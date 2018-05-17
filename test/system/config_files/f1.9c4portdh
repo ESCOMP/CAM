@@ -1,0 +1,7 @@
+-spmd -smp
+-offline_drv rad
+-dyn fv
+-hgrid 1.9x2.5
+-phys cam4
+-debug
+-s

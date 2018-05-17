@@ -1,0 +1,9 @@
+-spmd -nosmp
+-dyn eul
+-hgrid 8x16
+-debug
+-nadv_tt 5
+-cppdefs -DTRACER_CHECK
+-phys cam5
+-aquaplanet
+-s

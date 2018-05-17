@@ -1,0 +1,7 @@
+-spmd -nosmp
+-dyn eul
+-hgrid 8x16
+-phys cam3
+-aquaplanet
+-debug
+-s

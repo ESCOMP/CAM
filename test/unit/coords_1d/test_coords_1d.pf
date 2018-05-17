@@ -1,0 +1,117 @@
+module test_coords_1d
+
+use pfunit_mod
+
+use shr_kind_mod, only: r8 => shr_kind_r8
+use coords_1d, only: Coords1D
+
+implicit none
+
+integer, parameter :: n = 3
+integer, parameter :: d = 4
+
+real(r8) :: ifc(n,d+1)
+real(r8) :: mid(n,d)
+real(r8) :: del(n,d)
+real(r8) :: dst(n,d-1)
+
+type(Coords1D) :: coords
+
+contains
+
+@Before
+subroutine setUp()
+  integer :: i
+
+  do i = 1, n
+     ifc(i,:) = i*[0._r8, 1._r8, 3._r8, 3.5_r8, 4._r8]
+     mid(i,:) = i*[0.5_r8, 2._r8, 3.25_r8, 3.75_r8]
+     del(i,:) = i*[1._r8, 2._r8, 0.5_r8, 0.5_r8]
+     dst(i,:) = i*[1.5_r8, 1.25_r8, 0.5_r8]
+  end do
+
+end subroutine setUp
+
+@After
+subroutine tearDown()
+  call coords%finalize()
+end subroutine tearDown
+
+! This test just sets all the fields and checks that they were allocated
+! and set correctly.
+@Test
+subroutine coords_1d_set_all()
+
+  ! XLF workaround requires these temporaries.
+  real(r8) :: rdel(n,d), rdst(n,d-1)
+
+  rdel = 1._r8/del
+  rdst = 1._r8/dst
+
+  coords = Coords1D(ifc, mid, del, dst, rdel, rdst)
+
+  @assertEqual(n, coords%n)
+  @assertEqual(d, coords%d)
+  @assertEqual(ifc, coords%ifc)
+  @assertEqual(mid, coords%mid)
+  @assertEqual(del, coords%del)
+  @assertEqual(dst, coords%dst)
+  @assertEqual(1._r8/del, coords%rdel)
+  @assertEqual(1._r8/dst, coords%rdst)
+
+end subroutine coords_1d_set_all
+
+! This test is for the constructor from an input of "int" alone.
+@Test
+subroutine coords_1d_set_from_int()
+
+  coords = Coords1D(ifc)
+
+  @assertEqual(n, coords%n)
+  @assertEqual(d, coords%d)
+  @assertEqual(ifc, coords%ifc)
+  @assertEqual(mid, coords%mid)
+  @assertEqual(del, coords%del)
+  @assertEqual(dst, coords%dst)
+  @assertEqual(1._r8/del, coords%rdel)
+  @assertEqual(1._r8/dst, coords%rdst)
+
+end subroutine coords_1d_set_from_int
+
+! Test creating a coords object as a section of another coords object.
+@Test
+subroutine coords_section()
+
+  ! Lower and upper bounds for section.
+  integer :: li, ui, lj, uj
+
+  type(Coords1D) :: sub_coords, section
+
+  ! Bounds to use for section.
+  li = 2
+  ui = n-1
+  lj = 2
+  uj = d-1
+
+  ! Create coords and coords subset.
+  coords = Coords1D(ifc)
+  sub_coords = Coords1D(ifc(li:ui,lj:uj+1))
+
+  ! Coords section.
+  section = coords%section([li, ui],[lj, uj])
+
+  ! Subset and section should be the same.
+  @assertEqual(sub_coords%n, section%n)
+  @assertEqual(sub_coords%d, section%d)
+  @assertEqual(sub_coords%ifc, section%ifc)
+  @assertEqual(sub_coords%mid, section%mid)
+  @assertEqual(sub_coords%del, section%del)
+  @assertEqual(sub_coords%dst, section%dst)
+  @assertEqual(sub_coords%rdel, section%rdel)
+  @assertEqual(sub_coords%rdst, section%rdst)
+
+  call sub_coords%finalize()
+
+end subroutine coords_section
+
+end module test_coords_1d

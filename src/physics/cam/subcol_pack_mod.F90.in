@@ -1,0 +1,325 @@
+module subcol_pack_mod
+  !---------------------------------------------------------------------------
+  ! Purpose:
+  !
+  ! Provides utilities to pack and unpack subcolumns
+  !
+  !---------------------------------------------------------------------------
+
+  use shr_kind_mod,    only: r8=>shr_kind_r8, r4=>shr_kind_r4, i4=>shr_kind_i4
+  use infnan,          only: nan, assignment(=)
+  use cam_abortutils,  only: endrun
+  use ppgrid,          only: pcols, psubcols
+  use pio,             only: var_desc_t
+
+  implicit none
+
+  private
+  save
+
+  public :: subcol_unpack           ! Unpack a subcolumn field
+  public :: subcol_pack             ! Pack a subcolumn field
+  public :: subcol_get_nsubcol      ! Copy chunk from nsubcol2d
+  public :: subcol_set_nsubcol      ! Copy chunk to nsubcol2d
+  public :: subcol_get_indcol       ! Copy chunk from indcol2d
+  public :: subcol_pack_allocate    ! Allocate subcol packing arrays
+  public :: subcol_pack_init_restart
+  public :: subcol_pack_write_restart
+  public :: subcol_pack_read_restart
+
+  !! Private variable to provide default packing and unpacking of fields
+  !! for use in restart functionality. Allocated as (pcols, begchunk:endchunk)
+  integer, target, allocatable :: nsubcol2d(:,:)
+  integer, target, allocatable :: indcol2d(:,:)
+
+  interface subcol_pack
+     ! TYPE int,double,real
+     ! DIMS 1,2,3,4,5,6
+     module procedure subcol_pack_{DIMS}d_{TYPE}
+  end interface subcol_pack
+
+  interface subcol_unpack
+     ! TYPE int,double,real
+     ! DIMS 1,2,3,4,5,6
+     module procedure subcol_unpack_{DIMS}d_{TYPE}
+  end interface subcol_unpack
+
+  type(var_desc_t) :: nsubcol_desc
+
+contains
+
+  subroutine subcol_pack_allocate()
+    use ppgrid,          only: begchunk, endchunk
+    !-----------------------------------------------------------------------
+    ! Allocate nsubcol2d and indcol2d
+    !-----------------------------------------------------------------------
+    if (allocated(nsubcol2d)) then
+       deallocate(nsubcol2d)
+    end if
+    allocate(nsubcol2d(pcols, begchunk:endchunk))
+    nsubcol2d = 0
+
+    if (allocated(indcol2d)) then
+       deallocate(indcol2d)
+    end if
+    allocate(indcol2d(pcols*psubcols, begchunk:endchunk))
+    indcol2d = 0
+  end subroutine subcol_pack_allocate
+
+  subroutine subcol_pack_init_restart(File, hdimids)
+
+    use pio,           only: file_desc_t, pio_int
+    use cam_pio_utils, only: cam_pio_def_var
+
+    ! Dummy arguments
+    type(file_desc_t), intent(inout) :: File
+    integer,           intent(in)    :: hdimids(:)
+
+    call cam_pio_def_var(File, 'NSUBCOL2D', pio_int, hdimids, nsubcol_desc)
+  end subroutine subcol_pack_init_restart
+
+  subroutine subcol_pack_write_restart(File, grid_id, fdimlens)
+    use cam_grid_support, only: cam_grid_write_dist_array
+    use ppgrid,           only: begchunk, endchunk
+    use pio,              only: file_desc_t
+
+    ! Dummy argument
+    type(file_desc_t), intent(inout) :: File
+    integer,           intent(in)    :: grid_id
+    integer,           intent(in)    :: fdimlens(:)
+
+    ! Local variables
+    integer                          :: adimlens(2)
+    character(len=*), parameter      :: subname = 'SUBCOL_PACK_WRITE_RESTART'
+
+    ! Write nsubcol2d
+    adimlens(1) = size(nsubcol2d, 1)
+    adimlens(2) = endchunk - begchunk + 1
+    call cam_grid_write_dist_array(File, grid_id, adimlens(1:2),              &
+         fdimlens(:), nsubcol2d, nsubcol_desc)
+  end subroutine subcol_pack_write_restart
+
+  subroutine subcol_pack_read_restart(File, grid_id, fdimlens)
+    use pio,              only: file_desc_t, pio_inq_varid
+    use cam_pio_utils,    only: cam_pio_handle_error
+    use cam_grid_support, only: cam_grid_read_dist_array
+    use ppgrid,           only: begchunk, endchunk
+
+    ! Dummy argument
+    type(file_desc_t), intent(inout) :: File
+    integer,           intent(in)    :: grid_id
+    integer,           intent(in)    :: fdimlens(:)
+
+    integer                          :: ierr, c
+    integer                          :: adimlens(3)
+    character(len=*), parameter      :: subname = 'SUBCOL_PACK_READ_RESTART'
+
+    ! Array dimensions
+    adimlens(1) = size(nsubcol2d, 1)
+    adimlens(2) = endchunk - begchunk + 1
+    ! Find nsubcol2d and read it in
+    ierr = pio_inq_varid(File, 'NSUBCOL2D', nsubcol_desc)
+    call cam_pio_handle_error(ierr, trim(subname)//': NSUBCOL2D not found')
+    call cam_grid_read_dist_array(File, grid_id, adimlens(1:2),              &
+         fdimlens(:), nsubcol2d, nsubcol_desc)
+
+     ! We need to update indcol2d so set nsubcol2d to itself
+     do c = begchunk, endchunk
+       call subcol_set_nsubcol(c, pcols, nsubcol2d(:, c))
+     end do
+
+  end subroutine subcol_pack_read_restart
+
+
+  subroutine subcol_get_nsubcol(lchnk, nsubcol)
+    !-----------------------------------------------------------------------
+    ! Retrieve a chunk from the nsubcol module variable
+    !-----------------------------------------------------------------------
+
+    integer,    intent(in)    :: lchnk
+    integer,    intent(out)   :: nsubcol(:)
+
+    if (.not. allocated(nsubcol2d)) then
+       call endrun('subcol_get_nsubcol: nsubcol2d not allocated')
+    end if
+    nsubcol(:) = nsubcol2d(:,lchnk)
+  end subroutine subcol_get_nsubcol
+
+  subroutine subcol_get_indcol(lchnk, indcol)
+    !-----------------------------------------------------------------------
+    ! Retrieve a chunk from the nsubcol module variable
+    !-----------------------------------------------------------------------
+
+    integer,    intent(in)    :: lchnk
+    integer,    intent(out)   :: indcol(:)
+
+    if (.not. allocated(indcol2d)) then
+       call endrun('subcol_get_indcol: indcol2d not allocated')
+    end if
+    indcol(:) = indcol2d(:,lchnk)
+  end subroutine subcol_get_indcol
+
+  subroutine subcol_set_nsubcol(lchnk, ngrdcol, nsubcol)
+    !-----------------------------------------------------------------------
+    ! Set a chunk of the nsubcol module variable
+    ! Also, recompute indcol for lchnk
+    !-----------------------------------------------------------------------
+
+    integer,    intent(in)    :: lchnk
+    integer,    intent(in)    :: ngrdcol
+    integer,    intent(in)    :: nsubcol(:)
+
+    integer                   :: i, j, indx
+
+    if (any(nsubcol(:) > psubcols)) then
+       call endrun('subcol_set_nsubcol: psubcols not set large enough to hold the number of subcolumns requested')
+    end if
+    if (any(nsubcol(:) < 0)) then
+       call endrun('subcol_set_nsubcol: nsubcols must be non-negative')
+    end if
+    if (ngrdcol < pcols) then
+       if (any(nsubcol(ngrdcol+1:) > 0)) then
+          call endrun('subcol_set_nsubcol: Cannot set subcolumns for columns past ngrdcol')
+       end if
+    end if
+    nsubcol2d(:, lchnk) = nsubcol(:)
+    ! Recalculate indcol for the chunk
+    indx = 1
+    do i = 1, pcols
+       do j = 1, nsubcol2d(i, lchnk)
+          indcol2d(indx, lchnk) = i
+          indx = indx + 1
+       end do
+    end do
+    ! Fill with zeros
+    if (indx <= pcols * psubcols) then
+       indcol2d(indx:pcols*psubcols, lchnk) = 0
+    end if
+  end subroutine subcol_set_nsubcol
+
+  ! TYPE int,double,real
+  ! DIMS 1,2,3,4,5,6
+  subroutine subcol_pack_{DIMS}d_{TYPE}(lchnk, field, field_sc)
+    !-----------------------------------------------------------------------
+    ! Pack the field defined on (pcols, psubcols, *) into (pcols*psubcols, *)
+    ! Packing is done accoding to the values in the proper chunk from nsubcol2d
+    !-----------------------------------------------------------------------
+
+    integer, intent(in)                     :: lchnk            ! Chunk index
+#if ({DIMS} == 1)
+    {VTYPE}, intent(in)                     :: field(:,:)           ! grid
+#elif ({DIMS} == 2)
+    {VTYPE}, intent(in)                     :: field(:,:,:)         ! grid
+#elif ({DIMS} == 3)
+    {VTYPE}, intent(in)                     :: field(:,:,:,:)       ! grid
+#elif ({DIMS} == 4)
+    {VTYPE}, intent(in)                     :: field(:,:,:,:,:)     ! grid
+#elif ({DIMS} == 5)
+    {VTYPE}, intent(in)                     :: field(:,:,:,:,:,:)   ! grid
+#elif ({DIMS} == 6)
+    {VTYPE}, intent(in)                     :: field(:,:,:,:,:,:,:) ! grid
+#endif
+    {VTYPE}, intent(out)                    :: field_sc{DIMSTR}     ! subcols
+
+    !
+    ! Local variables
+    !
+    integer           :: indx, i, j
+    integer           :: nsubcol(pcols)
+
+    call subcol_get_nsubcol(lchnk, nsubcol)
+    indx = 1
+    do i=1, pcols
+       do j = 1, nsubcol(i)
+#if ({DIMS} == 1)
+          field_sc(indx) = field(i, j)
+#elif ({DIMS} == 2)
+          field_sc(indx, :) = field(i, j, :)
+#elif ({DIMS} == 3)
+          field_sc(indx, :, :) = field(i, j, :, :)
+#elif ({DIMS} == 4)
+          field_sc(indx, :, :, :) = field(i, j, :, :, :)
+#elif ({DIMS} == 5)
+          field_sc(indx, :, :, :, :) = field(i, j, :, :, :, :)
+#elif ({DIMS} == 6)
+          field_sc(indx, :, :, :, :, :) = field(i, j, :, :, :, :, :)
+#endif
+          indx = indx + 1
+       end do
+    end do
+  end subroutine subcol_pack_{DIMS}d_{TYPE}
+
+  ! TYPE int,double,real
+  ! DIMS 1,2,3,4,5,6
+  subroutine subcol_unpack_{DIMS}d_{TYPE}(lchnk, field_sc, field, fillvalue)
+    !-----------------------------------------------------------------------
+    ! UnPack the field defined on (pcols*psubcols, *) into (pcols, psubcols, *)
+    ! Unpacking is done accoding to the values in the proper chunk from nsubcol2d
+    ! If fillvalue is present, unused entries in field are set.
+    ! NB: The output field is not initialized, if fillvalue is not passed, it
+    !     will end up with undefined values for columns where nsubcol < psubcols
+    !-----------------------------------------------------------------------
+
+    integer, intent(in)                     :: lchnk            ! Chunk index
+    {VTYPE}, intent(in)                     :: field_sc{DIMSTR}     ! subcols
+#if ({DIMS} == 1)
+    {VTYPE}, intent(out)                    :: field(:,:)           ! grid
+#elif ({DIMS} == 2)
+    {VTYPE}, intent(out)                    :: field(:,:,:)         ! grid
+#elif ({DIMS} == 3)
+    {VTYPE}, intent(out)                    :: field(:,:,:,:)       ! grid
+#elif ({DIMS} == 4)
+    {VTYPE}, intent(out)                    :: field(:,:,:,:,:)     ! grid
+#elif ({DIMS} == 5)
+    {VTYPE}, intent(out)                    :: field(:,:,:,:,:,:)   ! grid
+#elif ({DIMS} == 6)
+    {VTYPE}, intent(out)                    :: field(:,:,:,:,:,:,:) ! grid
+#endif
+    {VTYPE}, intent(in), optional           :: fillvalue            ! fil
+
+    !
+    ! Local variables
+    !
+    integer           :: indx, i, j
+    integer           :: nsubcol(pcols)
+
+    call subcol_get_nsubcol(lchnk, nsubcol)
+    indx = 1
+    do i=1, pcols
+       do j = 1, nsubcol(i)
+#if ({DIMS} == 1)
+          field(i, j) = field_sc(indx)
+#elif ({DIMS} == 2)
+          field(i, j, :) = field_sc(indx, :)
+#elif ({DIMS} == 3)
+          field(i, j, :, :) = field_sc(indx, :, :)
+#elif ({DIMS} == 4)
+          field(i, j, :, :, :) = field_sc(indx, :, :, :)
+#elif ({DIMS} == 5)
+          field(i, j, :, :, :, :) = field_sc(indx, :, :, :, :)
+#elif ({DIMS} == 6)
+          field(i, j, :, :, :, :, :) = field_sc(indx, :, :, :, :, :)
+#endif
+          indx = indx + 1
+       end do
+       if (present(fillvalue)) then
+          do j = nsubcol(i) + 1, psubcols
+#if ({DIMS} == 1)
+             field(i, j) = fillvalue
+#elif ({DIMS} == 2)
+             field(i, j, :) = fillvalue
+#elif ({DIMS} == 3)
+             field(i, j, :, :) = fillvalue
+#elif ({DIMS} == 4)
+             field(i, j, :, :, :) = fillvalue
+#elif ({DIMS} == 5)
+             field(i, j, :, :, :, :) = fillvalue
+#elif ({DIMS} == 6)
+             field(i, j, :, :, :, :, :) = fillvalue
+#endif
+          end do
+       end if
+    end do
+  end subroutine subcol_unpack_{DIMS}d_{TYPE}
+
+end module subcol_pack_mod

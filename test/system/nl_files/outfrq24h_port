@@ -1,0 +1,18 @@
+&camexp
+ offline_driver_infile = '$CSMDATA/atm/cam/port/trop_strat_mam3.4x5.doubleCO2.cam.h1.0000-01-01-00000_c140430.nc'
+ rad_data_fdh = .true.
+ empty_htapes = .true.
+ avgflag_pertape = 'A','I'
+ fincl1 = 'SOLIN', 'QRS', 'FSNS', 'FSNT','FSNSC', 'FSDSC','FSNR','FLNR',
+          'FSNTOA', 'FSUTOA', 'FSNTOAC', 'FSNTC', 'FSDSC', 'FSDS', 'SWCF',
+          'QRL', 'FLNS', 'FLDS', 'FLNT', 'LWCF', 'FLUT' ,'FLUTC', 'FLNTC', 
+          'FLNSC', 'FLDSC'
+ fincl2 = 'SOLIN', 'QRS', 'FSNS', 'FSNT','FSNSC', 'FSDSC','FSNR','FLNR',
+          'FSNTOA', 'FSUTOA', 'FSNTOAC', 'FSNTC', 'FSDSC', 'FSDS', 'SWCF',
+          'QRL', 'FLNS', 'FLDS', 'FLNT', 'LWCF', 'FLUT' ,'FLUTC', 'FLNTC', 
+          'FLNSC', 'FLDSC'
+ rad_data_output = .false.
+ mfilt=1,1,1,1,1,1
+ ndens=1,1,1,1,1,1
+ nhtfrq=-24,-24,-24,-24,-24,-24
+ /

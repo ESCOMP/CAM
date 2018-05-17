@@ -1,0 +1,272 @@
+module test_fd_solver
+
+use pfunit_mod
+
+use shr_kind_mod, only: r8 => shr_kind_r8
+use shr_const_mod, only: pi => shr_const_pi
+
+use linear_1d_operators, only: TriDiagDecomp
+use vdiff_lu_solver, only: vd_lu_decomp
+
+implicit none
+
+! This tests the differential equation solver by actually setting up small
+! systems to solve via implicit Euler (for a single time step). The error
+! bounds are based on very rough heuristics, and may not be as tight as
+! they could be.
+
+! Grid size used by these tests.
+integer, parameter :: n = 101
+
+! The grid itself (mid-points and distances between points).
+real(r8) :: x(1,n), deltas(1,n-1)
+
+contains
+
+@Before
+subroutine setUp()
+
+  integer :: i
+
+  ! Grid is n points between 0 and 1.
+  x(1,:) = [( real(i, r8) / real(n-1, r8), i = 0, n-1 )]
+  ! Introduce nonuniformity.
+  x = x*x
+  deltas = x(:,2:) - x(:,:n-1)
+
+end subroutine setUp
+
+@After
+subroutine tearDown()
+
+  ! Fight pollution!
+  x = 0._r8
+  deltas = 0._r8
+
+end subroutine tearDown
+
+! This test sets up a scenario where the concentration of a tracer decays
+! exponentially at each grid point, without transport.
+@Test
+subroutine solves_decay()
+
+  ! Time step.
+  real(r8) :: dt
+  ! PDE coefficients.
+  real(r8) :: coef_q(1,n)
+  ! Array to evolve.
+  real(r8) :: q(1,n), q_expected(1,n)
+
+  ! Decomposed diffusion matrix.
+  type(TriDiagDecomp) :: diff_decomp
+
+  ! Equation to solve is dq/dt = -q
+  coef_q = -1._r8
+
+  dt = 1._r8
+
+  ! Decomposition
+  diff_decomp = vd_lu_decomp(dt, deltas, coef_q=coef_q)
+
+  ! We are seeking the solution q(x,t) = e^(-t) * cos(pi*x)
+  ! Set q for t = 0.
+  q = cos(pi*x)
+  ! Expected result after one step.
+  q_expected = cos(pi*x)*exp(-dt)
+
+  call diff_decomp%left_div(q)
+
+  ! Max error in this case is (1/2 - 1/e)*dt*maxval(x) which is
+  ! ~dt*maxval(x)/6.
+  @assertEqual(q_expected, q, tolerance=dt*maxval(x)/6._r8)
+
+end subroutine solves_decay
+
+! This test sets up a scenario where we only solve the 1-D advection
+! equation. It deliberately uses boundary conditions where the tendency is
+! zero; a separate test will test the boundaries.
+!
+! Note that this method (using central differencing) does not actually
+! converge on the right answer. We don't really care, since the point is
+! just to ensure that it's roughly OK for a single time-step. Real uses of
+! this solver should always be dominated by a diffusive term.
+@Test
+subroutine solves_advection()
+
+  ! Time step.
+  real(r8) :: dt
+  ! PDE coefficients.
+  real(r8) :: coef_q_d(1,n)
+  ! Array to evolve.
+  real(r8) :: q(1,n), q_expected(1,n)
+
+  ! Decomposed diffusion matrix.
+  type(TriDiagDecomp) :: diff_decomp
+
+  ! Equation to solve is dq/dt = -dq/dx
+  coef_q_d = -1._r8
+
+  ! Set time based (roughly) on CFL.
+  dt = minval(deltas) / maxval(abs(coef_q_d))
+
+  ! Decomposition
+  diff_decomp = vd_lu_decomp(dt, deltas, coef_q_d=coef_q_d)
+
+  ! We are seeking the solution q(x,t) = cos(pi*(x-t))
+  ! Set q for t = 0.
+  q = cos(pi*x)
+  ! Expected result after one step.
+  q_expected = cos(pi*(x-dt))
+
+  call diff_decomp%left_div(q)
+
+  @assertEqual(q_expected, q, tolerance=dt)
+
+end subroutine solves_advection
+
+! This test sets up a scenario where we only solve the 1-D heat equation.
+! It deliberately uses boundary conditions where the tendency is zero; a
+! separate test will test the boundaries.
+@Test
+subroutine solves_heat()
+
+  ! Time step.
+  real(r8) :: dt
+  ! PDE coefficients.
+  real(r8) :: coef_q_d2(1,n)
+  ! Array to evolve.
+  real(r8) :: q(1,n), q_expected(1,n)
+
+  ! Decomposed diffusion matrix.
+  type(TriDiagDecomp) :: diff_decomp
+
+  ! Equation to solve is dq/dt = (d^2 q)/dx^2
+  coef_q_d2 = 1._r8
+
+  ! Set time based (roughly) on CFL.
+  dt = minval(deltas)**2 / maxval(abs(coef_q_d2))
+
+  ! Decomposition
+  diff_decomp = vd_lu_decomp(dt, deltas, coef_q_d2=coef_q_d2)
+
+  ! We are seeking the solution:
+  ! q(x,t) = sin(pi*x) * exp(-pi^2*t) - (1/3) * sin(3*pi*x) * exp(-9*pi^2*t)
+  ! This solution is constant at the boundaries, and it has no heat flux
+  ! through the boundary at t=0, so it's a good choice for testing the
+  ! default (zero-flux) boundary condition.
+
+  ! Set q for t = 0.
+  q = sin(pi*x) - (1._r8/3._r8)*sin(3._r8*pi*x)
+  ! Expected result after one step.
+  q_expected = sin(pi*x)*exp(-pi*pi*dt) - &
+       (1._r8/3._r8)*sin(3._r8*pi*x)*exp(-9._r8*pi*pi*dt)
+
+  call diff_decomp%left_div(q)
+
+  @assertEqual(q_expected, q, tolerance=2._r8*dt)
+
+end subroutine solves_heat
+
+! This test sets up a scenario where we only solve the 1-D heat equation.
+! A flux is prescribed at the boundary.
+@Test
+subroutine solves_heat_with_flux()
+
+  use linear_1d_operators, only: BoundaryCond, BoundaryFlux
+
+  ! Time step.
+  real(r8) :: dt
+  ! PDE coefficients.
+  real(r8) :: coef_q_d2(1,n)
+  ! Array to evolve.
+  real(r8) :: q(1,n), q_expected(1,n)
+
+  ! Decomposed diffusion matrix.
+  type(TriDiagDecomp) :: diff_decomp
+
+  type(BoundaryCond) :: upper_cond, lower_cond
+
+  ! Equation to solve is dq/dt = (d^2 q)/dx^2
+  coef_q_d2 = 1._r8
+
+  ! Set time based (roughly) on CFL.
+  dt = minval(deltas)**2 / maxval(abs(coef_q_d2))
+
+  ! Decomposition
+  diff_decomp = vd_lu_decomp(dt, deltas, coef_q_d2=coef_q_d2)
+
+  ! We are seeking the solution: q(x,t) = sin(pi*x) * exp(-pi^2*t)
+  ! To adhere to this solution, we need to specify information about the
+  ! boundary fluxes.
+  ! Set q for t = 0.
+  q = sin(pi*x)
+  ! Expected result after one step.
+  q_expected = q*exp(-pi*pi*dt)
+
+  ! Boundary flux for t=0 is -pi on the top and the bottom.
+  upper_cond = BoundaryFlux(spread(-pi, 1, 1), dt, deltas(:,1))
+  lower_cond = BoundaryFlux(spread(-pi, 1, 1), dt, deltas(:,n-1))
+  call diff_decomp%left_div(q, upper_cond, lower_cond)
+
+  @assertEqual(q_expected, q, tolerance=dt)
+
+end subroutine solves_heat_with_flux
+
+! This test sets up a scenario where we only solve the 1-D heat equation.
+! An extra layer with a specified value is provided for the boundary
+! condition.
+@Test
+subroutine solves_heat_with_data()
+
+  use linear_1d_operators, only: BoundaryType, BoundaryFixedLayer, &
+       BoundaryCond, BoundaryData
+
+  ! Time step.
+  real(r8) :: dt
+  ! PDE coefficients.
+  real(r8) :: coef_q_d2(1,n)
+  ! Array to evolve.
+  real(r8) :: q(1,n), q_expected(1,n)
+
+  ! Decomposed diffusion matrix.
+  type(TriDiagDecomp) :: diff_decomp
+
+  type(BoundaryType) :: upper_bndry, lower_bndry
+  type(BoundaryCond) :: upper_cond, lower_cond
+
+  real(r8) :: tmp_bndry_data(1)
+
+  ! Equation to solve is dq/dt = (d^2 q)/dx^2
+  coef_q_d2 = 1._r8
+
+  ! Set time based (roughly) on CFL.
+  dt = minval(deltas)**2 / maxval(abs(coef_q_d2))
+
+  ! Fixed boundary layers.
+  tmp_bndry_data = deltas(:,1)
+  upper_bndry = BoundaryFixedLayer(tmp_bndry_data)
+  tmp_bndry_data = deltas(:,n-1)
+  lower_bndry = BoundaryFixedLayer(tmp_bndry_data)
+
+  ! Decomposition
+  diff_decomp = vd_lu_decomp(dt, deltas, coef_q_d2=coef_q_d2, &
+       upper_bndry=upper_bndry, lower_bndry=lower_bndry)
+
+  ! We are seeking the solution: q(x,t) = sin(pi*x) * exp(-pi^2*t)
+  ! To adhere to this solution, we need to specify information about the
+  ! boundary fluxes.
+  ! Set q for t = 0.
+  q = sin(pi*x)
+  ! Expected result after one step.
+  q_expected = q*exp(-pi*pi*dt)
+
+  ! Boundary condition such that the end points should stay at 0.
+  upper_cond = BoundaryData(-q(:,2))
+  lower_cond = BoundaryData(-q(:,n-1))
+  call diff_decomp%left_div(q, upper_cond, lower_cond)
+
+  @assertEqual(q_expected, q, tolerance=dt)
+
+end subroutine solves_heat_with_data
+
+end module test_fd_solver

@@ -1,0 +1,6 @@
+-spmd -nosmp
+-dyn fv
+-hgrid 4x5
+-phys held_suarez
+-debug
+-s

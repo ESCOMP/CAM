@@ -1,0 +1,41 @@
+  
+  
+     Solution species
+      (  1)  CL                 (Cl)
+      (  2)  CL2                (Cl2)
+      (  3)  RHO                (H)
+  
+  
+     Invariant species
+      (  1)  M               
+  
+  
+     Column integrals
+   ( 1)  O3               -  0.000E+00
+   ( 2)  O2               -  0.000E+00
+  
+Class List
+==========
+  
+ Implicit  
+ --------
+      (  1)  CL              
+      (  2)  CL2             
+      (  3)  RHO             
+  
+     Photolysis
+  
+     Reactions
+  toy_k1           (  1)   CL2 ->  2.*CL                                                        rate = ** User defined **         (  1)
+  toy_k2           (  2)   CL + CL ->  CL2                                                      rate = ** User defined **         (  2)
+  
+Extraneous prod/loss species
+  
+  
+ Equation Report
+  
+    d(CL)/dt = 2*r1*CL2                                                                                                 
+                - 2*r2*CL*CL                                                                                            
+    d(CL2)/dt = r2*CL*CL                                                                                                
+                 - r1*CL2                                                                                               
+    d(RHO)/dt = 0                                                                                                       

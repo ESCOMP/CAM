@@ -1,0 +1,6 @@
+-spmd -nosmp
+-dyn se
+-hgrid ne5np4
+-phys adiabatic
+-debug
+-s

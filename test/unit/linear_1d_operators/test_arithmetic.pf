@@ -1,0 +1,227 @@
+module test_arithmetic
+
+use pfunit_mod
+
+use shr_kind_mod, only: r8 => shr_kind_r8
+use linear_1d_operators
+
+implicit none
+
+! Roundoff level tolerance.
+real(r8), parameter :: tol = 1.e-12_r8
+
+! Grid size.
+integer, parameter :: nsys = 2, ncel = 4
+
+! Grids:
+! Uniform.
+real(r8), parameter :: uniform_grid(ncel) = &
+     [0._r8, 1._r8, 2._r8, 3._r8]
+real(r8), parameter :: uniform_spacing(ncel-1) = &
+     [1._r8, 1._r8, 1._r8]
+! Non-uniform.
+real(r8), parameter :: non_uni_grid(ncel) = &
+     [0._r8, 0.25_r8, 0.75_r8, 2.0_r8]
+real(r8), parameter :: non_uni_spacing(ncel-1) = &
+     [0.25_r8, 0.5_r8, 1.25_r8]
+
+real(r8) :: data(nsys, ncel)
+
+type(TriDiagOp) :: first_deriv
+type(TriDiagOp) :: second_deriv
+type(TriDiagOp) :: test_op
+
+contains
+
+@Before
+subroutine setUp()
+  real(r8) :: spacings(nsys, ncel-1)
+  ! Quadratic test data.
+  data(1,:) = non_uni_grid * non_uni_grid
+  data(2,:) = uniform_grid * uniform_grid
+
+  spacings(1,:) = non_uni_spacing
+  spacings(2,:) = uniform_spacing
+
+  first_deriv = first_derivative(spacings, &
+       l_bndry=BoundaryExtrapolate(), r_bndry=BoundaryExtrapolate())
+  second_deriv = second_derivative(spacings, &
+       l_bndry=BoundaryExtrapolate(), r_bndry=BoundaryExtrapolate())
+end subroutine setUp
+
+@After
+subroutine tearDown()
+  call first_deriv%finalize()
+  call second_deriv%finalize()
+  call test_op%finalize()
+end subroutine tearDown
+
+! Check that two linear operators can be summed. This uses the distributive
+! property.
+@Test
+subroutine adding_ops_gives_sum()
+
+  real(r8) :: output(nsys,ncel)
+  real(r8) :: expected(nsys,ncel)
+
+  ! The expected result on data.
+  expected = first_deriv%apply(data)
+  expected = expected + second_deriv%apply(data)
+
+  ! Combined operator.
+  test_op = first_deriv + second_deriv
+  output = test_op%apply(data)
+
+  ! The two should match up to roundoff.
+  @assertEqual(expected, output, tolerance=tol)
+
+end subroutine adding_ops_gives_sum
+
+! Check that two linear operators can be subtracted.
+@Test
+subroutine subtracting_ops_gives_difference()
+
+  real(r8) :: output(nsys,ncel)
+  real(r8) :: expected(nsys,ncel)
+
+  ! The expected result on data.
+  expected = first_deriv%apply(data)
+  expected = second_deriv%apply(data) - expected
+
+  ! Combined operator.
+  test_op = second_deriv - first_deriv
+  output = test_op%apply(data)
+
+  ! The two should match up to roundoff.
+  @assertEqual(expected, output, tolerance=tol)
+
+end subroutine subtracting_ops_gives_difference
+
+! Check that two linear operators can be summed. This uses the distributive
+! property.
+@Test
+subroutine adding_ops_in_place_gives_sum()
+
+  real(r8) :: output(nsys,ncel)
+  real(r8) :: expected(nsys,ncel)
+
+  ! The derivative and expected result on data.
+  expected = first_deriv%apply(data)
+  expected = expected + second_deriv%apply(data)
+
+  ! Combined operator.
+  test_op = second_deriv
+  call test_op%add(first_deriv)
+  output = test_op%apply(data)
+
+  ! The two should match up to roundoff.
+  @assertEqual(expected, output, tolerance=tol)
+
+end subroutine adding_ops_in_place_gives_sum
+
+! Check that two linear operators can be subtracted.
+@Test
+subroutine subtracting_ops_in_place()
+
+  real(r8) :: output(nsys,ncel)
+  real(r8) :: expected(nsys,ncel)
+
+  ! The derivative and expected result on data.
+  expected = first_deriv%apply(data)
+  expected = second_deriv%apply(data) - expected
+
+  ! Combined operator.
+  test_op = second_deriv
+  call test_op%subtract(first_deriv)
+  output = test_op%apply(data)
+
+  ! The two should match up to roundoff.
+  @assertEqual(expected, output, tolerance=tol)
+
+end subroutine subtracting_ops_in_place
+
+! Can add a scalar to diagonal, equivalent to adding a multiple of the
+! identity.
+@Test
+subroutine add_scalar_to_diag()
+
+  real(r8) :: output(nsys,ncel)
+  real(r8) :: expected(nsys,ncel)
+
+  ! The derivative and expected result on data.
+  test_op = first_deriv
+  expected = data + test_op%apply(data)
+
+  ! Add in data to operator.
+  call test_op%add_to_diag(1._r8)
+  output = test_op%apply(data)
+
+  ! The two should match up to roundoff.
+  @assertEqual(expected, output, tolerance=tol)
+
+end subroutine add_scalar_to_diag
+
+! Adding data to an operator's diagonal is the same as adding a diagonal
+! operator.
+@Test
+subroutine add_to_diag_gives_sum()
+
+  real(r8) :: output(nsys,ncel)
+  real(r8) :: expected(nsys,ncel)
+
+  ! The derivative and expected result on data.
+  test_op = first_deriv
+  expected = data*data + test_op%apply(data)
+
+  ! Add in data to operator.
+  call test_op%add_to_diag(data)
+  output = test_op%apply(data)
+
+  ! The two should match up to roundoff.
+  @assertEqual(expected, output, tolerance=tol)
+
+end subroutine add_to_diag_gives_sum
+
+! Can multiply an operator by a scalar.
+@Test
+subroutine scalar_multiplies_diag()
+
+  real(r8) :: output(nsys,ncel)
+  real(r8) :: expected(nsys,ncel)
+
+  ! The derivative and expected result on data.
+  test_op = first_deriv
+  expected = 2._r8 * test_op%apply(data)
+
+  ! Add in data to operator.
+  call test_op%lmult_as_diag(2._r8)
+  output = test_op%apply(data)
+
+  ! The two should match up to roundoff.
+  @assertEqual(expected, output, tolerance=tol)
+
+end subroutine scalar_multiplies_diag
+
+! Test that we can construct the operator (f * derivative), where f is a
+! scalar function. The test checks using associativity:
+! (f * derivative) x = f * (derivative x)
+@Test
+subroutine diagonal_multiplies_operator()
+
+  real(r8) :: output(nsys,ncel)
+  real(r8) :: expected(nsys,ncel)
+
+  ! The derivative and expected result on data.
+  test_op = first_deriv
+  expected = data * test_op%apply(data)
+
+  ! Now do the scaling and see if we get the same output.
+  call test_op%lmult_as_diag(data)
+  output = test_op%apply(data)
+
+  ! The two should match up to roundoff.
+  @assertEqual(expected, output, tolerance=tol)
+
+end subroutine diagonal_multiplies_operator
+
+end module test_arithmetic

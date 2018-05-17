@@ -1,0 +1,137 @@
+#!/bin/csh -fv
+
+#**********************************************************************
+# Run SCAM with a single IOP
+#    This script will build and run one IOP
+#    If a user wishes to run more than one IOP, use create_scam6_iop_multi
+#
+# Usage:
+#   ./create_scam6_iop <IOP>    # where IOP name is from list below
+#      - or -
+#   ./create_scam6_iop          # IOP is specified in the script below
+#**********************************************************************
+
+#------------------
+# User sets options in this section
+#------------------
+
+### Full path of cesm source code and case (output) directories (see examples)
+
+# set CESMDIR=/project/amp/$USER/collections/cam5_4_175
+# set CASEDIR=/project/amp/$USER/cases
+set CESMDIR=
+set CASEDIR=
+
+### Case Name
+
+#set CASETITLE=scam_test
+set CASETITLE=
+
+### Set location of user source mods (if any)
+setenv this_dir  `pwd`
+setenv usrsrc  ${this_dir}/mods/$CASETITLE
+
+### Standard Run Settings
+set RES=T42_T42
+set COMPSET=FSCAM
+set COMPILER=intel
+
+### Set Desired IOP
+### $1 means read from command line. Or put one of the names in:
+###     arm95 arm97 atex bomex cgilsS11 cgilsS12 cgilsS6 dycomsRF01 dycomsRF02 gateIII mpace rico sparticus togaII twp06
+
+set IOP = $1
+
+#------------------
+# User should not need to set any options in this section
+#------------------
+
+cd  $CASEDIR
+
+set IOPNAME = scam_$IOP
+
+## location of IOP data in CESM Tag
+set MODSDIR = $CESMDIR/components/cam/cime_config/usermods_dirs
+
+#Create full casename
+set CASENAME=${CASETITLE}.${COMPSET}.${IOP}
+
+#------------------
+# create case
+#------------------
+
+$CESMDIR/cime/scripts/create_newcase --compset $COMPSET  --res $RES --compiler $COMPILER --case $CASEDIR/$CASENAME  --user-mods-dir ${MODSDIR}/${IOPNAME} --run-unsupported
+
+cd  $CASEDIR/$CASENAME
+
+### Set build and run directories to be under case directory.
+
+set RUNDIR=${CASEDIR}/${CASENAME}/run
+./xmlchange RUNDIR=$RUNDIR
+
+./xmlchange EXEROOT=${CASEDIR}/${CASENAME}/bld
+
+#------------------
+# XMLCHANGE OPTIONS HERE
+#------------------
+
+### Append to CAM configure options
+# ./xmlchange --append CAM_CONFIG_OPTS=' '
+
+### DEBUG
+#./xmlchange DEBUG='TRUE'
+
+#------------------
+# Setup Case
+#------------------
+
+./case.setup 
+# ./case.setup -d -v    #-d -v for verbose and debug file
+
+#------------------
+#  source mods: copy them into case directory
+#------------------
+
+/bin/cp  ${usrsrc}/* SourceMods/src.cam/
+
+#------------------
+# Build
+#------------------
+
+./case.build 
+# ./case.build -d -v   #-d -v for verbose and debug file
+
+### make timing dir kludge  [REMOVE WHEN FIXED]
+mkdir -p $RUNDIR/timing/checkpoints
+
+#------------------
+# Add all user specific cam namelist changes here
+#
+# Users should add all user specific namelist changes below in the form of
+#    namelist_var = new_namelist_value
+# Namelist settings which appear in usermods_dir and here will use the values
+#    specified below
+# Other namelist settings from usermods_dirs will be unchanged
+# Output can also be specified here (e.g. fincl1)
+#------------------
+
+cat >> user_nl_cam << EOF
+ use_topo_file          = .true.  
+ mfilt          = 2500
+ nhtfrq         = 1
+ fincl1= 'CDNUMC', 'AQSNOW','ANSNOW','FREQSL','LS_FLXPRC'
+EOF
+
+#------------------
+# Choose type of job submission (batch or interactive)
+#------------------
+
+### Submit to Queue (If you have one)
+#./case.submit
+
+###  OR you can run interactively instead of going through the queue
+#cd $RUNDIR  
+#../bld/cesm.exe 
+
+
+

@@ -1,0 +1,48 @@
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+CHERYL'S NOTE -- to be removed when fully implemented
+The tracer, ozone and strataero files are from Mike Mill's 10/4/17 email
+I updated the cycle_yr to 2010
+NOTE - the solar_data_ymd is still 2000
+Everything else was copied from 2000_cam6.xml 
+This has not been verified with Cecile and is not ready to be used
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+<?xml version="1.0"?>
+
+<namelist_defaults>
+
+<co2vmr>   367.0e-6   </co2vmr>
+
+<do_tms>                .false.  </do_tms>
+<do_beljaars>           .true.   </do_beljaars>  
+
+
+<tracer_cnst_cycle_yr>   2010                                                           </tracer_cnst_cycle_yr>
+<tracer_cnst_datapath>   atm/cam/ozone                                                  </tracer_cnst_datapath>
+<tracer_cnst_file>       tracer_cnst_CAM6chem_2010climo_3D_monthly_c171004.nc           </tracer_cnst_file>
+<tracer_cnst_filelist>   ''                                                             </tracer_cnst_filelist>
+<tracer_cnst_specifier>  'O3','OH','NO3','HO2'                                          </tracer_cnst_specifier>
+<tracer_cnst_type>       'CYCLICAL'                                                     </tracer_cnst_type>
+
+<prescribed_ozone_cycle_yr>   2010                                                           </prescribed_ozone_cycle_yr>
+<prescribed_ozone_datapath>   atm/cam/ozone                                                  </prescribed_ozone_datapath>
+<prescribed_ozone_file>       ozone_strataero_CAM6chem_2010climo_zm_5day_c171004.nc          </prescribed_ozone_file> 
+<prescribed_ozone_name>       'O3'                                                           </prescribed_ozone_name>
+<prescribed_ozone_type>       'CYCLICAL'                                                     </prescribed_ozone_type> 
+
+<use_gw_oro>                  .false.          </use_gw_oro>
+<use_gw_rdg_beta>             .true.           </use_gw_rdg_beta>
+
+<zmconv_num_cin>              1                </zmconv_num_cin>
+
+<prescribed_strataero_cycle_yr>   2010                                                           </prescribed_strataero_cycle_yr>
+<prescribed_strataero_datapath>   atm/cam/ozone                                                  </prescribed_strataero_datapath>
+<prescribed_strataero_file>       ozone_strataero_CAM6chem_2010climo_zm_5day_c171004.nc          </prescribed_strataero_file> 
+<prescribed_strataero_type>       'CYCLICAL'                                                     </prescribed_strataero_type> 
+
+<solar_data_file     >   'atm/cam/solar/SolarForcing1995-2005avg_c160929.nc'   </solar_data_file>
+<solar_data_ymd      >    20000101                                             </solar_data_ymd>
+<solar_data_type     >    FIXED                                                </solar_data_type>
+
+</namelist_defaults>

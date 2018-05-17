@@ -1,0 +1,16 @@
+# setup SCAM lon and lat for this iop
+# this should correspond to the forcing IOP coordinates
+./xmlchange PTS_LON=300.
+./xmlchange PTS_LAT=15.
+
+# Specify the starting/ending time for the IOP
+# The complete time slice of IOP file is specified below
+# but you may simulate any within the IOP start and end times.
+./xmlchange RUN_STARTDATE=1969-06-25
+./xmlchange START_TOD=0
+./xmlchange STOP_OPTION=ndays
+./xmlchange STOP_N=5
+
+# usermods_dir/scam_mandatory will be included for all single column
+# runs by default.  This usermods directory contains mandatory settings
+# for scam and shouldn't be modified by the user.

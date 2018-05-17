@@ -1,0 +1,282 @@
+module test_mg_size_utils
+
+use pfunit_mod
+
+use micro_mg_utils
+
+! Constants we can get from the same place as the model:
+use shr_const_mod, only: &
+     rh2o => shr_const_rwv, &
+     cpair => shr_const_cpdair, &
+     tmelt => shr_const_tkfrz, &
+     latvap => shr_const_latvap, &
+     latice => shr_const_latice
+
+implicit none
+
+! At the time of this writing, this is the hard-coded MG2 value.
+real(r8), parameter :: dcs = 150.e-6_r8
+
+real(r8), parameter :: mach_eps = epsilon(1._r8)
+
+contains
+
+@Before
+subroutine setUp()
+  character(len=128) :: errstring
+  call micro_mg_utils_init(r8, rh2o, cpair, tmelt, latvap, latice, dcs, &
+       errstring)
+  if (trim(errstring) /= "") &
+       call throw("micro_mg_utils_init error: "//errstring)
+end subroutine setUp
+
+@After
+subroutine tearDown()
+end subroutine tearDown
+
+@Test
+subroutine mmr_converts_to_avg_diameter()
+  ! Don't really need to use units related to the model here.
+  !
+  ! Note that for an exponential distribution with mean diameter 1/lambda,
+  ! the average particle volume is pi * lambda**-3. (Not to be confused
+  ! with the volume of a particle with the average diameter, which is six
+  ! times smaller.)
+  !
+  ! Scenario:
+  ! In a substance of mass and volume 1, there are 2000 particles, each 3
+  ! micro-units wide, of a substance 5 times as heavy as the background
+  ! material.
+  !
+  ! Then the mmr is 2000 * (pi*(3e-6)**3) * 5 = 8.48e-13
+
+  real(r8) :: calculated_diameter
+
+  calculated_diameter = &
+       avg_diameter(8.4823001646924416e-13_r8, 2000._r8, 1._r8, 5._r8)
+
+  ! Should get the expected diameter to within an order of magnitude of
+  ! machine epsilon.
+  @assertEqual(3.e-6_r8, calculated_diameter, tolerance=(1.e-5_r8*mach_eps))
+
+end subroutine mmr_converts_to_avg_diameter
+
+@Test
+subroutine param_basic_has_q_threshold
+
+  type(MGHydrometeorProps) :: props
+
+  real(r8) :: qic(1), nic(1), lam(1)
+
+  ! Simple properties object with the density of water and 3 dimensions.
+  props = MGHydrometeorProps(1000._r8, 3._r8)
+
+  qic = 0._r8
+  nic = 0._r8
+  lam = -1._r8
+
+  ! For zeroed inputs, we expect a zeroed output.
+  call size_dist_param_basic(props, qic, nic, lam)
+
+  @assertEqual(0._r8, lam)
+
+end subroutine param_basic_has_q_threshold
+
+@Test
+subroutine param_basic_lam
+
+  type(MGHydrometeorProps) :: props
+
+  real(r8) :: qic(3), nic(3), lam(3), mean_masses_limited(3)
+
+  ! Particle type with the density of water and an effective dimension of
+  ! 2.5, between 1 and 100 microns average size.
+  props = MGHydrometeorProps(1000._r8, 2.5_r8, &
+       lambda_bounds=[1.e4_r8, 1.e6_r8])
+
+  ! What we expect is that the mean particle mass (qic/nic) for a particle
+  ! with an exponential distribution in diameter should be:
+  !
+  ! rho * gamma(d+1) * pi/6 * (1/lam)**d
+  !
+  ! For a lambda of 1.e3, 1.e5, and 1.e7, the mean mass would be 5.50e-5,
+  ! 5.50e-10, and 5.50e-15 respectively. However the first and third cases
+  ! should be limited, producing mean masses of 1.740e-5 and 1.740e-12.
+
+  qic = 55.02687259022202_r8
+  nic = [1.e6_r8, 1.e11_r8, 1.e16_r8]
+  lam = -1._r8
+
+  call size_dist_param_basic(props, qic, nic, lam)
+
+  ! Check limited lambda.
+  @assertEqual([1.e4_r8, 1.e5_r8, 1.e6_r8], lam, tolerance=(1.e7_r8*mach_eps))
+
+  ! Check that nic was limited as well.
+  mean_masses_limited = &
+       [1.7401024990099086e-7_r8, 5.502687259022204e-10_r8, &
+       1.7401024990099086e-12_r8]
+  @assertEqual(mean_masses_limited, qic/nic, tolerance=(1.e-6_r8*mach_eps))
+
+end subroutine param_basic_lam
+
+@Test
+subroutine param_basic_lam_mass_lim
+
+  type(MGHydrometeorProps) :: props
+
+  real(r8) :: qic(1), nic(1), lam(1)
+
+  ! Particle type with the density of water and an effective dimension of
+  ! 2.5, limiting mean mass to above 1.e-20. The lambda bounds are made
+  ! ineffective to avoid interference from them.
+  props = MGHydrometeorProps(1000._r8, 2.5_r8, &
+       lambda_bounds=[0._r8, huge(1._r8)], min_mean_mass=1.e-20_r8)
+
+  qic = 1._r8
+  nic = 1.e21_r8
+
+  call size_dist_param_basic(props, qic, nic, lam)
+
+  ! Check that nic was limited correctly.
+  @assertEqual(1.e20_r8, nic, tolerance=(1.e21_r8*mach_eps))
+
+end subroutine param_basic_lam_mass_lim
+
+@Test
+subroutine param_basic_n0
+
+  type(MGHydrometeorProps) :: props
+
+  real(r8) :: qic(1), nic(1), lam_alone(1), lam(1), n0(1)
+
+  ! Particle type with the density of water and an effective dimension of
+  ! 2.5, between 1 and 100 microns average size.
+  props = MGHydrometeorProps(1000._r8, 2.5_r8, &
+       lambda_bounds=[1.e4_r8, 1.e6_r8])
+
+  qic = 55.02687259022202_r8
+  nic = 1.e11_r8
+  lam_alone = -1._r8
+  lam = -1._r8
+  n0 = -1._r8
+
+  ! First, call without optional argument.
+  call size_dist_param_basic(props, qic, nic, lam_alone)
+
+  ! Now, again with n0.
+  call size_dist_param_basic(props, qic, nic, lam, n0)
+
+  ! First, lambda should be the same from both calls.
+  @assertEqual(lam_alone, lam, tolerance=(1.e7_r8*mach_eps))
+
+  ! Second, n0 should match nic*lam
+  @assertEqual(nic*lam, n0, tolerance=(1.e18_r8*mach_eps))
+
+end subroutine param_basic_n0
+
+@Test
+subroutine param_liq_has_q_threshold
+
+  type(MGHydrometeorProps) :: props
+
+  real(r8) :: qcic(1), ncic(1), rho(1), pgam(1), lamc(1)
+
+  ! Simple properties object with the density of water and 3 dimensions.
+  props = MGHydrometeorProps(1000._r8, 3._r8)
+
+  qcic = 0._r8
+  ncic = 0._r8
+  rho = 0._r8
+  pgam = -1._r8
+  lamc = -1._r8
+
+  ! For zeroed inputs, we expect a zeroed output (and the sentinel value
+  ! pgam = -100).
+  call size_dist_param_liq(props, qcic, ncic, rho, pgam, lamc)
+
+  @assertEqual(-100._r8, pgam)
+  @assertEqual(0._r8, lamc)
+
+end subroutine param_liq_has_q_threshold
+
+! Note a slightly unusual formulation of the gamma distribution:
+!
+! Gamma(x; pgam, lamc) =
+!   lamc**(pgam+1) * x**pgam * exp(-x*lamc) / gamma(pgam+1)
+!
+! For a given pgam, mean particle mass then becomes:
+!
+! rho * (gamma(d+pgam+1)/gamma(pgam+1)) * pi/6 * (1/lam)**d
+
+@Test
+subroutine param_liq_pgam
+
+  type(MGHydrometeorProps) :: props
+
+  real(r8) :: qcic(2), ncic(2), rho(2), pgam(2), lamc(2)
+
+  ! Particle with the density of water and an effective dimension of 2.5.
+  props = MGHydrometeorProps(1000._r8, 2.5_r8)
+
+  ! We are only testing pgam here, and only ncic and rho matter for that
+  ! (except qcic must be positive to run at all). To calculate pgam, this
+  ! empirical fit is used:
+  !
+  ! 1/sqrt(pgam + 1) = 0.0005714*(ncic*rho*1.e-6) + 0.2714
+  !
+  ! pgam is also limited to be greater than 2. It can never grow above
+  ! ~12.58 for any positive value of ncic*rho, so an upper bound is
+  ! unnecessary.
+  !
+  ! We want to pick ncic*rho that would generate the values 1 and 3, to
+  ! test the standard case and limiter. Arbitrarily picking rho=4, the
+  ! following should work:
+  qcic = 1.e-3_r8
+  ncic = [1.906312483315311e8_r8, 1.0001750087504376e8_r8]
+  rho = 4._r8
+  pgam = -1._r8
+  lamc = -1._r8
+
+  call size_dist_param_liq(props, qcic, ncic, rho, pgam, lamc)
+
+  @assertEqual([2._r8, 3._r8], pgam, tolerance=10._r8*mach_eps)
+
+end subroutine param_liq_pgam
+
+@Test
+subroutine param_liq_lamc
+
+  type(MGHydrometeorProps) :: props
+
+  real(r8) :: qcic(3), ncic(3), rho(3), pgam(3), lamc(3)
+
+  ! Particle with the density of water and an effective dimension of 2.5.
+  props = MGHydrometeorProps(1000._r8, 2.5_r8)
+
+  ! For liquid, the limiter on lamc is (pgam+1)/[50.e-6, 2.e-6].
+  ! We can rig this using ncic/rho so that pgam = 3. The limits on lambda
+  ! are then [8.e4, 2.e6], so we want inputs that would generate 1.e3,
+  ! 1.e5, and 1.e7 again.
+  !
+  ! As mentioned in comments above:
+  ! qcic/ncic = rho * (gamma(d+pgam+1)/gamma(pgam+1)) * pi/6 * (1/lam)**d
+  !
+  ! We then need qcic/ncic = 7.944504730213308 * [1.e-4, 1.e-9, 1.e-14]
+  !
+  ! The simplest solution is to set ncic = 1:
+  qcic = 7.944504730213308 * [1.e-4, 1.e-9, 1.e-14]
+  ncic = 1._r8
+  rho = 4.0007000350017506e8_r8
+  pgam = -1._r8
+  lamc = -1._r8
+
+  call size_dist_param_liq(props, qcic, ncic, rho, pgam, lamc)
+
+  ! Gamma is only correct up to ~1.e-8 in some cases, so don't use machine
+  ! epsilon.
+  @assertEqual([8.e4_r8, 1.e5_r8, 2.e6_r8], lamc, tolerance=1.e7_r8*1.e-8_r8)
+
+end subroutine param_liq_lamc
+
+end module test_mg_size_utils

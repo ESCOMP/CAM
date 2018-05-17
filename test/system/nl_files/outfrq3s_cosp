@@ -1,0 +1,9 @@
+&camexp
+ start_ymd=19950101
+ restart_option='nsteps'
+ restart_n=3
+ mfilt=1,1,1,1,1,1
+ ndens=1,1,1,1,1,1
+ nhtfrq=3,3,3,3,3,3
+ fexcl1='CFAD_DBZE94_CS','CLDTOT_CALCS','CLD_CAL_NOTCS'
+ /

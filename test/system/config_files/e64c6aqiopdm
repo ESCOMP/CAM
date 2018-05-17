@@ -1,0 +1,9 @@
+-spmd -nosmp
+-dyn eul
+-hgrid 64x128
+-phys cam6
+-aquaplanet
+-camiop
+-noclubb_sgs
+-debug
+-s

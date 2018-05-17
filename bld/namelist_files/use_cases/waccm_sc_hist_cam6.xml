@@ -1,0 +1,73 @@
+<?xml version="1.0"?>
+
+<namelist_defaults>
+
+<start_ymd>19790101</start_ymd>
+
+<!-- Solar data from NRL -->
+<solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-22991231_c171031.nc</solar_irrad_data_file>
+
+<!-- Kp and F10.7 -->
+<solar_parms_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-22991231_c171031.nc</solar_parms_data_file>
+
+<!--Species IC -->
+<ncdata dyn="fv"  hgrid="0.9x1.25">atm/waccm/ic/f.e20.FWscAMIP.f09_f09.cesm2_0_beta04_compsets.007.GRNLtopo.cam.i.1980-01-01-00000.nc</ncdata>
+<ncdata dyn="fv"  hgrid="1.9x2.5" >atm/waccm/ic/f.e15.FWmaAMIP.f19_f19.misc08_cam5_4_81.003.cam.i.1980-01-01-00000_c160928.nc</ncdata>
+<ncdata dyn="fv"  hgrid="4x5"     >atm/waccm/ic/f2000.waccm-mam3_4x5_L70.cam2.i.0017-01-01.c121113.nc</ncdata>
+
+
+<!-- LBC, UBC Files -->
+<flbc_file>atm/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180227.nc</flbc_file>
+<flbc_type>'SERIAL'</flbc_type>
+<flbc_list>'CO2','CH4','N2O','CFC11eq','CFC12'</flbc_list>
+
+<!-- QBO settings -->
+<qbo_use_forcing >.true.</qbo_use_forcing>
+<qbo_use_forcing hgrid="0.9x1.25">.false.</qbo_use_forcing>
+<qbo_cyclic>.false.</qbo_cyclic>
+<qbo_forcing_file>atm/waccm/qbo/qbocoefficients_c091230.nc</qbo_forcing_file>
+
+<prescribed_strataero_use_chemtrop> .true. </prescribed_strataero_use_chemtrop>
+
+<!-- Specified chemistry forcing file; note that the same file is used for ozone. -->
+
+<waccm_forcing_type>SERIAL</waccm_forcing_type>
+
+<prescribed_ozone_type>SERIAL</prescribed_ozone_type>
+
+<tracer_cnst_type>INTERP_MISSING_MONTHS</tracer_cnst_type>
+
+<prescribed_strataero_type>SERIAL</prescribed_strataero_type>
+
+<!-- External forcing -->
+<ext_frc_type>INTERP_MISSING_MONTHS</ext_frc_type>
+
+<!-- Surface emissions -->
+<srf_emis_type>INTERP_MISSING_MONTHS</srf_emis_type>
+
+<!-- History Files -->
+<do_circulation_diags>.true.</do_circulation_diags>
+<history_chemistry>.true.</history_chemistry>
+
+<mfilt>             1,  30, 120, 240, 240, 480, 365,  73,  30  </mfilt>
+<nhtfrq>            0, -24,  -6,  -3,  -1,   1, -24,-120,-240  </nhtfrq>
+<avgflag_pertape> 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'I'</avgflag_pertape>
+
+<fincl1>
+  'AOA1', 'AOA2', 'CH4', 'H2O', 'N2O', 'CFC11', 'CFC12', 'CFC11STAR', 'UTGWORO', 'VTGWORO',
+  'UTGWSPEC', 'VTGWSPEC', 'BUTGWSPEC', 'AODVISstdn', 'AODVISdn', 'KVH_CLUBB', 'KVH', 'TTENDICE', 'QVTENDICE', 'QCTENDICE',
+  'NCTENDICE', 'FQTENDICE', 'MASS'
+</fincl1>
+
+<fincl7 dyn="fv">
+  'MSKtem','PS','PSL','VTHzm','UVzm','UWzm','Uzm','Vzm','THzm','Wzm','PHIS'
+</fincl7>
+
+<!-- Reduce output size by removing some variables. -->
+<fexcl1>
+ 'BTAUN', 'BTAUS', 'BTAUE', 'BTAUW', 'BTAUNET', 'BUTEND1', 'BUTEND2', 'BUTEND3', 'BUTEND4', 'BUTEND5', 'BVTGWSPEC',
+ 'MAXQ0', 'HDEPTH', 'NETDT', 'TAUN', 'TAUS', 'TAUE', 'TAUW', 'TAUGWX', 'TAUGWY', 'UTEND1', 'UTEND2', 'UTEND3', 
+ 'UTEND4', 'UTEND5', 'FRONTGF', 'FRONTGFA', 'EKGW', 'QNO', 'QRLNLTE', 'QRL_TOT', 'DUV', 'DVV', 'TTPXMLC'
+</fexcl1>
+
+</namelist_defaults>

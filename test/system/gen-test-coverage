@@ -1,0 +1,257 @@
+#!/usr/bin/env perl
+
+# Execute this script in the directory containing the test-driver scripts
+# (~components/cam/test/system) to generate an HTML table
+# (test_coverage.html) containing all the tests in the master list, and
+# indicate in which of the pretag lists the test is done.
+
+use strict;
+use warnings;
+use diagnostics;
+
+my $fout = 'test_coverage.html';
+my $fmaster = 'input_tests_master';
+
+# Parse the master test list and format the test components for HTML output.
+my $masterlist_html = gen_masterlist_html($fmaster);
+
+# Get list of the files containing tests, and do some sorting so the pretag test
+# tables are first, then the posttag tables, and finally the miscellaneous tables.
+my @pretag_test_lists = <tests_pretag_*>;
+
+### Produce the web page here ###
+
+# open file for output
+open my $fh_out, '+>', $fout  or die "*** can't open $fout\n";
+
+# output header info
+print_header($fh_out);
+
+# Generate a table test coverage.
+print_test_coverage($masterlist_html, \@pretag_test_lists);
+
+# Finish the page
+print {$fh_out} "</body></html>\n";
+
+close $fh_out;
+
+#====================================================================================
+
+sub gen_masterlist_html{
+
+    my $fmaster = shift(@_);
+
+    # Parse master test list and store each line as an array of elements (<TD>)
+    # in an HTML formatted row of a table.  Then store these arrays in the hash
+    # %masterlist_html indexed by the test IDs.  Return a pointer to this hash.
+
+    open my $fh_master, '<', $fmaster  or die "*** can't open $fmaster\n";
+
+    my %masterlist_html;
+
+  LINE: while (my $line = <$fh_master>) {
+
+      my @test_desc = split " ", $line;
+      # check for empty lines or for file header line
+      if (! defined($test_desc[0]) or $test_desc[0] =~ /<id>/) {next LINE;}
+
+      # Apply HTML table formatting to each component of the test description.
+      my @test_desc_html = ();
+
+      foreach my $comp (@test_desc) {
+
+	  # Add HTML links for all the components of the test description
+	  # which are files.  This includes the names of the test scripts
+	  # and input files for the configure and build-namelist utilities.
+	  my $html_str;
+
+	  if ($comp =~ /([-\.\w]+)\+([-\.\w]+)/) {
+
+	      my $str1 = add_html_link($1);
+	      my $str2 = add_html_link($2);
+	      $html_str = "<TD>$str1+$str2</TD>";
+	  }
+	  else {
+	      my $str1 = add_html_link($comp);
+	      $html_str = "<TD>$str1 </TD>";
+	  }
+
+	  push @test_desc_html, $html_str ;
+      }
+
+      # Add empty cells as necessary so that all descriptions contain
+      # 7 cells.  The cells are added in a way that pushes the run length 
+      # component to the last column so they all line up.
+      my $num_test_comp = scalar(@test_desc_html);
+      my $num_empty_cells = 7 - $num_test_comp;
+      if ($num_test_comp <= 4) {
+	  # When a test description has <= 4 components then there is no
+	  # run length component.  So just add the empty cells to the end.
+	  push @test_desc_html, ("<TD> </TD>") x $num_empty_cells;
+      }
+      else {
+	  # When a test description has 5 or more components then the last component
+	  # is the run length.  In this case add empty cells in front of the last one
+	  # until the total array length is 7.
+	  splice @test_desc_html, -1, 0, ("<TD> </TD>") x $num_empty_cells;
+      }
+      
+      $masterlist_html{$test_desc[0]} = \@test_desc_html;
+  }
+    close $fh_master;
+    return \%masterlist_html;
+}
+
+#====================================================================================
+
+sub print_test_coverage{
+
+    my $masterlist_html   = shift(@_);
+    my $pretag_test_lists = shift(@_);
+
+    my $header = '<TABLE><TR><TH>testid </TH>';
+
+    # Add a column header for each of the pretag test lists.
+    foreach my $test_list (@$pretag_test_lists) {
+	$test_list =~ /tests_pretag_(\w+)/;
+	$header .= "<TH>$1</TH>";
+    }
+
+    # Finish header with columns for the components of the test description
+    $header .= '<TH>test script </TH>'.
+               '<TH>build 1</TH><TH>namelist 1</TH><TH>build 2</TH><TH>namelist 2</TH>'.
+               '<TH>run length</TH></TR>';
+
+    print {$fh_out} $header;
+
+    # Store the test IDs from each test list in the keys of a hash.
+    my %test_list_ids;
+    foreach my $test_list (@$pretag_test_lists) {
+	$test_list =~ /tests_pretag_(\w+)/;
+
+	my %test_ids = ();
+
+	# open file read only
+	open my $fh, '<', $test_list  or die "*** can't open $test_list\n";
+
+	# read test IDs in input file
+	my @test_ids = ();
+	while (my $line = <$fh>) {
+	    push @test_ids, split " ", $line;
+	}
+	close $fh;
+
+	# Put the test IDs into the keys of %test_ids
+	foreach my $test_id (@test_ids) {
+	    $test_ids{$test_id} = " ";
+	}
+
+	# Store a reference to the %test_ids for this $test_list in %test_list_ids
+	$test_list_ids{$test_list} = \%test_ids;
+    }
+
+    # Construct array of the test IDs to display.  This is where we select tests from the 
+    # master list and customize the test order.
+    # Start with sorted list of all tests:
+    my @test_ids_all = sort keys %$masterlist_html;
+
+    # Remove the TCB tests because these are always done as part of the smoke tests, so
+    # no reason to call them out separately.  They're only listed separately to allow
+    # the builds to occur separately from running a test.
+    my @test_ids_no_tcb = grep { !/cb/ } @test_ids_all;
+
+    # Next pull out the smoke tests.  This is the most basic test so list them first.
+    my @tsm = grep { /sm/ } @test_ids_no_tcb;
+    my @remaining = grep { !/sm/ } @test_ids_no_tcb;
+
+    # Exact restart tests.
+    my @ter = grep { /er/ } @remaining;
+    my @remaining2 = grep { !/er/ } @remaining;
+
+    # Baseline comparisons.
+    my @tbl = grep { /bl/ } @remaining2;
+    @remaining = grep { !/bl/ } @remaining2;
+
+    # Branch tests.
+    my @tbr = grep { /br/ } @remaining;
+    @remaining2 = grep { !/br/ } @remaining;
+
+    # Add cells to indicate test coverage.
+    foreach my $test_id (@tsm, @ter, @tbl, @tbr, @remaining2) {
+
+	# Construct a table row for each test id.  Start the row with
+	# the test ID cell.
+	my @test_desc_html = @{$$masterlist_html{$test_id}};
+	my $test_id_cell = splice @test_desc_html, 0, 1;
+	my $row = "<TR>$test_id_cell";
+
+	# Check for the test id in each test list and add a cell to indicate whether
+	# the test list contains the test id (colored cell) or not (empty cell).
+	foreach my $test_list (@$pretag_test_lists) {
+	    $test_list =~ /tests_pretag_(\w+)/;
+	    if (defined $test_list_ids{$test_list}->{$test_id}) {
+		$row .= '<TD class="on"> </TD>';
+	    }
+	    else {
+		$row .= "<TD> </TD>";
+	    }
+	}
+
+
+	# Finish the row with the remainder of the test description.
+	$row .= "@test_desc_html</TR>\n";
+
+	# print a table row for each test
+	print {$fh_out} $row;
+    }
+
+    # Terminate <TABLE>
+    print {$fh_out} "</TABLE><BR /><BR />\n";
+}
+
+#====================================================================================
+
+sub add_html_link{
+
+    # Add HTML links to the parts of the test description that correspond to a file.
+
+    my $fname = shift(@_);
+
+    my $result = $fname;
+
+    if (-f "./$fname") {
+	$result = "<A HREF=\"./$fname\">$fname </A>";
+    }
+    elsif (-f "./config_files/$fname") {
+	$result = "<A HREF=\"./config_files/$fname\">$fname </A>";
+    }
+    elsif (-f "./nl_files/$fname") {
+	$result = "<A HREF=\"./nl_files/$fname\">$fname </A>";
+    }
+    elsif (-f "../use_cases/$fname.xml") {
+	$result = "<A HREF=\"../use_cases/$fname.xml\">$fname </A>";
+    }
+
+    return $result;
+}
+
+#====================================================================================
+
+sub print_header{
+
+    my $fh = shift(@_);
+
+    print {$fh} <<'END_HERE'
+<html>	
+<head><meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+
+<title>CAM Pretag Test Coverage</title>
+
+<link rel="STYLESHEET" type="text/css" href="gen-test-style.css"/>
+
+</head>
+
+<body>
+<H1>Pretag Regression Test Coverage</H1>
+END_HERE
+}

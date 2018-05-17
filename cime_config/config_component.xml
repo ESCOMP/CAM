@@ -1,0 +1,289 @@
+<?xml version="1.0"?>
+
+<entry_id version="3.0">
+
+  <description modifier_mode="*">
+  <!--
+    ===============
+      CAM
+    ===============
+   -->
+    <desc atm="CAM60[%CCTS][%PORT][%RCO2][%SCAM][%WCCM][%WCMD][%WCSC][%WCTS]"      >CAM cam6 physics:</desc>
+    <desc atm="CAM50[%CCTS][%CLB][%PORT][%RCO2][%SCAM][%WCSC][%WCTS]"              >CAM cam5 physics:</desc>
+    <desc atm="CAM40[%PORT][%RCO2][%SCAM][%TMOZ][%WXIE]"                           >CAM cam4 physics:</desc>
+    <desc atm="CAM[%ADIAB][%DABIP04][%DCTBM][%HS94][%KESSLER][%RCO2][%SPCAMS][%SPCAMCLBS][%SPCAMM][%SPCAMCLBM]">CAM simplified and non-versioned physics :</desc>
+
+  <!--
+    ===============
+     SINGLE COLUMN CAM
+    ===============
+   -->
+    <desc atm="CAM[456]0%SCAM"  >CAM stand-alone single column mode -- need to define usermods directory with IOP settings:</desc>
+    <desc atm="SDYN_CAM"        >CAM winds and temperature nudged towards prescribed meteorology:</desc>
+  <!--
+    ===============
+     CAM Options
+    ===============
+   -->
+    <desc option="CCTS"         >CAM-Chem troposphere/stratosphere chem with simplified volatility basis set SOA scheme and modal aersols :</desc>
+    <desc option="CLB"          >CAM CLUBB - turned on by default in CAM60:</desc>
+    <desc option="RCO2"         >CAM CO2 ramp: </desc>
+    <desc option="SPCAMS"       >CAM super-parameterized CAM one moment SAM microphysics </desc>
+    <desc option="SPCAMCLBS"    >CAM super-parameterized CAM one moment SAM microphysics using CLUBB </desc>
+    <desc option="SPCAMM"       >CAM super-parameterized CAM double moment m2005 SAM microphysics </desc>
+    <desc option="SPCAMCLBM"    >CAM super-parameterized CAM double moment m2005 SAM microphysics using CLUBB </desc>
+    <desc option="TMOZ"         >CAM tropospheric chemistry with bulk aerosols:</desc>
+
+  <!--
+    ===============
+     WACCM Options
+    ===============
+   -->
+    <desc option="WCCM"         >WACCM with middle atmosphere chemistry:</desc>
+    <desc option="WCMD"         >WACCM with middle atmosphere chemistry with enhanced D-region ion chemistry:</desc>
+    <desc option="WXIE"         >WACCM-X enhanced ionosphere, transport, and electrodynamics:</desc>
+    <desc option="WCSC"         >WACCM specified chemistry:</desc>
+    <desc option="WCTS"         >WACCM with tropospheric, stratospheric, mesospheric, and lower thermospheric chemistry:</desc>
+
+  <!--
+    ===============
+     SIMPLE MODELS Options
+    ===============
+   -->
+    <desc option="ADIAB"        >CAM adiabatic physics:</desc>
+    <desc option="DABIP04"      >CAM dry adiabatic baroclinic instability (Polvani 2004):</desc>
+    <desc option="DCTBM"        >CAM dynamical core test with baroclinic wave IC and terminator chemistry:</desc>
+    <desc option="HS94"         >CAM Held-Suarez forcing:</desc>
+    <desc option="KESSLER"      >CAM dynamical core test with baroclinic wave IC and Kessler physics:</desc>
+
+  <!--
+    ===============
+     PORT
+    ===============
+   -->
+    <desc option="PORT"         >CAM Parallel Offline Radiation Tool:</desc>
+  </description>
+
+  <entry id="COMP_ATM">
+    <type>char</type>
+    <valid_values>cam</valid_values>
+    <default_value>cam</default_value>
+    <group>case_comp</group>
+    <file>env_case.xml</file>
+    <desc>Name of atmospheric component</desc>
+  </entry>
+
+  <entry id="CAM_CPPDEFS">
+    <type>char</type>
+    <valid_values></valid_values>
+    <default_value>UNSET</default_value>
+    <group>build_component_cam</group>
+    <file>env_build.xml</file>
+    <desc>CAM cpp definitions (setup automatically - DO NOT EDIT)</desc>
+  </entry>
+
+  <entry id="CAM_DYCORE">
+    <type>char</type>
+    <valid_values>eul,fv,se</valid_values>
+    <default_value>fv</default_value>
+    <values match="last">
+      <value grid="a%T[1-9]" >eul</value>
+      <value grid="a%ne[0-9]">se</value>
+    </values>
+    <group>build_component_cam</group>
+    <file>env_build.xml</file>
+    <desc>CAM dynamical core</desc>
+  </entry>
+
+  <entry id="CAM_CONFIG_OPTS">
+    <type>char</type>
+    <valid_values></valid_values>
+    <default_value></default_value>
+    <values match="last" modifier='additive'>
+      <value compset="_CAM40">-phys cam4</value>
+      <value compset="_CAM50">-phys cam5</value>
+      <value compset="_CAM60">-phys cam6</value>
+
+      <!-- Modifiers for CAM runs -->
+      <value compset="_(CAM50|CAM60)%CCTS">-chem trop_strat_mam4_vbs</value>
+      <value compset="_CAM50%CLB">-clubb_sgs</value>
+      <value compset="_(CAM40|CAM50|CAM60)%SCAM">-dyn eul -scam</value>
+      <value compset="CAM%SPCAMS">-rad camrt -chem none -spcam_nx 32 -spcam_ny 1 -spcam_dx 4000 -spcam_dt 20 -phys spcam_sam1mom </value>
+      <value compset="CAM%SPCAMCLBS">-rad camrt -chem none -spcam_nx 32 -spcam_ny 1 -spcam_dx 4000 -spcam_dt 20 -phys spcam_sam1mom -spcam_clubb_sgs </value>
+      <value compset="CAM%SPCAMM">-rad rrtmg -chem trop_mam3 -spcam_nx 32 -spcam_ny 1 -spcam_dx 4000 -spcam_dt 20 -phys spcam_m2005 </value>
+      <value compset="CAM%SPCAMCLBM">-rad rrtmg -chem trop_mam3 -spcam_nx 32 -spcam_ny 1 -spcam_dx 4000 -spcam_dt 20 -phys spcam_m2005 -spcam_clubb_sgs </value>
+      <value compset="_CAM40%TMOZ">-chem trop_mozart</value>
+
+      <value compset="_CAM.*_BGC%B">-co2_cycle</value>
+
+      <!-- Match against "%WC" to set defaults for all WACCM cases. -->
+      <!-- Later settings of "-chem" take precedence over earlier ones. -->
+      <value compset="_(CAM50|CAM60)%(WC|CC)">-age_of_air_trcs</value>
+      <value compset="_CAM40%WC">-chem waccm_ma</value>
+      <value compset="_(CAM50|CAM60)%WCCM">-chem waccm_ma_mam4</value>
+      <value compset="_(CAM50|CAM60)%WCMD">-chem waccm_mad_mam4</value>
+      <value compset="_(CAM50|CAM60)%WCSC">-chem waccm_sc_mam4</value>
+      <value compset="_(CAM50|CAM60)%WCTS">-chem waccm_tsmlt_mam4</value>
+      <value compset="_CAM40%WX">-chem waccm_ma -waccmx</value>
+      <value compset="_CAM40%WXIE">-ionosphere wxie</value>
+
+      <value compset="SDYN_CAM">-offline_dyn</value>
+      <value compset="SDYN_CAM.*%CC">-nlev 56</value>
+      <value compset="SDYN_CAM.*%WC">-nlev 88</value>
+      <value compset="SDYN_CAM.*%WX">-nlev 145</value>
+
+      <!-- Simple models -->
+      <value compset="_CAM%HS94" grid="(%ne[0-9])|(%[0-9.]+x)">-analytic_ic</value>
+      <value compset="_CAM%ADIAB">-phys adiabatic</value>
+      <value compset="_CAM%DABIP04">-phys adiabatic</value>
+      <value compset="_CAM%DCTBM">-phys held_suarez -chem terminator -analytic_ic</value>
+      <value compset="_CAM%HS94">-phys held_suarez</value>
+      <value compset="_CAM%KESSLER">-phys kessler -chem terminator -analytic_ic</value>
+
+      <!-- Aquaplanet -->
+      <value compset="_DOCN%SOMAQP">-aquaplanet</value>
+      <value compset="_DOCN%AQP"   >-aquaplanet</value>
+
+      <!-- PORT -->
+      <value compset="%PORT">-offline_drv rad</value>
+    </values>
+    <group>build_component_cam</group>
+    <file>env_build.xml</file>
+    <desc>
+      CAM configure options, see CAM configure utility for details
+      Provides option(s) for the CAM configure utility.
+      CAM_CONFIG_OPTS are normally set as compset variables (e.g., -phys  cam4 -chem waccm_ma)
+      and in general should not be modified for supported compsets.  It is recommended that if you want
+      to modify this value for your experiment, you should use your own user-defined
+      component sets via using create_newcase with a compset_file argument
+    </desc>
+  </entry>
+
+  <entry id="CAM_NML_USE_CASE">
+    <type>char</type>
+    <valid_values></valid_values>
+    <default_value>UNSET</default_value>
+    <values match="last">
+      <value compset="1850_CAM40"        >1850_cam4</value>
+      <value compset="1850_CAM50"        >1850_cam5</value>
+
+      <value compset="1850_CAM60"        >1850_cam6</value>
+      <value compset="1850_CAM60%WCTS"   >waccm_tsmlt_1850_cam6</value>
+      <value compset="1850_CAM60%WCCM"   >waccm_ma_1850_cam6</value>
+
+      <value compset="2000_CAM40%TMOZ"   >2000_cam4_trop_chem</value>
+      <value compset="2000_CAM40%WXIE"   >waccmxie_ma_2000_cam4</value>
+
+      <value compset="2000_CAM60"        >2000_cam6</value>
+      <value compset="2000_CAM60%WCTS"   >waccm_tsmlt_2000_cam6</value>
+      <value compset="2000_CAM60%WCCM"   >waccm_ma_2000_cam6</value>
+      <value compset="2000_CAM60%CCTS"   >2000_trop_strat_vbs_cam6</value>
+
+      <value compset="2000_CAM40_SLND_SICE_DOCN%SOMAQP">aquaplanet_cam4</value>
+      <value compset="2000_CAM40_SLND_SICE_DOCN%AQP"   >aquaplanet_cam4</value>
+      <value compset="2000_CAM50_SLND_SICE_DOCN%SOMAQP">aquaplanet_cam5</value>
+      <value compset="2000_CAM50_SLND_SICE_DOCN%AQP"   >aquaplanet_cam5</value>
+      <value compset="2000_CAM60_SLND_SICE_DOCN%SOMAQP">aquaplanet_cam6</value>
+      <value compset="2000_CAM60_SLND_SICE_DOCN%AQP"   >aquaplanet_cam6</value>
+
+      <value compset="2010_CAM60%CCTS"   >2010_trop_strat_vbs_cam6</value>
+
+      <value compset="AMIP_CAM50"        >1850-2005_cam5</value>
+      <value compset="AMIP_CAM40"        >1850-2005_cam4</value>
+
+      <value compset="HIST_CAM40"        >1850-2005_cam4</value>
+      <value compset="HIST_CAM40.*_BGC%B">1850-2005_cam4_bgc</value>
+      <value compset="HIST_CAM40%WXIE"   >1950-2010_ccmi_refc1_waccmx_ma</value>
+      <value compset="HIST_CAM50"        >1850-2005_cam5</value>
+      <value compset="HIST_CAM60"        >hist_cam6</value>
+      <value compset="HIST_CAM60%WCTS"   >waccm_tsmlt_hist_cam6</value>
+      <value compset="HIST_CAM60%WCSC"   >waccm_sc_hist_cam6</value>
+      <value compset="HIST_CAM60%WCCM"   >waccm_ma_hist_cam6</value>
+      <value compset="HIST_CAM60%WCMD"   >waccm_ma_hist_cam6</value>
+      <value compset="HIST_CAM60%CCTS"   >hist_trop_strat_vbs_cam6</value>
+
+      <value compset="PIPD_CAM50"        >1850-PD_cam5</value>
+
+      <value compset="RCP2_CAM40"        >2005-2100_cam4_rcp26</value>
+      <value compset="RCP4_CAM40"        >2005-2100_cam4_rcp45</value>
+      <value compset="RCP4_CAM40.*_BGC%B">2005-2100_cam4_rcp45_bgc</value>
+      <value compset="RCP6_CAM40"        >2005-2100_cam4_rcp60</value>
+      <value compset="RCP8_CAM40"        >2005-2100_cam4_rcp85</value>
+      <value compset="RCP8_CAM40.*_BGC%B">2005-2100_cam4_rcp85_bgc</value>
+
+      <value compset="RCP2_CAM50"        >2006-2100_cam5_rcp26</value>
+      <value compset="RCP4_CAM50"        >2006-2100_cam5_rcp45</value>
+      <value compset="RCP6_CAM50"        >2006-2100_cam5_rcp60</value>
+      <value compset="RCP8_CAM50"        >2006-2100_cam5_rcp85</value>
+
+      <value compset="SDYN_CAM40%WXIE"   >sd_waccmx_ma_cam4</value>
+      <value compset="SDYN_CAM60%WCTS"   >sd_waccm_tsmlt_cam6</value>
+      <value compset="SDYN_CAM60%WCCM"   >sd_waccm_ma_cam6</value>
+      <value compset="SDYN_CAM60%WCMD"   >sd_waccm_ma_cam6</value>
+      <value compset="SDYN_CAM60%CCTS"   >sd_trop_strat_vbs_cam6</value>
+
+      <value compset="2000_CAM%DABIP04"  >dabi_p2004</value>
+      <value compset="CAM%HS94"          >held_suarez_1994</value>
+      <value compset="CAM%DCTBM"         >dctest_baro_moist</value>
+      <value compset="CAM%KESSLER"       >dctest_baro_kessler</value>
+
+      <!-- SCAM defaults to ARM97, all other IOPs are in usermods_dirs -->
+      <value compset="CAM[456]0%SCAM"    >scam_arm97</value>
+    </values>
+    <group>run_component_cam</group>
+    <file>env_run.xml</file>
+    <desc>CAM namelist use_case.  Provides the use_case option for the
+      CAM build-namelist utility (which is called from
+      $CASEROOT/Buildconf/cam.buildnml).  The CAM build-namelist
+      leverages groups of namelist options (use cases) that are often
+      paired with the CAM configure options.  These use cases are xml
+      files located in
+      $CIMEROOT/../components/cam/bld/namelist_files/use_cases.
+      In general, this variable should not be modified for supported
+      component sets (compsets).  Recommendation: If you want to
+      modify this value for your experiment, use your own user-defined
+      component sets.</desc>
+  </entry>
+
+  <entry id="CAM_NAMELIST_OPTS">
+    <type>char</type>
+    <valid_values></valid_values>
+    <default_value></default_value>
+    <values match="last" modifier="additive">
+      <value compset="_CAM.*%RCO2"> scenario_ghg=&apos;RAMP_CO2_ONLY&apos;ramp_co2_annual_rate=1 </value>
+      <value compset="_BGC%BDRD"> co2_cycle_rad_passive=.true. </value>
+      <value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9x1.25_r%r05_g%null_w%null_m%gx1v7" compset="SDYN_CAM60%(WCTS|WCCM|WCMD)_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV">
+         ncdata='$DIN_LOC_ROOT/cesm2_init/f.e20.FWSD.f09_f09_mg17.262/2005-01-01/f.e20.FWSD.f09_f09_mg17.262.cam.i.2005-01-01-00000.nc'
+      </value>
+    </values>
+    <group>run_component_cam</group>
+    <file>env_run.xml</file>
+    <desc>CAM specific namelist settings for -namelist option Provides
+      options to the -namelist argument for the CAM build-namelist
+      utility.  This should be reserved for component set
+      specification. Users should modify CAM namelists only via the
+      $CASEROOT/user_nl_cam file.</desc>
+  </entry>
+
+  <entry id="CAM_USER_MODS">
+    <type>char</type>
+    <valid_values></valid_values>
+    <default_value></default_value>
+    <values match="last">
+    <value compset="DOCN%AQP">$COMP_ROOT_DIR_ATM/cime_config/usermods_dirs/aquap</value>
+    <value compset="DOCN%SOMAQP">$COMP_ROOT_DIR_ATM/cime_config/usermods_dirs/aquap</value>
+    <value compset="_CAM40%WX.*_CLM40">$COMP_ROOT_DIR_ATM/cime_config/usermods_dirs/waccmx</value>
+    <value compset="CAM[456]0%SCAM" >$COMP_ROOT_DIR_ATM/cime_config/usermods_dirs/scam_mandatory</value>
+    </values>
+    <group>run_component_cam</group>
+    <file>env_case.xml</file>
+    <desc>User mods to apply to specific compset matches. </desc>
+  </entry>
+
+  <help>
+    =========================================
+    CAM naming conventions
+    =========================================
+  </help>
+
+</entry_id>

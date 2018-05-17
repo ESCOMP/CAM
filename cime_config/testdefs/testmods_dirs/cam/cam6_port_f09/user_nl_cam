@@ -1,0 +1,22 @@
+ offline_driver_infile = '$DIN_LOC_ROOT/atm/cam/port/base_cam6_3mode_1deg.doubleCO2.cam.h1.0001-01-01-00000_c170526.nc'
+ rad_data_fdh = .true.
+ empty_htapes = .true.
+ avgflag_pertape = 'A','I'
+ fincl1 = 'SOLIN', 'QRS', 'FSNS', 'FSNT','FSNSC', 'FSDSC','FSNR','FLNR',
+          'FSNTOA', 'FSUTOA', 'FSNTOAC', 'FSNTC', 'FSDSC', 'FSDS', 'SWCF',
+          'QRL', 'FLNS', 'FLDS', 'FLNT', 'LWCF', 'FLUT' ,'FLUTC', 'FLNTC',
+          'FLNSC', 'FLDSC'
+ fincl2 = 'SOLIN', 'QRS', 'FSNS', 'FSNT','FSNSC', 'FSDSC','FSNR','FLNR',
+          'FSNTOA', 'FSUTOA', 'FSNTOAC', 'FSNTC', 'FSDSC', 'FSDS', 'SWCF',
+          'QRL', 'FLNS', 'FLDS', 'FLNT', 'LWCF', 'FLUT' ,'FLUTC', 'FLNTC',
+          'FLNSC', 'FLDSC'
+ rad_data_output = .false.
+ mfilt=100,100
+ nhtfrq=-120,73
+
+ prescribed_strataero_3modes = .true.
+ prescribed_strataero_cycle_yr          = 1999         
+ prescribed_strataero_datapath          = '$DIN_LOC_ROOT/atm/cam/volc'
+ prescribed_strataero_file              = 'f.e15.FSDW5.f09_f09.beta02_waccm.cam5_4.03.volc_PrescribedMAM_19891231-2000_zm_5day_c170216.nc'
+ prescribed_strataero_type              = 'CYCLICAL'
+ prescribed_strataero_use_chemtrop      = .true.

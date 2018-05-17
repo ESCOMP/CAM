@@ -1,0 +1,49 @@
+Example taken from bulletin board forum for "Subversion Issues" in the 
+thread for "Introduction to Subversion"...(070208)
+
+
+Working with externals:
+
+checkout the HEAD of cam's trunk into working copy directory
+> svn co $SVN/cam1/trunk cam_trunk_head_wc
+
+view the property set for cam's external definitions
+> svn propget svn:externals cam_trunk_head_wc
+
+view revision, URL and other useful information specific to external files
+> cd cam_trunk_head_wc/models/lnd/clm2/src
+> svn info main
+
+create new clm branch for mods required of cam
+> svn copy $SVN/clm2/trunk_tags/<tag-to-branch-from> $SVN/clm2/branches/<new-branch-name> -m "appropriate message"
+
+have external directories in working copy refer to new clm branch to make changes
+> svn switch $SVN/clm2/branches/<new-branch-name>/src/main main
+
+--make changes to clm files--
+
+when satisfied with changes and testing, commit to HEAD of clm branch
+> svn commit main -m "appropriate message"
+
+tag new version of clm branch - review naming conventions!
+> svn copy $SVN/clm2/branches/<new-branch-name> $SVN/clm2/branch_tags/<new-branch-name>_tags/<new-tag-name> -m "appropriate message"
+
+have external directories in working copy refer to new clm tag
+> svn switch $SVN/clm2/branch_tags/<new-branch-name>_tags/<new-tag-name>/src/main main
+
+modify cam's property for external definitions in working copy
+> emacs cam_trunk_head_wc/SVN_EXTERNAL_DIRECTORIES
+
+--point definition to URL of new-tag-name--
+
+set the property - don't forget the 'dot' at the end!
+> svn propset svn:externals -F SVN_EXTERNAL_DIRECTORIES cam_trunk_head_wc
+
+--continue with other cam mods--
+
+commit changes from working copy directory to HEAD of cam trunk - NOTE: a commit from here will *NOT* recurse to external directories
+> cd cam_trunk_head_wc
+> svn commit -m "appropriate message"
+
+tag new version of cam trunk
+> svn copy $SVN/cam1/trunk $SVN/cam1/trunk_tags/<new-tag-name> -m "appropriate message"

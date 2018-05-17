@@ -1,0 +1,1654 @@
+module test_mg_processes
+
+use pfunit_mod
+
+use micro_mg_utils
+
+! Constants we can get from the same place as the model:
+use shr_const_mod, only: &
+     rh2o => shr_const_rwv, &
+     cpair => shr_const_cpdair, &
+     tmelt => shr_const_tkfrz, &
+     latvap => shr_const_latvap, &
+     latice => shr_const_latice
+
+use shr_spfn_mod, only: gamma => shr_spfn_gamma
+
+implicit none
+
+! At the time of this writing, this is the hard-coded MG2 value.
+real(r8), parameter :: dcs = 150.e-6_r8
+
+real(r8), parameter :: mach_eps = epsilon(1._r8)
+
+contains
+
+@Before
+subroutine setUp()
+  character(len=128) :: errstring
+  call micro_mg_utils_init(r8, rh2o, cpair, tmelt, latvap, latice, dcs, &
+       errstring)
+  if (trim(errstring) /= "") &
+       call throw("micro_mg_utils_init error: "//errstring)
+end subroutine setUp
+
+@After
+subroutine tearDown()
+end subroutine tearDown
+
+@Test
+subroutine ice_dep_sub_has_qi_threshold()
+
+  real(r8) :: t(2), qv(2), qi(2), ni(2)
+  real(r8) :: icldm(2), rho(2), dv(2), qvl(2), qvi(2)
+
+  real(r8) :: berg(2), vap_dep(2), ice_sublim(2)
+
+  ! As long as qi is 0, this should produce 0 at the end.
+  t = 1._r8
+  qv = 2._r8
+  qi = 0._r8
+  ni = 1._r8
+  icldm = 1._r8
+  rho = 1._r8
+  dv = 1._r8
+  qvl = 2._r8
+  qvi = 1._r8
+
+  berg = 1._r8
+  vap_dep = 1._r8
+  ice_sublim = 1._r8
+
+  call ice_deposition_sublimation(t, qv, qi, ni, icldm, rho, dv, qvl, qvi, &
+       berg, vap_dep, ice_sublim)
+
+  @assertEqual(0._r8, berg)
+  @assertEqual(0._r8, vap_dep)
+  @assertEqual(0._r8, ice_sublim)
+
+end subroutine ice_dep_sub_has_qi_threshold
+
+@Test
+subroutine ice_dep_has_correct_value()
+
+  real(r8) :: t(2), qv(2), qi(2), ni(2)
+  real(r8) :: icldm(2), rho(2), dv(2), qvl(2), qvi(2)
+
+  real(r8) :: berg(2), vap_dep(2), ice_sublim(2)
+
+  ! Check the typical case with deposition and the bergeron process.
+  !
+  ! Make up unrealistic data because it's easier to see that it should
+  ! exercise the appropriate code paths.
+  t = 253._r8
+  qv = 1._r8
+  qi = 1.e-3_r8
+  ni = qi / (pi/6._r8 * (50.e-6_r8)**3 * rhoi)
+  icldm = 0.1_r8
+  rho = 3._r8
+  dv = 5._r8
+  qvl = 0.5_r8
+  qvi = 0.25_r8
+
+  berg = 1._r8
+  vap_dep = 1._r8
+  ice_sublim = 1._r8
+
+  call ice_deposition_sublimation(t, qv, qi, ni, icldm, rho, dv, qvl, qvi, &
+       berg, vap_dep, ice_sublim)
+
+  @assertEqual(2884.1851927526181_r8, berg, tolerance=(1.e5*mach_eps))
+  @assertEqual(865.25555782578544_r8, vap_dep, tolerance=(1.e5*mach_eps))
+  @assertEqual(0._r8, ice_sublim)
+
+end subroutine ice_dep_has_correct_value
+
+@Test
+subroutine ice_dep_is_off_above_freezing()
+
+  real(r8) :: t(2), qv(2), qi(2), ni(2)
+  real(r8) :: icldm(2), rho(2), dv(2), qvl(2), qvi(2)
+
+  real(r8) :: berg(2), vap_dep(2), ice_sublim(2)
+
+  ! Copy above, but with a temperature too high to freeze
+  t = 280._r8
+  qv = 1._r8
+  qi = 1.e-3_r8
+  ni = qi / (pi/6._r8 * (50.e-6_r8)**3 * rhoi)
+  icldm = 0.1_r8
+  rho = 3._r8
+  dv = 5._r8
+  qvl = 0.5_r8
+  qvi = 0.25_r8
+
+  berg = 1._r8
+  vap_dep = 1._r8
+  ice_sublim = 1._r8
+
+  call ice_deposition_sublimation(t, qv, qi, ni, icldm, rho, dv, qvl, qvi, &
+       berg, vap_dep, ice_sublim)
+
+  @assertEqual(0._r8, berg)
+  @assertEqual(0._r8, vap_dep)
+  @assertEqual(0._r8, ice_sublim)
+
+end subroutine ice_dep_is_off_above_freezing
+
+@Test
+subroutine ice_sub_has_correct_value()
+
+  real(r8) :: t(2), qv(2), qi(2), ni(2)
+  real(r8) :: icldm(2), rho(2), dv(2), qvl(2), qvi(2)
+
+  real(r8) :: berg(2), vap_dep(2), ice_sublim(2)
+
+  ! In this case, qv < qvl < qvi, so we should have sublimation and the
+  ! bergeron process should be inactive.
+  t = 280._r8
+  qv = 0.25_r8
+  qi = 1.e-3_r8
+  ni = qi / (pi/6._r8 * (50.e-6_r8)**3 * rhoi)
+  icldm = 0.1_r8
+  rho = 3._r8
+  dv = 5._r8
+  qvl = 0.5_r8
+  qvi = 1._r8
+
+  berg = 1._r8
+  vap_dep = 1._r8
+  ice_sublim = 1._r8
+
+  call ice_deposition_sublimation(t, qv, qi, ni, icldm, rho, dv, qvl, qvi, &
+       berg, vap_dep, ice_sublim)
+
+  @assertEqual(0._r8, berg)
+  @assertEqual(0._r8, vap_dep)
+  @assertEqual(-267.65060825243921_r8, ice_sublim, tolerance=(1.e5_r8*mach_eps))
+
+end subroutine ice_sub_has_correct_value
+
+@Test
+subroutine ice_sub_is_on_above_freezing()
+
+  real(r8) :: t(2), qv(2), qi(2), ni(2)
+  real(r8) :: icldm(2), rho(2), dv(2), qvl(2), qvi(2)
+
+  real(r8) :: berg(2), vap_dep(2), ice_sublim(2)
+
+  ! Similar to above, but it's cold.
+  t = 253._r8
+  qv = 0.25_r8
+  qi = 1.e-3_r8
+  ni = qi / (pi/6._r8 * (50.e-6_r8)**3 * rhoi)
+  icldm = 0.1_r8
+  rho = 3._r8
+  dv = 5._r8
+  qvl = 0.5_r8
+  qvi = 1._r8
+
+  berg = 1._r8
+  vap_dep = 1._r8
+  ice_sublim = 1._r8
+
+  call ice_deposition_sublimation(t, qv, qi, ni, icldm, rho, dv, qvl, qvi, &
+       berg, vap_dep, ice_sublim)
+
+  @assertEqual(0._r8, berg)
+  @assertEqual(0._r8, vap_dep)
+  @assertEqual(-218.70179977744760_r8, ice_sublim, tolerance=(1.e5_r8*mach_eps))
+
+end subroutine ice_sub_is_on_above_freezing
+
+@Test
+subroutine liq_autoconversion_has_qc_threshold()
+
+  real(r8), parameter :: zeros(2) = 0._r8
+
+  real(r8) :: prc(2), nprc(2), nprc1(2)
+
+  prc = 1._r8
+  nprc = 1._r8
+  nprc1 = 1._r8
+
+  ! For zeroed inputs, should get zeroed outputs.
+  call kk2000_liq_autoconversion(.true., zeros, zeros, zeros, zeros, &
+       prc, nprc, nprc1)
+
+  @assertEqual(0._r8, prc)
+  @assertEqual(0._r8, nprc)
+  @assertEqual(0._r8, nprc1)
+
+end subroutine liq_autoconversion_has_qc_threshold
+
+@Test
+subroutine uniform_liq_autoconversion_mass()
+
+  real(r8), parameter :: zeros(2) = 0._r8
+
+  real(r8) :: qcic(2), ncic(2), rho(2), prc(2), nprc(2), nprc1(2)
+  real(r8) :: expected(2)
+
+  ! Arbitrary contrived inputs.
+  qcic = [2.e-3_r8, 3.e-3_r8]
+  ncic = [2.e6_r8, 1.5e6_r8]
+  rho = [2._r8, 1.5_r8]
+
+  ! Use formula 1350 * qc**2.47 * (nc/1.e6_r8*rho)**-1.79 to get this.
+  ! (Note that the above form is because the original paper used #/cm3
+  ! instead of #/kg as CAM does.)
+  expected = [2.4332709614947312e-05_r8, 1.8553103196805609e-4_r8]
+
+  prc = 1._r8
+  nprc = 1._r8
+  nprc1 = 1._r8
+
+  call kk2000_liq_autoconversion(.true., qcic, ncic, rho, zeros, &
+       prc, nprc, nprc1)
+
+  @assertEqual(expected, prc, tolerance=(1.e-4_r8*mach_eps))
+
+end subroutine uniform_liq_autoconversion_mass
+
+@Test
+subroutine liq_autoconversion_rain_num()
+
+  real(r8), parameter :: zeros(2) = 0._r8
+
+  real(r8) :: qcic(2), ncic(2), rho(2), prc(2), nprc(2), nprc1(2)
+  real(r8) :: expected_mass
+
+  ! Arbitrary contrived inputs.
+  qcic = [2.e-3_r8, 3.e-3_r8]
+  ncic = [2.e6_r8, 1.5e6_r8]
+  rho = [2._r8, 1.5_r8]
+
+  ! Average particle mass is the mass of a droplet with a 50 micron
+  ! diameter.
+  expected_mass = pi/6._r8 * (50.e-6_r8)**3 * rhow
+
+  prc = 1._r8
+  nprc = 1._r8
+  nprc1 = 1._r8
+
+  call kk2000_liq_autoconversion(.true., qcic, ncic, rho, zeros, &
+       prc, nprc, nprc1)
+
+  @assertEqual(expected_mass, prc/nprc, tolerance=(expected_mass*10._r8*mach_eps))
+
+end subroutine liq_autoconversion_rain_num
+
+@Test
+subroutine liq_autoconversion_cld_num()
+
+  real(r8), parameter :: zeros(2) = 0._r8
+
+  real(r8) :: qcic(2), ncic(2), rho(2), prc(2), nprc(2), nprc1(2)
+
+  ! Arbitrary contrived inputs.
+  qcic = [2.e-3_r8, 3.e-3_r8]
+  ncic = [2.e6_r8, 1.5e6_r8]
+  rho = [2._r8, 1.5_r8]
+
+  prc = 1._r8
+  nprc = 1._r8
+  nprc1 = 1._r8
+
+  call kk2000_liq_autoconversion(.true., qcic, ncic, rho, zeros, &
+       prc, nprc, nprc1)
+
+  @assertEqual(qcic/ncic, prc/nprc1, tolerance=(1.e-8_r8*mach_eps))
+
+end subroutine liq_autoconversion_cld_num
+
+@Test
+subroutine nonuniform_liq_autoconversion_mass()
+
+  real(r8) :: qcic(2), ncic(2), rho(2), relvar(2), prc(2), nprc(2), nprc1(2)
+  real(r8) :: expected(2)
+
+  ! Arbitrary contrived inputs.
+  qcic = [2.e-3_r8, 3.e-3_r8]
+  ncic = [2.e6_r8, 1.5e6_r8]
+  rho = [2._r8, 1.5_r8]
+  relvar = [2._r8, 3._r8]
+
+  ! Same as uniform test, only we multiply in a variance-related factor:
+  ! gamma(relvar+2.47) / (gamma(relvar) * relvar**2.47)
+  expected = [4.9005406623946315e-05_r8, 3.0676245281189245e-4_r8]
+
+  prc = 1._r8
+  nprc = 1._r8
+  nprc1 = 1._r8
+
+  call kk2000_liq_autoconversion(.false., qcic, ncic, rho, relvar, &
+       prc, nprc, nprc1)
+
+  @assertEqual(expected, prc, tolerance=(1.e-4_r8*mach_eps))
+
+end subroutine nonuniform_liq_autoconversion_mass
+
+@Test
+subroutine ice_auto_has_t_threshold()
+
+  real(r8) :: t(2), qiic(2), lami(2), n0i(2), prci(2), nprci(2)
+
+  ! Above freezing, nothing should happen.
+  t = 280._r8
+  qiic = 1._r8
+  lami = 1._r8
+  n0i = 1._r8
+  prci = 1._r8
+  nprci = 1._r8
+
+  call ice_autoconversion(t, qiic, lami, n0i, dcs, prci, nprci)
+
+  @assertEqual(0._r8, prci)
+  @assertEqual(0._r8, nprci)
+
+end subroutine ice_auto_has_t_threshold
+
+@Test
+subroutine ice_auto_has_qi_threshold()
+
+  real(r8) :: t(2), qiic(2), lami(2), n0i(2), prci(2), nprci(2)
+
+  ! Without cloud ice, nothing should happen.
+  t = 253._r8
+  qiic = 0._r8
+  lami = 1._r8
+  n0i = 1._r8
+  prci = 1._r8
+  nprci = 1._r8
+
+  call ice_autoconversion(t, qiic, lami, n0i, dcs, prci, nprci)
+
+  @assertEqual(0._r8, prci)
+  @assertEqual(0._r8, nprci)
+
+end subroutine ice_auto_has_qi_threshold
+
+@Test
+subroutine ice_auto_has_correct_outputs()
+
+  real(r8) :: t(2), qiic(2), lami(2), n0i(2), prci(2), nprci(2)
+
+  ! Arbitrary inputs that cause a small amount of autoconversion.
+  t = 253._r8
+  qiic = 1.e-3_r8
+  lami = 20000._r8
+  n0i = 1._r8
+  prci = 1._r8
+  nprci = 1._r8
+
+  call ice_autoconversion(t, qiic, lami, n0i, dcs, prci, nprci)
+
+  @assertEqual(3.5301023384849040e-17_r8, prci, tolerance=(1.e-16*mach_eps))
+  @assertEqual(1.3829741213295544e-08_r8, nprci, tolerance=(1.e-7*mach_eps))
+
+end subroutine ice_auto_has_correct_outputs
+
+@Test
+subroutine imm_freezing_has_t_threshold()
+
+  real(r8) :: t(2), pgam(2), lamc(2), qcic(2), ncic(2), relvar(2)
+  real(r8) :: mnuccc(2), nnuccc(2)
+
+  t = 280._r8
+  pgam = 1._r8
+  lamc = 1._r8
+  qcic = 1._r8
+  ncic = 1._r8
+  relvar = 1._r8
+
+  mnuccc = 1._r8
+  nnuccc = 1._r8
+
+  call immersion_freezing(.true., t, pgam, lamc, &
+       qcic, ncic, relvar, mnuccc, nnuccc)
+
+  @assertEqual(0._r8, mnuccc)
+  @assertEqual(0._r8, nnuccc)
+
+end subroutine imm_freezing_has_t_threshold
+
+@Test
+subroutine imm_freezing_has_qc_threshold()
+
+  real(r8) :: t(2), pgam(2), lamc(2), qcic(2), ncic(2), relvar(2)
+  real(r8) :: mnuccc(2), nnuccc(2)
+
+  t = 253._r8
+  pgam = 1._r8
+  lamc = 1._r8
+  qcic = 0._r8
+  ncic = 1._r8
+  relvar = 1._r8
+
+  mnuccc = 1._r8
+  nnuccc = 1._r8
+
+  call immersion_freezing(.true., t, pgam, lamc, &
+       qcic, ncic, relvar, mnuccc, nnuccc)
+
+  @assertEqual(0._r8, mnuccc)
+  @assertEqual(0._r8, nnuccc)
+
+end subroutine imm_freezing_has_qc_threshold
+
+@Test
+subroutine imm_freezing_has_correct_outputs()
+
+  real(r8) :: t(2), pgam(2), lamc(2), qcic(2), ncic(2), relvar(2)
+  real(r8) :: mnuccc(2), nnuccc(2)
+
+  t = 253._r8
+  pgam = 3._r8
+  lamc = 20000._r8
+  qcic = 1._r8
+  ncic = 1.e6_r8
+  relvar = 1._r8
+
+  mnuccc = 1._r8
+  nnuccc = 1._r8
+
+  call immersion_freezing(.true., t, pgam, lamc, &
+       qcic, ncic, relvar, mnuccc, nnuccc)
+
+  @assertEqual(1.5456481556770479e-5_r8, mnuccc, tolerance=(1.e-4*mach_eps))
+  @assertEqual(468.56675096547337_r8, nnuccc, tolerance=(1.e4*mach_eps))
+
+end subroutine imm_freezing_has_correct_outputs
+
+@Test
+subroutine nonuniform_imm_freezing_is_correct()
+
+  real(r8) :: t(2), pgam(2), lamc(2), qcic(2), ncic(2), relvar(2)
+  real(r8) :: mnuccc(2), nnuccc(2)
+
+  t = 253._r8
+  pgam = 3._r8
+  lamc = 20000._r8
+  qcic = 1._r8
+  ncic = 1.e6_r8
+  relvar = 2.5_r8
+
+  mnuccc = 1._r8
+  nnuccc = 1._r8
+
+  call immersion_freezing(.false., t, pgam, lamc, &
+       qcic, ncic, relvar, mnuccc, nnuccc)
+
+  @assertEqual(2.1639074179478672e-5_r8, mnuccc, tolerance=(1.e-4*mach_eps))
+  @assertEqual(468.56675096547337_r8, nnuccc, tolerance=(1.e4*mach_eps))
+
+end subroutine nonuniform_imm_freezing_is_correct
+
+@Test
+subroutine cont_freezing_has_t_threshold()
+  real(r8) :: t(2), p(2), rndst(2,2), nacon(2,2), pgam(2), lamc(2)
+  real(r8) :: qcic(2), ncic(2), relvar(2), mnucct(2), nnucct(2)
+
+  ! No contact freezing if temperature is around tmelt or above.
+  t = [tmelt, 280._r8]
+  p = 1._r8
+  rndst = 1._r8
+  nacon = 1._r8
+  pgam = 1._r8
+  lamc = 1._r8
+  qcic = 1._r8
+  ncic = 1._r8
+  relvar = 1._r8
+
+  mnucct = 1._r8
+  nnucct = 1._r8
+
+  call contact_freezing (.true., t, p, rndst, nacon, &
+       pgam, lamc, qcic, ncic, relvar, mnucct, nnucct)
+
+  @assertEqual(0._r8, mnucct)
+  @assertEqual(0._r8, nnucct)
+
+end subroutine cont_freezing_has_t_threshold
+
+@Test
+subroutine cont_freezing_has_qc_threshold()
+  real(r8) :: t(2), p(2), rndst(2,2), nacon(2,2), pgam(2), lamc(2)
+  real(r8) :: qcic(2), ncic(2), relvar(2), mnucct(2), nnucct(2)
+
+  ! No contact freezing if there's no cloud to freeze.
+  t = 253._r8
+  p = 1._r8
+  rndst = 1._r8
+  nacon = 1._r8
+  pgam = 1._r8
+  lamc = 1._r8
+  qcic = 0._r8
+  ncic = 1._r8
+  relvar = 1._r8
+
+  mnucct = 1._r8
+  nnucct = 1._r8
+
+  call contact_freezing (.true., t, p, rndst, nacon, &
+       pgam, lamc, qcic, ncic, relvar, mnucct, nnucct)
+
+  @assertEqual(0._r8, mnucct)
+  @assertEqual(0._r8, nnucct)
+
+end subroutine cont_freezing_has_qc_threshold
+
+@Test
+subroutine cont_freezing_is_correct()
+  real(r8) :: t(2), p(2), rndst(2,2), nacon(2,2), pgam(2), lamc(2)
+  real(r8) :: qcic(2), ncic(2), relvar(2), mnucct(2), nnucct(2)
+
+  ! Completely made up data again.
+  t = 253._r8
+  p = 1.e5_r8
+  rndst = spread([30.e-6_r8, 50.e-6_r8], 1, 2)
+  nacon = spread([3.e6_r8, 2.e6_r8], 1, 2)
+  pgam = 3._r8
+  lamc = 20000._r8
+  qcic = 1._r8
+  ncic = 1.e6_r8
+  relvar = 1._r8
+
+  mnucct = 1._r8
+  nnucct = 1._r8
+
+  call contact_freezing (.true., t, p, rndst, nacon, &
+       pgam, lamc, qcic, ncic, relvar, mnucct, nnucct)
+
+  @assertEqual(1.1544152715841601e-9_r8, mnucct, tolerance=(1.e-8*mach_eps))
+  @assertEqual(8.3991267132979150e-2_r8, nnucct, tolerance=(1.e-1*mach_eps))
+
+end subroutine cont_freezing_is_correct
+
+@Test
+subroutine cont_freezing_nonuniform_is_correct()
+  real(r8) :: t(2), p(2), rndst(2,2), nacon(2,2), pgam(2), lamc(2)
+  real(r8) :: qcic(2), ncic(2), relvar(2), mnucct(2), nnucct(2)
+
+  ! Completely made up data yet again.
+  t = 253._r8
+  p = 1.e5_r8
+  rndst = spread([30.e-6_r8, 50.e-6_r8], 1, 2)
+  nacon = spread([3.e6_r8, 2.e6_r8], 1, 2)
+  pgam = 3._r8
+  lamc = 20000._r8
+  qcic = 1._r8
+  ncic = 1.e6_r8
+  relvar = 2.5_r8
+
+  mnucct = 1._r8
+  nnucct = 1._r8
+
+  call contact_freezing (.false., t, p, rndst, nacon, &
+       pgam, lamc, qcic, ncic, relvar, mnucct, nnucct)
+
+  @assertEqual(1.2505730222133072e-9_r8, mnucct, tolerance=(1.e-8*mach_eps))
+  @assertEqual(8.0282976073661236e-2_r8, nnucct, tolerance=mach_eps)
+
+end subroutine cont_freezing_nonuniform_is_correct
+
+@Test
+subroutine snow_aggregation_has_t_threshold()
+  real(r8) :: t(2), rho(2), asn(2), qsic(2), nsic(2)
+  real(r8) :: nsagg(2)
+
+  ! Above freezing, nothing should happen.
+  t = 280._r8
+  rho = 1._r8
+  asn = as
+  qsic = 1.e-3_r8
+  nsic = 1.e6_r8
+
+  call snow_self_aggregation(t, rho, asn, rhosn, qsic, nsic, nsagg)
+
+  @assertEqual(0._r8, nsagg)
+
+end subroutine snow_aggregation_has_t_threshold
+
+@Test
+subroutine snow_aggregation_has_qs_threshold()
+  real(r8) :: t(2), rho(2), asn(2), qsic(2), nsic(2)
+  real(r8) :: nsagg(2)
+
+  ! Without snow, nothing should happen.
+  t = 253._r8
+  rho = 1._r8
+  asn = as
+  qsic = 0._r8
+  nsic = 1.e6_r8
+
+  call snow_self_aggregation(t, rho, asn, rhosn, qsic, nsic, nsagg)
+
+  @assertEqual(0._r8, nsagg)
+
+end subroutine snow_aggregation_has_qs_threshold
+
+@Test
+subroutine snow_aggregation_is_correct()
+  real(r8) :: t(2), rho(2), asn(2), qsic(2), nsic(2)
+  real(r8) :: nsagg(2)
+
+  ! Without snow, nothing should happen.
+  t = 253._r8
+  rho = 1._r8
+  asn = as
+  qsic = 1.e-3_r8
+  nsic = 1.e6_r8
+
+  call snow_self_aggregation(t, rho, asn, rhosn, qsic, nsic, nsagg)
+
+  @assertEqual(-1.9700287158816477e3_r8, nsagg, tolerance=(1.e5_r8*mach_eps))
+
+end subroutine snow_aggregation_is_correct
+
+@Test
+subroutine acc_cloud_snow_has_t_threshold()
+  real(r8) :: t(2), rho(2), asn(2), uns(2), mu(2), qcic(2), ncic(2)
+  real(r8) :: qsic(2), pgam(2), lamc(2), lams(2), n0s(2)
+  real(r8) :: psacws(2), npsacws(2)
+
+  t = 280._r8
+  rho = 1._r8
+  asn = as
+  uns = 1._r8
+  mu = 1._r8
+  qcic = 1._r8
+  ncic = 1._r8
+  qsic = 1._r8
+  pgam = 1._r8
+  lamc = 1._r8
+  lams = 1._r8
+  n0s = 1._r8
+
+  psacws = 1._r8
+  npsacws = 1._r8
+
+  call accrete_cloud_water_snow(t, rho, asn, uns, mu, qcic, ncic, qsic, &
+     pgam, lamc, lams, n0s, psacws, npsacws)
+
+  @assertEqual(0._r8, psacws)
+  @assertEqual(0._r8, npsacws)
+
+end subroutine acc_cloud_snow_has_t_threshold
+
+@Test
+subroutine acc_cloud_snow_has_qs_threshold()
+  real(r8) :: t(2), rho(2), asn(2), uns(2), mu(2), qcic(2), ncic(2)
+  real(r8) :: qsic(2), pgam(2), lamc(2), lams(2), n0s(2)
+  real(r8) :: psacws(2), npsacws(2)
+
+  t = 253._r8
+  rho = 1._r8
+  asn = as
+  uns = 1._r8
+  mu = 1._r8
+  qcic = 1._r8
+  ncic = 1._r8
+  qsic = 0._r8
+  pgam = 1._r8
+  lamc = 1._r8
+  lams = 1._r8
+  n0s = 1._r8
+
+  psacws = 1._r8
+  npsacws = 1._r8
+
+  call accrete_cloud_water_snow(t, rho, asn, uns, mu, qcic, ncic, qsic, &
+     pgam, lamc, lams, n0s, psacws, npsacws)
+
+  @assertEqual(0._r8, psacws)
+  @assertEqual(0._r8, npsacws)
+
+end subroutine acc_cloud_snow_has_qs_threshold
+
+@Test
+subroutine acc_cloud_snow_has_qc_threshold()
+  real(r8) :: t(2), rho(2), asn(2), uns(2), mu(2), qcic(2), ncic(2)
+  real(r8) :: qsic(2), pgam(2), lamc(2), lams(2), n0s(2)
+  real(r8) :: psacws(2), npsacws(2)
+
+  t = 253._r8
+  rho = 1._r8
+  asn = as
+  uns = 1._r8
+  mu = 1._r8
+  qcic = 0._r8
+  ncic = 1._r8
+  qsic = 1._r8
+  pgam = 1._r8
+  lamc = 1._r8
+  lams = 1._r8
+  n0s = 1._r8
+
+  psacws = 1._r8
+  npsacws = 1._r8
+
+  call accrete_cloud_water_snow(t, rho, asn, uns, mu, qcic, ncic, qsic, &
+     pgam, lamc, lams, n0s, psacws, npsacws)
+
+  @assertEqual(0._r8, psacws)
+  @assertEqual(0._r8, npsacws)
+
+end subroutine acc_cloud_snow_has_qc_threshold
+
+@Test
+subroutine acc_cloud_snow_is_correct()
+  real(r8) :: t(2), rho(2), asn(2), uns(2), mu(2), qcic(2), ncic(2)
+  real(r8) :: qsic(2), pgam(2), lamc(2), lams(2), n0s(2)
+  real(r8) :: psacws(2), npsacws(2)
+
+  t = 253._r8
+  rho = 1.2_r8
+  asn = as
+  uns = 0.2_r8
+  mu = 1.e-5_r8
+  qcic = 1.e-3_r8
+  ncic = 1.e6_r8
+  qsic = 1._r8
+  pgam = 3._r8
+  lamc = 20000._r8
+  lams = 5000._r8
+  n0s = 7.e4_r8
+
+  psacws = 1._r8
+  npsacws = 1._r8
+
+  call accrete_cloud_water_snow(t, rho, asn, uns, mu, qcic, ncic, qsic, &
+     pgam, lamc, lams, n0s, psacws, npsacws)
+
+  @assertEqual(5.6633345420868814e-10_r8, psacws, tolerance=(1.e-9_r8*mach_eps))
+  @assertEqual(0.5663334542086882_r8, npsacws, tolerance=mach_eps)
+
+end subroutine acc_cloud_snow_is_correct
+
+@Test
+subroutine snd_ice_production_has_t_thresholds()
+  real(r8) :: t(2), psacws(2)
+  real(r8) :: msacwi(2), nsacwi(2)
+
+  ! Both of these are outside the relevant temperature range.
+  t = [253._r8, tmelt]
+  psacws = 1.e-8_r8
+
+  msacwi = 1._r8
+  nsacwi = 1._r8
+
+  call secondary_ice_production(t, psacws, msacwi, nsacwi)
+
+  @assertEqual(1.e-8_r8, psacws)
+  @assertEqual(0._r8, msacwi)
+  @assertEqual(0._r8, nsacwi)
+
+end subroutine snd_ice_production_has_t_thresholds
+
+@Test
+subroutine snd_ice_production_is_correct()
+  real(r8) :: t(2), psacws(2)
+  real(r8) :: msacwi(2), nsacwi(2)
+
+  real(r8) :: psacws_expected(2), msacwi_expected(2), nsacwi_expected(2)
+
+  ! Both of these are outside the relevant temperature range.
+  t = [267._r8, 269._r8]
+  psacws = 1.e-8_r8
+
+  msacwi = 1._r8
+  nsacwi = 1._r8
+
+  call secondary_ice_production(t, psacws, msacwi, nsacwi)
+
+  psacws_expected = [9.9955040318468636e-9_r8, 9.9957483779421419e-9_r8]
+  msacwi_expected = [4.4959681531373333e-12_r8, 4.2516220578582796e-12_r8]
+  nsacwi_expected = [2.1466666666666376_r8, 2.0300000000000438_r8]
+  @assertEqual(psacws_expected, psacws, tolerance=(1.e-8_r8*mach_eps))
+  @assertEqual(msacwi_expected, msacwi, tolerance=(1.e-11_r8*mach_eps))
+  @assertEqual(nsacwi_expected, nsacwi, tolerance=(1.e1_r8*mach_eps))
+
+end subroutine snd_ice_production_is_correct
+
+@Test
+subroutine acc_rain_snow_has_t_threshold()
+  real(r8) :: t(2), rho(2), umr(2), ums(2), unr(2), uns(2), qric(2), qsic(2)
+  real(r8) :: lamr(2), n0r(2), lams(2), n0s(2)
+  real(r8) :: pracs(2), npracs(2)
+
+  t = 280._r8
+  rho = 1._r8
+  umr = 1._r8
+  ums = 1._r8
+  unr = 1._r8
+  uns = 1._r8
+  qric = 1._r8
+  qsic = 1._r8
+  lamr = 1._r8
+  n0r = 1._r8
+  lams = 1._r8
+  n0s = 1._r8
+
+  pracs = 1._r8
+  npracs = 1._r8
+
+  call accrete_rain_snow(t, rho, umr, ums, unr, uns, qric, qsic, &
+       lamr, n0r, lams, n0s, pracs, npracs)
+
+  @assertEqual(0._r8, pracs)
+  @assertEqual(0._r8, npracs)
+
+end subroutine acc_rain_snow_has_t_threshold
+
+@Test
+subroutine acc_rain_snow_has_qr_threshold()
+  real(r8) :: t(2), rho(2), umr(2), ums(2), unr(2), uns(2), qric(2), qsic(2)
+  real(r8) :: lamr(2), n0r(2), lams(2), n0s(2)
+  real(r8) :: pracs(2), npracs(2)
+
+  t = 253._r8
+  rho = 1._r8
+  umr = 1._r8
+  ums = 1._r8
+  unr = 1._r8
+  uns = 1._r8
+  qric = 0._r8
+  qsic = 1._r8
+  lamr = 1._r8
+  n0r = 1._r8
+  lams = 1._r8
+  n0s = 1._r8
+
+  pracs = 1._r8
+  npracs = 1._r8
+
+  call accrete_rain_snow(t, rho, umr, ums, unr, uns, qric, qsic, &
+       lamr, n0r, lams, n0s, pracs, npracs)
+
+  @assertEqual(0._r8, pracs)
+  @assertEqual(0._r8, npracs)
+
+end subroutine acc_rain_snow_has_qr_threshold
+
+@Test
+subroutine acc_rain_snow_has_qs_threshold()
+  real(r8) :: t(2), rho(2), umr(2), ums(2), unr(2), uns(2), qric(2), qsic(2)
+  real(r8) :: lamr(2), n0r(2), lams(2), n0s(2)
+  real(r8) :: pracs(2), npracs(2)
+
+  t = 253._r8
+  rho = 1._r8
+  umr = 1._r8
+  ums = 1._r8
+  unr = 1._r8
+  uns = 1._r8
+  qric = 1._r8
+  qsic = 0._r8
+  lamr = 1._r8
+  n0r = 1._r8
+  lams = 1._r8
+  n0s = 1._r8
+
+  pracs = 1._r8
+  npracs = 1._r8
+
+  call accrete_rain_snow(t, rho, umr, ums, unr, uns, qric, qsic, &
+       lamr, n0r, lams, n0s, pracs, npracs)
+
+  @assertEqual(0._r8, pracs)
+  @assertEqual(0._r8, npracs)
+
+end subroutine acc_rain_snow_has_qs_threshold
+
+@Test
+subroutine acc_rain_snow_is_correct()
+  real(r8) :: t(2), rho(2), umr(2), ums(2), unr(2), uns(2), qric(2), qsic(2)
+  real(r8) :: lamr(2), n0r(2), lams(2), n0s(2)
+  real(r8) :: pracs(2), npracs(2)
+
+  t = 253._r8
+  rho = 1.2_r8
+  umr = 4._r8
+  ums = 0.8_r8
+  unr = 1._r8
+  uns = 0.2_r8
+  qric = 1._r8
+  qsic = 1._r8
+  lamr = 5000._r8
+  n0r = 3.e10_r8
+  lams = 5000._r8
+  n0s = 7.e10_r8
+
+  pracs = 1._r8
+  npracs = 1._r8
+
+  call accrete_rain_snow(t, rho, umr, ums, unr, uns, qric, qsic, &
+       lamr, n0r, lams, n0s, pracs, npracs)
+
+  @assertEqual(9.7214791125218962_r8, pracs, tolerance=(1.e1_r8*mach_eps))
+  @assertEqual(2.0357882303518619e7_r8, npracs, tolerance=(1.e8_r8*mach_eps))
+
+end subroutine acc_rain_snow_is_correct
+
+@Test
+subroutine het_rain_frz_has_t_threshold()
+  real(r8) :: t(2), qric(2), nric(2), lamr(2)
+  real(r8) :: mnuccr(2), nnuccr(2)
+
+  ! Does not operate unless somewhat below freezing.
+  t = tmelt
+  qric = 1._r8
+  nric = 1._r8
+  lamr = 1._r8
+
+  mnuccr = 1._r8
+  nnuccr = 1._r8
+
+  call heterogeneous_rain_freezing(t, qric, nric, lamr, mnuccr, nnuccr)
+
+  @assertEqual(0._r8, mnuccr)
+  @assertEqual(0._r8, nnuccr)
+
+end subroutine het_rain_frz_has_t_threshold
+
+@Test
+subroutine het_rain_frz_has_qr_threshold()
+  real(r8) :: t(2), qric(2), nric(2), lamr(2)
+  real(r8) :: mnuccr(2), nnuccr(2)
+
+  ! Does not operate unless somewhat below freezing.
+  t = 253._r8
+  qric = 0._r8
+  nric = 1._r8
+  lamr = 1._r8
+
+  mnuccr = 1._r8
+  nnuccr = 1._r8
+
+  call heterogeneous_rain_freezing(t, qric, nric, lamr, mnuccr, nnuccr)
+
+  @assertEqual(0._r8, mnuccr)
+  @assertEqual(0._r8, nnuccr)
+
+end subroutine het_rain_frz_has_qr_threshold
+
+@Test
+subroutine het_rain_frz_is_correct()
+  real(r8) :: t(2), qric(2), nric(2), lamr(2)
+  real(r8) :: mnuccr(2), nnuccr(2)
+
+  ! Does not operate unless somewhat below freezing.
+  t = 253._r8
+  qric = 1._r8
+  nric = 1.e6_r8
+  lamr = 5000._r8
+
+  mnuccr = 1._r8
+  nnuccr = 1._r8
+
+  call heterogeneous_rain_freezing(t, qric, nric, lamr, mnuccr, nnuccr)
+
+  @assertEqual(7.5368748162537962e-4_r8, mnuccr, tolerance=(1.e-3*mach_eps))
+  @assertEqual(1.4994136030895149e3_r8, nnuccr, tolerance=(1.e4*mach_eps))
+
+end subroutine het_rain_frz_is_correct
+
+@Test
+subroutine acc_cloud_rain_has_qr_threshold()
+  real(r8) :: qric(2), qcic(2), ncic(2), relvar(2), accre_enhan(2)
+  real(r8) :: pra(2), npra(2)
+
+  qric = 0._r8
+  qcic = 1._r8
+  ncic = 1._r8
+  relvar = 1._r8
+  accre_enhan = 1._r8
+
+  pra = 1._r8
+  npra = 1._r8
+
+  call accrete_cloud_water_rain(.true., qric, qcic, &
+       ncic, relvar, accre_enhan, pra, npra)
+
+  @assertEqual(0._r8, pra)
+  @assertEqual(0._r8, npra)
+
+end subroutine acc_cloud_rain_has_qr_threshold
+
+@Test
+subroutine acc_cloud_rain_has_qc_threshold()
+  real(r8) :: qric(2), qcic(2), ncic(2), relvar(2), accre_enhan(2)
+  real(r8) :: pra(2), npra(2)
+
+  qric = 1._r8
+  qcic = 0._r8
+  ncic = 1._r8
+  relvar = 1._r8
+  accre_enhan = 1._r8
+
+  pra = 1._r8
+  npra = 1._r8
+
+  call accrete_cloud_water_rain(.true., qric, qcic, &
+       ncic, relvar, accre_enhan, pra, npra)
+
+  @assertEqual(0._r8, pra)
+  @assertEqual(0._r8, npra)
+
+end subroutine acc_cloud_rain_has_qc_threshold
+
+@Test
+subroutine acc_cloud_rain_is_correct()
+  real(r8) :: qric(2), qcic(2), ncic(2), relvar(2), accre_enhan(2)
+  real(r8) :: pra(2), npra(2)
+
+  qric = 1.e-3_r8
+  qcic = 1.e-4_r8
+  ncic = 1.e6_r8
+  relvar = 1._r8
+  accre_enhan = 1._r8
+
+  pra = 1._r8
+  npra = 1._r8
+
+  call accrete_cloud_water_rain(.true., qric, qcic, &
+       ncic, relvar, accre_enhan, pra, npra)
+
+  @assertEqual(5.9713812854961045e-7_r8, pra, tolerance=(1.e-6*mach_eps))
+  @assertEqual(5.9713812854961043e3_r8, npra, tolerance=(1.e4*mach_eps))
+
+end subroutine acc_cloud_rain_is_correct
+
+@Test
+subroutine acc_cloud_rain_nonuniform_is_correct()
+  real(r8) :: qric(2), qcic(2), ncic(2), relvar(2), accre_enhan(2)
+  real(r8) :: pra(2), npra(2)
+
+  qric = 1.e-3_r8
+  qcic = 1.e-4_r8
+  ncic = 1.e6_r8
+  relvar = 3._r8
+  accre_enhan = 7._r8
+
+  pra = 1._r8
+  npra = 1._r8
+
+  call accrete_cloud_water_rain(.false., qric, qcic, &
+       ncic, relvar, accre_enhan, pra, npra)
+
+  @assertEqual(4.2933960677780231e-6_r8, pra, tolerance=(1.e-7*mach_eps))
+  @assertEqual(4.2933960677780233e4_r8, npra, tolerance=(1.e5*mach_eps))
+
+end subroutine acc_cloud_rain_nonuniform_is_correct
+
+@Test
+subroutine rain_collection_has_qr_threshold()
+  real(r8) :: rho(2), qric(2), nric(2), nragg(2)
+
+  rho = 1._r8
+  qric = 0._r8
+  nric = 1._r8
+
+  nragg = 1._r8
+
+  call self_collection_rain(rho, qric, nric, nragg)
+
+  @assertEqual(0._r8, nragg)
+
+end subroutine rain_collection_has_qr_threshold
+
+@Test
+subroutine rain_collection_is_correct()
+  real(r8) :: rho(2), qric(2), nric(2), nragg(2)
+
+  rho = 1._r8
+  qric = 1._r8
+  nric = 1._r8
+
+  nragg = 1._r8
+
+  call self_collection_rain(rho, qric, nric, nragg)
+
+  @assertEqual(-8._r8, nragg, tolerance=(1.e1_r8*mach_eps))
+
+end subroutine rain_collection_is_correct
+
+@Test
+subroutine acc_ice_snow_has_t_threshold()
+  real(r8) :: t(2), rho(2), asn(2), qiic(2), niic(2), qsic(2), lams(2), n0s(2)
+  real(r8) :: prai(2), nprai(2)
+
+  t = 280._r8
+  rho = 1._r8
+  asn = as
+  qiic = 1._r8
+  niic = 1._r8
+  qsic = 1._r8
+  lams = 1._r8
+  n0s = 1._r8
+
+  prai = 1._r8
+  nprai = 1._r8
+
+  call accrete_cloud_ice_snow(t, rho, asn, qiic, niic, qsic, &
+       lams, n0s, prai, nprai)
+
+  @assertEqual(0._r8, prai)
+  @assertEqual(0._r8, nprai)
+
+end subroutine acc_ice_snow_has_t_threshold
+
+@Test
+subroutine acc_ice_snow_has_qs_threshold()
+  real(r8) :: t(2), rho(2), asn(2), qiic(2), niic(2), qsic(2), lams(2), n0s(2)
+  real(r8) :: prai(2), nprai(2)
+
+  t = 253._r8
+  rho = 1._r8
+  asn = as
+  qiic = 1._r8
+  niic = 1._r8
+  qsic = 0._r8
+  lams = 1._r8
+  n0s = 1._r8
+
+  prai = 1._r8
+  nprai = 1._r8
+
+  call accrete_cloud_ice_snow(t, rho, asn, qiic, niic, qsic, &
+       lams, n0s, prai, nprai)
+
+  @assertEqual(0._r8, prai)
+  @assertEqual(0._r8, nprai)
+
+end subroutine acc_ice_snow_has_qs_threshold
+
+@Test
+subroutine acc_ice_snow_has_qi_threshold()
+  real(r8) :: t(2), rho(2), asn(2), qiic(2), niic(2), qsic(2), lams(2), n0s(2)
+  real(r8) :: prai(2), nprai(2)
+
+  t = 253._r8
+  rho = 1._r8
+  asn = as
+  qiic = 0._r8
+  niic = 1._r8
+  qsic = 1._r8
+  lams = 1._r8
+  n0s = 1._r8
+
+  prai = 1._r8
+  nprai = 1._r8
+
+  call accrete_cloud_ice_snow(t, rho, asn, qiic, niic, qsic, &
+       lams, n0s, prai, nprai)
+
+  @assertEqual(0._r8, prai)
+  @assertEqual(0._r8, nprai)
+
+end subroutine acc_ice_snow_has_qi_threshold
+
+@Test
+subroutine acc_ice_snow_is_correct()
+  real(r8) :: t(2), rho(2), asn(2), qiic(2), niic(2), qsic(2), lams(2), n0s(2)
+  real(r8) :: prai(2), nprai(2)
+
+  t = 253._r8
+  rho = 1._r8
+  asn = as
+  qiic = 1.e-3_r8
+  niic = 1.e6_r8
+  qsic = 1._r8
+  lams = 5000._r8
+  n0s = 5.e9_r8
+
+  prai = 1._r8
+  nprai = 1._r8
+
+  call accrete_cloud_ice_snow(t, rho, asn, qiic, niic, qsic, &
+       lams, n0s, prai, nprai)
+
+  @assertEqual(1.6885515272510761e-5_r8, prai, tolerance=(1.e-4*mach_eps))
+  @assertEqual(1.6885515272510762e4_r8, nprai, tolerance=(1.e5*mach_eps))
+
+end subroutine acc_ice_snow_is_correct
+
+@Test
+subroutine precip_evap_sub_has_precip_threshold()
+
+  real(r8) :: t(2), rho(2), dv(2), mu(2), sc(2), q(2), qvl(2), qvi(2)
+  real(r8) :: lcldm(2), precip_frac(2), arn(2), asn(2), qcic(2), qiic(2)
+  real(r8) :: qric(2), qsic(2), lamr(2), n0r(2), lams(2), n0s(2)
+  real(r8) :: pre(2), prds(2)
+
+  ! With a precipitation fraction below the cloud fraction, nothing should
+  ! happen.
+  t = 1._r8
+  rho = 1._r8
+  dv = 1._r8
+  mu = 1._r8
+  sc = 1._r8
+  q = 5.e-4_r8
+  qvl = 1.e-3_r8
+  qvi = 1.e-3_r8
+  lcldm = 1._r8
+  precip_frac = 0.5_r8
+  arn = 1._r8
+  asn = 1._r8
+  qcic = 1._r8
+  qiic = 1._r8
+  qric = 1._r8
+  qsic = 1._r8
+  lamr = 1._r8
+  n0r = 1._r8
+  lams = 1._r8
+  n0s = 1._r8
+  pre = 1._r8
+  prds = 1._r8
+
+  call evaporate_sublimate_precip(t, rho, dv, mu, sc, q, qvl, qvi, lcldm, &
+       precip_frac, arn, asn, qcic, qiic, qric, qsic, lamr, n0r, lams, n0s, &
+       pre, prds)
+
+  @assertEqual(0._r8, pre)
+  @assertEqual(0._r8, prds)
+
+end subroutine precip_evap_sub_has_precip_threshold
+
+@Test
+subroutine precip_evap_sub_is_correct()
+
+  real(r8) :: t(2), rho(2), dv(2), mu(2), sc(2), q(2), qvl(2), qvi(2)
+  real(r8) :: lcldm(2), precip_frac(2), arn(2), asn(2), qcic(2), qiic(2)
+  real(r8) :: qric(2), qsic(2), lamr(2), n0r(2), lams(2), n0s(2)
+  real(r8) :: pre(2), prds(2)
+
+  ! Made-up data!
+  t = tmelt
+  rho = 1._r8
+  dv = 2.e-6_r8
+  mu = 1.e-5_r8
+  sc = mu/(rho*dv)
+  q = 5.e-4_r8
+  qvl = 1.e-3_r8
+  qvi = 1.e-3_r8
+  lcldm = 0.25_r8
+  precip_frac = 0.5_r8
+  arn = ar
+  asn = as
+  qcic = 1._r8
+  qiic = 1._r8
+  qric = 1._r8
+  qsic = 1._r8
+  lamr = 10000._r8
+  n0r = 3.e10_r8
+  lams = 5000._r8
+  n0s = 7.e10_r8
+  pre = 1._r8
+  prds = 1._r8
+
+  call evaporate_sublimate_precip(t, rho, dv, mu, sc, q, qvl, qvi, lcldm, &
+       precip_frac, arn, asn, qcic, qiic, qric, qsic, lamr, n0r, lams, n0s, &
+       pre, prds)
+
+  @assertEqual(-3.1908134966921465e-6_r8, pre, tolerance=(1.e-5*mach_eps))
+  @assertEqual(-2.7062816224452731e-5_r8, prds, tolerance=(1.e-4*mach_eps))
+
+end subroutine precip_evap_sub_is_correct
+
+@Test
+subroutine precip_evap_sub_has_cloud_threshold()
+
+  real(r8) :: t(2), rho(2), dv(2), mu(2), sc(2), q(2), qvl(2), qvi(2)
+  real(r8) :: lcldm(2), precip_frac(2), arn(2), asn(2), qcic(2), qiic(2)
+  real(r8) :: qric(2), qsic(2), lamr(2), n0r(2), lams(2), n0s(2)
+  real(r8) :: pre(2), prds(2)
+  real(r8) :: pre_no_lcldm(2), prds_no_lcldm(2)
+
+  ! If qcic and qiic are negligible, the routine should behave as if cloud
+  ! fraction were zero.
+  !
+  ! First run with cloud fraction of 0.
+  t = tmelt
+  rho = 1._r8
+  dv = 2.e-6_r8
+  mu = 1.e-5_r8
+  sc = mu/(rho*dv)
+  q = 5.e-4_r8
+  qvl = 1.e-3_r8
+  qvi = 1.e-3_r8
+  lcldm = 0._r8
+  precip_frac = 0.5_r8
+  arn = ar
+  asn = as
+  qcic = 1._r8
+  qiic = 1._r8
+  qric = 1._r8
+  qsic = 1._r8
+  lamr = 10000._r8
+  n0r = 3.e10_r8
+  lams = 5000._r8
+  n0s = 7.e10_r8
+  pre = 1._r8
+  prds = 1._r8
+
+  call evaporate_sublimate_precip(t, rho, dv, mu, sc, q, qvl, qvi, lcldm, &
+       precip_frac, arn, asn, qcic, qiic, qric, qsic, lamr, n0r, lams, n0s, &
+       pre_no_lcldm, prds_no_lcldm)
+
+  ! Now positive cloud fraction, but no actual cloud mass.
+  lcldm = 0.25_r8
+  qcic = 0._r8
+  qiic = 0._r8
+
+  call evaporate_sublimate_precip(t, rho, dv, mu, sc, q, qvl, qvi, lcldm, &
+       precip_frac, arn, asn, qcic, qiic, qric, qsic, lamr, n0r, lams, n0s, &
+       pre, prds)
+
+  @assertEqual(pre_no_lcldm, pre)
+  @assertEqual(prds_no_lcldm, prds)
+
+end subroutine precip_evap_sub_has_cloud_threshold
+
+@Test
+subroutine precip_evap_sub_has_rain_threshold()
+
+  real(r8) :: t(2), rho(2), dv(2), mu(2), sc(2), q(2), qvl(2), qvi(2)
+  real(r8) :: lcldm(2), precip_frac(2), arn(2), asn(2), qcic(2), qiic(2)
+  real(r8) :: qric(2), qsic(2), lamr(2), n0r(2), lams(2), n0s(2)
+  real(r8) :: pre(2), prds(2)
+  real(r8) :: prds_no_rain(2)
+
+  ! If we zero out rain mass, there should be no evaporation, but
+  ! sublimation should not be affected.
+  t = tmelt
+  rho = 1._r8
+  dv = 2.e-6_r8
+  mu = 1.e-5_r8
+  sc = mu/(rho*dv)
+  q = 5.e-4_r8
+  qvl = 1.e-3_r8
+  qvi = 1.e-3_r8
+  lcldm = 0.25_r8
+  precip_frac = 0.5_r8
+  arn = ar
+  asn = as
+  qcic = 1._r8
+  qiic = 1._r8
+  qric = 1._r8
+  qsic = 1._r8
+  lamr = 10000._r8
+  n0r = 3.e10_r8
+  lams = 5000._r8
+  n0s = 7.e10_r8
+  pre = 1._r8
+  prds = 1._r8
+
+  call evaporate_sublimate_precip(t, rho, dv, mu, sc, q, qvl, qvi, lcldm, &
+       precip_frac, arn, asn, qcic, qiic, qric, qsic, lamr, n0r, lams, n0s, &
+       pre, prds_no_rain)
+
+  qric = 0._r8
+
+  call evaporate_sublimate_precip(t, rho, dv, mu, sc, q, qvl, qvi, lcldm, &
+       precip_frac, arn, asn, qcic, qiic, qric, qsic, lamr, n0r, lams, n0s, &
+       pre, prds)
+
+  @assertEqual(0._r8, pre)
+  @assertEqual(prds_no_rain, prds)
+
+end subroutine precip_evap_sub_has_rain_threshold
+
+@Test
+subroutine precip_evap_sub_has_snow_threshold()
+
+  real(r8) :: t(2), rho(2), dv(2), mu(2), sc(2), q(2), qvl(2), qvi(2)
+  real(r8) :: lcldm(2), precip_frac(2), arn(2), asn(2), qcic(2), qiic(2)
+  real(r8) :: qric(2), qsic(2), lamr(2), n0r(2), lams(2), n0s(2)
+  real(r8) :: pre(2), prds(2)
+  real(r8) :: pre_no_snow(2)
+
+  ! Zeroing out snow mass affects sublimation, but not evaporation.
+  t = tmelt
+  rho = 1._r8
+  dv = 2.e-6_r8
+  mu = 1.e-5_r8
+  sc = mu/(rho*dv)
+  q = 5.e-4_r8
+  qvl = 1.e-3_r8
+  qvi = 1.e-3_r8
+  lcldm = 0.25_r8
+  precip_frac = 0.5_r8
+  arn = ar
+  asn = as
+  qcic = 1._r8
+  qiic = 1._r8
+  qric = 1._r8
+  qsic = 1._r8
+  lamr = 10000._r8
+  n0r = 3.e10_r8
+  lams = 5000._r8
+  n0s = 7.e10_r8
+  pre = 1._r8
+  prds = 1._r8
+
+  call evaporate_sublimate_precip(t, rho, dv, mu, sc, q, qvl, qvi, lcldm, &
+       precip_frac, arn, asn, qcic, qiic, qric, qsic, lamr, n0r, lams, n0s, &
+       pre_no_snow, prds)
+
+  qsic = 0._r8
+
+  call evaporate_sublimate_precip(t, rho, dv, mu, sc, q, qvl, qvi, lcldm, &
+       precip_frac, arn, asn, qcic, qiic, qric, qsic, lamr, n0r, lams, n0s, &
+       pre, prds)
+
+  @assertEqual(pre_no_snow, pre)
+  @assertEqual(0._r8, prds)
+
+end subroutine precip_evap_sub_has_snow_threshold
+
+@Test
+subroutine precip_evap_sub_has_qvl_threshold()
+
+  real(r8) :: t(2), rho(2), dv(2), mu(2), sc(2), q(2), qvl(2), qvi(2)
+  real(r8) :: lcldm(2), precip_frac(2), arn(2), asn(2), qcic(2), qiic(2)
+  real(r8) :: qric(2), qsic(2), lamr(2), n0r(2), lams(2), n0s(2)
+  real(r8) :: pre(2), prds(2)
+
+  ! Low qvl prevents rain evaporation and increases out-of-cloud humidity,
+  ! reducing snow sublimation.
+  t = tmelt
+  rho = 1._r8
+  dv = 2.e-6_r8
+  mu = 1.e-5_r8
+  sc = mu/(rho*dv)
+  q = 5.e-4_r8
+  qvl = 1.e-5_r8
+  qvi = 1.e-3_r8
+  lcldm = 0.25_r8
+  precip_frac = 0.5_r8
+  arn = ar
+  asn = as
+  qcic = 1._r8
+  qiic = 1._r8
+  qric = 1._r8
+  qsic = 1._r8
+  lamr = 10000._r8
+  n0r = 3.e10_r8
+  lams = 5000._r8
+  n0s = 7.e10_r8
+  pre = 1._r8
+  prds = 1._r8
+
+  call evaporate_sublimate_precip(t, rho, dv, mu, sc, q, qvl, qvi, lcldm, &
+       precip_frac, arn, asn, qcic, qiic, qric, qsic, lamr, n0r, lams, n0s, &
+       pre, prds)
+
+  @assertEqual(0._r8, pre)
+  @assertEqual(-1.3666722193348627e-5_r8, prds, tolerance=(1.e-4_r8*mach_eps))
+
+end subroutine precip_evap_sub_has_qvl_threshold
+
+@Test
+subroutine precip_evap_sub_has_qvi_threshold()
+
+  real(r8) :: t(2), rho(2), dv(2), mu(2), sc(2), q(2), qvl(2), qvi(2)
+  real(r8) :: lcldm(2), precip_frac(2), arn(2), asn(2), qcic(2), qiic(2)
+  real(r8) :: qric(2), qsic(2), lamr(2), n0r(2), lams(2), n0s(2)
+  real(r8) :: pre(2), prds(2)
+  real(r8) :: pre_no_qvi(2)
+
+  ! Similar to snow mass check, but this time we use supersaturation to
+  ! prevent snow sublimation.
+  t = tmelt
+  rho = 1._r8
+  dv = 2.e-6_r8
+  mu = 1.e-5_r8
+  sc = mu/(rho*dv)
+  q = 5.e-4_r8
+  qvl = 1.e-3_r8
+  qvi = 1.e-3_r8
+  lcldm = 0.25_r8
+  precip_frac = 0.5_r8
+  arn = ar
+  asn = as
+  qcic = 1._r8
+  qiic = 1._r8
+  qric = 1._r8
+  qsic = 1._r8
+  lamr = 10000._r8
+  n0r = 3.e10_r8
+  lams = 5000._r8
+  n0s = 7.e10_r8
+  pre = 1._r8
+  prds = 1._r8
+
+  call evaporate_sublimate_precip(t, rho, dv, mu, sc, q, qvl, qvi, lcldm, &
+       precip_frac, arn, asn, qcic, qiic, qric, qsic, lamr, n0r, lams, n0s, &
+       pre_no_qvi, prds)
+
+  qvi = 1.e-5_r8
+
+  call evaporate_sublimate_precip(t, rho, dv, mu, sc, q, qvl, qvi, lcldm, &
+       precip_frac, arn, asn, qcic, qiic, qric, qsic, lamr, n0r, lams, n0s, &
+       pre, prds)
+
+  @assertEqual(pre_no_qvi, pre)
+  @assertEqual(0._r8, prds)
+
+end subroutine precip_evap_sub_has_qvi_threshold
+
+@Test
+subroutine bergeron_snow_has_t_threshold()
+  real(r8) :: t(2), rho(2), dv(2), mu(2), sc(2), qvl(2), qvi(2), asn(2)
+  real(r8) :: qcic(2), qsic(2), lams(2), n0s(2)
+  real(r8) :: bergs(2)
+
+  ! Process not active above freezing.
+  t = 280._r8
+  rho = 1._r8
+  dv = 2.e-6_r8
+  mu = 1.e-5_r8
+  sc = mu/(rho*dv)
+  qvl = 1.e-3_r8
+  qvi = 5.e-4_r8
+  asn = as
+  qcic = 1._r8
+  qsic = 1._r8
+  lams = 5000._r8
+  n0s = 7.e10_r8
+  bergs = 1._r8
+
+  call bergeron_process_snow(t, rho, dv, mu, sc, qvl, qvi, asn, &
+       qcic, qsic, lams, n0s, bergs)
+
+  @assertEqual(0._r8, bergs)
+
+end subroutine bergeron_snow_has_t_threshold
+
+@Test
+subroutine bergeron_snow_has_qc_threshold()
+  real(r8) :: t(2), rho(2), dv(2), mu(2), sc(2), qvl(2), qvi(2), asn(2)
+  real(r8) :: qcic(2), qsic(2), lams(2), n0s(2)
+  real(r8) :: bergs(2)
+
+  ! Process not active above freezing.
+  t = 253._r8
+  rho = 1._r8
+  dv = 2.e-6_r8
+  mu = 1.e-5_r8
+  sc = mu/(rho*dv)
+  qvl = 1.e-3_r8
+  qvi = 5.e-4_r8
+  asn = as
+  qcic = 0._r8
+  qsic = 1._r8
+  lams = 5000._r8
+  n0s = 7.e10_r8
+  bergs = 1._r8
+
+  call bergeron_process_snow(t, rho, dv, mu, sc, qvl, qvi, asn, &
+       qcic, qsic, lams, n0s, bergs)
+
+  @assertEqual(0._r8, bergs)
+
+end subroutine bergeron_snow_has_qc_threshold
+
+@Test
+subroutine bergeron_snow_has_qs_threshold()
+  real(r8) :: t(2), rho(2), dv(2), mu(2), sc(2), qvl(2), qvi(2), asn(2)
+  real(r8) :: qcic(2), qsic(2), lams(2), n0s(2)
+  real(r8) :: bergs(2)
+
+  ! Process not active above freezing.
+  t = 253._r8
+  rho = 1._r8
+  dv = 2.e-6_r8
+  mu = 1.e-5_r8
+  sc = mu/(rho*dv)
+  qvl = 1.e-3_r8
+  qvi = 5.e-4_r8
+  asn = as
+  qcic = 1._r8
+  qsic = 0._r8
+  lams = 5000._r8
+  n0s = 7.e10_r8
+  bergs = 1._r8
+
+  call bergeron_process_snow(t, rho, dv, mu, sc, qvl, qvi, asn, &
+       qcic, qsic, lams, n0s, bergs)
+
+  @assertEqual(0._r8, bergs)
+
+end subroutine bergeron_snow_has_qs_threshold
+
+@Test
+subroutine bergeron_snow_is_correct()
+  real(r8) :: t(2), rho(2), dv(2), mu(2), sc(2), qvl(2), qvi(2), asn(2)
+  real(r8) :: qcic(2), qsic(2), lams(2), n0s(2)
+  real(r8) :: bergs(2)
+
+  ! Process not active above freezing.
+  t = 253._r8
+  rho = 1._r8
+  dv = 2.e-6_r8
+  mu = 1.e-5_r8
+  sc = mu/(rho*dv)
+  qvl = 1.e-3_r8
+  qvi = 5.e-4_r8
+  asn = as
+  qcic = 1._r8
+  qsic = 1._r8
+  lams = 5000._r8
+  n0s = 7.e10_r8
+  bergs = 1._r8
+
+  call bergeron_process_snow(t, rho, dv, mu, sc, qvl, qvi, asn, &
+       qcic, qsic, lams, n0s, bergs)
+
+  @assertEqual(4.4059005347141078e-5_r8, bergs, tolerance=(1.e-4*mach_eps))
+
+end subroutine bergeron_snow_is_correct
+
+end module test_mg_processes

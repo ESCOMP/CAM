@@ -1,0 +1,9 @@
+-spmd -smp
+-chem waccm_ma
+-age_of_air_trcs
+-dyn fv
+-nlev 88
+-offline_dyn
+-hgrid 1.9x2.5
+-phys cam4
+-s

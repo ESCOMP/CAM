@@ -1,0 +1,308 @@
+module test_MGFieldPostProc
+
+use pfunit_mod
+
+use shr_kind_mod, only: r8 => shr_kind_r8
+use micro_mg_data, only: MGFieldPostProc, accum_null, accum_mean, &
+     MGPacker
+
+implicit none
+
+integer, parameter :: pcols = 4, pver = 3, dim_t = 2
+
+! Just for convenience, tests will all pack with these settings.
+integer, parameter :: mgncol = 2
+integer, parameter :: nlev = 2
+integer, parameter :: mgcols(mgncol) = [1, 3]
+integer, parameter :: top_lev = 2
+real(r8), parameter :: fillvalue = -1._r8
+
+type(MGPacker) :: packer
+
+! Packed test data for the two time steps.
+real(r8) :: test_ref(mgncol, nlev, dim_t)
+real(r8) :: test_ref_mean(mgncol, nlev)
+
+type(MGFieldPostProc), allocatable :: field_proc
+
+contains
+
+@Before
+subroutine setUp()
+  integer :: i, k, m
+
+  do m = 1, dim_t
+     do k = 1, nlev
+        do i = 1, mgncol
+           test_ref(i,k,m) = i + 10._r8*k + 100._r8*m
+        end do
+     end do
+  end do
+
+  test_ref_mean = sum(test_ref, dim=3)/dim_t
+
+  packer = MGPacker(pcols, pver, mgcols, top_lev)
+
+end subroutine setUp
+
+@After
+subroutine tearDown()
+
+  if (allocated(field_proc)) then
+     call field_proc%finalize()
+     deallocate(field_proc)
+  end if
+
+  call packer%finalize()
+
+end subroutine tearDown
+
+@Test
+subroutine MGFieldPostProc_accum_null_1D()
+  real(r8), target :: unpacked_data(pcols)
+  real(r8), target :: packed_data(mgncol)
+  real(r8), pointer :: unpacked_ptr(:)
+  real(r8), pointer :: packed_ptr(:)
+
+  real(r8) :: expected_data(pcols)
+
+  unpacked_ptr => unpacked_data
+  packed_ptr => packed_data
+
+  field_proc = &
+       MGFieldPostProc(unpacked_ptr, packed_ptr, fillvalue, accum_null)
+
+  packed_data = test_ref(:,1,1)
+
+  call field_proc%accumulate()
+
+  packed_data = test_ref(:,1,2)
+
+  call field_proc%accumulate()
+
+  call field_proc%process_and_unpack(packer)
+
+  expected_data = packer%unpack(test_ref(:,1,2), fillvalue)
+
+  @assertEqual(expected_data, unpacked_data)
+
+end subroutine MGFieldPostProc_accum_null_1D
+
+@Test
+subroutine MGFieldPostProc_accum_null_2D()
+  real(r8), target :: unpacked_data(pcols,pver)
+  real(r8), target :: packed_data(mgncol,nlev)
+  real(r8), pointer :: unpacked_ptr(:,:)
+  real(r8), pointer :: packed_ptr(:,:)
+
+  real(r8) :: expected_data(pcols,pver)
+
+  unpacked_ptr => unpacked_data
+  packed_ptr => packed_data
+
+  field_proc = &
+       MGFieldPostProc(unpacked_ptr, packed_ptr, fillvalue, accum_null)
+
+  packed_data = test_ref(:,:,1)
+
+  call field_proc%accumulate()
+
+  packed_data = test_ref(:,:,2)
+
+  call field_proc%accumulate()
+
+  call field_proc%process_and_unpack(packer)
+
+  expected_data = packer%unpack(test_ref(:,:,2), fillvalue)
+
+  @assertEqual(expected_data, unpacked_data)
+
+end subroutine MGFieldPostProc_accum_null_2D
+
+@Test
+subroutine MGFieldPostProc_accum_mean_1D()
+  real(r8), target :: unpacked_data(pcols)
+  real(r8), target :: packed_data(mgncol)
+  real(r8), pointer :: unpacked_ptr(:)
+  real(r8), pointer :: packed_ptr(:)
+
+  real(r8) :: expected_data(pcols)
+
+  unpacked_ptr => unpacked_data
+  packed_ptr => packed_data
+
+  field_proc = &
+       MGFieldPostProc(unpacked_ptr, packed_ptr, fillvalue, accum_mean)
+
+  packed_data = test_ref(:,1,1)
+
+  call field_proc%accumulate()
+
+  packed_data = test_ref(:,1,2)
+
+  call field_proc%accumulate()
+
+  call field_proc%process_and_unpack(packer)
+
+  expected_data = packer%unpack(test_ref_mean(:,1), fillvalue)
+
+  @assertEqual(expected_data, unpacked_data)
+
+end subroutine MGFieldPostProc_accum_mean_1D
+
+@Test
+subroutine MGFieldPostProc_accum_mean_2D()
+  real(r8), target :: unpacked_data(pcols,pver)
+  real(r8), target :: packed_data(mgncol,nlev)
+  real(r8), pointer :: unpacked_ptr(:,:)
+  real(r8), pointer :: packed_ptr(:,:)
+
+  real(r8) :: expected_data(pcols,pver)
+
+  unpacked_ptr => unpacked_data
+  packed_ptr => packed_data
+
+  field_proc = &
+       MGFieldPostProc(unpacked_ptr, packed_ptr, fillvalue, accum_mean)
+
+  packed_data = test_ref(:,:,1)
+
+  call field_proc%accumulate()
+
+  packed_data = test_ref(:,:,2)
+
+  call field_proc%accumulate()
+
+  call field_proc%process_and_unpack(packer)
+
+  expected_data = packer%unpack(test_ref_mean, fillvalue)
+
+  @assertEqual(expected_data, unpacked_data)
+
+end subroutine MGFieldPostProc_accum_mean_2D
+
+! Checks that the defaults are equivalent to a fillvalue of 0 and
+! a method of accum_mean.
+@Test
+subroutine MGFieldPostProc_accum_defaults_1D()
+  real(r8), target :: unpacked_data(pcols)
+  real(r8), target :: packed_data(mgncol)
+  real(r8), pointer :: unpacked_ptr(:)
+  real(r8), pointer :: packed_ptr(:)
+
+  real(r8) :: expected_data(pcols)
+
+  unpacked_ptr => unpacked_data
+  packed_ptr => packed_data
+
+  field_proc = MGFieldPostProc(unpacked_ptr, packed_ptr)
+
+  packed_data = test_ref(:,1,1)
+
+  call field_proc%accumulate()
+
+  packed_data = test_ref(:,1,2)
+
+  call field_proc%accumulate()
+
+  call field_proc%process_and_unpack(packer)
+
+  expected_data = packer%unpack(test_ref_mean(:,1), 0._r8)
+
+  @assertEqual(expected_data, unpacked_data)
+
+end subroutine MGFieldPostProc_accum_defaults_1D
+
+@Test
+subroutine MGFieldPostProc_accum_defaults_2D()
+  real(r8), target :: unpacked_data(pcols,pver)
+  real(r8), target :: packed_data(mgncol,nlev)
+  real(r8), pointer :: unpacked_ptr(:,:)
+  real(r8), pointer :: packed_ptr(:,:)
+
+  real(r8) :: expected_data(pcols,pver)
+
+  unpacked_ptr => unpacked_data
+  packed_ptr => packed_data
+
+  field_proc = MGFieldPostProc(unpacked_ptr, packed_ptr)
+
+  packed_data = test_ref(:,:,1)
+
+  call field_proc%accumulate()
+
+  packed_data = test_ref(:,:,2)
+
+  call field_proc%accumulate()
+
+  call field_proc%process_and_unpack(packer)
+
+  expected_data = packer%unpack(test_ref_mean, 0._r8)
+
+  @assertEqual(expected_data, unpacked_data)
+
+end subroutine MGFieldPostProc_accum_defaults_2D
+
+@Test
+subroutine MGFieldPostProc_unpack_only_1D()
+  real(r8), target :: unpacked_data(pcols)
+  real(r8), target :: packed_data(mgncol)
+  real(r8), pointer :: unpacked_ptr(:)
+  real(r8), pointer :: packed_ptr(:)
+
+  real(r8) :: expected_data(pcols)
+
+  unpacked_ptr => unpacked_data
+  packed_ptr => packed_data
+
+  field_proc = &
+       MGFieldPostProc(unpacked_ptr, packed_ptr, fillvalue, accum_mean)
+
+  packed_data = test_ref(:,1,1)
+
+  call field_proc%accumulate()
+
+  packed_data = test_ref(:,1,2)
+
+  call field_proc%accumulate()
+
+  call field_proc%unpack_only(packer)
+
+  expected_data = packer%unpack(test_ref(:,1,2), fillvalue)
+
+  @assertEqual(expected_data, unpacked_data)
+
+end subroutine MGFieldPostProc_unpack_only_1D
+
+@Test
+subroutine MGFieldPostProc_unpack_only_2D()
+  real(r8), target :: unpacked_data(pcols,pver)
+  real(r8), target :: packed_data(mgncol,nlev)
+  real(r8), pointer :: unpacked_ptr(:,:)
+  real(r8), pointer :: packed_ptr(:,:)
+
+  real(r8) :: expected_data(pcols,pver)
+
+  unpacked_ptr => unpacked_data
+  packed_ptr => packed_data
+
+  field_proc = &
+       MGFieldPostProc(unpacked_ptr, packed_ptr, fillvalue, accum_mean)
+
+  packed_data = test_ref(:,:,1)
+
+  call field_proc%accumulate()
+
+  packed_data = test_ref(:,:,2)
+
+  call field_proc%accumulate()
+
+  call field_proc%unpack_only(packer)
+
+  expected_data = packer%unpack(test_ref(:,:,2), fillvalue)
+
+  @assertEqual(expected_data, unpacked_data)
+
+end subroutine MGFieldPostProc_unpack_only_2D
+
+end module test_MGFieldPostProc

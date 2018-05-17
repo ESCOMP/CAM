@@ -1,0 +1,6 @@
+-spmd -smp
+-dyn eul
+-hgrid 64x128
+-phys held_suarez
+-debug
+-s

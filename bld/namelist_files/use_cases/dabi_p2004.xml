@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+
+<namelist_defaults>
+
+<start_ymd> 10101 </start_ymd>
+
+<!-- Initial condition files -->
+<ncdata hgrid="128x256" nlev="30">atm/cam/inic/gaus/DABIp2004.128x256.L30.nc</ncdata>
+<ncdata hgrid="128x256" nlev="60">atm/cam/inic/gaus/DABIp2004.128x256.L60.nc</ncdata>
+<ncdata hgrid="64x128"  nlev="30">atm/cam/inic/gaus/DABIp2004.64x128.L30.nc</ncdata>
+
+<!-- Force PHIS to be set to zero -->
+<use_topo_file>.false.</use_topo_file>
+
+<!-- Modified constants -->
+<gravit> 9.806D0 </gravit>
+<rearth> 6.371D6 </rearth>
+<!-- length of sideral day set to give rotation rate of 7.292D-5 sec^-1 -->
+<sday>   86165.45950602833D0  </sday>
+<!-- molec weight of dry air set to give gas const for dry air = 287. J/kg/K -->
+<mwdry>  28.97027035191638D0  </mwdry>
+<!-- Cp dry air set to R/kappa=287./(2./7.) -->
+<cpair>  1004.5D0  </cpair>
+
+<!-- Modified horizontal diffusion -->
+<eul_hdif_order>      2    </eul_hdif_order>
+<eul_hdif_kmnhdn>     1    </eul_hdif_kmnhdn>
+<eul_hdif_coef>       7.D5 </eul_hdif_coef>
+<eul_kmxhdc>          0    </eul_kmxhdc>
+
+<!-- history output customization -->
+<empty_htapes>.true.</empty_htapes>
+<avgflag_pertape>'I'</avgflag_pertape>
+<nhtfrq>-24</nhtfrq>
+<mfilt>30</mfilt>
+<fincl1>
+ 'U','V','T','PS','OMEGA'
+</fincl1>
+
+</namelist_defaults>

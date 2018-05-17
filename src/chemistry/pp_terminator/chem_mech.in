@@ -1,0 +1,53 @@
+SPECIES
+
+  Solution
+    CL -> Cl, CL2 -> Cl2, RHO -> H
+  End Solution
+
+  Fixed
+    M
+  End Fixed
+
+  Col-int
+    O3 = 0.
+    O2 = 0.
+  End Col-int
+
+End SPECIES
+
+Solution Classes
+  Explicit
+  End Explicit
+  Implicit
+    CL, CL2, RHO
+  End Implicit
+End Solution Classes
+
+CHEMISTRY
+  Photolysis
+  End Photolysis
+
+  Reactions
+   [toy_k1]  CL2 -> 2.*CL 
+   [toy_k2]  CL + CL -> CL2
+  End Reactions
+
+  Ext Forcing
+  End Ext Forcing
+
+END CHEMISTRY
+
+SIMULATION PARAMETERS
+
+  Version Options
+    model   = cam
+    machine = intel
+    architecture = hybrid
+    vec_ftns  = on
+    multitask = on
+    namemod = on
+    modules = on
+  End Version Options
+
+END SIMULATION PARAMETERS
+

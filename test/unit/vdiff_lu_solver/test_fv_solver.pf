@@ -1,0 +1,306 @@
+module test_fv_solver
+
+use pfunit_mod
+
+use shr_kind_mod, only: r8 => shr_kind_r8
+use shr_const_mod, only: pi => shr_const_pi
+use coords_1d, only: Coords1D
+
+use linear_1d_operators, only: TriDiagDecomp
+use vdiff_lu_solver, only: fin_vol_lu_decomp
+
+implicit none
+
+! This tests the differential equation solver by actually setting up small
+! systems to solve via implicit Euler (for a single time step). The error
+! bounds are based on very rough heuristics, and may not be as tight as
+! they could be.
+
+! Grid parameters.
+type(Coords1D) :: coords
+
+contains
+
+@Before
+subroutine setUp()
+
+  ! Grid size used by these tests.
+  integer, parameter :: n = 101
+
+  real(r8) :: ifc(1,n)
+
+  integer :: i
+
+  ! Grid is n points between -1 and 1.
+  ifc(1,:) = [( -1._r8 + 2._r8 * real(i, r8) / real(n-1, r8), i = 0, n-1 )]
+  ! Introduce nonuniformity.
+  ifc = sign(ifc*ifc, ifc)
+
+  coords = Coords1D(ifc)
+
+end subroutine setUp
+
+@After
+subroutine tearDown()
+
+  call coords%finalize()
+
+end subroutine tearDown
+
+! This test compares a finite volume solution to a simple diffusion
+! equation with a known solution. The boundary flux is zero in this case.
+@Test
+subroutine solves_diffusion()
+
+  ! Time step.
+  real(r8) :: dt
+  ! PDE coefficients.
+  real(r8) :: coef_q_diff(1,coords%d+1)
+  ! Array to evolve.
+  real(r8) :: q(1,coords%d), q_expected(1,coords%d)
+
+  ! Decomposed diffusion matrix.
+  type(TriDiagDecomp) :: diff_decomp
+
+  ! Equation to solve is dq/dt = d/dx ((1-x^2) * dq/dx)
+  ! We can leverage the fact that the Legendre polynomials experience a
+  ! simple exponential decay for this equation.
+  coef_q_diff = 1._r8 - coords%ifc*coords%ifc
+
+  ! Set time based (roughly) on CFL.
+  dt = minval(coords%del)**2 / maxval(abs(coef_q_diff))
+
+  ! Set q for t = 0.
+  ! One analytic solution is:
+  !     q(x,t) = e^(-6t) * (3x^2-1)/2
+  ! However we want grid-cell average, which is:
+  !     q_bar(x_m,d,t) = q(x_m,t) + e^(-6t)*(d^2)/8
+  ! where x_m is the midpoint of the cell, and d is the cell width.
+  q = (3._r8*coords%mid*coords%mid - 1._r8)/2._r8
+  q = q + coords%del*coords%del/8._r8
+
+  ! Expected result.
+  q_expected = q * exp(-6._r8*dt)
+
+  ! Decompose and solve diffusion case.
+  diff_decomp = fin_vol_lu_decomp(dt, coords, coef_q_diff=coef_q_diff)
+  call diff_decomp%left_div(q)
+
+  @assertEqual(q_expected, q, tolerance=1.5_r8*dt)
+
+end subroutine solves_diffusion
+
+! This test compares a finite volume solution to a known solution for the
+! diffusion-advection equation. The boundary flux is zero in this case.
+@Test
+subroutine solves_diffusion_advection()
+
+  ! Time step.
+  real(r8) :: dt
+  ! PDE coefficients.
+  real(r8) :: coef_q_diff(1,coords%d+1), coef_q_adv(1,coords%d+1)
+  ! Array to evolve.
+  real(r8) :: q(1,coords%d), q_expected(1,coords%d)
+
+  ! Decomposed diffusion matrix.
+  type(TriDiagDecomp) :: diff_decomp
+
+  ! Equation to solve is dq/dt = d/dx (dq/dx - x*q)
+  ! The Hermite polynomials experience an exponential decay over time under
+  ! this PDE.
+  coef_q_diff = 1._r8
+  coef_q_adv = coords%ifc
+
+  ! Set time based (roughly) on CFL.
+  dt = minval(coords%del)**2 / maxval(abs(coef_q_diff))
+
+  ! Set q for t = 0.
+  ! A solution is based on the first Hermite polynomial:
+  !     q(x,t) = e^(-2t) * x
+  ! Since this is linear, the grid cell average is just the midpoint value.
+  q = coords%mid
+
+  ! Expected result.
+  q_expected = q * exp(-2._r8*dt)
+
+  ! Decompose and solve diffusion case.
+  diff_decomp = fin_vol_lu_decomp(dt, coords, coef_q_diff=coef_q_diff, &
+       coef_q_adv=coef_q_adv)
+  call diff_decomp%left_div(q)
+
+  @assertEqual(q_expected, q, tolerance=dt)
+
+end subroutine solves_diffusion_advection
+
+! This test solves a diffusion/advection equation with data for a fixed-
+! concentration boundary layer.
+@Test
+subroutine solves_diffusion_advection_boundary()
+
+  use linear_1d_operators, only: BoundaryType, BoundaryFixedLayer, &
+       BoundaryCond, BoundaryData
+
+  ! Time step.
+  real(r8) :: dt
+  ! PDE coefficients.
+  real(r8) :: coef_q_diff(1,coords%d+1), coef_q_adv(1,coords%d+1)
+  ! Array to evolve.
+  real(r8) :: q(1,coords%d), q_expected(1,coords%d)
+
+  ! Decomposed diffusion matrix.
+  type(TriDiagDecomp) :: diff_decomp
+  type(BoundaryType) :: upper_bndry, lower_bndry
+  type(BoundaryCond) :: upper_cond, lower_cond
+
+  ! Use the edge points as the boundary layers.
+  upper_bndry = BoundaryFixedLayer([0._r8])
+  lower_bndry = BoundaryFixedLayer([0._r8])
+
+  ! Equation to solve is dq/dt = d/dx (dq/dx - x*q)
+  ! The Hermite polynomials experience an exponential decay over time under
+  ! this PDE.
+  coef_q_diff = 1._r8
+  coef_q_adv = coords%ifc
+
+  ! Set time based (roughly) on CFL.
+  dt = minval(coords%del)**2 / maxval(abs(coef_q_diff))
+
+  ! Set q for t = 0.
+  ! A solution is based on the second Hermite polynomial:
+  !     q(x,t) = e^(-3t) * (x^2 - 1)
+  ! The grid cell average is:
+  !     q_bar(x_m, d, t) = q(x_m, t) + e^(-3t)*(d^2)/12
+  ! where x_m is the midpoint of the cell, and d is the cell width.
+  q = coords%mid*coords%mid - 1._r8
+  q = q + coords%del*coords%del/12._r8
+
+  ! Set edge layers from q. These points are fixed at 0.
+  upper_cond = BoundaryData([0._r8])
+  lower_cond = BoundaryData([0._r8])
+
+  ! Expected result.
+  q_expected = q * exp(-3._r8*dt)
+
+  ! Decompose and solve diffusion case (interior points only).
+  diff_decomp = fin_vol_lu_decomp(dt, coords, &
+       coef_q_diff=coef_q_diff, coef_q_adv=coef_q_adv, &
+       upper_bndry=upper_bndry, lower_bndry=lower_bndry)
+  call diff_decomp%left_div(q, l_cond=upper_cond, &
+       r_cond=lower_cond)
+
+  @assertEqual(q_expected, q, tolerance=1.5_r8*dt)
+
+end subroutine solves_diffusion_advection_boundary
+
+! This test solves the case where there is a space-dependent weighting
+! function on the process rate.
+@Test
+subroutine solves_diffusion_with_weighting()
+
+  ! Time step.
+  real(r8) :: dt
+  ! PDE coefficients.
+  real(r8) :: coef_q_diff(1,coords%d+1)
+  real(r8) :: coef_q_weight(1,coords%d)
+  ! Array to evolve.
+  real(r8) :: q(1,coords%d), q_expected(1,coords%d)
+
+  ! Decomposed diffusion matrix.
+  type(TriDiagDecomp) :: diff_decomp
+
+  ! Equation to solve is exp(-x^2/2)dq/dt = d/dx (exp(-x^2/2) * dq/dx)
+  ! We can leverage the fact that the Hermite polynomials experience a
+  ! simple exponential decay for this equation.
+  coef_q_diff = exp(-coords%ifc*coords%ifc/2._r8)
+
+  ! Cheat a bit, assuming that the average of q*e^(-x^2/2) is approximately
+  ! the product of q times the midpoint value of the gaussian part.
+  coef_q_weight = exp(-coords%mid*coords%mid/2._r8)
+
+  ! Set time based (roughly) on CFL.
+  dt = minval(coords%del)**2 / maxval(abs(coef_q_diff))
+
+  ! Set q for t = 0.
+  ! One analytic solution is:
+  !     q(x,t) = e^(-3t) * (x^3 - 3*x)
+  ! However we want grid-cell average, which is:
+  !     q_bar(x_m,d,t) = q(x_m,t) + e^(-3t)*(d^2*x)/4
+  ! where x_m is the midpoint of the cell, and d is the cell width.
+  q = ((coords%mid*coords%mid) - 3._r8)*coords%mid
+  q = q + coords%del*coords%del*coords%mid/4._r8
+
+  ! Expected result.
+  q_expected = q * exp(-3._r8*dt)
+
+  ! Decompose and solve diffusion case.
+  diff_decomp = fin_vol_lu_decomp(dt, coords, coef_q_diff=coef_q_diff, &
+       coef_q_weight=coef_q_weight)
+  call diff_decomp%left_div(q)
+
+  @assertEqual(q_expected, q, tolerance=dt)
+
+end subroutine solves_diffusion_with_weighting
+
+! Grafting two different decompositions together should work as if a single
+! combined operator had been decomposed.
+!
+! This test is mostly the same as "solves_diffusion".
+@Test
+subroutine solves_diffusion_with_grafting()
+
+  use linear_1d_operators, only: BoundaryType, BoundaryFixedLayer
+
+  ! Graft point.
+  integer, parameter :: gp = 30
+
+  ! Time step.
+  real(r8) :: dt
+  ! PDE coefficients.
+  real(r8) :: coef_q_diff(1,coords%d+1), coef_upper(1,gp+1)
+  ! Array to evolve.
+  real(r8) :: q(1,coords%d), q_expected(1,coords%d)
+
+  ! Decomposed diffusion matrix.
+  type(TriDiagDecomp) :: lower_decomp, diff_decomp
+  type(BoundaryType) :: graft_bndry
+
+  ! Equation to solve is dq/dt = d/dx ((1-x^2) * dq/dx)
+  ! We can leverage the fact that the Legendre polynomials experience a
+  ! simple exponential decay for this equation.
+  !
+  ! We split the coefficient between the operator that is "grafted" onto,
+  ! and a part that overwrites the upper region.
+  coef_upper = 1._r8 - coords%ifc(:,:gp+1)*coords%ifc(:,:gp+1)
+  coef_q_diff(:,:gp) = 0._r8
+  coef_q_diff(:,gp+1:) = 1._r8 - coords%ifc(:,gp+1:)*coords%ifc(:,gp+1:)
+
+  ! Edge layer for the boundary.
+  graft_bndry = BoundaryFixedLayer(coords%dst(:,gp))
+
+  ! Set time based (roughly) on CFL.
+  dt = minval(coords%del)**2 / maxval(abs(coef_q_diff))
+
+  ! Set q for t = 0.
+  ! One analytic solution is:
+  !     q(x,t) = e^(-6t) * (3x^2-1)/2
+  ! However we want grid-cell average, which is:
+  !     q_bar(x_m,d,t) = q(x_m,t) + e^(-6t)*(d^2)/8
+  ! where x_m is the midpoint of the cell, and d is the cell width.
+  q = (3._r8*coords%mid*coords%mid - 1._r8)/2._r8
+  q = q + coords%del*coords%del/8._r8
+
+  ! Expected result.
+  q_expected = q * exp(-6._r8*dt)
+
+  ! Decompose and solve diffusion case.
+  lower_decomp = fin_vol_lu_decomp(dt, coords, coef_q_diff=coef_q_diff)
+  diff_decomp = fin_vol_lu_decomp(dt, coords%section([1, 1], [1, gp]), &
+       coef_q_diff=coef_upper, lower_bndry=graft_bndry, &
+       graft_decomp=lower_decomp)
+  call diff_decomp%left_div(q)
+
+  @assertEqual(q_expected, q, tolerance=1.5_r8*dt)
+
+end subroutine solves_diffusion_with_grafting
+
+end module test_fv_solver

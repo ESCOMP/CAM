@@ -1,0 +1,7 @@
+-spmd -smp
+-chem waccm_tsmlt_mam4
+-dyn fv
+-hgrid 1.9x2.5
+-phys cam6
+-aquaplanet
+-s

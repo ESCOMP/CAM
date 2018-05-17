@@ -1,0 +1,9 @@
+-spmd -nosmp
+-dyn se
+-hgrid ne5np4.pg3
+-phys cam5
+-aquaplanet
+-nadv_tt 5
+-cppdefs -DTRACER_CHECK
+-debug
+-s

@@ -1,0 +1,128 @@
+#!/usr/bin/env perl
+
+# Make list of files containing source code.  The source list contains all
+# .F90, .f90, .F, .f, .c and .cpp files in a specified list of directories. 
+# The directories are specified one per line in a file called Filepath which
+# this script tries to open in the current directory.  The current
+# directory is prepended to the specified list of directories.  If Filepath
+# doesn't exist then only the source files in the current directory are
+# listed.  The list of source files is written to the file Srcfiles.
+# The -e option is available to provide a comma separated list of filenames
+# that should be excluded from the Srcfiles file.
+
+use strict;
+use Getopt::Std;
+
+# Process command line.
+my %opt = ();
+getopts( "e:", \%opt )        or usage();
+
+my @exclude_files = ();
+if ( defined $opt{'e'} ) {
+    @exclude_files = split ',', $opt{'e'};
+}
+
+my @paths = ();
+if ( open(FILEPATH,"< Filepath") ) {
+    @paths = <FILEPATH>;
+    close( FILEPATH );
+}
+chomp @paths;
+unshift(@paths, '.');
+foreach my $dir (@paths) {  # (could check that directories exist here)
+    $dir =~ s!/?\s*$!!;     # remove / and any whitespace at end of directory name
+    ($dir) = glob $dir;     # Expand tildes in path names.
+}
+
+# Loop through the directories and add each filename as a hash key.  This
+# automatically eliminates redunancies.
+my %src = ();
+foreach my $dir (@paths) {
+    my @filenames = (glob("$dir/*.[Ffc]"), glob("$dir/*.[Ff]90"), glob("$dir/*.cpp"));
+    foreach my $filename (@filenames) {
+        $filename =~ s!.*/!!;                   # remove part before last slash
+        $src{$filename} = 1;
+    }
+
+    # Files with a .in suffix will be preprocessed using the genf90 utility.
+    # If a directory contains files with both .F90 and .F90.in suffixes, remove
+    # the .F90 version from the Srcfiles list.  The Makefile will convert filenames
+    # with .F90.in to filenames with a .F90 suffix.  If the directory did not contain
+    # the .F90 version then Make will produce it using its rule to generate .F90 files
+    # from .F90.in files.  If the .F90 version exists then it will be used as is.
+    my @templates = glob("$dir/*.F90.in");
+    foreach my $filename (@templates) {
+        $filename =~ s!.*/!!;                   # remove part before last slash
+        my $dfile = $filename;
+        $dfile =~ s/\.in//;
+        delete $src{$dfile} if(defined $src{$dfile});
+        $src{$filename} = 1;
+    }
+
+    # Remove files that have be specified for exclusion
+    foreach my $filename (@exclude_files) {
+        if (defined $src{$filename}) {
+            delete $src{$filename};
+        }
+    }
+}
+
+# If Srcfiles exists, then check whether or not it contains all the files in %src.
+# If it does then don't rewrite it.  If the creation date of Srcfiles is not modified
+# then Make won't need to redo the dependency generation, which results in a faster
+# make update.
+my @srcfiles;
+my $foundcnt=0;
+my $writenew=1;
+if(-e "Srcfiles"){    # file already exists, do not update if no changes are required
+    open(SRC,"Srcfiles");
+    @srcfiles = <SRC>;
+    close(SRC);
+    $writenew=0;
+    foreach my $file (@srcfiles){
+        chomp $file;
+        if($src{$file}){
+            $src{$file}=0;
+        }else{
+            $writenew=1;  # A srcfile was removed
+            last;
+        }
+
+    }
+    foreach my $file (keys %src){
+        if($src{$file} == 1){
+            $writenew=1;  # A srcfile was added
+            last;
+        }
+    }
+}
+
+if($writenew==1){
+    open(SRC,"> Srcfiles")     or die "Can't open Srcfiles\n";
+
+    foreach my $file ( sort keys %src ) {
+        print SRC "$file\n";
+    }
+
+    close( SRC );
+}
+#--------------------------------------------------------------------------------------
+
+sub usage {
+    my $ProgName;
+    ($ProgName = $0) =~ s!.*/!!;            # name of program
+    die <<EOF
+SYNOPSIS
+     $ProgName [-e file1,...,filen]
+OPTIONS
+     -e file1,...,filen
+        Comma separated list of filenames to exclude from the Srcfiles file.
+DESCRIPTION
+     The $ProgName utility assumes the existence of an input file
+     ./Filepath, and writes an output file ./Srcfiles that contains
+     the names of all the files that match the patterns *.[Ff]90, *.[Ff],
+     *.c, and *.cpp in all the directories from ./Filepath plus ./.  The
+     -e option is used to exclude matched files from being written to the
+     Filepath file.  The files are listed one per line.
+EOF
+}

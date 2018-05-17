@@ -1,0 +1,76 @@
+module test_diagonal
+
+use pfunit_mod
+
+use shr_kind_mod, only: r8 => shr_kind_r8
+use linear_1d_operators
+
+implicit none
+
+integer, parameter :: nlev = 4
+
+real(r8), parameter :: vec1(nlev) = [1._r8, 2._r8, 3._r8, 4._r8]
+real(r8), parameter :: vec2(nlev) = [2._r8, 3._r8, 4._r8, 5._r8]
+real(r8), parameter :: vec3(nlev) = [3._r8, 4._r8, 5._r8, 6._r8]
+
+contains
+
+! Data is cleared by the zero operator.
+@Test
+subroutine zero_operator_gives_zero()
+
+  real(r8) :: data(1,nlev), output(1,nlev)
+
+  type(TriDiagOp) :: zero
+
+  data(1,:) = vec1
+
+  zero = zero_operator(1, nlev)
+  output = zero%apply(data)
+
+  data = 0._r8
+
+  @assertEqual(data, output)
+
+end subroutine zero_operator_gives_zero
+
+! Data is still the same after being operated on by the identity operator.
+@Test
+subroutine identity_does_nothing()
+
+  real(r8) :: data(1,nlev), output(1,nlev)
+
+  type(TriDiagOp) :: identity
+
+  data(1,:) = vec1
+
+  identity = identity_operator(1, nlev)
+  output = identity%apply(data)
+
+  @assertEqual(data, output)
+
+end subroutine identity_does_nothing
+
+! Making an array into an operator and then applying it is the same as
+! multiplying the two arrays.
+@Test
+subroutine diagonal_op_is_product()
+
+  real(r8) :: operator_entries(2,nlev), data(2,nlev), output(2,nlev)
+
+  type(TriDiagOp) :: diag_op
+
+  operator_entries(1,:) = vec1
+  operator_entries(2,:) = vec2
+
+  data(1,:) = vec3
+  data(2,:) = vec1
+
+  diag_op = diagonal_operator(operator_entries)
+  output = diag_op%apply(data)
+
+  @assertEqual(operator_entries*data, output)
+
+end subroutine diagonal_op_is_product
+
+end module test_diagonal

@@ -1,0 +1,13 @@
+&camexp
+ start_ymd=20000101
+ restart_option='nsteps'
+ restart_n=3
+ mfilt=1,1,1,1,1,1
+ ndens=1,1,1,1,1,1
+ nhtfrq=3,3,3,3,3,3
+ inithist='ENDOFRUN'
+ pbuf_global_allocate=.false.
+ solar_parms_data_file = '$CSMDATA/atm/waccm/solar/wa_smed_quiet.nc'
+ ionos_xport_nsplit = 10
+ ionos_epotential_model='weimer'
+/

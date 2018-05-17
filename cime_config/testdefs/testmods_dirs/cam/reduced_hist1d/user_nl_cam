@@ -1,0 +1,27 @@
+
+ mfilt=1,1,1,1,1,1
+ ndens=1,1,1,1,1,1
+ nhtfrq=-24,-24,-24,-24,-24,-24
+
+ fincl1 = ' '
+ fincl2 = ' '
+ fincl3 = ' '
+ fincl4 = ' '
+ fincl5 = ' '
+ fincl6 = ' '
+ fincl7 = ' '
+ fincl8 = ' '
+ fincl9 = ' '
+ fincl10 = ' '
+
+ history_aero_optics = .false.  
+ history_aerosol     = .false.  
+ history_amwg        = .false.
+ history_budget      = .false.  
+ history_carma       = .false.
+ history_chemistry   = .false.
+ history_clubb       = .false.
+ history_eddy        = .false.  
+ history_vdiag       = .false.  
+ history_waccm       = .false.
+ history_waccmx      = .false.  

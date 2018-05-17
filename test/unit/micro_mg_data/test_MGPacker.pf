@@ -1,0 +1,387 @@
+module test_MGPacker
+
+use pfunit_mod
+
+use shr_kind_mod, only: r8 => shr_kind_r8
+use micro_mg_data, only: MGPacker
+
+implicit none
+
+integer, parameter :: pcols = 4, pver = 3
+
+real(r8) :: test_data(pcols, pver)
+real(r8) :: test_data_interface(pcols, pver+1)
+
+! Just for convenience, tests will all pack with these settings.
+integer, parameter :: mgncol = 2
+integer, parameter :: nlev = 2
+integer, parameter :: mgcols(mgncol) = [1, 3]
+integer, parameter :: top_lev = 2
+
+type(MGPacker) :: packer
+
+contains
+
+@Before
+subroutine setUp()
+
+  integer :: i, k
+
+  do k = 1, pver+1
+     do i = 1, pcols
+        test_data_interface(i,k) = 10._r8*k + i
+     end do
+  end do
+
+  test_data = test_data_interface(:,:pver)
+
+  packer = MGPacker(pcols, pver, mgcols, top_lev)
+
+end subroutine setUp
+
+@After
+subroutine tearDown()
+  call packer%finalize()
+end subroutine tearDown
+
+@Test
+subroutine MGPacker_packs_1D()
+
+  real(r8) :: packed(mgncol)
+
+  integer :: i
+
+  packed = packer%pack(test_data(:,1))
+
+  ! Result should be test_data for level 1 and each of the MG columns.
+  @assertEqual([(test_data(mgcols(i), 1), i = 1, mgncol)], packed)
+
+end subroutine MGPacker_packs_1D
+
+@Test
+subroutine MGPacker_unpacks_1D()
+
+  real(r8) :: packed(mgncol)
+  real(r8) :: unpacked(pcols)
+  real(r8) :: expected(pcols)
+
+  integer :: i
+
+  ! Double the packed data so that we can tell that the unpacking did
+  ! something.
+  packed = 2._r8*packer%pack(test_data(:,1))
+
+  ! This should yield 2*test_data at the packed points and 0 elsewhere.
+  unpacked = packer%unpack(packed, 0._r8)
+
+  ! Explicitly create an array matching the previous comment for
+  ! comparison.
+  do i = 1, pcols
+     if (any(i == mgcols)) then
+        expected(i) = 2._r8 * test_data(i,1)
+     else
+        expected(i) = 0._r8
+     end if
+  end do
+
+  @assertEqual(expected, unpacked)
+
+end subroutine MGPacker_unpacks_1D
+
+@Test
+subroutine MGPacker_unpacks_1D_array_fill()
+
+  real(r8) :: packed(mgncol)
+  real(r8) :: unpacked(pcols)
+  real(r8) :: expected(pcols)
+
+  integer :: i
+
+  ! Double the packed data so that we can tell that the unpacking did
+  ! something.
+  packed = 2._r8*packer%pack(test_data(:,1))
+
+  ! This should yield 2*test_data at the packed points and test_data
+  ! elsewhere.
+  unpacked = packer%unpack(packed, test_data(:,1))
+
+  ! Explicitly create an array matching the previous comment for
+  ! comparison.
+  do i = 1, pcols
+     if (any(i == mgcols)) then
+        expected(i) = 2._r8 * test_data(i,1)
+     else
+        expected(i) = test_data(i,1)
+     end if
+  end do
+
+  @assertEqual(expected, unpacked)
+
+end subroutine MGPacker_unpacks_1D_array_fill
+
+@Test
+subroutine MGPacker_packs_2D()
+
+  real(r8) :: packed(mgncol,nlev)
+  real(r8) :: expected(mgncol,nlev)
+
+  integer :: i, k
+
+  packed = packer%pack(test_data)
+
+  do k = 1, nlev
+     expected(:,k) = &
+          [(test_data(mgcols(i), k+top_lev-1), i = 1, mgncol)]
+  end do
+
+  @assertEqual(expected, packed)
+
+end subroutine MGPacker_packs_2D
+
+@Test
+subroutine MGPacker_unpacks_2D()
+
+  real(r8) :: packed(mgncol,nlev)
+  real(r8) :: unpacked(pcols,pver)
+  real(r8) :: expected(pcols,pver)
+
+  integer :: i, k
+
+  ! Double the packed data so that we can tell that the unpacking did
+  ! something.
+  packed = 2._r8*packer%pack(test_data)
+
+  ! This should yield 2*test_data at the packed points and 0 elsewhere.
+  unpacked = packer%unpack(packed, 0._r8)
+
+  ! Explicitly create an array matching the previous comment for
+  ! comparison.
+  do k = 1, pver
+     do i = 1, pcols
+        if (k >= top_lev .and. any(i == mgcols)) then
+           expected(i,k) = 2._r8 * test_data(i,k)
+        else
+           expected(i,k) = 0._r8
+        end if
+     end do
+  end do
+
+  @assertEqual(expected, unpacked)
+
+end subroutine MGPacker_unpacks_2D
+
+@Test
+subroutine MGPacker_unpacks_2D_array_fill()
+
+  real(r8) :: packed(mgncol,nlev)
+  real(r8) :: unpacked(pcols,pver)
+  real(r8) :: expected(pcols,pver)
+
+  integer :: i, k
+
+  ! Double the packed data so that we can tell that the unpacking did
+  ! something.
+  packed = 2._r8*packer%pack(test_data)
+
+  ! This should yield 2*test_data at the packed points and test_data
+  ! elsewhere.
+  unpacked = packer%unpack(packed, test_data)
+
+  ! Explicitly create an array matching the previous comment for
+  ! comparison.
+  do k = 1, pver
+     do i = 1, pcols
+        if (k >= top_lev .and. any(i == mgcols)) then
+           expected(i,k) = 2._r8 * test_data(i,k)
+        else
+           expected(i,k) = test_data(i,k)
+        end if
+     end do
+  end do
+
+  @assertEqual(expected, unpacked)
+
+end subroutine MGPacker_unpacks_2D_array_fill
+
+@Test
+subroutine MGPacker_packs_2D_interface()
+
+  real(r8) :: packed(mgncol,nlev+1)
+  real(r8) :: expected(mgncol,nlev+1)
+
+  integer :: i, k
+
+  packed = packer%pack_interface(test_data_interface)
+
+  do k = 1, nlev+1
+     expected(:,k) = &
+          [(test_data_interface(mgcols(i), k+top_lev-1), i = 1, mgncol)]
+  end do
+
+  @assertEqual(expected, packed)
+
+end subroutine MGPacker_packs_2D_interface
+
+@Test
+subroutine MGPacker_unpacks_2D_interface()
+
+  real(r8) :: packed(mgncol,nlev+1)
+  real(r8) :: unpacked(pcols,pver+1)
+  real(r8) :: expected(pcols,pver+1)
+
+  integer :: i, k
+
+  ! Double the packed data so that we can tell that the unpacking did
+  ! something.
+  packed = 2._r8*packer%pack_interface(test_data_interface)
+
+  ! This should yield 2*test_data at the packed points and 0 elsewhere.
+  unpacked = packer%unpack(packed, 0._r8)
+
+  ! Explicitly create an array matching the previous comment for
+  ! comparison.
+  do k = 1, pver+1
+     do i = 1, pcols
+        if (k >= top_lev .and. any(i == mgcols)) then
+           expected(i,k) = 2._r8 * test_data_interface(i,k)
+        else
+           expected(i,k) = 0._r8
+        end if
+     end do
+  end do
+
+  @assertEqual(expected, unpacked)
+
+end subroutine MGPacker_unpacks_2D_interface
+
+@Test
+subroutine MGPacker_unpacks_2D_ifc_array_fill()
+
+  real(r8) :: packed(mgncol,nlev+1)
+  real(r8) :: unpacked(pcols,pver+1)
+  real(r8) :: expected(pcols,pver+1)
+
+  integer :: i, k
+
+  ! Double the packed data so that we can tell that the unpacking did
+  ! something.
+  packed = 2._r8*packer%pack_interface(test_data_interface)
+
+  ! This should yield 2*test_data at the packed points and test_data
+  ! elsewhere.
+  unpacked = packer%unpack(packed, test_data_interface)
+
+  ! Explicitly create an array matching the previous comment for
+  ! comparison.
+  do k = 1, pver+1
+     do i = 1, pcols
+        if (k >= top_lev .and. any(i == mgcols)) then
+           expected(i,k) = 2._r8 * test_data_interface(i,k)
+        else
+           expected(i,k) = test_data_interface(i,k)
+        end if
+     end do
+  end do
+
+  @assertEqual(expected, unpacked)
+
+end subroutine MGPacker_unpacks_2D_ifc_array_fill
+
+@Test
+subroutine MGPacker_packs_3D()
+
+  real(r8) :: test_3D(pcols,pver,2)
+  real(r8) :: packed(mgncol,nlev,2)
+  real(r8) :: expected(mgncol,nlev,2)
+
+  integer :: i, k
+
+  test_3D(:,:,1) = test_data
+  test_3D(:,:,2) = -test_data
+
+  packed = packer%pack(test_3D)
+
+  do k = 1, nlev
+     expected(:,k,1) = &
+          [(test_3D(mgcols(i), k+top_lev-1,1), i = 1, mgncol)]
+     expected(:,k,2) = &
+          [(test_3D(mgcols(i), k+top_lev-1,2), i = 1, mgncol)]
+  end do
+
+  @assertEqual(expected, packed)
+
+end subroutine MGPacker_packs_3D
+
+@Test
+subroutine MGPacker_unpacks_3D()
+
+  real(r8) :: test_3D(pcols,pver,2)
+  real(r8) :: packed(mgncol,nlev,2)
+  real(r8) :: unpacked(pcols,pver,2)
+  real(r8) :: expected(pcols,pver,2)
+
+  integer :: i, k
+
+  test_3D(:,:,1) = test_data
+  test_3D(:,:,2) = -test_data
+
+  ! Double the packed data so that we can tell that the unpacking did
+  ! something.
+  packed = 2._r8*packer%pack(test_3D)
+
+  ! This should yield 2*test_data at the packed points and 0 elsewhere.
+  unpacked = packer%unpack(packed, 0._r8)
+
+  ! Explicitly create an array matching the previous comment for
+  ! comparison.
+  do k = 1, pver
+     do i = 1, pcols
+        if (k >= top_lev .and. any(i == mgcols)) then
+           expected(i,k,:) = 2._r8 * test_3D(i,k,:)
+        else
+           expected(i,k,:) = 0._r8
+        end if
+     end do
+  end do
+
+  @assertEqual(expected, unpacked)
+
+end subroutine MGPacker_unpacks_3D
+
+@Test
+subroutine MGPacker_unpacks_3D_array_fill()
+
+  real(r8) :: test_3D(pcols,pver,2)
+  real(r8) :: packed(mgncol,nlev,2)
+  real(r8) :: unpacked(pcols,pver,2)
+  real(r8) :: expected(pcols,pver,2)
+
+  integer :: i, k
+
+  test_3D(:,:,1) = test_data
+  test_3D(:,:,2) = -test_data
+
+  ! Double the packed data so that we can tell that the unpacking did
+  ! something.
+  packed = 2._r8*packer%pack(test_3D)
+
+  ! This should yield 2*test_data at the packed points and 0 elsewhere.
+  unpacked = packer%unpack(packed, test_3D)
+
+  ! Explicitly create an array matching the previous comment for
+  ! comparison.
+  do k = 1, pver
+     do i = 1, pcols
+        if (k >= top_lev .and. any(i == mgcols)) then
+           expected(i,k,:) = 2._r8 * test_3D(i,k,:)
+        else
+           expected(i,k,:) = test_3D(i,k,:)
+        end if
+     end do
+  end do
+
+  @assertEqual(expected, unpacked)
+
+end subroutine MGPacker_unpacks_3D_array_fill
+
+end module test_MGPacker

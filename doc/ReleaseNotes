@@ -1,0 +1,300 @@
+-------------------------------------------------
+New features in CAM-5.4
+-------------------------------------------------
+
+## CAM-SE
+* Update SE dycore tuning parameters (XXEaton)
+  - Change time stepping method to RK5 (Kinnmark & Gray Runga-Kutta 5
+    stage; 3rd order accurate in time)
+  - Set the namelists variables as recommended for RK5 in:
+    http://www.cgd.ucar.edu/cms/pel/software/cam-se-dt-table.pdf
+  - Add "tstep_type" namelist option for SE dycore
+  - Turn on the FV energy fixer.
+  - Remove the variable "energy_fixer" from the cam namelist.
+  - Reformulated total energy as applied in physics_update and the energy fixers for CAM-FV and CAM-SE dycores.
+
+## CAM-FV
+* Vertical remapping is now applied to temperature instead of energy. This
+  primarily affects WACCM by reducing numerical artifacts near the model top.
+  - Reformulated total energy as applied in physics_update and the energy fixers for CAM-FV and CAM-SE dycores.
+
+## CARMA
+* Add six new CARMA models:
+    - cirrus_dust
+    - meteor_impact
+    - mixed_sulfate
+    - pmc_sulfate
+    - tholin
+    - test_tracers2
+
+* Further development of CARMA-CAM integration, including:
+    - New sulfate model features.
+    - "Fractal" code for soot.
+    - Port to the NAG compiler.
+
+## CLUBB
+* Update the version of CLUBB used
+* Add features to the interface (all options, controlled by namelist switches)
+    - rain evaportation-turbulence feedback
+    - advection of CLUBB's moments
+    - cloud top radiational cooling parameterization
+    - explicit diffusion on CLUBBs prognostic temperature and total water
+    - provide support for CLUBB/microphysics sub-stepping
+
+## CHEMISTRY
+
+* Added ability to use wild fire emissions produced by CLM4.5
+
+* Added option for external forcing of H2O from CH4 oxidation when running
+  low-top CAM5 without chemistry. CH4 oxidation is an important source of
+  H2O in the stratosphere.
+
+* Reaction constants updated to JPL10
+
+* Added functionality to provide rate groupings (summations) diagnostics
+
+* Corrections to aerosol surface area
+
+* NEU wet deposition changes
+   . set TICE to 263
+   . disable wet deposition poleward of 60 degrees and pressures < 200 mbar
+   . correction Henry's Law parameters used for SO2 deposition (in seq_drydep_mod)
+   . correction in units of NEU wet deposition diagnostics
+
+* Chemistry preprocessor updates:
+   . enthalpies for chemical potential heating now specified in mechanism files
+   . added ability to put comments at the end of reactions in mechanism file following '#' or '!'
+   . bug fixes for species names longer than 8 characters (up to 16 characters)
+
+
+## COSP
+   . Update from COSP1.3 (version used for CMIP5) to COSP1.4 (version endorsed for CMIP6)
+       - includes code optimizations, new CALIPSO cloud phase diagnostics, new timing variables
+       - retains radiatively active snow in all simulators (merged from CESM version of COSP1.3)
+       - fixes bug affecting convective ice input into COSP
+
+## AEROSOLS
+
+* Added 4-mode modal aerosol model (MAM4)
+
+* Enhancements to emission specifications (surface and elevated):
+  . ability to specify emissions from multiple input files for any given species
+  . optional global attribute 'input_method' (set to: 'SERIAL', 'CYCLICAL',
+    or 'INTERP_MISSING_MONTHS') in the emissions input file which overrides the
+    corresponding *type namelist option on a file-by-file basis
+  . optional multiplier proceeding the emissions filepath, e.g.:
+    'NAME -> 0.5*/path.../filename.nc'
+
+* Prognostic Modal Aerosols: Provide the capability to prognose modal aerosols in the stratosphere. This
+    gives CAM5 and WACCM5 the ability to simulate aerosols in the stratosphere
+    which originate from volcanic eruptions.  To this end, accumulation to coarse
+    mode exchange is allowed and the widths and edges of the modes are modified
+
+* Added options to use different then default values for solubility factors for
+  BULK aerosols
+
+## DUST
+
+* Defaults changed for soil_erod and dust_emis_fact.
+  . All grids except the 0.9x1.25 FV and a few low resolution grid now use
+    the soid_erod dataset generated for the 1.9x2.5 FV grid.
+  . The value of dust_emis_fact has been changed for FV 1/2 and 1/4 degree
+    grids to 0.45 based on tuning done at PNNL.  The value for FV 1 degree
+    was not changed since that will require retuning the production configuration.
+
+* Tuned following Albani et al., 2014 to best match observations
+
+* New soil erodibility file from Albani which specifically improves the dust in the Middle East
+
+## Radiation
+
+* New optical properties with less absorbing optics for MAM3 and MAM4 (use aeronet dust optics and dust in the aitken mode 2)
+
+* Added option to calculate solar insolation using the mean of cosz in a radiation time step. When this option is turned on, 
+  it eliminates the spurious zonal oscillation of daily insolation caused by discrete time sampling.
+
+## Microphysics
+
+* New microphysics scheme: MG version 2 adds prognostic precipitation and has
+  a cleaner implementation compared to the original MG scheme.
+
+* It is now possible to control both the number of microphysics substeps per
+  physics time step, and joint macrophysics/microphysics substepping, via the
+  namelist.
+
+* Add pre-existing ice option to nucleate_ice code.
+
+* Add option for Hoose heterogeneous freezing parameterization.
+
+* Add option to specify/parameterize precipitation fraction
+
+* Add option to use a different dehydration threshold (rhmin) for in the polar stratosphere.
+
+* New switch to use alternative autoconversion scheme in MG2 (following Seifert and Behang 2001): when active this
+  uses a different autoconversion and accretion scheme for liquid in MG2
+
+* Add Song and Zhang 2012 version of MG 2-moment microphysics in ZM convective scheme as an option
+
+## Macrophysics
+
+* Add option for a ice supersaturation closure (supported in both CAM5 and CAM-CLUBB)
+
+## Deep convection
+
+* Minor improvements to the ZM scheme improve robustness for some inputs
+  (e.g. unusually high temperatures).
+  
+* Add option for convective organization in ZM (based on Mapes and Neale 2010)
+
+## Sub-columns
+* Modifications to pbuf and history to support sub-columns
+
+* Introduced sub-column interface and utlities routines
+
+* Microphysics now has the ability to be run on grid(usual) or subcolumns
+
+## Gravity waves
+
+* New AMIP configuration with a high vertical resolution uses spectral
+  gravity waves in the low top model.
+
+* A long-wavelength inertial gravity wave spectrum has been added, and
+  frontogenesis can now trigger waves in this spectrum.
+
+* Gravity waves can be triggered from shallow, as well as deep, convection.
+
+* The entire gravity wave scheme has been audited to correct conservation
+  issues, internal inconsistencies, and problems with hard-coded parameters.
+  This should result in more accurate and less noisy output.
+
+* WACCM's gravity wave functionality can now be enabled in non-WACCM runs,
+  and can be enabled/disabled at run time via the namelist.
+
+* Most gravity wave parameters that were previously hard-coded are now
+  set by the namelist instead.
+
+* Added "tau_0_ubc" option, to enforce an upper boundary condition of tau = 0
+  in the gravity wave parameterization.
+
+## WACCM
+
+* WACCM5 with prognostic modal aerosols in the stratosphere
+
+* Reaction constants updated to JPL10
+
+* Background ionization from star light added to WACCM
+
+* New specification of stratospheric aerosols (volcanic)
+
+* New treatment of stratospheric aerosol chemistry
+
+* Corrections to age-of-air tracers
+
+* Bug fixes and usability improvements for SC-WACCM and WACCM5 that were
+  also added between CESM 1.2.1 and CESM 1.2.2.
+
+* Include SC-WACCM5 which has prognostic modal aerosols
+
+* WACCM-X now has an option to turn on the extended ionosphere including 
+  calculation of electron and ion temperatur and ion transport ambipolar 
+  diffusion 
+
+## SCAM
+
+## SPCAM
+*  Super-parameterized CAM (SPCAM) implements a 2D cloud resolving model (the
+   System for Atmospheric Modeling SAM, version 6.8.2) in CAM.  When it is turned on,
+   it replaces CAM's parameterization for moist convection and large-scale condensation
+   with this alternate model.
+
+* The SPCAM package allows CLUBB to be used or not.  It is important to note that there is
+   a SPCAM-specific version of CLUBB within the CRM package and it is not the same CLUBB being
+   used by CAM
+
+## AQUAPLANET
+* CESM-aquaplanet is now supported out-of-the-box via prescribed-SST (QPCx) and 
+   slab-ocean (QSCx) compsets (where x is CAM version).
+
+
+-------------------------------------------------
+CODE CLEANUP AND REFACTORING
+-------------------------------------------------
+
+* CARMA and the MG microphysics interface now use micro_mg_utils to get
+  size distribution parameters for cloud droplets, ice, and precipitation.
+  Previously this was done with duplicated code.
+
+* The chemistry-aerosol model interface was refactored to provide a more
+  extendable framework.  This will ease incorporation of other aerosol
+  models (e.g., a sectional aerosol model)
+
+* The SE dycore now uses Pa instead of hPa, which is consistent with CAM's
+  physics.
+
+* The CAM and WACCM gravity wave modules have been merged together, and the
+  result was extensively refactored. The CAM interface (gw_drag.F90) has been
+  separated from a new set of modules that constitute a portable layer, and
+  the routines for the wave sources, wave propagation, and effective diffusion
+  have been separated from each other as well.
+
+* Removed the WACCM_PHYS preprocessor macro, and brought WACCM physics modules
+  up to date with current CAM conventions:
+
+  - qbo, radheat, and iondrag have their own namelists. If WACCM is off, we
+    compile in stubs rather than using the WACCM_PHYS macro.
+  - Molecular diffusion is turned on/off at run time based on the namelist and
+    the extent of the vertical grid.
+  - Each type of gravity wave source is turned on/off via the namelist.
+  - WACCM-specific fields set by the dycore are now communicated via the physics
+    buffer rather than the physics_state object, and are only set if needed.
+
+* Remove restriction that radiation diagnostic calculations reuse the water
+  uptake and wet radius values calculated for the climate affecting modes.
+  These quantities are now recomputed for the diagnostic modes.
+
+* satellite history output was refactored to improve run-time performance
+  -- find nearest neighbor operation was parallelized
+
+* The vertical diffusion code was refactored to use new tridiagonal matrix
+  types, which represent operators in the diffusion equation.
+
+-------------------------------------------------
+CAM INFRASTRUCTURE CHANGES
+-------------------------------------------------
+
+* Improve the microp_aero driver by removing code that belonged in a CAM
+  specific interface for the nucleate_ice parameterization and adding the
+  missing CAM interface layer (nucleate_ice_cam).
+
+* Add two new functions to the rad_constituents interfaces to make it
+  easier to access the mode and specie indices for specific modes and
+  specie types.
+
+* Type descriptions in namelist_definitions.xml can now include variables
+  as dimensions. For instance, both "integer(n)" and "integer(2)" can be
+  used for a 1-D integer array.
+
+* The rad_climate and rad_diag_* arrays can now be set to a larger size
+  using the new "-max_n_rad_cnst" configure option.
+
+* Turning on CESM's DEBUG mode now also turns on state_debug_checks.
+
+* The Lahey compiler is no longer supported because it doesn't support Fortran
+  2003 features.
+
+* Added a new namelist variable, history_aero_optics, to add modal aerosol
+   optics diagnostics to the default history fields.  The existing
+   history_aerosol variable turns on diagnostics related to the aerosol
+   production and removal tendencies.
+
+* Preliminary implementation of further flags to control default history
+  outputs, including:
+  - history_waccm
+  - history_waccmx
+  - history_chemistry
+  - history_carma
+  - history_clubb
+ 
+* CAM history changes:
+   . increased number of fields in fincls from 750 to 1000
+   . can have up to 10 simultaneous history files (or streams)

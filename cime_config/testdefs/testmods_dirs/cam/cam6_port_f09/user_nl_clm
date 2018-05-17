@@ -1,0 +1,22 @@
+!----------------------------------------------------------------------------------
+! Users should add all user specific namelist changes below in the form of 
+! namelist_var = new_namelist_value 
+!
+! EXCEPTIONS: 
+! Set use_cndv           by the compset you use and the CLM_BLDNML_OPTS -dynamic_vegetation setting
+! Set use_vichydro       by the compset you use and the CLM_BLDNML_OPTS -vichydro           setting
+! Set use_cn             by the compset you use and CLM_BLDNML_OPTS -bgc  setting
+! Set use_crop           by the compset you use and CLM_BLDNML_OPTS -crop setting
+! Set spinup_state       by the CLM_BLDNML_OPTS -bgc_spinup      setting
+! Set irrigate           by the CLM_BLDNML_OPTS -irrig           setting
+! Set co2_ppmv           with CCSM_CO2_PPMV                      option
+! Set dtime              with L_NCPL                             option
+! Set fatmlndfrc         with LND_DOMAIN_PATH/LND_DOMAIN_FILE    options
+! Set finidat            with RUN_REFCASE/RUN_REFDATE/RUN_REFTOD options for hybrid or branch cases
+!                        (includes $inst_string for multi-ensemble cases)
+! Set maxpatch_glcmec    with GLC_NEC                            option
+! Set glc_do_dynglacier  with GLC_TWO_WAY_COUPLING               env variable
+!----------------------------------------------------------------------------------
+
+ finidat = '$DIN_LOC_ROOT/lnd/clm2/initdata_map/clmi.IGM2000GSWP3CLM50BGCCROPIRR.2011-01-01.1.9x2.5_gx1v6_gl5_simyr2000_c170419.nc'
+ use_init_interp = .true.

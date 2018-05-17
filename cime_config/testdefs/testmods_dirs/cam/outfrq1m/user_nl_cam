@@ -1,0 +1,4 @@
+mfilt=1,30,30,30,30,30
+ndens=2,2,2,2,2,2
+nhtfrq=0,-24,-24,-24,-24,-24
+inithist='ENDOFRUN'

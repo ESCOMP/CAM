@@ -1,0 +1,579 @@
+!
+! Tests for derivative operators.
+!
+! This gets complex because of these combinatorics:
+!
+! Three grids: Uniform spacing, non-uniform spacing, and different spacings
+!              in different columns.
+! Three functions: Linear, quadratic, and different for different columns.
+! Two operators: First and second derivative
+! Several cases: One for interior points, one for each type of boundary
+!                condition.
+!
+! The "cases" are each a different test. The grids, functions, and
+! operators are fed in as parameters to those tests. Thus each test is run
+! 18 times.
+!
+! The upshot is high test specificity.
+!
+module test_derivatives
+
+use pfunit_mod
+
+use shr_kind_mod, only: r8 => shr_kind_r8
+use linear_1d_operators
+
+implicit none
+
+! Roundoff level tolerance.
+real(r8), parameter :: tol = 1.e-15_r8
+
+type :: LabeledGrid
+   character(len=32) :: name = ""
+   real(r8), allocatable :: coords(:,:)
+end type LabeledGrid
+
+! This type contained a procedure pointer to the constructor. However, due
+! to an Intel compiler bug, this had to be replaced with a simpler, "enum"
+! method of picking a constructor.
+type :: LabeledDerivConstructor
+   character(len=32) :: name = ""
+   integer :: constructor_enum = 0
+!   procedure(first_derivative), pointer, nopass :: constructor => null()
+end type LabeledDerivConstructor
+
+type :: FunctionSet
+   character(len=32) :: name = ""
+   procedure(r8_to_r8), pointer, nopass :: f => null()
+   procedure(r8_to_r8), pointer, nopass :: d_f => null()
+   procedure(r8_to_r8), pointer, nopass :: d2_f => null()
+end type FunctionSet
+
+abstract interface
+   function r8_to_r8(x) result(y)
+     import :: r8
+     real(r8), intent(in) :: x
+     real(r8) :: y
+   end function r8_to_r8
+end interface
+
+@TestParameter
+type, extends(AbstractTestParameter) :: DerivTestParams
+   character(len=32) :: function_string = ""
+   type(LabeledDerivConstructor) :: deriv
+   type(LabeledGrid) :: grid
+   real(r8), allocatable :: data(:,:)
+   real(r8), allocatable :: expected(:,:)
+   real(r8), allocatable :: expected_1st_order_bndry(:,:)
+   real(r8), allocatable :: expected_barrier_bndry(:,:)
+ contains
+   procedure, pass(this) :: toString
+end type DerivTestParams
+
+@TestCase(testParameters={getParameters()}, constructor=new_DerivTestCase)
+type, extends(ParameterizedTestCase) :: DerivTestCase
+   procedure(first_derivative), pointer, nopass :: deriv_constructor => null()
+   real(r8), allocatable :: grid_spacing(:,:)
+   real(r8), allocatable :: data(:,:)
+   real(r8), allocatable :: expected(:,:)
+   real(r8), allocatable :: expected_1st_order_bndry(:,:)
+   real(r8), allocatable :: expected_barrier_bndry(:,:)
+end type DerivTestCase
+
+interface DerivTestParams
+   module procedure new_DerivTestParams
+end interface
+
+! Enumeration of derivatives.
+integer, parameter :: first_d = 1
+integer, parameter :: second_d = 2
+
+contains
+
+function new_DerivTestCase(test_params) result(test)
+  type(DerivTestParams), intent(in) :: test_params
+  type(DerivTestCase) :: test
+
+  select case(test_params%deriv%constructor_enum)
+  case(first_d)
+     test%deriv_constructor => first_derivative
+  case(second_d)
+     test%deriv_constructor => second_derivative
+  case default
+     call throw("Unrecognized derivative operator index.")
+  end select
+  test%grid_spacing = test_params%grid%coords(:,2:) - &
+       test_params%grid%coords(:,:size(test_params%grid%coords, 2)-1)
+  test%data = test_params%data
+  test%expected = test_params%expected
+  test%expected_1st_order_bndry = test_params%expected_1st_order_bndry
+  test%expected_barrier_bndry = test_params%expected_barrier_bndry
+
+end function new_DerivTestCase
+
+function toString(this) result(string)
+  class(DerivTestParams), intent(in) :: this
+  character(:), allocatable :: string
+
+  character(len=256) :: buffer
+
+  write(buffer,*) "(Operator: ", trim(this%deriv%name), &
+       ", Grid: ", trim(this%grid%name), &
+       ", Data: ", trim(this%function_string), ")"
+
+  string = trim(buffer)
+
+end function toString
+
+function identity(x) result(y)
+  real(r8), intent(in) :: x
+  real(r8) :: y
+  y = x
+end function identity
+
+function one(x) result(y)
+  real(r8), intent(in) :: x
+  real(r8) :: y
+  y = 1._r8
+end function one
+
+function zero(x) result(y)
+  real(r8), intent(in) :: x
+  real(r8) :: y
+  y = 0._r8
+end function zero
+
+function square(x) result(y)
+  real(r8), intent(in) :: x
+  real(r8) :: y
+  y = x*x
+end function square
+
+function two_x(x) result(y)
+  real(r8), intent(in) :: x
+  real(r8) :: y
+  y = 2._r8*x
+end function two_x
+
+function two(x) result(y)
+  real(r8), intent(in) :: x
+  real(r8) :: y
+  y = 2._r8
+end function two
+
+function new_DerivTestParams(func_set, grid, deriv) result(params)
+  type(FunctionSet), intent(in) :: func_set(:)
+  type(LabeledGrid), intent(in) :: grid
+  integer, intent(in) :: deriv
+  type(DerivTestParams) :: params
+
+  character(len=32) :: function_string
+
+  integer :: i, k
+  integer :: ncol, nlev
+
+  ncol = size(grid%coords, 1)
+  nlev = size(grid%coords, 2)
+
+  if (all(func_set(2:)%name == func_set(1)%name)) then
+     function_string = func_set(1)%name
+  else
+     function_string = "mixed data"
+  end if
+
+  params%function_string = function_string
+  params%grid = grid
+
+  ! Set procedure component separately to deal with Intel bug.
+  select case (deriv)
+  case(first_d)
+     params%deriv = &
+          LabeledDerivConstructor("First derivative")!, first_derivative)
+  case(second_d)
+     params%deriv = &
+          LabeledDerivConstructor("Second derivative")!, second_derivative)
+  case default
+     ! We throw to get pFUnit to recognize this, but in fact it doesn't
+     ! work, because pFUnit doesn't check the exception stack at the right
+     ! time.
+     call throw("Unrecognized derivative operator index.")
+     return
+  end select
+
+  params%deriv%constructor_enum = deriv
+
+  allocate(params%data(ncol,nlev), params%expected(ncol,nlev), &
+       params%expected_1st_order_bndry(ncol,2), &
+       params%expected_barrier_bndry(ncol,2))
+
+  do k = 1, nlev
+     do i = 1, ncol
+        params%data(i,k) = func_set(i)%f(grid%coords(i,k))
+     end do
+  end do
+
+  select case (deriv)
+  case(first_d)
+     do k = 1, nlev
+        do i = 1, ncol
+           params%expected(i,k) = func_set(i)%d_f(grid%coords(i,k))
+        end do
+     end do
+     ! First order approximation to boundary condition.
+     params%expected_1st_order_bndry(:,1) = &
+          (params%data(:,2)-params%data(:,1)) / &
+          (grid%coords(:,2)-grid%coords(:,1))
+     params%expected_1st_order_bndry(:,2) = &
+          (params%data(:,nlev)-params%data(:,nlev-1)) / &
+          (grid%coords(:,nlev)-grid%coords(:,nlev-1))
+     ! With a barrier present, the first order approximation is "averaged"
+     ! with derivative 0 on the other side of the boundary.
+     params%expected_barrier_bndry = &
+          params%expected_1st_order_bndry/2._r8
+  case(second_d)
+     do k = 1, nlev
+        do i = 1, ncol
+           params%expected(i,k) = func_set(i)%d2_f(grid%coords(i,k))
+        end do
+     end do
+     params%expected_1st_order_bndry = 0._r8
+     ! Approximation combining 1st order first derivative with an effective
+     ! derivative of 0 inside the barrier.
+     params%expected_barrier_bndry(:,1) = &
+          (params%data(:,2)-params%data(:,1)) / &
+          (grid%coords(:,2)-grid%coords(:,1))**2
+     params%expected_barrier_bndry(:,2) = &
+          (params%data(:,nlev-1)-params%data(:,nlev)) / &
+          (grid%coords(:,nlev)-grid%coords(:,nlev-1))**2
+  case default
+     call throw("Unrecognized derivative operator index.")
+     return
+  end select
+
+end function new_DerivTestParams
+
+function getParameters() result(params)
+  type(DerivTestParams), allocatable :: params(:)
+
+  ! Grid size.
+  integer, parameter :: nlev = 5
+
+  ! Grids:
+  ! Uniform.
+  real(r8), parameter :: uniform(nlev) = &
+       [0._r8, 1._r8, 2._r8, 3._r8, 4._r8]
+  ! Non-uniform.
+  real(r8), parameter :: non_uni(nlev) = &
+       [0._r8, 0.25_r8, 0.75_r8, 2.0_r8, 3._r8]
+
+  real(r8) :: uniform_coords(2,nlev)
+  real(r8) :: non_uni_coords(2,nlev)
+  real(r8) :: mixed_coords(2,nlev)
+  type(LabeledGrid) :: uniform_grid
+  type(LabeledGrid) :: non_uni_grid
+  type(LabeledGrid) :: mixed_grid
+
+  type(FunctionSet) :: y_equals_x
+  type(FunctionSet) :: y_equals_x_squared
+
+  uniform_coords = spread(uniform, 1, 2)
+  non_uni_coords = spread(non_uni, 1, 2)
+  mixed_coords(1,:) = uniform
+  mixed_coords(2,:) = non_uni
+
+  uniform_grid = LabeledGrid("Uniform", uniform_coords)
+  non_uni_grid = LabeledGrid("Non-Uniform", non_uni_coords)
+  mixed_grid = LabeledGrid("Mixed", mixed_coords)
+
+  ! Set procedure components separately to deal with Intel bug.
+  y_equals_x = &
+       FunctionSet("f = x")!, identity, one, zero)
+  y_equals_x%f => identity
+  y_equals_x%d_f => one
+  y_equals_x%d2_f => zero
+
+  y_equals_x_squared = &
+       FunctionSet("f = x^2")!, square, two_x, two)
+  y_equals_x_squared%f => square
+  y_equals_x_squared%d_f => two_x
+  y_equals_x_squared%d2_f => two
+
+  params = [ &
+       DerivTestParams(spread(y_equals_x, 1, 2), &
+       uniform_grid, first_d), &
+       DerivTestParams(spread(y_equals_x_squared, 1, 2), &
+       uniform_grid, first_d), &
+       DerivTestParams([y_equals_x, y_equals_x_squared], &
+       uniform_grid, first_d), &
+       DerivTestParams(spread(y_equals_x, 1, 2), &
+       non_uni_grid, first_d), &
+       DerivTestParams(spread(y_equals_x_squared, 1, 2), &
+       non_uni_grid, first_d), &
+       DerivTestParams([y_equals_x, y_equals_x_squared], &
+       non_uni_grid, first_d), &
+       DerivTestParams(spread(y_equals_x, 1, 2), &
+       mixed_grid, first_d), &
+       DerivTestParams(spread(y_equals_x_squared, 1, 2), &
+       mixed_grid, first_d), &
+       DerivTestParams([y_equals_x, y_equals_x_squared], &
+       mixed_grid, first_d), &
+       DerivTestParams(spread(y_equals_x, 1, 2), &
+       uniform_grid, second_d), &
+       DerivTestParams(spread(y_equals_x_squared, 1, 2), &
+       uniform_grid, second_d), &
+       DerivTestParams([y_equals_x, y_equals_x_squared], &
+       uniform_grid, second_d), &
+       DerivTestParams(spread(y_equals_x, 1, 2), &
+       non_uni_grid, second_d), &
+       DerivTestParams(spread(y_equals_x_squared, 1, 2), &
+       non_uni_grid, second_d), &
+       DerivTestParams([y_equals_x, y_equals_x_squared], &
+       non_uni_grid, second_d), &
+       DerivTestParams(spread(y_equals_x, 1, 2), &
+       mixed_grid, second_d), &
+       DerivTestParams(spread(y_equals_x_squared, 1, 2), &
+       mixed_grid, second_d), &
+       DerivTestParams([y_equals_x, y_equals_x_squared], &
+       mixed_grid, second_d) &
+       ]
+
+end function getParameters
+
+! This routine checks the interior points only; edges are checked in the
+! "bndry" tests below.
+@test
+subroutine test_interior(this)
+
+  class(DerivTestCase), intent(inout) :: this
+
+  real(r8) :: output(size(this%data, 1),size(this%data, 2))
+
+  type(TriDiagOp) :: deriv_op
+
+  ! The derivative from the SUT.
+  deriv_op = this%deriv_constructor(this%grid_spacing)
+  output = deriv_op%apply(this%data)
+
+  associate( nlev => size(output, 2) )
+    @assertEqual(this%expected(:,2:nlev-1), output(:,2:nlev-1), tolerance=tol)
+  end associate
+
+end subroutine test_interior
+
+@test
+subroutine test_bndry_zero(this)
+
+  class(DerivTestCase), intent(inout) :: this
+
+  real(r8) :: output(size(this%data, 1),size(this%data, 2))
+
+  type(TriDiagOp) :: deriv_op
+
+  ! The derivative from the SUT.
+  deriv_op = this%deriv_constructor(this%grid_spacing, BoundaryZero(), &
+       BoundaryZero())
+  output = deriv_op%apply(this%data)
+
+  associate( nlev => size(output, 2) )
+    @assertEqual(0._r8, output(:,1))
+    @assertEqual(0._r8, output(:,nlev))
+  end associate
+
+end subroutine test_bndry_zero
+
+@test
+subroutine test_bndry_1st_order(this)
+
+  class(DerivTestCase), intent(inout) :: this
+
+  real(r8) :: output(size(this%data, 1),size(this%data, 2))
+
+  type(TriDiagOp) :: deriv_op
+
+  ! The derivative from the SUT.
+  deriv_op = this%deriv_constructor(this%grid_spacing, &
+       BoundaryFirstOrder(), BoundaryFirstOrder())
+  output = deriv_op%apply(this%data)
+
+  associate( nlev => size(output, 2) )
+    @assertEqual(this%expected_1st_order_bndry(:,1), output(:,1), tolerance=tol)
+    @assertEqual(this%expected_1st_order_bndry(:,2), output(:,nlev), tolerance=tol)
+  end associate
+
+end subroutine test_bndry_1st_order
+
+@test
+subroutine test_bndry_extrap(this)
+
+  class(DerivTestCase), intent(inout) :: this
+
+  real(r8) :: output(size(this%data, 1),size(this%data, 2))
+
+  type(TriDiagOp) :: deriv_op
+
+  ! The derivative from the SUT.
+  deriv_op = this%deriv_constructor(this%grid_spacing, &
+       BoundaryExtrapolate(), BoundaryExtrapolate())
+  output = deriv_op%apply(this%data)
+
+  associate( nlev => size(output, 2) )
+    @assertEqual(this%expected(:,1), output(:,1), tolerance=tol)
+    @assertEqual(this%expected(:,nlev), output(:,nlev), tolerance=tol)
+  end associate
+
+end subroutine test_bndry_extrap
+
+! Unlike the above boundary conditions, this test needs an extra buffer
+! layer on each side. Therefore, we only run on the interior points, and
+! the tested "boundary" points in this case are at 2 and nlev-2.
+@test
+subroutine test_bndry_fixed_layer(this)
+
+  class(DerivTestCase), intent(inout) :: this
+
+  real(r8) :: output(size(this%data, 1),2:size(this%data, 2)-1)
+
+  type(TriDiagOp) :: deriv_op
+  type(BoundaryType) :: left_boundary, right_boundary
+  type(BoundaryCond) :: left_data, right_data
+
+  integer :: nlev
+
+  nlev = size(this%data, 2)
+
+  ! Specify fixed layer boundary conditions.
+  left_boundary = BoundaryFixedLayer(this%grid_spacing(:,1))
+  right_boundary = BoundaryFixedLayer(this%grid_spacing(:,nlev-1))
+
+  ! The derivative from the SUT.
+  ! We only actually run this on the interior points. This means that.
+  deriv_op = this%deriv_constructor(this%grid_spacing(:,2:nlev-2), &
+       left_boundary, right_boundary)
+
+  ! Apply boundary condition.
+  left_data = BoundaryData(this%data(:,1))
+  right_data = BoundaryData(this%data(:,nlev))
+  output = deriv_op%apply(this%data(:,2:nlev-1), &
+       left_data, right_data)
+
+  @assertEqual(this%expected(:,2), output(:,2), tolerance=tol)
+  @assertEqual(this%expected(:,nlev-1), output(:,nlev-1), tolerance=tol)
+
+end subroutine test_bndry_fixed_layer
+
+! Consider a "barrier" condition to simply be equivalent to a fixed flux
+! of 0 (which is the default if none specified).
+@test
+subroutine test_bndry_barrier(this)
+
+  class(DerivTestCase), intent(inout) :: this
+
+  real(r8) :: output(size(this%data, 1),size(this%data, 2))
+
+  type(TriDiagOp) :: deriv_op
+
+  ! The derivative from the SUT.
+  deriv_op = this%deriv_constructor(this%grid_spacing, &
+       BoundaryFixedFlux(), BoundaryFixedFlux())
+  output = deriv_op%apply(this%data)
+
+  associate( nlev => size(output, 2) )
+    @assertEqual(this%expected_barrier_bndry(:,1), output(:,1), tolerance=tol)
+    @assertEqual(this%expected_barrier_bndry(:,2), output(:,nlev), tolerance=tol)
+  end associate
+
+end subroutine test_bndry_barrier
+
+! Using BoundaryFixedFlux with BoundaryFlux is the same as using
+! BoundaryFixedFlux with no data, then adding in the change. This is one
+! of those unfortunate situations where you can't easily make a test for
+! the code that's much simpler than the SUT.
+@test
+subroutine test_bndry_fixed_flux(this)
+
+  class(DerivTestCase), intent(inout) :: this
+
+  real(r8) :: output(size(this%data, 1),size(this%data, 2))
+  real(r8) :: no_flux(size(this%data, 1),size(this%data, 2))
+
+  type(TriDiagOp) :: deriv_op
+  type(BoundaryCond) :: left_flux, right_flux
+
+  integer :: nlev
+
+  nlev = size(this%data, 2)
+
+  ! Just use fluxes that add in half the original values.
+  left_flux = BoundaryFlux(this%data(:,1), 0.5_r8, &
+       this%grid_spacing(:,1))
+  right_flux = BoundaryFlux(this%data(:,nlev), 0.5_r8, &
+       this%grid_spacing(:,nlev-1))
+
+  ! The derivative from the SUT.
+  deriv_op = this%deriv_constructor(this%grid_spacing, &
+       BoundaryFixedFlux(), BoundaryFixedFlux())
+  no_flux = deriv_op%apply(this%data)
+  output = deriv_op%apply(this%data, left_flux, right_flux)
+
+  @assertEqual(0.5*this%data(:,1)+no_flux(:,1), output(:,1), tolerance=tol)
+  @assertEqual(0.5*this%data(:,nlev)+no_flux(:,nlev), output(:,nlev), tolerance=tol)
+
+end subroutine test_bndry_fixed_flux
+
+! Identical to the fixed flux test, only now we don't explicitly specify
+! the boundary condition, while expecting to get the same answer anyway.
+@test
+subroutine test_bndry_fixed_flux_is_default(this)
+
+  class(DerivTestCase), intent(inout) :: this
+
+  real(r8) :: output(size(this%data, 1),size(this%data, 2))
+  real(r8) :: no_flux(size(this%data, 1),size(this%data, 2))
+
+  type(TriDiagOp) :: deriv_op
+  type(BoundaryCond) :: left_flux, right_flux
+
+  integer :: nlev
+
+  nlev = size(this%data, 2)
+
+  ! Just use fluxes that add in half the original values.
+  left_flux = BoundaryFlux(this%data(:,1), 0.5_r8, &
+       this%grid_spacing(:,1))
+  right_flux = BoundaryFlux(this%data(:,nlev), 0.5_r8, &
+       this%grid_spacing(:,nlev-1))
+
+  ! The derivative from the SUT.
+  deriv_op = this%deriv_constructor(this%grid_spacing, &
+       BoundaryFixedFlux(), BoundaryFixedFlux())
+  no_flux = deriv_op%apply(this%data)
+  output = deriv_op%apply(this%data, left_flux, right_flux)
+
+  @assertEqual(0.5*this%data(:,1)+no_flux(:,1), output(:,1), tolerance=tol)
+  @assertEqual(0.5*this%data(:,nlev)+no_flux(:,nlev), output(:,nlev), tolerance=tol)
+
+end subroutine test_bndry_fixed_flux_is_default
+
+! Test the case where one boundary condition differs from the other.
+@test
+subroutine test_bndry_left_differs_from_right(this)
+
+  class(DerivTestCase), intent(inout) :: this
+
+  real(r8) :: output(size(this%data, 1),size(this%data, 2))
+
+  type(TriDiagOp) :: deriv_op
+
+  ! The derivative from the SUT.
+  deriv_op = this%deriv_constructor(this%grid_spacing, &
+       BoundaryZero(), BoundaryExtrapolate())
+  output = deriv_op%apply(this%data)
+
+  associate( nlev => size(output, 2) )
+    @assertEqual(0._r8, output(:,1), tolerance=tol)
+    @assertEqual(this%expected(:,nlev), output(:,nlev), tolerance=tol)
+  end associate
+
+end subroutine test_bndry_left_differs_from_right
+
+end module test_derivatives

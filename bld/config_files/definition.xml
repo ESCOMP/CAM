@@ -1,0 +1,314 @@
+<?xml version="1.0"?>
+
+<?xml-stylesheet type="text/xsl" href="config_definition.xsl" ?>
+
+<config_definition>
+
+<entry id="cam_bld" value=".">
+CAM build directory; contains .o and .mod files.
+</entry>
+<entry id="cam_exedir" value=".">
+Directory where CAM executable will be created.
+</entry>
+<entry id="cam_root" value="">
+Root directory of CAM source distribution
+</entry>
+<entry id="cam_dir" value="">
+Root directory of CAM model source..
+</entry>
+<entry id="usr_src" value="" list="1">
+User source directories to prepend to the filepath.  Multiple directories
+are specified as a comma separated list with no embedded white space.
+</entry>
+<entry id="ccsm_seq" valid_values="0,1" value="0">
+Switch specifies whether CAM is being built by the CCSM sequential scripts.  0 => no, 1 => yes.
+</entry>
+<entry id="comp_intf" valid_values="mct,esmf" value="mct">
+Component interfaces: mct or esmf.  Default: mct.
+</entry>
+<entry id="dyn" valid_values="eul,fv,se" value="">
+Dynamics package: eul, fv, or se.
+</entry>
+<entry id="waccm_phys" valid_values="0,1" value="0">
+Switch to turn on waccm physics: 0 => no, 1 => yes.
+</entry>
+<entry id="offline_dyn" valid_values="0,1" value="0">
+Switch to turn on FV offline driver: 0 => no, 1 => yes.
+</entry>
+<entry id="offline_drv" valid_values="aur,rad,stub" value="stub">
+ Offline unit driver:
+  aur  : aurora module unit test
+  rad  : radiation offline unit driver
+  stub : stub offline unit driver
+</entry>
+<entry id="analytic_ic" valid_values="0,1" value="0">
+Switch to turn on analytic initial conditions for the dynamics state:
+  0 => no
+  1 => yes.
+</entry>
+<entry id="waccmx" valid_values="0,1" value="0">
+Option to turn on waccmx thermosphere/ionosphere extension: 0 => no, 1 => yes
+</entry>
+<entry id="ionosphere" valid_values="none,wxi,wxie" value="none">
+Ionosphere model used in WACCMX.
+</entry>
+<entry id="phys" valid_values="cam3,cam4,cam5,cam6,held_suarez,adiabatic,kessler,spcam_sam1mom,spcam_m2005" value="">
+Physics package: cam3, cam4, cam5, cam6, held_suarez, adiabatic, spcam_sam1mom, spcam_m2005.
+</entry>
+<entry id="microphys" valid_values="rk,mg1,mg2,spcam_m2005,spcam_sam1mom,none" value="">
+Microphysics package: rk (Rasch and Kristjansson), mg1 and mg2 (Morrison and Gettelman),
+SPCAM_m2005, SPCAM_sam1mom.
+</entry>
+<entry id="macrophys" valid_values="rk,park,clubb_sgs,spcam_sam1mom,spcam_m2005,none" value="">
+Macrophysics package: RK, Park, CLUBB_SGS, SPCAM_sam1mom, SPCAM_m2005.
+</entry>
+<entry id="clubb_sgs" valid_values="0,1" value="0">
+Switch to turn on CLUBB_SGS package: 0 => no, 1 => yes
+</entry>
+<entry id="unicon" valid_values="0,1" value="0">
+Switch to turn on UNICON package: 0 => off, 1 => on
+</entry>
+<entry id="clubb_do_adv" valid_values="0,1" value="0">
+Switch to turn on/off advecting CLUBB moments: 0 => no, 1 => yes
+</entry>
+<entry id="zmconv_org" valid_values="0,1" value="0">
+Switch to turn on/off parameterization for sub-grid scale convective organization for the ZM deep convective scheme based
+on Mapes and Neale (2011): 0 => no, 1 => yes
+</entry>
+<entry id="pbl" valid_values="uw,hb,hbr,clubb_sgs,spcam_sam1mom,spcam_m2005,none" value="">
+PBL package: uw (University of Washington), hb (Holtslag and Boville), hbr
+ (Holtslag, Boville, and Rasch), clubb_sgs, spcam_sam1om, spcam_m2005, none.
+</entry>
+<entry id="rad" valid_values="rrtmg,camrt,none" value="">
+Radiative transfer calculation: 
+camrt (CAM3 and CAM4 RT package), rrtmg (RRTMG package from AER).
+</entry>
+<entry id="carma" valid_values="none,bc_strat,cirrus,cirrus_dust,dust,meteor_impact,meteor_smoke,mixed_sulfate,pmc,pmc_sulfate,sea_salt,sulfate,tholin,test_detrain,test_growth,test_passive,test_radiative,test_swelling,test_tracers,test_tracers2" value="none">
+CARMA sectional microphysics: 
+none (disabled), bc_strat (Stratospheric Black Carbon), cirrus (Cirrus Clouds),
+cirrus_dust (Cirrus Clouds with dust), dust (Dust), meteor_impact (Meteor Impact), 
+meteor_smoke (Meteor Smoke), mixed_sulfate (Meteor Smoke and Sulfate), pmc (Polar Mesospheric Clouds), pmc_sulfate (PMC and Sulfate), sea_salt (Sea Salt),
+sulfate (Sulfate Aerosols), tholin (early earth haze), test_detrain (Detrainment), test_growth (Particle Growth), test_passive (Passive Dust), 
+test_radiative (Radiatively Active Dust), test_swelling (Sea Salt), test_tracers (Asian Monsoon), test_tracers2 (Guam).
+</entry>
+<entry id="chem" valid_values="trop_mam3,trop_mam4,trop_mam7,trop_mozart,trop_strat_mam4_vbs,trop_bam,trop_ghg,waccm_ma,waccm_mad_mam4,waccm_ma_mam4,waccm_ma_sulfur,waccm_sc,waccm_sc_mam4,waccm_tsmlt,waccm_tsmlt_mam4,waccm_tsmlt_sulfur,super_fast_llnl,super_fast_llnl_mam3,terminator,none" value="">
+Chemistry package: trop_mam3 trop_mam4 trop_mam7 trop_mozart trop_strat_mam4_vbs trop_bam trop_ghg waccm_ma waccm_mad_mam4 waccm_ma_mam4 waccm_ma_sulfur waccm_sc waccm_sc_mam4 waccm_tsmlt waccm_tsmlt_mam4 waccm_tsmlt_sulfur super_fast_llnl super_fast_llnl_mam3 terminator none
+</entry>
+<entry id="prog_species" valid_values="DST,SSLT,SO4,GHG,OC,BC,CARBON16" value="" list="1">
+Prognostic mozart species packages: list of any subset of the following: DST,SSLT,SO4,GHG,OC,BC,CARBON16
+</entry>
+<entry id="edit_chem_mech" valid_values="0,1" value="0">
+Switch to allow user to edit chem mechanism file: 0 => no, 1 => yes.
+</entry>
+<entry id="usr_mech_infile" value="">
+Path and file name of the user supplied chemistry mechanism file.
+</entry>
+<entry id="build_chem_proc" value="0,1">
+Switch to force the build of the chemistry preprocessor.
+</entry>
+<entry id="chem_proc_bld" value="">
+Chemistry preprocessor build directory; contains .o and .mod files.
+</entry>
+<entry id="chem_proc_src" value="">
+Chemistry source directory generated by the chemistry preprocessor; contains F90 files.
+</entry>
+<entry id="chem_src_dir" value="">
+Chemistry source directory; contains F90 files.
+</entry>
+<entry id="ocn" valid_values="docn,dom,som,socn,aquaplanet,pop" value="docn">
+Use data ocean model (docn or dom), stub ocean (socn), or aqua planet ocean
+(aquaplanet) in cam build.  When built from the CESM scripts the value of
+ocn may be set to pop.  This doesn't impact how CAM is built, only how
+attributes are matched when searching for namelist defaults.  If ocn is set
+to som then the docn component is used.
+</entry>
+<entry id="aquaplanet" valid_value="0,1" value="0">
+Switch for aquaplanet mode.  By default this switch sets the ocn component
+to use an analytic expression for SST.  To use aquaplanet with time varying
+SSTs read from a dataset, or with a slab ocean, the ocean component should
+be set to DOCN.
+</entry>
+<entry id="co2_cycle" valid_values="0,1" value="0">
+Turn on CO2 cycle in biogeochemistry model: 0 => no, 1 => yes.
+</entry>
+<entry id="pergro" valid_values="0,1" value="0">
+Modifications that allow perturbation growth testing: 0=off, 1=on.
+</entry>
+<entry id="scam" valid_values="0,1" value="0">
+Configure CAM for single column mode: 0=off, 1=on.  This option only
+supported for the Eulerian dycore.
+</entry>
+<entry id="camiop" valid_values="0,1" value="0">
+Configure CAM to generate an IOP file that can be used to drive SCAM: 0=no, 1=yes.
+This option only supported for the Eulerian dycore.
+</entry>
+<entry id="hgrid" value="">
+Horizontal grid specifier.  The recognized values depend on
+the dynamics type and are contained in the horiz_grid.xml file.
+</entry>
+<entry id="nlon" value="1">
+Number of unique longitude points in rectangular lat/lon grid.
+</entry>
+<entry id="nlat" value="1">
+Number of unique latitude points in rectangular lat/lon grid.
+</entry>
+<entry id="csne" value="1">
+Number of elements along one edge of a cubed sphere grid.
+</entry>
+<entry id="csnp" value="1">
+Number of points on each edge of the elements in a cubed sphere grid.
+</entry>
+<entry id="npg" value="0">
+Number of physics grid cells on each edge of the elements in a cubed sphere grid.
+</entry>
+<entry id="nlev" value="0">
+Number of vertical levels.
+</entry>
+<entry id="nadv" value="">
+Total number of advected constituents.  By default this is computed by
+configure.  However, configure has a commandline argument to allow the user
+to override the default.
+</entry>
+<entry id="nadv_tt" value="0">
+Total number of advected test tracers.
+</entry>
+<entry id="age_of_air_trcs" valid_values="0,1" value="0">
+Switch on (off) age of air tracers: 0=off, 1=on.
+</entry>
+<entry id="max_n_rad_cnst" value="30">
+Maximum number of constituents that are radiatively active or in any one
+diagnostic list.
+</entry>
+<entry id="trm" value="1">
+Maximum Fourier wavenumber.
+</entry>
+<entry id="trn" value="1">
+Highest degree of the Legendre polynomials for m=0.
+</entry>
+<entry id="trk" value="1">
+Highest degree of the associated Legendre polynomials.
+</entry>
+<entry id="pcols" value="16">
+Maximum number of columns in a chunk (physics data structure).
+</entry>
+<entry id="psubcols" value="1">
+Maximum number of sub-columns in a column (physics data structure).
+</entry>
+<entry id="cam_exe" value="cam">
+Name of CAM executable.
+</entry>
+<entry id="cppdefs" value="">
+User specified CPP defines to append to Makefile defaults.
+</entry>
+<entry id="cc" value="">
+User specified C compiler overrides Makefile default (linux only).
+</entry>
+<entry id="cflags" value="" list="1">
+User specified C compiler options to append to Makefile defaults.
+</entry>
+<entry id="fc" value="">
+User specified Fortran compiler overrides Makefile default.
+</entry>
+<entry id="fc_type" valid_values="cray,pgi,intel,gnu,pathscale,ibm,nag" value="">
+Type of Fortran compiler.  Used when -fc specifies a generic wrapper script
+such as mpif90 or ftn.
+</entry>
+<entry id="debug" valid_values="0,1" value="0">
+Switch to enable debugging options for Fortran compiler: 0=off, 1=on.
+</entry>
+<entry id="fflags" value="" list="1">
+User specified Fortran compiler flags to append to Makefile defaults.
+</entry>
+<entry id="fopt" value="">
+User specified Fortran optimization flags to override Makefile defaults.
+</entry>
+<entry id="linker" value="">
+User specified linker.  Overrides the Makefile default $(FC).
+</entry>
+<entry id="ldflags" value="" list="1">
+User specified load options to append to Makefile defaults.
+</entry>
+<entry id="spmd" valid_values="0,1" value="">
+Switch to enable or disable building SPMD version of CAM: 0=off, 1=on.
+</entry>
+<entry id="smp" valid_values="0,1" value="">
+Switch to enable or disable building SMP version (OPENMP) of CAM: 0=off, 1=on.
+</entry>
+<entry id="nc_inc" value="">
+Directory containing NetCDF include files.
+</entry>
+<entry id="nc_lib" value="">
+Directory containing NetCDF library.
+</entry>
+<entry id="nc_ldflags" value="" list="1">
+Arguments for linking NetCDF libraries.
+</entry>
+<entry id="nc_mod" value="">
+Directory containing NetCDF module files.
+</entry>
+<entry id="pnc_inc" value="">
+Directory containing pNetCDF include files.
+</entry>
+<entry id="pnc_lib" value="">
+Directory containing pNetCDF library.
+</entry>
+<entry id="lapack_libdir" value="">
+Directory containing LAPACK library.
+</entry>
+<entry id="esmf_libdir" value="">
+Directory containing ESMF library (for linking to external ESMF).
+</entry>
+<entry id="esmf_libvers" value="">
+Version of ESMF library.
+</entry>
+<entry id="mct_libdir" value="">
+Directory containing MCT library (for linking to external MCT).
+</entry>
+<entry id="mpi_inc" value="">
+Directory containing MPI include files.
+</entry>
+<entry id="mpi_lib" value="">
+Directory containing MPI library.
+</entry>
+<entry id="mpi_lib_name" value="">
+Name of MPI library.
+</entry>
+<entry id="pio_build_dir" value="">
+Directory where PIO will be built (pio2 only).
+</entry>
+<entry id="pio_install_dir" value="">
+Directory containing PIO libraries and include files (pio2 only).
+</entry>
+<entry id="cosp" valid_values="0,1" value="0">
+Switch to enable building COSP simulator package.  1 => build COSP.
+</entry>
+<entry id="cosp_libdir" value="">
+Directory containing COSP library.
+</entry>
+<entry id="target_os" value="">
+OS for which CAM is being built.  The default value is the name contained
+in Perl's $OSNAME variable.  This parameter allows the user to override
+that setting to allow for cross-compilation, and for instances where the
+$OSNAME value is too generic.  For example, currently on both cray-xt and
+bluegene systems $OSNAME has the value "linux".
+</entry>
+<entry id="spcam_clubb_sgs" valid_values="0,1" value="0">
+Switch to turn on SPCAM version of CLUBB_SGS package: 0 => no, 1 => yes
+</entry>
+<entry id="spcam_nx" value="4">
+SPCAM number of grid points in x
+</entry>
+<entry id="spcam_ny" value="1">
+SPCAM number of grid points in y
+</entry>
+<entry id="spcam_nz" value="1">
+SPCAM number of grid points in z
+</entry>
+<entry id="spcam_dx" value="1">
+SPCAM horizontal grid spacing, m
+</entry>
+<entry id="spcam_dt" value="1"> 
+SPCAM time step, s
+</entry>
+
+</config_definition>

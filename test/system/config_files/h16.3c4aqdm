@@ -1,0 +1,7 @@
+-spmd -nosmp
+-dyn se
+-hgrid ne16np4.pg3
+-phys cam4
+-aquaplanet
+-debug
+-s

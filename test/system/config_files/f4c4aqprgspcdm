@@ -1,0 +1,8 @@
+-debug
+-spmd -nosmp
+-dyn fv
+-hgrid 4x5
+-prog_species SO4,BC,OC,SSLT,DST,GHG
+-phys cam4
+-aquaplanet
+-s

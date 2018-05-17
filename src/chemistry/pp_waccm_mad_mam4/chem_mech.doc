@@ -1,0 +1,1491 @@
+  
+  
+     Solution species
+      (  1)  O3              
+      (  2)  O               
+      (  3)  O2              
+      (  4)  N2O             
+      (  5)  N               
+      (  6)  NO              
+      (  7)  NO2             
+      (  8)  NO3             
+      (  9)  HNO3            
+      ( 10)  HO2NO2          
+      ( 11)  N2O5            
+      ( 12)  CH4             
+      ( 13)  CH3O2           
+      ( 14)  CH3OOH          
+      ( 15)  CH2O            
+      ( 16)  CO              
+      ( 17)  H2              
+      ( 18)  H               
+      ( 19)  H2O2            
+      ( 20)  HONO            
+      ( 21)  CLY             
+      ( 22)  BRY             
+      ( 23)  CL2                (Cl2)
+      ( 24)  CLO                (ClO)
+      ( 25)  OCLO               (OClO)
+      ( 26)  CL2O2              (Cl2O2)
+      ( 27)  HCL                (HCl)
+      ( 28)  HOCL               (HOCl)
+      ( 29)  CLONO2             (ClONO2)
+      ( 30)  BRCL               (BrCl)
+      ( 31)  BRO                (BrO)
+      ( 32)  HBR                (HBr)
+      ( 33)  HOBR               (HOBr)
+      ( 34)  BRONO2             (BrONO2)
+      ( 35)  CH3CL              (CH3Cl)
+      ( 36)  CH3BR              (CH3Br)
+      ( 37)  CFC11              (CFCl3)
+      ( 38)  CFC12              (CF2Cl2)
+      ( 39)  CFC113             (CCl2FCClF2)
+      ( 40)  HCFC22             (CHF2Cl)
+      ( 41)  CCL4               (CCl4)
+      ( 42)  CH3CCL3            (CH3CCl3)
+      ( 43)  CF3BR              (CF3Br)
+      ( 44)  CF2CLBR            (CF2ClBr)
+      ( 45)  HCFC141B           (CH3CCl2F)
+      ( 46)  HCFC142B           (CH3CClF2)
+      ( 47)  CFC114             (CClF2CClF2)
+      ( 48)  CFC115             (CClF2CF3)
+      ( 49)  H1202              (CBr2F2)
+      ( 50)  H2402              (CBrF2CBrF2)
+      ( 51)  CHBR3              (CHBr3)
+      ( 52)  CH2BR2             (CH2Br2)
+      ( 53)  COF2            
+      ( 54)  COFCL              (COFCl)
+      ( 55)  HF              
+      ( 56)  F               
+      ( 57)  CO2             
+      ( 58)  OCS             
+      ( 59)  S               
+      ( 60)  SO              
+      ( 61)  SO2             
+      ( 62)  SO3             
+      ( 63)  H2SO4           
+      ( 64)  DMS                (CH3SCH3)
+      ( 65)  SOAG               (C)
+      ( 66)  so4_a1             (NH4HSO4)
+      ( 67)  pom_a1             (C)
+      ( 68)  soa_a1             (C)
+      ( 69)  bc_a1              (C)
+      ( 70)  dst_a1             (AlSiO5)
+      ( 71)  ncl_a1             (NaCl)
+      ( 72)  num_a1             (H)
+      ( 73)  so4_a2             (NH4HSO4)
+      ( 74)  soa_a2             (C)
+      ( 75)  ncl_a2             (NaCl)
+      ( 76)  num_a2             (H)
+      ( 77)  dst_a2             (AlSiO5)
+      ( 78)  dst_a3             (AlSiO5)
+      ( 79)  ncl_a3             (NaCl)
+      ( 80)  so4_a3             (NH4HSO4)
+      ( 81)  num_a3             (H)
+      ( 82)  pom_a4             (C)
+      ( 83)  bc_a4              (C)
+      ( 84)  num_a4             (H)
+      ( 85)  CL                 (Cl)
+      ( 86)  BR                 (Br)
+      ( 87)  OH              
+      ( 88)  HO2             
+      ( 89)  N2p                (N2)
+      ( 90)  O2p                (O2)
+      ( 91)  O4p                (O4)
+      ( 92)  O2p_H2O            (H2O3)
+      ( 93)  Hp_H2O             (H3O)
+      ( 94)  Hp_2H2O            (H5O2)
+      ( 95)  Hp_3H2O            (H7O3)
+      ( 96)  Hp_4H2O            (H9O4)
+      ( 97)  Hp_5H2O            (H11O5)
+      ( 98)  H3Op_OH            (H4O2)
+      ( 99)  Hp_3N1             (H8NO6)
+      (100)  Hp_4N1             (H10NO7)
+      (101)  NOp_H2O            (H2NO2)
+      (102)  NOp_2H2O           (H4NO3)
+      (103)  NOp_3H2O           (H6NO3)
+      (104)  NOp_CO2            (NCO3)
+      (105)  NOp_N2             (N3O)
+      (106)  Om                 (O)
+      (107)  O2m                (O2)
+      (108)  O3m                (O3)
+      (109)  O4m                (O4)
+      (110)  OHm                (OH)
+      (111)  CO3m               (CO3)
+      (112)  CO4m               (CO4)
+      (113)  NO2m               (NO2)
+      (114)  NO3m               (NO3)
+      (115)  CO3m_H2O           (H2CO4)
+      (116)  CO3m2H2O           (H4CO5)
+      (117)  NO2m_H2O           (H2NO3)
+      (118)  NO3m_H2O           (H2NO4)
+      (119)  NO3m2H2O           (H4NO5)
+      (120)  NO3mHNO3           (HN2O6)
+      (121)  NO3m_HCL           (NO3HCl)
+      (122)  HCO3m              (HCO3)
+      (123)  CLm                (Cl)
+      (124)  CLOm               (ClO)
+      (125)  CLm_H2O            (ClH2O)
+      (126)  CLm_HCL            (Cl2H)
+      (127)  Np                 (N)
+      (128)  Op                 (O)
+      (129)  NOp                (NO)
+      (130)  e                  (E)
+      (131)  N2D                (N)
+      (132)  O2_1S              (O2)
+      (133)  O2_1D              (O2)
+      (134)  O1D                (O)
+      (135)  H2O             
+  
+  
+     Invariant species
+      (  1)  M               
+      (  2)  N2              
+  
+  
+     Column integrals
+   ( 1)  O3               -  0.000E+00
+   ( 2)  O2               -  0.000E+00
+  
+Class List
+==========
+ Explicit  
+ --------
+      (  1)  CH4             
+      (  2)  N2O             
+      (  3)  CH3CL           
+      (  4)  CH3BR           
+      (  5)  CFC11           
+      (  6)  CFC12           
+      (  7)  CFC113          
+      (  8)  CFC114          
+      (  9)  CFC115          
+      ( 10)  HCFC22          
+      ( 11)  HCFC141B        
+      ( 12)  HCFC142B        
+      ( 13)  CCL4            
+      ( 14)  CH3CCL3         
+      ( 15)  CF3BR           
+      ( 16)  CF2CLBR         
+      ( 17)  H1202           
+      ( 18)  H2402           
+      ( 19)  CHBR3           
+      ( 20)  CH2BR2          
+      ( 21)  CLY             
+      ( 22)  BRY             
+  
+ Implicit  
+ --------
+      (  1)  O3              
+      (  2)  O               
+      (  3)  O1D             
+      (  4)  O2              
+      (  5)  O2_1S           
+      (  6)  O2_1D           
+      (  7)  H2              
+      (  8)  CO              
+      (  9)  CO2             
+      ( 10)  N               
+      ( 11)  NO              
+      ( 12)  NO2             
+      ( 13)  OH              
+      ( 14)  NO3             
+      ( 15)  HONO            
+      ( 16)  HNO3            
+      ( 17)  HO2NO2          
+      ( 18)  N2O5            
+      ( 19)  CH3O2           
+      ( 20)  CH3OOH          
+      ( 21)  CH2O            
+      ( 22)  H               
+      ( 23)  HO2             
+      ( 24)  H2O2            
+      ( 25)  H2O             
+      ( 26)  CL              
+      ( 27)  CL2             
+      ( 28)  CLO             
+      ( 29)  OCLO            
+      ( 30)  CL2O2           
+      ( 31)  HCL             
+      ( 32)  HOCL            
+      ( 33)  CLONO2          
+      ( 34)  BRCL            
+      ( 35)  BR              
+      ( 36)  BRO             
+      ( 37)  HBR             
+      ( 38)  HOBR            
+      ( 39)  BRONO2          
+      ( 40)  N2p             
+      ( 41)  O2p             
+      ( 42)  Np              
+      ( 43)  Op              
+      ( 44)  NOp             
+      ( 45)  N2D             
+      ( 46)  O4p             
+      ( 47)  O2p_H2O         
+      ( 48)  Hp_H2O          
+      ( 49)  Hp_2H2O         
+      ( 50)  Hp_3H2O         
+      ( 51)  Hp_4H2O         
+      ( 52)  Hp_5H2O         
+      ( 53)  H3Op_OH         
+      ( 54)  Hp_3N1          
+      ( 55)  Hp_4N1          
+      ( 56)  NOp_H2O         
+      ( 57)  NOp_2H2O        
+      ( 58)  NOp_3H2O        
+      ( 59)  NOp_CO2         
+      ( 60)  NOp_N2          
+      ( 61)  Om              
+      ( 62)  O2m             
+      ( 63)  O3m             
+      ( 64)  O4m             
+      ( 65)  CO3m            
+      ( 66)  CO4m            
+      ( 67)  NO2m            
+      ( 68)  NO3m            
+      ( 69)  OHm             
+      ( 70)  HCO3m           
+      ( 71)  CO3m_H2O        
+      ( 72)  CO3m2H2O        
+      ( 73)  NO2m_H2O        
+      ( 74)  NO3m_H2O        
+      ( 75)  NO3m2H2O        
+      ( 76)  NO3mHNO3        
+      ( 77)  NO3m_HCL        
+      ( 78)  CLm             
+      ( 79)  CLOm            
+      ( 80)  CLm_H2O         
+      ( 81)  CLm_HCL         
+      ( 82)  e               
+      ( 83)  COF2            
+      ( 84)  COFCL           
+      ( 85)  HF              
+      ( 86)  F               
+      ( 87)  OCS             
+      ( 88)  S               
+      ( 89)  SO              
+      ( 90)  SO2             
+      ( 91)  SO3             
+      ( 92)  H2SO4           
+      ( 93)  DMS             
+      ( 94)  SOAG            
+      ( 95)  so4_a1          
+      ( 96)  pom_a1          
+      ( 97)  soa_a1          
+      ( 98)  bc_a1           
+      ( 99)  dst_a1          
+      (100)  ncl_a1          
+      (101)  num_a1          
+      (102)  so4_a2          
+      (103)  soa_a2          
+      (104)  ncl_a2          
+      (105)  num_a2          
+      (106)  dst_a2          
+      (107)  dst_a3          
+      (108)  ncl_a3          
+      (109)  so4_a3          
+      (110)  num_a3          
+      (111)  pom_a4          
+      (112)  bc_a4           
+      (113)  num_a4          
+  
+     Photolysis
+  jo2_a            (  1)   O2 + hv ->  O + O1D                                                  rate = ** User defined **         (  1)
+  jo2_b            (  2)   O2 + hv ->  2*O                                                      rate = ** User defined **         (  2)
+  jo3_a            (  3)   O3 + hv ->  O1D + O2_1D                                              rate = ** User defined **         (  3)
+  jo3_b            (  4)   O3 + hv ->  O + O2                                                   rate = ** User defined **         (  4)
+  jn2o             (  5)   N2O + hv ->  O1D + N2                                                rate = ** User defined **         (  5)
+  jno              (  6)   NO + hv ->  N + O                                                    rate = ** User defined **         (  6)
+  jno_i            (  7)   NO + hv ->  NOp + e                                                  rate = ** User defined **         (  7)
+  jno2             (  8)   NO2 + hv ->  NO + O                                                  rate = ** User defined **         (  8)
+  jn2o5_a          (  9)   N2O5 + hv ->  NO2 + NO3                                              rate = ** User defined **         (  9)
+  jn2o5_b          ( 10)   N2O5 + hv ->  NO + O + NO3                                           rate = ** User defined **         ( 10)
+  jhno3            ( 11)   HNO3 + hv ->  NO2 + OH                                               rate = ** User defined **         ( 11)
+  jno3_a           ( 12)   NO3 + hv ->  NO2 + O                                                 rate = ** User defined **         ( 12)
+  jno3_b           ( 13)   NO3 + hv ->  NO + O2                                                 rate = ** User defined **         ( 13)
+  jho2no2_a        ( 14)   HO2NO2 + hv ->  OH + NO3                                             rate = ** User defined **         ( 14)
+  jho2no2_b        ( 15)   HO2NO2 + hv ->  NO2 + HO2                                            rate = ** User defined **         ( 15)
+  jch3ooh          ( 16)   CH3OOH + hv ->  CH2O + H + OH                                        rate = ** User defined **         ( 16)
+  jch2o_a          ( 17)   CH2O + hv ->  CO + 2*H                                               rate = ** User defined **         ( 17)
+  jch2o_b          ( 18)   CH2O + hv ->  CO + H2                                                rate = ** User defined **         ( 18)
+  jh2o_a           ( 19)   H2O + hv ->  OH + H                                                  rate = ** User defined **         ( 19)
+  jh2o_b           ( 20)   H2O + hv ->  H2 + O1D                                                rate = ** User defined **         ( 20)
+  jh2o_c           ( 21)   H2O + hv ->  2*H + O                                                 rate = ** User defined **         ( 21)
+  jh2o2            ( 22)   H2O2 + hv ->  2*OH                                                   rate = ** User defined **         ( 22)
+  jcl2             ( 23)   CL2 + hv ->  2*CL                                                    rate = ** User defined **         ( 23)
+  jclo             ( 24)   CLO + hv ->  CL + O                                                  rate = ** User defined **         ( 24)
+  joclo            ( 25)   OCLO + hv ->  O + CLO                                                rate = ** User defined **         ( 25)
+  jcl2o2           ( 26)   CL2O2 + hv ->  2*CL                                                  rate = ** User defined **         ( 26)
+  jhocl            ( 27)   HOCL + hv ->  OH + CL                                                rate = ** User defined **         ( 27)
+  jhcl             ( 28)   HCL + hv ->  H + CL                                                  rate = ** User defined **         ( 28)
+  jclono2_a        ( 29)   CLONO2 + hv ->  CL + NO3                                             rate = ** User defined **         ( 29)
+  jclono2_b        ( 30)   CLONO2 + hv ->  CLO + NO2                                            rate = ** User defined **         ( 30)
+  jbrcl            ( 31)   BRCL + hv ->  BR + CL                                                rate = ** User defined **         ( 31)
+  jbro             ( 32)   BRO + hv ->  BR + O                                                  rate = ** User defined **         ( 32)
+  jhobr            ( 33)   HOBR + hv ->  BR + OH                                                rate = ** User defined **         ( 33)
+  jhbr             ( 34)   HBR + hv ->  BR + H                                                  rate = ** User defined **         ( 34)
+  jbrono2_a        ( 35)   BRONO2 + hv ->  BR + NO3                                             rate = ** User defined **         ( 35)
+  jbrono2_b        ( 36)   BRONO2 + hv ->  BRO + NO2                                            rate = ** User defined **         ( 36)
+  jch3cl           ( 37)   CH3CL + hv ->  CL + CH3O2                                            rate = ** User defined **         ( 37)
+  jccl4            ( 38)   CCL4 + hv ->  4*CL                                                   rate = ** User defined **         ( 38)
+  jch3ccl3         ( 39)   CH3CCL3 + hv ->  3*CL                                                rate = ** User defined **         ( 39)
+  jcfcl3           ( 40)   CFC11 + hv ->  2*CL + COFCL                                          rate = ** User defined **         ( 40)
+  jcf2cl2          ( 41)   CFC12 + hv ->  2*CL + COF2                                           rate = ** User defined **         ( 41)
+  jcfc113          ( 42)   CFC113 + hv ->  2*CL + COFCL + COF2                                  rate = ** User defined **         ( 42)
+  jcfc114          ( 43)   CFC114 + hv ->  2*CL + 2*COF2                                        rate = ** User defined **         ( 43)
+  jcfc115          ( 44)   CFC115 + hv ->  CL + F + 2*COF2                                      rate = ** User defined **         ( 44)
+  jhcfc22          ( 45)   HCFC22 + hv ->  CL + COF2                                            rate = ** User defined **         ( 45)
+  jhcfc141b        ( 46)   HCFC141B + hv ->  CL + COFCL                                         rate = ** User defined **         ( 46)
+  jhcfc142b        ( 47)   HCFC142B + hv ->  CL + COF2                                          rate = ** User defined **         ( 47)
+  jch3br           ( 48)   CH3BR + hv ->  BR + CH3O2                                            rate = ** User defined **         ( 48)
+  jcf3br           ( 49)   CF3BR + hv ->  BR + F + COF2                                         rate = ** User defined **         ( 49)
+  jcf2clbr         ( 50)   CF2CLBR + hv ->  BR + CL + COF2                                      rate = ** User defined **         ( 50)
+  jchbr3           ( 51)   CHBR3 + hv ->  3*BR                                                  rate = ** User defined **         ( 51)
+  jch2br2          ( 52)   CH2BR2 + hv ->  2*BR                                                 rate = ** User defined **         ( 52)
+  jh1202           ( 53)   H1202 + hv ->  2*BR + COF2                                           rate = ** User defined **         ( 53)
+  jh2402           ( 54)   H2402 + hv ->  2*BR + 2*COF2                                         rate = ** User defined **         ( 54)
+  jcof2            ( 55)   COF2 + hv ->  2*F                                                    rate = ** User defined **         ( 55)
+  jcofcl           ( 56)   COFCL + hv ->  F + CL                                                rate = ** User defined **         ( 56)
+  jhf              ( 57)   HF + hv ->  H + F                                                    rate = ** User defined **         ( 57)
+  jco2             ( 58)   CO2 + hv ->  CO + O                                                  rate = ** User defined **         ( 58)
+  jch4_a           ( 59)   CH4 + hv ->  H + CH3O2                                               rate = ** User defined **         ( 59)
+  jch4_b           ( 60)   CH4 + hv ->  1.44*H2 + 0.18*CH2O + 0.18*O + 0.33*OH + 0.33*H         rate = ** User defined **         ( 60)
+                                        + 0.44*CO2 + 0.38*CO + 0.05*H2O                                                           
+  jh2so4           ( 61)   H2SO4 + hv ->  SO3 + H2O                                             rate = ** User defined **         ( 61)
+  jso2             ( 62)   SO2 + hv ->  SO + O                                                  rate = ** User defined **         ( 62)
+  jso3             ( 63)   SO3 + hv ->  SO2 + O                                                 rate = ** User defined **         ( 63)
+  jocs             ( 64)   OCS + hv ->  S + CO                                                  rate = ** User defined **         ( 64)
+  jso              ( 65)   SO + hv ->  S + O                                                    rate = ** User defined **         ( 65)
+  jhono            ( 66)   HONO + hv ->  OH + NO                                                rate = ** User defined **         ( 66)
+  jeuv_1           ( 67)   O + hv ->  Op + e                                                    rate = ** User defined **         ( 67)
+  jeuv_2           ( 68)   O + hv ->  Op + e                                                    rate = ** User defined **         ( 68)
+  jeuv_3           ( 69)   O + hv ->  Op + e                                                    rate = ** User defined **         ( 69)
+  jeuv_4           ( 70)   N + hv ->  Np + e                                                    rate = ** User defined **         ( 70)
+  jeuv_5           ( 71)   O2 + hv ->  O2p + e                                                  rate = ** User defined **         ( 71)
+  jeuv_6           ( 72)   N2 + hv ->  N2p + e                                                  rate = ** User defined **         ( 72)
+  jeuv_7           ( 73)   O2 + hv ->  O + Op + e                                               rate = ** User defined **         ( 73)
+  jeuv_8           ( 74)   O2 + hv ->  O + Op + e                                               rate = ** User defined **         ( 74)
+  jeuv_9           ( 75)   O2 + hv ->  O + Op + e                                               rate = ** User defined **         ( 75)
+  jeuv_10          ( 76)   N2 + hv ->  N + Np + e                                               rate = ** User defined **         ( 76)
+  jeuv_11          ( 77)   N2 + hv ->  N2D + Np + e                                             rate = ** User defined **         ( 77)
+  jeuv_12          ( 78)   O2 + hv ->  2*O                                                      rate = ** User defined **         ( 78)
+  jeuv_13          ( 79)   N2 + hv ->  1.2*N2D + .8*N                                           rate = ** User defined **         ( 79)
+  jeuv_14          ( 80)   O + hv ->  Op + e                                                    rate = ** User defined **         ( 80)
+  jeuv_15          ( 81)   O + hv ->  Op + e                                                    rate = ** User defined **         ( 81)
+  jeuv_16          ( 82)   O + hv ->  Op + e                                                    rate = ** User defined **         ( 82)
+  jeuv_17          ( 83)   O2 + hv ->  O2p + e                                                  rate = ** User defined **         ( 83)
+  jeuv_18          ( 84)   N2 + hv ->  N2p + e                                                  rate = ** User defined **         ( 84)
+  jeuv_19          ( 85)   O2 + hv ->  O + Op + e                                               rate = ** User defined **         ( 85)
+  jeuv_20          ( 86)   O2 + hv ->  O + Op + e                                               rate = ** User defined **         ( 86)
+  jeuv_21          ( 87)   O2 + hv ->  O + Op + e                                               rate = ** User defined **         ( 87)
+  jeuv_22          ( 88)   N2 + hv ->  N + Np + e                                               rate = ** User defined **         ( 88)
+  jeuv_23          ( 89)   N2 + hv ->  N2D + Np + e                                             rate = ** User defined **         ( 89)
+  jeuv_24          ( 90)   O2 + hv ->  2*O                                                      rate = ** User defined **         ( 90)
+  jeuv_25          ( 91)   N2 + hv ->  1.2*N2D + .8*N                                           rate = ** User defined **         ( 91)
+  jeuv_26          ( 92)   CO2 + hv ->  CO + O                                                  rate = ** User defined **         ( 92)
+  jppi             ( 93)   O2p_H2O + hv ->  O2p + H2O                                           rate = ** User defined **         ( 93)
+  jepn1            ( 94)   Om + hv ->  O + e                                                    rate = ** User defined **         ( 94)
+  jepn2            ( 95)   O2m + hv ->  O2 + e                                                  rate = ** User defined **         ( 95)
+  jepn3            ( 96)   O3m + hv ->  O3 + e                                                  rate = ** User defined **         ( 96)
+  jepn4            ( 97)   OHm + hv ->  OH + e                                                  rate = ** User defined **         ( 97)
+  jepn6            ( 98)   NO2m + hv ->  NO2 + e                                                rate = ** User defined **         ( 98)
+  jepn7            ( 99)   NO3m + hv ->  NO3 + e                                                rate = ** User defined **         ( 99)
+  jpni1            (100)   O3m + hv ->  Om + O2                                                 rate = ** User defined **         (100)
+  jpni2            (101)   O4m + hv ->  O2m + O2                                                rate = ** User defined **         (101)
+  jpni3            (102)   CO3m + hv ->  Om + CO2                                               rate = ** User defined **         (102)
+  jpni4            (103)   CO4m + hv ->  O2m + CO2                                              rate = ** User defined **         (103)
+  jpni5            (104)   CO3m_H2O + hv ->  CO3m + H2O                                         rate = ** User defined **         (104)
+  
+     Reactions
+  usr_O_O2         (  1)   O + O2 + M ->  O3 + M                                                rate = ** User defined **         (105)
+  O_O3             (  2)   O + O3 ->  2*O2                                                      rate = 8.00E-12*exp(  -2060./t)   (106)
+  usr_O_O          (  3)   O + O + M ->  O2 + M                                                 rate = ** User defined **         (107)
+  O2_1S_O          (  4)   O2_1S + O ->  O2_1D + O                                              rate = 8.00E-14                   (108)
+  O2_1S_O2         (  5)   O2_1S + O2 ->  O2_1D + O2                                            rate = 3.90E-17                   (109)
+  O2_1S_N2         (  6)   O2_1S + N2 ->  O2_1D + N2                                            rate = 1.80E-15*exp(     45./t)   (110)
+  O2_1S_O3         (  7)   O2_1S + O3 ->  O2_1D + O3                                            rate = 3.50E-11*exp(   -135./t)   (111)
+  O2_1S_CO2        (  8)   O2_1S + CO2 ->  O2_1D + CO2                                          rate = 4.20E-13                   (112)
+  ag2              (  9)   O2_1S ->  O2                                                         rate = 8.50E-02                   (113)
+  O2_1D_O          ( 10)   O2_1D + O ->  O2 + O                                                 rate = 1.30E-16                   (114)
+  O2_1D_O2         ( 11)   O2_1D + O2 ->  2*O2                                                  rate = 3.60E-18*exp(   -220./t)   (115)
+  O2_1D_N2         ( 12)   O2_1D + N2 ->  O2 + N2                                               rate = 1.00E-20                   (116)
+  ag1              ( 13)   O2_1D ->  O2                                                         rate = 2.58E-04                   (117)
+  O1D_N2           ( 14)   O1D + N2 ->  O + N2                                                  rate = 2.15E-11*exp(    110./t)   (118)
+  O1D_O2           ( 15)   O1D + O2 ->  O + O2_1S                                               rate = 3.13E-11*exp(     55./t)   (119)
+  O1D_O2b          ( 16)   O1D + O2 ->  O + O2                                                  rate = 1.65E-12*exp(     55./t)   (120)
+  O1D_H2O          ( 17)   O1D + H2O ->  2*OH                                                   rate = 1.63E-10*exp(     60./t)   (121)
+  O1D_N2Oa         ( 18)   O1D + N2O ->  2*NO                                                   rate = 7.25E-11*exp(     20./t)   (122)
+  O1D_N2Ob         ( 19)   O1D + N2O ->  N2 + O2                                                rate = 4.63E-11*exp(     20./t)   (123)
+  O1D_O3           ( 20)   O1D + O3 ->  O2 + O2                                                 rate = 1.20E-10                   (124)
+  O1D_CFC11        ( 21)   O1D + CFC11 ->  2*CL + COFCL                                         rate = 2.02E-10                   (125)
+  O1D_CFC12        ( 22)   O1D + CFC12 ->  2*CL + COF2                                          rate = 1.20E-10                   (126)
+  O1D_CFC113       ( 23)   O1D + CFC113 ->  2*CL + COFCL + COF2                                 rate = 1.50E-10                   (127)
+  O1D_CFC114       ( 24)   O1D + CFC114 ->  2*CL + 2*COF2                                       rate = 9.75E-11                   (128)
+  O1D_CFC115       ( 25)   O1D + CFC115 ->  CL + F + 2*COF2                                     rate = 1.50E-11                   (129)
+  O1D_HCFC22       ( 26)   O1D + HCFC22 ->  CL + COF2                                           rate = 7.20E-11                   (130)
+  O1D_HCFC141B     ( 27)   O1D + HCFC141B ->  CL + COFCL                                        rate = 1.79E-10                   (131)
+  O1D_HCFC142B     ( 28)   O1D + HCFC142B ->  CL + COF2                                         rate = 1.63E-10                   (132)
+  O1D_CCL4         ( 29)   O1D + CCL4 ->  4*CL                                                  rate = 2.84E-10                   (133)
+  O1D_CH3BR        ( 30)   O1D + CH3BR ->  BR                                                   rate = 1.67E-10                   (134)
+  O1D_CF2CLBR      ( 31)   O1D + CF2CLBR ->  CL + BR + COF2                                     rate = 9.60E-11                   (135)
+  O1D_CF3BR        ( 32)   O1D + CF3BR ->  BR + F + COF2                                        rate = 4.10E-11                   (136)
+  O1D_H1202        ( 33)   O1D + H1202 ->  2*BR + COF2                                          rate = 1.01E-10                   (137)
+  O1D_H2402        ( 34)   O1D + H2402 ->  2*BR + 2*COF2                                        rate = 1.20E-10                   (138)
+  O1D_CHBR3        ( 35)   O1D + CHBR3 ->  3*BR                                                 rate = 4.49E-10                   (139)
+  O1D_CH2BR2       ( 36)   O1D + CH2BR2 ->  2*BR                                                rate = 2.57E-10                   (140)
+  O1D_COF2         ( 37)   O1D + COF2 ->  2*F                                                   rate = 2.14E-11                   (141)
+  O1D_COFCL        ( 38)   O1D + COFCL ->  F + CL                                               rate = 1.90E-10                   (142)
+  O1D_CH4a         ( 39)   O1D + CH4 ->  CH3O2 + OH                                             rate = 1.31E-10                   (143)
+  O1D_CH4b         ( 40)   O1D + CH4 ->  CH2O + H + HO2                                         rate = 3.50E-11                   (144)
+  O1D_CH4c         ( 41)   O1D + CH4 ->  CH2O + H2                                              rate = 9.00E-12                   (145)
+  O1D_H2           ( 42)   O1D + H2 ->  H + OH                                                  rate = 1.20E-10                   (146)
+  O1D_HCL          ( 43)   O1D + HCL ->  CL + OH                                                rate = 1.50E-10                   (147)
+  O1D_HBR          ( 44)   O1D + HBR ->  BR + OH                                                rate = 1.20E-10                   (148)
+  H_O2             ( 45)   H + O2 + M ->  HO2 + M                                               troe : ko=4.40E-32*(300/t)**1.30  (149)
+                                                                                                       ki=7.50E-11*(300/t)**-0.20 
+                                                                                                        f=0.60                    
+  H_O3             ( 46)   H + O3 ->  OH + O2                                                   rate = 1.40E-10*exp(   -470./t)   (150)
+  H_HO2a           ( 47)   H + HO2 ->  2*OH                                                     rate = 7.20E-11                   (151)
+  H_HO2            ( 48)   H + HO2 ->  H2 + O2                                                  rate = 6.90E-12                   (152)
+  H_HO2b           ( 49)   H + HO2 ->  H2O + O                                                  rate = 1.60E-12                   (153)
+  OH_O             ( 50)   OH + O ->  H + O2                                                    rate = 1.80E-11*exp(    180./t)   (154)
+  OH_O3            ( 51)   OH + O3 ->  HO2 + O2                                                 rate = 1.70E-12*exp(   -940./t)   (155)
+  OH_HO2           ( 52)   OH + HO2 ->  H2O + O2                                                rate = 4.80E-11*exp(    250./t)   (156)
+  OH_OH            ( 53)   OH + OH ->  H2O + O                                                  rate = 1.80E-12                   (157)
+  OH_OH_M          ( 54)   OH + OH + M ->  H2O2 + M                                             troe : ko=6.90E-31*(300/t)**1.00  (158)
+                                                                                                       ki=2.60E-11                
+                                                                                                        f=0.60                    
+  OH_H2            ( 55)   OH + H2 ->  H2O + H                                                  rate = 2.80E-12*exp(  -1800./t)   (159)
+  OH_H2O2          ( 56)   OH + H2O2 ->  H2O + HO2                                              rate = 1.80E-12                   (160)
+  H2_O             ( 57)   H2 + O ->  OH + H                                                    rate = 1.60E-11*exp(  -4570./t)   (161)
+  HO2_O            ( 58)   HO2 + O ->  OH + O2                                                  rate = 3.00E-11*exp(    200./t)   (162)
+  HO2_O3           ( 59)   HO2 + O3 ->  OH + 2*O2                                               rate = 1.00E-14*exp(   -490./t)   (163)
+  usr_HO2_HO2      ( 60)   HO2 + HO2 ->  H2O2 + O2                                              rate = ** User defined **         (164)
+  H2O2_O           ( 61)   H2O2 + O ->  OH + HO2                                                rate = 1.40E-12*exp(  -2000./t)   (165)
+  HONO1            ( 62)   H + NO + M ->  HONO + M                                              troe : ko=7.00E-31*(300/t)**2.60  (166)
+                                                                                                       ki=3.60E-11*(300/t)**0.10  
+                                                                                                        f=0.60                    
+  HONO2            ( 63)   OH + HONO ->  H2O + NO2                                              rate = 1.80E-11*exp(    390./t)   (167)
+  N2D_O2           ( 64)   N2D + O2 ->  NO + O1D                                                rate = 5.00E-12                   (168)
+  N2D_O            ( 65)   N2D + O ->  N + O                                                    rate = 7.00E-13                   (169)
+  N_OH             ( 66)   N + OH ->  NO + H                                                    rate = 5.00E-11                   (170)
+  N_O2             ( 67)   N + O2 ->  NO + O                                                    rate = 1.50E-11*exp(  -3600./t)   (171)
+  N_NO             ( 68)   N + NO ->  N2 + O                                                    rate = 2.10E-11*exp(    100./t)   (172)
+  N_NO2a           ( 69)   N + NO2 ->  N2O + O                                                  rate = 2.90E-12*exp(    220./t)   (173)
+  N_NO2b           ( 70)   N + NO2 ->  2*NO                                                     rate = 1.45E-12*exp(    220./t)   (174)
+  N_NO2c           ( 71)   N + NO2 ->  N2 + O2                                                  rate = 1.45E-12*exp(    220./t)   (175)
+  NO_O             ( 72)   NO + O + M ->  NO2 + M                                               troe : ko=9.00E-32*(300/t)**1.50  (176)
+                                                                                                       ki=3.00E-11                
+                                                                                                        f=0.60                    
+  NO_HO2           ( 73)   NO + HO2 ->  NO2 + OH                                                rate = 3.30E-12*exp(    270./t)   (177)
+  NO_O3            ( 74)   NO + O3 ->  NO2 + O2                                                 rate = 3.00E-12*exp(  -1500./t)   (178)
+  NO2_O            ( 75)   NO2 + O ->  NO + O2                                                  rate = 5.10E-12*exp(    210./t)   (179)
+  NO2_O_M          ( 76)   NO2 + O + M ->  NO3 + M                                              troe : ko=2.50E-31*(300/t)**1.80  (180)
+                                                                                                       ki=2.20E-11*(300/t)**0.70  
+                                                                                                        f=0.60                    
+  NO2_O3           ( 77)   NO2 + O3 ->  NO3 + O2                                                rate = 1.20E-13*exp(  -2450./t)   (181)
+  tag_NO2_NO3      ( 78)   NO2 + NO3 + M ->  N2O5 + M                                           troe : ko=2.00E-30*(300/t)**4.40  (182)
+                                                                                                       ki=1.40E-12*(300/t)**0.70  
+                                                                                                        f=0.60                    
+  usr_N2O5_M       ( 79)   N2O5 + M ->  NO2 + NO3 + M                                           rate = ** User defined **         (183)
+  tag_NO2_OH       ( 80)   NO2 + OH + M ->  HNO3 + M                                            troe : ko=1.80E-30*(300/t)**3.00  (184)
+                                                                                                       ki=2.80E-11                
+                                                                                                        f=0.60                    
+  usr_HNO3_OH      ( 81)   HNO3 + OH ->  NO3 + H2O                                              rate = ** User defined **         (185)
+  NO3_NO           ( 82)   NO3 + NO ->  2*NO2                                                   rate = 1.50E-11*exp(    170./t)   (186)
+  NO3_O            ( 83)   NO3 + O ->  NO2 + O2                                                 rate = 1.00E-11                   (187)
+  NO3_OH           ( 84)   NO3 + OH ->  HO2 + NO2                                               rate = 2.20E-11                   (188)
+  NO3_HO2          ( 85)   NO3 + HO2 ->  OH + NO2 + O2                                          rate = 3.50E-12                   (189)
+  tag_NO2_HO2      ( 86)   NO2 + HO2 + M ->  HO2NO2 + M                                         troe : ko=2.00E-31*(300/t)**3.40  (190)
+                                                                                                       ki=2.90E-12*(300/t)**1.10  
+                                                                                                        f=0.60                    
+  HO2NO2_OH        ( 87)   HO2NO2 + OH ->  H2O + NO2 + O2                                       rate = 1.30E-12*exp(    380./t)   (191)
+  usr_HO2NO2_M     ( 88)   HO2NO2 + M ->  HO2 + NO2 + M                                         rate = ** User defined **         (192)
+  CL_O3            ( 89)   CL + O3 ->  CLO + O2                                                 rate = 2.30E-11*exp(   -200./t)   (193)
+  CL_H2            ( 90)   CL + H2 ->  HCL + H                                                  rate = 3.05E-11*exp(  -2270./t)   (194)
+  CL_H2O2          ( 91)   CL + H2O2 ->  HCL + HO2                                              rate = 1.10E-11*exp(   -980./t)   (195)
+  CL_HO2a          ( 92)   CL + HO2 ->  HCL + O2                                                rate = 1.40E-11*exp(    270./t)   (196)
+  CL_HO2b          ( 93)   CL + HO2 ->  OH + CLO                                                rate = 3.60E-11*exp(   -375./t)   (197)
+  CL_CH2O          ( 94)   CL + CH2O ->  HCL + HO2 + CO                                         rate = 8.10E-11*exp(    -30./t)   (198)
+  CL_CH4           ( 95)   CL + CH4 ->  CH3O2 + HCL                                             rate = 7.30E-12*exp(  -1280./t)   (199)
+  CLO_O            ( 96)   CLO + O ->  CL + O2                                                  rate = 2.80E-11*exp(     85./t)   (200)
+  CLO_OHa          ( 97)   CLO + OH ->  CL + HO2                                                rate = 7.40E-12*exp(    270./t)   (201)
+  CLO_OHb          ( 98)   CLO + OH ->  HCL + O2                                                rate = 6.00E-13*exp(    230./t)   (202)
+  CLO_HO2          ( 99)   CLO + HO2 ->  O2 + HOCL                                              rate = 2.60E-12*exp(    290./t)   (203)
+  CLO_CH3O2        (100)   CLO + CH3O2 ->  CL + HO2 + CH2O                                      rate = 3.30E-12*exp(   -115./t)   (204)
+  CLO_NO           (101)   CLO + NO ->  NO2 + CL                                                rate = 6.40E-12*exp(    290./t)   (205)
+  CLO_NO2_M        (102)   CLO + NO2 + M ->  CLONO2 + M                                         troe : ko=1.80E-31*(300/t)**3.40  (206)
+                                                                                                       ki=1.50E-11*(300/t)**1.90  
+                                                                                                        f=0.60                    
+  CLO_CLOa         (103)   CLO + CLO ->  2*CL + O2                                              rate = 3.00E-11*exp(  -2450./t)   (207)
+  CLO_CLOb         (104)   CLO + CLO ->  CL2 + O2                                               rate = 1.00E-12*exp(  -1590./t)   (208)
+  CLO_CLOc         (105)   CLO + CLO ->  CL + OCLO                                              rate = 3.50E-13*exp(  -1370./t)   (209)
+  tag_CLO_CLO_M    (106)   CLO + CLO + M ->  CL2O2 + M                                          troe : ko=1.60E-32*(300/t)**4.50  (210)
+                                                                                                       ki=3.00E-12*(300/t)**2.00  
+                                                                                                        f=0.60                    
+  usr_CL2O2_M      (107)   CL2O2 + M ->  CLO + CLO + M                                          rate = ** User defined **         (211)
+  HCL_OH           (108)   HCL + OH ->  H2O + CL                                                rate = 1.80E-12*exp(   -250./t)   (212)
+  HCL_O            (109)   HCL + O ->  CL + OH                                                  rate = 1.00E-11*exp(  -3300./t)   (213)
+  HOCL_O           (110)   HOCL + O ->  CLO + OH                                                rate = 1.70E-13                   (214)
+  HOCL_CL          (111)   HOCL + CL ->  HCL + CLO                                              rate = 3.40E-12*exp(   -130./t)   (215)
+  HOCL_OH          (112)   HOCL + OH ->  H2O + CLO                                              rate = 3.00E-12*exp(   -500./t)   (216)
+  CLONO2_O         (113)   CLONO2 + O ->  CLO + NO3                                             rate = 3.60E-12*exp(   -840./t)   (217)
+  CLONO2_OH        (114)   CLONO2 + OH ->  HOCL + NO3                                           rate = 1.20E-12*exp(   -330./t)   (218)
+  CLONO2_CL        (115)   CLONO2 + CL ->  CL2 + NO3                                            rate = 6.50E-12*exp(    135./t)   (219)
+  BR_O3            (116)   BR + O3 ->  BRO + O2                                                 rate = 1.60E-11*exp(   -780./t)   (220)
+  BR_HO2           (117)   BR + HO2 ->  HBR + O2                                                rate = 4.80E-12*exp(   -310./t)   (221)
+  BR_CH2O          (118)   BR + CH2O ->  HBR + HO2 + CO                                         rate = 1.70E-11*exp(   -800./t)   (222)
+  BRO_O            (119)   BRO + O ->  BR + O2                                                  rate = 1.90E-11*exp(    230./t)   (223)
+  BRO_OH           (120)   BRO + OH ->  BR + HO2                                                rate = 1.70E-11*exp(    250./t)   (224)
+  BRO_HO2          (121)   BRO + HO2 ->  HOBR + O2                                              rate = 4.50E-12*exp(    460./t)   (225)
+  BRO_NO           (122)   BRO + NO ->  BR + NO2                                                rate = 8.80E-12*exp(    260./t)   (226)
+  BRO_NO2_M        (123)   BRO + NO2 + M ->  BRONO2 + M                                         troe : ko=5.20E-31*(300/t)**3.20  (227)
+                                                                                                       ki=6.90E-12*(300/t)**2.90  
+                                                                                                        f=0.60                    
+  BRO_CLOa         (124)   BRO + CLO ->  BR + OCLO                                              rate = 9.50E-13*exp(    550./t)   (228)
+  BRO_CLOb         (125)   BRO + CLO ->  BR + CL + O2                                           rate = 2.30E-12*exp(    260./t)   (229)
+  BRO_CLOc         (126)   BRO + CLO ->  BRCL + O2                                              rate = 4.10E-13*exp(    290./t)   (230)
+  BRO_BRO          (127)   BRO + BRO ->  2*BR + O2                                              rate = 1.50E-12*exp(    230./t)   (231)
+  HBR_OH           (128)   HBR + OH ->  BR + H2O                                                rate = 5.50E-12*exp(    200./t)   (232)
+  HBR_O            (129)   HBR + O ->  BR + OH                                                  rate = 5.80E-12*exp(  -1500./t)   (233)
+  HOBR_O           (130)   HOBR + O ->  BRO + OH                                                rate = 1.20E-10*exp(   -430./t)   (234)
+  BRONO2_O         (131)   BRONO2 + O ->  BRO + NO3                                             rate = 1.90E-11*exp(    215./t)   (235)
+  F_H2O            (132)   F + H2O ->  HF + OH                                                  rate = 1.40E-11                   (236)
+  F_H2             (133)   F + H2 ->  HF + H                                                    rate = 1.40E-10*exp(   -500./t)   (237)
+  F_CH4            (134)   F + CH4 ->  HF + CH3O2                                               rate = 1.60E-10*exp(   -260./t)   (238)
+  F_HNO3           (135)   F + HNO3 ->  HF + NO3                                                rate = 6.00E-12*exp(    400./t)   (239)
+  CH3CL_CL         (136)   CH3CL + CL ->  HO2 + CO + 2*HCL                                      rate = 2.17E-11*exp(  -1130./t)   (240)
+  CH3CL_OH         (137)   CH3CL + OH ->  CL + H2O + HO2                                        rate = 2.40E-12*exp(  -1250./t)   (241)
+  CH3CCL3_OH       (138)   CH3CCL3 + OH ->  H2O + 3*CL                                          rate = 1.64E-12*exp(  -1520./t)   (242)
+  HCFC22_OH        (139)   HCFC22 + OH ->  H2O + CL + COF2                                      rate = 1.05E-12*exp(  -1600./t)   (243)
+  CH3BR_OH         (140)   CH3BR + OH ->  BR + H2O + HO2                                        rate = 2.35E-12*exp(  -1300./t)   (244)
+  CH3BR_CL         (141)   CH3BR + CL ->  HCL + HO2 + BR                                        rate = 1.40E-11*exp(  -1030./t)   (245)
+  HCFC141B_OH      (142)   HCFC141B + OH ->  CL + COFCL                                         rate = 1.25E-12*exp(  -1600./t)   (246)
+  HCFC142B_OH      (143)   HCFC142B + OH ->  CL + COF2                                          rate = 1.30E-12*exp(  -1770./t)   (247)
+  CH2BR2_OH        (144)   CH2BR2 + OH ->  2*BR + H2O                                           rate = 2.00E-12*exp(   -840./t)   (248)
+  CHBR3_OH         (145)   CHBR3 + OH ->  3*BR                                                  rate = 1.35E-12*exp(   -600./t)   (249)
+  CH2BR2_CL        (146)   CH2BR2 + CL ->  2*BR + HCL                                           rate = 6.30E-12*exp(   -800./t)   (250)
+  CHBR3_CL         (147)   CHBR3 + CL ->  3*BR + HCL                                            rate = 4.85E-12*exp(   -850./t)   (251)
+  CH4_OH           (148)   CH4 + OH ->  CH3O2 + H2O                                             rate = 2.45E-12*exp(  -1775./t)   (252)
+  usr_CO_OH_b      (149)   CO + OH ->  CO2 + H                                                  rate = ** User defined **         (253)
+  CO_OH_M          (150)   CO + OH + M ->  CO2 + HO2 + M                                        troe : ko=5.90E-33*(300/t)**1.40  (254)
+                                                                                                       ki=1.10E-12*(300/t)**-1.30 
+                                                                                                        f=0.60                    
+  CH2O_NO3         (151)   CH2O + NO3 ->  CO + HO2 + HNO3                                       rate = 6.00E-13*exp(  -2058./t)   (255)
+  CH2O_OH          (152)   CH2O + OH ->  CO + H2O + H                                           rate = 5.50E-12*exp(    125./t)   (256)
+  CH2O_O           (153)   CH2O + O ->  HO2 + OH + CO                                           rate = 3.40E-11*exp(  -1600./t)   (257)
+  CH3O2_NO         (154)   CH3O2 + NO ->  CH2O + NO2 + HO2                                      rate = 2.80E-12*exp(    300./t)   (258)
+  CH3O2_HO2        (155)   CH3O2 + HO2 ->  CH3OOH + O2                                          rate = 4.10E-13*exp(    750./t)   (259)
+  CH3OOH_OH        (156)   CH3OOH + OH ->  CH3O2 + H2O                                          rate = 3.80E-12*exp(    200./t)   (260)
+  usr_N2O5_aer     (157)   N2O5 ->  2*HNO3                                                      rate = ** User defined **         (261)
+  usr_NO3_aer      (158)   NO3 ->  HNO3                                                         rate = ** User defined **         (262)
+  usr_NO2_aer      (159)   NO2 ->  0.5*OH + 0.5*NO + 0.5*HNO3                                   rate = ** User defined **         (263)
+  usr_HO2_aer      (160)   HO2 ->  0.5*H2O2                                                     rate = ** User defined **         (264)
+  OCS_O            (161)   OCS + O ->  SO + CO                                                  rate = 2.10E-11*exp(  -2200./t)   (265)
+  OCS_OH           (162)   OCS + OH ->  SO2 + CO + H                                            rate = 1.10E-13*exp(  -1200./t)   (266)
+  S_OH             (163)   S + OH ->  SO + H                                                    rate = 6.60E-11                   (267)
+  S_O2             (164)   S + O2 ->  SO + O                                                    rate = 2.30E-12                   (268)
+  S_O3             (165)   S + O3 ->  SO + O2                                                   rate = 1.20E-11                   (269)
+  SO_OH            (166)   SO + OH ->  SO2 + H                                                  rate = 2.70E-11*exp(    335./t)   (270)
+  SO_O2            (167)   SO + O2 ->  SO2 + O                                                  rate = 1.25E-13*exp(  -2190./t)   (271)
+  SO_O3            (168)   SO + O3 ->  SO2 + O2                                                 rate = 3.40E-12*exp(  -1100./t)   (272)
+  SO_NO2           (169)   SO + NO2 ->  SO2 + NO                                                rate = 1.40E-11                   (273)
+  SO_CLO           (170)   SO + CLO ->  SO2 + CL                                                rate = 2.80E-11                   (274)
+  SO_BRO           (171)   SO + BRO ->  SO2 + BR                                                rate = 5.70E-11                   (275)
+  SO_OCLO          (172)   SO + OCLO ->  SO2 + CLO                                              rate = 1.90E-12                   (276)
+  usr_SO2_OH       (173)   SO2 + OH ->  SO3 + HO2                                               rate = ** User defined **         (277)
+  usr_SO3_H2O      (174)   SO3 + H2O ->  H2SO4                                                  rate = ** User defined **         (278)
+  usr_DMS_OH       (175)   DMS + OH ->  .5*SO2 + .5*HO2                                         rate = ** User defined **         (279)
+  DMS_OHb          (176)   DMS + OH ->  SO2                                                     rate = 9.60E-12*exp(   -234./t)   (280)
+  DMS_NO3          (177)   DMS + NO3 ->  SO2 + HNO3                                             rate = 1.90E-13*exp(    520./t)   (281)
+  het1             (178)   N2O5 ->  2*HNO3                                                      rate = ** User defined **         (282)
+  het2             (179)   CLONO2 ->  HOCL + HNO3                                               rate = ** User defined **         (283)
+  het3             (180)   BRONO2 ->  HOBR + HNO3                                               rate = ** User defined **         (284)
+  het4             (181)   CLONO2 + HCL ->  CL2 + HNO3                                          rate = ** User defined **         (285)
+  het5             (182)   HOCL + HCL ->  CL2 + H2O                                             rate = ** User defined **         (286)
+  het6             (183)   HOBR + HCL ->  BRCL + H2O                                            rate = ** User defined **         (287)
+  het7             (184)   N2O5 ->  2*HNO3                                                      rate = ** User defined **         (288)
+  het8             (185)   CLONO2 ->  HOCL + HNO3                                               rate = ** User defined **         (289)
+  het9             (186)   CLONO2 + HCL ->  CL2 + HNO3                                          rate = ** User defined **         (290)
+  het10            (187)   HOCL + HCL ->  CL2 + H2O                                             rate = ** User defined **         (291)
+  het11            (188)   BRONO2 ->  HOBR + HNO3                                               rate = ** User defined **         (292)
+  het12            (189)   N2O5 ->  2*HNO3                                                      rate = ** User defined **         (293)
+  het13            (190)   CLONO2 ->  HOCL + HNO3                                               rate = ** User defined **         (294)
+  het14            (191)   BRONO2 ->  HOBR + HNO3                                               rate = ** User defined **         (295)
+  het15            (192)   CLONO2 + HCL ->  CL2 + HNO3                                          rate = ** User defined **         (296)
+  het16            (193)   HOCL + HCL ->  CL2 + H2O                                             rate = ** User defined **         (297)
+  het17            (194)   HOBR + HCL ->  BRCL + H2O                                            rate = ** User defined **         (298)
+  ion_Op_O2        (195)   Op + O2 ->  O2p + O                                                  rate = ** User defined **         (299)
+  ion_Op_N2        (196)   Op + N2 ->  NOp + N                                                  rate = ** User defined **         (300)
+  ion_N2p_Oa       (197)   N2p + O ->  NOp + N2D                                                rate = ** User defined **         (301)
+  ion_N2p_Ob       (198)   N2p + O ->  Op + N2                                                  rate = ** User defined **         (302)
+  ion_Op_CO2       (199)   Op + CO2 ->  O2p + CO                                                rate = 9.00E-10                   (303)
+  ion_O2p_N        (200)   O2p + N ->  NOp + O                                                  rate = 1.00E-10                   (304)
+  ion_O2p_NO       (201)   O2p + NO ->  NOp + O2                                                rate = 4.40E-10                   (305)
+  ion_Np_O2a       (202)   Np + O2 ->  O2p + N                                                  rate = 4.00E-10                   (306)
+  ion_Np_O2b       (203)   Np + O2 ->  NOp + O                                                  rate = 2.00E-10                   (307)
+  ion_Np_O         (204)   Np + O ->  Op + N                                                    rate = 1.00E-12                   (308)
+  ion_N2p_O2       (205)   N2p + O2 ->  O2p + N2                                                rate = 6.00E-11                   (309)
+  ion_O2p_N2       (206)   O2p + N2 ->  NOp + NO                                                rate = 5.00E-16                   (310)
+  elec1            (207)   NOp + e ->  .2*N + .8*N2D + O                                        rate = ** User defined **         (311)
+  elec2            (208)   O2p + e ->  1.15*O + .85*O1D                                         rate = ** User defined **         (312)
+  elec3            (209)   N2p + e ->  1.1*N + .9*N2D                                           rate = ** User defined **         (313)
+  ean1             (210)   O2 + N2 + e ->  O2m + N2                                             rate = ** User defined **         (314)
+  ean2             (211)   O3 + e ->  Om + O2                                                   rate = ** User defined **         (315)
+  ean3             (212)   O2 + e + M ->  O2m + M                                               rate = ** User defined **         (316)
+  rpe1             (213)   O4p + e ->  2*O2                                                     rate = ** User defined **         (317)
+                   (214)   NOp_CO2 + e ->  NO + CO2                                             rate = 1.50E-06                   (318)
+                   (215)   NOp_H2O + e ->  NO + H2O                                             rate = 1.50E-06                   (319)
+                   (216)   NOp_2H2O + e ->  NO + 2*H2O                                          rate = 2.00E-06                   (320)
+                   (217)   NOp_3H2O + e ->  NO + 3*H2O                                          rate = 2.00E-06                   (321)
+                   (218)   O2p_H2O + e ->  O2 + H2O                                             rate = 2.00E-06                   (322)
+                   (219)   H3Op_OH + e ->  OH + H + H2O                                         rate = 1.50E-06                   (323)
+  rpe2             (220)   Hp_H2O + e ->  H + H2O                                               rate = ** User defined **         (324)
+  rpe3             (221)   Hp_2H2O + e ->  H + 2*H2O                                            rate = ** User defined **         (325)
+  rpe4             (222)   Hp_3H2O + e ->  H + 3*H2O                                            rate = ** User defined **         (326)
+                   (223)   Hp_4H2O + e ->  H + 4*H2O                                            rate = 3.60E-06                   (327)
+                   (224)   Hp_5H2O + e ->  H + 5*H2O                                            rate = 5.00E-06                   (328)
+  rpe5             (225)   NOp_N2 + e ->  NO + N2                                               rate = ** User defined **         (329)
+                   (226)   NOp_N2 + CO2 ->  NOp_CO2 + N2                                        rate = 1.00E-09                   (330)
+                   (227)   NOp_N2 + H2O ->  NOp_H2O + N2                                        rate = 1.00E-09                   (331)
+  pir1             (228)   O2p + O2 + M ->  O4p + M                                             rate = ** User defined **         (332)
+                   (229)   O2p + H2O + M ->  O2p_H2O + M                                        rate = 2.80E-28                   (333)
+                   (230)   O4p + H2O ->  O2p_H2O + O2                                           rate = 1.70E-09                   (334)
+                   (231)   O4p + O2_1D ->  O2p + 2*O2                                           rate = 1.50E-10                   (335)
+                   (232)   O4p + O ->  O2p + O3                                                 rate = 3.00E-10                   (336)
+                   (233)   O2p_H2O + H2O ->  H3Op_OH + O2                                       rate = 9.00E-10                   (337)
+                   (234)   O2p_H2O + H2O ->  Hp_H2O + OH + O2                                   rate = 2.40E-10                   (338)
+                   (235)   H3Op_OH + H2O ->  Hp_2H2O + OH                                       rate = 2.00E-09                   (339)
+  pir2             (236)   Hp_H2O + H2O + M ->  Hp_2H2O + M                                     rate = ** User defined **         (340)
+  pir3             (237)   Hp_2H2O + M ->  Hp_H2O + H2O + M                                     rate = ** User defined **         (341)
+  pir4             (238)   Hp_2H2O + H2O + M ->  Hp_3H2O + M                                    rate = ** User defined **         (342)
+  pir5             (239)   Hp_3H2O + M ->  Hp_2H2O + H2O + M                                    rate = ** User defined **         (343)
+  pir6             (240)   Hp_3H2O + H2O + M ->  Hp_4H2O + M                                    rate = ** User defined **         (344)
+  pir7             (241)   Hp_4H2O + M ->  Hp_3H2O + H2O + M                                    rate = ** User defined **         (345)
+  pir8             (242)   Hp_4H2O + H2O + M ->  Hp_5H2O + M                                    rate = ** User defined **         (346)
+  pir9             (243)   Hp_5H2O + M ->  Hp_4H2O + H2O + M                                    rate = ** User defined **         (347)
+                   (244)   Hp_4H2O + N2O5 ->  Hp_3N1 + HNO3                                     rate = 4.00E-12                   (348)
+                   (245)   Hp_5H2O + N2O5 ->  Hp_4N1 + HNO3                                     rate = 7.00E-12                   (349)
+                   (246)   Hp_3N1 + H2O ->  Hp_4H2O + HNO3                                      rate = 1.00E-09                   (350)
+                   (247)   Hp_4N1 + H2O ->  Hp_5H2O + HNO3                                      rate = 1.00E-09                   (351)
+  pir10            (248)   NOp + H2O + M ->  NOp_H2O + M                                        rate = ** User defined **         (352)
+  pir11            (249)   NOp_H2O + H2O + M ->  NOp_2H2O + M                                   rate = ** User defined **         (353)
+                   (250)   NOp_H2O + HO2 ->  Hp_H2O + NO3                                       rate = 5.00E-10                   (354)
+                   (251)   NOp_H2O + OH ->  Hp_H2O + NO2                                        rate = 1.00E-10                   (355)
+                   (252)   NOp_H2O + H ->  Hp_H2O + NO                                          rate = 7.00E-12                   (356)
+  pir12            (253)   NOp_2H2O + H2O + M ->  NOp_3H2O + M                                  rate = ** User defined **         (357)
+                   (254)   NOp_3H2O + H2O ->  Hp_3H2O + HONO                                    rate = 7.00E-11                   (358)
+                   (255)   NOp_CO2 + H2O ->  NOp_H2O + CO2                                      rate = 1.00E-09                   (359)
+  pir13            (256)   NOp + CO2 + M ->  NOp_CO2 + M                                        rate = ** User defined **         (360)
+  pir14            (257)   NOp_CO2 + M ->  NOp + CO2 + M                                        rate = ** User defined **         (361)
+  pir15            (258)   NOp + N2 + M ->  NOp_N2 + M                                          rate = ** User defined **         (362)
+  pir16            (259)   NOp_N2 + M ->  NOp + N2 + M                                          rate = ** User defined **         (363)
+                   (260)   Om + O ->  O2 + e                                                    rate = 1.90E-10                   (364)
+  edn1             (261)   Om + NO ->  NO2 + e                                                  rate = ** User defined **         (365)
+                   (262)   Om + O2_1D ->  O3 + e                                                rate = 3.00E-10                   (366)
+                   (263)   Om + M ->  O + M + e                                                 rate = 5.00E-13                   (367)
+                   (264)   Om + H2 ->  H2O + e                                                  rate = 5.80E-10                   (368)
+                   (265)   O2m + O ->  O3 + e                                                   rate = 1.50E-10                   (369)
+                   (266)   O2m + O2_1D ->  2*O2 + e                                             rate = 2.00E-10                   (370)
+  edn2             (267)   O2m + N2 ->  N2 + O2 + e                                             rate = ** User defined **         (371)
+                   (268)   O2m + H ->  HO2 + e                                                  rate = 1.40E-09                   (372)
+                   (269)   O3m + O ->  2*O2 + e                                                 rate = 1.00E-10                   (373)
+                   (270)   O3m + O3 ->  3*O2 + e                                                rate = 1.00E-10                   (374)
+                   (271)   OHm + O ->  HO2 + e                                                  rate = 2.00E-10                   (375)
+                   (272)   OHm + H ->  H2O + e                                                  rate = 1.40E-09                   (376)
+                   (273)   Om + O3 ->  O3m + O                                                  rate = 8.00E-10                   (377)
+                   (274)   Om + O2 + M ->  O3m + M                                              rate = 2.90E-31                   (378)
+                   (275)   Om + H2O ->  OHm + OH                                                rate = 6.00E-13                   (379)
+                   (276)   Om + NO2 ->  NO2m + O                                                rate = 1.00E-09                   (380)
+                   (277)   Om + CO2 + M ->  CO3m + M                                            rate = 2.00E-28                   (381)
+                   (278)   Om + H2 ->  OHm + H                                                  rate = 3.20E-11                   (382)
+                   (279)   Om + HNO3 ->  NO3m + OH                                              rate = 3.60E-09                   (383)
+                   (280)   Om + HCL ->  CLm + OH                                                rate = 2.00E-09                   (384)
+                   (281)   Om + CL ->  CLm + O                                                  rate = 1.00E-10                   (385)
+                   (282)   Om + CLO ->  CLm + O2                                                rate = 1.00E-10                   (386)
+                   (283)   O2m + O ->  Om + O2                                                  rate = 1.50E-10                   (387)
+                   (284)   O2m + O3 ->  O3m + O2                                                rate = 7.80E-10                   (388)
+                   (285)   O2m + CO2 + M ->  CO4m + M                                           rate = 9.90E-30                   (389)
+                   (286)   O2m + NO2 ->  NO2m + O2                                              rate = 7.00E-10                   (390)
+                   (287)   O2m + O2 + M ->  O4m + M                                             rate = 3.40E-31                   (391)
+                   (288)   O2m + HNO3 ->  NO3m + HO2                                            rate = 2.90E-09                   (392)
+                   (289)   O2m + HCL ->  CLm + HO2                                              rate = 1.60E-09                   (393)
+                   (290)   O2m + CLO ->  CLOm + O2                                              rate = 1.00E-10                   (394)
+                   (291)   O2m + CL ->  CLm + O2                                                rate = 1.00E-10                   (395)
+                   (292)   O3m + O ->  O2m + O2                                                 rate = 2.50E-10                   (396)
+                   (293)   O3m + H ->  OHm + O2                                                 rate = 8.40E-10                   (397)
+                   (294)   O3m + CO2 ->  CO3m + O2                                              rate = 5.50E-10                   (398)
+  nir1             (295)   O3m + NO ->  NO3m + O                                                rate = ** User defined **         (399)
+  nir2             (296)   O3m + NO2 ->  NO3m + O2                                              rate = ** User defined **         (400)
+  nir3             (297)   O3m + NO2 ->  NO2m + O                                               rate = ** User defined **         (401)
+  nir4             (298)   O3m + NO ->  NO2m + O2                                               rate = ** User defined **         (402)
+                   (299)   O4m + O ->  O3m + O2                                                 rate = 4.00E-10                   (403)
+                   (300)   O4m + CO2 ->  CO4m + O2                                              rate = 4.30E-10                   (404)
+                   (301)   OHm + O3 ->  O3m + OH                                                rate = 9.00E-10                   (405)
+                   (302)   OHm + NO2 ->  NO2m + OH                                              rate = 1.10E-09                   (406)
+                   (303)   OHm + CO2 + M ->  HCO3m + M                                          rate = 7.60E-28                   (407)
+                   (304)   OHm + HCL ->  CLm + H2O                                              rate = 1.00E-09                   (408)
+                   (305)   OHm + CL ->  CLm + OH                                                rate = 1.00E-10                   (409)
+                   (306)   OHm + CLO ->  CLOm + OH                                              rate = 1.00E-10                   (410)
+                   (307)   CO3m + O ->  O2m + CO2                                               rate = 1.10E-10                   (411)
+                   (308)   CO3m + O2 ->  O3m + CO2                                              rate = 6.00E-15                   (412)
+                   (309)   CO3m + H ->  OHm + CO2                                               rate = 1.70E-10                   (413)
+  nir5             (310)   CO3m + NO ->  NO2m + CO2                                             rate = ** User defined **         (414)
+  nir6             (311)   CO3m + NO2 ->  NO3m + CO2                                            rate = ** User defined **         (415)
+                   (312)   CO3m + HNO3 ->  NO3m + CO2 + OH                                      rate = 3.51E-10                   (416)
+                   (313)   CO3m + CL ->  CLm + CO2 + O                                          rate = 1.00E-10                   (417)
+                   (314)   CO3m + CL ->  CLOm + CO2                                             rate = 1.00E-10                   (418)
+                   (315)   CO3m + CLO ->  CLm + CO2 + O2                                        rate = 1.00E-11                   (419)
+                   (316)   CO4m + O3 ->  O3m + O2 + CO2                                         rate = 1.30E-10                   (420)
+                   (317)   CO4m + H ->  CO3m + OH                                               rate = 2.20E-10                   (421)
+                   (318)   CO4m + O ->  CO3m + O2                                               rate = 1.40E-10                   (422)
+                   (319)   CO4m + HCL ->  CLm + HO2 + CO2                                       rate = 1.20E-09                   (423)
+                   (320)   CO4m + CL ->  CLm + O2 + CO2                                         rate = 1.00E-10                   (424)
+                   (321)   CO4m + CLO ->  CLOm + O2 + CO2                                       rate = 1.00E-10                   (425)
+                   (322)   NO2m + H ->  OHm + NO                                                rate = 3.00E-10                   (426)
+                   (323)   NO2m + NO2 ->  NO3m + NO                                             rate = 2.00E-13                   (427)
+                   (324)   NO2m + O3 ->  NO3m + O2                                              rate = 1.20E-10                   (428)
+                   (325)   NO2m + HNO3 ->  NO3m + {HNO2}                                        rate = 1.60E-09                   (429)
+                   (326)   NO2m + HCL ->  CLm + HONO                                            rate = 1.40E-09                   (430)
+                   (327)   NO2m + CL ->  CLm + NO2                                              rate = 1.00E-10                   (431)
+                   (328)   NO2m + CLO ->  CLm + NO3                                             rate = 1.00E-10                   (432)
+                   (329)   NO3m + O ->  NO2m + O2                                               rate = 5.00E-12                   (433)
+                   (330)   NO3m + O3 ->  NO2m + 2*O2                                            rate = 1.00E-13                   (434)
+                   (331)   NO3m + HCL ->  CLm + HNO3                                            rate = 1.00E-12                   (435)
+                   (332)   CLm + H ->  HCL + e                                                  rate = 9.60E-10                   (436)
+                   (333)   CLm + NO2 ->  NO2m + CL                                              rate = 6.00E-12                   (437)
+                   (334)   CLm + HNO3 ->  NO3m + HCL                                            rate = 1.60E-09                   (438)
+                   (335)   CLm + H2O + M ->  CLm_H2O + M                                        rate = 2.00E-29                   (439)
+                   (336)   CLm + HCL + M ->  CLm_HCL + M                                        rate = 1.00E-27                   (440)
+                   (337)   CLOm + NO ->  CL + NO2m                                              rate = 2.90E-12                   (441)
+                   (338)   CLOm + NO ->  CLm + NO2                                              rate = 2.90E-11                   (442)
+                   (339)   CLOm + O ->  CLm + O2                                                rate = 2.00E-10                   (443)
+                   (340)   CLm_H2O + HCL ->  CLm_HCL + H2O                                      rate = 1.30E-09                   (444)
+  usr_CLm_H2O_M    (341)   CLm_H2O + M ->  CLm + H2O + M                                        rate = ** User defined **         (445)
+  usr_CLm_HCL_M    (342)   CLm_HCL + M ->  CLm + HCL + M                                        rate = ** User defined **         (446)
+                   (343)   CO3m + H2O + M ->  CO3m_H2O + M                                      rate = 1.00E-28                   (447)
+                   (344)   NO3m + H2O + M ->  NO3m_H2O + M                                      rate = 1.60E-28                   (448)
+  nir7             (345)   NO3m_H2O + M ->  NO3m + H2O + M                                      rate = ** User defined **         (449)
+                   (346)   CO3m_H2O + NO ->  NO2m + H2O + CO2                                   rate = 3.50E-12                   (450)
+                   (347)   CO3m_H2O + NO2 ->  NO3m + H2O + CO2                                  rate = 4.00E-11                   (451)
+  nir8             (348)   CO3m_H2O + M ->  CO3m + H2O + M                                      rate = ** User defined **         (452)
+                   (349)   CO3m_H2O + NO2 ->  NO3m_H2O + CO2                                    rate = 4.00E-11                   (453)
+                   (350)   CO3m_H2O + H2O + M ->  CO3m2H2O + M                                  rate = 1.00E-28                   (454)
+  nir9             (351)   CO3m2H2O + M ->  CO3m_H2O + H2O + M                                  rate = ** User defined **         (455)
+                   (352)   CO3m_H2O + NO ->  NO2m_H2O + CO2                                     rate = 3.50E-12                   (456)
+  nir10            (353)   NO2m_H2O + M ->  NO2m + H2O + M                                      rate = ** User defined **         (457)
+                   (354)   NO2m + H2O + M ->  NO2m_H2O + M                                      rate = 1.60E-28                   (458)
+                   (355)   NO3m_H2O + H2O + M ->  NO3m2H2O + M                                  rate = 1.60E-28                   (459)
+  nir11            (356)   NO3m2H2O + M ->  NO3m_H2O + H2O + M                                  rate = ** User defined **         (460)
+                   (357)   NO3m2H2O + N2O5 ->  NO3mHNO3 + HNO3 + H2O                            rate = 7.00E-10                   (461)
+  nir12            (358)   NO3mHNO3 + M ->  NO3m + HNO3 + M                                     rate = ** User defined **         (462)
+                   (359)   NO3m + HNO3 + M ->  NO3mHNO3 + M                                     rate = 1.45E-26                   (463)
+                   (360)   NO3m_HCL + HNO3 ->  NO3mHNO3 + HCL                                   rate = 7.60E-10                   (464)
+  nir13            (361)   NO3m + HCL + M ->  NO3m_HCL + M                                      rate = ** User defined **         (465)
+                   (362)   NO3m_H2O + N2O5 ->  NO3mHNO3 + HNO3                                  rate = 7.00E-10                   (466)
+                   (363)   NO3m_H2O + HNO3 ->  NO3mHNO3 + H2O                                   rate = 1.60E-09                   (467)
+  iira1            (364)   Hp_4H2O + NO3mHNO3 ->  2*HNO3 + 4*H2O                                rate = ** User defined **         (468)
+  iira2            (365)   Hp_4H2O + CO3m ->  H + 4*H2O + O + CO2                               rate = ** User defined **         (469)
+  iira3            (366)   Hp_4H2O + CLm_HCL ->  H + 4*H2O + CL + HCL                           rate = ** User defined **         (470)
+  iira4            (367)   Hp_4H2O + NO3m ->  HNO3 + 4*H2O                                      rate = ** User defined **         (471)
+  iira5            (368)   Hp_4H2O + HCO3m ->  H + 4*H2O + OH + CO2                             rate = ** User defined **         (472)
+  iira6            (369)   Hp_4H2O + O2m ->  H + 4*H2O + O2                                     rate = ** User defined **         (473)
+  iira7            (370)   Hp_4H2O + CO4m ->  H + 4*H2O + O2 + CO2                              rate = ** User defined **         (474)
+  iira8            (371)   Hp_4H2O + NO3m_H2O ->  H + 5*H2O + NO3                               rate = ** User defined **         (475)
+  iira9            (372)   Hp_4H2O + CO3m2H2O ->  H + 6*H2O + O + CO2                           rate = ** User defined **         (476)
+  iira10           (373)   Hp_4H2O + CLm ->  H + 4*H2O + CL                                     rate = ** User defined **         (477)
+  iira11           (374)   Hp_4H2O + CO3m_H2O ->  H + 5*H2O + O + CO2                           rate = ** User defined **         (478)
+  iira12           (375)   Hp_4H2O + NO2m_H2O ->  H + 5*H2O + NO2                               rate = ** User defined **         (479)
+  iira13           (376)   Hp_4H2O + NO3m_HCL ->  H + 4*H2O + NO3 + HCL                         rate = ** User defined **         (480)
+  iira14           (377)   Hp_4H2O + CLm_H2O ->  H + 5*H2O + CL                                 rate = ** User defined **         (481)
+  iira15           (378)   Hp_4H2O + NO3m2H2O ->  H + 6*H2O + NO3                               rate = ** User defined **         (482)
+  iira16           (379)   Hp_4H2O + NO2m ->  H + 4*H2O + NO2                                   rate = ** User defined **         (483)
+  iira17           (380)   Hp_5H2O + NO3mHNO3 ->  2*HNO3 + 5*H2O                                rate = ** User defined **         (484)
+  iira18           (381)   Hp_5H2O + CO3m ->  H + 5*H2O + O + CO2                               rate = ** User defined **         (485)
+  iira19           (382)   Hp_5H2O + CLm_HCL ->  H + 5*H2O + CL + HCL                           rate = ** User defined **         (486)
+  iira20           (383)   Hp_5H2O + NO3m ->  HNO3 + 5*H2O                                      rate = ** User defined **         (487)
+  iira21           (384)   Hp_5H2O + HCO3m ->  H + 5*H2O + OH + CO2                             rate = ** User defined **         (488)
+  iira22           (385)   Hp_5H2O + O2m ->  H + 5*H2O + O2                                     rate = ** User defined **         (489)
+  iira23           (386)   Hp_5H2O + CO4m ->  H + 5*H2O + O2 + CO2                              rate = ** User defined **         (490)
+  iira24           (387)   Hp_5H2O + NO3m_H2O ->  H + 6*H2O + NO3                               rate = ** User defined **         (491)
+  iira25           (388)   Hp_5H2O + CO3m2H2O ->  H + 7*H2O + O + CO2                           rate = ** User defined **         (492)
+  iira26           (389)   Hp_5H2O + CLm ->  H + 5*H2O + CL                                     rate = ** User defined **         (493)
+  iira27           (390)   Hp_5H2O + CO3m_H2O ->  H + 6*H2O + O + CO2                           rate = ** User defined **         (494)
+  iira28           (391)   Hp_5H2O + NO2m_H2O ->  H + 6*H2O + NO2                               rate = ** User defined **         (495)
+  iira29           (392)   Hp_5H2O + NO3m_HCL ->  H + 5*H2O + NO3 + HCL                         rate = ** User defined **         (496)
+  iira30           (393)   Hp_5H2O + CLm_H2O ->  H + 6*H2O + CL                                 rate = ** User defined **         (497)
+  iira31           (394)   Hp_5H2O + NO3m2H2O ->  H + 7*H2O + NO3                               rate = ** User defined **         (498)
+  iira32           (395)   Hp_5H2O + NO2m ->  H + 5*H2O + NO2                                   rate = ** User defined **         (499)
+  iira33           (396)   Hp_3H2O + NO3mHNO3 ->  2*HNO3 + 3*H2O                                rate = ** User defined **         (500)
+  iira34           (397)   Hp_3H2O + CO3m ->  H + 3*H2O + O + CO2                               rate = ** User defined **         (501)
+  iira35           (398)   Hp_3H2O + CLm_HCL ->  H + 3*H2O + CL + HCL                           rate = ** User defined **         (502)
+  iira36           (399)   Hp_3H2O + NO3m ->  HNO3 + 3*H2O                                      rate = ** User defined **         (503)
+  iira37           (400)   Hp_3H2O + HCO3m ->  H + 3*H2O + OH + CO2                             rate = ** User defined **         (504)
+  iira38           (401)   Hp_3H2O + O2m ->  H + 3*H2O + O2                                     rate = ** User defined **         (505)
+  iira39           (402)   Hp_3H2O + CO4m ->  H + 3*H2O + O2 + CO2                              rate = ** User defined **         (506)
+  iira40           (403)   Hp_3H2O + NO3m_H2O ->  H + 4*H2O + NO3                               rate = ** User defined **         (507)
+  iira41           (404)   Hp_3H2O + CO3m2H2O ->  H + 5*H2O + O + CO2                           rate = ** User defined **         (508)
+  iira42           (405)   Hp_3H2O + CLm ->  H + 3*H2O + CL                                     rate = ** User defined **         (509)
+  iira43           (406)   Hp_3H2O + CO3m_H2O ->  H + 4*H2O + O + CO2                           rate = ** User defined **         (510)
+  iira44           (407)   Hp_3H2O + NO2m_H2O ->  H + 4*H2O + NO2                               rate = ** User defined **         (511)
+  iira45           (408)   Hp_3H2O + NO3m_HCL ->  H + 3*H2O + NO3 + HCL                         rate = ** User defined **         (512)
+  iira46           (409)   Hp_3H2O + CLm_H2O ->  H + 4*H2O + CL                                 rate = ** User defined **         (513)
+  iira47           (410)   Hp_3H2O + NO3m2H2O ->  H + 5*H2O + NO3                               rate = ** User defined **         (514)
+  iira48           (411)   Hp_3H2O + NO2m ->  H + 3*H2O + NO2                                   rate = ** User defined **         (515)
+  iira49           (412)   NOp_H2O + NO3mHNO3 ->  NO + H2O + NO3 + HNO3                         rate = ** User defined **         (516)
+  iira50           (413)   NOp_H2O + CO3m ->  NO + H2O + O + CO2                                rate = ** User defined **         (517)
+  iira51           (414)   NOp_H2O + CLm_HCL ->  NO + H2O + CL + HCL                            rate = ** User defined **         (518)
+  iira52           (415)   NOp_H2O + NO3m ->  NO + H2O + NO3                                    rate = ** User defined **         (519)
+  iira53           (416)   NOp_H2O + HCO3m ->  NO + H2O + OH + CO2                              rate = ** User defined **         (520)
+  iira54           (417)   NOp_H2O + O2m ->  NO + H2O + O2                                      rate = ** User defined **         (521)
+  iira55           (418)   NOp_H2O + CO4m ->  NO + H2O + O2 + CO2                               rate = ** User defined **         (522)
+  iira56           (419)   NOp_H2O + NO3m_H2O ->  NO + 2*H2O + NO3                              rate = ** User defined **         (523)
+  iira57           (420)   NOp_H2O + CO3m2H2O ->  NO + 3*H2O + O + CO2                          rate = ** User defined **         (524)
+  iira58           (421)   NOp_H2O + CLm ->  NO + H2O + CL                                      rate = ** User defined **         (525)
+  iira59           (422)   NOp_H2O + CO3m_H2O ->  NO + 2*H2O + O + CO2                          rate = ** User defined **         (526)
+  iira60           (423)   NOp_H2O + NO2m_H2O ->  NO + 2*H2O + NO2                              rate = ** User defined **         (527)
+  iira61           (424)   NOp_H2O + NO3m_HCL ->  NO + H2O + NO3 + HCL                          rate = ** User defined **         (528)
+  iira62           (425)   NOp_H2O + CLm_H2O ->  NO + 2*H2O + CL                                rate = ** User defined **         (529)
+  iira63           (426)   NOp_H2O + NO3m2H2O ->  NO + 3*H2O + NO3                              rate = ** User defined **         (530)
+  iira64           (427)   NOp_H2O + NO2m ->  NO + H2O + NO2                                    rate = ** User defined **         (531)
+  iira65           (428)   NOp_2H2O + NO3mHNO3 ->  NO + 2*H2O + NO3 + HNO3                      rate = ** User defined **         (532)
+  iira66           (429)   NOp_2H2O + CO3m ->  NO + 2*H2O + O + CO2                             rate = ** User defined **         (533)
+  iira67           (430)   NOp_2H2O + CLm_HCL ->  NO + 2*H2O + CL + HCL                         rate = ** User defined **         (534)
+  iira68           (431)   NOp_2H2O + NO3m ->  NO + 2*H2O + NO3                                 rate = ** User defined **         (535)
+  iira69           (432)   NOp_2H2O + HCO3m ->  NO + 2*H2O + OH + CO2                           rate = ** User defined **         (536)
+  iira70           (433)   NOp_2H2O + O2m ->  NO + 2*H2O + O2                                   rate = ** User defined **         (537)
+  iira71           (434)   NOp_2H2O + CO4m ->  NO + 2*H2O + O2 + CO2                            rate = ** User defined **         (538)
+  iira72           (435)   NOp_2H2O + NO3m_H2O ->  NO + 3*H2O + NO3                             rate = ** User defined **         (539)
+  iira73           (436)   NOp_2H2O + CO3m2H2O ->  NO + 4*H2O + O + CO2                         rate = ** User defined **         (540)
+  iira74           (437)   NOp_2H2O + CLm ->  NO + 2*H2O + CL                                   rate = ** User defined **         (541)
+  iira75           (438)   NOp_2H2O + CO3m_H2O ->  NO + 3*H2O + O + CO2                         rate = ** User defined **         (542)
+  iira76           (439)   NOp_2H2O + NO2m_H2O ->  NO + 3*H2O + NO2                             rate = ** User defined **         (543)
+  iira77           (440)   NOp_2H2O + NO3m_HCL ->  NO + 2*H2O + NO3 + HCL                       rate = ** User defined **         (544)
+  iira78           (441)   NOp_2H2O + CLm_H2O ->  NO + 3*H2O + CL                               rate = ** User defined **         (545)
+  iira79           (442)   NOp_2H2O + NO3m2H2O ->  NO + 4*H2O + NO3                             rate = ** User defined **         (546)
+  iira80           (443)   NOp_2H2O + NO2m ->  NO + 2*H2O + NO2                                 rate = ** User defined **         (547)
+  iira81           (444)   NOp + NO3mHNO3 ->  NO + NO3 + HNO3                                   rate = ** User defined **         (548)
+  iira82           (445)   NOp + CO3m ->  NO + O + CO2                                          rate = ** User defined **         (549)
+  iira83           (446)   NOp + CLm_HCL ->  NO + CL + HCL                                      rate = ** User defined **         (550)
+  iira84           (447)   NOp + NO3m ->  NO + NO3                                              rate = ** User defined **         (551)
+  iira85           (448)   NOp + HCO3m ->  NO + OH + CO2                                        rate = ** User defined **         (552)
+  iira86           (449)   NOp + O2m ->  NO + O2                                                rate = ** User defined **         (553)
+  iira87           (450)   NOp + CO4m ->  NO + O2 + CO2                                         rate = ** User defined **         (554)
+  iira88           (451)   NOp + NO3m_H2O ->  NO + NO3 + H2O                                    rate = ** User defined **         (555)
+  iira89           (452)   NOp + CO3m2H2O ->  NO + O + 2*H2O + CO2                              rate = ** User defined **         (556)
+  iira90           (453)   NOp + CLm ->  NO + CL                                                rate = ** User defined **         (557)
+  iira91           (454)   NOp + CO3m_H2O ->  NO + O + H2O + CO2                                rate = ** User defined **         (558)
+  iira92           (455)   NOp + NO2m_H2O ->  NO + NO2 + H2O                                    rate = ** User defined **         (559)
+  iira93           (456)   NOp + NO3m_HCL ->  NO + NO3 + HCL                                    rate = ** User defined **         (560)
+  iira94           (457)   NOp + CLm_H2O ->  NO + CL + H2O                                      rate = ** User defined **         (561)
+  iira95           (458)   NOp + NO3m2H2O ->  NO + NO3 + 2*H2O                                  rate = ** User defined **         (562)
+  iira96           (459)   NOp + NO2m ->  NO + NO2                                              rate = ** User defined **         (563)
+  iira97           (460)   O2p + NO3mHNO3 ->  O2 + NO3 + HNO3                                   rate = ** User defined **         (564)
+  iira98           (461)   O2p + CO3m ->  O2 + O + CO2                                          rate = ** User defined **         (565)
+  iira99           (462)   O2p + CLm_HCL ->  O2 + CL + HCL                                      rate = ** User defined **         (566)
+  iira100          (463)   O2p + NO3m ->  O2 + NO3                                              rate = ** User defined **         (567)
+  iira101          (464)   O2p + HCO3m ->  O2 + OH + CO2                                        rate = ** User defined **         (568)
+  iira102          (465)   O2p + O2m ->  2*O2p                                                  rate = ** User defined **         (569)
+  iira103          (466)   O2p + CO4m ->  O2 + O2 + CO2                                         rate = ** User defined **         (570)
+  iira104          (467)   O2p + NO3m_H2O ->  O2 + NO3 + H2O                                    rate = ** User defined **         (571)
+  iira105          (468)   O2p + CO3m2H2O ->  O2 + O + 2*H2O + CO2                              rate = ** User defined **         (572)
+  iira106          (469)   O2p + CLm ->  O2 + CL                                                rate = ** User defined **         (573)
+  iira107          (470)   O2p + CO3m_H2O ->  O2 + O + H2O + CO2                                rate = ** User defined **         (574)
+  iira108          (471)   O2p + NO2m_H2O ->  O2 + NO2 + H2O                                    rate = ** User defined **         (575)
+  iira109          (472)   O2p + NO3m_HCL ->  O2 + NO3 + HCL                                    rate = ** User defined **         (576)
+  iira110          (473)   O2p + CLm_H2O ->  O2 + CL + H2O                                      rate = ** User defined **         (577)
+  iira111          (474)   O2p + NO3m2H2O ->  O2 + NO3 + 2*H2O                                  rate = ** User defined **         (578)
+  iira112          (475)   O2p + NO2m ->  O2 + NO2                                              rate = ** User defined **         (579)
+  iirb1            (476)   Hp_4H2O + CO3m + M ->  H + 4*H2O + O + CO2 + M                       rate = ** User defined **         (580)
+  iirb2            (477)   Hp_4H2O + NO3m + M ->  HNO3 + 4*H2O + M                              rate = ** User defined **         (581)
+  iirb3            (478)   Hp_5H2O + CO3m + M ->  H + 5*H2O + O + CO2 + M                       rate = ** User defined **         (582)
+  iirb4            (479)   Hp_5H2O + NO3m + M ->  HNO3 + 5*H2O + M                              rate = ** User defined **         (583)
+  iirb5            (480)   Hp_4H2O + CLm_HCL + M ->  2*HCL + 4*H2O + M                          rate = ** User defined **         (584)
+  iirb6            (481)   Hp_5H2O + CLm_HCL + M ->  2*HCL + 5*H2O + M                          rate = ** User defined **         (585)
+  iirb7            (482)   Hp_4H2O + NO3mHNO3 + M ->  2*HNO3 + 4*H2O + M                        rate = ** User defined **         (586)
+  iirb8            (483)   Hp_5H2O + NO3mHNO3 + M ->  2*HNO3 + 5*H2O + M                        rate = ** User defined **         (587)
+  iirb9            (484)   Hp_4H2O + CO3m2H2O + M ->  H + 6*H2O + O + CO2 + M                   rate = ** User defined **         (588)
+  iirb10           (485)   Hp_5H2O + CO3m2H2O + M ->  H + 7*H2O + O + CO2 + M                   rate = ** User defined **         (589)
+  iirb11           (486)   Hp_4H2O + CO3m_H2O + M ->  H + 5*H2O + O + CO2 + M                   rate = ** User defined **         (590)
+  iirb12           (487)   Hp_5H2O + CO3m_H2O + M ->  H + 6*H2O + O + CO2 + M                   rate = ** User defined **         (591)
+  iirb13           (488)   Hp_4H2O + NO3m_H2O + M ->  H + 5*H2O + NO3 + M                       rate = ** User defined **         (592)
+  iirb14           (489)   Hp_5H2O + NO3m_H2O + M ->  H + 6*H2O + NO3 + M                       rate = ** User defined **         (593)
+  
+Extraneous prod/loss species
+ ( 1)   NO   (dataset)
+ ( 2)   NO2   (dataset)
+ ( 3)   CO   (dataset)
+ ( 4)   SO2   (dataset)
+ ( 5)   DMS   (dataset)
+ ( 6)   so4_a1   (dataset)
+ ( 7)   so4_a2   (dataset)
+ ( 8)   pom_a1   (dataset)
+ ( 9)   pom_a4   (dataset)
+ (10)   bc_a1   (dataset)
+ (11)   bc_a4   (dataset)
+ (12)   num_a1   (dataset)
+ (13)   num_a2   (dataset)
+ (14)   num_a4   (dataset)
+ (15)   Op
+ (16)   O2p
+ (17)   Np
+ (18)   N2p
+ (19)   N2D
+ (20)   O
+ (21)   N
+ (22)   e
+ (23)   OH
+  
+  
+ Equation Report
+  
+    d(O3)/dt = j96*O3m  + r1*M*O*O2  + r232*O4p*O  + r262*Om*O2_1D  + r265*O2m*O                                        
+                - j3*O3  - j4*O3  - r2*O*O3  - r20*O1D*O3  - r46*H*O3  - r51*OH*O3  - r59*HO2*O3  - r74*NO*O3           
+                - r77*NO2*O3  - r89*CL*O3  - r116*BR*O3  - r165*S*O3  - r168*SO*O3  - r211*e*O3  - r270*O3m*O3          
+                - r273*Om*O3  - r284*O2m*O3  - r301*OHm*O3  - r316*CO4m*O3  - r324*NO2m*O3  - r330*NO3m*O3              
+    d(O)/dt = j1*O2  + 2*j2*O2  + j4*O3  + j6*NO  + j8*NO2  + j10*N2O5  + j12*NO3  + j21*H2O  + j24*CLO  + j25*OCLO     
+               + j32*BRO  + j58*CO2  + .18*j60*CH4  + j62*SO2  + j63*SO3  + j65*SO  + j73*O2  + j74*O2  + j75*O2        
+               + 2*j78*O2  + j85*O2  + j86*O2  + j87*O2  + 2*j90*O2  + j92*CO2  + j94*Om  + r14*N2*O1D  + r263*M*Om     
+               + r15*O1D*O2  + r16*O1D*O2  + r49*H*HO2  + r53*OH*OH  + r67*N*O2  + r68*N*NO  + r69*N*NO2  + r164*S*O2   
+               + r167*SO*O2  + r195*Op*O2  + r200*O2p*N  + r203*Np*O2  + r207*NOp*e  + 1.15*r208*O2p*e  + r273*Om*O3    
+               + r276*Om*NO2  + r281*Om*CL  + r295*O3m*NO  + r297*O3m*NO2  + r313*CO3m*CL  + r365*Hp_4H2O*CO3m          
+               + r372*Hp_4H2O*CO3m2H2O  + r374*Hp_4H2O*CO3m_H2O  + r381*Hp_5H2O*CO3m  + r388*Hp_5H2O*CO3m2H2O           
+               + r390*Hp_5H2O*CO3m_H2O  + r397*Hp_3H2O*CO3m  + r404*Hp_3H2O*CO3m2H2O  + r406*Hp_3H2O*CO3m_H2O           
+               + r413*NOp_H2O*CO3m  + r420*NOp_H2O*CO3m2H2O  + r422*NOp_H2O*CO3m_H2O  + r429*NOp_2H2O*CO3m              
+               + r436*NOp_2H2O*CO3m2H2O  + r438*NOp_2H2O*CO3m_H2O  + r445*NOp*CO3m  + r452*NOp*CO3m2H2O                 
+               + r454*NOp*CO3m_H2O  + r461*O2p*CO3m  + r468*O2p*CO3m2H2O  + r470*O2p*CO3m_H2O  + r476*M*Hp_4H2O*CO3m    
+               + r478*M*Hp_5H2O*CO3m  + r484*M*Hp_4H2O*CO3m2H2O  + r485*M*Hp_5H2O*CO3m2H2O  + r486*M*Hp_4H2O*CO3m_H2O   
+               + r487*M*Hp_5H2O*CO3m_H2O                                                                                
+               - j67*O  - j68*O  - j69*O  - j80*O  - j81*O  - j82*O  - r1*M*O2*O  - r2*O3*O  - 2*r3*M*O*O  - r50*OH*O   
+               - r57*H2*O  - r58*HO2*O  - r61*H2O2*O  - r72*M*NO*O  - r75*NO2*O  - r76*M*NO2*O  - r83*NO3*O             
+               - r96*CLO*O  - r109*HCL*O  - r110*HOCL*O  - r113*CLONO2*O  - r119*BRO*O  - r129*HBR*O  - r130*HOBR*O     
+               - r131*BRONO2*O  - r153*CH2O*O  - r161*OCS*O  - r197*N2p*O  - r198*N2p*O  - r204*Np*O  - r232*O4p*O      
+               - r260*Om*O  - r265*O2m*O  - r269*O3m*O  - r271*OHm*O  - r283*O2m*O  - r292*O3m*O  - r299*O4m*O          
+               - r307*CO3m*O  - r318*CO4m*O  - r329*NO3m*O  - r339*CLOm*O                                               
+    d(O2)/dt = j4*O3  + j13*NO3  + j95*O2m  + j100*O3m  + j101*O4m  + r9*O2_1S  + r12*N2*O2_1D  + r13*O2_1D             
+                + r267*N2*O2m  + 2*r2*O*O3  + r3*M*O*O  + r10*O2_1D*O  + 2*r11*O2_1D*O2  + r19*O1D*N2O  + r20*O1D*O3    
+                + r20*O1D*O3  + r46*H*O3  + r48*H*HO2  + r50*OH*O  + r51*OH*O3  + r52*OH*HO2  + r58*HO2*O               
+                + 2*r59*HO2*O3  + r60*HO2*HO2  + r71*N*NO2  + r74*NO*O3  + r75*NO2*O  + r77*NO2*O3  + r83*NO3*O         
+                + r85*NO3*HO2  + r87*HO2NO2*OH  + r89*CL*O3  + r92*CL*HO2  + r96*CLO*O  + r98*CLO*OH  + r99*CLO*HO2     
+                + r103*CLO*CLO  + r104*CLO*CLO  + r116*BR*O3  + r117*BR*HO2  + r119*BRO*O  + r121*BRO*HO2               
+                + r125*BRO*CLO  + r126*BRO*CLO  + r127*BRO*BRO  + r155*CH3O2*HO2  + r165*S*O3  + r168*SO*O3             
+                + r201*O2p*NO  + r211*O3*e  + 2*r213*O4p*e  + r218*O2p_H2O*e  + r230*O4p*H2O  + 2*r231*O4p*O2_1D        
+                + r233*O2p_H2O*H2O  + r234*O2p_H2O*H2O  + r260*Om*O  + 2*r266*O2m*O2_1D  + 2*r269*O3m*O                 
+                + 3*r270*O3m*O3  + r282*Om*CLO  + r283*O2m*O  + r284*O2m*O3  + r286*O2m*NO2  + r290*O2m*CLO             
+                + r291*O2m*CL  + r292*O3m*O  + r293*O3m*H  + r294*O3m*CO2  + r296*O3m*NO2  + r298*O3m*NO  + r299*O4m*O  
+                + r300*O4m*CO2  + r315*CO3m*CLO  + r316*CO4m*O3  + r318*CO4m*O  + r320*CO4m*CL  + r321*CO4m*CLO         
+                + r324*NO2m*O3  + r329*NO3m*O  + 2*r330*NO3m*O3  + r339*CLOm*O  + r369*Hp_4H2O*O2m                      
+                + r370*Hp_4H2O*CO4m  + r385*Hp_5H2O*O2m  + r386*Hp_5H2O*CO4m  + r401*Hp_3H2O*O2m  + r402*Hp_3H2O*CO4m   
+                + r417*NOp_H2O*O2m  + r418*NOp_H2O*CO4m  + r433*NOp_2H2O*O2m  + r434*NOp_2H2O*CO4m  + r449*NOp*O2m      
+                + r450*NOp*CO4m  + r460*O2p*NO3mHNO3  + r461*O2p*CO3m  + r462*O2p*CLm_HCL  + r463*O2p*NO3m              
+                + r464*O2p*HCO3m  + r466*O2p*CO4m  + r466*O2p*CO4m  + r467*O2p*NO3m_H2O  + r468*O2p*CO3m2H2O            
+                + r469*O2p*CLm  + r470*O2p*CO3m_H2O  + r471*O2p*NO2m_H2O  + r472*O2p*NO3m_HCL  + r473*O2p*CLm_H2O       
+                + r474*O2p*NO3m2H2O  + r475*O2p*NO2m                                                                    
+                - j1*O2  - j2*O2  - j71*O2  - j73*O2  - j74*O2  - j75*O2  - j78*O2  - j83*O2  - j85*O2  - j86*O2        
+                - j87*O2  - j90*O2  - r1*M*O*O2  - r11*O2_1D*O2  - r15*O1D*O2  - r45*M*H*O2  - r64*N2D*O2  - r67*N*O2   
+                - r164*S*O2  - r167*SO*O2  - r195*Op*O2  - r202*Np*O2  - r203*Np*O2  - r205*N2p*O2  - r210*N2*e*O2      
+                - r212*M*e*O2  - r228*M*O2p*O2  - r274*M*Om*O2  - r287*M*O2m*O2  - r308*CO3m*O2                         
+    d(N2O)/dt = r69*N*NO2                                                                                               
+                 - j5*N2O  - r18*O1D*N2O  - r19*O1D*N2O                                                                 
+    d(N)/dt = j76*N2  + .8*j79*N2  + j88*N2  + .8*j91*N2  + j6*NO  + r196*N2*Op  + r65*N2D*O  + r202*Np*O2              
+               + r204*Np*O  + .2*r207*NOp*e  + 1.1*r209*N2p*e                                                           
+               - j70*N  - r66*OH*N  - r67*O2*N  - r68*NO*N  - r69*NO2*N  - r70*NO2*N  - r71*NO2*N  - r200*O2p*N         
+    d(NO)/dt = j8*NO2  + j10*N2O5  + j13*NO3  + j66*HONO  + .5*r159*NO2  + r206*N2*O2p  + 2*r18*O1D*N2O  + r64*N2D*O2   
+                + r66*N*OH  + r67*N*O2  + 2*r70*N*NO2  + r75*NO2*O  + r169*SO*NO2  + r214*NOp_CO2*e  + r215*NOp_H2O*e   
+                + r216*NOp_2H2O*e  + r217*NOp_3H2O*e  + r225*NOp_N2*e  + r252*NOp_H2O*H  + r322*NO2m*H                  
+                + r323*NO2m*NO2  + r412*NOp_H2O*NO3mHNO3  + r413*NOp_H2O*CO3m  + r414*NOp_H2O*CLm_HCL                   
+                + r415*NOp_H2O*NO3m  + r416*NOp_H2O*HCO3m  + r417*NOp_H2O*O2m  + r418*NOp_H2O*CO4m                      
+                + r419*NOp_H2O*NO3m_H2O  + r420*NOp_H2O*CO3m2H2O  + r421*NOp_H2O*CLm  + r422*NOp_H2O*CO3m_H2O           
+                + r423*NOp_H2O*NO2m_H2O  + r424*NOp_H2O*NO3m_HCL  + r425*NOp_H2O*CLm_H2O  + r426*NOp_H2O*NO3m2H2O       
+                + r427*NOp_H2O*NO2m  + r428*NOp_2H2O*NO3mHNO3  + r429*NOp_2H2O*CO3m  + r430*NOp_2H2O*CLm_HCL            
+                + r431*NOp_2H2O*NO3m  + r432*NOp_2H2O*HCO3m  + r433*NOp_2H2O*O2m  + r434*NOp_2H2O*CO4m                  
+                + r435*NOp_2H2O*NO3m_H2O  + r436*NOp_2H2O*CO3m2H2O  + r437*NOp_2H2O*CLm  + r438*NOp_2H2O*CO3m_H2O       
+                + r439*NOp_2H2O*NO2m_H2O  + r440*NOp_2H2O*NO3m_HCL  + r441*NOp_2H2O*CLm_H2O  + r442*NOp_2H2O*NO3m2H2O   
+                + r443*NOp_2H2O*NO2m  + r444*NOp*NO3mHNO3  + r445*NOp*CO3m  + r446*NOp*CLm_HCL  + r447*NOp*NO3m         
+                + r448*NOp*HCO3m  + r449*NOp*O2m  + r450*NOp*CO4m  + r451*NOp*NO3m_H2O  + r452*NOp*CO3m2H2O             
+                + r453*NOp*CLm  + r454*NOp*CO3m_H2O  + r455*NOp*NO2m_H2O  + r456*NOp*NO3m_HCL  + r457*NOp*CLm_H2O       
+                + r458*NOp*NO3m2H2O  + r459*NOp*NO2m                                                                    
+                - j6*NO  - j7*NO  - r62*M*H*NO  - r68*N*NO  - r72*M*O*NO  - r73*HO2*NO  - r74*O3*NO  - r82*NO3*NO       
+                - r101*CLO*NO  - r122*BRO*NO  - r154*CH3O2*NO  - r201*O2p*NO  - r261*Om*NO  - r295*O3m*NO               
+                - r298*O3m*NO  - r310*CO3m*NO  - r337*CLOm*NO  - r338*CLOm*NO  - r346*CO3m_H2O*NO  - r352*CO3m_H2O*NO   
+    d(NO2)/dt = j9*N2O5  + j11*HNO3  + j12*NO3  + j15*HO2NO2  + j30*CLONO2  + j36*BRONO2  + j98*NO2m  + r79*M*N2O5      
+                 + r88*M*HO2NO2  + r63*OH*HONO  + r72*M*NO*O  + r73*NO*HO2  + r74*NO*O3  + 2*r82*NO3*NO  + r83*NO3*O    
+                 + r84*NO3*OH  + r85*NO3*HO2  + r87*HO2NO2*OH  + r101*CLO*NO  + r122*BRO*NO  + r154*CH3O2*NO            
+                 + r251*NOp_H2O*OH  + r261*Om*NO  + r327*NO2m*CL  + r338*CLOm*NO  + r375*Hp_4H2O*NO2m_H2O               
+                 + r379*Hp_4H2O*NO2m  + r391*Hp_5H2O*NO2m_H2O  + r395*Hp_5H2O*NO2m  + r407*Hp_3H2O*NO2m_H2O             
+                 + r411*Hp_3H2O*NO2m  + r423*NOp_H2O*NO2m_H2O  + r427*NOp_H2O*NO2m  + r439*NOp_2H2O*NO2m_H2O            
+                 + r443*NOp_2H2O*NO2m  + r455*NOp*NO2m_H2O  + r459*NOp*NO2m  + r471*O2p*NO2m_H2O  + r475*O2p*NO2m       
+                 - j8*NO2  - r159*NO2  - r69*N*NO2  - r70*N*NO2  - r71*N*NO2  - r75*O*NO2  - r76*M*O*NO2  - r77*O3*NO2  
+                 - r78*M*NO3*NO2  - r80*M*OH*NO2  - r86*M*HO2*NO2  - r102*M*CLO*NO2  - r123*M*BRO*NO2  - r169*SO*NO2    
+                 - r276*Om*NO2  - r286*O2m*NO2  - r296*O3m*NO2  - r297*O3m*NO2  - r302*OHm*NO2  - r311*CO3m*NO2         
+                 - r323*NO2m*NO2  - r333*CLm*NO2  - r347*CO3m_H2O*NO2  - r349*CO3m_H2O*NO2                              
+    d(NO3)/dt = j9*N2O5  + j10*N2O5  + j14*HO2NO2  + j29*CLONO2  + j35*BRONO2  + j99*NO3m  + r79*M*N2O5  + r76*M*NO2*O  
+                 + r77*NO2*O3  + r81*HNO3*OH  + r113*CLONO2*O  + r114*CLONO2*OH  + r115*CLONO2*CL  + r131*BRONO2*O      
+                 + r135*F*HNO3  + r250*NOp_H2O*HO2  + r328*NO2m*CLO  + r371*Hp_4H2O*NO3m_H2O  + r376*Hp_4H2O*NO3m_HCL   
+                 + r378*Hp_4H2O*NO3m2H2O  + r387*Hp_5H2O*NO3m_H2O  + r392*Hp_5H2O*NO3m_HCL  + r394*Hp_5H2O*NO3m2H2O     
+                 + r403*Hp_3H2O*NO3m_H2O  + r408*Hp_3H2O*NO3m_HCL  + r410*Hp_3H2O*NO3m2H2O  + r412*NOp_H2O*NO3mHNO3     
+                 + r415*NOp_H2O*NO3m  + r419*NOp_H2O*NO3m_H2O  + r424*NOp_H2O*NO3m_HCL  + r426*NOp_H2O*NO3m2H2O         
+                 + r428*NOp_2H2O*NO3mHNO3  + r431*NOp_2H2O*NO3m  + r435*NOp_2H2O*NO3m_H2O  + r440*NOp_2H2O*NO3m_HCL     
+                 + r442*NOp_2H2O*NO3m2H2O  + r444*NOp*NO3mHNO3  + r447*NOp*NO3m  + r451*NOp*NO3m_H2O                    
+                 + r456*NOp*NO3m_HCL  + r458*NOp*NO3m2H2O  + r460*O2p*NO3mHNO3  + r463*O2p*NO3m  + r467*O2p*NO3m_H2O    
+                 + r472*O2p*NO3m_HCL  + r474*O2p*NO3m2H2O  + r488*M*Hp_4H2O*NO3m_H2O  + r489*M*Hp_5H2O*NO3m_H2O         
+                 - j12*NO3  - j13*NO3  - r158*NO3  - r78*M*NO2*NO3  - r82*NO*NO3  - r83*O*NO3  - r84*OH*NO3             
+                 - r85*HO2*NO3  - r151*CH2O*NO3  - r177*DMS*NO3                                                         
+    d(HNO3)/dt = 2*r157*N2O5  + r158*NO3  + .5*r159*NO2  + 2*r178*N2O5  + r179*CLONO2  + r180*BRONO2  + 2*r184*N2O5     
+                  + r185*CLONO2  + r188*BRONO2  + 2*r189*N2O5  + r190*CLONO2  + r191*BRONO2  + r358*M*NO3mHNO3          
+                  + r80*M*NO2*OH  + r151*CH2O*NO3  + r177*DMS*NO3  + r181*CLONO2*HCL  + r186*CLONO2*HCL                 
+                  + r192*CLONO2*HCL  + r244*Hp_4H2O*N2O5  + r245*Hp_5H2O*N2O5  + r246*Hp_3N1*H2O  + r247*Hp_4N1*H2O     
+                  + r331*NO3m*HCL  + r357*NO3m2H2O*N2O5  + r362*NO3m_H2O*N2O5  + 2*r364*Hp_4H2O*NO3mHNO3                
+                  + r367*Hp_4H2O*NO3m  + 2*r380*Hp_5H2O*NO3mHNO3  + r383*Hp_5H2O*NO3m  + 2*r396*Hp_3H2O*NO3mHNO3        
+                  + r399*Hp_3H2O*NO3m  + r412*NOp_H2O*NO3mHNO3  + r428*NOp_2H2O*NO3mHNO3  + r444*NOp*NO3mHNO3           
+                  + r460*O2p*NO3mHNO3  + r477*M*Hp_4H2O*NO3m  + r479*M*Hp_5H2O*NO3m  + 2*r482*M*Hp_4H2O*NO3mHNO3        
+                  + 2*r483*M*Hp_5H2O*NO3mHNO3                                                                           
+                  - j11*HNO3  - r81*OH*HNO3  - r135*F*HNO3  - r279*Om*HNO3  - r288*O2m*HNO3  - r312*CO3m*HNO3           
+                  - r325*NO2m*HNO3  - r334*CLm*HNO3  - r359*M*NO3m*HNO3  - r360*NO3m_HCL*HNO3  - r363*NO3m_H2O*HNO3     
+    d(HO2NO2)/dt = r86*M*NO2*HO2                                                                                        
+                    - j14*HO2NO2  - j15*HO2NO2  - r88*M*HO2NO2  - r87*OH*HO2NO2                                         
+    d(N2O5)/dt = r78*M*NO2*NO3                                                                                          
+                  - j9*N2O5  - j10*N2O5  - r79*M*N2O5  - r157*N2O5  - r178*N2O5  - r184*N2O5  - r189*N2O5               
+                  - r244*Hp_4H2O*N2O5  - r245*Hp_5H2O*N2O5  - r357*NO3m2H2O*N2O5  - r362*NO3m_H2O*N2O5                  
+    d(CH4)/dt =  - j59*CH4  - j60*CH4  - r39*O1D*CH4  - r40*O1D*CH4  - r41*O1D*CH4  - r95*CL*CH4  - r134*F*CH4          
+                 - r148*OH*CH4                                                                                          
+    d(CH3O2)/dt = j37*CH3CL  + j48*CH3BR  + j59*CH4  + r39*O1D*CH4  + r95*CL*CH4  + r134*F*CH4  + r148*CH4*OH           
+                   + r156*CH3OOH*OH                                                                                     
+                   - r100*CLO*CH3O2  - r154*NO*CH3O2  - r155*HO2*CH3O2                                                  
+    d(CH3OOH)/dt = r155*CH3O2*HO2                                                                                       
+                    - j16*CH3OOH  - r156*OH*CH3OOH                                                                      
+    d(CH2O)/dt = j16*CH3OOH  + .18*j60*CH4  + r40*O1D*CH4  + r41*O1D*CH4  + r100*CLO*CH3O2  + r154*CH3O2*NO             
+                  - j17*CH2O  - j18*CH2O  - r94*CL*CH2O  - r118*BR*CH2O  - r151*NO3*CH2O  - r152*OH*CH2O                
+                  - r153*O*CH2O                                                                                         
+    d(CO)/dt = j17*CH2O  + j18*CH2O  + j58*CO2  + .38*j60*CH4  + j64*OCS  + j92*CO2  + r94*CL*CH2O  + r118*BR*CH2O      
+                + r136*CH3CL*CL  + r151*CH2O*NO3  + r152*CH2O*OH  + r153*CH2O*O  + r161*OCS*O  + r162*OCS*OH            
+                + r199*Op*CO2                                                                                           
+                - r149*OH*CO  - r150*M*OH*CO                                                                            
+    d(H2)/dt = j18*CH2O  + j20*H2O  + 1.4400001*j60*CH4  + r41*O1D*CH4  + r48*H*HO2                                     
+                - r42*O1D*H2  - r55*OH*H2  - r57*O*H2  - r90*CL*H2  - r133*F*H2  - r264*Om*H2  - r278*Om*H2             
+    d(H)/dt = j16*CH3OOH  + 2*j17*CH2O  + j19*H2O  + 2*j21*H2O  + j28*HCL  + j34*HBR  + j57*HF  + j59*CH4               
+               + .33*j60*CH4  + r40*O1D*CH4  + r42*O1D*H2  + r50*OH*O  + r55*OH*H2  + r57*H2*O  + r66*N*OH              
+               + r90*CL*H2  + r133*F*H2  + r149*CO*OH  + r152*CH2O*OH  + r162*OCS*OH  + r163*S*OH  + r166*SO*OH         
+               + r219*H3Op_OH*e  + r220*Hp_H2O*e  + r221*Hp_2H2O*e  + r222*Hp_3H2O*e  + r223*Hp_4H2O*e                  
+               + r224*Hp_5H2O*e  + r278*Om*H2  + r365*Hp_4H2O*CO3m  + r366*Hp_4H2O*CLm_HCL  + r368*Hp_4H2O*HCO3m        
+               + r369*Hp_4H2O*O2m  + r370*Hp_4H2O*CO4m  + r371*Hp_4H2O*NO3m_H2O  + r372*Hp_4H2O*CO3m2H2O                
+               + r373*Hp_4H2O*CLm  + r374*Hp_4H2O*CO3m_H2O  + r375*Hp_4H2O*NO2m_H2O  + r376*Hp_4H2O*NO3m_HCL            
+               + r377*Hp_4H2O*CLm_H2O  + r378*Hp_4H2O*NO3m2H2O  + r379*Hp_4H2O*NO2m  + r381*Hp_5H2O*CO3m                
+               + r382*Hp_5H2O*CLm_HCL  + r384*Hp_5H2O*HCO3m  + r385*Hp_5H2O*O2m  + r386*Hp_5H2O*CO4m                    
+               + r387*Hp_5H2O*NO3m_H2O  + r388*Hp_5H2O*CO3m2H2O  + r389*Hp_5H2O*CLm  + r390*Hp_5H2O*CO3m_H2O            
+               + r391*Hp_5H2O*NO2m_H2O  + r392*Hp_5H2O*NO3m_HCL  + r393*Hp_5H2O*CLm_H2O  + r394*Hp_5H2O*NO3m2H2O        
+               + r395*Hp_5H2O*NO2m  + r397*Hp_3H2O*CO3m  + r398*Hp_3H2O*CLm_HCL  + r400*Hp_3H2O*HCO3m                   
+               + r401*Hp_3H2O*O2m  + r402*Hp_3H2O*CO4m  + r403*Hp_3H2O*NO3m_H2O  + r404*Hp_3H2O*CO3m2H2O                
+               + r405*Hp_3H2O*CLm  + r406*Hp_3H2O*CO3m_H2O  + r407*Hp_3H2O*NO2m_H2O  + r408*Hp_3H2O*NO3m_HCL            
+               + r409*Hp_3H2O*CLm_H2O  + r410*Hp_3H2O*NO3m2H2O  + r411*Hp_3H2O*NO2m  + r476*M*Hp_4H2O*CO3m              
+               + r478*M*Hp_5H2O*CO3m  + r484*M*Hp_4H2O*CO3m2H2O  + r485*M*Hp_5H2O*CO3m2H2O  + r486*M*Hp_4H2O*CO3m_H2O   
+               + r487*M*Hp_5H2O*CO3m_H2O  + r488*M*Hp_4H2O*NO3m_H2O  + r489*M*Hp_5H2O*NO3m_H2O                          
+               - r45*M*O2*H  - r46*O3*H  - r47*HO2*H  - r48*HO2*H  - r49*HO2*H  - r62*M*NO*H  - r252*NOp_H2O*H          
+               - r268*O2m*H  - r272*OHm*H  - r293*O3m*H  - r309*CO3m*H  - r317*CO4m*H  - r322*NO2m*H  - r332*CLm*H      
+    d(H2O2)/dt = .5*r160*HO2  + r54*M*OH*OH  + r60*HO2*HO2                                                              
+                  - j22*H2O2  - r56*OH*H2O2  - r61*O*H2O2  - r91*CL*H2O2                                                
+    d(HONO)/dt = r62*M*H*NO  + r254*NOp_3H2O*H2O  + r326*NO2m*HCL                                                       
+                  - j66*HONO  - r63*OH*HONO                                                                             
+    d(CLY)/dt = 0                                                                                                       
+    d(BRY)/dt = 0                                                                                                       
+    d(CL2)/dt = r104*CLO*CLO  + r115*CLONO2*CL  + r181*CLONO2*HCL  + r182*HOCL*HCL  + r186*CLONO2*HCL  + r187*HOCL*HCL  
+                 + r192*CLONO2*HCL  + r193*HOCL*HCL                                                                     
+                 - j23*CL2                                                                                              
+    d(CLO)/dt = j25*OCLO  + j30*CLONO2  + r107*M*CL2O2  + r107*M*CL2O2  + r89*CL*O3  + r93*CL*HO2  + r110*HOCL*O        
+                 + r111*HOCL*CL  + r112*HOCL*OH  + r113*CLONO2*O  + r172*SO*OCLO                                        
+                 - j24*CLO  - r96*O*CLO  - r97*OH*CLO  - r98*OH*CLO  - r99*HO2*CLO  - r100*CH3O2*CLO  - r101*NO*CLO     
+                 - r102*M*NO2*CLO  - 2*r103*CLO*CLO  - 2*r104*CLO*CLO  - 2*r105*CLO*CLO  - 2*r106*M*CLO*CLO             
+                 - r124*BRO*CLO  - r125*BRO*CLO  - r126*BRO*CLO  - r170*SO*CLO  - r282*Om*CLO  - r290*O2m*CLO           
+                 - r306*OHm*CLO  - r315*CO3m*CLO  - r321*CO4m*CLO  - r328*NO2m*CLO                                      
+    d(OCLO)/dt = r105*CLO*CLO  + r124*BRO*CLO                                                                           
+                  - j25*OCLO  - r172*SO*OCLO                                                                            
+    d(CL2O2)/dt = r106*M*CLO*CLO                                                                                        
+                   - j26*CL2O2  - r107*M*CL2O2                                                                          
+    d(HCL)/dt = r342*M*CLm_HCL  + r90*CL*H2  + r91*CL*H2O2  + r92*CL*HO2  + r94*CL*CH2O  + r95*CL*CH4  + r98*CLO*OH     
+                 + r111*HOCL*CL  + 2*r136*CH3CL*CL  + r141*CH3BR*CL  + r146*CH2BR2*CL  + r147*CHBR3*CL  + r332*CLm*H    
+                 + r334*CLm*HNO3  + r360*NO3m_HCL*HNO3  + r366*Hp_4H2O*CLm_HCL  + r376*Hp_4H2O*NO3m_HCL                 
+                 + r382*Hp_5H2O*CLm_HCL  + r392*Hp_5H2O*NO3m_HCL  + r398*Hp_3H2O*CLm_HCL  + r408*Hp_3H2O*NO3m_HCL       
+                 + r414*NOp_H2O*CLm_HCL  + r424*NOp_H2O*NO3m_HCL  + r430*NOp_2H2O*CLm_HCL  + r440*NOp_2H2O*NO3m_HCL     
+                 + r446*NOp*CLm_HCL  + r456*NOp*NO3m_HCL  + r462*O2p*CLm_HCL  + r472*O2p*NO3m_HCL                       
+                 + 2*r480*M*Hp_4H2O*CLm_HCL  + 2*r481*M*Hp_5H2O*CLm_HCL                                                 
+                 - j28*HCL  - r43*O1D*HCL  - r108*OH*HCL  - r109*O*HCL  - r181*CLONO2*HCL  - r182*HOCL*HCL              
+                 - r183*HOBR*HCL  - r186*CLONO2*HCL  - r187*HOCL*HCL  - r192*CLONO2*HCL  - r193*HOCL*HCL                
+                 - r194*HOBR*HCL  - r280*Om*HCL  - r289*O2m*HCL  - r304*OHm*HCL  - r319*CO4m*HCL  - r326*NO2m*HCL       
+                 - r331*NO3m*HCL  - r336*M*CLm*HCL  - r340*CLm_H2O*HCL  - r361*M*NO3m*HCL                               
+    d(HOCL)/dt = r179*CLONO2  + r185*CLONO2  + r190*CLONO2  + r99*CLO*HO2  + r114*CLONO2*OH                             
+                  - j27*HOCL  - r110*O*HOCL  - r111*CL*HOCL  - r112*OH*HOCL  - r182*HCL*HOCL  - r187*HCL*HOCL           
+                  - r193*HCL*HOCL                                                                                       
+    d(CLONO2)/dt = r102*M*CLO*NO2                                                                                       
+                    - j29*CLONO2  - j30*CLONO2  - r179*CLONO2  - r185*CLONO2  - r190*CLONO2  - r113*O*CLONO2            
+                    - r114*OH*CLONO2  - r115*CL*CLONO2  - r181*HCL*CLONO2  - r186*HCL*CLONO2  - r192*HCL*CLONO2         
+    d(BRCL)/dt = r126*BRO*CLO  + r183*HOBR*HCL  + r194*HOBR*HCL                                                         
+                  - j31*BRCL                                                                                            
+    d(BRO)/dt = j36*BRONO2  + r116*BR*O3  + r130*HOBR*O  + r131*BRONO2*O                                                
+                 - j32*BRO  - r119*O*BRO  - r120*OH*BRO  - r121*HO2*BRO  - r122*NO*BRO  - r123*M*NO2*BRO                
+                 - r124*CLO*BRO  - r125*CLO*BRO  - r126*CLO*BRO  - 2*r127*BRO*BRO  - r171*SO*BRO                        
+    d(HBR)/dt = r117*BR*HO2  + r118*BR*CH2O                                                                             
+                 - j34*HBR  - r44*O1D*HBR  - r128*OH*HBR  - r129*O*HBR                                                  
+    d(HOBR)/dt = r180*BRONO2  + r188*BRONO2  + r191*BRONO2  + r121*BRO*HO2                                              
+                  - j33*HOBR  - r130*O*HOBR  - r183*HCL*HOBR  - r194*HCL*HOBR                                           
+    d(BRONO2)/dt = r123*M*BRO*NO2                                                                                       
+                    - j35*BRONO2  - j36*BRONO2  - r180*BRONO2  - r188*BRONO2  - r191*BRONO2  - r131*O*BRONO2            
+    d(CH3CL)/dt =  - j37*CH3CL  - r136*CL*CH3CL  - r137*OH*CH3CL                                                        
+    d(CH3BR)/dt =  - j48*CH3BR  - r30*O1D*CH3BR  - r140*OH*CH3BR  - r141*CL*CH3BR                                       
+    d(CFC11)/dt =  - j40*CFC11  - r21*O1D*CFC11                                                                         
+    d(CFC12)/dt =  - j41*CFC12  - r22*O1D*CFC12                                                                         
+    d(CFC113)/dt =  - j42*CFC113  - r23*O1D*CFC113                                                                      
+    d(HCFC22)/dt =  - j45*HCFC22  - r26*O1D*HCFC22  - r139*OH*HCFC22                                                    
+    d(CCL4)/dt =  - j38*CCL4  - r29*O1D*CCL4                                                                            
+    d(CH3CCL3)/dt =  - j39*CH3CCL3  - r138*OH*CH3CCL3                                                                   
+    d(CF3BR)/dt =  - j49*CF3BR  - r32*O1D*CF3BR                                                                         
+    d(CF2CLBR)/dt =  - j50*CF2CLBR  - r31*O1D*CF2CLBR                                                                   
+    d(HCFC141B)/dt =  - j46*HCFC141B  - r27*O1D*HCFC141B  - r142*OH*HCFC141B                                            
+    d(HCFC142B)/dt =  - j47*HCFC142B  - r28*O1D*HCFC142B  - r143*OH*HCFC142B                                            
+    d(CFC114)/dt =  - j43*CFC114  - r24*O1D*CFC114                                                                      
+    d(CFC115)/dt =  - j44*CFC115  - r25*O1D*CFC115                                                                      
+    d(H1202)/dt =  - j53*H1202  - r33*O1D*H1202                                                                         
+    d(H2402)/dt =  - j54*H2402  - r34*O1D*H2402                                                                         
+    d(CHBR3)/dt =  - j51*CHBR3  - r35*O1D*CHBR3  - r145*OH*CHBR3  - r147*CL*CHBR3                                       
+    d(CH2BR2)/dt =  - j52*CH2BR2  - r36*O1D*CH2BR2  - r144*OH*CH2BR2  - r146*CL*CH2BR2                                  
+    d(COF2)/dt = j41*CFC12  + j42*CFC113  + 2*j43*CFC114  + 2*j44*CFC115  + j45*HCFC22  + j47*HCFC142B  + j49*CF3BR     
+                  + j50*CF2CLBR  + j53*H1202  + 2*j54*H2402  + r22*O1D*CFC12  + r23*O1D*CFC113  + 2*r24*O1D*CFC114      
+                  + 2*r25*O1D*CFC115  + r26*O1D*HCFC22  + r28*O1D*HCFC142B  + r31*O1D*CF2CLBR  + r32*O1D*CF3BR          
+                  + r33*O1D*H1202  + 2*r34*O1D*H2402  + r139*HCFC22*OH  + r143*HCFC142B*OH                              
+                  - j55*COF2  - r37*O1D*COF2                                                                            
+    d(COFCL)/dt = j40*CFC11  + j42*CFC113  + j46*HCFC141B  + r21*O1D*CFC11  + r23*O1D*CFC113  + r27*O1D*HCFC141B        
+                   + r142*HCFC141B*OH                                                                                   
+                   - j56*COFCL  - r38*O1D*COFCL                                                                         
+    d(HF)/dt = r132*F*H2O  + r133*F*H2  + r134*F*CH4  + r135*F*HNO3                                                     
+                - j57*HF                                                                                                
+    d(F)/dt = j44*CFC115  + j49*CF3BR  + 2*j55*COF2  + j56*COFCL  + j57*HF  + r25*O1D*CFC115  + r32*O1D*CF3BR           
+               + 2*r37*O1D*COF2  + r38*O1D*COFCL                                                                        
+               - r132*H2O*F  - r133*H2*F  - r134*CH4*F  - r135*HNO3*F                                                   
+    d(CO2)/dt = .44*j60*CH4  + j102*CO3m  + j103*CO4m  + r257*M*NOp_CO2  + r149*CO*OH  + r150*M*CO*OH                   
+                 + r214*NOp_CO2*e  + r255*NOp_CO2*H2O  + r307*CO3m*O  + r308*CO3m*O2  + r309*CO3m*H  + r310*CO3m*NO     
+                 + r311*CO3m*NO2  + r312*CO3m*HNO3  + r313*CO3m*CL  + r314*CO3m*CL  + r315*CO3m*CLO  + r316*CO4m*O3     
+                 + r319*CO4m*HCL  + r320*CO4m*CL  + r321*CO4m*CLO  + r346*CO3m_H2O*NO  + r347*CO3m_H2O*NO2              
+                 + r349*CO3m_H2O*NO2  + r352*CO3m_H2O*NO  + r365*Hp_4H2O*CO3m  + r368*Hp_4H2O*HCO3m                     
+                 + r370*Hp_4H2O*CO4m  + r372*Hp_4H2O*CO3m2H2O  + r374*Hp_4H2O*CO3m_H2O  + r381*Hp_5H2O*CO3m             
+                 + r384*Hp_5H2O*HCO3m  + r386*Hp_5H2O*CO4m  + r388*Hp_5H2O*CO3m2H2O  + r390*Hp_5H2O*CO3m_H2O            
+                 + r397*Hp_3H2O*CO3m  + r400*Hp_3H2O*HCO3m  + r402*Hp_3H2O*CO4m  + r404*Hp_3H2O*CO3m2H2O                
+                 + r406*Hp_3H2O*CO3m_H2O  + r413*NOp_H2O*CO3m  + r416*NOp_H2O*HCO3m  + r418*NOp_H2O*CO4m                
+                 + r420*NOp_H2O*CO3m2H2O  + r422*NOp_H2O*CO3m_H2O  + r429*NOp_2H2O*CO3m  + r432*NOp_2H2O*HCO3m          
+                 + r434*NOp_2H2O*CO4m  + r436*NOp_2H2O*CO3m2H2O  + r438*NOp_2H2O*CO3m_H2O  + r445*NOp*CO3m              
+                 + r448*NOp*HCO3m  + r450*NOp*CO4m  + r452*NOp*CO3m2H2O  + r454*NOp*CO3m_H2O  + r461*O2p*CO3m           
+                 + r464*O2p*HCO3m  + r466*O2p*CO4m  + r468*O2p*CO3m2H2O  + r470*O2p*CO3m_H2O  + r476*M*Hp_4H2O*CO3m     
+                 + r478*M*Hp_5H2O*CO3m  + r484*M*Hp_4H2O*CO3m2H2O  + r485*M*Hp_5H2O*CO3m2H2O                            
+                 + r486*M*Hp_4H2O*CO3m_H2O  + r487*M*Hp_5H2O*CO3m_H2O                                                   
+                 - j58*CO2  - j92*CO2  - r199*Op*CO2  - r226*NOp_N2*CO2  - r256*M*NOp*CO2  - r277*M*Om*CO2              
+                 - r285*M*O2m*CO2  - r294*O3m*CO2  - r300*O4m*CO2  - r303*M*OHm*CO2                                     
+    d(OCS)/dt =  - j64*OCS  - r161*O*OCS  - r162*OH*OCS                                                                 
+    d(S)/dt = j64*OCS  + j65*SO                                                                                         
+               - r163*OH*S  - r164*O2*S  - r165*O3*S                                                                    
+    d(SO)/dt = j62*SO2  + r161*OCS*O  + r163*S*OH  + r164*S*O2  + r165*S*O3                                             
+                - j65*SO  - r166*OH*SO  - r167*O2*SO  - r168*O3*SO  - r169*NO2*SO  - r170*CLO*SO  - r171*BRO*SO         
+                - r172*OCLO*SO                                                                                          
+    d(SO2)/dt = j63*SO3  + r162*OCS*OH  + r166*SO*OH  + r167*SO*O2  + r168*SO*O3  + r169*SO*NO2  + r170*SO*CLO          
+                 + r171*SO*BRO  + r172*SO*OCLO  + .5*r175*DMS*OH  + r176*DMS*OH  + r177*DMS*NO3                         
+                 - j62*SO2  - r173*OH*SO2                                                                               
+    d(SO3)/dt = j61*H2SO4  + r173*SO2*OH                                                                                
+                 - j63*SO3  - r174*H2O*SO3                                                                              
+    d(H2SO4)/dt = r174*SO3*H2O                                                                                          
+                   - j61*H2SO4                                                                                          
+    d(DMS)/dt =  - r175*OH*DMS  - r176*OH*DMS  - r177*NO3*DMS                                                           
+    d(SOAG)/dt = 0                                                                                                      
+    d(so4_a1)/dt = 0                                                                                                    
+    d(pom_a1)/dt = 0                                                                                                    
+    d(soa_a1)/dt = 0                                                                                                    
+    d(bc_a1)/dt = 0                                                                                                     
+    d(dst_a1)/dt = 0                                                                                                    
+    d(ncl_a1)/dt = 0                                                                                                    
+    d(num_a1)/dt = 0                                                                                                    
+    d(so4_a2)/dt = 0                                                                                                    
+    d(soa_a2)/dt = 0                                                                                                    
+    d(ncl_a2)/dt = 0                                                                                                    
+    d(num_a2)/dt = 0                                                                                                    
+    d(dst_a2)/dt = 0                                                                                                    
+    d(dst_a3)/dt = 0                                                                                                    
+    d(ncl_a3)/dt = 0                                                                                                    
+    d(so4_a3)/dt = 0                                                                                                    
+    d(num_a3)/dt = 0                                                                                                    
+    d(pom_a4)/dt = 0                                                                                                    
+    d(bc_a4)/dt = 0                                                                                                     
+    d(num_a4)/dt = 0                                                                                                    
+    d(CL)/dt = 2*j23*CL2  + j24*CLO  + 2*j26*CL2O2  + j27*HOCL  + j28*HCL  + j29*CLONO2  + j31*BRCL  + j37*CH3CL        
+                + 4*j38*CCL4  + 3*j39*CH3CCL3  + 2*j40*CFC11  + 2*j41*CFC12  + 2*j42*CFC113  + 2*j43*CFC114             
+                + j44*CFC115  + j45*HCFC22  + j46*HCFC141B  + j47*HCFC142B  + j50*CF2CLBR  + j56*COFCL                  
+                + 2*r21*O1D*CFC11  + 2*r22*O1D*CFC12  + 2*r23*O1D*CFC113  + 2*r24*O1D*CFC114  + r25*O1D*CFC115          
+                + r26*O1D*HCFC22  + r27*O1D*HCFC141B  + r28*O1D*HCFC142B  + 4*r29*O1D*CCL4  + r31*O1D*CF2CLBR           
+                + r38*O1D*COFCL  + r43*O1D*HCL  + r96*CLO*O  + r97*CLO*OH  + r100*CLO*CH3O2  + r101*CLO*NO              
+                + 2*r103*CLO*CLO  + r105*CLO*CLO  + r108*HCL*OH  + r109*HCL*O  + r125*BRO*CLO  + r137*CH3CL*OH          
+                + 3*r138*CH3CCL3*OH  + r139*HCFC22*OH  + r142*HCFC141B*OH  + r143*HCFC142B*OH  + r170*SO*CLO            
+                + r333*CLm*NO2  + r337*CLOm*NO  + r366*Hp_4H2O*CLm_HCL  + r373*Hp_4H2O*CLm  + r377*Hp_4H2O*CLm_H2O      
+                + r382*Hp_5H2O*CLm_HCL  + r389*Hp_5H2O*CLm  + r393*Hp_5H2O*CLm_H2O  + r398*Hp_3H2O*CLm_HCL              
+                + r405*Hp_3H2O*CLm  + r409*Hp_3H2O*CLm_H2O  + r414*NOp_H2O*CLm_HCL  + r421*NOp_H2O*CLm                  
+                + r425*NOp_H2O*CLm_H2O  + r430*NOp_2H2O*CLm_HCL  + r437*NOp_2H2O*CLm  + r441*NOp_2H2O*CLm_H2O           
+                + r446*NOp*CLm_HCL  + r453*NOp*CLm  + r457*NOp*CLm_H2O  + r462*O2p*CLm_HCL  + r469*O2p*CLm              
+                + r473*O2p*CLm_H2O                                                                                      
+                - r89*O3*CL  - r90*H2*CL  - r91*H2O2*CL  - r92*HO2*CL  - r93*HO2*CL  - r94*CH2O*CL  - r95*CH4*CL        
+                - r111*HOCL*CL  - r115*CLONO2*CL  - r136*CH3CL*CL  - r141*CH3BR*CL  - r146*CH2BR2*CL  - r147*CHBR3*CL   
+                - r281*Om*CL  - r291*O2m*CL  - r305*OHm*CL  - r313*CO3m*CL  - r314*CO3m*CL  - r320*CO4m*CL              
+                - r327*NO2m*CL                                                                                          
+    d(BR)/dt = j31*BRCL  + j32*BRO  + j33*HOBR  + j34*HBR  + j35*BRONO2  + j48*CH3BR  + j49*CF3BR  + j50*CF2CLBR        
+                + 3*j51*CHBR3  + 2*j52*CH2BR2  + 2*j53*H1202  + 2*j54*H2402  + r30*O1D*CH3BR  + r31*O1D*CF2CLBR         
+                + r32*O1D*CF3BR  + 2*r33*O1D*H1202  + 2*r34*O1D*H2402  + 3*r35*O1D*CHBR3  + 2*r36*O1D*CH2BR2            
+                + r44*O1D*HBR  + r119*BRO*O  + r120*BRO*OH  + r122*BRO*NO  + r124*BRO*CLO  + r125*BRO*CLO               
+                + 2*r127*BRO*BRO  + r128*HBR*OH  + r129*HBR*O  + r140*CH3BR*OH  + r141*CH3BR*CL  + 2*r144*CH2BR2*OH     
+                + 3*r145*CHBR3*OH  + 2*r146*CH2BR2*CL  + 3*r147*CHBR3*CL  + r171*SO*BRO                                 
+                - r116*O3*BR  - r117*HO2*BR  - r118*CH2O*BR                                                             
+    d(OH)/dt = j11*HNO3  + j14*HO2NO2  + j16*CH3OOH  + j19*H2O  + 2*j22*H2O2  + j27*HOCL  + j33*HOBR  + .33*j60*CH4     
+                + j66*HONO  + j97*OHm  + .5*r159*NO2  + 2*r17*O1D*H2O  + r39*O1D*CH4  + r42*O1D*H2  + r43*O1D*HCL       
+                + r44*O1D*HBR  + r46*H*O3  + 2*r47*H*HO2  + r57*H2*O  + r58*HO2*O  + r59*HO2*O3  + r61*H2O2*O           
+                + r73*NO*HO2  + r85*NO3*HO2  + r93*CL*HO2  + r109*HCL*O  + r110*HOCL*O  + r129*HBR*O  + r130*HOBR*O     
+                + r132*F*H2O  + r153*CH2O*O  + r219*H3Op_OH*e  + r234*O2p_H2O*H2O  + r235*H3Op_OH*H2O  + r275*Om*H2O    
+                + r279*Om*HNO3  + r280*Om*HCL  + r301*OHm*O3  + r302*OHm*NO2  + r305*OHm*CL  + r306*OHm*CLO             
+                + r312*CO3m*HNO3  + r317*CO4m*H  + r368*Hp_4H2O*HCO3m  + r384*Hp_5H2O*HCO3m  + r400*Hp_3H2O*HCO3m       
+                + r416*NOp_H2O*HCO3m  + r432*NOp_2H2O*HCO3m  + r448*NOp*HCO3m  + r464*O2p*HCO3m                         
+                - r50*O*OH  - r51*O3*OH  - r52*HO2*OH  - 2*r53*OH*OH  - 2*r54*M*OH*OH  - r55*H2*OH  - r56*H2O2*OH       
+                - r63*HONO*OH  - r66*N*OH  - r80*M*NO2*OH  - r81*HNO3*OH  - r84*NO3*OH  - r87*HO2NO2*OH  - r97*CLO*OH   
+                - r98*CLO*OH  - r108*HCL*OH  - r112*HOCL*OH  - r114*CLONO2*OH  - r120*BRO*OH  - r128*HBR*OH             
+                - r137*CH3CL*OH  - r138*CH3CCL3*OH  - r139*HCFC22*OH  - r140*CH3BR*OH  - r142*HCFC141B*OH               
+                - r143*HCFC142B*OH  - r144*CH2BR2*OH  - r145*CHBR3*OH  - r148*CH4*OH  - r149*CO*OH  - r150*M*CO*OH      
+                - r152*CH2O*OH  - r156*CH3OOH*OH  - r162*OCS*OH  - r163*S*OH  - r166*SO*OH  - r173*SO2*OH               
+                - r175*DMS*OH  - r176*DMS*OH  - r251*NOp_H2O*OH                                                         
+    d(HO2)/dt = j15*HO2NO2  + r88*M*HO2NO2  + r40*O1D*CH4  + r45*M*H*O2  + r51*OH*O3  + r56*OH*H2O2  + r61*H2O2*O       
+                 + r84*NO3*OH  + r91*CL*H2O2  + r94*CL*CH2O  + r97*CLO*OH  + r100*CLO*CH3O2  + r118*BR*CH2O             
+                 + r120*BRO*OH  + r136*CH3CL*CL  + r137*CH3CL*OH  + r140*CH3BR*OH  + r141*CH3BR*CL  + r150*M*CO*OH      
+                 + r151*CH2O*NO3  + r153*CH2O*O  + r154*CH3O2*NO  + r173*SO2*OH  + .5*r175*DMS*OH  + r268*O2m*H         
+                 + r271*OHm*O  + r288*O2m*HNO3  + r289*O2m*HCL  + r319*CO4m*HCL                                         
+                 - r160*HO2  - r47*H*HO2  - r48*H*HO2  - r49*H*HO2  - r52*OH*HO2  - r58*O*HO2  - r59*O3*HO2             
+                 - 2*r60*HO2*HO2  - r73*NO*HO2  - r85*NO3*HO2  - r86*M*NO2*HO2  - r92*CL*HO2  - r93*CL*HO2              
+                 - r99*CLO*HO2  - r117*BR*HO2  - r121*BRO*HO2  - r155*CH3O2*HO2  - r250*NOp_H2O*HO2                     
+    d(N2p)/dt = j72*N2  + j84*N2                                                                                        
+                 - r197*O*N2p  - r198*O*N2p  - r205*O2*N2p  - r209*e*N2p                                                
+    d(O2p)/dt = j71*O2  + j83*O2  + j93*O2p_H2O  + r195*Op*O2  + r199*Op*CO2  + r202*Np*O2  + r205*N2p*O2               
+                 + r231*O4p*O2_1D  + r232*O4p*O  + 2*r465*O2p*O2m                                                       
+                 - r206*N2*O2p  - r200*N*O2p  - r201*NO*O2p  - r208*e*O2p  - r228*M*O2*O2p  - r229*M*H2O*O2p            
+                 - r460*NO3mHNO3*O2p  - r461*CO3m*O2p  - r462*CLm_HCL*O2p  - r463*NO3m*O2p  - r464*HCO3m*O2p            
+                 - r465*O2m*O2p  - r466*CO4m*O2p  - r467*NO3m_H2O*O2p  - r468*CO3m2H2O*O2p  - r469*CLm*O2p              
+                 - r470*CO3m_H2O*O2p  - r471*NO2m_H2O*O2p  - r472*NO3m_HCL*O2p  - r473*CLm_H2O*O2p                      
+                 - r474*NO3m2H2O*O2p  - r475*NO2m*O2p                                                                   
+    d(O4p)/dt = r228*M*O2p*O2                                                                                           
+                 - r213*e*O4p  - r230*H2O*O4p  - r231*O2_1D*O4p  - r232*O*O4p                                           
+    d(O2p_H2O)/dt = r229*M*O2p*H2O  + r230*O4p*H2O                                                                      
+                     - j93*O2p_H2O  - r218*e*O2p_H2O  - r233*H2O*O2p_H2O  - r234*H2O*O2p_H2O                            
+    d(Hp_H2O)/dt = r237*M*Hp_2H2O  + r234*O2p_H2O*H2O  + r250*NOp_H2O*HO2  + r251*NOp_H2O*OH  + r252*NOp_H2O*H          
+                    - r220*e*Hp_H2O  - r236*M*H2O*Hp_H2O                                                                
+    d(Hp_2H2O)/dt = r239*M*Hp_3H2O  + r235*H3Op_OH*H2O  + r236*M*Hp_H2O*H2O                                             
+                     - r237*M*Hp_2H2O  - r221*e*Hp_2H2O  - r238*M*H2O*Hp_2H2O                                           
+    d(Hp_3H2O)/dt = r241*M*Hp_4H2O  + r238*M*Hp_2H2O*H2O  + r254*NOp_3H2O*H2O                                           
+                     - r239*M*Hp_3H2O  - r222*e*Hp_3H2O  - r240*M*H2O*Hp_3H2O  - r396*NO3mHNO3*Hp_3H2O                  
+                     - r397*CO3m*Hp_3H2O  - r398*CLm_HCL*Hp_3H2O  - r399*NO3m*Hp_3H2O  - r400*HCO3m*Hp_3H2O             
+                     - r401*O2m*Hp_3H2O  - r402*CO4m*Hp_3H2O  - r403*NO3m_H2O*Hp_3H2O  - r404*CO3m2H2O*Hp_3H2O          
+                     - r405*CLm*Hp_3H2O  - r406*CO3m_H2O*Hp_3H2O  - r407*NO2m_H2O*Hp_3H2O  - r408*NO3m_HCL*Hp_3H2O      
+                     - r409*CLm_H2O*Hp_3H2O  - r410*NO3m2H2O*Hp_3H2O  - r411*NO2m*Hp_3H2O                               
+    d(Hp_4H2O)/dt = r243*M*Hp_5H2O  + r240*M*Hp_3H2O*H2O  + r246*Hp_3N1*H2O                                             
+                     - r241*M*Hp_4H2O  - r223*e*Hp_4H2O  - r242*M*H2O*Hp_4H2O  - r244*N2O5*Hp_4H2O                      
+                     - r364*NO3mHNO3*Hp_4H2O  - r365*CO3m*Hp_4H2O  - r366*CLm_HCL*Hp_4H2O  - r367*NO3m*Hp_4H2O          
+                     - r368*HCO3m*Hp_4H2O  - r369*O2m*Hp_4H2O  - r370*CO4m*Hp_4H2O  - r371*NO3m_H2O*Hp_4H2O             
+                     - r372*CO3m2H2O*Hp_4H2O  - r373*CLm*Hp_4H2O  - r374*CO3m_H2O*Hp_4H2O  - r375*NO2m_H2O*Hp_4H2O      
+                     - r376*NO3m_HCL*Hp_4H2O  - r377*CLm_H2O*Hp_4H2O  - r378*NO3m2H2O*Hp_4H2O  - r379*NO2m*Hp_4H2O      
+                     - r476*M*CO3m*Hp_4H2O  - r477*M*NO3m*Hp_4H2O  - r480*M*CLm_HCL*Hp_4H2O  - r482*M*NO3mHNO3*Hp_4H2O  
+                     - r484*M*CO3m2H2O*Hp_4H2O  - r486*M*CO3m_H2O*Hp_4H2O  - r488*M*NO3m_H2O*Hp_4H2O                    
+    d(Hp_5H2O)/dt = r242*M*Hp_4H2O*H2O  + r247*Hp_4N1*H2O                                                               
+                     - r243*M*Hp_5H2O  - r224*e*Hp_5H2O  - r245*N2O5*Hp_5H2O  - r380*NO3mHNO3*Hp_5H2O                   
+                     - r381*CO3m*Hp_5H2O  - r382*CLm_HCL*Hp_5H2O  - r383*NO3m*Hp_5H2O  - r384*HCO3m*Hp_5H2O             
+                     - r385*O2m*Hp_5H2O  - r386*CO4m*Hp_5H2O  - r387*NO3m_H2O*Hp_5H2O  - r388*CO3m2H2O*Hp_5H2O          
+                     - r389*CLm*Hp_5H2O  - r390*CO3m_H2O*Hp_5H2O  - r391*NO2m_H2O*Hp_5H2O  - r392*NO3m_HCL*Hp_5H2O      
+                     - r393*CLm_H2O*Hp_5H2O  - r394*NO3m2H2O*Hp_5H2O  - r395*NO2m*Hp_5H2O  - r478*M*CO3m*Hp_5H2O        
+                     - r479*M*NO3m*Hp_5H2O  - r481*M*CLm_HCL*Hp_5H2O  - r483*M*NO3mHNO3*Hp_5H2O                         
+                     - r485*M*CO3m2H2O*Hp_5H2O  - r487*M*CO3m_H2O*Hp_5H2O  - r489*M*NO3m_H2O*Hp_5H2O                    
+    d(H3Op_OH)/dt = r233*O2p_H2O*H2O                                                                                    
+                     - r219*e*H3Op_OH  - r235*H2O*H3Op_OH                                                               
+    d(Hp_3N1)/dt = r244*Hp_4H2O*N2O5                                                                                    
+                    - r246*H2O*Hp_3N1                                                                                   
+    d(Hp_4N1)/dt = r245*Hp_5H2O*N2O5                                                                                    
+                    - r247*H2O*Hp_4N1                                                                                   
+    d(NOp_H2O)/dt = r227*NOp_N2*H2O  + r248*M*NOp*H2O  + r255*NOp_CO2*H2O                                               
+                     - r215*e*NOp_H2O  - r249*M*H2O*NOp_H2O  - r250*HO2*NOp_H2O  - r251*OH*NOp_H2O  - r252*H*NOp_H2O    
+                     - r412*NO3mHNO3*NOp_H2O  - r413*CO3m*NOp_H2O  - r414*CLm_HCL*NOp_H2O  - r415*NO3m*NOp_H2O          
+                     - r416*HCO3m*NOp_H2O  - r417*O2m*NOp_H2O  - r418*CO4m*NOp_H2O  - r419*NO3m_H2O*NOp_H2O             
+                     - r420*CO3m2H2O*NOp_H2O  - r421*CLm*NOp_H2O  - r422*CO3m_H2O*NOp_H2O  - r423*NO2m_H2O*NOp_H2O      
+                     - r424*NO3m_HCL*NOp_H2O  - r425*CLm_H2O*NOp_H2O  - r426*NO3m2H2O*NOp_H2O  - r427*NO2m*NOp_H2O      
+    d(NOp_2H2O)/dt = r249*M*NOp_H2O*H2O                                                                                 
+                      - r216*e*NOp_2H2O  - r253*M*H2O*NOp_2H2O  - r428*NO3mHNO3*NOp_2H2O  - r429*CO3m*NOp_2H2O          
+                      - r430*CLm_HCL*NOp_2H2O  - r431*NO3m*NOp_2H2O  - r432*HCO3m*NOp_2H2O  - r433*O2m*NOp_2H2O         
+                      - r434*CO4m*NOp_2H2O  - r435*NO3m_H2O*NOp_2H2O  - r436*CO3m2H2O*NOp_2H2O  - r437*CLm*NOp_2H2O     
+                      - r438*CO3m_H2O*NOp_2H2O  - r439*NO2m_H2O*NOp_2H2O  - r440*NO3m_HCL*NOp_2H2O                      
+                      - r441*CLm_H2O*NOp_2H2O  - r442*NO3m2H2O*NOp_2H2O  - r443*NO2m*NOp_2H2O                           
+    d(NOp_3H2O)/dt = r253*M*NOp_2H2O*H2O                                                                                
+                      - r217*e*NOp_3H2O  - r254*H2O*NOp_3H2O                                                            
+    d(NOp_CO2)/dt = r226*NOp_N2*CO2  + r256*M*NOp*CO2                                                                   
+                     - r257*M*NOp_CO2  - r214*e*NOp_CO2  - r255*H2O*NOp_CO2                                             
+    d(NOp_N2)/dt = r258*N2*M*NOp                                                                                        
+                    - r259*M*NOp_N2  - r225*e*NOp_N2  - r226*CO2*NOp_N2  - r227*H2O*NOp_N2                              
+    d(Om)/dt = j100*O3m  + j102*CO3m  + r211*O3*e  + r283*O2m*O                                                         
+                - j94*Om  - r263*M*Om  - r260*O*Om  - r261*NO*Om  - r262*O2_1D*Om  - r264*H2*Om  - r273*O3*Om           
+                - r274*M*O2*Om  - r275*H2O*Om  - r276*NO2*Om  - r277*M*CO2*Om  - r278*H2*Om  - r279*HNO3*Om             
+                - r280*HCL*Om  - r281*CL*Om  - r282*CLO*Om                                                              
+    d(O2m)/dt = j101*O4m  + j103*CO4m  + r210*N2*O2*e  + r212*M*O2*e  + r292*O3m*O  + r307*CO3m*O                       
+                 - j95*O2m  - r267*N2*O2m  - r265*O*O2m  - r266*O2_1D*O2m  - r268*H*O2m  - r283*O*O2m  - r284*O3*O2m    
+                 - r285*M*CO2*O2m  - r286*NO2*O2m  - r287*M*O2*O2m  - r288*HNO3*O2m  - r289*HCL*O2m  - r290*CLO*O2m     
+                 - r291*CL*O2m  - r369*Hp_4H2O*O2m  - r385*Hp_5H2O*O2m  - r401*Hp_3H2O*O2m  - r417*NOp_H2O*O2m          
+                 - r433*NOp_2H2O*O2m  - r449*NOp*O2m  - r465*O2p*O2m                                                    
+    d(O3m)/dt = r273*Om*O3  + r274*M*Om*O2  + r284*O2m*O3  + r299*O4m*O  + r301*OHm*O3  + r308*CO3m*O2  + r316*CO4m*O3  
+                 - j96*O3m  - j100*O3m  - r269*O*O3m  - r270*O3*O3m  - r292*O*O3m  - r293*H*O3m  - r294*CO2*O3m         
+                 - r295*NO*O3m  - r296*NO2*O3m  - r297*NO2*O3m  - r298*NO*O3m                                           
+    d(O4m)/dt = r287*M*O2m*O2                                                                                           
+                 - j101*O4m  - r299*O*O4m  - r300*CO2*O4m                                                               
+    d(OHm)/dt = r275*Om*H2O  + r278*Om*H2  + r293*O3m*H  + r309*CO3m*H  + r322*NO2m*H                                   
+                 - j97*OHm  - r271*O*OHm  - r272*H*OHm  - r301*O3*OHm  - r302*NO2*OHm  - r303*M*CO2*OHm                 
+                 - r304*HCL*OHm  - r305*CL*OHm  - r306*CLO*OHm                                                          
+    d(CO3m)/dt = j104*CO3m_H2O  + r348*M*CO3m_H2O  + r277*M*Om*CO2  + r294*O3m*CO2  + r317*CO4m*H  + r318*CO4m*O        
+                  - j102*CO3m  - r307*O*CO3m  - r308*O2*CO3m  - r309*H*CO3m  - r310*NO*CO3m  - r311*NO2*CO3m            
+                  - r312*HNO3*CO3m  - r313*CL*CO3m  - r314*CL*CO3m  - r315*CLO*CO3m  - r343*M*H2O*CO3m                  
+                  - r365*Hp_4H2O*CO3m  - r381*Hp_5H2O*CO3m  - r397*Hp_3H2O*CO3m  - r413*NOp_H2O*CO3m                    
+                  - r429*NOp_2H2O*CO3m  - r445*NOp*CO3m  - r461*O2p*CO3m  - r476*M*Hp_4H2O*CO3m  - r478*M*Hp_5H2O*CO3m  
+    d(CO4m)/dt = r285*M*O2m*CO2  + r300*O4m*CO2                                                                         
+                  - j103*CO4m  - r316*O3*CO4m  - r317*H*CO4m  - r318*O*CO4m  - r319*HCL*CO4m  - r320*CL*CO4m            
+                  - r321*CLO*CO4m  - r370*Hp_4H2O*CO4m  - r386*Hp_5H2O*CO4m  - r402*Hp_3H2O*CO4m  - r418*NOp_H2O*CO4m   
+                  - r434*NOp_2H2O*CO4m  - r450*NOp*CO4m  - r466*O2p*CO4m                                                
+    d(NO2m)/dt = r353*M*NO2m_H2O  + r276*Om*NO2  + r286*O2m*NO2  + r297*O3m*NO2  + r298*O3m*NO  + r302*OHm*NO2          
+                  + r310*CO3m*NO  + r329*NO3m*O  + r330*NO3m*O3  + r333*CLm*NO2  + r337*CLOm*NO  + r346*CO3m_H2O*NO     
+                  - j98*NO2m  - r322*H*NO2m  - r323*NO2*NO2m  - r324*O3*NO2m  - r325*HNO3*NO2m  - r326*HCL*NO2m         
+                  - r327*CL*NO2m  - r328*CLO*NO2m  - r354*M*H2O*NO2m  - r379*Hp_4H2O*NO2m  - r395*Hp_5H2O*NO2m          
+                  - r411*Hp_3H2O*NO2m  - r427*NOp_H2O*NO2m  - r443*NOp_2H2O*NO2m  - r459*NOp*NO2m  - r475*O2p*NO2m      
+    d(NO3m)/dt = r345*M*NO3m_H2O  + r358*M*NO3mHNO3  + r279*Om*HNO3  + r288*O2m*HNO3  + r295*O3m*NO  + r296*O3m*NO2     
+                  + r311*CO3m*NO2  + r312*CO3m*HNO3  + r323*NO2m*NO2  + r324*NO2m*O3  + r325*NO2m*HNO3                  
+                  + r334*CLm*HNO3  + r347*CO3m_H2O*NO2                                                                  
+                  - j99*NO3m  - r329*O*NO3m  - r330*O3*NO3m  - r331*HCL*NO3m  - r344*M*H2O*NO3m  - r359*M*HNO3*NO3m     
+                  - r361*M*HCL*NO3m  - r367*Hp_4H2O*NO3m  - r383*Hp_5H2O*NO3m  - r399*Hp_3H2O*NO3m                      
+                  - r415*NOp_H2O*NO3m  - r431*NOp_2H2O*NO3m  - r447*NOp*NO3m  - r463*O2p*NO3m  - r477*M*Hp_4H2O*NO3m    
+                  - r479*M*Hp_5H2O*NO3m                                                                                 
+    d(CO3m_H2O)/dt = r351*M*CO3m2H2O  + r343*M*CO3m*H2O                                                                 
+                      - j104*CO3m_H2O  - r348*M*CO3m_H2O  - r346*NO*CO3m_H2O  - r347*NO2*CO3m_H2O  - r349*NO2*CO3m_H2O  
+                      - r350*M*H2O*CO3m_H2O  - r352*NO*CO3m_H2O  - r374*Hp_4H2O*CO3m_H2O  - r390*Hp_5H2O*CO3m_H2O       
+                      - r406*Hp_3H2O*CO3m_H2O  - r422*NOp_H2O*CO3m_H2O  - r438*NOp_2H2O*CO3m_H2O  - r454*NOp*CO3m_H2O   
+                      - r470*O2p*CO3m_H2O  - r486*M*Hp_4H2O*CO3m_H2O  - r487*M*Hp_5H2O*CO3m_H2O                         
+    d(CO3m2H2O)/dt = r350*M*CO3m_H2O*H2O                                                                                
+                      - r351*M*CO3m2H2O  - r372*Hp_4H2O*CO3m2H2O  - r388*Hp_5H2O*CO3m2H2O  - r404*Hp_3H2O*CO3m2H2O      
+                      - r420*NOp_H2O*CO3m2H2O  - r436*NOp_2H2O*CO3m2H2O  - r452*NOp*CO3m2H2O  - r468*O2p*CO3m2H2O       
+                      - r484*M*Hp_4H2O*CO3m2H2O  - r485*M*Hp_5H2O*CO3m2H2O                                              
+    d(NO2m_H2O)/dt = r352*CO3m_H2O*NO  + r354*M*NO2m*H2O                                                                
+                      - r353*M*NO2m_H2O  - r375*Hp_4H2O*NO2m_H2O  - r391*Hp_5H2O*NO2m_H2O  - r407*Hp_3H2O*NO2m_H2O      
+                      - r423*NOp_H2O*NO2m_H2O  - r439*NOp_2H2O*NO2m_H2O  - r455*NOp*NO2m_H2O  - r471*O2p*NO2m_H2O       
+    d(NO3m_H2O)/dt = r356*M*NO3m2H2O  + r344*M*NO3m*H2O  + r349*CO3m_H2O*NO2                                            
+                      - r345*M*NO3m_H2O  - r355*M*H2O*NO3m_H2O  - r362*N2O5*NO3m_H2O  - r363*HNO3*NO3m_H2O              
+                      - r371*Hp_4H2O*NO3m_H2O  - r387*Hp_5H2O*NO3m_H2O  - r403*Hp_3H2O*NO3m_H2O                         
+                      - r419*NOp_H2O*NO3m_H2O  - r435*NOp_2H2O*NO3m_H2O  - r451*NOp*NO3m_H2O  - r467*O2p*NO3m_H2O       
+                      - r488*M*Hp_4H2O*NO3m_H2O  - r489*M*Hp_5H2O*NO3m_H2O                                              
+    d(NO3m2H2O)/dt = r355*M*NO3m_H2O*H2O                                                                                
+                      - r356*M*NO3m2H2O  - r357*N2O5*NO3m2H2O  - r378*Hp_4H2O*NO3m2H2O  - r394*Hp_5H2O*NO3m2H2O         
+                      - r410*Hp_3H2O*NO3m2H2O  - r426*NOp_H2O*NO3m2H2O  - r442*NOp_2H2O*NO3m2H2O  - r458*NOp*NO3m2H2O   
+                      - r474*O2p*NO3m2H2O                                                                               
+    d(NO3mHNO3)/dt = r357*NO3m2H2O*N2O5  + r359*M*NO3m*HNO3  + r360*NO3m_HCL*HNO3  + r362*NO3m_H2O*N2O5                 
+                      + r363*NO3m_H2O*HNO3                                                                              
+                      - r358*M*NO3mHNO3  - r364*Hp_4H2O*NO3mHNO3  - r380*Hp_5H2O*NO3mHNO3  - r396*Hp_3H2O*NO3mHNO3      
+                      - r412*NOp_H2O*NO3mHNO3  - r428*NOp_2H2O*NO3mHNO3  - r444*NOp*NO3mHNO3  - r460*O2p*NO3mHNO3       
+                      - r482*M*Hp_4H2O*NO3mHNO3  - r483*M*Hp_5H2O*NO3mHNO3                                              
+    d(NO3m_HCL)/dt = r361*M*NO3m*HCL                                                                                    
+                      - r360*HNO3*NO3m_HCL  - r376*Hp_4H2O*NO3m_HCL  - r392*Hp_5H2O*NO3m_HCL  - r408*Hp_3H2O*NO3m_HCL   
+                      - r424*NOp_H2O*NO3m_HCL  - r440*NOp_2H2O*NO3m_HCL  - r456*NOp*NO3m_HCL  - r472*O2p*NO3m_HCL       
+    d(HCO3m)/dt = r303*M*OHm*CO2                                                                                        
+                   - r368*Hp_4H2O*HCO3m  - r384*Hp_5H2O*HCO3m  - r400*Hp_3H2O*HCO3m  - r416*NOp_H2O*HCO3m               
+                   - r432*NOp_2H2O*HCO3m  - r448*NOp*HCO3m  - r464*O2p*HCO3m                                            
+    d(CLm)/dt = r341*M*CLm_H2O  + r342*M*CLm_HCL  + r280*Om*HCL  + r281*Om*CL  + r282*Om*CLO  + r289*O2m*HCL            
+                 + r291*O2m*CL  + r304*OHm*HCL  + r305*OHm*CL  + r313*CO3m*CL  + r315*CO3m*CLO  + r319*CO4m*HCL         
+                 + r320*CO4m*CL  + r326*NO2m*HCL  + r327*NO2m*CL  + r328*NO2m*CLO  + r331*NO3m*HCL  + r338*CLOm*NO      
+                 + r339*CLOm*O                                                                                          
+                 - r332*H*CLm  - r333*NO2*CLm  - r334*HNO3*CLm  - r335*M*H2O*CLm  - r336*M*HCL*CLm  - r373*Hp_4H2O*CLm  
+                 - r389*Hp_5H2O*CLm  - r405*Hp_3H2O*CLm  - r421*NOp_H2O*CLm  - r437*NOp_2H2O*CLm  - r453*NOp*CLm        
+                 - r469*O2p*CLm                                                                                         
+    d(CLOm)/dt = r290*O2m*CLO  + r306*OHm*CLO  + r314*CO3m*CL  + r321*CO4m*CLO                                          
+                  - r337*NO*CLOm  - r338*NO*CLOm  - r339*O*CLOm                                                         
+    d(CLm_H2O)/dt = r335*M*CLm*H2O                                                                                      
+                     - r341*M*CLm_H2O  - r340*HCL*CLm_H2O  - r377*Hp_4H2O*CLm_H2O  - r393*Hp_5H2O*CLm_H2O               
+                     - r409*Hp_3H2O*CLm_H2O  - r425*NOp_H2O*CLm_H2O  - r441*NOp_2H2O*CLm_H2O  - r457*NOp*CLm_H2O        
+                     - r473*O2p*CLm_H2O                                                                                 
+    d(CLm_HCL)/dt = r336*M*CLm*HCL  + r340*CLm_H2O*HCL                                                                  
+                     - r342*M*CLm_HCL  - r366*Hp_4H2O*CLm_HCL  - r382*Hp_5H2O*CLm_HCL  - r398*Hp_3H2O*CLm_HCL           
+                     - r414*NOp_H2O*CLm_HCL  - r430*NOp_2H2O*CLm_HCL  - r446*NOp*CLm_HCL  - r462*O2p*CLm_HCL            
+                     - r480*M*Hp_4H2O*CLm_HCL  - r481*M*Hp_5H2O*CLm_HCL                                                 
+    d(Np)/dt = j76*N2  + j77*N2  + j88*N2  + j89*N2  + j70*N                                                            
+                - r202*O2*Np  - r203*O2*Np  - r204*O*Np                                                                 
+    d(Op)/dt = j67*O  + j68*O  + j69*O  + j73*O2  + j74*O2  + j75*O2  + j80*O  + j81*O  + j82*O  + j85*O2  + j86*O2     
+                + j87*O2  + r198*N2p*O  + r204*Np*O                                                                     
+                - r196*N2*Op  - r195*O2*Op  - r199*CO2*Op                                                               
+    d(NOp)/dt = j7*NO  + r196*N2*Op  + r206*N2*O2p  + r257*M*NOp_CO2  + r259*M*NOp_N2  + r197*N2p*O  + r200*O2p*N       
+                 + r201*O2p*NO  + r203*Np*O2                                                                            
+                 - r258*N2*M*NOp  - r207*e*NOp  - r248*M*H2O*NOp  - r256*M*CO2*NOp  - r444*NO3mHNO3*NOp                 
+                 - r445*CO3m*NOp  - r446*CLm_HCL*NOp  - r447*NO3m*NOp  - r448*HCO3m*NOp  - r449*O2m*NOp                 
+                 - r450*CO4m*NOp  - r451*NO3m_H2O*NOp  - r452*CO3m2H2O*NOp  - r453*CLm*NOp  - r454*CO3m_H2O*NOp         
+                 - r455*NO2m_H2O*NOp  - r456*NO3m_HCL*NOp  - r457*CLm_H2O*NOp  - r458*NO3m2H2O*NOp  - r459*NO2m*NOp     
+    d(e)/dt = j72*N2  + j76*N2  + j77*N2  + j84*N2  + j88*N2  + j89*N2  + j7*NO  + j67*O  + j68*O  + j69*O  + j70*N     
+               + j71*O2  + j73*O2  + j74*O2  + j75*O2  + j80*O  + j81*O  + j82*O  + j83*O2  + j85*O2  + j86*O2          
+               + j87*O2  + j94*Om  + j95*O2m  + j96*O3m  + j97*OHm  + j98*NO2m  + j99*NO3m  + r263*M*Om  + r267*N2*O2m  
+               + r260*Om*O  + r261*Om*NO  + r262*Om*O2_1D  + r264*Om*H2  + r265*O2m*O  + r266*O2m*O2_1D  + r268*O2m*H   
+               + r269*O3m*O  + r270*O3m*O3  + r271*OHm*O  + r272*OHm*H  + r332*CLm*H                                    
+               - r207*NOp*e  - r208*O2p*e  - r209*N2p*e  - r210*N2*O2*e  - r211*O3*e  - r212*M*O2*e  - r213*O4p*e       
+               - r214*NOp_CO2*e  - r215*NOp_H2O*e  - r216*NOp_2H2O*e  - r217*NOp_3H2O*e  - r218*O2p_H2O*e               
+               - r219*H3Op_OH*e  - r220*Hp_H2O*e  - r221*Hp_2H2O*e  - r222*Hp_3H2O*e  - r223*Hp_4H2O*e                  
+               - r224*Hp_5H2O*e  - r225*NOp_N2*e                                                                        
+    d(N2D)/dt = j77*N2  + 1.2*j79*N2  + j89*N2  + 1.2*j91*N2  + r197*N2p*O  + .8*r207*NOp*e  + .9*r209*N2p*e            
+                 - r64*O2*N2D  - r65*O*N2D                                                                              
+    d(O2_1S)/dt = r15*O1D*O2                                                                                            
+                   - r6*N2*O2_1S  - r9*O2_1S  - r4*O*O2_1S  - r5*O2*O2_1S  - r7*O3*O2_1S  - r8*CO2*O2_1S                
+    d(O2_1D)/dt = j3*O3  + r6*N2*O2_1S  + r4*O2_1S*O  + r5*O2_1S*O2  + r7*O2_1S*O3  + r8*O2_1S*CO2                      
+                   - r12*N2*O2_1D  - r13*O2_1D  - r10*O*O2_1D  - r11*O2*O2_1D  - r231*O4p*O2_1D  - r262*Om*O2_1D        
+                   - r266*O2m*O2_1D                                                                                     
+    d(O1D)/dt = j1*O2  + j3*O3  + j5*N2O  + j20*H2O  + r64*N2D*O2  + .85*r208*O2p*e                                     
+                 - r14*N2*O1D  - r15*O2*O1D  - r16*O2*O1D  - r17*H2O*O1D  - r18*N2O*O1D  - r19*N2O*O1D  - r20*O3*O1D    
+                 - r21*CFC11*O1D  - r22*CFC12*O1D  - r23*CFC113*O1D  - r24*CFC114*O1D  - r25*CFC115*O1D                 
+                 - r26*HCFC22*O1D  - r27*HCFC141B*O1D  - r28*HCFC142B*O1D  - r29*CCL4*O1D  - r30*CH3BR*O1D              
+                 - r31*CF2CLBR*O1D  - r32*CF3BR*O1D  - r33*H1202*O1D  - r34*H2402*O1D  - r35*CHBR3*O1D                  
+                 - r36*CH2BR2*O1D  - r37*COF2*O1D  - r38*COFCL*O1D  - r39*CH4*O1D  - r40*CH4*O1D  - r41*CH4*O1D         
+                 - r42*H2*O1D  - r43*HCL*O1D  - r44*HBR*O1D                                                             
+    d(H2O)/dt = .05*j60*CH4  + j61*H2SO4  + j93*O2p_H2O  + j104*CO3m_H2O  + r237*M*Hp_2H2O  + r239*M*Hp_3H2O            
+                 + r241*M*Hp_4H2O  + r243*M*Hp_5H2O  + r341*M*CLm_H2O  + r345*M*NO3m_H2O  + r348*M*CO3m_H2O             
+                 + r351*M*CO3m2H2O  + r353*M*NO2m_H2O  + r356*M*NO3m2H2O  + r49*H*HO2  + r52*OH*HO2  + r53*OH*OH        
+                 + r55*OH*H2  + r56*OH*H2O2  + r63*OH*HONO  + r81*HNO3*OH  + r87*HO2NO2*OH  + r108*HCL*OH               
+                 + r112*HOCL*OH  + r128*HBR*OH  + r137*CH3CL*OH  + r138*CH3CCL3*OH  + r139*HCFC22*OH  + r140*CH3BR*OH   
+                 + r144*CH2BR2*OH  + r148*CH4*OH  + r152*CH2O*OH  + r156*CH3OOH*OH  + r182*HOCL*HCL  + r183*HOBR*HCL    
+                 + r187*HOCL*HCL  + r193*HOCL*HCL  + r194*HOBR*HCL  + r215*NOp_H2O*e  + 2*r216*NOp_2H2O*e               
+                 + 3*r217*NOp_3H2O*e  + r218*O2p_H2O*e  + r219*H3Op_OH*e  + r220*Hp_H2O*e  + 2*r221*Hp_2H2O*e           
+                 + 3*r222*Hp_3H2O*e  + 4*r223*Hp_4H2O*e  + 5*r224*Hp_5H2O*e  + r264*Om*H2  + r272*OHm*H                 
+                 + r304*OHm*HCL  + r340*CLm_H2O*HCL  + r346*CO3m_H2O*NO  + r347*CO3m_H2O*NO2  + r357*NO3m2H2O*N2O5      
+                 + r363*NO3m_H2O*HNO3  + 4*r364*Hp_4H2O*NO3mHNO3  + 4*r365*Hp_4H2O*CO3m  + 4*r366*Hp_4H2O*CLm_HCL       
+                 + 4*r367*Hp_4H2O*NO3m  + 4*r368*Hp_4H2O*HCO3m  + 4*r369*Hp_4H2O*O2m  + 4*r370*Hp_4H2O*CO4m             
+                 + 5*r371*Hp_4H2O*NO3m_H2O  + 6*r372*Hp_4H2O*CO3m2H2O  + 4*r373*Hp_4H2O*CLm  + 5*r374*Hp_4H2O*CO3m_H2O  
+                 + 5*r375*Hp_4H2O*NO2m_H2O  + 4*r376*Hp_4H2O*NO3m_HCL  + 5*r377*Hp_4H2O*CLm_H2O                         
+                 + 6*r378*Hp_4H2O*NO3m2H2O  + 4*r379*Hp_4H2O*NO2m  + 5*r380*Hp_5H2O*NO3mHNO3  + 5*r381*Hp_5H2O*CO3m     
+                 + 5*r382*Hp_5H2O*CLm_HCL  + 5*r383*Hp_5H2O*NO3m  + 5*r384*Hp_5H2O*HCO3m  + 5*r385*Hp_5H2O*O2m          
+                 + 5*r386*Hp_5H2O*CO4m  + 6*r387*Hp_5H2O*NO3m_H2O  + 7*r388*Hp_5H2O*CO3m2H2O  + 5*r389*Hp_5H2O*CLm      
+                 + 6*r390*Hp_5H2O*CO3m_H2O  + 6*r391*Hp_5H2O*NO2m_H2O  + 5*r392*Hp_5H2O*NO3m_HCL                        
+                 + 6*r393*Hp_5H2O*CLm_H2O  + 7*r394*Hp_5H2O*NO3m2H2O  + 5*r395*Hp_5H2O*NO2m  + 3*r396*Hp_3H2O*NO3mHNO3  
+                 + 3*r397*Hp_3H2O*CO3m  + 3*r398*Hp_3H2O*CLm_HCL  + 3*r399*Hp_3H2O*NO3m  + 3*r400*Hp_3H2O*HCO3m         
+                 + 3*r401*Hp_3H2O*O2m  + 3*r402*Hp_3H2O*CO4m  + 4*r403*Hp_3H2O*NO3m_H2O  + 5*r404*Hp_3H2O*CO3m2H2O      
+                 + 3*r405*Hp_3H2O*CLm  + 4*r406*Hp_3H2O*CO3m_H2O  + 4*r407*Hp_3H2O*NO2m_H2O  + 3*r408*Hp_3H2O*NO3m_HCL  
+                 + 4*r409*Hp_3H2O*CLm_H2O  + 5*r410*Hp_3H2O*NO3m2H2O  + 3*r411*Hp_3H2O*NO2m  + r412*NOp_H2O*NO3mHNO3    
+                 + r413*NOp_H2O*CO3m  + r414*NOp_H2O*CLm_HCL  + r415*NOp_H2O*NO3m  + r416*NOp_H2O*HCO3m                 
+                 + r417*NOp_H2O*O2m  + r418*NOp_H2O*CO4m  + 2*r419*NOp_H2O*NO3m_H2O  + 3*r420*NOp_H2O*CO3m2H2O          
+                 + r421*NOp_H2O*CLm  + 2*r422*NOp_H2O*CO3m_H2O  + 2*r423*NOp_H2O*NO2m_H2O  + r424*NOp_H2O*NO3m_HCL      
+                 + 2*r425*NOp_H2O*CLm_H2O  + 3*r426*NOp_H2O*NO3m2H2O  + r427*NOp_H2O*NO2m  + 2*r428*NOp_2H2O*NO3mHNO3   
+                 + 2*r429*NOp_2H2O*CO3m  + 2*r430*NOp_2H2O*CLm_HCL  + 2*r431*NOp_2H2O*NO3m  + 2*r432*NOp_2H2O*HCO3m     
+                 + 2*r433*NOp_2H2O*O2m  + 2*r434*NOp_2H2O*CO4m  + 3*r435*NOp_2H2O*NO3m_H2O  + 4*r436*NOp_2H2O*CO3m2H2O  
+                 + 2*r437*NOp_2H2O*CLm  + 3*r438*NOp_2H2O*CO3m_H2O  + 3*r439*NOp_2H2O*NO2m_H2O                          
+                 + 2*r440*NOp_2H2O*NO3m_HCL  + 3*r441*NOp_2H2O*CLm_H2O  + 4*r442*NOp_2H2O*NO3m2H2O                      
+                 + 2*r443*NOp_2H2O*NO2m  + r451*NOp*NO3m_H2O  + 2*r452*NOp*CO3m2H2O  + r454*NOp*CO3m_H2O                
+                 + r455*NOp*NO2m_H2O  + r457*NOp*CLm_H2O  + 2*r458*NOp*NO3m2H2O  + r467*O2p*NO3m_H2O                    
+                 + 2*r468*O2p*CO3m2H2O  + r470*O2p*CO3m_H2O  + r471*O2p*NO2m_H2O  + r473*O2p*CLm_H2O                    
+                 + 2*r474*O2p*NO3m2H2O  + 4*r476*M*Hp_4H2O*CO3m  + 4*r477*M*Hp_4H2O*NO3m  + 5*r478*M*Hp_5H2O*CO3m       
+                 + 5*r479*M*Hp_5H2O*NO3m  + 4*r480*M*Hp_4H2O*CLm_HCL  + 5*r481*M*Hp_5H2O*CLm_HCL                        
+                 + 4*r482*M*Hp_4H2O*NO3mHNO3  + 5*r483*M*Hp_5H2O*NO3mHNO3  + 6*r484*M*Hp_4H2O*CO3m2H2O                  
+                 + 7*r485*M*Hp_5H2O*CO3m2H2O  + 5*r486*M*Hp_4H2O*CO3m_H2O  + 6*r487*M*Hp_5H2O*CO3m_H2O                  
+                 + 5*r488*M*Hp_4H2O*NO3m_H2O  + 6*r489*M*Hp_5H2O*NO3m_H2O                                               
+                 - j19*H2O  - j20*H2O  - j21*H2O  - r17*O1D*H2O  - r132*F*H2O  - r174*SO3*H2O  - r227*NOp_N2*H2O        
+                 - r229*M*O2p*H2O  - r230*O4p*H2O  - r233*O2p_H2O*H2O  - r234*O2p_H2O*H2O  - r235*H3Op_OH*H2O           
+                 - r236*M*Hp_H2O*H2O  - r238*M*Hp_2H2O*H2O  - r240*M*Hp_3H2O*H2O  - r242*M*Hp_4H2O*H2O                  
+                 - r246*Hp_3N1*H2O  - r247*Hp_4N1*H2O  - r248*M*NOp*H2O  - r249*M*NOp_H2O*H2O  - r253*M*NOp_2H2O*H2O    
+                 - r254*NOp_3H2O*H2O  - r255*NOp_CO2*H2O  - r275*Om*H2O  - r335*M*CLm*H2O  - r343*M*CO3m*H2O            
+                 - r344*M*NO3m*H2O  - r350*M*CO3m_H2O*H2O  - r354*M*NO2m*H2O  - r355*M*NO3m_H2O*H2O                     

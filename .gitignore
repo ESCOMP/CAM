@@ -1,0 +1,20 @@
+# Ignore externals
+chem_proc
+cime
+components
+manage_externals.log
+src/physics/carma/base
+src/physics/clubb
+src/physics/cosp2/src
+src/physics/silhs
+
+
+# Ignore compiled python
+buildnmlc
+buildcppc
+
+# Ignore editor temporaries and backups
+*~
+.#*
+\#*#
+*.swp
