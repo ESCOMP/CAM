@@ -108,6 +108,14 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
+  <test compset="QPC6" grid="ne30_ne30_mg17" name="ERP_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="prebeta"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
+  </test>
   <test compset="QPC5" grid="f19_f19_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prebeta"/>
@@ -143,6 +151,14 @@
       <machine name="cheyenne" compiler="intel" category="aux_cime_baselines"/>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
+  </test>
+  <test compset="QSC6" grid="ne30_ne30_mg17" name="ERP_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="prebeta"/>
     </machines>
     <options>
       <option name="wallclock">00:10:00</option>
@@ -187,7 +203,7 @@
       <machine name="hobart" compiler="nag" category="prealpha"/>
     </machines>
   </test>
-  <test compset="FHS94" grid="T85z30_T85" name="ERP_D_Ln9" testmods="cam/outfrq9s">
+  <test compset="FHS94" grid="T85z30_T85_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="hobart" compiler="nag" category="prebeta"/>
     </machines>
@@ -271,7 +287,7 @@
       <machine name="cheyenne" compiler="intel" category="prebeta"/>
     </machines>
     <options>
-      <option name="wallclock">00:20:00</option>
+      <option name="wallclock">00:40:00</option>
     </options>
   </test>
   <test compset="FC2010climo" grid="f09_f09_mg17" name="ERP_Ld3" testmods="cam/outfrq1d">
@@ -496,7 +512,7 @@
       <machine name="cheyenne" compiler="intel" category="prebeta"/>
     </machines>
     <options>
-      <option name="wallclock">00:20:00</option>
+      <option name="wallclock">00:40:00</option>
     </options>
   </test>
   <test compset="FWmaHIST" grid="f19_f19_mg17" name="ERP_Ld3" testmods="cam/outfrq3d">

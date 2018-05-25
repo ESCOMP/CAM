@@ -199,7 +199,7 @@ CONTAINS
             perpetual=perpetual_run, perpetual_ymd=perpetual_ymd)
 
        dart_mode_in = .false.
-       if (trim(atm_resume_all_inst(inst_index)) == 'TRUE') dart_mode_in = .true.
+       if (trim(atm_resume_all_inst(MIN(num_inst_atm,inst_index))) == 'TRUE') dart_mode_in = .true.
 
        ! Initialize CAM, allocate cam_in and cam_out and determine
        ! atm decomposition (needed to initialize gsmap)
