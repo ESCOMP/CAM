@@ -127,7 +127,9 @@ def buildnml(case, caseroot, compname):
             if ninst > 1:
                 logger.info("%s is being used for cam_branch_file" % cam_branch_file)
 
-        dtime = ( 3600 * 24 ) / int(atm_ncpl)
+        # In python3 integer division returns a float value.
+        # Adjust argument of int() to get nearest integer.
+        dtime = int( (3600*24)/int(atm_ncpl) + .5)
         infile_lines.append(" dtime = " + str(dtime))
         start_ymd = RUN_STARTDATE.replace('-','')
         infile_lines.append(" start_ymd = " + start_ymd)

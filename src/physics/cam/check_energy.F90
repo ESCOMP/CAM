@@ -955,7 +955,7 @@ end subroutine check_energy_get_integrals
       mo_cnst = omega*rearth**4/gravit
       do k = 1, pver
         do i = 1, ncol
-          cos_lat = cos(state%lat(i)*180._r8/pi)
+          cos_lat = cos(state%lat(i))
           mr_tmp = mr_cnst*state%u(i,k)*state%pdel(i,k)*cos_lat
           mo_tmp = mo_cnst*state%pdel(i,k)*cos_lat**2
 

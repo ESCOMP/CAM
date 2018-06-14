@@ -4472,8 +4472,10 @@ sub check_input_files {
                     my $rootdir = $nl->get_variable_value($group, $rootdir_var);
                     $rootdir =~ s/['"]//g;          #"'
                     if ($inputdata_rootdir) {
-                        $pathname = "$rootdir/$pathname";
-                        print $fh "$var = $pathname\n";
+                        if ($pathname !~ m/^\s*$/) { # not 0 or more whitespace characters
+                            $pathname = "$rootdir/$pathname";
+                            print $fh "$var = $pathname\n";
+                        }
                     }
                     else {
                         if (-f "$rootdir/$pathname") {
