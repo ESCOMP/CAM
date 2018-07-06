@@ -392,9 +392,6 @@ module purge
 
 export LAPACK_LIBDIR=/usr/lib64
 
-# Not currently used on hobart
-#/usr/local/bin/make_ib_hosts.sh
-
 if [ "\$CAM_FC" = "INTEL" ]; then
     module load compiler/intel/14.0.2
     export CFG_STRING=" -cc mpicc -fc_type intel -fc mpif90 -cppdefs -DNO_MPI2 -cppdefs -DNO_MPIMOD "
@@ -404,13 +401,17 @@ if [ "\$CAM_FC" = "INTEL" ]; then
     export CCSM_MACH="hobart_intel"
 elif [ "\$CAM_FC" = "NAG" ]; then
     module load compiler/nag/6.1
+    # using older netcdf lib built w/ nag-6.0
+    module unload tool/netcdf/4.6.1/nag
+    module load tool/netcdf/4.3.2/nag-6.0
+
     export CFG_STRING="-cc mpicc -fc mpif90 -fc_type nag "
     export INC_NETCDF=\${NETCDF_PATH}/include
     export LIB_NETCDF=\${NETCDF_PATH}/lib
     input_file="tests_pretag_hobart_nag"
     export CCSM_MACH="hobart_nag"
 else
-    module load compiler/pgi/17.05
+    module load compiler/pgi/18.1
     export CFG_STRING=" -cc mpicc -fc_type pgi -fc mpif90 -cppdefs -DNO_MPI2 -cppdefs -DNO_MPIMOD "
     export INC_NETCDF=\${NETCDF_PATH}/include
     export LIB_NETCDF=\${NETCDF_PATH}/lib
@@ -419,7 +420,7 @@ else
 fi
 export MAKE_CMD="gmake --output-sync -j $gmake_j"
 export MACH_WORKSPACE="$mach_workspace"
-export CPRNC_EXE=/fs/cgd/csm/tools/cprnc_hobart/cprnc
+export CPRNC_EXE=/fs/cgd/csm/tools/bin/cprnc
 export ADDREALKIND_EXE=/fs/cgd/csm/tools/addrealkind/addrealkind
 dataroot="/fs/cgd/csm"
 echo_arg="-e"
