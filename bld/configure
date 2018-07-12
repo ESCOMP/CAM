@@ -2458,10 +2458,10 @@ EOF
             # This workaround tells gcc how to link to the NAG runtime,
             # which is the only way to run MCT's configure with runtime
             # checks enabled.
-            # Note that this hard-codes the NAG path, lib61rts for NAG6.1.
+            # Note that this hard-codes the NAG path, lib62rts for NAG6.2.
             if ($debug eq 'ON') {
                $mct_flags_str .= " CFLAGS=\" -g -Wl,--as-needed,--allow-shlib-undefined\" ";
-               $mct_flags_str .= " LIBS=\" -L/usr/local/nag-6.1/lib/NAG_Fortran -lf61rts \" ";
+               $mct_flags_str .= " LIBS=\" -L/usr/local/nag-6.2/lib/NAG_Fortran -lf62rts \" ";
             }
         }
         elsif ($fc_type eq "pgi") {

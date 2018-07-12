@@ -3856,7 +3856,7 @@ than using instantaneous values.
 Default: FALSE
 </entry>
 
-<entry id="mode_defs" type="char*256(60)"  category="radiation"
+<entry id="mode_defs" type="char*256(120)"  category="radiation"
        group="rad_cnst_nl" valid_values="" >
 Definitions for the aerosol modes that may be used in the rad_climate and
 rad_diag_* variables.

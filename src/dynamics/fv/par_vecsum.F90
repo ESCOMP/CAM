@@ -104,7 +104,7 @@ contains
 
       return
 !EOC
-      end
+   end subroutine par_vecsum
 !-----------------------------------------------------------------------
 
 end module par_vecsum_mod

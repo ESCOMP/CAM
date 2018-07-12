@@ -352,6 +352,6 @@ contains
 
       return
 !EOC
-      end
+   end subroutine d2a3dikj
 !-----------------------------------------------------------------------
 end module d2a3dikj_mod

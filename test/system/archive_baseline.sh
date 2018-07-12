@@ -33,7 +33,7 @@ BASELINE ARCHIVED LOCATION
 
 	hobart:     /fs/cgd/csm/models/atm/cam/pretag_bl/TAGNAME_pgi
 	              /fs/cgd/csm/models/atm/cam/pretag_bl/TAGNAME_nag
-        cheyenne:  /glade/p/cesm/cseg/models/atm/cam/pretag_bl/TAGNAME
+        cheyenne:  /glade/p/cesmdata/cseg/cam_baselines/TAGNAME
 
 
 
@@ -96,7 +96,7 @@ case $hostname in
       CAM_FC="INTEL"
     fi
     test_file_list="tests_pretag_cheyenne"
-    baselinedir="/glade/p/cesm/cseg/models/atm/cam/pretag_bl/$1"
+    baselinedir="/glade/p/cesmdata/cseg/cam_baselines/$1"
   ;;
 
   * ) echo "ERROR: machine $hostname not currently supported"; exit 1 ;;

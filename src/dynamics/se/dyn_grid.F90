@@ -916,8 +916,8 @@ subroutine define_cam_grids()
    real(r8),        allocatable :: pelon_deg(:)  ! pe-local longitudes (degrees)
    real(r8),        pointer     :: pearea(:) => null()  ! pe-local areas
    real(r8)                     :: areaw(np,np)
-   integer(iMap)                :: fdofP_local(npsq,nelemd)! pe-local map for dynamics decomp
-   integer(iMap),   allocatable :: pemap(:)     ! pe-local map for PIO decomp
+   integer(iMap)                :: fdofP_local(npsq,nelemd) ! pe-local map for dynamics decomp
+   integer(iMap),   allocatable :: pemap(:)                 ! pe-local map for PIO decomp
 
    integer                      :: ncols_fvm, ngcols_fvm
    real(r8),        allocatable :: fvm_coord(:)
@@ -935,7 +935,7 @@ subroutine define_cam_grids()
    !-----------------------
 
    ! Calculate the mapping between element GLL points and file order
-   fdofp_local = 0
+   fdofp_local = 0_iMap
    do ie = 1, nelemd
       do ii = 1, elem(ie)%idxP%NumUniquePts
          i = elem(ie)%idxP%ia(ii)
@@ -949,7 +949,7 @@ subroutine define_cam_grids()
    allocate(pearea(np*np*nelemd))
    allocate(pemap(np*np*nelemd))
 
-   pemap = 0
+   pemap = 0_iMap
    ii = 1
    do ie = 1, nelemd
       areaw = 1.0_r8 / elem(ie)%rspheremp(:,:)
@@ -986,7 +986,7 @@ subroutine define_cam_grids()
 
    ! Map for GLL grid
    allocate(grid_map(3,npsq*nelemd))
-   grid_map = 0
+   grid_map = 0_iMap
    mapind = 1
    do j = 1, nelemd
       do i = 1, npsq
@@ -1064,7 +1064,7 @@ subroutine define_cam_grids()
 
       ! Map for FVM grid
       allocate(grid_map(3, ncols_fvm))
-      grid_map = 0
+      grid_map = 0_iMap
       mapind = 1
       do j = 1, nelemd
          do i = 1, nc*nc
@@ -1134,7 +1134,7 @@ subroutine define_cam_grids()
 
       ! Map for physics grid
       allocate(grid_map(3, ncols_physgrid))
-      grid_map = 0
+      grid_map = 0_iMap
       mapind = 1
       do j = 1, nelemd
          do i = 1, fv_nphys*fv_nphys

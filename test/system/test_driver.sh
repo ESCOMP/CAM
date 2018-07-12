@@ -196,7 +196,7 @@ case $hostname in
     CAM_RESTART_TASKS=36
     CAM_RESTART_THREADS=2
 
-    mach_workspace="/glade/scratch"
+    mach_workspace="/glade/scratch_new"
 
 ##vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv writing to batch script vvvvvvvvvvvvvvvvvvv
 
@@ -211,7 +211,7 @@ cat > ${submit_script_cb} << EOF
 #PBS -j oe
 #PBS -l inception=login
 
-export TMPDIR=/glade/scratch/$USER
+export TMPDIR=/glade/scratch_new/$USER
 
 if [ -n "\$PBS_JOBID" ]; then    #batch job
    export JOBID=\`echo \${PBS_JOBID} | cut -f1 -d'.'\`
@@ -257,7 +257,7 @@ cat > ${submit_script} << EOF
 #PBS -l select=2:ncpus=36:mpiprocs=36
 #PBS -j oe
 
-export TMPDIR=/glade/scratch/$USER
+export TMPDIR=/glade/scratch_new/$USER
 
 if [ -n "\$PBS_JOBID" ]; then    #batch job
    export JOBID=\`echo \${PBS_JOBID} | cut -f1 -d'.'\`
@@ -400,10 +400,7 @@ if [ "\$CAM_FC" = "INTEL" ]; then
     input_file="tests_pretag_hobart_nag"
     export CCSM_MACH="hobart_intel"
 elif [ "\$CAM_FC" = "NAG" ]; then
-    module load compiler/nag/6.1
-    # using older netcdf lib built w/ nag-6.0
-    module unload tool/netcdf/4.6.1/nag
-    module load tool/netcdf/4.3.2/nag-6.0
+    module load compiler/nag/6.2
 
     export CFG_STRING="-cc mpicc -fc mpif90 -fc_type nag "
     export INC_NETCDF=\${NETCDF_PATH}/include

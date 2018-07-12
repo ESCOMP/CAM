@@ -28,7 +28,6 @@ module physpkg
   use phys_control,     only: phys_do_flux_avg, phys_getopts, waccmx_is
   use scamMod,          only: single_column, scm_crm_mode
   use flux_avg,         only: flux_avg_init
-  use infnan,           only: posinf, assignment(=)
   use perf_mod
   use cam_logfile,     only: iulog
   use camsrfexch,      only: cam_export
@@ -466,10 +465,6 @@ contains
        end do
        deallocate(tptr)
     end if
-
-    do lchnk=begchunk,endchunk
-       cam_out(lchnk)%tbot(:) = posinf
-    end do
 
     !
     ! 3-D fields
