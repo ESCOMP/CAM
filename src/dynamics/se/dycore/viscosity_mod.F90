@@ -24,7 +24,6 @@ module viscosity_mod
   implicit none
   save
 
-  public :: biharmonic_wk
   public :: biharmonic_wk_scalar
   public :: biharmonic_wk_omega
   public :: neighbor_minmax, neighbor_minmax_start,neighbor_minmax_finish
@@ -50,126 +49,6 @@ module viscosity_mod
   type (EdgeBuffer_t)          :: edge1
 
 CONTAINS
-
-subroutine biharmonic_wk(elem,pstens,ptens,vtens,deriv,edge3,hybrid,nt,nets,nete,kbeg,kend)
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! compute weak biharmonic operator
-!    input:  h,v (stored in elem()%, in lat-lon coordinates
-!    output: ptens,vtens  overwritten with weak biharmonic of h,v (output in lat-lon coordinates)
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-type (hybrid_t)      , intent(in) :: hybrid
-type (element_t)     , intent(inout), target :: elem(:)
-integer :: nt,nets,nete,kbeg,kend
-real (kind=r8), dimension(np,np,2,nlev,nets:nete)  :: vtens
-real (kind=r8), dimension(np,np,nlev,nets:nete) :: ptens
-type (EdgeBuffer_t)  , intent(inout) :: edge3
-type (derivative_t)  , intent(in) :: deriv
-real (kind=r8), dimension(np,np,nets:nete) :: pstens
-
-! local
-integer :: k,kptr,i,j,ie,ic,kblk
-real (kind=r8), dimension(:,:), pointer :: rspheremv
-real (kind=r8), dimension(np,np) :: lap_ps
-real (kind=r8), dimension(np,np,nlev) :: T
-real (kind=r8), dimension(np,np,2) :: v
-real (kind=r8) ::  nu_ratio1,nu_ratio2
-logical var_coef1
-
-   !if tensor hyperviscosity with tensor V is used, then biharmonic operator is (\grad\cdot V\grad) (\grad \cdot \grad) 
-   !so tensor is only used on second call to laplace_sphere_wk
-
-   kblk = kend - kbeg + 1
-
-   var_coef1 = .true.
-   if(hypervis_scaling > 0)  var_coef1= .false.
-
-   nu_ratio1=1
-   nu_ratio2=1
-   if (nu_div/=nu) then
-      if(hypervis_scaling /= 0) then
-         ! we have a problem with the tensor in that we cant seperate
-         ! div and curl components.  So we do, with tensor V:
-         ! nu * (del V del ) * ( nu_ratio * grad(div) - curl(curl))
-         nu_ratio1=nu_div/nu
-         nu_ratio2=1
-      else
-         nu_ratio1=sqrt(nu_div/nu)
-         nu_ratio2=sqrt(nu_div/nu)
-      endif
-   endif
-
-
-   do ie=nets,nete
-      
-      ! should filter lnps + PHI_s/RT?
-      call laplace_sphere_wk(elem(ie)%state%psdry(:,:,nt),deriv,elem(ie),pstens(:,:,ie),var_coef=var_coef1)
-      
-      do k=kbeg,kend
-         do j=1,np
-            do i=1,np
-               T(i,j,k)=elem(ie)%state%T(i,j,k,nt) 
-            enddo
-         enddo
-        
-         call laplace_sphere_wk(T(:,:,k),deriv,elem(ie),ptens(:,:,k,ie),var_coef=var_coef1)
-         call vlaplace_sphere_wk(elem(ie)%state%v(:,:,:,k,nt),deriv,&
-              elem(ie),vtens(:,:,:,k,ie),var_coef=var_coef1,nu_ratio=nu_ratio1)
-
-      enddo
-
-      kptr = kbeg - 1
-      call edgeVpack(edge3,ptens(:,:,kbeg:kend,ie),kblk,kptr,ie)
-
-      kptr = (kbeg - 1) + nlev
-      call edgeVpack(edge3,vtens(:,:,1,kbeg:kend,ie),kblk,kptr,ie)
-
-      kptr = (kbeg - 1) + 2*nlev
-      call edgeVpack(edge3,vtens(:,:,2,kbeg:kend,ie),kblk,kptr,ie)
-
-      kptr = (kbeg - 1) + 3*nlev
-      call edgeVpack(edge3,pstens(:,:,ie),1,kptr,ie) ! need logic for surface field
-   enddo
-   
-   call bndry_exchange(hybrid,edge3)
-   
-   do ie=nets,nete
-      rspheremv => elem(ie)%rspheremp(:,:)
-      
-      kptr = kbeg - 1
-      call edgeVunpack(edge3,ptens(:,:,kbeg:kend,ie),kblk,kptr,ie)
-
-      kptr = (kbeg - 1) + nlev
-      call edgeVunpack(edge3,vtens(:,:,1,kbeg:kend,ie),kblk,kptr,ie)
-      
-      kptr = (kbeg - 1) + 2*nlev
-      call edgeVunpack(edge3,vtens(:,:,2,kbeg:kend,ie),kblk,kptr,ie)
-
-      ! apply inverse mass matrix, then apply laplace again
-      do k=kbeg,kend
-         do j=1,np
-            do i=1,np
-               T(i,j,k)=rspheremv(i,j)*ptens(i,j,k,ie)
-               v(i,j,1)=rspheremv(i,j)*vtens(i,j,1,k,ie)
-               v(i,j,2)=rspheremv(i,j)*vtens(i,j,2,k,ie)
-            enddo
-         enddo
-         call laplace_sphere_wk(T(:,:,k),deriv,elem(ie),ptens(:,:,k,ie),var_coef=.true.)
-         call vlaplace_sphere_wk(v(:,:,:),deriv,elem(ie),vtens(:,:,:,k,ie),var_coef=.true.,&
-              nu_ratio=nu_ratio2)
-      enddo
-         
-      kptr = (kbeg - 1) + 3*nlev 
-      call edgeVunpack(edge3,pstens(:,:,ie),1,kptr,ie) ! need logic for surface field
-
-      ! apply inverse mass matrix, then apply laplace again
-      lap_ps(:,:)=rspheremv(:,:)*pstens(:,:,ie)
-      call laplace_sphere_wk(lap_ps,deriv,elem(ie),lap_ps,var_coef=.true.)
-
-   enddo
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-end subroutine
-
 
 subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,nt,nets,nete,kbeg,kend,&
      dptens2,dp3d_ref)

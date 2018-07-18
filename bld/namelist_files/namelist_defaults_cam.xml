@@ -1742,8 +1742,7 @@
 <se_fine_ne                            >   0 </se_fine_ne>
 <se_fine_ne hgrid="ne0np4CONUS.ne30x8" > 120 </se_fine_ne>
 
-<se_ftype           > 0 </se_ftype>
-<se_ftype cslam="1" > 2 </se_ftype>
+<se_ftype> 2 </se_ftype>
 
 <se_hypervis_on_plevs> .true.  </se_hypervis_on_plevs>
 

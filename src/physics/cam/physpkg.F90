@@ -1549,9 +1549,10 @@ contains
     tmp_q     (:ncol,:pver) = state%q(:ncol,:pver,1)
     tmp_cldliq(:ncol,:pver) = state%q(:ncol,:pver,ixcldliq)
     tmp_cldice(:ncol,:pver) = state%q(:ncol,:pver,ixcldice)
-    ! For 'SE', physics_dme_adjust is called for energy diagnostic purposes only.  So, save off tracers
-    if (dycore_is('SE').and.hist_fld_active('SE_pAM').or.hist_fld_active('KE_pAM').or.hist_fld_active('WV_pAM').or.&
-         hist_fld_active('WL_pAM').or.hist_fld_active('WI_pAM')) then
+    ! For not 'FV', physics_dme_adjust is called for energy diagnostic purposes only.  So, save off tracers
+    if (.not.dycore_is('FV').and.&
+         (hist_fld_active('SE_pAM').or.hist_fld_active('KE_pAM').or.hist_fld_active('WV_pAM').or.&
+         hist_fld_active('WL_pAM').or.hist_fld_active('WI_pAM'))) then
       tmp_trac(:ncol,:pver,:pcnst) = state%q(:ncol,:pver,:pcnst)
       tmp_pdel(:ncol,:pver)        = state%pdel(:ncol,:pver)
       tmp_ps(:ncol)                = state%ps(:ncol)
@@ -1568,7 +1569,10 @@ contains
       state%ps(:ncol)             = tmp_ps(:ncol)
     end if
 
-    if (dycore_is('LR')) call physics_dme_adjust(state, tend, qini, ztodt)
+    if (dycore_is('LR')) then
+      call physics_dme_adjust(state, tend, qini, ztodt)
+      call calc_te_and_aam_budgets(state, 'pAM')
+    endif
 
 !!!   REMOVE THIS CALL, SINCE ONLY Q IS BEING ADJUSTED. WON'T BALANCE ENERGY. TE IS SAVED BEFORE THIS
 !!!   call check_energy_chng(state, tend, "drymass", nstep, ztodt, zero, zero, zero, zero)

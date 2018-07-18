@@ -31,7 +31,7 @@ module fvm_control_volume_mod
     real (kind=r8) :: dp_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,nlev,2)
     real (kind=r8) :: dp_ref(nlev)
     real (kind=r8) :: dp_ref_inverse(nlev)
-    real (kind=r8) :: psc(1-nhc:nc+nhc,1-nc:nc+nhc)
+    real (kind=r8) :: psc(nc,nc)
 
     real (kind=r8) :: inv_area_sphere(nc,nc)    ! inverse area_sphere    
     real (kind=r8) :: inv_se_area_sphere(nc,nc) ! inverse area_sphere    
@@ -234,8 +234,8 @@ contains
     !
     ! overwrite areas for consistency with SE areas (that are O(10E-5) incorrect)
     !
-    tmp = 1.0_r8
-    call subcell_integration(tmp, np, nc, elem%metdet,fvm%area_sphere)
+!    tmp = 1.0_r8
+!    call subcell_integration(tmp, np, nc, elem%metdet,fvm%area_sphere)
     !
     ! do the same for physics grid
     !

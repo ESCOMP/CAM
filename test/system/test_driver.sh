@@ -286,7 +286,6 @@ module list
 export CCSM_MACH="cheyenne"
 export MACH_WORKSPACE="$mach_workspace"
 export CPRNC_EXE=${CESMDATAROOT}/tools/cime/tools/cprnc/cprnc.cheyenne
-export ADDREALKIND_EXE=/fs/cgd/csm/tools/addrealkind/addrealkind
 
 dataroot=${CESMDATAROOT}
 

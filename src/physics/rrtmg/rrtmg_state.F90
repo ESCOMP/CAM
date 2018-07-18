@@ -231,8 +231,8 @@ contains
       chi_0(:) = chi_mid(:) /  (1._r8 + beta(:))
       chi_eff(:) = chi_0(:) * (a(:) + b(:))
       rstate%o3vmr(:,1) = chi_eff(:)
-      chi_eff(:) = chi_eff(:) * P_int(:) / amdo / 9.8 ! O3 column above in kg m-2
-      chi_eff(:) = chi_eff(:) / 2.1415e-5             ! O3 column above in DU
+      chi_eff(:) = chi_eff(:) * P_int(:) / amdo / 9.8_r8 ! O3 column above in kg m-2
+      chi_eff(:) = chi_eff(:) / 2.1415e-5_r8             ! O3 column above in DU
     endwhere
     
     call outfld('O3colAbove', chi_eff(:ncol), pcols, lchnk)

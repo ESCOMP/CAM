@@ -649,7 +649,7 @@ function compute_ppm( a , dx )    result(coefs)
     indB = 2
     indE = nlev-1
   else
-    indB = 0
+    indB = 2
     indE = nlev+1
   endif
   do j = indB , indE
@@ -663,7 +663,7 @@ function compute_ppm( a , dx )    result(coefs)
     indB = 2
     indE = nlev-2
   else
-    indB = 0
+    indB = 2
     indE = nlev
   endif
   do j = indB , indE
@@ -677,7 +677,7 @@ function compute_ppm( a , dx )    result(coefs)
     indB = 3
     indE = nlev-2
   else
-    indB = 1
+    indB = 3
     indE = nlev
   endif
   do j = indB , indE
@@ -698,9 +698,9 @@ function compute_ppm( a , dx )    result(coefs)
   !If we're not using a mirrored boundary condition, then make the two cells bordering the top and bottom
   !material boundaries piecewise constant. Zeroing out the first and second moments, and setting the zeroth
   !moment to the cell mean is sufficient to maintain conservation.
+  coefs(0,1:2) = a(1:2)  !always reduce to PCoM at model top
+  coefs(1:2,1:2) = 0._r8 !always reduce to PCoM at model top
   if (vert_remap_q_alg == 2) then
-    coefs(0,1:2) = a(1:2)
-    coefs(1:2,1:2) = 0._r8
     coefs(0,nlev-1:nlev) = a(nlev-1:nlev)
     coefs(1:2,nlev-1:nlev) = 0._R8
   endif

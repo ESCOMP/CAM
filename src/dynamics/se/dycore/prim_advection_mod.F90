@@ -997,13 +997,13 @@ contains
       !  REMAP u,v,T from levels in dp3d() to REF levels
       !
       ! update final ps
-      elem(ie)%state%psdry(:,:,np1) = hvcoord%hyai(1)*hvcoord%ps0 + &
+      elem(ie)%state%psdry(:,:) = hvcoord%hyai(1)*hvcoord%ps0 + &
            sum(elem(ie)%state%dp3d(:,:,:,np1),3)
       !
       do k=1,nlev
         dp_star_dry(:,:,k) = elem(ie)%state%dp3d(:,:,k,np1)
         dp_dry(:,:,k) = ( hvcoord%hyai(k+1) - hvcoord%hyai(k) )*hvcoord%ps0 + &
-             ( hvcoord%hybi(k+1) - hvcoord%hybi(k) )*elem(ie)%state%psdry(:,:,np1)
+             ( hvcoord%hybi(k+1) - hvcoord%hybi(k) )*elem(ie)%state%psdry(:,:)
         elem(ie)%state%dp3d(:,:,k,np1) = dp_dry(:,:,k)
       enddo
       if (minval(dp_star_dry)<0) call endrun('negative dry layer thickness.  timestep or remap time too large B')

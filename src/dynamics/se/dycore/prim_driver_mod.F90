@@ -238,7 +238,7 @@ contains
 
     call TimeLevel_Qdp( tl, qsplit, n0_qdp)
 
-    call calc_tot_energy_dynamics(elem,nets,nete,tl%n0,n0_qdp,'dAF')
+    call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%n0,n0_qdp,n0_fvm,'dAF')
     call ApplyCAMForcing(elem,fvm,tl%n0,n0_qdp,dt_remap,nets,nete,nsubstep)
 
 
@@ -260,7 +260,7 @@ contains
     call TimeLevel_Qdp( tl, qsplit, n0_qdp, np1_qdp)
     ! note: time level update for fvm tracers takes place in fvm_mod
 
-    call calc_tot_energy_dynamics(elem,nets,nete,tl%np1,np1_qdp,'dAD')
+    call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%np1,np1_qdp,n0_fvm,'dAD')
 
     call t_startf('vertical_remap')
     call vertical_remap(hybrid,elem,fvm,hvcoord,dt_remap,tl%np1,np1_qdp,n0_fvm,nets,nete)
@@ -271,7 +271,7 @@ contains
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! time step is complete.
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    call calc_tot_energy_dynamics(elem,nets,nete,tl%np1,np1_qdp,'dAR')
+    call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%np1,np1_qdp,n0_fvm,'dAR')
 
     if (nsubstep==nsplit) &
          call compute_omega(hybrid,tl%np1,np1_qdp,elem,deriv,nets,nete,dt,hvcoord)
@@ -400,7 +400,7 @@ contains
 !    ithr   = 0 ! omp_get_thread_num()
 !    vybrid = hybrid_create(hybrid%par,ithr)
 
-    call prim_advance_exp(elem, deriv, hvcoord,   &
+    call prim_advance_exp(elem, fvm, deriv, hvcoord,   &
          hybrid, dt, tl, nets, nete)
 
     call t_stopf('prim_advance_exp')
@@ -410,7 +410,7 @@ contains
 
        call t_startf('prim_advance_exp')
 
-       call prim_advance_exp(elem, deriv, hvcoord,   &
+       call prim_advance_exp(elem, fvm, deriv, hvcoord,   &
             hybrid, dt, tl, nets, nete)
 
     call t_stopf('prim_advance_exp')
@@ -526,12 +526,12 @@ contains
       call get_global_ave_surface_pressure(elem, global_ave_ps_inic)
 
       do ie=1,nelemd
-        elem(ie)%state%psdry(:,:,1)=elem(ie)%state%psdry(:,:,1)*(initial_global_ave_dry_ps/global_ave_ps_inic)
+        elem(ie)%state%psdry(:,:)=elem(ie)%state%psdry(:,:)*(initial_global_ave_dry_ps/global_ave_ps_inic)
         do k=1,nlev
           do j = 1,np
             do i = 1,np
               dp_tmp =  ((hvcoord%hyai(k+1) - hvcoord%hyai(k))*hvcoord%ps0)+&
-                   ((hvcoord%hybi(k+1) - hvcoord%hybi(k))*elem(ie)%state%psdry(i,j,1))
+                   ((hvcoord%hybi(k+1) - hvcoord%hybi(k))*elem(ie)%state%psdry(i,j))
               factor(i,j,k) = elem(ie)%state%dp3d(i,j,k,1)/dp_tmp
               elem(ie)%state%dp3d(i,j,k,:) = dp_tmp
             end do
@@ -589,10 +589,9 @@ contains
       allocate(tmp(np,np,nets:nete))
 
       do ie=nets,nete
-        tmp(:,:,ie)=elem(ie)%state%psdry(:,:,1)
+        tmp(:,:,ie)=elem(ie)%state%psdry(:,:)
       enddo
       global_ave_ps_inic = global_integral(elem, tmp(:,:,nets:nete),hybrid,np,nets,nete)
       deallocate(tmp)
     end subroutine get_global_ave_surface_pressure
-
 end module prim_driver_mod

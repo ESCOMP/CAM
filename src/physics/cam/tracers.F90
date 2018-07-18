@@ -369,7 +369,7 @@ function test_func(name, lat, lon, k) result(fout)
    real(r8), parameter :: psurf_moist = 100000.0_r8 ! moist surface pressure
    real(r8), parameter :: deg2rad = pi/180._r8
 
-   real(r8) :: lon1, lat1, R0, Rg1, Rg2, lon2, lat2
+   real(r8) :: lon1, lat1, R0, Rg1
    real(r8) :: eta, eta_c
    real(r8) :: cos_tmp, sin_tmp
    !----------------------------------------------------------------------------
@@ -379,23 +379,15 @@ function test_func(name, lat, lon, k) result(fout)
       !
       !   Non-smooth scalar field (slotted cylinder)
       !
-      R0 = 0.5_r8
-      lon1 = 4.0_r8 * pi / 5.0_r8
-      lat1 = 0.0_r8
+      R0 = 0.25_r8
+      lon1  = 20.0_r8*deg2rad   ! longitudinal position, 20E
+      lat1  = 40.0_r8*deg2rad  ! latitudinal position, 40N
       Rg1 = acos(sin(lat1)*sin(lat)+cos(lat1)*cos(lat)*cos(lon-lon1))
-      lon2 = 6.0_r8 * pi / 5.0_r8
-      lat2 = 0.0_r8
-      Rg2 = acos(sin(lat2)*sin(lat)+cos(lat2)*cos(lat)*cos(lon-lon2))
 
       if ((Rg1 <= R0) .AND. (abs(lon-lon1) >= R0/6)) then
          fout = 2.0_r8
-      elseif ((Rg2 <= R0) .AND. (abs(lon-lon2) >= R0/6)) then
-         fout = 2.0_r8
       elseif ((Rg1 <= R0) .AND. (abs(lon-lon1) < R0/6) &
          .AND. (lat-lat1 < -5.0_r8*R0/12.0_r8)) then
-         fout = 2.0_r8
-      elseif ((Rg2 <= R0) .AND. (abs(lon-lon2) < R0/6) &
-         .AND. (lat-lat2 > 5.0_r8*R0/12.0_r8)) then
          fout = 2.0_r8
       else
          fout = 1.0_r8
@@ -407,7 +399,7 @@ function test_func(name, lat, lon, k) result(fout)
       !
       R0    = 10.0_r8           ! radius of the perturbation
       lon1  = 20.0_r8*deg2rad   ! longitudinal position, 20E
-      lat1  = 40.0_r8 *deg2rad  ! latitudinal position, 40N
+      lat1  = 40.0_r8*deg2rad  ! latitudinal position, 40N
       eta_c = 0.6_r8
       sin_tmp = SIN(lat1)*SIN(lat)
       cos_tmp = COS(lat1)*COS(lat)

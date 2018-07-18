@@ -946,7 +946,7 @@ subroutine radiation_tend( &
             do i = 1, ncol
                do k = 1, pver
 
-                  if (cldfprime(i,k) > 0.) then
+                  if (cldfprime(i,k) > 0._r8) then
 
                      c_cld_tau(:,i,k)     = ( cldfsnow(i,k)*snow_tau(:,i,k) &
                                              + cld(i,k)*cld_tau(:,i,k) )/cldfprime(i,k)
@@ -1163,7 +1163,7 @@ subroutine radiation_tend( &
          if (cldfsnow_idx > 0) then
             do i = 1, ncol
                do k = 1, pver
-                  if (cldfsnow(i,k) > 0.) then
+                  if (cldfsnow(i,k) > 0._r8) then
                      gb_snow_tau(i,k) = snow_tau(rrtmg_sw_cloudsim_band,i,k)*cldfsnow(i,k)
                      gb_snow_lw(i,k)  = snow_lw_abs(rrtmg_lw_cloudsim_band,i,k)*cldfsnow(i,k)
                   end if

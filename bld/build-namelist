@@ -3697,10 +3697,8 @@ if ($dyn =~ /se/) {
     }
     add_default($nl, 'se_fv_nphys', 'val'=>$npg);
 
-    my $cslam = ($npg > 0) ? 1 : 0;
-    add_default($nl, 'se_ftype', 'cslam'=>$cslam);
-
     my @vars = qw(
+                  se_ftype
                   se_horz_num_threads
                   se_hypervis_on_plevs
                   se_hypervis_subcycle

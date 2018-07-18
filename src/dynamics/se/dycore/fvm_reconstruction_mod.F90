@@ -169,10 +169,8 @@ contains
         do in=1,3
           do j=jy(1,in),jy(2,in)
             do i=jx(1,in),jx(2,in)
-
-!             recons(1,i,j,itr)  = fcube(i,j,itr) !hack first-order
-!             recons(2:6,i,j,itr)  = 0.0_r8       !hack first-order
-
+!                recons(1,i,j,itr)  = fcube(i,j,itr) !hack first-order
+!                recons(2:6,i,j,itr)  = 0.0_r8       !hack first-order
               recons(1,i,j,itr)  = fcube(i,j,itr) &
                    - recons(2,i,j,itr)*spherecentroid(1,i,j) &
                    - recons(3,i,j,itr)*spherecentroid(2,i,j) &
@@ -333,7 +331,7 @@ contains
     integer       :: itmp1,itmp2,i,j,in,vertex,n
 
 !    real (kind=r8), dimension(-1:5) :: diff_value
-    real (kind=r8), parameter :: threshold = 1.e-12_r8
+    real (kind=r8), parameter :: threshold = 1.0E-40_r8
     select case (irecons)
       !
       ! PLM limiter

@@ -40,7 +40,7 @@ contains
     use edge_mod              , only: ghostpack, ghostunpack
     use bndry_mod             , only: ghost_exchange
     use hybvcoord_mod         , only: hvcoord_t
-
+    use constituents          , only: qmin
     implicit none
     type (element_t)      , intent(inout) :: elem(:)
     type (fvm_struct)     , intent(inout) :: fvm(:)
@@ -54,9 +54,7 @@ contains
 
     !high-order air density reconstruction
     real (kind=r8) :: ctracer(irecons_tracer,1-nhe:nc+nhe,1-nhe:nc+nhe,ntrac)
-    real (kind=r8) :: inv_dp_area(nc,nc)
-    real (kind=r8) :: dp_se(nc,nc)
-    real (kind=r8) :: p_top
+    real (kind=r8) :: inv_dp_area(nc,nc), ps_se(nc,nc)
 
     logical :: llimiter(ntrac)
     integer :: i,j,k,ie,itr,ntmp
@@ -150,18 +148,10 @@ contains
        !
        ! convert to mixing ratio
        !
-       do k=1,nlev
-         !
-         ! dp from SE integrated over fvm control volumes are round-off equal to dp_fvm
-         ! to avoid accumulation of round-off error overwrite dp_fvm with dp_se
-         !
-         call subcell_integration(elem(ie)%state%dp3d(:,:,k,tl%np1), np, nc, elem(ie)%metdet,dp_se)
+       do k=1,nlev         
          do j=1,nc
            do i=1,nc
-             dp_se(i,j) = dp_se(i,j)*fvm(ie)%dp_ref_inverse(k)
-             !overwrite dp_fvm here to preserve tracer mass to round-off
-!             fvm(ie)%dp_fvm(i,j,k,np1_fvm) = dp_se(i,j)
-             inv_dp_area(i,j)              = 1.0_r8/fvm(ie)%dp_fvm(i,j,k,np1_fvm)
+             inv_dp_area(i,j) = 1.0_r8/fvm(ie)%dp_fvm(i,j,k,np1_fvm)
            end do
          end do
 
@@ -170,25 +160,27 @@ contains
              do i=1,nc
                ! convert to mixing ratio
                fvm(ie)%c(i,j,k,itr,np1_fvm) = fvm(ie)%c(i,j,k,itr,np1_fvm)*inv_dp_area(i,j)
+               ! remove round-off undershoots
+               fvm(ie)%c(i,j,k,itr,np1_fvm) = MAX(fvm(ie)%c(i,j,k,itr,np1_fvm),qmin(itr))
              end do
            end do
          end do
          !
          ! convert to dp and scale back dp
          !
-         ! overwrite dp_fvm here to preserve mixing ratio (not mass) to round-off level
-         fvm(ie)%dp_fvm(1:nc,1:nc,k,np1_fvm) = dp_se(1:nc,1:nc)
          fvm(ie)%dp_fvm(1:nc,1:nc,k,np1_fvm) = fvm(ie)%dp_fvm(1:nc,1:nc,k,np1_fvm)*fvm(ie)%dp_ref(k)*fvm(ie)%inv_area_sphere
        end do
        !
-       ! surface pressure implied by fvm
+       ! to avoid accumulation of truncation error overwrite CSLAM surface pressure with SE
+       ! surface pressure
        !
-       p_top = hvcoord%hyai(1)*hvcoord%ps0
-       do j=1,nc
-         do i=1,nc
-           fvm(ie)%psc(i,j) = sum(fvm(ie)%dp_fvm(i,j,:,np1_fvm)) +  p_top
-         end do
-       end do
+       call subcell_integration(elem(ie)%state%psdry(:,:), np, nc, elem(ie)%metdet,ps_se)
+       fvm(ie)%psc = ps_se*fvm(ie)%inv_se_area_sphere
+!       do j=1,nc
+!         do i=1,nc
+!           fvm(ie)%psc(i,j) = sum(fvm(ie)%dp_fvm(i,j,:,np1_fvm)) +  hvcoord%hyai(1)*hvcoord%ps0
+!         end do
+!       end do
      end do
      call t_stopf('fvm:end_of_reconstruct_subroutine')
      !
@@ -197,7 +189,6 @@ contains
      ntmp     = np1_fvm
      np1_fvm  = n0_fvm
      n0_fvm   = ntmp
-
   end subroutine run_consistent_se_cslam
 
   subroutine swept_flux(elem,fvm,ilev,ctracer)
@@ -1134,7 +1125,12 @@ contains
        end do
        f2 = f2-flux !integral error
 
-       if (ABS(f2)<eps.or.ABS((gamma2-gamma1)*f2)<eps.or.lexit_after_one_more_iteration) then
+       !
+       ! uncommented logic leads to noise in PS in FKESSLER at element boundary
+       !
+       !       if (ABS(f2)<eps.or.ABS((gamma2-gamma1)*f2)<eps.or.lexit_after_one_more_iteration) then
+       !
+       if (ABS(f2)<eps.or.lexit_after_one_more_iteration) then
          gamma=gamma3
          if (gamma>gamma_max) then
            lexit_after_one_more_iteration=.true.
@@ -1148,23 +1144,28 @@ contains
           ! Newton increment
           !
          if (abs(f2-f1)<eps) then
-           write(*,*) "ITERATION ILL-CONDITIONED ",iter,f1,f2,gamma1,gamma2,f2,flux,flow_case
+           !
+           ! if entering here abs(f2)>eps and abs(f1)>eps but abs(f2-f1)<eps
+           !
+           dgamma=-0.5_r8*(gamma2-gamma1)
+           lexit_after_one_more_iteration=.true.
+         else
+           dgamma=(gamma2-gamma1)*f2/(f2-f1)
+         endif
+         if (ABS(dgamma)>eps) then
+           gamma3 = gamma2-dgamma;
+         else
+           !
+           ! dgamma set to minimum displacement to avoid f2-f1=0
+           !
+           gamma3=gamma2-SIGN(1.0_r8,dgamma)*eps
+           write(*,*) "WARNING: setting gamma to min",gamma3,iter
          end if
-          dgamma=(gamma2-gamma1)*f2/(f2-f1)
-          if (ABS(dgamma)>eps) then
-             gamma3 = gamma2-dgamma;
-          else
-             !
-             ! dgamma set to minimum displacement to avoid f2-f1=0
-             !
-             gamma3=gamma2-SIGN(1.0_r8,dgamma)*eps
-             write(*,*) "WARNING: setting gamma to min",gamma3,iter
-          end if
-          gamma3=MAX(gamma3,gamma_min)
-          !
-          ! prepare for next iteration
-          !
-          gamma1 = gamma2; f1 = f2; gamma2 = gamma3;
+         gamma3=MAX(gamma3,gamma_min)
+         !
+         ! prepare for next iteration
+         !
+         gamma1 = gamma2; f1 = f2; gamma2 = gamma3;
        endif
      end do
      if (iter>iter_max) write(*,*) "WARNING: iteration not converged",&

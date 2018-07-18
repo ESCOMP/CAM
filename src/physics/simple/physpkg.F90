@@ -448,10 +448,12 @@ contains
     use physics_buffer,  only: physics_buffer_desc, pbuf_get_field, pbuf_old_tim_idx
     use physics_types,   only: physics_state, physics_tend, physics_state_check
     use physics_types,   only: physics_dme_adjust, set_dry_to_wet
-    use constituents,    only: cnst_get_ind
+    use constituents,    only: cnst_get_ind, pcnst
     use cam_control_mod, only: moist_physics
     use cam_diagnostics, only: diag_phys_tend_writeout
     use dycore,          only: dycore_is
+    use check_energy,    only: calc_te_and_aam_budgets
+    use cam_history,     only: hist_fld_active
     !
     ! Arguments
     !
@@ -477,6 +479,10 @@ contains
     integer                                  :: ncol
     integer                                  :: itim_old
 
+    real(r8) :: tmp_trac  (pcols,pver,pcnst) ! tmp space
+    real(r8) :: tmp_pdel  (pcols,pver)       ! tmp space
+    real(r8) :: tmp_ps    (pcols)            ! tmp space
+
     ! number of active atmospheric columns
     ncol  = state%ncol
     ! Associate pointers with physics buffer fields
@@ -496,6 +502,8 @@ contains
       allocate(cldiceini(pcols, pver))
       cldiceini = 0.0_r8
     end if
+
+    call calc_te_and_aam_budgets(state, 'pAP')
     !
     ! FV: convert dry-type mixing ratios to moist here because
     !     physics_dme_adjust assumes moist. This is done in p_d_coupling for
@@ -520,11 +528,35 @@ contains
       else
         tmp_cldice(:ncol,:pver) = 0.0_r8
       end if
-      if (dycore_is('LR')) call physics_dme_adjust(state, tend, qini, ztodt)
+      ! For not 'FV', physics_dme_adjust is called for energy diagnostic purposes only.  So, save off tracers
+      if (.not.dycore_is('FV').and.&
+           (hist_fld_active('SE_pAM').or.hist_fld_active('KE_pAM').or.hist_fld_active('WV_pAM').or.&
+           hist_fld_active('WL_pAM').or.hist_fld_active('WI_pAM'))) then
+        tmp_trac(:ncol,:pver,:pcnst) = state%q(:ncol,:pver,:pcnst)
+        tmp_pdel(:ncol,:pver)        = state%pdel(:ncol,:pver)
+        tmp_ps(:ncol)                = state%ps(:ncol)
+        !
+        ! pint, lnpint,rpdel are altered by dme_adjust but not used for tendencies in dynamics of SE
+        ! we do not reset them to pre-dme_adjust values
+        !
+        if (dycore_is('SE')) call set_dry_to_wet(state)
+        call physics_dme_adjust(state, tend, qini, ztodt)
+        call calc_te_and_aam_budgets(state, 'pAM')
+        ! Restore pre-"physics_dme_adjust" tracers
+        state%q(:ncol,:pver,:pcnst) = tmp_trac(:ncol,:pver,:pcnst)
+        state%pdel(:ncol,:pver)     = tmp_pdel(:ncol,:pver)
+        state%ps(:ncol)             = tmp_ps(:ncol)    
+      end if
+
+      if (dycore_is('LR')) then
+        call physics_dme_adjust(state, tend, qini, ztodt)
+        call calc_te_and_aam_budgets(state, 'pAM')
+      end if
     else
       tmp_q     (:ncol,:pver) = 0.0_r8
       tmp_cldliq(:ncol,:pver) = 0.0_r8
       tmp_cldice(:ncol,:pver) = 0.0_r8
+      call calc_te_and_aam_budgets(state, 'pAM')
     end if
 
     ! store T in buffer for use in computing dynamics T-tendency in next timestep
@@ -589,6 +621,7 @@ contains
     use held_suarez_cam,   only: held_suarez_tend
     use kessler_cam,       only: kessler_tend
     use dycore,            only: dycore_is
+    use check_energy,      only: calc_te_and_aam_budgets
 
     ! Arguments
 
@@ -683,6 +716,7 @@ contains
     !===================================================
     call t_startf('energy_fixer')
 
+    call calc_te_and_aam_budgets(state, 'pBF')
     if (dycore_is('LR') .or. dycore_is('SE')) then
       call check_energy_fix(state, ptend, nstep, flx_heat)
       call physics_update(state, ptend, ztodt, tend)
@@ -690,6 +724,7 @@ contains
       call outfld( 'EFIX', flx_heat    , pcols, lchnk   )
       call physics_ptend_dealloc(ptend)
     end if
+    call calc_te_and_aam_budgets(state, 'pBP')
     ! Save state for convective tendency calculations.
     call diag_conv_tend_ini(state, pbuf)
 

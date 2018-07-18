@@ -381,14 +381,17 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,tnp0,nd
   subroutine fvm_init2(elem,fvm,hybrid,nets,nete)
     use fvm_control_volume_mod, only: fvm_mesh,fvm_set_cubeboundary,n0_fvm,np1_fvm
     use bndry_mod,              only: compute_ghost_corner_orientation
-    use dimensions_mod,         only: nlev, nc, nhc, nhe, ntrac, ntrac_d
+    use dimensions_mod,         only: nlev, nc, nhc, nhe, ntrac, ntrac_d, np
     use hycoef,                 only: hyai, hybi, ps0
+    use derivative_mod,         only: subcell_integration
     
     type (fvm_struct) :: fvm(:)
     type (element_t)  :: elem(:)
     type (hybrid_t)   :: hybrid
     integer           :: ie,nets,nete,k
+    real(kind=r8)     :: one(np,np)
 
+    one = 1.0_r8
     do ie=nets,nete
       do k = 1, nlev
         fvm(ie)%dp_ref(k)         = ( hyai(k+1) - hyai(k) )*ps0 + ( hybi(k+1) - hybi(k) )*ps0
@@ -407,7 +410,12 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,tnp0,nd
       call fvm_set_cubeboundary(elem(ie),fvm(ie))
       call fvm_mesh(elem(ie),fvm(ie))
       fvm(ie)%inv_area_sphere    = 1.0_r8/fvm(ie)%area_sphere
-      fvm(ie)%inv_se_area_sphere = fvm(ie)%inv_area_sphere
+      !
+      ! compute CSLAM areas consistent with SE area (at 1 degree they can be up to 
+      ! 1E-6 different than the correct spherical areas used in CSLAM)
+      !
+      call subcell_integration(one, np, nc, elem(ie)%metdet,fvm(ie)%inv_se_area_sphere)
+      fvm(ie)%inv_se_area_sphere = 1.0_r8/fvm(ie)%inv_se_area_sphere
 
       fvm(ie)%fc(:,:,:,:) = 0.0_r8
       fvm(ie)%fm(:,:,:,:) = 0.0_r8

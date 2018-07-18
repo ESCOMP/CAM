@@ -309,7 +309,7 @@ subroutine write_elem()
    do ie = 1, nelemd
       do j = 1, np
          do i = 1, np
-            var2d(i,j,ie) = elem(ie)%state%psdry(i,j,tl)
+            var2d(i,j,ie) = elem(ie)%state%psdry(i,j)
          end do
       end do
    end do
@@ -415,7 +415,7 @@ subroutine write_unstruct()
       ii = 1
       do j = 1, np
          do i = 1, np
-            var2d(ii,ie) = elem(ie)%state%psdry(i,j,tl)
+            var2d(ii,ie) = elem(ie)%state%psdry(i,j)
             ii = ii + 1
          end do
       end do
@@ -609,7 +609,7 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
    do ie = 1, nelemd
       do k = 1, nlev
          elem(ie)%state%dp3d(:,:,k,tl) = ((hyai(k+1) - hyai(k))*ps0) + &
-                              ((hybi(k+1) - hybi(k))*elem(ie)%state%psdry(:,:,tl))
+                              ((hybi(k+1) - hybi(k))*elem(ie)%state%psdry(:,:))
       end do
    end do
 
@@ -739,7 +739,7 @@ subroutine read_elem()
       do j = 1, np
          do i = 1, np
             ii = ii + 1
-            elem(ie)%state%psdry(i,j,tl) = var2d(ii)
+            elem(ie)%state%psdry(i,j) = var2d(ii)
          end do
       end do
    end do
@@ -840,7 +840,7 @@ subroutine read_unstruct()
       ii = 1
       do j = 1, np
          do i = 1, np
-            elem(ie)%state%psdry(i,j,tl) = dbuf2(ii,ie)
+            elem(ie)%state%psdry(i,j) = dbuf2(ii,ie)
             ii = ii + 1
          end do
       end do
@@ -906,7 +906,7 @@ subroutine read_unstruct()
    end if
    do ie = 1, nelemd
       kptr = 0
-      call edgeVpack(edge, elem(ie)%state%psdry(:,:,tl), 1, kptr, ie)
+      call edgeVpack(edge, elem(ie)%state%psdry(:,:), 1, kptr, ie)
       kptr = kptr + 1
       call edgeVpack(edge, elem(ie)%state%v(:,:,:,:,tl), 2*nlev, kptr, ie)
       kptr = kptr + (2 * nlev)
@@ -919,7 +919,7 @@ subroutine read_unstruct()
    end if
    do ie = 1, nelemd
       kptr = 0
-      call edgeVunpack(edge, elem(ie)%state%psdry(:,:,tl), 1, kptr, ie)
+      call edgeVunpack(edge, elem(ie)%state%psdry(:,:), 1, kptr, ie)
       kptr = kptr + 1
       call edgeVunpack(edge, elem(ie)%state%v(:,:,:,:,tl), 2*nlev, kptr, ie)
       kptr = kptr + (2 * nlev)

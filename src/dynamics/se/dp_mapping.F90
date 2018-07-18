@@ -542,14 +542,11 @@ contains
     integer        , intent(in) :: fvm_nc, phys_nc, irecons
     real (kind=r8)       :: dalpha,dbeta
     real (kind=r8), dimension(0:phys_nc+2):: xgno_phys,ygno_phys
-!    real (kind=r8), dimension(phys_nc,phys_nc):: da_phys
     real (kind=r8), dimension(0:fvm_nc+2) :: xgno_fvm,ygno_fvm
-!    real (kind=r8), dimension(fvm_nc,fvm_nc):: da_fvm
-
 
     real (kind=r8), dimension(ngpc):: gauss_weights, abscissae !dimension(ngauss)
 
-    integer :: i,j
+    integer :: i,j,h
     integer, parameter :: nvertex = 4
     real (kind=r8), dimension(nvertex)            :: xcell,ycell
 
@@ -567,101 +564,126 @@ contains
     real (kind=r8)   , dimension(jmax_segments_cell,irecons)  :: weights_cell
     integer , dimension(jmax_segments_cell,2)        :: weights_eul_index_cell
     integer :: jcollect_cell,ie
-
+    real(kind=r8), dimension(phys_nc,phys_nc) :: phys_area, factor
+    real(kind=r8), dimension(fvm_nc,fvm_nc)   :: fvm_area, facfvm
 
     xgno_phys(0) = -1D20; xgno_phys(phys_nc+2) = 1D20
     xgno_fvm(0)  = -1D20; xgno_fvm(fvm_nc+2)   = 1D20
-    do ie=1,nelemd
-
-       dalpha         = abs(elem(ie)%corners(1)%x-elem(ie)%corners(2)%x)/phys_nc !in alpha
-       dbeta          = abs(elem(ie)%corners(1)%y-elem(ie)%corners(4)%y)/phys_nc  !in beta
-       do i=1,phys_nc+1
-          xgno_phys(i) = tan(elem(ie)%corners(1)%x+(i-1)*dalpha)
-          ygno_phys(i) = tan(elem(ie)%corners(1)%y+(i-1)*dbeta )
-       end do
-
-       dalpha         = abs(elem(ie)%corners(1)%x-elem(ie)%corners(2)%x)/fvm_nc !in alpha
-       dbeta          = abs(elem(ie)%corners(1)%y-elem(ie)%corners(4)%y)/fvm_nc  !in beta
-       do i=1,fvm_nc+1
-          xgno_fvm(i) = tan(elem(ie)%corners(1)%x+(i-1)*dalpha)
-          ygno_fvm(i) = tan(elem(ie)%corners(1)%y+(i-1)*dbeta )
-       end do
-
-       !
-       ! compute area using line-integrals
-       !
-!       do j=1,phys_nc
-!          do i=1,phys_nc
-!             da_phys(i,j) = (I_00(xgno_phys(i+1),ygno_phys(j+1)) - I_00(xgno_phys(i  ),ygno_phys(j+1)) + &
-!                  I_00(xgno_phys(i  ),ygno_phys(j  )) - I_00(xgno_phys(i+1),ygno_phys(j  )))
-!          end do
-!       end do
-!
-!       do j=1,fvm_nc
-!          do i=1,fvm_nc
-!             da_fvm(i,j) = (I_00(xgno_fvm(i+1),ygno_fvm(j+1)) - I_00(xgno_fvm(i  ),ygno_fvm(j+1)) + &
-!                  I_00(xgno_fvm(i  ),ygno_fvm(j  )) - I_00(xgno_fvm(i+1),ygno_fvm(j  )))
-!          end do
-!       end do
-
-       gauss_weights = 0.0D0; abscissae=0.0D0!not used since line-segments are parallel to coordinate
-
-       jall_fvm2phys(ie)=1
-       do j=1,phys_nc
-          do i=1,phys_nc
-             xcell(1) = xgno_phys(i)  ; ycell(1) = ygno_phys(j)
-             xcell(2) = xgno_phys(i)  ; ycell(2) = ygno_phys(j+1)
-             xcell(3) = xgno_phys(i+1); ycell(3) = ygno_phys(j+1)
-             xcell(4) = xgno_phys(i+1); ycell(4) = ygno_phys(j)
-
-             call compute_weights_cell(nvertex,.true.,&
-                  xcell,ycell,i,j,irecons,xgno_fvm,ygno_fvm,0,fvm_nc+2,&
-                  1,fvm_nc+1,1,fvm_nc+1,&
-                  ngpc,gauss_weights,abscissae,&
-                  weights_cell,weights_eul_index_cell,jcollect_cell,jmax_segments_cell)
-
-             if (jcollect_cell>0) then
-               weights_all_fvm2phys(jall_fvm2phys(ie):jall_fvm2phys(ie)+jcollect_cell-1,:,ie) = &
-                    weights_cell(1:jcollect_cell,:)/fvm(ie)%area_sphere_physgrid(i,j)!da_phys(i,j) 
-
-               weights_eul_index_all_fvm2phys(jall_fvm2phys(ie):jall_fvm2phys(ie)+jcollect_cell-1,:,ie) = &
-                    weights_eul_index_cell(1:jcollect_cell,:)
-               weights_lgr_index_all_fvm2phys(jall_fvm2phys(ie):jall_fvm2phys(ie)+jcollect_cell-1,1,ie) = i
-               weights_lgr_index_all_fvm2phys(jall_fvm2phys(ie):jall_fvm2phys(ie)+jcollect_cell-1,2,ie) = j
-               jall_fvm2phys(ie) = jall_fvm2phys(ie)+jcollect_cell
-            endif
-         end do
+    do ie=1,nelemd 
+      dalpha         = abs(elem(ie)%corners(1)%x-elem(ie)%corners(2)%x)/phys_nc !in alpha
+      dbeta          = abs(elem(ie)%corners(1)%y-elem(ie)%corners(4)%y)/phys_nc  !in beta
+      do i=1,phys_nc+1
+        xgno_phys(i) = tan(elem(ie)%corners(1)%x+(i-1)*dalpha)
+        ygno_phys(i) = tan(elem(ie)%corners(1)%y+(i-1)*dbeta )
+      end do
+      
+      dalpha         = abs(elem(ie)%corners(1)%x-elem(ie)%corners(2)%x)/fvm_nc !in alpha
+      dbeta          = abs(elem(ie)%corners(1)%y-elem(ie)%corners(4)%y)/fvm_nc  !in beta
+      do i=1,fvm_nc+1
+        xgno_fvm(i) = tan(elem(ie)%corners(1)%x+(i-1)*dalpha)
+        ygno_fvm(i) = tan(elem(ie)%corners(1)%y+(i-1)*dbeta )
+      end do
+      
+      !
+      ! compute area using line-integrals
+      !
+      !       do j=1,phys_nc
+      !          do i=1,phys_nc
+      !             da_phys(i,j) = (I_00(xgno_phys(i+1),ygno_phys(j+1)) - I_00(xgno_phys(i  ),ygno_phys(j+1)) + &
+      !                  I_00(xgno_phys(i  ),ygno_phys(j  )) - I_00(xgno_phys(i+1),ygno_phys(j  )))
+      !          end do
+      !       end do
+      !
+      !       do j=1,fvm_nc
+      !          do i=1,fvm_nc
+      !             da_fvm(i,j) = (I_00(xgno_fvm(i+1),ygno_fvm(j+1)) - I_00(xgno_fvm(i  ),ygno_fvm(j+1)) + &
+      !                  I_00(xgno_fvm(i  ),ygno_fvm(j  )) - I_00(xgno_fvm(i+1),ygno_fvm(j  )))
+      !          end do
+      !       end do
+      
+      gauss_weights = 0.0D0; abscissae=0.0D0!not used since line-segments are parallel to coordinate
+      
+      jall_fvm2phys(ie)=1
+      do j=1,phys_nc
+        do i=1,phys_nc
+          xcell(1) = xgno_phys(i)  ; ycell(1) = ygno_phys(j)
+          xcell(2) = xgno_phys(i)  ; ycell(2) = ygno_phys(j+1)
+          xcell(3) = xgno_phys(i+1); ycell(3) = ygno_phys(j+1)
+          xcell(4) = xgno_phys(i+1); ycell(4) = ygno_phys(j)
+          
+          call compute_weights_cell(nvertex,.true.,&
+               xcell,ycell,i,j,irecons,xgno_fvm,ygno_fvm,0,fvm_nc+2,&
+               1,fvm_nc+1,1,fvm_nc+1,&
+               ngpc,gauss_weights,abscissae,&
+               weights_cell,weights_eul_index_cell,jcollect_cell,jmax_segments_cell)
+          
+          if (jcollect_cell>0) then
+            weights_all_fvm2phys(jall_fvm2phys(ie):jall_fvm2phys(ie)+jcollect_cell-1,:,ie) = &
+                 weights_cell(1:jcollect_cell,:)!/fvm(ie)%area_sphere_physgrid(i,j)!da_phys(i,j) 
+            
+            weights_eul_index_all_fvm2phys(jall_fvm2phys(ie):jall_fvm2phys(ie)+jcollect_cell-1,:,ie) = &
+                 weights_eul_index_cell(1:jcollect_cell,:)
+            weights_lgr_index_all_fvm2phys(jall_fvm2phys(ie):jall_fvm2phys(ie)+jcollect_cell-1,1,ie) = i
+            weights_lgr_index_all_fvm2phys(jall_fvm2phys(ie):jall_fvm2phys(ie)+jcollect_cell-1,2,ie) = j
+            jall_fvm2phys(ie) = jall_fvm2phys(ie)+jcollect_cell
+          endif
+        end do
       enddo
       jall_fvm2phys(ie)=jall_fvm2phys(ie)-1
-
-
-       jall_phys2fvm(ie)=1
-       do j=1,fvm_nc
-          do i=1,fvm_nc
-             xcell(1) = xgno_fvm(i)  ; ycell(1) = ygno_fvm(j)
-             xcell(2) = xgno_fvm(i)  ; ycell(2) = ygno_fvm(j+1)
-             xcell(3) = xgno_fvm(i+1); ycell(3) = ygno_fvm(j+1)
-             xcell(4) = xgno_fvm(i+1); ycell(4) = ygno_fvm(j)
-
-             call compute_weights_cell(nvertex,.true.,&
-                  xcell,ycell,i,j,irecons,xgno_phys,ygno_phys,0,phys_nc+2,&
-                  1,phys_nc+1,1,phys_nc+1,&
-                  ngpc,gauss_weights,abscissae,&
-                  weights_cell,weights_eul_index_cell,jcollect_cell,jmax_segments_cell)
-
-             if (jcollect_cell>0) then
-               weights_all_phys2fvm(jall_phys2fvm(ie):jall_phys2fvm(ie)+jcollect_cell-1,:,ie) &
-                    = weights_cell(1:jcollect_cell,:)/fvm(ie)%area_sphere(i,j)!da_fvm(i,j)
-
-               weights_eul_index_all_phys2fvm(jall_phys2fvm(ie):jall_phys2fvm(ie)+jcollect_cell-1,:,ie) = &
-                    weights_eul_index_cell(1:jcollect_cell,:)
-               weights_lgr_index_all_phys2fvm(jall_phys2fvm(ie):jall_phys2fvm(ie)+jcollect_cell-1,1,ie) = i
-               weights_lgr_index_all_phys2fvm(jall_phys2fvm(ie):jall_phys2fvm(ie)+jcollect_cell-1,2,ie) = j
-               jall_phys2fvm(ie) = jall_phys2fvm(ie)+jcollect_cell
-            endif
-         end do
-       enddo
-       jall_phys2fvm(ie)=jall_phys2fvm(ie)-1
-     end do
-  end subroutine fvm2phys_init
+      !
+      ! make sure sum of area overlap weights exactly match fvm%%area_sphere_physgrid
+      !
+      phys_area = 0.0_r8
+      do h=1,jall_fvm2phys(ie)
+        i  = weights_lgr_index_all_fvm2phys(h,1,ie); j  = weights_lgr_index_all_fvm2phys(h,2,ie)
+        phys_area(i,j) = phys_area(i,j) +weights_all_fvm2phys(h,1,ie)
+      end do
+      factor(:,:) = fvm(ie)%area_sphere_physgrid(:,:)/phys_area(:,:)
+      do h=1,jall_fvm2phys(ie)
+        i  = weights_lgr_index_all_fvm2phys(h,1,ie); j  = weights_lgr_index_all_fvm2phys(h,2,ie)
+        weights_all_fvm2phys(h,1,ie) = weights_all_fvm2phys(h,1,ie)*factor(i,j)
+      end do
+      
+      jall_phys2fvm(ie)=1
+      do j=1,fvm_nc
+        do i=1,fvm_nc
+          xcell(1) = xgno_fvm(i)  ; ycell(1) = ygno_fvm(j)
+          xcell(2) = xgno_fvm(i)  ; ycell(2) = ygno_fvm(j+1)
+          xcell(3) = xgno_fvm(i+1); ycell(3) = ygno_fvm(j+1)
+          xcell(4) = xgno_fvm(i+1); ycell(4) = ygno_fvm(j)
+          
+          call compute_weights_cell(nvertex,.true.,&
+               xcell,ycell,i,j,irecons,xgno_phys,ygno_phys,0,phys_nc+2,&
+               1,phys_nc+1,1,phys_nc+1,&
+               ngpc,gauss_weights,abscissae,&
+               weights_cell,weights_eul_index_cell,jcollect_cell,jmax_segments_cell)
+          
+          if (jcollect_cell>0) then
+            weights_all_phys2fvm(jall_phys2fvm(ie):jall_phys2fvm(ie)+jcollect_cell-1,:,ie) &
+                 = weights_cell(1:jcollect_cell,:)!/fvm(ie)%area_sphere(i,j)!da_fvm(i,j)
+            
+            weights_eul_index_all_phys2fvm(jall_phys2fvm(ie):jall_phys2fvm(ie)+jcollect_cell-1,:,ie) = &
+                 weights_eul_index_cell(1:jcollect_cell,:)
+            weights_lgr_index_all_phys2fvm(jall_phys2fvm(ie):jall_phys2fvm(ie)+jcollect_cell-1,1,ie) = i
+            weights_lgr_index_all_phys2fvm(jall_phys2fvm(ie):jall_phys2fvm(ie)+jcollect_cell-1,2,ie) = j
+            jall_phys2fvm(ie) = jall_phys2fvm(ie)+jcollect_cell
+          endif
+        end do
+      enddo
+      jall_phys2fvm(ie)=jall_phys2fvm(ie)-1
+      !
+      ! make sure sum of area overlap weights exactly matches fvm%%area_sphere_physgrid
+      !
+      fvm_area = 0.0_r8
+      do h=1,jall_phys2fvm(ie)
+        i  = weights_lgr_index_all_phys2fvm(h,1,ie); j  = weights_lgr_index_all_phys2fvm(h,2,ie)
+        fvm_area(i,j) = fvm_area(i,j) +weights_all_phys2fvm(h,1,ie)
+      end do
+      fvm_area(:,:) = fvm(ie)%area_sphere(:,:)/fvm_area(:,:)
+      do h=1,jall_phys2fvm(ie)
+        i  = weights_lgr_index_all_phys2fvm(h,1,ie); j  = weights_lgr_index_all_phys2fvm(h,2,ie)
+        weights_all_phys2fvm(h,1,ie) = weights_all_phys2fvm(h,1,ie)*fvm_area(i,j)
+      end do
+    end do
+    end subroutine fvm2phys_init
 end module dp_mapping

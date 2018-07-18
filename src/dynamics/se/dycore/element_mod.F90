@@ -21,22 +21,20 @@ module element_mod
     ! vertically-lagrangian code advects dp3d instead of ps
     ! tracers Q, Qdp always use 2 level time scheme
 
-    real (kind=r8) :: v     (np,np,2,nlev,timelevels)            ! velocity                           1
-    real (kind=r8) :: T     (np,np,nlev,timelevels)              ! temperature                        2
-    real (kind=r8) :: dp3d  (np,np,nlev,timelevels)              ! dry delta p on levels              8
-    real (kind=r8) :: psdry (np,np,timelevels)                   ! dry surface pressure               4
-    real (kind=r8) :: phis  (np,np)                              ! surface geopotential (prescribed)  5
-    real (kind=r8) :: Qdp   (np,np,nlev,qsize_d,2)               ! Tracer mass                        6
+    real (kind=r8) :: v     (np,np,2,nlev,timelevels)            ! velocity                           
+    real (kind=r8) :: T     (np,np,nlev,timelevels)              ! temperature                        
+    real (kind=r8) :: dp3d  (np,np,nlev,timelevels)              ! dry delta p on levels              
+    real (kind=r8) :: psdry (np,np)                              ! dry surface pressure               
+    real (kind=r8) :: phis  (np,np)                              ! surface geopotential (prescribed)  
+    real (kind=r8) :: Qdp   (np,np,nlev,qsize_d,2)               ! Tracer mass                        
 
   end type elem_state_t
 
   !___________________________________________________________________
   type, public :: derived_state_t
-
-    ! diagnostic variables for preqx solver
-
-    ! storage for subcycling tracers/dynamics
-
+     !
+     ! storage for subcycling tracers/dynamics
+     !
     real (kind=r8) :: vn0  (np,np,2,nlev)                      ! velocity for SE tracer advection
     real (kind=r8) :: dpdiss_biharmonic(np,np,nlev)            ! mean dp dissipation tendency, if nu_p>0
     real (kind=r8) :: dpdiss_ave(np,np,nlev)                   ! mean dp used to compute psdiss_tens
@@ -53,7 +51,7 @@ module element_mod
     real (kind=r8) :: dp(np,np,nlev)                           ! for dp_tracers at physics timestep
     real (kind=r8) :: divdp(np,np,nlev)                        ! divergence of dp
     real (kind=r8) :: divdp_proj(np,np,nlev)                   ! DSSed divdp
-    real (kind=r8) :: mass(MAX(qsize_d,ntrac_d)+2)             ! total tracer mass for diagnostics
+    real (kind=r8) :: mass(MAX(qsize_d,ntrac_d)+8)             ! total tracer mass for diagnostics
 
     ! forcing terms for CAM
     real (kind=r8) :: FQ(np,np,nlev,qsize_d)                   ! tracer forcing

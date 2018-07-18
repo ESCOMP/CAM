@@ -492,7 +492,7 @@ subroutine old_liq_get_rad_props_lw(state, pbuf, abs_od, oldliqwp)
       do k=1,pver
          do i = 1,ncol
             cwp(i,k) = 1000.0_r8 *iclwpth(i,k) + 1000.0_r8 *iciwpth(i, k)
-            ficemr(i,k) = 1000.0 * iciwpth(i,k)/(max(1.e-18_r8,cwp(i,k)))
+            ficemr(i,k) = 1000.0_r8 * iciwpth(i,k)/(max(1.e-18_r8,cwp(i,k)))
          end do
       end do
    endif

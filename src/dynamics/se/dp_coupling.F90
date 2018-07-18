@@ -137,13 +137,12 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
    end if
 
    if (iam < par%nprocs) then
-
       if (use_gw_front .or. use_gw_front_igw) then
          call gws_src_fnct(elem, tl_f, tl_qdp_np0, frontgf, frontga, nphys)
       end if
 
       if (fv_nphys > 0) then
-         call test_mapping_overwrite_dyn_state(elem,dyn_out%fvm,tl_f)
+         call test_mapping_overwrite_dyn_state(elem,dyn_out%fvm)
          !******************************************************************
          ! physics runs on an FVM grid: map GLL vars to physics grid
          !******************************************************************
@@ -159,7 +158,7 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
                ! fvm state
                dyn_out%fvm(ie)%dp_fvm(:,:,:,n0_fvm),                           &
                dyn_out%fvm(ie)%c(:,:,:,1:ntrac,n0_fvm),                        &
-               pcnst, qsize, elem(ie)%metdet, ntrac>0, dyn_out%fvm(ie),        &
+               pcnst, elem(ie)%metdet, dyn_out%fvm(ie),        &
                !
                hyai(1)*ps0,                                                    &
                ! output
@@ -188,7 +187,7 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
              qgll(:,:,:,m) = elem(ie)%state%Qdp(:,:,:,m,tl_qdp_np0)*inv_dp3d(:,:,:)
            end do
             ncols = elem(ie)%idxP%NumUniquePts
-            call UniquePoints(elem(ie)%idxP, elem(ie)%state%psdry(:,:,tl_f), ps_tmp(1:ncols,ie))
+            call UniquePoints(elem(ie)%idxP, elem(ie)%state%psdry(:,:), ps_tmp(1:ncols,ie))
             call UniquePoints(elem(ie)%idxP, nlev, elem(ie)%state%dp3d(:,:,:,tl_f), dp3d_tmp(1:ncols,:,ie))
             call UniquePoints(elem(ie)%idxP, nlev, elem(ie)%state%T(:,:,:,tl_f), T_tmp(1:ncols,:,ie))
             call UniquePoints(elem(ie)%idxV, 2, nlev, elem(ie)%state%V(:,:,:,:,tl_f), uv_tmp(1:ncols,:,:,ie))
@@ -410,7 +409,6 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
          phys_state(lchnk)%phis(ncols+1:) = 0.0_r8
       end if
    end do
-
 end subroutine d_p_coupling
 
 !=========================================================================================
@@ -422,7 +420,6 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
    use fvm_mapping,            only: phys2dyn_forcings_fvm
    use test_fvm_mapping,       only: test_mapping_overwrite_tendencies
    use test_fvm_mapping,       only: test_mapping_output_mapped_tendencies
-
    ! arguments
    type(physics_state), intent(inout), dimension(begchunk:endchunk) :: phys_state
    type(physics_tend),  intent(inout), dimension(begchunk:endchunk) :: phys_tend
@@ -455,7 +452,6 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
    integer                      :: nets,nete
    integer                      :: kptr,ii
    !----------------------------------------------------------------------------
-
    if (iam < par%nprocs) then
       elem => dyn_in%elem
    else
@@ -551,7 +547,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
                                                    q_prev(icol,ilyr,m,lchnk))
                end do
             end do
-         end do
+          end do
       end do
 
       call t_barrierf('sync_chk_to_blk', mpicom)
@@ -723,7 +719,6 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
       call test_mapping_output_mapped_tendencies(dyn_in%fvm(1:nelemd), elem(1:nelemd), &
                                                  1, nelemd, tl_f, tl_qdp)
    end if
-
 end subroutine p_d_coupling
 
 !=========================================================================================

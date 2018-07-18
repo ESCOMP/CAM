@@ -23,10 +23,11 @@ module rad_solar_var
   real(r8), allocatable :: radbinmax(:)
   real(r8), allocatable :: radbinmin(:)
   integer :: nradbins
-contains
 
 !-------------------------------------------------------------------------------
+contains
 !-------------------------------------------------------------------------------
+
   subroutine rad_solar_var_init( )
     use radconstants,  only : get_number_sw_bands
     use radconstants,  only : get_sw_spectral_boundaries
@@ -84,7 +85,7 @@ contains
 
     endif
 
-  endsubroutine rad_solar_var_init
+  end subroutine rad_solar_var_init
 
 !-------------------------------------------------------------------------------
 !-------------------------------------------------------------------------------
@@ -106,7 +107,7 @@ contains
 
     endif
 
-  endsubroutine get_variability
+  end subroutine get_variability
 
 !-------------------------------------------------------------------------------
 ! private method.........
@@ -149,4 +150,4 @@ contains
 
   end subroutine integrate_spectrum
 
-endmodule rad_solar_var
+end module rad_solar_var

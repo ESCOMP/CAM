@@ -268,7 +268,7 @@ CONTAINS
         end do
       end if
     case default
-      write(*,*) "irecons out of range",irecons
+      call endrun('SUBROUTINE moment_on_sphere: irecons out of range')
     end select
   end subroutine moment_onsphere
 
@@ -602,8 +602,7 @@ CONTAINS
         enddo
       enddo
     case default
-      write(*,*) "irecons out of range",irecons
-      stop
+      call endrun('SUBROUTINE compute_reconstruct_matrix: irecons out of range')
     end select
   end subroutine compute_reconstruct_matrix
 
@@ -720,9 +719,7 @@ CONTAINS
       weights(4)   = (322.0_r8+13.0_r8*sqrt(70.0_r8))/900.0_r8
       weights(5)   = (322.0_r8-13.0_r8*sqrt(70.0_r8))/900.0_r8
     case default
-      write(*,*) 'n out of range in glwp of module gll. n=',n
-      write(*,*) '0<n<5'
-      stop
+      call endrun('SUBROUTINE gauss_points: n out of range in (0<n<5)')
     end select
 
   end subroutine gauss_points
@@ -1149,7 +1146,7 @@ subroutine interpolation_point(nc,ns,gnom,gnom1d,face1,face2,xy,point,ida,ide,ir
       call endrun("error in search - ABORT; probably invalid ns-nc combination")
     end if
     if (iref>ide) then
-       write(*,*) "extrapolation in interpolation_point",iref,ide
+!       write(*,*) "extrapolation in interpolation_point",iref,ide
        iref=ide
        exit
     endif

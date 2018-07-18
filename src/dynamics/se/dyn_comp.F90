@@ -123,7 +123,7 @@ subroutine dyn_readnl(NLFileName)
 
    ! Local variables
    integer                      :: unitn, ierr
-   real(r8)                     :: uniform_res_hypervis_scaling
+   real(r8)                     :: uniform_res_hypervis_scaling,nu_fac
 
 
    ! SE Namelist variables
@@ -273,24 +273,36 @@ subroutine dyn_readnl(NLFileName)
    !
    ! automatically set viscosity coefficients
    !
-   uniform_res_hypervis_scaling = 3.0_r8
+   !
+   ! Use scaling from
+   !
+   ! - Boville, B. A., 1991: Sensitivity of simulated climate to
+   !   model resolution. J. Climate, 4, 469-485.
+   !
+   ! - TAKAHASHI ET AL., 2006: GLOBAL SIMULATION OF MESOSCALE SPECTRUM 
+   !
+   uniform_res_hypervis_scaling = log(10.0_r8)/log(2.0_r8) ! (= 3.3219)
+   !
+   ! compute factor so that at ne30 resolution nu=1E15
+   !
+   nu_fac = 1.0E15_r8/(110000.0_r8**uniform_res_hypervis_scaling)
    if (se_nu_div < 0) then
       if (se_ne <= 0) then
          call endrun('dyn_readnl: ERROR must have se_ne > 0 for se_nu_div < 0')
       end if
-      se_nu_div = 0.751_r8*((30.0_r8/se_ne)*110000.0_r8)**uniform_res_hypervis_scaling
+      se_nu_div = nu_fac*((30.0_r8/se_ne)*110000.0_r8)**uniform_res_hypervis_scaling
    end if
    if (se_nu_p < 0) then
       if (se_ne <= 0) then
          call endrun('dyn_readnl: ERROR must have se_ne > 0 for se_nu_p < 0')
       end if
-      se_nu_p   = 0.751_r8*((30.0_r8/se_ne)*110000.0_r8)**uniform_res_hypervis_scaling
+      se_nu_p   = nu_fac*((30.0_r8/se_ne)*110000.0_r8)**uniform_res_hypervis_scaling
    end if
    if (se_nu < 0) then
       if (se_ne <= 0) then
          call endrun('dyn_readnl: ERROR must have se_ne > 0 for se_nu < 0')
       end if
-      se_nu     = 0.15_r8*((30.0_r8/se_ne)*110000.0_r8)**uniform_res_hypervis_scaling
+      se_nu     = 0.4_r8*nu_fac*((30.0_r8/se_ne)*110000.0_r8)**uniform_res_hypervis_scaling
    end if
    ! Go ahead and enforce ne = 0 for refined mesh runs
    if (se_refined_mesh) then
@@ -521,8 +533,8 @@ subroutine dyn_init(dyn_in, dyn_out)
    integer :: m_cnst, m
 
    ! variables for initializing energy and axial angular momentum diagnostics
-   character (len = 3), dimension(9) :: stage = (/"dED","dAF","dBD","dAD","dAR","dBF","dBH","dCH","dAH"/)
-   character (len = 70),dimension(9) :: stage_txt = (/&
+   character (len = 3), dimension(10) :: stage = (/"dED","dAF","dBD","dAD","dAR","dBF","dBH","dCH","dAH",'p2d'/)
+   character (len = 70),dimension(10) :: stage_txt = (/&
       " end of previous dynamics                           ",& !dED
       " from previous remapping or state passed to dynamics",& !dAF - state in beginning of nsplit loop
       " state after applying CAM forcing                   ",& !dBD - state after applyCAMforcing
@@ -531,10 +543,13 @@ subroutine dyn_init(dyn_in, dyn_out)
       " state passed to parameterizations                  ",& !dBF
       " state before hypervis                              ",& !dBH
       " state after hypervis but before adding heating term",& !dCH
-      " state after hypervis                               " & !dAH
+      " state after hypervis                               ",& !dAH
+      " phys2dyn mapping errors (requires ftype-1)         " & !p2d - for assessing phys2dyn mapping errors
       /)
-   character (len = 2)  , dimension(8) :: vars = (/"WV","WL","WI","SE","KE","MR","MO","TT"/)
-   character (len = 70), dimension(8)  :: vars_descriptor = (/&
+   character (len = 2)  , dimension(8) :: vars  = (/"WV"  ,"WL"  ,"WI"  ,"SE"   ,"KE"   ,"MR"   ,"MO"   ,"TT"   /)
+   !if ntrac>0 then tracers should be output on fvm grid but not energy (SE+KE) and AAM diags
+   logical              , dimension(8) :: massv = (/.true.,.true.,.true.,.false.,.false.,.false.,.false.,.false./)
+   character (len = 70) , dimension(8) :: vars_descriptor = (/&
       "Total column water vapor                ",&
       "Total column cloud water                ",&
       "Total column cloud ice                  ",&
@@ -550,18 +565,18 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    integer :: istage, ivars
    character (len=108) :: str1, str2, str3
-
+   integer, parameter :: qcondensate_max = 6
    character(len=*), parameter :: subname = 'dyn_init'
    !----------------------------------------------------------------------------
 
-   if (qsize_condensate_loading > 6) then
+   if (qsize_condensate_loading > qcondensate_max) then
      call endrun(subname//': se_qsize_condensate_loading not setup for more than 6 forms of water')
    end if
 
    ! Now allocate and set condenstate vars
-   allocate(qsize_condensate_loading_idx(qsize_condensate_loading))
-   allocate(qsize_condensate_loading_idx_gll(qsize_condensate_loading))
-   allocate(qsize_condensate_loading_cp(qsize_condensate_loading))
+   allocate(qsize_condensate_loading_idx(qcondensate_max))
+   allocate(qsize_condensate_loading_idx_gll(qcondensate_max))
+   allocate(qsize_condensate_loading_cp(qcondensate_max))
 
    allocate(cnst_name_gll(qsize))     ! constituent names for gll tracers
    allocate(cnst_longname_gll(qsize)) ! long name of constituents for gll tracers
@@ -569,41 +584,36 @@ subroutine dyn_init(dyn_in, dyn_out)
    ! water vapor is always tracer 1
    qsize_condensate_loading_idx(1) = 1
    qsize_condensate_loading_cp(1) = cpwv
-   if (qsize_condensate_loading > 1) then
-     call cnst_get_ind('CLDLIQ', ixcldliq, abort=.false.)
-     if (ixcldliq < 1) &
-          call endrun(subname//': ERROR: qsize_condensate_loading >1 but CLDLIQ not available')
-     qsize_condensate_loading_idx(2) = ixcldliq
-     qsize_condensate_loading_cp(2)  = cpliq
-   end if
-   if (qsize_condensate_loading > 2) then
-     call cnst_get_ind('CLDICE', ixcldice, abort=.false.)
-     if (ixcldice < 1) &
-          call endrun(subname//': ERROR: qsize_condensate_loading >2 but CLDICE not available')
-     qsize_condensate_loading_idx(3) = ixcldice
-     qsize_condensate_loading_cp(3)  = cpice
-   end if
-   if (qsize_condensate_loading > 3) then
-     call cnst_get_ind('RAINQM', ixrain, abort=.false.)
-     if (ixrain < 1) &
-          call endrun(subname//': ERROR: qsize_condensate_loading >3 but RAINQM not available')
-     qsize_condensate_loading_idx(4) = ixrain
-     qsize_condensate_loading_cp(4)  = cpliq
-   end if
-   if (qsize_condensate_loading > 4) then
-     call cnst_get_ind('SNOWQM', ixsnow, abort=.false.)
-     if (ixsnow < 1) &
-          call endrun(subname//': ERROR: qsize_condensate_loading >4 but SNOWQM not available')
-     qsize_condensate_loading_idx(5) = ixsnow
-     qsize_condensate_loading_cp(5)  = cpice
-   end if
-   if (qsize_condensate_loading > 5) then
-     call cnst_get_ind('GRAUQM', ixgraupel, abort=.false.)
-     if (ixgraupel < 1) &
-          call endrun(subname//': ERROR: qsize_condensate_loading >5 but GRAUQM not available')
-     qsize_condensate_loading_idx(6) = ixgraupel
-     qsize_condensate_loading_cp(6)  = cpice
-   end if
+
+   call cnst_get_ind('CLDLIQ', ixcldliq, abort=.false.)
+   if (ixcldliq < 1.and.qsize_condensate_loading > 1) &
+        call endrun(subname//': ERROR: qsize_condensate_loading >1 but CLDLIQ not available')
+   qsize_condensate_loading_idx(2) = ixcldliq
+   qsize_condensate_loading_cp(2)  = cpliq
+
+   call cnst_get_ind('CLDICE', ixcldice, abort=.false.)
+   if (ixcldice < 1.and.qsize_condensate_loading > 2) &
+        call endrun(subname//': ERROR: qsize_condensate_loading >2 but CLDICE not available')
+   qsize_condensate_loading_idx(3) = ixcldice
+   qsize_condensate_loading_cp(3)  = cpice
+
+   call cnst_get_ind('RAINQM', ixrain, abort=.false.)
+   if (ixrain < 1.and.qsize_condensate_loading > 3) &
+        call endrun(subname//': ERROR: qsize_condensate_loading >3 but RAINQM not available')
+   qsize_condensate_loading_idx(4) = ixrain
+   qsize_condensate_loading_cp(4)  = cpliq
+
+   call cnst_get_ind('SNOWQM', ixsnow, abort=.false.)
+   if (ixsnow < 1.and.qsize_condensate_loading > 4) &
+        call endrun(subname//': ERROR: qsize_condensate_loading >4 but SNOWQM not available')
+   qsize_condensate_loading_idx(5) = ixsnow
+   qsize_condensate_loading_cp(5)  = cpice
+
+   call cnst_get_ind('GRAUQM', ixgraupel, abort=.false.)
+   if (ixgraupel < 1.and.qsize_condensate_loading > 5) &
+        call endrun(subname//': ERROR: qsize_condensate_loading >5 but GRAUQM not available')
+   qsize_condensate_loading_idx(6) = ixgraupel
+   qsize_condensate_loading_cp(6)  = cpice
    !
    ! if adding more condensate loading tracers remember to increase qsize_d in dimensions_mod
    !
@@ -632,7 +642,7 @@ subroutine dyn_init(dyn_in, dyn_out)
        ! if not running with CSLAM then the condensate-loading water tracers are not necessarily
        ! indexed contiguously (are indexed as in physics)
        !
-       if (m.le.qsize_condensate_loading) qsize_condensate_loading_idx_gll(m) = qsize_condensate_loading_idx(m)
+       if (m.le.qcondensate_max) qsize_condensate_loading_idx_gll(m) = qsize_condensate_loading_idx(m)
        cnst_name_gll    (m)                = cnst_name    (m)
        cnst_longname_gll(m)                = cnst_longname(m)
      end if
@@ -705,10 +715,17 @@ subroutine dyn_init(dyn_in, dyn_out)
    ! Energy diagnostics and axial angular momentum diagnostics
    call addfld ('ABS_dPSdt',  horiz_only, 'A', 'Pa/s', 'Absolute surface pressure tendency',gridname='GLL')
 
-   call addfld ('WV_PDC',   horiz_only, 'A', 'kg/m2','Total column water vapor lost in physics-dynamics coupling',gridname='GLL')
-   call addfld ('WL_PDC',   horiz_only, 'A', 'kg/m2','Total column cloud water lost in physics-dynamics coupling',gridname='GLL')
-   call addfld ('WI_PDC',   horiz_only, 'A', 'kg/m2','Total column cloud ice lost in physics-dynamics coupling'  ,gridname='GLL')
-   call addfld ('TT_PDC',   horiz_only, 'A', 'kg/m2','Total column test tracer lost in physics-dynamics coupling'  ,gridname='GLL')
+   if (ntrac>0) then
+     call addfld ('WV_PDC',   horiz_only, 'A', 'kg/m2','Total column water vapor lost in physics-dynamics coupling',gridname='FVM')
+     call addfld ('WL_PDC',   horiz_only, 'A', 'kg/m2','Total column cloud water lost in physics-dynamics coupling',gridname='FVM')
+     call addfld ('WI_PDC',   horiz_only, 'A', 'kg/m2','Total column cloud ice lost in physics-dynamics coupling'  ,gridname='FVM')
+     call addfld ('TT_PDC',   horiz_only, 'A', 'kg/m2','Total column test tracer lost in physics-dynamics coupling',gridname='FVM')
+   else
+     call addfld ('WV_PDC',   horiz_only, 'A', 'kg/m2','Total column water vapor lost in physics-dynamics coupling',gridname='GLL')
+     call addfld ('WL_PDC',   horiz_only, 'A', 'kg/m2','Total column cloud water lost in physics-dynamics coupling',gridname='GLL')
+     call addfld ('WI_PDC',   horiz_only, 'A', 'kg/m2','Total column cloud ice lost in physics-dynamics coupling'  ,gridname='GLL')
+     call addfld ('TT_PDC',   horiz_only, 'A', 'kg/m2','Total column test tracer lost in physics-dynamics coupling',gridname='GLL')
+   end if
 
    do istage = 1,SIZE(stage)
       do ivars=1,SIZE(vars)
@@ -716,12 +733,15 @@ subroutine dyn_init(dyn_in, dyn_out)
          write(str2,*) TRIM(ADJUSTL(vars_descriptor(ivars))),&
              TRIM(ADJUSTL(" ")),TRIM(ADJUSTL(stage_txt(istage)))
          write(str3,*) TRIM(ADJUSTL(vars_unit(ivars)))
-         call addfld (TRIM(ADJUSTL(str1)),   horiz_only, 'A', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)),gridname='GLL')
+         if (ntrac>0.and.massv(ivars)) then
+           call addfld (TRIM(ADJUSTL(str1)),   horiz_only, 'A', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)),gridname='FVM')
+         else
+           call addfld (TRIM(ADJUSTL(str1)),   horiz_only, 'A', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)),gridname='GLL')
+         end if
       end do
    end do
 
    call test_mapping_addfld
-
 end subroutine dyn_init
 
 !=========================================================================================
@@ -822,7 +842,7 @@ subroutine dyn_run(dyn_state)
                do j = 1, nc
                   do i = 1, nc
                      dyn_state%fvm(ie)%fc(i,j,k,m) = dyn_state%fvm(ie)%fc(i,j,k,m)* &
-                        rec2dt*dyn_state%fvm(ie)%dp_fvm(i,j,k,n0_fvm)
+                        rec2dt!*dyn_state%fvm(ie)%dp_fvm(i,j,k,n0_fvm)
                   end do
                end do
             end do
@@ -841,7 +861,7 @@ subroutine dyn_run(dyn_state)
 
       if (ldiag) then
          do ie = nets, nete
-            ps_before(:,:,ie) = dyn_state%elem(ie)%state%psdry(:,:,tl_f)
+            ps_before(:,:,ie) = dyn_state%elem(ie)%state%psdry(:,:)
          end do
       end if
 
@@ -852,7 +872,7 @@ subroutine dyn_run(dyn_state)
       if (ldiag) then
          do ie = nets, nete
             abs_ps_tend(:,:,ie) = abs_ps_tend(:,:,ie) +                                &
-               ABS(ps_before(:,:,ie)-dyn_state%elem(ie)%state%psdry(:,:,tl_f)) &
+               ABS(ps_before(:,:,ie)-dyn_state%elem(ie)%state%psdry(:,:)) &
                /(tstep*qsplit*rsplit)
          end do
       end if
@@ -868,7 +888,7 @@ subroutine dyn_run(dyn_state)
    end if
 
    call TimeLevel_Qdp(TimeLevel, qsplit, n0_qdp)!get n0_qdp for diagnostics call
-   call calc_tot_energy_dynamics(dyn_state%elem, nets, nete, tl_f, n0_qdp, 'dBF')
+   call calc_tot_energy_dynamics(dyn_state%elem,dyn_state%fvm, nets, nete, tl_f, n0_qdp,n0_fvm, 'dBF')
    !$OMP END PARALLEL
 
    ! output vars on CSLAM fvm grid
@@ -1024,7 +1044,7 @@ subroutine read_inidat(dyn_in)
          do j = 1, np
             do i = 1, np
                ! PS
-               elem(ie)%state%psdry(i,j,1) = dbuf4(indx, 1, ie, (qsize+1))
+               elem(ie)%state%psdry(i,j) = dbuf4(indx, 1, ie, (qsize+1))
                ! U
                elem(ie)%state%v(i,j,1,:,1) = dbuf4(indx, :, ie, (qsize+2))
                ! V
@@ -1095,7 +1115,7 @@ subroutine read_inidat(dyn_in)
          indx = 1
          do j = 1, np
             do i = 1, np
-               elem(ie)%state%psdry(i,j,1) = dbuf2(indx,ie) ! can be either wet or dry ps
+               elem(ie)%state%psdry(i,j) = dbuf2(indx,ie) ! can be either wet or dry ps
                indx = indx + 1
             end do
          end do
@@ -1337,9 +1357,9 @@ subroutine read_inidat(dyn_in)
       factor_array(:,:,:,:) = 1.0_r8/factor_array(:,:,:,:)
       do ie = 1, nelemd
          ! pstmp is the wet ps
-         pstmp = elem(ie)%state%psdry(:,:,1)
+         pstmp = elem(ie)%state%psdry(:,:)
          ! start accumulating the dry air pressure differences across each layer
-         elem(ie)%state%psdry(:,:,1) = hyai(1)*ps0
+         elem(ie)%state%psdry(:,:) = hyai(1)*ps0
          do k=1,nlev
             do j = 1,np
                do i = 1,np
@@ -1363,8 +1383,7 @@ subroutine read_inidat(dyn_in)
                   !
                   ! dp3d .NE. (hyai(k+1) - hyai(k))*ps0 + (hybi(k+1) - hybi(k))*ps(i,j)
 
-                  elem(ie)%state%psdry(i,j,1) = elem(ie)%state%psdry(i,j,1) + &
-                                                elem(ie)%state%dp3d(i,j,k,1)
+                  elem(ie)%state%psdry(i,j) = elem(ie)%state%psdry(i,j)+elem(ie)%state%dp3d(i,j,k,1)
                end do
             end do
          end do
@@ -1383,7 +1402,7 @@ subroutine read_inidat(dyn_in)
             do j = 1, np
                do i = 1, np
                   elem(ie)%state%dp3d(i,j,k,:) = (hyai(k+1) - hyai(k))*ps0 + &
-                                                 (hybi(k+1) - hybi(k))*elem(ie)%state%psdry(i,j,1)
+                                                 (hybi(k+1) - hybi(k))*elem(ie)%state%psdry(i,j)
                end do
             end do
          end do
@@ -1457,7 +1476,7 @@ subroutine read_inidat(dyn_in)
          else
             lsize = ntrac
          end if
-         call dyn2fvm_mass_vars(elem(ie)%state%dp3d(:,:,:,1),elem(ie)%state%psdry(:,:,1),&
+         call dyn2fvm_mass_vars(elem(ie)%state%dp3d(:,:,:,1),elem(ie)%state%psdry(:,:),&
             qtmp(:,:,:,ie,1:lsize),&
             dyn_in%fvm(ie)%dp_fvm(1:nc,1:nc,:,1),dyn_in%fvm(ie)%psC(1:nc,1:nc),&
             dyn_in%fvm(ie)%c(1:nc,1:nc,:,1:lsize,1),&
@@ -1539,7 +1558,6 @@ subroutine read_inidat(dyn_in)
 
    do ie = 1, nelemd
       do t = 2, timelevels
-         elem(ie)%state%psdry(:,:,t) = elem(ie)%state%psdry(:,:,1)
          elem(ie)%state%v(:,:,:,:,t) = elem(ie)%state%v(:,:,:,:,1)
          elem(ie)%state%T(:,:,:,t)   = elem(ie)%state%T(:,:,:,1)
       end do
@@ -1550,6 +1568,7 @@ subroutine read_inidat(dyn_in)
    end if
 
 end subroutine read_inidat
+
 
 !========================================================================================
 

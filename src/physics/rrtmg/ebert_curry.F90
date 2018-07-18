@@ -23,7 +23,7 @@ public :: &
    ec_ice_get_rad_props_lw
 
 
-real, public, parameter:: scalefactor = 1._r8 !500._r8/917._r8
+real(r8), public, parameter:: scalefactor = 1._r8 !500._r8/917._r8
 
 ! Minimum cloud amount (as a fraction of the grid-box area) to 
 ! distinguish from clear sky

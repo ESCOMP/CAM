@@ -115,12 +115,14 @@ end subroutine stepon_run1
 
 subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out)
 
-   use dp_coupling,      only: p_d_coupling
-   use dyn_grid,         only: TimeLevel
+   use dp_coupling,            only: p_d_coupling
+   use dyn_grid,               only: TimeLevel
 
-   use time_mod,         only: TimeLevel_Qdp
-   use control_mod,      only: qsplit
-   use prim_advance_mod, only: calc_tot_energy_dynamics
+   use time_mod,               only: TimeLevel_Qdp
+   use control_mod,            only: qsplit
+   use prim_advance_mod,       only: calc_tot_energy_dynamics
+   use fvm_control_volume_mod, only: n0_fvm
+
 
    ! arguments
    type(physics_state), intent(inout) :: phys_state(begchunk:endchunk)
@@ -142,7 +144,7 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out)
    call t_stopf('p_d_coupling')
 
    if (iam < par%nprocs) then
-      call calc_tot_energy_dynamics(dyn_in%elem, 1, nelemd, tl_f, tl_fQdp, 'dED')
+      call calc_tot_energy_dynamics(dyn_in%elem,dyn_in%fvm, 1, nelemd, tl_f, tl_fQdp,n0_fvm, 'dED')
    end if
 
 end subroutine stepon_run2
@@ -279,7 +281,7 @@ subroutine diag_dynvar_ic(elem, fvm)
       do ie = 1, nelemd
          do j = 1, np
             do i = 1, np
-               ftmp(i+(j-1)*np,1,1) = elem(ie)%state%psdry(i,j,tl_f)
+               ftmp(i+(j-1)*np,1,1) = elem(ie)%state%psdry(i,j)
             end do
          end do
          call outfld('PSDRY_gll', ftmp(:,1,1), npsq, ie)
@@ -290,7 +292,7 @@ subroutine diag_dynvar_ic(elem, fvm)
       do ie = 1, nelemd
          do j = 1, np
             do i = 1, np
-               ftmp(i+(j-1)*np,1,1) = elem(ie)%state%psdry(i,j,tl_f)
+               ftmp(i+(j-1)*np,1,1) = elem(ie)%state%psdry(i,j)
                do nq = 1, qsize_condensate_loading
                   m_cnst = qsize_condensate_loading_idx_gll(nq)
                   ftmp(i+(j-1)*np,1,1) = ftmp(i+(j-1)*np,1,1) + &
@@ -313,7 +315,7 @@ subroutine diag_dynvar_ic(elem, fvm)
       do ie = 1, nelemd
          do j = 1, np
             do i = 1, np
-               ftmp(i+(j-1)*np,1,1) = elem(ie)%state%psdry(i,j,tl_f)
+               ftmp(i+(j-1)*np,1,1) = elem(ie)%state%psdry(i,j)
                do nq = 1, qsize_condensate_loading
                   m_cnst = qsize_condensate_loading_idx_gll(nq)
                   ftmp(i+(j-1)*np,1,1) = ftmp(i+(j-1)*np,1,1) + &

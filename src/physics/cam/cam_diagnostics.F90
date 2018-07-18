@@ -347,6 +347,59 @@ contains
     ! and semidiurnal tide in T, U, V, and Z3
     call tidal_diag_init()
 
+    !
+    ! energy diagnostics
+    !
+    call addfld ('SE_pBF',   horiz_only, 'A', 'J/m2','Dry Static Energy before energy fixer')
+    call addfld ('SE_pBP',   horiz_only, 'A', 'J/m2','Dry Static Energy before parameterizations')
+    call addfld ('SE_pAP',   horiz_only, 'A', 'J/m2','Dry Static Energy after parameterizations')
+    call addfld ('SE_pAM',   horiz_only, 'A', 'J/m2','Dry Static Energy after dry mass correction')
+
+    call addfld ('KE_pBF',   horiz_only, 'A', 'J/m2','Kinetic Energy before energy fixer')
+    call addfld ('KE_pBP',   horiz_only, 'A', 'J/m2','Kinetic Energy before parameterizations')
+    call addfld ('KE_pAP',   horiz_only, 'A', 'J/m2','Kinetic Energy after parameterizations')
+    call addfld ('KE_pAM',   horiz_only, 'A', 'J/m2','Kinetic Energy after dry mass correction')
+
+    call addfld ('TT_pBF',   horiz_only, 'A', 'kg/m2','Total column test tracer before energy fixer')
+    call addfld ('TT_pBP',   horiz_only, 'A', 'kg/m2','Total column test tracer before parameterizations')
+    call addfld ('TT_pAP',   horiz_only, 'A', 'kg/m2','Total column test tracer after parameterizations')
+    call addfld ('TT_pAM',   horiz_only, 'A', 'kg/m2','Total column test tracer after dry mass correction')
+
+    call addfld ('WV_pBF',   horiz_only, 'A', 'kg/m2','Total column water vapor before energy fixer')
+    call addfld ('WV_pBP',   horiz_only, 'A', 'kg/m2','Total column water vapor before parameterizations')
+    call addfld ('WV_pAP',   horiz_only, 'A', 'kg/m2','Total column water vapor after parameterizations')
+    call addfld ('WV_pAM',   horiz_only, 'A', 'kg/m2','Total column water vapor after dry mass correction')
+
+    call addfld ('WL_pBF',   horiz_only, 'A', 'kg/m2','Total column cloud water before energy fixer')
+    call addfld ('WL_pBP',   horiz_only, 'A', 'kg/m2','Total column cloud water before parameterizations')
+    call addfld ('WL_pAP',   horiz_only, 'A', 'kg/m2','Total column cloud water after parameterizations')
+    call addfld ('WL_pAM',   horiz_only, 'A', 'kg/m2','Total column cloud water after dry mass correction')
+
+    call addfld ('WI_pBF',   horiz_only, 'A', 'kg/m2','Total column cloud ice before energy fixer')
+    call addfld ('WI_pBP',   horiz_only, 'A', 'kg/m2','Total column cloud ice before parameterizations')
+    call addfld ('WI_pAP',   horiz_only, 'A', 'kg/m2','Total column cloud ice after parameterizations')
+    call addfld ('WI_pAM',   horiz_only, 'A', 'kg/m2','Total column cloud ice after dry mass correction')
+    !
+    ! Axial Angular Momentum diagnostics
+    !
+    call addfld ('MR_pBF',   horiz_only, 'A', 'kg*m2/s*rad2',&
+    'Total column wind axial angular momentum before energy fixer')
+    call addfld ('MR_pBP',   horiz_only, 'A', 'kg*m2/s*rad2',&
+    'Total column wind axial angular momentum before parameterizations')
+    call addfld ('MR_pAP',   horiz_only, 'A', 'kg*m2/s*rad2',&
+         'Total column wind axial angular momentum after parameterizations')
+    call addfld ('MR_pAM',   horiz_only, 'A', 'kg*m2/s*rad2',&
+         'Total column wind axial angular momentum after dry mass correction')
+
+    call addfld ('MO_pBF',   horiz_only, 'A', 'kg*m2/s*rad2',&
+    'Total column mass axial angular momentum before energy fixer')
+    call addfld ('MO_pBP',   horiz_only, 'A', 'kg*m2/s*rad2',&
+    'Total column mass axial angular momentum before parameterizations')
+    call addfld ('MO_pAP',   horiz_only, 'A', 'kg*m2/s*rad2',&
+         'Total column mass axial angular momentum after parameterizations')
+    call addfld ('MO_pAM',   horiz_only, 'A', 'kg*m2/s*rad2',&
+         'Total column mass axial angular momentum after dry mass correction')
+
   end subroutine diag_init_dry
 
   subroutine diag_init_moist(pbuf2d)
@@ -449,58 +502,7 @@ contains
     call addfld ('ALDIR',    horiz_only, 'A', '1','albedo: longwave, direct')
     call addfld ('ALDIF',    horiz_only, 'A', '1','albedo: longwave, diffuse')
     call addfld ('SST',      horiz_only, 'A', 'K','sea surface temperature')
-    !
-    ! energy diagnostics
-    !
-    call addfld ('SE_pBF',   horiz_only, 'A', 'J/m2','Dry Static Energy before energy fixer')
-    call addfld ('SE_pBP',   horiz_only, 'A', 'J/m2','Dry Static Energy before parameterizations')
-    call addfld ('SE_pAP',   horiz_only, 'A', 'J/m2','Dry Static Energy after parameterizations')
-    call addfld ('SE_pAM',   horiz_only, 'A', 'J/m2','Dry Static Energy after dry mass correction')
 
-    call addfld ('KE_pBF',   horiz_only, 'A', 'J/m2','Kinetic Energy before energy fixer')
-    call addfld ('KE_pBP',   horiz_only, 'A', 'J/m2','Kinetic Energy before parameterizations')
-    call addfld ('KE_pAP',   horiz_only, 'A', 'J/m2','Kinetic Energy after parameterizations')
-    call addfld ('KE_pAM',   horiz_only, 'A', 'J/m2','Kinetic Energy after dry mass correction')
-
-    call addfld ('TT_pBF',   horiz_only, 'A', 'kg/m2','Total column test tracer before energy fixer')
-    call addfld ('TT_pBP',   horiz_only, 'A', 'kg/m2','Total column test tracer before parameterizations')
-    call addfld ('TT_pAP',   horiz_only, 'A', 'kg/m2','Total column test tracer after parameterizations')
-    call addfld ('TT_pAM',   horiz_only, 'A', 'kg/m2','Total column test tracer after dry mass correction')
-
-    call addfld ('WV_pBF',   horiz_only, 'A', 'kg/m2','Total column water vapor before energy fixer')
-    call addfld ('WV_pBP',   horiz_only, 'A', 'kg/m2','Total column water vapor before parameterizations')
-    call addfld ('WV_pAP',   horiz_only, 'A', 'kg/m2','Total column water vapor after parameterizations')
-    call addfld ('WV_pAM',   horiz_only, 'A', 'kg/m2','Total column water vapor after dry mass correction')
-
-    call addfld ('WL_pBF',   horiz_only, 'A', 'kg/m2','Total column cloud water before energy fixer')
-    call addfld ('WL_pBP',   horiz_only, 'A', 'kg/m2','Total column cloud water before parameterizations')
-    call addfld ('WL_pAP',   horiz_only, 'A', 'kg/m2','Total column cloud water after parameterizations')
-    call addfld ('WL_pAM',   horiz_only, 'A', 'kg/m2','Total column cloud water after dry mass correction')
-
-    call addfld ('WI_pBF',   horiz_only, 'A', 'kg/m2','Total column cloud ice before energy fixer')
-    call addfld ('WI_pBP',   horiz_only, 'A', 'kg/m2','Total column cloud ice before parameterizations')
-    call addfld ('WI_pAP',   horiz_only, 'A', 'kg/m2','Total column cloud ice after parameterizations')
-    call addfld ('WI_pAM',   horiz_only, 'A', 'kg/m2','Total column cloud ice after dry mass correction')
-    !
-    ! Axial Angular Momentum diagnostics
-    !
-    call addfld ('MR_pBF',   horiz_only, 'A', 'kg*m2/s*rad2',&
-    'Total column wind axial angular momentum before energy fixer')
-    call addfld ('MR_pBP',   horiz_only, 'A', 'kg*m2/s*rad2',&
-    'Total column wind axial angular momentum before parameterizations')
-    call addfld ('MR_pAP',   horiz_only, 'A', 'kg*m2/s*rad2',&
-         'Total column wind axial angular momentum after parameterizations')
-    call addfld ('MR_pAM',   horiz_only, 'A', 'kg*m2/s*rad2',&
-         'Total column wind axial angular momentum after dry mass correction')
-
-    call addfld ('MO_pBF',   horiz_only, 'A', 'kg*m2/s*rad2',&
-    'Total column mass axial angular momentum before energy fixer')
-    call addfld ('MO_pBP',   horiz_only, 'A', 'kg*m2/s*rad2',&
-    'Total column mass axial angular momentum before parameterizations')
-    call addfld ('MO_pAP',   horiz_only, 'A', 'kg*m2/s*rad2',&
-         'Total column mass axial angular momentum after parameterizations')
-    call addfld ('MO_pAM',   horiz_only, 'A', 'kg*m2/s*rad2',&
-         'Total column mass axial angular momentum after dry mass correction')
 
     ! outfld calls in diag_phys_tend_writeout
 
