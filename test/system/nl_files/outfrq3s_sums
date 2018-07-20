@@ -25,4 +25,5 @@
           'soa1_a1','soa2_a1','soa3_a1','soa4_a1','soa5_a1',
           'soa1_a2','soa2_a2','soa3_a2','soa4_a2','soa5_a2',
           'O3_Prod','O3_Loss'
+ fincl3 = 'PM25','PM25_SRF'
 /

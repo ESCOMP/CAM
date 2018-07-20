@@ -8,7 +8,7 @@
       CAM
     ===============
    -->
-    <desc atm="CAM60[%CCTS][%PORT][%RCO2][%SCAM][%WCCM][%WCMD][%WCSC][%WCTS]"      >CAM cam6 physics:</desc>
+    <desc atm="CAM60[%CCTS][%CFIRE][%CVBSX][%PORT][%RCO2][%SCAM][%WCCM][%WCMD][%WCSC][%WCTS]">CAM cam6 physics:</desc>
     <desc atm="CAM50[%CCTS][%CLB][%PORT][%RCO2][%SCAM][%WCSC][%WCTS]"              >CAM cam5 physics:</desc>
     <desc atm="CAM40[%PORT][%RCO2][%SCAM][%TMOZ][%WXIE]"                           >CAM cam4 physics:</desc>
     <desc atm="CAM[%ADIAB][%DABIP04][%DCTBM][%HS94][%KESSLER][%RCO2][%SPCAMS][%SPCAMCLBS][%SPCAMM][%SPCAMCLBM]">CAM simplified and non-versioned physics :</desc>
@@ -26,7 +26,9 @@
     ===============
    -->
     <desc option="CCTS"         >CAM-Chem troposphere/stratosphere chem with simplified volatility basis set SOA scheme and modal aersols :</desc>
+    <desc option="CFIRE"        >CAM-Chem troposphere/stratosphere chem with simplified volatility basis set SOA scheme and fire emissons :</desc>
     <desc option="CLB"          >CAM CLUBB - turned on by default in CAM60:</desc>
+    <desc option="CVBSX"        >CAM-Chem troposphere/stratosphere chem with extended volatility basis set SOA scheme and modal aersols :</desc>
     <desc option="RCO2"         >CAM CO2 ramp: </desc>
     <desc option="SPCAMS"       >CAM super-parameterized CAM one moment SAM microphysics </desc>
     <desc option="SPCAMCLBS"    >CAM super-parameterized CAM one moment SAM microphysics using CLUBB </desc>
@@ -105,7 +107,8 @@
       <value compset="_CAM60">-phys cam6</value>
 
       <!-- Modifiers for CAM runs -->
-      <value compset="_(CAM50|CAM60)%CCTS">-chem trop_strat_mam4_vbs</value>
+      <value compset="_(CAM50|CAM60)%(CCTS|CFIRE)">-chem trop_strat_mam4_vbs</value>
+      <value compset="CAM60%CVBSX">-chem trop_strat_mam4_vbsext</value>
       <value compset="_CAM50%CLB">-clubb_sgs</value>
       <value compset="_(CAM40|CAM50|CAM60)%SCAM">-dyn eul -scam</value>
       <value compset="CAM%SPCAMS">-rad camrt -chem none -spcam_nx 32 -spcam_ny 1 -spcam_dx 4000 -spcam_dt 20 -phys spcam_sam1mom </value>
@@ -118,7 +121,7 @@
 
       <!-- Match against "%WC" to set defaults for all WACCM cases. -->
       <!-- Later settings of "-chem" take precedence over earlier ones. -->
-      <value compset="_(CAM50|CAM60)%(WC|CC)">-age_of_air_trcs</value>
+      <value compset="_(CAM50|CAM60)%(WC|CC|CV|CF)">-age_of_air_trcs</value>
       <value compset="_CAM40%WC">-chem waccm_ma</value>
       <value compset="_(CAM50|CAM60)%WCCM">-chem waccm_ma_mam4</value>
       <value compset="_(CAM50|CAM60)%WCMD">-chem waccm_mad_mam4</value>
@@ -201,6 +204,8 @@
       <value compset="HIST_CAM60%WCCM"   >waccm_ma_hist_cam6</value>
       <value compset="HIST_CAM60%WCMD"   >waccm_ma_hist_cam6</value>
       <value compset="HIST_CAM60%CCTS"   >hist_trop_strat_vbs_cam6</value>
+      <value compset="HIST_CAM60%CVBSX"  >hist_trop_strat_vbsext_cam6</value>
+      <value compset="HIST_CAM60%CFIRE"  >hist_trop_strat_vbsfire_cam6</value>
 
       <value compset="PIPD_CAM50"        >1850-PD_cam5</value>
 
@@ -252,9 +257,6 @@
     <values match="last" modifier="additive">
       <value compset="_CAM.*%RCO2"> scenario_ghg=&apos;RAMP_CO2_ONLY&apos;ramp_co2_annual_rate=1 </value>
       <value compset="_BGC%BDRD"> co2_cycle_rad_passive=.true. </value>
-      <value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9x1.25_r%r05_g%null_w%null_m%gx1v7" compset="SDYN_CAM60%(WCTS|WCCM|WCMD)_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV">
-         ncdata='$DIN_LOC_ROOT/cesm2_init/f.e20.FWSD.f09_f09_mg17.262/2005-01-01/f.e20.FWSD.f09_f09_mg17.262.cam.i.2005-01-01-00000.nc'
-      </value>
     </values>
     <group>run_component_cam</group>
     <file>env_run.xml</file>

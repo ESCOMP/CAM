@@ -4,7 +4,7 @@
 
 <start_ymd>00010101</start_ymd>
 
-<ncdata dyn="fv" hgrid="0.9x1.25">atm/cam/inic/fv/f.e20.FW1850.f09_f09.CESMpiControlForcingSST141.003.veclen64.cam.i.0009_32L_c170412.nc</ncdata>
+<ncdata dyn="fv" hgrid="0.9x1.25">atm/cam/inic/fv/f.e20.FCHIST.f09_f09_mg17.cesm2_0_rel.emis_fix.001.cam.i.1996-01-01-00000_c180716.nc</ncdata>
 <ncdata dyn="se" hgrid="ne30np4">atm/cam/inic/se/f.e20.FCHIST.ne30_ne30.chem01_cam5_4_152.001.cam.i.2011-01-01-00000_c171215.nc</ncdata>
 
 <!-- Solar data -->
@@ -142,7 +142,7 @@
          'soa3_a1_CHMP', 'soa4_a1_CHMP', 'soa5_a1_CHMP', 'soa1_a2_CHMP', 'soa2_a2_CHMP', 'soa3_a2_CHMP', 'soa4_a2_CHMP', 'soa5_a2_CHMP', 'r_jsoa1_a1',
          'r_jsoa2_a1', 'r_jsoa3_a1', 'r_jsoa4_a1', 'r_jsoa5_a1', 'r_jsoa1_a2', 'r_jsoa2_a2', 'r_jsoa3_a2', 'r_jsoa4_a2', 'r_jsoa5_a2',
          'r_GLYOXAL_aer', 'H2SO4_sfnnuc1', 'num_a2_sfnnuc1', 'TMOCS', 'TMSO2', 'TMDMS', 'TMso4_a1', 'TMso4_a2', 'TMso4_a3',
-         'BURDENDUSTdn', 'BURDENPOMdn', 'BURDENSO4dn', 'BURDENSOAdn', 'BURDENSEASALTdn','BURDENBCdn'
+         'BURDENDUSTdn', 'BURDENPOMdn', 'BURDENSO4dn', 'BURDENSOAdn', 'BURDENSEASALTdn','BURDENBCdn', 'PM25'
 </fincl1>
 
 <rxn_rate_sums>

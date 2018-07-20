@@ -1107,7 +1107,7 @@ contains
        !-----------------------------------------------------------------------
        pos = len_trim( filename )
        fn_new = filename(:pos)
-       write(iulog,*) 'incr_flnm: old filename = ',trim(fn_new)
+       if (masterproc) write(iulog,*) 'incr_flnm: old filename = ',trim(fn_new)
        if( fn_new(pos-2:) == '.nc' ) then
           pos = pos - 3
        end if
@@ -1121,8 +1121,8 @@ contains
     else
 
        ! open met_filenames_list
-       write(iulog,*) 'incr_flnm: old filename = ',trim(filename)
-       write(iulog,*) 'incr_flnm: open met_filenames_list : ',met_filenames_list 
+       if (masterproc) write(iulog,*) 'incr_flnm: old filename = ',trim(filename)
+       if (masterproc) write(iulog,*) 'incr_flnm: open met_filenames_list : ',met_filenames_list 
        unitnumber = shr_file_getUnit()
        open( unit=unitnumber, file=met_filenames_list, iostat=ios, status="OLD")
        if (ios /= 0) then
@@ -1151,7 +1151,7 @@ contains
        call shr_file_freeUnit(unitnumber)
     endif
     incr_filename = trim(fn_new)
-    write(iulog,*) 'incr_flnm: new filename = ',incr_filename
+    if (masterproc) write(iulog,*) 'incr_flnm: new filename = ',incr_filename
 
   end function incr_filename
 

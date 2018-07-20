@@ -3,7 +3,7 @@ module modal_aero_wateruptake
 !   RCE 07.04.13:  Adapted from MIRAGE2 code
 
 use shr_kind_mod,     only: r8 => shr_kind_r8
-use physconst,        only: pi, rhoh2o
+use physconst,        only: pi, rhoh2o, rair
 use ppgrid,           only: pcols, pver
 use physics_types,    only: physics_state
 use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_old_tim_idx, pbuf_get_field
@@ -11,7 +11,7 @@ use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_old_tim_id
 use wv_saturation,    only: qsat_water
 use rad_constituents, only: rad_cnst_get_info, rad_cnst_get_aer_mmr, rad_cnst_get_aer_props, &
                             rad_cnst_get_mode_props
-use cam_history,      only: addfld, add_default, outfld
+use cam_history,      only: addfld, add_default, outfld, horiz_only
 use cam_logfile,      only: iulog
 use ref_pres,         only: top_lev => clim_modal_aero_top_lev
 use phys_control,     only: phys_getopts
@@ -128,6 +128,9 @@ subroutine modal_aero_wateruptake_init(pbuf2d)
 
    end do
    
+   call addfld('PM25',     (/ 'lev' /), 'A', 'kg/m3', 'PM2.5 concentration')
+   call addfld('PM25_SRF', horiz_only,  'A', 'kg/m3', 'surface PM2.5 concentration')
+
    if (is_first_step()) then
       ! initialize fields in physics buffer
       call pbuf_set_field(pbuf2d, dgnumwet_idx, 0.0_r8)
@@ -200,7 +203,8 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
    real(r8), pointer :: wetdens(:,:,:)
    real(r8), pointer :: qaerwat(:,:,:)
 
-   real(r8), pointer :: maer(:,:,:)      ! aerosol wet mass MR (including water) (kg/kg-air)
+   real(r8), pointer :: raer(:,:)        ! aerosol species MRs (kg/kg)
+   real(r8), pointer :: maer(:,:,:)      ! accumulated aerosol mode MRs
    real(r8), pointer :: hygro(:,:,:)     ! volume-weighted mean hygroscopicity (--)
    real(r8), pointer :: naer(:,:,:)      ! aerosol number MR (bounded!) (#/kg-air)
    real(r8), pointer :: dryvol(:,:,:)    ! single-particle-mean dry volume (m3)
@@ -222,12 +226,15 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
    
    real(r8) :: specdens, so4specdens
    real(r8) :: sigmag
-   real(r8) :: alnsg
+   real(r8), allocatable :: alnsg(:)
    real(r8) :: rh(pcols,pver)        ! relative humidity (0-1)
    real(r8) :: dmean, qh2so4_equilib, wtpct_mode, sulden_mode
 
    real(r8) :: es(pcols)             ! saturation vapor pressure
    real(r8) :: qs(pcols)             ! saturation specific humidity
+
+   real(r8) :: pm25(pcols,pver)      ! PM2.5 diagnostics     
+   real(r8) :: rhoair(pcols,pver) 
 
    character(len=3) :: trnum       ! used to hold mode number (as characters)
    character(len=32) :: spectype
@@ -275,7 +282,8 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
       sulden(pcols,pver,nmodes),   &
       rhcrystal(nmodes),           &
       rhdeliques(nmodes),          &
-      specdens_1(nmodes)           )
+      specdens_1(nmodes),          &
+      alnsg(nmodes)           )
 
    wtpct(:,:,:)     = 75._r8
    sulden(:,:,:)    = 1.923_r8
@@ -317,6 +325,9 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
    t      => state%t
    pmid   => state%pmid
 
+   allocate( maer(pcols,pver,nmodes))
+   maer(:,:,:) = 0._r8
+
    do m = 1, nmodes
 
       call rad_cnst_get_mode_props(list_idx, m, sigmag=sigmag, &
@@ -327,6 +338,10 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
 
       do l = 1, nspec
 
+         ! accumulate the aerosol masses of each mode
+         call rad_cnst_get_aer_mmr(0, m, l, 'a', state, pbuf, raer)
+         maer(:ncol,:,m)= maer(:ncol,:,m) + raer(:ncol,:)
+            
          ! get species interstitial mixing ratio ('a')
          call rad_cnst_get_aer_props(list_idx, m, l, density_aer=specdens, &
                                      spectype=spectype)
@@ -342,12 +357,12 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
 
       end do
 
-      alnsg = log(sigmag)
+      alnsg(m) = log(sigmag)
 
       if (modal_strat_sulfate) then
          do k = top_lev, pver
             do i = 1, ncol
-               dmean = dgncur_awet(i,k,m)*exp(1.5_r8*alnsg**2)
+               dmean = dgncur_awet(i,k,m)*exp(1.5_r8*alnsg(m)**2)
                call calc_h2so4_equilib_mixrat( t(i,k), pmid(i,k), h2ommr(i,k), dmean, &
                                                qh2so4_equilib, wtpct_mode, sulden_mode )
                sulfeq(i,k,m)  = qh2so4_equilib
@@ -391,6 +406,7 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
             rh(i,k) = (rh(i,k) - cldn(i,k)) / (1.0_r8 - cldn(i,k))  ! clear portion
          end if
          rh(i,k) = max(rh(i,k), 0.0_r8)
+         rhoair(i,k) = pmid(i,k)/(rair*t(i,k))
       end do
    end do
 
@@ -422,16 +438,30 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
 
    if (list_idx == 0) then
 
+      pm25(:,:)=0._r8
+
       do m = 1, nmodes
          ! output to history
          write( trnum, '(i3.3)' ) m
          call outfld( 'wat_a'//trnum(3:3),  qaerwat(:,:,m),     pcols, lchnk)
          call outfld( 'dgnd_a'//trnum(2:3), dgncur_a(:,:,m),    pcols, lchnk)
          call outfld( 'dgnw_a'//trnum(2:3), dgncur_awet(:,:,m), pcols, lchnk)
+
+         ! calculate PM2.5 diagnostics
+         do k=1,pver
+            do i=1,ncol
+               pm25(i,k) = pm25(i,k)+maer(i,k,m)*(1._r8-(0.5_r8 - 0.5_r8*erf(log(2.5e-6_r8/dgncur_a(i,k,m))/ &
+                                                 (2._r8**0.5_r8*alnsg(m)))))*rhoair(i,k)
+            end do
+         end do
       end do
 
+      call outfld('PM25',     pm25(:,:),    pcols, lchnk)
+      call outfld('PM25_SRF', pm25(:,pver), pcols, lchnk)
+
    end if
-   
+
+   deallocate(maer, alnsg)
    deallocate( &
       wetrad, wetvol, wtrvol, wtpct, sulden, rhcrystal, rhdeliques, specdens_1 )
 end subroutine modal_aero_wateruptake_dr

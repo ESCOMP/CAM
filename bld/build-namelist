@@ -2515,10 +2515,17 @@ if ($chem =~ /_mam4/ and $phys =~ /cam6/) {
                 'num_a4_bc_srf_file'  => 'num_a4',
                 'num_a4_oc_srf_file'  => 'num_a4',
                 'num_a4_bb_srf_file'  => 'num_a4',
-                'num_pom_bb_srf_file' => 'num_a4',
+                'num_pom_bb_srf_file' => 'num_a4' );
+    if ($chem =~ /_vbsext/) {
+      %species = (%species,
+                'pom_a4_an_srf_file'  => 'pomff1_a4',
+                'pom_a4_bb_srf_file'  => 'pombb1_a4' );
+    } else {
+      %species = (%species,
                 'pom_a4_an_srf_file'  => 'pom_a4',
                 'pom_a4_bb_srf_file'  => 'pom_a4' );
-
+    }
+	    
     # for mechanism missing full tropospheric chemistry
     if ($chem =~ /trop_mam/ or $chem =~ /waccm_ma/ or $chem =~ /waccm_sc/) {
         %species = (%species,
@@ -2592,11 +2599,20 @@ if ($chem =~ /_mam4/ and $phys =~ /cam6/) {
                     'TOLUENE_bb_srf_file' => 'TOLUENE',
                     'XYLENES_an_srf_file' => 'XYLENES',
                     'XYLENES_bb_srf_file' => 'XYLENES',
+                    'E90_srf_file' => 'E90' );
+        if ($chem =~ /_vbsext/) {
+            %species = (%species,
+                    'IVOC_an_srf_file' => 'IVOCff',
+                    'IVOC_bb_srf_file' => 'IVOCbb',
+                    'SVOC_an_srf_file' => 'SVOCff',
+                    'SVOC_bb_srf_file' => 'SVOCbb' );
+        } else {
+            %species = (%species,
                     'IVOC_an_srf_file' => 'IVOC',
                     'IVOC_bb_srf_file' => 'IVOC',
                     'SVOC_an_srf_file' => 'SVOC',
-                    'SVOC_bb_srf_file' => 'SVOC',
-                    'E90_srf_file' => 'E90' );
+                    'SVOC_bb_srf_file' => 'SVOC' );
+        }
     }
 
     my %verhash = ('ver'=>'cam6');

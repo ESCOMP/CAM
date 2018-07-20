@@ -5,13 +5,21 @@
 <start_ymd>20050101</start_ymd>
 
 <ncdata dyn="fv"  hgrid="0.9x1.25">atm/cam/inic/fv/f.e20.FWAMIP.f09_f09.134.1975.009.cam.i.2010-01-01_56L_c170403.nc</ncdata>
-<bnd_topo hgrid="0.9x1.25">atm/cam/topo/fv_0.9x1.25_nc3000_Nsw042_Nrs008_Co060_Fi001_ZR_geos5_c160702.nc</bnd_topo>
+<bnd_topo hgrid="0.9x1.25">atm/cam/met/MERRA2/0.9x1.25/fv_0.9x1.25_nc3000_Nsw042_Nrs008_Co060_Fi001_ZR_sgh30_24km_GRNL_MERRA2_c171218.nc</bnd_topo>
+
+<ncdata dyn="fv"  hgrid="0.47x0.63">atm/cam/inic/fv/camchem_2010-01-01_0.47x0.63_56L_c180613.nc</ncdata>
+<bnd_topo hgrid="0.47x0.63">atm/cam/met/MERRA2/0.5x0.63/fv_0.47x0.63_nc3000_Co030_Fi001_PF_nullRR_Nsw021_MERRA2_c180612.nc</bnd_topo>
 
 <met_rlx_time>50.</met_rlx_time>
 <met_fix_mass>.true.</met_fix_mass>
-<met_data_file dyn="fv"  hgrid="0.9x1.25">'2005/MERRA2_0.9x1.25_20050101.nc'</met_data_file>
+
+<met_data_file dyn="fv"  hgrid="0.9x1.25">1980/MERRA2_0.9x1.25_19800101.nc</met_data_file>
 <met_data_path dyn="fv"  hgrid="0.9x1.25">atm/cam/met/MERRA2/0.9x1.25</met_data_path>
 <met_filenames_list dyn="fv"  hgrid="0.9x1.25">atm/cam/met/MERRA2/0.9x1.25/filenames_1975-2017_c180430.txt</met_filenames_list>
+
+<met_data_file dyn="fv"  hgrid="0.47x0.63">2010/MERRA2_0.5x0.63_20100101.nc</met_data_file>
+<met_data_path dyn="fv"  hgrid="0.47x0.63">atm/cam/met/MERRA2/0.5x0.63</met_data_path>
+<met_filenames_list dyn="fv"  hgrid="0.47x0.63">atm/cam/met/MERRA2/0.5x0.63/filenames_list_c180612</met_filenames_list>
 
 <!-- Solar data from NRL -->
 <solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-22991231_c171031.nc</solar_irrad_data_file>
@@ -148,7 +156,7 @@
          'soa3_a1_CHMP', 'soa4_a1_CHMP', 'soa5_a1_CHMP', 'soa1_a2_CHMP', 'soa2_a2_CHMP', 'soa3_a2_CHMP', 'soa4_a2_CHMP', 'soa5_a2_CHMP', 'r_jsoa1_a1',
          'r_jsoa2_a1', 'r_jsoa3_a1', 'r_jsoa4_a1', 'r_jsoa5_a1', 'r_jsoa1_a2', 'r_jsoa2_a2', 'r_jsoa3_a2', 'r_jsoa4_a2', 'r_jsoa5_a2',
          'r_GLYOXAL_aer', 'H2SO4_sfnnuc1', 'num_a2_sfnnuc1', 'TMOCS', 'TMSO2', 'TMDMS', 'TMso4_a1', 'TMso4_a2', 'TMso4_a3',
-         'BURDENDUSTdn', 'BURDENPOMdn', 'BURDENSO4dn', 'BURDENSOAdn', 'BURDENSEASALTdn','BURDENBCdn'
+         'BURDENDUSTdn', 'BURDENPOMdn', 'BURDENSO4dn', 'BURDENSOAdn', 'BURDENSEASALTdn','BURDENBCdn', 'PM25'
 </fincl1>
 
 <rxn_rate_sums>

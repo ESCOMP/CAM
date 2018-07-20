@@ -21,12 +21,11 @@
 <met_rlx_top>60.</met_rlx_top>
 <met_rlx_time>50.</met_rlx_time>
 <met_fix_mass>.true.</met_fix_mass>
-<met_data_file dyn="fv"  hgrid="0.9x1.25">'2005/GEOS5_09x125_20050101.nc'</met_data_file>
-<met_data_path dyn="fv"  hgrid="0.9x1.25">atm/cam/met/GEOS5/0.9x1.25</met_data_path>
-<met_filenames_list dyn="fv" hgrid="0.9x1.25">atm/cam/met/GEOS5/0.9x1.25/filenames_list.txt</met_filenames_list>
+<met_data_file dyn="fv"  hgrid="0.9x1.25">1980/MERRA2_0.9x1.25_19800101.nc</met_data_file>
+<met_data_path dyn="fv"  hgrid="0.9x1.25">atm/cam/met/MERRA2/0.9x1.25</met_data_path>
+<met_filenames_list dyn="fv"  hgrid="0.9x1.25">atm/cam/met/MERRA2/0.9x1.25/filenames_1975-2017_c180430.txt</met_filenames_list>
 
-
-<bnd_topo hgrid="0.9x1.25">atm/cam/topo/fv_0.9x1.25_nc3000_Nsw042_Nrs008_Co060_Fi001_ZR_geos5_c160702.nc</bnd_topo>
+<bnd_topo hgrid="0.9x1.25">atm/cam/met/MERRA2/0.9x1.25/fv_0.9x1.25_nc3000_Nsw042_Nrs008_Co060_Fi001_ZR_sgh30_24km_GRNL_MERRA2_c171218.nc</bnd_topo>
 
 <!-- LBC, UBC Files -->
 <flbc_type>SERIAL</flbc_type>

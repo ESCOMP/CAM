@@ -280,7 +280,17 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-
+  <test compset="FCSD" grid="f05_f05_mg17" name="ERP_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="prealpha"/>
+      <machine name="cheyenne" compiler="intel" category="camchem"/>
+    </machines>
+  </test>
+  <test compset="FCSD" grid="f05_f05_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="camchem"/>
+    </machines>
+  </test>
   <test compset="FCSD" grid="f09_f09_mg17" name="ERP_Ld3" testmods="cam/outfrq1d">
     <machines>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
@@ -324,7 +334,29 @@
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
     </machines>
   </test>
-   <test compset="FSPCAMS" grid="f19_f19_mg17" name="ERS_Ln9" testmods="cam/outfrq9s">
+  <test compset="FCvbsxHIST" grid="f09_f09_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="camchem"/>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+    </machines>
+  </test>
+  <test compset="FCvbsxHIST" grid="f09_f09_mg17" name="ERP_Ld3" testmods="cam/outfrq1d">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="camchem"/>
+    </machines>
+  </test>
+  <test compset="FCfireHIST" grid="f09_f09_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="camchem"/>
+    </machines>
+  </test>
+  <test compset="FCfireHIST" grid="f09_f09_mg17" name="ERP_Ld3" testmods="cam/outfrq1d">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="camchem"/>
+      <machine name="cheyenne" compiler="intel" category="prealpha"/>
+    </machines>
+  </test>
+  <test compset="FSPCAMS" grid="f19_f19_mg17" name="ERS_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="hobart" compiler="nag" category="test_spcam"/>
       <machine name="hobart" compiler="pgi" category="test_spcam"/>

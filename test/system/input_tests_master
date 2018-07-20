@@ -52,8 +52,10 @@ sm368 TSM.sh f10c6aqdm outfrq3s 9s
 sm369 TSM.sh f10c6aqdm outfrq3s_am 9s
 
 sm370 TSM.sh f1.9c6aqtsvbsdh outfrq3s 9s
+sm371 TSM.sh f1.9c6aqtsvbsxdh outfrq3s 9s
 
 sm375 TSM.sh f10c6aqtsvbsdm outfrq3s_sums 9s
+sm376 TSM.sh f10c6aqtsvbsxdm outfrq3s 9s
 
 sm380 TSM.sh f1.9c6aqcdh outfrq3s_cosp 9s
 
@@ -149,8 +151,10 @@ er368 TER.sh f10c6aqdm outfrq3s 4+5s
 er369 TER.sh f10c6aqdm outfrq3s_am 4+5s
 
 er370 TER.sh f1.9c6aqtsvbsdh outfrq3s 4+5s
+er371 TER.sh f1.9c6aqtsvbsxdh outfrq3s 4+5s
 
 er375 TER.sh f10c6aqtsvbsdm outfrq3s_sums 4+5s
+er376 TER.sh f10c6aqtsvbsxdm outfrq3s 4+5s
 
 er380 TER.sh f1.9c6aqcdh outfrq3s_cosp 4+5s
 
@@ -275,8 +279,10 @@ bl368 TBL.sh f10c6aqdm outfrq3s 9s
 bl369 TBL.sh f10c6aqdm outfrq3s_am 9s
 
 bl370 TBL.sh f1.9c6aqtsvbsdh outfrq3s 9s
+bl371 TBL.sh f1.9c6aqtsvbsxdh outfrq3s 9s
 
 bl375 TBL.sh f10c6aqtsvbsdm outfrq3s_sums 9s
+bl376 TBL.sh f10c6aqtsvbsxdm outfrq3s 9s
 
 bl380 TBL.sh f1.9c6aqcdh outfrq3s_cosp 9s
 
