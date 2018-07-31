@@ -342,7 +342,7 @@ integer, optional, intent(in) :: timelevel
 	
    status =  nf90_inq_varid( ncid, 'hyam', varid   )
    if ( status == nf90_noerr ) then
-      do i = 1, plev
+      do i = 1, nlev
          dplevs( i ) = 1000.0_r8 * hyam( i ) + ps(1,1,ntimelevel) * hybm( i ) / 100.0_r8
       end do
    endif
