@@ -2014,6 +2014,7 @@ subroutine gw_rdg_calc( &
    ! U,V tendency accumulators
    real(r8) :: utrdg(ncol,pver)
    real(r8) :: vtrdg(ncol,pver)
+   real(r8) :: ttrdg(ncol,pver)
 
    ! Energy change used by fixer.
    real(r8) :: de(ncol)
@@ -2030,6 +2031,7 @@ subroutine gw_rdg_calc( &
    ! initialize accumulated momentum fluxes and tendencies
    taurx = 0._r8
    taury = 0._r8 
+   ttrdg = 0._r8
    utrdg = 0._r8
    vtrdg = 0._r8
 
@@ -2071,6 +2073,7 @@ subroutine gw_rdg_calc( &
          ! diagnostics
          utrdg(:,k) = utrdg(:,k) + utgw(:,k)
          vtrdg(:,k) = vtrdg(:,k) + vtgw(:,k)
+         ttrdg(:,k) = ttrdg(:,k) + ttgw(:,k)
          ! physics tendencies
          ptend%u(:ncol,k) = ptend%u(:ncol,k) + utgw(:,k)
          ptend%v(:ncol,k) = ptend%v(:ncol,k) + vtgw(:,k)
@@ -2133,6 +2136,7 @@ subroutine gw_rdg_calc( &
    call outfld(fname(2), taury(:,pver+1), ncol, lchnk)
    call outfld(fname(3), utrdg,  ncol, lchnk)
    call outfld(fname(4), vtrdg,  ncol, lchnk)
+   call outfld('TTGWORO', ttrdg / cpair,  ncol, lchnk)
 
    deallocate(tau, gwut, c)
 

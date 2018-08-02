@@ -4,7 +4,7 @@
 
 <start_ymd>20050101</start_ymd>
 
-<ncdata dyn="fv"  hgrid="0.9x1.25">atm/cam/inic/fv/f.e20.FWAMIP.f09_f09.134.1975.009.cam.i.2010-01-01_56L_c170403.nc</ncdata>
+<ncdata dyn="fv"  hgrid="0.9x1.25">atm/cam/inic/fv/f.e20.FCSD.f09_f09_mg17.cesm2.1-exp002.001.cam.i.2005-01-01-00000_c180801.nc</ncdata>
 <bnd_topo hgrid="0.9x1.25">atm/cam/met/MERRA2/0.9x1.25/fv_0.9x1.25_nc3000_Nsw042_Nrs008_Co060_Fi001_ZR_sgh30_24km_GRNL_MERRA2_c171218.nc</bnd_topo>
 
 <ncdata dyn="fv"  hgrid="0.47x0.63">atm/cam/inic/fv/camchem_2010-01-01_0.47x0.63_56L_c180613.nc</ncdata>
@@ -13,7 +13,7 @@
 <met_rlx_time>50.</met_rlx_time>
 <met_fix_mass>.true.</met_fix_mass>
 
-<met_data_file dyn="fv"  hgrid="0.9x1.25">1980/MERRA2_0.9x1.25_19800101.nc</met_data_file>
+<met_data_file dyn="fv"  hgrid="0.9x1.25">2005/MERRA2_0.9x1.25_20050101.nc</met_data_file>
 <met_data_path dyn="fv"  hgrid="0.9x1.25">atm/cam/met/MERRA2/0.9x1.25</met_data_path>
 <met_filenames_list dyn="fv"  hgrid="0.9x1.25">atm/cam/met/MERRA2/0.9x1.25/filenames_1975-2017_c180430.txt</met_filenames_list>
 
@@ -152,8 +152,8 @@
          'soa2_a1_sfgaex1', 'soa2_a2_sfgaex1', 'soa3_a1_sfgaex1', 'soa3_a2_sfgaex1', 'soa4_a1_sfgaex1', 'soa4_a2_sfgaex1', 'soa5_a1_sfgaex1', 'soa5_a2_sfgaex1', 'so4_a2_sfnnuc1',
          'so4_c1AQH2SO4', 'so4_c2AQH2SO4', 'so4_c3AQH2SO4', 'so4_c1AQSO4', 'so4_c2AQSO4', 'so4_c3AQSO4', 'SFdst_a1', 'SFdst_a2', 'SFdst_a3',
          'SFncl_a1', 'SFncl_a2', 'SFncl_a3', 'soa1_a1_CHML', 'soa2_a1_CHML', 'soa3_a1_CHML', 'soa4_a1_CHML', 'soa5_a1_CHML', 'soa1_a2_CHML',
-         'soa2_a2_CHML', 'soa3_a2_CHML', 'soa4_a2_CHML', 'soa5_a2_CHML', 'so4_a1_CHMP', 'so4_a2_CHMP', 'so4_a3_CHMP', 'soa1_a1_CHMP', 'soa2_a1_CHMP',
-         'soa3_a1_CHMP', 'soa4_a1_CHMP', 'soa5_a1_CHMP', 'soa1_a2_CHMP', 'soa2_a2_CHMP', 'soa3_a2_CHMP', 'soa4_a2_CHMP', 'soa5_a2_CHMP', 'r_jsoa1_a1',
+         'soa2_a2_CHML', 'soa3_a2_CHML', 'soa4_a2_CHML', 'soa5_a2_CHML', 'so4_a1_CHMP', 'so4_a2_CHMP', 'so4_a3_CHMP', 
+         'r_jsoa1_a1',
          'r_jsoa2_a1', 'r_jsoa3_a1', 'r_jsoa4_a1', 'r_jsoa5_a1', 'r_jsoa1_a2', 'r_jsoa2_a2', 'r_jsoa3_a2', 'r_jsoa4_a2', 'r_jsoa5_a2',
          'r_GLYOXAL_aer', 'H2SO4_sfnnuc1', 'num_a2_sfnnuc1', 'TMOCS', 'TMSO2', 'TMDMS', 'TMso4_a1', 'TMso4_a2', 'TMso4_a3',
          'BURDENDUSTdn', 'BURDENPOMdn', 'BURDENSO4dn', 'BURDENSOAdn', 'BURDENSEASALTdn','BURDENBCdn', 'PM25'

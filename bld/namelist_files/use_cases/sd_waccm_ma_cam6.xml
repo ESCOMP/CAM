@@ -15,13 +15,13 @@
 <epp_all_varname>'epp_ion_rates'</epp_all_varname>
 
 <!--Species IC -->
-<ncdata dyn="fv"  hgrid="0.9x1.25">cesm2_init/f.e20.FWSD.f09_f09_mg17.262/2005-01-01/f.e20.FWSD.f09_f09_mg17.262.cam.i.2005-01-01-00000.nc</ncdata>
+<ncdata dyn="fv"  hgrid="0.9x1.25">atm/cam/inic/fv/f.e21.FWSD.f09_f09_mg17.spinup02.cam.i.2005-01-01-00000_c180801.nc</ncdata>
 
 <met_rlx_bot>50.</met_rlx_bot>
 <met_rlx_top>60.</met_rlx_top>
 <met_rlx_time>50.</met_rlx_time>
 <met_fix_mass>.true.</met_fix_mass>
-<met_data_file dyn="fv"  hgrid="0.9x1.25">1980/MERRA2_0.9x1.25_19800101.nc</met_data_file>
+<met_data_file dyn="fv"  hgrid="0.9x1.25">2005/MERRA2_0.9x1.25_20050101.nc</met_data_file>
 <met_data_path dyn="fv"  hgrid="0.9x1.25">atm/cam/met/MERRA2/0.9x1.25</met_data_path>
 <met_filenames_list dyn="fv"  hgrid="0.9x1.25">atm/cam/met/MERRA2/0.9x1.25/filenames_1975-2017_c180430.txt</met_filenames_list>
 
