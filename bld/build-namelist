@@ -483,7 +483,7 @@ add_default($nl, 'flds_co2c',      'val'=>'.false.');
 add_default($nl, 'cplflds_custom', 'val'=>'');
 
 ############################
-# namelist group: ccsm_pes #
+# namelist group: cime_pes #
 ############################
 
 # By default the driver sets all components to use all tasks.  This is the
@@ -513,10 +513,7 @@ if ($smp) {
     if ($nthreads) {
         add_default($nl, 'atm_nthreads', 'val'=>$nthreads);
         add_default($nl, 'cpl_nthreads', 'val'=>$nthreads);
-        add_default($nl, 'ice_nthreads', 'val'=>$nthreads);
-        add_default($nl, 'lnd_nthreads', 'val'=>$nthreads);
         add_default($nl, 'ocn_nthreads', 'val'=>$nthreads);
-        add_default($nl, 'rof_nthreads', 'val'=>$nthreads);
     }
 }
 
@@ -4103,7 +4100,7 @@ foreach my $name (@nl_groups) { $nl_group{$name} = ''; }
 # Remove the group names from %nl_group as they are written.
 
 # Driver
-@comp_groups = qw(cime_driver_inst seq_cplflds_inparm seq_cplflds_userspec ccsm_pes
+@comp_groups = qw(cime_driver_inst seq_cplflds_inparm seq_cplflds_userspec cime_pes
     seq_infodata_inparm seq_timemgr_inparm prof_inparm papi_inparm pio_default_inparm);
 $outfile = "$opts{'dir'}/drv_in";
 if ($cam_build) {
