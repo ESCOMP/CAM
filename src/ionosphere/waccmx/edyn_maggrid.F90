@@ -39,10 +39,10 @@ module edyn_maggrid
 !-----------------------------------------------------------------------
   subroutine set_maggrid
     use edyn_params ,only: pi,pi_dyn,rtd,r0
-    use edyn_geogrid,only: nlev,zlev
+    use edyn_geogrid,only: nlev
 !
 ! Local:
-    integer :: i,j,k,n
+    integer :: i,j,n
     real(r8) :: tanths2,dtheta,real8
     real(r8) ::      &
       tanth0(nmlat), &

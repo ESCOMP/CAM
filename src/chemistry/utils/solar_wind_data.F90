@@ -17,7 +17,7 @@ module solar_wind_data
   public :: solar_wind_init
   public :: solar_wind_advance
 
-  logical :: solar_wind_on = .false.
+  logical, public :: solar_wind_on = .false.
 
  ! time-interpolated quantities
 

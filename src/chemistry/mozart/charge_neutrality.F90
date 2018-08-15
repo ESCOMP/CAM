@@ -16,12 +16,13 @@ module charge_neutrality
      module procedure charge_fix_mmr   ! for fixing charge balance after vertical diffusion
   end interface
 
-  integer, parameter :: pos_ion_n = 20
+  integer, parameter :: pos_ion_n = 22
   character(len=16), parameter :: pos_ion_names(pos_ion_n) = (/ &
        'Np              ','N2p             ','Op              ','O2p             ','NOp             ', &
        'O4p             ','O2p_H2O         ','Hp_H2O          ','Hp_2H2O         ','Hp_3H2O         ', &
        'Hp_4H2O         ','Hp_5H2O         ','H3Op_OH         ','Hp_3N1          ','Hp_4N1          ', &
-       'NOp_H2O         ','NOp_2H2O        ','NOp_3H2O        ','NOp_CO2         ','NOp_N2          ' /)
+       'NOp_H2O         ','NOp_2H2O        ','NOp_3H2O        ','NOp_CO2         ','NOp_N2          ', &
+       'Op2P            ','Op2D            ' /)
 
   integer, parameter :: neg_ion_n = 21
   character(len=16), parameter :: neg_ion_names(neg_ion_n) = (/ &

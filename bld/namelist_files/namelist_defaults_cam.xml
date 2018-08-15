@@ -115,6 +115,7 @@
 <ncdata dyn="fv"  hgrid="4x5"       nlev="81"  waccmx="1"  ic_ymd="20000101" >atm/waccm/ic/WAX3548T08CO_2003top_f2000.waccm_0017bottom_4x5_L81_c160630.nc</ncdata>
 <ncdata dyn="fv"  hgrid="10x15"     nlev="81"  waccmx="1"  ic_ymd="20000101" >atm/waccm/ic/WAX3548T08CO_2003top_f2000.waccm_0017bottom_10x15_L81_c141027.nc</ncdata>
 <ncdata dyn="fv"  hgrid="4x5"       nlev="126" waccmx="1"  ic_ymd="101" aquaplanet="1">atm/waccm/ic/waccmx_aqua_4x5_L126_c170705.nc</ncdata>
+<ncdata dyn="fv"  hgrid="0.9x1.25"  nlev="126" waccmx="1">atm/waccm/ic/fx2000_1deg.cam.i.0001-01-02-00000_c180712.nc</ncdata>
 
 <ncdata dyn="eul" hgrid="512x1024"  nlev="26"              ic_ymd="101" >atm/cam/inic/gaus/T341clim01.cam2.i.0024-01-01-00000.nc</ncdata>
 <ncdata dyn="eul" hgrid="256x512"   nlev="26"              ic_ymd="101" >atm/cam/inic/gaus/cami_0000-01-01_256x512_L26_c030918.nc</ncdata>
@@ -508,7 +509,7 @@
 <solar_parms_data_file phys="cam5" waccm_phys="1">atm/waccm/solar/wasolar_c140408.nc</solar_parms_data_file>
 <solar_parms_data_file             waccm_phys="1">atm/cam/solar/SolarForcing1995-2005avg_c160929.nc</solar_parms_data_file>
 
-<solar_wind_data_file>atm/waccm/solar/solar_wind_imf_OMNI_WACCMX_2000001-2016366_c170907.nc</solar_wind_data_file>
+<solar_wind_data_file>atm/waccm/solar/solar_wind_imf_OMNI_WACCMX_2000001-2017365_c180731.nc</solar_wind_data_file>
 
 <!-- nudged QBO  -->
 <qbo_forcing_file>atm/waccm/qbo/qbocyclic28months.nc</qbo_forcing_file>
@@ -592,6 +593,8 @@
 <waccmx_opt waccmx="1" ionosphere="none">neutral</waccmx_opt>
 <ionos_epotential_model>heelis</ionos_epotential_model>
 <wei05_coefs_file>atm/waccm/efld/wei05sc_c080415.nc</wei05_coefs_file>
+<ionos_xport_nsplit waccmx="1">5</ionos_xport_nsplit>
+<ionos_xport_nsplit hgrid="0.9x1.25" waccmx="1">20</ionos_xport_nsplit>
 
 <!-- For scaling lightning sources of NOx -->
 <lght_no_prd_factor                                              >1.00D0</lght_no_prd_factor>

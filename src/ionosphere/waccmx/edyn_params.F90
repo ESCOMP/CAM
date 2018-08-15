@@ -3,12 +3,13 @@ module edyn_params
 ! Constants for edynamo.
 !
   use shr_kind_mod, only: r8 => shr_kind_r8            ! 8-byte reals
+  use physconst, only: pi
+
   implicit none
   save
 
   private
 
-  public :: edyn_params_init
   public :: pi, pi_dyn, re_dyn, r0, re, rtd, dtr, finit, h0, hs
   public :: kbotdyn, pbotdyn, cm2km
 
@@ -27,11 +28,9 @@ module edyn_params
 !   
   real(r8),parameter :: pi_dyn = 3.14159265358979312_r8 ! pi for dynamo
   real(r8),parameter :: re_dyn = 6.378165e8_r8          ! earth radius (cm) for dynamo
-
-  real(r8) :: & ! constants that are set at runtime
-    pi,       & ! pi = 4.*atan(1.)
-    dtr,      & ! degrees to radians
-    rtd         ! radians to degrees
+!
+  real(r8),parameter :: dtr = pi/180._r8 ! degrees to radians
+  real(r8),parameter :: rtd = 180._r8/pi ! radians to degrees
 ! 
 ! kbotdyn is the column index at which upward dynamo integrals begin. 
 ! This should correspond to about 85 km (zbotdyn). The index is determined
@@ -42,12 +41,4 @@ module edyn_params
   real(r8),parameter :: pbotdyn = 1.0_r8 ! Pa pressure (~80 km) at which to set kbotdyn
   integer :: kbotdyn = -1                     
 
-  contains
-!-----------------------------------------------------------------------
-  subroutine edyn_params_init
-    pi = 4._r8*atan(1._r8)
-    rtd = 180._r8/pi
-    dtr = pi/180._r8
-  end subroutine edyn_params_init
-!-----------------------------------------------------------------------
 end module edyn_params

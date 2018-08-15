@@ -229,7 +229,7 @@ contains
     !-----------------------------------------------------------------------
     !	... initialize ion production
     !-----------------------------------------------------------------------
-    call aurora_inti
+    call aurora_inti(pbuf2d)
     if (masterproc) write(iulog,*) 'chemini: after aurora_inti'
 
     call neu_wetdep_init()

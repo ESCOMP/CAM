@@ -1040,8 +1040,6 @@
   <grid name="a%1.9x2.5">
     <mach name="cheyenne">
       <pes pesize="any" compset="_CAM40%WX">
-        <MAX_MPITASKS_PER_NODE>36</MAX_MPITASKS_PER_NODE>
-        <MAX_TASKS_PER_NODE>36</MAX_TASKS_PER_NODE>
 	<comment>none</comment>
 	<ntasks>
 	  <ntasks_atm>144</ntasks_atm>
@@ -1052,6 +1050,43 @@
 	  <ntasks_glc>144</ntasks_glc>
 	  <ntasks_wav>144</ntasks_wav>
 	  <ntasks_cpl>144</ntasks_cpl>
+	</ntasks>
+	<nthrds>
+	  <nthrds_atm>3</nthrds_atm>
+	  <nthrds_lnd>3</nthrds_lnd>
+	  <nthrds_rof>3</nthrds_rof>
+	  <nthrds_ice>3</nthrds_ice>
+	  <nthrds_ocn>3</nthrds_ocn>
+	  <nthrds_glc>3</nthrds_glc>
+	  <nthrds_wav>3</nthrds_wav>
+	  <nthrds_cpl>3</nthrds_cpl>
+	</nthrds>
+	<rootpe>
+	  <rootpe_atm>0</rootpe_atm>
+	  <rootpe_lnd>0</rootpe_lnd>
+	  <rootpe_rof>0</rootpe_rof>
+	  <rootpe_ice>0</rootpe_ice>
+	  <rootpe_ocn>0</rootpe_ocn>
+	  <rootpe_glc>0</rootpe_glc>
+	  <rootpe_wav>0</rootpe_wav>
+	  <rootpe_cpl>0</rootpe_cpl>
+	</rootpe>
+      </pes>
+    </mach>
+  </grid>
+  <grid name="a%0.9x1.25">
+    <mach name="cheyenne">
+      <pes pesize="any" compset="_CAM40%WX">
+	<comment>none</comment>
+	<ntasks>
+	  <ntasks_atm>288</ntasks_atm>
+	  <ntasks_lnd>288</ntasks_lnd>
+	  <ntasks_rof>288</ntasks_rof>
+	  <ntasks_ice>288</ntasks_ice>
+	  <ntasks_ocn>288</ntasks_ocn>
+	  <ntasks_glc>288</ntasks_glc>
+	  <ntasks_wav>288</ntasks_wav>
+	  <ntasks_cpl>288</ntasks_cpl>
 	</ntasks>
 	<nthrds>
 	  <nthrds_atm>3</nthrds_atm>

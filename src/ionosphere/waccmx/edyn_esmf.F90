@@ -2,8 +2,8 @@ module edyn_esmf
 #ifdef WACCMX_EDYN_ESMF
 
   use esmf           ,only: ESMF_Grid, ESMF_Field, ESMF_RouteHandle, & ! ESMF library module
-                            ESMF_LOGKIND_NONE, ESMF_SUCCESS, ESMF_END_KEEPMPI, ESMF_KIND_R8, ESMF_KIND_I4, &
-		            ESMF_FieldGet, ESMF_GridWriteVTK, ESMF_STAGGERLOC_CENTER, ESMF_FieldRegridStore, &
+                            ESMF_SUCCESS, ESMF_KIND_R8, ESMF_KIND_I4, &
+		            ESMF_FieldGet, ESMF_STAGGERLOC_CENTER, ESMF_FieldRegridStore, &
 		            ESMF_REGRIDMETHOD_BILINEAR, ESMF_POLEMETHOD_ALLAVG, ESMF_FieldSMMStore, &
                             ESMF_GridCreate1PeriDim, ESMF_INDEX_GLOBAL, ESMF_GridAddCoord, ESMF_GridGetCoord, &
                             ESMF_TYPEKIND_R8, ESMF_FieldCreate, ESMF_Array, ESMF_ArraySpec, ESMF_DistGrid, &
@@ -12,12 +12,12 @@ module edyn_esmf
   use shr_kind_mod   ,only: r8 => shr_kind_r8
   use cam_logfile    ,only: iulog
   use cam_abortutils ,only: endrun
-  use edyn_mpi       ,only: ntask,ntaski,ntaskj,tasks,lon0,lon1,lat0,lat1,mytid,&
+  use edyn_mpi       ,only: ntask,ntaski,ntaskj,tasks,lon0,lon1,lat0,lat1,&
                             nmagtaski,nmagtaskj,mlon0,mlon1,mlat0,mlat1
   use getapex        ,only: gdlatdeg,gdlondeg
   use edyn_geogrid   ,only: nlon,nlat,nlev,glon,glat,jspole,jnpole  ! dynamically allocated geo grid
-  use edyn_maggrid   ,only: nmlev,nmlon,nmlonp1,gmlat,gmlon
-  use spmd_utils     ,only: masterproc
+  use edyn_maggrid   ,only: nmlev,gmlat,gmlon
+
 #endif
 
   implicit none
@@ -29,12 +29,16 @@ module edyn_esmf
 #ifdef WACCMX_EDYN_ESMF
 
   public :: nf_3dgeo,f_3dgeo
+  public :: edyn_esmf_update_flag
   public :: edyn_esmf_init, edyn_esmf_final, edyn_esmf_update_step, edyn_esmf_regrid
-  public :: edyn_esmf_get_2dfield, edyn_esmf_set2d_geo, edyn_esmf_get_3dfield, edyn_esmf_set3d_mag, edyn_esmf_set3d_geo
- 
+  public :: edyn_esmf_get_2dfield, edyn_esmf_set2d_geo, edyn_esmf_get_3dfield, edyn_esmf_set3d_mag, edyn_esmf_set3d_geo 
+  public :: edyn_esmf_set2d_mag
+  
   public :: mag_be3, mag_adota1,mag_adota2,mag_a1dta2,mag_sini,mag_adotv2,mag_adotv1,mag_scht
+  public :: mag_efx, mag_kev
   public :: mag_zpot,mag_hal,mag_ped, mag_phi3d
   public :: geo_be3,geo_adotv2,geo_a1dta2,geo_adota2,geo_adota1,geo_adotv1,geo_sini,geo_scht,geo_zpot
+  public :: geo_efx, geo_kev
   public :: geo_hal, geo_ped, mag_des_grid, geo_src_grid, geo_phi3d, geo_emz3d, geo_elam3d, geo_ephi3d
   public :: mag_emz3d, mag_elam3d, mag_ephi3d
 
@@ -61,7 +65,8 @@ module edyn_esmf
     geo_adota1,     & ! d(1)**2/D
     geo_adota2,     & ! d(2)**2/D
     geo_a1dta2,     & ! (d(1) dot d(2)) /D
-    geo_be3           ! mag field strength (T)
+    geo_be3,        & ! mag field strength (T)
+    geo_efx, geo_kev  ! amie fields
 !
 ! 3d (i,j,k) ESMF fields regridded to magnetic subdomains:
 !
@@ -80,7 +85,8 @@ module edyn_esmf
     mag_adota1,     & ! d(1)**2/D
     mag_adota2,     & ! d(2)**2/D
     mag_a1dta2,     & ! (d(1) dot d(2)) /D
-    mag_be3           ! mag field strength (T)
+    mag_be3,        & ! mag field strength (T)
+    mag_efx, mag_kev  ! amie fields
 !
 ! 3d electric potential and electric field for mag to geo regridding:
 !
@@ -90,13 +96,13 @@ module edyn_esmf
   type(ESMF_RouteHandle) :: & ! ESMF route handles for regridding
     routehandle_geo2mag,    & ! for geo to mag regrid 
     routehandle_mag2geo,    & ! for mag to geo regrid
-    routehandle_geo2mag_2d    ! for 2d geo to mag
+    routehandle_geo2mag_2d, & ! for 2d geo to mag
+    routehandle_mag2geo_2d    ! for 2d mag to geo for AMIE fields
 !
-  real(r8) :: r8_nlon 
   real(r8),allocatable :: unitv(:)
 !
   private routehandle_geo2mag, routehandle_mag2geo,&
-    routehandle_geo2mag_2d,r8_nlon
+    routehandle_geo2mag_2d
 
   logical, protected :: edyn_esmf_update_step = .true.
   logical :: debug=.false. ! set true for prints to stdout at each call
@@ -159,7 +165,6 @@ module edyn_esmf
 !
     if (.not.allocated(unitv)) allocate(unitv(nlon))
     unitv(:) = 1._r8    
-    r8_nlon = dble(nlon) ! 8-byte float(nlon)
 !
 ! Make magnetic and geographic grids for geo2mag regridding:
 !
@@ -241,6 +246,8 @@ module edyn_esmf
     call edyn_esmf_create_magfield(mag_ephi3d,mag_src_grid,'EPHI3D  ',nmlev)
     call edyn_esmf_create_magfield(mag_elam3d,mag_src_grid,'ELAM3D  ',nmlev)
     call edyn_esmf_create_magfield(mag_emz3d ,mag_src_grid,'EMZ3D   ',nmlev)
+    call edyn_esmf_create_magfield(mag_efx   ,mag_src_grid,'MEFXAMIE',0)
+    call edyn_esmf_create_magfield(mag_kev   ,mag_src_grid,'MKEVAMIE',0)
 !
 ! 3d fields on destination geo grid for mag2geo:
 !
@@ -248,6 +255,8 @@ module edyn_esmf
     call edyn_esmf_create_geofield(geo_ephi3d,geo_des_grid,'EPHI3D  ',nlev)
     call edyn_esmf_create_geofield(geo_elam3d,geo_des_grid,'ELAM3D  ',nlev)
     call edyn_esmf_create_geofield(geo_emz3d ,geo_des_grid,'EMZ3D   ',nlev)
+    call edyn_esmf_create_geofield(geo_efx   ,geo_des_grid,'GEFXAMIE',0)
+    call edyn_esmf_create_geofield(geo_kev   ,geo_des_grid,'GKEVAMIE',0)
 !
 ! Get 3d bounds of source mag field:
     call ESMF_FieldGet(mag_phi3d,localDe=0,farrayPtr=fptr,&
@@ -357,6 +366,25 @@ module edyn_esmf
       call endrun('edyn_esmf_update: ESMF_FieldSMMStore for 3d geo2mag phi3d')
     endif
 
+! amie fields
+    call ESMF_FieldRegridStore(srcField=mag_efx,dstField=geo_efx, &
+      regridMethod=ESMF_REGRIDMETHOD_BILINEAR,                        &
+      polemethod=ESMF_POLEMETHOD_ALLAVG,                              &
+      routeHandle=routehandle_mag2geo_2d,factorIndexList=factorIndexList,&
+      factorList=factorList,srcTermProcessing=smm_srctermproc,pipelineDepth=smm_pipelinedep,rc=rc)
+
+    if (rc /= ESMF_SUCCESS) then
+      write(6,"(2a,i4)") '>>> esmf_init: error return from ',&
+        'ESMF_FieldRegridStore for 2d mag2geo_2d: rc=',rc
+      call endrun
+    endif
+!
+! mag2geo 2d fields:
+!
+    call ESMF_FieldSMMStore(mag_efx,geo_efx,routehandle_mag2geo_2d,&
+      factorList,factorIndexList,srcTermProcessing=smm_srctermproc,pipelineDepth=smm_pipelinedep,rc=rc)
+
+
     edyn_esmf_update_step = .true.
 #endif
   end subroutine edyn_esmf_update
@@ -390,7 +418,7 @@ module edyn_esmf
     character(len=*),intent(in) :: srcdes
 !
 ! Local:
-    integer :: istat,i,j,n,rc
+    integer :: i,j,n,rc
     real(ESMF_KIND_R8),pointer :: coordX(:,:),coordY(:,:)
     integer :: lbnd(2),ubnd(2)
     integer :: nmlons_task(ntaski) ! number of lons per task 
@@ -514,7 +542,6 @@ module edyn_esmf
 ! Local:
     integer :: i,j,n,rc
     integer :: lbnd_lat,ubnd_lat,lbnd_lon,ubnd_lon,lbnd(1),ubnd(1)
-    integer :: ihalf, nlon_local ! Used to convert from CAM lons to edynamo lons
     real(ESMF_KIND_R8),pointer :: coordX(:),coordY(:)
     integer :: nlons_task(ntaski) ! number of lons per task 
     integer :: nlats_task(ntaskj) ! number of lats per task
@@ -922,8 +949,8 @@ module edyn_esmf
   real(r8),intent(in) :: f(ilon0:ilon1,ilat0:ilat1,ilev0:ilev1,nf)
 !
 ! Local:
-  integer :: i,j,k,rc,n,istat
-  integer :: ncalls=0,lbnd(3),ubnd(3) ! lower,upper bounds of 3d field
+  integer :: i,j,k,rc,n
+  integer :: lbnd(3),ubnd(3) ! lower,upper bounds of 3d field
 !
 ! fptr is esmf pointer (i,j,k) to 3d field, set by this subroutine
   real(ESMF_KIND_R8),pointer :: fptr(:,:,:)
@@ -933,8 +960,8 @@ module edyn_esmf
     call ESMF_FieldGet(fields(n),localDe=0,farrayPtr=fptr,&
       computationalLBound=lbnd,computationalUBound=ubnd,rc=rc)
     if (rc /= ESMF_SUCCESS) then
-      write(iulog,"(a,i4)") '>>> esmf_set2d_mag: error from ESMF_FieldGet: rc=',rc
-      call endrun('edyn_esmf_set2d_mag: ESMF_FieldGet')
+      write(iulog,"(a,i4)") '>>> esmf_set3d_mag: error from ESMF_FieldGet: rc=',rc
+      call endrun('edyn_esmf_set3d_mag: ESMF_FieldGet')
     endif
 !
     fptr(:,:,:) = 0._r8
@@ -951,6 +978,51 @@ module edyn_esmf
   enddo       ! n=1,nf
   end subroutine edyn_esmf_set3d_mag
 !-----------------------------------------------------------------------
+!
+  subroutine edyn_esmf_set2d_mag(fields,fnames,f,nf,ilon0,ilon1,ilat0,ilat1)
+!
+! Set values of a 2d ESMF field on magnetic grid, prior to magnetic to
+! geographic grid transformation.
+!
+! Args:
+  integer,intent(in) :: nf
+  type(ESMF_Field) ,intent(in) :: fields(nf) ! esmf fields on mag grid
+  character(len=*) ,intent(in) :: fnames(nf) ! field names
+!
+! f is input data on model subdomains:
+!
+  integer,intent(in) :: ilon0,ilon1,ilat0,ilat1
+  real(r8),intent(in) :: f(ilon0:ilon1,ilat0:ilat1,nf)
+!
+! Local:
+  integer :: i,j,rc,n
+  integer :: lbnd(2),ubnd(2) ! lower,upper bounds of 2d field
+!
+! fptr is esmf pointer (i,j,k) to 2d field, set by this subroutine
+  real(ESMF_KIND_R8),pointer :: fptr(:,:)
+!
+! Fields loop:
+  do n=1,nf
+    call ESMF_FieldGet(fields(n),localDe=0,farrayPtr=fptr,&
+      computationalLBound=lbnd,computationalUBound=ubnd,rc=rc)
+    if (rc /= ESMF_SUCCESS) then
+      write(iulog,"(a,i4)") '>>> esmf_set2d_mag: error from ESMF_FieldGet: rc=',rc
+      call endrun('edyn_esmf_set2d_mag: ESMF_FieldGet')
+    endif
+!
+    fptr(:,:) = 0._r8
+!
+! Set ESMF pointer:
+!
+    do j=lbnd(2),ubnd(2)      ! lat
+      do i=lbnd(1),ubnd(1)    ! lon
+        fptr(i,j) = f(i,j,n)
+      enddo   ! mlon
+    enddo     ! mlat
+  enddo       ! n=1,nf
+!
+  end subroutine edyn_esmf_set2d_mag
+!-----------------------------------------------------------------------
   subroutine edyn_esmf_get_3dfield(field, fptr, name)
 !
 ! Get pointer to 3d esmf field (i,j,k):
@@ -961,7 +1033,7 @@ module edyn_esmf
     character(len=*),intent(in) :: name
 !
 ! Local:
-    integer :: rc,k,lbnd(3),ubnd(3)
+    integer :: rc,lbnd(3),ubnd(3)
     character(len=80) :: errmsg
 
     call ESMF_FieldGet(field,localDe=0,farrayPtr=fptr, &
@@ -990,8 +1062,6 @@ module edyn_esmf
       write(errmsg,"('edyn_esmf_get_2dfield ',a)") trim(name)
       call endrun('edyn_esmf_get_2dfield: ESMF_FieldGet')
     endif
-
-    edyn_esmf_update_step = .false.
 
   end subroutine edyn_esmf_get_2dfield
 !-----------------------------------------------------------------------
@@ -1043,13 +1113,17 @@ module edyn_esmf
 !   are commented out (mag2geo_3d calls this routine with direction='mag2geo').
 !
       case ('mag2geo')
-        routehandle = routehandle_mag2geo
-        call ESMF_FieldSMM(srcfield,dstfield,routehandle,termorderflag=ESMF_TERMORDER_SRCSEQ,rc=rc)
-        if (rc /= ESMF_SUCCESS) then
-          write(iulog,"(/,4a,i4)") '>>> edyn_esmf_regrid: error return from ',&
-            'ESMF_FieldSMM for 3d ',trim(direction),': rc=',rc
-          call endrun('edyn_esmf_regrid: ESMF_FieldSMM magtogeo')
-        endif
+         if (ndim==2) then
+            routehandle = routehandle_mag2geo_2d
+         else
+            routehandle = routehandle_mag2geo
+         endif
+         call ESMF_FieldSMM(srcfield,dstfield,routehandle,termorderflag=ESMF_TERMORDER_SRCSEQ,checkflag=.true.,rc=rc)
+         if (rc /= ESMF_SUCCESS) then
+            write(iulog,"(/,4a,i4)") '>>> edyn_esmf_regrid: error return from ',&
+                 'ESMF_FieldSMM for 3d ',trim(direction),': rc=',rc
+            call endrun('edyn_esmf_regrid: ESMF_FieldSMM magtogeo')
+         endif
       case default
         write(iulog,"('>>> edyn_esmf_regrid: bad direction=',a)") trim(direction)
         call endrun
@@ -1057,5 +1131,10 @@ module edyn_esmf
   end subroutine edyn_esmf_regrid
 !-----------------------------------------------------------------------
 
+  subroutine edyn_esmf_update_flag( flag )
+    logical, intent(in) :: flag
+    edyn_esmf_update_step=flag
+  end subroutine edyn_esmf_update_flag
+  
 #endif
 end module edyn_esmf

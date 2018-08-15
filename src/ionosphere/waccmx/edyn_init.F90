@@ -12,8 +12,7 @@
   use edyn_geogrid   ,only: nlon,nlat,nlev,nilev,glon,glat,zlev,zilev,&
                             nlonp1,nlonp2,nlatp1,jspole,jnpole,dlatg,dlong,&
                             ylatg,ylong,dphi,dlamda,cs,expz,zp
-  use mag_parms,      only: highlat_potential_model
-  use edyn_params    ,only: edyn_params_init, kbotdyn, pbotdyn
+  use edyn_params    ,only: kbotdyn, pbotdyn
 
   implicit none
 
@@ -25,7 +24,7 @@
   contains
 !-----------------------------------------------------------------------
   subroutine edynamo_init(mpicomm, nlon_in,nlat_in,nlev_in, lonndx0,lonndx1,latndx0,latndx1,levndx0,levndx1, ntaski,ntaskj, &
-                          glon_in, glat_in, pres_in, pres_edge_in)
+                          glon_in, glat_in, pres_in, pres_edge_in )
 !
 ! One-time initialization, called from inital.F90 after dyn_init and initcom.
 !
@@ -46,11 +45,9 @@
 
     if (masterproc) then
        write(iulog,"('Enter edynamo_init:')")
-       write(iulog,"('  highlat_potential_model = ',a)") trim(highlat_potential_model)
     endif
 
     call mp_init(mpicomm) ! get ntask,mytid
-    call edyn_params_init() 
     call set_geogrid(nlon_in,nlat_in,nlev_in, glon_in, glat_in, pres_in, pres_edge_in) ! set global geographic grid 
     call set_maggrid ()   ! set parameter-based global magnetic grid
 
@@ -63,6 +60,7 @@
     call alloc_edyn      ! allocate dynamo arrays
     call edyn_esmf_init(mpicomm)       ! initialize ESMF
 #endif
+
     call add_fields      ! add fields to WACCM history master list
 
   end subroutine edynamo_init
@@ -240,6 +238,12 @@
     call addfld ('ZPOT_MAG'  ,(/ 'lev' /), 'I', 'cm   ','Geopotential on mag grid (h0 min)',gridname='gmag_grid')
     call addfld ('ADOTV1_MAG',(/ 'lev' /), 'I', '     ','ADOTV1 on mag grid'               ,gridname='gmag_grid')
     call addfld ('ADOTV2_MAG',(/ 'lev' /), 'I', '     ','ADOTV2 on mag grid'               ,gridname='gmag_grid') 
+!
+    call addfld ('amie_phihm' , horiz_only, 'I','VOLTS','AMIE Electric Potential-mag grid' ,gridname='gmag_grid')
+    call addfld ('amie_efxm'  , horiz_only, 'I','mW/m2','AMIE energy flux on mag grid'     ,gridname='gmag_grid')
+    call addfld ('amie_kevm'  , horiz_only, 'I','keV  ','AMIE mean energy on mag grid'     ,gridname='gmag_grid')
+    call addfld ('amie_efxg'  , horiz_only, 'I','mW/m2','AMIE energy flux on geo grid'     ,gridname='fv_centers')
+    call addfld ('amie_kevg'  , horiz_only, 'I','keV  ','AMIE mean energy on geo grid'     ,gridname='fv_centers')
 
 !
 ! Dynamo inputs from sub dynamo_input (edynamo.F90):

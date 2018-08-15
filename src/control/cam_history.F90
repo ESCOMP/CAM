@@ -54,6 +54,9 @@ module cam_history
    use sat_hist,            only: is_satfile
    use solar_parms_data,    only: solar_parms_on, kp=>solar_parms_kp, ap=>solar_parms_ap
    use solar_parms_data,    only: f107=>solar_parms_f107, f107a=>solar_parms_f107a, f107p=>solar_parms_f107p
+   use solar_wind_data,     only: solar_wind_on, byimf=>solar_wind_byimf, bzimf=>solar_wind_bzimf
+   use solar_wind_data,     only: swvel=>solar_wind_swvel, swden=>solar_wind_swden
+   use epotential_params,   only: epot_active, epot_crit_colats
 
   implicit none
   private
@@ -3532,6 +3535,16 @@ end subroutine print_active_fldlst
           ierr=pio_inq_varid (tape(t)%File,'kp      ',    tape(t)%kpid)
           ierr=pio_inq_varid (tape(t)%File,'ap      ',    tape(t)%apid)
         endif
+        if (solar_wind_on) then
+          ierr=pio_inq_varid (tape(t)%File,'byimf', tape(t)%byimfid)
+          ierr=pio_inq_varid (tape(t)%File,'bzimf', tape(t)%bzimfid)
+          ierr=pio_inq_varid (tape(t)%File,'swvel', tape(t)%swvelid)
+          ierr=pio_inq_varid (tape(t)%File,'swden', tape(t)%swdenid)
+        endif
+        if (epot_active) then
+          ierr=pio_inq_varid (tape(t)%File,'colat_crit1', tape(t)%colat_crit1_id)         
+          ierr=pio_inq_varid (tape(t)%File,'colat_crit2', tape(t)%colat_crit2_id)         
+        endif
       end if
     end if
     ierr=pio_inq_varid (tape(t)%File,'date    ',    tape(t)%dateid)
@@ -4022,6 +4035,44 @@ end subroutine print_active_fldlst
           ierr=pio_def_var (tape(t)%File,'ap',pio_double,(/timdim/),tape(t)%apid)
           str = 'Daily planetary A geomagnetic index'
           ierr=pio_put_att (tape(t)%File, tape(t)%apid, 'long_name', trim(str))
+        endif
+        if (solar_wind_on) then
+
+          ierr=pio_def_var (tape(t)%File,'byimf',pio_double,(/timdim/),tape(t)%byimfid)
+          str = 'Y component of the interplanetary magnetic field'
+          ierr=pio_put_att (tape(t)%File, tape(t)%byimfid, 'long_name', trim(str))
+          str = 'nT'
+          ierr=pio_put_att (tape(t)%File, tape(t)%byimfid, 'units', trim(str))
+
+          ierr=pio_def_var (tape(t)%File,'bzimf',pio_double,(/timdim/),tape(t)%bzimfid)
+          str = 'Z component of the interplanetary magnetic field'
+          ierr=pio_put_att (tape(t)%File, tape(t)%bzimfid, 'long_name', trim(str))
+          str = 'nT'
+          ierr=pio_put_att (tape(t)%File, tape(t)%bzimfid, 'units', trim(str))
+
+          ierr=pio_def_var (tape(t)%File,'swvel',pio_double,(/timdim/),tape(t)%swvelid)
+          str = 'Solar wind speed'
+          ierr=pio_put_att (tape(t)%File, tape(t)%swvelid, 'long_name', trim(str))
+          str = 'km/sec'
+          ierr=pio_put_att (tape(t)%File, tape(t)%swvelid, 'units', trim(str))
+
+          ierr=pio_def_var (tape(t)%File,'swden',pio_double,(/timdim/),tape(t)%swdenid)
+          str = 'Solar wind ion number density'
+          ierr=pio_put_att (tape(t)%File, tape(t)%swdenid, 'long_name', trim(str))
+          str = 'cm-3'
+          ierr=pio_put_att (tape(t)%File, tape(t)%swdenid, 'units', trim(str))
+
+        endif
+        if (epot_active) then
+          ierr=pio_def_var (tape(t)%File,'colat_crit1',pio_double,(/timdim/),tape(t)%colat_crit1_id)
+          ierr=pio_put_att (tape(t)%File, tape(t)%colat_crit1_id, 'long_name', &
+                           'First co-latitude of electro-potential critical angle')
+          ierr=pio_put_att (tape(t)%File, tape(t)%colat_crit1_id, 'units', 'degrees')
+
+          ierr=pio_def_var (tape(t)%File,'colat_crit2',pio_double,(/timdim/),tape(t)%colat_crit2_id)
+          ierr=pio_put_att (tape(t)%File, tape(t)%colat_crit2_id, 'long_name',&
+                           'Second co-latitude of electro-potential critical angle')
+          ierr=pio_put_att (tape(t)%File, tape(t)%colat_crit2_id, 'units', 'degrees')
         endif
       end if
 
@@ -4843,7 +4894,16 @@ end subroutine print_active_fldlst
               ierr=pio_put_var (tape(t)%File, tape(t)%kpid,   (/start/), (/count1/),(/ kp /) )
               ierr=pio_put_var (tape(t)%File, tape(t)%apid,   (/start/), (/count1/),(/ ap /) )
             endif
-
+            if (solar_wind_on) then
+              ierr=pio_put_var (tape(t)%File, tape(t)%byimfid, (/start/), (/count1/),(/ byimf /) )
+              ierr=pio_put_var (tape(t)%File, tape(t)%bzimfid, (/start/), (/count1/),(/ bzimf /) )
+              ierr=pio_put_var (tape(t)%File, tape(t)%swvelid, (/start/), (/count1/),(/ swvel /) )
+              ierr=pio_put_var (tape(t)%File, tape(t)%swdenid, (/start/), (/count1/),(/ swden /) )
+            endif
+            if (epot_active) then
+              ierr=pio_put_var (tape(t)%File, tape(t)%colat_crit1_id, (/start/), (/count1/),(/ epot_crit_colats(1) /) )
+              ierr=pio_put_var (tape(t)%File, tape(t)%colat_crit2_id, (/start/), (/count1/),(/ epot_crit_colats(2) /) )
+            endif
           end if
 
           ierr = pio_put_var (tape(t)%File, tape(t)%datesecid,(/start/),(/count1/),(/ncsec/))

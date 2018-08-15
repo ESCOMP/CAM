@@ -33,7 +33,6 @@
 !     ... initialize the sad module
 !----------------------------------------------------------------------
 
-      use time_manager, only : is_first_step
       use ref_pres,     only : pref_mid_norm
       use cam_history,  only : addfld
       use physics_buffer, only : physics_buffer_desc, pbuf_set_field

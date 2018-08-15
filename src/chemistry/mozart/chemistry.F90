@@ -768,7 +768,8 @@ end function chem_is_active
     use constituents,          only : sflxnam
     use noy_ubc,             only : noy_ubc_init
     use fire_emissions,      only : fire_emissions_init
-
+    use short_lived_species, only : short_lived_species_initic
+    
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
     type(physics_state), intent(in):: phys_state(begchunk:endchunk)
 
@@ -966,6 +967,8 @@ end function chem_is_active
      ! Fire emissions ...
      call fire_emissions_init()
 
+     call short_lived_species_initic()
+     
   end subroutine chem_init
 
 !================================================================================
@@ -1259,6 +1262,7 @@ end function chem_is_active
     use mo_drydep,           only : drydep_update
     use mo_neu_wetdep,       only : neu_wetdep_tend
     use aerodep_flx,         only : aerodep_flx_prescribed
+    use short_lived_species, only : short_lived_species_writeic
     
     implicit none
 
@@ -1308,6 +1312,8 @@ end function chem_is_active
 
     lchnk = state%lchnk
     ncol  = state%ncol
+
+    call short_lived_species_writeic( lchnk, pbuf )
 
     lq(:) = .false.
     do n = 1,pcnst
@@ -1442,6 +1448,7 @@ end function chem_is_active
     do k = 1,pver
        fh2o(:ncol) = fh2o(:ncol) + ptend%q(:ncol,k,1)*state%pdel(:ncol,k)/gravit
     end do
+    
   end subroutine chem_timestep_tend
 
 !-------------------------------------------------------------------

@@ -311,7 +311,6 @@ contains
     use aero_model,        only : aero_model_gasaerexch
 
     use aero_model,        only : aero_model_strat_surfarea
-    use time_manager,      only : is_first_step
 
     implicit none
 
@@ -473,7 +472,7 @@ contains
     real(r8) :: prod_out(ncol,pver,max(1,clscnt4))
     real(r8) :: loss_out(ncol,pver,max(1,clscnt4))
 
-    if ( ele_temp_ndx>0 .and. ion_temp_ndx>0 .and. .not.is_first_step()) then
+    if ( ele_temp_ndx>0 .and. ion_temp_ndx>0 ) then
        call pbuf_get_field(pbuf, ele_temp_ndx, ele_temp_fld)
        call pbuf_get_field(pbuf, ion_temp_ndx, ion_temp_fld)
     else

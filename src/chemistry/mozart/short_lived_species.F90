@@ -19,6 +19,8 @@ module short_lived_species
   private
   public :: map
   public :: register_short_lived_species
+  public :: short_lived_species_initic
+  public :: short_lived_species_writeic
   public :: initialize_short_lived_species
   public :: set_short_lived_species
   public :: get_short_lived_species
@@ -46,6 +48,46 @@ contains
     call pbuf_add_field(pbufname,'global',dtype_r8,(/pcols,pver,nslvd/),pbf_idx)
 
   end subroutine register_short_lived_species
+
+!---------------------------------------------------------------------
+!---------------------------------------------------------------------
+  subroutine short_lived_species_initic
+#ifdef WACCMX_IONOS
+    use cam_history, only : addfld, add_default
+
+    integer :: m
+    character(len=24) :: varname
+
+    do m=1,nslvd
+       varname = trim(slvd_lst(m))//'&IC'
+       call addfld (varname, (/ 'lev' /),'I','kg/kg',trim(varname)//' not-transported species',gridname='physgrid')
+       call add_default (varname,0, 'I')
+    enddo
+#endif
+  end subroutine short_lived_species_initic
+
+!---------------------------------------------------------------------
+!---------------------------------------------------------------------
+  subroutine short_lived_species_writeic( lchnk, pbuf )
+    use cam_history,    only : outfld, write_inithist
+    use physics_buffer, only : physics_buffer_desc, pbuf_get_field
+
+    integer       , intent(in) :: lchnk  ! chunk identifier
+    type(physics_buffer_desc), pointer :: pbuf(:)
+#ifdef WACCMX_IONOS
+    real(r8),pointer :: tmpptr(:,:)
+    integer :: m
+    character(len=24) :: varname
+    
+    if ( write_inithist() ) then
+       do m=1,nslvd
+          varname = trim(slvd_lst(m))//'&IC'
+          call pbuf_get_field(pbuf, pbf_idx, tmpptr, start=(/1,1,m/), kount=(/ pcols,pver,1 /))
+          call outfld(varname, tmpptr, pcols,lchnk)
+       enddo
+    endif
+#endif
+  end subroutine short_lived_species_writeic
 
 !---------------------------------------------------------------------
 !---------------------------------------------------------------------

@@ -123,7 +123,6 @@
       use physics_buffer,    only : physics_buffer_desc
       use phys_control,      only : waccmx_is
       use orbit,             only : zenith
-      use time_manager,      only : is_first_step
 
 !-----------------------------------------------------------------------
 !        ... dummy arguments
@@ -199,7 +198,7 @@
       real(r8), pointer :: ele_temp_fld(:,:) ! electron temperature pointer
       real(r8), pointer :: ion_temp_fld(:,:) ! ion temperature pointer
 
-      if ( ele_temp_ndx>0 .and. ion_temp_ndx>0 .and. .not.is_first_step()) then
+      if ( ele_temp_ndx>0 .and. ion_temp_ndx>0 ) then
          call pbuf_get_field(pbuf, ele_temp_ndx, ele_temp_fld)
          call pbuf_get_field(pbuf, ion_temp_ndx, ion_temp_fld)
       else
@@ -431,7 +430,7 @@ column_loop : &
 !-----------------------------------------------------------------------      
       call aurora( state%t, mbar, rlats, &
                    aur_hrate, cpair, state%pmid, lchnk, calday, &
-                   ncol, rlons )
+                   ncol, rlons, pbuf )
       do k = 1,pver
          aur_hrate(:,k)  = aur_hrate(:,k)/invariants(:,k,indexm)
       end do

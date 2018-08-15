@@ -27,7 +27,7 @@ module ionosphere_interface
   use dyn_internal_state,  only: get_dyn_state_grid
   use dynamics_vars,       only: t_fvdycore_grid
   use perf_mod
-
+  use epotential_params,   only: epot_active, epot_crit_colats
   implicit none
 
   private
@@ -79,6 +79,12 @@ module ionosphere_interface
   logical,  public, protected :: oplus_enforce_floor = .true.     ! switch to apply Stan's  floor
 
   character(len=256) :: wei05_coefs_file = 'NONE' !'wei05sc.nc'
+  character(len=256) :: amienh_file  = 'NONE'
+  character(len=256) :: amiesh_file  = 'NONE'
+
+  character(len=16), public, protected :: ionos_epotential_model = 'none'
+  logical,           public, protected :: ionos_epotential_amie = .false.
+  integer ::  indxAMIEefxg=-1, indxAMIEkevg=-1
 
 contains
 
@@ -91,19 +97,19 @@ contains
     use spmd_utils,     only: mpicom, masterprocid, mpi_real8, mpi_logical, mpi_integer, mpi_character
     use cam_logfile,    only: iulog
     use spmd_utils,     only: masterproc
-    use mag_parms,      only: mag_parms_setopts
 
     character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
     ! Local variables
     integer :: unitn, ierr
     character(len=*), parameter :: subname = 'ionosphere_readnl'
-    character(len=16) :: ionos_epotential_model = 'none'
 
     namelist /ionosphere_nl/ ionos_xport_active, ionos_edyn_active, ionos_oplus_xport, ionos_xport_nsplit
     namelist /ionosphere_nl/ oplus_adiff_limiter, oplus_shapiro_const, oplus_enforce_floor
-    namelist /ionosphere_nl/ ionos_epotential_model, wei05_coefs_file
-
+    namelist /ionosphere_nl/ ionos_epotential_model, ionos_epotential_amie, wei05_coefs_file
+    namelist /ionosphere_nl/ amienh_file, amiesh_file, wei05_coefs_file
+    namelist /ionosphere_nl/ epot_crit_colats
+    
     ! Read namelist
     if (masterproc) then
        unitn = getunit()
@@ -126,39 +132,46 @@ contains
     call mpi_bcast(ionos_xport_nsplit,  1, mpi_integer, masterprocid, mpicom, ierr)
     call mpi_bcast(oplus_adiff_limiter, 1, mpi_real8,   masterprocid, mpicom, ierr)
     call mpi_bcast(ionos_epotential_model, len(ionos_epotential_model), mpi_character, masterprocid, mpicom, ierr)
+    call mpi_bcast(ionos_epotential_amie,1, mpi_logical, masterprocid, mpicom, ierr)
     call mpi_bcast(wei05_coefs_file, len(wei05_coefs_file), mpi_character, masterprocid, mpicom, ierr)
+    call mpi_bcast(amienh_file, len(amienh_file), mpi_character, masterprocid, mpicom, ierr)
+    call mpi_bcast(amiesh_file, len(amiesh_file), mpi_character, masterprocid, mpicom, ierr)
     call mpi_bcast(oplus_shapiro_const, 1, mpi_real8,   masterprocid, mpicom, ierr)
     call mpi_bcast(oplus_enforce_floor, 1, mpi_logical, masterprocid, mpicom, ierr)
-
+    call mpi_bcast(epot_crit_colats,    2, mpi_real8,   masterprocid, mpicom, ierr)
+    
     ! log the user settings
     if (masterproc) then
-       write(iulog,*) 'ionosphere_readnl: ionos_xport_active  = ', ionos_xport_active
-       write(iulog,*) 'ionosphere_readnl: ionos_edyn_active   = ', ionos_edyn_active
-       write(iulog,*) 'ionosphere_readnl: ionos_oplus_xport   = ', ionos_oplus_xport
-       write(iulog,*) 'ionosphere_readnl: ionos_xport_nsplit  = ', ionos_xport_nsplit
+       write(iulog,*) 'ionosphere_readnl: ionos_xport_active     = ', ionos_xport_active
+       write(iulog,*) 'ionosphere_readnl: ionos_edyn_active      = ', ionos_edyn_active
+       write(iulog,*) 'ionosphere_readnl: ionos_oplus_xport      = ', ionos_oplus_xport
+       write(iulog,*) 'ionosphere_readnl: ionos_xport_nsplit     = ', ionos_xport_nsplit
        write(iulog,*) 'ionosphere_readnl: ionos_epotential_model = ', trim(ionos_epotential_model)
-       write(iulog,*) 'ionosphere_readnl: oplus_adiff_limiter = ', oplus_adiff_limiter
-       write(iulog,*) 'ionosphere_readnl: oplus_shapiro_const = ', oplus_shapiro_const
-       write(iulog,*) 'ionosphere_readnl: oplus_enforce_floor = ', oplus_enforce_floor
+       write(iulog,*) 'ionosphere_readnl: ionos_epotential_amie  = ', ionos_epotential_amie
+       write(iulog,'(a,2(g12.4))') &
+                     ' ionosphere_readnl: epot_crit_colats       = ', epot_crit_colats
+       write(iulog,*) 'ionosphere_readnl: oplus_adiff_limiter    = ', oplus_adiff_limiter
+       write(iulog,*) 'ionosphere_readnl: oplus_shapiro_const    = ', oplus_shapiro_const
+       write(iulog,*) 'ionosphere_readnl: oplus_enforce_floor    = ', oplus_enforce_floor
     endif
-
-    call mag_parms_setopts(ionos_epotential_model)
-
+    epot_active = .true.
+    
   end subroutine ionosphere_readnl
 
   !--------------------------------------------------------------------------------
   !--------------------------------------------------------------------------------
   subroutine ionosphere_init()
-    use cam_history,    only: addfld, add_default
+    use physics_buffer, only: pbuf_add_field, dtype_r8
+    use cam_history,    only: addfld, add_default, horiz_only
     use mo_apex,        only: mo_apex_init1
     use cam_control_mod,only: initial_run
     use dyn_grid,       only: get_horiz_grid_d
-    use wei05sc,        only: weimer05_init
-
     use ref_pres,  only : & ! Hybrid level definitions:
       pref_mid,           & ! target alev(plev) midpoint levels coord
       pref_edge             ! target ailev(plevp) interface levels coord
-
+    use amie_module,    only: init_amie
+    use wei05sc,        only: weimer05_init
+   
     ! local variables:
     type (t_fvdycore_grid), pointer :: grid
     integer :: sIndx
@@ -171,6 +184,10 @@ contains
     real(r8), allocatable :: glon(:) ! global geo-graphic longitudes (degrees)
     real(r8), allocatable :: glat(:) ! global geo-graphic latitudes (degrees)
 
+    if ( ionos_epotential_amie ) then
+       call pbuf_add_field('AMIE_efxg', 'global', dtype_r8, (/pcols/), indxAMIEefxg)  ! Energy flux from AMIE
+       call pbuf_add_field('AMIE_kevg', 'global', dtype_r8, (/pcols/), indxAMIEkevg)  ! Mean energy from AMIE  
+    endif
     if (initial_run) then
        call ionosphere_read_ic()
     endif
@@ -260,7 +277,8 @@ contains
           endif
        endif
 
-       call d_pie_init( ionos_edyn_active, ionos_oplus_xport, ionos_xport_nsplit )
+       call d_pie_init( ionos_edyn_active, ionos_oplus_xport, ionos_xport_nsplit, epot_crit_colats )
+ 
        if ( grid%iam < grid%npes_xy ) then
           
           allocate(glon(plon))
@@ -276,17 +294,13 @@ contains
           ntaskj = grid%nprxy_y
 
           call edynamo_init( mpicomm, plon, plat, plev, lon0,lon1,lat0,lat1,lev0,lev1, ntaski,ntaskj, &
-                             glon, glat, pref_mid,pref_edge)
+                             glon, glat, pref_mid,pref_edge )
           call ionosphere_alloc()
           call oplus_init( oplus_adiff_limiter, oplus_shapiro_const, oplus_enforce_floor )
 
           deallocate(glon,glat)
        endif
 
-       if (sIndxOp > 0) then
-          call addfld ('Op&IC', (/ 'lev' /),'I','kg/kg','O+',gridname='physgrid')
-          call add_default ('Op&IC',0, 'I')
-       endif
        call addfld ('OpTM1&IC', (/ 'lev' /),'I','kg/kg','O+ at time step minus 1',gridname='fv_centers')
        call add_default ('OpTM1&IC',0, 'I')
 
@@ -303,8 +317,14 @@ contains
        call add_default ('VI&IC', 0, ' ')
        call add_default ('WI&IC', 0, ' ')
     endif
-
-    call weimer05_init(wei05_coefs_file)
+    if ( ionos_epotential_amie ) then
+       call init_amie(amienh_file,amiesh_file)
+       call addfld ('amie_efx_phys',horiz_only,'I','mW/m2', 'AMIE energy flux') 
+       call addfld ('amie_kev_phys',horiz_only,'I','keV'  , 'AMIE mean energy')
+    end if
+    if ( trim(ionos_epotential_model) == 'weimer' ) then
+       call weimer05_init(wei05_coefs_file)
+    endif
 
   end subroutine ionosphere_init
 
@@ -312,7 +332,8 @@ contains
   !--------------------------------------------------------------------------------
   subroutine ionosphere_run1(pbuf2d)
     use physics_buffer, only: physics_buffer_desc
-    use cam_history  , only: outfld, write_inithist
+    use cam_history,    only: outfld, write_inithist
+    use phys_grid,      only: get_ncols_p
 
     ! args
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
@@ -322,21 +343,37 @@ contains
     integer :: ifirstxy, ilastxy, jfirstxy, jlastxy, km, idim
     real(r8), allocatable :: tmp(:,:)
     type(physics_buffer_desc), pointer :: pbuf_chnk(:)
-    real(r8),pointer :: Op_phys(:,:)     ! Pointer to access O+ in pbuf
 
     type(t_fvdycore_grid), pointer :: grid
 
+    real(r8), pointer :: pbuf_amie_efxg(:)     ! Pointer to access AMIE energy flux in pbuf
+    real(r8), pointer :: pbuf_amie_kevg(:)     ! Pointer to access AMIE mean energy in pbuf
+    
+    integer :: lats(pcols)           ! array of latitude indices
+    integer :: lons(pcols)           ! array of longitude in
+    integer :: blksiz                ! number of columns in 2D block
+    integer :: tsize                 ! amount of data per grid point passed to physics
+    integer :: iam, astat
+    integer :: ib, ic, jc,ncol
+    integer, allocatable, dimension(:,:) :: bpter
+                                     ! offsets into block buffer for packing data
+    integer :: cpter(pcols,0:pver)   ! offsets into chunk buffer for unpacking data
+    real(r8), allocatable, dimension(:) :: bbuffer, cbuffer
+    real(r8), allocatable :: amie_efxg(:,:) ! energy flux from AMIE
+    real(r8), allocatable :: amie_kevg(:,:) ! characteristic mean energy from AMIE
+
+    grid => get_dyn_state_grid()
+    iam = grid%iam
+
+    ifirstxy     = grid%ifirstxy
+    ilastxy      = grid%ilastxy
+    jfirstxy     = grid%jfirstxy
+    jlastxy      = grid%jlastxy
+    km           = grid%km
+
     if( write_inithist() .and. ionos_xport_active ) then
 
-       grid => get_dyn_state_grid()
-
-       allocate( tmp(grid%ifirstxy:grid%ilastxy,grid%km) )
-
-       ifirstxy     = grid%ifirstxy
-       ilastxy      = grid%ilastxy
-       jfirstxy     = grid%jfirstxy
-       jlastxy      = grid%jlastxy
-       km           = grid%km
+       allocate( tmp(ifirstxy:ilastxy,km) )
 
        idim = ilastxy - ifirstxy + 1
        do j = jfirstxy, jlastxy
@@ -348,21 +385,96 @@ contains
           call outfld ('OpTM1&IC', tmp, idim, j) 
        enddo
 
-       if (sIndxOp > 0) then
-          do lchnk = begchunk,endchunk
-             pbuf_chnk => pbuf_get_chunk(pbuf2d, lchnk)
-             call pbuf_get_field(pbuf_chnk, slvd_pbf_ndx, Op_phys, &
-                  start=(/1,1,sIndxOp/), kount=(/pcols,pver,1/) )
-             call outfld ('Op&IC', Op_phys, pcols,lchnk ) 
-          enddo
-       endif
-
        deallocate( tmp )
 
     endif
 
-    ! set cross tail potential before physics -- aurora uses weimer derived potential
-    call d_pie_epotent()
+    amie_active: if ( ionos_epotential_amie ) then
+       allocate(amie_efxg(ifirstxy:ilastxy,jfirstxy:jlastxy))
+       allocate(amie_kevg(ifirstxy:ilastxy,jfirstxy:jlastxy))
+
+       ! data assimilated potential
+       call d_pie_epotent( ionos_epotential_model, epot_crit_colats, &
+                           i0=ifirstxy,i1=ilastxy,j0=jfirstxy,j1=jlastxy, &
+                           efxg=amie_efxg,kevg=amie_kevg )
+
+       ! transform to physics grid for aurora...
+
+       ! blocks --> physics chunks
+
+       blcks2phys_local: if (local_dp_map) then
+
+          chnk_loop1 : do lchnk = begchunk,endchunk
+             ncol = get_ncols_p(lchnk)
+             call get_lon_all_p(lchnk, ncol, lons)
+             call get_lat_all_p(lchnk, ncol, lats)
+
+             pbuf_chnk => pbuf_get_chunk(pbuf2d, lchnk)
+             call pbuf_get_field(pbuf_chnk, indxAMIEefxg, pbuf_amie_efxg)
+             call pbuf_get_field(pbuf_chnk, indxAMIEkevg, pbuf_amie_kevg)
+
+             do i=1,ncol
+                ic = lons(i)
+                jc = lats(i)
+                pbuf_amie_efxg(i) = amie_efxg(ic,jc)
+                pbuf_amie_kevg(i) = amie_kevg(ic,jc)
+             end do
+             call outfld ( 'amie_efx_phys', pbuf_amie_efxg, pcols, lchnk )
+             call outfld ( 'amie_kev_phys', pbuf_amie_kevg, pcols, lchnk )
+          end do chnk_loop1
+
+       else ! blcks2phys_local
+
+          tsize = 2
+          blksiz = (jlastxy-jfirstxy+1)*(ilastxy-ifirstxy+1)
+          allocate( bpter(blksiz,0:km),stat=astat )
+          allocate( bbuffer(tsize*block_buf_nrecs),stat=astat )
+          allocate( cbuffer(tsize*chunk_buf_nrecs),stat=astat )
+
+          if (iam < grid%npes_xy) then 
+             call block_to_chunk_send_pters(iam+1,blksiz,pver+1,tsize,bpter)
+          endif
+
+          do j=jfirstxy,jlastxy
+             do i=ifirstxy,ilastxy
+                ib = (j-jfirstxy)*(ilastxy-ifirstxy+1) + (i-ifirstxy+1)
+                bbuffer(bpter(ib,0)+0) = amie_efxg(i,j)
+                bbuffer(bpter(ib,0)+1) = amie_kevg(i,j)
+             end do
+          end do
+
+          call transpose_block_to_chunk(tsize, bbuffer, cbuffer)
+
+          chnk_loop2: do lchnk = begchunk,endchunk
+             ncol = get_ncols_p(lchnk)
+
+             pbuf_chnk => pbuf_get_chunk(pbuf2d, lchnk)
+             call pbuf_get_field(pbuf_chnk, indxAMIEefxg, pbuf_amie_efxg)
+             call pbuf_get_field(pbuf_chnk, indxAMIEkevg, pbuf_amie_kevg)
+             call block_to_chunk_recv_pters(lchnk,pcols,pver+1,tsize,cpter)
+             do i=1,ncol
+                pbuf_amie_efxg(i) = cbuffer(cpter(i,0)+0)
+                pbuf_amie_kevg(i) = cbuffer(cpter(i,0)+1)
+             end do
+             call outfld ( 'amie_efx_phys', pbuf_amie_efxg, pcols, lchnk )
+             call outfld ( 'amie_kev_phys', pbuf_amie_kevg, pcols, lchnk )
+          end do chnk_loop2
+
+          deallocate(bpter)
+          deallocate(bbuffer)
+          deallocate(cbuffer)
+
+
+       end if blcks2phys_local
+
+       deallocate(amie_efxg,amie_kevg)
+
+    else
+       
+       ! set cross tail potential before physics -- aurora uses weimer derived potential
+       call d_pie_epotent( ionos_epotential_model, epot_crit_colats )
+
+    end if amie_active
 
   end subroutine ionosphere_run1
 

@@ -31,12 +31,25 @@ module wei05sc
 ! Modified for free-format fortran, and for CESM/WACCM (r8, etc).
 !
   use shr_kind_mod  ,only: r8 => shr_kind_r8
+  use shr_kind_mod  ,only: shr_kind_cl
+  use spmd_utils    ,only: masterproc
 #ifdef WACCMX_IONOS
   use cam_logfile   ,only: iulog
   use cam_abortutils,only: endrun  
   use time_manager  ,only: get_curr_date
   use edyn_maggrid  ,only: nmlat,nmlon,nmlonp1
 #endif
+
+  use edyn_maggrid,only: &
+    ylonm,    & ! magnetic latitudes (nmlat) (radians)
+    ylatm       ! magnetic longtitudes (nmlonp1) (radians)
+  use edyn_solve,only: &
+    nmlat0,   & ! (nmlat+1)/2
+    phihm       ! output: high-latitude potential (nmlonp1,nmlat)
+
+  use physconst, only: pi
+  use aurora_params, only: aurora_params_set, hpower, ctpoten, theta0
+  use aurora_params, only: offa, dskofa, dskofc, phid, rrad, offc, phin
   implicit none
   private
 
@@ -79,9 +92,9 @@ module wei05sc
   public :: weimer05_init
 
 #endif
-  public :: ctpoten_weimer
 
-  real(r8),protected :: ctpoten_weimer = huge(1.0_r8)
+  real(r8), parameter :: r2d = 180._r8/pi  ! radians to degrees
+  real(r8), parameter :: d2r = pi/180._r8  ! degrees to radians
 
   contains
 
@@ -91,7 +104,17 @@ module wei05sc
 
     character(len=*),intent(in) :: wei05_ncfile
 
-    ctpoten_weimer = nan
+    hpower = nan
+    ctpoten = nan
+    phin = nan
+    phid = nan
+    theta0 = nan
+    offa = nan
+    dskofa = nan
+    rrad = nan
+    offc = nan
+    dskofc = nan
+    
     bndya = nan
     bndyb = nan
     ex_bndy = nan
@@ -102,35 +125,28 @@ module wei05sc
     bpot_alschfits = nan
 
     if (wei05_ncfile.ne.'NONE') then
-      call read_wei05_ncfile(wei05_ncfile)
+       call read_wei05_ncfile(wei05_ncfile)
+       aurora_params_set = .true.
     endif
 
   end subroutine weimer05_init
 
 !-----------------------------------------------------------------------
-  subroutine weimer05(by,bz_in,swvel,swden,sunlons,ctpoten_out)
+  subroutine weimer05(by,bz_in,swvel,swden,sunlons)
 !
 ! 9/16/15 btf: Driver to call Weimer 2005 model for waccm[x].
 !
-#ifdef WACCMX_IONOS
-  use edyn_solve,only: &
-    nmlat0,   & ! (nmlat+1)/2
-    phihm       ! output: high-latitude potential (nmlonp1,nmlat)
-  use edyn_maggrid,only: &
-    ylonm,    & ! magnetic latitudes (nmlat) (radians)
-    ylatm       ! magnetic longtitudes (nmlonp1) (radians)
-#endif
 
   implicit none
 !
 ! Args:
   real(r8),intent(in) :: bz_in,by,swvel,swden
   real(r8),intent(in) :: sunlons(:)
-  real(r8),intent(out) :: ctpoten_out  ! Cross-tail potential output
+
 #ifdef WACCMX_IONOS
 !
 ! Local:
-  real(r8) :: pi,rtd
+
   real(r8) :: angl,angle,bt
   integer :: i,j
   real(r8) :: rmlt,mlat,tilt,htilt,hem,ut,secs
@@ -140,8 +156,8 @@ module wei05sc
   real(r8) :: bz
 
   bz = bz_in
-  pi = 4._r8*atan(1._r8)
-  rtd = 180._r8/pi       ! radians to degrees
+
+  hpower = hp_from_bz_swvel(bz,swvel)
 !
 ! Get current date and time:
 !
@@ -155,13 +171,15 @@ module wei05sc
 !
 ! At least one of by,bz must be non-zero: 
   if (by==0._r8.and.bz==0._r8) then
-    write(iulog,"(/,'>>> WARNING: by and bz cannot both be zero',&
-      ' when calling the Weimer model: am setting bz=0.01')")
-    bz = 0.01_r8
+     if (masterproc) then
+        write(iulog,"(/,'>>> WARNING: by and bz cannot both be zero',&
+                        ' when calling the Weimer model: am setting bz=0.01')")
+     endif
+     bz = 0.01_r8
   endif
 !
   bt = sqrt(by**2+bz**2)
-  angl = atan2(by,bz)*rtd
+  angl = atan2(by,bz)*r2d
 !
 ! Convert from day-of-year to month,day and get tilt from date and ut:
 !
@@ -191,8 +209,8 @@ module wei05sc
 !
 ! sunlons(nlat): sun's longitude in dipole coordinates (see sub sunloc) in rad
 !
-      rmlt = (ylonm(i)-sunlons(1)) * rtd / 15._r8 + 12._r8
-      mlat = abs(ylatm(j))*rtd
+      rmlt = (ylonm(i)-sunlons(1)) * r2d / 15._r8 + 12._r8
+      mlat = abs(ylatm(j))*r2d
 !
 ! Obtain electric potential and convert from kV to V
 !
@@ -205,10 +223,8 @@ module wei05sc
 !
 ! Re-calculate SH values of offa, dskofa, arad, and phid and phin from
 !    Weimer 2005 setboundary values of offc, dskofc, and theta0
-! 9/16/15 btf: not calling this for waccm yet. See wei05loc.src for
-!              free-format source file w/ r8, etc., but still w/ tiegcm use-assoc.
 !
-! call wei05loc(1)
+  call wei05loc (1, by, hpower, sunlons)
 !
 ! Call Weimer model for southern hemisphere fac:
 !
@@ -217,8 +233,8 @@ module wei05sc
   if (debug) write(iulog,"('weimer05 after setmodel for SH fac')")
   do j=1,nmlat0
     do i=1,nmlon
-      rmlt = (ylonm(i)-sunlons(1)) * rtd / 15._r8 + 12._r8
-      mlat = abs(ylatm(j))*rtd
+      rmlt = (ylonm(i)-sunlons(1)) * r2d / 15._r8 + 12._r8
+      mlat = abs(ylatm(j))*r2d
       call mpfac(mlat,rmlt,fill,wei05sc_fac(i,j))
     enddo ! i=1,nmlon
   enddo ! j=1,nmlat0
@@ -235,8 +251,8 @@ module wei05sc
     do i=1,nmlon
 !
 ! sunlons(nlat): sun's longitude in dipole coordinates (see sub sunloc) in rad
-      rmlt = (ylonm(i)-sunlons(1)) * rtd / 15._r8 + 12._r8
-      mlat = abs(ylatm(j))*rtd
+      rmlt = (ylonm(i)-sunlons(1)) * r2d / 15._r8 + 12._r8
+      mlat = abs(ylatm(j))*r2d
 !
 ! Obtain electric potential and convert from kV to V
       call epotval(mlat,rmlt,fill,phihm(i,j))
@@ -248,9 +264,8 @@ module wei05sc
 !
 ! Re-calculate NH values of offa, dskofa, arad, and Heelis phid and phin from
 !   Weimer 2005 setboundary values of offc, dskofc, and theta0
-! 9/16/15 btf: not calling this for waccm yet.
 !
-! call wei05loc (2)
+ call wei05loc (2, by, hpower, sunlons)
 !
 ! Call Weimer model for northern hemisphere fac:
   if (debug) write(iulog,"('weimer05 call setmodel for NH fac')")
@@ -258,8 +273,8 @@ module wei05sc
   if (debug) write(iulog,"('weimer05 after setmodel for NH fac')")
   do j=nmlat0+1,nmlat
     do i=1,nmlon
-      rmlt = (ylonm(i)-sunlons(1)) * rtd / 15._r8 + 12._r8
-      mlat = abs(ylatm(j))*rtd
+      rmlt = (ylonm(i)-sunlons(1)) * r2d / 15._r8 + 12._r8
+      mlat = abs(ylatm(j))*r2d
       call mpfac(mlat,rmlt,fill,wei05sc_fac(i,j))
     enddo ! i=1,nmlon
   enddo ! j=1,nmlat0
@@ -295,21 +310,26 @@ module wei05sc
   enddo 
   weictpoten(2) = 0.001_r8 * (phimax - phimin)
 !
-! Return the average of the weictpoten from the SH and NH in ctpoten
-  ctpoten_out = 0.5_r8*(weictpoten(1)+weictpoten(2))
-  ctpoten_weimer = ctpoten_out
+! average of the SH and NH in ctpoten
+  ctpoten = 0.5_r8*(weictpoten(1)+weictpoten(2))
 
-  write(iulog,"('weimer05: ctpoten=',f8.2,' phihm min,max=',2es12.4)") &
-    ctpoten_weimer,minval(phihm),maxval(phihm)
+  if (masterproc) then
+    write(iulog,"('weimer05: ctpoten=',f8.2,' phihm min,max=',2es12.4)") ctpoten,minval(phihm),maxval(phihm)
+  endif
 !
+
 #endif
   end subroutine weimer05
 !-----------------------------------------------------------------------
   subroutine read_wei05_ncfile(file)
+
+    use ioFileMod,     only: getfil
+    use cam_pio_utils, only: cam_pio_openfile, cam_pio_closefile
+    use pio, only: file_desc_t, pio_nowrite, pio_inq_dimid, pio_inquire_dimension, &
+                   pio_inq_varid, pio_get_var
 !
 ! Read coefficients and other data from netcdf data file.
 !
-  use netcdf
   implicit none
 !
 ! Arg:
@@ -317,44 +337,43 @@ module wei05sc
 #ifdef WACCMX_IONOS
 !
 ! Local:
-  integer :: istat,ncid
+  integer :: istat
   integer :: rd_na,rd_nb,rd_nex,rd_n1_scha,rd_n2_scha,rd_n3_scha,&
     rd_csize,rd_n_schfits,rd_n_alschfits
   integer :: id
+  character(len=shr_kind_cl) :: filen
+  type(file_desc_t) :: ncid
 !
 ! Open netcdf file for reading:
 !
-  istat = nf90_open(file,NF90_NOWRITE,ncid)
-  if (istat /= NF90_NOERR) then
-    write(iulog,"('Error from nf90_open of netcdf file ',a)") trim(file)
-    call endrun('wei05sc')
-   else
-    write(iulog,"('wei05sc: opened netcdf data file',a)") trim(file)
-  endif
+  call getfil( file, filen, 0 )
+  call cam_pio_openfile(ncid, filen, PIO_NOWRITE)
+  
+  write(iulog,"('wei05sc: opened netcdf data file',a)") trim(filen)
 !
 ! Read and check dimensions:
 !
 ! na=6
-  istat = nf90_inq_dimid(ncid,"na",id) 
-  istat = nf90_inquire_dimension(ncid,id,len=rd_na)
+  istat = pio_inq_dimid(ncid,'na',id)
+  istat = pio_inquire_dimension(ncid,id,len=rd_na)
   if (rd_na /= na) then
-    write(iulog,"(/,'>>> wei05sc: rd_na /= na: rd_na=',i4,' na=',i4)") rd_na,na
-    call endrun('wei05sc')
+     write(iulog,"(/,'>>> wei05sc: rd_na /= na: rd_na=',i4,' na=',i4)") rd_na,na
+     call endrun('wei05sc: rd_na /= na')
   endif
 !
 ! nb=7
 !
-  istat = nf90_inq_dimid(ncid,"nb",id) 
-  istat = nf90_inquire_dimension(ncid,id,len=rd_nb)
+  istat = pio_inq_dimid(ncid,'nb',id)
+  istat = pio_inquire_dimension(ncid,id,len=rd_nb)
   if (rd_na /= na) then
     write(iulog,"(/,'>>> wei05sc: rd_nb /= nb: rd_nb=',i4,' nb=',i4)") rd_nb,nb
-    call endrun('wei05sc')
+    call endrun('wei05sc: rd_nb /= nb: rd_nb')
   endif
 !
 ! nex=2
 !
-  istat = nf90_inq_dimid(ncid,"nex",id) 
-  istat = nf90_inquire_dimension(ncid,id,len=rd_nex)
+  istat = pio_inq_dimid(ncid,'nex',id)
+  istat = pio_inquire_dimension(ncid,id,len=rd_nex)
   if (rd_nex /= nex) then
     write(iulog,"(/,'>>> wei05sc: rd_nex /= nex: rd_nex=',i4,' nex=',i4)") &
       rd_nex,nex
@@ -363,8 +382,8 @@ module wei05sc
 !
 ! n1_scha=19
 !
-  istat = nf90_inq_dimid(ncid,"n1_scha",id) 
-  istat = nf90_inquire_dimension(ncid,id,len=rd_n1_scha)
+  istat = pio_inq_dimid(ncid,'n1_scha',id)
+  istat = pio_inquire_dimension(ncid,id,len=rd_n1_scha)
   if (rd_n1_scha /= n1_scha) then
     write(iulog,"(/,'>>> wei05sc: rd_n1_scha /= n1_scha: rd_n1_scha=',i4,' n1_scha=',i4)") &
       rd_n1_scha,n1_scha
@@ -373,8 +392,8 @@ module wei05sc
 !
 ! n2_scha=7
 !
-  istat = nf90_inq_dimid(ncid,"n2_scha",id) 
-  istat = nf90_inquire_dimension(ncid,id,len=rd_n2_scha)
+  istat = pio_inq_dimid(ncid,'n2_scha',id)
+  istat = pio_inquire_dimension(ncid,id,len=rd_n2_scha)
   if (rd_n2_scha /= n2_scha) then
     write(iulog,"(/,'>>> wei05sc: rd_n2_scha /= n2_scha: rd_n2_scha=',i4,' n2_scha=',i4)") &
       rd_n2_scha,n2_scha
@@ -383,8 +402,8 @@ module wei05sc
 !
 ! n3_scha=68
 !
-  istat = nf90_inq_dimid(ncid,"n3_scha",id) 
-  istat = nf90_inquire_dimension(ncid,id,len=rd_n3_scha)
+  istat = pio_inq_dimid(ncid,'n3_scha',id)
+  istat = pio_inquire_dimension(ncid,id,len=rd_n3_scha)
   if (rd_n3_scha /= n3_scha) then
     write(6,"(/,'>>> wei05sc: rd_n3_scha /= n3_scha: rd_n3_scha=',i4,' n3_scha=',i4)") &
       rd_n3_scha,n3_scha
@@ -393,8 +412,8 @@ module wei05sc
 !
 ! csize=28
 !
-  istat = nf90_inq_dimid(ncid,"csize",id) 
-  istat = nf90_inquire_dimension(ncid,id,len=rd_csize)
+  istat = pio_inq_dimid(ncid,'csize',id)
+  istat = pio_inquire_dimension(ncid,id,len=rd_csize)
   if (rd_csize /= csize) then
     write(iulog,"(/,'>>> wei05sc: rd_csize /= csize: rd_csize=',i4,' csize=',i4)") &
       rd_csize,csize
@@ -403,8 +422,8 @@ module wei05sc
 !
 ! n_schfits=15
 !
-  istat = nf90_inq_dimid(ncid,"n_schfits",id) 
-  istat = nf90_inquire_dimension(ncid,id,len=rd_n_schfits)
+  istat = pio_inq_dimid(ncid,'n_schfits',id)
+  istat = pio_inquire_dimension(ncid,id,len=rd_n_schfits)
   if (rd_n_schfits /= n_schfits) then
     write(iulog,"(/,'>>> wei05sc: rd_n_schfits /= n_schfits: rd_n_schfits=',i4,' n_schfits=',i4)") &
       rd_n_schfits,n_schfits
@@ -413,8 +432,8 @@ module wei05sc
 !
 ! n_alschfits=18
 !
-  istat = nf90_inq_dimid(ncid,"n_alschfits",id) 
-  istat = nf90_inquire_dimension(ncid,id,len=rd_n_alschfits)
+  istat = pio_inq_dimid(ncid,'n_alschfits',id)
+  istat = pio_inquire_dimension(ncid,id,len=rd_n_alschfits)
   if (rd_n_alschfits /= n_alschfits) then
     write(iulog,"(/,'>>> wei05sc: rd_n_alschfits /= n_alschfits: rd_n_alschfits=',i4,' n_alschfits=',i4)") & 
       rd_n_alschfits,n_alschfits
@@ -427,14 +446,14 @@ module wei05sc
 ! maxl_pot = 12 ;
 ! maxm_pot = 2 ;
 !
-  istat = nf90_inq_dimid(ncid,"maxk_scha",id) 
-  istat = nf90_inquire_dimension(ncid,id,len=maxk_scha)
-  istat = nf90_inq_dimid(ncid,"maxm_scha",id) 
-  istat = nf90_inquire_dimension(ncid,id,len=maxm_scha)
-  istat = nf90_inq_dimid(ncid,"maxl_pot",id) 
-  istat = nf90_inquire_dimension(ncid,id,len=maxl_pot)
-  istat = nf90_inq_dimid(ncid,"maxm_pot",id) 
-  istat = nf90_inquire_dimension(ncid,id,len=maxm_pot)
+  istat = pio_inq_dimid(ncid,"maxk_scha",id) 
+  istat = pio_inquire_dimension(ncid,id,len=maxk_scha)
+  istat = pio_inq_dimid(ncid,"maxm_scha",id) 
+  istat = pio_inquire_dimension(ncid,id,len=maxm_scha)
+  istat = pio_inq_dimid(ncid,"maxl_pot",id) 
+  istat = pio_inquire_dimension(ncid,id,len=maxl_pot)
+  istat = pio_inq_dimid(ncid,"maxm_pot",id) 
+  istat = pio_inquire_dimension(ncid,id,len=maxm_pot)
 
 ! write(iulog,"('wei05sc: maxk_scha=',i3,' maxm_scha=',i3)") &
 !   maxk_scha,maxm_scha
@@ -444,82 +463,82 @@ module wei05sc
 ! Read variables:
 !
 ! double bndya(na):
-  istat = nf90_inq_varid(ncid,'bndya',id)
-  istat = nf90_get_var(ncid,id,bndya)
+  istat = pio_inq_varid(ncid,'bndya',id)
+  istat = pio_get_var(ncid,id,bndya)
 ! write(iulog,"('wei05sc: bndya=',/,(8f8.3))") bndya
 !
 ! double bndyb(nb):
-  istat = nf90_inq_varid(ncid,'bndyb',id)
-  istat = nf90_get_var(ncid,id,bndyb)
+  istat = pio_inq_varid(ncid,'bndyb',id)
+  istat = pio_get_var(ncid,id,bndyb)
 ! write(iulog,"('wei05sc: bndyb=',/,(8f8.3))") bndyb
 !
 ! double ex_bndy(nex):
-  istat = nf90_inq_varid(ncid,'ex_bndy',id)
-  istat = nf90_get_var(ncid,id,ex_bndy)
+  istat = pio_inq_varid(ncid,'ex_bndy',id)
+  istat = pio_get_var(ncid,id,ex_bndy)
 ! write(iulog,"('wei05sc: ex_bndy=',/,(8f8.3))") ex_bndy
 !
 ! double th0s(n3_scha):
-  istat = nf90_inq_varid(ncid,'th0s',id)
-  istat = nf90_get_var(ncid,id,th0s)
+  istat = pio_inq_varid(ncid,'th0s',id)
+  istat = pio_get_var(ncid,id,th0s)
 ! write(iulog,"('wei05sc: th0s=',/,(8f8.3))") th0s
 !
 ! double allnkm(n1_scha,n2_scha,n3_scha):
-  istat = nf90_inq_varid(ncid,'allnkm',id)
-  istat = nf90_get_var(ncid,id,allnkm)
+  istat = pio_inq_varid(ncid,'allnkm',id)
+  istat = pio_get_var(ncid,id,allnkm)
 ! write(iulog,"('wei05sc: allnkm min,max=',2e12.4)") minval(allnkm),maxval(allnkm)
 !
 ! int ab(csize):
-  istat = nf90_inq_varid(ncid,'ab',id)
-  istat = nf90_get_var(ncid,id,ab)
+  istat = pio_inq_varid(ncid,'ab',id)
+  istat = pio_get_var(ncid,id,ab)
 ! write(iulog,"('wei05sc: ab=',/,(10i4))") ab
 !
 ! int ls(csize):
-  istat = nf90_inq_varid(ncid,'ls',id)
-  istat = nf90_get_var(ncid,id,ls)
+  istat = pio_inq_varid(ncid,'ls',id)
+  istat = pio_get_var(ncid,id,ls)
 ! write(iulog,"('wei05sc: ls=',/,(10i4))") ls
 !
 ! int ms(csize):
-  istat = nf90_inq_varid(ncid,'ms',id)
-  istat = nf90_get_var(ncid,id,ms)
+  istat = pio_inq_varid(ncid,'ms',id)
+  istat = pio_get_var(ncid,id,ms)
 ! write(iulog,"('wei05sc: ms=',/,(10i4))") ms
 !
 ! double ex_epot(nex):
-  istat = nf90_inq_varid(ncid,'ex_epot',id)
-  istat = nf90_get_var(ncid,id,ex_epot)
+  istat = pio_inq_varid(ncid,'ex_epot',id)
+  istat = pio_get_var(ncid,id,ex_epot)
 ! write(iulog,"('wei05sc: ex_epot=',/,(8f8.3))") ex_epot
 !
 ! double ex_bpot(nex):
-  istat = nf90_inq_varid(ncid,'ex_bpot',id)
-  istat = nf90_get_var(ncid,id,ex_bpot)
+  istat = pio_inq_varid(ncid,'ex_bpot',id)
+  istat = pio_get_var(ncid,id,ex_bpot)
 ! write(iulog,"('wei05sc: ex_bpot=',/,(8f8.3))") ex_bpot
 !
 ! double epot_schfits(csize,n_schfits):
-  istat = nf90_inq_varid(ncid,'epot_schfits',id)
-  istat = nf90_get_var(ncid,id,epot_schfits)
+  istat = pio_inq_varid(ncid,'epot_schfits',id)
+  istat = pio_get_var(ncid,id,epot_schfits)
 ! write(iulog,"('wei05sc: epot_schfits min,max=',2e12.4)") &
 !   minval(epot_schfits),maxval(epot_schfits)
 !
 ! double bpot_schfits(csize,n_schfits):
-  istat = nf90_inq_varid(ncid,'bpot_schfits',id)
-  istat = nf90_get_var(ncid,id,bpot_schfits)
+  istat = pio_inq_varid(ncid,'bpot_schfits',id)
+  istat = pio_get_var(ncid,id,bpot_schfits)
 ! write(iulog,"('wei05sc: bpot_schfits min,max=',2e12.4)") &
 !   minval(bpot_schfits),maxval(bpot_schfits)
 !
 ! double epot_alschfits(csize,n_alschfits):
-  istat = nf90_inq_varid(ncid,'epot_alschfits',id)
-  istat = nf90_get_var(ncid,id,epot_alschfits)
+  istat = pio_inq_varid(ncid,'epot_alschfits',id)
+  istat = pio_get_var(ncid,id,epot_alschfits)
 ! write(iulog,"('wei05sc: epot_alschfits min,max=',2e12.4)") &
 !   minval(epot_alschfits),maxval(epot_alschfits)
 !
 ! double bpot_alschfits(csize,n_alschfits):
-  istat = nf90_inq_varid(ncid,'bpot_alschfits',id)
-  istat = nf90_get_var(ncid,id,bpot_alschfits)
+  istat = pio_inq_varid(ncid,'bpot_alschfits',id)
+  istat = pio_get_var(ncid,id,bpot_alschfits)
 ! write(iulog,"('wei05sc: bpot_alschfits min,max=',2e12.4)") &
 !   minval(bpot_alschfits),maxval(bpot_alschfits)
 !
 ! Close file:
-  istat = nf90_close(ncid)
-  write(iulog,"('wei05sc: completed read of file ',a)") trim(file)
+  call cam_pio_closefile(ncid)
+  if(masterproc) write(iulog,"('wei05sc: completed read of file ',a)") trim(file)
 #endif
   end subroutine read_wei05_ncfile
 #ifdef WACCMX_IONOS
@@ -599,6 +618,185 @@ module wei05sc
 !   write(iulog,"('setmodel: bsphc=',/,(6e12.4))") bsphc
   endif
   end subroutine setmodel
+
+!-----------------------------------------------------------------------
+!-----------------------------------------------------------------------
+      subroutine wei05loc (ih, byimf, power, sunlons)
+! ih=1,2 for SH,NH called from weimer05
+!
+! (dimension 2 is for south, north hemispheres)
+!  Calculate offa, dskofa, rrad, phid, and phin from Weimer 2005 offc, dskofc, theta0
+!   Use Fig 8 of Heelis et al. [JGR, 85, 3315-3324, 1980]
+!     This shows:  arad = 18.7 deg, crad = 16.7 deg (so arad = crad + 2 deg)
+!           offa = offc = 3 deg (so offa = offc)
+!           dskofc = 2 deg, dskofa = -0.5 deg  (so dskofa = dskofc - 2.5 deg)
+!   Parameterization defaults for phid (phid(MLT)=9.39 +/- 0.21By - 12)
+!                             and phin (phin(MLT)=23.50 +/- 0.15By - 12)
+!   (In aurora_cons, phid=0., phin=180.*rtd)
+!     (For zero By, should be phid=21.39MLT*15*rtd, phin=11.5*15*rtd)
+!  05/08:  But formulae for ra-rc using IMF CP between 5-7 deg (not 2) so use
+!          difference of ra(max IMF CP or HP)-rc(IMF CP) as in aurora.F
+! These are the dimensions and descriptions (corrected phid,n) from aurora.F:
+!      theta0(2), ! convection reversal boundary in radians
+!      offa(2),   ! offset of oval towards 0 MLT relative to magnetic pole (rad)
+!      dskofa(2), ! offset of oval in radians towards 18 MLT (f(By))
+!      phid(2),   ! dayside convection entrance in MLT-12 converted to radians (f(By))
+!                      phid is the MLT-12 location of the cusp on the dayside
+!      phin(2),   ! night convection entrance in MLT-12 converted to radians (f(By))
+!      rrad(2),   ! radius of auroral circle in radians
+!      offc(2),   ! offset of convection towards 0 MLT relative to mag pole (rad)
+!      dskofc(2)  ! offset of convection in radians towards 18 MLT (f(By))
+! sunlons(nlat): sun's longitude in dipole coordinates (see sub sunloc)
+!
+
+!
+! Args:
+      integer,intent(in) :: ih
+      real(r8),intent(in) :: byimf
+      real(r8),intent(in) :: power
+      real(r8),intent(in) :: sunlons(:)
+!
+! Local:
+      real(r8) :: rccp,racp,rahp,ramx,diffrac,plevel,tmltmin,tmltmax
+      real(r8) :: offcdegp(2)
+      integer :: i,j,j1,j2
+      real(r8) :: vnx(2,2),hem,mltd,mltn
+      integer :: inx(2,2)
+      real(r8) :: offcdeg,dskof,arad,crad
+      real(r8) :: byloc
+        
+! Limit size of byimf in phin and phid calculations (as in aurora.F) 
+!  NOTE:  This byloc is assymetric in hemisphere, which is probably not correct
+      byloc = byimf
+      if (byloc .gt. 7._r8) byloc = 7._r8
+      if (byloc .lt. -11._r8) byloc = -11._r8
+!
+!  ih=1 is SH, ih=2 is NH
+	if (ih .eq. 1) then
+	  j1 = 1
+	  j2 = nmlat0
+	  hem = -1._r8
+	else
+	  j1 = nmlat0 + 1
+	  j2 = nmlat
+	  hem = 1._r8
+	endif
+! Print out un-revised values:
+!       write (6,"(1x,'Original convection/oval params (hem,By,off,dsk',
+!    |    ',rad,phid,n=',10f9.4)") hem,byimf,offc(ih)*rtd,offa(ih)*rtd,
+!    |    dskofc(ih)*rtd,dskofa(ih)*rtd,theta0(ih)*rtd,rrad(ih)*rtd,
+!    |    phid(ih)*rtd/15.+12.,phin(ih)*rtd/15.+12.
+!  Find min/max
+	vnx(ih,1) = 0._r8
+	vnx(ih,2) = 0._r8
+	do j=j1,j2
+	  do i=1,nmlonp1-1
+	    if (phihm(i,j) .gt. vnx(ih,2)) then
+	      vnx(ih,2) = phihm(i,j)
+	      inx(ih,2) = i
+	    endif
+	    if (phihm(i,j) .lt. vnx(ih,1)) then
+	      vnx(ih,1) = phihm(i,j)
+	      inx(ih,1) = i
+	    endif
+	  enddo  !  i=1,nmlonp1-1
+	enddo  !  j=j1,j2
+! 05/08: Calculate weictpoten in kV from Weimer model min/max in V
+	weictpoten(ih) = 0.001_r8 * (vnx(ih,2) - vnx(ih,1))
+	tmltmin = (ylonm(inx(ih,1))-sunlons(1)) * r2d/15._r8 + 12._r8
+	if (tmltmin .gt. 24._r8) tmltmin = tmltmin - 24._r8
+	tmltmax = (ylonm(inx(ih,2))-sunlons(1)) * r2d/15._r8 + 12._r8
+	if (tmltmax .gt. 24._r8) tmltmax = tmltmax - 24._r8
+!       write (6,"('ih Bz By Hp ctpoten,wei min/max potV,lat,mlt=',i2,
+!    |    5f8.2,2x,e12.4,2f8.2,2x,e12.4,2f8.2))") ih,bzimf,byimf,power,
+!    |    ctpoten,weictpoten(ih),
+!    |    vnx(ih,1),ylatm(jnx(ih,1))*rtd,tmltmin,
+!    |    vnx(ih,2),ylatm(jnx(ih,2))*rtd,tmltmax
+! 05/08: From aurora_cons, calculate convection and aurora radii using IMF convection
+!   and power (plevel);  racp (DMSP/NOAA) - rccp (AMIE) = 5.32 (Bz>0) to 6.62 (Bz<0) deg
+!  Heelis et al [1980, JGR, 85, pp 3315-3324] Fig 8: ra=rc+2deg, and is 2.5 deg to dusk
+	rccp = -3.80_r8+8.48_r8*(weictpoten(ih)**0.1875_r8)
+	racp = -0.43_r8+9.69_r8*(weictpoten(ih)**0.1875_r8)
+	plevel = 0._r8
+	if (power >=1.00_r8) plevel = 2.09_r8*log(power)
+	rahp = 14.20_r8 + 0.96_r8*plevel
+	ramx = max(racp,rahp)
+	diffrac = ramx - rccp
+
+!  Set default values
+!  Use parameterization defaults for phid (phid(MLT)=9.39 +/- 0.21By - 12)
+!                             and phin (phin(MLT)=23.50 +/- 0.15By - 12)
+	mltd = 9.39_r8 - hem*0.21_r8*byloc
+	mltn = 23.50_r8 - hem*0.15_r8*byloc
+	phid(ih) = (mltd-12._r8) * 15._r8 *d2r
+	phin(ih) = (mltn-12._r8) * 15._r8 *d2r
+! 05/18/08:  Note that phid,phin are only for Heelis and are irrelevant for Weimer
+!       write (6,"(1x,'mltd mltn phid,n =',4f8.2)")
+!    |   mltd,mltn,phid(ih)*rtd/15.,phin(ih)*rtd/15.
+!  Use default constant value of offcdegp from setboundary in Weimer 2005
+	offcdeg = 4.2_r8
+	offcdegp(ih) = offcdeg
+	offc(ih) = offcdegp(ih) *d2r
+	offa(ih) = offcdegp(ih) *d2r
+!       write (6,"(1x,'offcdeg,rad =',2e12.4)") offcdeg,offc(ih)
+	dskof = 0._r8
+        dskofc(ih) = dskof *d2r
+!  oval offset is 2.5 deg towards dawn (more neg dskof)
+	dskofa(ih) = (dskof-2.5_r8) *d2r
+!       write (6,"(1x,'dskof,c,a=',3f8.2)")
+!    |    dskof,dskofc(ih)*rtd,dskofa(ih)*rtd
+! Set crad from bndyfitr/2 of setboundary of Weimer 2005
+	crad = bndyfitr/2._r8
+!      write (6,"(1x,'wei05loc: ih,bz,y,crad =',i2,3f8.2)") 
+!    |    ih,bzimf,byimf,crad
+!  Fig 8 Heelis et al [1980]: ra=rc+2deg, and shifted 2.5 deg to dusk
+	arad = crad + 2._r8
+! 05/08:  Make ra=rc+diffrac(=ramx-rccp) - same difference as in aurora.F
+! Choose to have arad=crad(Weimer) + diffrac(same diff as in aurora.F)
+	arad = crad + diffrac
+! 08/08: OR make ra=ramx=max(racp,rahp) so diffrac=arad-crad
+!	diffrac2 = ramx - crad
+! Choose to have arad=ramx (same as in aurora.F as determined by P/CP)
+!       arad = ramx
+	theta0(ih) = crad *d2r
+	rrad(ih) = arad *d2r
+!       write (6,"(1x,'radius: crad,rccp,racp,rahp diffa-c',
+!    |   '(aurF,ramx-Weic) ramx,Weic+d,arad deg=',9f8.2)") crad,rccp,
+!    |   racp,rahp,diffrac,diffrac2,ramx,crad+diffrac,arad
+
+! Print out revised values (revised 05/08):
+!       write (6,"(1x,'Revised convection/oval params (off,dsk,',
+!    |    'rad,phid,n=',8f9.4)")offc(ih)*rtd,offa(ih)*rtd,
+!    |    dskofc(ih)*rtd,dskofa(ih)*rtd,theta0(ih)*rtd,rrad(ih)*rtd,
+!    |    phid(ih)*rtd/15.+12.,phin(ih)*rtd/15.+12.
+
+      end subroutine wei05loc
+
+!-----------------------------------------------------------------------
+! for now this is here ... might need to move to a gen util module      
+!-----------------------------------------------------------------------
+    function hp_from_bz_swvel(bz,swvel) result(hp)
+!
+! Calculate hemispheric power from bz, swvel:
+! Emery, et.al., (2008, in press, JGR)
+! 6/3/08: Enforce minimum hp of 4.0 before *fac.
+! 6/6/08: Reset minimum hp from 4.0 to 2.5 before *fac,
+!         as per Emery email of 6/5/08.
+!
+      real(r8),intent(in) :: bz,swvel  ! in
+      real(r8) :: hp                   ! out
+
+      real(r8), parameter :: fac = 2.0_r8
+!
+      if (bz < 0._r8) then
+        hp = 6.0_r8 + 3.3_r8*abs(bz) + (0.05_r8 + 0.003_r8*abs(bz))* (min(swvel,700._r8)-300._r8)
+      else
+        hp = 5.0_r8 + 0.05_r8 * (min(swvel,700._r8)-300._r8)
+      endif
+      hp = max(2.5_r8,hp)*fac
+
+    end function hp_from_bz_swvel
+
 !-----------------------------------------------------------------------
   subroutine setboundary(angle,bt,swvel,swden)
 !

@@ -274,7 +274,7 @@
     <values match="last">
     <value compset="DOCN%AQP">$COMP_ROOT_DIR_ATM/cime_config/usermods_dirs/aquap</value>
     <value compset="DOCN%SOMAQP">$COMP_ROOT_DIR_ATM/cime_config/usermods_dirs/aquap</value>
-    <value compset="_CAM40%WX.*_CLM40">$COMP_ROOT_DIR_ATM/cime_config/usermods_dirs/waccmx</value>
+    <value compset="_CAM40%WX.*_CLM40" grid="a%1.9x2.5_l%1.9x2.5">$COMP_ROOT_DIR_ATM/cime_config/usermods_dirs/waccmx</value>
     <value compset="CAM[456]0%SCAM" >$COMP_ROOT_DIR_ATM/cime_config/usermods_dirs/scam_mandatory</value>
     </values>
     <group>run_component_cam</group>

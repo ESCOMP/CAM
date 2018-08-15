@@ -1182,7 +1182,7 @@ contains
 	   where( tp(:ncol) < trlim3 )
 		  rxt(:,k,ion3_ndx)  = 1.4e-10_r8 * tp(:)**.44_r8
 		  rxt(:,k,ion11_ndx) = 1.e-11_r8 * tp(:)**.23_r8
-       elsewhere
+           elsewhere
 		  rxt(:,k,ion3_ndx)  = 5.2e-11_r8 / tp(:)**.2_r8
 	      rxt(:,k,ion11_ndx) = 3.6e-12_r8 / tp(:)**.41_r8
 	   end where

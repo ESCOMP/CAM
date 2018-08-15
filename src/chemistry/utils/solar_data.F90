@@ -34,7 +34,8 @@ module solar_data
     use units,           only: getunit, freeunit
     use spmd_utils,      only: mpicom, masterprocid, mpi_character, mpi_integer, mpi_logical, mpi_real8
     use solar_parms_data,only: solar_parms_on
-
+    use solar_wind_data, only: solar_wind_on
+    
     ! arguments
     character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
@@ -93,6 +94,7 @@ module solar_data
     endif
 
     solar_parms_on = solar_parms_data_file.ne.'NONE'
+    solar_wind_on = solar_wind_data_file.ne.'NONE'
 
   end subroutine solar_data_readnl
 

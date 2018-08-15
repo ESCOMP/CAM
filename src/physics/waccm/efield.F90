@@ -94,7 +94,7 @@
 !------------------------------------------------------------------------------ 
 ! array on magnetic grid:    
 !------------------------------------------------------------------------------ 
-      real(r8) ::                &
+      real(r8), protected ::                &
         potent(0:nmlon,0:nmlat), &  ! electric potential   [V]  
         ed1(0:nmlon,0:nmlat),    &  ! zonal electric field Ed1  [V/m] 
         ed2(0:nmlon,0:nmlat)        ! meridional electric field Ed2/sin I_m  [V/m]  

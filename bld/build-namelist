@@ -3086,6 +3086,7 @@ if ($waccmx) {
     add_default($nl,'wei05_coefs_file');
     add_default($nl,'solar_wind_data_file');
   }
+  add_default($nl,'ionos_xport_nsplit');  
 }
 
 # Chemistry options

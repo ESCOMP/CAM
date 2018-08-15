@@ -96,20 +96,10 @@ module edyn_solve
 !
   real(r8) :: phihm(nmlonp1,nmlat)  ! high-latitude potential
   real(r8) :: pfrac(nmlonp1,nmlat0) ! NH fraction of potential
-
+  
   contains
 !-----------------------------------------------------------------------
   subroutine solve_edyn
-!
-! Local:
-    real(r8) :: & ! Global coefficients for PDE solver
-      coefglb_rhs(nmlonp1,nmlat), &
-      coefglb_cofum(nmlonp1,nmlat,9)
-!
-! Initialize global coefficients:
-!
-    coefglb_rhs   = finit
-    coefglb_cofum = finit
 !
 ! Set up stencils for solver:
 !
@@ -118,9 +108,6 @@ module edyn_solve
 ! Call mudpack PDE solver:
 !
     call solver(cofum,c0)
-
-    coefglb_rhs  (:,1:nmlath)   = c0(:,:,10)
-    coefglb_cofum(:,1:nmlath,:) = cofum(:,:,:)
 
   end subroutine solve_edyn
 !-----------------------------------------------------------------------

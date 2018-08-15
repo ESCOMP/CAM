@@ -32,6 +32,7 @@ module filter_module
 
   integer, allocatable, protected :: kut1(:)
   integer, allocatable, protected :: kut2(:)
+  integer, allocatable, protected :: nn(:)
 
   integer, parameter :: nxlat = 96
   integer,parameter :: kut1_x(nxlat) =                   &
@@ -71,7 +72,7 @@ module filter_module
        18,  17,  16,  15,  14,  13,  11,  11,  10,   9,   8,   8, &
         7,   6,   5,   5,   4,   3,   2,   1,   0,   0,   0,   0 /)
 
-  integer, parameter :: nn(nxlat) = &
+  integer, parameter :: nn_x(nxlat) = &
     (/255, 171, 104,  60,  42,  32,  26,  20,  17,  15,  12,  11, &
         9,   9,   8,   7,   6,   6,   5,   4,   3,   3,   2,   1, &
         1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1, &
@@ -86,10 +87,11 @@ module filter_module
   subroutine filter_init
      use interpolate_data, only : lininterp
      real(r8) :: xlats(nxlat), lats(nlat), kut1_out(nlat),  kut2_out(nlat)
+     real(r8) :: nn_out(nlat)
      integer :: i
 
      ntrigs = 3*nlon/2+1
-     allocate(trigs(ntrigs),kut1(nlat),kut2(nlat))
+     allocate(trigs(ntrigs),kut1(nlat),kut2(nlat),nn(nlat))
 
      call set99(trigs,ifax,nlon) ! initialize fft for O+ polar filtering
 
@@ -106,6 +108,9 @@ module filter_module
 
      kut1 = int( kut1_out )
      kut2 = int( kut2_out )
+
+     call lininterp( dble(nn_x), xlats, nxlat, nn_out, lats, nlat )
+     nn = int( nn_out )
 
   end subroutine filter_init
 !-----------------------------------------------------------------------

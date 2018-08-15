@@ -1,0 +1,3 @@
+ ionos_epotential_model = 'weimer'
+ nhtfrq = -24,-24,-24,-24,-24,-24,-24
+ fincl7='UI','VI','WI','PHIM2D','POTEN','QIONSUM','ELECDEN','QJOULE'

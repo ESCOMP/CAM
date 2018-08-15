@@ -1558,7 +1558,7 @@ module edyn_mpi
     real(r8),intent(out) :: fout(mlon00:mlon11,mxneed,nf) ! returned data at needed lats
     !
     ! Local:
-    integer,parameter :: sndbuf_cntr_max = 10 ! Maximum number of ibsend from one mpi task
+    integer,parameter :: sndbuf_cntr_max = 20 ! Maximum number of ibsend from one mpi task
     integer :: ier,njneed,i,j,n,nj,idest, &
       icount,len,nlons,isrc,msgid,ifld,sndbuf_cntr
     integer :: tij ! rank in cols_comm (0 to nmagtaskj-1)
@@ -1998,7 +1998,7 @@ module edyn_mpi
 ! Shift longitude grid from 0 to 360 to -180 to 180 for edynamo
 !  Check for compatible geographic longitude dimension and quit if not compatible
 !
-    if (nlon /= 144 .and. nlon /= 80 .and. nlon /= 72 .and. nlon /= 24) then
+    if (nlon /= 288 .and. nlon /= 144 .and. nlon /= 80 .and. nlon /= 72 .and. nlon /= 24) then
       write(iulog,"('ERROR lonshift_blocks: incompatible nlon = ',i5,' i0,i1=',2i4)") nlon,i0,i1
       call endrun
     end if

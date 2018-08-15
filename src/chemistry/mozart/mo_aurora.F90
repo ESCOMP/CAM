@@ -26,8 +26,9 @@ contains
 
   !----------------------------------------------------------------------
   !----------------------------------------------------------------------
-  subroutine aurora_inti
-
+  subroutine aurora_inti(pbuf2d)
+    use physics_buffer, only: physics_buffer_desc
+    type(physics_buffer_desc), pointer :: pbuf2d(:,:)
   end subroutine aurora_inti
 
   !----------------------------------------------------------------------
@@ -39,8 +40,8 @@ contains
   !----------------------------------------------------------------------
   !----------------------------------------------------------------------
   subroutine aurora_prod( tn, o2, o1, mbar, rlats, &
-       qo2p, qop, qn2p, qnp, pmid, &
-       lchnk, calday,  ncol, rlons, pbuf )
+                          qo2p, qop, qn2p, qnp, pmid, &
+                          lchnk, calday,  ncol, rlons, pbuf )
 
     use physics_buffer,only: physics_buffer_desc
 
@@ -75,8 +76,9 @@ contains
   !----------------------------------------------------------------------
   !----------------------------------------------------------------------
   subroutine aurora_hrate( tn, mbar, rlats, &
-       aur_hrate, cpair, pmid, lchnk, calday, &
-       ncol, rlons )
+                           aur_hrate, cpair, pmid, lchnk, calday, &
+                           ncol, rlons, pbuf  )
+    use physics_buffer,only: physics_buffer_desc
     !-----------------------------------------------------------------------
     ! 	... dummy arguments
     !-----------------------------------------------------------------------
@@ -97,6 +99,7 @@ contains
          rlons(ncol)
     real(r8), intent(out) :: &
          aur_hrate(ncol,pver)             ! auroral heating rate
+    type(physics_buffer_desc),pointer :: pbuf(:)
 
   end subroutine aurora_hrate
 

@@ -762,7 +762,7 @@ contains
     !--------------------------------------------------------------------------------------------------
     ! For WACCM-X, grab electron (TE) and ion (TI) temperatures from pbuf from ionosphere module
     !--------------------------------------------------------------------------------------------------
-    if ( indxTe>0 .and. indxTi>0 .and. .not. is_first_step() ) then
+    if ( indxTe>0 .and. indxTi>0 ) then
       call pbuf_get_field(pbuf, indxTe, tE)
       call pbuf_get_field(pbuf, indxTi, tI)
     else
@@ -1308,7 +1308,6 @@ contains
           vs           = vi(i,k) - state%v(i,k)
           qjoule(i,k)  = us*us*lxx(i,k) + us*vs*(lxy(i,k) - lyx(i,k)) + vs*vs*lyy(i,k)
           ptend%s(i,k) = qjoule(i,k)        ! joule heating tendency
-          !     ptend%s(i,k) = 0._r8              ! no joule heating tendency
        end do
        !   write(iulog,"('qjoule: k=',i3,' qjoule(:,k)=',/,(6e12.4))") k,qjoule(:,k)
     end do

@@ -10,8 +10,7 @@ module ion_electron_temp
 !---------------------------------------------------------------------------------
   use shr_kind_mod,   only : r8 => shr_kind_r8            ! Real kind to declare variables
   use ppgrid,         only : pcols, pver, pverp           ! Dimensions and chunk bounds
-  use cam_history,    only : outfld, hist_fld_active      ! Routine to output fields to history files
-  use cam_control_mod,only : initial_run
+  use cam_history,    only : outfld, hist_fld_active, write_inithist ! Routine to output fields to history files
   use physics_types,  only : physics_state, &             ! Structures containing physics state variables
                              physics_ptend, &             ! Structures containing physics tendency variables
                              physics_ptend_init           ! Routine to initialize physics tendency variables
@@ -109,13 +108,6 @@ contains
 
     logical :: history_waccmx
     integer :: indxOp,sIndxOp                           ! state%q or pbuf index for O+ mixing ratio
-
-    if (initial_run) then
-      indxTi = pbuf_get_index( 'TIon' )
-      indxTe = pbuf_get_index( 'TElec' )
-      call pbuf_set_field(pbuf2d, indxTi, 0.0_r8)
-      call pbuf_set_field(pbuf2d, indxTe, 0.0_r8)
-    end if
 
     call phys_getopts(history_waccmx_out=history_waccmx)
 
@@ -351,11 +343,13 @@ contains
     !--------------------------------------------------------------
     !  Make Te and Ti fields available for output to history files
     !--------------------------------------------------------------
-    call outfld ('TElec&IC', tE, pcols, lchnk)
-    call outfld ('TIon&IC' , tI, pcols, lchnk)
     call outfld ('TElec'   , tE, pcols, lchnk)
     call outfld ('TIon'    , tI, pcols, lchnk)
-       
+    if (write_inithist()) then
+       call outfld ('TElec&IC', tE, pcols, lchnk)
+       call outfld ('TIon&IC' , tI, pcols, lchnk)
+    endif
+
     return
 
   end subroutine ion_electron_temp_tend

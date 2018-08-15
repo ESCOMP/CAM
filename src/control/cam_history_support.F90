@@ -212,6 +212,12 @@ module cam_history_support
     type(var_desc_t) :: f107pid          ! var id for f107p
     type(var_desc_t) :: kpid             ! var id for kp
     type(var_desc_t) :: apid             ! var id for ap
+    type(var_desc_t) :: byimfid          ! var id IMF BY
+    type(var_desc_t) :: bzimfid          ! var id IMF BZ
+    type(var_desc_t) :: swvelid          ! var id solar wind velocity
+    type(var_desc_t) :: swdenid          ! var id solar wind density
+    type(var_desc_t) :: colat_crit1_id   ! critical colatitude
+    type(var_desc_t) :: colat_crit2_id   ! critical colatitude
 
   end type active_entry
 
