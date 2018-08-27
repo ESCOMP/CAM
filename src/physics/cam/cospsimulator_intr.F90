@@ -2046,7 +2046,7 @@ CONTAINS
     call t_startf("construct_cospIN")
     call construct_cospIN(ncol,nscol_cosp,pver,cospIN)
     cospIN%emsfc_lw      = emsfc_lw
-    cospIN%rcfg_cloudsat = rcfg_cs(lchnk)
+    if (lradar_sim) cospIN%rcfg_cloudsat = rcfg_cs(lchnk)
     call t_stopf("construct_cospIN")
 
     ! *NOTE* Fields passed into subsample_and_optics are ordered from TOA-2-SFC.

@@ -26,7 +26,6 @@ module chem_surfvals
    private                   ! Make default access private
    save
 
-! Public methods
    public ::&
       chem_surfvals_readnl,  &! read namelist input
       chem_surfvals_init,    &! initialize options that depend on namelist input
@@ -47,7 +46,7 @@ module chem_surfvals
    real(r8) :: ch4vmr = -1.0_r8                ! ch4   volume mixing ratio 
    real(r8) :: f11vmr = -1.0_r8                ! cfc11 volume mixing ratio 
    real(r8) :: f12vmr = -1.0_r8                ! cfc12 volume mixing ratio 
-   character(len=16) :: scenario_ghg = 'FIXED' ! 'FIXED','RAMPED' or 'RAMP_CO2_ONLY'
+   character(len=16) :: scenario_ghg = 'FIXED' ! 'FIXED','RAMPED', 'RAMP_CO2_ONLY', 'CHEM_LBC_FILE'
    integer  :: rampYear_ghg = 0                ! ramped gases fixed at this year (if > 0)
    character(len=256) :: bndtvghg = 'NONE'     ! filename for ramped data
    integer  :: ramp_co2_start_ymd = 0          ! start date for co2 ramping (yyyymmdd)
@@ -91,13 +90,14 @@ subroutine chem_surfvals_readnl(nlfile)
 
    use namelist_utils,  only: find_group_name
    use units,           only: getunit, freeunit
-   use mpishorthand
+   use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_logical, mpi_integer, &
+                              mpi_real8, mpi_character
 
    character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
    ! Local variables
    integer :: unitn, ierr, i
-   character(len=*), parameter :: subname = 'chem_surfvals_readnl'
+   character(len=*), parameter :: sub = 'chem_surfvals_readnl'
    
    character(len=8)   :: flbc_type = 'CYCLICAL'     ! 'CYCLICAL' | 'SERIAL' | 'FIXED'
    integer            :: flbc_cycle_yr = 0
@@ -108,7 +108,7 @@ subroutine chem_surfvals_readnl(nlfile)
                                co2vmr_rad, scenario_ghg, rampyear_ghg, bndtvghg, &
                                ramp_co2_start_ymd, ramp_co2_annual_rate, ramp_co2_cap, &
                                ghg_yearStart_model, ghg_yearStart_data
-   ! waccm/cam-chem naemlist
+
    namelist /chem_surfvals_nl/ flbc_type, flbc_cycle_yr, flbc_fixed_ymd, flbc_fixed_tod, flbc_list, flbc_file
 
    !-----------------------------------------------------------------------------
@@ -120,40 +120,53 @@ subroutine chem_surfvals_readnl(nlfile)
       if (ierr == 0) then
          read(unitn, chem_surfvals_nl, iostat=ierr)
          if (ierr /= 0) then
-            call endrun(subname // ':: ERROR reading namelist')
+            call endrun(sub // ':: ERROR reading namelist')
          end if
       end if
       close(unitn)
       call freeunit(unitn)
    end if
 
-#ifdef SPMD
-   ! Broadcast namelist variables
-   call mpibcast (co2vmr,                          1,   mpir8, 0, mpicom)
-   call mpibcast (n2ovmr,                          1,   mpir8, 0, mpicom)
-   call mpibcast (ch4vmr,                          1,   mpir8, 0, mpicom)
-   call mpibcast (f11vmr,                          1,   mpir8, 0, mpicom)
-   call mpibcast (f12vmr,                          1,   mpir8, 0, mpicom)
-   call mpibcast (co2vmr_rad,                      1,   mpir8, 0, mpicom)
-   call mpibcast (scenario_ghg,    len(scenario_ghg), mpichar, 0, mpicom)
-   call mpibcast (rampyear_ghg,                    1,  mpiint, 0, mpicom)
-   call mpibcast (bndtvghg,            len(bndtvghg), mpichar, 0, mpicom)
-   call mpibcast (ramp_co2_start_ymd,              1,  mpiint, 0, mpicom)
-   call mpibcast (ramp_co2_annual_rate,            1,   mpir8, 0, mpicom)
-   call mpibcast (ramp_co2_cap,                    1,   mpir8, 0, mpicom)
-   call mpibcast (ghg_yearstart_model,             1,  mpiint, 0, mpicom)
-   call mpibcast (ghg_yearstart_data,              1,  mpiint, 0, mpicom)
-   
-   ! waccm/cam-chem fixed lower boundary 
-   
-   call mpibcast (flbc_type,         len(flbc_type),                  mpichar, 0, mpicom)
-   call mpibcast (flbc_cycle_yr,     1,                               mpiint,  0, mpicom)
-   call mpibcast (flbc_fixed_ymd,    1,                               mpiint,  0, mpicom)
-   call mpibcast (flbc_fixed_tod,    1,                               mpiint,  0, mpicom)
-   call mpibcast (flbc_list,         len(flbc_list(1))*pcnst,         mpichar, 0, mpicom)
-   call mpibcast (flbc_file,         len(flbc_file),                  mpichar, 0, mpicom)
-
-#endif
+   call mpi_bcast(co2vmr, 1, mpi_real8, mstrid, mpicom, ierr)
+   if (ierr /= 0) call endrun(sub//" mpi_bcast: co2vmr")
+   call mpi_bcast(n2ovmr, 1, mpi_real8, mstrid, mpicom, ierr)
+   if (ierr /= 0) call endrun(sub//" mpi_bcast: n2ovmr")
+   call mpi_bcast(ch4vmr, 1, mpi_real8, mstrid, mpicom, ierr)
+   if (ierr /= 0) call endrun(sub//" mpi_bcast: ch4vmr")
+   call mpi_bcast(f11vmr, 1, mpi_real8, mstrid, mpicom, ierr)
+   if (ierr /= 0) call endrun(sub//" mpi_bcast: f11vmr")
+   call mpi_bcast(f12vmr, 1, mpi_real8, mstrid, mpicom, ierr)
+   if (ierr /= 0) call endrun(sub//" mpi_bcast: f12vmr")
+   call mpi_bcast(co2vmr_rad, 1, mpi_real8, mstrid, mpicom, ierr)
+   if (ierr /= 0) call endrun(sub//" mpi_bcast: co2vmr_rad")
+   call mpi_bcast(scenario_ghg, len(scenario_ghg), mpi_character, mstrid, mpicom, ierr)
+   if (ierr /= 0) call endrun(sub//" mpi_bcast: scenario_ghg")
+   call mpi_bcast(rampyear_ghg, 1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= 0) call endrun(sub//" mpi_bcast: rampyear_ghg")
+   call mpi_bcast(bndtvghg, len(bndtvghg), mpi_character, mstrid, mpicom, ierr)
+   if (ierr /= 0) call endrun(sub//" mpi_bcast: bndtvghg")
+   call mpi_bcast(ramp_co2_start_ymd, 1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= 0) call endrun(sub//" mpi_bcast: ramp_co2_start_ymd")
+   call mpi_bcast(ramp_co2_annual_rate, 1, mpi_real8, mstrid, mpicom, ierr)
+   if (ierr /= 0) call endrun(sub//" mpi_bcast: ramp_co2_annual_rate")
+   call mpi_bcast(ramp_co2_cap, 1, mpi_real8, mstrid, mpicom, ierr)
+   if (ierr /= 0) call endrun(sub//" mpi_bcast: ramp_co2_cap")
+   call mpi_bcast(ghg_yearstart_model, 1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= 0) call endrun(sub//" mpi_bcast: ghg_yearstart_model")
+   call mpi_bcast(ghg_yearstart_data, 1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= 0) call endrun(sub//" mpi_bcast: ghg_yearstart_data")
+   call mpi_bcast(flbc_type, len(flbc_type), mpi_character, mstrid, mpicom, ierr)
+   if (ierr /= 0) call endrun(sub//" mpi_bcast: flbc_type")
+   call mpi_bcast(flbc_cycle_yr, 1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= 0) call endrun(sub//" mpi_bcast: flbc_cycle_yr")
+   call mpi_bcast(flbc_fixed_ymd, 1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= 0) call endrun(sub//" mpi_bcast: flbc_fixed_ymd")
+   call mpi_bcast(flbc_fixed_tod, 1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= 0) call endrun(sub//" mpi_bcast: flbc_fixed_tod")
+   call mpi_bcast(flbc_list, len(flbc_list(1))*pcnst, mpi_character, mstrid, mpicom, ierr)
+   if (ierr /= 0) call endrun(sub//" mpi_bcast: flbc_list")
+   call mpi_bcast(flbc_file, len(flbc_file), mpi_character, mstrid, mpicom, ierr)
+   if (ierr /= 0) call endrun(sub//" mpi_bcast: flbc_file")
 
    flbc_timing%type      = flbc_type
    flbc_timing%cycle_yr  = flbc_cycle_yr
@@ -161,12 +174,73 @@ subroutine chem_surfvals_readnl(nlfile)
    flbc_timing%fixed_tod = flbc_fixed_tod
 
    if ( (bndtvghg.ne.'NONE') .and. (flbc_file.ne.'NONE') ) then
-      call endrun('chem_surfvals_readnl: Cannot specify both bndtvghg and flbc_file ')
+      call endrun(sub//': Cannot specify both bndtvghg and flbc_file ')
    endif
 
-   if (co2vmr_rad > 0._r8) then
-      if (masterproc) &
-         write(iulog,*) trim(subname)//': co2vmr_rad override is set to ', co2vmr_rad
+   if (masterproc) then
+      write(iulog,*) ' '
+      write(iulog,*) sub//': Settings for control of GHG surface values '
+      write(iulog,*) '  scenario_ghg = '//trim(scenario_ghg)
+      
+      if (scenario_ghg == 'FIXED' .or. scenario_ghg == 'RAMP_CO2_ONLY') then
+
+         if (scenario_ghg == 'RAMP_CO2_ONLY') then
+            write(iulog,*) '  CO2 will be ramped as follows:'
+            write(iulog,*) '    Initial co2vmr       = ', co2vmr
+            write(iulog,*) '    ramp_co2_annual_rate = ', ramp_co2_annual_rate
+            write(iulog,*) '    ramp_co2_cap         = ', ramp_co2_cap
+            if (ramp_co2_start_ymd == 0) then
+               write(iulog,*) '    ramp starts at initial run time '
+            else
+               write(iulog,*) '    ramp_co2_start_ymd   = ', ramp_co2_start_ymd
+            end if
+ 
+         else
+            write(iulog,*) '  CO2 will be fixed:'
+            write(iulog,*) '    co2vmr = ', co2vmr
+         end if
+
+         write(iulog,*) '  Other GHG values will be fixed as follows:'
+         write(iulog,*) '    n2ovmr = ', n2ovmr
+         write(iulog,*) '    ch4vmr = ', ch4vmr
+         write(iulog,*) '    f11vmr = ', f11vmr
+         write(iulog,*) '    f12vmr = ', f12vmr
+
+      else if (scenario_ghg == 'RAMPED') then
+         write(iulog,*) '  GHG values time interpolated from global annual averages:'
+         write(iulog,*) '    bndtvghg = ', trim(bndtvghg)
+         if (rampYear_ghg > 0) then
+            write(iulog,*) '  Data from bndtvghg FIXED at year ', rampYear_ghg
+         end if
+
+      else if (scenario_ghg == 'CHEM_LBC_FILE') then
+         write(iulog,*) '  GHG values time interpolated from LBC file:'
+         write(iulog,*) '    flbc_file = ', trim(flbc_file)
+         write(iulog,*) '    flbc_type = ', trim(flbc_type)
+         if (flbc_type == 'CYCLICAL') then
+            write(iulog,*) '    flbc_cycle_yr = ', flbc_cycle_yr
+         else if (flbc_type == 'FIXED') then
+            write(iulog,*) '    flbc_fixed_ymd = ', flbc_fixed_ymd
+            write(iulog,*) '    flbc_fixed_tod = ', flbc_fixed_tod
+         end if
+         write(iulog,*) '  Species from LBC file:'
+         do i = 1, pcnst
+            if (flbc_list(i) == ' ') exit
+            write(iulog,*) '    '//trim(flbc_list(i))
+         end do
+
+      else
+         call endrun (sub//': scenario_ghg must be set to either FIXED, RAMPED, RAMP_CO2_ONLY, &
+                   & or CHEM_LBC_FILE')
+
+      end if
+
+      if (co2vmr_rad > 0._r8) then
+         write(iulog,*) '  *** The CO2 prescribed by scenario_ghg has been OVERRIDDEN by ***'
+         write(iulog,*) '      co2vmr_rad = ', co2vmr_rad
+      end if
+
+      write(iulog,*) ' '
    end if
 
 end subroutine chem_surfvals_readnl
@@ -193,6 +267,7 @@ subroutine chem_surfvals_init()
 
    !---------------------------Local variables-----------------------------
    integer :: yr, mon, day, ncsec
+   character(len=*), parameter :: sub = 'chem_surfvals_init'
    !-----------------------------------------------------------------------
 
    if (use_simple_phys) return
@@ -200,25 +275,18 @@ subroutine chem_surfvals_init()
    if (scenario_ghg == 'FIXED') then
       doRamp_ghg = .false.
       ramp_just_co2 = .false.
-      if (masterproc) &
-         write(iulog,*)'chem_surfvals_init: ghg surface values are fixed as follows'
 
    else if (scenario_ghg == 'RAMPED') then
       doRamp_ghg = .true.
       ramp_just_co2 = .false.
       call ghg_ramp_read
 
-      fixYear_ghg = rampYear_ghg     ! set private member to namelist var
-      if (masterproc) then
-         if ( fixYear_ghg > 0 ) then
-            write(iulog,*) '  FIXED values from year ',fixYear_ghg
-         else
-            write(iulog,*) '  RAMPED values initialized to'
-         end if
-      end if
+      fixYear_ghg = rampYear_ghg
+
       call chem_surfvals_set()
 
    else if (scenario_ghg == 'RAMP_CO2_ONLY') then
+
       if(ramp_co2_start_ymd == 0) then
          ! by default start the ramp at the initial run time
          call get_start_date(yr, mon, day, ncsec)
@@ -228,49 +296,50 @@ subroutine chem_surfvals_init()
 
       if(ramp_co2_annual_rate <= -100.0_r8) then
          write(iulog,*) 'RAMP_CO2:  invalid ramp_co2_annual_rate= ',ramp_co2_annual_rate
-         call endrun ('chem_surfvals_init: RAMP_CO2_ANNUAL_RATE must be greater than -100.0')
+         call endrun (sub//': RAMP_CO2_ANNUAL_RATE must be greater than -100.0')
       end if
 
       doRamp_ghg = .true.
       ramp_just_co2 = .true.
       co2_base = co2vmr        ! save initial setting 
-      if (masterproc) &
-           write(iulog,*) '  RAMPED values initialized to'
 
       co2_daily_factor = (ramp_co2_annual_rate*0.01_r8+1.0_r8)**(1.0_r8/365.0_r8)
 
-      if(ramp_co2_cap > 0.0_r8) then  
+      if (ramp_co2_cap > 0.0_r8) then  
          co2_limit = ramp_co2_cap * co2_base
       else                                  ! if no cap/floor specified, provide default
-         if(ramp_co2_annual_rate < 0.0_r8) then
+         if (ramp_co2_annual_rate < 0.0_r8) then
             co2_limit = 0.0_r8
          else
             co2_limit = posinf
          end if
       end if
-      if((ramp_co2_annual_rate<0.0_r8 .and. co2_limit>co2_base) .or. &
-         (ramp_co2_annual_rate>0.0_r8 .and. co2_limit<co2_base)) then
-         write(iulog,*) 'RAMP_CO2: ramp_co2_cap is unreachable'
-         write(iulog,*) 'RAMP_CO2: ramp_co2_annual_rate= ',ramp_co2_annual_rate,' ramp_co2_cap= ',ramp_co2_cap
-         call endrun('chem_surfvals_init:  ramp_co2_annual_rate and ramp_co2_cap incompatible')
+
+      if ((ramp_co2_annual_rate<0.0_r8 .and. co2_limit>co2_base) .or. &
+          (ramp_co2_annual_rate>0.0_r8 .and. co2_limit<co2_base)) then
+         write(iulog,*) sub//': ramp_co2_cap is unreachable'
+         write(iulog,*) sub//': ramp_co2_annual_rate= ',ramp_co2_annual_rate,' ramp_co2_cap= ',ramp_co2_cap
+         call endrun(sub//':  ramp_co2_annual_rate and ramp_co2_cap incompatible')
       end if
 
       call chem_surfvals_set()
+
    else if (scenario_ghg == 'CHEM_LBC_FILE') then
       ! set by lower boundary conditions file
       call flbc_inti( flbc_file, flbc_list, flbc_timing, co2vmr, ch4vmr, n2ovmr, f11vmr, f12vmr )
       call chem_surfvals_set()
-   else
-      call endrun ('chem_surfvals_init: input namelist SCENARIO_GHG must be set to either FIXED, RAMPED, RAMP_CO2_ONLY, &
-                   & or CHEM_LBC_FILE')
+
    endif
 
    if (masterproc) then
-      write(iulog,*) '  co2 volume mixing ratio = ',co2vmr
-      write(iulog,*) '  ch4 volume mixing ratio = ',ch4vmr
-      write(iulog,*) '  n2o volume mixing ratio = ',n2ovmr
-      write(iulog,*) '  f11 volume mixing ratio = ',f11vmr
-      write(iulog,*) '  f12 volume mixing ratio = ',f12vmr
+      write(iulog,*) ' '
+      write(iulog,*) 'chem_surfvals_init: Initial ghg surface values:'
+      write(iulog,*) '  co2 volume mixing ratio = ', chem_surfvals_co2_rad(vmr_in=.true.)
+      write(iulog,*) '  ch4 volume mixing ratio = ', ch4vmr
+      write(iulog,*) '  n2o volume mixing ratio = ', n2ovmr
+      write(iulog,*) '  f11 volume mixing ratio = ', f11vmr
+      write(iulog,*) '  f12 volume mixing ratio = ', f12vmr
+      write(iulog,*) ' '
    end if
 
 end subroutine chem_surfvals_init

@@ -58,6 +58,7 @@ sm375 TSM.sh f10c6aqtsvbsdm outfrq3s_sums 9s
 sm376 TSM.sh f10c6aqtsvbsxdm outfrq3s 9s
 
 sm380 TSM.sh f1.9c6aqcdh outfrq3s_cosp 9s
+sm381 TSM.sh f0.9c6aqccdm outfrq3s+hist_cam6 3s
 
 sm390 TSM.sh f1.9c4aqwmxdh outfrq3s+waccmx_ma_2000_cam4 9s
 sm391 TSM.sh f1.9c4aqwmxidh outfrq3s 9s
@@ -289,6 +290,7 @@ bl375 TBL.sh f10c6aqtsvbsdm outfrq3s_sums 9s
 bl376 TBL.sh f10c6aqtsvbsxdm outfrq3s 9s
 
 bl380 TBL.sh f1.9c6aqcdh outfrq3s_cosp 9s
+bl381 TBL.sh f0.9c6aqccdm outfrq3s+hist_cam6 3s
 
 bl390 TBL.sh f1.9c4aqwmxdh outfrq3s+waccmx_ma_2000_cam4 9s
 bl391 TBL.sh f1.9c4aqwmxidh outfrq3s 9s

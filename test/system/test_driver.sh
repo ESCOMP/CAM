@@ -196,7 +196,7 @@ case $hostname in
     CAM_RESTART_TASKS=36
     CAM_RESTART_THREADS=2
 
-    mach_workspace="/glade/scratch_new"
+    mach_workspace="/glade/scratch"
 
 ##vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv writing to batch script vvvvvvvvvvvvvvvvvvv
 
@@ -211,7 +211,7 @@ cat > ${submit_script_cb} << EOF
 #PBS -j oe
 #PBS -l inception=login
 
-export TMPDIR=/glade/scratch_new/$USER
+export TMPDIR=/glade/scratch/$USER
 
 if [ -n "\$PBS_JOBID" ]; then    #batch job
    export JOBID=\`echo \${PBS_JOBID} | cut -f1 -d'.'\`
@@ -257,7 +257,7 @@ cat > ${submit_script} << EOF
 #PBS -l select=2:ncpus=36:mpiprocs=36
 #PBS -j oe
 
-export TMPDIR=/glade/scratch_new/$USER
+export TMPDIR=/glade/scratch/$USER
 
 if [ -n "\$PBS_JOBID" ]; then    #batch job
    export JOBID=\`echo \${PBS_JOBID} | cut -f1 -d'.'\`

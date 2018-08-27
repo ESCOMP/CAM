@@ -111,6 +111,16 @@
     <lname>2000_CAM%SPCAMS_CLM50%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV</lname>
   </compset>
 
+  <compset>
+    <alias>F1850_BDRD</alias>
+    <lname>1850_CAM60_CLM50%BGC_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV_BGC%BDRD</lname>
+  </compset>
+
+  <compset>
+    <alias>FHIST_BDRD</alias>
+    <lname>HIST_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV_BGC%BDRD</lname>
+  </compset>
+
   <!-- CAM simpler model compsets -->
 
   <compset>

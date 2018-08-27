@@ -1,0 +1,7 @@
+-spmd -nosmp
+-dyn fv
+-hgrid 0.9x1.25
+-phys cam6 -co2_cycle
+-aquaplanet
+-debug
+-s

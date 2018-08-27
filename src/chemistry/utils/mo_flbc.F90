@@ -657,8 +657,13 @@ contains
     do m = 1,flbc_cnt
        if ( flbcs(m)%spc_ndx > 0 ) then
           n = map( flbcs(m)%spc_ndx )
-          vmr(:ncol,pver,n) = flbcs(m)%vmr(:ncol,lchnk,last) &
-               + dels * (flbcs(m)%vmr(:ncol,lchnk,next) - flbcs(m)%vmr(:ncol,lchnk,last))
+          ! If the GHG happens to be an advected specie, but not a chemical specie
+          ! (e.g., CO2 when the carbon cycle is on in standard CAM), then n=0 and
+          ! we need to skip setting the LBC.
+          if (n > 0) then
+             vmr(:ncol,pver,n) = flbcs(m)%vmr(:ncol,lchnk,last) &
+                + dels * (flbcs(m)%vmr(:ncol,lchnk,next) - flbcs(m)%vmr(:ncol,lchnk,last))
+          end if
        endif
     end do
 
