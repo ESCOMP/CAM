@@ -1,10 +1,8 @@
 module charge_neutrality
 
   use shr_kind_mod, only : r8 => shr_kind_r8
-  use cam_logfile,  only : iulog
   use ppgrid,       only : pcols, pver
   use mo_chem_utls, only : get_spc_ndx
-  use chem_mods,    only : gas_pcnst
 
   implicit none
 
@@ -48,7 +46,7 @@ contains
     !-----------------------------------------------------------------------      
     !        ... local variables
     !-----------------------------------------------------------------------      
-    integer  :: i, k, n
+    integer  :: i, n
     integer  :: elec_ndx
     real(r8) :: wrk(ncol,pver)
 
@@ -73,7 +71,12 @@ contains
           endif
        enddo
 
-       vmr(:ncol,:,elec_ndx) = max(0._r8,wrk(:ncol,:))
+       where ( wrk(:,:)<0._r8 )
+          wrk(:,:)=0._r8
+       end where
+
+       vmr(:ncol,:,elec_ndx) = wrk(:ncol,:)
+      
     end if
 
   end subroutine charge_fix_vmr
@@ -89,7 +92,6 @@ contains
     use chem_mods,           only : adv_mass
     use physics_buffer,      only : pbuf_get_field,physics_buffer_desc ! Needed to get variables from physics buffer
     use physics_types,       only : physics_state
-    use infnan,              only : nan, assignment(=)
 
     !-----------------------------------------------------------------------      
     !        ... dummy arguments
@@ -107,10 +109,10 @@ contains
 
     real(r8), dimension(:,:,:), pointer :: q         ! model mass mixing ratios
     real(r8), dimension(:,:),   pointer :: qs        ! Pointer to access fields in pbuf
-    real(r8), dimension(:,:),   pointer :: mbar
 
-    real(r8) :: vmr(pcols,pver,gas_pcnst)  
     character(len=16) :: name
+    real(r8) :: vmr(state%ncol,pver)  
+    real(r8) :: wrk(state%ncol,pver)
 
     !-----------------------------------------------------------------------      
     elec_ndx = get_spc_ndx('e')
@@ -122,8 +124,7 @@ contains
        lchnk = state%lchnk
        ncol  = state%ncol
        q => state%q
-       mbar => mbarv(:ncol,:,lchnk)
-       vmr = nan
+       wrk(:,:) = 0._r8
 
        do i = 1,pos_ion_n+neg_ion_n
           if (i .le. pos_ion_n) then
@@ -136,25 +137,36 @@ contains
           if (n>0) then
              call cnst_get_ind( name, nc, abort=.false. )
              if (nc>0) then
-                vmr(:ncol,:,n) = mbar(:ncol,:) * q(:ncol,:,nc) / adv_mass(n)
+                vmr(:ncol,:) = mbarv(:ncol,:,lchnk) * q(:ncol,:,nc) / adv_mass(n)
              else
+                ! not transported
                 ns = slvd_index( name )
-                call pbuf_get_field(pbuf, slvd_pbf_ndx, qs, start=(/1,1,ns/), kount=(/pcols,pver,1/) )
-                vmr(:ncol,:,n) = mbar(:ncol,:) * qs(:ncol,:) / adv_mass(n)
+                if (ns>0) then
+                   call pbuf_get_field(pbuf, slvd_pbf_ndx, qs, start=(/1,1,ns/), kount=(/pcols,pver,1/) )
+                   vmr(:ncol,:) = mbarv(:ncol,:,lchnk) * qs(:ncol,:) / adv_mass(n)
+                endif
              endif
-          endif
-       enddo
+             if (i .le. pos_ion_n) then
+                wrk(:ncol,:) = wrk(:ncol,:) + vmr(:ncol,:)
+             else
+                wrk(:ncol,:) = wrk(:ncol,:) - vmr(:ncol,:)
+             endif
+          end if
+       end do
 
-       call charge_balance( ncol, vmr )
+       where ( wrk(:,:)<0._r8 )
+          wrk(:,:)=0._r8
+       end where
 
        call cnst_get_ind( 'e', nc, abort=.false. )  
 
        if (nc>0) then 
-          q(:ncol,:,nc) = adv_mass(elec_ndx) * vmr(:ncol,:,elec_ndx) / mbar(:ncol,:)
+          q(:ncol,:,nc) = adv_mass(elec_ndx) * wrk(:ncol,:) / mbarv(:ncol,:,lchnk)
        else
+          ! not transported
           ns = slvd_index( 'e' )
           call pbuf_get_field(pbuf, slvd_pbf_ndx, qs, start=(/1,1,ns/), kount=(/pcols,pver,1/) )
-          qs(:ncol,:) = adv_mass(elec_ndx) * vmr(:ncol,:,elec_ndx) / mbar(:ncol,:)
+          qs(:ncol,:) = adv_mass(elec_ndx) * wrk(:ncol,:) / mbarv(:ncol,:,lchnk)
        endif
 
     endif

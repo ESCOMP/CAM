@@ -814,8 +814,8 @@
 <no2_ar_ext_file       ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_NO2_aircraft_vertical_1750-2015_0.9x1.25_c20170608.nc</no2_ar_ext_file>
 <num_a4_ar_ext_file    ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_num_bc_a4_aircraft_vertical_1750-2015_0.9x1.25_c20170608.nc</num_a4_ar_ext_file>
 <so2_ar_ext_file       ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_SO2_aircraft_vertical_1750-2015_0.9x1.25_c20170608.nc</so2_ar_ext_file>
-<so2_volc_1deg_ext_file ver="cam6">atm/cam/chem/stratvolc/VolcanEESMv3.10_SO2_850-2016_Mscale_Zreduc_1deg_c180416.nc</so2_volc_1deg_ext_file>
-<so2_volc_2deg_ext_file ver="cam6">atm/cam/chem/stratvolc/VolcanEESMv3.10_SO2_850-2016_Mscale_Zreduc_2deg_c180416.nc</so2_volc_2deg_ext_file>
+<so2_volc_1deg_ext_file ver="cam6">atm/cam/chem/stratvolc/VolcanEESMv3.11_SO2_850-2016_Mscale_Zreduc_1deg_c180812.nc</so2_volc_1deg_ext_file>
+<so2_volc_2deg_ext_file ver="cam6">atm/cam/chem/stratvolc/VolcanEESMv3.11_SO2_850-2016_Mscale_Zreduc_2deg_c180812.nc</so2_volc_2deg_ext_file>
 <so2_volc_pi_ext_file   ver="cam6">atm/cam/chem/stratvolc/VolcanEESMv3.10_piControl_SO2_1850-2014average_1deg_ZeroTrop_c180416.nc</so2_volc_pi_ext_file>
 
 

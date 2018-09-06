@@ -13,9 +13,8 @@ module mo_setext
   integer :: co_ndx, no_ndx, synoz_ndx, xno_ndx, o_ndx
   integer :: op_ndx, o2p_ndx, np_ndx, n2p_ndx, n2d_ndx, n_ndx, e_ndx, oh_ndx
   logical :: has_ions = .false.
+  logical :: has_dregion_ions = .false.
   integer :: aoa_nh_ndx
-
-  character(len=32) :: chempkg
 
 contains
 
@@ -24,14 +23,11 @@ contains
     !	... Initialize the external forcing module
     !--------------------------------------------------------
 
-    use mo_chem_utls, only : get_extfrc_ndx
+    use mo_chem_utls, only : get_extfrc_ndx, get_spc_ndx
     use cam_history,  only : addfld
     use spmd_utils,   only : masterproc
-    use phys_control, only : phys_getopts
 
     implicit none
-
-    call phys_getopts( cam_chempkg_out = chempkg )
 
     co_ndx    = get_extfrc_ndx( 'CO' )
     no_ndx    = get_extfrc_ndx( 'NO' )
@@ -50,6 +46,7 @@ contains
     o_ndx    = get_extfrc_ndx( 'O' )
 
     has_ions = op_ndx > 0 .and. o2p_ndx > 0 .and. np_ndx > 0 .and. n2p_ndx > 0 .and. e_ndx > 0
+    has_dregion_ions = has_ions .and. (get_spc_ndx( 'O2m' )>0)
 
     if (masterproc) then
        write(iulog,*) ' '
@@ -64,7 +61,7 @@ contains
     call addfld( 'EPP_ionpairs', (/ 'lev' /), 'A', 'pairs/cm3/s', 'EPP ionization forcing' )
     call addfld( 'GCR_ionpairs', (/ 'lev' /), 'A', 'pairs/cm3/s', 'GCR ionization forcing' )
     
-    if (index(chempkg,'waccm_mad')<1) then 
+    if (.not.has_dregion_ions) then 
        if ( n2d_ndx > 0 .and. n_ndx>0 ) then
           call addfld( 'N4S_EPP', (/ 'lev' /), 'I', 'molec/cm3/s', 'solar proton event N(4S) source' )
           call addfld( 'N2D_EPP', (/ 'lev' /), 'I', 'molec/cm3/s', 'solar proton event N(2D) source' )
@@ -252,19 +249,6 @@ contains
           extfrc(:,k,n2d_ndx) = 1.57_r8*.6_r8*extfrc(:,k,n2p_ndx)
           extfrc(:,k,n_ndx) = 1.57_r8*.4_r8*extfrc(:,k,n2p_ndx)
        end do
-       !---------------------------------------------------------------------
-       !     ... set electron auroral production
-       !---------------------------------------------------------------------
-       do k = 1,pver
-          extfrc(:,k,e_ndx) = extfrc(:,k,op_ndx) + extfrc(:,k,o2p_ndx) &
-               + extfrc(:,k,np_ndx) + extfrc(:,k,n2p_ndx)
-       end do
-
-       call outfld( 'P_Op',  extfrc(:,:,op_ndx), ncol, lchnk )
-       call outfld( 'P_O2p', extfrc(:,:,o2p_ndx), ncol, lchnk )
-       call outfld( 'P_Np',  extfrc(:,:,np_ndx), ncol, lchnk )
-       call outfld( 'P_N2p', extfrc(:,:,n2p_ndx), ncol, lchnk )
-       call outfld( 'P_IONS',extfrc(:,:,n2d_ndx), ncol, lchnk )
 
     endif
 
@@ -288,7 +272,24 @@ contains
 
     epp_ipr(:ncol,:pver) = epp_ipr(:ncol,:) + gcr_ipr(:ncol,:)
 
-    if (index(chempkg,'waccm_mad')<1) then 
+    if (has_dregion_ions) then 
+       ! D-region ion chemistry is active ...
+       ! N2p production
+       extfrc(:ncol,:pver,n2p_ndx) = extfrc(:ncol,:pver,n2p_ndx) + 0.585_r8 * epp_ipr(:ncol,:pver)
+       ! O2p production
+       extfrc(:ncol,:pver,o2p_ndx) = extfrc(:ncol,:pver,o2p_ndx) + 0.15_r8 * epp_ipr(:ncol,:pver)
+       ! Np
+       extfrc(:ncol,:pver,np_ndx)  = extfrc(:ncol,:pver,np_ndx)  + 0.185_r8 * epp_ipr(:ncol,:pver)
+       ! Op
+       extfrc(:ncol,:pver,op_ndx)  = extfrc(:ncol,:pver,op_ndx)  + 0.076_r8 * epp_ipr(:ncol,:pver)
+       ! N2D/N4S branching
+       ! new initial rates
+       extfrc(:ncol,:pver,n2d_ndx) = extfrc(:ncol,:pver,n2d_ndx) + 0.583_r8 * epp_ipr(:ncol,:pver)
+       extfrc(:ncol,:pver,n_ndx)   = extfrc(:ncol,:pver,n_ndx)   + 0.502_r8 * epp_ipr(:ncol,:pver)
+       ! O
+       extfrc(:ncol,:pver,o_ndx)   = extfrc(:ncol,:pver,o_ndx)   + 1.074_r8 * epp_ipr(:ncol,:pver)
+
+    else 
        ! D-region ion chemistry is NOT active
        if ( n2d_ndx>0 .and. n_ndx>0 ) then
           extfrc(:ncol,:pver,n2d_ndx) = extfrc(:ncol,:pver,n2d_ndx) +  0.7_r8*epp_ipr(:ncol,:pver)
@@ -309,24 +310,23 @@ contains
           extfrc(:ncol,:pver, oh_ndx) = extfrc(:ncol,:pver, oh_ndx) + epp_hox(:ncol,:pver)
           call outfld( 'OH_EPP' ,  epp_hox(:ncol,:), ncol, lchnk ) ! HOX produciton (molec/cm3/s)
        endif
-    else
-       ! D-region ion chemistry is active ...
-       ! N2p production
-       extfrc(:ncol,:pver,n2p_ndx) = extfrc(:ncol,:pver,n2p_ndx) + 0.585_r8 * epp_ipr(:ncol,:pver)
-       ! O2p production
-       extfrc(:ncol,:pver,o2p_ndx) = extfrc(:ncol,:pver,o2p_ndx) + 0.15_r8 * epp_ipr(:ncol,:pver)
-       ! Np
-       extfrc(:ncol,:pver,np_ndx)  = extfrc(:ncol,:pver,np_ndx)  + 0.185_r8 * epp_ipr(:ncol,:pver)
-       ! Op
-       extfrc(:ncol,:pver,op_ndx)  = extfrc(:ncol,:pver,op_ndx)  + 0.076_r8 * epp_ipr(:ncol,:pver)
-       ! N2D/N4S branching
-       ! new initial rates
-       extfrc(:ncol,:pver,n2d_ndx) = extfrc(:ncol,:pver,n2d_ndx) + 0.583_r8 * epp_ipr(:ncol,:pver)
-       extfrc(:ncol,:pver,n_ndx)   = extfrc(:ncol,:pver,n_ndx)   + 0.502_r8 * epp_ipr(:ncol,:pver)
-       ! O
-       extfrc(:ncol,:pver,o_ndx)   = extfrc(:ncol,:pver,o_ndx)   + 1.074_r8 * epp_ipr(:ncol,:pver)
     endif
 
+    if ( has_ions ) then
+       !---------------------------------------------------------------------
+       !     ... set total electron production
+       !---------------------------------------------------------------------
+       do k = 1,pver
+          extfrc(:,k,e_ndx) = extfrc(:,k,op_ndx) + extfrc(:,k,o2p_ndx) &
+               + extfrc(:,k,np_ndx) + extfrc(:,k,n2p_ndx)
+       end do
+       call outfld( 'P_Op',  extfrc(:,:,op_ndx), ncol, lchnk )
+       call outfld( 'P_O2p', extfrc(:,:,o2p_ndx), ncol, lchnk )
+       call outfld( 'P_Np',  extfrc(:,:,np_ndx), ncol, lchnk )
+       call outfld( 'P_N2p', extfrc(:,:,n2p_ndx), ncol, lchnk )
+       call outfld( 'P_IONS',extfrc(:,:,e_ndx), ncol, lchnk )
+    end if
+    
   end subroutine setext
 
 end module mo_setext
