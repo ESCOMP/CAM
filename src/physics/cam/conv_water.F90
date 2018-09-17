@@ -66,7 +66,7 @@ subroutine conv_water_readnl(nlfile)
    integer :: unitn, ierr
    character(len=*), parameter :: subname = 'conv_water_readnl'
 
-   real(r8) :: conv_water_frac_limit 
+   real(r8) :: conv_water_frac_limit = 0._r8
 
    namelist /conv_water_nl/ conv_water_in_rad, conv_water_frac_limit
    !-----------------------------------------------------------------------------

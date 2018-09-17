@@ -517,7 +517,7 @@ end subroutine phys_grid_readnl
     real(r8),               allocatable :: latdeg_p(:)
     real(r8),               allocatable :: londeg_p(:)
     integer(iMap),  pointer             :: grid_map(:,:)
-    integer(iMap),  pointer             :: coord_map(:)
+    integer(iMap),  allocatable         :: coord_map(:)
     type(horiz_coord_t), pointer        :: lat_coord
     type(horiz_coord_t), pointer        :: lon_coord
     integer                             :: gcols(pcols)
@@ -530,7 +530,6 @@ end subroutine phys_grid_readnl
     nullify(lonvals)
     nullify(latvals)
     nullify(grid_map)
-    nullify(coord_map)
     nullify(lat_coord)
     nullify(lon_coord)
 
@@ -552,8 +551,8 @@ end subroutine phys_grid_readnl
     clat_d = 100000.0_r8
     clon_d = 100000.0_r8
     call get_horiz_grid_d(ngcols, clat_d_out=clat_d, clon_d_out=clon_d, lat_d_out=lat_d, lon_d_out=lon_d)
-    latmin = MINVAL(ABS(lat_d))
-    lonmin = MINVAL(ABS(lon_d))
+    latmin = minval(lat_d)
+    lonmin = minval(lon_d)
 !!XXgoldyXX: To do: replace collection above with local physics points
 
     ! count number of "real" column indices
@@ -1138,14 +1137,15 @@ end subroutine phys_grid_readnl
     !      However, these will be in the dynamics decomposition
 
     if (unstructured) then
-      coord_map => grid_map(3,:)
       lon_coord => horiz_coord_create('lon', 'ncol', ngcols_p, 'longitude',   &
-           'degrees_east', 1, size(lonvals), lonvals, map=coord_map)
+           'degrees_east', 1, size(lonvals), lonvals, map=grid_map(3,:))
       lat_coord => horiz_coord_create('lat', 'ncol', ngcols_p, 'latitude',    &
-           'degrees_north', 1, size(latvals), latvals, map=coord_map)
+           'degrees_north', 1, size(latvals), latvals, map=grid_map(3,:))
     else
-      ! Create a lon coord map which only writes from one of each unique lon
+
       allocate(coord_map(size(grid_map, 2)))
+
+      ! Create a lon coord map which only writes from one of each unique lon
       where(latvals == latmin)
         coord_map(:) = grid_map(3, :)
       elsewhere
@@ -1153,9 +1153,8 @@ end subroutine phys_grid_readnl
       end where
       lon_coord => horiz_coord_create('lon', 'lon', hdim1_d, 'longitude',     &
            'degrees_east', 1, size(lonvals), lonvals, map=coord_map)
-      nullify(coord_map)
+
       ! Create a lat coord map which only writes from one of each unique lat
-      allocate(coord_map(size(grid_map, 2)))
       where(lonvals == lonmin)
         coord_map(:) = grid_map(4, :)
       elsewhere
@@ -1163,6 +1162,9 @@ end subroutine phys_grid_readnl
       end where
       lat_coord => horiz_coord_create('lat', 'lat', hdim2_d, 'latitude',      &
            'degrees_north', 1, size(latvals), latvals, map=coord_map)
+
+      deallocate(coord_map)
+
     end if
     call cam_grid_register('physgrid', phys_decomp, lat_coord, lon_coord,     &
          grid_map, unstruct=unstructured, block_indexed=.true.)
@@ -1195,11 +1197,10 @@ end subroutine phys_grid_readnl
         p = p + pcols
       end do
       call cam_grid_attribute_register('physgrid', 'area',                    &
-           'physics column areas', 'ncol', area_d, map=coord_map)
+           'physics column areas', 'ncol', area_d, map=grid_map(3,:))
       nullify(area_d) ! Belongs to attribute now
     end if
     ! Cleanup pointers (they belong to the grid now)
-    nullify(coord_map)
     nullify(grid_map)
     deallocate(latvals)
     nullify(latvals)

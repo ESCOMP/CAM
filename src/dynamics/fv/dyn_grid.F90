@@ -919,7 +919,7 @@ subroutine define_cam_grids()
   type(horiz_coord_t), pointer :: slat_coord
   type(horiz_coord_t), pointer :: slon_coord
   type(horiz_coord_t), pointer :: zlon_coord
-  integer(iMap),       pointer :: coord_map(:)
+  integer(iMap),   allocatable :: coord_map(:)
   integer(iMap),       pointer :: grid_map(:,:)
   real(r8)                     :: zlon_bnds(2,1)
   real(r8), allocatable        :: latvals(:)
@@ -935,7 +935,6 @@ subroutine define_cam_grids()
   nullify(slat_coord)
   nullify(slon_coord)
   nullify(zlon_coord)
-  nullify(coord_map)
   nullify(grid_map)
   nullify(rattval)
 
@@ -989,7 +988,7 @@ subroutine define_cam_grids()
   lat_coord => horiz_coord_create('lat', '', plat, 'latitude',                &
        'degrees_north', beglatxy, endlatxy, latdeg(beglatxy:endlatxy),        &
        map=coord_map)
-  nullify(coord_map)
+  deallocate(coord_map)
 
   ! Cell-centered longitude coordinate
   if (is_lon_distributed) then
@@ -1005,7 +1004,6 @@ subroutine define_cam_grids()
          'degrees_east', beglonxy, endlonxy, londeg(beglonxy:endlonxy,1),     &
          map=coord_map)
     deallocate(coord_map)
-    nullify(coord_map)
   else
     lon_coord => horiz_coord_create('lon', '', plon, 'longitude',             &
          'degrees_east', beglonxy, endlonxy, londeg(beglonxy:endlonxy,1))
@@ -1064,7 +1062,6 @@ subroutine define_cam_grids()
        'staggered latitude', 'degrees_north', beglatxy, endlatxy, latvals,    &
        map=coord_map)
   deallocate(coord_map)
-  nullify(coord_map)
   deallocate(latvals)
 
   call cam_grid_register('fv_u_stagger', dyn_ustag_decomp, slat_coord,        &
@@ -1100,7 +1097,6 @@ subroutine define_cam_grids()
          'degrees_east', beglonxy, endlonxy, londeg_st(beglonxy:endlonxy,1),  &
          map=coord_map)
     deallocate(coord_map)
-    nullify(coord_map)
   else
     slon_coord => horiz_coord_create('slon', '', plon, 'staggered longitude', &
          'degrees_east', beglonxy, endlonxy, londeg_st(beglonxy:endlonxy,1))
