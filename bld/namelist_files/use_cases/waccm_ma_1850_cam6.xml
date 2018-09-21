@@ -7,7 +7,7 @@
 <fixed_geomag_year>1850</fixed_geomag_year>
 
 <!--Species IC -->
-<ncdata dyn="fv"  hgrid="0.9x1.25">atm/waccm/ic/f.e20.FW1850.f09_f09.CESMpiControlForcingSST141.003.veclen64.cam.i.0021-01-01-00000_c170426.nc</ncdata>
+<ncdata dyn="fv"  hgrid="0.9x1.25">cesm2_init/b.e21.BW1850.f09_g17.CMIP6-piControl.001/0056-01-01/b.e21.BW1850.f09_g17.CMIP6-piControl.001.cam.i.0056-01-01-00000.nc</ncdata>
 <ncdata dyn="fv"  hgrid="1.9x2.5" >atm/waccm/ic/b.e20.BW1850.f19_g17.alpha07b.002.cam.i.1851-01-01-00000_c170911.nc</ncdata>
 <ncdata dyn="fv"  hgrid="4x5"     >atm/waccm/ic/b1850.waccm-mam3_4x5_L70.cam2.i.0156-01-01.c141201.nc</ncdata>
 

@@ -175,7 +175,7 @@
          'MSKtem','PS','PSL','VTHzm','UVzm','UWzm','Uzm','Vzm','THzm','Wzm','PHIS'
 </fincl7> 
 <fincl8> 
-         'PS', 'PSL', 'U', 'V', 'T', 'Z3', 'PHIS', 'FRONTGF:I', 'OMEGA', 'O3', 'REFF_AERO', 'SAD_AERO',
+         'PS', 'PSL', 'U', 'V', 'T', 'Z3', 'PHIS', 'FRONTGF:I', 'OMEGA', 'O3', 'REFF_AERO', 'SAD_AERO', 'NITROP_PD',
          'so4_a1', 'so4_a2', 'so4_a3', 'AODVISstdn', 'dgnumwet1', 'dgnumwet2', 'dgnumwet3', 'QRS_TOT', 'CO2', 'H', 'NO', 'O'
 </fincl8> 
 

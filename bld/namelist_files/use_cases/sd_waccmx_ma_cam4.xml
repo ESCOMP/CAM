@@ -142,9 +142,10 @@
 <met_rlx_top>55.</met_rlx_top>
 <met_rlx_time>50.</met_rlx_time>
 <met_fix_mass>.true.</met_fix_mass>
-<met_data_file>'2000/MERRA_19x2_20000101.nc'</met_data_file>
-<met_data_path>atm/cam/met/MERRA</met_data_path>
-<met_filenames_list>atm/cam/met/MERRA/CCMI_sd_filenames.txt</met_filenames_list>
+<met_data_file>2000/MERRA2_1.9x2.5_20000101.nc</met_data_file>
+<met_data_path>atm/cam/met/MERRA2/1.9x2.5</met_data_path>
+<met_filenames_list>atm/cam/met/MERRA2/1.9x2.5/filenames_list_c180824</met_filenames_list>
+<bnd_topo hgrid="1.9x2.5">atm/cam/met/MERRA2/1.9x2.5/USGS-gtopo30_1.9x2.5_remap_MERRA2_c180824.nc</bnd_topo>
 
 <fv_div24del2flag>42</fv_div24del2flag>
 
@@ -176,7 +177,6 @@
 <iradsw>-1</iradsw>
 <phys_loadbalance>2</phys_loadbalance>
 <soil_erod_file>atm/cam/dst/dst_source2x2tuned-cam4-06132012.nc</soil_erod_file>
-<bnd_topo hgrid="1.9x2.5">atm/cam/topo/USGS-gtopo30_1.9x2.5_remap_c050602.nc</bnd_topo>
 <rk_strat_polstrat_rhmin>1.200D0</rk_strat_polstrat_rhmin>
 <history_clubb>.false.</history_clubb> 
 

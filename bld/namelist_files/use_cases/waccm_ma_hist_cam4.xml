@@ -1,0 +1,128 @@
+<?xml version="1.0"?>
+
+<namelist_defaults>
+
+<start_ymd>20000101</start_ymd>
+
+<ncdata dyn="fv"  hgrid="1.9x2.5" >atm/waccm/ic/f.e11.FWTREFC1.f19_f19.001.cam.i.1955-01-01-00000_c141024.nc</ncdata>
+
+<lght_no_prd_factor>1.3</lght_no_prd_factor>
+
+<!-- Solar Inputs -->
+<solar_irrad_data_file>atm/cam/solar/spectral_irradiance_Lean_1950-2014_daily_GOME-Mg_Leap_c150623.nc</solar_irrad_data_file>
+
+<!-- Kp Ap indices -->
+<solar_parms_data_file>atm/waccm/solar/waxsolar_3hr_c170504.nc</solar_parms_data_file>
+
+<!-- Solar protons -->
+<epp_spe_filepath>atm/waccm/solar/spes_1963-2014_c150717.nc</epp_spe_filepath>
+<epp_spe_varname>'Prod'</epp_spe_varname>'
+
+<!-- Galactic Cosmics Rays -->
+<gcr_ionization_datapath>atm/waccm/gcrs</gcr_ionization_datapath>
+<gcr_ionization_filename>gcr_prod_NO_1949-2142_c150309.nc</gcr_ionization_filename>
+
+<!-- QBO settings --> 
+<qbo_cyclic>.false.</qbo_cyclic>
+<qbo_forcing_file>atm/waccm/qbo/qbocoefficients_c151023.nc</qbo_forcing_file>
+<qbo_use_forcing>.true.</qbo_use_forcing>
+
+<!-- Lower Boundary Conditions -->
+<flbc_file>atm/waccm/lb/LBC_1765-2100_1.9x2.5_CCMI_RCP60_za_c130313.nc </flbc_file>
+<flbc_type>'SERIAL'</flbc_type>
+<flbc_list>
+ 'CCL4', 'CF2CLBR', 'CF3BR', 'CFC11', 'CFC113', 'CFC12', 'CH3BR', 'CH3CCL3', 'CH3CL', 'CH4', 'CO2', 'H2',
+ 'HCFC22', 'N2O', 'CFC114', 'CFC115', 'HCFC141B', 'HCFC142B', 'CH2BR2', 'CHBR3', 'H1202', 'H2402','SF6'
+</flbc_list>
+
+<!-- Tropospheric Aerosols -->
+<sulf_file>atm/waccm/sulf/sulfate_b.e11.TSREFC2.f19.g16.ccmi23.001_c150908.nc</sulf_file>
+<sulf_type>SERIAL</sulf_type>
+
+<!-- Stratospheric Aerosols -->
+<prescribed_strataero_feedback>.true.</prescribed_strataero_feedback>
+<prescribed_strataero_type>SERIAL</prescribed_strataero_type>
+
+<!-- Prescribed BAM data is from Jean-Francois Lamarque -->
+<prescribed_aero_datapath>atm/cam/chem/trop_mozart_aero/aero</prescribed_aero_datapath>
+<prescribed_aero_file>aero_b.e11.TSREFC2.f19.f19.ccmi23.001_c141030.nc</prescribed_aero_file>
+<prescribed_aero_type>INTERP_MISSING_MONTHS</prescribed_aero_type>
+
+<!-- aerosol deposition -->
+<aerodep_flx_datapath>atm/cam/chem/trop_mozart_aero/aero</aerodep_flx_datapath>
+<aerodep_flx_file>aerosoldep_rcp6.0_monthly_1849-2104_1.9x2.5_c100830.nc</aerodep_flx_file>
+<aerodep_flx_type>'INTERP_MISSING_MONTHS'</aerodep_flx_type>
+<aerodep_flx_ymd>0</aerodep_flx_ymd>
+
+<!-- emissions -->
+<ext_frc_specifier>
+  'NO2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/ccmi_1960-2008/CCMI_emissions_aircraft_NO2_1850-2100_1.9x2.5_c130314.nc',
+</ext_frc_specifier>
+<ext_frc_type>'SERIAL'</ext_frc_type>
+
+<srf_emis_specifier>
+  'CH2O     -> $INPUTDATA_ROOT/atm/cam/chem/emis/ccmi_1960-2008/maccity_maccity_corrdates_CH2O_woBiog_1960-2008_1.9x2.5_mol_c130314.nc',
+  'CO       -> $INPUTDATA_ROOT/atm/cam/chem/emis/ccmi_1960-2008/maccity_maccity_corrdates_CO_woBiog_1960-2008_1.9x2.5_mol_c130314.nc',
+  'NO       -> $INPUTDATA_ROOT/atm/cam/chem/emis/ccmi_1960-2008/maccity_maccity_corrdates_NO_1960-2008_1.9x2.5_mol_c130314.nc',
+</srf_emis_specifier>
+<srf_emis_type>'INTERP_MISSING_MONTHS'</srf_emis_type>
+
+<!-- turn on clm MEGAN VOC emis -->
+<megan_factors_file>atm/cam/chem/trop_mozart/emis/megan21_emis_factors_c20120313.nc</megan_factors_file>
+<megan_mapped_emisfctrs>.false.</megan_mapped_emisfctrs>
+<megan_specifier>
+ 'CH2O = formaldehyde',
+ 'CO = carbon_monoxide'
+</megan_specifier>
+
+<!-- History Streams -->
+
+<mfilt>             1,  30, 120, 240, 240, 480, 365,  73,  30  </mfilt>
+<nhtfrq>            0, -24,  -6,  -3,  -1,   1, -24,-120,-240  </nhtfrq>
+<avgflag_pertape> 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'I'</avgflag_pertape>
+
+<fincl1>
+  'AOA1', 'AOA2', 'CLDHGH', 'CLDLOW', 'CLDMED', 'CLDTOT', 'CLO', 'CLONO2', 'CLOUD',
+  'DTCOND', 'DTV', 'DUV', 'DVV', 'EKGW', 'FLNS', 'FLNSC', 'FLNT', 'FLNTC',
+  'FSDS', 'FSNS', 'FSNSC', 'FSNT', 'FSNTC', 'HORZ', 'LANDFRAC', 'LHFLX', 'OCNFRAC',
+  'OH', 'OMEGA', 'PHIS', 'PRECC', 'PRECL', 'PS', 'QFLX', 'QRL', 'QRLNLTE',
+  'QRS', 'RELHUM', 'SHFLX', 'SOLIN', 'SWCF', 'QCP', 'QTHERMAL', 'QRL_TOT', 'QRS_TOT',
+  'QJOULE', 'PSL', 'HNO3_STS', 'HNO3_NAT', 'HNO3_GAS', 'NO_Lightning', 'QNO', 'QRS_AUR',
+  'QRS_CO2NIR', 'QRS_EUV', 'SAD_ICE', 'SAD_LNAT', 'SAD_SULFC', 'TREFHT', 'TTGW',
+  'UTGWORO', 'UTGWSPEC', 'VERT', 'VTGWORO', 'VTGWSPEC', 'Z3', 'HOX', 'NOX', 'NOY', 'CLOX',
+  'CLOY', 'BROX', 'BROY', 'TCLY', 'TOTH', 'QJOULE', 'UI', 'VI', 'UIONTEND', 'VIONTEND',
+  'DTCORE', 'T_24_COS', 'T_24_SIN', 'T_12_COS', 'T_12_SIN', 'OMEGA_24_COS', 'OMEGA_24_SIN',
+  'OMEGA_12_COS', 'OMEGA_12_SIN', 'U_24_COS', 'U_24_SIN', 'U_12_COS', 'U_12_SIN',
+  'V_24_COS', 'V_24_SIN', 'V_12_COS', 'V_12_SIN', 'PS_24_COS', 'PS_24_SIN', 'PS_12_COS',
+  'PS_12_SIN', 'CLDLIQ', 'CLDICE', 'CONCLD', 'FRONTGF:I', 'BUTGWSPEC', 'BTAUE', 'BTAUW',
+  'BTAUN', 'BTAUS', 'TAUE', 'TAUW', 'TAUN', 'TAUS', 'TAUGWX', 'TAUGWY', 'TAUX', 'TAUY',
+  'SNOWHLND', 'SNOWHICE', 'ICEFRAC', 'FSDSC', 'SFNO', 'SFCO', 'SFCH2O', 'CFC11STAR',
+  'TROPP_FD',  'TROP_P', 'TROP_T', 'TROP_Z', 'SAD_AERO', 'REFF_AERO', 'MASS',
+  'CO2', 'H2O', 'N2O', 'CH4', 'N2O5', 'NO2',  'NO',
+  'LNO_PROD', 'LNO_COL_PROD', 'dry_deposition_NHx_as_N', 'dry_deposition_NOy_as_N',
+  'wet_deposition_NHx_as_N', 'wet_deposition_NOy_as_N'
+</fincl1>
+<fincl2>
+   'EPP_ionpairs', 'GCR_ionpairs', 'P_Op',  'P_O2p', 'P_N2p', 'P_Np', 'P_IONS', 'ELECDEN'
+</fincl2>
+<fincl7 dyn="fv">
+  'MSKtem','PS','PSL','VTHzm','UVzm','UWzm','Uzm','Vzm','THzm','Wzm','PHIS'
+</fincl7>
+<fincl8>
+  'PS', 'PSL', 'U', 'V', 'T', 'Z3', 'PHIS', 'FRONTGF:I', 'OMEGA', 'O3',
+  'REFF_AERO', 'SAD_AERO', 'QRS_TOT', 'CO2', 'H', 'NO', 'O'
+</fincl8>
+
+<history_cesm_forcing>.true.</history_cesm_forcing>
+<history_scwaccm_forcing>.true. </history_scwaccm_forcing>
+<history_waccm>.true.</history_waccm>
+<history_amwg>.true.</history_amwg>
+<history_carma>.false.</history_carma>
+<history_clubb>.false.</history_clubb>
+<history_chemistry>.false.</history_chemistry>
+<history_chemspecies_srf>.false.</history_chemspecies_srf>
+<history_aerosol>.false.</history_aerosol>
+<history_aero_optics>.false.</history_aero_optics>
+
+
+</namelist_defaults>

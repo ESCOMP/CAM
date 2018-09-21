@@ -582,7 +582,7 @@
  O3m + CO2 -> CO3m + O2                           ; 5.5e-10
  [nir1] O3m + NO -> NO3m + O                     
  [nir2] O3m + NO2 -> NO3m + O2            
- [nir3] O3m + NO2 -> NO2m + O                 
+ [nir3] O3m + NO2 -> NO2m + O3                 
  [nir4] O3m + NO -> NO2m + O2                
  O4m + O -> O3m + O2                              ; 4.e-10
  O4m + CO2 -> CO4m + O2                           ; 4.3e-10
@@ -610,7 +610,7 @@
  NO2m + H -> OHm + NO                             ; 3.e-10
  NO2m + NO2 -> NO3m + NO                          ; 2.e-13
  NO2m + O3 -> NO3m + O2                           ; 1.2e-10
- NO2m + HNO3 -> NO3m + HNO2                       ; 1.6e-9
+ NO2m + HNO3 -> NO3m + HONO                       ; 1.6e-9
  NO2m + HCL -> CLm + HONO                         ; 1.4e-9
  NO2m + CL -> CLm + NO2                           ; 1.0e-10
  NO2m + CLO -> CLm + NO3                          ; 1.0e-10
@@ -812,14 +812,13 @@
 
    SIMULATION PARAMETERS
 
-     Version Options
+      Version Options
+        machine = nec
         model   = cam
-        machine = intel
+        model_architecture = VECTOR
+        vector_length = 32
         architecture = hybrid
-        vec_ftns  = on
-        multitask = on
         namemod = on
-        modules = on
-     End Version Options
+      End Version Options
 
    End Simulation Parameters

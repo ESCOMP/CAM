@@ -10,7 +10,7 @@
    -->
     <desc atm="CAM60[%CCTS][%CFIRE][%CVBSX][%PORT][%RCO2][%SCAM][%WCCM][%WCMD][%WCSC][%WCTS]">CAM cam6 physics:</desc>
     <desc atm="CAM50[%CCTS][%CLB][%PORT][%RCO2][%SCAM][%WCSC][%WCTS]"              >CAM cam5 physics:</desc>
-    <desc atm="CAM40[%PORT][%RCO2][%SCAM][%TMOZ][%WXIE]"                           >CAM cam4 physics:</desc>
+    <desc atm="CAM40[%PORT][%RCO2][%SCAM][%TMOZ][%WXIE][%WXIED][%WCMD]"                   >CAM cam4 physics:</desc>
     <desc atm="CAM[%ADIAB][%DABIP04][%DCTBM][%HS94][%KESSLER][%RCO2][%SPCAMS][%SPCAMCLBS][%SPCAMM][%SPCAMCLBM]">CAM simplified and non-versioned physics :</desc>
 
   <!--
@@ -44,6 +44,7 @@
     <desc option="WCCM"         >WACCM with middle atmosphere chemistry:</desc>
     <desc option="WCMD"         >WACCM with middle atmosphere chemistry with enhanced D-region ion chemistry:</desc>
     <desc option="WXIE"         >WACCM-X enhanced ionosphere, transport, and electrodynamics:</desc>
+    <desc option="WXIED"        >WACCM-X enhanced ionosphere, transport, and electrodynamics with D-region ion chemistry:</desc>
     <desc option="WCSC"         >WACCM specified chemistry:</desc>
     <desc option="WCTS"         >WACCM with tropospheric, stratospheric, mesospheric, and lower thermospheric chemistry:</desc>
 
@@ -122,13 +123,16 @@
       <!-- Match against "%WC" to set defaults for all WACCM cases. -->
       <!-- Later settings of "-chem" take precedence over earlier ones. -->
       <value compset="_(CAM50|CAM60)%(WC|CC|CV|CF)">-age_of_air_trcs</value>
-      <value compset="_CAM40%WC">-chem waccm_ma</value>
+      <value compset="_CAM40%WCCM">-chem waccm_ma</value>
       <value compset="_(CAM50|CAM60)%WCCM">-chem waccm_ma_mam4</value>
       <value compset="_(CAM50|CAM60)%WCMD">-chem waccm_mad_mam4</value>
       <value compset="_(CAM50|CAM60)%WCSC">-chem waccm_sc_mam4</value>
       <value compset="_(CAM50|CAM60)%WCTS">-chem waccm_tsmlt_mam4</value>
-      <value compset="_CAM40%WX">-chem waccm_ma -waccmx</value>
+      <value compset="_CAM40%WX">-waccmx</value>
       <value compset="_CAM40%WXIE">-ionosphere wxie</value>
+      <value compset="_CAM40%WXIE_">-chem waccm_ma</value>
+      <value compset="_CAM40%WXIED_">-chem waccm_mad</value>
+      <value compset="_CAM40%WCMD_">-chem waccm_mad</value>
 
       <value compset="SDYN_CAM">-offline_dyn</value>
       <value compset="SDYN_CAM.*%CC">-nlev 56</value>
@@ -179,6 +183,7 @@
 
       <value compset="2000_CAM60"        >2000_cam6</value>
       <value compset="2000_CAM60%WCTS"   >waccm_tsmlt_2000_cam6</value>
+      <value compset="2010_CAM60%WCTS"   >waccm_tsmlt_2010_cam6</value>
       <value compset="2000_CAM60%WCCM"   >waccm_ma_2000_cam6</value>
       <value compset="2000_CAM60%CCTS"   >2000_trop_strat_vbs_cam6</value>
 
@@ -203,6 +208,7 @@
       <value compset="HIST_CAM60%WCSC"   >waccm_sc_hist_cam6</value>
       <value compset="HIST_CAM60%WCCM"   >waccm_ma_hist_cam6</value>
       <value compset="HIST_CAM60%WCMD"   >waccm_ma_hist_cam6</value>
+      <value compset="HIST_CAM40%WCMD"   >waccm_ma_hist_cam4</value>
       <value compset="HIST_CAM60%CCTS"   >hist_trop_strat_vbs_cam6</value>
       <value compset="HIST_CAM60%CVBSX"  >hist_trop_strat_vbsext_cam6</value>
       <value compset="HIST_CAM60%CFIRE"  >hist_trop_strat_vbsfire_cam6</value>
@@ -225,6 +231,7 @@
       <value compset="SDYN_CAM60%WCTS"   >sd_waccm_tsmlt_cam6</value>
       <value compset="SDYN_CAM60%WCCM"   >sd_waccm_ma_cam6</value>
       <value compset="SDYN_CAM60%WCMD"   >sd_waccm_ma_cam6</value>
+      <value compset="SDYN_CAM40%WCMD"   >sd_waccm_ma_cam4</value>
       <value compset="SDYN_CAM60%CCTS"   >sd_trop_strat_vbs_cam6</value>
 
       <value compset="2000_CAM%DABIP04"  >dabi_p2004</value>
