@@ -57,9 +57,8 @@ module aircraft_emit
 
   integer            :: index_map(N_AERO)
   character(len=256) :: air_specifier(N_AERO)=''
+  character(len=256) :: air_datapath=''
   character(len=24)  :: air_type = 'CYCLICAL_LIST' ! 'CYCLICAL_LIST'
-
-  character(len=256) :: datapath = ''
 
   logical            :: rmv_file = .false.
 
@@ -117,8 +116,8 @@ contains
         index_map(aircraft_cnt) = mm
 
         curr_filename=''	
-        datapath=''
-        spc_fname(aircraft_cnt) = incr_filename( curr_filename, filenames_list=spc_flist(aircraft_cnt), datapath=datapath)
+        spc_fname(aircraft_cnt) = incr_filename( curr_filename, filenames_list=spc_flist(aircraft_cnt), &
+                                                 datapath=air_datapath)
 
         if( advective_tracer(mm) ) then
           long_name = 'aircraft_'//trim(spc_name)
@@ -196,11 +195,6 @@ contains
           forcings_air(m)%filelist         = spc_flist(m)
 !         forcings_air(m)%file%curr_filename    = spc_fname(m)
           forcings_air(m)%filename         = spc_fname(m)
-          call addfld( trim(spc_name), (/ 'lev' /), 'A',  '1/s', &
-                       'aircraft emission '//trim(spc_name) )
-          if (history_chemistry) then
-             call add_default( trim(spc_name), 1, ' ' )
-          end if
     end do species_loop
 
     if (masterproc) then
@@ -230,7 +224,7 @@ contains
 
        allocate (forcings_air(m)%file%in_pbuf(size(forcings_air(m)%sectors)))
        forcings_air(m)%file%in_pbuf(:) = .true.
-       call trcdata_init( forcings_air(m)%sectors, forcings_air(m)%filename, forcings_air(m)%filelist, datapath, &
+       call trcdata_init( forcings_air(m)%sectors, forcings_air(m)%filename, forcings_air(m)%filelist, air_datapath, &
                           forcings_air(m)%fields, forcings_air(m)%file, rmv_file, 0, 0, 0, air_type)
         
 
@@ -243,6 +237,13 @@ contains
              write(iulog,*) ' '
              call endrun
           endif
+       end if
+
+       spc_name = spc_name_list(m)
+       call addfld( trim(spc_name), (/ 'lev' /), 'A', forcings_air(m)%fields(1)%units, &
+                    'aircraft emission '//trim(spc_name) )
+       if (history_chemistry) then
+          call add_default( trim(spc_name), 1, ' ' )
        end if
    end do
 
@@ -311,6 +312,8 @@ contains
              caseid = 3
           case ('kg/kg/sec')
               caseid = 4
+          case ('kg m-2 s-1')
+              caseid = 5
           case default
              print*, 'aircraft_emit_adv: units = ',trim(forcings_air(m)%fields(i)%units) ,' are not recognized'
              call endrun('aircraft_emit_adv: units are not recognized')
@@ -334,6 +337,8 @@ contains
 !                  to_mmr(n,:) = 1.0_r8/(rearth*rearth*wght(n)*state(c)%pdel(n,:)/gravit)
 !                end do
                 to_mmr(:ncol,:) = 1.0_r8
+             elseif (caseid == 5) then
+                to_mmr(:ncol,:) = 1.0_r8
              else
                 to_mmr(:ncol,:) = molmass(ind)/mwdry
              endif
@@ -343,7 +348,7 @@ contains
              tmpptr(:ncol,:) = tmpptr(:ncol,:)*to_mmr(:ncol,:)
 
              call outfld( forcings_air(m)%fields(i)%fldnam, &
-                  tmpptr, ncol, state(c)%lchnk )
+                  tmpptr(:ncol,:), ncol, state(c)%lchnk )
 
           enddo
        enddo
@@ -367,13 +372,15 @@ contains
    character(len=*), parameter :: subname = 'aircraft_emit_readnl'
 
    character(len=256) :: aircraft_specifier(N_AERO)
+   character(len=256) :: aircraft_datapath
    character(len=24)  :: aircraft_type 
 
-   namelist /aircraft_emit_nl/  aircraft_specifier, aircraft_type
+   namelist /aircraft_emit_nl/  aircraft_specifier, aircraft_datapath, aircraft_type
    !-----------------------------------------------------------------------------
 
    ! Initialize namelist variables from local module variables.
    aircraft_specifier= air_specifier
+   aircraft_datapath = air_datapath
    aircraft_type     = air_type
 
    ! Read namelist
@@ -394,11 +401,13 @@ contains
 #ifdef SPMD
    ! Broadcast namelist variables
    call mpibcast(aircraft_specifier,len(aircraft_specifier(1))*N_AERO,     mpichar, 0, mpicom)
+   call mpibcast(aircraft_datapath, len(aircraft_datapath),                mpichar, 0, mpicom)
    call mpibcast(aircraft_type,     len(aircraft_type),                    mpichar, 0, mpicom)
 #endif
 
    ! Update module variables with user settings.
    air_specifier  = aircraft_specifier
+   air_datapath   = aircraft_datapath
    air_type       = aircraft_type
 
  end subroutine aircraft_emit_readnl

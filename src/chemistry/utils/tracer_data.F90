@@ -270,8 +270,12 @@ contains
           file%one_yr = time2-time1
        endif
 
-       call open_trc_datafile( file%curr_filename, file%pathname, file%curr_fileid, file%curr_data_times, &
-            cyc_ndx_beg=file%cyc_ndx_beg, cyc_ndx_end=file%cyc_ndx_end, cyc_yr=file%cyc_yr )
+       if ( file%cyclical ) then
+          call open_trc_datafile( file%curr_filename, file%pathname, file%curr_fileid, file%curr_data_times, &
+               cyc_ndx_beg=file%cyc_ndx_beg, cyc_ndx_end=file%cyc_ndx_end, cyc_yr=file%cyc_yr )
+       else
+          call open_trc_datafile( file%curr_filename, file%pathname, file%curr_fileid, file%curr_data_times )
+       endif
     else
        call open_trc_datafile( file%curr_filename, file%pathname, file%curr_fileid, file%curr_data_times )
        file%curr_data_times = file%curr_data_times - file%offset_time
@@ -1665,7 +1669,11 @@ contains
                 if (file%geop_alt) then
                    model_z(1:pverp) = model_z(1:pverp) + m2km * state(c)%phis(i)*rga
                 endif
-                call rebin( file%nlev, pver, file%ilevs, model_z, datain(i,:), data_col(:) )
+                if (file%conserve_column) then
+                   call interpz_conserve( file%nlev, pver, file%ilevs, model_z, datain(i,:), data_col(:) )
+                else
+                   call rebin( file%nlev, pver, file%ilevs, model_z, datain(i,:), data_col(:) )
+                end if
                 data_out(i,:) = data_col(pver:1:-1)
              enddo
 
@@ -2112,6 +2120,75 @@ contains
 
 
   end subroutine read_trc_restart
+!------------------------------------------------------------------------------
+  subroutine interpz_conserve( nsrc, ntrg, src_x, trg_x, src, trg)
+  
+    implicit none
+
+    integer, intent(in)   :: nsrc                  ! dimension source array
+    integer, intent(in)   :: ntrg                  ! dimension target array
+    real(r8), intent(in)  :: src_x(nsrc+1)         ! source coordinates
+    real(r8), intent(in)  :: trg_x(ntrg+1)         ! target coordinates
+    real(r8), intent(in)  :: src(nsrc)             ! source array
+    real(r8), intent(out) :: trg(ntrg)             ! target array
+
+    !---------------------------------------------------------------
+    !   ... local variables
+    !---------------------------------------------------------------
+    integer  :: i, j, n
+    integer  :: sil
+    real(r8) :: tl, y
+    real(r8) :: bot, top
+   
+   
+    do i = 1, ntrg
+       tl = trg_x(i)
+       if ( (tl.lt.src_x(nsrc+1)).and.(trg_x(i+1).gt.src_x(1)) ) then
+          do sil = 1,nsrc
+             if ( (tl-src_x(sil))*(tl-src_x(sil+1)).le.0.0_r8 ) then
+                exit
+             end if
+          end do
+
+          if ( tl.lt.src_x(1) ) sil = 1
+
+          y = 0.0_r8
+          bot = max(tl,src_x(1))   
+          top = trg_x(i+1)
+          do j = sil, nsrc
+             if ( top.gt.src_x(j+1) ) then
+                y = y+(src_x(j+1)-bot)*src(j)/(src_x(j+1)-src_x(j))
+                bot = src_x(j+1)
+             else
+                y = y+(top-bot)*src(j)/(src_x(j+1)-src_x(j))
+                exit
+             endif
+          enddo
+          trg(i) = y
+       else
+          trg(i) = 0.0_r8
+       end if
+    end do
+
+    if ( trg_x(1).gt.src_x(1) ) then
+       top = trg_x(1)
+       bot = src_x(1)
+       y = 0.0_r8
+       do j = 1, nsrc
+          if ( top.gt.src_x(j+1) ) then
+             y = y+(src_x(j+1)-bot)*src(j)/(src_x(j+1)-src_x(j))
+             bot = src_x(j+1)
+          else
+             y = y+(top-bot)*src(j)/(src_x(j+1)-src_x(j))
+             exit
+          endif
+       enddo
+       trg(1) = trg(1)+y
+    endif
+
+
+  end subroutine interpz_conserve
+
 !------------------------------------------------------------------------------
    subroutine vert_interp_mixrat( ncol, nsrc, ntrg, trg_x, src, trg, p0, ps, hyai, hybi)
   

@@ -687,14 +687,11 @@ contains
       call pbuf_get_field(pbuf, prec_sed_idx, prec_sed)
     end if
 
-    ! Set physics tendencies to 0
-    if (moist_physics) then
-      tend%dTdt(:ncol,:pver)  = 0._r8
-      tend%dudt(:ncol,:pver)  = 0._r8
-      tend%dvdt(:ncol,:pver)  = 0._r8
-    else
-      call physics_tend_init(tend)
-    end if
+    ! Set accumulated physics tendencies to 0
+    tend%dtdt(:ncol,:pver) = 0._r8
+    tend%dudt(:ncol,:pver) = 0._r8
+    tend%dvdt(:ncol,:pver) = 0._r8
+    tend%flx_net(:ncol)    = 0._r8
 
     ! Verify state coming from the dynamics
     if (state_debug_checks) then

@@ -456,7 +456,13 @@
 <flbc_file>atm/waccm/lb/LBC_1765-2100_1.9x2.5_CCMI_RCP60_za_RNOCStrend_c141002.nc</flbc_file>
 
 <!-- Time-variant CO2 fossil fuel emissions -->
-<co2flux_fuel_file hgrid="0.9x1.25" sim_year="1850-2000">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201412_0.9x1.25_kgm2s_c20180516.nc</co2flux_fuel_file>
+<co2flux_fuel_file hgrid="0.9x1.25" sim_year="1850-2000">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201412_fv_0.9x1.25_c20180904.nc</co2flux_fuel_file>
+<co2flux_fuel_file hgrid="1.9x2.5"  sim_year="1850-2000">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201412_fv_1.9x2.5_c20180904.nc</co2flux_fuel_file>
+
+<aircraft_specifier hgrid="0.9x1.25" sim_year="1850-2000">ac_CO2 -> ac_CO2_filelist_175001-201412_fv_0.9x1.25_c20180910.txt</aircraft_specifier>
+<aircraft_specifier hgrid="1.9x2.5"  sim_year="1850-2000">ac_CO2 -> ac_CO2_filelist_175001-201412_fv_1.9x2.5_c20180910.txt</aircraft_specifier>
+<aircraft_datapath sim_year="1850-2000">atm/cam/ggas</aircraft_datapath>
+<aircraft_type sim_year="1850-2000">SERIAL</aircraft_type>
 
 <!-- DMS surface emissions -->
 <bndtvdms          hgrid="128x256"  >atm/cam/scyc/DMS_emissions_128x256_clim_c040122.nc</bndtvdms>

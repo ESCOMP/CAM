@@ -67,6 +67,9 @@ subroutine cubxdr(pidim   ,ibeg    ,len     ,dx      ,f       ,  &
 !
 !-----------------------------------------------------------------------
 !
+  fxl = 0._r8
+  fxr = 0._r8
+
   iend = ibeg + len - 1
   rdx6 = 1._r8/(6._r8*dx)
 !

@@ -1254,6 +1254,7 @@ contains
     use unicon_cam,         only: unicon_cam_org_diags
     use cam_history,        only: hist_fld_active
     use qneg_module,        only: qneg4
+    use co2_cycle,          only: co2_cycle_set_ptend
     !
     ! Arguments
     !
@@ -1382,6 +1383,9 @@ contains
     call physics_update(state, ptend, ztodt, tend)
     call check_tracers_chng(state, tracerint, "aoa_tracers_timestep_tend", nstep, ztodt,   &
          cam_in%cflx)
+
+    call co2_cycle_set_ptend(state, pbuf, ptend)
+    call physics_update(state, ptend, ztodt, tend)
 
     !===================================================
     ! Chemistry and MAM calculation

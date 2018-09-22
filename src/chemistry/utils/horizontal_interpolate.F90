@@ -131,6 +131,13 @@ contains
 !                |---------------------------------|
 !              x2_west                           x2_east
      weight_x(i2,i1) = (x1_east-x2_west)/(x2_east-x2_west)
+   elseif ( (x1_east.gt.x2_east).and.(x1_west.lt.x2_west) ) then
+! case 4: 
+!       x1_west                          x1_east
+!         |--------------------------------|
+!                |--------------------|
+!              x2_west              x2_east
+     weight_x(i2,i1) = 1._r8
    endif
 
    enddo	
@@ -195,6 +202,13 @@ contains
 !                |---------------------------------|
 !              y2_south                           y2_north
                  weight_y(j2,j1) = (y1_north-y2_south)/(y1_north-y1_south)*gw1(j1)/gw2(j2)
+            elseif ( (y1_north.gt.y2_north).and.(y1_south.lt.y2_south) ) then
+! case 4: 
+!       y1_south                          y1_north
+!         |--------------------------------|
+!                |---------------------|
+!              y2_south             y2_north
+                 weight_y(j2,j1) = gw1(j1)/gw2(j2)
             endif
 
           enddo

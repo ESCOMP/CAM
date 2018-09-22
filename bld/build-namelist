@@ -889,6 +889,16 @@ if ($co2_cycle) {
         if ($nl->get_value('co2_readflux_fuel') =~ /$TRUE/io) {
             add_default($nl, 'co2flux_fuel_file', 'sim_year'=>$sim_year);
         }
+
+        add_default($nl, 'co2_readflux_aircraft', 'val'=>'.true.');
+
+        # Check whether user has explicitly turned off reading the aircraft CO2 dataset.
+        # (user specification has higher precedence than the true value set above)
+        if ($nl->get_value('co2_readflux_aircraft') =~ /$TRUE/io) {
+            add_default($nl, 'aircraft_specifier');
+            add_default($nl, 'aircraft_datapath');
+            add_default($nl, 'aircraft_type');
+        }
     }
 }
 
