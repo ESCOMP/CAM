@@ -3,32 +3,31 @@
 
   <solar_irrad_data_file    >   'atm/cam/solar/SolarForcingCMIP6_18491230-22991231_c171031.nc'</solar_irrad_data_file>
 
-  <tracer_cnst_datapath     >   'atm/cam/ozone/'                                          </tracer_cnst_datapath>
-  <tracer_cnst_file         >   'tracer_cnst_CAM6chem_1849-2014_3D_monthly_c170925.nc'    </tracer_cnst_file>
-  <tracer_cnst_specifier    >   'O3','OH','NO3','HO2'                                     </tracer_cnst_specifier>
-  <tracer_cnst_type         >   'SERIAL'                                                  </tracer_cnst_type>
-  <tracer_cnst_filelist     >   ''                                                        </tracer_cnst_filelist>
+  <tracer_cnst_datapath     >   'atm/cam/tracer_cnst'                                        </tracer_cnst_datapath>
+  <tracer_cnst_file         >   'tracer_cnst_halons_3D_L70_1849-2015_CMIP6ensAvg_c180927.nc' </tracer_cnst_file>
+  <tracer_cnst_specifier    >   'O3','OH','NO3','HO2'                                        </tracer_cnst_specifier>
+  <tracer_cnst_type         >   'INTERP_MISSING_MONTHS'                                      </tracer_cnst_type>
+  <tracer_cnst_filelist     >   ''                                                           </tracer_cnst_filelist>
 
-  <prescribed_ozone_datapath>   'atm/cam/ozone/'                                          </prescribed_ozone_datapath>
-  <prescribed_ozone_file    >   'ozone_strataero_CAM6chem_1849-2014_zm_5day_c170924.nc'   </prescribed_ozone_file>
-  <prescribed_ozone_name    >   'O3'                                                      </prescribed_ozone_name>
-  <prescribed_ozone_type    >   'SERIAL'                                                  </prescribed_ozone_type>
+  <prescribed_ozone_datapath>   'atm/cam/ozone_strataero'                                                    </prescribed_ozone_datapath>
+  <prescribed_ozone_file    >   'ozone_strataero_WACCM_L70_zm5day_18500101-20150103_CMIP6ensAvg_c180923.nc'  </prescribed_ozone_file>
+  <prescribed_ozone_name    >   'O3'                                                                         </prescribed_ozone_name>
+  <prescribed_ozone_type    >   'SERIAL'                                                                     </prescribed_ozone_type>
 
   <srf_emis_type            >    INTERP_MISSING_MONTHS  </srf_emis_type>
   <ext_frc_type             >    INTERP_MISSING_MONTHS  </ext_frc_type>
 
-  <prescribed_strataero_type    >     'SERIAL'                                                 </prescribed_strataero_type>
-  <prescribed_strataero_datapath>     'atm/cam/ozone/'                                         </prescribed_strataero_datapath>
-  <prescribed_strataero_file>         'ozone_strataero_CAM6chem_1849-2014_zm_5day_c170924.nc'  </prescribed_strataero_file> 
-  <prescribed_strataero_use_chemtrop> .true.                                                   </prescribed_strataero_use_chemtrop>
+  <prescribed_strataero_type    >     'SERIAL'                                                                     </prescribed_strataero_type>
+  <prescribed_strataero_datapath>     'atm/cam/ozone_strataero'                                                    </prescribed_strataero_datapath>
+  <prescribed_strataero_file>         'ozone_strataero_WACCM_L70_zm5day_18500101-20150103_CMIP6ensAvg_c180923.nc'  </prescribed_strataero_file> 
+  <prescribed_strataero_use_chemtrop> .true.                                                                       </prescribed_strataero_use_chemtrop>
 
   <scenario_ghg            >    'CHEM_LBC_FILE'   </scenario_ghg>
- <!-- use waccm LBC file -->  
- <flbc_file>atm/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180227.nc</flbc_file>
- <flbc_type>'SERIAL'</flbc_type>
- <flbc_list>'CO2','CH4','N2O','CFC11eq','CFC12'</flbc_list>
+  <flbc_file>atm/waccm/lb/LBC_1750-2015_CMIP6_GlobAnnAvg_c180926.nc</flbc_file>
+  <flbc_type>'SERIAL'</flbc_type>
+  <flbc_list>'CO2','CH4','N2O','CFC11eq','CFC12'</flbc_list>
 
- <!-- sim_year used for CLM datasets and SSTs forcings -->
- <sim_year>1850-2000</sim_year>
+  <!-- sim_year used for CLM datasets and SSTs forcings -->
+  <sim_year>1850-2000</sim_year>
 
 </namelist_defaults>

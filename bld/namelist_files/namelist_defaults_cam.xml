@@ -807,7 +807,7 @@
 
 <E90_srf_file         ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions_E90global_surface_1750-2100_0.9x1.25_c20170322.nc</E90_srf_file>
 
-<h2o_ch4ox_ext_file    ver="cam6">atm/cam/chem/emis/elev/H2O_emission_CH4_oxidationx2_elev_1850-2100_CCMI_RCP6_0_c160219.nc</h2o_ch4ox_ext_file>
+<h2o_ch4ox_ext_file    ver="cam6">atm/cam/chem/emis/elev/H2OemissionCH4oxidationx2_3D_L70_1849-2015_CMIP6ensAvg_c180927.nc</h2o_ch4ox_ext_file>
 <so2_cv_ext_file       ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_SO2_contvolcano_vertical_850-5000_0.9x1.25_c20170724.nc</so2_cv_ext_file>
 <so4_a1_cv_ext_file    ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_so4_a1_contvolcano_vertical_850-5000_0.9x1.25_c20170724.nc</so4_a1_cv_ext_file>
 <num_a1_cv_ext_file    ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_num_a1_so4_contvolcano_vertical_850-5000_0.9x1.25_c20170724.nc</num_a1_cv_ext_file>
