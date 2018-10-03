@@ -599,7 +599,7 @@
 <waccmx_opt waccmx="1" ionosphere="none">neutral</waccmx_opt>
 <ionos_epotential_model>heelis</ionos_epotential_model>
 <wei05_coefs_file>atm/waccm/efld/wei05sc_c080415.nc</wei05_coefs_file>
-<ionos_xport_nsplit waccmx="1">5</ionos_xport_nsplit>
+<ionos_xport_nsplit waccmx="1">6</ionos_xport_nsplit>
 <ionos_xport_nsplit hgrid="0.9x1.25" waccmx="1">20</ionos_xport_nsplit>
 
 <!-- For scaling lightning sources of NOx -->

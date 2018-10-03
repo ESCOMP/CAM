@@ -7,6 +7,7 @@
  nhtfrq=3,3,3,3,3,3
  inithist='ENDOFRUN'
  pbuf_global_allocate=.false.
+ steady_state_ion_elec_temp = .false.
  solar_euv_data_file = '$CSMDATA/atm/waccm/phot/2003_fism_daily_and_2003301flare_23_5minutes_c150626.nc'
  amienh_file = '$CSMDATA/atm/waccm/amie_data/oct27_31_2003_nh.nc'
  amiesh_file = '$CSMDATA/atm/waccm/amie_data/oct27_31_2003_sh.nc'

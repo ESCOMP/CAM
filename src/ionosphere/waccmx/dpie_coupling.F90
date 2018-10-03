@@ -170,12 +170,12 @@ contains
        iprint = 0
        amie_ibkg = 0
        iamie = 1
-       if (masterproc) write(6,"('Calling getamie >>> iamie=',i2)") iamie
+       if (masterproc) write(iulog,"('Calling getamie >>> iamie=',i2)") iamie
        
        call getamie(iyear,imo,iday,tod,sunlons(1),amie_ibkg,iprint,iamie, &
             amie_phihm,amie_efxm,amie_kevm,crad,efxg,kevg)
 
-       if (masterproc) write(6,"('After Calling getamie >>> iamie=',i2)") iamie
+       if (masterproc) write(iulog,"('After Calling getamie >>> iamie=',i2)") iamie
        amie_period = iamie == 1
 
        do j=mlat0,mlat1

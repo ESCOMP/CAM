@@ -6,6 +6,7 @@ module waccmx_phys_intr
 #ifdef WACCMX_PHYS
   use majorsp_diffusion, only: mspd_init
   use majorsp_diffusion, only: mspd_intr
+  use ion_electron_temp, only: ion_electron_temp_readnl
   use ion_electron_temp, only: ion_electron_temp_init
   use ion_electron_temp, only: ion_electron_temp_register
   use ion_electron_temp, only: ion_electron_temp_inidat
@@ -22,6 +23,7 @@ module waccmx_phys_intr
   public :: waccmx_phys_ion_elec_temp_inidat
   public :: waccmx_phys_ion_elec_temp_init
   public :: waccmx_phys_ion_elec_temp_tend
+  public :: waccmx_phys_ion_elec_temp_readnl
 
 contains
 
@@ -56,6 +58,15 @@ contains
 #endif
 
   end subroutine waccmx_phys_ion_elec_temp_reg
+
+  !------------------------------------------------------------------------------
+  !------------------------------------------------------------------------------
+  subroutine waccmx_phys_ion_elec_temp_readnl(nlfilename)
+    character(len=*), intent(in) :: nlfilename
+#ifdef WACCMX_PHYS
+    call ion_electron_temp_readnl(nlfilename)
+#endif
+  end subroutine waccmx_phys_ion_elec_temp_readnl
 
   !------------------------------------------------------------------------------
   !------------------------------------------------------------------------------

@@ -135,6 +135,7 @@
 
       logical :: aurora_active = .false.
       integer :: indxAIPRS    = -1
+      integer :: indxQTe = -1
       integer :: indxAMIEefxg = -1        ! am_amie_201712
       integer :: indxAMIEkevg = -1        ! am_amie_201712
 
@@ -152,6 +153,7 @@
         ! add ionization rates to phys buffer for waccmx ionosphere module
 
         call pbuf_add_field('AurIPRateSum', 'physpkg', dtype_r8, (/pcols,pver/), indxAIPRS)     ! Sum of ion auroral production rates for O2
+        call pbuf_add_field('QTeAur', 'physpkg', dtype_r8, (/pcols/), indxQTe)     ! for electron temperature
 
       endsubroutine aurora_register
 
@@ -399,7 +401,7 @@
       use mo_apex,     only : maglon0
       use ppgrid,      only : pcols, pver
       use cam_history, only : outfld
-      use physics_buffer,only: physics_buffer_desc
+      use physics_buffer,only: physics_buffer_desc,pbuf_get_field
 
       implicit none
 
@@ -449,10 +451,10 @@
       real(r8) :: flux(ncol)
       real(r8) :: flux2(ncol)
       real(r8) :: drizl(ncol)
-      real(r8) :: qteaur(ncol)                         ! for electron temperature
       logical  :: do_aurora(ncol)
 
       real(r8) :: dayfrac, rotation
+      real(r8), pointer :: qteaur(:)    ! for electron temperature
 
       if (.not. aurora_active) return
 
@@ -472,8 +474,13 @@
       call outfld( 'ALONM', r2d*alonm(:ncol,lchnk), pcols, lchnk )
       call outfld( 'ALATM', r2d*alatm(:ncol,lchnk), pcols, lchnk )
 
+      if (indxQTe>0) then
+        call pbuf_get_field(pbuf, indxQTe, qteaur)
+        qteaur(:) = 0._r8
+     endif
+     
 !-----------------------------------------------------------------------
-! 	... check latitudes, and return if all below 30 deg
+!    aurora is active for columns poleward of 30 deg
 !-----------------------------------------------------------------------
       do_aurora(:) = abs( rlats(:) ) > pi/6._r8
       if( all( .not. do_aurora(:) ) ) then
@@ -542,7 +549,7 @@
 ! 	... make alfa, flux, and drizzle
 !-----------------------------------------------------------------------
       call aurora_heat( flux, flux2, alfa, alfa2, &
-                        qteaur, drizl, do_aurora, hemis, &
+                        drizl, do_aurora, hemis, &
                         alon, colat, ncol, pbuf )
 
 !-----------------------------------------------------------------------
@@ -616,7 +623,6 @@
       real(r8) :: flux(ncol)
       real(r8) :: flux2(ncol)
       real(r8) :: drizl(ncol)
-      real(r8) :: qteaur(ncol)                         ! for electron temperature
       real(r8) :: qsum(ncol,pver)                      ! total ion production (1/s)
       logical  :: do_aurora(ncol)
 
@@ -701,7 +707,7 @@
 ! 	... make alfa, flux, and drizzle
 !-----------------------------------------------------------------------
       call aurora_heat( flux, flux2, alfa, alfa2, &
-                        qteaur, drizl, do_aurora, hemis, &
+                        drizl, do_aurora, hemis, &
                         alon, colat, ncol, pbuf )
  
 !-----------------------------------------------------------------------
@@ -755,7 +761,7 @@
       end subroutine aurora_cusp 
 
       subroutine aurora_heat( flux, flux2, alfa, alfa2, &
-                              qteaur, drizl, do_aurora, hemis, &
+                              drizl, do_aurora, hemis, &
                               alon, colat, ncol, pbuf )
 !-----------------------------------------------------------------------
 ! 	... calculate alfa, flux, and drizzle
@@ -774,7 +780,6 @@
       real(r8), intent(inout) :: flux(ncol)
       real(r8), intent(inout) :: flux2(ncol)
       real(r8), intent(inout) :: drizl(ncol)
-      real(r8), intent(inout) :: qteaur(ncol)
       real(r8), intent(inout) :: alfa(ncol)
       real(r8), intent(inout) :: alfa2(ncol)
       logical, intent(in)     :: do_aurora(ncol)
@@ -791,7 +796,9 @@
       real(r8) :: ekev 
       real(r8), pointer   :: amie_efxg(:) ! Pointer to pbuf AMIE energy flux (mW m-2)
       real(r8), pointer   :: amie_kevg(:) ! Pointer to pbuf AMIE mean energy (keV)
+      real(r8), pointer   :: qteaur(:)    ! for electron temperature
       integer  :: n
+      
 !-----------------------------------------------------------------------
 ! Low-energy protons:
 !
@@ -822,6 +829,7 @@
          alfa(:) =  0._r8
       end if
 
+      wrk = 0._r8
       where( do_aurora(:) )
 !-----------------------------------------------------------------------
 ! 	... flux, drizzle, alfa2, flux2
@@ -834,12 +842,17 @@
          drizl(:) = exp( -((dtheta(:) + abs(dtheta(:)))/(2._r8*h0))**2 )
          alfa2(:) = alfa20*(1._r8 - ralfa2*coslamda(:))
          flux2(:) = e20*(1._r8 - re2*coslamda(:))*wrk(:) / (2._r8*alfa2(:)*1.602e-9_r8)
+      endwhere
+
 !-----------------------------------------------------------------------
 ! 	... for electron temperature (used in settei):  
 !-----------------------------------------------------------------------
-         qteaur(:) = -7.e8_r8*wrk(:)
-      endwhere
-      
+      if (indxQTe>0) then
+         call pbuf_get_field(pbuf, indxQTe, qteaur)
+         ! The factor of -7e8 is based on the energy per ion pair and heating efficiency from Roble (1987)
+         qteaur(:ncol) = -7.e8_r8*wrk(:ncol)
+      end if
+
 !----------------------------------------------------------------------------------------------
 !       ... If turned on, use amie energy flux and mean energy to replace flux(:) and alfa(:)
 !----------------------------------------------------------------------------------------------

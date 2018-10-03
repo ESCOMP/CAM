@@ -11,6 +11,7 @@ module ion_electron_temp
   use shr_kind_mod,   only : r8 => shr_kind_r8            ! Real kind to declare variables
   use ppgrid,         only : pcols, pver, pverp           ! Dimensions and chunk bounds
   use cam_history,    only : outfld, hist_fld_active, write_inithist ! Routine to output fields to history files
+  use cam_history,    only : horiz_only, addfld, add_default ! Routines and variables for adding fields to history output
   use physics_types,  only : physics_state, &             ! Structures containing physics state variables
                              physics_ptend, &             ! Structures containing physics tendency variables
                              physics_ptend_init           ! Routine to initialize physics tendency variables
@@ -27,6 +28,11 @@ module ion_electron_temp
   use mo_chem_utls,   only : get_spc_ndx                  ! Routine to get index of adv_mass array for short lived species
   use constituents,   only : cnst_get_ind, cnst_mw        ! Routines to get molecular weights for constituents
   use solar_parms_data, only : f107=>solar_parms_f107     ! 10.7 cm solar flux
+  use steady_state_tei, only : steady_state_tei_init, steady_state_tei_tend
+  use perf_mod,         only : t_startf, t_stopf          ! timing utils
+  use spmd_utils,       only : masterproc
+  use cam_logfile,      only : iulog ! Output unit
+  use ionos_state_mod,  only : ionos_state
 
   implicit none
 
@@ -41,6 +47,7 @@ module ion_electron_temp
   public :: ion_electron_temp_register ! Registration of ionosphere variables in pbuf physics buffer
   public :: ion_electron_temp_inidat   ! Get fields from initial condition file into physics buffer
   public :: ion_electron_temp_tend     ! Calculate tendencies for extended model ionosphere
+  public :: ion_electron_temp_readnl
 
   !------------------------------------------------------------------------
   ! PRIVATE: Rest of the data and interfaces are private to this module
@@ -52,44 +59,56 @@ module ion_electron_temp
 
   real(r8), parameter :: rads2Degs   = 180._r8/pi ! radians to degrees
 
-  type ionos_state
-
-    real(r8), dimension(pcols)      :: cosZenAngR              ! cosine of zenith angle (radians)
-    real(r8), dimension(pcols)      :: zenAngD                  ! zenith angle (degrees)
-
-    real(r8), dimension(pcols,pver) :: bNorth3d   ! northward component of magnetic field units?
-    real(r8), dimension(pcols,pver) :: bEast3d    ! eastward component of magnetic field
-    real(r8), dimension(pcols,pver) :: bDown3d    ! downward component of magnetic field
-
-    real(r8), dimension(pcols,pver,nIonRates) :: ionPRates    ! ionization rates temporary array (s-1 cm-3)
-    real(r8), dimension(pcols,pver)           :: sumIonPRates ! Sum of ionization rates for O+,O2+,N+,N2+,NO+ (s-2 cm-3)
-
-    real(r8), dimension(pcols,pver)  :: dipMag   ! dip angle for each column (radians)
-    real(r8), dimension(pcols,pver)  :: dipMagD  ! dip angle for each column (degrees)
-
-    real(r8), dimension(pcols,pverp) :: tNInt    ! Interface Temperature (K)
-
-    real(r8), dimension(pcols,pver)  :: ndensN2  ! N2 number density (cm-3)
-    real(r8), dimension(pcols,pver)  :: ndensO2  ! O2 number density (cm-3)
-    real(r8), dimension(pcols,pver)  :: ndensO1  ! O number density (cm-3)
-    real(r8), dimension(pcols,pver)  :: ndensNO  ! NO number density (cm-3)
-    real(r8), dimension(pcols,pver)  :: ndensN1  ! N number density  (cm-3)
-    real(r8), dimension(pcols,pver)  :: ndensE   ! E electron number density (cm-3)
-    real(r8), dimension(pcols,pver)  :: ndensOp  ! O plus number density (cm-3)
-    real(r8), dimension(pcols,pver)  :: ndensO2p ! O2 plus ion number density (cm-3)
-    real(r8), dimension(pcols,pver)  :: ndensNOp ! NO plus ion number density  (cm-3)
-
-    real(r8), dimension(pcols,pver)  :: sourceg4 ! g4 source term for electron/ion temperature update
-
-    real(r8), dimension(pcols,pverp) :: rairvi   ! Constituent dependent gas constant on interface levels
-
-  end type ionos_state
 
 ! private data
-  real(r8) :: rMassOp ! O+ molecular weight kg/kmol  
+  real(r8) :: rMassOp ! O+ molecular weight kg/kmol
+
+  logical :: steady_state_ion_elec_temp = .true.
+
+  integer :: index_te=-1, index_ti=-1  ! Indices to find ion and electron temperature in pbuf
 
 contains
 
+!==============================================================================
+
+  subroutine ion_electron_temp_readnl(nlfile)
+
+    use namelist_utils,  only: find_group_name
+    use units,           only: getunit, freeunit
+    use spmd_utils, only: mpicom, masterprocid, mpicom, mpi_logical
+
+    character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
+
+    ! Local variables
+    integer :: unitn, ierr
+    character(len=*), parameter :: subname = 'ion_electron_temp_readnl'
+
+    namelist /ion_electron_temp_nl/ steady_state_ion_elec_temp
+
+    if (masterproc) then
+       unitn = getunit()
+       open( unitn, file=trim(nlfile), status='old' )
+       call find_group_name(unitn, 'ion_electron_temp_nl', status=ierr)
+       if (ierr == 0) then
+          read(unitn, ion_electron_temp_nl, iostat=ierr)
+          if (ierr /= 0) then
+             call endrun(subname // ':: ERROR reading namelist')
+          end if
+       end if
+       close(unitn)
+       call freeunit(unitn)
+
+    end if
+
+    call mpi_bcast (steady_state_ion_elec_temp, 1, mpi_logical, masterprocid, mpicom, ierr)
+
+    if (masterproc) then
+       write(iulog,*) subname//': steady_state_ion_elec_temp = ',steady_state_ion_elec_temp
+    endif
+
+  end subroutine ion_electron_temp_readnl
+
+!==============================================================================
 !==============================================================================
 
   subroutine ion_electron_temp_init(pbuf2d)
@@ -98,39 +117,41 @@ contains
 ! Time independent initialization for ionosphere simulation.
 !-----------------------------------------------------------------------
 
-    use cam_history,      only : horiz_only, addfld, add_default ! Routines and variables for adding fields to history output
     use phys_control,     only : phys_getopts !Method used to get flag for waccmx ionosphere output variables     
 
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
-    integer :: indxTi                                   ! pbuf index for ion temperature
-    integer :: indxTe                                   ! pbuf index for electron temperature
-
     logical :: history_waccmx
     integer :: indxOp,sIndxOp                           ! state%q or pbuf index for O+ mixing ratio
 
+    if (steady_state_ion_elec_temp) then
+       call steady_state_tei_init(pbuf2d)
+    end if
+    
     call phys_getopts(history_waccmx_out=history_waccmx)
 
     !-------------------------------------------------------------------------------
     !  Add history variables for ionosphere 
     !-------------------------------------------------------------------------------
+    call addfld ('QIonElec' ,(/ 'lev' /), 'I', 'K/s', 'Electron Ion Thermal Heating Rate')
     call addfld ('TElec&IC'     ,(/ 'lev' /), 'I', 'K',      'Electron Temperature')
     call addfld ('TIon&IC'      ,(/ 'lev' /), 'I', 'K',      'Ion Temperature')
     call addfld ('TElec'        ,(/ 'lev' /), 'I', 'K',      'Electron Temperature')
     call addfld ('TIon'         ,(/ 'lev' /), 'I', 'K',      'Ion Temperature')
-    call addfld ('QIN'          ,(/ 'lev' /), 'I', 'J/kg/s', 'Ion-neutral Heating')
-    call addfld ('QEN'          ,(/ 'lev' /), 'I', ' ',      'Electron-neutral Heating')
-    call addfld ('QEI'          ,(/ 'lev' /), 'I', ' ',      'Electron-ion Heating')
-    call addfld ('LOSS_g3'      ,(/ 'lev' /), 'I', ' ',      'Loss Term g3')
-    call addfld ('LOSS_EI'      ,(/ 'lev' /), 'I', ' ',      'Loss Term EI')
-    call addfld ('LOSS_IN'      ,(/ 'lev' /), 'I', ' ',      'Loss Term IN')
-    call addfld ('SOURCER'      ,(/ 'lev' /), 'I', ' ',      'SOURCER')
-    call addfld ('SOURCEEff'    ,(/ 'lev' /), 'I', ' ',      'SOURCEEff')
-    call addfld ('AURIPRATESUM' ,(/ 'lev' /), 'I', ' ',      'Auroral ionization')
-
-    call addfld ('OpI'          ,(/ 'lev' /), 'I', ' ',      'O+ Ionosphere')
-    call addfld ('eI'           ,(/ 'lev' /), 'I', ' ',      'e Ionosphere')
     call addfld ('ElecColDens'  ,horiz_only , 'I', 'TECU',   'Electron Column Density')
+    if (.not.steady_state_ion_elec_temp) then
+       call addfld ('QIN'          ,(/ 'lev' /), 'I', 'J/kg/s', 'Ion-neutral Heating')
+       call addfld ('QEN'          ,(/ 'lev' /), 'I', ' ',      'Electron-neutral Heating')
+       call addfld ('QEI'          ,(/ 'lev' /), 'I', ' ',      'Electron-ion Heating')
+       call addfld ('LOSS_g3'      ,(/ 'lev' /), 'I', ' ',      'Loss Term g3')
+       call addfld ('LOSS_EI'      ,(/ 'lev' /), 'I', ' ',      'Loss Term EI')
+       call addfld ('LOSS_IN'      ,(/ 'lev' /), 'I', ' ',      'Loss Term IN')
+       call addfld ('SOURCER'      ,(/ 'lev' /), 'I', ' ',      'SOURCER')
+       call addfld ('SOURCEEff'    ,(/ 'lev' /), 'I', ' ',      'SOURCEEff')
+       call addfld ('AURIPRATESUM' ,(/ 'lev' /), 'I', ' ',      'Auroral ionization')
+       call addfld ('OpI'          ,(/ 'lev' /), 'I', ' ',      'O+ Ionosphere')
+       call addfld ('eI'           ,(/ 'lev' /), 'I', ' ',      'e Ionosphere')
+    end if
 
     call add_default ('TElec&IC'      , 0, ' ')
     call add_default ('TIon&IC'       , 0, ' ')
@@ -141,23 +162,27 @@ contains
     if (history_waccmx) then
        call add_default ('TElec'         , 1, ' ')
        call add_default ('TIon'          , 1, ' ')
-       call add_default ('QIN'           , 1, ' ')
-       call add_default ('QEN'           , 1, ' ')
-       call add_default ('QEI'           , 1, ' ')
-       call add_default ('SOURCER'  , 1, ' ')
-       call add_default ('SOURCEEff'  , 1, ' ')
-       call add_default ('AURIPRATESUM'  , 1, ' ')
+       if (.not.steady_state_ion_elec_temp) then
+          call add_default ('QIN'           , 1, ' ')
+          call add_default ('QEN'           , 1, ' ')
+          call add_default ('QEI'           , 1, ' ')
+          call add_default ('SOURCER'  , 1, ' ')
+          call add_default ('SOURCEEff'  , 1, ' ')
+          call add_default ('AURIPRATESUM'  , 1, ' ')
+       end if
     end if
 
-    call cnst_get_ind( 'Op',  indxOp, abort=.false. )
-    if (indxOp > 0) then
-       rMassOp = cnst_mw(indxOP)
-    else
-       sIndxOp = get_spc_ndx( 'Op' )
-       if (sIndxOp > 0) then
-          rMassOp  = adv_mass(sIndxOp)
+    if (.not.steady_state_ion_elec_temp) then
+       call cnst_get_ind( 'Op',  indxOp, abort=.false. )
+       if (indxOp > 0) then
+          rMassOp = cnst_mw(indxOP)
        else
-          call endrun('update_teti: Cannot find short-lived index for Op in update_teti')         
+          sIndxOp = get_spc_ndx( 'Op' )
+          if (sIndxOp > 0) then
+             rMassOp  = adv_mass(sIndxOp)
+          else
+             call endrun('update_teti: Cannot find short-lived index for Op in update_teti')         
+          endif
        endif
     endif
 
@@ -176,18 +201,16 @@ contains
     ! pcols dimension and lchnk assumed here
     !
     !-----------------------------------------------------------------------
-
-    integer :: idx
   
     !------------------------------------------------------------------------------
     ! Electron temperature in physics buffer (global so can write to history files) 
     !------------------------------------------------------------------------------
-    call pbuf_add_field('TElec','global',dtype_r8,(/pcols,pver/),idx)
+    call pbuf_add_field('TElec','global',dtype_r8,(/pcols,pver/), index_te)
     
     !--------------------------------------------------------------------------
     ! Ion temperature in physics buffer (global so can write to history files)
     !--------------------------------------------------------------------------
-    call pbuf_add_field('TIon', 'global',dtype_r8,(/pcols,pver/),idx)
+    call pbuf_add_field('TIon', 'global',dtype_r8,(/pcols,pver/), index_ti)
 
   end subroutine ion_electron_temp_register
 
@@ -203,16 +226,13 @@ contains
     use cam_grid_support, only : cam_grid_check, cam_grid_id
     use cam_grid_support, only : cam_grid_get_dim_names
     use cam_abortutils,   only : endrun
-    use physics_buffer,   only : pbuf_get_index, pbuf_set_field
+    use physics_buffer,   only : pbuf_set_field
     use ncdio_atm,        only : infld
     use ppgrid,           only : pcols, pver, begchunk, endchunk
-    use spmd_utils,       only : masterproc
-    use cam_logfile,      only : iulog ! Output unit for run.out file
 
     type(file_desc_t), intent(inout)   :: ncid_ini    ! Initial condition file id
     type(physics_buffer_desc), pointer :: pbuf2d(:,:) ! Physics buffer
 
-    integer          :: index_te, index_ti  ! Indices to find ion and electron temperature in pbuf
     integer          :: grid_id
     character(len=4) :: dim1name, dim2name
     logical          :: found
@@ -228,9 +248,6 @@ contains
       call endrun(trim(subname)//': Internal error, no "physgrid" grid')
     end if
     call cam_grid_get_dim_names(grid_id, dim1name, dim2name)
-
-    index_te = pbuf_get_index('TElec',errcode=ierr)
-    index_ti = pbuf_get_index('TIon',errcode=ierr)
 
     if (index_te>0) then
        !---------------------------------------------------------------------------------
@@ -278,6 +295,7 @@ contains
 
   subroutine ion_electron_temp_tend(state, ptend, pbuf, ztodt)
 
+    use physconst,        only : cpairv
     !-------------------------------------------------------------------------------------
     ! Calculate dry static energy and O+ tendency for extended ionosphere simulation 
     !-------------------------------------------------------------------------------------
@@ -302,43 +320,48 @@ contains
                 
     integer :: teTiBot                            ! bottom of ionosphere calculations
 
-    integer :: indxTe                                   ! pbuf index for electron temperature
-    integer :: indxTi                                   ! pbuf index for ion temperature
-
     real(r8), dimension(:,:), pointer   :: tE           ! Pointer to electron temperature in pbuf (K) 
     real(r8), dimension(:,:), pointer   :: tI           ! Pointer to ion temperature in pbuf (K) 
  
     logical :: ls         
+    real(r8) :: dse_tend(pcols,pver) ! dry static energy tendency
+    real(r8) :: qionelec(pcols,pver) ! diagnostic heating rate (neutrals)
+
+    call t_startf ('ion_electron_temp_tend')
 
     !----------------------------------------------------------------
     !  Get number of this chunk
     !----------------------------------------------------------------
-     lchnk = state%lchnk
-     ncol = state%ncol
-    
+    lchnk = state%lchnk
+    ncol = state%ncol
+
+    ls = .TRUE.   
+    call physics_ptend_init(ptend_loc, state%psetcols, 'ionosphere', ls=ls)
+
+    !-------------------------------------------------------------------------------------------------------------------
+    !  Get electron and ion temperatures from physics buffer. 
+    !-------------------------------------------------------------------------------------------------------------------
+    call pbuf_get_field(pbuf, index_te, tE)
+    call pbuf_get_field(pbuf, index_ti, tI)
+
     !------------------------------------------------------------
     !  Initialize data needed in the ionosphere calculations
     !------------------------------------------------------------
     call update_istate(state, pbuf, istate, teTiBot)
 
-    !-------------------------------------------------------------------------------------------------------------------
-    !  Get electron temperature from physics buffer. 
-    !-------------------------------------------------------------------------------------------------------------------
-    indxTe = pbuf_get_index( 'TElec' )
-    call pbuf_get_field(pbuf, indxTe, tE)
-
-    indxTi = pbuf_get_index( 'TIon' )
-    call pbuf_get_field(pbuf, indxTi, tI)
-
-    ls = .TRUE.   
-    call physics_ptend_init(ptend_loc, state%psetcols, 'ionosphere', ls=ls)
-
-    !-----------------------------------------------------------------
-    !  Get electron temperature and update dry static energy tendency
-    !-----------------------------------------------------------------
-    call update_teti(state, ptend%s, ptend_loc%s, ztodt, istate, tE, tI, teTiBot)
-       
-    call physics_ptend_sum(ptend_loc, ptend, ncol)
+    if (steady_state_ion_elec_temp) then
+       !-----------------------------------------------------------------
+       ! steady-state solution
+       !-----------------------------------------------------------------
+       dse_tend(:ncol,:) = ptend%s(:ncol,:)
+       call steady_state_tei_tend(state, istate, dse_tend, pbuf)
+       ptend_loc%s(:ncol,:) = dse_tend(:ncol,:)
+    else
+       !-----------------------------------------------------------------
+       !  Get electron temperature and update dry static energy tendency
+       !-----------------------------------------------------------------
+       call update_teti(state, ptend%s, ptend_loc%s, ztodt, istate, tE, tI, teTiBot)
+    end if
 
     !--------------------------------------------------------------
     !  Make Te and Ti fields available for output to history files
@@ -350,7 +373,12 @@ contains
        call outfld ('TIon&IC' , tI, pcols, lchnk)
     endif
 
-    return
+    qionelec(:ncol,:) = ptend_loc%s(:ncol,:)/cpairv(:ncol,:,lchnk)
+    call outfld ('QIonElec' , qionelec, pcols, lchnk)
+
+    call physics_ptend_sum(ptend_loc, ptend, ncol)
+
+    call t_stopf ('ion_electron_temp_tend')
 
   end subroutine ion_electron_temp_tend
 
@@ -398,7 +426,8 @@ contains
     integer :: indxSP     ! pbuf index for Pedersen Conductivity
     integer :: indxSH     ! pbuf index for Hall Conductivity
 
-    real(r8), parameter :: teTiBotPres   = 50._r8   ! Pressure above which electron/ion temperature are calculated in WACCM-X. (Pa)
+    real(r8), parameter :: teTiBotPres   = 50._r8 ! Pressure above which electron/ion temperature are calculated
+                                                  ! in WACCM-X. (Pa)
 
     character(len = 3), dimension(nCnst) :: cCnst
 
@@ -428,12 +457,11 @@ contains
     real(r8), dimension(:,:),pointer  :: rairvi        ! Constituent dependent gas constant
  
     real(r8), dimension(:,:),pointer  :: dipMag  ! dip angle for each column (radians)
-    real(r8), dimension(:,:),pointer  :: dipMagD ! dip angle for each column (degrees)
 
     real(r8), parameter :: rMassN2 = 28._r8       ! N2 molecular weight kg/kmol
     real(r8) :: rMass   ! Constituent molecular weight kg/kmol
 
-    real(r8), dimension(pcols,pver)   :: mmrN2    ! N2 mass mixing ratio kg/kg
+    real(r8), dimension(:,:),pointer  :: mmrN2    ! N2 mass mixing ratio kg/kg
     real(r8), dimension(pcols,pver)   :: mmrO2    ! O2 mass mixing ratio kg/kg
     real(r8), dimension(pcols,pver)   :: mmrO1    ! O mass mixing ratio kg/kg
 
@@ -453,7 +481,8 @@ contains
     real(r8), dimension(:,:,:),pointer :: ionPRates    ! ionization rates temporary array (s-1 cm-3)
     real(r8), dimension(:,:)  ,pointer :: sumIonPRates ! Sum of ionization rates for O+,O2+,N+,N2+,NO+ (s-1 cm-3)
 
-    real(r8), dimension(:,:)  ,pointer :: aurIPRateSum ! Auroral ion production sum for O2+,O+,N2+ (s-1 cm-3 from module mo_aurora)
+    real(r8), dimension(:,:)  ,pointer :: aurIPRateSum ! Auroral ion production sum for O2+,O+,N2+
+                                                       ! (s-1 cm-3 from module mo_aurora)
 
     real(r8), dimension(:,:)  ,pointer :: sourceg4     ! g4 source term for electron/ion temperature update
 
@@ -470,6 +499,7 @@ contains
     sourceR           = 0._r8  
     sourceEff         = 0._r8
 
+    mmrN2 => istate%n2_mmr
     mmrN2             = 0._r8
     mmrO2             = 0._r8
     mmrO1             = 0._r8
@@ -520,7 +550,6 @@ contains
     rairvi => istate%rairvi(1:ncol,1:pverp)
 
     dipMag  => istate%dipMag(1:ncol,1:pver)
-    dipMagD => istate%dipMagD(1:ncol,1:pver)
 
     ndensN2 => istate%ndensN2(1:ncol,1:pver)
 
@@ -601,7 +630,6 @@ contains
         dipMag(iCol,iVer) = ATAN(bDown3d(iCol,iVer) / SQRT(bNorth3d(iCol,iVer)**2 + bEast3d(iCol,iVer)**2))
         if (dipMag(iCol,iVer) < 0.17_r8 .and. dipMag(iCol,iVer) > 0._r8 ) dipMag(iCol,iVer) = 0.17_r8
         if (dipMag(iCol,iVer) > -0.17_r8 .and. dipMag(iCol,iVer) < 0._r8 ) dipMag(iCol,iVer) = 0.17_r8
-        dipMagD(iCol,iVer) = dipMag(iCol,iVer) * rads2Degs
       enddo
     enddo
 
@@ -715,17 +743,21 @@ contains
     !  of neutral species appropriate from reactions in mo_jeuv(jeuv) and mo_jshort(jshort)(for NO)  
     !----------------------------------------------------------------------------------------------         
     do iVer = 1, pver
-      do iCol = 1, ncol
-    
-        do iIonR = 1, nIonRates
-          IF (iIonR <= 3) ionPRates(iCol,iVer,iIonR) = ionRates(iCol,iVer,iIonR) * ndensO1(iCol,iVer)
-          IF (iIonR == 4) ionPRates(iCol,iVer,iIonR) = ionRates(iCol,iVer,iIonR) * ndensN1(iCol,iVer)
-          IF ((iIonR == 5) .OR. (iIonR >= 7 .AND. iIonR <= 9)) &
-                                    ionPRates(iCol,iVer,iIonR) = ionRates(iCol,iVer,iIonR) * ndensO2(iCol,iVer)
-          IF (iIonR == 6 .OR. iIonR == 10 .OR. iIonR == 11) &
-                                    ionPRates(iCol,iVer,iIonR) = ionRates(iCol,iVer,iIonR) * ndensN2(iCol,iVer)
-        enddo
-                                    
+       do iCol = 1, ncol
+
+          do iIonR = 1, nIonRates
+             IF (iIonR <= 3) then
+                ionPRates(iCol,iVer,iIonR) = ionRates(iCol,iVer,iIonR) * ndensO1(iCol,iVer)
+             else IF (iIonR == 4) then
+                ionPRates(iCol,iVer,iIonR) = ionRates(iCol,iVer,iIonR) * ndensN1(iCol,iVer)
+             else IF ((iIonR == 5) .OR. (iIonR >= 7 .AND. iIonR <= 9)) then
+
+                ionPRates(iCol,iVer,iIonR) = ionRates(iCol,iVer,iIonR) * ndensO2(iCol,iVer)
+             else IF (iIonR == 6 .OR. iIonR == 10 .OR. iIonR == 11) then
+                ionPRates(iCol,iVer,iIonR) = ionRates(iCol,iVer,iIonR) * ndensN2(iCol,iVer)
+             endif
+          enddo
+
         !----------------------------------------------
         !  Sum ion production rates all reactions
         !----------------------------------------------   
@@ -733,45 +765,47 @@ contains
 
        enddo
     enddo
-        
-    !-------------------------------------------------------------------------------------------
-    ! Get aurora ion production rate sum from physics buffer which were calculated in mo_aurora 
-    ! module.  Rate array dimensions are pcols, pver.  Units s-1 cm-3
-    !-------------------------------------------------------------------------------------------
-    indxAIPRS = pbuf_get_index( 'AurIPRateSum' )
-    call pbuf_get_field(pbuf, indxAIPRS, aurIPRateSum)
+    if (.not.steady_state_ion_elec_temp) then
+       !-------------------------------------------------------------------------------------------
+       ! Get aurora ion production rate sum from physics buffer which were calculated in mo_aurora 
+       ! module.  Rate array dimensions are pcols, pver.  Units s-1 cm-3
+       !-------------------------------------------------------------------------------------------
+       indxAIPRS = pbuf_get_index( 'AurIPRateSum' )
+       call pbuf_get_field(pbuf, indxAIPRS, aurIPRateSum)
 
-    !-------------------------------------------------------------------------------------------------
-    !  Calculate electron heating rate which is a source in electron/ion temperature derivation
-    !-------------------------------------------------------------------------------------------------
-    do iVer = 1, teTiBot
-      do iCol = 1, ncol
-        sourceR(iCol,iVer) = LOG( ndensE(iCol,iVer) / (ndensO2(iCol,iVer) + ndensN2(iCol,iVer) + &
-                                                                                  0.1_r8 * ndensO1(iCol,iVer)) )
-        sourceEff(iCol,iVer) = EXP( -(12.75_r8 + 6.941_r8 * sourceR(iCol,iVer) + 1.166_r8 * sourceR(iCol,iVer)**2 + &
-                                        0.08043_r8 * sourceR(iCol,iVer)**3 + 0.001996_r8 * sourceR(iCol,iVer)**4) )
+       !-------------------------------------------------------------------------------------------------
+       !  Calculate electron heating rate which is a source in electron/ion temperature derivation
+       !-------------------------------------------------------------------------------------------------
+       do iVer = 1, teTiBot
+          do iCol = 1, ncol
+             sourceR(iCol,iVer) = LOG( ndensE(iCol,iVer) / (ndensO2(iCol,iVer) + ndensN2(iCol,iVer) + &
+                  0.1_r8 * ndensO1(iCol,iVer)) )
+             sourceEff(iCol,iVer) = EXP( -(12.75_r8 + 6.941_r8 * sourceR(iCol,iVer) + 1.166_r8 * sourceR(iCol,iVer)**2 + &
+                  0.08043_r8 * sourceR(iCol,iVer)**3 + 0.001996_r8 * sourceR(iCol,iVer)**4) )
 
-        !-------------------------------------------------------------------------------
-        !  Calculate g4 source term for electron temperature update
-        !-------------------------------------------------------------------------------         
-        sourceg4(iCol,iVer) = (sumIonPRates(iCol,iVer) + aurIPRateSum(iCol,iVer)) * sourceEff(iCol,iVer)
+             !-------------------------------------------------------------------------------
+             !  Calculate g4 source term for electron temperature update
+             !-------------------------------------------------------------------------------         
+             sourceg4(iCol,iVer) = (sumIonPRates(iCol,iVer) + aurIPRateSum(iCol,iVer)) * sourceEff(iCol,iVer)
 
-      enddo
+          enddo
 
-    enddo
+       enddo
 
-    call outfld ('SOURCER'     , sourceR     , pcols, lchnk)
-    call outfld ('SOURCEEff'   , sourceEff   , pcols, lchnk)
-    call outfld ('AURIPRATESUM', aurIPRateSum, pcols, lchnk)
+       call outfld ('SOURCER'     , sourceR     , pcols, lchnk)
+       call outfld ('SOURCEEff'   , sourceEff   , pcols, lchnk)
+       call outfld ('AURIPRATESUM', aurIPRateSum, pcols, lchnk)
 
-    !----------------------------------------------------------------------------------------------
-    ! Get Pedersen and Hall Conductivities from physics buffer which were calculated in iondrag 
-    ! module.  Conductivity array dimensions are pcols, pver
-    !-------------------------------------------------------------------------------
-    indxSP = pbuf_get_index( 'PedConduct' )
-    indxSH = pbuf_get_index( 'HallConduct' )
-    call pbuf_get_field(pbuf, indxSP, sigma_ped)
-    call pbuf_get_field(pbuf, indxSH, sigma_hall)
+       !----------------------------------------------------------------------------------------------
+       ! Get Pedersen and Hall Conductivities from physics buffer which were calculated in iondrag 
+       ! module.  Conductivity array dimensions are pcols, pver
+       !-------------------------------------------------------------------------------
+       indxSP = pbuf_get_index( 'PedConduct' )
+       indxSH = pbuf_get_index( 'HallConduct' )
+       call pbuf_get_field(pbuf, indxSP, sigma_ped)
+       call pbuf_get_field(pbuf, indxSH, sigma_hall)
+
+    endif
 
     return
 
@@ -787,7 +821,8 @@ contains
 
     use physconst, only : gravit ! Gravity (m/s2)
     use physconst, only : rairv, mbarv  ! Constituent dependent rair and mbar
-
+    use mo_apex, only: alatm
+    
 !------------------------------Arguments--------------------------------
 
     type(physics_state),   intent(in), target    :: state    ! physics state structure
@@ -908,7 +943,7 @@ contains
     real(r8), dimension(:,:), pointer   :: sourceg4     ! g4 source term for electron/ion temperature update
  
     real(r8), dimension(:,:), pointer   :: dipMag       ! dip angle for each column (radians)
-    real(r8), dimension(:,:), pointer   :: dipMagD      ! dip angle for each column (degrees)
+    real(r8), dimension(pcols)          :: dlatm        ! magnetic latitude of each phys column (degrees)
 
     real(r8), dimension(:),   pointer   :: zenAngD      ! zenith angle (degrees)
 
@@ -976,7 +1011,8 @@ contains
     real(r8), dimension(teTiBot)        :: tETemp       ! temporary electron temperature array for input to tridag
 
     logical, dimension(pcols)           :: colConv      ! flag for column converging
-    logical                             :: converged    ! Flag for convergence in electron temperature calculation iteration loop
+    logical                             :: converged    ! Flag for convergence in electron temperature
+                                                        ! calculation iteration loop
 
     !--------------------------------------------------------------------------------------------------------- 
     !  Initialize arrays to zero and column convergence logical to .false.
@@ -1026,7 +1062,7 @@ contains
     rho(:,:)            = 0._r8
     dSETendOut          = 0._r8
     colConv(:)          = .false.
-    
+
     !--------------------------------------------------------------------------------------
     !  Get lchnk and ncol from state
     !--------------------------------------------------------------------------------------
@@ -1066,7 +1102,6 @@ contains
     sourceg4 => istate%sourceg4(1:ncol,1:pver)
 
     dipMag   => istate%dipMag(1:ncol,1:pver)
-    dipMagD  => istate%dipMagD(1:ncol,1:pver)
 
     zenAngD  => istate%zenAngD(1:ncol) 
       
@@ -1084,6 +1119,8 @@ contains
     tI(1:ncol,teTiBotP:pver) = tN(1:ncol,teTiBotP:pver)
 
     wrk2(1:ncol,1:teTiBot) =  ndensE(1:ncol,1:teTiBot)/wrk1/(SIN(dipMag(1:ncol,1:teTiBot)))**2._r8
+    
+    dlatm(:ncol) = rads2Degs* alatm(:ncol,lchnk)
     
     !-----------------------------------------------------------------------------
     !  Get terms needed for loss term g3 for electron temperature update which do 
@@ -1119,10 +1156,11 @@ contains
         !----------------------------------------------------------------------------------
         !  Calculate upper boundary heat flux 
         !----------------------------------------------------------------------------------
-        if (ABS(dipMagD(iCol,1)) < 40.0_r8) FeDB = 0.5_r8 * &
-                                        (1._r8 + SIN(pi * (ABS(dipMagD(iCol,1)) - 20.0_r8) /40.0_r8))
+        if (ABS(dlatm(iCol)) < 40.0_r8) FeDB = 0.5_r8 * &
+                                        (1._r8 + SIN(pi * (ABS(dlatm(iCol)) - 20.0_r8) /40.0_r8))
 
-        if (ABS(dipMagD(iCol,1)) >= 40.0_r8) FeDB = 1._r8 
+        if (ABS(dlatm(iCol)) >= 40.0_r8) FeDB = 1._r8
+
 
         FeD = FeDCoef1 * f107 * FeDB - FeDCoef2 * f107
         FeN = .5_r8 * FeD
@@ -1370,7 +1408,7 @@ contains
    qei(1:ncol,1:teTiBot) = losscei(1:ncol,1:teTiBot) * (tE(1:ncol,1:teTiBot)-ti(1:ncol,1:teTiBot)) / rho(1:ncol,1:teTiBot)
    qin(1:ncol,1:teTiBot) = losscin(1:ncol,1:teTiBot) * (tI(1:ncol,1:teTiBot)-tN(1:ncol,1:teTiBot)) / rho(1:ncol,1:teTiBot)
 
-   dSETendOut(1:ncol,1:teTiBot) = (qei(1:ncol,1:teTiBot)+qen(1:ncol,1:teTiBot)) / sToQConv    
+   dSETendOut(1:ncol,1:teTiBot) = (qei(1:ncol,1:teTiBot)+qen(1:ncol,1:teTiBot)) / sToQConv    ! J/kg/s 
 
    call outfld ('QEN', qen, pcols, lchnk)
    call outfld ('QEI', qei, pcols, lchnk)
