@@ -1049,6 +1049,13 @@ mid-scale gravity waves from frontogenesis.
 Default: set by build-namelist.
 </entry>
 
+<entry id="gw_top_taper" type="logical" category="gw_drag"
+       group="gw_drag_nl" valid_values="" >
+Whether or not to apply tapering at the top of the model (above 0.6E-02 Pa)
+to reduce undesired effects of gravity waves in the thermosphere/ionosphere.
+Default: set by build-namelist
+</entry>
+
 <!-- Gravity Wave Ridge -->
 
 <entry id="gw_rdg_do_divstream" type="logical" category="gw_rdg"

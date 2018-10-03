@@ -265,7 +265,7 @@ end subroutine gw_prof
 !==========================================================================
 
 subroutine gw_drag_prof(ncol, band, p, src_level, tend_level, dt, &
-     t,    &
+     t, vramp,   &
      piln, rhoi,    nm,   ni,  ubm,  ubi,  xv,    yv,   &
      effgw,      c, kvtt, q,   dse,  tau,  utgw,  vtgw, &
      ttgw, qtgw, egwdffi,   gwut, dttdf, dttke, ro_adjust, &
@@ -326,6 +326,8 @@ subroutine gw_drag_prof(ncol, band, p, src_level, tend_level, dt, &
   real(r8), intent(in) :: q(:,:,:)
   ! Dry static energy.
   real(r8), intent(in) :: dse(ncol,pver)
+  ! Coefficient to ramp down diffusion coeff.
+  real(r8), pointer, intent(in) :: vramp(:)
 
   ! Wave Reynolds stress.
   real(r8), intent(inout) :: tau(ncol,-band%ngwv:band%ngwv,pver+1)
@@ -629,6 +631,11 @@ subroutine gw_drag_prof(ncol, band, p, src_level, tend_level, dt, &
         vtgw(:,k) = ubt(:,k) * yv
      end where
 
+     if (associated(vramp)) then
+        utgw(:,k) = utgw(:,k) * vramp(k)
+        vtgw(:,k) = vtgw(:,k) * vramp(k)
+     endif
+
      ! End of level loop.
   end do
 
@@ -660,7 +667,7 @@ subroutine gw_drag_prof(ncol, band, p, src_level, tend_level, dt, &
      ! Calculate effective diffusivity and LU decomposition for the
      ! vertical diffusion solver.
      call gw_ediff (ncol, pver, band%ngwv, kbot_tend, ktop, tend_level, &
-          gwut, ubm, nm, rhoi, dt, prndl, gravit, p, c, &
+          gwut, ubm, nm, rhoi, dt, prndl, gravit, p, c, vramp, &
           egwdffi, decomp, ro_adjust=ro_adjust)
 
      ! Calculate tendency on each constituent.
@@ -685,6 +692,12 @@ subroutine gw_drag_prof(ncol, band, p, src_level, tend_level, dt, &
   end do
 
   ttgw = dttke + dttdf
+
+  if (associated(vramp)) then
+     do k = ktop, kbot_tend
+        ttgw(:,k) = ttgw(:,k) * vramp(k)
+     enddo
+  endif
 
   ! Deallocate decomp.
   call decomp%finalize()

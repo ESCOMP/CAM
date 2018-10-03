@@ -540,6 +540,11 @@
 <gw_polar_taper>.false.</gw_polar_taper>
 <gw_polar_taper dyn="fv">.true.</gw_polar_taper>
 
+<gw_top_taper>.false.</gw_top_taper>
+<gw_top_taper waccmx="1">.true.</gw_top_taper>
+<pgwv>32</pgwv>
+<pgwv waccmx="1">18</pgwv>
+
 <!-- gravity wave settings -->
 <effgw_beres_dp>0.1D0</effgw_beres_dp>
 <effgw_beres_dp hgrid="0.9x1.25">0.4D0</effgw_beres_dp>

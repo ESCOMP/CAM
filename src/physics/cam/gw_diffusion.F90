@@ -20,7 +20,7 @@ contains
 !==========================================================================
 
 subroutine gw_ediff(ncol, pver, ngwv, kbot, ktop, tend_level, &
-     gwut, ubm, nm, rho, dt, prndl, gravit, p, c, &
+     gwut, ubm, nm, rho, dt, prndl, gravit, p, c, vramp, &
      egwdffi, decomp, ro_adjust)
 !
 ! Calculate effective diffusivity associated with GW forcing.
@@ -58,6 +58,9 @@ subroutine gw_ediff(ncol, pver, ngwv, kbot, ktop, tend_level, &
   type(Coords1D), intent(in) :: p
   ! Wave phase speeds for each column.
   real(r8), intent(in) :: c(ncol,-ngwv:ngwv)
+
+  ! Coefficient to ramp down diffusion coeff.
+  real(r8), pointer, intent(in) :: vramp(:)
 
   ! Adjustment parameter for IGWs.
   real(r8), intent(in), optional :: &
@@ -105,6 +108,11 @@ subroutine gw_ediff(ncol, pver, ngwv, kbot, ktop, tend_level, &
      end do
   end do
 
+  if (associated(vramp)) then
+     do k = ktop,kbot
+        egwdffm(:,k) = egwdffm(:,k) * vramp(k)
+     end do
+  endif
 
   ! Interpolate effective diffusivity to interfaces.
   ! Assume zero at top and bottom interfaces.

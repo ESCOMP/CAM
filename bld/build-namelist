@@ -3509,6 +3509,7 @@ if ($waccm_phys or
        add_default($nl, 'qbo_forcing_file');
     }
     add_default($nl, 'gw_qbo_hdepth_scaling', 'val'=>$hdepth_scaling);
+    add_default($nl, 'gw_top_taper');
 } else {
     add_default($nl, 'use_gw_front'     , 'val'=>'.false.');
     add_default($nl, 'use_gw_convect_dp', 'val'=>'.false.');
@@ -3531,7 +3532,7 @@ if (!$simple_phys) {
 }
 # Mid-scale wavelength settings.
 if ($do_gw_front or $do_gw_convect_dp or $do_gw_convect_sh) {
-    add_default($nl, 'pgwv', 'val'=>'32');
+    add_default($nl, 'pgwv');
     add_default($nl, 'gw_dc','val'=>'2.5D0');
 } elsif (!$simple_phys) {
     add_default($nl, 'pgwv', 'val'=>'0');
