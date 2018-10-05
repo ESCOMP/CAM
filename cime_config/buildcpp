@@ -3,7 +3,9 @@
 """
 API for cam's configure
 """
-
+#pylint: disable=multiple-imports, wrong-import-position, wildcard-import
+#pylint: disable=invalid-name, unused-wildcard-import, too-many-locals
+#pylint: disable=too-many-branches, too-many-statements
 import os, sys, re
 
 CIMEROOT = os.environ.get("CIMEROOT")
@@ -13,12 +15,11 @@ sys.path.append(os.path.join(CIMEROOT, "scripts", "Tools"))
 
 from standard_script_setup import *
 
-from CIME.utils import run_cmd_no_fail, expect
-from CIME.utils import run_cmd
+from CIME.utils import run_cmd_no_fail
 from CIME.case import Case
 from CIME.buildnml import parse_input
 
-import glob, shutil
+
 logger = logging.getLogger(__name__)
 
 ###############################################################################
@@ -42,7 +43,7 @@ def buildcpp(case):
 
     # level information for CAM is part of the atm grid name - and must be stripped out
     nlev = ''
-    match = re.match('(.+)z(\d+)',atm_grid)
+    match = re.match(r'(.+)z(\d+)', atm_grid)
     if match:
         atm_grid = match.groups()[0]
         nlev = match.groups()[1]
@@ -64,10 +65,10 @@ def buildcpp(case):
     config_opts = ["-s", "-fc_type", compiler, "-ccsm_seq",
                    "-dyn", cam_dycore, "-hgrid", atm_grid,
                    "-usr_src", os.path.join(caseroot, "SourceMods", "src.cam")]
-    
+
     if nlev:
         config_opts += ["-nlev", nlev]
-        
+
     # Some settings for single column mode.
     if pts_mode:
         config_opts.append("-scam")
@@ -86,8 +87,7 @@ def buildcpp(case):
     # setting default tuning parameter values.  In SOM mode we want to use the same
     # tunings as the fully coupled B compset, so set the ocean component to pop in
     # that case.
-    
-    ocn = comp_ocn
+
     if docn_mode == 'som':
         config_opts += ["-ocn", "pop"]
     else:
@@ -97,21 +97,25 @@ def buildcpp(case):
     config_opts += cam_config_opts.split(" ")
 
     if "-cosp" in config_opts:
-        config_opts += ["-cosp_libdir", os.path.join(exeroot,"atm","obj","cosp")]
+        config_opts += ["-cosp_libdir", os.path.join(exeroot, "atm", "obj", "cosp")]
 
     camconf = os.path.join(caseroot, "Buildconf", "camconf")
     if not os.path.isdir(camconf):
         os.makedirs(camconf)
 
     # Construct the command itself.
-    cmd = os.path.join(srcroot,"components","cam","bld","configure") + " " + " ".join(config_opts)
+    testpath = os.path.join(srcroot, "components", "cam")
+    if os.path.exists(testpath):
+        srcroot = testpath
+    cmd = os.path.join(srcroot, "bld", "configure") + \
+          " " + " ".join(config_opts)
     run_cmd_no_fail(cmd, from_dir=camconf)
 
     # determine cppdefs - caseroot/camconf/CESM_cppdefs is created by the call to configure
     with open(os.path.join(camconf, "CESM_cppdefs"), 'r') as f:
         user_cppdefs = f.readline().rstrip()
     if user_cppdefs:
-        case.set_value("CAM_CPPDEFS",user_cppdefs)
+        case.set_value("CAM_CPPDEFS", user_cppdefs)
         case.flush()
 
     return user_cppdefs
@@ -122,7 +126,7 @@ def _main_func():
     caseroot = parse_input(sys.argv)
     with Case(caseroot) as case:
         cam_cppdefs = buildcpp(case)
-    logger.info("CAM_CPPDEFS: %s" %cam_cppdefs)
+    logger.info("CAM_CPPDEFS: %s", cam_cppdefs)
 
 if __name__ == "__main__":
     _main_func()

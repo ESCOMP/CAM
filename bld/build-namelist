@@ -4113,7 +4113,7 @@ foreach my $name (@nl_groups) { $nl_group{$name} = ''; }
 
 # Driver
 @comp_groups = qw(cime_driver_inst seq_cplflds_inparm seq_cplflds_userspec cime_pes
-    seq_infodata_inparm seq_timemgr_inparm prof_inparm papi_inparm pio_default_inparm);
+    seq_infodata_inparm seq_timemgr_inparm prof_inparm papi_inparm pio_default_inparm esmf_inparm);
 $outfile = "$opts{'dir'}/drv_in";
 if ($cam_build) {
     $nl->write($outfile, 'groups'=>\@comp_groups);
@@ -4452,7 +4452,7 @@ sub check_input_files {
 
     my $fh;
     if (defined $inputdata_rootdir) {
-        open $fh, '>', $outfile or die "check_input_files: error opening $outfile: $!";
+        open $fh, '>>', $outfile or die "check_input_files: error opening $outfile: $!";
     }
 
     # Look through all namelist groups

@@ -3,7 +3,10 @@
 """
 create the cam library
 """
-import sys, os, filecmp, shutil, re, imp
+#pylint: disable=multiple-imports, wrong-import-position, wildcard-import
+#pylint: disable=unused-wildcard-import, bad-whitespace, too-many-locals
+#pylint: disable=invalid-name
+import sys, os, filecmp, shutil, imp
 
 _CIMEROOT = os.environ.get("CIMEROOT")
 if _CIMEROOT is None:
@@ -24,7 +27,7 @@ def _build_cam():
 ###############################################################################
 
     caseroot, libroot, bldroot = parse_input(sys.argv)
- 
+
     with Case(caseroot) as case:
 
         casetools = case.get_value("CASETOOLS")
@@ -36,7 +39,12 @@ def _build_cam():
         #-------------------------------------------------------
         # Call cam's buildcpp
         #-------------------------------------------------------
-        cmd = os.path.join(os.path.join(srcroot,"components","cam","cime_config","buildcpp"))
+        testpath = os.path.join(srcroot, "components", "cam")
+        if os.path.exists(testpath):
+            srcroot = testpath
+
+        cmd = os.path.join(os.path.join(srcroot,
+                                        "cime_config", "buildcpp"))
         logger.info("     ...calling cam buildcpp to set build time options")
         try:
             mod = imp.load_source("buildcpp", cmd)
@@ -50,7 +58,7 @@ def _build_cam():
         #-------------------------------------------------------
         filesrc = os.path.join(caseroot, "Buildconf", "camconf", "Filepath")
         filedst = os.path.join(bldroot, "Filepath_tmp")
-        shutil.copy(filesrc,filedst)
+        shutil.copy(filesrc, filedst)
 
         filedst     = os.path.join(bldroot, "Filepath")
         filedst_tmp = os.path.join(bldroot, "Filepath_tmp")
@@ -69,13 +77,13 @@ def _build_cam():
 
         if cam_cppdefs:
             cmd = "%s complib -j %d MODEL=cam COMPLIB=%s -f %s MACFILE=%s USER_CPPDEFS='%s'" \
-                  % (gmake, gmake_j, complib, makefile, macfile, cam_cppdefs )
+                  % (gmake, gmake_j, complib, makefile, macfile, cam_cppdefs)
         else:
             cmd = "%s complib -j %d MODEL=cam COMPLIB=%s -f %s MACFILE=%s " \
-                  % (gmake, gmake_j, complib, makefile, macfile )
+                  % (gmake, gmake_j, complib, makefile, macfile)
 
         rc, out, err = run_cmd(cmd)
-        logger.info("%s: \n\n output:\n %s \n\n err:\n\n%s\n"%(cmd,out,err))
+        logger.info("%s: \n\n output:\n %s \n\n err:\n\n%s\n", cmd, out, err)
         expect(rc == 0, "Command %s failed with rc=%s" % (cmd, rc))
 
 ###############################################################################
