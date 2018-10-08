@@ -1754,6 +1754,7 @@
 <history_chemistry>            .true.   </history_chemistry>
 <history_chemspecies_srf>      .true.   </history_chemspecies_srf>
 <history_clubb>                .true.   </history_clubb>
+<history_dust>                 .false.  </history_dust>
 
 <!-- ================================================================== -->
 <!-- Defaults for SE                                                    -->

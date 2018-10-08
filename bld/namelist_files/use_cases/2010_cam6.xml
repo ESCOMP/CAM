@@ -1,22 +1,6 @@
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-CHERYL'S NOTE -- to be removed when fully implemented
-The tracer, ozone and strataero files are from Mike Mill's 10/4/17 email
-I updated the cycle_yr to 2010
-NOTE - the solar_data_ymd is still 2000
-Everything else was copied from 2000_cam6.xml 
-This has not been verified with Cecile and is not ready to be used
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
 <?xml version="1.0"?>
 
 <namelist_defaults>
-
-<co2vmr>   367.0e-6   </co2vmr>
-
-<do_tms>                .false.  </do_tms>
-<do_beljaars>           .true.   </do_beljaars>  
-
 
 <tracer_cnst_cycle_yr>   2010                                                           </tracer_cnst_cycle_yr>
 <tracer_cnst_datapath>   atm/cam/ozone                                                  </tracer_cnst_datapath>
@@ -31,18 +15,55 @@ This has not been verified with Cecile and is not ready to be used
 <prescribed_ozone_name>       'O3'                                                           </prescribed_ozone_name>
 <prescribed_ozone_type>       'CYCLICAL'                                                     </prescribed_ozone_type> 
 
-<use_gw_oro>                  .false.          </use_gw_oro>
-<use_gw_rdg_beta>             .true.           </use_gw_rdg_beta>
-
-<zmconv_num_cin>              1                </zmconv_num_cin>
-
 <prescribed_strataero_cycle_yr>   2010                                                           </prescribed_strataero_cycle_yr>
 <prescribed_strataero_datapath>   atm/cam/ozone                                                  </prescribed_strataero_datapath>
 <prescribed_strataero_file>       ozone_strataero_CAM6chem_2010climo_zm_5day_c171004.nc          </prescribed_strataero_file> 
 <prescribed_strataero_type>       'CYCLICAL'                                                     </prescribed_strataero_type> 
 
-<solar_data_file     >   'atm/cam/solar/SolarForcing1995-2005avg_c160929.nc'   </solar_data_file>
-<solar_data_ymd      >    20000101                                             </solar_data_ymd>
+<solar_irrad_data_file>   'atm/cam/solar/SolarForcing1995-2005avg_c160929.nc'  </solar_irrad_data_file>
+<solar_data_ymd      >    20100101                                             </solar_data_ymd>
 <solar_data_type     >    FIXED                                                </solar_data_type>
+
+<ext_frc_cycle_yr>                 2010                                       </ext_frc_cycle_yr>
+<ext_frc_specifier>
+            'H2O -> $INPUTDATA_ROOT/atm/cam/chem/emis/elev/H2O_emission_CH4_oxidationx2_elev_3Dmonthly_L70_2010climo_c180511.nc',
+         'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_num_so4_a1_anthro-ene_vertical_2010climo_0.9x1.25_c20180918.nc',
+         'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_num_a1_so4_contvolcano_vertical_2010climo_0.9x1.25_c20170724.nc',
+         'num_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_num_a2_so4_contvolcano_vertical_2010climo_0.9x1.25_c20170724.nc',
+         'SO2 ->       $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_SO2_contvolcano_vertical_2010climo_0.9x1.25_c20170322.nc ',
+         'so4_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_so4_a1_anthro-ene_vertical_2010climo_0.9x1.25_c20180918.nc',
+         'so4_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_so4_a1_contvolcano_vertical_2010climo_0.9x1.25_c20170724.nc',
+         'so4_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_so4_a2_contvolcano_vertical_2010climo_0.9x1.25_c20170724.nc'
+</ext_frc_specifier>
+
+<srf_emis_cycle_yr>               2010          </srf_emis_cycle_yr> 
+<srf_emis_specifier> 
+         'bc_a4 ->  $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_bc_a4_anthro_surface_2010climo_0.9x1.25_c20180918.nc',
+         'bc_a4 ->  $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_bc_a4_bb_surface_2010climo_0.9x1.25_c20180918.nc',
+         'DMS ->    $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_DMS_bb_surface_2010climo_0.9x1.25_c20180918.nc',
+         'DMS ->    $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_DMS_other_surface_2010climo_0.9x1.25_c20180918.nc',
+         'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_num_so4_a1_bb_surface_2010climo_0.9x1.25_c20180918.nc',
+         'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_num_so4_a1_anthro-ag-ship_surface_2010climo_0.9x1.25_c20180918.nc',
+         'num_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_num_so4_a2_anthro-res_surface_2010climo_0.9x1.25_c20180918.nc',
+         'num_a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_num_bc_a4_bb_surface_2010climo_0.9x1.25_c20180918.nc',
+         'num_a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_num_bc_a4_anthro_surface_2010climo_0.9x1.25_c20180918.nc',
+         'num_a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_num_pom_a4_anthro_surface_2010climo_0.9x1.25_c20180918.nc',
+         'num_a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_num_pom_a4_bb_surface_2010climo_0.9x1.25_c20180918.nc',
+         'pom_a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_pom_a4_anthro_surface_2010climo_0.9x1.25_c20180918.nc',
+         'pom_a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_pom_a4_bb_surface_2010climo_0.9x1.25_c20180918.nc ',
+         'SO2 ->    $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_SO2_anthro-ag-ship-res_surface_2010climo_0.9x1.25_c20180918.nc',
+         'SO2 ->    $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_SO2_anthro-ene_surface_2010climo_0.9x1.25_c20180918.nc',
+         'SO2 ->    $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_SO2_bb_surface_2010climo_0.9x1.25_c20180918.nc',
+         'so4_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_so4_a1_anthro-ag-ship_surface_2010climo_0.9x1.25_c20180918.nc',
+         'so4_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_so4_a1_bb_surface_2010climo_0.9x1.25_c20180918.nc',
+         'so4_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_so4_a2_anthro-res_surface_2010climo_0.9x1.25_c20180918.nc',
+         'SOAG ->   $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_SOAGx1.5_anthro_surface_2010climo_0.9x1.25_c20180918.nc',
+         'SOAG ->   $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_SOAGx1.5_bb_surface_2010climo_0.9x1.25_c20180918.nc',
+         'SOAG ->   $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_SOAGx1.5_biogenic_surface_2010climo_0.9x1.25_c20180918.nc'
+</srf_emis_specifier> 
+<flbc_file>      'atm/waccm/lb/LBC_2010climo_CMIP6_0p5degLat_c180227.nc' </flbc_file>
+<flbc_list>      'CO2','CH4','N2O','CFC11eq','CFC12' </flbc_list>
+<flbc_type>      'CYCLICAL'                          </flbc_type>
+<flbc_cycle_yr>  2010                                </flbc_cycle_yr>
 
 </namelist_defaults>

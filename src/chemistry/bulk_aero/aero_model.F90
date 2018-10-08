@@ -143,8 +143,11 @@ contains
     integer :: m, id
     character(len=20) :: dummy
     logical  :: history_aerosol ! Output MAM or SECT aerosol tendencies
+    logical  :: history_dust    ! Output dust
     
-    call phys_getopts( history_aerosol_out=history_aerosol   )
+    call phys_getopts( history_aerosol_out = history_aerosol,&
+                       history_dust_out    = history_dust   )
+
     call aerosols_inti()
     call soa_inti(pbuf2d)
     call dust_init()
@@ -325,7 +328,7 @@ contains
 
        dummy = 'DSTSFMBL'
        call addfld (dummy,horiz_only, 'A','kg/m2/s','Mobilization flux at surface')
-       if (history_aerosol) then
+       if (history_aerosol .or. history_dust) then
           call add_default (dummy, 1, ' ')
        endif
 

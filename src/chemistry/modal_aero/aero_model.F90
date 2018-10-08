@@ -205,7 +205,7 @@ contains
     character(len=20) :: dummy
 
     logical  :: history_aerosol ! Output MAM or SECT aerosol tendencies
-    logical  :: history_chemistry, history_cesm_forcing
+    logical  :: history_chemistry, history_cesm_forcing, history_dust
 
     integer :: l
     character(len=6) :: test_name
@@ -233,6 +233,7 @@ contains
     call phys_getopts(history_aerosol_out = history_aerosol, &
                       history_chemistry_out=history_chemistry, &
                       history_cesm_forcing_out=history_cesm_forcing, &
+                      history_dust_out=history_dust, &
                       convproc_do_aer_out = convproc_do_aer)
     
     call rad_cnst_get_info(0, nmodes=nmodes)
@@ -334,7 +335,7 @@ contains
 
        dummy = 'DSTSFMBL'
        call addfld (dummy,horiz_only, 'A','kg/m2/s','Mobilization flux at surface')
-       if (history_aerosol) then
+       if (history_aerosol .or. history_dust) then
           call add_default (dummy, 1, ' ')
        endif
 

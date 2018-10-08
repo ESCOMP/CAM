@@ -3805,6 +3805,12 @@ Switch to turn on/off default output specific to CESM forcings.
 Default: .false.
 </entry>
 
+<entry id="history_dust" type="logical"  category="diagnostics"
+       group="phys_ctl_nl" valid_values="" >
+Switch for diagnostics specific to dust.
+Default: .false.
+</entry>
+
 <entry id="history_scwaccm_forcing" type="logical"  category="diagnostics"
        group="phys_ctl_nl" valid_values="" >
 Switch to turn on/off default output specific to WACCM-SC forcings.

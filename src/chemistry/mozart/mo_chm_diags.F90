@@ -95,6 +95,7 @@ contains
     logical :: history_cesm_forcing
     logical :: history_scwaccm_forcing
     logical :: history_chemspecies_srf ! output the chemistry constituents species in the surface layer
+    logical :: history_dust
     integer :: bulkaero_species(20)
 
     !-----------------------------------------------------------------------
@@ -103,7 +104,8 @@ contains
                        history_chemistry_out = history_chemistry, &
                        history_chemspecies_srf_out = history_chemspecies_srf, &
                        history_cesm_forcing_out = history_cesm_forcing, &
-                       history_scwaccm_forcing_out = history_scwaccm_forcing )
+                       history_scwaccm_forcing_out = history_scwaccm_forcing, &
+                       history_dust_out = history_dust )
 
     id_bry     = get_spc_ndx( 'BRY' )
     id_cly     = get_spc_ndx( 'CLY' )
@@ -428,6 +430,8 @@ contains
           if (m==id_cfc11 ) call add_default( spc_name, 1, ' ')
           if (m==id_cfc12 ) call add_default( spc_name, 1, ' ')
        endif
+
+       if (history_dust .and. (index(spc_name,'dst_') > 0))  call add_default( spc_name, 1, ' ')
 
     enddo
 

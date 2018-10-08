@@ -2,7 +2,6 @@
 
 <namelist_defaults>
 
-<co2vmr>367.0e-6</co2vmr>
 
 <tracer_cnst_cycle_yr>   2000                                                           </tracer_cnst_cycle_yr>
 <tracer_cnst_datapath>   atm/cam/ozone                                                  </tracer_cnst_datapath>

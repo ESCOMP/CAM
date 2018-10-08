@@ -118,6 +118,7 @@ subroutine modal_aer_opt_init()
    
    logical           :: history_amwg            ! output the variables used by the AMWG diag package
    logical           :: history_aero_optics     ! output aerosol optics diagnostics
+   logical           :: history_dust            ! output dust diagnostics
 
    logical :: call_list(0:n_diag)
    integer :: ilist, nmodes, m_ncoef, m_prefr, m_prefi
@@ -171,7 +172,8 @@ subroutine modal_aer_opt_init()
    if (masterproc) write(iulog,*) "modal_aer_opt_init: read water refractive index file:", trim(locfile)
 
    call phys_getopts(history_amwg_out        = history_amwg, &
-                     history_aero_optics_out = history_aero_optics )
+                     history_aero_optics_out = history_aero_optics, &
+                     history_dust_out        = history_dust )
 
    ! Add diagnostic fields to history output.
 
@@ -341,6 +343,12 @@ subroutine modal_aer_opt_init()
       call add_default ('AODDUST3'     , 1, ' ')
       call add_default ('AODDUST'      , 1, ' ')
       call add_default ('AODVIS'       , 1, ' ')
+   end if
+
+   if (history_dust) then 
+      call add_default ('AODDUST1'     , 1, ' ')
+      call add_default ('AODDUST2'     , 1, ' ')
+      call add_default ('AODDUST3'     , 1, ' ')
    end if
 
    if (history_aero_optics) then 

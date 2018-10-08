@@ -51,12 +51,14 @@ subroutine aer_rad_props_init()
    character(len=64), pointer :: aernames(:)  ! aerosol names
    logical                    :: history_amwg         ! output the variables used by the AMWG diag package
    logical                    :: history_aero_optics  ! Output aerosol optics diagnostics
+   logical                    :: history_dust         ! Output dust diagnostics
    logical                    :: prog_modal_aero      ! Prognostic modal aerosols present
 
    !----------------------------------------------------------------------------
 
    call phys_getopts( history_aero_optics_out    = history_aero_optics, &
                       history_amwg_out           = history_amwg,    &
+                      history_dust_out           = history_dust,    &
                       prog_modal_aero_out        = prog_modal_aero )
 
    ! Limit modal aerosols with top_lev here.
@@ -87,7 +89,7 @@ subroutine aer_rad_props_init()
    end do
 
    ! Determine default fields
-   if (history_amwg ) then 
+   if (history_amwg .or. history_dust ) then 
       call add_default ('AEROD_v', 1, ' ')
    endif   
    

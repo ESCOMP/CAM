@@ -3795,6 +3795,7 @@ add_default($nl, 'history_waccmx');
 add_default($nl, 'history_chemistry');
 add_default($nl, 'history_chemspecies_srf');
 add_default($nl, 'history_clubb');
+add_default($nl, 'history_dust');
 
 # The history output for the AMWG variability diagnostics assumes that auxilliary history
 # files h1, h2, and h3 contain daily, 6-hrly, and 3-hrly output respectively.  If this output
