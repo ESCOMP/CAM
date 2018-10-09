@@ -632,6 +632,18 @@ Default: 60.
 Default: 50.
 </entry>
 
+<entry id="met_rlx_bot_top" type="real"  category="dyn_fv_off"
+       group="metdata_nl" valid_values="" >
+(km) top of ramping relaxation region for metdata at model bottom
+Default: 0.
+</entry>
+
+<entry id="met_rlx_bot_bot" type="real"  category="dyn_fv_off"
+       group="metdata_nl" valid_values="" >
+(km) bottom of ramping relaxation region for metdata at model bottom
+Default: 0.
+</entry>
+
 <entry id="met_rlx_time" type="real"  category="dyn_fv_off"
        group="metdata_nl" valid_values="" >
 Relaxation time (hours) applied to specified meteorology.
@@ -678,13 +690,60 @@ Default: 1.0
 
 <entry id="met_srf_feedback" type="logical"  category="dyn_fv_off"
        group="metdata_nl" valid_values="" >
-if false then do not allow surface models feedbacks influence climate
+If false then do not allow surface models feedbacks influence climate
 Default: true
 </entry>
 
 <entry id="met_srf_nudge_flux" type="logical"  category="dyn_fv_off"
        group="metdata_nl" valid_values="" >
-if true nudge meteorology surface fields TAUX, TAUY, SHFLX, QFLX rather than force
+If true nudge meteorology surface fields TAUX, TAUY, SHFLX, QFLX rather than force
+Default: true
+</entry>
+
+<entry id="met_srf_land" type="logical"  category="dyn_fv_off"
+       group="metdata_nl" valid_values="" >
+If true nudge meteorology surface fields over the land. If false, then fields are
+still nudged over the ocean.
+Default: true
+</entry>
+
+<entry id="met_srf_land_scale" type="logical"  category="dyn_fv_off"
+       group="metdata_nl" valid_values="" >
+If met_srf_land is false, then determines whether to nudge proportional to the non-land
+fraction (i.e. 1 - land fraction) (true), or to nudge everywhere except where land
+fraction is 1 (false).
+Default: false
+</entry>
+
+<entry id="met_srf_rad" type="logical"  category="dyn_fv_off"
+       group="metdata_nl" valid_values="" >
+If true nudge meteorology surface fields from radiation. These include ASDIR, ASDIF,
+ALDIR, ALDIF, and LWUP.
+Default: false
+</entry>
+
+<entry id="met_srf_refs" type="logical"  category="dyn_fv_off"
+       group="metdata_nl" valid_values="" >
+If true nudge meteorology reference surface fields. These include TSREF, QREF, and U10.
+Default: false
+</entry>
+
+<entry id="met_srf_sst" type="logical"  category="dyn_fv_off"
+       group="metdata_nl" valid_values="" >
+If true nudge meteorology reference for sea surface temperature and sea ice fraction
+(SST and SEAICEFRAC).
+Default: false
+</entry>
+
+<entry id="met_srf_tau" type="logical"  category="dyn_fv_off"
+       group="metdata_nl" valid_values="" >
+If true nudge surface sheer stress (TAUX, TAUY) from the meteorology.
+Default: true
+</entry>
+
+<entry id="met_nudge_temp" type="logical"  category="dyn_fv_off"
+       group="metdata_nl" valid_values="" >
+If true nudge atmospheric temperature (T) from the meteorology.
 Default: true
 </entry>
 
@@ -2946,6 +3005,13 @@ Default: .false.
        group="clubb_params_nl" valid_values="" >
 Apply liquid supersaturation adjustment code
 Default: false
+</entry>
+
+<entry id="clubb_do_energyfix" type="logical"  category="conv"
+       group="clubb_params_nl" valid_values="" >
+Apply adjustments to dry static energy so that CLUBB conserves
+energy.
+Default: true
 </entry>
 
 <!-- CARMA Sectional Microphysics -->

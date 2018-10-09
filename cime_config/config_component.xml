@@ -143,9 +143,10 @@
       <value compset="_CAM40%WCMD_">-chem waccm_mad</value>
 
       <value compset="SDYN_CAM">-offline_dyn</value>
-      <value compset="SDYN_CAM.*%CC">-nlev 56</value>
-      <value compset="SDYN_CAM.*%WC">-nlev 88</value>
-      <value compset="SDYN_CAM.*%WX">-nlev 145</value>
+      <value compset="SDYN_CAM\d0_CLM">-nlev 56</value>
+      <value compset="SDYN_CAM\d0%CC">-nlev 56</value>
+      <value compset="SDYN_CAM\d0%WC">-nlev 88</value>
+      <value compset="SDYN_CAM\d0%WX">-nlev 145</value>
 
       <!-- Simple models -->
       <value compset="_CAM%HS94" grid="(%ne[0-9])|(%[0-9.]+x)">-analytic_ic</value>
@@ -242,6 +243,7 @@
       <value compset="SDYN_CAM60%WCMD"   >sd_waccm_ma_cam6</value>
       <value compset="SDYN_CAM40%WCMD"   >sd_waccm_ma_cam4</value>
       <value compset="SDYN_CAM60%CCTS"   >sd_trop_strat_vbs_cam6</value>
+      <value compset="SDYN_CAM60_CLM50"  >sd_cam6</value>
 
       <value compset="2000_CAM%DABIP04"  >dabi_p2004</value>
       <value compset="CAM%HS94"          >held_suarez_1994</value>

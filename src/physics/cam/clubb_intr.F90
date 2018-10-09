@@ -122,6 +122,7 @@ module clubb_intr
   logical            :: do_expldiff
   logical            :: clubb_do_adv
   logical            :: clubb_do_liqsupersat = .false.
+  logical            :: clubb_do_energyfix   = .true.
   logical            :: history_budget
 
   logical            :: clubb_l_lscale_plume_centered
@@ -420,7 +421,7 @@ end subroutine clubb_init_cnst
                                clubb_c_K10, clubb_c_K10h, clubb_beta, clubb_C2rt, clubb_C2thl, &
 			       clubb_C2rtthl, clubb_C8, clubb_C7, clubb_C7b, clubb_Skw_denom_coef, &
                                clubb_lambda0_stability_coef, clubb_l_lscale_plume_centered, &
-                               clubb_l_use_ice_latent, clubb_do_liqsupersat
+                               clubb_l_use_ice_latent, clubb_do_liqsupersat, clubb_do_energyfix
 
     !----- Begin Code -----
 
@@ -528,6 +529,8 @@ end subroutine clubb_init_cnst
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_use_ice_latent")
     call mpi_bcast(clubb_do_liqsupersat,         1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_do_liqsupersat")
+    call mpi_bcast(clubb_do_energyfix,         1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_do_energyfix")
 
     !  Overwrite defaults if they are true
     if (clubb_history) l_stats = .true.
@@ -2065,23 +2068,23 @@ end subroutine clubb_init_cnst
       apply_to_surface = .false.
       if (tw_upper_diss .lt. 0._r8) then
         do k=clubbtop+1,pver
-	  rtm_test = (rtm(i,k) + tw_upper_diss*gravit) - rcm(i,k)
+          rtm_test = (rtm(i,k) + tw_upper_diss*gravit) - rcm(i,k)
           if (rtm_test .lt. 0._r8) then
-	    apply_to_surface = .true.
-	  endif
+            apply_to_surface = .true.
+          endif
         enddo
       endif
       
       if (apply_to_surface) then
         tw_upper_diss = (tw_upper_a - tw_upper_b)/(state1%pint(i,pverp)-state1%pint(i,pver))
-	se_upper_diss = (se_upper_a - se_upper_b)/(state1%pint(i,pverp)-state1%pint(i,pver))
+        se_upper_diss = (se_upper_a - se_upper_b)/(state1%pint(i,pverp)-state1%pint(i,pver))
         rtm(i,pver) = rtm(i,pver) + tw_upper_diss*gravit
-	if (apply_to_heat) clubb_s(pver) = clubb_s(pver) + se_upper_diss*gravit
+        if (apply_to_heat) clubb_s(pver) = clubb_s(pver) + se_upper_diss*gravit
       else
         ! Apply the disbalances above to layers where CLUBB is active
         do k=clubbtop+1,pver
           rtm(i,k) = rtm(i,k) + tw_upper_diss*gravit
-	  if (apply_to_heat) clubb_s(k) = clubb_s(k) + se_upper_diss*gravit
+        if (apply_to_heat) clubb_s(k) = clubb_s(k) + se_upper_diss*gravit
         enddo
       endif      
       
@@ -2130,9 +2133,15 @@ end subroutine clubb_init_cnst
       ! Fix the total energy coming out of CLUBB so it achieves enery conservation.
       ! Apply this fixer throughout the column evenly, but only at layers where 
       ! CLUBB is active.
-      do k=clubbtop+1,pver
-         clubb_s(k) = clubb_s(k) - se_dis*gravit
-      enddo           
+      !
+      ! NOTE: The energy fixer seems to cause the climate to change significantly
+      ! when using specified dynamics, so allow this to be turned off via a namelist
+      ! variable.
+      if (clubb_do_energyfix) then
+        do k=clubbtop+1,pver
+           clubb_s(k) = clubb_s(k) - se_dis*gravit
+        enddo
+      endif           
 
       !  Now compute the tendencies of CLUBB to CAM, note that pverp is the ghost point
       !  for all variables and therefore is never called in this loop

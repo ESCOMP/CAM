@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<namelist_defaults>
+
+  <ncdata dyn="fv"  hgrid="0.9x1.25">atm/cam/inic/fv/f.e20.FCSD.f09_f09_mg17.cesm2.1-exp002.001.cam.i.2005-01-01-00000_c180801.nc</ncdata>
+  <bnd_topo hgrid="0.9x1.25">atm/cam/met/MERRA2/0.9x1.25/fv_0.9x1.25_nc3000_Nsw042_Nrs008_Co060_Fi001_ZR_sgh30_24km_GRNL_MERRA2_c171218.nc</bnd_topo>
+
+  <met_rlx_time>50.</met_rlx_time>
+  <met_fix_mass>.true.</met_fix_mass>
+  <met_data_file dyn="fv"  hgrid="0.9x1.25">'2005/MERRA2_0.9x1.25_20050101.nc'</met_data_file>
+  <met_data_path dyn="fv"  hgrid="0.9x1.25">atm/cam/met/MERRA2/0.9x1.25</met_data_path>
+  <met_filenames_list dyn="fv"  hgrid="0.9x1.25">atm/cam/met/MERRA2/0.9x1.25/filenames_1975-2017_c180430.txt</met_filenames_list>
+
+  <solar_irrad_data_file    >   'atm/cam/solar/SolarForcingCMIP6_18491230-22991231_c171031.nc'</solar_irrad_data_file>
+
+  <tracer_cnst_datapath     >   'atm/cam/tracer_cnst'                                        </tracer_cnst_datapath>
+  <tracer_cnst_file         >   'tracer_cnst_halons_3D_L70_1849-2015_CMIP6ensAvg_c180927.nc' </tracer_cnst_file>
+  <tracer_cnst_specifier    >   'O3','OH','NO3','HO2'                                        </tracer_cnst_specifier>
+  <tracer_cnst_type         >   'INTERP_MISSING_MONTHS'                                      </tracer_cnst_type>
+  <tracer_cnst_filelist     >   ''                                                           </tracer_cnst_filelist>
+
+  <prescribed_ozone_datapath>   'atm/cam/ozone_strataero'                                                    </prescribed_ozone_datapath>
+  <prescribed_ozone_file    >   'ozone_strataero_WACCM_L70_zm5day_18500101-20150103_CMIP6ensAvg_c180923.nc'  </prescribed_ozone_file>
+  <prescribed_ozone_name    >   'O3'                                                                         </prescribed_ozone_name>
+  <prescribed_ozone_type    >   'SERIAL'                                                                     </prescribed_ozone_type>
+
+  <srf_emis_type            >    INTERP_MISSING_MONTHS  </srf_emis_type>
+  <ext_frc_type             >    INTERP_MISSING_MONTHS  </ext_frc_type>
+
+  <prescribed_strataero_type    >     'SERIAL'                                                                     </prescribed_strataero_type>
+  <prescribed_strataero_datapath>     'atm/cam/ozone_strataero'                                                    </prescribed_strataero_datapath>
+  <prescribed_strataero_file>         'ozone_strataero_WACCM_L70_zm5day_18500101-20150103_CMIP6ensAvg_c180923.nc'  </prescribed_strataero_file> 
+  <prescribed_strataero_use_chemtrop> .true.                                                                       </prescribed_strataero_use_chemtrop>
+
+  <scenario_ghg            >    'CHEM_LBC_FILE'   </scenario_ghg>
+  <flbc_file>atm/waccm/lb/LBC_1750-2015_CMIP6_GlobAnnAvg_c180926.nc</flbc_file>
+  <flbc_type>'SERIAL'</flbc_type>
+  <flbc_list>'CO2','CH4','N2O','CFC11eq','CFC12'</flbc_list>
+
+</namelist_defaults>

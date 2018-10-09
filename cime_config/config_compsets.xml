@@ -218,6 +218,11 @@
   </compset>
 
   <compset>
+    <alias>FSD</alias>
+    <lname>SDYN_CAM60_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
     <alias>FMOZ</alias>
     <lname>2000_CAM40%TMOZ_CLM45%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV</lname>
   </compset>
