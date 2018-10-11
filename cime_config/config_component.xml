@@ -192,7 +192,6 @@
 
       <value compset="2000_CAM60"        >2000_cam6</value>
       <value compset="2000_CAM60%WCTS"   >waccm_tsmlt_2000_cam6</value>
-      <value compset="2010_CAM60%WCTS"   >waccm_tsmlt_2010_cam6</value>
       <value compset="2000_CAM60%WCCM"   >waccm_ma_2000_cam6</value>
       <value compset="2000_CAM60%CCTS"   >2000_trop_strat_vbs_cam6</value>
 
@@ -205,6 +204,7 @@
 
       <value compset="2010_CAM60"        >2010_cam6</value>
       <value compset="2010_CAM60%CCTS"   >2010_trop_strat_vbs_cam6</value>
+      <value compset="2010_CAM60%WCTS"   >waccm_tsmlt_2010_cam6</value>
 
       <value compset="AMIP_CAM50"        >1850-2005_cam5</value>
       <value compset="AMIP_CAM40"        >1850-2005_cam4</value>
@@ -277,12 +277,13 @@
       <value compset="_CAM60%4xCO2"> co2vmr=1138.8e-6  </value>
       <value compset="_CAM60%WCTS%4xCO2"> flbc_cycle_yr=1  </value>
       <value compset="_CAM60%WCTS%4xCO2"> flbc_file='$DIN_LOC_ROOT/atm/waccm/lb/LBC_CMIP6abrupt4xCO2_cyclicalYear1_0p5degLat_c180929.nc'  </value>
-      <value compset="_CAM60%WCTS%4xCO2"> ncdata='atm/waccm/ic/b.e21.BW1850.f09_g17.CMIP6-piControl.001.cam.i.0070-01-01.abrupt4xCO2_c181003.nc'  </value>
+      <value compset="_CAM60%WCTS%4xCO2"> ncdata='$DIN_LOC_ROOT/atm/waccm/ic/b.e21.BW1850.f09_g17.CMIP6-piControl.001.cam.i.0070-01-01.abrupt4xCO2_c181003.nc'  </value>
       <value compset="_CAM60%WCTS%4xCO2"> nlte_limit_co2=.true.  </value>
       <value compset="_CAM60%1PCT"> flbc_type='SERIAL'</value>
       <value compset="_CAM60%1PCT"> flbc_file='$DIN_LOC_ROOT/atm/waccm/lb/LBC_CMIP6_1pctCO2_y1-165_GlobAnnAvg_0p5degLat_c180929.nc'</value>
       <value compset="_CAM60%1PCT"> flbc_list='CO2','CH4','N2O','CFC11eq','CFC12' </value>
       <value compset="_CAM60%WCTS%1PCT"> flbc_type='SERIAL' </value>
+      <value compset="_CAM60%WCTS%1PCT"> flbc_cycle_yr=-1 </value>
       <value compset="_CAM60%WCTS%1PCT"> flbc_file='$DIN_LOC_ROOT/atm/waccm/lb/LBC_CMIP6_1pctCO2ramp_y1-165_0p5degLat_c180930.nc'</value>
       <value compset="_CAM60%WCTS%1PCT"> nlte_limit_co2=.true.</value>
       <value compset="_BGC%BDRD"> co2_cycle_rad_passive=.true. </value>

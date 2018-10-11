@@ -1427,7 +1427,13 @@ implicit none
                write(errmsg,fmt='(a,i12,2(i6),g12.4,2(f8.2),g12.4)') &
                      'nlte_fomichev_calc: CO2 has exceeded the limit: nstep,i,k,press(Pa),lon,lat,vco2(vmr)=',&
                                      nstep,i,kinv, pmid(i,kinv), londeg, latdeg, vco2(i,k)
-               write(iulog,*) trim(errmsg)
+
+!                 ---------------------
+!   The following error message was disabled at Mike Mill's request as it
+!   was causing issues when run in the 4xCO2 runs
+!               write(iulog,*) trim(errmsg)
+!                 ---------------------
+
                if ((.not.apply_co2_limit) .and. (kinv<k1mb)) then
                    call endrun(trim(errmsg))
                endif
