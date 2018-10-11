@@ -54,6 +54,298 @@
           that have only a small number of allowed values.
                                                                         -->
 
+<!-- Nudging Parameters -->
+
+<entry id="Nudge_Model" type="logical" category="nudging"
+       group="nudging_nl" valid_values="" >
+       Toggle Model Nudging ON/OFF.
+
+        FORCING:
+        --------
+        Nudging tendencies are applied as a relaxation force between the current
+        model state values and target state values derived from the avalilable
+        analyses. The form of the target values is selected by the 'Nudge_Force_Opt'
+        option, the timescale of the forcing is determined from the given 
+        'Nudge_TimeScale_Opt', and the nudging strength Alpha=[0.,1.] for each 
+        variable is specified by the 'Nudge_Xcoef' values. Where X={U,V,T,Q,PS}
+ 
+               F_nudge = Alpha*((Target-Model(t_curr))/TimeScale
+ 
+        WINDOWING:
+        ----------
+        The region of applied nudging can be limited using Horizontal/Vertical 
+        window functions that are constructed using a parameterization of the 
+        Heaviside step function. 
+    
+        The Heaviside window function is the product of separate horizonal and vertical 
+        windows that are controled via 12 parameters:
+    
+            Nudge_Hwin_lat0:     Specify the horizontal center of the window in degrees. 
+            Nudge_Hwin_lon0:     The longitude must be in the range [0,360] and the 
+                                 latitude should be [-90,+90].
+            Nudge_Hwin_latWidth: Specify the lat and lon widths of the window as positive 
+            Nudge_Hwin_lonWidth: values in degrees.Setting a width to a large value (e.g. 999) 
+                                 renders the window a constant in that direction.
+            Nudge_Hwin_latDelta: Controls the sharpness of the window transition with a 
+            Nudge_Hwin_lonDelta: length in degrees. Small non-zero values yeild a step 
+                                 function while a large value yeilds a smoother transition.
+            Nudge_Hwin_Invert  : A logical flag used to invert the horizontal window function 
+                                 to get its compliment.(e.g. to nudge outside a given window).
+    
+            Nudge_Vwin_Lindex:   In the vertical, the window is specified in terms of model 
+            Nudge_Vwin_Ldelta:   level indcies. The High and Low transition levels should 
+            Nudge_Vwin_Hindex:   range from [0,(NLEV+1)]. The transition lengths are also 
+            Nudge_Vwin_Hdelta:   specified in terms of model indices. For a window function 
+                                 constant in the vertical, the Low index should be set to 0,
+                                 the High index should be set to (NLEV+1), and the transition 
+                                 lengths should be set to 0.001 
+            Nudge_Vwin_Invert  : A logical flag used to invert the vertical window function 
+                                 to get its compliment.
+       Default: FALSE
+       </entry>
+
+<entry id="Nudge_Path" type="char*256" input_pathname="abs" category="nudging"
+       group="nudging_nl" valid_values="" >
+       Full pathname of analyses data to use for nudging.
+        (e.g. '/$DIN_LOC_ROOT/atm/cam/nudging/')
+       Default: none
+       </entry>
+
+<entry id="Nudge_File_Template" type="char*80" category="nudging"
+       group="nudging_nl" valid_values="" >
+       Template for Nudging analyses file names.
+        (e.g. '%y/ERAI_ne30np4_L30.cam2.i.%y-%m-%d-%s.nc')
+       Default: none
+       </entry>
+
+<entry id="Nudge_Times_Per_Day" type="integer" category="nudging"
+       group="nudging_nl" valid_values="" >
+       Number of analyses files per day.
+        (e.g. 4 --> 6 hourly analyses)
+       Default: none
+       </entry>
+
+<entry id="Model_Times_Per_Day" type="integer" category="nudging"
+       group="nudging_nl" valid_values="" >
+       Number of time to update model data per day.
+        (e.g. 48 --> 1800 Second timestep)
+       Default: none
+       </entry>
+
+<entry id="Nudge_Beg_Year" type="integer" category="nudging"
+       group="nudging_nl" valid_values="" >
+       Year at which Nudging Begins.
+       Default: none
+       </entry>
+
+<entry id="Nudge_Beg_Month" type="integer" category="nudging"
+       group="nudging_nl" valid_values="" >
+       Month at which Nudging Begins.
+       Default: none
+       </entry>
+
+<entry id="Nudge_Beg_Day" type="integer" category="nudging"
+       group="nudging_nl" valid_values="" >
+       Day at which Nudging Begins.
+       Default: none
+       </entry>
+
+<entry id="Nudge_End_Year" type="integer" category="nudging"
+       group="nudging_nl" valid_values="" >
+       Year at which Nudging Ends.
+       Default: none
+       </entry>
+
+<entry id="Nudge_End_Month" type="integer" category="nudging"
+       group="nudging_nl" valid_values="" >
+       Month at which Nudging Ends.
+       Default: none
+       </entry>
+
+<entry id="Nudge_End_Day" type="integer" category="nudging"
+       group="nudging_nl" valid_values="" >
+       Day at which Nudging Ends.
+       Default: none
+       </entry>
+
+<entry id="Nudge_Force_Opt" type="integer" category="nudging"
+       group="nudging_nl" valid_values="" >
+       Select the form of nudging forcing, where (t'==Analysis times ; t==Model Times)
+         0 -> NEXT-OBS: Target=Anal(t'_next)                 
+         1 -> LINEAR:   Target=(F*Anal(t'_curr) +(1-F)*Anal(t'_next))
+                            F =(t'_next - t_curr )/Tdlt_Anal
+       Default: 0
+       </entry>
+
+<entry id="Nudge_TimeScale_Opt" type="integer" category="nudging"
+       group="nudging_nl" valid_values="" >
+       Select the timescale of nudging force, where (t'==Analysis times ; t==Model Times) 
+         0 -->  TimeScale = 1/Tdlt_Anal                     
+         1 -->  TimeScale = 1/(t'_next - t_curr )
+       Default: 0
+       </entry>
+
+<entry id="Nudge_Uprof" type="integer" category="nudging"
+       group="nudging_nl" valid_values="" >
+       Profile index for U nudging.
+         0 == OFF      (No Nudging of this variable)
+         1 == CONSTANT (Spatially Uniform Nudging)
+         2 == HEAVISIDE WINDOW FUNCTION
+       Default: 0
+       </entry>
+
+<entry id="Nudge_Ucoef" type="real" category="nudging"
+       group="nudging_nl" valid_values="" >
+       Normalized Coeffcient for U nudging.
+         [0.,1.] fraction of nudging tendency applied.
+       Default: 0.
+       </entry>
+
+<entry id="Nudge_Vprof" type="integer" category="nudging"
+       group="nudging_nl" valid_values="" >
+       Profile index for V nudging.
+         0 == OFF      (No Nudging of this variable)
+         1 == CONSTANT (Spatially Uniform Nudging)
+         2 == HEAVISIDE WINDOW FUNCTION
+       Default: 0
+       </entry>
+
+<entry id="Nudge_Vcoef" type="real" category="nudging"
+       group="nudging_nl" valid_values="" >
+       Normalized Coeffcient for V nudging.
+         [0.,1.] fraction of nudging tendency applied.
+       Default: 0.
+       </entry>
+
+<entry id="Nudge_Tprof" type="integer" category="nudging"
+       group="nudging_nl" valid_values="" >
+       Profile index for T nudging.
+         0 == OFF      (No Nudging of this variable)
+         1 == CONSTANT (Spatially Uniform Nudging)
+         2 == HEAVISIDE WINDOW FUNCTION
+       Default: 0
+       </entry>
+
+<entry id="Nudge_Tcoef" type="real" category="nudging"
+       group="nudging_nl" valid_values="" >
+       Normalized Coeffcient for T nudging.
+         [0.,1.] fraction of nudging tendency applied.
+       Default: 0.
+       </entry>
+
+<entry id="Nudge_Qprof" type="integer" category="nudging"
+       group="nudging_nl" valid_values="" >
+       Profile index for Q nudging.
+         0 == OFF      (No Nudging of this variable)
+         1 == CONSTANT (Spatially Uniform Nudging)
+         2 == HEAVISIDE WINDOW FUNCTION
+       Default: 0
+       </entry>
+
+<entry id="Nudge_Qcoef" type="real" category="nudging"
+       group="nudging_nl" valid_values="" >
+       Normalized Coeffcient for Q nudging.
+         [0.,1.] fraction of nudging tendency applied.
+       Default: 0.
+       </entry>
+
+<entry id="Nudge_PSprof" type="integer" category="nudging"
+       group="nudging_nl" valid_values="" >
+       Profile index for PS nudging.
+         0 == OFF      (No Nudging of this variable)
+         1 == CONSTANT (Spatially Uniform Nudging)
+         2 == HEAVISIDE WINDOW FUNCTION
+       Default: 0
+       </entry>
+
+<entry id="Nudge_PScoef" type="real" category="nudging"
+       group="nudging_nl" valid_values="" >
+       Normalized Coeffcient for PS nudging.
+         [0.,1.] fraction of nudging tendency applied.
+       Default: 0.
+       </entry>
+
+<entry id="Nudge_Hwin_lat0" type="real" category="nudging"
+       group="nudging_nl" valid_values="" >
+       LAT0 center of Horizontal Window in degrees [-90.,90.].
+       Default: none
+       </entry>
+
+<entry id="Nudge_Hwin_latWidth" type="real" category="nudging"
+       group="nudging_nl" valid_values="" >
+       Width of LAT Window in degrees.
+       Default: none
+       </entry>
+
+<entry id="Nudge_Hwin_latDelta" type="real" category="nudging"
+       group="nudging_nl" valid_values="" >
+       Width of transition which controls the steepness of window transition in latitude.
+        0. --> Step function
+       Default: none
+       </entry>
+
+<entry id="Nudge_Hwin_lon0" type="real" category="nudging"
+       group="nudging_nl" valid_values="" >
+       LON0 center of Horizontal Window in degrees [0.,360.].
+       Default: none
+       </entry>
+
+<entry id="Nudge_Hwin_lonWidth" type="real" category="nudging"
+       group="nudging_nl" valid_values="" >
+       Width of LON Window in degrees.
+       Default: none
+       </entry>
+
+<entry id="Nudge_Hwin_lonDelta" type="real" category="nudging"
+       group="nudging_nl" valid_values="" >
+       Width of transition which controls the steepness of window transition in longitude.
+        0. --> Step function
+       Default: none
+       </entry>
+
+<entry id="Nudge_Hwin_Invert" type="logical" category="nudging"
+       group="nudging_nl" valid_values="" >
+       Invert Horizontal Window Function to its Compliment.
+         TRUE  = value=0 inside the specified window, 1 outside
+         FALSE = value=1 inside the specified window, 0 outside
+       Default: FALSE
+       </entry>
+
+<entry id="Nudge_Vwin_Hindex" type="real" category="nudging"
+       group="nudging_nl" valid_values="" >
+       HIGH Level Index for Verical Window specified in terms of model level indices.
+         (e.g. For a 30 level model, Nudge_Vwin_Hindex ~ 30 )
+       Default: none
+       </entry>
+
+<entry id="Nudge_Vwin_Hdelta" type="real" category="nudging"
+       group="nudging_nl" valid_values="" >
+       Width of transition for HIGH end of Vertical Window.
+       Default: none
+       </entry>
+
+<entry id="Nudge_Vwin_Lindex" type="real" category="nudging"
+       group="nudging_nl" valid_values="" >
+       LOW Level Index for Verical Window specified in terms of model level indices.
+         (e.g. Nudge_Vwin_Lindex ~ 0 )
+       Default: none
+       </entry>
+
+<entry id="Nudge_Vwin_Ldelta" type="real" category="nudging"
+       group="nudging_nl" valid_values="" >
+       Width of transition for LOW end of Vertical Window.
+       Default: none
+       </entry>
+
+<entry id="Nudge_Vwin_Invert" type="logical" category="nudging"
+       group="nudging_nl" valid_values="" >
+       Invert Vertical Window Function to its Compliment.
+         TRUE  = value=0 inside the specified window, 1 outside
+         FALSE = value=1 inside the specified window, 0 outside
+       Default: FALSE
+       </entry>
+
+
 <!-- Aerosols: Data (CAM version) -->
 
 <entry id="bndtvaer" type="char*256" input_pathname="abs" category="aero_data_cam"
