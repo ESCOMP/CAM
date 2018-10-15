@@ -89,6 +89,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    use inic_analytic_utils, only: analytic_ic_readnl
    use rate_diags,          only: rate_diags_readnl
    use tracers,             only: tracers_readnl
+   use nudging,             only: nudging_readnl
 
    use dyn_comp,            only: dyn_readnl
    use ionosphere_interface,only: ionosphere_readnl
@@ -183,6 +184,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    call analytic_ic_readnl(nlfilename)
    call rate_diags_readnl(nlfilename)
    call scam_readnl(nlfilename, single_column, scmlat, scmlon)
+   call nudging_readnl(nlfilename)
 
    call dyn_readnl(nlfilename)
    call ionosphere_readnl(nlfilename)
