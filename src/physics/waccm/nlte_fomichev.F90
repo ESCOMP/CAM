@@ -1420,23 +1420,15 @@ implicit none
 ! (i.e. the mwair is correct), but vco2 will be limited.  Abort the run if CO2
 ! exceeds the limit at altitudes above 1 mbar unless apply_co2_limit=.true.
 
-            if (vco2(i,k)>co2_limit) then
+            if ((vco2(i,k)>co2_limit).and.(.not.apply_co2_limit).and.(kinv<k1mb)) then
                nstep = get_nstep()
                latdeg = get_rlat_p(lchnk,i)*180._r8/pi
                londeg = get_rlon_p(lchnk,i)*180._r8/pi
                write(errmsg,fmt='(a,i12,2(i6),g12.4,2(f8.2),g12.4)') &
-                     'nlte_fomichev_calc: CO2 has exceeded the limit: nstep,i,k,press(Pa),lon,lat,vco2(vmr)=',&
-                                     nstep,i,kinv, pmid(i,kinv), londeg, latdeg, vco2(i,k)
-
-!                 ---------------------
-!   The following error message was disabled at Mike Mill's request as it
-!   was causing issues when run in the 4xCO2 runs
-!               write(iulog,*) trim(errmsg)
-!                 ---------------------
-
-               if ((.not.apply_co2_limit) .and. (kinv<k1mb)) then
-                   call endrun(trim(errmsg))
-               endif
+                    'nlte_fomichev_calc: CO2 has exceeded the limit: nstep,i,k,press(Pa),lon,lat,vco2(vmr)=',&
+                    nstep,i,kinv, pmid(i,kinv), londeg, latdeg, vco2(i,k)
+               write(iulog,*) trim(errmsg)
+               call endrun(trim(errmsg))
             endif
 
 !-----------------------------------------------------------------

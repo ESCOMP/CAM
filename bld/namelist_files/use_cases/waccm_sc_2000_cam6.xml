@@ -1,0 +1,124 @@
+<?xml version="1.0"?>
+
+<namelist_defaults>
+
+<!-- Solar data -->
+<solar_irrad_data_file>atm/cam/solar/SolarForcing1995-2005avg_c160929.nc</solar_irrad_data_file>
+<solar_data_ymd>20000101</solar_data_ymd>
+<solar_data_type>FIXED</solar_data_type>
+
+<!-- Kp and F10.7 -->
+<solar_parms_data_file>atm/cam/solar/SolarForcing1995-2005avg_c160929.nc</solar_parms_data_file>
+
+<!--Species IC -->
+<ncdata dyn="fv"  hgrid="0.9x1.25">atm/waccm/ic/f.e21.FWsc2000climo.test.001.cam.i.0002-01-01_c181017.nc</ncdata>
+<ncdata dyn="fv"  hgrid="1.9x2.5" >atm/waccm/ic/f2000.waccm-mam3_1.9x2.5_L70.cam2.i.0017-01-01.c120410.nc</ncdata>
+
+<!-- LBC, UBC Files -->
+<flbc_type>CYCLICAL</flbc_type>
+<flbc_cycle_yr>2000</flbc_cycle_yr>
+<flbc_file>atm/waccm/lb/LBC_2000climo_CMIP6_0p5degLat_c180227.nc</flbc_file>
+<flbc_list>'CO2','CH4','N2O','CFC11','CFC12','CFC11eq'</flbc_list>
+
+<!-- QBO settings -->
+<qbo_use_forcing >.true.</qbo_use_forcing>
+<qbo_use_forcing hgrid="0.9x1.25">.false.</qbo_use_forcing>
+<qbo_cyclic>.false.</qbo_cyclic>
+<qbo_forcing_file>atm/waccm/qbo/qbocoefficients_c091230.nc</qbo_forcing_file>
+
+<!-- upper atmos forcings -->
+<waccm_forcing_type>FIXED</waccm_forcing_type>
+<waccm_forcing_fixed_ymd>20000101</waccm_forcing_fixed_ymd>
+<waccm_forcing_file>SCWACCM_forcing_WACCM6_zm_5day_L70_1975-2014_c180216.nc</waccm_forcing_file>
+<waccm_forcing_datapath>atm/waccm/waccm_forcing</waccm_forcing_datapath>
+
+<!-- ozone data -->
+<prescribed_ozone_cycle_yr>   2000                                                      </prescribed_ozone_cycle_yr>
+<prescribed_ozone_datapath>   'atm/cam/ozone'                                           </prescribed_ozone_datapath>
+<prescribed_ozone_file    >   'ozone_strataero_CAM6chem_2000climo_zm_5day_c171004.nc'   </prescribed_ozone_file>
+<prescribed_ozone_name    >   'O3'                                                      </prescribed_ozone_name>
+<prescribed_ozone_type    >   'CYCLICAL'                                                </prescribed_ozone_type>
+
+<!-- Prescribed stratospheric aerosols -->
+<prescribed_strataero_cycle_yr    >   2000                                                      </prescribed_strataero_cycle_yr>
+<prescribed_strataero_datapath    >   'atm/cam/ozone'                                           </prescribed_strataero_datapath>
+<prescribed_strataero_file        >   'ozone_strataero_CAM6chem_2000climo_zm_5day_c171004.nc'   </prescribed_strataero_file>
+<prescribed_strataero_type        >   'CYCLICAL'                                                </prescribed_strataero_type>
+
+<!-- Prescribed oxidants for aerosol chemistry -->
+<tracer_cnst_cycle_yr >   2000                                                                  </tracer_cnst_cycle_yr>
+<tracer_cnst_datapath >   'atm/cam/tracer_cnst'                                                 </tracer_cnst_datapath>
+<tracer_cnst_file     >   'tracer_cnst_halons_3D_L70_1849-2015_CMIP6ensAvg_c180927.nc'          </tracer_cnst_file>
+<tracer_cnst_specifier>   'O3','OH','NO3','HO2','HALONS'                                        </tracer_cnst_specifier>
+<tracer_cnst_type     >   'CYCLICAL'                                                            </tracer_cnst_type>
+<tracer_cnst_filelist >   ''                                                                    </tracer_cnst_filelist>
+
+<!-- emissions -->
+
+<!-- External forcing -->
+<ext_frc_type>CYCLICAL										</ext_frc_type>
+<ext_frc_cycle_yr>2000										</ext_frc_cycle_yr>
+<ext_frc_specifier>
+         'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_num_so4_a1_anthro-ene_vertical_2000climo_0.9x1.25_c20170616.nc',
+         'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_num_a1_so4_contvolcano_vertical_2000climo_0.9x1.25_c20170724.nc',
+         'num_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_num_a2_so4_contvolcano_vertical_2000climo_0.9x1.25_c20170724.nc',
+         'SO2 ->    $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_SO2_contvolcano_vertical_2000climo_0.9x1.25_c20170322.nc',
+         'so4_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_so4_a1_anthro-ene_vertical_2000climo_0.9x1.25_c20170616.nc',
+         'so4_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_so4_a1_contvolcano_vertical_2000climo_0.9x1.25_c20170724.nc',
+         'so4_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_so4_a2_contvolcano_vertical_2000climo_0.9x1.25_c20170724.nc'
+</ext_frc_specifier>
+
+<!-- Surface emissions -->
+<srf_emis_type>CYCLICAL</srf_emis_type>
+<srf_emis_cycle_yr>2000</srf_emis_cycle_yr>
+<srf_emis_specifier> 
+         'bc_a4 ->  $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_bc_a4_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
+         'bc_a4 ->  $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_bc_a4_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+         'DMS ->    $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_DMS_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+         'DMS ->    $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_DMS_other_surface_2000climo_0.9x1.25_c20170322.nc',
+         'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_num_so4_a1_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+         'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_num_so4_a1_anthro-ag-ship_surface_2000climo_0.9x1.25_c20170616.nc',
+         'num_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_num_so4_a2_anthro-res_surface_2000climo_0.9x1.25_c20170616.nc',
+         'num_a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_num_bc_a4_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+         'num_a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_num_bc_a4_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
+         'num_a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_num_pom_a4_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
+         'num_a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_num_pom_a4_bb_surface_2000climo_0.9x1.25_c20170509.nc',
+         'pom_a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_pom_a4_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
+         'pom_a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_pom_a4_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+         'SO2 ->    $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_SO2_anthro-ag-ship-res_surface_2000climo_0.9x1.25_c20170616.nc',
+         'SO2 ->    $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_SO2_anthro-ene_surface_2000climo_0.9x1.25_c20170616.nc',
+         'SO2 ->    $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_SO2_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+         'so4_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_so4_a1_anthro-ag-ship_surface_2000climo_0.9x1.25_c20170616.nc',
+         'so4_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_so4_a1_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+         'so4_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_so4_a2_anthro-res_surface_2000climo_0.9x1.25_c20170616.nc',
+         'SOAG ->   $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_SOAGx1.5_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
+         'SOAG ->   $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_SOAGx1.5_bb_surface_2000climo_0.9x1.25_c20170322.nc',
+         'SOAG ->   $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_SOAGx1.5_biogenic_surface_2000climo_0.9x1.25_c20170322.nc'
+</srf_emis_specifier> 
+
+<!-- History Files -->
+<do_circulation_diags>.true.</do_circulation_diags>
+<history_chemistry>.true.</history_chemistry>
+
+<mfilt>             1,  30, 120, 240, 240, 480, 365,  73,  30  </mfilt>
+<nhtfrq>            0, -24,  -6,  -3,  -1,   1, -24,-120,-240  </nhtfrq>
+<avgflag_pertape> 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'I'</avgflag_pertape>
+
+<fincl1>
+  'AOA1', 'AOA2', 'CH4', 'H2O', 'N2O', 'CFC11', 'CFC12', 'CFC11STAR', 'UTGWORO', 'VTGWORO',
+  'UTGWSPEC', 'VTGWSPEC', 'BUTGWSPEC', 'AODVISstdn', 'AODVISdn', 'KVH_CLUBB', 'KVH', 'TTENDICE', 'QVTENDICE', 'QCTENDICE',
+  'NCTENDICE', 'FQTENDICE', 'MASS'
+</fincl1>
+
+<fincl7 dyn="fv">
+  'MSKtem','PS','PSL','VTHzm','UVzm','UWzm','Uzm','Vzm','THzm','Wzm','PHIS'
+</fincl7>
+
+<!-- Reduce output size by removing some variables. -->
+<fexcl1>
+ 'BTAUN', 'BTAUS', 'BTAUE', 'BTAUW', 'BTAUNET', 'BUTEND1', 'BUTEND2', 'BUTEND3', 'BUTEND4', 'BUTEND5', 'BVTGWSPEC',
+ 'MAXQ0', 'HDEPTH', 'NETDT', 'TAUN', 'TAUS', 'TAUE', 'TAUW', 'TAUGWX', 'TAUGWY', 'UTEND1', 'UTEND2', 'UTEND3', 
+ 'UTEND4', 'UTEND5', 'FRONTGF', 'FRONTGFA', 'EKGW', 'QNO', 'QRLNLTE', 'QRL_TOT', 'DUV', 'DVV', 'TTPXMLC'
+</fexcl1>
+
+</namelist_defaults>

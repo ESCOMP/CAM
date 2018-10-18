@@ -5,7 +5,7 @@
 <start_ymd>20000101</start_ymd>
 
 <!--Species IC -->
-<ncdata dyn="fv"  hgrid="1.9x2.5" >atm/waccm/ic/f.c54137.FXSD.f19_f19.001.cam.i.2000-01-01-00000_c170817.nc</ncdata>
+<ncdata dyn="fv"  hgrid="1.9x2.5" >atm/waccm/ic/f.e21.machem01_cam6_0_024.FXSD.spinup.03.cam.i.2000-01-01-00000_c181017.nc</ncdata>
 
 <lght_no_prd_factor>1.0</lght_no_prd_factor>
 
@@ -33,7 +33,7 @@
 <flbc_type>'SERIAL'</flbc_type>
 <flbc_list>
  'CCL4', 'CF2CLBR', 'CF3BR', 'CFC11', 'CFC113', 'CFC12', 'CH3BR', 'CH3CCL3', 'CH3CL', 'CH4', 'CO2', 'H2',
- 'HCFC22', 'N2O', 'CFC114', 'CFC115', 'HCFC141B', 'HCFC142B', 'CH2BR2', 'CHBR3', 'H1202', 'H2402','SF6'
+ 'HCFC22', 'N2O', 'CFC114', 'CFC115', 'HCFC141B', 'HCFC142B', 'CH2BR2', 'CHBR3', 'H2402','SF6'
 </flbc_list>
 
 <!-- Tropospheric Aerosols -->

@@ -486,7 +486,7 @@
       <machine name="cheyenne" compiler="intel" category="waccm"/>
     </machines>
   </test>
-  <test compset="FMOZ" grid="f19_f19_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s">
+  <test compset="FMOZ" grid="f19_f19_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s" supported="false">
     <machines>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
       <machine name="cheyenne" compiler="intel" category="prebeta"/>
@@ -628,25 +628,24 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FXmadHIST" grid="f19_f19_mg16" name="ERS_Lh12"   testmods="cam/outfrq9s">
+  <test compset="FXmadHIST" grid="f19_f19_mg16" name="ERS_Lh12"   testmods="cam/outfrq9s" supported="false">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prebeta"/>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
     </machines>
   </test>
-  <test compset="FXmadHIST" grid="f19_f19_mg16" name="SMS_D_Ln9"   testmods="cam/outfrq9s">
+  <test compset="FXmadHIST" grid="f19_f19_mg16" name="SMS_D_Ln9"   testmods="cam/outfrq9s" supported="false">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
     </machines>
   </test>
-  <test compset="FXmadSD" grid="f19_f19_mg16" name="ERS_Lh12"   testmods="cam/outfrq9s">
+  <test compset="FXmadSD" grid="f19_f19_mg16" name="ERS_Ln9"   testmods="cam/outfrq9s" supported="false">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
     </machines>
   </test>
-  <test compset="FXmadSD" grid="f19_f19_mg16" name="SMS_D_Ln9"   testmods="cam/outfrq9s">
+  <test compset="FXmadSD" grid="f19_f19_mg16" name="SMS_D_Ln9"   testmods="cam/outfrq9s" supported="false">
     <machines>
-      <machine name="cheyenne" compiler="intel" category="prebeta"/>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
     </machines>
     <options>
@@ -749,6 +748,15 @@
       <machine name="cheyenne" compiler="intel" category="waccm"/>
     </machines>
   </test>
+  <test compset="FWsc1850" grid="f09_f09_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="waccm"/>
+      <machine name="cheyenne" compiler="intel" category="prealpha"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
+  </test>
   <test compset="FWscHIST" grid="f09_f09_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
@@ -762,6 +770,30 @@
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
     </machines>
+  </test>
+  <test compset="FWsc2010climo" grid="f19_f19_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="waccm"/>
+      <machine name="cheyenne" compiler="intel" category="prealpha"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
+  </test>
+  <test compset="FWsc2010climo" grid="f19_f19_mg17" name="ERP_Ld3" testmods="cam/outfrq3d">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="waccm"/>
+      <machine name="cheyenne" compiler="intel" category="prebeta"/>
+    </machines>
+  </test>
+  <test compset="FWsc1850" grid="f19_f19_mg17" name="ERP_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="waccm"/>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
   </test>
   <test compset="FWscHIST" grid="f19_f19_mg17" name="ERP_Ld3" testmods="cam/outfrq3d">
     <machines>
@@ -980,7 +1012,7 @@
     </machines>
   </test>
 
-  <test compset="FMOZ" grid="f09_f09_mg17" name="ERP_Ln9" testmods="cam/outfrq9s">
+  <test compset="FMOZ" grid="f09_f09_mg17" name="ERP_Ln9" testmods="cam/outfrq9s" supported="false">
     <machines>
       <machine name="cheyenne" compiler="intel" category="test_release"/>
     </machines>

@@ -1,8 +1,9 @@
       module mo_lin_matrix
+      use chem_mods, only: veclen
       private
       public :: linmat
       contains
-      subroutine linmat01( mat, y, rxt, het_rates )
+      subroutine linmat01( avec_len, mat, y, rxt, het_rates )
 !----------------------------------------------
 ! ... linear matrix entries for implicit species
 !----------------------------------------------
@@ -12,215 +13,226 @@
 !----------------------------------------------
 ! ... dummy arguments
 !----------------------------------------------
-      real(r8), intent(in) :: y(gas_pcnst)
-      real(r8), intent(in) :: rxt(rxntot)
-      real(r8), intent(in) :: het_rates(max(1,gas_pcnst))
-      real(r8), intent(inout) :: mat(nzcnt)
-         mat(610) = -( rxt(3) + rxt(4) + het_rates(1) )
-         mat(499) = -( rxt(62) + rxt(63) + rxt(64) + rxt(75) + rxt(76) + rxt(77) &
-                 + het_rates(2) )
-         mat(230) = rxt(1) + 2.000_r8*rxt(2) + rxt(68) + rxt(69) + rxt(70) &
-                      + 2.000_r8*rxt(73) + rxt(80) + rxt(81) + rxt(82) + 2.000_r8*rxt(85)
-         mat(605) = rxt(4)
-         mat(587) = rxt(6)
-         mat(380) = rxt(8)
-         mat(30) = rxt(10)
-         mat(519) = rxt(12)
-         mat(242) = rxt(21)
-         mat(319) = rxt(24)
-         mat(11) = rxt(25)
-         mat(293) = rxt(32)
-         mat(565) = rxt(101)
-         mat(51) = rxt(278)
-         mat(58) = rxt(285)
-         mat(568) = -( rxt(101) + rxt(105)*y(7) + rxt(106)*y(7) + rxt(108)*y(44) &
-                      + rxt(109)*y(45) + rxt(110)*y(46) + rxt(111)*y(54) + rxt(112)*y(55) &
-                      + rxt(113)*y(47) + rxt(114)*y(52) + rxt(115)*y(53) + rxt(116)*y(48) &
-                      + rxt(117)*y(43) + rxt(118)*y(51) + rxt(119)*y(50) + rxt(120)*y(56) &
-                      + rxt(121)*y(57) + rxt(122)*y(58) + rxt(123)*y(59) + rxt(126)*y(15) &
-                      + rxt(127)*y(15) + rxt(128)*y(15) + het_rates(3) )
-         mat(231) = rxt(1)
-         mat(608) = rxt(3)
-         mat(244) = rxt(20)
-         mat(225) = -( rxt(1) + rxt(2) + rxt(66) + rxt(68) + rxt(69) + rxt(70) + rxt(73) &
-                      + rxt(78) + rxt(80) + rxt(81) + rxt(82) + rxt(85) + het_rates(4) )
-         mat(596) = rxt(4)
-         mat(509) = rxt(13)
-         mat(8) = rxt(96)
-         mat(5) = rxt(99) + rxt(100)
-         mat(555) = rxt(106)*y(7)
-         mat(7) = -( rxt(93) + rxt(96) + rxt(95)*y(64) + het_rates(5) )
-         mat(4) = -( rxt(99) + rxt(100) + het_rates(6) )
-         mat(594) = rxt(3)
-         mat(6) = rxt(93) + rxt(95)*y(64)
-         mat(267) = -( het_rates(20) )
-         mat(251) = rxt(18)
-         mat(238) = rxt(20)
-         mat(558) = rxt(128)*y(15)
-         mat(64) = -( het_rates(19) )
-         mat(246) = rxt(17) + rxt(18)
-         mat(413) = rxt(221)*y(42)
-         mat(101) = rxt(267)*y(64)
-         mat(174) = -( rxt(65) + het_rates(8) )
-         mat(575) = rxt(6)
-         mat(105) = rxt(264)
-         mat(591) = -( rxt(6) + rxt(7) + het_rates(9) )
-         mat(384) = rxt(8) + .500_r8*rxt(244)
-         mat(32) = rxt(10)
-         mat(523) = rxt(13)
-         mat(127) = rxt(274)
-         mat(52) = rxt(279)
-         mat(569) = 2.000_r8*rxt(105)*y(7)
-         mat(376) = -( rxt(8) + rxt(244) + het_rates(10) )
-         mat(29) = rxt(9) + rxt(164)
-         mat(209) = rxt(11)
-         mat(515) = rxt(12)
-         mat(42) = rxt(15) + rxt(173)
-         mat(197) = rxt(30)
-         mat(73) = rxt(36)
-         mat(459) = -( rxt(222)*y(42) + rxt(223)*y(49) + rxt(224)*y(47) + rxt(225)*y(43) &
-                      + rxt(227)*y(52) + rxt(228)*y(53) + rxt(229)*y(59) + rxt(230)*y(58) &
-                      + rxt(233)*y(15) + het_rates(22) )
-         mat(210) = rxt(11)
-         mat(44) = rxt(14)
-         mat(37) = rxt(16)
-         mat(241) = rxt(19)
-         mat(80) = 2.000_r8*rxt(22)
-         mat(188) = rxt(27)
-         mat(117) = rxt(33)
-         mat(379) = .500_r8*rxt(244)
-         mat(564) = rxt(126)*y(15)
-         mat(520) = -( rxt(12) + rxt(13) + rxt(243) + het_rates(11) )
-         mat(31) = rxt(9) + rxt(10) + rxt(164)
-         mat(45) = rxt(14)
-         mat(201) = rxt(29)
-         mat(75) = rxt(35)
-         mat(205) = -( rxt(11) + het_rates(12) )
-         mat(28) = 2.000_r8*rxt(242) + 2.000_r8*rxt(246) + 2.000_r8*rxt(252) &
-                      + 2.000_r8*rxt(257)
-         mat(508) = rxt(243)
-         mat(368) = .500_r8*rxt(244)
-         mat(194) = rxt(247) + rxt(253) + rxt(258)
-         mat(70) = rxt(248) + rxt(256) + rxt(259)
-         mat(39) = -( rxt(14) + rxt(15) + rxt(173) + het_rates(13) )
-         mat(27) = -( rxt(9) + rxt(10) + rxt(164) + rxt(242) + rxt(246) + rxt(252) &
-                      + rxt(257) + het_rates(14) )
-         mat(630) = -( het_rates(16) )
-         mat(571) = rxt(126)*y(15)
-         mat(435) = rxt(180)*y(15)
-         mat(161) = rxt(219)*y(15)
-         mat(466) = rxt(233)*y(15)
-         mat(33) = -( rxt(16) + het_rates(17) )
-         mat(250) = -( rxt(17) + rxt(18) + het_rates(18) )
-         mat(35) = rxt(16)
-         mat(557) = rxt(127)*y(15) + rxt(128)*y(15)
-         mat(329) = -( het_rates(21) )
-         mat(36) = rxt(16)
-         mat(252) = 2.000_r8*rxt(17)
-         mat(239) = rxt(19) + 2.000_r8*rxt(21)
-         mat(536) = rxt(28)
-         mat(164) = rxt(34)
-         mat(26) = rxt(57)
-         mat(559) = rxt(127)*y(15)
-         mat(402) = -( rxt(245) + het_rates(23) )
-         mat(43) = rxt(15) + rxt(173)
-         mat(562) = rxt(127)*y(15)
-         mat(426) = rxt(221)*y(42) + rxt(226)*y(43)
-         mat(457) = rxt(222)*y(42) + rxt(225)*y(43)
-         mat(76) = -( rxt(22) + het_rates(24) )
-         mat(389) = .500_r8*rxt(245)
-         mat(237) = -( rxt(19) + rxt(20) + rxt(21) + het_rates(74) )
-         mat(449) = rxt(222)*y(42) + rxt(223)*y(49) + rxt(224)*y(47) + rxt(225)*y(43) &
-                      + rxt(229)*y(59) + rxt(233)*y(15)
-         mat(427) = -( rxt(180)*y(15) + rxt(221)*y(42) + rxt(226)*y(43) + rxt(231)*y(59) &
-                      + rxt(232)*y(58) + het_rates(28) )
-         mat(16) = 2.000_r8*rxt(23)
-         mat(317) = rxt(24)
-         mat(3) = 2.000_r8*rxt(26)
-         mat(187) = rxt(27)
-         mat(540) = rxt(28)
-         mat(198) = rxt(29)
-         mat(23) = rxt(31)
-         mat(19) = rxt(56)
-         mat(563) = 2.000_r8*rxt(108)*y(44) + 2.000_r8*rxt(109)*y(45) &
-                      + 2.000_r8*rxt(110)*y(46) + 2.000_r8*rxt(111)*y(54) + rxt(112)*y(55) &
-                      + rxt(113)*y(47) + rxt(114)*y(52) + rxt(115)*y(53) &
-                      + 4.000_r8*rxt(116)*y(48) + rxt(118)*y(51)
-         mat(458) = rxt(222)*y(42) + 3.000_r8*rxt(223)*y(49) + rxt(224)*y(47) &
-                      + rxt(227)*y(52) + rxt(228)*y(53)
-         mat(15) = -( rxt(23) + het_rates(29) )
-         mat(312) = -( rxt(24) + het_rates(30) )
-         mat(10) = rxt(25)
-         mat(196) = rxt(30)
-         mat(2) = 2.000_r8*rxt(192)
-         mat(9) = -( rxt(25) + het_rates(31) )
-         mat(1) = -( rxt(26) + rxt(192) + het_rates(32) )
-         mat(544) = -( rxt(28) + het_rates(33) )
-         mat(431) = rxt(180)*y(15) + 2.000_r8*rxt(221)*y(42) + rxt(226)*y(43) &
-                      + rxt(231)*y(59) + rxt(232)*y(58)
-         mat(184) = -( rxt(27) + het_rates(34) )
-         mat(192) = rxt(247) + rxt(253) + rxt(258)
-         mat(193) = -( rxt(29) + rxt(30) + rxt(247) + rxt(253) + rxt(258) + het_rates(35) &
-       )
-         mat(21) = -( rxt(31) + het_rates(36) )
-         mat(350) = -( het_rates(37) )
-         mat(22) = rxt(31)
-         mat(288) = rxt(32)
-         mat(115) = rxt(33)
-         mat(165) = rxt(34)
-         mat(72) = rxt(35)
-         mat(560) = rxt(117)*y(43) + rxt(118)*y(51) + rxt(119)*y(50) &
-                      + 2.000_r8*rxt(120)*y(56) + 2.000_r8*rxt(121)*y(57) &
-                      + 3.000_r8*rxt(122)*y(58) + 2.000_r8*rxt(123)*y(59)
-         mat(455) = rxt(225)*y(43) + 2.000_r8*rxt(229)*y(59) + 3.000_r8*rxt(230)*y(58)
-         mat(424) = rxt(226)*y(43) + 2.000_r8*rxt(231)*y(59) + 3.000_r8*rxt(232)*y(58)
-         mat(285) = -( rxt(32) + het_rates(38) )
-         mat(71) = rxt(36)
-         mat(162) = -( rxt(34) + het_rates(39) )
-         mat(112) = -( rxt(33) + het_rates(40) )
-         mat(69) = rxt(248) + rxt(256) + rxt(259)
-         mat(68) = -( rxt(35) + rxt(36) + rxt(248) + rxt(256) + rxt(259) + het_rates(41) &
-       )
-         mat(91) = -( het_rates(65) )
-         mat(49) = rxt(278)
-         mat(54) = rxt(285)
-         mat(120) = -( rxt(274) + het_rates(66) )
-         mat(221) = rxt(66) + rxt(78)
-         mat(103) = rxt(267)*y(64)
-         mat(83) = -( het_rates(67) )
-         mat(169) = rxt(65)
-         mat(48) = rxt(279)
-         mat(102) = -( rxt(264) + rxt(267)*y(64) + het_rates(68) )
-         mat(477) = rxt(62) + rxt(75)
-         mat(220) = rxt(68) + rxt(80)
-         mat(50) = rxt(287)
-         mat(55) = rxt(289)
-         mat(129) = -( het_rates(69) )
-         mat(573) = rxt(7)
-         mat(104) = rxt(264)
-         mat(121) = rxt(274)
-         mat(59) = -( het_rates(71) )
-         mat(144) = -( het_rates(70) )
-         mat(574) = rxt(7)
-         mat(481) = rxt(62) + rxt(63) + rxt(64) + rxt(75) + rxt(76) + rxt(77)
-         mat(173) = rxt(65)
-         mat(223) = rxt(66) + rxt(68) + rxt(69) + rxt(70) + rxt(78) + rxt(80) + rxt(81) &
-                      + rxt(82)
-         mat(46) = -( rxt(278) + rxt(279) + rxt(287) + rxt(288) + het_rates(72) )
-         mat(469) = rxt(64) + rxt(77)
-         mat(215) = rxt(70) + rxt(82)
-         mat(53) = -( rxt(285) + rxt(289) + het_rates(73) )
-         mat(470) = rxt(63) + rxt(76)
-         mat(216) = rxt(69) + rxt(81)
-         mat(47) = rxt(288)
-         mat(12) = -( rxt(55) + het_rates(60) )
-         mat(550) = rxt(109)*y(45) + rxt(110)*y(46) + 2.000_r8*rxt(111)*y(54) &
-                      + 2.000_r8*rxt(112)*y(55) + rxt(113)*y(47) + rxt(115)*y(53) &
-                      + rxt(118)*y(51) + rxt(119)*y(50) + rxt(120)*y(56) &
-                      + 2.000_r8*rxt(121)*y(57)
-         mat(436) = rxt(224)*y(47) + rxt(228)*y(53)
+      integer, intent(in) :: avec_len
+      real(r8), intent(in) :: y(veclen,gas_pcnst)
+      real(r8), intent(in) :: rxt(veclen,rxntot)
+      real(r8), intent(in) :: het_rates(veclen,gas_pcnst)
+      real(r8), intent(inout) :: mat(veclen,nzcnt)
+!----------------------------------------------
+! ... local variables
+!----------------------------------------------
+      integer :: k
+      do k = 1,avec_len
+         mat(k,21) = -( rxt(k,26) + het_rates(k,1) )
+         mat(k,502) = -( rxt(k,27) + het_rates(k,2) )
+         mat(k,69) = rxt(k,28)
+         mat(k,64) = -( rxt(k,28) + rxt(k,29) + rxt(k,248) + rxt(k,251) + rxt(k,256) &
+                 + het_rates(k,3) )
+         mat(k,272) = -( rxt(k,20) + rxt(k,21) + het_rates(k,14) )
+         mat(k,35) = rxt(k,22)
+         mat(k,430) = rxt(k,239)*y(k,20) + rxt(k,240)*y(k,20)
+         mat(k,478) = -( het_rates(k,18) )
+         mat(k,338) = rxt(k,151)*y(k,20)
+         mat(k,158) = rxt(k,207)*y(k,20)
+         mat(k,532) = rxt(k,236)*y(k,20)
+         mat(k,439) = rxt(k,238)*y(k,20)
+         mat(k,33) = -( rxt(k,22) + het_rates(k,19) )
+         mat(k,15) = -( rxt(k,43) + het_rates(k,22) )
+         mat(k,1) = -( rxt(k,44) + rxt(k,185) + het_rates(k,23) )
+         mat(k,359) = -( rxt(k,45) + het_rates(k,24) )
+         mat(k,199) = rxt(k,47)
+         mat(k,8) = rxt(k,59)
+         mat(k,3) = 2.000_r8*rxt(k,185)
+         mat(k,194) = -( rxt(k,46) + rxt(k,47) + rxt(k,250) + rxt(k,255) + rxt(k,261) &
+                 + het_rates(k,25) )
+         mat(k,72) = -( het_rates(k,27) )
+         mat(k,267) = rxt(k,20) + rxt(k,21)
+         mat(k,321) = rxt(k,218)*y(k,17)
+         mat(k,101) = rxt(k,278)*y(k,28)
+         mat(k,4) = -( rxt(k,48) + het_rates(k,29) )
+         mat(k,421) = rxt(k,176)*y(k,6) + rxt(k,178)*y(k,9) + 2.000_r8*rxt(k,179)*y(k,10) &
+                      + 2.000_r8*rxt(k,180)*y(k,11) + rxt(k,181)*y(k,12) &
+                      + rxt(k,202)*y(k,7) + 2.000_r8*rxt(k,204)*y(k,34) &
+                      + rxt(k,228)*y(k,38) + rxt(k,229)*y(k,39)
+         mat(k,508) = rxt(k,223)*y(k,38) + rxt(k,224)*y(k,39)
+         mat(k,17) = -( rxt(k,49) + het_rates(k,30) )
+         mat(k,423) = rxt(k,177)*y(k,8) + rxt(k,178)*y(k,9) + rxt(k,227)*y(k,37)
+         mat(k,509) = rxt(k,222)*y(k,37)
+         mat(k,154) = -( rxt(k,207)*y(k,20) + het_rates(k,31) )
+         mat(k,5) = 2.000_r8*rxt(k,48)
+         mat(k,18) = rxt(k,49)
+         mat(k,25) = rxt(k,56)
+         mat(k,424) = rxt(k,180)*y(k,11) + rxt(k,202)*y(k,7)
+         mat(k,288) = -( het_rates(k,32) )
+         mat(k,239) = 2.000_r8*rxt(k,2) + rxt(k,3)
+         mat(k,273) = 2.000_r8*rxt(k,20)
+         mat(k,36) = rxt(k,22)
+         mat(k,186) = rxt(k,51)
+         mat(k,255) = rxt(k,55)
+         mat(k,26) = rxt(k,56)
+         mat(k,431) = rxt(k,239)*y(k,20)
+         mat(k,617) = -( het_rates(k,33) )
+         mat(k,246) = rxt(k,1)
+         mat(k,285) = rxt(k,21)
+         mat(k,444) = rxt(k,240)*y(k,20)
+         mat(k,83) = -( rxt(k,4) + het_rates(k,35) )
+         mat(k,373) = .500_r8*rxt(k,242)
+         mat(k,184) = -( rxt(k,51) + het_rates(k,36) )
+         mat(k,254) = -( rxt(k,55) + het_rates(k,40) )
+         mat(k,328) = rxt(k,151)*y(k,20) + rxt(k,213)*y(k,13) + rxt(k,215)*y(k,15) &
+                      + 2.000_r8*rxt(k,218)*y(k,17) + rxt(k,220)*y(k,21)
+         mat(k,24) = -( rxt(k,56) + het_rates(k,41) )
+         mat(k,153) = rxt(k,207)*y(k,20)
+         mat(k,206) = -( rxt(k,9) + het_rates(k,42) )
+         mat(k,28) = 2.000_r8*rxt(k,243) + 2.000_r8*rxt(k,246) + 2.000_r8*rxt(k,249) &
+                      + 2.000_r8*rxt(k,260)
+         mat(k,402) = .500_r8*rxt(k,244)
+         mat(k,580) = rxt(k,245)
+         mat(k,66) = rxt(k,248) + rxt(k,251) + rxt(k,256)
+         mat(k,195) = rxt(k,250) + rxt(k,255) + rxt(k,261)
+         mat(k,385) = -( rxt(k,242) + het_rates(k,43) )
+         mat(k,42) = rxt(k,11) + rxt(k,148)
+         mat(k,334) = rxt(k,215)*y(k,15) + rxt(k,218)*y(k,17)
+         mat(k,528) = rxt(k,216)*y(k,15) + rxt(k,219)*y(k,17)
+         mat(k,435) = rxt(k,239)*y(k,20)
+         mat(k,39) = -( rxt(k,10) + rxt(k,11) + rxt(k,148) + het_rates(k,44) )
+         mat(k,112) = -( rxt(k,57) + het_rates(k,45) )
+         mat(k,65) = rxt(k,248) + rxt(k,251) + rxt(k,256)
+         mat(k,177) = -( rxt(k,58) + het_rates(k,46) )
+         mat(k,193) = rxt(k,250) + rxt(k,255) + rxt(k,261)
+         mat(k,167) = -( rxt(k,62) + het_rates(k,47) )
+         mat(k,302) = rxt(k,15)
+         mat(k,105) = rxt(k,279)
+         mat(k,27) = -( rxt(k,13) + rxt(k,14) + rxt(k,149) + rxt(k,243) + rxt(k,246) &
+                      + rxt(k,249) + rxt(k,260) + het_rates(k,49) )
+         mat(k,306) = -( rxt(k,15) + rxt(k,16) + het_rates(k,50) )
+         mat(k,29) = rxt(k,14)
+         mat(k,407) = rxt(k,17) + .500_r8*rxt(k,244)
+         mat(k,585) = rxt(k,19)
+         mat(k,125) = rxt(k,276)
+         mat(k,51) = rxt(k,288)
+         mat(k,432) = 2.000_r8*rxt(k,142)*y(k,48)
+         mat(k,411) = -( rxt(k,17) + rxt(k,244) + het_rates(k,51) )
+         mat(k,209) = rxt(k,9)
+         mat(k,43) = rxt(k,11) + rxt(k,148)
+         mat(k,30) = rxt(k,13) + rxt(k,149)
+         mat(k,589) = rxt(k,18)
+         mat(k,67) = rxt(k,28)
+         mat(k,200) = rxt(k,47)
+         mat(k,596) = -( rxt(k,18) + rxt(k,19) + rxt(k,245) + het_rates(k,52) )
+         mat(k,45) = rxt(k,10)
+         mat(k,32) = rxt(k,13) + rxt(k,14) + rxt(k,149)
+         mat(k,71) = rxt(k,29)
+         mat(k,203) = rxt(k,46)
+         mat(k,574) = -( rxt(k,71) + rxt(k,72) + rxt(k,73) + rxt(k,74) + rxt(k,75) &
+                      + rxt(k,76) + het_rates(k,53) )
+         mat(k,244) = rxt(k,2)
+         mat(k,233) = 2.000_r8*rxt(k,5) + rxt(k,6) + rxt(k,77) + rxt(k,79) + rxt(k,81) &
+                      + 2.000_r8*rxt(k,82) + 2.000_r8*rxt(k,83) + rxt(k,84) + rxt(k,85) &
+                      + rxt(k,86)
+         mat(k,633) = rxt(k,8)
+         mat(k,31) = rxt(k,14)
+         mat(k,316) = rxt(k,15)
+         mat(k,417) = rxt(k,17)
+         mat(k,595) = rxt(k,18)
+         mat(k,504) = rxt(k,27)
+         mat(k,367) = rxt(k,45)
+         mat(k,9) = rxt(k,59)
+         mat(k,442) = rxt(k,91)
+         mat(k,58) = rxt(k,282)
+         mat(k,52) = rxt(k,287)
+         mat(k,226) = -( rxt(k,5) + rxt(k,6) + rxt(k,77) + rxt(k,78) + rxt(k,79) &
+                      + rxt(k,80) + rxt(k,81) + rxt(k,82) + rxt(k,83) + rxt(k,84) &
+                      + rxt(k,85) + rxt(k,86) + het_rates(k,54) )
+         mat(k,621) = rxt(k,8)
+         mat(k,581) = rxt(k,19)
+         mat(k,11) = rxt(k,87) + rxt(k,95)
+         mat(k,14) = rxt(k,88)
+         mat(k,427) = rxt(k,143)*y(k,48)
+         mat(k,636) = -( rxt(k,7) + rxt(k,8) + het_rates(k,55) )
+         mat(k,7) = -( rxt(k,59) + het_rates(k,56) )
+         mat(k,458) = -( het_rates(k,58) )
+         mat(k,23) = rxt(k,26)
+         mat(k,500) = rxt(k,27)
+         mat(k,68) = rxt(k,29)
+         mat(k,188) = rxt(k,51)
+         mat(k,116) = rxt(k,57)
+         mat(k,438) = rxt(k,176)*y(k,6) + rxt(k,202)*y(k,7) + 3.000_r8*rxt(k,203)*y(k,21) &
+                      + 2.000_r8*rxt(k,204)*y(k,34) + 2.000_r8*rxt(k,225)*y(k,13) &
+                      + rxt(k,226)*y(k,15)
+         mat(k,337) = 2.000_r8*rxt(k,213)*y(k,13) + rxt(k,215)*y(k,15) &
+                      + 3.000_r8*rxt(k,220)*y(k,21)
+         mat(k,531) = 2.000_r8*rxt(k,214)*y(k,13) + rxt(k,216)*y(k,15) &
+                      + 3.000_r8*rxt(k,221)*y(k,21)
+         mat(k,332) = -( rxt(k,151)*y(k,20) + rxt(k,213)*y(k,13) + rxt(k,215)*y(k,15) &
+                      + rxt(k,218)*y(k,17) + rxt(k,220)*y(k,21) + het_rates(k,59) )
+         mat(k,22) = rxt(k,26)
+         mat(k,16) = 2.000_r8*rxt(k,43)
+         mat(k,2) = 2.000_r8*rxt(k,44)
+         mat(k,358) = rxt(k,45)
+         mat(k,198) = rxt(k,46)
+         mat(k,19) = rxt(k,49)
+         mat(k,256) = rxt(k,55)
+         mat(k,180) = rxt(k,58)
+         mat(k,433) = 4.000_r8*rxt(k,175)*y(k,5) + rxt(k,176)*y(k,6) &
+                      + 2.000_r8*rxt(k,177)*y(k,8) + 2.000_r8*rxt(k,178)*y(k,9) &
+                      + 2.000_r8*rxt(k,179)*y(k,10) + rxt(k,180)*y(k,11) &
+                      + 2.000_r8*rxt(k,181)*y(k,12) + rxt(k,227)*y(k,37) &
+                      + rxt(k,228)*y(k,38) + rxt(k,229)*y(k,39)
+         mat(k,526) = 3.000_r8*rxt(k,217)*y(k,16) + rxt(k,219)*y(k,17) &
+                      + rxt(k,222)*y(k,37) + rxt(k,223)*y(k,38) + rxt(k,224)*y(k,39)
+         mat(k,144) = -( het_rates(k,60) )
+         mat(k,301) = rxt(k,16)
+         mat(k,166) = rxt(k,62)
+         mat(k,553) = rxt(k,71) + rxt(k,72) + rxt(k,73) + rxt(k,74) + rxt(k,75) &
+                      + rxt(k,76)
+         mat(k,224) = rxt(k,77) + rxt(k,78) + rxt(k,79) + rxt(k,80) + rxt(k,81) &
+                      + rxt(k,84) + rxt(k,85) + rxt(k,86)
+         mat(k,59) = -( het_rates(k,61) )
+         mat(k,91) = -( het_rates(k,62) )
+         mat(k,54) = rxt(k,282)
+         mat(k,49) = rxt(k,287)
+         mat(k,129) = -( het_rates(k,63) )
+         mat(k,300) = rxt(k,16)
+         mat(k,121) = rxt(k,276)
+         mat(k,104) = rxt(k,279)
+         mat(k,76) = -( het_rates(k,64) )
+         mat(k,162) = rxt(k,62)
+         mat(k,48) = rxt(k,288)
+         mat(k,437) = -( rxt(k,91) + rxt(k,142)*y(k,48) + rxt(k,143)*y(k,48) &
+                      + rxt(k,175)*y(k,5) + rxt(k,176)*y(k,6) + rxt(k,177)*y(k,8) &
+                      + rxt(k,178)*y(k,9) + rxt(k,179)*y(k,10) + rxt(k,180)*y(k,11) &
+                      + rxt(k,181)*y(k,12) + rxt(k,202)*y(k,7) + rxt(k,203)*y(k,21) &
+                      + rxt(k,204)*y(k,34) + rxt(k,225)*y(k,13) + rxt(k,226)*y(k,15) &
+                      + rxt(k,227)*y(k,37) + rxt(k,228)*y(k,38) + rxt(k,229)*y(k,39) &
+                      + rxt(k,238)*y(k,20) + rxt(k,239)*y(k,20) + rxt(k,240)*y(k,20) &
+                 + het_rates(k,65) )
+         mat(k,241) = rxt(k,1)
+         mat(k,231) = rxt(k,6)
+         mat(k,628) = rxt(k,7)
+         mat(k,10) = -( rxt(k,87) + rxt(k,95) + het_rates(k,66) )
+         mat(k,619) = rxt(k,7)
+         mat(k,12) = rxt(k,99) + rxt(k,98)*y(k,28)
+         mat(k,13) = -( rxt(k,88) + rxt(k,99) + rxt(k,98)*y(k,28) + het_rates(k,67) )
+         mat(k,120) = -( rxt(k,276) + het_rates(k,68) )
+         mat(k,222) = rxt(k,78) + rxt(k,80)
+         mat(k,103) = rxt(k,278)*y(k,28)
+         mat(k,534) = -( rxt(k,214)*y(k,13) + rxt(k,216)*y(k,15) + rxt(k,217)*y(k,16) &
+                      + rxt(k,219)*y(k,17) + rxt(k,221)*y(k,21) + rxt(k,222)*y(k,37) &
+                      + rxt(k,223)*y(k,38) + rxt(k,224)*y(k,39) + rxt(k,236)*y(k,20) &
+                 + het_rates(k,69) )
+         mat(k,243) = rxt(k,3)
+         mat(k,88) = 2.000_r8*rxt(k,4)
+         mat(k,211) = rxt(k,9)
+         mat(k,44) = rxt(k,10)
+         mat(k,38) = rxt(k,22)
+         mat(k,118) = rxt(k,57)
+         mat(k,182) = rxt(k,58)
+         mat(k,416) = .500_r8*rxt(k,244)
+         mat(k,441) = rxt(k,238)*y(k,20)
+      end do
       end subroutine linmat01
-      subroutine linmat02( mat, y, rxt, het_rates )
+      subroutine linmat02( avec_len, mat, y, rxt, het_rates )
 !----------------------------------------------
 ! ... linear matrix entries for implicit species
 !----------------------------------------------
@@ -230,22 +242,35 @@
 !----------------------------------------------
 ! ... dummy arguments
 !----------------------------------------------
-      real(r8), intent(in) :: y(gas_pcnst)
-      real(r8), intent(in) :: rxt(rxntot)
-      real(r8), intent(in) :: het_rates(max(1,gas_pcnst))
-      real(r8), intent(inout) :: mat(nzcnt)
-         mat(17) = -( rxt(56) + het_rates(61) )
-         mat(551) = rxt(108)*y(44) + rxt(110)*y(46) + rxt(114)*y(52)
-         mat(437) = rxt(227)*y(52)
-         mat(24) = -( rxt(57) + het_rates(62) )
-         mat(153) = rxt(219)*y(15)
-         mat(154) = -( rxt(219)*y(15) + het_rates(63) )
-         mat(13) = 2.000_r8*rxt(55)
-         mat(18) = rxt(56)
-         mat(25) = rxt(57)
-         mat(552) = rxt(112)*y(55) + rxt(119)*y(50)
+      integer, intent(in) :: avec_len
+      real(r8), intent(in) :: y(veclen,gas_pcnst)
+      real(r8), intent(in) :: rxt(veclen,rxntot)
+      real(r8), intent(in) :: het_rates(veclen,gas_pcnst)
+      real(r8), intent(inout) :: mat(veclen,nzcnt)
+!----------------------------------------------
+! ... local variables
+!----------------------------------------------
+      integer :: k
+      do k = 1,avec_len
+         mat(k,102) = -( rxt(k,279) + rxt(k,278)*y(k,28) + het_rates(k,70) )
+         mat(k,549) = rxt(k,71) + rxt(k,72)
+         mat(k,221) = rxt(k,79) + rxt(k,81)
+         mat(k,50) = rxt(k,263)
+         mat(k,55) = rxt(k,264)
+         mat(k,53) = -( rxt(k,264) + rxt(k,282) + het_rates(k,71) )
+         mat(k,542) = rxt(k,73) + rxt(k,75)
+         mat(k,217) = rxt(k,84) + rxt(k,86)
+         mat(k,47) = rxt(k,265)
+         mat(k,46) = -( rxt(k,263) + rxt(k,265) + rxt(k,287) + rxt(k,288) &
+                 + het_rates(k,72) )
+         mat(k,541) = rxt(k,74) + rxt(k,76)
+         mat(k,216) = rxt(k,77) + rxt(k,85)
+         mat(k,238) = -( rxt(k,1) + rxt(k,2) + rxt(k,3) + het_rates(k,73) )
+         mat(k,521) = rxt(k,214)*y(k,13) + rxt(k,216)*y(k,15) + rxt(k,217)*y(k,16) &
+                      + rxt(k,219)*y(k,17) + rxt(k,224)*y(k,39) + rxt(k,236)*y(k,20)
+      end do
       end subroutine linmat02
-      subroutine linmat( mat, y, rxt, het_rates )
+      subroutine linmat( avec_len, mat, y, rxt, het_rates )
 !----------------------------------------------
 ! ... linear matrix entries for implicit species
 !----------------------------------------------
@@ -255,11 +280,12 @@
 !----------------------------------------------
 ! ... dummy arguments
 !----------------------------------------------
-      real(r8), intent(in) :: y(gas_pcnst)
-      real(r8), intent(in) :: rxt(rxntot)
-      real(r8), intent(in) :: het_rates(max(1,gas_pcnst))
-      real(r8), intent(inout) :: mat(nzcnt)
-      call linmat01( mat, y, rxt, het_rates )
-      call linmat02( mat, y, rxt, het_rates )
+      integer, intent(in) :: avec_len
+      real(r8), intent(in) :: y(veclen,gas_pcnst)
+      real(r8), intent(in) :: rxt(veclen,rxntot)
+      real(r8), intent(in) :: het_rates(veclen,gas_pcnst)
+      real(r8), intent(inout) :: mat(veclen,nzcnt)
+      call linmat01( avec_len, mat, y, rxt, het_rates )
+      call linmat02( avec_len, mat, y, rxt, het_rates )
       end subroutine linmat
       end module mo_lin_matrix

@@ -1336,17 +1336,12 @@ end function chem_is_active
 !-----------------------------------------------------------------------
 ! get tropopause level
 !-----------------------------------------------------------------------
-    if (chem_is('super_fast_llnl') .or. chem_is('super_fast_llnl_mam3')) then
-       call tropopause_find(state, tropLev, primary=TROP_ALG_HYBSTOB, backup=TROP_ALG_CLIMATE)
+    if (.not.chem_use_chemtrop) then
+       call tropopause_find(state,tropLev)
        tropLevChem=tropLev
     else
-       if (.not.chem_use_chemtrop) then
-          call tropopause_find(state,tropLev)
-          tropLevChem=tropLev
-       else
-          call tropopause_find(state,tropLev)
-          call tropopause_findChemTrop(state, tropLevChem)
-       endif
+       call tropopause_find(state,tropLev)
+       call tropopause_findChemTrop(state, tropLevChem)
     endif
 
     tim_ndx = pbuf_old_tim_idx()

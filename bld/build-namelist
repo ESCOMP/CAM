@@ -655,17 +655,17 @@ my $prog_species = $cfg->get('prog_species');
 my $prog_ghg1    = ($chem =~ "trop_mozart" or $chem =~ "trop_strat" or $chem =~ "ghg" or $chem =~ "_sc" or $prog_species =~ "GHG");
 my $prog_ghg2    = ($chem =~ "ghg" or $chem =~ "_sc" or $prog_species =~ "GHG");
 my $ghg_chem     = ($chem =~ "ghg" or $chem =~ "_sc");
-my $aero_chem    = ($chem =~ "aero" or $chem eq 'trop_mozart' or $chem =~ 'trop_strat' or $chem =~ 'tsmlt' or $chem eq 'trop_bam');
+my $aero_chem    = ($chem =~ "aero" or $chem eq 'trop_mozart' or $chem =~ 'trop_strat' or $chem =~ 'tsmlt');
 
 my $chem_rad_passive = ($nl->get_value('chem_rad_passive') =~ /$TRUE/io);
 my $ipcc_aircraft_emis = ($nl->get_value('ipcc_aircraft_emis') =~ /$TRUE/io);
 
 my $rad_prog_ocarb = (($prog_species =~ "OC"   or $aero_chem) and !($chem_rad_passive));
 my $rad_prog_bcarb = (($prog_species =~ "BC"   or $aero_chem) and !($chem_rad_passive));
-my $rad_prog_sulf  = (($prog_species =~ "SO4"  or $aero_chem or $chem =~ "super_fast_llnl") and !($chem_rad_passive));
+my $rad_prog_sulf  = (($prog_species =~ "SO4"  or $aero_chem) and !($chem_rad_passive));
 my $rad_prog_dust  = (($prog_species =~ "DST"  or $aero_chem) and !($chem_rad_passive));
 my $rad_prog_sslt  = (($prog_species =~ "SSLT" or $aero_chem) and !($chem_rad_passive));
-my $rad_prog_ozone = (($chem =~ "mozart" or $chem =~ "waccm_ma" or $chem =~ "tsmlt" or $chem =~ "trop_strat" or $chem =~ "super_fast_llnl") and !($chem_rad_passive));
+my $rad_prog_ozone = (($chem =~ "mozart" or $chem =~ "waccm_ma" or $chem =~ "tsmlt" or $chem =~ "trop_strat") and !($chem_rad_passive));
 
 # Check for eruptive volcano emissions.  These will be radiatively active by default, but
 # only if using BAM and the camrt radiation package
@@ -1010,9 +1010,7 @@ if ($rad_prog_ozone) {
     die "ERROR: can not set ozone rad_climate specification\n";
 }
 
-if (($chem =~ /super_fast_llnl/) and !$chem_rad_passive ) {
-    $radval .= ",'N:N2O:N2O','N:prsd_ch4:CH4','N:CFC11:CFC11','N:CFC12:CFC12'";
-} elsif ((($chem =~ /waccm_ma/) or ($chem =~ /waccm_sc_mam/) or ($chem =~ /waccm_tsmlt/) or ($chem =~ /trop_strat/)) and !$chem_rad_passive ) {
+if ((($chem =~ /waccm_ma/) or ($chem =~ /waccm_sc_mam/) or ($chem =~ /waccm_tsmlt/) or ($chem =~ /trop_strat/)) and !$chem_rad_passive ) {
     $radval .= ",'A:N2O:N2O','A:CH4:CH4','N:CFC11STAR:CFC11','A:CFC12:CFC12'";
 } elsif ($prog_ghg1 and $prog_ghg2 and !$chem_rad_passive ) {
     $radval .= ",'A:N2O:N2O','A:CH4:CH4','A:CFC11:CFC11','A:CFC12:CFC12'";
@@ -2114,294 +2112,7 @@ if ($chem =~ /trop_mozart/ or $chem =~ /trop_strat/ or $chem =~ /waccm_tsmlt/) {
     }
 }
 
-# Prognostic aerosols via CAM-Chem package.
-# BAM settings
-if ($chem eq 'trop_bam') {
-
-    my %species;
-
-    # Surface emission datasets:
-    %species = ();
-    %species = ('CB1      -> ' => 'cb1_emis_bam',
-                'DMS      -> ' => 'dms_emis_bam',
-                'OC1      -> ' => 'oc1_emis_bam',
-                'SO2      -> ' => 'so2_emis_bam',
-                'SO4      -> ' => 'so4_emis_bam', );
-    my $first = 1;
-    my $pre = "";
-    my $val = "";
-    foreach my $id (sort keys %species) {
-        my $rel_filepath = get_default_value($species{$id});
-        my $abs_filepath = set_abs_filepath($rel_filepath, $inputdata_rootdir);
-        $val .= $pre . quote_string($id . $abs_filepath);
-        if ($first) {
-            $pre = ",";
-            $first = 0;
-        }
-    }
-    add_default($nl, 'srf_emis_specifier', 'val'=>$val);
-    add_default($nl, 'srf_emis_type',      'val'=>'CYCLICAL');
-
-    # Surface emission datasets:
-    %species = ();
-    %species = ('SO2      -> ' => 'so2_vrt_emis_file',
-                'SO4      -> ' => 'so4_vrt_emis_file', );
-    $first = 1;
-    $pre = "";
-    $val = "";
-    foreach my $id (sort keys %species) {
-        my $rel_filepath = get_default_value($species{$id});
-        my $abs_filepath = set_abs_filepath($rel_filepath, $inputdata_rootdir);
-        $val .= $pre . quote_string($id . $abs_filepath);
-        if ($first) {
-            $pre = ",";
-            $first = 0;
-        }
-    }
-    add_default($nl, 'ext_frc_specifier', 'val'=>$val);
-    add_default($nl, 'ext_frc_type',      'val'=>'CYCLICAL');
-
-    # Prescribed species
-    add_default($nl, 'tracer_cnst_specifier', 'val'=>"'O3','OH','NO3','HO2'");
-
-    my @files = ('tracer_cnst_datapath', 'tracer_cnst_file');
-    foreach my $file (@files) {
-        add_default($nl, $file, 'ver'=>'fixed_ox');
-    }
-    unless (defined $nl->get_value('tracer_cnst_type')) {
-        add_default($nl, 'tracer_cnst_type',    'ver'=>'fixed_ox');
-        add_default($nl, 'tracer_cnst_cycle_yr','ver'=>'fixed_ox');
-    }
-
-    add_default($nl, 'fstrat_list', 'val'=>"' '");
-    add_default($nl, 'flbc_list', 'val'=>"' '");
-
-    # Datasets
-    my @files = ( 'soil_erod_file','xs_coef_file','xs_short_file','xs_long_file', 'rsf_file', 'exo_coldens_file' );
-    foreach my $file (@files) {
-        add_default($nl, $file);
-    }
-}
-
-if ($chem eq 'super_fast_llnl') {
-    # Surface emission datasets:
-    my $val;
-    my %species;
-    %species = (
-                'CH2O     -> ' => 'ch2o_emis_file',
-                'CO       -> ' => 'co_emis_file',
-                'DMS      -> ' => 'dms_emis_file',
-                'NO       -> ' => 'nox_emis_file',
-                'SO2      -> ' => 'so2_emis_file',
-                );
-    if (! $megan_emis ) {
-      %species = ( %species,
-                'ISOP     -> ' => 'isop_emis_file',  );
-    }
-    unless (defined $nl->get_value('srf_emis_type')) {
-        add_default($nl, 'srf_emis_cycle_yr',  'val'=>'1997');
-        add_default($nl, 'srf_emis_type',  'val'=>'CYCLICAL');
-    }
-    my $first = 1; my $pre = "";
-    foreach my $id (sort keys %species) {
-        my $rel_filepath = get_default_value($species{$id});
-        my $abs_filepath = set_abs_filepath($rel_filepath, $inputdata_rootdir);
-        $val .= $pre . quote_string($id . $abs_filepath);
-        if ($first) {
-            $pre = ",";
-            $first = 0;
-        }
-    }
-    add_default($nl, 'srf_emis_specifier', 'val'=>$val);
-
-    # vertical emissions...
-    %species = ();
-    %species = ('SO2 -> ' => 'so2_vrt_emis_file',
-                'SO4 -> ' => 'so4_vrt_emis_file' );
-    add_default($nl, 'ext_frc_type', 'val'=>"'CYCLICAL'");
-
-    if ($ipcc_aircraft_emis) {
-      %species = ('SO2 -> ' => 'so2_vrt_emis_file',
-                  'SO4 -> ' => 'so4_vrt_emis_file',
-                  'NO2 -> ' => 'no2_aircraft_emis_file' );
-    }
-
-    $first = 1; $pre = ""; $val = "";
-    foreach my $id (sort keys %species) {
-        my $rel_filepath = get_default_value($species{$id});
-        my $abs_filepath = set_abs_filepath($rel_filepath, $inputdata_rootdir);
-        $val .= $pre . quote_string($id . $abs_filepath);
-        if ($first) {
-            $pre = ",";
-            $first = 0;
-        }
-    }
-    add_default($nl, 'ext_frc_specifier', 'val'=>$val);
-
-    # Species with fixed stratosphere values
-    $val = "'NO','NO2','HNO3','CO'";
-    add_default($nl, 'fstrat_list', 'val'=>$val);
-
-    # Datasets
-    my @files = ('airpl_emis_file', 'soil_erod_file', 'flbc_file', 'fstrat_file',
-                 'sulf_file', 'tuv_xsect_file', 'o2_xsect_file', 'xs_long_file', 'rsf_file',
-                 'exo_coldens_file', 'linoz_data_path', 'linoz_data_file', 'chlorine_loading_file' );
-    foreach my $file (@files) {
-        add_default($nl, $file);
-    }
-    unless (defined $nl->get_value('flbc_type')) {
-        add_default($nl, 'flbc_type',  'val'=>'CYCLICAL');
-        add_default($nl, 'flbc_cycle_yr',  'val'=>'1990');
-    }
-    unless (defined $nl->get_value('chlorine_loading_type')) {
-        add_default($nl, 'chlorine_loading_type', 'val'=>'FIXED');
-        add_default($nl, 'chlorine_loading_fixed_ymd','val'=>'19900101');
-    }
-
-    add_default($nl, 'xactive_prates', 'val'=>'.false.');
-
-    # Prescribed methane
-    my $val = "'CH4'";
-    add_default($nl, 'tracer_cnst_specifier', 'val'=>$val);
-    my @files = ( 'tracer_cnst_datapath','tracer_cnst_file', 'tracer_cnst_filelist');
-    foreach my $file (@files) {
-        add_default($nl, $file, 'ver'=>'fixed_ch4');
-    }
-    unless (defined $nl->get_value('tracer_cnst_type')) {
-        add_default($nl, 'tracer_cnst_type',    'ver'=>'fixed_ch4');
-        add_default($nl, 'tracer_cnst_cycle_yr','ver'=>'fixed_ch4');
-    }
-
-    my $val = "'prsd_ch4:CH4'";
-    add_default($nl, 'prescribed_ghg_specifier', 'val'=>$val);
-    my @files = ( 'prescribed_ghg_datapath','prescribed_ghg_file', 'prescribed_ghg_filelist');
-    foreach my $file (@files) {
-        add_default($nl, $file, 'ver'=>'fixed_ch4');
-    }
-    unless (defined $nl->get_value('prescribed_ghg_type')) {
-        add_default($nl, 'prescribed_ghg_type',    'ver'=>'fixed_ch4');
-        add_default($nl, 'prescribed_ghg_cycle_yr','ver'=>'fixed_ch4');
-    }
-}
-
 # MAM settings
-
-if ($chem eq 'super_fast_llnl_mam3') {
-
-    # Surface emission datasets:
-    my $val;
-    my %species;
-    my %verhash = ('ver'=>'mam');
-    %species = (
-                'CH2O   -> ' => 'ch2o_emis_file',
-                'CO     -> ' => 'co_emis_file',
-                'DMS    -> ' => 'dms_emis_file',
-                'NO     -> ' => 'nox_emis_file',
-                'SO2    -> ' => 'so2_emis_file',
-                'SOAG   -> ' => 'soag_emis_file',
-                'bc_a1  -> ' => 'bc_a1_emis_file',
-                'pom_a1 -> ' => 'pom_a1_emis_file',
-                'so4_a1 -> ' => 'so4_a1_emis_file',
-                'so4_a2 -> ' => 'so4_a2_emis_file',
-                'num_a1 -> ' => 'num_a1_emis_file',
-                'num_a2 -> ' => 'num_a2_emis_file',
-                );
-    if (! $megan_emis ) {
-      %species = ( %species,
-                'ISOP   -> ' => 'isop_emis_file',  );
-    }
-
-    my $first = 1; my $pre = "";
-    foreach my $id (sort keys %species) {
-        my $rel_filepath = get_default_value($species{$id}, \%verhash );
-        my $abs_filepath = set_abs_filepath($rel_filepath, $inputdata_rootdir);
-        $val .= $pre . quote_string($id . $abs_filepath);
-        if ($first) {
-            $pre = ",";
-            $first = 0;
-        }
-    }
-    add_default($nl, 'srf_emis_specifier', 'val'=>$val);
-    unless (defined $nl->get_value('srf_emis_type')) {
-        add_default($nl, 'srf_emis_type',      'val'=>'CYCLICAL');
-        add_default($nl, 'srf_emis_cycle_yr',  'val'=>2000);
-    }
-
-    # vertical emissions...
-    %species = ();
-    %species = ('SO2         -> ' => 'so2_ext_file',
-                'so4_a1      -> ' => 'so4_a1_ext_file',
-                'so4_a2      -> ' => 'so4_a2_ext_file',
-                'pom_a1      -> ' => 'pom_a1_ext_file',
-                'bc_a1       -> ' => 'bc_a1_ext_file',
-                'num_a1      -> ' => 'num_a1_ext_file',
-                'num_a2      -> ' => 'num_a2_ext_file', );
-
-    $first = 1; $pre = ""; $val = "";
-    foreach my $id (sort keys %species) {
-        my $rel_filepath = get_default_value($species{$id}, \%verhash );
-        my $abs_filepath = set_abs_filepath($rel_filepath, $inputdata_rootdir);
-        $val .= $pre . quote_string($id . $abs_filepath);
-        if ($first) {
-            $pre = ",";
-            $first = 0;
-        }
-    }
-    add_default($nl, 'ext_frc_specifier', 'val'=>$val);
-    unless (defined $nl->get_value('ext_frc_type')) {
-        add_default($nl, 'ext_frc_type', 'val'=>"'CYCLICAL'");
-        add_default($nl, 'ext_frc_cycle_yr',  'val'=>2000);
-    }
-
-    # Species with fixed stratosphere values
-    $val = "'NO','NO2','HNO3','CO'";
-    add_default($nl, 'fstrat_list', 'val'=>$val);
-
-    # Datasets
-    my @files = ('airpl_emis_file', 'soil_erod_file', 'flbc_file', 'fstrat_file',
-                 'sulf_file', 'tuv_xsect_file', 'o2_xsect_file', 'xs_long_file', 'rsf_file',
-                 'exo_coldens_file',
-                 'linoz_data_path' , 'linoz_data_file', 'chlorine_loading_file' );
-    foreach my $file (@files) {
-        add_default($nl, $file);
-    }
-    unless (defined $nl->get_value('flbc_type')) {
-        add_default($nl, 'flbc_type',  'val'=>'CYCLICAL');
-        add_default($nl, 'flbc_cycle_yr',  'val'=>'2000');
-    }
-    unless (defined $nl->get_value('linoz_data_type')) {
-        add_default($nl, 'linoz_data_type',  'val'=>'CYCLICAL');
-        add_default($nl, 'linoz_data_cycle_yr',  'val'=>'0');
-    }
-    unless (defined $nl->get_value('chlorine_loading_type')) {
-        add_default($nl, 'chlorine_loading_type',  'val'=>'FIXED');
-        add_default($nl, 'chlorine_loading_fixed_ymd',  'val'=>'20000101');
-    }
-    add_default($nl, 'xactive_prates', 'val'=>'.false.');
-
-    # Prescribed methane
-    my $val = "'CH4'";
-    add_default($nl, 'tracer_cnst_specifier', 'val'=>$val);
-    my @files = ( 'tracer_cnst_datapath','tracer_cnst_file', 'tracer_cnst_filelist');
-    foreach my $file (@files) {
-        add_default($nl, $file, 'ver'=>'fixed_ch4');
-    }
-    unless (defined $nl->get_value('tracer_cnst_type')) {
-        add_default($nl, 'tracer_cnst_type',    'ver'=>'fixed_ch4');
-        add_default($nl, 'tracer_cnst_cycle_yr','ver'=>'fixed_ch4');
-    }
-
-    my $val = "'prsd_ch4:CH4'";
-    add_default($nl, 'prescribed_ghg_specifier', 'val'=>$val);
-    my @files = ( 'prescribed_ghg_datapath','prescribed_ghg_file', 'prescribed_ghg_filelist');
-    foreach my $file (@files) {
-        add_default($nl, $file, 'ver'=>'fixed_ch4');
-    }
-    unless (defined $nl->get_value('prescribed_ghg_type')) {
-        add_default($nl, 'prescribed_ghg_type',    'ver'=>'fixed_ch4');
-        add_default($nl, 'prescribed_ghg_cycle_yr','ver'=>'fixed_ch4');
-    }
-}
 
 if ($chem eq 'trop_mam3') {
 
@@ -2873,7 +2584,7 @@ if ($chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/) {
     # Species with fixed lower boundary
     my $val = "'CCL4','CF2CLBR','CF3BR','CFC11','CFC113','CFC12','CH3BR','CH3CCL3','CH3CL','CH4','CO2'"
              .",'H2','HCFC22','N2O','CFC114','CFC115','HCFC141B','HCFC142B','CH2BR2','CHBR3','H2402'";
-    if ($chem =~ /waccm_ma/) {
+    if (chem_has_species($cfg, 'H1202')) {
       $val .= ",'H1202'";
     }
     if ($chem_has_ocs) {
@@ -3097,6 +2808,7 @@ if ($waccmx) {
     add_default($nl,'solar_wind_data_file');
   }
   add_default($nl,'ionos_xport_nsplit');  
+  add_default($nl,'steady_state_ion_elec_temp', 'val'=>'.false.');  
 }
 
 # Chemistry options

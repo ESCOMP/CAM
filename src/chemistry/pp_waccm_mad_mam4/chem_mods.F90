@@ -5,25 +5,25 @@
       use shr_kind_mod, only : r8 => shr_kind_r8
       implicit none
       save
-      integer, parameter :: phtcnt = 104, & ! number of photolysis reactions
+      integer, parameter :: phtcnt = 103, & ! number of photolysis reactions
                             rxntot = 593, & ! number of total reactions
-                            gascnt = 489, & ! number of gas phase reactions
+                            gascnt = 490, & ! number of gas phase reactions
                             nabscol = 2, & ! number of absorbing column densities
-                            gas_pcnst = 135, & ! number of "gas phase" species
+                            gas_pcnst = 134, & ! number of "gas phase" species
                             nfs = 2, & ! number of "fixed" species
                             relcnt = 0, & ! number of relationship species
                             grpcnt = 0, & ! number of group members
-                            nzcnt = 1908, & ! number of non-zero matrix entries
+                            nzcnt = 1828, & ! number of non-zero matrix entries
                             extcnt = 23, & ! number of species with external forcing
                             clscnt1 = 22, & ! number of species in explicit class
                             clscnt2 = 0, & ! number of species in hov class
                             clscnt3 = 0, & ! number of species in ebi class
-                            clscnt4 = 113, & ! number of species in implicit class
+                            clscnt4 = 112, & ! number of species in implicit class
                             clscnt5 = 0, & ! number of species in rodas class
                             indexm = 1, & ! index of total atm density in invariant array
                             indexh2o = 0, & ! index of water vapor density
                             clsze = 1, & ! loop length for implicit chemistry
-                            rxt_tag_cnt = 480, &
+                            rxt_tag_cnt = 593, &
                             enthalpy_cnt = 41, &
                             nslvd = 50
       integer :: clscnt(5) = 0

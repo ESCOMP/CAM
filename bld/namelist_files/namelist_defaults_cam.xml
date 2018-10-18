@@ -85,13 +85,6 @@
 <ncdata dyn="fv" hgrid="4x5"     nlev="30" chem="trop_strat_mam4_vbs" ic_ymd="101" >atm/cam/inic/fv/trop_strat_mam3_chem_2000-01-01_4x5_L30_c121015.nc</ncdata>
 <ncdata dyn="fv" hgrid="1.9x2.5" nlev="30" chem="trop_strat_mam4_vbs" ic_ymd="101" >atm/cam/inic/fv/trop_strat_mam3_chem_2000-01-01_1.9x2.5_L30_c121015.nc</ncdata>
 
-<ncdata dyn="fv" hgrid="10x15"   nlev="26" chem="super_fast_llnl" ic_ymd="101" >atm/cam/inic/fv/camchemi_0012-01-01_10x15_L26_c081104.nc</ncdata>
-<ncdata dyn="fv" hgrid="10x15"   nlev="30" chem="super_fast_llnl" ic_ymd="101" >atm/cam/inic/fv/camchemi_0012-01-01_10x15_L30_c081104.nc</ncdata>
-<ncdata dyn="fv" hgrid="4x5"     nlev="26" chem="super_fast_llnl" ic_ymd="101" >atm/cam/inic/fv/camchemi_0012-01-01_4x5_L26_c081104.nc</ncdata>
-<ncdata dyn="fv" hgrid="4x5"     nlev="30" chem="super_fast_llnl" ic_ymd="101" >atm/cam/inic/fv/camchemi_0012-01-01_4x5_L30_c081104.nc</ncdata>
-<ncdata dyn="fv" hgrid="1.9x2.5" nlev="26" chem="super_fast_llnl" ic_ymd="101" >atm/cam/inic/fv/camchemi_0012-01-01_1.9x2.5_L26_c081104.nc</ncdata>
-<ncdata dyn="fv" hgrid="1.9x2.5" nlev="30" chem="super_fast_llnl" ic_ymd="101" >atm/cam/inic/fv/camchemi_0012-01-01_1.9x2.5_L30_c081104.nc</ncdata>
-
 <ncdata dyn="fv"  hgrid="4x5"       nlev="26"  chem="trop_mozart" ic_ymd="901" >atm/cam/chem/trop_mozart/ic/cami_0000-09-01_4x5_L26_c060217.nc</ncdata>
 <ncdata dyn="fv"  hgrid="10x15"     nlev="26"  chem="trop_mozart" ic_ymd="901" >atm/cam/chem/trop_mozart/ic/cami_0000-09-01_10x15_L26_c060216.nc</ncdata>
 
@@ -109,8 +102,6 @@
 <ncdata dyn="fv"  hgrid="10x15"     nlev="66"   ic_ymd="20000101" >atm/waccm/ic/cami_2000-01-01_10x15_L66_c041121.nc</ncdata>
 <ncdata dyn="fv"  hgrid="4x5"       nlev="66"  chem="waccm_ma_sulfur" ic_ymd="20000101">atm/waccm/ic/f40.2000.4deg.wcm.carma.sulf.004.cam2.i.0008-01-01-00000.nc</ncdata>
 <ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="66"  chem="waccm_ma_sulfur" ic_ymd="20100101">atm/waccm/ic/f40.2deg.wcm.carma.sulf.L66.cam2.i.2010-01-01.nc</ncdata>
-<ncdata dyn="fv"  hgrid="10x15"     nlev="66"  chem="waccm_tsmlt_sulfur"  ic_ymd="20000101">atm/waccm/ic/f40.2000.10deg.wcm.carma.sulf.004.cam2.i.0008-01-01-00000.nc</ncdata>
-<ncdata dyn="fv"  hgrid="4x5"       nlev="66"  chem="waccm_tsmlt_sulfur"  ic_ymd="20000101">atm/waccm/ic/f40.2000.4deg.wcm.carma.sulf.004.cam2.i.0008-01-01-00000.nc</ncdata>
 <ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="81"  waccmx="1"  ic_ymd="20000101" >atm/waccm/ic/WAX3548T08CO_2003top_f2000.waccm_0017bottom_L81_c110906.nc</ncdata>
 <ncdata dyn="fv"  hgrid="4x5"       nlev="81"  waccmx="1"  ic_ymd="20000101" >atm/waccm/ic/WAX3548T08CO_2003top_f2000.waccm_0017bottom_4x5_L81_c160630.nc</ncdata>
 <ncdata dyn="fv"  hgrid="10x15"     nlev="81"  waccmx="1"  ic_ymd="20000101" >atm/waccm/ic/WAX3548T08CO_2003top_f2000.waccm_0017bottom_10x15_L81_c141027.nc</ncdata>
@@ -329,7 +320,6 @@
 <!-- Eruptive volcanic aerosols  -->
 <VOLC_MMR                        rad="camrt">atm/cam/physprops/volc_camRT_byradius_sigma1.6_c130724.nc</VOLC_MMR>
 <VOLC_MMR chem="none"            rad="camrt">atm/cam/physprops/sulfuricacid_cam3_c080918.nc</VOLC_MMR>
-<VOLC_MMR chem="super_fast_llnl" rad="camrt">atm/cam/physprops/sulfuricacid_cam3_c080918.nc</VOLC_MMR>
 <VOLC_MMR rad="rrtmg">atm/cam/physprops/volc_camRRTMG_byradius_sigma1.6_c130724.nc</VOLC_MMR>
 <VOLC_MMR1 rad="rrtmg">atm/cam/physprops/volc_camRRTMG_byradius_sigma1.6_mode1_c170214.nc</VOLC_MMR1>
 <VOLC_MMR2 rad="rrtmg">atm/cam/physprops/volc_camRRTMG_byradius_sigma1.6_mode2_c170214.nc</VOLC_MMR2>
@@ -605,7 +595,7 @@
 <waccmx_opt waccmx="1" ionosphere="none">neutral</waccmx_opt>
 <ionos_epotential_model>heelis</ionos_epotential_model>
 <wei05_coefs_file>atm/waccm/efld/wei05sc_c080415.nc</wei05_coefs_file>
-<ionos_xport_nsplit waccmx="1">6</ionos_xport_nsplit>
+<ionos_xport_nsplit waccmx="1">5</ionos_xport_nsplit>
 <ionos_xport_nsplit hgrid="0.9x1.25" waccmx="1">20</ionos_xport_nsplit>
 
 <!-- For scaling lightning sources of NOx -->
@@ -676,14 +666,6 @@
 <co_emis_file   chem="waccm_ma_sulfur">atm/cam/chem/1850-2000_emis/IPCC_emissions_houw_CO_1850-2000_1.9x2.5.c090728.nc</co_emis_file>
 <ch2o_emis_file chem="waccm_ma_sulfur">atm/cam/chem/1850-2000_emis/IPCC_emissions_houw_CH2O_1850-2000_1.9x2.5.c090728.nc</ch2o_emis_file>
 <so2_emis_file  chem="waccm_ma_sulfur">atm/cam/chem/1850-2000_emis/IPCC_emissions_houw_SO2_1850-2000_1.9x2.5.c090522.nc</so2_emis_file>
-
-<!-- super_fast Chemistry emissions -->
-<ch2o_emis_file	   chem="super_fast_llnl">atm/cam/chem/trop_mozart/emis/emissions.CH2O.surface.T42LR.nc</ch2o_emis_file>
-<co_emis_file      chem="super_fast_llnl">atm/cam/chem/trop_mozart/emis/emissions.CO.surface.T42LR.nc</co_emis_file>
-<dms_emis_file     chem="super_fast_llnl">atm/cam/chem/trop_mozart/emis/emissions.DMS.surface.T42LR.nc</dms_emis_file>
-<nox_emis_file     chem="super_fast_llnl">atm/cam/chem/trop_mozart/emis/emissions.NO.surface.T42LR.nc</nox_emis_file>
-<so2_emis_file     chem="super_fast_llnl">atm/cam/chem/trop_mozart/emis/emissions.SO2.surface.T42LR.nc</so2_emis_file>
-<isop_emis_file    chem="super_fast_llnl">atm/cam/chem/trop_mozart/emis/emissions.ISOP.surface.T42LR.nc</isop_emis_file>
 
 <!-- BAM and MAM aerosol emissions -->
 <dms_emis_bam      >atm/cam/chem/trop_mozart_aero/emis/aerocom_DMS_2000.c080417.nc</dms_emis_bam>

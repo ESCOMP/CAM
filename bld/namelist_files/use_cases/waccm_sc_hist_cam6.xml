@@ -11,10 +11,8 @@
 <solar_parms_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-22991231_c171031.nc</solar_parms_data_file>
 
 <!--Species IC -->
-<ncdata dyn="fv"  hgrid="0.9x1.25">cesm2_init/f.e20.FWHIST.f09_f09_mg17.262a/1976-01-01/f.e20.FWHIST.f09_f09_mg17.262a.cam.i.1976-01-01-00000.nc</ncdata>
+<ncdata dyn="fv"  hgrid="0.9x1.25">cesm2_init/b.e21.BWsc1850.test.002/0014-01-01/b.e21.BWsc1850.test.002.cam.i.0014-01-01-00000.nc</ncdata>
 <ncdata dyn="fv"  hgrid="1.9x2.5" >atm/waccm/ic/f.e15.FWmaAMIP.f19_f19.misc08_cam5_4_81.003.cam.i.1980-01-01-00000_c160928.nc</ncdata>
-<ncdata dyn="fv"  hgrid="4x5"     >atm/waccm/ic/f2000.waccm-mam3_4x5_L70.cam2.i.0017-01-01.c121113.nc</ncdata>
-
 
 <!-- LBC, UBC Files -->
 <flbc_file>atm/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180227.nc</flbc_file>
@@ -27,17 +25,29 @@
 <qbo_cyclic>.false.</qbo_cyclic>
 <qbo_forcing_file>atm/waccm/qbo/qbocoefficients_c091230.nc</qbo_forcing_file>
 
-<prescribed_strataero_use_chemtrop> .true. </prescribed_strataero_use_chemtrop>
+<!-- upper atmos forcings -->
+<waccm_forcing_type>INTERP_MISSING_MONTHS</waccm_forcing_type>
+<waccm_forcing_file>SCWACCM_forcing_zm_L70_1849-2015_CMIP6ensAvg_c181011.nc</waccm_forcing_file>
+<waccm_forcing_datapath>atm/waccm/waccm_forcing</waccm_forcing_datapath>
 
-<!-- Specified chemistry forcing file; note that the same file is used for ozone. -->
+<!-- ozone data -->
+<prescribed_ozone_datapath>   'atm/cam/ozone_strataero'                                                         </prescribed_ozone_datapath>
+<prescribed_ozone_file    >   'ozone_strataero_WACCM_L70_zm5day_18500101-20150103_CMIP6ensAvg_c180923.nc'       </prescribed_ozone_file>
+<prescribed_ozone_name    >   'O3'                                                                              </prescribed_ozone_name>
+<prescribed_ozone_type    >   SERIAL                                                                            </prescribed_ozone_type>
 
-<waccm_forcing_type>SERIAL</waccm_forcing_type>
+<!-- Prescribed stratospheric aerosols -->
+<prescribed_strataero_use_chemtrop>   .true.                                                                       </prescribed_strataero_use_chemtrop>
+<prescribed_strataero_datapath    >   'atm/cam/ozone_strataero'                                                    </prescribed_strataero_datapath>
+<prescribed_strataero_file        >   'ozone_strataero_WACCM_L70_zm5day_18500101-20150103_CMIP6ensAvg_c180923.nc'  </prescribed_strataero_file>
+<prescribed_strataero_type        >   SERIAL                                                                       </prescribed_strataero_type>
 
-<prescribed_ozone_type>SERIAL</prescribed_ozone_type>
-
-<tracer_cnst_type>INTERP_MISSING_MONTHS</tracer_cnst_type>
-
-<prescribed_strataero_type>SERIAL</prescribed_strataero_type>
+<!-- Prescribed oxidants for aerosol chemistry -->
+<tracer_cnst_datapath >   'atm/cam/tracer_cnst'                                         </tracer_cnst_datapath>
+<tracer_cnst_file     >   'tracer_cnst_halons_3D_L70_1849-2015_CMIP6ensAvg_c180927.nc'  </tracer_cnst_file>
+<tracer_cnst_specifier>   'O3','OH','NO3','HO2','HALONS'                                </tracer_cnst_specifier>
+<tracer_cnst_type     >   INTERP_MISSING_MONTHS                                         </tracer_cnst_type>
+<tracer_cnst_filelist >   ''                                                            </tracer_cnst_filelist>
 
 <!-- External forcing -->
 <ext_frc_type>INTERP_MISSING_MONTHS</ext_frc_type>

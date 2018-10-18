@@ -267,6 +267,24 @@
   </compset>
 
   <compset>
+    <alias>FWsc2010climo</alias>
+    <lname>2010_CAM60%WCSC_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
+    <science_support grid="f09_f09_mg17"/>
+  </compset>
+
+  <compset>
+    <alias>FWsc2000climo</alias>
+    <lname>2000_CAM60%WCSC_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
+    <science_support grid="f09_f09_mg17"/>
+  </compset>
+
+  <compset>
+    <alias>FWsc1850</alias>
+    <lname>1850_CAM60%WCSC_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
+    <science_support grid="f09_f09_mg17"/>
+  </compset>
+
+  <compset>
     <alias>FWscHIST</alias>
     <lname>HIST_CAM60%WCSC_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
     <science_support grid="f09_f09_mg17"/>
@@ -374,7 +392,6 @@
         <value  compset="HIST_CAM40%WX">2000-01-01</value>
 	<value  compset="HIST_CAM60%W">1979-01-01</value>
 	<value  compset="HIST_CAM60%WC">1950-01-01</value>
-        <value  compset="HIST_CAM60%WCSC">1976-01-01</value>
 	<value  compset="HIST_CAM60%CCTS">1995-01-01</value>
 	<value  compset="HIST_CAM60%CVBSX">1995-01-01</value>
 	<value  compset="HIST_CAM60%CFIRE">1995-01-01</value>

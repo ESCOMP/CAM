@@ -5,17 +5,17 @@
       use shr_kind_mod, only : r8 => shr_kind_r8
       implicit none
       save
-      integer, parameter :: phtcnt = 87, & ! number of photolysis reactions
+      integer, parameter :: phtcnt = 86, & ! number of photolysis reactions
                             rxntot = 289, & ! number of total reactions
-                            gascnt = 202, & ! number of gas phase reactions
+                            gascnt = 203, & ! number of gas phase reactions
                             nabscol = 2, & ! number of absorbing column densities
-                            gas_pcnst = 74, & ! number of "gas phase" species
+                            gas_pcnst = 73, & ! number of "gas phase" species
                             nfs = 2, & ! number of "fixed" species
                             relcnt = 0, & ! number of relationship species
                             grpcnt = 0, & ! number of group members
-                            nzcnt = 630, & ! number of non-zero matrix entries
+                            nzcnt = 636, & ! number of non-zero matrix entries
                             extcnt = 11, & ! number of species with external forcing
-                            clscnt1 = 24, & ! number of species in explicit class
+                            clscnt1 = 23, & ! number of species in explicit class
                             clscnt2 = 0, & ! number of species in hov class
                             clscnt3 = 0, & ! number of species in ebi class
                             clscnt4 = 50, & ! number of species in implicit class
@@ -25,7 +25,7 @@
                             clsze = 1, & ! loop length for implicit chemistry
                             rxt_tag_cnt = 289, &
                             enthalpy_cnt = 53, &
-                            nslvd = 16
+                            nslvd = 15
       integer :: clscnt(5) = 0
       integer :: cls_rxt_cnt(4,5) = 0
       integer :: clsmap(gas_pcnst,5) = 0
@@ -47,4 +47,5 @@
       logical :: is_vector
       logical :: is_scalar
       character(len=16) :: slvd_lst(max(1,nslvd))
+      integer, parameter :: veclen = 32
       end module chem_mods

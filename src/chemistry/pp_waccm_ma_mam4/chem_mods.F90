@@ -5,17 +5,17 @@
       use shr_kind_mod, only : r8 => shr_kind_r8
       implicit none
       save
-      integer, parameter :: phtcnt = 91, & ! number of photolysis reactions
+      integer, parameter :: phtcnt = 90, & ! number of photolysis reactions
                             rxntot = 298, & ! number of total reactions
-                            gascnt = 207, & ! number of gas phase reactions
+                            gascnt = 208, & ! number of gas phase reactions
                             nabscol = 2, & ! number of absorbing column densities
-                            gas_pcnst = 98, & ! number of "gas phase" species
+                            gas_pcnst = 97, & ! number of "gas phase" species
                             nfs = 2, & ! number of "fixed" species
                             relcnt = 0, & ! number of relationship species
                             grpcnt = 0, & ! number of group members
-                            nzcnt = 735, & ! number of non-zero matrix entries
+                            nzcnt = 733, & ! number of non-zero matrix entries
                             extcnt = 22, & ! number of species with external forcing
-                            clscnt1 = 23, & ! number of species in explicit class
+                            clscnt1 = 22, & ! number of species in explicit class
                             clscnt2 = 0, & ! number of species in hov class
                             clscnt3 = 0, & ! number of species in ebi class
                             clscnt4 = 75, & ! number of species in implicit class
@@ -47,4 +47,5 @@
       logical :: is_vector
       logical :: is_scalar
       character(len=16) :: slvd_lst(max(1,nslvd))
+      integer, parameter :: veclen = 32
       end module chem_mods

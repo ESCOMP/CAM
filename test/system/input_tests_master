@@ -72,8 +72,6 @@ sm426 TSM.sh f10c4aqwmxdm outfrq3s_newyear 9s
 
 sm430 TSM.sh f10c5aqcmtt1dm outfrq3s_carma 9s
 
-sm460 TSM.sh f1.9c4aqbamm outfrq3s 9s
-
 sm469 TSM.sh f4c4aqprgspcdm outfrq3s 9s
 
 sm471 TSM.sh f10c6aqwmadm outfrq3s 9s
@@ -172,8 +170,6 @@ er396 TER.sh f4c4aqwmxiedm outfrq3s_euv 4+5s
 er426 TER.sh f10c4aqwmxdm outfrq3s_newyear 4+5s
 
 er430 TER.sh f10c5aqcmtt1dm outfrq3s_carma 4+5s
-
-er460 TER.sh f1.9c4aqbamm outfrq3s 4+5s
 
 er469 TER.sh f4c4aqprgspcdm outfrq3s 4+5s
 
@@ -303,8 +299,6 @@ bl396 TBL.sh f4c4aqwmxiedm outfrq3s_euv 9s
 bl426 TBL.sh f10c4aqwmxdm outfrq3s_newyear 9s
 
 bl430 TBL.sh f10c5aqcmtt1dm outfrq3s_carma 9s
-
-bl460 TBL.sh f1.9c4aqbamm outfrq3s 9s
 
 bl469 TBL.sh f4c4aqprgspcdm outfrq3s 9s
 
