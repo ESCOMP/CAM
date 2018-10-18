@@ -570,7 +570,7 @@ if ($phys eq 'adiabatic') {
     ++$phys_mode_flags;
 }
 my $ideal_mode = 0;
-if ($phys eq 'kessler' or $phys eq 'held_suarez') {
+if ($phys eq 'kessler' or $phys eq 'held_suarez' or $phys eq 'tj2016') {
     $ideal_mode = 1;
     ++$phys_mode_flags;
 }
@@ -4517,9 +4517,9 @@ sub check_input_files {
     # Treat special cases...
 
     # These namelist variables are arrays of strings.
-    my @vars = qw(ext_frc_specifier srf_emis_specifier mode_defs rad_climate rad_diag_1 rad_diag_2
-                  rad_diag_3 rad_diag_4 rad_diag_5 rad_diag_6 rad_diag_7 rad_diag_8
-                  rad_diag_9 rad_diag_10);
+    my @vars = qw(aircraft_specifier ext_frc_specifier srf_emis_specifier mode_defs
+                  rad_climate rad_diag_1 rad_diag_2 rad_diag_3 rad_diag_4 rad_diag_5
+                  rad_diag_6 rad_diag_7 rad_diag_8 rad_diag_9 rad_diag_10);
 
     foreach my $var (@vars) {
 
@@ -4555,6 +4555,17 @@ sub check_input_files {
                         my $coef = $1;
                         $file = $2;
                     }
+
+                    # The filenames in the aircraft_specifier strings are not absolute.  They are
+                    # relative to the root directory from aircraft_datapath.  Create absolute pathnames.
+                    if ($var eq 'aircraft_specifier') {
+                        my $datapath = $nl->get_value('aircraft_datapath');
+                        if (defined $datapath) {
+                            # set absolute filepath
+                            $file = set_abs_filepath($file, $datapath);
+                        }
+                    }
+
 
                     if ($inputdata_rootdir) {
                         print $fh "$var for $name = $file\n";

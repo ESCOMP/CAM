@@ -912,13 +912,13 @@ subroutine read_inidat(dyn_in)
    use shr_sys_mod,         only: shr_sys_flush
    use hycoef,              only: hyai, hybi, ps0
    use const_init,          only: cnst_init_default
-   use cam_control_mod,     only: ideal_phys
+   use cam_control_mod,     only: simple_phys
 
    use element_mod,         only: timelevels
    use dimensions_mod,      only: qsize_d, qsize_condensate_loading
    use dimensions_mod,      only: qsize_condensate_loading_idx
    use fvm_mapping,         only: dyn2fvm_mass_vars
-   use control_mod,         only: runtype,initial_global_ave_dry_ps
+   use control_mod,         only: runtype, initial_global_ave_dry_ps
    use prim_driver_mod,     only: prim_set_dry_mass
 
    ! Arguments
@@ -1415,8 +1415,8 @@ subroutine read_inidat(dyn_in)
       if (.not. associated(fh_topo)) then
          initial_global_ave_dry_ps = 101325._r8 - 245._r8
       end if
-      if (analytic_ic_active()) then
-         initial_global_ave_dry_ps = 0                  !do not scale psdry
+      if (analytic_ic_active() .or. simple_phys) then
+         initial_global_ave_dry_ps = 0._r8            ! do not scale psdry
       end if
       if (iam < par%nprocs) then
         call prim_set_dry_mass(elem, hvcoord, initial_global_ave_dry_ps, qtmp)

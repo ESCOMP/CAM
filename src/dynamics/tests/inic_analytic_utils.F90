@@ -94,12 +94,15 @@ CONTAINS
        select case(trim(analytic_ic_type))
        case('held_suarez_1994')
           msg = 'Dynamics state will be set to Held-Suarez (1994) initial conditions.'
-       case('baroclinic_wave')
+       case('moist_baroclinic_wave_dcmip2016')
           moist = .true.
-          msg = 'Dynamics state will be set to a baroclinic wave initial condition.'
-       case('dry_baroclinic_wave')
+          msg = 'Dynamics state will be set to a moist baroclinic wave initial condition used in DCMIP 2016.'
+       case('dry_baroclinic_wave_dcmip2016')
           moist = .false.
-          msg = 'Dynamics state will be set to a dry baroclinic wave initial condition.'
+          msg = 'Dynamics state will be set to a dry baroclinic wave initial condition used in DCMIP 2016.'
+       case('dry_baroclinic_wave_jw2006')
+          moist = .false.
+          msg = 'Dynamics state will be set to a dry baroclinic wave initial condition as described in JW2006.'
        case('none')
           msg = subname//': ERROR: analytic_ic_type must be set'
           write(iulog, *) msg

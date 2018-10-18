@@ -1132,7 +1132,7 @@ contains
     ierr = pio_openfile(pio_subsystem, file, pio_iotype, fname, mode)
 
     if(ierr/= PIO_NOERR) then
-       call endrun('Failed to open restart file to read')
+       call endrun('Failed to open '//trim(fname)//' to read')
     else if(pio_iotask_rank(pio_subsystem) == 0) then
        write(iulog,*) 'Opened existing file ', trim(fname), file%fh
     end if

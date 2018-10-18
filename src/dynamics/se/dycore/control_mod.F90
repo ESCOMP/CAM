@@ -106,7 +106,7 @@ module control_mod
   integer,               public :: se_met_tevolve = 0     ! switch to turn on time evolution of nudging within dynamics
   integer,               public :: prescribed_vertwind = 0
 
-  real (kind=r8), public :: initial_global_ave_dry_ps = 0 ! scale dry surface pressure to initial_global_ave_dry_ps
+  real (kind=r8), public :: initial_global_ave_dry_ps = 0._r8 ! scale dry surface pressure to initial_global_ave_dry_ps
 
   integer, public, parameter :: west  = 1
   integer, public, parameter :: east  = 2

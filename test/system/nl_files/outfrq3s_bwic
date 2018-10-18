@@ -6,6 +6,6 @@
  ndens=1,1,1,1,1,1
  nhtfrq=3,3,3,3,3,3
  inithist='ENDOFRUN'
- analytic_ic_type='baroclinic_wave'
+ analytic_ic_type='moist_baroclinic_wave_dcmip2016'
  pbuf_global_allocate=.false.
  /

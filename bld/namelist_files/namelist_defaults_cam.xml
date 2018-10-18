@@ -242,7 +242,8 @@
 <analytic_ic_type                   > none </analytic_ic_type>
 <analytic_ic_type phys="adiabatic"  > held_suarez_1994 </analytic_ic_type>
 <analytic_ic_type phys="held_suarez"> held_suarez_1994 </analytic_ic_type>
-<analytic_ic_type phys="kessler"    > baroclinic_wave </analytic_ic_type>
+<analytic_ic_type phys="kessler"    > moist_baroclinic_wave_dcmip2016 </analytic_ic_type>
+<analytic_ic_type phys="tj2016"     > moist_baroclinic_wave_dcmip2016 </analytic_ic_type>
 
 <!-- Bulk aerosol physical properties (includes optics) -->
 
@@ -1821,6 +1822,7 @@
 <se_qsize_condensate_loading phys="held_suarez" > 1 </se_qsize_condensate_loading>
 <se_qsize_condensate_loading phys="adiabatic"   > 1 </se_qsize_condensate_loading>
 <se_qsize_condensate_loading phys="kessler"     > 1 </se_qsize_condensate_loading>
+<se_qsize_condensate_loading phys="tj2016"      > 1 </se_qsize_condensate_loading>
 
 <se_qsplit > 1 </se_qsplit>
 

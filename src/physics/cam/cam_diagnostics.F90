@@ -30,19 +30,21 @@ save
 ! Public interfaces
 
 public :: &
-   diag_readnl,        &! read namelist options
-   diag_register,      &! register pbuf space
-   diag_init,          &! initialization
-   diag_allocate,      &! allocate memory for module variables
-   diag_deallocate,    &! deallocate memory for module variables
-   diag_conv_tend_ini, &! initialize convective tendency calcs
-   diag_phys_writeout, &! output diagnostics of the dynamics
-   diag_phys_tend_writeout, & ! output physics tendencies
-   diag_state_b4_phys_write,& ! output state before physics execution
-   diag_conv,          &! output diagnostics of convective processes
-   diag_surf,          &! output diagnostics of the surface
-   diag_export,        &! output export state
-   diag_physvar_ic
+   diag_readnl,              &! read namelist options
+   diag_register,            &! register pbuf space
+   diag_init,                &! initialization
+   diag_allocate,            &! allocate memory for module variables
+   diag_deallocate,          &! deallocate memory for module variables
+   diag_conv_tend_ini,       &! initialize convective tendency calcs
+   diag_phys_writeout,       &! output diagnostics of the dynamics
+   diag_phys_tend_writeout,  &! output physics tendencies
+   diag_state_b4_phys_write, &! output state before physics execution
+   diag_conv,                &! output diagnostics of convective processes
+   diag_surf,                &! output diagnostics of the surface
+   diag_export,              &! output export state
+   diag_physvar_ic,          &
+   diag_phys_writeout_dry,   &! output diagnostics of the dynamics
+   nsurf
 
 
 ! Private data
@@ -507,15 +509,20 @@ contains
     ! outfld calls in diag_phys_tend_writeout
 
     call addfld (ptendnam(       1),(/ 'lev' /), 'A', 'kg/kg/s',trim(cnst_name(       1))//' total physics tendency '      )
-    call addfld (ptendnam(ixcldliq),(/ 'lev' /), 'A', 'kg/kg/s',trim(cnst_name(ixcldliq))//' total physics tendency '      )
+
+    if (ixcldliq > 0) then
+       call addfld (ptendnam(ixcldliq),(/ 'lev' /), 'A', 'kg/kg/s',trim(cnst_name(ixcldliq))//' total physics tendency '      )
+    end if
     if (ixcldice > 0) then
       call addfld (ptendnam(ixcldice),(/ 'lev' /), 'A', 'kg/kg/s',trim(cnst_name(ixcldice))//' total physics tendency ')
     end if
     if ( dycore_is('LR') )then
       call addfld (dmetendnam(       1),(/ 'lev' /), 'A','kg/kg/s', &
            trim(cnst_name(       1))//' dme adjustment tendency (FV) ')
-      call addfld (dmetendnam(ixcldliq),(/ 'lev' /), 'A','kg/kg/s', &
-           trim(cnst_name(ixcldliq))//' dme adjustment tendency (FV) ')
+      if (ixcldliq > 0) then
+         call addfld (dmetendnam(ixcldliq),(/ 'lev' /), 'A','kg/kg/s', &
+            trim(cnst_name(ixcldliq))//' dme adjustment tendency (FV) ')
+      end if
       if (ixcldice > 0) then
         call addfld (dmetendnam(ixcldice),(/ 'lev' /), 'A','kg/kg/s', &
              trim(cnst_name(ixcldice))//' dme adjustment tendency (FV) ')
@@ -597,13 +604,17 @@ contains
       call add_default (cnst_name(1), history_budget_histfile_num, ' ')
       call add_default ('PTTEND'          , history_budget_histfile_num, ' ')
       call add_default (ptendnam(       1), history_budget_histfile_num, ' ')
-      call add_default (ptendnam(ixcldliq), history_budget_histfile_num, ' ')
+      if (ixcldliq > 0) then
+         call add_default (ptendnam(ixcldliq), history_budget_histfile_num, ' ')
+      end if
       if (ixcldice > 0) then
         call add_default (ptendnam(ixcldice), history_budget_histfile_num, ' ')
       end if
       if ( dycore_is('LR') )then
         call add_default(dmetendnam(1)       , history_budget_histfile_num, ' ')
-        call add_default(dmetendnam(ixcldliq), history_budget_histfile_num, ' ')
+        if (ixcldliq > 0) then
+           call add_default(dmetendnam(ixcldliq), history_budget_histfile_num, ' ')
+        end if
         if (ixcldice > 0) then
           call add_default(dmetendnam(ixcldice), history_budget_histfile_num, ' ')
         end if
@@ -1220,10 +1231,11 @@ contains
     ! Purpose: record dynamics variables on physics grid
     !
     !-----------------------------------------------------------------------
-    use physconst,          only: gravit, rga, rair, cpair, latvap, rearth, pi, cappa
+    use physconst,          only: gravit, rga, rair, cpair, latvap, rearth, pi, cappa, &
+                                  epsilo, rh2o
     use interpolate_data,   only: vertinterp
     use constituent_burden, only: constituent_burden_comp
-    use cam_control_mod,    only: moist_physics
+    use cam_control_mod,    only: moist_physics, tj2016_phys
     use co2_cycle,          only: c_i, co2_transport
     !-----------------------------------------------------------------------
     !
@@ -1246,6 +1258,10 @@ contains
     real(r8) :: esi(pcols,pver)   !
     real(r8) :: dlon(pcols)      ! width of grid cell (meters)
     integer ::  plon             ! number of longitudes
+
+    ! temporary fix for tj2016 sat vp calc
+    real(r8), parameter :: T0=273.16_r8  ! Control temperature (K) for calculation of saturation specific humidity
+    real(r8), parameter :: e0=610.78_r8  ! Saturation vapor pressure (Pa) at T0
 
     integer :: i, k, m, lchnk, ncol
     !
@@ -1292,8 +1308,17 @@ contains
 
     ! Relative humidity
     if (hist_fld_active('RELHUM')) then
-      call qsat(state%t(:ncol,:), state%pmid(:ncol,:), &
-           tem2(:ncol,:), ftem(:ncol,:))
+      if (tj2016_phys) then
+         do k=1,pver
+            do i=1,ncol
+               ftem(i,k)= epsilo*e0/state%pmid(i,k)*exp(-latvap/rh2o*((1._r8/state%t(i,k))-1._r8/T0))
+            end do
+         end do
+     else
+         call qsat(state%t(:ncol,:), state%pmid(:ncol,:), &
+                   tem2(:ncol,:), ftem(:ncol,:))
+      end if
+
       ftem(:ncol,:) = state%q(:ncol,:,1)/ftem(:ncol,:)*100._r8
       call outfld ('RELHUM  ',ftem    ,pcols   ,lchnk     )
     end if

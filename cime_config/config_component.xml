@@ -11,7 +11,7 @@
     <desc atm="CAM60[%1PCT][%4xCO2][%CCTS][%CFIRE][%CVBSX][%PORT][%RCO2][%SCAM][%WCCM][%WCMD][%WCSC][%WCTS]">CAM cam6 physics:</desc>
     <desc atm="CAM50[%CCTS][%CLB][%PORT][%RCO2][%SCAM][%WCSC][%WCTS]"              >CAM cam5 physics:</desc>
     <desc atm="CAM40[%PORT][%RCO2][%SCAM][%TMOZ][%WXIE][%WXIED][%WCMD]"                   >CAM cam4 physics:</desc>
-    <desc atm="CAM[%ADIAB][%DABIP04][%DCTBM][%HS94][%KESSLER][%RCO2][%SPCAMS][%SPCAMCLBS][%SPCAMM][%SPCAMCLBM]">CAM simplified and non-versioned physics :</desc>
+    <desc atm="CAM[%ADIAB][%DABIP04][%TJ16][%HS94][%KESSLER][%RCO2][%SPCAMS][%SPCAMCLBS][%SPCAMM][%SPCAMCLBM]">CAM simplified and non-versioned physics :</desc>
 
   <!--
     ===============
@@ -61,11 +61,11 @@
      SIMPLE MODELS Options
     ===============
    -->
-    <desc option="ADIAB"        >CAM adiabatic physics:</desc>
-    <desc option="DABIP04"      >CAM dry adiabatic baroclinic instability (Polvani 2004):</desc>
-    <desc option="DCTBM"        >CAM dynamical core test with baroclinic wave IC and terminator chemistry:</desc>
-    <desc option="HS94"         >CAM Held-Suarez forcing:</desc>
-    <desc option="KESSLER"      >CAM dynamical core test with baroclinic wave IC and Kessler physics:</desc>
+    <desc option="ADIAB"        >CAM dry adiabatic configurarion (no physics forcing):</desc>
+    <desc option="DABIP04"      >CAM dry adiabatic baroclinic instability (Polvani et al., 2004):</desc>
+    <desc option="TJ16"         >CAM moist Held-Suarez forcing (Thatcher and Jablonowski, 2016):</desc>
+    <desc option="HS94"         >CAM dry Held-Suarez forcing (Held and Suarez (1994)):</desc>
+    <desc option="KESSLER"      >CAM moist dynamical core test with Ullrich et al. (2014) baroclinic wave IC, Kessler physics and terminator chemistry:</desc>
 
   <!--
     ===============
@@ -152,7 +152,7 @@
       <value compset="_CAM%HS94" grid="(%ne[0-9])|(%[0-9.]+x)">-analytic_ic</value>
       <value compset="_CAM%ADIAB">-phys adiabatic</value>
       <value compset="_CAM%DABIP04">-phys adiabatic</value>
-      <value compset="_CAM%DCTBM">-phys held_suarez -chem terminator -analytic_ic</value>
+      <value compset="_CAM%TJ16">-phys tj2016 -analytic_ic</value>
       <value compset="_CAM%HS94">-phys held_suarez</value>
       <value compset="_CAM%KESSLER">-phys kessler -chem terminator -analytic_ic</value>
 
@@ -247,7 +247,7 @@
 
       <value compset="2000_CAM%DABIP04"  >dabi_p2004</value>
       <value compset="CAM%HS94"          >held_suarez_1994</value>
-      <value compset="CAM%DCTBM"         >dctest_baro_moist</value>
+      <value compset="CAM%TJ16"          >dctest_tj2016</value>
       <value compset="CAM%KESSLER"       >dctest_baro_kessler</value>
 
       <!-- SCAM defaults to ARM97, all other IOPs are in usermods_dirs -->

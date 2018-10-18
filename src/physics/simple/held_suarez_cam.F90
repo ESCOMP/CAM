@@ -1,6 +1,15 @@
-#define MODHS 1
-#undef MODHS
 module held_suarez_cam
+
+  !----------------------------------------------------------------------- 
+  ! 
+  ! Purpose: Implement idealized Held-Suarez forcings
+  !    Held, I. M., and M. J. Suarez, 1994: 'A proposal for the
+  !    intercomparison of the dynamical cores of atmospheric general
+  !    circulation models.'
+  !    Bulletin of the Amer. Meteor. Soc., vol. 75, pp. 1825-1830.
+  ! 
+  !-----------------------------------------------------------------------
+
   use shr_kind_mod, only: r8 => shr_kind_r8
   use ppgrid,       only: pcols, pver
 
@@ -45,16 +54,6 @@ contains
  end subroutine held_suarez_init
 
   subroutine held_suarez_tend(state, ptend, ztodt)
-    !----------------------------------------------------------------------- 
-    ! 
-    ! Purpose: 
-    !  algorithm 1: Held/Suarez IDEALIZED physics
-    !  algorithm 2: Held/Suarez IDEALIZED physics (Williamson modified stratosphere
-    !  algorithm 3: Held/Suarez IDEALIZED physics (Lin/Williamson modified strato/meso-sphere
-    !
-    ! Author: J. Olson
-    ! 
-    !-----------------------------------------------------------------------
     use physconst,          only: cpairv
     use phys_grid,          only: get_rlat_all_p
     use physics_types,      only: physics_state, physics_ptend

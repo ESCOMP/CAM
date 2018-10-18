@@ -6754,12 +6754,12 @@ Default: Set by build-namelist.
 
 <entry id="analytic_ic_type" type="char*80" category="dyn_test"
        group="analytic_ic_nl"
-       valid_values="none,held_suarez_1994,baroclinic_wave,dry_baroclinic_wave" >
-The analytic initial conditions to use for this run:
-none: Do not use analytic initial conditions (i.e., read IC from file)
-held_suarez_1994: Dynamics state will be set to Held-Suarez (1994) initial conditions.
-baroclinic_wave: Dynamics state will be set to a baroclinic wave initial condition.
-dry_baroclinic_wave: Dynamics state will be set to a dry baroclinic wave initial condition.
+       valid_values="none,held_suarez_1994,moist_baroclinic_wave_dcmip2016,dry_baroclinic_wave_dcmip2016,dry_baroclinic_wave_jw2006" >
+Specify the type of analytic initial conditions for an initial run.
+held_suarez_1994: Initial conditions specified in Held and Suarez (1994)
+moist_baroclinic_wave_dcmip2016: Moist baroclinic wave as used in the DCMIP 2016 experiments
+dry_baroclinic_wave_dcmip2016: Dry baroclinic wave as used in the DCMIP 2016 experiments
+dry_baroclinic_wave_jw2006: Dry baroclinic wave as specified in Jablonowski and Williamson (2006)
 Default: 'none'
 </entry>
 

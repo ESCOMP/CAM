@@ -17,7 +17,8 @@
 <fincl2>
  'Q','CLDLIQ','RAINQM','T','U','V','iCLy','iCL','iCL2','OMEGA'
 </fincl2>
-<analytic_ic_type>'baroclinic_wave'</analytic_ic_type>
+
+<analytic_ic_type>'moist_baroclinic_wave_dcmip2016'</analytic_ic_type>
 
 <test_tracer_names>
  'TT_SLOT','TT_GBALL','TT_TANH','TT_EM8','TT_Y2_2','TT_Y32_16'

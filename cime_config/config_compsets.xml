@@ -146,9 +146,10 @@
   </compset>
 
   <compset>
-    <alias>FDCBAROMOIST</alias>
-    <lname>2000_CAM%DCTBM_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>
+    <alias>FTJ16</alias>
+    <lname>2000_CAM%TJ16_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>
   </compset>
+
   <compset>
     <alias>FKESSLER</alias>
     <lname>2000_CAM%KESSLER_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>

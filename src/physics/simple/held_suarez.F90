@@ -1,4 +1,14 @@
 module held_suarez
+  !----------------------------------------------------------------------- 
+  ! 
+  ! Purpose: Implement idealized Held-Suarez forcings
+  !    Held, I. M., and M. J. Suarez, 1994: 'A proposal for the
+  !    intercomparison of the dynamical cores of atmospheric general
+  !    circulation models.'
+  !    Bulletin of the Amer. Meteor. Soc., vol. 75, pp. 1825-1830.
+  ! 
+  !-----------------------------------------------------------------------
+
   use shr_kind_mod, only: r8 => shr_kind_r8
 
   implicit none
@@ -57,15 +67,6 @@ contains
 
   subroutine held_suarez_1994(pcols, ncol, clat, pmid, &
        u, v, t, du, dv, s)
-    !----------------------------------------------------------------------- 
-    ! 
-    ! Purpose: Implement idealized Held-Suarez forcings
-    !    Held, I. M., and M. J. Suarez, 1994: 'A proposal for the
-    !    intercomparison of the dynamical cores of atmospheric general
-    !    circulation models.'
-    !    Bulletin of the Amer. Meteor. Soc., vol. 75, pp. 1825-1830.
-    ! 
-    !-----------------------------------------------------------------------
 
     !
     ! Input arguments
