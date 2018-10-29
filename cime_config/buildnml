@@ -38,7 +38,6 @@ def buildnml(case, caseroot, compname):
     CAM_NAMELIST_OPTS   = case.get_value("CAM_NAMELIST_OPTS")
     CAM_NML_USE_CASE    = case.get_value("CAM_NML_USE_CASE")
     DEBUG               = case.get_value("DEBUG")
-    NTASKS_ATM          = case.get_value("NTASKS_ATM")
     NINST_ATM           = case.get_value("NINST_ATM")
     RUN_TYPE            = case.get_value("RUN_TYPE")
     RUN_STARTDATE       = case.get_value("RUN_STARTDATE")
@@ -152,9 +151,7 @@ def buildnml(case, caseroot, compname):
         # call build-namelist
         # -----------------------------------------------------
 
-        ntasks = int(NTASKS_ATM) / int(ninst)
-# waiting for cime to implement this
-#        ntasks = int(case.get_value("NTASKS_PER_INST_ATM"))
+        ntasks = int(case.get_value("NTASKS_PER_INST_ATM"))
 
         buildnl_opts = ["-ntasks", str(ntasks), "-csmdata", din_loc_root,
                         "-infile", os.path.join(camconf, "namelist")]

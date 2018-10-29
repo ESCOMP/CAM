@@ -637,9 +637,9 @@ contains
        end do
 #ifdef DEBUG
        if( levrelax /= ltrop(i) ) then
-          write(iulog,*) 'warning -- raised ubc: ',lat,i,
-          ltrop(i)-1,nint(pmid(i,ltrop(i)-1)/mb2pa),'mb -->',
-          levrelax,nint(pmid(i,levrelax)/mb2pa),'mb'
+          write(iulog,*) 'warning -- raised ubc: ',lat,i,        &
+             ltrop(i)-1,nint(pmid(i,ltrop(i)-1)/mb2pa),'mb -->', &
+             levrelax,nint(pmid(i,levrelax)/mb2pa),'mb'
        end if
 #endif
        level_loop2 : do k = kmax(i)+1,levrelax
@@ -919,9 +919,9 @@ contains
           end do
 #ifdef DEBUG
           if( levrelax /= ltrop(i) ) then
-             write(iulog,*) 'warning -- raised ubc: ',lat,i,
-             ltrop(i)-1,nint(pmid(i,ltrop(i)-1)/100._r8),'mb -->',
-             levrelax,nint(pmid(i,levrelax)/100._r8),'mb'
+             write(iulog,*) 'warning -- raised ubc: ',lat,i,          &
+                ltrop(i)-1,nint(pmid(i,ltrop(i)-1)/100._r8),'mb -->', &
+                levrelax,nint(pmid(i,levrelax)/100._r8),'mb'
           end if
 #endif
           do k = kmax(i)+1,levrelax

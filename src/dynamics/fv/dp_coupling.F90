@@ -313,7 +313,7 @@ CONTAINS
        call t_stopf('DP_CPLN_fv_am')
     endif
 
-    if (use_gw_front .or. use_gw_front_igw) then
+    if ((iam .lt. grid%npes_xy) .and. (use_gw_front .or. use_gw_front_igw)) then
        call t_startf('DP_CPLN_gw_sources')
        call gws_src_fnct(grid, u3, v3, ptxy, tracer(:,jfirstxy:jlastxy,:,1), pexy, frontgf, frontga)
        call t_stopf('DP_CPLN_gw_sources')
