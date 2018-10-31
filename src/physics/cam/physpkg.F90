@@ -2237,7 +2237,7 @@ contains
     !===================================================
 
     call t_startf('bc_history_write')
-    call diag_phys_writeout(state, cam_out%psl)
+    call diag_phys_writeout(state, pbuf)
     call diag_conv(state, ztodt, pbuf)
 
     call t_stopf('bc_history_write')

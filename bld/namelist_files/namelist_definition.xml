@@ -7574,7 +7574,7 @@ Default: 1
 </entry>
 
 <entry id="stop_option" type="char*8"  category="time_mgr"
-       group="seq_timemgr_inparm" valid_values="nsteps,ndays,nmonths,nyears,date" >
+       group="seq_timemgr_inparm" valid_values="nsteps,nhours,ndays,nmonths,nyears,date" >
 Set the length of run as an elapsed time using one of the options 'nsteps',
 'ndays', 'nmonths', or 'nyears', in conjuction
 with {{ hilight }}stop_n{{ closehilight }} to set the number of elapsed time units.

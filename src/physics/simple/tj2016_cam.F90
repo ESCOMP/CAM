@@ -12,10 +12,13 @@ module TJ2016_cam
 
   use shr_kind_mod,   only: r8 => shr_kind_r8
   use ppgrid,         only: pcols, pver
+  use constituents,   only: pcnst
 
   use physics_buffer, only: dtype_r8, pbuf_add_field, physics_buffer_desc, &
                             pbuf_set_field, pbuf_get_field
+  use camsrfexch,     only: cam_in_t
 
+  use cam_history,    only: outfld
   use time_manager,   only: is_first_step
 
   implicit none
@@ -85,10 +88,7 @@ end subroutine Thatcher_Jablonowski_register
     !-----------------------------------------------------------------------
     use physics_types,      only: physics_state, physics_ptend
     use physics_types,      only: physics_ptend_init
-    use camsrfexch,         only: cam_out_t
     use physconst,          only: cpair
-    use constituents,       only: pcnst
-    use cam_history,        only: outfld
     use TJ2016,             only: Thatcher_Jablonowski_precip
 
     ! arguments
@@ -164,7 +164,7 @@ end subroutine Thatcher_Jablonowski_register
 
 !========================================================================================
 
- subroutine Thatcher_Jablonowski_sfc_pbl_hs_tend(state, ptend, ztodt, surf_state)
+ subroutine Thatcher_Jablonowski_sfc_pbl_hs_tend(state, ptend, ztodt, cam_in)
     !-----------------------------------------------------------------------
     !
     ! Purpose: Run the surface flux and PBL processes of the Thatcher-Jablonowski physics (moist Held-Suarez)
@@ -172,27 +172,19 @@ end subroutine Thatcher_Jablonowski_register
     !-----------------------------------------------------------------------
     use physics_types,      only: physics_state, physics_ptend
     use physics_types,      only: physics_ptend_init
-    use camsrfexch,         only: cam_out_t
     use physconst,          only: cpair
     use phys_grid,          only: get_rlat_all_p
-    use constituents,       only: pcnst
-    use cam_history,        only: outfld
     use TJ2016,             only: Thatcher_Jablonowski_sfc_pbl_hs
 
-    !
-    ! Input arguments
-    !
-    type(physics_state), intent(inout) :: state
-    real(r8),            intent(in)    :: ztodt                         ! physics timestep
-    !
-    ! Output arguments
-    !
-    type(physics_ptend), intent(out)   :: ptend                         ! Package tendencies
-    !
-    type(cam_out_t),     intent(inout) :: surf_state                    ! Surface fluxes
+    ! Arguments
+    type(physics_state), intent(in)    :: state
+    real(r8),            intent(in)    :: ztodt
+    type(physics_ptend), intent(out)   :: ptend
+    type(cam_in_t),     intent(inout)  :: cam_in
 
     !---------------------------Local workspace-----------------------------
-    !
+
+    integer  :: k                             ! loop index
     integer  :: lchnk                         ! chunk identifier
     integer  :: ncol                          ! number of atmospheric columns
 
@@ -203,24 +195,15 @@ end subroutine Thatcher_Jablonowski_register
     real(r8) :: U(state%ncol, pver)           ! U temporary
     real(r8) :: V(state%ncol, pver)           ! V temporary
     logical  :: lq(pcnst)                     ! Calc tendencies?
+
     ! output from parameterization
-    real(r8) :: shflx(state%ncol)             ! surface sensible heat flux in W/m2
-    real(r8) :: lhflx(state%ncol)             ! surface latent heat flux in W/m2
-    real(r8) :: taux(state%ncol)              ! surface momentum flux in the zonal direction in N/m2
-    real(r8) :: tauy(state%ncol)              ! surface momentum flux in the meridional direction in N/m2
-    real(r8) :: evap(state%ncol)              ! surface water flux in kg/m2/s
     real(r8) :: dqdt_vdiff(state%ncol,pver)   ! Q tendency due to vertical PBL diffusion in kg/kg/s
     real(r8) :: dtdt_vdiff(state%ncol,pver)   ! T tendency due to vertical PBL diffusion in K/s
     real(r8) :: dtdt_heating(state%ncol,pver) ! temperature tendency from relaxation in K/s
     real(r8) :: Km(state%ncol,pver+1)         ! Eddy diffusivity at layer interfaces for boundary layer calculations (m2/s)
     real(r8) :: Ke(state%ncol,pver+1)         ! Eddy diffusivity at layer interfaces for boundary layer calculations (m2/s)
-    real(r8) :: Tsurf(state%ncol)             ! sea surface temperature in K (varied by latitude)
-
-    integer  :: k                             ! loop index
-
-    !
     !-----------------------------------------------------------------------
-    !
+
     lchnk = state%lchnk
     ncol  = state%ncol
     call get_rlat_all_p(lchnk, ncol, clat)
@@ -258,22 +241,23 @@ end subroutine Thatcher_Jablonowski_register
     ! qv:     Specific humidity (moist mixing ratio)
 
     ! Output arguments
-    ! shflx:        Surface sensible heat flux
-    ! lhflx:        Surface latent heat flux
-    ! taux:         Surface momentum flux in the zonal direction
-    ! tauy:         Surface momentum flux in the meridional direction
-    ! evap:         surface water flux in kg/m2/s
+    ! cam_in%shf:   Surface sensible heat flux
+    ! cam_in%lhf:   Surface latent heat flux
+    ! cam_in%wsx:   Surface momentum flux in the zonal direction
+    ! cam_in%wsy:   Surface momentum flux in the meridional direction
+    ! cam_in%cflx:  surface water flux in kg/m2/s
     ! dqdt_vdiff:   Q tendency due to vertical diffusion (PBL)
     ! dtdt_vdiff:   T tendency due to vertical diffusion (PBL)
     ! dtdt_heating: Temperature tendency in K/s from relaxation
     ! Km:           Eddy diffusivity for boundary layer calculations
     ! Ke:           Eddy diffusivity for boundary layer calculations
-    ! Tsurf:        Sea surface temperature K (varied by latitude)
+    ! cam_in%sst:   Sea surface temperature K (varied by latitude)
 
-    call Thatcher_Jablonowski_sfc_pbl_hs(ncol, pver, ztodt, clat,           &
-         state%ps(:ncol), state%pmid(:ncol,:), state%pint(:ncol,:), lnpint, &
-         state%rpdel(:ncol,:), T, U, V, qv, shflx, lhflx, taux, tauy,       &
-         evap, dqdt_vdiff, dtdt_vdiff, dtdt_heating, Km, Ke, Tsurf)
+    call Thatcher_Jablonowski_sfc_pbl_hs(ncol, pver, ztodt, clat,                 &
+         state%ps(:ncol), state%pmid(:ncol,:), state%pint(:ncol,:), lnpint,       &
+         state%rpdel(:ncol,:), T, U, V, qv, cam_in%shf(:ncol), cam_in%lhf(:ncol), &
+         cam_in%wsx(:ncol), cam_in%wsy(:ncol), cam_in%cflx(:ncol,1), dqdt_vdiff,  &
+         dtdt_vdiff, dtdt_heating, Km, Ke, cam_in%sst(:ncol))
 
     ! Back out tendencies from updated fields
     do k = 1, pver
@@ -283,22 +267,16 @@ end subroutine Thatcher_Jablonowski_register
       ptend%q(:ncol,k,1) = (qv(:, k) - state%q(:ncol, k, 1)) / ztodt
     end do
 
-!===============================================================================
-! Archive diagnostic fields
-!===============================================================================
-   call outfld('SHFLX   ', shflx,            ncol,  lchnk) ! surface heat flux (W/m2)
-   call outfld('LHFLX   ', lhflx,            ncol,  lchnk) ! latent heat flux (W/m2)
-   call outfld('TAUX    ', taux,             ncol,  lchnk) ! U surface momentum flux (N/m2)
-   call outfld('TAUY    ', tauy,             ncol,  lchnk) ! V surface momentum flux (N/m2)
-   call outfld('SST     ', Tsurf,            ncol,  lchnk) ! sea surface temperature (K)
-   call outfld('QRS     ', dtdt_heating,     ncol,  lchnk) ! T tendency from temperature relaxation (mimics radiation, K/s)
-   call outfld('QFLX    ', evap,             ncol,  lchnk) ! surface water flux (kg/m2/s)
-   call outfld('KVH     ', Ke,               ncol,  lchnk) ! Eddy diffusivity (heat and moisture, m2/s)
-   call outfld('KVM     ', Km,               ncol,  lchnk) ! Eddy diffusivity (momentum, m2/s)
-   call outfld('DUV     ', ptend%u,          pcols, lchnk) ! PBL u tendency (m/s2)
-   call outfld('DVV     ', ptend%v,          pcols, lchnk) ! PBL v tendency (m/s2)
-   call outfld('DTV     ', dtdt_vdiff,       ncol,  lchnk) ! PBL + surface flux T tendency (K/s)
-   call outfld('VD01    ', dqdt_vdiff,       ncol,  lchnk) ! PBL + surface flux Q tendency (kg/kg/s)
+    !===============================================================================
+    ! Archive diagnostic fields
+    !===============================================================================
+    call outfld('QRS',  dtdt_heating, ncol,  lchnk) ! T tendency from temperature relaxation (mimics radiation, K/s)
+    call outfld('KVH',  Ke,           ncol,  lchnk) ! Eddy diffusivity (heat and moisture, m2/s)
+    call outfld('KVM',  Km,           ncol,  lchnk) ! Eddy diffusivity (momentum, m2/s)
+    call outfld('DUV',  ptend%u,      pcols, lchnk) ! PBL u tendency (m/s2)
+    call outfld('DVV',  ptend%v,      pcols, lchnk) ! PBL v tendency (m/s2)
+    call outfld('DTV',  dtdt_vdiff,   ncol,  lchnk) ! PBL + surface flux T tendency (K/s)
+    call outfld('VD01', dqdt_vdiff,   ncol,  lchnk) ! PBL + surface flux Q tendency (kg/kg/s)
 
  end subroutine Thatcher_Jablonowski_sfc_pbl_hs_tend
 

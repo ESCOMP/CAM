@@ -1,6 +1,9 @@
 module kessler_cam
-  use shr_kind_mod, only: r8 => shr_kind_r8
-  use ppgrid,       only: pcols, pver
+
+  use shr_kind_mod,   only: r8 => shr_kind_r8
+  use ppgrid,         only: pcols, pver
+  use physics_buffer, only: physics_buffer_desc, pbuf_init_time, dtype_r8, &
+                            pbuf_add_field, pbuf_get_field
 
   implicit none
   private
@@ -11,9 +14,12 @@ module kessler_cam
   integer :: ixcldliq = -1 ! cloud liquid mixing ratio index
   integer :: ixrain   = -1 ! rain liquid mixing ratio index
 
-!=======================================================================
+  ! physics buffer indices
+  integer :: prec_sed_idx  = 0
+
+!========================================================================================
 contains
-!======================================================================= 
+!========================================================================================
 
   subroutine kessler_register()
     use physconst,      only: cpair, mwh2o
@@ -25,10 +31,14 @@ contains
     call cnst_add('RAINQM', mwh2o, cpair, 0._r8, ixrain,                      &
          longname='Grid box averaged rain water amount', is_convtran1=.true.)
 
+    call pbuf_add_field('PREC_SED', 'physpkg', dtype_r8, (/pcols/), prec_sed_idx)
+
   end subroutine kessler_register
 
+!========================================================================================
+
   subroutine kessler_init(pbuf2d)
-    use physics_buffer, only: physics_buffer_desc
+
     use physconst,      only: cpair, latvap,pstd, rair, rhoh2o
     use constituents,   only: cnst_name, cnst_longname, bpcnst, apcnst
     use cam_history,    only: addfld, add_default, horiz_only
@@ -50,7 +60,9 @@ contains
 
   end subroutine kessler_init
 
-  subroutine kessler_tend(state, ptend, ztodt, surf_state, precl)
+!========================================================================================
+
+  subroutine kessler_tend(state, ptend, ztodt, pbuf)
     !----------------------------------------------------------------------- 
     ! 
     ! Purpose: Run Kessler physics (see kessler.F90)
@@ -61,23 +73,17 @@ contains
     use physics_types,      only: physics_state, physics_ptend
     use physics_types,      only: physics_ptend_init
     use constituents,       only: pcnst, cnst_name, cnst_type
-    use camsrfexch,         only: cam_out_t
+
     use cam_abortutils,     only: endrun
     use cam_history,        only: outfld
     use kessler_mod,        only: kessler
 
-    !
-    ! Input arguments
-    !
-    type(physics_state), intent(inout) :: state
+
+    ! arguments
+    type(physics_state), intent(in)    :: state
     real(r8),            intent(in)    :: ztodt            ! physics timestep
-    !
-    ! Output arguments
-    !
     type(physics_ptend), intent(out)   :: ptend            ! Package tendencies
-    !
-    type(cam_out_t),     intent(inout) :: surf_state       ! Surface fluxes
-    real(r8), pointer                  :: precl(:)         ! Precip. (pcols)
+    type(physics_buffer_desc), pointer :: pbuf(:)
 
     !---------------------------Local workspace-----------------------------
     !
@@ -86,6 +92,7 @@ contains
 
     real(r8)                           :: pmid(pcols,pver) ! mid-point pressure
     real(r8)                           :: rho(pcols,pver)  ! Dry air density
+    real(r8)                           :: exner(pcols,pver)! exner (CAM vertical order)
     real(r8)                           :: pk(pcols,pver)   ! exner func.
     real(r8)                           :: th(pcols,pver)   ! Potential temp.
     real(r8)                           :: qv(pcols,pver)   ! Water vapor
@@ -97,6 +104,8 @@ contains
     integer                            :: k,rk             ! vert. indices
     logical                            :: lq(pcnst)        ! Calc tendencies?
     character(len=SHR_KIND_CM)         :: errmsg
+
+    real(r8), pointer                  :: prec_sed(:) ! total precip from cloud sedimentation
 
     integer :: i
 
@@ -115,15 +124,17 @@ contains
          ls=.true., lu=.true., lv=.true., lq=lq)
 
     do k=1,pver
-      state%exner(:ncol,k) = (state%pmid(:ncol,k)/1.e5_r8)**(rair/cpair) !exner
+      exner(:ncol,k) = (state%pmid(:ncol,k)/1.e5_r8)**(rair/cpair)
     end do
+
+    call pbuf_get_field(pbuf, prec_sed_idx, prec_sed)
 
     do k = 1, pver
       rk = pver - k + 1
       rho(:ncol,rk) = state%pmiddry(:ncol,k)/(rair*state%t(:ncol,k))
-      pk(:ncol,rk) =  state%exner(:ncol,k) 
+      pk(:ncol,rk) =  exner(:ncol,k) 
       ! Create temporaries for state variables changed by Kessler routine
-      th(:ncol,rk) = state%t(:ncol,k) / state%exner(:ncol,k)
+      th(:ncol,rk) = state%t(:ncol,k) / exner(:ncol,k)
       z(:ncol,rk)  = state%zm(:ncol,k)
       qv(:ncol,rk) = state%q(:ncol,k,1)
       qc(:ncol,rk) = state%q(:ncol,k,ixcldliq)
@@ -152,7 +163,7 @@ contains
     ! precl: Precipitation rate (m_water / s) (out)
     ! errmsg: Error string if error found
     call kessler(ncol, pver, ztodt, rho(:ncol,:), z(:ncol,:), pk(:ncol,:),    &
-         th(:ncol,:), qv(:ncol,:), qc(:ncol,:), qr(:ncol,:), precl(:ncol), errmsg)
+         th(:ncol,:), qv(:ncol,:), qc(:ncol,:), qr(:ncol,:), prec_sed, errmsg)
 
     if (len_trim(errmsg) > 0) then
       call endrun(trim(errmsg))
@@ -174,19 +185,11 @@ contains
     ! Back out tendencies from updated fields
     do k = 1, pver
       rk = pver - k + 1
-      ptend%s(:ncol,k) = (th(:ncol,rk)*state%exner(:ncol,k) - state%t(:ncol,k)) * cpair / ztodt
+      ptend%s(:ncol,k) = (th(:ncol,rk)*exner(:ncol,k) - state%t(:ncol,k)) * cpair / ztodt
       ptend%q(:ncol,k,1) = (qv(:ncol,rk) - state%q(:ncol,k,1)) / ztodt
       ptend%q(:ncol,k,ixcldliq) = (qc(:ncol,rk) - state%q(:ncol,k,ixcldliq)) / ztodt
       ptend%q(:ncol,k,ixrain) = (qr(:ncol,rk) - state%q(:ncol,k,ixrain)) / ztodt
     end do
-
-    ! Update precip
-    if (ncol < pcols) then
-      precl(ncol+1:pcols) = 0.0_r8
-      qc(ncol+1:pcols,:)  = 0.0_r8
-      qr(ncol+1:pcols,:)  = 0.0_r8
-    end if
-    surf_state%precl(:ncol) = surf_state%precl(:ncol) + precl(:ncol)
 
     ! Output liquid tracers
     call outfld(cnst_name(ixcldliq), qc(:,pver:1:-1), pcols, lchnk)

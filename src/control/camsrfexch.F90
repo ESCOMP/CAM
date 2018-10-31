@@ -458,8 +458,11 @@ subroutine cam_export(state,cam_out,pbuf)
    integer :: m              ! constituent index
    integer :: lchnk          ! Chunk index
    integer :: ncol
+   integer :: psl_idx
    integer :: prec_dp_idx, snow_dp_idx, prec_sh_idx, snow_sh_idx
    integer :: prec_sed_idx,snow_sed_idx,prec_pcw_idx,snow_pcw_idx
+
+   real(r8), pointer :: psl(:)
 
    real(r8), pointer :: prec_dp(:)                 ! total precipitation   from ZM convection
    real(r8), pointer :: snow_dp(:)                 ! snow from ZM   convection
@@ -473,6 +476,9 @@ subroutine cam_export(state,cam_out,pbuf)
 
    lchnk = state%lchnk
    ncol  = state%ncol
+
+   psl_idx = pbuf_get_index('PSL')
+   call pbuf_get_field(pbuf, psl_idx, psl)
 
    prec_dp_idx = pbuf_get_index('PREC_DP', errcode=i)
    snow_dp_idx = pbuf_get_index('SNOW_DP', errcode=i)
@@ -516,6 +522,7 @@ subroutine cam_export(state,cam_out,pbuf)
       cam_out%ubot(i)  = state%u(i,pver)
       cam_out%vbot(i)  = state%v(i,pver)
       cam_out%pbot(i)  = state%pmid(i,pver)
+      cam_out%psl(i)   = psl(i)
       cam_out%rho(i)   = cam_out%pbot(i)/(rair*cam_out%tbot(i))
    end do
    do m = 1, pcnst

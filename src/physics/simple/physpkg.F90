@@ -16,7 +16,7 @@ module physpkg
   use phys_grid,       only: get_ncols_p
   use phys_gmean,      only: gmean_mass
   use ppgrid,          only: begchunk, endchunk, pcols, pver, pverp
-  use camsrfexch,      only: cam_out_t, cam_in_t
+  use camsrfexch,      only: cam_out_t, cam_in_t, cam_export
 
   ! Note: ideal_phys is true for Held-Suarez (1994) physics
   use cam_control_mod, only: moist_physics, adiabatic, ideal_phys, kessler_phys, tj2016_phys
@@ -39,18 +39,15 @@ module physpkg
 
   ! Private module data
 
-  !  Physics buffer indices
-  integer           :: teout_idx     = 0
-  integer           :: dtcore_idx    = 0
+  ! Physics buffer indices
+  integer :: teout_idx     = 0
+  integer :: dtcore_idx    = 0
 
-  integer           :: qini_idx      = 0
-  integer           :: cldliqini_idx = 0
-  integer           :: cldiceini_idx = 0
-  integer           :: prec_sed_idx  = 0
+  integer :: qini_idx      = 0
+  integer :: cldliqini_idx = 0
+  integer :: cldiceini_idx = 0
 
- ! Physics package options
-  character(len=16) :: convection_scheme
-  logical           :: state_debug_checks  ! Debug physics_state.
+  logical :: state_debug_checks  ! Debug physics_state.
 
 !=======================================================================
 contains
@@ -99,7 +96,6 @@ contains
 
     if (kessler_phys) then
       call kessler_register()
-      call pbuf_add_field('PREC_SED', 'physpkg', dtype_r8, (/pcols/), prec_sed_idx)
     else if (tj2016_phys) then
       call thatcher_jablonowski_register()
     end if
@@ -449,7 +445,7 @@ contains
     use physics_types,   only: physics_state, physics_tend, physics_state_check
     use physics_types,   only: physics_dme_adjust, set_dry_to_wet
     use constituents,    only: cnst_get_ind, pcnst
-    use cam_diagnostics, only: diag_phys_tend_writeout
+    use cam_diagnostics, only: diag_phys_tend_writeout, diag_surf
     use tj2016_cam,      only: thatcher_jablonowski_sfc_pbl_hs_tend
     use dycore,          only: dycore_is
     use check_energy,    only: calc_te_and_aam_budgets
@@ -495,6 +491,7 @@ contains
     if (state_debug_checks) then
       call physics_state_check(state, name="before tphysac")
     end if
+
     call pbuf_get_field(pbuf, qini_idx, qini)
     if (moist_physics) then
       call pbuf_get_field(pbuf, cldliqini_idx, cldliqini)
@@ -513,7 +510,7 @@ contains
     !=========================
     if (tj2016_phys) then
        ! Update surface, PBL and modified Held-Suarez forcings
-       call thatcher_jablonowski_sfc_pbl_hs_tend(state, ptend, ztodt, cam_out)
+       call thatcher_jablonowski_sfc_pbl_hs_tend(state, ptend, ztodt, cam_in)
        call physics_update(state, ptend, ztodt, tend)
     end if
 
@@ -584,6 +581,8 @@ contains
     call diag_phys_tend_writeout (state, pbuf,  tend, ztodt,                  &
          tmp_q, tmp_cldliq, tmp_cldice, qini, cldliqini, cldiceini)
 
+    call diag_surf(cam_in, cam_out, state, pbuf)
+
     if (.not. moist_physics) then
       deallocate(cldliqini)
       deallocate(cldiceini)
@@ -652,7 +651,6 @@ contains
     real(r8), pointer        :: cldliqini(:,:)
     real(r8), pointer        :: cldiceini(:,:)
     real(r8), pointer        :: dtcore(:,:)
-    real(r8), pointer        :: prec_sed(:) ! total precip from cloud sedimentation
 
     real(r8)                 :: zero(pcols) ! array of zeros
     real(r8)                 :: flx_heat(pcols)
@@ -679,10 +677,6 @@ contains
     if (moist_physics) then
       call pbuf_get_field(pbuf, cldliqini_idx, cldliqini)
       call pbuf_get_field(pbuf, cldiceini_idx, cldiceini)
-    end if
-
-    if (kessler_phys) then
-      call pbuf_get_field(pbuf, prec_sed_idx, prec_sed)
     end if
 
     ! Set accumulated physics tendencies to 0
@@ -756,7 +750,7 @@ contains
       call physics_update(state, ptend, ztodt, tend)
 
     else if (kessler_phys) then
-      call kessler_tend(state, ptend, ztodt, cam_out, prec_sed)
+      call kessler_tend(state, ptend, ztodt, pbuf)
       call physics_update(state, ptend, ztodt, tend)
 
     else if (tj2016_phys) then
@@ -784,17 +778,16 @@ contains
     end if
 
     call t_startf('bc_history_write')
-    if (moist_physics) then
-       call diag_phys_writeout(state, cam_out%psl)
-       call diag_conv(state, ztodt, pbuf)
-    else
-       call diag_phys_writeout(state)
-    end if
+
+    call diag_phys_writeout(state, pbuf)
+    call diag_conv(state, ztodt, pbuf)
 
     call t_stopf('bc_history_write')
 
     ! Save total enery after physics for energy conservation checks
     teout = state%te_cur
+
+    call cam_export(state, cam_out, pbuf)
 
   end subroutine tphysbc
 

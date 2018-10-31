@@ -15,7 +15,7 @@
 <fincl1>
  'PS','Q','T','U','V','OMEGA','U850','V850','T850','OMEGA850','Q850','PRECL'
  'SHFLX','LHFLX','TAUX','TAUY','SST',
- 'DCQ','DTCOND','QRS','RELHUM','QFLX','PTTEND','PTEQ' 
+ 'DCQ','DTCOND','QRS','RELHUM','QFLX','PTTEND','PTEQ','VT','UU','VV','VU'
 </fincl1>
 
 <analytic_ic_type>'moist_baroclinic_wave_dcmip2016'</analytic_ic_type>
