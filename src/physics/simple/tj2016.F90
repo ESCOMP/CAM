@@ -85,7 +85,7 @@ CONTAINS
 ! Moist processes   
 !=======================================================================
   subroutine Thatcher_Jablonowski_precip(ncol, pver, dtime,                &
-       pmid, pdel, T, qv, precl, precc)
+       pmid, pdel, T, qv, relhum, precl, precc)
     !------------------------------------------------
     !   Input / output parameters
     !------------------------------------------------
@@ -99,6 +99,7 @@ CONTAINS
     real(r8), intent(inout) :: T(ncol,pver)            ! temperature (K)
     real(r8), intent(inout) :: qv(ncol,pver)           ! specific humidity Q (kg/kg)
 
+    real(r8), intent(out)   :: relhum(ncol,pver)       ! relative humidity
     real(r8), intent(out)   :: precl(ncol)             ! large-scale precipitation rate (m/s)
     real(r8), intent(out)   :: precc(ncol)             ! convective precipitation (m/s) (optional)
 
@@ -147,7 +148,12 @@ CONTAINS
           precl(i)    = precl(i) + tmp*pdel(i,k)/(gravit*rhoh2o) ! large-scale precipitation rate (m/s)
           T(i,k)      = T(i,k)   + tmp_t*dtime ! update T (temperature)
           qv(i,k)     = qv(i,k)  + tmp_q*dtime ! update qv (specific humidity)
+          ! recompute qsat with updated T
+          qsat = epsilo*e0/pmid(i,k)*exp(-latvap/rh2o*((1._r8/T(i,k))-1._r8/T0)) ! saturation value for Q
         end if
+
+        relhum(i,k) = qv(i,k) / qsat * 100._r8 ! in percent
+
       end do
     end do
 

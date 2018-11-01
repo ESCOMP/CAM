@@ -31,6 +31,7 @@ module TJ2016_cam
   public :: Thatcher_Jablonowski_sfc_pbl_hs_tend
 
   integer :: prec_pcw_idx  = 0
+  integer :: relhum_idx    = 0
 
 !=======================================================================
 CONTAINS
@@ -38,7 +39,8 @@ CONTAINS
 
 subroutine Thatcher_Jablonowski_register()
 
-   call pbuf_add_field('PREC_PCW',  'physpkg', dtype_r8, (/pcols/), prec_pcw_idx)
+   call pbuf_add_field('PREC_PCW',  'physpkg', dtype_r8, (/pcols/),      prec_pcw_idx)
+   call pbuf_add_field('RELHUM',    'physpkg', dtype_r8, (/pcols,pver/), relhum_idx)
 
 end subroutine Thatcher_Jablonowski_register
 
@@ -103,6 +105,7 @@ end subroutine Thatcher_Jablonowski_register
     ! local variables
 
     real(r8), pointer :: prec_pcw(:)
+    real(r8), pointer :: relhum(:,:)
 
     !---------------------------Local workspace-----------------------------
     !
@@ -143,16 +146,18 @@ end subroutine Thatcher_Jablonowski_register
     ! Input/Output arguments
     ! T:      Temperature (K)
     ! qv:     Specific humidity (kg/kg)
-    ! precl:  large-scale precipitation rate (m/s)
 
     ! Output arguments
+    ! relhum: relative humidity (%)
+    ! precl:  large-scale precipitation rate (m/s)
     ! precc:  convective precipitation rate (m/s) (optional process)
 
     call pbuf_get_field(pbuf, prec_pcw_idx, prec_pcw)
+    call pbuf_get_field(pbuf, relhum_idx,   relhum)
 
     call Thatcher_Jablonowski_precip(ncol, pver, ztodt,                     &
          state%pmid(:ncol,:), state%pdel(:ncol,:),                          &
-         T, qv, prec_pcw(:ncol), precc)
+         T, qv, relhum(:ncol,:), prec_pcw(:ncol), precc)
 
     ! Back out temperature and specific humidity tendencies from updated fields
     do k = 1, pver

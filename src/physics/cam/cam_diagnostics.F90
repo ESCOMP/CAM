@@ -78,6 +78,7 @@ logical          :: history_waccm                  ! outputs typically used for 
 ! Physics buffer indices
 
 integer  ::      psl_idx    = 0 
+integer  ::      relhum_idx = 0 
 integer  ::      qcwat_idx  = 0 
 integer  ::      tcwat_idx  = 0 
 integer  ::      lcwat_idx  = 0 
@@ -685,6 +686,7 @@ contains
     end if
 
     ! Pbuf field indices for collecting output data
+    relhum_idx = pbuf_get_index('RELHUM',  errcode=ierr)
     qcwat_idx  = pbuf_get_index('QCWAT',  errcode=ierr)
     tcwat_idx  = pbuf_get_index('TCWAT',  errcode=ierr)
     lcwat_idx  = pbuf_get_index('LCWAT',  errcode=ierr)
@@ -896,7 +898,6 @@ contains
     use time_manager,       only: get_nstep
     use interpolate_data,   only: vertinterp
     use constituent_burden, only: constituent_burden_comp
-    use cam_control_mod,    only: moist_physics
     use co2_cycle,          only: c_i, co2_transport
 
     use tidal_diag,         only: tidal_diag_write
@@ -1223,7 +1224,7 @@ contains
 
 !===============================================================================
 
-  subroutine diag_phys_writeout_moist(state, p_surf_t)
+  subroutine diag_phys_writeout_moist(state, pbuf, p_surf_t)
 
     !-----------------------------------------------------------------------
     !
@@ -1234,13 +1235,13 @@ contains
                                   epsilo, rh2o
     use interpolate_data,   only: vertinterp
     use constituent_burden, only: constituent_burden_comp
-    use cam_control_mod,    only: moist_physics, tj2016_phys
     use co2_cycle,          only: c_i, co2_transport
     !-----------------------------------------------------------------------
     !
     ! Arguments
     !
     type(physics_state), intent(inout) :: state
+    type(physics_buffer_desc), pointer :: pbuf(:)
     real(r8),            intent(inout) :: p_surf_t(pcols, nsurf)  ! data interpolated to a pressure surface
     !
     !---------------------------Local workspace-----------------------------
@@ -1255,12 +1256,8 @@ contains
     real(r8) :: tem2(pcols,pver) ! temporary workspace
     real(r8) :: esl(pcols,pver)   ! saturation vapor pressures
     real(r8) :: esi(pcols,pver)   !
-    real(r8) :: dlon(pcols)      ! width of grid cell (meters)
-    integer ::  plon             ! number of longitudes
 
-    ! temporary fix for tj2016 sat vp calc
-    real(r8), parameter :: T0=273.16_r8  ! Control temperature (K) for calculation of saturation specific humidity
-    real(r8), parameter :: e0=610.78_r8  ! Saturation vapor pressure (Pa) at T0
+    real(r8), pointer :: ftem_ptr(:,:)
 
     integer :: i, k, m, lchnk, ncol
     !
@@ -1307,19 +1304,15 @@ contains
 
     ! Relative humidity
     if (hist_fld_active('RELHUM')) then
-      if (tj2016_phys) then
-         do k=1,pver
-            do i=1,ncol
-               ftem(i,k)= epsilo*e0/state%pmid(i,k)*exp(-latvap/rh2o*((1._r8/state%t(i,k))-1._r8/T0))
-            end do
-         end do
-     else
-         call qsat(state%t(:ncol,:), state%pmid(:ncol,:), &
-                   tem2(:ncol,:), ftem(:ncol,:))
-      end if
-
-      ftem(:ncol,:) = state%q(:ncol,:,1)/ftem(:ncol,:)*100._r8
-      call outfld ('RELHUM  ',ftem    ,pcols   ,lchnk     )
+       if (relhum_idx > 0) then
+          call pbuf_get_field(pbuf, relhum_idx, ftem_ptr)
+          ftem(:ncol,:) = ftem_ptr(:ncol,:)
+       else
+          call qsat(state%t(:ncol,:), state%pmid(:ncol,:), &
+                    tem2(:ncol,:), ftem(:ncol,:))
+          ftem(:ncol,:) = state%q(:ncol,:,1)/ftem(:ncol,:)*100._r8
+       end if
+       call outfld ('RELHUM  ',ftem    ,pcols   ,lchnk     )
     end if
 
     if (hist_fld_active('RHW') .or. hist_fld_active('RHI') .or. hist_fld_active('RHCFMIP') ) then
@@ -1483,7 +1476,7 @@ contains
     call diag_phys_writeout_dry(state, pbuf, p_surf_t)
 
     if (moist_physics) then
-      call diag_phys_writeout_moist(state, p_surf_t)
+      call diag_phys_writeout_moist(state, pbuf, p_surf_t)
     end if
 
   end subroutine diag_phys_writeout
