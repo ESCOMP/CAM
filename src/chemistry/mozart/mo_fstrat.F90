@@ -364,20 +364,14 @@ contains
 
                    call lininterp(mr_ub_in(:,spcno, month, lev), ub_nlat, mr_ub(:,spcno,month,lev,c), &
                         ncols, lat_wgts)
-
-                   !                call regrid_1d( mr_ub_in(:,spcno,month,lev), mr_ub(:,spcno,month,lev), gndx, &
-                   !                     do_lat=.true.,to_lat_min=1, to_lat_max=plat )
 #ifdef DEBUG
                    if( lev == 25 .and. month == 1 .and. spcno == 1 ) then
                       write(iulog,*) 'mr_ub_in='
                       write(iulog,'(10f7.1)') mr_ub_in(:,spcno,month,lev)*1.e9_r8
                       write(iulog,*) 'mr_ub='
-                      write(iulog,'(10f7.1)') mr_ub(:,spcno,month,lev)*1.e9_r8
+                      write(iulog,'(10f7.1)') mr_ub(:,spcno,month,lev,c)*1.e9_r8
                    end if
 #endif
-                   !                mr_ub(1,spcno,month,lev) = mr_ub(2,spcno,month,lev)
-                   !                mr_ub(plat,spcno,month,lev) = mr_ub(plat-1,spcno,month,lev)
-
                 end if
 
              end do
@@ -638,8 +632,8 @@ contains
 #ifdef DEBUG
        if( levrelax /= ltrop(i) ) then
           write(iulog,*) 'warning -- raised ubc: ',lat,i,        &
-             ltrop(i)-1,nint(pmid(i,ltrop(i)-1)/mb2pa),'mb -->', &
-             levrelax,nint(pmid(i,levrelax)/mb2pa),'mb'
+             ltrop(i)-1,nint(pmid(i,ltrop(i)-1)/100._r8),'mb -->', &
+             levrelax,nint(pmid(i,levrelax)/100._r8),'mb'
        end if
 #endif
        level_loop2 : do k = kmax(i)+1,levrelax

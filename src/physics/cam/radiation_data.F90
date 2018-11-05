@@ -984,7 +984,8 @@ contains
           call pbuf_get_field(pbuf, qrsin_idx, qrsin)
           call pbuf_get_field(pbuf, qrlin_idx, qrlin)
 
-          call tropopause_find(phys_state(c), troplev, tropP=tropp(:), primary=TROP_ALG_HYBSTOB, backup=TROP_ALG_CLIMATE)
+          call tropopause_find(phys_state(c), troplev, tropP=tropp(:), primary=TROP_ALG_CLIMATE, &
+                               backup=TROP_ALG_CLIMATE)
 
           qrsin(:,:) = qrs_ptrs(c)%array(:,:)
           qrlin(:,:) = qrl_ptrs(c)%array(:,:)
