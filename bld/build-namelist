@@ -3416,6 +3416,11 @@ if ($cfg->get('camiop')) {
 
 if ($dyn =~ /se/) {
 
+    ## topography not supported for CESM2.0
+    if (!defined $use_topo_file or ($use_topo_file =~ m/$TRUE/io)) {
+      die "$ProgName - ERROR: Use of topography not currently supported with SE dycore\n";
+    }
+
     ####################################################
     # namelist group: dyn_se_inparm (for CAM_SE) #
     ####################################################

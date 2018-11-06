@@ -128,25 +128,6 @@
 <ncdata           hgrid="8x16"      nlev="26"              ic_ymd="901" >atm/cam/inic/gaus/cami_0000-09-01_8x16_L26_c030918.nc</ncdata>
 <ncdata           hgrid="8x16"      nlev="30"              ic_ymd="101" >atm/cam/inic/gaus/cami_0000-01-01_8x16_L30_c090102.nc</ncdata>
 
-
-<ncdata dyn="se" hgrid="ne5np4"   nlev="30"             ic_ymd="101" >atm/cam/inic/homme/cami-mam3_0000-01_ne5np4_L30.140707.nc</ncdata>
-<ncdata dyn="se" hgrid="ne16np4"  nlev="26"             ic_ymd="101" >atm/cam/inic/se/ape_topo_cam4_ne16np4_L26_c171020.nc</ncdata>
-<ncdata dyn="se" hgrid="ne16np4"  nlev="30"             ic_ymd="101" >atm/cam/inic/se/ape_topo_cam4_ne16np4_L30_c171020.nc</ncdata>
-<ncdata dyn="se" hgrid="ne16np4"  nlev="32"             ic_ymd="101" >atm/cam/inic/se/ape_topo_cam4_ne16np4_L32_c171020.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4"  nlev="26"             ic_ymd="101" >atm/cam/inic/se/ape_topo_cam4_ne30np4_L26_c171020.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4"  nlev="30"             ic_ymd="101" >atm/cam/inic/se/ape_topo_cam4_ne30np4_L30_c171020.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4"  nlev="32"             ic_ymd="101" >atm/cam/inic/se/ape_topo_cam6_ne30np4_L32_c171023.nc</ncdata>
-<ncdata dyn="se" hgrid="ne60np4"  nlev="26"             ic_ymd="101" >atm/cam/inic/se/ape_topo_cam4_ne60np4_L26_c171018.nc</ncdata>
-<ncdata dyn="se" hgrid="ne60np4"  nlev="30"             ic_ymd="101" >atm/cam/inic/se/ape_topo_cam4_ne60np4_L30_c171020.nc</ncdata>
-<ncdata dyn="se" hgrid="ne60np4"  nlev="32"             ic_ymd="101" >atm/cam/inic/se/ape_topo_cam4_ne60np4_L32_c171020.nc</ncdata>
-<ncdata dyn="se" hgrid="ne120np4" nlev="26"             ic_ymd="101" >atm/cam/inic/se/ape_topo_cam4_ne120np4_L26_c171018.nc</ncdata>
-<ncdata dyn="se" hgrid="ne120np4" nlev="30"             ic_ymd="101" >atm/cam/inic/se/ape_topo_cam4_ne120np4_L30_c171024.nc</ncdata>
-<ncdata dyn="se" hgrid="ne120np4" nlev="32"             ic_ymd="101" >atm/cam/inic/se/ape_topo_cam4_ne120np4_L32_c171023.nc</ncdata>
-<ncdata dyn="se" hgrid="ne240np4" nlev="26"             ic_ymd="101" >atm/cam/inic/homme/cami_1850-01-01_ne240np4_L26_c110314.nc</ncdata>
-<ncdata dyn="se" hgrid="ne240np4" nlev="26"             ic_ymd="901" >atm/cam/inic/homme/cami_0000-09-01_ne240np4_L26_c061106.nc</ncdata>
-
-<ncdata dyn="se" hgrid="ne240np4" nlev="30"             ic_ymd="101" >atm/cam/inic/homme/cami-mam3_0000-01-ne240np4_L30_c111004.nc</ncdata>
-
 <ncdata dyn="se" hgrid="ne5np4"  nlev="26"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/ape_cam4_ne5np4_L26_c170517.nc</ncdata>
 <ncdata dyn="se" hgrid="ne16np4"  nlev="26"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/ape_cam4_ne16np4_L26_c170417.nc</ncdata>
 <ncdata dyn="se" hgrid="ne30np4"  nlev="26"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/ape_cam4_ne30np4_L26_c170417.nc</ncdata>
@@ -165,10 +146,6 @@
 <ncdata dyn="se" hgrid="ne120np4"  nlev="32"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/ape_cam6_ne120np4_L32_c170908.nc</ncdata>
 <ncdata dyn="se" hgrid="ne240np4"  nlev="32"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/ape_cam6_ne240np4_L32_c170908.nc</ncdata>
 
-<ncdata dyn="se" hgrid="ne5np4"   nlev="66">atm/waccm/ic/wa3_ne5np4_1950_spinup.cam2.i.1960-01-01-00000_c150810.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4"  nlev="70">atm/waccm/ic/waccm5_1850_ne30np4_L70_0001-01-11-00000_c151217.nc</ncdata>
-<ncdata dyn="se" hgrid="ne0np4CONUS.ne30x8" nlev="32">atm/cam/inic/se/f_asd2017.cam6_clm5_ne0conus30x8_t12_1980-01-01-00000.nc</ncdata>
-
 <!-- Topography -->
 <bnd_topo hgrid="256x512" >atm/cam/topo/topo-from-cami_0000-01-01_256x512_L26_c030918.nc</bnd_topo>
 <bnd_topo hgrid="128x256" >atm/cam/topo/USGS-gtopo30_128x256_c050520.nc</bnd_topo>
@@ -185,34 +162,6 @@
 <bnd_topo hgrid="2.5x3.33"  >atm/cam/topo/USGS-gtopo30_2.5x3.33_remap_c100204.nc</bnd_topo>
 <bnd_topo hgrid="4x5"       >atm/cam/topo/USGS-gtopo30_4x5_remap_c050520.nc</bnd_topo>
 <bnd_topo hgrid="10x15"     >atm/cam/topo/fv_10x15_nc0540_Nsw042_Nrs008_Co060_Fi001_20171220.nc</bnd_topo>
-
-<bnd_topo hgrid="ne5np4"          >atm/cam/topo/se/ne5np4_nc3000_Co360_Fi001_MulG_PF_nullRR_Nsw064_20170515.nc</bnd_topo>
-<bnd_topo hgrid="ne16np4"         >atm/cam/topo/se/ne16np4_nc3000_Co120_Fi001_PF_nullRR_Nsw084_20171012.nc</bnd_topo>
-<bnd_topo hgrid="ne30np4"         >atm/cam/topo/se/ne30np4_nc3000_Co060_Fi001_PF_nullRR_Nsw042_20171020.nc</bnd_topo>
-<bnd_topo hgrid="ne60np4"         >atm/cam/topo/se/ne60np4_nc3000_Co030_Fi001_PF_nullRR_Nsw021_20171012.nc</bnd_topo>
-<bnd_topo hgrid="ne120np4"        >atm/cam/topo/se/ne120np4_nc3000_Co015_Fi001_PF_nullRR_Nsw010_20171011.nc</bnd_topo>
-<bnd_topo hgrid="ne240np4"        >atm/cam/topo/se/ne240np4_nc3000_Co008_Fi001_PF_nullRR_Nsw005_20171014.nc</bnd_topo>
-
-<bnd_topo hgrid="ne5np4"   npg="2">atm/cam/topo/se/ne5pg2_nc3000_Co360_Fi001_MulG_PF_nullRR_Nsw060_20170706.nc</bnd_topo>
-<bnd_topo hgrid="ne30np4"  npg="2">atm/cam/topo/se/ne30pg2_nc3000_Co060_Fi001_PF_nullRR_Nsw042_20171014.nc</bnd_topo>
-<bnd_topo hgrid="ne60np4"  npg="2">atm/cam/topo/se/ne60pg2_nc3000_Co030_Fi001_PF_nullRR_Nsw021_20171014.nc</bnd_topo>
-<bnd_topo hgrid="ne120np4" npg="2">atm/cam/topo/se/ne120pg2_nc3000_Co015_Fi001_PF_nullRR_Nsw010_20171012.nc</bnd_topo>
-<bnd_topo hgrid="ne240np4" npg="2">atm/cam/topo/se/ne240pg2_nc3000_Co008_Fi001_PF_nullRR_Nsw005_20171014.nc</bnd_topo>
-
-<bnd_topo hgrid="ne5np4"   npg="3">atm/cam/topo/se/ne5pg3_nc3000_Co360_Fi001_MulG_PF_nullRR_Nsw064_20170516.nc</bnd_topo>
-<bnd_topo hgrid="ne16np4"  npg="3">atm/cam/topo/se/ne16pg3_nc3000_Co120_Fi001_PF_nullRR_Nsw084_20171012.nc</bnd_topo>
-<bnd_topo hgrid="ne30np4"  npg="3">atm/cam/topo/se/ne30pg3_nc3000_Co060_Fi001_PF_nullRR_Nsw042_20171014.nc</bnd_topo>
-<bnd_topo hgrid="ne60np4"  npg="3">atm/cam/topo/se/ne60pg3_nc3000_Co030_Fi001_PF_nullRR_Nsw021_20171012.nc</bnd_topo>
-<bnd_topo hgrid="ne120np4" npg="3">atm/cam/topo/se/ne120pg3_nc3000_Co015_Fi001_PF_nullRR_Nsw010_20171014.nc</bnd_topo>
-<bnd_topo hgrid="ne240np4" npg="3">atm/cam/topo/se/ne240pg3_nc3000_Co008_Fi001_PF_nullRR_Nsw005_20171015.nc</bnd_topo>
-
-<bnd_topo hgrid="ne5np4"   npg="4">atm/cam/topo/se/ne5pg4_nc3000_Co360_Fi001_MulG_PF_nullRR_Nsw060_20170707.nc</bnd_topo>
-<bnd_topo hgrid="ne30np4"  npg="4">atm/cam/topo/se/ne30pg4_nc3000_Co060_Fi001_PF_nullRR_Nsw042_20171014.nc</bnd_topo>
-<bnd_topo hgrid="ne60np4"  npg="4">atm/cam/topo/se/ne60pg4_nc3000_Co030_Fi001_PF_nullRR_Nsw021_20171018.nc</bnd_topo>
-<bnd_topo hgrid="ne120np4" npg="4">atm/cam/topo/se/ne120pg4_nc3000_Co015_Fi001_PF_nullRR_Nsw010_20171014.nc</bnd_topo>
-
-<!-- Refine mesh topo -->
-<bnd_topo hgrid="ne0np4CONUS.ne30x8" aquaplanet="0" >atm/cam/topo/conus_30_x8_nc3000_Co060_Fi001_MulG_PF_CONUS_Nsw042_20170417.nc</bnd_topo>
 
 <!-- Ridge parameterization (gamma) -->
 <bnd_rdggm hgrid="0.9x1.25">atm/cam/topo/fv_0.9x1.25_nc3000_Nsw006_Nrs002_Co008_Fi001_ZR_c160505.nc</bnd_rdggm>

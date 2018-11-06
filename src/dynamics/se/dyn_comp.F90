@@ -1649,50 +1649,7 @@ subroutine read_phis(dyn_in)
 
    if (associated(fh_topo)) then
 
-      ! Set PIO to return error flags.
-      call pio_seterrorhandling(fh_topo, PIO_BCAST_ERROR, pio_errtype)
-
-      ! Set name of grid object which will be used to read data from file
-      ! into internal data structure via PIO.
-      if (fv_nphys == 0) then
-         grid_name = 'GLL'
-      else
-         grid_name = 'physgrid_d'
-      end if
-
-      ! Get number of global columns from the grid object and check that
-      ! it matches the file data.
-      call cam_grid_dimensions(grid_name, dims)
-      dyn_cols = dims(1)
-
-      ! The dimension of the unstructured grid in the TOPO file is 'ncol'.
-      ierr = pio_inq_dimid(fh_topo, 'ncol', ncol_did)
-      if (ierr /= PIO_NOERR) then
-         call endrun(subname//': dimension ncol not found in bnd_topo file')
-      end if
-      ierr = pio_inq_dimlen(fh_topo, ncol_did, ncol_size)
-      if (ncol_size /= dyn_cols) then
-         if (masterproc) then
-            write(iulog,*) subname//': ncol_size=', ncol_size, ' : dyn_cols=', dyn_cols
-         end if
-         call endrun(subname//': ncol size in bnd_topo file does not match grid definition')
-      end if
-
-      fieldname = 'PHIS'
-      if (dyn_field_exists(fh_topo, trim(fieldname))) then
-         if (fv_nphys == 0) then
-            call read_dyn_var(fieldname, fh_topo, 'ncol', phis_tmp)
-         else
-            call read_phys_field_2d(fieldname, fh_topo, 'ncol', phis_phys_tmp)
-            call map_phis_from_physgrid_to_gll(dyn_in%fvm, elem, phis_phys_tmp, &
-                                               phis_tmp, pmask)
-         end if
-      else
-         call endrun(subname//': Could not find PHIS field on input datafile')
-      end if
-
-      ! Put the error handling back the way it was
-      call pio_seterrorhandling(fh_topo, pio_errtype)
+      call endrun(subname//': surface components with topography not supported')
 
    else if (analytic_ic_active() .and. (iam < par%nprocs)) then
 

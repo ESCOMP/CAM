@@ -1882,7 +1882,7 @@ if ($dyn_pkg eq 'se') {
     # Check to see if physics grid is being used
     my $npg = $cfg_ref->get('npg');
     if ($npg > 0) {
-        $cfg_cppdefs .= " -DFVM_TRACERS";
+        die "CSLAM and FVM physics grid are not currently supported.$eol";
     }
 
     if ($smp eq 'ON') {

@@ -26,8 +26,6 @@
 <ncdata dyn="fv"  hgrid="1.9x2.5" >atm/waccm/ic/f2000.e10r02.2deg.waccm.005.cam2.i.0017-01-01-00000.nc</ncdata>
 <ncdata dyn="fv"  hgrid="4x5"     >atm/waccm/ic/f40.2000.track1.4deg.001.cam2.i.0013-01-01-00000.nc</ncdata>
 
-<ncdata dyn="se" hgrid="ne30np4" >atm/waccm/ic/f.e11.FWSC.ne30_ne30.wm_SE.003.cam.i.0006-01-01-00000.nc</ncdata> 
-
 <!-- Deposition Velocities : DEFAULTS okay -->
 
 <!-- Emissions DEFAULTS OKAY for: airpl_emis_file,ch2o_emis_file,co_emis_file,nox_emis_file-->
