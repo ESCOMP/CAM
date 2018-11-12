@@ -1,0 +1,6 @@
+# Test CAM post-Data Assimilation handling
+SRCROOT="`./xmlquery --value SRCROOT`"
+DAFILE="${SRCROOT}/components/cam/test/system/da_cam_no_data_mod.sh"
+./xmlchange DATA_ASSIMILATION_SCRIPT=${DAFILE}
+# Turn off any use case
+./xmlchange CAM_NML_USE_CASE="UNSET"

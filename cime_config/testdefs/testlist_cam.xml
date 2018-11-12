@@ -467,6 +467,15 @@
       <machine name="hobart" compiler="nag" category="aux_cam"/>
     </machines>
   </test>
+  <!--  DART -->
+  <test compset="FHS94" grid="f45_f45_mg37" name="DAE" testmods="cam/dae">
+    <machines>
+      <machine name="hobart" compiler="nag" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock"> 00:20:00 </option>
+    </options>
+  </test>
 
 <!--              @@@@@@@@@@@@@@@@@@@@@@                 -->
 <!--             WACCM COMPSETS                 -->

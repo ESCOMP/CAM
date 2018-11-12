@@ -125,7 +125,6 @@ CONTAINS
     integer :: perpetual_ymd    ! Perpetual date (YYYYMMDD)
 
     logical :: dart_mode_in
-    character(len=cl) :: atm_resume_all_inst(num_inst_atm) ! atm resume file
 
     real(r8):: nextsw_cday      ! calendar of next atm shortwave
     integer :: stepno           ! time step
@@ -146,7 +145,8 @@ CONTAINS
     ! Determine cdata points
     !
     call seq_cdata_setptrs(cdata_a, ID=ATMID, mpicom=mpicom_atm, &
-         gsMap=gsMap_atm, dom=dom_a, infodata=infodata)
+         gsMap=gsMap_atm, dom=dom_a, infodata=infodata,          &
+         post_assimilation=dart_mode_in)
 
     if (first_time) then
 
@@ -191,15 +191,11 @@ CONTAINS
        call seq_infodata_GetData( infodata,                                           &
             case_name=caseid, case_desc=ctitle, model_doi_url=model_doi_url,          &
             start_type=starttype,                                                     &
-            atm_resume=atm_resume_all_inst,                                           &
             aqua_planet=aqua_planet,                                                  &
             brnch_retain_casename=brnch_retain_casename,                              &
             single_column=single_column, scmlat=scmlat, scmlon=scmlon,                &
             orb_eccen=eccen, orb_mvelpp=mvelpp, orb_lambm0=lambm0, orb_obliqr=obliqr, &
             perpetual=perpetual_run, perpetual_ymd=perpetual_ymd)
-
-       dart_mode_in = .false.
-       if (trim(atm_resume_all_inst(MIN(num_inst_atm,inst_index))) == 'TRUE') dart_mode_in = .true.
 
        ! Initialize CAM, allocate cam_in and cam_out and determine
        ! atm decomposition (needed to initialize gsmap)

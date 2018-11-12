@@ -7241,6 +7241,11 @@ T =&gt; no diurnal cycle in ocn albedos.
 Default: FALSE
 </entry>
 
+<entry id="flux_convergence" type="real" category="driver"
+       group="seq_infodata_inparm" valid_values="" >
+Default: 0.01
+</entry>
+
 <entry id="flux_epbal" type="char*256" category="driver"
        group="seq_infodata_inparm" valid_values="" >
 Selects E,P,R adjustment technique.

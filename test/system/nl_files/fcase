@@ -5,4 +5,5 @@
  start_ymd = 10101
  inithist='ENDOFRUN'
  aqua_planet_sst=3
- /
+ flux_convergence=0.01
+/
