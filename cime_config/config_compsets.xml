@@ -69,6 +69,13 @@
   </compset>
 
   <compset>
+    <alias>FKESSLER</alias>
+    <lname>2000_CAM%KESSLER_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>
+    <science_support grid="f09_f09_mg17"/>
+    <science_support grid="f19_f19_mg17"/>
+  </compset>
+
+  <compset>
     <alias>FSCAM</alias>
     <lname>2000_CAM60%SCAM_CLM50%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
     <science_support grid="T42_T42"/>
@@ -150,10 +157,6 @@
     <lname>2000_CAM%TJ16_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>
   </compset>
 
-  <compset>
-    <alias>FKESSLER</alias>
-    <lname>2000_CAM%KESSLER_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>
-  </compset>
 
   <!-- PORT compsets -->
   <compset>
@@ -267,30 +270,6 @@
   </compset>
 
   <compset>
-    <alias>FWsc2010climo</alias>
-    <lname>2010_CAM60%WCSC_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
-    <science_support grid="f09_f09_mg17"/>
-  </compset>
-
-  <compset>
-    <alias>FWsc2000climo</alias>
-    <lname>2000_CAM60%WCSC_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
-    <science_support grid="f09_f09_mg17"/>
-  </compset>
-
-  <compset>
-    <alias>FWsc1850</alias>
-    <lname>1850_CAM60%WCSC_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
-    <science_support grid="f09_f09_mg17"/>
-  </compset>
-
-  <compset>
-    <alias>FWscHIST</alias>
-    <lname>HIST_CAM60%WCSC_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
-    <science_support grid="f09_f09_mg17"/>
-  </compset>
-
-  <compset>
     <alias>FW1850</alias>
     <lname>1850_CAM60%WCTS_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
     <science_support grid="f09_f09_mg17"/>
@@ -299,6 +278,26 @@
   <!-- ****************************** -->
   <!-- WACCM tested compsets -->
   <!-- ****************************** -->
+
+  <compset>
+    <alias>FWsc2010climo</alias>
+    <lname>2010_CAM60%WCSC_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>FWsc2000climo</alias>
+    <lname>2000_CAM60%WCSC_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>FWsc1850</alias>
+    <lname>1850_CAM60%WCSC_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>FWscHIST</alias>
+    <lname>HIST_CAM60%WCSC_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
+  </compset>
 
   <compset>
     <alias>FW2000climo</alias>
