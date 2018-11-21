@@ -5289,6 +5289,14 @@ Type of time interpolation for data in aircraft aerosol files.
 Default: 'CYCLICAL_LIST'
 </entry>
 
+<entry id="aircraft_co2_file" type="char*256" input_pathname="abs" category="cam_chem"
+       group="camexp" valid_values="" >
+Full pathname of the ac_CO2 file specified in the filelist in
+{{ hilight }}aircraft_specifier{{ closehilight }}.  This is only to
+get this name into the cam.input_data_list for the CESM scripts.
+Default: set by build-namelist.
+</entry>
+
 
 
 <entry id="gcr_ionization_datapath" type="char*256" input_pathname="abs" category="cam_chem"

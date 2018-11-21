@@ -399,10 +399,13 @@
 <co2flux_fuel_file hgrid="0.9x1.25" sim_year="1850-2000">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_0.9x1.25_c20181011.nc</co2flux_fuel_file>
 <co2flux_fuel_file hgrid="1.9x2.5"  sim_year="1850-2000">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_1.9x2.5_c20181011.nc</co2flux_fuel_file>
 
-<aircraft_specifier hgrid="0.9x1.25" sim_year="1850-2000">ac_CO2 -> ac_CO2_filelist_175001-201512_fv_0.9x1.25_c20181011.txt</aircraft_specifier>
-<aircraft_specifier hgrid="1.9x2.5"  sim_year="1850-2000">ac_CO2 -> ac_CO2_filelist_175001-201512_fv_1.9x2.5_c20181011.txt</aircraft_specifier>
-<aircraft_datapath sim_year="1850-2000">atm/cam/ggas</aircraft_datapath>
-<aircraft_type sim_year="1850-2000">SERIAL</aircraft_type>
+<ac_CO2_emis hgrid="0.9x1.25">ac_CO2_filelist_175001-201512_fv_0.9x1.25_c20181011.txt</ac_CO2_emis>
+<ac_CO2_emis hgrid="1.9x2.5" >ac_CO2_filelist_175001-201512_fv_1.9x2.5_c20181011.txt</ac_CO2_emis>
+<aircraft_datapath >atm/cam/ggas</aircraft_datapath>
+<aircraft_type     >SERIAL</aircraft_type>
+<!-- These CO2 aircraft emission files are the same as in the aircraft_specifier file above (for cam.input_data_list) -->
+<aircraft_co2_file  hgrid="0.9x1.25">atm/cam/ggas/emissions-cmip6_CO2_anthro_ac_175001-201512_fv_0.9x1.25_c20181011.nc</aircraft_co2_file>
+<aircraft_co2_file  hgrid="1.9x2.5" >atm/cam/ggas/emissions-cmip6_CO2_anthro_ac_175001-201512_fv_1.9x2.5_c20181011.nc</aircraft_co2_file>
 
 <!-- DMS surface emissions -->
 <bndtvdms          hgrid="128x256"  >atm/cam/scyc/DMS_emissions_128x256_clim_c040122.nc</bndtvdms>
