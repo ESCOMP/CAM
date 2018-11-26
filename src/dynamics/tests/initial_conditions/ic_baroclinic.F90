@@ -113,6 +113,7 @@ contains
     real(r8)                          :: psurface
     real(r8)                          :: wvp,qdry
     logical                           :: lU, lV, lT, lQ, l3d_vars
+    logical                           :: cnst1_is_moisture
     real(r8), allocatable             :: pdry_half(:), pwet_half(:),zdry_half(:),zk(:)
 
     if ((vcoord == vc_moist_pressure) .or. (vcoord == vc_dry_pressure)) then
@@ -216,7 +217,13 @@ contains
       if (lu) nlev = size(U, 2)
       if (lv) nlev = size(V, 2)
       if (lt) nlev = size(T, 2)
-      if (lq) nlev = size(Q, 2)
+
+      if (lq) then
+         nlev = size(Q, 2)
+         ! check whether first constituent in Q is water vapor.
+         cnst1_is_moisture = m_cnst(1) == 1
+      end if
+
       allocate(zk(nlev+1))
       if ((lq.or.lt) .and. (vcoord == vc_dry_pressure)) then
         allocate(pdry_half(nlev+1))
@@ -259,7 +266,7 @@ contains
               else
                 qk = 0.d0
               end if
-              if (lq) Q(i,k,1) = qk
+              if (lq .and. cnst1_is_moisture) Q(i,k,1) = qk
               if (lt) then
                 tvk    = Tv_given_z(zk(k),latvals(i))
                 T(i,k) = tvk / (1.d0 + Mvap * qk)
@@ -290,7 +297,7 @@ contains
               else
                 qdry = 0.0_r8
               end if
-              if (lq) then
+              if (lq .and. cnst1_is_moisture) then
                 Q(i,k,1) = qdry
               end if
               if (lt) then
@@ -307,21 +314,25 @@ contains
       if(lu .and. masterproc.and. verbose_use)  write(iulog,*) '          U initialized by "',subname,'"'
       if(lv .and. masterproc.and. verbose_use)  write(iulog,*) '          V initialized by "',subname,'"'
       if(lt .and. masterproc.and. verbose_use)  write(iulog,*) '          T initialized by "',subname,'"'
-      if(lq .and. masterproc.and. verbose_use)  write(iulog,*) &
+      if(lq .and. cnst1_is_moisture .and. masterproc.and. verbose_use)  write(iulog,*) &
            '          ', trim(cnst_name(m_cnst(1))), ' initialized by "',subname,'"'
     end if
 
     if (lq) then
       ncnst = size(m_cnst, 1)
       if ((vcoord == vc_moist_pressure) .or. (vcoord == vc_dry_pressure)) then
-        do m = 2, ncnst
-          call cnst_init_default(m_cnst(m), latvals, lonvals, Q(:,:,m_cnst(m)),&
+        do m = 1, ncnst
+
+          ! water vapor already done above
+          if (m_cnst(m) == 1) cycle
+
+          call cnst_init_default(m_cnst(m), latvals, lonvals, Q(:,:,m),&
                mask=mask_use, verbose=verbose_use, notfound=.false.)
 #if 0
           do k = 1, nlev
             do i=1,ncol
               if (mask_use(i)) then
-                Q(i,k,m_cnst(m)) = test_func(latvals(i),lonvals(i), k, m)
+                Q(i,k,m) = test_func(latvals(i),lonvals(i), k, m)
               end if
             end do
           end do
@@ -330,8 +341,10 @@ contains
           end if
 #endif
         end do
-      end if
-    end if
+
+      end if ! vcoord
+    end if   ! lq
+
     deallocate(mask_use)
     if (l3d_vars) then
       deallocate(zk)

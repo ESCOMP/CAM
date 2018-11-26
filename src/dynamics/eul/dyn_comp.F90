@@ -918,6 +918,7 @@ subroutine global_int()
    use hycoef,          only: hyai, ps0
    use eul_control_mod, only: pdela, qmass1, tmassf, fixmas, &
                               tmass0, zgsint, qmass2, qmassf
+   use inic_analytic,   only: analytic_ic_active
 
    !---------------------------Local workspace-----------------------------
 
@@ -1020,11 +1021,15 @@ subroutine global_int()
       zgsint_tmp = zgsint_tmp*.5_r8/gravit
       qmassf_tmp = qmass1_tmp + qmass2_tmp
 
-      ! Globally avgd sfc. partial pressure of dry air (i.e. global dry mass):
-      tmass0 = 98222._r8/gravit
-      if (.not. associated(fh_topo)) tmass0 = (101325._r8-245._r8)/gravit
-      if (adiabatic)                 tmass0 =  tmassf_tmp
-      if (ideal_phys )               tmass0 =  100000._r8/gravit
+      if (analytic_ic_active()) then
+         tmass0 = tmassf_tmp
+      else
+         ! Globally avgd sfc. partial pressure of dry air (i.e. global dry mass):
+         tmass0 = 98222._r8/gravit
+         if (.not. associated(fh_topo)) tmass0 = (101325._r8-245._r8)/gravit
+         if (adiabatic)                 tmass0 =  tmassf_tmp
+         if (ideal_phys )               tmass0 =  100000._r8/gravit
+      end if
 
       if (masterproc) then
          write(iulog,*) sub//': INFO:'
@@ -1034,14 +1039,18 @@ subroutine global_int()
          write(iulog,*) '  Globally averaged geopotential height (m)   = ', zgsint_tmp
       end if
 
-      ! Compute and apply an initial mass fix factor which preserves horizontal
-      ! gradients of ln(ps).
-      if (.not. moist_physics) then
-         fixmas = tmass0/tmassf_tmp
+      if (analytic_ic_active()) then
+         fixmas = 1._r8
       else
-         fixmas = (tmass0 + qmass1_tmp)/(tmassf_tmp - qmass2_tmp)
+         ! Compute and apply an initial mass fix factor which preserves horizontal
+         ! gradients of ln(ps).
+         if (.not. moist_physics) then
+            fixmas = tmass0/tmassf_tmp
+         else
+            fixmas = (tmass0 + qmass1_tmp)/(tmassf_tmp - qmass2_tmp)
+         end if
+         ps_tmp = ps_tmp*fixmas
       end if
-      ps_tmp = ps_tmp*fixmas
 
       ! Global integerals
       tmassf = tmassf_tmp
