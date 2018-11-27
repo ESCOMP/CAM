@@ -218,12 +218,12 @@
 
   <compset>
     <alias>FCSD</alias>
-    <lname>SDYN_CAM60%CCTS_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+    <lname>HIST_CAM60%CCTS%SDYN_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
   <compset>
     <alias>FSD</alias>
-    <lname>SDYN_CAM60_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+    <lname>HIST_CAM60%SDYN_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
   <compset>
@@ -311,7 +311,7 @@
 
   <compset>
     <alias>FWSD</alias>
-    <lname>SDYN_CAM60%WCTS_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+    <lname>HIST_CAM60%WCTS%SDYN_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
 
@@ -326,7 +326,7 @@
 
   <compset>
     <alias>FWmaSD</alias>
-    <lname>SDYN_CAM60%WCCM_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+    <lname>HIST_CAM60%WCCM%SDYN_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
   <compset>
@@ -336,7 +336,7 @@
 
   <compset>
     <alias>FWmadSD</alias>
-    <lname>SDYN_CAM60%WCMD_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+    <lname>HIST_CAM60%WCMD%SDYN_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
   <compset>
@@ -345,7 +345,7 @@
   </compset>
   <compset>
     <alias>FW4madSD</alias>
-    <lname>SDYN_CAM40%WCMD_CLM40%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV</lname>
+    <lname>HIST_CAM40%WCMD%SDYN_CLM40%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV</lname>
   </compset>
 
   <!-- ****************************** -->
@@ -355,13 +355,11 @@
   <compset>
     <alias>FX2000</alias>
     <lname>2000_CAM40%WXIE_CLM40%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV</lname>
-    <science_support grid="f19_f19_mg16"/>
   </compset>
 
   <compset>
     <alias>FXHIST</alias>
     <lname>HIST_CAM40%WXIE_CLM40%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV</lname>
-    <science_support grid="f19_f19_mg16"/>
   </compset>
 
   <compset>
@@ -371,13 +369,12 @@
 
   <compset>
     <alias>FXSD</alias>
-    <lname>SDYN_CAM40%WXIE_CLM40%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV</lname>
-    <science_support grid="f19_f19_mg16"/>
+    <lname>HIST_CAM40%WXIE%SDYN_CLM40%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV</lname>
   </compset>
 
   <compset>
     <alias>FXmadSD</alias>
-    <lname>SDYN_CAM40%WXIED_CLM40%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV</lname>
+    <lname>HIST_CAM40%WXIED%SDYN_CLM40%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV</lname>
   </compset>
 
   <!-- ENTRIES -->
@@ -395,9 +392,9 @@
 	<value  compset="HIST_CAM60%CVBSX">1995-01-01</value>
 	<value  compset="HIST_CAM60%CFIRE">1995-01-01</value>
 	<value  compset="RCP[2468]_CAM\d+">2005-01-01</value>
- 	<value  compset="SDYN_CAM"                   >2005-01-01</value>
- 	<value  compset="SDYN_CAM" grid="a%0.47x0.63">2010-01-01</value>
- 	<value  compset="SDYN_CAM40%WX">2000-01-01</value>
+ 	<value  compset="_CAM.*%SDYN"                   >2005-01-01</value>
+ 	<value  compset="_CAM.*%SDYN" grid="a%0.47x0.63">2010-01-01</value>
+ 	<value  compset="_CAM40%WX.*%SDYN">2000-01-01</value>
 
 	<value  compset="C2R4_CAM">2004-01-01</value>
 	<value  compset="C2R[68]_CAM">1950-01-01</value>
@@ -426,7 +423,7 @@
     <!-- Overrides for Specified Dynamics -->
     <entry id="CALENDAR">
       <values match="first">
-	<value  compset="SDYN_">GREGORIAN</value>
+	<value  compset="%SDYN">GREGORIAN</value>
  	<value  compset="HIST_CAM40%WX">GREGORIAN</value>
      </values>
     </entry>
@@ -468,12 +465,6 @@
         <value compset="2010"          grid="a%0.9x1.25.*_oi%0.9x1.25"       >$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_0.9x1.25_2010climo_c180511.nc</value>
         <value compset="2010"          grid="a%0.47x0.63.*_oi%0.47x0.63"     >$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_0.47x0.63_2010climo_c180511.nc</value>
         <value compset="2010"          grid="a%0.23x0.31.*_oi%0.23x0.31"     >$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_0.23x0.31_2010climo_c180511.nc</value>
-
-
-        <value compset="SDYN_"         grid="a%1.9x2.5.*_oi%1.9x2.5"         >$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_1.9x2.5_1850_2016_c170525.nc</value>
-        <value compset="SDYN_"         grid="a%0.9x1.25.*_oi%0.9x1.25"       >$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_0.9x1.25_1850_2016_c170525.nc</value>
-        <value compset="SDYN_"         grid="a%0.47x0.63.*_oi%0.47x0.63"     >$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_0.47x0.63_1850_2016_c170525.nc</value>
-        <value compset="SDYN_"         grid="a%0.23x0.31.*_oi%0.23x0.31"     >$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_0.23x0.31_1850_2016_c170525.nc</value>
       </values>
 
     </entry>
@@ -501,19 +492,9 @@
         <value compset="1850" grid="a%0.23x0.31.*_oi%0.23x0.31">$DIN_LOC_ROOT/atm/cam/ocnfrac/domain.camocn.0.23x0.31_gx1v6_101108.nc</value>
       </values>
     </entry>
-    <entry id="SSTICE_YEAR_ALIGN">
-      <values match="first">
-        <value compset="SDYN_">1850</value>
-      </values>
-    </entry>
-    <entry id="SSTICE_YEAR_START">
-      <values match="first">
-        <value compset="SDYN_">1850</value>
-      </values>
-    </entry>
     <entry id="SSTICE_YEAR_END">
       <values match="first">
-        <value compset="(SDYN_|HIST_)">2016</value>
+        <value compset="HIST_">2016</value>
       </values>
     </entry>
 
