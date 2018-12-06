@@ -1122,7 +1122,7 @@ endif
 # ESMF_F90ESMFLINKLIBS
 ifneq ($(strip $(ESMF_LIBDIR)),)
   include $(ESMF_LIBDIR)/esmf.mk
-  FFLAGS  += $(ESMF_F90COMPILEPATHS)
+  FFLAGS  += $(ESMF_F90COMPILEPATHS) -DESMF_VERSION_MAJOR=$(ESMF_VERSION_MAJOR) -DESMF_VERSION_MINOR=$(ESMF_VERSION_MINOR)
   LDFLAGS += $(ESMF_F90LINKPATHS) $(ESMF_F90LINKRPATHS) $(ESMF_F90ESMFLINKLIBS)
   #override default linker with ESMF recommendation unless user has set linker
   ifeq ($(strip $(USER_LINKER)),)

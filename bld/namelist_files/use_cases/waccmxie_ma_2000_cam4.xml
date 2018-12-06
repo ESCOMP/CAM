@@ -84,7 +84,6 @@
 <srf_emis_cycle_yr>2000</srf_emis_cycle_yr>
 
 <!-- turn on clm MEGAN VOC emis -->
-<megan_factors_file>atm/cam/chem/trop_mozart/emis/megan21_emis_factors_c20120313.nc</megan_factors_file>
 <megan_mapped_emisfctrs>.false.</megan_mapped_emisfctrs>
 <megan_specifier>
  'CH2O = formaldehyde',

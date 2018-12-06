@@ -230,8 +230,8 @@ contains
 
     real(r8) :: zvirv(state%psetcols,pver)  ! Local zvir array pointer
 
-    real(r8),allocatable :: cpairv_loc(:,:,:)
-    real(r8),allocatable :: rairv_loc(:,:,:)
+    real(r8),allocatable :: cpairv_loc(:,:)
+    real(r8),allocatable :: rairv_loc(:,:)
 
     ! PERGRO limits cldliq/ice for macro/microphysics:
     character(len=24), parameter :: pergro_cldlim_names(4) = &
@@ -272,29 +272,7 @@ contains
        end if
     end if
 
-    !-----------------------------------------------------------------------
-    ! cpairv_loc and rairv_loc need to be allocated to a size which matches state and ptend
-    ! If psetcols == pcols, the cpairv is the correct size and just copy
-    ! If psetcols > pcols and all cpairv match cpair, then assign the constant cpair
-    if (state%psetcols == pcols) then
-       allocate (cpairv_loc(state%psetcols,pver,begchunk:endchunk))
-       cpairv_loc(:,:,:) = cpairv(:,:,:)
-    else if (state%psetcols > pcols .and. all(cpairv(:,:,:) == cpair)) then
-       allocate(cpairv_loc(state%psetcols,pver,begchunk:endchunk))
-       cpairv_loc(:,:,:) = cpair
-    else
-       call endrun('physics_update: cpairv is not allowed to vary when subcolumns are turned on')
-    end if
-    if (state%psetcols == pcols) then
-       allocate (rairv_loc(state%psetcols,pver,begchunk:endchunk))
-       rairv_loc(:,:,:) = rairv(:,:,:)
-    else if (state%psetcols > pcols .and. all(rairv(:,:,:) == rair)) then
-       allocate(rairv_loc(state%psetcols,pver,begchunk:endchunk))
-       rairv_loc(:,:,:) = rair
-    else
-       call endrun('physics_update: rairv_loc is not allowed to vary when subcolumns are turned on')
-    end if
-
+    
     !-----------------------------------------------------------------------
     call phys_getopts(state_debug_checks_out=state_debug_checks)
 
@@ -397,9 +375,30 @@ contains
     if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
        call physconst_update(state%q, state%t, state%lchnk, ncol)
     endif
+    
+    !-----------------------------------------------------------------------
+    ! cpairv_loc and rairv_loc need to be allocated to a size which matches state and ptend
+    ! If psetcols == pcols, the cpairv is the correct size and just copy
+    ! If psetcols > pcols and all cpairv match cpair, then assign the constant cpair
+    allocate(cpairv_loc(state%psetcols,pver))
+    if (state%psetcols == pcols) then
+       cpairv_loc(:,:) = cpairv(:,:,state%lchnk)
+    else if (state%psetcols > pcols .and. all(cpairv(:,:,:) == cpair)) then
+       cpairv_loc(:,:) = cpair
+    else
+       call endrun('physics_update: cpairv is not allowed to vary when subcolumns are turned on')
+    end if
+    allocate(rairv_loc(state%psetcols,pver))
+    if (state%psetcols == pcols) then
+       rairv_loc(:,:) = rairv(:,:,state%lchnk)
+    else if (state%psetcols > pcols .and. all(rairv(:,:,:) == rair)) then
+       rairv_loc(:,:) = rair
+    else
+       call endrun('physics_update: rairv_loc is not allowed to vary when subcolumns are turned on')
+    end if
 
     if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
-      zvirv(:,:) = shr_const_rwv / rairv_loc(:,:,state%lchnk) - 1._r8
+      zvirv(:,:) = shr_const_rwv / rairv_loc(:,:) - 1._r8
     else
       zvirv(:,:) = zvir
     endif
@@ -410,9 +409,9 @@ contains
 
     if(ptend%ls) then
        do k = ptend%top_level, ptend%bot_level
-          state%t(:ncol,k) = state%t(:ncol,k) + ptend%s(:ncol,k)*dt/cpairv_loc(:ncol,k,state%lchnk)
+          state%t(:ncol,k) = state%t(:ncol,k) + ptend%s(:ncol,k)*dt/cpairv_loc(:ncol,k)
           if (present(tend)) &
-               tend%dtdt(:ncol,k) = tend%dtdt(:ncol,k) + ptend%s(:ncol,k)/cpairv_loc(:ncol,k,state%lchnk)
+               tend%dtdt(:ncol,k) = tend%dtdt(:ncol,k) + ptend%s(:ncol,k)/cpairv_loc(:ncol,k)
        end do
     end if
 
@@ -421,11 +420,11 @@ contains
     if (ptend%ls .or. ptend%lq(1)) then
        call geopotential_t  (                                                                    &
             state%lnpint, state%lnpmid, state%pint  , state%pmid  , state%pdel  , state%rpdel  , &
-            state%t     , state%q(:,:,1), rairv_loc(:,:,state%lchnk), gravit  , zvirv              , &
+            state%t     , state%q(:,:,1), rairv_loc(:,:), gravit  , zvirv              , &
             state%zi    , state%zm      , ncol         )
        ! update dry static energy for use in next process
        do k = ptend%top_level, ptend%bot_level
-          state%s(:ncol,k) = state%t(:ncol,k  )*cpairv_loc(:ncol,k,state%lchnk) &
+          state%s(:ncol,k) = state%t(:ncol,k)*cpairv_loc(:ncol,k) &
                            + gravit*state%zm(:ncol,k) + state%phis(:ncol)
        end do
     end if
@@ -1181,7 +1180,7 @@ end subroutine physics_ptend_copy
 
     real(r8) :: zvirv(pcols,pver)    ! Local zvir array pointer
 
-    real(r8),allocatable :: cpairv_loc(:,:,:)
+    real(r8),allocatable :: cpairv_loc(:,:)
     !
     !-----------------------------------------------------------------------
 
@@ -1248,12 +1247,11 @@ end subroutine physics_ptend_copy
 ! If psetcols == pcols, cpairv is the correct size and just copy into cpairv_loc
 ! If psetcols > pcols and all cpairv match cpair, then assign the constant cpair
 
+       allocate(cpairv_loc(state%psetcols,pver))
        if (state%psetcols == pcols) then
-          allocate (cpairv_loc(state%psetcols,pver,begchunk:endchunk))
-          cpairv_loc(:,:,:) = cpairv(:,:,:)
+          cpairv_loc(:,:) = cpairv(:,:,state%lchnk)
        else if (state%psetcols > pcols .and. all(cpairv(:,:,:) == cpair)) then
-          allocate(cpairv_loc(state%psetcols,pver,begchunk:endchunk))
-          cpairv_loc(:,:,:) = cpair
+          cpairv_loc(:,:) = cpair
        else
           call endrun('physics_dme_adjust: cpairv is not allowed to vary when subcolumns are turned on')
        end if
@@ -1261,7 +1259,7 @@ end subroutine physics_ptend_copy
        call geopotential_dse(state%lnpint, state%lnpmid, state%pint,  &
             state%pmid  , state%pdel    , state%rpdel,  &
             state%s     , state%q(:,:,1), state%phis , rairv(:,:,state%lchnk), &
-            gravit, cpairv_loc(:,:,state%lchnk), zvirv, &
+            gravit, cpairv_loc(:,:), zvirv, &
             state%t     , state%zi      , state%zm   , ncol)
 
        deallocate(cpairv_loc)
