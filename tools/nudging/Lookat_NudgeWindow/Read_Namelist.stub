@@ -1,0 +1,32 @@
+C NCLFORTSTART
+      subroutine read_namelist(Nudge_Hwin_Invert, 
+     &                         Nudge_Vwin_Invert,                      
+     &                         Nudge_Hwin_lat0,Nudge_Hwin_lon0,        
+     &                         Nudge_Hwin_latWidth,Nudge_Hwin_lonWidth,
+     &                         Nudge_Hwin_latDelta,Nudge_Hwin_lonDelta,
+     &                         Nudge_Vwin_Lindex,Nudge_Vwin_Hindex,    
+     &                         Nudge_Vwin_Ldelta,Nudge_Vwin_Hdelta )
+C---------------------------------------------------------------
+C Read Processing Namelist
+C---------------------------------------------------------------
+      implicit none
+
+C     INPUTS
+C---------------------------------------------------------------
+
+C     OUTPUT
+C---------------------------------------------------------------
+      logical           Nudge_Hwin_Invert
+      real              Nudge_Hwin_lat0
+      real              Nudge_Hwin_latWidth
+      real              Nudge_Hwin_latDelta
+      real              Nudge_Hwin_lon0
+      real              Nudge_Hwin_lonWidth
+      real              Nudge_Hwin_lonDelta
+      logical           Nudge_Vwin_Invert
+      real              Nudge_Vwin_Hindex
+      real              Nudge_Vwin_Hdelta
+      real              Nudge_Vwin_Lindex
+      real              Nudge_Vwin_Ldelta
+
+C NCLEND

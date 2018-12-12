@@ -1,0 +1,126 @@
+
+-------------------------------------------
+Notes for Pre-processing data for Nudging:
+-------------------------------------------
+
+./Gen_Data_SETNAME_f09  : Directory to be used as a template for processing 
+                          data from 'SETNAME'. Contains the ncl processing scripts 
+                          and example csh scripts used to ERA-I data. Generally, it is 
+                          best to create a separate directory for each dataset/resolution 
+                          processed.
+
+                          Processing programs/routines:
+                          ------------------------------
+                            ESMF_regridding.ncl
+                            makeIC_Create_field_Master_List.ncl
+                            makeIC_extract_analyses_info.ncl
+                            MAKEIC.f90
+                            MAKEIC.stub
+                            makeIC.ncl
+                            makeIC_procedures.ncl
+
+                          Work directories for processing:
+                          ---------------------------------
+                            Config/
+                            LOG/
+                            TMP/
+
+                          Example Processing scripts:
+                          ----------------------------
+                            Gen_ERAI_fv09_001.01.csh
+                            Run_ERAI_fv09_001.01.csh
+
+-----------------------------
+Script CONFIGURATION SECTION:
+-----------------------------
+  RUNNUM   : Index so that processing can run with concurrent scripts running
+  REF_DATE : 'YYYYMMDD'  Year month and day to begin processing
+  NUM_DAYS : Number of days to process
+
+  NAMELIST  : './Config/Config_makeIC-'$RUNNUM'.nl'    <-- Work directories
+  MYLOGDIR  : './LOG/LOG_001.'$RUNNUM'/'               <-- Work directories
+  MYTMPDIR  : './TMP/TMP_001.'$RUNNUM'/'               <-- Work directories
+
+  MYOUTDIR  : '/PATH-FOR-OUTPUT-DATA/'                 <-- SET THIS PATH
+  INPUTDIR  : '/PATH-TO-REANALYSES-INPUT/'             <-- SET THIS PATH
+
+  TMP_clean   :                                        <-- NOTHING TO CHANGE HERE!
+
+  CASE                   : 'ROOT-NAME-OF-OUTPUTDATA'   <-- SET THE NAME OF YOUR DATA FILES
+  DYCORE                 : 'fv'                        <-- LEAVE ALONE
+  PRECISION              : 'float'                     <-- LEAVE ALONE
+  VORT_DIV_TO_UV         : 'True'                      <-- CALC U,V from VOR/DIV VALUES?
+  SST_MASK               : 'False'                     <-- YOUR CHOICE??
+  ICE_MASK               : 'False'                     <-- YOUR CHOICE??
+  OUTPUT_PHIS            : 'True'                      <-- YOUR CHOICE??
+  REGRID_ALL             : 'False'                     <-- PROCESS OTHER CONTENTS IN DATASET?
+  ADJUST_STATE_FROM_TOPO : 'True'                      <-- YOUR CHOICE??
+
+                                                       <-- SELECT files containig OUTPUT Grid structure and topography
+  fname_grid_info   : '/glade/p/cesm/cseg/inputdata/atm/cam/inic/fv/cami-mam3_0000-01-01_0.9x1.25_L30_c100618.nc'
+  fname_phis_output : '/glade/p/cesmdata/cseg/inputdata/atm/cam/topo/fv_0.9x1.25_nc3000_Nsw042_Nrs008_Co060_Fi001_ZR_160505.nc'
+  ftype_phis_output : 'FV_TOPOGRAPHY'                  <-- LEAVE ALONE
+
+  fname   : ( none none none none none none )          <-- NOTHING TO CHANGE HERE!
+  ftype   : ( none none none none none none )          <-- NOTHING TO CHANGE HERE!
+  ftime   : ( none none none none none none )          <-- NOTHING TO CHANGE HERE!
+  hoursec : ( 00000 21600 43200 64800 )                <-- NOTHING TO CHANGE HERE!
+  hourstr : (   00    06    12    18  )                <-- NOTHING TO CHANGE HERE!
+
+  fname[1] : "ei.oper.an.ml/YYYYMM/ei.oper.an.ml.regn128sc.YYYYMMDDHH" <-- TEMPLATE FOR REANALYSES FILES
+  ftype[1] : "Era_Interim_627.0_sc"                                    <-- TYPE OF REANALYSES DATA
+  ftime[1] : "1X"                                                      <-- # OF RECORDS IN FILE
+
+  fields       : ( U US V VS T PS Q )                  <-- FIELDS TO PROCESS (both U,V grids are needed)
+  field_findex : ( 1 1  1 1  1 1  1 )                  <-- FILE CONTAINING THE FILED
+  phis_findex  : 1                                     <-- FILE CONTAINING 'PHIS'
+
+
+  WHAT TO DO:
+  -----------
+   (1) Set REF_DATE to the begining date of reanalyses data, and NUM_DAYS, the 
+       number of days of data to process.
+   (2) Processing the data is SLOW, SLOW, SLOW. To get done
+       in a timely mannor, multiple copies of the script need to be run concurrently. 
+       RUNNUM is an index so that concurrent runs don't interfere with eachother.
+       Also, for example, the format for the YOTC data changes during the 2 year 
+       length, which requires separate processing scripts.
+   (3) Set the path to the reanalyses source data and the path where processed output 
+       should be stored.
+   (4) Set the CASE name, the root anme of your processed files.
+   (5) Set { VORT_DIV_TO_UV, SST_MASK, ICE_MASK, OUTPUT_PHIS, } as you desire.
+           { REGRID_ALL, ADJUST_STATE_FROM_TOPO               }
+   (6) Slelect the grid/phis values for the desired resolution
+   (7) Determine the reanalyses files that contain the data you desire. Then set 
+       fname[N],ftype[N],ftime[N] values for each of the N files you need. 
+       (For ERA-I all of the values are contined in a single file, for YOTC the data 
+        is spread across 3 different files.)
+
+       fname[n] - Is a template in which YYYY,MM,DD,HH will be replaced with the 
+                   values at a given time. 
+       ftype[n] - Identifies the type of reanalyses file - see 'makeIC_extract_analyses_info.ncl'
+       ftime[n] - "4X" - for daily files containing 4 time recoeds
+                  "1X" - for 1 record per file.
+
+   (8) Add the data to be processed into fields. In 'field_findex' set the file index N that
+       contains that data.
+   (9) Set the index for the file which contains PHIS.
+   
+##---------------------------------------------------------------------------------
+## Available "FTYPE" Values
+##---------------------------------------------------------------------------------
+## Current input file types:    CAM
+##                              YOTC_PS_Z
+##                              YOTC_sfc
+##                              YOTC_sfc_fcst
+##                              YOTC_sh
+##                              ECMWF_gg
+##                              ECMWF_sh
+##                              NASA_MERRA
+##                              NASA_MERRA_PREVOCA
+##                              JRA_25
+##                              Era_Interim_627.0_sc
+##                              ERA40_ds117.2
+##---------------------------------------------------------------------------------
+
+    
