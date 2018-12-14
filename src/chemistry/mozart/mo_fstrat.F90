@@ -456,7 +456,6 @@ contains
     real(r8) ::  pint_vals(2)
     real(r8), allocatable :: table_ox(:)
     logical  ::  found_trop
-    integer  :: lat
 
     if (.not. any(has_fstrat(:))) return
 
@@ -556,7 +555,7 @@ contains
                      + dels*(mr_ub(i,m,next,2:ub_nlevs-1,lchnk) &
                      - mr_ub(i,m,last,2:ub_nlevs-1,lchnk))
 #ifdef UB_DEBUG
-                write(iulog,*) 'set_fstrat_vals: table_ox @ lat = ',lat
+                write(iulog,*) 'set_fstrat_vals: table_ox @ i = ',i
                 write(iulog,'(1p5g15.7)') table_ox(:)
                 write(iulog,*) ' '
 #endif
@@ -572,7 +571,7 @@ contains
 #endif
                 call rebin( ub_nlevs-2, km, ub_plevse, pint(i,:km+1), table_ox, vmr(i,:km,map(m)) )
 #ifdef UB_DEBUG
-                write(iulog,*) 'set_fstrat_vals: ub o3 @ lat = ',lat
+                write(iulog,*) 'set_fstrat_vals: ub o3 @ i = ',i
                 write(iulog,'(1p5g15.7)') vmr(i,:km,map(m))
 #endif
              end do
@@ -631,7 +630,7 @@ contains
        end do
 #ifdef DEBUG
        if( levrelax /= ltrop(i) ) then
-          write(iulog,*) 'warning -- raised ubc: ',lat,i,        &
+          write(iulog,*) 'warning -- raised ubc: ',i,        &
              ltrop(i)-1,nint(pmid(i,ltrop(i)-1)/100._r8),'mb -->', &
              levrelax,nint(pmid(i,levrelax)/100._r8),'mb'
        end if
@@ -815,7 +814,6 @@ contains
     real(r8) ::  delp(ncol,zlower)
     real(r8) ::  pint_vals(2)
     logical  ::  found_trop
-    integer  ::  lat
 
     h2o_overwrite : if( h2o_ndx > 0 .and. table_h2o_ndx > 0 ) then
        !--------------------------------------------------------
@@ -913,7 +911,7 @@ contains
           end do
 #ifdef DEBUG
           if( levrelax /= ltrop(i) ) then
-             write(iulog,*) 'warning -- raised ubc: ',lat,i,          &
+             write(iulog,*) 'warning -- raised ubc: ',i,          &
                 ltrop(i)-1,nint(pmid(i,ltrop(i)-1)/100._r8),'mb -->', &
                 levrelax,nint(pmid(i,levrelax)/100._r8),'mb'
           end if

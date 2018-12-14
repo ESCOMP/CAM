@@ -567,11 +567,17 @@ contains
              end do
           end if
 #ifdef DEBUG
-          write(iulog,*) '-----------------------------------'
-          write(iulog,*) 'photo_inti: diagnostics'
-          write(iulog,*) 'ki, delp = ',ki,delp
-          write(iulog,*) 'pinterp,levs(ki-1:ki) = ',pinterp,levs(ki-1:ki)
-          write(iulog,*) '-----------------------------------'
+          if (masterproc) then
+             write(iulog,*) '-----------------------------------'
+             write(iulog,*) 'photo_inti: diagnostics'
+             write(iulog,*) 'ki, delp = ',ki,delp
+             if (ki>1) then
+                write(iulog,*) 'pinterp,levs(ki-1:ki) = ',pinterp,levs(ki-1:ki)
+             else
+                write(iulog,*) 'pinterp,levs(ki) = ',pinterp,levs(ki)
+             end if
+             write(iulog,*) '-----------------------------------'
+          endif
 #endif
        end if
     end if has_abs_columns
@@ -1080,8 +1086,10 @@ contains
     ncdate = yr*10000 + mon*100 + day
     ut   = real(tod)/3600._r8
 #ifdef DEBUG
-    write(iulog,*) 'photo: nj = ',nlng
-    write(iulog,*) 'photo: esfact = ',esfact
+    if (masterproc) then
+       write(iulog,*) 'photo: nj = ',nlng
+       write(iulog,*) 'photo: esfact = ',esfact
+    endif
 #endif
     col_loop : do i = 1,ncol
 daylight : &
@@ -1700,10 +1708,12 @@ secant_in_bounds : &
           dels = (calday - days(m)) / (days(m+1) - days(m))
        end if
 #ifdef DEBUG
-       write(iulog,*) '-----------------------------------'
-       write(iulog,*) 'photo_timestep_init: diagnostics'
-       write(iulog,*) 'calday, last, next, dels = ',calday,last,next,dels
-       write(iulog,*) '-----------------------------------'
+       if (masterproc) then
+          write(iulog,*) '-----------------------------------'
+          write(iulog,*) 'photo_timestep_init: diagnostics'
+          write(iulog,*) 'calday, last, next, dels = ',calday,last,next,dels
+          write(iulog,*) '-----------------------------------'
+       endif
 #endif
     end if
 

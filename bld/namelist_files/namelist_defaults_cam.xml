@@ -486,8 +486,10 @@
 <!-- Constituents for non-LTE calculations and heating rates below 200 nm -->
 <waccm_forcing_datapath chem="waccm_sc">atm/waccm/ub</waccm_forcing_datapath>
 <waccm_forcing_file     chem="waccm_sc">ghg_forcing_2000_c110321.nc</waccm_forcing_file>
+<waccm_forcing_cycle_yr chem="waccm_sc">0</waccm_forcing_cycle_yr>
 <waccm_forcing_datapath chem="waccm_sc_mam4">atm/waccm/waccm_forcing</waccm_forcing_datapath>
 <waccm_forcing_file     chem="waccm_sc_mam4">SCWACCM_forcing_WACCM6_zm_5day_L70_1975-2014_c180216.nc</waccm_forcing_file>
+<waccm_forcing_cycle_yr chem="waccm_sc_mam4">2000</waccm_forcing_cycle_yr>
 
 <!-- Waccm electric field parameters -->
 <efield_lflux_file >atm/waccm/efld/coeff_lflux.dat</efield_lflux_file>
@@ -1071,8 +1073,8 @@
 <tracer_cnst_type     ver="fixed_ch4">CYCLICAL</tracer_cnst_type>
 <tracer_cnst_cycle_yr ver="fixed_ch4">1995</tracer_cnst_cycle_yr>
 
-<tracer_cnst_file     chem="waccm_sc_mam4">tracer_cnst_halons_WACCM6_3Dmonthly_L70_1975-2014_c180216.nc</tracer_cnst_file>
-<tracer_cnst_datapath chem="waccm_sc_mam4">atm/cam/tracer_cnst</tracer_cnst_datapath>
+<tracer_cnst_file     chem="waccm_sc_mam4">halons_oxid_1.9x2.5zm_L66_1849-2099_c160714.nc</tracer_cnst_file>
+<tracer_cnst_datapath chem="waccm_sc_mam4">atm/waccm/halons</tracer_cnst_datapath>
 <tracer_cnst_type     >CYCLICAL</tracer_cnst_type>
 <tracer_cnst_cycle_yr >2000</tracer_cnst_cycle_yr>
 
