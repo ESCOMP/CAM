@@ -1609,7 +1609,7 @@ contains
           if (cam_in%ocnfrac(i) /= 1._r8) labort = .true.
        end do
        if (labort) then
-          call endrun ('TPHYSAC error:  grid contains non-ocean point')
+          call endrun ('TPHYSAC error: in aquaplanet mode, but grid contains non-ocean point')
        endif
     endif
 

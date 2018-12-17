@@ -5,10 +5,10 @@ module fire_emissions
 
   use shr_kind_mod,      only : r8 => shr_kind_r8, shr_kind_cl
   use shr_fire_emis_mod, only : shr_fire_emis_mechcomps, shr_fire_emis_mechcomps_n, shr_fire_emis_elevated
+  use srf_field_check,   only : active_Fall_flxfire
   use shr_const_mod,     only : pi => SHR_CONST_PI
   use shr_const_mod,     only : avogad => SHR_CONST_AVOGAD ! Avogadro's number ~ molecules/kmole
   use cam_abortutils,    only : endrun
-  use cam_cpl_indices,   only : index_x2a_Fall_flxfire
   use cam_history,       only : addfld, horiz_only, outfld, fieldname_len
   use cam_logfile,       only : iulog
   use ppgrid,            only : pver, pverp
@@ -174,7 +174,7 @@ contains
     integer :: i, n
 
     ! fire surface emissions if not elevated forcing
-    if ((.not.shr_fire_emis_elevated) .and. index_x2a_Fall_flxfire>0 .and. shr_fire_emis_mechcomps_n>0 ) then
+    if ((.not.shr_fire_emis_elevated) .and. active_Fall_flxfire .and. shr_fire_emis_mechcomps_n>0 ) then
 
        ! set Fire Emis fluxes ( add to other emis )
        do i =1,ncol

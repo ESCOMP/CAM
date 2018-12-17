@@ -15,6 +15,7 @@ module chemistry
   use cam_logfile,      only : iulog
   use mo_gas_phase_chemdr, only : map2chm
   use shr_megan_mod,    only : shr_megan_mechcomps, shr_megan_mechcomps_n 
+  use srf_field_check,  only : active_Fall_flxvoc
   use tracer_data,      only : MAXTRCRS
   use gcr_ionization,   only : gcr_ionization_readnl, gcr_ionization_init, gcr_ionization_adv
   use epp_ionization,   only : epp_ionization_readnl, epp_ionization_adv
@@ -979,7 +980,6 @@ end function chem_is_active
     use constituents,     only: sflxnam
     use cam_history,      only: outfld
     use mo_srf_emissions, only: set_srf_emissions
-    use cam_cpl_indices,  only: index_x2a_Fall_flxvoc
     use fire_emissions,   only: fire_emissions_srf
 
     ! Arguments:
@@ -1009,7 +1009,7 @@ end function chem_is_active
 
    ! MEGAN emissions ...
  
-    if ( index_x2a_Fall_flxvoc>0 .and. shr_megan_mechcomps_n>0 ) then
+    if ( active_Fall_flxvoc .and. shr_megan_mechcomps_n>0 ) then
 
        ! set MEGAN fluxes 
        do n = 1,shr_megan_mechcomps_n

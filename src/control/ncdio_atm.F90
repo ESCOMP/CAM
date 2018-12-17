@@ -207,6 +207,7 @@ contains
         else
           call pio_setframe(ncid, varid, int(1,kind=pio_offset_kind))
         end if
+        ndims = ndims - 1
       end if
 
       ! NB: strt and cnt were initialized to 1
@@ -625,6 +626,7 @@ contains
         else
           call pio_setframe(ncid, varid, int(1,kind=pio_offset_kind))
         end if
+        ndims = ndims - 1
       end if
 
       field_dnames(1) = dimname1

@@ -1,44 +1,40 @@
 module camsrfexch
-!-----------------------------------------------------------------------
-!
-! Module to handle data that is exchanged between the CAM atmosphere
-! model and the surface models (land, sea-ice, and ocean).
-!
-!-----------------------------------------------------------------------
-!
-! USES:
-!
-  use shr_kind_mod,  only: r8 => shr_kind_r8, r4 => shr_kind_r4
-  use constituents,  only: pcnst
-  use ppgrid,        only: pcols, begchunk, endchunk
-  use phys_grid,     only: get_ncols_p, phys_grid_initialized
-  use infnan,        only: posinf, assignment(=)
-  use cam_abortutils,only: endrun
-  use cam_logfile,   only: iulog
+
+  !-----------------------------------------------------------------------
+  ! Module to handle data that is exchanged between the CAM atmosphere
+  ! model and the surface models (land, sea-ice, and ocean).
+  !-----------------------------------------------------------------------
+
+  use shr_kind_mod,    only: r8 => shr_kind_r8, r4 => shr_kind_r4
+  use constituents,    only: pcnst
+  use ppgrid,          only: pcols, begchunk, endchunk
+  use phys_grid,       only: get_ncols_p, phys_grid_initialized
+  use infnan,          only: posinf, assignment(=)
+  use cam_abortutils,  only: endrun
+  use cam_logfile,     only: iulog
+  use srf_field_check, only: active_Sl_ram1, active_Sl_fv, active_Sl_soilw,                &
+                             active_Fall_flxdst1, active_Fall_flxvoc, active_Fall_flxfire, &
+                             active_Faxa_nhx, active_Faxa_noy
+
+
 
   implicit none
+  private
 
-!----------------------------------------------------------------------- 
-! PRIVATE: Make default data and interfaces private
-!----------------------------------------------------------------------- 
-  private     ! By default all data is private to this module
-!
-! Public interfaces
-!
+  ! Public interfaces
   public atm2hub_alloc              ! Atmosphere to surface data allocation method
   public hub2atm_alloc              ! Merged hub surface to atmosphere data allocation method
   public atm2hub_deallocate
   public hub2atm_deallocate
   public cam_export
-!
-! Public data types
-!
+
+  ! Public data types
   public cam_out_t                  ! Data from atmosphere
   public cam_in_t                   ! Merged surface data
 
-!---------------------------------------------------------------------------
-! This is the data that is sent from the atmosphere to the surface models
-!---------------------------------------------------------------------------
+  !---------------------------------------------------------------------------
+  ! This is the data that is sent from the atmosphere to the surface models
+  !---------------------------------------------------------------------------
 
   type cam_out_t 
      integer  :: lchnk               ! chunk index
@@ -83,9 +79,9 @@ module camsrfexch
      real(r8), pointer, dimension(:) :: noy_nitrogen_flx ! nitrogen deposition fluxes (kgN/m2/s)
   end type cam_out_t 
 
-!---------------------------------------------------------------------------
-! This is the merged state of sea-ice, land and ocean surface parameterizations
-!---------------------------------------------------------------------------
+  !---------------------------------------------------------------------------
+  ! This is the merged state of sea-ice, land and ocean surface parameterizations
+  !---------------------------------------------------------------------------
 
   type cam_in_t    
      integer  :: lchnk                   ! chunk index
@@ -112,13 +108,13 @@ module camsrfexch
      real(r8) :: landfrac(pcols)         ! land area fraction
      real(r8) :: icefrac(pcols)          ! sea-ice areal fraction
      real(r8) :: ocnfrac(pcols)          ! ocean areal fraction
-     real(r8), pointer, dimension(:) :: ram1  !aerodynamical resistance (s/m) (pcols)
-     real(r8), pointer, dimension(:) :: fv    !friction velocity (m/s) (pcols)
-     real(r8), pointer, dimension(:) :: soilw !volumetric soil water (m3/m3)
      real(r8) :: cflx(pcols,pcnst)       ! constituent flux (emissions)
      real(r8) :: ustar(pcols)            ! atm/ocn saved version of ustar
      real(r8) :: re(pcols)               ! atm/ocn saved version of re
      real(r8) :: ssq(pcols)              ! atm/ocn saved version of ssq
+     real(r8), pointer, dimension(:)   :: ram1  !aerodynamical resistance (s/m) (pcols)
+     real(r8), pointer, dimension(:)   :: fv    !friction velocity (m/s) (pcols)
+     real(r8), pointer, dimension(:)   :: soilw !volumetric soil water (m3/m3)
      real(r8), pointer, dimension(:,:) :: depvel ! deposition velocities
      real(r8), pointer, dimension(:,:) :: dstflx ! dust fluxes
      real(r8), pointer, dimension(:,:) :: meganflx ! MEGAN fluxes
@@ -130,46 +126,29 @@ module camsrfexch
 CONTAINS
 !===============================================================================
 
-!----------------------------------------------------------------------- 
-! 
-! BOP
-!
-! !IROUTINE: hub2atm_alloc
-!
-! !DESCRIPTION:
-!
-!   Allocate space for the surface to atmosphere data type. And initialize
-!   the values.
-! 
-!-----------------------------------------------------------------------
-!
-! !INTERFACE
-!
   subroutine hub2atm_alloc( cam_in )
+
+    ! Allocate space for the surface to atmosphere data type. And initialize
+    ! the values.
+
     use seq_drydep_mod,  only: lnd_drydep, n_drydep
-    use cam_cpl_indices, only: index_x2a_Sl_ram1, index_x2a_Sl_fv, index_x2a_Sl_soilw, index_x2a_Fall_flxdst1
-    use cam_cpl_indices, only: index_x2a_Fall_flxvoc
     use shr_megan_mod,   only: shr_megan_mechcomps_n
-    use cam_cpl_indices, only: index_x2a_Fall_flxfire
     use shr_fire_emis_mod,only: shr_fire_emis_mechcomps_n
-!
-!!ARGUMENTS:
-!
-   type(cam_in_t), pointer ::  cam_in(:)     ! Merged surface state
-!
-!!LOCAL VARIABLES:
-!
+
+    ! ARGUMENTS:
+    type(cam_in_t), pointer ::  cam_in(:)     ! Merged surface state
+
+    ! LOCAL VARIABLES:
     integer :: c        ! chunk index
     integer :: ierror   ! Error code
-!----------------------------------------------------------------------- 
-! 
-! EOP
-!
-    if ( .not. phys_grid_initialized() ) call endrun( "HUB2ATM_ALLOC error: phys_grid not called yet" )
+    character(len=*), parameter :: sub = 'hub2atm_alloc'
+    !----------------------------------------------------------------------- 
+
+    if ( .not. phys_grid_initialized() ) call endrun(sub//": phys_grid not called yet")
     allocate (cam_in(begchunk:endchunk), stat=ierror)
     if ( ierror /= 0 )then
-      write(iulog,*) 'Allocation error: ', ierror
-      call endrun('HUB2ATM_ALLOC error: allocation error')
+      write(iulog,*) sub//': Allocation error: ', ierror
+      call endrun(sub//': allocation error')
     end if
 
     do c = begchunk,endchunk
@@ -183,42 +162,42 @@ CONTAINS
        nullify(cam_in(c)%fireztop)
     enddo  
     do c = begchunk,endchunk 
-       if (index_x2a_Sl_ram1>0) then
+       if (active_Sl_ram1) then
           allocate (cam_in(c)%ram1(pcols), stat=ierror)
-          if ( ierror /= 0 ) call endrun('HUB2ATM_ALLOC error: allocation error ram1')
+          if ( ierror /= 0 ) call endrun(sub//': allocation error ram1')
        endif
-       if (index_x2a_Sl_fv>0) then
+       if (active_Sl_fv) then
           allocate (cam_in(c)%fv(pcols), stat=ierror)
-          if ( ierror /= 0 ) call endrun('HUB2ATM_ALLOC error: allocation error fv')
+          if ( ierror /= 0 ) call endrun(sub//': allocation error fv')
        endif
-       if (index_x2a_Sl_soilw /= 0) then
+       if (active_Sl_soilw) then
           allocate (cam_in(c)%soilw(pcols), stat=ierror)
-          if ( ierror /= 0 ) call endrun('HUB2ATM_ALLOC error: allocation error soilw')
+          if ( ierror /= 0 ) call endrun(sub//': allocation error soilw')
        end if
-       if (index_x2a_Fall_flxdst1>0) then
+       if (active_Fall_flxdst1) then
           ! Assume 4 bins from surface model ....
           allocate (cam_in(c)%dstflx(pcols,4), stat=ierror)
-          if ( ierror /= 0 ) call endrun('HUB2ATM_ALLOC error: allocation error dstflx')
+          if ( ierror /= 0 ) call endrun(sub//': allocation error dstflx')
        endif
-       if ( index_x2a_Fall_flxvoc>0 .and. shr_megan_mechcomps_n>0 ) then
+       if (active_Fall_flxvoc .and. shr_megan_mechcomps_n>0) then
           allocate (cam_in(c)%meganflx(pcols,shr_megan_mechcomps_n), stat=ierror)
-          if ( ierror /= 0 ) call endrun('HUB2ATM_ALLOC error: allocation error meganflx')
+          if ( ierror /= 0 ) call endrun(sub//': allocation error meganflx')
        endif
     end do
 
     if (lnd_drydep .and. n_drydep>0) then
        do c = begchunk,endchunk 
           allocate (cam_in(c)%depvel(pcols,n_drydep), stat=ierror)
-          if ( ierror /= 0 ) call endrun('HUB2ATM_ALLOC error: allocation error depvel')
+          if ( ierror /= 0 ) call endrun(sub//': allocation error depvel')
        end do
     endif
 
-    if ( index_x2a_Fall_flxfire>0 .and. shr_fire_emis_mechcomps_n>0 ) then
+    if (active_Fall_flxfire .and. shr_fire_emis_mechcomps_n>0) then
        do c = begchunk,endchunk 
           allocate(cam_in(c)%fireflx(pcols,shr_fire_emis_mechcomps_n), stat=ierror)
-          if ( ierror /= 0 ) call endrun('HUB2ATM_ALLOC error: allocation error fireflx')
+          if ( ierror /= 0 ) call endrun(sub//': allocation error fireflx')
           allocate(cam_in(c)%fireztop(pcols), stat=ierror)
-          if ( ierror /= 0 ) call endrun('HUB2ATM_ALLOC error: allocation error fireztop')
+          if ( ierror /= 0 ) call endrun(sub//': allocation error fireztop')
        enddo
     endif
 
@@ -266,7 +245,7 @@ CONTAINS
        if (lnd_drydep .and. n_drydep>0) then
           cam_in(c)%depvel (:,:) = 0._r8
        endif
-       if ( index_x2a_Fall_flxfire>0 .and. shr_fire_emis_mechcomps_n>0 ) then
+       if (active_Fall_flxfire .and. shr_fire_emis_mechcomps_n>0) then
           cam_in(c)%fireflx(:,:) = 0._r8
           cam_in(c)%fireztop(:) = 0._r8
        endif
@@ -274,46 +253,27 @@ CONTAINS
 
   end subroutine hub2atm_alloc
 
-!
-!===============================================================================
-!
+  !===============================================================================
 
-!----------------------------------------------------------------------- 
-! 
-! BOP
-!
-! !IROUTINE: atm2hub_alloc
-!
-! !DESCRIPTION:
-!
-!   Allocate space for the atmosphere to surface data type. And initialize
-!   the values.
-! 
-!-----------------------------------------------------------------------
-!
-! !INTERFACE
-!
   subroutine atm2hub_alloc( cam_out )
-!
-!!USES:
-!
-    use cam_cpl_indices, only: index_a2x_Faxa_nhx, index_a2x_Faxa_noy
-!
-!!ARGUMENTS:
-!
+
+    ! Allocate space for the atmosphere to surface data type. And initialize
+    ! the values.
+
+    ! ARGUMENTS:
     type(cam_out_t), pointer :: cam_out(:)    ! Atmosphere to surface input
-!
-!!LOCAL VARIABLES:
-!
+
+    ! LOCAL VARIABLES:
     integer :: c            ! chunk index
     integer :: ierror       ! Error code
+    character(len=*), parameter :: sub = 'atm2hub_alloc'
     !----------------------------------------------------------------------- 
 
-    if ( .not. phys_grid_initialized() ) call endrun( "ATM2HUB_ALLOC error: phys_grid not called yet" )
+    if (.not. phys_grid_initialized()) call endrun(sub//": phys_grid not called yet")
     allocate (cam_out(begchunk:endchunk), stat=ierror)
     if ( ierror /= 0 )then
-      write(iulog,*) 'Allocation error: ', ierror
-      call endrun('ATM2HUB_ALLOC error: allocation error')
+      write(iulog,*) sub//': Allocation error: ', ierror
+      call endrun(sub//': allocation error: cam_out')
     end if
 
     do c = begchunk,endchunk
@@ -359,31 +319,42 @@ CONTAINS
        nullify(cam_out(c)%nhx_nitrogen_flx)
        nullify(cam_out(c)%noy_nitrogen_flx)
 
-       if (index_a2x_Faxa_nhx>0) then
+       if (active_Faxa_nhx) then
           allocate (cam_out(c)%nhx_nitrogen_flx(pcols), stat=ierror)
-          if ( ierror /= 0 ) call endrun('atm2hub_alloc error: allocation error nhx_nitrogen_flx')
+          if ( ierror /= 0 ) call endrun(sub//': allocation error nhx_nitrogen_flx')
           cam_out(c)%nhx_nitrogen_flx(:) = 0._r8
        endif
-       if (index_a2x_Faxa_noy>0) then
+       if (active_Faxa_noy) then
           allocate (cam_out(c)%noy_nitrogen_flx(pcols), stat=ierror)
-          if ( ierror /= 0 ) call endrun('atm2hub_alloc error: allocation error noy_nitrogen_flx')
+          if ( ierror /= 0 ) call endrun(sub//': allocation error noy_nitrogen_flx')
           cam_out(c)%noy_nitrogen_flx(:) = 0._r8
        endif
     end do
 
   end subroutine atm2hub_alloc
 
+  !===============================================================================
+
   subroutine atm2hub_deallocate(cam_out)
+
     type(cam_out_t), pointer :: cam_out(:)    ! Atmosphere to surface input
+    !----------------------------------------------------------------------- 
+
     if(associated(cam_out)) then
        deallocate(cam_out)
     end if
     nullify(cam_out)
 
   end subroutine atm2hub_deallocate
+
+  !===============================================================================
+
   subroutine hub2atm_deallocate(cam_in)
+
     type(cam_in_t), pointer :: cam_in(:)    ! Atmosphere to surface input
+
     integer :: c
+    !----------------------------------------------------------------------- 
 
     if(associated(cam_in)) then
        do c=begchunk,endchunk
@@ -425,14 +396,8 @@ CONTAINS
 
 subroutine cam_export(state,cam_out,pbuf)
 
-!----------------------------------------------------------------------- 
-! 
-! Purpose: 
-! Transfer atmospheric fields into necessary surface data structures
-! 
-! Author: L. Bath  CMS Contact: M. Vertenstein
-! 
-!-----------------------------------------------------------------------
+   ! Transfer atmospheric fields into necessary surface data structures
+
    use physics_types,    only: physics_state
    use ppgrid,           only: pver
    use cam_history,      only: outfld
@@ -441,19 +406,16 @@ subroutine cam_export(state,cam_out,pbuf)
    use physconst,        only: rair, mwdry, mwco2, gravit
    use constituents,     only: pcnst
    use physics_buffer,   only: pbuf_get_index, pbuf_get_field, physics_buffer_desc
+
    implicit none
 
-   !------------------------------Arguments--------------------------------
-   !
    ! Input arguments
-   !
    type(physics_state),  intent(in)    :: state
    type (cam_out_t),     intent(inout) :: cam_out
    type(physics_buffer_desc), pointer  :: pbuf(:)
 
-   !
-   !---------------------------Local variables-----------------------------
-   !
+   ! Local variables
+
    integer :: i              ! Longitude index
    integer :: m              ! constituent index
    integer :: lchnk          ! Chunk index
@@ -578,7 +540,7 @@ subroutine cam_export(state,cam_out,pbuf)
       if (cam_out%precsl(i).lt.0._r8) cam_out%precsl(i)=0._r8
       if (cam_out%precsc(i).gt.cam_out%precc(i)) cam_out%precsc(i)=cam_out%precc(i)
       if (cam_out%precsl(i).gt.cam_out%precl(i)) cam_out%precsl(i)=cam_out%precl(i)
-      ! end jrm
+
    end do
 
 end subroutine cam_export

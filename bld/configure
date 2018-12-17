@@ -108,7 +108,7 @@ OPTIONS
      NOT be bundled.
 
   Options used to determine the CAM model configuration.  These options will have an
-  effect whether running CAM as part of CCSM or running in a CAM standalone mode:
+  effect whether running CAM from CESM scripts or running via CAM standalone scripts:
 
      -[no]age_of_air_trcs Switch on [off] age of air tracers. Default: on for waccm_phys, otherwise off.
      -analytic_ic       Enables the (namelist controlled) dycore testing infrastructure
@@ -134,6 +134,7 @@ OPTIONS
      -cosp              Enable the COSP simulator.
      -cppdefs <string>  A string of user specified CPP defines.  Appended to
                         Makefile defaults.  E.g. -cppdefs '-DVAR1 -DVAR2'
+     -cpl               Coupling framework [mct | nuopc].  Default: mct.
      -dyn <name>        Dynamical core option: [eul | fv | se].  Default: fv.
      -edit_chem_mech    Invokes CAMCHEM_EDITOR to allow the user to edit the chemistry mechanism file
      -hgrid <name>      Specify horizontal grid.  Use nlatxnlon for spectral grids;
@@ -189,7 +190,7 @@ OPTIONS
 
      -cache <file>      Name of output cache file (default: config_cache.xml).
      -cachedir <file>   Name of directory where output cache file is written (default: CAM build directory).
-     -ccsm_seq          Switch to specify that CAM is being built from within sequential CCSM scripts.
+     -ccsm_seq          Switch to specify that CAM is being built via CESM scripts.
      -help [or -h]      Print usage to STDOUT.
      -silent [or -s]    Turns on silent mode - only fatal messages issued.
      -test              Switch on testing of Fortran compiler and external libraries.
@@ -309,6 +310,7 @@ GetOptions(
     "cosp"                      => \$opts{'cosp'},
     "cosp_libdir=s"             => \$opts{'cosp_libdir'},
     "cppdefs=s"                 => \$opts{'cppdefs'},
+    "cpl=s"                     => \$opts{'cpl'},
     "spcam_clubb_sgs"           => \$opts{'spcam_clubb_sgs'},
     "debug"                     => \$opts{'debug'},
     "dyn=s"                     => \$opts{'dyn'},
@@ -605,6 +607,15 @@ if ($print>=2) { print "SMP parallelism: $smp$eol";}
 #-----------------------------------------------------------------------------------------------
 # Determine which packages/component to include  ###############################################
 #-----------------------------------------------------------------------------------------------
+
+# Coupling framework
+
+if (defined $opts{'cpl'}) {
+    $cfg_ref->set('cpl', $opts{'cpl'});
+}
+
+my $cpl = $cfg_ref->get('cpl');
+if ($print>=2) { print "Coupling framework: $cpl$eol"; }
 
 #-----------------------------------------------------------------------------------------------
 # Physics package
@@ -2626,7 +2637,7 @@ EOF
 #-----------------------------------------------------------------------------------------------
 
 my $fp_filename      = 'Filepath';             # name of output filepath file
-my $cpp_filename     = 'CESM_cppdefs';         # name of output file for cam's cppdefs in ccsm
+my $cpp_filename     = 'CESM_cppdefs';         # name of output file for cam's cppdefs in cesm
 
 # Write the filepath file.
 write_filepath("$cam_bld/$fp_filename", $cfg_ref);
@@ -2868,7 +2879,7 @@ sub write_filepath
         print $fh "$camsrcdir/src/advection/slt\n";
     }
 
-    print $fh "$camsrcdir/src/cpl\n";
+    print $fh "$camsrcdir/src/cpl/$cpl\n";
     print $fh "$camsrcdir/src/control\n";
     print $fh "$camsrcdir/src/utils\n";
 

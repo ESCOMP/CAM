@@ -11,8 +11,9 @@ module co2_cycle
 !
 !-------------------------------------------------------------------------------
 
-   use shr_kind_mod,   only: r8 => shr_kind_r8, cl => shr_kind_cl
-   use co2_data_flux,  only: co2_data_flux_type
+   use shr_kind_mod,    only: r8 => shr_kind_r8, cl => shr_kind_cl
+   use co2_data_flux,   only: co2_data_flux_type
+   use srf_field_check, only: active_Faoo_fco2_ocn
 
    implicit none
 
@@ -65,9 +66,7 @@ module co2_cycle
    integer, dimension(ncnst) :: c_i                   ! global index
 
 !===============================================================================
-
 contains
-
 !===============================================================================
 
 subroutine co2_cycle_readnl(nlfile)
@@ -81,7 +80,6 @@ subroutine co2_cycle_readnl(nlfile)
    use spmd_utils,      only: masterproc
    use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_logical, mpi_character
    use cam_logfile,     only: iulog
-   use cam_cpl_indices, only: index_x2a_Faoo_fco2_ocn
    use cam_abortutils,  only: endrun
 
    ! Arguments
@@ -89,11 +87,11 @@ subroutine co2_cycle_readnl(nlfile)
 
    ! Local variables
    integer :: unitn, ierr
+   character(len=256) :: msg
    character(len=*), parameter :: subname = 'co2_cycle_readnl'
 
    namelist /co2_cycle_nl/ co2_flag, co2_readFlux_ocn, co2_readFlux_fuel, co2_readFlux_aircraft, &
                            co2flux_ocn_file, co2flux_fuel_file
-
    !----------------------------------------------------------------------------
 
    if (masterproc) then
@@ -125,9 +123,11 @@ subroutine co2_cycle_readnl(nlfile)
    if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: co2flux_fuel_file")
 
    ! Consistency check
-   if (co2_readFlux_ocn .and. index_x2a_Faoo_fco2_ocn /= 0) then
-      write(iulog,*)'error co2_readFlux_ocn and index_x2a_Faoo_fco2_ocn cannot both be active'
-      call endrun(subname // ':: error co2_readFlux_ocn and index_x2a_Faoo_fco2_ocn cannot both be active')
+   if (co2_readFlux_ocn .and. active_Faoo_fco2_ocn) then
+      msg = subname//': ERROR: reading ocn flux dataset is enabled, but coupler is setting'&
+            //' the ocn co2 flux.  Cannot do both.'
+      write(iulog,*) trim(msg)
+      call endrun(trim(msg))
    end if
 
 end subroutine co2_cycle_readnl
