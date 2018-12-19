@@ -40,6 +40,7 @@ def buildcpp(case):
     compiler = case.get_value("COMPILER") # for chem preprocessor
     nthrds_atm = case.get_value("NTHRDS_ATM")
     cam_config_opts = case.get_value("CAM_CONFIG_OPTS")
+    comp_interface=case.get_value("COMP_INTERFACE")
 
     # level information for CAM is part of the atm grid name - and must be stripped out
     nlev = ''
@@ -63,7 +64,7 @@ def buildcpp(case):
 
     # if need to build - then construct configure command
     config_opts = ["-s", "-fc_type", compiler, "-ccsm_seq",
-                   "-dyn", cam_dycore, "-hgrid", atm_grid,
+                   "-dyn", cam_dycore, "-hgrid", atm_grid, "-cpl", comp_interface,
                    "-usr_src", os.path.join(caseroot, "SourceMods", "src.cam")]
 
     if nlev:

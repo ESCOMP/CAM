@@ -13,11 +13,8 @@ module cam_comp
 use shr_kind_mod,      only: r8 => SHR_KIND_R8, cl=>SHR_KIND_CL, cs=>SHR_KIND_CS
 use shr_sys_mod,       only: shr_sys_flush
 
-use ESMF,              only: esmf_clock
-use seq_timemgr_mod,   only: seq_timemgr_EClockGetData
-
 use spmd_utils,        only: masterproc, mpicom
-use cam_control_mod,   only: cam_ctrl_init, cam_ctrl_set_orbit, initial_run
+use cam_control_mod,   only: cam_ctrl_init, cam_ctrl_set_orbit
 use runtime_opts,      only: read_namelist
 use time_manager,      only: timemgr_init, get_step_size, &
                              get_nstep, is_first_step, is_first_restart_step
@@ -36,7 +33,6 @@ use cam_abortutils,    only: endrun
 
 implicit none
 private
-save
 
 public cam_init      ! First phase of CAM initialization
 public cam_run1      ! CAM run method phase 1
@@ -59,12 +55,15 @@ real(r8) :: dtime_phys         ! Time step for physics tendencies.  Set by call 
 contains
 !-----------------------------------------------------------------------
 
-subroutine cam_init(EClock, &
-   caseid, ctitle, start_type, dart_mode,       &
-   brnch_retain_casename, aqua_planet,          &
+subroutine cam_init( &
+   caseid, ctitle, model_doi_url, dart_mode, &
+   initial_run_in, restart_run_in, branch_run_in, &
+   calendar, brnch_retain_casename, aqua_planet, &
    single_column, scmlat, scmlon,               &
    eccen, obliqr, lambm0, mvelpp,               &
-   perpetual_run, perpetual_ymd, model_doi_url, &
+   perpetual_run, perpetual_ymd, &
+   dtime, start_ymd, start_tod, ref_ymd, ref_tod, &
+   stop_ymd, stop_tod, curr_ymd, curr_tod, &
    cam_out, cam_in)
 
    !-----------------------------------------------------------------------
@@ -83,24 +82,26 @@ subroutine cam_init(EClock, &
    use cam_restart,      only: cam_read_restart
    use stepon,           only: stepon_init
    use ionosphere_interface, only: ionosphere_init
-
-#if (defined BFB_CAM_SCAM_IOP)
-   use history_defaults, only: initialize_iop_history
-#endif
-
    use camsrfexch,       only: hub2atm_alloc, atm2hub_alloc
    use cam_history,      only: intht
    use history_scam,     only: scm_intht
    use cam_pio_utils,    only: init_pio_subsystem
    use cam_instance,     only: inst_suffix
 
-   ! Arguments
-   type(ESMF_Clock),  intent(in) :: EClock
+#if (defined BFB_CAM_SCAM_IOP)
+   use history_defaults, only: initialize_iop_history
+#endif
 
+
+   ! Arguments
    character(len=cl), intent(in) :: caseid                ! case ID
    character(len=cl), intent(in) :: ctitle                ! case title
-   character(len=cs), intent(in) :: start_type            ! start type: initial, restart, or branch
+   character(len=cl), intent(in) :: model_doi_url         ! CESM model DOI
    logical,           intent(in) :: dart_mode             ! enables DART mode
+   logical,           intent(in) :: initial_run_in        ! true => inital run
+   logical,           intent(in) :: restart_run_in        ! true => restart run
+   logical,           intent(in) :: branch_run_in         ! true => branch run
+   character(len=cs), intent(in) :: calendar              ! Calendar type
    logical,           intent(in) :: brnch_retain_casename ! Flag to allow a branch to use the same
                                                           ! caseid as the run being branched from.
    logical,           intent(in) :: aqua_planet           ! Flag to run model in "aqua planet" mode
@@ -116,47 +117,43 @@ subroutine cam_init(EClock, &
 
    logical,           intent(in) :: perpetual_run    ! true => perpetual mode enabled
    integer,           intent(in) :: perpetual_ymd    ! Perpetual date (YYYYMMDD)
-   character(len=cl), intent(in) :: model_doi_url    ! CESM model DOI
+   integer,           intent(in) :: dtime                 ! model timestep (sec)
+
+   integer,           intent(in) :: start_ymd             ! Start date (YYYYMMDD)
+   integer,           intent(in) :: start_tod             ! Start time of day (sec)
+   integer,           intent(in) :: curr_ymd              ! Start date (YYYYMMDD)
+   integer,           intent(in) :: curr_tod              ! Start time of day (sec)
+   integer,           intent(in) :: stop_ymd              ! Stop date (YYYYMMDD)
+   integer,           intent(in) :: stop_tod              ! Stop time of day (sec)
+   integer,           intent(in) :: ref_ymd               ! Reference date (YYYYMMDD)
+   integer,           intent(in) :: ref_tod               ! Reference time of day (sec)
 
    type(cam_out_t),   pointer    :: cam_out(:)       ! Output from CAM to surface
    type(cam_in_t) ,   pointer    :: cam_in(:)        ! Merged input state to CAM
 
    ! Local variables
    character(len=cs) :: filein      ! Input namelist filename
-   character(len=cs) :: calendar    ! Calendar type
-   integer           :: dtime       ! model timestep (sec)
-   integer           :: start_ymd   ! Start date (YYYYMMDD)
-   integer           :: start_tod   ! Start time of day (sec)
-   integer           :: curr_ymd    ! Start date (YYYYMMDD)
-   integer           :: curr_tod    ! Start time of day (sec)
-   integer           :: stop_ymd    ! Stop date (YYYYMMDD)
-   integer           :: stop_tod    ! Stop time of day (sec)
-   integer           :: ref_ymd     ! Reference date (YYYYMMDD)
-   integer           :: ref_tod     ! Reference time of day (sec)
    !-----------------------------------------------------------------------
 
    call init_pio_subsystem()
 
    ! Initializations using data passed from coupler.
    call cam_ctrl_init( &
-      caseid, ctitle, start_type, dart_mode,       &
-      aqua_planet, brnch_retain_casename)
+      caseid_in=caseid, &
+      ctitle_in=ctitle, &
+      initial_run_in=initial_run_in, &
+      restart_run_in=restart_run_in, &
+      branch_run_in=branch_run_in, &
+      dart_mode_in=dart_mode, &
+      aqua_planet_in=aqua_planet, &
+      brnch_retain_casename_in=brnch_retain_casename)
 
    call cam_ctrl_set_orbit(eccen, obliqr, lambm0, mvelpp)
-
-   ! Extract info from the eclock passed from coupler to initialize
-   ! the local time manager
-   call seq_timemgr_EClockGetData(EClock, &
-      start_ymd=start_ymd, start_tod=start_tod, &
-      ref_ymd=ref_ymd, ref_tod=ref_tod,         &
-      stop_ymd=stop_ymd, stop_tod=stop_tod,     &
-      curr_ymd=curr_ymd, curr_tod=curr_tod,     &
-      dtime=dtime, calendar=calendar )
 
    call timemgr_init( &
       dtime, calendar, start_ymd, start_tod, ref_ymd,  &
       ref_tod, stop_ymd, stop_tod, curr_ymd, curr_tod, &
-      perpetual_run, perpetual_ymd, initial_run)
+      perpetual_run, perpetual_ymd, initial_run_in)
 
    ! Read CAM namelists.
    filein = "atm_in" // trim(inst_suffix)
@@ -181,7 +178,7 @@ subroutine cam_init(EClock, &
    ! initialize ionosphere
    call ionosphere_init()
 
-   if (initial_run) then
+   if (initial_run_in) then
 
       call dyn_init(dyn_in, dyn_out)
 
@@ -427,6 +424,7 @@ subroutine cam_final( cam_out, cam_in )
    use cam_initfiles,    only: cam_initfiles_close
    use camsrfexch,       only: atm2hub_deallocate, hub2atm_deallocate
    use ionosphere_interface, only: ionosphere_final
+   use cam_control_mod,  only: initial_run
 
    !
    ! Arguments

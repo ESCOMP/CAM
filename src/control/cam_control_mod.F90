@@ -1,15 +1,12 @@
 module cam_control_mod
 !------------------------------------------------------------------------------------------------
-! 
+!
 ! High level control variables.  Information received from the driver/coupler is
 ! stored here.
-! 
+!
 !------------------------------------------------------------------------------------------------
 
 use shr_kind_mod,     only: r8=>shr_kind_r8, cs=>shr_kind_cs, cl=>shr_kind_cl
-use seq_infodata_mod, only: seq_infodata_start_type_start, seq_infodata_start_type_cont, &
-                            seq_infodata_start_type_brnch
-
 use spmd_utils,       only: masterproc
 use cam_logfile,      only: iulog
 use cam_abortutils,   only: endrun
@@ -57,12 +54,15 @@ contains
 !================================================================================================
 
 subroutine cam_ctrl_init( &
-   caseid_in, ctitle_in, start_type, dart_mode_in, &
-   aqua_planet_in, brnch_retain_casename_in)
+   caseid_in, ctitle_in, &
+   initial_run_in, restart_run_in, branch_run_in, &
+   dart_mode_in, aqua_planet_in, brnch_retain_casename_in)
 
    character(len=cl), intent(in) :: caseid_in            ! case ID
    character(len=cl), intent(in) :: ctitle_in            ! case title
-   character(len=cs), intent(in) :: start_type           ! start type: initial, restart, or branch
+   logical,           intent(in) :: initial_run_in       ! true => inital run
+   logical,           intent(in) :: restart_run_in       ! true => restart run
+   logical,           intent(in) :: branch_run_in        ! true => branch run
    logical,           intent(in) :: dart_mode_in         ! Flag to run model with DART
    logical,           intent(in) :: aqua_planet_in       ! Flag to run model in "aqua planet" mode
    logical,           intent(in) :: brnch_retain_casename_in ! Flag to allow a branch to use the same
@@ -76,25 +76,17 @@ subroutine cam_ctrl_init( &
 
    caseid = caseid_in
    ctitle = ctitle_in
+
    dart_mode = dart_mode_in
 
-   initial_run = .false.
-   restart_run = .false.
-   branch_run  = .false.
    if (dart_mode) then
       initial_run = .true.
+      restart_run = .false.
+      branch_run  = .false.
    else
-      select case (trim(start_type))
-      case (seq_infodata_start_type_start)
-         initial_run = .true.
-      case (seq_infodata_start_type_cont)
-         restart_run = .true.
-      case (seq_infodata_start_type_brnch)
-         branch_run = .true.
-      case default
-         write(errmsg,*) sub // ': FATAL: unknown start type: ', trim(start_type)
-         call endrun(errmsg)
-      end select
+      initial_run = initial_run_in
+      restart_run = restart_run_in
+      branch_run  = branch_run_in
    end if
 
    aqua_planet = aqua_planet_in

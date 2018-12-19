@@ -8,10 +8,15 @@ module atm_comp_mct
   use seq_cdata_mod
   use esmf
 
-  use seq_comm_mct,      only: num_inst_atm
-  use seq_flds_mod
+  use seq_comm_mct      , only: seq_comm_inst, seq_comm_name, seq_comm_suffix, num_inst_atm
+  use shr_flds_mod      , only: shr_flds_dom_coord, shr_flds_dom_other
+  use seq_flds_mod      , only: seq_flds_x2a_fields, seq_flds_a2x_fields
   use seq_infodata_mod
-  use seq_timemgr_mod
+
+  use seq_timemgr_mod   , only: seq_timemgr_EClockGetData
+  use seq_timemgr_mod   , only: seq_timemgr_EClockDateInSync
+  use seq_timemgr_mod   , only: seq_timemgr_StopAlarmIsOn
+  use seq_timemgr_mod   , only: seq_timemgr_RestartAlarmIsOn
 
   use shr_kind_mod     , only: r8 => shr_kind_r8, cs=>shr_kind_cs, cl=>shr_kind_cl
   use shr_file_mod     , only: shr_file_getunit,                          &
@@ -42,7 +47,6 @@ module atm_comp_mct
   use cam_logfile      , only: iulog
 
   implicit none
-  save
   private
 
 !--------------------------------------------------------------------------
@@ -89,57 +93,60 @@ CONTAINS
     type(seq_cdata), intent(inout)              :: cdata_a
     type(mct_aVect), intent(inout)              :: x2a_a
     type(mct_aVect), intent(inout)              :: a2x_a
-    character(len=*), optional,   intent(IN)    :: NLFilename ! Namelist filename
+    character(len=*), optional,   intent(in)    :: NLFilename ! Namelist filename
     !
     ! Locals
     !
     type(mct_gsMap), pointer   :: gsMap_atm
     type(mct_gGrid), pointer   :: dom_a
-    integer :: ATMID
-    integer :: mpicom_atm
-    integer :: lsize
+    integer           :: ATMID
+    integer           :: mpicom_atm
+    integer           :: lsize
+    logical           :: first_time = .true.
+    logical           :: exists
+    integer           :: shrlogunit, shrloglev ! save values, restore on return
+    character(len=cs) :: start_type            ! infodata start type
+    character(len=cl) :: caseid                ! case ID
+    character(len=cl) :: ctitle                ! case title
+    character(len=cl) :: model_doi_url         ! DOI for CESM model run
+    character(len=cs) :: calendar              ! Calendar type
+    logical           :: aqua_planet           ! Flag to run model in "aqua planet" mode
+    logical           :: brnch_retain_casename ! true => branch run may use same caseid as the run being branched from
+    logical           :: single_column
+    real(r8)          :: scmlat
+    real(r8)          :: scmlon
+    real(r8)          :: eccen
+    real(r8)          :: obliqr
+    real(r8)          :: lambm0
+    real(r8)          :: mvelpp
+    logical           :: perpetual_run         ! If in perpetual mode or not
+    integer           :: perpetual_ymd         ! Perpetual date (YYYYMMDD)
 
-    logical :: first_time = .true.
-    logical :: exists
+    logical           :: dart_mode_in
 
-    integer :: shrlogunit, shrloglev ! save values, restore on return
-
-    character(len=cs) :: starttype ! infodata start type
-    character(len=cl) :: caseid    ! case ID
-    character(len=cl) :: ctitle    ! case title
-    character(len=cl) :: model_doi_url ! DOI for CESM model run
-
-    logical :: aqua_planet       ! Flag to run model in "aqua planet" mode
-    logical :: brnch_retain_casename ! true => branch run may use same caseid as
-                                     !         the run being branched from
-    logical :: single_column
-    real(r8):: scmlat
-    real(r8):: scmlon
-
-    real(r8) :: eccen
-    real(r8) :: obliqr
-    real(r8) :: lambm0
-    real(r8) :: mvelpp
-
-    logical :: perpetual_run    ! If in perpetual mode or not
-    integer :: perpetual_ymd    ! Perpetual date (YYYYMMDD)
-
-    logical :: dart_mode_in
-
-    real(r8):: nextsw_cday      ! calendar of next atm shortwave
-    integer :: stepno           ! time step
-
-    integer :: dtime            ! time step increment (sec)
-    integer :: atm_cpl_dt       ! driver atm coupling time step
-    integer :: nstep            ! CAM nstep
-
-    real(r8):: caldayp1         ! CAM calendar day for for next cam time step
-
-    integer :: lbnum
-
-    integer :: hdim1_d, hdim2_d ! dimensions of rectangular horizontal grid
-                                ! data structure, If 1D data structure, then
-                                ! hdim2_d == 1.
+    real(r8)          :: nextsw_cday           ! calendar of next atm shortwave
+    integer           :: stepno                ! time step
+    integer           :: dtime                 ! time step increment (sec)
+    integer           :: atm_cpl_dt            ! driver atm coupling time step
+    integer           :: nstep                 ! CAM nstep
+    real(r8)          :: caldayp1              ! CAM calendar day for for next cam time step
+    integer           :: start_ymd             ! Start date (YYYYMMDD)
+    integer           :: start_tod             ! Start time of day (sec)
+    integer           :: curr_ymd              ! Start date (YYYYMMDD)
+    integer           :: curr_tod              ! Start time of day (sec)
+    integer           :: stop_ymd              ! Stop date (YYYYMMDD)
+    integer           :: stop_tod              ! Stop time of day (sec)
+    integer           :: ref_ymd               ! Reference date (YYYYMMDD)
+    integer           :: ref_tod               ! Reference time of day (sec)
+    logical           :: initial_run           ! startup mode which only requires a minimal initial file
+    logical           :: restart_run           ! continue a previous run; requires a restart file
+    logical           :: branch_run            ! branch from a previous run; requires a restart file
+    integer           :: lbnum
+    character(cs)     :: inst_name
+    integer           :: inst_index
+    character(cs)     :: inst_suffix
+    integer           :: hdim1_d, hdim2_d      ! dimensions of rectangular horizontal grid
+                                               ! data structure, If 1D data structure, then hdim2_d == 1.
     !-----------------------------------------------------------------------
     !
     ! Determine cdata points
@@ -150,14 +157,17 @@ CONTAINS
 
     if (first_time) then
 
-       call cam_instance_init(ATMID)
+       ! determine instance information
+       inst_name   = seq_comm_name(ATMID)
+       inst_index  = seq_comm_inst(ATMID)
+       inst_suffix = seq_comm_suffix(ATMID)
+       call cam_instance_init(ATMID, inst_name, inst_index, inst_suffix)
 
        ! Set filename specifier for restart surface file
        ! (%c=caseid, $y=year, $m=month, $d=day, $s=seconds in day)
        rsfilename_spec_cam = '%c.cam' // trim(inst_suffix) // '.rs.%y-%m-%d-%s.nc'
 
        ! Determine attribute vector indices
-
        call cam_cpl_indices_set()
 
        ! Initialize atm use of MPI
@@ -188,28 +198,79 @@ CONTAINS
        !
        ! Get data from infodata object
        !
+       !TODO: the perpetual_run does not work for nuopc since nextsw_cday is not being set correctly
+       !FOR now will debug without support for perpetual until this can be resolved
+       perpetual_run = .false.
+
        call seq_infodata_GetData( infodata,                                           &
             case_name=caseid, case_desc=ctitle, model_doi_url=model_doi_url,          &
-            start_type=starttype,                                                     &
+            start_type=start_type,                                                     &
             aqua_planet=aqua_planet,                                                  &
             brnch_retain_casename=brnch_retain_casename,                              &
             single_column=single_column, scmlat=scmlat, scmlon=scmlon,                &
             orb_eccen=eccen, orb_mvelpp=mvelpp, orb_lambm0=lambm0, orb_obliqr=obliqr, &
             perpetual=perpetual_run, perpetual_ymd=perpetual_ymd)
 
+       !TODO: the following strings must not be hard-wired - must have module variables
+       initial_run = .false.
+       restart_run = .false.
+       branch_run  = .false.
+       if (trim(start_type) == 'startup') then
+          initial_run = .true.
+       else if (trim(start_type) == 'continue' ) then
+          restart_run = .true.
+       else if (trim(start_type) == 'branch') then
+          branch_run = .true.
+       else
+          call shr_sys_abort('atm_init_mct: ERROR: unknown start_type' // start_type )
+       end if
+
+       ! Extract info from the eclock passed from coupler to initialize
+       ! the local time manager
+
+       call seq_timemgr_EClockGetData(Eclock, &
+            start_ymd=start_ymd, start_tod=start_tod, &
+            ref_ymd=ref_ymd, ref_tod=ref_tod,         &
+            stop_ymd=stop_ymd, stop_tod=stop_tod,     &
+            curr_ymd=curr_ymd, curr_tod=curr_tod,     &
+            dtime=dtime, calendar=calendar )
+
        ! Initialize CAM, allocate cam_in and cam_out and determine
        ! atm decomposition (needed to initialize gsmap)
        ! for an initial run, cam_in and cam_out are allocated in cam_init
        ! for a restart/branch run, cam_in and cam_out are allocated in restart
-       !
-       call cam_init(EClock, &
-          caseid, ctitle, starttype, dart_mode_in,     &
-          brnch_retain_casename, aqua_planet,          &
-          single_column, scmlat, scmlon,               &
-          eccen, obliqr, lambm0, mvelpp,               &
-          perpetual_run, perpetual_ymd, model_doi_url, &
-          cam_out, cam_in)
 
+       call cam_init( &
+            caseid=caseid, &
+            ctitle=ctitle, &
+            dart_mode=dart_mode_in, &
+            model_doi_url=model_doi_url, &
+            initial_run_in=initial_run, &
+            restart_run_in=restart_run, &
+            branch_run_in=branch_run, &
+            calendar=calendar, &
+            brnch_retain_casename=brnch_retain_casename, &
+            aqua_planet=aqua_planet, &
+            single_column=single_column, &
+            scmlat=scmlat, &
+            scmlon=scmlon, &
+            eccen=eccen, &
+            obliqr=obliqr, &
+            lambm0=lambm0, &
+            mvelpp=mvelpp,  &
+            perpetual_run=perpetual_run, &
+            perpetual_ymd=perpetual_ymd, &
+            dtime=dtime, &
+            start_ymd=start_ymd, &
+            start_tod=start_tod, &
+            ref_ymd=ref_ymd, &
+            ref_tod=ref_tod, &
+            stop_ymd=stop_ymd, &
+            stop_tod=stop_tod, &
+            curr_ymd=curr_ymd, &
+            curr_tod=curr_tod, &
+            cam_out=cam_out, &
+            cam_in=cam_in)
        !
        ! Initialize MCT gsMap, domain and attribute vectors (and dof)
        !
@@ -600,7 +661,7 @@ CONTAINS
     !
     ! Initialize mct atm domain
     !
-    call mct_gGrid_init( GGrid=dom_a, CoordChars=trim(seq_flds_dom_coord), OtherChars=trim(seq_flds_dom_other), lsize=lsize )
+    call mct_gGrid_init( GGrid=dom_a, CoordChars=trim(shr_flds_dom_coord), OtherChars=trim(shr_flds_dom_other), lsize=lsize )
     !
     ! Allocate memory
     !
@@ -684,28 +745,31 @@ CONTAINS
     type(ESMF_Clock),intent(inout) :: EClock
     type(mct_aVect), intent(inout) :: x2a_a
     type(mct_aVect), intent(inout) :: a2x_a
-
+    !
     ! Local variables
-    character(len=cl)     :: fname_srf_cam  ! surface restart filename
-    character(len=cl)     :: pname_srf_cam  ! surface restart full pathname
-    integer               :: rcode        ! return error code
-    integer               :: yr_spec      ! Current year
-    integer               :: mon_spec     ! Current month
-    integer               :: day_spec     ! Current day
-    integer               :: sec_spec     ! Current time of day (sec)
+    !
+    character(len=cl)     :: fname_srf_cam ! surface restart filename
+    character(len=cl)     :: pname_srf_cam ! surface restart full pathname
+    integer               :: rcode         ! return error code
+    integer               :: yr_spec       ! Current year
+    integer               :: mon_spec      ! Current month
+    integer               :: day_spec      ! Current day
+    integer               :: sec_spec      ! Current time of day (sec)
     integer               :: nf_x2a, nf_a2x, k
     real(r8), allocatable :: tmp(:)
     type(file_desc_t)     :: file
     type(io_desc_t)       :: iodesc
     type(var_desc_t)      :: varid
-    character(CL)         :: itemc       ! string converted to char
-    type(mct_string)      :: mstring     ! mct char type
+    character(CL)         :: itemc         ! string converted to char
+    type(mct_string)      :: mstring       ! mct char type
     !-----------------------------------------------------------------------
 
     ! Determine and open surface restart dataset
 
     call seq_timemgr_EClockGetData( EClock, curr_yr=yr_spec,curr_mon=mon_spec, &
          curr_day=day_spec, curr_tod=sec_spec )
+
+    ! Determine and open surface restart dataset
 
     if (dart_mode) then
        fname_srf_cam = interpret_filename_spec( rsfilename_spec_cam, &
@@ -774,24 +838,22 @@ CONTAINS
     !
     type(mct_aVect), intent(in) :: x2a_a
     type(mct_aVect), intent(in) :: a2x_a
-    integer        , intent(in) :: yr_spec         ! Simulation year
-    integer        , intent(in) :: mon_spec        ! Simulation month
-    integer        , intent(in) :: day_spec        ! Simulation day
-    integer        , intent(in) :: sec_spec        ! Seconds into current simulation day
+    integer        , intent(in) :: yr_spec     ! Simulation year
+    integer        , intent(in) :: mon_spec    ! Simulation month
+    integer        , intent(in) :: day_spec    ! Simulation day
+    integer        , intent(in) :: sec_spec    ! Seconds into current simulation day
     !
     ! Local variables
     !
-    character(len=cl)         :: fname_srf_cam  ! surface restart filename
-    integer                   :: rcode        ! return error code
+    character(len=cl)         :: fname_srf_cam ! surface restart filename
+    integer                   :: rcode         ! return error code
     integer                   :: nf_x2a, nf_a2x, dimid(1), k
     type(file_desc_t)         :: file
     type(var_desc_t), pointer :: varid_x2a(:), varid_a2x(:)
     type(io_desc_t)           :: iodesc
-    character(CL)             :: itemc       ! string converted to char
-    type(mct_string)          :: mstring     ! mct char type
+    character(CL)             :: itemc         ! string converted to char
+    type(mct_string)          :: mstring       ! mct char type
     !-----------------------------------------------------------------------
-
-    ! Determine and open surface restart dataset
 
     fname_srf_cam = interpret_filename_spec( rsfilename_spec_cam, &
          yr_spec=yr_spec, mon_spec=mon_spec, day_spec=day_spec, sec_spec= sec_spec )

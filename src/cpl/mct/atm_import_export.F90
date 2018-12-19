@@ -1,7 +1,14 @@
 module atm_import_export
 
   use shr_kind_mod  , only: r8 => shr_kind_r8, cl=>shr_kind_cl
+  use time_manager  , only: get_nstep
+  use cam_logfile   , only: iulog
+  use spmd_utils    , only: masterproc
+
   implicit none
+
+  integer     ,parameter :: debug = 1 ! internal debug level
+  character(*),parameter :: F01 = "('(cam_import_export) ',a, i8,2x,i8,2x,d21.14)"
 
 contains
 
@@ -9,17 +16,18 @@ contains
 
     !-----------------------------------------------------------------------
     use cam_cpl_indices
-    use camsrfexch,     only: cam_in_t
-    use phys_grid ,     only: get_ncols_p
-    use ppgrid    ,     only: begchunk, endchunk       
-    use shr_const_mod,  only: shr_const_stebol
-    use seq_drydep_mod, only: n_drydep
-    use shr_fire_emis_mod, only: shr_fire_emis_mechcomps_n
-    use co2_cycle     , only: c_i, co2_readFlux_ocn, co2_readFlux_fuel
-    use co2_cycle     , only: co2_transport, co2_time_interp_ocn, co2_time_interp_fuel
-    use co2_cycle     , only: data_flux_ocn, data_flux_fuel
-    use physconst     , only: mwco2
-    use time_manager  , only: is_first_step
+    use camsrfexch        , only: cam_in_t
+    use phys_grid         , only: get_ncols_p
+    use ppgrid            , only: begchunk, endchunk
+    use shr_const_mod     , only: shr_const_stebol
+    use shr_sys_mod       , only: shr_sys_abort 
+    use seq_drydep_mod    , only: n_drydep
+    use shr_fire_emis_mod , only: shr_fire_emis_mechcomps_n
+    use co2_cycle         , only: c_i, co2_readFlux_ocn, co2_readFlux_fuel
+    use co2_cycle         , only: co2_transport, co2_time_interp_ocn, co2_time_interp_fuel
+    use co2_cycle         , only: data_flux_ocn, data_flux_fuel
+    use physconst         , only: mwco2
+    use time_manager      , only: is_first_step
     !
     ! Arguments
     !
@@ -28,7 +36,7 @@ contains
     logical, optional, intent(in) :: restart_init
     !
     ! Local variables
-    !		
+    !
     integer            :: i,lat,n,c,ig  ! indices
     integer            :: ncols         ! number of columns
     logical, save      :: first_time = .true.
@@ -36,10 +44,12 @@ contains
     integer, target    :: spc_ndx(ndst)
     integer, pointer   :: dst_a5_ndx, dst_a7_ndx
     integer, pointer   :: dst_a1_ndx, dst_a3_ndx
-    logical :: overwrite_flds
+    integer            :: nstep
+    logical            :: overwrite_flds
     !-----------------------------------------------------------------------
+
     overwrite_flds = .true.
-    ! don't overwrite fields if invoked during the initialization phase 
+    ! don't overwrite fields if invoked during the initialization phase
     ! of a 'continue' or 'branch' run type with data from .rs file
     if (present(restart_init)) overwrite_flds = .not. restart_init
 
@@ -47,31 +57,32 @@ contains
 
     ig=1
     do c=begchunk,endchunk
-       ncols = get_ncols_p(c) 
+       ncols = get_ncols_p(c)
 
-       do i =1,ncols                                                               
+       do i =1,ncols
           if (overwrite_flds) then
-             cam_in(c)%wsx(i)    = -x2a(index_x2a_Faxx_taux,ig)     
-             cam_in(c)%wsy(i)    = -x2a(index_x2a_Faxx_tauy,ig)     
-             cam_in(c)%shf(i)    = -x2a(index_x2a_Faxx_sen, ig)     
-             cam_in(c)%cflx(i,1) = -x2a(index_x2a_Faxx_evap,ig)                
+             cam_in(c)%wsx(i)    = -x2a(index_x2a_Faxx_taux,ig)
+             cam_in(c)%wsy(i)    = -x2a(index_x2a_Faxx_tauy,ig)
+             cam_in(c)%shf(i)    = -x2a(index_x2a_Faxx_sen, ig)
+             cam_in(c)%cflx(i,1) = -x2a(index_x2a_Faxx_evap,ig)
           endif
-          cam_in(c)%lhf(i)       = -x2a(index_x2a_Faxx_lat, ig)     
-          cam_in(c)%lwup(i)      = -x2a(index_x2a_Faxx_lwup,ig)    
-          cam_in(c)%asdir(i)     =  x2a(index_x2a_Sx_avsdr, ig)  
-          cam_in(c)%aldir(i)     =  x2a(index_x2a_Sx_anidr, ig)  
-          cam_in(c)%asdif(i)     =  x2a(index_x2a_Sx_avsdf, ig)  
+          cam_in(c)%lhf(i)       = -x2a(index_x2a_Faxx_lat, ig)
+          cam_in(c)%lwup(i)      = -x2a(index_x2a_Faxx_lwup,ig)
+          cam_in(c)%asdir(i)     =  x2a(index_x2a_Sx_avsdr, ig)
+          cam_in(c)%aldir(i)     =  x2a(index_x2a_Sx_anidr, ig)
+          cam_in(c)%asdif(i)     =  x2a(index_x2a_Sx_avsdf, ig)
           cam_in(c)%aldif(i)     =  x2a(index_x2a_Sx_anidf, ig)
-          cam_in(c)%ts(i)        =  x2a(index_x2a_Sx_t,     ig)  
-          cam_in(c)%sst(i)       =  x2a(index_x2a_So_t,     ig)             
-          cam_in(c)%snowhland(i) =  x2a(index_x2a_Sl_snowh, ig)  
-          cam_in(c)%snowhice(i)  =  x2a(index_x2a_Si_snowh, ig)  
-          cam_in(c)%tref(i)      =  x2a(index_x2a_Sx_tref,  ig)  
+          cam_in(c)%ts(i)        =  x2a(index_x2a_Sx_t,     ig)
+          cam_in(c)%sst(i)       =  x2a(index_x2a_So_t,     ig)
+          cam_in(c)%snowhland(i) =  x2a(index_x2a_Sl_snowh, ig)
+          cam_in(c)%snowhice(i)  =  x2a(index_x2a_Si_snowh, ig)
+          cam_in(c)%tref(i)      =  x2a(index_x2a_Sx_tref,  ig)
           cam_in(c)%qref(i)      =  x2a(index_x2a_Sx_qref,  ig)
           cam_in(c)%u10(i)       =  x2a(index_x2a_Sx_u10,   ig)
-          cam_in(c)%icefrac(i)   =  x2a(index_x2a_Sf_ifrac, ig)  
+          cam_in(c)%icefrac(i)   =  x2a(index_x2a_Sf_ifrac, ig)
           cam_in(c)%ocnfrac(i)   =  x2a(index_x2a_Sf_ofrac, ig)
 	  cam_in(c)%landfrac(i)  =  x2a(index_x2a_Sf_lfrac, ig)
+
           if ( associated(cam_in(c)%ram1) ) &
                cam_in(c)%ram1(i) =  x2a(index_x2a_Sl_ram1 , ig)
           if ( associated(cam_in(c)%fv) ) &
@@ -137,18 +148,18 @@ contains
        if (co2_readFlux_fuel) then
           call co2_time_interp_fuel
        end if
-       
+
        ! from ocn : data read in or from coupler or zero
        ! from fuel: data read in or zero
        ! from lnd : through coupler or zero
        do c=begchunk,endchunk
-          ncols = get_ncols_p(c)                                                 
-          do i=1,ncols                                                               
-             
-             ! all co2 fluxes in unit kgCO2/m2/s ! co2 flux from ocn 
+          ncols = get_ncols_p(c)
+          do i=1,ncols
+
+             ! all co2 fluxes in unit kgCO2/m2/s ! co2 flux from ocn
              if (index_x2a_Faoo_fco2_ocn /= 0) then
                 cam_in(c)%cflx(i,c_i(1)) = cam_in(c)%fco2_ocn(i)
-             else if (co2_readFlux_ocn) then 
+             else if (co2_readFlux_ocn) then
                 ! convert from molesCO2/m2/s to kgCO2/m2/s
                 cam_in(c)%cflx(i,c_i(1)) = &
                      -data_flux_ocn%co2flx(i,c)*(1._r8- cam_in(c)%landfrac(i)) &
@@ -156,21 +167,21 @@ contains
              else
                 cam_in(c)%cflx(i,c_i(1)) = 0._r8
              end if
-             
+
              ! co2 flux from fossil fuel
              if (co2_readFlux_fuel) then
                 cam_in(c)%cflx(i,c_i(2)) = data_flux_fuel%co2flx(i,c)
              else
                 cam_in(c)%cflx(i,c_i(2)) = 0._r8
              end if
-             
+
              ! co2 flux from land (cpl already multiplies flux by land fraction)
              if (index_x2a_Fall_fco2_lnd /= 0) then
                 cam_in(c)%cflx(i,c_i(3)) = cam_in(c)%fco2_lnd(i)
              else
                 cam_in(c)%cflx(i,c_i(3)) = 0._r8
              end if
-             
+
              ! merged co2 flux
              cam_in(c)%cflx(i,c_i(4)) = cam_in(c)%cflx(i,c_i(1)) + &
                                         cam_in(c)%cflx(i,c_i(2)) + &
@@ -179,7 +190,7 @@ contains
        end do
     end if
     !
-    ! if first step, determine longwave up flux from the surface temperature 
+    ! if first step, determine longwave up flux from the surface temperature
     !
     if (first_time) then
        if (is_first_step()) then
@@ -193,6 +204,40 @@ contains
        first_time = .false.
     end if
 
+    !-----------------------------------------------------------------
+    ! Debug output
+    !-----------------------------------------------------------------
+
+    if (debug > 0 .and. masterproc) then
+       nstep = get_nstep()
+       ig=1
+       do c=begchunk, endchunk
+          ncols = get_ncols_p(c)
+          do i=1,ncols
+             write(iulog,F01)'import: nstep, ig, Faxx_tauy = ',nstep,ig,x2a(index_x2a_Faxx_tauy ,ig)
+             write(iulog,F01)'import: nstep, ig, Faxx_taux = ',nstep,ig,x2a(index_x2a_Faxx_taux ,ig)
+             write(iulog,F01)'import: nstep, ig, Faxx_shf  = ',nstep,ig,x2a(index_x2a_Faxx_sen  ,ig)
+             write(iulog,F01)'import: nstep, ig, Faxx_lhf  = ',nstep,ig,x2a(index_x2a_Faxx_lat  ,ig)
+             write(iulog,F01)'import: nstep, ig, Sx_asdir  = ',nstep,ig,x2a(index_x2a_Sx_avsdr  ,ig)
+             write(iulog,F01)'import: nstep, ig, Sx_aldir  = ',nstep,ig,x2a(index_x2a_Sx_anidr  ,ig)
+             write(iulog,F01)'import: nstep, ig, Sx_asdif  = ',nstep,ig,x2a(index_x2a_Sx_avsdf  ,ig)
+             write(iulog,F01)'import: nstep, ig, Sx_aldif  = ',nstep,ig,x2a(index_x2a_Sx_anidf  ,ig)
+             write(iulog,F01)'import: nstep, ig, Sx_t      = ',nstep,ig,x2a(index_x2a_Sx_t      ,ig)
+             write(iulog,F01)'import: nstep, ig, Sl_snowh  = ',nstep,ig,x2a(index_x2a_Sl_snowh  ,ig)
+             write(iulog,F01)'import: nstep, ig, Si_snowh  = ',nstep,ig,x2a(index_x2a_Si_snowh  ,ig)
+             write(iulog,F01)'import: nstep, ig, Sf_ifrac  = ',nstep,ig,x2a(index_x2a_Sf_ifrac  ,ig)
+             write(iulog,F01)'import: nstep, ig, Sf_ofrac  = ',nstep,ig,x2a(index_x2a_Sf_ofrac  ,ig)
+             write(iulog,F01)'import: nstep, ig, Sf_lfrac  = ',nstep,ig,x2a(index_x2a_Sf_lfrac  ,ig)
+             if (.not. first_time .and. .not. is_first_step()) then
+                write(iulog,F01)'import: nstep, ig, Faxa_lwup = ',nstep,ig,x2a(index_x2a_Faxx_lwup, ig)
+             else
+                write(iulog,F01)'import: nstep, ig, Faxa_lwup = ',nstep,ig,cam_in(c)%lwup(i)
+             end if
+             ig = ig + 1
+          end do
+       end do
+    end if
+
   end subroutine atm_import
 
   !===============================================================================
@@ -202,12 +247,12 @@ contains
     !-------------------------------------------------------------------
     use camsrfexch, only: cam_out_t
     use phys_grid , only: get_ncols_p
-    use ppgrid    , only: begchunk, endchunk       
+    use ppgrid    , only: begchunk, endchunk
     use cam_cpl_indices
     !
     ! Arguments
     !
-    type(cam_out_t), intent(in)    :: cam_out(begchunk:endchunk) 
+    type(cam_out_t), intent(in)    :: cam_out(begchunk:endchunk)
     real(r8)       , intent(inout) :: a2x(:,:)
     !
     ! Local variables
@@ -215,6 +260,7 @@ contains
     integer :: avsize, avnat
     integer :: i,m,c,n,ig       ! indices
     integer :: ncols            ! Number of columns
+    integer :: nstep
     !-----------------------------------------------------------------------
 
     ! Copy from component arrays into chunk array data structure
@@ -226,25 +272,25 @@ contains
        ncols = get_ncols_p(c)
        do i=1,ncols
           a2x(index_a2x_Sa_pslv   ,ig) = cam_out(c)%psl(i)
-          a2x(index_a2x_Sa_z      ,ig) = cam_out(c)%zbot(i)   
+          a2x(index_a2x_Sa_z      ,ig) = cam_out(c)%zbot(i)
           a2x(index_a2x_Sa_topo   ,ig) = cam_out(c)%topo(i)
-          a2x(index_a2x_Sa_u      ,ig) = cam_out(c)%ubot(i)   
-          a2x(index_a2x_Sa_v      ,ig) = cam_out(c)%vbot(i)   
-          a2x(index_a2x_Sa_tbot   ,ig) = cam_out(c)%tbot(i)   
-          a2x(index_a2x_Sa_ptem   ,ig) = cam_out(c)%thbot(i)  
-          a2x(index_a2x_Sa_pbot   ,ig) = cam_out(c)%pbot(i)   
-          a2x(index_a2x_Sa_shum   ,ig) = cam_out(c)%qbot(i,1) 
+          a2x(index_a2x_Sa_u      ,ig) = cam_out(c)%ubot(i)
+          a2x(index_a2x_Sa_v      ,ig) = cam_out(c)%vbot(i)
+          a2x(index_a2x_Sa_tbot   ,ig) = cam_out(c)%tbot(i)
+          a2x(index_a2x_Sa_ptem   ,ig) = cam_out(c)%thbot(i)
+          a2x(index_a2x_Sa_pbot   ,ig) = cam_out(c)%pbot(i)
+          a2x(index_a2x_Sa_shum   ,ig) = cam_out(c)%qbot(i,1)
 	  a2x(index_a2x_Sa_dens   ,ig) = cam_out(c)%rho(i)
-          a2x(index_a2x_Faxa_swnet,ig) = cam_out(c)%netsw(i)      
-          a2x(index_a2x_Faxa_lwdn ,ig) = cam_out(c)%flwds(i)  
+          a2x(index_a2x_Faxa_swnet,ig) = cam_out(c)%netsw(i)
+          a2x(index_a2x_Faxa_lwdn ,ig) = cam_out(c)%flwds(i)
           a2x(index_a2x_Faxa_rainc,ig) = (cam_out(c)%precc(i)-cam_out(c)%precsc(i))*1000._r8
           a2x(index_a2x_Faxa_rainl,ig) = (cam_out(c)%precl(i)-cam_out(c)%precsl(i))*1000._r8
           a2x(index_a2x_Faxa_snowc,ig) = cam_out(c)%precsc(i)*1000._r8
           a2x(index_a2x_Faxa_snowl,ig) = cam_out(c)%precsl(i)*1000._r8
-          a2x(index_a2x_Faxa_swndr,ig) = cam_out(c)%soll(i)   
-          a2x(index_a2x_Faxa_swvdr,ig) = cam_out(c)%sols(i)   
-          a2x(index_a2x_Faxa_swndf,ig) = cam_out(c)%solld(i)  
-          a2x(index_a2x_Faxa_swvdf,ig) = cam_out(c)%solsd(i)  
+          a2x(index_a2x_Faxa_swndr,ig) = cam_out(c)%soll(i)
+          a2x(index_a2x_Faxa_swvdr,ig) = cam_out(c)%sols(i)
+          a2x(index_a2x_Faxa_swndf,ig) = cam_out(c)%solld(i)
+          a2x(index_a2x_Faxa_swvdf,ig) = cam_out(c)%solsd(i)
 
           ! aerosol deposition fluxes
           a2x(index_a2x_Faxa_bcphidry,ig) = cam_out(c)%bcphidry(i)
@@ -278,7 +324,67 @@ contains
           ig=ig+1
        end do
     end do
-    
-  end subroutine atm_export 
+
+    !-----------------------------------------------------------------
+    ! Debug output
+    !-----------------------------------------------------------------
+
+    if (debug > 0 .and. masterproc) then
+       nstep = get_nstep()
+       ig=1
+       do c=begchunk, endchunk
+          ncols = get_ncols_p(c)
+          do i=1,ncols
+             write(iulog,F01)'export: nstep, ig, Sa_z          = ',nstep,ig,a2x(index_a2x_Sa_z,ig)
+             write(iulog,F01)'export: nstep, ig, Sa_topo       = ',nstep,ig,a2x(index_a2x_Sa_topo,ig)
+             write(iulog,F01)'export: nstep, ig, Sa_u          = ',nstep,ig,a2x(index_a2x_Sa_u,ig)
+             write(iulog,F01)'export: nstep, ig, Sa_v          = ',nstep,ig,a2x(index_a2x_Sa_v,ig)
+             write(iulog,F01)'export: nstep, ig, Sa_tbot       = ',nstep,ig,a2x(index_a2x_Sa_tbot,ig)
+             write(iulog,F01)'export: nstep, ig, Sa_ptem       = ',nstep,ig,a2x(index_a2x_Sa_ptem,ig)
+             write(iulog,F01)'export: nstep, ig, Sa_pbot       = ',nstep,ig,a2x(index_a2x_Sa_pbot,ig)
+             write(iulog,F01)'export: nstep, ig, Sa_shum       = ',nstep,ig,a2x(index_a2x_Sa_shum,ig)
+             write(iulog,F01)'export: nstep, ig, Sa_dens       = ',nstep,ig,a2x(index_a2x_Sa_dens,ig)
+             write(iulog,F01)'export: nstep, ig, Faxa_swnet    = ',nstep,ig,a2x(index_a2x_Faxa_swnet,ig)
+             write(iulog,F01)'export: nstep, ig, Faxa_lwdn     = ',nstep,ig,a2x(index_a2x_Faxa_lwdn,ig)
+             write(iulog,F01)'export: nstep, ig, Faxa_rainc    = ',nstep,ig,a2x(index_a2x_Faxa_rainc,ig)
+             write(iulog,F01)'export: nstep, ig, Faxa_rainl    = ',nstep,ig,a2x(index_a2x_Faxa_rainl,ig)
+             write(iulog,F01)'export: nstep, ig, Faxa_snowc    = ',nstep,ig,a2x(index_a2x_Faxa_snowc,ig)
+             write(iulog,F01)'export: nstep, ig, Faxa_snowl    = ',nstep,ig,a2x(index_a2x_Faxa_snowl,ig)
+             write(iulog,F01)'export: nstep, ig, Faxa_swndr    = ',nstep,ig,a2x(index_a2x_Faxa_swndr,ig)
+             write(iulog,F01)'export: nstep, ig, Faxa_swvdr    = ',nstep,ig,a2x(index_a2x_Faxa_swvdr,ig)
+             write(iulog,F01)'export: nstep, ig, Faxa_swndf    = ',nstep,ig,a2x(index_a2x_Faxa_swndf,ig)
+             write(iulog,F01)'export: nstep, ig, Faxa_swvdf    = ',nstep,ig,a2x(index_a2x_Faxa_swvdf,ig)
+             write(iulog,F01)'export: nstep, ig, Faxa_bcphidry = ',nstep,ig,a2x(index_a2x_Faxa_bcphidry,ig)
+             write(iulog,F01)'export: nstep, ig, Faxa_bcphodry = ',nstep,ig,a2x(index_a2x_Faxa_bcphodry,ig)
+             write(iulog,F01)'export: nstep, ig, Faxa_bcphiwet = ',nstep,ig,a2x(index_a2x_Faxa_bcphiwet,ig)
+             write(iulog,F01)'export: nstep, ig, Faxa_ocphidry = ',nstep,ig,a2x(index_a2x_Faxa_ocphidry,ig)
+             write(iulog,F01)'export: nstep, ig, Faxa_ocphodry = ',nstep,ig,a2x(index_a2x_Faxa_ocphodry,ig)
+             write(iulog,F01)'export: nstep, ig, Faxa_ocphidry = ',nstep,ig,a2x(index_a2x_Faxa_ocphiwet,ig)
+             write(iulog,F01)'export: nstep, ig, Faxa_dstwet1  = ',nstep,ig,a2x(index_a2x_Faxa_dstwet1,ig)
+             write(iulog,F01)'export: nstep, ig, Faxa_dstwet1  = ',nstep,ig,a2x(index_a2x_Faxa_dstdry1,ig)
+             write(iulog,F01)'export: nstep, ig, Faxa_dstwet1  = ',nstep,ig,a2x(index_a2x_Faxa_dstwet2,ig)
+             write(iulog,F01)'export: nstep, ig, Faxa_dstwet1  = ',nstep,ig,a2x(index_a2x_Faxa_dstdry2,ig)
+             write(iulog,F01)'export: nstep, ig, Faxa_dstwet1  = ',nstep,ig,a2x(index_a2x_Faxa_dstwet3,ig)
+             write(iulog,F01)'export: nstep, ig, Faxa_dstwet1  = ',nstep,ig,a2x(index_a2x_Faxa_dstdry3,ig)
+             write(iulog,F01)'export: nstep, ig, Faxa_dstwet1  = ',nstep,ig,a2x(index_a2x_Faxa_dstwet4,ig)
+             write(iulog,F01)'export: nstep, ig, Faxa_dstwet1  = ',nstep,ig,a2x(index_a2x_Faxa_dstdry4,ig)
+             if (index_a2x_Sa_co2prog /= 0) then
+                write(iulog,F01)'export: nstep, ig, Sa_co2prog = ',nstep,ig,a2x(index_a2x_Sa_co2prog,ig)
+             end if
+             if (index_a2x_Sa_co2diag /= 0) then
+                write(iulog,F01)'export: nstep, ig, Sa_co2diag  = ',nstep,ig,a2x(index_a2x_Sa_co2diag,ig)
+             end if
+             if (index_a2x_Faxa_nhx > 0 ) then
+                write(iulog,F01)'export: nstep, ig, Faxa_nhx    = ',nstep,ig,a2x(index_a2x_Faxa_nhx,ig)
+             endif
+             if (index_a2x_Faxa_noy > 0 ) then
+                write(iulog,F01)'export: nstep, ig, Faxa_noy    = ',nstep,ig,a2x(index_a2x_Faxa_noy,ig)
+             endif
+             ig = ig + 1
+          end do
+       end do
+    end if
+
+  end subroutine atm_export
 
 end module atm_import_export

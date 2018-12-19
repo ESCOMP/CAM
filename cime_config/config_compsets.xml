@@ -37,6 +37,16 @@
   </help>
 
   <!-- ****************************** -->
+  <!-- CAM nuopc testing -->
+  <!-- ****************************** -->
+
+  <compset>
+    <alias>F2000Nuopc</alias>
+    <lname>2000_CAM40_CLM50%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
+  </compset>
+
+
+  <!-- ****************************** -->
   <!-- CAM science supported compsets -->
   <!-- ****************************** -->
 
