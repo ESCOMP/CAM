@@ -20,10 +20,11 @@
            '.9*MDIALO2_NO  + .9*XYLOLO2_NO + .9*XYLENO2_NO + TERPO2_NO+ ',
            'TERP2O2_NO + NTERPO2_NO + ALKO2_NO + ENEO2_NO +  EO2_NO + MEKO2_NO + HOCH2OO_NO + jonitr',
    'O3_Loss = O1D_H2O + OH_O3 + HO2_O3 + H_O3 + C3H6_O3 + .9*ISOP_O3 + C2H4_O3 + .8*MVK_O3 + 0.8*MACR_O3 + MTERP_O3 + BCARY_O3'
+   'O3S_Loss = O1D_H2O + OH_O3 + HO2_O3 + H_O3 + C3H6_O3 + .9*ISOP_O3 + C2H4_O3 + .8*MVK_O3 + 0.8*MACR_O3 + MTERP_O3 + BCARY_O3'
  fincl2 = 'SOAG','NOy','NOY','soa_a1','soa_a2', 
           'SOAG0','SOAG1','SOAG2','SOAG3','SOAG4', 
           'soa1_a1','soa2_a1','soa3_a1','soa4_a1','soa5_a1',
           'soa1_a2','soa2_a2','soa3_a2','soa4_a2','soa5_a2',
-          'O3_Prod','O3_Loss'
+          'O3_Prod','O3_Loss','O3S_Loss','O3S_LOSS','O3S'
  fincl3 = 'PM25','PM25_SRF'
 /

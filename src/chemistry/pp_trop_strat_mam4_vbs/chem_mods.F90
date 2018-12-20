@@ -9,13 +9,13 @@
                             rxntot = 528, & ! number of total reactions
                             gascnt = 405, & ! number of gas phase reactions
                             nabscol = 2, & ! number of absorbing column densities
-                            gas_pcnst = 221, & ! number of "gas phase" species
+                            gas_pcnst = 222, & ! number of "gas phase" species
                             nfs = 3, & ! number of "fixed" species
                             relcnt = 0, & ! number of relationship species
                             grpcnt = 0, & ! number of group members
                             nzcnt = 2022, & ! number of non-zero matrix entries
                             extcnt = 17, & ! number of species with external forcing
-                            clscnt1 = 30, & ! number of species in explicit class
+                            clscnt1 = 31, & ! number of species in explicit class
                             clscnt2 = 0, & ! number of species in hov class
                             clscnt3 = 0, & ! number of species in ebi class
                             clscnt4 = 191, & ! number of species in implicit class

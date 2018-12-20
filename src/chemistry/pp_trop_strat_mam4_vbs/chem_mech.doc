@@ -135,93 +135,94 @@
       (132)  num_a4             (H)
       (133)  O               
       (134)  O3              
-      (135)  OCLO               (OClO)
-      (136)  OCS                (OCS)
-      (137)  ONITR              (C4H7NO4)
-      (138)  PAN                (CH3CO3NO2)
-      (139)  PBZNIT             (C7H5O3NO2)
-      (140)  PHENO              (C6H5O)
-      (141)  PHENOL             (C6H5OH)
-      (142)  PHENOOH            (C6H8O6)
-      (143)  pom_a1             (C)
-      (144)  pom_a4             (C)
-      (145)  POOH               (C3H6OHOOH)
-      (146)  ROOH               (CH3COCH2OOH)
-      (147)  S                  (S)
-      (148)  SF6             
-      (149)  SO                 (SO)
-      (150)  SO2             
-      (151)  SO3                (SO3)
-      (152)  so4_a1             (NH4HSO4)
-      (153)  so4_a2             (NH4HSO4)
-      (154)  so4_a3             (NH4HSO4)
-      (155)  soa1_a1            (C15H38O2)
-      (156)  soa1_a2            (C15H38O2)
-      (157)  soa2_a1            (C15H38O2)
-      (158)  soa2_a2            (C15H38O2)
-      (159)  soa3_a1            (C15H38O2)
-      (160)  soa3_a2            (C15H38O2)
-      (161)  soa4_a1            (C15H38O2)
-      (162)  soa4_a2            (C15H38O2)
-      (163)  soa5_a1            (C15H38O2)
-      (164)  soa5_a2            (C15H38O2)
-      (165)  SOAG0              (C15H38O2)
-      (166)  SOAG1              (C15H38O2)
-      (167)  SOAG2              (C15H38O2)
-      (168)  SOAG3              (C15H38O2)
-      (169)  SOAG4              (C15H38O2)
-      (170)  ST80_25            (CO)
-      (171)  SVOC               (C22H46)
-      (172)  TEPOMUC            (C7H8O3)
-      (173)  TERP2OOH           (C10H18O3)
-      (174)  TERPNIT            (C10H17NO4)
-      (175)  TERPOOH            (C10H18O3)
-      (176)  TERPROD1           (C10H16O2)
-      (177)  TERPROD2           (C9H14O2)
-      (178)  TOLOOH             (C7H10O5)
-      (179)  TOLUENE            (C7H8)
-      (180)  XOOH               (HOCH2COOHCH3CHOHCHO)
-      (181)  XYLENES            (C8H10)
-      (182)  XYLENOOH           (C8H12O5)
-      (183)  XYLOL              (C8H10O)
-      (184)  XYLOLOOH           (C8H12O6)
-      (185)  NHDEP              (N)
-      (186)  NDEP               (N)
-      (187)  ACBZO2             (C7H5O3)
-      (188)  ALKO2              (C5H11O2)
-      (189)  BENZO2             (C6H7O5)
-      (190)  BZOO               (C7H7O2)
-      (191)  C2H5O2          
-      (192)  C3H7O2          
-      (193)  C6H5O2          
-      (194)  CH3CO3          
-      (195)  CH3O2           
-      (196)  DICARBO2           (C5H5O4)
-      (197)  ENEO2              (C4H9O3)
-      (198)  EO                 (HOCH2CH2O)
-      (199)  EO2                (HOCH2CH2O2)
-      (200)  HO2             
-      (201)  HOCH2OO         
-      (202)  ISOPAO2            (HOC5H8O2)
-      (203)  ISOPBO2            (HOC5H8O2)
-      (204)  MACRO2             (CH3COCHO2CH2OH)
-      (205)  MALO2              (C4H3O4)
-      (206)  MCO3               (CH2CCH3CO3)
-      (207)  MDIALO2            (C4H5O4)
-      (208)  MEKO2              (C4H7O3)
-      (209)  NTERPO2            (C10H16NO5)
-      (210)  O1D                (O)
-      (211)  OH              
-      (212)  PHENO2             (C6H7O6)
-      (213)  PO2                (C3H6OHO2)
-      (214)  RO2                (CH3COCH2O2)
-      (215)  TERP2O2            (C10H15O4)
-      (216)  TERPO2             (C10H17O3)
-      (217)  TOLO2              (C7H9O5)
-      (218)  XO2                (HOCH2COOCH3CHOHCHO)
-      (219)  XYLENO2            (C8H11O5)
-      (220)  XYLOLO2            (C8H11O6)
-      (221)  H2O             
+      (135)  O3S                (O3)
+      (136)  OCLO               (OClO)
+      (137)  OCS                (OCS)
+      (138)  ONITR              (C4H7NO4)
+      (139)  PAN                (CH3CO3NO2)
+      (140)  PBZNIT             (C7H5O3NO2)
+      (141)  PHENO              (C6H5O)
+      (142)  PHENOL             (C6H5OH)
+      (143)  PHENOOH            (C6H8O6)
+      (144)  pom_a1             (C)
+      (145)  pom_a4             (C)
+      (146)  POOH               (C3H6OHOOH)
+      (147)  ROOH               (CH3COCH2OOH)
+      (148)  S                  (S)
+      (149)  SF6             
+      (150)  SO                 (SO)
+      (151)  SO2             
+      (152)  SO3                (SO3)
+      (153)  so4_a1             (NH4HSO4)
+      (154)  so4_a2             (NH4HSO4)
+      (155)  so4_a3             (NH4HSO4)
+      (156)  soa1_a1            (C15H38O2)
+      (157)  soa1_a2            (C15H38O2)
+      (158)  soa2_a1            (C15H38O2)
+      (159)  soa2_a2            (C15H38O2)
+      (160)  soa3_a1            (C15H38O2)
+      (161)  soa3_a2            (C15H38O2)
+      (162)  soa4_a1            (C15H38O2)
+      (163)  soa4_a2            (C15H38O2)
+      (164)  soa5_a1            (C15H38O2)
+      (165)  soa5_a2            (C15H38O2)
+      (166)  SOAG0              (C15H38O2)
+      (167)  SOAG1              (C15H38O2)
+      (168)  SOAG2              (C15H38O2)
+      (169)  SOAG3              (C15H38O2)
+      (170)  SOAG4              (C15H38O2)
+      (171)  ST80_25            (CO)
+      (172)  SVOC               (C22H46)
+      (173)  TEPOMUC            (C7H8O3)
+      (174)  TERP2OOH           (C10H18O3)
+      (175)  TERPNIT            (C10H17NO4)
+      (176)  TERPOOH            (C10H18O3)
+      (177)  TERPROD1           (C10H16O2)
+      (178)  TERPROD2           (C9H14O2)
+      (179)  TOLOOH             (C7H10O5)
+      (180)  TOLUENE            (C7H8)
+      (181)  XOOH               (HOCH2COOHCH3CHOHCHO)
+      (182)  XYLENES            (C8H10)
+      (183)  XYLENOOH           (C8H12O5)
+      (184)  XYLOL              (C8H10O)
+      (185)  XYLOLOOH           (C8H12O6)
+      (186)  NHDEP              (N)
+      (187)  NDEP               (N)
+      (188)  ACBZO2             (C7H5O3)
+      (189)  ALKO2              (C5H11O2)
+      (190)  BENZO2             (C6H7O5)
+      (191)  BZOO               (C7H7O2)
+      (192)  C2H5O2          
+      (193)  C3H7O2          
+      (194)  C6H5O2          
+      (195)  CH3CO3          
+      (196)  CH3O2           
+      (197)  DICARBO2           (C5H5O4)
+      (198)  ENEO2              (C4H9O3)
+      (199)  EO                 (HOCH2CH2O)
+      (200)  EO2                (HOCH2CH2O2)
+      (201)  HO2             
+      (202)  HOCH2OO         
+      (203)  ISOPAO2            (HOC5H8O2)
+      (204)  ISOPBO2            (HOC5H8O2)
+      (205)  MACRO2             (CH3COCHO2CH2OH)
+      (206)  MALO2              (C4H3O4)
+      (207)  MCO3               (CH2CCH3CO3)
+      (208)  MDIALO2            (C4H5O4)
+      (209)  MEKO2              (C4H7O3)
+      (210)  NTERPO2            (C10H16NO5)
+      (211)  O1D                (O)
+      (212)  OH              
+      (213)  PHENO2             (C6H7O6)
+      (214)  PO2                (C3H6OHO2)
+      (215)  RO2                (CH3COCH2O2)
+      (216)  TERP2O2            (C10H15O4)
+      (217)  TERPO2             (C10H17O3)
+      (218)  TOLO2              (C7H9O5)
+      (219)  XO2                (HOCH2COOCH3CHOHCHO)
+      (220)  XYLENO2            (C8H11O5)
+      (221)  XYLOLO2            (C8H11O6)
+      (222)  H2O             
   
   
      Invariant species
@@ -264,10 +265,11 @@ Class List
       ( 24)  N2O             
       ( 25)  NH_5            
       ( 26)  NH_50           
-      ( 27)  SF6             
-      ( 28)  ST80_25         
-      ( 29)  NHDEP           
-      ( 30)  NDEP            
+      ( 27)  O3S             
+      ( 28)  SF6             
+      ( 29)  ST80_25         
+      ( 30)  NHDEP           
+      ( 31)  NDEP            
   
  Implicit  
  --------
@@ -1493,6 +1495,7 @@ Extraneous prod/loss species
                 - j7*O3  - j8*O3  - r5*O1D*O3  - r6*O*O3  - r16*HO2*O3  - r17*H*O3  - r22*OH*O3  - r33*NO2*O3           
                 - r41*NO*O3  - r57*CL*O3  - r89*BR*O3  - r156*C2H4*O3  - r185*C3H6*O3  - r215*MACR*O3  - r229*MVK*O3    
                 - r262*ISOP*O3  - r300*PHENO*O3  - r317*BCARY*O3  - r320*MTERP*O3  - r342*S*O3  - r348*SO*O3            
+    d(O3S)/dt = 0                                                                                                       
     d(OCLO)/dt = r61*CLO*CLO  + r91*BRO*CLO                                                                             
                   - j107*OCLO  - r349*SO*OCLO                                                                           
     d(OCS)/dt =  - j110*OCS  - r339*O*OCS  - r340*OH*OCS                                                                

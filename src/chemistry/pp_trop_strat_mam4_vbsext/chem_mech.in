@@ -1,17 +1,18 @@
 * Comments
-* User-given Tag Description: TS1-fullVBS for CESM2.0
-* Tag database identifier : MZ199_TS1-fullVBS_20180423
+* User-given Tag Description: TS1-fullVBS
+* Tag database identifier : MZ216_TS1_fullVBS_20180911
 * Tag created by : lke
 * Tag created from branch : TS1-fullVBS
-* Tag created on : 2018-04-23 17:51:39.415645-06
+* Tag created on : 2018-09-11 13:28:02.949413-06
 * Comments for this tag follow:
-*     lke : 2018-04-23 : Latest change only removes O3S loss reactions.
+*     lke : 2018-09-11 : TS1 with VBS-SOA for source type. Added O3S tracer.
 
       SPECIES
 
       Solution
  ALKNIT -> C5H11ONO2,
  ALKOOH -> C5H12O2,
+ AOA_NH -> CO,
  bc_a1 -> C,
  bc_a4 -> C,
  BCARY -> C15H24,
@@ -142,6 +143,7 @@
  num_a4 -> H,
  O,
  O3,
+ O3S -> O3,
  OCLO -> OClO,
  OCS -> OCS,
  ONITR -> C4H7NO4,
@@ -316,6 +318,7 @@
 
    Solution classes
       Explicit
+ AOA_NH
  BRY
  CCL4
  CF2CLBR
@@ -339,6 +342,7 @@
  HCFC142B
  HCFC22
  N2O
+ O3S
  SF6
  NHDEP
  NDEP
@@ -1205,7 +1209,7 @@
       End Reactions
 
       Ext Forcing
- pombb1_a4 <- dataset 
+ bc_a1 <- dataset 
  bc_a4 <- dataset 
  CO <- dataset 
  NO <- dataset 
@@ -1219,7 +1223,8 @@
  SVOCbb <- dataset 
  SVOCff <- dataset 
  pomff1_a4 <- dataset 
- bc_a1 <- dataset 
+ pombb1_a4 <- dataset 
+ AOA_NH 
  N 
  OH 
       End Ext Forcing

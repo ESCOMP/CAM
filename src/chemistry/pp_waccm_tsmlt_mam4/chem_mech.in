@@ -1,11 +1,11 @@
 * Comments
-* User-given Tag Description: TSMLT1 for CESM2.0
-* Tag database identifier : MZ197_TSMLT1_20180423
+* User-given Tag Description: TSMLT1
+* Tag database identifier : MZ214_TSMLT1_20180911
 * Tag created by : lke
 * Tag created from branch : TSMLT1
-* Tag created on : 2018-04-23 17:47:30.657331-06
+* Tag created on : 2018-09-11 13:13:23.141796-06
 * Comments for this tag follow:
-*     lke : 2018-04-23 : Latest change only removes O3S loss reactions.
+*     lke : 2018-09-11 : Added O3S tracer
 
       SPECIES
 
@@ -145,6 +145,7 @@
  O,
  O2,
  O3,
+ O3S -> O3,
  OCLO -> OClO,
  OCS -> OCS,
  ONITR -> C4H7NO4,
@@ -331,6 +332,7 @@
  N2O
  NH_5
  NH_50
+ O3S
  SF6
  ST80_25
  NHDEP

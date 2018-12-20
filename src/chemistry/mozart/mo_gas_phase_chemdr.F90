@@ -232,6 +232,8 @@ contains
     call addfld( 'GAMMA_HET6', (/ 'lev' /), 'I', '1', 'Reaction Probability' )
     call addfld( 'WTPER',      (/ 'lev' /), 'I', '%', 'H2SO4 Weight Percent' )
 
+    call addfld( 'O3S_LOSS',      (/ 'lev' /), 'I', '1/sec', 'O3S loss rate const' )
+
     call chem_prod_loss_diags_init
 
   end subroutine gas_phase_chemdr_inti
@@ -297,7 +299,7 @@ contains
     use gas_wetdep_opts,   only : gas_wetdep_method
     use physics_buffer,    only : physics_buffer_desc, pbuf_get_field, pbuf_old_tim_idx
     use infnan,            only : nan, assignment(=)
-    use rate_diags,        only : rate_diags_calc
+    use rate_diags,        only : rate_diags_calc, rate_diags_o3s_loss
     use mo_mass_xforms,    only : mmr2vmr, vmr2mmr, h2o_to_vmr, mmr2vmri
     use orbit,             only : zenith
 !
@@ -471,6 +473,8 @@ contains
     real(r8), pointer :: ion_temp_fld(:,:) ! ion temperature pointer
     real(r8) :: prod_out(ncol,pver,max(1,clscnt4))
     real(r8) :: loss_out(ncol,pver,max(1,clscnt4))
+
+    real(r8) :: o3s_loss(ncol,pver)
 
     if ( ele_temp_ndx>0 .and. ion_temp_ndx>0 ) then
        call pbuf_get_field(pbuf, ele_temp_ndx, ele_temp_fld)
@@ -943,9 +947,12 @@ contains
 
     ! reset O3S to O3 in the stratosphere ...
     if ( o3_ndx > 0 .and. o3s_ndx > 0 ) then
+       o3s_loss = rate_diags_o3s_loss( reaction_rates, vmr, ncol )
        do i = 1,ncol
           vmr(i,1:troplev(i),o3s_ndx) = vmr(i,1:troplev(i),o3_ndx)
+          vmr(i,troplev(i)+1:pver,o3s_ndx) = vmr(i,troplev(i)+1:pver,o3s_ndx) * exp(-delt*o3s_loss(i,troplev(i)+1:pver))
        end do
+       call outfld( 'O3S_LOSS',  o3s_loss,  ncol ,lchnk )
     end if
 
     if (convproc_do_aer) then

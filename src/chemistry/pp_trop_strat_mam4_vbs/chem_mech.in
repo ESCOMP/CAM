@@ -1,11 +1,11 @@
 * Comments
-* User-given Tag Description: TS1-simpleVBS for CESM2.0
-* Tag database identifier : MZ198_TS1-simpleVBS_20180423
+* User-given Tag Description: TS1-simpleVBS
+* Tag database identifier : MZ215_TS1_simpleVBS_20180911
 * Tag created by : lke
 * Tag created from branch : TS1-simpleVBS
-* Tag created on : 2018-04-23 17:49:48.65279-06
+* Tag created on : 2018-09-11 13:18:14.069156-06
 * Comments for this tag follow:
-*     lke : 2018-04-23 : Latest change only removes O3S loss reactions.
+*     lke : 2018-09-11 : Added O3S tracer
 
       SPECIES
 
@@ -144,6 +144,7 @@
  num_a4 -> H,
  O,
  O3,
+ O3S -> O3,
  OCLO -> OClO,
  OCS -> OCS,
  ONITR -> C4H7NO4,
@@ -312,6 +313,7 @@
  N2O
  NH_5
  NH_50
+ O3S
  SF6
  ST80_25
  NHDEP
