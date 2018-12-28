@@ -474,7 +474,7 @@ contains
              nlen = max_num_threads
           end if
        else
-          nlen = max_num_threads
+          nlen = 1
        end if
     end if
     call gbarrier_init(edge%gbarrier, nlen)
@@ -617,8 +617,8 @@ contains
 
 !$OMP BARRIER
 !$OMP MASTER
-    deallocate(edge%buf)
-    deallocate(edge%receive)
+    if(allocated(edge%buf))         deallocate(edge%buf)
+    if(allocated(edge%receive))     deallocate(edge%receive)
     if(associated(edge%putmap))     deallocate(edge%putmap)
     if(associated(edge%getmap))     deallocate(edge%getmap)
     if(associated(edge%reverse))    deallocate(edge%reverse)

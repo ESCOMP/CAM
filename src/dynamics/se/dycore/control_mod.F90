@@ -23,8 +23,9 @@ module control_mod
   integer, public  :: statediag_numtrac = 3          
 
   integer, public :: qsplit = 1           ! ratio of dynamics tsteps to tracer tsteps
-  integer, public :: rsplit = 3           ! for vertically lagrangian dynamics, apply remap
+  integer, public :: rsplit =-1           ! for vertically lagrangian dynamics, apply remap
                                           ! every rsplit tracer timesteps
+  logical, public :: variable_nsplit=.false.
 
   logical, public :: refined_mesh
 

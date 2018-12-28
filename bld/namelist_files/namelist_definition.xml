@@ -6572,6 +6572,15 @@ Number of dynamics steps per physics timestep.
 Default: Set by build-namelist.
 </entry>
 
+<entry id="se_variable_nsplit" type="logical" category="se"
+       group="dyn_se_inparm" valid_values="" >
+If TRUE nsplit is dynamically adjusted (increased by 2 if vertical
+velocity Courant number is large than 0.85) and reset when vertical
+velocity Courant number is less than 0.38  
+Default: FALSE
+</entry>
+
+
 <entry id="se_nu" type="real" category="se"
        group="dyn_se_inparm" valid_values="" >
 Hyperviscosity coefficient for u,v, T [m^4/s].
@@ -6601,12 +6610,60 @@ Default: Set by build-namelist.
 
 <entry id="se_hypervis_on_plevs" type="logical" category="se"
        group="dyn_se_inparm" valid_values="" >
-If TRUE hyperviscosity operators for u,v,T are applied on approximate pressure levels
+If TRUE hyperviscosity operators for T are applied on approximate pressure levels
 If TRUE and se_nu_p>0 then hyperviscosity is also applied to difference between a
 reference dp and dp
 If FALSE all hyperviscosity operators are applied on eta levels
 Default: TRUE
 </entry>
+
+<entry id="se_lcp_moist" type="logical" category="se"
+       group="dyn_se_inparm" valid_values="" >
+If TRUE the continous equations the dynamical core is based on will conserve a 
+comprehensive moist total energy
+If FALSE the continous equations the dynamical core is based on will conserve 
+a total energy based on cp for dry air and no condensates (same total energy as 
+CAM physics uses).
+For more details see Lauritzen et al., (2018;DOI:10.1029/2017MS001257)
+Default: TRUE
+</entry>
+
+<entry id="se_large_Courant_incr" type="logical" category="se"
+       group="dyn_se_inparm" valid_values="" >
+  If TRUE the CSLAM algorithm will work for Courant number larger than 1 with
+  a low-order increment for tracer mass more than one grid cell width away
+</entry>
+
+<entry id="se_fvm_supercycling" type="integer" category="se"
+       group="dyn_se_inparm" valid_values="" >
+Number of SE rsplit time-steps CSLAM supercycles
+rsplit/se_fvm_supercycling must be an integer
+</entry>
+
+<entry id="se_fvm_supercycling_jet" type="integer" category="se"
+       group="dyn_se_inparm" valid_values="" >
+Number of SE rsplit time-steps CSLAM supercycles in the jet region
+(which is specified by kmin_jet and kmax_jet)
+rsplit/se_fvm_supercycling_jet must be an integer
+se_fvm_supercycling_jet/se_fvm_supercyling must be an integer
+</entry>
+
+<entry id="se_kmin_jet" type="integer" category="se"
+       group="dyn_se_inparm" valid_values="" >
+  Min level index where CSLAM runs with se_fvm_supercycling_jet
+  (if se_fvm_supercycling_jet.ne.se_fvm_supercycling) or
+  min index where are Courant number increment is active
+  (se_large_Courant_incr=.true.)
+</entry>
+
+<entry id="se_kmax_jet" type="integer" category="se"
+       group="dyn_se_inparm" valid_values="" >
+  Max level index where CSLAM runs with se_fvm_supercycling_jet
+  (if se_fvm_supercycling_jet.ne.se_fvm_supercycling) or
+  max index where are Courant number increment is active
+  (se_large_Courant_incr=.true.)
+</entry>  
+
 
 <entry id="se_qsplit" type="integer" category="se"
        group="dyn_se_inparm" valid_values="" >
@@ -6650,11 +6707,11 @@ Default: 3
 </entry>
 
 <entry id="se_vert_remap_q_alg" type="integer" category="se"
-    group="dyn_se_inparm" valid_values="0,1,2">
+    group="dyn_se_inparm" valid_values="1,2">
 CAM-SE vertical remap algorithm
-0: Zerroukat monotonic splines
 1: PPM vertical remap with mirroring at the boundaries
    (solid wall bc's, high-order throughout)
+   PCoM in sponge
 2: PPM vertical remap without mirroring at the boundaries
    (no bc's enforced, first-order at two cells bordering top and bottom
    boundaries)

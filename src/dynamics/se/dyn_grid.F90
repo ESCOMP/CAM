@@ -242,7 +242,6 @@ subroutine dyn_grid_init()
       ! ================================================
 
       if (iam < par%nprocs) then
-!$OMP PARALLEL NUM_THREADS(horz_num_threads), DEFAULT(SHARED), PRIVATE(hybrid,nets,nete)
          hybrid = config_thread_region(par,'serial')
          call get_loop_ranges(hybrid, ibeg=nets, iend=nete)
 
@@ -250,7 +249,6 @@ subroutine dyn_grid_init()
          call fvm_init2(elem, fvm, hybrid, nets, nete)
          call fvm_pg_init(elem, fvm, hybrid, nets, nete, irecons_tracer)
          call fvm_init3(elem, fvm, hybrid, nets, nete, irecons_tracer)
-!$OMP END PARALLEL
       end if
 
    else

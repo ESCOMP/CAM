@@ -121,7 +121,6 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out)
    use time_mod,               only: TimeLevel_Qdp
    use control_mod,            only: qsplit
    use prim_advance_mod,       only: calc_tot_energy_dynamics
-   use fvm_control_volume_mod, only: n0_fvm
 
 
    ! arguments
@@ -144,7 +143,7 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out)
    call t_stopf('p_d_coupling')
 
    if (iam < par%nprocs) then
-      call calc_tot_energy_dynamics(dyn_in%elem,dyn_in%fvm, 1, nelemd, tl_f, tl_fQdp,n0_fvm, 'dED')
+      call calc_tot_energy_dynamics(dyn_in%elem,dyn_in%fvm, 1, nelemd, tl_f, tl_fQdp,'dED')
    end if
 
 end subroutine stepon_run2
@@ -196,7 +195,7 @@ subroutine diag_dynvar_ic(elem, fvm)
    use dimensions_mod,         only: cnst_name_gll
    use constituents,           only: cnst_name
    use element_mod,            only: element_t
-   use fvm_control_volume_mod, only: fvm_struct, n0_fvm
+   use fvm_control_volume_mod, only: fvm_struct
    use fvm_mapping,            only: fvm2dyn
 
    ! arguments
@@ -354,7 +353,7 @@ subroutine diag_dynvar_ic(elem, fvm)
          llimiter = .true.
          do ie = nets, nete
             do m_cnst = 1, ntrac
-               fld_fvm(1:nc,1:nc,:,m_cnst,ie) = fvm(ie)%c(1:nc,1:nc,:,m_cnst,n0_fvm)
+               fld_fvm(1:nc,1:nc,:,m_cnst,ie) = fvm(ie)%c(1:nc,1:nc,:,m_cnst)
             end do
          end do
 

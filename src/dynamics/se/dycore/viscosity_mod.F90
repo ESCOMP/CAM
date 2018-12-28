@@ -53,7 +53,7 @@ CONTAINS
 subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,nt,nets,nete,kbeg,kend,&
      dptens2,dp3d_ref)
   use derivative_mod, only : subcell_Laplace_fluxes
-  use dimensions_mod, only : ntrac
+  use dimensions_mod, only : ntrac, nu_div_scale_top
   
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ! compute weak biharmonic operator
@@ -89,24 +89,26 @@ subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,
   var_coef1 = .true.
   if(hypervis_scaling > 0)    var_coef1 = .false.
   
-  nu_ratio1=1
-  nu_ratio2=1
-  if (nu_div/=nu) then
-    if(hypervis_scaling /= 0) then
-      ! we have a problem with the tensor in that we cant seperate
-      ! div and curl components.  So we do, with tensor V:
-      ! nu * (del V del ) * ( nu_ratio * grad(div) - curl(curl))
-      nu_ratio1=nu_div/nu
-      nu_ratio2=1
-    else
-      nu_ratio1=sqrt(nu_div/nu)
-      nu_ratio2=sqrt(nu_div/nu)
-    endif
-  endif
   
   do ie=nets,nete    
-!$omp parallel do num_threads(vert_num_threads) private(tmp)
+!$omp parallel do num_threads(vert_num_threads) private(k,tmp)
     do k=kbeg,kend
+       nu_ratio1=1
+       nu_ratio2=1
+       if (nu_div/=nu) then
+          if(hypervis_scaling /= 0) then
+             ! we have a problem with the tensor in that we cant seperate
+             ! div and curl components.  So we do, with tensor V:
+             ! nu * (del V del ) * ( nu_ratio * grad(div) - curl(curl))             
+             nu_ratio1=nu_div_scale_top(k)*nu_div/nu
+             nu_ratio2=1
+          else
+             nu_ratio1=sqrt(nu_div_scale_top(k)*nu_div/nu)
+             nu_ratio2=sqrt(nu_div_scale_top(k)*nu_div/nu)
+          endif
+       endif
+
+
       tmp=elem(ie)%state%T(:,:,k,nt) 
       call laplace_sphere_wk(tmp,deriv,elem(ie),ttens(:,:,k,ie),var_coef=var_coef1)
       if (present(dptens2)) then 
@@ -140,7 +142,7 @@ subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,
     end if    
   enddo
   
-  call bndry_exchange(hybrid,edge3)
+  call bndry_exchange(hybrid,edge3,location='biharmonic_wk_dp3d')
   
   do ie=nets,nete
 !CLEAN    rspheremv     => elem(ie)%rspheremp(:,:)
@@ -171,7 +173,7 @@ subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,
     endif
     
     ! apply inverse mass matrix, then apply laplace again
-!$omp parallel do num_threads(vert_num_threads) private(v,tmp,tmp2)
+    !$omp parallel do num_threads(vert_num_threads) private(k,v,tmp,tmp2)
     do k=kbeg,kend
 !CLEAN      tmp(:,:)=rspheremv(:,:)*ttens(:,:,k,ie)
       tmp(:,:)=elem(ie)%rspheremp(:,:)*ttens(:,:,k,ie)
@@ -228,7 +230,7 @@ subroutine biharmonic_wk_omega(elem,ptens,deriv,edge3,hybrid,nets,nete,kbeg,kend
   
   do ie=nets,nete
     
-!$omp parallel do num_threads(vert_num_threads) private(tmp)
+    !$omp parallel do num_threads(vert_num_threads) private(k,tmp)
     do k=kbeg,kend
       tmp=elem(ie)%derived%omega(:,:,k) 
       call laplace_sphere_wk(tmp,deriv,elem(ie),ptens(:,:,k,ie),var_coef=var_coef1)
@@ -238,7 +240,7 @@ subroutine biharmonic_wk_omega(elem,ptens,deriv,edge3,hybrid,nets,nete,kbeg,kend
     call edgeVpack(edge3,ptens(:,:,kbeg:kend,ie),kblk,kptr,ie)
   enddo
   
-  call bndry_exchange(hybrid,edge3)
+  call bndry_exchange(hybrid,edge3,location='biharmonic_wk_omega')
   
   do ie=nets,nete
     rspheremv     => elem(ie)%rspheremp(:,:)
@@ -247,7 +249,7 @@ subroutine biharmonic_wk_omega(elem,ptens,deriv,edge3,hybrid,nets,nete,kbeg,kend
     call edgeVunpack(edge3,ptens(:,:,kbeg:kend,ie),kblk,kptr,ie)
     
     ! apply inverse mass matrix, then apply laplace again
-!$omp parallel do num_threads(vert_num_threads) private(v,tmp,tmp2)
+    !$omp parallel do num_threads(vert_num_threads) private(k,tmp)
     do k=kbeg,kend
       tmp(:,:)=rspheremv(:,:)*ptens(:,:,k,ie)
       call laplace_sphere_wk(tmp,deriv,elem(ie),ptens(:,:,k,ie),var_coef=.true.)
@@ -338,7 +340,7 @@ integer :: k,i,j,ie,ic,kptr,nthread_save
 
 do ie=nets,nete
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k)
+!$omp parallel do num_threads(vert_num_threads) private(k)
 #endif
    do k=1,nlev
       zeta(:,:,k,ie)=zeta(:,:,k,ie)*elem(ie)%spheremp(:,:)
@@ -346,12 +348,12 @@ do ie=nets,nete
    kptr=0
    call edgeVpack(edge1, zeta(1,1,1,ie),nlev,kptr,ie)
 enddo
-call bndry_exchange(hybrid,edge1)
+call bndry_exchange(hybrid,edge1,location='make_C0')
 do ie=nets,nete
    kptr=0
    call edgeVunpack(edge1, zeta(1,1,1,ie),nlev,kptr, ie)
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k)
+!$omp parallel do num_threads(vert_num_threads) private(k)
 #endif
    do k=1,nlev
       zeta(:,:,k,ie)=zeta(:,:,k,ie)*elem(ie)%rspheremp(:,:)
@@ -404,7 +406,7 @@ real (kind=r8), dimension(np,np,nlev,nets:nete) :: v1
 
 do ie=nets,nete
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k)
+!$omp parallel do num_threads(vert_num_threads) private(k)
 #endif
    do k=1,nlev
       v(:,:,1,k,ie)=v(:,:,1,k,ie)*elem(ie)%spheremp(:,:)
@@ -413,12 +415,12 @@ do ie=nets,nete
    kptr=0
    call edgeVpack(edge2, v(1,1,1,1,ie),2*nlev,kptr,ie)
 enddo
-call bndry_exchange(hybrid,edge2)
+call bndry_exchange(hybrid,edge2,location='make_C0_vector')
 do ie=nets,nete
    kptr=0
    call edgeVunpack(edge2, v(1,1,1,1,ie),2*nlev,kptr,ie)
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k)
+!$omp parallel do num_threads(vert_num_threads) private(k)
 #endif
    do k=1,nlev
       v(:,:,1,k,ie)=v(:,:,1,k,ie)*elem(ie)%rspheremp(:,:)
@@ -590,7 +592,7 @@ call derivinit(deriv)
 
 do ie=nets,nete
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k)
+!$omp parallel do num_threads(vert_num_threads) private(k)
 #endif
 do k=1,nlev
    call vorticity_sphere(elem(ie)%state%v(:,:,:,k,nt),deriv,elem(ie),zeta(:,:,k,ie))
@@ -625,7 +627,7 @@ call derivinit(deriv)
 
 do ie=nets,nete
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k)
+!$omp parallel do num_threads(vert_num_threads) private(k)
 #endif
 do k=1,nlev
    call divergence_sphere(elem(ie)%state%v(:,:,:,k,nt),deriv,elem(ie),zeta(:,:,k,ie))
@@ -669,7 +671,7 @@ subroutine neighbor_minmax(hybrid,edgeMinMax,nets,nete,min_neigh,max_neigh)
       enddo
    enddo
    
-   call bndry_exchange(hybrid,edgeMinMax)
+   call bndry_exchange(hybrid,edgeMinMax,location='neighbor_minmax')
 
    do ie=nets,nete
       do q=qbeg,qend
@@ -713,7 +715,7 @@ subroutine neighbor_minmax_start(hybrid,edgeMinMax,nets,nete,min_neigh,max_neigh
       enddo
    enddo
 
-   call bndry_exchange_start(hybrid,edgeMinMax)
+   call bndry_exchange_start(hybrid,edgeMinMax,location='neighbor_minmax_start')
 
 end subroutine neighbor_minmax_start
 
@@ -733,7 +735,7 @@ subroutine neighbor_minmax_finish(hybrid,edgeMinMax,nets,nete,min_neigh,max_neig
    kblk = kend - kbeg + 1   ! calculate size of the block of vertical levels
    qblk = qend - qbeg + 1   ! calculate size of the block of tracers
 
-   call bndry_exchange_finish(hybrid,edgeMinMax)
+   call bndry_exchange_finish(hybrid,edgeMinMax,location='neighbor_minmax_finish')
 
    do ie=nets,nete
       do q=qbeg, qend

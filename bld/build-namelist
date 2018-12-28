@@ -3450,6 +3450,8 @@ if ($dyn =~ /se/) {
                   se_ftype
                   se_horz_num_threads
                   se_hypervis_on_plevs
+                  se_lcp_moist
+		  se_large_Courant_incr
                   se_hypervis_subcycle
                   se_hypervis_subcycle_q
                   se_limiter_option
@@ -3467,6 +3469,11 @@ if ($dyn =~ /se/) {
                   se_tstep_type
                   se_vert_num_threads
                   se_vert_remap_q_alg
+		  se_fvm_supercycling
+		  se_fvm_supercycling_jet
+		  se_kmin_jet
+		  se_kmax_jet
+		  se_variable_nsplit
         );
 
     my %opts;

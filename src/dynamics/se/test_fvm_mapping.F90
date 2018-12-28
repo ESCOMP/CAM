@@ -30,102 +30,102 @@ contains
 
     name = 'd2p_u_gll'
     call addfld(trim(name),   (/ 'lev' /),  'I','m/2','Exact zonal wind on GLL grid',gridname='GLL')
-    call add_default (trim(name), 1, ' ')
+    !call add_default (trim(name), 1, ' ')
 
     name = 'd2p_v_gll'
     call addfld(trim(name),   (/ 'lev' /),  'I','m/2','Exact meridional wind on GLL grid',gridname='GLL')
-    call add_default (trim(name), 1, ' ')
+    !call add_default (trim(name), 1, ' ')
 
     name = 'd2p_scalar_gll'
     call addfld(trim(name),   (/ 'lev' /),  'I','','Exact scalar on GLL grid',gridname='GLL')
-    call add_default (trim(name), 1, ' ')
+    !call add_default (trim(name), 1, ' ')
 
     name = 'd2p_u'
     call addfld(trim(name),   (/ 'lev' /),  'I','m/2','Zonal wind mapped to physics grid')
-    call add_default (trim(name), 1, ' ')
+    !call add_default (trim(name), 1, ' ')
 
     name = 'd2p_u_err'
     call addfld(trim(name),   (/ 'lev' /),  'I','m/2','Error in zonal wind mapped to physics grid')
-    call add_default (trim(name), 1, ' ')
+    !call add_default (trim(name), 1, ' ')
 
     name = 'd2p_v_err'
     call addfld(trim(name),   (/ 'lev' /),  'I','m/2','Error in meridional wind mapped to physics grid')
-    call add_default (trim(name), 1, ' ')
+    !call add_default (trim(name), 1, ' ')
 
     name = 'd2p_v'
     call addfld(trim(name),   (/ 'lev' /),  'I','m/s','Meridional wind mapped to physics grid')
-    call add_default (trim(name), 1, ' ')
+    !call add_default (trim(name), 1, ' ')
 
     name = 'd2p_scalar'
     call addfld(trim(name),   (/ 'lev' /),  'I','','Scalar mapped to physics grid')
-    call add_default (trim(name), 1, ' ')
+    !call add_default (trim(name), 1, ' ')
 
     name = 'd2p_scalar_err'
     call addfld(trim(name),   (/ 'lev' /),  'I','','Error in scalar mapped to physics grid')
-    call add_default (trim(name), 1, ' ')
+    !call add_default (trim(name), 1, ' ')
 
     do nq=2,qsize_condensate_loading
       m_cnst = qsize_condensate_loading_idx(nq)
       name = 'f2p_'//trim(cnst_name(m_cnst))//'_fvm'
       call addfld(trim(name),   (/ 'lev' /),  'I','','Exact water tracer on fvm grid',gridname='FVM')
-      call add_default (trim(name), 1, ' ')
+      !call add_default (trim(name), 1, ' ')
       name = 'f2p_'//trim(cnst_name(m_cnst))//'_err'
       call addfld(trim(name),   (/ 'lev' /),  'I','','Error in water tracer on physics grid (mapped from fvm grid)')
-      call add_default (trim(name), 1, ' ')
+      !call add_default (trim(name), 1, ' ')
       name = 'f2p_'//trim(cnst_name(m_cnst))//''
       call addfld(trim(name),   (/ 'lev' /),  'I','','Water tracer on physics grid (mapped from fvm grid')
-      call add_default (trim(name), 1, ' ')
+      !call add_default (trim(name), 1, ' ')
       !
       ! physgrid to gll (condensate loading tracers)
       !
       name = 'p2d_'//trim(cnst_name(m_cnst))//''
       call addfld(trim(name),   (/ 'lev' /),  'I','','Water tracer on physics grid')
-      call add_default (trim(name), 1, ' ')
+      !call add_default (trim(name), 1, ' ')
       name = 'p2d_'//trim(cnst_name(m_cnst))//'_gll'
       call addfld(trim(name),   (/ 'lev' /),  'I','','Water tracer on GLL grid',gridname='GLL')
-      call add_default (trim(name), 1, ' ')
+      !call add_default (trim(name), 1, ' ')
       name = 'p2d_'//trim(cnst_name(m_cnst))//'_err_gll'
       call addfld(trim(name),   (/ 'lev' /),  'I','','Error in water tracer mapped to GLL grid',gridname='GLL')
-      call add_default (trim(name), 1, ' ')
+      !call add_default (trim(name), 1, ' ')
       !
       ! physgrid to fvm (condensate loading tracers)
       !
       name = 'p2f_'//trim(cnst_name(m_cnst))//''
       call addfld(trim(name),   (/ 'lev' /),  'I','','Water tracer on physics grid')
-      call add_default (trim(name), 1, ' ')
+      !call add_default (trim(name), 1, ' ')
       name = 'p2f_'//trim(cnst_name(m_cnst))//'_fvm'
       call addfld(trim(name),   (/ 'lev' /),  'I','','Water tracer on FVM grid',gridname='FVM')
-      call add_default (trim(name), 1, ' ')
+      !call add_default (trim(name), 1, ' ')
       name = 'p2f_'//trim(cnst_name(m_cnst))//'_err_fvm'
       call addfld(trim(name),   (/ 'lev' /),  'I','','Error in water tracer mapped to FVM grid',gridname='FVM')
-      call add_default (trim(name), 1, ' ')
+      !call add_default (trim(name), 1, ' ')
     end do
     !
     ! temperature tendency
     !
     name = 'p2d_ptend'
     call addfld(trim(name),   (/ 'lev' /),  'I','','T tendency on physics grid')
-    call add_default (trim(name), 1, ' ')
+    !call add_default (trim(name), 1, ' ')
     name = 'p2d_ptend_gll'
     call addfld(trim(name),   (/ 'lev' /),  'I','','T tendency on GLL grid',gridname='GLL')
-    call add_default (trim(name), 1, ' ')
+    !call add_default (trim(name), 1, ' ')
     name = 'p2d_ptend_err_gll'
     call addfld(trim(name),   (/ 'lev' /),  'I','','Error in T tendency mapped to GLL grid',gridname='GLL')
-    call add_default (trim(name), 1, ' ')
+    !call add_default (trim(name), 1, ' ')
 
     call addfld('p2d_u',   (/ 'lev' /),  'I','m/2','Zonal wind on physics grid')
-    call add_default ('p2d_u', 1, ' ')
+    !call add_default ('p2d_u', 1, ' ')
     call addfld('p2d_v',   (/ 'lev' /),  'I','m/2','Meridional wind on physics grid')
-    call add_default ('p2d_v', 1, ' ')
+    !call add_default ('p2d_v', 1, ' ')
     call addfld('p2d_u_gll',   (/ 'lev' /),  'I','m/2','Zonal wind on physics grid',gridname='GLL')
-    call add_default ('p2d_u_gll', 1, ' ')
+    !call add_default ('p2d_u_gll', 1, ' ')
     call addfld('p2d_v_gll',   (/ 'lev' /),  'I','m/2','Meridional wind on physics grid',gridname='GLL')
-    call add_default ('p2d_v_gll', 1, ' ')
+    !call add_default ('p2d_v_gll', 1, ' ')
     call addfld('p2d_u_gll_err',   (/ 'lev' /),  'I','m/2','Error in zonal wind interpolation to GLL grid',gridname='GLL')
-    call add_default ('p2d_u_gll_err', 1, ' ')
+    !call add_default ('p2d_u_gll_err', 1, ' ')
     call addfld('p2d_v_gll_err',   (/ 'lev' /),  'I','m/2','Error in meridional wind interpolation to GLL grid',&
          gridname='GLL')
-    call add_default ('p2d_v_gll_err', 1, ' ')
+    !call add_default ('p2d_v_gll_err', 1, ' ')
 
 !      name = 'phys2dyn_'//trim(cnst_name(m_cnst))//'_physgrid'
 !      call outfld(trim(name),phys_state%q(:ncols,:,m_cnst),ncols,lchnk)
@@ -195,7 +195,7 @@ contains
     integer :: ie,i,j,k
     character(LEN=128) :: name
     integer :: nq,m_cnst
-    real(r8) :: diff(nc,nc,nlev)
+    real(r8) :: diff(nc,nc,nlev,ntrac)
 
     do ie = nets,nete
       call outfld('p2d_u_gll', RESHAPE(elem(ie)%derived%fm(:,:,1,:),(/npsq,nlev/)), npsq, ie)
@@ -249,18 +249,18 @@ contains
 !          fvm(ie)%fc(1:nc,1:nc,k,:) = fvm(ie)%fc(1:nc,1:nc,cl_idx,:)+&
 !                                    2.0_r8*fvm(ie)%fc(1:nc,1:nc,cl2_idx,:)
           call outfld(trim(name),&
-               RESHAPE(fvm(ie)%fc(1:nc,1:nc,:,m_cnst),&
+               RESHAPE(fvm(ie)%fc(1:nc,1:nc,:,m_cnst)/fvm(ie)%dp_fvm(1:nc,1:nc,:),&
                (/nc*nc,nlev/)),nc*nc,ie)
           do k=1,num_tracer
             do j=1,nc
               do i=1,nc
-                fvm(ie)%fc(i,j,k,m_cnst) = fvm(ie)%fc(i,j,k,m_cnst)-&
+                diff(i,j,k,m_cnst) = fvm(ie)%fc(i,j,k,m_cnst)/fvm(ie)%dp_fvm(i,j,k)-&
                      test_func(fvm(ie)%center_cart(i,j)%lat,fvm(ie)%center_cart(i,j)%lon, k, k)
               end do
             end do
           end do
           name = 'p2f_'//trim(cnst_name(m_cnst))//'_err_fvm'
-          call outfld(TRIM(name), RESHAPE(fvm(ie)%fc(:,:,:,m_cnst),(/nc*nc,nlev/)), nc*nc, ie)
+          call outfld(TRIM(name), RESHAPE(diff(:,:,:,m_cnst),(/nc*nc,nlev/)), nc*nc, ie)
 
         end do
       endif
@@ -269,7 +269,7 @@ contains
   end subroutine test_mapping_output_mapped_tendencies
 
   subroutine test_mapping_overwrite_dyn_state(elem,fvm)
-    use fvm_control_volume_mod, only: fvm_struct,n0_fvm
+    use fvm_control_volume_mod, only: fvm_struct
     use constituents,           only: cnst_name
     use dimensions_mod,         only: nc,nhc
     use hybrid_mod,             only: get_loop_ranges, hybrid_t,config_thread_region
@@ -292,7 +292,7 @@ contains
         do k=1,num_tracer
           do j=1,nc
             do i=1,nc
-              fvm(ie)%c(i,j,k,m_cnst,:) = test_func(fvm(ie)%center_cart(i,j)%lat,fvm(ie)%center_cart(i,j)%lon, k, k)
+              fvm(ie)%c(i,j,k,m_cnst) = test_func(fvm(ie)%center_cart(i,j)%lat,fvm(ie)%center_cart(i,j)%lon, k, k)
             end do
           end do
         end do
@@ -302,11 +302,11 @@ contains
         k=num_tracer+1
         do j=1,nc
           do i=1,nc
-            fvm(ie)%c(i,j,k,m_cnst,:) = test_func(fvm(ie)%center_cart(i,j)%lat,fvm(ie)%center_cart(i,j)%lon, k,cl_idx)+&
+            fvm(ie)%c(i,j,k,m_cnst) = test_func(fvm(ie)%center_cart(i,j)%lat,fvm(ie)%center_cart(i,j)%lon, k,cl_idx)+&
                                  2.0_r8*test_func(fvm(ie)%center_cart(i,j)%lat,fvm(ie)%center_cart(i,j)%lon, k,cl2_idx)
           end do
         end do
-        call outfld(TRIM(name), RESHAPE(fvm(ie)%c(1:nc,1:nc,:,m_cnst,1),(/nc*nc,nlev/)), nc*nc, ie)
+        call outfld(TRIM(name), RESHAPE(fvm(ie)%c(1:nc,1:nc,:,m_cnst),(/nc*nc,nlev/)), nc*nc, ie)
       end do
 
       elem(ie)%state%Qdp(:,:,:,:,:)   = 0.0_r8 !for testing the p2d map
@@ -332,7 +332,7 @@ contains
     !
     ! do boundary exchange (this call should be indentical to call in prim_driver)
     !
-!    call fill_halo_fvm_noprealloc(elem,fvm,hybrid,nets,nete,n0_fvm,nhc,1,nlev)!xxx nhr chould be a function of interp_method
+!    call fill_halo_fvm_noprealloc(elem,fvm,hybrid,nets,nete,nhc,1,nlev)!xxx nhr chould be a function of interp_method
 #endif
   end subroutine test_mapping_overwrite_dyn_state
 
@@ -347,7 +347,7 @@ contains
     character(LEN=128) :: name
 
     do ie=1,nelemd
-      fvm(ie)%c(:,:,:,:,:) = 0.0_r8
+      fvm(ie)%c(:,:,:,:) = 0.0_r8
     end do
 
     do lchnk = begchunk, endchunk
@@ -504,8 +504,8 @@ contains
       !
       ! approximately Y^2_2 spherical harmonic
       !
-      fout = sin(lon)*cos(40*lat)!1.0e-8_r8
-!xxx      fout = 0.5_r8 + 0.5_r8*(cos(lat)*cos(lat)*cos(2.0_r8*lon))
+!      fout = sin(lon)*cos(40*lat)!1.0e-8_r8
+      fout = 0.5_r8 + 0.5_r8*(cos(lat)*cos(lat)*cos(2.0_r8*lon))
     case(6)
       !
       ! approximately Y32_16 spherical harmonic

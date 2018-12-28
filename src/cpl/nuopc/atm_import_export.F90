@@ -505,6 +505,16 @@ contains
        do c = begchunk,endchunk
           do i = 1,get_ncols_p(c)
              cam_in(c)%ts(i)  = fldptr(g)
+             g = g + 1
+          end do
+       end do
+    end if
+    call state_getfldptr(importState, 'So_t', fldptr, exists, rc=rc)
+    if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
+    if (exists) then
+       g = 1
+       do c = begchunk,endchunk
+          do i = 1,get_ncols_p(c)
              cam_in(c)%sst(i) = fldptr(g)
              g = g + 1
           end do

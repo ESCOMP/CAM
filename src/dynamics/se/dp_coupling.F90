@@ -27,7 +27,7 @@ use perf_mod,       only: t_startf, t_stopf, t_barrierf
 use cam_abortutils, only: endrun
 
 use parallel_mod,   only: par
-use thread_mod,     only: horz_num_threads
+use thread_mod,     only: horz_num_threads, max_num_threads
 use hybrid_mod,     only: config_thread_region, get_loop_ranges, hybrid_t
 use dimensions_mod, only: np, npsq, nelemd, nlev, nc, qsize, ntrac, fv_nphys
 
@@ -53,7 +53,6 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
    use dyn_comp,               only: frontgf_idx, frontga_idx
    use phys_control,           only: use_gw_front, use_gw_front_igw
    use hycoef,                 only: hyai, ps0
-   use fvm_control_volume_mod, only: n0_fvm
    use fvm_mapping,            only: dyn2phys_vector, dyn2phys_all_vars
    use time_mod,               only: timelevel_qdp
    use control_mod,            only: qsplit
@@ -147,24 +146,15 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
          ! physics runs on an FVM grid: map GLL vars to physics grid
          !******************************************************************
          call t_startf('dyn2phys')
+         ! note that the fvm halo has been filled in prim_run_subcycle
+         ! if physics grid resolution is not equal to fvm resolution
+         call dyn2phys_all_vars(1,nelemd,elem, dyn_out%fvm,&
+              pcnst,hyai(1)*ps0,tl_f,                      &
+              ! output
+              dp3d_tmp, ps_tmp, q_tmp, T_tmp,              &
+              omega_tmp, phis_tmp                          &
+              )
          do ie = 1, nelemd
-            ! note that the fvm halo has been filled in prim_run_subcycle
-            ! if physics grid resolution is not equal to fvm resolution
-            call dyn2phys_all_vars(ie,                                         &
-               ! spectral element state
-               elem(ie)%state%dp3d(:,:,:,tl_f),                                &
-               elem(ie)%state%T(:,:,:,tl_f),                                   &
-               elem(ie)%derived%omega(:,:,:),                                  &
-               ! fvm state
-               dyn_out%fvm(ie)%dp_fvm(:,:,:,n0_fvm),                           &
-               dyn_out%fvm(ie)%c(:,:,:,1:ntrac,n0_fvm),                        &
-               pcnst, elem(ie)%metdet, dyn_out%fvm(ie),        &
-               !
-               hyai(1)*ps0,                                                    &
-               ! output
-               dp3d_tmp(:,:,ie), ps_tmp(:,ie), q_tmp(:,:,:,ie), T_tmp(:,:,ie), &
-               omega_tmp(:,:,ie), phis_tmp(:,ie)                               &
-               )
             uv_tmp(:,:,:,ie) = &
                dyn2phys_vector(elem(ie)%state%v(:,:,:,:,tl_f),elem(ie))
          end do
@@ -227,7 +217,7 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
    call t_startf('dpcopy')
    if (local_dp_map) then
 
-      !$omp parallel do num_threads(horz_num_threads) private (lchnk, ncols, pgcols, icol, idmb1, idmb2, idmb3, ie, ioff, ilyr, m, pbuf_chnk, pbuf_frontgf, pbuf_frontga)
+      !$omp parallel do num_threads(max_num_threads) private (lchnk, ncols, pgcols, icol, idmb1, idmb2, idmb3, ie, ioff, ilyr, m, pbuf_chnk, pbuf_frontgf, pbuf_frontga)
       do lchnk = begchunk, endchunk
 
          ncols = get_ncols_p(lchnk)
@@ -280,7 +270,7 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
       end if
 
       if (iam < par%nprocs) then
-         !$omp parallel do num_threads(horz_num_threads) private (ie, bpter, icol, ilyr, m, ncols, ioff)
+         !$omp parallel do num_threads(max_num_threads) private (ie, bpter, icol, ilyr, m, ncols, ioff)
          do ie = 1, nelemd
 
             if (fv_nphys > 0) then
@@ -332,7 +322,7 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
       call transpose_block_to_chunk(tsize, bbuffer, cbuffer)
       call t_stopf  ('block_to_chunk')
 
-      !$omp parallel do num_threads(horz_num_threads) private (lchnk, ncols, cpter, icol, ilyr, m, pbuf_chnk, pbuf_frontgf, pbuf_frontga, ioff)
+      !$omp parallel do num_threads(max_num_threads) private (lchnk, ncols, cpter, icol, ilyr, m, pbuf_chnk, pbuf_frontgf, pbuf_frontga, ioff)
       do lchnk = begchunk, endchunk
          ncols = phys_state(lchnk)%ncol
 
@@ -402,7 +392,7 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
    call derived_phys_dry(phys_state, phys_tend, pbuf2d)
    call t_stopf('derived_phys')
 
-!$omp parallel do private (lchnk, ncols, ilyr, icol)
+  !$omp parallel do num_threads(max_num_threads) private (lchnk, ncols, ilyr, icol)
    do lchnk = begchunk, endchunk
       ncols=get_ncols_p(lchnk)
       if (pcols > ncols) then
@@ -474,7 +464,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
    call t_startf('pd_copy')
    if (local_dp_map) then
 
-      !$omp parallel do num_threads(horz_num_threads) private (lchnk, ncols, pgcols, icol, idmb1, idmb2, idmb3, ie, ioff, ilyr, m, factor)
+      !$omp parallel do num_threads(max_num_threads) private (lchnk, ncols, pgcols, icol, idmb1, idmb2, idmb3, ie, ioff, ilyr, m, factor)
       do lchnk = begchunk, endchunk
          ncols = get_ncols_p(lchnk)
          call get_gcol_all_p(lchnk, pcols, pgcols)
@@ -504,6 +494,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
                   end if
                   dq_tmp(ioff,ilyr,m,ie) = (phys_state(lchnk)%q(icol,ilyr,m) - &
                                             q_prev(icol,ilyr,m,lchnk))
+
                end do
             end do
          end do
@@ -516,7 +507,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
       allocate(bbuffer(tsize*block_buf_nrecs))
       allocate(cbuffer(tsize*chunk_buf_nrecs))
 
-      !$omp parallel do num_threads(horz_num_threads) private (lchnk, ncols, cpter, i, icol, ilyr, m, factor)
+      !$omp parallel do num_threads(max_num_threads) private (lchnk, ncols, cpter, i, icol, ilyr, m, factor)
       do lchnk = begchunk, endchunk
          ncols = get_ncols_p(lchnk)
 
@@ -563,7 +554,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
             allocate(bpter(npsq,0:pver))
          end if
 
-         !$omp parallel do num_threads(horz_num_threads) private (ie, bpter, icol, ilyr, m, ncols)
+         !$omp parallel do num_threads(max_num_threads) private (ie, bpter, icol, ilyr, m, ncols)
          do ie = 1, nelemd
 
             if (fv_nphys > 0) then
@@ -609,10 +600,10 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
             do j = 1, fv_nphys
                do i = 1, fv_nphys
                   ii = i + (j-1)*fv_nphys
-                  dyn_in%fvm(ie)%ft(i,j,1:pver)     = T_tmp(ii,1:pver,ie)
-                  dyn_in%fvm(ie)%fm(i,j,1:2,1:pver) = uv_tmp(ii,1:2,1:pver,ie)
+                  dyn_in%fvm(ie)%ft(i,j,1:pver)                 = T_tmp(ii,1:pver,ie)
+                  dyn_in%fvm(ie)%fm(i,j,1:2,1:pver)             = uv_tmp(ii,1:2,1:pver,ie)
                   dyn_in%fvm(ie)%fc_phys(i,j,1:pver,1:num_trac) = dq_tmp(ii,1:pver,1:num_trac,ie)
-                  dyn_in%fvm(ie)%dp_phys(i,j,1:pver) = dp_phys(ii,1:pver,ie)
+                  dyn_in%fvm(ie)%dp_phys(i,j,1:pver)            = dp_phys(ii,1:pver,ie)
                end do
             end do
          end do
@@ -630,7 +621,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
 
          call t_startf('putUniquePoints')
 
-         !$omp parallel do num_threads(horz_num_threads) private(ie,ncols)
+         !$omp parallel do num_threads(max_num_threads) private(ie,ncols)
          do ie = 1, nelemd
             ncols = elem(ie)%idxP%NumUniquePts
             call putUniquePoints(elem(ie)%idxP, nlev, T_tmp(1:ncols,:,ie),       &
@@ -654,7 +645,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
    ! so do a simple sum (boundary exchange with no weights).
    ! For physics grid, we interpolated into all points, so do weighted average.
 
-   call t_startf('bndry_exchange')
+   call t_startf('p_d_coupling:bndry_exchange')
 
    do ie = 1, nelemd
       if (fv_nphys > 0) then
@@ -713,7 +704,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
          end do
       end if
    end do
-   call t_stopf('bndry_exchange')
+   call t_stopf('p_d_coupling:bndry_exchange')
 
    if (iam < par%nprocs .and. fv_nphys > 0) then
       call test_mapping_output_mapped_tendencies(dyn_in%fvm(1:nelemd), elem(1:nelemd), &
@@ -760,7 +751,7 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
 
    ! Evaluate derived quantities
 
-   !$omp parallel do num_threads(horz_num_threads) private (lchnk, ncol, k, i, m , zvirv, pbuf_chnk, factor_array)
+   !!$omp parallel do num_threads(horz_num_threads) private (lchnk, ncol, k, i, m , zvirv, pbuf_chnk, factor_array)
    do lchnk = begchunk,endchunk
 
       ncol = get_ncols_p(lchnk)

@@ -7,10 +7,10 @@ sm370             bl370
 sm380 er380       bl380
 sm390 er390       bl390
 sm391       br391 bl391
+sm730 er730       bl730
 sm735 er735       bl735
-sm736 er736       bl736
+sm742 er742       bl742
 sm991                   eq991
-sm994                   eq994
 sm995                   eq995
 sm012             bl012
 sc001

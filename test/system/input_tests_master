@@ -97,6 +97,7 @@ sm714 TSM.sh h5.3c5aqt5mdm ttrac 9s
 sm720 TSM.sh h16c4aqdm outfrq3s+aquaplanet_cam4 9s
 sm721 TSM.sh h16.3c4aqdm outfrq3s+aquaplanet_cam4 9s
 
+sm730 TSM.sh h16adtermdm terminator 9s
 sm731 TSM.sh h16c3aqdh aqua+aquaplanet_cam3 9s
 sm734 TSM.sh h16c5naqdm outfrq3s+aquaplanet_cam5 9s
 sm735 TSM.sh h16c5aqdm outfrq3s+1850-2005_cam5 9s
@@ -105,6 +106,7 @@ sm737 TSM.sh h16c5aqdm ghgrmp_unstruct 9s
 sm738 TSM.sh h16idm idphys 9s
 
 sm741 TSM.sh h16c6aqdm ghgrmp_unstruct 9s
+sm742 TSM.sh h16.3c6aqt5dm outfrq3s+hist_cam6 9s
 
 sm751 TSM.sh h30c4aqdm outfrq3s+aquaplanet_cam4 9s
 
@@ -192,6 +194,7 @@ er712 TER.sh h5c5aqbamdm outfrq3s+aquaplanet_cam5 4+5s
 er720 TER.sh h16c4aqdm outfrq3s+aquaplanet_cam4 4+5s
 er721 TER.sh h16.3c4aqdm outfrq3s+aquaplanet_cam4 4+5s
 
+er730 TER.sh h16adtermdm terminator 4+5s
 er731 TER.sh h16c3aqdh aqua+aquaplanet_cam3 4+5s
 er734 TER.sh h16c5naqdm outfrq3s+aquaplanet_cam5 4+5s
 er735 TER.sh h16c5aqdm outfrq3s+1850-2005_cam5 4+5s
@@ -200,6 +203,7 @@ er737 TER.sh h16c5aqdm ghgrmp_unstruct 4+5s
 er738 TER.sh h16idm idphys 4+5s
 
 er741 TER.sh h16c6aqdm ghgrmp_unstruct 4+5s
+er742 TER.sh h16.3c6aqt5dm outfrq3s+hist_cam6 4+5s
 
 er751 TER.sh h30c4aqdm outfrq3s+aquaplanet_cam4 4+5s
 
@@ -320,6 +324,7 @@ bl712 TBL.sh h5c5aqbamdm outfrq3s+aquaplanet_cam5 9s
 bl720 TBL.sh h16c4aqdm outfrq3s+aquaplanet_cam4 9s
 bl721 TBL.sh h16.3c4aqdm outfrq3s+aquaplanet_cam4 9s
 
+bl730 TBL.sh h16adtermdm terminator 9s
 bl731 TBL.sh h16c3aqdh aqua+aquaplanet_cam3 9s
 bl734 TBL.sh h16c5naqdm outfrq3s+aquaplanet_cam5 9s
 bl735 TBL.sh h16c5aqdm outfrq3s+1850-2005_cam5 9s
@@ -327,6 +332,7 @@ bl736 TBL.sh h16adtermdh terminator 9s
 bl737 TBL.sh h16c5aqdm ghgrmp_unstruct 9s
 
 bl741 TBL.sh h16c6aqdm ghgrmp_unstruct 9s
+bl742 TBL.sh h16.3c6aqt5dm outfrq3s+hist_cam6 9s
 
 bl751 TBL.sh h30c4aqdm outfrq3s+aquaplanet_cam4 9s
 

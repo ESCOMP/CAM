@@ -2184,7 +2184,8 @@ CONTAINS
 
     use cam_grid_support, only: cam_grid_num_grids
     use spmd_utils,       only: mpicom
-    !
+    use dycore,           only: dycore_is
+
     !-----------------------------------------------------------------------
     !
     ! Purpose: Define the contents of each history file based on namelist input for initial or branch
@@ -2198,6 +2199,7 @@ CONTAINS
     !
     integer t, f                   ! tape, field indices
     integer ff                     ! index into include, exclude and fprec list
+    integer :: i
     character(len=fieldname_len) :: name ! field name portion of fincl (i.e. no avgflag separator)
     character(len=max_fieldname_len) :: mastername ! name from masterlist field
     character(len=max_chars) :: errormsg ! error output field
@@ -2215,17 +2217,45 @@ CONTAINS
     !    on that grid.
     integer, allocatable        :: gridsontape(:,:)
 
-    !
+    ! The following list of field names are only valid for the FV dycore.  They appear
+    ! in fincl settings of WACCM use case files which are not restricted to the FV dycore.
+    ! To avoid duplicating long fincl lists in use case files to provide both FV and non-FV
+    ! versions this short list of fields is checked for and removed from fincl lists when
+    ! the dycore is not FV.
+    integer, parameter :: n_fv_only = 10
+    character(len=6) :: fv_only_flds(n_fv_only) = &
+       [ 'VTHzm ', 'WTHzm ', 'UVzm  ', 'UWzm  ', 'Uzm   ', 'Vzm   ', 'Wzm   ', &
+         'THzm  ', 'TH    ', 'MSKtem' ]
+    !--------------------------------------------------------------------------
+
     ! First ensure contents of fincl, fexcl, and fwrtpr are all valid names
     !
     errors_found = 0
     do t=1,ptapes
+
       f = 1
-      do while (f < pflds .and. fincl(f,t) /= ' ')
+fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
         name = getname (fincl(f,t))
+
+        if (.not. dycore_is('FV')) then
+           ! filter out fields only provided by FV dycore
+           do i = 1, n_fv_only
+              if (name == fv_only_flds(i)) then
+                 write(errormsg,'(3a,2(i0,a))')'FLDLST: ', trim(name), &
+                    ' in fincl(', f,', ',t, ') only available with FV dycore'
+                 if (masterproc) then
+                    write(iulog,*) trim(errormsg)
+                    call shr_sys_flush(iulog)
+                 end if
+                 f = f + 1
+                 cycle fincls
+              end if
+           end do
+        end if
+        
         mastername=''
         listentry => get_entry_by_name(masterlinkedlist, name)
-        if(associated(listentry)) mastername = listentry%field%name
+        if (associated(listentry)) mastername = listentry%field%name
         if (name /= mastername) then
           write(errormsg,'(3a,2(i0,a))')'FLDLST: ', trim(name), ' in fincl(', f,', ',t, ') not found'
           if (masterproc) then
@@ -2235,7 +2265,7 @@ CONTAINS
           errors_found = errors_found + 1
         end if
         f = f + 1
-      end do
+      end do fincls
 
       f = 1
       do while (f < pflds .and. fexcl(f,t) /= ' ')

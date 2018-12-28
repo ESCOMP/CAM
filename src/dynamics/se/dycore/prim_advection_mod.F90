@@ -34,7 +34,7 @@ module prim_advection_mod
                                  neighbor_minmax_start, neighbor_minmax_finish
   use perf_mod,               only: t_startf, t_stopf, t_barrierf
   use cam_abortutils,         only: endrun
-  use thread_mod,             only: horz_num_threads, tracer_num_threads
+  use thread_mod,             only: horz_num_threads, vert_num_threads, tracer_num_threads
 
   implicit none
 
@@ -64,7 +64,7 @@ contains
 
 
   subroutine Prim_Advec_Init1(par, elem)
-    use dimensions_mod, only : nlev, qsize, nelemd
+    use dimensions_mod, only : nlev, qsize, nelemd,ntrac
     use parallel_mod,   only : parallel_t, boundaryCommMethod
     type(parallel_t)    :: par
     type (element_t)    :: elem(:)
@@ -75,24 +75,34 @@ contains
     ! threads. But in this case we want shared pointers.
     real(kind=r8), pointer :: buf_ptr(:) => null()
     real(kind=r8), pointer :: receive_ptr(:) => null()
+    integer       :: advec_remap_num_threads 
 
 
+    !
+    ! Set the number of threads used in the subroutine Prim_Advec_tracers_remap()
+    !
+    if (ntrac>0) then
+       advec_remap_num_threads = 1
+    else
+       advec_remap_num_threads = tracer_num_threads
+    endif
     ! this might be called with qsize=0
     ! allocate largest one first
     ! Currently this is never freed. If it was, only this first one should
     ! be freed, as only it knows the true size of the buffer.
     call initEdgeBuffer(par,edgeAdvp1,elem,qsize*nlev + nlev,bndry_type=boundaryCommMethod,&
-                         nthreads=horz_num_threads*tracer_num_threads)
+                         nthreads=horz_num_threads*advec_remap_num_threads)
     call initEdgeBuffer(par,edgeAdv,elem,qsize*nlev,bndry_type=boundaryCommMethod, &
-                         nthreads=horz_num_threads*tracer_num_threads)
-    call initEdgeBuffer(par,edgeAdv1,elem,nlev,bndry_type=boundaryCommMethod)
-    call initEdgeBuffer(par,edgeveloc,elem,2*nlev,bndry_type=boundaryCommMethod)
-
+                         nthreads=horz_num_threads*advec_remap_num_threads)
     ! This is a different type of buffer pointer allocation
     ! used for determine the minimum and maximum value from
     ! neighboring  elements
     call initEdgeSBuffer(par,edgeAdvQminmax,elem,qsize*nlev*2,bndry_type=boundaryCommMethod, &
-                        nthreads=horz_num_threads*tracer_num_threads)
+                        nthreads=horz_num_threads*advec_remap_num_threads)
+
+    call initEdgeBuffer(par,edgeAdv1,elem,nlev,bndry_type=boundaryCommMethod)
+    call initEdgeBuffer(par,edgeveloc,elem,2*nlev,bndry_type=boundaryCommMethod)
+
 
     ! Don't actually want these saved, if this is ever called twice.
     nullify(buf_ptr)
@@ -122,9 +132,10 @@ contains
   ! fvm driver
   !
   subroutine Prim_Advec_Tracers_fvm(elem,fvm,hvcoord,hybrid,&
-        dt,tl,nets,nete)
+        dt,tl,nets,nete,ghostbufQnhc,ghostBufQ1, ghostBufFlux,kmin,kmax)
     use fvm_consistent_se_cslam, only: run_consistent_se_cslam
     use control_mod,             only: tracer_transport_type,TRACERTRANSPORT_CONSISTENT_SE_FVM
+    use edgetype_mod,            only: edgebuffer_t    
     implicit none
     type (element_t), intent(inout)   :: elem(:)
     type (fvm_struct), intent(inout)  :: fvm(:)
@@ -133,7 +144,8 @@ contains
     type (TimeLevel_t)                :: tl
 
     real(kind=r8) , intent(in) :: dt
-    integer,intent(in)                :: nets,nete
+    integer,intent(in)                :: nets,nete,kmin,kmax
+    type (EdgeBuffer_t), intent(inout):: ghostbufQnhc,ghostBufQ1, ghostBufFlux
 
     call t_barrierf('sync_prim_advec_tracers_fvm', hybrid%par%comm)
     call t_startf('prim_advec_tracers_fvm')
@@ -145,7 +157,8 @@ contains
     !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     if (tracer_transport_type == TRACERTRANSPORT_CONSISTENT_SE_FVM) then
-       call run_consistent_se_cslam(elem,fvm,hybrid,dt,tl,nets,nete,hvcoord)
+      call run_consistent_se_cslam(elem,fvm,hybrid,dt,tl,nets,nete,hvcoord,&
+           ghostbufQnhc,ghostBufQ1, ghostBufFlux,kmin,kmax)
     else
       call endrun('Bad tracer_transport_type in Prim_Advec_Tracers_fvm')
     end if
@@ -169,6 +182,7 @@ contains
     integer              , intent(in   ) :: nete
 
 
+    !print *,'prim_Advec_Tracers_remap: qsize: ',qsize
     call Prim_Advec_Tracers_remap_rk2( elem , deriv , hvcoord , hybrid , dt , tl , nets , nete )
   end subroutine Prim_Advec_Tracers_remap
 
@@ -693,7 +707,7 @@ contains
     end if
   enddo
 
-  call bndry_exchange( hybrid , edgeAdvp1)
+  call bndry_exchange( hybrid , edgeAdvp1,location='edgeAdvp1')
 
   do ie = nets, nete
     ! only perform this operation on thread which owns the first tracer
@@ -906,7 +920,7 @@ contains
       enddo
     enddo
 
-    call bndry_exchange( hybrid , edgeAdv)
+    call bndry_exchange( hybrid , edgeAdv,location='advance_hypervis_scalar')
 
     do ie = nets, nete
       do q = qbeg, qend
@@ -927,7 +941,7 @@ contains
   end subroutine advance_hypervis_scalar
 
 
-  subroutine vertical_remap(hybrid,elem,fvm,hvcoord,dt,np1,np1_qdp,n_fvm,nets,nete)
+  subroutine vertical_remap(hybrid,elem,fvm,hvcoord,dt,np1,np1_qdp,nets,nete)
     ! This routine is called at the end of the vertically Lagrangian
     ! dynamics step to compute the vertical flux needed to get back
     ! to reference eta levels
@@ -941,17 +955,18 @@ contains
     
     use hybvcoord_mod, only          : hvcoord_t
     use vertremap_mod,          only : remap1, remap1_nofilter
-    use hybrid_mod            , only : hybrid_t!, set_region_num_threads
+    use hybrid_mod            , only : hybrid_t, config_thread_region,get_loop_ranges, PrintHybrid
     use fvm_control_volume_mod, only : fvm_struct
     use control_mod,            only : se_prescribed_wind_2d
     use dimensions_mod        , only : ntrac
     use dimensions_mod        , only : qsize_condensate_loading, qsize_condensate_loading_idx_gll
     use dimensions_mod,         only : lcp_moist,qsize_condensate_loading_cp
-    
+    use cam_logfile,            only : iulog
+    use physconst,              only : pi
+    use thread_mod            , only : omp_set_nested
     type (hybrid_t),  intent(in)    :: hybrid  ! distributed parallel structure (shared)
     type(fvm_struct), intent(inout) :: fvm(:)
     type (element_t), intent(inout) :: elem(:)
-    integer,          intent(in)    :: n_fvm
     !
     real (kind=r8) :: cdp(1:nc,1:nc,nlev,ntrac)
     real (kind=r8) :: dpc(nc,nc,nlev),dpc_star(nc,nc,nlev)
@@ -962,7 +977,9 @@ contains
     real (kind=r8), dimension(np,np,nlev)  :: dp_moist,dp_star_moist, dp_inv,dp_dry,dp_star_dry
     real (kind=r8), dimension(np,np,nlev)  :: internal_energy_star
     real (kind=r8), dimension(np,np,nlev,2):: ttmp
-    
+    real(r8), parameter                    :: rad2deg = 180.0_r8/pi
+    integer :: region_num_threads,qbeg,qend
+    type (hybrid_t) :: hybridnew,hybridnew2 
     
     ! reference levels:
     !   dp(k) = (hyai(k+1)-hyai(k))*ps0 + (hybi(k+1)-hybi(k))*ps(i,j)
@@ -1006,7 +1023,6 @@ contains
              ( hvcoord%hybi(k+1) - hvcoord%hybi(k) )*elem(ie)%state%psdry(:,:)
         elem(ie)%state%dp3d(:,:,k,np1) = dp_dry(:,:,k)
       enddo
-      if (minval(dp_star_dry)<0) call endrun('negative dry layer thickness.  timestep or remap time too large B')
       !
       dp_star_moist(:,:,:) = dp_star_dry(:,:,:)
       do q=1,qsize_condensate_loading
@@ -1015,9 +1031,41 @@ contains
           dp_star_moist(:,:,k)= dp_star_moist(:,:,k)+elem(ie)%state%Qdp(:,:,k,m_cnst,np1_qdp)
         end do
       end do
-      if (minval(dp_star_moist)<0) call endrun('negative moist layer thickness.  timestep or remap time too large')
-      
-      call remap1(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp),np,1,qsize,qsize,dp_star_dry,dp_dry,hybrid=hybrid)
+      !
+      ! DEBUGGING CODE
+      !
+      if (minval(dp_star_moist)<0) then
+        write(iulog,*) "NEGATIVE LAYER THICKNESS DIAGNOSTICS:"
+        write(iulog,*) " "
+        do j=1,np
+          do i=1,np
+            if (minval(dp_star_moist(i,j,:))<0) then
+              write(iulog,'(A13,2f6.2)') "(lon,lat) = ",&
+                   elem(ie)%spherep(i,j)%lon*rad2deg,elem(ie)%spherep(i,j)%lat*rad2deg
+              write(iulog,*) " "
+              do k=1,nlev
+                write(iulog,'(A21,I5,A1,f10.8,3f8.2)') "k,dp_star_moist,u,v,T: ",k," ",dp_star_moist(i,j,k),&
+                     elem(ie)%state%v(i,j,1,k,np1),elem(ie)%state%v(i,j,2,k,np1),elem(ie)%state%T(i,j,k,np1)
+              end do
+            end if
+          end do
+        end do
+        call endrun('negative moist layer thickness.  timestep or remap time too large')
+      endif
+! For some reason there is a bug in the threading when threading over tracers is activiated for this loop 
+!      print *,'vertical_remap: qsize: ',qsize
+!      if(qsize>tracer_num_threads) then 
+!        call omp_set_nested(.true.)
+!        !$OMP PARALLEL NUM_THREADS(tracer_num_threads), DEFAULT(SHARED), PRIVATE(hybridnew,qbeg,qend)
+!        hybridnew = config_thread_region(hybrid,'tracer')
+!        call get_loop_ranges(hybridnew, qbeg=qbeg, qend=qend)
+!        call remap1(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp),np,qbeg,qend,qsize,dp_star_dry,dp_dry)
+!        !$OMP END PARALLEL
+!        call omp_set_nested(.false.)
+!      else
+!        call remap1(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp),np,1,qsize,qsize,dp_star_dry,dp_dry)
+!      endif
+      call remap1(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp),np,1,qsize,qsize,dp_star_dry,dp_dry)
       !
       ! compute moist reference pressure level thickness
       !
@@ -1028,10 +1076,8 @@ contains
           dp_moist(:,:,k) = dp_moist(:,:,k)+elem(ie)%state%Qdp(:,:,k,m_cnst,np1_qdp)
         end do
       end do
-      if (minval(dp_star_moist)<0) call endrun('negative layer thickness.  timestep or remap time too large')
       
-      dp_inv=1.0_R8/dp_moist !for efficiency
-      
+      dp_inv=1.0_R8/dp_moist !for efficiency      
       !
       ! remap internal energy and back out temperature
       !      
@@ -1091,34 +1137,43 @@ contains
           enddo
         endif
       endif
-      
-      
-      if (ntrac>0) then
-        do i=1,nc
-          do j=1,nc
-            !
-            ! compute source (cdp) and target (dpc) pressure grids for vertical remapping
-            !
-            do k=1,nlev
+    enddo
+    if (ntrac>0) then
+      do ie=nets,nete
+        do k=1,nlev
+         do j=1,nc
+           do i=1,nc
+              !
+              ! compute source (cdp) and target (dpc) pressure grids for vertical remapping
+              !
               dpc(i,j,k) = (hvcoord%hyai(k+1) - hvcoord%hyai(k))*hvcoord%ps0 + &
                    (hvcoord%hybi(k+1) - hvcoord%hybi(k))*fvm(ie)%psc(i,j)
-              cdp(i,j,k,1:ntrac)=fvm(ie)%c(i,j,k,1:ntrac,n_fvm)*fvm(ie)%dp_fvm(i,j,k,n_fvm)
+              cdp(i,j,k,1:ntrac)=fvm(ie)%c(i,j,k,1:ntrac)*fvm(ie)%dp_fvm(i,j,k)
             end do
           end do
         end do
-        dpc_star=fvm(ie)%dp_fvm(1:nc,1:nc,:,n_fvm)
-        call remap1(cdp,nc,1,ntrac,ntrac,dpc_star,dpc)
+        dpc_star=fvm(ie)%dp_fvm(1:nc,1:nc,:)
+        if(ntrac>tracer_num_threads) then 
+          call omp_set_nested(.true.)
+          !$OMP PARALLEL NUM_THREADS(tracer_num_threads), DEFAULT(SHARED), PRIVATE(hybridnew2,qbeg,qend)
+          hybridnew2 = config_thread_region(hybrid,'ctracer')
+          call get_loop_ranges(hybridnew2, qbeg=qbeg, qend=qend)
+          call remap1(cdp,nc,qbeg,qend,ntrac,dpc_star,dpc)
+          !$OMP END PARALLEL 
+          call omp_set_nested(.false.)
+        else
+          call remap1(cdp,nc,1,ntrac,ntrac,dpc_star,dpc)
+        endif
         do k=1,nlev
           do j=1,nc
             do i=1,nc
-              fvm(ie)%dp_fvm(i,j,k,n_fvm)=dpc(i,j,k)
-              fvm(ie)%c(i,j,k,1:ntrac,n_fvm)=cdp(i,j,k,1:ntrac)/dpc(i,j,k)
+              fvm(ie)%dp_fvm(i,j,k)=dpc(i,j,k)
+              fvm(ie)%c(i,j,k,1:ntrac)=cdp(i,j,k,1:ntrac)/dpc(i,j,k)
             end do
           end do
         end do
-      end if
-      !         call remap_velocityC(np1,dt,elem,fvm,hvcoord,ie)
-    enddo
+      enddo
+    end if
   end subroutine vertical_remap
 
 end module prim_advection_mod

@@ -443,7 +443,7 @@ call pio_write_darray(file, grid_corner_lon_id, iodesc, gwork, status)
       allocate(cvlist(ie)%face_no(nv_max,np,np))
     end do
 
-    call initedgebuffer(par,edge1,elem,3,bndry_type=HME_BNDRY_P2P, nthreads=horz_num_threads)
+    call initedgebuffer(par,edge1,elem,3,bndry_type=HME_BNDRY_P2P, nthreads=1)
     call initGhostBuffer3D(ghost_buf,3,np+1,1)
   end subroutine InitControlVolumesData
 
@@ -560,7 +560,7 @@ call pio_write_darray(file, grid_corner_lon_id, iodesc, gwork, status)
       call edgeVpack(edge1,test,1,0,ie)
     end do
 
-    call bndry_exchange(hybrid, edge1)
+    call bndry_exchange(hybrid, edge1,location='InitControlVolumes_duel')
 
     test = 0
     do ie=nets,nete
@@ -2015,7 +2015,7 @@ call pio_write_darray(file, grid_corner_lon_id, iodesc, gwork, status)
 
     end do  ! loop over NE
 
-    call bndry_exchange(hybrid,edge1)
+    call bndry_exchange(hybrid,edge1,location='construct_cv_gll #1')
 
     do ie=nets,nete
       kptr=0
@@ -2093,7 +2093,7 @@ call pio_write_darray(file, grid_corner_lon_id, iodesc, gwork, status)
       call edgeVpack(edge1,vertpack,3,kptr,ie)
     end do
 
-    call bndry_exchange(hybrid,edge1)
+    call bndry_exchange(hybrid,edge1,location='construct_cv_gll #2')
 
     do ie=nets,nete
       kptr=0

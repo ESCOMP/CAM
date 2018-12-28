@@ -124,9 +124,6 @@ ntasks=$CAM_RESTART_TASKS
 nthreads=$CAM_RESTART_THREADS
 
 run_mode=`get_run_mode $1`
-if [ $run_mode = mpi ]; then
-    ntasks=$(( ntasks * nthreads / 2 ))
-fi
 echo "TBR.sh: run mode is ${run_mode}." 
 if [ $run_mode = mpi ] || [ $run_mode = hybrid ]; then
     echo "TBR.sh: branch run will use $ntasks tasks." 

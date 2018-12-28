@@ -34,10 +34,13 @@ real(r8), public :: hybd(plev)        ! difference  in b (hybi) across layers
 real(r8), public :: hypi(plevp)       ! reference pressures at interfaces
 real(r8), public :: hypm(plev)        ! reference pressures at midpoints
 real(r8), public :: hypd(plev)        ! reference pressure layer thickness
-
+#ifdef planet_mars
+real(r8), public, protected :: ps0 = 6.0e1_r8    ! Base state surface pressure (pascals)
+real(r8), public, protected :: psr = 6.0e1_r8    ! Reference surface pressure (pascals)
+#else
 real(r8), public, protected :: ps0 = 1.0e5_r8    ! Base state surface pressure (pascals)
 real(r8), public, protected :: psr = 1.0e5_r8    ! Reference surface pressure (pascals)
-
+#endif
 real(r8), target :: alev(plev)    ! level values (pascals) for 'lev' coord
 real(r8), target :: ailev(plevp)  ! interface level values for 'ilev' coord
 

@@ -171,7 +171,7 @@
    'V', 'Z3', 'Z500'
 </fincl2>
 
-<fincl7 dyn="fv"> 
+<fincl7> 
          'MSKtem','PS','PSL','VTHzm','UVzm','UWzm','Uzm','Vzm','THzm','Wzm','PHIS'
 </fincl7> 
 <fincl8> 

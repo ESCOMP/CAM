@@ -96,9 +96,6 @@ ntasks=$CAM_TASKS
 nthreads=$CAM_THREADS
 
 run_mode=`get_run_mode $1`
-if [ $run_mode = mpi ]; then
-    ntasks=$(( CAM_TASKS * CAM_THREADS ))
-fi
 echo "TSM.sh: run mode is ${run_mode}." 
 if [ $run_mode = mpi ] || [ $run_mode = hybrid ]; then
     echo "TSM.sh: run will use $ntasks tasks." 

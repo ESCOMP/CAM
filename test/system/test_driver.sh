@@ -188,13 +188,13 @@ case $hostname in
         gmake_j=36
     fi
 
-    # run tests on 2 nodes using 12 tasks/node, 3 threads/task
-    CAM_TASKS=24
-    CAM_THREADS=3
+    # run tests on 2 nodes using 18 tasks/node, 2 threads/task
+    CAM_TASKS=36
+    CAM_THREADS=2
 
-    # change parallel configuration on 2 nodes using 18 tasks/node, 2 threads/task
-    CAM_RESTART_TASKS=36
-    CAM_RESTART_THREADS=2
+    # change parallel configuration on 2 nodes using 32 tasks, 1 threads/task
+    CAM_RESTART_TASKS=32
+    CAM_RESTART_THREADS=1
 
     mach_workspace="/glade/scratch"
 
@@ -254,7 +254,7 @@ cat > ${submit_script} << EOF
 #PBS -q $CAM_BATCHQ
 #PBS -A $CAM_ACCOUNT
 #PBS -l walltime=$wallclock_limit
-#PBS -l select=2:ncpus=36:mpiprocs=36
+#PBS -l select=2:ncpus=36:mpiprocs=18:ompthreads=2
 #PBS -j oe
 
 export TMPDIR=/glade/scratch/$USER

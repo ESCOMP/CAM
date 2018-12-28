@@ -65,253 +65,19 @@ subroutine remap1(Qdp,nx,qstart,qstop,qsize,dp1,dp2,hybrid)
   logical :: abort=.false.
 
   if (vert_remap_q_alg == 1 .or. vert_remap_q_alg == 2) then
-    call t_startf('remap_Q_ppm')
-    if ( present(hybrid) ) then
-      !$OMP PARALLEL NUM_THREADS(tracer_num_threads), DEFAULT(SHARED), PRIVATE(hybridnew,qbeg,qend)
-      hybridnew = config_thread_region(hybrid,'tracer')
-      call get_loop_ranges(hybridnew, qbeg=qbeg, qend=qend)
-      call remap_Q_ppm(qdp,nx,qbeg,qend,qsize,dp1,dp2)
-      !$OMP END PARALLEL
-    else
-      call remap_Q_ppm(qdp,nx,qstart,qstop,qsize,dp1,dp2)
-    endif
-    call t_stopf('remap_Q_ppm')
+    !call t_startf('remap_Q_ppm')
+    !if ( present(hybrid) ) then
+    !  !$OMP PARALLEL NUM_THREADS(tracer_num_threads), DEFAULT(SHARED), PRIVATE(hybridnew,qbeg,qend)
+    !  hybridnew = config_thread_region(hybrid,'tracer')
+    !  call get_loop_ranges(hybridnew, qbeg=qbeg, qend=qend)
+    !  call remap_Q_ppm(qdp,nx,qbeg,qend,qsize,dp1,dp2)
+    !  !$OMP END PARALLEL
+    !else
+    call remap_Q_ppm(qdp,nx,qstart,qstop,qsize,dp1,dp2)
+    !endif
+    !call t_stopf('remap_Q_ppm')
     return
   endif
-
-  !  write(6,*) 'YOU ARE DOINGS SPLINES REMAP WHICH IS NOT STRICTLY MONOTONE! ABORT'
-  !  abort = .true.                                                                 
-  do q=qstart,qstop
-    do i=1,nx
-      do j=1,nx
-
-        z1c(1)=0 ! source grid
-        z2c(1)=0 ! target grid
-        do k=1,nlev
-          z1c(k+1)=z1c(k)+dp1(i,j,k)
-          z2c(k+1)=z2c(k)+dp2(i,j,k)
-        enddo
-
-        zv(1)=0
-        do k=1,nlev
-          Qcol(k)=Qdp(i,j,k,q)!  *(z1c(k+1)-z1c(k)) input is mass
-          zv(k+1) = zv(k)+Qcol(k)
-        enddo
-
-        if (ABS(z2c(nlev+1)-z1c(nlev+1)).GE.0.000001_r8) then
-          write(6,*) 'SURFACE PRESSURE IMPLIED BY ADVECTION SCHEME'
-          write(6,*) 'NOT CORRESPONDING TO SURFACE PRESSURE IN    '
-          write(6,*) 'DATA FOR MODEL LEVELS'
-          write(6,*) 'PLEVMODEL=',z2c(nlev+1)
-          write(6,*) 'PLEV     =',z1c(nlev+1)
-          write(6,*) 'DIFF     =',z2c(nlev+1)-z1c(nlev+1)
-          abort=.true.
-        endif
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        !! quadratic splies with UK met office monotonicity constraints  !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-        zkr  = 99
-        ilev = 2
-        zkr(1) = 1
-        zkr(nlev+1) = nlev
-        kloop: do k = 2,nlev
-          do jk = ilev,nlev+1
-            if (z1c(jk).ge.z2c(k)) then
-              ilev      = jk
-              zkr(k)   = jk-1
-              cycle kloop
-            endif
-          enddo
-        enddo kloop
-
-        zgam  = (z2c(1:nlev+1)-z1c(zkr)) / (z1c(zkr+1)-z1c(zkr))
-        zgam(1)      = 0.0_r8
-        zgam(nlev+1) = 1.0_r8
-        zhdp = z1c(2:nlev+1)-z1c(1:nlev)
-
-
-        h = 1/zhdp
-        zarg = Qcol * h
-        rhs = 0
-        lower_diag = 0
-        diag = 0
-        upper_diag = 0
-
-        rhs(1)=3*zarg(1)
-        rhs(2:nlev) = 3*(zarg(2:nlev)*h(2:nlev) + zarg(1:nlev-1)*h(1:nlev-1))
-        rhs(nlev+1)=3*zarg(nlev)
-
-        lower_diag(1)=1
-        lower_diag(2:nlev) = h(1:nlev-1)
-        lower_diag(nlev+1)=1
-
-        diag(1)=2
-        diag(2:nlev) = 2*(h(2:nlev) + h(1:nlev-1))
-        diag(nlev+1)=2
-
-        upper_diag(1)=1
-        upper_diag(2:nlev) = h(2:nlev)
-        upper_diag(nlev+1)=0
-
-        q_diag(1)=-upper_diag(1)/diag(1)
-        rhs(1)= rhs(1)/diag(1)
-
-        do k=2,nlev+1
-          tmp_cal    =  1/(diag(k)+lower_diag(k)*q_diag(k-1))
-          q_diag(k) = -upper_diag(k)*tmp_cal
-          rhs(k) =  (rhs(k)-lower_diag(k)*rhs(k-1))*tmp_cal
-        enddo
-        do k=nlev,1,-1
-          rhs(k)=rhs(k)+q_diag(k)*rhs(k+1)
-        enddo
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        !!  monotonicity modifications  !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-        filter_code = 0
-        dy(1:nlev-1) = zarg(2:nlev)-zarg(1:nlev-1)
-        dy(nlev) = dy(nlev-1)
-
-        dy = merge(zero, dy, abs(dy) < tiny )
-
-        do k=1,nlev
-          im1=MAX(1,k-1)
-          im2=MAX(1,k-2)
-          im3=MAX(1,k-3)
-          ip1=MIN(nlev,k+1)
-          t1 = merge(1,0,(zarg(k)-rhs(k))*(rhs(k)-zarg(im1)) >= 0)
-          t2 = merge(1,0,dy(im2)*(rhs(k)-zarg(im1)) > 0 .AND. dy(im2)*dy(im3) > 0 &
-               .AND. dy(k)*dy(ip1) > 0 .AND. dy(im2)*dy(k) < 0 )
-          t3 = merge(1,0,ABS(rhs(k)-zarg(im1)) > ABS(rhs(k)-zarg(k)))
-
-          filter_code(k) = merge(0,1,t1+t2 > 0)
-          rhs(k) = (1-filter_code(k))*rhs(k)+filter_code(k)*(t3*zarg(k)+(1-t3)*zarg(im1))
-          filter_code(im1) = MAX(filter_code(im1),filter_code(k))
-        enddo
-
-        rhs = merge(qmax,rhs,rhs > qmax)
-        rhs = merge(zero,rhs,rhs < zero)
-
-        za0 = rhs(1:nlev)
-        za1 = -4*rhs(1:nlev) - 2*rhs(2:nlev+1) + 6*zarg
-        za2 =  3*rhs(1:nlev) + 3*rhs(2:nlev+1) - 6*zarg
-
-        dy(1:nlev) = rhs(2:nlev+1)-rhs(1:nlev)
-        dy = merge(zero, dy, abs(dy) < tiny )
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        !! Compute the 3 quadratic spline coeffients {za0, za1, za2}                 !!
-        !! knowing the quadratic spline parameters {rho_left,rho_right,zarg}         !!
-        !! Zerroukat et.al., Q.J.R. Meteorol. Soc., Vol. 128, pp. 2801-2820 (2002).   !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
-        h = rhs(2:nlev+1)
-
-        do k=1,nlev
-          xm_d = merge(one,2*za2(k),abs(za2(k)) < tiny)
-          xm = merge(zero,-za1(k)/xm_d, abs(za2(k)) < tiny)
-          f_xm = za0(k) + za1(k)*xm + za2(k)*xm**2
-
-          t1 = merge(1,0,ABS(za2(k)) > tiny)
-          t2 = merge(1,0,xm <= zero .OR. xm >= 1)
-          t3 = merge(1,0,za2(k) > zero)
-          t4 = merge(1,0,za2(k) < zero)
-          tm = merge(1,0,t1*((1-t2)+t3) .EQ. 2)
-          tp = merge(1,0,t1*((1-t2)+(1-t3)+t4) .EQ. 3)
-
-          peaks=0
-          peaks = merge(-1,peaks,tm .EQ. 1)
-          peaks = merge(+1,peaks,tp .EQ. 1)
-          peaks_min = merge(f_xm,MIN(za0(k),za0(k)+za1(k)+za2(k)),tm .EQ. 1)
-          peaks_max = merge(f_xm,MAX(za0(k),za0(k)+za1(k)+za2(k)),tp .EQ. 1)
-
-          im1=MAX(1,k-1)
-          im2=MAX(1,k-2)
-          ip1=MIN(nlev,k+1)
-          ip2=MIN(nlev,k+2)
-
-          t1 = merge(abs(peaks),0,(dy(im2)*dy(im1) <= tiny) .OR. &
-               (dy(ip1)*dy(ip2) <= tiny) .OR. (dy(im1)*dy(ip1) >= tiny) .OR. &
-               (dy(im1)*float(peaks) <= tiny))
-
-          filter_code(k) = merge(1,t1+(1-t1)*filter_code(k),(rhs(k) >= qmax) .OR. &
-               (rhs(k) <= zero) .OR. (peaks_max > qmax) .OR. (peaks_min < tiny))
-
-          if (filter_code(k) > 0) then
-            level1 = rhs(k)
-            level2 = (2*rhs(k)+h(k))/3
-            level4 = (1/3_r8)*rhs(k)+2*(1/3_r8)*h(k)
-            level5 = h(k)
-
-            t1 = merge(1,0,h(k) >= rhs(k))
-            t2 = merge(1,0,zarg(k) <= level1 .OR.  zarg(k) >= level5)
-            t3 = merge(1,0,zarg(k) >  level1 .AND. zarg(k) <  level2)
-            t4 = merge(1,0,zarg(k) >  level4 .AND. zarg(k) <  level5)
-
-            lt1 = t1*t2
-            lt2 = t1*(1-t2+t3)
-            lt3 = t1*(1-t2+1-t3+t4)
-
-            za0(k) = merge(zarg(k),za0(k),lt1 .EQ. 1)
-            za1(k) = merge(zero,za1(k),lt1 .EQ. 1)
-            za2(k) = merge(zero,za2(k),lt1 .EQ. 1)
-
-            za0(k) = merge(rhs(k),za0(k),lt2 .EQ. 2)
-            za1(k) = merge(zero,za1(k),lt2 .EQ. 2)
-            za2(k) = merge(3*(zarg(k)-rhs(k)),za2(k),lt2 .EQ. 2)
-
-            za0(k) = merge(-2*h(k)+3*zarg(k),za0(k),lt3 .EQ. 3)
-            za1(k) = merge(+6*h(k)-6*zarg(k),za1(k),lt3 .EQ. 3)
-            za2(k) = merge(-3*h(k)+3*zarg(k),za2(k),lt3 .EQ. 3)
-
-            t2 = merge(1,0,zarg(k) >= level1 .OR.  zarg(k) <= level5)
-            t3 = merge(1,0,zarg(k) <  level1 .AND. zarg(k) >  level2)
-            t4 = merge(1,0,zarg(k) <  level4 .AND. zarg(k) >  level5)
-
-            lt1 = (1-t1)*t2
-            lt2 = (1-t1)*(1-t2+t3)
-            lt3 = (1-t1)*(1-t2+1-t3+t4)
-
-            za0(k) = merge(zarg(k),za0(k),lt1 .EQ. 1)
-            za1(k) = merge(zero,za1(k),lt1 .EQ. 1)
-            za2(k) = merge(zero,za2(k),lt1 .EQ. 1)
-
-            za0(k) = merge(rhs(k),za0(k),lt2 .EQ. 2)
-            za1(k) = merge(zero,za1(k),lt2 .EQ. 2)
-            za2(k) = merge(3*(zarg(k)-rhs(k)),za2(k),lt2 .EQ. 2)
-
-            za0(k) = merge(-2*h(k)+3*zarg(k),za0(k),lt3 .EQ. 3)
-            za1(k) = merge(+6*h(k)-6*zarg(k),za1(k),lt3 .EQ. 3)
-            za2(k) = merge(-3*h(k)+3*zarg(k),za2(k),lt3 .EQ. 3)
-          endif
-        enddo
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        !! start iteration from top to bottom of atmosphere !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-        zv1 = 0
-        do k=1,nlev
-          if (zgam(k+1)>1_r8) then
-            WRITE(*,*) 'r not in [0:1]', zgam(k+1)
-            abort=.true.
-          endif
-          zv2 = zv(zkr(k+1))+(za0(zkr(k+1))*zgam(k+1)+(za1(zkr(k+1))/2)*(zgam(k+1)**2)+ &
-               (za2(zkr(k+1))/3)*(zgam(k+1)**3))*zhdp(zkr(k+1))
-          Qdp(i,j,k,q) = (zv2 - zv1) ! / (z2c(k+1)-z2c(k) ) dont convert back to mixing ratio
-          zv1 = zv2
-        enddo
-      enddo
-    enddo
-  enddo ! q loop
-  if (abort) then
-    call endrun('Bad levels in remap1.  usually CFL violatioin')
-  end if
-
 end subroutine remap1
 
 subroutine remap1_nofilter(Qdp,nx,qsize,dp1,dp2)
@@ -471,7 +237,8 @@ subroutine remap_Q_ppm(Qdp,nx,qstart,qstop,qsize,dp1,dp2)
   !
   ! output: remaped Qdp, conserving mass
   !
-  use control_mod, only        : vert_remap_q_alg
+  use control_mod, only : vert_remap_q_alg
+
   implicit none
   integer,intent(in) :: nx,qstart,qstop,qsize
   real (kind=r8), intent(inout) :: Qdp(nx,nx,nlev,qsize)
@@ -526,6 +293,7 @@ subroutine remap_Q_ppm(Qdp,nx,qstart,qstop,qsize,dp1,dp2)
         !Find the index of the old grid cell in which this new cell's bottom interface resides.
         do while ( pio(kk) <= pin(k+1) )
           kk = kk + 1
+          if(kk==nlev+2) exit
         enddo
         kk = kk - 1                   !kk is now the cell index we're integrating over.
         if (kk == nlev+1) kk = nlev   !This is to keep the indices in bounds.
@@ -585,7 +353,8 @@ end subroutine remap_Q_ppm
 
 !THis compute grid-based coefficients from Collela & Woodward 1984.
 function compute_ppm_grids( dx )   result(rslt)
-  use control_mod, only: vert_remap_q_alg
+  use control_mod,    only: vert_remap_q_alg
+  use dimensions_mod, only: ksponge_end
   implicit none
   real(kind=r8), intent(in) :: dx(-1:nlev+2)  !grid spacings
   real(kind=r8)             :: rslt(10,0:nlev+1)  !grid spacings
@@ -597,7 +366,7 @@ function compute_ppm_grids( dx )   result(rslt)
     indB = 2
     indE = nlev-1
   else
-    indB = 0
+    indB = MAX(ksponge_end-1,2)
     indE = nlev+1
   endif
   do j = indB , indE
@@ -611,7 +380,7 @@ function compute_ppm_grids( dx )   result(rslt)
     indB = 2
     indE = nlev-2
   else
-    indB = 0
+    indB = MAX(ksponge_end-1,2)
     indE = nlev
   endif
   do j = indB , indE
@@ -632,6 +401,7 @@ end function compute_ppm_grids
 !This computes a limited parabolic interpolant using a net 5-cell stencil, but the stages of computation are broken up into 3 stages
 function compute_ppm( a , dx )    result(coefs)
   use control_mod, only: vert_remap_q_alg
+  use dimensions_mod, only: ksponge_end
   implicit none
   real(kind=r8), intent(in) :: a    (    -1:nlev+2)  !Cell-mean values
   real(kind=r8), intent(in) :: dx   (10,  0:nlev+1)  !grid spacings
@@ -641,7 +411,7 @@ function compute_ppm( a , dx )    result(coefs)
   real(kind=r8) :: da                                !Ditto
   ! Hold expressions based on the grid (which are cumbersome).
   real(kind=r8) :: al, ar                            !Left and right interface values for cell-local limiting
-  integer :: j
+  integer :: j,k
   integer :: indB, indE
 
   ! Stage 1: Compute dma for each cell, allowing a 1-cell ghost stencil below and above the domain
@@ -649,7 +419,7 @@ function compute_ppm( a , dx )    result(coefs)
     indB = 2
     indE = nlev-1
   else
-    indB = 2
+    indB = MAX(ksponge_end-1,2)
     indE = nlev+1
   endif
   do j = indB , indE
@@ -663,7 +433,7 @@ function compute_ppm( a , dx )    result(coefs)
     indB = 2
     indE = nlev-2
   else
-    indB = 2
+    indB = MAX(ksponge_end-1,2)
     indE = nlev
   endif
   do j = indB , indE
@@ -677,7 +447,7 @@ function compute_ppm( a , dx )    result(coefs)
     indB = 3
     indE = nlev-2
   else
-    indB = 3
+    indB = MAX(ksponge_end,3)
     indE = nlev
   endif
   do j = indB , indE
@@ -698,11 +468,16 @@ function compute_ppm( a , dx )    result(coefs)
   !If we're not using a mirrored boundary condition, then make the two cells bordering the top and bottom
   !material boundaries piecewise constant. Zeroing out the first and second moments, and setting the zeroth
   !moment to the cell mean is sufficient to maintain conservation.
-  coefs(0,1:2) = a(1:2)  !always reduce to PCoM at model top
-  coefs(1:2,1:2) = 0._r8 !always reduce to PCoM at model top
+
+  do k=1,MAX(ksponge_end,2)
+     coefs(0,k)   = a(k)  !always reduce to PCoM in sponge layers
+     coefs(1:2,k) = 0._r8 !always reduce to PCoM in sponge layers
+  end do
   if (vert_remap_q_alg == 2) then
-    coefs(0,nlev-1:nlev) = a(nlev-1:nlev)
-    coefs(1:2,nlev-1:nlev) = 0._R8
+    coefs(0  ,1:2        ) = a(1:2)
+    coefs(1:2,1:2        ) = 0.0_r8
+    coefs(0  ,nlev-1:nlev) = a(nlev-1:nlev)
+    coefs(1:2,nlev-1:nlev) = 0.0_r8
   endif
 end function compute_ppm
 

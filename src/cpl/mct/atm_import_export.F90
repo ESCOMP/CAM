@@ -7,7 +7,7 @@ module atm_import_export
 
   implicit none
 
-  integer     ,parameter :: debug = 1 ! internal debug level
+  integer     ,parameter :: debug = 0 ! internal debug level
   character(*),parameter :: F01 = "('(cam_import_export) ',a, i8,2x,i8,2x,d21.14)"
 
 contains

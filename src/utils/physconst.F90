@@ -38,7 +38,11 @@ real(r8), public, parameter :: karman      = shr_const_karman     ! Von Karman c
 real(r8), public, parameter :: latice      = shr_const_latice     ! Latent heat of fusion (J/kg)
 real(r8), public, parameter :: latvap      = shr_const_latvap     ! Latent heat of vaporization (J/kg)
 real(r8), public, parameter :: pi          = shr_const_pi         ! 3.14...
+#ifdef planet_mars
+real(r8), public, parameter :: pstd        = 6.0E1_r8             ! Standard pressure (Pascals)
+#else
 real(r8), public, parameter :: pstd        = shr_const_pstd       ! Standard pressure (Pascals)
+#endif
 real(r8), public, parameter :: r_universal = shr_const_rgas       ! Universal gas constant (J/K/kmol)
 real(r8), public, parameter :: rhoh2o      = shr_const_rhofw      ! Density of liquid water (STP)
 real(r8), public, parameter :: spval       = shr_const_spval      !special value

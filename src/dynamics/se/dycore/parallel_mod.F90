@@ -2,7 +2,7 @@ module parallel_mod
   ! ---------------------------
   use shr_kind_mod,   only: r8=>shr_kind_r8
   ! ---------------------------
-  use dimensions_mod, only : nmpi_per_node, nlev, qsize_d
+  use dimensions_mod, only : nmpi_per_node, nlev, qsize_d, ntrac_d
   ! ---------------------------
   use spmd_utils,     only: MPI_STATUS_SIZE, MPI_MAX_ERROR_STRING, MPI_TAG_UB
 
@@ -21,7 +21,7 @@ module parallel_mod
   integer,  public, parameter   :: HME_BNDRY_A2A   = 3
   integer,  public, parameter   :: HME_BNDRY_A2AO  = 4
 
-  integer,  public, parameter   :: nrepro_vars = MAX(10, nlev*qsize_d)
+  integer,  public, parameter   :: nrepro_vars = MAX(10, nlev*qsize_d, nlev*ntrac_d)
 
   integer,  public              :: MaxNumberFrames
   integer,  public              :: numframes

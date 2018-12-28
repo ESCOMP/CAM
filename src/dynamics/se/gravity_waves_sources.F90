@@ -39,7 +39,7 @@ CONTAINS
     type(element_t), pointer :: elem(:)
 
     ! Set up variables similar to dyn_comp and prim_driver_mod initializations
-    call initEdgeBuffer(par, edge3, elem, 3*nlev,nthreads=horz_num_threads)
+    call initEdgeBuffer(par, edge3, elem, 3*nlev,nthreads=1)
 
     psurf_ref = hypi(plev+1)
 
@@ -68,9 +68,9 @@ CONTAINS
 
     ! This does not need to be a thread private data-structure
     call derivinit(deriv)
-    !$OMP PARALLEL NUM_THREADS(horz_num_threads),  DEFAULT(SHARED), PRIVATE(nets,nete,hybrid,ie,ncols,frontgf_thr,frontga_thr)
-    hybrid = config_thread_region(par,'horizontal')
-!JMD    hybrid = config_thread_region(par,'serial')
+    !!$OMP PARALLEL NUM_THREADS(horz_num_threads),  DEFAULT(SHARED), PRIVATE(nets,nete,hybrid,ie,ncols,frontgf_thr,frontga_thr)
+!    hybrid = config_thread_region(par,'horizontal')
+    hybrid = config_thread_region(par,'serial')
     call get_loop_ranges(hybrid,ibeg=nets,iend=nete)
 
     allocate(frontgf_thr(nphys,nphys,nlev,nets:nete))
@@ -90,7 +90,7 @@ CONTAINS
     end if
     deallocate(frontga_thr)
     deallocate(frontgf_thr)
-    !$OMP END PARALLEL
+    !!$OMP END PARALLEL
 
   end subroutine gws_src_fnct
 
