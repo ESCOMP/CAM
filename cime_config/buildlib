@@ -28,14 +28,9 @@ def _build_cam():
 
     caseroot, libroot, bldroot = parse_input(sys.argv)
 
-    with Case(caseroot) as case:
+    with Case(caseroot, read_only=False) as case:
 
-        casetools = case.get_value("CASETOOLS")
         srcroot = case.get_value("SRCROOT")
-        gmake_j = case.get_value("GMAKE_J")
-        gmake = case.get_value("GMAKE")
-        mach = case.get_value("MACH")
-
         #-------------------------------------------------------
         # Call cam's buildcpp
         #-------------------------------------------------------
@@ -51,6 +46,14 @@ def _build_cam():
             cam_cppdefs = mod.buildcpp(case)
         except:
             raise
+
+    with Case(caseroot) as case:
+
+        casetools = case.get_value("CASETOOLS")
+        srcroot = case.get_value("SRCROOT")
+        gmake_j = case.get_value("GMAKE_J")
+        gmake = case.get_value("GMAKE")
+        mach = case.get_value("MACH")
 
         #-------------------------------------------------------
         # Filepath is created in caseroot/camconf by the call
