@@ -7,7 +7,7 @@ module chemistry
   use shr_kind_mod,     only : r8 => shr_kind_r8, shr_kind_cl
   use ppgrid,           only : pcols, pver, begchunk, endchunk
   use physconst,        only : gravit
-  use constituents,     only : pcnst, cnst_add, cnst_name, cnst_fixed_ubc, cnst_type
+  use constituents,     only : pcnst, cnst_add, cnst_name, cnst_fixed_ubc
   use chem_mods,        only : gas_pcnst
   use cam_history,      only : fieldname_len
   use physics_types,    only : physics_state, physics_ptend, physics_ptend_init
@@ -852,12 +852,6 @@ end function chem_is_active
              endif
           endif
   
-          ! this is moved out of chem_register because we need to know where (what pressure) 
-          ! the upper boundary is to determine if this is a high top configuration -- after
-          ! initialization of ref_pres ...
-          if ( do_molec_diff ) then ! molecular diffusion requires 'wet' mixing ratios
-             cnst_type(n) = 'wet'
-          endif
        endif
     end do
 

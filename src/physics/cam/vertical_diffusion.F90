@@ -444,7 +444,7 @@ subroutine vertical_diffusion_init(pbuf2d)
         enddo
      end if
 
-     if( cnst_get_type_byind(k) .eq. 'wet' ) then
+     if (cnst_get_type_byind(k) .eq. 'wet' .or. do_molec_diff) then
         if( vdiff_select( fieldlist_wet, 'q', k ) .ne. '' ) call endrun( vdiff_select( fieldlist_wet, 'q', k ) )
      else
         if( vdiff_select( fieldlist_dry, 'q', k ) .ne. '' ) call endrun( vdiff_select( fieldlist_dry, 'q', k ) )
@@ -653,6 +653,8 @@ subroutine vertical_diffusion_tend( &
   !---------------------------------------------------- !
   use physics_buffer,     only : physics_buffer_desc, pbuf_get_field, pbuf_set_field
   use physics_types,      only : physics_state, physics_ptend, physics_ptend_init
+  use physics_types,      only : set_dry_to_wet, set_wet_to_dry
+  
   use camsrfexch,         only : cam_in_t
   use cam_history,        only : outfld
 
@@ -677,7 +679,7 @@ subroutine vertical_diffusion_tend( &
   ! Input Arguments !
   ! --------------- !
 
-  type(physics_state), intent(in)    :: state                     ! Physics state variables
+  type(physics_state), intent(inout) :: state                     ! Physics state variables
   type(cam_in_t),      intent(in)    :: cam_in                    ! Surface inputs
 
   real(r8),            intent(in)    :: ztodt                     ! 2 delta-t [ s ]
@@ -845,6 +847,11 @@ subroutine vertical_diffusion_tend( &
   ! Main Computation Begins !
   ! ----------------------- !
 
+  ! molecular diffusion requires 'wet' mixing ratios
+  if (do_molec_diff) then
+     call set_dry_to_wet(state)
+  end if
+  
   rztodt = 1._r8 / ztodt
   lchnk  = state%lchnk
   ncol   = state%ncol
@@ -1339,6 +1346,11 @@ subroutine vertical_diffusion_tend( &
      tten(:ncol,:pver)        = ( t_aftPBL(:ncol,:pver)    - state%t(:ncol,:pver) )              * rztodt
      rhten(:ncol,:pver)       = ( ftem_aftPBL(:ncol,:pver) - ftem_prePBL(:ncol,:pver) )          * rztodt
 
+  end if
+
+  ! convert wet mmr back to dry before conservation check
+  if (do_molec_diff) then
+     call set_wet_to_dry(state)
   end if
 
   ! -------------------------------------------------------------- !
