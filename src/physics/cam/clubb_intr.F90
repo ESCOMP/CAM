@@ -1027,18 +1027,18 @@ end subroutine clubb_init_cnst
 
    use physics_types,  only: physics_state, physics_ptend, &
                              physics_state_copy, physics_ptend_init, &
-                             physics_ptend_sum, physics_update
+                             physics_ptend_sum, physics_update, set_dry_to_wet
 
    use physics_buffer, only: pbuf_get_index, pbuf_old_tim_idx, pbuf_get_field, &
                              physics_buffer_desc
 
-   use constituents,   only: cnst_get_ind
+   use constituents,   only: cnst_get_ind, cnst_type
    use camsrfexch,     only: cam_in_t
    use time_manager,   only: is_first_step   
    use cam_abortutils, only: endrun
    use cam_logfile,    only: iulog
    use tropopause,     only: tropopause_findChemTrop
-      
+
 #ifdef CLUBB_SGS
    use hb_diff,                   only: pblintd
    use scamMOD,                   only: single_column,scm_clubb_iop_name
@@ -1368,13 +1368,15 @@ end subroutine clubb_init_cnst
    call cnst_get_ind('NUMLIQ',ixnumliq)
    call cnst_get_ind('NUMICE',ixnumice)
 
- !  Copy the state to state1 array to use in this routine
-
    !  Initialize physics tendency arrays, copy the state to state1 array to use in this routine
    call physics_ptend_init(ptend_loc,state%psetcols, 'clubb', ls=.true., lu=.true., lv=.true., lq=lq)
    call physics_ptend_init(ptend_all, state%psetcols, 'clubb')
 
-   call physics_state_copy(state,state1)
+   ! Copy the state to state1 array to use in this routine
+   call physics_state_copy(state, state1)
+
+   ! constituents are all treated as wet mmr by clubb
+   call set_dry_to_wet(state1)
 
    if (clubb_do_liqsupersat) then
       npccn_idx      = pbuf_get_index('NPCCN')
@@ -2388,6 +2390,18 @@ end subroutine clubb_init_cnst
   
    call physics_ptend_sum(ptend_loc,ptend_all,ncol)
    call physics_update(state1,ptend_loc,hdtime)
+
+   ! ptend_all now has all accumulated tendencies.  Convert the tendencies for the
+   ! dry constituents to dry air basis.
+   do ixind = 1, pcnst
+      if (lq(ixind) .and. cnst_type(ixind).eq.'dry') then
+         do k = 1, pver
+            do i = 1, ncol
+               ptend_all%q(i,k,ixind) = ptend_all%q(i,k,ixind)*state1%pdel(i,k)/state1%pdeldry(i,k)
+            end do
+         end do
+      end if
+   end do
 
    ! ------------------------------------------------- !
    ! Diagnose relative cloud water variance            !
