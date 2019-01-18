@@ -1168,7 +1168,7 @@ end subroutine handle_pio_error
 
 !==========================================================================
 
-subroutine gw_tend(state_in, pbuf, dt, ptend, cam_in, flx_heat)
+subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   !-----------------------------------------------------------------------
   ! Interface for multiple gravity wave drag parameterization.
   !-----------------------------------------------------------------------
@@ -1188,7 +1188,7 @@ subroutine gw_tend(state_in, pbuf, dt, ptend, cam_in, flx_heat)
   use gw_convect, only: gw_beres_src
 
   !------------------------------Arguments--------------------------------
-  type(physics_state), intent(in) :: state_in   ! physics state structure
+  type(physics_state), intent(in) :: state   ! physics state structure
   type(physics_buffer_desc), pointer :: pbuf(:) ! Physics buffer
   real(r8), intent(in) :: dt                    ! time step
   ! Parameterization net tendencies.
@@ -1198,7 +1198,7 @@ subroutine gw_tend(state_in, pbuf, dt, ptend, cam_in, flx_heat)
 
   !---------------------------Local storage-------------------------------
 
-  type(physics_state) :: state      ! Local copy of state variable
+  type(physics_state) :: state1     ! Local copy of state variable
 
   integer :: lchnk                  ! chunk identifier
   integer :: ncol                   ! number of atmospheric columns
@@ -1334,28 +1334,28 @@ subroutine gw_tend(state_in, pbuf, dt, ptend, cam_in, flx_heat)
   real(r8) :: zi(state%ncol,pver+1)
   !------------------------------------------------------------------------
 
-  ! Make local copy of state_in.
-  call physics_state_copy(state_in, state)
+  ! Make local copy of input state.
+  call physics_state_copy(state, state1)
 
   ! constituents are all treated as wet mmr
-  call set_dry_to_wet(state)
+  call set_dry_to_wet(state1)
 
-  lchnk = state%lchnk
-  ncol  = state%ncol
+  lchnk = state1%lchnk
+  ncol  = state1%ncol
 
-  p = Coords1D(state%pint(:ncol,:))
+  p = Coords1D(state1%pint(:ncol,:))
 
-  dse = state%s(:ncol,:)
-  t = state%t(:ncol,:)
-  u = state%u(:ncol,:)
-  v = state%v(:ncol,:)
-  q = state%q(:ncol,:,:)
-  piln = state%lnpint(:ncol,:)
-  zm = state%zm(:ncol,:)
-  zi = state%zi(:ncol,:)
+  dse = state1%s(:ncol,:)
+  t = state1%t(:ncol,:)
+  u = state1%u(:ncol,:)
+  v = state1%v(:ncol,:)
+  q = state1%q(:ncol,:,:)
+  piln = state1%lnpint(:ncol,:)
+  zm = state1%zm(:ncol,:)
+  zi = state1%zi(:ncol,:)
 
   lq = .true.
-  call physics_ptend_init(ptend, state%psetcols, "Gravity wave drag", &
+  call physics_ptend_init(ptend, state1%psetcols, "Gravity wave drag", &
        ls=.true., lu=.true., lv=.true., lq=lq)
 
   ! Profiles of background state variables
@@ -1389,7 +1389,7 @@ subroutine gw_tend(state_in, pbuf, dt, ptend, cam_in, flx_heat)
   end if
 
   if (use_gw_front_igw) then
-     u_coriolis = coriolis_speed(band_long, state%lat(:ncol))
+     u_coriolis = coriolis_speed(band_long, state1%lat(:ncol))
   end if
 
   ! Totals that accumulate over different sources.
@@ -1411,7 +1411,7 @@ subroutine gw_tend(state_in, pbuf, dt, ptend, cam_in, flx_heat)
 
      ! Efficiency of gravity wave momentum transfer.
      ! This is really only to remove the pole points.
-     where (pi/2._r8 - abs(state%lat(:ncol)) >= 4*epsilon(1._r8))
+     where (pi/2._r8 - abs(state1%lat(:ncol)) >= 4*epsilon(1._r8))
         effgw = effgw_beres_dp
      elsewhere
         effgw = 0._r8
@@ -1496,7 +1496,7 @@ subroutine gw_tend(state_in, pbuf, dt, ptend, cam_in, flx_heat)
 
      ! Efficiency of gravity wave momentum transfer.
      ! This is really only to remove the pole points.
-     where (pi/2._r8 - abs(state%lat(:ncol)) >= 4*epsilon(1._r8))
+     where (pi/2._r8 - abs(state1%lat(:ncol)) >= 4*epsilon(1._r8))
         effgw = effgw_beres_sh
      elsewhere
         effgw = 0._r8
@@ -1586,7 +1586,7 @@ subroutine gw_tend(state_in, pbuf, dt, ptend, cam_in, flx_heat)
      effgw = effgw_cm
      ! Frontogenesis is too high at the poles (at least for the FV
      ! dycore), so introduce a polar taper.
-     if (gw_polar_taper) effgw = effgw * cos(state%lat(:ncol))
+     if (gw_polar_taper) effgw = effgw * cos(state1%lat(:ncol))
 
      ! Determine the wave source for C&M background spectrum
      call gw_cm_src(ncol, band_mid, cm_desc, u, v, frontgf(:ncol,:), &
@@ -1663,10 +1663,10 @@ subroutine gw_tend(state_in, pbuf, dt, ptend, cam_in, flx_heat)
      ! Frontogenesis is too high at the poles (at least for the FV
      ! dycore), so introduce a polar taper.
      if (gw_polar_taper) then
-        where (abs(state%lat(:ncol)) <= 89._r8*degree2radian)
+        where (abs(state1%lat(:ncol)) <= 89._r8*degree2radian)
            effgw = effgw * 0.25_r8 * &
-                 (1._r8+tanh((state%lat(:ncol)+al0)/dlat0)) * &
-                 (1._r8-tanh((state%lat(:ncol)-al0)/dlat0))
+                 (1._r8+tanh((state1%lat(:ncol)+al0)/dlat0)) * &
+                 (1._r8-tanh((state1%lat(:ncol)-al0)/dlat0))
         elsewhere
            effgw = 0._r8
         end where
@@ -1769,7 +1769,7 @@ subroutine gw_tend(state_in, pbuf, dt, ptend, cam_in, flx_heat)
              src_level, tend_level, tau, ubm, ubi, xv, yv, c)
      endif
      do i = 1, ncol
-        if (state%lat(i) < 0._r8) then
+        if (state1%lat(i) < 0._r8) then
            tau(i,:,:) = tau(i,:,:) * gw_oro_south_fac
         end if
      end do
@@ -1903,7 +1903,7 @@ subroutine gw_tend(state_in, pbuf, dt, ptend, cam_in, flx_heat)
      if (cnst_type(m).eq.'dry') then
         do k = 1, pver
            do i = 1, ncol
-              ptend%q(i,k,m) = ptend%q(i,k,m)*state%pdel(i,k)/state%pdeldry(i,k)
+              ptend%q(i,k,m) = ptend%q(i,k,m)*state1%pdel(i,k)/state1%pdeldry(i,k)
            end do
         end do
      end if
