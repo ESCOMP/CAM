@@ -1168,10 +1168,13 @@ end subroutine handle_pio_error
 
 !==========================================================================
 
-subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
+subroutine gw_tend(state_in, pbuf, dt, ptend, cam_in, flx_heat)
   !-----------------------------------------------------------------------
   ! Interface for multiple gravity wave drag parameterization.
   !-----------------------------------------------------------------------
+
+  use physics_types,  only: physics_state_copy, set_dry_to_wet
+  use constituents,   only: cnst_type
   use physics_buffer, only: physics_buffer_desc, pbuf_get_field
   use camsrfexch, only: cam_in_t
   ! Location-dependent cpair
@@ -1183,8 +1186,9 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   use gw_oro,     only: gw_oro_src
   use gw_front,   only: gw_cm_src
   use gw_convect, only: gw_beres_src
+
   !------------------------------Arguments--------------------------------
-  type(physics_state), intent(in) :: state      ! physics state structure
+  type(physics_state), intent(in) :: state_in   ! physics state structure
   type(physics_buffer_desc), pointer :: pbuf(:) ! Physics buffer
   real(r8), intent(in) :: dt                    ! time step
   ! Parameterization net tendencies.
@@ -1193,6 +1197,9 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   real(r8), intent(out) :: flx_heat(pcols)
 
   !---------------------------Local storage-------------------------------
+
+  type(physics_state) :: state      ! Local copy of state variable
+
   integer :: lchnk                  ! chunk identifier
   integer :: ncol                   ! number of atmospheric columns
 
@@ -1325,8 +1332,13 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   real(r8) :: piln(state%ncol,pver+1)
   real(r8) :: zm(state%ncol,pver)
   real(r8) :: zi(state%ncol,pver+1)
-
   !------------------------------------------------------------------------
+
+  ! Make local copy of state_in.
+  call physics_state_copy(state_in, state)
+
+  ! constituents are all treated as wet mmr
+  call set_dry_to_wet(state)
 
   lchnk = state%lchnk
   ncol  = state%ncol
@@ -1884,6 +1896,18 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
         ptend, flx_heat)
 
   endif
+
+  ! ptend now has all accumulated tendencies.  Convert the tendencies for the
+  ! dry constituents to dry air basis.
+  do m = 1, pcnst
+     if (cnst_type(m).eq.'dry') then
+        do k = 1, pver
+           do i = 1, ncol
+              ptend%q(i,k,m) = ptend%q(i,k,m)*state%pdel(i,k)/state%pdeldry(i,k)
+           end do
+        end do
+     end if
+  end do
 
   ! Write totals to history file.
   call outfld('EKGW', egwdffi_tot , ncol, lchnk)
