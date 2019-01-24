@@ -20,7 +20,7 @@ use physconst,          only: zvir, cappa
 
 use physics_types,      only: physics_state, physics_tend
 
-use dyn_comp,           only: dyn_import_t, dyn_export_t
+use dyn_comp,           only: dyn_import_t, dyn_export_t, initial_mr
 use dynamics_vars,      only: t_fvdycore_state, t_fvdycore_grid
 use dyn_internal_state, only: get_dyn_state, get_dyn_state_grid
 
@@ -55,7 +55,7 @@ contains
 
 subroutine stepon_init(dyn_in, dyn_out)
 
-   use constituents, only: pcnst, cnst_get_type_byind
+   use constituents, only: pcnst
    use time_manager, only: get_step_size
    use physconst,    only: physconst_calc_kappav, rair, cpair
    use inic_analytic,      only: analytic_ic_active
@@ -238,7 +238,7 @@ subroutine stepon_init(dyn_in, dyn_out)
          enddo
       enddo
       do m = 1,pcnst
-         if (cnst_get_type_byind(m).eq.'dry') then
+         if (initial_mr(m) == 'dry') then
             do k=1, km
                do j = jfirstxy, jlastxy
                   do i = ifirstxy, ilastxy
@@ -254,7 +254,6 @@ subroutine stepon_init(dyn_in, dyn_out)
       
    end if
 
-!EOC
 end subroutine stepon_init
 
 !=========================================================================================

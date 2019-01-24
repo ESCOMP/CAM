@@ -44,7 +44,7 @@ use shr_kind_mod,       only: r8=>shr_kind_r8
 use spmd_utils,         only: masterproc, iam
 
 use pmgrid,             only: plon, plat
-use constituents,       only: cnst_name, cnst_read_iv, qmin
+use constituents,       only: pcnst, cnst_name, cnst_read_iv, qmin
 
 use time_manager,       only: get_step_size
 
@@ -61,14 +61,14 @@ use phys_control,       only: phys_setopts
 use cam_initfiles,      only: initial_file_get_id, topo_file_get_id, pertlim
 use cam_pio_utils,      only: clean_iodesc_list
 use ncdio_atm,          only: infld
-use pio,                only: pio_inq_varid, pio_get_att
-
+use pio,                only: pio_seterrorhandling, pio_bcast_error, pio_noerr, &
+                              file_desc_t, pio_inq_dimid, pio_inq_dimlen,       &
+                              pio_inq_varid, pio_get_att
 
 use perf_mod,           only: t_startf, t_stopf, t_barrierf
 use cam_logfile,        only: iulog
 use cam_abortutils,     only: endrun
 
-use pio,                only: file_desc_t, pio_inq_dimid, pio_inq_dimlen
 use par_vecsum_mod,     only: par_vecsum
 use te_map_mod,         only: te_map
 
@@ -87,7 +87,8 @@ public :: &
    dyn_state,    &
    frontgf_idx,  &
    frontga_idx,  &
-   uzm_idx
+   uzm_idx,      &
+   initial_mr
 
 type (t_fvdycore_state), target :: dyn_state
 
@@ -137,6 +138,8 @@ logical, parameter         :: convt = .true.
 integer, protected :: frontgf_idx  = -1
 integer, protected :: frontga_idx  = -1
 integer, protected :: uzm_idx = -1
+
+character(len=3), protected :: initial_mr(pcnst) ! constituents initialized with wet or dry mr
 
 logical :: readvar            ! inquiry flag:  true => variable exists on netCDF file
 
@@ -2810,7 +2813,7 @@ subroutine read_inidat(dyn_in)
   use physconst,       only: pi
   use dyn_grid,        only: get_horiz_grid_dim_d
   use commap,          only: clat, clon, clat_staggered, londeg_st
-  use constituents,    only: pcnst
+  use constituents,    only: cnst_type
 
   ! Read initial dataset
 
@@ -2854,6 +2857,14 @@ subroutine read_inidat(dyn_in)
   jlastxy  =  grid%jlastxy
   km       =  grid%km
   ntotq    =  grid%ntotq
+
+  ! Set the array initial_mr assuming that constituents are initialized with mixing ratios
+  ! that are consistent with their declared type in the constituents module.  This array
+  ! may be modified below to provide backwards compatibility for reading old initial files
+  ! that contain wet mixing ratios for all constituents regardless of how they were registered.
+  do i = 1, pcnst
+     initial_mr(i) = cnst_type(i)
+  end do
 
   if (analytic_ic_active()) then
      readvar   = .false.
@@ -3007,9 +3018,11 @@ subroutine process_inidat(fh_ini, grid, dyn_in, fieldname, m_cnst)
 
    real(r8) :: xsum(grid%km)               ! temp array for parallel sums
 
+   integer :: err_handling
    integer :: varid                        ! variable id
    integer :: ret                          ! return values
    character(len=256) :: trunits           ! tracer untis
+   character(len=3)   :: mixing_ratio
 
    character(len=*), parameter :: sub='process_inidat'
    !----------------------------------------------------------------------------
@@ -3097,6 +3110,26 @@ subroutine process_inidat(fh_ini, grid, dyn_in, fieldname, m_cnst)
             call endrun(sub//': ERROR:  Units for tracer ' &
                   //trim(cnst_name(m_cnst))//' must be in KG/KG')
          end if
+
+         ! Check for mixing_ratio attribute.  If present then use it to
+         ! specify whether the initial file contains wet or dry values.  If
+         ! not present then assume the mixing ratio is wet.  This is for
+         ! backwards compatibility with old initial files that were written
+         ! will all wet mixing ratios.
+
+         ! We will handle errors for this routine
+         call pio_seterrorhandling(fh_ini, pio_bcast_error, err_handling)
+
+         ret = pio_get_att(fh_ini, varid, 'mixing_ratio', mixing_ratio)
+         if (ret == pio_noerr) then
+            initial_mr(m_cnst) = mixing_ratio
+         else
+            initial_mr(m_cnst) = 'wet'
+         end if
+
+         ! reset PIO to handle errors as before
+         call pio_seterrorhandling(fh_ini, err_handling)
+        
 
       else if (.not. analytic_ic_active()) then
 

@@ -8,7 +8,7 @@
 ! !USES:
     use shr_kind_mod , only: r8 => shr_kind_r8
     use cam_history  , only: outfld, write_inithist
-    use constituents , only: cnst_name, pcnst
+    use constituents , only: cnst_name, pcnst, cnst_type
     use dynamics_vars, only: T_FVDYCORE_GRID
 
     implicit none
@@ -92,12 +92,23 @@
           enddo
           call outfld ('VS&IC      ', tmp       , idim, j)
 
+          ! The tracers are all wet mixing ratios in the dycore.  If cnst_type is dry
+          ! then need to convert before writing to initial file.
           do m = 1, pcnst
-             do k = 1, km
-                do i = ifirstxy, ilastxy
-                   tmp(i,k) = tracer(i,j,k,m)
+             if (cnst_type(m) == 'dry') then
+                do k = 1, km
+                   do i = ifirstxy, ilastxy
+                      ! convert wet to dry
+                      tmp(i,k) = tracer(i,j,k,m) / (1._r8 - tracer(i,j,k,1))
+                   enddo
                 enddo
-             enddo
+             else
+                do k = 1, km
+                   do i = ifirstxy, ilastxy
+                      tmp(i,k) = tracer(i,j,k,m)
+                   enddo
+                enddo
+             end if
              call outfld(trim(cnst_name(m))//'&IC' , tmp  , idim, j)
           end do
 
@@ -105,6 +116,4 @@
 
     end if
 
-    return
-!EOC
   end subroutine diag_dynvar_ic
