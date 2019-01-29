@@ -1,15 +1,11 @@
 * Comments
-* User-given Tag Description: WACCM_MAD_MAM4_1
-* Tag database identifier : MZ233_WACCM_MAD_MAM4_20181001
+* User-given Tag Description: MAD_MAM4_1
+* Tag database identifier : MZ256_MAD_MAM4_20190128
 * Tag created by : ajc
-* Tag created from branch : WACCM_MAD_MAM4
-* Tag created on : 2018-10-01 13:24:56.175929-06
+* Tag created from branch : MAD_MAM4
+* Tag created on : 2019-01-28 15:49:11.9369-07
 * Comments for this tag follow:
-*     ajc : 2018-10-01 : Update reaction rates to jpl15
-*     Remove H1202
-*     CO2 explicit solve
-*     O1D_N2 cph update
-*     Update Machine Specifications
+*     ajc : 2019-01-28 : add sf6 and Op2P Op2D and N2D
 
       SPECIES
 
@@ -88,6 +84,7 @@
  pom_a1 -> C,
  pom_a4 -> C,
  S -> S,
+ SF6,
  SO -> SO,
  SO2,
  SO3 -> SO3,
@@ -147,6 +144,8 @@
  OHm -> OH,
  Om -> O,
  Op -> O,
+ Op2D -> O,
+ Op2P -> O,
  H2O
 
       End Solution
@@ -211,7 +210,9 @@
  OH,
  OHm,
  Om,
- Op
+ Op,
+ Op2D,
+ Op2P
       End Not-Transported
 
    END Species
@@ -241,6 +242,7 @@
  HCFC142B
  HCFC22
  N2O
+ SF6
       End Explicit
 
       Implicit
@@ -355,6 +357,8 @@
  OHm
  Om
  Op
+ Op2D
+ Op2P
  H2O
       End Implicit
 
@@ -435,6 +439,7 @@
 [jhobr]                       HOBR + hv -> BR + OH 
 [jhocl]                       HOCL + hv -> OH + CL 
 [joclo]                       OCLO + hv -> O + CLO 
+[jsf6]                        SF6 + hv -> sink 
 *********************************
 *** ions
 *********************************
@@ -443,36 +448,36 @@
 [jpni5=userdefined]           CO3m_H2O + hv -> CO3m + H2O 
 [jpni4=userdefined]           CO4m + hv -> CO2 + O2m 
 [jeuv_4=userdefined,userdefined] N + hv -> Np + e 
-[jeuv_25=userdefined,userdefined] N2 + hv -> 1.2*N2D + 0.8*N 
 [jeuv_18=userdefined,userdefined] N2 + hv -> N2p + e 
-[jeuv_13=userdefined,userdefined] N2 + hv -> 1.2*N2D + 0.8*N 
-[jeuv_23=userdefined,userdefined] N2 + hv -> N2D + Np + e 
 [jeuv_11=userdefined,userdefined] N2 + hv -> N2D + Np + e 
-[jeuv_6=userdefined,userdefined] N2 + hv -> N2p + e 
 [jeuv_10=userdefined,userdefined] N2 + hv -> N + Np + e 
 [jeuv_22=userdefined,userdefined] N2 + hv -> N + Np + e 
+[jeuv_23=userdefined,userdefined] N2 + hv -> N2D + Np + e 
+[jeuv_25=userdefined,userdefined] N2 + hv -> 1.2*N2D + 0.8*N 
+[jeuv_13=userdefined,userdefined] N2 + hv -> 1.2*N2D + 0.8*N 
+[jeuv_6=userdefined,userdefined] N2 + hv -> N2p + e 
 [jepn6=userdefined]           NO2m + hv -> NO2 + e 
 [jepn7=userdefined]           NO3m + hv -> NO3 + e 
-[jeuv_16=userdefined,userdefined] O + hv -> Op + e 
 [jeuv_1=userdefined,userdefined] O + hv -> Op + e 
+[jeuv_2=userdefined,userdefined] O + hv -> Op2D + e 
+[jeuv_16=userdefined,userdefined] O + hv -> Op2P + e 
+[jeuv_3=userdefined,userdefined] O + hv -> Op2P + e 
 [jeuv_14=userdefined,userdefined] O + hv -> Op + e 
-[jeuv_15=userdefined,userdefined] O + hv -> Op + e 
-[jeuv_2=userdefined,userdefined] O + hv -> Op + e 
-[jeuv_3=userdefined,userdefined] O + hv -> Op + e 
-[jeuv_21=userdefined,userdefined] O2 + hv -> O + Op + e 
+[jeuv_15=userdefined,userdefined] O + hv -> Op2D + e 
+[jeuv_8=userdefined,userdefined] O2 + hv -> O + Op2D + e 
 [jeuv_17=userdefined,userdefined] O2 + hv -> O2p + e 
-[jeuv_9=userdefined,userdefined] O2 + hv -> O + Op + e 
-[jeuv_24=userdefined,userdefined] O2 + hv -> 2*O 
-[jeuv_19=userdefined,userdefined] O2 + hv -> O + Op + e 
-[jeuv_5=userdefined,userdefined] O2 + hv -> O2p + e 
 [jeuv_7=userdefined,userdefined] O2 + hv -> O + Op + e 
+[jeuv_5=userdefined,userdefined] O2 + hv -> O2p + e 
+[jeuv_19=userdefined,userdefined] O2 + hv -> O + Op + e 
+[jeuv_24=userdefined,userdefined] O2 + hv -> 2*O 
 [jeuv_12=userdefined,userdefined] O2 + hv -> 2*O 
-[jeuv_20=userdefined,userdefined] O2 + hv -> O + Op + e 
-[jeuv_8=userdefined,userdefined] O2 + hv -> O + Op + e 
+[jeuv_21=userdefined,userdefined] O2 + hv -> O + Op2P + e 
+[jeuv_9=userdefined,userdefined] O2 + hv -> O + Op2P + e 
+[jeuv_20=userdefined,userdefined] O2 + hv -> O + Op2D + e 
 [jepn2=userdefined]           O2m + hv -> O2 + e 
 [jppi=userdefined]            O2p_H2O + hv -> H2O + O2p 
-[jepn3=userdefined]           O3m + hv -> O3 + e 
 [jpni1=userdefined]           O3m + hv -> O2 + Om 
+[jepn3=userdefined]           O3m + hv -> O3 + e 
 [jpni2=userdefined]           O4m + hv -> O2 + O2m 
 [jepn4=userdefined]           OHm + hv -> OH + e 
 [jepn1=userdefined]           Om + hv -> O + e 
@@ -1001,6 +1006,9 @@
 *********************************
 *** Ions
 *********************************
+[ag247nm,cph=483.39]   Op2P  -> Op                                              ; 0.047 
+[ag373nm,cph=321.3]    Op2D  -> Op                                              ; 7.7e-05 
+[ag732nm,cph=163.06]   Op2P  -> Op2D                                            ; 0.171 
 [elec1,cph=82.389]     NOp + e  -> 0.2*N + 0.8*N2D + O                           
 [elec2,cph=508.95]     O2p + e  -> 1.15*O + 0.85*O1D                             
 [elec3,cph=354.83]     N2p + e  -> 1.1*N + 0.9*N2D                               
@@ -1015,7 +1023,17 @@
 [ion_O2p_NO,cph=271.38] O2p + NO  -> NOp + O2                                   ; 4.4e-10 
 [ion_Op_CO2]           Op + CO2  -> O2p + CO                                    ; 9e-10 
 [ion_Op_N2,cph=105.04] Op + N2  -> NOp + N                                       
+[ion_Op_N2D,cph=139.9] Op + N2D  -> Np + O                                      ; 1.3e-10 
 [ion_Op_O2,cph=150.11] Op + O2  -> O2p + O                                       
+[Op2D_e,cph=319.37]    Op2D + e  -> Op + e                                       
+[Op2D_N2,cph=128.32]   Op2D + N2  -> N2p + O                                    ; 8e-10 
+[Op2D_O,cph=319.36]    Op2D + O  -> Op + O                                      ; 5e-12 
+[Op2D_O2,cph=469.4]    Op2D + O2  -> O2p + O                                    ; 7e-10 
+[Op2P_ea,cph=163.06]   Op2P + e  -> Op2D + e                                     
+[Op2P_eb,cph=482.43]   Op2P + e  -> Op + e                                       
+[Op2P_N2a,cph=291.38]  Op2P + N2  -> N2p + O                                    ; 4.8e-10 
+[Op2P_N2b,cph=67.54]   Op2P + N2  -> Np + NO                                    ; 1e-10 
+[Op2P_O,cph=501.72]    Op2P + O  -> Op + O                                      ; 4e-10 
       End Reactions
 
       Ext Forcing

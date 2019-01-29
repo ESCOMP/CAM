@@ -582,15 +582,16 @@ contains
       rxt_rates(:ncol,:,   572) = rxt_rates(:ncol,:,   572)*sol(:ncol,:,    99)*sol(:ncol,:,    51)                            ! rate_const*O2p*NO
       rxt_rates(:ncol,:,   573) = rxt_rates(:ncol,:,   573)*sol(:ncol,:,   107)*sol(:ncol,:,    28)                            ! rate_const*Op*CO2
       rxt_rates(:ncol,:,   574) = rxt_rates(:ncol,:,   574)*sol(:ncol,:,   107)                                                ! rate_const*N2*Op
-      rxt_rates(:ncol,:,   575) = rxt_rates(:ncol,:,   575)*sol(:ncol,:,   107)*sol(:ncol,:,    55)                            ! rate_const*Op*O2
-      rxt_rates(:ncol,:,   576) = rxt_rates(:ncol,:,   576)*sol(:ncol,:,   108)*sol(:ncol,:,    69)                            ! rate_const*Op2D*e
-      rxt_rates(:ncol,:,   577) = rxt_rates(:ncol,:,   577)*sol(:ncol,:,   108)                                                ! rate_const*N2*Op2D
-      rxt_rates(:ncol,:,   578) = rxt_rates(:ncol,:,   578)*sol(:ncol,:,   108)*sol(:ncol,:,    54)                            ! rate_const*Op2D*O
-      rxt_rates(:ncol,:,   579) = rxt_rates(:ncol,:,   579)*sol(:ncol,:,   108)*sol(:ncol,:,    55)                            ! rate_const*Op2D*O2
-      rxt_rates(:ncol,:,   580) = rxt_rates(:ncol,:,   580)*sol(:ncol,:,   109)*sol(:ncol,:,    69)                            ! rate_const*Op2P*e
+      rxt_rates(:ncol,:,   575) = rxt_rates(:ncol,:,   575)*sol(:ncol,:,   107)*sol(:ncol,:,    79)                            ! rate_const*Op*N2D
+      rxt_rates(:ncol,:,   576) = rxt_rates(:ncol,:,   576)*sol(:ncol,:,   107)*sol(:ncol,:,    55)                            ! rate_const*Op*O2
+      rxt_rates(:ncol,:,   577) = rxt_rates(:ncol,:,   577)*sol(:ncol,:,   108)*sol(:ncol,:,    69)                            ! rate_const*Op2D*e
+      rxt_rates(:ncol,:,   578) = rxt_rates(:ncol,:,   578)*sol(:ncol,:,   108)                                                ! rate_const*N2*Op2D
+      rxt_rates(:ncol,:,   579) = rxt_rates(:ncol,:,   579)*sol(:ncol,:,   108)*sol(:ncol,:,    54)                            ! rate_const*Op2D*O
+      rxt_rates(:ncol,:,   580) = rxt_rates(:ncol,:,   580)*sol(:ncol,:,   108)*sol(:ncol,:,    55)                            ! rate_const*Op2D*O2
       rxt_rates(:ncol,:,   581) = rxt_rates(:ncol,:,   581)*sol(:ncol,:,   109)*sol(:ncol,:,    69)                            ! rate_const*Op2P*e
-      rxt_rates(:ncol,:,   582) = rxt_rates(:ncol,:,   582)*sol(:ncol,:,   109)                                                ! rate_const*N2*Op2P
+      rxt_rates(:ncol,:,   582) = rxt_rates(:ncol,:,   582)*sol(:ncol,:,   109)*sol(:ncol,:,    69)                            ! rate_const*Op2P*e
       rxt_rates(:ncol,:,   583) = rxt_rates(:ncol,:,   583)*sol(:ncol,:,   109)                                                ! rate_const*N2*Op2P
-      rxt_rates(:ncol,:,   584) = rxt_rates(:ncol,:,   584)*sol(:ncol,:,   109)*sol(:ncol,:,    54)                            ! rate_const*Op2P*O
+      rxt_rates(:ncol,:,   584) = rxt_rates(:ncol,:,   584)*sol(:ncol,:,   109)                                                ! rate_const*N2*Op2P
+      rxt_rates(:ncol,:,   585) = rxt_rates(:ncol,:,   585)*sol(:ncol,:,   109)*sol(:ncol,:,    54)                            ! rate_const*Op2P*O
   end subroutine set_rates
 end module mo_rxt_rates_conv

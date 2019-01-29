@@ -1,15 +1,11 @@
 * Comments
-* User-given Tag Description: WACCMX_MAD_1
-* Tag database identifier : MZ234_WACCMX_MAD_20181001
+* User-given Tag Description: MAD_1
+* Tag database identifier : MZ257_MAD_20190128
 * Tag created by : ajc
-* Tag created from branch : WACCMX-MAD
-* Tag created on : 2018-10-01 13:27:10.614885-06
+* Tag created from branch : MAD
+* Tag created on : 2019-01-28 16:00:59.18623-07
 * Comments for this tag follow:
-*     ajc : 2018-10-01 : Update reaction rates to jpl15
-*     Remove H1202
-*     CO2 implicit solve
-*     O1D_N2 cph update
-*     Update Machine Specifications
+*     ajc : 2019-01-28 : Add ion_Op_N2D
 
       SPECIES
 
@@ -944,6 +940,7 @@
 [ion_O2p_NO,cph=271.38] O2p + NO  -> NOp + O2                                   ; 4.4e-10 
 [ion_Op_CO2]           Op + CO2  -> O2p + CO                                    ; 9e-10 
 [ion_Op_N2,cph=105.04] Op + N2  -> NOp + N                                       
+[ion_Op_N2D,cph=139.9] Op + N2D  -> Np + O                                      ; 1.3e-10 
 [ion_Op_O2,cph=150.11] Op + O2  -> O2p + O                                       
 [Op2D_e,cph=319.37]    Op2D + e  -> Op + e                                       
 [Op2D_N2,cph=128.32]   Op2D + N2  -> N2p + O                                    ; 8e-10 
