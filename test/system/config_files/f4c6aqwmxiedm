@@ -1,0 +1,11 @@
+-spmd -nosmp
+-phys cam6
+-chem waccm_ma_mam4
+-aquaplanet
+-waccmx
+-ionosphere wxie
+-esmf_libdir /home/fvitt/esmf/lib/libg/Linux.nag.64.mvapich2.default
+-dyn fv
+-hgrid 4x5
+-debug
+-s

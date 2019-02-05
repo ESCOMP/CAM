@@ -1039,7 +1039,7 @@
   </grid>
   <grid name="a%1.9x2.5">
     <mach name="cheyenne">
-      <pes pesize="any" compset="_CAM40%WX">
+      <pes pesize="any" compset="_CAM\d0%WX">
 	<comment>none</comment>
 	<ntasks>
 	  <ntasks_atm>144</ntasks_atm>
@@ -1144,7 +1144,7 @@
   </grid>
   <grid name="a%0.9x1.25">
     <mach name="cheyenne">
-      <pes pesize="any" compset="_CAM40%WX">
+      <pes pesize="any" compset="_CAM\d0%WX">
 	<comment>none</comment>
 	<ntasks>
 	  <ntasks_atm>288</ntasks_atm>

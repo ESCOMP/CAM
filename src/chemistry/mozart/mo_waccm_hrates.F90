@@ -118,7 +118,7 @@
       use shr_orb_mod,       only : shr_orb_decl
       use time_manager,      only : get_curr_calday
       use cam_control_mod,   only : lambm0, eccen, mvelpp, obliqr
-      use mo_constants,      only : r2d
+      use mo_constants,      only : r2d, n2min
       use short_lived_species,only: get_short_lived_species
       use physics_buffer,    only : physics_buffer_desc
       use phys_control,      only : waccmx_is
@@ -364,6 +364,9 @@ column_loop : &
             o2_line(:)  = vmr(i,:,id_o2)
             co2_line(:) = vmr(i,:,id_co2)
             n2_line(:)  = 1._r8 - (o_line(:) + o2_line(:) + vmr(i,:,id_h))
+            where( n2_line(:) < n2min ) 
+               n2_line = n2min
+            end where
             o3_line(:)  = vmr(i,:,id_o3)
             occ(:)      = o_line(:) * invariants(i,:,indexm)
             o2cc(:)     = o2_line(:) * invariants(i,:,indexm)

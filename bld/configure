@@ -1335,8 +1335,12 @@ my $nlev = 0;
 
 # Defaults
 if ($waccmx) {
-    if ($ionos =~ /wxie/) {
+    if ($ionos =~ /wxi/) {
+      if ($phys_pkg eq 'cam6') {
+        $nlev = 130;
+      } else {
         $nlev = 126;
+      }
     }
     else {
         $nlev = 81;

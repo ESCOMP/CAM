@@ -369,6 +369,11 @@
   </compset>
 
   <compset>
+    <alias>FC6X2000</alias>
+    <lname>2000_CAM60%WXIE_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
     <alias>FXHIST</alias>
     <lname>HIST_CAM40%WXIE_CLM50%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV</lname>
   </compset>
@@ -421,13 +426,13 @@
     <!-- Overrides for WACCMX -->
     <entry id="ATM_NCPL">
       <values match="first">
-        <value compset="_CAM40%WX">288</value>
+        <value compset="_CAM\d0%WX">288</value>
       </values>
     </entry>
 
     <entry id="USE_ESMF_LIB">
       <values match="first">
-        <value compset="_CAM40%WXIE">TRUE</value>
+        <value compset="_CAM\d0%WXIE">TRUE</value>
       </values>
     </entry>
 
@@ -435,7 +440,7 @@
     <entry id="CALENDAR">
       <values match="first">
 	<value  compset="%SDYN">GREGORIAN</value>
- 	<value  compset="HIST_CAM40%WX">GREGORIAN</value>
+ 	<value  compset="HIST_CAM\d0%WX">GREGORIAN</value>
      </values>
     </entry>
     <entry id="SSTICE_DATA_FILENAME">

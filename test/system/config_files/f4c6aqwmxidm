@@ -1,0 +1,10 @@
+-spmd -nosmp
+-phys cam6
+-chem waccm_ma_mam4
+-aquaplanet
+-waccmx
+-ionosphere wxi
+-dyn fv
+-hgrid 4x5
+-debug
+-s

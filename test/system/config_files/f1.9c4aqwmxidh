@@ -6,5 +6,6 @@
 -chem waccm_ma
 -waccmx
 -ionosphere wxi
+-nlev 81
 -debug
 -s

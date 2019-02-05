@@ -4,6 +4,7 @@
 -aquaplanet
 -waccmx
 -ionosphere wxi
+-nlev 81
 -dyn fv
 -hgrid 4x5
 -debug

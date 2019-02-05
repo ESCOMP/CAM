@@ -64,7 +64,7 @@ contains
     !        ... set the invariant densities (molecules/cm**3)
     !-----------------------------------------------------------------
 
-    use mo_constants,  only : boltz_cgs
+    use mo_constants,  only : boltz_cgs, n2min
     use tracer_cnst,   only : num_tracer_cnst, tracer_cnst_flds, get_cnst_data
     use mo_chem_utls,  only : get_inv_ndx
     use physics_buffer, only : physics_buffer_desc
@@ -91,7 +91,7 @@ contains
     !-----------------------------------------------------------------
     integer :: k, i, ndx
     real(r8), parameter ::  Pa_xfac = 10._r8                 ! Pascals to dyne/cm^2
-    real(r8) :: sum1(ncol)
+    real(r8) :: n2vmr(ncol)
     real(r8) :: tmp_out(ncol,pver)
 
     !-----------------------------------------------------------------
@@ -110,8 +110,11 @@ contains
     if( has_n2 ) then
        if ( has_var_o2 ) then
           do k = 1,pver
-             sum1(:ncol) = (vmr(:ncol,k,id_o) + vmr(:ncol,k,id_o2) + vmr(:ncol,k,id_h))
-             invariants(:ncol,k,n2_ndx) = (1._r8 - sum1(:)) * invariants(:ncol,k,m_ndx)
+             n2vmr(:ncol) = 1._r8 - (vmr(:ncol,k,id_o) + vmr(:ncol,k,id_o2) + vmr(:ncol,k,id_h))
+             where (n2vmr(:ncol)<n2min)
+                n2vmr = n2min
+             end where
+             invariants(:ncol,k,n2_ndx) = n2vmr(:ncol) * invariants(:ncol,k,m_ndx)
           end do
        else
           do k = 1,pver

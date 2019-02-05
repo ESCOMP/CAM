@@ -2301,8 +2301,12 @@ contains
     save iwet
 
 
+    vlc_trb = 0._r8
+    vlc_grv = 0._r8
+    vlc_dry = 0._r8
+    
     !------------------------------------------------------------------------
-    do k=1,pver
+    do k=top_lev,pver ! radius_part is not defined above top_lev
        do i=1,ncol
 
           lnsig = log(sig_part(i,k))
