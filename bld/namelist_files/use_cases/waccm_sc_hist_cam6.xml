@@ -15,7 +15,7 @@
 <ncdata dyn="fv"  hgrid="1.9x2.5" >atm/waccm/ic/f.e15.FWmaAMIP.f19_f19.misc08_cam5_4_81.003.cam.i.1980-01-01-00000_c160928.nc</ncdata>
 
 <!-- LBC, UBC Files -->
-<flbc_file>atm/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180227.nc</flbc_file>
+<flbc_file>atm/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180905.nc</flbc_file>
 <flbc_type>'SERIAL'</flbc_type>
 <flbc_list>'CO2','CH4','N2O','CFC11','CFC12','CFC11eq'</flbc_list>
 

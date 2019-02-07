@@ -13,7 +13,7 @@
 <met_fix_mass>.true.</met_fix_mass>
 <met_data_file dyn="fv"  hgrid="0.9x1.25">2005/MERRA2_0.9x1.25_20050101.nc</met_data_file>
 <met_data_path dyn="fv"  hgrid="0.9x1.25">atm/cam/met/MERRA2/0.9x1.25</met_data_path>
-<met_filenames_list dyn="fv"  hgrid="0.9x1.25">atm/cam/met/MERRA2/0.9x1.25/filenames_1975-2017_c180430.txt</met_filenames_list>
+<met_filenames_list dyn="fv"  hgrid="0.9x1.25">atm/cam/met/MERRA2/0.9x1.25/filenames_1975-2017_c190125.txt</met_filenames_list>
 <met_data_file dyn="fv" hgrid="1.9x2.5">2005/MERRA2_1.9x2.5_20050101.nc</met_data_file>
 <met_data_path dyn="fv" hgrid="1.9x2.5">atm/cam/met/MERRA2/1.9x2.5</met_data_path>
 <met_filenames_list dyn="fv" hgrid="1.9x2.5">atm/cam/met/MERRA2/1.9x2.5/filenames_list_c180824</met_filenames_list>

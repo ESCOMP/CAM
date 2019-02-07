@@ -19,7 +19,7 @@
 <!-- LBC, UBC Files -->
 <flbc_type>CYCLICAL</flbc_type>
 <flbc_cycle_yr>1850</flbc_cycle_yr>
-<flbc_file>atm/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180227.nc</flbc_file>
+<flbc_file>atm/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180905.nc</flbc_file>
 <flbc_list>'CO2','CH4','N2O','CFC11','CFC12','CFC11eq'</flbc_list>
 
 <!-- QBO settings -->

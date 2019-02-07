@@ -228,6 +228,9 @@
 
       <value compset="PIPD_CAM50"        >1850-PD_cam5</value>
 
+      <value compset="SSP5-8.5_CAM60%WCTS">waccm_tsmlt_ssp585_cam6</value>
+      <value compset="SSP5-3.4_CAM60%WCTS">waccm_tsmlt_ssp534_cam6</value>
+      <value compset="SSP1-2.6_CAM60%WCTS">waccm_tsmlt_ssp126_cam6</value>
       <value compset="RCP2_CAM40"        >2005-2100_cam4_rcp26</value>
       <value compset="RCP4_CAM40"        >2005-2100_cam4_rcp45</value>
       <value compset="RCP4_CAM40.*_BGC%B">2005-2100_cam4_rcp45_bgc</value>
@@ -244,7 +247,7 @@
       <value compset="_CAM40%WXIE%SDYN"   >sd_waccmx_ma_cam4</value>
       <value compset="_CAM60%WCTS%SDYN"   >sd_waccm_tsmlt_cam6</value>
       <value compset="_CAM60%WCCM%SDYN"   >sd_waccm_ma_cam6</value>
-      <value compset="_CAM60%WCMD%SDYN"   >sd_waccm_ma_cam6</value>
+      <value compset="_CAM60%WCMD%SDYN"   >sd_waccm_mad_cam6</value>
       <value compset="_CAM40%WCMD%SDYN"   >sd_waccm_ma_cam4</value>
       <value compset="_CAM60%CCTS%SDYN"   >sd_trop_strat_vbs_cam6</value>
       <value compset="_CAM60%SDYN_CLM50"  >sd_cam6</value>
