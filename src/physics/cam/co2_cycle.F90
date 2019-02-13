@@ -32,6 +32,7 @@ module co2_cycle
    ! Public data
    public data_flux_ocn                 ! data read in for co2 flux from ocn
    public data_flux_fuel                ! data read in for co2 flux from fuel
+   public co2_readFlux_aircraft         ! true => read aircraft co2 flux from data file, namelist variable
 
    type(co2_data_flux_type) :: data_flux_ocn
    type(co2_data_flux_type) :: data_flux_fuel
@@ -42,9 +43,9 @@ module co2_cycle
 
    ! Namelist variables
    logical :: co2_flag              = .false.         ! true => turn on co2 code, namelist variable
-   logical :: co2_readFlux_ocn      = .false.         ! true => read ocn      co2 flux from date file, namelist variable
-   logical :: co2_readFlux_fuel     = .false.         ! true => read fuel     co2 flux from date file, namelist variable
-   logical :: co2_readFlux_aircraft = .false.         ! true => read aircraft co2 flux from date file, namelist variable
+   logical :: co2_readFlux_ocn      = .false.         ! true => read ocn      co2 flux from data file, namelist variable
+   logical :: co2_readFlux_fuel     = .false.         ! true => read fuel     co2 flux from data file, namelist variable
+   logical :: co2_readFlux_aircraft = .false.         ! true => read aircraft co2 flux from data file, namelist variable
    character(len=cl) :: co2flux_ocn_file  = 'unset' ! co2 flux from ocn
    character(len=cl) :: co2flux_fuel_file = 'unset' ! co2 flux from fossil fuel
 
@@ -157,7 +158,7 @@ subroutine co2_register
 
    c_mw   = (/     mwco2,     mwco2,     mwco2,     mwco2 /)
    c_cp   = (/     cpair,     cpair,     cpair,     cpair /)
-   c_qmin = (/ 1.e-20_r8, 1.e-20_r8, 1.e-20_r8, 1.e-20_r8 /)
+   c_qmin = (/ -1.e36_r8, -1.e36_r8, -1.e36_r8, -1.e36_r8 /) ! disable qneg3
 
    ! register CO2 constiuents as dry tracers, set indices
 
@@ -322,6 +323,10 @@ subroutine co2_init
 
    if (co2_readFlux_fuel) then
       call co2_data_flux_init ( co2flux_fuel_file, 'CO2_flux', data_flux_fuel )
+   end if
+
+   if (co2_readFlux_aircraft) then
+      call addfld('TMac_CO2', horiz_only,'A', 'kg/m2/s', 'vertical integral of aircraft emission ac_CO2')
    end if
 
 end subroutine co2_init

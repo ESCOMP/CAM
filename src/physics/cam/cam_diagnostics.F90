@@ -898,7 +898,6 @@ contains
     use time_manager,       only: get_nstep
     use interpolate_data,   only: vertinterp
     use constituent_burden, only: constituent_burden_comp
-    use co2_cycle,          only: c_i, co2_transport
 
     use tidal_diag,         only: tidal_diag_write
     !-----------------------------------------------------------------------
@@ -1235,7 +1234,7 @@ contains
                                   epsilo, rh2o
     use interpolate_data,   only: vertinterp
     use constituent_burden, only: constituent_burden_comp
-    use co2_cycle,          only: c_i, co2_transport
+    use co2_cycle,          only: c_i, co2_transport, co2_readFlux_aircraft
     !-----------------------------------------------------------------------
     !
     ! Arguments
@@ -1270,6 +1269,11 @@ contains
       do m = 1,4
         call outfld(trim(cnst_name(c_i(m)))//'_BOT', state%q(1,pver,c_i(m)), pcols, lchnk)
       end do
+
+      if (co2_readFlux_aircraft) then
+        call pbuf_get_field(pbuf, pbuf_get_index('ac_CO2'), ftem_ptr)
+        call outfld('TMac_CO2', sum(ftem_ptr(:ncol,:), dim=2), pcols, lchnk)
+      end if
     end if
 
     ! column burdens of all constituents except water vapor
