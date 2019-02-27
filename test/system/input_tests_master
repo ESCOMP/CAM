@@ -51,11 +51,11 @@ sm367 TSM.sh f10c6aqdm outfrq3s_convmic 9s
 sm368 TSM.sh f10c6aqdm outfrq3s 9s
 sm369 TSM.sh f10c6aqdm outfrq3s_am 9s
 
-sm370 TSM.sh f1.9c6aqtsvbsdh outfrq3s 9s
-sm371 TSM.sh f1.9c6aqtsvbsxdh outfrq3s 9s
+sm370 TSM.sh f1.9c6aqtsvbsdh outfrq3s+2000_trop_strat_vbs_cam6 9s
+sm371 TSM.sh f1.9c6aqtsvbsxdh outfrq3s+hist_trop_strat_vbsext_cam6 9s
 
 sm375 TSM.sh f10c6aqtsvbsdm outfrq3s_sums 9s
-sm376 TSM.sh f10c6aqtsvbsxdm outfrq3s 9s
+sm376 TSM.sh f10c6aqtsvbsxdm outfrq3s+hist_trop_strat_vbsext_cam6 9s
 
 sm380 TSM.sh f1.9c6aqcdh outfrq3s_cosp 9s
 sm381 TSM.sh f0.9c6aqccdm outfrq3s+hist_cam6 3s
@@ -81,8 +81,8 @@ sm469 TSM.sh f4c4aqprgspcdm outfrq3s 9s
 
 sm471 TSM.sh f10c6aqwmadm outfrq3s 9s
 sm472 TSM.sh f4c6aqwmadm outfrq3s 9s
-sm473 TSM.sh f4c6aqwmtdm outfrq3s 9s
-sm474 TSM.sh f1.9c6aqwmth outfrq3s 9s
+sm473 TSM.sh f4c6aqwmtdm outfrq3s_sums 9s
+sm474 TSM.sh f1.9c6aqwmth outfrq3s_sums 9s
 
 sm700 TSM.sh h5adicdm outfrq3s_bwic 9s
 sm701 TSM.sh h5addm outfrq3s 9s
@@ -158,11 +158,11 @@ er367 TER.sh f10c6aqdm outfrq3s_convmic 4+5s
 er368 TER.sh f10c6aqdm outfrq3s 4+5s
 er369 TER.sh f10c6aqdm outfrq3s_am 4+5s
 
-er370 TER.sh f1.9c6aqtsvbsdh outfrq3s 4+5s
-er371 TER.sh f1.9c6aqtsvbsxdh outfrq3s 4+5s
+er370 TER.sh f1.9c6aqtsvbsdh outfrq3s+2000_trop_strat_vbs_cam6 4+5s
+er371 TER.sh f1.9c6aqtsvbsxdh outfrq3s+hist_trop_strat_vbsext_cam6 4+5s
 
 er375 TER.sh f10c6aqtsvbsdm outfrq3s_sums 4+5s
-er376 TER.sh f10c6aqtsvbsxdm outfrq3s 4+5s
+er376 TER.sh f10c6aqtsvbsxdm outfrq3s+hist_trop_strat_vbsext_cam6 4+5s
 
 er380 TER.sh f1.9c6aqcdh outfrq3s_cosp 4+5s
 
@@ -187,8 +187,8 @@ er469 TER.sh f4c4aqprgspcdm outfrq3s 4+5s
 
 er471 TER.sh f10c6aqwmadm outfrq3s 4+5s
 er472 TER.sh f4c6aqwmadm outfrq3s 4+5s
-er473 TER.sh f4c6aqwmtdm outfrq3s 4+5s
-er474 TER.sh f1.9c6aqwmth outfrq3s 4+5s
+er473 TER.sh f4c6aqwmtdm outfrq3s_sums 4+5s
+er474 TER.sh f1.9c6aqwmth outfrq3s_sums 4+5s
 
 er700 TER.sh h5adicdm outfrq3s_bwic 4+5s
 er701 TER.sh h5addm outfrq3s 4+5s
@@ -293,11 +293,11 @@ bl367 TBL.sh f10c6aqdm outfrq3s_convmic 9s
 bl368 TBL.sh f10c6aqdm outfrq3s 9s
 bl369 TBL.sh f10c6aqdm outfrq3s_am 9s
 
-bl370 TBL.sh f1.9c6aqtsvbsdh outfrq3s 9s
-bl371 TBL.sh f1.9c6aqtsvbsxdh outfrq3s 9s
+bl370 TBL.sh f1.9c6aqtsvbsdh outfrq3s+2000_trop_strat_vbs_cam6 9s
+bl371 TBL.sh f1.9c6aqtsvbsxdh outfrq3s+hist_trop_strat_vbsext_cam6 9s
 
 bl375 TBL.sh f10c6aqtsvbsdm outfrq3s_sums 9s
-bl376 TBL.sh f10c6aqtsvbsxdm outfrq3s 9s
+bl376 TBL.sh f10c6aqtsvbsxdm outfrq3s+hist_trop_strat_vbsext_cam6 9s
 
 bl380 TBL.sh f1.9c6aqcdh outfrq3s_cosp 9s
 bl381 TBL.sh f0.9c6aqccdm outfrq3s+hist_cam6 3s
@@ -323,8 +323,8 @@ bl469 TBL.sh f4c4aqprgspcdm outfrq3s 9s
 
 bl471 TBL.sh f10c6aqwmadm outfrq3s 9s
 bl472 TBL.sh f4c6aqwmadm outfrq3s 9s
-bl473 TBL.sh f4c6aqwmtdm outfrq3s 9s
-bl474 TBL.sh f1.9c6aqwmth outfrq3s 9s
+bl473 TBL.sh f4c6aqwmtdm outfrq3s_sums 9s
+bl474 TBL.sh f1.9c6aqwmth outfrq3s_sums 9s
 
 bl700 TBL.sh h5adicdm outfrq3s_bwic 9s
 bl701 TBL.sh h5addm outfrq3s 9s

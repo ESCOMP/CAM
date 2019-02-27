@@ -13,13 +13,13 @@
 <solar_parms_data_file>atm/cam/solar/SolarForcingCMIP6piControl_c160921.nc</solar_parms_data_file>
 
 <!--Species IC -->
-<ncdata dyn="fv"  hgrid="0.9x1.25">cesm2_init/b.e21.BWsc1850.test.002/0014-01-01/b.e21.BWsc1850.test.002.cam.i.0014-01-01-00000.nc</ncdata>
+<ncdata dyn="fv"  hgrid="0.9x1.25">cesm2_init/f.e21.FWsc1850.f09_f09_mg17.cesm2.1-exp011.001/0003-01-01/f.e21.FWsc1850.f09_f09_mg17.cesm2.1-exp011.001.cam.i.0003-01-01-00000.nc</ncdata>
 <ncdata dyn="fv"  hgrid="1.9x2.5" >atm/waccm/ic/f.e15.FWmaAMIP.f19_f19.misc08_cam5_4_81.003.cam.i.1980-01-01-00000_c160928.nc</ncdata>
 
 <!-- LBC, UBC Files -->
 <flbc_type>CYCLICAL</flbc_type>
 <flbc_cycle_yr>1850</flbc_cycle_yr>
-<flbc_file>atm/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180227.nc</flbc_file>
+<flbc_file>atm/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180905.nc</flbc_file>
 <flbc_list>'CO2','CH4','N2O','CFC11','CFC12','CFC11eq'</flbc_list>
 
 <!-- QBO settings -->

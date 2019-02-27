@@ -1662,6 +1662,16 @@ if ( $nl->get_value('modal_strat_sulfate')=~ /$TRUE/io and
     die "Cannot set both modal_strat_sulfate and prescribed_strataero_feedback to TRUE \n";
 }
 
+# check O3S_Loss setting ...
+if (chem_has_species($cfg, 'O3S')) {
+    my $rate_sums = $nl->get_value('rxn_rate_sums');
+    if ($rate_sums =~ /O3S_Loss.*=/) {
+	if ($print>=2) { print "OK rxn_rate_sums includes O3S_Loss \n"; }
+    } else {
+	die "Must specify O3S_Loss in rxn_rate_sums \n";
+    }    
+}
+
 # stratospheric aerosols are needed for heterogeneous chemistry as well as radiation feedback
 my $het_chem = chem_has_species($cfg, 'N2O5');
 
