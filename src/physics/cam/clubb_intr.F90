@@ -1033,6 +1033,7 @@ end subroutine clubb_init_cnst
                              physics_buffer_desc
 
    use constituents,   only: cnst_get_ind, cnst_type
+   use co2_cycle,      only: co2_cycle_set_cnst_type
    use camsrfexch,     only: cam_in_t
    use time_manager,   only: is_first_step   
    use cam_abortutils, only: endrun
@@ -1266,6 +1267,7 @@ end subroutine clubb_init_cnst
    type(pdf_parameter), dimension(pverp) :: pdf_params                  ! PDF parameters                    [units vary]
    character(len=200)                    :: temp1, sub                  ! Strings needed for CLUBB output
 
+   character(len=3)                      :: cnst_type_loc(pcnst)        ! local copy of cnst_type
 
    ! --------------- !
    ! Pointers        !
@@ -1376,7 +1378,10 @@ end subroutine clubb_init_cnst
    call physics_state_copy(state, state1)
 
    ! constituents are all treated as wet mmr by clubb
-   call set_dry_to_wet(state1)
+   ! lie about cnst_type of co2_cycle constituents, so that they don't get converted to wet
+   cnst_type_loc(:) = cnst_type(:)
+   call co2_cycle_set_cnst_type(cnst_type_loc, 'wet')
+   call set_dry_to_wet(state1, cnst_type_loc)
 
    if (clubb_do_liqsupersat) then
       npccn_idx      = pbuf_get_index('NPCCN')

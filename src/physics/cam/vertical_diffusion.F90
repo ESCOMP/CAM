@@ -651,6 +651,7 @@ subroutine vertical_diffusion_tend( &
   use physics_buffer,     only : physics_buffer_desc, pbuf_get_field, pbuf_set_field
   use physics_types,      only : physics_state, physics_ptend, physics_ptend_init
   use physics_types,      only : set_dry_to_wet, set_wet_to_dry
+  use co2_cycle,          only : co2_cycle_set_cnst_type
   
   use camsrfexch,         only : cam_in_t
   use cam_history,        only : outfld
@@ -840,12 +841,17 @@ subroutine vertical_diffusion_tend( &
 
   logical  :: lq(pcnst)
 
+  character(len=3) :: cnst_type_loc(pcnst) ! local copy of cnst_type
+
   ! ----------------------- !
   ! Main Computation Begins !
   ! ----------------------- !
 
   ! Assume 'wet' mixing ratios in diffusion code.
-  call set_dry_to_wet(state)
+  ! lie about cnst_type of co2_cycle constituents, so that they don't get converted to wet
+  cnst_type_loc(:) = cnst_type(:)
+  call co2_cycle_set_cnst_type(cnst_type_loc, 'wet')
+  call set_dry_to_wet(state, cnst_type_loc)
   
   rztodt = 1._r8 / ztodt
   lchnk  = state%lchnk
@@ -1282,7 +1288,7 @@ subroutine vertical_diffusion_tend( &
      endif
   end do
   ! convert wet mmr back to dry before conservation check
-  call set_wet_to_dry(state)
+  call set_wet_to_dry(state, cnst_type_loc)
 
   if (.not. do_pbl_diags) then
      slten(:ncol,:)         = ( sl(:ncol,:) - sl_prePBL(:ncol,:) ) * rztodt

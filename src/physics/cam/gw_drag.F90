@@ -1175,6 +1175,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
 
   use physics_types,  only: physics_state_copy, set_dry_to_wet
   use constituents,   only: cnst_type
+  use co2_cycle,      only: co2_cycle_set_cnst_type
   use physics_buffer, only: physics_buffer_desc, pbuf_get_field
   use camsrfexch, only: cam_in_t
   ! Location-dependent cpair
@@ -1332,13 +1333,19 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   real(r8) :: piln(state%ncol,pver+1)
   real(r8) :: zm(state%ncol,pver)
   real(r8) :: zi(state%ncol,pver+1)
+
+  character(len=3) :: cnst_type_loc(pcnst)        ! local copy of cnst_type
+
   !------------------------------------------------------------------------
 
   ! Make local copy of input state.
   call physics_state_copy(state, state1)
 
   ! constituents are all treated as wet mmr
-  call set_dry_to_wet(state1)
+  ! lie about cnst_type of co2_cycle constituents, so that they don't get converted to wet
+  cnst_type_loc(:) = cnst_type(:)
+  call co2_cycle_set_cnst_type(cnst_type_loc, 'wet')
+  call set_dry_to_wet(state1, cnst_type_loc)
 
   lchnk = state1%lchnk
   ncol  = state1%ncol

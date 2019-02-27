@@ -28,6 +28,7 @@ module co2_cycle
    public co2_time_interp_ocn           ! time interpolate co2 flux
    public co2_time_interp_fuel          ! time interpolate co2 flux
    public co2_cycle_set_ptend           ! set tendency from aircraft emissions
+   public co2_cycle_set_cnst_type       ! set cnst_type for co2_cycle tracers
 
    ! Public data
    public data_flux_ocn                 ! data read in for co2 flux from ocn
@@ -426,6 +427,32 @@ subroutine co2_cycle_set_ptend(state, pbuf, ptend)
    end do
 
 end subroutine co2_cycle_set_ptend
+
+!===============================================================================
+
+subroutine co2_cycle_set_cnst_type(cnst_type_array, cnst_type_val)
+
+!-------------------------------------------------------------------------------
+! Purpose:
+! set cnst_type for co2_cycle tracers
+!-------------------------------------------------------------------------------
+
+   ! Arguments
+   character(len=*), intent(inout) :: cnst_type_array(:)
+   character(len=*), intent(in) :: cnst_type_val
+
+   ! Local variables
+   integer :: m
+
+   !----------------------------------------------------------------------------
+
+   if (.not. co2_flag) return
+
+   do m = 1, ncnst
+      cnst_type_array(c_i(m)) = cnst_type_val
+   end do
+
+end subroutine co2_cycle_set_cnst_type
 
 !===============================================================================
 

@@ -1438,18 +1438,25 @@ end subroutine set_state_pdry
 
 !===============================================================================
 
-subroutine set_wet_to_dry (state)
+subroutine set_wet_to_dry (state, cnst_type_in)
 
   use constituents,  only: pcnst, cnst_type
 
   type(physics_state), intent(inout) :: state
+  character(len=*), optional, intent(in) :: cnst_type_in(:)
 
   integer m, ncol
+  logical l_conv_cnst ! should the dry->wet conversion be applied to this constituent
 
   ncol = state%ncol
 
   do m = 1,pcnst
-     if (cnst_type(m).eq.'dry') then
+     if (present(cnst_type_in)) then
+        l_conv_cnst = cnst_type_in(m).eq.'dry'
+     else
+        l_conv_cnst = cnst_type(m).eq.'dry'
+     endif
+     if (l_conv_cnst) then
         state%q(:ncol,:,m) = state%q(:ncol,:,m)*state%pdel(:ncol,:)/state%pdeldry(:ncol,:)
      endif
   end do
@@ -1458,18 +1465,25 @@ end subroutine set_wet_to_dry
 
 !===============================================================================
 
-subroutine set_dry_to_wet (state)
+subroutine set_dry_to_wet (state, cnst_type_in)
 
   use constituents,  only: pcnst, cnst_type
 
   type(physics_state), intent(inout) :: state
+  character(len=*), optional, intent(in) :: cnst_type_in(:)
 
   integer m, ncol
+  logical l_conv_cnst ! should the dry->wet conversion be applied to this constituent
 
   ncol = state%ncol
 
   do m = 1,pcnst
-     if (cnst_type(m).eq.'dry') then
+     if (present(cnst_type_in)) then
+        l_conv_cnst = cnst_type_in(m).eq.'dry'
+     else
+        l_conv_cnst = cnst_type(m).eq.'dry'
+     endif
+     if (l_conv_cnst) then
         state%q(:ncol,:,m) = state%q(:ncol,:,m)*state%pdeldry(:ncol,:)/state%pdel(:ncol,:)
      endif
   end do
