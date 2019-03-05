@@ -228,6 +228,8 @@
 
       <value compset="PIPD_CAM50"        >1850-PD_cam5</value>
 
+      <value compset="SSP585_CAM60"    >ssp585_cam6</value>
+
       <value compset="SSP1-2.6_CAM60%WCTS">waccm_tsmlt_ssp126_cam6</value>
       <value compset="SSP2-4.5_CAM60%WCTS">waccm_tsmlt_ssp245_cam6</value>
       <value compset="SSP3-7.0_CAM60%WCTS">waccm_tsmlt_ssp370_cam6</value>
