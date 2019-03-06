@@ -289,4 +289,6 @@
   'OddOx_Prod_Tot = 2.0*jo2_a + 2.0*jo2_b'
 </rxn_rate_sums>
 
+<nlte_limit_co2>.true.</nlte_limit_co2>
+
 </namelist_defaults>

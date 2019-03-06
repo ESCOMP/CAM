@@ -228,13 +228,12 @@
 
       <value compset="PIPD_CAM50"        >1850-PD_cam5</value>
 
-      <value compset="SSP585_CAM60"    >ssp585_cam6</value>
-
-      <value compset="SSP1-2.6_CAM60%WCTS">waccm_tsmlt_ssp126_cam6</value>
-      <value compset="SSP2-4.5_CAM60%WCTS">waccm_tsmlt_ssp245_cam6</value>
-      <value compset="SSP3-7.0_CAM60%WCTS">waccm_tsmlt_ssp370_cam6</value>
-      <value compset="SSP5-3.4_CAM60%WCTS">waccm_tsmlt_ssp534_cam6</value>
-      <value compset="SSP5-8.5_CAM60%WCTS">waccm_tsmlt_ssp585_cam6</value>
+      <value compset="SSP585_CAM60"      >ssp585_cam6</value>
+      <value compset="SSP126_CAM60%WCTS" >waccm_tsmlt_ssp126_cam6</value>
+      <value compset="SSP245_CAM60%WCTS" >waccm_tsmlt_ssp245_cam6</value>
+      <value compset="SSP370_CAM60%WCTS" >waccm_tsmlt_ssp370_cam6</value>
+      <value compset="SSP534_CAM60%WCTS" >waccm_tsmlt_ssp534_cam6</value>
+      <value compset="SSP585_CAM60%WCTS" >waccm_tsmlt_ssp585_cam6</value>
       <value compset="RCP2_CAM40"        >2005-2100_cam4_rcp26</value>
       <value compset="RCP4_CAM40"        >2005-2100_cam4_rcp45</value>
       <value compset="RCP4_CAM40.*_BGC%B">2005-2100_cam4_rcp45_bgc</value>
