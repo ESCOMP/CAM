@@ -3,7 +3,7 @@
 <namelist_defaults>
 
 <ext_frc_specifier>             
-         'H2O ->  $INPUTDATA_ROOT/atm/cam/chem/emis/elev/H2OemissionCH4oxidationx2_3D_L70_2014-2101_CMIP6-SSP5-8.5_c190221.nc',
+         'H2O ->  $INPUTDATA_ROOT/atm/cam/chem/emis/elev/H2OemissionCH4oxidationx2_3D_L70_2014-2101_CMIP6-SSP5-8.5_c190307.nc',
          'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_num_so4_a1_anthro-ene_vertical_mol_175001-210101_0.9x1.25_c20190224.nc',
          'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_num_a1_so4_contvolcano_vertical_850-5000_0.9x1.25_c20170724.nc',
          'num_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_num_a2_so4_contvolcano_vertical_850-5000_0.9x1.25_c20170724.nc',
@@ -45,7 +45,7 @@
 
 
   <tracer_cnst_datapath     >   'atm/cam/tracer_cnst'                                        </tracer_cnst_datapath>
-  <tracer_cnst_file         >   'tracer_cnst_halons_3D_L70_2014-2101_CMIP6-SSP5-8.5_c190221.nc' </tracer_cnst_file>
+  <tracer_cnst_file         >   'tracer_cnst_halons_3D_L70_2014-2101_CMIP6-SSP5-8.5_c190307.nc' </tracer_cnst_file>
   <tracer_cnst_specifier    >   'O3','OH','NO3','HO2'                                        </tracer_cnst_specifier>
   <tracer_cnst_type         >   'INTERP_MISSING_MONTHS'                                      </tracer_cnst_type>
   <tracer_cnst_filelist     >   ''                                                           </tracer_cnst_filelist>
@@ -81,7 +81,7 @@
 <aircraft_co2_file hgrid="1.9x2.5">emissions-cmip6_CO2_anthro_ac_ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585_201401-210112_fv_1.9x2.5_c20190207.nc</aircraft_co2_file>
 
   <scenario_ghg            >    'CHEM_LBC_FILE'   </scenario_ghg>
-  <flbc_file>atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_SOAGx1.5_biogenic_surface_mol_175001-210101_0.9x1.25_c20190226.nc</flbc_file>
+  <flbc_file>atm/waccm/lb/LBC_2014-2500_CMIP6_SSP585_0p5degLat_GlobAnnAvg_c190301.nc</flbc_file>
   <flbc_type>'SERIAL'</flbc_type>
   <flbc_list>'CO2','CH4','N2O','CFC11eq','CFC12'</flbc_list>
 
