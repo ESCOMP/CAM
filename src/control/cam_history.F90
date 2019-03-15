@@ -108,7 +108,7 @@ module cam_history
   !
   !   The size of these parameters should match the assignments in restart_vars_setnames and restart_dims_setnames below
   !
-  integer, parameter :: restartvarcnt              = 38
+  integer, parameter :: restartvarcnt              = 39
   integer, parameter :: restartdimcnt              = 10
   type(rvar_id)      :: restartvars(restartvarcnt)
   type(rdim_id)      :: restartdims(restartdimcnt)
@@ -1103,6 +1103,14 @@ CONTAINS
     restartvars(rvindex)%dims(3) = ptapes_dim_ind
 
     rvindex = rvindex + 1
+    restartvars(rvindex)%name = 'mixing_ratio'
+    restartvars(rvindex)%type = pio_char
+    restartvars(rvindex)%ndims = 3
+    restartvars(rvindex)%dims(1) = max_chars_dim_ind
+    restartvars(rvindex)%dims(2) = maxnflds_dim_ind
+    restartvars(rvindex)%dims(3) = ptapes_dim_ind
+
+    rvindex = rvindex + 1
     restartvars(rvindex)%name = 'xyfill'
     restartvars(rvindex)%type = pio_int
     restartvars(rvindex)%ndims = 2
@@ -1330,6 +1338,7 @@ CONTAINS
     type(var_desc_t), pointer ::  cm_desc
     type(var_desc_t), pointer ::  longname_desc
     type(var_desc_t), pointer ::  units_desc
+    type(var_desc_t), pointer ::  mr_desc
     type(var_desc_t), pointer ::  hwrt_prec_desc
     type(var_desc_t), pointer ::  xyfill_desc
     type(var_desc_t), pointer ::  mdims_desc        ! mdim name indices
@@ -1449,6 +1458,7 @@ CONTAINS
     cm_desc => restartvar_getdesc('cell_methods')
     longname_desc => restartvar_getdesc('long_name')
     units_desc => restartvar_getdesc('units')
+    mr_desc => restartvar_getdesc('mixing_ratio')
     avgflag_desc => restartvar_getdesc('avgflag')
     xyfill_desc => restartvar_getdesc('xyfill')
     issubcol_desc => restartvar_getdesc('is_subcol')
@@ -1488,6 +1498,7 @@ CONTAINS
         ierr = pio_put_var(File, cm_desc,startc,tape(t)%hlist(f)%field%cell_methods)
         ierr = pio_put_var(File, longname_desc,startc,tape(t)%hlist(f)%field%long_name)
         ierr = pio_put_var(File, units_desc,startc,tape(t)%hlist(f)%field%units)
+        ierr = pio_put_var(File, mr_desc,startc,tape(t)%hlist(f)%field%mixing_ratio)
         ierr = pio_put_var(File, avgflag_desc,start, tape(t)%hlist(f)%avgflag)
 
         ierr = pio_put_var(File, fillval_desc,start, tape(t)%hlist(f)%field%fillvalue)
@@ -1593,6 +1604,7 @@ CONTAINS
     type(var_desc_t)                 :: vdesc
     type(var_desc_t)                 :: longname_desc
     type(var_desc_t)                 :: units_desc
+    type(var_desc_t)                 :: mr_desc
     type(var_desc_t)                 :: avgflag_desc
     type(var_desc_t)                 :: sseq_desc
     type(var_desc_t)                 :: cm_desc
@@ -1782,6 +1794,7 @@ CONTAINS
 
     ierr = pio_inq_varid(File, 'long_name', longname_desc)
     ierr = pio_inq_varid(File, 'units', units_desc)
+    ierr = pio_inq_varid(File, 'mixing_ratio', mr_desc)
     ierr = pio_inq_varid(File, 'sampling_seq', sseq_desc)
     ierr = pio_inq_varid(File, 'cell_methods', cm_desc)
 
@@ -1816,6 +1829,7 @@ CONTAINS
         ierr = pio_get_var(File,avgflag_desc, (/f,t/), tape(t)%hlist(f)%avgflag)
         ierr = pio_get_var(File,longname_desc, (/1,f,t/), tape(t)%hlist(f)%field%long_name)
         ierr = pio_get_var(File,units_desc, (/1,f,t/), tape(t)%hlist(f)%field%units)
+        ierr = pio_get_var(File,mr_desc, (/1,f,t/), tape(t)%hlist(f)%field%mixing_ratio)
         tape(t)%hlist(f)%field%sampling_seq(1:max_chars) = ' '
         ierr = pio_get_var(File,sseq_desc, (/1,f,t/), tape(t)%hlist(f)%field%sampling_seq)
         call strip_null(tape(t)%hlist(f)%field%sampling_seq)
@@ -2184,7 +2198,8 @@ CONTAINS
 
     use cam_grid_support, only: cam_grid_num_grids
     use spmd_utils,       only: mpicom
-    !
+    use dycore,           only: dycore_is
+
     !-----------------------------------------------------------------------
     !
     ! Purpose: Define the contents of each history file based on namelist input for initial or branch
@@ -2198,6 +2213,7 @@ CONTAINS
     !
     integer t, f                   ! tape, field indices
     integer ff                     ! index into include, exclude and fprec list
+    integer :: i
     character(len=fieldname_len) :: name ! field name portion of fincl (i.e. no avgflag separator)
     character(len=max_fieldname_len) :: mastername ! name from masterlist field
     character(len=max_chars) :: errormsg ! error output field
@@ -2215,17 +2231,53 @@ CONTAINS
     !    on that grid.
     integer, allocatable        :: gridsontape(:,:)
 
-    !
+    ! The following list of field names are only valid for the FV dycore.  They appear
+    ! in fincl settings of WACCM use case files which are not restricted to the FV dycore.
+    ! To avoid duplicating long fincl lists in use case files to provide both FV and non-FV
+    ! versions this short list of fields is checked for and removed from fincl lists when
+    ! the dycore is not FV.
+    integer, parameter :: n_fv_only = 10
+    character(len=6) :: fv_only_flds(n_fv_only) = &
+       [ 'VTHzm ', 'WTHzm ', 'UVzm  ', 'UWzm  ', 'Uzm   ', 'Vzm   ', 'Wzm   ', &
+         'THzm  ', 'TH    ', 'MSKtem' ]
+
+    integer :: n_vec_comp, add_fincl_idx
+    integer, parameter :: nvecmax = 50 ! max number of vector components in a fincl list
+    character(len=2) :: avg_suffix
+    character(len=fieldname_len) :: vec_comp_names(nvecmax)
+    character(len=1)             :: vec_comp_avgflag(nvecmax)
+    !--------------------------------------------------------------------------
+
     ! First ensure contents of fincl, fexcl, and fwrtpr are all valid names
     !
     errors_found = 0
     do t=1,ptapes
       f = 1
-      do while (f < pflds .and. fincl(f,t) /= ' ')
+      n_vec_comp       = 0
+      vec_comp_names   = ' '
+      vec_comp_avgflag = ' '
+fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
         name = getname (fincl(f,t))
+
+        if (.not. dycore_is('FV')) then
+           ! filter out fields only provided by FV dycore
+           do i = 1, n_fv_only
+              if (name == fv_only_flds(i)) then
+                 write(errormsg,'(3a,2(i0,a))')'FLDLST: ', trim(name), &
+                    ' in fincl(', f,', ',t, ') only available with FV dycore'
+                 if (masterproc) then
+                    write(iulog,*) trim(errormsg)
+                    call shr_sys_flush(iulog)
+                 end if
+                 f = f + 1
+                 cycle fincls
+              end if
+           end do
+        end if
+
         mastername=''
         listentry => get_entry_by_name(masterlinkedlist, name)
-        if(associated(listentry)) mastername = listentry%field%name
+        if (associated(listentry)) mastername = listentry%field%name
         if (name /= mastername) then
           write(errormsg,'(3a,2(i0,a))')'FLDLST: ', trim(name), ' in fincl(', f,', ',t, ') not found'
           if (masterproc) then
@@ -2233,9 +2285,53 @@ CONTAINS
              call shr_sys_flush(iulog)
           end if
           errors_found = errors_found + 1
+        else
+           if (len_trim(mastername)>0 .and. interpolate_output(t)) then
+              if (n_vec_comp >= nvecmax) call endrun('FLDLST: need to increase nvecmax')
+              ! If this is a vector component then save the name of the complement
+              avgflag = getflag(fincl(f,t))
+              if (len_trim(listentry%meridional_field) > 0) then
+                 n_vec_comp = n_vec_comp + 1
+                 vec_comp_names(n_vec_comp) = listentry%meridional_field
+                 vec_comp_avgflag(n_vec_comp) = avgflag
+              else if (len_trim(listentry%zonal_field) > 0) then
+                 n_vec_comp = n_vec_comp + 1
+                 vec_comp_names(n_vec_comp) = listentry%meridional_field
+                 vec_comp_avgflag(n_vec_comp) = avgflag
+              end if
+           end if
         end if
         f = f + 1
-      end do
+      end do fincls
+
+      ! Interpolation of vector components requires that both be present.  If the fincl
+      ! specifier contains any vector components, then the complement was saved in the
+      ! array vec_comp_names.  Next insure (for interpolated output only) that all complements
+      ! are also present in the fincl array.
+      
+      ! The first empty slot in the current fincl array is index f from loop above.
+      add_fincl_idx = f
+      if (f > 1 .and. interpolate_output(t)) then
+         do i = 1, n_vec_comp
+            call list_index(fincl(:,t), vec_comp_names(i), ff)
+            if (ff == 0) then
+
+               ! Add vector component to fincl.  Don't need to check whether its in the master
+               ! list since this was done at the time of registering the vector components.
+               avg_suffix = '  '
+               if (len_trim(vec_comp_avgflag(i)) > 0) avg_suffix = ':' // vec_comp_avgflag(i)
+               fincl(add_fincl_idx,t) = vec_comp_names(i) // avg_suffix
+               add_fincl_idx = add_fincl_idx + 1
+
+               write(errormsg,'(3a,1(i0,a))')'FLDLST: ', trim(vec_comp_names(i)), &
+                  ' added to fincl', t, '.  Both vector components are required for interpolated output.'
+               if (masterproc) then
+                  write(iulog,*) trim(errormsg)
+                  call shr_sys_flush(iulog)
+               end if
+            end if
+         end do
+      end if
 
       f = 1
       do while (f < pflds .and. fexcl(f,t) /= ' ')
