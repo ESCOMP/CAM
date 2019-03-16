@@ -108,7 +108,7 @@ module cam_history
   !
   !   The size of these parameters should match the assignments in restart_vars_setnames and restart_dims_setnames below
   !
-  integer, parameter :: restartvarcnt              = 39
+  integer, parameter :: restartvarcnt              = 38
   integer, parameter :: restartdimcnt              = 10
   type(rvar_id)      :: restartvars(restartvarcnt)
   type(rdim_id)      :: restartdims(restartdimcnt)
@@ -1103,14 +1103,6 @@ CONTAINS
     restartvars(rvindex)%dims(3) = ptapes_dim_ind
 
     rvindex = rvindex + 1
-    restartvars(rvindex)%name = 'mixing_ratio'
-    restartvars(rvindex)%type = pio_char
-    restartvars(rvindex)%ndims = 3
-    restartvars(rvindex)%dims(1) = max_chars_dim_ind
-    restartvars(rvindex)%dims(2) = maxnflds_dim_ind
-    restartvars(rvindex)%dims(3) = ptapes_dim_ind
-
-    rvindex = rvindex + 1
     restartvars(rvindex)%name = 'xyfill'
     restartvars(rvindex)%type = pio_int
     restartvars(rvindex)%ndims = 2
@@ -1338,7 +1330,6 @@ CONTAINS
     type(var_desc_t), pointer ::  cm_desc
     type(var_desc_t), pointer ::  longname_desc
     type(var_desc_t), pointer ::  units_desc
-    type(var_desc_t), pointer ::  mr_desc
     type(var_desc_t), pointer ::  hwrt_prec_desc
     type(var_desc_t), pointer ::  xyfill_desc
     type(var_desc_t), pointer ::  mdims_desc        ! mdim name indices
@@ -1458,7 +1449,6 @@ CONTAINS
     cm_desc => restartvar_getdesc('cell_methods')
     longname_desc => restartvar_getdesc('long_name')
     units_desc => restartvar_getdesc('units')
-    mr_desc => restartvar_getdesc('mixing_ratio')
     avgflag_desc => restartvar_getdesc('avgflag')
     xyfill_desc => restartvar_getdesc('xyfill')
     issubcol_desc => restartvar_getdesc('is_subcol')
@@ -1498,7 +1488,6 @@ CONTAINS
         ierr = pio_put_var(File, cm_desc,startc,tape(t)%hlist(f)%field%cell_methods)
         ierr = pio_put_var(File, longname_desc,startc,tape(t)%hlist(f)%field%long_name)
         ierr = pio_put_var(File, units_desc,startc,tape(t)%hlist(f)%field%units)
-        ierr = pio_put_var(File, mr_desc,startc,tape(t)%hlist(f)%field%mixing_ratio)
         ierr = pio_put_var(File, avgflag_desc,start, tape(t)%hlist(f)%avgflag)
 
         ierr = pio_put_var(File, fillval_desc,start, tape(t)%hlist(f)%field%fillvalue)
@@ -1568,6 +1557,7 @@ CONTAINS
     use sat_hist,            only: sat_hist_define, sat_hist_init
     use cam_grid_support,    only: cam_grid_read_dist_array, cam_grid_num_grids
     use cam_history_support, only: get_hist_coord_index, add_hist_coord
+    use constituents,        only: cnst_get_ind, cnst_get_type_byind
 
     use shr_sys_mod,         only: shr_sys_getenv
     use spmd_utils,          only: mpicom, mpi_character, masterprocid
@@ -1604,7 +1594,6 @@ CONTAINS
     type(var_desc_t)                 :: vdesc
     type(var_desc_t)                 :: longname_desc
     type(var_desc_t)                 :: units_desc
-    type(var_desc_t)                 :: mr_desc
     type(var_desc_t)                 :: avgflag_desc
     type(var_desc_t)                 :: sseq_desc
     type(var_desc_t)                 :: cm_desc
@@ -1632,6 +1621,8 @@ CONTAINS
     integer                          :: fdims(3)         ! Field dims
     integer                          :: nfdims           ! 2 or 3 (for 2D,3D)
     integer                          :: fdecomp          ! Grid ID for field
+    integer                          :: idx
+    character(len=3)                 :: mixing_ratio
 
     !
     ! Get users logname and machine hostname
@@ -1794,7 +1785,6 @@ CONTAINS
 
     ierr = pio_inq_varid(File, 'long_name', longname_desc)
     ierr = pio_inq_varid(File, 'units', units_desc)
-    ierr = pio_inq_varid(File, 'mixing_ratio', mr_desc)
     ierr = pio_inq_varid(File, 'sampling_seq', sseq_desc)
     ierr = pio_inq_varid(File, 'cell_methods', cm_desc)
 
@@ -1829,7 +1819,6 @@ CONTAINS
         ierr = pio_get_var(File,avgflag_desc, (/f,t/), tape(t)%hlist(f)%avgflag)
         ierr = pio_get_var(File,longname_desc, (/1,f,t/), tape(t)%hlist(f)%field%long_name)
         ierr = pio_get_var(File,units_desc, (/1,f,t/), tape(t)%hlist(f)%field%units)
-        ierr = pio_get_var(File,mr_desc, (/1,f,t/), tape(t)%hlist(f)%field%mixing_ratio)
         tape(t)%hlist(f)%field%sampling_seq(1:max_chars) = ' '
         ierr = pio_get_var(File,sseq_desc, (/1,f,t/), tape(t)%hlist(f)%field%sampling_seq)
         call strip_null(tape(t)%hlist(f)%field%sampling_seq)
@@ -1851,6 +1840,15 @@ CONTAINS
         tape(t)%hlist(f)%field%decomp_type = decomp(f,t)
         tape(t)%hlist(f)%field%numlev = tmpnumlev(f,t)
         tape(t)%hlist(f)%hwrt_prec = tmpprec(f,t)
+
+        ! If the field is an advected constituent set the mixing_ratio attribute
+        fname_tmp = strip_suffix(tape(t)%hlist(f)%field%name)
+        call cnst_get_ind(fname_tmp, idx, abort=.false.)
+        mixing_ratio = ''
+        if (idx > 0) then
+           mixing_ratio = cnst_get_type_byind(idx)
+        end if
+        tape(t)%hlist(f)%field%mixing_ratio = mixing_ratio
 
         mdimcnt = count(allmdims(:,f,t) > 0)
         if(mdimcnt > 0) then
