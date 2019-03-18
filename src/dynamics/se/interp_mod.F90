@@ -68,19 +68,8 @@ CONTAINS
     type(horiz_coord_t), pointer       :: lat_coord
     type(horiz_coord_t), pointer       :: lon_coord
     character(len=max_hcoordname_len)  :: gridname
+    !---------------------------------------------------------------------------
 
-    if (associated(cam_interpolate)) then
-      do i = 1, size(cam_interpolate)
-!JMD  This is strange ithr used before it is set
-      ithr = 0
-        if (associated(interpdata_set(ithr)%interpdata)) then
-          deallocate(interpdata_set(ithr)%interpdata)
-          nullify(interpdata_set(ithr)%interpdata)
-        end if
-      end do
-      deallocate(cam_interpolate)
-      nullify(cam_interpolate)
-    end if
     nullify(grid_map)
 
     ! For this dycore, interpolated output should be OK

@@ -414,7 +414,6 @@ contains
     ! Declare the history fields for which this module contains outfld calls.
 
     use cam_history,        only: addfld, add_default, horiz_only
-    use cam_history,        only: register_vector_field
     use constituent_burden, only: constituent_burden_init
     use physics_buffer,     only: pbuf_set_field
 

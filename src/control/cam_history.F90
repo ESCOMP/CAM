@@ -1557,6 +1557,7 @@ CONTAINS
     use sat_hist,            only: sat_hist_define, sat_hist_init
     use cam_grid_support,    only: cam_grid_read_dist_array, cam_grid_num_grids
     use cam_history_support, only: get_hist_coord_index, add_hist_coord
+    use constituents,        only: cnst_get_ind, cnst_get_type_byind
 
     use shr_sys_mod,         only: shr_sys_getenv
     use spmd_utils,          only: mpicom, mpi_character, masterprocid
@@ -1620,6 +1621,8 @@ CONTAINS
     integer                          :: fdims(3)         ! Field dims
     integer                          :: nfdims           ! 2 or 3 (for 2D,3D)
     integer                          :: fdecomp          ! Grid ID for field
+    integer                          :: idx
+    character(len=3)                 :: mixing_ratio
 
     !
     ! Get users logname and machine hostname
@@ -1837,6 +1840,15 @@ CONTAINS
         tape(t)%hlist(f)%field%decomp_type = decomp(f,t)
         tape(t)%hlist(f)%field%numlev = tmpnumlev(f,t)
         tape(t)%hlist(f)%hwrt_prec = tmpprec(f,t)
+
+        ! If the field is an advected constituent set the mixing_ratio attribute
+        fname_tmp = strip_suffix(tape(t)%hlist(f)%field%name)
+        call cnst_get_ind(fname_tmp, idx, abort=.false.)
+        mixing_ratio = ''
+        if (idx > 0) then
+           mixing_ratio = cnst_get_type_byind(idx)
+        end if
+        tape(t)%hlist(f)%field%mixing_ratio = mixing_ratio
 
         mdimcnt = count(allmdims(:,f,t) > 0)
         if(mdimcnt > 0) then
@@ -2226,6 +2238,12 @@ CONTAINS
     character(len=6) :: fv_only_flds(n_fv_only) = &
        [ 'VTHzm ', 'WTHzm ', 'UVzm  ', 'UWzm  ', 'Uzm   ', 'Vzm   ', 'Wzm   ', &
          'THzm  ', 'TH    ', 'MSKtem' ]
+
+    integer :: n_vec_comp, add_fincl_idx
+    integer, parameter :: nvecmax = 50 ! max number of vector components in a fincl list
+    character(len=2) :: avg_suffix
+    character(len=max_fieldname_len) :: vec_comp_names(nvecmax)
+    character(len=1)                 :: vec_comp_avgflag(nvecmax)
     !--------------------------------------------------------------------------
 
     ! First ensure contents of fincl, fexcl, and fwrtpr are all valid names
@@ -2234,6 +2252,9 @@ CONTAINS
     do t=1,ptapes
 
       f = 1
+      n_vec_comp       = 0
+      vec_comp_names   = ' '
+      vec_comp_avgflag = ' '
 fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
         name = getname (fincl(f,t))
 
@@ -2263,9 +2284,53 @@ fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
              call shr_sys_flush(iulog)
           end if
           errors_found = errors_found + 1
+        else
+           if (len_trim(mastername)>0 .and. interpolate_output(t)) then
+              if (n_vec_comp >= nvecmax) call endrun('FLDLST: need to increase nvecmax')
+              ! If this is a vector component then save the name of the complement
+              avgflag = getflag(fincl(f,t))
+              if (len_trim(listentry%meridional_field) > 0) then
+                 n_vec_comp = n_vec_comp + 1
+                 vec_comp_names(n_vec_comp) = listentry%meridional_field
+                 vec_comp_avgflag(n_vec_comp) = avgflag
+              else if (len_trim(listentry%zonal_field) > 0) then
+                 n_vec_comp = n_vec_comp + 1
+                 vec_comp_names(n_vec_comp) = listentry%meridional_field
+                 vec_comp_avgflag(n_vec_comp) = avgflag
+              end if
+           end if
         end if
         f = f + 1
       end do fincls
+
+      ! Interpolation of vector components requires that both be present.  If the fincl
+      ! specifier contains any vector components, then the complement was saved in the
+      ! array vec_comp_names.  Next insure (for interpolated output only) that all complements
+      ! are also present in the fincl array.
+      
+      ! The first empty slot in the current fincl array is index f from loop above.
+      add_fincl_idx = f
+      if (f > 1 .and. interpolate_output(t)) then
+         do i = 1, n_vec_comp
+            call list_index(fincl(:,t), vec_comp_names(i), ff)
+            if (ff == 0) then
+
+               ! Add vector component to fincl.  Don't need to check whether its in the master
+               ! list since this was done at the time of registering the vector components.
+               avg_suffix = '  '
+               if (len_trim(vec_comp_avgflag(i)) > 0) avg_suffix = ':' // vec_comp_avgflag(i)
+               fincl(add_fincl_idx,t) = trim(vec_comp_names(i)) // avg_suffix
+               add_fincl_idx = add_fincl_idx + 1
+
+               write(errormsg,'(3a,1(i0,a))')'FLDLST: ', trim(vec_comp_names(i)), &
+                  ' added to fincl', t, '.  Both vector components are required for interpolated output.'
+               if (masterproc) then
+                  write(iulog,*) trim(errormsg)
+                  call shr_sys_flush(iulog)
+               end if
+            end if
+         end do
+      end if
 
       f = 1
       do while (f < pflds .and. fexcl(f,t) /= ' ')

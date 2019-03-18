@@ -469,8 +469,8 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
          ncols = get_ncols_p(lchnk)
          call get_gcol_all_p(lchnk, pcols, pgcols)
 
-         call test_mapping_overwrite_tendencies(phys_state(lchnk), phys_tend(lchnk), ncols,&
-            lchnk, q_prev(1:ncols,:,:,lchnk))
+         call test_mapping_overwrite_tendencies(phys_state(lchnk), phys_tend(lchnk), ncols, &
+            lchnk, q_prev(1:ncols,:,:,lchnk), dyn_in%fvm)
 
          do icol = 1, ncols
             call get_gcol_block_d(pgcols(icol), 1, idmb1, idmb2, idmb3)
@@ -512,7 +512,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
          ncols = get_ncols_p(lchnk)
 
          call test_mapping_overwrite_tendencies(phys_state(lchnk), phys_tend(lchnk), ncols, lchnk, &
-                                                q_prev(1:ncols,:,:,lchnk))
+                                                q_prev(1:ncols,:,:,lchnk), dyn_in%fvm)
 
          call chunk_to_block_send_pters(lchnk, pcols, pver+1, tsize, cpter)
 

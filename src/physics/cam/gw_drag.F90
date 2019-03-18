@@ -574,6 +574,7 @@ subroutine gw_init()
           'Zonal gravity wave surface stress')
      call addfld ('TAUGWY',     horiz_only,  'A','N/m2', &
           'Meridional gravity wave surface stress')
+     call register_vector_field('TAUGWX', 'TAUGWY')
 
      if (history_amwg) then
         call add_default('TAUGWX  ', 1, ' ')
@@ -661,6 +662,7 @@ subroutine gw_init()
           'Zonal wind profile-entry to GW ' )
      call addfld('VEGW',  (/ 'lev' /) , 'A'  ,'1/s' ,  &
           'Merdional wind profile-entry to GW ' )
+     call register_vector_field('UEGW','VEGW')
      call addfld('TEGW',  (/ 'lev' /) , 'A'  ,'K' ,  &
           'Temperature profile-entry to GW ' )
 
@@ -677,16 +679,19 @@ subroutine gw_init()
           'Ridge based momentum flux profile')
         call addfld('TAU'//cn//'RDGBETAX' , (/ 'ilev' /), 'I', 'N/m2', &
           'Ridge based momentum flux profile')
+        call register_vector_field('TAU'//cn//'RDGBETAX','TAU'//cn//'RDGBETAY')
         call addfld('UT'//cn//'RDGBETA',    (/ 'lev' /),  'I', 'm/s', &
           'U wind tendency from ridge '//cn)
         call addfld('VT'//cn//'RDGBETA',    (/ 'lev' /),  'I', 'm/s', &
           'V wind tendency from ridge '//cn)
+        call register_vector_field('UT'//cn//'RDGBETA','VT'//cn//'RDGBETA')
      end do
 
      call addfld('TAUARDGBETAY' , (/ 'ilev' /) , 'I'  ,'N/m2' , &
           'Ridge based momentum flux profile')
      call addfld('TAUARDGBETAX' , (/ 'ilev' /) , 'I'  ,'N/m2' , &
           'Ridge based momentum flux profile')
+     call register_vector_field('TAUARDGBETAX','TAUARDGBETAY')
 
      if (history_waccm) then
         call add_default('TAUARDGBETAX', 1, ' ')
@@ -764,21 +769,24 @@ subroutine gw_init()
           'U wind tendency from ridge '//cn)
         call addfld('VT'//cn//'RDGGAMMA' , (/ 'lev' /),  'I', 'm/s', &
           'V wind tendency from ridge '//cn)
+        call register_vector_field('UT'//cn//'RDGGAMMA','VT'//cn//'RDGGAMMA')
      end do
 
      call addfld ('TAUARDGGAMMAY' , (/ 'ilev' /) , 'I'  ,'N/m2' , &
           'Ridge based momentum flux profile')
      call addfld ('TAUARDGGAMMAX' , (/ 'ilev' /) , 'I'  ,'N/m2' , &
           'Ridge based momentum flux profile')
+     call register_vector_field('TAUARDGGAMMAX','TAUARDGGAMMAY')
      call addfld ('TAURDGGMX',     horiz_only,  'A','N/m2', &
           'Zonal gravity wave surface stress')
      call addfld ('TAURDGGMY',     horiz_only,  'A','N/m2', &
           'Meridional gravity wave surface stress')
+     call register_vector_field('TAURDGGMX','TAURDGGMY')
      call addfld ('UTRDGGM' , (/ 'lev' /) , 'I'  ,'m/s' , &
           'U wind tendency from ridge 6     ')
      call addfld ('VTRDGGM' , (/ 'lev' /) , 'I'  ,'m/s' , &
-          'U wind tendency from ridge 6     ')
-
+          'V wind tendency from ridge 6     ')
+     call register_vector_field('UTRDGGM','VTRDGGM')
   end if
 
   if (use_gw_front .or. use_gw_front_igw) then
@@ -965,6 +973,9 @@ subroutine gw_init()
 
   call addfld ('UTGW_TOTAL',    (/ 'lev' /), 'A','m/s2', &
        'Total U tendency due to gravity wave drag')
+  call addfld ('VTGW_TOTAL',    (/ 'lev' /), 'A','m/s2', &
+       'Total V tendency due to gravity wave drag')
+  call register_vector_field('UTGW_TOTAL', 'VTGW_TOTAL')
 
   ! Total temperature tendency output.
   call addfld ('TTGW', (/ 'lev' /), 'A', 'K/s',  &
@@ -1913,6 +1924,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   call outfld('TTGW', ptend%s/cpairv(:,:,lchnk),  pcols, lchnk)
  
   call outfld('UTGW_TOTAL', ptend%u, pcols, lchnk)
+  call outfld('VTGW_TOTAL', ptend%v, pcols, lchnk)
 
   call outfld('QTGW', ptend%q(:,:,1), pcols, lchnk)
   call outfld('CLDLIQTGW', ptend%q(:,:,ixcldliq), pcols, lchnk)
@@ -2198,7 +2210,7 @@ end subroutine gw_rdg_calc
 
 ! Add all history fields for a gravity wave spectrum source.
 subroutine gw_spec_addflds(prefix, scheme, band, history_defaults)
-  use cam_history, only: addfld, add_default
+  use cam_history, only: addfld, add_default, register_vector_field
 
   !------------------------------Arguments--------------------------------
 
@@ -2228,6 +2240,8 @@ subroutine gw_spec_addflds(prefix, scheme, band, history_defaults)
        trim(scheme)//' U tendency - gravity wave spectrum')
   call addfld (trim(prefix)//'VTGWSPEC',(/ 'lev' /), 'A','m/s2', &
        trim(scheme)//' V tendency - gravity wave spectrum')
+  call register_vector_field(trim(prefix)//'UTGWSPEC',trim(prefix)//'VTGWSPEC')
+
   call addfld (trim(prefix)//'TTGWSPEC',(/ 'lev' /), 'A','K/s', &
        trim(scheme)//' T tendency - gravity wave spectrum')
 

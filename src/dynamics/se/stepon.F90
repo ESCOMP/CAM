@@ -154,19 +154,36 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
 
    use camsrfexch,     only: cam_out_t
    use dyn_comp,       only: dyn_run
-
+   use advect_tend,    only: compute_adv_tends_xyz
+   use dyn_grid,       only: TimeLevel
+   use time_mod,       only: TimeLevel_Qdp
+   use control_mod,    only: qsplit   
    ! arguments
    real(r8),            intent(in)    :: dtime   ! Time-step
    type(cam_out_t),     intent(inout) :: cam_out(:) ! Output from CAM to surface
    type(physics_state), intent(inout) :: phys_state(begchunk:endchunk)
    type (dyn_import_t), intent(inout) :: dyn_in  ! Dynamics import container
    type (dyn_export_t), intent(inout) :: dyn_out ! Dynamics export container
-   !----------------------------------------------------------------------------
 
+   integer :: tl_f, tl_fQdp
+   !--------------------------------------------------------------------------------------
+   
+   call t_startf('comp_adv_tends1')
+   tl_f = TimeLevel%n0 
+   call TimeLevel_Qdp(TimeLevel, qsplit, tl_fQdp)   
+   call compute_adv_tends_xyz(dyn_in%elem,dyn_in%fvm,1,nelemd,tl_fQdp,tl_f)
+   call t_stopf('comp_adv_tends1')
+   
    call t_barrierf('sync_dyn_run', mpicom)
-   call t_startf ('dyn_run')
+   call t_startf('dyn_run')
    call dyn_run(dyn_out)
-   call t_stopf  ('dyn_run')
+   call t_stopf('dyn_run')
+
+   call t_startf('comp_adv_tends2')
+   tl_f = TimeLevel%n0 
+   call TimeLevel_Qdp(TimeLevel, qsplit, tl_fQdp)   
+   call compute_adv_tends_xyz(dyn_in%elem,dyn_in%fvm,1,nelemd,tl_fQdp,tl_f)
+   call t_stopf('comp_adv_tends2')   
 
 end subroutine stepon_run3
 
@@ -182,7 +199,7 @@ end subroutine stepon_final
 !=========================================================================================
 
 subroutine diag_dynvar_ic(elem, fvm)
-
+   use constituents,           only: cnst_type
    use cam_history,            only: write_inithist, outfld, hist_fld_active, fieldname_len
    use dyn_grid,               only: TimeLevel
 
@@ -192,6 +209,7 @@ subroutine diag_dynvar_ic(elem, fvm)
    use hybrid_mod,             only: hybrid_t
    use dimensions_mod,         only: np, npsq, nc, nhc, fv_nphys, qsize, ntrac, nlev
    use dimensions_mod,         only: qsize_condensate_loading, qsize_condensate_loading_idx_gll
+   use dimensions_mod,         only: qsize_condensate_loading_idx
    use dimensions_mod,         only: cnst_name_gll
    use constituents,           only: cnst_name
    use element_mod,            only: element_t
@@ -203,7 +221,7 @@ subroutine diag_dynvar_ic(elem, fvm)
    type(fvm_struct), intent(inout) :: fvm(:)
 
    ! local variables
-   integer              :: ie, i, j, m, m_cnst, nq
+   integer              :: ie, i, j, k, m, m_cnst, nq
    integer              :: tl_f, tl_qdp
    character(len=fieldname_len) :: tfname
 
@@ -213,6 +231,7 @@ subroutine diag_dynvar_ic(elem, fvm)
    real(r8), allocatable :: fld_fvm(:,:,:,:,:), fld_gll(:,:,:,:,:)
    logical,  allocatable :: llimiter(:)
    real(r8)              :: qtmp(np,np,nlev)
+   real(r8), allocatable :: factor_array(:,:,:)
    !----------------------------------------------------------------------------
 
    tl_f = timelevel%n0
@@ -325,22 +344,36 @@ subroutine diag_dynvar_ic(elem, fvm)
          call outfld('PS&IC', ftmp(:,1,1), npsq, ie)
       end do
 
+      if (fv_nphys < 1) allocate(factor_array(np,np,nlev))
+
       do ie = 1, nelemd
          call outfld('T&IC', RESHAPE(elem(ie)%state%T(:,:,:,tl_f),   (/npsq,nlev/)), npsq, ie)
          call outfld('U&IC', RESHAPE(elem(ie)%state%v(:,:,1,:,tl_f), (/npsq,nlev/)), npsq, ie)
          call outfld('V&IC', RESHAPE(elem(ie)%state%v(:,:,2,:,tl_f), (/npsq,nlev/)), npsq, ie)
 
          if (fv_nphys < 1) then
+            factor_array(:,:,:) = 1.0_r8
+            do k = 1, qsize_condensate_loading
+               m_cnst = qsize_condensate_loading_idx(k)
+               factor_array(:,:,:) = factor_array(:,:,:) + &
+                    elem(ie)%state%Qdp(:,:,:,m_cnst,tl_qdp)/elem(ie)%state%dp3d(:,:,:,tl_f)
+            end do
+            factor_array(:,:,:) = 1.0_r8/factor_array(:,:,:)
             do m_cnst = 1, qsize
-               call outfld(trim(cnst_name(m_cnst))//'&IC', &
-                  RESHAPE(elem(ie)%state%Qdp(:,:,:,m_cnst,tl_qdp)/&
+               if (cnst_type(m_cnst) == 'wet') then
+                  call outfld(trim(cnst_name(m_cnst))//'&IC', &
+                       RESHAPE(factor_array(:,:,:)*elem(ie)%state%Qdp(:,:,:,m_cnst,tl_qdp)/&
                        elem(ie)%state%dp3d(:,:,:,tl_f), (/npsq,nlev/)), npsq, ie)
+               else
+                  call outfld(trim(cnst_name(m_cnst))//'&IC', &
+                       RESHAPE(elem(ie)%state%Qdp(:,:,:,m_cnst,tl_qdp)/&
+                       elem(ie)%state%dp3d(:,:,:,tl_f), (/npsq,nlev/)), npsq, ie)
+               end if
             end do
          end if
       end do
 
       if (fv_nphys > 0) then
-
          !JMD $OMP PARALLEL NUM_THREADS(horz_num_threads), DEFAULT(SHARED), PRIVATE(hybrid,nets,nete,n)
          !JMD        hybrid = config_thread_region(par,'horizontal')
          hybrid = config_thread_region(par,'serial')
@@ -349,21 +382,30 @@ subroutine diag_dynvar_ic(elem, fvm)
          allocate(fld_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,nlev,ntrac,nets:nete))
          allocate(fld_gll(np,np,nlev,ntrac,nets:nete))
          allocate(llimiter(ntrac))
-
+         allocate(factor_array(nc,nc,nlev))
          llimiter = .true.
          do ie = nets, nete
+            factor_array(:,:,:) = 1.0_r8
+            do k = 1, qsize_condensate_loading
+               m_cnst = qsize_condensate_loading_idx(k)
+               factor_array(:,:,:) = factor_array(:,:,:) + fvm(ie)%c(1:nc,1:nc,:,m_cnst)
+            end do
+            factor_array(:,:,:) = 1.0_r8/factor_array(:,:,:)
             do m_cnst = 1, ntrac
-               fld_fvm(1:nc,1:nc,:,m_cnst,ie) = fvm(ie)%c(1:nc,1:nc,:,m_cnst)
+               if (cnst_type(m_cnst) == 'wet') then
+                  fld_fvm(1:nc,1:nc,:,m_cnst,ie) = fvm(ie)%c(1:nc,1:nc,:,m_cnst)*factor_array(:,:,:)
+               else
+                  fld_fvm(1:nc,1:nc,:,m_cnst,ie) = fvm(ie)%c(1:nc,1:nc,:,m_cnst)
+               end if
             end do
          end do
 
-         call fvm2dyn(elem(nets:nete), fld_fvm, fld_gll, hybrid, nets, nete, &
-                      nlev, ntrac, fvm(nets:nete), llimiter)
+         call fvm2dyn(fld_fvm, fld_gll, hybrid, nets, nete, nlev, ntrac, fvm(nets:nete), llimiter)
 
          do ie = nets, nete
             do m_cnst = 1, ntrac
                call outfld(trim(cnst_name(m_cnst))//'&IC', &
-                  RESHAPE(fld_gll(:,:,:,m_cnst,ie), (/npsq,nlev/)), npsq, ie)
+                    RESHAPE(fld_gll(:,:,:,m_cnst,ie), (/npsq,nlev/)), npsq, ie)
             end do
          end do
 
@@ -371,7 +413,7 @@ subroutine diag_dynvar_ic(elem, fvm)
          deallocate(fld_gll)
          deallocate(llimiter)
       end if
-
+      deallocate(factor_array)
    end if  ! if (write_inithist)
 
    deallocate(ftmp)

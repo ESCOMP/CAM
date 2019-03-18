@@ -241,7 +241,7 @@ contains
           work_pool_trac(ith+1,2) = end_index
         end do
 
-        if(ntrac<tracer_num_threads) &
+        if(ntrac>0 .and. ntrac<tracer_num_threads) &
           print *,'WARNING: insufficient CSLAM tracer parallelism to support ',tracer_num_threads,' tracer threads'
         if ( .NOT. allocated(work_pool_ctrac) ) allocate(work_pool_ctrac(tracer_num_threads,2))
         do ith=0,tracer_num_threads-1
@@ -249,8 +249,6 @@ contains
           work_pool_ctrac(ith+1,1) = beg_index
           work_pool_ctrac(ith+1,2) = end_index
         end do
-         print *,'init_loop_ranges: ntrac: ',ntrac
-
 
         init_ranges = .false.
       endif
