@@ -2242,14 +2242,15 @@ CONTAINS
     integer :: n_vec_comp, add_fincl_idx
     integer, parameter :: nvecmax = 50 ! max number of vector components in a fincl list
     character(len=2) :: avg_suffix
-    character(len=fieldname_len) :: vec_comp_names(nvecmax)
-    character(len=1)             :: vec_comp_avgflag(nvecmax)
+    character(len=max_fieldname_len) :: vec_comp_names(nvecmax)
+    character(len=1)                 :: vec_comp_avgflag(nvecmax)
     !--------------------------------------------------------------------------
 
     ! First ensure contents of fincl, fexcl, and fwrtpr are all valid names
     !
     errors_found = 0
     do t=1,ptapes
+
       f = 1
       n_vec_comp       = 0
       vec_comp_names   = ' '
@@ -2272,7 +2273,7 @@ fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
               end if
            end do
         end if
-
+        
         mastername=''
         listentry => get_entry_by_name(masterlinkedlist, name)
         if (associated(listentry)) mastername = listentry%field%name
@@ -2318,7 +2319,7 @@ fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
                ! list since this was done at the time of registering the vector components.
                avg_suffix = '  '
                if (len_trim(vec_comp_avgflag(i)) > 0) avg_suffix = ':' // vec_comp_avgflag(i)
-               fincl(add_fincl_idx,t) = vec_comp_names(i) // avg_suffix
+               fincl(add_fincl_idx,t) = trim(vec_comp_names(i)) // avg_suffix
                add_fincl_idx = add_fincl_idx + 1
 
                write(errormsg,'(3a,1(i0,a))')'FLDLST: ', trim(vec_comp_names(i)), &
