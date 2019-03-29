@@ -3,7 +3,7 @@
 <namelist_defaults>
 
 <ext_frc_specifier>             
-         'H2O ->  $INPUTDATA_ROOT/atm/cam/chem/emis/elev/H2OemissionCH4oxidationx2_3D_L70_2014-2101_CMIP6-SSP1-2.6_c190221.nc',
+         'H2O ->  $INPUTDATA_ROOT/atm/cam/chem/emis/elev/H2OemissionCH4oxidationx2_3D_L70_2014-2101_CMIP6-SSP1-2.6_c190307.nc',
          'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp126/emissions-cmip6-ScenarioMIP_IAMC-IMAGE-ssp126-1-1_num_so4_a1_anthro-ene_vertical_mol_175001-210012_0.9x1.25_c20180830.nc',
          'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_num_a1_so4_contvolcano_vertical_850-5000_0.9x1.25_c20170724.nc',
          'num_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_num_a2_so4_contvolcano_vertical_850-5000_0.9x1.25_c20170724.nc',
@@ -68,7 +68,7 @@
 
 
 <co2_readflux_fuel>.true.</co2_readflux_fuel>
-<co2flux_fuel_file hgrid="0.9x1.25">tm/cam/ggas/emissions-cmip6_CO2_anthro_surface_ScenarioMIP_IAMC-IMAGE-ssp126_201401-210112_fv_0.9x1.25_c20190207.nc</co2flux_fuel_file>
+<co2flux_fuel_file hgrid="0.9x1.25">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_ScenarioMIP_IAMC-IMAGE-ssp126_201401-210112_fv_0.9x1.25_c20190207.nc</co2flux_fuel_file>
 <co2flux_fuel_file hgrid="1.9x2.5">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_ScenarioMIP_IAMC-IMAGE-ssp126_201401-210112_fv_1.9x2.5_c20190207.nc</co2flux_fuel_file>
 
 
