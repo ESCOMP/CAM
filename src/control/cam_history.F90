@@ -2295,7 +2295,7 @@ fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
                  vec_comp_avgflag(n_vec_comp) = avgflag
               else if (len_trim(listentry%zonal_field) > 0) then
                  n_vec_comp = n_vec_comp + 1
-                 vec_comp_names(n_vec_comp) = listentry%meridional_field
+                 vec_comp_names(n_vec_comp) = listentry%zonal_field
                  vec_comp_avgflag(n_vec_comp) = avgflag
               end if
            end if
