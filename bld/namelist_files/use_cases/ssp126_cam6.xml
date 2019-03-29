@@ -3,8 +3,8 @@
 <namelist_defaults>
 
 <ext_frc_specifier>             
-         'H2O ->  $INPUTDATA_ROOT/atm/cam/chem/emis/elev//H2OemissionCH4oxidationx2_3D_L70_2014-2101_CMIP6-SSP1-2.6_c190221.nc',
-         'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/missions_ssp126/emissions-cmip6-ScenarioMIP_IAMC-IMAGE-ssp126-1-1_num_so4_a1_anthro-ene_vertical_mol_175001-210012_0.9x1.25_c20180830.nc',
+         'H2O ->  $INPUTDATA_ROOT/atm/cam/chem/emis/elev/H2OemissionCH4oxidationx2_3D_L70_2014-2101_CMIP6-SSP1-2.6_c190221.nc',
+         'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp126/emissions-cmip6-ScenarioMIP_IAMC-IMAGE-ssp126-1-1_num_so4_a1_anthro-ene_vertical_mol_175001-210012_0.9x1.25_c20180830.nc',
          'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_num_a1_so4_contvolcano_vertical_850-5000_0.9x1.25_c20170724.nc',
          'num_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_num_a2_so4_contvolcano_vertical_850-5000_0.9x1.25_c20170724.nc',
          'SO2    -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_SO2_contvolcano_vertical_850-5000_0.9x1.25_c20170724.nc',
@@ -45,7 +45,7 @@
 
 
   <tracer_cnst_datapath     >   'atm/cam/tracer_cnst'                                        </tracer_cnst_datapath>
-  <tracer_cnst_file         >   'tracer_cnst_halons_3D_L70_2014-2101_CMIP6-SSP1-2.6_c190221.nc' </tracer_cnst_file>
+  <tracer_cnst_file         >   'tracer_cnst_halons_3D_L70_2014-2101_CMIP6-SSP1-2.6_c190307.nc' </tracer_cnst_file>
   <tracer_cnst_specifier    >   'O3','OH','NO3','HO2'                                        </tracer_cnst_specifier>
   <tracer_cnst_type         >   'INTERP_MISSING_MONTHS'                                      </tracer_cnst_type>
   <tracer_cnst_filelist     >   ''                                                           </tracer_cnst_filelist>
