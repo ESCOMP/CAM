@@ -2665,6 +2665,7 @@ end subroutine clubb_init_cnst
    call outfld( 'QT',               qt_output,               pcols, lchnk )
    call outfld( 'SL',               sl_output,               pcols, lchnk )
    call outfld( 'CONCLD',           concld,                  pcols, lchnk )
+   call outfld( 'DP_CLD',           deepcu,                  pcols, lchnk )
    call outfld( 'CLUBB_GRID_SIZE',  grid_dx,                 pcols, lchnk )
    call outfld( 'QSATFAC',          qsatfac,                 pcols, lchnk)
 
