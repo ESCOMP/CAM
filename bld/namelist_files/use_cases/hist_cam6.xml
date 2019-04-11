@@ -1,6 +1,8 @@
 <?xml version="1.0"?>
 <namelist_defaults>
 
+  <ncdata hgrid="1.9x2.5" nlev="32">cesm2_init/b.e20.B1850.f19_g17.release_cesm2_1_0.020/0301-01-01/b.e20.B1850.f19_g17.release_cesm2_1_0.020.cam.i.0301-01-01-00000.nc</ncdata>
+
   <solar_irrad_data_file    >   'atm/cam/solar/SolarForcingCMIP6_18491230-22991231_c171031.nc'</solar_irrad_data_file>
 
   <tracer_cnst_datapath     >   'atm/cam/tracer_cnst'                                        </tracer_cnst_datapath>
@@ -27,7 +29,40 @@
   <flbc_type>'SERIAL'</flbc_type>
   <flbc_list>'CO2','CH4','N2O','CFC11eq','CFC12'</flbc_list>
 
-  <!-- sim_year used for CLM datasets and SSTs forcings -->
+<fincl1 hgrid="1.9x2.5">
+         'dst_a1', 'dst_c1', 'dst_a3', 'dst_c3', 'dst_a1_SRF', 'dst_a3_SRF', 'dst_a1DDF', 'dst_a1SFWET', 'dst_c1DDF',
+         'dst_c1SFWET', 'dst_a3DDF', 'dst_a3SFWET', 'dst_c3DDF', 'dst_c3SFWET', 'SSAVIS', 'AODABS', 'AODDUST2', 'bc_a1',
+         'bc_a4', 'dst_a1', 'dst_a2', 'dst_a3', 'ncl_a1', 'ncl_a1', 'ncl_a2', 'ncl_a3', 'pom_a1',
+         'pom_a4', 'so4_a1', 'so4_a2', 'so4_a3', 'soa_a1', 'soa_a2', 'bc_c1', 'bc_c4', 'dst_c1',
+         'dst_c2', 'dst_c3', 'ncl_c1', 'ncl_c1', 'ncl_c2', 'ncl_c3', 'pom_c1', 'pom_c4', 'so4_c1',
+         'so4_c2', 'so4_c3', 'soa_c1', 'soa_c2', 'num_a1', 'num_a2', 'num_a4', 'num_c1', 'num_c2',
+         'num_c3', 'bc_a1SFWET', 'bc_a4SFWET', 'dst_a1SFWET', 'dst_a2SFWET', 'dst_a3SFWET', 'ncl_a1SFWET', 'ncl_a2SFWET', 'ncl_a3SFWET',
+         'pom_a1SFWET', 'pom_a4SFWET', 'so4_a1SFWET', 'so4_a2SFWET', 'so4_a3SFWET', 'soa_a1SFWET', 'soa_a2SFWET', 'bc_c1SFWET', 'bc_c4SFWET',
+         'dst_c1SFWET', 'dst_c2SFWET', 'dst_c3SFWET', 'ncl_c1SFWET', 'ncl_c2SFWET', 'ncl_c3SFWET', 'pom_c1SFWET', 'pom_c4SFWET', 'so4_c1SFWET',
+         'so4_c2SFWET', 'so4_c3SFWET', 'soa_c1SFWET', 'soa_c2SFWET', 'bc_a1DDF', 'bc_a4DDF', 'dst_a1DDF', 'dst_a2DDF', 'dst_a3DDF',
+         'ncl_a1DDF', 'ncl_a2DDF', 'ncl_a3DDF', 'pom_a1DDF', 'pom_a4DDF', 'so4_a1DDF', 'so4_a2DDF', 'so4_a3DDF', 'soa_a1DDF',
+         'soa_a2DDF', 'bc_c1DDF', 'bc_c4DDF', 'dst_c1DDF', 'dst_c2DDF', 'dst_c3DDF', 'ncl_c1DDF', 'ncl_c2DDF', 'ncl_c3DDF',
+         'pom_c1DDF', 'pom_c4DDF', 'so4_c1DDF', 'so4_c2DDF', 'so4_c3DDF', 'soa_c1DDF', 'soa_c2DDF', 'bc_a4_CLXF', 'pom_a4_CLXF',
+         'so4_a1_CLXF', 'so4_a2_CLXF', 'SFbc_a4', 'SFpom_a4', 'SFso4_a1', 'SFso4_a2', 'so4_a1_sfgaex1', 'so4_a2_sfgaex1', 'so4_a3_sfgaex1',
+         'soa_a1_sfgaex1', 'soa_a2_sfgaex1', 'so4_a2_sfnnuc1', 'so4_c1AQH2SO4', 'so4_c2AQH2SO4', 'so4_c3AQH2SO4', 'so4_c1AQSO4', 'so4_c2AQSO4', 'so4_c3AQSO4',
+         'ADRAIN', 'ADSNOW', 'ANRAIN', 'ANSNOW', 'AODDUST', 'AODVIS', 'AQRAIN', 'AQSNOW', 'AQSO4_H2O2',
+         'AQSO4_O3', 'AREI', 'AREL', 'AWNC', 'AWNI', 'CCN3', 'CDNUMC', 'CLDHGH', 'CLDICE',
+         'CLDLIQ', 'CLDLOW', 'CLDMED', 'CLDTOT', 'CLOUD', 'CONCLD', 'DMS', 'FICE', 'FLDS',
+         'FLNS', 'FLNS', 'FLNT', 'FLNT', 'FLUT', 'FLUT', 'FREQI', 'FREQL', 'FREQR',
+         'FREQS', 'FSDS', 'FSDS', 'FSNS', 'FSNS', 'FSNT', 'FSNT', 'FSNTOA', 'FSNTOA',
+         'H2SO4', 'H2SO4_sfgaex1', 'ICEFRAC', 'ICIMR', 'ICWMR', 'IWC', 'LWCF', 'OMEGA', 'OMEGAT',
+         'PBLH', 'PRECC', 'PRECL', 'PRECSC', 'PRECSL', 'PS', 'PSL', 'Q', 'QFLX',
+         'QRL', 'QRS', 'QT', 'RAINQM', 'RCM_CLUBB', 'RELHUM', 'RELVAR', 'RTP2_CLUBB', 'RTPTHLP_CLUBB',
+         'SFDMS', 'SFSOAG', 'SNOWQM', 'SO2', 'SO2_CLXF', 'SOLIN', 'SWCF', 'T', 'TAUBLJX',
+         'TAUBLJY', 'TAUGWX', 'TAUGWY', 'TAUX', 'TAUY', 'TGCLDCWP', 'TGCLDIWP', 'TGCLDLWP', 'TMQ',
+         'TREFHT', 'TS', 'U', 'U10', 'UP2_CLUBB', 'UPWP_CLUBB', 'UU', 'V', 'VP2_CLUBB',
+         'VPWP_CLUBB', 'VQ', 'VU', 'VV', 'WP2_CLUBB', 'WP3_CLUBB', 'WPRCP_CLUBB', 'WPRTP_CLUBB', 'WPTHLP_CLUBB',
+         'WPTHVP_CLUBB', 'WSUB', 'Z3', 'bc_a1', 'bc_a1DDF', 'bc_a1SFWET', 'bc_a1_SRF', 'bc_a4', 'bc_a4DDF',
+         'bc_a4SFWET', 'bc_a4_SRF', 'bc_c1', 'bc_c1DDF', 'bc_c1SFWET', 'num_a2', 'num_a3', 'num_a4', 'so4_a1',
+         'so4_a2', 'so4_a3', 'so4_c1', 'O3', 'O3colAbove'
+</fincl1>
+
+  <!-- sim_year used for CO2 cycle namelist settings -->
   <sim_year>1850-2000</sim_year>
 
 </namelist_defaults>

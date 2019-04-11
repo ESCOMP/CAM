@@ -16,8 +16,7 @@
 
 <!--Species IC -->
 <ncdata dyn="fv"  hgrid="0.9x1.25">cesm2_init/b.e21.BWHIST.f09_g17.CMIP6-historical-WACCM.001/1950-01-01/b.e21.BWHIST.f09_g17.CMIP6-historical-WACCM.001.cam.i.1950-01-01-00000.nc</ncdata>
-<ncdata dyn="fv"  hgrid="1.9x2.5" >atm/waccm/ic/f.e15.FWmaAMIP.f19_f19.misc08_cam5_4_81.003.cam.i.1980-01-01-00000_c160928.nc</ncdata>
-<ncdata dyn="fv"  hgrid="4x5"     >atm/waccm/ic/f2000.waccm-mam3_4x5_L70.cam2.i.0017-01-01.c121113.nc</ncdata>
+<ncdata dyn="fv"  hgrid="1.9x2.5" >cesm2_init/b.e20.BWma1850.f19_g17.release_cesm2_1_0.020/0289-01-01/b.e20.BWma1850.f19_g17.release_cesm2_1_0.020.cam.i.0289-01-01-00000.nc</ncdata>
 
 
 <!-- LBC, UBC Files -->

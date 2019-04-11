@@ -6,6 +6,8 @@
 
 <ncdata dyn="fv"  hgrid="1.9x2.5" >atm/waccm/ic/f.e11.FWTREFC1.f19_f19.001.cam.i.1955-01-01-00000_c141024.nc</ncdata>
 
+<bnd_topo hgrid="1.9x2.5">atm/cam/topo/USGS-gtopo30_1.9x2.5_remap_c050602.nc</bnd_topo>
+
 <lght_no_prd_factor>1.3</lght_no_prd_factor>
 
 <!-- Solar Inputs -->
