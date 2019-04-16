@@ -532,7 +532,6 @@ add_default($nl, 'cime_model', 'val'=>'cesm');
 # CESM driver defaults
 add_default($nl, 'coldair_outbreak_mod', 'val'=>'.true.');
 add_default($nl, 'flux_max_iteration', 'val'=>'5');
-add_default($nl, 'gust_fac', 'val'=>'0');
 
 # Spectral Element dycore
 my $dyn = $cfg->get('dyn');

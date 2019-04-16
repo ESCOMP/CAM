@@ -34,9 +34,9 @@ cheyenne/intel:
 
 cheyenne/intel/aux_cam:
 
-hobart/nag:
+izumi/nag:
 
-hobart/pgi:
+izumi/pgi:
 
 CAM tag used for the baseline comparison tests if different than previous
 tag:

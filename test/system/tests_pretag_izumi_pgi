@@ -1,0 +1,15 @@
+r8001
+sm112 er112       bl112
+sm114 er114 br114 bl114
+sm222 er222       bl222
+sm314 er314       bl314
+sm320 er320       bl320
+sm334 er334       bl334
+sm339 er339       bl339
+sm704 er704       bl704
+sm706                   eq706
+sm707 er707       bl707
+sm712 er712       bl712
+sm714                   eq711 eq712 eq713
+sc002
+sc004

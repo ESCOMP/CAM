@@ -7266,12 +7266,6 @@ Enable cold air outbreak modification based on Mahrt and Sun, MWR, 1995.
 Default: TRUE
 </entry>
 
-<entry id="gust_fac" type="integer"  category="driver"
-       group="seq_infodata_inparm" valid_values="0" >
-gust_fac value - for CESM is 0
-Default: 0.
-</entry>
-
 <entry id="case_name" type="char*80"  category="driver"
        group="seq_infodata_inparm" valid_values="" >
 Case identifier.  The value of {{ hilight }}case_name{{ closehilight }} is used in the
