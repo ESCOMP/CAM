@@ -2066,14 +2066,16 @@ contains
                     chm_mass = chm_mass + mmr(i,k,index_chm_mass(l,m))
              end do
              if ( tot_mass > 0._r8 ) then
-               sad_mode(i,k,l) = (chm_mass/tot_mass)**(2._r8/3._r8) * &
-                    mmr(i,k,num_idx(l))*rho_air*pi*diam(i,k,l)**2._r8*&
-                    exp(2._r8*alnsg_amode(l)**2._r8)  ! m^2/m^3
+              ! surface area density
+               sad_mode(i,k,l) = chm_mass/tot_mass &
+                               * mmr(i,k,num_idx(l))*rho_air*pi*diam(i,k,l)**2._r8 &
+                               * exp(2._r8*alnsg_amode(l)**2._r8)  ! m^2/m^3
                sad_mode(i,k,l) = 1.e-2_r8 * sad_mode(i,k,l) ! cm^2/cm^3
                
-               vol_mode(i,k,l) = chm_mass/tot_mass * &
-                    mmr(i,k,num_idx(l))*rho_air*pi/6._r8*diam(i,k,l)**3._r8*&
-                    exp(3._r8*alnsg_amode(l)**2._r8)  ! m^3/m^3 = cm^3/cm^3
+              ! volume calculation, for use in effective radius calculation
+               vol_mode(i,k,l) = chm_mass/tot_mass &
+                               * mmr(i,k,num_idx(l))*rho_air*pi/6._r8*diam(i,k,l)**3._r8  &
+                               * exp(4.5_r8*alnsg_amode(l)**2._r8)  ! m^3/m^3 = cm^3/cm^3
              else
                sad_mode(i,k,l) = 0._r8
                vol_mode(i,k,l) = 0._r8
