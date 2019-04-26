@@ -1883,7 +1883,8 @@ $cfg_cppdefs .= " -DPLON=$nlon -DPLAT=$nlat";
 # Parameters for multiple instances
 if (!$ccsm_seq){
     $cfg_cppdefs .= " -DNUM_COMP_INST_ATM=1 -DNUM_COMP_INST_LND=1 -DNUM_COMP_INST_OCN=1 -DNUM_COMP_INST_ICE=1";
-    $cfg_cppdefs .= " -DNUM_COMP_INST_GLC=1 -DNUM_COMP_INST_ROF=1 -DNUM_COMP_INST_WAV=1 -DNUM_COMP_INST_ESP=1";
+    $cfg_cppdefs .= " -DNUM_COMP_INST_GLC=1 -DNUM_COMP_INST_ROF=1 -DNUM_COMP_INST_WAV=1 -DNUM_COMP_INST_IAC=1";
+    $cfg_cppdefs .= " -DNUM_COMP_INST_ESP=1";
 }
 
 # Parameters for spectral element dycore.
@@ -2936,6 +2937,9 @@ sub write_filepath
 
         # Wave package
         print $fh "$cam_root/cime/src/components/stub_comps/swav/mct\n";
+
+        # IAC package
+        print $fh "$cam_root/cime/src/components/stub_comps/siac/mct\n";
 
         # Share utilities
         print $fh "$cam_root/cime/src/share/util\n";
