@@ -768,12 +768,12 @@
 
 <h2o_ch4ox_ext_file hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/H2OemissionCH4oxidationx2_3D_L70_1849-2015_CMIP6ensAvg_1.9x2.5_c190308.nc</h2o_ch4ox_ext_file>
 <num_a1_an_ext_file hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_num_so4_a1_anthro-ene_vertical_1750-2015_1.9x2.5_c20170616.nc</num_a1_an_ext_file>
-<num_a1_cv_ext_file hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_num_a1_so4_contvolcano_vertical_850-5000_1.9x2.5_c20181024.nc</num_a1_cv_ext_file>
-<num_a2_cv_ext_file hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_num_a2_so4_contvolcano_vertical_850-5000_1.9x2.5_c20181024.nc</num_a2_cv_ext_file>
-<so2_cv_ext_file    hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_SO2_contvolcano_vertical_850-5000_1.9x2.5_c20181024.nc</so2_cv_ext_file>
+<num_a1_cv_ext_file hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_num_a1_so4_contvolcano_vertical_850-5000_1.9x2.5_c20190417.nc</num_a1_cv_ext_file>
+<num_a2_cv_ext_file hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_num_a2_so4_contvolcano_vertical_850-5000_1.9x2.5_c20190417.nc</num_a2_cv_ext_file>
+<so2_cv_ext_file    hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_SO2_contvolcano_vertical_850-5000_1.9x2.5_c20190417.nc</so2_cv_ext_file>
 <so4_a1_an_ext_file hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_so4_a1_anthro-ene_vertical_1750-2015_1.9x2.5_c20170616.nc</so4_a1_an_ext_file>
-<so4_a1_cv_ext_file hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_so4_a1_contvolcano_vertical_850-5000_1.9x2.5_c20181024.nc</so4_a1_cv_ext_file>
-<so4_a2_cv_ext_file hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_so4_a2_contvolcano_vertical_850-5000_1.9x2.5_c20181024.nc</so4_a2_cv_ext_file>
+<so4_a1_cv_ext_file hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_so4_a1_contvolcano_vertical_850-5000_1.9x2.5_c20190417.nc</so4_a1_cv_ext_file>
+<so4_a2_cv_ext_file hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_so4_a2_contvolcano_vertical_850-5000_1.9x2.5_c20190417.nc</so4_a2_cv_ext_file>
 <so2_ar_ext_file    hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_SO2_aircraft_vertical_1750-2015_1.9x2.5_c20170608.nc</so2_ar_ext_file>
 <bc_a4_ar_ext_file  hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_bc_a4_aircraft_vertical_1750-2015_1.9x2.5_c20170608.nc</bc_a4_ar_ext_file>
 <no2_ar_ext_file    hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_NO2_aircraft_vertical_1750-2015_1.9x2.5_c20170608.nc</no2_ar_ext_file>

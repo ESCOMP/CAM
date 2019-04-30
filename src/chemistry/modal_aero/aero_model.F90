@@ -2033,7 +2033,7 @@ contains
     real(r8),optional, intent(out) :: sfc(:,:,:)
 
     ! local vars
-    real(r8) :: sad_mode(pcols,pver,ntot_amode),sad_mode_correct(pcols,pver,ntot_amode),sad_correct(pcols,pver)
+    real(r8) :: sad_mode(pcols,pver,ntot_amode),radeff(pcols,pver)
     real(r8) :: vol(pcols,pver),vol_mode(pcols,pver,ntot_amode)
     real(r8) :: rho_air
     integer  :: i,k,l,m 
@@ -2046,8 +2046,6 @@ contains
 
     sad = 0._r8
     sad_mode = 0._r8
-    sad_correct = 0._r8
-    sad_mode_correct = 0._r8
     vol = 0._r8
     vol_mode = 0._r8
     reff = 0._r8
@@ -2068,32 +2066,24 @@ contains
                     chm_mass = chm_mass + mmr(i,k,index_chm_mass(l,m))
              end do
              if ( tot_mass > 0._r8 ) then
-              ! SAD calculation below is incorrect, but consistent with CMIP6
-               sad_mode(i,k,l) = (chm_mass/tot_mass)**(2._r8/3._r8) * &
-                    mmr(i,k,num_idx(l))*rho_air*pi*diam(i,k,l)**2._r8*&
-                    exp(2._r8*alnsg_amode(l)**2._r8)  ! m^2/m^3
+              ! surface area density
+               sad_mode(i,k,l) = chm_mass/tot_mass &
+                               * mmr(i,k,num_idx(l))*rho_air*pi*diam(i,k,l)**2._r8 &
+                               * exp(2._r8*alnsg_amode(l)**2._r8)  ! m^2/m^3
                sad_mode(i,k,l) = 1.e-2_r8 * sad_mode(i,k,l) ! cm^2/cm^3
-
-              ! Corrected SAD calculation without 2/3 power in chem weighting, for use in effective radius calculation  
-               sad_mode_correct(i,k,l) = chm_mass/tot_mass * &
-                    mmr(i,k,num_idx(l))*rho_air*pi*diam(i,k,l)**2._r8*&
-                    exp(2._r8*alnsg_amode(l)**2._r8)  ! m^2/m^3
-               sad_mode_correct(i,k,l) = 1.e-2_r8 * sad_mode_correct(i,k,l) ! cm^2/cm^3
                
-              ! Volume calculation, for use in effective radius calculation  
-               vol_mode(i,k,l) = chm_mass/tot_mass * &
-                    mmr(i,k,num_idx(l))*rho_air*pi/6._r8*diam(i,k,l)**3._r8*&
-                    exp(4.5_r8*alnsg_amode(l)**2._r8)  ! m^3/m^3 = cm^3/cm^3
+              ! volume calculation, for use in effective radius calculation
+               vol_mode(i,k,l) = chm_mass/tot_mass &
+                               * mmr(i,k,num_idx(l))*rho_air*pi/6._r8*diam(i,k,l)**3._r8  &
+                               * exp(4.5_r8*alnsg_amode(l)**2._r8)  ! m^3/m^3 = cm^3/cm^3
              else
                sad_mode(i,k,l) = 0._r8
-               sad_mode_correct(i,k,l) = 0._r8
                vol_mode(i,k,l) = 0._r8
              end if
           end do
           sad(i,k) = sum(sad_mode(i,k,:))
-          sad_correct(i,k) = sum(sad_mode_correct(i,k,:))
           vol(i,k) = sum(vol_mode(i,k,:))
-          reff(i,k) = 3._r8*vol(i,k)/sad_correct(i,k)
+          reff(i,k) = 3._r8*vol(i,k)/sad(i,k)
 
        enddo
     enddo
