@@ -395,7 +395,7 @@ contains
     ! Get indices for molecular weights and call WACCM-X physconst_update
     !------------------------------------------------------------------------
     if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
-       call physconst_update(state%q, state%t, state%lchnk, ncol)
+       call physconst_update(state%q, state%t, state%lchnk, state%ncol, state%pdel, state%pdeldry)
     endif
 
     if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then

@@ -630,7 +630,8 @@ chnk_loop2 : &
 ! and compute molecular viscosity(kmvis) and conductivity(kmcnd)
 !-----------------------------------------------------------------------------
        if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
-         call physconst_update(phys_state(lchnk)%q, phys_state(lchnk)%t, lchnk, ncol)
+          call physconst_update(phys_state(lchnk)%q, phys_state(lchnk)%t, lchnk, ncol, &
+                                phys_state(lchnk)%pdel, phys_state(lchnk)%pdeldry, moist=.true.)
        endif
 
 !------------------------------------------------------------------------
