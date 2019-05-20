@@ -258,7 +258,7 @@ end subroutine physconst_init
 
 !===============================================================================
 
-  subroutine physconst_update(mmr, t, lchnk, ncol)
+  subroutine physconst_update(mmr, t, lchnk, ncol, to_moist_factor)
 
 !-----------------------------------------------------------------------
 ! Update the physics "constants" that vary
@@ -270,6 +270,7 @@ end subroutine physconst_init
     real(r8), intent(in) :: t(pcols,pver)   ! temperature t array from state structure
     integer, intent(in)  :: lchnk           ! Chunk number
     integer, intent(in)  :: ncol            ! number of columns
+    real(r8),  optional, intent(in) :: to_moist_factor(:,:)
 !
 !---------------------------Local storage-------------------------------------------------------------
     integer :: i,k                                 ! column,level,constituent indices
@@ -279,6 +280,8 @@ end subroutine physconst_init
     real(r8):: dof1, dof2                          ! Degress of freedom for cpairv calculation
     real(r8):: kv1, kv2, kv3, kv4                  ! Coefficients for kmvis calculation
     real(r8):: kc1, kc2, kc3, kc4                  ! Coefficients for kmcnd calculation
+    real(r8) :: to_moist_fact(ncol,pver)
+    
     !--------------------------------------------
     ! Set constants needed for updates
     !--------------------------------------------
@@ -293,6 +296,12 @@ end subroutine physconst_init
     kc3  = 75.9_r8
     kc4  = 0.69_r8
 
+    to_moist_fact(:,:) = 1._r8
+
+    if (present(to_moist_factor)) then
+       to_moist_fact(:ncol,:) = to_moist_factor(:ncol,:)
+    end if
+
     if (o2_ndx<0 .or. o_ndx<0 .or. h_ndx<0) then
        call endrun('physconst_update: ERROR -- needed constituents are not available')
     endif
@@ -302,9 +311,9 @@ end subroutine physconst_init
      !--------------------------------------------
      do k=1,pver
         do i=1,ncol
-           mmro = mmr(i,k, o_ndx)
-           mmro2 = mmr(i,k, o2_ndx)
-           mmrh = mmr(i,k, h_ndx)
+           mmro  = mmr(i,k,o_ndx)*to_moist_fact(i,k) ! convert to moist mass mixing ratios
+           mmro2 = mmr(i,k,o2_ndx)*to_moist_fact(i,k)
+           mmrh  = mmr(i,k,h_ndx)*to_moist_fact(i,k)
            mmrn2 = 1._r8-mmro-mmro2-mmrh
            mbarv(i,k,lchnk) = 1._r8/( mmro *o_mwi  + &
                                       mmro2*o2_mwi + &
@@ -323,9 +332,10 @@ end subroutine physconst_init
 
      do k=2,pver
         do i=1,ncol
-           mmro = .5_r8*(mmr(i,k-1, o_ndx)+mmr(i,k,o_ndx))
-           mmro2 = .5_r8*(mmr(i,k-1, o2_ndx)+mmr(i,k,o2_ndx))
-           mmrn2 = 1._r8-mmro-mmro2
+           mmro  = .5_r8*(mmr(i,k-1,o_ndx) *to_moist_fact(i,k-1)+mmr(i,k,o_ndx) *to_moist_fact(i,k))
+           mmro2 = .5_r8*(mmr(i,k-1,o2_ndx)*to_moist_fact(i,k-1)+mmr(i,k,o2_ndx)*to_moist_fact(i,k))
+           mmrh  = .5_r8*(mmr(i,k-1,h_ndx) *to_moist_fact(i,k-1)+mmr(i,k,h_ndx) *to_moist_fact(i,k))
+           mmrn2 = 1._r8-mmro-mmro2-mmrh
            mbarvi = .5_r8*(mbarv(i,k-1,lchnk)+mbarv(i,k,lchnk))
            tint = .5_r8*(t(i,k-1)+t(i,k))
 
@@ -351,7 +361,8 @@ end subroutine physconst_init
 !===============================================================================
 
    subroutine physconst_calc_kappav( i0,i1,j0,j1,k0,k1,ntotq, tracer, kappav, cpv )
-
+     ! assumes moist MMRs
+     
      ! args
      integer,  intent(in) :: i0,i1,j0,j1,k0,k1, ntotq
      real(r8), intent(in) :: tracer(i0:i1,j0:j1,k0:k1,ntotq) ! Tracer array
