@@ -52,7 +52,7 @@
 
 
   <prescribed_ozone_datapath>   'atm/cam/ozone_strataero'                                                    </prescribed_ozone_datapath>
-  <prescribed_ozone_file    >   'ozone_strataero_WACCM_L70_zm5day_2015-2100_SSP585_c190221.nc' </prescribed_ozone_file>
+  <prescribed_ozone_file    >   'ozone_strataero_WACCM_L70_zm5day_2015-2100_SSP585_c190529.nc' </prescribed_ozone_file>
   <prescribed_ozone_name    >   'O3'                                                                         </prescribed_ozone_name>
   <prescribed_ozone_type    >   'SERIAL'                                                                     </prescribed_ozone_type>
 
@@ -63,7 +63,7 @@
 
   <prescribed_strataero_type    >     'SERIAL'                                                                     </prescribed_strataero_type>
   <prescribed_strataero_datapath>     'atm/cam/ozone_strataero'                                                    </prescribed_strataero_datapath>
-  <prescribed_strataero_file>      'ozone_strataero_WACCM_L70_zm5day_2015-2100_SSP585_c190221.nc'  </prescribed_strataero_file>
+  <prescribed_strataero_file>      'ozone_strataero_WACCM_L70_zm5day_2015-2100_SSP585_c190529.nc'  </prescribed_strataero_file>
   <prescribed_strataero_use_chemtrop> .true.                                                                       </prescribed_strataero_use_chemtrop>
 
 
