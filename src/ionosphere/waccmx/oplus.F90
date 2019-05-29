@@ -60,25 +60,29 @@ module oplus
     real(r8) :: adiff_limiter
     real(r8) :: shapiro_const
     logical  :: enforce_floor
+    logical  :: ring_polar_filter = .false.
     logical, parameter :: debug = .false.
-
+    
   contains
 
 !-----------------------------------------------------------------------
-  subroutine oplus_init( adiff_limiter_in, shapiro_const_in, enforce_floor_in )
+  subroutine oplus_init( adiff_limiter_in, shapiro_const_in, enforce_floor_in, ring_polar_filter_in )
 
     use cam_history,  only : addfld, horiz_only
     use filter_module,only : filter_init
+    use edyn_geogrid ,only : nlon
 
     real(r8), intent(in) :: adiff_limiter_in
     real(r8), intent(in) :: shapiro_const_in
     logical , intent(in) :: enforce_floor_in
-
+    logical , intent(in) :: ring_polar_filter_in
+    
     shapiro_const = shapiro_const_in
     enforce_floor = enforce_floor_in
     adiff_limiter = adiff_limiter_in
+    ring_polar_filter = ring_polar_filter_in
     
-    call filter_init
+    call filter_init( ring_polar_filter )
 
     !
     ! Save fields from oplus module:
@@ -1179,7 +1183,12 @@ module oplus
 !
 !   call filter1_op(op_out(kbot:nlev,i0:i1,j0:j1),kbot,nlev,i0,i1,j0,j1)
 !
-    call filter2_op(op_out(kbot:nlev,i0:i1,j0:j1),kbot,nlev,i0,i1,j0,j1)
+   if (ring_polar_filter) then
+     call ringfilter_op(op_out(kbot:nlev,i0:i1,j0:j1),kbot,nlev,i0,i1,j0,j1)
+   else    
+     call filter2_op(op_out(kbot:nlev,i0:i1,j0:j1),kbot,nlev,i0,i1,j0,j1)
+   endif
+   
 !
 !----------------------- Begin fourth latitude scan ---------------------
 !
@@ -1672,5 +1681,83 @@ module oplus
     enddo
     deallocate(fkij(1)%ptr)
   end subroutine filter2_op
+!-----------------------------------------------------------------------
+  subroutine ringfilter_op(f,k0,k1,i0,i1,j0,j1)
+    use filter_module,only: ringfilter
+    use edyn_mpi     ,only: mp_gatherlons_f3d,mytidi
+    use edyn_mpi     ,only: mp_scatterlons_f3d
+    use edyn_geogrid ,only: nlon
+!
+! Args:
+    integer,intent(in) :: k0,k1,i0,i1,j0,j1
+    real(r8),intent(inout) :: f(k0:k1,i0:i1,j0:j1)
+!
+! Local:
+    integer :: i,j,k,nlevs
+    real(r8) :: fik(nlon,k1-k0+1)
+    type(array_ptr_type) :: fkij(1) ! fkij(1)%ptr(k1-k0+1,nlon,j0:j1)
+
+    nlevs = k1-k0+1
+!
+! Define lons in fkij from current task subdomain:
+!
+    allocate(fkij(1)%ptr(nlevs,nlon,j0:j1))
+!$omp parallel do private( i,j,k )
+    do j=j0,j1
+      do i=i0,i1
+        do k=k0,k1
+          fkij(1)%ptr(k-k0+1,i,j) = f(k,i,j)
+        enddo
+      enddo
+    enddo
+!
+! Gather longitudes into tasks in first longitude column of task table
+!   (leftmost of each j-row) for global fft. (i.e., tasks with mytidi==0
+!   gather lons from other tasks in that row). This includes all latitudes.
+!
+    call mp_gatherlons_f3d(fkij,1,nlevs,i0,i1,j0,j1,1)
+!
+! Only leftmost tasks at each j-row of tasks does the global filtering:
+!
+    if (mytidi==0) then
+!
+! Define 2d array with all longitudes for filter at each latitude:
+!
+      do j=j0,j1
+        do i=1,nlon
+          do k=k0,k1
+            fik(i,k-k0+1) = fkij(1)%ptr(k-k0+1,i,j)
+          enddo
+        enddo 
+!
+! Remove wave numbers > kut(lat):
+!
+        call ringfilter(1,nlevs,j,fik)
+!
+! Return filtered array to fkij:
+!
+        do i=1,nlon
+          do k=k0,k1
+            fkij(1)%ptr(k-k0+1,i,j) = fik(i,k-k0+1)
+          enddo
+        enddo ! i=1,nlon
+      enddo ! j=j0,j1
+    endif ! mytidi==0
+!
+! Now leftmost task at each j-row must redistribute filtered data
+! back to other tasks in the j-row (mytidi>0,mytidj) (includes latitude):
+!
+    call mp_scatterlons_f3d(fkij,1,nlevs,i0,i1,j0,j1,1)
+!
+! Return filtered array to inout field at task subdomain:
+    do j=j0,j1
+      do i=i0,i1
+        do k=k0,k1
+          f(k,i,j) = fkij(1)%ptr(k-k0+1,i,j)
+        enddo
+      enddo
+    enddo
+    deallocate(fkij(1)%ptr)
+  end subroutine ringfilter_op
 !-----------------------------------------------------------------------
 end module oplus

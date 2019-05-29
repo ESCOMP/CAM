@@ -197,7 +197,7 @@
       <value compset="2000_CAM60%WCCM"   >waccm_ma_2000_cam6</value>
       <value compset="2000_CAM60%WCSC"   >waccm_sc_2000_cam6</value>
       <value compset="2000_CAM60%CCTS"   >2000_trop_strat_vbs_cam6</value>
-      <value compset="2000_CAM60%WXIE"   >waccmxie_ma_2000_cam6</value>
+      <value compset="2000_CAM60%WXIE"   >waccmx_ma_2000_cam6</value>
 
       <value compset="2000_CAM40_SLND_SICE_DOCN%SOMAQP">aquaplanet_cam4</value>
       <value compset="2000_CAM40_SLND_SICE_DOCN%AQP"   >aquaplanet_cam4</value>
@@ -227,6 +227,7 @@
       <value compset="HIST_CAM60%CCTS"   >hist_trop_strat_vbs_cam6</value>
       <value compset="HIST_CAM60%CVBSX"  >hist_trop_strat_vbsext_cam6</value>
       <value compset="HIST_CAM60%CFIRE"  >hist_trop_strat_vbsfire_cam6</value>
+      <value compset="HIST_CAM60%WXIE"   >waccmx_ma_hist_cam6</value>
 
       <value compset="PIPD_CAM50"        >1850-PD_cam5</value>
 
@@ -244,6 +245,7 @@
 
       <value compset="_CAM40%WXIED%SDYN"  >sd_waccmx_ma_cam4</value>
       <value compset="_CAM40%WXIE%SDYN"   >sd_waccmx_ma_cam4</value>
+      <value compset="_CAM60%WXIE%SDYN"   >sd_waccmx_ma_cam6</value>
       <value compset="_CAM60%WCTS%SDYN"   >sd_waccm_tsmlt_cam6</value>
       <value compset="_CAM60%WCCM%SDYN"   >sd_waccm_ma_cam6</value>
       <value compset="_CAM60%WCMD%SDYN"   >sd_waccm_ma_cam6</value>

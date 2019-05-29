@@ -2829,7 +2829,8 @@ if ($waccmx) {
     add_default($nl,'solar_wind_data_file');
   }
   add_default($nl,'ionos_xport_nsplit');  
-  add_default($nl,'steady_state_ion_elec_temp', 'val'=>'.false.');  
+  add_default($nl,'steady_state_ion_elec_temp', 'val'=>'.false.');
+  add_default($nl,'oplus_ring_polar_filter');
 }
 
 # Chemistry options

@@ -606,6 +606,8 @@
 <wei05_coefs_file>atm/waccm/efld/wei05sc_c080415.nc</wei05_coefs_file>
 <ionos_xport_nsplit waccmx="1">5</ionos_xport_nsplit>
 <ionos_xport_nsplit hgrid="0.9x1.25" waccmx="1">30</ionos_xport_nsplit>
+<oplus_ring_polar_filter>.false.</oplus_ring_polar_filter>
+<oplus_ring_polar_filter hgrid="0.9x1.25" waccmx="1">.true.</oplus_ring_polar_filter>
 
 <!-- For scaling lightning sources of NOx -->
 <lght_no_prd_factor                                              >1.00D0</lght_no_prd_factor>

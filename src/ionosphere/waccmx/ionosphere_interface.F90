@@ -77,6 +77,7 @@ module ionosphere_interface
   real(r8), public, protected :: oplus_adiff_limiter = 1.5e+8_r8  ! limiter for ambipolar diffusion coefficient
   real(r8), public, protected :: oplus_shapiro_const = 0.03_r8    ! shapiro constant for spatial smoother
   logical,  public, protected :: oplus_enforce_floor = .true.     ! switch to apply Stan's  floor
+  logical,  public, protected :: oplus_ring_polar_filter = .false. ! switch to apply ring polar filter
 
   character(len=256) :: wei05_coefs_file = 'NONE' !'wei05sc.nc'
   character(len=256) :: amienh_file  = 'NONE'
@@ -105,7 +106,7 @@ contains
     character(len=*), parameter :: subname = 'ionosphere_readnl'
 
     namelist /ionosphere_nl/ ionos_xport_active, ionos_edyn_active, ionos_oplus_xport, ionos_xport_nsplit
-    namelist /ionosphere_nl/ oplus_adiff_limiter, oplus_shapiro_const, oplus_enforce_floor
+    namelist /ionosphere_nl/ oplus_adiff_limiter, oplus_shapiro_const, oplus_enforce_floor, oplus_ring_polar_filter
     namelist /ionosphere_nl/ ionos_epotential_model, ionos_epotential_amie, wei05_coefs_file
     namelist /ionosphere_nl/ amienh_file, amiesh_file, wei05_coefs_file
     namelist /ionosphere_nl/ epot_crit_colats
@@ -138,6 +139,7 @@ contains
     call mpi_bcast(amiesh_file, len(amiesh_file), mpi_character, masterprocid, mpicom, ierr)
     call mpi_bcast(oplus_shapiro_const, 1, mpi_real8,   masterprocid, mpicom, ierr)
     call mpi_bcast(oplus_enforce_floor, 1, mpi_logical, masterprocid, mpicom, ierr)
+    call mpi_bcast(oplus_ring_polar_filter,1, mpi_logical, masterprocid, mpicom, ierr)
     call mpi_bcast(epot_crit_colats,    2, mpi_real8,   masterprocid, mpicom, ierr)
     
     ! log the user settings
@@ -153,6 +155,7 @@ contains
        write(iulog,*) 'ionosphere_readnl: oplus_adiff_limiter    = ', oplus_adiff_limiter
        write(iulog,*) 'ionosphere_readnl: oplus_shapiro_const    = ', oplus_shapiro_const
        write(iulog,*) 'ionosphere_readnl: oplus_enforce_floor    = ', oplus_enforce_floor
+       write(iulog,*) 'ionosphere_readnl: oplus_ring_polar_filter= ', oplus_ring_polar_filter
     endif
     epot_active = .true.
     
@@ -296,7 +299,7 @@ contains
           call edynamo_init( mpicomm, plon, plat, plev, lon0,lon1,lat0,lat1,lev0,lev1, ntaski,ntaskj, &
                              glon, glat, pref_mid,pref_edge )
           call ionosphere_alloc()
-          call oplus_init( oplus_adiff_limiter, oplus_shapiro_const, oplus_enforce_floor )
+          call oplus_init( oplus_adiff_limiter, oplus_shapiro_const, oplus_enforce_floor, oplus_ring_polar_filter )
 
           deallocate(glon,glat)
        endif

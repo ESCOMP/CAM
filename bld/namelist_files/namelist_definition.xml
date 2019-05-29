@@ -3941,6 +3941,12 @@ Switch to apply floor to O+ concentrations within in ionosphere O+ transport.
 Default: TRUE
 </entry>
 
+<entry id="oplus_ring_polar_filter" type="logical"  category="waccmx"
+       group="ionosphere_nl" valid_values="">
+Switch to apply ring polar filter within in ionosphere O+ transport.
+Default: FALSE
+</entry>
+
 <entry id="ionos_xport_active" type="logical"  category="waccmx"
        group="ionosphere_nl" valid_values="">
 Switch to to turn on/off O+ transport in ionosphere.
