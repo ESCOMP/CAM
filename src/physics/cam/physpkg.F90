@@ -52,6 +52,7 @@ module physpkg
   character(len=16) :: shallow_scheme
   character(len=16) :: macrop_scheme
   character(len=16) :: microp_scheme
+  character(len=16) :: subcol_scheme
   integer           :: cld_macmic_num_steps    ! Number of macro/micro substeps
   logical           :: do_clubb_sgs
   logical           :: use_subcol_microp   ! if true, use subcolumns in microphysics
@@ -141,7 +142,7 @@ contains
     use cospsimulator_intr, only: cospsimulator_intr_register
     use rad_constituents,   only: rad_cnst_get_info ! Added to query if it is a modal aero sim or not
     use subcol,             only: subcol_register
-    use subcol_utils,       only: is_subcol_on
+    use subcol_utils,       only: is_subcol_on, subcol_get_scheme
     use dyn_comp,           only: dyn_register
     use spcam_drivers,      only: spcam_register
     use offline_driver,     only: offline_driver_reg
@@ -161,6 +162,8 @@ contains
                       do_clubb_sgs_out         = do_clubb_sgs,     &
                       use_subcol_microp_out    = use_subcol_microp, &
                       state_debug_checks_out   = state_debug_checks)
+
+    subcol_scheme = subcol_get_scheme()
 
     ! Initialize dyn_time_lvls
     call pbuf_init_time()
@@ -1565,6 +1568,7 @@ contains
     ! Scale dry mass and energy (does nothing if dycore is EUL or SLD)
     call cnst_get_ind('CLDLIQ', ixcldliq)
     call cnst_get_ind('CLDICE', ixcldice)
+      
     tmp_q     (:ncol,:pver) = state%q(:ncol,:pver,1)
     tmp_cldliq(:ncol,:pver) = state%q(:ncol,:pver,ixcldliq)
     tmp_cldice(:ncol,:pver) = state%q(:ncol,:pver,ixcldice)
@@ -1664,6 +1668,7 @@ contains
          physics_update, physics_ptend_init, physics_ptend_sum, &
          physics_state_check, physics_ptend_scale
     use cam_diagnostics, only: diag_conv_tend_ini, diag_phys_writeout, diag_conv, diag_export, diag_state_b4_phys_write
+    use cam_diagnostics, only: diag_clip_tend_writeout
     use cam_history,     only: outfld
     use physconst,       only: cpair, latvap
     use constituents,    only: pcnst, qmin, cnst_get_ind
@@ -1689,6 +1694,8 @@ contains
     use subcol,          only: subcol_gen, subcol_ptend_avg
     use subcol_utils,    only: subcol_ptend_copy, is_subcol_on
     use qneg_module,     only: qneg3
+    use subcol_SILHS,    only: subcol_SILHS_var_covar_driver
+    use micro_mg_cam,    only: massless_droplet_destroyer
 
     ! Arguments
 
@@ -1725,12 +1732,13 @@ contains
     real(r8) dlf(pcols,pver)                   ! Detraining cld H20 from shallow + deep convections
     real(r8) dlf2(pcols,pver)                  ! Detraining cld H20 from shallow convections
     real(r8) pflx(pcols,pverp)                 ! Conv rain flux thru out btm of lev
+    real(r8) rtdt                              ! 1./ztodt
 
     integer lchnk                              ! chunk identifier
     integer ncol                               ! number of atmospheric columns
 
     integer :: i                               ! column indicex
-    integer :: ixcldice, ixcldliq              ! constituent indices for cloud liquid and ice water.
+    integer :: ixcldice, ixcldliq, ixq         ! constituent indices for cloud liquid and ice water.
     ! for macro/micro co-substepping
     integer :: macmic_it                       ! iteration variables
     real(r8) :: cld_macmic_ztodt               ! modified timestep
@@ -1801,6 +1809,8 @@ contains
     lchnk = state%lchnk
     ncol  = state%ncol
 
+    rtdt = 1._r8/ztodt
+
     nstep = get_nstep()
 
     ! Associate pointers with physics buffer fields
@@ -1834,7 +1844,6 @@ contains
 
     ! Since clybry_fam_adj operates directly on the tracers, and has no
     ! physics_update call, re-run qneg3.
-
     call qneg3('TPHYSBCc',lchnk  ,ncol    ,pcols   ,pver    , &
          1, pcnst, qmin  ,state%q )
 
@@ -1868,6 +1877,7 @@ contains
     ! Save state for convective tendency calculations.
     call diag_conv_tend_ini(state, pbuf)
 
+    call cnst_get_ind('Q', ixq)
     call cnst_get_ind('CLDLIQ', ixcldliq)
     call cnst_get_ind('CLDICE', ixcldice)
     qini     (:ncol,:pver) = state%q(:ncol,:pver,       1)
@@ -2124,9 +2134,17 @@ contains
 
           if (use_subcol_microp) then
              call microp_driver_tend(state_sc, ptend_sc, cld_macmic_ztodt, pbuf)
+             ! Parameterize subcolumn effects on covariances, if enabled
+             if (trim(subcol_scheme) == 'SILHS') &
+                call subcol_SILHS_var_covar_driver( cld_macmic_ztodt, state_sc, ptend_sc, pbuf )
 
              ! Average the sub-column ptend for use in gridded update - will not contain ptend_aero
              call subcol_ptend_avg(ptend_sc, state_sc%ngrdcol, lchnk, ptend)
+
+             ! Destroy massless droplets - Note this routine returns with no change unless
+             ! micro_do_massless_droplet_destroyer has been set to true
+             call massless_droplet_destroyer( cld_macmic_ztodt, state, & ! Intent(in)
+                                               ptend )                    ! Intent(inout)
 
              ! Copy ptend_aero field to one dimensioned by sub-columns before summing with ptend
              call subcol_ptend_copy(ptend_aero, state_sc, ptend_aero_sc)
@@ -2157,7 +2175,14 @@ contains
           ! (see above note for macrophysics).
           call physics_ptend_scale(ptend, 1._r8/cld_macmic_num_steps, ncol)
 
-          call physics_update (state, ptend, ztodt, tend)
+          call diag_clip_tend_writeout(state, ptend, ncol, lchnk, ixcldliq, ixcldice, ixq, ztodt, rtdt)
+
+          ! SILHS uses hole filling, all others just perform a regular physics_update
+          if (trim(subcol_scheme) == 'SILHS') then
+             call physics_update (state, ptend, ztodt, tend, do_clubb_hole_fill_in=.true.)
+          else
+             call physics_update (state, ptend, ztodt, tend)
+          end if
           call check_energy_chng(state, tend, "microp_tend", nstep, ztodt, &
                zero, prec_str(:ncol)/cld_macmic_num_steps, &
                snow_str(:ncol)/cld_macmic_num_steps, zero)

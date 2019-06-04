@@ -125,6 +125,16 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
+
+  <test compset="F2000climo" grid="f19_f19" name="SMS_Ln9" testmods="cam/silhs">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+      <machine name="cheyenne" compiler="intel" category="cam_silhs"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
+  </test>
 <!--              CAM Aquaplanet COMPSETS                 -->
 
   <test compset="QPC6" grid="f19_f19_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">

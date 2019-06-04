@@ -1,0 +1,4 @@
+./xmlchange -append CAM_CONFIG_OPTS=" -silhs -psubcols 4"
+./xmlchange RUN_STARTDATE="0000-01-01"
+./xmlchange STOP_OPTION=nsteps
+./xmlchange STOP_N=9

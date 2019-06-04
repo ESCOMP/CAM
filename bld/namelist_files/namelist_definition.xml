@@ -2570,6 +2570,12 @@ Do Seifert and Behang (2001) autoconversion and accretion physics when set to tr
 Default: .false.
 </entry>
 
+<entry id="micro_do_massless_droplet_destroyer" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+Do destruction of massless droplets
+Default: .false.
+</entry>
+
 <entry id="microp_uniform" type="logical" category="microphys"
        group="micro_mg_nl" valid_values="" >
 Switch to control whether MG microphysics performs a uniform calculation or not
@@ -2964,6 +2970,114 @@ Number of subcolumns/samples to use in this simulation. Must be less than psubco
 Default: 4
 </entry>
 
+<entry id="subcol_silhs_corr_file_path" type="char*256" category="conv"
+       group="subcol_silhs_nl" valid_values="" >
+Location of SILHS correlation input files - usually the path to the SILHS code directory.
+</entry>
+
+<entry id="subcol_silhs_corr_file_name" type="char*16" category="conv"
+       group="subcol_silhs_nl" valid_values="" >
+Correlation input file run name (as in 'rico' or 'arm97' or 'default')
+</entry>
+
+<entry id="subcol_silhs_meanice" type="logical" category="conv"
+       group="subcol_silhs_nl" valid_values="" >
+A special configuration that sends mean ice mixing ratios and number concentrations to microphysics but allows cloud liquid water and number concentrations to vary. Should reduce the impact of negative condensate. Default False. 
+</entry> 
+
+<entry id="subcol_silhs_q_to_micro" type="logical" category="conv"
+       group="subcol_silhs_nl" valid_values="" >
+Whether to send SILHS liq and ice mixing ratios to microphysics (if false, uses grid mean values).
+</entry> 
+
+<entry id="subcol_silhs_n_to_micro" type="logical" category="conv"
+       group="subcol_silhs_nl" valid_values="" >
+Whether to send SILHS liq and ice num concentrations to microphysics (if false, uses grid mean values).
+</entry> 
+
+<entry id="subcol_silhs_constrainmn" type="logical" category="conv"
+       group="subcol_silhs_nl" valid_values="" >
+Whether to constrain samples of ice, liquid and vapor to the same subcolumn mean as the grid mean value.
+</entry> 
+
+<entry id="subcol_silhs_use_clear_col" type="logical" category="conv"
+       group="subcol_silhs_nl" valid_values="" >
+Whether to use a clear-air only column to ensure consistant subcolumn cloud fraction
+</entry>
+
+<entry id="subcol_silhs_var_covar_src" type="logical" category="conv"
+       group="subcol_silhs_nl" valid_values="" >
+Flag to use SILHS to calculate the effect of microphysics on CLUBB's predictive
+(co)variances rtp2 (total water variance), thlp2 (theta-l variance), and rtpthlp
+(covariance of total water and theta-l), as well as on CLUBB's predictive fluxes
+wprtp (total water flux) and wpthlp (flux of theta-l).
+</entry>
+
+<entry id="subcol_silhs_ncnp2_on_ncnm2" type="real" category="conv"
+       group="subcol_silhs_nl" valid_values="" >
+Prescribed in-cloud ratio [N_cn'^2] / [N_cn]^2 [no units]
+</entry>
+
+<entry id="subcol_silhs_hmp2_ip_on_hmm2_ip_slope%rr" type="real" category="conv"
+       group="subcol_silhs_nl" valid_values="" >
+Slope of linear equation that calculates precribed in-cloud rain water mixing ratio [r_r'^2] / [r_r]^2   [1/m]
+</entry>
+
+<entry id="subcol_silhs_hmp2_ip_on_hmm2_ip_slope%Nr" type="real" category="conv"
+       group="subcol_silhs_nl" valid_values="" >
+Slope of linear equation that calculates precribed in-cloud rain drop concentration ratio [N_r'^2] / [N_r]^2   [1/m]
+</entry>
+
+<entry id="subcol_silhs_hmp2_ip_on_hmm2_ip_slope%rs" type="real" category="conv"
+       group="subcol_silhs_nl" valid_values="" >
+Slope of linear equation that calculates precribed in-cloud snow mixing ratio [r_s'^2] / [r_s]^2   [1/m]
+</entry>
+
+<entry id="subcol_silhs_hmp2_ip_on_hmm2_ip_slope%Ns" type="real" category="conv"
+       group="subcol_silhs_nl" valid_values="" >
+Slope of linear equation that calculates precribed in-cloud snow concentration ratio [N_s'^2] / [N_s]^2   [1/m]
+</entry>
+
+<entry id="subcol_silhs_hmp2_ip_on_hmm2_ip_slope%ri" type="real" category="conv"
+       group="subcol_silhs_nl" valid_values="" >
+Slope of linear equation that calculates precribed in-cloud ice mixing ratio [r_i'^2] / [r_i]^2   [1/m]
+</entry>
+
+<entry id="subcol_silhs_hmp2_ip_on_hmm2_ip_slope%Ni" type="real" category="conv"
+       group="subcol_silhs_nl" valid_values="" >
+Slope of linear equation that calculates precribed in-cloud ice concentration ratio [N_i'^2] / [N_i]^2   [1/m]
+</entry>
+
+<entry id="subcol_silhs_hmp2_ip_on_hmm2_ip_intrcpt%rr" type="real" category="conv"
+       group="subcol_silhs_nl" valid_values="" >
+Intercept of linear equation that calculates precribed in-cloud rain water mixing ratio [r_r'^2] / [r_r]^2   [1/m]
+</entry>
+
+<entry id="subcol_silhs_hmp2_ip_on_hmm2_ip_intrcpt%Nr" type="real" category="conv"
+       group="subcol_silhs_nl" valid_values="" >
+Intercept of linear equation that calculates precribed in-cloud rain drop concentration ratio [N_r'^2] / [N_r]^2   [-]
+</entry>
+
+<entry id="subcol_silhs_hmp2_ip_on_hmm2_ip_intrcpt%rs" type="real" category="conv"
+       group="subcol_silhs_nl" valid_values="" >
+Intercept of linear equation that calculates precribed in-cloud snow mixing ratio [r_s'^2] / [r_s]^2   [-]
+</entry>
+
+<entry id="subcol_silhs_hmp2_ip_on_hmm2_ip_intrcpt%Ns" type="real" category="conv"
+       group="subcol_silhs_nl" valid_values="" >
+Intercept of linear equation that calculates precribed in-cloud snow concentration ratio [N_s'^2] / [N_s]^2   [-]
+</entry>
+
+<entry id="subcol_silhs_hmp2_ip_on_hmm2_ip_intrcpt%ri" type="real" category="conv"
+       group="subcol_silhs_nl" valid_values="" >
+Intercept of linear equation that calculates precribed in-cloud ice mixing ratio [r_i'^2] / [r_i]^2   [-]
+</entry>
+
+<entry id="subcol_silhs_hmp2_ip_on_hmm2_ip_intrcpt%Ni" type="real" category="conv"
+       group="subcol_silhs_nl" valid_values="" >
+Intercept of linear equation that calculates precribed in-cloud ice concentration ratio [N_i'^2] / [N_i]^2   [-]
+</entry>
+
 <!-- VAMP Sub-Column Generator -->
 
 <entry id="subcol_vamp_ctyp" type="integer" category="conv"
@@ -3141,6 +3255,13 @@ History file number for offline unicon driver output.
 Default: 2 (i.e., h1 history file)
 </entry>
 
+<entry id="clubb_do_icesuper" type="logical"  category="pblrad"
+       group="clubbpbl_diff_nl" valid_values="" >
+Flag to perform a saturation adjustment for ice which will add ice mass if the
+air is supersaturated with respect to ice.
+Default: .false.
+</entry>
+
 <entry id="clubb_cloudtop_cooling" type="logical"  category="pblrad"
        group="clubbpbl_diff_nl" valid_values="" >
 Apply cloud top radiative cooling parameterization
@@ -3156,12 +3277,6 @@ Default: .false.
 <entry id="clubb_expldiff" type="logical"  category="pblrad"
        group="clubbpbl_diff_nl" valid_values="" >
 Explicit diffusion on temperature and moisture when CLUBB is on
-Default: .false.
-</entry>
-
-<entry id="clubb_stabcorrect" type="logical"  category="pblrad"
-       group="clubbpbl_diff_nl" valid_values="" >
-CLUBB do explicit diffusion with a stability correction
 Default: .false.
 </entry>
 
@@ -3185,6 +3300,25 @@ Default: FALSE
 </entry>
 
 <!-- CLUBB parameters -->
+<entry id="clubb_beta" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Plume widths for theta_l and rt
+</entry>
+
+<entry id="clubb_c1" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Limiting value of C1 when skewness of w (vertical velocity) is small in
+magnitude in the C1 skewness function.  Increasing the value of C1 increases the
+damping of CLUBB's wp2 (variance of vertical velocity).
+</entry>
+
+<entry id="clubb_c1b" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Limiting value of C1 when skewness of w (vertical velocity) is large in
+magnitude in the C1 skewness function.  Increasing the value of C1 increases the
+damping of CLUBB's wp2 (variance of vertical velocity).
+</entry>
+
 <entry id="clubb_c11" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Low Skewness in C11 Skw. Function
@@ -3203,16 +3337,42 @@ Constant for u'^2 and v'^2 terms
 Default: 2.2D0
 </entry>
 
-<entry id="clubb_mult_coef" type="real" category="pblrad"
+<entry id="clubb_C2rt" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
-Coef. applied to log(avg dz/thresh)
-Default: 1.0D0
+C2 coef. for the rtp2_dp1 term
 </entry>
 
-<entry id="clubb_gamma_coef" type="real" category="pblrad"
+<entry id="clubb_C2thl" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
-Low Skw.: gamma coef. Skw. Fnct.
-Default: 0.308
+C2 coef. for the thlp2_dp1 term
+</entry>
+
+<entry id="clubb_C2rtthl" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+C2 coef. for the rtpthlp_dp1 term
+</entry>
+
+<entry id="clubb_C7" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Low Skewness in C7 Skw. Function
+</entry>
+
+<entry id="clubb_C7b" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+High Skewness in C7 Skw. Function
+</entry>
+
+<entry id="clubb_C8" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Coef. #1 in C8 Skewness Equation
+</entry>
+
+<entry id="clubb_C8b" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Coefficient in the C8 skewness equation.  Increasing the value of C8b increases
+the damping of CLUBB's wp3 when skewness of w (vertical velocity) is large in
+magnitude.
+
 </entry>
 
 <entry id="clubb_c_K10" type="real" category="pblrad"
@@ -3227,46 +3387,42 @@ Thermo of Kh_zm
 Default: 0.3
 </entry>
 
-<entry id="clubb_beta" type="real" category="pblrad"
+<entry id="clubb_do_liqsupersat" type="logical"  category="conv"
        group="clubb_params_nl" valid_values="" >
-Plume widths for theta_l and rt
-Default: 2.4
+Apply liquid supersaturation adjustment code
+Default: false
 </entry>
 
-<entry id="clubb_C2rt" type="real" category="pblrad"
+<entry id="clubb_gamma_coef" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
-C2 coef. for the rtp2_dp1 term
-Default: 1.0
+Low Skw.: gamma coef. Skw. Fnct.
 </entry>
 
-<entry id="clubb_C2thl" type="real" category="pblrad"
+<entry id="clubb_gamma_coefb" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
-C2 coef. for the thlp2_dp1 term
-Default: 1.0
+Limiting value of gamma when skewness of w (vertical velocity) is large in
+magnitude in the gamma skewness function.  Increasing the value of gamma
+increases the standard deviation of w in both Gaussians in CLUBB's double
+Gaussian PDF, and also decreases the difference between the means of w from
+each Gaussian.
 </entry>
 
-<entry id="clubb_C2rtthl" type="real" category="pblrad"
-       group="clubb_params_nl" valid_values="" >
-C2 coef. for the rtpthlp_dp1 term
-Default: 1.3
+<entry id="clubb_lambda0_stability_coef" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="">
+Intensity of stability correction applied to C1 and C6
+Default 0.04
 </entry>
 
-<entry id="clubb_C8" type="real" category="pblrad"
-       group="clubb_params_nl" valid_values="" >
-Coef. #1 in C8 Skewness Equation
-Default: 4.2
+<entry id="clubb_lmin_coef" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="">
+Coefficient used to determine the minimum allowable value of CLUBB's length
+scale (Lscale) in a grid-spacing dependent formula.  Increasing the value of
+clubb_lmin_coef increases the minimum allowable value for length scale.
 </entry>
 
-<entry id="clubb_C7" type="real" category="pblrad"
+<entry id="clubb_mult_coef" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
-Low Skewness in C7 Skw. Function
-Default: 0.5
-</entry>
-
-<entry id="clubb_C7b" type="real" category="pblrad"
-       group="clubb_params_nl" valid_values="" >
-High Skewness in C7 Skw. Function
-Default: 0.5
+Coef. applied to log(avg dz/thresh)
 </entry>
 
 <entry id="clubb_Skw_denom_coef" type="real" category="pblrad"
@@ -3275,10 +3431,38 @@ Factor to decrease sensitivity in the denominator of Skw calculation
 Default: 0.0
 </entry>
 
-<entry id="clubb_lambda0_stability_coef" type="real" category="pblrad"
-       group="clubb_params_nl" valid_values="">
-Intensity of stability correction applied to C1 and C6
-Default: 0.04
+<entry id="clubb_skw_max_mag" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Maximum magnitude of skewness allowed.
+</entry>
+
+<entry id="clubb_up2_vp2_factor" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Factor used in calculating the surface values of up2 (variance of the u wind
+component) and vp2 (variance of the v wind component).  Increasing
+clubb_up2_vp2_factor increases the values of up2 and vp2 at the surface.
+</entry>
+
+
+<!-- CLUBB logical parameters -->
+<entry id="clubb_l_brunt_vaisala_freq_moist" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Flag to uses an alternate equation to calculate the Brunt-Vaisala frequency.
+This equation calculates an in-cloud Brunt-Vaisala frequency.
+</entry>
+
+<entry id="clubb_l_call_pdf_closure_twice" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Flag to call CLUBB's PDF closure at both thermodynamic and momentum vertical
+grid levels.  When this flag is turned off, CLUBB's PDF closure is only called
+on thermodynamic grid levels.
+</entry>
+
+<entry id="clubb_l_damp_wp3_Skw_squared" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Flag to damp CLUBB's wp3 by the square of skewness of w (Skw).  When this flag
+is turned off, wp3 is damped according to Skw to the 4th power.  This damping
+equation also involves the coefficient clubb_C8b (see description of clubb_C8b).
 </entry>
 
 <entry id="clubb_l_lscale_plume_centered" type="logical" category="pblrad"
@@ -3287,16 +3471,116 @@ Uses PDF to compute perturbed values for l_avg_Lscale code
 Default: .false.
 </entry>
 
+<entry id="clubb_l_min_wp2_from_corr_wx" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Flag to set an additional minimum threshold on wp2 (in addition to w_tol_sqd)
+based on maintaining a realizable correlation (value between -1 and 1) of w and
+another variable, x.  When this flag is enabled, the value of wp2 will be
+increased when the correlation is not realizable until the correlation becomes
+realizable.  When this flag is turned off, the magnitude of wpxp will be
+decreased when the correlation is not realizable until the correlation becomes
+realizable.  This correction is applied at the point in the code where wp2 is
+advanced one timestep.
+</entry>
+
+<entry id="clubb_l_min_xp2_from_corr_wx" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Flag to set an additional minimum threshold on xp2 (in addition to x_tol^2),
+where xp2 is a variance such as rtp2 (variance of total water) or thlp2
+(variance of liquid water potential temperature).  This threshold is based on
+maintaining a realizable correlation (value between -1 and 1) of w and x.  When
+this flag is enabled, the value of xp2 will be increased when the correlation is
+not realizable until the correlation becomes realizable.  When this flag is
+turned off, the magnitude of wpxp will be decreased when the correlation is not
+realizable until the correlation becomes realizable.  This correction is applied
+at the point in the code where xp2 is advanced one timestep.
+</entry>
+
+<entry id="clubb_l_predict_upwp_vpwp" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Flag to predict horizontal momentum fluxes upwp and vpwp along with mean
+horizontal winds um and vm.  When this flag is turned off, upwp and vpwp are
+calculated by down-gradient diffusion.
+</entry>
+
+<entry id="clubb_l_rcm_supersat_adj" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Flag to take any remaining supersaturation after CLUBB PDF call and add it to
+rcm (mean cloud water mixing ratio).  Supersaturation may be found after the
+PDF call due to issues when the PDF is called on both the thermodynamic grid
+levels and the momentum grid levels and variables are interpolated between the
+two grid level types.
+</entry>
+
+<entry id="clubb_l_stability_correct_tau_zm" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Flag to use a stability corrected version of CLUBB's time scale (tau_zm).  This
+creates a time scale that provides stronger damping at altitudes where
+Brunt-Vaisala frequency is large.
+</entry>
+
+<entry id="clubb_l_trapezoidal_rule_zm" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Flag that uses the trapezoidal rule to adjust fields calculated by CLUBB's PDF
+(e.g. cloud fraction) by taking into account the values of these fields from an
+adjacent vertical grid level.  The clubb_l_trapezoidal_rule_zm flag applies this
+adjustment to PDF fields calculated on momentum vertical grid levels.
+</entry>
+
+<entry id="clubb_l_trapezoidal_rule_zt" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Flag that uses the trapezoidal rule to adjust fields calculated by CLUBB's PDF
+(e.g. cloud fraction) by taking into account the values of these fields from an
+adjacent vertical grid level.  The clubb_l_trapezoidal_rule_zt flag applies this
+adjustment to PDF fields calculated on thermodynamic vertical grid levels.
+</entry>
+
+<entry id="clubb_l_upwind_xpyp_ta" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Flag to use "upwind" discretization in the turbulent advection term in the
+xpyp predictive equation, where xpyp is a field such as rtp2 (variance of
+vertical velocity) or rtpthlp (covariance of total water and liquid water
+potential temperature).  When this flag is turned off, centered discretization
+is used.
+</entry>
+
+<entry id="clubb_l_use_C7_Richardson" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Flag to calculate the value of CLUBB's C7 based on Richardson number, where
+C7 is a coefficient in a wpxp pressure term and is used to balance the effects
+of pressure and buoyancy in the wpxp predictive equation.  The variable wpxp is
+a flux such as total water flux or flux of liquid water potential temperature.
+</entry>
+
+<entry id="clubb_l_use_C11_Richardson" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Flag to calculate the value of CLUBB's C11 based on Richardson number, where
+C11 is a coefficient in a wp3 pressure term and is used to balance the effects
+of pressure and buoyancy in the wp3 predictive equation.
+</entry>
+
+<entry id="clubb_l_use_cloud_cover" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Flag to allow cloud fraction and mean cloud water at adjacent vertical grid
+levels influence the amount of cloudiness and amount of cloud water in a
+grid box.
+</entry>
+
 <entry id="clubb_l_use_ice_latent" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Include the effects of ice latent heating in turbulence terms
 Default: .false.
 </entry>
 
-<entry id="clubb_do_liqsupersat" type="logical"  category="conv"
+<entry id="clubb_l_use_thvm_in_bv_freq" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
-Apply liquid supersaturation adjustment code
-Default: false
+Flag to use mean theta-v in the calculation of Brunt-Vaisala frequency.
+</entry>
+
+<entry id="clubb_l_vert_avg_closure" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Flag that, when it is enabled, automatically enables CLUBB's
+l_trapezoidal_rule_zt, l_trapezoidal_rule_zm, and l_call_pdf_closure_twice.
 </entry>
 
 <entry id="clubb_do_energyfix" type="logical"  category="conv"

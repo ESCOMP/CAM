@@ -2920,6 +2920,7 @@ if ($cfg->get('microphys') =~ /^mg/) {
     add_default($nl, 'micro_mg_berg_eff_factor');
     add_default($nl, 'nucleate_ice_incloud');
     add_default($nl, 'nucleate_ice_strat');
+    add_default($nl, 'micro_do_massless_droplet_destroyer');
 
     # For CESM2, the decision was made to set micro_do_sb_physics to false
     add_default($nl, 'micro_do_sb_physics', 'val'=>'.false.');
@@ -2965,6 +2966,32 @@ if ($subcol_scheme eq 'tstcp') {
 
 if ($subcol_scheme eq 'SILHS') {
    add_default($nl, 'subcol_silhs_weight');
+   add_default($nl, 'subcol_silhs_var_covar_src');
+   add_default($nl, 'subcol_silhs_weight');
+   add_default($nl, 'subcol_silhs_numsubcol');
+   add_default($nl, 'subcol_silhs_corr_file_path');
+   add_default($nl, 'subcol_silhs_corr_file_name');
+   add_default($nl, 'subcol_silhs_meanice');
+   add_default($nl, 'subcol_silhs_q_to_micro');
+   add_default($nl, 'subcol_silhs_n_to_micro');
+   add_default($nl, 'subcol_silhs_constrainmn');
+   add_default($nl, 'subcol_silhs_use_clear_col');
+   add_default($nl, 'subcol_silhs_var_covar_src');
+   add_default($nl, 'subcol_silhs_ncnp2_on_ncnm2');
+   add_default($nl, 'subcol_silhs_hmp2_ip_on_hmm2_ip_intrcpt%rr');
+   add_default($nl, 'subcol_silhs_hmp2_ip_on_hmm2_ip_intrcpt%Nr');
+   add_default($nl, 'subcol_silhs_hmp2_ip_on_hmm2_ip_intrcpt%rs');
+   add_default($nl, 'subcol_silhs_hmp2_ip_on_hmm2_ip_intrcpt%Ns');
+   add_default($nl, 'subcol_silhs_hmp2_ip_on_hmm2_ip_intrcpt%ri');
+   add_default($nl, 'subcol_silhs_hmp2_ip_on_hmm2_ip_intrcpt%Ni');
+   add_default($nl, 'subcol_silhs_hmp2_ip_on_hmm2_ip_slope%rr');
+   add_default($nl, 'subcol_silhs_hmp2_ip_on_hmm2_ip_slope%Nr');
+   add_default($nl, 'subcol_silhs_hmp2_ip_on_hmm2_ip_slope%rs');
+   add_default($nl, 'subcol_silhs_hmp2_ip_on_hmm2_ip_slope%Ns');
+   add_default($nl, 'subcol_silhs_hmp2_ip_on_hmm2_ip_slope%ri');
+   add_default($nl, 'subcol_silhs_hmp2_ip_on_hmm2_ip_slope%Ni');
+
+
 }
 
 if ($subcol_scheme eq 'vamp') {
@@ -2989,36 +3016,61 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_history');
    add_default($nl, 'clubb_rad_history');
 
-   if ($nl->get_value('clubb_history') =~ "true" &&  $nl->get_value('atm_nthreads') != 1) {
+   if ($nl->get_value('clubb_history') =~ "true" &&  $nl->get_value('atm_nthreads') > 1) {
      die "$ProgName - ERROR: clubb_history = .true. with multiple threads is not supported. \n";
    }
+
+   add_default($nl, 'clubb_do_icesuper');
 
    add_default($nl, 'clubb_expldiff');
    add_default($nl, 'clubb_rainevap_turb');
    add_default($nl, 'clubb_cloudtop_cooling');
    add_default($nl, 'clubb_timestep');
    add_default($nl, 'clubb_rnevap_effic');
-   add_default($nl, 'clubb_stabcorrect');
 
+   add_default($nl, 'clubb_beta');
+   add_default($nl, 'clubb_c1');
+   add_default($nl, 'clubb_c1b');
    add_default($nl, 'clubb_c11');
    add_default($nl, 'clubb_c11b');
    add_default($nl, 'clubb_c14');
-   add_default($nl, 'clubb_mult_coef');
-   add_default($nl, 'clubb_gamma_coef');
-   add_default($nl, 'clubb_c_K10');
-   add_default($nl, 'clubb_c_K10h');
-   add_default($nl, 'clubb_beta');
    add_default($nl, 'clubb_C2rt');
    add_default($nl, 'clubb_C2thl');
    add_default($nl, 'clubb_C2rtthl');
-   add_default($nl, 'clubb_C8');
    add_default($nl, 'clubb_C7');
    add_default($nl, 'clubb_C7b');
-   add_default($nl, 'clubb_lambda0_stability_coef');
-   add_default($nl, 'clubb_Skw_denom_coef');
-   add_default($nl, 'clubb_l_lscale_plume_centered');
-   add_default($nl, 'clubb_l_use_ice_latent');
+   add_default($nl, 'clubb_C8');
+   add_default($nl, 'clubb_C8b');
+   add_default($nl, 'clubb_c_K10');
+   add_default($nl, 'clubb_c_K10h');
    add_default($nl, 'clubb_do_liqsupersat');
+   add_default($nl, 'clubb_gamma_coef');
+   add_default($nl, 'clubb_gamma_coefb');
+   add_default($nl, 'clubb_lambda0_stability_coef');
+   add_default($nl, 'clubb_lmin_coef');
+   add_default($nl, 'clubb_mult_coef');
+   add_default($nl, 'clubb_Skw_denom_coef');
+   add_default($nl, 'clubb_skw_max_mag');
+   add_default($nl, 'clubb_up2_vp2_factor');
+
+   add_default($nl, 'clubb_l_brunt_vaisala_freq_moist');
+   add_default($nl, 'clubb_l_call_pdf_closure_twice');
+   add_default($nl, 'clubb_l_damp_wp3_Skw_squared');
+   add_default($nl, 'clubb_l_lscale_plume_centered');
+   add_default($nl, 'clubb_l_min_wp2_from_corr_wx');
+   add_default($nl, 'clubb_l_min_xp2_from_corr_wx');
+   add_default($nl, 'clubb_l_predict_upwp_vpwp');
+   add_default($nl, 'clubb_l_rcm_supersat_adj');
+   add_default($nl, 'clubb_l_stability_correct_tau_zm');
+   add_default($nl, 'clubb_l_trapezoidal_rule_zm');
+   add_default($nl, 'clubb_l_trapezoidal_rule_zt');
+   add_default($nl, 'clubb_l_upwind_xpyp_ta');
+   add_default($nl, 'clubb_l_use_C7_Richardson');
+   add_default($nl, 'clubb_l_use_C11_Richardson');
+   add_default($nl, 'clubb_l_use_cloud_cover');
+   add_default($nl, 'clubb_l_use_ice_latent');
+   add_default($nl, 'clubb_l_use_thvm_in_bv_freq');
+   add_default($nl, 'clubb_l_vert_avg_closure');
 }
 
 # Tuning for wet scavenging of modal aerosols
@@ -3386,6 +3438,11 @@ if ($dyn eq 'fv') {
     add_default($nl, 'fv_del2coef');
     add_default($nl, 'fv_filtcw');
     add_default($nl, 'fv_nspltvrm');
+    add_default($nl, 'fv_am_correction');
+    add_default($nl, 'fv_am_fixer');
+    add_default($nl, 'fv_am_fix_lbl');
+    add_default($nl, 'fv_am_diag');
+
     if ($waccm_phys) {
         add_default($nl, 'fv_nsplit');
         add_default($nl, 'fv_nspltrac');

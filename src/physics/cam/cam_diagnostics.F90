@@ -7,7 +7,7 @@ module cam_diagnostics
 use shr_kind_mod,    only: r8 => shr_kind_r8
 use camsrfexch,      only: cam_in_t, cam_out_t
 use cam_control_mod, only: moist_physics
-use physics_types,   only: physics_state, physics_tend
+use physics_types,   only: physics_state, physics_tend, physics_ptend
 use ppgrid,          only: pcols, pver, begchunk, endchunk
 use physics_buffer,  only: physics_buffer_desc, pbuf_add_field, dtype_r8
 use physics_buffer,  only: dyn_time_lvls, pbuf_get_field, pbuf_get_index, pbuf_old_tim_idx
@@ -37,6 +37,7 @@ public :: &
    diag_deallocate,          &! deallocate memory for module variables
    diag_conv_tend_ini,       &! initialize convective tendency calcs
    diag_phys_writeout,       &! output diagnostics of the dynamics
+   diag_clip_tend_writeout,  &! output diagnostics for clipping
    diag_phys_tend_writeout,  &! output physics tendencies
    diag_state_b4_phys_write, &! output state before physics execution
    diag_conv,                &! output diagnostics of convective processes
@@ -207,6 +208,11 @@ contains
       call addfld ('TFIX',    horiz_only,  'A', 'K/s',        'T fixer (T equivalent of Energy correction)')
     end if
     call addfld ('TTEND_TOT', (/ 'lev' /), 'A', 'K/s',        'Total temperature tendency')
+   
+    ! Debugging negative water output fields
+    call addfld ('INEGCLPTEND ', (/ 'lev' /), 'A', 'kg/kg/s', 'Cloud ice tendency due to clipping neg values after microp')
+    call addfld ('LNEGCLPTEND ', (/ 'lev' /), 'A', 'kg/kg/s', 'Cloud liq tendency due to clipping neg values after microp')
+    call addfld ('VNEGCLPTEND ', (/ 'lev' /), 'A', 'kg/kg/s', 'Vapor tendency due to clipping neg values after microp')
 
     call addfld ('Z3',         (/ 'lev' /), 'A', 'm',         'Geopotential Height (above sea level)')
     call addfld ('Z1000',      horiz_only,  'A', 'm',         'Geopotential Z at 1000 mbar pressure surface')
@@ -1479,6 +1485,52 @@ contains
     end if
 
   end subroutine diag_phys_writeout
+
+!===============================================================================
+
+  subroutine diag_clip_tend_writeout(state, ptend, ncol, lchnk, ixcldliq, ixcldice, ixq, ztodt, rtdt)
+
+    !-----------------------------------------------------------------------
+    !
+    ! Arguments
+    !
+    type(physics_state), intent(in) :: state
+    type(physics_ptend), intent(in) :: ptend
+    integer  :: ncol
+    integer  :: lchnk
+    integer  :: ixcldliq
+    integer  :: ixcldice
+    integer  :: ixq
+    real(r8) :: ztodt
+    real(r8) :: rtdt
+
+    ! Local variables
+
+    ! Debugging output to look at ice tendencies due to hard clipping negative values
+    real(r8) :: preclipice(pcols,pver)
+    real(r8) :: icecliptend(pcols,pver)
+    real(r8) :: preclipliq(pcols,pver)
+    real(r8) :: liqcliptend(pcols,pver)
+    real(r8) :: preclipvap(pcols,pver)
+    real(r8) :: vapcliptend(pcols,pver)
+
+    ! Initialize to zero
+    liqcliptend(:,:) = 0._r8
+    icecliptend(:,:) = 0._r8
+    vapcliptend(:,:) = 0._r8
+
+    preclipliq(:ncol,:) = state%q(:ncol,:,ixcldliq)+(ptend%q(:ncol,:,ixcldliq)*ztodt)
+    preclipice(:ncol,:) = state%q(:ncol,:,ixcldice)+(ptend%q(:ncol,:,ixcldice)*ztodt)
+    preclipvap(:ncol,:) = state%q(:ncol,:,ixq)+(ptend%q(:ncol,:,ixq)*ztodt)
+    vapcliptend(:ncol,:) = (state%q(:ncol,:,ixq)-preclipvap(:ncol,:))*rtdt
+    icecliptend(:ncol,:) = (state%q(:ncol,:,ixcldice)-preclipice(:ncol,:))*rtdt
+    liqcliptend(:ncol,:) = (state%q(:ncol,:,ixcldliq)-preclipliq(:ncol,:))*rtdt
+
+    call outfld('INEGCLPTEND', icecliptend, pcols, lchnk   )
+    call outfld('LNEGCLPTEND', liqcliptend, pcols, lchnk   )
+    call outfld('VNEGCLPTEND', vapcliptend, pcols, lchnk   )
+
+  end subroutine diag_clip_tend_writeout
 
 !===============================================================================
 

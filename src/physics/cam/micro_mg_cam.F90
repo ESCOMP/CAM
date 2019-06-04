@@ -106,7 +106,8 @@ public :: &
    micro_mg_cam_implements_cnst, &
    micro_mg_cam_init,            &
    micro_mg_cam_tend,            &
-   micro_mg_version
+   micro_mg_version,             &
+   massless_droplet_destroyer
 
 integer :: micro_mg_version     = 1      ! Version number for MG.
 integer :: micro_mg_sub_version = 0      ! Second part of version number.
@@ -115,6 +116,8 @@ real(r8) :: micro_mg_dcs = -1._r8
 
 logical :: microp_uniform       = .false.
 logical :: micro_mg_adjust_cpt  = .false.
+
+logical :: micro_do_massless_droplet_destroyer ! turn on/off destruction of massless droplets
 
 character(len=16) :: micro_mg_precip_frac_method = 'max_overlap' ! type of precipitation fraction method
 
@@ -275,7 +278,8 @@ subroutine micro_mg_cam_readnl(nlfile)
        micro_mg_do_cldice, micro_mg_do_cldliq, micro_mg_num_steps, &
        microp_uniform, micro_mg_dcs, micro_mg_precip_frac_method,  &
        micro_mg_berg_eff_factor, micro_do_sb_physics, micro_mg_adjust_cpt, &
-       micro_mg_nccons, micro_mg_nicons, micro_mg_ncnst, micro_mg_ninst
+       micro_mg_nccons, micro_mg_nicons, micro_mg_ncnst, micro_mg_ninst, &
+       micro_do_massless_droplet_destroyer
   !-----------------------------------------------------------------------------
 
   if (masterproc) then
@@ -366,6 +370,9 @@ subroutine micro_mg_cam_readnl(nlfile)
   call mpi_bcast(micro_mg_ninst, 1, mpi_real8, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: micro_mg_ninst")
 
+  call mpi_bcast(micro_do_massless_droplet_destroyer, 1, mpi_logical, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: micro_do_massless_droplet_destroyer")
+
   if (masterproc) then
 
      write(iulog,*) 'MG microphysics namelist:'
@@ -384,6 +391,7 @@ subroutine micro_mg_cam_readnl(nlfile)
      write(iulog,*) '  micro_mg_nicons             = ', micro_mg_nicons
      write(iulog,*) '  micro_mg_ncnst              = ', micro_mg_ncnst
      write(iulog,*) '  micro_mg_ninst              = ', micro_mg_ninst
+     write(iulog,*) '  micro_do_massless_droplet_destroyer = ', micro_do_massless_droplet_destroyer
   end if
 
 contains
@@ -798,6 +806,8 @@ subroutine micro_mg_cam_init(pbuf2d)
    call addfld ('MPDQ',       (/ 'lev' /), 'A', 'kg/kg/s',  'Q tendency - Morrison microphysics'                      )
    call addfld ('MPDLIQ',     (/ 'lev' /), 'A', 'kg/kg/s',  'CLDLIQ tendency - Morrison microphysics'                 )
    call addfld ('MPDICE',     (/ 'lev' /), 'A', 'kg/kg/s',  'CLDICE tendency - Morrison microphysics'                 )
+   call addfld ('MPDNLIQ',    (/ 'lev' /), 'A', '1/kg/s',   'NUMLIQ tendency - Morrison microphysics'                 )
+   call addfld ('MPDNICE',    (/ 'lev' /), 'A', '1/kg/s',   'NUMICE tendency - Morrison microphysics'                 )
    call addfld ('MPDW2V',     (/ 'lev' /), 'A', 'kg/kg/s',  'Water <--> Vapor tendency - Morrison microphysics'       )
    call addfld ('MPDW2I',     (/ 'lev' /), 'A', 'kg/kg/s',  'Water <--> Ice tendency - Morrison microphysics'         )
    call addfld ('MPDW2P',     (/ 'lev' /), 'A', 'kg/kg/s',  'Water <--> Precip tendency - Morrison microphysics'      )
@@ -818,6 +828,10 @@ subroutine micro_mg_cam_init(pbuf2d)
    if (use_subcol_microp) then
       call addfld('FICE_SCOL', (/'psubcols','lev     '/), 'I', 'fraction', &
            'Sub-column fractional ice content within cloud', flag_xyfill=.true., fill_value=1.e30_r8)
+      call addfld('MPDICE_SCOL', (/'psubcols','lev     '/), 'I', 'kg/kg/s', &
+           'Sub-column CLDICE tendency - Morrison microphysics', flag_xyfill=.true., fill_value=1.e30_r8)
+      call addfld('MPDLIQ_SCOL', (/'psubcols','lev     '/), 'I', 'kg/kg/s', &
+           'Sub-column CLDLIQ tendency - Morrison microphysics', flag_xyfill=.true., fill_value=1.e30_r8)
    end if
    
    
@@ -2909,6 +2923,8 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    call outfld('MPDQ',        qvlat,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('MPDLIQ',      qcten,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('MPDICE',      qiten,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('MPDNLIQ',     ncten,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('MPDNICE',     niten,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('EVAPSNOW',    evapsnow,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('QCSEVAP',     qcsevap,     psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('QISEVAP',     qisevap,     psetcols, lchnk, avg_subcol_field=use_subcol_microp)
@@ -2942,6 +2958,8 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    ! Example subcolumn outfld call
    if (use_subcol_microp) then
       call outfld('FICE_SCOL',   nfice,       psubcols*pcols, lchnk)
+      call outfld('MPDLIQ_SCOL', qcten,       psubcols*pcols, lchnk)
+      call outfld('MPDICE_SCOL', qiten,       psubcols*pcols, lchnk)
    end if
 
    ! Output fields which are already on the grid
@@ -3030,6 +3048,50 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    call physics_state_dealloc(state_loc)
 
 end subroutine micro_mg_cam_tend_pack
+
+subroutine massless_droplet_destroyer(ztodt, state,  ptend)
+
+     ! This subroutine eradicates cloud droplets in grid boxes with no cloud mass.
+
+     use constituents,     only: cnst_get_ind
+     use micro_mg_utils,   only: qsmall
+
+     implicit none
+
+     ! Input Variables
+     real(r8), intent(in)                  :: ztodt     ! model time increment
+     type(physics_state), intent(in)       :: state     ! state for columns
+
+     ! Input/Output Variables
+     type(physics_ptend), intent(inout)    :: ptend     ! ptend for columns
+
+     ! Local Variables
+     integer :: icol, k
+
+     integer :: ixcldliq, ixnumliq
+
+     !----- Begin Code -----
+
+     ! Don't do anything if this option isn't enabled.
+     if ( .not. micro_do_massless_droplet_destroyer ) return
+
+     ! Indices!
+     call cnst_get_ind('CLDLIQ', ixcldliq)
+     call cnst_get_ind('NUMLIQ', ixnumliq)
+
+     col_loop: do icol=1, state%ncol
+       ! If updated qc (after microphysics) is zero, then ensure updated nc is also zero!!
+       vert_loop: do k=1, pver
+         if ( state%q(icol,k,ixcldliq) + (ztodt*ptend%q(icol,k,ixcldliq)) < qsmall ) then
+           ptend%lq(ixnumliq) = .true. ! This is probably already true, but it doesn't
+                                       ! hurt to set it.
+           ptend%q(icol,k,ixnumliq) = -(state%q(icol,k,ixnumliq) / ztodt)
+         end if
+       end do vert_loop
+     end do col_loop
+
+     return
+end subroutine massless_droplet_destroyer
 
 function p1(tin) result(pout)
   real(r8), target, intent(in) :: tin(:)

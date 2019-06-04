@@ -1202,33 +1202,97 @@
 <clubb_rad_history           > .false. </clubb_rad_history>
 
 <!-- CLUBB options -->
-<clubb_rainevap_turb                              > .false. </clubb_rainevap_turb>
+<clubb_do_icesuper                                > .false. </clubb_do_icesuper>
 <clubb_cloudtop_cooling                           > .false. </clubb_cloudtop_cooling>
 <clubb_expldiff                                   > .false. </clubb_expldiff>
 <clubb_expldiff       clubb_sgs="1"               > .true.  </clubb_expldiff>
-<clubb_stabcorrect                                > .false. </clubb_stabcorrect>
-<clubb_timestep                                   > 300.0D0 </clubb_timestep>
+<clubb_expldiff       clubb_sgs="1" silhs="1"     > .false. </clubb_expldiff>
+<clubb_rainevap_turb                              > .false. </clubb_rainevap_turb>
 <clubb_rnevap_effic                               > 1.0D0   </clubb_rnevap_effic>
+<clubb_timestep                                   > 300.0D0 </clubb_timestep>
+
+<clubb_beta                                       > 2.4     </clubb_beta>
+<clubb_c1                                         > 1.0     </clubb_c1>
+<clubb_c1b                                        > 1.0     </clubb_c1b>
 <clubb_c11                                        > 0.7D0   </clubb_c11>
 <clubb_c11b                                       > 0.35D0  </clubb_c11b>
 <clubb_c14                                        > 2.2D0   </clubb_c14>
-<clubb_gamma_coef                                 > 0.308   </clubb_gamma_coef>
-<clubb_c_K10                                      > 0.5     </clubb_c_K10>
-<clubb_c_K10h                                     > 0.3     </clubb_c_K10h>
-<clubb_beta                                       > 2.4     </clubb_beta>
 <clubb_C2rt                                       > 1.0     </clubb_C2rt>
 <clubb_C2thl                                      > 1.0     </clubb_C2thl>
 <clubb_C2rtthl                                    > 1.3     </clubb_C2rtthl>
-<clubb_C8                                         > 4.2     </clubb_C8>
 <clubb_C7                                         > 0.5     </clubb_C7>
 <clubb_C7b                                        > 0.5     </clubb_C7b>
-<clubb_Skw_denom_coef                             > 0.0     </clubb_Skw_denom_coef>
-<clubb_mult_coef                                  > 1.0D0   </clubb_mult_coef>
-<clubb_lambda0_stability_coef                     > 0.04    </clubb_lambda0_stability_coef>
-<clubb_l_lscale_plume_centered                    > .false. </clubb_l_lscale_plume_centered>
-<clubb_l_use_ice_latent                           > .false.  </clubb_l_use_ice_latent>
+<clubb_C8                                         > 4.2     </clubb_C8>
+<clubb_C8b                                        > 0.0     </clubb_C8b>
+<clubb_c_K10                                      > 0.5     </clubb_c_K10>
+<clubb_c_K10h                                     > 0.3     </clubb_c_K10h>
 <clubb_do_liqsupersat                             > .false. </clubb_do_liqsupersat>
+<clubb_gamma_coef                                 > 0.308   </clubb_gamma_coef>
+<clubb_gamma_coefb                                > 0.32    </clubb_gamma_coefb>
+<clubb_lambda0_stability_coef                     > 0.04    </clubb_lambda0_stability_coef>
+<clubb_lmin_coef                                  > 0.1     </clubb_lmin_coef>
+<clubb_mult_coef                                  > 1.0D0   </clubb_mult_coef>
+<clubb_Skw_denom_coef                             > 0.0     </clubb_Skw_denom_coef>
+<clubb_skw_max_mag                                > 4.5     </clubb_skw_max_mag>
+<clubb_up2_vp2_factor                             > 2.0     </clubb_up2_vp2_factor>
 
+<clubb_l_brunt_vaisala_freq_moist                 > .false. </clubb_l_brunt_vaisala_freq_moist>
+<clubb_l_call_pdf_closure_twice                   > .true.  </clubb_l_call_pdf_closure_twice>
+<clubb_l_damp_wp3_Skw_squared                     > .false. </clubb_l_damp_wp3_Skw_squared>
+<clubb_l_lscale_plume_centered                    > .false. </clubb_l_lscale_plume_centered>
+<clubb_l_min_wp2_from_corr_wx                     > .false. </clubb_l_min_wp2_from_corr_wx>
+<clubb_l_min_xp2_from_corr_wx                     > .false. </clubb_l_min_xp2_from_corr_wx>
+<clubb_l_predict_upwp_vpwp                        > .false. </clubb_l_predict_upwp_vpwp>
+<clubb_l_rcm_supersat_adj                         > .false. </clubb_l_rcm_supersat_adj>
+<clubb_l_stability_correct_tau_zm                 > .true.  </clubb_l_stability_correct_tau_zm>
+<clubb_l_trapezoidal_rule_zm                      > .true.  </clubb_l_trapezoidal_rule_zm>
+<clubb_l_trapezoidal_rule_zt                      > .true.  </clubb_l_trapezoidal_rule_zt>
+<clubb_l_upwind_xpyp_ta                           > .true.  </clubb_l_upwind_xpyp_ta>
+<clubb_l_use_C7_Richardson                        > .false. </clubb_l_use_C7_Richardson>
+<clubb_l_use_C11_Richardson                       > .false. </clubb_l_use_C11_Richardson>
+<clubb_l_use_cloud_cover                          > .true.  </clubb_l_use_cloud_cover>
+<clubb_l_use_ice_latent                           > .false. </clubb_l_use_ice_latent>
+<clubb_l_use_thvm_in_bv_freq                      > .false. </clubb_l_use_thvm_in_bv_freq>
+<clubb_l_vert_avg_closure                         > .true.  </clubb_l_vert_avg_closure>
+
+<!-- SILHS options -->
+<clubb_do_icesuper                      silhs="1" > .true.  </clubb_do_icesuper>
+
+<clubb_C2rt                             silhs="1" > 0.2     </clubb_C2rt>
+<clubb_C2thl                            silhs="1" > 0.2     </clubb_C2thl>
+<clubb_C2rtthl                          silhs="1" > 0.2     </clubb_C2rtthl>
+<clubb_C7b                              silhs="1" > 0.8     </clubb_C7b>
+<clubb_C8                               silhs="1" > 2.5     </clubb_C8>
+<clubb_C8b                              silhs="1" > 0.02    </clubb_C8b>
+<clubb_C11                              silhs="1" > 0.5     </clubb_C11>
+<clubb_C11b                             silhs="1" > 0.5     </clubb_C11b>
+<clubb_c14                              silhs="1" > 0.5     </clubb_c14>
+<clubb_c_K10                            silhs="1" > 2.0     </clubb_c_K10>
+<clubb_c_K10h                           silhs="1" > 1.0     </clubb_c_K10h>
+<clubb_gamma_coef                       silhs="1" > 0.24    </clubb_gamma_coef>
+<clubb_gamma_coefb                      silhs="1" > 0.37    </clubb_gamma_coefb>
+<clubb_lambda0_stability_coef           silhs="1" > 0.03    </clubb_lambda0_stability_coef>
+<clubb_lmin_coef                        silhs="1" > 0.5     </clubb_lmin_coef>
+<clubb_mult_coef                        silhs="1" > 1.5     </clubb_mult_coef>
+<clubb_Skw_denom_coef                   silhs="1" > 4.0     </clubb_Skw_denom_coef>
+<clubb_skw_max_mag                      silhs="1" > 10.0    </clubb_skw_max_mag>
+<clubb_up2_vp2_factor                   silhs="1" > 4.0     </clubb_up2_vp2_factor>
+
+<clubb_l_brunt_vaisala_freq_moist       silhs="1" > .true.  </clubb_l_brunt_vaisala_freq_moist>
+<clubb_l_call_pdf_closure_twice         silhs="1" > .false. </clubb_l_call_pdf_closure_twice>
+<clubb_l_damp_wp3_Skw_squared           silhs="1" > .true.  </clubb_l_damp_wp3_Skw_squared>
+<clubb_l_min_wp2_from_corr_wx           silhs="1" > .true.  </clubb_l_min_wp2_from_corr_wx>
+<clubb_l_min_xp2_from_corr_wx           silhs="1" > .true.  </clubb_l_min_xp2_from_corr_wx>
+<clubb_l_predict_upwp_vpwp              silhs="1" > .true.  </clubb_l_predict_upwp_vpwp>
+<clubb_l_rcm_supersat_adj               silhs="1" > .true.  </clubb_l_rcm_supersat_adj>
+<clubb_l_stability_correct_tau_zm       silhs="1" > .false. </clubb_l_stability_correct_tau_zm>
+<clubb_l_trapezoidal_rule_zm            silhs="1" > .false. </clubb_l_trapezoidal_rule_zm>
+<clubb_l_trapezoidal_rule_zt            silhs="1" > .false. </clubb_l_trapezoidal_rule_zt>
+<clubb_l_use_C7_Richardson              silhs="1" > .true.  </clubb_l_use_C7_Richardson>
+<clubb_l_use_C11_Richardson             silhs="1" > .true.  </clubb_l_use_C11_Richardson>
+<clubb_l_use_cloud_cover                silhs="1" > .false. </clubb_l_use_cloud_cover>
+<clubb_l_use_thvm_in_bv_freq            silhs="1" > .true.  </clubb_l_use_thvm_in_bv_freq>
+<clubb_l_vert_avg_closure               silhs="1" > .false. </clubb_l_vert_avg_closure>
 
 <!-- Microphysics scheme -->
 <microp_scheme                          >NONE         </microp_scheme>
@@ -1247,6 +1311,10 @@
 <micro_mg_sub_version microphys="mg2">                                 0          </micro_mg_sub_version>
 <micro_mg_num_steps   microphys="mg2">                                 1          </micro_mg_num_steps>
 <micro_mg_dcs         microphys="mg2">                                 500.D-6    </micro_mg_dcs>
+<micro_mg_dcs         microphys="mg2"                   silhs="1"   >  390.D-6    </micro_mg_dcs>
+
+<micro_do_massless_droplet_destroyer                             >  .false. </micro_do_massless_droplet_destroyer>
+<micro_do_massless_droplet_destroyer   microphys="mg2" silhs="1" >  .true.  </micro_do_massless_droplet_destroyer>
 
 <micro_mg_precip_frac_method                        >  max_overlap </micro_mg_precip_frac_method>
 <micro_mg_precip_frac_method   clubb_sgs="1"        >  in_cloud    </micro_mg_precip_frac_method>
@@ -1256,6 +1324,7 @@
 
 <cld_macmic_num_steps>                                            1 </cld_macmic_num_steps>
 <cld_macmic_num_steps microphys="mg2" clubb_sgs="1"             > 3 </cld_macmic_num_steps>
+<cld_macmic_num_steps microphys="mg2" clubb_sgs="1" silhs="1"   > 6 </cld_macmic_num_steps>
 <cld_macmic_num_steps microphys="mg2" clubb_sgs="1" waccmx="1"  > 1 </cld_macmic_num_steps>
 <!-- The following adjustments to cld_macmic_num_steps are to allow clubb -->
 <!-- to substep with clubb_timestep=300 -->
@@ -1267,6 +1336,7 @@
 <nucleate_ice_subgrid                                  >1.0D0</nucleate_ice_subgrid>
 <nucleate_ice_subgrid microphys="mg1"                  >1.2D0</nucleate_ice_subgrid>
 <nucleate_ice_subgrid microphys="mg2"                  >1.2D0</nucleate_ice_subgrid>
+<nucleate_ice_subgrid microphys="mg2" silhs="1"        >1.0D0</nucleate_ice_subgrid>
 
 <nucleate_ice_subgrid_strat                            >1.0D0</nucleate_ice_subgrid_strat>
 <nucleate_ice_subgrid_strat microphys="mg1"            >1.2D0</nucleate_ice_subgrid_strat>
@@ -1343,6 +1413,7 @@
 <dust_emis_fact          hgrid="0.47x0.63" phys="spcam_m2005"           >0.45D0</dust_emis_fact>
 <dust_emis_fact          hgrid="0.23x0.31" phys="cam5"                  >0.45D0</dust_emis_fact>
 <dust_emis_fact                            phys="cam6"                  >0.35D0</dust_emis_fact>
+<dust_emis_fact                            phys="cam6"      silhs="1"   >0.30D0</dust_emis_fact>
 <dust_emis_fact          hgrid="0.47x0.63" phys="cam6"                  >0.45D0</dust_emis_fact>
 <dust_emis_fact          hgrid="0.23x0.31" phys="cam6"                  >0.45D0</dust_emis_fact>
 <dust_emis_fact          hgrid="0.23x0.31" phys="spcam_m2005"           >0.45D0</dust_emis_fact>
@@ -1365,6 +1436,7 @@
 <seasalt_emis_scale ver="strat"              >0.90D0</seasalt_emis_scale>
 <seasalt_emis_scale ver="strat" clubb_sgs="1">1.00D0</seasalt_emis_scale>
 <seasalt_emis_scale ver="strat" spcam_clubb_sgs="1">1.2D0</seasalt_emis_scale>
+<seasalt_emis_scale ver="strat" clubb_sgs="1" silhs="1">0.60D0</seasalt_emis_scale>
 
 <!-- Wet scavenging of modal aerosols -->
 <sol_facti_cloud_borne                                                >1.0D0</sol_facti_cloud_borne>
@@ -1381,8 +1453,10 @@
 <seasalt_emis_scale  spcam_clubb_sgs="1" phys="spcam_m2005"              >1.00D0</seasalt_emis_scale >
 
 <!-- sub-column switches for physics packages -->
-<use_subcol_microp>.false.</use_subcol_microp>
-<subcol_scheme    >off    </subcol_scheme>
+<use_subcol_microp                  >.false.</use_subcol_microp>
+<use_subcol_microp        silhs="1" >.true.</use_subcol_microp>
+<subcol_scheme                      >off    </subcol_scheme>
+<subcol_scheme            silhs="1" >SILHS    </subcol_scheme>
 
 <!-- sub-column tstcp switches for testing purposes -->
 <subcol_tstcp_noAvg  >.false.</subcol_tstcp_noAvg>
@@ -1397,8 +1471,31 @@
 <subcol_vamp_nsubc > 10 </subcol_vamp_nsubc>
 
 <!-- sub-column SILHS switches -->
-<subcol_silhs_weight >.true.</subcol_silhs_weight>
-<subcol_silhs_numsubcol >4</subcol_silhs_numsubcol>
+<subcol_silhs_weight >           .true.   </subcol_silhs_weight>
+<subcol_silhs_numsubcol >        4        </subcol_silhs_numsubcol>
+<subcol_silhs_corr_file_path >   .        </subcol_silhs_corr_file_path>
+<subcol_silhs_corr_file_name>    default  </subcol_silhs_corr_file_name>
+<subcol_silhs_meanice>           .false.  </subcol_silhs_meanice>
+<subcol_silhs_q_to_micro>        .true.   </subcol_silhs_q_to_micro>
+<subcol_silhs_n_to_micro>        .true.   </subcol_silhs_n_to_micro>
+<subcol_silhs_constrainmn>       .false.  </subcol_silhs_constrainmn>
+<subcol_silhs_use_clear_col>     .false.  </subcol_silhs_use_clear_col>
+<subcol_silhs_var_covar_src>     .true.   </subcol_silhs_var_covar_src>
+<subcol_silhs_ncnp2_on_ncnm2>    0.05     </subcol_silhs_ncnp2_on_ncnm2>
+
+<subcol_silhs_hmp2_ip_on_hmm2_ip_intrcpt%rr > 1.0 </subcol_silhs_hmp2_ip_on_hmm2_ip_intrcpt%rr>
+<subcol_silhs_hmp2_ip_on_hmm2_ip_intrcpt%Nr > 1.0 </subcol_silhs_hmp2_ip_on_hmm2_ip_intrcpt%Nr>
+<subcol_silhs_hmp2_ip_on_hmm2_ip_intrcpt%rs > 1.0 </subcol_silhs_hmp2_ip_on_hmm2_ip_intrcpt%rs>
+<subcol_silhs_hmp2_ip_on_hmm2_ip_intrcpt%Ns > 1.0 </subcol_silhs_hmp2_ip_on_hmm2_ip_intrcpt%Ns>
+<subcol_silhs_hmp2_ip_on_hmm2_ip_intrcpt%ri > 1.0 </subcol_silhs_hmp2_ip_on_hmm2_ip_intrcpt%ri>
+<subcol_silhs_hmp2_ip_on_hmm2_ip_intrcpt%Ni > 1.0 </subcol_silhs_hmp2_ip_on_hmm2_ip_intrcpt%Ni>
+<subcol_silhs_hmp2_ip_on_hmm2_ip_slope%rr   > 0.0 </subcol_silhs_hmp2_ip_on_hmm2_ip_slope%rr>
+<subcol_silhs_hmp2_ip_on_hmm2_ip_slope%Nr   > 0.0 </subcol_silhs_hmp2_ip_on_hmm2_ip_slope%Nr>
+<subcol_silhs_hmp2_ip_on_hmm2_ip_slope%rs   > 0.0 </subcol_silhs_hmp2_ip_on_hmm2_ip_slope%rs>
+<subcol_silhs_hmp2_ip_on_hmm2_ip_slope%Ns   > 0.0 </subcol_silhs_hmp2_ip_on_hmm2_ip_slope%Ns>
+<subcol_silhs_hmp2_ip_on_hmm2_ip_slope%ri   > 0.0 </subcol_silhs_hmp2_ip_on_hmm2_ip_slope%ri>
+<subcol_silhs_hmp2_ip_on_hmm2_ip_slope%Ni   > 0.0 </subcol_silhs_hmp2_ip_on_hmm2_ip_slope%Ni>
+
 
 <!-- PBL scheme -->
 <eddy_scheme pbl="none"           >NONE           </eddy_scheme>
@@ -1411,6 +1508,7 @@
 
 <!-- convection schemes -->
 <deep_scheme                     >ZM       </deep_scheme>
+<deep_scheme           silhs="1" >off      </deep_scheme>
 <deep_scheme unicon="1"          >UNICON   </deep_scheme>
 <deep_scheme pbl="none"          >NONE     </deep_scheme>
 <deep_scheme phys='spcam_sam1mom'>SPCAM    </deep_scheme>
@@ -1531,6 +1629,7 @@
 
 <cldfrc2m_rhmaxi                                     >  1.1D0  </cldfrc2m_rhmaxi>
 <cldfrc2m_rhmaxi    clubb_sgs="1"                    >  1.0D0  </cldfrc2m_rhmaxi>
+<cldfrc2m_rhmaxi    clubb_sgs="1"     silhs="1"      >  1.05D0 </cldfrc2m_rhmaxi>
 <cldfrc2m_rhmaxi    spcam_clubb_sgs="1"              >  1.0D0  </cldfrc2m_rhmaxi>
 <cldfrc2m_rhmaxis                                    >  1.1D0  </cldfrc2m_rhmaxis>
 <cldfrc2m_rhmaxis   clubb_sgs="1"                    >  1.0D0  </cldfrc2m_rhmaxis>
@@ -1690,6 +1789,16 @@
 
 <fv_filtcw                  >0</fv_filtcw>
 <fv_filtcw hgrid="0.23x0.31">1</fv_filtcw>
+
+<fv_am_correction               > .false.</fv_am_correction>
+<fv_am_fixer                    > .false.</fv_am_fixer>
+<fv_am_fix_lbl                  > .false.</fv_am_fix_lbl>
+<fv_am_diag                     > .false.</fv_am_diag>
+<fv_am_correction     silhs="1" > .true. </fv_am_correction>
+<fv_am_fixer          silhs="1" > .true. </fv_am_fixer>
+<fv_am_fix_lbl        silhs="1" > .true. </fv_am_fix_lbl>
+<fv_am_diag           silhs="1" > .true. </fv_am_diag>
+
 
 <!-- default namelist for SCAM mode -->
 <ncdata             hgrid="64x128"    nlev="30"   scam="1"  >atm/cam/inic/gaus/cami_0000-09-01_64x128_L30_c031210.nc</ncdata>
