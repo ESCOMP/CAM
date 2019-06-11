@@ -53,8 +53,10 @@ contains
     call mpi_bcast(apply_lunar_tides, 1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: apply_lunar_tides")
 
-    write(iulog,*) 'lunar_tides_readnl: apply_lunar_tides: ',apply_lunar_tides
-    
+    if (masterproc) then
+       write(iulog,*) 'lunar_tides_readnl: apply_lunar_tides: ',apply_lunar_tides
+    end if
+
   end subroutine lunar_tides_readnl
 
   !==========================================================================
