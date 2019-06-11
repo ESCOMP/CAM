@@ -94,6 +94,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    use dyn_comp,            only: dyn_readnl
    use ionosphere_interface,only: ionosphere_readnl
    use qneg_module,         only: qneg_readnl
+   use lunar_tides,         only: lunar_tides_readnl
 
    !---------------------------Arguments-----------------------------------
 
@@ -149,6 +150,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    call cld_sediment_readnl(nlfilename)
    call gw_drag_readnl(nlfilename)
    call qbo_readnl(nlfilename)
+   call lunar_tides_readnl(nlfilename)
    call iondrag_readnl(nlfilename)
    call waccmx_phys_ion_elec_temp_readnl(nlfilename)
    call phys_debug_readnl(nlfilename)

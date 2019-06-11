@@ -1,0 +1,12 @@
+&camexp
+ calendar='GREGORIAN'
+ start_ymd=20000101
+ restart_option='nsteps'
+ restart_n=3
+ mfilt=1,1,1,1,1,1
+ ndens=1,1,1,1,1,1
+ nhtfrq=3,3,3,3,3,3
+ inithist='ENDOFRUN'
+ apply_lunar_tides=.true.
+ fincl2 ='U','V', 'UT_LUNAR','VT_LUNAR'
+/

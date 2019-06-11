@@ -6816,6 +6816,12 @@ ion pairs production rates.
 Default: None.
 </entry>
 
+<entry id="apply_lunar_tides" type="logical" category="dyn"
+       group="lunar_tides_opts" valid_values="" >
+Switch to apply lunar tidal tendencies to neutral winds.
+Default: FALSE
+</entry>
+
 <!-- SE dycore -->
 
 <entry id="se_qsize_condensate_loading" type="integer" category="se"

@@ -73,6 +73,7 @@ sm402 TSM.sh f4c6aqwmxiedm outfrq3s 9s
 sm403 TSM.sh f1.9c6aqwmxidh outfrq3s 9s
 
 sm426 TSM.sh f10c4aqwmxdm outfrq3s_newyear 9s
+sm427 TSM.sh f10c4aqwmxdm outfrq3s_lunar_tides 9s
 
 sm430 TSM.sh f10c5aqcmtt1dm outfrq3s_carma 9s
 
@@ -181,6 +182,7 @@ er402 TER.sh f4c6aqwmxiedm outfrq3s 4+5s
 er403 TER.sh f1.9c6aqwmxidh outfrq3s 4+5s
 
 er426 TER.sh f10c4aqwmxdm outfrq3s_newyear 4+5s
+er427 TER.sh f10c4aqwmxdm outfrq3s_lunar_tides 4+5s
 
 er430 TER.sh f10c5aqcmtt1dm outfrq3s_carma 4+5s
 
@@ -319,6 +321,7 @@ bl402 TBL.sh f4c6aqwmxiedm outfrq3s 9s
 bl403 TBL.sh f1.9c6aqwmxidh outfrq3s 9s
 
 bl426 TBL.sh f10c4aqwmxdm outfrq3s_newyear 9s
+bl427 TBL.sh f10c4aqwmxdm outfrq3s_lunar_tides 9s
 
 bl430 TBL.sh f10c5aqcmtt1dm outfrq3s_carma 9s
 
