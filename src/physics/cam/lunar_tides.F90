@@ -61,10 +61,17 @@ contains
   !==========================================================================
   subroutine lunar_tides_init
     use cam_history, only: addfld
+    use time_manager,only: timemgr_get_calendar_cf
 
     if (apply_lunar_tides) then
+       if (timemgr_get_calendar_cf().ne.'gregorian') then
+          call endrun('lunar_tides_init: calendar must be gregorian')
+       endif
        call addfld('UT_LUNAR', (/ 'lev' /), 'A','m/s2','U tendency due to lunar tides')
        call addfld('VT_LUNAR', (/ 'lev' /), 'A','m/s2','U tendency due to lunar tides')
+       if (masterproc) then
+          write(iulog,*) 'lunar_tides_init: Lunar tides turned on'
+       end if
     end if
  
   end subroutine lunar_tides_init
