@@ -53,7 +53,7 @@ module dimensions_mod
   ! hyperviscosity is applied on approximate pressure levels
   ! Similar to CAM-EUL; see CAM5 scietific documentation (Note TN-486), equation (3.09), page 58.
   ! 
-  logical,            public :: hypervis_on_plevs = .true.  
+  logical,            public :: hypervis_dynamic_ref_state = .false.  
   ! fvm dimensions:
   logical, public :: lprint!for debugging
   integer, parameter, public :: ngpc=3          !number of Gausspoints for the fvm integral approximation   !phl change from 4

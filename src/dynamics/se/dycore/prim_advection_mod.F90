@@ -1044,7 +1044,7 @@ contains
                    elem(ie)%spherep(i,j)%lon*rad2deg,elem(ie)%spherep(i,j)%lat*rad2deg
               write(iulog,*) " "
               do k=1,nlev
-                write(iulog,'(A21,I5,A1,f10.8,3f8.2)') "k,dp_star_moist,u,v,T: ",k," ",dp_star_moist(i,j,k),&
+                write(iulog,'(A21,I5,A1,f12.8,3f8.2)') "k,dp_star_moist,u,v,T: ",k," ",dp_star_moist(i,j,k)/100.0_r8,&
                      elem(ie)%state%v(i,j,1,k,np1),elem(ie)%state%v(i,j,2,k,np1),elem(ie)%state%T(i,j,k,np1)
               end do
             end if

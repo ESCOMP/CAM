@@ -6816,9 +6816,8 @@ Default: Set by build-namelist
 </entry>
 
 <entry id="se_hypervis_subcycle_q" type="integer" category="se"
-       group="dyn_se_inparm" valid_values="1" >
+       group="dyn_se_inparm" valid_values="" >
 Number of hyperviscosity subcycles done in tracer advection code.
-The only supported value in CAM is 1.
 Default: Set by build-namelist.
 </entry>
 
@@ -6865,11 +6864,20 @@ Default: Set by build-namelist.
 <entry id="se_variable_nsplit" type="logical" category="se"
        group="dyn_se_inparm" valid_values="" >
 If TRUE nsplit is dynamically adjusted (increased by 2 if vertical
-velocity Courant number is large than 0.85) and reset when vertical
+velocity Courant number is larger than 0.85) and reset when vertical
 velocity Courant number is less than 0.38  
-Default: FALSE
+Set by build-namelist.
 </entry>
 
+<entry id="se_phys_dyn_cp" type="integer" category="se"
+       group="dyn_se_inparm" valid_values="0,1,2" >
+Scaling of temperature increment for different levels of
+thermal energy consistency.
+0: no scaling
+1: scale increment for cp consistency between dynamics and physics
+2: do 1 as well as take into account condensate effect on thermal energy
+Default: Set by build-namelist.
+</entry>
 
 <entry id="se_nu" type="real" category="se"
        group="dyn_se_inparm" valid_values="" >
@@ -6898,13 +6906,17 @@ Second-order viscosity applied only near the model top [m^2/s].
 Default: Set by build-namelist.
 </entry>
 
-<entry id="se_hypervis_on_plevs" type="logical" category="se"
+<entry id="se_hypervis_dynamic_ref_state" type="logical" category="se"
        group="dyn_se_inparm" valid_values="" >
-If TRUE hyperviscosity operators for T are applied on approximate pressure levels
-If TRUE and se_nu_p>0 then hyperviscosity is also applied to difference between a
-reference dp and dp
-If FALSE all hyperviscosity operators are applied on eta levels
-Default: TRUE
+Hyperscosity for T and dp is applied to (T-Tref) and (dp-dp_ref) where
+Xref are reference states where the effect of topography has been removed
+(Simmons and Jiabin, 1991, QJRMS, Section 2a).
+If TRUE dp_ref is dynamic smoothed reference state derived by Patrick Callaghan
+(Lauritzen et al., 2018, JAMES, Appendix A.2) and temperature reference state
+based on Simmons and Jiabin (1991) but using smoothed dp_ref.
+If FALSE Tref is static reference state (Simmons and Jiabin) and dp_ref state
+derived from hydrostatic balance.
+Default: FALSE
 </entry>
 
 <entry id="se_lcp_moist" type="logical" category="se"

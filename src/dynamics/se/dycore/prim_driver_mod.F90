@@ -550,13 +550,19 @@ contains
         ! surface pressure
         !
         do ie=nets,nete
-          call subcell_integration(elem(ie)%state%psdry(:,:), np, nc, elem(ie)%metdet,fvm(ie)%psc)
-          fvm(ie)%psc = fvm(ie)%psc*fvm(ie)%inv_se_area_sphere
-          !       do j=1,nc
-          !         do i=1,nc
-          !           fvm(ie)%psc(i,j) = sum(fvm(ie)%dp_fvm(i,j,:)) +  hvcoord%hyai(1)*hvcoord%ps0
-          !         end do
-          !       end do
+          !
+          ! overwrite PSDRY on CSLAM grid with SE PSDRY integrated over CSLAM control volume
+          !
+          !          call subcell_integration(elem(ie)%state%psdry(:,:), np, nc, elem(ie)%metdet,fvm(ie)%psc)
+          !          fvm(ie)%psc = fvm(ie)%psc*fvm(ie)%inv_se_area_sphere
+          !
+          ! Update CSLAM surface pressure
+          !
+          do j=1,nc
+            do i=1,nc
+              fvm(ie)%psc(i,j) = sum(fvm(ie)%dp_fvm(i,j,:)) +  hvcoord%hyai(1)*hvcoord%ps0
+            end do
+          end do
         end do
       else if ((mod(rstep,fvm_supercycling_jet) == 0)) then
         !

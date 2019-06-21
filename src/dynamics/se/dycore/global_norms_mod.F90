@@ -692,6 +692,7 @@ contains
                's ',dt_tracer_fvm_actual
           if (dt_tracer_fvm_actual>dt_max_tracer_fvm) write(iulog,*) 'WARNING: dt_tracer_fvm theortically unstable'
         end if
+        write(iulog,'(a,f10.2)') '* dt_remap (vertical remap dt) ',dt_remap_actual
 
         do k=1,nlev
           if (nu_scale_top(k)>0.15_r8) then

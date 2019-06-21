@@ -27,6 +27,10 @@ module control_mod
                                           ! every rsplit tracer timesteps
   logical, public :: variable_nsplit=.false.
 
+  integer, public :: phys_dyn_cp = 0 !=0; no thermal energy scaling of T increment
+                                     !=1; scale increment for cp consistency between dynamics and physics
+                                     !=2; scale increment for cp consistency and mass effect on thermal energy
+
   logical, public :: refined_mesh
 
 ! vert_remap_q_alg:    0  default value, Zerroukat monotonic splines

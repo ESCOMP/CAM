@@ -543,6 +543,11 @@ ifeq ($(FC_TYPE),gnu)
   FFLAGS_NOOPT := $(cpp_path) $(mod_path) $(CPPDEF) $(FC_FLAGS_NOOPT)
   FC_AUTO_R8   := -fdefault-real-8 -fdefault-double-8
 
+# 2019-06-17 fpe trapping on this file is throwing an erroneous exception.  Just build
+#            it without debug for now
+pdf_utilities.o: pdf_utilities.F90
+	$(FC) -c $(FREEFLAGS) $(FFLAGS_NOOPT) $<
+
 # These RRTMG files take an extraordinarily long time to compile with optimization.
 # Until mods are made to read the data from files, just remove optimization from
 # their compilation.

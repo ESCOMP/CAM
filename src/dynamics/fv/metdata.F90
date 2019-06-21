@@ -223,7 +223,7 @@ module metdata
   logical :: online_test = .false.
   logical :: debug = .false.
 
-  real(r8) :: met_rlx(pver)
+  real(r8) :: met_rlx(pver) = 0._r8
   integer  :: met_levels
   integer  :: num_met_levels
   

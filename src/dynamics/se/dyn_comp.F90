@@ -105,14 +105,14 @@ subroutine dyn_readnl(NLFileName)
    use control_mod,    only: nu, nu_div, nu_p, nu_q, nu_top, qsplit, rsplit
    use control_mod,    only: vert_remap_q_alg, tstep_type, rk_stage_user
    use control_mod,    only: ftype, limiter_option, partmethod
-   use control_mod,    only: topology, tasknum
+   use control_mod,    only: topology, phys_dyn_cp
    use control_mod,    only: remap_type, variable_nsplit
    use control_mod,    only: fine_ne, hypervis_power, hypervis_scaling
    use control_mod,    only: max_hypervis_courant, statediag_numtrac,refined_mesh
    use control_mod,    only: se_met_nudge_u, se_met_nudge_p, se_met_nudge_t, se_met_tevolve
    use dimensions_mod, only: ne, npart
    use dimensions_mod, only: qsize_condensate_loading, lcp_moist
-   use dimensions_mod, only: hypervis_on_plevs,large_Courant_incr
+   use dimensions_mod, only: hypervis_dynamic_ref_state,large_Courant_incr
    use dimensions_mod, only: fvm_supercycling, fvm_supercycling_jet
    use dimensions_mod, only: kmin_jet, kmax_jet
    use params_mod,     only: SFCURVE
@@ -156,7 +156,7 @@ subroutine dyn_readnl(NLFileName)
    integer                      :: se_horz_num_threads
    integer                      :: se_vert_num_threads
    integer                      :: se_tracer_num_threads
-   logical                      :: se_hypervis_on_plevs
+   logical                      :: se_hypervis_dynamic_ref_state
    logical                      :: se_lcp_moist
    logical                      :: se_write_restart_unstruct
    logical                      :: se_large_Courant_incr
@@ -165,6 +165,7 @@ subroutine dyn_readnl(NLFileName)
    integer                      :: se_kmin_jet
    integer                      :: se_kmax_jet
    logical                      :: se_variable_nsplit
+   integer                      :: se_phys_dyn_cp   
 
    namelist /dyn_se_inparm/        &
       se_qsize_condensate_loading, &
@@ -202,7 +203,7 @@ subroutine dyn_readnl(NLFileName)
       se_horz_num_threads,         &
       se_vert_num_threads,         &
       se_tracer_num_threads,       &
-      se_hypervis_on_plevs,        &
+      se_hypervis_dynamic_ref_state,&
       se_lcp_moist,                &
       se_write_restart_unstruct,   &
       se_large_Courant_incr,       &
@@ -210,7 +211,8 @@ subroutine dyn_readnl(NLFileName)
       se_fvm_supercycling_jet,     &
       se_kmin_jet,                 &
       se_kmax_jet,                 &
-      se_variable_nsplit
+      se_variable_nsplit,          &
+      se_phys_dyn_cp
    !--------------------------------------------------------------------------
 
    ! defaults for variables not set by build-namelist
@@ -275,7 +277,7 @@ subroutine dyn_readnl(NLFileName)
    call MPI_bcast(se_horz_num_threads, 1, MPI_integer, masterprocid, mpicom,ierr)
    call MPI_bcast(se_vert_num_threads, 1, MPI_integer, masterprocid, mpicom,ierr)
    call MPI_bcast(se_tracer_num_threads, 1, MPI_integer, masterprocid, mpicom,ierr)
-   call MPI_bcast(se_hypervis_on_plevs, 1, mpi_logical, masterprocid, mpicom, ierr)
+   call MPI_bcast(se_hypervis_dynamic_ref_state, 1, mpi_logical, masterprocid, mpicom, ierr)
    call MPI_bcast(se_lcp_moist, 1, mpi_logical, masterprocid, mpicom, ierr)
    call MPI_bcast(se_write_restart_unstruct, 1, mpi_logical, masterprocid, mpicom, ierr)
    call MPI_bcast(se_large_Courant_incr, 1, mpi_logical, masterprocid, mpicom, ierr)
@@ -284,6 +286,7 @@ subroutine dyn_readnl(NLFileName)
    call MPI_bcast(se_kmin_jet, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_kmax_jet, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_variable_nsplit, 1, mpi_logical, masterprocid, mpicom, ierr)
+   call MPI_bcast(se_phys_dyn_cp, 1, mpi_integer, masterprocid, mpicom, ierr)   
 
    if (se_npes <= 0) then
       call endrun('dyn_readnl: ERROR: se_npes must be > 0')
@@ -307,7 +310,7 @@ subroutine dyn_readnl(NLFileName)
    !
    ! - TAKAHASHI ET AL., 2006: GLOBAL SIMULATION OF MESOSCALE SPECTRUM 
    !
-   uniform_res_hypervis_scaling = log(10.0_r8)/log(2.0_r8) ! (= 3.3219)
+   uniform_res_hypervis_scaling = 3.0_r8    ! 1./log(2.0_r8) = 3.3219
    !
    ! compute factor so that at ne30 resolution nu=1E15
    ! scale so that scaling works for other planets
@@ -317,19 +320,19 @@ subroutine dyn_readnl(NLFileName)
       if (se_ne <= 0) then
          call endrun('dyn_readnl: ERROR must have se_ne > 0 for se_nu_div < 0')
       end if
-      se_nu_div = nu_fac*((30.0_r8/se_ne)*110000.0_r8)**uniform_res_hypervis_scaling
+      se_nu_div = 2.25_r8*nu_fac*((30.0_r8/se_ne)*110000.0_r8)**uniform_res_hypervis_scaling
    end if
    if (se_nu_p < 0) then
       if (se_ne <= 0) then
          call endrun('dyn_readnl: ERROR must have se_ne > 0 for se_nu_p < 0')
       end if
-      se_nu_p   = nu_fac*((30.0_r8/se_ne)*110000.0_r8)**uniform_res_hypervis_scaling
+      se_nu_p   = 1.0_r8*nu_fac*((30.0_r8/se_ne)*110000.0_r8)**uniform_res_hypervis_scaling
    end if
    if (se_nu < 0) then
       if (se_ne <= 0) then
          call endrun('dyn_readnl: ERROR must have se_ne > 0 for se_nu < 0')
       end if
-      se_nu     = 0.4_r8*nu_fac*((30.0_r8/se_ne)*110000.0_r8)**uniform_res_hypervis_scaling
+      se_nu     = 0.225_r8*nu_fac*((30.0_r8/se_ne)*110000.0_r8)**uniform_res_hypervis_scaling
    end if
 
    ! Go ahead and enforce ne = 0 for refined mesh runs
@@ -371,7 +374,7 @@ subroutine dyn_readnl(NLFileName)
    tstep_type               = se_tstep_type
    vert_remap_q_alg         = se_vert_remap_q_alg
    fv_nphys                 = se_fv_nphys
-   hypervis_on_plevs        = se_hypervis_on_plevs
+   hypervis_dynamic_ref_state = se_hypervis_dynamic_ref_state
    lcp_moist                = se_lcp_moist
    large_Courant_incr       = se_large_Courant_incr
    fvm_supercycling         = se_fvm_supercycling
@@ -379,6 +382,7 @@ subroutine dyn_readnl(NLFileName)
    kmin_jet                 = se_kmin_jet
    kmax_jet                 = se_kmax_jet   
    variable_nsplit          = se_variable_nsplit
+   phys_dyn_cp              = se_phys_dyn_cp
    if (fv_nphys > 0) then
       ! Use finite volume physics grid and CSLAM for tracer advection
       nphys_pts = fv_nphys*fv_nphys
@@ -449,6 +453,7 @@ subroutine dyn_readnl(NLFileName)
       write(iulog, '(a,i0)')   'dyn_readnl: se_npes                     = ',se_npes
       write(iulog, '(a,i0)')   'dyn_readnl: se_nsplit                   = ',se_nsplit
       write(iulog, '(a,l4)')   'dyn_readnl: se_variable_nsplit          = ',se_variable_nsplit
+      write(iulog, '(a,i0)')   'dyn_readnl: se_phys_dyn_cp              = ',se_phys_dyn_cp
       write(iulog, '(a,e9.2)') 'dyn_readnl: se_nu                       = ',se_nu
       write(iulog, '(a,e9.2)') 'dyn_readnl: se_nu_div                   = ',se_nu_div
       write(iulog, '(a,e9.2)') 'dyn_readnl: se_nu_p                     = ',se_nu_p
@@ -460,12 +465,7 @@ subroutine dyn_readnl(NLFileName)
       write(iulog, '(a,i0)')   'dyn_readnl: se_tstep_type               = ',se_tstep_type
       write(iulog, '(a,i0)')   'dyn_readnl: se_vert_remap_q_alg         = ',se_vert_remap_q_alg
       write(iulog, '(a,i0)')   'dyn_readnl: se_qsize_condensate_loading = ',se_qsize_condensate_loading
-      write(iulog, '(a,l4)')   'dyn_readnl: hypervis_on_plevs           = ',hypervis_on_plevs
-      if (hypervis_on_plevs.and.nu_p>0) then
-         write(iulog, *) 'FYI: nu_p>0 and hypervis_on_plevs=T => hypervis is applied to dp-dp_ref'
-      else if (hypervis_on_plevs.and.nu_p==0) then
-         write(iulog, *) 'FYI: hypervis_on_plevs=T and nu_p=0'
-      end if
+      write(iulog, '(a,l4)')   'dyn_readnl: se_hypervis_dynamic_ref_state = ',hypervis_dynamic_ref_state
       write(iulog, '(a,l4)')   'dyn_readnl: lcp_moist                   = ',lcp_moist
       write(iulog, '(a,i0)')   'dyn_readnl: se_fvm_supercycling         = ',fvm_supercycling
       write(iulog, '(a,i0)')   'dyn_readnl: se_fvm_supercycling_jet     = ',fvm_supercycling_jet

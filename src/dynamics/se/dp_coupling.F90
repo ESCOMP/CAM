@@ -49,6 +49,10 @@ CONTAINS
 
 subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
 
+   ! Convert the dynamics output state into the physics input state.
+   ! Note that all pressures and tracer mixing ratios coming from the dycore are based on
+   ! dry air mass.
+
    use gravity_waves_sources,  only: gws_src_fnct
    use dyn_comp,               only: frontgf_idx, frontga_idx
    use phys_control,           only: use_gw_front, use_gw_front_igw
@@ -372,7 +376,8 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
    end if
    call t_stopf('dpcopy')
 
-   ! Save the tracer fields for calculating tendencies
+   ! Save the tracer fields input to physics package for calculating tendencies
+   ! The mixing ratios are all dry at this point.
    do lchnk = begchunk, endchunk
       ncols = phys_state(lchnk)%ncol
       q_prev(1:ncols,1:pver,1:pcnst,lchnk) = phys_state(lchnk)%q(1:ncols,1:pver,1:pcnst)
@@ -388,6 +393,8 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
    deallocate(q_tmp)
    deallocate(omega_tmp)
 
+   ! ps, pdel, and q in phys_state are all dry at this point.  After return from derived_phys_dry
+   ! ps and pdel include water vapor only, and the 'wet' constituents have been converted to wet mmr.
    call t_startf('derived_phys')
    call derived_phys_dry(phys_state, phys_tend, pbuf2d)
    call t_stopf('derived_phys')
@@ -405,15 +412,18 @@ end subroutine d_p_coupling
 
 subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
 
+   ! Convert the physics output state into the dynamics input state.
+
    use bndry_mod,              only: bndry_exchange
    use edge_mod,               only: edgeVpack, edgeVunpack
    use fvm_mapping,            only: phys2dyn_forcings_fvm
    use test_fvm_mapping,       only: test_mapping_overwrite_tendencies
    use test_fvm_mapping,       only: test_mapping_output_mapped_tendencies
+
    ! arguments
    type(physics_state), intent(inout), dimension(begchunk:endchunk) :: phys_state
    type(physics_tend),  intent(inout), dimension(begchunk:endchunk) :: phys_tend
-   integer, intent(in)                                              :: tl_qdp, tl_f
+   integer,             intent(in)                                  :: tl_qdp, tl_f
    type(dyn_import_t),  intent(inout)                               :: dyn_in
    type(hybrid_t)                                                   :: hybrid
 
@@ -437,10 +447,9 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
    real (kind=r8),  allocatable :: bbuffer(:), cbuffer(:) ! transpose buffers
 
    real (kind=r8)               :: factor
-
    integer                      :: num_trac
-   integer                      :: nets,nete
-   integer                      :: kptr,ii
+   integer                      :: nets, nete
+   integer                      :: kptr, ii
    !----------------------------------------------------------------------------
    if (iam < par%nprocs) then
       elem => dyn_in%elem
@@ -461,14 +470,36 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
       call endrun('p_d_coupling: q_prev not allocated')
    end if
 
+   ! Convert wet to dry mixing ratios and modify the physics temperature
+   ! tendency to be thermodynamically consistent with the dycore.
+   !$omp parallel do num_threads(max_num_threads) private (lchnk, ncols, icol, ilyr, m, factor)
+   do lchnk = begchunk, endchunk
+      ncols = get_ncols_p(lchnk)
+      do icol = 1, ncols
+         do ilyr = 1, pver
+            ! convert wet mixing ratios to dry
+            factor = phys_state(lchnk)%pdel(icol,ilyr)/phys_state(lchnk)%pdeldry(icol,ilyr)
+            do m = 1, pcnst
+               if (cnst_type(m) == 'wet') then
+                  phys_state(lchnk)%q(icol,ilyr,m) = factor*phys_state(lchnk)%q(icol,ilyr,m)
+               end if
+            end do
+            call thermodynamic_consistency( &
+               phys_state(lchnk), phys_tend(lchnk), icol, ilyr, q_prev(icol,ilyr,1,lchnk))
+         end do
+      end do
+   end do
+
+
    call t_startf('pd_copy')
    if (local_dp_map) then
 
-      !$omp parallel do num_threads(max_num_threads) private (lchnk, ncols, pgcols, icol, idmb1, idmb2, idmb3, ie, ioff, ilyr, m, factor)
+      !$omp parallel do num_threads(max_num_threads) private (lchnk, ncols, pgcols, icol, idmb1, idmb2, idmb3, ie, ioff, ilyr, m)
       do lchnk = begchunk, endchunk
          ncols = get_ncols_p(lchnk)
          call get_gcol_all_p(lchnk, pcols, pgcols)
 
+         ! test code -- does nothing unless cpp macro debug_coupling is defined.
          call test_mapping_overwrite_tendencies(phys_state(lchnk), phys_tend(lchnk), ncols, &
             lchnk, q_prev(1:ncols,:,:,lchnk), dyn_in%fvm)
 
@@ -478,23 +509,13 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
             ioff = idmb2(1)
 
             do ilyr = 1, pver
-
-               ! phys_state%psdry units is Pa
                dp_phys(ioff,ilyr,ie)  = phys_state(lchnk)%pdeldry(icol,ilyr)
                T_tmp(ioff,ilyr,ie)    = phys_tend(lchnk)%dtdt(icol,ilyr)
                uv_tmp(ioff,1,ilyr,ie) = phys_tend(lchnk)%dudt(icol,ilyr)
                uv_tmp(ioff,2,ilyr,ie) = phys_tend(lchnk)%dvdt(icol,ilyr)
-
-               ! convert wet mixing ratios to dry
-               ! this code is equivalent to dme_adjust
-               factor = phys_state(lchnk)%pdel(icol,ilyr)/phys_state(lchnk)%pdeldry(icol,ilyr)
                do m = 1, pcnst
-                  if (cnst_type(m) == 'wet') then
-                     phys_state(lchnk)%q(icol,ilyr,m) = factor*phys_state(lchnk)%q(icol,ilyr,m)
-                  end if
                   dq_tmp(ioff,ilyr,m,ie) = (phys_state(lchnk)%q(icol,ilyr,m) - &
                                             q_prev(icol,ilyr,m,lchnk))
-
                end do
             end do
          end do
@@ -507,7 +528,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
       allocate(bbuffer(tsize*block_buf_nrecs))
       allocate(cbuffer(tsize*chunk_buf_nrecs))
 
-      !$omp parallel do num_threads(max_num_threads) private (lchnk, ncols, cpter, i, icol, ilyr, m, factor)
+      !$omp parallel do num_threads(max_num_threads) private (lchnk, ncols, cpter, i, icol, ilyr, m)
       do lchnk = begchunk, endchunk
          ncols = get_ncols_p(lchnk)
 
@@ -526,17 +547,10 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
                cbuffer(cpter(icol,ilyr)+1) = phys_tend(lchnk)%dudt(icol,ilyr)
                cbuffer(cpter(icol,ilyr)+2) = phys_tend(lchnk)%dvdt(icol,ilyr)
                cbuffer(cpter(icol,ilyr)+3) = phys_state(lchnk)%pdeldry(icol,ilyr)
-
-               ! this code is equivalent to dme_adjust
-               factor = phys_state(lchnk)%pdel(icol,ilyr)/phys_state(lchnk)%pdeldry(icol,ilyr)
-
                do m = 1, pcnst
-                  if (cnst_type(m) == 'wet') then
-                     phys_state(lchnk)%q(icol,ilyr,m) = factor*phys_state(lchnk)%q(icol,ilyr,m)
-                  end if
                   cbuffer(cpter(icol,ilyr)+3+m) = (phys_state(lchnk)%q(icol,ilyr,m) - &
                                                    q_prev(icol,ilyr,m,lchnk))
-               end do
+                end do
             end do
           end do
       end do
@@ -590,6 +604,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
    end if
    call t_stopf('pd_copy')
 
+   
    if (iam < par%nprocs) then
 
       if (fv_nphys > 0) then
@@ -715,6 +730,12 @@ end subroutine p_d_coupling
 !=========================================================================================
 
 subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
+
+   ! The ps, pdel, and q components of phys_state are all dry on input.
+   ! On output the psdry and pdeldry components are initialized; ps and pdel are
+   ! updated to contain contribution from water vapor only; the 'wet' constituent
+   ! mixing ratios are converted to a wet basis.  Initialize geopotential heights.
+   ! Finally compute energy and water column integrals of the physics input state.
 
    use constituents,  only: qmin
    use physconst,     only: cpair, gravit, rair, zvir, cappa, rairv,rh2o,rair
@@ -881,6 +902,73 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
    end do  ! lchnk
 
 end subroutine derived_phys_dry
+
+!=========================================================================================
+
+subroutine thermodynamic_consistency(phys_state, phys_tend, icol, ilyr, q_prev)
+
+   ! Adjust the physics temperature tendency for thermal energy consistency with the
+   ! dynamics.
+   ! Note: mixing ratios are assumed to be dry.
+   
+   use dimensions_mod,    only: qsize_condensate_loading,qsize_condensate_loading_idx
+   use dimensions_mod,    only: qsize_condensate_loading_cp, lcp_moist
+   use control_mod,       only: phys_dyn_cp
+   use physconst,         only: cpair
+
+   type(physics_state), intent(in)    :: phys_state
+   type(physics_tend ), intent(inout) :: phys_tend  
+   integer,  intent(in)               :: icol,ilyr
+   real(r8), intent(in)               :: q_prev
+  
+   integer :: nq, m
+   real(r8):: facor, sum_water, sum_cp, factor
+   !----------------------------------------------------------------------------
+
+   if (lcp_moist) then
+
+      if (phys_dyn_cp>0) then
+         factor = 1.0_r8
+         sum_cp    = cpair
+         sum_water = 1.0_r8                    
+         do nq=1,qsize_condensate_loading
+            m = qsize_condensate_loading_idx(nq)
+            sum_cp  = sum_cp+qsize_condensate_loading_cp(nq)*phys_state%q(icol,ilyr,m)
+            sum_water = sum_water + phys_state%q(icol,ilyr,m)
+         end do
+
+         ! scale temperature tendency so that thermal energy increment from physics
+         ! matches SE (not taking into account dme adjust)
+
+         if (phys_dyn_cp==1) factor = cpair*sum_water/sum_cp
+
+         ! scale temperature tendency so that thermal energy increment from physics
+         ! matches SE incl. dme adjust (that incl. condensate effect)
+
+         if (phys_dyn_cp==2) factor = cpair*(1.0_r8+q_prev)/sum_cp
+         phys_tend%dtdt(icol,ilyr) = phys_tend%dtdt(icol,ilyr)*factor
+      else
+         if (phys_dyn_cp==2) then
+
+            ! thermal energy between physics and dynamics are the same - only condensate effect
+
+            sum_water = 1.0_r8                    
+            do nq=1,qsize_condensate_loading
+               m = qsize_condensate_loading_idx(nq)
+               sum_water = sum_water + phys_state%q(icol,ilyr,m)
+            end do
+
+            ! dme_adjust
+
+            factor = (1.0_r8+q_prev)/sum_water
+            phys_tend%dtdt(icol,ilyr) = phys_tend%dtdt(icol,ilyr)*factor
+         end if
+
+      end if  ! phys_dyn_cp
+
+   end if ! lcp_moist
+
+end subroutine thermodynamic_consistency
 
 !=========================================================================================
 
