@@ -235,7 +235,7 @@ module load intel/17.0.1
 module load mkl
 module list
 
-export CFG_STRING="-cc mpicc -fc mpif90 -fc_type intel "
+export CFG_STRING="-cc mpicc -fc mpif90 -fc_type intel -ldflags -mkl=cluster"
 export MAKE_CMD="gmake -j $gmake_j"
 export CCSM_MACH="cheyenne"
 export MACH_WORKSPACE="$mach_workspace"

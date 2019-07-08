@@ -8,8 +8,7 @@
 
 <!--Species IC -->
 <ncdata dyn="fv"  hgrid="0.9x1.25">cesm2_init/b.e21.BW1850.f09_g17.CMIP6-piControl.001/0056-01-01/b.e21.BW1850.f09_g17.CMIP6-piControl.001.cam.i.0056-01-01-00000.nc</ncdata>
-<ncdata dyn="fv"  hgrid="1.9x2.5" >atm/waccm/ic/b.e20.BW1850.f19_g17.alpha07b.002.cam.i.1851-01-01-00000_c170911.nc</ncdata>
-<ncdata dyn="fv"  hgrid="4x5"     >atm/waccm/ic/b1850.waccm-mam3_4x5_L70.cam2.i.0156-01-01.c141201.nc</ncdata>
+<ncdata dyn="fv"  hgrid="1.9x2.5" >cesm2_init/b.e20.BWma1850.f19_g17.release_cesm2_1_0.020/0289-01-01/b.e20.BWma1850.f19_g17.release_cesm2_1_0.020.cam.i.0289-01-01-00000.nc</ncdata>
 
 <!-- Solar data -->
 <solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP6piControl_c160921.nc</solar_irrad_data_file>
@@ -41,7 +40,7 @@
 <qbo_use_forcing >.true.</qbo_use_forcing>
 <qbo_use_forcing hgrid="0.9x1.25">.false.</qbo_use_forcing>
 <qbo_cyclic>.false.</qbo_cyclic>
-<qbo_forcing_file>atm/waccm/qbo/qbocoefficients_c091230.nc</qbo_forcing_file>
+<qbo_forcing_file>atm/waccm/qbo/qbocoefficients_c151023.nc</qbo_forcing_file>
 
 
 <!-- emissions -->
@@ -53,6 +52,8 @@
 <!-- Surface emissions -->
 <srf_emis_type>CYCLICAL</srf_emis_type>
 <srf_emis_cycle_yr>1850</srf_emis_cycle_yr>
+
+<ndep_list>'noy', 'nhx'</ndep_list>
 
 <!-- History Streams -->
 

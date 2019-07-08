@@ -185,7 +185,7 @@
 <bnd_topo hgrid="0.47x0.63" >atm/cam/topo/USGS_gtopo30_0.47x0.63_remap_c061106.nc</bnd_topo>
 <bnd_topo hgrid="0.5x0.625" >atm/cam/topo/topo-from-cami_0000-10-01_0.5x0.625_L26_c031204.nc</bnd_topo>
 <bnd_topo hgrid="0.9x1.25"  >atm/cam/topo/fv_0.9x1.25_nc3000_Nsw042_Nrs008_Co060_Fi001_ZR_sgh30_24km_GRNL_c170103.nc</bnd_topo>
-<bnd_topo hgrid="1.9x2.5"   >atm/cam/topo/fv_1.9x2.5_nc3000_Nsw084_Nrs016_Co120_Fi001_ZR_061116.nc</bnd_topo>
+<bnd_topo hgrid="1.9x2.5"   >atm/cam/topo/fv_1.9x2.5_nc3000_Nsw084_Nrs016_Co120_Fi001_ZR_GRNL_c190405.nc</bnd_topo>
 <bnd_topo hgrid="2.5x3.33"  >atm/cam/topo/USGS-gtopo30_2.5x3.33_remap_c100204.nc</bnd_topo>
 <bnd_topo hgrid="4x5"       >atm/cam/topo/USGS-gtopo30_4x5_remap_c050520.nc</bnd_topo>
 <bnd_topo hgrid="10x15"     >atm/cam/topo/fv_10x15_nc0540_Nsw042_Nrs008_Co060_Fi001_20171220.nc</bnd_topo>
@@ -823,7 +823,55 @@
 <so2_volc_2deg_ext_file ver="cam6">atm/cam/chem/stratvolc/VolcanEESMv3.11_SO2_850-2016_Mscale_Zreduc_2deg_c180812.nc</so2_volc_2deg_ext_file>
 <so2_volc_pi_ext_file   ver="cam6">atm/cam/chem/stratvolc/VolcanEESMv3.10_piControl_SO2_1850-2014average_1deg_ZeroTrop_c180416.nc</so2_volc_pi_ext_file>
 
+<!-- 2-DEG VRT -->
 
+<h2o_ch4ox_ext_file hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/H2OemissionCH4oxidationx2_3D_L70_1849-2015_CMIP6ensAvg_1.9x2.5_c190308.nc</h2o_ch4ox_ext_file>
+<num_a1_an_ext_file hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_num_so4_a1_anthro-ene_vertical_1750-2015_1.9x2.5_c20170616.nc</num_a1_an_ext_file>
+<num_a1_cv_ext_file hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_num_a1_so4_contvolcano_vertical_850-5000_1.9x2.5_c20190417.nc</num_a1_cv_ext_file>
+<num_a2_cv_ext_file hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_num_a2_so4_contvolcano_vertical_850-5000_1.9x2.5_c20190417.nc</num_a2_cv_ext_file>
+<so2_cv_ext_file    hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_SO2_contvolcano_vertical_850-5000_1.9x2.5_c20190417.nc</so2_cv_ext_file>
+<so4_a1_an_ext_file hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_so4_a1_anthro-ene_vertical_1750-2015_1.9x2.5_c20170616.nc</so4_a1_an_ext_file>
+<so4_a1_cv_ext_file hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_so4_a1_contvolcano_vertical_850-5000_1.9x2.5_c20190417.nc</so4_a1_cv_ext_file>
+<so4_a2_cv_ext_file hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_so4_a2_contvolcano_vertical_850-5000_1.9x2.5_c20190417.nc</so4_a2_cv_ext_file>
+<so2_ar_ext_file    hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_SO2_aircraft_vertical_1750-2015_1.9x2.5_c20170608.nc</so2_ar_ext_file>
+<bc_a4_ar_ext_file  hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_bc_a4_aircraft_vertical_1750-2015_1.9x2.5_c20170608.nc</bc_a4_ar_ext_file>
+<no2_ar_ext_file    hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_NO2_aircraft_vertical_1750-2015_1.9x2.5_c20170608.nc</no2_ar_ext_file>
+<num_a4_ar_ext_file hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_num_bc_a4_aircraft_vertical_1750-2015_1.9x2.5_c20170608.nc</num_a4_ar_ext_file>
+<so2_volc_pi_ext_file hgrid="1.9x2.5" ver="cam6">atm/cam/chem/stratvolc/VolcanEESMv3.10_piControl_SO2_1850-2014average_2deg_ZeroTrop_c190701.nc</so2_volc_pi_ext_file>
+
+<!-- 2-DEG SRF -->
+
+<bc_a4_an_srf_file  hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_bc_a4_anthro_surface_1750-2015_1.9x2.5_c20170608.nc</bc_a4_an_srf_file>
+<bc_a4_bb_srf_file  hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_bc_a4_bb_surface_1750-2015_1.9x2.5_c20170322.nc</bc_a4_bb_srf_file>
+<dms_ot_srf_file    hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_DMS_other_surface_1750-2015_1.9x2.5_c20170322.nc</dms_ot_srf_file>
+<dms_bb_srf_file    hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_DMS_bb_surface_1750-2015_1.9x2.5_c20170322.nc</dms_bb_srf_file>
+<num_a1_bb_srf_file hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_num_so4_a1_bb_surface_1750-2015_1.9x2.5_c20170322.nc</num_a1_bb_srf_file>
+<num_a1_sh_srf_file hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_num_so4_a1_anthro-ag-ship_surface_1750-2015_1.9x2.5_c20170616.nc</num_a1_sh_srf_file>
+<num_a2_an_srf_file hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_num_so4_a2_anthro-res_surface_1750-2015_1.9x2.5_c20170616.nc</num_a2_an_srf_file>
+<num_a4_oc_srf_file hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_num_pom_a4_anthro_surface_1750-2015_1.9x2.5_c20170608.nc</num_a4_oc_srf_file>
+<num_a4_bc_srf_file hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_num_bc_a4_anthro_surface_1750-2015_1.9x2.5_c20170608.nc</num_a4_bc_srf_file>
+<num_a4_bb_srf_file hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_num_bc_a4_bb_surface_1750-2015_1.9x2.5_c20170322.nc</num_a4_bb_srf_file>
+<num_pom_bb_srf_file hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_num_pom_a4_bb_surface_1750-2015_1.9x2.5_c20170322.nc</num_pom_bb_srf_file>
+
+<so2_ag_sh_file     hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_SO2_anthro-ag-ship-res_surface_1750-2015_1.9x2.5_c20170616.nc</so2_ag_sh_file>
+<so2_an_srf_file    hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_SO2_anthro-ene_surface_1750-2015_1.9x2.5_c20170616.nc</so2_an_srf_file>
+<so2_bb_srf_file    hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_SO2_bb_surface_1750-2015_1.9x2.5_c20170322.nc</so2_bb_srf_file>
+<so4_a1_an_srf_file hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_so4_a1_anthro-ag-ship_surface_1750-2015_1.9x2.5_c20170616.nc</so4_a1_an_srf_file>
+<so4_a1_bb_srf_file hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_so4_a1_bb_surface_1750-2015_1.9x2.5_c20170322.nc</so4_a1_bb_srf_file>
+<so4_a2_an_srf_file hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_so4_a2_anthro-res_surface_1750-2015_1.9x2.5_c20170616.nc</so4_a2_an_srf_file>
+<soag_an_srf_file   hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_SOAGx1.5_anthro_surface_1750-2015_1.9x2.5_c20170608.nc</soag_an_srf_file>
+<soag_bg_srf_file   hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_SOAGx1.5_biogenic_surface_1750-2015_1.9x2.5_c20170322.nc</soag_bg_srf_file>
+<soag_bb_srf_file   hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_SOAGx1.5_bb_surface_1750-2015_1.9x2.5_c20170322.nc</soag_bb_srf_file>
+<pom_a4_bb_srf_file hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_pom_a4_bb_surface_1750-2015_1.9x2.5_c20170322.nc</pom_a4_bb_srf_file>
+<pom_a4_an_srf_file hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_pom_a4_anthro_surface_1750-2015_1.9x2.5_c20170608.nc</pom_a4_an_srf_file>
+<CH2O_an_srf_file   hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_CH2O_anthro_surface_1750-2015_1.9x2.5_c20170608.nc</CH2O_an_srf_file>
+<CH2O_bb_srf_file   hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_CH2O_bb_surface_1750-2015_1.9x2.5_c20170322.nc</CH2O_bb_srf_file>
+<CO_an_srf_file     hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_CO_anthro_surface_1750-2015_1.9x2.5_c20180504.nc</CO_an_srf_file>
+<CO_bb_srf_file     hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_CO_bb_surface_1750-2015_1.9x2.5_c20170322.nc</CO_bb_srf_file>
+<CO_ot_srf_file     hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_CO_other_surface_1750-2015_1.9x2.5_c20170322.nc</CO_ot_srf_file>
+<NO_an_srf_file     hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_NO_anthro_surface_1750-2015_1.9x2.5_c20170608.nc</NO_an_srf_file>
+<NO_bb_srf_file     hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_NO_bb_surface_1750-2015_1.9x2.5_c20170322.nc</NO_bb_srf_file>
+<NO_ot_srf_file     hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_NO_other_surface_1750-2015_1.9x2.5_c20170322.nc</NO_ot_srf_file>
 
 <!-- SCAM CMIP emissions - lightweight set of emissions files for single column -->
 
@@ -1228,6 +1276,7 @@
 <clubb_c_K10h                                     > 0.3     </clubb_c_K10h>
 <clubb_do_liqsupersat                             > .false. </clubb_do_liqsupersat>
 <clubb_gamma_coef                                 > 0.308   </clubb_gamma_coef>
+<clubb_gamma_coef hgrid="1.9x2.5"                 > 0.280   </clubb_gamma_coef>
 <clubb_gamma_coefb                                > 0.32    </clubb_gamma_coefb>
 <clubb_lambda0_stability_coef                     > 0.04    </clubb_lambda0_stability_coef>
 <clubb_lmin_coef                                  > 0.1     </clubb_lmin_coef>
@@ -1312,6 +1361,7 @@
 <micro_mg_num_steps   microphys="mg2">                                 1          </micro_mg_num_steps>
 <micro_mg_dcs         microphys="mg2">                                 500.D-6    </micro_mg_dcs>
 <micro_mg_dcs         microphys="mg2"                   silhs="1"   >  390.D-6    </micro_mg_dcs>
+<micro_mg_dcs         microphys="mg2" hgrid="1.9x2.5">                 200.D-6    </micro_mg_dcs>
 
 <micro_do_massless_droplet_destroyer                             >  .false. </micro_do_massless_droplet_destroyer>
 <micro_do_massless_droplet_destroyer   microphys="mg2" silhs="1" >  .true.  </micro_do_massless_droplet_destroyer>
@@ -1435,6 +1485,7 @@
 <seasalt_emis_scale ver="mam7"               >1.62D0</seasalt_emis_scale>
 <seasalt_emis_scale ver="strat"              >0.90D0</seasalt_emis_scale>
 <seasalt_emis_scale ver="strat" clubb_sgs="1">1.00D0</seasalt_emis_scale>
+<seasalt_emis_scale ver="strat" clubb_sgs="1" hgrid="1.9x2.5">1.10D0</seasalt_emis_scale>
 <seasalt_emis_scale ver="strat" spcam_clubb_sgs="1">1.2D0</seasalt_emis_scale>
 <seasalt_emis_scale ver="strat" clubb_sgs="1" silhs="1">0.60D0</seasalt_emis_scale>
 
@@ -2003,6 +2054,41 @@
 <orb_iyear >1990</orb_iyear>
 
 <cpl_seq_option >'CESM1_MOD_TIGHT'</cpl_seq_option>
+
+<!-- ================================================================== -->
+<!-- Chemistry Rates Diagnostics                                        -->
+<!-- ================================================================== -->
+<rxn_rate_sums>
+  'O3_Prod = NO_HO2 + CH3O2_NO + HOCH2OO_NO + C2H5O2_NO + CH3CO3_NO + EO2_NO + C3H7O2_NO + PO2_NO + RO2_NO + ENEO2_NO + MACRO2_NOa + jhonitr + ',
+            'MCO3_NO + MEKO2_NO + ALKO2_NO + jalknit + .92*ISOPAO2_NO + .92*ISOPBO2_NO + ISOPNO3_NO + XO2_NO + ACBZO2_NO + BENZO2_NO + BZOO_NO + ',
+            'C6H5O2_NO + DICARBO2_NO + MALO2_NO + MDIALO2_NO + PHENO2_NO + TOLO2_NO + XYLENO2_NO + XYLOLO2_NO + NTERPO2_NO + .9*TERP2O2_NO + .8*TERPO2_NO + jterpnit',
+  'O3_Loss = O1D_H2O + OH_O3 + HO2_O3 + C2H4_O3 + C3H6_O3 + ISOP_O3 + MVK_O3 + MACR_O3 + MTERP_O3 + BCARY_O3',
+  'O3S_Loss = 2.0*O_O3 + O1D_H2O + HO2_O3 + OH_O3 + H_O3 + 2.0*NO2_O + 2.0*jno3_b + 2.0*CLO_O + 2.0*jcl2o2 + 2.0*CLO_CLOa + 2.0*CLO_CLOb + ',
+              '2.0*BRO_CLOb + 2.0*BRO_CLOc + 2.0*BRO_BRO + 2.0*BRO_O + CLO_HO2 + BRO_HO2 + S_O3 + SO_O3 + ',
+              'C2H4_O3 + C3H6_O3 + ISOP_O3 + MVK_O3 + MACR_O3 + MTERP_O3 + BCARY_O3',
+  'Ox_Prod = 2.0*jo2_a + 2.0*jo2_b + NO_HO2 + CH3O2_NO + HOCH2OO_NO + C2H5O2_NO + CH3CO3_NO + EO2_NO + C3H7O2_NO + PO2_NO + RO2_NO + ENEO2_NO + MACRO2_NOa + ',
+            'jhonitr + MCO3_NO + MEKO2_NO + ALKO2_NO + jalknit + .92*ISOPAO2_NO + .92*ISOPBO2_NO + ISOPNO3_NO + XO2_NO + ACBZO2_NO + BENZO2_NO + BZOO_NO + ',
+            'C6H5O2_NO + DICARBO2_NO + MALO2_NO + MDIALO2_NO + PHENO2_NO + TOLO2_NO + XYLENO2_NO + XYLOLO2_NO + NTERPO2_NO + .9*TERP2O2_NO + .8*TERPO2_NO + jterpnit',
+  'Ox_Loss = 2.0*O_O3 + O1D_H2O + HO2_O + HO2_O3 + OH_O + OH_O3 + H_O3 + 2.0*NO2_O + 2.0*jno3_b + 2.0*CLO_O + 2.0*jcl2o2 + 2.0*CLO_CLOa + 2.0*CLO_CLOb + ',
+            '2.0*BRO_CLOb + 2.0*BRO_CLOc + 2.0*BRO_BRO + 2.0*BRO_O + CLO_HO2 + BRO_HO2 + C2H4_O3 + C3H6_O3 + ISOP_O3 + MVK_O3 + MACR_O3 + MTERP_O3 + BCARY_O3',
+  'RO2_NO_sum = NO_HO2 + HOCH2OO_NO + C2H5O2_NO + CH3CO3_NO + EO2_NO + C3H7O2_NO + PO2_NO + RO2_NO + ENEO2_NO + MACRO2_NOa + jhonitr + ',
+               'MCO3_NO + MEKO2_NO + ALKO2_NO + jalknit + .92*ISOPAO2_NO + .92*ISOPBO2_NO + ISOPNO3_NO + XO2_NO + ACBZO2_NO + BENZO2_NO + BZOO_NO + ',
+               'C6H5O2_NO + DICARBO2_NO + MALO2_NO + MDIALO2_NO + PHENO2_NO + TOLO2_NO + XYLENO2_NO + XYLOLO2_NO + NTERPO2_NO + .9*TERP2O2_NO + .8*TERPO2_NO + jterpnit',
+  'RO2_NO3_sum = NO3_HO2 + MACRO2_NO3 + MCO3_NO3 + ISOPAO2_NO3 + ISOPBO2_NO3 + XO2_NO3',
+  'RO2_HO2_sum = CH3O2_HO2 + HOCH2OO_HO2 + EO2_HO2 + C2H5O2_HO2 + CH3CO3_HO2 + C3H7O2_HO2 + PO2_HO2 + RO2_HO2 + MEKO2_HO2 + MACRO2_HO2 + ISOPAO2_HO2 + ISOPBO2_HO2 + ALKO2_HO2 +',
+                'XO2_HO2 + TOLO2_HO2 + PHENO2_HO2 + C6H5O2_HO2 + BENZO2_HO2 + MALO2_HO2 + BZOO_HO2 + ACBZO2_HO2 + DICARBO2_HO2 + MDIALO2_HO2 + XYLOLO2_HO2 + XYLENO2_HO2 + TERPO2_HO2 +',
+                'TERP2O2_HO2 + NTERPO2_HO2',
+  'RO2_RO2_sum = CH3O2_CH3O2a + CH3O2_CH3O2b + C2H5O2_CH3O2 + C2H5O2_C2H5O2 + CH3CO3_CH3O2 + CH3CO3_CH3CO3 + C3H7O2_CH3O2 + RO2_CH3O2 + MACRO2_CH3O2 + MACRO2_CH3CO3 + MCO3_CH3O2 +',
+               ' MCO3_CH3CO3 + MCO3_MCO3 + ISOPAO2_CH3O2 + ISOPBO2_CH3O2 + ISOPAO2_CH3CO3 + ISOPBO2_CH3CO3 + XO2_CH3O2 + XO2_CH3CO3',
+  'RCO2_NO2_sum = CH3CO3_NO2 + MCO3_NO2',
+  'OddOx_Ox_Loss  = 2.0*O_O3 + O1D_H2O',
+  'OddOx_HOx_Loss = HO2_O + HO2_O3 + OH_O + OH_O3 + H_O3',
+  'OddOx_NOx_Loss = 2.0*NO2_O + 2.0*jno3_b',
+  'OddOx_CLOxBROx_Loss = 2.0*CLO_O + 2.0*jcl2o2 + 2.0*CLO_CLOa + 2.0*CLO_CLOb + 2.0*BRO_CLOb + 2.0*BRO_CLOc + 2.0*BRO_BRO + 2.0*BRO_O + CLO_HO2 + BRO_HO2',
+  'OddOx_Loss_Tot = 2.0*O_O3 + O1D_H2O + HO2_O + HO2_O3 + OH_O + OH_O3 + H_O3 + 2.0*NO2_O + 2.0*jno3_b + 2.0*CLO_O + 2.0*jcl2o2 + 2.0*CLO_CLOa + 2.0*CLO_CLOb + 2.0*BRO_CLOb +',
+                  ' 2.0*BRO_CLOc + 2.0*BRO_BRO + 2.0*BRO_O + CLO_HO2 + BRO_HO2',
+  'OddOx_Prod_Tot = 2.0*jo2_a + 2.0*jo2_b'
+</rxn_rate_sums>
 
 <!-- ================================================================== -->
 <!-- CAM specific surface model DOM                                     -->

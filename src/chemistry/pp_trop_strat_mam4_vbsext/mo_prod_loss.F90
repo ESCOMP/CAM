@@ -85,13 +85,13 @@
          loss(k,24) = ((rxt(k,186) +rxt(k,187))* y(k,242) + rxt(k,12) &
                   + het_rates(k,114))* y(k,114)
          prod(k,24) = 0._r8
-         loss(k,25) = ( + het_rates(k,134))* y(k,134)
+         loss(k,25) = ( + rxt(k,108) + het_rates(k,150))* y(k,150)
          prod(k,25) = 0._r8
-         loss(k,26) = ( + rxt(k,108) + het_rates(k,150))* y(k,150)
+         loss(k,26) = ( + het_rates(k,217))* y(k,217)
          prod(k,26) = 0._r8
-         loss(k,27) = ( + het_rates(k,217))* y(k,217)
+         loss(k,27) = ( + het_rates(k,218))* y(k,218)
          prod(k,27) = 0._r8
-         loss(k,28) = ( + het_rates(k,218))* y(k,218)
+         loss(k,28) = ( + het_rates(k,134))* y(k,134)
          prod(k,28) = 0._r8
       end do
       end subroutine exp_prod_loss
@@ -161,7 +161,7 @@
                  * y(k,232) + het_rates(k,17))* y(k,17)
          prod(k,208) = (rxt(k,75) +2.000_r8*rxt(k,233)*y(k,19) +rxt(k,234)*y(k,59) + &
                  rxt(k,235)*y(k,59) +rxt(k,238)*y(k,123) +rxt(k,241)*y(k,132) + &
-                 rxt(k,242)*y(k,243) +rxt(k,486)*y(k,151))*y(k,19) &
+                 rxt(k,242)*y(k,243) +rxt(k,488)*y(k,151))*y(k,19) &
                   + (rxt(k,220)*y(k,34) +rxt(k,246)*y(k,35) + &
                  3.000_r8*rxt(k,247)*y(k,55) +2.000_r8*rxt(k,248)*y(k,78) + &
                  2.000_r8*rxt(k,269)*y(k,41) +rxt(k,270)*y(k,43) +rxt(k,249)*y(k,81)) &
@@ -176,7 +176,7 @@
                   +rxt(k,236)*y(k,59)*y(k,19)
          loss(k,221) = (2._r8*rxt(k,233)* y(k,19) + (rxt(k,234) +rxt(k,235) + &
                  rxt(k,236))* y(k,59) +rxt(k,238)* y(k,123) +rxt(k,239)* y(k,124) &
-                  +rxt(k,241)* y(k,132) +rxt(k,486)* y(k,151) +rxt(k,237)* y(k,232) &
+                  +rxt(k,241)* y(k,132) +rxt(k,488)* y(k,151) +rxt(k,237)* y(k,232) &
                   +rxt(k,242)* y(k,243) + rxt(k,75) + het_rates(k,19))* y(k,19)
          prod(k,221) = (rxt(k,76) +rxt(k,240)*y(k,132))*y(k,20) +rxt(k,232)*y(k,133) &
                  *y(k,17) +rxt(k,250)*y(k,242)*y(k,81) +rxt(k,245)*y(k,132)*y(k,91)
@@ -320,7 +320,7 @@
                  rxt(k,273)*y(k,84) +rxt(k,226)*y(k,85) +rxt(k,256)*y(k,65))*y(k,242) &
                   + (rxt(k,93) +rxt(k,201)*y(k,227) +2.000_r8*rxt(k,202)*y(k,59) + &
                  rxt(k,204)*y(k,59) +rxt(k,206)*y(k,123) +rxt(k,211)*y(k,132) + &
-                 rxt(k,212)*y(k,243) +rxt(k,235)*y(k,19) +rxt(k,487)*y(k,151))*y(k,59) &
+                 rxt(k,212)*y(k,243) +rxt(k,235)*y(k,19) +rxt(k,489)*y(k,151))*y(k,59) &
                   + (3.000_r8*rxt(k,261)*y(k,44) +rxt(k,263)*y(k,46) + &
                  rxt(k,266)*y(k,82) +rxt(k,267)*y(k,83) +rxt(k,268)*y(k,84) + &
                  rxt(k,215)*y(k,85))*y(k,243) + (rxt(k,103) +rxt(k,214)*y(k,132)) &
@@ -336,13 +336,13 @@
          loss(k,222) = ((rxt(k,234) +rxt(k,235) +rxt(k,236))* y(k,19) &
                   + 2._r8*(rxt(k,202) +rxt(k,203) +rxt(k,204) +rxt(k,228))* y(k,59) &
                   +rxt(k,206)* y(k,123) +rxt(k,208)* y(k,124) +rxt(k,211)* y(k,132) &
-                  +rxt(k,487)* y(k,151) +rxt(k,201)* y(k,227) +rxt(k,205)* y(k,232) &
+                  +rxt(k,489)* y(k,151) +rxt(k,201)* y(k,227) +rxt(k,205)* y(k,232) &
                   + (rxt(k,212) +rxt(k,213))* y(k,243) + rxt(k,93) + het_rates(k,59)) &
                  * y(k,59)
          prod(k,222) = (rxt(k,199)*y(k,232) +rxt(k,200)*y(k,133) +rxt(k,216)*y(k,92)) &
                  *y(k,56) + (rxt(k,94) +rxt(k,209)*y(k,132))*y(k,60) &
                   + (rxt(k,217)*y(k,132) +rxt(k,218)*y(k,243))*y(k,92) + (rxt(k,107) + &
-                 rxt(k,492)*y(k,151))*y(k,135) +2.000_r8*rxt(k,229)*y(k,58) &
+                 rxt(k,494)*y(k,151))*y(k,135) +2.000_r8*rxt(k,229)*y(k,58) &
                   +rxt(k,227)*y(k,242)*y(k,85)
          loss(k,182) = (rxt(k,207)* y(k,56) + (rxt(k,536) +rxt(k,541) +rxt(k,546)) &
                  * y(k,85) +rxt(k,209)* y(k,132) +rxt(k,210)* y(k,243) + rxt(k,94) &
@@ -360,14 +360,14 @@
                  .170_r8*rxt(k,431)*y(k,228) +.400_r8*rxt(k,434)*y(k,237) + &
                  .350_r8*rxt(k,437)*y(k,239) +.225_r8*rxt(k,472)*y(k,247))*y(k,123) &
                   + (.350_r8*rxt(k,297)*y(k,24) +rxt(k,322)*y(k,75) + &
-                 rxt(k,335)*y(k,49) +.700_r8*rxt(k,481)*y(k,209) +rxt(k,483)*y(k,136)) &
+                 rxt(k,335)*y(k,49) +.700_r8*rxt(k,481)*y(k,209) +rxt(k,485)*y(k,136)) &
                  *y(k,243) + (rxt(k,334)*y(k,49) +.220_r8*rxt(k,355)*y(k,236) + &
                  .500_r8*rxt(k,414)*y(k,250))*y(k,125) &
                   + (.110_r8*rxt(k,353)*y(k,236) +.200_r8*rxt(k,411)*y(k,250) + &
                  .125_r8*rxt(k,470)*y(k,247))*y(k,227) &
                   + (.070_r8*rxt(k,430)*y(k,228) +.160_r8*rxt(k,433)*y(k,237) + &
                  .140_r8*rxt(k,436)*y(k,239))*y(k,232) + (rxt(k,110) + &
-                 rxt(k,482)*y(k,132))*y(k,136) + (.220_r8*rxt(k,352)*y(k,236) + &
+                 rxt(k,484)*y(k,132))*y(k,136) + (.220_r8*rxt(k,352)*y(k,236) + &
                  .250_r8*rxt(k,410)*y(k,250))*y(k,226) +1.500_r8*rxt(k,22)*y(k,9) &
                   +.450_r8*rxt(k,23)*y(k,10) +.600_r8*rxt(k,26)*y(k,13) +rxt(k,27) &
                  *y(k,14) +rxt(k,34)*y(k,45) +rxt(k,262)*y(k,56)*y(k,46) +rxt(k,36) &
@@ -387,7 +387,7 @@
                  *y(k,242) +rxt(k,266)*y(k,243)*y(k,82)
          loss(k,86) = (rxt(k,429)* y(k,243) + het_rates(k,66))* y(k,66)
          prod(k,86) =.180_r8*rxt(k,449)*y(k,243)*y(k,211)
-         loss(k,105) = (rxt(k,496)* y(k,125) + (rxt(k,497) +rxt(k,499))* y(k,243) &
+         loss(k,105) = (rxt(k,482)* y(k,125) + (rxt(k,483) +rxt(k,496))* y(k,243) &
                   + het_rates(k,67))* y(k,67)
          prod(k,105) = 0._r8
          loss(k,3) = ( + het_rates(k,68))* y(k,68)
@@ -432,8 +432,8 @@
          loss(k,210) = (rxt(k,160)* y(k,133) + (rxt(k,154) +rxt(k,155) +rxt(k,156)) &
                  * y(k,232) + rxt(k,157) + het_rates(k,76))* y(k,76)
          prod(k,210) = (rxt(k,161)*y(k,77) +rxt(k,164)*y(k,132) +rxt(k,182)*y(k,113) + &
-                 rxt(k,277)*y(k,42) +rxt(k,295)*y(k,62) +rxt(k,483)*y(k,136) + &
-                 rxt(k,488)*y(k,149) +rxt(k,493)*y(k,151))*y(k,243) &
+                 rxt(k,277)*y(k,42) +rxt(k,295)*y(k,62) +rxt(k,485)*y(k,136) + &
+                 rxt(k,490)*y(k,149) +rxt(k,495)*y(k,151))*y(k,243) &
                   + (rxt(k,144)*y(k,242) +rxt(k,152)*y(k,132) +rxt(k,196)*y(k,56) + &
                  rxt(k,252)*y(k,73))*y(k,77) + (rxt(k,292)*y(k,54) + &
                  rxt(k,227)*y(k,85) +rxt(k,250)*y(k,81))*y(k,242) + (rxt(k,2) + &
@@ -449,7 +449,7 @@
          prod(k,148) = (.500_r8*rxt(k,501) +rxt(k,168)*y(k,232))*y(k,232) &
                   +rxt(k,167)*y(k,243)*y(k,243)
          loss(k,78) = ( + rxt(k,109) + het_rates(k,80))* y(k,80)
-         prod(k,78) =rxt(k,495)*y(k,253)*y(k,153)
+         prod(k,78) =rxt(k,498)*y(k,253)*y(k,153)
          loss(k,170) = (rxt(k,243)* y(k,132) + (rxt(k,249) +rxt(k,250))* y(k,242) &
                   +rxt(k,244)* y(k,243) + rxt(k,99) + het_rates(k,81))* y(k,81)
          prod(k,170) = (rxt(k,230)*y(k,42) +rxt(k,231)*y(k,232))*y(k,17)
@@ -479,7 +479,7 @@
          prod(k,209) = (rxt(k,534) +rxt(k,539) +rxt(k,545) +rxt(k,536)*y(k,85) + &
                  rxt(k,541)*y(k,85) +rxt(k,546)*y(k,85))*y(k,60) + (rxt(k,510) + &
                  rxt(k,275)*y(k,42) +rxt(k,308)*y(k,45) +rxt(k,334)*y(k,49) + &
-                 rxt(k,496)*y(k,67))*y(k,125) + (2.000_r8*rxt(k,505) + &
+                 rxt(k,482)*y(k,67))*y(k,125) + (2.000_r8*rxt(k,505) + &
                  2.000_r8*rxt(k,530) +2.000_r8*rxt(k,533) +2.000_r8*rxt(k,544)) &
                  *y(k,115) + (rxt(k,532) +rxt(k,535) +rxt(k,540))*y(k,20) &
                   + (.500_r8*rxt(k,509) +rxt(k,190)*y(k,243))*y(k,124) +rxt(k,502) &
@@ -583,7 +583,7 @@
          prod(k,7) = 0._r8
          loss(k,8) = ( + het_rates(k,120))* y(k,120)
          prod(k,8) = 0._r8
-         loss(k,70) = (rxt(k,498)* y(k,243) + het_rates(k,121))* y(k,121)
+         loss(k,70) = (rxt(k,499)* y(k,243) + het_rates(k,121))* y(k,121)
          prod(k,70) = 0._r8
          loss(k,9) = ( + rxt(k,508) + het_rates(k,122))* y(k,122)
          prod(k,9) = 0._r8
@@ -603,13 +603,13 @@
                   +rxt(k,453)* y(k,251) +rxt(k,456)* y(k,252) + rxt(k,15) &
                   + het_rates(k,123))* y(k,123)
          prod(k,211) = (rxt(k,16) +.500_r8*rxt(k,509) +2.000_r8*rxt(k,172)*y(k,113) + &
-                 rxt(k,175)*y(k,132) +rxt(k,489)*y(k,151))*y(k,124) + (rxt(k,174) + &
+                 rxt(k,175)*y(k,132) +rxt(k,491)*y(k,151))*y(k,124) + (rxt(k,174) + &
                  rxt(k,182)*y(k,243))*y(k,113) +2.000_r8*rxt(k,186)*y(k,242)*y(k,114) &
                   +rxt(k,13)*y(k,115) +rxt(k,17)*y(k,125)
          loss(k,217) = (rxt(k,239)* y(k,19) +rxt(k,208)* y(k,59) + (rxt(k,171) + &
                  rxt(k,172) +rxt(k,173))* y(k,113) +rxt(k,189)* y(k,125) &
                   + (rxt(k,175) +rxt(k,177))* y(k,132) +rxt(k,176)* y(k,133) &
-                  +rxt(k,442)* y(k,140) +rxt(k,489)* y(k,151) +rxt(k,445)* y(k,219) &
+                  +rxt(k,442)* y(k,140) +rxt(k,491)* y(k,151) +rxt(k,445)* y(k,219) &
                   +rxt(k,325)* y(k,226) +rxt(k,432)* y(k,228) +rxt(k,188)* y(k,232) &
                   +rxt(k,435)* y(k,237) +rxt(k,374)* y(k,238) +rxt(k,438)* y(k,239) &
                   +rxt(k,190)* y(k,243) + rxt(k,16) + rxt(k,509) + het_rates(k,124)) &
@@ -644,7 +644,7 @@
                   +.500_r8*rxt(k,465)*y(k,241)*y(k,227)
          loss(k,218) = (rxt(k,459)* y(k,6) +rxt(k,347)* y(k,16) +rxt(k,327)* y(k,29) &
                   +rxt(k,275)* y(k,42) +rxt(k,308)* y(k,45) +rxt(k,334)* y(k,49) &
-                  +rxt(k,496)* y(k,67) +rxt(k,398)* y(k,98) +rxt(k,403)* y(k,101) &
+                  +rxt(k,482)* y(k,67) +rxt(k,398)* y(k,98) +rxt(k,403)* y(k,101) &
                   +rxt(k,462)* y(k,111) +rxt(k,179)* y(k,123) +rxt(k,189)* y(k,124) &
                   +rxt(k,180)* y(k,132) +rxt(k,479)* y(k,208) +rxt(k,178)* y(k,232) &
                   +rxt(k,389)* y(k,234) +rxt(k,395)* y(k,235) +rxt(k,355)* y(k,236) &
@@ -678,30 +678,30 @@
                   +rxt(k,153)* y(k,79) +rxt(k,243)* y(k,81) +rxt(k,214)* y(k,85) &
                   +rxt(k,245)* y(k,91) +rxt(k,217)* y(k,92) +rxt(k,185)* y(k,123) &
                   + (rxt(k,175) +rxt(k,177))* y(k,124) +rxt(k,180)* y(k,125) &
-                  + 2._r8*rxt(k,150)* y(k,132) +rxt(k,149)* y(k,133) +rxt(k,482) &
+                  + 2._r8*rxt(k,150)* y(k,132) +rxt(k,149)* y(k,133) +rxt(k,484) &
                  * y(k,136) +rxt(k,158)* y(k,232) +rxt(k,164)* y(k,243) + rxt(k,151) &
                   + het_rates(k,132))* y(k,132)
          prod(k,223) = (rxt(k,174) +rxt(k,170)*y(k,123) +rxt(k,171)*y(k,124))*y(k,113) &
-                  + (rxt(k,111) +rxt(k,490))*y(k,151) + (rxt(k,146) +rxt(k,147)) &
+                  + (rxt(k,111) +rxt(k,492))*y(k,151) + (rxt(k,146) +rxt(k,147)) &
                  *y(k,242) +rxt(k,75)*y(k,19) +rxt(k,93)*y(k,59) +rxt(k,156)*y(k,232) &
                  *y(k,76) +rxt(k,13)*y(k,115) +rxt(k,15)*y(k,123) +rxt(k,16)*y(k,124) &
                   +rxt(k,18)*y(k,125) +rxt(k,8)*y(k,133) +rxt(k,107)*y(k,135) &
-                  +rxt(k,484)*y(k,149) +rxt(k,112)*y(k,152) +rxt(k,113)*y(k,153) &
+                  +rxt(k,486)*y(k,149) +rxt(k,112)*y(k,152) +rxt(k,113)*y(k,153) &
                   +rxt(k,166)*y(k,243)*y(k,243) +rxt(k,3)*y(k,253)
          loss(k,220) = (rxt(k,460)* y(k,6) +rxt(k,232)* y(k,17) +rxt(k,299)* y(k,25) &
                   +rxt(k,328)* y(k,29) +rxt(k,200)* y(k,56) +rxt(k,160)* y(k,76) &
                   +rxt(k,405)* y(k,98) +rxt(k,358)* y(k,106) +rxt(k,463)* y(k,111) &
                   +rxt(k,372)* y(k,112) +rxt(k,184)* y(k,123) +rxt(k,176)* y(k,124) &
-                  +rxt(k,149)* y(k,132) +rxt(k,443)* y(k,140) +rxt(k,485)* y(k,149) &
-                  +rxt(k,491)* y(k,151) +rxt(k,159)* y(k,232) +rxt(k,148)* y(k,242) &
+                  +rxt(k,149)* y(k,132) +rxt(k,443)* y(k,140) +rxt(k,487)* y(k,149) &
+                  +rxt(k,493)* y(k,151) +rxt(k,159)* y(k,232) +rxt(k,148)* y(k,242) &
                   +rxt(k,165)* y(k,243) + rxt(k,7) + rxt(k,8) + het_rates(k,133)) &
                  * y(k,133)
          prod(k,220) = (.150_r8*rxt(k,313)*y(k,226) +.150_r8*rxt(k,363)*y(k,238)) &
                  *y(k,232) +rxt(k,151)*y(k,132)
-         loss(k,107) = (rxt(k,492)* y(k,151) + rxt(k,107) + het_rates(k,135)) &
+         loss(k,107) = (rxt(k,494)* y(k,151) + rxt(k,107) + het_rates(k,135)) &
                  * y(k,135)
          prod(k,107) = (rxt(k,204)*y(k,59) +rxt(k,234)*y(k,19))*y(k,59)
-         loss(k,115) = (rxt(k,482)* y(k,132) +rxt(k,483)* y(k,243) + rxt(k,110) &
+         loss(k,115) = (rxt(k,484)* y(k,132) +rxt(k,485)* y(k,243) + rxt(k,110) &
                   + het_rates(k,136))* y(k,136)
          prod(k,115) = 0._r8
          loss(k,91) = ( + rxt(k,59) + rxt(k,512) + het_rates(k,137))* y(k,137)
@@ -732,23 +732,23 @@
          prod(k,140) =rxt(k,338)*y(k,245)*y(k,232)
          loss(k,117) = (rxt(k,344)* y(k,243) + rxt(k,63) + het_rates(k,148))* y(k,148)
          prod(k,117) =.850_r8*rxt(k,342)*y(k,246)*y(k,232)
-         loss(k,137) = (rxt(k,485)* y(k,133) +rxt(k,488)* y(k,243) + rxt(k,484) &
+         loss(k,137) = (rxt(k,487)* y(k,133) +rxt(k,490)* y(k,243) + rxt(k,486) &
                   + het_rates(k,149))* y(k,149)
          prod(k,137) =rxt(k,110)*y(k,136) +rxt(k,111)*y(k,151)
-         loss(k,201) = (rxt(k,486)* y(k,19) +rxt(k,487)* y(k,59) +rxt(k,489)* y(k,124) &
-                  +rxt(k,491)* y(k,133) +rxt(k,492)* y(k,135) +rxt(k,493)* y(k,243) &
-                  + rxt(k,111) + rxt(k,490) + het_rates(k,151))* y(k,151)
-         prod(k,201) = (rxt(k,484) +rxt(k,485)*y(k,133) +rxt(k,488)*y(k,243))*y(k,149) &
-                  +rxt(k,482)*y(k,136)*y(k,132) +rxt(k,112)*y(k,152)
-         loss(k,174) = (rxt(k,494)* y(k,243) + rxt(k,112) + het_rates(k,152)) &
+         loss(k,201) = (rxt(k,488)* y(k,19) +rxt(k,489)* y(k,59) +rxt(k,491)* y(k,124) &
+                  +rxt(k,493)* y(k,133) +rxt(k,494)* y(k,135) +rxt(k,495)* y(k,243) &
+                  + rxt(k,111) + rxt(k,492) + het_rates(k,151))* y(k,151)
+         prod(k,201) = (rxt(k,486) +rxt(k,487)*y(k,133) +rxt(k,490)*y(k,243))*y(k,149) &
+                  +rxt(k,484)*y(k,136)*y(k,132) +rxt(k,112)*y(k,152)
+         loss(k,174) = (rxt(k,497)* y(k,243) + rxt(k,112) + het_rates(k,152)) &
                  * y(k,152)
-         prod(k,174) = (rxt(k,490) +rxt(k,486)*y(k,19) +rxt(k,487)*y(k,59) + &
-                 rxt(k,489)*y(k,124) +rxt(k,491)*y(k,133) +rxt(k,492)*y(k,135) + &
-                 rxt(k,493)*y(k,243))*y(k,151) + (rxt(k,496)*y(k,125) + &
-                 rxt(k,497)*y(k,243) +.500_r8*rxt(k,499)*y(k,243))*y(k,67) &
-                  +rxt(k,483)*y(k,243)*y(k,136) +rxt(k,113)*y(k,153)
-         loss(k,97) = (rxt(k,495)* y(k,253) + rxt(k,113) + het_rates(k,153))* y(k,153)
-         prod(k,97) =rxt(k,109)*y(k,80) +rxt(k,494)*y(k,243)*y(k,152)
+         prod(k,174) = (rxt(k,492) +rxt(k,488)*y(k,19) +rxt(k,489)*y(k,59) + &
+                 rxt(k,491)*y(k,124) +rxt(k,493)*y(k,133) +rxt(k,494)*y(k,135) + &
+                 rxt(k,495)*y(k,243))*y(k,151) + (rxt(k,482)*y(k,125) + &
+                 rxt(k,483)*y(k,243) +.500_r8*rxt(k,496)*y(k,243))*y(k,67) &
+                  +rxt(k,485)*y(k,243)*y(k,136) +rxt(k,113)*y(k,153)
+         loss(k,97) = (rxt(k,498)* y(k,253) + rxt(k,113) + het_rates(k,153))* y(k,153)
+         prod(k,97) =rxt(k,109)*y(k,80) +rxt(k,497)*y(k,243)*y(k,152)
          loss(k,18) = ( + het_rates(k,154))* y(k,154)
          prod(k,18) = 0._r8
          loss(k,19) = ( + het_rates(k,155))* y(k,155)
@@ -883,7 +883,7 @@
          loss(k,66) = ( + het_rates(k,201))* y(k,201)
          prod(k,66) = (.1621005_r8*rxt(k,517)*y(k,7) + &
                  .0113005_r8*rxt(k,522)*y(k,105) +.0128005_r8*rxt(k,527)*y(k,203) + &
-                 .0232005_r8*rxt(k,528)*y(k,211) +.1598005_r8*rxt(k,529)*y(k,213)) &
+                 .0738005_r8*rxt(k,528)*y(k,211) +.1598005_r8*rxt(k,529)*y(k,213)) &
                  *y(k,243)
          loss(k,68) = (rxt(k,526)* y(k,243) + het_rates(k,202))* y(k,202)
          prod(k,68) = 0._r8
@@ -1032,8 +1032,8 @@
                  .650_r8*rxt(k,418)*y(k,7) +.730_r8*rxt(k,429)*y(k,66) + &
                  .800_r8*rxt(k,441)*y(k,141) +.280_r8*rxt(k,449)*y(k,211) + &
                  .380_r8*rxt(k,451)*y(k,213) +.630_r8*rxt(k,457)*y(k,215) + &
-                 .200_r8*rxt(k,481)*y(k,209) +rxt(k,494)*y(k,152) + &
-                 .500_r8*rxt(k,499)*y(k,67))*y(k,243) + (rxt(k,281)*y(k,227) + &
+                 .200_r8*rxt(k,481)*y(k,209) +.500_r8*rxt(k,496)*y(k,67) + &
+                 rxt(k,497)*y(k,152))*y(k,243) + (rxt(k,281)*y(k,227) + &
                  rxt(k,290)*y(k,233) +rxt(k,303)*y(k,223) + &
                  .250_r8*rxt(k,318)*y(k,231) +rxt(k,331)*y(k,224) + &
                  rxt(k,339)*y(k,245) +rxt(k,349)*y(k,229) + &
@@ -1140,7 +1140,7 @@
                   +rxt(k,282)* y(k,52) +rxt(k,283)* y(k,53) +rxt(k,284)* y(k,54) &
                   +rxt(k,265)* y(k,55) + (rxt(k,212) +rxt(k,213))* y(k,59) +rxt(k,210) &
                  * y(k,60) + (rxt(k,285) +rxt(k,295))* y(k,62) +rxt(k,429)* y(k,66) &
-                  + (rxt(k,497) +rxt(k,499))* y(k,67) +rxt(k,321)* y(k,74) +rxt(k,322) &
+                  + (rxt(k,483) +rxt(k,496))* y(k,67) +rxt(k,321)* y(k,74) +rxt(k,322) &
                  * y(k,75) +rxt(k,161)* y(k,77) +rxt(k,162)* y(k,79) +rxt(k,244) &
                  * y(k,81) +rxt(k,266)* y(k,82) +rxt(k,267)* y(k,83) +rxt(k,268) &
                  * y(k,84) +rxt(k,215)* y(k,85) +rxt(k,286)* y(k,86) +rxt(k,287) &
@@ -1151,12 +1151,12 @@
                  * y(k,102) +rxt(k,407)* y(k,103) +rxt(k,359)* y(k,106) +rxt(k,360) &
                  * y(k,107) +rxt(k,369)* y(k,108) +rxt(k,370)* y(k,109) +rxt(k,371) &
                  * y(k,110) +rxt(k,464)* y(k,111) +rxt(k,373)* y(k,112) +rxt(k,182) &
-                 * y(k,113) +rxt(k,408)* y(k,116) +rxt(k,409)* y(k,117) +rxt(k,498) &
+                 * y(k,113) +rxt(k,408)* y(k,116) +rxt(k,409)* y(k,117) +rxt(k,499) &
                  * y(k,121) +rxt(k,190)* y(k,124) +rxt(k,181)* y(k,125) +rxt(k,337) &
                  * y(k,126) +rxt(k,469)* y(k,127) +rxt(k,164)* y(k,132) +rxt(k,165) &
-                 * y(k,133) +rxt(k,483)* y(k,136) +rxt(k,323)* y(k,138) +rxt(k,441) &
+                 * y(k,133) +rxt(k,485)* y(k,136) +rxt(k,323)* y(k,138) +rxt(k,441) &
                  * y(k,141) +rxt(k,444)* y(k,142) +rxt(k,340)* y(k,147) +rxt(k,344) &
-                 * y(k,148) +rxt(k,488)* y(k,149) +rxt(k,493)* y(k,151) +rxt(k,494) &
+                 * y(k,148) +rxt(k,490)* y(k,149) +rxt(k,495)* y(k,151) +rxt(k,497) &
                  * y(k,152) +rxt(k,473)* y(k,205) +rxt(k,474)* y(k,206) +rxt(k,478) &
                  * y(k,207) +rxt(k,480)* y(k,208) +rxt(k,481)* y(k,209) +rxt(k,448) &
                  * y(k,210) +rxt(k,449)* y(k,211) +rxt(k,415)* y(k,212) +rxt(k,451) &
@@ -1225,7 +1225,7 @@
          loss(k,135) = (rxt(k,456)* y(k,123) +rxt(k,455)* y(k,232) + het_rates(k,252)) &
                  * y(k,252)
          prod(k,135) = (.300_r8*rxt(k,457)*y(k,215) +rxt(k,458)*y(k,216))*y(k,243)
-         loss(k,225) = (rxt(k,253)* y(k,73) +rxt(k,495)* y(k,153) +rxt(k,145) &
+         loss(k,225) = (rxt(k,253)* y(k,73) +rxt(k,498)* y(k,153) +rxt(k,145) &
                  * y(k,242) + rxt(k,1) + rxt(k,2) + rxt(k,3) + het_rates(k,253)) &
                  * y(k,253)
          prod(k,225) = (rxt(k,258)*y(k,41) +rxt(k,260)*y(k,43) +rxt(k,261)*y(k,44) + &
@@ -1237,7 +1237,7 @@
                  rxt(k,307)*y(k,28) +rxt(k,309)*y(k,45) +rxt(k,315)*y(k,50) + &
                  rxt(k,316)*y(k,51) +rxt(k,332)*y(k,30) +rxt(k,333)*y(k,31) + &
                  rxt(k,335)*y(k,49) +rxt(k,340)*y(k,147) +rxt(k,344)*y(k,148) + &
-                 rxt(k,346)*y(k,48) +.500_r8*rxt(k,359)*y(k,106) +rxt(k,498)*y(k,121)) &
+                 rxt(k,346)*y(k,48) +.500_r8*rxt(k,359)*y(k,106) +rxt(k,499)*y(k,121)) &
                  *y(k,243) + (rxt(k,531)*y(k,92) +rxt(k,537)*y(k,92) + &
                  rxt(k,538)*y(k,91) +rxt(k,542)*y(k,92) +rxt(k,543)*y(k,91))*y(k,85) &
                   +rxt(k,156)*y(k,232)*y(k,76) +rxt(k,109)*y(k,80)
