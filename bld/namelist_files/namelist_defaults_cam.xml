@@ -778,7 +778,7 @@
 <bc_a4_ar_ext_file  hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_bc_a4_aircraft_vertical_1750-2015_1.9x2.5_c20170608.nc</bc_a4_ar_ext_file>
 <no2_ar_ext_file    hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_NO2_aircraft_vertical_1750-2015_1.9x2.5_c20170608.nc</no2_ar_ext_file>
 <num_a4_ar_ext_file hgrid="1.9x2.5" ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015_2deg/emissions-cmip6_num_bc_a4_aircraft_vertical_1750-2015_1.9x2.5_c20170608.nc</num_a4_ar_ext_file>
-<so2_volc_pi_ext_file hgrid="1.9x2.5" ver="cam6">atm/cam/chem/stratvolc/VolcanEESMv3.10_piControl_SO2_1850-2014average_2deg_c190220.nc</so2_volc_pi_ext_file>
+<so2_volc_pi_ext_file hgrid="1.9x2.5" ver="cam6">atm/cam/chem/stratvolc/VolcanEESMv3.10_piControl_SO2_1850-2014average_2deg_ZeroTrop_c190701.nc</so2_volc_pi_ext_file>
 
 <!-- 2-DEG SRF -->
 

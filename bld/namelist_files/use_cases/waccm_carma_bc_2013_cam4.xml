@@ -48,7 +48,7 @@
 
 <!-- QBO settings --> 
 <qbo_cyclic>.false.</qbo_cyclic>
-<qbo_forcing_file>atm/waccm/qbo/qbocoefficients_c091230.nc'</qbo_forcing_file>
+<qbo_forcing_file>atm/waccm/qbo/qbocoefficients_c151023.nc</qbo_forcing_file>
 <qbo_use_forcing>.true.</qbo_use_forcing>
 
 <!-- volcanic aerosol heating -->
