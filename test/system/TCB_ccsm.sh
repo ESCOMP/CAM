@@ -76,6 +76,12 @@ else
 fi
 
 cd ${CAM_TESTDIR}/case.$1.$2
+echo "./xmlchange EXTERNAL_WORKFLOW=TRUE"
+./xmlchange EXTERNAL_WORKFLOW=TRUE
+
+echo "./xmlchange BATCH_SYSTEM=none"
+./xmlchange BATCH_SYSTEM=none
+
 echo "./xmlchange EXEROOT=${CAM_TESTDIR}/case.$1.$2/bld"
 ./xmlchange EXEROOT=${CAM_TESTDIR}/case.$1.$2/bld
 

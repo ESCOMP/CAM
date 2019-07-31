@@ -2266,7 +2266,8 @@ end do
     ! they are defined for a 2x2 square
     integration_matrix = integration_matrix/intervals
 
-    boundary_interp_matrix(:,:,:) = Lagrange_interp(:,(/1,np/),:)
+    boundary_interp_matrix(:,1,:) = Lagrange_interp(:,1,:)
+    boundary_interp_matrix(:,2,:) = Lagrange_interp(:,np,:)
   end subroutine allocate_subcell_integration_matrix_cslam
 
   subroutine allocate_subcell_integration_matrix_physgrid(np, intervals)
