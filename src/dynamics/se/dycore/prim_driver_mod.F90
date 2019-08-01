@@ -36,7 +36,7 @@ contains
                                       variable_nsplit
     use fvm_mod,                only: fill_halo_fvm,ghostBufQnhc_h
     use thread_mod,             only: omp_get_thread_num
-    use global_norms_mod,       only: test_global_integral, print_cfl
+    use global_norms_mod,       only: print_cfl
     use hybvcoord_mod,          only: hvcoord_t
     use prim_advection_mod,     only: prim_advec_init2,deriv
     use prim_advance_mod,       only: compute_omega
@@ -77,11 +77,6 @@ contains
     ! begin executable code
     ! ==========================
     !call prim_advance_init(hybrid%par,elem)
-
-    if (topology == "cube") then
-       call test_global_integral(elem, hybrid,nets,nete)
-    end if
-
 
     ! compute most restrictive dt*nu for use by variable res viscosity:
     ! compute timestep seen by viscosity operator:
@@ -147,7 +142,7 @@ contains
 !=======================================================================================================!
 
 
-  subroutine prim_run_subcycle(elem, fvm, hybrid,nets,nete, dt, tl, hvcoord,nsubstep)
+  subroutine prim_run_subcycle(elem, fvm, hybrid,nets,nete, dt, tl, hvcoord,nsubstep, omega_cn)
 !
 !   advance all variables (u,v,T,ps,Q,C) from time t to t + dt_q
 !
@@ -201,12 +196,12 @@ contains
     real(kind=r8), intent(in)        :: dt  ! "timestep dependent" timestep
     type (TimeLevel_t), intent(inout):: tl
     integer, intent(in)              :: nsubstep  ! nsubstep = 1 .. nsplit
+    real (kind=r8)    , intent(inout):: omega_cn(2,nets:nete) !min and max of vertical Courant number    
 
     real(kind=r8)   :: dt_q, dt_remap
     integer         :: ie, q,k,n0_qdp,np1_qdp,r, nstep_end,region_num_threads,i,j
     real (kind=r8)  :: dp_np1(np,np)
     real (kind=r8)  :: dp_start(np,np,nlev+1,nets:nete),dp_end(np,np,nlev,nets:nete)
-    real (kind=r8)  :: omega_cn(2,nets:nete) !min and max of vertical Courant number
     logical         :: compute_diagnostics
 
     ! ===================================
@@ -230,7 +225,7 @@ contains
     !
     ! initialize variables for computing vertical Courant number
     !
-    if (nsubstep==1.or.(compute_diagnostics.and..not.variable_nsplit)) then
+    if (variable_nsplit.or.compute_diagnostics) then    
       if (nsubstep==1) then
         do ie=nets,nete
           omega_cn(1,ie) = 0.0_r8

@@ -925,49 +925,26 @@ subroutine thermodynamic_consistency(phys_state, phys_tend, icol, ilyr, q_prev)
    real(r8):: facor, sum_water, sum_cp, factor
    !----------------------------------------------------------------------------
 
-   if (lcp_moist) then
-
-      if (phys_dyn_cp>0) then
-         factor = 1.0_r8
-         sum_cp    = cpair
-         sum_water = 1.0_r8                    
-         do nq=1,qsize_condensate_loading
-            m = qsize_condensate_loading_idx(nq)
-            sum_cp  = sum_cp+qsize_condensate_loading_cp(nq)*phys_state%q(icol,ilyr,m)
-            sum_water = sum_water + phys_state%q(icol,ilyr,m)
-         end do
-
-         ! scale temperature tendency so that thermal energy increment from physics
-         ! matches SE (not taking into account dme adjust)
-
-         if (phys_dyn_cp==1) factor = cpair*sum_water/sum_cp
-
-         ! scale temperature tendency so that thermal energy increment from physics
-         ! matches SE incl. dme adjust (that incl. condensate effect)
-
-         if (phys_dyn_cp==2) factor = cpair*(1.0_r8+q_prev)/sum_cp
-         phys_tend%dtdt(icol,ilyr) = phys_tend%dtdt(icol,ilyr)*factor
-      else
-         if (phys_dyn_cp==2) then
-
-            ! thermal energy between physics and dynamics are the same - only condensate effect
-
-            sum_water = 1.0_r8                    
-            do nq=1,qsize_condensate_loading
-               m = qsize_condensate_loading_idx(nq)
-               sum_water = sum_water + phys_state%q(icol,ilyr,m)
-            end do
-
-            ! dme_adjust
-
-            factor = (1.0_r8+q_prev)/sum_water
-            phys_tend%dtdt(icol,ilyr) = phys_tend%dtdt(icol,ilyr)*factor
-         end if
-
-      end if  ! phys_dyn_cp
-
-   end if ! lcp_moist
-
+   if (lcp_moist.and.phys_dyn_cp==1) then
+     factor = 1.0_r8
+     sum_cp    = cpair
+     sum_water = 1.0_r8                    
+     do nq=1,qsize_condensate_loading
+       m = qsize_condensate_loading_idx(nq)
+       sum_cp  = sum_cp+qsize_condensate_loading_cp(nq)*phys_state%q(icol,ilyr,m)
+       sum_water = sum_water + phys_state%q(icol,ilyr,m)
+     end do
+     !
+     ! scale temperature tendency so that thermal energy increment from physics
+     ! matches SE (not taking into account dme adjust)
+     !
+     ! note that if lcp_moist=.false. then there is thermal energy increment
+     ! consistency (not taking into account dme adjust) 
+     !
+     !
+     factor = cpair*sum_water/sum_cp
+     phys_tend%dtdt(icol,ilyr) = phys_tend%dtdt(icol,ilyr)*factor
+   end if 
 end subroutine thermodynamic_consistency
 
 !=========================================================================================

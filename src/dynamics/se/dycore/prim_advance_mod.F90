@@ -603,7 +603,7 @@ contains
               !
               ! increase del4 damping in sponge
               !
-              nu_scale_del4_top=MIN(1.0_r8+nu_scale_top(k),max_nu_scale_del4)
+              nu_scale_del4_top=MAX(MIN(nu_scale_top(k),max_nu_scale_del4),1.0_r8)
             end if
             
             !OMP_COLLAPSE_SIMD

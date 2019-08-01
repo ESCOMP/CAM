@@ -299,41 +299,6 @@ subroutine dyn_readnl(NLFileName)
 
    if (se_fvm_supercycling < 0) se_fvm_supercycling = se_rsplit
    if (se_fvm_supercycling_jet < 0) se_fvm_supercycling_jet = se_rsplit
-   !
-   ! automatically set viscosity coefficients
-   !
-   !
-   ! Use scaling from
-   !
-   ! - Boville, B. A., 1991: Sensitivity of simulated climate to
-   !   model resolution. J. Climate, 4, 469-485.
-   !
-   ! - TAKAHASHI ET AL., 2006: GLOBAL SIMULATION OF MESOSCALE SPECTRUM 
-   !
-   uniform_res_hypervis_scaling = 3.0_r8    ! 1./log(2.0_r8) = 3.3219
-   !
-   ! compute factor so that at ne30 resolution nu=1E15
-   ! scale so that scaling works for other planets
-   !
-   nu_fac = (rearth/6.37122E6_r8)*1.0E15_r8/(110000.0_r8**uniform_res_hypervis_scaling)
-   if (se_nu_div < 0) then
-      if (se_ne <= 0) then
-         call endrun('dyn_readnl: ERROR must have se_ne > 0 for se_nu_div < 0')
-      end if
-      se_nu_div = 2.25_r8*nu_fac*((30.0_r8/se_ne)*110000.0_r8)**uniform_res_hypervis_scaling
-   end if
-   if (se_nu_p < 0) then
-      if (se_ne <= 0) then
-         call endrun('dyn_readnl: ERROR must have se_ne > 0 for se_nu_p < 0')
-      end if
-      se_nu_p   = 1.0_r8*nu_fac*((30.0_r8/se_ne)*110000.0_r8)**uniform_res_hypervis_scaling
-   end if
-   if (se_nu < 0) then
-      if (se_ne <= 0) then
-         call endrun('dyn_readnl: ERROR must have se_ne > 0 for se_nu < 0')
-      end if
-      se_nu     = 0.225_r8*nu_fac*((30.0_r8/se_ne)*110000.0_r8)**uniform_res_hypervis_scaling
-   end if
 
    ! Go ahead and enforce ne = 0 for refined mesh runs
    if (se_refined_mesh) then
@@ -454,38 +419,42 @@ subroutine dyn_readnl(NLFileName)
       write(iulog, '(a,i0)')   'dyn_readnl: se_nsplit                   = ',se_nsplit
       write(iulog, '(a,l4)')   'dyn_readnl: se_variable_nsplit          = ',se_variable_nsplit
       write(iulog, '(a,i0)')   'dyn_readnl: se_phys_dyn_cp              = ',se_phys_dyn_cp
-      write(iulog, '(a,e9.2)') 'dyn_readnl: se_nu                       = ',se_nu
-      write(iulog, '(a,e9.2)') 'dyn_readnl: se_nu_div                   = ',se_nu_div
-      write(iulog, '(a,e9.2)') 'dyn_readnl: se_nu_p                     = ',se_nu_p
-      write(iulog, '(a)') 'Note that nu_q=nu_p for  mass / tracer inconsistency'
-      write(iulog, '(a,e9.2)') 'dyn_readnl: se_nu_top                   = ',se_nu_top
-      write(iulog, '(a,i0)')   'dyn_readnl: se_qsplit                   = ',se_qsplit
-      write(iulog, '(a,i0)')   'dyn_readnl: se_rsplit                   = ',se_rsplit
-      write(iulog, '(a,i0)')   'dyn_readnl: se_statefreq                = ',se_statefreq
-      write(iulog, '(a,i0)')   'dyn_readnl: se_tstep_type               = ',se_tstep_type
-      write(iulog, '(a,i0)')   'dyn_readnl: se_vert_remap_q_alg         = ',se_vert_remap_q_alg
-      write(iulog, '(a,i0)')   'dyn_readnl: se_qsize_condensate_loading = ',se_qsize_condensate_loading
+      !
+      ! se_nu<0 then coefficients are set automatically in module global_norms_mod
+      !
+      if (se_nu_div>0) &      
+           write(iulog, '(a,e9.2)') 'dyn_readnl: se_nu                       = ',se_nu
+      if (se_nu_div>0) &
+           write(iulog, '(a,e9.2)') 'dyn_readnl: se_nu_div                   = ',se_nu_div
+      if (se_nu_p>0) then
+        write(iulog, '(a,e9.2)') 'dyn_readnl: se_nu_p                     = ',se_nu_p
+        write(iulog, '(a)') 'Note that nu_q must be the same as nu_p for  mass / tracer inconsistency'
+      end if
+      write(iulog, '(a,e9.2)') 'dyn_readnl: se_nu_top                     = ',se_nu_top
+      write(iulog, '(a,i0)')   'dyn_readnl: se_qsplit                     = ',se_qsplit
+      write(iulog, '(a,i0)')   'dyn_readnl: se_rsplit                     = ',se_rsplit
+      write(iulog, '(a,i0)')   'dyn_readnl: se_statefreq                  = ',se_statefreq
+      write(iulog, '(a,i0)')   'dyn_readnl: se_tstep_type                 = ',se_tstep_type
+      write(iulog, '(a,i0)')   'dyn_readnl: se_vert_remap_q_alg           = ',se_vert_remap_q_alg
+      write(iulog, '(a,i0)')   'dyn_readnl: se_qsize_condensate_loading   = ',se_qsize_condensate_loading
       write(iulog, '(a,l4)')   'dyn_readnl: se_hypervis_dynamic_ref_state = ',hypervis_dynamic_ref_state
-      write(iulog, '(a,l4)')   'dyn_readnl: lcp_moist                   = ',lcp_moist
-      write(iulog, '(a,i0)')   'dyn_readnl: se_fvm_supercycling         = ',fvm_supercycling
-      write(iulog, '(a,i0)')   'dyn_readnl: se_fvm_supercycling_jet     = ',fvm_supercycling_jet
-      write(iulog, '(a,i0)')   'dyn_readnl: se_kmin_jet                 = ',kmin_jet
-      write(iulog, '(a,i0)')   'dyn_readnl: se_kmax_jet                 = ',kmax_jet      
+      write(iulog, '(a,l4)')   'dyn_readnl: lcp_moist                     = ',lcp_moist
+      write(iulog, '(a,i0)')   'dyn_readnl: se_fvm_supercycling           = ',fvm_supercycling
+      write(iulog, '(a,i0)')   'dyn_readnl: se_fvm_supercycling_jet       = ',fvm_supercycling_jet
+      write(iulog, '(a,i0)')   'dyn_readnl: se_kmin_jet                   = ',kmin_jet
+      write(iulog, '(a,i0)')   'dyn_readnl: se_kmax_jet                   = ',kmax_jet      
       if (se_refined_mesh) then
          write(iulog, '(a)') 'dyn_readnl: Refined mesh simulation'
          write(iulog, '(a)') 'dyn_readnl: se_mesh_file = ',trim(se_mesh_file)
-         if (abs(se_hypervis_power) < 1.0e-12_r8) then
-            write(iulog, '(a,e11.4)') 'dyn_readnl: se_hypervis_power = ',se_hypervis_power, ', (tensor hyperviscosity)'
-            write(iulog, '(a,e11.4)') 'dyn_readnl: se_hypervis_scaling = ',se_hypervis_scaling
-         else if (abs(se_hypervis_power - 3.322_r8) < 1.0e-12_r8) then
-            write(iulog, '(a,e11.4)') 'dyn_readnl: se_hypervis_power = ',se_hypervis_power, ', (scalar hyperviscosity)'
-            write(iulog, '(a,i0)') 'dyn_readnl: se_fine_ne = ',se_fine_ne
-         else
-            write(iulog, '(a,i0)') 'dyn_readnl: se_hypervis_power = ',se_hypervis_power
-            write(iulog, '(a,e11.4)') 'dyn_readnl: se_hypervis_scaling = ',se_hypervis_scaling
-            write(iulog, '(a,e11.4)') 'dyn_readnl: se_fine_ne = ',se_fine_ne
+         if (hypervis_power /= 0) then
+           write(iulog, '(a)') 'Using scalar viscosity (Zarzycki et al 2014 JClim)'
+           write(iulog, '(a,e11.4)') 'dyn_readnl: se_hypervis_power = ',se_hypervis_power, ', (tensor hyperviscosity)'
+           write(iulog, '(a,e11.4)') 'dyn_readnl: se_max_hypervis_courant = ',se_max_hypervis_courant
          end if
-         write(iulog, '(a,e11.4)') 'dyn_readnl: se_max_hypervis_courant = ',se_max_hypervis_courant
+         if (hypervis_scaling /= 0) then
+           write(iulog, '(a)') 'Using tensor viscosity (Guba et al., 2014)'
+           write(iulog, '(a,e11.4)') 'dyn_readnl: se_hypervis_scaling = ',se_hypervis_scaling
+         end if
       end if
       if ((se_met_nudge_u /= 0._r8) .or. (se_met_nudge_p /= 0._r8) .or.       &
          (se_met_nudge_t /= 0._r8) .or. (se_met_tevolve /= 0)) then
@@ -747,7 +716,7 @@ subroutine dyn_init(dyn_in, dyn_out)
      else
         irecons_tracer_lev(k) = irecons_tracer
      end if
-     
+
      if (masterproc) then
        if (nu_scale_top(k)>0.15_r8) then
          write(iulog,*) subname//": nu_scale_top ",k,nu_scale_top(k)
@@ -890,6 +859,7 @@ subroutine dyn_run(dyn_state)
 
    real(r8), allocatable, dimension(:,:,:) :: ps_before
    real(r8), allocatable, dimension(:,:,:) :: abs_ps_tend
+   real (kind=r8)                          :: omega_cn(2,nelemd) !min and max of vertical Courant number    
    !----------------------------------------------------------------------------
 
 #ifdef debug_coupling
@@ -989,7 +959,7 @@ subroutine dyn_run(dyn_state)
 
       ! forward-in-time RK, with subcycling
       call prim_run_subcycle(dyn_state%elem, dyn_state%fvm, hybrid, nets, nete, &
-                             tstep, TimeLevel, hvcoord, n)
+                             tstep, TimeLevel, hvcoord, n, omega_cn)
 
       if (ldiag) then
          do ie = nets, nete

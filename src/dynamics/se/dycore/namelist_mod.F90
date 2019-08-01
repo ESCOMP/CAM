@@ -19,10 +19,6 @@ module namelist_mod
        cubed_sphere_map,      &
        prescribed_wind,       &
        limiter_option,        &
-       nu,                    &
-       nu_s,                  &
-       nu_q,                  &
-       nu_div,                &
        nu_top,                &
        hypervis_scaling,      & ! use tensor HV instead of scalar coefficient
        disable_diagnostics,   & ! Use to disable diagnostics for timing reasons
@@ -158,17 +154,6 @@ module namelist_mod
 
     if((prescribed_wind /= 0) .and. (prescribed_wind /= 1))then
       call endrun(subname//'prescribed_wind should be either 0 or 1')
-    end if
-
-    ! some default diffusion coefficiets
-    if (nu_s < 0) then
-      nu_s = nu
-    end if
-    if (nu_q < 0) then
-      nu_q = nu
-    end if
-    if (nu_div < 0) then
-      nu_div = nu
     end if
 
     if (multilevel <= 0) then

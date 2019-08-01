@@ -3547,18 +3547,21 @@ if ($dyn =~ /se/) {
 
     my %opts;
 
-    # Do we need special refined mesh processing?
+    # Settings for refined mesh.
     add_default($nl, 'se_refined_mesh');
     my $refined_mesh = $nl->get_value('se_refined_mesh');
     if ($refined_mesh =~ m/$TRUE/i) {
         $opts{'refined_mesh'} = "1";
+
         add_default($nl, 'se_mesh_file');
         my $se_mesh_file = $nl->get_value('se_mesh_file');
-        if (!defined $se_mesh_file or ($refined_mesh =~ m/none/i) or ((length $refined_mesh) == 0)) {
+        if (!defined $se_mesh_file or ($se_mesh_file =~ m/none/i) or ((length $se_mesh_file) == 0)) {
             die "$ProgName - ERROR: se_mesh_file is required for a refined mesh run\n";
         }
+
         # We are in a refined mesh situation, set appropriate defaults
         $nl->set_variable_value('dyn_se_inparm', 'se_ne', 0);
+
         add_default($nl, 'se_hypervis_power');
         my $hypervis_power = $nl->get_value('se_hypervis_power');
         if ($hypervis_power == 0) {

@@ -563,6 +563,18 @@ Chooses level of velocity diffusion.
 Default: 3.0e5
 </entry>
 
+<entry id="fv_high_order_top" type="logical"  category="dyn_fv"
+       group="dyn_fv_inparm" valid_values="" >
+Flag to extend standard 4th-order PPM scheme to model top.
+Default: .false.
+</entry>
+
+<entry id="fv_am_geom_crrct" type="logical"  category="dyn_fv"
+       group="dyn_fv_inparm" valid_values="" >
+Flag to turn on corrections in FV geometry and/or pressure terms.
+Default: .false.
+</entry>
+
 <entry id="fv_am_correction" type="logical"  category="dyn_fv"
        group="dyn_fv_inparm" valid_values="" >
 Flag to turn on corrections that improve angular momentum conservation.
