@@ -102,6 +102,7 @@ type rad_out_t
    real(r8) :: liq_icld_vistau(pcols,pver)  ! in-cld liq cloud optical depth (only during day, night = fillvalue)
    real(r8) :: ice_icld_vistau(pcols,pver)  ! in-cld ice cloud optical depth (only during day, night = fillvalue)
    real(r8) :: snow_icld_vistau(pcols,pver) ! snow in-cloud visible sw optical depth for output on history files
+   real(r8) :: grau_icld_vistau(pcols,pver) ! Graupel in-cloud visible sw optical depth for output on history files
 
    real(r8) :: cld_tau_cloudsim(pcols,pver)
    real(r8) :: aer_tau400(pcols,0:pver)
@@ -123,6 +124,7 @@ integer :: irad_always = 0 ! Specifies length of time in timesteps (positive)
                            ! initial or restart run
 logical :: use_rad_dt_cosz  = .false. ! if true, use radiation dt for all cosz calculations
 logical :: spectralflux     = .false. ! calculate fluxes (up and down) per band.
+logical :: graupel_in_rad     = .false. ! graupel in radiation code
 
 ! Physics buffer indices
 integer :: qrs_idx      = 0 
@@ -138,6 +140,7 @@ integer :: flns_idx     = 0
 integer :: flnt_idx     = 0
 integer :: cldfsnow_idx = 0 
 integer :: cld_idx      = 0 
+integer :: cldfgrau_idx = 0    
 
 character(len=4) :: diag(0:N_DIAG) =(/'    ','_d1 ','_d2 ','_d3 ','_d4 ','_d5 ','_d6 ','_d7 ','_d8 ','_d9 ','_d10'/)
 
@@ -167,7 +170,8 @@ subroutine radiation_readnl(nlfile)
    character(len=*), parameter :: sub = 'radiation_readnl'
 
    namelist /radiation_nl/ iradsw, iradlw, irad_always, &
-                           use_rad_dt_cosz, spectralflux
+                           use_rad_dt_cosz, spectralflux,graupel_in_rad
+
    !-----------------------------------------------------------------------------
 
    if (masterproc) then
@@ -195,6 +199,8 @@ subroutine radiation_readnl(nlfile)
    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: use_rad_dt_cosz")
    call mpi_bcast(spectralflux, 1, mpi_logical, mstrid, mpicom, ierr)
    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: spectralflux")
+   call mpi_bcast(graupel_in_rad, 1, mpi_logical, mstrid, mpicom, ierr)
+   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: graupel_in_rad")
 
    ! Convert iradsw, iradlw and irad_always from hours to timesteps if necessary
    dtime  = get_step_size()
@@ -208,14 +214,15 @@ subroutine radiation_readnl(nlfile)
 
    if (masterproc) then
       write(iulog,*) 'RRTMG radiation scheme parameters:'
-      write(iulog,10) iradsw, iradlw, irad_always, use_rad_dt_cosz, spectralflux
+      write(iulog,10) iradsw, iradlw, irad_always, use_rad_dt_cosz, spectralflux, graupel_in_rad
    end if
 
 10 format('  Frequency (timesteps) of Shortwave Radiation calc:  ',i5/, &
           '  Frequency (timesteps) of Longwave Radiation calc:   ',i5/, &
           '  SW/LW calc done every timestep for first N steps. N=',i5/, &
           '  Use average zenith angle:                           ',l5/, &
-          '  Output spectrally resolved fluxes:                  ',l5/)
+          '  Output spectrally resolved fluxes:                  ',l5/, &
+          '  Graupel in Radiation Code:                          ',l5/)
 
 end subroutine radiation_readnl
 
@@ -367,6 +374,7 @@ subroutine radiation_init(pbuf2d)
 
    cld_idx      = pbuf_get_index('CLD')
    cldfsnow_idx = pbuf_get_index('CLDFSNOW',errcode=err)
+   cldfgrau_idx = pbuf_get_index('CLDFGRAU',errcode=err)
 
    if (is_first_step()) then
       call pbuf_set_field(pbuf2d, qrl_idx, 0._r8)
@@ -418,6 +426,10 @@ subroutine radiation_init(pbuf2d)
 
    if (cldfsnow_idx > 0) then
       call addfld('SNOW_ICLD_VISTAU', (/ 'lev' /), 'A', '1', 'Snow in-cloud extinction visible sw optical depth', &
+                                                       sampling_seq='rad_lwsw', flag_xyfill=.true.)
+   endif
+   if (cldfgrau_idx > 0 .and. graupel_in_rad) then
+      call addfld('GRAU_ICLD_VISTAU', (/ 'lev' /), 'A', '1', 'Graupel in-cloud extinction visible sw optical depth', &
                                                        sampling_seq='rad_lwsw', flag_xyfill=.true.)
    endif
 
@@ -686,6 +698,7 @@ subroutine radiation_tend( &
 
    use cloud_rad_props,    only: get_ice_optics_sw, get_liquid_optics_sw, liquid_cloud_get_rad_props_lw, &
                                  ice_cloud_get_rad_props_lw, cloud_rad_props_get_lw, &
+                                 grau_cloud_get_rad_props_lw, get_grau_optics_sw, &
                                  snow_cloud_get_rad_props_lw, get_snow_optics_sw
    use slingo,             only: slingo_liq_get_rad_props_lw, slingo_liq_optics_sw
    use ebert_curry,        only: ec_ice_optics_sw, ec_ice_get_rad_props_lw
@@ -743,6 +756,7 @@ subroutine radiation_tend( &
 
    real(r8), pointer :: cld(:,:)      ! cloud fraction
    real(r8), pointer :: cldfsnow(:,:) ! cloud fraction of just "snow clouds- whatever they are"
+   real(r8), pointer :: cldfgrau(:,:) ! cloud fraction of just "snow clouds- whatever they are"
    real(r8), pointer :: qrs(:,:)      ! shortwave radiative heating rate 
    real(r8), pointer :: qrl(:,:)      ! longwave  radiative heating rate 
    real(r8), pointer :: fsds(:)  ! Surface solar down flux
@@ -789,6 +803,14 @@ subroutine radiation_tend( &
    real(r8) :: snow_tau_w_g(nswbands,pcols,pver) ! snow assymetry parameter * tau * w
    real(r8) :: snow_tau_w_f(nswbands,pcols,pver) ! snow forward scattered fraction * tau * w
    real(r8) :: snow_lw_abs (nlwbands,pcols,pver)! snow absorption optics depth (LW)
+
+   ! Add graupel as another snow species. 
+   ! cloud radiative parameters are "in cloud" not "in cell"
+   real(r8) :: grau_tau    (nswbands,pcols,pver) ! graupel extinction optical depth
+   real(r8) :: grau_tau_w  (nswbands,pcols,pver) ! graupel single scattering albedo * tau
+   real(r8) :: grau_tau_w_g(nswbands,pcols,pver) ! graupel assymetry parameter * tau * w
+   real(r8) :: grau_tau_w_f(nswbands,pcols,pver) ! graupel forward scattered fraction * tau * w
+   real(r8) :: grau_lw_abs (nlwbands,pcols,pver)! graupel absorption optics depth (LW)
 
    ! combined cloud radiative parameters are "in cloud" not "in cell"
    real(r8) :: cldfprime(pcols,pver)              ! combined cloud fraction (snow plus regular)
@@ -871,6 +893,10 @@ subroutine radiation_tend( &
    if (cldfsnow_idx > 0) then
       call pbuf_get_field(pbuf, cldfsnow_idx, cldfsnow, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
    endif
+   if (cldfgrau_idx > 0) then
+      call pbuf_get_field(pbuf, cldfgrau_idx, cldfgrau, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+   endif
+
    call pbuf_get_field(pbuf, cld_idx, cld, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
 
    call pbuf_get_field(pbuf, qrs_idx, qrs)
@@ -917,8 +943,15 @@ subroutine radiation_tend( &
       else
          cldfprime(:ncol,:) = cld(:ncol,:)
       end if
-      
-      
+    
+      if (cldfgrau_idx > 0 .and. graupel_in_rad) then
+         do k = 1, pver
+            do i = 1, ncol
+               cldfprime(i,k) = max(cld(i,k), cldfgrau(i,k))
+            end do
+         end do
+      end if
+     
       if (dosw) then
 
          if (oldcldoptics) then
@@ -983,6 +1016,35 @@ subroutine radiation_tend( &
             c_cld_tau_w_f(:,:ncol,:) = cld_tau_w_f(:,:ncol,:)
          end if
 
+         if (cldfgrau_idx > 0 .and. graupel_in_rad) then
+            ! add in graupel
+            call get_grau_optics_sw(state, pbuf, grau_tau, grau_tau_w, grau_tau_w_g, grau_tau_w_f)
+            do i = 1, ncol
+               do k = 1, pver
+
+                  if (cldfprime(i,k) > 0._r8) then
+
+                     c_cld_tau(:,i,k)     = ( cldfgrau(i,k)*grau_tau(:,i,k) &
+                                             + cld(i,k)*c_cld_tau(:,i,k) )/cldfprime(i,k)
+
+                     c_cld_tau_w(:,i,k)   = ( cldfgrau(i,k)*grau_tau_w(:,i,k)  &
+                                             + cld(i,k)*c_cld_tau_w(:,i,k) )/cldfprime(i,k)
+
+                     c_cld_tau_w_g(:,i,k) = ( cldfgrau(i,k)*grau_tau_w_g(:,i,k) &
+                                             + cld(i,k)*c_cld_tau_w_g(:,i,k) )/cldfprime(i,k)
+
+                     c_cld_tau_w_f(:,i,k) = ( cldfgrau(i,k)*grau_tau_w_f(:,i,k) &
+                                             + cld(i,k)*c_cld_tau_w_f(:,i,k) )/cldfprime(i,k)
+                  else
+                     c_cld_tau(:,i,k)     = 0._r8
+                     c_cld_tau_w(:,i,k)   = 0._r8
+                     c_cld_tau_w_g(:,i,k) = 0._r8
+                     c_cld_tau_w_f(:,i,k) = 0._r8
+                  end if
+               end do
+            end do
+         end if
+
          ! Output cloud optical depth fields for the visible band
          rd%tot_icld_vistau(:ncol,:) = c_cld_tau(idx_sw_diag,:ncol,:)
          rd%liq_icld_vistau(:ncol,:) = liq_tau(idx_sw_diag,:ncol,:)
@@ -990,6 +1052,10 @@ subroutine radiation_tend( &
 
          if (cldfsnow_idx > 0) then
             rd%snow_icld_vistau(:ncol,:) = snow_tau(idx_sw_diag,:ncol,:)
+         endif
+
+         if (cldfgrau_idx > 0 .and. graupel_in_rad) then
+            rd%grau_icld_vistau(:ncol,:) = grau_tau(idx_sw_diag,:ncol,:)
          endif
 
          ! multiply by total cloud fraction to get gridbox value
@@ -1003,6 +1069,9 @@ subroutine radiation_tend( &
             rd%ice_icld_vistau(IdxNite(i),:)  = fillvalue
             if (cldfsnow_idx > 0) then
                rd%snow_icld_vistau(IdxNite(i),:) = fillvalue
+            end if
+            if (cldfgrau_idx > 0) then
+               rd%grau_icld_vistau(IdxNite(i),:) = fillvalue
             end if
          end do
 
@@ -1054,6 +1123,23 @@ subroutine radiation_tend( &
             end do
          else
             c_cld_lw_abs(:,:ncol,:) = cld_lw_abs(:,:ncol,:)
+         end if
+
+         if (cldfgrau_idx > 0 .and. graupel_in_rad) then
+
+            ! add in graupel
+            call grau_cloud_get_rad_props_lw(state, pbuf, grau_lw_abs)
+
+            do i = 1, ncol
+               do k = 1, pver
+                  if (cldfprime(i,k) > 0._r8) then
+                     c_cld_lw_abs(:,i,k) = ( cldfgrau(i,k)*grau_lw_abs(:,i,k) &
+                                            + cld(i,k)*c_cld_lw_abs(:,i,k) )/cldfprime(i,k)
+                  else
+                     c_cld_lw_abs(:,i,k) = 0._r8
+                  end if
+               end do
+            end do
          end if
 
       end if   ! if (dolw)
@@ -1182,8 +1268,17 @@ subroutine radiation_tend( &
             do i = 1, ncol
                do k = 1, pver
                   if (cldfsnow(i,k) > 0._r8) then
-                     gb_snow_tau(i,k) = snow_tau(rrtmg_sw_cloudsim_band,i,k)*cldfsnow(i,k)
-                     gb_snow_lw(i,k)  = snow_lw_abs(rrtmg_lw_cloudsim_band,i,k)*cldfsnow(i,k)
+ 
+                     ! Add graupel to snow tau for cosp
+                     if (cldfgrau_idx > 0 .and. graupel_in_rad) then
+                        gb_snow_tau(i,k) = snow_tau(rrtmg_sw_cloudsim_band,i,k)*cldfsnow(i,k) + &
+                              grau_tau(rrtmg_sw_cloudsim_band,i,k)*cldfgrau(i,k)
+                        gb_snow_lw(i,k)  = snow_lw_abs(rrtmg_lw_cloudsim_band,i,k)*cldfsnow(i,k) + &
+                              grau_lw_abs(rrtmg_lw_cloudsim_band,i,k)*cldfgrau(i,k)
+                     else
+                        gb_snow_tau(i,k) = snow_tau(rrtmg_sw_cloudsim_band,i,k)*cldfsnow(i,k)
+                        gb_snow_lw(i,k)  = snow_lw_abs(rrtmg_lw_cloudsim_band,i,k)*cldfsnow(i,k)
+                     end if
                   end if
                end do
             end do
@@ -1332,7 +1427,9 @@ subroutine radiation_output_cld(lchnk, ncol, rd)
    if (cldfsnow_idx > 0) then
       call outfld('SNOW_ICLD_VISTAU', rd%snow_icld_vistau, pcols, lchnk)
    endif
-
+   if (cldfgrau_idx > 0 .and. graupel_in_rad) then
+      call outfld('GRAU_ICLD_VISTAU', rd%grau_icld_vistau, pcols, lchnk)
+   endif
 end subroutine radiation_output_cld
 
 !===============================================================================

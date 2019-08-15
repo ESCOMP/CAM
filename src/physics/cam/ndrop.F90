@@ -556,10 +556,8 @@ subroutine dropmixnuc( &
 
          ! rce-comment - define wtke at layer centers for new-cloud activation
          !    and at layer boundaries for old-cloud activation
-         !++ag
          wtke_cen(i,k) = wsub(i,k)
          wtke(i,k)     = wsub(i,k)
-         !--ag
          wtke_cen(i,k) = max(wtke_cen(i,k), wmixmin)
          wtke(i,k)     = max(wtke(i,k), wmixmin)
 

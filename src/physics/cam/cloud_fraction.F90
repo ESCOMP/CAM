@@ -368,7 +368,6 @@ subroutine cldfrc(lchnk   ,ncol    , pbuf,  &
 
     !==================================================================================
     ! PHILOSOPHY OF PRESENT IMPLEMENTATION
-    !++ag ice3
     ! Modification to philosophy for ice supersaturation
     ! philosophy below is based on RH water only. This is 'liquid condensation'
     ! or liquid cloud (even though it will freeze immediately to ice)
@@ -382,7 +381,6 @@ subroutine cldfrc(lchnk   ,ncol    , pbuf,  &
     ! for a first cut, icicval=f(temp) only.
     ! Combined cloud fraction is maximum overlap  cloud=max(1,max(icecldf,liqcldf))
     ! No dA/dt term for ice?
-    !--ag
     !
     ! There are three co-existing cloud types: convective, inversion related low-level
     ! stratocumulus, and layered cloud (based on relative humidity).  Layered and 
@@ -495,7 +493,7 @@ subroutine cldfrc(lchnk   ,ncol    , pbuf,  &
        kp1 = min(k + 1,pver)
        do i=1,ncol
 
-          !++ag   This is now designed to apply FOR LIQUID CLOUDS (condensation > RH water)
+          ! This is now designed to apply FOR LIQUID CLOUDS (condensation > RH water)
 
           cldbnd(i) = pmid(i,k).ge.pretop
 

@@ -30,8 +30,11 @@ public :: &
    ice_cloud_get_rad_props_lw,    & ! Mitchell LW ice rad props
    get_liquid_optics_sw,          & ! return Conley SW rad props
    liquid_cloud_get_rad_props_lw, & ! return Conley LW rad props
+   grau_cloud_get_rad_props_lw,   &
+   get_grau_optics_sw, &
    snow_cloud_get_rad_props_lw,   &
    get_snow_optics_sw
+
 
 integer :: nmu, nlambda
 real(r8), allocatable :: g_mu(:)           ! mu samples on grid
@@ -52,6 +55,7 @@ real(r8), allocatable :: abs_lw_ice(:,:)
 ! indexes into pbuf for optical parameters of MG clouds
 ! 
    integer :: i_dei, i_mu, i_lambda, i_iciwp, i_iclwp, i_des, i_icswp
+   integer :: i_degrau, i_icgrauwp
 
 ! indexes into constituents for old optics
    integer :: &
@@ -106,6 +110,8 @@ subroutine cloud_rad_props_init()
    i_iclwp  = pbuf_get_index('ICLWP',errcode=err)
    i_des    = pbuf_get_index('DES',errcode=err)
    i_icswp  = pbuf_get_index('ICSWP',errcode=err)
+   i_icgrauwp  = pbuf_get_index('ICGRAUWP',errcode=err) ! Available when using MG3
+   i_degrau    = pbuf_get_index('DEGRAU',errcode=err)   ! Available when using MG3
 
    ! old optics
    call cnst_get_ind('CLDICE', ixcldice)
@@ -443,6 +449,45 @@ subroutine get_snow_optics_sw(state, pbuf, tau, tau_w, tau_w_g, tau_w_f)
 end subroutine get_snow_optics_sw   
 
 !==============================================================================
+
+subroutine get_grau_optics_sw(state, pbuf, tau, tau_w, tau_w_g, tau_w_f)
+   type(physics_state), intent(in)   :: state
+   type(physics_buffer_desc),pointer :: pbuf(:)
+
+   real(r8),intent(out) :: tau    (nswbands,pcols,pver) ! extinction optical depth
+   real(r8),intent(out) :: tau_w  (nswbands,pcols,pver) ! single scattering albedo * tau
+   real(r8),intent(out) :: tau_w_g(nswbands,pcols,pver) ! assymetry parameter * tau * w
+   real(r8),intent(out) :: tau_w_f(nswbands,pcols,pver) ! forward scattered fraction * tau * w
+
+   real(r8), pointer :: icgrauwpth(:,:), degrau(:,:)
+
+   integer :: i,k
+
+   ! This does the same thing as get_ice_optics_sw, except with a different
+   ! water path and effective diameter.
+   if((i_icgrauwp > 0) .and. (i_degrau > 0)) then
+
+      call pbuf_get_field(pbuf, i_icgrauwp, icgrauwpth)
+      call pbuf_get_field(pbuf, i_degrau,   degrau)
+
+      call interpolate_ice_optics_sw(state%ncol, icgrauwpth, degrau, tau, tau_w, &
+           tau_w_g, tau_w_f)
+      do i = 1, pcols
+         do k = 1, pver
+            if (tau(idx_sw_diag,i,k).gt.100._r8) then
+               write(iulog,*) 'WARNING: SW Graupel Tau > 100  (i,k,icgrauwpth,degrau,tau):'
+               write(iulog,*) i,k,icgrauwpth(i,k), degrau(i,k), tau(idx_sw_diag,i,k)  
+            end if
+         enddo
+      enddo
+
+   else
+      call endrun('ERROR: Get_grau_optics_sw called when graupel properties not supported')
+   end if
+
+end subroutine get_grau_optics_sw   
+
+!==============================================================================
 ! Private methods
 !==============================================================================
 
@@ -606,6 +651,30 @@ subroutine snow_cloud_get_rad_props_lw(state, pbuf, abs_od)
    call interpolate_ice_optics_lw(state%ncol,icswpth, des, abs_od)
 
 end subroutine snow_cloud_get_rad_props_lw
+
+
+!==============================================================================
+
+subroutine grau_cloud_get_rad_props_lw(state, pbuf, abs_od)
+   type(physics_state), intent(in)    :: state
+   type(physics_buffer_desc), pointer :: pbuf(:)
+   real(r8), intent(out) :: abs_od(nlwbands,pcols,pver)
+
+   real(r8), pointer :: icgrauwpth(:,:), degrau(:,:)
+
+   ! This does the same thing as ice_cloud_get_rad_props_lw, except with a
+   ! different water path and effective diameter.
+   if((i_icgrauwp > 0) .and. (i_degrau > 0)) then 
+      call pbuf_get_field(pbuf, i_icgrauwp, icgrauwpth)
+      call pbuf_get_field(pbuf, i_degrau,   degrau)
+
+      call interpolate_ice_optics_lw(state%ncol,icgrauwpth, degrau, abs_od)
+   else
+      call endrun('ERROR: Grau_cloud_get_rad_props_lw called when graupel &
+           &properties not supported')
+   end if
+
+end subroutine grau_cloud_get_rad_props_lw
 
 !==============================================================================
 

@@ -65,7 +65,14 @@ public :: &
      self_collection_rain, &
      accrete_cloud_ice_snow, &
      evaporate_sublimate_precip, &
-     bergeron_process_snow
+     bergeron_process_snow, &
+     graupel_collecting_snow, &
+     graupel_collecting_rain, &
+     graupel_collecting_cld_water, &
+     graupel_riming_liquid_snow, &
+     graupel_rain_riming_snow, &
+     graupel_rime_splintering, &
+     evaporate_sublimate_precip_graupel
 
 ! 8 byte real and integer
 integer, parameter, public :: r8 = selected_real_kind(12)
@@ -96,6 +103,8 @@ type(MGHydrometeorProps), public :: mg_liq_props
 type(MGHydrometeorProps), public :: mg_ice_props
 type(MGHydrometeorProps), public :: mg_rain_props
 type(MGHydrometeorProps), public :: mg_snow_props
+type(MGHydrometeorProps), public :: mg_graupel_props
+type(MGHydrometeorProps), public :: mg_hail_props
 
 interface size_dist_param_liq
   module procedure size_dist_param_liq_vect
@@ -127,6 +136,10 @@ real(r8), parameter, public :: rhoi = 500._r8   ! bulk density ice
 real(r8), parameter, public :: rhow = 1000._r8  ! bulk density liquid
 real(r8), parameter, public :: rhows = 917._r8  ! bulk density water solid
 
+!Hail and Graupel (set in MG3)
+real(r8), parameter, public :: rhog = 500._r8 
+real(r8), parameter, public :: rhoh = 900._r8 
+
 ! fall speed parameters, V = aD^b (V is in m/s)
 ! droplets
 real(r8), parameter, public :: ac = 3.e7_r8
@@ -143,11 +156,24 @@ real(r8), parameter, public :: bj = bc
 ! rain
 real(r8), parameter, public :: ar = 841.99667_r8
 real(r8), parameter, public :: br = 0.8_r8
+! graupel
+real(r8), parameter, public :: ag = 19.3_r8
+real(r8), parameter, public :: bg = 0.37_r8
+! hail
+real(r8), parameter, public :: ah = 114.5_r8 
+real(r8), parameter, public :: bh = 0.5_r8
 
 ! mass of new crystal due to aerosol freezing and growth (kg)
 ! Make this consistent with the lower bound, to support UTLS and
 ! stratospheric ice, and the smaller ice size limit.
 real(r8), parameter, public :: mi0 = 4._r8/3._r8*pi*rhoi*(1.e-6_r8)**3
+
+! mass of new graupel particle  (assume same as mi0 for now, may want to make bigger?)
+!real(r8), parameter, public :: mg0 = 4._r8/3._r8*pi*rhoi*(1.e-6_r8)**3
+!or set based on M2005:
+real(r8), parameter, public :: mg0 = 1.6e-10_r8
+! radius of contact nuclei
+real(r8), parameter, public :: mmult = 4._r8/3._r8*pi*rhoi*(5.e-6_r8)**3
 
 !=================================================
 ! Private module parameters
@@ -184,6 +210,10 @@ real(r8), parameter :: f2r = 0.308_r8
 ! collection efficiencies
 ! aggregation of cloud ice and snow
 real(r8), parameter :: eii = 0.5_r8
+! collection efficiency, ice-droplet collisions
+real(r8), parameter, public :: ecid = 0.7_r8
+! collection efficiency between droplets/rain and snow/rain
+real(r8), parameter, public :: ecr = 1.0_r8
 
 ! immersion freezing parameters, bigg 1953
 real(r8), parameter :: bimm = 100._r8
@@ -202,6 +232,8 @@ real(r8) :: rv          ! water vapor gas constant
 real(r8) :: cpp         ! specific heat of dry air
 real(r8) :: tmelt       ! freezing point of water (K)
 
+real(r8) :: ra        ! dry air gas constant
+
 ! latent heats of:
 real(r8) :: xxlv        ! vaporization
 real(r8) :: xlf         ! freezing
@@ -211,6 +243,7 @@ real(r8) :: xxls        ! sublimation
 real(r8) :: gamma_bs_plus3
 real(r8) :: gamma_half_br_plus5
 real(r8) :: gamma_half_bs_plus5
+real(r8) :: gamma_2bs_plus2
 
 !=========================================================
 ! Utilities that are cheaper if the compiler knows that
@@ -241,10 +274,11 @@ contains
 !
 ! Check the list at the top of this module for descriptions of all other
 ! arguments.
-subroutine micro_mg_utils_init( kind, rh2o, cpair, tmelt_in, latvap, &
+subroutine micro_mg_utils_init( kind, rair, rh2o, cpair, tmelt_in, latvap, &
      latice, dcs, errstring)
 
   integer,  intent(in)  :: kind
+  real(r8), intent(in)  :: rair
   real(r8), intent(in)  :: rh2o
   real(r8), intent(in)  :: cpair
   real(r8), intent(in)  :: tmelt_in
@@ -273,6 +307,8 @@ subroutine micro_mg_utils_init( kind, rh2o, cpair, tmelt_in, latvap, &
   cpp = cpair               ! specific heat of dry air
   tmelt = tmelt_in
 
+  ra = rair     !dry air gas constant
+
   ! latent heats
 
   xxlv = latvap         ! latent heat vaporization
@@ -283,6 +319,7 @@ subroutine micro_mg_utils_init( kind, rh2o, cpair, tmelt_in, latvap, &
   gamma_bs_plus3=gamma(3._r8+bs)
   gamma_half_br_plus5=gamma(5._r8/2._r8+br/2._r8)
   gamma_half_bs_plus5=gamma(5._r8/2._r8+bs/2._r8)
+  gamma_2bs_plus2=gamma(2._r8*bs+2._r8)  
 
   ! Don't specify lambda bounds for cloud liquid, as they are determined by
   ! pgam dynamically.
@@ -298,6 +335,9 @@ subroutine micro_mg_utils_init( kind, rh2o, cpair, tmelt_in, latvap, &
 
   mg_rain_props = MGHydrometeorProps(rhow, dsph, lam_bnd_rain)
   mg_snow_props = MGHydrometeorProps(rhosn, dsph, lam_bnd_snow)
+  mg_graupel_props = MGHydrometeorProps(rhog, dsph, lam_bnd_snow)
+  mg_hail_props = MGHydrometeorProps(rhoh, dsph, lam_bnd_snow)
+
 
 end subroutine micro_mg_utils_init
 
@@ -1535,6 +1575,156 @@ subroutine evaporate_sublimate_precip(t, rho, dv, mu, sc, q, qvl, qvi, &
 
 end subroutine evaporate_sublimate_precip
 
+
+! evaporation/sublimation of rain, snow and graupel
+!===================================================================
+! note: evaporation/sublimation occurs only in cloud-free portion of grid cell
+! in-cloud condensation/deposition of rain and snow is neglected
+! except for transfer of cloud water to snow through bergeron process
+
+subroutine evaporate_sublimate_precip_graupel(t, rho, dv, mu, sc, q, qvl, qvi, &
+     lcldm, precip_frac, arn, asn, agn, bg, qcic, qiic, qric, qsic, qgic, lamr, n0r, lams, n0s, lamg, n0g, &
+     pre, prds, prdg, am_evp_st, mgncol)
+
+  integer,  intent(in) :: mgncol
+
+  real(r8), dimension(mgncol), intent(in) :: t    ! temperature
+  real(r8), dimension(mgncol), intent(in) :: rho  ! air density
+  real(r8), dimension(mgncol), intent(in) :: dv   ! water vapor diffusivity
+  real(r8), dimension(mgncol), intent(in) :: mu   ! viscosity
+  real(r8), dimension(mgncol), intent(in) :: sc   ! schmidt number
+  real(r8), dimension(mgncol), intent(in) :: q    ! humidity
+  real(r8), dimension(mgncol), intent(in) :: qvl  ! saturation humidity (water)
+  real(r8), dimension(mgncol), intent(in) :: qvi  ! saturation humidity (ice)
+  real(r8), dimension(mgncol), intent(in) :: lcldm  ! liquid cloud fraction
+  real(r8), dimension(mgncol), intent(in) :: precip_frac ! precipitation fraction (maximum overlap)
+
+  ! fallspeed parameters
+  real(r8), dimension(mgncol), intent(in) :: arn  ! rain
+  real(r8), dimension(mgncol), intent(in) :: asn  ! snow
+  real(r8), dimension(mgncol), intent(in) :: agn  ! graupel
+  real(r8),                    intent(in) :: bg 
+
+  ! In-cloud MMRs
+  real(r8), dimension(mgncol), intent(in) :: qcic ! cloud liquid
+  real(r8), dimension(mgncol), intent(in) :: qiic ! cloud ice
+  real(r8), dimension(mgncol), intent(in) :: qric ! rain
+  real(r8), dimension(mgncol), intent(in) :: qsic ! snow
+  real(r8), dimension(mgncol), intent(in) :: qgic ! graupel
+
+  ! Size parameters
+  ! rain
+  real(r8), dimension(mgncol), intent(in) :: lamr
+  real(r8), dimension(mgncol), intent(in) :: n0r
+  ! snow
+  real(r8), dimension(mgncol), intent(in) :: lams
+  real(r8), dimension(mgncol), intent(in) :: n0s
+  ! graupel
+  real(r8), dimension(mgncol), intent(in) :: lamg
+  real(r8), dimension(mgncol), intent(in) :: n0g
+
+  ! Output tendencies
+  real(r8), dimension(mgncol), intent(out) :: pre
+  real(r8), dimension(mgncol), intent(out) :: prds
+  real(r8), dimension(mgncol), intent(out) :: prdg
+  real(r8), dimension(mgncol), intent(out) :: am_evp_st ! Fractional area where rain evaporates.
+
+  real(r8) :: qclr   ! water vapor mixing ratio in clear air
+  real(r8) :: ab     ! correction to account for latent heat
+  real(r8) :: eps    ! 1/ sat relaxation timescale
+
+  real(r8), dimension(mgncol) :: dum
+
+  integer :: i
+
+  ! set temporary cloud fraction to zero if cloud water + ice is very small
+  ! this will ensure that evaporation/sublimation of precip occurs over
+  ! entire grid cell, since min cloud fraction is specified otherwise
+  am_evp_st = 0._r8
+  do i=1,mgncol
+     if (qcic(i)+qiic(i) < 1.e-6_r8) then
+        dum(i) = 0._r8
+     else
+        dum(i) = lcldm(i)
+     end if
+  enddo
+  do i=1,mgncol
+  ! only calculate if there is some precip fraction > cloud fraction
+
+     if (precip_frac(i) > dum(i)) then
+
+        if (qric(i) >= qsmall .or. qsic(i) >= qsmall .or. qgic(i) >= qsmall) then
+           am_evp_st(i) = precip_frac(i) - dum(i)
+
+           ! calculate q for out-of-cloud region
+           qclr=(q(i)-dum(i)*qvl(i))/(1._r8-dum(i))
+        end if
+
+        ! evaporation of rain
+        if (qric(i) >= qsmall) then
+
+           ab = calc_ab(t(i), qvl(i), xxlv)
+           eps = 2._r8*pi*n0r(i)*rho(i)*Dv(i)* &
+                (f1r/(lamr(i)*lamr(i))+ &
+                f2r*(arn(i)*rho(i)/mu(i))**0.5_r8* &
+                sc(i)**(1._r8/3._r8)*gamma_half_br_plus5/ &
+                (lamr(i)**(5._r8/2._r8+br/2._r8)))
+
+           pre(i) = eps*(qclr-qvl(i))/ab
+
+           ! only evaporate in out-of-cloud region
+           ! and distribute across precip_frac
+           pre(i)=min(pre(i)*am_evp_st(i),0._r8)
+           pre(i)=pre(i)/precip_frac(i)
+        else
+           pre(i) = 0._r8
+        end if
+
+        ! sublimation of snow
+        if (qsic(i) >= qsmall) then
+           ab = calc_ab(t(i), qvi(i), xxls)
+           eps = 2._r8*pi*n0s(i)*rho(i)*Dv(i)* &
+                (f1s/(lams(i)*lams(i))+ &
+                f2s*(asn(i)*rho(i)/mu(i))**0.5_r8* &
+                sc(i)**(1._r8/3._r8)*gamma_half_bs_plus5/ &
+                (lams(i)**(5._r8/2._r8+bs/2._r8)))
+           prds(i) = eps*(qclr-qvi(i))/ab
+
+          ! only sublimate in out-of-cloud region and distribute over precip_frac
+           prds(i)=min(prds(i)*am_evp_st(i),0._r8)
+           prds(i)=prds(i)/precip_frac(i)
+        else
+           prds(i) = 0._r8
+        end if
+
+        ! add graupel, do the Same with prdg.
+        if (qgic(i).ge.qsmall) then
+           ab = calc_ab(t(i), qvi(i), xxls)
+           
+           eps = 2._r8*pi*n0g(i)*rho(i)*Dv(i)*                    &
+                (f1s/(lamg(i)*lamg(i))+                           &
+                f2s*(agn(i)*rho(i)/mu(i))**0.5_r8*                &
+                sc(i)**(1._r8/3._r8)*gamma(5._r8/2._r8+bg/2._r8)/ &
+                (lamg(i)**(5._r8/2._r8+bs/2._r8)))
+           prdg(i) = eps*(qclr-qvi(i))/ab
+           
+           ! only sublimate in out-of-cloud region and distribute over precip_frac
+           prdg(i)=min(prdg(i)*am_evp_st(i),0._r8)
+           prdg(i)=prdg(i)/precip_frac(i)
+        else
+           prdg(i) = 0._r8
+        end if
+
+     else
+        prds(i) = 0._r8
+        pre(i) = 0._r8
+        prdg(i) = 0._r8
+     end if
+  enddo
+
+end subroutine evaporate_sublimate_precip_graupel
+
+
 ! bergeron process - evaporation of droplets and deposition onto snow
 !===================================================================
 
@@ -1555,8 +1745,8 @@ subroutine bergeron_process_snow(t, rho, dv, mu, sc, qvl, qvi, asn, &
   real(r8), dimension(mgncol), intent(in) :: asn
 
   ! In-cloud MMRs
-  real(r8), dimension(mgncol), intent(in) :: qcic ! cloud liquid
-  real(r8), dimension(mgncol), intent(in) :: qsic ! snow
+  real(r8), dimension(mgncol), intent(in) :: qcic ! cloud liquid mixing ratio
+  real(r8), dimension(mgncol), intent(in) :: qsic ! snow mixing ratio
 
   ! Size parameters for snow
   real(r8), dimension(mgncol), intent(in) :: lams
@@ -1584,6 +1774,450 @@ subroutine bergeron_process_snow(t, rho, dv, mu, sc, qvl, qvi, asn, &
      end if
   enddo
 end subroutine bergeron_process_snow
+
+!========================================================================
+! Collection of snow by rain to form graupel
+!========================================================================
+
+subroutine graupel_collecting_snow(qsic,qric,umr,ums,rho,lamr,n0r,lams,n0s, &
+     psacr, mgncol)
+  
+  integer, intent(in) :: mgncol
+
+  ! In-cloud MMRs
+  real(r8), dimension(mgncol), intent(in) :: qsic ! snow
+  real(r8), dimension(mgncol), intent(in) :: qric ! rain
+
+  ! mass-weighted fall speeds
+  real(r8), dimension(mgncol), intent(in) :: umr ! rain
+  real(r8), dimension(mgncol), intent(in) :: ums ! snow
+ 
+  real(r8), dimension(mgncol), intent(in) :: rho  ! air density
+
+
+  ! Size parameters for rain
+  real(r8), dimension(mgncol), intent(in) :: lamr
+  real(r8), dimension(mgncol), intent(in) :: n0r
+
+  ! Size parameters for snow
+  real(r8), dimension(mgncol), intent(in) :: lams
+  real(r8), dimension(mgncol), intent(in) :: n0s
+
+  real(r8), dimension(mgncol), intent(out) :: psacr ! conversion due to coll of snow by rain
+
+  real(r8) :: cons31
+  integer :: i
+
+  cons31=pi*pi*ecr*rhosn
+	
+  do i=1,mgncol
+
+     if (qsic(i).ge.0.1e-3_r8 .and. qric(i).ge.0.1e-3_r8) then
+        psacr(i) = cons31*(((1.2_r8*umr(i)-0.95_r8*ums(i))**2+              &
+             0.08_r8*ums(i)*umr(i))**0.5_r8*rho(i)*                     &
+             n0r(i)*n0s(i)/lams(i)**3*                               &
+             (5._r8/(lams(i)**3*lamr(i))+                    &
+             2._r8/(lams(i)**2*lamr(i)**2)+                  &
+             0.5_r8/(lams(i)*lamr(i)**3)))            
+     else
+        psacr(i) = 0._r8
+     end if
+
+  end do
+
+end subroutine graupel_collecting_snow
+
+!========================================================================
+! Collection of cloud water by graupel
+!========================================================================
+
+subroutine graupel_collecting_cld_water(qgic,qcic,ncic,rho,n0g,lamg,bg,agn, &
+     psacwg, npsacwg, mgncol)
+
+  integer, intent(in) :: mgncol
+
+  ! In-cloud MMRs
+  real(r8), dimension(mgncol), intent(in) :: qgic ! graupel
+  real(r8), dimension(mgncol), intent(in) :: qcic ! cloud water
+
+  real(r8), dimension(mgncol), intent(in) :: ncic ! cloud water number conc
+
+  real(r8), dimension(mgncol), intent(in) :: rho  ! air density
+
+  ! Size parameters for graupel
+  real(r8), dimension(mgncol), intent(in) :: lamg
+  real(r8), dimension(mgncol), intent(in) :: n0g
+
+  ! fallspeed parameters for graupel
+  ! Set AGN and BG  as input (in micro_mg3_0.F90)  (select hail or graupel as appropriate)
+  real(r8),                    intent(in) :: bg
+  real(r8), dimension(mgncol), intent(in) :: agn
+
+  ! Output tendencies
+  real(r8), dimension(mgncol), intent(out) :: psacwg
+  real(r8), dimension(mgncol), intent(out) :: npsacwg
+
+  real(r8) :: cons
+  integer :: i 
+
+  cons = gamma(bg + 3._r8)*pi/4._r8 * ecid
+
+  do i=1,mgncol
+
+        if (qgic(i).ge.1.e-8_r8 .and. qcic(i).ge.qsmall) then
+
+           psacwg(i) = cons*agn(i)*qcic(i)*rho(i)*               &
+                  n0g(i)/                        &
+                  lamg(i)**(bg+3._r8)
+           npsacwg(i) = cons*agn(i)*ncic(i)*rho(i)*              &
+                  n0g(i)/                        &
+                  lamg(i)**(bg+3._r8)
+        else
+           psacwg(i)=0._r8
+           npsacwg(i)=0._r8
+        end if
+     enddo
+end subroutine graupel_collecting_cld_water
+
+!========================================================================
+! Conversion of rimed cloud water onto snow to graupel/hail
+!========================================================================
+
+subroutine graupel_riming_liquid_snow(psacws,qsic,qcic,nsic,rho,rhosn,rhog,asn,lams,n0s,dtime, &
+     pgsacw,nscng,mgncol)
+
+  integer, intent(in) :: mgncol
+
+  ! Accretion of cloud water to snow tendency (modified)
+  real(r8), dimension(mgncol), intent(inout) :: psacws
+
+  real(r8), dimension(mgncol), intent(in) :: qsic ! snow mixing ratio
+  real(r8), dimension(mgncol), intent(in) :: qcic ! cloud liquid mixing ratio
+  real(r8), dimension(mgncol), intent(in) :: nsic ! snow number concentration
+
+  real(r8), dimension(mgncol), intent(in) :: rho   ! air density
+  real(r8),                    intent(in) :: rhosn ! snow density
+  real(r8),                    intent(in) :: rhog ! graupel density
+
+  real(r8), dimension(mgncol), intent(in) :: asn   ! fall speed parameter for snow
+
+  ! Size parameters for snow
+  real(r8), dimension(mgncol), intent(in) :: lams
+  real(r8), dimension(mgncol), intent(in) :: n0s
+
+  real(r8),                    intent(in) :: dtime
+
+  !Output process rates
+  real(r8), dimension(mgncol), intent(out) :: pgsacw  ! dQ graupel due to collection droplets by snow
+  real(r8), dimension(mgncol), intent(out) :: nscng   ! dN graupel due to collection droplets by snow
+
+  real(r8) :: cons
+  real(r8) :: rhosu
+  real(r8) :: dum
+  integer :: i 
+
+!........................................................................
+!Input: PSACWS,qs,qc,n0s,rho,lams,rhos,rhog
+!Output:PSACWS,PGSACW,NSCNG
+
+  rhosu = 85000._r8/(ra * tmelt)    ! typical air density at 850 mb
+
+  do i=1,mgncol
+
+      cons=4._r8 *2._r8 *3._r8 *rhosu*pi*ecid*ecid*gamma_2bs_plus2/(8._r8*(rhog-rhosn))
+      
+! Only allow conversion if qni > 0.1 and qc > 0.5 g/kg following Rutledge and Hobbs (1984)
+     if (psacws(i).gt.0._r8 .and. qsic(i).GE.0.1e-3_r8 .AND. qcic(i).GE.0.5E-3_r8) then
+
+! portion of riming converted to graupel (Reisner et al. 1998, originally IS1991)
+! dtime here is correct.
+        pgsacw(i) = min(psacws(i),cons*dtime*n0s(i)*qcic(i)*qcic(i)* &
+             asn(i)*asn(i)/ &
+             (rho(i)*lams(i)**(2._r8*bs+2._r8))) 
+
+! Mix rat converted into graupel as embryo (Reisner et al. 1998, orig M1990)
+        dum= max(rhosn/(rhog-rhosn)*pgsacw(i),0._r8) 
+
+! Number concentraiton of embryo graupel from riming of snow
+        nscng(i) = dum/mg0*rho(i)
+! Limit max number converted to snow number  (dtime here correct? We think yes)
+        nscng(i) = min(nscng(i),nsic(i)/dtime)
+
+! Portion of riming left for snow
+        psacws(i) = psacws(i) - pgsacw(i)
+     else
+        pgsacw(i) = 0._r8
+        nscng(i) = 0._r8
+     end if
+     
+  enddo
+
+end subroutine graupel_riming_liquid_snow
+
+!========================================================================
+!CHANGE IN Q,N COLLECTION RAIN BY GRAUPEL
+!========================================================================
+
+subroutine graupel_collecting_rain(qric,qgic,umg,umr,ung,unr,rho,n0r,lamr,n0g,lamg,&
+     pracg,npracg,mgncol)
+
+  integer, intent(in) :: mgncol
+
+  !MMR
+  real(r8), dimension(mgncol), intent(in) :: qric  !rain mixing ratio
+  real(r8), dimension(mgncol), intent(in) :: qgic  !graupel mixing ratio
+
+  !Mass weighted Fall speeds
+  real(r8), dimension(mgncol), intent(in) :: umg ! graupel fall speed
+  real(r8), dimension(mgncol), intent(in) :: umr ! rain fall speed
+
+  !Number weighted fall speeds
+  real(r8), dimension(mgncol), intent(in) :: ung ! graupel fall speed
+  real(r8), dimension(mgncol), intent(in) :: unr ! rain fall speed
+
+  real(r8), dimension(mgncol), intent(in) :: rho   ! air density
+
+ ! Size parameters for rain
+  real(r8), dimension(mgncol), intent(in) :: n0r
+  real(r8), dimension(mgncol), intent(in) :: lamr
+
+ ! Size parameters for graupel
+  real(r8), dimension(mgncol), intent(in) :: n0g
+  real(r8), dimension(mgncol), intent(in) :: lamg
+
+
+  !Output process rates
+  real(r8), dimension(mgncol), intent(out) :: pracg   ! Q collection rain by graupel
+  real(r8), dimension(mgncol), intent(out) :: npracg  ! N collection rain by graupel
+
+! Add collection of graupel by rain above freezing
+! assume all rain collection by graupel above freezing is shed
+! assume shed drops are 1 mm in size
+
+  integer :: i 
+  real(r8) :: cons41
+  real(r8) :: cons32
+  real(r8) :: dum
+
+  cons41=pi*pi*ecr*rhow
+  cons32=pi/2._r8*ecr
+
+  do i=1,mgncol
+
+     if (qric(i).ge.1.e-8_r8.and.qgic(i).ge.1.e-8_r8) then
+
+! pracg is mixing ratio of rain per sec collected by graupel/hail
+        pracg(i) = cons41*(((1.2_r8*umr(i)-0.95_r8*umg(i))**2._r8+                   &
+             0.08_r8*umg(i)*umr(i))**0.5_r8*rho(i)*                      &
+             n0r(i)*n0g(i)/lamr(i)**3._r8*                              &
+             (5._r8/(lamr(i)**3._r8*lamg(i))+                    &
+             2._r8/(lamr(i)**2._r8*lamg(i)**2._r8)+				   &
+             0.5_r8/(lamr(i)*lamg(i)**3._r8)))
+
+! assume 1 mm drops are shed, get number shed per sec
+
+        dum = pracg(i)/5.2e-7_r8
+        
+        npracg(i) = cons32*rho(i)*(1.7_r8*(unr(i)-ung(i))**2._r8+            &
+             0.3_r8*unr(i)*ung(i))**0.5_r8*n0r(i)*n0g(i)*              &
+             (1._r8/(lamr(i)**3._r8*lamg(i))+                      &
+             1._r8/(lamr(i)**2._r8*lamg(i)**2._r8)+                   &
+             1._r8/(lamr(i)*lamg(i)**3._r8))
+        
+! hm 7/15/13, remove limit so that the number of collected drops can smaller than 
+! number of shed drops
+!            NPRACG(K)=MAX(NPRACG(K)-DUM,0.)
+        npracg(i)=npracg(i)- dum
+     else
+        npracg(i)=0._r8
+        pracg(i)=0._r8
+     end if
+     
+  enddo
+
+end subroutine graupel_collecting_rain
+
+!========================================================================
+! Rain riming snow to graupel
+!========================================================================
+! Conversion of rimed rainwater onto snow converted to graupel
+
+subroutine graupel_rain_riming_snow(pracs,npracs,psacr,qsic,qric,nric,nsic,n0s,lams,n0r,lamr,dtime,&
+     pgracs,ngracs,mgncol)
+
+  integer, intent(in) :: mgncol
+  
+  ! Accretion of rain by snow
+  real(r8), dimension(mgncol), intent(inout) :: pracs
+  real(r8), dimension(mgncol), intent(inout) :: npracs
+  real(r8), dimension(mgncol), intent(inout) :: psacr  ! conversion due to coll of snow by rain
+
+  !MMR
+  real(r8), dimension(mgncol), intent(in) :: qsic  !snow mixing ratio
+  real(r8), dimension(mgncol), intent(in) :: qric  !rain mixing ratio
+
+  real(r8), dimension(mgncol), intent(in) :: nric ! rain number concentration
+  real(r8), dimension(mgncol), intent(in) :: nsic ! snow number concentration
+
+ ! Size parameters for snow
+  real(r8), dimension(mgncol), intent(in) :: n0s
+  real(r8), dimension(mgncol), intent(in) :: lams
+
+ ! Size parameters for rain
+  real(r8), dimension(mgncol), intent(in) :: n0r
+  real(r8), dimension(mgncol), intent(in) :: lamr
+
+  real(r8),                    intent(in) :: dtime
+
+  !Output process rates
+  real(r8), dimension(mgncol), intent(out) :: pgracs  ! Q graupel due to collection rain by snow
+  real(r8), dimension(mgncol), intent(out) :: ngracs  ! N graupel due to collection rain by snow
+
+!Input: PRACS,NPRACS,PSACR,qni,qr,lams,lamr,nr,ns  Note: No PSACR in MG2
+!Output:PGRACS,NGRACS,PRACS,PSACR
+
+  integer :: i 
+  real(r8) :: cons18
+  real(r8) :: cons19
+  real(r8) :: dum,fmult
+
+  cons18=rhosn*rhosn
+  cons19=rhow*rhow
+
+  do i=1,mgncol
+     
+     fmult=0._r8
+
+! only allow conversion if qs > 0.1 and qr > 0.1 g/kg following rutledge and hobbs (1984)
+     if (pracs(i).gt.0._r8.and.qsic(i).ge.0.1e-3_r8.and.qric(i).ge.0.1e-3_r8) then
+
+          ! portion of collected rainwater converted to graupel (reisner et al. 1998)
+          dum = cons18*(4._r8/lams(i))**3*(4._r8/lams(i))**3 &    
+               /(cons18*(4._r8/lams(i))**3*(4._r8/lams(i))**3+ &  
+               cons19*(4._r8/lamr(i))**3*(4._r8/lamr(i))**3)
+          dum=min(dum,1._r8)
+          dum=max(dum,0._r8)
+          pgracs(i) = (1._r8-dum)*pracs(i)
+          ngracs(i) = (1._r8-dum)*npracs(i)
+          ! limit max number converted to min of either rain or snow number concentration
+          ngracs(i) = min(ngracs(i),nric(i)/dtime)
+          ngracs(i) = min(ngracs(i),nsic(i)/dtime)
+          
+          ! amount left for snow production
+          pracs(i) = pracs(i) - pgracs(i)
+          npracs(i) = npracs(i) - ngracs(i)
+          
+          ! conversion to graupel due to collection of snow by rain
+          psacr(i)=psacr(i)*(1._r8-dum)
+       else
+          pgracs(i) = 0._r8
+          ngracs(i) = 0._r8
+        end if
+     enddo 
+
+end subroutine graupel_rain_riming_snow
+
+!========================================================================
+! Rime Splintering
+!========================================================================
+subroutine graupel_rime_splintering(t,qcic,qric,qgic,psacwg,pracg,&
+     qmultg,nmultg,qmultrg,nmultrg,mgncol)
+
+  integer, intent(in) :: mgncol
+  
+  real(r8), dimension(mgncol), intent(in) :: t  !temperature
+
+  !MMR
+  real(r8), dimension(mgncol), intent(in) :: qcic  !liquid mixing ratio
+  real(r8), dimension(mgncol), intent(in) :: qric  !rain mixing ratio
+  real(r8), dimension(mgncol), intent(in) :: qgic  !graupel mixing ratio
+
+  ! Already calculated terms for collection 
+  real(r8), dimension(mgncol), intent(inout) :: psacwg ! collection droplets by graupel
+  real(r8), dimension(mgncol), intent(inout) :: pracg  ! collection rain by graupel
+
+  !Output process rates for splintering
+  real(r8), dimension(mgncol), intent(out) :: qmultg  ! Q ice mult of droplets/graupel
+  real(r8), dimension(mgncol), intent(out) :: nmultg  ! N ice mult of droplets/graupel
+  real(r8), dimension(mgncol), intent(out) :: qmultrg  ! Q ice mult of rain/graupel
+  real(r8), dimension(mgncol), intent(out) :: nmultrg  ! N ice mult of rain/graupel
+
+
+!Input: qg,qc,qr, PSACWG,PRACG,T
+!Output: NMULTG,QMULTG,NMULTRG,QMULTRG,PSACWG,PRACG
+
+  integer :: i 
+  real(r8) :: fmult
+  real(r8) :: tm_3,tm_5,tm_8
+
+  tm_3 = tmelt - 3._r8
+  tm_5 = tmelt - 5._r8
+  tm_8 = tmelt - 8._r8
+
+
+!nmultg,qmultg                                                                             .
+!========================================================================
+  do i=1,mgncol
+
+     nmultrg(i)=0._r8
+     qmultrg(i)=0._r8
+     nmultg(i)=0._r8
+     qmultg(i)=0._r8
+
+     if (qgic(i).ge.0.1e-3_r8) then
+        if (qcic(i).ge.0.5e-3_r8.or.qric(i).ge.0.1e-3_r8) then
+           if (psacwg(i).gt.0._r8.or.pracg(i).gt.0._r8) then
+              if (t(i).lt.tm_3 .and. t(i).gt.tm_8) then
+                 if (t(i).gt.tm_3) then
+                    fmult = 0._r8
+                 else if (t(i).le.tm_3.and.t(i).gt.tm_5)  then
+                    fmult = (tm_3-t(i))/2._r8
+                 else if (t(i).ge.tm_8.and.t(i).le.tm_5)   then
+                    fmult = (t(i)-tm_8)/3._r8
+                 else if (t(i).lt.tm_8) then
+                    fmult = 0._r8
+                 end if
+
+! 1000 is to convert from kg to g  
+! splintering from droplets accreted onto graupel
+
+                 if (psacwg(i).gt.0._r8) then
+                    nmultg(i) = 35.e4_r8*psacwg(i)*fmult*1000._r8
+                    qmultg(i) = nmultg(i)*mmult
+                    
+! constrain so that transfer of mass from graupel to ice cannot be more mass
+! than was rimed onto graupel
+                    
+                    qmultg(i) = min(qmultg(i),psacwg(i))
+                    psacwg(i) = psacwg(i)-qmultg(i)
+                    
+                 end if
+
+
+!nmultrg,qmultrg                                                                             .
+!========================================================================
+
+! riming and splintering from accreted raindrops
+
+                 if (pracg(i).gt.0._r8) then
+                    nmultrg(i) = 35.e4_r8*pracg(i)*fmult*1000._r8
+                    qmultrg(i) = nmultrg(i)*mmult
+                    
+! constrain so that transfer of mass from graupel to ice cannot be more mass
+! than was rimed onto graupel
+
+                    qmultrg(i) = min(qmultrg(i),pracg(i))
+                    pracg(i) = pracg(i)-qmultrg(i)
+
+                 end if
+
+              end if
+           end if
+        end if
+     end if
+  enddo
+
+end subroutine graupel_rime_splintering
 
 !========================================================================
 !UTILITIES

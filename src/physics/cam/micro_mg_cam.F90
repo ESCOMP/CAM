@@ -133,14 +133,20 @@ integer :: ncnst = 4       ! Number of constituents
 ! Namelist variables for option to specify constant cloud droplet/ice number
 logical :: micro_mg_nccons = .false. ! set .true. to specify constant cloud droplet number
 logical :: micro_mg_nicons = .false. ! set .true. to specify constant cloud ice number
+logical :: micro_mg_ngcons = .false. ! set .true. to specify constant graupel/hail number
+
 ! parameters for specified ice and droplet number concentration
 ! note: these are local in-cloud values, not grid-mean
 real(r8) :: micro_mg_ncnst = 100.e6_r8 ! constant droplet num concentration (m-3)
 real(r8) :: micro_mg_ninst = 0.1e6_r8  ! constant ice num concentration (m-3)
+real(r8) :: micro_mg_ngnst = 0.1e6_r8  ! constant graupel/hail num concentration (m-3)
 
-character(len=8), parameter :: &      ! Constituent names
-   cnst_names(8) = (/'CLDLIQ', 'CLDICE','NUMLIQ','NUMICE', &
-                     'RAINQM', 'SNOWQM','NUMRAI','NUMSNO'/)
+logical, public ::   micro_mg_do_graupel
+logical, public ::   micro_mg_do_hail
+
+character(len=10), parameter :: &      ! Constituent names
+   cnst_names(10) = (/'CLDLIQ', 'CLDICE','NUMLIQ','NUMICE', &
+                     'RAINQM', 'SNOWQM','NUMRAI','NUMSNO','GRAUQM','NUMGRA'/)
 
 integer :: &
    ixcldliq = -1,      &! cloud liquid amount index
@@ -150,7 +156,9 @@ integer :: &
    ixrain = -1,        &! rain index
    ixsnow = -1,        &! snow index
    ixnumrain = -1,     &! rain number index
-   ixnumsnow = -1       ! snow number index
+   ixnumsnow = -1,     &! snow number index
+   ixgraupel = -1,     &! graupel index
+   ixnumgraupel = -1   ! graupel number index
 
 ! Physics buffer indices for fields registered by this module
 integer :: &
@@ -172,6 +180,9 @@ integer :: &
    des_idx,            &
    icswp_idx,          &
    cldfsnow_idx,       &
+   degrau_idx,         &
+   icgrauwp_idx,       &
+   cldfgrau_idx,       &
    rate1_cw2pr_st_idx = -1, &
    ls_flxprc_idx,      &
    ls_flxsnw_idx,      &
@@ -278,8 +289,10 @@ subroutine micro_mg_cam_readnl(nlfile)
        micro_mg_do_cldice, micro_mg_do_cldliq, micro_mg_num_steps, &
        microp_uniform, micro_mg_dcs, micro_mg_precip_frac_method,  &
        micro_mg_berg_eff_factor, micro_do_sb_physics, micro_mg_adjust_cpt, &
-       micro_mg_nccons, micro_mg_nicons, micro_mg_ncnst, micro_mg_ninst, &
+       micro_mg_do_hail, micro_mg_do_graupel,micro_mg_ngcons, micro_mg_ngnst,&
+       micro_mg_nccons, micro_mg_nicons, micro_mg_ncnst, micro_mg_ninst,&
        micro_do_massless_droplet_destroyer
+
   !-----------------------------------------------------------------------------
 
   if (masterproc) then
@@ -316,12 +329,36 @@ subroutine micro_mg_cam_readnl(nlfile)
         case default
            call bad_version_endrun()
         end select
+     case (3)
+        select case (micro_mg_sub_version)
+        case(0)
+           ! MG version 3.0
+        case default
+           call bad_version_endrun()
+        end select
      case default
         call bad_version_endrun()
      end select
 
      if (micro_mg_dcs < 0._r8) call endrun( "micro_mg_cam_readnl: &
               &micro_mg_dcs has not been set to a valid value.")
+
+     if (micro_mg_version < 3) then
+
+        if(micro_mg_do_graupel .or. micro_mg_do_hail ) then
+           call endrun ("micro_mg_cam_readnl: Micro_mg_do_graupel and micro_mg_do_hail &
+                &must be false for MG versions before MG3.")
+        end if
+
+     else ! micro_mg_version = 3 or greater
+
+        if(micro_mg_do_graupel .and. micro_mg_do_hail ) then
+           call endrun ("micro_mg_cam_readnl: Only one of micro_mg_do_graupel or &
+                &micro_mg_do_hail may be true at a time.")
+        end if
+
+     end if
+
   end if
 
   ! Broadcast namelist variables
@@ -370,6 +407,18 @@ subroutine micro_mg_cam_readnl(nlfile)
   call mpi_bcast(micro_mg_ninst, 1, mpi_real8, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: micro_mg_ninst")
 
+  call mpi_bcast(micro_mg_do_hail, 1, mpi_logical, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: micro_mg_do_hail")
+
+  call mpi_bcast(micro_mg_do_graupel, 1, mpi_logical, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: micro_mg_do_graupel")
+
+  call mpi_bcast(micro_mg_ngcons, 1, mpi_logical, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: micro_mg_ngcons")
+
+  call mpi_bcast(micro_mg_ngnst, 1, mpi_real8, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: micro_mg_ngnst")
+
   call mpi_bcast(micro_do_massless_droplet_destroyer, 1, mpi_logical, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: micro_do_massless_droplet_destroyer")
 
@@ -391,6 +440,10 @@ subroutine micro_mg_cam_readnl(nlfile)
      write(iulog,*) '  micro_mg_nicons             = ', micro_mg_nicons
      write(iulog,*) '  micro_mg_ncnst              = ', micro_mg_ncnst
      write(iulog,*) '  micro_mg_ninst              = ', micro_mg_ninst
+     write(iulog,*) '  micro_mg_ngcons             = ', micro_mg_ngcons
+     write(iulog,*) '  micro_mg_ngnst              = ', micro_mg_ngnst
+     write(iulog,*) '  micro_mg_do_hail            = ', micro_mg_do_hail
+     write(iulog,*) '  micro_mg_do_graupel         = ', micro_mg_do_graupel
      write(iulog,*) '  micro_do_massless_droplet_destroyer = ', micro_do_massless_droplet_destroyer
   end if
 
@@ -443,6 +496,13 @@ subroutine micro_mg_cam_register
            longname='Grid box averaged snow number', is_convtran1=.true.)
    end if
 
+   if (micro_mg_version > 2) then
+         call cnst_add(cnst_names(9), mwh2o, cpair, 0._r8, ixgraupel, &
+              longname='Grid box averaged graupel/hail amount', is_convtran1=.true.)
+         call cnst_add(cnst_names(10), mwh2o, cpair, 0._r8, ixnumgraupel, &
+              longname='Grid box averaged graupel/hail number', is_convtran1=.true.)
+   end if
+
    ! Request physics buffer space for fields that persist across timesteps.
 
    call pbuf_add_field('CLDO','global',dtype_r8,(/pcols,pver,dyn_time_lvls/), cldo_idx)
@@ -479,6 +539,15 @@ subroutine micro_mg_cam_register
    call pbuf_add_field('ICSWP',      'physpkg',dtype_r8,(/pcols,pver/), icswp_idx)
    ! Cloud fraction for liquid drops + snow
    call pbuf_add_field('CLDFSNOW ',  'physpkg',dtype_r8,(/pcols,pver,dyn_time_lvls/), cldfsnow_idx)
+
+   if (micro_mg_version > 2) then
+      ! Graupel effective diameter for radiation
+      call pbuf_add_field('DEGRAU',        'physpkg',dtype_r8,(/pcols,pver/), degrau_idx)
+      ! In cloud snow water path for radiation
+      call pbuf_add_field('ICGRAUWP',      'physpkg',dtype_r8,(/pcols,pver/), icgrauwp_idx)
+      ! Cloud fraction for liquid drops + graupel
+      call pbuf_add_field('CLDFGRAU',      'physpkg',dtype_r8,(/pcols,pver/), cldfgrau_idx)
+   end if
 
    if (prog_modal_aero) then
       call pbuf_add_field('RATE1_CW2PR_ST','physpkg',dtype_r8,(/pcols,pver/), rate1_cw2pr_st_idx)
@@ -557,6 +626,15 @@ subroutine micro_mg_cam_register
       call pbuf_register_subcol('ICSWP',       'micro_mg_cam_register', icswp_idx)
       ! Cloud fraction for liquid drops + snow
       call pbuf_register_subcol('CLDFSNOW ',   'micro_mg_cam_register', cldfsnow_idx)
+
+      if (micro_mg_version > 2) then
+         ! Graupel effective diameter for radiation
+         call pbuf_register_subcol('DEGRAU',         'micro_mg_cam_register', degrau_idx)
+         ! In cloud snow water path for radiation
+         call pbuf_register_subcol('ICGRAUWP',       'micro_mg_cam_register', icgrauwp_idx)
+         ! Cloud fraction for liquid drops + snow
+         call pbuf_register_subcol('CLDFGRAU',   'micro_mg_cam_register', cldfgrau_idx)
+      end if
 
       if (prog_modal_aero) then
          call pbuf_register_subcol('RATE1_CW2PR_ST', 'micro_mg_cam_register', rate1_cw2pr_st_idx)
@@ -647,7 +725,7 @@ subroutine micro_mg_cam_init(pbuf2d)
    use time_manager,   only: is_first_step
    use micro_mg_utils, only: micro_mg_utils_init
    use micro_mg1_0, only: micro_mg_init1_0 => micro_mg_init
-   use micro_mg2_0, only: micro_mg_init2_0 => micro_mg_init
+   use micro_mg3_0, only: micro_mg_init3_0 => micro_mg_init
 
    !-----------------------------------------------------------------------
    !
@@ -696,8 +774,9 @@ subroutine micro_mg_cam_init(pbuf2d)
       select case (micro_mg_sub_version)
       case (0)
          ! MG 1 does not initialize micro_mg_utils, so have to do it here.
-         call micro_mg_utils_init(r8, rh2o, cpair, tmelt, latvap, latice, &
+         call micro_mg_utils_init(r8, rair, rh2o, cpair, tmelt, latvap, latice, &
               micro_mg_dcs, errstring)
+
          call handle_errmsg(errstring, subname="micro_mg_utils_init")
 
          call micro_mg_init1_0( &
@@ -708,22 +787,25 @@ subroutine micro_mg_cam_init(pbuf2d)
               micro_mg_nccons, micro_mg_nicons, micro_mg_ncnst,   &
               micro_mg_ninst, errstring)
       end select
-   case (2)
+   case (2:3)
       ! Set constituent number for later loops.
-      ncnst = 8
+      if(micro_mg_version == 2) then
+         ncnst = 8
+      else
+         ncnst = 10
+      end if
 
-      select case (micro_mg_sub_version)
-      case (0)
-         call micro_mg_init2_0( &
-              r8, gravit, rair, rh2o, cpair, &
-              tmelt, latvap, latice, rhmini, &
-              micro_mg_dcs,                  &
-              microp_uniform, do_cldice, use_hetfrz_classnuc, &
-              micro_mg_precip_frac_method, micro_mg_berg_eff_factor, &
-              allow_sed_supersat, micro_do_sb_physics,          &
-              micro_mg_nccons, micro_mg_nicons, micro_mg_ncnst, &
-              micro_mg_ninst, errstring)
-      end select
+      call micro_mg_init3_0( &
+           r8, gravit, rair, rh2o, cpair, &
+           tmelt, latvap, latice, rhmini, &
+           micro_mg_dcs,                  &
+           micro_mg_do_hail,micro_mg_do_graupel, &
+           microp_uniform, do_cldice, use_hetfrz_classnuc, &
+           micro_mg_precip_frac_method, micro_mg_berg_eff_factor, &
+           allow_sed_supersat, micro_do_sb_physics, &
+           micro_mg_nccons, micro_mg_nicons, micro_mg_ncnst, &
+           micro_mg_ninst, micro_mg_ngcons, micro_mg_ngnst, errstring)
+
    end select
 
    call handle_errmsg(errstring, subname="micro_mg_init")
@@ -731,11 +813,11 @@ subroutine micro_mg_cam_init(pbuf2d)
    ! Register history variables
    do m = 1, ncnst
       call cnst_get_ind(cnst_names(m), mm)
-      if ( any(mm == (/ ixcldliq, ixcldice, ixrain, ixsnow /)) ) then
+      if ( any(mm == (/ ixcldliq, ixcldice, ixrain, ixsnow, ixgraupel /)) ) then
          ! mass mixing ratios
          call addfld(cnst_name(mm), (/ 'lev' /), 'A', 'kg/kg', cnst_longname(mm)                   )
          call addfld(sflxnam(mm),    horiz_only, 'A',   'kg/m2/s', trim(cnst_name(mm))//' surface flux')
-      else if ( any(mm == (/ ixnumliq, ixnumice, ixnumrain, ixnumsnow /)) ) then
+      else if ( any(mm == (/ ixnumliq, ixnumice, ixnumrain, ixnumsnow, ixnumgraupel /)) ) then
          ! number concentrations
          call addfld(cnst_name(mm), (/ 'lev' /), 'A', '1/kg', cnst_longname(mm)                   )
          call addfld(sflxnam(mm),    horiz_only, 'A',   '1/m2/s', trim(cnst_name(mm))//' surface flux')
@@ -755,6 +837,13 @@ subroutine micro_mg_cam_init(pbuf2d)
       call addfld(apcnst(ixsnow), (/ 'lev' /), 'A', 'kg/kg', trim(cnst_name(ixsnow))//' after physics'  )
       call addfld(bpcnst(ixrain), (/ 'lev' /), 'A', 'kg/kg', trim(cnst_name(ixrain))//' before physics' )
       call addfld(bpcnst(ixsnow), (/ 'lev' /), 'A', 'kg/kg', trim(cnst_name(ixsnow))//' before physics' )
+   end if
+
+   if (micro_mg_version > 2) then
+      if (micro_mg_do_hail .or. micro_mg_do_graupel) then 
+         call addfld(apcnst(ixgraupel), (/ 'lev' /), 'A', 'kg/kg', trim(cnst_name(ixgraupel))//' after physics'  )
+         call addfld(bpcnst(ixgraupel), (/ 'lev' /), 'A', 'kg/kg', trim(cnst_name(ixgraupel))//' before physics' )
+      endif
    end if
 
    call addfld ('CME',        (/ 'lev' /), 'A', 'kg/kg/s',  'Rate of cond-evap within the cloud'                      )
@@ -789,16 +878,39 @@ subroutine micro_mg_cam_init(pbuf2d)
    call addfld ('MELTO',      (/ 'lev' /), 'A', 'kg/kg/s',  'Melting of cloud ice'                                    )
    call addfld ('HOMOO',      (/ 'lev' /), 'A', 'kg/kg/s',  'Homogeneous freezing of cloud water'                     )
    call addfld ('QCRESO',     (/ 'lev' /), 'A', 'kg/kg/s',  'Residual condensation term for cloud water'              )
-   call addfld ('PRCIO',      (/ 'lev' /), 'A', 'kg/kg/s',  'Autoconversion of cloud ice'                             )
-   call addfld ('PRAIO',      (/ 'lev' /), 'A', 'kg/kg/s',  'Accretion of cloud ice by rain'                          )
+   call addfld ('PRCIO',      (/ 'lev' /), 'A', 'kg/kg/s',  'Autoconversion of cloud ice to snow'                     )
+   call addfld ('PRAIO',      (/ 'lev' /), 'A', 'kg/kg/s',  'Accretion of cloud ice to snow'                          )
    call addfld ('QIRESO',     (/ 'lev' /), 'A', 'kg/kg/s',  'Residual deposition term for cloud ice'                  )
    call addfld ('MNUCCRO',    (/ 'lev' /), 'A', 'kg/kg/s',  'Heterogeneous freezing of rain to snow'                  )
+   call addfld ('MNUCCRIO',   (/ 'lev' /), 'A', 'kg/kg/s',  'Heterogeneous freezing of rain to ice'                  )
    call addfld ('PRACSO',     (/ 'lev' /), 'A', 'kg/kg/s',  'Accretion of rain by snow'                               )
    call addfld ('MELTSDT',    (/ 'lev' /), 'A', 'W/kg',     'Latent heating rate due to melting of snow'              )
    call addfld ('FRZRDT',     (/ 'lev' /), 'A', 'W/kg',     'Latent heating rate due to homogeneous freezing of rain' )
    if (micro_mg_version > 1) then
       call addfld ('QRSEDTEN', (/ 'lev' /), 'A', 'kg/kg/s', 'Rain mixing ratio tendency from sedimentation'           )
       call addfld ('QSSEDTEN', (/ 'lev' /), 'A', 'kg/kg/s', 'Snow mixing ratio tendency from sedimentation'           )
+   end if
+
+
+   if (micro_mg_version > 2) then
+
+         call addfld ('PSACRO',     (/ 'lev' /), 'A', 'kg/kg/s',  'Collisions between rain & snow (Graupel collecting snow)')
+         call addfld ('PRACGO',    (/ 'lev' /), 'A', 'kg/kg/s',  'Change in q collection rain by graupel'             )
+         call addfld ('PSACWGO',   (/ 'lev' /), 'A', 'kg/kg/s',  'Change in q collection droplets by graupel'         )
+         call addfld ('PGSACWO',   (/ 'lev' /), 'A', 'kg/kg/s', 'Q conversion to graupel due to collection droplets by snow')
+         call addfld ('PGRACSO',   (/ 'lev' /), 'A', 'kg/kg/s',  'Q conversion to graupel due to collection rain by snow')
+         call addfld ('PRDGO',     (/ 'lev' /), 'A', 'kg/kg/s',  'Deposition of graupel')
+         call addfld ('QMULTGO',   (/ 'lev' /), 'A', 'kg/kg/s',  'Q change due to ice mult droplets/graupel')
+         call addfld ('QMULTRGO',  (/ 'lev' /), 'A', 'kg/kg/s',  'Q change due to ice mult rain/graupel')
+         call addfld ('QGSEDTEN',  (/ 'lev' /), 'A', 'kg/kg/s',  'Graupel/Hail mixing ratio tendency from sedimentation')
+         call addfld ('NPRACGO',     (/ 'lev' /), 'A', 'kg/kg/s',  'Change N collection rain by graupel')
+         call addfld ('NSCNGO', (/'lev'/),'A','kg/kg/s','Change N conversion to graupel due to collection droplets by snow')
+         call addfld ('NGRACSO',(/'lev'/),'A','kg/kg/s','Change N conversion to graupel due to collection rain by snow')
+         call addfld ('NMULTGO',     (/ 'lev' /), 'A', 'kg/kg/s',  'Ice mult due to acc droplets by graupel ')
+         call addfld ('NMULTRGO',     (/ 'lev' /), 'A', 'kg/kg/s',  'Ice mult due to acc rain by graupel')
+         call addfld ('NPSACWGO',     (/ 'lev' /), 'A', 'kg/kg/s',  'Change N collection droplets by graupel')
+         call addfld ('CLDFGRAU',   (/ 'lev' /), 'A', '1',        'Cloud fraction adjusted for graupel'                        )
+
    end if
 
    ! History variables for CAM5 microphysics
@@ -931,6 +1043,15 @@ subroutine micro_mg_cam_init(pbuf2d)
       call addfld('UMS', (/ 'lev' /), 'A',   'm/s', 'Mass-weighted snow fallspeed'               )
    end if
 
+   if (micro_mg_version > 2) then
+      call addfld('UMG',    (/ 'lev' /), 'A',   'm/s', 'Mass-weighted graupel/hail  fallspeed'                    )
+      call addfld ('FREQG', (/ 'lev' /),  'A', 'fraction', 'Fractional occurrence of Graupel'                     )
+      call addfld ('LS_REFFGRAU', (/ 'lev' /),  'A', 'micron',   'ls stratiform graupel/hail effective radius'    )
+      call addfld ('AQGRAU',      (/ 'lev' /),  'A', 'kg/kg',    'Average graupel/hail mixing ratio'              )
+      call addfld ('ANGRAU',      (/ 'lev' /),  'A', 'm-3',      'Average graupel/hail number conc'               )
+   end if
+
+   
    ! qc limiter (only output in versions 1.5 and later)
    if (.not. (micro_mg_version == 1 .and. micro_mg_sub_version == 0)) then
       call addfld('QCRAT', (/ 'lev' /), 'A', 'fraction', 'Qc Limiter: Fraction of qc tendency applied')
@@ -961,7 +1082,6 @@ subroutine micro_mg_cam_init(pbuf2d)
       do m = 1, ncnst
          call cnst_get_ind(cnst_names(m), mm)
          call add_default(cnst_name(mm), 1, ' ')
-         ! call add_default(sflxnam(mm),   1, ' ')
       end do
    end if
 
@@ -998,6 +1118,7 @@ subroutine micro_mg_cam_init(pbuf2d)
       call add_default ('MPDI2P   ', budget_histfile, ' ')
       call add_default ('MNUCCTO  ', budget_histfile, ' ')
       call add_default ('MNUCCRO  ', budget_histfile, ' ')
+      call add_default ('MNUCCRIO ', budget_histfile, ' ')
       call add_default ('MNUCCCO  ', budget_histfile, ' ')
       call add_default ('MELTSDT  ', budget_histfile, ' ')
       call add_default ('MELTO    ', budget_histfile, ' ')
@@ -1006,7 +1127,17 @@ subroutine micro_mg_cam_init(pbuf2d)
       call add_default ('CMEIOUT  ', budget_histfile, ' ')
       call add_default ('BERGSO   ', budget_histfile, ' ')
       call add_default ('BERGO    ', budget_histfile, ' ')
-
+      if (micro_mg_version > 2) then
+         call add_default ('QGSEDTEN ', budget_histfile, ' ')
+         call add_default ('PSACRO    ', budget_histfile, ' ')
+         call add_default ('PRACGO    ', budget_histfile, ' ')
+         call add_default ('PSACWGO   ', budget_histfile, ' ')
+         call add_default ('PGSACWO   ', budget_histfile, ' ')
+         call add_default ('PGRACSO   ', budget_histfile, ' ')
+         call add_default ('PRDGO     ', budget_histfile, ' ')
+         call add_default ('QMULTGO   ', budget_histfile, ' ')
+         call add_default ('QMULTRGO  ', budget_histfile, ' ')
+      end if
       call add_default(cnst_name(ixcldliq), budget_histfile, ' ')
       call add_default(cnst_name(ixcldice), budget_histfile, ' ')
       call add_default(apcnst   (ixcldliq), budget_histfile, ' ')
@@ -1020,6 +1151,14 @@ subroutine micro_mg_cam_init(pbuf2d)
          call add_default(apcnst   (ixsnow), budget_histfile, ' ')
          call add_default(bpcnst   (ixrain), budget_histfile, ' ')
          call add_default(bpcnst   (ixsnow), budget_histfile, ' ')
+      end if
+
+      if (micro_mg_version > 2) then
+         if (micro_mg_do_hail .or. micro_mg_do_graupel) then 
+            call add_default(cnst_name(ixgraupel), budget_histfile, ' ')
+            call add_default(apcnst   (ixgraupel), budget_histfile, ' ')
+            call add_default(bpcnst   (ixgraupel), budget_histfile, ' ')
+         endif
       end if
 
    end if
@@ -1102,7 +1241,7 @@ end subroutine micro_mg_cam_init
 subroutine micro_mg_cam_tend(state, ptend, dtime, pbuf)
 
    use micro_mg1_0, only: micro_mg_get_cols1_0 => micro_mg_get_cols
-   use micro_mg2_0, only: micro_mg_get_cols2_0 => micro_mg_get_cols
+   use micro_mg3_0, only: micro_mg_get_cols3_0 => micro_mg_get_cols
 
    type(physics_state),         intent(in)    :: state
    type(physics_ptend),         intent(out)   :: ptend
@@ -1121,10 +1260,16 @@ subroutine micro_mg_cam_tend(state, ptend, dtime, pbuf)
    case (1)
       call micro_mg_get_cols1_0(ncol, nlev, top_lev, state%q(:,:,ixcldliq), &
            state%q(:,:,ixcldice), mgncol, mgcols)
-   case (2)
-      call micro_mg_get_cols2_0(ncol, nlev, top_lev, state%q(:,:,ixcldliq), &
-           state%q(:,:,ixcldice), state%q(:,:,ixrain), state%q(:,:,ixsnow), &
-           mgncol, mgcols)
+   case (2:3)
+
+      if (micro_mg_do_hail .or. micro_mg_do_graupel) then 
+         call micro_mg_get_cols3_0(ncol, nlev, top_lev, mgncol, mgcols, state%q(:,:,ixcldliq), &
+              state%q(:,:,ixcldice), state%q(:,:,ixrain), state%q(:,:,ixsnow), state%q(:,:,ixgraupel))
+      else
+         call micro_mg_get_cols3_0(ncol, nlev, top_lev, mgncol, mgcols, state%q(:,:,ixcldliq), &
+              state%q(:,:,ixcldice), state%q(:,:,ixrain), state%q(:,:,ixsnow))
+      endif
+
    end select
 
    call micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nlev)
@@ -1135,12 +1280,13 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
 
    use micro_mg_utils, only: size_dist_param_basic, size_dist_param_liq, &
         mg_liq_props, mg_ice_props, avg_diameter, rhoi, rhosn, rhow, rhows, &
+        mg_graupel_props, rhog, &
         qsmall, mincld
 
    use micro_mg_data, only: MGPacker, MGPostProc, accum_null, accum_mean
 
    use micro_mg1_0, only: micro_mg_tend1_0 => micro_mg_tend
-   use micro_mg2_0, only: micro_mg_tend2_0 => micro_mg_tend
+   use micro_mg3_0, only: micro_mg_tend3_0 => micro_mg_tend
 
    use physics_buffer,  only: pbuf_col_type_index
    use subcol,          only: subcol_field_avg
@@ -1187,10 +1333,11 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8), pointer :: relvar(:,:)       ! relative variance of cloud water
    real(r8), pointer :: accre_enhan(:,:)  ! optional accretion enhancement for experimentation
    real(r8), pointer :: prain(:,:)        ! Total precipitation (rain + snow)
-   real(r8), pointer :: dei(:,:)          ! Ice effective diameter (meters) (AG: microns?)
+   real(r8), pointer :: dei(:,:)          ! Ice effective diameter (meters) 
    real(r8), pointer :: mu(:,:)           ! Size distribution shape parameter for radiation
    real(r8), pointer :: lambdac(:,:)      ! Size distribution slope parameter for radiation
    real(r8), pointer :: des(:,:)          ! Snow effective diameter (m)
+   real(r8), pointer :: degrau(:,:)          ! Graupel effective diameter (m)
 
    real(r8) :: rho(state%psetcols,pver)
    real(r8) :: cldmax(state%psetcols,pver)
@@ -1208,6 +1355,8 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8), target :: qsten(state%psetcols,pver)
    real(r8), target :: nrten(state%psetcols,pver)
    real(r8), target :: nsten(state%psetcols,pver)
+   real(r8), target :: qgten(state%psetcols,pver)
+   real(r8), target :: ngten(state%psetcols,pver)
 
    real(r8), target :: prect(state%psetcols)
    real(r8), target :: preci(state%psetcols)
@@ -1220,6 +1369,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8), target :: iflx(state%psetcols,pverp)      ! grid-box avg ice condensate flux (kg m^-2 s^-1)
    real(r8), target :: rflx(state%psetcols,pverp)      ! grid-box average rain flux (kg m^-2 s^-1)
    real(r8), target :: sflx(state%psetcols,pverp)      ! grid-box average snow flux (kg m^-2 s^-1)
+   real(r8), target :: gflx(state%psetcols,pverp)      ! grid-box average snow flux (kg m^-2 s^-1)
    real(r8), target :: qrout(state%psetcols,pver)      ! Rain mixing ratio
    real(r8), target :: qcsevap(state%psetcols,pver)    ! Evaporation of falling cloud water
    real(r8), target :: qisevap(state%psetcols,pver)    ! Sublimation of falling cloud ice
@@ -1233,6 +1383,8 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8), target :: qisedten(state%psetcols,pver)   ! Cloud ice mixing ratio tendency from sedimentation
    real(r8), target :: qrsedten(state%psetcols,pver)   ! Rain mixing ratio tendency from sedimentation
    real(r8), target :: qssedten(state%psetcols,pver)   ! Snow mixing ratio tendency from sedimentation
+   real(r8), target :: qgsedten(state%psetcols,pver)   ! Graupel/Hail mixing ratio tendency from sedimentation
+   real(r8), target :: umg(state%psetcols,pver)        ! Mass-weighted Graupel/Hail fallspeed
 
    real(r8), target :: prao(state%psetcols,pver)
    real(r8), target :: prco(state%psetcols,pver)
@@ -1249,6 +1401,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8), target :: praio(state%psetcols,pver)
    real(r8), target :: qireso(state%psetcols,pver)
    real(r8), target :: mnuccro(state%psetcols,pver)
+   real(r8), target :: mnuccrio(state%psetcols,pver)
    real(r8), target :: pracso (state%psetcols,pver)
    real(r8), target :: meltsdt(state%psetcols,pver)
    real(r8), target :: frzrdt (state%psetcols,pver)
@@ -1273,6 +1426,29 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8), target :: freqr(state%psetcols,pver)
    real(r8), target :: nfice(state%psetcols,pver)
    real(r8), target :: qcrat(state%psetcols,pver)   ! qc limiter ratio (1=no limit)
+!Hail/Graupel Output 
+   real(r8), target :: freqg(state%psetcols,pver)
+   real(r8), target :: qgout(state%psetcols,pver)   
+   real(r8), target :: ngout(state%psetcols,pver)   
+   real(r8), target :: dgout(state%psetcols,pver)                  
+   real(r8), target :: qgout2(state%psetcols,pver) 
+   real(r8), target :: ngout2(state%psetcols,pver) 
+   real(r8), target :: dgout2(state%psetcols,pver) 
+!Hail/Graupel Process Rates                
+   real(r8), target :: psacro(state%psetcols,pver)   
+   real(r8), target :: pracgo(state%psetcols,pver)   
+   real(r8), target :: psacwgo(state%psetcols,pver)  
+   real(r8), target :: pgsacwo(state%psetcols,pver)
+   real(r8), target :: pgracso(state%psetcols,pver) 
+   real(r8), target :: prdgo(state%psetcols,pver)   
+   real(r8), target :: qmultgo(state%psetcols,pver)  
+   real(r8), target :: qmultrgo(state%psetcols,pver)   
+   real(r8), target :: npracgo(state%psetcols,pver) 
+   real(r8), target :: nscngo(state%psetcols,pver) 
+   real(r8), target :: ngracso(state%psetcols,pver) 
+   real(r8), target :: nmultgo(state%psetcols,pver) 
+   real(r8), target :: nmultrgo(state%psetcols,pver) 
+   real(r8), target :: npsacwgo(state%psetcols,pver) 
 
    ! Object that packs columns with clouds/precip.
    type(MGPacker) :: packer
@@ -1288,6 +1464,8 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8) :: packed_nr(mgncol,nlev)
    real(r8) :: packed_qs(mgncol,nlev)
    real(r8) :: packed_ns(mgncol,nlev)
+   real(r8) :: packed_qg(mgncol,nlev)
+   real(r8) :: packed_ng(mgncol,nlev)   
 
    real(r8) :: packed_relvar(mgncol,nlev)
    real(r8) :: packed_accre_enhan(mgncol,nlev)
@@ -1331,6 +1509,8 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8), target :: packed_qstend(mgncol,nlev)
    real(r8), target :: packed_nrtend(mgncol,nlev)
    real(r8), target :: packed_nstend(mgncol,nlev)
+   real(r8), target :: packed_qgtend(mgncol,nlev)
+   real(r8), target :: packed_ngtend(mgncol,nlev)
 
    real(r8), target :: packed_prect(mgncol)
    real(r8), target :: packed_preci(mgncol)
@@ -1345,6 +1525,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8), target :: packed_iflx(mgncol,nlev+1)
    real(r8), target :: packed_rflx(mgncol,nlev+1)
    real(r8), target :: packed_sflx(mgncol,nlev+1)
+   real(r8), target :: packed_gflx(mgncol,nlev+1)
    real(r8), target :: packed_qrout(mgncol,nlev)
    real(r8), target :: packed_qcsevap(mgncol,nlev)
    real(r8), target :: packed_qisevap(mgncol,nlev)
@@ -1356,6 +1537,8 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8), target :: packed_qisedten(mgncol,nlev)
    real(r8), target :: packed_qrsedten(mgncol,nlev)
    real(r8), target :: packed_qssedten(mgncol,nlev)
+   real(r8), target :: packed_qgsedten(mgncol,nlev)
+   real(r8), target :: packed_umg(mgncol,nlev)
    real(r8), target :: packed_umr(mgncol,nlev)
    real(r8), target :: packed_ums(mgncol,nlev)
    real(r8), target :: packed_pra(mgncol,nlev)
@@ -1373,6 +1556,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8), target :: packed_prai(mgncol,nlev)
    real(r8), target :: packed_qires(mgncol,nlev)
    real(r8), target :: packed_mnuccr(mgncol,nlev)
+   real(r8), target :: packed_mnuccri(mgncol,nlev)
    real(r8), target :: packed_pracs(mgncol,nlev)
    real(r8), target :: packed_meltsdt(mgncol,nlev)
    real(r8), target :: packed_frzrdt(mgncol,nlev)
@@ -1395,6 +1579,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8), target :: packed_nsout2(mgncol,nlev)
    real(r8), target :: packed_freqs(mgncol,nlev)
    real(r8), target :: packed_freqr(mgncol,nlev)
+   real(r8), target :: packed_freqg(mgncol,nlev)
    real(r8), target :: packed_nfice(mgncol,nlev)
    real(r8), target :: packed_prer_evap(mgncol,nlev)
    real(r8), target :: packed_qcrat(mgncol,nlev)
@@ -1408,6 +1593,29 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8), target :: packed_des(mgncol,nlev)
    real(r8), target :: packed_dei(mgncol,nlev)
 
+!Hail/Graupel Output
+   real(r8), target :: packed_qgout(mgncol,nlev)   
+   real(r8), target :: packed_ngout(mgncol,nlev)   
+   real(r8), target :: packed_dgout(mgncol,nlev)                  
+   real(r8), target :: packed_qgout2(mgncol,nlev) 
+   real(r8), target :: packed_ngout2(mgncol,nlev) 
+   real(r8), target :: packed_dgout2(mgncol,nlev) 
+!Hail/Graupel Process Rates                
+   real(r8), target :: packed_psacr(mgncol,nlev)   
+   real(r8), target :: packed_pracg(mgncol,nlev)   
+   real(r8), target :: packed_psacwg(mgncol,nlev)  
+   real(r8), target :: packed_pgsacw(mgncol,nlev)
+   real(r8), target :: packed_pgracs(mgncol,nlev) 
+   real(r8), target :: packed_prdg(mgncol,nlev)   
+   real(r8), target :: packed_qmultg(mgncol,nlev)  
+   real(r8), target :: packed_qmultrg(mgncol,nlev)   
+   real(r8), target :: packed_npracg(pcols,pver)
+   real(r8), target :: packed_nscng(pcols,pver)
+   real(r8), target :: packed_ngracs(pcols,pver)
+   real(r8), target :: packed_nmultg(pcols,pver)
+   real(r8), target :: packed_nmultrg(pcols,pver)
+   real(r8), target :: packed_npsacwg(pcols,pver)
+
    ! Dummy arrays for cases where we throw away the MG version and
    ! recalculate sizes on the CAM grid to avoid time/subcolumn averaging
    ! issues.
@@ -1416,6 +1624,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8) :: drout_dum(mgncol,nlev)
    real(r8) :: reff_rain_dum(mgncol,nlev)
    real(r8) :: reff_snow_dum(mgncol,nlev)
+   real(r8) :: reff_grau_dum(mgncol,nlev)   !not used for now or passed to COSP.
 
    ! Heterogeneous-only version of mnuccdo.
    real(r8) :: mnuccdohet(state%psetcols,pver)
@@ -1476,6 +1685,9 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8), pointer :: iclwpst(:,:)      ! Stratiform in-cloud liquid water path for radiation
    real(r8), pointer :: cldfsnow(:,:)     ! Cloud fraction for liquid+snow
    real(r8), pointer :: icswp(:,:)        ! In-cloud snow water path
+
+   real(r8), pointer :: cldfgrau(:,:)     ! Cloud fraction for liquid+snow
+   real(r8), pointer :: icgrauwp(:,:)        ! In-cloud snow water path
 
    real(r8) :: icimrst(state%psetcols,pver) ! In stratus ice mixing ratio
    real(r8) :: icwmrst(state%psetcols,pver) ! In stratus water mixing ratio
@@ -1553,6 +1765,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8), pointer :: dei_grid(:,:)
    real(r8), pointer :: des_grid(:,:)
    real(r8), pointer :: iclwpst_grid(:,:)
+   real(r8), pointer :: degrau_grid(:,:)
 
    real(r8) :: rho_grid(pcols,pver)
    real(r8) :: liqcldf_grid(pcols,pver)
@@ -1567,6 +1780,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8) :: nrout_grid(pcols,pver)
    real(r8) :: reff_rain_grid(pcols,pver)
    real(r8) :: reff_snow_grid(pcols,pver)
+   real(r8) :: reff_grau_grid(pcols,pver)
    real(r8) :: cld_grid(pcols,pver)
    real(r8) :: pdel_grid(pcols,pver)
    real(r8) :: prco_grid(pcols,pver)
@@ -1587,6 +1801,20 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8) :: qireso_grid(pcols,pver)
    real(r8) :: prcio_grid(pcols,pver)
    real(r8) :: praio_grid(pcols,pver)
+   real(r8) :: psacro_grid(pcols,pver)
+   real(r8) :: pracgo_grid(pcols,pver)
+   real(r8) :: psacwgo_grid(pcols,pver)          
+   real(r8) :: pgsacwo_grid(pcols,pver)
+   real(r8) :: pgracso_grid(pcols,pver)
+   real(r8) :: prdgo_grid(pcols,pver)
+   real(r8) :: qmultgo_grid(pcols,pver)
+   real(r8) :: qmultrgo_grid(pcols,pver)
+   real(r8) :: npracgo_grid(pcols,pver)
+   real(r8) :: nscngo_grid(pcols,pver)
+   real(r8) :: ngracso_grid(pcols,pver)
+   real(r8) :: nmultgo_grid(pcols,pver)
+   real(r8) :: nmultrgo_grid(pcols,pver)
+   real(r8) :: npsacwgo_grid(pcols,pver)
 
    real(r8) :: nc_grid(pcols,pver)
    real(r8) :: ni_grid(pcols,pver)
@@ -1594,6 +1822,12 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8) :: nr_grid(pcols,pver)
    real(r8) :: qs_grid(pcols,pver)
    real(r8) :: ns_grid(pcols,pver)
+   real(r8) :: qg_grid(pcols,pver)
+   real(r8) :: ng_grid(pcols,pver)
+
+   real(r8) :: qgout_grid(pcols,pver)
+   real(r8) :: dgout2_grid(pcols,pver)
+   real(r8) :: ngout_grid(pcols,pver)
    
    real(r8) :: cp_rh(pcols,pver)
    real(r8) :: cp_t(pcols)
@@ -1635,6 +1869,9 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8), pointer :: icswp_grid(:,:)
    real(r8), pointer :: ast_grid(:,:)
    real(r8), pointer :: cldfsnow_grid(:,:)
+
+   real(r8), pointer :: icgrauwp_grid(:,:)
+   real(r8), pointer :: cldfgrau_grid(:,:)
 
    real(r8), pointer :: qrout_grid_ptr(:,:)
    real(r8), pointer :: qsout_grid_ptr(:,:)
@@ -1735,6 +1972,9 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    call pbuf_get_field(pbuf, sadsnow_idx,     sadsnow,     col_type=col_type)
    call pbuf_get_field(pbuf, wsedl_idx,       wsedl,       col_type=col_type)
    call pbuf_get_field(pbuf, qme_idx,         qme,         col_type=col_type)
+   if (degrau_idx > 0)   call pbuf_get_field(pbuf, degrau_idx,   degrau,   col_type=col_type)
+   if (icgrauwp_idx > 0) call pbuf_get_field(pbuf, icgrauwp_idx, icgrauwp, col_type=col_type)
+   if (cldfgrau_idx > 0) call pbuf_get_field(pbuf, cldfgrau_idx, cldfgrau, col_type=col_type)
 
    call pbuf_get_field(pbuf, cldo_idx,        cldo,     start=(/1,1,itim_old/), kount=(/psetcols,pver,1/), col_type=col_type)
    call pbuf_get_field(pbuf, cldfsnow_idx,    cldfsnow, start=(/1,1,itim_old/), kount=(/psetcols,pver,1/), col_type=col_type)
@@ -1787,6 +2027,9 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
       call pbuf_get_field(pbuf, sadsnow_idx,     sadsnow_grid)
       call pbuf_get_field(pbuf, wsedl_idx,       wsedl_grid)
       call pbuf_get_field(pbuf, qme_idx,         qme_grid)
+      if (degrau_idx > 0)   call pbuf_get_field(pbuf, degrau_idx,   degrau_grid)
+      if (icgrauwp_idx > 0) call pbuf_get_field(pbuf, icgrauwp_idx, icgrauwp_grid)
+      if (cldfgrau_idx > 0) call pbuf_get_field(pbuf, cldfgrau_idx, cldfgrau_grid)
 
       call pbuf_get_field(pbuf, cldo_idx,     cldo_grid,     start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
       call pbuf_get_field(pbuf, cldfsnow_idx, cldfsnow_grid, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
@@ -1892,6 +2135,12 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
       lq(ixnumrain) = .true.
       lq(ixnumsnow) = .true.
    end if
+   if (micro_mg_version > 2) then
+      if (micro_mg_do_hail .or. micro_mg_do_graupel) then
+         lq(ixgraupel) = .true.
+         lq(ixnumgraupel) = .true.
+      end if
+   end if
 
    ! the name 'cldwat' triggers special tests on cldliq
    ! and cldice in physics_update
@@ -1899,7 +2148,6 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
 
    packer = MGPacker(psetcols, pver, mgcols, top_lev)
    post_proc = MGPostProc(packer)
-
    pckdptr => packed_rate1ord_cw2pr_st ! workaround an apparent pgi compiler bug
    call post_proc%add_field(p(rate1cld), pckdptr)
    call post_proc%add_field(p(tlat) , p(packed_tlat))
@@ -1918,6 +2166,12 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
       call post_proc%add_field(p(ums), p(packed_ums))
       call post_proc%add_field(p(cflx), p(packed_cflx))
       call post_proc%add_field(p(iflx), p(packed_iflx))
+   end if
+
+   if (micro_mg_version > 2) then
+      call post_proc%add_field(p(qgten), p(packed_qgtend))
+      call post_proc%add_field(p(ngten), p(packed_ngtend))
+      call post_proc%add_field(p(umg), p(packed_umg))
    end if
 
    call post_proc%add_field(p(am_evp_st), p(packed_am_evp_st))
@@ -1944,6 +2198,11 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    if (micro_mg_version > 1) then
       call post_proc%add_field(p(qrsedten), p(packed_qrsedten))
       call post_proc%add_field(p(qssedten), p(packed_qssedten))
+   end if
+
+   if (micro_mg_version > 2) then
+      call post_proc%add_field(p(qgsedten), p(packed_qgsedten))
+      call post_proc%add_field(p(gflx), p(packed_gflx))
    end if
 
    call post_proc%add_field(p(prao), p(packed_pra))
@@ -1988,6 +2247,24 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    call post_proc%add_field(p(nfice), p(packed_nfice))
    if (micro_mg_version /= 1) then
       call post_proc%add_field(p(qcrat), p(packed_qcrat), fillvalue=1._r8)
+      call post_proc%add_field(p(mnuccrio), p(packed_mnuccri))
+   end if
+
+   if (micro_mg_version > 2) then
+      call post_proc%add_field(p(freqg), p(packed_freqg))
+! Graupel/Hail size
+      call post_proc%add_field(p(qgout), p(packed_qgout))
+      call post_proc%add_field(p(qgout2), p(packed_qgout2))
+      call post_proc%add_field(p(ngout2), p(packed_ngout2))
+! Graupel/Hail process rates
+      call post_proc%add_field(p(psacro), p(packed_psacr))
+      call post_proc%add_field(p(pracgo), p(packed_pracg))
+      call post_proc%add_field(p(psacwgo), p(packed_psacwg))
+      call post_proc%add_field(p(pgsacwo), p(packed_pgsacw))
+      call post_proc%add_field(p(pgracso), p(packed_pgracs))
+      call post_proc%add_field(p(prdgo), p(packed_prdg))
+      call post_proc%add_field(p(qmultgo), p(packed_qmultg))
+      call post_proc%add_field(p(qmultrgo), p(packed_qmultrg))
    end if
 
    ! The following are all variables related to sizes, where it does not
@@ -2037,7 +2314,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    allocate(packed_nacon(mgncol,nlev,size(nacon, 3)))
    packed_nacon = packer%pack(nacon)
 
-  if (.not. do_cldice) then
+   if (.not. do_cldice) then
       packed_tnd_qsnow = packer%pack(tnd_qsnow)
       packed_tnd_nsnow = packer%pack(tnd_nsnow)
       packed_re_ice = packer%pack(re_ice)
@@ -2063,6 +2340,16 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
          packed_nr = packer%pack(state_loc%q(:,:,ixnumrain))
          packed_qs = packer%pack(state_loc%q(:,:,ixsnow))
          packed_ns = packer%pack(state_loc%q(:,:,ixnumsnow))
+      end if
+
+      if (micro_mg_version > 1) then
+         if (micro_mg_version > 2 .and. (micro_mg_do_graupel .or. micro_mg_do_hail)) then
+            packed_qg = packer%pack(state_loc%q(:,:,ixgraupel))
+            packed_ng = packer%pack(state_loc%q(:,:,ixnumgraupel))
+         else
+            packed_qg(:,:) = 0._r8
+            packed_ng(:,:) = 0._r8
+         end if
       end if
 
       select case (micro_mg_version)
@@ -2095,67 +2382,74 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
                  packed_frzimm, packed_frzcnt, packed_frzdep)
 
          end select
-      case(2)
-         select case (micro_mg_sub_version)
-         case (0)
-
-            call micro_mg_tend2_0( &
-                 mgncol,         nlev,           dtime/num_steps,&
-                 packed_t,               packed_q,               &
-                 packed_qc,              packed_qi,              &
-                 packed_nc,              packed_ni,              &
-                 packed_qr,              packed_qs,              &
-                 packed_nr,              packed_ns,              &
-                 packed_relvar,          packed_accre_enhan,     &
-                 packed_p,               packed_pdel,            &
-                 packed_cldn, packed_liqcldf, packed_icecldf, packed_qsatfac, &
-                 packed_rate1ord_cw2pr_st,                       &
-                 packed_naai,            packed_npccn,           &
-                 packed_rndst,           packed_nacon,           &
-                 packed_tlat,            packed_qvlat,           &
-                 packed_qctend,          packed_qitend,          &
-                 packed_nctend,          packed_nitend,          &
-                 packed_qrtend,          packed_qstend,          &
-                 packed_nrtend,          packed_nstend,          &
-                 packed_rel,     rel_fn_dum,     packed_rei,     &
-                 packed_sadice,          packed_sadsnow,         &
-                 packed_prect,           packed_preci,           &
-                 packed_nevapr,          packed_evapsnow,        &
-                 packed_am_evp_st,                               &
-                 packed_prain,           packed_prodsnow,        &
-                 packed_cmeout,          packed_dei,             &
-                 packed_mu,              packed_lambdac,         &
-                 packed_qsout,           packed_des,             &
-                 packed_cflx,    packed_iflx,                    &
-                 packed_rflx,    packed_sflx,    packed_qrout,   &
-                 reff_rain_dum,          reff_snow_dum,          &
-                 packed_qcsevap, packed_qisevap, packed_qvres,   &
-                 packed_cmei,    packed_vtrmc,   packed_vtrmi,   &
-                 packed_umr,             packed_ums,             &
-                 packed_qcsedten,        packed_qisedten,        &
-                 packed_qrsedten,        packed_qssedten,        &
-                 packed_pra,             packed_prc,             &
-                 packed_mnuccc,  packed_mnucct,  packed_msacwi,  &
-                 packed_psacws,  packed_bergs,   packed_berg,    &
-                 packed_melt,            packed_homo,            &
-                 packed_qcres,   packed_prci,    packed_prai,    &
-                 packed_qires,   packed_mnuccr,  packed_pracs,   &
-                 packed_meltsdt, packed_frzrdt,  packed_mnuccd,  &
-                 packed_nrout,           packed_nsout,           &
-                 packed_refl,    packed_arefl,   packed_areflz,  &
-                 packed_frefl,   packed_csrfl,   packed_acsrfl,  &
-                 packed_fcsrfl,          packed_rercld,          &
-                 packed_ncai,            packed_ncal,            &
-                 packed_qrout2,          packed_qsout2,          &
-                 packed_nrout2,          packed_nsout2,          &
-                 drout_dum,              dsout2_dum,             &
-                 packed_freqs,           packed_freqr,           &
-                 packed_nfice,           packed_qcrat,           &
-                 errstring, &
-                 packed_tnd_qsnow,packed_tnd_nsnow,packed_re_ice,&
-                 packed_prer_evap,                                     &
-                 packed_frzimm,  packed_frzcnt,  packed_frzdep   )
-         end select
+      case(2:3)
+         call micro_mg_tend3_0( &
+              mgncol,         nlev,           dtime/num_steps,&
+              packed_t,               packed_q,               &
+              packed_qc,              packed_qi,              &
+              packed_nc,              packed_ni,              &
+              packed_qr,              packed_qs,              &
+              packed_nr,              packed_ns,              &
+              packed_qg,              packed_ng,              &
+              packed_relvar,          packed_accre_enhan,     &
+              packed_p,               packed_pdel,            &
+              packed_cldn, packed_liqcldf, packed_icecldf, packed_qsatfac, &
+              packed_rate1ord_cw2pr_st,                       &
+              packed_naai,            packed_npccn,           &
+              packed_rndst,           packed_nacon,           &
+              packed_tlat,            packed_qvlat,           &
+              packed_qctend,          packed_qitend,          &
+              packed_nctend,          packed_nitend,          &
+              packed_qrtend,          packed_qstend,          &
+              packed_nrtend,          packed_nstend,          &
+              packed_qgtend,          packed_ngtend,          &
+              packed_rel,     rel_fn_dum,     packed_rei,     &
+              packed_sadice,          packed_sadsnow,         &
+              packed_prect,           packed_preci,           &
+              packed_nevapr,          packed_evapsnow,        &
+              packed_am_evp_st,                               &
+              packed_prain,           packed_prodsnow,        &
+              packed_cmeout,          packed_dei,             &
+              packed_mu,              packed_lambdac,         &
+              packed_qsout,           packed_des,             &
+              packed_qgout,   packed_ngout,   packed_dgout,   &
+              packed_cflx,    packed_iflx,                    &
+              packed_gflx,                                    &
+              packed_rflx,    packed_sflx,    packed_qrout,   &
+              reff_rain_dum,          reff_snow_dum,   reff_grau_dum,       &
+              packed_qcsevap, packed_qisevap, packed_qvres,   &
+              packed_cmei,    packed_vtrmc,   packed_vtrmi,   &
+              packed_umr,             packed_ums,             &
+              packed_umg,             packed_qgsedten,        &
+              packed_qcsedten,        packed_qisedten,        &
+              packed_qrsedten,        packed_qssedten,        &
+              packed_pra,             packed_prc,             &
+              packed_mnuccc,  packed_mnucct,  packed_msacwi,  &
+              packed_psacws,  packed_bergs,   packed_berg,    &
+              packed_melt,            packed_homo,            &
+              packed_qcres,   packed_prci,    packed_prai,    &
+              packed_qires,   packed_mnuccr,  packed_mnuccri, packed_pracs,   &
+              packed_meltsdt, packed_frzrdt,  packed_mnuccd,  &
+              packed_pracg,   packed_psacwg,  packed_pgsacw,  &
+              packed_pgracs,  packed_prdg,   &
+              packed_qmultg,  packed_qmultrg, packed_psacr,   &
+              packed_npracg,  packed_nscng,   packed_ngracs,  &
+              packed_nmultg,  packed_nmultrg, packed_npsacwg, & 
+              packed_nrout,           packed_nsout,           &
+              packed_refl,    packed_arefl,   packed_areflz,  &
+              packed_frefl,   packed_csrfl,   packed_acsrfl,  &
+              packed_fcsrfl,          packed_rercld,          &
+              packed_ncai,            packed_ncal,            &
+              packed_qrout2,          packed_qsout2,          &
+              packed_nrout2,          packed_nsout2,          &
+              drout_dum,              dsout2_dum,             &
+              packed_qgout2, packed_ngout2, packed_dgout2, packed_freqg,   &
+              packed_freqs,           packed_freqr,           &
+              packed_nfice,           packed_qcrat,           &
+              errstring, &
+              packed_tnd_qsnow,packed_tnd_nsnow,packed_re_ice,&
+              packed_prer_evap,                                     &
+              packed_frzimm,  packed_frzcnt,  packed_frzdep   )
       end select
 
       call handle_errmsg(errstring, subname="micro_mg_tend")
@@ -2188,6 +2482,14 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
               -state_loc%q(:,:,ixnumrain)/(dtime/num_steps))
          ptend_loc%q(:,:,ixnumsnow) = packer%unpack(packed_nstend, &
               -state_loc%q(:,:,ixnumsnow)/(dtime/num_steps))
+      end if
+
+      if (micro_mg_version > 2) then
+         if (micro_mg_do_graupel .or. micro_mg_do_hail) then       
+            ptend_loc%q(:,:,ixgraupel)    = packer%unpack(packed_qgtend, 0._r8)
+            ptend_loc%q(:,:,ixnumgraupel) = packer%unpack(packed_ngtend, &
+                 -state_loc%q(:,:,ixnumgraupel)/(dtime/num_steps))
+         end if
       end if
 
       ! Sum into overall ptend
@@ -2228,6 +2530,18 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
            " but micro_mg_tend has liquid number tendencies.")
    end if
 
+   if (micro_mg_version > 2) then
+      if ((.not. micro_mg_do_hail) .and. (.not. micro_mg_do_graupel)) then
+         if (any(ptend%q(:ncol,top_lev:pver,ixgraupel) /= 0.0_r8)) &
+              call endrun("micro_mg_cam:ERROR - MG microphysics is configured not to prognose graupel/hail,"// &
+              " but micro_mg_tend has graupel/hail mass tendencies.")
+         if (any(ptend%q(:ncol,top_lev:pver,ixnumgraupel) /= 0.0_r8)) &
+              call endrun("micro_mg_cam:ERROR - MG microphysics is configured not to prognose graupel/hail number,"// &
+              " but micro_mg_tend has graupel/hail number tendencies.")
+      end if
+   end if
+
+
    mnuccdohet = 0._r8
    do k=top_lev,pver
       do i=1,ncol
@@ -2246,6 +2560,11 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
       mgflxsnw(:ncol,top_lev:pverp) = mgflxsnw(:ncol,top_lev:pverp) + iflx(:ncol,top_lev:pverp)
    end if
 
+   !add graupel fluxes for MG3 to snow flux 
+   if (micro_mg_version >= 3) then
+      mgflxprc(:ncol,top_lev:pverp) = mgflxprc(:ncol,top_lev:pverp)+gflx(:ncol,top_lev:pverp)
+      mgflxsnw(:ncol,top_lev:pverp) = mgflxsnw(:ncol,top_lev:pverp)+gflx(:ncol,top_lev:pverp)
+   end if
 
    mgmrprc(:ncol,top_lev:pver) = qrout(:ncol,top_lev:pver) + qsout(:ncol,top_lev:pver)
    mgmrsnw(:ncol,top_lev:pver) = qsout(:ncol,top_lev:pver)
@@ -2301,6 +2620,10 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    iclwpst = 0._r8
    icswp = 0._r8
    cldfsnow = 0._r8
+   if (micro_mg_version > 2) then
+      icgrauwp = 0._r8
+      cldfgrau = 0._r8
+   end if
 
    do k = top_lev, pver
       do i = 1, ncol
@@ -2333,6 +2656,29 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
          end if
          ! Calculate in-cloud snow water path
          icswp(i,k) = qsout(i,k) / max( mincld, cldfsnow(i,k) ) * state_loc%pdel(i,k) / gravit
+
+         ! --------------------------------- !
+         ! Adjust cloud fraction for graupel !
+         ! --------------------------------- !
+       if (micro_mg_version > 2) then
+          cldfgrau(i,k) = cld(i,k)
+         ! If cloud and only ice ( no convective cloud or ice ), then set to 0.
+          if( ( cldfgrau(i,k) .gt. 1.e-4_r8 ) .and. &
+              ( concld(i,k)   .lt. 1.e-4_r8 ) .and. &
+              ( state_loc%q(i,k,ixcldliq) .lt. 1.e-10_r8 ) ) then
+              cldfgrau(i,k) = 0._r8
+           end if
+         ! If no cloud and graupel, then set to 0.25
+           if( ( cldfgrau(i,k) .le. 1.e-4_r8 ) .and. ( qgout(i,k) .gt. 1.e-9_r8 ) ) then
+              cldfgrau(i,k) = 0.25_r8
+           end if
+         ! Calculate in-cloud snow water path
+           icgrauwp(i,k) = qgout(i,k) / max( 1.e-2_r8, cldfgrau(i,k) ) * state_loc%pdel(i,k) / gravit 
+           if (icgrauwp(i,k).gt.0.1_r8) then
+              write(iulog,*) 'WARNING: icgraup large: i,k,icgrauwp,qgout,cldf,pdel'
+              write(iulog,*) i,k,icgrauwp(i,k),qgout(i,k),max( mincld, cldfgrau(i,k)),state_loc%pdel(i,k)
+           end if
+        end if 
       end do
    end do
 
@@ -2412,6 +2758,25 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
          call subcol_field_avg(state_loc%q(:,:,ixnumsnow), ngrdcol, lchnk, ns_grid)
       end if
 
+      if (micro_mg_version > 2) then
+            call subcol_field_avg(state_loc%q(:,:,ixgraupel),    ngrdcol, lchnk, qg_grid)
+            call subcol_field_avg(state_loc%q(:,:,ixnumgraupel), ngrdcol, lchnk, ng_grid)
+            call subcol_field_avg(psacro,       ngrdcol, lchnk, psacro_grid)
+            call subcol_field_avg(pracgo,       ngrdcol, lchnk, pracgo_grid)
+            call subcol_field_avg(psacwgo,      ngrdcol, lchnk, psacwgo_grid)
+            call subcol_field_avg(pgsacwo,      ngrdcol, lchnk, pgsacwo_grid)
+            call subcol_field_avg(pgracso,      ngrdcol, lchnk, pgracso_grid)
+            call subcol_field_avg(prdgo,        ngrdcol, lchnk, prdgo_grid)
+            call subcol_field_avg(qmultgo,      ngrdcol, lchnk, qmultgo_grid)
+            call subcol_field_avg(qmultrgo,     ngrdcol, lchnk, qmultrgo_grid)
+            call subcol_field_avg(npracgo,      ngrdcol, lchnk, npracgo_grid)
+            call subcol_field_avg(nscngo,       ngrdcol, lchnk, nscngo_grid)
+            call subcol_field_avg(ngracso,      ngrdcol, lchnk, ngracso_grid)
+            call subcol_field_avg(nmultgo,      ngrdcol, lchnk, nmultgo_grid)
+            call subcol_field_avg(nmultrgo,     ngrdcol, lchnk, nmultrgo_grid)
+            call subcol_field_avg(npsacwgo,     ngrdcol, lchnk, npsacwgo_grid)
+      end if
+
    else
       ! These pbuf fields need to be assigned.  There is no corresponding subcol_field_avg
       ! as they are reset before being used, so it would be a needless calculation
@@ -2423,6 +2788,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
       sadsnow_grid    => sadsnow
       dei_grid        => dei
       des_grid        => des
+      degrau_grid     => degrau
 
       ! fields already on grids, so just assign
       prec_str_grid   => prec_str
@@ -2478,6 +2844,31 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
          ns_grid = state_loc%q(:,:,ixnumsnow)
       end if
 
+! Zero out terms for budgets if not mg3....
+      psacwgo_grid = 0._r8
+      pgsacwo_grid = 0._r8
+      qmultgo_grid = 0._r8
+ 
+      if (micro_mg_version > 2) then
+            qg_grid = state_loc%q(:,:,ixgraupel)
+            ng_grid = state_loc%q(:,:,ixnumgraupel)
+            psacro_grid =     psacro
+            pracgo_grid =     pracgo
+            psacwgo_grid =    psacwgo
+            pgsacwo_grid =    pgsacwo
+            pgracso_grid =    pgracso
+            prdgo_grid =      prdgo
+            qmultgo_grid =    qmultgo
+            qmultrgo_grid =   qmultrgo
+            npracgo_grid =   npracgo
+            nscngo_grid =   nscngo
+            ngracso_grid =   ngracso
+            nmultgo_grid =   nmultgo
+            nmultrgo_grid =   nmultrgo
+            npsacwgo_grid =   npsacwgo
+      end if
+
+
    end if
 
    ! If on subcolumns, average the rest of the pbuf fields which were modified on subcolumns but are not used further in
@@ -2502,6 +2893,11 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
       call subcol_field_avg(iciwpst,     ngrdcol, lchnk, iciwpst_grid)
       call subcol_field_avg(icswp,       ngrdcol, lchnk, icswp_grid)
       call subcol_field_avg(cldfsnow,    ngrdcol, lchnk, cldfsnow_grid)
+
+      if (micro_mg_version > 2) then
+         call subcol_field_avg(icgrauwp,    ngrdcol, lchnk, icgrauwp_grid)
+         call subcol_field_avg(cldfgrau,    ngrdcol, lchnk, cldfsnow_grid)
+      end if
 
       if (rate1_cw2pr_st_idx > 0) then
          call subcol_field_avg(rate1ord_cw2pr_st,    ngrdcol, lchnk, rate1ord_cw2pr_st_grid)
@@ -2573,6 +2969,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    des_grid = 0._r8
    dsout2_grid = 0._r8
    reff_snow_grid = 0._r8
+   reff_grau_grid = 0._r8
 
    if (micro_mg_version > 1) then
       ! Prognostic precipitation
@@ -2626,6 +3023,22 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
               dsout2_grid(:ngrdcol,top_lev:) * 1.5_r8 * 1.e6_r8
       end where
 
+   end if
+
+! Graupel/Hail size distribution Placeholder
+   if (micro_mg_version > 2) then
+      degrau_grid = 0._r8
+      where (qg_grid(:ngrdcol,top_lev:) >= 1.e-7_r8)
+         dgout2_grid(:ngrdcol,top_lev:) = avg_diameter( &
+              qg_grid(:ngrdcol,top_lev:), &
+              ng_grid(:ngrdcol,top_lev:) * rho_grid(:ngrdcol,top_lev:), &
+              rho_grid(:ngrdcol,top_lev:), rhog)
+      
+         reff_grau_grid(:ngrdcol,top_lev:) = dgout2_grid(:ngrdcol,top_lev:) * &
+              1.5_r8 * 1.e6_r8
+         degrau_grid(:ngrdcol,top_lev:) = dgout2_grid(:ngrdcol,top_lev:) *&
+              3._r8 * rhog/rhows
+      end where
    end if
 
    ! Effective radius and diameter for cloud ice.
@@ -2875,6 +3288,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    ! --------------------------------------------- !
 
    ! Output a handle of variables which are calculated on the fly
+
    ftem_grid = 0._r8
 
    ftem_grid(:ngrdcol,top_lev:pver) =  qcreso_grid(:ngrdcol,top_lev:pver)
@@ -2885,16 +3299,31 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
         - msacwio_grid(:ngrdcol,top_lev:pver)
    call outfld( 'MPDW2I', ftem_grid, pcols, lchnk)
 
-   ftem_grid(:ngrdcol,top_lev:pver) = -prao_grid(:ngrdcol,top_lev:pver) - prco_grid(:ngrdcol,top_lev:pver)&
-        - psacwso_grid(:ngrdcol,top_lev:pver) - bergso_grid(:ngrdcol,top_lev:pver)
+   if (micro_mg_version > 2) then
+      ftem_grid(:ngrdcol,top_lev:pver) = -prao_grid(:ngrdcol,top_lev:pver) - prco_grid(:ngrdcol,top_lev:pver)&
+          - psacwso_grid(:ngrdcol,top_lev:pver) - bergso_grid(:ngrdcol,top_lev:pver)&
+          - psacwgo_grid(:ngrdcol,top_lev:pver) - pgsacwo_grid(:ngrdcol,top_lev:pver)
+   else
+      ftem_grid(:ngrdcol,top_lev:pver) = -prao_grid(:ngrdcol,top_lev:pver) - prco_grid(:ngrdcol,top_lev:pver)&
+          - psacwso_grid(:ngrdcol,top_lev:pver) - bergso_grid(:ngrdcol,top_lev:pver)
+   endif
+
    call outfld( 'MPDW2P', ftem_grid, pcols, lchnk)
 
    ftem_grid(:ngrdcol,top_lev:pver) =  cmeiout_grid(:ngrdcol,top_lev:pver) + qireso_grid(:ngrdcol,top_lev:pver)
    call outfld( 'MPDI2V', ftem_grid, pcols, lchnk)
 
-   ftem_grid(:ngrdcol,top_lev:pver) = -melto_grid(:ngrdcol,top_lev:pver) + mnuccco_grid(:ngrdcol,top_lev:pver) &
-        + mnuccto_grid(:ngrdcol,top_lev:pver) +  bergo_grid(:ngrdcol,top_lev:pver) + homoo_grid(:ngrdcol,top_lev:pver)&
-        + msacwio_grid(:ngrdcol,top_lev:pver)
+   if (micro_mg_version > 2) then
+      ftem_grid(:ngrdcol,top_lev:pver) = -melto_grid(:ngrdcol,top_lev:pver) + mnuccco_grid(:ngrdcol,top_lev:pver) &
+          + mnuccto_grid(:ngrdcol,top_lev:pver) +  bergo_grid(:ngrdcol,top_lev:pver) + homoo_grid(:ngrdcol,top_lev:pver)&
+          + msacwio_grid(:ngrdcol,top_lev:pver)&
+          - qmultgo_grid(:ngrdcol,top_lev:pver)
+   else
+      ftem_grid(:ngrdcol,top_lev:pver) = -melto_grid(:ngrdcol,top_lev:pver) + mnuccco_grid(:ngrdcol,top_lev:pver) &
+          + mnuccto_grid(:ngrdcol,top_lev:pver) +  bergo_grid(:ngrdcol,top_lev:pver) + homoo_grid(:ngrdcol,top_lev:pver)&
+          + msacwio_grid(:ngrdcol,top_lev:pver)
+   endif
+
    call outfld( 'MPDI2W', ftem_grid, pcols, lchnk)
 
    ftem_grid(:ngrdcol,top_lev:pver) = -prcio_grid(:ngrdcol,top_lev:pver) - praio_grid(:ngrdcol,top_lev:pver)
@@ -2936,6 +3365,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    if (micro_mg_version > 1) then
       call outfld('QRSEDTEN',    qrsedten,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
       call outfld('QSSEDTEN',    qssedten,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('MNUCCRIO',    mnuccrio,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    end if
    call outfld('MNUCCDO',     mnuccdo,     psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('MNUCCDOhet',  mnuccdohet,  psetcols, lchnk, avg_subcol_field=use_subcol_microp)
@@ -2953,6 +3383,15 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
 
    if (.not. (micro_mg_version == 1 .and. micro_mg_sub_version == 0)) then
       call outfld('QCRAT',    qcrat,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   end if
+
+   if (micro_mg_version > 2) then
+      call outfld('UMG',        umg,         psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('QGSEDTEN',   qgsedten,         psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('FREQG',       freqg,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('AQGRAU',      qgout2,      psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('ANGRAU',      ngout2,      psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('CLDFGRAU',    cldfgrau,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    end if
 
    ! Example subcolumn outfld call
@@ -3028,6 +3467,24 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    call outfld('FCTM',        fctm_grid,        pcols, lchnk)
    call outfld('FCTSL',       fctsl_grid,       pcols, lchnk)
    call outfld('FCTSLM',      fctslm_grid,      pcols, lchnk)
+
+   if (micro_mg_version > 2) then
+      call outfld('PRACGO',      pracgo_grid,      pcols, lchnk)
+      call outfld('PSACRO',      psacro_grid,      pcols, lchnk)
+      call outfld('PSACWGO',     psacwgo_grid,     pcols, lchnk)
+      call outfld('PGSACWO',     pgsacwo_grid,     pcols, lchnk)
+      call outfld('PGRACSO',     pgracso_grid,     pcols, lchnk)
+      call outfld('PRDGO',       prdgo_grid,       pcols, lchnk)
+      call outfld('QMULTGO',     qmultgo_grid,     pcols, lchnk)
+      call outfld('QMULTRGO',    qmultrgo_grid,    pcols, lchnk)
+      call outfld('LS_REFFGRAU', reff_grau_grid,  pcols, lchnk)
+      call outfld ('NPRACGO',    npracgo_grid,  pcols, lchnk)
+      call outfld ('NSCNGO',     nscngo_grid,  pcols, lchnk)
+      call outfld ('NGRACSO',    ngracso_grid,  pcols, lchnk)
+      call outfld ('NMULTGO',    nmultgo_grid,  pcols, lchnk)
+      call outfld ('NMULTRGO',   nmultrgo_grid,  pcols, lchnk)
+      call outfld ('NPSACWGO',   npsacwgo_grid,  pcols, lchnk)
+   end if
 
    if (micro_mg_adjust_cpt) then
       cp_rh(:ncol, :pver)  = 0._r8

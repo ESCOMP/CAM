@@ -2557,6 +2557,21 @@ cloud liquid (cldliq).
 Default: .true.
 </entry>
 
+<entry id="micro_mg_do_graupel" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+Switch to control whether MG microphysics should prognose
+dense precipitating ice as graupel. mg3 only.
+Default: .true. for mg3
+</entry>
+
+<entry id="micro_mg_do_hail" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+Switch to control whether MG microphysics should prognose
+dense precipitating ice as hail. mg3 only.
+Default: .false.
+</entry>
+
+
 <entry id="micro_mg_num_steps" type="integer" category="microphys"
        group="micro_mg_nl" valid_values="" >
 Number of substeps over MG microphysics.
@@ -2615,6 +2630,12 @@ Set .true. to hold cloud ice number constant.
 Default: .false.
 </entry>
 
+<entry id="micro_mg_ngcons" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+Set .true. to hold cloud graupel number constant.
+Default: .false.
+</entry>
+
 <entry id="micro_mg_ncnst" type="real" category="microphys"
        group="micro_mg_nl" valid_values="" >
 In-cloud droplet number concentration when micro_mg_nccons=.true.
@@ -2624,6 +2645,12 @@ Default: 100.e6 m-3
 <entry id="micro_mg_ninst" type="real" category="microphys"
        group="micro_mg_nl" valid_values="" >
 In-cloud ice number concentration when micro_mg_nicons=.true.
+Default: 0.1e6 m-3
+</entry>
+
+<entry id="micro_mg_ngnst" type="real" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+In-cloud graupel number concentration when micro_mg_nicons=.true.
 Default: 0.1e6 m-3
 </entry>
 
@@ -4551,6 +4578,12 @@ Default: 0
 <entry id="spectralflux" type="logical"  category="radiation"
        group="radiation_nl" valid_values="" >
 Return fluxes per band in addition to the total fluxes.
+Default: FALSE
+</entry>
+
+<entry id="graupel_in_rad" type="logical"  category="radiation"
+       group="radiation_nl" valid_values="" >
+Calculate radiative effect of graupel/hail (using snow optics)
 Default: FALSE
 </entry>
 

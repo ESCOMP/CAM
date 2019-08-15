@@ -233,6 +233,7 @@ end subroutine check_energy_get_integrals
     integer  i,k                                   ! column, level indices
     integer :: ixcldice, ixcldliq                  ! CLDICE and CLDLIQ indices
     integer :: ixrain, ixsnow                      ! RAINQM and SNOWQM indices
+    integer :: ixgrau                              ! GRAUQM index
 !-----------------------------------------------------------------------
 
     lchnk = state%lchnk
@@ -241,6 +242,7 @@ end subroutine check_energy_get_integrals
     call cnst_get_ind('CLDLIQ', ixcldliq, abort=.false.)
     call cnst_get_ind('RAINQM', ixrain,   abort=.false.)
     call cnst_get_ind('SNOWQM', ixsnow,   abort=.false.)
+    call cnst_get_ind('GRAUQM', ixgrau,   abort=.false.)
 
     ! cpairv_loc needs to be allocated to a size which matches state and ptend
     ! If psetcols == pcols, cpairv is the correct size and just copy into cpairv_loc
@@ -289,6 +291,15 @@ end subroutine check_energy_get_integrals
           do i = 1, ncol
              wl(i) = wl(i) + state%q(i,k,ixrain)*state%pdel(i,k)/gravit
              wi(i) = wi(i) + state%q(i,k,ixsnow)*state%pdel(i,k)/gravit
+          end do
+       end do
+    end if
+
+    ! Don't require graupel/hail either, if microphysics doesn't add it.
+    if (ixgrau > 1) then
+       do k = 1, pver
+          do i = 1, ncol
+             wi(i) = wi(i) + state%q(i,k,ixgrau)*state%pdel(i,k)/gravit
           end do
        end do
     end if
@@ -372,6 +383,7 @@ end subroutine check_energy_get_integrals
     integer  i,k                                   ! column, level indices
     integer :: ixcldice, ixcldliq                  ! CLDICE and CLDLIQ indices
     integer :: ixrain, ixsnow                      ! RAINQM and SNOWQM indices
+    integer :: ixgrau                              ! GRAUQM index
 !-----------------------------------------------------------------------
 
     lchnk = state%lchnk
@@ -380,6 +392,7 @@ end subroutine check_energy_get_integrals
     call cnst_get_ind('CLDLIQ', ixcldliq, abort=.false.)
     call cnst_get_ind('RAINQM', ixrain,   abort=.false.)
     call cnst_get_ind('SNOWQM', ixsnow,   abort=.false.)
+    call cnst_get_ind('GRAUQM', ixgrau,   abort=.false.)
 
     ! cpairv_loc needs to be allocated to a size which matches state and ptend
     ! If psetcols == pcols, cpairv is the correct size and just copy into cpairv_loc
@@ -428,6 +441,15 @@ end subroutine check_energy_get_integrals
           do i = 1, ncol
              wl(i) = wl(i) + state%q(i,k,ixrain)*state%pdel(i,k)/gravit
              wi(i) = wi(i) + state%q(i,k,ixsnow)*state%pdel(i,k)/gravit
+          end do
+       end do
+    end if
+
+    ! Don't require graupel/hail either, if microphysics doesn't add it.
+    if (ixgrau > 1) then
+       do k = 1, pver
+          do i = 1, ncol
+             wi(i) = wi(i) + state%q(i,k,ixgrau)*state%pdel(i,k)/gravit
           end do
        end do
     end if
@@ -626,7 +648,7 @@ end subroutine check_energy_get_integrals
     integer  i,k,m                                 ! column, level,constituent indices
     integer :: ixcldice, ixcldliq                  ! CLDICE and CLDLIQ indices
     integer :: ixrain, ixsnow                      ! RAINQM and SNOWQM indices
-
+    integer :: ixgrau                              ! GRAUQM index
 !-----------------------------------------------------------------------
 
     ncol  = state%ncol
@@ -634,12 +656,15 @@ end subroutine check_energy_get_integrals
     call cnst_get_ind('CLDLIQ', ixcldliq, abort=.false.)
     call cnst_get_ind('RAINQM', ixrain,   abort=.false.)
     call cnst_get_ind('SNOWQM', ixsnow,   abort=.false.)
+    call cnst_get_ind('GRAUQM', ixgrau,   abort=.false.)
+
 
     do m = 1,pcnst
 
        if ( any(m == (/ 1, ixcldliq, ixcldice, &
-                           ixrain,   ixsnow    /)) ) exit   ! dont process water substances
-                                                            ! they are checked in check_energy
+                           ixrain,   ixsnow, ixgrau /)) ) exit   ! dont process water substances
+                                                                 ! they are checked in check_energy
+
        if (cnst_get_type_byind(m).eq.'dry') then
           trpdel(:ncol,:) = state%pdeldry(:ncol,:)
        else
@@ -709,6 +734,7 @@ end subroutine check_energy_get_integrals
     integer  i,k                                   ! column, level indices
     integer :: ixcldice, ixcldliq                  ! CLDICE and CLDLIQ indices
     integer :: ixrain, ixsnow                      ! RAINQM and SNOWQM indices
+    integer :: ixgrau                              ! GRAUQM index
     integer :: m                            ! tracer index
     character(len=8) :: tracname   ! tracername
 !-----------------------------------------------------------------------
@@ -720,13 +746,13 @@ end subroutine check_energy_get_integrals
     call cnst_get_ind('CLDLIQ', ixcldliq, abort=.false.)
     call cnst_get_ind('RAINQM', ixrain,   abort=.false.)
     call cnst_get_ind('SNOWQM', ixsnow,   abort=.false.)
+    call cnst_get_ind('GRAUQM', ixgrau,   abort=.false.)
 
     do m = 1,pcnst
 
        if ( any(m == (/ 1, ixcldliq, ixcldice, &
-                           ixrain,   ixsnow    /)) ) exit   ! dont process water substances
-                                                            ! they are checked in check_energy
-
+                           ixrain,   ixsnow, ixgrau /)) ) exit   ! dont process water substances
+                                                                 ! they are checked in check_energy
        tracname = cnst_name(m)
        if (cnst_get_type_byind(m).eq.'dry') then
           trpdel(:ncol,:) = state%pdeldry(:ncol,:)

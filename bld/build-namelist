@@ -2921,6 +2921,9 @@ if ($cfg->get('microphys') =~ /^mg/) {
     add_default($nl, 'micro_mg_berg_eff_factor');
     add_default($nl, 'nucleate_ice_incloud');
     add_default($nl, 'nucleate_ice_strat');
+    add_default($nl, 'micro_mg_do_hail');
+    add_default($nl, 'micro_mg_do_graupel');
+    add_default($nl, 'graupel_in_rad');
     add_default($nl, 'micro_do_massless_droplet_destroyer');
 
     # For CESM2, the decision was made to set micro_do_sb_physics to false
