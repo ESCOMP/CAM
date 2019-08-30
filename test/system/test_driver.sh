@@ -231,10 +231,6 @@ export ACCOUNT=$CAM_ACCOUNT
 export CAM_THREADS=$CAM_THREADS
 export CAM_TASKS=$CAM_TASKS
 
-##Cheyenne hacks to avoid MPI_LAUNCH_TIMEOUT
-MPI_IB_CONGESTED=1
-MPI_LAUNCH_TIMEOUT=40
-
 source /glade/u/apps/ch/opt/lmod/7.5.3/lmod/lmod/init/sh
 
 module load intel/19.0.2
