@@ -121,10 +121,12 @@ subroutine physconst_readnl(nlfile)
    ! Local variables
    integer :: unitn, ierr
    character(len=*), parameter :: subname = 'physconst_readnl'
-   logical :: newg, newsday, newmwh2o, newcpwv, newmwdry, newcpair, newrearth, newtmelt
+   logical :: newg, newsday, newmwh2o, newcpwv, newmwdry, newcpair, newrearth, newtmelt, newomega
+
 
    ! Physical constants needing to be reset (ie. for aqua planet experiments)
-   namelist /physconst_nl/  gravit, sday, mwh2o, cpwv, mwdry, cpair, rearth, tmelt
+   namelist /physconst_nl/  gravit, sday, mwh2o, cpwv, mwdry, cpair, rearth, tmelt, omega
+
    !-----------------------------------------------------------------------------
 
    if (masterproc) then
@@ -151,6 +153,8 @@ subroutine physconst_readnl(nlfile)
    call mpibcast(cpair,       1,  mpir8,   0, mpicom)
    call mpibcast(rearth,      1,  mpir8,   0, mpicom)
    call mpibcast(tmelt,       1,  mpir8,   0, mpicom)
+   call mpibcast(omega,       1,  mpir8,   0, mpicom)
+
 #endif
 
    newg     =  gravit .ne. shr_const_g
@@ -161,8 +165,11 @@ subroutine physconst_readnl(nlfile)
    newcpair =  cpair  .ne. shr_const_cpdair
    newrearth=  rearth .ne. shr_const_rearth
    newtmelt =  tmelt  .ne. shr_const_tkfrz
+   newomega =  omega  .ne. shr_const_omega
 
-   if (newg .or. newsday .or. newmwh2o .or. newcpwv .or. newmwdry .or. newrearth .or. newtmelt) then
+
+
+   if (newg .or. newsday .or. newmwh2o .or. newcpwv .or. newmwdry .or. newrearth .or. newtmelt .or. newomega) then
       if (masterproc) then
          write(iulog,*)'****************************************************************************'
          write(iulog,*)'***    New Physical Constant Values set via namelist                     ***'
@@ -176,11 +183,14 @@ subroutine physconst_readnl(nlfile)
          if (newcpair)   write(iulog,*)'***       CPAIR     ',shr_const_cpdair,cpair,'***'
          if (newrearth)  write(iulog,*)'***       REARTH    ',shr_const_rearth,rearth,'***'
          if (newtmelt)   write(iulog,*)'***       TMELT     ',shr_const_tkfrz,tmelt,'***'
+         if (newomega)   write(iulog,*)'***       OMEGA     ',shr_const_omega,omega,'***'
          write(iulog,*)'****************************************************************************'
       end if
       rga         = 1._r8/gravit
       ra          = 1._r8/rearth
-      omega       = 2.0_R8*pi/sday
+      if (.not. newomega) then
+         omega       = 2.0_R8*pi/sday
+      end if
       cpvir       = cpwv/cpair - 1._r8
       epsilo      = mwh2o/mwdry
 

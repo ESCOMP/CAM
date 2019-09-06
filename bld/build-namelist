@@ -3672,6 +3672,13 @@ my $aqua_planet_sst;
 if ($aqua_mode) {
     add_default($nl, 'aqua_planet_sst', 'val'=>'1');
     $aqua_planet_sst = $nl->get_value('aqua_planet_sst');
+ 
+     my $use_rad_uniform_angle = $FALSE;
+     my $use_rad_uniform_angle = $nl->get_value('use_rad_uniform_angle');
+     if ($use_rad_uniform_angle) {
+         add_default($nl, 'use_rad_uniform_angle');
+         add_default($nl, 'rad_uniform_angle');
+     }
 }
 
 # The following variables are set by namelist variables in the special camexp namelist
@@ -3862,6 +3869,11 @@ EOF
 
 }
 
+ if ($cam_build) {
+     add_default($nl, 'seq_flux_mct_albdif');
+     add_default($nl, 'seq_flux_mct_albdir');
+ }
+
 #-----------------------------------------------------------------------------------------------
 # Rename component logfiles.
 #
@@ -3920,7 +3932,8 @@ foreach my $name (@nl_groups) { $nl_group{$name} = ''; }
 
 # Driver
 @comp_groups = qw(cime_driver_inst seq_cplflds_inparm seq_cplflds_userspec cime_pes
-    seq_infodata_inparm seq_timemgr_inparm prof_inparm papi_inparm pio_default_inparm esmf_inparm);
+    seq_infodata_inparm seq_timemgr_inparm prof_inparm papi_inparm pio_default_inparm esmf_inparm seq_flux_mct_inparm);
+
 $outfile = "$opts{'dir'}/drv_in";
 if ($cam_build) {
     $nl->write($outfile, 'groups'=>\@comp_groups);
