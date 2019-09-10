@@ -144,7 +144,7 @@ type(var_desc_t), allocatable :: abstot_desc(:)
 type(var_desc_t) :: emstot_desc, absnxt_desc(4)
 
 logical  :: use_rad_uniform_angle = .false. ! if true, use the namelist rad_uniform_angle for the zenith calculation
-real(r8) :: rad_uniform_angle
+real(r8) :: rad_uniform_angle = -99._r8
 
 !===============================================================================
 contains
@@ -182,6 +182,11 @@ subroutine radiation_readnl(nlfile)
       end if
       close(unitn)
       call freeunit(unitn)
+   end if
+
+
+   if (use_rad_uniform_angle .and. rad_uniform_angle == -99._r8) then
+      call endrun(sub // ' ERROR - use_rad_uniform_angle is set to .true, but rad_uniform_angle is not set ')
    end if
 
    ! Broadcast namelist variables

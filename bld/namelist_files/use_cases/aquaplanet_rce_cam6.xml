@@ -48,8 +48,8 @@
 <aqua_planet              >.true. </aqua_planet>
 
 <!-- Set the uniform_angle for the radiation package -->
-<use_rad_uniform_angle      > .true.        </use_rad_uniform_angle
-<rad_uniform_angle          > 0.73391095    </rad_uniform_angle
+<use_rad_uniform_angle      > .true.        </use_rad_uniform_angle>
+<rad_uniform_angle          > 0.73391095    </rad_uniform_angle>
 
 
 <!-- Revised physics constants for ape experiments -->

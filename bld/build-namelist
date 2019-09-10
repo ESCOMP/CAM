@@ -3672,13 +3672,6 @@ my $aqua_planet_sst;
 if ($aqua_mode) {
     add_default($nl, 'aqua_planet_sst', 'val'=>'1');
     $aqua_planet_sst = $nl->get_value('aqua_planet_sst');
- 
-     my $use_rad_uniform_angle = $FALSE;
-     my $use_rad_uniform_angle = $nl->get_value('use_rad_uniform_angle');
-     if ($use_rad_uniform_angle) {
-         add_default($nl, 'use_rad_uniform_angle');
-         add_default($nl, 'rad_uniform_angle');
-     }
 }
 
 # The following variables are set by namelist variables in the special camexp namelist

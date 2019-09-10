@@ -189,7 +189,7 @@ subroutine physconst_readnl(nlfile)
       rga         = 1._r8/gravit
       ra          = 1._r8/rearth
       if (.not. newomega) then
-         omega       = 2.0_R8*pi/sday
+         omega       = 2.0_r8*pi/sday
       end if
       cpvir       = cpwv/cpair - 1._r8
       epsilo      = mwh2o/mwdry

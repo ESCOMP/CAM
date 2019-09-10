@@ -149,7 +149,7 @@ character(len=4) :: diag(0:N_DIAG) =(/'    ','_d1 ','_d2 ','_d3 ','_d4 ','_d5 ',
 ! averaging time interval for zenith angle
 real(r8) :: dt_avg = 0._r8
 
-real(r8) :: rad_uniform_angle
+real(r8) :: rad_uniform_angle = -99._r8
 
 ! PIO descriptors (for restarts)
 type(var_desc_t) :: cospcnt_desc
@@ -191,6 +191,10 @@ subroutine radiation_readnl(nlfile)
       end if
       close(unitn)
       call freeunit(unitn)
+   end if
+
+   if (use_rad_uniform_angle .and. rad_uniform_angle == -99._r8) then
+      call endrun(sub // ' ERROR - use_rad_uniform_angle is set to .true, but rad_uniform_angle is not set ')
    end if
 
    ! Broadcast namelist variables
