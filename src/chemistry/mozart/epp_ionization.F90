@@ -249,7 +249,7 @@ contains
   !-----------------------------------------------------------------------------
   !-----------------------------------------------------------------------------
   function interp_ionpairs( ncol, lchnk, pmid, temp, input ) result( ionpairs )
-    use interpolate_data, only : lininterp
+    use interpolate_data, only : lininterp, lininterp_init, lininterp_finish, extrap_method_zero, interp_type
     use physconst,        only : rairv
     use cam_history,      only : outfld
 
@@ -263,6 +263,7 @@ contains
     real(r8) :: wrk(ncol,input%nlevs)
     real(r8) :: ions_diags(ncol,pver) ! for diagnostics
     integer :: i
+    type (interp_type) :: interp_wgts
 
     if (input%time_coord%time_interp) then
        ! time interpolate
@@ -278,8 +279,12 @@ contains
     do i = 1,ncol
 
        ! interpolate over log pressure
-       call lininterp( wrk(i,:input%nlevs), log(input%press(:input%nlevs)*1.e2_r8), input%nlevs, &
-                       ionpairs(i,:pver), log(pmid(i,:pver)), pver )
+       call lininterp_init( log(input%press(:input%nlevs)*1.e2_r8), input%nlevs, &
+                            log(pmid(i,:pver)), pver, extrap_method_zero, interp_wgts )
+       call lininterp( wrk(i,:input%nlevs), input%nlevs, &
+                       ionpairs(i,:pver), pver, interp_wgts )
+       call lininterp_finish(interp_wgts)
+       
        ions_diags(i,:pver) = ionpairs(i,:pver)
        
        if ( index(trim(input%units), 'g^-1') > 0 ) then
