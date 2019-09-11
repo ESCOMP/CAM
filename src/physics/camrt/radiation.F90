@@ -184,11 +184,6 @@ subroutine radiation_readnl(nlfile)
       call freeunit(unitn)
    end if
 
-
-   if (use_rad_uniform_angle .and. rad_uniform_angle == -99._r8) then
-      call endrun(sub // ' ERROR - use_rad_uniform_angle is set to .true, but rad_uniform_angle is not set ')
-   end if
-
    ! Broadcast namelist variables
    call mpi_bcast(absems_data, len(absems_data), mpi_character, mstrid, mpicom, ierr)
    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: absems_data")
@@ -206,6 +201,10 @@ subroutine radiation_readnl(nlfile)
    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: use_rad_uniform_angle")
    call mpi_bcast(rad_uniform_angle, 1, mpi_real8,  mstrid, mpicom, ierr)
    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: rad_uniform_angle")
+
+   if (use_rad_uniform_angle .and. rad_uniform_angle == -99._r8) then
+      call endrun(sub // ' ERROR - use_rad_uniform_angle is set to .true, but rad_uniform_angle is not set ')
+   end if
 
    ! Convert iradsw, iradlw and irad_always from hours to timesteps if necessary
    dtime  = get_step_size()
