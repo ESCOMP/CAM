@@ -634,12 +634,12 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-  <test compset="FC6X2000" grid="f05_f05_mg17" name="SMS_D_Ln3"   testmods="cam/outfrq9s">
+  <test compset="FC6X2000" grid="f05_f05_mg17" name="SMS_D_Ln3"   testmods="cam/outfrq9s_576tsks">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
     </machines>
   </test>
-  <test compset="FC6X2000" grid="f05_f05_mg17" name="ERS_Ln9"   testmods="cam/outfrq9s">
+  <test compset="FC6X2000" grid="f05_f05_mg17" name="ERS_Ln9"   testmods="cam/outfrq9s_576tsks">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
     </machines>
