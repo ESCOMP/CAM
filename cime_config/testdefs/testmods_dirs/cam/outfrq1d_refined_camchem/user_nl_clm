@@ -1,0 +1,33 @@
+!----------------------------------------------------------------------------------
+! Users should add all user specific namelist changes below in the form of 
+! namelist_var = new_namelist_value 
+!
+! Include namelist variables for drv_flds_in ONLY if -megan and/or -drydep options
+! are set in the CLM_NAMELIST_OPTS env variable.
+!
+! EXCEPTIONS: 
+! Set use_cndv           by the compset you use and the CLM_BLDNML_OPTS -dynamic_vegetation setting
+! Set use_vichydro       by the compset you use and the CLM_BLDNML_OPTS -vichydro           setting
+! Set use_cn             by the compset you use and CLM_BLDNML_OPTS -bgc  setting
+! Set use_crop           by the compset you use and CLM_BLDNML_OPTS -crop setting
+! Set spinup_state       by the CLM_BLDNML_OPTS -bgc_spinup      setting
+! Set irrigate           by the CLM_BLDNML_OPTS -irrig           setting
+! Set dtime              with L_NCPL                             option
+! Set fatmlndfrc         with LND_DOMAIN_PATH/LND_DOMAIN_FILE    options
+! Set finidat            with RUN_REFCASE/RUN_REFDATE/RUN_REFTOD options for hybrid or branch cases
+!                        (includes $inst_string for multi-ensemble cases)
+! Set glc_grid           with CISM_GRID                          option
+! Set glc_smb            with GLC_SMB                            option
+! Set maxpatch_glcmec    with GLC_NEC                            option
+! Set glc_do_dynglacier  with GLC_TWO_WAY_COUPLING               env variable
+!----------------------------------------------------------------------------------
+hist_nhtfrq = -24
+hist_mfilt  = 1
+hist_ndens  = 1
+
+finidat = '$DIN_LOC_ROOT/lnd/clm2/initdata/opt_se_cslam_topo.FCHIST.ne30_ne30_mg17.default_spin_up_TS1.clm2.r.2012-11-01-00000_c190810.nc'
+use_init_interp = .true.
+
+fsurdat = '$DIN_LOC_ROOT/lnd/clm2/surfdata_map/surfdata_ne0CONUSne30x8_hist_16pfts_Irrig_CMIP6_simyr1850_c190814.nc'
+
+flanduse_timeseries = '$DIN_LOC_ROOT/lnd/clm2/surfdata_map/landuse.timeseries_ne0CONUSne30x8_hist_16pfts_Irrig_CMIP6_simyr1850-2015_c190815.nc'

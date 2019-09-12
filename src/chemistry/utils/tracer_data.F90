@@ -8,8 +8,8 @@ module tracer_data
 !----------------------------------------------------------------------- 
 
   use perf_mod,         only : t_startf, t_stopf
-  use shr_kind_mod,     only : r8 => shr_kind_r8,r4 => shr_kind_r4, shr_kind_cl, SHR_KIND_CS
-  use time_manager,     only : get_curr_date, get_step_size, get_curr_calday
+  use shr_kind_mod,     only : r8 => shr_kind_r8, shr_kind_cl
+  use time_manager,     only : get_curr_date, get_step_size
   use spmd_utils,       only : masterproc
   use ppgrid,           only : pcols, pver, pverp, begchunk, endchunk
   use cam_abortutils,   only : endrun
@@ -19,7 +19,6 @@ module tracer_data
   use time_manager,     only : set_time_float_from_date, set_date_from_time_float
   use pio,              only : file_desc_t, var_desc_t, &
                                pio_seterrorhandling, pio_internal_error, pio_bcast_error, &
-                               pio_setdebuglevel, &
                                pio_char, pio_noerr, &
                                pio_inq_dimid, pio_inq_varid, &
                                pio_def_dim, pio_def_var, &
@@ -116,6 +115,7 @@ module tracer_data
      logical,  allocatable, dimension(:) :: in_pbuf
      logical :: has_ps = .false.
      logical :: zonal_ave = .false.
+     logical :: unstructured = .false.
      logical :: alt_data = .false.   
      logical :: geop_alt = .false.
      logical :: cyclical = .false.
@@ -156,7 +156,6 @@ contains
 
     use mo_constants,    only : d2r
     use dyn_grid,        only : get_dyn_grid_parm
-    use string_utils,    only : to_upper
     use horizontal_interpolate, only : xy_interp_init
 #if ( defined SPMD )
     use mpishorthand,    only: mpicom, mpir8, mpiint
@@ -208,8 +207,6 @@ contains
     file%cyclical = .false.  
     file%cyclical_list = .false.  
 
-! does not work when compiled with pathf90
-!    select case ( to_upper(data_type) )
     select case ( data_type )
     case( 'FIXED' )
        file%fixed = .true.
@@ -282,10 +279,13 @@ contains
     endif
 
     call pio_seterrorhandling(File%curr_fileid, PIO_BCAST_ERROR)
-    ierr = pio_inq_dimid( file%curr_fileid, 'lon', idx )
+    ierr = pio_inq_dimid( file%curr_fileid, 'ncol', idx )
+    file%unstructured = (ierr==PIO_NOERR)
+    if (.not.file%unstructured) then
+       ierr = pio_inq_dimid( file%curr_fileid, 'lon', idx )
+       file%zonal_ave = (ierr/=PIO_NOERR)
+    endif
     call pio_seterrorhandling(File%curr_fileid, PIO_INTERNAL_ERROR)
-
-    file%zonal_ave = (ierr/=PIO_NOERR)
 
     plon = get_dyn_grid_parm('plon')
     plat = get_dyn_grid_parm('plat')
@@ -296,23 +296,26 @@ contains
 
     else
 
-       call get_dimension( file%curr_fileid, 'lon', file%nlon, dimid=old_dimid, data=file%lons )
+       if (.not. file%unstructured ) then
+          call get_dimension( file%curr_fileid, 'lon', file%nlon, dimid=old_dimid, data=file%lons )
 
-       file%lons =  file%lons * d2r
-
-       lon_dimid = old_dimid
-
+          file%lons =  file%lons * d2r
+      
+          lon_dimid = old_dimid
+       end if
     endif
 
     ierr = pio_inq_dimid( file%curr_fileid, 'time', old_dimid)
 
-    ! Hack to work with weird netCDF and old gcc or NAG bug.
-    tim_dimid = old_dimid
+    if (.not. file%unstructured ) then
+       ! Hack to work with weird netCDF and old gcc or NAG bug.
+       tim_dimid = old_dimid
 
-    call get_dimension( file%curr_fileid, 'lat', file%nlat, dimid=old_dimid, data=file%lats )
-    file%lats =  file%lats * d2r
+       call get_dimension( file%curr_fileid, 'lat', file%nlat, dimid=old_dimid, data=file%lats )
+       file%lats =  file%lats * d2r
 
-    lat_dimid = old_dimid
+       lat_dimid = old_dimid
+    endif
 
     allocate( file%ps(file%nlon,file%nlat), stat=astat )
     if( astat /= 0 ) then
@@ -328,7 +331,7 @@ contains
 
     call pio_seterrorhandling(File%curr_fileid, PIO_INTERNAL_ERROR)
 
-    if ( file%has_ps) then
+    if ( file%has_ps .and. .not.file%unstructured ) then
        if ( file%zonal_ave ) then
           ierr = pio_inq_vardimid (file%curr_fileid, file%ps_id, dimids(1:2))
           do did = 1,2
@@ -524,7 +527,7 @@ contains
                 flds(f)%order(did) = ZA_TIMDIM
              endif
           enddo
-       else if ( flds(f)%srf_fld ) then
+       else if ( flds(f)%srf_fld .and. .not.file%unstructured ) then
           ierr = pio_inq_vardimid (file%curr_fileid, flds(f)%var_id, dimids(1:3))
           do did = 1,3
              if      ( dimids(did) == lon_dimid ) then
@@ -538,7 +541,7 @@ contains
                 flds(f)%order(did) = PS_TIMDIM
              endif
           enddo
-       else
+       else if (.not. file%unstructured ) then
           ierr = pio_inq_vardimid (file%curr_fileid, flds(f)%var_id, dimids)
           do did = 1,4
              if      ( dimids(did) == lon_dimid ) then
@@ -624,7 +627,6 @@ contains
 !-----------------------------------------------------------------------
   subroutine advance_trcdata( flds, file, state, pbuf2d )
     use physics_types,only : physics_state
-    use physics_buffer, only : physics_buffer_desc
 
     implicit none
 
@@ -677,7 +679,6 @@ contains
 !-------------------------------------------------------------------
   subroutine get_fld_data( flds, field_name, data, ncol, lchnk, pbuf )
 
-    use physics_buffer, only : physics_buffer_desc, pbuf_get_field
 
     implicit none
 
@@ -848,10 +849,8 @@ contains
     !-----------------------------------------------------------------------
     !	... local variables
     !-----------------------------------------------------------------------
-    integer :: pos, pos1, istat
+    integer :: pos, istat
     character(len=shr_kind_cl) :: fn_new, line, filepath
-    character(len=6)   :: seconds
-    character(len=5)   :: num
     integer :: ios,unitnumber
     logical :: abort_run
  
@@ -1220,40 +1219,58 @@ contains
              call read_za_trc( fids(i), flds(f)%var_id, flds(f)%input(i)%data, strt3, cnt3, file, &
                   (/ flds(f)%order(ZA_LATDIM),flds(f)%order(ZA_LEVDIM) /) )
           else if ( flds(f)%srf_fld ) then
-             cnt3( flds(f)%coords(LONDIM)) = file%nlon
-             cnt3( flds(f)%coords(LATDIM)) = file%nlat
-             cnt3( flds(f)%coords(PS_TIMDIM)) = 1
-             strt3(flds(f)%coords(PS_TIMDIM)) = recnos(i)
-             call read_2d_trc( fids(i), flds(f)%var_id, flds(f)%input(i)%data(:,1,:), strt3, cnt3, file, &
-                 (/ flds(f)%order(LONDIM),flds(f)%order(LATDIM) /) )
+             if ( file%unstructured ) then
+                ! read data directly onto the unstructureed phys grid -- assumes input data is on same grid as phys
+                call read_physgrid_2d( fids(i), flds(f)%fldnam,  recnos(i), flds(f)%input(i)%data(:,1,:) )
+             else   
+                cnt3( flds(f)%coords(LONDIM)) = file%nlon
+                cnt3( flds(f)%coords(LATDIM)) = file%nlat
+                cnt3( flds(f)%coords(PS_TIMDIM)) = 1
+                strt3(flds(f)%coords(PS_TIMDIM)) = recnos(i)
+                call read_2d_trc( fids(i), flds(f)%var_id, flds(f)%input(i)%data(:,1,:), strt3, cnt3, file, &
+                     (/ flds(f)%order(LONDIM),flds(f)%order(LATDIM) /) )
+             endif
           else
-             cnt4(flds(f)%coords(LONDIM)) = file%nlon
-             cnt4(flds(f)%coords(LATDIM)) = file%nlat
-             cnt4(flds(f)%coords(LEVDIM)) = file%nlev
-             cnt4(flds(f)%coords(TIMDIM)) = 1
-             strt4(flds(f)%coords(TIMDIM)) = recnos(i)
-             call read_3d_trc( fids(i), flds(f)%var_id, flds(f)%input(i)%data, strt4, cnt4, file, &
-                  (/ flds(f)%order(LONDIM),flds(f)%order(LATDIM),flds(f)%order(LEVDIM) /))
+             if ( file%unstructured ) then
+                ! read data directly onto the unstructureed phys grid -- assumes input data is on same grid as phys
+                if ( file%alt_data ) then
+                   call read_physgrid_3d( fids(i), flds(f)%fldnam, 'altitude', file%nlev, recnos(i), flds(f)%input(i)%data(:,:,:) )
+                else
+                   call read_physgrid_3d( fids(i), flds(f)%fldnam, 'lev', file%nlev, recnos(i), flds(f)%input(i)%data(:,:,:) )
+                end if
+             else   
+                cnt4(flds(f)%coords(LONDIM)) = file%nlon
+                cnt4(flds(f)%coords(LATDIM)) = file%nlat
+                cnt4(flds(f)%coords(LEVDIM)) = file%nlev
+                cnt4(flds(f)%coords(TIMDIM)) = 1
+                strt4(flds(f)%coords(TIMDIM)) = recnos(i)
+                call read_3d_trc( fids(i), flds(f)%var_id, flds(f)%input(i)%data, strt4, cnt4, file, &
+                     (/ flds(f)%order(LONDIM),flds(f)%order(LATDIM),flds(f)%order(LEVDIM) /))
+             endif
 
           endif
 
        enddo
 
        if ( file%has_ps ) then
-          cnt3 = 1
-          strt3 = 1
-          if (.not. file%zonal_ave) then
-             cnt3(file%ps_coords(LONDIM)) = file%nlon
-          end if
-          cnt3(file%ps_coords(LATDIM)) = file%nlat
-          cnt3(file%ps_coords(PS_TIMDIM)) = 1
-          strt3(file%ps_coords(PS_TIMDIM)) = recnos(i)
-          if (file%zonal_ave) then
-             call read_2d_trc( fids(i), file%ps_id, file%ps_in(i)%data, strt3(1:2), cnt3(1:2), file, &
-                  (/ 1, 2 /) )
+          if ( file%unstructured ) then
+             call read_physgrid_2d( fids(i), 'PS',  recnos(i), file%ps_in(i)%data )
           else
-             call read_2d_trc( fids(i), file%ps_id, file%ps_in(i)%data, strt3, cnt3, file, &
-                  (/ file%ps_order(LONDIM),file%ps_order(LATDIM) /) )
+             cnt3 = 1
+             strt3 = 1
+             if (.not. file%zonal_ave) then
+                cnt3(file%ps_coords(LONDIM)) = file%nlon
+             end if
+             cnt3(file%ps_coords(LATDIM)) = file%nlat
+             cnt3(file%ps_coords(PS_TIMDIM)) = 1
+             strt3(file%ps_coords(PS_TIMDIM)) = recnos(i)
+             if (file%zonal_ave) then
+                call read_2d_trc( fids(i), file%ps_id, file%ps_in(i)%data, strt3(1:2), cnt3(1:2), file, &
+                     (/ 1, 2 /) )
+             else
+                call read_2d_trc( fids(i), file%ps_id, file%ps_in(i)%data, strt3, cnt3, file, &
+                     (/ file%ps_order(LONDIM),file%ps_order(LATDIM) /) )
+             end if
           end if
        endif
 
@@ -1262,7 +1279,6 @@ contains
   end subroutine read_next_trcdata
 
 !------------------------------------------------------------------------
-
 
   subroutine read_2d_trc( fid, vid, loc_arr, strt, cnt, file, order )
     use interpolate_data,  only : lininterp_init, lininterp, interp_type, lininterp_finish
@@ -1280,11 +1296,11 @@ contains
     real(r8),intent(out)  :: loc_arr(:,:)
     type (trfile), intent(in) :: file
 
-    real(r8) :: to_lats(pcols), to_lons(pcols), wrk(pcols)
+    real(r8) :: to_lats(pcols), to_lons(pcols)
     real(r8), allocatable, target :: wrk2d(:,:)
     real(r8), pointer :: wrk2d_in(:,:)
 
-    integer :: tsize, c, i, ierr, ncols
+    integer :: c, ierr, ncols
     real(r8), parameter :: zero=0_r8, twopi=2_r8*pi
     type(interp_type) :: lon_wgts, lat_wgts    
     integer :: lons(pcols), lats(pcols)
@@ -1380,10 +1396,7 @@ contains
 
   subroutine read_za_trc( fid, vid, loc_arr, strt, cnt, file, order )
     use interpolate_data, only : lininterp_init, lininterp, interp_type, lininterp_finish
-    use phys_grid,        only : pcols, begchunk, endchunk, get_ncols_p, get_rlat_all_p, get_rlon_all_p	
-    use mo_constants,     only : pi
-!    use dycore,           only : dycore_is		
-    use polar_avg,        only : polar_average
+    use phys_grid,        only : pcols, begchunk, endchunk, get_ncols_p, get_rlat_all_p
 
     implicit none
     type(file_desc_t), intent(in) :: fid
@@ -1394,7 +1407,7 @@ contains
     type (trfile),     intent(in) :: file
 
     type(interp_type) :: lat_wgts
-    real(r8) :: to_lats(pcols), to_lons(pcols), wrk(pcols)
+    real(r8) :: to_lats(pcols), wrk(pcols)
     real(r8), allocatable, target :: wrk2d(:,:)
     real(r8), pointer :: wrk2d_in(:,:)
     integer :: c, k, ierr, ncols
@@ -1440,11 +1453,75 @@ contains
     else
        deallocate(wrk2d_in)
     end if
-!    if(dycore_is('LR')) call polar_average(loc_arr)
   end subroutine read_za_trc
 
 !------------------------------------------------------------------------
+! this assumes the input data is gridded to match the physics grid
+  subroutine read_physgrid_2d(ncid, varname, recno, data )
 
+    use ncdio_atm,        only: infld
+    use cam_grid_support, only: cam_grid_check, cam_grid_id, cam_grid_get_dim_names
+
+    type(file_desc_t) :: ncid
+    character(len=*), intent(in) :: varname
+    integer, intent(in) :: recno
+    real(r8), intent(out) :: data(1:pcols,begchunk:endchunk)
+
+    logical :: found
+    character(len=8) :: dim1name, dim2name
+    integer :: grid_id  ! grid ID for data mapping
+
+    grid_id = cam_grid_id('physgrid')
+    if (.not. cam_grid_check(grid_id)) then
+      call endrun('tracer_data::read_physgrid_2d: Internal error, no "physgrid" grid')
+    end if
+    call cam_grid_get_dim_names(grid_id, dim1name, dim2name)
+
+    call infld( varname, ncid, dim1name, dim2name, 1, pcols, begchunk, endchunk, &
+                data, found, gridname='physgrid', timelevel=recno )
+
+    if(.not. found) then
+       call endrun('tracer_data::read_physgrid_2d: Could not find '//trim(varname)//' field in met input datafile')
+    end if
+
+  end subroutine read_physgrid_2d
+  
+!------------------------------------------------------------------------
+!------------------------------------------------------------------------
+! this assumes the input data is gridded to match the physics grid
+  subroutine read_physgrid_3d(ncid, varname, vrt_coord_name, nlevs, recno, data )
+
+    use ncdio_atm,        only: infld
+    use cam_grid_support, only: cam_grid_check, cam_grid_id, cam_grid_get_dim_names
+
+    type(file_desc_t) :: ncid
+    character(len=*), intent(in) :: varname
+    character(len=*), intent(in) :: vrt_coord_name
+    integer, intent(in) :: nlevs
+    integer, intent(in) :: recno
+    real(r8), intent(out) :: data(1:pcols,1:nlevs,begchunk:endchunk)
+
+    logical :: found
+    character(len=8) :: dim1name, dim2name
+    integer :: grid_id  ! grid ID for data mapping
+
+    grid_id = cam_grid_id('physgrid')
+    if (.not. cam_grid_check(grid_id)) then
+      call endrun('tracer_data::read_physgrid_3d: Internal error, no "physgrid" grid')
+    end if
+    call cam_grid_get_dim_names(grid_id, dim1name, dim2name)
+
+    call infld( varname, ncid, dim1name, vrt_coord_name, dim2name, 1, pcols, 1, nlevs, begchunk, endchunk, &
+                data, found, gridname='physgrid', timelevel=recno )
+
+    if(.not. found) then
+       call endrun('tracer_data::read_physgrid_3d: Could not find '//trim(varname)//' field in met input datafile')
+    end if
+
+  end subroutine read_physgrid_3d
+  
+  !------------------------------------------------------------------------
+  
   subroutine read_3d_trc( fid, vid, loc_arr, strt, cnt, file, order)
     use interpolate_data, only : lininterp_init, lininterp, interp_type, lininterp_finish
     use phys_grid,        only : pcols, begchunk, endchunk, get_ncols_p, get_rlat_all_p, get_rlon_all_p, get_lon_all_p,&
@@ -1463,11 +1540,10 @@ contains
     
     type (trfile), intent(in) :: file
 
-    integer :: i,j,k, astat, c, ncols
+    integer :: astat, c, ncols
     integer :: lons(pcols), lats(pcols)
 
-    integer                     :: jlim(2), jl, ju, ierr
-    integer                     :: gndx
+    integer :: ierr
 
     real(r8), allocatable, target :: wrk3d(:,:,:)
     real(r8), pointer :: wrk3d_in(:,:,:)
@@ -1497,8 +1573,6 @@ contains
     else
        wrk3d_in => wrk3d
     end if
-
-    j=1
 
 ! If weighting by latitude, then perform horizontal interpolation by using weight_x, weight_y
 
@@ -1553,7 +1627,6 @@ contains
     use mo_util,      only : rebin
     use physics_types,only : physics_state
     use physconst,    only : cday, rga
-    use physics_buffer, only : physics_buffer_desc, pbuf_get_field
 
     implicit none
 
@@ -1794,7 +1867,7 @@ contains
     integer, intent(out) :: cyc_ndx_end
     integer, intent(in)  :: cyc_yr
 
-    integer, allocatable , dimension(:) :: dates, datesecs
+    integer, allocatable , dimension(:) :: dates
     integer :: timesize, i, astat, year, ierr
     type(var_desc_T) :: dateid
     call get_dimension( fileid, 'time', timesize )
@@ -1849,7 +1922,7 @@ contains
     integer, optional, intent(in) :: cyc_yr
 
     character(len=shr_kind_cl) :: filen, filepath
-    integer :: year, month, day, dsize, i, timesize
+    integer :: year, month, day, i, timesize
     integer :: dateid,secid
     integer, allocatable , dimension(:) :: dates, datesecs
     integer :: astat, ierr
@@ -2068,7 +2141,7 @@ contains
     type(file_desc_t), intent(inout) :: piofile
     type(trfile), intent(inout) :: tr_file
 
-    integer :: ioerr, slen   ! error status
+    integer :: ioerr   ! error status
     if(associated(tr_file%currfnameid)) then
        ioerr = pio_put_var(pioFile, tr_file%currfnameid, tr_file%curr_filename)
        deallocate(tr_file%currfnameid)
@@ -2135,7 +2208,7 @@ contains
     !---------------------------------------------------------------
     !   ... local variables
     !---------------------------------------------------------------
-    integer  :: i, j, n
+    integer  :: i, j
     integer  :: sil
     real(r8) :: tl, y
     real(r8) :: bot, top
