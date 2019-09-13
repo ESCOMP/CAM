@@ -29,7 +29,7 @@ module atm_comp_mct
   use atm_import_export
   use cam_comp,          only: cam_init, cam_run1, cam_run2, cam_run3, cam_run4, cam_final
   use cam_instance     , only: cam_instance_init, inst_suffix, inst_index
-  use cam_control_mod  , only: initial_run, dart_mode, cam_ctrl_set_orbit
+  use cam_control_mod  , only: cam_ctrl_set_orbit
   use radiation        , only: radiation_nextsw_cday
   use phys_grid        , only: get_ncols_p, ngcols, get_gcol_p, get_rlat_all_p, &
 	                       get_rlon_all_p, get_area_all_p
@@ -79,6 +79,8 @@ module atm_comp_mct
   integer,                 pointer :: dof(:) ! needed for pio_init decomp for restarts
   type(seq_infodata_type), pointer :: infodata
 
+  logical :: dart_mode = .false.
+
 !================================================================================
 CONTAINS
 !================================================================================
@@ -122,8 +124,6 @@ CONTAINS
     logical           :: perpetual_run         ! If in perpetual mode or not
     integer           :: perpetual_ymd         ! Perpetual date (YYYYMMDD)
 
-    logical           :: dart_mode_in
-
     real(r8)          :: nextsw_cday           ! calendar of next atm shortwave
     integer           :: stepno                ! time step
     integer           :: dtime                 ! time step increment (sec)
@@ -153,7 +153,7 @@ CONTAINS
     !
     call seq_cdata_setptrs(cdata_a, ID=ATMID, mpicom=mpicom_atm, &
          gsMap=gsMap_atm, dom=dom_a, infodata=infodata,          &
-         post_assimilation=dart_mode_in)
+         post_assimilation=dart_mode)
 
     if (first_time) then
 
@@ -190,6 +190,9 @@ CONTAINS
           endif
 
           write(iulog,*) "CAM atmosphere model initialization"
+          if (dart_mode) then
+             write(iulog,*) "***DART mode ON***"
+          end if
        endif
 
        call shr_file_getLogUnit (shrlogunit)
@@ -211,7 +214,7 @@ CONTAINS
             orb_eccen=eccen, orb_mvelpp=mvelpp, orb_lambm0=lambm0, orb_obliqr=obliqr, &
             perpetual=perpetual_run, perpetual_ymd=perpetual_ymd)
 
-       !TODO: the following strings must not be hard-wired - must have module variables
+       ! set the run type
        initial_run = .false.
        restart_run = .false.
        branch_run  = .false.
@@ -223,6 +226,13 @@ CONTAINS
           branch_run = .true.
        else
           call shr_sys_abort('atm_init_mct: ERROR: unknown start_type' // start_type )
+       end if
+
+       ! DART always starts up as an initial run.
+       if (dart_mode) then
+          initial_run = .true.
+          restart_run = .false.
+          branch_run  = .false.
        end if
 
        ! Extract info from the eclock passed from coupler to initialize
@@ -243,7 +253,6 @@ CONTAINS
        call cam_init( &
             caseid=caseid, &
             ctitle=ctitle, &
-            dart_mode=dart_mode_in, &
             model_doi_url=model_doi_url, &
             initial_run_in=initial_run, &
             restart_run_in=restart_run, &
