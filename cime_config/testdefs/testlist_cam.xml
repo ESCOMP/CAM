@@ -892,6 +892,11 @@
      <machine name="cheyenne" compiler="intel" category="waccm"/>
     </machines>
   </test>
+  <test compset="FWmadSD" grid="f19_f19_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s">
+    <machines>
+     <machine name="cheyenne" compiler="intel" category="waccm"/>
+    </machines>
+  </test>
   <test compset="FWmaSD" grid="f19_f19_mg17" name="ERP_Ln9" testmods="cam/outfrq9s">
     <machines>
      <machine name="cheyenne" compiler="intel" category="waccm"/>
