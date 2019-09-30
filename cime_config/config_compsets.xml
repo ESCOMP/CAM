@@ -253,6 +253,11 @@
     <lname>2000_CAM50_SLND_SICE_DOCN%SOMAQP_SROF_SGLC_SWAV</lname>
   </compset>
 
+  <compset>
+    <alias>QPRCEMIP</alias>
+    <lname>2000_CAM60_SLND_SICE_DOCN%AQP11_SROF_SGLC_SWAV</lname>
+  </compset>
+
   <!-- ****************************** -->
   <!-- WACCM science supported compsets -->
   <!-- ****************************** -->

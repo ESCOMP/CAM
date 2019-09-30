@@ -123,6 +123,7 @@ integer :: irad_always = 0 ! Specifies length of time in timesteps (positive)
                            ! initial or restart run
 logical :: use_rad_dt_cosz  = .false. ! if true, use radiation dt for all cosz calculations
 logical :: spectralflux     = .false. ! calculate fluxes (up and down) per band.
+logical :: use_rad_uniform_angle = .false. ! if true, use the namelist rad_uniform_angle for the coszrs calculation
 
 ! Physics buffer indices
 integer :: qrs_idx      = 0 
@@ -144,6 +145,8 @@ character(len=4) :: diag(0:N_DIAG) =(/'    ','_d1 ','_d2 ','_d3 ','_d4 ','_d5 ',
 ! averaging time interval for zenith angle
 real(r8) :: dt_avg = 0._r8
 
+real(r8) :: rad_uniform_angle = -99._r8
+
 ! PIO descriptors (for restarts)
 type(var_desc_t) :: cospcnt_desc
 
@@ -157,7 +160,7 @@ subroutine radiation_readnl(nlfile)
 
    use namelist_utils,  only: find_group_name
    use units,           only: getunit, freeunit
-   use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_integer, mpi_logical
+   use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_integer, mpi_logical, mpi_real8
 
    character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
@@ -167,7 +170,7 @@ subroutine radiation_readnl(nlfile)
    character(len=*), parameter :: sub = 'radiation_readnl'
 
    namelist /radiation_nl/ iradsw, iradlw, irad_always, &
-                           use_rad_dt_cosz, spectralflux
+                           use_rad_dt_cosz, spectralflux, use_rad_uniform_angle, rad_uniform_angle
    !-----------------------------------------------------------------------------
 
    if (masterproc) then
@@ -195,6 +198,14 @@ subroutine radiation_readnl(nlfile)
    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: use_rad_dt_cosz")
    call mpi_bcast(spectralflux, 1, mpi_logical, mstrid, mpicom, ierr)
    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: spectralflux")
+   call mpi_bcast(use_rad_uniform_angle, 1, mpi_logical, mstrid, mpicom, ierr)
+   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: use_rad_uniform_angle")
+   call mpi_bcast(rad_uniform_angle, 1, mpi_real8,  mstrid, mpicom, ierr)
+   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: rad_uniform_angle")
+
+   if (use_rad_uniform_angle .and. rad_uniform_angle == -99._r8) then
+      call endrun(sub // ' ERROR - use_rad_uniform_angle is set to .true, but rad_uniform_angle is not set ')
+   end if
 
    ! Convert iradsw, iradlw and irad_always from hours to timesteps if necessary
    dtime  = get_step_size()
@@ -849,9 +860,15 @@ subroutine radiation_tend( &
 
    call shr_orb_decl(calday, eccen, mvelpp, lambm0, obliqr, &
                      delta, eccf)
-   do i = 1, ncol
-      coszrs(i) = shr_orb_cosz(calday, clat(i), clon(i), delta, dt_avg)
-   end do
+   if (use_rad_uniform_angle) then
+      do i = 1, ncol
+         coszrs(i) = shr_orb_cosz(calday, clat(i), clon(i), delta, dt_avg, uniform_angle=rad_uniform_angle)
+      end do
+   else
+      do i = 1, ncol
+         coszrs(i) = shr_orb_cosz(calday, clat(i), clon(i), delta, dt_avg)
+      end do
+   end if
 
    ! Gather night/day column indices.
    Nday = 0

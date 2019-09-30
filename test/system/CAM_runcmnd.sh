@@ -42,7 +42,7 @@ if [ $run_mode = mpi ] || [ $run_mode = hybrid ]; then
             ;;
 
         # hobart and leehill
-        hob* | h[[:digit:]]* | le* )
+        hob* | h[[:digit:]]* | le* | izu* | i[[:digit:]]* )
 
             cmnd="${cmnd} mpiexec -n $2 "
             ;;

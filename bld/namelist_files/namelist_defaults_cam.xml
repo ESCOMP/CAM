@@ -1850,6 +1850,14 @@
 <start_type>startup</start_type>
 
 <!-- ================================================================== -->
+<!-- Defaults for driver namelist seq_flux_mct_inparm                   -->
+<!-- ================================================================== -->
+
+<seq_flux_mct_albdif>0.06</seq_flux_mct_albdif>
+<seq_flux_mct_albdir>0.07</seq_flux_mct_albdir>
+<seq_flux_atmocn_minwind>0.5</seq_flux_atmocn_minwind>
+
+<!-- ================================================================== -->
 <!-- Defaults for driver namelist seq_timemgr_inparm                    -->
 <!-- ================================================================== -->
 

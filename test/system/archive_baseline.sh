@@ -12,7 +12,7 @@ cat << EOF1
 NAME
 
 	archive_baseline.sh - archive pretag baselines to set locations on
-                              hobart and cheyenne.
+                              hobart, izumi and cheyenne.
 
 
 SYNOPSIS
@@ -25,14 +25,14 @@ ENVIROMENT VARIABLES
 
 	CESM_TESTDIR - Directory that contains the CESM finished results you wish to archive.
 	CAM_TESTDIR - Directory that contains the CAM finished results you wish to archive.
-	CAM_FC      - Compiler used, only used on hobart (PGI,NAG), where the compiler
+	CAM_FC      - Compiler used, only used on hobart and izumi (PGI,NAG), where the compiler
                       name is appended to the archive directory.
 
 
 BASELINE ARCHIVED LOCATION
 
-	hobart:     /fs/cgd/csm/models/atm/cam/pretag_bl/TAGNAME_pgi
-	              /fs/cgd/csm/models/atm/cam/pretag_bl/TAGNAME_nag
+	hobart, izumi:     /fs/cgd/csm/models/atm/cam/pretag_bl/TAGNAME_pgi
+	                   /fs/cgd/csm/models/atm/cam/pretag_bl/TAGNAME_nag
         cheyenne:  /glade/p/cesmdata/cseg/cam_baselines/TAGNAME
 
 
@@ -44,7 +44,7 @@ HOW TO USE ARCHIVE BASELINES
 
 WORK FLOW
 
-	This is an example for hobart.
+	This is an example for hobart or izumi.
 
 	Modify your sandbox with the changes you want.
         setenv CAM_FC PGI
@@ -90,6 +90,15 @@ case $hostname in
     baselinedir="/fs/cgd/csm/models/atm/cam/pretag_bl/$1_${CAM_FC,,}"
   ;;
 
+  iz*)
+    echo "server: izumi"
+    if [ -z "$CAM_FC" ]; then
+      CAM_FC="PGI"
+    fi
+    test_file_list="tests_pretag_izumi_${CAM_FC,,}"
+    baselinedir="/fs/cgd/csm/models/atm/cam/pretag_bl/$1_${CAM_FC,,}"
+  ;;
+
   ch*)
     echo "server: cheyenne"
     if [ -z "$CAM_FC" ]; then
@@ -111,6 +120,9 @@ if [ -n "$CESM_TESTDIR" ]; then
 	    ;;
 
 	hobart)
+	    echo "CESM Archiving to /fs/cgd/csm/models/atm/cam/cesm_baselines/$1"
+	    ;;
+	izumi)
 	    echo "CESM Archiving to /fs/cgd/csm/models/atm/cam/cesm_baselines/$1"
 	    ;;
     esac
@@ -171,7 +183,7 @@ done < ${test_file_list}
 
 case $hostname in
 
-    ch* | hobart)
+    ch* | hobart | izumi)
 	if [ -z "$CESM_TESTDIR" ]; then
 	    echo '***********************************************************************************'
 	    echo 'INFO: The aux_cam and test_cam tests were NOT archived'

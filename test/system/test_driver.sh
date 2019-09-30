@@ -2,7 +2,7 @@
 #
 # test_driver.sh:  driver for the testing of CAM with standalone scripts
 #
-# usage on hobart, leehill, cheyenne
+# usage on hobart, izumi, leehill, cheyenne
 # ./test_driver.sh
 #
 # **more details in the CAM testing user's guide, accessible
@@ -188,13 +188,13 @@ case $hostname in
         gmake_j=36
     fi
 
-    # run tests on 2 nodes using 12 tasks/node, 3 threads/task
-    CAM_TASKS=24
-    CAM_THREADS=3
+    # run tests on 2 nodes using 18 tasks/node, 2 threads/task
+    CAM_TASKS=36
+    CAM_THREADS=2
 
-    # change parallel configuration on 2 nodes using 18 tasks/node, 2 threads/task
-    CAM_RESTART_TASKS=36
-    CAM_RESTART_THREADS=2
+    # change parallel configuration on 2 nodes using 32 tasks, 1 threads/task
+    CAM_RESTART_TASKS=32
+    CAM_RESTART_THREADS=1
 
     mach_workspace="/glade/scratch"
 
@@ -231,11 +231,20 @@ export ACCOUNT=$CAM_ACCOUNT
 export CAM_THREADS=$CAM_THREADS
 export CAM_TASKS=$CAM_TASKS
 
-module load intel/17.0.1
+##Cheyenne hacks to avoid MPI_LAUNCH_TIMEOUT
+MPI_IB_CONGESTED=1
+MPI_LAUNCH_TIMEOUT=40
+
+source /glade/u/apps/ch/opt/lmod/7.5.3/lmod/lmod/init/sh
+
+module load intel/19.0.2
 module load mkl
 module list
 
-export CFG_STRING="-cc mpicc -fc mpif90 -fc_type intel "
+export INC_NETCDF=\${NCAR_ROOT_NETCDF}/include
+export LIB_NETCDF=\${NCAR_ROOT_NETCDF}/lib
+
+export CFG_STRING="-cc mpicc -fc mpif90 -fc_type intel -ldflags -mkl=cluster"
 export MAKE_CMD="gmake -j $gmake_j"
 export CCSM_MACH="cheyenne"
 export MACH_WORKSPACE="$mach_workspace"
@@ -254,7 +263,7 @@ cat > ${submit_script} << EOF
 #PBS -q $CAM_BATCHQ
 #PBS -A $CAM_ACCOUNT
 #PBS -l walltime=$wallclock_limit
-#PBS -l select=2:ncpus=36:mpiprocs=36
+#PBS -l select=2:ncpus=36:mpiprocs=18:ompthreads=2
 #PBS -j oe
 
 export TMPDIR=/glade/scratch/$USER
@@ -279,7 +288,13 @@ export CAM_RESTART_THREADS=$CAM_RESTART_THREADS
 export CAM_TASKS=$CAM_TASKS
 export CAM_RESTART_TASKS=$CAM_RESTART_TASKS
 
-module load intel/17.0.1
+##Cheyenne hacks to avoid MPI_LAUNCH_TIMEOUT
+MPI_IB_CONGESTED=1
+MPI_LAUNCH_TIMEOUT=40
+
+source /glade/u/apps/ch/opt/lmod/7.5.3/lmod/lmod/init/sh
+
+module load intel/19.0.2
 module load mkl
 module list
 
@@ -443,6 +458,141 @@ cat > ${submit_script_cime} << EOF
 EOF
 
 # To lower number of nodes required for regression testing on Hobart,
+# run CIME test suites sequentially after standalone regression tests
+submit_script_cime="${submit_script}"
+##^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ writing to batch script ^^^^^^^^^^^^^^^^^^^
+    ;;
+
+    ##izumi
+    izu* | i[[:digit:]]* )
+    submit_script="`pwd -P`/test_driver_izumi${cur_time}.sh"
+    submit_script_cime="`pwd -P`/test_driver_izumi_cime_${cur_time}.sh"
+    export PATH=/cluster/torque/bin:${PATH}
+
+    # Default setting is 12 hr in the long queue; the short queue only
+    # allows 1 hr runs.
+    wallclock_limit="12:00:00"
+    gmake_j=24
+    if [ -z "$CAM_BATCHQ" ]; then
+        export CAM_BATCHQ="long"
+    elif [[ "$CAM_BATCHQ" == short ]]; then
+        wallclock_limit="1:00:00"
+    fi
+
+    if [ $gmake_j = 0 ]; then
+        gmake_j=24
+    fi
+
+    if [ -z "$CAM_TASKS" ]; then
+        CAM_TASKS=24
+    fi
+    if [ -z "$CAM_RESTART_TASKS" ]; then
+        CAM_RESTART_TASKS=$(( $CAM_TASKS / 2))
+    fi
+
+    mach_workspace="/scratch/cluster"
+
+##vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv writing to batch script vvvvvvvvvvvvvvvvvvv
+cat > ${submit_script} << EOF
+#!/bin/sh
+#
+
+# Name of the queue (CHANGE THIS if needed)
+#PBS -q $CAM_BATCHQ
+# Number of nodes (CHANGE THIS if needed)
+#PBS -l walltime=$wallclock_limit,nodes=1:ppn=24
+# output file base name
+#PBS -N test_dr
+# Put standard error and standard out in same file
+#PBS -j oe
+# Export all Environment variables
+#PBS -V
+# End of options
+
+# Make sure core dumps are created
+ulimit -c unlimited
+
+if [ -n "\$PBS_JOBID" ]; then    #batch job
+    export JOBID=\`echo \${PBS_JOBID} | cut -f1 -d'.'\`
+    initdir=\${PBS_O_WORKDIR}
+fi
+
+if [ "\$PBS_ENVIRONMENT" = "PBS_BATCH" ]; then
+    interactive=false
+else
+    interactive=true
+fi
+
+if [ -z "$CAM_RBOPTIONS" ]; then
+    export CAM_RBOPTIONS="run_and_build"
+fi
+
+##omp threads
+export CAM_THREADS=1
+export CAM_RESTART_THREADS=2
+
+##mpi tasks
+export CAM_TASKS=$CAM_TASKS
+export CAM_RESTART_TASKS=$CAM_RESTART_TASKS
+
+export P4_GLOBMEMSIZE=500000000
+source /usr/share/Modules/init/sh
+module purge
+
+export LAPACK_LIBDIR=/usr/lib64
+
+if [ "\$CAM_FC" = "INTEL" ]; then
+    module load compiler/intel/14.0.2
+    export CFG_STRING=" -cc mpicc -fc_type intel -fc mpif90 -cppdefs -DNO_MPI2 -cppdefs -DNO_MPIMOD "
+    export INC_NETCDF=\${NETCDF_PATH}/include
+    export LIB_NETCDF=\${NETCDF_PATH}/lib
+    input_file="tests_pretag_izumi_nag"
+    export CCSM_MACH="izumi_intel"
+elif [ "\$CAM_FC" = "NAG" ]; then
+    module load compiler/nag/6.2
+
+    export CFG_STRING="-cc mpicc -fc mpif90 -fc_type nag "
+    export INC_NETCDF=\${NETCDF_PATH}/include
+    export LIB_NETCDF=\${NETCDF_PATH}/lib
+    input_file="tests_pretag_izumi_nag"
+    export CCSM_MACH="izumi_nag"
+else
+    module load compiler/pgi/18.10
+    export CFG_STRING=" -cc mpicc -fc_type pgi -fc mpif90 -cppdefs -DNO_MPI2 -cppdefs -DNO_MPIMOD "
+    export INC_NETCDF=\${NETCDF_PATH}/include
+    export LIB_NETCDF=\${NETCDF_PATH}/lib
+    input_file="tests_pretag_izumi_pgi"
+    export CCSM_MACH="izumi_pgi"
+fi
+export MAKE_CMD="gmake --output-sync -j $gmake_j"
+export MACH_WORKSPACE="$mach_workspace"
+export CPRNC_EXE=/fs/cgd/csm/tools/bin/cprnc
+export ADDREALKIND_EXE=/fs/cgd/csm/tools/addrealkind/addrealkind
+dataroot="/fs/cgd/csm"
+echo_arg="-e"
+
+EOF
+
+#-------------------------------------------
+
+cat > ${submit_script_cime} << EOF
+#!/bin/bash
+#
+# Name of the queue (CHANGE THIS if needed)
+#PBS -q $CAM_BATCHQ
+# Number of nodes (CHANGE THIS if needed)
+#PBS -l walltime=$wallclock_limit,nodes=1:ppn=24
+# output file base name
+#PBS -N cime-tests
+# Put standard error and standard out in same file
+#PBS -j oe
+# Export all Environment variables
+#PBS -V
+# End of options
+
+EOF
+
+# To lower number of nodes required for regression testing on izumi,
 # run CIME test suites sequentially after standalone regression tests
 submit_script_cime="${submit_script}"
 ##^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ writing to batch script ^^^^^^^^^^^^^^^^^^^
@@ -843,12 +993,18 @@ fi
 if [ "${hostname:0:6}" == "hobart" ]; then
   cesm_test_mach="hobart"
 fi
+if [ "${hostname:0:5}" == "izumi" ]; then
+  cesm_test_mach="izumi"
+fi
 if [ -n "${CAM_FC}" ]; then
   comp="_${CAM_FC,,}"
 fi
 
 if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
   if [ "${hostname:0:6}" != "hobart" ]; then
+    module load python
+  fi
+  if [ "${hostname:0:5}" != "izumi" ]; then
     module load python
   fi
 
@@ -938,6 +1094,15 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
       fi
     fi
 
+    if [ "${hostname:0:5}" == "izumi" ]; then
+      echo "cd ${script_dir}" >> ${submit_script_cime}
+      echo './create_test' ${testargs} >> ${submit_script_cime}
+      if [ "${submit_script}" != "${submit_script_cime}" ]; then
+        chmod u+x ${submit_script_cime}
+        qsub ${submit_script_cime}
+      fi
+    fi
+
   done
 fi
 
@@ -956,6 +1121,17 @@ if $run_cam_regression; then
 
     ##hobart
     hob* | h[[:digit:]]* )
+#        qsub ${submit_script}
+    echo "************************************************************************************************************"
+    echo "****************   IMPORTANT *******************************************************************************"
+    echo "************************************************************************************************************"
+    echo "hobart testing is disabled - use izumi or find this message in test_driver.sh and uncomment the qsub command"
+    echo "************************************************************************************************************"
+    echo "************************************************************************************************************"
+        ;;
+
+    ##izumi
+    izu* | i[[:digit:]]* )
         qsub ${submit_script}
         ;;
 

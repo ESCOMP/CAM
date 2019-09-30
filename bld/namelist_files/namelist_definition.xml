@@ -4208,6 +4208,18 @@ Lower limit of cumulus cloud fraction.
 Default: set by build-namelist
 </entry>
 
+<entry id="use_rad_uniform_angle" type="logical" category="radiation"
+       group="radiation_nl" valid_values="" >
+If true, use a uniform angle for the calculation of coszrs within radiation
+Default: set by build-namelist.
+</entry>
+
+<entry id="rad_uniform_angle" type="real" category="radiation"
+       group="radiation_nl" valid_values="" >
+The angle (in radians) to use in the calculation of coszrs within radiation
+Default: set by build-namelist.
+</entry>
+
 <entry id="absems_data" type="char*256" input_pathname="abs" category="radiation"
        group="radiation_nl" valid_values="" >
 Full pathname of absorption/emission dataset.  Used only by camrt scheme.
@@ -7128,7 +7140,7 @@ Default: FALSE
 </entry>
 
 <entry id="aqua_planet_sst" type="integer"  category="driver"
-       group="aquap_nl" valid_values="1,2,3,4,5,6,7,8,9,10" value="1" >
+       group="aquap_nl" valid_values="1,2,3,4,5,6,7,8,9,10,11" value="1" >
 Set the sst to a particular analytic solution.
 Default: 1
 </entry>
@@ -7423,6 +7435,24 @@ Invoke vector mapping option
 Default: 'cart3d'
 </entry>
 
+<entry id="seq_flux_mct_albdif" type="real"  category="driver"
+       group="seq_flux_mct_inparm" valid_values="" >
+Surface albedo for direct radiation.
+Default: none.
+</entry>
+
+<entry id="seq_flux_mct_albdir" type="real"  category="driver"
+       group="seq_flux_mct_inparm" valid_values="" >
+Surface albedo for diffuse radiation.
+Default: none.
+</entry>
+
+<entry id="seq_flux_atmocn_minwind" type="real"  category="driver"
+       group="seq_flux_mct_inparm" valid_values="" >
+Minimum wind speed for atmOcn flux calculations.
+Default: none.
+</entry>
+
 <!-- Reproducible Distributed Sum Calculation -->
 
 <entry id="reprosum_use_ddpdd" type="logical"  category="reprosum"
@@ -7664,6 +7694,12 @@ Default: set to shr_const value
 <entry id="tmelt" type="real" category="physconst"
        group="physconst_nl" valid_values="" >
 Freezing point of water [K].
+Default: set to shr_const value
+</entry>
+
+<entry id="omega" type="real" category="physconst"
+       group="physconst_nl" valid_values="" >
+Planetary rotation rate (radians/second). Value set here is ONLY used in the atmosphere.
 Default: set to shr_const value
 </entry>
 
