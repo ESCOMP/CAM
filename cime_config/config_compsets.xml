@@ -513,7 +513,7 @@
 
     <entry id="RUN_TYPE">
       <values match="first">
-	<value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9x1.25_r%r05_g%gland4_w%null_m%gx1v7"	compset="HIST_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV"	 >hybrid</value>
+	<value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9x1.25_r%r05_g%gland4_w%null_m%gx1v7"	compset="HIST_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV">hybrid</value>
 	<value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9x1.25_r%r05_g%gland4_w%null_m%gx1v7"	compset="2000_CAM60_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV"	 >hybrid</value>
 	<value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9x1.25_r%r05_g%gland4_w%null_m%gx1v7"	compset="2010_CAM60_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV"	 >hybrid</value>
 	<value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9x1.25_r%r05_g%gland4_w%null_m%gx1v7"	compset="HIST_CAM60_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV"	 >hybrid</value>
@@ -532,6 +532,7 @@
         <value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9x1.25_r%r05_g%null_w%null_m%gx1v7"   compset="HIST_CAM60%WCCM%SDYN_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV">hybrid</value>
         <value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9x1.25_r%r05_g%null_w%null_m%gx1v7"   compset="HIST_CAM60%WCMD%SDYN_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV">hybrid</value>
 	<value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9x1.25_r%r05_g%gland4_w%null_m%gx1v7" compset="HIST_CAM60%WC.*_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV">hybrid</value>
+        <value grid="a%1.9x2.5_l%1.9x2.5_oi%1.9x2.5_r%r05_g%null_w%null_m%gx1v7"      compset="HIST_CAM60%WCCM%SDYN_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV">hybrid</value>
       </values>
     </entry>
 
@@ -556,6 +557,7 @@
         <value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9x1.25_r%r05_g%null_w%null_m%gx1v7" compset="HIST_CAM60%WCCM%SDYN_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV">f.e21.FWmaSD.f09_f09_mg17.cesm2.1-exp011.1978-2015.001_v2</value>
         <value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9x1.25_r%r05_g%null_w%null_m%gx1v7" compset="HIST_CAM60%WCMD%SDYN_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV">f.e21.FWmadSD.f09_f09_mg17.cesm2.1-exp011.001_v2</value>
         <value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9x1.25_r%r05_g%gland4_w%null_m%gx1v7" compset="HIST_CAM60%WC.*_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV">b.e21.BWHIST.f09_g17.CMIP6-historical-WACCM.001_v2</value>
+        <value grid="a%1.9x2.5_l%1.9x2.5_oi%1.9x2.5_r%r05_g%null_w%null_m%gx1v7"      compset="HIST_CAM60%WCCM%SDYN_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV">f.e21.FWmaSD.f19_f19_mg17.HETALL.001</value>
       </values>
     </entry>
 
@@ -579,6 +581,7 @@
         <value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9x1.25_r%r05_g%null_w%null_m%gx1v7"   compset="HIST_CAM60%WCCM%SDYN_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV">1980-01-01</value>
         <value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9x1.25_r%r05_g%null_w%null_m%gx1v7"   compset="HIST_CAM60%WCMD%SDYN_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV">2005-01-01</value>
         <value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9x1.25_r%r05_g%gland4_w%null_m%gx1v7" compset="HIST_CAM60%WC.*_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV">1950-01-01</value>
+        <value grid="a%1.9x2.5_l%1.9x2.5_oi%1.9x2.5_r%r05_g%null_w%null_m%gx1v7"      compset="HIST_CAM60%WCCM%SDYN_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV">1980-01-02</value>
       </values>
     </entry>
 
@@ -602,6 +605,7 @@
         <value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9x1.25_r%r05_g%null_w%null_m%gx1v7"   compset="HIST_CAM60%WCCM%SDYN_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV">cesm2_init</value>
         <value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9x1.25_r%r05_g%null_w%null_m%gx1v7"   compset="HIST_CAM60%WCMD%SDYN_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV">cesm2_init</value>
 	<value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9x1.25_r%r05_g%gland4_w%null_m%gx1v7" compset="HIST_CAM60%WC.*_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV">cesm2_init</value>
+        <value grid="a%1.9x2.5_l%1.9x2.5_oi%1.9x2.5_r%r05_g%null_w%null_m%gx1v7"      compset="HIST_CAM60%WCCM%SDYN_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV">cesm2_init</value>
      </values>
     </entry>
 
