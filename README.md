@@ -24,8 +24,8 @@ git checkout cam_cesm2_1_rel_32
 
 ### To use unsupported CAM **development** code:
 
-## NOTE: This is unsupported development code and is subject to the [CESM developer's agreement](http://www.cgd.ucar.edu/cseg/development-code.html).
+## NOTE: This is **unsupported** development code and is subject to the [CESM developer's agreement](http://www.cgd.ucar.edu/cseg/development-code.html).
 ```
-git checkout cesm_development
+git checkout cam_development
 ./manage_externals/checkout_externals
 ```
