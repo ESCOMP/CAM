@@ -18,7 +18,7 @@ cd CAM
 
 ### To run CAM compatible with the CESM2.1 release:
 ```
-git checkout cam_cesm2_1_rel_32
+git checkout cam_cesm2_1_rel_33
 ./manage_externals/checkout_externals
 ```
 
@@ -26,6 +26,6 @@ git checkout cam_cesm2_1_rel_32
 
 ## NOTE: This is **unsupported** development code and is subject to the [CESM developer's agreement](http://www.cgd.ucar.edu/cseg/development-code.html).
 ```
-git checkout cam_development
+git checkout cam6_2_000
 ./manage_externals/checkout_externals
 ```
