@@ -16,7 +16,7 @@ cd CAM
 git checkout cam_cesm2_1_rel_33
 ./manage_externals/checkout_externals
 ```
-NOTE -- to view this branch in github, go to the "Branch:master" pulldown menu and select cam_cesm2_1_rel
+### To view the release branch in github, go to the "Branch:master" pulldown menu and select cam_cesm2_1_rel
 
 ### To use unsupported CAM **development** code:
 
