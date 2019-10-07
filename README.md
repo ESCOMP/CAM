@@ -1,7 +1,8 @@
 # CAM: The Community Atmosphere Model
 
 CAM code is stored in this repository on branches other than master.  The details are explained below.
-Please see the [wiki](https://github.com/ESCOMP/CAM/wiki) for complete documentation on CAM.
+
+Please see the [wiki](https://github.com/ESCOMP/CAM/wiki) for complete documentation on CAM, getting started with git and how to contribute to CAM's development.
 
 ## How to checkout and use CAM:
 
