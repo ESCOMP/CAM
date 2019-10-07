@@ -56,7 +56,7 @@ contains
 !-----------------------------------------------------------------------
 
 subroutine cam_init( &
-   caseid, ctitle, model_doi_url, dart_mode, &
+   caseid, ctitle, model_doi_url, &
    initial_run_in, restart_run_in, branch_run_in, &
    calendar, brnch_retain_casename, aqua_planet, &
    single_column, scmlat, scmlon,               &
@@ -97,7 +97,6 @@ subroutine cam_init( &
    character(len=cl), intent(in) :: caseid                ! case ID
    character(len=cl), intent(in) :: ctitle                ! case title
    character(len=cl), intent(in) :: model_doi_url         ! CESM model DOI
-   logical,           intent(in) :: dart_mode             ! enables DART mode
    logical,           intent(in) :: initial_run_in        ! true => inital run
    logical,           intent(in) :: restart_run_in        ! true => restart run
    logical,           intent(in) :: branch_run_in         ! true => branch run
@@ -144,7 +143,6 @@ subroutine cam_init( &
       initial_run_in=initial_run_in, &
       restart_run_in=restart_run_in, &
       branch_run_in=branch_run_in, &
-      dart_mode_in=dart_mode, &
       aqua_planet_in=aqua_planet, &
       brnch_retain_casename_in=brnch_retain_casename)
 

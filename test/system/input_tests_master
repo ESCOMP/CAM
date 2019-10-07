@@ -84,6 +84,8 @@ sm472 TSM.sh f4c6aqwmadm outfrq3s 9s
 sm473 TSM.sh f4c6aqwmtdm outfrq3s_sums 9s
 sm474 TSM.sh f1.9c6aqwmth outfrq3s_sums 9s
 
+sm501 TSM.sh h5c5aqdm outfrq3s_unstr_emis 9s
+
 sm700 TSM.sh h5adicdm outfrq3s_bwic 9s
 sm701 TSM.sh h5addm outfrq3s 9s
 sm702 TSM.sh h5.3adicdm outfrq3s_bwic 9s
@@ -189,6 +191,8 @@ er471 TER.sh f10c6aqwmadm outfrq3s 4+5s
 er472 TER.sh f4c6aqwmadm outfrq3s 4+5s
 er473 TER.sh f4c6aqwmtdm outfrq3s_sums 4+5s
 er474 TER.sh f1.9c6aqwmth outfrq3s_sums 4+5s
+
+er501 TER.sh h5c5aqdm outfrq3s_unstr_emis 4+5s
 
 er700 TER.sh h5adicdm outfrq3s_bwic 4+5s
 er701 TER.sh h5addm outfrq3s 4+5s
@@ -325,6 +329,8 @@ bl471 TBL.sh f10c6aqwmadm outfrq3s 9s
 bl472 TBL.sh f4c6aqwmadm outfrq3s 9s
 bl473 TBL.sh f4c6aqwmtdm outfrq3s_sums 9s
 bl474 TBL.sh f1.9c6aqwmth outfrq3s_sums 9s
+
+bl501 TBL.sh h5c5aqdm outfrq3s_unstr_emis 9s
 
 bl700 TBL.sh h5adicdm outfrq3s_bwic 9s
 bl701 TBL.sh h5addm outfrq3s 9s

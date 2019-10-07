@@ -37,7 +37,6 @@ logical, protected :: simple_phys       ! true => adiabatic or ideal_phys or kes
 logical, protected :: aqua_planet       ! Flag to run model in "aqua planet" mode
 logical, protected :: moist_physics     ! true => moist physics enabled, i.e.,
                                         ! (.not. ideal_phys) .and. (.not. adiabatic)
-logical, protected :: dart_mode         ! Flag to run model with DART
 
 logical, protected :: brnch_retain_casename ! true => branch run may use same caseid as
                                             !         the run being branched from
@@ -56,14 +55,13 @@ contains
 subroutine cam_ctrl_init( &
    caseid_in, ctitle_in, &
    initial_run_in, restart_run_in, branch_run_in, &
-   dart_mode_in, aqua_planet_in, brnch_retain_casename_in)
+   aqua_planet_in, brnch_retain_casename_in)
 
    character(len=cl), intent(in) :: caseid_in            ! case ID
    character(len=cl), intent(in) :: ctitle_in            ! case title
    logical,           intent(in) :: initial_run_in       ! true => inital run
    logical,           intent(in) :: restart_run_in       ! true => restart run
    logical,           intent(in) :: branch_run_in        ! true => branch run
-   logical,           intent(in) :: dart_mode_in         ! Flag to run model with DART
    logical,           intent(in) :: aqua_planet_in       ! Flag to run model in "aqua planet" mode
    logical,           intent(in) :: brnch_retain_casename_in ! Flag to allow a branch to use the same
                                                              ! caseid as the run being branched from.
@@ -77,17 +75,9 @@ subroutine cam_ctrl_init( &
    caseid = caseid_in
    ctitle = ctitle_in
 
-   dart_mode = dart_mode_in
-
-   if (dart_mode) then
-      initial_run = .true.
-      restart_run = .false.
-      branch_run  = .false.
-   else
-      initial_run = initial_run_in
-      restart_run = restart_run_in
-      branch_run  = branch_run_in
-   end if
+   initial_run = initial_run_in
+   restart_run = restart_run_in
+   branch_run  = branch_run_in
 
    aqua_planet = aqua_planet_in
 
@@ -103,11 +93,7 @@ subroutine cam_ctrl_init( &
       else if (branch_run) then
          write(iulog,*) '  Branch of an earlier run'
       else
-         if (dart_mode) then
-            write(iulog,*) '  DART run using CAM initial mode'
-         else
-            write(iulog,*) '         Initial run'
-         end if
+         write(iulog,*) '         Initial run'
       end if
       write(iulog,*) ' ********** CASE = ',trim(caseid),' **********'
       write(iulog,'(1x,a)') ctitle

@@ -204,7 +204,7 @@ contains
     use ppgrid          , only : pcols, begchunk, endchunk
     use phys_grid       , only : get_ncols_p, get_gcol_p, get_rlon_all_p, get_rlat_all_p
     use dyn_grid        , only : get_horiz_grid_dim_d
-    use cam_control_mod , only : dart_mode, cam_ctrl_set_orbit
+    use cam_control_mod , only : cam_ctrl_set_orbit
     use shr_const_mod   , only : shr_const_pi
 
     ! input/output variables
@@ -266,7 +266,7 @@ contains
     real(r8)                :: obliqr
     real(r8)                :: lambm0
     real(r8)                :: mvelpp
-    logical                 :: dart_mode_in
+    logical                 :: dart_mode
     character(len=cl)       :: atm_resume_all_inst(num_inst_atm) ! atm resume file
     integer                 :: lbnum
     character(CS)           :: inst_name
@@ -425,16 +425,16 @@ contains
     ! TODO: atm_resume_all_inst must be added to gcomp or infodata
     atm_resume_all_inst(:) = 'FALSE'
 
-    dart_mode_in = .false.
-    if (trim(atm_resume_all_inst(MIN(num_inst_atm,inst_index))) == 'TRUE') dart_mode_in = .true.
+    dart_mode = .false.
+    if (trim(atm_resume_all_inst(MIN(num_inst_atm,inst_index))) == 'TRUE') dart_mode = .true.
 
     ! Initialize CAM, allocate cam_in and cam_out and determine
     ! atm decomposition (needed to initialize gsmap)
     ! for an initial run, cam_in and cam_out are allocated in cam_init
     ! for a restart/branch run, cam_in and cam_out are allocated in restart
     !
-    !TODO: the following strings must not be hard-wired - must have module variables
-    ! like seq_infodata_start_type_type - maybe another entry in flds_mod?
+
+    ! Set the run type
     initial_run = .false.
     restart_run = .false.
     branch_run  = .false.
@@ -446,6 +446,13 @@ contains
        branch_run = .true.
     else
        call shr_sys_abort( subname//' ERROR: unknown start_type' )
+    end if
+
+    ! DART always starts up as an initial run.
+    if (dart_mode) then
+       initial_run = .true.
+       restart_run = .false.
+       branch_run  = .false.
     end if
 
     ! Get properties from clock
@@ -494,7 +501,6 @@ contains
          caseid=caseid, &
          ctitle=ctitle, &
          model_doi_url=model_doi_url, &
-         dart_mode=dart_mode_in, &
          initial_run_in=initial_run, &
          restart_run_in=restart_run, &
          branch_run_in=branch_run, &
