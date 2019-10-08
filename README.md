@@ -7,7 +7,7 @@ Please see the [wiki](https://github.com/ESCOMP/CAM/wiki) for complete documenta
 This repository has three branches:
 * master - contains this readme and the Code of Conduct information
 * cam_cesm2_1_release - contains the current CESM2.1 CAM code
-* cam_development - contains the current CAM development code (see the imporatant note below before using this branch)
+* cam_development - contains the current CAM development code (see the important note below before using this branch)
 
 ## How to checkout and use CAM:
 
