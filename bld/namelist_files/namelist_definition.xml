@@ -7846,7 +7846,13 @@ Default: none.
 
 <entry id="seq_flux_mct_albdir" type="real"  category="driver"
        group="seq_flux_mct_inparm" valid_values="" >
-urface albedo for diffuse radiation.
+Surface albedo for diffuse radiation.
+Default: none.
+</entry>
+
+<entry id="seq_flux_atmocn_minwind" type="real"  category="driver"
+       group="seq_flux_mct_inparm" valid_values="" >
+Minimum wind speed for atmOcn flux calculations.
 Default: none.
 </entry>
 

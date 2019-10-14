@@ -3865,6 +3865,7 @@ EOF
  if ($cam_build) {
      add_default($nl, 'seq_flux_mct_albdif');
      add_default($nl, 'seq_flux_mct_albdir');
+     add_default($nl, 'seq_flux_atmocn_minwind');
  }
 
 #-----------------------------------------------------------------------------------------------
