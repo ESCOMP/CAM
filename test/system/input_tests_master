@@ -2,6 +2,7 @@
 r8001 TR8.sh
 
 gt001 TGIT.sh
+fm001 TFM.sh
 
 sm010 TSM.sh f4c5portdh outfrq24h_port 2d
 sm011 TSM.sh f4c5portdm outfrq24h_port 2d

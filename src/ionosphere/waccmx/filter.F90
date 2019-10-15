@@ -106,26 +106,26 @@ module filter_module
            ! 5 deg
            nlat_filter = 6
            allocate(chunk_array(nlat_filter))
-           chunk_array(:nlat_filter) = &
+           chunk_array(:) = &
                 (/9,18,36,36,72,72/)
         case (144)
            ! 2.5deg
            nlat_filter = 16
            allocate(chunk_array(nlat_filter))
-           chunk_array(:nlat_filter) = &
+           chunk_array(:) = &
                 (/9,9,9,18,18,18,36,36,36,36,36,72,72,72,72,72/)
         case (288)
            ! 1.25 deg 
            nlat_filter = 26
            allocate(chunk_array(nlat_filter))
-           chunk_array(:nlat_filter) = &
-                (/9,9,9,18,18,18,36,36,36,36,36,36,72,72,72,72,72,72, &
-                 144,144,144,144,144,144,144,144/)    
+           chunk_array(:) = &
+                (/9,9,9,18,18,18,36,36,36,36,36,36,72,72,72,72,72,72,144,144,144,144, &
+                144,144,144,144/)    
         case (576)
            ! 0.625 deg
-           nlat_filter = 45
+           nlat_filter = 55
            allocate(chunk_array(nlat_filter))
-           chunk_array(:nlat_filter) = &
+           chunk_array(:) = &
                 (/9,9,9,9,9,18,18,18,18,18,36,36,36,36,36, &
                 72,72,72,72,72,72,72,72,72,72, &
                 144,144,144,144,144,144,144,144,144,144, &
@@ -134,7 +134,7 @@ module filter_module
            ! 0.3125 deg
            nlat_filter = 111
            allocate(chunk_array(nlat_filter))
-           chunk_array(:nlat_filter) = &
+           chunk_array(:) = &
                 (/9,9,9,9,9,9,9,9,9, &
                 18,18,18,18,18,18,18,18,18, &
                 36,36,36,36,36,36,36,36,36, &
@@ -304,16 +304,13 @@ module filter_module
     real(r8),intent(inout) :: f(nlon,lev0:lev1)
 !
 ! Local:
-    real(r8) :: fx(nlon), f_out(nlon)
-    real(r8), allocatable :: average(:)
+    real(r8) :: fx(nlon),average(200),f_out(nlon)
     real(r8) :: w(nlon),wm1(nlon),a0,a1,b1,theta,dtheta
     real(r8) :: fL,fR,fm2,fm1,ff,fp1,fp2,a,b,c
     integer :: i,k,points,n,chunk,j_index,m
 
     near_pole: if(lat .LE. nlat_filter .OR. lat .GE. (nlat-nlat_filter+1) ) then
 
-      allocate(average(maxval(chunk_array)))
-       
       dtheta=2._r8*3.14159_r8/real(nlon)
 
       do k=lev0,lev1
@@ -426,10 +423,7 @@ module filter_module
 
       enddo ! k=lev0,lev1
 
-      deallocate(average)
-
     endif near_pole
-
   end subroutine ringfilter
 !-----------------------------------------------------------------------
 end module filter_module

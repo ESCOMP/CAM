@@ -109,7 +109,6 @@
 <ncdata dyn="fv"  hgrid="0.9x1.25"  nlev="126" waccmx="1">atm/waccm/ic/fx2000_0.9x1.25_126lev_0002-01-01-00000_c181221.nc</ncdata>
 <ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="130" waccmx="1">atm/waccm/ic/wcmx-cam6-phys_1.9x2.5_130lev_2000_c181115.nc</ncdata>
 <ncdata dyn="fv"  hgrid="0.9x1.25"  nlev="130" waccmx="1">atm/waccm/ic/wcmx-cam6-phys_0.9x1.25_130lev_2000_c190122.nc</ncdata>
-<ncdata dyn="fv"  hgrid="0.47x0.63" nlev="130" waccmx="1">atm/waccm/ic/FC6X2000_f05_spinup01.cam.i.0002-01-01-00000_c190711.nc</ncdata>
 <ncdata dyn="fv"  hgrid="4x5"       nlev="130" waccmx="1"  ic_ymd="101" aquaplanet="1">atm/waccm/ic/waccmx_mam4_aqua_4x5_L130_c180803.nc</ncdata>
 <ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="130" waccmx="1"  ic_ymd="101" aquaplanet="1">atm/waccm/ic/waccmx_mam4_aqua_1.9x2.5_L130_c180803.nc</ncdata>
 
@@ -186,7 +185,6 @@
 
 <bnd_topo hgrid="0.23x0.31" >atm/cam/topo/USGS_gtopo30_0.23x0.31_remap_c061107.nc</bnd_topo>
 <bnd_topo hgrid="0.47x0.63" >atm/cam/topo/USGS_gtopo30_0.47x0.63_remap_c061106.nc</bnd_topo>
-<bnd_topo hgrid="0.47x0.63" phys="cam6">atm/cam/topo/fv_0.47x0.63_nc3000_Co030_Fi001_PF_nullRR_Nsw021_20171023.nc</bnd_topo>
 <bnd_topo hgrid="0.5x0.625" >atm/cam/topo/topo-from-cami_0000-10-01_0.5x0.625_L26_c031204.nc</bnd_topo>
 <bnd_topo hgrid="0.9x1.25"  >atm/cam/topo/fv_0.9x1.25_nc3000_Nsw042_Nrs008_Co060_Fi001_ZR_sgh30_24km_GRNL_c170103.nc</bnd_topo>
 <bnd_topo hgrid="1.9x2.5"   >atm/cam/topo/fv_1.9x2.5_nc3000_Nsw084_Nrs016_Co120_Fi001_ZR_GRNL_c190405.nc</bnd_topo>
@@ -600,7 +598,6 @@
 
 <!-- Dry Convective Adjustment options -->
 <dadadj_niter>15</dadadj_niter>
-<dadadj_niter hgrid="0.47x0.63" waccmx="1">100</dadadj_niter>
 
 <!-- Waccm-x runtime options -->
 <waccmx_opt                             >off</waccmx_opt>
@@ -610,10 +607,8 @@
 <wei05_coefs_file>atm/waccm/efld/wei05sc_c080415.nc</wei05_coefs_file>
 <ionos_xport_nsplit waccmx="1">5</ionos_xport_nsplit>
 <ionos_xport_nsplit hgrid="0.9x1.25" waccmx="1">30</ionos_xport_nsplit>
-<ionos_xport_nsplit hgrid="0.47x0.63" waccmx="1">90</ionos_xport_nsplit>
 <oplus_ring_polar_filter>.false.</oplus_ring_polar_filter>
 <oplus_ring_polar_filter hgrid="0.9x1.25" waccmx="1">.true.</oplus_ring_polar_filter>
-<oplus_ring_polar_filter hgrid="0.47x0.63" waccmx="1">.true.</oplus_ring_polar_filter>
 
 <!-- For scaling lightning sources of NOx -->
 <lght_no_prd_factor                                              >1.00D0</lght_no_prd_factor>
@@ -1862,15 +1857,12 @@
 <fv_nspltvrm hgrid="0.23x0.31">2</fv_nspltvrm>
 <fv_nspltvrm                  waccm_phys="1">2</fv_nspltvrm>
 <fv_nspltvrm hgrid="0.9x1.25" waccm_phys="1">4</fv_nspltvrm>
-<fv_nspltvrm hgrid="0.47x0.63"    waccmx="1">16</fv_nspltvrm>
 
 <fv_nspltrac                  waccm_phys="1">2</fv_nspltrac>
 <fv_nspltrac hgrid="0.9x1.25" waccm_phys="1">4</fv_nspltrac>
-<fv_nspltrac hgrid="0.47x0.63"    waccmx="1">16</fv_nspltrac>
 
 <fv_nsplit                  waccm_phys="1"> 8</fv_nsplit>
 <fv_nsplit hgrid="0.9x1.25" waccm_phys="1">16</fv_nsplit>
-<fv_nsplit hgrid="0.47x0.63"    waccmx="1">32</fv_nsplit>
 
 <fv_del2coef                >3.e+5</fv_del2coef>
 
