@@ -88,7 +88,7 @@
 ! Add mag field output to master field list:
 !-----------------------------------------------------------------------
       call addfld('EF_EAST', horiz_only,'I','V/m', 'eastward electric field')
-      call addfld('EF_WEST', horiz_only,'I','V/m', 'northward electric field')
+      call addfld('EF_NORTH', horiz_only,'I','V/m', 'northward electric field')
       call addfld('EF_UP',   horiz_only,'I','V/m', 'upward electric field')
       call addfld('EF1_MAP', horiz_only,'I','V/m', 'map. mag. eastward ef')
       call addfld('EF2_MAP', horiz_only,'I','V/m', 'map. mag. northward ef')
@@ -223,17 +223,18 @@
        t = (collon - ylonm(iphi1))/(ylonm(iphi2) - ylonm(iphi1))
        u = (collat + 90._r8 - ylatm(ilam1))/(ylatm(ilam2) - ylatm(ilam1))
        ed1_geo(i) = (1._r8 - t)*(1._r8 - u)*ed1(iphi1,ilam1) + &
-        	    t*(1._r8 - u)*	  ed1(iphi2,ilam1) + &
-        	    t*u*	  ed1(iphi2,ilam2) + &
-        	    (1._r8 - t)*u*	  ed1(iphi1,ilam2) 
+                    t*(1._r8 - u)*ed1(iphi2,ilam1) + &
+                    t*u*          ed1(iphi2,ilam2) + &
+                    (1._r8 - t)*u*ed1(iphi1,ilam2) 
        ed2_geo(i) = (1._r8 - t)*(1._r8 - u)*ed2(iphi1,ilam1) + &
-        	    t*(1._r8 - u)*	  ed2(iphi2,ilam1) + &
-        	    t*u*	  ed2(iphi2,ilam2) + &
-        	    (1._r8 - t)*u*	  ed2(iphi1,ilam2) 
+                    t*(1._r8 - u)*ed2(iphi2,ilam1) + &
+                    t*u*          ed2(iphi2,ilam2) + &
+                    (1._r8 - t)*u*ed2(iphi1,ilam2) 
        epot_geo(i)= (1._r8 - t)*(1._r8 - u)*potent(iphi1,ilam1) + &
-        	    t*(1._r8 - u)*	  potent(iphi2,ilam1) + &
-        	    t*u*	  potent(iphi2,ilam2) + &
-        	    (1._r8 - t)*u*	  potent(iphi1,ilam2) 
+                    t*(1._r8 - u)*potent(iphi2,ilam1) + &
+                    t*u*          potent(iphi2,ilam2) + &
+                    (1._r8 - t)*u*potent(iphi1,ilam2)
+       
      end do ! i = 1,pcol
 
      call outfld( 'EF1_MAP', ed1_geo, pcol, lchnk)
@@ -276,7 +277,7 @@
    end do
 
    call outfld( 'EF_EAST', elfld(1,:), pcol, lchnk)
-   call outfld( 'EF_WEST', elfld(2,:), pcol, lchnk)
+   call outfld( 'EF_NORTH', elfld(2,:), pcol, lchnk)
    call outfld( 'EF_UP', elfld(3,:), pcol, lchnk)
 
    end subroutine rot_efield

@@ -2,10 +2,10 @@
       module efield
 !------------------------------------------------------------------------------ 
 ! description: calculates the electric potential for a given year,
-!      day of year,UT, F10.7, B_z(K_p)
+!      day of year, UT, F10.7, K_p
 !     - low/midlatitudes electric potential is from an empirical model from
 !       L.Scherliess ludger@gaim.cass.usu.edu
-!     - high latitude electric potential is from Weimer96 model
+!     - high latitude electric potential is Heelis
 !     - the transition zone is smoothed
 !     - output is the horizontal global electric field in magnetic coordinates direction
 !      at every magnetic local time grid point expressed in degrees (0 deg-0MLT; 360deg 24 MLT)
@@ -15,7 +15,6 @@
 !                 iyear     ! year
 !      real(r8):: ut,       ! universal time 
 !                 F10.7,    ! solar flux       (see ionosphere module)
-!                 bz        ! component of IMF (see ionosphere module)
 ! output
 !      real(r8) ::               &
 !       ed1(0:nmlon,0:nmlat),    &  ! zonal electric field Ed1  [V/m] 
@@ -28,7 +27,6 @@
 ! - assume regular geomagnetic grid 
 ! - uses average year 365.24 days/year 30.6001 day/mo s. Weimer
 ! - get_tilt works only for iyear >= 1900
-! - Weimer model 1996, Dan Weimer (not with the updates from B.Emery)
 ! - fixed parameters: B_z, B_y units nT  CHANGE THIS
 !                     F10.7
 ! - we assume that the reference height is 300km for the emperical potential model
@@ -47,8 +45,10 @@
       use physconst,         only: pi
       use cam_abortutils,    only: endrun
       use cam_logfile,       only: iulog
-      use wei96,             only: gecmp, ReadCoef, EpotVal, adjust, get_tilt, SetModel
+      use heelis_mod,        only: heelis_flwv32, heelis_update
       use solar_parms_data,  only: f107d=>solar_parms_f107
+      use spmd_utils,        only: masterproc
+      use infnan,   only: nan, assignment(=)
 
       implicit none
 
@@ -60,6 +60,7 @@
 	        nmlon, nmlat, & ! dimension of mag. grid 
                 dlatm, dlonm, & ! grid spacing of mag. grid 
 	        ylonm, ylatm    ! magnetic longitudes/latitudes (deg)
+      
       private
 
       integer ::  &
@@ -70,20 +71,12 @@
       real(r8) ::  ut    ! universal time  
 
 !------------------------------------------------------------------------------ 
-! solar parameters
-!------------------------------------------------------------------------------ 
-      real(r8) ::   by              ! By component of IMF [nT]
-      real(r8) ::   bz              ! Bz component of IMF [nT]
-!------------------------------------------------------------------------------ 
 ! mag. grid dimensions (assumed resolution of 2deg)
 !------------------------------------------------------------------------------ 
       integer, parameter ::  &
       nmlon = 180,       &  ! mlon 
       nmlat = 90,        &  ! mlat
-      nmlath= nmlat/2,   &  ! mlat/2
-      nmlonh= nmlon/2,   &  ! mlon/2
-      nmlonp1 = nmlon+1, &  ! mlon+1 
-      nmlatp1 = nmlat+1     ! mlat+1
+      nmlath= nmlat/2       ! mlat/2
 
       real(r8) ::        &
         ylatm(0:nmlat),  &   ! magnetic latitudes (deg)
@@ -97,21 +90,18 @@
       real(r8), protected ::                &
         potent(0:nmlon,0:nmlat), &  ! electric potential   [V]  
         ed1(0:nmlon,0:nmlat),    &  ! zonal electric field Ed1  [V/m] 
-        ed2(0:nmlon,0:nmlat)        ! meridional electric field Ed2/sin I_m  [V/m]  
+        ed2(0:nmlon,0:nmlat)        ! meridional electric field Ed2/sin I_m  [V/m]
        
       real(r8) :: &
        day      ! iday+ut
 
       logical, parameter :: iutav=.false.   ! .true.  means UT-averaging 
                                             ! .false. means no UT-averaging
-      real(r8), parameter ::          &
-        v_sw = 400._r8 	                   ! solar wind velocity [km/s]
-
 !------------------------------------------------------------------------------ 
-! boundary for Weimer
+! boundary for high-lat potential
 !------------------------------------------------------------------------------ 
-      real(r8), parameter :: bnd_wei = 44._r8 ! colat. [deg]
-      integer :: nmlat_wei
+      real(r8), parameter :: bnd_hgh = 44._r8 ! colat. [deg]
+      integer :: nmlat_hgh
       
 !------------------------------------------------------------------------------ 
 ! flag for choosing factors for empirical low latitude model      
@@ -124,15 +114,13 @@
       real(r8), parameter ::        & 
      	r_e  =  6.371e6_r8,         &  ! radius_earth [m] (same as for apex.F90)
         h_r  = 130.0e3_r8,          &  ! reference height [m] (same as for apex.F90)
-     	dy2yr= 365.24_r8,           &  ! day per avg. year used in Weimer
-     	dy2mo= 30.6001_r8  	       ! day per avg. month used in Weimer
+     	dy2yr= 365.24_r8               ! day per avg. year
 
       real(r8) :: &
      	rtd ,     &    ! radians -> deg
      	dtr,      &    ! deg -> radians
      	sqr2,     &      
      	dy2rd,    &    ! 2*pi/365.24  average year
-     	deg2mlt,  &    ! for mlon to deg
         sinIm_mag(0:nmlat)    ! sinIm
 
       integer :: jmin, jmax   ! latitude index for interpolation of 
@@ -170,16 +158,17 @@
 !------------------------------------------------------------------------------ 
 ! high_latitude boundary
 !------------------------------------------------------------------------------ 
-      real(r8), parameter ::  & 
-     	ef_max  = 0.015_r8,   &  ! max e-field for high latitude boundary location [V/m]
-     	lat_sft = 54._r8	 ! shift of highlat_bnd to 54 deg
+      real(r8), parameter :: & 
+        lat_sft = 54._r8         ! shift of highlat_bnd to 54 deg
       integer :: ilat_sft        ! index of shift for high latitude boundary
       integer, parameter :: nmax_sin = 2 ! max. wave number to be represented
       logical, parameter :: debug =.false.
 
+      real(r8) :: epotential_max = huge(1._r8) ! max cross cap potential kV
+
       contains
 
-      subroutine efield_init(efield_lflux_file, efield_hflux_file, efield_wei96_file)
+      subroutine efield_init(efield_lflux_file, efield_hflux_file, efield_potential_max)
 !-----------------------------------------------------------------------
 ! Purpose: read in and set up coefficients needed for electric field
 !          calculation (independent of time & geog. location)
@@ -190,8 +179,15 @@
 !-----------------------------------------------------------------------
       character(len=*), intent(in) :: efield_lflux_file
       character(len=*), intent(in) :: efield_hflux_file
-      character(len=*), intent(in) :: efield_wei96_file
+      real(r8),         intent(in) :: efield_potential_max ! cross cap electric potential maximum
+      
+      real(r8) :: nanval
+      nanval=nan
 
+      potent = nanval
+      ed1 = nanval
+      ed2 = nanval
+    
       call constants	 ! calculate constants
 !-----------------------------------------------------------------------
 ! low/midlatitude potential from Scherliess model
@@ -200,11 +196,9 @@
       call index_quiet  ! set up index for f_m(mlt),f_l(UT),f_-k(d)
       call prep_fk	! set up the constant factors for f_k
       call prep_pnm	! set up the constant factors for P_n^m & dP/d phi
-!-----------------------------------------------------------------------
-! following part should be independent of time & location if IMF constant
-!-----------------------------------------------------------------------
-      call ReadCoef (efield_wei96_file)
 
+      epotential_max = efield_potential_max
+      
       end subroutine efield_init
 
       subroutine get_efield
@@ -218,7 +212,6 @@
 !-----------------------------------------------------------------------
 
       use time_manager,   only : get_curr_calday, get_curr_date
-      use mag_parms,      only : get_mag_parms
       use mo_apex,        only : geomag_year
 
       integer :: tod ! time of day [s] 
@@ -236,12 +229,7 @@
         call endrun
       end if
 
-      ut = tod/3600._r8                   ! UT of day [sec]
-
-!-----------------------------------------------------------------------
-! get mag parms
-!-----------------------------------------------------------------------
-      call get_mag_parms( by = by, bz = bz )
+      ut = tod/3600._r8                   ! UT of day [hour]
 
 !-----------------------------------------------------------------------
 ! ajust S_a
@@ -267,7 +255,7 @@
 ! Method: rewritten code from Luedger Scherliess (11/20/99 LS)
 !     routine to calculate the global electric potential in magnetic
 !     Apex coordinates (Latitude and MLT).
-!     High Latitude Model is Weimer 1996.
+!     High Latitude Model is Heelis
 !     Midlatitude model is Scherliess 1999.
 !     Interpolation in a transition region at about 60 degree 
 !     magnetic apex lat
@@ -281,10 +269,13 @@
       integer  :: ilon, ilat, idlat
       integer  :: ihlat_bnd(0:nmlon)                  ! high latitude boundary
       integer  :: itrans_width(0:nmlon)               ! width of transition zone
-      real(r8) :: mlat, mlat_90, pot
+      real(r8) :: mlat, pot
       real(r8) :: pot_midlat(0:nmlon,0:nmlat)         ! potential from L. Scherliess model
-      real(r8) :: pot_highlat(0:nmlon,0:nmlat)        ! potential from Weimer model
-      real(r8) :: pot_highlats(0:nmlon,0:nmlat)	      ! smoothed potential from Weimer model
+      real(r8) :: pot_highlat(0:nmlon,0:nmlat)        ! potential from Heelis
+      real(r8) :: pot_highlats(0:nmlon,0:nmlat)	      ! smoothed potential from Heelis
+      real(r8) :: poten(nmlon+1)
+      integer,dimension(nmlon) :: iflag
+      real(r8),dimension(nmlon) :: dlat,dlon,ratio
 
 !-----------------------------------------------------------------------
 ! convert to date and day	
@@ -292,7 +283,7 @@
       day  = iday + ut/24._r8
 
 !-----------------------------------------------------------------------
-! low/midlatitude electric potential - empirical model Scherliess 1999  
+! low/mid-latitude electric potential - empirical model Scherliess 1999  
 !-----------------------------------------------------------------------
 !$omp parallel do private(ilat, ilon, mlat, pot)
       do ilat = 0,nmlath                        ! Calculate only for one magn. hemisphere
@@ -305,26 +296,32 @@
       end do
 
 !-----------------------------------------------------------------------
-! hight latitude potential from Weimer model
-! at the poles Weimer potential is not longitudinal dependent
+! high-latitude potential from Heelis model
 !-----------------------------------------------------------------------
-      call prep_weimer                             ! calculate IMF angle & magnitude, tilt
+      call heelis_update(max_ctpoten=epotential_max)
 
-!$omp parallel do private(ilat, ilon, mlat_90, pot)
-      do ilat = 0,nmlat_wei 	                   ! Calculate only for one magn. hemisphere
-        mlat_90 = 90._r8 - ylatm(ilat)             ! mag. latitude
-        do ilon = 0,nmlon
-    	  pot  = 1000._r8*EpotVal( mlat_90, ylonm(ilon)*deg2mlt )     ! calculate potential (kv -> v)
-!-----------------------------------------------------------------------
-! NH/SH symmetry
-!-----------------------------------------------------------------------
-    	  pot_highlat(ilon,ilat)        = pot
-    	  pot_highlat(ilon,nmlat-ilat)  = pot
-    	  pot_highlats(ilon,ilat)       = pot
-    	  pot_highlats(ilon,nmlat-ilat) = pot
-        end do
+      ratio(:) = 1._r8
+
+      do ilat = 0,nmlat
+        iflag(:) = 1
+        dlat(:) = (90._r8-ylatm(ilat))*dtr
+        dlon(:) = (ylonm(1:nmlon)-180._r8)*dtr
+
+        if (ylatm(ilat) > 44._r8) then
+           call heelis_flwv32(dlat,dlon,ratio,pi,iflag,nmlon,poten(:))
+        else
+           poten(:) = 0._r8
+        endif
+     
+        pot_highlat(1:nmlon,ilat)        = poten(1:nmlon) ! volts
+        pot_highlat(1:nmlon,nmlat-ilat)  = poten(1:nmlon)
+        pot_highlats(1:nmlon,ilat)       = poten(1:nmlon)
+        pot_highlats(1:nmlon,nmlat-ilat) = poten(1:nmlon)
+       
       end do     
-
+      pot_highlat(0,:)  = pot_highlat(nmlon,:)
+      pot_highlats(0,:) = pot_highlats(nmlon,:)
+      
 !-----------------------------------------------------------------------
 ! weighted smoothing of high latitude potential
 !-----------------------------------------------------------------------
@@ -332,12 +329,14 @@
       call pot_latsmo( pot_highlats, idlat )
 !-----------------------------------------------------------------------
 ! calculate the height latitude bounday ihl_bnd
-! 1. calculate E field from weimar model
+! 1. calculate E field from high-lat potential model
 !    boundary is set where the total electric field exceeds
 !    0.015 V/m (corresp. approx. to 300 m/s)
 ! 2. moved halfways to 54 deg 
 ! output : index 0-pole nmlath-equator
 !-----------------------------------------------------------------------
+      potent = pot_highlat ! need efield components (ed1,ed2) to determine ihlat_bnd
+      call DerivPotential()
       call highlat_getbnd( ihlat_bnd )
 !-----------------------------------------------------------------------
 ! 3. adjust high latitude boundary sinusoidally
@@ -363,20 +362,6 @@
 !-----------------------------------------------------------------------
       idlat = nmlon/48          ! smooth over -idlat:idlat grid points
       call pot_lonsmo( potent, idlat )
-
-!-----------------------------------------------------------------------
-! output
-!-----------------------------------------------------------------------
-! output ( change later to netcdf file)
-!      do ilat=0,nmlat
-!       do ilon=0,nmlon
-!         write(iulog,'(4(x,f12.5))') ylatm(ilat),ylonm(ilon), &
-!           potent(ilon,ilat),potent(ilon,nmlat-ilat)
-!         write(iulog,'(4(x,f12.5))') ylatm(ilat),ylonm(ilon), &
-!           potent(ilon,ilat),potent(ilon,nmlat-ilat)
-!	write(iulog,'(f10.3)') potent(ilon,ilat)
-!       end do
-!      end do
 
       end subroutine GlobalElPotential
 
@@ -467,7 +452,7 @@
       end subroutine pnm                                                                         
 
       subroutine prep_pnm
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! Purpose: constant factors for normalized associated Legendre polynomial P_n^m
 !          Ref.: Richmond J.Atm.Ter.Phys. 1974
 !
@@ -476,7 +461,7 @@
 !   R_n^m      = sqrt[ (n^2-m^2)/(4n^2-1) ]
 !
 ! Author: A. Maute Nov 2003  am 11/18/03
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 
       implicit none                
 
@@ -502,7 +487,7 @@
       end subroutine prep_pnm                                                                         
 
       subroutine index_quiet
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! Purpose: set up index for factors f_m(mlt),f_l(UT),f_-k(d) to
 !    describe the electric potential Phi for the empirical model   
 !
@@ -514,13 +499,13 @@
 !      range n=1,12 and m=-n,n, k=0,2 l=-2,2
 !
 ! Author: A. Maute Nov 2003  am 11/18/03
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 
       implicit none
 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 !	... local variables
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
       integer :: i, j, k, l, n, m
 
       i = 0 	! initialize
@@ -531,7 +516,7 @@
              cycle
           end if
           do n = 1,12
-            do m = -18,18 
+            do m = -18,18
               if( abs(m) <= n ) then		    !  |m| < n
                 if( (((n-m)/2)*2) == (n-m) ) then   ! only n+m even
              	  if( n-abs(m) <= 9 ) then	    ! n-|m| <= 9 why?
@@ -560,7 +545,7 @@
       end subroutine index_quiet                                                           
 
       subroutine read_acoef (efield_lflux_file, efield_hflux_file)
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! Purpose:  
 !    1. read in coefficients A_klmn^lf for solar cycle minimum and
 !      A_klmn^hf for maximum 
@@ -575,97 +560,103 @@
 ! Method:
 !
 ! Author: A. Maute Nov 2003  am 11/19/03
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 
       use ioFileMod,     only : getfil
       use units,         only : getunit, freeunit
+      use spmd_utils,    only : mpicom, masterprocid, mpicom, mpi_real8
 
       character(len=*), intent(in) :: efield_lflux_file
       character(len=*), intent(in) :: efield_hflux_file
 
-      integer  :: ios,unit
+      integer  :: ios,unit, ierr
       character (len=256):: locfn
 
-!----------------------------------------------------------------------------                                                                   
-!  get coefficients file for solar minimum: 
-!----------------------------------------------------------------------------                                                                   
-      unit     = getunit()
-      call getfil( efield_lflux_file, locfn, 0 )
+      if (masterproc) then
+         !----------------------------------------------------------------------------
+         !  get coefficients file for solar minimum: 
+         !----------------------------------------------------------------------------
+         unit     = getunit()
+         call getfil( efield_lflux_file, locfn, 0 )
 
-!----------------------------------------------------------------------------                                                                   
-! open datafile with coefficients A_klnm
-!----------------------------------------------------------------------------                                                                   
-      if (debug) write(iulog,*) 'read_acoef: open file ',trim(locfn),' unit ',unit
-      open(unit=unit,file=trim(locfn), &
-           status = 'old',iostat = ios)
-      if(ios.gt.0) then
-	write(iulog,*) 'read_acoef: error in opening coeff_lf file',' unit ',unit
-        call endrun
-      end if
+         !----------------------------------------------------------------------------
+         ! open datafile with coefficients A_klnm
+         !----------------------------------------------------------------------------
+         if (debug) write(iulog,*) 'read_acoef: open file ',trim(locfn),' unit ',unit
+         open(unit=unit,file=trim(locfn), &
+              status = 'old',iostat = ios)
+         if(ios.gt.0) then
+            write(iulog,*) 'read_acoef: error in opening coeff_lf file',' unit ',unit
+            call endrun
+         end if
 
-!----------------------------------------------------------------------------                                                                   
-! read datafile with coefficients A_klnm
-!----------------------------------------------------------------------------                                                                   
-      if (debug) write(iulog,*) 'read_acoef: read file ',trim(locfn),' unit ',unit
-      read(unit,*,iostat = ios) a_lf
-      if(ios.gt.0) then
-	write(iulog,*) 'read_acoef: error in reading coeff_lf file',' unit ',unit
-        call endrun
-      end if
+         !----------------------------------------------------------------------------
+         ! read datafile with coefficients A_klnm
+         !----------------------------------------------------------------------------
+         if (debug) write(iulog,*) 'read_acoef: read file ',trim(locfn),' unit ',unit
+         read(unit,*,iostat = ios) a_lf
+         if(ios.gt.0) then
+            write(iulog,*) 'read_acoef: error in reading coeff_lf file',' unit ',unit
+            call endrun
+         end if
 
-!----------------------------------------------------------------------------                                                                   
-! close & free unit      
-!----------------------------------------------------------------------------                                                                   
-      close(unit)
-      call freeunit(unit)
-      if (debug) write(iulog,*) 'read_acoef: free unit ',unit
+         !----------------------------------------------------------------------------
+         ! close & free unit      
+         !----------------------------------------------------------------------------
+         close(unit)
+         call freeunit(unit)
+         if (debug) write(iulog,*) 'read_acoef: free unit ',unit
 
-!----------------------------------------------------------------------------                                                                   
-!  get coefficients file for solar maximum: 
-!----------------------------------------------------------------------------                                                                   
-      unit     = getunit()
-      call getfil( efield_hflux_file, locfn, 0 )
+         !----------------------------------------------------------------------------
+         !  get coefficients file for solar maximum: 
+         !----------------------------------------------------------------------------
+         unit     = getunit()
+         call getfil( efield_hflux_file, locfn, 0 )
 
-!----------------------------------------------------------------------------                                                                   
-! open datafile with coefficients A_klnm
-!----------------------------------------------------------------------------                                                                   
-      if (debug) write(iulog,*) 'read_acoef: open file ',trim(locfn),' unit ',unit
-      open(unit=unit,file=trim(locfn), &
-           status = 'old',iostat = ios)
-      if(ios.gt.0) then
-	write(iulog,*) 'read_acoef: error in opening coeff_hf file',' unit ',unit
-        call endrun
-      end if
+         !----------------------------------------------------------------------------
+         ! open datafile with coefficients A_klnm
+         !----------------------------------------------------------------------------
+         if (debug) write(iulog,*) 'read_acoef: open file ',trim(locfn),' unit ',unit
+         open(unit=unit,file=trim(locfn), &
+              status = 'old',iostat = ios)
+         if(ios.gt.0) then
+            write(iulog,*) 'read_acoef: error in opening coeff_hf file',' unit ',unit
+            call endrun
+         end if
 
-!----------------------------------------------------------------------------                                                                   
-! read datafile with coefficients A_klnm
-!----------------------------------------------------------------------------                                                                   
-      if (debug) write(iulog,*) 'read_acoef: read file ',trim(locfn)
-      read(unit,*,iostat = ios) a_hf
-      if(ios.gt.0) then
-	write(iulog,*) 'read_acoef: error in reading coeff_hf file',' unit ',unit
-        call endrun
-      end if
+         !----------------------------------------------------------------------------
+         ! read datafile with coefficients A_klnm
+         !----------------------------------------------------------------------------
+         if (debug) write(iulog,*) 'read_acoef: read file ',trim(locfn)
+         read(unit,*,iostat = ios) a_hf
+         if(ios.gt.0) then
+            write(iulog,*) 'read_acoef: error in reading coeff_hf file',' unit ',unit
+            call endrun
+         end if
 
-!----------------------------------------------------------------------------                                                                   
-! close & free unit      
-!----------------------------------------------------------------------------                                                                   
-      close(unit)
-      call freeunit(unit)
-      if (debug) write(iulog,*) 'read_acoef: free unit ',unit
+         !----------------------------------------------------------------------------
+         ! close & free unit      
+         !----------------------------------------------------------------------------
+         close(unit)
+         call freeunit(unit)
+         if (debug) write(iulog,*) 'read_acoef: free unit ',unit
+      endif
+
+      call mpi_bcast (a_lf, ni+1, mpi_real8, masterprocid, mpicom, ierr)
+      call mpi_bcast (a_hf, ni+1, mpi_real8, masterprocid, mpicom, ierr)
 
       end subroutine read_acoef
 
       subroutine adj_S_a
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! adjust S_a -> S_aM   eqn.8-11 Scherliess draft
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 
       implicit none
 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! local variables
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
       integer  :: i
       real(r8) :: x2, y2, a90, a180, S_aM
 
@@ -682,11 +673,10 @@
       S_aM = (atan2(y2,x2) - a90)/(a180 - a90) 
       S_aM = 90._r8*(1._r8 + S_aM)
       if(debug) write(iulog,*) 'f107d=',f107d,' S_aM =',S_aM
-      if(debug) write(iulog,*) 'By=',by
 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! inter/extrapolate to S_a (f107d)
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
       do i = 0,ni                       ! eqn.8 Scherliess draft
         a_klnm(i) = S_aM*(a_hf(i) - a_lf(i))/90._r8 + 2._r8*a_lf(i) - a_hf(i)
 ! for testing like in original code
@@ -697,18 +687,18 @@
       end subroutine adj_S_a
 
       subroutine constants
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! Purpose: set up constant values (e.g. magnetic grid, convertion
 !      constants etc)
 !
 ! Method:
 !
 ! Author: A. Maute Nov 2003  am 11/19/03
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! local variables
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
       integer  :: i,j
       real(r8) :: fac,lat
 
@@ -716,17 +706,16 @@
       dtr     = pi/180._r8	        ! deg -> radians
       sqr2    = sqrt(2.e0_r8)
       dy2rd   = 2._r8*pi/dy2yr          ! 2*pi/365.24  average year
-      deg2mlt = 24._r8/360._r8          ! convert degrees to MLT hours
 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! Set grid deltas:
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
       dlatm = 180._r8/nmlat
       dlonm = 360._r8/nmlon
 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! Set magnetic latitude array 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
       do j = 0,nmlat
         ylatm(j) = j*dlatm
         lat = (ylatm(j) - 90._r8)*dtr
@@ -736,26 +725,26 @@
 	sinIm_mag(j) = fac*sin( lat )
       end do 
 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! Set magnetic longitude array
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
       do i = 0,nmlon
         ylonm(i) = i*dlonm
-      end do ! i=1,nmlonp1
+      end do
 
-!----------------------------------------------------------------------------                                                                   
-! find boundary index for weimer
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
+! find boundary index for high-lat potential
+!----------------------------------------------------------------------------
       do j = 0,nmlat
-        nmlat_wei = j
-        if( bnd_wei <= ylatm(j) ) then
+        nmlat_hgh = j
+        if( bnd_hgh <= ylatm(j) ) then
            exit
         end if
       end do 
 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! find latitudinal shift
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
       do j = 0,nmlat
         ilat_sft = j
         if( lat_sft <= ylatm(j) ) then
@@ -763,10 +752,10 @@
         end if
       end do 
 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! find index for linear interpolation of ed2 at mag.equator 
 ! use 12 deg - same as in TIEGCM      
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
       do j = 0,nmlat
         lat = ylatm(j) - 90._r8
         if( lat <= -12._r8 ) then
@@ -780,14 +769,14 @@
       end subroutine constants
 
       subroutine prep_fk
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! Purpose: set up constants factors for f_-k(day) used for empirical model
 !     to calculate the electric potential
 !
 ! Method:
 !
 ! Author: A. Maute Nov 2003  am 11/19/03
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 
       ft(1,0) = .75_r8*sqrt( 6.e0_r8 )/pi			
       ft(1,1) = 2.e0_r8*ft(1,0)					      
@@ -802,33 +791,33 @@
       end subroutine prep_fk
 
       subroutine set_fkflfs( fk, fl, fs )
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! Purpose:  set f_-k(day) depending on seasonal flag used for empirical model
 !     to calculate the electric potential
 !
 ! Method:
 !
 ! Author: A. Maute Nov 2003  am 11/20/03
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 !	... dummy arguments
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
       real(r8), intent(out) ::  &
      	fk(0:2),  &	                ! f_-k(day) 
      	fl(-2:2), &	                ! f_l(ut)  
      	fs(2)		                ! f_s(f10.7) 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! local variables
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
       integer  :: lp
       real(r8) :: ang
       real(r8) :: lon_ut
 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! f_-k(day) 
 ! use factors for iseasav == 0 - Scherliess had iseasav as an input parameter
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
       lp = iseasav
       if( iseasav == 0 ) then
         ang   = (day + 9._r8)*dy2rd
@@ -845,9 +834,9 @@
         fk(2) =1._r8
       end if
 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! f_l(ut) 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
       lon_ut = 15._r8*ut        ! 15.*mlt - xmlon + 69. 
       call ff( lon_ut, 2, fl )                                                 
       if( iutav ) then  	! UT-averaging
@@ -858,9 +847,9 @@
 	
       end if
 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! f_s(f10.7)  only fs(1) used  	
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
       fs(1) = 1._r8
 !     fs(2) = S_a			  
       fs(2) = f107d			  
@@ -868,24 +857,24 @@
       end subroutine set_fkflfs
 
       subroutine efield_mid( mlat, mlon, pot )
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! Purpose: calculate the electric potential for low and 
 !      midlatitudes from an empirical model (Scherliess 1999)
 !
 ! Method:
 !
 ! Author: A. Maute Nov 2003  am 11/20/03
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 !	... dummy arguments
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
       real(r8), intent(in)  :: mlat, mlon
       real(r8), intent(out) :: pot               ! electric potential (V)
 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! local variables
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
       integer  :: i, mp, np, nn
       real(r8) :: mod_mlat, ct, x
       real(r8) :: fk(0:2)      	    ! f_-k(day) 
@@ -901,14 +890,14 @@
          mod_mlat = 0.5_r8                     ! avoid geomag.equator
       end if
 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! set f_-k, f_l, f_s depending on seasonal flag
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
       call set_fkflfs( fk, fl, fs ) 
       
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! spherical harmonics 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
       ct = cos( (90._r8 - mod_mlat)*dtr )  ! magnetic colatitude 
       call pnm( ct, p )	                   ! calculate P_n^m
       call ff( mlon, 18, f )               ! calculate f_m (phi) why 18 if N=12                              
@@ -921,87 +910,36 @@
 	pot = pot + x*f(mp)*p(np,nn) 
       end do 
       
-      end subroutine efield_mid                                              
-
-      subroutine prep_weimer
-!----------------------------------------------------------------------------                                                                   
-! Purpose:  for Weimer model calculate IMF angle, IMF magnitude
-!  tilt of earth
-!
-! Method: using functions and subroutines from Weimer Model 1996
-!     output:  angle, &  ! IMF angle
-!     	       bt,    &  ! IMF magnitude
-!     	       tilt      ! tilt of earth
-!
-! Author: A. Maute Nov 2003  am 11/20/03
-!----------------------------------------------------------------------------                                                                   
-
-!----------------------------------------------------------------------------                                                                   
-!  local variables
-!----------------------------------------------------------------------------                                                                   
-      real(r8) ::  &
-        angle,  &  ! IMF angle
-	bt,     &  ! IMF magnitude
-	tilt       ! tilt of earth
-
-      if( by == 0._r8 .and. bz == 0._r8) then
-         angle = 0._r8
-      else
-         angle = atan2( by,bz )
-      end if
-      
-      angle = angle*rtd
-      call adjust( angle )
-      bt = sqrt( by*by + bz*bz )
-!----------------------------------------------------------------------------                                                                   
-! use month and day of month - calculated with average no.of days per month
-! as in Weimer
-!----------------------------------------------------------------------------                                                                   
-      if(debug) write(iulog,*) 'prep_weimer: day->day of month',iday,imo,iday_m,ut
-      tilt = get_tilt( iyear, imo, iday_m, ut )
-
-       if(debug) then
-        write(iulog,"(/,'efield prep_weimer:')")
-        write(iulog,*)  '  Bz   =',bz
-        write(iulog,*)  '  By   =',by
-        write(iulog,*)  '  Bt   =',bt
-        write(iulog,*)  '  angle=',angle
-        write(iulog,*)  '  VSW  =',v_sw
-        write(iulog,*)  '  tilt =',tilt
-       end if
-
-      call SetModel( angle, bt, tilt, v_sw )
-
-      end subroutine prep_weimer
+      end subroutine efield_mid
 
       subroutine pot_latsmo( pot, idlat )  ! pots == pot_highlats
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! Purpose: smoothing in latitude of  potential
 !
 ! Method: weighted smoothing in latitude 
 ! assume regular grid spacing
 !
 ! Author: A. Maute Nov 2003  am 11/20/03
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 !	... dummy arguments
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
       integer, intent(in)     :: idlat
       real(r8), intent(inout) :: pot(0:nmlon,0:nmlat)
 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! local variables
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
       integer  :: ilat, id
       real(r8) :: wgt, del
       real(r8) :: w(-idlat:idlat)
 !     real(r8) :: pot_smo(0:nmlat) ! temp array for smooth. potential
-      real(r8) :: pot_smo(0:nmlon,0:nmlat_wei) ! temp array for smooth. potential
+      real(r8) :: pot_smo(0:nmlon,0:nmlat_hgh) ! temp array for smooth. potential
 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! weighting factors (regular grid spacing) 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
       wgt = 0._r8 
       do id = -idlat,idlat
 	del   = abs(id)*dlatm	! delta lat_m
@@ -1010,30 +948,12 @@
       end do
       wgt = 1._r8/wgt
 
-!     do ilon = 0,nmlon
-!        do ilat = idlat,nmlat_wei-idlat
-!       do ilat = idlat,nmlat-idlat
-!         pot_smo(ilat) = 0._r8
-!         do id = -idlat,idlat	!  org. was degree now grid points
-!           pot_smo(ilat) = pot_smo(ilat) + w(id)*pot(ilon,ilat+id)
-!           write(iulog,"('pot_latsmo: ilon=',i3,' ilat=',i3,' id=',i3,' pot(ilon,ilat+id)=',e12.4)") ilon,ilat,id,pot(ilon,ilat+id)
-!         end do
-!         pot_smo(ilat)       = pot_smo(ilat)*wgt
-!         pot_smo(nmlat-ilat) = pot_smo(ilat)
-!       end do
-!      pot(ilon,idlat:nmlat-idlat) =  &        ! copy back into pot
-!         pot_smo(idlat:nmlat-idlat)
-!        pot(ilon,idlat:nmlat_wei-idlat)       = pot_smo(idlat:nmlat_wei-idlat)
-!       pot(ilon,nmlat-nmlat_wei+idlat:nmlat) = pot_smo(nmlat-nmlat_wei+idlat:nmlat)
-!        pot(ilon,nmlat-nmlat_wei+idlat:nmlat-idlat) = pot_smo(nmlat-nmlat_wei+idlat:nmlat-idlat)
-!     end do
-
 !$omp parallel do private(ilat)
-      do ilat = idlat,nmlat_wei-idlat
+      do ilat = idlat,nmlat_hgh-idlat
          pot_smo(:,ilat) = matmul( pot(:,ilat-idlat:ilat+idlat),w )*wgt
       end do
 
-      do ilat = idlat,nmlat_wei-idlat
+      do ilat = idlat,nmlat_hgh-idlat
          pot(:,ilat)       = pot_smo(:,ilat)
          pot(:,nmlat-ilat) = pot_smo(:,ilat)
       end do
@@ -1041,33 +961,33 @@
       end subroutine pot_latsmo
 
       subroutine pot_latsmo2( pot, idlat ) 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! Purpose:  smoothing in latitude of  potential
 !
 ! Method: weighted smoothing in latitude 
 !         assume regular grid spacing
 !
 ! Author: A. Maute Nov 2003  am 11/20/03
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 !	... dummy arguments
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
       integer, intent(in)     :: idlat
       real(r8), intent(inout) :: pot(0:nmlon,0:nmlat)
 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! local variables
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
       integer  :: ilat, id
       real(r8) :: wgt, del
       real(r8) :: w(-idlat:idlat)
 !     real(r8) :: pot_smo(0:nmlat) ! temp array for smooth. potential
       real(r8) :: pot_smo(0:nmlon,0:nmlath) ! temp array for smooth. potential
 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! weighting factors (regular grid spacing)  
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
       wgt = 0._r8
       do id = -idlat,idlat
 	del   = abs(id)*dlatm	! delta lat_m
@@ -1099,32 +1019,32 @@
       end subroutine pot_latsmo2
 
       subroutine pot_lonsmo( pot, idlon ) 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! Purpose: smoothing in longitude of potential
 !
 ! Method:  weighted smoothing in longitude
 !          assume regular grid spacing
 !
 ! Author: A. Maute Nov 2003  am 11/20/03
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 !	... dummy arguments
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
       integer, intent(in)     :: idlon
       real(r8), intent(inout) :: pot(0:nmlon,0:nmlat)
 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! local variables
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
       integer  :: ilon, ilat, id
       real(r8) :: wgt, del
       real(r8) :: w(-idlon:idlon)
       real(r8) :: tmp(-idlon:nmlon+idlon) ! temp array for smooth. potential
 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! weighting factors (regular grid spacing) 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
       wgt = 0._r8
       do id = -idlon,idlon
 	del   = abs(id)*dlonm	! delta lon_m
@@ -1133,9 +1053,9 @@
       end do
      wgt = 1._r8/wgt
 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! averaging     
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 !     do ilon = 0,nmlon
 !       do ilat = 0,nmlath
 !         pot_smo(ilat) = 0._r8
@@ -1173,7 +1093,7 @@
 ! Purpose: calculate the height latitude bounday index ihl_bnd
 !
 ! Method:
-! 1. calculate E field from weimar model
+! 1. calculate E field from high-latitude model
 !    boundary is set where the total electric field exceeds
 !    0.015 V/m (corresp. approx. to 300 m/s)
 ! 2. moved halfways to 54 deg not necessarily equatorwards as in the
@@ -1191,30 +1111,40 @@
 ! local variables
 !----------------------------------------------------------------------------                                                                   
       integer  :: ilon, ilat, ilat_sft_rvs
-      real(r8) :: mlat, mlt, es, ez, e_tot
+      real(r8) :: e_tot
+      real(r8) :: e_max, ef_max
 
-      ilat_sft_rvs = nmlath - ilat_sft          ! pole =0, equ=90
-!$omp parallel do private(ilat,ilon,mlt,mlat,es,ez,e_tot)
-      do ilon = 0,nmlon                         ! long.
-	ihlat_bnd(ilon) = 0
-        mlt  = ylonm(ilon)*deg2mlt              ! mag.local time ?
-        do ilat = nmlat_wei+1,0,-1              ! lat. loop moving torwards pole
-	  mlat = 90._r8 - ylatm(ilat)           ! mag. latitude pole = 90 equator = 0
-          call gecmp( mlat, mlt, es, ez )	! get electric field
-          e_tot = sqrt( es**2 + ez**2 )
-          if( abs(e_tot) >= ef_max ) then                        ! e-filed > limit -> boundary
-            ihlat_bnd(ilon) = ilat - (ilat - ilat_sft_rvs)/2     ! shift boundary to lat_sft (54deg)
-            exit
-          end if
-        end do
-      end do     
+      ! first find absolute max E-field magnitude
+      e_max = 0._r8
+      do ilon = 0,nmlon
+         do ilat = nmlat_hgh+1,0,-1              ! lat. loop moving torwards pole
+            e_tot = sqrt( ed1(ilon,ilat)**2 + ed2(ilon,ilat)**2 )
+            if (e_tot > e_max) then
+               e_max = e_tot
+            end if
+         end do
+      end do
 
-!     write(iulog,"('highlat_getbnd: ihlat_bnd=',/,(12i6))") ihlat_bnd
+      ! Set E-field strength used to find the transition boundary:
+      !   when Kp is low the max E-field strength from Heelis is less than 0.015 V/m
+      !   for such cases set ef_max to half the max E-field strength
+      ef_max = min(0.015_r8,e_max*0.5_r8)
 
+      ilat_sft_rvs = nmlath - ilat_sft           ! pole =0, equ=90
+      do ilon = 0,nmlon
+         do ilat = nmlat_hgh+1,0,-1              ! lat. loop moving torwards pole
+            e_tot = sqrt( ed1(ilon,ilat)**2 + ed2(ilon,ilat)**2 )
+            if( abs(e_tot) >= ef_max ) then                         ! e-filed > limit -> boundary
+               ihlat_bnd(ilon) = ilat - (ilat - ilat_sft_rvs)*.5_r8 ! shift boundary to lat_sft (54deg)
+               exit
+            end if
+         end do
+      end do
+    
       end subroutine highlat_getbnd
 
       subroutine bnd_sinus( ihlat_bnd, itrans_width )  
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! Purpose: 
 !   1. adjust high latitude boundary (ihlat_bnd) sinusoidally
 !   2. width of transition zone from midlatitude potential to high latitude
@@ -1236,19 +1166,19 @@
 !    trans_width(phi)=8.-2.*cos(phi) 
 !
 ! Author: A. Maute Nov 2003  am 11/20/03
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 
       use sv_decomp, only : svdcmp, svbksb
      
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 !	... dummy arguments
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
       integer, intent(inout) :: ihlat_bnd(0:nmlon)    ! loaction of boundary
       integer, intent(out)   :: itrans_width(0:nmlon) ! width of transition zone
 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! local variables
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
       integer, parameter :: nmax_a = 2*nmax_sin+1 ! absolute array length
       integer, parameter :: ishf   = nmax_sin+1
       integer  :: ilon, i, i1, j, bnd
@@ -1260,9 +1190,9 @@
       real(r8) :: w(nmax_a,nmax_a)
       real(r8) :: f(-nmax_sin:nmax_sin,0:nmlon)
 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 !    Sinusoidal Boundary calculation
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
       rhs(:) = 0._r8
       lsg(:) = 0._r8
       u(:,:) = 0._r8
@@ -1304,7 +1234,7 @@
       end subroutine bnd_sinus
 
       subroutine highlat_adjust( pot_highlats, pot_highlat, pot_midlat, ihlat_bnd )
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! Purpose: Adjust mid/low latitude electric potential and high latitude
 !          potential such that there are continous across the mid to high 
 !          latitude boundary
@@ -1316,26 +1246,26 @@
 !    Int_phi Phi_high(phi,bnd) d phi/360. - Int_phi Phi_low/mid(phi,bnd) d phi/360.
 !
 ! Author: A. Maute Nov 2003  am 11/21/03
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 !	... dummy arguments
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
       integer, intent(in)     :: ihlat_bnd(0:nmlon)	                  ! boundary mid to high latitude
       real(r8), intent(in)    :: pot_midlat(0:nmlon,0:nmlat)              ! low/mid latitude potentail
       real(r8), intent(inout) :: pot_highlat(0:nmlon,0:nmlat)             ! high_lat potential
       real(r8), intent(inout) :: pot_highlats(0:nmlon,0:nmlat)            ! high_lat potential! smoothed high_lat potential
 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! local:     
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
       integer  :: ilon, ilat, ilatS, ibnd60, ibnd_hl
       real(r8) :: pot60, pot_hl, del
 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! 1. integrate Phi_low/mid(phi,bnd) along the boundary mid to high latitude
 ! 2. integrate Phi_high(phi,bnd) along the boundary mid to high latitude
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
       pot60  = 0._r8
       pot_hl = 0._r8
       do ilon = 1,nmlon  ! long.           ! bnd -> eq to pole 0:90
@@ -1350,14 +1280,14 @@
       if (debug) write(iulog,*) 'Mid-Latitude Boundary Potential =',pot60
       if (debug) write(iulog,*) 'High-Latitude Boundary Potential=',pot_hl
 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! 3. adjust Phi_high by delta =
 !    Int_phi Phi_high(phi,bnd) d phi/360. - Int_phi Phi_low/mid(phi,bnd) d phi/360.
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
       del = pot_hl - pot60
 
 !$omp parallel do private(ilat,ilon,ilats)
-      do ilat = 0,nmlat_wei      ! colatitude
+      do ilat = 0,nmlat_hgh      ! colatitude
         ilats = nmlat - ilat
         do ilon = 0,nmlon
 	  pot_highlat(ilon,ilat)   = pot_highlat(ilon,ilat)   - del
@@ -1371,7 +1301,7 @@
 
       subroutine interp_poten( pot_highlats, pot_highlat, pot_midlat, &
                                ihlat_bnd, itrans_width ) 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! Purpose: construct a smooth global electric potential field 
 !
 ! Method: construct one global potential field
@@ -1393,20 +1323,20 @@
 !   [lam-bnd-trans_width)]* Phi_hl*(phi,lam) }
 !
 ! Author: A. Maute Nov 2003  am 11/21/03      
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 !	... dummy arguments
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
       integer, intent(in)  :: ihlat_bnd(0:nmlon)
       integer, intent(in)  :: itrans_width(0:nmlon)
       real(r8), intent(in) :: pot_highlats(0:nmlon,0:nmlat)
       real(r8), intent(in) :: pot_highlat(0:nmlon,0:nmlat)
       real(r8), intent(in) :: pot_midlat(0:nmlon,0:nmlat)
 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! local variables
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
       real(r8), parameter :: fac = 1._r8/3._r8
       integer  :: ilon, ilat
       integer  :: ibnd, tw, hb1, hb2, lat_ind
@@ -1418,30 +1348,30 @@
       do ilon = 0,nmlon
         ibnd = ihlat_bnd(ilon)     ! high latitude boundary index
 	tw   = itrans_width(ilon)  ! width of transition zone (index)
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! 1. low/mid latitude: |lam| < bnd-trans_width
 !   Phi(phi,lam) = Phi_low(phi,lam)
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
         do ilat = 0,nmlath-(ibnd+tw+1)
           potent(ilon,nmlath+ilat) = pot_midlat(ilon,nmlath+ilat)
           potent(ilon,nmlath-ilat) = pot_midlat(ilon,nmlath+ilat)
         end do
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! 2. high latitude: |lam| > bnd+trans_width
 !   Phi(phi,lam) = Phi_hl(phi,lam)
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
         do ilat = 0,ibnd-tw-1
           potent(ilon,ilat)       = pot_highlats(ilon,nmlat-ilat)
           potent(ilon,nmlat-ilat) = pot_highlats(ilon,nmlat-ilat)
         end do
       end do
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! 3. transition zone: bnd-trans_width <= lam <= bnd+trans_width 
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! a. interpolate between high and low/midlatitude potential
 ! update only southern hemisphere (northern hemisphere is copied
 ! after smoothing)
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 !$omp parallel do private(ilat,ilon,ibnd,tw,a,b,b1,b2,hb1,hb2,lat_ind,j1,j2,wrk1,wrk2)
       do ilon = 0,nmlon
         ibnd = ihlat_bnd(ilon)          ! high latitude boundary index
@@ -1463,10 +1393,10 @@
      	          + (wrk2 + 2._r8*pot_highlats(ilon,ilat))*(a*lat_ind - b2))
           potent(ilon,nmlat-ilat) = potent(ilon,ilat)
         end do
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 ! b.  Interpolate between just calculated Potential and the high latitude
 !    potential in a 3 degree zone poleward of the boundary
-!----------------------------------------------------------------------------                                                                   
+!----------------------------------------------------------------------------
 	do ilat = hb2+1,nmlath
 	  a = max( 3._r8/dlatm - (ilat - hb2 - 1),0._r8 )
 	  b = 3._r8/dlatm - a

@@ -499,7 +499,6 @@
 <!-- Waccm electric field parameters -->
 <efield_lflux_file >atm/waccm/efld/coeff_lflux.dat</efield_lflux_file>
 <efield_hflux_file >atm/waccm/efld/coeff_hflux.dat</efield_hflux_file>
-<efield_wei96_file >atm/waccm/efld/wei96.cofcnts</efield_wei96_file>
 
 <!-- International Geomagnetic Reference Field coefficients -->
 <igrf_geomag_coefs_file>atm/waccm/geomag/igrf_ceofs_c160412.nc</igrf_geomag_coefs_file>
