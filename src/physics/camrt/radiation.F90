@@ -143,6 +143,9 @@ real(r8), parameter :: cgs2mks = 1.e-3_r8
 type(var_desc_t), allocatable :: abstot_desc(:)
 type(var_desc_t) :: emstot_desc, absnxt_desc(4)
 
+logical  :: use_rad_uniform_angle = .false. ! if true, use the namelist rad_uniform_angle for the zenith calculation
+real(r8) :: rad_uniform_angle = -99._r8
+
 !===============================================================================
 contains
 !===============================================================================
@@ -154,7 +157,7 @@ subroutine radiation_readnl(nlfile)
    use namelist_utils,  only: find_group_name
    use units,           only: getunit, freeunit
    use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_integer, mpi_logical, &
-                              mpi_character
+                              mpi_character, mpi_real8
 
    character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
@@ -164,7 +167,7 @@ subroutine radiation_readnl(nlfile)
    character(len=*), parameter :: sub = 'radiation_readnl'
 
    namelist /radiation_nl/ absems_data, iradsw, iradlw, iradae, irad_always, &
-                           use_rad_dt_cosz
+                           use_rad_dt_cosz, use_rad_uniform_angle, rad_uniform_angle
    !-----------------------------------------------------------------------------
 
    if (masterproc) then
@@ -194,6 +197,14 @@ subroutine radiation_readnl(nlfile)
    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: irad_always")
    call mpi_bcast(use_rad_dt_cosz, 1, mpi_logical, mstrid, mpicom, ierr)
    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: use_rad_dt_cosz")
+   call mpi_bcast(use_rad_uniform_angle, 1, mpi_logical, mstrid, mpicom, ierr)
+   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: use_rad_uniform_angle")
+   call mpi_bcast(rad_uniform_angle, 1, mpi_real8,  mstrid, mpicom, ierr)
+   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: rad_uniform_angle")
+
+   if (use_rad_uniform_angle .and. rad_uniform_angle == -99._r8) then
+      call endrun(sub // ' ERROR - use_rad_uniform_angle is set to .true, but rad_uniform_angle is not set ')
+   end if
 
    ! Convert iradsw, iradlw and irad_always from hours to timesteps if necessary
    dtime  = get_step_size()
@@ -902,7 +913,11 @@ subroutine radiation_tend( &
    ! Cosine solar zenith angle for current time step
    call get_rlat_all_p(lchnk, ncol, clat)
    call get_rlon_all_p(lchnk, ncol, clon)
-   call zenith (calday, clat, clon, coszrs, ncol, dt_avg)
+   if (use_rad_uniform_angle) then
+      call zenith (calday, clat, clon, coszrs, ncol, dt_avg, uniform_angle=rad_uniform_angle)
+   else
+      call zenith (calday, clat, clon, coszrs, ncol, dt_avg)
+   end if
 
    ! Gather night/day column indices.
    Nday = 0

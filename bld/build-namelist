@@ -3862,6 +3862,12 @@ EOF
 
 }
 
+ if ($cam_build) {
+     add_default($nl, 'seq_flux_mct_albdif');
+     add_default($nl, 'seq_flux_mct_albdir');
+     add_default($nl, 'seq_flux_atmocn_minwind');
+ }
+
 #-----------------------------------------------------------------------------------------------
 # Rename component logfiles.
 #
@@ -3920,7 +3926,8 @@ foreach my $name (@nl_groups) { $nl_group{$name} = ''; }
 
 # Driver
 @comp_groups = qw(cime_driver_inst seq_cplflds_inparm seq_cplflds_userspec cime_pes
-    seq_infodata_inparm seq_timemgr_inparm prof_inparm papi_inparm pio_default_inparm esmf_inparm);
+    seq_infodata_inparm seq_timemgr_inparm prof_inparm papi_inparm pio_default_inparm esmf_inparm seq_flux_mct_inparm);
+
 $outfile = "$opts{'dir'}/drv_in";
 if ($cam_build) {
     $nl->write($outfile, 'groups'=>\@comp_groups);
