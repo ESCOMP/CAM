@@ -1451,6 +1451,7 @@
 ! Interpolate of ed2 between between -12 <= lam_m <= 12 degrees:
 !-----------------------------------------------------------------------
       wrk1d(:) = ed2(:,jmax) - ed2(:,jmin)
+!$omp parallel do private(j, i, fac)
       do j = jmin+1,jmax-1
         fac = (ylatm(j) - ylatm(jmin))/(ylatm(jmax) - ylatm(jmin))
         do i = 0,nmlon
@@ -1479,6 +1480,7 @@
 !-----------------------------------------------------------------------
 ! Poles:
 !-----------------------------------------------------------------------
+!$omp parallel do private(i, ip1f,ip2f,ip3f)
       do i = 0,nmlon
         ip1f = i + nmlon/4
         if( ip1f > nmlon ) then
