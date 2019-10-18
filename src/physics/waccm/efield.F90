@@ -57,9 +57,9 @@
       public :: ed1,          & ! zonal electric field Ed1  [V/m] 
                 ed2,          & ! meridional electric field Ed2 [V/m] 
                 potent,       & ! electric potential [V]
-	        nmlon, nmlat, & ! dimension of mag. grid 
+                nmlon, nmlat, & ! dimension of mag. grid 
                 dlatm, dlonm, & ! grid spacing of mag. grid 
-	        ylonm, ylatm    ! magnetic longitudes/latitudes (deg)
+                ylonm, ylatm    ! magnetic longitudes/latitudes (deg)
       
       private
 
@@ -81,8 +81,8 @@
       real(r8) ::        &
         ylatm(0:nmlat),  &   ! magnetic latitudes (deg)
         ylonm(0:nmlon),  &   ! magnetic longitudes (deg)
-        dlonm,	         &   ! delon lon grid spacing
-        dlatm		     ! delat lat grid spacing
+        dlonm,           &   ! delon lon grid spacing
+        dlatm                ! delat lat grid spacing
 
 !------------------------------------------------------------------------------ 
 ! array on magnetic grid:    
@@ -112,15 +112,15 @@
 ! constants:
 !------------------------------------------------------------------------------ 
       real(r8), parameter ::        & 
-     	r_e  =  6.371e6_r8,         &  ! radius_earth [m] (same as for apex.F90)
+        r_e  =  6.371e6_r8,         &  ! radius_earth [m] (same as for apex.F90)
         h_r  = 130.0e3_r8,          &  ! reference height [m] (same as for apex.F90)
-     	dy2yr= 365.24_r8               ! day per avg. year
+        dy2yr= 365.24_r8               ! day per avg. year
 
       real(r8) :: &
-     	rtd ,     &    ! radians -> deg
-     	dtr,      &    ! deg -> radians
-     	sqr2,     &      
-     	dy2rd,    &    ! 2*pi/365.24  average year
+        rtd ,     &    ! radians -> deg
+        dtr,      &    ! deg -> radians
+        sqr2,     &      
+        dy2rd,    &    ! 2*pi/365.24  average year
         sinIm_mag(0:nmlat)    ! sinIm
 
       integer :: jmin, jmax   ! latitude index for interpolation of 
@@ -130,10 +130,10 @@
 !  for spherical harmonics
 !------------------------------------------------------------------------------ 
       integer, parameter ::   &
-     	nm   = 19,     &
-     	mm   = 18,     &					
-     	nmp  = nm + 1, &					       
-     	mmp  = mm + 1	  
+        nm   = 19,     &
+        mm   = 18,     &                                        
+        nmp  = nm + 1, &                                               
+        mmp  = mm + 1     
 
       real(r8) :: r(0:nm,0:mm)      ! R_n^m
       real(r8) :: pmopmmo(0:mm)     ! sqrt(1+1/2m)
@@ -144,11 +144,11 @@
       integer, parameter :: ni = 1091  ! for n=12 m=-18:18
       integer :: imax                                         ! max number of index
       integer,dimension(0:ni) :: &
-     	kf, &
-     	lf, &
-     	mf, &
-     	nf, &
-     	jf
+        kf, &
+        lf, &
+        mf, &
+        nf, &
+        jf
       real(r8) :: ft(1:3,0:2)  ! used for f_-k(season,k)
 
       real(r8) ::  a_klnm(0:ni)        !  A_klm
@@ -188,14 +188,14 @@
       ed1 = nanval
       ed2 = nanval
     
-      call constants	 ! calculate constants
+      call constants     ! calculate constants
 !-----------------------------------------------------------------------
 ! low/midlatitude potential from Scherliess model
 !-----------------------------------------------------------------------
-      call read_acoef (efield_lflux_file, efield_hflux_file)	! read in A_klnm for given S_aM
+      call read_acoef (efield_lflux_file, efield_hflux_file)    ! read in A_klnm for given S_aM
       call index_quiet  ! set up index for f_m(mlt),f_l(UT),f_-k(d)
-      call prep_fk	! set up the constant factors for f_k
-      call prep_pnm	! set up the constant factors for P_n^m & dP/d phi
+      call prep_fk      ! set up the constant factors for f_k
+      call prep_pnm     ! set up the constant factors for P_n^m & dP/d phi
 
       epotential_max = efield_potential_max
       
@@ -272,13 +272,13 @@
       real(r8) :: mlat, pot
       real(r8) :: pot_midlat(0:nmlon,0:nmlat)         ! potential from L. Scherliess model
       real(r8) :: pot_highlat(0:nmlon,0:nmlat)        ! potential from Heelis
-      real(r8) :: pot_highlats(0:nmlon,0:nmlat)	      ! smoothed potential from Heelis
+      real(r8) :: pot_highlats(0:nmlon,0:nmlat)       ! smoothed potential from Heelis
       real(r8) :: poten(nmlon+1)
       integer,dimension(nmlon) :: iflag
       real(r8),dimension(nmlon) :: dlat,dlon,ratio
 
 !-----------------------------------------------------------------------
-! convert to date and day	
+! convert to date and day       
 !-----------------------------------------------------------------------
       day  = iday + ut/24._r8
 
@@ -287,11 +287,11 @@
 !-----------------------------------------------------------------------
 !$omp parallel do private(ilat, ilon, mlat, pot)
       do ilat = 0,nmlath                        ! Calculate only for one magn. hemisphere
-	mlat = ylatm(ilat)                      ! mag. latitude
-        do ilon = 0,nmlon	                ! lon. loop
+        mlat = ylatm(ilat)                      ! mag. latitude
+        do ilon = 0,nmlon                       ! lon. loop
           call efield_mid( mlat, ylonm(ilon), pot )
-	  pot_midlat(ilon,ilat+nmlath) = pot	! SH/NH symmetry 
-	  pot_midlat(ilon,nmlath-ilat) = pot
+          pot_midlat(ilon,ilat+nmlath) = pot    ! SH/NH symmetry 
+          pot_midlat(ilon,nmlath-ilat) = pot
         end do
       end do
 
@@ -383,7 +383,7 @@
 ! dummy arguments
 !-----------------------------------------------------------------------
       integer,intent(in)   :: mt
-      real(r8),intent(in)  :: ph	! geo. longitude of 0SLT (ut*15)
+      real(r8),intent(in)  :: ph        ! geo. longitude of 0SLT (ut*15)
       real(r8),intent(out) :: f(-mt:mt)
 
 !-----------------------------------------------------------------------
@@ -397,7 +397,7 @@
       f(0) = 1.e0_r8
                                                                 
       f(-1) = sqr2*cp
-      f(1)  = sqr2*sp      								 
+      f(1)  = sqr2*sp                                                                    
       do m = 2,mt
         mmo   = m - 1  
         f(m)  = f(-mmo)*sp + cp*f(mmo)
@@ -433,19 +433,19 @@
       integer  :: mp, m, n
       real(r8) :: pm2, st
 
-!      ct = min( ct,.99_r8 )		! cos(colat)
-      st = sqrt( 1._r8 - ct*ct ) 	! sin(colat)
+!      ct = min( ct,.99_r8 )            ! cos(colat)
+      st = sqrt( 1._r8 - ct*ct )        ! sin(colat)
 
       p(0,0) = 1._r8  
       do mp = 1,mmp  ! m+1=1,mm+1
         m = mp - 1
-	if( m >= 1 ) then
-           p(m,m) = pmopmmo(m)*p(m-1,m-1)*st 			
-	end if
-	pm2 = 0._r8                                                                  
-	do n = mp,nm                    ! n=m+1,N
-	   p(n,m) = (ct*p(n-1,m) - r(n-1,m)*pm2)/r(n,m)
-	   pm2    = p(n-1,m)
+        if( m >= 1 ) then
+           p(m,m) = pmopmmo(m)*p(m-1,m-1)*st                    
+        end if
+        pm2 = 0._r8                                                                  
+        do n = mp,nm                    ! n=m+1,N
+           p(n,m) = (ct*p(n-1,m) - r(n-1,m)*pm2)/r(n,m)
+           pm2    = p(n-1,m)
         end do
       end do
 
@@ -472,16 +472,16 @@
       real(r8) :: xms, xns, den
 
       do mp = 1, mmp            ! m+1 = 1,mm+1                                     
-	m = mp - 1                                               
-	xms = m*m                                                
-	if( mp /= 1 ) then
+        m = mp - 1                                               
+        xms = m*m                                                
+        if( mp /= 1 ) then
            pmopmmo(m) = sqrt( 1._r8 + .5_r8/M )
-	end if
-	do n = m,nm      ! n = m,N                                     
-	  xns    = n*n                                       
-	  den    = max(4._r8*xns - 1._r8,1._r8)
-	  r(n,m) = sqrt( (xns  - xms)/den )
-	end do                 
+        end if
+        do n = m,nm      ! n = m,N                                     
+          xns    = n*n                                       
+          den    = max(4._r8*xns - 1._r8,1._r8)
+          r(n,m) = sqrt( (xns  - xms)/den )
+        end do                 
       end do 
 
       end subroutine prep_pnm                                                                         
@@ -504,11 +504,11 @@
       implicit none
 
 !----------------------------------------------------------------------------
-!	... local variables
+!       ... local variables
 !----------------------------------------------------------------------------
       integer :: i, j, k, l, n, m
 
-      i = 0 	! initialize
+      i = 0     ! initialize
       j = 1 
       do k = 2,0,-1
         do l = -2,2
@@ -517,15 +517,15 @@
           end if
           do n = 1,12
             do m = -18,18
-              if( abs(m) <= n ) then		    !  |m| < n
+              if( abs(m) <= n ) then                !  |m| < n
                 if( (((n-m)/2)*2) == (n-m) ) then   ! only n+m even
-             	  if( n-abs(m) <= 9 ) then	    ! n-|m| <= 9 why?
-             	    kf(i) = 2-k
-             	    lf(i) = l
-             	    nf(i) = n
-             	    mf(i) = m
-             	    jf(i) = j
-             	    i	  = i + 1	 ! counter
+                  if( n-abs(m) <= 9 ) then          ! n-|m| <= 9 why?
+                    kf(i) = 2-k
+                    lf(i) = l
+                    nf(i) = n
+                    mf(i) = m
+                    jf(i) = j
+                    i     = i + 1        ! counter
                   end if
                 end if
               end if
@@ -539,7 +539,7 @@
         write(iulog,'(a19,i5,a18,i5)') 'index_quiet: imax= ',imax, &
           ' not equal to ni =',ni 
         call endrun('index_quiet ERROR')
-      end if							
+      end if                                                    
       if(debug) write(iulog,*) 'imax=',imax
 
       end subroutine index_quiet                                                           
@@ -702,8 +702,8 @@
       integer  :: i,j
       real(r8) :: fac,lat
 
-      rtd     = 180._r8/pi	        ! radians -> deg
-      dtr     = pi/180._r8	        ! deg -> radians
+      rtd     = 180._r8/pi              ! radians -> deg
+      dtr     = pi/180._r8              ! deg -> radians
       sqr2    = sqrt(2.e0_r8)
       dy2rd   = 2._r8*pi/dy2yr          ! 2*pi/365.24  average year
 
@@ -719,10 +719,10 @@
       do j = 0,nmlat
         ylatm(j) = j*dlatm
         lat = (ylatm(j) - 90._r8)*dtr
-	fac = cos(lat)                   ! sinIm = 2*sin(lam_m)/sqrt[4-3*cos^2(lam_m)]
-	fac = 4._r8 - 3._r8*fac*fac
-	fac = 2._r8/sqrt( fac )
-	sinIm_mag(j) = fac*sin( lat )
+        fac = cos(lat)                   ! sinIm = 2*sin(lam_m)/sqrt[4-3*cos^2(lam_m)]
+        fac = 4._r8 - 3._r8*fac*fac
+        fac = 2._r8/sqrt( fac )
+        sinIm_mag(j) = fac*sin( lat )
       end do 
 
 !----------------------------------------------------------------------------
@@ -759,10 +759,10 @@
       do j = 0,nmlat
         lat = ylatm(j) - 90._r8
         if( lat <= -12._r8 ) then
-	  jmin = j
+          jmin = j
         else if( lat > 12._r8 ) then
-	  jmax = j
-	  exit
+          jmax = j
+          exit
        end if
       end do
 
@@ -778,15 +778,15 @@
 ! Author: A. Maute Nov 2003  am 11/19/03
 !----------------------------------------------------------------------------
 
-      ft(1,0) = .75_r8*sqrt( 6.e0_r8 )/pi			
-      ft(1,1) = 2.e0_r8*ft(1,0)					      
-      ft(1,2) = 1.e0_r8						      
-      ft(2,0) = ft(1,0) 					      
-      ft(2,1) = -ft(1,1)					      
-      ft(2,2) = 1.e0_r8						      
-      ft(3,0) = ft(2,1) 					      
-      ft(3,1) = 0._r8						      
-      ft(3,2) = 1.e0_r8							   
+      ft(1,0) = .75_r8*sqrt( 6.e0_r8 )/pi                       
+      ft(1,1) = 2.e0_r8*ft(1,0)                                       
+      ft(1,2) = 1.e0_r8                                               
+      ft(2,0) = ft(1,0)                                               
+      ft(2,1) = -ft(1,1)                                              
+      ft(2,2) = 1.e0_r8                                               
+      ft(3,0) = ft(2,1)                                               
+      ft(3,1) = 0._r8                                                 
+      ft(3,2) = 1.e0_r8                                                    
 
       end subroutine prep_fk
 
@@ -801,12 +801,12 @@
 !----------------------------------------------------------------------------
 
 !----------------------------------------------------------------------------
-!	... dummy arguments
+!       ... dummy arguments
 !----------------------------------------------------------------------------
       real(r8), intent(out) ::  &
-     	fk(0:2),  &	                ! f_-k(day) 
-     	fl(-2:2), &	                ! f_l(ut)  
-     	fs(2)		                ! f_s(f10.7) 
+        fk(0:2),  &                     ! f_-k(day) 
+        fl(-2:2), &                     ! f_l(ut)  
+        fs(2)                           ! f_s(f10.7) 
 !----------------------------------------------------------------------------
 ! local variables
 !----------------------------------------------------------------------------
@@ -839,20 +839,20 @@
 !----------------------------------------------------------------------------
       lon_ut = 15._r8*ut        ! 15.*mlt - xmlon + 69. 
       call ff( lon_ut, 2, fl )                                                 
-      if( iutav ) then  	! UT-averaging
+      if( iutav ) then          ! UT-averaging
      
-	ang   = fl(0)
+        ang   = fl(0)
         fl(:) = 0._r8
         fl(0) = ang
-	
+        
       end if
 
 !----------------------------------------------------------------------------
-! f_s(f10.7)  only fs(1) used  	
+! f_s(f10.7)  only fs(1) used   
 !----------------------------------------------------------------------------
       fs(1) = 1._r8
-!     fs(2) = S_a			  
-      fs(2) = f107d			  
+!     fs(2) = S_a                         
+      fs(2) = f107d                       
 
       end subroutine set_fkflfs
 
@@ -867,7 +867,7 @@
 !----------------------------------------------------------------------------
 
 !----------------------------------------------------------------------------
-!	... dummy arguments
+!       ... dummy arguments
 !----------------------------------------------------------------------------
       real(r8), intent(in)  :: mlat, mlon
       real(r8), intent(out) :: pot               ! electric potential (V)
@@ -877,11 +877,11 @@
 !----------------------------------------------------------------------------
       integer  :: i, mp, np, nn
       real(r8) :: mod_mlat, ct, x
-      real(r8) :: fk(0:2)      	    ! f_-k(day) 
+      real(r8) :: fk(0:2)           ! f_-k(day) 
       real(r8) :: fl(-2:2)          ! f_l(ut)  
-      real(r8) :: fs(2)	            ! f_s(f10.7) 
+      real(r8) :: fs(2)             ! f_s(f10.7) 
       real(r8) :: f(-18:18)
-      real(r8) :: p(0:nm,0:mm)      ! P_n^m	 spherical harmonics
+      real(r8) :: p(0:nm,0:mm)      ! P_n^m      spherical harmonics
 
       pot = 0._r8 ! initialize                                        
 
@@ -899,7 +899,7 @@
 ! spherical harmonics 
 !----------------------------------------------------------------------------
       ct = cos( (90._r8 - mod_mlat)*dtr )  ! magnetic colatitude 
-      call pnm( ct, p )	                   ! calculate P_n^m
+      call pnm( ct, p )                    ! calculate P_n^m
       call ff( mlon, 18, f )               ! calculate f_m (phi) why 18 if N=12                              
 
       do i = 0,imax  
@@ -907,7 +907,7 @@
         np  = nf(i)
         nn  = abs(mp)                      !   P_n^m = P_n^-m  
         x   = a_klnm(i)* fl(lf(i)) * fk(kf(i)) * fs(jf(i))
-	pot = pot + x*f(mp)*p(np,nn) 
+        pot = pot + x*f(mp)*p(np,nn) 
       end do 
       
       end subroutine efield_mid
@@ -923,7 +923,7 @@
 !----------------------------------------------------------------------------
 
 !----------------------------------------------------------------------------
-!	... dummy arguments
+!       ... dummy arguments
 !----------------------------------------------------------------------------
       integer, intent(in)     :: idlat
       real(r8), intent(inout) :: pot(0:nmlon,0:nmlat)
@@ -942,8 +942,8 @@
 !----------------------------------------------------------------------------
       wgt = 0._r8 
       do id = -idlat,idlat
-	del   = abs(id)*dlatm	! delta lat_m
-	w(id) = 1._r8/(del + 1._r8)
+        del   = abs(id)*dlatm   ! delta lat_m
+        w(id) = 1._r8/(del + 1._r8)
         wgt   = wgt + w(id)
       end do
       wgt = 1._r8/wgt
@@ -971,7 +971,7 @@
 !----------------------------------------------------------------------------
 
 !----------------------------------------------------------------------------
-!	... dummy arguments
+!       ... dummy arguments
 !----------------------------------------------------------------------------
       integer, intent(in)     :: idlat
       real(r8), intent(inout) :: pot(0:nmlon,0:nmlat)
@@ -990,8 +990,8 @@
 !----------------------------------------------------------------------------
       wgt = 0._r8
       do id = -idlat,idlat
-	del   = abs(id)*dlatm	! delta lat_m
-	w(id) = 1._r8/(del + 1._r8)
+        del   = abs(id)*dlatm   ! delta lat_m
+        w(id) = 1._r8/(del + 1._r8)
         wgt   = wgt + w(id)
       end do
       wgt = 1._r8/wgt
@@ -999,7 +999,7 @@
 !     do ilon = 0,nmlon
 !       do ilat = idlat,nmlath-idlat  ! ilat = 5:175
 !         pot_smo(ilat) = 0._r8
-!         do id = -idlat,idlat	!  org. was degree now grid points
+!         do id = -idlat,idlat  !  org. was degree now grid points
 !           pot_smo(ilat) = pot_smo(ilat) + w(id)*pot(ilon,ilat+id)
 !         end do
 !         pot_smo(ilat) = pot_smo(ilat)*wgt
@@ -1029,7 +1029,7 @@
 !----------------------------------------------------------------------------
 
 !----------------------------------------------------------------------------
-!	... dummy arguments
+!       ... dummy arguments
 !----------------------------------------------------------------------------
       integer, intent(in)     :: idlon
       real(r8), intent(inout) :: pot(0:nmlon,0:nmlat)
@@ -1047,8 +1047,8 @@
 !----------------------------------------------------------------------------
       wgt = 0._r8
       do id = -idlon,idlon
-	del   = abs(id)*dlonm	! delta lon_m
-	w(id) = 1._r8/(del + 1._r8)
+        del   = abs(id)*dlonm   ! delta lon_m
+        w(id) = 1._r8/(del + 1._r8)
         wgt   = wgt + w(id)
       end do
      wgt = 1._r8/wgt
@@ -1059,7 +1059,7 @@
 !     do ilon = 0,nmlon
 !       do ilat = 0,nmlath
 !         pot_smo(ilat) = 0._r8
-!         do id = -idlon,idlon	                  !  org. was degree now grid points
+!         do id = -idlon,idlon                    !  org. was degree now grid points
 !           iabs = ilon + id
 !           if( iabs > nmlon ) then
 !              iabs = iabs - nmlon ! test if wrap around
@@ -1081,8 +1081,8 @@
           tmp(-idlon:-1)           = pot(nmlon-idlon:nmlon-1,ilat)
           tmp(nmlon+1:nmlon+idlon) = pot(1:idlon,ilat)
           do ilon = 0,nmlon
-	     pot(ilon,ilat) = dot_product( tmp(ilon-idlon:ilon+idlon),w )*wgt
-	     pot(ilon,nmlat-ilat) = pot(ilon,ilat)
+             pot(ilon,ilat) = dot_product( tmp(ilon-idlon:ilon+idlon),w )*wgt
+             pot(ilon,nmlat-ilat) = pot(ilon,ilat)
           end do   
       end do
       
@@ -1103,7 +1103,7 @@
 !----------------------------------------------------------------------------                                                                   
 
 !----------------------------------------------------------------------------                                                                   
-!	... dummy arguments
+!       ... dummy arguments
 !----------------------------------------------------------------------------                                                                   
       integer, intent(out) :: ihlat_bnd(0:nmlon)
 
@@ -1171,7 +1171,7 @@
       use sv_decomp, only : svdcmp, svbksb
      
 !----------------------------------------------------------------------------
-!	... dummy arguments
+!       ... dummy arguments
 !----------------------------------------------------------------------------
       integer, intent(inout) :: ihlat_bnd(0:nmlon)    ! loaction of boundary
       integer, intent(out)   :: itrans_width(0:nmlon) ! width of transition zone
@@ -1203,12 +1203,12 @@
         bnd  = nmlath - ihlat_bnd(ilon)  ! switch from pole=0 to pole =90
         call ff( ylonm(ilon), nmax_sin, f(-nmax_sin,ilon) )
         do i = -nmax_sin,nmax_sin
-	  i1 = i + ishf
+          i1 = i + ishf
           rhs(i1) = rhs(i1) + f(i,ilon) * bnd
-!	  write(iulog,*) 'rhs ',ilon,i1,bnd,f(i,ilon),rhs(i+ishf)
+!         write(iulog,*) 'rhs ',ilon,i1,bnd,f(i,ilon),rhs(i+ishf)
           do j = -nmax_sin,nmax_sin 
             u(i1,j+ishf) = u(i1,j+ishf) + f(i,ilon)*f(j,ilon)
-!	    write(iulog,*) 'u ',ilon,i1,j+ishf,u(i+ishf,j+ishf)
+!           write(iulog,*) 'u ',ilon,i1,j+ishf,u(i+ishf,j+ishf)
           end do
         end do
       end do
@@ -1221,7 +1221,7 @@
 !      
       do ilon = 0,nmlon  ! long.
 !       sum = 0._r8
-	sum = dot_product( lsg(-nmax_sin+ishf:nmax_sin+ishf),f(-nmax_sin:nmax_sin,ilon) )
+        sum = dot_product( lsg(-nmax_sin+ishf:nmax_sin+ishf),f(-nmax_sin:nmax_sin,ilon) )
 !       do i = -nmax_sin,nmax_sin
 !         sum = sum + lsg(i+ishf)*f(i,ilon)  
 !       end do
@@ -1249,9 +1249,9 @@
 !----------------------------------------------------------------------------
 
 !----------------------------------------------------------------------------
-!	... dummy arguments
+!       ... dummy arguments
 !----------------------------------------------------------------------------
-      integer, intent(in)     :: ihlat_bnd(0:nmlon)	                  ! boundary mid to high latitude
+      integer, intent(in)     :: ihlat_bnd(0:nmlon)                       ! boundary mid to high latitude
       real(r8), intent(in)    :: pot_midlat(0:nmlon,0:nmlat)              ! low/mid latitude potentail
       real(r8), intent(inout) :: pot_highlat(0:nmlon,0:nmlat)             ! high_lat potential
       real(r8), intent(inout) :: pot_highlats(0:nmlon,0:nmlat)            ! high_lat potential! smoothed high_lat potential
@@ -1269,8 +1269,8 @@
       pot60  = 0._r8
       pot_hl = 0._r8
       do ilon = 1,nmlon  ! long.           ! bnd -> eq to pole 0:90
-    	ibnd60  = nmlat - ihlat_bnd(ilon)   ! 0:180 pole to pole
-    	ibnd_hl = ihlat_bnd(ilon)         ! colatitude
+        ibnd60  = nmlat - ihlat_bnd(ilon)   ! 0:180 pole to pole
+        ibnd_hl = ihlat_bnd(ilon)         ! colatitude
         pot60   = pot60 + pot_midlat(ilon,ibnd60)
         pot_hl  = pot_hl + pot_highlats(ilon,ibnd_hl)
       end do
@@ -1290,10 +1290,10 @@
       do ilat = 0,nmlat_hgh      ! colatitude
         ilats = nmlat - ilat
         do ilon = 0,nmlon
-	  pot_highlat(ilon,ilat)   = pot_highlat(ilon,ilat)   - del
-	  pot_highlat(ilon,ilats)  = pot_highlat(ilon,ilats)  - del
-	  pot_highlats(ilon,ilat)  = pot_highlats(ilon,ilat)  - del
-	  pot_highlats(ilon,ilats) = pot_highlats(ilon,ilats) - del
+          pot_highlat(ilon,ilat)   = pot_highlat(ilon,ilat)   - del
+          pot_highlat(ilon,ilats)  = pot_highlat(ilon,ilats)  - del
+          pot_highlats(ilon,ilat)  = pot_highlats(ilon,ilat)  - del
+          pot_highlats(ilon,ilats) = pot_highlats(ilon,ilats) - del
         end do
       end do
 
@@ -1326,7 +1326,7 @@
 !----------------------------------------------------------------------------
 
 !----------------------------------------------------------------------------
-!	... dummy arguments
+!       ... dummy arguments
 !----------------------------------------------------------------------------
       integer, intent(in)  :: ihlat_bnd(0:nmlon)
       integer, intent(in)  :: itrans_width(0:nmlon)
@@ -1347,7 +1347,7 @@
 !$omp parallel do private(ilat,ilon,ibnd,tw)
       do ilon = 0,nmlon
         ibnd = ihlat_bnd(ilon)     ! high latitude boundary index
-	tw   = itrans_width(ilon)  ! width of transition zone (index)
+        tw   = itrans_width(ilon)  ! width of transition zone (index)
 !----------------------------------------------------------------------------
 ! 1. low/mid latitude: |lam| < bnd-trans_width
 !   Phi(phi,lam) = Phi_low(phi,lam)
@@ -1375,31 +1375,31 @@
 !$omp parallel do private(ilat,ilon,ibnd,tw,a,b,b1,b2,hb1,hb2,lat_ind,j1,j2,wrk1,wrk2)
       do ilon = 0,nmlon
         ibnd = ihlat_bnd(ilon)          ! high latitude boundary index
-	tw   = itrans_width(ilon)       ! width of transition zone (index)
+        tw   = itrans_width(ilon)       ! width of transition zone (index)
         a    = 1._r8/(2._r8*tw)
-	b1   = (nmlath - ibnd + tw)*a
-	b2   = (nmlath - ibnd - tw)*a
-	hb1  = nmlath - (ibnd + tw)
-	j1   = nmlath - hb1
-	hb2  = nmlath - (ibnd - tw)
-	j2   = nmlath - hb2
-	wrk1 = pot_midlat(ilon,j1)
-	wrk2 = pot_highlats(ilon,j2)
+        b1   = (nmlath - ibnd + tw)*a
+        b2   = (nmlath - ibnd - tw)*a
+        hb1  = nmlath - (ibnd + tw)
+        j1   = nmlath - hb1
+        hb2  = nmlath - (ibnd - tw)
+        j2   = nmlath - hb2
+        wrk1 = pot_midlat(ilon,j1)
+        wrk2 = pot_highlats(ilon,j2)
 !        write(iulog,*) 'pot_all ',ilon,hb1,hb2,nmlath -ibnd,tw
-	do ilat = ibnd-tw,ibnd+tw
-	  lat_ind = nmlath - ilat
+        do ilat = ibnd-tw,ibnd+tw
+          lat_ind = nmlath - ilat
           potent(ilon,ilat) = &
-     	     fac*((wrk1 + 2._r8*pot_midlat(ilon,ilat))*(b1 - a*lat_ind) &
-     	          + (wrk2 + 2._r8*pot_highlats(ilon,ilat))*(a*lat_ind - b2))
+             fac*((wrk1 + 2._r8*pot_midlat(ilon,ilat))*(b1 - a*lat_ind) &
+                  + (wrk2 + 2._r8*pot_highlats(ilon,ilat))*(a*lat_ind - b2))
           potent(ilon,nmlat-ilat) = potent(ilon,ilat)
         end do
 !----------------------------------------------------------------------------
 ! b.  Interpolate between just calculated Potential and the high latitude
 !    potential in a 3 degree zone poleward of the boundary
 !----------------------------------------------------------------------------
-	do ilat = hb2+1,nmlath
-	  a = max( 3._r8/dlatm - (ilat - hb2 - 1),0._r8 )
-	  b = 3._r8/dlatm - a
+        do ilat = hb2+1,nmlath
+          a = max( 3._r8/dlatm - (ilat - hb2 - 1),0._r8 )
+          b = 3._r8/dlatm - a
           potent(ilon,nmlath-ilat) = (a*potent(ilon,nmlath-ilat)   &
                                       + b*pot_highlat(ilon,nmlath-ilat))/3._r8*dlatm
           potent(ilon,nmlath+ilat) = potent(ilon,nmlath-ilat)
@@ -1432,7 +1432,7 @@
 !-----------------------------------------------------------------------
       fac = .5_r8/(dlatm*dtr*r)
 !$omp parallel do private(j, i, wrk )
-      do j = 1,nmlath-1		! southern hemisphere
+      do j = 1,nmlath-1         ! southern hemisphere
         wrk = fac/sinIm_mag(j)
         do i = 0,nmlon
           ed2(i,j) = (potent(i,j+1) - potent(i,j-1))*wrk
@@ -1440,7 +1440,7 @@
       end do
 
 !$omp parallel do private(j, i, wrk )
-      do j = nmlath+1,nmlat-1	! northern hemisphere
+      do j = nmlath+1,nmlat-1   ! northern hemisphere
         wrk = fac/sinIm_mag(j)
         do i = 0,nmlon
           ed2(i,j) = (potent(i,j+1) - potent(i,j-1))*wrk
@@ -1455,8 +1455,8 @@
       do j = jmin+1,jmax-1
         fac = (ylatm(j) - ylatm(jmin))/(ylatm(jmax) - ylatm(jmin))
         do i = 0,nmlon
-	    ed2(i,j) = ed2(i,jmin) + fac*wrk1d(i)
-	end do
+            ed2(i,j) = ed2(i,jmin) + fac*wrk1d(i)
+        end do
       end do
 
 !-----------------------------------------------------------------------
@@ -1472,9 +1472,9 @@
         do i = 1,nmlon-1
           ed1(i,j) = -(potent(i+1,j) - potent(i-1,j))*wrk
         end do
-	i = 0
-	ed1(i,j)     = -(potent(i+1,j) - potent(nmlon-1,j))*wrk
-	ed1(nmlon,j) = ed1(i,j)
+        i = 0
+        ed1(i,j)     = -(potent(i+1,j) - potent(nmlon-1,j))*wrk
+        ed1(nmlon,j) = ed1(i,j)
       end do
 
 !-----------------------------------------------------------------------
