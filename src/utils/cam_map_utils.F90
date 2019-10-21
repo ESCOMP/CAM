@@ -937,7 +937,9 @@ contains
           dims(rank + this%src(i) + 1, 1) = 0
           dims(rank + this%src(i) + 1, 2) = -1
         end if
-       ! No else (zero means unused position)
+      else
+        ! src(i)==0 means unused position
+        dims(i,:) = 0
       end if
     end do
   end subroutine cam_filemap_get_array_bounds

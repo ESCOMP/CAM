@@ -103,6 +103,9 @@ def buildcpp(case):
     if "-cosp" in config_opts:
         config_opts += ["-cosp_libdir", os.path.join(exeroot, "atm", "obj", "cosp")]
 
+    if cam_dycore == 'mpas':
+        config_opts += ["-mpas_libdir", os.path.join(exeroot, "atm", "obj", "mpas")]
+
     camconf = os.path.join(caseroot, "Buildconf", "camconf")
     if not os.path.isdir(camconf):
         os.makedirs(camconf)

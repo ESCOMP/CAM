@@ -47,4 +47,7 @@
 <horiz_grid dyn="se"    hgrid="ne0np4TESTONLY.ne5x4" ncol="3863"     csne="0"    csnp="4"  npg="0" />
 <horiz_grid dyn="se"    hgrid="ne0np4CONUS.ne30x8" ncol="174098"   csne="0"    csnp="4"  npg="0" />
 
+<horiz_grid dyn="mpas"  hgrid="mpasa480"           ncol="2562" />
+<horiz_grid dyn="mpas"  hgrid="mpasa120"           ncol="40962" />
+
 </config_horiz_grid>

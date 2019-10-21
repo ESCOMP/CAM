@@ -7173,6 +7173,230 @@ Normally equal to se_vert_num_threads.
 Default: Set by build-namelist.
 </entry>
 
+
+<!-- MPAS dycore -->
+
+<entry id="mpas_time_integration" type="char*512" category="mpas" group="nhyd_model" valid_values="">
+Time integration scheme
+Default: SRK3
+</entry>
+
+<entry id="mpas_time_integration_order" type="integer" category="mpas" group="nhyd_model" valid_values="">
+Order for RK time integration
+Default: 2
+</entry>
+
+<entry id="mpas_dt" type="real" category="mpas" group="nhyd_model" valid_values="">
+Model time step, seconds
+Default: 720.0
+</entry>
+
+<entry id="mpas_split_dynamics_transport" type="logical" category="mpas" group="nhyd_model" valid_values="">
+Whether to super-cycle scalar transport
+Default: true
+</entry>
+
+<entry id="mpas_number_of_sub_steps" type="integer" category="mpas" group="nhyd_model" valid_values="">
+Number of acoustic steps per full RK step
+Default: 2
+</entry>
+
+<entry id="mpas_dynamics_split_steps" type="integer" category="mpas" group="nhyd_model" valid_values="">
+When config\_split\_dynamics\_transport = T, the number of RK steps per transport step
+Default: 3
+</entry>
+
+<entry id="mpas_h_mom_eddy_visc2" type="real" category="mpas" group="nhyd_model" valid_values="">
+$\nabla^2$ eddy viscosity for horizontal diffusion of momentum
+Default: 0.0
+</entry>
+
+<entry id="mpas_h_mom_eddy_visc4" type="real" category="mpas" group="nhyd_model" valid_values="">
+$\nabla^4$ eddy hyper-viscosity for horizontal diffusion of momentum
+Default: 0.0
+</entry>
+
+<entry id="mpas_v_mom_eddy_visc2" type="real" category="mpas" group="nhyd_model" valid_values="">
+$\nabla^2$ eddy viscosity for vertical diffusion of momentum
+Default: 0.0
+</entry>
+
+<entry id="mpas_h_theta_eddy_visc2" type="real" category="mpas" group="nhyd_model" valid_values="">
+$\nabla^2$ eddy viscosity for horizontal diffusion of theta
+Default: 0.0
+</entry>
+
+<entry id="mpas_h_theta_eddy_visc4" type="real" category="mpas" group="nhyd_model" valid_values="">
+$\nabla^4$ eddy hyper-viscosity for horizontal diffusion of theta
+Default: 0.0
+</entry>
+
+<entry id="mpas_v_theta_eddy_visc2" type="real" category="mpas" group="nhyd_model" valid_values="">
+$\nabla^2$ eddy viscosity for vertical diffusion of theta
+Default: 0.0
+</entry>
+
+<entry id="mpas_horiz_mixing" type="char*512" category="mpas" group="nhyd_model" valid_values="">
+Formulation of horizontal mixing
+Default: 2d_smagorinsky
+</entry>
+
+<entry id="mpas_len_disp" type="real" category="mpas" group="nhyd_model" valid_values="">
+Horizontal length scale, used by the Smagorinsky formulation of horizontal diffusion and by 3-d divergence damping
+Default: 120000.0
+</entry>
+
+<entry id="mpas_visc4_2dsmag" type="real" category="mpas" group="nhyd_model" valid_values="">
+Scaling coefficient of $\delta x^3$ to obtain $\nabla^4$ diffusion coefficient
+Default: 0.05
+</entry>
+
+<entry id="mpas_del4u_div_factor" type="real" category="mpas" group="nhyd_model" valid_values="">
+Scaling factor for the divergent component of $\nabla^4 u$ calculation
+Default: 10.0
+</entry>
+
+<entry id="mpas_w_adv_order" type="integer" category="mpas" group="nhyd_model" valid_values="">
+Horizontal advection order for w
+Default: 3
+</entry>
+
+<entry id="mpas_theta_adv_order" type="integer" category="mpas" group="nhyd_model" valid_values="">
+Horizontal advection order for theta
+Default: 3
+</entry>
+
+<entry id="mpas_scalar_adv_order" type="integer" category="mpas" group="nhyd_model" valid_values="">
+Horizontal advection order for scalars
+Default: 3
+</entry>
+
+<entry id="mpas_u_vadv_order" type="integer" category="mpas" group="nhyd_model" valid_values="">
+Vertical advection order for normal velocities (u)
+Default: 3
+</entry>
+
+<entry id="mpas_w_vadv_order" type="integer" category="mpas" group="nhyd_model" valid_values="">
+Vertical advection order for w
+Default: 3
+</entry>
+
+<entry id="mpas_theta_vadv_order" type="integer" category="mpas" group="nhyd_model" valid_values="">
+Vertical advection order for theta
+Default: 3
+</entry>
+
+<entry id="mpas_scalar_vadv_order" type="integer" category="mpas" group="nhyd_model" valid_values="">
+Vertical advection order for scalars
+Default: 3
+</entry>
+
+<entry id="mpas_scalar_advection" type="logical" category="mpas" group="nhyd_model" valid_values="">
+Whether to advect scalar fields
+Default: true
+</entry>
+
+<entry id="mpas_positive_definite" type="logical" category="mpas" group="nhyd_model" valid_values="">
+Whether to enable positive-definite advection of scalars
+Default: false
+</entry>
+
+<entry id="mpas_monotonic" type="logical" category="mpas" group="nhyd_model" valid_values="">
+Whether to enable monotonic limiter in scalar advection
+Default: true
+</entry>
+
+<entry id="mpas_coef_3rd_order" type="real" category="mpas" group="nhyd_model" valid_values="">
+Upwinding coefficient in the 3rd order advection scheme
+Default: 0.25
+</entry>
+
+<entry id="mpas_smagorinsky_coef" type="real" category="mpas" group="nhyd_model" valid_values="">
+Dimensionless empirical parameter relating the strain tensor to the eddy viscosity in the Smagorinsky turbulence model
+Default: 0.125
+</entry>
+
+<entry id="mpas_mix_full" type="logical" category="mpas" group="nhyd_model" valid_values="">
+Mix full $\theta$ and $u$ fields, or mix perturbation from intitial state
+Default: true
+</entry>
+
+<entry id="mpas_epssm" type="real" category="mpas" group="nhyd_model" valid_values="">
+Off-centering parameter for the vertically implicit acoustic integration
+Default: 0.1
+</entry>
+
+<entry id="mpas_smdiv" type="real" category="mpas" group="nhyd_model" valid_values="">
+3-d divergence damping coefficient
+Default: 0.1
+</entry>
+
+<entry id="mpas_apvm_upwinding" type="real" category="mpas" group="nhyd_model" valid_values="">
+Amount of upwinding in APVM
+Default: 0.5
+</entry>
+
+<entry id="mpas_h_ScaleWithMesh" type="logical" category="mpas" group="nhyd_model" valid_values="">
+Scale eddy viscosities with mesh-density function for horizontal diffusion
+Default: true
+</entry>
+
+<entry id="mpas_num_halos" type="integer" category="mpas" group="nhyd_model" valid_values="">
+Number of halo layers for fields
+Default: 2
+</entry>
+
+<entry id="mpas_zd" type="real" category="mpas" group="damping" valid_values="">
+Height MSL to begin w-damping profile
+Default: 22000.0
+</entry>
+
+<entry id="mpas_xnutr" type="real" category="mpas" group="damping" valid_values="">
+Maximum w-damping coefficient at model top
+Default: 0.2
+</entry>
+
+<entry id="mpas_block_decomp_file_prefix" type="char*512" category="mpas" group="decomposition" valid_values="">
+Prefix of graph decomposition file, to be suffixed with the MPI task count
+Default: x1.40962.graph.info.part.
+</entry>
+
+<entry id="mpas_number_of_blocks" type="integer" category="mpas" group="decomposition" valid_values="">
+Number of blocks to assign to each MPI task
+Default: 0
+</entry>
+
+<entry id="mpas_explicit_proc_decomp" type="logical" category="mpas" group="decomposition" valid_values="">
+Whether to use an explicit mapping of blocks to MPI tasks
+Default: false
+</entry>
+
+<entry id="mpas_proc_decomp_file_prefix" type="char*512" category="mpas" group="decomposition" valid_values="">
+Prefix of block mapping file
+Default: graph.info.part.
+</entry>
+
+<entry id="mpas_do_restart" type="logical" category="mpas" group="restart" valid_values="">
+Whether this run of the model is to restart from a previous restart file or not
+Default: false
+</entry>
+
+<entry id="mpas_print_global_minmax_vel" type="logical" category="mpas" group="printout" valid_values="">
+Whether to print the global min/max of horizontal normal velocity and vertical velocity each timestep
+Default: true
+</entry>
+
+<entry id="mpas_print_detailed_minmax_vel" type="logical" category="mpas" group="printout" valid_values="">
+Whether to print the global min/max of horizontal normal velocity and vertical velocity each timestep, along with the location in the domain where those extrema occurred
+Default: false
+</entry>
+
+<entry id="mpas_print_global_minmax_sca" type="logical" category="mpas" group="printout" valid_values="">
+Whether to print the global min/max of scalar fields each timestep
+Default: false
+</entry>
+
+
 <!-- Dycore testing  -->
 
 <entry id="analytic_ic_type" type="char*80" category="dyn_test"
