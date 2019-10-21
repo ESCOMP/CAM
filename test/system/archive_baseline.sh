@@ -128,7 +128,7 @@ if [ -n "$CESM_TESTDIR" ]; then
     esac
     echo " "
 
-    ../../../../cime/scripts/Tools/bless_test_results -p -t '' -c '' -r $CESM_TESTDIR -b $1 -f -s
+    ../../cime/scripts/Tools/bless_test_results -p -t '' -c '' -r $CESM_TESTDIR -b $1 -f -s
 fi
 
 echo
