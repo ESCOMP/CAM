@@ -53,6 +53,8 @@ def buildcpp(case):
     # to support the differences between how the scripts specify the land grid
     # and how it is specified internally
 
+    if atm_grid == 'T5':
+        atm_grid = '8x16'
     if atm_grid == 'T31':
         atm_grid = '48x96'
     if atm_grid == 'T42':

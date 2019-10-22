@@ -1,0 +1,3 @@
+./xmlchange ROF_NCPL=\$ATM_NCPL
+./xmlchange GLC_NCPL=\$ATM_NCPL
+./xmlchange MAX_MPITASKS_PER_NODE="24"

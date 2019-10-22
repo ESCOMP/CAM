@@ -12,7 +12,7 @@
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
       <machine name="cheyenne" compiler="intel" category="aux_cam_short"/>
       <machine name="cheyenne" compiler="intel" category="aux_cam_one"/>
-      <machine name="hobart" compiler="nag" category="aux_cam_one"/>
+      <machine name="izumi"    compiler="nag" category="aux_cam_one"/>
     </machines>
     <options>
       <option name="wallclock">00:10:00</option>
@@ -189,7 +189,7 @@
   </test>
   <test compset="QPC5" grid="ne5_ne5_mg37" name="ERP_Ln9" testmods="cam/outfrq9s" supported="false">
     <machines>
-      <machine name="hobart" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="pgi" category="aux_cam"/>
     </machines>
   </test>
 
@@ -236,41 +236,358 @@
     </options>
   </test>
 
+<!--              CAM Stand alone                          -->
+<!--              111 tsm, ter, tbr, tbl                              -->
+  <test compset="QPC5" grid="T5_T5_mg37" name="ERI_D_Ld9" testmods="cam/ghgrmp_e8">
+    <machines>
+      <machine name="izumi" compiler="nag" category="cam_test"/>
+    </machines>
+  </test>
+<!--              111 tmc                                             -->
+  <test compset="QPC5" grid="T5_T5_mg37" name="TMC_D" testmods="cam/ghgrmp_e8">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+    </machines>
+  </test>
+<!--              112 tsm, ter, tbl                              -->
+  <test compset="QPC3" grid="T5_T5_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s">
+    <machines>
+      <machine name="izumi" compiler="pgi" category="cam_test"/>
+    </machines>
+  </test>
+<!--              113 tsm, ter, T8                              -->
+  <test compset="QPC4" grid="T42_T42_mg17" name="ERC_D_Ln9" testmods="cam/outfrq3s">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+    </machines>
+  </test>
+<!--              114 tsm, ter, tbr, tbl                             -->
+  <test compset="QPC4" grid="T5_T5_mg37" name="ERI_D" testmods="cam/co2rmp">
+    <machines>
+      <machine name="izumi" compiler="pgi" category="cam_test"/>
+    </machines>
+  </test>
+<!--              221 tsm, ter                         -->
+  <test compset="QSPCAMS" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+    </machines>
+  </test>
+<!--              222 tsm, ter                         -->
+  <test compset="QPSPCAMM" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s">
+<!-- no matching compset       <value compset="CAM%SPMAQ">-spcam_nx 32 -spcam_ny 1 -spcam_dx 4000 -spcam_dt 20 -phys spcam_m2005 </value> -->
+<!-- do I make a new compset, I need some kind of a compset, do I make a compset with no physics? -->
+    <machines>
+      <machine name="izumi" compiler="pgi" category="cam_test"/>
+    </machines>
+  </test>
+<!--              311                         -->
+  <test compset="QPC5" grid="f10_f10_mg37" name="ERI_D" testmods="cam/outfrq3s_ttrac">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+    </machines>
+  </test>
+<!--              311 tmc                        -->
+  <test compset="QPC5" grid="f10_f10_mg37" name="TMC_D" testmods="cam/outfrq3s_ttrac">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+    </machines>
+  </test>
+<!--              301                         -->
+  <test compset="QPC5" grid="f10_f10_mg37" name="PLB_D_Ln9" testmods="cam/outfrq3s_ttrac_lb1">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+    </machines>
+  </test>
+<!--              302                         -->
+  <test compset="QPC5" grid="f10_f10_mg37" name="PLB_D_Ln9" testmods="cam/outfrq3s_ttrac_lb3">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+    </machines>
+  </test>
+<!--              304                         -->
+  <test compset="QPC5" grid="f10_f10_mg37" name="PLB_D_Ln9" testmods="cam/outfrq3s_ttrac_lb0">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+    </machines>
+  </test>
+<!--              314 tsm ter tbl             -->
+  <test compset="QPC4" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s_diags">
+    <machines>
+      <machine name="izumi" compiler="pgi" category="cam_test"/>
+    </machines>
+  </test>
+<!--              317                         -->
+  <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s_cosp">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+    </machines>
+  </test>
+<!--              318                         -->
+  <test compset="QPC6" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s_cospsathist">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+    </machines>
+  </test>
+<!--              320 tsm ter tbl                        -->
+  <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/rad_diag">
+    <machines>
+      <machine name="izumi" compiler="pgi" category="cam_test"/>
+    </machines>
+  </test>
+<!--              325                         -->
+  <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s_subcol">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+    </machines>
+  </test>
+<!--              eq325                         -->
+  <test compset="QPC5" grid="f10_f10_mg37" name="SUB_D_Ln9" testmods="cam/outfrq3s">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+    </machines>
+  </test>
+<!--              334 tsm ter tbl                        -->
+  <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s">
+    <machines>
+      <machine name="izumi" compiler="pgi" category="cam_test"/>
+    </machines>
+  </test>
+<!--              335                         -->
+  <test compset="FHS94" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/idphys">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+    </machines>
+  </test>
+<!--              338                         -->
+  <test compset="QPC5" grid="f10_f10_mg37" name="SMS_D_Ln9" testmods="cam/rad_diag_mam">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+    </machines>
+  </test>
+<!--              339 tsm ter tbl                        -->
+  <test compset="FADIAB" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/terminator">
+<!-- do I need aquaplanet, or can I remove -->
+    <machines>
+      <machine name="izumi" compiler="pgi" category="cam_test"/>
+    </machines>
+  </test>
+<!--              367                         -->
+  <test compset="QPC6" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s_convmic">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+    </machines>
+  </test>
+<!--              368                         -->
+  <test compset="QPC6" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+    </machines>
+  </test>
+<!--              369                         -->
+  <test compset="QPC6" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s_am">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+    </machines>
+  </test>
+<!--              426                         -->
+  <test compset="QPC4" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s_newyear">
+    <machines>
+      <machine name="izumi" compiler="nag" category="cam_test"/>
+    </machines>
+  </test>
+<!--              430                         -->
+  <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s_carma">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+    </machines>
+  </test>
+<!--              471                         -->
+  <test compset="QPWmaC6" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s">
+    <machines>
+      <machine name="izumi" compiler="nag" category="cam_test"/>
+    </machines>
+  </test>
+<!--              700                         -->
+  <test compset="FADIAB" grid="ne5_ne5_mg37" name="ERI_D" testmods="cam/outfrq3s_bwic">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+    </machines>
+  </test>
+<!--              702                        -->
+  <test compset="FADIAB" grid="ne16pg3_ne16pg3_mg17" name="ERI_D_Ld9" testmods="cam/outfrq3s_bwic">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+    </machines>
+  </test>
+<!--              704 tsm  ter tbl                       -->
+  <test compset="FADIAB" grid="ne5_ne5_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s">
+    <machines>
+      <machine name="izumi" compiler="pgi" category="cam_test"/>
+    </machines>
+  </test>
+<!--              705 tsm                        -->
+  <test compset="FADIAB" grid="ne5_ne5_mg37" name="SMS_D_Ln9_Mmpi-serial" testmods="cam/outfrq3s">
+    <machines>
+      <machine name="izumi" compiler="nag" category="cam_test"/>
+    </machines>
+  </test>
+<!--              705 teq                        -->
+  <test compset="FADIAB" grid="ne5_ne5_mg37" name="PEM_D_Ln9" testmods="cam/outfrq3s">
+    <machines>
+      <machine name="izumi" compiler="nag" category="cam_test"/>
+    </machines>
+  </test>
+<!--              706  tsm teq                      -->
+  <test compset="FADIAB" grid="ne5pg3_ne5pg3_mg37" name="PEM_D_Ln9" testmods="cam/outfrq3s">
+    <machines>
+      <machine name="izumi" compiler="pgi" category="cam_test"/>
+    </machines>
+  </test>
+<!--              707  tsm teq                      -->
+  <test compset="FADIAB" grid="ne5pg2_ne5pg2_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s">
+    <machines>
+      <machine name="izumi" compiler="pgi" category="cam_test"/>
+    </machines>
+  </test>
+<!--              711    ter                    -->
+  <test compset="QPC5" grid="ne5_ne5_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s_ttrac">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+    </machines>
+  </test>
+<!--              714  sms                      -->
+  <test compset="QPC5" grid="ne5pg3_ne5pg3_mg37" name="SMS_D_Ln9" testmods="cam/outfrq3s_ttrac">
+    <machines>
+      <machine name="izumi" compiler="pgi" category="cam_test"/>
+    </machines>
+  </test>
+<!--              712                        -->
+  <test compset="QPC5" grid="ne5_ne5_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s_ba">
+    <machines>
+      <machine name="izumi" compiler="pgi" category="cam_test"/>
+    </machines>
+  </test>
+<!--              701                        -->
+  <test compset="QPC5" grid="ne5_ne5_mg37" name="PLB_D_Ln9" testmods="cam/outfrq3s_ttrac_lb0">
+    <machines>
+      <machine name="izumi" compiler="nag" category="cam_test"/>
+    </machines>
+  </test>
+<!--              702                        -->
+  <test compset="QPC5" grid="ne5_ne5_mg37" name="PLB_D_Ln9" testmods="cam/outfrq3s_ttrac_lb1">
+    <machines>
+      <machine name="izumi" compiler="nag" category="cam_test"/>
+    </machines>
+  </test>
+<!--              703                        -->
+  <test compset="QPC5" grid="ne5_ne5_mg37" name="PLB_D_Ln9" testmods="cam/outfrq3s_ttrac_lb3">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+    </machines>
+  </test>
+<!--              711 teq                       -->
+  <test compset="QPC5" grid="ne5pg3_ne5pg3_mg37" name="PLB_D_Ln9" testmods="cam/outfrq3s_ttrac_lb0">
+    <machines>
+      <machine name="izumi" compiler="pgi" category="cam_test"/>
+    </machines>
+  </test>
+<!--              712 teq                       -->
+  <test compset="QPC5" grid="ne5pg3_ne5pg3_mg37" name="PLB_D_Ln9" testmods="cam/outfrq3s_ttrac_lb1">
+    <machines>
+      <machine name="izumi" compiler="pgi" category="cam_test"/>
+    </machines>
+  </test>
+<!--              713 teq                       -->
+  <test compset="QPC5" grid="ne5pg3_ne5pg3_mg37" name="PLB_D_Ln9" testmods="cam/outfrq3s_ttrac_lb3">
+    <machines>
+      <machine name="izumi" compiler="pgi" category="cam_test"/>
+    </machines>
+  </test>
+<!--              720                        -->
+  <test compset="QPC4" grid="ne16_ne16_mg17" name="ERC_D_Ln9" testmods="cam/outfrq3s">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+    </machines>
+  </test>
+<!--              721     -->
+  <test compset="QPC4" grid="ne16pg3_ne16pg3_mg17" name="ERC_D_Ln9" testmods="cam/outfrq3s">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+    </machines>
+  </test>
+<!--              011                        -->
+  <test compset="PC5" grid="f45_f45_mg37" name="SMS_D_Ld2" testmods="cam/outfrq24h_port">
+    <machines>
+ <machine name="izumi" compiler="nag" category="aux_cam"/>
+    </machines>
+  </test>
+<!--              002 tsc                       -->
+  <test compset="QPC4" grid="T42_T42_mg17" name="SMS_D_Ln7" testmods="cam/scm_prep">
+    <machines>
+      <machine name="izumi" compiler="pgi" category="cam_test"/>
+    </machines>
+  </test>
+<!--              004 tsc                       -->
+  <test compset="QPC6" grid="T42_T42_mg17" name="SMS_D_Ln7" testmods="cam/scm_prep">
+    <machines>
+      <machine name="izumi" compiler="pgi" category="cam_test"/>
+    </machines>
+  </test>
+<!--              003                        -->
+  <test compset="QPSCAMC5" grid="T42_T42_mg17" name="SMS_D_Ln7" testmods="cam/scmarm">
+    <machines>
+      <machine name="izumi" compiler="nag" category="cam_test"/>
+    </machines>
+  </test>
+<!-- 319 -->
+  <test compset="QPC2000climo" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s_sathist">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="cam_test"/>
+    </machines>
+  </test>
+<!--              004ish                        -->
+  <test compset="QPC6" grid="T42_T42_mg17" name="ERC_D_Ln9" testmods="cam/outfrq9s_iop">
+    <machines>
+      <machine name="izumi" compiler="pgi" category="cam_test"/>
+    </machines>
+  </test>
+
 <!--              CAM Simple Models                       -->
 
   <test compset="FDABIP04" grid="T42z30_T42_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
     <machines>
-      <machine name="hobart" compiler="nag" category="prealpha"/>
+      <machine name="izumi" compiler="nag" category="prealpha"/>
     </machines>
   </test>
   <test compset="FDABIP04" grid="T85z30_T85_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
     <machines>
-      <machine name="hobart" compiler="nag" category="prebeta"/>
+      <machine name="izumi" compiler="nag" category="prebeta"/>
     </machines>
   </test>
   <test compset="FDABIP04" grid="T85z60_T85_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
     <machines>
-      <machine name="hobart" compiler="nag" category="prebeta"/>
+      <machine name="izumi" compiler="nag" category="prebeta"/>
     </machines>
   </test>
   <test compset="FHS94" grid="T42_T42_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
     <machines>
-      <machine name="hobart" compiler="nag" category="prealpha"/>
+      <machine name="izumi" compiler="nag" category="prealpha"/>
     </machines>
   </test>
   <test compset="FHS94" grid="T85z30_T85_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
     <machines>
-      <machine name="hobart" compiler="nag" category="prebeta"/>
+      <machine name="izumi" compiler="nag" category="prebeta"/>
     </machines>
   </test>
   <test compset="FHS94" grid="T85z60_T85_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
     <machines>
-      <machine name="hobart" compiler="nag" category="prebeta"/>
+      <machine name="izumi" compiler="nag" category="prebeta"/>
     </machines>
   </test>
   <test compset="FKESSLER" grid="f19_f19_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
     <machines>
-      <machine name="hobart" compiler="nag" category="prealpha"/>
+      <machine name="izumi" compiler="nag" category="prealpha"/>
     </machines>
   </test>
 
@@ -472,8 +789,8 @@
   </test>
   <test compset="FSPCAMS" grid="f19_f19_mg17" name="ERS_Ln9" testmods="cam/outfrq9s">
     <machines>
-      <machine name="hobart" compiler="nag" category="test_spcam"/>
-      <machine name="hobart" compiler="pgi" category="test_spcam"/>
+      <machine name="izumi" compiler="nag" category="test_spcam"/>
+      <machine name="izumi" compiler="pgi" category="test_spcam"/>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
   </test>
@@ -497,24 +814,24 @@
   </test>
   <test compset="FSPCAMCLBM" grid="f19_f19_mg17" name="ERS_Ln9" testmods="cam/outfrq9s">
     <machines>
-      <machine name="hobart" compiler="intel" category="test_spcam"/>
+      <machine name="izumi" compiler="intel" category="test_spcam"/>
     </machines>
   </test>
   <test compset="FSPCAMCLBS" grid="f19_f19_mg17" name="ERS_Ln9" testmods="cam/outfrq9s">
     <machines>
-      <machine name="hobart" compiler="intel" category="test_spcam"/>
+      <machine name="izumi" compiler="intel" category="test_spcam"/>
     </machines>
   </test>
   <!--  Test of finite volume CAM-SE grid with CSLAM tracer advection -->
   <test compset="FKESSLER" grid="ne5pg3_ne5pg3_mg37" name="ERS_Ln27" testmods="cam/outfrq9s" supported="false">
     <machines>
-      <machine name="hobart" compiler="nag" category="aux_cam"/>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
   </test>
   <!--  DART -->
   <test compset="FHS94" grid="f45_f45_mg37" name="DAE" testmods="cam/dae">
     <machines>
-      <machine name="hobart" compiler="nag" category="aux_cam"/>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
     <options>
       <option name="wallclock"> 00:20:00 </option>
@@ -854,14 +1171,14 @@
   </test>
   <test compset="FW4madHIST" grid="f19_f19_mg17" name="ERP_Ln9" testmods="cam/outfrq9s" supported="false">
     <machines>
-      <machine name="hobart" compiler="nag" category="waccm"/>
+      <machine name="izumi" compiler="nag" category="waccm"/>
     </machines>
   </test>
   <test compset="FW4madHIST" grid="f19_f19_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s" supported="false">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
-      <machine name="hobart" compiler="nag" category="waccm"/>
-      <machine name="hobart" compiler="nag" category="prealpha"/>
+      <machine name="izumi" compiler="nag" category="waccm"/>
+      <machine name="izumi" compiler="nag" category="prealpha"/>
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
@@ -879,8 +1196,8 @@
   <test compset="FW4madSD" grid="f19_f19_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s" supported="false">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
-      <machine name="hobart" compiler="nag" category="waccm"/>
-      <machine name="hobart" compiler="nag" category="aux_cam"/>
+      <machine name="izumi" compiler="nag" category="waccm"/>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
     <options>
       <option name="wallclock">00:10:00</option>
@@ -1007,8 +1324,8 @@
   </test>
   <test compset="PC5" grid="f45_f45_mg37" name="SMS_D" testmods="cam/cam5_port_f45">
     <machines>
-      <machine name="hobart" compiler="nag" category="prealpha"/>
-      <machine name="hobart" compiler="nag" category="test_port"/>
+      <machine name="izumi" compiler="nag" category="prealpha"/>
+      <machine name="izumi" compiler="nag" category="test_port"/>
     </machines>
   </test>
   <test compset="PC5" grid="ne30_ne30_mg17" name="SMS_D" testmods="cam/cam5_port_ne30">
@@ -1033,13 +1350,13 @@
 
   <test compset="FHS94" grid="ne5_ne5_mg37" name="ERP_Ln9" testmods="cam/outfrq9s">
     <machines>
-      <machine name="hobart" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="pgi" category="aux_cam"/>
     </machines>
   </test>
 
   <test compset="FADIAB" grid="ne5_ne5_mg37" name="ERS_Ln9" testmods="cam/outfrq9s">
     <machines>
-      <machine name="hobart" compiler="nag" category="aux_cam"/>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
   </test>
 

@@ -18,7 +18,7 @@
 <co2vmr                   >348.0e-6</co2vmr>
 
 <!-- Solar insolation of 1365 -->
-<solar_const              >1365.0     </solar_const>
+<solar_const waccm_phys="0"    >1365.0     </solar_const>
 /
 
 <!-- zonally symmetric ozone file -->

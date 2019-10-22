@@ -102,6 +102,21 @@
   </compset>
 
   <compset>
+    <alias>QPC2000climo</alias>
+    <lname>2000_CAM60%CCTS_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>QPSCAMC5</alias>
+    <lname>2000_CAM50%SCAM_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>QPWmaC6</alias>
+    <lname>2000_CAM60%WCCM_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
     <alias>QSC6</alias>
     <lname>2000_CAM60_SLND_SICE_DOCN%SOMAQP_SROF_SGLC_SWAV</lname>
     <science_support grid="f09_f09_mg17"/>
@@ -241,6 +256,11 @@
   <!-- Aquaplanet untested compsets -->
 
   <compset>
+    <alias>QPC3</alias>
+    <lname>2000_CAM30_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
     <alias>QPC4</alias>
     <lname>2000_CAM40_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
   </compset>
@@ -248,6 +268,54 @@
   <compset>
     <alias>QPC5</alias>
     <lname>2000_CAM50_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>QSPCAMS</alias>
+    <lname>2000_CAM%SPCAMS_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>QPSPCAMM</alias>
+    <lname>2000_CAM%SPCAMM_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>FSPCAMS</alias>
+    <lname>2000_CAM%SPCAMS_CLM50%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>F1850_BDRD</alias>
+    <lname>1850_CAM60_CLM50%BGC_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV_BGC%BDRD</lname>
+  </compset>
+
+  <compset>
+    <alias>FHIST_BDRD</alias>
+    <lname>HIST_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV_BGC%BDRD</lname>
+  </compset>
+
+  <!-- CAM simpler model compsets -->
+
+  <compset>
+    <alias>FADIAB</alias>
+    <lname>2000_CAM%ADIAB_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>
+  </compset>
+
+  <!-- CAM Dycore test compsets -->
+  <compset>
+    <alias>FHIST_DARTC6</alias>
+    <lname>HIST_CAM60_CLM50%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>FTJ16</alias>
+    <lname>2000_CAM%TJ16_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>FKESSLER</alias>
+    <lname>2000_CAM%KESSLER_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>
   </compset>
 
   <compset>
@@ -411,6 +479,19 @@
   <!-- ENTRIES -->
 
   <entries>
+
+    <entry id="EPS_AAREA">
+      <values match="last">
+        <value grid="a%T42_l%null_oi%T42_r%null_g%null_w%null_z%null_m%gx1v7">9.0e-4</value>
+        <value grid="a%ne0np4CONUS.ne30x8_l%ne0np4CONUS.ne30x8_oi%ne0np4CONUS.ne30x8">9.0e-06</value>
+      </values>
+    </entry>
+
+    <entry id="EPS_AGRID">
+      <values match="last">
+        <value grid="a%T42_l%null_oi%T42_r%null_g%null_w%null_z%null_m%gx1v7">9.0e-5</value>
+      </values>
+    </entry>
 
     <entry id="RUN_STARTDATE">
       <values match="last">
