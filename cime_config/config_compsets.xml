@@ -419,6 +419,7 @@
 	<value  compset="HIST_CAM60%WCTS_CLM50%BGC-CROP">1950-01-01</value>
         <value  compset="HIST_CAM40%WX">2000-01-01</value>
 	<value  compset="HIST_CAM60%WCMD">2005-01-01</value>
+	<value  compset="HIST_CAM60%WCMD%SDYN" grid="a%1.9x2.5">1980-01-01</value>
 	<value  compset="HIST_CAM60%WCSC">1850-01-01</value>
 	<value  compset="HIST_CAM60%CCTS">1995-01-01</value>
 	<value  compset="HIST_CAM60%CVBSX">1995-01-01</value>
