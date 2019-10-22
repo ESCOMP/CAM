@@ -1998,7 +1998,7 @@ module edyn_mpi
 ! Shift longitude grid from 0 to 360 to -180 to 180 for edynamo
 !  Check for compatible geographic longitude dimension and quit if not compatible
 !
-    if (nlon /= 288 .and. nlon /= 144 .and. nlon /= 80 .and. nlon /= 72 .and. nlon /= 24) then
+    if (nlon /= 576 .and. nlon /= 288 .and. nlon /= 144 .and. nlon /= 80 .and. nlon /= 72 .and. nlon /= 24) then
       write(iulog,"('ERROR lonshift_blocks: incompatible nlon = ',i5,' i0,i1=',2i4)") nlon,i0,i1
       call endrun
     end if
