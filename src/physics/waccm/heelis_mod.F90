@@ -1,6 +1,5 @@
 !-----------------------------------------------------------------------
-! extracted from components/cam/src/ionosphere/waccmx/heelis.F90
-! to be used by waccm physics
+!  Heelis empirical model to calculate high-latitude electric potential
 !-----------------------------------------------------------------------
 module heelis_mod
 
