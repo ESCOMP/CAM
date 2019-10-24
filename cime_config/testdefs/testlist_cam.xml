@@ -252,7 +252,7 @@
 <!--              112 tsm, ter, tbl                              -->
   <test compset="QPC3" grid="T5_T5_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s">
     <machines>
-      <machine name="izumi" compiler="pgi" category="cam_test"/>
+      <machine name="izumi" compiler="pgi" category="aux_cam"/>
     </machines>
   </test>
 <!--              113 tsm, ter, T8                              -->
@@ -275,10 +275,8 @@
   </test>
 <!--              222 tsm, ter                         -->
   <test compset="QPSPCAMM" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s">
-<!-- no matching compset       <value compset="CAM%SPMAQ">-spcam_nx 32 -spcam_ny 1 -spcam_dx 4000 -spcam_dt 20 -phys spcam_m2005 </value> -->
-<!-- do I make a new compset, I need some kind of a compset, do I make a compset with no physics? -->
     <machines>
-      <machine name="izumi" compiler="pgi" category="cam_test"/>
+      <machine name="izumi" compiler="pgi" category="aux_cam"/>
     </machines>
   </test>
 <!--              311                         -->
@@ -314,7 +312,7 @@
 <!--              314 tsm ter tbl             -->
   <test compset="QPC4" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s_diags">
     <machines>
-      <machine name="izumi" compiler="pgi" category="cam_test"/>
+      <machine name="izumi" compiler="pgi" category="aux_cam"/>
     </machines>
   </test>
 <!--              317                         -->
@@ -332,7 +330,7 @@
 <!--              320 tsm ter tbl                        -->
   <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/rad_diag">
     <machines>
-      <machine name="izumi" compiler="pgi" category="cam_test"/>
+      <machine name="izumi" compiler="pgi" category="aux_cam"/>
     </machines>
   </test>
 <!--              325                         -->
@@ -350,7 +348,7 @@
 <!--              334 tsm ter tbl                        -->
   <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s">
     <machines>
-      <machine name="izumi" compiler="pgi" category="cam_test"/>
+      <machine name="izumi" compiler="pgi" category="aux_cam"/>
     </machines>
   </test>
 <!--              335                         -->
@@ -367,9 +365,8 @@
   </test>
 <!--              339 tsm ter tbl                        -->
   <test compset="FADIAB" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/terminator">
-<!-- do I need aquaplanet, or can I remove -->
     <machines>
-      <machine name="izumi" compiler="pgi" category="cam_test"/>
+      <machine name="izumi" compiler="pgi" category="aux_cam"/>
     </machines>
   </test>
 <!--              367                         -->
@@ -441,7 +438,7 @@
 <!--              706  tsm teq                      -->
   <test compset="FADIAB" grid="ne5pg3_ne5pg3_mg37" name="PEM_D_Ln9" testmods="cam/outfrq3s">
     <machines>
-      <machine name="izumi" compiler="pgi" category="cam_test"/>
+      <machine name="izumi" compiler="pgi" category="aux_cam"/>
     </machines>
   </test>
 <!--              707  tsm teq                      -->
@@ -459,11 +456,11 @@
 <!--              714  sms                      -->
   <test compset="QPC5" grid="ne5pg3_ne5pg3_mg37" name="SMS_D_Ln9" testmods="cam/outfrq3s_ttrac">
     <machines>
-      <machine name="izumi" compiler="pgi" category="cam_test"/>
+      <machine name="izumi" compiler="pgi" category="aux_cam"/>
     </machines>
   </test>
 <!--              712                        -->
-  <test compset="QPC5" grid="ne5_ne5_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s_ba">
+  <test compset="QPC5" grid="ne5pg3_ne5pg3_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s_ba">
     <machines>
       <machine name="izumi" compiler="pgi" category="cam_test"/>
     </machines>
@@ -489,19 +486,19 @@
 <!--              711 teq                       -->
   <test compset="QPC5" grid="ne5pg3_ne5pg3_mg37" name="PLB_D_Ln9" testmods="cam/outfrq3s_ttrac_lb0">
     <machines>
-      <machine name="izumi" compiler="pgi" category="cam_test"/>
+      <machine name="izumi" compiler="pgi" category="aux_cam"/>
     </machines>
   </test>
 <!--              712 teq                       -->
   <test compset="QPC5" grid="ne5pg3_ne5pg3_mg37" name="PLB_D_Ln9" testmods="cam/outfrq3s_ttrac_lb1">
     <machines>
-      <machine name="izumi" compiler="pgi" category="cam_test"/>
+      <machine name="izumi" compiler="pgi" category="aux_cam"/>
     </machines>
   </test>
 <!--              713 teq                       -->
   <test compset="QPC5" grid="ne5pg3_ne5pg3_mg37" name="PLB_D_Ln9" testmods="cam/outfrq3s_ttrac_lb3">
     <machines>
-      <machine name="izumi" compiler="pgi" category="cam_test"/>
+      <machine name="izumi" compiler="pgi" category="aux_cam"/>
     </machines>
   </test>
 <!--              720                        -->
