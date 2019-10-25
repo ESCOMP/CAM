@@ -255,7 +255,7 @@
 
   <compset>
     <alias>QPRCEMIP</alias>
-    <lname>2000_CAM60_SLND_SICE_DOCN%AQP11_SROF_SGLC_SWAV</lname>
+    <lname>2000_CAM60_SLND_SICE_DOCN%AQPCONST_SROF_SGLC_SWAV</lname>
   </compset>
 
   <!-- ****************************** -->
