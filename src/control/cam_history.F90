@@ -64,6 +64,7 @@ module cam_history
 
   ! Forward common parameters to present unified interface to cam_history
   public :: fieldname_len, horiz_only
+  public :: get_field_properties, masterlist
 
   !
   ! master_entry: elements of an entry in the master field list
@@ -3429,7 +3430,7 @@ end subroutine print_active_fldlst
 
   !#######################################################################
 
-  subroutine get_field_properties(fname, found, tape_out, ff_out)
+  subroutine get_field_properties(fname, found, tape_out, ff_out, no_tape_check_in)
 
     implicit none
     !
@@ -3451,17 +3452,26 @@ end subroutine print_active_fldlst
     logical,            intent(out) :: found ! Set to true if fname is active
     type(active_entry), pointer, optional :: tape_out(:)
     integer,            intent(out), optional :: ff_out
+    logical,            intent(in), optional  :: no_tape_check_in
 
     !
     ! Local variables
     !
     character*(max_fieldname_len) :: fname_loc  ! max-char equivalent of fname
     integer :: t, ff          ! tape, masterindex indices
+    logical :: no_tape_check
      !-----------------------------------------------------------------------
 
     ! Need to re-cast the field name so that the hashing works #hackalert
     fname_loc = fname
     ff = get_masterlist_indx(fname_loc)
+
+    ! Set the no_tape_check to false, unless is passed in
+    if (present(no_tape_check_in)) then
+       no_tape_check = no_tape_check_in
+    else
+       no_tape_check = .false.
+    end if
 
     ! Set found to .false. so we can return early if fname is not active
     found = .false.
@@ -3484,13 +3494,17 @@ end subroutine print_active_fldlst
     !  Next, check to see whether this field is active on one or more history
     !  tapes.
     !
-    if ( .not. masterlist(ff)%thisentry%act_sometape )  then
+    if (no_tape_check) then
+      if (present(ff_out)) ff_out   =  ff  ! Set the output index and return without checking tapes
+      return
+    else if ( .not. masterlist(ff)%thisentry%act_sometape )  then
       return
     end if
     !
     ! Note, the field may be on any or all of the history files (primary
     ! and auxiliary).
     !
+
 
     do t=1, ptapes
       if (masterlist(ff)%thisentry%actflag(t)) then
