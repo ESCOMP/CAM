@@ -47,6 +47,7 @@ help () {
   echo "CAM_TAG:           Default = none (used to set CESM baseline dir)"
   echo "CAM_TASKS:         Default = 32"
   echo "CAM_TESTDIR:       Default = <user_scratch_dir>/test-driver.<jobid>"
+  echo "BATCH:             Default = none (used to allow cime test to run in batch mode"
   echo ""
   echo "Less common ENVIRONMENT variables"
   echo "CALDERA_BATCHQ:    Default = caldera"
@@ -1055,7 +1056,12 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
     else
       testargs="${testargs} --xml-compiler intel"
     fi
-    testargs="${testargs} --queue ${CAM_BATCHQ} --test-root ${cesm_testdir} --output-root ${cesm_testdir}"
+    if [ -n "${BATCH}" ]; then
+      testargs="${testargs} --queue ${CAM_BATCHQ} --test-root ${cesm_testdir} --output-root ${cesm_testdir}"
+    else
+      testargs="${testargs} --test-root ${cesm_testdir} --output-root ${cesm_testdir}"
+      testargs="${testargs} --no-batch"
+    fi
     if [ -n "${CAM_ACCOUNT}" ]; then
       testargs="${testargs} --project ${CAM_ACCOUNT}"
     fi
@@ -1069,6 +1075,7 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
     if [ -n "${archive_dir}" ]; then
       testargs="${testargs} --generate ${archive_dir}"
     fi
+
 
     echo ""
     echo "CESM test results will be in: ${cesm_testdir}" | tee ${logfile}
