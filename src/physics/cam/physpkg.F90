@@ -745,6 +745,7 @@ contains
     use dadadj_cam,         only: dadadj_init
     use cam_abortutils,     only: endrun
     use nudging,            only: Nudge_Model, nudging_init
+    use cam_snapshot,       only: cam_snapshot_init
 
     ! Input/output arguments
     type(physics_state), pointer       :: phys_state(:)
@@ -930,6 +931,9 @@ contains
 
     ! Initialize qneg3 and qneg4
     call qneg_init()
+
+    ! Initialize qneg3 and qneg4
+    call cam_snapshot_init()
 
   end subroutine phys_init
 
@@ -1696,6 +1700,8 @@ contains
     use qneg_module,     only: qneg3
     use subcol_SILHS,    only: subcol_SILHS_var_covar_driver
     use micro_mg_cam,    only: massless_droplet_destroyer
+    use cam_snapshot,    only: cam_snapshot_all_outfld
+    use phys_control,    only: phys_getopts
 
     ! Arguments
 
@@ -1798,6 +1804,8 @@ contains
     real(r8) :: zero_tracers(pcols,pcnst)
 
     logical   :: lq(pcnst)
+    integer   :: cam_snapshot_before_num, cam_snapshot_after_num
+
     !-----------------------------------------------------------------------
 
     call t_startf('bc_init')
@@ -2282,6 +2290,8 @@ contains
     !===================================================
     call t_startf('radiation')
 
+    call phys_getopts(cam_snapshot_before_num_out = cam_snapshot_before_num)
+    call cam_snapshot_all_outfld(cam_snapshot_before_num, state)
 
     call radiation_tend( &
        state, ptend, pbuf, cam_out, cam_in, net_flx)
