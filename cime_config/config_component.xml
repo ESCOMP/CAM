@@ -203,7 +203,7 @@
       <value compset="2000_CAM50_SLND_SICE_DOCN%AQP"   >aquaplanet_cam5</value>
       <value compset="2000_CAM60_SLND_SICE_DOCN%SOMAQP">aquaplanet_cam6</value>
       <value compset="2000_CAM60_SLND_SICE_DOCN%AQP"   >aquaplanet_cam6</value>
-      <value compset="2000_CAM60_SLND_SICE_DOCN%AQP11" >aquaplanet_rce_cam6</value>
+      <value compset="2000_CAM60_SLND_SICE_DOCN%AQPCONST" >aquaplanet_rce_cam6</value>
 
       <value compset="2010_CAM60"        >2010_cam6</value>
       <value compset="2010_CAM60%CCTS"   >2010_trop_strat_vbs_cam6</value>
