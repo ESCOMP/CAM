@@ -33,7 +33,7 @@ contains
     use prim_state_mod,         only: prim_printstate
     use control_mod,            only: runtype, topology, rsplit, qsplit, rk_stage_user,         &
                                       nu, nu_q, nu_div, hypervis_subcycle, hypervis_subcycle_q, &
-                                      variable_nsplit
+                                      hypervis_subcycle_sponge, variable_nsplit
     use fvm_mod,                only: fill_halo_fvm,ghostBufQnhc_h
     use thread_mod,             only: omp_get_thread_num
     use global_norms_mod,       only: print_cfl
@@ -59,6 +59,7 @@ contains
 !   variables used to calculate CFL
     real (kind=r8) :: dtnu            ! timestep*viscosity parameter
     real (kind=r8) :: dt_dyn_vis      ! viscosity timestep used in dynamics
+    real (kind=r8) :: dt_dyn_del2_sponge 
     real (kind=r8) :: dt_tracer_vis      ! viscosity timestep used in tracers
 
     real (kind=r8) :: dp
@@ -81,6 +82,7 @@ contains
     ! compute most restrictive dt*nu for use by variable res viscosity:
     ! compute timestep seen by viscosity operator:
     dt_dyn_vis = tstep
+    dt_dyn_del2_sponge = tstep
     dt_tracer_vis=tstep*qsplit
 
     ! compute most restrictive condition:
@@ -89,6 +91,7 @@ contains
     ! compute actual viscosity timesteps with subcycling
     dt_tracer_vis = dt_tracer_vis/hypervis_subcycle_q
     dt_dyn_vis = dt_dyn_vis/hypervis_subcycle
+    dt_dyn_del2_sponge = dt_dyn_del2_sponge/hypervis_subcycle_sponge
     if (variable_nsplit) then
        nsplit_baseline=nsplit
        rsplit_baseline=rsplit
@@ -119,7 +122,7 @@ contains
          !dt_remap,dt_tracer_fvm,dt_tracer_se
          tstep*qsplit*rsplit,tstep*qsplit*fvm_supercycling,tstep*qsplit,&
          !dt_dyn,dt_dyn_visco,dt_tracer_visco, dt_phys
-         tstep,dt_dyn_vis,dt_tracer_vis,tstep*nsplit*qsplit*rsplit)
+         tstep,dt_dyn_vis,dt_dyn_del2_sponge,dt_tracer_vis,tstep*nsplit*qsplit*rsplit)
 
     if (hybrid%masterthread) then
        if (phys_tscale/=0) then
@@ -178,7 +181,8 @@ contains
     use hybvcoord_mod, only : hvcoord_t
     use time_mod,               only: TimeLevel_t, timelevel_update, timelevel_qdp, nsplit
     use control_mod,            only: statefreq,disable_diagnostics,qsplit, rsplit, variable_nsplit
-    use prim_advance_mod,       only: applycamforcing
+    use control_mod,            only: del2_physics_tendencies
+    use prim_advance_mod,       only: applycamforcing, del2_sponge_uvt_tendencies
     use prim_advance_mod,       only: calc_tot_energy_dynamics,compute_omega
     use prim_state_mod,         only: prim_printstate, adjust_nsplit
     use prim_advection_mod,     only: vertical_remap, deriv
@@ -198,7 +202,7 @@ contains
     integer, intent(in)              :: nsubstep  ! nsubstep = 1 .. nsplit
     real (kind=r8)    , intent(inout):: omega_cn(2,nets:nete) !min and max of vertical Courant number    
 
-    real(kind=r8)   :: dt_q, dt_remap
+    real(kind=r8)   :: dt_q, dt_remap, dt_phys
     integer         :: ie, q,k,n0_qdp,np1_qdp,r, nstep_end,region_num_threads,i,j
     real (kind=r8)  :: dp_np1(np,np)
     real (kind=r8)  :: dp_start(np,np,nlev+1,nets:nete),dp_end(np,np,nlev,nets:nete)
@@ -208,10 +212,10 @@ contains
     ! Main timestepping loop
     ! ===================================
     dt_q = dt*qsplit
-    dt_remap = dt_q
     nstep_end = tl%nstep + qsplit
     dt_remap=dt_q*rsplit
     nstep_end = tl%nstep + qsplit*rsplit  ! nstep at end of this routine
+    dt_phys   = nsplit*dt_remap
 
     ! compute diagnostics for STDOUT
     compute_diagnostics=.false.
@@ -241,29 +245,28 @@ contains
 
     call TimeLevel_Qdp( tl, qsplit, n0_qdp)
 
+    if (del2_physics_tendencies) &
+         call del2_sponge_uvt_tendencies(elem,hybrid,deriv,nets,nete,dt_phys)
+    
     call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%n0,n0_qdp,'dAF')
-    call ApplyCAMForcing(elem,fvm,tl%n0,n0_qdp,dt_remap,nets,nete,nsubstep)
-
-
-    ! loop over rsplit vertically lagrangian timesteps
-    call prim_step(elem, fvm, hybrid,nets,nete, dt, tl, hvcoord,1)
-    do r=2,rsplit
-       call TimeLevel_update(tl,"leapfrog")
-       call prim_step(elem, fvm, hybrid,nets,nete, dt, tl, hvcoord,r)
+    call ApplyCAMForcing(elem,fvm,tl%n0,n0_qdp,dt_remap,dt_phys,nets,nete,nsubstep)
+    call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%n0,n0_qdp,'dBD')    
+    do r=1,rsplit
+      if (r.ne.1) call TimeLevel_update(tl,"leapfrog")
+      call prim_step(elem, fvm, hybrid,nets,nete, dt, tl, hvcoord,r)
     enddo
-    ! defer final timelevel update until after remap and diagnostics
 
+    
+    ! defer final timelevel update until after remap and diagnostics
+    call TimeLevel_Qdp( tl, qsplit, n0_qdp, np1_qdp)
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !
     !  apply vertical remap
     !  always for tracers
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !compute timelevels for tracers (no longer the same as dynamics)
-    call TimeLevel_Qdp( tl, qsplit, n0_qdp, np1_qdp)
-    ! note: time level update for fvm tracers takes place in fvm_mod
 
-    call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%np1,np1_qdp,'dAD')
+    call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%np1,np1_qdp,'dAD')    
 
     if (variable_nsplit.or.compute_diagnostics) then
       !
@@ -285,7 +288,7 @@ contains
     call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%np1,np1_qdp,'dAR')
 
     if (nsubstep==nsplit) then
-      call compute_omega(hybrid,tl%np1,np1_qdp,elem,deriv,nets,nete,dt,hvcoord)
+      call compute_omega(hybrid,tl%np1,np1_qdp,elem,deriv,nets,nete,dt,hvcoord)      
     end if
 
     ! now we have:
@@ -457,7 +460,7 @@ contains
     call t_stopf('prim_advance_exp')
 
        ! defer final timelevel update until after Q update.
-    enddo
+  enddo
 #ifdef HOMME_TEST_SUB_ELEMENT_MASS_FLUX
     if (ntrac>0.and.rstep==1) then
       do ie=nets,nete

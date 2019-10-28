@@ -3524,6 +3524,7 @@ if ($dyn =~ /se/) {
                   se_lcp_moist
 		  se_large_Courant_incr
                   se_hypervis_subcycle
+                  se_hypervis_subcycle_sponge
                   se_hypervis_subcycle_q
                   se_limiter_option
                   se_nsplit

@@ -433,7 +433,7 @@ end function compute_ppm_grids
 !This computes a limited parabolic interpolant using a net 5-cell stencil, but the stages of computation are broken up into 3 stages
 function compute_ppm( a , dx )    result(coefs)
   use control_mod, only: vert_remap_q_alg
-
+  use dimensions_mod, only: ksponge_end
   implicit none
   real(kind=r8), intent(in) :: a    (    -1:nlev+2)  !Cell-mean values
   real(kind=r8), intent(in) :: dx   (10,  0:nlev+1)  !grid spacings
@@ -501,7 +501,7 @@ function compute_ppm( a , dx )    result(coefs)
   !material boundaries piecewise constant. Zeroing out the first and second moments, and setting the zeroth
   !moment to the cell mean is sufficient to maintain conservation.
 
-  do k=1,2
+  do k=1,MAX(ksponge_end-1,1)
      coefs(0,k)   = a(k)  !always reduce to PCoM in sponge layers
      coefs(1:2,k) = 0._r8 !always reduce to PCoM in sponge layers
   end do

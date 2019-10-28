@@ -2881,6 +2881,32 @@ subroutine read_inidat(dyn_in)
      initial_mr(i) = cnst_type(i)
   end do
 
+  ! some analytical initial conditions require PHIS from file; therefore read PHIS from
+  ! file before call to analytic_ic_set_ic
+  if (associated(fh_topo)) then    
+    !-----------
+    ! Check coord sizes
+    !-----------
+    ierr = pio_inq_dimid(fh_topo, 'lon' , lonid)
+    ierr = pio_inq_dimid(fh_topo, 'lat' , latid)
+    ierr = pio_inq_dimlen(fh_topo, lonid , mlon)
+    ierr = pio_inq_dimlen(fh_topo, latid , mlat)
+    if (mlon /= plon .or. mlat /= plat) then
+      write(iulog,*) sub//': ERROR: model parameters do not match initial dataset parameters'
+      write(iulog,*)'Model Parameters:    plon = ',plon,' plat = ',plat
+      write(iulog,*)'Dataset Parameters:  dlon = ',mlon,' dlat = ',mlat
+      call endrun(sub//': ERROR: model parameters do not match initial dataset parameters')
+    end if
+    
+    fieldname = 'PHIS'
+    readvar   = .false.      
+    call infld(fieldname, fh_topo, 'lon', 'lat', ifirstxy, ilastxy, jfirstxy, jlastxy, &
+         dyn_in%phis, readvar, gridname='fv_centers')
+    if (.not. readvar) call endrun(sub//': ERROR: PHIS not found')
+  else
+    dyn_in%phis(:,:) = 0._r8
+  end if
+
   if (analytic_ic_active()) then
      readvar   = .false.
     if (jfirstxy == 1) then
@@ -2908,24 +2934,28 @@ subroutine read_inidat(dyn_in)
     end do
     allocate(clon_st(ifirstxy:ilastxy))
     clon_st(ifirstxy:ilastxy) = londeg_st(ifirstxy:ilastxy,1) * deg2rad
+
+    if (.not. associated(fh_topo)) then
+      call analytic_ic_set_ic(vc_moist_pressure, clat(jfirstxy:jlastxy),      &
+           clon(ifirstxy:ilastxy,1), glob_ind, PHIS=dyn_in%phis)
+    end if
+    
     call analytic_ic_set_ic(vc_moist_pressure, clat_staggered(jf:jlastxy-1),  &
          clon(ifirstxy:ilastxy,1), glob_ind(gf:), U=dyn_in%u3s(:,uf:,:))
     call analytic_ic_set_ic(vc_moist_pressure, clat(jfirstxy:jlastxy),        &
          clon_st(ifirstxy:ilastxy), glob_ind, V=dyn_in%v3s)
     call analytic_ic_set_ic(vc_moist_pressure, clat(jfirstxy:jlastxy),        &
          clon(ifirstxy:ilastxy,1), glob_ind, T=dyn_in%t3, PS=dyn_in%ps,       &
-         Q=dyn_in%tracer(:,:,:,1:ntotq), m_cnst=m_cnst)
-    if (.not. associated(fh_topo)) then
-      call analytic_ic_set_ic(vc_moist_pressure, clat(jfirstxy:jlastxy),      &
-           clon(ifirstxy:ilastxy,1), glob_ind, PHIS=dyn_in%phis)
-    end if
+         Q=dyn_in%tracer(:,:,:,1:ntotq), PHIS=dyn_in%phis, m_cnst=m_cnst)
     do m = 1, ntotq
        call process_inidat(fh_ini, grid, dyn_in, 'CONSTS', m_cnst=m)
     end do
     deallocate(glob_ind)
     deallocate(m_cnst)
     deallocate(clon_st)
+
   else
+
     !-----------
     ! Check coord sizes
     !-----------
@@ -2949,15 +2979,6 @@ subroutine read_inidat(dyn_in)
          dyn_in%ps, readvar, gridname='fv_centers')
     if (.not. readvar) call endrun(sub//': ERROR: PS not found')
 
-    fieldname = 'PHIS'
-    readvar   = .false.
-    if (.not. associated(fh_topo)) then
-      dyn_in%phis(:,:) = 0._r8
-    else
-      call infld(fieldname, fh_topo, 'lon', 'lat', ifirstxy, ilastxy, jfirstxy, jlastxy, &
-           dyn_in%phis, readvar, gridname='fv_centers')
-      if (.not. readvar) call endrun(sub//': ERROR: PHIS not found')
-    end if
 
     !-----------
     ! 3-D fields
@@ -2977,18 +2998,22 @@ subroutine read_inidat(dyn_in)
     call infld(fieldname, fh_ini, 'lon', 'lat', 'lev', ifirstxy, ilastxy, jfirstxy, jlastxy, &
          1, km, dyn_in%t3, readvar, gridname='fv_centers')
     if (.not. readvar) call endrun(sub//': ERROR: T not found')
-
-    ! Constituents (read and process one at a time)
-    do m = 1, pcnst
-      readvar   = .false.
-      fieldname = cnst_name(m)
-      if (cnst_read_iv(m)) then
-        call infld(fieldname, fh_ini, 'lon', 'lat', 'lev', ifirstxy, ilastxy, jfirstxy, jlastxy, &
-             1, km, dyn_in%tracer(:,:,:,m), readvar, gridname='fv_centers')
-      end if
-      call process_inidat(fh_ini, grid, dyn_in, 'CONSTS', m_cnst=m)
-    end do
   end if
+
+  ! Constituents (read and process one at a time)
+  !
+  ! If analytic_ic_active())=.true. then distributions for tracers will be overwritten
+  ! if they exist on file
+
+  do m = 1, pcnst
+    readvar   = .false.
+    fieldname = cnst_name(m)
+    if (cnst_read_iv(m)) then
+      call infld(fieldname, fh_ini, 'lon', 'lat', 'lev', ifirstxy, ilastxy, jfirstxy, jlastxy, &
+           1, km, dyn_in%tracer(:,:,:,m), readvar, gridname='fv_centers')
+    end if
+    call process_inidat(fh_ini, grid, dyn_in, 'CONSTS', m_cnst=m)
+  end do
 
   ! Set u3s(:,1,:) to zero as it is used in interpolation routines
   if ((jfirstxy == 1) .and. (size(dyn_in%u3s) > 0)) then

@@ -33,6 +33,7 @@ module dimensions_mod
   integer,            allocatable, public :: qsize_condensate_loading_idx(:)    
   integer,            allocatable, public :: qsize_condensate_loading_idx_gll(:)
   real(r8),           allocatable, public :: qsize_condensate_loading_cp(:)
+  real(r8),           allocatable, public :: qsize_condensate_loading_R(:)
   character(len=16),  allocatable, public :: cnst_name_gll(:)     ! constituent names for SE tracers
   character(len=128), allocatable, public :: cnst_longname_gll(:) ! long name of SE tracers
   !

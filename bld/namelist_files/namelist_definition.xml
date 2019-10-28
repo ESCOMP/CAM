@@ -6872,6 +6872,12 @@ Number of hyperviscosity subcycles per dynamics timestep.
 Default: Set by build-namelist
 </entry>
 
+<entry id="se_hypervis_subcycle_sponge" type="integer" category="se"
+       group="dyn_se_inparm" valid_values="" >
+Number of hyperviscosity subcycles per dynamics timestep in sponge del2 diffusion.
+Default: Set by build-namelist
+</entry>
+
 <entry id="se_hypervis_subcycle_q" type="integer" category="se"
        group="dyn_se_inparm" valid_values="" >
 Number of hyperviscosity subcycles done in tracer advection code.
@@ -7177,12 +7183,14 @@ Default: Set by build-namelist.
 
 <entry id="analytic_ic_type" type="char*80" category="dyn_test"
        group="analytic_ic_nl"
-       valid_values="none,held_suarez_1994,moist_baroclinic_wave_dcmip2016,dry_baroclinic_wave_dcmip2016,dry_baroclinic_wave_jw2006" >
+       valid_values="none,held_suarez_1994,moist_baroclinic_wave_dcmip2016,dry_baroclinic_wave_dcmip2016,dry_baroclinic_wave_jw2006,us_standard_atmosphere" >
 Specify the type of analytic initial conditions for an initial run.
 held_suarez_1994: Initial conditions specified in Held and Suarez (1994)
 moist_baroclinic_wave_dcmip2016: Moist baroclinic wave as used in the DCMIP 2016 experiments
 dry_baroclinic_wave_dcmip2016: Dry baroclinic wave as used in the DCMIP 2016 experiments
 dry_baroclinic_wave_jw2006: Dry baroclinic wave as specified in Jablonowski and Williamson (2006)
+us_standard_atmosphere: static atmospheric state (u,v)=0, standard lapse rate for T, PS is hydrostatic equilibrium with topography
+(this ic is recommended for spinning up new initial condition files when changing horizontal or vertical resolution)
 Default: 'none'
 </entry>
 

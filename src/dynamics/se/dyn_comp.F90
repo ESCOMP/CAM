@@ -100,7 +100,7 @@ subroutine dyn_readnl(NLFileName)
 
    use control_mod,    only: TRACERTRANSPORT_SE_GLL, tracer_transport_type
    use control_mod,    only: TRACERTRANSPORT_CONSISTENT_SE_FVM
-   use control_mod,    only: hypervis_subcycle
+   use control_mod,    only: hypervis_subcycle, hypervis_subcycle_sponge
    use control_mod,    only: hypervis_subcycle_q, statefreq, runtype
    use control_mod,    only: nu, nu_div, nu_p, nu_q, nu_top, qsplit, rsplit
    use control_mod,    only: vert_remap_q_alg, tstep_type, rk_stage_user
@@ -136,6 +136,7 @@ subroutine dyn_readnl(NLFileName)
    real(r8)                     :: se_hypervis_power
    real(r8)                     :: se_hypervis_scaling
    integer                      :: se_hypervis_subcycle
+   integer                      :: se_hypervis_subcycle_sponge   
    integer                      :: se_hypervis_subcycle_q
    integer                      :: se_limiter_option
    real(r8)                     :: se_max_hypervis_courant
@@ -176,6 +177,7 @@ subroutine dyn_readnl(NLFileName)
       se_hypervis_power,           &
       se_hypervis_scaling,         &
       se_hypervis_subcycle,        &
+      se_hypervis_subcycle_sponge, &      
       se_hypervis_subcycle_q,      &
       se_limiter_option,           &
       se_max_hypervis_courant,     &
@@ -249,6 +251,7 @@ subroutine dyn_readnl(NLFileName)
    call MPI_bcast(se_hypervis_power, 1, mpi_real8, masterprocid, mpicom, ierr)
    call MPI_bcast(se_hypervis_scaling, 1, mpi_real8, masterprocid, mpicom, ierr)
    call MPI_bcast(se_hypervis_subcycle, 1, mpi_integer, masterprocid, mpicom, ierr)
+   call MPI_bcast(se_hypervis_subcycle_sponge, 1, mpi_integer, masterprocid, mpicom, ierr)   
    call MPI_bcast(se_hypervis_subcycle_q, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_limiter_option, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_max_hypervis_courant, 1, mpi_real8, masterprocid, mpicom, ierr)
@@ -322,6 +325,11 @@ subroutine dyn_readnl(NLFileName)
    hypervis_power           = se_hypervis_power
    hypervis_scaling         = se_hypervis_scaling
    hypervis_subcycle        = se_hypervis_subcycle
+   if (hypervis_subcycle_sponge<0) then
+     hypervis_subcycle_sponge = hypervis_subcycle
+   else
+     hypervis_subcycle_sponge = se_hypervis_subcycle_sponge
+   end if
    hypervis_subcycle_q      = se_hypervis_subcycle_q
    limiter_option           = se_limiter_option
    max_hypervis_courant     = se_max_hypervis_courant
@@ -409,6 +417,7 @@ subroutine dyn_readnl(NLFileName)
       write(iulog, '(a,i0)')   'dyn_readnl: se_ftype                    = ',ftype
       write(iulog, '(a,i0)')   'dyn_readnl: se_statediag_numtrac        = ',statediag_numtrac
       write(iulog, '(a,i0)')   'dyn_readnl: se_hypervis_subcycle        = ',se_hypervis_subcycle
+      write(iulog, '(a,i0)')   'dyn_readnl: se_hypervis_subcycle_sponge = ',se_hypervis_subcycle_sponge      
       write(iulog, '(a,i0)')   'dyn_readnl: se_hypervis_subcycle_q      = ',se_hypervis_subcycle_q
       write(iulog, '(a,l4)')   'dyn_readnl: se_large_Courant_incr       = ',se_large_Courant_incr
       write(iulog, '(a,i0)')   'dyn_readnl: se_limiter_option           = ',se_limiter_option
@@ -517,7 +526,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    use prim_advance_mod,   only: prim_advance_init
    use dyn_grid,           only: elem, fvm
    use cam_pio_utils,      only: clean_iodesc_list
-   use physconst,          only: cpwv, cpliq, cpice
+   use physconst,          only: cpwv, cpliq, cpice, rh2o
    use cam_history,        only: addfld, add_default, horiz_only, register_vector_field
    use gravity_waves_sources, only: gws_init
 
@@ -525,7 +534,8 @@ subroutine dyn_init(dyn_in, dyn_out)
    use hybrid_mod,         only: get_loop_ranges, config_thread_region
    use dimensions_mod,     only: qsize_condensate_loading,qsize_condensate_loading_idx
    use dimensions_mod,     only: qsize_condensate_loading_idx_gll, nu_scale_top
-   use dimensions_mod,     only: qsize_condensate_loading_cp, ksponge_end
+   use dimensions_mod,     only: qsize_condensate_loading_cp, qsize_condensate_loading_R
+   use dimensions_mod,     only: ksponge_end
    use dimensions_mod,     only: cnst_name_gll, cnst_longname_gll, nu_div_scale_top
    use dimensions_mod,     only: irecons_tracer_lev,irecons_tracer
    use prim_driver_mod,    only: prim_init2
@@ -546,11 +556,12 @@ subroutine dyn_init(dyn_in, dyn_out)
    type(hybrid_t)      :: hybrid
 
    integer :: ixcldice, ixcldliq, ixrain, ixsnow, ixgraupel
+   integer :: ixo2, ixn2, ixh !needed for WACCM-x
    integer :: m_cnst, m
 
-   ! variables for initializing energy and axial angular momentum diagnostics
-   character (len = 3), dimension(10) :: stage = (/"dED","dAF","dBD","dAD","dAR","dBF","dBH","dCH","dAH",'p2d'/)
-   character (len = 70),dimension(10) :: stage_txt = (/&
+   ! variables for initializing energy and axial angular momentum diagnostics   
+   character (len = 3), dimension(12) :: stage = (/"dED","dAF","dBD","dAD","dAR","dBF","dBH","dCH","dAH",'dBS','dAS','p2d'/)
+   character (len = 70),dimension(12) :: stage_txt = (/&
       " end of previous dynamics                           ",& !dED
       " from previous remapping or state passed to dynamics",& !dAF - state in beginning of nsplit loop
       " state after applying CAM forcing                   ",& !dBD - state after applyCAMforcing
@@ -560,6 +571,8 @@ subroutine dyn_init(dyn_in, dyn_out)
       " state before hypervis                              ",& !dBH
       " state after hypervis but before adding heating term",& !dCH
       " state after hypervis                               ",& !dAH
+      " state before sponge layer diffusion                ",& !dBS - state before sponge del2
+      " state after sponge layer diffusion                 ",& !dAS - state after sponge del2            
       " phys2dyn mapping errors (requires ftype-1)         " & !p2d - for assessing phys2dyn mapping errors
       /)
    character (len = 2)  , dimension(8) :: vars  = (/"WV"  ,"WL"  ,"WI"  ,"SE"   ,"KE"   ,"MR"   ,"MO"   ,"TT"   /)
@@ -577,11 +590,11 @@ subroutine dyn_init(dyn_in, dyn_out)
    character (len = 14), dimension(8)  :: &
       vars_unit = (/&
       "kg/m2        ","kg/m2        ","kg/m2        ","J/m2         ",&
-      "J/m2         ","kg*m2/s*rad2 ","kg*m2/s*rad2 ","kg/m2        "/)
+      "J/m2         ","kg*m2/s*rad2 ","kg*m2/s*rad2 ","kg/m2        "/)   
 
    integer :: istage, ivars
    character (len=108) :: str1, str2, str3
-   integer, parameter :: qcondensate_max = 6
+   integer, parameter :: qcondensate_max = 9
 
    logical :: history_budget      ! output tendencies and state variables for budgets
    integer :: budget_hfile_num
@@ -597,43 +610,73 @@ subroutine dyn_init(dyn_in, dyn_out)
    allocate(qsize_condensate_loading_idx(qcondensate_max))
    allocate(qsize_condensate_loading_idx_gll(qcondensate_max))
    allocate(qsize_condensate_loading_cp(qcondensate_max))
+   allocate(qsize_condensate_loading_R(qcondensate_max))
 
    allocate(cnst_name_gll(qsize))     ! constituent names for gll tracers
    allocate(cnst_longname_gll(qsize)) ! long name of constituents for gll tracers
 
    ! water vapor is always tracer 1
    qsize_condensate_loading_idx(1) = 1
-   qsize_condensate_loading_cp(1) = cpwv
+   qsize_condensate_loading_cp(1)  = cpwv
+   qsize_condensate_loading_R(1)   = rh2o
 
    call cnst_get_ind('CLDLIQ', ixcldliq, abort=.false.)
    if (ixcldliq < 1.and.qsize_condensate_loading > 1) &
         call endrun(subname//': ERROR: qsize_condensate_loading >1 but CLDLIQ not available')
    qsize_condensate_loading_idx(2) = ixcldliq
    qsize_condensate_loading_cp(2)  = cpliq
+   qsize_condensate_loading_R(2)   = 0.0_r8
 
    call cnst_get_ind('CLDICE', ixcldice, abort=.false.)
    if (ixcldice < 1.and.qsize_condensate_loading > 2) &
         call endrun(subname//': ERROR: qsize_condensate_loading >2 but CLDICE not available')
    qsize_condensate_loading_idx(3) = ixcldice
    qsize_condensate_loading_cp(3)  = cpice
+   qsize_condensate_loading_R(3)   = 0.0_r8
 
    call cnst_get_ind('RAINQM', ixrain, abort=.false.)
    if (ixrain < 1.and.qsize_condensate_loading > 3) &
         call endrun(subname//': ERROR: qsize_condensate_loading >3 but RAINQM not available')
    qsize_condensate_loading_idx(4) = ixrain
    qsize_condensate_loading_cp(4)  = cpliq
+   qsize_condensate_loading_R(4)   = 0.0_r8
 
    call cnst_get_ind('SNOWQM', ixsnow, abort=.false.)
    if (ixsnow < 1.and.qsize_condensate_loading > 4) &
         call endrun(subname//': ERROR: qsize_condensate_loading >4 but SNOWQM not available')
    qsize_condensate_loading_idx(5) = ixsnow
    qsize_condensate_loading_cp(5)  = cpice
+   qsize_condensate_loading_R(5)   = 0.0_r8
 
    call cnst_get_ind('GRAUQM', ixgraupel, abort=.false.)
    if (ixgraupel < 1.and.qsize_condensate_loading > 5) &
         call endrun(subname//': ERROR: qsize_condensate_loading >5 but GRAUQM not available')
    qsize_condensate_loading_idx(6) = ixgraupel
    qsize_condensate_loading_cp(6)  = cpice
+   qsize_condensate_loading_R(6)   = 0.0_r8
+   !
+   ! Major species for WACCM-x
+   !
+   call cnst_get_ind('O2', ixo2, abort=.false.)
+   if (ixo2 < 1.and.qsize_condensate_loading > 6) &
+        call endrun(subname//': ERROR: qsize_condensate_loading >6 but O2 not available')
+   qsize_condensate_loading_idx(7) = ixo2
+   qsize_condensate_loading_cp(7)  = cpice
+   qsize_condensate_loading_R(7)   = 0.0_r8
+
+   call cnst_get_ind('N2', ixn2, abort=.false.)
+   if (ixn2 < 1.and.qsize_condensate_loading > 7) &
+        call endrun(subname//': ERROR: qsize_condensate_loading >7 but N2 not available')
+   qsize_condensate_loading_idx(8) = ixn2
+   qsize_condensate_loading_cp(8)  = cpice
+   qsize_condensate_loading_R(8)   = 0.0_r8
+   
+   call cnst_get_ind('H', ixo2, abort=.false.)
+   if (ixh < 1.and.qsize_condensate_loading > 8) &
+        call endrun(subname//': ERROR: qsize_condensate_loading >8 but H not available')
+   qsize_condensate_loading_idx(9) = ixh
+   qsize_condensate_loading_cp(9)  = cpice
+   qsize_condensate_loading_R(9)   = 0.0_r8
    !
    ! if adding more condensate loading tracers remember to increase qsize_d in dimensions_mod
    !
@@ -839,7 +882,7 @@ subroutine dyn_run(dyn_state)
    use dimensions_mod,   only: cnst_name_gll
    use time_mod,         only: tstep, nsplit, timelevel_qdp
    use hybrid_mod,       only: config_thread_region, get_loop_ranges
-   use control_mod,      only: qsplit ,rsplit
+   use control_mod,      only: qsplit, rsplit, ftype_conserve
    use thread_mod,       only: horz_num_threads
    use time_mod,         only: tevolve
 
@@ -849,13 +892,13 @@ subroutine dyn_run(dyn_state)
    integer        :: tl_f
    integer        :: n
    integer        :: nets, nete, ithr
-   integer        :: i, ie, j, k, m
+   integer        :: i, ie, j, k, m, nq, m_cnst
    integer        :: n0_qdp, nsplit_local
    logical        :: ldiag
 
    real(r8) :: ftmp(npsq,nlev,3)
    real(r8) :: dtime
-   real(r8) :: rec2dt
+   real(r8) :: rec2dt, pdel
 
    real(r8), allocatable, dimension(:,:,:) :: ps_before
    real(r8), allocatable, dimension(:,:,:) :: abs_ps_tend
@@ -886,7 +929,8 @@ subroutine dyn_run(dyn_state)
    rec2dt = 1._r8/dtime
 
    tl_f = TimeLevel%n0   ! timelevel which was adjusted by physics
-
+   call TimeLevel_Qdp(TimeLevel, qsplit, n0_qdp)!get n0_qdp for diagnostics call
+   
    ! output physics forcing
    if (hist_fld_active('FU') .or. hist_fld_active('FV') .or.hist_fld_active('FT')) then
       do ie = nets, nete
@@ -915,7 +959,9 @@ subroutine dyn_run(dyn_state)
      end if
    end do
 
-   ! convert elem(ie)%derived%fq to tendency
+
+   
+   ! convert elem(ie)%derived%fq to mass tendency
    do ie = nets, nete
       do m = 1, qsize
          do k = 1, nlev
@@ -929,6 +975,25 @@ subroutine dyn_run(dyn_state)
       end do
    end do
 
+
+   if (ftype_conserve>0) then
+     do ie = nets, nete
+       do k=1,nlev
+         do j=1,np
+           do i = 1, np
+             pdel     = dyn_state%elem(ie)%state%dp3d(i,j,k,tl_f)
+             do nq=1,qsize_condensate_loading
+               m_cnst = qsize_condensate_loading_idx_gll(nq)
+               pdel = pdel + (dyn_state%elem(ie)%state%qdp(i,j,k,m_cnst,n0_qdp)+dyn_state%elem(ie)%derived%FQ(i,j,k,m_cnst)*dtime)
+             end do             
+             dyn_state%elem(ie)%derived%FDP(i,j,k) = pdel
+           end do           
+         end do
+       end do       
+     end do
+   end if
+
+   
    if (ntrac > 0) then
       do ie = nets, nete
          do m = 1, ntrac
@@ -978,7 +1043,7 @@ subroutine dyn_run(dyn_state)
       end do
    end if
 
-   call TimeLevel_Qdp(TimeLevel, qsplit, n0_qdp)!get n0_qdp for diagnostics call
+
    call calc_tot_energy_dynamics(dyn_state%elem,dyn_state%fvm, nets, nete, tl_f, n0_qdp,'dBF')
    !$OMP END PARALLEL
 
@@ -1013,7 +1078,7 @@ subroutine read_inidat(dyn_in)
    use fvm_mapping,         only: dyn2fvm_mass_vars
    use control_mod,         only: runtype,initial_global_ave_dry_ps
    use prim_driver_mod,     only: prim_set_dry_mass
-
+   
    ! Arguments
    type (dyn_import_t), target, intent(inout) :: dyn_in   ! dynamics import
 
@@ -1028,6 +1093,7 @@ subroutine read_inidat(dyn_in)
    real(r8), allocatable            :: qtmp(:,:,:,:,:)    ! (np,np,nlev,nelemd,n)
    real(r8), allocatable            :: dbuf2(:,:)         ! (npsq,nelemd)
    real(r8), allocatable            :: dbuf3(:,:,:)       ! (npsq,nlev,nelemd)
+   real(r8), allocatable            :: phis_tmp(:,:)      ! (npsp,nelemd)
    real(r8), allocatable            :: factor_array(:,:,:,:) ! (np,np,nlev,nelemd)
    logical,  allocatable            :: pmask(:)           ! (npsq*nelemd) unique grid vals
    logical,  allocatable            :: pmask_phys(:)
@@ -1076,7 +1142,8 @@ subroutine read_inidat(dyn_in)
    integer,  allocatable            :: m_ind(:)
    real(r8), allocatable            :: dbuf4(:,:,:,:)
    !----------------------------------------------------------------------------
-
+   logical :: lbalance_ps_with_phis=.false.
+   
    fh_ini  => initial_file_get_id()
    fh_topo => topo_file_get_id()
 
@@ -1107,6 +1174,17 @@ subroutine read_inidat(dyn_in)
 
    if (analytic_ic_active() .and. (iam < par%nprocs)) then
 
+      allocate(phis_tmp(npsq,nelemd))
+      do ie = 1, nelemd
+         k = 1
+         do j = 1, np
+            do i = 1, np
+               phis_tmp(k,ie) = elem(ie)%state%phis(i,j)
+               k = k + 1
+            end do
+         end do
+      end do
+
       inic_wet = .false.
       allocate(glob_ind(npsq * nelemd))
       j = 1
@@ -1125,14 +1203,18 @@ subroutine read_inidat(dyn_in)
       do m_cnst = 1, qsize
          m_ind(m_cnst) = m_cnst
       end do
-
+      !
+      ! only tracer that should be initialized in analytic_ic_set_ic is water vapor
+      ! the rest should be set in cnst_init_default
+      !
       call analytic_ic_set_ic(vcoord, latvals, lonvals, glob_ind,  &
          PS=dbuf4(:,1,:,(qsize+1)), U=dbuf4(:,:,:,(qsize+2)),      &
          V=dbuf4(:,:,:,(qsize+3)), T=dbuf4(:,:,:,(qsize+4)),       &
-         Q=dbuf4(:,:,:,1:qsize), m_cnst=m_ind, mask=pmask(:))
-
+         Q=dbuf4(:,:,:,1:qsize), m_cnst=m_ind, mask=pmask(:),      &
+         PHIS=PHIS_tmp)
       deallocate(m_ind)
       deallocate(glob_ind)
+      deallocate(phis_tmp)
       do ie = 1, nelemd
          indx = 1
          do j = 1, np
@@ -1169,25 +1251,26 @@ subroutine read_inidat(dyn_in)
       end do
       deallocate(dbuf4)
 
+    end if ! analytic_ic_active
 
-   else
+    ! Read ICs from file.  Assume all fields in the initial file are on the GLL grid.
+    
+    ! Set PIO to return error codes.
+    call pio_seterrorhandling(fh_ini, PIO_BCAST_ERROR, pio_errtype)
+    
+    ! The grid name is defined in dyn_grid::define_cam_grids.
+    ! Get the number of columns in the global GLL grid.
+    call cam_grid_dimensions('GLL', dims)
+    dyn_cols = dims(1)
+    
+    allocate(dbuf2(npsq,nelemd))
+    allocate(dbuf3(npsq,nlev,nelemd))
+    
+    ! Check that number of columns in IC file matches grid definition.
+    call check_file_layout(fh_ini, elem, dyn_cols, 'ncdata', .true., dimname)
 
-      ! Read ICs from file.  Assume all fields in the initial file are on the GLL grid.
-
-      ! Set PIO to return error codes.
-      call pio_seterrorhandling(fh_ini, PIO_BCAST_ERROR, pio_errtype)
-
-      ! The grid name is defined in dyn_grid::define_cam_grids.
-      ! Get the number of columns in the global GLL grid.
-      call cam_grid_dimensions('GLL', dims)
-      dyn_cols = dims(1)
-
-      allocate(dbuf2(npsq,nelemd))
-      allocate(dbuf3(npsq,nlev,nelemd))
-
-      ! Check that number of columns in IC file matches grid definition.
-      call check_file_layout(fh_ini, elem, dyn_cols, 'ncdata', .true., dimname)
-
+    if (.not.analytic_ic_active() .and. (iam < par%nprocs)) then
+      
       ! Read 2-D field
 
       fieldname  = 'PS'
@@ -1294,84 +1377,85 @@ subroutine read_inidat(dyn_in)
 
          deallocate(rndm_seed)
       end if
-
-      ! Read in or cold-initialize all the tracer fields
-      ! Data is read in on the GLL grid
-      ! Both GLL and FVM tracer fields are initialized based on the
-      ! dimension qsize or ntrac for GLL or FVM tracers respectively.
-      ! Data is only read in on GLL so if FVM tracers are active,
-      ! interpolation is performed.
-      if (ntrac > qsize) then
-         if (ntrac < pcnst) then
-            write(errmsg, '(a,3(i0,a))') ': ntrac (',ntrac,') > qsize (',qsize, &
-               ') but < pcnst (',pcnst,')'
-            call endrun(trim(subname)//errmsg)
-         end if
-      else if (qsize < pcnst) then
-         write(errmsg, '(a,2(i0,a))') ': qsize (',qsize,') < pcnst (',pcnst,')'
-         call endrun(trim(subname)//errmsg)
+    end if
+    
+    ! Read in or cold-initialize all the tracer fields
+    ! Data is read in on the GLL grid
+    ! Both GLL and FVM tracer fields are initialized based on the
+    ! dimension qsize or ntrac for GLL or FVM tracers respectively.
+    ! Data is only read in on GLL so if FVM tracers are active,
+    ! interpolation is performed.
+    if (ntrac > qsize) then
+      if (ntrac < pcnst) then
+        write(errmsg, '(a,3(i0,a))') ': ntrac (',ntrac,') > qsize (',qsize, &
+             ') but < pcnst (',pcnst,')'
+        call endrun(trim(subname)//errmsg)
       end if
+    else if (qsize < pcnst) then
+      write(errmsg, '(a,2(i0,a))') ': qsize (',qsize,') < pcnst (',pcnst,')'
+      call endrun(trim(subname)//errmsg)
+    end if
 
-      do m_cnst = 1, pcnst
-
-         found = .false.
-
-         if (cnst_read_iv(m_cnst)) then
-            found = dyn_field_exists(fh_ini, trim(cnst_name(m_cnst)),            &
-               required=.false.)
-         end if
-
-         if (found) then
-            call read_dyn_var(trim(cnst_name(m_cnst)), fh_ini, dimname, dbuf3)
-         else
-            call cnst_init_default(m_cnst, latvals, lonvals, dbuf3, pmask)
-         end if
-
-         do ie = 1, nelemd
-            ! Copy tracers defined on GLL grid into Eulerian array
-            ! Make sure tracers have at least minimum value
-            do k=1, nlev
-               indx = 1
-               do j = 1, np
-                  do i = 1, np
-                     ! Set qtmp at the unique columns only: zero non-unique columns
-                     if (pmask(((ie - 1) * npsq) + indx)) then
-                        qtmp(i,j, k, ie, m_cnst) = max(qmin(m_cnst),dbuf3(indx,k,ie))
-                     else
-                        qtmp(i,j, k, ie, m_cnst) = 0.0_r8
-                     end if
-                     indx = indx + 1
-                  end do
-               end do
+    do m_cnst = 1, pcnst
+      
+      found = .false.
+      
+      if (cnst_read_iv(m_cnst)) then
+        found = dyn_field_exists(fh_ini, trim(cnst_name(m_cnst)),            &
+             required=.false.)
+      end if
+      
+      if (found) then
+        call read_dyn_var(trim(cnst_name(m_cnst)), fh_ini, dimname, dbuf3)
+      else
+        call cnst_init_default(m_cnst, latvals, lonvals, dbuf3, pmask)
+      end if
+      
+      do ie = 1, nelemd
+        ! Copy tracers defined on GLL grid into Eulerian array
+        ! Make sure tracers have at least minimum value
+        do k=1, nlev
+          indx = 1
+          do j = 1, np
+            do i = 1, np
+              ! Set qtmp at the unique columns only: zero non-unique columns
+              if (pmask(((ie - 1) * npsq) + indx)) then
+                qtmp(i,j, k, ie, m_cnst) = max(qmin(m_cnst),dbuf3(indx,k,ie))
+              else
+                qtmp(i,j, k, ie, m_cnst) = 0.0_r8
+              end if
+              indx = indx + 1
             end do
-         end do
-      end do ! pcnst
+          end do
+        end do
+      end do
+    end do ! pcnst
+    
+    ! Cleanup
+    deallocate(dbuf2)
+    deallocate(dbuf3)
+    
+    ! Put the error handling back the way it was
+    call pio_seterrorhandling(fh_ini, pio_errtype)
+    
 
-      ! Cleanup
-      deallocate(dbuf2)
-      deallocate(dbuf3)
 
-      ! Put the error handling back the way it was
-      call pio_seterrorhandling(fh_ini, pio_errtype)
-
-   end if ! analytic_ic_active
-
-   ! Cleanup
-   deallocate(pmask)
-   deallocate(latvals)
-   deallocate(lonvals)
-
-   if (associated(ldof)) then
+    ! Cleanup
+    deallocate(pmask)
+    deallocate(latvals)
+    deallocate(lonvals)
+    
+    if (associated(ldof)) then
       deallocate(ldof)
       nullify(ldof)
-   end if
-
-   ! once we've read or initialized all the fields we do a boundary exchange to
-   ! update the redundent columns in the dynamics
-   if(iam < par%nprocs) then
+    end if
+    
+    ! once we've read or initialized all the fields we do a boundary exchange to
+    ! update the redundent columns in the dynamics
+    if(iam < par%nprocs) then
       call initEdgeBuffer(par, edge, elem, (3+pcnst)*nlev + 2 )
-   end if
-   do ie = 1, nelemd
+    end if
+    do ie = 1, nelemd
       kptr = 0
       call edgeVpack(edge, elem(ie)%state%psdry,1,kptr,ie)
       kptr = kptr + 1
@@ -1504,8 +1588,8 @@ subroutine read_inidat(dyn_in)
             end do
          end do
       end do
-   end if
-
+    end if
+    
    ! scale PS to achieve prescribed dry mass following FV dycore (dryairm.F90)
 #ifndef planet_mars   
    if (runtype == 0) then
@@ -1569,11 +1653,11 @@ subroutine read_inidat(dyn_in)
          ! different than the areas (exact) computed by CSLAM
          !
          ! Map the constituents which are also to be transported by dycore
-         if (analytic_ic_active()) then
-            lsize = 1
-         else
+!         if (analytic_ic_active()) then
+!            lsize = 1
+!         else
             lsize = ntrac
-         end if
+!         end if
          call dyn2fvm_mass_vars(elem(ie)%state%dp3d(:,:,:,1),elem(ie)%state%psdry(:,:),&
             qtmp(:,:,:,ie,1:lsize),&
             dyn_in%fvm(ie)%dp_fvm(1:nc,1:nc,:),dyn_in%fvm(ie)%psC(1:nc,1:nc),&
@@ -1581,66 +1665,66 @@ subroutine read_inidat(dyn_in)
             lsize,elem(ie)%metdet,dyn_in%fvm(ie)%inv_se_area_sphere(1:nc,1:nc))
       end do
 
-      if (analytic_ic_active()) then
-
-         ! initialize tracers
-
-         allocate(latvals(nc*nc*nelemd))
-         allocate(lonvals(nc*nc*nelemd))
-         indx = 1
-         do ie = 1, nelemd
-            do j = 1, nc
-               do i = 1, nc
-                  latvals(indx) = dyn_in%fvm(ie)%center_cart(i,j)%lat
-                  lonvals(indx) = dyn_in%fvm(ie)%center_cart(i,j)%lon
-                  indx = indx + 1
-               end do
-            end do
-         end do
-
-         allocate(pmask(nc*nc*nelemd))
-         pmask(:) = .true.
-
-         allocate(dbuf4(nc*nc, nlev, nelemd, ntrac))
-         allocate(m_ind(ntrac))
-         allocate(glob_ind(nc*nc*nelemd))
-         j = 1
-         do ie = 1, nelemd
-            do i = 1, nc*nc
-               ! Create a global(ish) column index
-               glob_ind(j) = elem(ie)%GlobalId
-               j = j + 1
-            end do
-         end do
-
-         dbuf4 = 0.0_r8
-         do m_cnst = 1, ntrac
-            m_ind(m_cnst) = m_cnst
-         end do
-         call analytic_ic_set_ic(vcoord, latvals, lonvals, glob_ind, Q=dbuf4, m_cnst=m_ind, mask=pmask)
-
-         ! it is more balanced to use dyn2fvm for Q than to use the "analytical" value
-         ! on the fvm grid
-
-         do m_cnst = 2, ntrac
-            do ie = 1, nelemd
-               indx = 1
-               do j = 1, nc
-                  do i = 1, nc
-                     dyn_in%fvm(ie)%c(i,j,:,m_cnst) = dbuf4(indx, :, ie, m_cnst)
-                     indx = indx + 1
-                  end do
-               end do
-            end do
-         end do
-         deallocate(dbuf4)
-         deallocate(m_ind)
-         deallocate(latvals)
-         deallocate(lonvals)
-         deallocate(glob_ind)
-         deallocate(pmask)
-      end if
-
+!      if (analytic_ic_active()) then
+!
+!         ! initialize tracers
+!
+!         allocate(latvals(nc*nc*nelemd))
+!         allocate(lonvals(nc*nc*nelemd))
+!         indx = 1
+!         do ie = 1, nelemd
+!            do j = 1, nc
+!               do i = 1, nc
+!                  latvals(indx) = dyn_in%fvm(ie)%center_cart(i,j)%lat
+!                  lonvals(indx) = dyn_in%fvm(ie)%center_cart(i,j)%lon
+!                  indx = indx + 1
+!               end do
+!            end do
+!         end do
+!
+!         allocate(pmask(nc*nc*nelemd))
+!         pmask(:) = .true.
+!
+!         allocate(dbuf4(nc*nc, nlev, nelemd, ntrac))
+!         allocate(m_ind(ntrac))
+!         allocate(glob_ind(nc*nc*nelemd))
+!         j = 1
+!         do ie = 1, nelemd
+!            do i = 1, nc*nc
+!               ! Create a global(ish) column index
+!               glob_ind(j) = elem(ie)%GlobalId
+!               j = j + 1
+!            end do
+!         end do
+!
+!         dbuf4 = 0.0_r8
+!         do m_cnst = 1, ntrac
+!            m_ind(m_cnst) = m_cnst
+!         end do
+!         call analytic_ic_set_ic(vcoord, latvals, lonvals, glob_ind, Q=dbuf4, m_cnst=m_ind, mask=pmask)
+!
+!         ! it is more balanced to use dyn2fvm for Q than to use the "analytical" value
+!         ! on the fvm grid
+!
+!         do m_cnst = 2, ntrac
+!            do ie = 1, nelemd
+!               indx = 1
+!               do j = 1, nc
+!                  do i = 1, nc
+!                     dyn_in%fvm(ie)%c(i,j,:,m_cnst) = dbuf4(indx, :, ie, m_cnst)
+!                     indx = indx + 1
+!                  end do
+!               end do
+!            end do
+!         end do
+!         deallocate(dbuf4)
+!         deallocate(m_ind)
+!         deallocate(latvals)
+!         deallocate(lonvals)
+!         deallocate(glob_ind)
+!         deallocate(pmask)
+!      end if
+!
       if(par%masterproc) then
          write(iulog,*) 'FVM tracers, FVM pressure variables and se_area_sphere initialized.'
       end if
@@ -1793,7 +1877,7 @@ subroutine read_phis(dyn_in)
 
       ! Put the error handling back the way it was
       call pio_seterrorhandling(fh_topo, pio_errtype)
-
+      
    else if (analytic_ic_active() .and. (iam < par%nprocs)) then
 
       ! lat/lon needed in radians
@@ -1813,10 +1897,8 @@ subroutine read_phis(dyn_in)
             j = j + 1
          end do
       end do
-
       call analytic_ic_set_ic(vcoord, latvals, lonvals, glob_ind, &
                               PHIS=phis_tmp, mask=pmask(:))
-
       deallocate(glob_ind)
 
       if (fv_nphys > 0) then
@@ -2212,5 +2294,4 @@ subroutine write_dyn_vars(dyn_out)
 end subroutine write_dyn_vars
 
 !=========================================================================================
-
 end module dyn_comp
