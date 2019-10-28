@@ -215,6 +215,7 @@
       use mo_apex,        only : geomag_year
 
       integer :: tod ! time of day [s]
+      character(len=80) :: errmsg
 
 !-----------------------------------------------------------------------
 ! get current calendar day of year & date components
@@ -225,8 +226,8 @@
       iyear = int(geomag_year)
 
       if( iyear < 1900 ) then
-        write(iulog,"(/,'>>> get_efield: year < 1900 not possible: year=',i5)") iyear
-        call endrun
+         write(errmsg,"(/,'>>> get_efield: year < 1900 not possible: year=',i5)") iyear
+         call endrun(errmsg)
       end if
 
       ut = tod/3600._r8                   ! UT of day [hour]
@@ -536,11 +537,10 @@
 
       imax = i - 1
       if(imax /= ni ) then    ! check if imax == ni
-        write(iulog,'(a19,i5,a18,i5)') 'index_quiet: imax= ',imax, &
-          ' not equal to ni =',ni
+        write(iulog,'(a19,i5,a18,i5)') 'index_quiet: imax= ',imax,' not equal to ni =',ni
         call endrun('index_quiet ERROR')
       end if
-      if(debug) write(iulog,*) 'imax=',imax
+      if(debug.and.masterproc) write(iulog,*) 'imax=',imax
 
       end subroutine index_quiet
 
@@ -571,6 +571,7 @@
 
       integer  :: ios,unit, ierr
       character (len=256):: locfn
+      character(len=80) :: errmsg
 
       if (masterproc) then
          !----------------------------------------------------------------------------
@@ -586,8 +587,8 @@
          open(unit=unit,file=trim(locfn), &
               status = 'old',iostat = ios)
          if(ios.gt.0) then
-            write(iulog,*) 'read_acoef: error in opening coeff_lf file',' unit ',unit
-            call endrun
+            write(errmsg,*) 'read_acoef: error in opening coeff_lf file',' unit ',unit
+            call endrun(errmsg)
          end if
 
          !----------------------------------------------------------------------------
@@ -596,8 +597,8 @@
          if (debug) write(iulog,*) 'read_acoef: read file ',trim(locfn),' unit ',unit
          read(unit,*,iostat = ios) a_lf
          if(ios.gt.0) then
-            write(iulog,*) 'read_acoef: error in reading coeff_lf file',' unit ',unit
-            call endrun
+            write(errmsg,*) 'read_acoef: error in reading coeff_lf file',' unit ',unit
+            call endrun(errmsg)
          end if
 
          !----------------------------------------------------------------------------
@@ -620,8 +621,8 @@
          open(unit=unit,file=trim(locfn), &
               status = 'old',iostat = ios)
          if(ios.gt.0) then
-            write(iulog,*) 'read_acoef: error in opening coeff_hf file',' unit ',unit
-            call endrun
+            write(errmsg,*) 'read_acoef: error in opening coeff_hf file',' unit ',unit
+            call endrun(errmsg)
          end if
 
          !----------------------------------------------------------------------------
@@ -630,8 +631,8 @@
          if (debug) write(iulog,*) 'read_acoef: read file ',trim(locfn)
          read(unit,*,iostat = ios) a_hf
          if(ios.gt.0) then
-            write(iulog,*) 'read_acoef: error in reading coeff_hf file',' unit ',unit
-            call endrun
+            write(errmsg,*) 'read_acoef: error in reading coeff_hf file',' unit ',unit
+            call endrun(errmsg)
          end if
 
          !----------------------------------------------------------------------------
@@ -672,7 +673,7 @@
       y2 = y2*y2
       S_aM = (atan2(y2,x2) - a90)/(a180 - a90)
       S_aM = 90._r8*(1._r8 + S_aM)
-      if(debug) write(iulog,*) 'f107d=',f107d,' S_aM =',S_aM
+      if(debug.and.masterproc) write(iulog,*) 'f107d=',f107d,' S_aM =',S_aM
 
 !----------------------------------------------------------------------------
 ! inter/extrapolate to S_a (f107d)
@@ -1205,10 +1206,10 @@
         do i = -nmax_sin,nmax_sin
           i1 = i + ishf
           rhs(i1) = rhs(i1) + f(i,ilon) * bnd
-!         write(iulog,*) 'rhs ',ilon,i1,bnd,f(i,ilon),rhs(i+ishf)
+!         if (debug) write(iulog,*) 'rhs ',ilon,i1,bnd,f(i,ilon),rhs(i+ishf)
           do j = -nmax_sin,nmax_sin
             u(i1,j+ishf) = u(i1,j+ishf) + f(i,ilon)*f(j,ilon)
-!           write(iulog,*) 'u ',ilon,i1,j+ishf,u(i+ishf,j+ishf)
+!           if (debug) write(iulog,*) 'u ',ilon,i1,j+ishf,u(i+ishf,j+ishf)
           end do
         end do
       end do
@@ -1228,8 +1229,8 @@
         ihlat_bnd(ilon)    = nmlath - int( sum + .5_r8 )                                ! closest point
         itrans_width(ilon) = int( 8._r8 - 2._r8*cos( ylonm(ilon)*dtr ) + .5_r8 )/dlatm  ! 6 to 10 deg.
       end do
-!     write(iulog,"('bnd_sinus: ihlat_bnd=',/,(12i6))") ihlat_bnd
-!     write(iulog,"('bnd_sinus: itrans_width=',/,(12i6))") itrans_width
+!     if (debug) write(iulog,"('bnd_sinus: ihlat_bnd=',/,(12i6))") ihlat_bnd
+!     if (debug) write(iulog,"('bnd_sinus: itrans_width=',/,(12i6))") itrans_width
 
       end subroutine bnd_sinus
 
@@ -1277,8 +1278,8 @@
       pot60  = pot60/(nmlon)
       pot_hl = pot_hl/(nmlon)
 
-      if (debug) write(iulog,*) 'Mid-Latitude Boundary Potential =',pot60
-      if (debug) write(iulog,*) 'High-Latitude Boundary Potential=',pot_hl
+      if (debug.and.masterproc) write(iulog,*) 'Mid-Latitude Boundary Potential =',pot60
+      if (debug.and.masterproc) write(iulog,*) 'High-Latitude Boundary Potential=',pot_hl
 
 !----------------------------------------------------------------------------
 ! 3. adjust Phi_high by delta =
@@ -1385,7 +1386,7 @@
         j2   = nmlath - hb2
         wrk1 = pot_midlat(ilon,j1)
         wrk2 = pot_highlats(ilon,j2)
-!        write(iulog,*) 'pot_all ',ilon,hb1,hb2,nmlath -ibnd,tw
+!       if(debug.and.masterproc) write(iulog,*) 'pot_all ',ilon,hb1,hb2,nmlath -ibnd,tw
         do ilat = ibnd-tw,ibnd+tw
           lat_ind = nmlath - ilat
           potent(ilon,ilat) = &
