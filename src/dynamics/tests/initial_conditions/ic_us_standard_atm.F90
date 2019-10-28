@@ -15,6 +15,8 @@ use physconst,           only: gravit
 use constituents,        only: cnst_name
 use const_init,          only: cnst_init_default
 
+use std_atm_profile,     only: std_atm_pres, std_atm_height, std_atm_temp
+
 use cam_logfile,         only: iulog
 use cam_abortutils,      only: endrun
 
