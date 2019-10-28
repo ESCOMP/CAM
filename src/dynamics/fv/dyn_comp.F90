@@ -2937,7 +2937,7 @@ subroutine read_inidat(dyn_in)
 
     if (.not. associated(fh_topo)) then
       call analytic_ic_set_ic(vc_moist_pressure, clat(jfirstxy:jlastxy),      &
-           clon(ifirstxy:ilastxy,1), glob_ind, PHIS=dyn_in%phis)
+           clon(ifirstxy:ilastxy,1), glob_ind, PHIS_OUT=dyn_in%phis)
     end if
     
     call analytic_ic_set_ic(vc_moist_pressure, clat_staggered(jf:jlastxy-1),  &
@@ -2946,7 +2946,7 @@ subroutine read_inidat(dyn_in)
          clon_st(ifirstxy:ilastxy), glob_ind, V=dyn_in%v3s)
     call analytic_ic_set_ic(vc_moist_pressure, clat(jfirstxy:jlastxy),        &
          clon(ifirstxy:ilastxy,1), glob_ind, T=dyn_in%t3, PS=dyn_in%ps,       &
-         Q=dyn_in%tracer(:,:,:,1:ntotq), PHIS=dyn_in%phis, m_cnst=m_cnst)
+         Q=dyn_in%tracer(:,:,:,1:ntotq), PHIS_IN=dyn_in%phis, m_cnst=m_cnst)
     do m = 1, ntotq
        call process_inidat(fh_ini, grid, dyn_in, 'CONSTS', m_cnst=m)
     end do

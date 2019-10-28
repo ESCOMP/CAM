@@ -95,7 +95,7 @@ contains
     real(r8), optional, intent(inout) :: V(:,:)     ! meridional velocity
     real(r8), optional, intent(inout) :: T(:,:)     ! temperature
     real(r8), optional, intent(inout) :: PS(:)      ! surface pressure
-    real(r8), optional, intent(inout) :: PHIS(:)    ! surface geopotential
+    real(r8), optional, intent(out)   :: PHIS(:)    ! surface geopotential
     real(r8), optional, intent(inout) :: Q(:,:,:)   ! tracer (ncol, lev, m)
     integer,  optional, intent(in)    :: m_cnst(:)  ! tracer indices (reqd. if Q)
     logical,  optional, intent(in)    :: mask(:)    ! only init where .true.
