@@ -42,9 +42,10 @@ module dyn_comp
 
 use shr_kind_mod,       only: r8=>shr_kind_r8
 use spmd_utils,         only: masterproc, iam
+use physconst,          only: pi
 
 use pmgrid,             only: plon, plat
-use constituents,       only: pcnst, cnst_name, cnst_read_iv, qmin
+use constituents,       only: pcnst, cnst_name, cnst_read_iv, qmin, cnst_type
 
 use time_manager,       only: get_step_size
 
@@ -53,7 +54,11 @@ use dynamics_vars,      only: t_fvdycore_grid,            &
 use dyn_internal_state, only: get_dyn_state, get_dyn_state_grid
 
 use dyn_grid,           only: get_horiz_grid_dim_d
+use commap,             only: clat, clon, clat_staggered, londeg_st
 use spmd_dyn,           only: spmd_readnl
+
+use inic_analytic,      only: analytic_ic_active, analytic_ic_set_ic
+use dyn_tests_utils,    only: vc_moist_pressure
 
 use cam_control_mod,    only: initial_run, moist_physics
 use phys_control,       only: phys_setopts
@@ -621,6 +626,8 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    ! Diagnostics for AM
    if (dyn_state%am_diag) call fv_diag_init()
+
+   call read_phis(dyn_in)
 
    if (initial_run) then
 
@@ -2823,12 +2830,6 @@ end subroutine dyn_final
 !=============================================================================================
 
 subroutine read_inidat(dyn_in)
-  use inic_analytic,   only: analytic_ic_active, analytic_ic_set_ic
-  use dyn_tests_utils, only: vc_moist_pressure
-  use physconst,       only: pi
-  use dyn_grid,        only: get_horiz_grid_dim_d
-  use commap,          only: clat, clon, clat_staggered, londeg_st
-  use constituents,    only: cnst_type
 
   ! Read initial dataset
 
@@ -2842,7 +2843,6 @@ subroutine read_inidat(dyn_in)
   character(len=16)               :: fieldname
 
   type(file_desc_t), pointer      :: fh_ini    ! PIO filehandle
-  type(file_desc_t), pointer      :: fh_topo
 
   type (t_fvdycore_grid), pointer :: grid
   ! variables for analytic initial conditions
@@ -2863,7 +2863,6 @@ subroutine read_inidat(dyn_in)
   !----------------------------------------------------------------------------
 
   fh_ini  => initial_file_get_id()
-  fh_topo => topo_file_get_id()
 
   grid     => get_dyn_state_grid()
   ifirstxy =  grid%ifirstxy
@@ -2880,32 +2879,6 @@ subroutine read_inidat(dyn_in)
   do i = 1, pcnst
      initial_mr(i) = cnst_type(i)
   end do
-
-  ! some analytical initial conditions require PHIS from file; therefore read PHIS from
-  ! file before call to analytic_ic_set_ic
-  if (associated(fh_topo)) then    
-    !-----------
-    ! Check coord sizes
-    !-----------
-    ierr = pio_inq_dimid(fh_topo, 'lon' , lonid)
-    ierr = pio_inq_dimid(fh_topo, 'lat' , latid)
-    ierr = pio_inq_dimlen(fh_topo, lonid , mlon)
-    ierr = pio_inq_dimlen(fh_topo, latid , mlat)
-    if (mlon /= plon .or. mlat /= plat) then
-      write(iulog,*) sub//': ERROR: model parameters do not match initial dataset parameters'
-      write(iulog,*)'Model Parameters:    plon = ',plon,' plat = ',plat
-      write(iulog,*)'Dataset Parameters:  dlon = ',mlon,' dlat = ',mlat
-      call endrun(sub//': ERROR: model parameters do not match initial dataset parameters')
-    end if
-    
-    fieldname = 'PHIS'
-    readvar   = .false.      
-    call infld(fieldname, fh_topo, 'lon', 'lat', ifirstxy, ilastxy, jfirstxy, jlastxy, &
-         dyn_in%phis, readvar, gridname='fv_centers')
-    if (.not. readvar) call endrun(sub//': ERROR: PHIS not found')
-  else
-    dyn_in%phis(:,:) = 0._r8
-  end if
 
   if (analytic_ic_active()) then
      readvar   = .false.
@@ -2935,11 +2908,6 @@ subroutine read_inidat(dyn_in)
     allocate(clon_st(ifirstxy:ilastxy))
     clon_st(ifirstxy:ilastxy) = londeg_st(ifirstxy:ilastxy,1) * deg2rad
 
-    if (.not. associated(fh_topo)) then
-      call analytic_ic_set_ic(vc_moist_pressure, clat(jfirstxy:jlastxy),      &
-           clon(ifirstxy:ilastxy,1), glob_ind, PHIS_OUT=dyn_in%phis)
-    end if
-    
     call analytic_ic_set_ic(vc_moist_pressure, clat_staggered(jf:jlastxy-1),  &
          clon(ifirstxy:ilastxy,1), glob_ind(gf:), U=dyn_in%u3s(:,uf:,:))
     call analytic_ic_set_ic(vc_moist_pressure, clat(jfirstxy:jlastxy),        &
@@ -3026,6 +2994,91 @@ subroutine read_inidat(dyn_in)
   call process_inidat(fh_ini, grid, dyn_in, 'T')
 
 end subroutine read_inidat
+
+!=========================================================================================
+
+subroutine read_phis(dyn_in)
+
+   ! Set PHIS according to the following rules.
+   !
+   ! 1) If a topo file is specified use it.  This option has highest precedence.
+   ! 2) If not using topo file, but analytic_ic option is on, use analytic phis.
+   ! 3) Set phis = 0.0.
+
+   ! Arguments
+   type (dyn_import_t), target, intent(inout) :: dyn_in   ! dynamics import
+
+   ! local variables
+   type(file_desc_t),      pointer :: fh_topo
+   type (t_fvdycore_grid), pointer :: grid
+
+   integer :: ifirstxy, ilastxy, jfirstxy, jlastxy
+   integer :: ierr
+   integer :: lonid
+   integer :: latid
+   integer :: mlon            ! longitude dimension length from dataset
+   integer :: mlat            ! latitude dimension length from dataset
+   integer :: nglon, nglat
+   integer :: i, j, m
+
+   integer, allocatable :: glob_ind(:)
+
+   character(len=16)                :: fieldname
+   character(len=*), parameter      :: sub='read_phis'
+   !----------------------------------------------------------------------------
+
+   fh_topo => topo_file_get_id()
+
+   grid     => get_dyn_state_grid()
+   ifirstxy =  grid%ifirstxy
+   ilastxy  =  grid%ilastxy
+   jfirstxy =  grid%jfirstxy
+   jlastxy  =  grid%jlastxy
+
+   if (associated(fh_topo)) then    
+      !-----------
+      ! Check coord sizes
+      !-----------
+      ierr = pio_inq_dimid(fh_topo, 'lon' , lonid)
+      ierr = pio_inq_dimid(fh_topo, 'lat' , latid)
+      ierr = pio_inq_dimlen(fh_topo, lonid , mlon)
+      ierr = pio_inq_dimlen(fh_topo, latid , mlat)
+      if (mlon /= plon .or. mlat /= plat) then
+         write(iulog,*) sub//': ERROR: model parameters do not match initial dataset parameters'
+         write(iulog,*)'Model Parameters:    plon = ',plon,' plat = ',plat
+         write(iulog,*)'Dataset Parameters:  dlon = ',mlon,' dlat = ',mlat
+         call endrun(sub//': ERROR: model parameters do not match initial dataset parameters')
+      end if
+    
+      fieldname = 'PHIS'
+      readvar   = .false.      
+      call infld(fieldname, fh_topo, 'lon', 'lat', ifirstxy, ilastxy, jfirstxy, jlastxy, &
+         dyn_in%phis, readvar, gridname='fv_centers')
+      if (.not. readvar) call endrun(sub//': ERROR: PHIS not found')
+
+   else if (analytic_ic_active()) then
+
+      allocate(glob_ind((ilastxy - ifirstxy + 1) * (jlastxy - jfirstxy + 1)))
+      call get_horiz_grid_dim_d(nglon, nglat)
+      m = 1
+      do j = jfirstxy, jlastxy
+         do i = ifirstxy, ilastxy
+            ! Create a global column index
+            glob_ind(m) = i + (j-1)*nglon
+            m = m + 1
+         end do
+      end do
+
+      call analytic_ic_set_ic(vc_moist_pressure, clat(jfirstxy:jlastxy),      &
+         clon(ifirstxy:ilastxy,1), glob_ind, PHIS_OUT=dyn_in%phis)
+
+   else
+
+      dyn_in%phis(:,:) = 0._r8
+
+   end if
+
+end subroutine read_phis
 
 !=========================================================================================
 
