@@ -627,7 +627,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    ! Diagnostics for AM
    if (dyn_state%am_diag) call fv_diag_init()
 
-   call read_phis(dyn_in)
+   call set_phis(dyn_in)
 
    if (initial_run) then
 
@@ -2857,6 +2857,7 @@ subroutine read_inidat(dyn_in)
   integer                         :: latid
   integer                         :: mlon ! longitude dimension length from dataset
   integer                         :: mlat            ! latitude dimension length from dataset
+  integer                         :: cnst_start
   real(r8), parameter             :: deg2rad = pi/180._r8
 
   character(len=*), parameter     :: sub='read_inidat'
@@ -2912,6 +2913,8 @@ subroutine read_inidat(dyn_in)
          clon(ifirstxy:ilastxy,1), glob_ind(gf:), U=dyn_in%u3s(:,uf:,:))
     call analytic_ic_set_ic(vc_moist_pressure, clat(jfirstxy:jlastxy),        &
          clon_st(ifirstxy:ilastxy), glob_ind, V=dyn_in%v3s)
+    ! Note that analytic_ic_set_ic makes use of cnst_init_default for
+    ! the tracers except water vapor.
     call analytic_ic_set_ic(vc_moist_pressure, clat(jfirstxy:jlastxy),        &
          clon(ifirstxy:ilastxy,1), glob_ind, T=dyn_in%t3, PS=dyn_in%ps,       &
          Q=dyn_in%tracer(:,:,:,1:ntotq), PHIS_IN=dyn_in%phis, m_cnst=m_cnst)
@@ -2970,10 +2973,34 @@ subroutine read_inidat(dyn_in)
 
   ! Constituents (read and process one at a time)
   !
-  ! If analytic_ic_active())=.true. then distributions for tracers will be overwritten
-  ! if they exist on file
+  ! If analytic ICs are being used, we allow constituents in an initial
+  ! file to overwrite mixing ratios set by the default constituent initialization
+  ! except for water vapor.
+  cnst_start = 1
+  if (analytic_ic_active()) cnst_start = 2
 
-  do m = 1, pcnst
+  ! If using analytic ICs the initial file only needs the horizonal grid
+  ! dimension checked in the case that the file contains constituent mixing
+  ! ratios.
+  do m = cnst_start, pcnst
+     if (cnst_read_iv(m)) then
+        if (dyn_field_exists(fh_ini, trim(cnst_name(m)), required=.false.)) then
+           ierr = pio_inq_dimid(fh_ini, 'lon' , lonid)
+           ierr = pio_inq_dimid(fh_ini, 'lat' , latid)
+           ierr = pio_inq_dimlen(fh_ini, lonid , mlon)
+           ierr = pio_inq_dimlen(fh_ini, latid , mlat)
+           if (mlon /= plon .or. mlat /= plat) then
+              write(iulog,*) sub//': ERROR: model parameters do not match initial dataset parameters'
+              write(iulog,*)'Model Parameters:    plon = ',plon,' plat = ',plat
+              write(iulog,*)'Dataset Parameters:  dlon = ',mlon,' dlat = ',mlat
+              call endrun(sub//': ERROR: model parameters do not match initial dataset parameters')
+           end if
+           exit
+        end if
+     end if
+  end do
+
+  do m = cnst_start, pcnst
     readvar   = .false.
     fieldname = cnst_name(m)
     if (cnst_read_iv(m)) then
@@ -2990,14 +3017,13 @@ subroutine read_inidat(dyn_in)
 
   ! These always happen
   call process_inidat(fh_ini, grid, dyn_in, 'PS')
-  call process_inidat(fh_ini, grid, dyn_in, 'PHIS')
   call process_inidat(fh_ini, grid, dyn_in, 'T')
 
 end subroutine read_inidat
 
 !=========================================================================================
 
-subroutine read_phis(dyn_in)
+subroutine set_phis(dyn_in)
 
    ! Set PHIS according to the following rules.
    !
@@ -3024,7 +3050,7 @@ subroutine read_phis(dyn_in)
    integer, allocatable :: glob_ind(:)
 
    character(len=16)                :: fieldname
-   character(len=*), parameter      :: sub='read_phis'
+   character(len=*), parameter      :: sub='set_phis'
    !----------------------------------------------------------------------------
 
    fh_topo => topo_file_get_id()
@@ -3078,7 +3104,9 @@ subroutine read_phis(dyn_in)
 
    end if
 
-end subroutine read_phis
+   call process_inidat(fh_topo, grid, dyn_in, 'PHIS')
+
+end subroutine set_phis
 
 !=========================================================================================
 
@@ -3309,5 +3337,44 @@ subroutine process_inidat(fh_ini, grid, dyn_in, fieldname, m_cnst)
 
 end subroutine process_inidat
 
+!=========================================================================================
+
+logical function dyn_field_exists(fh, fieldname, required)
+
+   use pio,            only: var_desc_t, PIO_inq_varid
+   use pio,            only: PIO_NOERR
+
+   type(file_desc_t), intent(in) :: fh
+   character(len=*),  intent(in) :: fieldname
+   logical, optional, intent(in) :: required
+
+   ! Local variables
+   logical                  :: found
+   logical                  :: field_required
+   integer                  :: ret
+   type(var_desc_t)         :: varid
+   character(len=128)       :: errormsg
+   !--------------------------------------------------------------------------
+
+   if (present(required)) then
+      field_required = required
+   else
+      field_required = .true.
+   end if
+
+   ret = PIO_inq_varid(fh, trim(fieldname), varid)
+   found = (ret == PIO_NOERR)
+   if (.not. found) then
+      if (field_required) then
+         write(errormsg, *) trim(fieldname),' was not present in the input file.'
+         call endrun('DYN_FIELD_EXISTS: '//errormsg)
+      end if
+   end if
+
+   dyn_field_exists = found
+
+end function dyn_field_exists
+
+!=========================================================================================
 
 end module dyn_comp

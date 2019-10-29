@@ -730,7 +730,7 @@ subroutine dyn_init(dyn_in, dyn_out)
      nullify(dyn_out%fvm)
    end if
 
-   call read_phis(dyn_in)
+   call set_phis(dyn_in)
 
    if (initial_run) then
       call read_inidat(dyn_in)
@@ -1110,8 +1110,8 @@ subroutine read_inidat(dyn_in)
    logical                          :: inic_wet           ! true if initial condition is based on
                                                           ! wet pressure and water species
    integer                          :: kptr, m_cnst
+   integer                          :: cnst_start
    type(EdgeBuffer_t)               :: edge
-   integer                          :: lsize
 
    character(len=max_fieldname_len) :: dimname, varname
    integer                          :: ierr
@@ -1127,9 +1127,6 @@ subroutine read_inidat(dyn_in)
    integer                          :: dyn_cols
    character(len=128)               :: errmsg
    character(len=*), parameter      :: subname='READ_INIDAT'
-
-   integer                          :: ioff
-
 
    ! fvm vars
    real(r8), allocatable            :: inv_dp_darea_fvm(:,:,:)
@@ -1170,10 +1167,20 @@ subroutine read_inidat(dyn_in)
    latvals(:) = latvals_deg(:)*deg2rad
    lonvals(:) = lonvals_deg(:)*deg2rad
 
+   ! Set PIO to return error codes when reading data from IC file.
+   call pio_seterrorhandling(fh_ini, PIO_BCAST_ERROR, pio_errtype)
+
+   ! The grid name is defined in dyn_grid::define_cam_grids.
+   ! Get the number of columns in the global GLL grid.
+   call cam_grid_dimensions('GLL', dims)
+   dyn_cols = dims(1)
+
    ! Set ICs.  Either from analytic expressions or read from file.
 
    if (analytic_ic_active() .and. (iam < par%nprocs)) then
 
+      ! PHIS has already been set by set_phis.  Get local copy for
+      ! possible use in setting T and PS in the analytic IC code.
       allocate(phis_tmp(npsq,nelemd))
       do ie = 1, nelemd
          k = 1
@@ -1203,15 +1210,15 @@ subroutine read_inidat(dyn_in)
       do m_cnst = 1, qsize
          m_ind(m_cnst) = m_cnst
       end do
-      !
-      ! only tracer that should be initialized in analytic_ic_set_ic is water vapor
-      ! the rest should be set in cnst_init_default
-      !
+
+      ! Init tracers on the GLL grid.  Note that analytic_ic_set_ic makes
+      ! use of cnst_init_default for the tracers except water vapor.
+
       call analytic_ic_set_ic(vcoord, latvals, lonvals, glob_ind,  &
          PS=dbuf4(:,1,:,(qsize+1)), U=dbuf4(:,:,:,(qsize+2)),      &
          V=dbuf4(:,:,:,(qsize+3)), T=dbuf4(:,:,:,(qsize+4)),       &
          Q=dbuf4(:,:,:,1:qsize), m_cnst=m_ind, mask=pmask(:),      &
-         PHIS=PHIS_tmp)
+         PHIS_IN=PHIS_tmp)
       deallocate(m_ind)
       deallocate(glob_ind)
       deallocate(phis_tmp)
@@ -1251,26 +1258,17 @@ subroutine read_inidat(dyn_in)
       end do
       deallocate(dbuf4)
 
-    end if ! analytic_ic_active
 
-    ! Read ICs from file.  Assume all fields in the initial file are on the GLL grid.
-    
-    ! Set PIO to return error codes.
-    call pio_seterrorhandling(fh_ini, PIO_BCAST_ERROR, pio_errtype)
-    
-    ! The grid name is defined in dyn_grid::define_cam_grids.
-    ! Get the number of columns in the global GLL grid.
-    call cam_grid_dimensions('GLL', dims)
-    dyn_cols = dims(1)
-    
-    allocate(dbuf2(npsq,nelemd))
-    allocate(dbuf3(npsq,nlev,nelemd))
-    
-    ! Check that number of columns in IC file matches grid definition.
-    call check_file_layout(fh_ini, elem, dyn_cols, 'ncdata', .true., dimname)
+   else
 
-    if (.not.analytic_ic_active() .and. (iam < par%nprocs)) then
-      
+      ! Read ICs from file.  Assume all fields in the initial file are on the GLL grid.
+
+      allocate(dbuf2(npsq,nelemd))
+      allocate(dbuf3(npsq,nlev,nelemd))
+
+      ! Check that number of columns in IC file matches grid definition.
+      call check_file_layout(fh_ini, elem, dyn_cols, 'ncdata', .true., dimname)
+
       ! Read 2-D field
 
       fieldname  = 'PS'
@@ -1377,85 +1375,108 @@ subroutine read_inidat(dyn_in)
 
          deallocate(rndm_seed)
       end if
-    end if
+
+      ! Cleanup
+      deallocate(dbuf2)
+      deallocate(dbuf3)
     
-    ! Read in or cold-initialize all the tracer fields
-    ! Data is read in on the GLL grid
-    ! Both GLL and FVM tracer fields are initialized based on the
-    ! dimension qsize or ntrac for GLL or FVM tracers respectively.
-    ! Data is only read in on GLL so if FVM tracers are active,
-    ! interpolation is performed.
-    if (ntrac > qsize) then
+   end if ! analytic_ic_active
+    
+   ! Read in or cold-initialize all the tracer fields.
+   ! Data is read in on the GLL grid.
+   ! Both GLL and FVM tracer fields are initialized based on the
+   ! dimension qsize or ntrac for GLL or FVM tracers respectively.
+   ! Data is only read in on GLL so if FVM tracers are active,
+   ! interpolation is performed.
+   !
+   ! If analytic ICs are being used, we allow constituents in an initial
+   ! file to overwrite mixing ratios set by the default constituent initialization
+   ! except for water vapor.
+
+   if (ntrac > qsize) then
       if (ntrac < pcnst) then
-        write(errmsg, '(a,3(i0,a))') ': ntrac (',ntrac,') > qsize (',qsize, &
-             ') but < pcnst (',pcnst,')'
-        call endrun(trim(subname)//errmsg)
+         write(errmsg, '(a,3(i0,a))') ': ntrac (',ntrac,') > qsize (',qsize, &
+            ') but < pcnst (',pcnst,')'
+         call endrun(trim(subname)//errmsg)
       end if
-    else if (qsize < pcnst) then
+   else if (qsize < pcnst) then
       write(errmsg, '(a,2(i0,a))') ': qsize (',qsize,') < pcnst (',pcnst,')'
       call endrun(trim(subname)//errmsg)
-    end if
+   end if
 
-    do m_cnst = 1, pcnst
+   cnst_start = 1
+   if (analytic_ic_active()) cnst_start = 2
+
+   ! If using analytic ICs the initial file only needs the horizonal grid
+   ! dimension checked in the case that the file contains constituent mixing
+   ! ratios.
+   do m_cnst = cnst_start, pcnst
+      if (cnst_read_iv(m_cnst)) then
+         if (dyn_field_exists(fh_ini, trim(cnst_name(m_cnst)), required=.false.)) then
+            call check_file_layout(fh_ini, elem, dyn_cols, 'ncdata', .true., dimname)
+            exit
+         end if
+      end if
+   end do
+
+   allocate(dbuf3(npsq,nlev,nelemd))
+
+   do m_cnst = cnst_start, pcnst
       
       found = .false.
-      
       if (cnst_read_iv(m_cnst)) then
-        found = dyn_field_exists(fh_ini, trim(cnst_name(m_cnst)),            &
-             required=.false.)
+         found = dyn_field_exists(fh_ini, trim(cnst_name(m_cnst)), required=.false.)
       end if
       
       if (found) then
-        call read_dyn_var(trim(cnst_name(m_cnst)), fh_ini, dimname, dbuf3)
+         call read_dyn_var(trim(cnst_name(m_cnst)), fh_ini, dimname, dbuf3)
       else
-        call cnst_init_default(m_cnst, latvals, lonvals, dbuf3, pmask)
+         call cnst_init_default(m_cnst, latvals, lonvals, dbuf3, pmask)
       end if
       
       do ie = 1, nelemd
-        ! Copy tracers defined on GLL grid into Eulerian array
-        ! Make sure tracers have at least minimum value
-        do k=1, nlev
-          indx = 1
-          do j = 1, np
-            do i = 1, np
-              ! Set qtmp at the unique columns only: zero non-unique columns
-              if (pmask(((ie - 1) * npsq) + indx)) then
-                qtmp(i,j, k, ie, m_cnst) = max(qmin(m_cnst),dbuf3(indx,k,ie))
-              else
-                qtmp(i,j, k, ie, m_cnst) = 0.0_r8
-              end if
-              indx = indx + 1
+         ! Copy tracers defined on GLL grid into Eulerian array
+         ! Make sure tracers have at least minimum value
+         do k=1, nlev
+            indx = 1
+            do j = 1, np
+               do i = 1, np
+                  ! Set qtmp at the unique columns only: zero non-unique columns
+                  if (pmask(((ie - 1) * npsq) + indx)) then
+                     qtmp(i,j, k, ie, m_cnst) = max(qmin(m_cnst),dbuf3(indx,k,ie))
+                  else
+                     qtmp(i,j, k, ie, m_cnst) = 0.0_r8
+                  end if
+                  indx = indx + 1
+               end do
             end do
-          end do
-        end do
+         end do
       end do
-    end do ! pcnst
-    
-    ! Cleanup
-    deallocate(dbuf2)
-    deallocate(dbuf3)
-    
-    ! Put the error handling back the way it was
-    call pio_seterrorhandling(fh_ini, pio_errtype)
-    
 
-
-    ! Cleanup
-    deallocate(pmask)
-    deallocate(latvals)
-    deallocate(lonvals)
+   end do ! pcnst
     
-    if (associated(ldof)) then
+   ! Cleanup
+   deallocate(dbuf3)
+    
+   ! Put the error handling back the way it was
+   call pio_seterrorhandling(fh_ini, pio_errtype)
+
+   ! Cleanup
+   deallocate(pmask)
+   deallocate(latvals)
+   deallocate(lonvals)
+
+   if (associated(ldof)) then
       deallocate(ldof)
       nullify(ldof)
-    end if
-    
-    ! once we've read or initialized all the fields we do a boundary exchange to
-    ! update the redundent columns in the dynamics
-    if(iam < par%nprocs) then
+   end if
+
+   ! once we've read or initialized all the fields we do a boundary exchange to
+   ! update the redundent columns in the dynamics
+   if(iam < par%nprocs) then
       call initEdgeBuffer(par, edge, elem, (3+pcnst)*nlev + 2 )
-    end if
-    do ie = 1, nelemd
+   end if
+   do ie = 1, nelemd
       kptr = 0
       call edgeVpack(edge, elem(ie)%state%psdry,1,kptr,ie)
       kptr = kptr + 1
@@ -1588,8 +1609,8 @@ subroutine read_inidat(dyn_in)
             end do
          end do
       end do
-    end if
-    
+   end if
+
    ! scale PS to achieve prescribed dry mass following FV dycore (dryairm.F90)
 #ifndef planet_mars   
    if (runtype == 0) then
@@ -1648,83 +1669,18 @@ subroutine read_inidat(dyn_in)
       end if
 
       do ie = 1, nelemd
-         !
+
          ! note that the area over fvm cells as computed from subcell_integration is up to 1.0E-6
          ! different than the areas (exact) computed by CSLAM
          !
          ! Map the constituents which are also to be transported by dycore
-!         if (analytic_ic_active()) then
-!            lsize = 1
-!         else
-            lsize = ntrac
-!         end if
          call dyn2fvm_mass_vars(elem(ie)%state%dp3d(:,:,:,1),elem(ie)%state%psdry(:,:),&
-            qtmp(:,:,:,ie,1:lsize),&
+            qtmp(:,:,:,ie,1:ntrac),&
             dyn_in%fvm(ie)%dp_fvm(1:nc,1:nc,:),dyn_in%fvm(ie)%psC(1:nc,1:nc),&
-            dyn_in%fvm(ie)%c(1:nc,1:nc,:,1:lsize),&
-            lsize,elem(ie)%metdet,dyn_in%fvm(ie)%inv_se_area_sphere(1:nc,1:nc))
+            dyn_in%fvm(ie)%c(1:nc,1:nc,:,1:ntrac),&
+            ntrac,elem(ie)%metdet,dyn_in%fvm(ie)%inv_se_area_sphere(1:nc,1:nc))
       end do
 
-!      if (analytic_ic_active()) then
-!
-!         ! initialize tracers
-!
-!         allocate(latvals(nc*nc*nelemd))
-!         allocate(lonvals(nc*nc*nelemd))
-!         indx = 1
-!         do ie = 1, nelemd
-!            do j = 1, nc
-!               do i = 1, nc
-!                  latvals(indx) = dyn_in%fvm(ie)%center_cart(i,j)%lat
-!                  lonvals(indx) = dyn_in%fvm(ie)%center_cart(i,j)%lon
-!                  indx = indx + 1
-!               end do
-!            end do
-!         end do
-!
-!         allocate(pmask(nc*nc*nelemd))
-!         pmask(:) = .true.
-!
-!         allocate(dbuf4(nc*nc, nlev, nelemd, ntrac))
-!         allocate(m_ind(ntrac))
-!         allocate(glob_ind(nc*nc*nelemd))
-!         j = 1
-!         do ie = 1, nelemd
-!            do i = 1, nc*nc
-!               ! Create a global(ish) column index
-!               glob_ind(j) = elem(ie)%GlobalId
-!               j = j + 1
-!            end do
-!         end do
-!
-!         dbuf4 = 0.0_r8
-!         do m_cnst = 1, ntrac
-!            m_ind(m_cnst) = m_cnst
-!         end do
-!         call analytic_ic_set_ic(vcoord, latvals, lonvals, glob_ind, Q=dbuf4, m_cnst=m_ind, mask=pmask)
-!
-!         ! it is more balanced to use dyn2fvm for Q than to use the "analytical" value
-!         ! on the fvm grid
-!
-!         do m_cnst = 2, ntrac
-!            do ie = 1, nelemd
-!               indx = 1
-!               do j = 1, nc
-!                  do i = 1, nc
-!                     dyn_in%fvm(ie)%c(i,j,:,m_cnst) = dbuf4(indx, :, ie, m_cnst)
-!                     indx = indx + 1
-!                  end do
-!               end do
-!            end do
-!         end do
-!         deallocate(dbuf4)
-!         deallocate(m_ind)
-!         deallocate(latvals)
-!         deallocate(lonvals)
-!         deallocate(glob_ind)
-!         deallocate(pmask)
-!      end if
-!
       if(par%masterproc) then
          write(iulog,*) 'FVM tracers, FVM pressure variables and se_area_sphere initialized.'
       end if
@@ -1750,7 +1706,7 @@ end subroutine read_inidat
 
 !========================================================================================
 
-subroutine read_phis(dyn_in)
+subroutine set_phis(dyn_in)
 
    ! Set PHIS according to the following rules.
    !
@@ -1799,7 +1755,7 @@ subroutine read_phis(dyn_in)
    real(r8), allocatable            :: latvals_phys(:)
    real(r8), allocatable            :: lonvals_phys(:)
 
-   character(len=*), parameter      :: subname='read_phis'
+   character(len=*), parameter      :: subname='set_phis'
    !----------------------------------------------------------------------------
 
    fh_topo => topo_file_get_id()
@@ -1877,7 +1833,7 @@ subroutine read_phis(dyn_in)
 
       ! Put the error handling back the way it was
       call pio_seterrorhandling(fh_topo, pio_errtype)
-      
+
    else if (analytic_ic_active() .and. (iam < par%nprocs)) then
 
       ! lat/lon needed in radians
@@ -1898,7 +1854,7 @@ subroutine read_phis(dyn_in)
          end do
       end do
       call analytic_ic_set_ic(vcoord, latvals, lonvals, glob_ind, &
-                              PHIS=phis_tmp, mask=pmask(:))
+                              PHIS_OUT=phis_tmp, mask=pmask(:))
       deallocate(glob_ind)
 
       if (fv_nphys > 0) then
@@ -1930,8 +1886,8 @@ subroutine read_phis(dyn_in)
             end do
          end do
 
-         call analytic_ic_set_ic(vcoord, latvals_phys, lonvals_phys, glob_ind, PHIS=phis_phys_tmp, &
-                                 mask=pmask_phys)
+         call analytic_ic_set_ic(vcoord, latvals_phys, lonvals_phys, glob_ind, &
+                                 PHIS_OUT=phis_phys_tmp, mask=pmask_phys)
 
          deallocate(latvals_phys)
          deallocate(lonvals_phys)
@@ -1978,7 +1934,7 @@ subroutine read_phis(dyn_in)
       call edgeVunpack(edgebuf, elem(ie)%state%phis,1,kptr,ie)
    end do
 
-end subroutine read_phis
+end subroutine set_phis
 
 !========================================================================================
 
