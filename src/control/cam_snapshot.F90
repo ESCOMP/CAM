@@ -6,7 +6,7 @@ module cam_snapshot
 ! fields which are used within CAM
 !--------------------------------------------------------
 
-use cam_history,    only: addfld, outfld, get_field_properties, masterlist
+use cam_history,    only: addfld, add_default, outfld, cam_history_snapshot_deactivate, cam_history_snapshot_activate
 use cam_abortutils, only: endrun
 use physics_buffer, only: physics_buffer_desc, pbuf_get_index, pbuf_get_field
 use physics_types,  only: physics_state, physics_tend
@@ -18,7 +18,7 @@ implicit  none
 
 private
 
-public :: cam_snapshot_init, cam_snapshot_all_outfld
+public :: cam_snapshot_init, cam_snapshot_all_outfld, cam_snapshot_deactivate
 
 type state_snapshot_type
 
@@ -57,91 +57,94 @@ subroutine cam_snapshot_init()
    ! Add the state variables to the output
    !--------------------------------------------------------
 
-   call snapshot_state_addfld(                                           &
+   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%ps',        'ps_snapshot',         'Pa',    'horiz_only')
 
-   call snapshot_state_addfld(                                           &
+   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%psdry',     'psdry_snapshot',      'Pa',    'horiz_only')
 
-   call snapshot_state_addfld(                                           &
+   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%phis',      'phis_snapshot',       'm2/m2', 'horiz_only')
 
-   call snapshot_state_addfld(                                           &
+   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%t',         't_snapshot',          'K',     'lev')
 
-   call snapshot_state_addfld(                                           &
+   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%u',         'u_snapshot',          'm/s',   'lev')
 
-   call snapshot_state_addfld(                                           &
+   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%v',         'v_snapshot',          'm/s',   'lev')
 
-   call snapshot_state_addfld(                                           &
+   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%s',         's_snapshot',          ' ',     'lev')
 
-   call snapshot_state_addfld(                                           &
+   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%omega',     'omega_snapshot',      'Pa/s',  'lev')
 
-   call snapshot_state_addfld(                                           &
+   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%pmid',      'pmid_snapshot',       'Pa',    'lev')
 
-   call snapshot_state_addfld(                                           &
+   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%pmiddry',   'pmiddry_snapshot',    'Pa',    'lev')
 
-   call snapshot_state_addfld(                                           &
+   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%pdel',      'pdel_snapshot',       'Pa',    'lev')
 
-   call snapshot_state_addfld(                                           &
+   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%pdeldry',   'pdeldry_snapshot',    'Pa',    'lev')
 
-   call snapshot_state_addfld(                                           &
+   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%rpdel',     'rpdel_snapshot',      'Pa',    'lev')
 
-   call snapshot_state_addfld(                                           &
+   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%rpdeldry',  'rpdeldry_snapshot',   'Pa',    'lev')
 
-   call snapshot_state_addfld(                                           &
+   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%lnpmid',    'lnpmid_snapshot',     ' ',     'lev')
 
-   call snapshot_state_addfld(                                           &
+   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%lnpmiddry', 'lnpmiddry_snapshot',  ' ',     'lev')
 
-   call snapshot_state_addfld(                                           &
+   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%exner',     'exner_snapshot',      ' ',     'lev')
 
-   call snapshot_state_addfld(                                           &
+   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%zm',        'zm_snapshot',         'm',     'lev')
 
-   call snapshot_state_addfld(                                           &
+   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%pint',      'pint_snapshot',       'Pa',    'lev')
 
-   call snapshot_state_addfld(                                           &
+   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%pintdry',   'pintdry_snapshot',    'Pa',    'lev')
 
-   call snapshot_state_addfld(                                           &
+   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%lnpint',    'lnpint_snapshot',     ' ',     'lev')
 
-   call snapshot_state_addfld(                                           &
+   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%lnpintdry', 'lnpintdry_snapshot',  ' ',     'lev')
 
-   call snapshot_state_addfld(                                           &
+   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%zi',        'zi_snapshot',         'm',     'lev')
 
-   call snapshot_state_addfld(                                           &
+   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%te_ini',    'te_ini_snapshot',     ' ',     'horiz_only')
 
-   call snapshot_state_addfld(                                           &
+   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%te_cur',    'te_cur_snapshot',     ' ',     'horiz_only')
 
-   call snapshot_state_addfld(                                           &
+   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%tw_ini',    'tw_ini_snapshot',     ' ',     'horiz_only')
 
-   call snapshot_state_addfld(                                           &
+   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%tw_cur',    'tw_cur_snapshot',     ' ',     'horiz_only')
 
 end subroutine cam_snapshot_init
 
-subroutine snapshot_state_addfld(state_string, standard_name, units, dimension_string)
+subroutine snapshot_state_addfld(cam_snapshot_before_num, cam_snapshot_after_num,&
+    state_string, standard_name, units, dimension_string)
  
+   integer,          intent(in) :: cam_snapshot_before_num
+   integer,          intent(in) :: cam_snapshot_after_num
    character(len=*), intent(in) :: state_string
    character(len=*), intent(in) :: standard_name
    character(len=*), intent(in) :: units
@@ -154,11 +157,14 @@ subroutine snapshot_state_addfld(state_string, standard_name, units, dimension_s
       call endrun(' ERROR in cam_snapshot_addfld: state_snapshot array not allocated large enough')
 
    call addfld(standard_name, dimension_string, 'I', units, standard_name)
+   if (cam_snapshot_before_num > 0) call add_default(standard_name, cam_snapshot_before_num, ' ')
+   if (cam_snapshot_after_num > 0)  call add_default(standard_name, cam_snapshot_after_num, ' ')
 
    state_snapshot(nstate_var)%state_string  = state_string
    state_snapshot(nstate_var)%standard_name = standard_name
    state_snapshot(nstate_var)%dim_name      = dimension_string
    state_snapshot(nstate_var)%units         = units
+
 
 end subroutine snapshot_state_addfld
 
@@ -199,12 +205,8 @@ subroutine state_snapshot_all_outfld(lchnk, file_num, state)
 
    do i=1, nstate_var
 
-      ! Turn on the writing for the requested tape (file_num)
-      call get_field_properties(trim(state_snapshot(i)%standard_name), found, ff_out=ff, no_tape_check_in=.true.)
-      if (ff < 0) then
-         call endrun('ERROR in state_snapshot_all_outfld: no addfld found for '//trim(state_snapshot(i)%standard_name))
-      end if
-      masterlist(ff)%thisentry%actflag(file_num) = .true. ! Turn on output for file_num
+      ! Turn on the writing for only the requested tape (file_num)
+      call cam_history_snapshot_activate(trim(state_snapshot(i)%standard_name), file_num)
 
       ! Select the state field which is being written
       select case(state_snapshot(i)%state_string)
@@ -295,12 +297,20 @@ subroutine state_snapshot_all_outfld(lchnk, file_num, state)
       
       end select
 
-      ! Turn off the writing of this field
-      masterlist(ff)%thisentry%actflag(file_num) = .false. ! Turn off output for file_num
+      call cam_history_snapshot_deactivate(trim(state_snapshot(i)%standard_name))
 
    end do
 
 end subroutine state_snapshot_all_outfld
     
+subroutine cam_snapshot_deactivate()
+
+   integer :: i
+
+   do i=1,nstate_var
+      call cam_history_snapshot_deactivate(state_snapshot(i)%standard_name)
+   end do
+
+end subroutine cam_snapshot_deactivate
 
 end module cam_snapshot
