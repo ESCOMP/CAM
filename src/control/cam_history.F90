@@ -64,7 +64,9 @@ module cam_history
 
   ! Forward common parameters to present unified interface to cam_history
   public :: fieldname_len, horiz_only
-  public :: get_field_properties, masterlist
+  public :: get_field_properties
+  public :: cam_history_snapshot_deactivate
+  public :: cam_history_snapshot_activate
 
   !
   ! master_entry: elements of an entry in the master field list
@@ -6046,5 +6048,30 @@ end subroutine print_active_fldlst
     end do ! history files
 
   end function hist_fld_col_active
+ 
+  subroutine cam_history_snapshot_deactivate(name)
+  
+  character(len=*), intent(in) :: name
+
+  logical :: found
+  integer :: ff
+
+  call get_field_properties(trim(name), found, ff_out=ff, no_tape_check_in=.true.)
+  masterlist(ff)%thisentry%actflag(:) = .false.  
+
+  end subroutine cam_history_snapshot_deactivate
+
+  subroutine cam_history_snapshot_activate(name, tape)
+  
+  character(len=*), intent(in) :: name
+  integer,          intent(in) :: tape
+
+  logical :: found
+  integer :: ff
+
+  call get_field_properties(trim(name), found, ff_out=ff, no_tape_check_in=.true.)
+  masterlist(ff)%thisentry%actflag(tape) = .true.  
+
+  end subroutine cam_history_snapshot_activate
 
 end module cam_history
