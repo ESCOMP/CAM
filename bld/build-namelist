@@ -2623,7 +2623,7 @@ if ($chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/) {
     }
 
     # Datasets
-    my @files = ('flbc_file', 'efield_lflux_file', 'efield_hflux_file', 'efield_wei96_file',
+    my @files = ('flbc_file', 'efield_lflux_file', 'efield_hflux_file',
                  'photon_file', 'electron_file', 'igrf_geomag_coefs_file',
                  'euvac_file', 'solar_parms_data_file',
                  'depvel_lnd_file', 'clim_soilw_file', 'season_wes_file',
@@ -2694,6 +2694,9 @@ if ($chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/) {
     if ($dyn eq 'fv') {
         add_default($nl, 'do_circulation_diags', 'val'=>'.true.');
     }
+    
+    # max cross cap electric potential of 120 kV to keep WACCM stable through large geo-mag storms
+    add_default($nl, 'efield_potential_max', 'val'=>'120.D0');
 }
 
 # Determine the source of the prescribed GHG values.
