@@ -2919,7 +2919,7 @@ subroutine read_inidat(dyn_in)
          clon(ifirstxy:ilastxy,1), glob_ind, T=dyn_in%t3, PS=dyn_in%ps,       &
          Q=dyn_in%tracer(:,:,:,1:ntotq), PHIS_IN=dyn_in%phis, m_cnst=m_cnst)
     do m = 1, ntotq
-       call process_inidat(fh_ini, grid, dyn_in, 'CONSTS', m_cnst=m)
+       call process_inidat(grid, dyn_in, 'CONSTS', m_cnst=m, fh_ini=fh_ini)
     end do
     deallocate(glob_ind)
     deallocate(m_cnst)
@@ -3007,7 +3007,7 @@ subroutine read_inidat(dyn_in)
       call infld(fieldname, fh_ini, 'lon', 'lat', 'lev', ifirstxy, ilastxy, jfirstxy, jlastxy, &
            1, km, dyn_in%tracer(:,:,:,m), readvar, gridname='fv_centers')
     end if
-    call process_inidat(fh_ini, grid, dyn_in, 'CONSTS', m_cnst=m)
+    call process_inidat(grid, dyn_in, 'CONSTS', m_cnst=m, fh_ini=fh_ini)
   end do
 
   ! Set u3s(:,1,:) to zero as it is used in interpolation routines
@@ -3016,8 +3016,8 @@ subroutine read_inidat(dyn_in)
   end if
 
   ! These always happen
-  call process_inidat(fh_ini, grid, dyn_in, 'PS')
-  call process_inidat(fh_ini, grid, dyn_in, 'T')
+  call process_inidat(grid, dyn_in, 'PS')
+  call process_inidat(grid, dyn_in, 'T')
 
 end subroutine read_inidat
 
@@ -3104,13 +3104,13 @@ subroutine set_phis(dyn_in)
 
    end if
 
-   call process_inidat(fh_topo, grid, dyn_in, 'PHIS')
+   call process_inidat(grid, dyn_in, 'PHIS')
 
 end subroutine set_phis
 
 !=========================================================================================
 
-subroutine process_inidat(fh_ini, grid, dyn_in, fieldname, m_cnst)
+subroutine process_inidat(grid, dyn_in, fieldname, m_cnst, fh_ini)
 
    ! Post-process input fields
    use commap,              only: clat, clon
@@ -3118,11 +3118,11 @@ subroutine process_inidat(fh_ini, grid, dyn_in, fieldname, m_cnst)
    use inic_analytic,       only: analytic_ic_active
 
    ! arguments
-   type(file_desc_t),             intent(inout) :: fh_ini
    type(t_fvdycore_grid), target, intent(inout) :: grid        ! dynamics state grid
    type(dyn_import_t),    target, intent(inout) :: dyn_in      ! dynamics import
    character(len=*),              intent(in)    :: fieldname   ! field to be processed
    integer,             optional, intent(in)    :: m_cnst      ! constituent index
+   type(file_desc_t),   optional, intent(inout) :: fh_ini
 
    ! Local variables
    integer :: i, j, k                     ! grid and constituent indices
@@ -3215,7 +3215,7 @@ subroutine process_inidat(fh_ini, grid, dyn_in, fieldname, m_cnst)
 
    case ('CONSTS')
 
-      if (.not. present(m_cnst)) then
+      if (.not. present(m_cnst) .or. .not. present(fh_ini)) then
          call endrun(sub//': ERROR:  m_cnst needs to be present in the'// &
                      ' argument list')
       end if
