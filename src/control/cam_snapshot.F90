@@ -6,6 +6,7 @@ module cam_snapshot
 ! fields which are used within CAM
 !--------------------------------------------------------
 
+use shr_kind_mod,   only: r8 => shr_kind_r8
 use cam_history,    only: addfld, add_default, outfld, cam_history_snapshot_deactivate, cam_history_snapshot_activate
 use cam_abortutils, only: endrun
 use physics_buffer, only: physics_buffer_desc, pbuf_get_index, pbuf_get_field
@@ -20,19 +21,21 @@ private
 
 public :: cam_snapshot_init, cam_snapshot_all_outfld, cam_snapshot_deactivate
 
-type state_snapshot_type
+type snapshot_type
 
-  character(len=40)  :: state_string
+  character(len=40)  :: ddt_string
   character(len=256) :: standard_name
   character(len=20)  :: dim_name
   character(len=8)   :: units
 
-end type state_snapshot_type
+end type snapshot_type
 
 integer :: nstate_var 
-integer, parameter :: max_nstate_var = 27
+integer :: ncnst_var 
 
-type (state_snapshot_type) ::  state_snapshot(max_nstate_var)
+! Note the maximum number of variables for each type
+type (snapshot_type) ::  state_snapshot(27)
+type (snapshot_type) ::  cnst_snapshot(40)
 
 contains
 
@@ -43,8 +46,27 @@ subroutine cam_snapshot_init()
 ! elements which are used within CAM
 !--------------------------------------------------------
 
+   integer  :: cam_snapshot_before_num, cam_snapshot_after_num
+
+   call phys_getopts(cam_snapshot_before_num_out=cam_snapshot_before_num, &
+                     cam_snapshot_after_num_out=cam_snapshot_after_num)
+
+   if (cam_snapshot_before_num <= 0 .and. cam_snapshot_after_num <= 0) return ! No snapshot files are being requested
+
+   call cam_state_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num)
+   call cam_cnst_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num)
+
+end subroutine cam_snapshot_init
+
+
+subroutine cam_state_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num)
+
+!--------------------------------------------------------
+! This subroutine does the addfld calls for state, tend and pbuf fields.
+!--------------------------------------------------------
+
+   integer,intent(in) :: cam_snapshot_before_num, cam_snapshot_after_num
    integer :: i
-   integer :: cam_snapshot_before_num, cam_snapshot_after_num
     
    nstate_var = 0
 
@@ -57,116 +79,145 @@ subroutine cam_snapshot_init()
    ! Add the state variables to the output
    !--------------------------------------------------------
 
-   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
+   call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%ps',        'ps_snapshot',         'Pa',    'horiz_only')
 
-   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
+   call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%psdry',     'psdry_snapshot',      'Pa',    'horiz_only')
 
-   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
+   call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%phis',      'phis_snapshot',       'm2/m2', 'horiz_only')
 
-   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
+   call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%t',         't_snapshot',          'K',     'lev')
 
-   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
+   call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%u',         'u_snapshot',          'm/s',   'lev')
 
-   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
+   call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%v',         'v_snapshot',          'm/s',   'lev')
 
-   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
+   call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%s',         's_snapshot',          ' ',     'lev')
 
-   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
+   call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%omega',     'omega_snapshot',      'Pa/s',  'lev')
 
-   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
+   call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%pmid',      'pmid_snapshot',       'Pa',    'lev')
 
-   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
+   call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%pmiddry',   'pmiddry_snapshot',    'Pa',    'lev')
 
-   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
+   call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%pdel',      'pdel_snapshot',       'Pa',    'lev')
 
-   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
+   call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%pdeldry',   'pdeldry_snapshot',    'Pa',    'lev')
 
-   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
+   call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%rpdel',     'rpdel_snapshot',      'Pa',    'lev')
 
-   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
+   call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%rpdeldry',  'rpdeldry_snapshot',   'Pa',    'lev')
 
-   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
+   call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%lnpmid',    'lnpmid_snapshot',     ' ',     'lev')
 
-   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
+   call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%lnpmiddry', 'lnpmiddry_snapshot',  ' ',     'lev')
 
-   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
+   call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%exner',     'exner_snapshot',      ' ',     'lev')
 
-   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
+   call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%zm',        'zm_snapshot',         'm',     'lev')
 
-   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
+   call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%pint',      'pint_snapshot',       'Pa',    'lev')
 
-   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
+   call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%pintdry',   'pintdry_snapshot',    'Pa',    'lev')
 
-   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
+   call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%lnpint',    'lnpint_snapshot',     ' ',     'lev')
 
-   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
+   call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%lnpintdry', 'lnpintdry_snapshot',  ' ',     'lev')
 
-   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
+   call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%zi',        'zi_snapshot',         'm',     'lev')
 
-   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
+   call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%te_ini',    'te_ini_snapshot',     ' ',     'horiz_only')
 
-   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
+   call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%te_cur',    'te_cur_snapshot',     ' ',     'horiz_only')
 
-   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
+   call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%tw_ini',    'tw_ini_snapshot',     ' ',     'horiz_only')
 
-   call snapshot_state_addfld( cam_snapshot_before_num, cam_snapshot_after_num, &
+   call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%tw_cur',    'tw_cur_snapshot',     ' ',     'horiz_only')
 
-end subroutine cam_snapshot_init
+end subroutine cam_state_snapshot_init
 
-subroutine snapshot_state_addfld(cam_snapshot_before_num, cam_snapshot_after_num,&
-    state_string, standard_name, units, dimension_string)
+subroutine cam_cnst_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num)
+
+!--------------------------------------------------------
+! This subroutine does the addfld calls for state, tend and pbuf fields.
+!--------------------------------------------------------
+
+   use constituents, only: pcnst, cnst_name
+
+   integer, intent(in) :: cam_snapshot_before_num, cam_snapshot_after_num
+
+   integer :: i
+    
+   !--------------------------------------------------------
+   ! Add the cnst variables to the output
+   !--------------------------------------------------------
+
+   ncnst_var = 0 ! Updated inside snapshot_addfld
+
+   do while (ncnst_var < pcnst)
+      call snapshot_addfld( ncnst_var, cnst_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+        'cnst_name(ncnst_var+1)',        trim(cnst_name(ncnst_var+1))//'_snapshot',         'kg kg-1',    'lev')
+   end do
+
+end subroutine cam_cnst_snapshot_init
+
+subroutine snapshot_addfld(nddt_var, ddt_snapshot, cam_snapshot_before_num, cam_snapshot_after_num,&
+    ddt_string, standard_name, units, dimension_string)
  
+   integer,              intent(inout)  :: nddt_var 
+   type (snapshot_type), intent(inout) ::  ddt_snapshot(:)
+
+
    integer,          intent(in) :: cam_snapshot_before_num
    integer,          intent(in) :: cam_snapshot_after_num
-   character(len=*), intent(in) :: state_string
+   character(len=*), intent(in) :: ddt_string
    character(len=*), intent(in) :: standard_name
    character(len=*), intent(in) :: units
    character(len=*), intent(in) :: dimension_string
   
 
-   nstate_var=nstate_var+1
+   nddt_var=nddt_var+1
 
-   if (nstate_var > size(state_snapshot)) &
-      call endrun(' ERROR in cam_snapshot_addfld: state_snapshot array not allocated large enough')
+   if (nddt_var > size(ddt_snapshot)) &
+      call endrun(' ERROR in snapshot_addfld: ddt_snapshot array not allocated large enough')
 
    call addfld(standard_name, dimension_string, 'I', units, standard_name)
    if (cam_snapshot_before_num > 0) call add_default(standard_name, cam_snapshot_before_num, ' ')
    if (cam_snapshot_after_num > 0)  call add_default(standard_name, cam_snapshot_after_num, ' ')
 
-   state_snapshot(nstate_var)%state_string  = state_string
-   state_snapshot(nstate_var)%standard_name = standard_name
-   state_snapshot(nstate_var)%dim_name      = dimension_string
-   state_snapshot(nstate_var)%units         = units
+   ddt_snapshot(nddt_var)%ddt_string    = ddt_string
+   ddt_snapshot(nddt_var)%standard_name = standard_name
+   ddt_snapshot(nddt_var)%dim_name      = dimension_string
+   ddt_snapshot(nddt_var)%units         = units
 
 
-end subroutine snapshot_state_addfld
+end subroutine snapshot_addfld
 
 subroutine cam_snapshot_all_outfld(file_num, state)
 
@@ -190,6 +241,12 @@ subroutine cam_snapshot_all_outfld(file_num, state)
 
    call state_snapshot_all_outfld(lchnk, file_num, state)
 
+   !--------------------------------------------------------
+   ! Write out all the constituent fields
+   !--------------------------------------------------------
+
+   call cnst_snapshot_all_outfld(lchnk, file_num, state%q)
+
 end subroutine cam_snapshot_all_outfld
 
 
@@ -209,7 +266,7 @@ subroutine state_snapshot_all_outfld(lchnk, file_num, state)
       call cam_history_snapshot_activate(trim(state_snapshot(i)%standard_name), file_num)
 
       ! Select the state field which is being written
-      select case(state_snapshot(i)%state_string)
+      select case(state_snapshot(i)%ddt_string)
 
       case ('state%ps')
          call outfld(state_snapshot(i)%standard_name, state%ps, pcols, lchnk)
@@ -293,7 +350,7 @@ subroutine state_snapshot_all_outfld(lchnk, file_num, state)
          call outfld(state_snapshot(i)%standard_name, state%tw_cur, pcols, lchnk)
 
       case default
-         call endrun('ERROR in state_snapshot_all_outfld: no match found for '//trim(state_snapshot(i)%state_string))
+         call endrun('ERROR in state_snapshot_all_outfld: no match found for '//trim(state_snapshot(i)%ddt_string))
       
       end select
 
@@ -302,6 +359,30 @@ subroutine state_snapshot_all_outfld(lchnk, file_num, state)
    end do
 
 end subroutine state_snapshot_all_outfld
+
+subroutine cnst_snapshot_all_outfld(lchnk, file_num, cnst)
+
+   integer,             intent(in)  :: lchnk
+   integer,             intent(in)  :: file_num
+   real(r8),            intent(in)  :: cnst(:,:,:)
+
+   integer :: i
+   integer :: ff
+   logical :: found
+
+   do i=1, ncnst_var
+
+      ! Turn on the writing for only the requested tape (file_num)
+      call cam_history_snapshot_activate(trim(cnst_snapshot(i)%standard_name), file_num)
+      call outfld(cnst_snapshot(i)%standard_name, cnst(:,:,i), pcols, lchnk)
+
+      ! Now that the field has been written, turn off the writing for field
+      call cam_history_snapshot_deactivate(trim(cnst_snapshot(i)%standard_name))
+
+   end do
+
+end subroutine cnst_snapshot_all_outfld
+
     
 subroutine cam_snapshot_deactivate()
 
