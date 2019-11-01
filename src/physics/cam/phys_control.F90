@@ -103,6 +103,7 @@ logical, public, protected :: fv_am_correction = .false.
 ! CAM snapshot before/after file numbers
 integer           :: cam_snapshot_before_num = -1   ! output history file number for CAM "before" snapshot
 integer           :: cam_snapshot_after_num = -1    ! output history file number for CAM "after" snapshot
+integer           :: cam_snapshot_nhtfrq = 1        ! output frequency for snapshot files - default 1 (every time step)
 
 !======================================================================= 
 contains
@@ -130,7 +131,8 @@ subroutine phys_ctl_readnl(nlfile)
       history_cesm_forcing, history_scwaccm_forcing, history_chemspecies_srf, &
       do_clubb_sgs, state_debug_checks, use_hetfrz_classnuc, use_gw_oro, use_gw_front, &
       use_gw_front_igw, use_gw_convect_dp, use_gw_convect_sh, cld_macmic_num_steps, &
-      offline_driver, convproc_do_aer, cam_snapshot_before_num, cam_snapshot_after_num
+      offline_driver, convproc_do_aer, cam_snapshot_before_num, cam_snapshot_after_num, &
+      cam_snapshot_nhtfrq
    !-----------------------------------------------------------------------------
 
    if (masterproc) then
@@ -190,6 +192,7 @@ subroutine phys_ctl_readnl(nlfile)
    call mpi_bcast(convproc_do_aer,             1,                     mpi_logical,   masterprocid, mpicom, ierr)
    call mpi_bcast(cam_snapshot_before_num,     1,                     mpi_integer,   masterprocid, mpicom, ierr)
    call mpi_bcast(cam_snapshot_after_num,      1,                     mpi_integer,   masterprocid, mpicom, ierr)
+   call mpi_bcast(cam_snapshot_nhtfrq,         1,                     mpi_integer,   masterprocid, mpicom, ierr)
 
    use_spcam       = (     cam_physpkg_is('spcam_sam1mom') &
                       .or. cam_physpkg_is('spcam_m2005'))
@@ -286,7 +289,8 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
                         history_cesm_forcing_out, history_scwaccm_forcing_out, history_chemspecies_srf_out, &
                         cam_chempkg_out, prog_modal_aero_out, macrop_scheme_out, &
                         do_clubb_sgs_out, use_spcam_out, state_debug_checks_out, cld_macmic_num_steps_out, &
-                        offline_driver_out, convproc_do_aer_out, cam_snapshot_before_num_out, cam_snapshot_after_num_out)
+                        offline_driver_out, convproc_do_aer_out, cam_snapshot_before_num_out, cam_snapshot_after_num_out,&
+                        cam_snapshot_nhtfrq_out)
 !-----------------------------------------------------------------------
 ! Purpose: Return runtime settings
 !          deep_scheme_out   : deep convection scheme
@@ -331,6 +335,7 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
    logical,           intent(out), optional :: convproc_do_aer_out
    integer,           intent(out), optional :: cam_snapshot_before_num_out
    integer,           intent(out), optional :: cam_snapshot_after_num_out
+   integer,           intent(out), optional :: cam_snapshot_nhtfrq_out
 
    if ( present(deep_scheme_out         ) ) deep_scheme_out          = deep_scheme
    if ( present(shallow_scheme_out      ) ) shallow_scheme_out       = shallow_scheme
@@ -367,6 +372,7 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
    if ( present(convproc_do_aer_out     ) ) convproc_do_aer_out      = convproc_do_aer
    if ( present(cam_snapshot_before_num_out ) ) cam_snapshot_before_num_out = cam_snapshot_before_num
    if ( present(cam_snapshot_after_num_out  ) ) cam_snapshot_after_num_out  = cam_snapshot_after_num
+   if ( present(cam_snapshot_nhtfrq_out     ) ) cam_snapshot_nhtfrq_out     = cam_snapshot_nhtfrq
 
 end subroutine phys_getopts
 
