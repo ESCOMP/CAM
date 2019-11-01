@@ -2015,6 +2015,9 @@ contains
 
     call t_stopf('carma_timestep_tend')
 
+    call phys_getopts(cam_snapshot_before_num_out = cam_snapshot_before_num)
+    call cam_snapshot_all_outfld(cam_snapshot_before_num, state, cam_out)
+
     if( microp_scheme == 'RK' ) then
 
        !===================================================
@@ -2289,9 +2292,6 @@ contains
     ! Radiation computations
     !===================================================
     call t_startf('radiation')
-
-    call phys_getopts(cam_snapshot_before_num_out = cam_snapshot_before_num)
-    call cam_snapshot_all_outfld(cam_snapshot_before_num, state)
 
     call radiation_tend( &
        state, ptend, pbuf, cam_out, cam_in, net_flx)
