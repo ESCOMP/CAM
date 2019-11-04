@@ -2016,7 +2016,7 @@ contains
     call t_stopf('carma_timestep_tend')
 
     call phys_getopts(cam_snapshot_before_num_out = cam_snapshot_before_num)
-    call cam_snapshot_all_outfld(cam_snapshot_before_num, state, cam_out)
+    call cam_snapshot_all_outfld(cam_snapshot_before_num, state, tend, cam_out)
 
     if( microp_scheme == 'RK' ) then
 
