@@ -462,7 +462,7 @@ submit_script_cime="${submit_script}"
 
     ##izumi
     izu* | i[[:digit:]]* )
-    submit_script="`pwd -P`/test_driver_izumi${cur_time}.sh"
+    submit_script="`pwd -P`/test_driver_izumi_${cur_time}.sh"
     submit_script_cime="`pwd -P`/test_driver_izumi_cime_${cur_time}.sh"
     export PATH=/cluster/torque/bin:${PATH}
 
@@ -591,7 +591,9 @@ EOF
 
 # To lower number of nodes required for regression testing on izumi,
 # run CIME test suites sequentially after standalone regression tests
-submit_script_cime="${submit_script}"
+if [ -n "${BATCH}" ||  !$run_cam_regression]; then
+   submit_script_cime="${submit_script}"
+fi
 ##^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ writing to batch script ^^^^^^^^^^^^^^^^^^^
     ;;
 
@@ -1067,7 +1069,7 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
     fi
     testargs="${testargs} --test-id ${test_id}"
     if [ -n "${BL_TESTDIR}" ]; then
-      testargs="${testargs} --compare $( basename ${BL_TESTDIR} )"
+      testargs="${testargs} --compare $( basename  ${BL_TESTDIR%"_${CAM_FC,,}"} )"
     fi
     if [ -n "${use_existing}" ]; then
       testargs="${testargs} --use-existing"
