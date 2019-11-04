@@ -32,11 +32,13 @@ end type snapshot_type
 
 integer :: nstate_var 
 integer :: ncnst_var 
+integer :: ntend_var 
 integer :: ncam_out_var
 
 ! Note the maximum number of variables for each type
 type (snapshot_type) ::  state_snapshot(27)
 type (snapshot_type) ::  cnst_snapshot(40)
+type (snapshot_type) ::  tend_snapshot(6)
 type (snapshot_type) ::  cam_out_snapshot(30)
 
 contains
@@ -62,9 +64,60 @@ use cam_history, only : cam_history_snapshot_nhtfrq_set
 
    call cam_state_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num)
    call cam_cnst_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num)
+   call cam_tend_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num)
    call cam_out_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num)
 
 end subroutine cam_snapshot_init
+
+subroutine cam_snapshot_all_outfld(file_num, state, tend, cam_out)
+
+!--------------------------------------------------------
+! This subroutine does the outfld calls for ALL state, tend and pbuf fields.  It also includes the cam_in and cam_out
+! elements which are used within CAM
+!--------------------------------------------------------
+
+   integer,             intent(in) :: file_num
+   type(physics_state), intent(in) :: state
+   type(physics_tend),  intent(in) :: tend
+   type(cam_out_t),     intent(in) :: cam_out
+
+   integer :: i
+   integer :: lchnk
+
+   lchnk = state%lchnk
+
+   ! Write out all the state fields
+   call state_snapshot_all_outfld(lchnk, file_num, state)
+
+   ! Write out all the constituent fields
+   call cnst_snapshot_all_outfld(lchnk, file_num, state%q)
+
+   ! Write out all the tendency fields
+   call tend_snapshot_all_outfld(lchnk, file_num, tend)
+
+   ! Write out all the cam_out fields
+   call cam_out_snapshot_all_outfld(lchnk, file_num, cam_out)
+
+end subroutine cam_snapshot_all_outfld
+    
+subroutine cam_snapshot_deactivate()
+
+!--------------------------------------------------------
+! This subroutine deactivates the printing of the snapshot before and after files
+! Note - this needs to be done as add_default has been called to setup the proper 
+!        outputting of the requested fields. The outfld calls will only write
+!        one file at a time (using the same name in both files), hence the writing
+!        needs to be turned off for all fields, and will be turned on individaully
+!        when needed.
+!--------------------------------------------------------
+
+   integer :: i
+
+   do i=1,nstate_var
+      call cam_history_snapshot_deactivate(state_snapshot(i)%standard_name)
+   end do
+
+end subroutine cam_snapshot_deactivate
 
 
 subroutine cam_state_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num)
@@ -95,16 +148,16 @@ subroutine cam_state_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_n
      'state%t',         't_snapshot',          'K',     'lev')
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%u',         'u_snapshot',          'm/s',   'lev')
+     'state%u',         'u_snapshot',          'm s-1',   'lev')
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%v',         'v_snapshot',          'm/s',   'lev')
+     'state%v',         'v_snapshot',          'm s-1',   'lev')
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%s',         's_snapshot',          ' ',     'lev')
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%omega',     'omega_snapshot',      'Pa/s',  'lev')
+     'state%omega',     'omega_snapshot',      'Pa s-1',  'lev')
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%pmid',      'pmid_snapshot',       'Pa',    'lev')
@@ -168,7 +221,9 @@ end subroutine cam_state_snapshot_init
 subroutine cam_cnst_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num)
 
 !--------------------------------------------------------
-! This subroutine does the addfld calls for state, tend and pbuf fields.
+! This subroutine does the addfld calls for state, tend and pbuf fields., hence the writing
+!        needs to be turned off for all fields, and will be turned on individaully
+!        when needed.
 !--------------------------------------------------------
 
    use constituents, only: pcnst, cnst_name
@@ -189,6 +244,41 @@ subroutine cam_cnst_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_nu
    end do
 
 end subroutine cam_cnst_snapshot_init
+
+subroutine cam_tend_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num)
+
+!--------------------------------------------------------
+! This subroutine does the addfld calls for state, tend and pbuf fields.
+!--------------------------------------------------------
+
+   integer,intent(in) :: cam_snapshot_before_num, cam_snapshot_after_num
+   integer :: i
+    
+   ntend_var = 0
+
+   !--------------------------------------------------------
+   ! Add the state variables to the output
+   !--------------------------------------------------------
+
+   call snapshot_addfld( ntend_var, tend_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+     'tend%dtdt',        'dtdt_snapshot',         'K s-1',    'lev')
+
+   call snapshot_addfld( ntend_var, tend_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+     'tend%dudt',        'dudt_snapshot',         '',    'lev')
+
+   call snapshot_addfld( ntend_var, tend_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+     'tend%dvdt',        'dvdt_snapshot',         '',    'lev')
+
+   call snapshot_addfld( ntend_var, tend_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+     'tend%flx_net',        'flx_net_snapshot',   '',    'horiz_only')
+
+   call snapshot_addfld( ntend_var, tend_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+     'tend%te_tnd',        'te_tnd_snapshot',   '',    'horiz_only')
+
+   call snapshot_addfld( ntend_var, tend_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+     'tend%tw_tnd',        'tw_tnd_snapshot',   '',    'horiz_only')
+
+end subroutine cam_tend_snapshot_init
 
 subroutine cam_out_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num)
 
@@ -313,44 +403,6 @@ subroutine snapshot_addfld(nddt_var, ddt_snapshot, cam_snapshot_before_num, cam_
 
 
 end subroutine snapshot_addfld
-
-subroutine cam_snapshot_all_outfld(file_num, state, cam_out)
-
-
-!--------------------------------------------------------
-! This subroutine does the outfld calls for ALL state, tend and pbuf fields.  It also includes the cam_in and cam_out
-! elements which are used within CAM
-!--------------------------------------------------------
-
-   integer,             intent(in) :: file_num
-   type(physics_state), intent(in) :: state
-   type(cam_out_t),     intent(in) :: cam_out
-
-   integer :: i
-   integer :: lchnk
-
-   lchnk = state%lchnk
-
-   !--------------------------------------------------------
-   ! Write out all the state fields
-   !--------------------------------------------------------
-
-   call state_snapshot_all_outfld(lchnk, file_num, state)
-
-   !--------------------------------------------------------
-   ! Write out all the constituent fields
-   !--------------------------------------------------------
-
-   call cnst_snapshot_all_outfld(lchnk, file_num, state%q)
-
-   !--------------------------------------------------------
-   ! Write out all the cam_out fields
-   !--------------------------------------------------------
-
-   call cam_out_snapshot_all_outfld(lchnk, file_num, cam_out)
-
-end subroutine cam_snapshot_all_outfld
-
 
 subroutine state_snapshot_all_outfld(lchnk, file_num, state)
 
@@ -485,6 +537,53 @@ subroutine cnst_snapshot_all_outfld(lchnk, file_num, cnst)
 
 end subroutine cnst_snapshot_all_outfld
 
+subroutine tend_snapshot_all_outfld(lchnk, file_num, tend)
+
+   integer,             intent(in)  :: lchnk
+   integer,             intent(in)  :: file_num
+   type(physics_tend),  intent(in)  :: tend
+
+   integer :: i
+   integer :: ff
+   logical :: found
+
+   do i=1, ntend_var
+
+      ! Turn on the writing for only the requested tape (file_num)
+      call cam_history_snapshot_activate(trim(tend_snapshot(i)%standard_name), file_num)
+
+      ! Select the tend field which is being written
+      select case(tend_snapshot(i)%ddt_string)
+
+      case ('tend%dtdt')
+         call outfld(tend_snapshot(i)%standard_name, tend%dtdt, pcols, lchnk)
+
+      case ('tend%dudt')
+         call outfld(tend_snapshot(i)%standard_name, tend%dudt, pcols, lchnk)
+
+      case ('tend%dvdt')
+         call outfld(tend_snapshot(i)%standard_name, tend%dvdt, pcols, lchnk)
+
+      case ('tend%flx_net')
+         call outfld(tend_snapshot(i)%standard_name, tend%flx_net, pcols, lchnk)
+
+      case ('tend%te_tnd')
+         call outfld(tend_snapshot(i)%standard_name, tend%te_tnd, pcols, lchnk)
+
+      case ('tend%tw_tnd')
+         call outfld(tend_snapshot(i)%standard_name, tend%tw_tnd, pcols, lchnk)
+
+      case default
+         call endrun('ERROR in tend_snapshot_all_outfld: no match found for '//trim(tend_snapshot(i)%ddt_string))
+      
+      end select
+
+      call cam_history_snapshot_deactivate(trim(tend_snapshot(i)%standard_name))
+
+   end do
+
+end subroutine tend_snapshot_all_outfld
+
 subroutine cam_out_snapshot_all_outfld(lchnk, file_num, cam_out)
 
    integer,             intent(in)  :: lchnk
@@ -593,15 +692,5 @@ subroutine cam_out_snapshot_all_outfld(lchnk, file_num, cam_out)
    end do
 
 end subroutine cam_out_snapshot_all_outfld
-    
-subroutine cam_snapshot_deactivate()
-
-   integer :: i
-
-   do i=1,nstate_var
-      call cam_history_snapshot_deactivate(state_snapshot(i)%standard_name)
-   end do
-
-end subroutine cam_snapshot_deactivate
 
 end module cam_snapshot
