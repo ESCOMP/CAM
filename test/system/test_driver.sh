@@ -591,7 +591,7 @@ EOF
 
 # To lower number of nodes required for regression testing on izumi,
 # run CIME test suites sequentially after standalone regression tests
-if [ -n "${BATCH}" ||  !$run_cam_regression]; then
+if $run_cam_regression; then
    submit_script_cime="${submit_script}"
 fi
 ##^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ writing to batch script ^^^^^^^^^^^^^^^^^^^
