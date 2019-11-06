@@ -675,7 +675,7 @@ contains
   end subroutine phys_inidat
 
 
-  subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
+  subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_in, cam_out )
 
     !-----------------------------------------------------------------------
     !
@@ -752,6 +752,7 @@ contains
     type(physics_tend ), pointer       :: phys_tend(:)
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
+    type(cam_in_t), intent(in)         :: cam_in(begchunk:endchunk)
     type(cam_out_t),intent(inout)      :: cam_out(begchunk:endchunk)
 
     ! local variables
@@ -933,7 +934,7 @@ contains
     call qneg_init()
 
     ! Initialize qneg3 and qneg4
-    call cam_snapshot_init()
+    call cam_snapshot_init(cam_in, cam_out, begchunk)
 
   end subroutine phys_init
 
@@ -2016,7 +2017,7 @@ contains
     call t_stopf('carma_timestep_tend')
 
     call phys_getopts(cam_snapshot_before_num_out = cam_snapshot_before_num)
-    call cam_snapshot_all_outfld(cam_snapshot_before_num, state, tend, cam_out)
+    call cam_snapshot_all_outfld(cam_snapshot_before_num, state, tend, cam_in, cam_out)
 
     if( microp_scheme == 'RK' ) then
 
