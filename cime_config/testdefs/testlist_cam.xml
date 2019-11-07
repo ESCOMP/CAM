@@ -388,9 +388,9 @@
     </machines>
   </test>
 <!--              426                         -->
-  <test compset="QPC4" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s_wxnewyear">
+  <test compset="QPC4X" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s_newyear">
     <machines>
-      <machine name="izumi" compiler="nag" category="cam_test"/>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
   </test>
 <!--              430                         -->

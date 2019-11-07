@@ -105,6 +105,11 @@
   </compset>
 
   <compset>
+    <alias>QPC4X</alias>
+    <lname>2000_CAM40%WX_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
     <alias>QPC5</alias>
     <lname>2000_CAM50_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
   </compset>

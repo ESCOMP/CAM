@@ -10,7 +10,7 @@
    -->
     <desc atm="CAM60[%1PCT][%4xCO2][%CCTS][%CFIRE][%CVBSX][%PORT][%RCO2][%SCAM][%SDYN][%WCCM][%WCMD][%WCSC][%WCTS][%WXIE]">CAM cam6 physics:</desc>
     <desc atm="CAM50[%CCTS][%CLB][%PORT][%RCO2][%SCAM][%SDYN][%WCSC][%WCTS]"                                              >CAM cam5 physics:</desc>
-    <desc atm="CAM40[%PORT][%RCO2][%SCAM][%SDYN][%TMOZ][%WXIE][%WXIED][%WCMD]"                                            >CAM cam4 physics:</desc>
+    <desc atm="CAM40[%PORT][%RCO2][%SCAM][%SDYN][%TMOZ][%WX][%WXIE][%WXIED][%WCMD]"                                            >CAM cam4 physics:</desc>
     <desc atm="CAM30"                                                                                                     >CAM cam3 physics:</desc>
     <desc atm="CAM[%ADIAB][%DABIP04][%TJ16][%HS94][%KESSLER][%RCO2][%SPCAMS][%SPCAMCLBS][%SPCAMM][%SPCAMCLBM]"            >CAM simplified and non-versioned physics :</desc>
 
