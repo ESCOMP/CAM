@@ -170,6 +170,7 @@ end subroutine dyn_register
 
 subroutine dyn_init(dyn_in, dyn_out)
 
+   use dyn_grid, only : nCellsSolve, nVertLevelsSolve
 
    ! arguments:
    type(dyn_import_t), intent(out)  :: dyn_in
@@ -179,6 +180,38 @@ subroutine dyn_init(dyn_in, dyn_out)
    !----------------------------------------------------------------------------
 
    MPAS_DEBUG_WRITE(0, 'begin '//subname)
+
+   !
+   ! Allocate dynamics import state
+   !
+   allocate(dyn_in % phis(nCellsSolve))
+   allocate(dyn_in % psd(nCellsSolve))
+   allocate(dyn_in % uvperp(nCellsSolve,6,nVertLevelsSolve))   ! Fix hard-wired value
+   allocate(dyn_in % ux(nCellsSolve,nVertLevelsSolve))
+   allocate(dyn_in % uy(nCellsSolve,nVertLevelsSolve))
+   allocate(dyn_in % t(nCellsSolve,nVertLevelsSolve))
+   allocate(dyn_in % omega(nCellsSolve,nVertLevelsSolve+1))
+   allocate(dyn_in % tracer(nCellsSolve,nVertLevelsSolve,10))   ! Fix hard-wired value
+   allocate(dyn_in % ux_tend(nCellsSolve,nVertLevelsSolve))
+   allocate(dyn_in % uy_tend(nCellsSolve,nVertLevelsSolve))
+   allocate(dyn_in % t_tend(nCellsSolve,nVertLevelsSolve))
+
+   !
+   ! Allocate dynamics export state
+   !
+   allocate(dyn_out % phis(nCellsSolve))
+   allocate(dyn_out % psd(nCellsSolve))
+   allocate(dyn_out % pint(nCellsSolve,nVertLevelsSolve+1))
+   allocate(dyn_out % pmid(nCellsSolve,nVertLevelsSolve))
+   allocate(dyn_out % zint(nCellsSolve,nVertLevelsSolve+1))
+   allocate(dyn_out % zmid(nCellsSolve,nVertLevelsSolve))
+   allocate(dyn_out % uvperp(nCellsSolve,6,nVertLevelsSolve))   ! Fix hard-wired value
+   allocate(dyn_out % ux(nCellsSolve,nVertLevelsSolve))
+   allocate(dyn_out % uy(nCellsSolve,nVertLevelsSolve))
+   allocate(dyn_out % t(nCellsSolve,nVertLevelsSolve))
+   allocate(dyn_out % omega(nCellsSolve,nVertLevelsSolve+1))
+   allocate(dyn_out % tracer(nCellsSolve,nVertLevelsSolve,10))   ! Fix hard-wired value
+   allocate(dyn_out % pressure(nCellsSolve,nVertLevelsSolve))
 
    call read_phis(dyn_in)
 
@@ -219,6 +252,38 @@ subroutine dyn_final(dyn_in, dyn_out)
 
    character(len=*), parameter :: subname = 'dyn_comp::dyn_final'
    !----------------------------------------------------------------------------
+
+   !
+   ! Deallocate dynamics import state
+   !
+   deallocate(dyn_in % phis)
+   deallocate(dyn_in % psd)
+   deallocate(dyn_in % uvperp)
+   deallocate(dyn_in % ux)
+   deallocate(dyn_in % uy)
+   deallocate(dyn_in % t)
+   deallocate(dyn_in % omega)
+   deallocate(dyn_in % tracer)
+   deallocate(dyn_in % ux_tend)
+   deallocate(dyn_in % uy_tend)
+   deallocate(dyn_in % t_tend)
+
+   !
+   ! Deallocate dynamics export state
+   !
+   deallocate(dyn_out % phis)
+   deallocate(dyn_out % psd)
+   deallocate(dyn_out % pint)
+   deallocate(dyn_out % pmid)
+   deallocate(dyn_out % zint)
+   deallocate(dyn_out % zmid)
+   deallocate(dyn_out % uvperp)
+   deallocate(dyn_out % ux)
+   deallocate(dyn_out % uy)
+   deallocate(dyn_out % t)
+   deallocate(dyn_out % omega)
+   deallocate(dyn_out % tracer)
+   deallocate(dyn_out % pressure)
 
 end subroutine dyn_final
 

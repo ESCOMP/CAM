@@ -91,6 +91,11 @@ real(r8), dimension(:), pointer :: lonCell               ! global cell longitude
 real(r8), dimension(:), pointer :: latCell               ! global cell latitudes
 real(r8), dimension(:), pointer :: areaCell              ! global cell areas
 
+integer, pointer, public :: nCellsSolve, &
+                            nEdgesSolve, &
+                            nVerticesSolve, &
+                            nVertLevelsSolve
+
 !=========================================================================================
 contains
 !=========================================================================================
@@ -817,7 +822,6 @@ subroutine define_cam_grids()
    integer(iMap),       pointer     :: grid_map(:,:)
 
    type(mpas_pool_type),   pointer :: meshPool
-   integer,                pointer :: nCellsSolve
    integer,  dimension(:), pointer :: indexToCellID
    real(r8), dimension(:), pointer :: latCell
    real(r8), dimension(:), pointer :: lonCell
@@ -830,6 +834,9 @@ subroutine define_cam_grids()
  
    call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'mesh', meshPool)
    call mpas_pool_get_dimension(meshPool, 'nCellsSolve', nCellsSolve)
+   call mpas_pool_get_dimension(meshPool, 'nEdgesSolve', nEdgesSolve)
+   call mpas_pool_get_dimension(meshPool, 'nVerticesSolve', nVerticesSolve)
+   call mpas_pool_get_dimension(meshPool, 'nVertLevels', nVertLevelsSolve)   ! MPAS always solves over the full column
    call mpas_pool_get_array(meshPool, 'indexToCellID', indexToCellID)
    call mpas_pool_get_array(meshPool, 'latCell', latCell)
    call mpas_pool_get_array(meshPool, 'lonCell', lonCell)
@@ -855,7 +862,7 @@ subroutine define_cam_grids()
    call cam_grid_register('mpas_cell', dyn_decomp, lat_coord, lon_coord,     &
           grid_map, block_indexed=.false., unstruct=.true., src_in=[1,0])
    call cam_grid_attribute_register('mpas_cell', 'area', 'cell areas',  &
-          'ncol', areaCell/6371229.0_r8**2.0_r8, coord_map)
+          'ncol', areaCell/6371229.0_r8**2.0_r8, coord_map)    ! MGD Should we pass areaCell(1:nCellsSolve) instead?
 
    ! grid_map cannot be deallocated as the cam_filemap_t object just points
    ! to it.  It can be nullified.

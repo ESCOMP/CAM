@@ -61,12 +61,147 @@ contains
 !-----------------------------------------------------------------------
 subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
 
+   use dyn_grid, only : nCellsSolve, nVertLevelsSolve
+
    type(physics_state),       intent(inout) :: phys_state(begchunk:endchunk)
    type(physics_tend ),       intent(inout) :: phys_tend(begchunk:endchunk)
    type(dyn_export_t),        intent(inout) :: dyn_out
    type(physics_buffer_desc), pointer       :: pbuf2d(:,:)
 
    ! LOCAL VARIABLES
+   real(r8), parameter, dimension(32) :: pmid_ref = [    370.0507, &
+                772.0267, &
+               1460.0401, &
+               2456.1190, &
+               3510.4428, &
+               4394.9775, &
+               5258.6650, &
+               6260.5462, &
+               7505.1291, &
+               8937.0345, &
+              10513.9623, &
+              12368.9543, &
+              14551.4143, &
+              17119.0922, &
+              20139.5649, &
+              23688.5536, &
+              27855.9967, &
+              32754.2135, &
+              38514.6948, &
+              45288.6443, &
+              53254.6026, &
+              61865.3664, &
+              70121.4348, &
+              77405.1773, &
+              83215.3208, &
+              87125.5307, &
+              89903.9705, &
+              92494.3081, &
+              94874.9828, &
+              97027.0667, &
+              98931.3386, &
+             100572.0510 ]
+
+   real(r8), parameter, dimension(33) :: pint_ref = [  228.8976, &
+              511.2039, &
+             1032.8496, &
+             1887.2306, &
+             3025.0074, &
+             3995.8781, &
+             4794.0770, &
+             5723.2531, &
+             6797.8393, &
+             8212.4188, &
+             9661.6502, &
+            11366.2745, &
+            13371.6342, &
+            15731.1944, &
+            18506.9901, &
+            21772.1397, &
+            25604.9675, &
+            30107.0258, &
+            35401.4011, &
+            41627.9885, &
+            48949.3000, &
+            57559.9052, &
+            66170.8275, &
+            74072.0421, &
+            80738.3125, &
+            85692.3292, &
+            88558.7323, &
+            91249.2088, &
+            93739.4075, &
+            96010.5582, &
+            98043.5752, &
+            99819.1020, &
+            101325.0000 ]
+
+   real(r8), parameter, dimension(32) :: zmid_ref = [ 38524.2527, &
+             33230.5418, &
+             28850.1087, &
+             25327.9309, &
+             22900.7199, &
+             21425.0307, &
+             20281.2855, &
+             19173.2056, &
+             18028.1748, &
+             16913.4272, &
+             15882.8868, &
+             14852.4477, &
+             13821.9328, &
+             12791.3613, &
+             11760.8767, &
+             10726.9401, &
+              9674.2358, &
+              8589.4962, &
+              7470.6318, &
+              6316.6734, &
+              5126.5126, &
+              3987.1676, &
+              3008.7228, &
+              2220.0977, &
+              1632.9889, &
+              1256.2718, &
+               998.0675, &
+               763.0978, &
+               551.8000, &
+               364.4534, &
+               201.4641, &
+                63.0587 ]
+
+   real(r8), parameter, dimension(33) :: zint_ref = [ 41426.9190, &
+             35621.5865, &
+             30839.4971, &
+             26860.7204, &
+             23795.1414, &
+             22006.2985, &
+             20843.7630, &
+             19718.8080, &
+             18627.6033, &
+             17428.7463, &
+             16398.1081, &
+             15367.6655, &
+             14337.2299, &
+             13306.6357, &
+             12276.0870, &
+             11245.6664, &
+             10208.2138, &
+              9140.2578, &
+              8038.7346, &
+              6902.5289, &
+              5730.8179, &
+              4522.2073, &
+              3452.1278, &
+              2565.3178, &
+              1874.8775, &
+              1391.1003, &
+              1121.4432, &
+               874.6918, &
+               651.5038, &
+               452.0961, &
+               276.8108, &
+               126.1175, &
+                 0.0000 ]
 
    ! Variables from dynamics export container
    real(r8), pointer :: phis(:)
@@ -108,6 +243,33 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    omega => dyn_out%omega
    tracer => dyn_out%tracer
 
+   !
+   ! For testing, set dynamics export state based on reference sounding...
+   !
+   phis(:) = 0.0
+   psd(:) = 101325.0
+   ux(:,:) = 0.0
+   uy(:,:) = 0.0
+   omega(:,:) = 0.0
+   tracer(:,:,:) = 0.0
+   do k=1,nVertLevelsSolve
+   do icol=1,nCellsSolve
+      pmid(icol,k) = pmid_ref(k)
+      zmid(icol,k) = zmid_ref(k)
+   end do
+   end do
+
+   do k=1,nVertLevelsSolve+1
+   do icol=1,nCellsSolve
+      pint(icol,k) = pint_ref(k)
+      zint(icol,k) = zint_ref(k)
+   end do
+   end do
+
+   do k=1,nVertLevelsSolve
+      temp(:,k) = (zint_ref(k+1) - zint_ref(k)) * 9.806 / 287.0 / log(pint_ref(k) / pint_ref(k+1))
+   end do
+
    ! Note: Omega is dimensioned plev+1, but this interface transmits only the first plev levels.
    !    call mpas_to_cam(numcols, pver, pcnst, psd, phis, pint(:,pverp:1:-1), pmid(:,pver:1:-1), &
    !                     zint(:,pverp:1:-1), zmid(:,pver:1:-1), &
@@ -131,7 +293,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
             phys_state(lchnk)%phis(icol)=phis(i)
 
             do k = 1, pver
-               phys_state(lchnk)%t(icol,k)=temp(i,k)	   
+               phys_state(lchnk)%t(icol,k)=temp(i,k)  
                phys_state(lchnk)%u(icol,k)=ux(i,k)
                phys_state(lchnk)%v(icol,k)=uy(i,k)
                phys_state(lchnk)%omega(icol,k)=omega(i,k)
@@ -157,9 +319,11 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
 
    else  ! .not. local_dp_map
 
-      tsize = 4 + pcnst
-      allocate(bbuffer(tsize*block_buf_nrecs))
-      allocate(cbuffer(tsize*chunk_buf_nrecs))
+      tsize = 8 + pcnst
+      allocate(bbuffer(tsize*block_buf_nrecs))    ! block buffer
+      bbuffer = 0.0_r8
+      allocate(cbuffer(tsize*chunk_buf_nrecs))    ! chunk buffer
+      cbuffer = 0.0_r8
 
       !$omp parallel do private (nb, nblk, ncols, icol, ig, i, k, m, bpter)
       do nb = 1, nblocks_per_pe
@@ -172,8 +336,6 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
             ig = col_indices_in_block(icol,nblk)   !  global column index
             i = global_to_local_cell(ig)           !  local (to process) column index
 
-            bbuffer(bpter(icol,0)+2:bpter(icol,0)+3+pcnst) = 0.0_r8
-
             bbuffer(bpter(icol,0))   = psd(i)
             bbuffer(bpter(icol,0)+1) = phis(i)
 
@@ -182,10 +344,17 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
                bbuffer(bpter(icol,k)+1) = ux(i,k)
                bbuffer(bpter(icol,k)+2) = uy(i,k)
                bbuffer(bpter(icol,k)+3) = omega(i,k)
+               bbuffer(bpter(icol,k)+4) = pmid(i,k)
+               bbuffer(bpter(icol,k)+5) = zmid(i,k)
 
                do m=1,pcnst
-                  bbuffer(bpter(icol,k)+3+m) = tracer(i,k,m)
+                  bbuffer(bpter(icol,k)+5+m) = tracer(i,k,m)
                end do
+            end do
+
+            do k=0,pver
+               bbuffer(bpter(icol,k)+6+pcnst) = pint(i,k+1)
+               bbuffer(bpter(icol,k)+7+pcnst) = zint(i,k+1)
             end do
 
          end do
@@ -210,15 +379,22 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
 
             do k=1,pver
 
-               phys_state(lchnk)%t     (icol,k)   = cbuffer(cpter(icol,k))
-               phys_state(lchnk)%u     (icol,k)   = cbuffer(cpter(icol,k)+1)
-               phys_state(lchnk)%v     (icol,k)   = cbuffer(cpter(icol,k)+2)
-               phys_state(lchnk)%omega (icol,k)   = cbuffer(cpter(icol,k)+3)
+               phys_state(lchnk)%t      (icol,k)  = cbuffer(cpter(icol,k))
+               phys_state(lchnk)%u      (icol,k)  = cbuffer(cpter(icol,k)+1)
+               phys_state(lchnk)%v      (icol,k)  = cbuffer(cpter(icol,k)+2)
+               phys_state(lchnk)%omega  (icol,k)  = cbuffer(cpter(icol,k)+3)
+               phys_state(lchnk)%pmiddry(icol,k)  = cbuffer(cpter(icol,k)+4)
+               phys_state(lchnk)%zm     (icol,k)  = cbuffer(cpter(icol,k)+5)
 
                do m=1,pcnst
-                  phys_state(lchnk)%q  (icol,k,m) = cbuffer(cpter(icol,k)+3+m)
+                  phys_state(lchnk)%q  (icol,k,m) = cbuffer(cpter(icol,k)+5+m)
                end do
 
+            end do
+
+            do k=0,pver
+               phys_state(lchnk)%pintdry(icol,k+1) = cbuffer(cpter(icol,k)+6+pcnst)
+               phys_state(lchnk)%zi     (icol,k+1) = cbuffer(cpter(icol,k)+7+pcnst)
             end do
 
          end do
@@ -530,14 +706,14 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
 !
 
       ! Convert dry type constituents from moist to dry mixing ratio
-      call set_state_pdry(phys_state(lchnk))	 ! First get dry pressure to use for this timestep
+      call set_state_pdry(phys_state(lchnk))    ! First get dry pressure to use for this timestep
       call set_wet_to_dry(phys_state(lchnk))    ! Dynamics had moist, physics wants dry.
 
       ! Compute energy and water integrals of input state
       pbuf_chnk => pbuf_get_chunk(pbuf2d, lchnk)
       call check_energy_timestep_init(phys_state(lchnk), phys_tend(lchnk), pbuf_chnk)
 
-	
+
 #if 0
       ke(:,lchnk) = 0._r8
       se(:,lchnk) = 0._r8
