@@ -238,9 +238,9 @@
 
 <!--              CAM Stand alone                          -->
 <!--              111 tsm, ter, tbr, tbl                              -->
-  <test compset="QPC5" grid="T5_T5_mg37" name="ERI_D_Ld9" testmods="cam/ghgrmp_e8">
+  <test compset="QPC5" grid="T5_T5_mg37" name="ERI_D_Ln18" testmods="cam/ghgrmp_e8">
     <machines>
-      <machine name="izumi" compiler="nag" category="cam_test"/>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
   </test>
 <!--              111 tmc                                             -->
