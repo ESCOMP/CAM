@@ -387,6 +387,12 @@
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
   </test>
+<!--              381                         -->
+  <test compset="QPHISTC6" grid="f09_f09_mg17" name="SMS_P48x1_D_Ln3" testmods="cam/outfrq3s">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+    </machines>
+  </test>
 <!--              426                         -->
   <test compset="QPC4X" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s_newyear">
     <machines>
