@@ -171,47 +171,56 @@ end subroutine dyn_register
 subroutine dyn_init(dyn_in, dyn_out)
 
    use dyn_grid, only : nCellsSolve, nVertLevelsSolve
+   use cam_mpas_subdriver, only : domain_ptr
+   use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_array
+   use mpas_derived_types, only : mpas_pool_type
 
    ! arguments:
    type(dyn_import_t), intent(out)  :: dyn_in
    type(dyn_export_t), intent(out)  :: dyn_out
 
    character(len=*), parameter :: subname = 'dyn_comp::dyn_init'
+
+   type(mpas_pool_type), pointer :: dyn_inPool
+   type(mpas_pool_type), pointer :: dyn_outPool
+
    !----------------------------------------------------------------------------
 
    MPAS_DEBUG_WRITE(0, 'begin '//subname)
 
-   !
-   ! Allocate dynamics import state
-   !
-   allocate(dyn_in % phis(nCellsSolve))
-   allocate(dyn_in % psd(nCellsSolve))
-   allocate(dyn_in % uvperp(nCellsSolve,6,nVertLevelsSolve))   ! Fix hard-wired value
-   allocate(dyn_in % ux(nCellsSolve,nVertLevelsSolve))
-   allocate(dyn_in % uy(nCellsSolve,nVertLevelsSolve))
-   allocate(dyn_in % t(nCellsSolve,nVertLevelsSolve))
-   allocate(dyn_in % omega(nCellsSolve,nVertLevelsSolve+1))
-   allocate(dyn_in % tracer(nCellsSolve,nVertLevelsSolve,10))   ! Fix hard-wired value
-   allocate(dyn_in % ux_tend(nCellsSolve,nVertLevelsSolve))
-   allocate(dyn_in % uy_tend(nCellsSolve,nVertLevelsSolve))
-   allocate(dyn_in % t_tend(nCellsSolve,nVertLevelsSolve))
+   call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'dyn_in', dyn_inPool)
+   call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'dyn_out', dyn_outPool)
+
 
    !
-   ! Allocate dynamics export state
+   ! Let dynamics import state point to memory managed by MPAS-Atmosphere
    !
-   allocate(dyn_out % phis(nCellsSolve))
-   allocate(dyn_out % psd(nCellsSolve))
-   allocate(dyn_out % pint(nCellsSolve,nVertLevelsSolve+1))
-   allocate(dyn_out % pmid(nCellsSolve,nVertLevelsSolve))
-   allocate(dyn_out % zint(nCellsSolve,nVertLevelsSolve+1))
-   allocate(dyn_out % zmid(nCellsSolve,nVertLevelsSolve))
-   allocate(dyn_out % uvperp(nCellsSolve,6,nVertLevelsSolve))   ! Fix hard-wired value
-   allocate(dyn_out % ux(nCellsSolve,nVertLevelsSolve))
-   allocate(dyn_out % uy(nCellsSolve,nVertLevelsSolve))
-   allocate(dyn_out % t(nCellsSolve,nVertLevelsSolve))
-   allocate(dyn_out % omega(nCellsSolve,nVertLevelsSolve+1))
-   allocate(dyn_out % tracer(nCellsSolve,nVertLevelsSolve,10))   ! Fix hard-wired value
-   allocate(dyn_out % pressure(nCellsSolve,nVertLevelsSolve))
+   call mpas_pool_get_array(dyn_inPool, 'phis', dyn_in % phis)
+   call mpas_pool_get_array(dyn_inPool, 'psd', dyn_in % psd)
+   call mpas_pool_get_array(dyn_inPool, 'ux', dyn_in % ux)
+   call mpas_pool_get_array(dyn_inPool, 'uy', dyn_in % uy)
+   call mpas_pool_get_array(dyn_inPool, 't', dyn_in % t)
+   call mpas_pool_get_array(dyn_inPool, 'omega', dyn_in % omega)
+   call mpas_pool_get_array(dyn_inPool, 'tracer', dyn_in % tracer)
+   call mpas_pool_get_array(dyn_inPool, 'ux_tend', dyn_in % ux_tend)
+   call mpas_pool_get_array(dyn_inPool, 'uy_tend', dyn_in % uy_tend)
+   call mpas_pool_get_array(dyn_inPool, 't_tend', dyn_in % t_tend)
+
+   !
+   ! Let dynamics export state point to memory managed by MPAS-Atmosphere
+   !
+   call mpas_pool_get_array(dyn_outPool, 'phis', dyn_out % phis)
+   call mpas_pool_get_array(dyn_outPool, 'psd', dyn_out % psd)
+   call mpas_pool_get_array(dyn_outPool, 'pint', dyn_out % pint)
+   call mpas_pool_get_array(dyn_outPool, 'pmid', dyn_out % pmid)
+   call mpas_pool_get_array(dyn_outPool, 'zint', dyn_out % zint)
+   call mpas_pool_get_array(dyn_outPool, 'zmid', dyn_out % zmid)
+   call mpas_pool_get_array(dyn_outPool, 'ux', dyn_out % ux)
+   call mpas_pool_get_array(dyn_outPool, 'uy', dyn_out % uy)
+   call mpas_pool_get_array(dyn_outPool, 't', dyn_out % t)
+   call mpas_pool_get_array(dyn_outPool, 'omega', dyn_out % omega)
+   call mpas_pool_get_array(dyn_outPool, 'tracer', dyn_out % tracer)
+   call mpas_pool_get_array(dyn_outPool, 'pressure', dyn_out % pressure)
 
    call read_phis(dyn_in)
 
@@ -254,36 +263,34 @@ subroutine dyn_final(dyn_in, dyn_out)
    !----------------------------------------------------------------------------
 
    !
-   ! Deallocate dynamics import state
+   ! Prevent any further access to MPAS-Atmosphere memory
    !
-   deallocate(dyn_in % phis)
-   deallocate(dyn_in % psd)
-   deallocate(dyn_in % uvperp)
-   deallocate(dyn_in % ux)
-   deallocate(dyn_in % uy)
-   deallocate(dyn_in % t)
-   deallocate(dyn_in % omega)
-   deallocate(dyn_in % tracer)
-   deallocate(dyn_in % ux_tend)
-   deallocate(dyn_in % uy_tend)
-   deallocate(dyn_in % t_tend)
+   nullify(dyn_in % phis)
+   nullify(dyn_in % psd)
+   nullify(dyn_in % ux)
+   nullify(dyn_in % uy)
+   nullify(dyn_in % t)
+   nullify(dyn_in % omega)
+   nullify(dyn_in % tracer)
+   nullify(dyn_in % ux_tend)
+   nullify(dyn_in % uy_tend)
+   nullify(dyn_in % t_tend)
 
    !
-   ! Deallocate dynamics export state
+   ! Prevent any further access to MPAS-Atmosphere memory
    !
-   deallocate(dyn_out % phis)
-   deallocate(dyn_out % psd)
-   deallocate(dyn_out % pint)
-   deallocate(dyn_out % pmid)
-   deallocate(dyn_out % zint)
-   deallocate(dyn_out % zmid)
-   deallocate(dyn_out % uvperp)
-   deallocate(dyn_out % ux)
-   deallocate(dyn_out % uy)
-   deallocate(dyn_out % t)
-   deallocate(dyn_out % omega)
-   deallocate(dyn_out % tracer)
-   deallocate(dyn_out % pressure)
+   nullify(dyn_out % phis)
+   nullify(dyn_out % psd)
+   nullify(dyn_out % pint)
+   nullify(dyn_out % pmid)
+   nullify(dyn_out % zint)
+   nullify(dyn_out % zmid)
+   nullify(dyn_out % ux)
+   nullify(dyn_out % uy)
+   nullify(dyn_out % t)
+   nullify(dyn_out % omega)
+   nullify(dyn_out % tracer)
+   nullify(dyn_out % pressure)
 
 end subroutine dyn_final
 

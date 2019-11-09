@@ -254,20 +254,20 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    tracer(:,:,:) = 0.0
    do k=1,nVertLevelsSolve
    do icol=1,nCellsSolve
-      pmid(icol,k) = pmid_ref(k)
-      zmid(icol,k) = zmid_ref(k)
+      pmid(k,icol) = pmid_ref(k)
+      zmid(k,icol) = zmid_ref(k)
    end do
    end do
 
    do k=1,nVertLevelsSolve+1
    do icol=1,nCellsSolve
-      pint(icol,k) = pint_ref(k)
-      zint(icol,k) = zint_ref(k)
+      pint(k,icol) = pint_ref(k)
+      zint(k,icol) = zint_ref(k)
    end do
    end do
 
    do k=1,nVertLevelsSolve
-      temp(:,k) = (zint_ref(k+1) - zint_ref(k)) * 9.806 / 287.0 / log(pint_ref(k) / pint_ref(k+1))
+      temp(k,:) = (zint_ref(k+1) - zint_ref(k)) * 9.806 / 287.0 / log(pint_ref(k) / pint_ref(k+1))
    end do
 
    ! Note: Omega is dimensioned plev+1, but this interface transmits only the first plev levels.
@@ -275,7 +275,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    !                     zint(:,pverp:1:-1), zmid(:,pver:1:-1), &
    !                     temp(:,plev:1:-1), ux(:,plev:1:-1), uy(:,plev:1:-1), &
    !                     omega(:,plev:1:-1), tracer(:,plev:1:-1,:)) 
-   omega(:,plev+1) = 0._r8
+   omega(plev+1,:) = 0._r8
 
    call t_startf('dpcopy')
    if (local_dp_map) then
@@ -293,24 +293,24 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
             phys_state(lchnk)%phis(icol)=phis(i)
 
             do k = 1, pver
-               phys_state(lchnk)%t(icol,k)=temp(i,k)  
-               phys_state(lchnk)%u(icol,k)=ux(i,k)
-               phys_state(lchnk)%v(icol,k)=uy(i,k)
-               phys_state(lchnk)%omega(icol,k)=omega(i,k)
-               phys_state(lchnk)%pintdry(icol,k)=pint(i,k)
-               phys_state(lchnk)%pmiddry(icol,k)=pmid(i,k)
-               !phys_state(lchnk)%pint(icol,k)=pint(i,k)
-               !phys_state(lchnk)%pmid(icol,k)=pmid(i,k)
-               phys_state(lchnk)%zi(icol,k)=zint(i,k)
-               phys_state(lchnk)%zm(icol,k)=zmid(i,k)
+               phys_state(lchnk)%t(icol,k)=temp(k,i)  
+               phys_state(lchnk)%u(icol,k)=ux(k,i)
+               phys_state(lchnk)%v(icol,k)=uy(k,i)
+               phys_state(lchnk)%omega(icol,k)=omega(k,i)
+               phys_state(lchnk)%pintdry(icol,k)=pint(k,i)
+               phys_state(lchnk)%pmiddry(icol,k)=pmid(k,i)
+               !phys_state(lchnk)%pint(icol,k)=pint(k,i)
+               !phys_state(lchnk)%pmid(icol,k)=pmid(k,i)
+               phys_state(lchnk)%zi(icol,k)=zint(k,i)
+               phys_state(lchnk)%zm(icol,k)=zmid(k,i)
             end do
-            phys_state(lchnk)%pintdry(icol,pverp)=pint(i,pverp)
-            !phys_state(lchnk)%pint(icol,pverp)=pint(i,pverp)
-            phys_state(lchnk)%zi(icol,pverp)=zint(i,pverp)
+            phys_state(lchnk)%pintdry(icol,pverp)=pint(pverp,i)
+            !phys_state(lchnk)%pint(icol,pverp)=pint(pverp,i)
+            phys_state(lchnk)%zi(icol,pverp)=zint(pverp,i)
 
             do m=1,pcnst
                do k=1,pver
-                  phys_state(lchnk)%q(icol,k,m)=tracer(i,k,m)
+                  phys_state(lchnk)%q(icol,k,m)=tracer(m,k,i)
                end do
             end do
          end do
@@ -340,21 +340,21 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
             bbuffer(bpter(icol,0)+1) = phis(i)
 
             do k=1,pver
-               bbuffer(bpter(icol,k))   = temp(i,k)
-               bbuffer(bpter(icol,k)+1) = ux(i,k)
-               bbuffer(bpter(icol,k)+2) = uy(i,k)
-               bbuffer(bpter(icol,k)+3) = omega(i,k)
-               bbuffer(bpter(icol,k)+4) = pmid(i,k)
-               bbuffer(bpter(icol,k)+5) = zmid(i,k)
+               bbuffer(bpter(icol,k))   = temp(k,i)
+               bbuffer(bpter(icol,k)+1) = ux(k,i)
+               bbuffer(bpter(icol,k)+2) = uy(k,i)
+               bbuffer(bpter(icol,k)+3) = omega(k,i)
+               bbuffer(bpter(icol,k)+4) = pmid(k,i)
+               bbuffer(bpter(icol,k)+5) = zmid(k,i)
 
                do m=1,pcnst
-                  bbuffer(bpter(icol,k)+5+m) = tracer(i,k,m)
+                  bbuffer(bpter(icol,k)+5+m) = tracer(m,k,i)
                end do
             end do
 
             do k=0,pver
-               bbuffer(bpter(icol,k)+6+pcnst) = pint(i,k+1)
-               bbuffer(bpter(icol,k)+7+pcnst) = zint(i,k+1)
+               bbuffer(bpter(icol,k)+6+pcnst) = pint(k+1,i)
+               bbuffer(bpter(icol,k)+7+pcnst) = zint(k+1,i)
             end do
 
          end do
@@ -472,11 +472,11 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
             i = global_to_local_cell(pgcols(icol))        ! local (to process) column index
 
             do k=1,pver
-               temp_tend(i,k) = phys_tend(lchnk)%dtdt(icol,k)
-               ux_tend(i,k)   = phys_tend(lchnk)%dudt(icol,k)
-               uy_tend(i,k)   = phys_tend(lchnk)%dvdt(icol,k)
+               temp_tend(k,i) = phys_tend(lchnk)%dtdt(icol,k)
+               ux_tend(k,i)   = phys_tend(lchnk)%dudt(icol,k)
+               uy_tend(k,i)   = phys_tend(lchnk)%dvdt(icol,k)
                do m=1,pcnst
-                  tracer(i,k,m) = phys_state(lchnk)%q(icol,k,m)
+                  tracer(m,k,i) = phys_state(lchnk)%q(icol,k,m)
                end do
             end do
 
@@ -535,12 +535,12 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
 
             do k=1,pver
 
-               temp_tend(i,k) = bbuffer(bpter(icol,k))
-               ux_tend  (i,k) = bbuffer(bpter(icol,k)+1)
-               uy_tend  (i,k) = bbuffer(bpter(icol,k)+2)
+               temp_tend(k,i) = bbuffer(bpter(icol,k))
+               ux_tend  (k,i) = bbuffer(bpter(icol,k)+1)
+               uy_tend  (k,i) = bbuffer(bpter(icol,k)+2)
 
                do m=1,pcnst
-                  tracer(i,k,m) = bbuffer(bpter(icol,k)+2+m)
+                  tracer(m,k,i) = bbuffer(bpter(icol,k)+2+m)
                end do
 
             end do
