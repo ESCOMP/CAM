@@ -54,6 +54,8 @@ module physpkg
   character(len=16) :: microp_scheme
   character(len=16) :: subcol_scheme
   integer           :: cld_macmic_num_steps    ! Number of macro/micro substeps
+  integer           :: cam_snapshot_before_num ! tape number for before snapshots
+  integer           :: cam_snapshot_after_num  ! tape number for after snapshots
   logical           :: do_clubb_sgs
   logical           :: use_subcol_microp   ! if true, use subcolumns in microphysics
   logical           :: state_debug_checks  ! Debug physics_state.
@@ -155,13 +157,15 @@ contains
     !-----------------------------------------------------------------------
 
     ! Get physics options
-    call phys_getopts(shallow_scheme_out       = shallow_scheme, &
-                      macrop_scheme_out        = macrop_scheme,   &
-                      microp_scheme_out        = microp_scheme,   &
-                      cld_macmic_num_steps_out = cld_macmic_num_steps, &
-                      do_clubb_sgs_out         = do_clubb_sgs,     &
-                      use_subcol_microp_out    = use_subcol_microp, &
-                      state_debug_checks_out   = state_debug_checks)
+    call phys_getopts(shallow_scheme_out          = shallow_scheme, &
+                      macrop_scheme_out           = macrop_scheme,   &
+                      microp_scheme_out           = microp_scheme,   &
+                      cld_macmic_num_steps_out    = cld_macmic_num_steps, &
+                      do_clubb_sgs_out            = do_clubb_sgs,     &
+                      use_subcol_microp_out       = use_subcol_microp, &
+                      state_debug_checks_out      = state_debug_checks, &
+                      cam_snapshot_before_num_out = cam_snapshot_before_num, &
+                      cam_snapshot_after_num_out  = cam_snapshot_after_num)
 
     subcol_scheme = subcol_get_scheme()
 
@@ -935,7 +939,7 @@ contains
     ! Initialize qneg3 and qneg4
     call qneg_init()
 
-    ! Initialize qneg3 and qneg4
+    ! Initialize the snapshot capability
     call cam_snapshot_init(cam_in, cam_out, pbuf2d, begchunk)
 
   end subroutine phys_init
@@ -1807,7 +1811,6 @@ contains
     real(r8) :: zero_tracers(pcols,pcnst)
 
     logical   :: lq(pcnst)
-    integer   :: cam_snapshot_before_num, cam_snapshot_after_num
 
     !-----------------------------------------------------------------------
 
@@ -2018,7 +2021,6 @@ contains
 
     call t_stopf('carma_timestep_tend')
 
-    call phys_getopts(cam_snapshot_before_num_out = cam_snapshot_before_num)
     call cam_snapshot_all_outfld(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf)
 
     if( microp_scheme == 'RK' ) then
