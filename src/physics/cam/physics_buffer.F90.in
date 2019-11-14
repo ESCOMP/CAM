@@ -141,6 +141,10 @@ module physics_buffer
   ! For help debugging code
   public :: pbuf_dump_pbuf
 
+  ! For snapshot use
+  public :: pbuf_get_dim_strings
+  public :: hist_cam_snapshot_register
+
    integer, public :: dyn_time_lvls  ! number of time levels in physics buffer (dycore dependent)
 
 
@@ -1710,5 +1714,77 @@ end subroutine pbuf_readnl
       end do
     end do
   end subroutine pbuf_dump_pbuf
+
+subroutine hist_cam_snapshot_register()
+!--------------------------------------------------------
+! This subroutine checks that all of the dimensions in pbuf fields have been registered
+! If they have not, then a new dimension is added with the "pbuf_" prepending the actual size
+!--------------------------------------------------------
+
+   use cam_grid_support,    only: max_hcoordname_len
+   use cam_history_support, only: hist_dimension_name, add_hist_coord
+
+   type(physics_buffer_hdr), pointer  :: hdrbuffer
+   integer                            :: i, j
+   integer                            :: dim_size
+   character(len=max_hcoordname_len)  :: dim_name
+   character(len=max_hcoordname_len)  :: dim_string
+
+   hdrbuffer => hdrbuffertop
+   do i=1, currentpbufflds
+      do j =1, 6    ! The max number of pbuf dimensions
+         dim_size=hdrbuffer%dimsizes(j,1)
+         if (dim_size /= 1) then         ! Don't check subcolumn dimensions
+             dim_name = hist_dimension_name(dim_size)
+             if (dim_name == '') then                   ! found a dimension which needs a name
+                if (dim_size < 10) then
+                   write(dim_string,100) 'pbuf_',dim_size
+                else if (dim_size < 100) then
+                   write(dim_string,110) 'pbuf_',dim_size
+                else if (dim_size < 1000) then
+                   write(dim_string,120) 'pbuf_',dim_size
+                else
+                   call endrun('ERROR in hist_cam_snapshot_register - dimension is larger than the code currently handles')
+                end if
+                call add_hist_coord(dim_string, dim_size, dim_string)
+             end if
+         end if
+      end do
+      hdrbuffer => hdrbuffer%nexthdr
+   end do
+
+100 format(a5,i1)
+110 format(a5,i2)
+120 format(a5,i3)
+end subroutine hist_cam_snapshot_register
+
+subroutine pbuf_get_dim_strings(pbuf, string)
+
+!--------------------------------------------------------
+! This subroutine retrieves the pbuf dimension strings
+!--------------------------------------------------------
+
+  use cam_history_support, only: hist_dimension_name
+  use cam_grid_support,    only: max_hcoordname_len
+
+  type(physics_buffer_desc), intent(in) :: pbuf(:)
+  character(len=*),       intent(inout) :: string(:,:)
+  
+  character(len=max_hcoordname_len) :: dim_name
+  integer :: i, j
+
+  do i = 1, size(pbuf(:))
+     string(i,:)=''
+     do j = 1, 6  ! Hardwired number of pbuf dimensions
+        dim_name = hist_dimension_name(pbuf(i)%hdr%dimsizes(j,1))
+        if (dim_name /= '') then
+           string(i,j)=trim(dim_name)
+        end if
+     end do
+  end do
+
+end subroutine pbuf_get_dim_strings
+
+
 
 end module physics_buffer

@@ -98,7 +98,7 @@ contains
     !
     !-----------------------------------------------------------------------
     use cam_abortutils,     only: endrun
-    use physics_buffer,     only: pbuf_init_time
+    use physics_buffer,     only: pbuf_init_time, hist_cam_snapshot_register
     use physics_buffer,     only: pbuf_add_field, dtype_r8, pbuf_register_subcol
     use shr_kind_mod,       only: r8 => shr_kind_r8
     use spmd_utils,         only: masterproc
@@ -327,6 +327,8 @@ contains
     ! ***NOTE*** No registering constituents after the call to cnst_chk_dim.
 
     call offline_driver_reg()
+
+    call hist_cam_snapshot_register() ! This needs to be last as it requires all pbuf fields to be added
 
   end subroutine phys_register
 
@@ -934,7 +936,7 @@ contains
     call qneg_init()
 
     ! Initialize qneg3 and qneg4
-    call cam_snapshot_init(cam_in, cam_out, begchunk)
+    call cam_snapshot_init(cam_in, cam_out, pbuf2d, begchunk)
 
   end subroutine phys_init
 
@@ -2019,7 +2021,7 @@ contains
     call t_stopf('carma_timestep_tend')
 
     call phys_getopts(cam_snapshot_before_num_out = cam_snapshot_before_num)
-    call cam_snapshot_all_outfld(cam_snapshot_before_num, state, tend, cam_in, cam_out)
+    call cam_snapshot_all_outfld(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf)
 
     if( microp_scheme == 'RK' ) then
 
