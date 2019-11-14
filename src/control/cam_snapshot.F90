@@ -53,6 +53,8 @@ integer :: ncam_in_var
 integer :: ncam_out_var
 integer :: npbuf_var
 
+integer :: cam_snapshot_before_num, cam_snapshot_after_num, cam_snapshot_nhtfrq
+
 ! Note the maximum number of variables for each type
 type (snapshot_type)    ::  state_snapshot(27)
 type (snapshot_type)    ::  cnst_snapshot(40)
@@ -76,12 +78,12 @@ use cam_history, only : cam_history_snapshot_nhtfrq_set
    type(physics_buffer_desc), intent(in) :: pbuf(:,:)
    integer,                   intent(in) :: index
 
-   integer  :: cam_snapshot_before_num, cam_snapshot_after_num, cam_snapshot_nhtfrq
 
    call phys_getopts(cam_snapshot_before_num_out = cam_snapshot_before_num, &
                      cam_snapshot_after_num_out  = cam_snapshot_after_num, &
                      cam_snapshot_nhtfrq_out     = cam_snapshot_nhtfrq)
 
+   ! Return if not turned on 
    if (cam_snapshot_before_num <= 0 .and. cam_snapshot_after_num <= 0) return ! No snapshot files are being requested
 
    call cam_history_snapshot_nhtfrq_set (cam_snapshot_before_num, cam_snapshot_after_num, cam_snapshot_nhtfrq)
@@ -112,6 +114,9 @@ subroutine cam_snapshot_all_outfld(file_num, state, tend, cam_in, cam_out, pbuf)
 
    integer :: i
    integer :: lchnk
+
+   ! Return if not turned on 
+   if (cam_snapshot_before_num <= 0 .and. cam_snapshot_after_num <= 0) return ! No snapshot files are being requested
 
    lchnk = state%lchnk
 
@@ -145,8 +150,10 @@ subroutine cam_snapshot_deactivate()
 !        needs to be turned off for all fields, and will be turned on individaully
 !        when needed.
 !--------------------------------------------------------
-
    integer :: i
+
+   ! Return if not turned on 
+   if (cam_snapshot_before_num <= 0 .and. cam_snapshot_after_num <= 0) return ! No snapshot files are being requested
 
    do i=1,nstate_var
       call cam_history_snapshot_deactivate(state_snapshot(i)%standard_name)
@@ -546,20 +553,6 @@ subroutine cam_pbuf_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_nu
    
    npbuf = size(pbuf(:))
    
-   !--------------------------------------------------------
-   ! Prefill the const_cname with information from the cnst_snapshot
-   ! NOTE -- cnst_snapshot has names with "_a" (ambient)
-   !         pbuf has names with "_c" (cloud-borne)
-   ! both use the same units
-   !--------------------------------------------------------
-   const_cname(:) = ' '
-   do i=1, ncnst_var
-      length = len(trim(cnst_snapshot(i)%ddt_string))
-      if (length > 4 .and. (cnst_snapshot(i)%ddt_string(length-2:length-1) == '_a')) then
-         const_cname(i) = cnst_snapshot(i)%ddt_string(:length-2)//'c'//cnst_snapshot(i)%ddt_string(length:length)
-      end if
-   end do
-
    !--------------------------------------------------------
    ! fill the name, standard name and units for pbuf_info
    !--------------------------------------------------------
