@@ -198,6 +198,14 @@ case $hostname in
     CAM_RESTART_THREADS=1
 
     mach_workspace="/glade/scratch"
+    CESM_BASELINE="/glade/p/cesmdata/cseg/cesm_baselines"
+
+    # Check for CESM baseline directory
+    if [ ! -d "${CESM_BASELINE}/$( basename  ${BL_TESTDIR%"_${CAM_FC,,}"} )" ] && [ -n $BL_TESTDIR ]; then
+        echo "CESM_BASELINE ${CESM_BASELINE}/$( basename  ${BL_TESTDIR%"_${CAM_FC,,}"} ) not found .  Check BL_TESTDIR for correct tag name."
+        exit
+    fi 
+
 
 ##vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv writing to batch script vvvvvvvvvvvvvvvvvvv
 
@@ -353,6 +361,13 @@ EOF
     fi
 
     mach_workspace="/scratch/cluster"
+    CESM_BASELINE="/fs/cgd/csm/ccsm_baselines"
+
+    # Check for CESM baseline directory
+    if [ ! -d "${CESM_BASELINE}/$( basename  ${BL_TESTDIR%"_${CAM_FC,,}"} )" ] && [ -n $BL_TESTDIR ]; then
+        echo "CESM_BASELINE ${CESM_BASELINE}/$( basename  ${BL_TESTDIR%"_${CAM_FC,,}"} ) not found .  Check BL_TESTDIR for correct tag name."
+        exit
+    fi 
 
 ##vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv writing to batch script vvvvvvvvvvvvvvvvvvv
 cat > ${submit_script} << EOF
@@ -488,6 +503,14 @@ submit_script_cime="${submit_script}"
     fi
 
     mach_workspace="/scratch/cluster"
+    CESM_BASELINE="/fs/cgd/csm/ccsm_baselines"
+
+    # Check for CESM baseline directory
+    if [ ! -d "${CESM_BASELINE}/$( basename  ${BL_TESTDIR%"_${CAM_FC,,}"} )" ] && [ -n $BL_TESTDIR ]; then
+        echo "CESM_BASELINE ${CESM_BASELINE}/$( basename  ${BL_TESTDIR%"_${CAM_FC,,}"} ) not found .  Check BL_TESTDIR for correct tag name."
+        exit
+    fi
+
 
 ##vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv writing to batch script vvvvvvvvvvvvvvvvvvv
 cat > ${submit_script} << EOF
@@ -616,6 +639,13 @@ fi
     fi
 
     mach_workspace="/scratch/cluster"
+    CESM_BASELINE="/fs/cgd/csm/ccsm_baselines"
+
+    # Check for CESM baseline directory
+    if [ ! -d "${CESM_BASELINE}/$( basename  ${BL_TESTDIR%"_${CAM_FC,,}"} )" ] && [ -n $BL_TESTDIR ]; then
+        echo "CESM_BASELINE ${CESM_BASELINE}/$( basename  ${BL_TESTDIR%"_${CAM_FC,,}"} ) not found .  Check BL_TESTDIR for correct tag name."
+        exit
+    fi
 
 ##vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv writing to batch script vvvvvvvvvvvvvvvvvvv
 
