@@ -16,6 +16,11 @@ module chemistry
   !use mo_sim_dat, only: set_sim_dat
   use spmd_utils,          only : masterproc
   use cam_logfile,         only : iulog
+
+  use Input_Opt_Mod,       only : OptInput
+  use State_Met_Mod,       only : MetState
+  use State_Chm_Mod,       only : ChmState
+
   implicit none
   private
   save
@@ -51,6 +56,14 @@ module chemistry
   integer            :: nsls
   character(len=255) :: slsnames(nslsmax)
   !===== SDE DEBUG =====
+
+  ! Location of valid input.geos
+  character(len=500) :: inputGeosPath
+
+  ! GEOS-Chem state variables
+  Type(OptInput),Allocatable      :: Input_Opt(:)
+  Type(MetState),Allocatable      :: State_Met(:)
+  Type(ChmState),Allocatable      :: State_Chm(:)
 
 !================================================================================================
 contains
@@ -175,8 +188,6 @@ contains
     character(len=500) :: line
     logical :: menuFound, validSLS
 
-    ! Hard-code for now
-    character(len=500) :: inputGeosPath
     inputGeosPath='/n/scratchlfs/jacob_lab/elundgren/UT/runs/4x5_standard/input.geos.template'
 
     if (masterproc) write(iulog,'(a)') 'GCCALL CHEM_READNL'
@@ -239,10 +250,10 @@ contains
 
     ! Broadcast to all processors
 #if defined( SPMD )
-    call mpibcast(ntracers,    1,                               mpiint,  0,        mpicom )
-    call mpibcast(tracernames, len(tracernames(1))*ntracersmax, mpichar, 0, mpicom )
-    call mpibcast(nsls,        1,                               mpiint,  0, mpicom )
-    call mpibcast(slsnames,    len(slsnames(1))*nslsmax,        mpichar, 0, mpicom )
+    CALL MPIBCAST(NTRACERS,    1,                               MPIINT,  0, MPICOM )
+    CALL MPIBCAST(TRACERNAMES, LEN(TRACERNAMES(1))*NTRACERSMAX, MPICHAR, 0, MPICOM )
+    CALL MPIBCAST(NSLS,        1,                               MPIINT,  0, MPICOM )
+    CALL MPIBCAST(SLSNAMES,    LEN(SLSNAMES(1))*NSLSMAX,        MPICHAR, 0, MPICOM )
 #endif
 
   end subroutine chem_readnl
@@ -299,10 +310,57 @@ contains
     use physics_buffer, only: physics_buffer_desc
     use cam_history,    only: addfld, add_default, horiz_only
 
+    use Input_Opt_Mod
+    use State_Met_Mod
+    use State_Chm_Mod
+    use GC_Environment_Mod
+
     type(physics_state), intent(in):: phys_state(begchunk:endchunk)
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
+    integer :: lchnk(begchunk:endchunk), ncol(begchunk:endchunk)
+    integer :: iwait
+
+    integer :: iipar, jjpar, llpar
+    integer :: nlev, i
+
+    ! lchnk: which chunks we have on this process
+    lchnk = phys_state%lchnk
+    ! ncol: number of atmospheric columns for each chunk
+    ncol  = phys_state%ncol
+    ! nlev: number of vertical levels
+    nlev  = pver
+
+    ! This ensures that each process allocates everything needed for its chunks
+    if (.not.allocated(Input_Opt)) then
+        Allocate(Input_Opt(begchunk:endchunk))
+        Allocate(State_Met(begchunk:endchunk))
+        Allocate(State_Chm(begchunk:endchunk))
+        if (masterproc) write(iulog,'(a,3(x,L1))') ' --> ALLOC CHECK   : ', Allocated(Input_Opt), Allocated(State_Met), Allocated(State_Chm)
+    end if
+    write(iulog,'(a,x,L1,2(x,I6))') ' --> SIZE  CHECK   : ', masterproc,lbound(Input_Opt),ubound(Input_Opt)
+
+    Do i = begchunk, endchunk
+
+        ! Set some basic flags
+        Input_Opt(i)%Max_BPCH_Diag     = 1000
+        Input_Opt(i)%Max_AdvectSpc     = 500
+        Input_Opt(i)%Max_Families      = 250
+
+        Input_Opt(i)%Linoz_NLevels     = 25
+        Input_Opt(i)%Linoz_NLat        = 18
+        Input_Opt(i)%Linoz_NMonths     = 12
+        Input_Opt(i)%Linoz_NFields     = 7
+        Input_Opt(i)%RootCPU           = ((i.eq.begchunk) .and. MasterProc)
+
+        IIPAR = 1
+        JJPAR = ncol(i)
+        LLPAR = nlev
+
+    end do
+
     ! Can add history output here too with the "addfld" & "add_default" routines
+    ! Note that constituents are already output by default
     call addfld ( 'BCPI', (/'lev'/), 'A', 'mole/mole', trim('BCPI')//' mixing ratio' )
     call add_default ( 'BCPI',   1, ' ')
     if (masterproc) write(iulog,'(a)') 'GCCALL CHEM_INIT'
@@ -318,6 +376,10 @@ contains
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
     if (masterproc) write(iulog,'(a)') 'GCCALL CHEM_TIMESTEP_INIT'
+
+    ! This is when we want to update State_Met and so on
+    ! Note that here we have been passed MANY chunks
+
   end subroutine chem_timestep_init
 
 !===============================================================================
@@ -339,7 +401,24 @@ contains
     ! Mapping (?)
     logical :: lq(pcnst)
     integer :: n, m
+
+    integer :: lchnk, ncol
     ! Here's where you'll call DO_CHEMISTRY
+    ! NOTE: State_Met etc are in an ARRAY - so we will want to always pass
+    ! State_Met%(lchnk) and so on
+    ! lchnk: which chunk we have on this process
+    lchnk = state%lchnk
+    ! ncol: number of atmospheric columns on this chunk
+    ncol  = state%ncol
+
+    ! Need to be super careful that the module arrays are updated and correctly
+    ! set
+
+    ! 1. Update State_Met etc for this timestep
+
+    !if (masterproc) write(iulog,*) ' --> TEND SIZE: ', size(state%ncol)
+    !if (masterproc) write(iulog,'(a,2(x,I6))') ' --> TEND SIDE:  ', lbound(state%ncol),ubound(state%ncol)
+
 
     if (masterproc) write(iulog,'(a)') 'GCCALL CHEM_TIMESTEP_TEND'
     lq(:) = .false.
@@ -391,6 +470,10 @@ contains
 
     ! Finalize GEOS-Chem
     if (masterproc) write(iulog,'(a)') 'GCCALL CHEM_FINAL'
+    If (allocated(Input_Opt))     Deallocate(Input_Opt)
+    If (allocated(State_Met))     Deallocate(State_Met)
+    If (allocated(State_Chm))     Deallocate(State_Chm)
+    if (masterproc) write(iulog,'(a,3(x,L1))') ' --> DEALLOC CHECK : ', Allocated(Input_Opt), Allocated(State_Met), Allocated(State_Chm)
 
     return
   end subroutine chem_final
