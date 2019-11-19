@@ -17,9 +17,20 @@ module chemistry
   use spmd_utils,          only : MasterProc
   use cam_logfile,         only : iulog
 
-  use Input_Opt_Mod,       only : OptInput
-  use State_Met_Mod,       only : MetState
-  use State_Chm_Mod,       only : ChmState
+  !--------------------------------------------------------------------
+  ! Basic GEOS-Chem modules
+  !--------------------------------------------------------------------
+  USE Input_Opt_Mod,       ONLY : OptInput   ! Derived type for Input Options
+  USE State_Chm_Mod,       ONLY : ChmState   ! Derived type for Chemistry State object
+  USE State_Grid_Mod,      ONLY : GrdState   ! Derived type for Grid State object
+  USE State_Met_Mod,       ONLY : MetState   ! Derived type for Meteorology State object
+  USE ErrCode_Mod                            ! Error codes for success or failure
+  USE Error_Mod                              ! For error checking
+
+  !-----------------------------------------------------------------
+  ! Parameters to define floating-point variables
+  !-----------------------------------------------------------------
+  USE PRECISION_MOD,       ONLY : fp, f4     ! Flexible precision
 
   IMPLICIT NONE
   PRIVATE
@@ -61,9 +72,17 @@ module chemistry
   CHARACTER(LEN=500) :: inputGeosPath
 
   ! GEOS-Chem state variables
-  Type(OptInput),Allocatable      :: Input_Opt(:)
-  Type(MetState),Allocatable      :: State_Met(:)
-  Type(ChmState),Allocatable      :: State_Chm(:)
+  TYPE(OptInput),ALLOCATABLE      :: Input_Opt(:)   ! Input Options object
+  TYPE(ChmState),ALLOCATABLE      :: State_Chm(:)   ! Chemistry State object
+  TYPE(GrdState),ALLOCATABLE      :: State_Grid(:)  ! Grid State object
+  TYPE(MetState),ALLOCATABLE      :: State_Met(:)   ! Meteorology State object
+
+  ! Integer
+  INTEGER                         :: RC
+
+  ! Strings
+  CHARACTER(LEN=255)              :: ThisLoc
+  CHARACTER(LEN=255)              :: ErrMsg
 
 !================================================================================================
 contains
@@ -317,36 +336,73 @@ contains
     use physics_buffer, only: physics_buffer_desc
     use cam_history,    only: addfld, add_default, horiz_only
 
+    use cam_abortutils, only : endrun
+
     use Input_Opt_Mod
-    use State_Met_Mod
     use State_Chm_Mod
+    use State_Grid_Mod
+    use State_Met_Mod
     use GC_Environment_Mod
+    use GC_Grid_Mod,    only : SetGridFromCtrEdges
+
+    ! Use GEOS-Chem versions of physical constants
+    use PhysConstants,  only : PI, PI_180
+
+    use Time_Mod,      only : Accept_External_Date_Time
+    !use Time_Mod,      only : Set_Begin_Time,   Set_End_Time
+    !use Time_Mod,      only : Set_Current_Time, Set_DiagB
+    use Transfer_Mod,  only : Init_Transfer
+
+    !use CMN_O3_Mod
+    !use CMN_Size_Mod
 
     TYPE(physics_state), INTENT(IN):: phys_state(BEGCHUNK:ENDCHUNK)
     TYPE(physics_buffer_desc), POINTER :: pbuf2d(:,:)
 
+    ! Local variables
     INTEGER :: LCHNK(BEGCHUNK:ENDCHUNK), NCOL(BEGCHUNK:ENDCHUNK)
-    INTEGER :: IWAIT
+    INTEGER               :: IWAIT, IERR
 
-    INTEGER :: IIPAR, JJPAR, LLPAR
-    INTEGER :: NLEV, I, RC
+    INTEGER               :: NX, NY, NZ
+    INTEGER               :: NLEV, I, J, L, RC
+
+    ! Grid setup
+    REAL(fp)              :: lonVal,  latVal
+    REAL(fp)              :: dLonFix, dLatFix
+    REAL(f4), ALLOCATABLE :: lonMidArr(:,:),  latMidArr(:,:)
+    REAL(f4), ALLOCATABLE :: lonEdgeArr(:,:), latEdgeArr(:,:)
 
     LOGICAL :: am_I_Root
 
-    ! lchnk: which chunks we have on this process
+    ! Assume a successful return until otherwise
+    RC                      = GC_SUCCESS
+
+    ! For error trapping
+    ErrMsg                  = ''
+    ThisLoc                 = ' -> at GEOS-Chem (in chemistry/pp_geoschem/chemistry.F90)'
+
+    ! LCHNK: which chunks we have on this process
     LCHNK = PHYS_STATE%LCHNK
-    ! ncol: number of atmospheric columns for each chunk
+    ! NCOL: number of atmospheric columns for each chunk
     NCOL  = PHYS_STATE%NCOL
-    ! nlev: number of vertical levels
+    ! NLEV: number of vertical levels
     NLEV  = PVER
+
+    ! The GEOS-Chem grids on every "chunk" will all be the same size, to avoid
+    ! the possibility of having differently-sized chunks
+    NX = 1
+    NY = MAXVAL(NCOL)
+    NZ = NLEV
 
     ! This ensures that each process allocates everything needed for its chunks
     IF (.NOT.ALLOCATED(Input_Opt)) THEN
         ALLOCATE(Input_Opt(BEGCHUNK:ENDCHUNK))
-        ALLOCATE(State_Met(BEGCHUNK:ENDCHUNK))
         ALLOCATE(State_Chm(BEGCHUNK:ENDCHUNK))
-        IF (MasterProc) WRITE(iulog,'(a,3(x,L1))') ' --> ALLOC CHECK   : ', ALLOCATED(Input_Opt), ALLOCATED(State_Met), ALLOCATED(State_Chm)
+        ALLOCATE(State_Grid(BEGCHUNK:ENDCHUNK))
+        ALLOCATE(State_Met(BEGCHUNK:ENDCHUNK))
+        IF (MasterProc) WRITE(iulog,'(a,4(x,L1))') ' --> ALLOC CHECK   : ', ALLOCATED(Input_Opt), ALLOCATED(State_Chm), ALLOCATED(State_Grid), ALLOCATED(State_Met)
     ENDIF
+
     WRITE(iulog,'(a,x,L1,2(x,I6))') ' --> SIZE  CHECK   : ', MasterProc, LBOUND(Input_Opt), UBOUND(Input_Opt)
 
     DO I = BEGCHUNK, ENDCHUNK
@@ -355,21 +411,289 @@ contains
         am_I_Root = ((I.eq.BEGCHUNK) .and. MasterProc)
 
         ! Set some basic flags
-        Input_Opt(i)%Max_BPCH_Diag     = 1000
-        Input_Opt(i)%Max_AdvectSpc     = 500
-        Input_Opt(i)%Max_Families      = 250
+        Input_Opt(I)%Max_BPCH_Diag     = 1000
+        Input_Opt(I)%Max_AdvectSpc     = 500
+        Input_Opt(I)%Max_Families      = 250
 
-        Input_Opt(i)%Linoz_NLevels     = 25
-        Input_Opt(i)%Linoz_NLat        = 18
-        Input_Opt(i)%Linoz_NMonths     = 12
-        Input_Opt(i)%Linoz_NFields     = 7
-        Input_Opt(i)%RootCPU           = am_I_Root
+        Input_Opt(I)%Linoz_NLevels     = 25
+        Input_Opt(I)%Linoz_NLat        = 18
+        Input_Opt(I)%Linoz_NMonths     = 12
+        Input_Opt(I)%Linoz_NFields     = 7
+        Input_Opt(I)%RootCPU           = am_I_Root
 
-        IIPAR = 1
-        JJPAR = NCOL(I)
-        LLPAR = NLEV
+        ! Initialize fields of the Grid State object
+        CALL Init_State_Grid( am_I_Root  = am_I_Root,      &
+                              State_Grid = State_Grid(I),  &
+                              RC         = RC         )
+        IF ( RC /= GC_SUCCESS ) THEN
+            ErrMsg = 'Error encountered within call to "Init_Grid_State"!'
+            CALL Error_Stop( ErrMsg, ThisLoc )
+        ENDIF
+
+        State_Grid(I)%NX = NX
+        State_Grid(I)%NY = NY
+        State_Grid(I)%NZ = NZ
+        ! Initialize GEOS-Chem horizontal grid structure
+        CALL GC_Init_Grid( am_I_Root  = am_I_Root,      &
+                           Input_Opt  = Input_Opt(I),   &
+                           State_Grid = State_Grid(I),  &
+                           RC         = RC          )
+        IF ( RC /= GC_SUCCESS ) THEN
+            ErrMsg = 'Error encountered within call to "GC_Init_Grid"!'
+            CALL Error_Stop( ErrMsg, ThisLoc )
+        ENDIF
+
+        ! Note - this is called AFTER chem_readnl, after X, and after
+        ! every constituent has had its initial conditions read. Any
+        ! constituent which is not found in the CAM restart file will
+        ! then have already had a call to chem_implements_cnst, and will
+        ! have then had a call to chem_init_cnst to set a default VMR
+        ! Call the routine GC_Allocate_All (located in module file
+        ! GeosCore/gc_environment_mod.F90) to allocate all lat/lon
+        ! allocatable arrays used by GEOS-Chem.
+        CALL GC_Allocate_All ( am_I_Root      = am_I_Root,      &
+                               Input_Opt      = Input_Opt(I),   &
+                               State_Grid     = State_Grid(I),  &
+                               value_I_Lo     = 1,              &
+                               value_J_Lo     = 1,              &
+                               value_I_Hi     = NX,             &
+                               value_J_Hi     = NY,             &
+                               value_IM       = NX,             &
+                               value_JM       = NY,             &
+                               value_LM       = NZ,             &
+                               value_IM_WORLD = NX,             &
+                               value_JM_WORLD = NY,             &
+                               value_LM_WORLD = NZ,             &
+                               value_LLSTRAT  = 59,             & !TMMF
+                               RC             = RC        )
+        IF ( RC /= GC_SUCCESS ) THEN
+           ErrMsg = 'Error encountered in "GC_Allocate_All"!'
+           CALL Error_Stop( ErrMsg, ThisLoc )
+        ENDIF
 
     ENDDO
+
+    ! TODO: Mimic GEOS-Chem's reading of input options
+    DO I = BEGCHUNK, ENDCHUNK
+        ! Start by setting some dummy timesteps
+        CALL GC_Update_Timesteps(I,300.0E+0_r8)
+        ! Simulation menu
+        ! Ignore the data directories for now
+        Input_Opt(i)%NYMDb                = 20000101
+        Input_Opt(i)%NHMSb                =   000000
+        Input_Opt(i)%NYMDe                = 20010101
+        Input_Opt(i)%NHMSe                =   000000
+    ENDDO
+
+    ! Set the times held by "time_mod"
+    CALL Accept_External_Date_Time( am_I_Root   = MasterProc,                &
+                                    value_NYMDb = Input_Opt(BEGCHUNK)%NYMDb, &
+                                    value_NHMSb = Input_Opt(BEGCHUNK)%NHMSb, &
+                                    value_NYMDe = Input_Opt(BEGCHUNK)%NYMDe, &
+                                    value_NHMSe = Input_Opt(BEGCHUNK)%NHMSe, &
+                                    value_NYMD  = Input_Opt(BEGCHUNK)%NYMDb, &
+                                    value_NHMS  = Input_Opt(BEGCHUNK)%NHMSb, &
+                                    RC          = RC                )
+    IF ( RC /= GC_SUCCESS ) THEN
+       ErrMsg = 'Error encountered in "Accept_External_Date_Time"!'
+       CALL Error_Stop( ErrMsg, ThisLoc )
+    ENDIF
+
+    ! Note: The following calculations do not setup the gridcell areas.
+    !       In any case, we will need to be constantly updating this grid
+    !       to compensate for the "multiple chunks per processor" element
+    ALLOCATE(lonMidArr(NX,NY), STAT=IERR)
+    IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating lonMidArr')
+    ALLOCATE(lonEdgeArr(NX+1,NY+1), STAT=IERR)
+    IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating lonEdgeArr')
+    ALLOCATE(latMidArr(NX,NY), STAT=IERR)
+    IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating latMidArr')
+    ALLOCATE(latEdgeArr(NX+1,NY+1), STAT=IERR)
+    IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating latEdgeArr')
+
+    ! We could try and get the data from CAM.. but the goal is to make this GC
+    ! component completely grid independent. So for now, we set to arbitrary
+    ! values
+    ! TODO: This needs more refinement. For now, this generates identical
+    ! State_Grid for all chunks
+    DO L = BEGCHUNK, ENDCHUNK
+        lonMidArr = 0.0e+0_f4
+        latMidArr = 0.0e+0_f4
+        dLonFix   = 360.0e+0_fp / REAL(NX,fp)
+        dLatFix   = 180.0e+0_fp / REAL(NY,fp)
+        DO I = 1,NX
+            ! Center of box, assuming dateline edge
+            lonVal = -180.0e+0_fp + (REAL(I-1,fp)*dLonFix)
+            DO J = 1,NY
+                ! Center of box, assuming regular cells
+                latVal = -90.0e+0_fp + (REAL(J-1,fp)*dLatFix)
+                lonMidArr(I,J)  = REAL((lonVal + (0.5e+0_fp * dLonFix)) * PI_180, f4)
+                latMidArr(I,J)  = REAL((latVal + (0.5e+0_fp * dLatFix)) * PI_180, f4)
+
+                ! Edges of box, assuming regular cells
+                lonEdgeArr(I,J) = REAL(lonVal * PI_180, f4)
+                latEdgeArr(I,J) = REAL(latVal * PI_180, f4)
+            ENDDO
+            ! Edges of box, assuming regular cells
+            lonEdgeArr(I,NY+1)  = REAL((lonVal + dLonFix) * PI_180, f4)
+            latEdgeArr(I,NY+1)  = REAL((latVal + dLatFix) * PI_180, f4)
+        ENDDO
+        DO J = 1,NY+1
+            ! Edges of box, assuming regular cells
+            latVal = -90.0e+0_fp + (REAL(J-1,fp)*dLatFix)
+            lonEdgeArr(NX+1,J)  = REAL((lonVal + dLonFix) * PI_180, f4)
+            latEdgeArr(NX+1,J)  = REAL((latVal) * PI_180, f4)
+    ENDDO
+
+        CALL SetGridFromCtrEdges( am_I_Root  = am_I_Root,     &
+                                  State_Grid = State_Grid(L), &
+                                  lonCtr     = lonMidArr,     &
+                                  latCtr     = latMidArr,     &
+                                  lonEdge    = lonEdgeArr,    &
+                                  latEdge    = latEdgeArr,    &
+                                  RC         = RC         )
+        IF ( RC /= GC_SUCCESS ) THEN
+           ErrMsg = 'Error encountered in "SetGridFromCtrEdges"!'
+           CALL Error_Stop( ErrMsg, ThisLoc )
+        ENDIF
+
+        CALL Init_Transfer( State_Grid(L), 0, 0 )
+    ENDDO
+    DEALLOCATE(lonMidArr)
+    DEALLOCATE(latMidArr)
+    DEALLOCATE(lonEdgeArr)
+    DEALLOCATE(latEdgeArr)
+
+
+    ! Now READ_SIMULATION_MENU
+    DO I = BEGCHUNK, ENDCHUNK
+        Input_Opt(I)%ITS_A_CH4_SIM          = .False.
+        Input_Opt(I)%ITS_A_CO2_SIM          = .False.
+        Input_Opt(I)%ITS_A_FULLCHEM_SIM     = .True.
+        Input_Opt(I)%ITS_A_MERCURY_SIM      = .False.
+        Input_Opt(I)%ITS_A_POPS_SIM         = .False.
+        Input_Opt(I)%ITS_A_RnPbBe_SIM       = .False.
+        Input_Opt(I)%ITS_A_TAGO3_SIM        = .False.
+        Input_Opt(I)%ITS_A_TAGCO_SIM        = .False.
+        Input_Opt(I)%ITS_AN_AEROSOL_SIM     = .False.
+    ENDDO
+
+    ! Now READ_ADVECTED_SPECIES_MENU
+    DO I = BEGCHUNK, ENDCHUNK
+        Input_Opt(I)%N_Advect               = NTracers
+        IF (Input_Opt(I)%N_Advect.GT.Input_Opt(I)%Max_AdvectSpc) THEN
+            CALL ENDRUN('Number of tracers exceeds max count')
+        ENDIF
+        ! Assign tracer names
+        DO J = 1, Input_Opt(I)%N_Advect
+            Input_Opt(I)%AdvectSpc_Name(J) = TRIM(TRACERNAMES(J))
+        ENDDO
+        ! No tagged species
+        Input_Opt(I)%LSplit = .False.
+    ENDDO
+
+    ! Now READ_TRANSPORT_MENU
+    DO I = BEGCHUNK, ENDCHUNK
+        Input_Opt(I)%LTran                  = .True.
+        Input_Opt(I)%LFill                  = .True.
+        Input_Opt(I)%TPCore_IOrd            = 3
+        Input_Opt(I)%TPCore_JOrd            = 3
+        Input_Opt(I)%TPCore_KOrd            = 3
+    ENDDO
+
+    ! Now READ_CONVECTION_MENU
+    ! For now, TMMF
+    DO I = BEGCHUNK, ENDCHUNK
+        Input_Opt(I)%LConv                  = .False.
+        Input_Opt(I)%LTurb                  = .False.
+        Input_Opt(I)%LNLPBL                 = .False.
+    ENDDO
+
+    ! Now READ_EMISSIONS_MENU
+    DO I = BEGCHUNK, ENDCHUNK
+        Input_Opt(I)%LEmis                  = .False.
+        Input_Opt(I)%HCOConfigFile          = 'HEMCO_Config.rc'
+        Input_Opt(I)%LFix_PBL_Bro           = .False.
+
+        ! Set surface VMRs - turn this off so that CAM can handle it
+        Input_Opt(I)%LCH4Emis               = .False.
+        Input_Opt(I)%LCH4SBC                = .False.
+        Input_Opt(I)%LOCSEmis               = .False.
+        Input_Opt(I)%LCFCEmis               = .False.
+        Input_Opt(I)%LClEmis                = .False.
+        Input_Opt(I)%LBrEmis                = .False.
+        Input_Opt(I)%LN2OEmis               = .False.
+        Input_Opt(I)%LBasicEmis             = .False.
+
+        ! Set initial conditions
+        Input_Opt(I)%LSetH2O                = .True.
+
+        ! CFC control
+        Input_Opt(I)%CFCYear                = 0
+    ENDDO
+
+    ! Now READ_AEROSOL_MENU
+    DO I = BEGCHUNK, ENDCHUNK
+        Input_Opt(I)%LSulf               = .True.
+        Input_Opt(I)%LMetalcatSO2        = .True.
+        Input_Opt(I)%LCarb               = .True.
+        Input_Opt(I)%LBrC                = .False.
+        Input_Opt(I)%LSOA                = .True.
+        Input_Opt(I)%LSVPOA              = .False.
+        Input_Opt(I)%LOMOC               = .False.
+        Input_Opt(I)%LDust               = .True.
+        Input_Opt(I)%LDstUp              = .False.
+        Input_Opt(I)%LSSalt              = .True.
+        Input_Opt(I)%SalA_rEdge_um(1)    = 0.01e+0_fp
+        Input_Opt(I)%SalA_rEdge_um(2)    = 0.50e+0_fp
+        Input_Opt(I)%SalC_rEdge_um(1)    = 0.50e+0_fp
+        Input_Opt(I)%SalC_rEdge_um(2)    = 8.00e+0_fp
+        Input_Opt(I)%LMPOA               = .False.
+        Input_Opt(I)%LGravStrat          = .True.
+        Input_Opt(I)%LSolidPSC           = .True.
+        Input_Opt(I)%LHomNucNAT          = .False.
+        Input_Opt(I)%T_NAT_Supercool     = 3.0e+0_fp
+        Input_Opt(I)%P_Ice_Supersat      = 1.2e+0_fp
+        Input_Opt(I)%LPSCChem            = .True.
+        Input_Opt(I)%LStratOD            = .True.
+        Input_Opt(I)%hvAerNIT            = .False.
+        Input_Opt(I)%hvAerNIT_JNIT       = .False.
+        Input_Opt(I)%hvAerNIT_JNITs      = .False.
+        Input_Opt(I)%JNITChanA           = 0e+0_fp
+        Input_Opt(I)%JNITChanB           = 0e+0_fp
+    ENDDO
+
+    ! Now READ_DEPOSITION_MENU
+    ! Disable dry/wet dep for now
+    DO I = BEGCHUNK, ENDCHUNK
+        Input_Opt(I)%LDryD                  = .False.
+        Input_Opt(I)%LWetD                  = .False.
+        Input_Opt(I)%CO2_Effect             = .False.
+        Input_Opt(I)%CO2_Level              = 390.0_fp
+        Input_Opt(I)%CO2_Ref                = 390.0_fp
+    ENDDO
+
+    ! Now READ_CHEMISTRY_MENU
+    DO I = BEGCHUNK, ENDCHUNK
+        Input_Opt(I)%LChem                  = .True.
+        Input_Opt(I)%LSChem                 = .True.
+        Input_Opt(I)%LLinoz                 = .True.
+        Input_Opt(I)%LSynoz                 = .True.
+        Input_Opt(I)%LUCX                   = .True.
+        Input_Opt(I)%LActiveH2O             = .True.
+        Input_Opt(I)%Use_Online_O3          = .True.
+        Input_Opt(I)%Use_O3_from_Met        = .False.
+        Input_Opt(I)%Use_TOMS_O3            = .False.
+        Input_Opt(I)%Gamma_HO2              = 0.2e+0_fp
+    ENDDO
+
+    !IF (MasterProc) THEN
+    !   CALL Read_Input_File( am_I_Root   = .True., &
+    !                         Input_Opt   = Input_Opt(begchunk), &
+    !                         srcFile     = inputGeosPath,      &
+    !                         RC          = RC )
+    !ENDIF
+
 
     ! Can add history output here too with the "addfld" & "add_default" routines
     ! Note that constituents are already output by default
@@ -394,6 +718,46 @@ contains
     ! Note that here we have been passed MANY chunks
 
   end subroutine chem_timestep_init
+
+!===============================================================================
+
+  subroutine GC_Update_Timesteps(LCHNK,DT)
+
+    use Time_Mod,       only : Set_Timesteps
+    use cam_abortutils, only : endrun
+
+    INTEGER,  INTENT(IN) :: LCHNK
+    REAL(r8), INTENT(IN) :: DT
+    INTEGER              :: DT_MIN
+    INTEGER, SAVE        :: DT_MIN_LAST = -1
+    LOGICAL              :: am_I_Root
+
+    am_I_Root = (MasterProc .AND. (LCHNK.EQ.BEGCHUNK))
+
+    DT_MIN = NINT(DT)
+
+    Input_Opt(LCHNK)%TS_CHEM = DT_MIN
+    Input_Opt(LCHNK)%TS_EMIS = DT_MIN
+    Input_Opt(LCHNK)%TS_CONV = DT_MIN
+    Input_Opt(LCHNK)%TS_DYN  = DT_MIN
+    Input_Opt(LCHNK)%TS_RAD  = DT_MIN
+
+    ! Only bother updating the module information if there's been a change
+    IF (DT_MIN .NE. DT_MIN_LAST) THEN
+        IF (MasterProc) WRITE(iulog,'(a,F7.1,a)') ' --> GC: updating dt to ', DT, ' seconds'
+
+        CALL Set_Timesteps( am_I_Root,             &
+                            CHEMISTRY  =  DT_MIN,  &
+                            EMISSION   =  DT_MIN,  &
+                            DYNAMICS   =  DT_MIN,  &
+                            UNIT_CONV  =  DT_MIN,  &
+                            CONVECTION =  DT_MIN,  &
+                            DIAGNOS    =  DT_MIN,  &
+                            RADIATION  =  DT_MIN    )
+        DT_MIN_LAST = DT_MIN
+     ENDIF
+
+  end subroutine
 
 !===============================================================================
 
@@ -423,6 +787,9 @@ contains
     lchnk = state%lchnk
     ! ncol: number of atmospheric columns on this chunk
     ncol  = state%ncol
+
+   ! Need to update the timesteps throughout the code
+    CALL GC_Update_Timesteps(LCHNK,DT)
 
     ! Need to be super careful that the module arrays are updated and correctly
     ! set
@@ -459,7 +826,7 @@ contains
     REAL(r8),         INTENT(IN)  :: latvals(:) ! lat in degrees (ncol)
     REAL(r8),         INTENT(IN)  :: lonvals(:) ! lon in degrees (ncol)
     LOGICAL,          INTENT(IN)  :: mask(:)    ! Only initialize where .true.
-    REAL(r8),         INTENT(OUT) :: q(:,:)     ! kg tracer/kg dry air (ncol, plev
+    REAL(r8),         INTENT(OUT) :: q(:,:)     ! kg tracer/kg dry air (ncol, pver
     ! Used to initialize tracer fields if desired.
     ! Will need a simple mapping structure as well as the CAM tracer registration
     ! routines.
@@ -499,10 +866,11 @@ contains
 
     ! Finally deallocate state variables
     IF (ALLOCATED(Input_Opt))     DEALLOCATE(Input_Opt)
-    IF (ALLOCATED(State_Met))     DEALLOCATE(State_Met)
     IF (ALLOCATED(State_Chm))     DEALLOCATE(State_Chm)
+    IF (ALLOCATED(State_Grid))    DEALLOCATE(State_Grid)
+    IF (ALLOCATED(State_Met))     DEALLOCATE(State_Met)
 
-    IF (MasterProc) WRITE(iulog,'(a,3(x,L1))') ' --> DEALLOC CHECK : ', ALLOCATED(Input_Opt), ALLOCATED(State_Met), ALLOCATED(State_Chm)
+    IF (MasterProc) WRITE(iulog,'(a,4(x,L1))') ' --> DEALLOC CHECK : ', ALLOCATED(Input_Opt), ALLOCATED(State_Chm), ALLOCATED(State_Grid), ALLOCATED(State_Met)
 
     RETURN
 
