@@ -2,7 +2,7 @@
 Implementation of the CAM sub column test test.
 
 This is a CAM specific test:
-Verifies that changeing pyhysics load balancing doesn't change answers
+Verifies that turning sub columns on and off doesn't change answers
 (1) do a run with sub columns on
 (2) Do a run with sub columns off
 
