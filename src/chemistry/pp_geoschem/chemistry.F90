@@ -411,8 +411,6 @@ contains
     ALLOCATE(State_Met(BEGCHUNK:ENDCHUNK) , STAT=IERR)
     IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating State_Met')
 
-    am_I_Root = MasterProc
-
         ! Set some basic flags
     Input_Opt%Max_BPCH_Diag     = 1000
     Input_Opt%Max_AdvectSpc     = 500
@@ -729,7 +727,13 @@ contains
         ! Start by setting some dummy timesteps
     CALL GC_Update_Timesteps(300.0E+0_r8)
 
-    ! Initialize the state objects for each chunk
+    ! Initialize error module
+    CALL Init_Error( MasterProc, Input_Opt, RC )
+    IF ( RC /= GC_SUCCESS ) THEN
+       ErrMsg = 'Error encountered in "Init_Error"!'
+       CALL Error_Stop( ErrMsg, ThisLoc )
+    ENDIF
+
     DO I = BEGCHUNK, ENDCHUNK
         ! This reproduces GC_Init_Stateobj without the State_Diag object
         am_I_Root = (MasterProc .AND. (I == BEGCHUNK))
