@@ -143,6 +143,7 @@ contains
     !*******************************
     !
     if (present(PHIS)) then
+      phis = 0.0_r8
       tmp =  u0 * (cos((eta_sfc-eta0)*pi*0.5_r8))**1.5_r8
       where(mask_use)
         PHIS(:) = ((-2._r8*(sin(latvals(:)))**6 * ((cos(latvals(:)))**2 + 1._r8/3._r8) + 10._r8/63._r8)*tmp   &

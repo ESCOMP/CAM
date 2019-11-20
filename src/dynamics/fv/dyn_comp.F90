@@ -2982,23 +2982,25 @@ subroutine read_inidat(dyn_in)
   ! If using analytic ICs the initial file only needs the horizonal grid
   ! dimension checked in the case that the file contains constituent mixing
   ! ratios.
-  do m = cnst_start, pcnst
-     if (cnst_read_iv(m)) then
-        if (dyn_field_exists(fh_ini, trim(cnst_name(m)), required=.false.)) then
-           ierr = pio_inq_dimid(fh_ini, 'lon' , lonid)
-           ierr = pio_inq_dimid(fh_ini, 'lat' , latid)
-           ierr = pio_inq_dimlen(fh_ini, lonid , mlon)
-           ierr = pio_inq_dimlen(fh_ini, latid , mlat)
-           if (mlon /= plon .or. mlat /= plat) then
-              write(iulog,*) sub//': ERROR: model parameters do not match initial dataset parameters'
-              write(iulog,*)'Model Parameters:    plon = ',plon,' plat = ',plat
-              write(iulog,*)'Dataset Parameters:  dlon = ',mlon,' dlat = ',mlat
-              call endrun(sub//': ERROR: model parameters do not match initial dataset parameters')
+  if (analytic_ic_active()) then
+     do m = cnst_start, pcnst
+        if (cnst_read_iv(m)) then
+           if (dyn_field_exists(fh_ini, trim(cnst_name(m)), required=.false.)) then
+              ierr = pio_inq_dimid(fh_ini, 'lon' , lonid)
+              ierr = pio_inq_dimid(fh_ini, 'lat' , latid)
+              ierr = pio_inq_dimlen(fh_ini, lonid , mlon)
+              ierr = pio_inq_dimlen(fh_ini, latid , mlat)
+              if (mlon /= plon .or. mlat /= plat) then
+                 write(iulog,*) sub//': ERROR: model parameters do not match initial dataset parameters'
+                 write(iulog,*)'Model Parameters:    plon = ',plon,' plat = ',plat
+                 write(iulog,*)'Dataset Parameters:  dlon = ',mlon,' dlat = ',mlat
+                 call endrun(sub//': ERROR: model parameters do not match initial dataset parameters')
+              end if
+              exit
            end if
-           exit
         end if
-     end if
-  end do
+     end do
+  end if
 
   do m = cnst_start, pcnst
     readvar   = .false.

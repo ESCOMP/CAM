@@ -671,7 +671,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    qsize_condensate_loading_cp(8)  = cpice
    qsize_condensate_loading_R(8)   = 0.0_r8
    
-   call cnst_get_ind('H', ixo2, abort=.false.)
+   call cnst_get_ind('H', ixh, abort=.false.)
    if (ixh < 1.and.qsize_condensate_loading > 8) &
         call endrun(subname//': ERROR: qsize_condensate_loading >8 but H not available')
    qsize_condensate_loading_idx(9) = ixh

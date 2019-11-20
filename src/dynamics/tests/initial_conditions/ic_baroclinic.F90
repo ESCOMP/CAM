@@ -192,9 +192,7 @@ contains
     !*******************************
     !
     if (present(PHIS)) then
-      where(mask_use)
-        PHIS = 0.0_r8
-      end where
+      PHIS = 0.0_r8
       if(masterproc .and. verbose_use) then
         write(iulog,*) '          PHIS initialized by "',subname,'"'
       end if
