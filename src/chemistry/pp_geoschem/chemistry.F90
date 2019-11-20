@@ -357,8 +357,13 @@ contains
     use GC_Environment_Mod
     use GC_Grid_Mod,    only : SetGridFromCtrEdges
 
+
     ! Use GEOS-Chem versions of physical constants
     use PhysConstants,  only : PI, PI_180
+    use PhysConstants,  only : Re
+
+    use Phys_Grid,      only : get_Area_All_p
+    use hycoef,         only : ps0, hyai, hybi
 
     use Time_Mod,      only : Accept_External_Date_Time
     !use Time_Mod,      only : Set_Begin_Time,   Set_End_Time
@@ -376,7 +381,7 @@ contains
     use Aerosol_Mod,   only : Init_Aerosol
     use WetScav_Mod,   only : Init_WetScav
     use TOMS_Mod,      only : Init_TOMS
-    use Pressure_Mod,  only : Init_Pressure
+    use Pressure_Mod,  only : Init_Pressure, Accept_External_ApBp
 
     TYPE(physics_state), INTENT(IN):: phys_state(BEGCHUNK:ENDCHUNK)
     TYPE(physics_buffer_desc), POINTER :: pbuf2d(:,:)
@@ -410,6 +415,8 @@ contains
     REAL(f4), ALLOCATABLE :: lonEdgeArr(:,:), latEdgeArr(:,:)
     REAL(r8), ALLOCATABLE :: linozData(:,:,:,:)
 
+    REAL(r8), ALLOCATABLE :: Col_Area(:)
+    REAL(fp), ALLOCATABLE :: Ap_CAM_Flip(:), Bp_CAM_Flip(:)
 
     ! Assume a successful return until otherwise
     RC                      = GC_SUCCESS
@@ -976,10 +983,83 @@ contains
     ENDIF
 
 
+    ! Set grid-cell area
+    DO I = BEGCHUNK, ENDCHUNK
+        ALLOCATE(Col_Area(NCOL(I)), STAT=IERR)
+        IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating Col_Area')
+
+        CALL Get_Area_All_p(I, NCOL(I), Col_Area)
+        
+        ! Set default value (in case of chunks with fewer columns)
+        State_Grid(I)%Area_M2 = 1.0e+10_fp
+        DO iX = 1, NX
+            DO iY = 1, NCOL(I)
+                State_Grid(I)%Area_M2(iX,iY) = REAL(Col_Area(iY) * Re**2,fp)
+            ENDDO
+        ENDDO
+
+        DEALLOCATE(Col_Area)
+      
+        ! Copy to State_Met(I)%Area_M2
+        State_Met(I)%Area_M2 = State_Grid(I)%Area_M2
+    ENDDO
+
+
+    ! Initialize (mostly unused) diagnostic arrays
+    ! WARNING: This routine likely calls on modules which are currently
+    ! excluded from the GC-CESM build (eg diag03)
+    ! CALL Initialize( MasterProc, Input_Opt, 2, RC )
+    ! CALL Initialize( Masterproc, Input_Opt, 3, RC )
+
+    ! Get Ap and Bp from CAM at pressure edges
+    ALLOCATE(Ap_CAM_Flip(nZ+1), STAT=IERR)
+    IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating Ap_CAM_Flip')
+    ALLOCATE(Bp_CAM_Flip(nZ+1), STAT=IERR)
+    IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating Bp_CAM_Flip')
+
+    Ap_CAM_Flip = 0.0e+0_fp
+    Bp_CAM_Flip = 0.0e+0_fp
+    DO I = 1, (nZ+1)
+        Ap_CAM_Flip(I) = hyai(nZ+2-I) * ps0 * 0.01e+0_r8
+        Bp_CAM_Flip(I) = hybi(nZ+2-I)
+    ENDDO
+
+    DO I = BEGCHUNK, ENDCHUNK
+    
+        !-----------------------------------------------------------------
+        ! Initialize the hybrid pressure module.  Define Ap and Bp.
+        !-----------------------------------------------------------------
+        CALL Init_Pressure( am_I_Root  = MasterProc,    &  ! Root CPU (Y/N)?
+        &                   State_Grid = State_Grid(I), &  ! Grid State
+        &                   RC         = RC            )   ! Success or failure
+
+        ! Trapping errors
+        IF ( RC /= GC_SUCCESS ) THEN
+           ErrMsg = 'Error encountered in "Init_Pressure"!'
+           CALL Error_Stop( ErrMsg, ThisLoc )
+        ENDIF
+
+        !-----------------------------------------------------------------
+        ! Pass external Ap and Bp to GEOS-Chem's Pressure_Mod
+        !-----------------------------------------------------------------
+        CALL Accept_External_ApBp( am_I_Root  = MasterProc,    &  ! Root CPU (Y/N)?
+        &                          State_Grid = State_Grid(I), &  ! Grid State
+        &                          ApIn       = Ap_CAM_Flip,   &  ! "A" term for hybrid grid
+        &                          BpIn       = Bp_CAM_Flip,   &  ! "B" term for hybrid grid
+        &                          RC         = RC            )   ! Success or failure
+
+        ! Trapping errors
+        IF ( RC /= GC_SUCCESS ) THEN
+           ErrMsg = 'Error encountered in "Accept_External_ApBp"!'
+           CALL Error_Stop( ErrMsg, ThisLoc )
+        ENDIF
+
+    ENDDO
+    DEALLOCATE(Ap_CAM_Flip,Bp_CAM_Flip)
+
 
 
     ! Init_FJX..
-    ! Init_Pressure...
     ! Init_PBL_Mix...
     ! Init_Chemistry...
     ! Init_TOMS...
@@ -1160,6 +1240,7 @@ contains
     use Aerosol_Mod,    only : Cleanup_Aerosol
     use TOMS_Mod,       only : Cleanup_Toms
     use Sulfate_Mod,    only : Cleanup_Sulfate
+    use Pressure_Mod,   only : Cleanup_Pressure
 
     ! Special: cleans up after NDXX_Setup
     use Diag_Mod,       only : Cleanup_Diag
@@ -1179,23 +1260,21 @@ contains
     IF ( RC /= GC_SUCCESS ) THEN
        ErrMsg = 'Error encountered in "Cleanup_FlexChem"!'
        CALL Error_Stop( ErrMsg, ThisLoc )
-       RETURN
     ENDIF
 
+    CALL Cleanup_Pressure
     CALL Cleanup_Seasalt
     CALL Cleanup_Sulfate
     CALL Cleanup_Toms( MasterProc, RC )
     IF ( RC /= GC_SUCCESS ) THEN
        ErrMsg = 'Error encountered in "Cleanup_Toms"!'
        CALL Error_Stop( ErrMsg, ThisLoc )
-       RETURN
     ENDIF
 
     CALL Cleanup_WetScav( MasterProc, RC)
     IF ( RC /= GC_SUCCESS ) THEN
        ErrMsg = 'Error encountered in "Cleanup_WetScav"!'
        CALL Error_Stop( ErrMsg, ThisLoc )
-       RETURN
     ENDIF
 
     CALL Cleanup_Diag
