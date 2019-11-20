@@ -560,8 +560,10 @@ contains
       call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu_p  ,1.0_r8 ,'_p  ') 
       call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu    ,0.5_r8,'    ')
       call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu_div,5.0_r8 ,'_div')
-      del2_physics_tendencies=.true.
-      if (hybrid%masterthread) write(iulog,*) 'filtering u,v,T tendencies in sponge for stability'
+      if (ne > 0) then
+        del2_physics_tendencies=.true. !del2 on physics tendencies only coded for uniform resolution
+        if (hybrid%masterthread) write(iulog,*) 'filtering u,v,T tendencies in sponge for stability'
+      end if
     end if
     if (hybrid%masterthread) write(iulog,*) 'del2_physics_tendencies= ',del2_physics_tendencies
 
