@@ -1163,8 +1163,12 @@ contains
     use cam_history,      only: outfld
     use camsrfexch,       only: cam_in_t, cam_out_t
 
+    use Dao_Mod,          only: Set_Dry_Surface_Pressure
+    use Dao_Mod,          only: Airqnt
+    use Pressure_Mod,     only: Set_Floating_Pressures
+
     REAL(r8),            INTENT(IN)    :: dT          ! Time step
-    TYPE(physics_state), INTENT(IN)    :: state       ! Physics state variables
+    TYPE(physics_state), INTENT(IN)    :: State       ! Physics State variables
     TYPE(physics_ptend), INTENT(OUT)   :: ptend       ! indivdual parameterization tendencies
     TYPE(cam_in_t),      INTENT(INOUT) :: cam_in
     TYPE(cam_out_t),     INTENT(IN)    :: cam_out
@@ -1221,17 +1225,32 @@ contains
             DO J = 1, NCOL
                 DO K = 1, pver
                     ! CURRENTLY KG/KG DRY
-                    mmr_beg(J,K,M) = state%q(J,pver+1-K,N)
+                    mmr_beg(J,K,M) = State%q(J,pver+1-K,N)
                     State_Chm(LCHNK)%Species(1,J,K,M) = REAL(mmr_beg(J,K,M),fp)
                 ENDDO
             ENDDO
             lq(n) = .TRUE.
         ENDIF
     ENDDO
-    CALL Physics_ptend_init(ptend, state%psetcols, 'chemistry', lq=lq)
+    CALL Physics_ptend_init(ptend, State%psetcols, 'chemistry', lq=lq)
 
-    !if (MasterProc) WRITE(iulog,*) ' --> TEND SIZE: ', size(state%ncol)
-    !if (MasterProc) WRITE(iulog,'(a,2(x,I6))') ' --> TEND SIDE:  ', lbound(state%ncol),ubound(state%ncol)
+    ! 1. Update State_Met etc for this timestep
+    !State_Met(LCHNK)%PS1_WET = 1013.25e+0_fp
+    !CALL Set_Dry_Surface_Pressure(State_Met(LCHNK), 1)
+
+    !! Set surface pressures to match those in input
+    !State_Met(LCHNK)%PSC2_WET = State_Met(LCHNK)%PS1_WET
+    !State_Met(LCHNK)%PSC2_DRY = State_Met(LCHNK)%PS1_DRY
+    !CALL Set_Floating_Pressures( MasterProc, State_Met(LCHNK), RC )
+
+    !! Set quantities of interest but do not change VMRs
+    !Call AirQnt( MasterProc, Input_Opt, State_Met(LCHNK), &
+    !             State_Chm(LCHNK), RC, update_mixing_ratio=.False. )
+
+
+
+    !IF (MasterProc) WRITE(iulog,*) ' --> TEND SIZE: ', size(State%ncol)
+    !IF (MasterProc) WRITE(iulog,'(a,2(x,I6))') ' --> TEND SIDE:  ', lbound(State%ncol),ubound(State%ncol)
 
     IF (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_TIMESTEP_TEND'
 
