@@ -89,8 +89,8 @@ module chemistry
   TYPE(MetState),ALLOCATABLE      :: State_Met(:)   ! Meteorology State object
   TYPE(DgnList )                  :: Diag_List      ! Diagnostics list object
 
-  ! Integer
-  INTEGER                         :: RC
+  ! Indices of critical species
+  INTEGER                         :: iH2O
 
   ! Strings
   CHARACTER(LEN=255)              :: ThisLoc
@@ -367,7 +367,7 @@ contains
     use DiagList_Mod,   only : Init_DiagList, Print_DiagList
     use GC_Environment_Mod
     use GC_Grid_Mod,    only : SetGridFromCtrEdges
-
+!Check GC_Grid TMMF
 
     ! Use GEOS-Chem versions of physical constants
     use PhysConstants,  only : PI, PI_180
@@ -394,6 +394,7 @@ contains
     use TOMS_Mod,      only : Init_TOMS
     use Pressure_Mod,  only : Init_Pressure, Accept_External_ApBp
     use Chemistry_Mod, only : Init_Chemistry
+    use UCX_Mod,       only : Init_UCX
 
     TYPE(physics_state), INTENT(IN):: phys_state(BEGCHUNK:ENDCHUNK)
     TYPE(physics_buffer_desc), POINTER :: pbuf2d(:,:)
@@ -970,6 +971,7 @@ contains
         ENDIF
     ENDIF
 
+    IF (Input_Opt%LChem) THEN
     CALL Init_Toms( am_I_Root  = MasterProc,           &
      &              Input_Opt  = Input_Opt,            &
      &              State_Chm  = State_Chm(BEGCHUNK),  &
@@ -980,6 +982,7 @@ contains
     IF ( RC /= GC_SUCCESS ) THEN
         ErrMsg = 'Error encountered in "Init_TOMS"!'
         CALL Error_Stop( ErrMsg, ThisLoc )
+    ENDIF
     ENDIF
 
     ! This is a bare subroutine - no module
@@ -1085,12 +1088,20 @@ contains
         ENDIF
     ENDIF
 
+    ! Initialize HEMCO?
+    !CALL EMISSIONS_INIT ( am_I_Root, Input_Opt, State_Met, State_Chm, RC, &
+    !                      HcoConfig=HcoConfig )
+    !ASSERT_(RC==GC_SUCCESS)
+
+    IF (Input_Opt%LChem.and.Input_Opt%LUCX) THEN
+        CALL Init_UCX( am_I_Root  = MasterProc,           &
+     &                 Input_Opt  = Input_Opt,            &
+     &                 State_Chm  = State_Chm(BEGCHUNK),  &
+     &                 State_Diag = State_Diag(BEGCHUNK), &
+     &                 State_Grid = State_Grid(BEGCHUNK) )
+    ENDIF
 
     ! Init_PBL_Mix...
-    ! Init_Chemistry...
-    ! Init_TOMS...
-    ! Emissions_Init...
-    ! Init_UCX...
     ! Convert_Spc_Units...
 
 
@@ -1166,6 +1177,12 @@ contains
     use Dao_Mod,          only: Set_Dry_Surface_Pressure
     use Dao_Mod,          only: Airqnt
     use Pressure_Mod,     only: Set_Floating_Pressures
+    use Pressure_Mod,     only: Accept_External_Pedge
+    use Time_Mod,         only: Accept_External_Date_Time
+    use Strat_chem_Mod,   only: Init_Strat_Chem
+    use Toms_Mod,         only: Compute_Overhead_O3
+    use Chemistry_Mod,    only: Do_Chemistry
+    use Wetscav_Mod,      only: Setup_Wetscav
 
     REAL(r8),            INTENT(IN)    :: dT          ! Time step
     TYPE(physics_state), INTENT(IN)    :: State       ! Physics State variables
@@ -1194,6 +1211,12 @@ contains
         Zsurf,     &                               ! Surface height
         Rlats, Rlons                               ! Chunk latitudes and longitudes (radians)
 
+    LOGICAL      :: rootChunk
+    INTEGER      :: RC
+
+    ! Because of strat chem
+    LOGICAL, SAVE :: SCHEM_READY = .FALSE.
+
     ! Here's where you'll call DO_CHEMISTRY
     ! NOTE: State_Met etc are in an ARRAY - so we will want to always pass
     ! State_Met%(lchnk) and so on
@@ -1201,6 +1224,9 @@ contains
     LCHNK = State%LCHNK
     ! ncol: number of atmospheric columns on this chunk
     NCOL  = State%NCOL
+
+    ! Am I the first chunk on the first CPU?
+    rootChunk = ( MasterProc.and.(LCHNK==BEGCHUNK) )
 
    ! Need to update the timesteps throughout the code
     CALL GC_Update_Timesteps(dT)
@@ -1215,6 +1241,9 @@ contains
     !call get_rlon_all_p( LCHNK, NCOL, Rlons )
 
     ! 2. Copy tracers into State_Chm
+    ! Data was received in kg/kg dry
+    State_Chm(LCHNK)%Spc_Units = 'kg/kg dry'
+
     lq(:) = .FALSE.
 
     mmr_beg = 0.0e+0_r8
@@ -1234,18 +1263,120 @@ contains
     ENDDO
     CALL Physics_ptend_init(ptend, State%psetcols, 'chemistry', lq=lq)
 
-    ! 1. Update State_Met etc for this timestep
-    !State_Met(LCHNK)%PS1_WET = 1013.25e+0_fp
+    ! Eventually initialize/reset wetdep
+    IF ( Input_Opt%LConv .OR. Input_Opt%LChem .OR. Input_Opt%LWetD ) THEN
+        CALL Setup_WetScav( am_I_Root  = rootChunk,         &
+                            Input_Opt  = Input_Opt,         &
+                            State_Chm  = State_Chm(LCHNK),  &
+                            State_Grid = State_Grid(LCHNK), &
+                            State_Met  = State_Met(LCHNK),  &
+                            RC         = RC                )
+
+        IF ( RC /= GC_SUCCESS ) THEN
+           ErrMsg = 'Failed to set up wet scavenging!'
+           CALL Error_Stop( ErrMsg, ThisLoc )
+        ENDIF
+    ENDIF
+
+    ! Pass time values obtained from the ESMF environment to GEOS-Chem
+    CALL Accept_External_Date_Time( am_I_Root      = rootChunk,  &
+                                    value_NYMD     = 20000101,   &
+                                    value_NHMS     = 0000,    &
+                                    value_YEAR     = 2000,    &
+                                    value_MONTH    = 01,    &
+                                    value_DAY      = 01,    &
+                                    value_DAYOFYR  = 001,    &
+                                    value_HOUR     = 00,    &
+                                    value_MINUTE   = 00,    &
+                                    value_HELAPSED = 0.0e+0_f4,    &
+                                    value_UTC      = 0.0e+0_f4,    &
+                                    RC             = RC    )
+    IF ( RC /= GC_SUCCESS ) THEN
+       ErrMsg = 'Failed to update time in GEOS-Chem!'
+       CALL Error_Stop( ErrMsg, ThisLoc )
+    ENDIF
+
+    CALL Accept_External_PEdge( am_I_Root = rootChunk,        &
+                                State_Met = State_Met(LCHNK), &
+                                RC        = RC               )
+    IF ( RC /= GC_SUCCESS ) THEN
+       ErrMsg = 'Failed to update pressure edges!'
+       CALL Error_Stop( ErrMsg, ThisLoc )
+    ENDIF
+
+    ! Calculate State_Met etc for this timestep
+    ! Use the CAM psdry fields instead of using the GC calculation
     !CALL Set_Dry_Surface_Pressure(State_Met(LCHNK), 1)
+    State_Met(LCHNK)%PS1_DRY (1,:) = state%psdry(:)
+    State_Met(LCHNK)%PS2_DRY (1,:) = state%psdry(:)
 
-    !! Set surface pressures to match those in input
-    !State_Met(LCHNK)%PSC2_WET = State_Met(LCHNK)%PS1_WET
-    !State_Met(LCHNK)%PSC2_DRY = State_Met(LCHNK)%PS1_DRY
-    !CALL Set_Floating_Pressures( MasterProc, State_Met(LCHNK), RC )
+    ! Set surface pressures to match those in input
+    State_Met(LCHNK)%PSC2_WET = State_Met(LCHNK)%PS1_WET
+    State_Met(LCHNK)%PSC2_DRY = State_Met(LCHNK)%PS1_DRY
+    CALL Set_Floating_Pressures( am_I_Root  = rootChunk,         &
+                                 State_Grid = State_Grid(LCHNK), &
+                                 State_Met  = State_Met(LCHNK),  &
+                                 RC         = RC                )
 
-    !! Set quantities of interest but do not change VMRs
-    !Call AirQnt( MasterProc, Input_Opt, State_Met(LCHNK), &
-    !             State_Chm(LCHNK), RC, update_mixing_ratio=.False. )
+    IF ( RC /= GC_SUCCESS ) THEN
+       ErrMsg = 'Failed to set floating pressures!'
+       CALL Error_Stop( ErrMsg, ThisLoc )
+    ENDIF
+
+    ! Set quantities of interest but do not change VMRs
+    CALL AirQnt( am_I_Root           = rootChunk,         &
+                 Input_Opt           = Input_Opt,         &
+                 State_Chm           = State_Chm(LCHNK),  &
+                 State_Grid          = State_Grid(LCHNK), &
+                 State_Met           = State_Met(LCHNK),  &
+                 RC                  = RC,                &
+                 Update_Mixing_Ratio = .False. )
+
+    IF ( RC /= GC_SUCCESS ) THEN
+       ErrMsg = 'Failed to calculate air properties!'
+       CALL Error_Stop( ErrMsg, ThisLoc )
+    ENDIF
+
+
+    ! Initialize strat chem if not already done. This has to be done here because
+    ! it needs to have non-zero values in State_Chm%AD, which only happens after
+    ! the first call to AirQnt
+    IF ( (.not.schem_ready) .and. Input_Opt%LSCHEM ) THEN
+        CALL Init_Strat_Chem( am_I_Root  = rootChunk,         &
+                              Input_Opt  = Input_Opt,         &
+                              State_Chm  = State_Chm(LCHNK),  &
+                              State_Met  = State_Met(LCHNK),  &
+                              State_Grid = State_Grid(LCHNK), &
+                              RC         = RC                )
+
+        IF ( RC /= GC_SUCCESS ) THEN
+           ErrMsg = 'Could not initialize strat-chem!'
+           CALL Error_Stop( ErrMsg, ThisLoc )
+        ENDIF
+        schem_ready = .True.
+    ENDIF
+
+    ! Run chemistry
+    IF (Input_Opt%LChem) THEN
+        CALL Compute_Overhead_O3( am_I_Root       = rootChunk,                 &
+                                  State_Grid      = State_Grid(LCHNK),         &
+                                  DAY             = 1,                         &
+                                  USE_O3_FROM_MET = Input_Opt%Use_O3_From_Met, &
+                                  TO3             = State_Met(LCHNK)%TO3 )
+
+        CALL Do_Chemistry( am_I_Root  = rootChunk,         &
+                           Input_Opt  = Input_Opt,         &
+                           State_Chm  = State_Chm(LCHNK),  &
+                           State_Diag = State_Diag(LCHNK), &
+                           State_Grid = State_Grid(LCHNK), &
+                           State_Met  = State_Met(LCHNK),  &
+                           RC         = RC        )
+
+        IF ( RC /= GC_SUCCESS ) THEN
+           ErrMsg = 'Chemistry failed!'
+           CALL Error_Stop( ErrMsg, ThisLoc )
+        ENDIF
+    ENDIF
 
 
 
@@ -1254,10 +1385,14 @@ contains
 
     IF (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_TIMESTEP_TEND'
 
+    ! Make sure State_Chm(lchnk) is back in kg/kg dry!
+
+    ! Reset H2O MMR to the initial value (no chemistry tendency in H2O just
+    ! yet)
+    State_Chm(LCHNK)%Species(1,:,:,iH2O) = mmr_beg(:,:,iH2O)
+
     ! NOTE: Re-flip all the arrays vertically or suffer the consequences
     ! ptend%q dimensions: [column, ?, species]
-    !ptend%q(:ncol,:,:) = 0.0e+0_r8
-    !ptend%q(:ncol,:,:) = 0.0e+0_r8
     ptend%q(:,:,:) = 0.0e+0_r8
     mmr_end = 0.0e+0_r8
     DO N = 1, pcnst
@@ -1329,6 +1464,7 @@ contains
     use TOMS_Mod,       only : Cleanup_Toms
     use Sulfate_Mod,    only : Cleanup_Sulfate
     use Pressure_Mod,   only : Cleanup_Pressure
+    use Strat_Chem_Mod, only : Cleanup_Strat_Chem
 
     use CMN_Size_Mod,   only : Cleanup_CMN_Size
     use CMN_O3_Mod,     only : Cleanup_CMN_O3
@@ -1357,6 +1493,7 @@ contains
     CALL Cleanup_Pressure
     CALL Cleanup_Seasalt
     CALL Cleanup_Sulfate
+    CALL Cleanup_Strat_Chem
     CALL Cleanup_Toms( MasterProc, RC )
     IF ( RC /= GC_SUCCESS ) THEN
        ErrMsg = 'Error encountered in "Cleanup_Toms"!'
