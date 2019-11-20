@@ -393,6 +393,7 @@ contains
     use WetScav_Mod,   only : Init_WetScav
     use TOMS_Mod,      only : Init_TOMS
     use Pressure_Mod,  only : Init_Pressure, Accept_External_ApBp
+    use Chemistry_Mod, only : Init_Chemistry
 
     TYPE(physics_state), INTENT(IN):: phys_state(BEGCHUNK:ENDCHUNK)
     TYPE(physics_buffer_desc), POINTER :: pbuf2d(:,:)
@@ -1068,9 +1069,23 @@ contains
     ENDDO
     DEALLOCATE(Ap_CAM_Flip,Bp_CAM_Flip)
 
+    IF (Input_Opt%Its_A_FullChem_Sim .OR. &
+        Input_Opt%Its_An_Aerosol_Sim) THEN
+        ! This also initializes Fast-JX
+        CALL Init_Chemistry( am_I_Root  = MasterProc,           &
+     &                       Input_Opt  = Input_Opt,            &
+     &                       State_Chm  = State_Chm(BEGCHUNK),  &
+     &                       State_Diag = State_Diag(BEGCHUNK), &
+     &                       State_Grid = State_Grid(BEGCHUNK), &
+     &                       RC         = RC                    )
+
+        IF ( RC /= GC_SUCCESS ) THEN
+            ErrMsg = 'Error encountered in "Init_Chemistry"!'
+            CALL Error_Stop( ErrMsg, ThisLoc )
+        ENDIF
+    ENDIF
 
 
-    ! Init_FJX..
     ! Init_PBL_Mix...
     ! Init_Chemistry...
     ! Init_TOMS...
@@ -1296,6 +1311,10 @@ contains
     use Sulfate_Mod,    only : Cleanup_Sulfate
     use Pressure_Mod,   only : Cleanup_Pressure
 
+    use CMN_Size_Mod,   only : Cleanup_CMN_Size
+    use CMN_O3_Mod,     only : Cleanup_CMN_O3
+    use CMN_FJX_Mod,    only : Cleanup_CMN_FJX
+
     ! Special: cleans up after NDXX_Setup
     use Diag_Mod,       only : Cleanup_Diag
 
@@ -1328,6 +1347,25 @@ contains
     CALL Cleanup_WetScav( MasterProc, RC)
     IF ( RC /= GC_SUCCESS ) THEN
        ErrMsg = 'Error encountered in "Cleanup_WetScav"!'
+       CALL Error_Stop( ErrMsg, ThisLoc )
+    ENDIF
+
+    ! Call extra cleanup routines, from modules in Headers/
+    CALL Cleanup_CMN_O3( MasterProc, RC )
+    IF ( RC /= GC_SUCCESS ) THEN
+       ErrMsg = 'Error encountered in "Cleanup_CMN_O3"!'
+       CALL Error_Stop( ErrMsg, ThisLoc )
+    ENDIF
+
+    CALL Cleanup_CMN_SIZE( MasterProc, RC )
+    IF ( RC /= GC_SUCCESS ) THEN
+       ErrMsg = 'Error encountered in "Cleanup_CMN_SIZE"!'
+       CALL Error_Stop( ErrMsg, ThisLoc )
+    ENDIF
+
+    CALL Cleanup_CMN_FJX( MasterProc, RC )
+    IF ( RC /= GC_SUCCESS ) THEN
+       ErrMsg = 'Error encountered in "Cleanup_CMN_FJX"!'
        CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
