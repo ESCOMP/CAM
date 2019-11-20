@@ -76,6 +76,9 @@ module chemistry
   ! Location of chemistry input (for now)
   CHARACTER(LEN=500) :: chemInputsDir
 
+  ! Mapping between constituents and GEOS-Chem tracers
+  INTEGER :: map2GC(pcnst)
+
   !-----------------------------
   ! Derived type objects
   !-----------------------------
@@ -138,6 +141,9 @@ contains
 
     if (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_REGISTER'
     ! At the moment, we force nadv_chem=200 in the setup file
+    ! Default
+    map2GC = -1
+
     DO I = 1, NTRACERSMAX
        ! TODO: Read input.geos in chem_readnl to get tracernames(1:ntracers)
        ! TODO: Get all other species properties here from species database
@@ -178,6 +184,11 @@ contains
                       readiv=ic_from_cam2, mixtype=mixtype, cam_outfld=camout, &
                       molectype=molectype, fixed_ubc=has_fixed_ubc, &
                       fixed_ubflx=has_fixed_ubflx, longname=trim(lng_name) )
+
+       ! Add to GC mapping. When starting a timestep, we will want to update the
+       ! concentration of State_Chm(x)%Species(1,iCol,iLev,i) with data from
+       ! constituent n
+       map2GC(n) = I
     ENDDO
 
        ! MOZART uses this for short-lived species. Not certain exactly what it
@@ -1131,13 +1142,13 @@ contains
 
 !===============================================================================
 
-  subroutine chem_timestep_tend( state, ptend, cam_in, cam_out, dt, pbuf,  fh2o )
+  subroutine chem_timestep_tend( State, ptend, cam_in, cam_out, dT, pbuf,  fh2o )
 
     use physics_buffer,   only: physics_buffer_desc
     use cam_history,      only: outfld
     use camsrfexch,       only: cam_in_t, cam_out_t
 
-    REAL(r8),            INTENT(IN)    :: dt          ! time step
+    REAL(r8),            INTENT(IN)    :: dT          ! Time step
     TYPE(physics_state), INTENT(IN)    :: state       ! Physics state variables
     TYPE(physics_ptend), INTENT(OUT)   :: ptend       ! indivdual parameterization tendencies
     TYPE(cam_in_t),      INTENT(INOUT) :: cam_in
@@ -1145,28 +1156,64 @@ contains
     TYPE(physics_buffer_desc), POINTER :: pbuf(:)
     REAL(r8), OPTIONAL,  INTENT(OUT)   :: fh2o(pcols) ! h2o flux to balance source from chemistry
 
-    ! Mapping (?)
-    logical :: lq(pcnst)
-    integer :: n, m
+    ! Initial MMR for all species
+    REAL(r8) :: mmr_beg(pcols,pver,nsls+ntracers)
+    REAL(r8) :: mmr_end(pcols,pver,nsls+ntracers)
+    REAL(r8) :: mmr_tend(pcols,pver,nsls+ntracers)
 
-    integer :: lchnk, ncol
+
+    ! Mapping (?)
+    LOGICAL :: lq(pcnst)
+    INTEGER :: I, J, K, N, M
+
+    INTEGER :: LCHNK, NCOL
+
+    INTEGER                    :: Latndx(pcols)    ! Chunk lat indices
+    INTEGER                    :: Lonndx(pcols)    ! Chunk lon indices
+    REAL(r8), DIMENSION(pcols) :: &
+        Zen_angle, &                               ! Solar zenith angle
+        Zsurf,     &                               ! Surface height
+        Rlats, Rlons                               ! Chunk latitudes and longitudes (radians)
+
     ! Here's where you'll call DO_CHEMISTRY
     ! NOTE: State_Met etc are in an ARRAY - so we will want to always pass
     ! State_Met%(lchnk) and so on
     ! lchnk: which chunk we have on this process
-    lchnk = state%lchnk
+    LCHNK = State%LCHNK
     ! ncol: number of atmospheric columns on this chunk
-    ncol  = state%ncol
+    NCOL  = State%NCOL
 
    ! Need to update the timesteps throughout the code
-    CALL GC_Update_Timesteps(DT)
+    CALL GC_Update_Timesteps(dT)
 
     ! Need to be super careful that the module arrays are updated and correctly
     ! set. NOTE: First thing - you'll need to flip all the data vertically
 
-    ! 1. Update State_Met etc for this timestep
+    ! Check that the chunk lat/lons haven't changed
+    !call get_lat_all_p( LCHNK, NCOL, Latndx )
+    !call get_lon_all_p( LCHNK, NCOL, Lonndx )
+    !call get_rlat_all_p( LCHNK, NCOL, Rlats )
+    !call get_rlon_all_p( LCHNK, NCOL, Rlons )
 
     ! 2. Copy tracers into State_Chm
+    lq(:) = .FALSE.
+
+    mmr_beg = 0.0e+0_r8
+    DO N = 1, pcnst
+        M = map2GC(N)
+        IF (M > 0) THEN
+            I = 1
+            DO J = 1, NCOL
+                DO K = 1, pver
+                    ! CURRENTLY KG/KG DRY
+                    mmr_beg(J,K,M) = state%q(J,pver+1-K,N)
+                    State_Chm(LCHNK)%Species(1,J,K,M) = REAL(mmr_beg(J,K,M),fp)
+                ENDDO
+            ENDDO
+            lq(n) = .TRUE.
+        ENDIF
+    ENDDO
+    CALL Physics_ptend_init(ptend, state%psetcols, 'chemistry', lq=lq)
 
     !if (MasterProc) WRITE(iulog,*) ' --> TEND SIZE: ', size(state%ncol)
     !if (MasterProc) WRITE(iulog,'(a,2(x,I6))') ' --> TEND SIDE:  ', lbound(state%ncol),ubound(state%ncol)
@@ -1174,18 +1221,25 @@ contains
     IF (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_TIMESTEP_TEND'
 
     ! NOTE: Re-flip all the arrays vertically or suffer the consequences
-    lq(:) = .false.
-    DO n=1,pcnst
-        !m = map2chm(n)
-        m=0
-        IF (m > 0) lq(n) = .true.
-    ENDDO
-
-    CALL physics_ptend_init(ptend, state%psetcols, 'chemistry', lq=lq)
     ! ptend%q dimensions: [column, ?, species]
     !ptend%q(:ncol,:,:) = 0.0e+0_r8
     !ptend%q(:ncol,:,:) = 0.0e+0_r8
     ptend%q(:,:,:) = 0.0e+0_r8
+    mmr_end = 0.0e+0_r8
+    DO N = 1, pcnst
+        M = map2GC(N)
+        IF (M > 0) THEN
+            I = 1
+            DO J = 1, NCOL
+                DO K = 1, pver
+                    ! CURRENTLY KG/KG
+                    mmr_end (J,K,M) = REAL(State_Chm(LCHNK)%Species(1,J,K,M),r8)
+                    mmr_tend(J,K,M) = mmr_end(J,K,M) - mmr_beg(J,K,M)
+                    ptend%q(J,pver+1-K,N) = (mmr_end(J,K,M)-mmr_beg(J,K,M))/dT
+                ENDDO
+            ENDDO
+        ENDIF
+    ENDDO
     IF (present(fh2o)) fh2o(:) = 0.0e+0_r8
 
     RETURN
