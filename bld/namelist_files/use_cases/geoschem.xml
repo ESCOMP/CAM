@@ -59,7 +59,7 @@
 </fincl1>
 
 <fincl2>
-    'O3', 'NO', 'NO2', 'CO', 'HNO3', 'CH4',
+    'O3', 'NO', 'NO2', 'CO', 'HNO3', 'CH4', 'NIT', 'NH4', 'NH3', 'SO4', 'SO2', 'OH',
 </fincl2>
 
 </namelist_defaults>
