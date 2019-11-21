@@ -1368,7 +1368,7 @@ contains
 
     ! For calculating SZA
     use Orbit,            only: zenith
-    use Time_Manager,     only: Get_Curr_Calday
+    use Time_Manager,        only: Get_Curr_Calday, Get_Curr_Date
 
     ! Calculating relative humidity
     use WV_Saturation,    only: QSat
@@ -1438,6 +1438,10 @@ contains
     REAL(r8)           :: MMR_Min, MMR_Max
 
     REAL(r8)           :: SlsData(State%NCOL, PVER, NSls)
+
+    INTEGER      :: CurrYr, CurrMo, CurrDy, CurrTOD
+    INTEGER      :: CurrYMD, CurrHMS, CurrHr, CurrMn, CurrSc
+    REAL(f4)     :: CurrUTC
 
     LOGICAL       :: rootChunk
     INTEGER       :: RC
@@ -1703,18 +1707,40 @@ contains
         ENDIF
     ENDIF
 
+    ! Determine current date and time
+    CALL Get_Curr_Date(CurrYr,CurrMo,CurrDy,CurrTOD)
+    ! For now, force year to be 2000
+    CurrYr  = 2000
+    CurrYMD = (CurrYr*1000) + (CurrMo*100) + (CurrDy)
+    ! Deal with subdaily
+    CurrUTC = REAL(CurrTOD,f4)/3600.0e+0_f4
+    CurrSc  = 0
+    CurrMn  = 0
+    CurrHr  = 0
+    DO WHILE (CurrTOD > 3600)
+        CurrTOD = CurrTOD - 3600
+        CurrHr  = CurrHr + 1
+    ENDDO
+    DO WHILE (CurrTOD > 60)
+        CurrTOD = CurrTOD - 60
+        CurrMn  = CurrMn + 1
+    ENDDO
+    CurrSc  = CurrTOD
+    CurrHMS = (CurrHr*1000) + (CurrMn*100) + (CurrSc)
+
+
     ! Pass time values obtained from the ESMF environment to GEOS-Chem
     CALL Accept_External_Date_Time( am_I_Root      = rootChunk,  &
-                                    value_NYMD     = 20000101,   &
-                                    value_NHMS     = 0000,    &
-                                    value_YEAR     = 2000,    &
-                                    value_MONTH    = 01,    &
-                                    value_DAY      = 01,    &
-                                    value_DAYOFYR  = 001,    &
-                                    value_HOUR     = 00,    &
-                                    value_MINUTE   = 00,    &
+                                    value_NYMD     = CurrYMD,            &
+                                    value_NHMS     = CurrHMS,            &
+                                    value_YEAR     = CurrYr,             &
+                                    value_MONTH    = CurrMo,             &
+                                    value_DAY      = CurrDy,             &
+                                    value_DAYOFYR  = INT(FLOOR(Calday)), &
+                                    value_HOUR     = CurrHr,             &
+                                    value_MINUTE   = CurrMn,             &
                                     value_HELAPSED = 0.0e+0_f4,    &
-                                    value_UTC      = 0.0e+0_f4,    &
+                                    value_UTC      = CurrUTC,            &
                                     RC             = RC    )
 
     IF ( RC /= GC_SUCCESS ) THEN
