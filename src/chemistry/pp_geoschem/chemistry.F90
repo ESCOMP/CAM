@@ -1317,6 +1317,13 @@ contains
     use WV_Saturation,    only: QSat
     use PhysConst,        only: MWDry
 
+    ! Grid area
+    use PhysConstants,    only: Re
+    use Phys_Grid,        only: get_area_all_p
+
+    ! Use GEOS-Chem versions of physical constants
+    use PhysConstants,    only: PI, PI_180
+
     REAL(r8),            INTENT(IN)    :: dT          ! Time step
     TYPE(physics_state), INTENT(IN)    :: State       ! Physics State variables
     TYPE(physics_ptend), INTENT(OUT)   :: ptend       ! indivdual parameterization tendencies
@@ -1357,6 +1364,8 @@ contains
 
     REAL(f4)      :: lonMidArr(1,pcols), latMidArr(1,pcols)
     INTEGER       :: iMaxLoc(1)
+
+    REAL(r8)      :: Col_Area(State%NCOL)
 
     ! Calculating SZA
     REAL(r8)      :: Calday
@@ -1416,6 +1425,16 @@ contains
         ErrMsg = 'Error encountered within call to "SetGridFromCtr"!'
         CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
+
+    ! Set area
+    CALL Get_Area_All_p( LCHNK, NCOL, Col_Area )
+    ! Set default value (in case of chunks with fewer columns)
+    State_Grid(LCHNK)%Area_M2 = 1.0e+10_fp
+    DO J = 1, NCOL
+        State_Grid(LCHNK)%Area_M2(1,J) = REAL(Col_Area(J) * Re**2,fp)
+    ENDDO
+    State_Met(LCHNK)%Area_M2 = State_Grid(LCHNK)%Area_M2
+
 
     ! 2. Copy tracers into State_Chm
     ! Data was received in kg/kg dry
