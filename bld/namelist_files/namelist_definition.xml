@@ -4533,6 +4533,18 @@ nhtfrq setting for the CAM snapshot files
 Default: 1 (every time step)
 </entry>
 
+<entry id="cam_take_snapshot_before" type="char*32"  category="diagnostics"
+       group="phys_ctl_nl" valid_values="chem_emissions,chem_timestep_tend,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,macrop_driver_tend,clubb_tend_cam,microp_section,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend" >
+Name of parameterization to take snapshot before running
+Default: 
+</entry>
+
+<entry id="cam_take_snapshot_after" type="char*32"  category="diagnostics"
+       group="phys_ctl_nl" valid_values="chem_emissions,chem_timestep_tend,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,macrop_driver_tend,clubb_tend_cam,microp_section,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend" >
+Name of parameterization to take snapshot after running
+Default: 
+</entry>
+
 <!-- Radiation -->
 <entry id="radiation_scheme" type="char*16" category="radiation"
        group="phys_ctl_nl" valid_values="rrtmg,camrt" >

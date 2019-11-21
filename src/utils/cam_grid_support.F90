@@ -1357,6 +1357,9 @@ contains
     gridid = get_cam_grid_index(id)
     if (gridid > 0) then
       call cam_grids(gridid)%write_darray_3d_double(File, adims, fdims, hbuf, varid)
+      if (varid%varid == 38) then
+        write(0,*) ' varid%varid=',varid%varid, ' varid%name=',varid%name
+      end if
     else
       write(errormsg, *) 'cam_grid_write_dist_array_3d_double: Bad grid ID, ', id
       call endrun(errormsg)

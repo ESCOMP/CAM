@@ -49,6 +49,12 @@ module physpkg
 
   logical :: state_debug_checks  ! Debug physics_state.
 
+  character(len=32) :: cam_take_snapshot_before ! Physics routine to take a snapshot "before"
+  character(len=32) :: cam_take_snapshot_after  ! Physics routine to take a snapshot "after"
+  integer           :: cam_snapshot_before_num ! tape number for before snapshots
+  integer           :: cam_snapshot_after_num  ! tape number for after snapshots
+
+
 !=======================================================================
 contains
 !=======================================================================
@@ -63,7 +69,7 @@ contains
 
     use physconst,          only: mwh2o, cpwv
     use constituents,       only: cnst_add, cnst_chk_dim
-    use physics_buffer,     only: pbuf_init_time, dtype_r8, pbuf_add_field
+    use physics_buffer,     only: pbuf_init_time, dtype_r8, pbuf_add_field, hist_cam_snapshot_register
 
     use cam_diagnostics,    only: diag_register
     use chemistry,          only: chem_register
@@ -78,7 +84,11 @@ contains
     !-----------------------------------------------------------------------
 
     ! Get physics options
-    call phys_getopts(state_debug_checks_out = state_debug_checks)
+    call phys_getopts(state_debug_checks_out = state_debug_checks, &
+                      cam_take_snapshot_before_out= cam_take_snapshot_before, &
+                      cam_take_snapshot_after_out = cam_take_snapshot_after, &
+                      cam_snapshot_before_num_out = cam_snapshot_before_num, &
+                      cam_snapshot_after_num_out  = cam_snapshot_after_num)
 
     ! Initialize dyn_time_lvls
     call pbuf_init_time()
@@ -125,6 +135,8 @@ contains
 
     ! ***NOTE*** No registering constituents after the call to cnst_chk_dim.
 
+    call hist_cam_snapshot_register() ! This needs to be last as it requires all pbuf fields to be added
+
   end subroutine phys_register
 
   !======================================================================================
@@ -159,7 +171,7 @@ contains
 
   !======================================================================================
 
-  subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
+  subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_in, cam_out )
 
     !-----------------------------------------------------------------------
     !
@@ -181,12 +193,14 @@ contains
     use wv_saturation,      only: wv_sat_init
     use phys_debug_util,    only: phys_debug_init
     use qneg_module,        only: qneg_init
+    use cam_snapshot,       only: cam_snapshot_init
 
     ! Input/output arguments
     type(physics_state), pointer       :: phys_state(:)
     type(physics_tend ), pointer       :: phys_tend(:)
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
+    type(cam_in_t), intent(in)         :: cam_in(begchunk:endchunk)
     type(cam_out_t),intent(inout)      :: cam_out(begchunk:endchunk)
 
     ! local variables
@@ -245,6 +259,9 @@ contains
 
     ! Initialize qneg3 and qneg4
     call qneg_init()
+
+    ! Initialize the snapshot capability
+    call cam_snapshot_init(cam_in, cam_out, pbuf2d, begchunk)
 
   end subroutine phys_init
 
@@ -450,6 +467,7 @@ contains
     use dycore,          only: dycore_is
     use check_energy,    only: calc_te_and_aam_budgets
     use cam_history,     only: hist_fld_active
+    use cam_snapshot,    only: cam_snapshot_all_outfld
 
     ! Arguments
     !
@@ -551,7 +569,15 @@ contains
         ! we do not reset them to pre-dme_adjust values
         !
         if (dycore_is('SE')) call set_dry_to_wet(state)
+
+        if (trim(cam_take_snapshot_before) == "physics_dme_adjust") &
+              call cam_snapshot_all_outfld(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf)
+
         call physics_dme_adjust(state, tend, qini, ztodt)
+
+        if (trim(cam_take_snapshot_after) == "physics_dme_adjust") &
+              call cam_snapshot_all_outfld(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf)
+
         call calc_te_and_aam_budgets(state, 'pAM')
         ! Restore pre-"physics_dme_adjust" tracers
         state%q(:ncol,:pver,:pcnst) = tmp_trac(:ncol,:pver,:pcnst)
@@ -623,6 +649,7 @@ contains
     use kessler_cam,       only: kessler_tend
     use tj2016_cam,        only: thatcher_jablonowski_precip_tend
     use dycore,            only: dycore_is
+    use cam_snapshot,      only: cam_snapshot_all_outfld
 
     ! Arguments
 
@@ -746,17 +773,38 @@ contains
     ! Compute physics tendency
     !===================================================
     if (ideal_phys) then
+
+      if (trim(cam_take_snapshot_before) == "held_suarez_tend") &
+          call cam_snapshot_all_outfld(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf)
+
       call held_suarez_tend(state, ptend, ztodt)
       call physics_update(state, ptend, ztodt, tend)
 
+      if (trim(cam_take_snapshot_after) == "held_suarez_tend") &
+          call cam_snapshot_all_outfld(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf)
+
     else if (kessler_phys) then
+
+      if (trim(cam_take_snapshot_before) == "kessler_tend") &
+          call cam_snapshot_all_outfld(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf)
+
       call kessler_tend(state, ptend, ztodt, pbuf)
       call physics_update(state, ptend, ztodt, tend)
 
+      if (trim(cam_take_snapshot_after) == "kessler_tend") &
+          call cam_snapshot_all_outfld(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf)
+
     else if (tj2016_phys) then
        ! Compute the large-scale precipitation
+
+       if (trim(cam_take_snapshot_before) == "thatcher_jablonowski_precip_tend") &
+           call cam_snapshot_all_outfld(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf)
+
        call thatcher_jablonowski_precip_tend(state, ptend, ztodt, pbuf)
        call physics_update(state, ptend, ztodt, tend)
+
+       if (trim(cam_take_snapshot_after) == "thatcher_jablonowski_precip_tend") &
+           call cam_snapshot_all_outfld(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf)
 
     end if
 
@@ -770,8 +818,16 @@ contains
       call t_startf('simple_chem')
 
       call check_tracers_init(state, tracerint)
+
+      if (trim(cam_take_snapshot_before) == "chem_timestep_tend") &
+          call cam_snapshot_all_outfld(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf)
+
       call chem_timestep_tend(state, ptend, cam_in, cam_out, ztodt, pbuf)
       call physics_update(state, ptend, ztodt, tend)
+
+      if (trim(cam_take_snapshot_after) == "chem_timestep_tend") &
+          call cam_snapshot_all_outfld(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf)
+
       call check_tracers_chng(state, tracerint, "chem_timestep_tend", nstep, ztodt, cam_in%cflx)
 
       call t_stopf('simple_chem')
