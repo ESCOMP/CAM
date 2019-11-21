@@ -778,8 +778,11 @@ contains
     Input_Opt%SalC_rEdge_um(1)    = 0.50e+0_fp
     Input_Opt%SalC_rEdge_um(2)    = 8.00e+0_fp
     Input_Opt%LMPOA               = .False.
-    Input_Opt%LGravStrat          = .True.
-    Input_Opt%LSolidPSC           = .True.
+    ! For now, disable solid PSCs and strat aerosol settling
+    ! Our treatment of the stratosphere isn't really sophisticated
+    ! enough to warrant it yet
+    Input_Opt%LGravStrat          = .False.
+    Input_Opt%LSolidPSC           = .False.
     Input_Opt%LHomNucNAT          = .False.
     Input_Opt%T_NAT_Supercool     = 3.0e+0_fp
     Input_Opt%P_Ice_Supersat      = 1.2e+0_fp
