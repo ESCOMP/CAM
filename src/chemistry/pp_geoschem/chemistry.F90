@@ -95,6 +95,9 @@ module chemistry
   ! Indices of critical species
   INTEGER                         :: iH2O
 
+  ! Indices in the physics buffer
+  INTEGER                         :: NDX_PBLH
+
   ! Strings
   CHARACTER(LEN=255)              :: ThisLoc
   CHARACTER(LEN=255)              :: ErrMsg
@@ -442,7 +445,7 @@ contains
     !          (and declare history variables)
     !
     !-----------------------------------------------------------------------
-    use physics_buffer, only: physics_buffer_desc
+    use physics_buffer, only: physics_buffer_desc, pbuf_get_index
     use cam_history,    only: addfld, add_default, horiz_only
 
     use mpishorthand
@@ -455,7 +458,6 @@ contains
     use DiagList_Mod,   only : Init_DiagList, Print_DiagList
     use GC_Environment_Mod
     use GC_Grid_Mod,    only : SetGridFromCtrEdges
-!Check GC_Grid TMMF
 
     ! Use GEOS-Chem versions of physical constants
     use PhysConstants,  only : PI, PI_180
@@ -483,6 +485,8 @@ contains
     use Pressure_Mod,  only : Init_Pressure, Accept_External_ApBp
     use Chemistry_Mod, only : Init_Chemistry
     use UCX_Mod,       only : Init_UCX
+
+    use PBL_Mix_Mod,   only : Init_PBL_Mix
 
     TYPE(physics_state), INTENT(IN):: phys_state(BEGCHUNK:ENDCHUNK)
     TYPE(physics_buffer_desc), POINTER :: pbuf2d(:,:)
@@ -1093,6 +1097,14 @@ contains
         CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
+    CALL Init_PBL_Mix( am_I_Root  = MasterProc,           &
+                       State_Grid = State_Grid(BEGCHUNK), &
+                       RC         = RC                   )
+
+    IF ( RC /= GC_SUCCESS ) THEN
+        ErrMsg = 'Error encountered in "Init_PBL_Mix"!'
+        CALL Error_Stop( ErrMsg, ThisLoc )
+    ENDIF
 
     ! Set grid-cell area
     DO I = BEGCHUNK, ENDCHUNK
@@ -1203,6 +1215,9 @@ contains
     ! Get the index of H2O
     iH2O = Ind_('H2O')
 
+    ! Get indices for physical fields in physics buffer
+    NDX_PBLH = pbuf_get_index('PBLH')
+
     ! Can add history output here too with the "addfld" & "add_default" routines
     ! Note that constituents are already output by default
     CALL addfld ( 'BCPI', (/'lev'/), 'A', 'mole/mole', trim('BCPI')//' mixing ratio' )
@@ -1266,7 +1281,7 @@ contains
 
   subroutine chem_timestep_tend( State, ptend, cam_in, cam_out, dT, pbuf,  fh2o )
 
-    use physics_buffer,   only: physics_buffer_desc
+    use physics_buffer,   only: physics_buffer_desc, pbuf_get_field
     use cam_history,      only: outfld
     use camsrfexch,       only: cam_in_t, cam_out_t
 
@@ -1319,6 +1334,7 @@ contains
         Zsurf,     &                               ! Surface height
         Rlats, Rlons                               ! Chunk latitudes and longitudes (radians)
 
+    REAL(r8), POINTER :: PBLH(:)                      ! PBL height on each chunk
     REAL(r8) :: RelHum(State%NCOL, pver)           ! Relative humidity [0-1]
     REAL(r8) :: SatV  (State%NCOL, pver)           ! Work arrays
     REAL(r8) :: SatQ  (State%NCOL, pver)           ! Work arrays
@@ -1370,8 +1386,8 @@ contains
     latMidArr = 0.0e+0_f4
     DO I = 1, NX
         DO J = 1, NY
-            lonMidArr(I,J) = Rlons(J)
-            latMidArr(I,J) = Rlats(J)
+            lonMidArr(I,J) = REAL(Rlons(J), f4)
+            latMidArr(I,J) = REAL(Rlats(J), f4)
         ENDDO
     ENDDO
 
@@ -1415,6 +1431,9 @@ contains
     CALL Zenith( Calday, Rlats, Rlons, CSZA, NCOL )
     !CALL Outfld( 'SZA', SZA, NCOL, LCHNK )
 
+    ! Get PBL height (m)
+    CALL pbuf_get_field(pbuf, NDX_PBLH, PBLH)
+
     ! Get VMR and MMR of H2O
     H2Ovmr = 0.0e0_fp
     QH2O   = 0.0e0_fp
@@ -1451,7 +1470,7 @@ contains
     State_Met(LCHNK)%LAI       (1,:) = 0.0e+0_fp
     State_Met(LCHNK)%PARDR     (1,:) = 0.0e+0_fp
     State_Met(LCHNK)%PARDF     (1,:) = 0.0e+0_fp
-    State_Met(LCHNK)%PBLH      (1,:) = 0.0e+0_fp
+    State_Met(LCHNK)%PBLH      (1,:) = PBLH(:NCOL)
     State_Met(LCHNK)%PHIS      (1,:) = State%Phis(:)
     State_Met(LCHNK)%PRECANV   (1,:) = 0.0e+0_fp
     State_Met(LCHNK)%PRECCON   (1,:) = 0.0e+0_fp
@@ -1547,6 +1566,9 @@ contains
 
     ! Calculate total OD as liquid cloud OD + ice cloud OD
     State_Met(lchnk)%OPTD =  State_Met(lchnk)%TAUCLI + State_Met(lchnk)%TAUCLW
+
+    ! Nullify all pointers
+    NULLIFY(PBLH)
 
     ! Eventually initialize/reset wetdep
     IF ( Input_Opt%LConv .OR. Input_Opt%LChem .OR. Input_Opt%LWetD ) THEN
@@ -1752,6 +1774,7 @@ contains
     use Sulfate_Mod,    only : Cleanup_Sulfate
     use Pressure_Mod,   only : Cleanup_Pressure
     use Strat_Chem_Mod, only : Cleanup_Strat_Chem
+    use PBL_Mix_Mod,    only : Cleanup_PBL_Mix
 
     use CMN_Size_Mod,   only : Cleanup_CMN_Size
     use CMN_O3_Mod,     only : Cleanup_CMN_O3
@@ -1777,6 +1800,7 @@ contains
        CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
+    CALL Cleanup_PBL_Mix
     CALL Cleanup_Pressure
     CALL Cleanup_Seasalt
     CALL Cleanup_Sulfate
