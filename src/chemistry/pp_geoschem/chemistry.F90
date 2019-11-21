@@ -588,7 +588,8 @@ contains
     ! The GEOS-Chem grids on every "chunk" will all be the same size, to avoid
     ! the possibility of having differently-sized chunks
     NX = 1
-    NY = MAXVAL(NCOL)
+    !NY = MAXVAL(NCOL)
+    NY = PCOLS
     NZ = NLEV
 
     !! Add short lived speies to buffers
@@ -1469,6 +1470,7 @@ contains
     INTEGER      :: CurrYMD, CurrHMS, CurrHr, CurrMn, CurrSc
     REAL(f4)     :: CurrUTC
 
+    INTEGER, SAVE :: iStep = 0
     LOGICAL       :: rootChunk
     INTEGER       :: RC
 
@@ -1479,6 +1481,9 @@ contains
 
     ! Am I the first chunk on the first CPU?
     rootChunk = ( MasterProc.and.(LCHNK==BEGCHUNK) )
+
+    ! Count the number of steps which have passed
+    IF (LCHNK.EQ.BEGCHUNK) iStep = iStep + 1
 
    ! Need to update the timesteps throughout the code
     CALL GC_Update_Timesteps(dT)
