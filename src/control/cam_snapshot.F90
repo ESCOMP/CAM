@@ -9,12 +9,15 @@ module cam_snapshot
 use shr_kind_mod,   only: r8 => shr_kind_r8
 use cam_history,    only: addfld, add_default, outfld, cam_history_snapshot_deactivate, cam_history_snapshot_activate
 use cam_abortutils, only: endrun
-use physics_buffer, only: physics_buffer_desc, pbuf_get_index, pbuf_get_field, pbuf_get_field_name, hist_dimension_name
+use physics_buffer, only: physics_buffer_desc, pbuf_get_index, pbuf_get_field, pbuf_get_field_name
+use physics_buffer, only: pbuf_set_field
 use physics_types,  only: physics_state, physics_tend
 use camsrfexch,     only: cam_out_t, cam_in_t
 use ppgrid,         only: pcols
 use phys_control,   only: phys_getopts
 use cam_logfile,    only: iulog
+use infnan,         only: isnan, isinf, isposinf, isneginf
+
 
 implicit  none
 
@@ -73,10 +76,10 @@ use cam_history, only : cam_history_snapshot_nhtfrq_set
 ! This subroutine does the addfld calls for ALL state, tend and pbuf fields.  It also includes the cam_in and cam_out
 ! elements which are used within CAM
 !--------------------------------------------------------
-   type(cam_in_t),            intent(in) :: cam_in_arr(:)
-   type(cam_out_t),           intent(in) :: cam_out_arr(:)
-   type(physics_buffer_desc), intent(in) :: pbuf(:,:)
-   integer,                   intent(in) :: index
+   type(cam_in_t),      intent(in)    :: cam_in_arr(:)
+   type(cam_out_t),     intent(in)    :: cam_out_arr(:)
+   type(physics_buffer_desc), pointer, intent(inout) :: pbuf(:,:)
+   integer,             intent(in)    :: index
 
 
    call phys_getopts(cam_snapshot_before_num_out = cam_snapshot_before_num, &
@@ -95,25 +98,32 @@ use cam_history, only : cam_history_snapshot_nhtfrq_set
    call cam_out_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num, cam_out_arr(index))
    call cam_pbuf_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num, pbuf(:,index))
 
+!   call pbuf_set_zero(pbuf_snapshot, pbuf) 
+
 end subroutine cam_snapshot_init
 
 subroutine cam_snapshot_all_outfld(file_num, state, tend, cam_in, cam_out, pbuf)
+
+use time_manager,   only: is_first_step
 
 !--------------------------------------------------------
 ! This subroutine does the outfld calls for ALL state, tend and pbuf fields.  It also includes the cam_in and cam_out
 ! elements which are used within CAM
 !--------------------------------------------------------
 
-   integer,             intent(in) :: file_num
+   integer,                            intent(in) :: file_num
    type(physics_state), intent(in) :: state
    type(physics_tend),  intent(in) :: tend
    type(cam_in_t),      intent(in) :: cam_in
    type(cam_out_t),     intent(in) :: cam_out
-   type(physics_buffer_desc), intent(in) :: pbuf(:)
+   type(physics_buffer_desc), pointer, intent(in) :: pbuf(:)
 
 
    integer :: i
    integer :: lchnk
+
+   ! Return if the first timestep as not all fields may be filled in and this will cause a core dump
+   if (is_first_step()) return
 
    ! Return if not turned on 
    if (cam_snapshot_before_num <= 0 .and. cam_snapshot_after_num <= 0) return ! No snapshot files are being requested
@@ -348,7 +358,7 @@ subroutine cam_in_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num,
 ! This subroutine does the addfld calls for state, tend and pbuf fields.
 !--------------------------------------------------------
 
-   type(cam_in_t),      intent(in) :: cam_in
+   type(cam_in_t), intent(in) :: cam_in
 
    integer,intent(in) :: cam_snapshot_before_num, cam_snapshot_after_num
    integer :: i
@@ -443,7 +453,7 @@ subroutine cam_out_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num
 ! This subroutine does the addfld calls for state, tend and pbuf fields.
 !--------------------------------------------------------
 
-   type(cam_out_t),     intent(in) :: cam_out
+   type(cam_out_t),  intent(in) :: cam_out
 
    integer,          intent(in) :: cam_snapshot_before_num, cam_snapshot_after_num
 
@@ -652,9 +662,9 @@ end subroutine snapshot_addfld
 
 subroutine state_snapshot_all_outfld(lchnk, file_num, state)
 
-   integer,             intent(in)  :: lchnk
-   integer,             intent(in)  :: file_num
-   type(physics_state), intent(in)  :: state
+   integer,              intent(in)  :: lchnk
+   integer,              intent(in)  :: file_num
+   type(physics_state),  intent(in)  :: state
 
    integer :: i
    integer :: ff
@@ -832,9 +842,9 @@ end subroutine tend_snapshot_all_outfld
 
 subroutine cam_in_snapshot_all_outfld(lchnk, file_num, cam_in)
 
-   integer,             intent(in)  :: lchnk
-   integer,             intent(in)  :: file_num
-   type(cam_in_t),      intent(in)  :: cam_in
+   integer,         intent(in)  :: lchnk
+   integer,         intent(in)  :: file_num
+   type(cam_in_t),  intent(in)  :: cam_in
 
    integer :: i
    integer :: ff
@@ -915,9 +925,9 @@ end subroutine cam_in_snapshot_all_outfld
 
 subroutine cam_out_snapshot_all_outfld(lchnk, file_num, cam_out)
 
-   integer,             intent(in)  :: lchnk
-   integer,             intent(in)  :: file_num
-   type(cam_out_t),     intent(in)  :: cam_out
+   integer,         intent(in)  :: lchnk
+   integer,         intent(in)  :: file_num
+   type(cam_out_t), intent(in)  :: cam_out
 
    integer :: i
    integer :: ff
@@ -1022,13 +1032,28 @@ subroutine cam_out_snapshot_all_outfld(lchnk, file_num, cam_out)
 
 end subroutine cam_out_snapshot_all_outfld
 
+subroutine pbuf_set_zero(pbuf_snapshot, pbuf) 
+
+   type (snapshot_type_nd),   intent(in)    :: pbuf_snapshot(:)
+   type(physics_buffer_desc), pointer, intent(inout) :: pbuf(:,:)
+
+   integer :: pbuf_idx, i
+
+   do i=1, npbuf_var
+
+      pbuf_idx= pbuf_get_index(pbuf_snapshot(i)%ddt_string)
+      call pbuf_set_field(pbuf, pbuf_idx, 0._r8)
+   end do
+
+end subroutine pbuf_set_zero
+
 subroutine cam_pbuf_snapshot_all_outfld(lchnk, file_num, pbuf)
 
    integer,                   intent(in) :: lchnk
    integer,                            intent(in) :: file_num
    type(physics_buffer_desc), pointer, intent(in) :: pbuf(:)
 
-   integer :: i, pbuf_idx, ndims
+   integer :: i, pbuf_idx, ndims, i1, i2
    integer :: ff
    logical :: found
    real(r8), pointer, dimension(:)             :: tmpptr1d
@@ -1051,18 +1076,44 @@ subroutine cam_pbuf_snapshot_all_outfld(lchnk, file_num, pbuf)
       
       case (1) 
          call pbuf_get_field(pbuf, pbuf_idx, tmpptr1d)
+         where (isnan(tmpptr1d)) tmpptr1d=0._r8
+         where (isinf(tmpptr1d)) tmpptr1d=0._r8
+         where (isneginf(tmpptr1d)) tmpptr1d=0._r8
+         where (isposinf(tmpptr1d)) tmpptr1d=0._r8
          call outfld(pbuf_snapshot(i)%standard_name, tmpptr1d, pcols, lchnk)
 
       case (2) 
          call pbuf_get_field(pbuf, pbuf_idx, tmpptr2d)
+         i1 = size(tmpptr2d,1)
+         i2 = size(tmpptr2d,2)
+         if ((i1 == 16) .and. (i2==16)) then
+           write(0,*) pbuf_snapshot(i)%standard_name, ' has same dimensions as field with errors'
+         end if
+         where (isnan(tmpptr2d)) tmpptr2d=0._r8
+         where (isinf(tmpptr2d)) tmpptr2d=0._r8
+         where (isneginf(tmpptr2d)) tmpptr2d=0._r8
+         where (isposinf(tmpptr2d)) tmpptr2d=0._r8
          call outfld(pbuf_snapshot(i)%standard_name, tmpptr2d, pcols, lchnk)
 
       case (3) 
          call pbuf_get_field(pbuf, pbuf_idx, tmpptr3d)
+         i1 = size(tmpptr3d,1)
+         i2 = size(tmpptr3d,2)
+         if ((i1 == 16) .and. (i2==16)) then
+           write(0,*) pbuf_snapshot(i)%standard_name, ' has same dimensions as field with errors'
+         end if
+         where (isnan(tmpptr3d)) tmpptr3d=0._r8
+         where (isinf(tmpptr3d)) tmpptr3d=0._r8
+         where (isneginf(tmpptr3d)) tmpptr3d=0._r8
+         where (isposinf(tmpptr3d)) tmpptr3d=0._r8
          call outfld(pbuf_snapshot(i)%standard_name, tmpptr3d, pcols, lchnk)
 
       case (4) 
          call pbuf_get_field(pbuf, pbuf_idx, tmpptr4d)
+         where (isnan(tmpptr4d)) tmpptr4d=0._r8
+         where (isinf(tmpptr4d)) tmpptr4d=0._r8
+         where (isneginf(tmpptr4d)) tmpptr4d=0._r8
+         where (isposinf(tmpptr4d)) tmpptr4d=0._r8
          call outfld(pbuf_snapshot(i)%standard_name, tmpptr4d, pcols, lchnk)
 
       end select
