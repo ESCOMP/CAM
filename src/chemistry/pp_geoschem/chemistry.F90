@@ -108,7 +108,11 @@ module chemistry
   INTEGER                         :: iH2O, iO3, iCH4, iCO
 
   ! Indices in the physics buffer
-  INTEGER                         :: NDX_PBLH
+  INTEGER                         :: NDX_PBLH    ! PBL height [m]
+  INTEGER                         :: NDX_FSDS    ! Downward shortwave flux at surface [W/m2]
+  INTEGER                         :: NDX_CLDTOP  ! Cloud top height [?]
+  INTEGER                         :: NDX_CLDFRC  ! Cloud fraction [?]
+  INTEGER                         :: NDX_PRAIN   ! Rain production rate [?]
 
   ! Strings
   CHARACTER(LEN=255)              :: ThisLoc
@@ -1273,7 +1277,11 @@ contains
     iCO  = Ind_('CO')
 
     ! Get indices for physical fields in physics buffer
-    NDX_PBLH = pbuf_get_index('PBLH')
+    NDX_PBLH    = Pbuf_Get_Index('PblH'  )
+    NDX_FSDS    = Pbuf_Get_Index('Fsds'  )
+    NDX_CLDTOP  = Pbuf_Get_Index('CldTop')
+    NDX_CLDFRC  = Pbuf_Get_Index('Cld'   )
+    NDX_PRAIN   = Pbuf_Get_Index('PRain' )
 
     ! Can add history output here too with the "addfld" & "add_default" routines
     ! Note that constituents are already output by default
@@ -1369,6 +1377,8 @@ contains
     use Wetscav_Mod,      only: Setup_Wetscav
     use CMN_Size_Mod,     only: PTop
 
+    use Tropopause,          only: Tropopause_findChemTrop, Tropopause_Find
+
     ! For calculating SZA
     use Orbit,            only: zenith
     use Time_Manager,        only: Get_Curr_Calday, Get_Curr_Date
@@ -1416,7 +1426,11 @@ contains
         Zsurf,     &                               ! Surface height
         Rlats, Rlons                               ! Chunk latitudes and longitudes (radians)
 
-    REAL(r8), POINTER :: PBLH(:)                      ! PBL height on each chunk
+    REAL(r8), POINTER :: PblH(:)                      ! PBL height on each chunk [m]
+    REAL(r8), POINTER :: CldTop(:)                    ! Cloud top height 
+    REAL(r8), POINTER :: CldFrc(:)                    ! Cloud fraction
+    REAL(r8), POINTER :: Fsds(:)                      ! Downward shortwave flux at surface [W/m2]
+    REAL(r8), POINTER :: PRain(:)                     ! Rain production rate
     REAL(r8)          :: RelHum(State%NCOL, PVER)     ! Relative humidity [0-1]
     REAL(r8)          :: SatV  (State%NCOL, PVER)     ! Work arrays
     REAL(r8)          :: SatQ  (State%NCOL, PVER)     ! Work arrays
@@ -1430,6 +1444,15 @@ contains
     INTEGER       :: iMaxLoc(1)
 
     REAL(r8)      :: Col_Area(State%NCOL)
+
+    ! Intermediate arrays
+    INTEGER      :: Trop_Lev(PCOLS)
+    REAL(r8)     :: Trop_P(  PCOLS)
+    REAL(r8)     :: Trop_T(  PCOLS)
+    REAL(r8)     :: Trop_Ht( PCOLS)
+    REAL(r8)     :: SnowDepth(PCOLS)
+    REAL(r8)     :: Z0(PCOLS)
+    REAL(r8)     :: Sd_Ice, Sd_Lnd, Sd_Avg, Frc_Ice
 
     ! Calculating SZA
     REAL(r8)      :: Calday
@@ -1556,8 +1579,11 @@ contains
     CALL Zenith( Calday, Rlats, Rlons, CSZA, NCOL )
     !CALL Outfld( 'SZA', SZA, NCOL, LCHNK )
 
-    ! Get PBL height (m)
-    CALL pbuf_get_field(pbuf, NDX_PBLH, PBLH)
+    CALL Pbuf_Get_Field( Pbuf, NDX_PBLH,     PblH   )
+    CALL Pbuf_Get_Field( Pbuf, NDX_PRAIN,    PRain  )
+    CALL Pbuf_Get_Field( Pbuf, NDX_FSDS,     Fsds   )
+    CALL Pbuf_Get_Field( Pbuf, NDX_CLDTOP,   CldTop )
+    CALL Pbuf_Get_Field( Pbuf, NDX_CLDFRC,   CldFrc )
 
     ! Get VMR and MMR of H2O
     H2OVMR = 0.0e0_fp
@@ -1581,13 +1607,47 @@ contains
         ENDDO
     ENDDO
 
+    ! Estimate roughness height VERY roughly
+    Z0 = 0.0e+0_r8
+    DO I = 1, NCOL 
+        IF (Cam_in%LandFrac(I).GE.0.5e+0_r8) THEN
+            Z0(I) = 0.035e+0_r8
+        ELSE
+            Z0(I) = 0.0001e+0_r8
+        ENDIF
+    ENDDO
+
+    ! Retrieve tropopause level
+    Trop_Lev = 0.0e+0_r8
+    CALL Tropopause_FindChemTrop(State, Trop_Lev)
+    ! Back out the pressure
+    Trop_P = 1000.0e+0_r8
+    DO I = 1, NCOL
+        Trop_P(I) = State%PMid(I,Trop_Lev(I)) * 0.01e+0_r8
+    ENDDO
+
+   ! Calculate snow depth
+   SnowDepth = 0.0e+0_r8
+   DO I = 1, NCOL
+       Sd_Ice  = MAX(0.0e+0_r8,Cam_in%Snowhice(I))
+       Sd_Lnd  = MAX(0.0e+0_r8,Cam_in%Snowhland(I))
+       Frc_Ice = MAX(0.0e+0_r8,Cam_in%Icefrac(I))
+       IF (Frc_Ice > 0.0e+0_r8) THEN
+           Sd_Avg = (Sd_Lnd*(1.0e+0_r8 - Frc_Ice)) + (Sd_Ice * Frc_Ice)
+       ELSE
+           Sd_Avg = Sd_Lnd
+       ENDIF
+       SnowDepth(I) = Sd_Avg
+   ENDDO
+
     State_Met(LCHNK)%ALBD      (1,:) = Cam_in%Asdir(:)
     State_Met(LCHNK)%CLDFRC    (1,:) = 0.0e+0_fp
-    State_Met(LCHNK)%EFLUX     (1,:) = 0.0e+0_fp
-    State_Met(LCHNK)%HFLUX     (1,:) = 0.0e+0_fp
-    State_Met(LCHNK)%FRCLND    (1,:) = 0.0e+0_fp
-    State_Met(LCHNK)%FRLAND    (1,:) = 1.0e+0_fp - cam_in%OcnFrac(:)
-    State_Met(LCHNK)%FROCEAN   (1,:) = Cam_in%OcnFrac(:)
+    State_Met(LCHNK)%EFLUX     (1,:) = Cam_in%Lhf(:)
+    State_Met(LCHNK)%HFLUX     (1,:) = Cam_in%Shf(:)
+    State_Met(LCHNK)%FRCLND    (1,:) = 0.0e+0_fp ! Olson land fraction
+    State_Met(LCHNK)%FRLAND    (1,:) = Cam_in%LandFrac(:)
+    State_Met(LCHNK)%FROCEAN   (1,:) = Cam_in%OcnFrac(:) + Cam_in%IceFrac(:)
+    State_Met(LCHNK)%FRSEAICE  (1,:) = Cam_in%IceFrac(:)
     State_Met(LCHNK)%FRLAKE    (1,:) = 0.0e+0_fp
     State_Met(LCHNK)%FRLANDIC  (1,:) = 0.0e+0_fp
     State_Met(LCHNK)%GWETROOT  (1,:) = 0.0e+0_fp
@@ -1595,26 +1655,26 @@ contains
     State_Met(LCHNK)%LAI       (1,:) = 0.0e+0_fp
     State_Met(LCHNK)%PARDR     (1,:) = 0.0e+0_fp
     State_Met(LCHNK)%PARDF     (1,:) = 0.0e+0_fp
-    State_Met(LCHNK)%PBLH      (1,:) = PBLH(:NCOL)
+    State_Met(LCHNK)%PBLH      (1,:) = PblH(:NCOL)
     State_Met(LCHNK)%PHIS      (1,:) = State%Phis(:)
-    State_Met(LCHNK)%PRECANV   (1,:) = 0.0e+0_fp
-    State_Met(LCHNK)%PRECCON   (1,:) = 0.0e+0_fp
-    State_Met(LCHNK)%PRECLSC   (1,:) = 0.0e+0_fp
-    State_Met(LCHNK)%PRECTOT   (1,:) = 0.0e+0_fp
-    State_Met(LCHNK)%TROPP     (1,:) = 150.0e+0_fp
+    State_Met(LCHNK)%PRECANV   (1,:) = 0.0e+0_fp                           ! Not used
+    State_Met(LCHNK)%PRECCON   (1,:) = Cam_Out%Precc(:)                    ! Convective precip
+    State_Met(LCHNK)%PRECLSC   (1,:) = Cam_Out%Precl(:)                    ! "Stratiform" precip
+    State_Met(LCHNK)%PRECTOT   (1,:) = Cam_Out%Precc(:) + Cam_Out%Precl(:) ! All precip
+    State_Met(LCHNK)%TROPP     (1,:) = Trop_P(:)
     State_Met(LCHNK)%PS1_WET   (1,:) = State%ps(:)*0.01e+0_fp
     State_Met(LCHNK)%PS2_WET   (1,:) = State%ps(:)*0.01e+0_fp
     State_Met(LCHNK)%SLP       (1,:) = State%ps(:)*0.01e+0_fp
     State_Met(LCHNK)%TS        (1,:) = Cam_in%TS(:)
     State_Met(LCHNK)%TSKIN     (1,:) = Cam_in%TS(:)
-    State_Met(LCHNK)%SWGDN     (1,:) = 0.0e+0_fp
+    State_Met(LCHNK)%SWGDN     (1,:) = fsds(:)
     State_Met(LCHNK)%TO3       (1,:) = 300.0e+0_fp ! Dummy
-    State_Met(LCHNK)%SNODP     (1,:) = 0.0e+0_fp
-    State_Met(LCHNK)%SNOMAS    (1,:) = 0.0e+0_fp
+    State_Met(LCHNK)%SNODP     (1,:) = snowdepth(:)
+    State_Met(LCHNK)%SNOMAS    (1,:) = snowdepth(:) * 1000.0e+0_r8 ! m -> kg/m2 for ice w/rho ~ 1000 kg/m3
     State_Met(LCHNK)%SUNCOS    (1,:) = CSZA(:)
     State_Met(LCHNK)%SUNCOSmid (1,:) = CSZA(:)
     State_Met(LCHNK)%U10M      (1,:) = State%U(:,NZ)
-    State_Met(LCHNK)%USTAR     (1,:) = 0.0e+0_fp
+    State_Met(LCHNK)%USTAR     (1,:) = Cam_In%UStar(:)
     State_Met(LCHNK)%V10M      (1,:) = State%V(:,NZ)
     State_Met(LCHNK)%Z0        (1,:) = 0.0e+0_fp
 
@@ -1693,7 +1753,11 @@ contains
     State_Met(lchnk)%OPTD =  State_Met(lchnk)%TAUCLI + State_Met(lchnk)%TAUCLW
 
     ! Nullify all pointers
-    NULLIFY(PBLH)
+    NULLIFY(PblH   )
+    NULLIFY(Fsds   )
+    NULLIFY(PRain  )
+    NULLIFY(CldTop )
+    NULLIFY(CldFrc )
 
     ! Eventually initialize/reset wetdep
     IF ( Input_Opt%LConv .OR. Input_Opt%LChem .OR. Input_Opt%LWetD ) THEN
