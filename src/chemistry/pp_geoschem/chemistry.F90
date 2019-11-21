@@ -96,7 +96,7 @@ module chemistry
   TYPE(DgnList )                  :: Diag_List      ! Diagnostics list object
 
   ! Indices of critical species
-  INTEGER                         :: iH2O
+  INTEGER                         :: iH2O, iO3, iCH4, iCO
 
   ! Indices in the physics buffer
   INTEGER                         :: NDX_PBLH
@@ -1226,6 +1226,9 @@ contains
 
     ! Get the index of H2O
     iH2O = Ind_('H2O')
+    iO3  = Ind_('O3')
+    iCH4 = Ind_('CH4')
+    iCO  = Ind_('CO')
 
     ! Get indices for physical fields in physics buffer
     NDX_PBLH = pbuf_get_index('PBLH')
@@ -1320,6 +1323,7 @@ contains
     use PhysConst,        only: MWDry
 
     ! Grid area
+    use PhysConst,        only: Gravit
     use PhysConstants,    only: Re
     use Phys_Grid,        only: get_area_all_p
 
@@ -1762,7 +1766,13 @@ contains
             ENDDO
         ENDIF
     ENDDO
-    IF (present(fh2o)) fh2o(:) = 0.0e+0_r8
+
+    IF (PRESENT(fh2o)) THEN
+        fh2o(:NCOL) = 0.0e+0_r8
+        !DO K = 1, pver
+        !   fh2o(:NCOL) = fh2o(:NCOL) + Ptend%Q(:NCOL,K,iH2O)*State%Pdel(:NCOL,K)/Gravit
+        !ENDDO
+    ENDIF
 
     IF (rootChunk) WRITE(iulog,'(a)') ' GEOS-Chem chemistry step completed'
     RETURN
