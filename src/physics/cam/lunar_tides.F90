@@ -1,3 +1,8 @@
+! Module to add lunar tide forcing for the M2
+! gravitational lunar tide based on the empirical 
+! formula of Champman and Lindzen (1970) and as
+! implemented in Pedatella, Liu, and Richmond (2012, JGR)
+
 module lunar_tides
   use shr_kind_mod,   only: r8=>shr_kind_r8
   use physics_types,  only: physics_state, physics_ptend, physics_ptend_init
@@ -119,6 +124,7 @@ contains
           lun_lt = lun_lt*hrs2rad ! radians
 
           do k=1,pver
+             ! M2 lunar tide forcing in the zonal and meridional directions
              ptend%u(i,k) = (-1._r8/((state%zm(i,k)+rearth)*cos(state%lat(i))))*2.456_r8*3._r8 *  &
                   ((state%zm(i,k)+rearth)/rearth)**2*cos(state%lat(i))*cos(state%lat(i))*2._r8*sin(2._r8*lun_lt)
              ptend%v(i,k) = (1._r8/(state%zm(i,k)+rearth))*2.456_r8*3._r8 * &
