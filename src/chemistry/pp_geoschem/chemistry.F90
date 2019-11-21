@@ -1200,7 +1200,8 @@ contains
     ! Init_PBL_Mix...
     ! Convert_Spc_Units...
 
-
+    ! Get the index of H2O
+    iH2O = Ind_('H2O')
 
     ! Can add history output here too with the "addfld" & "add_default" routines
     ! Note that constituents are already output by default
@@ -1272,7 +1273,7 @@ contains
     use phys_grid,        only: get_ncols_p, get_rlat_all_p, get_rlon_all_p
 
     use Dao_Mod,          only: Set_Dry_Surface_Pressure
-    use Dao_Mod,          only: Airqnt
+    use Dao_Mod,          only: AirQnt
     use GC_Grid_Mod,      only: SetGridFromCtr
     use Pressure_Mod,     only: Set_Floating_Pressures
     use Pressure_Mod,     only: Accept_External_Pedge
@@ -1281,6 +1282,14 @@ contains
     use Toms_Mod,         only: Compute_Overhead_O3
     use Chemistry_Mod,    only: Do_Chemistry
     use Wetscav_Mod,      only: Setup_Wetscav
+
+    ! For calculating SZA
+    use Orbit,            only: zenith
+    use Time_Manager,     only: Get_Curr_Calday
+
+    ! Calculating relative humidity
+    use WV_Saturation,    only: QSat
+    use PhysConst,        only: MWDry
 
     REAL(r8),            INTENT(IN)    :: dT          ! Time step
     TYPE(physics_state), INTENT(IN)    :: State       ! Physics State variables
@@ -1298,23 +1307,32 @@ contains
 
     ! Mapping (?)
     LOGICAL :: lq(pcnst)
-    INTEGER :: I, J, K, N, M
-    INTEGER :: NX, NY
+
+    ! Indexing
+    INTEGER :: I, J, K, L, N, M
+    INTEGER :: NX, NY, NZ
 
     INTEGER :: LCHNK, NCOL
 
-    INTEGER                    :: Latndx(pcols)    ! Chunk lat indices
-    INTEGER                    :: Lonndx(pcols)    ! Chunk lon indices
     REAL(r8), DIMENSION(State%NCOL) :: &
-        Zen_angle, &                               ! Solar zenith angle
+        CSZA,                          &           ! Cosine of solar zenith angle
         Zsurf,     &                               ! Surface height
         Rlats, Rlons                               ! Chunk latitudes and longitudes (radians)
+
+    REAL(r8) :: RelHum(State%NCOL, pver)           ! Relative humidity [0-1]
+    REAL(r8) :: SatV  (State%NCOL, pver)           ! Work arrays
+    REAL(r8) :: SatQ  (State%NCOL, pver)           ! Work arrays
+    REAL(r8) :: QH2O  (State%NCOL, pver)           ! Specific humidity [kg/kg]
+    REAL(r8) :: H2Ovmr(State%NCOL, pver)           ! H2O volume mixing ratio
 
     ! Because of strat chem
     LOGICAL, SAVE :: SCHEM_READY = .FALSE.
 
     REAL(f4)      :: lonMidArr(1,pcols), latMidArr(1,pcols)
-    INTEGER       :: imaxloc(1)
+    INTEGER       :: iMaxLoc(1)
+
+    ! Calculating SZA
+    REAL(r8)      :: Calday
 
     LOGICAL       :: rootChunk
     INTEGER       :: RC
@@ -1343,8 +1361,10 @@ contains
     ! Update the grid lat/lons since they are module variables
     ! Assume (!) that area hasn't changed for now, as GEOS-Chem will
     ! retrieve this from State_Met which is chunked
-    CALL get_rlat_all_p( LCHNK, NCOL, Rlats )
-    CALL get_rlon_all_p( LCHNK, NCOL, Rlons )
+    !CALL get_rlat_all_p( LCHNK, NCOL, Rlats )
+    !CALL get_rlon_all_p( LCHNK, NCOL, Rlons )
+    Rlats(1:NCOL) = State%Lat(1:NCOL)
+    Rlons(1:NCOL) = State%Lon(1:NCOL)
 
     lonMidArr = 0.0e+0_f4
     latMidArr = 0.0e+0_f4
@@ -1390,56 +1410,143 @@ contains
     ENDDO
     CALL Physics_ptend_init(ptend, State%psetcols, 'chemistry', lq=lq)
 
-    State_Met(LCHNK)%ALBD      = 0.0e+0_fp
-    State_Met(LCHNK)%CLDFRC    = 0.0e+0_fp
-    State_Met(LCHNK)%EFLUX     = 0.0e+0_fp
-    State_Met(LCHNK)%HFLUX     = 0.0e+0_fp
-    State_Met(LCHNK)%FRCLND    = 0.0e+0_fp
-    State_Met(LCHNK)%FRLAND    = 0.0e+0_fp
-    State_Met(LCHNK)%FROCEAN   = 0.0e+0_fp
-    State_Met(LCHNK)%FRLAKE    = 0.0e+0_fp
-    State_Met(LCHNK)%FRLANDIC  = 0.0e+0_fp
-    State_Met(LCHNK)%PHIS      = 0.0e+0_fp
-    State_Met(LCHNK)%GWETROOT  = 0.0e+0_fp
-    State_Met(LCHNK)%GWETTOP   = 0.0e+0_fp
-    State_Met(LCHNK)%LAI       = 0.0e+0_fp
-    State_Met(LCHNK)%PARDR     = 0.0e+0_fp
-    State_Met(LCHNK)%PARDF     = 0.0e+0_fp
-    State_Met(LCHNK)%PBLH      = 0.0e+0_fp
-    State_Met(LCHNK)%PRECANV   = 0.0e+0_fp
-    State_Met(LCHNK)%PRECCON   = 0.0e+0_fp
-    State_Met(LCHNK)%PRECLSC   = 0.0e+0_fp
-    State_Met(LCHNK)%PRECTOT   = 0.0e+0_fp
-    State_Met(LCHNK)%TROPP     = 0.0e+0_fp
-    State_Met(LCHNK)%PS1_WET   = 0.0e+0_fp
-    State_Met(LCHNK)%PS2_WET   = 0.0e+0_fp
-    State_Met(LCHNK)%SLP       = 0.0e+0_fp
-    State_Met(LCHNK)%TS        = 0.0e+0_fp
-    State_Met(LCHNK)%TSKIN     = 0.0e+0_fp
-    State_Met(LCHNK)%SWGDN     = 0.0e+0_fp
-    State_Met(LCHNK)%TO3       = 0.0e+0_fp
-    State_Met(LCHNK)%SNODP     = 0.0e+0_fp
-    State_Met(LCHNK)%SNOMAS    = 0.0e+0_fp
-    State_Met(LCHNK)%SUNCOS    = 0.0e+0_fp
-    State_Met(LCHNK)%SUNCOSmid = 0.0e+0_fp
-    State_Met(LCHNK)%U10M      = 0.0e+0_fp
-    State_Met(LCHNK)%USTAR     = 0.0e+0_fp
-    State_Met(LCHNK)%V10M      = 0.0e+0_fp
-    State_Met(LCHNK)%Z0        = 0.0e+0_fp
+    ! Calculate COS(SZA)
+    Calday = Get_Curr_Calday( )
+    CALL Zenith( Calday, Rlats, Rlons, CSZA, NCOL )
+    !CALL Outfld( 'SZA', SZA, NCOL, LCHNK )
+
+    ! Get VMR and MMR of H2O
+    H2Ovmr = 0.0e0_fp
+    QH2O   = 0.0e0_fp
+    ! Note MWDRY = 28.966 g/mol
+
+    DO J = 1, NY
+        DO L = 1, NZ
+            QH2O(J,L) = State_Chm(LCHNK)%Species(1,J,K,iH2O)
+            H2Ovmr(J,L) = QH2O(J,L) * MWDry / 18.016e+0_fp 
+        ENDDO
+    ENDDO
+
+    ! Calculate RH (range 0-1, note still level 1 = TOA)
+    RELHUM(:,:) = 0.0e+0_r8
+    CALL QSat(State%T(:NCOL,:), State%Pmid(:NCOL,:), SatV, SatQ)
+    DO J = 1, NY
+        DO L = 1, NZ
+            RELHUM(J,L) = 0.622e+0_r8 * H2Ovmr(J,L) / SatQ(J,L)
+            RELHUM(J,L) = MAX( 0.0e+0_r8, MIN( 1.0e+0_r8, RELHUM(J,L) ) )
+        ENDDO
+    ENDDO
+
+    State_Met(LCHNK)%ALBD      (1,:) = Cam_in%Asdir(:)
+    State_Met(LCHNK)%CLDFRC    (1,:) = 0.0e+0_fp
+    State_Met(LCHNK)%EFLUX     (1,:) = 0.0e+0_fp
+    State_Met(LCHNK)%HFLUX     (1,:) = 0.0e+0_fp
+    State_Met(LCHNK)%FRCLND    (1,:) = 0.0e+0_fp
+    State_Met(LCHNK)%FRLAND    (1,:) = 1.0e+0_fp - cam_in%OcnFrac(:)
+    State_Met(LCHNK)%FROCEAN   (1,:) = Cam_in%OcnFrac(:)
+    State_Met(LCHNK)%FRLAKE    (1,:) = 0.0e+0_fp
+    State_Met(LCHNK)%FRLANDIC  (1,:) = 0.0e+0_fp
+    State_Met(LCHNK)%GWETROOT  (1,:) = 0.0e+0_fp
+    State_Met(LCHNK)%GWETTOP   (1,:) = 0.0e+0_fp
+    State_Met(LCHNK)%LAI       (1,:) = 0.0e+0_fp
+    State_Met(LCHNK)%PARDR     (1,:) = 0.0e+0_fp
+    State_Met(LCHNK)%PARDF     (1,:) = 0.0e+0_fp
+    State_Met(LCHNK)%PBLH      (1,:) = 0.0e+0_fp
+    State_Met(LCHNK)%PHIS      (1,:) = State%Phis(:)
+    State_Met(LCHNK)%PRECANV   (1,:) = 0.0e+0_fp
+    State_Met(LCHNK)%PRECCON   (1,:) = 0.0e+0_fp
+    State_Met(LCHNK)%PRECLSC   (1,:) = 0.0e+0_fp
+    State_Met(LCHNK)%PRECTOT   (1,:) = 0.0e+0_fp
+    State_Met(LCHNK)%TROPP     (1,:) = 150.0e+0_fp
+    State_Met(LCHNK)%PS1_WET   (1,:) = State%ps(:)*0.01e+0_fp
+    State_Met(LCHNK)%PS2_WET   (1,:) = State%ps(:)*0.01e+0_fp
+    State_Met(LCHNK)%SLP       (1,:) = State%ps(:)*0.01e+0_fp
+    State_Met(LCHNK)%TS        (1,:) = Cam_in%TS(:)
+    State_Met(LCHNK)%TSKIN     (1,:) = Cam_in%TS(:)
+    State_Met(LCHNK)%SWGDN     (1,:) = 0.0e+0_fp
+    State_Met(LCHNK)%TO3       (1,:) = 300.0e+0_fp ! Dummy
+    State_Met(LCHNK)%SNODP     (1,:) = 0.0e+0_fp
+    State_Met(LCHNK)%SNOMAS    (1,:) = 0.0e+0_fp
+    State_Met(LCHNK)%SUNCOS    (1,:) = CSZA(:)
+    State_Met(LCHNK)%SUNCOSmid (1,:) = CSZA(:)
+    State_Met(LCHNK)%U10M      (1,:) = State%U(:,NZ)
+    State_Met(LCHNK)%USTAR     (1,:) = 0.0e+0_fp
+    State_Met(LCHNK)%V10M      (1,:) = State%V(:,NZ)
+    State_Met(LCHNK)%Z0        (1,:) = 0.0e+0_fp
 
     DO J = 1, NY
         DO I = 1, NX
-            IMAXLOC = MAXLOC( (/ State_Met%FRLAND(I,J)   + &
-                                 State_Met%FRLANDIC(I,J) + &
-                                 State_Met%FRLAKE(I,J),    &
-                                 State_Met%FRSEAICE(I,J),  &
-                                 State_Met%FROCEAN(I,J)  - &
-                                 State_Met%FRSEAICE(I,J) /) )
-            IF ( IMAXLOC(1) == 3 ) IMAXLOC(1) = 0
+            iMaxLoc = MAXLOC( (/ State_Met(LCHNK)%FRLAND(I,J)   + &
+                                 State_Met(LCHNK)%FRLANDIC(I,J) + &
+                                 State_Met(LCHNK)%FRLAKE(I,J),    &
+                                 State_Met(LCHNK)%FRSEAICE(I,J),  &
+                                 State_Met(LCHNK)%FROCEAN(I,J)  - &
+                                 State_Met(LCHNK)%FRSEAICE(I,J) /) )
+            IF ( iMaxLoc(1) == 3 ) iMaxLoc(1) = 0
             ! reset ocean to 0
-            State_Met%LWI(I,J) = FLOAT( IMAXLOC(1) )
+            State_Met(LCHNK)%LWI(I,J) = FLOAT( iMaxLoc(1) )
         ENDDO
     ENDDO
+
+    ! Three-dimensional fields on level edges
+    DO J = 1, NY
+        DO L = 1, NZ+1 
+            State_Met(LCHNK)%CMFMC   (1,J,L) = 0.0e+0_fp
+            State_Met(LCHNK)%PFICU   (1,J,L) = 0.0e+0_fp
+            State_Met(LCHNK)%PFILSAN (1,J,L) = 0.0e+0_fp
+            State_Met(LCHNK)%PFLCU   (1,J,L) = 0.0e+0_fp
+            State_Met(LCHNK)%PFLLSAN (1,J,L) = 0.0e+0_fp
+            State_Met(LCHNK)%PEDGE   (1,J,L) = State%Pint(J,NZ+2-L)*0.01e+0_fp
+        ENDDO
+    ENDDO
+
+    ! These are set later
+    State_Met(LCHNK)%PS1_DRY (:,:) = 0.0e+0_fp
+    State_Met(LCHNK)%PS2_DRY (:,:) = 0.0e+0_fp
+
+
+    ! Calculate CLDTOPS (highest location of CMFMC in the column)
+    I = 1
+    DO J = 1, NY
+        State_Met(lchnk)%CldTops(I,J) = 1
+        DO L = NZ, 1, -1
+            IF ( State_Met(LCHNK)%CMFMC(I,J,L) > 0.0e+0_fp ) THEN
+                State_Met(LCHNK)%CLDTOPS(I,J) = L + 1
+                EXIT
+            ENDIF
+        ENDDO
+    ENDDO
+
+    ! Three-dimensional fields on level centers
+    DO J = 1, NY
+        DO L = 1, NZ 
+            State_Met(lchnk)%U        (1,J,L) = State%U(J,NZ+1-L)
+            State_Met(lchnk)%V        (1,J,L) = State%V(J,NZ+1-L)
+            !State_Met(lchnk)%OMEGA    (1,J,L) = State%Omega(J,NZ+1-L)
+            State_Met(lchnk)%CLDF     (1,J,L) = 0.0e+0_fp
+            State_Met(lchnk)%DTRAIN   (1,J,L) = 0.0e+0_fp
+            State_Met(lchnk)%DQRCU    (1,J,L) = 0.0e+0_fp
+            State_Met(lchnk)%DQRLSAN  (1,J,L) = 0.0e+0_fp
+            State_Met(lchnk)%QI       (1,J,L) = 0.0e+0_fp
+            State_Met(lchnk)%QL       (1,J,L) = 0.0e+0_fp
+            State_Met(lchnk)%RH       (1,J,L) = RelHum(J,NZ+1-L)  * 100.0e+0_fp
+            State_Met(lchnk)%TAUCLI   (1,J,L) = 0.0e+0_fp
+            State_Met(lchnk)%TAUCLW   (1,J,L) = 0.0e+0_fp
+            State_Met(lchnk)%REEVAPCN (1,J,L) = 0.0e+0_fp
+            State_Met(lchnk)%REEVAPLS (1,J,L) = 0.0e+0_fp
+            State_Met(lchnk)%SPHU1    (1,J,L) = QH2O(J,NZ+1-L)    * 1.0e+3_fp    ! g/kg
+            State_Met(lchnk)%SPHU2    (1,J,L) = QH2O(J,NZ+1-L)    * 1.0e+3_fp    ! g/kg
+            State_Met(lchnk)%TMPU1    (1,J,L) = State%T(J,NZ+1-L)
+            State_Met(lchnk)%TMPU2    (1,J,L) = State%T(J,NZ+1-L)
+        ENDDO
+    ENDDO
+
+    ! Derived fields
+    State_Met(lchnk)%T    = (State_Met(lchnk)%TMPU1 + State_Met(lchnk)%TMPU2)*0.5e+0_fp
+    State_Met(lchnk)%SPHU = (State_Met(lchnk)%SPHU1 + State_Met(lchnk)%SPHU2)*0.5e+0_fp
+
+    ! Calculate total OD as liquid cloud OD + ice cloud OD
+    State_Met(lchnk)%OPTD =  State_Met(lchnk)%TAUCLI + State_Met(lchnk)%TAUCLW
 
     ! Eventually initialize/reset wetdep
     IF ( Input_Opt%LConv .OR. Input_Opt%LChem .OR. Input_Opt%LWetD ) THEN
@@ -1487,8 +1594,8 @@ contains
     ! Calculate State_Met etc for this timestep
     ! Use the CAM psdry fields instead of using the GC calculation
     !CALL Set_Dry_Surface_Pressure(State_Met(LCHNK), 1)
-    State_Met(LCHNK)%PS1_DRY (1,:) = state%psdry(:)
-    State_Met(LCHNK)%PS2_DRY (1,:) = state%psdry(:)
+    State_Met(LCHNK)%PS1_DRY (1,:) = State%PSDry(:) * 0.01e+0_fp
+    State_Met(LCHNK)%PS2_DRY (1,:) = State%PSDry(:) * 0.01e+0_fp
 
     ! Set surface pressures to match those in input
     State_Met(LCHNK)%PSC2_WET = State_Met(LCHNK)%PS1_WET
