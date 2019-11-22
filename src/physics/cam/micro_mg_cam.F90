@@ -2522,16 +2522,6 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
            " but micro_mg_tend has liquid number tendencies.")
    end if
 
-   if (micro_mg_version < 3) then
-      if (any(ptend%q(:ncol,top_lev:pver,ixgraupel) /= 0.0_r8)) &
-           call endrun("micro_mg_cam:ERROR - MG microphysics is configured not to prognose graupel/hail,"// &
-           " but micro_mg_tend has graupel/hail mass tendencies.")
-      if (any(ptend%q(:ncol,top_lev:pver,ixnumgraupel) /= 0.0_r8)) &
-           call endrun("micro_mg_cam:ERROR - MG microphysics is configured not to prognose graupel/hail number,"// &
-           " but micro_mg_tend has graupel/hail number tendencies.")
-   end if
-
-
    mnuccdohet = 0._r8
    do k=top_lev,pver
       do i=1,ncol
