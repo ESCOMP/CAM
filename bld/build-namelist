@@ -4474,6 +4474,9 @@ sub check_snapshot_settings {
    my $cam_snapshot_before_num  =  $nl->get_variable_value('phys_ctl_nl', 'cam_snapshot_before_num');
    my $cam_snapshot_after_num   =  $nl->get_variable_value('phys_ctl_nl', 'cam_snapshot_after_num');
 
+   # Set the empty_htapes always to false for snapshot runs
+   $nl->set_variable_value('cam_history_nl', 'empty_htapes', $FALSE);
+
    print  "cam_snapshot settings\n";
    print "$cam_take_snapshot_before, $cam_take_snapshot_after, $cam_snapshot_before_num, $cam_snapshot_after_num \n"; 
 
