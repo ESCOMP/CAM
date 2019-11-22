@@ -575,9 +575,15 @@ subroutine cam_pbuf_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_nu
 
    call pbuf_get_dim_strings(pbuf, dim_strings)
    do i=1, npbuf
-      do j=1,6
-         pbuf_info(i)%dim_string(j) = dim_strings(i,j)
-      end do
+      ! If the second dimension is empty, then this is a horiz_only field
+      if (trim(dim_strings(i,2)) == '') then
+         pbuf_info(i)%dim_string(1) = 'horiz_only'
+      else
+         ! The first dimension is the horizontal dimension and should not be used in the addfld call
+         do j=2,6
+            pbuf_info(i)%dim_string(j-1) = dim_strings(i,j)
+         end do
+      end if
    end do
 
    !--------------------------------------------------------
@@ -616,7 +622,11 @@ subroutine snapshot_addfld_nd(nddt_var, ddt_snapshot, cam_snapshot_before_num, c
    
    ndims = count(dimension_string /= '')
 
-   call addfld(standard_name, dimension_string(1:ndims), 'I', units, standard_name)
+   if (trim(dimension_string(1)) == 'horiz_only') then
+      call addfld(standard_name, 'horiz_only', 'I', units, standard_name)
+   else
+      call addfld(standard_name, dimension_string(1:ndims), 'I', units, standard_name)
+   end if
    if (cam_snapshot_before_num > 0) call add_default(standard_name, cam_snapshot_before_num, ' ')
    if (cam_snapshot_after_num > 0)  call add_default(standard_name, cam_snapshot_after_num, ' ')
 

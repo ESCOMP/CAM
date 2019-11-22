@@ -1737,25 +1737,15 @@ subroutine hist_cam_snapshot_register()
          if (dim_size /= 1) then         ! Don't check subcolumn dimensions
              dim_name = hist_dimension_name(dim_size)
              if (dim_name == '') then                   ! found a dimension which needs a name
-                if (dim_size < 10) then
-                   write(dim_string,100) 'pbuf_',dim_size
-                else if (dim_size < 100) then
-                   write(dim_string,110) 'pbuf_',dim_size
-                else if (dim_size < 1000) then
-                   write(dim_string,120) 'pbuf_',dim_size
-                else
-                   call endrun('ERROR in hist_cam_snapshot_register - dimension is larger than the code currently handles')
-                end if
+                write(dim_string,'(a,i0)') 'pbuf_',dim_size
                 call add_hist_coord(dim_string, dim_size, dim_string)
+                write(0,*) ' dim_string =', dim_string
              end if
          end if
       end do
       hdrbuffer => hdrbuffer%nexthdr
    end do
 
-100 format(a5,i1)
-110 format(a5,i2)
-120 format(a5,i3)
 end subroutine hist_cam_snapshot_register
 
 subroutine pbuf_get_dim_strings(pbuf, string)
