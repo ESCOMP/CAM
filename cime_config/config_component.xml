@@ -293,7 +293,7 @@
       <value compset="_CAM60%(WCTS|WCCM)%4xCO2"> flbc_file='$DIN_LOC_ROOT/atm/waccm/lb/LBC_CMIP6abrupt4xCO2_cyclicalYear1_0p5degLat_c180929.nc'  </value>
       <value compset="_CAM60%(WCTS|WCCM)%4xCO2"> nlte_limit_co2=.true.  </value>
       <value compset="_CAM60%WCTS%4xCO2"> ncdata='$DIN_LOC_ROOT/atm/waccm/ic/b.e21.BW1850.f09_g17.CMIP6-piControl.001.cam.i.0070-01-01.abrupt4xCO2_c181003.nc'  </value>
-      <value compset="_CAM60%WCCM%4xCO2"> ncdata='$DIN_LOC_ROOT/atm/waccm/ic/b.e20.BWma1850.f19_g17.release_cesm2_1_0.020.cam.i.0289-01-01.abrupt4xCO2_c190426.nc'</value>
+      <value compset="_CAM60%WCCM%4xCO2"> ncdata='$DIN_LOC_ROOT/atm/waccm/ic/b.e21.BWma1850.f19_g17.CMIP6-piControl-WACCM-MA-2deg.001.cam.i.0301-01-01.abrupt4xCO2_c191118.nc'</value>
       <value compset="_CAM60%1PCT"> flbc_type='SERIAL'</value>
       <value compset="_CAM60%1PCT"> flbc_file='$DIN_LOC_ROOT/atm/waccm/lb/LBC_CMIP6_1pctCO2_y1-165_GlobAnnAvg_0p5degLat_c180929.nc'</value>
       <value compset="_CAM60%1PCT"> flbc_list='CO2','CH4','N2O','CFC11eq','CFC12' </value>
