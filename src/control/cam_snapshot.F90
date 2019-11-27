@@ -1066,10 +1066,10 @@ subroutine cam_pbuf_snapshot_all_outfld(lchnk, file_num, pbuf)
    integer :: i, pbuf_idx, ndims, i1, i2
    integer :: ff
    logical :: found
-   real(r8), pointer, dimension(:)             :: tmpptr1d
    real(r8), pointer, dimension(:,:)           :: tmpptr2d
    real(r8), pointer, dimension(:,:,:)         :: tmpptr3d
    real(r8), pointer, dimension(:,:,:,:)       :: tmpptr4d
+   real(r8), pointer, dimension(:,:,:,:,:)     :: tmpptr5d
 
 
    do i=1, npbuf_var
@@ -1085,46 +1085,20 @@ subroutine cam_pbuf_snapshot_all_outfld(lchnk, file_num, pbuf)
       select case (ndims)  ! Note that dimension 5 and 6 do not work with pbuf_get_field, so these are not used here
       
       case (1) 
-         call pbuf_get_field(pbuf, pbuf_idx, tmpptr1d)
-         where (isnan(tmpptr1d)) tmpptr1d=0._r8
-         where (isinf(tmpptr1d)) tmpptr1d=0._r8
-         where (isneginf(tmpptr1d)) tmpptr1d=0._r8
-         where (isposinf(tmpptr1d)) tmpptr1d=0._r8
-         call outfld(pbuf_snapshot(i)%standard_name, tmpptr1d, pcols, lchnk)
+         call pbuf_get_field(pbuf, pbuf_idx, tmpptr2d)
+         call outfld(pbuf_snapshot(i)%standard_name, tmpptr2d, pcols, lchnk)
 
       case (2) 
-         call pbuf_get_field(pbuf, pbuf_idx, tmpptr2d)
-         i1 = size(tmpptr2d,1)
-         i2 = size(tmpptr2d,2)
-         if ((i1 == 16) .and. (i2==16)) then
-           write(0,*) pbuf_snapshot(i)%standard_name, ' has same dimensions as field with errors'
-         end if
-         where (isnan(tmpptr2d)) tmpptr2d=0._r8
-         where (isinf(tmpptr2d)) tmpptr2d=0._r8
-         where (isneginf(tmpptr2d)) tmpptr2d=0._r8
-         where (isposinf(tmpptr2d)) tmpptr2d=0._r8
-         call outfld(pbuf_snapshot(i)%standard_name, tmpptr2d, pcols, lchnk)
+         call pbuf_get_field(pbuf, pbuf_idx, tmpptr3d)
+         call outfld(pbuf_snapshot(i)%standard_name, tmpptr3d, pcols, lchnk)
 
       case (3) 
          call pbuf_get_field(pbuf, pbuf_idx, tmpptr3d)
-         i1 = size(tmpptr3d,1)
-         i2 = size(tmpptr3d,2)
-         if ((i1 == 16) .and. (i2==16)) then
-           write(0,*) pbuf_snapshot(i)%standard_name, ' has same dimensions as field with errors'
-         end if
-         where (isnan(tmpptr3d)) tmpptr3d=0._r8
-         where (isinf(tmpptr3d)) tmpptr3d=0._r8
-         where (isneginf(tmpptr3d)) tmpptr3d=0._r8
-         where (isposinf(tmpptr3d)) tmpptr3d=0._r8
-         call outfld(pbuf_snapshot(i)%standard_name, tmpptr3d, pcols, lchnk)
+         call outfld(pbuf_snapshot(i)%standard_name, tmpptr4d, pcols, lchnk)
 
       case (4) 
-         call pbuf_get_field(pbuf, pbuf_idx, tmpptr4d)
-         where (isnan(tmpptr4d)) tmpptr4d=0._r8
-         where (isinf(tmpptr4d)) tmpptr4d=0._r8
-         where (isneginf(tmpptr4d)) tmpptr4d=0._r8
-         where (isposinf(tmpptr4d)) tmpptr4d=0._r8
-         call outfld(pbuf_snapshot(i)%standard_name, tmpptr4d, pcols, lchnk)
+         call pbuf_get_field(pbuf, pbuf_idx, tmpptr5d)
+         call outfld(pbuf_snapshot(i)%standard_name, tmpptr5d, pcols, lchnk)
 
       end select
 
