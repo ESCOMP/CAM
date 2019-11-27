@@ -18,10 +18,10 @@
 <dtime dyn="se"    hgrid="ne5np4"  >1800</dtime>
 <dtime dyn="se"    hgrid="ne16np4" >1800</dtime>
 <dtime dyn="se"    hgrid="ne30np4" >1800</dtime>
-<dtime dyn="se"    hgrid="ne60np4" >1800</dtime>
-<dtime dyn="se"    hgrid="ne120np4">900 </dtime>
-<dtime dyn="se"    hgrid="ne240np4">600 </dtime>
-<dtime dyn="se"    hgrid="ne0np4CONUS.ne30x8">600</dtime>
+<dtime dyn="se"    hgrid="ne60np4" > 900</dtime>
+<dtime dyn="se"    hgrid="ne120np4"> 450</dtime>
+<dtime dyn="se"    hgrid="ne240np4"> 225</dtime>
+<dtime dyn="se"    hgrid="ne0np4CONUS.ne30x8">225</dtime>
 
 <!-- Initial conditions -->
 <!-- Vertical coordinates only, good for analytic initial conditions -->
