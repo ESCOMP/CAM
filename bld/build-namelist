@@ -3547,6 +3547,9 @@ if ($dyn =~ /se/) {
 		  se_kmax_jet
 		  se_variable_nsplit
 		  se_phys_dyn_cp
+		  se_raytau0
+		  se_raykrange
+		  se_rayk0 
         );
 
     my %opts;

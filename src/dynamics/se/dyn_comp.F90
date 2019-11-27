@@ -110,6 +110,8 @@ subroutine dyn_readnl(NLFileName)
    use control_mod,    only: fine_ne, hypervis_power, hypervis_scaling
    use control_mod,    only: max_hypervis_courant, statediag_numtrac,refined_mesh
    use control_mod,    only: se_met_nudge_u, se_met_nudge_p, se_met_nudge_t, se_met_tevolve
+   use control_mod,    only: raytau0, raykrange, rayk0 
+               
    use dimensions_mod, only: ne, npart
    use dimensions_mod, only: qsize_condensate_loading, lcp_moist
    use dimensions_mod, only: hypervis_dynamic_ref_state,large_Courant_incr
@@ -166,8 +168,11 @@ subroutine dyn_readnl(NLFileName)
    integer                      :: se_kmin_jet
    integer                      :: se_kmax_jet
    logical                      :: se_variable_nsplit
-   integer                      :: se_phys_dyn_cp   
-
+   integer                      :: se_phys_dyn_cp
+   real(r8)                     :: se_raytau0
+   real(r8)                     :: se_raykrange
+   integer                      :: se_rayk0 
+   
    namelist /dyn_se_inparm/        &
       se_qsize_condensate_loading, &
       se_fine_ne,                  & ! For refined meshes
@@ -214,7 +219,11 @@ subroutine dyn_readnl(NLFileName)
       se_kmin_jet,                 &
       se_kmax_jet,                 &
       se_variable_nsplit,          &
-      se_phys_dyn_cp
+      se_phys_dyn_cp,              &
+      se_raytau0,                  &
+      se_raykrange,                &
+      se_rayk0 
+
    !--------------------------------------------------------------------------
 
    ! defaults for variables not set by build-namelist
@@ -289,8 +298,11 @@ subroutine dyn_readnl(NLFileName)
    call MPI_bcast(se_kmin_jet, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_kmax_jet, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_variable_nsplit, 1, mpi_logical, masterprocid, mpicom, ierr)
-   call MPI_bcast(se_phys_dyn_cp, 1, mpi_integer, masterprocid, mpicom, ierr)   
-
+   call MPI_bcast(se_phys_dyn_cp, 1, mpi_integer, masterprocid, mpicom, ierr)
+   call MPI_bcast(se_rayk0 , 1, mpi_integer, masterprocid, mpicom, ierr)   
+   call MPI_bcast(se_raykrange, 1, mpi_real8, masterprocid, mpicom, ierr)
+   call MPI_bcast(se_raytau0, 1, mpi_real8, masterprocid, mpicom, ierr)
+   
    if (se_npes <= 0) then
       call endrun('dyn_readnl: ERROR: se_npes must be > 0')
    end if
@@ -356,6 +368,10 @@ subroutine dyn_readnl(NLFileName)
    kmax_jet                 = se_kmax_jet   
    variable_nsplit          = se_variable_nsplit
    phys_dyn_cp              = se_phys_dyn_cp
+   raytau0                  = se_raytau0 
+   raykrange                = se_raykrange
+   rayk0                    = se_rayk0
+
    if (fv_nphys > 0) then
       ! Use finite volume physics grid and CSLAM for tracer advection
       nphys_pts = fv_nphys*fv_nphys
@@ -494,6 +510,10 @@ subroutine dyn_readnl(NLFileName)
                             se_write_gll_corners
       write(iulog,'(a,l1)') 'dyn_readnl: write restart data on unstructured grid = ', &
                             se_write_restart_unstruct
+
+      write(iulog, '(a,e9.2)') 'dyn_readnl: se_raytau0    = ', raytau0
+      write(iulog, '(a,e9.2)') 'dyn_readnl: se_raykrange  = ', raykrange
+      write(iulog, '(a,i0)'  ) 'dyn_readnl: se_rayk0      = ', rayk0  
    end if
 
    call native_mapping_readnl(NLFileName)
@@ -537,10 +557,10 @@ subroutine dyn_init(dyn_in, dyn_out)
    use dimensions_mod,     only: qsize_condensate_loading_cp, qsize_condensate_loading_R
    use dimensions_mod,     only: ksponge_end
    use dimensions_mod,     only: cnst_name_gll, cnst_longname_gll, nu_div_scale_top
-   use dimensions_mod,     only: irecons_tracer_lev,irecons_tracer
+   use dimensions_mod,     only: irecons_tracer_lev, irecons_tracer, otau
    use prim_driver_mod,    only: prim_init2
    use time_mod,           only: time_at
-   use control_mod,        only: runtype
+   use control_mod,        only: runtype, raytau0, raykrange, rayk0 
    use test_fvm_mapping,   only: test_mapping_addfld
    use phys_control,       only: phys_getopts
 
@@ -556,7 +576,6 @@ subroutine dyn_init(dyn_in, dyn_out)
    type(hybrid_t)      :: hybrid
 
    integer :: ixcldice, ixcldliq, ixrain, ixsnow, ixgraupel
-   integer :: ixo2, ixn2, ixh !needed for WACCM-x
    integer :: m_cnst, m
 
    ! variables for initializing energy and axial angular momentum diagnostics   
@@ -594,12 +613,15 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    integer :: istage, ivars
    character (len=108) :: str1, str2, str3
-   integer, parameter :: qcondensate_max = 9
+   integer, parameter :: qcondensate_max = 6
 
    logical :: history_budget      ! output tendencies and state variables for budgets
    integer :: budget_hfile_num
 
    character(len=*), parameter :: subname = 'dyn_init'
+
+   real(r8) :: tau0, krange, otau0
+   
    !----------------------------------------------------------------------------
 
    if (qsize_condensate_loading > qcondensate_max) then
@@ -654,29 +676,6 @@ subroutine dyn_init(dyn_in, dyn_out)
    qsize_condensate_loading_idx(6) = ixgraupel
    qsize_condensate_loading_cp(6)  = cpice
    qsize_condensate_loading_R(6)   = 0.0_r8
-   !
-   ! Major species for WACCM-x
-   !
-   call cnst_get_ind('O2', ixo2, abort=.false.)
-   if (ixo2 < 1.and.qsize_condensate_loading > 6) &
-        call endrun(subname//': ERROR: qsize_condensate_loading >6 but O2 not available')
-   qsize_condensate_loading_idx(7) = ixo2
-   qsize_condensate_loading_cp(7)  = cpice
-   qsize_condensate_loading_R(7)   = 0.0_r8
-
-   call cnst_get_ind('N2', ixn2, abort=.false.)
-   if (ixn2 < 1.and.qsize_condensate_loading > 7) &
-        call endrun(subname//': ERROR: qsize_condensate_loading >7 but N2 not available')
-   qsize_condensate_loading_idx(8) = ixn2
-   qsize_condensate_loading_cp(8)  = cpice
-   qsize_condensate_loading_R(8)   = 0.0_r8
-   
-   call cnst_get_ind('H', ixh, abort=.false.)
-   if (ixh < 1.and.qsize_condensate_loading > 8) &
-        call endrun(subname//': ERROR: qsize_condensate_loading >8 but H not available')
-   qsize_condensate_loading_idx(9) = ixh
-   qsize_condensate_loading_cp(9)  = cpice
-   qsize_condensate_loading_R(9)   = 0.0_r8
    !
    ! if adding more condensate loading tracers remember to increase qsize_d in dimensions_mod
    !
@@ -737,8 +736,30 @@ subroutine dyn_init(dyn_in, dyn_out)
       call clean_iodesc_list()
    end if
    !
-   ! compute scaling of sponge layer damping (following cd_core.F90 in CAM-FV)
+   ! initialize Rayleigh friction
    !
+   krange = raykrange
+   if (raykrange .eq. 0._r8) krange = (rayk0 - 1) / 2._r8
+   tau0 = (86400._r8) * raytau0   ! convert to seconds
+   otau0 = 0._r8
+   if (tau0 .ne. 0._r8) otau0 = 1._r8/tau0
+   do k = 1, nlev
+     otau(k) = otau0 * (1.0_r8 + tanh((rayk0 - k) / krange)) / (2._r8)
+   enddo
+   if (masterproc) then
+     if (tau0 > 0._r8) then
+       write (iulog,*) 'SE dycore Rayleigh friction - krange = ', krange
+       write (iulog,*) 'SE dycore Rayleigh friction - otau0 = ', 1.0_r8/tau0
+       write (iulog,*) 'SE dycore Rayleigh friction decay rate profile (only applied to (u,v))'
+       do k = 1, nlev
+         write (iulog,*) '   k = ', k, '   otau = ', otau(k)
+       enddo
+     end if
+   end if
+
+   !
+   ! compute scaling of sponge layer damping (following cd_core.F90 in CAM-FV)
+   !   
    if (masterproc) write(iulog,*) subname//": sponge layer viscosity scaling factor"
    do k=1,nlev
      press = (hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0
@@ -1044,7 +1065,7 @@ subroutine dyn_run(dyn_state)
    end if
 
 
-   call calc_tot_energy_dynamics(dyn_state%elem,dyn_state%fvm, nets, nete, tl_f, n0_qdp,'dBF')
+   call calc_tot_energy_dynamics(dyn_state%elem,dyn_state%fvm, nets, nete, TimeLevel%n0, n0_qdp,'dBF')
    !$OMP END PARALLEL
 
    if (ldiag) then 

@@ -127,5 +127,11 @@ module control_mod
   integer, public, parameter :: neast = 8
 
   logical, public :: disable_diagnostics = .FALSE.
-
+  !
+  ! parameters for sponge layer Rayleigh damping
+  !
+  real(r8), public :: raytau0
+  real(r8), public :: raykrange
+  integer,  public :: rayk0 
+  
 end module control_mod

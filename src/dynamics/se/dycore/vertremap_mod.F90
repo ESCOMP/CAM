@@ -517,12 +517,12 @@ function compute_ppm( a , dx )    result(coefs)
   !material boundaries piecewise constant. Zeroing out the first and second moments, and setting the zeroth
   !moment to the cell mean is sufficient to maintain conservation.
 
-!  if (vert_remap_q_alg <10) then
+  if (vert_remap_q_alg <10) then
     do k=1,ksponge_end
       coefs(0,k)   = a(k)  !reduce to PCoM in sponge layers
       coefs(1:2,k) = 0._r8 !reduce to PCoM in sponge layers
     end do
-!  end if
+  end if
   if (vert_remap_q_alg == 2) then
     coefs(0  ,1:2        ) = a(1:2)
     coefs(1:2,1:2        ) = 0.0_r8

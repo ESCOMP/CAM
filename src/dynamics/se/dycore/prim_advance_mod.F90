@@ -61,6 +61,7 @@ contains
     use dimensions_mod,    only: qsize_condensate_loading_cp, lcp_moist
     use physconst,         only: cpair
     use fvm_control_volume_mod, only: fvm_struct
+    use control_mod,       only: raytau0
     
     implicit none
     
@@ -176,6 +177,8 @@ contains
     end if
     
     dt_vis = dt
+
+    if (raytau0>0) call rayleigh_friction(elem,n0,nets,nete,dt)    
     if (tstep_type==1) then
       ! RK2-SSP 3 stage.  matches tracer scheme. optimal SSP CFL, but
       ! not optimal for regular CFL
@@ -787,147 +790,149 @@ contains
     !
     !***************************************************************
     !
-    call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dBS')    
-    kblk = ksponge_end    
-    do ic=1,hypervis_subcycle_sponge      
-      rhypervis_subcycle=1.0_r8/real(hypervis_subcycle,kind=r8)
-      do ie=nets,nete
-        do k=1,ksponge_end
-          call laplace_sphere_wk(elem(ie)%state%T(:,:,k,nt),deriv,elem(ie),lap_t,var_coef=.false.)
-          call laplace_sphere_wk(elem(ie)%state%dp3d(:,:,k,nt),deriv,elem(ie),lap_dp,var_coef=.false.)
-          ! increased second-order divergence damping
-          nu_ratio1=1.0_r8
-          call vlaplace_sphere_wk(elem(ie)%state%v(:,:,:,k,nt),deriv,elem(ie),lap_v, var_coef=.false.,&
-               nu_ratio=nu_ratio1)
-          
-          !OMP_COLLAPSE_SIMD
-          !DIR_VECTOR_ALIGNED
-          do j=1,np
-            do i=1,np
-              ttens(i,j,k,ie)   = nu_scale_top(k)*nu_top*lap_t(i,j)  
-              dptens(i,j,k,ie)  = nu_scale_top(k)*nu_top*lap_dp(i,j) 
-              vtens(i,j,1,k,ie) = nu_scale_top(k)*nu_top*lap_v(i,j,1)
-              vtens(i,j,2,k,ie) = nu_scale_top(k)*nu_top*lap_v(i,j,2)
-            enddo
-          enddo
-
-          if (ntrac>0) then
-            !
-            ! del2 mass flux for CSLAM (note that we do not have del4 in sponge layer)
-            !
-            call subcell_Laplace_fluxes(elem(ie)%state%dp3d(:,:,k,nt),deriv,elem(ie),np,nc,laplace_fluxes)
-            elem(ie)%sub_elem_mass_flux(:,:,:,k) = elem(ie)%sub_elem_mass_flux(:,:,:,k) + &
-                 rhypervis_subcycle*eta_ave_w*nu_scale_top(k)*nu_top*laplace_fluxes
-          endif
-          
-          ! NOTE: we will DSS all tendicies, EXCEPT for dp3d, where we DSS the new state
-          !OMP_COLLAPSE_SIMD
-          !DIR_VECTOR_ALIGNED
-          do j=1,np
-            do i=1,np
-              elem(ie)%state%dp3d(i,j,k,nt) = elem(ie)%state%dp3d(i,j,k,nt)*elem(ie)%spheremp(i,j)&
-                   + dt*dptens(i,j,k,ie)
-            enddo
-          enddo
-          
-        enddo
-        
-        
-        kptr = 0
-        call edgeVpack(edgeSponge,ttens(:,:,1:ksponge_end,ie),kblk,kptr,ie)
-        
-        kptr = ksponge_end
-        call edgeVpack(edgeSponge,vtens(:,:,1,1:ksponge_end,ie),kblk,kptr,ie)
-        
-        kptr = 2*ksponge_end
-        call edgeVpack(edgeSponge,vtens(:,:,2,1:ksponge_end,ie),kblk,kptr,ie)
-
-        kptr = 3*ksponge_end        
-        call edgeVpack(edgeSponge,elem(ie)%state%dp3d(:,:,1:ksponge_end,nt),kblk,kptr,ie)
-      enddo
-      
-      call bndry_exchange(hybrid,edgeSponge,location='advance_hypervis_sponge')
-      
-      do ie=nets,nete
-        
-        kptr = 0
-        call edgeVunpack(edgeSponge,ttens(:,:,1:ksponge_end,ie),kblk,kptr,ie)
-
-        kptr = ksponge_end        
-        call edgeVunpack(edgeSponge,vtens(:,:,1,1:ksponge_end,ie),kblk,kptr,ie)
-
-        kptr = 2*ksponge_end        
-        call edgeVunpack(edgeSponge,vtens(:,:,2,1:ksponge_end,ie),kblk,kptr,ie)
-        
-        if (ntrac>0) then
+    call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dBS')
+    if (nu_top>0) then
+      kblk = ksponge_end    
+      do ic=1,hypervis_subcycle_sponge      
+        rhypervis_subcycle=1.0_r8/real(hypervis_subcycle_sponge,kind=r8)
+        do ie=nets,nete
           do k=1,ksponge_end
-            temp(:,:,k) = elem(ie)%state%dp3d(:,:,k,nt) / elem(ie)%spheremp  ! STATE before DSS
-            corners(0:np+1,0:np+1,k) = 0.0_r8
-            corners(1:np  ,1:np  ,k) = elem(ie)%state%dp3d(1:np,1:np,k,nt) ! fill in interior data of STATE*mass
-          enddo
-        endif
-        kptr = 3*ksponge_end                
-        call edgeVunpack(edgeSponge,elem(ie)%state%dp3d(:,:,1:ksponge_end,nt),kblk,kptr,ie)        
-        
-        if (ntrac>0) then
-          desc = elem(ie)%desc
-
-          kptr = 3*ksponge_end                          
-          call edgeDGVunpack(edgeSponge,corners(:,:,1:ksponge_end),kblk,kptr,ie)
-          do k=1,ksponge_end
-            corners(:,:,k) = corners(:,:,k)/dt !note: array size is 0:np+1
+            call laplace_sphere_wk(elem(ie)%state%T(:,:,k,nt),deriv,elem(ie),lap_t,var_coef=.false.)
+            call laplace_sphere_wk(elem(ie)%state%dp3d(:,:,k,nt),deriv,elem(ie),lap_dp,var_coef=.false.)
+            ! increased second-order divergence damping
+            nu_ratio1=1.0_r8
+            call vlaplace_sphere_wk(elem(ie)%state%v(:,:,:,k,nt),deriv,elem(ie),lap_v, var_coef=.false.,&
+                 nu_ratio=nu_ratio1)
+            
             !OMP_COLLAPSE_SIMD
             !DIR_VECTOR_ALIGNED
             do j=1,np
               do i=1,np
-                temp(i,j,k) =  elem(ie)%rspheremp(i,j)*elem(ie)%state%dp3d(i,j,k,nt) - temp(i,j,k)
-                temp(i,j,k) =  temp(i,j,k)/dt
+                ttens(i,j,k,ie)   = nu_scale_top(k)*nu_top*lap_t(i,j)  
+                dptens(i,j,k,ie)  = nu_scale_top(k)*nu_top*lap_dp(i,j) 
+                vtens(i,j,1,k,ie) = nu_scale_top(k)*nu_top*lap_v(i,j,1)
+                vtens(i,j,2,k,ie) = nu_scale_top(k)*nu_top*lap_v(i,j,2)
               enddo
             enddo
             
-            call distribute_flux_at_corners(cflux, corners(:,:,k), desc%getmapP)
+            if (ntrac>0) then
+              !
+              ! del2 mass flux for CSLAM (note that we do not have del4 in sponge layer)
+              !
+              call subcell_Laplace_fluxes(elem(ie)%state%dp3d(:,:,k,nt),deriv,elem(ie),np,nc,laplace_fluxes)
+              elem(ie)%sub_elem_mass_flux(:,:,:,k) = elem(ie)%sub_elem_mass_flux(:,:,:,k) + &
+                   rhypervis_subcycle*eta_ave_w*nu_scale_top(k)*nu_top*laplace_fluxes
+            endif
             
-            cflux(1,1,:)   = elem(ie)%rspheremp(1,  1) * cflux(1,1,:)
-            cflux(2,1,:)   = elem(ie)%rspheremp(np, 1) * cflux(2,1,:)
-            cflux(1,2,:)   = elem(ie)%rspheremp(1, np) * cflux(1,2,:)
-            cflux(2,2,:)   = elem(ie)%rspheremp(np,np) * cflux(2,2,:)
+            ! NOTE: we will DSS all tendicies, EXCEPT for dp3d, where we DSS the new state
+            !OMP_COLLAPSE_SIMD
+            !DIR_VECTOR_ALIGNED
+            do j=1,np
+              do i=1,np
+                elem(ie)%state%dp3d(i,j,k,nt) = elem(ie)%state%dp3d(i,j,k,nt)*elem(ie)%spheremp(i,j)&
+                     + dt*dptens(i,j,k,ie)
+              enddo
+            enddo
             
-            call subcell_dss_fluxes(temp(:,:,k), np, nc, elem(ie)%metdet,cflux,tempflux)
-            elem(ie)%sub_elem_mass_flux(:,:,:,k) = elem(ie)%sub_elem_mass_flux(:,:,:,k) + &
-                 rhypervis_subcycle*eta_ave_w*tempflux
-          end do
-        endif
-
-        ! apply inverse mass matrix, accumulate tendencies
-        !$omp parallel do num_threads(vert_num_threads) private(k,i,j)
-        do k=1,ksponge_end
-          !OMP_COLLAPSE_SIMD
-          !DIR_VECTOR_ALIGNED
-          do j=1,np
-            do i=1,np
-              vtens(i,j,1,k,ie)=dt*vtens(i,j,1,k,ie)*elem(ie)%rspheremp(i,j)
-              vtens(i,j,2,k,ie)=dt*vtens(i,j,2,k,ie)*elem(ie)%rspheremp(i,j)
-              ttens(i,j,k,ie)=dt*ttens(i,j,k,ie)*elem(ie)%rspheremp(i,j)
-              elem(ie)%state%dp3d(i,j,k,nt)=elem(ie)%state%dp3d(i,j,k,nt)*elem(ie)%rspheremp(i,j)
+          enddo
+          
+          
+          kptr = 0
+          call edgeVpack(edgeSponge,ttens(:,:,1:ksponge_end,ie),kblk,kptr,ie)
+          
+          kptr = ksponge_end
+          call edgeVpack(edgeSponge,vtens(:,:,1,1:ksponge_end,ie),kblk,kptr,ie)
+          
+          kptr = 2*ksponge_end
+          call edgeVpack(edgeSponge,vtens(:,:,2,1:ksponge_end,ie),kblk,kptr,ie)
+          
+          kptr = 3*ksponge_end        
+          call edgeVpack(edgeSponge,elem(ie)%state%dp3d(:,:,1:ksponge_end,nt),kblk,kptr,ie)
+        enddo
+        
+        call bndry_exchange(hybrid,edgeSponge,location='advance_hypervis_sponge')
+        
+        do ie=nets,nete
+          
+          kptr = 0
+          call edgeVunpack(edgeSponge,ttens(:,:,1:ksponge_end,ie),kblk,kptr,ie)
+          
+          kptr = ksponge_end        
+          call edgeVunpack(edgeSponge,vtens(:,:,1,1:ksponge_end,ie),kblk,kptr,ie)
+          
+          kptr = 2*ksponge_end        
+          call edgeVunpack(edgeSponge,vtens(:,:,2,1:ksponge_end,ie),kblk,kptr,ie)
+          
+          if (ntrac>0) then
+            do k=1,ksponge_end
+              temp(:,:,k) = elem(ie)%state%dp3d(:,:,k,nt) / elem(ie)%spheremp  ! STATE before DSS
+              corners(0:np+1,0:np+1,k) = 0.0_r8
+              corners(1:np  ,1:np  ,k) = elem(ie)%state%dp3d(1:np,1:np,k,nt) ! fill in interior data of STATE*mass
+            enddo
+          endif
+          kptr = 3*ksponge_end                
+          call edgeVunpack(edgeSponge,elem(ie)%state%dp3d(:,:,1:ksponge_end,nt),kblk,kptr,ie)        
+          
+          if (ntrac>0) then
+            desc = elem(ie)%desc
+            
+            kptr = 3*ksponge_end                          
+            call edgeDGVunpack(edgeSponge,corners(:,:,1:ksponge_end),kblk,kptr,ie)
+            do k=1,ksponge_end
+              corners(:,:,k) = corners(:,:,k)/dt !note: array size is 0:np+1
+              !OMP_COLLAPSE_SIMD
+              !DIR_VECTOR_ALIGNED
+              do j=1,np
+                do i=1,np
+                  temp(i,j,k) =  elem(ie)%rspheremp(i,j)*elem(ie)%state%dp3d(i,j,k,nt) - temp(i,j,k)
+                  temp(i,j,k) =  temp(i,j,k)/dt
+                enddo
+              enddo
+              
+              call distribute_flux_at_corners(cflux, corners(:,:,k), desc%getmapP)
+              
+              cflux(1,1,:)   = elem(ie)%rspheremp(1,  1) * cflux(1,1,:)
+              cflux(2,1,:)   = elem(ie)%rspheremp(np, 1) * cflux(2,1,:)
+              cflux(1,2,:)   = elem(ie)%rspheremp(1, np) * cflux(1,2,:)
+              cflux(2,2,:)   = elem(ie)%rspheremp(np,np) * cflux(2,2,:)
+              
+              call subcell_dss_fluxes(temp(:,:,k), np, nc, elem(ie)%metdet,cflux,tempflux)
+              elem(ie)%sub_elem_mass_flux(:,:,:,k) = elem(ie)%sub_elem_mass_flux(:,:,:,k) + &
+                   rhypervis_subcycle*eta_ave_w*tempflux
+            end do
+          endif
+          
+          ! apply inverse mass matrix, accumulate tendencies
+          !$omp parallel do num_threads(vert_num_threads) private(k,i,j)
+          do k=1,ksponge_end
+            !OMP_COLLAPSE_SIMD
+            !DIR_VECTOR_ALIGNED
+            do j=1,np
+              do i=1,np
+                vtens(i,j,1,k,ie)=dt*vtens(i,j,1,k,ie)*elem(ie)%rspheremp(i,j)
+                vtens(i,j,2,k,ie)=dt*vtens(i,j,2,k,ie)*elem(ie)%rspheremp(i,j)
+                ttens(i,j,k,ie)=dt*ttens(i,j,k,ie)*elem(ie)%rspheremp(i,j)
+                elem(ie)%state%dp3d(i,j,k,nt)=elem(ie)%state%dp3d(i,j,k,nt)*elem(ie)%rspheremp(i,j)
+              enddo
             enddo
           enddo
-        enddo
-        !$omp parallel do num_threads(vert_num_threads) private(k,i,j)
-        do k=1,ksponge_end
-          !OMP_COLLAPSE_SIMD
-          !DIR_VECTOR_ALIGNED
-          do j=1,np
-            do i=1,np
-              ! update v first (gives better results than updating v after heating)
-              elem(ie)%state%v(i,j,:,k,nt)=elem(ie)%state%v(i,j,:,k,nt) + &
-                   vtens(i,j,:,k,ie)
-              elem(ie)%state%T(i,j,k,nt)=elem(ie)%state%T(i,j,k,nt) &
-                   +ttens(i,j,k,ie)
+          !$omp parallel do num_threads(vert_num_threads) private(k,i,j)
+          do k=1,ksponge_end
+            !OMP_COLLAPSE_SIMD
+            !DIR_VECTOR_ALIGNED
+            do j=1,np
+              do i=1,np
+                ! update v first (gives better results than updating v after heating)
+                elem(ie)%state%v(i,j,:,k,nt)=elem(ie)%state%v(i,j,:,k,nt) + &
+                     vtens(i,j,:,k,ie)
+                elem(ie)%state%T(i,j,k,nt)=elem(ie)%state%T(i,j,k,nt) &
+                     +ttens(i,j,k,ie)
+              enddo
             enddo
           enddo
-        enddo
-      end do       
-    end do
+        end do
+      end do
+    end if
     call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dAS')        
   end subroutine advance_hypervis_dp
 
@@ -2285,4 +2290,26 @@ contains
     return
   end subroutine fill_element
 
+  subroutine rayleigh_friction(elem,nt,nets,nete,dt)
+    use dimensions_mod, only: np, nlev, otau
+    use hybrid_mod,     only: hybrid_t!, get_loop_ranges
+    use element_mod,    only: element_t
+    
+    type (element_t)   , intent(inout), target :: elem(:)
+    integer            , intent(in)   :: nets,nete, nt
+    real(r8)                          :: dt
+
+    real(r8) :: c1, c2
+    integer  :: k,ie
+
+    do ie=nets,nete
+      do k=1,nlev
+        c2 = 1._r8 / (1._r8 + otau(k)*dt)
+        c1 = -otau(k) * c2 * dt
+        elem(ie)%state%v(:,:,:,k,nt) = elem(ie)%state%v(:,:,:,k,nt)+c1 * elem(ie)%state%v(:,:,:,k,nt)
+!         ptend%s(:ncol,k) = c3 * (state%u(:ncol,k)**2 + state%v(:ncol,k)**2)
+      enddo
+    end do    
+  end subroutine rayleigh_friction
+  
 end module prim_advance_mod
