@@ -3072,10 +3072,10 @@ subroutine set_phis(dyn_in)
       ierr = pio_inq_dimlen(fh_topo, lonid , mlon)
       ierr = pio_inq_dimlen(fh_topo, latid , mlat)
       if (mlon /= plon .or. mlat /= plat) then
-         write(iulog,*) sub//': ERROR: model parameters do not match initial dataset parameters'
+         write(iulog,*) sub//': ERROR: model parameters do not match topo dataset parameters'
          write(iulog,*)'Model Parameters:    plon = ',plon,' plat = ',plat
          write(iulog,*)'Dataset Parameters:  dlon = ',mlon,' dlat = ',mlat
-         call endrun(sub//': ERROR: model parameters do not match initial dataset parameters')
+         call endrun(sub//': ERROR: model parameters do not match topo dataset parameters')
       end if
     
       fieldname = 'PHIS'
@@ -3217,7 +3217,7 @@ subroutine process_inidat(grid, dyn_in, fieldname, m_cnst, fh_ini)
 
    case ('CONSTS')
 
-      if (.not. present(m_cnst) .or. .not. present(fh_ini)) then
+      if (.not. present(m_cnst)) then
          call endrun(sub//': ERROR:  m_cnst needs to be present in the'// &
                      ' argument list')
       end if
@@ -3225,6 +3225,11 @@ subroutine process_inidat(grid, dyn_in, fieldname, m_cnst, fh_ini)
       tracer => dyn_in%tracer
 
       if (readvar) then
+
+         if (.not. present(fh_ini)) then
+            call endrun(sub//': ERROR:  fh_ini needs to be present in the'// &
+                        ' argument list')
+         end if
 
          ! Check that all tracer units are in mass mixing ratios
          ret = pio_inq_varid(fh_ini, cnst_name(m_cnst), varid)

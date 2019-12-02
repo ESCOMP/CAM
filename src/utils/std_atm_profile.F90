@@ -3,7 +3,10 @@ module std_atm_profile
 !-------------------------------------------------------------------------------
 !
 ! The barometric formula for U.S. Standard Atmosphere is valid up to 86 km.
-! see https://en.wikipedia.org/wiki/Barometric_formula
+! see https://en.wikipedia.org/wiki/Barometric_formula.
+!
+! N.B.  The extension above 86 km is using data from Hanli.  It is not complete
+!       since the hardcoded parameter (c1) needs adjustment above 86 km.
 !
 !-------------------------------------------------------------------------------
 
@@ -24,7 +27,7 @@ public :: &
 
 integer, parameter  :: nreg = 15  ! number of regions
 
-real(r8), parameter :: hb(nreg) = & ! height a bottom of layer (m)
+real(r8), parameter :: hb(nreg) = & ! height at bottom of layer (m)
      (/0.0_r8, 1.1e4_r8, 2.0e4_r8, 3.2e4_r8, 4.7e4_r8, 5.1e4_r8, 7.1e4_r8, 8.6e4_r8, &
      9.1e4_r8, 1.1e5_r8, 1.2e5_r8, 1.5e5_r8, 2.0e5_r8, 3.0e5_r8, 7.e5_r8/)
 

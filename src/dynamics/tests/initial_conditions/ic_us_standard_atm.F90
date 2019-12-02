@@ -154,7 +154,7 @@ subroutine us_std_atm_set_ic(latvals, lonvals, U, V, T, PS, PHIS,           &
       ncnst = size(m_cnst, 1)
       do m = 1, ncnst
          if (m_cnst(m) == 1) then
-            ! No water vapor in Held-Suarez
+            ! No water vapor in profile
             do k = 1, nlev
                where(mask_use)
                   Q(:,k,m_cnst(m)) = 0.0_r8

@@ -64,16 +64,8 @@ subroutine remap1(Qdp,nx,qstart,qstop,qsize,dp1,dp2,hybrid)
   integer :: qbeg, qend
   logical :: abort=.false.
 
-  !call t_startf('remap_Q_ppm')
-  !if ( present(hybrid) ) then
-  !  !$OMP PARALLEL NUM_THREADS(tracer_num_threads), DEFAULT(SHARED), PRIVATE(hybridnew,qbeg,qend)
-  !  hybridnew = config_thread_region(hybrid,'tracer')
-  !  call get_loop_ranges(hybridnew, qbeg=qbeg, qend=qend)
-  !  call remap_Q_ppm(qdp,nx,qbeg,qend,qsize,dp1,dp2)
-  !  !$OMP END PARALLEL
-  !else
   call remap_Q_ppm(qdp,nx,qstart,qstop,qsize,dp1,dp2)
-  !call t_stopf('remap_Q_ppm')
+
 end subroutine remap1
 
 subroutine remap1_nofilter(Qdp,nx,qsize,dp1,dp2)

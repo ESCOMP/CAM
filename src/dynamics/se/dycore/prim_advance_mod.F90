@@ -451,14 +451,6 @@ contains
                    dt_local*elem(ie)%derived%FM(i,j,1,k)*pdel!elem(ie)%state%dp3d(i,j,k,np1)
               elem(ie)%state%v(i,j,2,k,np1) = elem(ie)%state%v(i,j,2,k,np1) + &
                    dt_local*elem(ie)%derived%FM(i,j,2,k)*pdel!/elem(ie)%state%dp3d(i,j,k,np1)
-              !
-              ! attempt at kinetic energt conserving
-              !              
-!              tmp  = elem(ie)%derived%FM(i,j,1,k)*SQRT(pdel*dt_local/dt_phys)
-!              elem(ie)%state%v(i,j,1,k,np1) = elem(ie)%state%v(i,j,1,k,np1) + tmp  
-!
-!              tmp  = elem(ie)%derived%FM(i,j,2,k)*SQRT(pdel*dt_local/dt_phys)              
-!              elem(ie)%state%v(i,j,2,k,np1) = elem(ie)%state%v(i,j,2,k,np1) + tmp
             end do
           end do
         end do

@@ -561,10 +561,6 @@ contains
       call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu    ,0.5_r8,'    ')
       call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu_div,5.0_r8 ,'_div')
       del2_physics_tendencies=.false.
-!      if (ne > 0) then
-!        del2_physics_tendencies=.true. !del2 on physics tendencies only coded for uniform resolution
-!        if (hybrid%masterthread) write(iulog,*) 'filtering u,v,T tendencies in sponge for stability'
-!      end if
     end if
     if (hybrid%masterthread) write(iulog,*) 'del2_physics_tendencies= ',del2_physics_tendencies
 
@@ -673,15 +669,9 @@ contains
       end do
       
       write(iulog,*) ' '
-!      write(iulog,'(a,f10.2,a)') 'In sponge del4 viscosity can be increased by a maximum of (max_nu_scale_del4=)', &
-!           max_nu_scale_del4,' and still be stable (theoretically)'
-!      write(iulog,'(a,2f10.2)') 'In sponge del4 viscosity is increased by a maximum of ', &
-!           MIN(MAXVAL(nu_scale_top(1:ksponge_end)),max_nu_scale_del4)
       if (hypervis_power /= 0) then
         write(iulog,'(a,3e11.4)')'Scalar hyperviscosity (dynamics): ave,min,max = ', &
              nu*(/avg_hypervis**2,min_hypervis**2,max_hypervis**2/)
-        !         print*, 'fine_ne = ', fine_ne
-        !         print*, 'Using max_unif_dx = ', max_unif_dx
       end if
       write(iulog,*) 'tstep_type = ',tstep_type
     end if
@@ -1095,7 +1085,6 @@ contains
     !
     ! - TAKAHASHI ET AL., 2006: GLOBAL SIMULATION OF MESOSCALE SPECTRUM 
     !
-!    uniform_res_hypervis_scaling = 3.0_r8    ! 1./log(2.0_r8) = 3.3219
     uniform_res_hypervis_scaling = 1.0_r8/log10(2.0_r8)
     !
     ! compute factor so that at ne30 resolution nu=1E15

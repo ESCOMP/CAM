@@ -1160,7 +1160,6 @@ subroutine read_inidat(dyn_in)
    integer,  allocatable            :: m_ind(:)
    real(r8), allocatable            :: dbuf4(:,:,:,:)
    !----------------------------------------------------------------------------
-   logical :: lbalance_ps_with_phis=.false.
    
    fh_ini  => initial_file_get_id()
    fh_topo => topo_file_get_id()
