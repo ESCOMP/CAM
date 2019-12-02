@@ -22,7 +22,7 @@
 <met_filenames_list dyn="fv"  hgrid="0.47x0.63">atm/cam/met/MERRA2/0.5x0.63/filenames_list_c180612</met_filenames_list>
 
 <!-- Solar data from NRL -->
-<solar_irrad_data_file>atm/cam/solar/SolarForcingNRLSSI2_daily_s18820101_e20171231_c180702.nc</solar_irrad_data_file>
+<solar_irrad_data_file>atm/cam/solar/SolarForcingNRLSSI2_daily_s18820101_e20171231_c191122.nc</solar_irrad_data_file>
 <solar_data_type>SERIAL</solar_data_type>
 
 <!-- WACCM GW Settings -->
