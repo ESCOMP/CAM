@@ -18,7 +18,7 @@ module clubb_intr
   !----------------------------------------------------------------------------------------------------- !
 
   use shr_kind_mod,  only: r8=>shr_kind_r8                                                                  
-  use ppgrid,        only: pver, pverp, pcols
+  use ppgrid,        only: pver, pverp, pcols, begchunk, endchunk
   use phys_control,  only: phys_getopts
   use physconst,     only: rairv, cpairv, cpair, gravit, latvap, latice, zvir, rh2o, karman
   use spmd_utils,    only: masterproc 
@@ -26,8 +26,11 @@ module clubb_intr
   use pbl_utils,     only: calc_ustar, calc_obklen
   use ref_pres,      only: top_lev => trop_cloud_top_lev  
   use zm_conv_intr,  only: zmconv_microp
-  implicit none
+#ifdef CLUBB_SGS
+  use clubb_api_module, only: pdf_parameter
+#endif
 
+  implicit none
   private
   save
 
@@ -204,8 +207,6 @@ module clubb_intr
     radf_idx, & 
     qsatfac_idx, &      ! subgrid cloud water saturation scaling factor 
     ice_supersat_idx, & ! ice cloud fraction for SILHS
-    pdf_params_idx, &   ! pdf parameters for SILHS
-    pdf_params_zm_idx, &! pdf parameters on momentum levels
     rcm_idx, &          ! Cloud water mixing ratio for SILHS
     ztodt_idx           ! physics timestep for SILHS
 
@@ -247,6 +248,12 @@ module clubb_intr
   character(len=8)   :: cnst_names(ncnst)
   logical            :: do_cnst=.false.
 
+#ifdef CLUBB_SGS
+  type(pdf_parameter), target, allocatable, public, protected :: &
+                                              pdf_params_chnk(:,:,:)    ! PDF parameters (thermo. levs.) [units vary]
+  type(pdf_parameter), target, allocatable :: pdf_params_zm_chnk(:,:,:) ! PDF parameters on momentum levs. [units vary]
+#endif
+
   contains
   
   ! =============================================================================== !
@@ -269,7 +276,6 @@ module clubb_intr
 
     !  Add CLUBB fields to pbuf 
     use physics_buffer,  only: pbuf_add_field, dtype_r8, dyn_time_lvls
-    use clubb_api_module,only: num_pdf_params
     use subcol_utils,    only: subcol_get_scheme
     
     call phys_getopts( eddy_scheme_out                 = eddy_scheme, &
@@ -342,8 +348,6 @@ module clubb_intr
     call pbuf_add_field('THLPTHVP',   'physpkg', dtype_r8, (/pcols,pverp/), thlpthvp_idx)
     call pbuf_add_field('CLOUD_FRAC', 'physpkg', dtype_r8, (/pcols,pverp/), cloud_frac_idx)
     call pbuf_add_field('ISS_FRAC',   'physpkg', dtype_r8, (/pcols,pverp/), ice_supersat_idx)
-    call pbuf_add_field('PDF_PARAMS', 'physpkg', dtype_r8, (/pcols,pverp,num_pdf_params/), pdf_params_idx)
-    call pbuf_add_field('PDF_PARAMS_ZM', 'physpkg', dtype_r8, (/pcols,pverp,num_pdf_params/), pdf_params_zm_idx)
     call pbuf_add_field('RCM',        'physpkg', dtype_r8, (/pcols,pverp/), rcm_idx)
     call pbuf_add_field('ZTODT',      'physpkg', dtype_r8, (/pcols/),       ztodt_idx)
 
@@ -794,6 +798,10 @@ end subroutine clubb_init_cnst
     if (core_rknd /= r8) then
       call endrun('clubb_ini_cam:  CLUBB library core_rknd must match CAM r8 and it does not')
     end if
+
+    allocate( &
+       pdf_params_chnk(pverp,pcols,begchunk:endchunk),   &
+       pdf_params_zm_chnk(pverp,pcols,begchunk:endchunk) )
 
     ! ----------------------------------------------------------------- !
     ! Determine how many constituents CLUBB will transport.  Note that  
@@ -1287,8 +1295,6 @@ end subroutine clubb_init_cnst
         stats_rad_zm, &
         l_output_rad_files, &
         pdf_parameter, &
-        num_pdf_params, &
-        pack_pdf_params_api, unpack_pdf_params_api, & ! convert type to 2d real array
         stats_begin_timestep_api, &
         hydromet_dim, calculate_thlp2_rad_api, mu, update_xp2_mc_api, &
         sat_mixrat_liq_api, &
@@ -1517,10 +1523,7 @@ end subroutine clubb_init_cnst
 
    real(r8), dimension(nparams)  :: clubb_params    ! These adjustable CLUBB parameters (C1, C2 ...)
    real(r8), dimension(sclr_dim) :: sclr_tol 	! Tolerance on passive scalar 			[units vary]
-   type(pdf_parameter), dimension(pverp) :: pdf_params      ! PDF parameters (thermo. levs.)  	[units vary]
-   type(pdf_parameter), dimension(pverp) :: pdf_params_zm   ! PDF parameters on momentum levs.  [units vary]
-   real(r8), dimension(pverp,num_pdf_params) :: pdf_params_packed    ! Packed for storage in pbuf
-   real(r8), dimension(pverp,num_pdf_params) :: pdf_params_zm_packed ! Packed for storage in pbuf
+
    character(len=200) :: temp1, sub             ! Strings needed for CLUBB output
    real(kind=time_precision)                 :: time_elapsed                ! time keep track of stats          [s]
    integer :: stats_nsamp, stats_nout           ! Stats sampling and output intervals for CLUBB [timestep]
@@ -1571,9 +1574,10 @@ end subroutine clubb_init_cnst
    real(r8), pointer, dimension(:,:) :: accre_enhan ! accretion enhancement factor              [-]
    real(r8), pointer, dimension(:,:) :: naai
    real(r8), pointer, dimension(:,:) :: cmeliq 
-   real(r8), pointer, dimension(:,:,:) :: pdf_params_ptr    ! putting the params in the pbuf      [variable]
-   real(r8), pointer, dimension(:,:,:) :: pdf_params_zm_ptr ! putting the zm params in the pbuf   [variable]
    real(r8), pointer, dimension(:,:) :: cmfmc_sh ! Shallow convective mass flux--m subc (pcols,pverp) [kg/m2/s/]
+
+   type(pdf_parameter), pointer :: pdf_params(:)    ! PDF parameters (thermo. levs.) [units vary]
+   type(pdf_parameter), pointer :: pdf_params_zm(:) ! PDF parameters on momentum levs. [units vary]
 
    real(r8), pointer, dimension(:,:) :: qsatfac
    real(r8), pointer, dimension(:,:) :: npccn
@@ -1701,8 +1705,6 @@ end subroutine clubb_init_cnst
    call pbuf_get_field(pbuf, thlpthvp_idx,thlpthvp)
    call pbuf_get_field(pbuf, rcm_idx,     rcm)
    call pbuf_get_field(pbuf, cloud_frac_idx, cloud_frac)
-   call pbuf_get_field(pbuf, pdf_params_idx, pdf_params_ptr)
-   call pbuf_get_field(pbuf, pdf_params_zm_idx, pdf_params_zm_ptr)
    call pbuf_get_field(pbuf, thlm_idx,    thlm,    start=(/1,1,itim_old/), kount=(/pcols,pverp,1/))
    call pbuf_get_field(pbuf, rtm_idx,     rtm,     start=(/1,1,itim_old/), kount=(/pcols,pverp,1/))
    call pbuf_get_field(pbuf, um_idx,      um,      start=(/1,1,itim_old/), kount=(/pcols,pverp,1/))
@@ -1804,8 +1806,8 @@ end subroutine clubb_init_cnst
      call physics_update(state1, ptend_loc, hdtime)
 
     !Write output for tendencies:
-    !     oufld: QVTENDICE,QITENDICE,NITENDICE
-     call outfld( 'TTENDICE',  stend/cpair, pcols, lchnk )
+     temp2d(:ncol,:pver) =  stend(:ncol,:pver)/cpairv(:ncol,:pver,lchnk)
+     call outfld( 'TTENDICE',  temp2d, pcols, lchnk )
      call outfld( 'QVTENDICE', qvtend, pcols, lchnk )
      call outfld( 'QITENDICE', qitend, pcols, lchnk )
      call outfld( 'NITENDICE', initend, pcols, lchnk )
@@ -2076,6 +2078,26 @@ end subroutine clubb_init_cnst
          wpedsclrp_sfc(ixind) = 0._r8
       enddo 
 
+      !  Set stats output and increment equal to CLUBB and host dt
+      stats_tsamp = dtime
+      stats_tout  = hdtime
+ 
+      !  Heights need to be set at each timestep.  Therefore, recall 
+      !  setup_grid and setup_parameters for this.  
+     
+      !  Read in parameters for CLUBB.  Just read in default values 
+      call read_parameters_api( -99, "", clubb_params )
+ 
+      !  Set-up CLUBB core at each CLUBB call because heights can change
+      !  Important note:  do not make any calls that use CLUBB grid-height
+      !                   operators (such as zt2zm_api, etc.) until AFTER the
+      !                   call to setup_grid_heights_api.
+      call setup_grid_heights_api(l_implemented, grid_type, zi_g(2), &
+           zi_g(1), zi_g, zt_g)
+
+      call setup_parameters_api(zi_g(2), clubb_params, nlev+1, grid_type, &
+        zi_g, zt_g, err_code)
+
       !  Define forcings from CAM to CLUBB as zero for momentum and thermo,
       !  forcings already applied through CAM
       thlm_forcing = 0._r8
@@ -2104,23 +2126,6 @@ end subroutine clubb_init_cnst
       wprtp_mc_zt(i,:) = 0.0_r8
       wpthlp_mc_zt(i,:) = 0.0_r8
       rtpthlp_mc_zt(i,:) = 0.0_r8
-
-      !  Set stats output and increment equal to CLUBB and host dt
-      stats_tsamp = dtime
-      stats_tout  = hdtime
- 
-      !  Heights need to be set at each timestep.  Therefore, recall 
-      !  setup_grid and setup_parameters for this.  
-     
-      !  Read in parameters for CLUBB.  Just read in default values 
-      call read_parameters_api( -99, "", clubb_params )
- 
-      !  Set-up CLUBB core at each CLUBB call because heights can change
-      call setup_grid_heights_api(l_implemented, grid_type, zi_g(2), &
-           zi_g(1), zi_g, zt_g)
-
-      call setup_parameters_api(zi_g(2), clubb_params, nlev+1, grid_type, &
-        zi_g, zt_g, err_code)
 
       !  Compute some inputs from the thermodynamic grid
       !  to the momentum grid
@@ -2241,10 +2246,8 @@ end subroutine clubb_init_cnst
         edsclr_in(1,icnt+2) = edsclr_in(2,icnt+2)  
       endif    
 
-      pdf_params_packed(:,:) = pdf_params_ptr(i,:,:)
-      pdf_params_zm_packed(:,:) = pdf_params_zm_ptr(i,:,:)
-      call unpack_pdf_params_api(pdf_params_packed, pverp, pdf_params)
-      call unpack_pdf_params_api(pdf_params_zm_packed, pverp, pdf_params_zm)
+      pdf_params    => pdf_params_chnk(:,i,lchnk)
+      pdf_params_zm => pdf_params_zm_chnk(:,i,lchnk)
 
       stats_nsamp = nint(stats_tsamp/dtime)
       stats_nout = nint(stats_tout/dtime)
@@ -2352,12 +2355,6 @@ end subroutine clubb_init_cnst
       thl2_zt = zm2zt_api(thlp2_in)
       wp2_zt  = zm2zt_api(wp2_in)
 
-      ! Pack up pdf_params and store it in the pbuf
-      call pack_pdf_params_api(pdf_params, pverp, pdf_params_packed)
-      call pack_pdf_params_api(pdf_params_zm, pverp, pdf_params_zm_packed)
-      pdf_params_ptr(i,:,:) = pdf_params_packed(:,:) 
-      pdf_params_zm_ptr(i,:,:) = pdf_params_zm_packed(:,:) 
- 
       !  Arrays need to be "flipped" to CAM grid 
 
       do k=1,nlev+1
