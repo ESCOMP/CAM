@@ -6051,6 +6051,8 @@ end subroutine print_active_fldlst
   end function hist_fld_col_active
  
   subroutine cam_history_snapshot_deactivate(name)
+
+  ! This subroutine deactivates (sets actflag to false) for all tapes 
   
   character(len=*), intent(in) :: name
 
@@ -6064,6 +6066,8 @@ end subroutine print_active_fldlst
 
   subroutine cam_history_snapshot_activate(name, tape)
   
+  ! This subroutine activates (set aftflag to true) for the requested tape number
+
   character(len=*), intent(in) :: name
   integer,          intent(in) :: tape
 

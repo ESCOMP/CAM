@@ -102,7 +102,7 @@ contains
     !
     !-----------------------------------------------------------------------
     use cam_abortutils,     only: endrun
-    use physics_buffer,     only: pbuf_init_time, hist_cam_snapshot_register
+    use physics_buffer,     only: pbuf_init_time, pbuf_cam_snapshot_register
     use physics_buffer,     only: pbuf_add_field, dtype_r8, pbuf_register_subcol
     use shr_kind_mod,       only: r8 => shr_kind_r8
     use spmd_utils,         only: masterproc
@@ -336,7 +336,7 @@ contains
 
     call offline_driver_reg()
 
-    call hist_cam_snapshot_register() ! This needs to be last as it requires all pbuf fields to be added
+    call pbuf_cam_snapshot_register() ! This needs to be last as it requires all pbuf fields to be added
 
   end subroutine phys_register
 
@@ -1387,12 +1387,6 @@ contains
     if (trim(cam_take_snapshot_after) == "chem_emissions") &
         call cam_snapshot_all_outfld(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf)
 
-!!!!!!!!!!!!!!!!!!!!!
-!! CAC  - FOR TESTING
-!    if (trim(cam_take_snapshot_before) == "chem_emissions") &
-!        call cam_snapshot_all_outfld(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf)
-!!!!!!!!!!!!!!!!!!!!!
-
     if (carma_do_emission) then
        ! carma emissions
        call carma_emission_tend (state, ptend, cam_in, ztodt)
@@ -1788,7 +1782,6 @@ contains
     use subcol_SILHS,    only: subcol_SILHS_var_covar_driver
     use micro_mg_cam,    only: massless_droplet_destroyer
     use cam_snapshot,    only: cam_snapshot_all_outfld
-    use phys_control,    only: phys_getopts
 
     ! Arguments
 

@@ -143,7 +143,7 @@ module physics_buffer
 
   ! For snapshot use
   public :: pbuf_get_dim_strings
-  public :: hist_cam_snapshot_register
+  public :: pbuf_cam_snapshot_register
 
    integer, public :: dyn_time_lvls  ! number of time levels in physics buffer (dycore dependent)
 
@@ -1715,7 +1715,7 @@ end subroutine pbuf_readnl
     end do
   end subroutine pbuf_dump_pbuf
 
-subroutine hist_cam_snapshot_register()
+subroutine pbuf_cam_snapshot_register()
 !--------------------------------------------------------
 ! This subroutine checks that all of the dimensions in pbuf fields have been registered
 ! If they have not, then a new dimension is added with the "pbuf_" prepending the actual size
@@ -1739,14 +1739,13 @@ subroutine hist_cam_snapshot_register()
              if (dim_name == '') then                   ! found a dimension which needs a name
                 write(dim_string,'(a,i0)') 'pbuf_',dim_size
                 call add_hist_coord(dim_string, dim_size, dim_string)
-                write(0,*) ' dim_string =', dim_string
              end if
          end if
       end do
       hdrbuffer => hdrbuffer%nexthdr
    end do
 
-end subroutine hist_cam_snapshot_register
+end subroutine pbuf_cam_snapshot_register
 
 subroutine pbuf_get_dim_strings(pbuf, string)
 
