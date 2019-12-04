@@ -42,9 +42,10 @@ module dyn_comp
 
 use shr_kind_mod,       only: r8=>shr_kind_r8
 use spmd_utils,         only: masterproc, iam
+use physconst,          only: pi
 
 use pmgrid,             only: plon, plat
-use constituents,       only: pcnst, cnst_name, cnst_read_iv, qmin
+use constituents,       only: pcnst, cnst_name, cnst_read_iv, qmin, cnst_type
 
 use time_manager,       only: get_step_size
 
@@ -53,7 +54,11 @@ use dynamics_vars,      only: t_fvdycore_grid,            &
 use dyn_internal_state, only: get_dyn_state, get_dyn_state_grid
 
 use dyn_grid,           only: get_horiz_grid_dim_d
+use commap,             only: clat, clon, clat_staggered, londeg_st
 use spmd_dyn,           only: spmd_readnl
+
+use inic_analytic,      only: analytic_ic_active, analytic_ic_set_ic
+use dyn_tests_utils,    only: vc_moist_pressure
 
 use cam_control_mod,    only: initial_run, moist_physics
 use phys_control,       only: phys_setopts
@@ -621,6 +626,8 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    ! Diagnostics for AM
    if (dyn_state%am_diag) call fv_diag_init()
+
+   call set_phis(dyn_in)
 
    if (initial_run) then
 
@@ -2823,12 +2830,6 @@ end subroutine dyn_final
 !=============================================================================================
 
 subroutine read_inidat(dyn_in)
-  use inic_analytic,   only: analytic_ic_active, analytic_ic_set_ic
-  use dyn_tests_utils, only: vc_moist_pressure
-  use physconst,       only: pi
-  use dyn_grid,        only: get_horiz_grid_dim_d
-  use commap,          only: clat, clon, clat_staggered, londeg_st
-  use constituents,    only: cnst_type
 
   ! Read initial dataset
 
@@ -2842,7 +2843,6 @@ subroutine read_inidat(dyn_in)
   character(len=16)               :: fieldname
 
   type(file_desc_t), pointer      :: fh_ini    ! PIO filehandle
-  type(file_desc_t), pointer      :: fh_topo
 
   type (t_fvdycore_grid), pointer :: grid
   ! variables for analytic initial conditions
@@ -2857,13 +2857,13 @@ subroutine read_inidat(dyn_in)
   integer                         :: latid
   integer                         :: mlon ! longitude dimension length from dataset
   integer                         :: mlat            ! latitude dimension length from dataset
+  integer                         :: cnst_start
   real(r8), parameter             :: deg2rad = pi/180._r8
 
   character(len=*), parameter     :: sub='read_inidat'
   !----------------------------------------------------------------------------
 
   fh_ini  => initial_file_get_id()
-  fh_topo => topo_file_get_id()
 
   grid     => get_dyn_state_grid()
   ifirstxy =  grid%ifirstxy
@@ -2908,24 +2908,25 @@ subroutine read_inidat(dyn_in)
     end do
     allocate(clon_st(ifirstxy:ilastxy))
     clon_st(ifirstxy:ilastxy) = londeg_st(ifirstxy:ilastxy,1) * deg2rad
+
     call analytic_ic_set_ic(vc_moist_pressure, clat_staggered(jf:jlastxy-1),  &
          clon(ifirstxy:ilastxy,1), glob_ind(gf:), U=dyn_in%u3s(:,uf:,:))
     call analytic_ic_set_ic(vc_moist_pressure, clat(jfirstxy:jlastxy),        &
          clon_st(ifirstxy:ilastxy), glob_ind, V=dyn_in%v3s)
+    ! Note that analytic_ic_set_ic makes use of cnst_init_default for
+    ! the tracers except water vapor.
     call analytic_ic_set_ic(vc_moist_pressure, clat(jfirstxy:jlastxy),        &
          clon(ifirstxy:ilastxy,1), glob_ind, T=dyn_in%t3, PS=dyn_in%ps,       &
-         Q=dyn_in%tracer(:,:,:,1:ntotq), m_cnst=m_cnst)
-    if (.not. associated(fh_topo)) then
-      call analytic_ic_set_ic(vc_moist_pressure, clat(jfirstxy:jlastxy),      &
-           clon(ifirstxy:ilastxy,1), glob_ind, PHIS=dyn_in%phis)
-    end if
+         Q=dyn_in%tracer(:,:,:,1:ntotq), PHIS_IN=dyn_in%phis, m_cnst=m_cnst)
     do m = 1, ntotq
-       call process_inidat(fh_ini, grid, dyn_in, 'CONSTS', m_cnst=m)
+       call process_inidat(grid, dyn_in, 'CONSTS', m_cnst=m, fh_ini=fh_ini)
     end do
     deallocate(glob_ind)
     deallocate(m_cnst)
     deallocate(clon_st)
+
   else
+
     !-----------
     ! Check coord sizes
     !-----------
@@ -2949,15 +2950,6 @@ subroutine read_inidat(dyn_in)
          dyn_in%ps, readvar, gridname='fv_centers')
     if (.not. readvar) call endrun(sub//': ERROR: PS not found')
 
-    fieldname = 'PHIS'
-    readvar   = .false.
-    if (.not. associated(fh_topo)) then
-      dyn_in%phis(:,:) = 0._r8
-    else
-      call infld(fieldname, fh_topo, 'lon', 'lat', ifirstxy, ilastxy, jfirstxy, jlastxy, &
-           dyn_in%phis, readvar, gridname='fv_centers')
-      if (.not. readvar) call endrun(sub//': ERROR: PHIS not found')
-    end if
 
     !-----------
     ! 3-D fields
@@ -2977,18 +2969,48 @@ subroutine read_inidat(dyn_in)
     call infld(fieldname, fh_ini, 'lon', 'lat', 'lev', ifirstxy, ilastxy, jfirstxy, jlastxy, &
          1, km, dyn_in%t3, readvar, gridname='fv_centers')
     if (.not. readvar) call endrun(sub//': ERROR: T not found')
-
-    ! Constituents (read and process one at a time)
-    do m = 1, pcnst
-      readvar   = .false.
-      fieldname = cnst_name(m)
-      if (cnst_read_iv(m)) then
-        call infld(fieldname, fh_ini, 'lon', 'lat', 'lev', ifirstxy, ilastxy, jfirstxy, jlastxy, &
-             1, km, dyn_in%tracer(:,:,:,m), readvar, gridname='fv_centers')
-      end if
-      call process_inidat(fh_ini, grid, dyn_in, 'CONSTS', m_cnst=m)
-    end do
   end if
+
+  ! Constituents (read and process one at a time)
+  !
+  ! If analytic ICs are being used, we allow constituents in an initial
+  ! file to overwrite mixing ratios set by the default constituent initialization
+  ! except for water vapor.
+  cnst_start = 1
+  if (analytic_ic_active()) cnst_start = 2
+
+  ! If using analytic ICs the initial file only needs the horizonal grid
+  ! dimension checked in the case that the file contains constituent mixing
+  ! ratios.
+  if (analytic_ic_active()) then
+     do m = cnst_start, pcnst
+        if (cnst_read_iv(m)) then
+           if (dyn_field_exists(fh_ini, trim(cnst_name(m)), required=.false.)) then
+              ierr = pio_inq_dimid(fh_ini, 'lon' , lonid)
+              ierr = pio_inq_dimid(fh_ini, 'lat' , latid)
+              ierr = pio_inq_dimlen(fh_ini, lonid , mlon)
+              ierr = pio_inq_dimlen(fh_ini, latid , mlat)
+              if (mlon /= plon .or. mlat /= plat) then
+                 write(iulog,*) sub//': ERROR: model parameters do not match initial dataset parameters'
+                 write(iulog,*)'Model Parameters:    plon = ',plon,' plat = ',plat
+                 write(iulog,*)'Dataset Parameters:  dlon = ',mlon,' dlat = ',mlat
+                 call endrun(sub//': ERROR: model parameters do not match initial dataset parameters')
+              end if
+              exit
+           end if
+        end if
+     end do
+  end if
+
+  do m = cnst_start, pcnst
+    readvar   = .false.
+    fieldname = cnst_name(m)
+    if (cnst_read_iv(m)) then
+      call infld(fieldname, fh_ini, 'lon', 'lat', 'lev', ifirstxy, ilastxy, jfirstxy, jlastxy, &
+           1, km, dyn_in%tracer(:,:,:,m), readvar, gridname='fv_centers')
+    end if
+    call process_inidat(grid, dyn_in, 'CONSTS', m_cnst=m, fh_ini=fh_ini)
+  end do
 
   ! Set u3s(:,1,:) to zero as it is used in interpolation routines
   if ((jfirstxy == 1) .and. (size(dyn_in%u3s) > 0)) then
@@ -2996,15 +3018,101 @@ subroutine read_inidat(dyn_in)
   end if
 
   ! These always happen
-  call process_inidat(fh_ini, grid, dyn_in, 'PS')
-  call process_inidat(fh_ini, grid, dyn_in, 'PHIS')
-  call process_inidat(fh_ini, grid, dyn_in, 'T')
+  call process_inidat(grid, dyn_in, 'PS')
+  call process_inidat(grid, dyn_in, 'T')
 
 end subroutine read_inidat
 
 !=========================================================================================
 
-subroutine process_inidat(fh_ini, grid, dyn_in, fieldname, m_cnst)
+subroutine set_phis(dyn_in)
+
+   ! Set PHIS according to the following rules.
+   !
+   ! 1) If a topo file is specified use it.  This option has highest precedence.
+   ! 2) If not using topo file, but analytic_ic option is on, use analytic phis.
+   ! 3) Set phis = 0.0.
+
+   ! Arguments
+   type (dyn_import_t), target, intent(inout) :: dyn_in   ! dynamics import
+
+   ! local variables
+   type(file_desc_t),      pointer :: fh_topo
+   type (t_fvdycore_grid), pointer :: grid
+
+   integer :: ifirstxy, ilastxy, jfirstxy, jlastxy
+   integer :: ierr
+   integer :: lonid
+   integer :: latid
+   integer :: mlon            ! longitude dimension length from dataset
+   integer :: mlat            ! latitude dimension length from dataset
+   integer :: nglon, nglat
+   integer :: i, j, m
+
+   integer, allocatable :: glob_ind(:)
+
+   character(len=16)                :: fieldname
+   character(len=*), parameter      :: sub='set_phis'
+   !----------------------------------------------------------------------------
+
+   fh_topo => topo_file_get_id()
+
+   grid     => get_dyn_state_grid()
+   ifirstxy =  grid%ifirstxy
+   ilastxy  =  grid%ilastxy
+   jfirstxy =  grid%jfirstxy
+   jlastxy  =  grid%jlastxy
+
+   if (associated(fh_topo)) then    
+      !-----------
+      ! Check coord sizes
+      !-----------
+      ierr = pio_inq_dimid(fh_topo, 'lon' , lonid)
+      ierr = pio_inq_dimid(fh_topo, 'lat' , latid)
+      ierr = pio_inq_dimlen(fh_topo, lonid , mlon)
+      ierr = pio_inq_dimlen(fh_topo, latid , mlat)
+      if (mlon /= plon .or. mlat /= plat) then
+         write(iulog,*) sub//': ERROR: model parameters do not match topo dataset parameters'
+         write(iulog,*)'Model Parameters:    plon = ',plon,' plat = ',plat
+         write(iulog,*)'Dataset Parameters:  dlon = ',mlon,' dlat = ',mlat
+         call endrun(sub//': ERROR: model parameters do not match topo dataset parameters')
+      end if
+    
+      fieldname = 'PHIS'
+      readvar   = .false.      
+      call infld(fieldname, fh_topo, 'lon', 'lat', ifirstxy, ilastxy, jfirstxy, jlastxy, &
+         dyn_in%phis, readvar, gridname='fv_centers')
+      if (.not. readvar) call endrun(sub//': ERROR: PHIS not found')
+
+   else if (analytic_ic_active()) then
+
+      allocate(glob_ind((ilastxy - ifirstxy + 1) * (jlastxy - jfirstxy + 1)))
+      call get_horiz_grid_dim_d(nglon, nglat)
+      m = 1
+      do j = jfirstxy, jlastxy
+         do i = ifirstxy, ilastxy
+            ! Create a global column index
+            glob_ind(m) = i + (j-1)*nglon
+            m = m + 1
+         end do
+      end do
+
+      call analytic_ic_set_ic(vc_moist_pressure, clat(jfirstxy:jlastxy),      &
+         clon(ifirstxy:ilastxy,1), glob_ind, PHIS_OUT=dyn_in%phis)
+
+   else
+
+      dyn_in%phis(:,:) = 0._r8
+
+   end if
+
+   call process_inidat(grid, dyn_in, 'PHIS')
+
+end subroutine set_phis
+
+!=========================================================================================
+
+subroutine process_inidat(grid, dyn_in, fieldname, m_cnst, fh_ini)
 
    ! Post-process input fields
    use commap,              only: clat, clon
@@ -3012,11 +3120,11 @@ subroutine process_inidat(fh_ini, grid, dyn_in, fieldname, m_cnst)
    use inic_analytic,       only: analytic_ic_active
 
    ! arguments
-   type(file_desc_t),             intent(inout) :: fh_ini
    type(t_fvdycore_grid), target, intent(inout) :: grid        ! dynamics state grid
    type(dyn_import_t),    target, intent(inout) :: dyn_in      ! dynamics import
    character(len=*),              intent(in)    :: fieldname   ! field to be processed
    integer,             optional, intent(in)    :: m_cnst      ! constituent index
+   type(file_desc_t),   optional, intent(inout) :: fh_ini
 
    ! Local variables
    integer :: i, j, k                     ! grid and constituent indices
@@ -3117,6 +3225,11 @@ subroutine process_inidat(fh_ini, grid, dyn_in, fieldname, m_cnst)
       tracer => dyn_in%tracer
 
       if (readvar) then
+
+         if (.not. present(fh_ini)) then
+            call endrun(sub//': ERROR:  fh_ini needs to be present in the'// &
+                        ' argument list')
+         end if
 
          ! Check that all tracer units are in mass mixing ratios
          ret = pio_inq_varid(fh_ini, cnst_name(m_cnst), varid)
@@ -3231,5 +3344,44 @@ subroutine process_inidat(fh_ini, grid, dyn_in, fieldname, m_cnst)
 
 end subroutine process_inidat
 
+!=========================================================================================
+
+logical function dyn_field_exists(fh, fieldname, required)
+
+   use pio,            only: var_desc_t, PIO_inq_varid
+   use pio,            only: PIO_NOERR
+
+   type(file_desc_t), intent(in) :: fh
+   character(len=*),  intent(in) :: fieldname
+   logical, optional, intent(in) :: required
+
+   ! Local variables
+   logical                  :: found
+   logical                  :: field_required
+   integer                  :: ret
+   type(var_desc_t)         :: varid
+   character(len=128)       :: errormsg
+   !--------------------------------------------------------------------------
+
+   if (present(required)) then
+      field_required = required
+   else
+      field_required = .true.
+   end if
+
+   ret = PIO_inq_varid(fh, trim(fieldname), varid)
+   found = (ret == PIO_NOERR)
+   if (.not. found) then
+      if (field_required) then
+         write(errormsg, *) trim(fieldname),' was not present in the input file.'
+         call endrun('DYN_FIELD_EXISTS: '//errormsg)
+      end if
+   end if
+
+   dyn_field_exists = found
+
+end function dyn_field_exists
+
+!=========================================================================================
 
 end module dyn_comp

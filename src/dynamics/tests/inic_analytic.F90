@@ -38,12 +38,13 @@ CONTAINS
 !==============================================================================
 
   subroutine dyn_set_inic_col(vcoord, latvals, lonvals, glob_ind, U, V, T,    &
-       PS, PHIS, Q, m_cnst, mask, verbose)
+       PS, PHIS_IN, PHIS_OUT, Q, m_cnst, mask, verbose)
     use cam_initfiles,        only: pertlim
 #ifdef ANALYTIC_IC
-    use ic_held_suarez,       only: hs94_set_ic
-    use ic_baroclinic,        only: bc_wav_set_ic
-    use ic_baro_dry_jw06,     only: bc_dry_jw06_set_ic
+    use ic_held_suarez,            only: hs94_set_ic
+    use ic_baroclinic,             only: bc_wav_set_ic
+    use ic_baro_dry_jw06,          only: bc_dry_jw06_set_ic
+    use ic_us_standard_atmosphere, only: us_std_atm_set_ic
 #endif
     use spmd_utils,           only: masterproc
     !-----------------------------------------------------------------------
@@ -61,7 +62,8 @@ CONTAINS
     real(r8), optional, intent(inout) :: V(:,:)      ! meridional velocity
     real(r8), optional, intent(inout) :: T(:,:)      ! temperature
     real(r8), optional, intent(inout) :: PS(:)       ! surface pressure
-    real(r8), optional, intent(inout) :: PHIS(:)     ! surface geopotential
+    real(r8), optional, intent(in)    :: PHIS_IN(:)  ! surface geopotential
+    real(r8), optional, intent(out)   :: PHIS_OUT(:) ! surface geopotential
     real(r8), optional, intent(inout) :: Q(:,:,:)    ! tracer (ncol, lev, m)
     integer,  optional, intent(in)    :: m_cnst(:)   ! tracer indices (reqd. if Q)
     logical,  optional, intent(in)    :: mask(:)     ! Only init where .true.
@@ -126,9 +128,16 @@ CONTAINS
         return
       end if
     end if
-    if (present(PHIS)) then
-      if (size(PHIS) > 0) then
-        call check_array_size(PHIS, 'PHIS', latvals, subname)
+    if (present(PHIS_IN)) then
+      if (size(PHIS_IN) > 0) then
+        call check_array_size(PHIS_IN, 'PHIS_IN', latvals, subname)
+      else
+        return
+      end if
+    end if
+    if (present(PHIS_OUT)) then
+      if (size(PHIS_OUT) > 0) then
+        call check_array_size(PHIS_OUT, 'PHIS_OUT', latvals, subname)
       else
         return
       end if
@@ -147,19 +156,22 @@ CONTAINS
         return
       end if
     end if
-
     select case(trim(analytic_ic_type))
     case('held_suarez_1994')
-      call hs94_set_ic(latvals, lonvals, U=U, V=V, T=T, PS=PS, PHIS=PHIS,     &
+      call hs94_set_ic(latvals, lonvals, U=U, V=V, T=T, PS=PS, PHIS=PHIS_OUT,     &
            Q=Q, m_cnst=m_cnst, mask=mask_use, verbose=verbose_use)
 
     case('moist_baroclinic_wave_dcmip2016', 'dry_baroclinic_wave_dcmip2016')
       call bc_wav_set_ic(vcoord, latvals, lonvals, U=U, V=V, T=T, PS=PS,      &
-           PHIS=PHIS, Q=Q, m_cnst=m_cnst, mask=mask_use, verbose=verbose_use)
+           PHIS=PHIS_OUT, Q=Q, m_cnst=m_cnst, mask=mask_use, verbose=verbose_use)
 
     case('dry_baroclinic_wave_jw2006')
       call bc_dry_jw06_set_ic(vcoord, latvals, lonvals, U=U, V=V, T=T, PS=PS, &
-           PHIS=PHIS, Q=Q, m_cnst=m_cnst, mask=mask_use, verbose=verbose_use)
+           PHIS=PHIS_OUT, Q=Q, m_cnst=m_cnst, mask=mask_use, verbose=verbose_use)
+
+    case('us_standard_atmosphere')
+      call us_std_atm_set_ic(latvals, lonvals, U=U, V=V, T=T, PS=PS, PHIS=PHIS_IN,     &
+           Q=Q, m_cnst=m_cnst, mask=mask_use, verbose=verbose_use)      
 
     case default
       call endrun(subname//': Unknown analytic_ic_type, "'//trim(analytic_ic_type)//'"')
@@ -203,7 +215,7 @@ CONTAINS
   end subroutine dyn_set_inic_col
 
   subroutine dyn_set_inic_cblock(vcoord,latvals, lonvals, glob_ind, U, V, T,  &
-       PS, PHIS, Q, m_cnst, mask)
+       PS, PHIS_IN, PHIS_OUT, Q, m_cnst, mask)
     !-----------------------------------------------------------------------
     !
     ! Purpose: Set analytic initial values for dynamics state variables
@@ -219,7 +231,8 @@ CONTAINS
     real(r8), optional, intent(inout) :: V(:,:,:)    ! meridional velocity
     real(r8), optional, intent(inout) :: T(:,:,:)    ! temperature
     real(r8), optional, intent(inout) :: PS(:,:)     ! surface pressure
-    real(r8), optional, intent(inout) :: PHIS(:,:)   ! surface geopotential
+    real(r8), optional, intent(in)    :: PHIS_IN(:,:)! surface geopotential
+    real(r8), optional, intent(out)   :: PHIS_OUT(:,:)! surface geopotential
     real(r8), optional, intent(inout) :: Q(:,:,:,:)  ! tracer (ncol,lev,blk,m)
     integer,  optional, intent(in)    :: m_cnst(:)   ! tracer indices (reqd. if Q)
     logical,  optional, intent(in)    :: mask(:)     ! Only init where .true.
@@ -254,8 +267,11 @@ CONTAINS
     if(present(PS)) then
       call get_input_shape(PS, 'PS', mname, size1, size2, size3, subname)
     end if
-    if(present(PHIS)) then
-      call get_input_shape(PHIS, 'PHIS', mname, size1, size2, size3, subname)
+    if(present(PHIS_IN)) then
+      call get_input_shape(PHIS_IN, 'PHIS_IN', mname, size1, size2, size3, subname)
+    end if
+    if(present(PHIS_OUT)) then
+      call get_input_shape(PHIS_OUT, 'PHIS_OUT', mname, size1, size2, size3, subname)
     end if
     if (size1 < 0) then
       call endrun(subname//': No state variables to initialize')
@@ -283,17 +299,23 @@ CONTAINS
             call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
                  glob_ind(bbeg:bend), V=V(:,:,i), mask=mask(bbeg:bend), verbose=verbose)
           end if
-          if (present(T)) then
+          if (present(PS).and.present(PHIS_IN).and.present(T)) then          
             call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
-                 glob_ind(bbeg:bend), T=T(:,:,i), mask=mask(bbeg:bend), verbose=verbose)
-          end if
-          if (present(PS)) then
-            call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
-                 glob_ind(bbeg:bend), PS=PS(:,i), mask=mask(bbeg:bend), verbose=verbose)
-          end if
-          if (present(PHIS)) then
-            call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
-                 glob_ind(bbeg:bend), PHIS=PHIS(:,i), mask=mask(bbeg:bend), verbose=verbose)
+                 glob_ind(bbeg:bend), PS=PS(:,i), PHIS_IN=PHIS_IN(:,i), T=T(:,:,i),    &
+                 mask=mask(bbeg:bend), verbose=verbose)
+          else
+            if (present(T)) then
+              call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), T=T(:,:,i), mask=mask(bbeg:bend), verbose=verbose)
+            end if            
+            if (present(PHIS_OUT)) then
+              call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), PHIS_OUT=PHIS_OUT(:,i), mask=mask(bbeg:bend), verbose=verbose)
+            end if
+            if (present(PS)) then
+              call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), PS=PS(:,i), mask=mask(bbeg:bend), verbose=verbose)
+            end if
           end if
           if (present(Q)) then
             call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
@@ -309,18 +331,24 @@ CONTAINS
             call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
                  glob_ind(bbeg:bend), V=V(:,:,i), verbose=verbose)
           end if
-          if (present(T)) then
+          if (present(PS).and.present(PHIS_IN).and.present(T)) then
+              call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), PHIS_IN=PHIS_IN(:,i),PS=PS(:,i),T=T(:,:,i),      &
+                   verbose=verbose)            
+          else
+            if (present(T)) then              
+              call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), T=T(:,:,i), verbose=verbose)
+            end if
+            if (present(PS)) then
+              call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), PS=PS(:,i), verbose=verbose)
+            end if
+            if (present(PHIS_OUT)) then
             call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
-                 glob_ind(bbeg:bend), T=T(:,:,i), verbose=verbose)
+                 glob_ind(bbeg:bend), PHIS_OUT=PHIS_OUT(:,i), verbose=verbose)
           end if
-          if (present(PS)) then
-            call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
-                 glob_ind(bbeg:bend), PS=PS(:,i), verbose=verbose)
-          end if
-          if (present(PHIS)) then
-            call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
-                 glob_ind(bbeg:bend), PHIS=PHIS(:,i), verbose=verbose)
-          end if
+        end if
           if (present(Q)) then
             call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
                  glob_ind(bbeg:bend), Q=Q(:,:,i,:), m_cnst=m_cnst,            &
@@ -352,17 +380,23 @@ CONTAINS
             call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
                  glob_ind(bbeg:bend), V=V(:,i,:), mask=mask(bbeg:bend), verbose=verbose)
           end if
-          if (present(T)) then
-            call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
-                 glob_ind(bbeg:bend), T=T(:,i,:), mask=mask(bbeg:bend), verbose=verbose)
-          end if
-          if (present(PS)) then
-            call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
-                 glob_ind(bbeg:bend), PS=PS(:,i), mask=mask(bbeg:bend), verbose=verbose)
-          end if
-          if (present(PHIS)) then
-            call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
-                 glob_ind(bbeg:bend), PHIS=PHIS(:,i), mask=mask(bbeg:bend), verbose=verbose)
+          if (present(PS).and.present(PHIS_IN).and.present(T)) then
+              call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), PHIS_IN=PHIS_IN(:,i),PS=PS(:,i),T=T(:,i,:),      &
+                   mask=mask(bbeg:bend), verbose=verbose)            
+          else
+            if (present(T)) then
+              call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), T=T(:,i,:), mask=mask(bbeg:bend), verbose=verbose)
+            end if
+            if (present(PS)) then
+              call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), PS=PS(:,i), mask=mask(bbeg:bend), verbose=verbose)
+            end if
+            if (present(PHIS_OUT)) then
+              call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), PHIS_OUT=PHIS_OUT(:,i), mask=mask(bbeg:bend), verbose=verbose)
+            end if
           end if
           if (present(Q)) then
             call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
@@ -378,17 +412,23 @@ CONTAINS
             call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
                  glob_ind(bbeg:bend), V=V(:,i,:), verbose=verbose)
           end if
-          if (present(T)) then
-            call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
-                 glob_ind(bbeg:bend), T=T(:,i,:), verbose=verbose)
-          end if
-          if (present(PS)) then
-            call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
-                 glob_ind(bbeg:bend), PS=PS(:,i), verbose=verbose)
-          end if
-          if (present(PHIS)) then
-            call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
-                 glob_ind(bbeg:bend), PHIS=PHIS(:,i), verbose=verbose)
+          if (present(PS).and.present(PHIS_IN).and.present(T)) then
+              call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), PHIS_IN=PHIS_IN(:,i),PS=PS(:,i),T=T(:,i,:),      &
+                   verbose=verbose)            
+          else
+            if (present(T)) then
+              call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), T=T(:,i,:), verbose=verbose)
+            end if
+            if (present(PS)) then
+              call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), PS=PS(:,i), verbose=verbose)
+            end if
+            if (present(PHIS_OUT)) then
+              call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), PHIS_OUT=PHIS_OUT(:,i), verbose=verbose)
+            end if
           end if
           if (present(Q)) then
             call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
@@ -421,17 +461,22 @@ CONTAINS
             call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
                  V=V(:,i,:), verbose=verbose)
           end if
-          if (present(T)) then
-            call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
-                 T=T(:,i,:), verbose=verbose)
-          end if
-          if (present(PS)) then
-            call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
-                 PS=PS(:,i), verbose=verbose)
-          end if
-          if (present(PHIS)) then
-            call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
-                 PHIS=PHIS(:,i), verbose=verbose)
+          if (present(PS).and.present(PHIS_IN).and.present(T)) then
+              call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
+                   PS=PS(:,i),T=T(:,i,:),PHIS_IN=PHIS_IN(:,i), verbose=verbose)            
+          else
+            if (present(T)) then
+              call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
+                   T=T(:,i,:), verbose=verbose)
+            end if
+            if (present(PS)) then
+              call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
+                   PS=PS(:,i), verbose=verbose)
+            end if
+            if (present(PHIS_OUT)) then
+              call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
+                   PHIS_OUT=PHIS_OUT(:,i), verbose=verbose)
+            end if
           end if
           if (present(Q)) then
             call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
@@ -464,17 +509,22 @@ CONTAINS
             call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
                  V=V(:,:,i), verbose=verbose)
           end if
-          if (present(T)) then
+          if (present(PS).and.present(PHIS_IN).and.present(T)) then
             call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
-                 T=T(:,:,i), verbose=verbose)
-          end if
-          if (present(PS)) then
-            call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
-                 PS=PS(:,i), verbose=verbose)
-          end if
-          if (present(PHIS)) then
-            call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
-                 PHIS=PHIS(:,i), verbose=verbose)
+                 T=T(:,:,i),PS=PS(:,i), PHIS_IN=PHIS_IN(:,i), verbose=verbose)          
+          else
+            if (present(T)) then
+              call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
+                   T=T(:,:,i), verbose=verbose)
+            end if          
+            if (present(PS)) then
+              call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
+                   PS=PS(:,i), verbose=verbose)          
+            end if
+            if (present(PHIS_OUT)) then
+              call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
+                   PHIS_OUT=PHIS_OUT(:,i), verbose=verbose)
+            end if
           end if
           if (present(Q)) then
             call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
