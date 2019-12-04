@@ -69,7 +69,7 @@ contains
 
     use physconst,          only: mwh2o, cpwv
     use constituents,       only: cnst_add, cnst_chk_dim
-    use physics_buffer,     only: pbuf_init_time, dtype_r8, pbuf_add_field, hist_cam_snapshot_register
+    use physics_buffer,     only: pbuf_init_time, dtype_r8, pbuf_add_field, pbuf_cam_snapshot_register
 
     use cam_diagnostics,    only: diag_register
     use chemistry,          only: chem_register
@@ -135,7 +135,7 @@ contains
 
     ! ***NOTE*** No registering constituents after the call to cnst_chk_dim.
 
-    call hist_cam_snapshot_register() ! This needs to be last as it requires all pbuf fields to be added
+    call pbuf_cam_snapshot_register() ! This needs to be last as it requires all pbuf fields to be added
 
   end subroutine phys_register
 

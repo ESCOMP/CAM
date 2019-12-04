@@ -18,7 +18,6 @@ use phys_control,   only: phys_getopts
 use cam_logfile,    only: iulog
 use infnan,         only: isnan, isinf, isposinf, isneginf
 
-
 implicit  none
 
 private
@@ -97,8 +96,6 @@ use cam_history, only : cam_history_snapshot_nhtfrq_set
    call cam_in_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num, cam_in_arr(index))
    call cam_out_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num, cam_out_arr(index))
    call cam_pbuf_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num, pbuf(:,index))
-
-!   call pbuf_set_zero(pbuf_snapshot, pbuf) 
 
 end subroutine cam_snapshot_init
 
@@ -1041,21 +1038,6 @@ subroutine cam_out_snapshot_all_outfld(lchnk, file_num, cam_out)
    end do
 
 end subroutine cam_out_snapshot_all_outfld
-
-subroutine pbuf_set_zero(pbuf_snapshot, pbuf) 
-
-   type (snapshot_type_nd),   intent(in)    :: pbuf_snapshot(:)
-   type(physics_buffer_desc), pointer, intent(inout) :: pbuf(:,:)
-
-   integer :: pbuf_idx, i
-
-   do i=1, npbuf_var
-
-      pbuf_idx= pbuf_get_index(pbuf_snapshot(i)%ddt_string)
-      call pbuf_set_field(pbuf, pbuf_idx, 0._r8)
-   end do
-
-end subroutine pbuf_set_zero
 
 subroutine cam_pbuf_snapshot_all_outfld(lchnk, file_num, pbuf)
 
