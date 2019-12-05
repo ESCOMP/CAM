@@ -198,7 +198,7 @@ contains
 
   subroutine print_cfl(elem,hybrid,nets,nete,dtnu,ptop,&
        dt_remap_actual,dt_tracer_fvm_actual,dt_tracer_se_actual,&
-       dt_dyn_actual,dt_dyn_visco_actual,dt_tracer_visco_actual,dt_phys)
+       dt_dyn_actual,dt_dyn_visco_actual,dt_dyn_del2_actual,dt_tracer_visco_actual,dt_phys)
     !
     !   estimate various CFL limits
     !   also, for variable resolution viscosity coefficient, make sure
@@ -214,7 +214,7 @@ contains
     use reduction_mod,  only: ParallelMin,ParallelMax
     use physconst,      only: ra, rearth, pi
     use control_mod,    only: nu, nu_q, nu_div, nu_top, fine_ne, rk_stage_user, max_hypervis_courant
-    use control_mod,    only: tstep_type, hypervis_power, hypervis_scaling
+    use control_mod,    only: tstep_type, hypervis_power, hypervis_scaling, del2_physics_tendencies
     use cam_abortutils, only: endrun
     use parallel_mod,   only: global_shared_buf, global_shared_sum
     use edge_mod,       only: initedgebuffer, FreeEdgeBuffer, edgeVpack, edgeVunpack
@@ -232,7 +232,8 @@ contains
     ! actual time-steps
     !
     real (kind=r8), intent(in) :: dt_remap_actual,dt_tracer_fvm_actual,dt_tracer_se_actual,&
-                           dt_dyn_actual,dt_dyn_visco_actual,dt_tracer_visco_actual, dt_phys
+                           dt_dyn_actual,dt_dyn_visco_actual,dt_dyn_del2_actual,           &
+                           dt_tracer_visco_actual, dt_phys
     
     ! Element statisics
     real (kind=r8) :: max_min_dx,min_min_dx,min_max_dx,max_unif_dx   ! used for normalizing scalar HV
@@ -551,6 +552,7 @@ contains
      call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu_p  ,1.0_r8 ,'_p  ')
      call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu    ,0.25_r8,'    ')
      call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu_div,2.5_r8 ,'_div')
+     del2_physics_tendencies=.false.
     else
       !
       ! WACCM setting
@@ -558,7 +560,10 @@ contains
       call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu_p  ,1.0_r8 ,'_p  ') 
       call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu    ,0.5_r8,'    ')
       call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu_div,5.0_r8 ,'_div')
-    end if    
+      del2_physics_tendencies=.false.
+    end if
+    if (hybrid%masterthread) write(iulog,*) 'del2_physics_tendencies= ',del2_physics_tendencies
+
     if (nu_q<0) nu_q = nu_p ! necessary for consistency
     if (nu_s<0) nu_s = nu   ! temperature damping is always equal to nu
     
@@ -604,7 +609,7 @@ contains
     if (ptop>100.0_r8) then
       umax = 120.0_r8
     else
-      umax = 600.0_r8
+      umax = 400.0_r8
     end if
     ugw = 342.0_r8 !max gravity wave speed
     
@@ -641,9 +646,9 @@ contains
       write(iulog,'(a,f10.2,a,f10.2,a)') '* dt_tracer_se  (time-stepping tracers ; q       ) < ',dt_max_tracer_se,'s ',&
            dt_tracer_se_actual,'s'
       if (dt_tracer_se_actual>dt_max_tracer_se) write(iulog,*) 'WARNING: dt_tracer_se theoretically unstable'
-      write(iulog,'(a,f10.2,a,f10.2,a)') '* dt_tracer_vis (hyperviscosity tracers; q       ) < ',dt_max_hypervis,'s',&
+      write(iulog,'(a,f10.2,a,f10.2,a)') '* dt_tracer_vis (hyperviscosity tracers; q       ) < ',dt_max_hypervis_tracer,'s',&
            dt_tracer_visco_actual,'s'
-      if (dt_tracer_visco_actual>dt_max_hypervis) write(iulog,*) 'WARNING: dt_tracer_hypervis theoretically unstable'
+      if (dt_tracer_visco_actual>dt_max_hypervis_tracer) write(iulog,*) 'WARNING: dt_tracer_hypervis theoretically unstable'
       
       if (ntrac>0) then
         write(iulog,'(a,f10.2,a,f10.2,a)') '* dt_tracer_fvm (time-stepping tracers ; q       ) < ',dt_max_tracer_fvm,&
@@ -656,23 +661,17 @@ contains
         if (nu_scale_top(k)>0.15_r8) then
           if(nu_top>0) then
             write(iulog,'(a,i2,a,f10.2,a,f10.2,a)') '* dt level',k,'    (del2 sponge           ; u,v,T,dM) < ',&
-                 dt_max_laplacian_top/nu_scale_top(k),'s',dt_dyn_visco_actual,'s'
-            if (dt_dyn_visco_actual>dt_max_laplacian_top/nu_scale_top(k)) &
-                 write(iulog,*) 'WARNING: dt_dyn_vis theoretically unstable in sponge'
+                 dt_max_laplacian_top/nu_scale_top(k),'s',dt_dyn_del2_actual,'s'
+            if (dt_dyn_del2_actual>dt_max_laplacian_top/nu_scale_top(k)) &
+                 write(iulog,*) 'WARNING: theoretically unstable in sponge; increase se_hypervis_subcycle_sponge'
           end if
         end if
       end do
       
       write(iulog,*) ' '
-      write(iulog,'(a,f10.2,a)') 'In sponge del4 viscosity can be increased by a maximum of (max_nu_scale_del4=)', &
-           max_nu_scale_del4,' and still be stable (theoretically)'
-      write(iulog,'(a,2f10.2)') 'In sponge del4 viscosity is increased by a maximum of ', &
-           MIN(MAXVAL(nu_scale_top(1:ksponge_end)),max_nu_scale_del4)
       if (hypervis_power /= 0) then
         write(iulog,'(a,3e11.4)')'Scalar hyperviscosity (dynamics): ave,min,max = ', &
              nu*(/avg_hypervis**2,min_hypervis**2,max_hypervis**2/)
-        !         print*, 'fine_ne = ', fine_ne
-        !         print*, 'Using max_unif_dx = ', max_unif_dx
       end if
       write(iulog,*) 'tstep_type = ',tstep_type
     end if
@@ -1086,7 +1085,7 @@ contains
     !
     ! - TAKAHASHI ET AL., 2006: GLOBAL SIMULATION OF MESOSCALE SPECTRUM 
     !
-    uniform_res_hypervis_scaling = 3.0_r8    ! 1./log(2.0_r8) = 3.3219
+    uniform_res_hypervis_scaling = 1.0_r8/log10(2.0_r8)
     !
     ! compute factor so that at ne30 resolution nu=1E15
     ! scale so that scaling works for other planets
