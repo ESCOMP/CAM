@@ -16,18 +16,17 @@ module subcol_SILHS
    use cam_history,      only: addfld, add_default, outfld, horiz_only
 #ifdef CLUBB_SGS
 #ifdef SILHS
+   use clubb_intr,       only: pdf_params_chnk
    use clubb_api_module, only: &
         hmp2_ip_on_hmm2_ip_slope_type, &
         hmp2_ip_on_hmm2_ip_intrcpt_type
 #endif
 #endif
    use physconst,     only: cpair, gravit, latvap, latice, rair
-   use clubb_intr,    only: pdf_params_chnk
 
    implicit none
-
-      private
-      save
+   private
+   save
 
    public :: subcol_register_SILHS  ! 
    public :: subcol_init_SILHS      ! Initialize 
