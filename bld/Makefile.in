@@ -529,7 +529,7 @@ ifeq ($(FC_TYPE),gnu)
   endif
 
   ifeq ($(DEBUG),TRUE)
-    FC_FLAGS += -g -ggdb -ffpe-trap='invalid,zero,overflow' -finit-real=snan 
+    FC_FLAGS += -g -ggdb -ffpe-trap='invalid,zero,overflow' -finit-real=snan -fcheck=bounds
     CFLAGS   += -g -ggdb
   else
     # Check for override of default Fortran compiler optimizations

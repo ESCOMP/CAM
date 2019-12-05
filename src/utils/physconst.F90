@@ -42,6 +42,8 @@ real(r8), public, parameter :: pi          = shr_const_pi         ! 3.14...
 real(r8), public, parameter :: pstd        = 6.0E1_r8             ! Standard pressure (Pascals)
 #else
 real(r8), public, parameter :: pstd        = shr_const_pstd       ! Standard pressure (Pascals)
+real(r8), public, parameter :: tref        = 288._r8              ! Reference temperature
+real(r8), public, parameter :: lapse_rate  = 0.0065_r8            ! reference lapse rate [K/m]
 #endif
 real(r8), public, parameter :: r_universal = shr_const_rgas       ! Universal gas constant (J/K/kmol)
 real(r8), public, parameter :: rhoh2o      = shr_const_rhofw      ! Density of liquid water (STP)

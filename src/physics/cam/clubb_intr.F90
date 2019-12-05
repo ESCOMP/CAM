@@ -1851,24 +1851,6 @@ end subroutine clubb_init_cnst
      call endrun(subr//':  CLUBB time step and HOST time step NOT compatible')
    endif
    
-   ! Since CLUBB has only been scientifically validated for a 5 minute timestep
-   ! (the default value of clubb_timestep), we have decided to error out if the
-   ! final value of dtime is less than clubb_timestep.  Thus to use a non-validated
-   ! value for dtime the user will need to explicitly change the value of clubb_timestep
-   ! in the namelist, or comment this check.
-   if (dtime < clubb_timestep) then
-      if (masterproc) then
-         write(iulog,*) subr//':ERROR: hdtime = ', hdtime
-         write(iulog,*) subr//':ERROR: The computed CLUBB timestep = ', dtime
-         write(iulog,*) subr//':ERROR: The namelist CLUBB timestep = ', clubb_timestep
-         write(iulog,*) '  The only validated value for the clubb timestep is 300 seconds.'
-         write(iulog,*) '  To run at any other value the namelist variable clubb_timestep must be set.'
-         write(iulog,*) '  Also consider adjusting the namelist variable cld_macmic_num_steps which'
-         write(iulog,*) '  determines the macro/micro substepping.'
-      end if
-       call endrun(subr//': computed CLUBB time step is less than clubb_timestep')
-   end if
-
    !  determine number of timesteps CLUBB core should be advanced, 
    !  host time step divided by CLUBB time step  
    nadv = max(hdtime/dtime,1._r8)

@@ -306,6 +306,7 @@ contains
       elem(ie)%derived%FM=0.0_r8
       elem(ie)%derived%FQ=0.0_r8
       elem(ie)%derived%FT=0.0_r8
+      elem(ie)%derived%FDP=0.0_r8      
       elem(ie)%derived%pecnd=0.0_r8
 
       elem(ie)%derived%Omega=0

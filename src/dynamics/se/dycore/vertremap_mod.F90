@@ -64,20 +64,8 @@ subroutine remap1(Qdp,nx,qstart,qstop,qsize,dp1,dp2,hybrid)
   integer :: qbeg, qend
   logical :: abort=.false.
 
-  if (vert_remap_q_alg == 1 .or. vert_remap_q_alg == 2) then
-    !call t_startf('remap_Q_ppm')
-    !if ( present(hybrid) ) then
-    !  !$OMP PARALLEL NUM_THREADS(tracer_num_threads), DEFAULT(SHARED), PRIVATE(hybridnew,qbeg,qend)
-    !  hybridnew = config_thread_region(hybrid,'tracer')
-    !  call get_loop_ranges(hybridnew, qbeg=qbeg, qend=qend)
-    !  call remap_Q_ppm(qdp,nx,qbeg,qend,qsize,dp1,dp2)
-    !  !$OMP END PARALLEL
-    !else
-    call remap_Q_ppm(qdp,nx,qstart,qstop,qsize,dp1,dp2)
-    !endif
-    !call t_stopf('remap_Q_ppm')
-    return
-  endif
+  call remap_Q_ppm(qdp,nx,qstart,qstop,qsize,dp1,dp2)
+
 end subroutine remap1
 
 subroutine remap1_nofilter(Qdp,nx,qsize,dp1,dp2)
@@ -333,10 +321,15 @@ subroutine remap_Q_ppm(Qdp,nx,qstart,qstop,qsize,dp1,dp2)
           ao(k) = ao(k) / dpo(k)        !Divide out the old grid spacing because we want the tracer mixing ratio, not mass.
         enddo
         !Fill in ghost values. Ignored if vert_remap_q_alg == 2
-        do k = 1 , gs
-          ao(1   -k) = ao(       k)
-          ao(nlev+k) = ao(nlev+1-k)
-        enddo
+        if (vert_remap_q_alg == 10) then
+          call linextrap(dpo(nlev-1), dpo(nlev), dpo(nlev+1), dpo(nlev+2), &
+               ao(nlev-1), ao(nlev), ao(nlev+1), ao(nlev+2))
+        else
+          do k = 1 , gs
+            ao(1   -k) = ao(       k)
+            ao(nlev+k) = ao(nlev+1-k)
+          enddo
+        end if
         !Compute monotonic and conservative PPM reconstruction over every cell
         coefs(:,:) = compute_ppm( ao , ppmdx )
         !Compute tracer values on the new grid by integrating from the old cell bottom to the new
@@ -397,6 +390,9 @@ function compute_ppm_grids( dx )   result(rslt)
   if (vert_remap_q_alg == 2) then
     indB = 2
     indE = nlev-1
+  elseif (vert_remap_q_alg == 10) then
+    indB = 0
+    indE = nlev+1 
   else
     indB = 2
     indE = nlev+1
@@ -411,6 +407,9 @@ function compute_ppm_grids( dx )   result(rslt)
   if (vert_remap_q_alg == 2) then
     indB = 2
     indE = nlev-2
+  elseif (vert_remap_q_alg == 10) then
+    indB = 0
+    indE = nlev   
   else
     indB = 2
     indE = nlev
@@ -433,7 +432,7 @@ end function compute_ppm_grids
 !This computes a limited parabolic interpolant using a net 5-cell stencil, but the stages of computation are broken up into 3 stages
 function compute_ppm( a , dx )    result(coefs)
   use control_mod, only: vert_remap_q_alg
-
+  use dimensions_mod, only: ksponge_end
   implicit none
   real(kind=r8), intent(in) :: a    (    -1:nlev+2)  !Cell-mean values
   real(kind=r8), intent(in) :: dx   (10,  0:nlev+1)  !grid spacings
@@ -449,7 +448,10 @@ function compute_ppm( a , dx )    result(coefs)
   ! Stage 1: Compute dma for each cell, allowing a 1-cell ghost stencil below and above the domain
   if (vert_remap_q_alg == 2) then
     indB = 2
-    indE = nlev-1
+    indE = nlev-1        
+  elseif (vert_remap_q_alg == 10) then
+    indB = 0
+    indE = nlev+1 
   else
     indB = 2
     indE = nlev+1
@@ -464,6 +466,9 @@ function compute_ppm( a , dx )    result(coefs)
   if (vert_remap_q_alg == 2) then
     indB = 2
     indE = nlev-2
+  elseif (vert_remap_q_alg == 10) then
+    indB = 0
+    indE = nlev  
   else
     indB = 2
     indE = nlev
@@ -478,6 +483,9 @@ function compute_ppm( a , dx )    result(coefs)
   if (vert_remap_q_alg == 2) then
     indB = 3
     indE = nlev-2
+  elseif (vert_remap_q_alg == 10) then
+    indB = 1
+    indE = nlev 
   else
     indB = 3
     indE = nlev
@@ -501,10 +509,12 @@ function compute_ppm( a , dx )    result(coefs)
   !material boundaries piecewise constant. Zeroing out the first and second moments, and setting the zeroth
   !moment to the cell mean is sufficient to maintain conservation.
 
-  do k=1,2
-     coefs(0,k)   = a(k)  !always reduce to PCoM in sponge layers
-     coefs(1:2,k) = 0._r8 !always reduce to PCoM in sponge layers
-  end do
+  if (vert_remap_q_alg <10) then
+    do k=1,ksponge_end
+      coefs(0,k)   = a(k)  !reduce to PCoM in sponge layers
+      coefs(1:2,k) = 0._r8 !reduce to PCoM in sponge layers
+    end do
+  end if
   if (vert_remap_q_alg == 2) then
     coefs(0  ,1:2        ) = a(1:2)
     coefs(1:2,1:2        ) = 0.0_r8
@@ -529,7 +539,24 @@ end function integrate_parabola
 
 
 !=============================================================================================!
+  subroutine linextrap(dx1,dx2,dx3,dx4,y1,y2,y3,y4)
+    real(kind=r8), intent(in) :: dx1,dx2,dx3,dx4,y1,y2
+    real(kind=r8), intent(out) :: y3,y4
 
+    real(kind=r8), parameter :: half = 0.5_r8
+
+    real(kind=r8) :: x1,x2,x3,x4,a
+
+    x1 = half*dx1
+    x2 = x1 + half*(dx1 + dx2)
+    x3 = x2 + half*(dx2 + dx3)
+    x4 = x3 + half*(dx3 + dx4)
+
+    a  = (x3-x1)/(x2-x1)
+    y3 = (1-a)*y1 + a*y2
+    a  = (x4-x1)/(x2-x1)
+    y4 = (1-a)*y1 + a*y2    
+  end subroutine linextrap
 
 
 end module vertremap_mod
