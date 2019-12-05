@@ -49,5 +49,10 @@
 
 <horiz_grid dyn="mpas"  hgrid="mpasa480"           ncol="2562" />
 <horiz_grid dyn="mpas"  hgrid="mpasa120"           ncol="40962" />
+<horiz_grid dyn="mpas"  hgrid="mpasa60"            ncol="163842" />
+<horiz_grid dyn="mpas"  hgrid="mpasa30"            ncol="655362" />
+<horiz_grid dyn="mpas"  hgrid="mpasa15"            ncol="2621442" />
+<horiz_grid dyn="mpas"  hgrid="mpasa12"            ncol="4096002" />
+<horiz_grid dyn="mpas"  hgrid="mpasa15-3"          ncol="6488066" />
 
 </config_horiz_grid>

@@ -35,6 +35,11 @@
 <!-- Vertical coordinates and grid only -->
 <ncdata hgrid="mpasa480" nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa480_L32_v6.1.grid.nc</ncdata>
 <ncdata hgrid="mpasa120" nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa120_L32_v6.1.grid.nc</ncdata>
+<ncdata hgrid="mpasa60"  nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa60_L32_v6.1.grid.nc</ncdata>
+<ncdata hgrid="mpasa30"  nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa30_L32_v6.1.grid.nc</ncdata>
+<ncdata hgrid="mpasa15"  nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa15_L32_v6.1.grid.nc</ncdata>
+<ncdata hgrid="mpasa12"  nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa12_L32_v6.1.grid.nc</ncdata>
+<ncdata hgrid="mpasa15-3" nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa15-3_L32_v6.1.grid.nc</ncdata>
 
 <!-- Files with initial conditions -->
 <ncdata dyn="fv"  hgrid="0.23x0.31" nlev="26" ic_ymd="101"      >atm/cam/inic/fv/cami_0000-01-01_0.23x0.31_L26_c100513.nc</ncdata>
@@ -2105,6 +2110,11 @@
 
 <mpas_block_decomp_file_prefix hgrid="mpasa480">atm/cam/inic/mpas/mpasa480.graph.info.part.</mpas_block_decomp_file_prefix>
 <mpas_block_decomp_file_prefix hgrid="mpasa120">atm/cam/inic/mpas/mpasa120.graph.info.part.</mpas_block_decomp_file_prefix>
+<mpas_block_decomp_file_prefix hgrid="mpasa60">atm/cam/inic/mpas/mpasa60.graph.info.part.</mpas_block_decomp_file_prefix>
+<mpas_block_decomp_file_prefix hgrid="mpasa30">atm/cam/inic/mpas/mpasa30.graph.info.part.</mpas_block_decomp_file_prefix>
+<mpas_block_decomp_file_prefix hgrid="mpasa15">atm/cam/inic/mpas/mpasa15.graph.info.part.</mpas_block_decomp_file_prefix>
+<mpas_block_decomp_file_prefix hgrid="mpasa12">atm/cam/inic/mpas/mpasa12.graph.info.part.</mpas_block_decomp_file_prefix>
+<mpas_block_decomp_file_prefix hgrid="mpasa15-3">atm/cam/inic/mpas/mpasa15-3.graph.info.part.</mpas_block_decomp_file_prefix>
 
 <!-- ================================================================== -->
 <!-- Defaults for driver namelist seq_infodata_inparm                   -->
