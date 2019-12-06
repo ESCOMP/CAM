@@ -10,13 +10,11 @@ use shr_kind_mod,   only: r8 => shr_kind_r8
 use cam_history,    only: addfld, add_default, outfld, cam_history_snapshot_deactivate, cam_history_snapshot_activate
 use cam_abortutils, only: endrun
 use physics_buffer, only: physics_buffer_desc, pbuf_get_index, pbuf_get_field, pbuf_get_field_name
-use physics_buffer, only: pbuf_set_field
 use physics_types,  only: physics_state, physics_tend
 use camsrfexch,     only: cam_out_t, cam_in_t
 use ppgrid,         only: pcols
 use phys_control,   only: phys_getopts
 use cam_logfile,    only: iulog
-use infnan,         only: isnan, isinf, isposinf, isneginf
 
 implicit  none
 
@@ -116,7 +114,6 @@ use time_manager,   only: is_first_step
    type(physics_buffer_desc), pointer, intent(in) :: pbuf(:)
 
 
-   integer :: i
    integer :: lchnk
 
    ! Return if the first timestep as not all fields may be filled in and this will cause a core dump
@@ -196,7 +193,6 @@ subroutine cam_state_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_n
 !--------------------------------------------------------
 
    integer,intent(in) :: cam_snapshot_before_num, cam_snapshot_after_num
-   integer :: i
     
    nstate_var = 0
 
@@ -299,8 +295,6 @@ subroutine cam_cnst_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_nu
 
    integer, intent(in) :: cam_snapshot_before_num, cam_snapshot_after_num
 
-   integer :: i
-    
    !--------------------------------------------------------
    ! Add the cnst variables to the output
    !--------------------------------------------------------
@@ -321,7 +315,6 @@ subroutine cam_tend_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_nu
 !--------------------------------------------------------
 
    integer,intent(in) :: cam_snapshot_before_num, cam_snapshot_after_num
-   integer :: i
     
    ntend_var = 0
 
@@ -358,7 +351,6 @@ subroutine cam_in_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num,
    type(cam_in_t), intent(in) :: cam_in
 
    integer,intent(in) :: cam_snapshot_before_num, cam_snapshot_after_num
-   integer :: i
     
    ncam_in_var = 0
 
@@ -454,8 +446,6 @@ subroutine cam_out_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num
 
    integer,          intent(in) :: cam_snapshot_before_num, cam_snapshot_after_num
 
-   integer :: i
-    
    ncam_out_var = 0
 
    !--------------------------------------------------------
@@ -547,13 +537,12 @@ subroutine cam_pbuf_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_nu
 ! This subroutine does the addfld calls for pbuf fields.
 !--------------------------------------------------------
 
-   use constituents,   only: pcnst, cnst_name
    use physics_buffer, only: pbuf_get_dim_strings
 
    integer,                   intent(in) :: cam_snapshot_before_num, cam_snapshot_after_num
    type(physics_buffer_desc), intent(in) :: pbuf(:)
 
-   integer :: i, j, npbuf, length
+   integer :: i, j, npbuf
    type(pbuf_info_type) :: pbuf_info(size(pbuf))
    character(len=40) :: const_cname(ncnst_var)
    character(len=40) :: dim_strings(size(pbuf),6) ! Hardwired 6 potential dimensions in pbuf
@@ -674,8 +663,6 @@ subroutine state_snapshot_all_outfld(lchnk, file_num, state)
    type(physics_state),  intent(in)  :: state
 
    integer :: i
-   integer :: ff
-   logical :: found
 
    do i=1, nstate_var
 
@@ -784,8 +771,6 @@ subroutine cnst_snapshot_all_outfld(lchnk, file_num, cnst)
    real(r8),            intent(in)  :: cnst(:,:,:)
 
    integer :: i
-   integer :: ff
-   logical :: found
 
    do i=1, ncnst_var
 
@@ -807,8 +792,6 @@ subroutine tend_snapshot_all_outfld(lchnk, file_num, tend)
    type(physics_tend),  intent(in)  :: tend
 
    integer :: i
-   integer :: ff
-   logical :: found
 
    do i=1, ntend_var
 
@@ -854,8 +837,6 @@ subroutine cam_in_snapshot_all_outfld(lchnk, file_num, cam_in)
    type(cam_in_t),  intent(in)  :: cam_in
 
    integer :: i
-   integer :: ff
-   logical :: found
 
    do i=1, ncam_in_var
 
@@ -937,8 +918,6 @@ subroutine cam_out_snapshot_all_outfld(lchnk, file_num, cam_out)
    type(cam_out_t), intent(in)  :: cam_out
 
    integer :: i
-   integer :: ff
-   logical :: found
 
    do i=1, ncam_out_var
 
@@ -1045,9 +1024,7 @@ subroutine cam_pbuf_snapshot_all_outfld(lchnk, file_num, pbuf)
    integer,                            intent(in) :: file_num
    type(physics_buffer_desc), pointer, intent(in) :: pbuf(:)
 
-   integer :: i, pbuf_idx, ndims, i1, i2
-   integer :: ff
-   logical :: found
+   integer :: i, pbuf_idx, ndims
    real(r8), pointer, dimension(:,:)           :: tmpptr2d
    real(r8), pointer, dimension(:,:,:)         :: tmpptr3d
    real(r8), pointer, dimension(:,:,:,:)       :: tmpptr4d
@@ -1104,350 +1081,346 @@ subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname)
      character(len=*),          intent(in) :: const_cname(:)
 
      logical, dimension(size(pbuf)) ::  found
-     character(len=15), dimension(2,npbuf_all) :: pbuf_all
-     character(len=15) :: pbuf_name
+     character(len=24), dimension(2,npbuf_all) :: pbuf_all
+     character(len=24) :: pbuf_name
      integer  :: i, ipbuf
 
      found(:) = .false.
 
      pbuf_all(1:2,1:100) = reshape ( (/  &
-          'ACCRE_ENHAN          ',  'unset        ',&
-          'ACGCME',                 'unset',        &
-          'ACLDY_CEN',              'unset',        &
-          'ACNUM',                  'unset',        &
-          'ACPRECL',                'unset',        &
-          'AIST',                   'unset',        &
-          'ALST',                   'unset',        &
-          'am_evp_st',              'unset',        &
-          'AMIE_efxg',              'mW/m2',        &
-          'AMIE_kevg',              'keV',          &
-          'AST',                    '1',            &
-          'AurIPRateSum',           'unset',        &
-          'awk_PBL',                'unset',        &
-          'bprod',                  'unset',        &
-          'cam3_bcphi',             'unset',        &
-          'cam3_bcpho',             'unset',        &
-          'cam3_dust1',             'unset',        &
-          'cam3_dust2',             'unset',        &
-          'cam3_dust3',             'unset',        &
-          'cam3_dust4',             'unset',        &
-          'cam3_ocphi',             'unset',        &
-          'cam3_ocpho',             'unset',        &
-          'cam3_ssam',              'unset',        &
-          'cam3_sscm',              'unset',        &
-          'cam3_sul',               'unset',        &
-          'CC_ni',                  'unset',        &
-          'CC_nl',                  'unset',        &
-          'CC_qi',                  'unset',        &
-          'CC_ql',                  'unset',        &
-          'CC_qlst',                'unset',        &
-          'CC_qv',                  'unset',        &
-          'CC_T',                   'unset',        &
-          'CICEWP',                 'unset',        &
-          'CLDBOT',                 '1',            &
-          'CLDEMIS',                'unset',        &
-          'CLDFGRAU',               '1',            &
-          'CLDFSNOW ',              '1',            &
-          'CLD',                    'unset',        &
-          'CLDICEINI',              'unset',        &
-          'CLDLIQINI',              'unset',        &
-          'CLDO',                   'unset',        &
-          'CLDTAU',                 'unset',        &
-          'CLDTOP',                 '1',            &
-          'CLIQWP',                 'unset',        &
-          'CLOUD_FRAC',             'unset',        &
-          'CLUBB_BUFFER',           'unset',        &
-          'CMELIQ',                 'kg/kg/s',      &
-          'CMFMC_SH',               'unset',        &
-          'cmfr_det',               'kg/m2/s',      &
-          'CONCLD',                 'fraction',     &
-          'CRM_CLD_RAD',            'unset',        &
-          'CRM_DGNUMWET',           'unset',        &
-          'CRM_NC',                 '/kg     ',     &
-          'CRM_NC_RAD',             'unset',        &
-          'CRM_NG',                 '/kg     ',     &
-          'CRM_NI',                 '/kg     ',     &
-          'CRM_NI_RAD',             'unset',        &
-          'CRM_NR',                 '/kg     ',     &
-          'CRM_NS',                 '/kg     ',     &
-          'CRM_NS_RAD',             'unset',        &
-          'CRM_QAERWAT',            'unset',        &
-          'CRM_QC',                 'kg/kg   ',     &
-          'CRM_QC_RAD',             'unset',        &
-          'CRM_QG',                 'kg/kg   ',     &
-          'CRM_QI',                 'kg/kg   ',     &
-          'CRM_QI_RAD',             'unset',        &
-          'CRM_QN',                 'unset',        &
-          'CRM_QP',                 'kg/kg   ',     &
-          'CRM_QRAD',               'unset',        &
-          'CRM_QR',                 'kg/kg   ',     &
-          'CRM_QS',                 'kg/kg   ',     &
-          'CRM_QS_RAD',             'unset',        &
-          'CRM_QT',                 'unset',        &
-          'CRM_QV_RAD',             'unset',        &
-          'CRM_T',                  ' K       ',    &
-          'CRM_T_RAD',              'unset',        &
-          'CRM_U',                  'm/s     ',     &
-          'CRM_V',                  'm/s     ',     &
-          'CRM_W',                  'm/s     ',     &
-          'CT',                     'unset',        &
-          'cu_cmfr',                'kg/m2/s',      &
-          'cuorg',                  'unset',        &
-          'cu_qir',                 'kg/kg',        &
-          'cu_qlr',                 'kg/kg',        &
-          'cu_qtr',                 'kg/kg',        &
-          'cushavg',                'm',            &
-          'cush',                   'm',            &
-          'cu_thlr',                'K',            &
-          'cu_trr',                 'unset',        &
-          'cu_ur',                  'm/s',          &
-          'cu_vr',                  'm/s',          &
-          'CV_REFFICE',             'micron',       &
-          'CV_REFFLIQ',             'micron',       &
-          'DEGRAU',                 'unset',        &
-          'DEI',                    'unset',        &
-          'delta_qt_PBL',           'unset',        &
-          'delta_thl_PBL',          'unset',        &
-          'delta_tr_PBL',           'unset',        &
-          'delta_u_PBL',            'unset',        &
-          'delta_v_PBL',            'unset'   /) ,  &
-                                                        (/2,100/))
+          'ACCRE_ENHAN            ','unset                  ',&
+          'ACGCME                 ','unset                  ',&
+          'ACLDY_CEN              ','unset                  ',&
+          'ACNUM                  ','unset                  ',&
+          'ACPRECL                ','unset                  ',&
+          'AIST                   ','unset                  ',&
+          'ALST                   ','unset                  ',&
+          'am_evp_st              ','unset                  ',&
+          'AMIE_efxg              ','mW/m2                  ',&
+          'AMIE_kevg              ','keV                    ',&
+          'AST                    ','1                      ',&
+          'AurIPRateSum           ','unset                  ',&
+          'awk_PBL                ','unset                  ',&
+          'bprod                  ','unset                  ',&
+          'cam3_bcphi             ','unset                  ',&
+          'cam3_bcpho             ','unset                  ',&
+          'cam3_dust1             ','unset                  ',&
+          'cam3_dust2             ','unset                  ',&
+          'cam3_dust3             ','unset                  ',&
+          'cam3_dust4             ','unset                  ',&
+          'cam3_ocphi             ','unset                  ',&
+          'cam3_ocpho             ','unset                  ',&
+          'cam3_ssam              ','unset                  ',&
+          'cam3_sscm              ','unset                  ',&
+          'cam3_sul               ','unset                  ',&
+          'CC_ni                  ','unset                  ',&
+          'CC_nl                  ','unset                  ',&
+          'CC_qi                  ','unset                  ',&
+          'CC_ql                  ','unset                  ',&
+          'CC_qlst                ','unset                  ',&
+          'CC_qv                  ','unset                  ',&
+          'CC_T                   ','unset                  ',&
+          'CICEWP                 ','unset                  ',&
+          'CLDBOT                 ','1                      ',&
+          'CLDEMIS                ','unset                  ',&
+          'CLDFGRAU               ','1                      ',&
+          'CLDFSNOW               ','1                      ',&
+          'CLD                    ','unset                  ',&
+          'CLDICEINI              ','unset                  ',&
+          'CLDLIQINI              ','unset                  ',&
+          'CLDO                   ','unset                  ',&
+          'CLDTAU                 ','unset                  ',&
+          'CLDTOP                 ','1                      ',&
+          'CLIQWP                 ','unset                  ',&
+          'CLOUD_FRAC             ','unset                  ',&
+          'CLUBB_BUFFER           ','unset                  ',&
+          'CMELIQ                 ','kg/kg/s                ',&
+          'CMFMC_SH               ','unset                  ',&
+          'cmfr_det               ','kg/m2/s                ',&
+          'CONCLD                 ','fraction               ',&
+          'CRM_CLD_RAD            ','unset                  ',&
+          'CRM_DGNUMWET           ','unset                  ',&
+          'CRM_NC                 ','/kg                    ',&
+          'CRM_NC_RAD             ','unset                  ',&
+          'CRM_NG                 ','/kg                    ',&
+          'CRM_NI                 ','/kg                    ',&
+          'CRM_NI_RAD             ','unset                  ',&
+          'CRM_NR                 ','/kg                    ',&
+          'CRM_NS                 ','/kg                    ',&
+          'CRM_NS_RAD             ','unset                  ',&
+          'CRM_QAERWAT            ','unset                  ',&
+          'CRM_QC                 ','kg/kg                  ',&
+          'CRM_QC_RAD             ','unset                  ',&
+          'CRM_QG                 ','kg/kg                  ',&
+          'CRM_QI                 ','kg/kg                  ',&
+          'CRM_QI_RAD             ','unset                  ',&
+          'CRM_QN                 ','unset                  ',&
+          'CRM_QP                 ','kg/kg                  ',&
+          'CRM_QRAD               ','unset                  ',&
+          'CRM_QR                 ','kg/kg                  ',&
+          'CRM_QS                 ','kg/kg                  ',&
+          'CRM_QS_RAD             ','unset                  ',&
+          'CRM_QT                 ','unset                  ',&
+          'CRM_QV_RAD             ','unset                  ',&
+          'CRM_T                  ',' K                     ',&
+          'CRM_T_RAD              ','unset                  ',&
+          'CRM_U                  ','m/s                    ',&
+          'CRM_V                  ','m/s                    ',&
+          'CRM_W                  ','m/s                    ',&
+          'CT                     ','unset                  ',&
+          'cu_cmfr                ','kg/m2/s                ',&
+          'cuorg                  ','unset                  ',&
+          'cu_qir                 ','kg/kg                  ',&
+          'cu_qlr                 ','kg/kg                  ',&
+          'cu_qtr                 ','kg/kg                  ',&
+          'cushavg                ','m                      ',&
+          'cush                   ','m                      ',&
+          'cu_thlr                ','K                      ',&
+          'cu_trr                 ','unset                  ',&
+          'cu_ur                  ','m/s                    ',&
+          'cu_vr                  ','m/s                    ',&
+          'CV_REFFICE             ','micron                 ',&
+          'CV_REFFLIQ             ','micron                 ',&
+          'DEGRAU                 ','unset                  ',&
+          'DEI                    ','unset                  ',&
+          'delta_qt_PBL           ','unset                  ',&
+          'delta_thl_PBL          ','unset                  ',&
+          'delta_tr_PBL           ','unset                  ',&
+          'delta_u_PBL            ','unset                  ',&
+          'delta_v_PBL            ','unset                  '/) ,  (/2,100/))
 
      pbuf_all(1:2,101:200) = reshape ( (/  &
-          'DES                   ', 'unset        ',&
-          'DGNUM',                  'unset',        &
-          'DGNUMWET',               'unset',        &
-          'DIFZM',                  'kg/kg/s ',     &
-          'DLFZM',                  'kg/kg/s ',     &
-          'DNIFZM',                 '1/kg/s ',      &
-          'DNLFZM',                 '1/kg/s ',      &
-          'DP_CLDICE',              'unset',        &
-          'DP_CLDLIQ',              'unset',        &
-          'DP_FLXPRC',              'unset',        &
-          'DP_FLXSNW',              'unset',        &
-          'DP_FRAC',                'unset',        &
-          'dragblj',                '1/s',          &
-          'DRYMASS',                'unset',        &
-          'DRYRAD',                 'unset',        &
-          'DRYVOL',                 'unset',        &
-          'DTCORE',                 'K/s',          &
-          'evprain_st',             'unset',        &
-          'evpsnow_st',             'unset',        &
-          'FICE',                   'fraction',     &
-          'FLNS' ,                  'W/m2',         &
-          'FLNT' ,                  'W/m2',         &
-          'FRACIS',                 'unset',        &
-          'FRACSOA' ,               'unset',        &
-          'FRACSOG' ,               'unset',        &
-          "FRONTGA",                'unset',        &
-          "FRONTGF",                'K^2/M^2/S',    &
-          'FRZCNT',                 'unset',        &
-          'FRZDEP',                 'unset',        &
-          'FRZIMM',                 'unset',        &
-          'FSDS' ,                  'W/m2',         &
-          'FSNS' ,                  'W/m2',         &
-          'FSNT' ,                  'W/m2',         &
-          'HallConduct',            'unset',        &
-          'HYGRO',                  'unset',        &
-          'ICCWAT',                 'unset',        &
-          'ICGRAUWP',               'unset',        &
-          'ICIWP',                  'unset',        &
-          'ICIWPST',                'unset',        &
-          'ICLWP',                  'unset',        &
-          'ICLWPST',                'unset',        &
-          'ICSWP',                  'unset',        &
-          'ICWMRDP',                'kg/kg',        &
-          'ICWMRSH',                'kg/kg',        &
-          'IonRates' ,              'unset',        &
-          'ipbl',                   'unset',        &
-          'ISS_FRAC',               'unset',        &
-          'kpblh',                  'unset',        &
-          "ksrftms",                'unset',        &
-          'kvh',                    'm2/s',         &
-          'kvm',                    'm2/s',         &
-          'kvt',                    'm2/s',         &
-          'LAMBDAC',                'unset',        &
-          'LANDM',                  'unset',        &
-          'LCWAT',                  'unset',        &
-          'LD' ,                    'unset',        &
-          'LHFLX',                  'W/m2',         &
-          'LHFLX_RES',              'unset',        &
-          'LS_FLXPRC',              'kg/m2/s',      &
-          'LS_FLXSNW',              'kg/m2/s',      &
-          'LS_MRPRC',               'unset',        &
-          'LS_MRSNW',               'unset',        &
-          'LS_REFFRAIN',            'micron',       &
-          'LS_REFFSNOW',            'micron',       &
-          'LU' ,                    'unset',        &
-          'MAMH2SO4EQ',             'unset',        &
-          'MU',                     'Pa/s',         &
-          'NAAI_HOM',               'unset',        &
-          'NAAI',                   'unset',        &
-          'NACON',                  'unset',        &
-          'NAER',                   'unset',        &
-          'NEVAPR_DPCU',            'unset',        &
-          'NEVAPR',                 'unset',        &
-          'NEVAPR_SHCU',            'unset',        &
-          'NIWAT',                  'unset',        &
-          'NLWAT',                  'unset',        &
-          'NMXRGN',                 'unset',        &
-          'NPCCN',                  'unset',        &
-          'NRAIN',                  'm-3',          &
-          'NSNOW',                  'm-3',          &
-          'O3',                     'unset',        &
-          'pblh',                   'm',            &
-          'PDF_PARAMS',             'unset',        &
-          'PDF_PARAMS_ZM',          'unset',        &
-          'PedConduct',             'unset',        &
-          'PMXRGN',                 'unset',        &
-          'PRAIN',                  'unset',        &
-          'PREC_DP',                'unset',        &
-          'PREC_PCW',               'm/s',          &
-          'PREC_SED',               'unset',        &
-          'PREC_SH',                'unset',        &
-          'PREC_SH',                'unset',        &
-          'PREC_STR',               'unset',        &
-          'PRER_EVAP',              'unset',        &
-          'PSL',                    'Pa',           &
-          'QAERWAT',                'unset',        &
-          'QCWAT',                  'unset',        &
-          'QFLX',                   'kg/m2/s',      &
-          'QFLX_RES',               'unset',        &
-          'QINI',                   'unset'  /),    &
-                                                        (/2,100/))
+          'DES                    ','unset                  ',&
+          'DGNUM                  ','unset                  ',&
+          'DGNUMWET               ','unset                  ',&
+          'DIFZM                  ','kg/kg/s                ',&
+          'DLFZM                  ','kg/kg/s                ',&
+          'DNIFZM                 ','1/kg/s                 ',&
+          'DNLFZM                 ','1/kg/s                 ',&
+          'DP_CLDICE              ','unset                  ',&
+          'DP_CLDLIQ              ','unset                  ',&
+          'DP_FLXPRC              ','unset                  ',&
+          'DP_FLXSNW              ','unset                  ',&
+          'DP_FRAC                ','unset                  ',&
+          'dragblj                ','1/s                    ',&
+          'DRYMASS                ','unset                  ',&
+          'DRYRAD                 ','unset                  ',&
+          'DRYVOL                 ','unset                  ',&
+          'DTCORE                 ','K/s                    ',&
+          'evprain_st             ','unset                  ',&
+          'evpsnow_st             ','unset                  ',&
+          'FICE                   ','fraction               ',&
+          'FLNS                   ','W/m2                   ',&
+          'FLNT                   ','W/m2                   ',&
+          'FRACIS                 ','unset                  ',&
+          'FRACSOA                ','unset                  ',&
+          'FRACSOG                ','unset                  ',&
+          'FRONTGA                ','unset                  ',&
+          'FRONTGF                ','K^2/M^2/S              ',&
+          'FRZCNT                 ','unset                  ',&
+          'FRZDEP                 ','unset                  ',&
+          'FRZIMM                 ','unset                  ',&
+          'FSDS                   ','W/m2                   ',&
+          'FSNS                   ','W/m2                   ',&
+          'FSNT                   ','W/m2                   ',&
+          'HallConduct            ','unset                  ',&
+          'HYGRO                  ','unset                  ',&
+          'ICCWAT                 ','unset                  ',&
+          'ICGRAUWP               ','unset                  ',&
+          'ICIWP                  ','unset                  ',&
+          'ICIWPST                ','unset                  ',&
+          'ICLWP                  ','unset                  ',&
+          'ICLWPST                ','unset                  ',&
+          'ICSWP                  ','unset                  ',&
+          'ICWMRDP                ','kg/kg                  ',&
+          'ICWMRSH                ','kg/kg                  ',&
+          'IonRates               ','unset                  ',&
+          'ipbl                   ','unset                  ',&
+          'ISS_FRAC               ','unset                  ',&
+          'kpblh                  ','unset                  ',&
+          'ksrftms                ','unset                  ',&
+          'kvh                    ','m2/s                   ',&
+          'kvm                    ','m2/s                   ',&
+          'kvt                    ','m2/s                   ',&
+          'LAMBDAC                ','unset                  ',&
+          'LANDM                  ','unset                  ',&
+          'LCWAT                  ','unset                  ',&
+          'LD                     ','unset                  ',&
+          'LHFLX                  ','W/m2                   ',&
+          'LHFLX_RES              ','unset                  ',&
+          'LS_FLXPRC              ','kg/m2/s                ',&
+          'LS_FLXSNW              ','kg/m2/s                ',&
+          'LS_MRPRC               ','unset                  ',&
+          'LS_MRSNW               ','unset                  ',&
+          'LS_REFFRAIN            ','micron                 ',&
+          'LS_REFFSNOW            ','micron                 ',&
+          'LU                     ','unset                  ',&
+          'MAMH2SO4EQ             ','unset                  ',&
+          'MU                     ','Pa/s                   ',&
+          'NAAI_HOM               ','unset                  ',&
+          'NAAI                   ','unset                  ',&
+          'NACON                  ','unset                  ',&
+          'NAER                   ','unset                  ',&
+          'NEVAPR_DPCU            ','unset                  ',&
+          'NEVAPR                 ','unset                  ',&
+          'NEVAPR_SHCU            ','unset                  ',&
+          'NIWAT                  ','unset                  ',&
+          'NLWAT                  ','unset                  ',&
+          'NMXRGN                 ','unset                  ',&
+          'NPCCN                  ','unset                  ',&
+          'NRAIN                  ','m-3                    ',&
+          'NSNOW                  ','m-3                    ',&
+          'O3                     ','unset                  ',&
+          'pblh                   ','m                      ',&
+          'PDF_PARAMS             ','unset                  ',&
+          'PDF_PARAMS_ZM          ','unset                  ',&
+          'PedConduct             ','unset                  ',&
+          'PMXRGN                 ','unset                  ',&
+          'PRAIN                  ','unset                  ',&
+          'PREC_DP                ','unset                  ',&
+          'PREC_PCW               ','m/s                    ',&
+          'PREC_SED               ','unset                  ',&
+          'PREC_SH                ','unset                  ',&
+          'PREC_SH                ','unset                  ',&
+          'PREC_STR               ','unset                  ',&
+          'PRER_EVAP              ','unset                  ',&
+          'PSL                    ','Pa                     ',&
+          'QAERWAT                ','unset                  ',&
+          'QCWAT                  ','unset                  ',&
+          'QFLX                   ','kg/m2/s                ',&
+          'QFLX_RES               ','unset                  ',& 
+          'QINI                   ','unset                  '  /),    (/2,100/))
 
      pbuf_all(1:2,201:300) = reshape ( (/  &
-          'qir_det                ','kg/kg       ', &
-          'QIST',                   'unset',        &
-          'qlr_det',                'kg/kg',        &
-          'QLST',                   'unset',        &
-          'QME',                    'unset',        &
-          'qpert',                  'kg/kg',        &
-          'QRAIN',                  'kg/kg',        &
-          'QRL' ,                   'K/s',          &
-          'qrlin',                  'unset',        &
-          'QRS' ,                   'K/s',          &
-          'qrsin',                  'unset',        &
-          'QSATFAC',                '-',            &
-          'QSNOW',                  'kg/kg',        &
-          'QTeAur',                 'unset',        &
-          'qti_flx',                'unset',        &
-          'qtl_flx',                'unset',        &
-          'RAD_CLUBB',              'unset',        &
-          'RATE1_CW2PR_ST',         'unset',        &
-          'RCM',                    'unset',        &
-          'RE_ICE',                 'unset',        &
-          'REI',                    'micron',       &
-          'RELHUM',                 'percent',      &
-          'REL',                    'micron',       &
-          'RELVAR',                 '-',            &
-          'RNDST',                  'unset',        &
-          'RPRDDP',                 'unset',        &
-          'RPRDSH',                 'unset',        &
-          'RPRDTOT',                'unset',        &
-          'RTM',                    'unset',        &
-          'rtp2_mc_zt',             'unset',        &
-          'RTP2_nadv',              'unset',        &
-          'rtpthlp_mc_zt',          'unset',        &
-          'RTPTHLP_nadv',           'unset',        &
-          'RTPTHVP',                'unset',        &
-          'SADICE',                 'cm2/cm3',      &
-          'SADSNOW',                'cm2/cm3',      &
-          'SADSULF',                'unset',        &
-          'SD' ,                    'unset',        &
-          'SGH30',                  'unset',        &
-          'SGH',                    'unset',        &
-          'SH_CLDICE1',             'unset',        &
-          'SH_CLDICE',              'unset',        &
-          'SH_CLDLIQ1',             'unset',        &
-          'SH_CLDLIQ',              'unset',        &
-          'SH_E_ED_RATIO',          'unset',        &
-          'SHFLX',                  'W/m2',         &
-          'SH_FLXPRC',              'unset',        &
-          'SHFLX_RES',              'unset',        &
-          'SH_FLXSNW',              'unset',        &
-          'SH_FRAC',                'unset',        &
-          'shfrc',                  'unset',        &
-          'smaw',                   'unset',        &
-          'SNOW_DP',                'unset',        &
-          'SNOW_PCW',               'unset',        &
-          'SNOW_SED',               'unset',        &
-          'SNOW_SH',                'unset',        &
-          'SNOW_STR',               'unset',        &
-          'SO4DRYVOL',              'unset',        &
-          'SSLTA',                  'kg/kg',        &
-          'SSLTC',                  'kg/kg',        &
-          'SU' ,                    'unset',        &
-          "taubljx",                'N/m2',         &
-          "taubljy",                'N/m2',         &
-          'tauresx',                'unset',        &
-          'tauresy',                'unset',        &
-          "tautmsx",                'N/m2',         &
-          "tautmsy",                'N/m2',         &
-          'TAUX',                   'N/m2',         &
-          'TAUX_RES',               'unset',        &
-          'TAUY',                   'N/m2',         &
-          'TAUY_RES',               'unset',        &
-          'tcorr',                  'unset',        &
-          'TCWAT',                  'unset',        &
-          'TElec',                  'K',            &
-          'TEOUT',                  'J/m2',         &
-          'THLM',                   'unset',        &
-          'thlp2_mc_zt',            'unset',        &
-          'THLP2_nadv',             'unset',        &
-          'THLPTHVP',               'unset',        &
-          'TIon',                   'K',            &
-          'TK_CRM',                 'unset',        &
-          'tke',                    'm2/s2',        &
-          'tkes',                   'm2/s2',        &
-          'TND_NSNOW',              'unset',        &
-          'TND_QSNOW',              'unset',        &
-          'tpert',                  'K',            & 
-          'TREFMNAV',               'K',            & 
-          'TREFMXAV',               'K',            & 
-          'tropp',                  'unset',        &
-          'TSTCPY_SCOL',            'unset',        &
-          'TTEND_DP',               'unset',        &
-          'TTEND_SH',               'unset',        &
-          'T_TTEND',                'unset',        &
-          'turbtype',               'unset',        &
-          "UI",                     'm/s',          &
-          'UM',                     'unset',        &
-          'UP2_nadv',               'unset',        &
-          'UPWP',                   'm^2/s^2',      &
-          'UZM',                    'M/S',          &
-          'VI',                     'm/s'    /),    &
-                                                        (/2,100/))
+          'qir_det                ','kg/kg                  ',&
+          'QIST                   ','unset                  ',&
+          'qlr_det                ','kg/kg                  ',&
+          'QLST                   ','unset                  ',&
+          'QME                    ','unset                  ',&
+          'qpert                  ','kg/kg                  ',&
+          'QRAIN                  ','kg/kg                  ',&
+          'QRL                    ','K/s                    ',&
+          'qrlin                  ','unset                  ',&
+          'QRS                    ','K/s                    ',&
+          'qrsin                  ','unset                  ',&
+          'QSATFAC                ','-                      ',&
+          'QSNOW                  ','kg/kg                  ',&
+          'QTeAur                 ','unset                  ',&
+          'qti_flx                ','unset                  ',&
+          'qtl_flx                ','unset                  ',&
+          'RAD_CLUBB              ','unset                  ',&
+          'RATE1_CW2PR_ST         ','unset                  ',&
+          'RCM                    ','unset                  ',&
+          'RE_ICE                 ','unset                  ',&
+          'REI                    ','micron                 ',&
+          'RELHUM                 ','percent                ',&
+          'REL                    ','micron                 ',&
+          'RELVAR                 ','-                      ',&
+          'RNDST                  ','unset                  ',&
+          'RPRDDP                 ','unset                  ',&
+          'RPRDSH                 ','unset                  ',&
+          'RPRDTOT                ','unset                  ',&
+          'RTM                    ','unset                  ',&
+          'rtp2_mc_zt             ','unset                  ',&
+          'RTP2_nadv              ','unset                  ',&
+          'rtpthlp_mc_zt          ','unset                  ',&
+          'RTPTHLP_nadv           ','unset                  ',&
+          'RTPTHVP                ','unset                  ',&
+          'SADICE                 ','cm2/cm3                ',&
+          'SADSNOW                ','cm2/cm3                ',&
+          'SADSULF                ','unset                  ',&
+          'SD                     ','unset                  ',&
+          'SGH30                  ','unset                  ',&
+          'SGH                    ','unset                  ',&
+          'SH_CLDICE1             ','unset                  ',&
+          'SH_CLDICE              ','unset                  ',&
+          'SH_CLDLIQ1             ','unset                  ',&
+          'SH_CLDLIQ              ','unset                  ',&
+          'SH_E_ED_RATIO          ','unset                  ',&
+          'SHFLX                  ','W/m2                   ',&
+          'SH_FLXPRC              ','unset                  ',&
+          'SHFLX_RES              ','unset                  ',&
+          'SH_FLXSNW              ','unset                  ',&
+          'SH_FRAC                ','unset                  ',&
+          'shfrc                  ','unset                  ',&
+          'smaw                   ','unset                  ',&
+          'SNOW_DP                ','unset                  ',&
+          'SNOW_PCW               ','unset                  ',&
+          'SNOW_SED               ','unset                  ',&
+          'SNOW_SH                ','unset                  ',&
+          'SNOW_STR               ','unset                  ',&
+          'SO4DRYVOL              ','unset                  ',&
+          'SSLTA                  ','kg/kg                  ',&
+          'SSLTC                  ','kg/kg                  ',&
+          'SU                     ','unset                  ',&
+          "taubljx                ",'N/m2                   ',&
+          "taubljy                ",'N/m2                   ',&
+          'tauresx                ','unset                  ',&
+          'tauresy                ','unset                  ',&
+          "tautmsx                ",'N/m2                   ',&
+          "tautmsy                ",'N/m2                   ',&
+          'TAUX                   ','N/m2                   ',&
+          'TAUX_RES               ','unset                  ',&
+          'TAUY                   ','N/m2                   ',&
+          'TAUY_RES               ','unset                  ',&
+          'tcorr                  ','unset                  ',&
+          'TCWAT                  ','unset                  ',&
+          'TElec                  ','K                      ',&
+          'TEOUT                  ','J/m2                   ',&
+          'THLM                   ','unset                  ',&
+          'thlp2_mc_zt            ','unset                  ',&
+          'THLP2_nadv             ','unset                  ',&
+          'THLPTHVP               ','unset                  ',&
+          'TIon                   ','K                      ',&
+          'TK_CRM                 ','unset                  ',&
+          'tke                    ','m2/s2                  ',&
+          'tkes                   ','m2/s2                  ',&
+          'TND_NSNOW              ','unset                  ',&
+          'TND_QSNOW              ','unset                  ',&
+          'tpert                  ','K                      ',&
+          'TREFMNAV               ','K                      ',&
+          'TREFMXAV               ','K                      ',&
+          'tropp                  ','unset                  ',&
+          'TSTCPY_SCOL            ','unset                  ',&
+          'TTEND_DP               ','unset                  ',&
+          'TTEND_SH               ','unset                  ',&
+          'T_TTEND                ','unset                  ',&
+          'turbtype               ','unset                  ',&
+          "UI                     ",'m/s                    ',&
+          'UM                     ','unset                  ',&
+          'UP2_nadv               ','unset                  ',&
+          'UPWP                   ','m^2/s^2                ',&
+          'UZM                    ','M/S                    ',&
+          'VI                     ','m/s                    '    /),                  (/2,100/))
 
      pbuf_all(1:2,301:npbuf_all) = reshape ( (/  &
-          'VM                     ','m/s          ',&
-          'VOLC_MMR',               'unset',        &
-          'VOLC_RAD_GEOM',          'unset',        &
-          'VP2_nadv',               'unset',        &
-          'VPWP',                   'm^2/s^2',      &
-          'went',                   'm/s',          &
-          'WETDENS_AP',             'unset',        &
-          "WI",                     'm/s',          &
-          'WP3_nadv',               'unset',        &
-          'wprtp_mc_zt',            'unset',        &
-          'WPRTP_nadv',             'unset',        &
-          'wpthlp_mc_zt',           'unset',        &
-          'WPTHLP_nadv',            'unset',        &
-          'WPTHVP',                 'unset',        &
-          'WSEDL',                  'unset',        &
-          'wstarPBL',               'unset',        &
-          'ZM_DP',                  'unset',        &
-          'ZM_DSUBCLD',             'unset',        &
-          'ZM_DU',                  'unset',        &
-          'ZM_ED',                  'unset',        &
-          'ZM_EU',                  'unset',        &
-          'ZM_IDEEP',               'unset',        &
-          'ZM_JT',                  'unset',        &
-          'ZM_MAXG',                'unset',        &
-          'ZM_MD',                  'unset',        &
-          'ZM_MU',                  'unset',        &
-          'ZTODT',                  'unset'  /),    &
-                                                        (/2,27/))
+          'VM                     ','m/s                    ',&
+          'VOLC_MMR               ','unset                  ',&
+          'VOLC_RAD_GEOM          ','unset                  ',&
+          'VP2_nadv               ','unset                  ',&
+          'VPWP                   ','m^2/s^2                ',&
+          'went                   ','m/s                    ',&
+          'WETDENS_AP             ','unset                  ',&
+          "WI                     ",'m/s                    ',&
+          'WP3_nadv               ','unset                  ',&
+          'wprtp_mc_zt            ','unset                  ',&
+          'WPRTP_nadv             ','unset                  ',&
+          'wpthlp_mc_zt           ','unset                  ',&
+          'WPTHLP_nadv            ','unset                  ',&
+          'WPTHVP                 ','unset                  ',&
+          'WSEDL                  ','unset                  ',&
+          'wstarPBL               ','unset                  ',&
+          'ZM_DP                  ','unset                  ',&
+          'ZM_DSUBCLD             ','unset                  ',&
+          'ZM_DU                  ','unset                  ',&
+          'ZM_ED                  ','unset                  ',&
+          'ZM_EU                  ','unset                  ',&
+          'ZM_IDEEP               ','unset                  ',&
+          'ZM_JT                  ','unset                  ',&
+          'ZM_MAXG                ','unset                  ',&
+          'ZM_MD                  ','unset                  ',&
+          'ZM_MU                  ','unset                  ',&
+          'ZTODT                  ','unset                  '  /),                     (/2,27/))
 
 ! Fields which are added with pbuf_add_field calls, but are data driven.  These are not
 ! included in the above list.  This means that these fields will not have proper units
