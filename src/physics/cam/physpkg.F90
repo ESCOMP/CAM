@@ -885,7 +885,7 @@ contains
        call rk_stratiform_init()
     elseif( microp_scheme == 'MG' ) then
        if (.not. do_clubb_sgs) call macrop_driver_init(pbuf2d)
-       call microp_aero_init()
+       call microp_aero_init(pbuf2d)
        call microp_driver_init(pbuf2d)
        call conv_water_init
     elseif( microp_scheme == 'SPCAM_m2005') then
@@ -1780,6 +1780,8 @@ contains
     use subcol_utils,    only: subcol_ptend_copy, is_subcol_on
     use qneg_module,     only: qneg3
     use subcol_SILHS,    only: subcol_SILHS_var_covar_driver
+    use subcol_SILHS,    only: subcol_SILHS_fill_holes_conserv
+    use subcol_SILHS,    only: subcol_SILHS_hydromet_conc_tend_lim
     use micro_mg_cam,    only: massless_droplet_destroyer
     use cam_snapshot,    only: cam_snapshot_all_outfld
 
@@ -2268,10 +2270,29 @@ contains
              ! Average the sub-column ptend for use in gridded update - will not contain ptend_aero
              call subcol_ptend_avg(ptend_sc, state_sc%ngrdcol, lchnk, ptend)
 
+             ! Call the conservative hole filler.
+             ! Hole filling is only necessary when using subcolumns.
+             ! Note:  this needs to be called after subcol_ptend_avg but before
+             !        physics_ptend_scale.
+             if (trim(subcol_scheme) == 'SILHS') &
+                call subcol_SILHS_fill_holes_conserv( state, cld_macmic_ztodt, &
+                                                      ptend, pbuf )
+
              ! Destroy massless droplets - Note this routine returns with no change unless
              ! micro_do_massless_droplet_destroyer has been set to true
              call massless_droplet_destroyer( cld_macmic_ztodt, state, & ! Intent(in)
-                                               ptend )                    ! Intent(inout)
+                                              ptend )                    ! Intent(inout)
+
+             ! Limit the value of hydrometeor concentrations in order to place
+             ! reasonable limits on hydrometeor drop size and keep them from
+             ! becoming too large.
+             ! Note:  this needs to be called after hydrometeor mixing ratio
+             !        tendencies are adjusted by subcol_SILHS_fill_holes_conserv
+             !        and after massless drop concentrations are removed by the
+             !        subcol_SILHS_massless_droplet_destroyer, but before the
+             !        call to physics_ptend_scale.
+             if (trim(subcol_scheme) == 'SILHS') &
+                call subcol_SILHS_hydromet_conc_tend_lim( state, cld_macmic_ztodt, ptend )
 
              ! Copy ptend_aero field to one dimensioned by sub-columns before summing with ptend
              call subcol_ptend_copy(ptend_aero, state_sc, ptend_aero_sc)
@@ -2308,12 +2329,7 @@ contains
 
           call diag_clip_tend_writeout(state, ptend, ncol, lchnk, ixcldliq, ixcldice, ixq, ztodt, rtdt)
 
-          ! SILHS uses hole filling, all others just perform a regular physics_update
-          if (trim(subcol_scheme) == 'SILHS') then
-             call physics_update (state, ptend, ztodt, tend, do_clubb_hole_fill_in=.true.)
-          else
-             call physics_update (state, ptend, ztodt, tend)
-          end if
+          call physics_update (state, ptend, ztodt, tend)
 
           if (trim(cam_take_snapshot_after) == "microp_section") &
               call cam_snapshot_all_outfld(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf)
