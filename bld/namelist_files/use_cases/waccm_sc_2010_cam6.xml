@@ -29,7 +29,7 @@
 <!-- upper atmos forcings -->
 <waccm_forcing_type>FIXED</waccm_forcing_type>
 <waccm_forcing_fixed_ymd>20100101</waccm_forcing_fixed_ymd>
-<waccm_forcing_file>SCWACCM_forcing_WACCM6_zm_5day_L70_1975-2014_c180216.nc</waccm_forcing_file>
+<waccm_forcing_file>SCWACCM_forcing_WACCM6_zm_5day_L70_1975-2014_c191121.nc</waccm_forcing_file>
 <waccm_forcing_datapath>atm/waccm/waccm_forcing</waccm_forcing_datapath>
 
 <!-- ozone data -->

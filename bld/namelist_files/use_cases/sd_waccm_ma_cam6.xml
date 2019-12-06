@@ -3,7 +3,7 @@
 <namelist_defaults>
 
 <!-- Solar data from NRL -->
-<solar_irrad_data_file>atm/cam/solar/SolarForcingNRLSSI2_daily_s18820101_e20171231_c180702.nc</solar_irrad_data_file>
+<solar_irrad_data_file>atm/cam/solar/SolarForcingNRLSSI2_daily_s18820101_e20171231_c191122.nc</solar_irrad_data_file>
 
 <!-- Kp and F10.7 -->
 <solar_parms_data_file>atm/cam/solar/SolarParmsEPP_CMIP6_daily_s18491230_e20150101_c190109.nc</solar_parms_data_file>

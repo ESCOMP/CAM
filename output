@@ -1,0 +1,159 @@
+diff --git a/bld/namelist_files/namelist_defaults_cam.xml b/bld/namelist_files/namelist_defaults_cam.xml
+index 3a6692f..3f4f56c 100644
+--- a/bld/namelist_files/namelist_defaults_cam.xml
++++ b/bld/namelist_files/namelist_defaults_cam.xml
+@@ -495,7 +495,7 @@
+ <waccm_forcing_file     chem="waccm_sc">ghg_forcing_2000_c110321.nc</waccm_forcing_file>
+ <waccm_forcing_cycle_yr chem="waccm_sc">0</waccm_forcing_cycle_yr>
+ <waccm_forcing_datapath chem="waccm_sc_mam4">atm/waccm/waccm_forcing</waccm_forcing_datapath>
+-<waccm_forcing_file     chem="waccm_sc_mam4">SCWACCM_forcing_WACCM6_zm_5day_L70_1975-2014_c180216.nc</waccm_forcing_file>
++<waccm_forcing_file     chem="waccm_sc_mam4">SCWACCM_forcing_WACCM6_zm_5day_L70_1975-2014_c191121.nc</waccm_forcing_file>
+ <waccm_forcing_cycle_yr chem="waccm_sc_mam4">2000</waccm_forcing_cycle_yr>
+ 
+ <!-- Waccm electric field parameters -->
+@@ -824,8 +824,8 @@
+ <no2_ar_ext_file       ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_NO2_aircraft_vertical_1750-2015_0.9x1.25_c20170608.nc</no2_ar_ext_file>
+ <num_a4_ar_ext_file    ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_num_bc_a4_aircraft_vertical_1750-2015_0.9x1.25_c20170608.nc</num_a4_ar_ext_file>
+ <so2_ar_ext_file       ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_SO2_aircraft_vertical_1750-2015_0.9x1.25_c20170608.nc</so2_ar_ext_file>
+-<so2_volc_1deg_ext_file ver="cam6">atm/cam/chem/stratvolc/VolcanEESMv3.11_SO2_850-2016_Mscale_Zreduc_1deg_c180812.nc</so2_volc_1deg_ext_file>
+-<so2_volc_2deg_ext_file ver="cam6">atm/cam/chem/stratvolc/VolcanEESMv3.11_SO2_850-2016_Mscale_Zreduc_2deg_c180812.nc</so2_volc_2deg_ext_file>
++<so2_volc_1deg_ext_file ver="cam6">atm/cam/chem/stratvolc/VolcanEESMv3.11_SO2_850-2016_Mscale_Zreduc_1deg_c191121.nc</so2_volc_1deg_ext_file>
++<so2_volc_2deg_ext_file ver="cam6">atm/cam/chem/stratvolc/VolcanEESMv3.11_SO2_850-2016_Mscale_Zreduc_2deg_c191125.nc</so2_volc_2deg_ext_file>
+ <so2_volc_pi_ext_file   ver="cam6">atm/cam/chem/stratvolc/VolcanEESMv3.10_piControl_SO2_1850-2014average_1deg_ZeroTrop_c180416.nc</so2_volc_pi_ext_file>
+ 
+ <!-- 2-DEG VRT -->
+diff --git a/bld/namelist_files/use_cases/sd_cam6.xml b/bld/namelist_files/use_cases/sd_cam6.xml
+index 34665ad..146268c 100644
+--- a/bld/namelist_files/use_cases/sd_cam6.xml
++++ b/bld/namelist_files/use_cases/sd_cam6.xml
+@@ -10,7 +10,7 @@
+   <met_data_path dyn="fv"  hgrid="0.9x1.25">atm/cam/met/MERRA2/0.9x1.25</met_data_path>
+   <met_filenames_list dyn="fv"  hgrid="0.9x1.25">atm/cam/met/MERRA2/0.9x1.25/filenames_1975-2017_c190125.txt</met_filenames_list>
+ 
+-  <solar_irrad_data_file    >   'atm/cam/solar/SolarForcingNRLSSI2_daily_s18820101_e20171231_c180702.nc'</solar_irrad_data_file>
++  <solar_irrad_data_file    >   'atm/cam/solar/SolarForcingNRLSSI2_daily_s18820101_e20171231_c191122.nc'</solar_irrad_data_file>
+ 
+   <tracer_cnst_datapath     >   'atm/cam/tracer_cnst'                                        </tracer_cnst_datapath>
+   <tracer_cnst_file         >   'tracer_cnst_halons_3D_L70_1849-2015_CMIP6ensAvg_c180927.nc' </tracer_cnst_file>
+diff --git a/bld/namelist_files/use_cases/sd_trop_strat_vbs_cam6.xml b/bld/namelist_files/use_cases/sd_trop_strat_vbs_cam6.xml
+index ae915b2..3dc1248 100644
+--- a/bld/namelist_files/use_cases/sd_trop_strat_vbs_cam6.xml
++++ b/bld/namelist_files/use_cases/sd_trop_strat_vbs_cam6.xml
+@@ -22,7 +22,7 @@
+ <met_filenames_list dyn="fv"  hgrid="0.47x0.63">atm/cam/met/MERRA2/0.5x0.63/filenames_list_c180612</met_filenames_list>
+ 
+ <!-- Solar data from NRL -->
+-<solar_irrad_data_file>atm/cam/solar/SolarForcingNRLSSI2_daily_s18820101_e20171231_c180702.nc</solar_irrad_data_file>
++<solar_irrad_data_file>atm/cam/solar/SolarForcingNRLSSI2_daily_s18820101_e20171231_c191122.nc</solar_irrad_data_file>
+ <solar_data_type>SERIAL</solar_data_type>
+ 
+ <!-- WACCM GW Settings -->
+diff --git a/bld/namelist_files/use_cases/sd_waccm_ma_cam6.xml b/bld/namelist_files/use_cases/sd_waccm_ma_cam6.xml
+index d503225..5994ff2 100644
+--- a/bld/namelist_files/use_cases/sd_waccm_ma_cam6.xml
++++ b/bld/namelist_files/use_cases/sd_waccm_ma_cam6.xml
+@@ -3,7 +3,7 @@
+ <namelist_defaults>
+ 
+ <!-- Solar data from NRL -->
+-<solar_irrad_data_file>atm/cam/solar/SolarForcingNRLSSI2_daily_s18820101_e20171231_c180702.nc</solar_irrad_data_file>
++<solar_irrad_data_file>atm/cam/solar/SolarForcingNRLSSI2_daily_s18820101_e20171231_c191122.nc</solar_irrad_data_file>
+ 
+ <!-- Kp and F10.7 -->
+ <solar_parms_data_file>atm/cam/solar/SolarParmsEPP_CMIP6_daily_s18491230_e20150101_c190109.nc</solar_parms_data_file>
+diff --git a/bld/namelist_files/use_cases/sd_waccm_tsmlt_cam6.xml b/bld/namelist_files/use_cases/sd_waccm_tsmlt_cam6.xml
+index 4a1da9c..97c254e 100644
+--- a/bld/namelist_files/use_cases/sd_waccm_tsmlt_cam6.xml
++++ b/bld/namelist_files/use_cases/sd_waccm_tsmlt_cam6.xml
+@@ -5,7 +5,7 @@
+ <start_ymd>20050101</start_ymd>
+ 
+ <!-- Solar data from NRL -->
+-<solar_irrad_data_file>atm/cam/solar/SolarForcingNRLSSI2_daily_s18820101_e20171231_c180702.nc</solar_irrad_data_file>
++<solar_irrad_data_file>atm/cam/solar/SolarForcingNRLSSI2_daily_s18820101_e20171231_c191122.nc</solar_irrad_data_file>
+ 
+ <!-- Kp Ap indices -->
+ <solar_parms_data_file>atm/cam/solar/SolarParmsEPP_CMIP6_daily_s18491230_e20150101_c190109.nc</solar_parms_data_file>
+diff --git a/bld/namelist_files/use_cases/sd_waccmx_ma_cam6.xml b/bld/namelist_files/use_cases/sd_waccmx_ma_cam6.xml
+index d73a493..5aaf021 100644
+--- a/bld/namelist_files/use_cases/sd_waccmx_ma_cam6.xml
++++ b/bld/namelist_files/use_cases/sd_waccmx_ma_cam6.xml
+@@ -5,7 +5,7 @@
+ <start_ymd>19800101</start_ymd>
+ 
+ <!-- Solar data from NRL -->
+-<solar_irrad_data_file>atm/cam/solar/SolarForcingNRLSSI2_daily_s18820101_e20171231_c180702.nc</solar_irrad_data_file>
++<solar_irrad_data_file>atm/cam/solar/SolarForcingNRLSSI2_daily_s18820101_e20171231_c191122.nc</solar_irrad_data_file>
+ 
+ <!-- Kp and F10.7 -->
+ <solar_parms_data_file>atm/cam/solar/waxsolar_3hr_c170504.nc</solar_parms_data_file>
+diff --git a/bld/namelist_files/use_cases/waccm_sc_2000_cam6.xml b/bld/namelist_files/use_cases/waccm_sc_2000_cam6.xml
+index cf73f8d..1180577 100644
+--- a/bld/namelist_files/use_cases/waccm_sc_2000_cam6.xml
++++ b/bld/namelist_files/use_cases/waccm_sc_2000_cam6.xml
+@@ -29,7 +29,7 @@
+ <!-- upper atmos forcings -->
+ <waccm_forcing_type>FIXED</waccm_forcing_type>
+ <waccm_forcing_fixed_ymd>20000101</waccm_forcing_fixed_ymd>
+-<waccm_forcing_file>SCWACCM_forcing_WACCM6_zm_5day_L70_1975-2014_c180216.nc</waccm_forcing_file>
++<waccm_forcing_file>SCWACCM_forcing_WACCM6_zm_5day_L70_1975-2014_c191121.nc</waccm_forcing_file>
+ <waccm_forcing_datapath>atm/waccm/waccm_forcing</waccm_forcing_datapath>
+ 
+ <!-- ozone data -->
+diff --git a/bld/namelist_files/use_cases/waccm_sc_2010_cam6.xml b/bld/namelist_files/use_cases/waccm_sc_2010_cam6.xml
+index 392430d..66b7f3d 100644
+--- a/bld/namelist_files/use_cases/waccm_sc_2010_cam6.xml
++++ b/bld/namelist_files/use_cases/waccm_sc_2010_cam6.xml
+@@ -29,7 +29,7 @@
+ <!-- upper atmos forcings -->
+ <waccm_forcing_type>FIXED</waccm_forcing_type>
+ <waccm_forcing_fixed_ymd>20100101</waccm_forcing_fixed_ymd>
+-<waccm_forcing_file>SCWACCM_forcing_WACCM6_zm_5day_L70_1975-2014_c180216.nc</waccm_forcing_file>
++<waccm_forcing_file>SCWACCM_forcing_WACCM6_zm_5day_L70_1975-2014_c191121.nc</waccm_forcing_file>
+ <waccm_forcing_datapath>atm/waccm/waccm_forcing</waccm_forcing_datapath>
+ 
+ <!-- ozone data -->
+diff --git a/cime_config/testdefs/testmods_dirs/cam/outfrq1d_refined_camchem/user_nl_cam b/cime_config/testdefs/testmods_dirs/cam/outfrq1d_refined_camchem/user_nl_cam
+index 4928799..820bcd0 100644
+--- a/cime_config/testdefs/testmods_dirs/cam/outfrq1d_refined_camchem/user_nl_cam
++++ b/cime_config/testdefs/testmods_dirs/cam/outfrq1d_refined_camchem/user_nl_cam
+@@ -7,7 +7,7 @@
+ 
+  inithist='ENDOFRUN'
+ 
+- ncdata = '$DIN_LOC_ROOT/atm/cam/inic/se/fchist_ne0conus30x8_L32_2012-11-01_c190906.nc'
++ ncdata = '$DIN_LOC_ROOT/atm/cam/inic/se/fchist_ne0conus30x8_L32_2012-11-01_c191203.nc'
+ 
+  fincl2 = 'SFBENZENE','SFBIGALK','SFC2H2','SFCH2O','SFCH3COOH','SFCO','SFNO'
+ 
+@@ -20,7 +20,7 @@
+          'num_a4 -> $DIN_LOC_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_num_bc_a4_aircraft_vertical_1750-2015_0.9x1.25_c20170608.nc',
+          'SO2    -> $DIN_LOC_ROOT/atm/cam/chem/emis/CAM-SE_ne0conus_30x8/emissions-EPA_SO2_vertical_anthro_201306-201310_conus_30x8_c190906.nc',
+          'SO2    -> $DIN_LOC_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_SO2_contvolcano_vertical_850-5000_0.9x1.25_c20170724.nc',
+-         'SO2    -> $DIN_LOC_ROOT/atm/cam/chem/stratvolc/VolcanEESMv3.11_SO2_850-2016_Mscale_Zreduc_1deg_c180812.nc',
++         'SO2    -> $DIN_LOC_ROOT/atm/cam/chem/stratvolc/VolcanEESMv3.11_SO2_850-2016_Mscale_Zreduc_1deg_c191203.nc',
+          'so4_a1 -> $DIN_LOC_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_so4_a1_anthro-ene_vertical_1750-2015_0.9x1.25_c20170616.nc',
+          'so4_a1 -> $DIN_LOC_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_so4_a1_contvolcano_vertical_850-5000_0.9x1.25_c20170724.nc',
+          'so4_a2 -> $DIN_LOC_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_so4_a2_contvolcano_vertical_850-5000_0.9x1.25_c20170724.nc'
+diff --git a/cime_config/testdefs/testmods_dirs/cam/outfrq9s_refined_camchem/user_nl_cam b/cime_config/testdefs/testmods_dirs/cam/outfrq9s_refined_camchem/user_nl_cam
+index 5458667..9b90ae7 100644
+--- a/cime_config/testdefs/testmods_dirs/cam/outfrq9s_refined_camchem/user_nl_cam
++++ b/cime_config/testdefs/testmods_dirs/cam/outfrq9s_refined_camchem/user_nl_cam
+@@ -7,7 +7,7 @@
+ 
+  inithist='ENDOFRUN'
+ 
+- ncdata = '$DIN_LOC_ROOT/atm/cam/inic/se/fchist_ne0conus30x8_L32_2012-11-01_c190906.nc'
++ ncdata = '$DIN_LOC_ROOT/atm/cam/inic/se/fchist_ne0conus30x8_L32_2012-11-01_c191203.nc'
+ 
+  fincl2 = 'SFBENZENE','SFBIGALK','SFC2H2','SFCH2O','SFCH3COOH','SFCO','SFNO'
+ 
+@@ -20,7 +20,7 @@
+          'num_a4 -> $DIN_LOC_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_num_bc_a4_aircraft_vertical_1750-2015_0.9x1.25_c20170608.nc',
+          'SO2    -> $DIN_LOC_ROOT/atm/cam/chem/emis/CAM-SE_ne0conus_30x8/emissions-EPA_SO2_vertical_anthro_201306-201310_conus_30x8_c190906.nc',
+          'SO2    -> $DIN_LOC_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_SO2_contvolcano_vertical_850-5000_0.9x1.25_c20170724.nc',
+-         'SO2    -> $DIN_LOC_ROOT/atm/cam/chem/stratvolc/VolcanEESMv3.11_SO2_850-2016_Mscale_Zreduc_1deg_c180812.nc',
++         'SO2    -> $DIN_LOC_ROOT/atm/cam/chem/stratvolc/VolcanEESMv3.11_SO2_850-2016_Mscale_Zreduc_1deg_c191203.nc',
+          'so4_a1 -> $DIN_LOC_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_so4_a1_anthro-ene_vertical_1750-2015_0.9x1.25_c20170616.nc',
+          'so4_a1 -> $DIN_LOC_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_so4_a1_contvolcano_vertical_850-5000_0.9x1.25_c20170724.nc',
+          'so4_a2 -> $DIN_LOC_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_so4_a2_contvolcano_vertical_850-5000_0.9x1.25_c20170724.nc'
