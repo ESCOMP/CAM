@@ -4567,6 +4567,18 @@ Lower limit of cumulus cloud fraction.
 Default: set by build-namelist
 </entry>
 
+<entry id="use_rad_uniform_angle" type="logical" category="radiation"
+       group="radiation_nl" valid_values="" >
+If true, use a uniform angle for the calculation of coszrs within radiation
+Default: set by build-namelist.
+</entry>
+
+<entry id="rad_uniform_angle" type="real" category="radiation"
+       group="radiation_nl" valid_values="" >
+The angle (in radians) to use in the calculation of coszrs within radiation
+Default: set by build-namelist.
+</entry>
+
 <entry id="absems_data" type="char*256" input_pathname="abs" category="radiation"
        group="radiation_nl" valid_values="" >
 Full pathname of absorption/emission dataset.  Used only by camrt scheme.
@@ -5371,11 +5383,11 @@ for low solar fluxes from the Scherliess low latitude electric potential model.
 Default: set by build-namelist.
 </entry>
 
-<entry id="efield_wei96_file" type="char*256" input_pathname="abs" category="waccm_phys"
+<entry id="efield_potential_max" type="real" category="waccm_phys"
        group="iondrag_nl" valid_values="" >
-Full pathname of dataset for coefficient data used in WACCM to calculate ion drag
-from the Weimer96 high latitude electric potential model.
-Default: set by build-namelist.
+Maximum cross cap electric potential used in Heelis high-latitude potential
+empirical model for WACCM ion drag and joule heating.
+Default: set by build-namelist (120 kV).
 </entry>
 
 <entry id="empirical_ion_velocities" type="logical" category="waccm_phys"
@@ -6890,6 +6902,34 @@ Number of hyperviscosity subcycles per dynamics timestep.
 Default: Set by build-namelist
 </entry>
 
+<entry id="se_hypervis_subcycle_sponge" type="integer" category="se"
+       group="dyn_se_inparm" valid_values="" >
+Number of hyperviscosity subcycles per dynamics timestep in sponge del2 diffusion.
+Default: Set by build-namelist
+</entry>
+
+
+<entry id="se_rayk0" type="integer" category="se"
+       group="dyn_se_inparm" valid_values="" >       
+Variable to specify the vertical index at which the
+Rayleigh friction term is centered (the peak value).
+Default: 2
+</entry>
+
+<entry id="se_raykrange" type="real" category="se"
+       group="dyn_se_inparm" valid_values="" >              
+Rayleigh friction parameter to determine the width of the profile.  If set
+to 0 then a width is chosen by the algorithm (see rayleigh_friction.F90).
+Default: 0.5.
+</entry>
+
+<entry id="se_raytau0" type="real" category="se"
+       group="dyn_se_inparm" valid_values="" >                     
+Rayleigh friction parameter to determine the approximate value of the decay
+time (days) at model top.  If 0.0 then no Rayleigh friction is applied.
+Default: 0.
+</entry>
+
 <entry id="se_hypervis_subcycle_q" type="integer" category="se"
        group="dyn_se_inparm" valid_values="" >
 Number of hyperviscosity subcycles done in tracer advection code.
@@ -7084,7 +7124,7 @@ Default: 3
 </entry>
 
 <entry id="se_vert_remap_q_alg" type="integer" category="se"
-    group="dyn_se_inparm" valid_values="1,2">
+       group="dyn_se_inparm" valid_values="1,2,10">
 CAM-SE vertical remap algorithm
 1: PPM vertical remap with mirroring at the boundaries
    (solid wall bc's, high-order throughout)
@@ -7092,6 +7132,7 @@ CAM-SE vertical remap algorithm
 2: PPM vertical remap without mirroring at the boundaries
    (no bc's enforced, first-order at two cells bordering top and bottom
    boundaries)
+10: PPM with linear extrapolation in ghost cells
 Default: Set by build-namelist.
 </entry>
 
@@ -7195,12 +7236,14 @@ Default: Set by build-namelist.
 
 <entry id="analytic_ic_type" type="char*80" category="dyn_test"
        group="analytic_ic_nl"
-       valid_values="none,held_suarez_1994,moist_baroclinic_wave_dcmip2016,dry_baroclinic_wave_dcmip2016,dry_baroclinic_wave_jw2006" >
+       valid_values="none,held_suarez_1994,moist_baroclinic_wave_dcmip2016,dry_baroclinic_wave_dcmip2016,dry_baroclinic_wave_jw2006,us_standard_atmosphere" >
 Specify the type of analytic initial conditions for an initial run.
 held_suarez_1994: Initial conditions specified in Held and Suarez (1994)
 moist_baroclinic_wave_dcmip2016: Moist baroclinic wave as used in the DCMIP 2016 experiments
 dry_baroclinic_wave_dcmip2016: Dry baroclinic wave as used in the DCMIP 2016 experiments
 dry_baroclinic_wave_jw2006: Dry baroclinic wave as specified in Jablonowski and Williamson (2006)
+us_standard_atmosphere: static atmospheric state (u,v)=0, standard lapse rate for T, PS is hydrostatic equilibrium with topography
+(this ic is recommended for spinning up new initial condition files when changing horizontal or vertical resolution)
 Default: 'none'
 </entry>
 
@@ -7562,7 +7605,7 @@ Default: FALSE
 </entry>
 
 <entry id="aqua_planet_sst" type="integer"  category="driver"
-       group="aquap_nl" valid_values="1,2,3,4,5,6,7,8,9,10" value="1" >
+       group="aquap_nl" valid_values="1,2,3,4,5,6,7,8,9,10,11" value="1" >
 Set the sst to a particular analytic solution.
 Default: 1
 </entry>
@@ -7856,6 +7899,24 @@ Invoke vector mapping option
 Default: 'cart3d'
 </entry>
 
+<entry id="seq_flux_mct_albdif" type="real"  category="driver"
+       group="seq_flux_mct_inparm" valid_values="" >
+Surface albedo for direct radiation.
+Default: none.
+</entry>
+
+<entry id="seq_flux_mct_albdir" type="real"  category="driver"
+       group="seq_flux_mct_inparm" valid_values="" >
+Surface albedo for diffuse radiation.
+Default: none.
+</entry>
+
+<entry id="seq_flux_atmocn_minwind" type="real"  category="driver"
+       group="seq_flux_mct_inparm" valid_values="" >
+Minimum wind speed for atmOcn flux calculations.
+Default: none.
+</entry>
+
 <!-- Reproducible Distributed Sum Calculation -->
 
 <entry id="reprosum_use_ddpdd" type="logical"  category="reprosum"
@@ -8097,6 +8158,12 @@ Default: set to shr_const value
 <entry id="tmelt" type="real" category="physconst"
        group="physconst_nl" valid_values="" >
 Freezing point of water [K].
+Default: set to shr_const value
+</entry>
+
+<entry id="omega" type="real" category="physconst"
+       group="physconst_nl" valid_values="" >
+Planetary rotation rate (radians/second). Value set here is ONLY used in the atmosphere.
 Default: set to shr_const value
 </entry>
 

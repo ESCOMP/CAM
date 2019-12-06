@@ -138,7 +138,7 @@
       <value compset="_(CAM50|CAM60)%WCTS">-chem waccm_tsmlt_mam4</value>
       <value compset="_CAM40%WX">-waccmx</value>
       <value compset="_CAM\d0%WXIE">-ionosphere wxie</value>
-      <value compset="_CAM40%WXIE">-chem waccm_ma</value>
+      <value compset="_CAM40%WXIE(_|%)">-chem waccm_ma</value>
       <value compset="_CAM40%WXIED">-chem waccm_mad</value>
       <value compset="_CAM40%WCMD">-chem waccm_mad</value>
       <value compset="_CAM60%WX">-chem waccm_ma_mam4 -waccmx</value>
@@ -205,6 +205,7 @@
       <value compset="2000_CAM50_SLND_SICE_DOCN%AQP"   >aquaplanet_cam5</value>
       <value compset="2000_CAM60_SLND_SICE_DOCN%SOMAQP">aquaplanet_cam6</value>
       <value compset="2000_CAM60_SLND_SICE_DOCN%AQP"   >aquaplanet_cam6</value>
+      <value compset="2000_CAM60_SLND_SICE_DOCN%AQPCONST" >aquaplanet_rce_cam6</value>
 
       <value compset="2010_CAM60"        >2010_cam6</value>
       <value compset="2010_CAM60%CCTS"   >2010_trop_strat_vbs_cam6</value>

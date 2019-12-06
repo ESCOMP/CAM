@@ -1,0 +1,74 @@
+<?xml version="1.0"?>
+
+<!-- Do not specify orb_*, co2vmr, ch4 or n2o for aquaplanet runs -->
+
+<namelist_defaults>
+<!-- make planet orbit circular              -->
+<orb_eccen                >0.</orb_eccen>
+<orb_obliq                >0.</orb_obliq>
+<orb_mvelp                >0.</orb_mvelp>
+<orb_mode>fixed_parameters</orb_mode>
+
+<!-- turn off volcanos   -->
+<prescribed_strataero_feedback> false </prescribed_strataero_feedback>
+
+<prescribed_ozone_datapath     > atm/cam/ozone/</prescribed_ozone_datapath>
+<prescribed_ozone_file         > ozone.cam.ne30.L32.RCEMIP_c20190507.nc </prescribed_ozone_file>
+<ncdata        hgrid="ne30np4" > atm/cam/inic/se/initial_data.cam.ne30.L32.RCEMIP_c20190507.nc</ncdata>
+<solar_irrad_data_file         > atm/cam/solar/solar_tsi_551_with_ssi.cam.ne30.L32.RCEMIP_c20190507.nc </solar_irrad_data_file>
+<solar_htng_spctrl_scl         > .false. </solar_htng_spctrl_scl>
+
+<empty_htapes    > true  </empty_htapes>
+<avgflag_pertape > I </avgflag_pertape>
+<nhtfrq          > 1 </nhtfrq>
+<mfilt           > 1 </mfilt>
+<fincl1> 'T','Q','U','V','PS','PRECT','Z3' </fincl1>
+
+<!-- APE ghg -->
+<ch4vmr                   >1.650e-6</ch4vmr>
+<n2ovmr                   >0.306e-6</n2ovmr>
+<co2vmr                   >348.0e-6</co2vmr>
+<!-- RCE uses no CFCs -->
+<f11vmr>0.0</f11vmr>
+<f12vmr>0.0</f12vmr>
+
+<!-- Solar insolation of 1365 -->
+<solar_irrad_data_file          >atm/cam/solar/ape_solar_ave_tsi_1365.nc</solar_irrad_data_file>
+<solar_htng_spctrl_scl    >.true.</solar_htng_spctrl_scl>
+/
+
+<!-- zonally symmetric ozone file -->
+<prescribed_ozone_file    >apeozone_cam3_5_54.nc</prescribed_ozone_file>
+<prescribed_ozone_datapath>atm/cam/ozone</prescribed_ozone_datapath>
+<prescribed_ozone_name    >OZONE</prescribed_ozone_name>
+<prescribed_ozone_type    >CYCLICAL</prescribed_ozone_type>
+<prescribed_ozone_cycle_yr>1990</prescribed_ozone_cycle_yr>
+
+<!-- Set Aquaplanet to True -->
+<aqua_planet              >.true. </aqua_planet>
+
+<!-- Set the uniform_angle for the radiation package -->
+<use_rad_uniform_angle      > .true.        </use_rad_uniform_angle>
+<rad_uniform_angle          > 0.73391095    </rad_uniform_angle>
+
+
+<!-- Revised physics constants for ape experiments -->
+<omega>0.0</omega>
+<sday                     >86164.10063718943</sday>
+<rearth                   >6.37100e6</rearth>
+<gravit                   >9.79764</gravit>
+<mwdry                    >28.96623324623746</mwdry>
+<mwh2o                    >18.01618112892741</mwh2o>
+<cpwv                     >1.846e3</cpwv>
+
+<use_topo_file            >.false.</use_topo_file>
+
+<micro_mg_nccons          >.true. </micro_mg_nccons>
+<micro_mg_nicons          >.true. </micro_mg_nicons>
+<ext_frc_specifier        > ""    </ext_frc_specifier>
+<srf_emis_specifier       > ""    </srf_emis_specifier>
+<tracer_cnst_specifier    > ""    </tracer_cnst_specifier>
+<seasalt_emis_scale> 0.0 </seasalt_emis_scale>
+
+</namelist_defaults>
+

@@ -2624,7 +2624,7 @@ if ($chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/) {
     }
 
     # Datasets
-    my @files = ('flbc_file', 'efield_lflux_file', 'efield_hflux_file', 'efield_wei96_file',
+    my @files = ('flbc_file', 'efield_lflux_file', 'efield_hflux_file',
                  'photon_file', 'electron_file', 'igrf_geomag_coefs_file',
                  'euvac_file', 'solar_parms_data_file',
                  'depvel_lnd_file', 'clim_soilw_file', 'season_wes_file',
@@ -2695,6 +2695,9 @@ if ($chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/) {
     if ($dyn eq 'fv') {
         add_default($nl, 'do_circulation_diags', 'val'=>'.true.');
     }
+    
+    # max cross cap electric potential of 120 kV to keep WACCM stable through large geo-mag storms
+    add_default($nl, 'efield_potential_max', 'val'=>'120.D0');
 }
 
 # Determine the source of the prescribed GHG values.
@@ -3529,6 +3532,7 @@ if ($dyn =~ /se/) {
                   se_lcp_moist
 		  se_large_Courant_incr
                   se_hypervis_subcycle
+                  se_hypervis_subcycle_sponge
                   se_hypervis_subcycle_q
                   se_limiter_option
                   se_nsplit
@@ -3551,6 +3555,9 @@ if ($dyn =~ /se/) {
 		  se_kmax_jet
 		  se_variable_nsplit
 		  se_phys_dyn_cp
+		  se_raytau0
+		  se_raykrange
+		  se_rayk0 
         );
 
     my %opts;
@@ -3867,6 +3874,12 @@ EOF
 
 }
 
+ if ($cam_build) {
+     add_default($nl, 'seq_flux_mct_albdif');
+     add_default($nl, 'seq_flux_mct_albdir');
+     add_default($nl, 'seq_flux_atmocn_minwind');
+ }
+
 #-----------------------------------------------------------------------------------------------
 # Rename component logfiles.
 #
@@ -3925,7 +3938,8 @@ foreach my $name (@nl_groups) { $nl_group{$name} = ''; }
 
 # Driver
 @comp_groups = qw(cime_driver_inst seq_cplflds_inparm seq_cplflds_userspec cime_pes
-    seq_infodata_inparm seq_timemgr_inparm prof_inparm papi_inparm pio_default_inparm esmf_inparm);
+    seq_infodata_inparm seq_timemgr_inparm prof_inparm papi_inparm pio_default_inparm esmf_inparm seq_flux_mct_inparm);
+
 $outfile = "$opts{'dir'}/drv_in";
 if ($cam_build) {
     $nl->write($outfile, 'groups'=>\@comp_groups);

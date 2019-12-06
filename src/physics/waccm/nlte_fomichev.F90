@@ -2447,8 +2447,10 @@ real(r8) function a18lin (x,xn,yn,m,n)
      real(r8) :: no_conc                          ! NO concentration divided by mean air density
      real(r8) :: no_deact                         ! effective NO deactivation rate multiplied by air concentration
 
-     real(r8), parameter :: o1_rate = 2.7e-11_r8     ! O1 reaction rate (units????)
-     real(r8), parameter :: o2_rate = 2.4e-14_r8     ! O2 reaction rate (units????)
+     ! Hwang et al., "Vibrational relaxation of NO(v=1) by oxygen atoms between 295 and 825 K"
+     ! JGR, Vol. 108, No. A3, 1109, doi:10.1029/2002JA009688, 2003
+     real(r8), parameter :: o1_rate = 4.2e-11_r8     ! O1 reaction rate (cm3/sec)
+     real(r8), parameter :: o2_rate = 2.4e-14_r8     ! O2 reaction rate (cm3/sec)
      real(r8), parameter :: phot_e  = 3.726e-13_r8   ! photon energy at 5.3 mum (erg)
      real(r8), parameter :: trans_prob = 13.3_r8     ! Einstein transition probability
 
