@@ -3368,20 +3368,16 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    if (qsnow_idx > 0)  qsout_grid_ptr = qsout_grid
    if (nrain_idx > 0)  nrout_grid_ptr = nrout_grid
    if (nsnow_idx > 0)  nsout_grid_ptr = nsout_grid
-   if (qcsedten_idx > 0)  qcsedtenout_grid_ptr = qcsedtenout_grid
-   if (qrsedten_idx > 0 .and. micro_mg_version > 1) &
-      qrsedtenout_grid_ptr = qrsedtenout_grid
-   if (qisedten_idx > 0)  qisedtenout_grid_ptr = qisedtenout_grid
-   if (qssedten_idx > 0 .and. micro_mg_version > 1) &
-      qssedtenout_grid_ptr = qssedtenout_grid
-   if (vtrmc_idx > 0)     vtrmcout_grid_ptr    = vtrmcout_grid
-   if (umr_idx > 0 .and. micro_mg_version > 1) &
-      umrout_grid_ptr      = umrout_grid
-   if (vtrmi_idx > 0)     vtrmiout_grid_ptr    = vtrmiout_grid
-   if (ums_idx > 0 .and. micro_mg_version > 1) &
-      umsout_grid_ptr      = umsout_grid
-   if (qcsevap_idx > 0 ) qcsevapout_grid_ptr = qcsevapout_grid
-   if (qisevap_idx > 0 ) qisevapout_grid_ptr = qisevapout_grid
+   if (qcsedten_idx > 0) qcsedtenout_grid_ptr = qcsedtenout_grid
+   if (qrsedten_idx > 0) qrsedtenout_grid_ptr = qrsedtenout_grid
+   if (qisedten_idx > 0) qisedtenout_grid_ptr = qisedtenout_grid
+   if (qssedten_idx > 0) qssedtenout_grid_ptr = qssedtenout_grid
+   if (vtrmc_idx > 0)    vtrmcout_grid_ptr    = vtrmcout_grid
+   if (umr_idx > 0)      umrout_grid_ptr      = umrout_grid
+   if (vtrmi_idx > 0)    vtrmiout_grid_ptr    = vtrmiout_grid
+   if (ums_idx > 0)      umsout_grid_ptr      = umsout_grid
+   if (qcsevap_idx > 0 ) qcsevapout_grid_ptr  = qcsevapout_grid
+   if (qisevap_idx > 0 ) qisevapout_grid_ptr  = qisevapout_grid
 
    ! --------------------------------------------- !
    ! General outfield calls for microphysics       !

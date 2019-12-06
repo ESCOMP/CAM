@@ -2984,10 +2984,10 @@ contains
         ! Print an error message if any total water relative error is found to
         ! be greater than the threshold.
         if ( any( tot_water_rel_err(:ncol) >= err_thresh ) ) then
-           print *, "Water conservation error reported in hole filling"
+           write(iulog,*) "Water conservation error reported in hole filling"
            do icol = 1, ncol
               if ( tot_water_rel_err(icol) >= err_thresh ) then
-                 print *, "Column = ", icol, &
+                 write(iulog,*) "Column = ", icol, &
                           "Relative error = ", tot_water_rel_err(icol), &
                           "Column-integrated grand total water at start = ", &
                           grand_total_water_column_start(icol), &
@@ -3000,10 +3000,10 @@ contains
         ! Print an error message if any total energy relative error is found to
         ! be greater than the threshold.
         if ( any( tot_energy_rel_err(:ncol) >= err_thresh ) ) then
-           print *, "Energy conservation error reported in hole filling"
+           write(iulog,*) "Energy conservation error reported in hole filling"
            do icol = 1, ncol
               if ( tot_energy_rel_err(icol) >= err_thresh ) then
-                 print *, "Column = ", icol, &
+                 write(iulog,*) "Column = ", icol, &
                           "Relative error = ", tot_energy_rel_err(icol), &
                           "Column-integrated total energy at start = ", &
                           total_energy_column_start(icol), &
