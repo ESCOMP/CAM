@@ -7,7 +7,7 @@
 
  inithist='ENDOFRUN'
 
- ncdata = '$DIN_LOC_ROOT/atm/cam/inic/se/fchist_ne0conus30x8_L32_2012-11-01_c190906.nc'
+ ncdata = '$DIN_LOC_ROOT/atm/cam/inic/se/fchist_ne0conus30x8_L32_2012-11-01_c191203.nc'
 
  fincl2 = 'SFBENZENE','SFBIGALK','SFC2H2','SFCH2O','SFCH3COOH','SFCO','SFNO'
 
@@ -20,7 +20,7 @@
          'num_a4 -> $DIN_LOC_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_num_bc_a4_aircraft_vertical_1750-2015_0.9x1.25_c20170608.nc',
          'SO2    -> $DIN_LOC_ROOT/atm/cam/chem/emis/CAM-SE_ne0conus_30x8/emissions-EPA_SO2_vertical_anthro_201306-201310_conus_30x8_c190906.nc',
          'SO2    -> $DIN_LOC_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_SO2_contvolcano_vertical_850-5000_0.9x1.25_c20170724.nc',
-         'SO2    -> $DIN_LOC_ROOT/atm/cam/chem/stratvolc/VolcanEESMv3.11_SO2_850-2016_Mscale_Zreduc_1deg_c180812.nc',
+         'SO2    -> $DIN_LOC_ROOT/atm/cam/chem/stratvolc/VolcanEESMv3.11_SO2_850-2016_Mscale_Zreduc_1deg_c191203.nc',
          'so4_a1 -> $DIN_LOC_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_so4_a1_anthro-ene_vertical_1750-2015_0.9x1.25_c20170616.nc',
          'so4_a1 -> $DIN_LOC_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_so4_a1_contvolcano_vertical_850-5000_0.9x1.25_c20170724.nc',
          'so4_a2 -> $DIN_LOC_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_so4_a2_contvolcano_vertical_850-5000_0.9x1.25_c20170724.nc'

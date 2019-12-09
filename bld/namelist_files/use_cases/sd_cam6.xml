@@ -10,7 +10,7 @@
   <met_data_path dyn="fv"  hgrid="0.9x1.25">atm/cam/met/MERRA2/0.9x1.25</met_data_path>
   <met_filenames_list dyn="fv"  hgrid="0.9x1.25">atm/cam/met/MERRA2/0.9x1.25/filenames_1975-2017_c190125.txt</met_filenames_list>
 
-  <solar_irrad_data_file    >   'atm/cam/solar/SolarForcingNRLSSI2_daily_s18820101_e20171231_c180702.nc'</solar_irrad_data_file>
+  <solar_irrad_data_file    >   'atm/cam/solar/SolarForcingNRLSSI2_daily_s18820101_e20171231_c191122.nc'</solar_irrad_data_file>
 
   <tracer_cnst_datapath     >   'atm/cam/tracer_cnst'                                        </tracer_cnst_datapath>
   <tracer_cnst_file         >   'tracer_cnst_halons_3D_L70_1849-2015_CMIP6ensAvg_c180927.nc' </tracer_cnst_file>
