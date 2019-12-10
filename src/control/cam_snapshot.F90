@@ -189,7 +189,7 @@ end subroutine cam_snapshot_deactivate
 subroutine cam_state_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num)
 
 !--------------------------------------------------------
-! This subroutine does the addfld calls for state, tend and pbuf fields.
+! This subroutine does the addfld calls for state
 !--------------------------------------------------------
 
    integer,intent(in) :: cam_snapshot_before_num, cam_snapshot_after_num
@@ -286,9 +286,7 @@ end subroutine cam_state_snapshot_init
 subroutine cam_cnst_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num)
 
 !--------------------------------------------------------
-! This subroutine does the addfld calls for state, tend and pbuf fields., hence the writing
-!        needs to be turned off for all fields, and will be turned on individaully
-!        when needed.
+! This subroutine does the addfld calls for state constituent (q) fields
 !--------------------------------------------------------
 
    use constituents, only: pcnst, cnst_name
@@ -345,7 +343,7 @@ end subroutine cam_tend_snapshot_init
 subroutine cam_in_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num, cam_in)
 
 !--------------------------------------------------------
-! This subroutine does the addfld calls for state, tend and pbuf fields.
+! This subroutine does the addfld calls for cam_in fields
 !--------------------------------------------------------
 
    type(cam_in_t), intent(in) :: cam_in
@@ -439,7 +437,7 @@ end subroutine cam_in_snapshot_init
 subroutine cam_out_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num, cam_out)
 
 !--------------------------------------------------------
-! This subroutine does the addfld calls for state, tend and pbuf fields.
+! This subroutine does the addfld calls for cam_out fields
 !--------------------------------------------------------
 
    type(cam_out_t),  intent(in) :: cam_out

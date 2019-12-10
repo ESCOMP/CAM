@@ -4517,13 +4517,13 @@ Default: Set by build-namelist.
 
 <entry id="cam_snapshot_before_num" type="integer"  category="diagnostics"
        group="phys_ctl_nl" valid_values="" >
-Tape number for before snapshots for CAM snapshot
+History file number for before snapshots for CAM snapshot
 Default: 
 </entry>
 
 <entry id="cam_snapshot_after_num" type="integer"  category="diagnostics"
        group="phys_ctl_nl" valid_values="" >
-Tape number for after snapshots for CAM snapshot
+History file number for after snapshots for CAM snapshot
 Default: 
 </entry>
 

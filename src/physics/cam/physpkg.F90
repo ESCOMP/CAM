@@ -2114,8 +2114,6 @@ contains
 
     call t_stopf('carma_timestep_tend')
 
-!    call cam_snapshot_all_outfld(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf)
-
     if( microp_scheme == 'RK' ) then
 
        !===================================================

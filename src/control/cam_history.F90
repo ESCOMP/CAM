@@ -3508,7 +3508,6 @@ end subroutine print_active_fldlst
     ! and auxiliary).
     !
 
-
     do t=1, ptapes
       if (masterlist(ff)%thisentry%actflag(t)) then
         found    =  .true.
