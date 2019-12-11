@@ -336,7 +336,10 @@ contains
 
     call offline_driver_reg()
 
-    call pbuf_cam_snapshot_register() ! This needs to be last as it requires all pbuf fields to be added
+    ! This needs to be last as it requires all pbuf fields to be added
+    if (cam_snapshot_before_num > 0 .or. cam_snapshot_after_num > 0) then 
+        call pbuf_cam_snapshot_register()
+    end if
 
   end subroutine phys_register
 

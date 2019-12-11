@@ -13,6 +13,7 @@ use physics_buffer, only: physics_buffer_desc, pbuf_get_index, pbuf_get_field, p
 use physics_types,  only: physics_state, physics_tend
 use camsrfexch,     only: cam_out_t, cam_in_t
 use ppgrid,         only: pcols
+use constituents,   only: pcnst
 use phys_control,   only: phys_getopts
 use cam_logfile,    only: iulog
 
@@ -57,7 +58,7 @@ integer :: cam_snapshot_before_num, cam_snapshot_after_num, cam_snapshot_nhtfrq
 
 ! Note the maximum number of variables for each type
 type (snapshot_type)    ::  state_snapshot(27)
-type (snapshot_type)    ::  cnst_snapshot(40)
+type (snapshot_type)    ::  cnst_snapshot(pcnst)
 type (snapshot_type)    ::  tend_snapshot(6)
 type (snapshot_type)    ::  cam_in_snapshot(30)
 type (snapshot_type)    ::  cam_out_snapshot(30)
@@ -289,7 +290,7 @@ subroutine cam_cnst_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_nu
 ! This subroutine does the addfld calls for state constituent (q) fields
 !--------------------------------------------------------
 
-   use constituents, only: pcnst, cnst_name
+   use constituents, only: cnst_name
 
    integer, intent(in) :: cam_snapshot_before_num, cam_snapshot_after_num
 
