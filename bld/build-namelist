@@ -2883,6 +2883,8 @@ $nl->set_variable_value('phys_ctl_nl', 'cam_chempkg', $cam_chempkg);
 
 # Check the snapshot settings.  
 check_snapshot_settings();
+add_default($nl, 'cam_snapshot_before_num');
+add_default($nl, 'cam_snapshot_after_num');
 
 # Tropopause climatology
 if (!$simple_phys) {
