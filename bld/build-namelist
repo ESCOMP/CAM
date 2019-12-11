@@ -49,6 +49,7 @@ use IO::File;
 use FindBin qw($Bin);
 use lib "$Bin/perl5lib";
 use Build::ChemNamelist qw(set_dep_lists set_aero_modes_info chem_has_species);
+use List::Util qw[min max];
 #-----------------------------------------------------------------------------------------------
 
 sub usage {
@@ -748,7 +749,7 @@ if ($chem) {
 
     # drydep_srf_file is only needed for prognostic MAM when the grid is unstructured.
     # structured grids can do interpolation on the fly.
-    if ($chem =~ /_mam/ and $dyn =~ /se/) {
+    if ($chem =~ /_mam/ and ($dyn =~ /se/ or $dyn =~ /fv3/)) {
         add_default($nl, 'drydep_srf_file');
     }
 }
@@ -3463,6 +3464,116 @@ if ($dyn eq 'fv') {
     }
 }
 
+# FV3 dycore
+if ( $dyn eq 'fv3') {
+
+    # # If the -ntasks argument has been set, then use it to set the default
+    # # FV decomposition unless the user has already set it.
+    # my $layout = $nl->get_value('layout');
+    # if (defined $opts{'ntasks'} and ! defined $layout ) {
+    #     $layout = fv3_decomp_set();
+    #     add_default($nl, 'layout', 'val'=>$layout);
+    # }
+
+    add_default($nl, 'fv3_adjust_dry_mass');
+    add_default($nl, 'fv3_beta');
+    add_default($nl, 'fv3_consv_am');
+    add_default($nl, 'fv3_consv_te');
+    add_default($nl, 'fv3_d2_bg');
+    add_default($nl, 'fv3_d2_bg_k1');
+    add_default($nl, 'fv3_d2_bg_k2');
+    add_default($nl, 'fv3_d4_bg');
+    add_default($nl, 'fv3_d_con');
+    add_default($nl, 'fv3_d_ext');
+    add_default($nl, 'fv3_dddmp');
+    add_default($nl, 'fv3_delt_max');
+    add_default($nl, 'fv3_dnats');
+    add_default($nl, 'fv3_do_sat_adj');
+    add_default($nl, 'fv3_do_vort_damp');
+    add_default($nl, 'fv3_dwind_2d');
+    add_default($nl, 'fv3_external_ic');
+    add_default($nl, 'fv3_fill');
+    add_default($nl, 'fv3_fv_debug');
+    add_default($nl, 'fv3_fv_sg_adj');
+    add_default($nl, 'fv3_gfs_phil');
+    add_default($nl, 'fv3_grid_type');
+    add_default($nl, 'fv3_hord_dp');
+    add_default($nl, 'fv3_hord_mt');
+    add_default($nl, 'fv3_hord_tm');
+    add_default($nl, 'fv3_hord_tr');
+    add_default($nl, 'fv3_hord_vt');
+    add_default($nl, 'fv3_hydrostatic');
+    add_default($nl, 'fv3_io_layout');
+    add_default($nl, 'fv3_ke_bg');
+    add_default($nl, 'fv3_k_split');
+    add_default($nl, 'fv3_kord_mt');
+    add_default($nl, 'fv3_kord_tm');
+    add_default($nl, 'fv3_kord_tr');
+    add_default($nl, 'fv3_kord_wz');
+    add_default($nl, 'fv3_make_nh');
+    add_default($nl, 'fv3_mountain');
+    add_default($nl, 'fv3_n_split');
+    add_default($nl, 'fv3_n_sponge');
+    add_default($nl, 'fv3_na_init');
+    add_default($nl, 'fv3_ncep_ic');
+    add_default($nl, 'fv3_nggps_ic');
+    add_default($nl, 'fv3_no_dycore');
+    add_default($nl, 'fv3_nord');
+    add_default($nl, 'fv3_npx');
+    add_default($nl, 'fv3_npy');
+    add_default($nl, 'fv3_ntiles');
+    add_default($nl, 'fv3_nudge_qv');
+    add_default($nl, 'fv3_nudge_ic');
+    add_default($nl, 'fv3_print_freq');
+    add_default($nl, 'fv3_range_warn');
+    add_default($nl, 'fv3_reset_eta');
+    add_default($nl, 'fv3_rf_cutoff');
+    add_default($nl, 'fv3_tau');
+    add_default($nl, 'fv3_vtdm4');
+    add_default($nl, 'fv3_warm_start');
+    add_default($nl, 'fv3_z_tracer');
+    add_default($nl, 'fv3_seconds');
+    add_default($nl, 'fv3_dt_atmos');
+    add_default($nl, 'fv3_clock_grain');
+    add_default($nl, 'fv3_domains_stack_size');
+    add_default($nl, 'fv3_stack_size');
+    add_default($nl, 'fv3_print_memory_usage');
+    add_default($nl, 'fv3_fv_calendar');
+    add_default($nl, 'fv3_months');
+    add_default($nl, 'fv3_days');
+    add_default($nl, 'fv3_hours');
+    add_default($nl, 'fv3_minutes');
+    add_default($nl, 'fv3_seconds');
+    add_default($nl, 'fv3_restart_interval');
+    add_default($nl, 'fv3_memuse_interval');
+    add_default($nl, 'fv3_adiabatic');
+    add_default($nl, 'fv3_do_held_suarez');
+    add_default($nl, 'fv3_fv_land');
+    add_default($nl, 'fv3_mountain');
+    add_default($nl, 'fv3_nwat');
+    add_default($nl, 'fv3_qsize_condensate_loading');
+
+    # By default, FV3 uses nlev levels
+    if (! defined $opts{'fv3_npz'}) {
+        add_default($nl, 'fv3_npz', 'val'=>$cfg->get('nlev'));
+    }
+    if (! defined $opts{'fv3_ncnst'}) {
+        add_default($nl, 'fv3_ncnst', 'val'=>$cfg->get('nadv'));
+    }
+    
+    add_default($nl, 'fv3_lcv_moist');
+    add_default($nl, 'fv3_lcp_moist');
+
+# If the -ntasks argument has been set, then use it to set the default
+# FV3 decomposition unless the user has already set it.
+    my $layout = $nl->get_value('fv3_layout');
+    if (defined $opts{'ntasks'} and ! defined $layout ) {
+	$layout = fv3_decomp_set();
+	add_default($nl, 'fv3_layout', 'val'=>$layout);
+    }
+    
+}
+
 # EUL dycore
 if ($dyn eq 'eul') {
     add_default($nl, 'eul_dif2_coef');
@@ -3982,6 +4093,24 @@ if (defined $nl_group{'camexp'}) { delete $nl_group{'camexp'}; }
 @comp_groups = sort keys %nl_group;
 $outfile = "$opts{'dir'}/atm_in";
 $nl->write($outfile, 'groups'=>\@comp_groups);
+delete @nl_group{@comp_groups};
+# Write input.nml and diag_table files for fv3.
+# input.nml is just a copy of atm_in which has additional fv3 namelist items
+# diag_table is a temporary text file that is required by fv3 diag IO.  
+#    For now has dummy text in it but may be useful for writing out variables from fv3.
+###if ($cfg->get('dyn') eq 'fv3') {
+###if ( $dyn eq 'fv3') {
+###    @comp_groups = qw(main_nml fv_core_nml surf_map_nml test_case_nml dyn_fv3_inparm);
+###    $outfile = "$opts{'dir'}/input.nml";
+###    $nl->write($outfile, 'groups'=>\@comp_groups);
+###    if ($print>=1) { print "CAM writing fv3 namelist groups to input.nml $eol"; }
+###    delete @nl_group{@comp_groups};
+###    $outfile = "$opts{'dir'}/diag_table";
+###    open(my $fh_diag, '>', $outfile) or die "Could not open file '$outfile' $!";
+###    print $fh_diag "20161003.00Z.Cxx.64bit.non-mono\n";
+###    print $fh_diag "2016 10 03 00 0 0\n";
+###    close $fh_diag
+###}
 if ($print>=1) { print "CAM writing namelist to atm_in $eol"; }
 
 #-----------------------------------------------------------------------------------------------
@@ -4029,6 +4158,11 @@ sub create_mode_defs {
         $mode_def .= "'$num_src->[$m]:$num->[$m]:N:$num_cw->[$m]:num_mr:+',";
 
         # number of species in mode
+	print "spec=$spec";
+	print "nmodes=$nmodes";
+	print "m=$m";
+	print "names=@$names[0]";
+	print "spec[m]=(@{$spec->[$m]})";
         my $nspec = scalar(@{$spec->[$m]});
         for (my $i=0; $i < $nspec; ++$i) {
 
@@ -4250,6 +4384,84 @@ sub fv_decomp_set{
     }
 
     return "$ny,$nz,$nz,$ny";
+}
+
+#-----------------------------------------------------------------------------------------------
+sub fv3_decomp_set{
+# Return a decomposition for the FV3 dycore, expressed as the value for the namelist
+# variable layout.  The value of layout is nx,ny where nx and ny are
+# respecitively the number of x, y, subdomains of an FV3 tile in the multi-2D decomposition.
+# The following constraints must be observed:
+# 1) nx*ny*6 = ntasks (ny*nz*6 must be equal to ntasks.  fv3 can handle other cases but for
+#                     now this decomp routine requires that constraint.
+#                     Assume the user will set the
+#                     decomp explicitly if that is what is desired.)
+# 2) tilesizex/nx >=4 decomp must allow for a minimum of 4 elements in a x direction task
+# 3) tilesizey/ny >=4 decomp must allow for a minimum of 4 elements in a y direction task
+# 4) tilesizex%nx =0  decomp requires that tile points in x direction must divide evenly by nx
+# 5) tilesizey%ny =0  decomp requires that tile points in y direction must divide evenly by ny
+#
+# The strategy for setting the default decomposition is to use a decomposition with approximately
+# equal nx and ny values
+
+    my $tasks = $opts{'ntasks'};
+    my $xpts = $nl->get_value('fv3_npx') - 1;
+    my $ypts = $nl->get_value('fv3_npy') - 1;
+    my $nx;
+    my $ny;
+    my $aspect = $xpts;
+    my $layoutx = 0;
+    my $layouty = 0;
+
+    # die if bad input
+    if ($tasks < 1) {
+        die "$ProgName - ERROR: fv3_decomp_set: bad input: ntasks=$tasks.\n" .
+            "  -ntask argument to build-namelist is wrong.";
+    }
+
+    #   integer divisors of xpts/4
+    # 	@tiledivisors = grep { $xpts % $_ == 0 } 1 .. $xpts/4;
+    
+    
+  NZ: for ($nx = 1; $nx <= int $xpts/4; ++$nx) {
+      
+      # test that $nx divides $xpts evenly
+      if ($xpts%$nx == 0) {
+	  
+	  $ny = int $tasks/$nx/6;
+          print "nx=$nx ny=$ny xpts=$xpts ypts=$ypts\n";
+	  # test that $ny divides $xpts exactly
+	  # if so then get aspect ratio
+	  if ($ny != 0) {
+            print "ny != 0\n";
+	      if ($ypts%$ny == 0 and  $nx*$ny*6 == $tasks) {
+		  print "ypts%ny == 0 and nx*ny*6 == tasks\n";
+		  if ($nx == $ny) {
+		      $layoutx=$nx;
+		      $layouty=$ny;
+		      last NZ;
+		  }else{
+		      print "nx != ny old aspect=$aspect\n";
+		      if (max($nx,$ny) / min($nx,$ny) < $aspect) {
+			  $aspect=max($nx,$ny) / min($nx,$ny);
+			  $layoutx=$nx;
+			  $layouty=$ny;
+  		          print "current aspect less than old current aspect=$aspect setting layoutx=$nx layouty=$ny\n";
+		      }
+		  }
+	      }
+	  }
+      }
+    }
+    # die if algorithm failed
+    if ($layoutx > $xpts/4 or $layouty > $ypts/4  or  $layoutx*$layouty*6 != $tasks) {
+	print "tasks=$tasks layoutx=$layoutx layouty=$layoutx\n" ;
+        die "$ProgName - ERROR: fv3_decomp_set failed to find a decomposition.\n" .
+            "  layout needs to be set by the user.";
+    }
+    
+    return "$layoutx,$layouty";
+    
 }
 
 #-----------------------------------------------------------------------------------------------

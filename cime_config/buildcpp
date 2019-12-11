@@ -87,6 +87,9 @@ def buildcpp(case):
     else:
         config_opts.append("-smp")
 
+    if cam_dycore == 'fv3':
+         config_opts += ["-fv3core_libdir", os.path.join(exeroot,"atm","obj","atmos_cubed_sphere")]
+
     # The ocean component setting is only used by CAM to do attribute matching for
     # setting default tuning parameter values.  In SOM mode we want to use the same
     # tunings as the fully coupled B compset, so set the ocean component to pop in

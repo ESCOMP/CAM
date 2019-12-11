@@ -95,11 +95,12 @@
 
   <entry id="CAM_DYCORE">
     <type>char</type>
-    <valid_values>eul,fv,se</valid_values>
+    <valid_values>eul,fv,fv3,se</valid_values>
     <default_value>fv</default_value>
     <values match="last">
       <value grid="a%T[1-9]" >eul</value>
       <value grid="a%ne[0-9]">se</value>
+      <value grid="a%C[0-9]" >fv3</value>
     </values>
     <group>build_component_cam</group>
     <file>env_build.xml</file>
@@ -150,7 +151,7 @@
       <value compset="_CAM\d0%WX.*%SDYN">-nlev 145</value>
 
       <!-- Simple models -->
-      <value compset="_CAM%HS94" grid="(%ne[0-9])|(%[0-9.]+x)">-analytic_ic</value>
+      <value compset="_CAM%HS94" grid="(%ne[0-9])|(%C[0-9])|(%[0-9.]+x)">-analytic_ic</value>
       <value compset="_CAM%ADIAB">-phys adiabatic</value>
       <value compset="_CAM%DABIP04">-phys adiabatic</value>
       <value compset="_CAM%TJ16">-phys tj2016 -analytic_ic</value>

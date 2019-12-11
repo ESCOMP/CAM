@@ -47,4 +47,12 @@
 <horiz_grid dyn="se"    hgrid="ne0np4TESTONLY.ne5x4" ncol="3863"     csne="0"    csnp="4"  npg="0" />
 <horiz_grid dyn="se"    hgrid="ne0np4CONUS.ne30x8" ncol="174098"   csne="0"    csnp="4"  npg="0" />
 
+<!-- For FV3 grids ncol is the total number of columns in the physics grid and csnp is the elements per dynamics tile side-->
+<horiz_grid dyn="fv3"   hgrid="C384" ncol="884736" csnp="384"  />
+<horiz_grid dyn="fv3"   hgrid="C192" ncol="221184" csnp="192"  />
+<horiz_grid dyn="fv3"   hgrid="C96"  ncol="55296"  csnp="96"   />
+<horiz_grid dyn="fv3"   hgrid="C48"  ncol="13824"  csnp="48"   />
+<horiz_grid dyn="fv3"   hgrid="C24"  ncol="3456"   csnp="24"   />
+<horiz_grid dyn="fv3"   hgrid="C12"  ncol="864"    csnp="12"   />
+<horiz_grid dyn="fv3"   hgrid="C5"   ncol="150"    csnp="5"   />
 </config_horiz_grid>

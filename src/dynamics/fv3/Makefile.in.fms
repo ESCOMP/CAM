@@ -1,0 +1,241 @@
+.SUFFIXES : .F .f .c .o .a .f90 .f95
+########################################################################
+#
+# The Makefile for building the FMS library is created by CAM's configure
+# using this template and prepending the following macros:
+#
+# The macro CAM_BLD is also prepended.  It is the build directory of the CAM
+# code and it contains the abortutils.mod file.  The abortutils module is
+# referenced by FMS code in order to perform an abort which is appropriate
+# for the CESM system.
+#
+# The main customization required for the library to link with CAM is to
+# use autopromotion of the default real type to real*8.  This is required
+# in most, though not all, of the FMS files.  Also, some compilers require
+# special flags to specify fixed or free format source (rather than depend
+# on filename extensions).  Thus, the explicit rules at the end of this
+# template for compiling FMS files have been modified to allow different
+# sets of flags for 1) files that cannot be compiled with autopromotion,
+# and 2) files that use fixed format source.
+#
+# The generated Makefile will be used by a sub-Make issued from CAM's Make.
+# The sub-Make will inherit the macros:
+#
+# FC           name of Fortran90 compiler
+# FC_FLAGS     Fortran compiler flags
+#
+########################################################################
+
+# Load dependency search path.
+cpp_dirs := .
+cpp_dirs += $(shell cat Filepath)
+
+# Create VPATH from Filepath file created by CAM configure
+# Expand any tildes in directory names. Change spaces to colons.
+VPATH := $(foreach dir,$(cpp_dirs),$(wildcard $(dir)))
+VPATH := $(subst $(space),:,$(VPATH))
+
+INCS    := $(foreach dir,$(cpp_dirs),-I$(dir))
+
+F90      := $(FC)
+C90      := $(CC)
+F90FLAGS := $(FREEFLAGS) $(FFLAGS)
+
+OBJS =  affinity.o amip_interp.o astronomy.o atmos_ocean_fluxes.o \
+        axis_utils.o block_control.o cloud_interpolator.o column_diagnostics.o \
+        constants.o coupler_types.o create_xgrid.o data_override.o \
+        diag_axis.o diag_data.o diag_grid.o diag_manager.o \
+        diag_manifest.o diag_output.o diag_table.o diag_util.o \
+        drifters_comm.o drifters_core.o drifters_input.o drifters_io.o \
+        drifters.o ensemble_manager.o fft99.o fft.o \
+        field_manager.o fms_io.o fms.o fm_util.o \
+        gaussian_topog.o get_cal_time.o gradient_c2l.o gradient.o \
+        grid.o horiz_interp_bicubic.o horiz_interp_bilinear.o horiz_interp_conserve.o \
+        horiz_interp.o horiz_interp_spherical.o horiz_interp_type.o interp.o \
+        interpolator.o memuse.o memutils.o MersenneTwister.o \
+        mosaic.o mosaic_util.o mpp_data.o mpp_domains.o \
+        mpp_efp.o mpp_io.o mpp_memutils.o mpp.o \
+        mpp_parameter.o mpp_pset.o mpp_utilities.o nsclock.o \
+        oda_core_ecda.o oda_core.o oda_types.o platform.o \
+        quicksort.o random_numbers.o read_mosaic.o sat_vapor_pres_k.o \
+        sat_vapor_pres.o station_data.o stock_constants.o test_fms_io.o \
+        test_horiz_interp.o test_mpp_domains.o test_mpp_io.o test_mpp.o \
+        test_mpp_pset.o test_unstructured_fms_io.o test_xgrid.o threadloc.o \
+        time_interp_external.o time_interp.o time_manager.o topography.o \
+        tracer_manager.o tridiagonal.o write_ocean_data.o xbt_drop_rate_adjust.o \
+        xgrid.o
+
+complib: libfms.a
+
+libfms.a: $(OBJS)
+	ar cr libfms.a $(OBJS)
+
+db_files:
+	@echo " "
+	@echo "* VPATH   := $(VPATH)"
+db_flags:
+	@echo " "
+	@echo "* cc      := $(CC) $(CFLAGS) $(INCLDIR) $(INCS)"
+	@echo "* .F.o    := $(FC) $(F90FLAGS) $(INCLDIR) $(INCS)"
+
+%.o: %.f90
+	$(F90) $(F90FLAGS) $(INCLDIR) $(INCS) -c  $<
+%.o: %.F90
+	$(F90) $(F90FLAGS) $(INCLDIR) $(INCS) -c  $<
+%.o: %.c
+	$(C90) $(CFLAGS) $(INCLDIR) $(INCS) -c  $<
+
+# Dependencies (FMS library)
+# Declare all module files used to build each object.
+
+MersenneTwister.o : MersenneTwister.F90    
+affinity.o : affinity.c    
+amip_interp.o : amip_interp.F90 constants_mod.mod get_cal_time_mod.mod time_manager_mod.mod fms_io_mod.mod fms_mod.mod platform_mod.mod mpp_io_mod.mod horiz_interp_mod.mod time_interp_mod.mod mpp_mod.mod   
+astronomy.o : astronomy.F90 constants_mod.mod time_manager_mod.mod fms_mod.mod mpp_mod.mod   
+atmos_ocean_fluxes.o : atmos_ocean_fluxes.F90 fm_util_mod.mod field_manager_mod.mod fms_mod.mod coupler_types_mod.mod mpp_mod.mod   
+axis_utils.o : axis_utils.F90 fms_mod.mod mpp_io_mod.mod mpp_mod.mod   
+block_control.o : block_control.F90 mpp_domains_mod.mod mpp_mod.mod fms_platform.h  
+cloud_interpolator.o : cloud_interpolator.F90  fms_platform.h  
+column_diagnostics.o : column_diagnostics.F90 constants_mod.mod time_manager_mod.mod fms_mod.mod mpp_io_mod.mod mpp_mod.mod   
+constants.o : constants.F90 platform_mod.mod   
+coupler_types.o : coupler_types.F90 mpp_domains_mod.mod time_manager_mod.mod diag_manager_mod.mod fms_io_mod.mod fm_util_mod.mod field_manager_mod.mod fms_mod.mod data_override_mod.mod mpp_mod.mod   
+create_xgrid.o : create_xgrid.c  constant.h mosaic_util.h create_xgrid.h  
+data_override.o : data_override.F90 mpp_domains_mod.mod time_manager_mod.mod constants_mod.mod diag_manager_mod.mod fms_io_mod.mod fms_mod.mod time_interp_external_mod.mod mpp_io_mod.mod platform_mod.mod mpp_memutils_mod.mod horiz_interp_mod.mod axis_utils_mod.mod mpp_mod.mod fms_platform.h  
+diag_axis.o : diag_axis.F90 mpp_domains_mod.mod fms_mod.mod diag_data_mod.mod fms_platform.h  
+diag_data.o : diag_data.F90 mpp_domains_mod.mod time_manager_mod.mod fms_mod.mod mpp_io_mod.mod fms_platform.h  
+diag_grid.o : diag_grid.F90 mpp_domains_mod.mod constants_mod.mod fms_mod.mod mpp_mod.mod fms_platform.h  
+diag_manager.o : diag_manager.F90 mpp_domains_mod.mod constants_mod.mod diag_grid_mod.mod time_manager_mod.mod diag_output_mod.mod fms_io_mod.mod fms_mod.mod diag_data_mod.mod mpp_io_mod.mod mpp_parameter_mod.mod diag_util_mod.mod diag_table_mod.mod diag_manifest_mod.mod mpp_mod.mod diag_axis_mod.mod fms_platform.h  
+diag_manifest.o : diag_manifest.F90 time_manager_mod.mod fms_io_mod.mod fms_mod.mod diag_data_mod.mod mpp_mod.mod   
+diag_output.o : diag_output.F90 mpp_domains_mod.mod time_manager_mod.mod fms_mod.mod diag_data_mod.mod mpp_io_mod.mod mpp_mod.mod diag_axis_mod.mod fms_platform.h  
+diag_table.o : diag_table.F90 constants_mod.mod time_manager_mod.mod fms_mod.mod diag_data_mod.mod mpp_io_mod.mod diag_util_mod.mod mpp_mod.mod   
+diag_util.o : diag_util.F90 mpp_domains_mod.mod constants_mod.mod time_manager_mod.mod diag_grid_mod.mod fms_io_mod.mod diag_output_mod.mod fms_mod.mod mpp_io_mod.mod diag_data_mod.mod mpp_mod.mod diag_axis_mod.mod fms_platform.h file_version.h  
+drifters.o : drifters.F90 drifters_comm_mod.mod mpp_domains_mod.mod cloud_interpolator_mod.mod drifters_io_mod.mod drifters_core_mod.mod mpp_mod.mod drifters_input_mod.mod fms_platform.h drifters_set_field.h drifters_compute_k.h cloud_interpolator_mod.mod drifters_push.h fms_switches.h  
+drifters_comm.o : drifters_comm.F90 mpp_domains_mod.mod drifters_core_mod.mod mpp_mod.mod drifters_input_mod.mod fms_platform.h fms_switches.h  
+drifters_core.o : drifters_core.F90  fms_platform.h  
+drifters_input.o : drifters_input.F90  fms_platform.h  
+drifters_io.o : drifters_io.F90    
+ensemble_manager.o : ensemble_manager.F90 fms_io_mod.mod fms_mod.mod mpp_mod.mod   
+fft.o : fft.F90 fft99_mod.mod fms_mod.mod platform_mod.mod   
+fft99.o : fft99.F90 constants_mod.mod mpp_mod.mod   
+field_manager.o : field_manager.F90 fms_mod.mod mpp_io_mod.mod mpp_mod.mod parse.inc  
+fm_util.o : fm_util.F90 fms_mod.mod field_manager_mod.mod mpp_mod.mod   
+fms.o : fms.F90 mpp_domains_mod.mod constants_mod.mod fms_io_mod.mod mpp_io_mod.mod mpp_mod.mod memutils_mod.mod   
+fms_io.o : fms_io.F90 mpp_domains_mod.mod platform_mod.mod mpp_io_mod.mod mpp_parameter_mod.mod mpp_mod.mod fms_platform.h fms_io_unstructured_get_file_unit.inc fms_io_unstructured_file_unit.inc fms_io_unstructured_get_field_size.inc fms_io_unstructured_register_restart_axis.inc read_data_3d.inc fms_io_unstructured_field_exist.inc fms_io_unstructured_setup_one_field.inc fms_io_unstructured_read.inc write_data.inc fms_io_unstructured_register_restart_field.inc read_data_4d.inc fms_io_unstructured_get_file_name.inc fms_io_unstructured_save_restart.inc read_data_2d.inc  
+gaussian_topog.o : gaussian_topog.F90 constants_mod.mod fms_mod.mod mpp_mod.mod   
+get_cal_time.o : get_cal_time.F90 time_manager_mod.mod fms_mod.mod mpp_mod.mod   
+gradient.o : gradient.F90 constants_mod.mod mpp_mod.mod   
+gradient_c2l.o : gradient_c2l.c  gradient_c2l.h constant.h mosaic_util.h  
+grid.o : grid.F90 mpp_domains_mod.mod constants_mod.mod fms_io_mod.mod fms_mod.mod mpp_mod.mod mosaic_mod.mod   
+horiz_interp.o : horiz_interp.F90 mpp_domains_mod.mod horiz_interp_spherical_mod.mod horiz_interp_bilinear_mod.mod constants_mod.mod horiz_interp_conserve_mod.mod fms_mod.mod mpp_io_mod.mod horiz_interp_bicubic_mod.mod horiz_interp_type_mod.mod mpp_mod.mod   
+horiz_interp_bicubic.o : horiz_interp_bicubic.F90 constants_mod.mod fms_mod.mod horiz_interp_type_mod.mod mpp_mod.mod   
+horiz_interp_bilinear.o : horiz_interp_bilinear.F90 constants_mod.mod fms_mod.mod horiz_interp_type_mod.mod mpp_mod.mod   
+horiz_interp_conserve.o : horiz_interp_conserve.F90 constants_mod.mod fms_io_mod.mod fms_mod.mod horiz_interp_type_mod.mod mpp_mod.mod   
+horiz_interp_spherical.o : horiz_interp_spherical.F90 constants_mod.mod fms_mod.mod horiz_interp_type_mod.mod mpp_mod.mod   
+horiz_interp_type.o : horiz_interp_type.F90 mpp_mod.mod   
+interp.o : interp.c  mosaic_util.h interp.h create_xgrid.h  
+interpolator.o : interpolator.F90 mpp_domains_mod.mod constants_mod.mod time_manager_mod.mod diag_manager_mod.mod fms_mod.mod mpp_io_mod.mod time_interp_mod.mod horiz_interp_mod.mod mpp_mod.mod fms_platform.h  
+memuse.o : memuse.c    
+memutils.o : memutils.F90 mpp_io_mod.mod mpp_mod.mod   
+mosaic.o : mosaic.F90 constants_mod.mod fms_io_mod.mod fms_mod.mod mpp_io_mod.mod mpp_mod.mod   
+mosaic_util.o : mosaic_util.c  constant.h mosaic_util.h  
+mpp.o : mpp.F90 mpp_parameter_mod.mod mpp_data_mod.mod fms_platform.h  
+mpp_data.o : mpp_data.F90 mpp_parameter_mod.mod fms_platform.h  
+mpp_domains.o : mpp_domains.F90 mpp_pset_mod.mod mpp_memutils_mod.mod mpp_parameter_mod.mod mpp_data_mod.mod mpp_mod.mod mpp_efp_mod.mod fms_platform.h  
+mpp_efp.o : mpp_efp.F90 mpp_mod.mod fms_platform.h  
+mpp_io.o : mpp_io.F90 mpp_domains_mod.mod mpp_parameter_mod.mod mpp_mod.mod fms_platform.h  
+mpp_memutils.o : mpp_memutils.F90 mpp_mod.mod   
+mpp_parameter.o : mpp_parameter.F90  fms_platform.h  
+mpp_pset.o : mpp_pset.F90 mpp_mod.mod fms_platform.h  
+mpp_utilities.o : mpp_utilities.F90 mpp_mod.mod   
+nsclock.o : nsclock.c    
+oda_core.o : oda_core.F90 mpp_domains_mod.mod constants_mod.mod get_cal_time_mod.mod time_manager_mod.mod write_ocean_data_mod.mod oda_types_mod.mod field_manager_mod.mod fms_mod.mod mpp_io_mod.mod axis_utils_mod.mod mpp_mod.mod   
+oda_core_ecda.o : oda_core_ecda.F90 mpp_domains_mod.mod horiz_interp_bilinear_mod.mod constants_mod.mod get_cal_time_mod.mod time_manager_mod.mod oda_types_mod.mod fms_mod.mod xbt_adjust.mod mpp_io_mod.mod mpp_memutils_mod.mod horiz_interp_type_mod.mod axis_utils_mod.mod mpp_mod.mod   
+oda_types.o : oda_types.F90 mpp_domains_mod.mod time_manager_mod.mod mpp_mod.mod   
+platform.o : platform.F90  fms_platform.h  
+quicksort.o : quicksort.F90    
+random_numbers.o : random_numbers.F90 time_manager_mod.mod mersennetwister_mod.mod   
+read_mosaic.o : read_mosaic.c  read_mosaic.h constant.h mosaic_util.h  
+sat_vapor_pres.o : sat_vapor_pres.F90 constants_mod.mod fms_mod.mod mpp_io_mod.mod sat_vapor_pres_k_mod.mod mpp_mod.mod   
+sat_vapor_pres_k.o : sat_vapor_pres_k.F90    
+station_data.o : station_data.F90 mpp_domains_mod.mod time_manager_mod.mod diag_manager_mod.mod diag_output_mod.mod fms_mod.mod mpp_io_mod.mod diag_util_mod.mod mpp_mod.mod axis_utils_mod.mod diag_axis_mod.mod   
+stock_constants.o : stock_constants.F90 time_manager_mod.mod diag_manager_mod.mod fms_mod.mod mpp_mod.mod   
+test_fms_io.o : test_fms_io.F90 mpp_domains_mod.mod fms_io_mod.mod mpp_io_mod.mod mpp_mod.mod fms_platform.h  
+test_horiz_interp.o : test_horiz_interp.F90 mpp_domains_mod.mod constants_mod.mod fms_io_mod.mod fms_mod.mod mpp_io_mod.mod horiz_interp_mod.mod axis_utils_mod.mod mpp_mod.mod mosaic_mod.mod   
+test_mpp.o : test_mpp.F90 mpp_io_mod.mod mpp_mod.mod fms_platform.h  
+test_mpp_domains.o : test_mpp_domains.F90 mpp_domains_mod.mod mpp_memutils_mod.mod mpp_mod.mod fms_platform.h  
+test_mpp_io.o : test_mpp_io.F90 mpp_domains_mod.mod mpp_io_mod.mod mpp_mod.mod fms_platform.h  
+test_mpp_pset.o : test_mpp_pset.F90 mpp_pset_mod.mod mpp_mod.mod fms_platform.h  
+test_unstructured_fms_io.o : test_unstructured_fms_io.F90 mpp_domains_mod.mod fms_io_mod.mod mpp_io_mod.mod mpp_parameter_mod.mod mpp_mod.mod fms_platform.h  
+test_xgrid.o : test_xgrid.F90 mpp_domains_mod.mod grid_mod.mod ensemble_manager_mod.mod constants_mod.mod fms_io_mod.mod fms_mod.mod mpp_io_mod.mod xgrid_mod.mod mpp_mod.mod gradient_mod.mod mosaic_mod.mod fms_platform.h  
+threadloc.o : threadloc.c    
+time_interp.o : time_interp.F90 time_manager_mod.mod fms_mod.mod mpp_mod.mod   
+time_interp_external.o : time_interp_external.F90 mpp_domains_mod.mod constants_mod.mod get_cal_time_mod.mod time_manager_mod.mod fms_mod.mod platform_mod.mod mpp_io_mod.mod horiz_interp_mod.mod time_interp_mod.mod axis_utils_mod.mod mpp_mod.mod fms_platform.h  
+time_manager.o : time_manager.F90 constants_mod.mod fms_io_mod.mod fms_mod.mod mpp_mod.mod fms_platform.h  
+topography.o : topography.F90 constants_mod.mod fms_io_mod.mod fms_mod.mod gaussian_topog_mod.mod horiz_interp_mod.mod mpp_mod.mod   
+tracer_manager.o : tracer_manager.F90 field_manager_mod.mod fms_mod.mod mpp_io_mod.mod mpp_mod.mod   
+tridiagonal.o : tridiagonal.F90    
+write_ocean_data.o : write_ocean_data.F90 mpp_domains_mod.mod time_manager_mod.mod oda_types_mod.mod mpp_io_mod.mod mpp_mod.mod   
+xbt_drop_rate_adjust.o : xbt_drop_rate_adjust.f90 oda_types_mod.mod   
+xgrid.o : xgrid.F90 mpp_domains_mod.mod time_manager_mod.mod constants_mod.mod diag_manager_mod.mod fms_io_mod.mod fms_mod.mod mpp_io_mod.mod stock_constants_mod.mod mpp_mod.mod gradient_mod.mod mosaic_mod.mod fms_platform.h  
+# The following section relates each module to the corresponding file.
+axis_utils_mod.mod : axis_utils.o
+cloud_interpolator_mod.mod : cloud_interpolator.o
+constants_mod.mod : constants.o
+coupler_types_mod.mod : coupler_types.o
+data_override_mod.mod : data_override.o
+diag_axis_mod.mod : diag_axis.o
+diag_data_mod.mod : diag_data.o
+diag_grid_mod.mod : diag_grid.o
+diag_manager_mod.mod : diag_manager.o
+diag_manifest_mod.mod : diag_manifest.o
+diag_output_mod.mod : diag_output.o
+diag_table_mod.mod : diag_table.o
+diag_util_mod.mod : diag_util.o
+drifters_comm_mod.mod : drifters_comm.o
+drifters_core_mod.mod : drifters_core.o
+drifters_input_mod.mod : drifters_input.o
+drifters_io_mod.mod : drifters_io.o
+ensemble_manager_mod.mod : ensemble_manager.o
+fft99_mod.mod : fft99.o
+field_manager_mod.mod : field_manager.o
+fm_util_mod.mod : fm_util.o
+fms_io_mod.mod : fms_io.o
+fms_mod.mod : fms.o
+gaussian_topog_mod.mod : gaussian_topog.o
+get_cal_time_mod.mod : get_cal_time.o
+gradient_mod.mod : gradient.o
+grid_mod.mod : grid.o
+horiz_interp_bicubic_mod.mod : horiz_interp_bicubic.o
+horiz_interp_bilinear_mod.mod : horiz_interp_bilinear.o
+horiz_interp_conserve_mod.mod : horiz_interp_conserve.o
+horiz_interp_mod.mod : horiz_interp.o
+horiz_interp_spherical_mod.mod : horiz_interp_spherical.o
+horiz_interp_type_mod.mod : horiz_interp_type.o
+memutils_mod.mod : memutils.o
+mersennetwister_mod.mod : MersenneTwister.o
+mosaic_mod.mod : mosaic.o
+mpp_data_mod.mod : mpp_data.o
+mpp_domains_mod.mod : mpp_domains.o
+mpp_efp_mod.mod : mpp_efp.o
+mpp_io_mod.mod : mpp_io.o
+mpp_memutils_mod.mod : mpp_memutils.o
+mpp_mod.mod : mpp.o
+mpp_parameter_mod.mod : mpp_parameter.o
+mpp_pset_mod.mod : mpp_pset.o
+oda_types_mod.mod : oda_types.o
+platform_mod.mod : platform.o
+sat_vapor_pres_k_mod.mod : sat_vapor_pres_k.o
+stock_constants_mod.mod : stock_constants.o
+time_interp_external_mod.mod : time_interp_external.o
+time_interp_mod.mod : time_interp.o
+time_manager_mod.mod : time_manager.o
+write_ocean_data_mod.mod : write_ocean_data.o
+xbt_adjust.mod : xbt_drop_rate_adjust.o
+xgrid_mod.mod : xgrid.o
+
+#
+clean_objs:
+	rm -f $(OBJS) *.mod *.o
+
+clean:
+	rm -f libfms.a $(OBJS) *.mod *.o fort.*

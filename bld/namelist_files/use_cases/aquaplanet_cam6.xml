@@ -34,7 +34,6 @@
 
 <!-- Revised physics constants for ape experiments -->
 <sday                     >86164.10063718943</sday>
-<rearth                   >6.37100e6</rearth>
 <gravit                   >9.79764</gravit>
 <mwdry                    >28.96623324623746</mwdry>
 <mwh2o                    >18.01618112892741</mwh2o>

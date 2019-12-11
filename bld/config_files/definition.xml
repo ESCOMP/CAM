@@ -26,8 +26,8 @@ Switch specifies whether CAM is being built by the CCSM sequential scripts.  0 =
 <entry id="cpl" valid_values="mct,nuopc" value="mct" >
 Coupling framework: mct or nuopc.  Default: mct.
 </entry>
-<entry id="dyn" valid_values="eul,fv,se" value="">
-Dynamics package: eul, fv, or se.
+<entry id="dyn" valid_values="eul,fv,fv3,se" value="">
+Dynamics package: eul, fv, fv3, or se.
 </entry>
 <entry id="waccm_phys" valid_values="0,1" value="0">
 Switch to turn on waccm physics: 0 => no, 1 => yes.
@@ -288,6 +288,24 @@ Switch to enable building COSP simulator package.  1 => build COSP.
 </entry>
 <entry id="cosp_libdir" value="">
 Directory containing COSP library.
+</entry>
+<entry id="fms_libdir" value="">
+Directory containing FMS library.
+</entry>
+<entry id="fv3core_libdir" value="">
+Directory containing FV3CORE library.
+</entry>
+<entry id="gfsphysics" valid_values="0,1" value="0">
+Switch to enable building GFSPHYSICS simulator package.  1 => build GFSPHYSICS.
+</entry>
+<entry id="gfsphysics_libdir" value="">
+Directory containing GFSPHYSICS library.
+</entry>
+<entry id="fv3io" valid_values="0,1" value="0">
+Switch to enable building FV3IO simulator package.  1 => build FV3IO.
+</entry>
+<entry id="fv3io_libdir" value="">
+Directory containing FV3IO library.
 </entry>
 <entry id="target_os" value="">
 OS for which CAM is being built.  The default value is the name contained

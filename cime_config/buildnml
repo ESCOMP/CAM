@@ -186,7 +186,23 @@ def buildnml(case, caseroot, compname):
                 file2 += inst_string
             logger.info("CAM namelist copy: file1 %s file2 %s ", file1, file2)
             shutil.copy(file1,file2)
-
+        # -----------------------------------------------------
+        # copy fv3 input.nml and diag_table files if they exists
+        # -----------------------------------------------------
+            file1 = os.path.join(camconf, "input.nml")
+            if (os.path.isfile(file1)):
+                file2 = os.path.join(rundir, "input.nml")
+                if ninst > 1:
+                    file2 += inst_string
+                logger.info("CAM namelist copy: file1 %s file2 %s " %(file1, file2))
+                shutil.copy(file1,file2)
+            file1 = os.path.join(camconf, "diag_table")
+            if (os.path.isfile(file1)):
+                file2 = os.path.join(rundir, "diag_table")
+                if ninst > 1:
+                    file2 += inst_string
+                logger.info("CAM namelist copy: file1 %s file2 %s " %(file1, file2))
+                shutil.copy(file1,file2)
         # -----------------------------------------------------
         # copy drv_flds_in to rundir if it does not exist
         # -----------------------------------------------------
