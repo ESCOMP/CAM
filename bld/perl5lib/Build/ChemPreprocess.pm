@@ -38,7 +38,6 @@ sub chem_preprocess
     my $usr_mech_infile = $cfg_ref->get('usr_mech_infile');
     my $prog_species = $cfg_ref->get('prog_species');
     my $chem_pkg = $cfg_ref->get('chem');
-    my $cam_root = $cfg_ref->get('cam_root');
     my $cam_dir = $cfg_ref->get('cam_dir');
     my $cam_bld = $cfg_ref->get('cam_bld');
     my $chem_proc_src = $cfg_ref->get('chem_proc_src');
