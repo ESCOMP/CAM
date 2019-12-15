@@ -83,6 +83,7 @@ module physics_buffer
      integer                           :: lchnk
      type(physics_buffer_hdr), pointer :: hdr => null()
      type(buffer_field_default_type)   :: bfg(ngrid_types)
+     logical                           :: used = .false.
   end type physics_buffer_desc
 
   interface pbuf_get_field
@@ -136,6 +137,7 @@ module physics_buffer
             pbuf_init_restart,    &
             pbuf_write_restart,   &
             pbuf_read_restart,    &
+            pbuf_is_used,         &
             dtype_r8, dtype_r4, dtype_i4
 
   ! For help debugging code
@@ -917,6 +919,7 @@ end subroutine pbuf_readnl
             end if
 
             ! Get the grid field
+            pbuf(index)%used = .true.
             call buffer_get_field_ptr(pbuf(index)%bfg(col_type_grid),           &
                  gfield, start, kount_grid)
 
@@ -924,11 +927,13 @@ end subroutine pbuf_readnl
 
           else
             ! Get the grid field
+            pbuf(index)%used = .true.
             call buffer_get_field_ptr(pbuf(index)%bfg(col_type_grid),           &
                  gfield)
           end if
 
           ! Get the subcol field pointer (note optional start/kount retain their status in this call)
+          pbuf(index)%used = .true.
           call buffer_get_field_ptr(pbuf(index)%bfg(col_type_subcol),            &
                sfield, start, kount)
 
@@ -955,7 +960,8 @@ end subroutine pbuf_readnl
        end if
     else
         ! Get the field pointer (note optional start/kount retain their status in this call)
-        call buffer_get_field_ptr(pbuf(index)%bfg(col_type_use),field,start,kount )
+       pbuf(index)%used = .true.
+       call buffer_get_field_ptr(pbuf(index)%bfg(col_type_use),field,start,kount )
     end if
 
   end subroutine get_pbuf1d_field_by_index_{DIMS}d_{TYPE}
@@ -1098,12 +1104,14 @@ end subroutine pbuf_readnl
          ! Set sub-column field
          if (.not. buffer_field_is_alloc(pbuf(index)%bfg(col_type_subcol))) &
               call endrun('pbuf_set_field: sub-column field not allocated for '//trim(pbuf(index)%hdr%name))
+         pbuf(index)%used = .true.
          call buffer_set_field(pbuf(index)%bfg(col_type_subcol),const,start,kount)
 
        else if (col_type_use == col_type_grid) then
          ! Set grid field
          if (.not. buffer_field_is_alloc(pbuf(index)%bfg(col_type_grid))) &
               call endrun('pbuf_set_field: grid field not allocated for '//trim(pbuf(index)%hdr%name))
+         pbuf(index)%used = .true.
          call buffer_set_field(pbuf(index)%bfg(col_type_grid),const,start,kount)
        else
          call endrun('pbuf_set_field: Trying to set '//trim(pbuf(index)%hdr%name)//&
@@ -1116,12 +1124,14 @@ end subroutine pbuf_readnl
          ! Set sub-column field
          if (.not. buffer_field_is_alloc(pbuf(index)%bfg(col_type_subcol))) &
               call endrun('pbuf_set_field: sub-column field not allocated for '//trim(pbuf(index)%hdr%name))
+         pbuf(index)%used = .true.
          call buffer_set_field(pbuf(index)%bfg(col_type_subcol),const)
 
        else if (col_type_use == col_type_grid) then
          ! Set grid field
          if (.not. buffer_field_is_alloc(pbuf(index)%bfg(col_type_grid))) &
               call endrun('pbuf_set_field: grid field not allocated for '//trim(pbuf(index)%hdr%name))
+         pbuf(index)%used = .true.
          call buffer_set_field(pbuf(index)%bfg(col_type_grid),const)
        else
          call endrun('pbuf_set_field: Trying to set '//trim(pbuf(index)%hdr%name)//&
@@ -1248,12 +1258,14 @@ end subroutine pbuf_readnl
        if (col_type_use == col_type_subcol) then
           if (.not. buffer_field_is_alloc(pbuf(index)%bfg(col_type_subcol))) &
               call endrun('pbuf_set_field: sub-column field not allocated for '//trim(pbuf(index)%hdr%name))
+          pbuf(index)%used = .true.
           call buffer_set_field(pbuf(index)%bfg(col_type_subcol),field,start,kount)
 
        ! Set grid field
        else if (col_type_use == col_type_grid) then
           if (.not. buffer_field_is_alloc(pbuf(index)%bfg(col_type_grid))) &
                  call endrun('pbuf_set_field: grid field not allocated for '//trim(pbuf(index)%hdr%name))
+          pbuf(index)%used = .true.
           call buffer_set_field(pbuf(index)%bfg(col_type_grid),field,start,kount)
        else
          call endrun('pbuf_set_field: Trying to set '//trim(pbuf(index)%hdr%name)//&
@@ -1265,12 +1277,14 @@ end subroutine pbuf_readnl
        if (col_type_use == col_type_subcol) then
           if (.not. buffer_field_is_alloc(pbuf(index)%bfg(col_type_subcol))) &
               call endrun('pbuf_set_field: sub-column field not allocated for '//trim(pbuf(index)%hdr%name))
+          pbuf(index)%used = .true.
           call buffer_set_field(pbuf(index)%bfg(col_type_subcol),field)
 
        ! Set grid field
        else if (col_type_use == col_type_grid) then
           if (.not. buffer_field_is_alloc(pbuf(index)%bfg(col_type_grid))) &
                  call endrun('pbuf_set_field: grid field not allocated for '//trim(pbuf(index)%hdr%name))
+          pbuf(index)%used = .true.
           call buffer_set_field(pbuf(index)%bfg(col_type_grid),field)
        else
          call endrun('pbuf_set_field: Trying to set '//trim(pbuf(index)%hdr%name)//&
@@ -1608,11 +1622,13 @@ end subroutine pbuf_readnl
 
       do c = begchunk, endchunk
         if (grid_select == col_type_grid) then
-          call buffer_get_field_ptr(pbuf2d(index,c)%bfg(grid_select), fld6,   &
-               start, dimsizes)
+           pbuf%used = .true.
+           call buffer_get_field_ptr(pbuf2d(index,c)%bfg(grid_select), fld6,  &
+                start, dimsizes)
           fld6 = reshape(field(:,:,c), dimsizes)
         else if (grid_select == col_type_subcol) then
           call subcol_pack(c, reshape(field(:,:,c), dimsizes), fld5_pack)
+          pbuf%used = .true.
           call buffer_set_field(pbuf2d(index,c)%bfg(grid_select), fld5_pack)
         else
           call endrun('read_restart_field_{TYPE}: invalid grid selector - must be either 1 or 2')
@@ -1626,6 +1642,12 @@ end subroutine pbuf_readnl
     end do
 
   end subroutine read_restart_field_{TYPE}
+
+  logical function pbuf_is_used(pbuf)
+     type(physics_buffer_desc), intent(in) :: pbuf
+
+     pbuf_is_used = pbuf%used
+  end function pbuf_is_used
 
   subroutine pbuf_dump_pbuf(pbuf2d, name, num)
     use cam_pio_utils,    only: cam_pio_dump_field
@@ -1758,7 +1780,7 @@ subroutine pbuf_get_dim_strings(pbuf, string)
 
   type(physics_buffer_desc), intent(in) :: pbuf(:)
   character(len=*),       intent(inout) :: string(:,:)
-  
+
   character(len=max_hcoordname_len) :: dim_name
   integer :: i, j
 
