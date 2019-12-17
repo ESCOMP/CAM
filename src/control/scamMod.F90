@@ -164,7 +164,7 @@ logical, public ::  have_asdir             = .false. ! dataset contains asdir
 logical, public ::  have_asdif             = .false. ! dataset contains asdif
 logical, public ::  use_camiop             = .false. ! use cam generated forcing 
 logical, public ::  use_3dfrc              = .false. ! use 3d forcing
-logical, public ::  use_userdata           = .false. 
+logical, public ::  use_userdata           = .true. 
 logical, public ::  isrestart              = .false. ! If this is a restart step or not
   
 ! SCAM namelist defaults
