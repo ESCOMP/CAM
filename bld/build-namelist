@@ -4541,12 +4541,29 @@ sub check_snapshot_settings {
         $nl->set_variable_value('phys_ctl_nl', 'cam_take_snapshot_after', "'UNSET'");
     }
 
+
     # Check for "cam_take_snapshot" values for before and after being compatible
     # Due to the physics call structure, only some before/after pairs are valid
     # After the appropriate check is found, return as no other checks will pertain
 
+    my $user_set_before = ((defined $cam_take_snapshot_before) and
+                               ($cam_take_snapshot_before eq "'user_set'"));
+    my $user_set_after = ((defined $cam_take_snapshot_after) and
+                              ($cam_take_snapshot_after eq "'user_set'"));
+    if ($user_set_before and $user_set_after) {
+        return; # This is okay, user will set before and after code
+    } elsif ($user_set_before and (not defined $cam_take_snapshot_after)) {
+        return; # This iis okay, user will set before code only
+    } elsif ($user_set_after and (not defined $cam_take_snapshot_before)) {
+        return; # This iis okay, user will set after code only
+    } # No else, just proceed with list checks
     my @validList_bc = ();
     my @validList_ac = ();
+    if ($user_set_before) {
+        # We cannot check order so mark all after matches okay.
+        push (@validList_ac, ("'user_set'"));
+        push (@validList_bc, ("'user_set'"));
+    }
     if ($simple_phys) {
         # Simple physpkg
         push (@validList_ac, ("'physics_dme_adjust'"));
@@ -4562,6 +4579,9 @@ sub check_snapshot_settings {
         }
     } else {
         # CAM physpkg
+        push(@validList_ac, ("'chem_emissions'",
+                             "'aoa_tracers_timestep_tend'",
+                             "'co2_cycle_set_ptend'"));
         if ($chem ne 'none') {
             push (@validList_ac, ("'chem_timestep_tend'"));
         }
@@ -4584,6 +4604,11 @@ sub check_snapshot_settings {
         }
         push (@validList_bc, ("'aero_model_wetdep'", "'radiation_tend'"));
     }
+    if ($user_set_after) {
+        # We cannot check order so mark all before matches okay.
+        push (@validList_ac, ("'user_set'"));
+        push (@validList_bc, ("'user_set'"));
+    }
 
     my $before_index_bc = first_index($cam_take_snapshot_before, @validList_bc);
     my $after_index_bc = first_index($cam_take_snapshot_after, @validList_bc);
@@ -4591,14 +4616,14 @@ sub check_snapshot_settings {
     my $after_index_ac = first_index($cam_take_snapshot_after, @validList_ac);
 
     # If before is set, it must be valid
-    if ((defined $cam_take_snapshot_before) and
+    if ((defined $cam_snapshot_before_num) and
           ($cam_snapshot_before_num ge 0) and
           (defined $cam_take_snapshot_before) and
           (($before_index_ac lt 0) and ($before_index_bc lt 0))) {
         die "ERROR: Invalid cam_take_snapshot_before setting, $cam_take_snapshot_before\n"
     }
     # If after is set, it must be valid
-    if ((defined $cam_take_snapshot_after) and
+    if ((defined $cam_snapshot_after_num) and
           ($cam_snapshot_after_num ge 0) and
           (defined $cam_take_snapshot_after) and
           (($after_index_ac lt 0) and ($after_index_bc lt 0))) {
@@ -4607,6 +4632,10 @@ sub check_snapshot_settings {
     # If at least one of before/after are not set requires no further checking
     if (  (! defined $cam_take_snapshot_before) or
           (! defined $cam_take_snapshot_after)) {
+        return;
+    }
+    # If either before or after is 'user_set', end checks
+    if ($user_set_before or $user_set_after) {
         return;
     }
 

@@ -1383,7 +1383,13 @@ contains
 
     ! emissions of aerosols and gas-phase chemistry constituents at surface
 
+    if (trim(cam_take_snapshot_before) == "chem_emissions") then
+       call cam_snapshot_all_outfld(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf)
+    end if
     call chem_emissions( state, cam_in )
+    if (trim(cam_take_snapshot_after) == "chem_emissions") then
+       call cam_snapshot_all_outfld(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf)
+    end if
 
     if (carma_do_emission) then
        ! carma emissions
@@ -1410,13 +1416,33 @@ contains
     call t_startf('adv_tracer_src_snk')
     ! Test tracers
 
+    if (trim(cam_take_snapshot_before) == "aoa_tracers_timestep_tend") then
+       call cam_snapshot_all_outfld(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf)
+    end if
     call aoa_tracers_timestep_tend(state, ptend, cam_in%cflx, cam_in%landfrac, ztodt)
-    call physics_update(state, ptend, ztodt, tend        )
+    if ( (trim(cam_take_snapshot_after) == "aoa_tracers_timestep_tend") .and. &
+         (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
+       call cam_snapshot_ptend_outfld(ptend, lchnk)
+    end if
+    call physics_update(state, ptend, ztodt, tend)
+    if (trim(cam_take_snapshot_after) == "aoa_tracers_timestep_tend") then
+       call cam_snapshot_all_outfld(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf)
+    end if
     call check_tracers_chng(state, tracerint, "aoa_tracers_timestep_tend", nstep, ztodt,   &
          cam_in%cflx)
 
+    if (trim(cam_take_snapshot_before) == "co2_cycle_set_ptend") then
+       call cam_snapshot_all_outfld(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf)
+    end if
     call co2_cycle_set_ptend(state, pbuf, ptend)
-    call physics_update(state, ptend, ztodt, tend              )
+    if ( (trim(cam_take_snapshot_after) == "co2_cycle_set_ptend") .and.       &
+         (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
+       call cam_snapshot_ptend_outfld(ptend, lchnk)
+    end if
+    call physics_update(state, ptend, ztodt, tend)
+    if (trim(cam_take_snapshot_after) == "co2_cycle_set_ptend") then
+       call cam_snapshot_all_outfld(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf)
+    end if
 
     !===================================================
     ! Chemistry and MAM calculation
@@ -1490,7 +1516,7 @@ contains
     !===================================================
     call t_startf('rayleigh_friction')
     call rayleigh_friction_tend( ztodt, state, ptend)
-    call physics_update(state, ptend, ztodt, tend      )
+    call physics_update(state, ptend, ztodt, tend)
     call t_stopf('rayleigh_friction')
 
     if (do_clubb_sgs) then
