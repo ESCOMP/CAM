@@ -825,7 +825,8 @@ subroutine define_cam_grids()
    integer,  dimension(:), pointer :: indexToCellID
    real(r8), dimension(:), pointer :: latCell
    real(r8), dimension(:), pointer :: lonCell
-   real(r8), dimension(:), pointer :: areaCell
+   real(r8), dimension(:), pointer :: areaCell  ! cell areas in m^2
+   real(r8), dimension(:), pointer :: area_unit ! cell areas on unit sphere (radians^2)
 
    character(len=*), parameter :: subname = 'dyn_grid::define_cam_grids'
    !----------------------------------------------------------------------------
@@ -854,19 +855,25 @@ subroutine define_cam_grids()
    allocate(grid_map(3, nCellsSolve))
    do i = 1, nCellsSolve
       grid_map(1, i) = i
-      grid_map(2, i) = 0
+      grid_map(2, i) = 1
       grid_map(3, i) = coord_map(i)
    end do
 
    ! cell center grid
    call cam_grid_register('mpas_cell', dyn_decomp, lat_coord, lon_coord,     &
-          grid_map, block_indexed=.false., unstruct=.true., src_in=[1,0])
-   call cam_grid_attribute_register('mpas_cell', 'area', 'cell areas',  &
-          'ncol', areaCell/6371229.0_r8**2.0_r8, coord_map)    ! MGD Should we pass areaCell(1:nCellsSolve) instead?
+          grid_map, block_indexed=.false., unstruct=.true.)
+   allocate(area_unit(nCellsSolve))
+   area_unit = areaCell(1:nCellsSolve) / 6371229.0_r8**2.0_r8
+   call cam_grid_attribute_register('mpas_cell', 'area', 'cell areas (radian^2)',  &
+          'ncol', area_unit, coord_map)
 
-   ! grid_map cannot be deallocated as the cam_filemap_t object just points
-   ! to it.  It can be nullified.
+   ! grid_map memory cannot be deallocated.  The cam_filemap_t object just points
+   ! to it.  Pointer can be disassociated.
    nullify(grid_map) ! Map belongs to grid now
+
+   ! area_unit memory cannot be deallocated.  The cam_grid_attribute_1d_r8_t object points
+   ! to it.  Pointer can be disassociated.
+   nullify(area_unit)
  
 end subroutine define_cam_grids
 
