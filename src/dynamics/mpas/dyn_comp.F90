@@ -52,35 +52,69 @@ public :: &
    dyn_final
 
 type dyn_import_t
-   real(r8), dimension(: ),     pointer     :: phis   ! Surface geopotential      (ncol)
-   real(r8), dimension(: ),     pointer     :: psd    ! Dry surface pressure      (ncol)
-   real(r8), dimension(:,:,: ), pointer     :: uvperp ! Normal velocity at edges  (ncol,nedge,nver)
-   real(r8), dimension(:,:   ), pointer     :: ux     ! Lon veloc at center       (ncol,nver)
-   real(r8), dimension(:,:   ), pointer     :: uy     ! Lat veloc at center       (ncol,nver)
-   real(r8), dimension(:,:   ), pointer     :: t      ! Temperature               (ncol,nver)
-   real(r8), dimension(:,:   ), pointer     :: omega  ! Omega                     (ncol,nver+1)
-   real(r8), dimension(:,:,: ), pointer     :: tracer ! Tracers                   (ncol,nver,nq)
-   real(r8), dimension(:,:   ), pointer     :: ux_tend! Lon veloc tend at center  (ncol,nver)
-   real(r8), dimension(:,:   ), pointer     :: uy_tend! Lat veloc tend at center  (ncol,nver)
-   real(r8), dimension(:,:   ), pointer     :: t_tend ! Temperature tendency      (ncol,nver)
+   !
+   ! State that is directly prognosed by the dycore
+   !
+   real(r8), dimension(:,:),   pointer :: uperp   ! Normal velocity at edges [m/s]  (nver,nedge)
+   real(r8), dimension(:,:),   pointer :: w       ! Vertical velocity [m/s]        (nver+1,ncol)
+   real(r8), dimension(:,:),   pointer :: theta_m ! Moist potential temperature [K]  (nver,ncol)
+   real(r8), dimension(:,:),   pointer :: rho_zz  ! Dry density [kg/m^3]
+                                                  ! divided by d(zeta)/dz            (nver,ncol)
+   real(r8), dimension(:,:,:), pointer :: tracers ! Tracers [kg/kg dry air]       (nq,nver,ncol)
+
+   !
+   ! Invariant -- the vertical coordinate in MPAS-A is a height coordinate
+   !
+   real(r8), dimension(:,:),   pointer :: zint    ! Geometric height [m]
+                                                  ! at layer interfaces            (nver+1,ncol)
+
+   !
+   ! State that may be directly derived from dycore prognostic state
+   !
+   real(r8), dimension(:,:),   pointer :: theta   ! Potential temperature [K]        (nver,ncol)
+   real(r8), dimension(:,:),   pointer :: rho     ! Dry density [kg/m^3]             (nver,ncol)
+   real(r8), dimension(:,:),   pointer :: ux      ! Zonal veloc at center [m/s]      (nver,ncol)
+   real(r8), dimension(:,:),   pointer :: uy      ! Meridional veloc at center [m/s] (nver,ncol)
+   real(r8), dimension(:,:),   pointer :: pmid    ! Full non-hydrostatic pressure [Pa]
+                                                  ! at layer midpoints               (nver,ncol)
+
+   !
+   ! Tendencies from physics
+   !
+   real(r8), dimension(:,:),   pointer :: ru_tend ! Normal horizontal momentum tendency
+                                                  ! from physics [kg/m^2/s]         (nver,nedge)
+   real(r8), dimension(:,:),   pointer :: rtheta_tend ! Tendency of rho*theta/zz
+                                                      ! from physics [kg K/m^3/s]    (nver,ncol)
+   real(r8), dimension(:,:),   pointer :: rho_tend ! Dry air density tendency
+                                                   ! from physics [kg/m^3/s]         (nver,ncol)
 end type dyn_import_t
 
 type dyn_export_t
-   real(r8), dimension(: ),     pointer     :: phis   ! Surface geopotential      (ncol)
-   real(r8), dimension(: ),     pointer     :: psd    ! Dry surface pressure      (ncol)
-   real(r8), dimension(:,: ),   pointer     :: pint   ! Dry pressure at layer interfaces (ncol,nver+1)
-   real(r8), dimension(:,: ),   pointer     :: pmid   ! Dry pressure at layer mid-points (ncol,nver)
-   real(r8), dimension(:,: ),   pointer     :: zint   ! Geopotential height 
-                                                       !              at layer interfaces (ncol,nver+1)
-   real(r8), dimension(:,: ),   pointer     :: zmid   ! Geopotential height 
-                                                       !              at layer mid-points (ncol,nver)
-   real(r8), dimension(:,:,: ), pointer     :: uvperp ! Normal velocity at edges  (ncol,nedge,nver)
-   real(r8), dimension(:,:   ), pointer     :: ux     ! Lon veloc at center       (ncol,nver)
-   real(r8), dimension(:,:   ), pointer     :: uy     ! Lat veloc at center       (ncol,nver)
-   real(r8), dimension(:,:   ), pointer     :: t      ! Temperature               (ncol,nver)
-   real(r8), dimension(:,:   ), pointer     :: omega  ! Omega                     (ncol,nver+1)
-   real(r8), dimension(:,:,: ), pointer     :: tracer ! Tracers                   (ncol,nver,nq)
-   real(r8), dimension(:,:   ), pointer     :: pressure! Pressure                 (ncol,nver)
+   !
+   ! State that is directly prognosed by the dycore
+   !
+   real(r8), dimension(:,:),   pointer :: uperp   ! Normal velocity at edges [m/s]  (nver,nedge)
+   real(r8), dimension(:,:),   pointer :: w       ! Vertical velocity [m/s]        (nver+1,ncol)
+   real(r8), dimension(:,:),   pointer :: theta_m ! Moist potential temperature [K]  (nver,ncol)
+   real(r8), dimension(:,:),   pointer :: rho_zz  ! Dry density [kg/m^3]
+                                                  ! divided by d(zeta)/dz            (nver,ncol)
+   real(r8), dimension(:,:,:), pointer :: tracers ! Tracers [kg/kg dry air]       (nq,nver,ncol)
+
+   !
+   ! Invariant -- the vertical coordinate in MPAS-A is a height coordinate
+   !
+   real(r8), dimension(:,:),   pointer :: zint    ! Geometric height [m]
+                                                  ! at layer interfaces            (nver+1,ncol)
+
+   !
+   ! State that may be directly derived from dycore prognostic state
+   !
+   real(r8), dimension(:,:),   pointer :: theta   ! Potential temperature [K]        (nver,ncol)
+   real(r8), dimension(:,:),   pointer :: rho     ! Dry density [kg/m^3]             (nver,ncol)
+   real(r8), dimension(:,:),   pointer :: ux      ! Zonal veloc at center [m/s]      (nver,ncol)
+   real(r8), dimension(:,:),   pointer :: uy      ! Meridional veloc at center [m/s] (nver,ncol)
+   real(r8), dimension(:,:),   pointer :: pmid    ! Full non-hydrostatic pressure [Pa]
+                                                  ! at layer midpoints               (nver,ncol)
 end type dyn_export_t
 
 real(r8), parameter :: rad2deg = 180.0_r8 / pi
@@ -181,48 +215,63 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    character(len=*), parameter :: subname = 'dyn_comp::dyn_init'
 
-   type(mpas_pool_type), pointer :: dyn_inPool
-   type(mpas_pool_type), pointer :: dyn_outPool
+   type(mpas_pool_type), pointer :: mesh_pool
+   type(mpas_pool_type), pointer :: state_pool
+   type(mpas_pool_type), pointer :: diag_pool
+   type(mpas_pool_type), pointer :: tend_physics_pool
 
    !----------------------------------------------------------------------------
 
    MPAS_DEBUG_WRITE(0, 'begin '//subname)
 
-   call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'dyn_in', dyn_inPool)
-   call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'dyn_out', dyn_outPool)
+   call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'mesh',  mesh_pool)
+   call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'state', state_pool)
+   call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'diag',  diag_pool)
+   call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'tend_physics', tend_physics_pool)
 
 
    !
    ! Let dynamics import state point to memory managed by MPAS-Atmosphere
    !
-   call mpas_pool_get_array(dyn_inPool, 'phis', dyn_in % phis)
-   call mpas_pool_get_array(dyn_inPool, 'psd', dyn_in % psd)
-   call mpas_pool_get_array(dyn_inPool, 'ux', dyn_in % ux)
-   call mpas_pool_get_array(dyn_inPool, 'uy', dyn_in % uy)
-   call mpas_pool_get_array(dyn_inPool, 't', dyn_in % t)
-   call mpas_pool_get_array(dyn_inPool, 'omega', dyn_in % omega)
-   call mpas_pool_get_array(dyn_inPool, 'tracer', dyn_in % tracer)
-   call mpas_pool_get_array(dyn_inPool, 'ux_tend', dyn_in % ux_tend)
-   call mpas_pool_get_array(dyn_inPool, 'uy_tend', dyn_in % uy_tend)
-   call mpas_pool_get_array(dyn_inPool, 't_tend', dyn_in % t_tend)
+   call mpas_pool_get_array(state_pool, 'u',                      dyn_in % uperp,   timeLevel=2)
+   call mpas_pool_get_array(state_pool, 'w',                      dyn_in % w,       timeLevel=2)
+   call mpas_pool_get_array(state_pool, 'theta_m',                dyn_in % theta_m, timeLevel=2)
+   call mpas_pool_get_array(state_pool, 'rho_zz',                 dyn_in % rho_zz,  timeLevel=2)
+   call mpas_pool_get_array(state_pool, 'scalars',                dyn_in % tracers, timeLevel=2)
+
+   call mpas_pool_get_array(mesh_pool,  'zgrid',                  dyn_in % zint)
+
+   call mpas_pool_get_array(diag_pool,  'theta',                  dyn_in % theta)
+   call mpas_pool_get_array(diag_pool,  'rho',                    dyn_in % rho)
+   call mpas_pool_get_array(diag_pool,  'uReconstructZonal',      dyn_in % ux)
+   call mpas_pool_get_array(diag_pool,  'uReconstructMeridional', dyn_in % uy)
+   call mpas_pool_get_array(diag_pool,  'pressure',               dyn_in % pmid)
+
+   call mpas_pool_get_array(tend_physics_pool, 'tend_ru_physics',     dyn_in % ru_tend)
+   call mpas_pool_get_array(tend_physics_pool, 'tend_rtheta_physics', dyn_in % rtheta_tend)
+   call mpas_pool_get_array(tend_physics_pool, 'tend_rho_physics',    dyn_in % rho_tend)
+
 
    !
    ! Let dynamics export state point to memory managed by MPAS-Atmosphere
    !
-   call mpas_pool_get_array(dyn_outPool, 'phis', dyn_out % phis)
-   call mpas_pool_get_array(dyn_outPool, 'psd', dyn_out % psd)
-   call mpas_pool_get_array(dyn_outPool, 'pint', dyn_out % pint)
-   call mpas_pool_get_array(dyn_outPool, 'pmid', dyn_out % pmid)
-   call mpas_pool_get_array(dyn_outPool, 'zint', dyn_out % zint)
-   call mpas_pool_get_array(dyn_outPool, 'zmid', dyn_out % zmid)
-   call mpas_pool_get_array(dyn_outPool, 'ux', dyn_out % ux)
-   call mpas_pool_get_array(dyn_outPool, 'uy', dyn_out % uy)
-   call mpas_pool_get_array(dyn_outPool, 't', dyn_out % t)
-   call mpas_pool_get_array(dyn_outPool, 'omega', dyn_out % omega)
-   call mpas_pool_get_array(dyn_outPool, 'tracer', dyn_out % tracer)
-   call mpas_pool_get_array(dyn_outPool, 'pressure', dyn_out % pressure)
+   call mpas_pool_get_array(state_pool, 'u',                      dyn_out % uperp,   timeLevel=1)
+   call mpas_pool_get_array(state_pool, 'w',                      dyn_out % w,       timeLevel=1)
+   call mpas_pool_get_array(state_pool, 'theta_m',                dyn_out % theta_m, timeLevel=1)
+   call mpas_pool_get_array(state_pool, 'rho_zz',                 dyn_out % rho_zz,  timeLevel=1)
+   call mpas_pool_get_array(state_pool, 'scalars',                dyn_out % tracers, timeLevel=1)
+
+   call mpas_pool_get_array(mesh_pool,  'zgrid',                  dyn_out % zint)
+
+   call mpas_pool_get_array(diag_pool,  'theta',                  dyn_out % theta)
+   call mpas_pool_get_array(diag_pool,  'rho',                    dyn_out % rho)
+   call mpas_pool_get_array(diag_pool,  'uReconstructZonal',      dyn_out % ux)
+   call mpas_pool_get_array(diag_pool,  'uReconstructMeridional', dyn_out % uy)
+   call mpas_pool_get_array(diag_pool,  'pressure',               dyn_out % pmid)
 
    call read_phis(dyn_in)
+
+   ! At this point, we could set up zgrid, zz, fzm, and fzp
 
    if (initial_run) then
       call read_inidat(dyn_in)
@@ -265,32 +314,35 @@ subroutine dyn_final(dyn_in, dyn_out)
    !
    ! Prevent any further access to MPAS-Atmosphere memory
    !
-   nullify(dyn_in % phis)
-   nullify(dyn_in % psd)
+   nullify(dyn_in % uperp)
+   nullify(dyn_in % w)
+   nullify(dyn_in % theta_m)
+   nullify(dyn_in % rho_zz)
+   nullify(dyn_in % tracers)
+   nullify(dyn_in % zint)
+   nullify(dyn_in % theta)
+   nullify(dyn_in % rho)
    nullify(dyn_in % ux)
    nullify(dyn_in % uy)
-   nullify(dyn_in % t)
-   nullify(dyn_in % omega)
-   nullify(dyn_in % tracer)
-   nullify(dyn_in % ux_tend)
-   nullify(dyn_in % uy_tend)
-   nullify(dyn_in % t_tend)
+   nullify(dyn_in % pmid)
+   nullify(dyn_in % ru_tend)
+   nullify(dyn_in % rtheta_tend)
+   nullify(dyn_in % rho_tend)
 
    !
    ! Prevent any further access to MPAS-Atmosphere memory
    !
-   nullify(dyn_out % phis)
-   nullify(dyn_out % psd)
-   nullify(dyn_out % pint)
-   nullify(dyn_out % pmid)
+   nullify(dyn_out % uperp)
+   nullify(dyn_out % w)
+   nullify(dyn_out % theta_m)
+   nullify(dyn_out % rho_zz)
+   nullify(dyn_out % tracers)
    nullify(dyn_out % zint)
-   nullify(dyn_out % zmid)
+   nullify(dyn_out % theta)
+   nullify(dyn_out % rho)
    nullify(dyn_out % ux)
    nullify(dyn_out % uy)
-   nullify(dyn_out % t)
-   nullify(dyn_out % omega)
-   nullify(dyn_out % tracer)
-   nullify(dyn_out % pressure)
+   nullify(dyn_out % pmid)
 
 end subroutine dyn_final
 
@@ -300,47 +352,252 @@ end subroutine dyn_final
 
 subroutine read_inidat(dyn_in)
 
+   use dyn_grid, only : nCellsSolve, nVertLevelsSolve
+   use cam_mpas_subdriver, only : domain_ptr
+   use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_array
+   use mpas_derived_types, only : mpas_pool_type
+
    ! Set initial conditions.  Either from analytic expressions or read from file.
 
    ! arguments
    type(dyn_import_t), target, intent(inout) :: dyn_in
 
    ! Local variables
+   integer :: klev, icol
 
    type(file_desc_t), pointer :: fh_ini
    type(file_desc_t), pointer :: fh_topo
 
-   integer :: p, nCellsLocal, io_master_id, m, i, k
-   integer, allocatable, dimension(:) :: proc_start_i
-   real(r8), allocatable, dimension(:,:) :: tmp_in, tmp_out
+   real(r8), dimension(:,:),   pointer :: uperp   ! Normal velocity at edges [m/s]  (nver,nedge)
+   real(r8), dimension(:,:),   pointer :: w       ! Vertical velocity [m/s]        (nver+1,ncol)
+   real(r8), dimension(:,:),   pointer :: theta_m ! Moist potential temperature [K]  (nver,ncol)
+   real(r8), dimension(:,:),   pointer :: rho_zz  ! Dry density [kg/m^3]
+                                                  ! divided by d(zeta)/dz            (nver,ncol)
+   real(r8), dimension(:,:,:), pointer :: tracers ! Tracers [kg/kg dry air]       (nq,nver,ncol)
+   real(r8), dimension(:,:),   pointer :: zint    ! Geometric height [m]
+                                                  ! at layer interfaces            (nver+1,ncol)
+   real(r8), dimension(:,:),   pointer :: theta   ! Potential temperature [K]        (nver,ncol)
+   real(r8), dimension(:,:),   pointer :: rho     ! Dry density [kg/m^3]             (nver,ncol)
+   real(r8), dimension(:,:),   pointer :: ux      ! Zonal veloc at center [m/s]      (nver,ncol)
+   real(r8), dimension(:,:),   pointer :: uy      ! Meridional veloc at center [m/s] (nver,ncol)
+   real(r8), dimension(:,:),   pointer :: pmid    ! Full non-hydrostatic pressure [Pa]
+                                                  ! at layer midpoints               (nver,ncol)
+   real(r8), dimension(:,:),   pointer :: ru_tend ! Normal horizontal momentum tendency
+                                                  ! from physics [kg/m^2/s]         (nver,nedge)
+   real(r8), dimension(:,:),   pointer :: rtheta_tend ! Tendency of rho*theta/zz
+                                                      ! from physics [kg K/m^3/s]    (nver,ncol)
+   real(r8), dimension(:,:),   pointer :: rho_tend ! Dry air density tendency
+                                                   ! from physics [kg/m^3/s]         (nver,ncol)
 
+   real(r8), dimension(:,:), pointer :: zz
 
-   real(r8), pointer :: psd(:)        !  psd(numcols)               ! dry surface pressure
-   real(r8), pointer :: phis(:)       !  phis(numcols)              ! surface geopotential
-   real(r8), pointer :: pt(:,:)       !  pt(numcols,plev)           ! potential temperature
-   real(r8), pointer :: ux(:,:)       !  ux(numcols,plev)           ! cell centered velocity
-   real(r8), pointer :: uy(:,:)       !  uy(numcols,plev)           ! cell centered velocity
-   real(r8), pointer :: uvperp(:,:,:) !  uvperp(numcols,maxEdges,plev) ! edge normal velocity
-   real(r8), pointer :: tracer(:,:,:) !  tracer(numcols,plev,pcnst) ! tracers
+   type(mpas_pool_type), pointer :: mesh_pool
 
-   real(r8), allocatable :: pdry(:,:)
-   real(r8), allocatable :: delpp(:,:)
-   real(r8), allocatable :: ptot(:,:)
-   real(r8), allocatable :: pcap(:,:)
+   real(r8) :: t
+
+   real(r8), parameter, dimension(32) :: pmid_ref = [    370.0507, &
+                772.0267, &
+               1460.0401, &
+               2456.1190, &
+               3510.4428, &
+               4394.9775, &
+               5258.6650, &
+               6260.5462, &
+               7505.1291, &
+               8937.0345, &
+              10513.9623, &
+              12368.9543, &
+              14551.4143, &
+              17119.0922, &
+              20139.5649, &
+              23688.5536, &
+              27855.9967, &
+              32754.2135, &
+              38514.6948, &
+              45288.6443, &
+              53254.6026, &
+              61865.3664, &
+              70121.4348, &
+              77405.1773, &
+              83215.3208, &
+              87125.5307, &
+              89903.9705, &
+              92494.3081, &
+              94874.9828, &
+              97027.0667, &
+              98931.3386, &
+             100572.0510 ]
+
+   real(r8), parameter, dimension(33) :: pint_ref = [  228.8976, &
+              511.2039, &
+             1032.8496, &
+             1887.2306, &
+             3025.0074, &
+             3995.8781, &
+             4794.0770, &
+             5723.2531, &
+             6797.8393, &
+             8212.4188, &
+             9661.6502, &
+            11366.2745, &
+            13371.6342, &
+            15731.1944, &
+            18506.9901, &
+            21772.1397, &
+            25604.9675, &
+            30107.0258, &
+            35401.4011, &
+            41627.9885, &
+            48949.3000, &
+            57559.9052, &
+            66170.8275, &
+            74072.0421, &
+            80738.3125, &
+            85692.3292, &
+            88558.7323, &
+            91249.2088, &
+            93739.4075, &
+            96010.5582, &
+            98043.5752, &
+            99819.1020, &
+            101325.0000 ]
+
+   real(r8), parameter, dimension(32) :: zmid_ref = [ 38524.2527, &
+             33230.5418, &
+             28850.1087, &
+             25327.9309, &
+             22900.7199, &
+             21425.0307, &
+             20281.2855, &
+             19173.2056, &
+             18028.1748, &
+             16913.4272, &
+             15882.8868, &
+             14852.4477, &
+             13821.9328, &
+             12791.3613, &
+             11760.8767, &
+             10726.9401, &
+              9674.2358, &
+              8589.4962, &
+              7470.6318, &
+              6316.6734, &
+              5126.5126, &
+              3987.1676, &
+              3008.7228, &
+              2220.0977, &
+              1632.9889, &
+              1256.2718, &
+               998.0675, &
+               763.0978, &
+               551.8000, &
+               364.4534, &
+               201.4641, &
+                63.0587 ]
+
+   real(r8), parameter, dimension(33) :: zint_ref = [ 41426.9190, &
+             35621.5865, &
+             30839.4971, &
+             26860.7204, &
+             23795.1414, &
+             22006.2985, &
+             20843.7630, &
+             19718.8080, &
+             18627.6033, &
+             17428.7463, &
+             16398.1081, &
+             15367.6655, &
+             14337.2299, &
+             13306.6357, &
+             12276.0870, &
+             11245.6664, &
+             10208.2138, &
+              9140.2578, &
+              8038.7346, &
+              6902.5289, &
+              5730.8179, &
+              4522.2073, &
+              3452.1278, &
+              2565.3178, &
+              1874.8775, &
+              1391.1003, &
+              1121.4432, &
+               874.6918, &
+               651.5038, &
+               452.0961, &
+               276.8108, &
+               126.1175, &
+                 0.0000 ]
 
    character(len=*), parameter :: subname = 'dyn_comp::read_inidat'
 
 
    MPAS_DEBUG_WRITE(0, 'begin '//subname)
 
+   
+   uperp => dyn_in % uperp
+   w => dyn_in % w
+   theta_m => dyn_in % theta_m
+   rho_zz => dyn_in % rho_zz
+   tracers => dyn_in % tracers
+   zint => dyn_in % zint
+   theta => dyn_in % theta
+   rho => dyn_in % rho
+   ux => dyn_in % ux
+   uy => dyn_in % uy
+   pmid => dyn_in % pmid
+   ru_tend => dyn_in % ru_tend
+   rtheta_tend => dyn_in % rtheta_tend
+   rho_tend => dyn_in % rho_tend
+
    fh_ini  => initial_file_get_id()
    fh_topo => topo_file_get_id()
 
-! For CAM/MPAS simulations, PS contains the dry surface pressure
-! For CAM with fixed dynamics, PS contains the total pressure
+   call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'mesh',  mesh_pool)
+   call mpas_pool_get_array(mesh_pool, 'zz', zz)
 
-   !MGD IO -- call MPAS_read_initial(ncid_ini, ncid_topo?) 
-   !MGD IO -- fill in dyn_in at this point?
+
+   ! At this point, we haven't actually read d(zeta)/dz, so for testing purposes
+   ! with no terrain we can set this to 1.0
+   zz(:,:) = 1.0_r8
+
+
+   !
+   ! Set placeholder state
+   !
+
+   ! No winds
+   uperp(:,:) = 0.0_r8
+   w(:,:) = 0.0_r8
+   ux(:,:) = 0.0_r8
+   uy(:,:) = 0.0_r8
+
+   ! No tracers
+   tracers(:,:,:) = 0.0_r8
+
+   ! Standard atmosphere (for MPAS, k=1 is the layer closest to the surface)
+   do klev=1,nVertLevelsSolve+1
+      zint(klev,:) = zint_ref(nVertLevelsSolve+1-klev+1)
+   end do
+
+   do klev=1,nVertLevelsSolve
+      pmid(klev,:) = pmid_ref(nVertLevelsSolve-klev+1)
+   end do
+
+   do klev=1,nVertLevelsSolve
+      t = (zint_ref(nVertLevelsSolve-klev+1) - zint_ref(nVertLevelsSolve-klev+1+1)) * 9.806/287.0 &
+          / log(pint_ref(nVertLevelsSolve-klev+1+1) / pint_ref(nVertLevelsSolve-klev+1))
+      theta(klev,:) = t * (1.0e5 / pmid_ref(nVertLevelsSolve-klev+1))**(287.0/1003.0)
+      rho(klev,:) = pmid_ref(nVertLevelsSolve-klev+1) / (287.0 * t)
+   end do
+
+   theta_m(:,:) = theta(:,:)    ! With no moisture, theta_m := theta
+   rho_zz(:,:) = rho(:,:) / zz(:,:)
+
+   ! Initially, no tendencies from physics
+   ru_tend(:,:) = 0.0_r8
+   rtheta_tend(:,:) = 0.0_r8
+   rho_tend(:,:) = 0.0_r8
 
 end subroutine read_inidat
 

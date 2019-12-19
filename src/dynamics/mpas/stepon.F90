@@ -62,6 +62,21 @@ subroutine stepon_init(dyn_in, dyn_out)
 
    MPAS_DEBUG_WRITE(1, 'begin '//subname)
 
+   !
+   ! Copy initial dynamics import state set in read_inidat to dynamics export state
+   !
+   dyn_out % uperp(:,:)     = dyn_in % uperp(:,:)
+   dyn_out % w(:,:)         = dyn_in % w(:,:)
+   dyn_out % theta_m(:,:)   = dyn_in % theta_m(:,:)
+   dyn_out % rho_zz(:,:)    = dyn_in % rho_zz(:,:)
+   dyn_out % tracers(:,:,:) = dyn_in % tracers(:,:,:)
+
+   !
+   ! No need to copy zint, theta, rho, ux, uy, or pmid, since dynamics import and export
+   ! states point to the same pool storage for these fields in MPAS-Atmosphere
+   !
+
+
    ! Forcing from physics
    call addfld('FU',  (/ 'lev' /), 'A', 'm/s2', 'Zonal wind forcing term', gridname='physgrid')
    call addfld('FV',  (/ 'lev' /), 'A', 'm/s2', 'Meridional wind forcing term', gridname='physgrid')
