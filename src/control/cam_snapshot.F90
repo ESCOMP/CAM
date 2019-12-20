@@ -23,7 +23,8 @@ implicit  none
 
 private
 
-public :: cam_snapshot_init, cam_snapshot_all_outfld, cam_snapshot_deactivate
+public :: cam_snapshot_init, cam_snapshot_deactivate
+public :: cam_snapshot_all_outfld, cam_snapshot_all_outfld_tphysbc, cam_snapshot_all_outfld_tphysac
 public :: cam_snapshot_ptend_outfld
 
 ! This is the number of pbuf fields in the CAM code that are declared with the fieldname as opposed to being data driven.
@@ -108,7 +109,7 @@ use cam_history, only : cam_history_snapshot_nhtfrq_set
 
 end subroutine cam_snapshot_init
 
-subroutine cam_snapshot_all_outfld_tphysbc(file_num, state, tend, cam_in, cam_out, pbuf, cmfmc, cmfcme, &
+subroutine cam_snapshot_all_outfld_tphysbc(file_num, state, tend, cam_in, cam_out, pbuf, flx_heat, cmfmc, cmfcme, &
         pflx, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
 
 use time_manager,   only: is_first_step
@@ -124,6 +125,7 @@ use time_manager,   only: is_first_step
    type(cam_in_t),      intent(in) :: cam_in
    type(cam_out_t),     intent(in) :: cam_out
    type(physics_buffer_desc), pointer, intent(in) :: pbuf(:)
+   real(r8),            intent(in) :: flx_heat(:)   ! Heat flux for check_energy_chng.
    real(r8),            intent(in) :: cmfmc(:,:)    ! convective mass flux
    real(r8),            intent(in) :: cmfcme(:,:)   ! cmf condensation - evaporation
    real(r8),            intent(in) :: pflx(:,:)     ! convective rain flux throughout bottom of level
@@ -147,6 +149,7 @@ use time_manager,   only: is_first_step
 
    lchnk = state%lchnk
 
+   call outfld('flx_heat_snapshot', flx_heat, pcols, lchnk)
    call outfld('cmfmc_snapshot', cmfmc, pcols, lchnk)
    call outfld('cmfcme_snapshot', cmfcme, pcols, lchnk)
    call outfld('pflx_snapshot', pflx, pcols, lchnk)
@@ -780,10 +783,11 @@ subroutine cam_tphysbc_snapshot_init(cam_snapshot_before_num, cam_snapshot_after
 
    integer,intent(in) :: cam_snapshot_before_num, cam_snapshot_after_num
     
-   ntphysac_var = 0
+   ntphysbc_var = 0
 
    !--------------------------------------------------------
    ! Add the misc tphysbc variables to the output
+   ! NOTE - flx_heat is added in tphysac
    !--------------------------------------------------------
 
    call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
@@ -799,10 +803,10 @@ subroutine cam_tphysbc_snapshot_init(cam_snapshot_before_num, cam_snapshot_after
      'zdu',        'zdu_snapshot',         'unset',              'lev')
 
    call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'rliq',        'rliq_snapshot',         'unset',              'horiz_only')
+     'rliq',        'rliq_snapshot',         'unset',              horiz_only)
 
    call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'rice',        'rice_snapshot',         'unset',              'horiz_only')
+     'rice',        'rice_snapshot',         'unset',              horiz_only)
 
    call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'dlf',        'dlf_snapshot',         'unset',              'lev')
@@ -811,16 +815,16 @@ subroutine cam_tphysbc_snapshot_init(cam_snapshot_before_num, cam_snapshot_after
      'dlf2',        'dlf2_snapshot',         'unset',              'lev')
 
    call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'rliq2',        'rliq2_snapshot',         'unset',              'horiz_only')
+     'rliq2',        'rliq2_snapshot',         'unset',              horiz_only)
 
    call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'det_s',        'det_s_snapshot',         'unset',              'horiz_only')
+     'det_s',        'det_s_snapshot',         'unset',              horiz_only)
 
    call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'det_ice',        'det_ice_snapshot',         'unset',              'horiz_only')
+     'det_ice',        'det_ice_snapshot',         'unset',              horiz_only)
 
    call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'net_flx',        'net_flx_snapshot',         'unset',              'horiz_only')
+     'net_flx',        'net_flx_snapshot',         'unset',              horiz_only)
 
 
 end subroutine cam_tphysbc_snapshot_init
@@ -841,16 +845,16 @@ subroutine cam_tphysac_snapshot_init(cam_snapshot_before_num, cam_snapshot_after
    !--------------------------------------------------------
 
    call snapshot_addfld( ntphysac_var, tphysac_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'fh2o',        'fh2o_snapshot',         'unset',              'horiz_only')
+     'fh2o',        'fh2o_snapshot',         'unset',              horiz_only)
 
    call snapshot_addfld( ntphysac_var, tphysac_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'surfric',        'surfric_snapshot',         'unset',              'horiz_only')
+     'surfric',        'surfric_snapshot',         'unset',              horiz_only)
 
    call snapshot_addfld( ntphysac_var, tphysac_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'obklen',        'obklen_snapshot',         'unset',              'horiz_only')
+     'obklen',        'obklen_snapshot',         'unset',              horiz_only)
 
    call snapshot_addfld( ntphysac_var, tphysac_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'flx',        'flx_snapshot',         'unset',              'horiz_only')
+     'flx',        'flx_heat_snapshot',         'unset',              horiz_only)
 
 end subroutine cam_tphysac_snapshot_init
 
