@@ -110,6 +110,21 @@
   </compset>
 
   <compset>
+    <alias>QPX2000</alias>
+    <lname>2000_CAM40%WXIE_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>QPMOZ</alias>
+    <lname>2000_CAM40%TMOZ_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>QPC41850</alias>
+    <lname>1850_CAM40_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
     <alias>QPC4X</alias>
     <lname>2000_CAM40%WX_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
   </compset>
@@ -117,6 +132,16 @@
   <compset>
     <alias>QPC5</alias>
     <lname>2000_CAM50_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>QPC5HIST</alias>
+    <lname>HIST_CAM50_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>QPC6HIST</alias>
+    <lname>HIST_CAM60_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
   </compset>
 
   <compset>
