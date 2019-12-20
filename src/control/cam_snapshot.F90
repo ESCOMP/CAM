@@ -7,12 +7,14 @@ module cam_snapshot
 !--------------------------------------------------------
 
 use shr_kind_mod,   only: r8 => shr_kind_r8
-use cam_history,    only: addfld, add_default, outfld, cam_history_snapshot_deactivate, cam_history_snapshot_activate
+use cam_history,    only: addfld, add_default, outfld
+use cam_history,    only: cam_history_snapshot_deactivate, cam_history_snapshot_activate
+use cam_history_support, only: horiz_only
 use cam_abortutils, only: endrun
 use physics_buffer, only: physics_buffer_desc, pbuf_get_index, pbuf_get_field, pbuf_get_field_name
-use physics_types,  only: physics_state, physics_tend
+use physics_types,  only: physics_state, physics_tend, physics_ptend
 use camsrfexch,     only: cam_out_t, cam_in_t
-use ppgrid,         only: pcols
+use ppgrid,         only: pcols, begchunk, endchunk
 use constituents,   only: pcnst
 use phys_control,   only: phys_getopts
 use cam_logfile,    only: iulog
@@ -22,9 +24,10 @@ implicit  none
 private
 
 public :: cam_snapshot_init, cam_snapshot_all_outfld, cam_snapshot_deactivate
+public :: cam_snapshot_ptend_outfld
 
-! This is the number of pbuf fields in the CAM code that are declared with the fieldname as opposed to being data driven. 
-integer, parameter :: npbuf_all = 327  
+! This is the number of pbuf fields in the CAM code that are declared with the fieldname as opposed to being data driven.
+integer, parameter :: npbuf_all = 327
 
 type snapshot_type
   character(len=40)  :: ddt_string
@@ -47,9 +50,9 @@ type pbuf_info_type
   character(len=100) :: dim_string(6) ! hardwired 6 potential dimensions in pbuf
 end type pbuf_info_type
 
-integer :: nstate_var 
-integer :: ncnst_var 
-integer :: ntend_var 
+integer :: nstate_var
+integer :: ncnst_var
+integer :: ntend_var
 integer :: ncam_in_var
 integer :: ncam_out_var
 integer :: npbuf_var
@@ -71,11 +74,11 @@ subroutine cam_snapshot_init(cam_in_arr, cam_out_arr, pbuf, index)
 use cam_history, only : cam_history_snapshot_nhtfrq_set
 
 !--------------------------------------------------------
-! This subroutine does the addfld calls for ALL state, tend and pbuf fields.  It also includes the cam_in and cam_out
+! This subroutine does the addfld calls for ALL state, tend, ptend, and pbuf fields.  It also includes the cam_in and cam_out
 ! elements which are used within CAM
 !--------------------------------------------------------
-   type(cam_in_t),      intent(in)    :: cam_in_arr(:)
-   type(cam_out_t),     intent(in)    :: cam_out_arr(:)
+   type(cam_in_t),      intent(in)    :: cam_in_arr(begchunk:endchunk)
+   type(cam_out_t),     intent(in)    :: cam_out_arr(begchunk:endchunk)
    type(physics_buffer_desc), pointer, intent(inout) :: pbuf(:,:)
    integer,             intent(in)    :: index
 
@@ -84,7 +87,7 @@ use cam_history, only : cam_history_snapshot_nhtfrq_set
                      cam_snapshot_after_num_out  = cam_snapshot_after_num, &
                      cam_snapshot_nhtfrq_out     = cam_snapshot_nhtfrq)
 
-   ! Return if not turned on 
+   ! Return if not turned on
    if (cam_snapshot_before_num <= 0 .and. cam_snapshot_after_num <= 0) return ! No snapshot files are being requested
 
    call cam_history_snapshot_nhtfrq_set (cam_snapshot_before_num, cam_snapshot_after_num, cam_snapshot_nhtfrq)
@@ -92,6 +95,7 @@ use cam_history, only : cam_history_snapshot_nhtfrq_set
    call cam_state_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num)
    call cam_cnst_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num)
    call cam_tend_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num)
+   call cam_ptend_snapshot_init(cam_snapshot_after_num)
    call cam_in_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num, cam_in_arr(index))
    call cam_out_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num, cam_out_arr(index))
    call cam_pbuf_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num, pbuf(:,index))
@@ -120,7 +124,7 @@ use time_manager,   only: is_first_step
    ! Return if the first timestep as not all fields may be filled in and this will cause a core dump
    if (is_first_step()) return
 
-   ! Return if not turned on 
+   ! Return if not turned on
    if (cam_snapshot_before_num <= 0 .and. cam_snapshot_after_num <= 0) return ! No snapshot files are being requested
 
    lchnk = state%lchnk
@@ -144,12 +148,12 @@ use time_manager,   only: is_first_step
    call cam_pbuf_snapshot_all_outfld(lchnk, file_num, pbuf)
 
 end subroutine cam_snapshot_all_outfld
-    
+
 subroutine cam_snapshot_deactivate()
 
 !--------------------------------------------------------
 ! This subroutine deactivates the printing of the snapshot before and after files
-! Note - this needs to be done as add_default has been called to setup the proper 
+! Note - this needs to be done as add_default has been called to setup the proper
 !        outputting of the requested fields. The outfld calls will only write
 !        one file at a time (using the same name in both files), hence the writing
 !        needs to be turned off for all fields, and will be turned on individaully
@@ -157,7 +161,7 @@ subroutine cam_snapshot_deactivate()
 !--------------------------------------------------------
    integer :: i
 
-   ! Return if not turned on 
+   ! Return if not turned on
    if (cam_snapshot_before_num <= 0 .and. cam_snapshot_after_num <= 0) return ! No snapshot files are being requested
 
    do i=1,nstate_var
@@ -194,7 +198,7 @@ subroutine cam_state_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_n
 !--------------------------------------------------------
 
    integer,intent(in) :: cam_snapshot_before_num, cam_snapshot_after_num
-    
+
    nstate_var = 0
 
    !--------------------------------------------------------
@@ -202,13 +206,13 @@ subroutine cam_state_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_n
    !--------------------------------------------------------
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%ps',        'ps_snapshot',         'Pa',              'horiz_only')
+     'state%ps',        'ps_snapshot',         'Pa',              horiz_only)
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%psdry',     'psdry_snapshot',      'Pa',              'horiz_only')
+     'state%psdry',     'psdry_snapshot',      'Pa',              horiz_only)
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%phis',      'phis_snapshot',       'm2/m2',           'horiz_only')
+     'state%phis',      'phis_snapshot',       'm2/m2',           horiz_only)
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%t',         't_snapshot',          'K',               'lev')
@@ -271,16 +275,16 @@ subroutine cam_state_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_n
      'state%zi',        'zi_snapshot',         'm',                'lev')
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%te_ini',    'te_ini_snapshot',     'unset',            'horiz_only')
+     'state%te_ini',    'te_ini_snapshot',     'unset',            horiz_only)
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%te_cur',    'te_cur_snapshot',     'unset',            'horiz_only')
+     'state%te_cur',    'te_cur_snapshot',     'unset',            horiz_only)
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%tw_ini',    'tw_ini_snapshot',     'unset',            'horiz_only')
+     'state%tw_ini',    'tw_ini_snapshot',     'unset',            horiz_only)
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%tw_cur',    'tw_cur_snapshot',     'unset',            'horiz_only')
+     'state%tw_cur',    'tw_cur_snapshot',     'unset',            horiz_only)
 
 end subroutine cam_state_snapshot_init
 
@@ -290,7 +294,7 @@ subroutine cam_cnst_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_nu
 ! This subroutine does the addfld calls for state constituent (q) fields
 !--------------------------------------------------------
 
-   use constituents, only: cnst_name
+   use constituents, only: cnst_name, cnst_longname
 
    integer, intent(in) :: cam_snapshot_before_num, cam_snapshot_after_num
 
@@ -301,8 +305,9 @@ subroutine cam_cnst_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_nu
    ncnst_var = 0 ! Updated inside snapshot_addfld
 
    do while (ncnst_var < pcnst)
-      call snapshot_addfld( ncnst_var, cnst_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-        cnst_name(ncnst_var+1),        trim(cnst_name(ncnst_var+1))//'_snapshot',         'kg kg-1',    'lev')
+      call snapshot_addfld(ncnst_var, cnst_snapshot, cam_snapshot_before_num, &
+           cam_snapshot_after_num, cnst_name(ncnst_var+1),                    &
+           trim(cnst_name(ncnst_var+1))//'_snapshot', 'kg kg-1', 'lev')
    end do
 
 end subroutine cam_cnst_snapshot_init
@@ -310,15 +315,15 @@ end subroutine cam_cnst_snapshot_init
 subroutine cam_tend_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num)
 
 !--------------------------------------------------------
-! This subroutine does the addfld calls for state, tend and pbuf fields.
+! This subroutine does the addfld calls for tend fields.
 !--------------------------------------------------------
 
    integer,intent(in) :: cam_snapshot_before_num, cam_snapshot_after_num
-    
+
    ntend_var = 0
 
    !--------------------------------------------------------
-   ! Add the state variables to the output
+   ! Add the physics_tend variables to the output
    !--------------------------------------------------------
 
    call snapshot_addfld( ntend_var, tend_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
@@ -331,15 +336,96 @@ subroutine cam_tend_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_nu
      'tend%dvdt',        'dvdt_snapshot',         '',    'lev')
 
    call snapshot_addfld( ntend_var, tend_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'tend%flx_net',        'flx_net_snapshot',   '',    'horiz_only')
+     'tend%flx_net',        'flx_net_snapshot',   '',    horiz_only)
 
    call snapshot_addfld( ntend_var, tend_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'tend%te_tnd',        'te_tnd_snapshot',   '',    'horiz_only')
+     'tend%te_tnd',        'te_tnd_snapshot',   '',    horiz_only)
 
    call snapshot_addfld( ntend_var, tend_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'tend%tw_tnd',        'tw_tnd_snapshot',   '',    'horiz_only')
+     'tend%tw_tnd',        'tw_tnd_snapshot',   '',    horiz_only)
 
 end subroutine cam_tend_snapshot_init
+
+subroutine cam_ptend_snapshot_init(cam_snapshot_after_num)
+   use constituents, only: cnst_name, cnst_longname
+
+   !--------------------------------------------------------
+   ! This subroutine does the addfld calls for ptend fields.
+   !--------------------------------------------------------
+
+   integer,intent(in) :: cam_snapshot_after_num
+
+   integer            :: mcnst
+   character(len=64)  :: fname
+   character(len=128) :: lname
+   character(len=32)  :: cam_take_snapshot_before
+   character(len=32)  :: cam_take_snapshot_after
+
+   call phys_getopts(cam_take_snapshot_before_out = cam_take_snapshot_before, &
+        cam_take_snapshot_after_out = cam_take_snapshot_after)
+
+   if (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after)) then
+
+      !--------------------------------------------------------
+      ! Add the physics_ptend variables to the output
+      !--------------------------------------------------------
+
+      call addfld('ptend_s_snapshot', (/ 'lev' /), 'I', 'J kg-1 s-1',         &
+           'heating rate snapshot')
+      call add_default('ptend_s_snapshot', cam_snapshot_after_num, ' ')
+
+      call addfld('ptend_u_snapshot', (/ 'lev' /), 'I', 'm s-1 s-1',          &
+           'momentum tendency snapshot')
+      call add_default('ptend_u_snapshot', cam_snapshot_after_num, ' ')
+
+      call addfld('ptend_v_snapshot', (/ 'lev' /), 'I', 'm s-1 s-1',          &
+           'momentum tendency snapshot')
+      call add_default('ptend_v_snapshot', cam_snapshot_after_num, ' ')
+
+      call addfld('ptend_hflux_srf_snapshot', horiz_only, 'I', 'W m-2',       &
+           'net zonal stress at surface snapshot')
+      call add_default('ptend_hflux_srf_snapshot', cam_snapshot_after_num, ' ')
+
+      call addfld('ptend_hflux_top_snapshot', horiz_only, 'I', 'W m-2',       &
+           'net zonal stress at top of model snapshot')
+      call add_default('ptend_hflux_top_snapshot', cam_snapshot_after_num, ' ')
+
+      call addfld('ptend_taux_srf_snapshot', horiz_only, 'I', 'Pa',           &
+           'net meridional stress at surface snapshot')
+      call add_default('ptend_taux_srf_snapshot', cam_snapshot_after_num, ' ')
+
+      call addfld('ptend_taux_top_snapshot', horiz_only, 'I', 'Pa',           &
+           'net zonal stress at top of model snapshot')
+      call add_default('ptend_taux_top_snapshot', cam_snapshot_after_num, ' ')
+
+      call addfld('ptend_tauy_srf_snapshot', horiz_only, 'I', 'Pa',           &
+           'net meridional stress at surface snapshot')
+      call add_default('ptend_tauy_srf_snapshot', cam_snapshot_after_num, ' ')
+
+      call addfld('ptend_tauy_top_snapshot', horiz_only, 'I', 'Pa',           &
+           'net meridional stress at top of model snapshot')
+      call add_default('ptend_tauy_top_snapshot', cam_snapshot_after_num, ' ')
+
+      do mcnst = 1, pcnst
+         fname = 'ptend_'//trim(cnst_name(mcnst))//'_snapshot'
+         lname = 'tendency of '//trim(cnst_longname(mcnst))//' snapshot'
+         call addfld(trim(fname), (/ 'lev' /), 'I', 'kg kg-1 s-1', trim(lname))
+         call add_default(trim(fname), cam_snapshot_after_num, ' ')
+
+         fname = 'cflx_srf_'//trim(cnst_name(mcnst))//'_snapshot'
+         lname = 'flux of '//trim(cnst_longname(mcnst))//' at surface snapshot'
+         call addfld(trim(fname), horiz_only, 'I', 'kg m-2 s-1', trim(lname))
+         call add_default(trim(fname), cam_snapshot_after_num, ' ')
+
+         fname = 'cflx_top_'//trim(cnst_name(mcnst))//'_snapshot'
+         lname = 'flux of '//trim(cnst_longname(mcnst))//' at top of model snapshot'
+         call addfld(trim(fname), horiz_only, 'I', 'kg m-2 s-1', trim(lname))
+         call add_default(trim(fname), cam_snapshot_after_num, ' ')
+      end do
+
+   end if
+
+end subroutine cam_ptend_snapshot_init
 
 subroutine cam_in_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num, cam_in)
 
@@ -350,7 +436,7 @@ subroutine cam_in_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num,
    type(cam_in_t), intent(in) :: cam_in
 
    integer,intent(in) :: cam_snapshot_before_num, cam_snapshot_after_num
-    
+
    ncam_in_var = 0
 
    !--------------------------------------------------------
@@ -358,80 +444,80 @@ subroutine cam_in_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num,
    !--------------------------------------------------------
 
    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_in%landfrac',        'landfrac_snapshot',          'unset',          'horiz_only')
+     'cam_in%landfrac',        'landfrac_snapshot',          'unset',          horiz_only)
 
    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_in%ocnfrac',         'ocnfrac_snapshot',           'unset',          'horiz_only')
+     'cam_in%ocnfrac',         'ocnfrac_snapshot',           'unset',          horiz_only)
 
    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_in%snowhland',       'snowhland_snapshot',         'unset',          'horiz_only')
+     'cam_in%snowhland',       'snowhland_snapshot',         'unset',          horiz_only)
 
    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_in%ts',              'ts_snapshot',                'unset',          'horiz_only')
+     'cam_in%ts',              'ts_snapshot',                'unset',          horiz_only)
 
    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_in%sst',             'sst_snapshot',               'unset',          'horiz_only')
+     'cam_in%sst',             'sst_snapshot',               'unset',          horiz_only)
 
    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_in%icefrac',         'icefrac_snapshot',           'unset',          'horiz_only')
+     'cam_in%icefrac',         'icefrac_snapshot',           'unset',          horiz_only)
 
    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_in%shf',             'shf_snapshot',               'unset',          'horiz_only')
+     'cam_in%shf',             'shf_snapshot',               'unset',          horiz_only)
 
    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_in%cflx',            'cflx_snapshot',              'unset',          'horiz_only')
+     'cam_in%cflx',            'cflx_snapshot',              'unset',          horiz_only)
 
    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_in%wsx',             'wsx_snapshot',               'unset',          'horiz_only')
+     'cam_in%wsx',             'wsx_snapshot',               'unset',          horiz_only)
 
    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_in%wsy',             'wsy_snapshot',               'unset',          'horiz_only')
+     'cam_in%wsy',             'wsy_snapshot',               'unset',          horiz_only)
 
    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_in%asdif',           'asdif_snapshot',             'unset',          'horiz_only')
+     'cam_in%asdif',           'asdif_snapshot',             'unset',          horiz_only)
 
    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_in%aldif',           'aldif_snapshot',             'unset',          'horiz_only')
+     'cam_in%aldif',           'aldif_snapshot',             'unset',          horiz_only)
 
    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_in%lwup',            'lwup_snapshot',              'unset',          'horiz_only')
+     'cam_in%lwup',            'lwup_snapshot',              'unset',          horiz_only)
 
    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_in%asdir',           'asdir_snapshot',             'unset',          'horiz_only')
+     'cam_in%asdir',           'asdir_snapshot',             'unset',          horiz_only)
 
    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_in%aldir',           'aldir_snapshot',             'unset',          'horiz_only')
+     'cam_in%aldir',           'aldir_snapshot',             'unset',          horiz_only)
 
     if (associated (cam_in%meganflx)) &
     call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-      'cam_in%meganflx',        'meganflx_snapshot',          'unset',          'horiz_only')
+      'cam_in%meganflx',        'meganflx_snapshot',          'unset',          horiz_only)
 
     if (associated (cam_in%fireflx)) &
     call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-      'cam_in%fireflx',         'fireflx_snapshot',           'unset',          'horiz_only')
+      'cam_in%fireflx',         'fireflx_snapshot',           'unset',          horiz_only)
 
     if (associated (cam_in%fireztop)) &
     call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-      'cam_in%fireztop',        'fireztop_snapshot',          'unset',          'horiz_only')
+      'cam_in%fireztop',        'fireztop_snapshot',          'unset',          horiz_only)
 
     if (associated (cam_in%depvel)) &
     call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-      'cam_in%depvel',          'depvel_snapshot',            'unset',          'horiz_only')
+      'cam_in%depvel',          'depvel_snapshot',            'unset',          horiz_only)
 
    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_in%lhf',             'lhf_snapshot',               'unset',          'horiz_only')
+     'cam_in%lhf',             'lhf_snapshot',               'unset',          horiz_only)
 
     if (associated (cam_in%fv)) &
     call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-      'cam_in%fv',              'fv_snapshot',                'unset',          'horiz_only')
+      'cam_in%fv',              'fv_snapshot',                'unset',          horiz_only)
 
     if (associated (cam_in%ram1)) &
     call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-      'cam_in%ram1',            'ram1_snapshot',              'unset',          'horiz_only')
+      'cam_in%ram1',            'ram1_snapshot',              'unset',          horiz_only)
 
     if (associated (cam_in%dstflx)) &
     call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-      'cam_in%dstflx',          'dstflx_snapshot',            'unset',          'horiz_only')
+      'cam_in%dstflx',          'dstflx_snapshot',            'unset',          horiz_only)
 
 end subroutine cam_in_snapshot_init
 
@@ -452,81 +538,81 @@ subroutine cam_out_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num
    !--------------------------------------------------------
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%precc',               'precc_snapshot',           'm s-1',          'horiz_only')
+     'cam_out%precc',               'precc_snapshot',           'm s-1',          horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%precl',               'precl_snapshot',           'm s-1',          'horiz_only')
+     'cam_out%precl',               'precl_snapshot',           'm s-1',          horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%precsc',               'precsc_snapshot',         'm s-1',          'horiz_only')
+     'cam_out%precsc',               'precsc_snapshot',         'm s-1',          horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%precsl',               'precsl_snapshot',         'm s-1',          'horiz_only')
+     'cam_out%precsl',               'precsl_snapshot',         'm s-1',          horiz_only)
 
    if (associated(cam_out%nhx_nitrogen_flx)) &
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%nhx_nitrogen_flx',     'nhx_nitro_flx_snapshot',  'kgN m2-1 sec-1', 'horiz_only')
+     'cam_out%nhx_nitrogen_flx',     'nhx_nitro_flx_snapshot',  'kgN m2-1 sec-1', horiz_only)
 
    if (associated(cam_out%noy_nitrogen_flx)) &
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%noy_nitrogen_flx',     'noy_nitro_flx_snapshot',  'kgN m2-1 sec-1', 'horiz_only')
+     'cam_out%noy_nitrogen_flx',     'noy_nitro_flx_snapshot',  'kgN m2-1 sec-1', horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%bcphodry',             'bcphodry_snapshot',       'kg m-2 s-1',     'horiz_only')
+     'cam_out%bcphodry',             'bcphodry_snapshot',       'kg m-2 s-1',     horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%bcphidry',             'bcphidry_snapshot',       'kg m-2 s-1',     'horiz_only')
+     'cam_out%bcphidry',             'bcphidry_snapshot',       'kg m-2 s-1',     horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%ocphodry',             'ocphodry_snapshot',       'kg m-2 s-1',     'horiz_only')
+     'cam_out%ocphodry',             'ocphodry_snapshot',       'kg m-2 s-1',     horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%ocphidry',             'ocphidry_snapshot',       'kg m-2 s-1',     'horiz_only')
+     'cam_out%ocphidry',             'ocphidry_snapshot',       'kg m-2 s-1',     horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%bcphiwet',             'bcphiwet_snapshot',       'kg m-2 s-1',     'horiz_only')
+     'cam_out%bcphiwet',             'bcphiwet_snapshot',       'kg m-2 s-1',     horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%ocphiwet',             'ocphiwet_snapshot',       'kg m-2 s-1',     'horiz_only')
+     'cam_out%ocphiwet',             'ocphiwet_snapshot',       'kg m-2 s-1',     horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%dstwet1',             'dstwet1_snapshot',         'kg m-2 s-1',     'horiz_only')
+     'cam_out%dstwet1',             'dstwet1_snapshot',         'kg m-2 s-1',     horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%dstwet2',             'dstwet2_snapshot',         'kg m-2 s-1',     'horiz_only')
+     'cam_out%dstwet2',             'dstwet2_snapshot',         'kg m-2 s-1',     horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%dstwet3',             'dstwet3_snapshot',         'kg m-2 s-1',     'horiz_only')
+     'cam_out%dstwet3',             'dstwet3_snapshot',         'kg m-2 s-1',     horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%dstwet4',             'dstwet4_snapshot',         'kg m-2 s-1',     'horiz_only')
+     'cam_out%dstwet4',             'dstwet4_snapshot',         'kg m-2 s-1',     horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%dstdry1',             'dstdry1_snapshot',         'kg m-2 s-1',     'horiz_only')
+     'cam_out%dstdry1',             'dstdry1_snapshot',         'kg m-2 s-1',     horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%dstdry2',             'dstdry2_snapshot',         'kg m-2 s-1',     'horiz_only')
+     'cam_out%dstdry2',             'dstdry2_snapshot',         'kg m-2 s-1',     horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%dstdry3',             'dstdry3_snapshot',         'kg m-2 s-1',     'horiz_only')
+     'cam_out%dstdry3',             'dstdry3_snapshot',         'kg m-2 s-1',     horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%dstdry4',             'dstdry4_snapshot',         'kg m-2 s-1',     'horiz_only')
+     'cam_out%dstdry4',             'dstdry4_snapshot',         'kg m-2 s-1',     horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%sols',                'sols_snapshot',            'W m-2',          'horiz_only')
+     'cam_out%sols',                'sols_snapshot',            'W m-2',          horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%soll',                'soll_snapshot',            'W m-2',          'horiz_only')
+     'cam_out%soll',                'soll_snapshot',            'W m-2',          horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%solsd',               'solsd_snapshot',           'W m-2',          'horiz_only')
+     'cam_out%solsd',               'solsd_snapshot',           'W m-2',          horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%solld',               'solld_snapshot',           'W m-2',          'horiz_only')
+     'cam_out%solld',               'solld_snapshot',           'W m-2',          horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%netsw',               'netsw_snapshot',           'unset',          'horiz_only')
+     'cam_out%netsw',               'netsw_snapshot',           'unset',          horiz_only)
 
 end subroutine cam_out_snapshot_init
 
@@ -545,9 +631,9 @@ subroutine cam_pbuf_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_nu
    type(pbuf_info_type) :: pbuf_info(size(pbuf))
    character(len=40) :: const_cname(ncnst_var)
    character(len=40) :: dim_strings(size(pbuf),6) ! Hardwired 6 potential dimensions in pbuf
-   
+
    npbuf = size(pbuf(:))
-   
+
    !--------------------------------------------------------
    ! fill the name, standard name and units for pbuf_info
    !--------------------------------------------------------
@@ -562,7 +648,7 @@ subroutine cam_pbuf_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_nu
    do i=1, npbuf
       ! If the second dimension is empty, then this is a horiz_only field
       if (trim(dim_strings(i,2)) == '') then
-         pbuf_info(i)%dim_string(1) = 'horiz_only'
+         pbuf_info(i)%dim_string(1) = horiz_only
       else
          ! The first dimension is the horizontal dimension and should not be used in the addfld call
          do j=2,6
@@ -586,8 +672,8 @@ end subroutine cam_pbuf_snapshot_init
 
 subroutine snapshot_addfld_nd(nddt_var, ddt_snapshot, cam_snapshot_before_num, cam_snapshot_after_num,&
     ddt_string, standard_name, units, dimension_string)
- 
-   integer,                 intent(inout)  :: nddt_var 
+
+   integer,                 intent(inout)  :: nddt_var
    type (snapshot_type_nd), intent(inout) ::  ddt_snapshot(:)
 
 
@@ -597,18 +683,18 @@ subroutine snapshot_addfld_nd(nddt_var, ddt_snapshot, cam_snapshot_before_num, c
    character(len=*), intent(in) :: standard_name
    character(len=*), intent(in) :: units
    character(len=*), intent(in) :: dimension_string(:)
-  
+
    integer :: ndims
 
    nddt_var=nddt_var+1
 
    if (nddt_var > size(ddt_snapshot)) &
       call endrun(' ERROR in snapshot_addfld: ddt_snapshot array not allocated large enough')
-   
+
    ndims = count(dimension_string /= '')
 
-   if (trim(dimension_string(1)) == 'horiz_only') then
-      call addfld(standard_name, 'horiz_only', 'I', units, standard_name)
+   if (trim(dimension_string(1)) == horiz_only) then
+      call addfld(standard_name, horiz_only, 'I', units, standard_name)
    else
       call addfld(standard_name, dimension_string(1:ndims), 'I', units, standard_name)
    end if
@@ -625,8 +711,8 @@ end subroutine snapshot_addfld_nd
 
 subroutine snapshot_addfld(nddt_var, ddt_snapshot, cam_snapshot_before_num, cam_snapshot_after_num,&
     ddt_string, standard_name, units, dimension_string)
- 
-   integer,              intent(inout)  :: nddt_var 
+
+   integer,              intent(inout)  :: nddt_var
    type (snapshot_type), intent(inout) ::  ddt_snapshot(:)
 
 
@@ -636,7 +722,7 @@ subroutine snapshot_addfld(nddt_var, ddt_snapshot, cam_snapshot_before_num, cam_
    character(len=*), intent(in) :: standard_name
    character(len=*), intent(in) :: units
    character(len=*), intent(in) :: dimension_string
-  
+
 
    nddt_var=nddt_var+1
 
@@ -754,7 +840,7 @@ subroutine state_snapshot_all_outfld(lchnk, file_num, state)
 
       case default
          call endrun('ERROR in state_snapshot_all_outfld: no match found for '//trim(state_snapshot(i)%ddt_string))
-      
+
       end select
 
       call cam_history_snapshot_deactivate(trim(state_snapshot(i)%standard_name))
@@ -762,6 +848,63 @@ subroutine state_snapshot_all_outfld(lchnk, file_num, state)
    end do
 
 end subroutine state_snapshot_all_outfld
+
+subroutine cam_snapshot_ptend_outfld(ptend, lchnk)
+
+   use constituents, only: cnst_name, cnst_longname
+   !--------------------------------------------------------
+   ! This subroutine does the addfld calls for ptend fields.
+   !--------------------------------------------------------
+
+   type(physics_ptend), intent(in) :: ptend
+   integer,             intent(in) :: lchnk
+
+   integer                         :: mcnst
+   character(len=128)              :: fname
+
+   !--------------------------------------------------------
+   ! Add the physics_ptend variables to the output
+   !--------------------------------------------------------
+
+   if (ptend%ls) then
+      call outfld('ptend_s_snapshot', ptend%s, pcols, lchnk)
+
+      call outfld('ptend_hflux_srf_snapshot', ptend%hflux_srf, pcols, lchnk)
+
+      call outfld('ptend_hflux_top_snapshot', ptend%hflux_top, pcols, lchnk)
+   end if
+
+   if (ptend%lu) then
+      call outfld('ptend_u_snapshot', ptend%u, pcols, lchnk)
+
+      call outfld('ptend_taux_srf_snapshot', ptend%taux_srf, pcols, lchnk)
+
+      call outfld('ptend_taux_top_snapshot', ptend%taux_top, pcols, lchnk)
+   end if
+
+   if (ptend%lv) then
+      call outfld('ptend_v_snapshot', ptend%v, pcols, lchnk)
+
+      call outfld('ptend_tauy_srf_snapshot', ptend%tauy_srf, pcols, lchnk)
+
+      call outfld('ptend_tauy_top_snapshot', ptend%tauy_top, pcols, lchnk)
+   end if
+
+   do mcnst = 1, pcnst
+      if (ptend%lq(mcnst)) then
+         fname = 'ptend_'//trim(cnst_name(mcnst))//'_snapshot'
+         call outfld(trim(fname), ptend%q(:,:,mcnst), pcols, lchnk)
+
+         fname = 'cflx_srf_'//trim(cnst_name(mcnst))//'_snapshot'
+         call outfld(trim(fname), ptend%cflx_srf(:,mcnst), pcols, lchnk)
+
+         fname = 'cflx_top_'//trim(cnst_name(mcnst))//'_snapshot'
+         call outfld(trim(fname), ptend%cflx_top(:,mcnst), pcols, lchnk)
+      end if
+   end do
+
+
+end subroutine cam_snapshot_ptend_outfld
 
 subroutine cnst_snapshot_all_outfld(lchnk, file_num, cnst)
 
@@ -820,7 +963,7 @@ subroutine tend_snapshot_all_outfld(lchnk, file_num, tend)
 
       case default
          call endrun('ERROR in tend_snapshot_all_outfld: no match found for '//trim(tend_snapshot(i)%ddt_string))
-      
+
       end select
 
       call cam_history_snapshot_deactivate(trim(tend_snapshot(i)%standard_name))
@@ -901,7 +1044,7 @@ subroutine cam_in_snapshot_all_outfld(lchnk, file_num, cam_in)
 
       case default
          call endrun('ERROR in cam_in_snapshot_all_outfld: no match found for '//trim(cam_in_snapshot(i)%ddt_string))
-      
+
       end select
 
       call cam_history_snapshot_deactivate(trim(cam_in_snapshot(i)%standard_name))
@@ -1008,7 +1151,7 @@ subroutine cam_out_snapshot_all_outfld(lchnk, file_num, cam_out)
 
       case default
          call endrun('ERROR in cam_out_snapshot_all_outfld: no match found for '//trim(cam_out_snapshot(i)%ddt_string))
-      
+
       end select
 
       call cam_history_snapshot_deactivate(trim(cam_out_snapshot(i)%standard_name))
@@ -1018,6 +1161,7 @@ subroutine cam_out_snapshot_all_outfld(lchnk, file_num, cam_out)
 end subroutine cam_out_snapshot_all_outfld
 
 subroutine cam_pbuf_snapshot_all_outfld(lchnk, file_num, pbuf)
+   use physics_buffer, only: pbuf_is_used
 
    integer,                   intent(in) :: lchnk
    integer,                            intent(in) :: file_num
@@ -1032,49 +1176,53 @@ subroutine cam_pbuf_snapshot_all_outfld(lchnk, file_num, pbuf)
 
    do i=1, npbuf_var
 
-      ! Turn on the writing for only the requested tape (file_num)
-      call cam_history_snapshot_activate(trim(pbuf_snapshot(i)%standard_name), file_num)
-
       pbuf_idx= pbuf_get_index(pbuf_snapshot(i)%ddt_string)
 
-      ! Retrieve the pbuf data (dependent on the number of dimensions)
-      ndims = count(pbuf_snapshot(i)%dim_name(:) /= '')
+      if (pbuf_is_used(pbuf(pbuf_idx))) then
+         ! Turn on the writing for only the requested tape (file_num)
+         call cam_history_snapshot_activate(trim(pbuf_snapshot(i)%standard_name), file_num)
 
-      select case (ndims)  ! Note that dimension 5 and 6 do not work with pbuf_get_field, so these are not used here
-      
-      case (1) 
-         call pbuf_get_field(pbuf, pbuf_idx, tmpptr2d)
-         call outfld(pbuf_snapshot(i)%standard_name, tmpptr2d, pcols, lchnk)
+         ! Retrieve the pbuf data (dependent on the number of dimensions)
+         ndims = count(pbuf_snapshot(i)%dim_name(:) /= '')
 
-      case (2) 
-         call pbuf_get_field(pbuf, pbuf_idx, tmpptr3d)
-         call outfld(pbuf_snapshot(i)%standard_name, tmpptr3d, pcols, lchnk)
+         select case (ndims)  ! Note that dimension 5 and 6 do not work with pbuf_get_field, so these are not used here
 
-      case (3) 
-         call pbuf_get_field(pbuf, pbuf_idx, tmpptr3d)
-         call outfld(pbuf_snapshot(i)%standard_name, tmpptr4d, pcols, lchnk)
+         case (1)
+            call pbuf_get_field(pbuf, pbuf_idx, tmpptr2d)
+            call outfld(pbuf_snapshot(i)%standard_name, tmpptr2d, pcols, lchnk)
 
-      case (4) 
-         call pbuf_get_field(pbuf, pbuf_idx, tmpptr5d)
-         call outfld(pbuf_snapshot(i)%standard_name, tmpptr5d, pcols, lchnk)
+         case (2)
+            call pbuf_get_field(pbuf, pbuf_idx, tmpptr3d)
+            call outfld(pbuf_snapshot(i)%standard_name, tmpptr3d, pcols, lchnk)
 
-      end select
+         case (3)
+            call pbuf_get_field(pbuf, pbuf_idx, tmpptr3d)
+            call outfld(pbuf_snapshot(i)%standard_name, tmpptr4d, pcols, lchnk)
 
-      ! Now that the field has been written, turn off the writing for field
-      call cam_history_snapshot_deactivate(trim(pbuf_snapshot(i)%standard_name))
+         case (4)
+            call pbuf_get_field(pbuf, pbuf_idx, tmpptr5d)
+            call outfld(pbuf_snapshot(i)%standard_name, tmpptr5d, pcols, lchnk)
+
+         end select
+
+         ! Now that the field has been written, turn off the writing for field
+         call cam_history_snapshot_deactivate(trim(pbuf_snapshot(i)%standard_name))
+
+
+      end if
 
    end do
 
 end subroutine cam_pbuf_snapshot_all_outfld
 
-subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname) 
+subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname)
 
 !---------------------------------------------------
 ! This subroutine exists to link the pbuf name with units.  It can be expanded to include standard_names
 ! at a later date if needed.  It is a list of all the pbuf fields that are called within CAM with actual
 ! names.
 !---------------------------------------------------
- 
+
      type(pbuf_info_type),   intent(inout) :: pbuf_info(:)
      type(physics_buffer_desc), intent(in) :: pbuf(:)
      character(len=*),          intent(in) :: const_cname(:)
@@ -1287,7 +1435,7 @@ subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname)
           'QAERWAT                ','unset                  ',&
           'QCWAT                  ','unset                  ',&
           'QFLX                   ','kg/m2/s                ',&
-          'QFLX_RES               ','unset                  ',& 
+          'QFLX_RES               ','unset                  ',&
           'QINI                   ','unset                  '  /),    (/2,100/))
 
      pbuf_all(1:2,201:300) = reshape ( (/  &
@@ -1474,7 +1622,7 @@ subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname)
             i = i+1
          end do
       end if
-     
+
         ! Found a pbuf that has not been added to this routine
       if (.not. found(ipbuf)) then
          write(iulog,*) 'WARNING - no units information for: '//trim(pbuf_name)

@@ -2277,7 +2277,7 @@ fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
               end if
            end do
         end if
-        
+
         mastername=''
         listentry => get_entry_by_name(masterlinkedlist, name)
         if (associated(listentry)) mastername = listentry%field%name
@@ -2311,7 +2311,7 @@ fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
       ! specifier contains any vector components, then the complement was saved in the
       ! array vec_comp_names.  Next insure (for interpolated output only) that all complements
       ! are also present in the fincl array.
-      
+
       ! The first empty slot in the current fincl array is index f from loop above.
       add_fincl_idx = f
       if (f > 1 .and. interpolate_output(t)) then
@@ -3653,8 +3653,8 @@ end subroutine print_active_fldlst
           ierr=pio_inq_varid (tape(t)%File,'swden', tape(t)%swdenid)
         endif
         if (epot_active) then
-          ierr=pio_inq_varid (tape(t)%File,'colat_crit1', tape(t)%colat_crit1_id)         
-          ierr=pio_inq_varid (tape(t)%File,'colat_crit2', tape(t)%colat_crit2_id)         
+          ierr=pio_inq_varid (tape(t)%File,'colat_crit1', tape(t)%colat_crit1_id)
+          ierr=pio_inq_varid (tape(t)%File,'colat_crit2', tape(t)%colat_crit2_id)
         endif
       end if
     end if
@@ -3825,6 +3825,7 @@ end subroutine print_active_fldlst
     ! Method: Issue the required netcdf wrapper calls to define the history file contents
     !
     !-----------------------------------------------------------------------
+     use phys_control,    only: phys_getopts
     use cam_grid_support, only: cam_grid_header_info_t
     use cam_grid_support, only: cam_grid_write_attr, cam_grid_write_var
     use time_manager,     only: get_step_size, get_ref_date, timemgr_get_calendar_cf
@@ -3895,6 +3896,15 @@ end subroutine print_active_fldlst
     integer                          :: amode
     logical                          :: interpolate
     logical                          :: patch_output
+    integer                          :: cam_snapshot_before_num
+    integer                          :: cam_snapshot_after_num
+    character(len=32)                :: cam_take_snapshot_before
+    character(len=32)                :: cam_take_snapshot_after
+
+    call phys_getopts(cam_take_snapshot_before_out= cam_take_snapshot_before, &
+                      cam_take_snapshot_after_out = cam_take_snapshot_after,  &
+                      cam_snapshot_before_num_out = cam_snapshot_before_num,  &
+                      cam_snapshot_after_num_out  = cam_snapshot_after_num)
 
     if(restart) then
       tape => restarthistory_tape
@@ -3963,6 +3973,16 @@ end subroutine print_active_fldlst
       call cam_pio_def_dim(tape(t)%File, 'nbnd', 2, bnddim, existOK=.true.)
       call cam_pio_def_dim(tape(t)%File, 'chars', 8, chardim)
     end if   ! is satfile
+
+    ! Store snapshot location
+    if (t == cam_snapshot_before_num) then
+       ierr=pio_put_att(tape(t)%File, PIO_GLOBAL, 'cam_snapshot_before',      &
+            trim(cam_take_snapshot_before))
+    end if
+    if (t == cam_snapshot_after_num) then
+       ierr=pio_put_att(tape(t)%File, PIO_GLOBAL, 'cam_snapshot_after',       &
+            trim(cam_take_snapshot_after))
+    end if
 
     ! Populate the history coordinate (well, mdims anyway) attributes
     ! This routine also allocates the mdimids array
@@ -6048,23 +6068,23 @@ end subroutine print_active_fldlst
     end do ! history files
 
   end function hist_fld_col_active
- 
+
   subroutine cam_history_snapshot_deactivate(name)
 
-  ! This subroutine deactivates (sets actflag to false) for all tapes 
-  
+  ! This subroutine deactivates (sets actflag to false) for all tapes
+
   character(len=*), intent(in) :: name
 
   logical :: found
   integer :: ff
 
   call get_field_properties(trim(name), found, ff_out=ff, no_tape_check_in=.true.)
-  masterlist(ff)%thisentry%actflag(:) = .false.  
+  masterlist(ff)%thisentry%actflag(:) = .false.
 
   end subroutine cam_history_snapshot_deactivate
 
   subroutine cam_history_snapshot_activate(name, tape)
-  
+
   ! This subroutine activates (set aftflag to true) for the requested tape number
 
   character(len=*), intent(in) :: name
@@ -6074,10 +6094,10 @@ end subroutine print_active_fldlst
   integer :: ff
 
   call get_field_properties(trim(name), found, ff_out=ff, no_tape_check_in=.true.)
-  masterlist(ff)%thisentry%actflag(tape) = .true.  
+  masterlist(ff)%thisentry%actflag(tape) = .true.
 
   end subroutine cam_history_snapshot_activate
- 
+
   subroutine cam_history_snapshot_nhtfrq_set(cam_snapshot_before_num, cam_snapshot_after_num, snapshot_nhtfrq)
 
   integer, intent(in) :: snapshot_nhtfrq
