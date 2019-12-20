@@ -1091,6 +1091,7 @@ contains
     use physconst,       only: stebol, latvap
     use carma_intr,      only: carma_accumulate_stats
     use spmd_utils,      only: mpicom
+    use iop_forcing,     only: scam_use_iop_srf
 #if ( defined OFFLINE_DYN )
     use metdata,         only: get_met_srf2
 #endif
@@ -1119,6 +1120,10 @@ contains
     !
 
     if(single_column.and.scm_crm_mode) return
+    !-----------------------------------------------------------------------
+    ! if using IOP values for surface fluxes overwrite here after surface components run
+    !-----------------------------------------------------------------------
+    if (single_column) call scam_use_iop_srf(cam_in)
 
     !-----------------------------------------------------------------------
     ! Tendency physics after coupler
