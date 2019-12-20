@@ -246,7 +246,7 @@
 <!--              111 tmc                                             -->
   <test compset="QPC5" grid="T5_T5_mg37" name="TMC_D" testmods="cam/ghgrmp_e8">
     <machines>
-      <machine name="izumi" compiler="nag" category="aux_cam"/>
+      <machine name="izumi" compiler="nag" category="aux_cam1"/>
     </machines>
   </test>
 <!--              112 tsm, ter, tbl                              -->
@@ -262,7 +262,7 @@
     </machines>
   </test>
 <!--              114 tsm, ter, tbr, tbl                             -->
-  <test compset="QPC4" grid="T5_T5_mg37" name="ERI_D" testmods="cam/co2rmp">
+  <test compset="QPC4" grid="T5_T5_mg37" name="ERI_D_Ln18" testmods="cam/co2rmp">
     <machines>
       <machine name="izumi" compiler="pgi" category="cam_test"/>
     </machines>
@@ -280,13 +280,13 @@
     </machines>
   </test>
 <!--              311                         -->
-  <test compset="QPC5" grid="f10_f10_mg37" name="ERI_D" testmods="cam/outfrq3s_ttrac">
+  <test compset="QPC5" grid="f10_f10_mg37" name="ERI_D_Ln18" testmods="cam/outfrq3s_eoyttrac">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
   </test>
 <!--              311 tmc                        -->
-  <test compset="QPC5" grid="f10_f10_mg37" name="TMC_D" testmods="cam/outfrq3s_ttrac">
+  <test compset="QPC5" grid="f10_f10_mg37" name="TMC_D" testmods="cam/outfrq3s_eoyttrac">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -412,13 +412,13 @@
     </machines>
   </test>
 <!--              700                         -->
-  <test compset="FADIAB" grid="ne5_ne5_mg37" name="ERI_D" testmods="cam/outfrq3s_bwic">
+  <test compset="FADIAB" grid="ne5_ne5_mg37" name="ERI_D_Ln18" testmods="cam/outfrq3s_bwic">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
   </test>
 <!--              702                        -->
-  <test compset="FADIAB" grid="ne16pg3_ne16pg3_mg17" name="ERI_D_Ld9" testmods="cam/outfrq3s_bwic">
+  <test compset="FADIAB" grid="ne16pg3_ne16pg3_mg17" name="ERI_D_Ln18" testmods="cam/outfrq3s_bwic">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -526,13 +526,13 @@
     </machines>
   </test>
 <!--              002 tsc                       -->
-  <test compset="QPC4" grid="T42_T42_mg17" name="SMS_D_Ln7" testmods="cam/scm_prep">
+  <test compset="QPC4" grid="T42_T42_mg17" name="SCT_D_Ln7" testmods="cam/scm_prep">
     <machines>
       <machine name="izumi" compiler="pgi" category="cam_test"/>
     </machines>
   </test>
 <!--              004 tsc                       -->
-  <test compset="QPC6" grid="T42_T42_mg17" name="SMS_D_Ln7" testmods="cam/scm_prep">
+  <test compset="QPC6" grid="T42_T42_mg17" name="SCT_D_Ln7" testmods="cam/scm_prep">
     <machines>
       <machine name="izumi" compiler="pgi" category="cam_test"/>
     </machines>
