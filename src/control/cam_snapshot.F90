@@ -53,6 +53,8 @@ integer :: ntend_var
 integer :: ncam_in_var
 integer :: ncam_out_var
 integer :: npbuf_var
+integer :: ntphysbc_var
+integer :: ntphysac_var
 
 integer :: cam_snapshot_before_num, cam_snapshot_after_num, cam_snapshot_nhtfrq
 
@@ -62,6 +64,8 @@ type (snapshot_type)    ::  cnst_snapshot(pcnst)
 type (snapshot_type)    ::  tend_snapshot(6)
 type (snapshot_type)    ::  cam_in_snapshot(30)
 type (snapshot_type)    ::  cam_out_snapshot(30)
+type (snapshot_type)    ::  tphysbc_snapshot(30)
+type (snapshot_type)    ::  tphysac_snapshot(30)
 type (snapshot_type_nd) ::  pbuf_snapshot(250)
 
 contains
@@ -95,8 +99,105 @@ use cam_history, only : cam_history_snapshot_nhtfrq_set
    call cam_in_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num, cam_in_arr(index))
    call cam_out_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num, cam_out_arr(index))
    call cam_pbuf_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num, pbuf(:,index))
+   call cam_tphysac_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num)
+   call cam_tphysbc_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num)
 
 end subroutine cam_snapshot_init
+
+subroutine cam_snapshot_all_outfld_tphysbc(file_num, state, tend, cam_in, cam_out, pbuf, cmfmc, cmfcme, &
+        pflx, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+
+use time_manager,   only: is_first_step
+
+!--------------------------------------------------------
+! This subroutine does the outfld calls for ALL state, tend and pbuf fields.  It also includes the cam_in and cam_out
+! elements which are used within CAM
+!--------------------------------------------------------
+
+   integer,                            intent(in) :: file_num
+   type(physics_state), intent(in) :: state
+   type(physics_tend),  intent(in) :: tend
+   type(cam_in_t),      intent(in) :: cam_in
+   type(cam_out_t),     intent(in) :: cam_out
+   type(physics_buffer_desc), pointer, intent(in) :: pbuf(:)
+   real(r8),            intent(in) :: cmfmc(:,:)    ! convective mass flux
+   real(r8),            intent(in) :: cmfcme(:,:)   ! cmf condensation - evaporation
+   real(r8),            intent(in) :: pflx(:,:)     ! convective rain flux throughout bottom of level
+   real(r8),            intent(in) :: zdu(:,:)      ! detraining mass flux from deep convection
+   real(r8),            intent(in) :: rliq(:)       ! vertical integral of liquid not yet in q(ixcldliq)
+   real(r8),            intent(in) :: rice(:)       ! vertical integral of ice not yet in q(ixcldice)
+   real(r8),            intent(in) :: dlf(:,:)      ! local copy of DLFZM (copy so need to output)
+   real(r8),            intent(in) :: dlf2(:,:)     ! Detraining cld H20 from shallow convections
+   real(r8),            intent(in) :: rliq2(:)      ! vertical integral of liquid from shallow scheme
+   real(r8),            intent(in) :: det_s(:)      ! vertical integral of detrained static energy from ice
+   real(r8),            intent(in) :: det_ice(:)    ! vertical integral of detrained ice
+   real(r8),            intent(in) :: net_flx(:)
+
+   integer :: lchnk
+
+   ! Return if the first timestep as not all fields may be filled in and this will cause a core dump
+   if (is_first_step()) return
+
+   ! Return if not turned on 
+   if (cam_snapshot_before_num <= 0 .and. cam_snapshot_after_num <= 0) return ! No snapshot files are being requested
+
+   lchnk = state%lchnk
+
+   call outfld('cmfmc_snapshot', cmfmc, pcols, lchnk)
+   call outfld('cmfcme_snapshot', cmfcme, pcols, lchnk)
+   call outfld('pflx_snapshot', pflx, pcols, lchnk)
+   call outfld('zdu_snapshot', zdu, pcols, lchnk)
+   call outfld('rliq_snapshot', rliq, pcols, lchnk)
+   call outfld('rice_snapshot', rice, pcols, lchnk)
+   call outfld('dlf_snapshot', dlf, pcols, lchnk)
+   call outfld('dlf2_snapshot', dlf2, pcols, lchnk)
+   call outfld('rliq2_snapshot', rliq2, pcols, lchnk)
+   call outfld('det_s_snapshot', det_s, pcols, lchnk)
+   call outfld('det_ice_snapshot', det_ice, pcols, lchnk)
+   call outfld('net_flx_snapshot', net_flx, pcols, lchnk)
+
+   call cam_snapshot_all_outfld(file_num, state, tend, cam_in, cam_out, pbuf)
+
+end subroutine cam_snapshot_all_outfld_tphysbc
+
+subroutine cam_snapshot_all_outfld_tphysac(file_num, state, tend, cam_in, cam_out, pbuf, fh2o, surfric, obklen, flx_heat)
+
+use time_manager,   only: is_first_step
+
+!--------------------------------------------------------
+! This subroutine does the outfld calls for ALL state, tend and pbuf fields.  It also includes the cam_in and cam_out
+! elements which are used within CAM
+!--------------------------------------------------------
+
+   integer,                            intent(in) :: file_num
+   type(physics_state), intent(in) :: state
+   type(physics_tend),  intent(in) :: tend
+   type(cam_in_t),      intent(in) :: cam_in
+   type(cam_out_t),     intent(in) :: cam_out
+   type(physics_buffer_desc), pointer, intent(in) :: pbuf(:)
+   real(r8),            intent(in) :: fh2o(:)            ! h2o flux to balance source from methane chemistry
+   real(r8),            intent(in) :: surfric(:)         ! surface friction velocity
+   real(r8),            intent(in) :: obklen(:)          ! Obukhov length
+   real(r8),            intent(in) :: flx_heat(:)        ! Heat flux for check_energy_chng.
+
+   integer :: lchnk
+
+   ! Return if the first timestep as not all fields may be filled in and this will cause a core dump
+   if (is_first_step()) return
+
+   ! Return if not turned on 
+   if (cam_snapshot_before_num <= 0 .and. cam_snapshot_after_num <= 0) return ! No snapshot files are being requested
+
+   lchnk = state%lchnk
+
+   call outfld('fh2o_snapshot', fh2o, pcols, lchnk)
+   call outfld('surfric_snapshot', surfric, pcols, lchnk)
+   call outfld('obklen_snapshot', obklen, pcols, lchnk)
+   call outfld('flx_heat_snapshot', flx_heat, pcols, lchnk)
+
+   call cam_snapshot_all_outfld(file_num, state, tend, cam_in, cam_out, pbuf)
+
+end subroutine cam_snapshot_all_outfld_tphysac
 
 subroutine cam_snapshot_all_outfld(file_num, state, tend, cam_in, cam_out, pbuf)
 
@@ -583,6 +684,89 @@ subroutine cam_pbuf_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_nu
    end do
 
 end subroutine cam_pbuf_snapshot_init
+
+subroutine cam_tphysbc_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num)
+
+!--------------------------------------------------------
+! This subroutine does the addfld calls for the misc tphysbc physics variables that are passed individually
+! into physics packages
+!--------------------------------------------------------
+
+   integer,intent(in) :: cam_snapshot_before_num, cam_snapshot_after_num
+    
+   ntphysac_var = 0
+
+   !--------------------------------------------------------
+   ! Add the misc tphysbc variables to the output
+   !--------------------------------------------------------
+
+   call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+     'cmfmc',        'cmfmc_snapshot',         'unset',              'lev')
+
+   call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+     'cmfcme',        'cmfcme_snapshot',         'unset',              'lev')
+
+   call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+     'pflx',        'pflx_snapshot',         'unset',              'lev')
+
+   call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+     'zdu',        'zdu_snapshot',         'unset',              'lev')
+
+   call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+     'rliq',        'rliq_snapshot',         'unset',              'horiz_only')
+
+   call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+     'rice',        'rice_snapshot',         'unset',              'horiz_only')
+
+   call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+     'dlf',        'dlf_snapshot',         'unset',              'lev')
+
+   call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+     'dlf2',        'dlf2_snapshot',         'unset',              'lev')
+
+   call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+     'rliq2',        'rliq2_snapshot',         'unset',              'horiz_only')
+
+   call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+     'det_s',        'det_s_snapshot',         'unset',              'horiz_only')
+
+   call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+     'det_ice',        'det_ice_snapshot',         'unset',              'horiz_only')
+
+   call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+     'net_flx',        'net_flx_snapshot',         'unset',              'horiz_only')
+
+
+end subroutine cam_tphysbc_snapshot_init
+
+subroutine cam_tphysac_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num)
+
+!--------------------------------------------------------
+! This subroutine does the addfld calls for the misc tphysac physics variables that are passed individually
+! into physics packages
+!--------------------------------------------------------
+
+   integer,intent(in) :: cam_snapshot_before_num, cam_snapshot_after_num
+    
+   ntphysac_var = 0
+
+   !--------------------------------------------------------
+   ! Add the misc tphysac variables to the output
+   !--------------------------------------------------------
+
+   call snapshot_addfld( ntphysac_var, tphysac_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+     'fh2o',        'fh2o_snapshot',         'unset',              'horiz_only')
+
+   call snapshot_addfld( ntphysac_var, tphysac_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+     'surfric',        'surfric_snapshot',         'unset',              'horiz_only')
+
+   call snapshot_addfld( ntphysac_var, tphysac_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+     'obklen',        'obklen_snapshot',         'unset',              'horiz_only')
+
+   call snapshot_addfld( ntphysac_var, tphysac_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+     'flx',        'flx_snapshot',         'unset',              'horiz_only')
+
+end subroutine cam_tphysac_snapshot_init
 
 subroutine snapshot_addfld_nd(nddt_var, ddt_snapshot, cam_snapshot_before_num, cam_snapshot_after_num,&
     ddt_string, standard_name, units, dimension_string)
