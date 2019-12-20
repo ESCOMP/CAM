@@ -1992,7 +1992,7 @@ contains
   !#######################################################################
 
   character(len=max_hcoordname_len) function hist_dimension_name (size)
-  ! Given a specific size value, return the registered dimension name if it exists
+  ! Given a specific size value, return the first registered dimension name which matches the size, if it exists
   ! Otherwise the name returned is blank
 
      integer, intent(in) :: size
