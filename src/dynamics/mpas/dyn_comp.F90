@@ -14,6 +14,8 @@ use constituents,       only: pcnst, cnst_name, cnst_read_iv
 use cam_control_mod,    only: initial_run
 use cam_initfiles,      only: initial_file_get_id, topo_file_get_id
 
+use dyn_grid,           only: nCellsSolve, nVertLevelsSolve
+
 use cam_grid_support,   only: cam_grid_id, cam_grid_get_gcid, &
                               cam_grid_dimensions, cam_grid_get_dim_names, &
                               cam_grid_get_latvals, cam_grid_get_lonvals,  &
@@ -23,6 +25,8 @@ use cam_map_utils,      only: iMap
 use inic_analytic,      only: analytic_ic_active, analytic_ic_set_ic
 use dyn_tests_utils,    only: vcoord=>vc_height
 
+use cam_history,        only: addfld, add_default, horiz_only, register_vector_field, &
+                              outfld, hist_fld_active
 use cam_history_support, only: date2yyyymmdd, sec2hms, nday2str, &
                                max_fieldname_len
 use cam_pio_utils,      only: clean_iodesc_list
@@ -204,7 +208,6 @@ end subroutine dyn_register
 
 subroutine dyn_init(dyn_in, dyn_out)
 
-   use dyn_grid, only : nCellsSolve, nVertLevelsSolve
    use cam_mpas_subdriver, only : domain_ptr
    use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_array
    use mpas_derived_types, only : mpas_pool_type

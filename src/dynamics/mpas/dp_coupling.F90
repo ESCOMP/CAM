@@ -541,26 +541,6 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
          end do
       end do
 
-! NOTE:  if a tracer is marked "dry", that means physics wants it dry
-!        if dycore advects it wet, it should be converted here 
-!        FV dycore does this, and in physics/cam/tphysac.F90 it will
-!        be converted back to wet, BUT ONLY FOR FV dycore
-!
-!        EUL: advects all tracers (except q1) as dry.  so it never 
-!        calls this.
-!
-!        HOMME:  we should follow FV and advect all tracers wet (especially
-!        since we will be switching to conservation form of advection).  
-!        So this is broken since dry tracers will never get converted 
-!        back to wet. (in APE, all tracers are wet, so it is ok for now)  
-!
-!        MPAS: advects dry mixing ratios, but coupler did converted whole dry mixing ratio to wet mixing ratio
-!
-
-      ! Convert dry type constituents from moist to dry mixing ratio
-      call set_state_pdry(phys_state(lchnk))    ! First get dry pressure to use for this timestep
-      call set_wet_to_dry(phys_state(lchnk))    ! Dynamics had moist, physics wants dry.
-
       ! Compute energy and water integrals of input state
       pbuf_chnk => pbuf_get_chunk(pbuf2d, lchnk)
       call check_energy_timestep_init(phys_state(lchnk), phys_tend(lchnk), pbuf_chnk)
