@@ -180,9 +180,9 @@ integer :: &
    des_idx,            &
    icswp_idx,          &
    cldfsnow_idx,       &
-   degrau_idx,         &
-   icgrauwp_idx,       &
-   cldfgrau_idx,       &
+   degrau_idx = -1,    &
+   icgrauwp_idx = -1,  &
+   cldfgrau_idx = -1,  &
    rate1_cw2pr_st_idx = -1, &
    ls_flxprc_idx,      &
    ls_flxsnw_idx,      &
