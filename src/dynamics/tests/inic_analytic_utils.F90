@@ -103,6 +103,9 @@ CONTAINS
        case('dry_baroclinic_wave_jw2006')
           moist = .false.
           msg = 'Dynamics state will be set to a dry baroclinic wave initial condition as described in JW2006.'
+       case('us_standard_atmosphere')
+          moist = .false.
+          msg = 'static atmospheric state (u,v)=0, standard lapse rate for T, PS is hydrostatic equilibrium with topography.'
        case('none')
           msg = subname//': ERROR: analytic_ic_type must be set'
           write(iulog, *) msg

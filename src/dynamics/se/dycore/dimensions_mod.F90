@@ -33,6 +33,7 @@ module dimensions_mod
   integer,            allocatable, public :: qsize_condensate_loading_idx(:)    
   integer,            allocatable, public :: qsize_condensate_loading_idx_gll(:)
   real(r8),           allocatable, public :: qsize_condensate_loading_cp(:)
+  real(r8),           allocatable, public :: qsize_condensate_loading_R(:)
   character(len=16),  allocatable, public :: cnst_name_gll(:)     ! constituent names for SE tracers
   character(len=128), allocatable, public :: cnst_longname_gll(:) ! long name of SE tracers
   !
@@ -77,6 +78,7 @@ module dimensions_mod
   real(r8), public :: max_nu_scale_del4 ! for sponge viscosity - maximum nu can be scaled with and still be
                                         ! theoretically stable (computed in global_norms_mod.F90)
   real(r8), public :: nu_scale_top(PLEV)! scaling of del2 viscosity in sopnge layer (initialized in dyn_comp)
+  real(r8), public :: otau(PLEV)
   integer,  public :: ksponge_end       ! sponge is active k=1,ksponge_end
   real(r8), public :: nu_div_scale_top(PLEV) = 1.0_r8 ! scaling of viscosity in sponge layer
                                                       ! (set in prim_state; if applicable)

@@ -13,14 +13,15 @@ use ppgrid,         only: pcols, pver
 use physconst,      only: pi, rair, tmelt
 use constituents,   only: pcnst, cnst_get_ind
 use physics_types,  only: physics_state, physics_ptend, physics_ptend_init
-use physics_buffer, only: physics_buffer_desc, pbuf_get_index, pbuf_old_tim_idx, pbuf_get_field
+use physics_buffer, only: physics_buffer_desc
 use phys_control,   only: use_hetfrz_classnuc
 use rad_constituents, only: rad_cnst_get_info, rad_cnst_get_aer_mmr, rad_cnst_get_aer_props, &
                             rad_cnst_get_mode_num, rad_cnst_get_mode_props, rad_cnst_get_mode_num_idx, &
                             rad_cnst_get_mam_mmr_idx
 
 use physics_buffer, only: pbuf_add_field, dtype_r8, pbuf_old_tim_idx, &
-                          pbuf_get_index, pbuf_get_field
+                          pbuf_get_index, pbuf_get_field, &
+                          pbuf_set_field
 use cam_history,    only: addfld, add_default, outfld
 
 use ref_pres,       only: top_lev => trop_cloud_top_lev
@@ -159,18 +160,22 @@ end subroutine nucleate_ice_cam_readnl
 
 subroutine nucleate_ice_cam_register()
 
-   call pbuf_add_field('NAAI',     'physpkg', dtype_r8, (/pcols,pver/), naai_idx)
+   ! global scope for NAAI needed when clubb_do_icesuper=.true.
+   call pbuf_add_field('NAAI',     'global', dtype_r8, (/pcols,pver/), naai_idx)
    call pbuf_add_field('NAAI_HOM', 'physpkg', dtype_r8, (/pcols,pver/), naai_hom_idx)
 
 end subroutine nucleate_ice_cam_register
 
 !================================================================================================
 
-subroutine nucleate_ice_cam_init(mincld_in, bulk_scale_in)
+subroutine nucleate_ice_cam_init(mincld_in, bulk_scale_in, pbuf2d)
    use phys_control, only: phys_getopts
+   use time_manager, only: is_first_step
 
    real(r8), intent(in) :: mincld_in
    real(r8), intent(in) :: bulk_scale_in
+
+   type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
    ! local variables
    integer  :: iaer
@@ -185,6 +190,11 @@ subroutine nucleate_ice_cam_init(mincld_in, bulk_scale_in)
 
    mincld     = mincld_in
    bulk_scale = bulk_scale_in
+
+   ! Initialize naai.
+   if (is_first_step()) then
+      call pbuf_set_field(pbuf2d, naai_idx, 0.0_r8)
+   end if
 
    if( masterproc ) then
       write(iulog,*) 'nucleate_ice parameters:'

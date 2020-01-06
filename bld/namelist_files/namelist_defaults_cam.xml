@@ -18,10 +18,10 @@
 <dtime dyn="se"    hgrid="ne5np4"  >1800</dtime>
 <dtime dyn="se"    hgrid="ne16np4" >1800</dtime>
 <dtime dyn="se"    hgrid="ne30np4" >1800</dtime>
-<dtime dyn="se"    hgrid="ne60np4" >1800</dtime>
-<dtime dyn="se"    hgrid="ne120np4">900 </dtime>
-<dtime dyn="se"    hgrid="ne240np4">600 </dtime>
-<dtime dyn="se"    hgrid="ne0np4CONUS.ne30x8">600</dtime>
+<dtime dyn="se"    hgrid="ne60np4" > 900</dtime>
+<dtime dyn="se"    hgrid="ne120np4"> 450</dtime>
+<dtime dyn="se"    hgrid="ne240np4"> 225</dtime>
+<dtime dyn="se"    hgrid="ne0np4CONUS.ne30x8">225</dtime>
 
 <!-- Initial conditions -->
 <!-- Vertical coordinates only, good for analytic initial conditions -->
@@ -495,7 +495,7 @@
 <waccm_forcing_file     chem="waccm_sc">ghg_forcing_2000_c110321.nc</waccm_forcing_file>
 <waccm_forcing_cycle_yr chem="waccm_sc">0</waccm_forcing_cycle_yr>
 <waccm_forcing_datapath chem="waccm_sc_mam4">atm/waccm/waccm_forcing</waccm_forcing_datapath>
-<waccm_forcing_file     chem="waccm_sc_mam4">SCWACCM_forcing_WACCM6_zm_5day_L70_1975-2014_c180216.nc</waccm_forcing_file>
+<waccm_forcing_file     chem="waccm_sc_mam4">SCWACCM_forcing_WACCM6_zm_5day_L70_1975-2014_c191121.nc</waccm_forcing_file>
 <waccm_forcing_cycle_yr chem="waccm_sc_mam4">2000</waccm_forcing_cycle_yr>
 
 <!-- Waccm electric field parameters -->
@@ -824,8 +824,8 @@
 <no2_ar_ext_file       ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_NO2_aircraft_vertical_1750-2015_0.9x1.25_c20170608.nc</no2_ar_ext_file>
 <num_a4_ar_ext_file    ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_num_bc_a4_aircraft_vertical_1750-2015_0.9x1.25_c20170608.nc</num_a4_ar_ext_file>
 <so2_ar_ext_file       ver="cam6">atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_SO2_aircraft_vertical_1750-2015_0.9x1.25_c20170608.nc</so2_ar_ext_file>
-<so2_volc_1deg_ext_file ver="cam6">atm/cam/chem/stratvolc/VolcanEESMv3.11_SO2_850-2016_Mscale_Zreduc_1deg_c180812.nc</so2_volc_1deg_ext_file>
-<so2_volc_2deg_ext_file ver="cam6">atm/cam/chem/stratvolc/VolcanEESMv3.11_SO2_850-2016_Mscale_Zreduc_2deg_c180812.nc</so2_volc_2deg_ext_file>
+<so2_volc_1deg_ext_file ver="cam6">atm/cam/chem/stratvolc/VolcanEESMv3.11_SO2_850-2016_Mscale_Zreduc_1deg_c191121.nc</so2_volc_1deg_ext_file>
+<so2_volc_2deg_ext_file ver="cam6">atm/cam/chem/stratvolc/VolcanEESMv3.11_SO2_850-2016_Mscale_Zreduc_2deg_c191125.nc</so2_volc_2deg_ext_file>
 <so2_volc_pi_ext_file   ver="cam6">atm/cam/chem/stratvolc/VolcanEESMv3.10_piControl_SO2_1850-2014average_1deg_ZeroTrop_c180416.nc</so2_volc_pi_ext_file>
 
 <!-- 2-DEG VRT -->
@@ -1964,10 +1964,15 @@
 
 <se_hypervis_scaling se_refined_mesh="1" hypervis_type="tensor" >3.0D0 </se_hypervis_scaling>
 
-<se_hypervis_subcycle>                             2 </se_hypervis_subcycle>
+<se_hypervis_subcycle>                             3 </se_hypervis_subcycle>
+<se_hypervis_subcycle hgrid="ne0np4CONUS.ne30x8">  1 </se_hypervis_subcycle>
+<se_hypervis_subcycle waccm_phys="1">              1 </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne16np4">            4 </se_hypervis_subcycle>
-<se_hypervis_subcycle  hgrid="ne0np4CONUS.ne30x8" hypervis_type="scalar"> 6 </se_hypervis_subcycle>
-<se_hypervis_subcycle  hgrid="ne0np4CONUS.ne30x8" hypervis_type="tensor"> 8 </se_hypervis_subcycle>
+
+<se_hypervis_subcycle_sponge>                            1                </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge waccm_phys="1">             3                </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge hgrid="ne0np4CONUS.ne30x8"> 4                </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"> 20</se_hypervis_subcycle_sponge>
 
 <se_hypervis_subcycle_q>1                 </se_hypervis_subcycle_q>
 <se_hypervis_subcycle_q hgrid="ne16np4">2 </se_hypervis_subcycle_q>
@@ -1983,15 +1988,14 @@
 <se_nsplit hgrid="ne5np4"   waccm_phys="1"        >  3  </se_nsplit>
 <se_nsplit hgrid="ne16np4"  waccm_phys="1"        >  3  </se_nsplit>
 <se_nsplit hgrid="ne30np4"  waccm_phys="1"        > 12  </se_nsplit>
-<se_nsplit hgrid="ne30np4"  waccm_phys="1" npg="2">  5  </se_nsplit>
-<se_nsplit hgrid="ne30np4"  waccm_phys="1" npg="3">  5  </se_nsplit>
+<se_nsplit hgrid="ne30np4"  waccm_phys="1" npg="2">  6  </se_nsplit>
+<se_nsplit hgrid="ne30np4"  waccm_phys="1" npg="3">  6  </se_nsplit>
 
-<se_nsplit hgrid="ne0np4CONUS.ne30x8"  > 6 </se_nsplit>
+<se_nsplit hgrid="ne0np4CONUS.ne30x8"               > 3 </se_nsplit>
+<se_nsplit hgrid="ne0np4CONUS.ne30x8" waccm_phys="1">12 </se_nsplit>
 <se_nsplit hgrid="ne0np4TESTONLY.ne5x4"> 7 </se_nsplit>
 
 <se_variable_nsplit                       >.false.</se_variable_nsplit>
-<se_variable_nsplit waccm_phys="1" npg="2">.true.</se_variable_nsplit>
-<se_variable_nsplit waccm_phys="1" npg="3">.true.</se_variable_nsplit>
 
 <se_phys_dyn_cp>1</se_phys_dyn_cp>
 
@@ -2004,9 +2008,19 @@
 <se_nu_p>-1 </se_nu_p>
 <se_nu_p se_refined_mesh="1" hypervis_type="scalar" > 1.5625e13 </se_nu_p>
 
-<se_nu_top> 1.25e5 </se_nu_top>
-<se_nu_top waccm_phys="1"> 1.0e6 </se_nu_top>
-<se_nu_top se_refined_mesh="1"> 2.0e5 </se_nu_top>
+<se_nu_top                                   > 1.25e5 </se_nu_top>
+<se_nu_top se_refined_mesh="1"               > 2.0e5  </se_nu_top>
+<se_nu_top waccm_phys="1"                    > 2.5e6  </se_nu_top>
+<se_nu_top se_refined_mesh="1" waccm_phys="1"> 2.0e5 </se_nu_top>
+
+
+<se_raytau0                      >  0.0 </se_raytau0>
+<se_raykrange                    >  0.5  </se_raykrange>
+<se_rayk0                        >  2    </se_rayk0>
+<!-- suggested value for WACCM se_raytau0=0.02   -->
+<se_raytau0   waccm_phys="1"     >  0.0  </se_raytau0>
+<se_raykrange waccm_phys="1"     >  3    </se_raykrange>
+<se_rayk0     waccm_phys="1"     >  2    </se_rayk0>
 
 <se_qsize_condensate_loading                    > 3 </se_qsize_condensate_loading>
 <se_qsize_condensate_loading phys="cam4"        > 3 </se_qsize_condensate_loading>
@@ -2023,9 +2037,10 @@
 <se_refined_mesh hgrid="ne0np4CONUS.ne30x8" > .true. </se_refined_mesh>
 <se_refined_mesh hgrid="ne0np4TESTONLY.ne5x4" > .true. </se_refined_mesh>
 
-<se_rsplit                                           > 3 </se_rsplit>
-<se_rsplit waccm_phys="1" npg="2"                    > 6 </se_rsplit>
-<se_rsplit waccm_phys="1" npg="3"                    > 6 </se_rsplit>
+<se_rsplit                                          > 3 </se_rsplit>
+<se_rsplit waccm_phys="1" npg="2"                   > 5 </se_rsplit>
+<se_rsplit waccm_phys="1" npg="3"                   > 5 </se_rsplit>
+<se_rsplit hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"> 3 </se_rsplit>
 
 <se_fvm_supercycling>-1</se_fvm_supercycling>
 <se_fvm_supercycling_jet>-1</se_fvm_supercycling_jet>
