@@ -119,8 +119,7 @@ subroutine dyn_grid_init()
 
    use cam_history_support, only: add_vert_coord
 
-   use cam_mpas_subdriver,  only: cam_mpas_init_phase3, cam_mpas_read_geometry,         &
-                                  cam_mpas_get_global_dims, cam_mpas_get_global_coords, &
+   use cam_mpas_subdriver,  only: cam_mpas_init_phase3, cam_mpas_get_global_dims, cam_mpas_get_global_coords, &
                                   cam_mpas_get_global_blocks
         
    type(file_desc_t), pointer :: fh_ini
@@ -167,9 +166,11 @@ subroutine dyn_grid_init()
       write(iulog,9830) plevp, zw(plevp), pref_edge(plevp)
    end if
 
-   ! Read distributed latitude, longitude, and area of mesh cells,
-   ! with the resulting fields stored in an MPAS pool
-   call cam_mpas_read_geometry(fh_ini, endrun)
+   !
+   ! Read or compute all time-invariant fields for the MPAS-A dycore
+   ! Time-invariant fields are stored in the MPAS mesh pool
+   !
+   call setup_time_invariant(fh_ini)
 
    ! Query global grid dimensions from MPAS
    call cam_mpas_get_global_dims(nCells, nEdges, nVertices, maxEdges, nVertLevels, maxNCells)
@@ -795,6 +796,36 @@ subroutine ref_height_read(File)
    call pio_seterrorhandling(file, pio_errtype)
 
 end subroutine ref_height_read
+
+
+!-----------------------------------------------------------------------
+!  routine setup_time_invariant
+!
+!> \brief Read or compute all time-invariant fields for the MPAS-A dycore
+!> \details
+!>  Initialize all time-invariant fields needed by the MPAS-Atmosphere dycore,
+!>  either by reading these fields from CAM's initial file or by computing them
+!
+!-----------------------------------------------------------------------
+subroutine setup_time_invariant(fh_ini)
+
+   use cam_initfiles,      only : initial_file_get_id
+   use cam_mpas_subdriver, only : cam_mpas_read_static
+
+   implicit none
+
+   ! Arguments
+   type(file_desc_t), pointer :: fh_ini
+
+   ! Read time-invariant fields
+   call cam_mpas_read_static(fh_ini, endrun)
+
+   ! At present, all time-invariant fields are read from the file descriptor provided
+   ! by initial_file_get_id(), but in future, some of these fields could be computed
+   ! here based on other fields that were read
+
+end subroutine setup_time_invariant
+
 
 !-----------------------------------------------------------------------
 !  routine define_cam_grids

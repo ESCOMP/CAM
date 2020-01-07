@@ -272,10 +272,6 @@ subroutine dyn_init(dyn_in, dyn_out)
    call mpas_pool_get_array(diag_pool,  'uReconstructMeridional', dyn_out % uy)
    call mpas_pool_get_array(diag_pool,  'pressure',               dyn_out % pmid)
 
-   call read_phis(dyn_in)
-
-   ! At this point, we could set up zgrid, zz, fzm, and fzp
-
    if (initial_run) then
       call read_inidat(dyn_in)
       call clean_iodesc_list()
@@ -603,109 +599,6 @@ subroutine read_inidat(dyn_in)
    rho_tend(:,:) = 0.0_r8
 
 end subroutine read_inidat
-
-!========================================================================================
-
-subroutine read_phis(dyn_in)
-
-   ! Set PHIS according to the following rules.
-   !
-   ! 1) If a topo file is specified use it.  This option has highest precedence.
-   ! 2) If not using topo file, but analytic_ic option is on, use analytic phis.
-   ! 3) Set phis = 0.0.
-   !
-   ! If using the physics grid then the topo file will be on that grid since its
-   ! contents are primarily for the physics parameterizations, and the values of
-   ! PHIS should be consistent with the values of sub-grid variability (e.g., SGH)
-   ! which are computed on the physics grid.  In this case phis on the physics grid
-   ! will be interpolated to the GLL grid.
-
-
-   ! Arguments
-   type (dyn_import_t), target, intent(inout) :: dyn_in   ! dynamics import
-
-   ! local variables
-   type(file_desc_t), pointer       :: fh_topo
-
-   real(r8), allocatable            :: phis_tmp(:,:)      ! (npsp,nelemd)
-   real(r8), allocatable            :: phis_phys_tmp(:,:) ! (fv_nphys**2,nelemd)
-
-   integer                          :: i, ie, indx, j, kptr
-   integer                          :: ierr, pio_errtype
-
-   character(len=max_fieldname_len) :: fieldname
-   character(len=max_hcoordname_len):: grid_name
-   integer                          :: dims(2)
-   integer                          :: ncells
-   integer                          :: ncol_did
-   integer                          :: ncol_size
-
-   integer(iMap), pointer           :: gcid(:)            ! map local column order to global order
-   logical,  allocatable            :: pmask(:)           ! unique columns
-
-   ! Variables for analytic initial conditions
-   integer,  allocatable            :: glob_ind(:)
-   logical,  allocatable            :: pmask_phys(:)
-   real(r8), pointer                :: latvals_deg(:)
-   real(r8), pointer                :: lonvals_deg(:)
-   real(r8), allocatable            :: latvals(:)
-   real(r8), allocatable            :: lonvals(:)
-   real(r8), allocatable            :: latvals_phys(:)
-   real(r8), allocatable            :: lonvals_phys(:)
-
-   character(len=*), parameter      :: subname='read_phis'
-   !----------------------------------------------------------------------------
-
-   fh_topo => topo_file_get_id()
-
-
-   ! Set mask to indicate which columns are active in GLL grid.
-   nullify(gcid)
-   call cam_grid_get_gcid(cam_grid_id('mpas_cell'), gcid)
-   allocate(pmask(size(gcid)))
-   pmask(:) = (gcid /= 0)
-   deallocate(gcid)
-
-   if (associated(fh_topo)) then
-
-      ! Set PIO to return error flags.
-      call pio_seterrorhandling(fh_topo, PIO_BCAST_ERROR, pio_errtype)
-
-      ! Get number of global columns from the grid object and check that
-      ! it matches the file data.
-      call cam_grid_dimensions('mpas_cell', dims)
-      ncells = dims(1)
-
-      ! code to read phis...
-
-      ! Put the error handling back the way it was
-      call pio_seterrorhandling(fh_topo, pio_errtype)
-
-   else if (analytic_ic_active()) then
-
-      ! lat/lon needed in radians
-      latvals_deg => cam_grid_get_latvals(cam_grid_id('mpas_cell'))
-      lonvals_deg => cam_grid_get_lonvals(cam_grid_id('mpas_cell'))
-      allocate(latvals(size(latvals_deg)))
-      allocate(lonvals(size(lonvals_deg)))
-      latvals(:) = latvals_deg(:)*deg2rad
-      lonvals(:) = lonvals_deg(:)*deg2rad
-
-
-!      call analytic_ic_set_ic(vcoord, latvals, lonvals, glob_ind, &
-!                              PHIS=phis_tmp, mask=pmask(:))
-
-
-
-   end if
-
-   deallocate(pmask)
-
-
-!   deallocate(phis_tmp)
-
-
-end subroutine read_phis
 
 !========================================================================================
 

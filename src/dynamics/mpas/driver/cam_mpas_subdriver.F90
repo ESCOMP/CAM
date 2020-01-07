@@ -17,10 +17,10 @@ module cam_mpas_subdriver
               cam_mpas_init_phase2, &
               cam_mpas_init_phase3, &
               cam_mpas_init_phase4, &
-              cam_mpas_read_geometry, &
               cam_mpas_get_global_dims, &
               cam_mpas_get_global_coords, &
               cam_mpas_get_global_blocks, &
+              cam_mpas_read_static, &
               cam_mpas_finalize
     public :: corelist, domain_ptr
 
@@ -426,57 +426,6 @@ contains
 
 
     !-----------------------------------------------------------------------
-    !  routine cam_mpas_read_geometry
-    !
-    !> \brief Read latitude, longitude, and cell area for MPAS cells
-    !> \author Michael Duda
-    !> \date   27 August 2019
-    !> \details
-    !>  This routine takes as input an opened PIO file descriptor and constructs
-    !>  an MPAS stream from this descriptor. The latCell, lonCell, and areaCell
-    !>  fields are read from the resulting stream and stored in the mesh pool.
-    !
-    !-----------------------------------------------------------------------
-    subroutine cam_mpas_read_geometry(fh_ini, endrun)
-
-       use pio, only : file_desc_t
-
-       use mpas_io_streams, only : MPAS_createStream, MPAS_closeStream, MPAS_streamAddField, MPAS_readStream
-       use mpas_derived_types, only : MPAS_IO_READ, MPAS_IO_NETCDF, MPAS_Stream_type, MPAS_pool_type, &
-                                      field1Dreal
-       use mpas_pool_routines, only : MPAS_pool_get_subpool, MPAS_pool_get_field
-
-       implicit none
-
-       type (file_desc_t), pointer :: fh_ini
-       procedure(halt_model) :: endrun
-
-       integer :: ierr
-       type (MPAS_pool_type), pointer :: meshPool
-       type (field1DReal), pointer :: latCell, lonCell, areaCell
-       type (MPAS_Stream_type) :: mesh_stream
-
-
-       call MPAS_createStream(mesh_stream, domain_ptr % ioContext, 'not_used', MPAS_IO_NETCDF, MPAS_IO_READ, &
-                              pio_file_desc=fh_ini, ierr=ierr)
-
-       call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'mesh', meshPool)
-       call mpas_pool_get_field(meshPool, 'latCell', latCell)
-       call mpas_pool_get_field(meshPool, 'lonCell', lonCell)
-       call mpas_pool_get_field(meshPool, 'areaCell', areaCell)
-
-       call MPAS_streamAddField(mesh_stream, latCell, ierr=ierr)
-       call MPAS_streamAddField(mesh_stream, lonCell, ierr=ierr)
-       call MPAS_streamAddField(mesh_stream, areaCell, ierr=ierr)
-
-       call MPAS_readStream(mesh_stream, 0, ierr=ierr)
-
-       call MPAS_closeStream(mesh_stream, ierr=ierr)
-
-    end subroutine cam_mpas_read_geometry
-
-
-    !-----------------------------------------------------------------------
     !  routine cam_mpas_get_global_dims
     !
     !> \brief  Returns global mesh dimensions
@@ -713,6 +662,207 @@ contains
        end do
 
     end subroutine cam_mpas_get_global_blocks
+
+
+    !-----------------------------------------------------------------------
+    !  routine cam_mpas_read_static
+    !
+    !> \brief  Reads time-invariant ("static") fields from an MPAS-A mesh file
+    !> \author Michael Duda
+    !> \date   6 January 2020
+    !> \details
+    !>  This routine takes as input an opened PIO file descriptor and a routine
+    !>  to call if catastrophic errors are encountered. An MPAS stream is constructed
+    !>  from this file descriptor, and most of the fields that exist in MPAS's
+    !>  "mesh" pool are read from this stream.
+    !>  Upon successful completion, valid mesh fields may be accessed from the mesh
+    !>  pool.
+    !
+    !-----------------------------------------------------------------------
+    subroutine cam_mpas_read_static(fh_ini, endrun)
+
+       use pio, only : file_desc_t
+
+       use mpas_io_streams, only : MPAS_createStream, MPAS_closeStream, MPAS_streamAddField, MPAS_readStream
+       use mpas_derived_types, only : MPAS_IO_READ, MPAS_IO_NETCDF, MPAS_Stream_type, MPAS_pool_type, &
+                                      field0DReal, field1DReal, field2DReal, field3DReal, field1DInteger, field2DInteger
+       use mpas_pool_routines, only : MPAS_pool_get_subpool, MPAS_pool_get_field
+
+       implicit none
+
+       type (file_desc_t), pointer :: fh_ini
+       procedure(halt_model) :: endrun
+
+       integer :: ierr
+       type (MPAS_pool_type), pointer :: meshPool
+       type (field1DReal), pointer :: latCell, lonCell, xCell, yCell, zCell
+       type (field1DReal), pointer :: latEdge, lonEdge, xEdge, yEdge, zEdge
+       type (field1DReal), pointer :: latVertex, lonVertex, xVertex, yVertex, zVertex
+       type (field1DInteger), pointer :: indexToCellID, indexToEdgeID, indexToVertexID
+       type (field1DReal), pointer :: areaCell, areaTriangle, dcEdge, dvEdge, angleEdge
+       type (field2DReal), pointer :: kiteAreasOnVertex, weightsOnEdge
+       type (field1DReal), pointer :: meshDensity
+       type (field1DInteger), pointer :: nEdgesOnCell, nEdgesOnEdge
+       type (field2DInteger), pointer :: cellsOnEdge, edgesOnCell, edgesOnEdge, cellsOnCell, verticesOnCell, &
+                                         verticesOnEdge, edgesOnVertex, cellsOnVertex
+       type (field0DReal), pointer :: cf1, cf2, cf3
+       type (field1DReal), pointer :: rdzw, dzu, rdzu, fzm, fzp
+       type (field2DReal), pointer :: zgrid, zxu, zz
+       type (field3DReal), pointer :: zb, zb3, deriv_two, cellTangentPlane, coeffs_reconstruct
+
+       type (field2DReal), pointer :: edgeNormalVectors, localVerticalUnitVectors, defc_a, defc_b
+
+       type (MPAS_Stream_type) :: mesh_stream
+
+
+       call MPAS_createStream(mesh_stream, domain_ptr % ioContext, 'not_used', MPAS_IO_NETCDF, MPAS_IO_READ, &
+                              pio_file_desc=fh_ini, ierr=ierr)
+
+       call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'mesh', meshPool)
+
+       call mpas_pool_get_field(meshPool, 'latCell', latCell)
+       call mpas_pool_get_field(meshPool, 'lonCell', lonCell)
+       call mpas_pool_get_field(meshPool, 'xCell', xCell)
+       call mpas_pool_get_field(meshPool, 'yCell', yCell)
+       call mpas_pool_get_field(meshPool, 'zCell', zCell)
+
+       call mpas_pool_get_field(meshPool, 'latEdge', latEdge)
+       call mpas_pool_get_field(meshPool, 'lonEdge', lonEdge)
+       call mpas_pool_get_field(meshPool, 'xEdge', xEdge)
+       call mpas_pool_get_field(meshPool, 'yEdge', yEdge)
+       call mpas_pool_get_field(meshPool, 'zEdge', zEdge)
+
+       call mpas_pool_get_field(meshPool, 'latVertex', latVertex)
+       call mpas_pool_get_field(meshPool, 'lonVertex', lonVertex)
+       call mpas_pool_get_field(meshPool, 'xVertex', xVertex)
+       call mpas_pool_get_field(meshPool, 'yVertex', yVertex)
+       call mpas_pool_get_field(meshPool, 'zVertex', zVertex)
+
+       call mpas_pool_get_field(meshPool, 'indexToCellID', indexToCellID)
+       call mpas_pool_get_field(meshPool, 'indexToEdgeID', indexToEdgeID)
+       call mpas_pool_get_field(meshPool, 'indexToVertexID', indexToVertexID)
+
+       call mpas_pool_get_field(meshPool, 'areaCell', areaCell)
+       call mpas_pool_get_field(meshPool, 'areaTriangle', areaTriangle)
+       call mpas_pool_get_field(meshPool, 'dcEdge', dcEdge)
+       call mpas_pool_get_field(meshPool, 'dvEdge', dvEdge)
+       call mpas_pool_get_field(meshPool, 'angleEdge', angleEdge)
+       call mpas_pool_get_field(meshPool, 'kiteAreasOnVertex', kiteAreasOnVertex)
+       call mpas_pool_get_field(meshPool, 'weightsOnEdge', weightsOnEdge)
+
+       call mpas_pool_get_field(meshPool, 'meshDensity', meshDensity)
+
+       call mpas_pool_get_field(meshPool, 'nEdgesOnCell', nEdgesOnCell)
+       call mpas_pool_get_field(meshPool, 'nEdgesOnEdge', nEdgesOnEdge)
+
+       call mpas_pool_get_field(meshPool, 'cellsOnEdge', cellsOnEdge)
+       call mpas_pool_get_field(meshPool, 'edgesOnCell', edgesOnCell)
+       call mpas_pool_get_field(meshPool, 'edgesOnEdge', edgesOnEdge)
+       call mpas_pool_get_field(meshPool, 'cellsOnCell', cellsOnCell)
+       call mpas_pool_get_field(meshPool, 'verticesOnCell', verticesOnCell)
+       call mpas_pool_get_field(meshPool, 'verticesOnEdge', verticesOnEdge)
+       call mpas_pool_get_field(meshPool, 'edgesOnVertex', edgesOnVertex)
+       call mpas_pool_get_field(meshPool, 'cellsOnVertex', cellsOnVertex)
+
+       call mpas_pool_get_field(meshPool, 'cf1', cf1)
+       call mpas_pool_get_field(meshPool, 'cf2', cf2)
+       call mpas_pool_get_field(meshPool, 'cf3', cf3)
+
+       call mpas_pool_get_field(meshPool, 'rdzw', rdzw)
+       call mpas_pool_get_field(meshPool, 'dzu', dzu)
+       call mpas_pool_get_field(meshPool, 'rdzu', rdzu)
+       call mpas_pool_get_field(meshPool, 'fzm', fzm)
+       call mpas_pool_get_field(meshPool, 'fzp', fzp)
+
+       call mpas_pool_get_field(meshPool, 'zgrid', zgrid)
+       call mpas_pool_get_field(meshPool, 'zxu', zxu)
+       call mpas_pool_get_field(meshPool, 'zz', zz)
+       call mpas_pool_get_field(meshPool, 'zb', zb)
+       call mpas_pool_get_field(meshPool, 'zb3', zb3)
+
+       call mpas_pool_get_field(meshPool, 'deriv_two', deriv_two)
+       call mpas_pool_get_field(meshPool, 'cellTangentPlane', cellTangentPlane)
+       call mpas_pool_get_field(meshPool, 'coeffs_reconstruct', coeffs_reconstruct)
+
+       call mpas_pool_get_field(meshPool, 'edgeNormalVectors', edgeNormalVectors)
+       call mpas_pool_get_field(meshPool, 'localVerticalUnitVectors', localVerticalUnitVectors)
+       call mpas_pool_get_field(meshPool, 'defc_a', defc_a)
+       call mpas_pool_get_field(meshPool, 'defc_b', defc_b)
+
+       call MPAS_streamAddField(mesh_stream, latCell, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, lonCell, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, xCell, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, yCell, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, zCell, ierr=ierr)
+
+       call MPAS_streamAddField(mesh_stream, latEdge, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, lonEdge, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, xEdge, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, yEdge, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, zEdge, ierr=ierr)
+
+       call MPAS_streamAddField(mesh_stream, latVertex, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, lonVertex, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, xVertex, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, yVertex, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, zVertex, ierr=ierr)
+
+       call MPAS_streamAddField(mesh_stream, indexToCellID, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, indexToEdgeID, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, indexToVertexID, ierr=ierr)
+
+       call MPAS_streamAddField(mesh_stream, areaCell, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, areaTriangle, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, dcEdge, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, dvEdge, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, angleEdge, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, kiteAreasOnVertex, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, weightsOnEdge, ierr=ierr)
+
+       call MPAS_streamAddField(mesh_stream, meshDensity, ierr=ierr)
+
+       call MPAS_streamAddField(mesh_stream, nEdgesOnCell, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, nEdgesOnEdge, ierr=ierr)
+
+       call MPAS_streamAddField(mesh_stream, cellsOnEdge, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, edgesOnCell, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, edgesOnEdge, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, cellsOnCell, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, verticesOnCell, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, verticesOnEdge, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, edgesOnVertex, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, cellsOnVertex, ierr=ierr)
+
+       call MPAS_streamAddField(mesh_stream, cf1, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, cf2, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, cf3, ierr=ierr)
+
+       call MPAS_streamAddField(mesh_stream, rdzw, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, dzu, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, rdzu, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, fzm, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, fzp, ierr=ierr)
+
+       call MPAS_streamAddField(mesh_stream, zgrid, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, zxu, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, zz, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, zb, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, zb3, ierr=ierr)
+
+       call MPAS_streamAddField(mesh_stream, deriv_two, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, cellTangentPlane, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, coeffs_reconstruct, ierr=ierr)
+
+       call MPAS_streamAddField(mesh_stream, edgeNormalVectors, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, localVerticalUnitVectors, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, defc_a, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, defc_b, ierr=ierr)
+
+       call MPAS_readStream(mesh_stream, 0, ierr=ierr)
+
+       call MPAS_closeStream(mesh_stream, ierr=ierr)
+
+    end subroutine cam_mpas_read_static
 
 
     !-----------------------------------------------------------------------
