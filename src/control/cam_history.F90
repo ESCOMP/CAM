@@ -67,7 +67,6 @@ module cam_history
   public :: get_field_properties
   public :: cam_history_snapshot_deactivate
   public :: cam_history_snapshot_activate
-  public :: cam_history_snapshot_nhtfrq_set
 
   !
   ! master_entry: elements of an entry in the master field list
@@ -6098,14 +6097,4 @@ end subroutine print_active_fldlst
 
   end subroutine cam_history_snapshot_activate
 
-  subroutine cam_history_snapshot_nhtfrq_set(cam_snapshot_before_num, cam_snapshot_after_num, snapshot_nhtfrq)
-
-  integer, intent(in) :: snapshot_nhtfrq
-  integer, intent(in) :: cam_snapshot_before_num
-  integer, intent(in) :: cam_snapshot_after_num
-
-  if (cam_snapshot_before_num > 0) nhtfrq(cam_snapshot_before_num) = snapshot_nhtfrq
-  if (cam_snapshot_after_num > 0)  nhtfrq(cam_snapshot_after_num)  = snapshot_nhtfrq
-
-  end subroutine cam_history_snapshot_nhtfrq_set
 end module cam_history

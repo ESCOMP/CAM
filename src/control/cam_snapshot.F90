@@ -60,7 +60,7 @@ integer :: npbuf_var
 integer :: ntphysbc_var
 integer :: ntphysac_var
 
-integer :: cam_snapshot_before_num, cam_snapshot_after_num, cam_snapshot_nhtfrq
+integer :: cam_snapshot_before_num, cam_snapshot_after_num
 
 ! Note the maximum number of variables for each type
 type (snapshot_type)    ::  state_snapshot(27)
@@ -76,7 +76,6 @@ contains
 
 subroutine cam_snapshot_init(cam_in_arr, cam_out_arr, pbuf, index)
 
-use cam_history, only : cam_history_snapshot_nhtfrq_set
 
 !--------------------------------------------------------
 ! This subroutine does the addfld calls for ALL state, tend, ptend, and pbuf fields.  It also includes the cam_in and cam_out
@@ -89,13 +88,11 @@ use cam_history, only : cam_history_snapshot_nhtfrq_set
 
 
    call phys_getopts(cam_snapshot_before_num_out = cam_snapshot_before_num, &
-                     cam_snapshot_after_num_out  = cam_snapshot_after_num, &
-                     cam_snapshot_nhtfrq_out     = cam_snapshot_nhtfrq)
+                     cam_snapshot_after_num_out  = cam_snapshot_after_num)
+                     
 
    ! Return if not turned on
    if (cam_snapshot_before_num <= 0 .and. cam_snapshot_after_num <= 0) return ! No snapshot files are being requested
-
-   call cam_history_snapshot_nhtfrq_set (cam_snapshot_before_num, cam_snapshot_after_num, cam_snapshot_nhtfrq)
 
    call cam_state_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num)
    call cam_cnst_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num)
