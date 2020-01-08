@@ -62,8 +62,8 @@ def buildcpp(case):
     if atm_grid == 'T341':
         atm_grid = '512x1024'
 
-    # Special case for backwards compatibility.  The CESM config_grids.xml file
-    # has specifiers that CAM's configure script recognizes for most SE grids.
+    # This special case for backwards compatibility.  The CESM config_grids.xml file
+    # has specifiers that CAM's configure script recognizes for all other SE grids.
     if atm_grid == 'ne30pg3':
         atm_grid = 'ne30np4.pg3'
 
