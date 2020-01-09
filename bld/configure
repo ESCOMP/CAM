@@ -3201,7 +3201,7 @@ sub set_horiz_grid
         # the config_cache file.  The physics grid specifier is stored separately
         # in the npg parameter.
 
-        $hgrid =~ s/\.pg\d//;   # strip the '.pgN' extension
+        $hgrid =~ s/\.pg\d+//;   # strip the '.pgN' extension
         $cfg_ref->set('hgrid', $hgrid);
     }
     else {
