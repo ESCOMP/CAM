@@ -7401,13 +7401,13 @@ Default: 'cart3d'
 
 <entry id="seq_flux_mct_albdif" type="real"  category="driver"
        group="seq_flux_mct_inparm" valid_values="" >
-Surface albedo for direct radiation.
+Surface albedo for diffuse radiation.
 Default: none.
 </entry>
 
 <entry id="seq_flux_mct_albdir" type="real"  category="driver"
        group="seq_flux_mct_inparm" valid_values="" >
-Surface albedo for diffuse radiation.
+Surface albedo for direct radiation.
 Default: none.
 </entry>
 
