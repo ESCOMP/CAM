@@ -361,19 +361,19 @@ subroutine cam_state_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_n
      'state%zm',        'zm_snapshot',         'm',                'lev')
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%pint',      'pint_snapshot',       'Pa',               'lev')
+     'state%pint',      'pint_snapshot',       'Pa',               'ilev')
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%pintdry',   'pintdry_snapshot',    'Pa',               'lev')
+     'state%pintdry',   'pintdry_snapshot',    'Pa',               'ilev')
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%lnpint',    'lnpint_snapshot',     'unset',            'lev')
+     'state%lnpint',    'lnpint_snapshot',     'unset',            'ilev')
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%lnpintdry', 'lnpintdry_snapshot',  'unset',            'lev')
+     'state%lnpintdry', 'lnpintdry_snapshot',  'unset',            'ilev')
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%zi',        'zi_snapshot',         'm',                'lev')
+     'state%zi',        'zi_snapshot',         'm',                'ilev')
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'state%te_ini',    'te_ini_snapshot',     'unset',            horiz_only)
