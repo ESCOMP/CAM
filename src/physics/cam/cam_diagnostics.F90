@@ -1410,7 +1410,7 @@ contains
       call vertinterp(ncol, pcols, pver, state%pmid, 100000._r8, state%q(1,1,1), p_surf_q1)
     end if
 
-    if (hist_fld_active('THE9251000') .or. 
+    if (hist_fld_active('THE9251000') .or.  &
         hist_fld_active('Q925')) then
       call vertinterp(ncol, pcols, pver, state%pmid, 92500._r8, state%q(1,1,1), p_surf_q2)
     end if
