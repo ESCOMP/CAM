@@ -913,7 +913,7 @@ subroutine radiation_tend( &
    if (cldfsnow_idx > 0) then
       call pbuf_get_field(pbuf, cldfsnow_idx, cldfsnow, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
    endif
-   if (cldfgrau_idx > 0) then
+   if (cldfgrau_idx > 0 .and. graupel_in_rad) then
       call pbuf_get_field(pbuf, cldfgrau_idx, cldfgrau, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
    endif
 
@@ -1090,7 +1090,7 @@ subroutine radiation_tend( &
             if (cldfsnow_idx > 0) then
                rd%snow_icld_vistau(IdxNite(i),:) = fillvalue
             end if
-            if (cldfgrau_idx > 0) then
+            if (cldfgrau_idx > 0 .and. graupel_in_rad) then
                rd%grau_icld_vistau(IdxNite(i),:) = fillvalue
             end if
          end do
