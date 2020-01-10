@@ -34,7 +34,11 @@ use pio,               only: file_desc_t, var_desc_t, &
                              pio_put_var, pio_get_var, &
                              pio_seterrorhandling, PIO_BCAST_ERROR, PIO_NOERR
 
-use cam_mpas_subdriver, only : domain_ptr
+use cam_mpas_subdriver, only: domain_ptr
+
+use mpas_pool_routines, only: mpas_pool_get_subpool, mpas_pool_get_dimension, mpas_pool_get_array
+use mpas_derived_types, only: mpas_pool_type
+
 
 implicit none
 private
@@ -42,9 +46,6 @@ save
 
 integer, parameter :: dyn_decomp  = 101 ! cell center grid
 integer, parameter :: ptimelevels = 2
-
-integer ::      &
-   maxNCells         ! maximum number of cells for any task
 
 public :: &
    dyn_decomp, &
@@ -67,50 +68,48 @@ public :: &
    dyn_grid_get_colndx, &
    physgrid_copy_attributes_d
 
-real(r8), parameter :: rad2deg=180.0_r8/pi ! convert radians to degrees
-
 ! vertical reference heights (m)
 real(r8) :: zw(plevp), zw_mid(plev)
 
 integer ::      &
-   nCells,      &    ! global number of cells/columns
-   nEdges,      &    ! global number of edges
-   nVertices,   &    ! global number of vertices
+   maxNCells,   &    ! maximum number of cells for any task
    maxEdges,    &    ! maximum number of edges per cell
    nVertLevels       ! number of vertical layers (yes, layers and not layer interfaces...)
 
+integer, pointer, public :: &
+   nCellsSolve,     &
+   nEdgesSolve,     &
+   nVerticesSolve,  &
+   nVertLevelsSolve
+
+real(r8), parameter :: rad2deg=180.0_r8/pi ! convert radians to degrees
 
 ! global grid data
+
+integer ::      &
+   nCells_g,    &    ! global number of cells/columns
+   nEdges_g,    &    ! global number of edges
+   nVertices_g       ! global number of vertices
 
 integer, public, allocatable :: col_indices_in_block(:,:)  !  global column indices (used in dp_coupling)
 integer,         allocatable :: num_col_per_block(:)
 integer,         allocatable :: global_blockid(:)
 integer, public, allocatable :: local_col_index(:)  !  local to block
 
-real(r8), dimension(:), pointer :: lonCell               ! global cell longitudes
-real(r8), dimension(:), pointer :: latCell               ! global cell latitudes
-real(r8), dimension(:), pointer :: areaCell              ! global cell areas
-
-integer, pointer, public :: nCellsSolve, &
-                            nEdgesSolve, &
-                            nVerticesSolve, &
-                            nVertLevelsSolve
+real(r8), dimension(:), pointer :: lonCell_g        ! global cell longitudes
+real(r8), dimension(:), pointer :: latCell_g        ! global cell latitudes
+real(r8), dimension(:), pointer :: areaCell_g       ! global cell areas
 
 !=========================================================================================
 contains
 !=========================================================================================
 
-
-!-----------------------------------------------------------------------
-!  routine dyn_grid_init
-!
-!> \brief Initialize dynamics grid
-!> \details
-!>  Prepares module variables describing the dynamics grid on the dynamics
-!>  decomposition for later use by interface routines get_gcol_block_d, etc.
-!
-!-----------------------------------------------------------------------
 subroutine dyn_grid_init()
+
+   ! Initialize grids on the dynamics decomposition and create associated
+   ! grid objects for use by I/O utilities.  The current physics/dynamics
+   ! coupling code requires constructing global fields for the grid used
+   ! by the physics parameterizations.
 
    use ref_pres,            only: std_atm_pres, ref_pres_init
    use time_manager,        only: get_step_size
@@ -140,8 +139,10 @@ subroutine dyn_grid_init()
 
    call cam_mpas_init_phase3(fh_ini, endrun)
 
-   ! Read reference heights.
-   call ref_height_read(fh_ini)
+   ! Read or compute all time-invariant fields for the MPAS-A dycore
+   ! Time-invariant fields are stored in the MPAS mesh pool.  This call
+   ! also sets the module data zw and zw_mid.
+   call setup_time_invariant(fh_ini)
 
    ! Compute reference pressures from reference heights.
    call std_atm_pres(zw, pref_edge)
@@ -166,25 +167,19 @@ subroutine dyn_grid_init()
       write(iulog,9830) plevp, zw(plevp), pref_edge(plevp)
    end if
 
-   !
-   ! Read or compute all time-invariant fields for the MPAS-A dycore
-   ! Time-invariant fields are stored in the MPAS mesh pool
-   !
-   call setup_time_invariant(fh_ini)
-
    ! Query global grid dimensions from MPAS
-   call cam_mpas_get_global_dims(nCells, nEdges, nVertices, maxEdges, nVertLevels, maxNCells)
+   call cam_mpas_get_global_dims(nCells_g, nEdges_g, nVertices_g, maxEdges, nVertLevels, maxNCells)
 
    ! Temporary global arrays needed by phys_grid_init
-   allocate(lonCell(nCells))
-   allocate(latCell(nCells))
-   allocate(areaCell(nCells))
-   call cam_mpas_get_global_coords(latCell, lonCell, areaCell)
+   allocate(lonCell_g(nCells_g))
+   allocate(latCell_g(nCells_g))
+   allocate(areaCell_g(nCells_g))
+   call cam_mpas_get_global_coords(latCell_g, lonCell_g, areaCell_g)
    
    allocate(num_col_per_block(npes))
    allocate(col_indices_in_block(maxNCells,npes))
-   allocate(global_blockid(nCells))
-   allocate(local_col_index(nCells))
+   allocate(global_blockid(nCells_g))
+   allocate(local_col_index(nCells_g))
    call cam_mpas_get_global_blocks(num_col_per_block, col_indices_in_block, global_blockID, local_col_index)
    
    ! Define the dynamics and physics grids on the dynamics decompostion.
@@ -364,45 +359,32 @@ subroutine get_block_levels_d(blockid, bcid, lvlsiz, levels)
 
 end subroutine get_block_levels_d
 
+!=========================================================================================
 
-!-----------------------------------------------------------------------
-!  routine get_gcol_block_cnt_d
-!
-!> \brief Return number of blocks containing data for a column
-!> \details
-!>  Return number of blocks containing data for the vertical column
-!>  with the specified global column index.
-!>
-!>  Under which conditions would the returned value potentially differ from 1?
-!
-!-----------------------------------------------------------------------
 integer function get_gcol_block_cnt_d(gcol)
+
+   ! Return number of blocks containing data for the vertical column
+   ! with the specified global column index.
 
    integer, intent(in) :: gcol     ! global column index
 
    character(len=*), parameter :: subname = 'dyn_grid::get_gcol_block_cnt_d'
+   !----------------------------------------------------------------------------
 
-
-!   MPAS_DEBUG_WRITE(0, 'begin '//subname)
-
-   ! For MPAS, each column is contained by exactly one block
+   ! For MPAS, the physics grid is the cell center grid.  Each column is contained in
+   ! one cell, and hence in one block.
    get_gcol_block_cnt_d = 1
 
 end function get_gcol_block_cnt_d
 
+!=========================================================================================
 
-!-----------------------------------------------------------------------
-!  routine get_gcol_block_d
-!
-!> \brief Return global block index and local column index for a global column
-!> \details
-!>  Return global block index and local column index for a global column index.
-!>
-!>  Can this routine be called for global columns that are not owned by
-!>  the calling task?
-!
-!-----------------------------------------------------------------------
 subroutine get_gcol_block_d(gcol, cnt, blockid, bcid, localblockid)
+
+   ! Return global block index and local column index for a global column index.
+   !
+   ! Can this routine be called for global columns that are not owned by
+   ! the calling task?
 
    integer, intent(in) :: gcol     ! global column index
    integer, intent(in) :: cnt      ! size of blockid and bcid arrays
@@ -414,9 +396,7 @@ subroutine get_gcol_block_d(gcol, cnt, blockid, bcid, localblockid)
    integer :: j
 
    character(len=*), parameter :: subname = 'dyn_grid::get_gcol_block_d'
-
-
-!   MPAS_DEBUG_WRITE(0, 'begin '//subname)
+   !----------------------------------------------------------------------------
 
    if ( cnt < 1 ) then
       call endrun( subname // ':: arrays not large enough' )
@@ -481,7 +461,7 @@ subroutine get_horiz_grid_dim_d(hdim1_d, hdim2_d)
 
 !   MPAS_DEBUG_WRITE(0, 'begin '//subname)
 
-   hdim1_d = nCells
+   hdim1_d = nCells_g
 
    if( present(hdim2_d) ) hdim2_d = 1
 
@@ -520,32 +500,32 @@ subroutine get_horiz_grid_d(nxy, clat_d_out, clon_d_out, area_d_out, &
 
 !   MPAS_DEBUG_WRITE(0, 'begin '//subname)
 
-   if ( nxy /= nCells ) then
+   if ( nxy /= nCells_g ) then
       call endrun( subname // ':: incorrect number of cells' )
    end if
 
    if ( present( clat_d_out ) ) then
-      clat_d_out(:) = latCell(:)
+      clat_d_out(:) = latCell_g(:)
    end if
 
    if ( present( clon_d_out ) ) then
-      clon_d_out(:) = lonCell(:)
+      clon_d_out(:) = lonCell_g(:)
    end if
 
    if ( present( area_d_out ) ) then
-      area_d_out(:) = areaCell(:) / (6371229.0_r8**2.0_r8)
+      area_d_out(:) = areaCell_g(:) / (6371229.0_r8**2.0_r8)
    end if
 
    if ( present( wght_d_out ) ) then
-      wght_d_out(:) = areaCell(:) / (6371229.0_r8**2.0_r8)
+      wght_d_out(:) = areaCell_g(:) / (6371229.0_r8**2.0_r8)
    end if
 
    if ( present( lat_d_out ) ) then
-      lat_d_out(:) = latCell(:) * rad2deg
+      lat_d_out(:) = latCell_g(:) * rad2deg
    end if
 
    if ( present( lon_d_out ) ) then
-      lon_d_out(:) = lonCell(:) * rad2deg
+      lon_d_out(:) = lonCell_g(:) * rad2deg
    end if
 
 end subroutine get_horiz_grid_d
@@ -639,7 +619,7 @@ integer function get_dyn_grid_parm(name) result(ival)
 !   if (name == 'plat') then
 !      ival = 1
 !   else if (name == 'plon') then
-!      ival = nCells
+!      ival = nCells_g
 !   else if(name == 'plev') then
 !      ival = plev
 !   else	
@@ -699,24 +679,12 @@ subroutine dyn_grid_get_colndx(igcol, ncols, owners, col, lbk )
 
 end subroutine dyn_grid_get_colndx
 
+!=========================================================================================
 
-!-----------------------------------------------------------------------
-!  routine dyn_grid_get_elem_coords
-!
-!> \brief Return coordinates of the columns of a block of the dynamics grid
-!> \details
-!>  Returns the latitude and longitude coordinates, as well as global IDs,
-!>  for the columns in a block.
-!>
-!>  Is the block index a global block index?
-!>  Can the block index be that of a block that is not owned by the calling
-!>  MPI task?
-!>
-!>  When is this routine needed? Previous implementations suggested that it may
-!>  never be called for MPAS.
-!
-!-----------------------------------------------------------------------
 subroutine dyn_grid_get_elem_coords(ie, rlon, rlat, cdex )
+
+   ! Returns the latitude and longitude coordinates, as well as global IDs,
+   ! for the columns in a block.
 
    integer, intent(in) :: ie ! block index
 
@@ -725,14 +693,16 @@ subroutine dyn_grid_get_elem_coords(ie, rlon, rlat, cdex )
    integer, optional, intent(out) :: cdex(:) ! global column index
 
    character(len=*), parameter :: subname = 'dyn_grid::dyn_grid_get_elem_coords'
+   !----------------------------------------------------------------------------
 
-
-!   MPAS_DEBUG_WRITE(0, 'begin '//subname)
-
-   call endrun('dyn_grid_get_elem_coords not supported for mpas dycore')
+   ! This routine is called for history output when local time averaging is requested
+   ! for a field on a dynamics decomposition.  The code in hbuf_accum_addlcltime appears
+   ! to also assume that the field is on the physics grid since there is no argument
+   ! passed to specify which dynamics grid the coordinates are for.
+   
+   call endrun('dyn_grid_get_elem_coords: not implemented for the MPAS grids')
 
 end subroutine dyn_grid_get_elem_coords
-
 
 !=========================================================================================
 ! Private routines.
@@ -797,53 +767,75 @@ subroutine ref_height_read(File)
 
 end subroutine ref_height_read
 
+!=========================================================================================
 
-!-----------------------------------------------------------------------
-!  routine setup_time_invariant
-!
-!> \brief Read or compute all time-invariant fields for the MPAS-A dycore
-!> \details
-!>  Initialize all time-invariant fields needed by the MPAS-Atmosphere dycore,
-!>  either by reading these fields from CAM's initial file or by computing them
-!
-!-----------------------------------------------------------------------
 subroutine setup_time_invariant(fh_ini)
 
-   use cam_initfiles,      only : initial_file_get_id
-   use cam_mpas_subdriver, only : cam_mpas_read_static
+   ! Initialize all time-invariant fields needed by the MPAS-Atmosphere dycore,
+   ! either by reading these fields from CAM's initial file or by computing them
+   ! At present, all time-invariant fields are read from the file descriptor fh_ini,
+   ! but in future, some of these fields could be computed
+   ! here based on other fields that were read
 
-   implicit none
+   use cam_mpas_subdriver, only : cam_mpas_read_static
 
    ! Arguments
    type(file_desc_t), pointer :: fh_ini
 
+   ! Local variables
+   type(mpas_pool_type),   pointer :: meshPool
+   real(r8), pointer     :: rdzw(:)
+   real(r8), allocatable :: dzw(:)
+
+   integer :: k, kk
+
+   character(len=*), parameter :: routine = 'dyn_grid::setup_time_invariant'
+   !----------------------------------------------------------------------------
+
    ! Read time-invariant fields
    call cam_mpas_read_static(fh_ini, endrun)
 
-   ! At present, all time-invariant fields are read from the file descriptor provided
-   ! by initial_file_get_id(), but in future, some of these fields could be computed
-   ! here based on other fields that were read
+   ! Access dimensions that are made public via this module
+   call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'mesh', meshPool)
+   call mpas_pool_get_dimension(meshPool, 'nCellsSolve', nCellsSolve)
+   call mpas_pool_get_dimension(meshPool, 'nEdgesSolve', nEdgesSolve)
+   call mpas_pool_get_dimension(meshPool, 'nVerticesSolve', nVerticesSolve)
+   call mpas_pool_get_dimension(meshPool, 'nVertLevels', nVertLevelsSolve) ! MPAS always solves over the full column
+
+   ! check that number of vertical layers matches MPAS grid data
+   if (plev /= nVertLevelsSolve) then
+      write(iulog,*) routine//': ERROR: number levels in IC file does not match plev: file, plev=', &
+                     nVertLevelsSolve, plev
+      call endrun(routine//': ERROR: number levels in IC file does not match plev.')
+   end if
+
+   ! Compute the zeta coordinate at layer interfaces and midpoints.  Store
+   ! in arrays using CAM vertical index order for use in CAM coordinate objects.
+   call mpas_pool_get_array(meshPool, 'rdzw', rdzw)
+
+   allocate(dzw(plev))
+   dzw = 1._r8 / rdzw
+   zw(plev+1) = 0._r8
+   do k = plev, 1, -1
+      kk = plev - k + 1
+      zw(k) = zw(k+1) + dzw(kk)
+      zw_mid(k) = 0.5_r8 * (zw(k+1) + zw(k))
+   end do
+
+   deallocate(dzw)
 
 end subroutine setup_time_invariant
 
+!=========================================================================================
 
-!-----------------------------------------------------------------------
-!  routine define_cam_grids
-!
-!> \brief Define the dynamics and physics grids on the dynamics decomposition
-!> \details
-!>  Defines the dynamics and physics grids on the dynamics decompostion.
-!>  The physics grid on the physics decomposition is defined in phys_grid_init.
-!
-!-----------------------------------------------------------------------
 subroutine define_cam_grids()
+
+   ! Defines the dynamics and physics grids on the dynamics decompostion.
+   ! The physics grid on the physics decomposition is defined in phys_grid_init.
 
    use cam_grid_support, only: horiz_coord_t, horiz_coord_create, iMap
    use cam_grid_support, only: cam_grid_register, cam_grid_attribute_register
  
-   use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_dimension, mpas_pool_get_array
-   use mpas_derived_types, only : mpas_pool_type
-
    ! Local variables
    integer :: i, j
 
@@ -854,8 +846,8 @@ subroutine define_cam_grids()
 
    type(mpas_pool_type),   pointer :: meshPool
    integer,  dimension(:), pointer :: indexToCellID
-   real(r8), dimension(:), pointer :: latCell
-   real(r8), dimension(:), pointer :: lonCell
+   real(r8), dimension(:), pointer :: latCell   ! cell latitude (radians)
+   real(r8), dimension(:), pointer :: lonCell   ! cell longitude (radians)
    real(r8), dimension(:), pointer :: areaCell  ! cell areas in m^2
    real(r8), dimension(:), pointer :: area_unit ! cell areas on unit sphere (radians^2)
 
@@ -865,10 +857,6 @@ subroutine define_cam_grids()
    MPAS_DEBUG_WRITE(0, 'begin '//subname)
  
    call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'mesh', meshPool)
-   call mpas_pool_get_dimension(meshPool, 'nCellsSolve', nCellsSolve)
-   call mpas_pool_get_dimension(meshPool, 'nEdgesSolve', nEdgesSolve)
-   call mpas_pool_get_dimension(meshPool, 'nVerticesSolve', nVerticesSolve)
-   call mpas_pool_get_dimension(meshPool, 'nVertLevels', nVertLevelsSolve)   ! MPAS always solves over the full column
    call mpas_pool_get_array(meshPool, 'indexToCellID', indexToCellID)
    call mpas_pool_get_array(meshPool, 'latCell', latCell)
    call mpas_pool_get_array(meshPool, 'lonCell', lonCell)
@@ -877,9 +865,9 @@ subroutine define_cam_grids()
    allocate(coord_map(nCellsSolve))
    coord_map = indexToCellID(1:nCellsSolve)
 
-   lat_coord => horiz_coord_create('lat', 'ncol', nCells, 'latitude',      &
+   lat_coord => horiz_coord_create('lat', 'ncol', nCells_g, 'latitude',      &
           'degrees_north', 1, nCellsSolve, latCell(1:nCellsSolve)*rad2deg, map=coord_map)
-   lon_coord => horiz_coord_create('lon', 'ncol', nCells, 'longitude',     &
+   lon_coord => horiz_coord_create('lon', 'ncol', nCells_g, 'longitude',     &
           'degrees_east', 1, nCellsSolve, lonCell(1:nCellsSolve)*rad2deg, map=coord_map)
  
    ! Map for cell centers grid
