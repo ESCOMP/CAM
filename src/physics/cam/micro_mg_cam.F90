@@ -180,9 +180,9 @@ integer :: &
    des_idx,            &
    icswp_idx,          &
    cldfsnow_idx,       &
-   degrau_idx,         &
-   icgrauwp_idx,       &
-   cldfgrau_idx,       &
+   degrau_idx = -1,    &
+   icgrauwp_idx = -1,  &
+   cldfgrau_idx = -1,  &
    rate1_cw2pr_st_idx = -1, &
    ls_flxprc_idx,      &
    ls_flxsnw_idx,      &
@@ -864,10 +864,8 @@ subroutine micro_mg_cam_init(pbuf2d)
    end if
 
    if (micro_mg_version > 2) then
-      if (micro_mg_do_hail .or. micro_mg_do_graupel) then 
-         call addfld(apcnst(ixgraupel), (/ 'lev' /), 'A', 'kg/kg', trim(cnst_name(ixgraupel))//' after physics'  )
-         call addfld(bpcnst(ixgraupel), (/ 'lev' /), 'A', 'kg/kg', trim(cnst_name(ixgraupel))//' before physics' )
-      endif
+      call addfld(apcnst(ixgraupel), (/ 'lev' /), 'A', 'kg/kg', trim(cnst_name(ixgraupel))//' after physics'  )
+      call addfld(bpcnst(ixgraupel), (/ 'lev' /), 'A', 'kg/kg', trim(cnst_name(ixgraupel))//' before physics' )
    end if
 
    call addfld ('CME',        (/ 'lev' /), 'A', 'kg/kg/s',  'Rate of cond-evap within the cloud'                      )
@@ -1049,8 +1047,8 @@ subroutine micro_mg_cam_init(pbuf2d)
    call addfld ('AQSNOW',      (/ 'lev' /),  'A', 'kg/kg',    'Average snow mixing ratio'                                         )
    call addfld ('ANRAIN',      (/ 'lev' /),  'A', 'm-3',      'Average rain number conc'                                          )
    call addfld ('ANSNOW',      (/ 'lev' /),  'A', 'm-3',      'Average snow number conc'                                          )
-   call addfld ('ADRAIN',      (/ 'lev' /),  'A', 'Micron',   'Average rain effective Diameter'                                   )
-   call addfld ('ADSNOW',      (/ 'lev' /),  'A', 'Micron',   'Average snow effective Diameter'                                   )
+   call addfld ('ADRAIN',      (/ 'lev' /),  'A', 'm',        'Average rain effective Diameter'                                   )
+   call addfld ('ADSNOW',      (/ 'lev' /),  'A', 'm',        'Average snow effective Diameter'                                   )
    call addfld ('FREQR',       (/ 'lev' /),  'A', 'fraction', 'Fractional occurrence of rain'                                     )
    call addfld ('FREQS',       (/ 'lev' /),  'A', 'fraction', 'Fractional occurrence of snow'                                     )
 
@@ -1178,11 +1176,9 @@ subroutine micro_mg_cam_init(pbuf2d)
       end if
 
       if (micro_mg_version > 2) then
-         if (micro_mg_do_hail .or. micro_mg_do_graupel) then 
-            call add_default(cnst_name(ixgraupel), budget_histfile, ' ')
-            call add_default(apcnst   (ixgraupel), budget_histfile, ' ')
-            call add_default(bpcnst   (ixgraupel), budget_histfile, ' ')
-         endif
+         call add_default(cnst_name(ixgraupel), budget_histfile, ' ')
+         call add_default(apcnst   (ixgraupel), budget_histfile, ' ')
+         call add_default(bpcnst   (ixgraupel), budget_histfile, ' ')
       end if
 
    end if
@@ -2200,10 +2196,8 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
       lq(ixnumsnow) = .true.
    end if
    if (micro_mg_version > 2) then
-      if (micro_mg_do_hail .or. micro_mg_do_graupel) then
-         lq(ixgraupel) = .true.
-         lq(ixnumgraupel) = .true.
-      end if
+      lq(ixgraupel) = .true.
+      lq(ixnumgraupel) = .true.
    end if
 
    ! the name 'cldwat' triggers special tests on cldliq
@@ -2407,7 +2401,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
       end if
 
       if (micro_mg_version > 1) then
-         if (micro_mg_version > 2 .and. (micro_mg_do_graupel .or. micro_mg_do_hail)) then
+         if (micro_mg_version > 2) then
             packed_qg = packer%pack(state_loc%q(:,:,ixgraupel))
             packed_ng = packer%pack(state_loc%q(:,:,ixnumgraupel))
          else
@@ -2549,11 +2543,9 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
       end if
 
       if (micro_mg_version > 2) then
-         if (micro_mg_do_graupel .or. micro_mg_do_hail) then       
-            ptend_loc%q(:,:,ixgraupel)    = packer%unpack(packed_qgtend, 0._r8)
-            ptend_loc%q(:,:,ixnumgraupel) = packer%unpack(packed_ngtend, &
-                 -state_loc%q(:,:,ixnumgraupel)/(dtime/num_steps))
-         end if
+         ptend_loc%q(:,:,ixgraupel)    = packer%unpack(packed_qgtend, 0._r8)
+         ptend_loc%q(:,:,ixnumgraupel) = packer%unpack(packed_ngtend, &
+              -state_loc%q(:,:,ixnumgraupel)/(dtime/num_steps))
       end if
 
       ! Sum into overall ptend
@@ -2593,18 +2585,6 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
            call endrun("micro_mg_cam:ERROR - MG microphysics is configured not to prognose cloud liquid,"// &
            " but micro_mg_tend has liquid number tendencies.")
    end if
-
-   if (micro_mg_version > 2) then
-      if ((.not. micro_mg_do_hail) .and. (.not. micro_mg_do_graupel)) then
-         if (any(ptend%q(:ncol,top_lev:pver,ixgraupel) /= 0.0_r8)) &
-              call endrun("micro_mg_cam:ERROR - MG microphysics is configured not to prognose graupel/hail,"// &
-              " but micro_mg_tend has graupel/hail mass tendencies.")
-         if (any(ptend%q(:ncol,top_lev:pver,ixnumgraupel) /= 0.0_r8)) &
-              call endrun("micro_mg_cam:ERROR - MG microphysics is configured not to prognose graupel/hail number,"// &
-              " but micro_mg_tend has graupel/hail number tendencies.")
-      end if
-   end if
-
 
    mnuccdohet = 0._r8
    do k=top_lev,pver
@@ -2736,13 +2716,11 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
            if( ( cldfgrau(i,k) .le. 1.e-4_r8 ) .and. ( qgout(i,k) .gt. 1.e-9_r8 ) ) then
               cldfgrau(i,k) = 0.25_r8
            end if
+
          ! Calculate in-cloud snow water path
            icgrauwp(i,k) = qgout(i,k) / max( 1.e-2_r8, cldfgrau(i,k) ) * state_loc%pdel(i,k) / gravit 
-           if (icgrauwp(i,k).gt.0.1_r8) then
-              write(iulog,*) 'WARNING: icgraup large: i,k,icgrauwp,qgout,cldf,pdel'
-              write(iulog,*) i,k,icgrauwp(i,k),qgout(i,k),max( mincld, cldfgrau(i,k)),state_loc%pdel(i,k)
-           end if
         end if 
+
       end do
    end do
 
