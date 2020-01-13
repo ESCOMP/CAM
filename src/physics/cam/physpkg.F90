@@ -2084,6 +2084,10 @@ contains
 
     call dadadj_tend(ztodt, state, ptend)
 
+    if ( (trim(cam_take_snapshot_after) == "dadadj_tend") .and. &
+         (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
+            call cam_snapshot_ptend_outfld(ptend, lchnk)
+    end if
     call physics_update(state, ptend, ztodt, tend)
 
     if (trim(cam_take_snapshot_after) == "dadadj_tend") then
@@ -2112,6 +2116,10 @@ contains
          ztodt,   &
          state,   ptend, cam_in%landfrac, pbuf)
 
+    if ( (trim(cam_take_snapshot_after) == "convect_deep_tend") .and. &
+         (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
+            call cam_snapshot_ptend_outfld(ptend, lchnk)
+    end if
     call physics_update(state, ptend, ztodt, tend)
 
     if (trim(cam_take_snapshot_after) == "convect_deep_tend") then
@@ -2165,6 +2173,10 @@ contains
          state      , ptend  ,  pbuf, cam_in)
     call t_stopf ('convect_shallow_tend')
 
+    if ( (trim(cam_take_snapshot_after) == "convect_shallow_tend") .and. &
+         (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
+            call cam_snapshot_ptend_outfld(ptend, lchnk)
+    end if
     call physics_update(state, ptend, ztodt, tend)
 
     if (trim(cam_take_snapshot_after) == "convect_shallow_tend") then

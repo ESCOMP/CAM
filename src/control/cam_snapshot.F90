@@ -112,8 +112,9 @@ subroutine cam_snapshot_all_outfld_tphysbc(file_num, state, tend, cam_in, cam_ou
 use time_manager,   only: is_first_step
 
 !--------------------------------------------------------
-! This subroutine does the outfld calls for ALL state, tend and pbuf fields.  It also includes the cam_in and cam_out
-! elements which are used within CAM
+! This subroutine does the outfld calls for ALL state, tend and pbuf fields for routines in tphysbc.
+! It also includes the cam_in and cam_out elements which are used within CAM as well as variables which
+! are local to tphysac.
 !--------------------------------------------------------
 
    integer,                            intent(in) :: file_num
@@ -169,8 +170,9 @@ subroutine cam_snapshot_all_outfld_tphysac(file_num, state, tend, cam_in, cam_ou
 use time_manager,   only: is_first_step
 
 !--------------------------------------------------------
-! This subroutine does the outfld calls for ALL state, tend and pbuf fields.  It also includes the cam_in and cam_out
-! elements which are used within CAM
+! This subroutine does the outfld calls for ALL state, tend and pbuf fields for routines in tphysac.
+! It also includes the cam_in and cam_out elements which are used within CAM as well as variables which
+! are local to tphysac.
 !--------------------------------------------------------
 
    integer,                            intent(in) :: file_num
