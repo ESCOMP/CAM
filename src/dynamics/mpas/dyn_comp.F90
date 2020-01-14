@@ -67,12 +67,22 @@ type dyn_import_t
    real(r8), dimension(:,:,:), pointer :: tracers ! Tracers [kg/kg dry air]       (nq,nver,ncol)
 
    !
+   ! Indices of tracers
+   !
+   integer                             :: index_qv  ! Index in tracers array of water vapor
+                                                    ! mixing ratio
+
+   !
    ! Invariant -- the vertical coordinate in MPAS-A is a height coordinate
    !
    real(r8), dimension(:,:),   pointer :: zint    ! Geometric height [m]
                                                   ! at layer interfaces            (nver+1,ncol)
    real(r8), dimension(:,:),   pointer :: zz      ! Vertical coordinate metric [dimensionless]
                                                   ! at layer midpoints               (nver,ncol)
+   real(r8), dimension(:),     pointer :: fzm     ! Interp weight from k layer midpoint to k layer
+                                                  ! interface [dimensionless]             (nver)
+   real(r8), dimension(:),     pointer :: fzp     ! Interp weight from k-1 layer midpoint to k
+                                                  ! layer interface [dimensionless]       (nver)
 
    !
    ! State that may be directly derived from dycore prognostic state
@@ -107,10 +117,22 @@ type dyn_export_t
    real(r8), dimension(:,:,:), pointer :: tracers ! Tracers [kg/kg dry air]       (nq,nver,ncol)
 
    !
+   ! Indices of tracers
+   !
+   integer                             :: index_qv  ! Index in tracers array of water vapor
+                                                    ! mixing ratio
+
+   !
    ! Invariant -- the vertical coordinate in MPAS-A is a height coordinate
    !
    real(r8), dimension(:,:),   pointer :: zint    ! Geometric height [m]
                                                   ! at layer interfaces            (nver+1,ncol)
+   real(r8), dimension(:,:),   pointer :: zz      ! Vertical coordinate metric [dimensionless]
+                                                  ! at layer midpoints               (nver,ncol)
+   real(r8), dimension(:),     pointer :: fzm     ! Interp weight from k layer midpoint to k layer
+                                                  ! interface [dimensionless]             (nver)
+   real(r8), dimension(:),     pointer :: fzp     ! Interp weight from k-1 layer midpoint to k
+                                                  ! layer interface [dimensionless]       (nver)
 
    !
    ! State that may be directly derived from dycore prognostic state
@@ -211,7 +233,7 @@ end subroutine dyn_register
 subroutine dyn_init(dyn_in, dyn_out)
 
    use cam_mpas_subdriver, only : domain_ptr
-   use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_array
+   use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_array, mpas_pool_get_dimension
    use mpas_derived_types, only : mpas_pool_type
 
    ! arguments:
@@ -224,6 +246,8 @@ subroutine dyn_init(dyn_in, dyn_out)
    type(mpas_pool_type), pointer :: state_pool
    type(mpas_pool_type), pointer :: diag_pool
    type(mpas_pool_type), pointer :: tend_physics_pool
+
+   integer, pointer :: index_qv
 
    !----------------------------------------------------------------------------
 
@@ -244,8 +268,13 @@ subroutine dyn_init(dyn_in, dyn_out)
    call mpas_pool_get_array(state_pool, 'rho_zz',                 dyn_in % rho_zz,  timeLevel=2)
    call mpas_pool_get_array(state_pool, 'scalars',                dyn_in % tracers, timeLevel=2)
 
+   call mpas_pool_get_dimension(state_pool, 'index_qv', index_qv)
+   dyn_in % index_qv = index_qv
+
    call mpas_pool_get_array(mesh_pool,  'zgrid',                  dyn_in % zint)
    call mpas_pool_get_array(mesh_pool,  'zz',                     dyn_in % zz)
+   call mpas_pool_get_array(mesh_pool,  'fzm',                    dyn_in % fzm)
+   call mpas_pool_get_array(mesh_pool,  'fzp',                    dyn_in % fzp)
 
    call mpas_pool_get_array(diag_pool,  'theta',                  dyn_in % theta)
    call mpas_pool_get_array(diag_pool,  'rho',                    dyn_in % rho)
@@ -267,7 +296,13 @@ subroutine dyn_init(dyn_in, dyn_out)
    call mpas_pool_get_array(state_pool, 'rho_zz',                 dyn_out % rho_zz,  timeLevel=1)
    call mpas_pool_get_array(state_pool, 'scalars',                dyn_out % tracers, timeLevel=1)
 
+   call mpas_pool_get_dimension(state_pool, 'index_qv', index_qv)
+   dyn_out % index_qv = index_qv
+
    call mpas_pool_get_array(mesh_pool,  'zgrid',                  dyn_out % zint)
+   call mpas_pool_get_array(mesh_pool,  'zz',                     dyn_out % zz)
+   call mpas_pool_get_array(mesh_pool,  'fzm',                    dyn_out % fzm)
+   call mpas_pool_get_array(mesh_pool,  'fzp',                    dyn_out % fzp)
 
    call mpas_pool_get_array(diag_pool,  'theta',                  dyn_out % theta)
    call mpas_pool_get_array(diag_pool,  'rho',                    dyn_out % rho)
@@ -321,8 +356,11 @@ subroutine dyn_final(dyn_in, dyn_out)
    nullify(dyn_in % theta_m)
    nullify(dyn_in % rho_zz)
    nullify(dyn_in % tracers)
+   dyn_in % index_qv = 0
    nullify(dyn_in % zint)
    nullify(dyn_in % zz)
+   nullify(dyn_in % fzm)
+   nullify(dyn_in % fzp)
    nullify(dyn_in % theta)
    nullify(dyn_in % rho)
    nullify(dyn_in % ux)
@@ -340,7 +378,11 @@ subroutine dyn_final(dyn_in, dyn_out)
    nullify(dyn_out % theta_m)
    nullify(dyn_out % rho_zz)
    nullify(dyn_out % tracers)
+   dyn_out % index_qv = 0
    nullify(dyn_out % zint)
+   nullify(dyn_out % zz)
+   nullify(dyn_out % fzm)
+   nullify(dyn_out % fzp)
    nullify(dyn_out % theta)
    nullify(dyn_out % rho)
    nullify(dyn_out % ux)
