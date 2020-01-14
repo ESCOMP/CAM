@@ -45,6 +45,7 @@ private
 save
 
 integer, parameter :: dyn_decomp  = 101 ! cell center grid
+integer, parameter :: edge_decomp = 102 ! edge node grid
 integer, parameter :: ptimelevels = 2
 
 public :: &
@@ -708,67 +709,6 @@ end subroutine dyn_grid_get_elem_coords
 ! Private routines.
 !=========================================================================================
 
-
-subroutine ref_height_read(File)
-
-   ! This code is used both for initial and restart reading.
-
-   type(file_desc_t), intent(inout) :: File
-
-   integer :: ilev, ilev_dimid, ierr
-   integer :: pio_errtype
-   integer :: start(1), cnt(1)
-
-   type(var_desc_t) :: zw_desc
-   real(r8) :: zw_in(plevp)
-
-   character(len=*), parameter :: routine = 'ref_height_read'
-   !----------------------------------------------------------------------------
-
-   ! Set PIO to return error codes.
-   call pio_seterrorhandling(file, PIO_BCAST_ERROR, pio_errtype)
-
-   ierr = PIO_Inq_DimID(File, 'nVertLevelsP1', ilev_dimid)
-   if (ierr == PIO_NOERR) then
-      ierr = PIO_Inq_dimlen(File, ilev_dimid, ilev)
-      if (ierr == PIO_NOERR) then
-         if (plevp /= ilev) then
-            write(iulog,*) routine//': ERROR: number file interface levels does not match model. lev (file, model):',ilev, plevp
-            call endrun(routine//': ERROR: file nVertLevelsP1 does not match model.')
-         end if
-      end if
-   else
-      write(iulog,*) routine//': ERROR: interface level dimension nVertLevelsP1 not found'
-      call endrun(routine//': ERROR: interface level dimension nVertLevelsP1 not found')
-   end if
-
-   ierr = pio_inq_varid(File, 'zw', zw_desc)
-   if (ierr == PIO_NOERR) then
-      start=(/1/)
-      cnt=(/plevp/)
-      ierr = pio_get_var(File, zw_desc, start, cnt, zw_in)
-      if (ierr /= PIO_NOERR) then
-         write(iulog,*) routine//': ERROR: failed to read data from zw'
-         call endrun(routine//': ERROR: failed to read data from zw')
-      end if
-   else
-      write(iulog,*) routine//': ERROR: height data in zw not found'
-      call endrun(routine//': ERROR: height data in zw not found')
-   end if
-
-   ! reverse level ordering for CAM which uses top to bottom order
-   zw = zw_in(plevp:1:-1)
-
-   ! compute layer midpoints
-   zw_mid = (zw(1:plev) + zw(2:plevp)) / 2._r8
-
-   ! Put the error handling back the way it was
-   call pio_seterrorhandling(file, pio_errtype)
-
-end subroutine ref_height_read
-
-!=========================================================================================
-
 subroutine setup_time_invariant(fh_ini)
 
    ! Initialize all time-invariant fields needed by the MPAS-Atmosphere dycore,
@@ -841,15 +781,20 @@ subroutine define_cam_grids()
 
    type(horiz_coord_t), pointer     :: lat_coord
    type(horiz_coord_t), pointer     :: lon_coord
-   integer(iMap),       allocatable :: coord_map(:)
+   integer(iMap),       allocatable :: gidx(:)        ! global indices
    integer(iMap),       pointer     :: grid_map(:,:)
 
    type(mpas_pool_type),   pointer :: meshPool
-   integer,  dimension(:), pointer :: indexToCellID
-   real(r8), dimension(:), pointer :: latCell   ! cell latitude (radians)
-   real(r8), dimension(:), pointer :: lonCell   ! cell longitude (radians)
+
+   integer,  dimension(:), pointer :: indexToCellID ! global indices of cell centers
+   real(r8), dimension(:), pointer :: latCell   ! cell center latitude (radians)
+   real(r8), dimension(:), pointer :: lonCell   ! cell center longitude (radians)
    real(r8), dimension(:), pointer :: areaCell  ! cell areas in m^2
    real(r8), dimension(:), pointer :: area_unit ! cell areas on unit sphere (radians^2)
+
+   integer,  dimension(:), pointer :: indexToEdgeID ! global indices of edge nodes
+   real(r8), dimension(:), pointer :: latEdge   ! edge node latitude (radians)
+   real(r8), dimension(:), pointer :: lonEdge   ! edge node longitude (radians)
 
    character(len=*), parameter :: subname = 'dyn_grid::define_cam_grids'
    !----------------------------------------------------------------------------
@@ -857,25 +802,30 @@ subroutine define_cam_grids()
    MPAS_DEBUG_WRITE(0, 'begin '//subname)
  
    call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'mesh', meshPool)
+
+   !-------------------------------------------------------------!
+   ! Construct coordinate and grid objects for cell center grid. !
+   !-------------------------------------------------------------!
+
    call mpas_pool_get_array(meshPool, 'indexToCellID', indexToCellID)
    call mpas_pool_get_array(meshPool, 'latCell', latCell)
    call mpas_pool_get_array(meshPool, 'lonCell', lonCell)
    call mpas_pool_get_array(meshPool, 'areaCell', areaCell)
 
-   allocate(coord_map(nCellsSolve))
-   coord_map = indexToCellID(1:nCellsSolve)
+   allocate(gidx(nCellsSolve))
+   gidx = indexToCellID(1:nCellsSolve)
 
    lat_coord => horiz_coord_create('lat', 'ncol', nCells_g, 'latitude',      &
-          'degrees_north', 1, nCellsSolve, latCell(1:nCellsSolve)*rad2deg, map=coord_map)
+          'degrees_north', 1, nCellsSolve, latCell(1:nCellsSolve)*rad2deg, map=gidx)
    lon_coord => horiz_coord_create('lon', 'ncol', nCells_g, 'longitude',     &
-          'degrees_east', 1, nCellsSolve, lonCell(1:nCellsSolve)*rad2deg, map=coord_map)
+          'degrees_east', 1, nCellsSolve, lonCell(1:nCellsSolve)*rad2deg, map=gidx)
  
    ! Map for cell centers grid
    allocate(grid_map(3, nCellsSolve))
    do i = 1, nCellsSolve
       grid_map(1, i) = i
       grid_map(2, i) = 1
-      grid_map(3, i) = coord_map(i)
+      grid_map(3, i) = gidx(i)
    end do
 
    ! cell center grid
@@ -884,7 +834,10 @@ subroutine define_cam_grids()
    allocate(area_unit(nCellsSolve))
    area_unit = areaCell(1:nCellsSolve) / 6371229.0_r8**2.0_r8
    call cam_grid_attribute_register('mpas_cell', 'area', 'cell areas (radian^2)',  &
-          'ncol', area_unit, coord_map)
+          'ncol', area_unit, gidx)
+
+   ! gidx can be deallocated.  Values are copied into the coordinate and attribute objects.
+   deallocate(gidx)
 
    ! grid_map memory cannot be deallocated.  The cam_filemap_t object just points
    ! to it.  Pointer can be disassociated.
@@ -893,6 +846,44 @@ subroutine define_cam_grids()
    ! area_unit memory cannot be deallocated.  The cam_grid_attribute_1d_r8_t object points
    ! to it.  Pointer can be disassociated.
    nullify(area_unit)
+
+   ! pointers to coordinate object can be nullified.  Memory is now pointed to by the
+   ! grid object.
+   nullify(lat_coord)
+   nullify(lon_coord)
+
+   !-----------------------------------------------------------!
+   ! Construct coordinate and grid objects for edge node grid. !
+   !-----------------------------------------------------------!
+
+   call mpas_pool_get_array(meshPool, 'indexToEdgeID', indexToEdgeID)
+   call mpas_pool_get_array(meshPool, 'latEdge', latEdge)
+   call mpas_pool_get_array(meshPool, 'lonEdge', lonEdge)
+
+   allocate(gidx(nEdgesSolve))
+   gidx = indexToEdgeID(1:nEdgesSolve)
+
+   lat_coord => horiz_coord_create('lat_edge', 'nedge', nEdges_g, 'latitude',      &
+          'degrees_north', 1, nEdgesSolve, latEdge(1:nEdgesSolve)*rad2deg, map=gidx)
+   lon_coord => horiz_coord_create('lon_edge', 'nedge', nEdges_g, 'longitude',     &
+          'degrees_east', 1, nEdgesSolve, lonEdge(1:nEdgesSolve)*rad2deg, map=gidx)
+ 
+   ! Map for edge node grid
+   allocate(grid_map(3, nEdgesSolve))
+   do i = 1, nEdgesSolve
+      grid_map(1, i) = i
+      grid_map(2, i) = 1
+      grid_map(3, i) = gidx(i)
+   end do
+
+   ! Edge node grid object
+   call cam_grid_register('mpas_edge', edge_decomp, lat_coord, lon_coord,     &
+          grid_map, block_indexed=.false., unstruct=.true.)
+
+   deallocate(gidx)
+   nullify(grid_map)
+   nullify(lat_coord)
+   nullify(lon_coord)
  
 end subroutine define_cam_grids
 
