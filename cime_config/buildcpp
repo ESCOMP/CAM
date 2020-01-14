@@ -49,9 +49,9 @@ def buildcpp(case):
         atm_grid = match.groups()[0]
         nlev = match.groups()[1]
 
-    # The following translation is hard-wired for backwards compatibility
-    # to support the differences between how the scripts specify the land grid
-    # and how it is specified internally
+    # The following translations are hard-wired to support the differences
+    # between how the CESM scripts specify the grid and how it is specified
+    # by CAM's build and run system.
 
     if atm_grid == 'T31':
         atm_grid = '48x96'
@@ -61,6 +61,9 @@ def buildcpp(case):
         atm_grid = '128x256'
     if atm_grid == 'T341':
         atm_grid = '512x1024'
+
+    # This special case for backwards compatibility.  The CESM config_grids.xml file
+    # has specifiers that CAM's configure script recognizes for all other SE grids.
     if atm_grid == 'ne30pg3':
         atm_grid = 'ne30np4.pg3'
 
