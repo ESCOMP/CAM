@@ -22,29 +22,4 @@
 <horiz_grid dyn="fv"    hgrid="4x5"        nlat="46"   nlon="72"   />
 <horiz_grid dyn="fv"    hgrid="10x15"      nlat="19"   nlon="24"   />
 
-<!-- For SE grids ncol is the number of columns in the physics grid -->
-<horiz_grid dyn="se"    hgrid="ne5np4"             ncol="1352"     csne="5"    csnp="4"  npg="0" />
-<horiz_grid dyn="se"    hgrid="ne5np4.pg2"         ncol="600"      csne="5"    csnp="4"  npg="2" />
-<horiz_grid dyn="se"    hgrid="ne5np4.pg3"         ncol="1350"     csne="5"    csnp="4"  npg="3" />
-<horiz_grid dyn="se"    hgrid="ne5np4.pg4"         ncol="2400"     csne="5"    csnp="4"  npg="4" />
-<horiz_grid dyn="se"    hgrid="ne16np4"            ncol="13826"    csne="16"   csnp="4"  npg="0" />
-<horiz_grid dyn="se"    hgrid="ne16np4.pg3"        ncol="13824"    csne="16"   csnp="4"  npg="3" />
-<horiz_grid dyn="se"    hgrid="ne30np4"            ncol="48602"    csne="30"   csnp="4"  npg="0" />
-<horiz_grid dyn="se"    hgrid="ne30np4.pg2"        ncol="21600"    csne="30"   csnp="4"  npg="2" />
-<horiz_grid dyn="se"    hgrid="ne30np4.pg3"        ncol="48600"    csne="30"   csnp="4"  npg="3" />
-<horiz_grid dyn="se"    hgrid="ne30np4.pg4"        ncol="86400"    csne="30"   csnp="4"  npg="4" />
-<horiz_grid dyn="se"    hgrid="ne60np4"            ncol="194402"   csne="60"   csnp="4"  npg="0" />
-<horiz_grid dyn="se"    hgrid="ne60np4.pg2"        ncol="86400"    csne="60"   csnp="4"  npg="2" />
-<horiz_grid dyn="se"    hgrid="ne60np4.pg3"        ncol="194400"   csne="60"   csnp="4"  npg="3" />
-<horiz_grid dyn="se"    hgrid="ne60np4.pg4"        ncol="345600"   csne="60"   csnp="4"  npg="4" />
-<horiz_grid dyn="se"    hgrid="ne120np4"           ncol="777602"   csne="120"  csnp="4"  npg="0" />
-<horiz_grid dyn="se"    hgrid="ne120np4.pg2"       ncol="345600"   csne="120"  csnp="4"  npg="2" />
-<horiz_grid dyn="se"    hgrid="ne120np4.pg3"       ncol="777600"   csne="120"  csnp="4"  npg="3" />
-<horiz_grid dyn="se"    hgrid="ne120np4.pg4"       ncol="1382400"  csne="120"  csnp="4"  npg="4" />
-<horiz_grid dyn="se"    hgrid="ne240np4"           ncol="3110402"  csne="240"  csnp="4"  npg="0" />
-<horiz_grid dyn="se"    hgrid="ne240np4.pg2"       ncol="1382400"  csne="240"  csnp="4"  npg="2" />
-<horiz_grid dyn="se"    hgrid="ne240np4.pg3"       ncol="3110400"  csne="240"  csnp="4"  npg="3" />
-<horiz_grid dyn="se"    hgrid="ne0np4TESTONLY.ne5x4" ncol="3863"     csne="0"    csnp="4"  npg="0" />
-<horiz_grid dyn="se"    hgrid="ne0np4CONUS.ne30x8" ncol="174098"   csne="0"    csnp="4"  npg="0" />
-
 </config_horiz_grid>
