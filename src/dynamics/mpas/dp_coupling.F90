@@ -73,15 +73,19 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    ! Variables from dynamics export container
    real(r8), pointer :: pmid(:,:)
    real(r8), pointer :: zint(:,:)
-   real(r8), pointer :: rho(:,:)
+   real(r8), pointer :: zz(:,:)
+   real(r8), pointer :: fzm(:)
+   real(r8), pointer :: fzp(:)
+   real(r8), pointer :: rho_zz(:,:)
    real(r8), pointer :: ux(:,:)
    real(r8), pointer :: uy(:,:)
    real(r8), pointer :: w(:,:)
-   real(r8), pointer :: theta(:,:)
+   real(r8), pointer :: theta_m(:,:)
    real(r8), pointer :: tracers(:,:,:)
 
    integer :: lchnk, icol, k      ! indices over chunks, columns, layers
    integer :: ncols, ig, nblk, nb, m, i
+   integer :: index_qv
 
    integer :: pgcols(pcols)
    integer :: tsize                 ! amount of data per grid point passed to physics
@@ -97,12 +101,16 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
 
    pmid => dyn_out % pmid
    zint => dyn_out % zint
-   rho => dyn_out % rho
+   zz => dyn_out % zz
+   fzm => dyn_out % fzm
+   fzp => dyn_out % fzp
+   rho_zz => dyn_out % rho_zz
    ux => dyn_out % ux
    uy => dyn_out % uy
    w => dyn_out % w
-   theta => dyn_out % theta
+   theta_m => dyn_out % theta_m
    tracers => dyn_out % tracers
+   index_qv = dyn_out % index_qv
 
    call t_startf('dpcopy')
    if (local_dp_map) then
@@ -117,14 +125,14 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
          do icol = 1, ncols
             i = global_to_local_cell(pgcols(icol))        ! local (to process) column index
 
-            phys_state(lchnk)%psdry(icol) = rho(1,i) * 9.806 * 0.5 * (zint(2,i) - zint(1,i)) + pmid(1,i)   ! psd
+            phys_state(lchnk)%psdry(icol) = rho_zz(1,i) * zz(1,i) * 9.806 * 0.5 * (zint(2,i) - zint(1,i)) + pmid(1,i)   ! psd
             phys_state(lchnk)%phis(icol) = zint(1,i) * 9.806   ! phis
 
             do k = 1, pver
-               phys_state(lchnk)%t(icol,k) = theta(k,i) * (pmid(k,i) / 1.0e5)**(287.0_r8 / 1003.0_r8)   ! t
+               phys_state(lchnk)%t(icol,k) = theta_m(k,i) / (1.0_r8 + 1.61_r8 * tracers(index_qv,k,i)) * (pmid(k,i) / 1.0e5)**(287.0_r8 / 1003.0_r8)   ! t
                phys_state(lchnk)%u(icol,k) = ux(k,i)
                phys_state(lchnk)%v(icol,k) = uy(k,i)
-               phys_state(lchnk)%omega(icol,k) = -rho(k,i) * 9.806 * 0.5 * (w(k,i) + w(k+1,i))   ! omega
+               phys_state(lchnk)%omega(icol,k) = -rho_zz(k,i) * zz(k,i) * 9.806 * 0.5 * (w(k,i) + w(k+1,i))   ! omega
                phys_state(lchnk)%pmiddry(icol,k)=pmid(k,i)   ! Wrong: these are full pressures at present
                phys_state(lchnk)%pmid(icol,k) = pmid(k,i)
                phys_state(lchnk)%zi(icol,k) = zint(k,i)
@@ -132,14 +140,14 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
             end do
             phys_state(lchnk)%zi(icol,pverp) = zint(pverp,i)
 
-            phys_state(lchnk)%pint(icol,1) = rho(1,i) * 9.806 * 0.5 * (zint(2,i) - zint(1,i)) + pmid(1,i)
-            phys_state(lchnk)%pintdry(icol,1) = rho(1,i) * 9.806 * 0.5 * (zint(2,i) - zint(1,i)) + pmid(1,i)
+            phys_state(lchnk)%pint(icol,1) = rho_zz(1,i) * zz(1,i) * 9.806 * 0.5 * (zint(2,i) - zint(1,i)) + pmid(1,i)
+            phys_state(lchnk)%pintdry(icol,1) = rho_zz(1,i) * zz(1,i) * 9.806 * 0.5 * (zint(2,i) - zint(1,i)) + pmid(1,i)
             do k=2,pver
-               phys_state(lchnk)%pint(icol,k) = 0.5 * (pmid(k-1,i) + pmid(k,i))   ! wrong, since we do not have fzm and fzp...
-               phys_state(lchnk)%pintdry(icol,k) = 0.5 * (pmid(k-1,i) + pmid(k,i))
+               phys_state(lchnk)%pint(icol,k) = fzp(k) * pmid(k-1,i) + fzm(k) * pmid(k,i)
+               phys_state(lchnk)%pintdry(icol,k) = fzp(k) * pmid(k-1,i) + fzm(k) * pmid(k,i)   ! Wrong: this is still full pressure
             end do
-            phys_state(lchnk)%pint(icol,pverp) = rho(pver,i) * 9.806 * 0.5 * (zint(pver,i) - zint(pver+1,i)) + pmid(pver,i)
-            phys_state(lchnk)%pintdry(icol,pverp) = rho(pver,i) * 9.806 * 0.5 * (zint(pver,i) - zint(pver+1,i)) + pmid(pver,i)
+            phys_state(lchnk)%pint(icol,pverp) = rho_zz(pver,i) * zz(pver,i) * 9.806 * 0.5 * (zint(pver,i) - zint(pver+1,i)) + pmid(pver,i)
+            phys_state(lchnk)%pintdry(icol,pverp) = rho_zz(pver,i) * zz(pver,i) * 9.806 * 0.5 * (zint(pver,i) - zint(pver+1,i)) + pmid(pver,i)
 
             do m=1,pcnst
                do k=1,pver
@@ -170,15 +178,15 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
             ig = col_indices_in_block(icol,nblk)   !  global column index
             i = global_to_local_cell(ig)           !  local (to process) column index
 
-            bbuffer(bpter(icol,0))   = rho(1,i) * 9.806 * 0.5 * (zint(2,i) - zint(1,i)) + pmid(1,i)   ! psd
+            bbuffer(bpter(icol,0))   = rho_zz(1,i) * zz(1,i) * 9.806 * 0.5 * (zint(2,i) - zint(1,i)) + pmid(1,i)   ! psd
             bbuffer(bpter(icol,0)+1) = zint(1,i) * 9.806   ! phis
 
             do k=1,pver
-               bbuffer(bpter(icol,k))   = theta(k,i) * (pmid(k,i) / 1.0e5)**(287.0_r8 / 1003.0_r8)   ! t
+               bbuffer(bpter(icol,k))   = theta_m(k,i) / (1.0_r8 + 1.61_r8 * tracers(index_qv,k,i)) * (pmid(k,i) / 1.0e5)**(287.0_r8 / 1003.0_r8)   ! t
                bbuffer(bpter(icol,k)+1) = ux(k,i)
                bbuffer(bpter(icol,k)+2) = uy(k,i)
-               bbuffer(bpter(icol,k)+3) = -rho(k,i) * 9.806 * 0.5 * (w(k,i) + w(k+1,i))   ! omega
-               bbuffer(bpter(icol,k)+4) = pmid(k,i)
+               bbuffer(bpter(icol,k)+3) = -rho_zz(k,i) * zz(k,i) * 9.806 * 0.5 * (w(k,i) + w(k+1,i))   ! omega
+               bbuffer(bpter(icol,k)+4) = pmid(k,i)    ! Full pressure, not dry pressure
                bbuffer(bpter(icol,k)+5) = 0.5_r8 * (zint(k,i) + zint(k+1,i))   ! zmid
 
                do m=1,pcnst
@@ -190,11 +198,11 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
                bbuffer(bpter(icol,k)+7+pcnst) = zint(k+1,i)
             end do
 
-            bbuffer(bpter(icol,0)+6+pcnst) = rho(1,i) * 9.806 * 0.5 * (zint(2,i) - zint(1,i)) + pmid(1,i)
+            bbuffer(bpter(icol,0)+6+pcnst) = rho_zz(1,i) * zz(1,i) * 9.806 * 0.5 * (zint(2,i) - zint(1,i)) + pmid(1,i)
             do k=2,pver
-               bbuffer(bpter(icol,k-1)+6+pcnst) = 0.5 * (pmid(k-1,i) + pmid(k,i))   ! wrong, since we do not have fzm and fzp...
+               bbuffer(bpter(icol,k-1)+6+pcnst) = fzp(k) * pmid(k-1,i) + fzm(k) * pmid(k,i)    ! Full pressure, not dry pressure
             end do
-            bbuffer(bpter(icol,pver)+6+pcnst) = rho(pver,i) * 9.806 * 0.5 * (zint(pver,i) - zint(pver+1,i)) + pmid(pver,i)
+            bbuffer(bpter(icol,pver)+6+pcnst) = rho_zz(pver,i) * zz(pver,i) * 9.806 * 0.5 * (zint(pver,i) - zint(pver+1,i)) + pmid(pver,i)
 
          end do
 
@@ -286,7 +294,8 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
    ! Variables from dynamics import container
    real(r8), pointer :: pmid(:,:)
    real(r8), pointer :: zint(:,:)
-   real(r8), pointer :: rho(:,:)
+   real(r8), pointer :: zz(:,:)
+   real(r8), pointer :: rho_zz(:,:)
    real(r8), pointer :: ux(:,:)
    real(r8), pointer :: uy(:,:)
    real(r8), pointer :: theta(:,:)
@@ -303,7 +312,8 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
 
    pmid => dyn_in % pmid
    zint => dyn_in % zint
-   rho => dyn_in % rho
+   zz => dyn_in % zz
+   rho_zz => dyn_in % rho_zz
    ux => dyn_in % ux
    uy => dyn_in % uy
    theta => dyn_in % theta
@@ -316,7 +326,6 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
    call t_startf('pd_copy')
    if (local_dp_map) then
 
-#ifdef USE_UNCOMPILABLE_MPAS_CODE
       !$omp parallel do private (lchnk, ncols, icol, i, k, m, pgcols)
       do lchnk=begchunk,endchunk
          ncols=get_ncols_p(lchnk)                         ! number of columns in this chunk
@@ -325,9 +334,11 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
             i = global_to_local_cell(pgcols(icol))        ! local (to process) column index
 
             do k=1,pver
+#ifdef USE_UNCOMPILABLE_MPAS_CODE
                temp_tend(k,i) = phys_tend(lchnk)%dtdt(icol,k)
                ux_tend(k,i)   = phys_tend(lchnk)%dudt(icol,k)
                uy_tend(k,i)   = phys_tend(lchnk)%dvdt(icol,k)
+#endif
                do m=1,pcnst
                   tracers(m,k,i) = phys_state(lchnk)%q(icol,k,m)
                end do
@@ -336,11 +347,9 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
          end do
 
       end do
-#endif
 
    else
 
-#ifdef USE_UNCOMPILABLE_MPAS_CODE
       tsize = 3 + pcnst
 
       allocate( bbuffer(tsize*block_buf_nrecs) )
@@ -390,9 +399,11 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
 
             do k=1,pver
 
+#ifdef USE_UNCOMPILABLE_MPAS_CODE
                temp_tend(k,i) = bbuffer(bpter(icol,k))
                ux_tend  (k,i) = bbuffer(bpter(icol,k)+1)
                uy_tend  (k,i) = bbuffer(bpter(icol,k)+2)
+#endif
 
                do m=1,pcnst
                   tracers(m,k,i) = bbuffer(bpter(icol,k)+2+m)
@@ -406,7 +417,6 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
 
       deallocate( bbuffer )
       deallocate( cbuffer )
-#endif
 
    end if
 

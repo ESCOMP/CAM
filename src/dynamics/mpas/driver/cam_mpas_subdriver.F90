@@ -687,6 +687,7 @@ contains
        use mpas_derived_types, only : MPAS_IO_READ, MPAS_IO_NETCDF, MPAS_Stream_type, MPAS_pool_type, &
                                       field0DReal, field1DReal, field2DReal, field3DReal, field1DInteger, field2DInteger
        use mpas_pool_routines, only : MPAS_pool_get_subpool, MPAS_pool_get_field
+       use mpas_dmpar, only : MPAS_dmpar_exch_halo_field
 
        implicit none
 
@@ -861,6 +862,69 @@ contains
        call MPAS_readStream(mesh_stream, 0, ierr=ierr)
 
        call MPAS_closeStream(mesh_stream, ierr=ierr)
+
+       !
+       ! Perform halo updates for all decomposed fields (i.e., fields with
+       ! an outermost dimension of nCells, nVertices, or nEdges)
+       !
+       call MPAS_dmpar_exch_halo_field(latCell)
+       call MPAS_dmpar_exch_halo_field(lonCell)
+       call MPAS_dmpar_exch_halo_field(xCell)
+       call MPAS_dmpar_exch_halo_field(yCell)
+       call MPAS_dmpar_exch_halo_field(zCell)
+
+       call MPAS_dmpar_exch_halo_field(latEdge)
+       call MPAS_dmpar_exch_halo_field(lonEdge)
+       call MPAS_dmpar_exch_halo_field(xEdge)
+       call MPAS_dmpar_exch_halo_field(yEdge)
+       call MPAS_dmpar_exch_halo_field(zEdge)
+
+       call MPAS_dmpar_exch_halo_field(latVertex)
+       call MPAS_dmpar_exch_halo_field(lonVertex)
+       call MPAS_dmpar_exch_halo_field(xVertex)
+       call MPAS_dmpar_exch_halo_field(yVertex)
+       call MPAS_dmpar_exch_halo_field(zVertex)
+
+       call MPAS_dmpar_exch_halo_field(indexToCellID)
+       call MPAS_dmpar_exch_halo_field(indexToEdgeID)
+       call MPAS_dmpar_exch_halo_field(indexToVertexID)
+
+       call MPAS_dmpar_exch_halo_field(areaCell)
+       call MPAS_dmpar_exch_halo_field(areaTriangle)
+       call MPAS_dmpar_exch_halo_field(dcEdge)
+       call MPAS_dmpar_exch_halo_field(dvEdge)
+       call MPAS_dmpar_exch_halo_field(angleEdge)
+       call MPAS_dmpar_exch_halo_field(kiteAreasOnVertex)
+       call MPAS_dmpar_exch_halo_field(weightsOnEdge)
+
+       call MPAS_dmpar_exch_halo_field(meshDensity)
+
+       call MPAS_dmpar_exch_halo_field(nEdgesOnCell)
+       call MPAS_dmpar_exch_halo_field(nEdgesOnEdge)
+
+       call MPAS_dmpar_exch_halo_field(cellsOnEdge)
+       call MPAS_dmpar_exch_halo_field(edgesOnCell)
+       call MPAS_dmpar_exch_halo_field(edgesOnEdge)
+       call MPAS_dmpar_exch_halo_field(cellsOnCell)
+       call MPAS_dmpar_exch_halo_field(verticesOnCell)
+       call MPAS_dmpar_exch_halo_field(verticesOnEdge)
+       call MPAS_dmpar_exch_halo_field(edgesOnVertex)
+       call MPAS_dmpar_exch_halo_field(cellsOnVertex)
+
+       call MPAS_dmpar_exch_halo_field(zgrid)
+       call MPAS_dmpar_exch_halo_field(zxu)
+       call MPAS_dmpar_exch_halo_field(zz)
+       call MPAS_dmpar_exch_halo_field(zb)
+       call MPAS_dmpar_exch_halo_field(zb3)
+
+       call MPAS_dmpar_exch_halo_field(deriv_two)
+       call MPAS_dmpar_exch_halo_field(cellTangentPlane)
+       call MPAS_dmpar_exch_halo_field(coeffs_reconstruct)
+
+       call MPAS_dmpar_exch_halo_field(edgeNormalVectors)
+       call MPAS_dmpar_exch_halo_field(localVerticalUnitVectors)
+       call MPAS_dmpar_exch_halo_field(defc_a)
+       call MPAS_dmpar_exch_halo_field(defc_b)
 
     end subroutine cam_mpas_read_static
 
