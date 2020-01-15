@@ -2226,14 +2226,6 @@ contains
         newDay   = .False.
         newMonth = .False.
     ENDIF
-    !TMMF, DEBUG
-    IF ( rootChunk ) THEN
-        Write(6,*) " firstDay         = ", firstDay
-        Write(6,*) " newDay           = ", newDay
-        Write(6,*) " newMonth         = ", newMonth
-        Write(6,*) " Current Day is   = ", currDy
-        Write(6,*) " Current Month is = ", currMo
-    ENDIF
 
     ! Pass time values obtained from the ESMF environment to GEOS-Chem
     CALL Accept_External_Date_Time( am_I_Root      = rootChunk,  &
