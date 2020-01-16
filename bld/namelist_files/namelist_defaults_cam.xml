@@ -22,6 +22,8 @@
 <dtime dyn="se"    hgrid="ne120np4"> 450</dtime>
 <dtime dyn="se"    hgrid="ne240np4"> 225</dtime>
 <dtime dyn="se"    hgrid="ne0np4CONUS.ne30x8">225</dtime>
+<dtime dyn="se"    hgrid="ne0np4.ARCTIC.ne30x4">450</dtime>
+<dtime dyn="se"    hgrid="ne0np4.ARCTICGRIS.ne30x8">225</dtime>
 
 <!-- Initial conditions -->
 <!-- Vertical coordinates only, good for analytic initial conditions -->
@@ -170,7 +172,9 @@
 <ncdata dyn="se" hgrid="ne120np4"  nlev="32"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/ape_cam6_ne120np4_L32_c170908.nc</ncdata>
 <ncdata dyn="se" hgrid="ne240np4"  nlev="32"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/ape_cam6_ne240np4_L32_c170908.nc</ncdata>
 
-<ncdata dyn="se" hgrid="ne0np4CONUS.ne30x8" nlev="32">atm/cam/inic/se/f2000_conus_ne30x8_L32_c190712.nc</ncdata>
+<ncdata dyn="se" hgrid="ne0np4CONUS.ne30x8" nlev="32">atm/cam/inic/se//glade/scratch/aherring/camtrunk_200115_F2000climo_ne0CONUSne30x8_ne0CONUSne30x8_mt12_200115_newtopo-spinup-15days/run/camtrunk_200115_F2000climo_ne0CONUSne30x8_ne0CONUSne30x8_mt12_200115_newtopo-spinup-15days.cam.i.0001-01-16-00000.nc</ncdata>
+<ncdata dyn="se" hgrid="ne0np4.ARCTIC.ne30x4"  nlev="32"  ic_ymd="101" >/glade/work/aherring/grids/var-res/ne0np4.ARCTIC.ne30x4/inic/opt-se-cslam_191203_F2000climo_ne0np4.ARCTIC.ne30x4_mt12_191203_1mnth.cam.i.0001-02-01-00000.nc</ncdata>
+<ncdata dyn="se" hgrid="ne0np4.ARCTICGRIS.ne30x8"  nlev="32"  ic_ymd="101" >/glade/work/aherring/grids/var-res/ne0np4.ARCTICGRIS.ne30x8/inic/opt-se-cslam_191203_F2000climo_ne0np4.ARCTICGRIS.ne30x8_mt12_200110-nsplit2-30days.cam.i.0001-01-31-00000.nc</ncdata>
 
 <ncdata dyn="se" hgrid="ne5np4"   nlev="66"                >atm/waccm/ic/wa3_ne5np4_1950_spinup.cam2.i.1960-01-01-00000_c150810.nc</ncdata>
 <ncdata dyn="se" hgrid="ne30np4"  nlev="70" sim_year="1850">atm/waccm/ic/waccm5_1850_ne30np4_L70_0001-01-11-00000_c151217.nc</ncdata>
@@ -219,7 +223,9 @@
 <bnd_topo hgrid="ne60np4"  npg="4">atm/cam/topo/se/ne60pg4_nc3000_Co030_Fi001_PF_nullRR_Nsw021_20171018.nc</bnd_topo>
 <bnd_topo hgrid="ne120np4" npg="4">atm/cam/topo/se/ne120pg4_nc3000_Co015_Fi001_PF_nullRR_Nsw010_20171014.nc</bnd_topo>
 
-<bnd_topo hgrid="ne0np4CONUS.ne30x8">atm/cam/topo/se/ne30x8_conus_nc3000_Co060_Fi001_MulG_PF_nullRR_Nsw042_20190710.nc</bnd_topo>
+<bnd_topo hgrid="ne0np4CONUS.ne30x8">/glade/work/aherring/grids/var-res/ne0np4.CONUS.ne30x8/topo/conus_30_x8_nc3000_Co060_Fi001_MulG_PF_RR_Nsw042.nc</bnd_topo>
+<bnd_topo hgrid="ne0np4.ARCTIC.ne30x4"  >/glade/work/aherring/grids/var-res/ne0np4.ARCTIC.ne30x4/topo/ARCTIC_30_x4_nc3000_Co060_Fi001_MulG_PF_RR_Nsw042.nc</bnd_topo>
+<bnd_topo hgrid="ne0np4.ARCTICGRIS.ne30x8"  >/glade/work/aherring/grids/var-res//ne0np4.ARCTICGRIS.ne30x8/topo/ARCTICGRIS_30_x8_nc3000_Co060_Fi001_MulG_PF_RR_Nsw042.nc</bnd_topo>
 
 <!-- Ridge parameterization (gamma) -->
 <bnd_rdggm hgrid="0.9x1.25">atm/cam/topo/fv_0.9x1.25_nc3000_Nsw006_Nrs002_Co008_Fi001_ZR_c160505.nc</bnd_rdggm>
@@ -235,6 +241,8 @@
 <se_mesh_file> none </se_mesh_file>
 <se_mesh_file hgrid="ne0np4CONUS.ne30x8">atm/cam/coords/ne0np4CONUS.ne30x8.g</se_mesh_file>
 <se_mesh_file hgrid="ne0np4TESTONLY.ne5x4">atm/cam/coords/ne0np4EQFACE.ne5x4.g</se_mesh_file>
+<se_mesh_file hgrid="ne0np4.ARCTIC.ne30x4">/glade/work/aherring/grids/var-res//ne0np4.ARCTIC.ne30x4/grids/EXODUS_ARCTIC_ne30x4.g</se_mesh_file>
+<se_mesh_file hgrid="ne0np4.ARCTICGRIS.ne30x8">/glade/work/aherring/grids/var-res//ne0np4.ARCTICGRIS.ne30x8/grids/EXODUS_ARCTICGRIS_ne30x8.g</se_mesh_file>
 
 <!-- Analytic ICs  -->
 <analytic_ic_type                   > none </analytic_ic_type>
@@ -1168,12 +1176,15 @@
 <drydep_srf_file hgrid="ne5np4"          >atm/cam/chem/trop_mam/atmsrf_ne5np4_110920.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne16np4"         >atm/cam/chem/trop_mam/atmsrf_ne16np4_110920.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne30np4"         >atm/cam/chem/trop_mam/atmsrf_ne30np4_110920.nc</drydep_srf_file>
+<drydep_srf_file hgrid="ne30np4"  npg="2">/glade/work/aherring/grids/uniform-res/ne30np4.pg2/atmsrf/atmsrf_ne30np4.pg2_200108.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne30np4"  npg="3">atm/cam/chem/trop_mam/atmsrf_ne30pg3_180522.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne60np4"         >atm/cam/chem/trop_mam/atmsrf_ne60np4_110920.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne120np4"        >atm/cam/chem/trop_mam/atmsrf_ne120np4_110920.nc</drydep_srf_file>
+<drydep_srf_file hgrid="ne120np4" npg="2">/glade/work/aherring/grids/uniform-res//ne120np4.pg2/atmsrf/atmsrf_ne120np4.pg2_200109.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne240np4"        >atm/cam/chem/trop_mam/atmsrf_ne240np4_110920.nc</drydep_srf_file>
-
 <drydep_srf_file hgrid="ne0np4CONUS.ne30x8">atm/cam/chem/trop_mam/atmsrf_ne0np4conus30x8_161116.nc</drydep_srf_file>
+<drydep_srf_file hgrid="ne0np4.ARCTIC.ne30x4">/glade/work/aherring/grids/var-res//ne0np4.ARCTIC.ne30x4/atmsrf/atmsrf_ne0np4.ARCTIC.ne30x4_191023.nc</drydep_srf_file>
+<drydep_srf_file hgrid="ne0np4.ARCTICGRIS.ne30x8">/glade/work/aherring/grids/var-res//ne0np4.ARCTICGRIS.ne30x8/atmsrf/atmsrf_ne0np4.ARCTICGRIS.ne30x8_191212.nc</drydep_srf_file>
 
 <!-- depvel data -->
 <depvel_file    >atm/cam/chem/trop_mozart/dvel/depvel_monthly.nc</depvel_file>
@@ -1969,14 +1980,18 @@
 <se_hypervis_scaling se_refined_mesh="1" hypervis_type="tensor" >3.0D0 </se_hypervis_scaling>
 
 <se_hypervis_subcycle>                             3 </se_hypervis_subcycle>
-<se_hypervis_subcycle hgrid="ne0np4CONUS.ne30x8">  1 </se_hypervis_subcycle>
+<se_hypervis_subcycle hgrid="ne0np4CONUS.ne30x8">  2 </se_hypervis_subcycle>
 <se_hypervis_subcycle waccm_phys="1">              1 </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne16np4">            4 </se_hypervis_subcycle>
+<se_hypervis_subcycle  hgrid="ne0np4.ARCTIC.ne30x4"> 2 </se_hypervis_subcycle>
+<se_hypervis_subcycle  hgrid="ne0np4.ARCTICGRIS.ne30x8"> 2 </se_hypervis_subcycle>
 
 <se_hypervis_subcycle_sponge>                            1                </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge waccm_phys="1">             3                </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne0np4CONUS.ne30x8"> 4                </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"> 20</se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge hgrid="ne0np4.ARCTIC.ne30x4"> 4 </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge hgrid="ne0np4.ARCTICGRIS.ne30x8"> 4 </se_hypervis_subcycle_sponge>
 
 <se_hypervis_subcycle_q>1                 </se_hypervis_subcycle_q>
 <se_hypervis_subcycle_q hgrid="ne16np4">2 </se_hypervis_subcycle_q>
@@ -1995,7 +2010,7 @@
 <se_nsplit hgrid="ne30np4"  waccm_phys="1" npg="2">  6  </se_nsplit>
 <se_nsplit hgrid="ne30np4"  waccm_phys="1" npg="3">  6  </se_nsplit>
 
-<se_nsplit hgrid="ne0np4CONUS.ne30x8"               > 3 </se_nsplit>
+<se_nsplit hgrid="ne0np4CONUS.ne30x8"               > 2 </se_nsplit>
 <se_nsplit hgrid="ne0np4CONUS.ne30x8" waccm_phys="1">12 </se_nsplit>
 <se_nsplit hgrid="ne0np4TESTONLY.ne5x4"> 7 </se_nsplit>
 
@@ -2040,6 +2055,8 @@
 <se_refined_mesh > .false. </se_refined_mesh>
 <se_refined_mesh hgrid="ne0np4CONUS.ne30x8" > .true. </se_refined_mesh>
 <se_refined_mesh hgrid="ne0np4TESTONLY.ne5x4" > .true. </se_refined_mesh>
+<se_refined_mesh hgrid="ne0np4.ARCTIC.ne30x4" > .true. </se_refined_mesh>
+<se_refined_mesh hgrid="ne0np4.ARCTICGRIS.ne30x8" > .true. </se_refined_mesh>
 
 <se_rsplit                                          > 3 </se_rsplit>
 <se_rsplit waccm_phys="1" npg="2"                   > 5 </se_rsplit>
