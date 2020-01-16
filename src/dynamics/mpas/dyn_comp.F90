@@ -277,11 +277,6 @@ subroutine dyn_init(dyn_in, dyn_out)
       call clean_iodesc_list()
    end if
 
-   ! test
-   call addfld('U_edge',  (/ 'lev' /), 'I', 'm/s', 'Normal velocity component at edge nodes', &
-               gridname='mpas_edge')
-   call add_default('U_edge', 1, ' ')
-
 end subroutine dyn_init
 
 !=========================================================================================
@@ -295,24 +290,12 @@ subroutine dyn_run(dyn_in, dyn_out)
    type (dyn_export_t), intent(inout)  :: dyn_out
 
    ! local variables
-   integer :: i, k, kk
-   real(r8), allocatable :: utmp(:,:)
 
    character(len=*), parameter :: subname = 'dyn_comp::dyn_run'
    !----------------------------------------------------------------------------
 
    MPAS_DEBUG_WRITE(0, 'begin '//subname)
 
-   allocate(utmp(nEdgesSolve,nVertLevelsSolve))
-   
-   do k = 1, plev
-      kk = plev - k + 1
-      do i = 1, nEdgesSolve
-         utmp(i,k) = dyn_in%uperp(kk,i)
-      end do
-   end do
-      
-   call outfld('U_edge', utmp, nEdgesSolve, 1)
 
 end subroutine dyn_run
 
@@ -586,16 +569,8 @@ subroutine read_inidat(dyn_in)
    !
    ! Set placeholder state
    !
-!++dbg
-   ! test pattern for edge grid
-   latvals_deg => cam_grid_get_latvals(cam_grid_id('mpas_edge'))
-
-   do k = 1, plev ! k=1 is surface layer
-      uperp(k,:nEdgesSolve) = (k-1)*1000._r8 + latvals_deg(:nEdgesSolve)
-   end do
    ! No winds
-!   uperp(:,:) = 0.0_r8
-!--dbg
+   uperp(:,:) = 0.0_r8
    w(:,:) = 0.0_r8
    ux(:,:) = 0.0_r8
    uy(:,:) = 0.0_r8
