@@ -686,8 +686,10 @@ contains
        use mpas_io_streams, only : MPAS_createStream, MPAS_closeStream, MPAS_streamAddField, MPAS_readStream
        use mpas_derived_types, only : MPAS_IO_READ, MPAS_IO_NETCDF, MPAS_Stream_type, MPAS_pool_type, &
                                       field0DReal, field1DReal, field2DReal, field3DReal, field1DInteger, field2DInteger
-       use mpas_pool_routines, only : MPAS_pool_get_subpool, MPAS_pool_get_field
+       use mpas_pool_routines, only : MPAS_pool_get_subpool, MPAS_pool_get_field, MPAS_pool_create_pool, MPAS_pool_destroy_pool, &
+                                      MPAS_pool_add_config
        use mpas_dmpar, only : MPAS_dmpar_exch_halo_field
+       use mpas_stream_manager, only : postread_reindex
 
        implicit none
 
@@ -696,6 +698,7 @@ contains
 
        integer :: ierr
        type (MPAS_pool_type), pointer :: meshPool
+       type (MPAS_pool_type), pointer :: reindexPool
        type (field1DReal), pointer :: latCell, lonCell, xCell, yCell, zCell
        type (field1DReal), pointer :: latEdge, lonEdge, xEdge, yEdge, zEdge
        type (field1DReal), pointer :: latVertex, lonVertex, xVertex, yVertex, zVertex
@@ -925,6 +928,24 @@ contains
        call MPAS_dmpar_exch_halo_field(localVerticalUnitVectors)
        call MPAS_dmpar_exch_halo_field(defc_a)
        call MPAS_dmpar_exch_halo_field(defc_b)
+
+       !
+       ! Re-index from global index space to local index space
+       !
+       call MPAS_pool_create_pool(reindexPool)
+
+       call MPAS_pool_add_config(reindexPool, 'cellsOnEdge', 1)
+       call MPAS_pool_add_config(reindexPool, 'edgesOnCell', 1)
+       call MPAS_pool_add_config(reindexPool, 'edgesOnEdge', 1)
+       call MPAS_pool_add_config(reindexPool, 'cellsOnCell', 1)
+       call MPAS_pool_add_config(reindexPool, 'verticesOnCell', 1)
+       call MPAS_pool_add_config(reindexPool, 'verticesOnEdge', 1)
+       call MPAS_pool_add_config(reindexPool, 'edgesOnVertex', 1)
+       call MPAS_pool_add_config(reindexPool, 'cellsOnVertex', 1)
+
+       call postread_reindex(meshPool, reindexPool)
+
+       call MPAS_pool_destroy_pool(reindexPool)
 
     end subroutine cam_mpas_read_static
 
