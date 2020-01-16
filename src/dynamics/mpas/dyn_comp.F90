@@ -85,6 +85,17 @@ type dyn_import_t
                                                   ! layer interface [dimensionless]       (nver)
 
    !
+   ! Invariant -- needed to compute edge-normal velocities
+   !
+   real(r8), dimension(:,:),   pointer :: east    ! Cartesian components of unit east vector
+                                                  ! at cell centers [dimensionless]     (3,ncol)
+   real(r8), dimension(:,:),   pointer :: north   ! Cartesian components of unit north vector
+                                                  ! at cell centers [dimensionless]     (3,ncol)
+   real(r8), dimension(:,:),   pointer :: normal  ! Cartesian components of the vector normal
+                                                  ! to an edge and tangential to the surface
+                                                  ! of the sphere [dimensionless]       (3,ncol)
+
+   !
    ! State that may be directly derived from dycore prognostic state
    !
    real(r8), dimension(:,:),   pointer :: theta   ! Potential temperature [K]        (nver,ncol)
@@ -276,6 +287,10 @@ subroutine dyn_init(dyn_in, dyn_out)
    call mpas_pool_get_array(mesh_pool,  'fzm',                    dyn_in % fzm)
    call mpas_pool_get_array(mesh_pool,  'fzp',                    dyn_in % fzp)
 
+   call mpas_pool_get_array(mesh_pool,  'east',                   dyn_in % east)
+   call mpas_pool_get_array(mesh_pool,  'north',                  dyn_in % north)
+   call mpas_pool_get_array(mesh_pool,  'edgeNormalVectors',      dyn_in % normal)
+
    call mpas_pool_get_array(diag_pool,  'theta',                  dyn_in % theta)
    call mpas_pool_get_array(diag_pool,  'rho',                    dyn_in % rho)
    call mpas_pool_get_array(diag_pool,  'uReconstructZonal',      dyn_in % ux)
@@ -361,6 +376,9 @@ subroutine dyn_final(dyn_in, dyn_out)
    nullify(dyn_in % zz)
    nullify(dyn_in % fzm)
    nullify(dyn_in % fzp)
+   nullify(dyn_in % east)
+   nullify(dyn_in % north)
+   nullify(dyn_in % normal)
    nullify(dyn_in % theta)
    nullify(dyn_in % rho)
    nullify(dyn_in % ux)

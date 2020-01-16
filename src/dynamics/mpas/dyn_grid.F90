@@ -810,7 +810,7 @@ end subroutine ref_height_read
 subroutine setup_time_invariant(fh_ini)
 
    use cam_initfiles,      only : initial_file_get_id
-   use cam_mpas_subdriver, only : cam_mpas_read_static
+   use cam_mpas_subdriver, only : cam_mpas_read_static, cam_mpas_compute_unit_vectors
 
    implicit none
 
@@ -820,9 +820,9 @@ subroutine setup_time_invariant(fh_ini)
    ! Read time-invariant fields
    call cam_mpas_read_static(fh_ini, endrun)
 
-   ! At present, all time-invariant fields are read from the file descriptor provided
-   ! by initial_file_get_id(), but in future, some of these fields could be computed
-   ! here based on other fields that were read
+   ! Compute unit vectors giving the local north and east directions as well as
+   ! the unit normal vector for edges
+   call cam_mpas_compute_unit_vectors()
 
 end subroutine setup_time_invariant
 
