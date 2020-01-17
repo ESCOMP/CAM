@@ -1282,7 +1282,7 @@ contains
     use qneg_module,        only: qneg4
     use co2_cycle,          only: co2_cycle_set_ptend
     use nudging,            only: Nudge_Model,Nudge_ON,nudging_timestep_tend
-    use cam_snapshot,       only: cam_snapshot_all_outfld_tphysac, cam_snapshot_all_outfld_tphysbc
+    use cam_snapshot,       only: cam_snapshot_all_outfld_tphysac
     use cam_snapshot,       only: cam_snapshot_ptend_outfld
 
     !
