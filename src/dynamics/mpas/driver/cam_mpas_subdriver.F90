@@ -22,6 +22,7 @@ module cam_mpas_subdriver
               cam_mpas_get_global_blocks, &
               cam_mpas_read_static, &
               cam_mpas_compute_unit_vectors, &
+              cam_mpas_update_halo, &
               cam_mpas_finalize
     public :: corelist, domain_ptr
 
@@ -1010,6 +1011,105 @@ contains
        call mpas_initialize_vectors(meshPool)
 
     end subroutine cam_mpas_compute_unit_vectors
+
+
+    !-----------------------------------------------------------------------
+    !  routine cam_mpas_update_halo
+    !
+    !> \brief  Updates the halo of the named field
+    !> \author Michael Duda
+    !> \date   16 January 2020
+    !> \details
+    !>  Given the name of a field that is defined in the MPAS Registry.xml file,
+    !>  this routine updates the halo for that field.
+    !
+    !-----------------------------------------------------------------------
+    subroutine cam_mpas_update_halo(fieldName)
+
+       use mpas_derived_types, only : field1DReal, field2DReal, field3DReal, field4DReal, field5DReal, &
+                                      field1DInteger, field2DInteger, field3DInteger, &
+                                      mpas_pool_field_info_type, MPAS_POOL_REAL, MPAS_POOL_INTEGER
+       use mpas_pool_routines, only : MPAS_pool_get_field_info, MPAS_pool_get_field
+       use mpas_dmpar, only : MPAS_dmpar_exch_halo_field
+
+       implicit none
+
+       character(len=*), intent(in) :: fieldName
+
+       type (mpas_pool_field_info_type) :: fieldInfo
+       type (field1DReal), pointer :: field_real1d
+       type (field2DReal), pointer :: field_real2d
+       type (field3DReal), pointer :: field_real3d
+       type (field4DReal), pointer :: field_real4d
+       type (field5DReal), pointer :: field_real5d
+       type (field1DInteger), pointer :: field_int1d
+       type (field2DInteger), pointer :: field_int2d
+       type (field3DInteger), pointer :: field_int3d
+
+
+       call MPAS_pool_get_field_info(domain_ptr % blocklist % allFields, trim(fieldName), fieldInfo)
+
+       if (fieldInfo % fieldType == MPAS_POOL_REAL) then
+           if (fieldInfo % nDims == 1) then
+               nullify(field_real1d)
+               call MPAS_pool_get_field(domain_ptr % blocklist % allFields, trim(fieldName), field_real1d)
+               if (associated(field_real1d)) then
+                   call MPAS_dmpar_exch_halo_field(field_real1d)
+               end if
+           else if (fieldInfo % nDims == 2) then
+               nullify(field_real2d)
+               call MPAS_pool_get_field(domain_ptr % blocklist % allFields, trim(fieldName), field_real2d)
+               if (associated(field_real2d)) then
+                   call MPAS_dmpar_exch_halo_field(field_real2d)
+               end if
+           else if (fieldInfo % nDims == 3) then
+               nullify(field_real3d)
+               call MPAS_pool_get_field(domain_ptr % blocklist % allFields, trim(fieldName), field_real3d)
+               if (associated(field_real3d)) then
+                   call MPAS_dmpar_exch_halo_field(field_real3d)
+               end if
+           else if (fieldInfo % nDims == 4) then
+               nullify(field_real4d)
+               call MPAS_pool_get_field(domain_ptr % blocklist % allFields, trim(fieldName), field_real4d)
+               if (associated(field_real4d)) then
+                   call MPAS_dmpar_exch_halo_field(field_real4d)
+               end if
+           else if (fieldInfo % nDims == 5) then
+               nullify(field_real5d)
+               call MPAS_pool_get_field(domain_ptr % blocklist % allFields, trim(fieldName), field_real5d)
+               if (associated(field_real5d)) then
+                   call MPAS_dmpar_exch_halo_field(field_real5d)
+               end if
+           else
+               ! Error...
+           end if
+       else if (fieldInfo % fieldType == MPAS_POOL_INTEGER) then
+           if (fieldInfo % nDims == 1) then
+               nullify(field_int1d)
+               call MPAS_pool_get_field(domain_ptr % blocklist % allFields, trim(fieldName), field_int1d)
+               if (associated(field_int1d)) then
+                   call MPAS_dmpar_exch_halo_field(field_int1d)
+               end if
+           else if (fieldInfo % nDims == 2) then
+               nullify(field_int2d)
+               call MPAS_pool_get_field(domain_ptr % blocklist % allFields, trim(fieldName), field_int2d)
+               if (associated(field_int2d)) then
+                   call MPAS_dmpar_exch_halo_field(field_int2d)
+               end if
+           else if (fieldInfo % nDims == 3) then
+               nullify(field_int3d)
+               call MPAS_pool_get_field(domain_ptr % blocklist % allFields, trim(fieldName), field_int3d)
+               if (associated(field_int3d)) then
+                   call MPAS_dmpar_exch_halo_field(field_int3d)
+               end if
+           else
+               ! Error...
+           end if
+       else
+           ! Error...
+       end if
+
+    end subroutine cam_mpas_update_halo
 
 
     !-----------------------------------------------------------------------
