@@ -34,7 +34,9 @@ use pio,               only: file_desc_t, var_desc_t, &
                              pio_put_var, pio_get_var, &
                              pio_seterrorhandling, PIO_BCAST_ERROR, PIO_NOERR
 
-use cam_mpas_subdriver, only: domain_ptr
+use cam_mpas_subdriver, only: domain_ptr, cam_mpas_init_phase3, cam_mpas_get_global_dims, &
+                              cam_mpas_get_global_coords, cam_mpas_get_global_blocks,     &
+                              cam_mpas_read_static, cam_mpas_compute_unit_vectors
 
 use mpas_pool_routines, only: mpas_pool_get_subpool, mpas_pool_get_dimension, mpas_pool_get_array
 use mpas_derived_types, only: mpas_pool_type
@@ -119,9 +121,6 @@ subroutine dyn_grid_init()
 
    use cam_history_support, only: add_vert_coord
 
-   use cam_mpas_subdriver,  only: cam_mpas_init_phase3, cam_mpas_get_global_dims, cam_mpas_get_global_coords, &
-                                  cam_mpas_get_global_blocks
-        
    type(file_desc_t), pointer :: fh_ini
 
    integer  :: k
@@ -717,8 +716,6 @@ subroutine setup_time_invariant(fh_ini)
    ! but in future, some of these fields could be computed
    ! here based on other fields that were read
 
-   use cam_mpas_subdriver, only : cam_mpas_read_static
-
    ! Arguments
    type(file_desc_t), pointer :: fh_ini
 
@@ -734,6 +731,10 @@ subroutine setup_time_invariant(fh_ini)
 
    ! Read time-invariant fields
    call cam_mpas_read_static(fh_ini, endrun)
+
+   ! Compute unit vectors giving the local north and east directions as well as
+   ! the unit normal vector for edges
+   call cam_mpas_compute_unit_vectors()
 
    ! Access dimensions that are made public via this module
    call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'mesh', meshPool)

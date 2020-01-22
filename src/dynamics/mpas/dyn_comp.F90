@@ -57,6 +57,13 @@ public :: &
 
 type dyn_import_t
    !
+   ! Number of cells, edges, and vertices in this block
+   !
+   integer                             :: nCells     ! Number of cells, including halo cells
+   integer                             :: nEdges     ! Number of edges, including halo edges
+   integer                             :: nVertices  ! Number of vertices, including halo vertices
+
+   !
    ! State that is directly prognosed by the dycore
    !
    real(r8), dimension(:,:),   pointer :: uperp   ! Normal velocity at edges [m/s]  (nver,nedge)
@@ -85,6 +92,19 @@ type dyn_import_t
                                                   ! layer interface [dimensionless]       (nver)
 
    !
+   ! Invariant -- needed to compute edge-normal velocities
+   !
+   real(r8), dimension(:,:),   pointer :: east    ! Cartesian components of unit east vector
+                                                  ! at cell centers [dimensionless]     (3,ncol)
+   real(r8), dimension(:,:),   pointer :: north   ! Cartesian components of unit north vector
+                                                  ! at cell centers [dimensionless]     (3,ncol)
+   real(r8), dimension(:,:),   pointer :: normal  ! Cartesian components of the vector normal
+                                                  ! to an edge and tangential to the surface
+                                                  ! of the sphere [dimensionless]       (3,ncol)
+   integer, dimension(:,:), pointer :: cellsOnEdge ! Indices of cells separated by an edge (2,nedge)
+
+
+   !
    ! State that may be directly derived from dycore prognostic state
    !
    real(r8), dimension(:,:),   pointer :: theta   ! Potential temperature [K]        (nver,ncol)
@@ -106,6 +126,13 @@ type dyn_import_t
 end type dyn_import_t
 
 type dyn_export_t
+   !
+   ! Number of cells, edges, and vertices in this block
+   !
+   integer                             :: nCells     ! Number of cells, including halo cells
+   integer                             :: nEdges     ! Number of edges, including halo edges
+   integer                             :: nVertices  ! Number of vertices, including halo vertices
+
    !
    ! State that is directly prognosed by the dycore
    !
@@ -247,6 +274,9 @@ subroutine dyn_init(dyn_in, dyn_out)
    type(mpas_pool_type), pointer :: diag_pool
    type(mpas_pool_type), pointer :: tend_physics_pool
 
+   integer, pointer :: nCells
+   integer, pointer :: nEdges
+   integer, pointer :: nVertices
    integer, pointer :: index_qv
 
    !----------------------------------------------------------------------------
@@ -262,6 +292,15 @@ subroutine dyn_init(dyn_in, dyn_out)
    !
    ! Let dynamics import state point to memory managed by MPAS-Atmosphere
    !
+   call mpas_pool_get_dimension(mesh_pool, 'nCells', nCells)
+   dyn_in % nCells = nCells
+
+   call mpas_pool_get_dimension(mesh_pool, 'nEdges', nEdges)
+   dyn_in % nEdges = nEdges
+
+   call mpas_pool_get_dimension(mesh_pool, 'nVertices', nVertices)
+   dyn_in % nVertices = nVertices
+
    call mpas_pool_get_array(state_pool, 'u',                      dyn_in % uperp,   timeLevel=2)
    call mpas_pool_get_array(state_pool, 'w',                      dyn_in % w,       timeLevel=2)
    call mpas_pool_get_array(state_pool, 'theta_m',                dyn_in % theta_m, timeLevel=2)
@@ -275,6 +314,11 @@ subroutine dyn_init(dyn_in, dyn_out)
    call mpas_pool_get_array(mesh_pool,  'zz',                     dyn_in % zz)
    call mpas_pool_get_array(mesh_pool,  'fzm',                    dyn_in % fzm)
    call mpas_pool_get_array(mesh_pool,  'fzp',                    dyn_in % fzp)
+
+   call mpas_pool_get_array(mesh_pool,  'east',                   dyn_in % east)
+   call mpas_pool_get_array(mesh_pool,  'north',                  dyn_in % north)
+   call mpas_pool_get_array(mesh_pool,  'edgeNormalVectors',      dyn_in % normal)
+   call mpas_pool_get_array(mesh_pool,  'cellsOnEdge',            dyn_in % cellsOnEdge)
 
    call mpas_pool_get_array(diag_pool,  'theta',                  dyn_in % theta)
    call mpas_pool_get_array(diag_pool,  'rho',                    dyn_in % rho)
@@ -290,6 +334,15 @@ subroutine dyn_init(dyn_in, dyn_out)
    !
    ! Let dynamics export state point to memory managed by MPAS-Atmosphere
    !
+   call mpas_pool_get_dimension(mesh_pool, 'nCells', nCells)
+   dyn_out % nCells = nCells
+
+   call mpas_pool_get_dimension(mesh_pool, 'nEdges', nEdges)
+   dyn_out % nEdges = nEdges
+
+   call mpas_pool_get_dimension(mesh_pool, 'nVertices', nVertices)
+   dyn_out % nVertices = nVertices
+
    call mpas_pool_get_array(state_pool, 'u',                      dyn_out % uperp,   timeLevel=1)
    call mpas_pool_get_array(state_pool, 'w',                      dyn_out % w,       timeLevel=1)
    call mpas_pool_get_array(state_pool, 'theta_m',                dyn_out % theta_m, timeLevel=1)
@@ -353,6 +406,9 @@ subroutine dyn_final(dyn_in, dyn_out)
    !
    ! Prevent any further access to MPAS-Atmosphere memory
    !
+   dyn_in % nCells = 0
+   dyn_in % nEdges = 0
+   dyn_in % nVertices = 0
    nullify(dyn_in % uperp)
    nullify(dyn_in % w)
    nullify(dyn_in % theta_m)
@@ -363,6 +419,10 @@ subroutine dyn_final(dyn_in, dyn_out)
    nullify(dyn_in % zz)
    nullify(dyn_in % fzm)
    nullify(dyn_in % fzp)
+   nullify(dyn_in % east)
+   nullify(dyn_in % north)
+   nullify(dyn_in % normal)
+   nullify(dyn_in % cellsOnEdge)
    nullify(dyn_in % theta)
    nullify(dyn_in % rho)
    nullify(dyn_in % ux)
@@ -375,6 +435,9 @@ subroutine dyn_final(dyn_in, dyn_out)
    !
    ! Prevent any further access to MPAS-Atmosphere memory
    !
+   dyn_out % nCells = 0
+   dyn_out % nEdges = 0
+   dyn_out % nVertices = 0
    nullify(dyn_out % uperp)
    nullify(dyn_out % w)
    nullify(dyn_out % theta_m)
@@ -400,7 +463,7 @@ end subroutine dyn_final
 subroutine read_inidat(dyn_in)
 
    use dyn_grid, only : nCellsSolve, nEdgesSolve, nVertLevelsSolve
-   use cam_mpas_subdriver, only : domain_ptr
+   use cam_mpas_subdriver, only : domain_ptr, cam_mpas_update_halo, cam_mpas_cell_to_edge_winds
 
    ! Set initial conditions.  Either from analytic expressions or read from file.
 
@@ -605,10 +668,15 @@ subroutine read_inidat(dyn_in)
    ! Set placeholder state
    !
    ! No winds
-   uperp(:,1:nEdgesSolve) = 0.0_r8
    w(:,1:nCellsSolve) = 0.0_r8
    ux(:,1:nCellsSolve) = 0.0_r8
    uy(:,1:nCellsSolve) = 0.0_r8
+
+   ! Compute uperp by projecting ux and uy from cell centers to edges
+   call cam_mpas_update_halo('uReconstructZonal')       ! ux => uReconstructZonal
+   call cam_mpas_update_halo('uReconstructMeridional')  ! uy => uReconstructMeridional
+   call cam_mpas_cell_to_edge_winds(dyn_in % nEdges, ux, uy, dyn_in % east, dyn_in % north, dyn_in % normal, &
+                                    dyn_in % cellsOnEdge, uperp)
 
    ! No tracers
    tracers(:,:,1:nCellsSolve) = 0.0_r8

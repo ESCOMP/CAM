@@ -21,6 +21,9 @@ module cam_mpas_subdriver
               cam_mpas_get_global_coords, &
               cam_mpas_get_global_blocks, &
               cam_mpas_read_static, &
+              cam_mpas_compute_unit_vectors, &
+              cam_mpas_update_halo, &
+              cam_mpas_cell_to_edge_winds, &
               cam_mpas_finalize
     public :: corelist, domain_ptr
 
@@ -686,8 +689,10 @@ contains
        use mpas_io_streams, only : MPAS_createStream, MPAS_closeStream, MPAS_streamAddField, MPAS_readStream
        use mpas_derived_types, only : MPAS_IO_READ, MPAS_IO_NETCDF, MPAS_Stream_type, MPAS_pool_type, &
                                       field0DReal, field1DReal, field2DReal, field3DReal, field1DInteger, field2DInteger
-       use mpas_pool_routines, only : MPAS_pool_get_subpool, MPAS_pool_get_field
+       use mpas_pool_routines, only : MPAS_pool_get_subpool, MPAS_pool_get_field, MPAS_pool_create_pool, MPAS_pool_destroy_pool, &
+                                      MPAS_pool_add_config
        use mpas_dmpar, only : MPAS_dmpar_exch_halo_field
+       use mpas_stream_manager, only : postread_reindex
 
        implicit none
 
@@ -696,6 +701,7 @@ contains
 
        integer :: ierr
        type (MPAS_pool_type), pointer :: meshPool
+       type (MPAS_pool_type), pointer :: reindexPool
        type (field1DReal), pointer :: latCell, lonCell, xCell, yCell, zCell
        type (field1DReal), pointer :: latEdge, lonEdge, xEdge, yEdge, zEdge
        type (field1DReal), pointer :: latVertex, lonVertex, xVertex, yVertex, zVertex
@@ -926,7 +932,241 @@ contains
        call MPAS_dmpar_exch_halo_field(defc_a)
        call MPAS_dmpar_exch_halo_field(defc_b)
 
+       !
+       ! Re-index from global index space to local index space
+       !
+       call MPAS_pool_create_pool(reindexPool)
+
+       call MPAS_pool_add_config(reindexPool, 'cellsOnEdge', 1)
+       call MPAS_pool_add_config(reindexPool, 'edgesOnCell', 1)
+       call MPAS_pool_add_config(reindexPool, 'edgesOnEdge', 1)
+       call MPAS_pool_add_config(reindexPool, 'cellsOnCell', 1)
+       call MPAS_pool_add_config(reindexPool, 'verticesOnCell', 1)
+       call MPAS_pool_add_config(reindexPool, 'verticesOnEdge', 1)
+       call MPAS_pool_add_config(reindexPool, 'edgesOnVertex', 1)
+       call MPAS_pool_add_config(reindexPool, 'cellsOnVertex', 1)
+
+       call postread_reindex(meshPool, reindexPool)
+
+       call MPAS_pool_destroy_pool(reindexPool)
+
     end subroutine cam_mpas_read_static
+
+
+    !-----------------------------------------------------------------------
+    !  routine cam_mpas_compute_unit_vectors
+    !
+    !> \brief  Computes local unit north, east, and edge-normal vectors
+    !> \author Michael Duda
+    !> \date   15 January 2020
+    !> \details
+    !>  This routine computes the local unit north and east vectors at all cell
+    !>  centers, storing the resulting fields in the mesh pool as 'north' and
+    !>  'east'. It also computes the edge-normal unit vectors by calling
+    !>  the mpas_initialize_vectors routine. Before this routine is called,
+    !>  the mesh pool must contain 'latCell' and 'lonCell' fields that are valid
+    !>  for all cells (not just solve cells), plus any fields that are required
+    !>  by the mpas_initialize_vectors routine.
+    !
+    !-----------------------------------------------------------------------
+    subroutine cam_mpas_compute_unit_vectors()
+
+       use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_dimension, mpas_pool_get_array
+       use mpas_derived_types, only : mpas_pool_type
+       use mpas_kind_types, only : RKIND
+       use mpas_vector_operations, only : mpas_initialize_vectors
+
+       implicit none
+
+       type (mpas_pool_type), pointer :: meshPool
+       real(kind=RKIND), dimension(:), pointer :: latCell, lonCell
+       real(kind=RKIND), dimension(:,:), pointer :: east, north
+       integer, pointer :: nCells
+       integer :: iCell
+
+       call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'mesh', meshPool)
+       call mpas_pool_get_dimension(meshPool, 'nCells', nCells)
+       call mpas_pool_get_array(meshPool, 'latCell', latCell)
+       call mpas_pool_get_array(meshPool, 'lonCell', lonCell)
+       call mpas_pool_get_array(meshPool, 'east', east)
+       call mpas_pool_get_array(meshPool, 'north', north)
+
+       do iCell = 1, nCells
+
+          east(1,iCell) = -sin(lonCell(iCell))
+          east(2,iCell) =  cos(lonCell(iCell))
+          east(3,iCell) =  0.0
+
+          ! Normalize
+          east(1:3,iCell) = east(1:3,iCell) / sqrt(sum(east(1:3,iCell) * east(1:3,iCell)))
+
+          north(1,iCell) = -cos(lonCell(iCell))*sin(latCell(iCell))
+          north(2,iCell) = -sin(lonCell(iCell))*sin(latCell(iCell))
+          north(3,iCell) =  cos(latCell(iCell))
+
+          ! Normalize
+          north(1:3,iCell) = north(1:3,iCell) / sqrt(sum(north(1:3,iCell) * north(1:3,iCell)))
+
+       end do
+
+       call mpas_initialize_vectors(meshPool)
+
+    end subroutine cam_mpas_compute_unit_vectors
+
+
+    !-----------------------------------------------------------------------
+    !  routine cam_mpas_update_halo
+    !
+    !> \brief  Updates the halo of the named field
+    !> \author Michael Duda
+    !> \date   16 January 2020
+    !> \details
+    !>  Given the name of a field that is defined in the MPAS Registry.xml file,
+    !>  this routine updates the halo for that field.
+    !
+    !-----------------------------------------------------------------------
+    subroutine cam_mpas_update_halo(fieldName)
+
+       use mpas_derived_types, only : field1DReal, field2DReal, field3DReal, field4DReal, field5DReal, &
+                                      field1DInteger, field2DInteger, field3DInteger, &
+                                      mpas_pool_field_info_type, MPAS_POOL_REAL, MPAS_POOL_INTEGER
+       use mpas_pool_routines, only : MPAS_pool_get_field_info, MPAS_pool_get_field
+       use mpas_dmpar, only : MPAS_dmpar_exch_halo_field
+
+       implicit none
+
+       character(len=*), intent(in) :: fieldName
+
+       type (mpas_pool_field_info_type) :: fieldInfo
+       type (field1DReal), pointer :: field_real1d
+       type (field2DReal), pointer :: field_real2d
+       type (field3DReal), pointer :: field_real3d
+       type (field4DReal), pointer :: field_real4d
+       type (field5DReal), pointer :: field_real5d
+       type (field1DInteger), pointer :: field_int1d
+       type (field2DInteger), pointer :: field_int2d
+       type (field3DInteger), pointer :: field_int3d
+
+
+       call MPAS_pool_get_field_info(domain_ptr % blocklist % allFields, trim(fieldName), fieldInfo)
+
+       if (fieldInfo % fieldType == MPAS_POOL_REAL) then
+           if (fieldInfo % nDims == 1) then
+               nullify(field_real1d)
+               call MPAS_pool_get_field(domain_ptr % blocklist % allFields, trim(fieldName), field_real1d)
+               if (associated(field_real1d)) then
+                   call MPAS_dmpar_exch_halo_field(field_real1d)
+               end if
+           else if (fieldInfo % nDims == 2) then
+               nullify(field_real2d)
+               call MPAS_pool_get_field(domain_ptr % blocklist % allFields, trim(fieldName), field_real2d)
+               if (associated(field_real2d)) then
+                   call MPAS_dmpar_exch_halo_field(field_real2d)
+               end if
+           else if (fieldInfo % nDims == 3) then
+               nullify(field_real3d)
+               call MPAS_pool_get_field(domain_ptr % blocklist % allFields, trim(fieldName), field_real3d)
+               if (associated(field_real3d)) then
+                   call MPAS_dmpar_exch_halo_field(field_real3d)
+               end if
+           else if (fieldInfo % nDims == 4) then
+               nullify(field_real4d)
+               call MPAS_pool_get_field(domain_ptr % blocklist % allFields, trim(fieldName), field_real4d)
+               if (associated(field_real4d)) then
+                   call MPAS_dmpar_exch_halo_field(field_real4d)
+               end if
+           else if (fieldInfo % nDims == 5) then
+               nullify(field_real5d)
+               call MPAS_pool_get_field(domain_ptr % blocklist % allFields, trim(fieldName), field_real5d)
+               if (associated(field_real5d)) then
+                   call MPAS_dmpar_exch_halo_field(field_real5d)
+               end if
+           else
+               ! Error...
+           end if
+       else if (fieldInfo % fieldType == MPAS_POOL_INTEGER) then
+           if (fieldInfo % nDims == 1) then
+               nullify(field_int1d)
+               call MPAS_pool_get_field(domain_ptr % blocklist % allFields, trim(fieldName), field_int1d)
+               if (associated(field_int1d)) then
+                   call MPAS_dmpar_exch_halo_field(field_int1d)
+               end if
+           else if (fieldInfo % nDims == 2) then
+               nullify(field_int2d)
+               call MPAS_pool_get_field(domain_ptr % blocklist % allFields, trim(fieldName), field_int2d)
+               if (associated(field_int2d)) then
+                   call MPAS_dmpar_exch_halo_field(field_int2d)
+               end if
+           else if (fieldInfo % nDims == 3) then
+               nullify(field_int3d)
+               call MPAS_pool_get_field(domain_ptr % blocklist % allFields, trim(fieldName), field_int3d)
+               if (associated(field_int3d)) then
+                   call MPAS_dmpar_exch_halo_field(field_int3d)
+               end if
+           else
+               ! Error...
+           end if
+       else
+           ! Error...
+       end if
+
+    end subroutine cam_mpas_update_halo
+
+
+    !-----------------------------------------------------------------------
+    !  routine cam_mpas_cell_to_edge_winds
+    !
+    !> \brief  Projects cell-centered winds to the normal component of velocity on edges
+    !> \author Michael Duda
+    !> \date   16 January 2020
+    !> \details
+    !>  Given zonal and meridional winds at cell centers, unit vectors in the east
+    !>  and north directions at cell centers, and unit vectors in the normal
+    !>  direction at edges, this routine projects the cell-centered winds onto
+    !>  the normal vectors.
+    !>
+    !>  Prior to calling this routine, the halos for the zonal and meridional
+    !>  components of cell-centered winds should be updated. It is also critical
+    !>  that the east, north, uZonal, and uMerid field are all allocated with
+    !>  a "garbage" element; this is handled automatically for fields allocated
+    !>  by the MPAS infrastructure.
+    !
+    !-----------------------------------------------------------------------
+    subroutine cam_mpas_cell_to_edge_winds(nEdges, uZonal, uMerid, east, north, edgeNormalVectors, &
+                                           cellsOnEdge, uNormal)
+
+       use mpas_kind_types, only : RKIND
+
+       implicit none
+
+       integer, intent(in) :: nEdges
+       real(kind=RKIND), dimension(:,:), intent(in) :: uZonal, uMerid
+       real(kind=RKIND), dimension(:,:), intent(in) :: east, north, edgeNormalVectors
+       integer, dimension(:,:), intent(in) :: cellsOnEdge
+       real(kind=RKIND), dimension(:,:), intent(out) :: uNormal
+
+       integer :: iEdge, cell1, cell2
+
+
+       do iEdge = 1, nEdges
+          cell1 = cellsOnEdge(1,iEdge)
+          cell2 = cellsOnEdge(2,iEdge)
+
+          uNormal(:,iEdge) =  uZonal(:,cell1) * 0.5 * (edgeNormalVectors(1,iEdge) * east(1,cell1)   &
+                                                    +  edgeNormalVectors(2,iEdge) * east(2,cell1)   &
+                                                    +  edgeNormalVectors(3,iEdge) * east(3,cell1))  &
+                            + uMerid(:,cell1) * 0.5 * (edgeNormalVectors(1,iEdge) * north(1,cell1)   &
+                                                    +  edgeNormalVectors(2,iEdge) * north(2,cell1)   &
+                                                    +  edgeNormalVectors(3,iEdge) * north(3,cell1))  &
+                            + uZonal(:,cell2) * 0.5 * (edgeNormalVectors(1,iEdge) * east(1,cell2)   &
+                                                    +  edgeNormalVectors(2,iEdge) * east(2,cell2)   &
+                                                    +  edgeNormalVectors(3,iEdge) * east(3,cell2))  &
+                            + uMerid(:,cell2) * 0.5 * (edgeNormalVectors(1,iEdge) * north(1,cell2)   &
+                                                    +  edgeNormalVectors(2,iEdge) * north(2,cell2)   &
+                                                    +  edgeNormalVectors(3,iEdge) * north(3,cell2))
+       end do
+
+    end subroutine cam_mpas_cell_to_edge_winds
 
 
     !-----------------------------------------------------------------------
