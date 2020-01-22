@@ -308,6 +308,7 @@ module cam_history_support
   public     :: lookup_hist_coord_indices, hist_coord_find_levels
   public     :: get_hist_coord_index, hist_coord_name, hist_coord_size
   public     :: sec2hms, date2yyyymmdd
+  public     :: hist_dimension_name
 
   interface add_hist_coord
     module procedure add_hist_coord_regonly
@@ -1990,5 +1991,25 @@ contains
 
   !#######################################################################
 
+  character(len=max_hcoordname_len) function hist_dimension_name (size)
+  ! Given a specific size value, return the first registered dimension name which matches the size, if it exists
+  ! Otherwise the name returned is blank
+
+     integer, intent(in) :: size
+  
+     integer :: i
+     
+     hist_dimension_name = ''
+     
+     do i=1, registeredmdims
+        if(size == hist_coords(i)%dimsize) then
+           hist_dimension_name = hist_coords(i)%name
+           exit
+        end if
+     end do    
+     
+  end function hist_dimension_name
+
+  !#######################################################################
 
 end module cam_history_support
