@@ -1040,7 +1040,7 @@ subroutine cam_snapshot_ptend_outfld(ptend, lchnk)
 
    use constituents, only: cnst_name, cnst_longname
    !--------------------------------------------------------
-   ! This subroutine does the addfld calls for ptend fields.
+   ! This subroutine does the outfld calls for ptend fields.
    !--------------------------------------------------------
 
    type(physics_ptend), intent(in) :: ptend
