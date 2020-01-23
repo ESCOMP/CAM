@@ -46,6 +46,7 @@ use English;
 use File::Basename;
 use Getopt::Long;
 use IO::File;
+use List::Util 'first';
 use FindBin qw($Bin);
 use lib "$Bin/perl5lib";
 use Build::ChemNamelist qw(set_dep_lists set_aero_modes_info chem_has_species);
@@ -2266,7 +2267,7 @@ if ($chem =~ /_mam4/ and $phys =~ /cam6/) {
                 'pom_a4_an_srf_file'  => 'pom_a4',
                 'pom_a4_bb_srf_file'  => 'pom_a4' );
     }
-	    
+
     # for mechanism missing full tropospheric chemistry
     if ($chem =~ /trop_mam/ or $chem =~ /waccm_ma/ or $chem =~ /waccm_sc/) {
         %species = (%species,
@@ -2695,7 +2696,7 @@ if ($chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/) {
     if ($dyn eq 'fv') {
         add_default($nl, 'do_circulation_diags', 'val'=>'.true.');
     }
-    
+
     # max cross cap electric potential of 120 kV to keep WACCM stable through large geo-mag storms
     add_default($nl, 'efield_potential_max', 'val'=>'120.D0');
 }
@@ -2833,7 +2834,7 @@ if ($waccmx) {
     add_default($nl,'wei05_coefs_file');
     add_default($nl,'solar_wind_data_file');
   }
-  add_default($nl,'ionos_xport_nsplit');  
+  add_default($nl,'ionos_xport_nsplit');
   add_default($nl,'steady_state_ion_elec_temp', 'val'=>'.false.');
   add_default($nl,'oplus_ring_polar_filter');
 }
@@ -2879,6 +2880,12 @@ if (defined $cam_chempkg) {
 $cam_chempkg = "'" . "$chem" . "'";  # add quotes to this string value
 
 $nl->set_variable_value('phys_ctl_nl', 'cam_chempkg', $cam_chempkg);
+
+
+# Check the snapshot settings.
+check_snapshot_settings();
+add_default($nl, 'cam_snapshot_before_num');
+add_default($nl, 'cam_snapshot_after_num');
 
 # Tropopause climatology
 if (!$simple_phys) {
@@ -3653,7 +3660,7 @@ if ($dyn =~ /se/) {
 		  se_phys_dyn_cp
 		  se_raytau0
 		  se_raykrange
-		  se_rayk0 
+		  se_rayk0
         );
 
     my %opts;
@@ -4100,6 +4107,24 @@ if ($opts{'inputdata'}) {
 
 # END OF MAIN SCRIPT
 #===============================================================================================
+
+# This is a slow implementation of first_index from List::MoreUtils,
+# because that module does not seem to be generally available.
+sub first_index {
+  my $check_str = shift; # String to find in list
+  my @check_list = @_; # List of available strings
+  my $findex = -1;
+  my $lindex = 0;
+  foreach my $cstr (@check_list) {
+    if ($check_str eq $cstr) {
+      $findex = $lindex;
+      last;
+    } else {
+      $lindex++;
+    }
+  }
+    return $findex;
+}
 
 sub create_mode_defs {
 
@@ -4655,6 +4680,179 @@ sub check_input_files {
     close $fh if defined $inputdata_rootdir;
 
     return 0;
+}
+
+#-----------------------------------------------------------------------------------------------
+
+sub check_snapshot_settings {
+
+    # This checks the snapshot settings
+
+    my $cam_take_snapshot_before = $nl->get_variable_value('phys_ctl_nl', 'cam_take_snapshot_before');
+    my $cam_take_snapshot_after  = $nl->get_variable_value('phys_ctl_nl', 'cam_take_snapshot_after');
+    my $cam_snapshot_before_num  =  $nl->get_variable_value('phys_ctl_nl', 'cam_snapshot_before_num');
+    my $cam_snapshot_after_num   =  $nl->get_variable_value('phys_ctl_nl', 'cam_snapshot_after_num');
+    my $microphys = $cfg->get('microphys');
+
+    # Set the empty_htapes always to false for snapshot runs
+    $nl->set_variable_value('cam_history_nl', 'empty_htapes', $FALSE);
+
+    if (($cam_snapshot_before_num >= 0) or ($cam_snapshot_after_num >= 0)) {
+        print  "cam_snapshot settings\n";
+        print "cam_take_snapshot_before = $cam_take_snapshot_before\n";
+        print "cam_take_snapshot_after  = $cam_take_snapshot_after\n";
+        print "cam_snapshot_before_num = $cam_snapshot_before_num\n";
+        print "cam_snapshot_after_num  = $cam_snapshot_after_num\n";
+    } else {
+        return;  # No snapshots are requested
+    }
+
+    # Check for "take_snapshot" and history file number both being set or not set.  Only one set is an error
+    if ( ((defined $cam_take_snapshot_before ) xor  (defined $cam_snapshot_before_num))) {
+        die "ERROR: cam_take_snapshot_before is set to $cam_take_snapshot_before \n and cam_snapshot_before_num is set to
+                      $cam_snapshot_before_num \n Both need to be set or not set";
+    }
+
+    if ( ((defined $cam_take_snapshot_after ) xor  (defined $cam_snapshot_after_num))) {
+        die "ERROR: cam_take_snapshot_after is set to $cam_take_snapshot_after \n and cam_snapshot_after_num is set to
+                      $cam_snapshot_after_num \n Both need to be set or not set";
+    }
+
+    # If a snapshot history file number is negative, turn off that snapshot
+    if ((defined $cam_snapshot_before_num) and ($cam_snapshot_before_num lt 0)) {
+        print "WARNING: No history file assigned to before snapshot, disabling\n";
+        $nl->set_variable_value('phys_ctl_nl', 'cam_take_snapshot_before', "'UNSET'");
+    }
+    if ((defined $cam_snapshot_after_num) and ($cam_snapshot_after_num lt 0)) {
+        print "WARNING: No history file assigned to after snapshot, disabling\n";
+        $nl->set_variable_value('phys_ctl_nl', 'cam_take_snapshot_after', "'UNSET'");
+    }
+
+
+    # Check for "cam_take_snapshot" values for before and after being compatible
+    # Due to the physics call structure, only some before/after pairs are valid
+    # After the appropriate check is found, return as no other checks will pertain
+
+    my $user_set_before = ((defined $cam_take_snapshot_before) and
+                               ($cam_take_snapshot_before eq "'user_set'"));
+    my $user_set_after = ((defined $cam_take_snapshot_after) and
+                              ($cam_take_snapshot_after eq "'user_set'"));
+    if ($user_set_before and $user_set_after) {
+        return; # This is okay, user will set before and after code
+    } elsif ($user_set_before and (not defined $cam_take_snapshot_after)) {
+        return; # This iis okay, user will set before code only
+    } elsif ($user_set_after and (not defined $cam_take_snapshot_before)) {
+        return; # This iis okay, user will set after code only
+    } # No else, just proceed with list checks
+    my @validList_bc = ();
+    my @validList_ac = ();
+    if ($user_set_before) {
+        # We cannot check order so mark all after matches okay.
+        push (@validList_ac, ("'user_set'"));
+        push (@validList_bc, ("'user_set'"));
+    }
+    if ($simple_phys) {
+        # Simple physpkg
+        push (@validList_ac, ("'physics_dme_adjust'"));
+        if ($phys eq 'held_suarez') {
+            push (@validList_bc, ("'held_suarez_tend'"));
+        } elsif ($phys eq 'kessler') {
+            push (@validList_bc, ("'kessler_tend'"));
+        } elsif ($phys eq 'tj2016') {
+            push (@validList_bc, ("'thatcher_jablonowski_precip_tend'"));
+        }
+        if ($chem ne 'none') {
+            push (@validList_bc, ("'chem_timestep_tend'"));
+        }
+    } else {
+        # CAM physpkg
+        push(@validList_ac, ("'chem_emissions'",
+                             "'aoa_tracers_timestep_tend'",
+                             "'co2_cycle_set_ptend'"));
+        if ($chem ne 'none') {
+            push (@validList_ac, ("'chem_timestep_tend'"));
+        }
+        push (@validList_ac, ("'vertical_diffusion_section'",
+                              "'aero_model_drydep'", "'gw_tend'",
+                              "'qbo_relax'", "'iondrag_calc_section'",
+                              "'physics_dme_adjust'"));
+        push (@validList_bc, ("'dadadj_tend'", "'convect_deep_tend'",
+                              "'convect_shallow_tend'"));
+        if ($microphys =~ /^mg/) {
+            if ($clubb_sgs  =~ /$TRUE/io) {
+                push (@validList_bc, ("'clubb_tend_cam'"));
+            } else {
+                push (@validList_bc, ("'macrop_driver_tend'"));
+            }
+            push (@validList_bc, ("'microp_section'"));
+            if ($use_subcol_microp =~ /$TRUE/io) {
+                push (@validList_bc, ("'microp_driver_tend_subcol'"));
+            }
+        }
+        push (@validList_bc, ("'aero_model_wetdep'", "'radiation_tend'"));
+    }
+    if ($user_set_after) {
+        # We cannot check order so mark all before matches okay.
+        push (@validList_ac, ("'user_set'"));
+        push (@validList_bc, ("'user_set'"));
+    }
+
+    my $before_index_bc = first_index($cam_take_snapshot_before, @validList_bc);
+    my $after_index_bc = first_index($cam_take_snapshot_after, @validList_bc);
+    my $before_index_ac = first_index($cam_take_snapshot_before, @validList_ac);
+    my $after_index_ac = first_index($cam_take_snapshot_after, @validList_ac);
+
+    # If before is set, it must be valid
+    if ((defined $cam_snapshot_before_num) and
+          ($cam_snapshot_before_num ge 0) and
+          (defined $cam_take_snapshot_before) and
+          (($before_index_ac lt 0) and ($before_index_bc lt 0))) {
+        die "ERROR: Invalid cam_take_snapshot_before setting, $cam_take_snapshot_before\n"
+    }
+    # If after is set, it must be valid
+    if ((defined $cam_snapshot_after_num) and
+          ($cam_snapshot_after_num ge 0) and
+          (defined $cam_take_snapshot_after) and
+          (($after_index_ac lt 0) and ($after_index_bc lt 0))) {
+        die "ERROR: Invalid cam_take_snapshot_after setting, $cam_take_snapshot_after\n"
+    }
+    # If at least one of before/after are not set requires no further checking
+    if (  (! defined $cam_take_snapshot_before) or
+          (! defined $cam_take_snapshot_after)) {
+        return;
+    }
+    # If either before or after is 'user_set', end checks
+    if ($user_set_before or $user_set_after) {
+        return;
+    }
+
+    # Some checks to do if both before and after snapshots are being used
+    if ((defined $cam_take_snapshot_before) and
+          ($cam_snapshot_before_num ge 0) and
+          (defined $cam_take_snapshot_after) and
+          ($cam_snapshot_after_num ge 0)) {
+        if ($before_index_ac ge 0) {
+            if ($after_index_bc ge 0) {
+                die "ERROR: before and after snapshots must both be in ",
+                  "tphysbc or both be in tphysac\n";
+            } elsif ($before_index_ac gt $after_index_ac) {
+                die "ERROR: cam_take_snapshot_before is set to ",
+                  "$cam_take_snapshot_before\n and cam_take_snapshot_after is ",
+                  "set to $cam_take_snapshot_after\n",
+                  "This combination is invalid\n";
+            }
+        } else {
+            if ($after_index_ac ge 0) {
+                die "ERROR: before and after snapshots must both be in ",
+                  "tphysbc or both be in tphysac\n";
+            } elsif ($before_index_bc gt $after_index_bc) {
+                die "ERROR: cam_take_snapshot_before is set to ",
+                  "$cam_take_snapshot_before\n and cam_take_snapshot_after is ",
+                  "set to $cam_take_snapshot_after\n",
+                  "This combination is invalid\n";
+            }
+        }
+    }
 }
 
 #-----------------------------------------------------------------------------------------------

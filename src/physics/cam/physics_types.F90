@@ -209,6 +209,7 @@ contains
     use physconst,    only: physconst_update ! Routine which updates physconst variables (WACCM-X)
     use ppgrid,       only: begchunk, endchunk
     use qneg_module,  only: qneg3
+    use cam_history,  only: outfld
 
 !------------------------------Arguments--------------------------------
     type(physics_ptend), intent(inout)  :: ptend   ! Parameterization tendencies
@@ -218,7 +219,7 @@ contains
     real(r8), intent(in) :: dt                     ! time step
 
     type(physics_tend ), intent(inout), optional  :: tend  ! Physics tendencies over timestep
-                    ! This is usually only needed by calls from physpkg.
+    ! tend is usually only needed by calls from physpkg.
 !
 !---------------------------Local storage-------------------------------
     integer :: i,k,m                               ! column,level,constituent indices
@@ -272,7 +273,7 @@ contains
        end if
     end if
 
-    
+
     !-----------------------------------------------------------------------
     call phys_getopts(state_debug_checks_out=state_debug_checks)
 
@@ -376,7 +377,7 @@ contains
        call physconst_update(state%q, state%t, state%lchnk, state%ncol, &
                              to_moist_factor=state%pdeldry(:ncol,:)/state%pdel(:ncol,:) )
     endif
-    
+
     !-----------------------------------------------------------------------
     ! cpairv_loc and rairv_loc need to be allocated to a size which matches state and ptend
     ! If psetcols == pcols, the cpairv is the correct size and just copy
