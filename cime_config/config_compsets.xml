@@ -506,13 +506,11 @@
         <value compset="DOCN%AQP3" grid="a%C96.*_oi%C96.*_m%gx1v6">$DIN_LOC_ROOT/share/domains/domain.ocn.C96_gx1v6.181018.nc</value>
         <value compset="DOCN%AQP3" grid="a%C48.*_oi%C48.*_m%gx1v6">$DIN_LOC_ROOT/share/domains/domain.ocn.C48_gx1v6.181018.nc</value>
         <value compset="DOCN%AQP3" grid="a%C24.*_oi%C24.*_m%gx1v6">$DIN_LOC_ROOT/share/domains/domain.ocn.C24_gx1v6.181018.nc</value>
-        <value compset="DOCN%AQP3" grid="a%C5.*_oi%C5.*_m%gx3v7">$DIN_LOC_ROOT/share/domains/domain.ocn.C5_gx3v7.181018.nc</value>
         <value compset="DOCN%AQP3" grid="a%C384.*_oi%C384.*_m%gx1v7">$DIN_LOC_ROOT/share/domains/domain.ocn.C384_gx1v7.181018.nc</value>
         <value compset="DOCN%AQP3" grid="a%C192.*_oi%C192.*_m%gx1v7">$DIN_LOC_ROOT/share/domains/domain.ocn.C192_gx1v7.181018.nc</value>
         <value compset="DOCN%AQP3" grid="a%C96.*_oi%C96.*_m%gx1v7">$DIN_LOC_ROOT/share/domains/domain.ocn.C96_gx1v7.181018.nc</value>
         <value compset="DOCN%AQP3" grid="a%C48.*_oi%C48.*_m%gx1v7">$DIN_LOC_ROOT/share/domains/domain.ocn.C48_gx1v7.181018.nc</value>
         <value compset="DOCN%AQP3" grid="a%C24.*_oi%C24.*_m%gx1v7">$DIN_LOC_ROOT/share/domains/domain.ocn.C24_gx1v7.181018.nc</value>
-        <value compset="DOCN%AQP3" grid="a%C5.*_oi%C5.*_m%gx3v7">$DIN_LOC_ROOT/share/domains/domain.ocn.C5_gx3v7.181018.nc</value>
         <value compset="DOCN%DOM" grid="a%T31.*_oi%T31" >$DIN_LOC_ROOT/atm/cam/ocnfrac/domain.camocn.48x96_gx3v7_100114.nc</value>
         <value compset="DOCN%DOM" grid="a%1.9x2.5.*_oi%1.9x2.5">$DIN_LOC_ROOT/atm/cam/ocnfrac/domain.camocn.1.9x2.5_gx1v6_090403.nc </value>
         <value compset="DOCN%DOM" grid="a%0.9x1.25.*_oi%0.9x1.25.*_m%gx1v6">$DIN_LOC_ROOT/atm/cam/ocnfrac/domain.camocn.0.9x1.25_gx1v6_090403.nc</value>

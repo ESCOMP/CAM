@@ -8153,47 +8153,6 @@ Default: none
 
 <!-- for fv3 dynamical core -->
 
-<entry id="fv3_restart_interval" type="integer(6)" category="dyn_fv3"
-       group="main_nml" valid_values="" >
-</entry>
-
-<entry id="fv3_current_date" type="integer(6)" category="dyn_fv3"
-       group="main_nml" valid_values="" >
-</entry>
-
-<entry id="fv3_fv_calendar" type="char*17" category="dyn_fv3"
-       group="main_nml" valid_values="JULIAN,NOLEAP,THIRTY_DAY,NO_CALENDAR" >
-Default: NOLEAP
-</entry>
-
-<entry id="fv3_memuse_interval" type="integer" category="dyn_fv3"
-       group="main_nml" valid_values="" >
-</entry>
-
-<entry id="fv3_months" type="integer" category="dyn_fv3"
-       group="main_nml" valid_values="" >
-</entry>
-
-<entry id="fv3_days" type="integer" category="dyn_fv3"
-       group="main_nml" valid_values="" >
-</entry>
-
-<entry id="fv3_hours" type="integer" category="dyn_fv3"
-       group="main_nml" valid_values="" >
-</entry>
-
-<entry id="fv3_minutes" type="integer" category="dyn_fv3"
-       group="main_nml" valid_values="" >
-</entry>
-
-<entry id="fv3_seconds" type="integer" category="dyn_fv3"
-       group="main_nml" valid_values="" >
-</entry>
-
-<entry id="fv3_dt_atmos" type="integer" category="dyn_fv3"
-       group="main_nml" valid_values="" >
-</entry>
-
 <entry id="fv3_clock_grain" type="char*256" category="dyn_fv3"
        group="fms_nml" valid_values="" >
 </entry>

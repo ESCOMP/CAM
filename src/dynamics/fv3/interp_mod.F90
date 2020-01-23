@@ -1,4 +1,5 @@
 module interp_mod
+  ! inline interpolation routines not implemented yet
   use shr_kind_mod,   only : r8=>shr_kind_r8
   use cam_abortutils, only : endrun
 

@@ -1,19 +1,17 @@
 module restart_dynamics
 
-    use shr_kind_mod,  only: r8 => shr_kind_r8, i8 => shr_kind_i8
-    use pio,           only: file_desc_t, var_desc_t
-    use dyn_comp,      only: dyn_import_t, dyn_export_t
-    use fv_arrays_mod, only: fv_atmos_type
-    use dyn_grid,      only: get_horiz_grid_dim_d,mytile,mybindex,mybindex_ew,mybindex_ns, &
-                             mygindex,mygindex_ew,mygindex_ns, &
-                             mylindex,mylindex_ew,mylindex_ns, &
-                             mygindexdups,mygindexdups_ew,mygindexdups_ns
-    use cam_grid_support, only: cam_grid_header_info_t, cam_grid_id, cam_grid_write_attr, &
-                            cam_grid_write_var, cam_grid_get_decomp, cam_grid_dimensions, max_hcoordname_len
-    use cam_pio_utils,    only: cam_pio_handle_error
     use cam_abortutils,   only: endrun
-    use mpp_mod,           only: mpp_pe, mpp_npes, mpp_chksum
-    use spmd_utils,      only: masterproc,iam
+    use cam_grid_support, only: cam_grid_header_info_t, cam_grid_id, cam_grid_write_attr, &
+                                cam_grid_write_var, cam_grid_get_decomp, cam_grid_dimensions, max_hcoordname_len
+    use cam_logfile,      only: iulog
+    use cam_pio_utils,    only: cam_pio_handle_error
+    use dyn_comp,         only: dyn_import_t, dyn_export_t
+    use dyn_grid,         only: mytile
+    use fv_arrays_mod,    only: fv_atmos_type
+    use mpp_mod,          only: mpp_chksum
+    use pio,              only: file_desc_t, var_desc_t
+    use shr_kind_mod,     only: r8 => shr_kind_r8, i8 => shr_kind_i8
+    use spmd_utils,       only: masterproc
 
     implicit none
     private
@@ -34,16 +32,14 @@ contains
 
 subroutine init_restart_dynamics(File, dyn_out)
 
-    use pio,           only: pio_global, pio_unlimited, pio_double, pio_def_dim, &
-                             pio_seterrorhandling, pio_bcast_error, pio_noerr, &
-                             pio_put_att, pio_def_var, pio_initdecomp, &
-                             pio_setdebuglevel, pio_inq_dimid
-    use cam_pio_utils, only: pio_subsystem
     use constituents,  only: cnst_name, pcnst
     use hycoef,        only: init_restart_hycoef
+    use pio,           only: pio_unlimited, pio_double, pio_def_dim, &
+                             pio_seterrorhandling, pio_bcast_error, &
+                             pio_def_var, &
+                             pio_inq_dimid
     use spmd_utils,    only : npes
-    use dyn_grid,      only : uniqpts_glob_ns,uniqpts_glob_ew,uniqpts_glob
-    use dimensions_mod,     only: npx, npy, npz
+
     implicit none
 
     type(file_desc_t),  intent(inout) :: file
@@ -55,7 +51,7 @@ subroutine init_restart_dynamics(File, dyn_out)
     integer :: is,ie,js,je
     type (fv_atmos_type),  pointer :: Atm(:)
     
-    integer :: grid_id,grid_id_ns,grid_id_ew,glob_pts_tiles
+    integer :: grid_id,grid_id_ns,grid_id_ew
     type(cam_grid_header_info_t) :: info,info_ew,info_ns
 
     Atm=>dyn_out%atm
@@ -109,15 +105,10 @@ end subroutine init_restart_dynamics
 
 subroutine write_restart_dynamics(File, dyn_out)
 
-    use pio,             only: pio_offset, pio_offset_kind, io_desc_t, pio_double, pio_write_darray, &
-                               pio_setframe, pio_put_var, pio_initdecomp, pio_setframe, pio_def_dim, &
-                               pio_freedecomp, pio_enddef
-    use cam_pio_utils,   only: pio_subsystem
     use hycoef,          only: write_restart_hycoef
     use constituents,    only: pcnst
+    use pio,             only: pio_offset_kind, io_desc_t, pio_double, pio_write_darray
     use time_manager,    only: get_curr_time, get_curr_date
-    use time_manager_mod,only: &
-         date_to_string, set_date
 
     implicit none
 
@@ -190,7 +181,7 @@ subroutine write_restart_dynamics(File, dyn_out)
 
     ! create map for distributed write of 2D fields
     checksum=mpp_chksum(atm(mytile)%phis(is:ie,js:je))
-    if (masterproc) write(6,*)'writing PHIS is:ie,js:je CHKSUM=',checksum
+    if (masterproc) write(iulog,*)'writing PHIS is:ie,js:je CHKSUM=',checksum
     allocate(var2d(ilen,jlen))
     array_lens_2d = (/ilen,jlen/)
     file_lens_1d  = (/grid_dimlens(1)/)
@@ -199,13 +190,13 @@ subroutine write_restart_dynamics(File, dyn_out)
     call PIO_Write_Darray(File, phisdesc, iodesc, var2d, ierr)
 
     checksum=mpp_chksum(atm(mytile)%ps(is:ie,js:je))
-    if (masterproc) write(6,*)'writing PS is:ie,js:je CHKSUM=',checksum
+    if (masterproc) write(iulog,*)'writing PS is:ie,js:je CHKSUM=',checksum
     var2d=Atm(mytile)%ps(is:ie,js:je)
     call PIO_Write_Darray(File, psdesc, iodesc, var2d, ierr)
     deallocate(var2d)
 
     checksum=mpp_chksum(atm(mytile)%ua(is:ie,js:je,1:npz))   
-    if (masterproc) write(6,*)'writing UA is:ie,js:je CHKSUM=',checksum
+    if (masterproc) write(iulog,*)'writing UA is:ie,js:je CHKSUM=',checksum
     allocate(var3d(ilen,npz,jlen))
     array_lens_3d = (/ilen,npz,jlen/)
     file_lens_2d  = (/grid_dimlens(1), npz/)
@@ -214,28 +205,28 @@ subroutine write_restart_dynamics(File, dyn_out)
     call PIO_Write_Darray(File, Udesc, iodesc3d, var3d, ierr)
 
     checksum=mpp_chksum(atm(mytile)%va(is:ie,js:je,1:npz))
-    if (masterproc) write(6,*)'writing VA is:ie,js:je CHKSUM=',checksum
+    if (masterproc) write(iulog,*)'writing VA is:ie,js:je CHKSUM=',checksum
     var3d=RESHAPE(Atm(mytile)%va(is:ie,js:je,1:npz),(/ilen,npz,jlen/),ORDER=(/1,3,2/))
     call PIO_Write_Darray(File, Vdesc, iodesc3d, var3d , ierr)
 
     checksum=mpp_chksum(atm(mytile)%omga(is:ie,js:je,1:npz))
-    if (masterproc) write(6,*)'writing omga is:ie,js:je CHKSUM=',checksum
+    if (masterproc) write(iulog,*)'writing omga is:ie,js:je CHKSUM=',checksum
     var3d=RESHAPE(Atm(mytile)%omga(is:ie,js:je,1:npz),(/ilen,npz,jlen/),ORDER=(/1,3,2/))
     call PIO_Write_Darray(File, Omegadesc, iodesc3d, var3d, ierr)
 
     checksum=mpp_chksum(atm(mytile)%delp(is:ie,js:je,1:npz))
-    if (masterproc) write(6,*)'writing delp is:ie,js:je CHKSUM=',checksum
+    if (masterproc) write(iulog,*)'writing delp is:ie,js:je CHKSUM=',checksum
     var3d=RESHAPE(Atm(mytile)%delp(is:ie,js:je,1:npz),(/ilen,npz,jlen/),ORDER=(/1,3,2/))
     call PIO_Write_Darray(File, delpdesc, iodesc3d, var3d, ierr)
 
     checksum=mpp_chksum(atm(mytile)%pt(is:ie,js:je,1:npz))
-    if (masterproc) write(6,*)'writing T is:ie,js:je CHKSUM=',checksum
+    if (masterproc) write(iulog,*)'writing T is:ie,js:je CHKSUM=',checksum
     var3d=RESHAPE(Atm(mytile)%pt(is:ie,js:je,1:npz),(/ilen,npz,jlen/),ORDER=(/1,3,2/))
     call PIO_Write_Darray(File, Tdesc, iodesc3d, var3d, ierr)
 
     do m = 1, pcnst
        checksum=mpp_chksum(atm(mytile)%q(is:ie,js:je,1:npz,m))
-       if (masterproc) write(6,*)'writing Q is:ie,js:je ',m,' of ',pcnst,' CHKSUM=',checksum
+       if (masterproc) write(iulog,*)'writing Q is:ie,js:je ',m,' of ',pcnst,' CHKSUM=',checksum
        var3d=RESHAPE(Atm(mytile)%q(is:ie,js:je,1:npz,m),(/ilen,npz,jlen/),ORDER=(/1,3,2/))
        call PIO_Write_Darray(File, Qdesc(m), iodesc3d, var3d, ierr)
     end do
@@ -245,7 +236,7 @@ subroutine write_restart_dynamics(File, dyn_out)
     
    ! create map for distributed write of 3D NS fields
     checksum=mpp_chksum(atm(mytile)%u(is:ie,js:je+1,1:npz))
-    if (masterproc) write(6,*)'writing US is:ie,js:je+1 CHKSUM=',checksum
+    if (masterproc) write(iulog,*)'writing US is:ie,js:je+1 CHKSUM=',checksum
     allocate(var3d_ns(ilen,npz,(jlen+1)))
     array_lens_3d = (/ilen , npz, (jlen+1)/)
     file_lens_2d  = (/grid_dimlens_ns(1), npz/)
@@ -257,7 +248,7 @@ subroutine write_restart_dynamics(File, dyn_out)
    ! create map for distributed write of 3D EW fields
 
     checksum=mpp_chksum(atm(mytile)%v(is:ie+1,js:je,1:npz))
-    if (masterproc) write(6,*)'writing VS is:ie+1,js:je CHKSUM=',checksum
+    if (masterproc) write(iulog,*)'writing VS is:ie+1,js:je CHKSUM=',checksum
     allocate(var3d_ew((ilen+1),npz,jlen))
     array_lens_3d = (/(ilen+1), npz, jlen /)
     file_lens_2d  = (/grid_dimlens_ew(1), npz/)
@@ -271,20 +262,17 @@ end subroutine write_restart_dynamics
 !=======================================================================
 
 subroutine read_restart_dynamics(File, dyn_in, dyn_out)
-    use pio,           only: file_desc_t, pio_global, pio_double, pio_offset, &
-                             pio_get_att, pio_inq_dimid, pio_inq_dimlen, pio_initdecomp, pio_inq_varid, &
-                             pio_read_darray, pio_setframe, file_desc_t, io_desc_t, pio_double,pio_offset_kind,&
-                             pio_seterrorhandling, pio_bcast_error, io_desc_t
 
+    use cam_history_support,    only: max_fieldname_len
+    use constituents,  only: cnst_name, pcnst
+    use dimensions_mod,only: npz
     use dyn_comp,      only: dyn_init
     use dyn_grid,      only: Atm
-    use constituents,  only: cnst_name, pcnst
-    use cam_pio_utils, only: pio_subsystem
-    use cam_logfile,   only: iulog
-    use dimensions_mod,only: npz
-    use cam_history_support,    only: max_fieldname_len
-    use ncdio_atm,              only: infld
-    use mpp_domains_mod, only: mpp_update_domains, domain2D, DGRID_NE
+    use mpp_domains_mod, only: mpp_update_domains, DGRID_NE
+    use pio,           only: file_desc_t, pio_double, &
+                             pio_inq_dimid, pio_inq_dimlen, pio_inq_varid, &
+                             pio_read_darray, file_desc_t, io_desc_t, pio_double,pio_offset_kind,&
+                             pio_seterrorhandling, pio_bcast_error
 
    ! arguments
    type(File_desc_t), intent(inout) :: File
@@ -576,26 +564,26 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
     call mpp_update_domains( atm(mytile)%q,    Atm(mytile)%domain )
 
     checksum=mpp_chksum(atm(mytile)%phis(is:ie,js:je))
-    if (masterproc) write(6,*)'reading PHIS is:ie,js:je CHKSUM=',checksum
+    if (masterproc) write(iulog,*)'reading PHIS is:ie,js:je CHKSUM=',checksum
     checksum=mpp_chksum(atm(mytile)%ps(is:ie,js:je))
-    if (masterproc) write(6,*)'reading PS is:ie,js:je CHKSUM=',checksum
+    if (masterproc) write(iulog,*)'reading PS is:ie,js:je CHKSUM=',checksum
     checksum=mpp_chksum(atm(mytile)%ua(is:ie,js:je,:))
-    if (masterproc) write(6,*)'reading UA is:ie,js:je CHKSUM=',checksum
+    if (masterproc) write(iulog,*)'reading UA is:ie,js:je CHKSUM=',checksum
     checksum=mpp_chksum(atm(mytile)%va(is:ie,js:je,:))
-    if (masterproc) write(6,*)'reading VA is:ie,js:je CHKSUM=',checksum
+    if (masterproc) write(iulog,*)'reading VA is:ie,js:je CHKSUM=',checksum
     checksum=mpp_chksum(atm(mytile)%u(is:ie,js:je+1,:))
-    if (masterproc) write(6,*)'reading US is:ie,js:je CHKSUM=',checksum
+    if (masterproc) write(iulog,*)'reading US is:ie,js:je CHKSUM=',checksum
     checksum=mpp_chksum(atm(mytile)%v(is:ie+1,js:je,:))
-    if (masterproc) write(6,*)'reading VS is:ie,js:je CHKSUM=',checksum
+    if (masterproc) write(iulog,*)'reading VS is:ie,js:je CHKSUM=',checksum
     checksum=mpp_chksum(atm(mytile)%pt(is:ie,js:je,:))
-    if (masterproc) write(6,*)'reading T is:ie,js:je CHKSUM=',checksum
+    if (masterproc) write(iulog,*)'reading T is:ie,js:je CHKSUM=',checksum
     checksum=mpp_chksum(atm(mytile)%delp(is:ie,js:je,:))
-    if (masterproc) write(6,*)'reading delp is:ie,js:je CHKSUM=',checksum
+    if (masterproc) write(iulog,*)'reading delp is:ie,js:je CHKSUM=',checksum
     checksum=mpp_chksum(atm(mytile)%omga(is:ie,js:je,:))
-    if (masterproc) write(6,*)'reading omga is:ie,js:je CHKSUM=',checksum
+    if (masterproc) write(iulog,*)'reading omga is:ie,js:je CHKSUM=',checksum
     do m = 1, pcnst
        checksum=mpp_chksum(atm(mytile)%q(is:ie,js:je,:,m))
-       if (masterproc) write(6,*)'reading Q is:ie,js:je ',m,' of ',pcnst,' CHKSUM=',checksum
+       if (masterproc) write(iulog,*)'reading Q is:ie,js:je ',m,' of ',pcnst,' CHKSUM=',checksum
     end do
 
     call dyn_init(dyn_in, dyn_out)

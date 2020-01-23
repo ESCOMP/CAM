@@ -27,32 +27,26 @@ module dyn_grid
     !
     ! Author: Jim Edwards and Patrick Worley
 
-    use physconst,        only: rearth
     use cam_abortutils,   only: endrun
     use cam_grid_support, only: iMap
     use cam_logfile,      only: iulog
-    use pio,              only: file_desc_t
-    use shr_kind_mod,     only: r8 => shr_kind_r8
-    use spmd_utils,       only: masterprocid,mpicom
-!    use fv_grid_tools_mod,only: gindex,bindex,lindex
+    use dimensions_mod,   only: npx, npy, npz, ncnst, pnats, dnats,nq
+    use fms_mod,          only: open_namelist_file, file_exist, check_nml_error,  &
+                                error_mesg, fms_init, write_version_number, FATAL
     use fv_arrays_mod,    only: fv_atmos_type
-    use mpp_domains_mod,    only: domain2d,mpp_domains_set_stack_size
-    use time_manager_mod,   only: time_type, get_time
-    use fms_mod,            only: open_namelist_file, file_exist, check_nml_error,  &
-                                 error_mesg, fms_init, fms_end, &
-                                 write_version_number, uppercase, FATAL, NOTE
-    use fv_control_mod,     only: ngrids,fv_init
+    use fv_control_mod,   only: ngrids,fv_init
+    use fv_mp_mod,        only: mp_bcst
+    use mpp_domains_mod,  only: domain2d,mpp_domains_set_stack_size
+    use mpp_mod,          only: mpp_pe, mpp_root_pe
+    use physconst,        only: rearth,pi
+    use shr_kind_mod,     only: r8 => shr_kind_r8
+    use spmd_utils,       only: mpicom
 
-    use dimensions_mod,     only: npx, npy, npz, ncnst, pnats, dnats,nq
-    use mpp_mod,            only: mpp_pe, mpp_root_pe
-    use fv_mp_mod,          only: mp_bcst
-    use constituents,       only: pcnst
     implicit none
     private
     save
 
     ! The FV3 dynamics grids
-    real(r8), parameter :: pi = 3.1415926535897931_r8
     real(r8), parameter :: rad2deg = 180._r8/pi
     integer, parameter, public :: dyn_decomp   = 101
     integer, parameter, public :: dyn_decomp_ew = 102
@@ -67,7 +61,6 @@ module dyn_grid
     integer, parameter, public :: ptimelevels = 2  ! number of time levels in the dycore
 
     !These are convenience variables for local use only, and are set to values in Atm%
-    real(r8)    :: dt_atmos
     real(r8)    :: zvir
     integer :: sec, seconds, days
     logical :: cold_start = .false.       ! read in initial condition
@@ -153,30 +146,28 @@ subroutine dyn_grid_init()
 
    ! Initialize FV grid, decomposition
 
-   use hycoef,             only: hycoef_init, hyai, hybi, hypi, hypm, nprlev
-   use ref_pres,           only: ref_pres_init
-   use pio,                only: file_desc_t, pio_seterrorhandling, pio_bcast_error, &
-                                 pio_internal_error, pio_noerr, pio_inq_dimid,       &
-                                 pio_inq_dimlen
-   use cam_initfiles,      only: initial_file_get_id
-   use mpp_mod,            only: mpp_init
-   use namelist_utils,     only: find_group_name
-   use units,              only: getunit, freeunit
    use block_control_mod,  only: block_control_type, define_blocks_packed
-   use constants_mod,      only: rdgas, rvgas
+   use cam_initfiles,      only: initial_file_get_id
    use constants_mod,      only: constants_init
+   use constants_mod,      only: rdgas, rvgas
    use fms_mod,            only: close_file
-   use fms_io_mod,         only: set_domain, nullify_domain
-   use fv_mp_mod,          only: switch_current_Atm,mp_gather, mp_bcst
+   use fv_mp_mod,          only: switch_current_Atm
    use fv_restart_mod,     only: fv_restart
+   use hycoef,             only: hycoef_init, hyai, hybi, hypi, hypm, nprlev
    use memutils_mod,       only: print_memuse_stats
+   use mpp_mod,            only: mpp_init
    use mpp_mod,            only: mpp_init, mpp_npes, mpp_get_current_pelist,mpp_gather
+   use namelist_utils,     only: find_group_name
    use pmgrid,             only: plev
+   use ref_pres,           only: ref_pres_init
    use sat_vapor_pres_mod, only: sat_vapor_pres_init
    use time_manager,       only: get_curr_date,get_step_size
    use tracer_manager_mod, only: get_tracer_index
+   use units,              only: getunit, freeunit
    use xgrid_mod,          only: grid_box_type
-   use fv_eta_mod,          only: set_eta
+   use pio,                only: file_desc_t, pio_seterrorhandling, pio_bcast_error, &
+                                 pio_internal_error, pio_noerr, pio_inq_dimid,       &
+                                 pio_inq_dimlen
 
    ! Local variables
 
@@ -192,50 +183,20 @@ subroutine dyn_grid_init()
    integer :: unit, io
    character(len = 256) :: err_msg
    character(len = 9) :: month
-   character(len = 17) :: calendar,fv_calendar = 'NOLEAP           '
    
    type(file_desc_t),      pointer :: fh_ini
    real(r8) :: dt_atmos_real = 0.
    real(r8),allocatable :: rtmp(:)
    real(r8) :: block_extents(5)
    integer, allocatable :: be_size(:)
-! ----- namelist -----
-   integer, dimension(6) :: current_date = (/ 0, 0, 0, 0, 0, 0 /)
-   character(len=17) :: fvcalendar = '                 '
-   integer :: months=0, days=0, hours=0, minutes=0, seconds=0
-   integer :: dt_atmos = 0
-   integer :: dt_ocean = 0
-   integer :: restart_days = 0
-   integer :: restart_secs = 0
-   integer :: atmos_nthreads = 1
-   logical :: memuse_verbose = .false.
-   logical :: use_hyper_thread = .false.
-   logical :: debug_affinity = .false.
-   integer :: ncores_per_node = 0
-   integer :: restart_interval(6) = 0
-   integer :: memuse_interval = 0
 
    integer :: unitn               ! File unit number
    integer :: ierr                ! Error code 
    integer :: n                   ! index
    integer :: nlat,nlon,mlat,mlon
-namelist /main_nml/ current_date, fv_calendar, &
-     months, days, hours, minutes, seconds,  &
-     dt_atmos,atmos_nthreads, memuse_verbose, & 
-     use_hyper_thread, ncores_per_node, debug_affinity, &
-     restart_secs, restart_days, restart_interval, &
-     memuse_interval
 
 !-----------------------------------------------------------------------
 integer :: ncolid,ncollen
-integer :: blocksize    = -1
-logical :: chksum_debug = .false.
-logical :: dycore_only  = .false.
-logical :: debug        = .false.
-logical :: sync         = .false.
-logical, save :: block_message = .true.
-
-namelist /atmos_model_nml/ blocksize, chksum_debug, dycore_only, debug, sync
 
 character(len=128) :: version = '$Id$'
 character(len=128) :: tagname = '$Name$'
@@ -269,32 +230,6 @@ integer :: is,isc,ie,iec,js,jsc,je,jec,npes,tsize,ssize
    call constants_init
    call sat_vapor_pres_init
 
-   ! =======================
-   ! Read namelist variables
-   ! =======================
-   
-      unitn=getunit()
-      open( unitn, file='input.nml', status='old' )
-      
-      ! Look for fv3_nl group name in the input file.  If found, leave the
-      ! file positioned at that namelist group.
-      call find_group_name(unitn, 'main_nml', status=ierr)
-      if ( ierr == 0 ) then
-         read (unitn,main_nml,iostat=ierr)
-         if (ierr /= 0) then
-            call endrun( 'dyn_grid_init:: namelist fv3_nl read returns an'// &
-                 ' end of file or end of record condition' )
-         end if
-      end if
-      close( unitn )
-      call freeunit( unitn )
-      
-      ! Tests for valid input, and set some defaults
-      
-      if (dt_atmos .eq. 0) then
-         call error_mesg('subroutine dyn_grid_init', 'dt_atmos has not been specified', FATAL)
-      end if
- 
 !-----------------------------------------------------------------------
 ! initialize atmospheric model -----
 
@@ -305,7 +240,7 @@ integer :: is,isc,ie,iec,js,jsc,je,jec,npes,tsize,ssize
 
 !---- compute physics/atmos time step in seconds ----
 
-   dt_atmos_real = dt_atmos
+   dt_atmos_real = get_step_size()
 
 !----- initialize FV dynamical core -----
 
@@ -318,24 +253,7 @@ integer :: is,isc,ie,iec,js,jsc,je,jec,npes,tsize,ssize
 !----- write version and namelist to log file -----
    call write_version_number ( version, tagname )
 
-   n = mytile
-   call switch_current_Atm(Atm(n)) 
-
-!---------- inline atmosphere_init -------
-   IF ( file_exist('input.nml')) THEN
-#ifdef INTERNAL_FILE_NML
-      read(input_nml_file, nml=atmos_model_nml, iostat=io)
-      ierr = check_nml_error(io, 'atmos_model_nml')
-#else
-      unitn = open_namelist_file ( )
-      ierr=1
-      do while (ierr /= 0)
-         read  (unitn, nml=atmos_model_nml, iostat=io, end=10)
-         ierr = check_nml_error(io,'atmos_model_nml')
-      enddo
- 10     call close_file (unitn)
-#endif
-   endif
+   call switch_current_Atm(Atm(mytile)) 
 
 !!  set up dimensions_mod convenience variables. 
 
@@ -371,9 +289,6 @@ integer :: is,isc,ie,iec,js,jsc,je,jec,npes,tsize,ssize
 
    deallocate(rtmp)
    deallocate(be_size)
-   call define_blocks_packed ('atmos_model', Atm_block,  isc, iec, &
-                              jsc, jec, npz, &
-                              blocksize, block_message)
 
  ! Initialize hybrid coordinate arrays
  call hycoef_init(fh_ini)
@@ -1302,214 +1217,9 @@ subroutine dyn_grid_get_elem_coords(ie, rlon, rlat, cdex)
 
 end subroutine dyn_grid_get_elem_coords
 
-!=======================================================================
-subroutine calc_global_index(ilocs,iloce,jlocs,jloce,agrid,nxtile,nytile,gindex,lindex,bindex,gindexdups,name)
-
-  use fv_mp_mod,          only: mp_gather, mp_bcst
-  
-  implicit none
-  character(10), intent(in)                                            :: name
-  integer, intent(in)                                                 :: ilocs,iloce,jlocs,jloce
-  real(r8), pointer, dimension(:,:,:), intent(in)                     :: agrid
-  integer, intent(in)                                                 :: nxtile,nytile
-  integer, dimension(ilocs:iloce,jlocs:jloce), intent(inout)          :: gindex,lindex,gindexdups
-  integer, intent(inout)                                              :: bindex
- 
-  integer :: s, t, l, m, alen, tmp_i,n,mm
-  integer :: nregions,i,j
-  integer, pointer   ::   tile
-  real(r8) :: tmp_r,lonrad,latrad
-  integer gid,masterproc
-  
-  integer, allocatable :: alatlon_1d_idx(:)
-  integer :: numuniq
-  real(r8), allocatable :: alatlon   (:,:,:),alatlonnew   (:,:,:)
-  real(r8), allocatable :: alatlon_id(:,:,:),alatlon_id_dups(:,:,:)
-  logical, allocatable :: alatlon_1d_uniqmask(:),alatlon_1d_sorted_uniqmask(:)
-  real(r8), allocatable :: alatlon_1d(:),alatlon_1d_sorted(:)
-  real(r8), allocatable :: alatlon_1d_sorted_uniq(:)
-  
-! Calculate Global Index
-! zlj, 2014.10.13
-!-----------------------------------------------------------------------
-  
-  nregions = atm(mytile)%gridstruct%ntiles_g
-
-  masterproc = mpp_root_pe()
-  gid = mpp_pe()
-
-  !-----------------------------------------------------------------------
-  ! zlj, 2014.10.13
-  ! Calculate Global Index
-
-  gindex(:,:) = 0
-  gindexdups(:,:) = 0
-  lindex(:,:) = 0
-
-  allocate(alatlon   ( nxtile,  nytile, nregions))
-  allocate(alatlonnew   ( nxtile,  nytile, nregions))
-  allocate(alatlon_1d_idx((nxtile)*(nytile)*nregions))
-  allocate(alatlon_1d((nxtile)*(nytile)*nregions))
-  allocate(alatlon_1d_sorted((nxtile)*(nytile)*nregions))
-  allocate(alatlon_id( nxtile,  nytile, nregions))
-  allocate(alatlon_id_dups( nxtile,  nytile, nregions))
-  allocate(alatlon_1d_sorted_uniqmask((nxtile)*(nytile)*nregions))
-  allocate(alatlon_1d_uniqmask((nxtile)*(nytile)*nregions))
-
-  alatlon = 0._r8
-  alatlonnew = 0._r8
-  alatlon_1d_idx = 0._r8
-  alatlon_1d = 0._r8
-  alatlon_1d_sorted = 0._r8
-  alatlon_id = 0._r8
-  alatlon_id_dups = 0._r8
-  alatlon_1d_sorted_uniqmask=.true.
-  alatlon_1d_uniqmask=.true.
-! there are 2 cases where multiplying lat*lon will not identify a uniq point
-! 1) when one of lat/lon is 0
-! 2) when 2 points have lat/lon values which are swapped ie (pt1 (lat=2,lon=10), pt2(lat=10,lon=2)) 
-  do j = jlocs, jloce
-     do i = ilocs, iloce
-        !take care of case 1 and 2 - make identical lats and lons uniq by adding eps to one and subtracting eps to the other
-        !There will be no identical 0's left after adding/subtracting eps.
-        lonrad = agrid(i,j,1)+1.e-14_r8
-        latrad = agrid(i,j,2)+1.e-13_r8
-        alatlon(i,j,Atm(mytile)%tile) = lonrad * latrad
-!        lonrad = agrid(i,j,1)
-!        latrad = agrid(i,j,2)
-!        if (agrid(i,j,1).eq.0._r8) lonrad=1.e-14_r8
-!        if (agrid(i,j,2).eq.0._r8) latrad=1.e-14_r8
-!        alatlon(i,j,Atm(mytile)%tile) = lonrad*latrad
-        alatlonnew(i,j,Atm(mytile)%tile) = agrid(i,j,1)*agrid(i,j,2)
-     end do
-  end do
-
-  call mp_gather(alatlon, ilocs, iloce, jlocs, jloce, nxtile, nytile, nregions)
-  call mp_gather(alatlonnew, ilocs, iloce, jlocs, jloce, nxtile, nytile, nregions)
-
-  if (gid == masterproc) then
-     alen = 0
-     do n = 1, nregions
-        do j = 1, nytile
-           do i = 1, nxtile
-              alen             = alen + 1
-              alatlon_1d(alen) = alatlon(i,j,n)
-              alatlon_1d_idx(alen) = alen
-           end do
-        end do
-     end do
-
-     alatlon_1d_sorted=alatlon_1d
-     do s = 1, alen - 1
-        do t = s + 1, alen
-           if (alatlon_1d_sorted(s) .ge. alatlon_1d_sorted(t)) then
-              tmp_r         = alatlon_1d_sorted(s)
-              alatlon_1d_sorted(s) = alatlon_1d_sorted(t)
-              alatlon_1d_sorted(t) = tmp_r
-              tmp_i         = alatlon_1d_idx(s)
-              alatlon_1d_idx(s) = alatlon_1d_idx(t)
-              alatlon_1d_idx(t) = tmp_i
-           end if
-        end do
-     end do
-
-     do s = 1, alen - 1
-        if (alatlon_1d_sorted(s) .eq. alatlon_1d_sorted(s+1)) then 
-           alatlon_1d_sorted_uniqmask(s)=.false.
-           alatlon_1d_uniqmask(alatlon_1d_idx(s))=.false.
-        end if
-     end do
-
-     numuniq=count(alatlon_1d_sorted_uniqmask)
-     allocate(alatlon_1d_sorted_uniq(numuniq))
-     alatlon_1d_sorted_uniq=-999.9
-     alatlon_1d_sorted_uniq=pack(alatlon_1d_sorted,alatlon_1d_sorted_uniqmask)
-     
-     m = 0
-     do n = 1, nregions
-        do j = 1, nytile
-           do i = 1, nxtile
-              m = m + 1
-              if (alatlon_1d_uniqmask(m)) then
-                 do l = 1, numuniq
-                    if (alatlon(i,j,n).eq.alatlon_1d_sorted_uniq(l)) then
-                       alatlon_id(i,j,n) = l
-                       exit
-                    end if
-                 end do
-              else
-                 alatlon_id(i,j,n) = 0
-              end if
-              do l = 1, numuniq
-                 if (alatlon(i,j,n).eq.alatlon_1d_sorted_uniq(l)) then
-                    alatlon_id_dups(i,j,n) = l
-                    exit
-                 end if
-              end do
-
-           end do
-        end do
-     end do
-
-     deallocate(alatlon_1d_sorted_uniq)
-
-  end if
-
-  call mp_bcst(alatlon_id, nxtile, nytile, nregions)
-  call mp_bcst(alatlon_id_dups, nxtile, nytile, nregions)
-
-  n = 1
-  do j = jlocs, jloce
-     do i = ilocs, iloce
-        gindex(i,j) = nint(alatlon_id(i,j,Atm(mytile)%tile))
-        lindex(i,j) = n
-        gindexdups(i,j) = nint(alatlon_id_dups(i,j,Atm(mytile)%tile))
-        n=n+1
-     end do
-  end do
-
-!
-! Have taken care of intertile duplicates for ew and ns grids. Need to 
-! account for duplicates of differing tasks within a tile. ie and je 
-! for every task can be 0'd out since they are repeated versions of 
-! is,js on a neighboring task.  ie and je already accounted for on 
-! tile boundaries after executing above code, don't want to touch those. 
-!
-! For ew grids 0 out ie task column (east most column of task) if not already 
-! eastern tile boundary
-  if (nxtile.gt.nytile .and. iloce .ne. nytile) then
-     do j = jlocs, jloce
-        gindex(iloce,j) = 0
-     end do
-  end if
-
-! For ns grids 0 out je row if not already on north tile edge
-  if (nytile.gt.nxtile .and. jloce .ne. nytile) then
-     do i = ilocs, iloce
-        gindex(i,jloce) = 0
-     end do
-  end if
-
-  deallocate(alatlon)
-  deallocate(alatlonnew)
-  deallocate(alatlon_1d_idx)
-  deallocate(alatlon_1d)
-  deallocate(alatlon_1d_sorted)
-  deallocate(alatlon_id)
-  deallocate(alatlon_id_dups)
-  deallocate(alatlon_1d_sorted_uniqmask)
-  deallocate(alatlon_1d_uniqmask)
-  bindex = mpp_pe() + 1
-
-  ! Calculate Global Index
-  ! zlj, 2014.10.13
-  !-----------------------------------------------------------------------
-end subroutine calc_global_index
 
 subroutine calc_global_indexjt(ilocs,iloce,jlocs,jloce,nxtile,nytile,tile,nregions,locgindex,lindex,bindex,locgindex_justdups,locgindex_tile, name,uniq_pts_loc,uniq_pts_glob)
 
-  use fv_mp_mod,          only: mp_gather, mp_bcst
-  
   implicit none
   character(10), intent(in)                                            :: name
   integer, intent(in)                                                 :: ilocs,iloce,jlocs,jloce

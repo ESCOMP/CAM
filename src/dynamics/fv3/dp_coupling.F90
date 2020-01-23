@@ -4,32 +4,33 @@ module dp_coupling
 ! dynamics - physics coupling module
 !-------------------------------------------------------------------------------
 
-use physconst,       only: cpair, gravit, rair, zvir, cappa, rairv
-use cam_abortutils,  only: endrun
-use constituents,    only: pcnst
-use cam_logfile,           only: iulog
-use shr_kind_mod,    only: r8=>shr_kind_r8, i8 => shr_kind_i8
-use dyn_comp,        only: dyn_export_t, dyn_import_t
-use physics_types,   only: physics_state, physics_tend
-use ppgrid,          only: begchunk, endchunk, pcols, pver, pverp
-use perf_mod,        only: t_startf, t_stopf, t_barrierf
-use spmd_dyn,        only: local_dp_map, block_buf_nrecs, chunk_buf_nrecs
-use phys_grid,       only: get_ncols_p, get_gcol_all_p, block_to_chunk_send_pters, &
+use cam_abortutils,    only: endrun
+use cam_logfile,       only: iulog
+use constituents,      only: pcnst
+use dimensions_mod,    only: ncnst,npx,npy,npz,pnats,nq, &
+                             qsize_condensate_loading_idx,qsize_condensate_loading_cp,qsize_condensate_loading_cv,&
+                             qsize_condensate_loading_idx_gll, qsize_condensate_loading, qsize_condensate_loading, &
+                             cnst_name_ffsl, cnst_longname_ffsl,qsize,fv3_lcp_moist,fv3_lcv_moist,qsize_tracer_idx_cam2dyn,fv3_scale_ttend
+use dyn_comp,          only: dyn_export_t, dyn_import_t
+use dyn_grid,          only: get_gcol_block_d,mytile,p_split,grids_on_this_pe
+use fv_grid_utils_mod, only: g_sum
+use hycoef,            only: hyam, hybm, hyai, hybi, ps0
+use mpp_domains_mod,   only: mpp_update_domains, domain2D, DGRID_NE
+use perf_mod,          only: t_startf, t_stopf, t_barrierf
+use physconst,         only: cpair, gravit, rair, zvir, cappa, rairv
+use phys_grid,         only: get_ncols_p, get_gcol_all_p, block_to_chunk_send_pters, &
      transpose_block_to_chunk, block_to_chunk_recv_pters, &
      chunk_to_block_send_pters, transpose_chunk_to_block, &
      chunk_to_block_recv_pters
-use dyn_grid,        only: get_gcol_block_d,mytile,p_split,grids_on_this_pe
-use spmd_utils,      only: mpicom, iam, npes,masterproc
-use mpp_domains_mod,   only: mpp_update_domains, domain2D, DGRID_NE
-use dimensions_mod,    only: ncnst,npx,npy,npz,pnats,nq, &
-                           qsize_condensate_loading_idx,qsize_condensate_loading_cp,qsize_condensate_loading_cv,&
-                           qsize_condensate_loading_idx_gll, qsize_condensate_loading, qsize_condensate_loading, &
-                           cnst_name_ffsl, cnst_longname_ffsl,qsize,fv3_lcp_moist,fv3_lcv_moist,qsize_tracer_idx_cam2dyn,fv3_scale_ttend
-use fv_grid_utils_mod, only: g_sum
+use physics_types,     only: physics_state, physics_tend
+use ppgrid,            only: begchunk, endchunk, pcols, pver, pverp
+use shr_kind_mod,      only: r8=>shr_kind_r8, i8 => shr_kind_i8
+use spmd_dyn,          only: local_dp_map, block_buf_nrecs, chunk_buf_nrecs
+use spmd_utils,        only: mpicom, iam, npes,masterproc
+
 #if ( defined CALC_MASS )
 use phys_gmean,        only: gmean_mass
 #endif
-use hycoef,            only: hyam, hybm, hyai, hybi, ps0
 
 implicit none
 private
@@ -41,51 +42,61 @@ contains
   
 subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
 
-  use physics_buffer,     only: physics_buffer_desc
+  ! Convert the dynamics output state into the physics input state.
+  ! Note that all pressures and tracer mixing ratios coming from the FV3 dycore are based on
+  ! wet air mass.
+
+
   use cam_abortutils,     only: endrun
   use fv_arrays_mod,      only: fv_atmos_type
   use fv_grid_utils_mod,  only: cubed_to_latlon
-  use shr_infnan_mod,  only: shr_infnan_inf_type, assignment(=), &
-                             shr_infnan_posinf, shr_infnan_neginf, &
-                             shr_infnan_nan, &
-                             shr_infnan_isnan, shr_infnan_isinf, &
-                             shr_infnan_isposinf, shr_infnan_isneginf
-  use shr_sys_mod, only: shr_sys_abort
+  use physics_buffer,     only: physics_buffer_desc
+  use shr_infnan_mod,     only: shr_infnan_inf_type, assignment(=), &
+                                shr_infnan_posinf, shr_infnan_neginf, &
+                                shr_infnan_nan, &
+                                shr_infnan_isnan, shr_infnan_isinf, &
+                                shr_infnan_isposinf, shr_infnan_isneginf
+  use shr_sys_mod,        only: shr_sys_abort
 
   implicit none
   
-  type (dyn_export_t),  intent(inout) :: dyn_out    ! dynamics export
-  type (physics_buffer_desc), pointer :: pbuf2d(:,:)
+  ! arguments
+  type (dyn_export_t),  intent(inout)                               :: dyn_out    ! dynamics export
+  type (physics_buffer_desc), pointer                               :: pbuf2d(:,:)
   type (physics_state), intent(inout), dimension(begchunk:endchunk) :: phys_state
   type (physics_tend ), intent(inout), dimension(begchunk:endchunk) :: phys_tend
+
+  ! LOCAL VARIABLES
+
   integer :: ib                     ! indices over elements
   integer :: ioff
   integer :: lchnk, icol, ilyr      ! indices over chunks, columns, layers
-  
-  real (r8),allocatable, dimension(:,:)     :: ps_tmp   !((ie-is+1)*(je-js+1),     1) ! temporary array to hold ps
-  real (r8),allocatable, dimension(:,:)     :: phis_tmp !((ie-is+1)*(je-js+1),     1) ! temporary array to hold phis
-  real (r8),allocatable, dimension(:,:,:)   :: T_tmp    !((ie-is+1)*(je-js+1),pver,1) ! temporary array to hold T
-  real (r8),allocatable, dimension(:,:,:)   :: u_tmp    !((ie-is+1)*(je-js+1),pver,1) ! temporary array to hold u and v
-  real (r8),allocatable, dimension(:,:,:)   :: v_tmp    !((ie-is+1)*(je-js+1),pver,1) ! temporary array to hold u and v
-  real (r8),allocatable, dimension(:,:,:,:) :: q_tmp    !((ie-is+1)*(je-js+1),pver,pcnst,1) ! temporary to hold advected constituents
-  real (r8),allocatable, dimension(:,:,:)   :: omega_tmp    !((ie-is+1)*(je-js+1),pver,      1) ! temporary array to hold omega
-  real (r8),allocatable, dimension(:,:,:)   :: pdel_tmp     !((ie-is+1)*(je-js+1),pver,      1) ! temporary array to hold omega
-  
   integer :: m, m_ffsl, n, i, j, k
   
-  integer,allocatable, dimension(:,:)  :: bpter             !((ie-is+1)*(je-js+1),0:pver)    ! offsets into block buffer for packing data
   integer :: cpter(pcols,              0:pver)    ! offsets into chunk buffer for unpacking data
   
   integer :: pgcols(pcols), idmb1(1), idmb2(1), idmb3(1)
   integer :: tsize                 ! amount of data per grid point passed to physics
-  real (r8), allocatable, dimension(:) :: bbuffer, cbuffer ! transpose buffers
   type (fv_atmos_type),  pointer :: Atm(:)
 
-  integer :: is,ie,js,je,isd,ied,jsd,jed
-  integer :: ncols
-  logical  nan_check,inf_check,inf_nan_gchecks
-  integer  nan_count,inf_count,ii
-  real(r8) :: tmparr(10000,pver)
+  integer                                   :: is,ie,js,je,isd,ied,jsd,jed
+  integer                                   :: ncols
+  logical                                   :: nan_check,inf_check,inf_nan_gchecks
+  integer                                   :: nan_count,inf_count,ii
+  real(r8)                                  :: tmparr(10000,pver)
+
+  ! LOCAL Allocatables
+  integer, allocatable,  dimension(:,:)     :: bpter    !((ie-is+1)*(je-js+1),0:pver)    ! offsets into block buffer for packing data
+  real(r8),  allocatable, dimension(:)      :: bbuffer, cbuffer ! transpose buffers
+  real(r8), allocatable, dimension(:,:)     :: phis_tmp !((ie-is+1)*(je-js+1),     1) ! temporary array to hold phis
+  real(r8), allocatable, dimension(:,:)     :: ps_tmp   !((ie-is+1)*(je-js+1),     1) ! temporary array to hold ps
+  real(r8), allocatable, dimension(:,:,:)   :: T_tmp    !((ie-is+1)*(je-js+1),pver,1) ! temporary array to hold T
+  real(r8), allocatable, dimension(:,:,:)   :: omega_tmp    !((ie-is+1)*(je-js+1),pver,      1) ! temporary array to hold omega
+  real(r8), allocatable, dimension(:,:,:)   :: pdel_tmp     !((ie-is+1)*(je-js+1),pver,      1) ! temporary array to hold omega
+  real(r8), allocatable, dimension(:,:,:)   :: u_tmp    !((ie-is+1)*(je-js+1),pver,1) ! temporary array to hold u and v
+  real(r8), allocatable, dimension(:,:,:)   :: v_tmp    !((ie-is+1)*(je-js+1),pver,1) ! temporary array to hold u and v
+  real(r8), allocatable, dimension(:,:,:,:) :: q_tmp    !((ie-is+1)*(je-js+1),pver,pcnst,1) ! temporary to hold advected constituents
+  
   !-----------------------------------------------------------------------
   
   Atm=>dyn_out%atm
@@ -98,8 +109,6 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
   ied = Atm(mytile)%bd%ied
   jsd = Atm(mytile)%bd%jsd
   jed = Atm(mytile)%bd%jed
-
-   if (iam.eq.960) write(6,*)'ua top d_p_coup ',atm(mytile)%ua(is:ie,js:je,1)
 
   ! Allocate temporary arrays to hold data for physics decomposition
   allocate(ps_tmp   ((ie-is+1)*(je-js+1),           1))
@@ -114,31 +123,29 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
   ps_tmp=0._r8;phis_tmp=0._r8;T_tmp=0._r8;u_tmp=0._r8;v_tmp=0._r8;omega_tmp=0._r8;pdel_tmp=0._r8;Q_tmp=0._r8
 
 #if ( defined CALC_MASS )
-  if (masterproc) write(iulog,*)'Dyn Tracers input to d_p_coupling'
   call fv3_tracer_diags(atm)
 #endif
-  if (masterproc) write(iulog,*)'checking ua nans top dp'
-     ii=0
-     tmparr(:,:)=0.
-     do j = js, je
-        do i = is, ie
-           ii=ii+1
-           tmparr(ii,:)=atm(mytile)%ua(i,j,1:pver)
-        end do
+  ii=0
+  tmparr(:,:)=0.
+  do j = js, je
+     do i = is, ie
+        ii=ii+1
+        tmparr(ii,:)=atm(mytile)%ua(i,j,1:pver)
      end do
-    nan_check = any(shr_infnan_isnan(tmparr(:,:)))
-    inf_check = any(shr_infnan_isinf(tmparr(:,:)))
-    nan_count = count(shr_infnan_isnan(tmparr(:,:)))
-    inf_count = count(shr_infnan_isinf(tmparr(:,:)))
-    if (nan_check.or.inf_check) then
-       if ((nan_count > 0) .or. (inf_count > 0)) then
-          write(iulog,*)"ua field on nan processor ",atm(mytile)%ua(is:ie,js:je,1:pver)
-          write(iulog,27) real(nan_count,r8), real(inf_count,r8), iam, iam
-27        format("SHR_REPROSUM_CALC: top dp atm ua Input contains ",e12.5, &
-               " NaNs and ", e12.5, " INFs on process ", i7, i7)
-          call shr_sys_abort("shr_reprosum_calc ERROR: NaNs or INFs in input")
-       endif
-    endif
+  end do
+  nan_check = any(shr_infnan_isnan(tmparr(:,:)))
+  inf_check = any(shr_infnan_isinf(tmparr(:,:)))
+  nan_count = count(shr_infnan_isnan(tmparr(:,:)))
+  inf_count = count(shr_infnan_isinf(tmparr(:,:)))
+  if (nan_check.or.inf_check) then
+     if ((nan_count > 0) .or. (inf_count > 0)) then
+        write(iulog,*)"ua field on nan processor ",atm(mytile)%ua(is:ie,js:je,1:pver)
+        write(iulog,27) real(nan_count,r8), real(inf_count,r8), iam, iam
+27      format("SHR_REPROSUM_CALC: top dp atm ua Input contains ",e12.5, &
+             " NaNs and ", e12.5, " INFs on process ", i7, i7)
+        call shr_sys_abort("shr_reprosum_calc ERROR: NaNs or INFs in input")
+     endif
+  endif
 
   n = 1
   do j = js, je
@@ -170,7 +177,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
   call t_startf('dpcopy')
   if (local_dp_map) then
 
-!$omp parallel do private (lchnk, ncols, pgcols, icol, idmb1, idmb2, idmb3, ib, ioff, ilyr, m)
+     !$omp parallel do private (lchnk, ncols, pgcols, icol, idmb1, idmb2, idmb3, ib, ioff, ilyr, m)
      do lchnk = begchunk, endchunk
         ncols = get_ncols_p(lchnk)
         call get_gcol_all_p(lchnk, pcols, pgcols)
@@ -265,9 +272,11 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
   deallocate(Q_tmp    )
 
   call t_stopf('dpcopy')
-! derive the physics state from the dynamics state converting to proper vapor loading
-! and setting dry mixing ratio variables based on cnst_type - no need to call wet_to_dry
-! since derived_phys_dry takes care of that.
+
+  ! derive the physics state from the dynamics state converting to proper vapor loading
+  ! and setting dry mixing ratio variables based on cnst_type - no need to call wet_to_dry
+  ! since derived_phys_dry takes care of that.
+
   call t_startf('derived_phys_dry')
   call derived_phys_dry(phys_state, phys_tend, pbuf2d,Atm )
   call t_stopf('derived_phys_dry')
@@ -275,78 +284,73 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
 #if ( defined CALC_MASS )
   call gmean_mass ('Phys Tracers output from d_p_coupling', phys_state)
 #endif
-   if (iam.eq.960) write(6,*)'ua bot d_p_coup ',atm(mytile)%ua(is:ie,js:je,1)
+
 end subroutine d_p_coupling
 
 !=======================================================================
 
 subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
 
-  use time_manager_mod,only: &
-       time_type, set_time, get_time, &
-       set_date, operator(-),  operator(<=), &
-       operator(+), operator (<), operator (>),   &
-       operator (/=), operator (/), operator (==),&
-       operator (*)
+  ! Convert the physics output state into the dynamics input state.
 
-  use time_manager,           only: get_step_size,get_curr_date
-  use fms_mod,                only: set_domain
-  use constants_mod,          only: cp_air, kappa
-  use physics_types,          only: set_state_pdry
-  use fv_arrays_mod,          only: fv_atmos_type, fv_grid_type
   use cam_history,            only: outfld
+  use constants_mod,          only: cp_air, kappa
+  use dyn_comp,               only: calc_tot_energy_dynamics  
+  use fms_mod,                only: set_domain
+  use fv_arrays_mod,          only: fv_atmos_type, fv_grid_type
   use fv_grid_utils_mod,      only: cubed_to_latlon
-  use dyn_comp,    only: calc_tot_energy_dynamics  
+  use physics_types,          only: set_state_pdry
+  use time_manager,           only: get_step_size,get_curr_date
+
   implicit none
 
+  ! arguments
   type (physics_state), intent(inout), dimension(begchunk:endchunk) :: phys_state
   type (physics_tend),  intent(inout), dimension(begchunk:endchunk) :: phys_tend
   type (dyn_import_t),  intent(inout) :: dyn_in
 
-  integer :: ib                     ! indices over elements
-  integer :: ioff
-  integer :: lchnk, icol, ilyr      ! indices over chunks, columns, layers
+  ! LOCAL VARIABLES
 
-  real (r8), allocatable, dimension(:,:,:)   :: t_tendadj     ! temporary array to temperature tendency adjustment
-  real (r8), allocatable, dimension(:,:,:)   :: u_tmp         ! temporary array to hold u and v
-  real (r8), allocatable, dimension(:,:,:)   :: v_tmp         ! temporary array to hold u and v
-  real (r8), allocatable, dimension(:,:,:)   :: u_dt_tmp      ! temporary to hold tendencies
-  real (r8), allocatable, dimension(:,:,:)   :: v_dt_tmp      ! temporary to hold tendencies
-  real (r8), allocatable, dimension(:,:,:)   :: u_dt          ! temporary to hold tendencies
-  real (r8), allocatable, dimension(:,:,:)   :: v_dt          ! temporary to hold tendencies
-  real (r8), allocatable, dimension(:,:,:)   :: t_dt          ! temporary to hold tendencies
-  real (r8), allocatable, dimension(:,:,:)   :: t_dt_tmp      ! temporary to hold tendencies
-  real (r8), allocatable, dimension(:,:,:)   :: pdel_tmp      ! temporary to hold 
-  real (r8), allocatable, dimension(:,:,:)   :: pdeldry_tmp   ! temporary to hold 
-  real (r8), allocatable, dimension(:,:,:)   :: delpdry       ! temporary to hold tendencies
-  real (r8), allocatable, dimension(:,:,:,:) :: q_tmp         ! temporary to hold 
-  real(r8) :: dt_atmos, zvir
-
-  integer :: ncols, seconds, days
-  integer :: m, n, i, j, k,m_ffsl
-  integer :: w_diff,nt_dyn
-  integer, allocatable, dimension(:,:) :: bpter   !((ie-is+1)*(je-js+1),0:pver)    ! offsets into block buffer for packing data
-  integer :: cpter(pcols,              0:pver)    ! offsets into chunk buffer for unpacking data
-
-  integer :: pgcols(pcols), idmb1(1), idmb2(1), idmb3(1)
-  integer :: tsize                 ! amount of data per grid point passed to physics
-
-  real (r8), allocatable, dimension(:) :: bbuffer, cbuffer ! transpose buffers
-  real (r8)                            :: tracermass(pcnst)
-  real (r8)                            :: fv3_totwatermass, fv3_airmass
-  real (r8)                            :: dt
-  real (r8)                            :: qall,cpfv3,newpt
-
-  integer :: pnats
+  integer :: cpter(pcols,0:pver)    ! offsets into chunk buffer for unpacking data
   integer :: date(6)
-  integer :: yy,mm,dd,tt
-  type (fv_atmos_type),  pointer :: Atm(:)
-  logical :: first_diag = .true.
-  logical,save :: firsttime = .true.
-  integer :: is,isd,ie,ied,js,jsd,je,jed
+  integer :: ib                     ! indices over elements
   integer :: idim,gid,m_cnst
-  character(16)          :: filename
-  character(2)          :: cgid
+  integer :: ioff
+  integer :: is,isd,ie,ied,js,jsd,je,jed
+  integer :: lchnk, icol, ilyr      ! indices over chunks, columns, layers
+  integer :: m, n, i, j, k,m_ffsl
+  integer :: ncols
+  integer :: pgcols(pcols), idmb1(1), idmb2(1), idmb3(1)
+  integer :: pnats
+  integer :: tsize                 ! amount of data per grid point passed to physics
+  integer :: w_diff,nt_dyn
+  integer :: yy,mm,dd,tt
+
+  integer, allocatable, dimension(:,:) :: bpter   !((ie-is+1)*(je-js+1),0:pver)    ! offsets into block buffer for packing data
+  real(r8),  allocatable, dimension(:) :: bbuffer, cbuffer ! transpose buffers
+
+  real (r8)                            :: dt
+  real (r8)                            :: fv3_totwatermass, fv3_airmass
+  real (r8)                            :: qall,cpfv3,newpt
+  real (r8)                            :: tracermass(pcnst)
+
+  type (fv_atmos_type),  pointer :: Atm(:)
+
+  real(r8),  allocatable, dimension(:,:,:)   :: delpdry       ! temporary to hold tendencies
+  real(r8),  allocatable, dimension(:,:,:)   :: pdel_tmp      ! temporary to hold 
+  real(r8),  allocatable, dimension(:,:,:)   :: pdeldry_tmp   ! temporary to hold 
+  real(r8),  allocatable, dimension(:,:,:)   :: t_dt          ! temporary to hold tendencies
+  real(r8),  allocatable, dimension(:,:,:)   :: t_dt_tmp      ! temporary to hold tendencies
+  real(r8),  allocatable, dimension(:,:,:)   :: t_tendadj     ! temporary array to temperature tendency adjustment
+  real(r8),  allocatable, dimension(:,:,:)   :: u_dt          ! temporary to hold tendencies
+  real(r8),  allocatable, dimension(:,:,:)   :: u_dt_tmp      ! temporary to hold tendencies
+  real(r8),  allocatable, dimension(:,:,:)   :: u_tmp         ! temporary array to hold u and v
+  real(r8),  allocatable, dimension(:,:,:)   :: v_dt          ! temporary to hold tendencies
+  real(r8),  allocatable, dimension(:,:,:)   :: v_dt_tmp      ! temporary to hold tendencies
+  real(r8),  allocatable, dimension(:,:,:)   :: v_tmp         ! temporary array to hold u and v
+  real(r8),  allocatable, dimension(:,:,:,:) :: q_tmp         ! temporary to hold 
+  real(r8)                                   :: dt_atmos, zvir
+
   !-----------------------------------------------------------------------
 
 #if ( defined CALC_MASS )
@@ -363,7 +367,6 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
   jsd = Atm(mytile)%bd%jsd
   jed = Atm(mytile)%bd%jed
 
-   if (iam.eq.960) write(6,*)'ua top p_d_coup ',atm(mytile)%ua(is:ie,js:je,1)
 
   call set_domain ( Atm(mytile)%domain )
 
@@ -542,33 +545,33 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
      end do
   end do
 
-!!$jt todo       dt_atmos = get_step_size()
-!!$jt todo       w_diff = get_tracer_index (MODEL_ATMOS, 'w_diff' )
-!!$jt todo       nt_dyn = Atm(mytile)%flagstruct%ncnst-Atm(mytile)%flagstruct%pnats   !nothing more than nq
-!!$jt todo       if ( w_diff /= NO_TRACER ) then
-!!$jt todo          nt_dyn = nt_dyn - 1
-!!$jt todo       endif
-!!$jt todo   
-!!$jt todo       !--- adjust w and heat tendency for non-hydrostatic case
-!!$jt todo#ifdef USE_Q_DT
-!!$jt todo       if ( .not.Atm(mytile)%flagstruct%hydrostatic .and. w_diff /= NO_TRACER ) then
-!!$jt todo          rcp = 1. / cp_air
-!!$jt todo          !$OMP parallel do default (none) &
-!!$jt todo          !$OMP              shared (js, je, is, ie, n, w_diff, Atm, q_dt, t_dt, rcp, dt_atmos) &
-!!$jt todo          !$OMP             private (i, j, k)
-!!$jt todo          do k=1, Atm(mytile)%npz
-!!$jt todo             do j=js, je
-!!$jt todo                do i=is, ie
-!!$jt todo                   Atm(mytile)%q(i,j,k,w_diff) = q_dt(i,j,k,w_diff) ! w tendency due to phys
-!!$jt todo                   ! Heating due to loss of KE (vertical diffusion of w)
-!!$jt todo                   t_dt(i,j,k) = t_dt(i,j,k) - q_dt(i,j,k,w_diff)*rcp*&
-!!$jt todo                        (Atm(mytile)%w(i,j,k)+0.5*dt_atmos*q_dt(i,j,k,w_diff))
-!!$jt todo                   Atm(mytile)%w(i,j,k) = Atm(mytile)%w(i,j,k) + dt_atmos*Atm(mytile)%q(i,j,k,w_diff)
-!!$jt todo                enddo
-!!$jt todo             enddo
-!!$jt todo          enddo
-!!$jt todo       endif
-!!$jt todo#endif
+!!$nonhydro       dt_atmos = get_step_size()
+!!$nonhydro       w_diff = get_tracer_index (MODEL_ATMOS, 'w_diff' )
+!!$nonhydro       nt_dyn = Atm(mytile)%flagstruct%ncnst-Atm(mytile)%flagstruct%pnats   !nothing more than nq
+!!$nonhydro       if ( w_diff /= NO_TRACER ) then
+!!$nonhydro          nt_dyn = nt_dyn - 1
+!!$nonhydro       endif
+!!$nonhydro   
+!!$nonhydro       !--- adjust w and heat tendency for non-hydrostatic case
+!!$nonhydro#ifdef USE_Q_DT
+!!$nonhydro       if ( .not.Atm(mytile)%flagstruct%hydrostatic .and. w_diff /= NO_TRACER ) then
+!!$nonhydro          rcp = 1. / cp_air
+!!$nonhydro          !$OMP parallel do default (none) &
+!!$nonhydro          !$OMP              shared (js, je, is, ie, n, w_diff, Atm, q_dt, t_dt, rcp, dt_atmos) &
+!!$nonhydro          !$OMP             private (i, j, k)
+!!$nonhydro          do k=1, Atm(mytile)%npz
+!!$nonhydro             do j=js, je
+!!$nonhydro                do i=is, ie
+!!$nonhydro                   Atm(mytile)%q(i,j,k,w_diff) = q_dt(i,j,k,w_diff) ! w tendency due to phys
+!!$nonhydro                   ! Heating due to loss of KE (vertical diffusion of w)
+!!$nonhydro                   t_dt(i,j,k) = t_dt(i,j,k) - q_dt(i,j,k,w_diff)*rcp*&
+!!$nonhydro                        (Atm(mytile)%w(i,j,k)+0.5*dt_atmos*q_dt(i,j,k,w_diff))
+!!$nonhydro                   Atm(mytile)%w(i,j,k) = Atm(mytile)%w(i,j,k) + dt_atmos*Atm(mytile)%q(i,j,k,w_diff)
+!!$nonhydro                enddo
+!!$nonhydro             enddo
+!!$nonhydro          enddo
+!!$nonhydro       endif
+!!$nonhydro#endif
    
    deallocate(t_dt_tmp)
    deallocate(u_dt_tmp)
@@ -639,7 +642,6 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
   do j=js,je
      do k=1,pver
         do i=is,ie
-           !$$jt todo check to make sure kappa is same as fv3 (ie kappa_moist or normal kappa)
            Atm(mytile)%pk(i,j,k+1)= Atm(mytile)%pe(i,k+1,j) ** kappa
            Atm(mytile)%peln(i,k+1,j) = log(Atm(mytile)%pe(i,k+1,j))
            Atm(mytile)%pkz(i,j,k) = (Atm(mytile)%pk(i,j,k+1)-Atm(mytile)%pk(i,j,k))/(kappa*(Atm(mytile)%peln(i,k+1,j)-Atm(mytile)%peln(i,k,j)))
@@ -695,49 +697,54 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
   call mpp_update_domains( atm(mytile)%q,    Atm(mytile)%domain )
 
 #if ( defined CALC_MASS )
-  if (masterproc) write(iulog,*)'Dyn Tracers output from p_d_coupling'
   call fv3_tracer_diags(atm)
 #endif
-   if (iam.eq.960) write(6,*)'ua bot p_d_coup ',atm(mytile)%ua(is:ie,js:je,1)
 end subroutine p_d_coupling
 
 !=======================================================================
 
 subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d, atm)
 
-  use physics_buffer, only: physics_buffer_desc, pbuf_get_chunk
-  use constituents,   only: qmin
-  use ppgrid,         only: pver
-  use geopotential,   only: geopotential_t
   use check_energy,   only: check_energy_timestep_init
-  use shr_vmath_mod,  only: shr_vmath_log
+  use constituents,   only: qmin
   use fv_arrays_mod,  only: fv_atmos_type
+  use geopotential,   only: geopotential_t
+  use physics_buffer, only: physics_buffer_desc, pbuf_get_chunk
   use physics_types,  only: set_wet_to_dry
+  use ppgrid,         only: pver
   use qneg_module,    only: qneg3
+  use shr_vmath_mod,  only: shr_vmath_log
+
   implicit none
 
+  ! arguments
   type(physics_state), intent(inout), dimension(begchunk:endchunk) :: phys_state
   type(physics_tend ), intent(inout), dimension(begchunk:endchunk) :: phys_tend
   type(physics_buffer_desc),      pointer     :: pbuf2d(:,:)
   type (fv_atmos_type),intent(inout), pointer    :: atm(:)
 
-  integer :: lchnk
+  ! local variables
+
+
+  integer  :: lchnk
+  integer  :: m, i, k, ncol
+
+  real(r8) :: cam_totwatermass, cam_airmass
+  real(r8) :: tracermass(pcnst)
+  real(r8) :: dqreq                ! q change at pver-1 required to remove q<qmin at pver
+  real(r8) :: ke(pcols,begchunk:endchunk)   
+  real(r8) :: ke_glob(1),se_glob(1)
   real(r8) :: qbot                 ! bottom level q before change
   real(r8) :: qbotm1               ! bottom-1 level q before change
-  real(r8) :: dqreq                ! q change at pver-1 required to remove q<qmin at pver
   real(r8) :: qmavl                ! available q at level pver-1
-
-  real(r8) :: ke(pcols,begchunk:endchunk)   
   real(r8) :: se(pcols,begchunk:endchunk)   
-  real(r8) :: ke_glob(1),se_glob(1)
   real(r8) :: zvirv(pcols,pver)    ! Local zvir array pointer
-  integer :: m, i, k, ncol
-  real (r8)                            :: tracermass(pcnst)
-  real (r8)                            :: cam_totwatermass, cam_airmass
+
+  !----------------------------------------------------------------------------
 
   type(physics_buffer_desc), pointer :: pbuf_chnk(:)
 
-     ! Compute energy and water integrals of input state
+  ! Compute energy and water integrals of input state
   do lchnk = begchunk,endchunk
      pbuf_chnk => pbuf_get_chunk(pbuf2d, lchnk)
      call check_energy_timestep_init(phys_state(lchnk), phys_tend(lchnk), pbuf_chnk)
@@ -869,31 +876,32 @@ end subroutine derived_phys_dry
 
 subroutine atend2dstate3d(u_dt, v_dt, u, v, is,  ie,  js,  je, isd, ied, jsd, jed, npx,npy, npz, gridstruct, domain, dt)
 
-  use mpp_domains_mod,    only: mpp_update_domains,  DGRID_NE
   use fv_arrays_mod,      only: fv_grid_type
+  use mpp_domains_mod,    only: mpp_update_domains,  DGRID_NE
 
+  ! arguments
+  integer, intent(IN) :: npx,npy, npz
   integer, intent(in):: is,  ie,  js,  je
   integer, intent(in):: isd, ied, jsd, jed
-  integer, intent(IN) :: npx,npy, npz
   real(r8), intent(in):: dt
+  real(r8), intent(inout), dimension(isd:ied,jsd:jed,npz):: u_dt, v_dt
   real(r8), intent(inout):: u(isd:ied,  jsd:jed+1,npz)
   real(r8), intent(inout):: v(isd:ied+1,jsd:jed  ,npz)
-  real(r8), intent(inout), dimension(isd:ied,jsd:jed,npz):: u_dt, v_dt
-  type(fv_grid_type), intent(IN), target :: gridstruct
   type(domain2d), intent(INOUT) :: domain
+  type(fv_grid_type), intent(IN), target :: gridstruct
 
   ! local:
-  real(r8) v3(is-1:ie+1,js-1:je+1,3)
+
+  integer i, j, k, m, im2, jm2
+  real(r8) dt5
   real(r8) ue(is-1:ie+1,js:je+1,3)    ! 3D winds at edges
+  real(r8) v3(is-1:ie+1,js-1:je+1,3)
   real(r8) ve(is:ie+1,js-1:je+1,  3)    ! 3D winds at edges
   real(r8), dimension(is:ie):: ut1, ut2, ut3
   real(r8), dimension(js:je):: vt1, vt2, vt3
-  real(r8) dt5
-  integer i, j, k, m, im2, jm2
-
+  real(r8), pointer, dimension(:) :: edge_vect_w, edge_vect_e, edge_vect_s, edge_vect_n
   real(r8), pointer, dimension(:,:,:) :: vlon, vlat
   real(r8), pointer, dimension(:,:,:,:) :: es, ew
-  real(r8), pointer, dimension(:) :: edge_vect_w, edge_vect_e, edge_vect_s, edge_vect_n
 
   es   => gridstruct%es
   ew   => gridstruct%ew
@@ -907,7 +915,7 @@ subroutine atend2dstate3d(u_dt, v_dt, u, v, is,  ie,  js,  je, isd, ied, jsd, je
 
   call mpp_update_domains(u_dt, domain, complete=.false.)
   call mpp_update_domains(v_dt, domain, complete=.true.)
-!jt mods are from update_dwinds_phys
+
   dt5 = 0.5_r8 * dt
   im2 = (npx-1)/2
   jm2 = (npy-1)/2
@@ -1049,21 +1057,25 @@ end subroutine atend2dstate3d
 
 
 subroutine fv3_tracer_diags(atm)
-  use fv_arrays_mod,         only: fv_atmos_type
+
+  ! Dry/Wet surface pressure diagnostics
+
   use constituents,          only: pcnst
-  use dyn_grid,              only: mytile
   use dimensions_mod,        only: npz,qsize_condensate_loading_idx, qsize_condensate_loading, &
                                    cnst_name_ffsl
-  
+  use dyn_grid,              only: mytile
+  use fv_arrays_mod,         only: fv_atmos_type
+
+  ! arguments
   type (fv_atmos_type), intent(in),  pointer :: Atm(:)
 
+  ! Locals
   integer                      :: i, j ,k, m,is,ie,js,je,m_ffsl
-  real (r8), allocatable       :: delpwet(:,:,:),delpdry(:,:,:),psdry(:,:),psq(:,:,:),q_strat(:,:)
-  real (r8)                    :: global_ps,global_dryps
-! Local:
-  real (r8)                    :: qtot(500), qwat, psum
-  real (r8)                    :: qm_strat
   integer kstrat,ng
+  real(r8)                     :: global_ps,global_dryps
+  real(r8)                     :: qm_strat
+  real(r8)                     :: qtot(500), qwat, psum
+  real(r8), allocatable        :: delpwet(:,:,:),delpdry(:,:,:),psdry(:,:),psq(:,:,:),q_strat(:,:)
 
   is = Atm(mytile)%bd%is
   ie = Atm(mytile)%bd%ie
@@ -1139,17 +1151,26 @@ end subroutine fv3_tracer_diags
 
 
 subroutine z_sum(atm,is,ie,js,je,km,q,msum,gpsum)
+
+  ! vertical integral
+
   use fv_arrays_mod,   only: fv_atmos_type
 
+  implicit none
+
+  ! arguments
+
   type (fv_atmos_type), intent(in),  pointer :: Atm(:)
-  integer, intent(in) :: is, ie, js, je
-  integer, intent(in) :: km
-  real(r8), intent(in):: q(is:ie, js:je, km)
-  real(r8), intent(out):: msum(is:ie,js:je)
-  real(r8), intent(out):: gpsum
+  integer, intent(in)                        :: is, ie, js, je
+  integer, intent(in)                        :: km
+  real(r8), intent(in)                       :: q(is:ie, js:je, km)
+  real(r8), intent(out)                      :: gpsum
+  real(r8), intent(out)                      :: msum(is:ie,js:je)
   
-  integer ::i,j,k
+  ! LOCAL VARIABLES
+  integer :: i,j,k
   real(r8):: psum(is:ie,js:je)
+  !----------------------------------------------------------------------------
   msum=0._r8
   psum=0._r8
   do j=js,je

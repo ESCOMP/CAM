@@ -2850,10 +2850,10 @@ sub write_fv3core_filepath
     my $cam_root   = $cfg_ref->get('cam_root');
     my $CASEROOT = "$ENV{'CASEROOT'}";
     print $fh "$CASEROOT/SourceMods/src.cam\n";
+    print $fh "$camsrcdir/src/dynamics/fv3/fv3_src_override\n";
     print $fh "$camsrcdir/src/dynamics/fv3/microphys\n";
     print $fh "$camsrcdir/src/dynamics/fv3/atmos_cubed_sphere/model\n";
     print $fh "$camsrcdir/src/dynamics/fv3/atmos_cubed_sphere/tools\n";
-###    print $fh "$cam_root/components/cam/src/dynamics/fv3/atmos_cubed_sphere/driver/fvGFS\n";
 
     $fh->close;
 }

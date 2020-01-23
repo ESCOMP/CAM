@@ -3532,20 +3532,10 @@ if ( $dyn eq 'fv3') {
     add_default($nl, 'fv3_vtdm4');
     add_default($nl, 'fv3_warm_start');
     add_default($nl, 'fv3_z_tracer');
-    add_default($nl, 'fv3_seconds');
-    add_default($nl, 'fv3_dt_atmos');
     add_default($nl, 'fv3_clock_grain');
     add_default($nl, 'fv3_domains_stack_size');
     add_default($nl, 'fv3_stack_size');
     add_default($nl, 'fv3_print_memory_usage');
-    add_default($nl, 'fv3_fv_calendar');
-    add_default($nl, 'fv3_months');
-    add_default($nl, 'fv3_days');
-    add_default($nl, 'fv3_hours');
-    add_default($nl, 'fv3_minutes');
-    add_default($nl, 'fv3_seconds');
-    add_default($nl, 'fv3_restart_interval');
-    add_default($nl, 'fv3_memuse_interval');
     add_default($nl, 'fv3_adiabatic');
     add_default($nl, 'fv3_do_held_suarez');
     add_default($nl, 'fv3_fv_land');
@@ -4094,23 +4084,6 @@ if (defined $nl_group{'camexp'}) { delete $nl_group{'camexp'}; }
 $outfile = "$opts{'dir'}/atm_in";
 $nl->write($outfile, 'groups'=>\@comp_groups);
 delete @nl_group{@comp_groups};
-# Write input.nml and diag_table files for fv3.
-# input.nml is just a copy of atm_in which has additional fv3 namelist items
-# diag_table is a temporary text file that is required by fv3 diag IO.  
-#    For now has dummy text in it but may be useful for writing out variables from fv3.
-###if ($cfg->get('dyn') eq 'fv3') {
-###if ( $dyn eq 'fv3') {
-###    @comp_groups = qw(main_nml fv_core_nml surf_map_nml test_case_nml dyn_fv3_inparm);
-###    $outfile = "$opts{'dir'}/input.nml";
-###    $nl->write($outfile, 'groups'=>\@comp_groups);
-###    if ($print>=1) { print "CAM writing fv3 namelist groups to input.nml $eol"; }
-###    delete @nl_group{@comp_groups};
-###    $outfile = "$opts{'dir'}/diag_table";
-###    open(my $fh_diag, '>', $outfile) or die "Could not open file '$outfile' $!";
-###    print $fh_diag "20161003.00Z.Cxx.64bit.non-mono\n";
-###    print $fh_diag "2016 10 03 00 0 0\n";
-###    close $fh_diag
-###}
 if ($print>=1) { print "CAM writing namelist to atm_in $eol"; }
 
 #-----------------------------------------------------------------------------------------------

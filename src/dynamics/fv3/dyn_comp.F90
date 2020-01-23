@@ -36,49 +36,37 @@ module dyn_comp
 !      
 !----------------------------------------------------------------------
 !----------------------------------------------------------------------
-    use fv_mp_mod,       only: mp_barrier
-    use physics_types,   only: physics_state, physics_tend
-    use dyn_grid,        only: mytile
-    use constituents,    only: pcnst, cnst_name, cnst_longname, tottnam, cnst_get_ind
 
-    use fv_arrays_mod,   only: fv_atmos_type, fv_grid_bounds_type
-    use shr_kind_mod,    only: r8 => shr_kind_r8, r4 => shr_kind_r4, i8 => shr_kind_i8
 
-    use shr_sys_mod,     only: shr_sys_flush
-    use pio,             only: file_desc_t, pio_seterrorhandling, PIO_BCAST_ERROR, &
-                               pio_inq_dimid, pio_inq_varid, pio_inq_dimlen, PIO_NOERR
-    use constants_mod,   only: cp_air, kappa, rvgas, rdgas
-    use fv_nesting_mod,  only: twoway_nesting
-    use physconst,       only: gravit, cpair, rearth,omega
-    use spmd_utils,      only: masterproc, masterprocid, mpicom, npes,iam
-    use spmd_utils,      only: mpi_real8, mpi_integer, mpi_character, mpi_logical
-    use infnan,          only: isnan
-    use cam_logfile,     only: iulog
-    use ppgrid,          only: pcols, pver, begchunk, endchunk
 
     use cam_abortutils,  only: endrun
+    use cam_logfile,     only: iulog
+    use constants_mod,   only: cp_air, kappa, rvgas, rdgas
+    use constituents,    only: pcnst, cnst_name, cnst_longname, tottnam, cnst_get_ind
+    use dimensions_mod,  only: npx, npy, npz, ncnst, pnats, dnats,nq, &
+                               qsize_condensate_loading_idx,qsize_condensate_loading_cp,qsize_condensate_loading_cv, &
+                               qsize_condensate_loading_idx_gll, qsize_condensate_loading, &
+                               cnst_name_ffsl, cnst_longname_ffsl,qsize,fv3_lcp_moist,fv3_lcv_moist,qsize_tracer_idx_cam2dyn,fv3_scale_ttend
+    use dyn_grid,        only: grid_ew,grid_ns, mytile
+    use field_manager_mod, only: MODEL_ATMOS
+    use fms_io_mod,      only: set_domain, nullify_domain
+    use fv_arrays_mod,   only: fv_atmos_type, fv_grid_bounds_type
+    use fv_grid_utils_mod,only: cubed_to_latlon, mid_pt_sphere, inner_prod, get_latlon_vector, get_unit_vect2, g_sum
+    use fv_mp_mod,       only: mp_barrier
+    use fv_nesting_mod,  only: twoway_nesting
+    use infnan,          only: isnan
     use mpp_domains_mod, only: mpp_update_domains, domain2D, DGRID_NE
-    use mpp_mod,                only: mpp_set_current_pelist,mpp_pe,mpp_chksum,mpp_sum,mpp_npes
-    use field_manager_mod,      only: MODEL_ATMOS
+    use mpp_mod,         only: mpp_set_current_pelist,mpp_pe,mpp_chksum,mpp_sum,mpp_npes
+    use physconst,       only: gravit, cpair, rearth,omega
+    use physics_types,   only: physics_state, physics_tend
+    use ppgrid,          only: pcols, pver, begchunk, endchunk
+    use shr_kind_mod,    only: r8 => shr_kind_r8, r4 => shr_kind_r4, i8 => shr_kind_i8
+    use shr_sys_mod,     only: shr_sys_flush
+    use spmd_utils,      only: masterproc, masterprocid, mpicom, npes,iam
+    use spmd_utils,      only: mpi_real8, mpi_integer, mpi_character, mpi_logical
+    use time_manager_mod,only: set_date, NOLEAP, set_calendar_type
     use tracer_manager_mod,     only: get_tracer_index,tracer_manager_init
-    use time_manager_mod, only: &
-        date_to_string, increment_date, time_type, set_time, &
-        set_date, set_calendar_type, &
-        days_in_month,  operator(-),  operator(<=), &
-        operator(+), operator (<), operator (>),   &
-        operator (/=), operator (/), operator (==),&
-        operator (*), THIRTY_DAY_MONTHS, JULIAN,   &
-        NOLEAP, NO_CALENDAR, INVALID_CALENDAR
-   use fms_io_mod,         only: set_domain, nullify_domain
-   use dimensions_mod,     only: npx, npy, npz, ncnst, pnats, dnats,nq
-   use dimensions_mod,     only: qsize_condensate_loading_idx,qsize_condensate_loading_cp,qsize_condensate_loading_cv, &
-                                 qsize_condensate_loading_idx_gll, qsize_condensate_loading, &
-                                 cnst_name_ffsl, cnst_longname_ffsl,qsize,fv3_lcp_moist,fv3_lcv_moist,qsize_tracer_idx_cam2dyn,fv3_scale_ttend
-   use fv_grid_utils_mod, only: cubed_to_latlon, great_circle_dist, mid_pt_sphere,    &
-                                   ptop_min, inner_prod, get_latlon_vector, get_unit_vect2, &
-                                   g_sum, latlon2xyz, cart_to_latlon, make_eta_level, f_p, project_sphere_v
 
-   use dyn_grid,           only:  grid_ew,grid_ns
 
 
     implicit none
@@ -105,26 +93,6 @@ type dyn_export_t
   type (fv_atmos_type),  pointer :: Atm(:) => null()
 end type dyn_export_t
 
- type atmos_data_type
-     type (domain2d)               :: domain             ! domain decomposition
-     integer                       :: axes(4)            ! axis indices (returned by diag_manager) for the atmospheric grid 
-                                                         ! (they correspond to the x, y, pfull, phalf axes)
-     real(r8),                 pointer, dimension(:,:) :: lon_bnd  => null() ! local longitude axis grid box corners in radians.
-     real(r8),                 pointer, dimension(:,:) :: lat_bnd  => null() ! local latitude axis grid box corners in radians.
-     real(r8), pointer, dimension(:,:) :: lon      => null() ! local longitude axis grid box centers in radians.
-     real(r8), pointer, dimension(:,:) :: lat      => null() ! local latitude axis grid box centers in radians.
-     type (time_type)              :: Time               ! current time
-     type (time_type)              :: Time_step          ! atmospheric time step.
-     type (time_type)              :: Time_init          ! reference time.
-     integer, pointer              :: pelist(:) =>null() ! pelist where atmosphere is running.
-     logical                       :: pe                 ! current pe.
-     real(r8), pointer, dimension(:) :: ak
-     real(r8), pointer, dimension(:) :: bk
-     real(r8), pointer, dimension(:,:) :: dx
-     real(r8), pointer, dimension(:,:) :: dy
-     real(r8), pointer, dimension(:,:) :: area
- end type atmos_data_type
-
 ! The FV core is always called in its "full physics" mode.  We don't want
 ! the dycore to know what physics package is responsible for the forcing.
 logical, parameter         :: convt = .true.
@@ -144,22 +112,14 @@ end interface read_dyn_var
 real(r8), public, allocatable :: u_dt(:,:,:), v_dt(:,:,:), t_dt(:,:,:)
 
 !These are convenience variables for local use only, and are set to values in Atm%
-integer :: dt_atmos
 integer(i8) :: checksum
 real(r8) ::  zvir, dt_atmos_real
-logical :: first_diag = .true.
 
 integer :: ldof_size
 integer :: grid_size
-real(r8), parameter :: pi = 3.1415926535897931_r8
-real(r8), parameter :: rad2deg = 180.0_r8 / pi
-real(r8), parameter :: deg2rad = pi / 180.0_r8
 
 real(r8), allocatable,dimension(:,:,:)       :: se_dyn,ke_dyn,wv_dyn,wl_dyn,wi_dyn, &
                                                 wr_dyn,ws_dyn,wg_dyn,tt_dyn,mo_dyn,mr_dyn
-integer, public :: isav,jsav,icolsav,lchnksav
-integer, public :: iamsav = -99
-
 !=======================================================================
 contains
 !=======================================================================
@@ -169,7 +129,6 @@ subroutine dyn_readnl(nlfilename)
   use units,           only: getunit, freeunit
   use namelist_utils,  only: find_group_name
   use constituents,    only: pcnst
-  use cam_control_mod, only: initial_run
 
   ! args
   character(len=*), intent(in) :: nlfilename
@@ -231,7 +190,7 @@ subroutine dyn_readnl(nlfilename)
 
   if (masterproc) then
 
-     ! write the file diag_table for the fv3 diag_manager  this is just a place holder until I get netcdf output working from fv3
+     ! write the file diag_table for the fv3 diag_manager
      unito = getunit()
      ! overwrite file if it exists.
      open( unito, file='diag_table', status='replace' )
@@ -323,35 +282,28 @@ subroutine dyn_init(dyn_in, dyn_out)
   
   ! Initialize FV dynamical core state variables
   
-  use pmgrid,          only: plev
-  use infnan,          only: inf, assignment(=)
-  use dyn_grid,        only: Atm, grids_on_this_pe,p_split,define_cam_grids
-  use hycoef,          only: hyai, hybi, ps0
   
-  use cam_history,     only: addfld, add_default, horiz_only
-  use cam_pio_utils,   only: clean_iodesc_list
-  use phys_control,    only: phys_getopts
   use cam_control_mod, only: initial_run
+  use cam_history,     only: addfld, add_default, horiz_only
   use cam_history,     only: register_vector_field
-  use fv_mp_mod,       only: fill_corners, XDir, YDir, switch_current_Atm
-  use fv_diagnostics_mod, only: fv_diag, fv_diag_init, fv_diag, fv_time, prt_maxmin
-  use diag_manager_mod,only: diag_manager_init,get_base_date
-  use fms_mod,         only: file_exist, &
-                                 error_mesg, &
-                                 uppercase, FATAL, NOTE
-  use time_manager_mod,only: time_type, set_time
-  use time_manager,    only: get_step_size,get_curr_date
+  use cam_pio_utils,   only: clean_iodesc_list
+  use diag_manager_mod,only: diag_manager_init
+  use dyn_grid,        only: Atm, grids_on_this_pe
+  use fv_diagnostics_mod, only: fv_diag_init, fv_time
+  use fv_mp_mod,       only: fill_corners, YDir, switch_current_Atm
+  use infnan,          only: inf, assignment(=)
   use physconst,       only: cpwv, cpliq, cpice
+  use time_manager,    only: get_step_size,get_curr_date
+  use time_manager_mod,only: time_type
 
   ! arguments:
    type (dyn_import_t),     intent(out) :: dyn_in
    type (dyn_export_t),     intent(out) :: dyn_out
    
-   type (time_type) :: Time_atmos, Time_init, Time_end, Time_start, &
-                       Time_step_atmos, Time, &
-                       Time_restart, Time_step_restart,Run_length
-
+   type (time_type) :: Time_init, Time
+                       
    character(len=*), parameter :: sub='dyn_init'
+   character(len = 256)        :: err_msg
    real(r8)                    :: alpha
 
    real(r8), pointer, dimension(:,:)            :: fC,f0
@@ -359,26 +311,13 @@ subroutine dyn_init(dyn_in, dyn_out)
    logical, pointer :: cubed_sphere
    type(domain2d), pointer     :: domain
    integer                     :: i,j,m
-   integer :: date(6),date_init(6),date_restart(6)
-   character(len=32) :: timestamp   
-   integer :: calendar_type = -99
+   integer :: date(6)
 
-   integer :: loading
-
-   integer :: lonid
-   integer :: latid
-   integer :: morec            ! latitude dimension length from dataset
-   
    integer :: yy             ! CAM current year
    integer :: mm             ! CAM current month
    integer :: dd             ! CAM current day
    integer :: tod             ! CAM current time of day (sec)
-   integer :: num_atmos_calls, na
 
-   character(len = 17) :: calendar = 'NOLEAP'
-   character(len = 256) :: err_msg
-   integer :: restart_interval(6) = 0
-   integer :: months=0, days=0, hours=0, minutes=0, seconds=0
    integer ::   sphum, liq_wat, ice_wat, rainwat, snowwat,graupel
    integer :: ixcldice, ixcldliq, ixrain, ixsnow, ixgraupel
    character(len=*), parameter :: subname = 'dyn_init'
@@ -532,9 +471,6 @@ subroutine dyn_init(dyn_in, dyn_out)
       end if
    end do
 
-   dt_atmos = get_step_size()
-   dt_atmos_real=dt_atmos
-
    !---------Space in ATM structure for constituents was allocated in dyn_init.
    !---------now that cam has registered all tracers create entries in fms tracer_manager
    !---------we will build fms fieldtable internal file that can be read by tracermanager
@@ -618,6 +554,8 @@ subroutine dyn_init(dyn_in, dyn_out)
       
    end if
 
+ call set_calendar_type(NOLEAP, err_msg)
+
  call get_curr_date(yy, mm, dd, tod)
  
  ! use namelist value (either no restart or override flag on)
@@ -628,79 +566,10 @@ subroutine dyn_init(dyn_in, dyn_out)
  date(5) = int((tod - date(4) * 3600) / 60)
  date(6) = tod - date(4) * 3600 - date(5) * 60
  
- ! read date and calendar type from restart file 
- ! override calendar type with namelist value
- 
-select case (uppercase(trim(calendar)))
- case ('JULIAN')
-    calendar_type = JULIAN
- case ('NOLEAP')
-    calendar_type = NOLEAP
- case ('THIRTY_DAY')
-    calendar_type = THIRTY_DAY_MONTHS
- case ('NO_CALENDAR')
-    calendar_type = NO_CALENDAR
- end select
- 
- call set_calendar_type(calendar_type, err_msg)
- if (err_msg .ne. '') then
-    call error_mesg('subroutine dyn_grid_init', 'ERROR in dyn_grid_init: '//trim(err_msg), FATAL)
- end if
- 
  ! initialize diagnostics manager  
- timestamp = date_to_string(set_date(date(1), date(2), date(3), date(4), date(5), date(6)))
  call diag_manager_init(TIME_INIT = date)
  
- ! always override initial/base date with diag_manager value
- ! get the base date in the diag_table from the diag_manager
- ! this base date is typically the starting date for the
- ! experiment and is subtracted from the current date
-
- date_init = date
-
- ! set initial and current time types
- ! set run length and compute ending time
-
- Time_init  = set_date(date_init(1), date_init(2), date_init(3), date_init(4), date_init(5), date_init(6))
- Time       = set_date(date     (1), date     (2), date     (3), date     (4), date     (5), date     (6))
- Time_start = Time
-
- ! compute the ending time
- Time_end = Time
- do m = 1, months
-    Time_end = Time_end + set_time(0, days_in_month(Time_end))
- end do
- Time_end   = Time_end + set_time(hours * 3600 + minutes * 60 + seconds, days)
- Run_length = Time_end - Time
-
- ! get the time that last intermediate restart file was written out.
- date_restart = date
- 
- if (all(restart_interval .eq. 0)) then
-    Time_restart = increment_date(Time_end, 1, 0, 0, 0, 0, 0)   ! no intermediate restart                                                                                                                                         
- else
-    Time_restart = set_date(date_restart(1), date_restart(2), date_restart(3), date_restart(4), date_restart(5), date_restart(6))
-    Time_restart = increment_date(Time_restart, restart_interval(1), restart_interval(2), restart_interval(3), &
-         restart_interval(4), restart_interval(5), restart_interval(6))
-    if (Time_restart <= Time) &
-         call error_mesg('subroutine dyn_grid_init', 'The first intermediate restart time is no larger than the start time', FATAL)
- end if
-
- ! compute the time steps
- ! determine number of iterations through the time integration loop
- ! must be evenly divisible
-
- Time_step_atmos = set_time(dt_atmos, 0)
- num_atmos_calls = Run_length / Time_step_atmos
-
- ! initial (base) time must not be greater than current time
- if (Time_init > Time) &
-      call error_mesg('subroutine dyn_grid_init', 'initial time is greater than current time', FATAL)
- 
- ! make sure run length is a multiple of atmos time step
- if (num_atmos_calls * Time_step_atmos /= Run_length)  &
-      call error_mesg('subroutine dyn_grid_init', 'run length must be multiple of atmosphere time step', FATAL)
-
+ Time_init  = set_date(date(1), date(2), date(3), date(4), date(5), date(6))
  Atm(mytile)%Time_init = Time_init
 
  ! Allocate grid variables to be used to calculate gradient in 2nd order flux exchange
@@ -760,7 +629,6 @@ select case (uppercase(trim(calendar)))
    allocate(mr_dyn(is:ie,js:je,5))
    allocate(mo_dyn(is:ie,js:je,5))
 
-     if (iam.eq.960) write(6,*)'ua end dyn init ',atm(mytile)%ua(is:ie,js:je,1)
 
 end subroutine dyn_init
 
@@ -769,17 +637,17 @@ end subroutine dyn_init
 subroutine dyn_run(dyn_state)
 
   ! DESCRIPTION: Driver for the NASA finite-volume dynamical core
-  use time_manager,  only: get_step_size
-  use fv_control_mod,         only: ngrids
-  use tracer_manager_mod,     only: get_tracer_index,&
-                                    NO_TRACER
 
-  use fv_dynamics_mod,        only: fv_dynamics
-  use fv_sg_mod,              only: fv_subgrid_z
-  use dyn_grid,               only: p_split,grids_on_this_pe
-  use dimensions_mod,         only: npz
+
   use cam_history,            only: outfld, hist_fld_active
+  use dimensions_mod,         only: npz
+  use dyn_grid,               only: p_split,grids_on_this_pe
+  use fv_control_mod,         only: ngrids
+  use fv_dynamics_mod,        only: fv_dynamics
   use fv_mp_mod,              only: switch_current_Atm
+  use fv_sg_mod,              only: fv_subgrid_z
+  use time_manager,           only: get_step_size
+  use tracer_manager_mod,     only: get_tracer_index, NO_TRACER
 
   implicit none
   
@@ -816,8 +684,7 @@ subroutine dyn_run(dyn_state)
   idim=ie-is+1
 
   nq = Atm(mytile)%ncnst - Atm(mytile)%flagstruct%pnats
-  dt_atmos = get_step_size()
-  dt_atmos_real=dt_atmos
+  dt_atmos_real=get_step_size()
 
   se_dyn = 0._r8
   ke_dyn = 0._r8
@@ -964,7 +831,6 @@ end subroutine dyn_run
 subroutine dyn_final(dyn_in, dyn_out, restart_file)
   use dyn_grid,           only: grids_on_this_pe
   use fms_mod,            only: fms_end
-  use fv_diagnostics_mod, only: fv_time,fv_diag
   use fv_control_mod,     only: fv_end
   implicit none
 
@@ -977,7 +843,7 @@ subroutine dyn_final(dyn_in, dyn_out, restart_file)
 
   Atm => dyn_in%Atm
 
-  call fv_end(Atm, grids_on_this_pe)
+  call fv_end(Atm, grids_on_this_pe, .false.)
 
   deallocate( u_dt, v_dt, t_dt)
 
@@ -996,8 +862,8 @@ subroutine read_inidat(dyn_in)
   use pmgrid,                only: plev
   use constituents,          only: pcnst
   use pio,                   only: file_desc_t, pio_global, pio_double, pio_offset, &
-                             pio_get_att, pio_inq_dimid, pio_inq_dimlen, pio_initdecomp, pio_inq_varid, &
-                             pio_read_darray, pio_setframe, file_desc_t, io_desc_t, pio_double,pio_offset_kind,&
+                             pio_get_att, pio_inq_dimid, pio_inq_dimlen, pio_inq_varid, &
+                             pio_read_darray, file_desc_t, io_desc_t, pio_double,pio_offset_kind,&
                              pio_seterrorhandling, pio_bcast_error,pio_get_local_array_size, pio_freedecomp, var_desc_t
 
   use ppgrid,                only: pver
@@ -1457,7 +1323,6 @@ subroutine read_inidat(dyn_in)
      call PIO_Read_Darray(fh_ini, psdesc, iodesc2d, var2d, ierr)
      atm(mytile)%ps(is:ie,js:je) = var2d
      checksum=mpp_chksum(atm(mytile)%ps(is:ie,js:je))
-     if (masterproc) write(6,*)'iam ',iam,'read PS is:ie,js:je CHKSUM=',checksum
 
      ! PHIS
 !jt     call PIO_Read_Darray(fh_ini, phisdesc, iodesc2d, var2d, ierr)
@@ -1480,7 +1345,6 @@ subroutine read_inidat(dyn_in)
      call PIO_Read_Darray(fh_ini, Tdesc, iodesc3d, var3d, ierr)
      atm(mytile)%pt(is:ie,js:je,1:npz)=RESHAPE(var3d,(/ilen,jlen,npz/),ORDER=(/1,3,2/))
      checksum=mpp_chksum(atm(mytile)%pt(is:ie,js:je,1:npz))
-     if (masterproc) write(6,*)'iam ',iam,' reading T',' CHKSUM=',checksum
      
      if (pertlim .ne. 0.0_r8) then
         if(masterproc) then
@@ -1517,7 +1381,6 @@ subroutine read_inidat(dyn_in)
      call PIO_Read_Darray(fh_ini, Vdesc, iodesc3d, var3d, ierr)
      atm(mytile)%va(is:ie,js:je,1:npz)=RESHAPE(var3d,(/ilen,jlen,npz/),ORDER=(/1,3,2/))
      checksum=mpp_chksum(atm(mytile)%va(is:ie,js:je,1:npz))
-     if (masterproc) write(6,*)'iam ',iam,' reading VA',' CHKSUM=',checksum
      ii=0
      tmparr(:,:)=0.
      do j = js, je
@@ -1542,8 +1405,6 @@ subroutine read_inidat(dyn_in)
      call PIO_Read_Darray(fh_ini, Udesc, iodesc3d, var3d, ierr)
      atm(mytile)%ua(is:ie,js:je,1:npz)   =RESHAPE(var3d,(/ilen,jlen,npz/),ORDER=(/1,3,2/))
      checksum=mpp_chksum(atm(mytile)%ua(is:ie,js:je,1:npz))
-     if (masterproc) write(6,*)'iam ',iam,' reading UA',' CHKSUM=',checksum
-     if (iam.eq.960) write(6,*)'read ua ',atm(mytile)%ua(is:ie,js:je,1)
      ii=0
      tmparr(:,:)=0.
      do j = js, je
@@ -1571,7 +1432,6 @@ subroutine read_inidat(dyn_in)
         call PIO_Read_Darray(fh_ini, Qdesc(m), iodesc3d, var3d, ierr)
         atm(mytile)%q(is:ie,js:je,1:npz,m) = RESHAPE(var3d,(/ilen,jlen,npz/),ORDER=(/1,3,2/))
         checksum=mpp_chksum(atm(mytile)%q(is:ie,js:je,1:npz,m))
-        if (masterproc) write(6,*)'iam ',iam,' reading Q is:ie,js:je',' CHKSUM=',checksum
      
      ! Read in or cold-initialize all the tracer fields
      ! Copy tracers defined on unstructured grid onto distributed FFSL grid
@@ -1588,18 +1448,16 @@ subroutine read_inidat(dyn_in)
         end if
 
         if(found) then
-           if (masterproc) write(6,*)'Found ',trim(cnst_name(m_cnst)),' constituent number',m_cnst
            var3d=0._r8
            ierr = PIO_Inq_varid(fh_ini, trim(cnst_name(m_cnst)), Qdesc(m_cnst))
            call cam_pio_handle_error(ierr, subname//': cannot find '//trim(cnst_name(m_cnst)))
            call PIO_Read_Darray(fh_ini, Qdesc(m_cnst), iodesc3d, var3d, ierr)
            atm(mytile)%q(is:ie,js:je,1:npz,m_cnst_ffsl) = RESHAPE(var3d,(/ilen,jlen,npz/),ORDER=(/1,3,2/))
            checksum=mpp_chksum(atm(mytile)%q(is:ie,js:je,1:npz,m_cnst_ffsl))
-           if (masterproc) write(6,*)'iam ',iam,' reading Q cnst ffsl is:ie,js:je ',m_cnst_ffsl,' m_cnst ',m_cnst,' CHKSUM=',checksum
         else
            dbuf3=0._r8
-           if (masterproc) write(6,*)'Missing ',trim(cnst_name(m_cnst)),' constituent number',m_cnst,size(latvals_rad),size(dbuf3)
-           if (masterproc) write(6,*)'Initializing ',trim(cnst_name(m_cnst)),'fv3 constituent number ',m_cnst_ffsl,' to default'
+           if (masterproc) write(iulog,*)'Missing ',trim(cnst_name(m_cnst)),' constituent number',m_cnst,size(latvals_rad),size(dbuf3)
+           if (masterproc) write(iulog,*)'Initializing ',trim(cnst_name(m_cnst)),'fv3 constituent number ',m_cnst_ffsl,' to default'
            call cnst_init_default(m_cnst, latvals_rad, lonvals_rad, dbuf3, pmask)
            do k=1, plev
               indx = 1
@@ -1611,7 +1469,6 @@ subroutine read_inidat(dyn_in)
               end do
            end do
            checksum=mpp_chksum(atm(mytile)%q(is:ie,js:je,1:npz,m_cnst_ffsl))
-           if (masterproc) write(6,*)'iam ',iam,' initializing Q cnst is:ie,js:je ',m_cnst_ffsl,' CHKSUM=',checksum
         end if
 
      end do ! pcnst
@@ -1674,10 +1531,8 @@ subroutine read_inidat(dyn_in)
 !!$     deallocate(var3d_ew)
 !!$     deallocate(var3d_ew_tmp)
 !!$     deallocate(var3d_ew_rst)
-     if (iam.eq.960) write(6,*)'ua 1 ',atm(mytile)%ua(is:ie,js:je,1)
 
      call a2d3djt(atm(mytile)%ua, atm(mytile)%va, atm(mytile)%u, atm(mytile)%v, is,  ie,  js,  je, isd, ied, jsd, jed, npx,npy, npz, atm(mytile)%gridstruct, atm(mytile)%domain)
-     if (iam.eq.960) write(6,*)'ua 2 ',atm(mytile)%ua(is:ie,js:je,1)
 
      ii=0
      tmparr(:,:)=0.
@@ -1806,7 +1661,6 @@ subroutine read_inidat(dyn_in)
      end do
   end do
   checksum=mpp_chksum(atm(mytile)%phis(is:ie,js:je))
-  if (masterproc) write(6,*)'iam ',iam,'reading PHIS is:ie,js:je CHKSUM=',checksum
 
   !                                                                                                                                                                                     
   ! initialize delp and mixing ratios
@@ -1850,7 +1704,7 @@ subroutine read_inidat(dyn_in)
                     if (tracermass(m_ffsl).ne.0) then
                        reldif=(Atm(mytile)%delp(i,j,k)*Atm(mytile)%q(i,j,k,m_ffsl)-tracermass(m_ffsl))/tracermass(m_ffsl)
                        if (reldif.gt.1.0e-15_r8) &
-                       write(6,*)'mass inconsistency new, old, relative error=',iam,cnst_name(m),Atm(mytile)%delp(i,j,k)*Atm(mytile)%q(i,j,k,m_ffsl),tracermass(m_ffsl),reldif
+                       write(iulog,*)'mass inconsistency new, old, relative error=',iam,cnst_name(m),Atm(mytile)%delp(i,j,k)*Atm(mytile)%q(i,j,k,m_ffsl),tracermass(m_ffsl),reldif
                     end if
                  end do
               end do
@@ -1881,7 +1735,7 @@ subroutine read_inidat(dyn_in)
                  m_ffsl=qsize_tracer_idx_cam2dyn(m)
                  reldif=(Atm(mytile)%delp(i,j,k)*Atm(mytile)%q(i,j,k,m_ffsl)-tracermass(m_ffsl))/tracermass(m_ffsl)
                  if (reldif.gt.1.0e-15_r8) &
-                      write(6,*)'mass inconsistency new, old, relative error=',iam,cnst_name(m),Atm(mytile)%delp(i,j,k)*Atm(mytile)%q(i,j,k,m_ffsl),tracermass(m_ffsl),reldif
+                      write(iulog,*)'mass inconsistency new, old, relative error=',iam,cnst_name(m),Atm(mytile)%delp(i,j,k)*Atm(mytile)%q(i,j,k,m_ffsl),tracermass(m_ffsl),reldif
               end do
            end do
         end do
@@ -1998,7 +1852,6 @@ subroutine read_inidat(dyn_in)
      deallocate(ldof)
      nullify(ldof)
   end if
-     if (iam.eq.960) write(6,*)'ua 3 end of inidat ',atm(mytile)%ua(is:ie,js:je,1)
   
 end subroutine read_inidat
 
