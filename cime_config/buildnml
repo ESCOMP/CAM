@@ -186,6 +186,7 @@ def buildnml(case, caseroot, compname):
                 file2 += inst_string
             logger.info("CAM namelist copy: file1 %s file2 %s ", file1, file2)
             shutil.copy(file1,file2)
+
         # -----------------------------------------------------
         # copy drv_flds_in to rundir if it does not exist
         # -----------------------------------------------------
