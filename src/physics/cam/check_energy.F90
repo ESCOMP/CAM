@@ -23,13 +23,7 @@ module check_energy
   use shr_kind_mod,    only: r8 => shr_kind_r8
   use ppgrid,          only: pcols, pver, begchunk, endchunk
   use spmd_utils,      only: masterproc
-  use shr_infnan_mod,  only: shr_infnan_inf_type, assignment(=), &
-                             shr_infnan_posinf, shr_infnan_neginf, &
-                             shr_infnan_nan, &
-                             shr_infnan_isnan, shr_infnan_isinf, &
-                             shr_infnan_isposinf, shr_infnan_isneginf
-  use spmd_utils,      only: iam
-  use shr_sys_mod, only: shr_sys_abort
+
   use gmean_mod,       only: gmean
   use physconst,       only: gravit, latvap, latice, cpair, cpairv
   use physics_types,   only: physics_state, physics_tend, physics_ptend, physics_ptend_init
@@ -78,9 +72,6 @@ module check_energy
      real(r8) :: tracer_tnd(pcols,pcnst)   ! cumulative boundary flux of total energy
      integer :: count(pcnst)               ! count of values with significant imbalances
   end type check_tracers_data
-  logical  nan_check,inf_check,inf_nan_gchecks
-  integer  nan_count,inf_count
-  real(r8) :: arr(pcols,1)
 
 
 !===============================================================================
@@ -312,179 +303,6 @@ end subroutine check_energy_get_integrals
           end do
        end do
     end if
-
-! check whether input contains NaNs or INFs, and abort if so
-    arr=0._r8
-    nan_check = any(shr_infnan_isnan(state%t(:ncol,:pver)))
-    inf_check = any(shr_infnan_isinf(state%t(:ncol,:pver)))
-    nan_count = count(shr_infnan_isnan(state%t(:ncol,:pver)))
-    inf_count = count(shr_infnan_isinf(state%t(:ncol,:pver)))
-    if (nan_check.or.inf_check) then
-       if ((nan_count > 0) .or. (inf_count > 0)) then
-          write(iulog,25) real(nan_count,r8), real(inf_count,r8), iam, lchnk
-25        format("SHR_REPROSUM_CALC: t Input contains ",e12.5, &
-               " NaNs and ", e12.5, " INFs on process ", i7, i7)
-          call shr_sys_abort("shr_reprosum_calc ERROR: NaNs or INFs in input")
-       endif
-    endif
-
-! check whether input contains NaNs or INFs, and abort if so
-    arr=0._r8
-    nan_check = any(shr_infnan_isnan(state%u(:ncol,:pver)))
-    inf_check = any(shr_infnan_isinf(state%u(:ncol,:pver)))
-    nan_count = count(shr_infnan_isnan(state%u(:ncol,:pver)))
-    inf_count = count(shr_infnan_isinf(state%u(:ncol,:pver)))
-    if (nan_check.or.inf_check) then
-       if ((nan_count > 0) .or. (inf_count > 0)) then
-          write(iulog,26) real(nan_count,r8), real(inf_count,r8), iam, lchnk
-26        format("SHR_REPROSUM_CALC: u Input contains ",e12.5, &
-               " NaNs and ", e12.5, " INFs on process ", i7, i7)
-          call shr_sys_abort("shr_reprosum_calc ERROR: NaNs or INFs in input")
-       endif
-    endif
-
-! check whether input contains NaNs or INFs, and abort if so
-    arr=0._r8
-    nan_check = any(shr_infnan_isnan(state%v(:ncol,:pver)))
-    inf_check = any(shr_infnan_isinf(state%v(:ncol,:pver)))
-    nan_count = count(shr_infnan_isnan(state%v(:ncol,:pver)))
-    inf_count = count(shr_infnan_isinf(state%v(:ncol,:pver)))
-    if (nan_check.or.inf_check) then
-       if ((nan_count > 0) .or. (inf_count > 0)) then
-          write(iulog,27) real(nan_count,r8), real(inf_count,r8), iam, lchnk
-27        format("SHR_REPROSUM_CALC: v Input contains ",e12.5, &
-               " NaNs and ", e12.5, " INFs on process ", i7, i7)
-          call shr_sys_abort("shr_reprosum_calc ERROR: NaNs or INFs in input")
-       endif
-    endif
-
-! check whether input contains NaNs or INFs, and abort if so
-    arr=0._r8
-    nan_check = any(shr_infnan_isnan(state%pdel(:ncol,:pver)))
-    inf_check = any(shr_infnan_isinf(state%pdel(:ncol,:pver)))
-    nan_count = count(shr_infnan_isnan(state%pdel(:ncol,:pver)))
-    inf_count = count(shr_infnan_isinf(state%pdel(:ncol,:pver)))
-    if (nan_check.or.inf_check) then
-       if ((nan_count > 0) .or. (inf_count > 0)) then
-          write(iulog,28) real(nan_count,r8), real(inf_count,r8), iam, lchnk
-28        format("SHR_REPROSUM_CALC: pdel Input contains ",e12.5, &
-               " NaNs and ", e12.5, " INFs on process ", i7, i7)
-          call shr_sys_abort("shr_reprosum_calc ERROR: NaNs or INFs in input")
-       endif
-    endif
-
-! check whether input contains NaNs or INFs, and abort if so
-    arr=0._r8
-    arr(:ncol,1)=state%phis(:ncol)
-    nan_check = any(shr_infnan_isnan(arr))
-    inf_check = any(shr_infnan_isinf(arr))
-    nan_count = count(shr_infnan_isnan(arr))
-    inf_count = count(shr_infnan_isinf(arr))
-    if (nan_check.or.inf_check) then
-       if ((nan_count > 0) .or. (inf_count > 0)) then
-          write(iulog,29) real(nan_count,r8), real(inf_count,r8), iam, lchnk
-29        format("SHR_REPROSUM_CALC: phis Input contains ",e12.5, &
-               " NaNs and ", e12.5, " INFs on process ", i7, i7)
-          call shr_sys_abort("shr_reprosum_calc ERROR: NaNs or INFs in input")
-       endif
-    endif
-
-! check whether input contains NaNs or INFs, and abort if so
-    arr=0._r8
-    arr(:ncol,1)=state%ps(:ncol)
-    nan_check = any(shr_infnan_isnan(arr))
-    inf_check = any(shr_infnan_isinf(arr))
-    nan_count = count(shr_infnan_isnan(arr))
-    inf_count = count(shr_infnan_isinf(arr))
-    if (nan_check.or.inf_check) then
-       if ((nan_count > 0) .or. (inf_count > 0)) then
-          write(iulog,30) real(nan_count,r8), real(inf_count,r8), iam, lchnk
-30        format("SHR_REPROSUM_CALC: ps Input contains ",e12.5, &
-               " NaNs and ", e12.5, " INFs on process ", i7, i7)
-          call shr_sys_abort("shr_reprosum_calc ERROR: NaNs or INFs in input")
-       endif
-    endif
-    
-! check whether input contains NaNs or INFs, and abort if so
-    arr=0._r8
-    arr(:ncol,1)=se(:ncol)
-    nan_check = any(shr_infnan_isnan(arr))
-    inf_check = any(shr_infnan_isinf(arr))
-    nan_count = count(shr_infnan_isnan(arr))
-    inf_count = count(shr_infnan_isinf(arr))
-    if (nan_check.or.inf_check) then
-       if ((nan_count > 0) .or. (inf_count > 0)) then
-          write(iulog,31) real(nan_count,r8), real(inf_count,r8), iam, lchnk
-31        format("SHR_REPROSUM_CALC: se Input contains ",e12.5, &
-               " NaNs and ", e12.5, " INFs on process ", i7, i7)
-          call shr_sys_abort("shr_reprosum_calc ERROR: NaNs or INFs in input")
-       endif
-    endif
-
-! check whether input contains NaNs or INFs, and abort if so
-    arr=0._r8
-    arr(:ncol,1)=ke(:ncol)
-    nan_check = any(shr_infnan_isnan(arr))
-    inf_check = any(shr_infnan_isinf(arr))
-    nan_count = count(shr_infnan_isnan(arr))
-    inf_count = count(shr_infnan_isinf(arr))
-    if (nan_check.or.inf_check) then
-       if ((nan_count > 0) .or. (inf_count > 0)) then
-          write(iulog,32) real(nan_count,r8), real(inf_count,r8), iam, lchnk
-32        format("SHR_REPROSUM_CALC: ke Input contains ",e12.5, &
-               " NaNs and ", e12.5, " INFs on process ", i7, i7)
-          call shr_sys_abort("shr_reprosum_calc ERROR: NaNs or INFs in input")
-       endif
-    endif
-    
-! check whether input contains NaNs or INFs, and abort if so
-    arr=0._r8
-    arr(:ncol,1)=wv(:ncol)
-    nan_check = any(shr_infnan_isnan(arr))
-    inf_check = any(shr_infnan_isinf(arr))
-    nan_count = count(shr_infnan_isnan(arr))
-    inf_count = count(shr_infnan_isinf(arr))
-    if (nan_check.or.inf_check) then
-       if ((nan_count > 0) .or. (inf_count > 0)) then
-          write(iulog,33) real(nan_count,r8), real(inf_count,r8), iam, lchnk
-33        format("SHR_REPROSUM_CALC: wv Input contains ",e12.5, &
-               " NaNs and ", e12.5, " INFs on process ", i7, i7)
-          call shr_sys_abort("shr_reprosum_calc ERROR: NaNs or INFs in input")
-       endif
-    endif
-    
-! check whether input contains NaNs or INFs, and abort if so
-    arr=0._r8
-    arr(:ncol,1)=wl(:ncol)
-    nan_check = any(shr_infnan_isnan(arr))
-    inf_check = any(shr_infnan_isinf(arr))
-    nan_count = count(shr_infnan_isnan(arr))
-    inf_count = count(shr_infnan_isinf(arr))
-    if (nan_check.or.inf_check) then
-       if ((nan_count > 0) .or. (inf_count > 0)) then
-          write(iulog,34) real(nan_count,r8), real(inf_count,r8), iam, lchnk
-34        format("SHR_REPROSUM_CALC: wl Input contains ",e12.5, &
-               " NaNs and ", e12.5, " INFs on process ", i7, i7)
-          call shr_sys_abort("shr_reprosum_calc ERROR: NaNs or INFs in input")
-       endif
-    endif
-    
-! check whether input contains NaNs or INFs, and abort if so
-    arr=0._r8
-    arr(:ncol,1)=wi(:ncol)
-    nan_check = any(shr_infnan_isnan(arr))
-    inf_check = any(shr_infnan_isinf(arr))
-    nan_count = count(shr_infnan_isnan(arr))
-    inf_count = count(shr_infnan_isinf(arr))
-    if (nan_check.or.inf_check) then
-       if ((nan_count > 0) .or. (inf_count > 0)) then
-          write(iulog,35) real(nan_count,r8), real(inf_count,r8), iam, lchnk
-35        format("SHR_REPROSUM_CALC: wi Input contains ",e12.5, &
-               " NaNs and ", e12.5, " INFs on process ", i7, i7)
-          call shr_sys_abort("shr_reprosum_calc ERROR: NaNs or INFs in input")
-       endif
-    endif
-    
 
 ! Compute vertical integrals of frozen static energy and total water.
     do i = 1, ncol
