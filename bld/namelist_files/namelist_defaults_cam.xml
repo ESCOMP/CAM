@@ -1970,11 +1970,11 @@
 
 <se_hypervis_subcycle>                             3 </se_hypervis_subcycle>
 <se_hypervis_subcycle hgrid="ne0np4CONUS.ne30x8">  1 </se_hypervis_subcycle>
-<se_hypervis_subcycle waccm_phys="1">              1 </se_hypervis_subcycle>
+<se_hypervis_subcycle waccm_phys="1">              2 </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne16np4">            4 </se_hypervis_subcycle>
 
 <se_hypervis_subcycle_sponge>                            1                </se_hypervis_subcycle_sponge>
-<se_hypervis_subcycle_sponge waccm_phys="1">             3                </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge waccm_phys="1">             2                </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne0np4CONUS.ne30x8"> 4                </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"> 20</se_hypervis_subcycle_sponge>
 
@@ -1991,9 +1991,9 @@
 
 <se_nsplit hgrid="ne5np4"   waccm_phys="1"        >  3  </se_nsplit>
 <se_nsplit hgrid="ne16np4"  waccm_phys="1"        >  3  </se_nsplit>
-<se_nsplit hgrid="ne30np4"  waccm_phys="1"        > 12  </se_nsplit>
-<se_nsplit hgrid="ne30np4"  waccm_phys="1" npg="2">  6  </se_nsplit>
-<se_nsplit hgrid="ne30np4"  waccm_phys="1" npg="3">  6  </se_nsplit>
+<se_nsplit hgrid="ne30np4"  waccm_phys="1"        >  5  </se_nsplit>
+<se_nsplit hgrid="ne30np4"  waccm_phys="1" npg="2">  5  </se_nsplit>
+<se_nsplit hgrid="ne30np4"  waccm_phys="1" npg="3">  5  </se_nsplit>
 
 <se_nsplit hgrid="ne0np4CONUS.ne30x8"               > 3 </se_nsplit>
 <se_nsplit hgrid="ne0np4CONUS.ne30x8" waccm_phys="1">12 </se_nsplit>
@@ -2012,11 +2012,8 @@
 <se_nu_p>-1 </se_nu_p>
 <se_nu_p se_refined_mesh="1" hypervis_type="scalar" > 1.5625e13 </se_nu_p>
 
-<se_nu_top                                   > 1.25e5 </se_nu_top>
-<se_nu_top se_refined_mesh="1"               > 2.0e5  </se_nu_top>
-<se_nu_top waccm_phys="1"                    > 2.5e6  </se_nu_top>
-<se_nu_top se_refined_mesh="1" waccm_phys="1"> 2.0e5 </se_nu_top>
-
+<se_nu_top               > 5.0e5 </se_nu_top>
+<se_nu_top waccm_phys="1"> 1.0e6 </se_nu_top>
 
 <se_raytau0                      >  0.0 </se_raytau0>
 <se_raykrange                    >  0.5  </se_raykrange>
@@ -2042,8 +2039,7 @@
 <se_refined_mesh hgrid="ne0np4TESTONLY.ne5x4" > .true. </se_refined_mesh>
 
 <se_rsplit                                          > 3 </se_rsplit>
-<se_rsplit waccm_phys="1" npg="2"                   > 5 </se_rsplit>
-<se_rsplit waccm_phys="1" npg="3"                   > 5 </se_rsplit>
+<se_rsplit waccm_phys="1"> 4 </se_rsplit>
 <se_rsplit hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"> 3 </se_rsplit>
 
 <se_fvm_supercycling>-1</se_fvm_supercycling>
