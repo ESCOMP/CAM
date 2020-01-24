@@ -174,7 +174,7 @@
 
 <ncdata dyn="se" hgrid="ne5np4"   nlev="66"                >atm/waccm/ic/wa3_ne5np4_1950_spinup.cam2.i.1960-01-01-00000_c150810.nc</ncdata>
 <ncdata dyn="se" hgrid="ne30np4"  nlev="70" sim_year="1850">atm/waccm/ic/waccm5_1850_ne30np4_L70_0001-01-11-00000_c151217.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4"  nlev="70"                >atm/waccm/ic/fw2000_ne30np4_L70_c181221.nc</ncdata>
+<ncdata dyn="se" hgrid="ne30np4"  nlev="70"                >/glade/p/cgd/amp/pel/inic/waccm.nlev70.FW2000climo.i.nc</ncdata>
 
 <!-- Topography -->
 <bnd_topo hgrid="256x512" >atm/cam/topo/topo-from-cami_0000-01-01_256x512_L26_c030918.nc</bnd_topo>
