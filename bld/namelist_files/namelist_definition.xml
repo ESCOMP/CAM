@@ -8147,13 +8147,6 @@ Default: none
        group="fms_nml" valid_values="" >
 </entry>
 
-<entry id="fv3_adiabatic" type="logical" category="dyn_fv3"
-       group="fv_core_nml" valid_values="" >
-Logical: whether to skip any physics. If true, the physics is
-not called at all and there is no virtual temperature effect. False by
-default; this option has no effect if not running solo_core.
-</entry>
-
 <entry id="fv3_adjust_dry_mass" type="logical" category="dyn_fv3"
        group="fv_core_nml" valid_values="" >
 Logical: whether to adjust the global dry-air mass to
@@ -8164,12 +8157,6 @@ vertical), or when changing the topography, so that the global mass
 of the atmosphere matches some estimate of observed value. False
 by default. It is recommended to only set this to True when initializing the model.
 </entry>
-
-<!--  Only needed for non hydro
-<entry id="a_imp" type="real" category="dyn_fv3"
-       group="fv_core_nml" valid_values="" >
-</entry>
--->
 
 <entry id="fv3_beta" type="real" category="dyn_fv3"
        group="fv_core_nml" valid_values="" >
@@ -8225,13 +8212,6 @@ constant) is recommended if ICs are noisy
 Integer: The number of tracers which are not to be advected by
 the dynamical core, but still passed into the dynamical core; the last
 dnats+pnats tracers in field_table are not advected. 0 by default.
-</entry>
-
-<entry id="fv3_do_Held_Suarez" type="logical" category="dyn_fv3"
-       group="fv_core_nml" valid_values="" >
-Logical: whether to use Held-Suarez forcing. Requires
-adiabatic to be false. False by default; this option has no effect if not
-running solo_core.
 </entry>
 
 <entry id="fv3_do_sat_adj" type="logical" category="dyn_fv3"
@@ -8313,17 +8293,6 @@ of d2_bg; nord >= 1 and d4_bg = 0.16 will be less diffusive than
 nord = 0 and d2_bg = 0.02.
 </entry>
 
-<entry id="fv3_external_ic" type="logical" category="dyn_fv3"
-       group="fv_core_nml" valid_values="" >
-Logical: Whether to initialize the models state using the data
-in an externally specified file, given in res_latlon_dynamics. By
-default this file is assumed to be a legacy lat-lon FV core restart file;
-set either ncep_ic or fv_diag_ic to true override this behavior..false.
-by default. Note that external_ic = true will cause the model to reinitialize
-the dynamical fields from the input dataset regardless of
-whether warm_start is set.
-</entry>
-
 <entry id="fv3_fill" type="logical" category="dyn_fv3"
        group="fv_core_nml" valid_values="" >
 Logical: Fills in negative tracer values by taking positive tracers from
@@ -8341,18 +8310,6 @@ Default: .false.
        group="fv_core_nml" valid_values="" >
 true to print diagnostics
 Default: .false.
-</entry>
-
-<entry id="fv3_fv_land" type="logical" category="dyn_fv3"
-       group="fv_core_nml" valid_values="" >
-Logical: whether to create terrain deviation and land fraction
-for output to mg_drag restart files, for use in mg_drag and in the
-land model..false. by default;.true. is recommended when, and
-only when, initializing the model, since the mg_drag files created
-provide a much more accurate terrain representation for the mountain
-gravity wave drag parameterization and for the land surface
-roughness than either computes internally. This has no effect on
-the representation of the terrain in the dynamics.
 </entry>
 
 <entry id="fv3_qsize_condensate_loading" type="integer" category="dyn_fv3"
@@ -8399,10 +8356,6 @@ mass, momentum, and total energy. Values of 0 or smaller
 disable this feature. If n_sponge lt 0 then the mixing is applied
 only to the top n_sponge layers of the domain. Set to -1 (inactive)
 by default. Proper range is 0 to 3600.
-</entry>
-
-<entry id="fv3_gfs_phil" type="logical" category="dyn_fv3"
-       group="fv_core_nml" valid_values="" >
 </entry>
 
 <entry id="fv3_grid_type" type="integer" category="dyn_fv3"
@@ -8528,17 +8481,6 @@ re-computing dz from hydrostatic balance and setting w to 0. False
 by default.
 </entry>
 
-<entry id="fv3_mountain" type="logical" category="dyn_fv3"
-       group="fv_core_nml" valid_values="" >
-Logical: takes topography into account when initializing the
-model. Set this to true to apply the terrain filter (if n_zs_filter = 2
-or 4) upon startup; also set to True when cold starting so that the
-topography can be initialized. Only set this to false if you wish
-to cold-start without any topography; this value is ignored for the
-aquaplanet test_case = 14. True by default. It is highly recommended
-to not alterthis value unless you know what you are doing.
-</entry>
-
 <entry id="fv3_na_init" type="integer" category="dyn_fv3"
        group="fv_core_nml" valid_values="" >
 Integer: Number of forward-backward dynamics steps used to
@@ -8546,19 +8488,7 @@ initialize adiabatic solver. 0 by default. Not recommended if not
 cold-starting the model.
 </entry>
 
-<entry id="fv3_ncep_ic" type="logical" category="dyn_fv3"
-       group="fv_core_nml" valid_values="" >
-Logical: If external_ic =.true., this variable says whether the file
-in res_latlon_dynamics is an NCEP analysis or reanalysis file. This
-option zeros out all tracer fields except specific humidity..false. by
-default.
-</entry>
-
 <entry id="fv3_ncnst" type="integer" category="dyn_fv3"
-       group="fv_core_nml" valid_values="" >
-</entry>
-
-<entry id="fv3_nggps_ic" type="logical" category="dyn_fv3"
        group="fv_core_nml" valid_values="" >
 </entry>
 
@@ -8610,17 +8540,6 @@ most other domains (including nested grids) this should be set to 1.
 Must be set.
 </entry>
 
-<entry id="fv3_nudge_ic" type="logical" category="dyn_fv3"
-       group="fv_core_nml" valid_values="" >
-Logical: same as nudge, but works in adiabatic solo_core simulations
-to nudge the field to a single external analysis file. False by
-default.
-</entry>
-
-<entry id="fv3_nudge_qv" type="logical" category="dyn_fv3"
-       group="fv_core_nml" valid_values="" >
-</entry>
-
 <entry id="fv3_nwat" type="integer" category="dyn_fv3"
        group="fv_core_nml" valid_values="" >
 Integer: Number of water species to be included in condensate and
@@ -8656,12 +8575,6 @@ Integer: controls the number of layers at the upper boundary
 on which the 2∆x filter is applied. 0 by default.
 </entry>
 
-<!--
-<entry id="phys_hydrostatic" type="logical" category="dyn_fv3"
-       group="fv_core_nml" valid_values="" >
-</entry>
--->
-
 <entry id="fv3_print_freq" type="integer" category="dyn_fv3"
        group="fv_core_nml" valid_values="" >
 Integer: number of hours between print out of max/min and
@@ -8670,21 +8583,12 @@ never prints out any output; set to -1 to see output after every
 dt_atmos. Computing these diagnostics requires some computational overhead.
 </entry>
 
-<!-- p_fac only used for non hydrostatic
-<entry id="p_fac" type="real" category="dyn_fv3"  
-       group="fv_core_nml" valid_values="" >
-</entry>
- -->
 <entry id="fv3_range_warn" type="logical" category="dyn_fv3"
        group="fv_core_nml" valid_values="" >
 Logical: checks whether the values of the prognostic variables
 are within a reasonable range at the end of a dynamics time
 step, and prints a warning if not. False by default; adds
 computational overhead, so we only recommend using this when debugging.
-</entry>
-
-<entry id="fv3_reset_eta" type="logical" category="dyn_fv3"
-       group="fv_core_nml" valid_values="" >
 </entry>
 
 <entry id="fv3_rf_cutoff" type="real" category="dyn_fv3"
@@ -8710,19 +8614,6 @@ higher-resolution.
        group="fv_core_nml" valid_values="" >
 </entry>
 
-<!--
-<entry id="use_hydro_pressure" type="logical" category="dyn_fv3"
-       group="fv_core_nml" valid_values="" >
-</entry>
--->
-
-<entry id="fv3_warm_start" type="logical" category="dyn_fv3"
-       group="fv_core_nml" valid_values="" >
-Logical; whether to start from restart files, instead of coldstarting the model.
-True by default; if this is set to true and restart
-files cannot be found the model will stop.
-</entry>
-
 <entry id="fv3_vtdm4" type="real" category="dyn_fv3"
        group="fv_core_nml" valid_values="" >
 Real: coefficient for background other-variable damping. The
@@ -8745,26 +8636,6 @@ by default; currently not implemented.
        group="dyn_fv3_inparm" valid_values="" >
 If TRUE perform temp tendency scaling before send to fv3 dynamics 
 Default: FALSE
-</entry>
-
-<entry id="fv3_surf_file" type="char*256" category="dyn_fv3"
-       group="surf_map_nml" valid_values="" >
-</entry>
-
-<entry id="fv3_surf_format" type="char*6" category="dyn_fv3"
-       group="surf_map_nml" valid_values="" >
-</entry>
-
-<entry id="fv3_nlon" type="integer" category="dyn_fv3"
-       group="surf_map_nml" valid_values="" >
-</entry>
-
-<entry id="fv3_nlat" type="integer" category="dyn_fv3"
-       group="surf_map_nml" valid_values="" >
-</entry>
-
-<entry id="fv3_test_case" type="integer" category="dyn_fv3"
-       group="test_case_nml" valid_values="" >
 </entry>
 
 </namelist_definition>

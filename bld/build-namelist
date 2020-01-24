@@ -3484,6 +3484,7 @@ if ( $dyn eq 'fv3') {
 
     add_default($nl, 'fv3_adjust_dry_mass');
     add_default($nl, 'fv3_beta');
+    add_default($nl, 'fv3_clock_grain');
     add_default($nl, 'fv3_consv_am');
     add_default($nl, 'fv3_consv_te');
     add_default($nl, 'fv3_d2_bg');
@@ -3497,12 +3498,11 @@ if ( $dyn eq 'fv3') {
     add_default($nl, 'fv3_dnats');
     add_default($nl, 'fv3_do_sat_adj');
     add_default($nl, 'fv3_do_vort_damp');
+    add_default($nl, 'fv3_domains_stack_size');
     add_default($nl, 'fv3_dwind_2d');
-    add_default($nl, 'fv3_external_ic');
     add_default($nl, 'fv3_fill');
     add_default($nl, 'fv3_fv_debug');
     add_default($nl, 'fv3_fv_sg_adj');
-    add_default($nl, 'fv3_gfs_phil');
     add_default($nl, 'fv3_grid_type');
     add_default($nl, 'fv3_hord_dp');
     add_default($nl, 'fv3_hord_mt');
@@ -3511,44 +3511,31 @@ if ( $dyn eq 'fv3') {
     add_default($nl, 'fv3_hord_vt');
     add_default($nl, 'fv3_hydrostatic');
     add_default($nl, 'fv3_io_layout');
-    add_default($nl, 'fv3_ke_bg');
     add_default($nl, 'fv3_k_split');
+    add_default($nl, 'fv3_ke_bg');
     add_default($nl, 'fv3_kord_mt');
     add_default($nl, 'fv3_kord_tm');
     add_default($nl, 'fv3_kord_tr');
     add_default($nl, 'fv3_kord_wz');
     add_default($nl, 'fv3_make_nh');
-    add_default($nl, 'fv3_mountain');
     add_default($nl, 'fv3_n_split');
     add_default($nl, 'fv3_n_sponge');
     add_default($nl, 'fv3_na_init');
-    add_default($nl, 'fv3_ncep_ic');
-    add_default($nl, 'fv3_nggps_ic');
     add_default($nl, 'fv3_no_dycore');
     add_default($nl, 'fv3_nord');
     add_default($nl, 'fv3_npx');
     add_default($nl, 'fv3_npy');
     add_default($nl, 'fv3_ntiles');
-    add_default($nl, 'fv3_nudge_qv');
-    add_default($nl, 'fv3_nudge_ic');
+    add_default($nl, 'fv3_nwat');
     add_default($nl, 'fv3_print_freq');
+    add_default($nl, 'fv3_print_memory_usage');
+    add_default($nl, 'fv3_qsize_condensate_loading');
     add_default($nl, 'fv3_range_warn');
-    add_default($nl, 'fv3_reset_eta');
     add_default($nl, 'fv3_rf_cutoff');
+    add_default($nl, 'fv3_stack_size');
     add_default($nl, 'fv3_tau');
     add_default($nl, 'fv3_vtdm4');
-    add_default($nl, 'fv3_warm_start');
     add_default($nl, 'fv3_z_tracer');
-    add_default($nl, 'fv3_clock_grain');
-    add_default($nl, 'fv3_domains_stack_size');
-    add_default($nl, 'fv3_stack_size');
-    add_default($nl, 'fv3_print_memory_usage');
-    add_default($nl, 'fv3_adiabatic');
-    add_default($nl, 'fv3_do_held_suarez');
-    add_default($nl, 'fv3_fv_land');
-    add_default($nl, 'fv3_mountain');
-    add_default($nl, 'fv3_nwat');
-    add_default($nl, 'fv3_qsize_condensate_loading');
 
     # By default, FV3 uses nlev levels
     if (! defined $opts{'fv3_npz'}) {

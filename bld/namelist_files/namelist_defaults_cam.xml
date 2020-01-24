@@ -2002,12 +2002,6 @@
 <fv3_lcp_moist dyn="fv3" > .false.  </fv3_lcp_moist>
 <fv3_lcv_moist dyn="fv3" > .false.  </fv3_lcv_moist>
 
-<fv3_surf_file dyn="fv3"   hgrid="C24"  >atm/cam/topo/USGS-gtopo30_C24_remap_c181018.nc</fv3_surf_file>
-<fv3_surf_file dyn="fv3"   hgrid="C48"  >atm/cam/topo/USGS-gtopo30_C48_remap_c181018.nc</fv3_surf_file>
-<fv3_surf_file dyn="fv3"   hgrid="C96"  >atm/cam/topo/USGS-gtopo30_C96_remap_c181018.nc</fv3_surf_file>
-<fv3_surf_file dyn="fv3"   hgrid="C192" >atm/cam/topo/USGS-gtopo30_C192_remap_c181018.nc</fv3_surf_file>
-<fv3_surf_file dyn="fv3"   hgrid="C384" >atm/cam/topo/USGS-gtopo30_C384_remap_c181018.nc</fv3_surf_file>
-
 <fv3_clock_grain dyn="fv3"  >LOOP</fv3_clock_grain>
 
 <fv3_domains_stack_size dyn="fv3">3000000</fv3_domains_stack_size>
@@ -2024,7 +2018,6 @@
 
 <!-- fv_core_nml defaults (alpha order ===============================  -->
 
-<fv3_adiabatic                                                              > .F.       </fv3_adiabatic>
 <fv3_adjust_dry_mass                                                        > .F.       </fv3_adjust_dry_mass>
 <!-- <a_imp                                                                  > 1         </a_imp>   -->
 <fv3_beta                                                                   > 0         </fv3_beta>
@@ -2033,7 +2026,6 @@
 <fv3_dddmp                                                                  > 0.0       </fv3_dddmp>
 <fv3_delt_max                                                               > 0.0       </fv3_delt_max> <!-- 0 for monotonic -->
 <fv3_dnats                                                                  > 0         </fv3_dnats>
-<fv3_do_Held_Suarez                                                         > .F.       </fv3_do_Held_Suarez>
 <fv3_do_sat_adj                                                             > .F.       </fv3_do_sat_adj>  
 <fv3_do_vort_damp      dyn="fv3nh"                                          > .T.       </fv3_do_vort_damp>  <!-- true for nonhydro -->
 <fv3_do_vort_damp      dyn="fv3"                                            > .F.       </fv3_do_vort_damp>  <!-- false for monotonic -->
@@ -2045,11 +2037,9 @@
 <fv3_d2_bg_k1                                                               > 0.15D0   </fv3_d2_bg_k1>
 <fv3_d2_bg_k2                                                               > 0.02D0   </fv3_d2_bg_k2>
 <fv3_d4_bg                                                                  > 0.15D0   </fv3_d4_bg>
-<fv3_external_ic                                                            > .F.       </fv3_external_ic>
 <fv3_fill                                                                   > .T.       </fv3_fill>
 <fv3_fv_debug                                                               > .F.       </fv3_fv_debug>
 <fv3_fv_diag                                                                > .F.       </fv3_fv_diag>
-<fv3_fv_land                                                                > .F.       </fv3_fv_land>
 <fv3_qsize_condensate_loading                                           > 3         </fv3_qsize_condensate_loading>
 <fv3_qsize_condensate_loading phys="cam4"                               > 3         </fv3_qsize_condensate_loading>
 <fv3_qsize_condensate_loading phys="cam5"                               > 3         </fv3_qsize_condensate_loading>
@@ -2068,7 +2058,6 @@
 <fv3_nwat phys="tj2016"                                                     > 1         </fv3_nwat>
 <fv3_fv_sg_adj                                                              > 0         </fv3_fv_sg_adj>
 <!-- <fv_sg_adj                                                              > 450       </fv_sg_adj> -->
-<fv3_gfs_phil                                                               > .F.       </fv3_gfs_phil>
 <fv3_grid_type                                                              > 0         </fv3_grid_type>
 <fv3_hord_dp        dyn="fv3"                                               > -10        </fv3_hord_dp>
 <fv3_hord_mt        dyn="fv3"                                               > 10         </fv3_hord_mt>
@@ -2089,10 +2078,7 @@
 <fv3_kord_wz                                                                > 9         </fv3_kord_wz>
 <fv3_k_split                                                                > 2         </fv3_k_split>
 <fv3_make_nh                                                                > .F.       </fv3_make_nh>
-<fv3_mountain                                                               > .F.       </fv3_mountain>
 <fv3_na_init                                                                > 0         </fv3_na_init>
-<fv3_ncep_ic                                                                > .F.       </fv3_ncep_ic>
-<fv3_nggps_ic                                                               > .F.       </fv3_nggps_ic>
 <fv3_nord                                                                   > 3         </fv3_nord>
 <fv3_no_dycore                                                              > .F.       </fv3_no_dycore>
 <!-- grid corners in x-direction per tile ============================== -->
@@ -2108,8 +2094,6 @@
 <fv3_npy                                       hgrid="C192"                 > 193       </fv3_npy>
 <fv3_npy                                       hgrid="C384"                 > 385       </fv3_npy>
 <fv3_ntiles                                                                 > 6         </fv3_ntiles>
-<fv3_nudge_ic                                                               > .F.       </fv3_nudge_ic>
-<fv3_nudge_qv                                                               > .F.       </fv3_nudge_qv>
 <fv3_m_split                                                                > 0         </fv3_m_split>
 <fv3_n_split                                                                > 6         </fv3_n_split>
 <fv3_n_sponge                                                               > 0         </fv3_n_sponge>
@@ -2118,14 +2102,12 @@
 <fv3_print_freq                                                             > 1         </fv3_print_freq>
 <!--p_fac                                                                  > 0.1D0    </p_fac>  only used for non_hydrostatic runs -->
 <fv3_range_warn                                                             > .F.       </fv3_range_warn>
-<fv3_reset_eta                                                              > .F.       </fv3_reset_eta>
 <fv3_rf_cutoff                                                              > 750       </fv3_rf_cutoff>
 <fv3_tau                                                                    > 10        </fv3_tau>
 <!-- <uniform_vert_spacing                                                   >           </uniform_vert_spacing> -->
 <!-- use_hydro_pressure only needed for GFS physics
 <use_hydro_pressure                                                     > .F.       </use_hydro_pressure>
 -->
-<fv3_warm_start                                                             > .F.       </fv3_warm_start>
 <!-- vtdm4 set to 0 for monotonic scheme-->
 <fv3_vtdm4                                                                  > 0.0       </fv3_vtdm4>
 <!-- <vtdm4           dyn="fv3nh"                                            > 0.04      </vtdm4>-->
@@ -2404,8 +2386,11 @@
 <focndomain hgrid="4x5"       >share/domains/domain.ocn.4x5_gx3v7_100120.nc</focndomain>
 <focndomain hgrid="10x15"     >atm/cam/ocnfrac/domain.camocn.10x15_USGS_070807.nc</focndomain>
 
-<focndomain hgrid="C24"       >share/domains/domain.ocn.C24_gx1v6.181018.nc</focndomain>
-<focndomain hgrid="C96"       >share/domains/domain.ocn.C96_gx1v6.181018.nc</focndomain>
+<focndomain hgrid="C24"       >share/domains/domain.ocn.C24_gx1v7.181018.nc</focndomain>
+<focndomain hgrid="C48"       >share/domains/domain.ocn.C48_gx1v7.181018.nc</focndomain>
+<focndomain hgrid="C96"       >share/domains/domain.ocn.C96_gx1v7.181018.nc</focndomain>
+<focndomain hgrid="C192"      >share/domains/domain.ocn.C192_gx1v7.181018.nc</focndomain>
+<focndomain hgrid="C384"      >share/domains/domain.ocn.C384_gx1v7.181018.nc</focndomain>
 
 <focndomain hgrid="ne5np4"    >share/domains/domain.ocn.ne5np4_gx3v7.140810.nc</focndomain>
 <focndomain hgrid="ne16np4"   >share/domains/domain.ocn.ne16np4_gx1v7.171018.nc</focndomain>
