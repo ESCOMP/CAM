@@ -4156,11 +4156,6 @@ sub create_mode_defs {
         $mode_def .= "'$num_src->[$m]:$num->[$m]:N:$num_cw->[$m]:num_mr:+',";
 
         # number of species in mode
-	print "spec=$spec";
-	print "nmodes=$nmodes";
-	print "m=$m";
-	print "names=@$names[0]";
-	print "spec[m]=(@{$spec->[$m]})";
         my $nspec = scalar(@{$spec->[$m]});
         for (my $i=0; $i < $nspec; ++$i) {
 

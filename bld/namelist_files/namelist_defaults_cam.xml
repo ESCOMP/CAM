@@ -16,13 +16,11 @@
 
 <dtime dyn="fv3"                   >1800</dtime>
 <dtime dyn="fv3"   waccmx="1"      >300 </dtime>
+<dtime dyn="fv3"   hgrid="C24"     >1800</dtime>
 <dtime dyn="fv3"   hgrid="C48"     >1800</dtime>
 <dtime dyn="fv3"   hgrid="C96"     >1800</dtime>
 <dtime dyn="fv3"   hgrid="C192"    >900</dtime>
 <dtime dyn="fv3"   hgrid="C384"    >450</dtime>
-<dtime dyn="fv3"   hgrid="C768"    >225</dtime>
-<dtime dyn="fv3"   hgrid="C1152"   >150</dtime>
-<dtime dyn="fv3"   hgrid="C3072"   >90</dtime>
 
 <dtime dyn="se"                    >1800</dtime>
 <dtime dyn="se"    hgrid="ne5np4"  >1800</dtime>
@@ -124,14 +122,12 @@
 <ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="130" waccmx="1"  ic_ymd="101" aquaplanet="1">atm/waccm/ic/waccmx_mam4_aqua_1.9x2.5_L130_c180803.nc</ncdata>
 
 
-<ncdata dyn="fv3"   hgrid="C5"   nlev="32"  aquaplanet="1"  ic_ymd="101" >atm/cam/inic/fv3/aqua_0006-01-01_C5_L32_c161020.nc</ncdata>
 <ncdata dyn="fv3"   hgrid="C24"  nlev="32"  aquaplanet="1"  ic_ymd="101" >atm/cam/inic/fv3/aqua_0006-01-01_C24_L32_c161020.nc</ncdata>
 <ncdata dyn="fv3"   hgrid="C48"  nlev="32"  aquaplanet="1"  ic_ymd="101" >atm/cam/inic/fv3/aqua_0006-01-01_C48_L32_c161020.nc</ncdata>
 <ncdata dyn="fv3"   hgrid="C96"  nlev="32"  aquaplanet="1"  ic_ymd="101" >atm/cam/inic/fv3/aqua_0006-01-01_C96_L32_c161020.nc</ncdata>
 <ncdata dyn="fv3"   hgrid="C96"  nlev="26"  aquaplanet="1"  ic_ymd="101" >atm/cam/inic/fv3/aqua_0006-01-01_C96_L26_c161020.nc</ncdata>
 <ncdata dyn="fv3"   hgrid="C192" nlev="32"  aquaplanet="1"  ic_ymd="101" >atm/cam/inic/fv3/aqua_0006-01-01_C192_L32_c161020.nc</ncdata>
 <ncdata dyn="fv3"   hgrid="C384" nlev="32"  aquaplanet="1"  ic_ymd="101" >atm/cam/inic/fv3/aqua_0006-01-01_C384_L32_c161020.nc</ncdata>
-<ncdata dyn="fv3"   hgrid="C5"   nlev="32"                  ic_ymd="101">atm/cam/inic/fv3/cami-mam3_0000-01-01_C5_L32_c141031.nc</ncdata>
 <ncdata dyn="fv3"   hgrid="C24"  nlev="32"                  ic_ymd="101">atm/cam/inic/fv3/cami-mam3_0000-01-01_C24_L32_c141031.nc</ncdata>
 <ncdata dyn="fv3"   hgrid="C24"  nlev="30"                  ic_ymd="101">atm/cam/inic/fv3/cami-mam3_0000-01-01_C24_L30_c100618.nc</ncdata>
 <ncdata dyn="fv3"   hgrid="C48"  nlev="32"                  ic_ymd="101">atm/cam/inic/fv3/cami-mam3_0000-01-01_C48_L32_c141031.nc</ncdata>
@@ -227,7 +223,6 @@
 <bnd_topo hgrid="4x5"       >atm/cam/topo/USGS-gtopo30_4x5_remap_c050520.nc</bnd_topo>
 <bnd_topo hgrid="10x15"     >atm/cam/topo/fv_10x15_nc0540_Nsw042_Nrs008_Co060_Fi001_20171220.nc</bnd_topo>
 
-<bnd_topo hgrid="C5"   >atm/cam/topo/fv3_C5_nc3000_Co060_Fi001_MulG_PF_nullRR_Nsw042.181018.nc</bnd_topo>
 <bnd_topo hgrid="C24"  >atm/cam/topo/fv3_C24_nc3000_Co180_Fi001_MulG_PF_nullRR_Nsw127.181018.nc</bnd_topo>
 <bnd_topo hgrid="C48"  >atm/cam/topo/fv3_C48_nc3000_Co120_Fi001_MulG_PF_nullRR_Nsw085.181018.nc</bnd_topo>
 <bnd_topo hgrid="C96"  >atm/cam/topo/fv3_C96_nc3000_Co060_Fi001_MulG_PF_nullRR_Nsw042.181018.nc</bnd_topo>
@@ -1213,7 +1208,6 @@
 <drydep_srf_file hgrid="ne240np4"        >atm/cam/chem/trop_mam/atmsrf_ne240np4_110920.nc</drydep_srf_file>
 
 <drydep_srf_file hgrid="ne0np4CONUS.ne30x8">atm/cam/chem/trop_mam/atmsrf_ne0np4conus30x8_161116.nc</drydep_srf_file>
-<drydep_srf_file hgrid="C5">atm/cam/chem/trop_mam/atmsrf_C5_181018.nc</drydep_srf_file>
 <drydep_srf_file hgrid="C24">atm/cam/chem/trop_mam/atmsrf_C24_181018.nc</drydep_srf_file>
 <drydep_srf_file hgrid="C48">atm/cam/chem/trop_mam/atmsrf_C48_181018.nc</drydep_srf_file>
 <drydep_srf_file hgrid="C96">atm/cam/chem/trop_mam/atmsrf_C96_181018.nc</drydep_srf_file>
@@ -2008,7 +2002,6 @@
 <fv3_lcp_moist dyn="fv3" > .false.  </fv3_lcp_moist>
 <fv3_lcv_moist dyn="fv3" > .false.  </fv3_lcv_moist>
 
-<fv3_surf_file dyn="fv3"   hgrid="C5"  >atm/cam/topo/USGS-gtopo30_C5_remap_c181018.nc</fv3_surf_file>
 <fv3_surf_file dyn="fv3"   hgrid="C24"  >atm/cam/topo/USGS-gtopo30_C24_remap_c181018.nc</fv3_surf_file>
 <fv3_surf_file dyn="fv3"   hgrid="C48"  >atm/cam/topo/USGS-gtopo30_C48_remap_c181018.nc</fv3_surf_file>
 <fv3_surf_file dyn="fv3"   hgrid="C96"  >atm/cam/topo/USGS-gtopo30_C96_remap_c181018.nc</fv3_surf_file>
@@ -2028,10 +2021,6 @@
 <fv3_dt_atmos dyn="fv3"                 >1800</fv3_dt_atmos>
 <fv3_dt_atmos dyn="fv3"     hgrid="C192">900</fv3_dt_atmos>
 <fv3_dt_atmos dyn="fv3"     hgrid="C384">450</fv3_dt_atmos>
-<fv3_dt_atmos dyn="fv3"     hgrid="C768">225</fv3_dt_atmos>
-<fv3_dt_atmos dyn="fv3"     hgrid="C1152">150</fv3_dt_atmos>
-<fv3_dt_atmos dyn="fv3"     hgrid="C3072">90</fv3_dt_atmos>
-
 
 <!-- fv_core_nml defaults (alpha order ===============================  -->
 
@@ -2107,14 +2096,12 @@
 <fv3_nord                                                                   > 3         </fv3_nord>
 <fv3_no_dycore                                                              > .F.       </fv3_no_dycore>
 <!-- grid corners in x-direction per tile ============================== -->
-<fv3_npx                                       hgrid="C5"                   > 6        </fv3_npx>
 <fv3_npx                                       hgrid="C24"                  > 25        </fv3_npx>
 <fv3_npx                                       hgrid="C48"                  > 49        </fv3_npx>
 <fv3_npx                                       hgrid="C96"                  > 97        </fv3_npx>
 <fv3_npx                                       hgrid="C192"                 > 193       </fv3_npx>
 <fv3_npx                                       hgrid="C384"                 > 385       </fv3_npx>
 <!-- grid corners in y-direction per tile ============================== -->
-<fv3_npy                                       hgrid="C5"                   > 6        </fv3_npy>
 <fv3_npy                                       hgrid="C24"                  > 25        </fv3_npy>
 <fv3_npy                                       hgrid="C48"                  > 49        </fv3_npy>
 <fv3_npy                                       hgrid="C96"                  > 97        </fv3_npy>
@@ -2125,7 +2112,6 @@
 <fv3_nudge_qv                                                               > .F.       </fv3_nudge_qv>
 <fv3_m_split                                                                > 0         </fv3_m_split>
 <fv3_n_split                                                                > 6         </fv3_n_split>
-<fv3_n_split                                   hgrid="C3072"                > 10        </fv3_n_split>
 <fv3_n_sponge                                                               > 0         </fv3_n_sponge>
 <!-- phys_hydrostatic only used for non hydro simulation
 <phys_hydrostatic                                                       > .F.       </phys_hydrostatic> -->

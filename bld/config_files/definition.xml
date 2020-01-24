@@ -289,23 +289,8 @@ Switch to enable building COSP simulator package.  1 => build COSP.
 <entry id="cosp_libdir" value="">
 Directory containing COSP library.
 </entry>
-<entry id="fms_libdir" value="">
-Directory containing FMS library.
-</entry>
 <entry id="fv3core_libdir" value="">
 Directory containing FV3CORE library.
-</entry>
-<entry id="gfsphysics" valid_values="0,1" value="0">
-Switch to enable building GFSPHYSICS simulator package.  1 => build GFSPHYSICS.
-</entry>
-<entry id="gfsphysics_libdir" value="">
-Directory containing GFSPHYSICS library.
-</entry>
-<entry id="fv3io" valid_values="0,1" value="0">
-Switch to enable building FV3IO simulator package.  1 => build FV3IO.
-</entry>
-<entry id="fv3io_libdir" value="">
-Directory containing FV3IO library.
 </entry>
 <entry id="target_os" value="">
 OS for which CAM is being built.  The default value is the name contained

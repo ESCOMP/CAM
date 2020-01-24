@@ -42,7 +42,6 @@
 #               Use this to replace default Fortran compiler optimization.
 # COSP_LIBDIR   Directory where COSP library will be built.
 # FV3CORE_LIBDIR   Directory where FV3 library will be built.
-# FMS_LIBDIR   Directory where FMS library will be built.
 # MCT_LIBDIR    Directory where MCT library will be built.
 # PIO_BUILD_DIR Directory where PIO will be built (pio2 only)
 # PIO_INSTALL_DIR Directory containing PIO libraries and include files (pio2 only)
@@ -158,7 +157,6 @@ endif
 ifneq ($(strip $(FV3CORE_LIBDIR)),)
 # Rules to build FV3CORE in its own library.
 $(FV3CORE_LIBDIR)/libfv3core.a: cam_abortutils.o
-	$(MAKE) -C $(FMS_LIBDIR) complib COMPLIB='$(FMS_LIBDIR)/libfms.a' FC='$(FC)' CC='$(CC)' FFLAGS='$(FFLAGS) $(FC_AUTO_R8)' CFLAGS='$(CFLAGS)' INCLDIR+='-I$(ROOTDIR)/libraries/FMS/src/include -I$(ROOTDIR)/libraries/FMS/src/mpp/include'
 	$(MAKE) -C $(FV3CORE_LIBDIR) complib COMPLIB='$(FV3CORE_LIBDIR)/libfv3core.a' F90='$(FC)' CC='$(CC)' FFLAGS='$(FFLAGS) $(FC_AUTO_R8)'  CFLAGS='$(CFLAGS)' INCLDIR+='-I$(ROOTDIR)/libraries/FMS/src/include' FC_TYPE='$(FC_TYPE)'
 
 
@@ -279,10 +277,6 @@ ifneq ($(strip $(FV3CORE_LIBDIR)),)
   mod_path     += -I$(FV3CORE_LIBDIR)
 endif
 
-ifneq ($(strip $(FMS_LIBDIR)),)
-  mod_path     += -I$(FMS_LIBDIR)
-endif
-
 FC_FLAGS       := -q64 -qarch=auto -qspillsize=2500 -g -qfullpath
 FC_FLAGS_NOOPT := $(FC_FLAGS)
 FREEFLAGS      := -qsuffix=f=f90:cpp=F90
@@ -379,9 +373,6 @@ ifneq ($(strip $(COSP_LIBDIR)),)
 endif
 ifneq ($(strip $(FV3CORE_LIBDIR)),)
   mod_path += -I$(FV3CORE_LIBDIR)
-endif
-ifneq ($(strip $(FMS_LIBDIR)),)
-  mod_path += -I$(FMS_LIBDIR)
 endif
 
 # PGI
@@ -781,11 +772,6 @@ ifeq ($(UNAMES),Darwin)
       mod_path += -I$(FV3CORE_LIBDIR)
     endif
 
-    # Needed for FMS, since it builds in its own directory.
-    ifneq ($(strip $(FMS_LIBDIR)),)
-      mod_path += -I$(FMS_LIBDIR)
-    endif
-
     # COSP FV3 and FMS needs to autopromote to get its precision to match CAM
     FC_AUTO_R8  := -autodouble
 
@@ -865,12 +851,7 @@ ifeq ($(UNAMES),Darwin)
       mod_path += -I$(FV3CORE_LIBDIR)
     endif
 
-    # Needed for FMS, since it builds in its own directory.
-    ifneq ($(strip $(FMS_LIBDIR)),)
-      mod_path += -I$(FMS_LIBDIR)
-    endif
-
-    # COSP FV3 and FMS needs to autopromote to get its precision to match CAM
+    # COSP FV3 needs to autopromote to get its precision to match CAM
     FC_AUTO_R8   := -qrealsize=8
 
     FFLAGS     := $(cpp_path) $(mod_path) $(FPPFLAGS) -qspillsize=2500 
@@ -1188,9 +1169,6 @@ LDFLAGS  += $(USER_LDFLAGS)
 
 # export variables needed by sub-Make
 export FC
-export CC
-export FFLAGS
-export FCLAGS
 export FC_FLAGS
 export FC_AUTO_R8
 export FREEFLAGS

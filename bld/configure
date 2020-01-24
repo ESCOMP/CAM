@@ -322,7 +322,6 @@ GetOptions(
     "fflags=s"                  => \$opts{'fflags'},
     "fopt=s"                    => \$opts{'fopt'},
     "fv3core_libdir=s"          => \$opts{'fv3core_libdir'},
-    "fms_libdir=s"              => \$opts{'fms_libdir'},
     "gmake=s"                   => \$opts{'gmake'},
     "h|help"                    => \$opts{'help'},
     "hgrid=s"                   => \$opts{'hgrid'},
@@ -1947,7 +1946,6 @@ if ($dyn_pkg eq 'se') {
 }
 
 # Parameters for fv3 dycore.
-# Set parameters for fms libdir needed for fv3
 if ($dyn_pkg eq 'fv3') {
 $cfg_cppdefs .= " -Duse_libMPI -Duse_netCDF";
 }
@@ -2417,38 +2415,6 @@ if ($dyn_pkg eq 'fv3') {
     # Create the FV3CORE Makefile from a template and copy it into the fv3core bld directory
     write_fv3fms_makefile("$camsrcdir/src/dynamics/fv3/Makefile.in.fv3",  "$fv3core_libdir/Makefile", $cfg_ref, $make_cppdefs);
     if ($print) { print "creating $fv3core_libdir/Makefile\n"; }
-
-    if ($cam_build) {
-	# for cam standalone the FMS library build will be handled here
-	# Set the directory used to build fms.  Add location and library name
-	# to the user specified load flags.
-	my $fms_libdir = '';
-	if (defined $opts{'fms_libdir'}) {
-	    $fms_libdir = $opts{'fms_libdir'};
-	} else
-	{
-	    $fms_libdir = "$cam_bld/FMS";
-	}
-	$cfg_ref->set('fms_libdir', "$fms_libdir");
-	
-	my $ldflags = $cfg_ref->get('ldflags');
-	$ldflags .= " -L$fms_libdir -lfms ";
-	$cfg_ref->set('ldflags', $ldflags);
-	
-	# create the build directory for fms
-	my $bld_dir = $fms_libdir;
-	unless (-d $bld_dir or mkdirp($bld_dir)) {
-	    die "** Could not create the fms build directory: $bld_dir\n";
-	}
-	
-	# Write the filepath file.
-	write_fms_filepath("$fms_libdir/Filepath", $cfg_ref);
-	if ($print) { print "creating $fms_libdir/Filepath\n"; }
-	
-	# Create the FMS Makefile from a template and copy it into the fms bld directory
-	write_fv3fms_makefile("$camsrcdir/src/dynamics/fv3/Makefile.in.fms",  "$fms_libdir/Makefile", $cfg_ref, $make_cppdefs);
-	if ($print) { print "creating $fms_libdir/Makefile\n"; }
-    }
 }
 
 #-----------------------------------------------------------------------------------------------
@@ -2858,52 +2824,6 @@ sub write_fv3core_filepath
     $fh->close;
 }
 #-------------------------------------------------------------------------------
-
-sub write_fms_filepath
-{
-    my ($file, $cfg_ref) = @_;
-    my  $fh = new IO::File;
-
-    $fh->open(">$file") or die "** can't open filepath file: $file\n";
-    my $cam_root   = $cfg_ref->get('cam_root');
-    my $CASEROOT = "$ENV{'CASEROOT'}";
-    print $fh "$CASEROOT/SourceMods/src.cam\n";
-    print $fh "$cam_root/libraries/FMS/src/sat_vapor_pres\n";
-    print $fh "$cam_root/libraries/FMS/src/block_control\n";
-    print $fh "$cam_root/libraries/FMS/src/astronomy\n";
-    print $fh "$cam_root/libraries/FMS/src/tridiagonal\n";
-    print $fh "$cam_root/libraries/FMS/src/diag_manager\n";
-    print $fh "$cam_root/libraries/FMS/src/memutils\n";
-    print $fh "$cam_root/libraries/FMS/src/coupler\n";
-    print $fh "$cam_root/libraries/FMS/src/tracer_manager\n";
-    print $fh "$cam_root/libraries/FMS/src/fvGFS\n";
-    print $fh "$cam_root/libraries/FMS/src/random_numbers\n";
-    print $fh "$cam_root/libraries/FMS/src/constants\n";
-    print $fh "$cam_root/libraries/FMS/src/horiz_interp\n";
-    print $fh "$cam_root/libraries/FMS/src/fft\n";
-    print $fh "$cam_root/libraries/FMS/src/time_interp\n";
-    print $fh "$cam_root/libraries/FMS/src/drifters\n";
-    print $fh "$cam_root/libraries/FMS/src/exchange\n";
-    print $fh "$cam_root/libraries/FMS/src/oda_tools\n";
-    print $fh "$cam_root/libraries/FMS/src/platform\n";
-    print $fh "$cam_root/libraries/FMS/src/time_manager\n";
-    print $fh "$cam_root/libraries/FMS/src/topography\n";
-    print $fh "$cam_root/libraries/FMS/src/mpp\n";
-    print $fh "$cam_root/libraries/FMS/src/amip_interp\n";
-    print $fh "$cam_root/libraries/FMS/src/data_override\n";
-    print $fh "$cam_root/libraries/FMS/src/station_data\n";
-    print $fh "$cam_root/libraries/FMS/src/mosaic\n";
-    print $fh "$cam_root/libraries/FMS/src/field_manager\n";
-    print $fh "$cam_root/libraries/FMS/src/interpolator\n";
-    print $fh "$cam_root/libraries/FMS/src/axis_utils\n";
-    print $fh "$cam_root/libraries/FMS/src/column_diagnostics\n";
-    print $fh "$cam_root/libraries/FMS/src/fms\n";
-    print $fh "$cam_root/libraries/FMS/src/include\n";
-    $fh->close;
-}
-
-#-------------------------------------------------------------------------------
-
 sub write_filepath
 {
     my ($file, $cfg_ref) = @_;
@@ -3190,7 +3110,6 @@ sub write_makefile
     my $ldflags      = $cfg_ref->get('ldflags');
     my $cosp_libdir  = $cfg_ref->get('cosp_libdir');
     my $fv3core_libdir  = $cfg_ref->get('fv3core_libdir');
-    my $fms_libdir   = $cfg_ref->get('fms_libdir');
     my $mct_libdir   = $cfg_ref->get('mct_libdir');
     my $pio_build_dir   = $cfg_ref->get('pio_build_dir');
     my $pio_install_dir = $cfg_ref->get('pio_install_dir');
@@ -3243,7 +3162,6 @@ F_OPTIMIZATION_OVERRIDE := $fopt
 USER_LDFLAGS    := $ldflags
 COSP_LIBDIR     := $cosp_libdir
 FV3CORE_LIBDIR  := $fv3core_libdir
-FMS_LIBDIR      := $fms_libdir
 MCT_LIBDIR      := $mct_libdir
 PIO_BUILD_DIR   := $pio_build_dir
 PIO_INSTALL_DIR := $pio_install_dir
@@ -3311,7 +3229,6 @@ sub write_fv3fms_makefile
 
     my $cam_root     = $cfg_ref->get('cam_root');
     my $fv3core_libdir  = $cfg_ref->get('fv3core_libdir');
-    my $fms_libdir      = $cfg_ref->get('fms_libdir');
 
     print $fh_out  <<"EOF";
 
