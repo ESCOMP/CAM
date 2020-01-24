@@ -201,7 +201,7 @@ integer :: ncolid,ncollen
 character(len=128) :: version = '$Id$'
 character(len=128) :: tagname = '$Name$'
 type (block_control_type), target   :: Atm_block
-integer :: is,isc,ie,iec,js,jsc,je,jec,npes,tsize,ssize
+integer :: is,ie,js,je,npes,tsize,ssize
 
    !-----------------------------------------------------------------------
 
@@ -261,10 +261,6 @@ integer :: is,isc,ie,iec,js,jsc,je,jec,npes,tsize,ssize
    ie = Atm(mytile)%bd%ie
    js = Atm(mytile)%bd%js
    je = Atm(mytile)%bd%je
-   isc = Atm(mytile)%bd%isc
-   iec = Atm(mytile)%bd%iec
-   jsc = Atm(mytile)%bd%jsc
-   jec = Atm(mytile)%bd%jec
    ncnst  = Atm(mytile)%flagstruct%ncnst
    npx   = Atm(mytile)%flagstruct%npx
    npy   = Atm(mytile)%flagstruct%npy
@@ -816,9 +812,9 @@ subroutine define_cam_grids(Atm)
   masterproc = mpp_root_pe()
   gid = mpp_pe()
 
-  call calc_global_indexjt(is,ie  ,js,je   ,npx-1 ,npy-1 ,tile, nregions, mygindex   ,mylindex   ,mybindex   ,mygindexdups, mygindex_tiles, 'gridew.txt' ,uniqpts_loc    ,uniqpts_glob)
-  call calc_global_indexjt(is,ie+1,js,je   ,npx   ,npy-1 ,tile, nregions, mygindex_ew,mylindex_ew,mybindex_ew,mygindexdups_ew, mygindex_tiles_ew, 'gridew.txt' ,uniqpts_loc_ew ,uniqpts_glob_ew)
-  call calc_global_indexjt(is,ie  ,js,je+1 ,npx-1 ,npy   ,tile, nregions, mygindex_ns,mylindex_ns,mybindex_ns,mygindexdups_ns, mygindex_tiles_ns, 'gridns.txt' ,uniqpts_loc_ns ,uniqpts_glob_ns)
+  call calc_global_index(is,ie  ,js,je   ,npx-1 ,npy-1 ,tile, nregions, mygindex   ,mylindex   ,mybindex   ,mygindexdups, mygindex_tiles, 'gridew.txt' ,uniqpts_loc    ,uniqpts_glob)
+  call calc_global_index(is,ie+1,js,je   ,npx   ,npy-1 ,tile, nregions, mygindex_ew,mylindex_ew,mybindex_ew,mygindexdups_ew, mygindex_tiles_ew, 'gridew.txt' ,uniqpts_loc_ew ,uniqpts_glob_ew)
+  call calc_global_index(is,ie  ,js,je+1 ,npx-1 ,npy   ,tile, nregions, mygindex_ns,mylindex_ns,mybindex_ns,mygindexdups_ns, mygindex_tiles_ns, 'gridns.txt' ,uniqpts_loc_ns ,uniqpts_glob_ns)
 
 
   blkidx_g(is:ie,js:je,tile)=mybindex
@@ -1218,7 +1214,7 @@ subroutine dyn_grid_get_elem_coords(ie, rlon, rlat, cdex)
 end subroutine dyn_grid_get_elem_coords
 
 
-subroutine calc_global_indexjt(ilocs,iloce,jlocs,jloce,nxtile,nytile,tile,nregions,locgindex,lindex,bindex,locgindex_justdups,locgindex_tile, name,uniq_pts_loc,uniq_pts_glob)
+subroutine calc_global_index(ilocs,iloce,jlocs,jloce,nxtile,nytile,tile,nregions,locgindex,lindex,bindex,locgindex_justdups,locgindex_tile, name,uniq_pts_loc,uniq_pts_glob)
 
   implicit none
   character(10), intent(in)                                            :: name
@@ -1242,9 +1238,6 @@ subroutine calc_global_indexjt(ilocs,iloce,jlocs,jloce,nxtile,nytile,tile,nregio
   gid = mpp_pe()+1
 
   !-----------------------------------------------------------------------
-  ! zlj, 2014.10.13
-  ! Calculate Global Index
-
   locgindex(:,:) = 0
   locgindex_tile(:,:) = 0
   locgindex_wdups(:,:) = 0
@@ -1298,8 +1291,8 @@ subroutine calc_global_indexjt(ilocs,iloce,jlocs,jloce,nxtile,nytile,tile,nregio
 
      locgindex(ilocs:iloce,jlocs:jloce)=gindex_zeros4dups(ilocs:iloce,jlocs:jloce,tile)
 
-     ! appropriate tiles boundarys (nytile) already 0'd from gindex_zeros4dups need to 
-     ! zero inner tile je boundarys (These are also repeated points between tasks in ns direction))
+     ! appropriate tile boundaries (nytile) already 0'd from gindex_zeros4dups need to 
+     ! zero inner tile je boundaries (These are also repeated points between tasks in ns direction))
      
      if (jloce.ne.nytile) then
         locgindex(ilocs:iloce,jloce)=0
@@ -1366,8 +1359,8 @@ subroutine calc_global_indexjt(ilocs,iloce,jlocs,jloce,nxtile,nytile,tile,nregio
 
      locgindex(ilocs:iloce,jlocs:jloce)=gindex_zeros4dups(ilocs:iloce,jlocs:jloce,tile)
 
-     ! appropriate tiles boundarys (nxtile) already 0'd from gindex_zeros4dups need to 
-     ! zero inner tile ie boundarys (These are also repeated points between tasks in ew direction)
+     ! appropriate tile boundaries (nxtile) already 0'd from gindex_zeros4dups need to 
+     ! zero inner tile ie boundaries (These are also repeated points between tasks in ew direction)
      if (iloce.ne.nxtile) then
         locgindex(iloce,jlocs:jloce)=0
      end if
@@ -1441,6 +1434,6 @@ subroutine calc_global_indexjt(ilocs,iloce,jlocs,jloce,nxtile,nytile,tile,nregio
   deallocate(gindex_tiles)
 
   !-----------------------------------------------------------------------
-end subroutine calc_global_indexjt
+end subroutine calc_global_index
 
 end module dyn_grid

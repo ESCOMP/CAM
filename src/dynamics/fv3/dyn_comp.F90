@@ -355,7 +355,7 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    integer :: istage, ivars
    character (len=108) :: str1, str2, str3
-   integer :: is,isc,isd,ie,iec,ied,js,jsc,jsd,je,jec,jed
+   integer :: is,isd,ie,ied,js,jsd,je,jed
    integer :: fv3idx,icnst_ffsl,k
    character(len=1024) :: fieldtable(pcnst)
 
@@ -496,10 +496,6 @@ subroutine dyn_init(dyn_in, dyn_out)
    ie = Atm(mytile)%bd%ie
    js = Atm(mytile)%bd%js
    je = Atm(mytile)%bd%je
-   isc = Atm(mytile)%bd%isc
-   iec = Atm(mytile)%bd%iec
-   jsc = Atm(mytile)%bd%jsc
-   jec = Atm(mytile)%bd%jec
    isd = Atm(mytile)%bd%isd
    ied = Atm(mytile)%bd%ied
    jsd = Atm(mytile)%bd%jsd

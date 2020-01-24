@@ -51,12 +51,6 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
   use fv_arrays_mod,      only: fv_atmos_type
   use fv_grid_utils_mod,  only: cubed_to_latlon
   use physics_buffer,     only: physics_buffer_desc
-  use shr_infnan_mod,     only: shr_infnan_inf_type, assignment(=), &
-                                shr_infnan_posinf, shr_infnan_neginf, &
-                                shr_infnan_nan, &
-                                shr_infnan_isnan, shr_infnan_isinf, &
-                                shr_infnan_isposinf, shr_infnan_isneginf
-  use shr_sys_mod,        only: shr_sys_abort
 
   implicit none
   
@@ -79,11 +73,8 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
   integer :: tsize                 ! amount of data per grid point passed to physics
   type (fv_atmos_type),  pointer :: Atm(:)
 
-  integer                                   :: is,ie,js,je,isd,ied,jsd,jed
+  integer                                   :: is,ie,js,je
   integer                                   :: ncols
-  logical                                   :: nan_check,inf_check,inf_nan_gchecks
-  integer                                   :: nan_count,inf_count,ii
-  real(r8)                                  :: tmparr(10000,pver)
 
   ! LOCAL Allocatables
   integer, allocatable,  dimension(:,:)     :: bpter    !((ie-is+1)*(je-js+1),0:pver)    ! offsets into block buffer for packing data
@@ -105,10 +96,6 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
   ie = Atm(mytile)%bd%ie
   js = Atm(mytile)%bd%js
   je = Atm(mytile)%bd%je
-  isd = Atm(mytile)%bd%isd
-  ied = Atm(mytile)%bd%ied
-  jsd = Atm(mytile)%bd%jsd
-  jed = Atm(mytile)%bd%jed
 
   ! Allocate temporary arrays to hold data for physics decomposition
   allocate(ps_tmp   ((ie-is+1)*(je-js+1),           1))
@@ -125,27 +112,6 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
 #if ( defined CALC_MASS )
   call fv3_tracer_diags(atm)
 #endif
-  ii=0
-  tmparr(:,:)=0.
-  do j = js, je
-     do i = is, ie
-        ii=ii+1
-        tmparr(ii,:)=atm(mytile)%ua(i,j,1:pver)
-     end do
-  end do
-  nan_check = any(shr_infnan_isnan(tmparr(:,:)))
-  inf_check = any(shr_infnan_isinf(tmparr(:,:)))
-  nan_count = count(shr_infnan_isnan(tmparr(:,:)))
-  inf_count = count(shr_infnan_isinf(tmparr(:,:)))
-  if (nan_check.or.inf_check) then
-     if ((nan_count > 0) .or. (inf_count > 0)) then
-        write(iulog,*)"ua field on nan processor ",atm(mytile)%ua(is:ie,js:je,1:pver)
-        write(iulog,27) real(nan_count,r8), real(inf_count,r8), iam, iam
-27      format("SHR_REPROSUM_CALC: top dp atm ua Input contains ",e12.5, &
-             " NaNs and ", e12.5, " INFs on process ", i7, i7)
-        call shr_sys_abort("shr_reprosum_calc ERROR: NaNs or INFs in input")
-     endif
-  endif
 
   n = 1
   do j = js, je

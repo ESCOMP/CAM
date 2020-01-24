@@ -23,7 +23,7 @@ module restart_dynamics
     integer :: ncol_d_dimid, ncol_d_ew_dimid, ncol_d_ns_dimid,  nlev_dimid, nlevp_dimid, npz
     type(var_desc_t), allocatable :: qdesc(:)
     integer(i8) :: checksum
-    integer :: is,ie,js,je,isc,iec,jsc,jec,isd,ied,jsd,jed
+    integer :: is,ie,js,je
 
 
 !=======================================================================
@@ -148,16 +148,6 @@ subroutine write_restart_dynamics(File, dyn_out)
     ie = Atm(mytile)%bd%ie
     js = Atm(mytile)%bd%js
     je = Atm(mytile)%bd%je
-    isc = Atm(mytile)%bd%isc
-    iec = Atm(mytile)%bd%iec
-    jsc = Atm(mytile)%bd%jsc
-    jec = Atm(mytile)%bd%jec
-
-    isd = Atm(mytile)%bd%isd
-    ied = Atm(mytile)%bd%ied
-    jsd = Atm(mytile)%bd%jsd
-    jed = Atm(mytile)%bd%jed
-
 
     grid_id = cam_grid_id('FFSL')
     grid_id_ew = cam_grid_id('FFSL_EW')
@@ -342,14 +332,6 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
    ie = Atm(mytile)%bd%ie
    js = Atm(mytile)%bd%js
    je = Atm(mytile)%bd%je
-   isc = Atm(mytile)%bd%isc
-   iec = Atm(mytile)%bd%iec
-   jsc = Atm(mytile)%bd%jsc
-   jec = Atm(mytile)%bd%jec
-   isd = Atm(mytile)%bd%isd
-   ied = Atm(mytile)%bd%ied
-   jsd = Atm(mytile)%bd%jsd
-   jed = Atm(mytile)%bd%jed
 
    call pio_seterrorhandling(File, pio_bcast_error, err_handling)
 
