@@ -510,34 +510,6 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
         end do
      end do
   end do
-
-!!$nonhydro       dt_atmos = get_step_size()
-!!$nonhydro       w_diff = get_tracer_index (MODEL_ATMOS, 'w_diff' )
-!!$nonhydro       nt_dyn = Atm(mytile)%flagstruct%ncnst-Atm(mytile)%flagstruct%pnats   !nothing more than nq
-!!$nonhydro       if ( w_diff /= NO_TRACER ) then
-!!$nonhydro          nt_dyn = nt_dyn - 1
-!!$nonhydro       endif
-!!$nonhydro   
-!!$nonhydro       !--- adjust w and heat tendency for non-hydrostatic case
-!!$nonhydro#ifdef USE_Q_DT
-!!$nonhydro       if ( .not.Atm(mytile)%flagstruct%hydrostatic .and. w_diff /= NO_TRACER ) then
-!!$nonhydro          rcp = 1. / cp_air
-!!$nonhydro          !$OMP parallel do default (none) &
-!!$nonhydro          !$OMP              shared (js, je, is, ie, n, w_diff, Atm, q_dt, t_dt, rcp, dt_atmos) &
-!!$nonhydro          !$OMP             private (i, j, k)
-!!$nonhydro          do k=1, Atm(mytile)%npz
-!!$nonhydro             do j=js, je
-!!$nonhydro                do i=is, ie
-!!$nonhydro                   Atm(mytile)%q(i,j,k,w_diff) = q_dt(i,j,k,w_diff) ! w tendency due to phys
-!!$nonhydro                   ! Heating due to loss of KE (vertical diffusion of w)
-!!$nonhydro                   t_dt(i,j,k) = t_dt(i,j,k) - q_dt(i,j,k,w_diff)*rcp*&
-!!$nonhydro                        (Atm(mytile)%w(i,j,k)+0.5*dt_atmos*q_dt(i,j,k,w_diff))
-!!$nonhydro                   Atm(mytile)%w(i,j,k) = Atm(mytile)%w(i,j,k) + dt_atmos*Atm(mytile)%q(i,j,k,w_diff)
-!!$nonhydro                enddo
-!!$nonhydro             enddo
-!!$nonhydro          enddo
-!!$nonhydro       endif
-!!$nonhydro#endif
    
    deallocate(t_dt_tmp)
    deallocate(u_dt_tmp)

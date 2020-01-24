@@ -878,12 +878,6 @@ subroutine read_inidat(dyn_in)
                                    mylindex,mylindex_ew,mylindex_ns, &
                                    mygindexdups,mygindexdups_ew,mygindexdups_ns
   use cam_pio_utils,         only: cam_pio_handle_error
-  use shr_infnan_mod,  only: shr_infnan_inf_type, assignment(=), &
-                             shr_infnan_posinf, shr_infnan_neginf, &
-                             shr_infnan_nan, &
-                             shr_infnan_isnan, shr_infnan_isinf, &
-                             shr_infnan_isposinf, shr_infnan_isneginf
-  use shr_sys_mod, only: shr_sys_abort
   implicit none
 
   type (dyn_import_t), target, intent(inout) :: dyn_in   ! dynamics import
@@ -976,10 +970,6 @@ subroutine read_inidat(dyn_in)
   integer :: grid_id,grid_id_ns,grid_id_ew,ilen,jlen,grid_id_ns_rst,grid_id_ew_rst
   integer :: grid_dimlens(2),grid_dimlens_ns(2),grid_dimlens_ew(2),grid_dimlens_ns_rst(2),grid_dimlens_ew_rst(2)
   real(r8), allocatable :: var3d(:,:,:), var3d_ew(:,:,:), var3d_ew_tmp(:,:,:), var3d_ew_rst(:,:,:), var3d_ns(:,:,:), var3d_ns_tmp(:,:,:), var3d_ns_rst(:,:,:), var2d(:,:)
-
-  logical  nan_check,inf_check,inf_nan_gchecks
-  integer  nan_count,inf_count,ii
-  real(r8) :: tmparr(10000,pver)
 
   Atm => dyn_in%Atm
 
@@ -1183,7 +1173,7 @@ subroutine read_inidat(dyn_in)
            call get_unit_vect2(grid(i,j,1:2),grid(i+1,j,1:2),e1)
            call get_latlon_vector(pa,ex,ey)
            u1 = inner_prod(e1,ex) !u components
-           !jt don't need this           u2 = inner_prod(e1,ey)
+           ! don't need this           u2 = inner_prod(e1,ey)
            ! U
            n=mylindex_ns(i,j)
            atm(mytile)%u(i,j,:) = dbuf3(n, :, 1)*u1
@@ -1320,22 +1310,8 @@ subroutine read_inidat(dyn_in)
      atm(mytile)%ps(is:ie,js:je) = var2d
      checksum=mpp_chksum(atm(mytile)%ps(is:ie,js:je))
 
-     ! PHIS
-!jt     call PIO_Read_Darray(fh_ini, phisdesc, iodesc2d, var2d, ierr)
-!jt     atm(mytile)%phis(is:ie,js:je) = var2d
-!jt     deallocate(var2d)
-     
-     
      allocate(var3d(is:ie,npz,js:je))
      var3d = 0._r8
-     
-!jt     ! OMEGA
-!jt     call PIO_Read_Darray(fh_ini, omegadesc, iodesc3d, var3d, ierr)
-!jt     Atm(mytile)%omga(is:ie,js:je,1:npz)=RESHAPE(var3d,(/ilen,jlen,npz/),ORDER=(/1,3,2/))
-
-!jt     ! DELP
-!jt     call PIO_Read_Darray(fh_ini, delpdesc, iodesc3d, var3d, ierr)
-!jt     atm(mytile)%delp(is:ie,js:je,1:npz)=RESHAPE(var3d,(/ilen,jlen,npz/),ORDER=(/1,3,2/))
      
      ! T
      call PIO_Read_Darray(fh_ini, Tdesc, iodesc3d, var3d, ierr)
@@ -1377,50 +1353,12 @@ subroutine read_inidat(dyn_in)
      call PIO_Read_Darray(fh_ini, Vdesc, iodesc3d, var3d, ierr)
      atm(mytile)%va(is:ie,js:je,1:npz)=RESHAPE(var3d,(/ilen,jlen,npz/),ORDER=(/1,3,2/))
      checksum=mpp_chksum(atm(mytile)%va(is:ie,js:je,1:npz))
-     ii=0
-     tmparr(:,:)=0.
-     do j = js, je
-        do i = is, ie
-           ii=ii+1
-           tmparr(ii,:)=atm(mytile)%va(i,j,1:npz)
-        end do
-     end do
-    nan_check = any(shr_infnan_isnan(tmparr(:,:)))
-    inf_check = any(shr_infnan_isinf(tmparr(:,:)))
-    nan_count = count(shr_infnan_isnan(tmparr(:,:)))
-    inf_count = count(shr_infnan_isinf(tmparr(:,:)))
-    if (nan_check.or.inf_check) then
-       if ((nan_count > 0) .or. (inf_count > 0)) then
-          write(iulog,26) real(nan_count,r8), real(inf_count,r8), iam, iam
-26        format("SHR_REPROSUM_CALC: v Input contains ",e12.5, &
-               " NaNs and ", e12.5, " INFs on process ", i7, i7)
-          call shr_sys_abort("shr_reprosum_calc ERROR: NaNs or INFs in input")
-       endif
-    endif
+
      ! U
      call PIO_Read_Darray(fh_ini, Udesc, iodesc3d, var3d, ierr)
      atm(mytile)%ua(is:ie,js:je,1:npz)   =RESHAPE(var3d,(/ilen,jlen,npz/),ORDER=(/1,3,2/))
      checksum=mpp_chksum(atm(mytile)%ua(is:ie,js:je,1:npz))
-     ii=0
-     tmparr(:,:)=0.
-     do j = js, je
-        do i = is, ie
-           ii=ii+1
-           tmparr(ii,:)=atm(mytile)%ua(i,j,1:pver)
-        end do
-     end do
-    nan_check = any(shr_infnan_isnan(tmparr(:,:)))
-    inf_check = any(shr_infnan_isinf(tmparr(:,:)))
-    nan_count = count(shr_infnan_isnan(tmparr(:,:)))
-    inf_count = count(shr_infnan_isinf(tmparr(:,:)))
-    if (nan_check.or.inf_check) then
-       if ((nan_count > 0) .or. (inf_count > 0)) then
-          write(iulog,27) real(nan_count,r8), real(inf_count,r8), iam, iam
-27        format("SHR_REPROSUM_CALC: ua Input contains ",e12.5, &
-               " NaNs and ", e12.5, " INFs on process ", i7, i7)
-          call shr_sys_abort("shr_reprosum_calc ERROR: NaNs or INFs in input")
-       endif
-    endif
+
      ! Q 
         m=1
         ierr = PIO_Inq_varid(fh_ini, trim(cnst_name(m)), Qdesc(m))
@@ -1473,157 +1411,17 @@ subroutine read_inidat(dyn_in)
      deallocate(var3d)
      deallocate(qdesc)
      
-!!$     !jt check - This is incorrect as the values on the initial condition file hav3 staggered winds in lat/lon coordinates these need to be
-!!$     !jt check   to D-grid coordinates.  For now just interpolate from a grid already read in.
-!!$
-!!$     ! US - For ew and ns grids PIO 1 can not read a single file point to
-!!$     !      multiple processors.  For now I am reading twice, once to get the
-!!$     !      uniq points distributed and the second time to read those points
-!!$     !      required on more than one processor. (ie those points at the 
-!!$     !      n/s e/w DGRID boundaries between processors
-!!$     
-!!$     allocate(var3d_ns(is:ie, npz,js:je+1))
-!!$     allocate(var3d_ns_tmp(is:ie, npz,js:je+1))
-!!$     allocate(var3d_ns_rst(is:ie, npz, js:je+1))
-!!$     var3d_ns = 0._r8
-!!$     var3d_ns_tmp = 0._r8
-!!$     var3d_ns_rst = 0._r8
-!!$     call PIO_Read_Darray(fh_ini, USdesc, iodesc3d_ns, var3d_ns_tmp, ierr)
-!!$     var3d_ns=var3d_ns_tmp
-!!$
-!!$     ! US hack to read in duplicate points on adjacent processor
-!!$     ! should fill in zeros in the decomposed global array after first read
-!!$     call PIO_Read_Darray(fh_ini, USdesc, iodesc3d_ns_rst, var3d_ns_rst, ierr)
-!!$     where(var3d_ns_tmp.eq.0)
-!!$        var3d_ns = var3d_ns_rst
-!!$     end where
-!!$
-!!$     atm(mytile)%u(is:ie,js:je+1,1:npz) = RESHAPE(var3d_ns,(/ilen,jlen+1,npz/),ORDER=(/1,3,2/))
-!!$     
-!!$     deallocate(var3d_ns)
-!!$     deallocate(var3d_ns_rst)
-!!$     deallocate(var3d_ns_tmp)
-!!$     
-!!$     allocate(var3d_ew(is:ie+1, npz, js:je))
-!!$     allocate(var3d_ew_tmp(is:ie+1, npz, js:je))
-!!$     allocate(var3d_ew_rst(is:ie+1, npz, js:je))
-!!$     var3d_ew = 0._r8
-!!$     var3d_ew_tmp = 0._r8
-!!$     var3d_ew_rst = 0._r8
-!!$     
-!!$     ! VS
-!!$     call PIO_Read_Darray(fh_ini, VSdesc, iodesc3d_ew, var3d_ew_tmp, ierr)
-!!$     var3d_ew=var3d_ew_tmp
-!!$     
-!!$     
-!!$     ! VS hack to read in duplicate points on adjacent processor
-!!$     ! should fill in zeros in the decomposed global array after first read
-!!$     call PIO_Read_Darray(fh_ini, VSdesc, iodesc3d_ew_rst, var3d_ew_rst, ierr)
-!!$     where(var3d_ew_tmp.eq.0)
-!!$        var3d_ew = var3d_ew_rst
-!!$     end where
-!!$     atm(mytile)%v(is:ie+1,js:je,1:npz) = RESHAPE(var3d_ew,(/ilen+1,jlen,npz/),ORDER=(/1,3,2/))
-!!$     
-!!$     deallocate(var3d_ew)
-!!$     deallocate(var3d_ew_tmp)
-!!$     deallocate(var3d_ew_rst)
 
      call a2d3djt(atm(mytile)%ua, atm(mytile)%va, atm(mytile)%u, atm(mytile)%v, is,  ie,  js,  je, isd, ied, jsd, jed, npx,npy, npz, atm(mytile)%gridstruct, atm(mytile)%domain)
-
-     ii=0
-     tmparr(:,:)=0.
-     do j = jsd, jed+1
-        do i = isd, ied
-           ii=ii+1
-           tmparr(ii,:)=atm(mytile)%u(i,j,1:pver)
-        end do
-     end do
-    nan_check = any(shr_infnan_isnan(tmparr(:,:)))
-    inf_check = any(shr_infnan_isinf(tmparr(:,:)))
-    nan_count = count(shr_infnan_isnan(tmparr(:,:)))
-    inf_count = count(shr_infnan_isinf(tmparr(:,:)))
-    if (nan_check.or.inf_check) then
-       if ((nan_count > 0) .or. (inf_count > 0)) then
-          write(iulog,29) real(nan_count,r8), real(inf_count,r8), iam, iam
-29        format("SHR_REPROSUM_CALC: after a2d3 %u contains ",e12.5, &
-               " NaNs and ", e12.5, " INFs on process ", i7, i7)
-          call shr_sys_abort("shr_reprosum_calc ERROR: NaNs or INFs in input")
-       endif
-    endif
-
-     ii=0
-     tmparr(:,:)=0.
-     do j = js, je
-        do i = is, ie
-           ii=ii+1
-           tmparr(ii,:)=atm(mytile)%ua(i,j,1:pver)
-        end do
-     end do
-    nan_check = any(shr_infnan_isnan(tmparr(:,:)))
-    inf_check = any(shr_infnan_isinf(tmparr(:,:)))
-    nan_count = count(shr_infnan_isnan(tmparr(:,:)))
-    inf_count = count(shr_infnan_isinf(tmparr(:,:)))
-    if (nan_check.or.inf_check) then
-       if ((nan_count > 0) .or. (inf_count > 0)) then
-          write(iulog,30) real(nan_count,r8), real(inf_count,r8), iam, iam
-30        format("SHR_REPROSUM_CALC: after a2d3 %ua Input contains ",e12.5, &
-               " NaNs and ", e12.5, " INFs on process ", i7, i7)
-          call shr_sys_abort("shr_reprosum_calc ERROR: NaNs or INFs in input")
-       endif
-    endif
 
      ! recreating a set of A winds from D winds using cubed_to_latlon to be consistent with what is done in the energy diagnostics. 
      call cubed_to_latlon(Atm(mytile)%u, Atm(mytile)%v, Atm(mytile)%ua, Atm(mytile)%va, Atm(mytile)%gridstruct, &
           npx, npy, npz, 1, Atm(mytile)%gridstruct%grid_type, Atm(mytile)%domain, Atm(mytile)%gridstruct%nested, Atm(mytile)%flagstruct%c2l_ord, Atm(mytile)%bd)
-     ii=0
-     tmparr(:,:)=0.
-     do j = jsd, jed+1
-        do i = isd, ied
-           ii=ii+1
-           tmparr(ii,:)=atm(mytile)%u(i,j,1:pver)
-        end do
-     end do
-    nan_check = any(shr_infnan_isnan(tmparr(:,:)))
-    inf_check = any(shr_infnan_isinf(tmparr(:,:)))
-    nan_count = count(shr_infnan_isnan(tmparr(:,:)))
-    inf_count = count(shr_infnan_isinf(tmparr(:,:)))
-    if (nan_check.or.inf_check) then
-       if ((nan_count > 0) .or. (inf_count > 0)) then
-          write(iulog,31) real(nan_count,r8), real(inf_count,r8), iam, iam
-31        format("SHR_REPROSUM_CALC: after cubed %u contains ",e12.5, &
-               " NaNs and ", e12.5, " INFs on process ", i7, i7)
-          call shr_sys_abort("shr_reprosum_calc ERROR: NaNs or INFs in input")
-       endif
-    endif
-
-     ii=0
-     tmparr(:,:)=0.
-     do j = js, je
-        do i = is, ie
-           ii=ii+1
-           tmparr(ii,:)=atm(mytile)%ua(i,j,1:pver)
-        end do
-     end do
-    nan_check = any(shr_infnan_isnan(tmparr(:,:)))
-    inf_check = any(shr_infnan_isinf(tmparr(:,:)))
-    nan_count = count(shr_infnan_isnan(tmparr(:,:)))
-    inf_count = count(shr_infnan_isinf(tmparr(:,:)))
-    if (nan_check.or.inf_check) then
-       if ((nan_count > 0) .or. (inf_count > 0)) then
-          write(iulog,32) real(nan_count,r8), real(inf_count,r8), iam, iam
-32        format("SHR_REPROSUM_CALC: after cubed %ua Input contains ",e12.5, &
-               " NaNs and ", e12.5, " INFs on process ", i7, i7)
-          call shr_sys_abort("shr_reprosum_calc ERROR: NaNs or INFs in input")
-       endif
-    endif
-
 
      ! Put the error handling back the way it was
      call pio_seterrorhandling(fh_ini, err_handling)
 
   end if ! analytic_ic_active
-
-
 
   ! If a topo file is specified use it.  This will overwrite the PHIS set by the
   ! analytic IC option.
@@ -1771,7 +1569,6 @@ subroutine read_inidat(dyn_in)
   do j=js,je
      do k=1,pver
         do i=is,ie
-           !$$jt todo check to make sure kappa is same as fv3 (ie kappa_moist or normal kappa)
            Atm(mytile)%pk(i,j,k+1)= Atm(mytile)%pe(i,k+1,j) ** kappa
            Atm(mytile)%peln(i,k+1,j) = log(Atm(mytile)%pe(i,k+1,j))
            Atm(mytile)%pkz(i,j,k) = (Atm(mytile)%pk(i,j,k+1)-Atm(mytile)%pk(i,j,k))/(kappa*(Atm(mytile)%peln(i,k+1,j)-Atm(mytile)%peln(i,k,j)))
@@ -1799,46 +1596,6 @@ subroutine read_inidat(dyn_in)
   call mpp_update_domains( atm(mytile)%pt,   Atm(mytile)%domain )
   call mpp_update_domains( atm(mytile)%delp,   Atm(mytile)%domain )
   call mpp_update_domains( atm(mytile)%q,    Atm(mytile)%domain )
-     ii=0
-     tmparr(:,:)=0.
-     do j = jsd, jed
-        do i = isd, ied
-           ii=ii+1
-           tmparr(ii,:)=atm(mytile)%u(i,j,1:pver)
-        end do
-     end do
-    nan_check = any(shr_infnan_isnan(tmparr(:,:)))
-    inf_check = any(shr_infnan_isinf(tmparr(:,:)))
-    nan_count = count(shr_infnan_isnan(tmparr(:,:)))
-    inf_count = count(shr_infnan_isinf(tmparr(:,:)))
-    if (nan_check.or.inf_check) then
-       if ((nan_count > 0) .or. (inf_count > 0)) then
-          write(iulog,33) real(nan_count,r8), real(inf_count,r8), iam, iam
-33        format("SHR_REPROSUM_CALC: end u Input contains ",e12.5, &
-               " NaNs and ", e12.5, " INFs on process ", i7, i7)
-          call shr_sys_abort("shr_reprosum_calc ERROR: NaNs or INFs in input")
-       endif
-    endif
-     ii=0
-     tmparr(:,:)=0.
-     do j = js, je
-        do i = is, ie
-           ii=ii+1
-           tmparr(ii,:)=atm(mytile)%ua(i,j,1:pver)
-        end do
-     end do
-    nan_check = any(shr_infnan_isnan(tmparr(:,:)))
-    inf_check = any(shr_infnan_isinf(tmparr(:,:)))
-    nan_count = count(shr_infnan_isnan(tmparr(:,:)))
-    inf_count = count(shr_infnan_isinf(tmparr(:,:)))
-    if (nan_check.or.inf_check) then
-       if ((nan_count > 0) .or. (inf_count > 0)) then
-          write(iulog,34) real(nan_count,r8), real(inf_count,r8), iam, iam
-34        format("SHR_REPROSUM_CALC: end ua Input contains ",e12.5, &
-               " NaNs and ", e12.5, " INFs on process ", i7, i7)
-          call shr_sys_abort("shr_reprosum_calc ERROR: NaNs or INFs in input")
-       endif
-    endif
 
   ! Cleanup
   deallocate(pmask)
