@@ -3444,7 +3444,7 @@ sub set_horiz_grid
             $cfg_ref->set('nlat', $a{'nlat'});
             $cfg_ref->set('nlon', $a{'nlon'});
         }
-        elsif ( $dyn_pkg eq 'fvcubed' ) {
+        elsif ( $dyn_pkg eq 'fv3' ) {
             $cfg_ref->set('csnp', $a{'csnp'});
         }
         else {
