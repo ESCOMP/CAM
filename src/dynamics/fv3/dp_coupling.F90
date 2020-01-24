@@ -682,11 +682,6 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d, atm)
 
   type(physics_buffer_desc), pointer :: pbuf_chnk(:)
 
-  ! Compute energy and water integrals of input state
-  do lchnk = begchunk,endchunk
-     pbuf_chnk => pbuf_get_chunk(pbuf2d, lchnk)
-     call check_energy_timestep_init(phys_state(lchnk), phys_tend(lchnk), pbuf_chnk)
-  end do
   !
   ! Evaluate derived quantities
   !
@@ -696,7 +691,7 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d, atm)
   ! to cam physics wet mixing ration based off of dry+vap.
   ! Following this loop call wet_to_dry to convert CAM's dry constituents to their dry mixing ratio.
 
-!!!jt omp parallel do private (lchnk, ncol, k, i, zvirv, pbuf_chnk,m,cam_airmass,cam_totwatermass)
+!!! omp parallel do private (lchnk, ncol, k, i, zvirv, pbuf_chnk,m,cam_airmass,cam_totwatermass)
   do lchnk = begchunk,endchunk
      ncol = get_ncols_p(lchnk)
      do k=1,pver
@@ -804,9 +799,9 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d, atm)
      call qneg3('D_P_COUPLING',lchnk  ,ncol    ,pcols   ,pver    , &
           1, pcnst, qmin  ,phys_state(lchnk)%q)
 
-!     ! Compute energy and water integrals of input state
-!     pbuf_chnk => pbuf_get_chunk(pbuf2d, lchnk)
-!     call check_energy_timestep_init(phys_state(lchnk), phys_tend(lchnk), pbuf_chnk)
+     ! Compute energy and water integrals of input state
+     pbuf_chnk => pbuf_get_chunk(pbuf2d, lchnk)
+     call check_energy_timestep_init(phys_state(lchnk), phys_tend(lchnk), pbuf_chnk)
 
   end do  ! lchnk
 
