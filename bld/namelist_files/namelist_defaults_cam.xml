@@ -2131,19 +2131,6 @@
 <!-- <vtdm4           dyn="fv3nh"                                            > 0.04      </vtdm4>-->
 <fv3_z_tracer                                                               > .F.       </fv3_z_tracer>
 
-
-
-
-<!-- fv3 time manager/diag manager variables =========================== -->
-<fv3_fv_calendar        >NOLEAP     </fv3_fv_calendar>
-<fv3_months             >0          </fv3_months>
-<fv3_days               >0          </fv3_days>
-<fv3_hours              >0          </fv3_hours>
-<fv3_minutes            >0          </fv3_minutes>
-<fv3_seconds            >1800       </fv3_seconds>
-<fv3_restart_interval   >1,0,0,0,0,0</fv3_restart_interval>
-<fv3_memuse_interval    >48         </fv3_memuse_interval>
-
 <!-- ================================================================== -->
 <!-- Defaults for SE                                                    -->
 <!-- ================================================================== -->
