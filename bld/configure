@@ -2413,7 +2413,7 @@ if ($dyn_pkg eq 'fv3') {
     if ($print) { print "creating $fv3core_libdir/Filepath\n"; }
 
     # Create the FV3CORE Makefile from a template and copy it into the fv3core bld directory
-    write_fv3fms_makefile("$camsrcdir/src/dynamics/fv3/Makefile.in.fv3",  "$fv3core_libdir/Makefile", $cfg_ref, $make_cppdefs);
+    write_makefile("$camsrcdir/src/dynamics/fv3/Makefile.in.fv3",  "$fv3core_libdir/Makefile", $cfg_ref, $make_cppdefs);
     if ($print) { print "creating $fv3core_libdir/Makefile\n"; }
 }
 
@@ -3214,40 +3214,6 @@ EOF
     $fh_out->close;
     $fh_in->close;
 }
-
-
-#-------------------------------------------------------------------------------
-
-sub write_fv3fms_makefile
-{
-
-    my ($file_in, $file_out, $cfg_ref, $make_cppdefs) = @_;
-    my  $fh_in = new IO::File;
-    my  $fh_out = new IO::File;
-
-    $fh_out->open(">$file_out") or die "** can't open file: $file_out\n";
-
-    my $cam_root     = $cfg_ref->get('cam_root');
-    my $fv3core_libdir  = $cfg_ref->get('fv3core_libdir');
-
-    print $fh_out  <<"EOF";
-
-
-ROOTDIR             := $cam_root
-EXCLUDE_SOURCES     := fv_iau_mod.F90
-
-EOF
-
-    # Copy the "template" makefile to the new makefile.
-    $fh_in->open("<$file_in") or die "** can't open file: $file_in\n";
-    while (<$fh_in>) {
-        print $fh_out $_;
-    }
-
-    $fh_out->close;
-    $fh_in->close;
-}
-
 
 
 #-------------------------------------------------------------------------------
