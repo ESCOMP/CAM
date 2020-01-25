@@ -78,7 +78,6 @@ module dyn_grid
     real(r8), parameter:: w0_big = 60.  ! to prevent negative w-tracer diffusion
     real(r8), allocatable :: block_extents_g(:,:)
 !-----------------------------------------------------------------------
-! zlj, 2014.10.13
 ! Calculate Global Index
 
 integer, allocatable, target, dimension(:,:) :: mygindex,mygindex_ew,mygindex_ns
@@ -101,22 +100,12 @@ integer, public :: uniqpts_loc_ns = 0     ! number of dynamics columns for Dgrid
 !real(r8), allocatable, dimension(:,:,:) :: grid_ew, grid_ns
 real(r8), pointer, dimension(:,:,:) :: grid_ew, grid_ns
 
-! Calculate Global Index
-! zlj, 2014.10.13
-
-!-----------------------------------------------------------------------
-!-----------------------------------------------------------------------
-! zlj, 2014.10.13
-! Calculate Global Index
-
 public :: mygindex,mygindex_ew,mygindex_ns
 public :: mygindexdups, mygindexdups_ew,mygindexdups_ns
 public :: mygindex_tiles, mygindex_tiles_ew,mygindex_tiles_ns
 public :: mylindex,mylindex_ew,mylindex_ns
 public :: mybindex,mybindex_ew,mybindex_ns
 public :: grid_ew,grid_ns
-! Calculate Global Index
-! zlj, 2014.10.13
 !-----------------------------------------------------------------------
 
     public :: get_block_bounds_d, get_block_gcol_d, get_block_gcol_cnt_d, &

@@ -414,9 +414,6 @@ module fv_control_mod
          target_lon = target_lon * pi/180.
          target_lat = target_lat * pi/180.
 
-! Delay tracer_manager_init call until after constituents added via phys_register
-! Just use ncnst to allow ATM structure to be allocated correctly.
-!
 !--------------------------------------------------
 ! override number of tracers by reading field_table
 !--------------------------------------------------
@@ -608,7 +605,7 @@ module fv_control_mod
     call timing_off('TOTAL')
     call timing_prt( gid )
 
-!jt    call fv_restart_end(Atm, grids_on_this_pe)
+    call fv_restart_end(Atm, grids_on_this_pe, restart_endfcst)
     call fv_io_exit()
 
   ! Free temporary memory from sw_core routines
@@ -617,7 +614,7 @@ module fv_control_mod
     call grid_utils_end
 
     do n = 1, ntilesMe
-!jt       call deallocate_fv_atmos_type(Atm(n))
+       call deallocate_fv_atmos_type(Atm(n))
     end do
 
 
