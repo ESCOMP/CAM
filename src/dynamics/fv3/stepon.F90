@@ -101,11 +101,6 @@ subroutine stepon_run1(dtime_out, phys_state, phys_tend, pbuf2d, dyn_in, dyn_out
 
     dtime_out = get_step_size()
 
-    if (iam.eq.960) write(6,*)'dyn_out ua before diag_dyn_out ',dyn_out%atm(mytile)%ua(dyn_out%Atm(mytile)%bd%is:dyn_out%Atm(mytile)%bd%ie,dyn_out%Atm(mytile)%bd%js:dyn_out%Atm(mytile)%bd%je,1)
-    if (iam.eq.960) write(6,*)'dyn_in ua before diag_dyn_out ',dyn_in%atm(mytile)%ua(dyn_in%Atm(mytile)%bd%is:dyn_in%Atm(mytile)%bd%ie,dyn_in%Atm(mytile)%bd%js:dyn_in%Atm(mytile)%bd%je,1)
-    if (iam.eq.960) write(6,*)'dyn_out u before diag_dyn_out ',dyn_out%atm(mytile)%u(dyn_out%Atm(mytile)%bd%is:dyn_out%Atm(mytile)%bd%ie,dyn_out%Atm(mytile)%bd%js:dyn_out%Atm(mytile)%bd%je+1,1)
-    if (iam.eq.960) write(6,*)'dyn_in u before diag_dyn_out ',dyn_in%atm(mytile)%u(dyn_in%Atm(mytile)%bd%is:dyn_in%Atm(mytile)%bd%ie,dyn_in%Atm(mytile)%bd%js:dyn_in%Atm(mytile)%bd%je+1,1)
-
     call diag_dyn_out(dyn_out,'')
 
     !----------------------------------------------------------
@@ -145,8 +140,6 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out)
     call t_startf('p_d_coupling')
     call p_d_coupling(phys_state, phys_tend, dyn_in)
     call t_stopf('p_d_coupling')
-    if (iam.eq.960) write(6,*)'after p_d_coupling u',dyn_out%atm(mytile)%u(dyn_out%Atm(mytile)%bd%is:dyn_out%Atm(mytile)%bd%ie,dyn_out%Atm(mytile)%bd%js:dyn_out%Atm(mytile)%bd%je+1,1)
-    if (iam.eq.960) write(6,*)'after p_d_coupling u',dyn_in%atm(mytile)%u(dyn_in%Atm(mytile)%bd%is:dyn_in%Atm(mytile)%bd%ie,dyn_in%Atm(mytile)%bd%js:dyn_in%Atm(mytile)%bd%je+1,1)
 
 #if ( defined CALC_ENERGY )
     call t_startf('calc_tot_energy_dynamics_dBD')
@@ -174,11 +167,7 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
 
     call t_barrierf('sync_dyn_run', mpicom)
     call t_startf('dyn_run')
-    if (iam.eq.960) write(6,*)'before dyn_run u',dyn_out%atm(mytile)%u(dyn_out%Atm(mytile)%bd%is:dyn_out%Atm(mytile)%bd%ie,dyn_out%Atm(mytile)%bd%js:dyn_out%Atm(mytile)%bd%je+1,1)
-    if (iam.eq.960) write(6,*)'before dyn_run u',dyn_in%atm(mytile)%u(dyn_in%Atm(mytile)%bd%is:dyn_in%Atm(mytile)%bd%ie,dyn_in%Atm(mytile)%bd%js:dyn_in%Atm(mytile)%bd%je+1,1)
     call dyn_run(dyn_out)
-    if (iam.eq.960) write(6,*)'after dyn_run u',dyn_out%atm(mytile)%u(dyn_out%Atm(mytile)%bd%is:dyn_out%Atm(mytile)%bd%ie,dyn_out%Atm(mytile)%bd%js:dyn_out%Atm(mytile)%bd%je+1,1)
-    if (iam.eq.960) write(6,*)'after dyn_run u',dyn_in%atm(mytile)%u(dyn_in%Atm(mytile)%bd%is:dyn_in%Atm(mytile)%bd%ie,dyn_in%Atm(mytile)%bd%js:dyn_in%Atm(mytile)%bd%je+1,1)
     call t_stopf('dyn_run')
 
 end subroutine stepon_run3
@@ -264,7 +253,6 @@ subroutine diag_dyn_in(dyn_in,suffx)
      end do
   end if
 
-!jt check need to rotate the D grid U/V winds to latlon coordinates before outfld.
   if (hist_fld_active('U_ffsl_ns'//trim(suffx))) then
      do j = js, je+1
         call outfld('U_ffsl_ns'//trim(suffx), RESHAPE(Atm(mytile)%u(is:ie, j, :),(/idim,npz/)), idim, j)
@@ -341,8 +329,6 @@ subroutine diag_dyn_out(dyn_in,suffx)
   js = Atm(mytile)%bd%js
   je = Atm(mytile)%bd%je
 
-  if (iam.eq.960) write(6,*)'ua diag_dyn_out ',atm(mytile)%ua(is:ie,js:je,1)
-
   idim=ie-is+1
   ! Output tracer fields for analysis of advection schemes
   do m_cnst = 1, qsize
@@ -373,7 +359,6 @@ subroutine diag_dyn_out(dyn_in,suffx)
      end do
   end if
 
-!jt check need to rotate the D grid U/V winds to latlon coordinates before outfld.
   if (hist_fld_active('U_ffsl_ns'//trim(suffx))) then
      do j = js, je+1
         call outfld('U_ffsl_ns'//trim(suffx), RESHAPE(Atm(mytile)%u(is:ie, j, :),(/idim,npz/)), idim, j)
