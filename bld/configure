@@ -2413,7 +2413,7 @@ if ($dyn_pkg eq 'fv3') {
     if ($print) { print "creating $fv3core_libdir/Filepath\n"; }
 
     # Create the FV3CORE Makefile from a template and copy it into the fv3core bld directory
-    write_makefile("$camsrcdir/src/dynamics/fv3/Makefile.in.fv3",  "$fv3core_libdir/Makefile", $cfg_ref, $make_cppdefs);
+    write_fv3_makefile("$camsrcdir/src/dynamics/fv3/Makefile.in.fv3",  "$fv3core_libdir/Makefile");
     if ($print) { print "creating $fv3core_libdir/Makefile\n"; }
 }
 
@@ -3202,6 +3202,33 @@ CS_PATH      := $cam_dir/src/physics/cosp2/src/simulator/actsim
 MISR_PATH    := $cam_dir/src/physics/cosp2/src/simulator/MISR_simulator
 MODIS_PATH   := $cam_dir/src/physics/cosp2/src/simulator/MODIS_simulator
 PARASOL_PATH := $cam_dir/src/physics/cosp2/src/simulator/parasol
+
+EOF
+
+    # Copy the "template" makefile to the new makefile.
+    $fh_in->open("<$file_in") or die "** can't open file: $file_in\n";
+    while (<$fh_in>) {
+        print $fh_out $_;
+    }
+
+    $fh_out->close;
+    $fh_in->close;
+}
+
+
+#-------------------------------------------------------------------------------
+sub write_fv3_makefile
+{
+
+    my ($file_in, $file_out) = @_;
+    my  $fh_in = new IO::File;
+    my  $fh_out = new IO::File;
+
+    $fh_out->open(">$file_out") or die "** can't open file: $file_out\n";
+
+    print $fh_out  <<"EOF";
+
+CAM_BLD      := $cam_bld
 
 EOF
 

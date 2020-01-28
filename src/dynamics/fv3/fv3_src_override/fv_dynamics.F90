@@ -1998,7 +1998,6 @@ contains
          end if
          end if
       end if
-
     end subroutine calc_tot_energy_dynamics1
 
 
