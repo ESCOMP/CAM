@@ -74,8 +74,8 @@ contains
        if (timemgr_get_calendar_cf().ne.'gregorian') then
           call endrun('lunar_tides_init: calendar must be gregorian')
        endif
-       call addfld('UT_LUNAR', (/ 'lev' /), 'A','m/s2','U tendency due to lunar tides')
-       call addfld('VT_LUNAR', (/ 'lev' /), 'A','m/s2','U tendency due to lunar tides')
+       call addfld('UT_LUNAR', (/ 'lev' /), 'A','m/s2','Zonal wind tendency due to lunar tides')
+       call addfld('VT_LUNAR', (/ 'lev' /), 'A','m/s2','Meridional wind tendency due to lunar tides')
     end if
  
   end subroutine lunar_tides_init
@@ -83,7 +83,7 @@ contains
   !==========================================================================
   !==========================================================================
   subroutine lunar_tides_tend( state, ptend )
-    use time_manager, only: get_curr_date
+    use time_manager, only: get_curr_date, get_julday
     use physconst,    only: pi, rearth
     use ppgrid,       only: pver
     use cam_history,  only: outfld
@@ -96,9 +96,10 @@ contains
 
     integer :: i, k
 
-    real(r8), parameter :: rad2hrs = 180._r8/pi/15._r8
-    real(r8), parameter :: tod2hrs = 24._r8/86400._r8
     real(r8), parameter :: deg2hrs = 1._r8/15._r8
+    real(r8), parameter :: rad2deg = 180._r8/pi
+    real(r8), parameter :: rad2hrs = rad2deg*deg2hrs
+    real(r8), parameter :: tod2hrs = 24._r8/86400._r8
     real(r8), parameter :: hrs2rad = 1._r8/rad2hrs
     
     if (apply_lunar_tides) then
@@ -108,7 +109,7 @@ contains
        ! calculate the current date:
        call get_curr_date(yr,mm,dd,tod)
        ! convert date to Julian centuries
-       call ymd2jd(yr,mm,dd,tod,jd)
+       jd = get_julday(yr,mm,dd,tod)
        ! calculation relies on time from noon on December 31, 1899, so
        ! subtract 2415020, which corresponds to the Julian date for Dec. 31 1899.
        jd = jd - 2415020._r8
@@ -120,7 +121,7 @@ contains
 
        do i=1,state%ncol
           ! solar local time (hours)
-          lt = dble(tod)*tod2hrs + state%lon(i)*rad2hrs
+          lt = real(tod,kind=r8)*tod2hrs + state%lon(i)*rad2hrs
 
           ! lunar local time
           lun_lt = lt - nu*deg2hrs ! hours
@@ -146,38 +147,4 @@ contains
 
   end subroutine lunar_tides_tend
 
-  !==========================================================================
-  !==========================================================================
-  ! julian date calculation
-  subroutine ymd2jd(yr_in,mon,day,sec,jd)
-
-    integer,  intent(in)  :: yr_in,mon,day,sec
-    real(r8), intent(out) :: jd
-
-    integer :: yr
-    integer :: itimes(3),j, a,y,m
-
-    yr = yr_in
-
-    if (yr < 1000) then
-       if (yr < 40) then
-          yr = yr + 2000
-       else
-          yr = yr + 1900
-       endif
-    endif
-
-    itimes(1) = int(mon)
-    itimes(2) = int(day)
-    itimes(3) = int(yr)
-
-    a = INT((14._r8-dble(itimes(1)))/12._r8)
-    y = itimes(3)+4800-a
-    m = itimes(1)+12*a-3
-    j = itimes(2) + INT((153._r8*dble(m)+2._r8) / 5._r8) + 365*y + &
-         INT(dble(y)/4._r8) - INT(dble(y)/100._r8) + INT(dble(y)/400._r8)- 32045
-    jd = dble(j) + dble(sec)/86400._r8
-
-  end subroutine ymd2jd
-  !==========================================================================
 end module lunar_tides
