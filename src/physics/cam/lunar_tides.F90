@@ -107,12 +107,15 @@ contains
 
        ! calculate the current date:
        call get_curr_date(yr,mm,dd,tod)
-       ! convert date to julian centuries
+       ! convert date to Julian centuries
        call ymd2jd(yr,mm,dd,tod,jd)
+       ! calculation relies on time from noon on December 31, 1899, so
+       ! subtract 2415020, which corresponds to the Julian date for Dec. 31 1899.
        jd = jd - 2415020._r8
        jd = jd / 36525._r8 ! convert to julian centuries
 
-       ! nu = lunar time
+       ! Calculate the lunar local time (nu) based on the the time
+       ! in Julian centuries using the formula given in Chapman and Lindzen (1970)
        nu = -9.26009_r8 + 445267.12165_r8*jd+0.00168_r8*jd*jd !nu in degrees
 
        do i=1,state%ncol
@@ -124,7 +127,11 @@ contains
           lun_lt = lun_lt*hrs2rad ! radians
 
           do k=1,pver
-             ! M2 lunar tide forcing in the zonal and meridional directions
+             ! Calculate the M2 lunar tide forcing in the zonal and meridional directions.
+             ! The forcing is calculated based on the gradient of the M2 tidal
+             ! potential, which is given in Chapman and Lindzen (1970).
+             ! Additional details on the derivation of the forcing are in 
+             ! Pedatella, Liu, and Richmond (2012) 
              ptend%u(i,k) = (-1._r8/((state%zm(i,k)+rearth)*cos(state%lat(i))))*2.456_r8*3._r8 *  &
                   ((state%zm(i,k)+rearth)/rearth)**2*cos(state%lat(i))*cos(state%lat(i))*2._r8*sin(2._r8*lun_lt)
              ptend%v(i,k) = (1._r8/(state%zm(i,k)+rearth))*2.456_r8*3._r8 * &
