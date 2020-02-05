@@ -2013,7 +2013,7 @@
 <se_nu_p se_refined_mesh="1" hypervis_type="scalar" > 1.5625e13 </se_nu_p>
 
 <se_nu_top               > 5.0e5 </se_nu_top>
-<se_nu_top waccm_phys="1"> 1.0e6 </se_nu_top>
+<se_nu_top waccm_phys="1"> 1.5e6 </se_nu_top>
 
 <se_raytau0                      >  0.0 </se_raytau0>
 <se_raykrange                    >  0.5  </se_raykrange>
