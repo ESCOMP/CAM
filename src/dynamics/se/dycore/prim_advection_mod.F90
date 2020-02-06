@@ -980,7 +980,7 @@ contains
     real(r8), parameter                    :: rad2deg = 180.0_r8/pi
     integer :: region_num_threads,qbeg,qend
     type (hybrid_t) :: hybridnew,hybridnew2 
-    
+    real (kind=r8) :: ptop
     ! reference levels:
     !   dp(k) = (hyai(k+1)-hyai(k))*ps0 + (hybi(k+1)-hybi(k))*ps(i,j)
     !   hybi(1)=0          pure pressure at top of atmosphere
@@ -996,6 +996,7 @@ contains
     ! reference levels:
     !    dp(k) = (hyai(k+1)-hyai(k))*ps0 + (hybi(k+1)-hybi(k))*ps
     !
+    ptop = hvcoord%hyai(1)*hvcoord%ps0
     do ie=nets,nete
       if (lcp_moist) then
         !
@@ -1014,7 +1015,7 @@ contains
       !  REMAP u,v,T from levels in dp3d() to REF levels
       !
       ! update final ps
-      elem(ie)%state%psdry(:,:) = hvcoord%hyai(1)*hvcoord%ps0 + &
+      elem(ie)%state%psdry(:,:) = ptop + &
            sum(elem(ie)%state%dp3d(:,:,:,np1),3)
       !
       do k=1,nlev
@@ -1065,7 +1066,7 @@ contains
 !      else
 !        call remap1(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp),np,1,qsize,qsize,dp_star_dry,dp_dry)
 !      endif
-      call remap1(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp),np,1,qsize,qsize,dp_star_dry,dp_dry)
+      call remap1(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp),np,1,qsize,qsize,dp_star_dry,dp_dry,0,ptop)
       !
       ! compute moist reference pressure level thickness
       !
@@ -1077,12 +1078,14 @@ contains
         end do
       end do
       
+!#define fv3remap
+#ifndef fv3remap      
       dp_inv=1.0_R8/dp_moist !for efficiency      
       !
       ! remap internal energy and back out temperature
-      !      
+      !
       if (lcp_moist) then
-        call remap1(internal_energy_star,np,1,1,1,dp_star_dry,dp_dry)
+        call remap1(internal_energy_star,np,1,1,1,dp_star_dry,dp_dry,2,ptop)
         !
         ! compute sum c^(l)_p*m^(l)*dp on arrival (Eulerian) grid
         !       
@@ -1094,22 +1097,30 @@ contains
         elem(ie)%state%t(:,:,:,np1)=internal_energy_star/ttmp(:,:,:,2)
       else
         internal_energy_star(:,:,:)=elem(ie)%state%t(:,:,:,np1)*dp_star_moist
-        call remap1(internal_energy_star,np,1,1,1,dp_star_moist,dp_moist)
-        elem(ie)%state%t(:,:,:,np1)=internal_energy_star*dp_inv
+        call remap1(internal_energy_star,np,1,1,1,dp_star_moist,dp_moist,2,ptop)
+        elem(ie)%state%t(:,:,:,np1)=internal_energy_star*dp_inv        
       end if
+#else
+      call remap1(elem(ie)%state%t(:,:,:,np1),np,1,1,1,dp_star_moist,dp_moist,2,ptop)
+#endif      
       !
       ! remap velocity components
-      !      
+      !
+#ifndef fv3remap                  
       ttmp(:,:,:,1)=elem(ie)%state%v(:,:,1,:,np1)*dp_star_moist
       ttmp(:,:,:,2)=elem(ie)%state%v(:,:,2,:,np1)*dp_star_moist
-
-      call remap1(ttmp,np,1,2,2,dp_star_moist,dp_moist) ! remap with PPM filter
+#else
+      ttmp(:,:,:,1)=elem(ie)%state%v(:,:,1,:,np1)
+      ttmp(:,:,:,2)=elem(ie)%state%v(:,:,2,:,np1)
+#endif      
+      call remap1(ttmp,np,1,2,2,dp_star_moist,dp_moist,3,ptop) ! remap with PPM filter
       !call remap1_nofilter(ttmp,np,2,dp_star_moist,dp_moist)
-      
+#ifndef fv3remap            
       if ( .not. se_prescribed_wind_2d ) &
            elem(ie)%state%v(:,:,1,:,np1)=ttmp(:,:,:,1)*dp_inv
       if ( .not. se_prescribed_wind_2d ) &
            elem(ie)%state%v(:,:,2,:,np1)=ttmp(:,:,:,2)*dp_inv
+#endif      
 #ifdef REMAP_TE
         ! back out T from TE
       elem(ie)%state%t(:,:,:,np1) = &
@@ -1159,11 +1170,11 @@ contains
           !$OMP PARALLEL NUM_THREADS(tracer_num_threads), DEFAULT(SHARED), PRIVATE(hybridnew2,qbeg,qend)
           hybridnew2 = config_thread_region(hybrid,'ctracer')
           call get_loop_ranges(hybridnew2, qbeg=qbeg, qend=qend)
-          call remap1(cdp,nc,qbeg,qend,ntrac,dpc_star,dpc)
+          call remap1(cdp,nc,qbeg,qend,ntrac,dpc_star,dpc,0,ptop)
           !$OMP END PARALLEL 
           call omp_set_nested(.false.)
         else
-          call remap1(cdp,nc,1,ntrac,ntrac,dpc_star,dpc)
+          call remap1(cdp,nc,1,ntrac,ntrac,dpc_star,dpc,0,ptop)
         endif
         do k=1,nlev
           do j=1,nc
