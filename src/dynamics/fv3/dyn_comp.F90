@@ -146,7 +146,13 @@ subroutine dyn_readnl(nlfilename)
        fv3_qsize_condensate_loading, &
        fv3_npes
 
-  character(len = 256), dimension(5) :: group_names = (/"main_nml","fv_core_nml","surf_map_nml","test_case_nml","fms_nml"/)
+  character(len = 20), dimension(5) :: group_names = (/  &
+  "main_nml            ", &
+  "fv_core_nml         ", &
+  "surf_map_nml        ", &
+  "test_case_nml       ", &
+  "fms_nml             "/)
+
   character(len=256) :: inrec  ! first 80 characters of input record
   character(len=256) :: inrec2 ! left adjusted input record
 

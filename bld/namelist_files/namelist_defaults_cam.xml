@@ -121,22 +121,29 @@
 <ncdata dyn="fv"  hgrid="4x5"       nlev="130" waccmx="1"  ic_ymd="101" aquaplanet="1">atm/waccm/ic/waccmx_mam4_aqua_4x5_L130_c180803.nc</ncdata>
 <ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="130" waccmx="1"  ic_ymd="101" aquaplanet="1">atm/waccm/ic/waccmx_mam4_aqua_1.9x2.5_L130_c180803.nc</ncdata>
 
-
+cami_0000-01-01_C192_L26_c100513.nc
 <ncdata dyn="fv3"   hgrid="C24"  nlev="32"  aquaplanet="1"  ic_ymd="101" >atm/cam/inic/fv3/aqua_0006-01-01_C24_L32_c161020.nc</ncdata>
 <ncdata dyn="fv3"   hgrid="C48"  nlev="32"  aquaplanet="1"  ic_ymd="101" >atm/cam/inic/fv3/aqua_0006-01-01_C48_L32_c161020.nc</ncdata>
+<ncdata dyn="fv3"   hgrid="C48"  nlev="26"  aquaplanet="1"  ic_ymd="101" >atm/cam/inic/fv3/aqua_0006-01-01_C48_L26_c161020.nc</ncdata>
 <ncdata dyn="fv3"   hgrid="C96"  nlev="32"  aquaplanet="1"  ic_ymd="101" >atm/cam/inic/fv3/aqua_0006-01-01_C96_L32_c161020.nc</ncdata>
 <ncdata dyn="fv3"   hgrid="C96"  nlev="26"  aquaplanet="1"  ic_ymd="101" >atm/cam/inic/fv3/aqua_0006-01-01_C96_L26_c161020.nc</ncdata>
 <ncdata dyn="fv3"   hgrid="C192" nlev="32"  aquaplanet="1"  ic_ymd="101" >atm/cam/inic/fv3/aqua_0006-01-01_C192_L32_c161020.nc</ncdata>
 <ncdata dyn="fv3"   hgrid="C384" nlev="32"  aquaplanet="1"  ic_ymd="101" >atm/cam/inic/fv3/aqua_0006-01-01_C384_L32_c161020.nc</ncdata>
 <ncdata dyn="fv3"   hgrid="C24"  nlev="32"                  ic_ymd="101">atm/cam/inic/fv3/cami-mam3_0000-01-01_C24_L32_c141031.nc</ncdata>
 <ncdata dyn="fv3"   hgrid="C24"  nlev="30"                  ic_ymd="101">atm/cam/inic/fv3/cami-mam3_0000-01-01_C24_L30_c100618.nc</ncdata>
+<ncdata dyn="fv3"   hgrid="C24"  nlev="26"                  ic_ymd="101">atm/cam/inic/fv3/cami_0000-01-01_C24_L26_c100513.nc</ncdata>
+<ncdata dyn="fv3"   hgrid="C48"  nlev="30"                  ic_ymd="101">atm/cam/inic/fv3/cami-mam3_0000-01-01_C48_L30_c100618.nc</ncdata>
 <ncdata dyn="fv3"   hgrid="C48"  nlev="32"                  ic_ymd="101">atm/cam/inic/fv3/cami-mam3_0000-01-01_C48_L32_c141031.nc</ncdata>
+<ncdata dyn="fv3"   hgrid="C48"  nlev="26"                  ic_ymd="101">atm/cam/inic/fv3/cami_0000-01-01_C48_L26_c100513.nc</ncdata>
 <ncdata dyn="fv3"   hgrid="C96"  nlev="32"                  ic_ymd="101">atm/cam/inic/fv3/cami-mam3_0000-01-01_C96_L32_c141031.nc</ncdata>
 <ncdata dyn="fv3"   hgrid="C96"  nlev="30"                  ic_ymd="101">atm/cam/inic/fv3/cami-mam3_0000-01-01_C96_L30_c140916.nc</ncdata>
+<ncdata dyn="fv3"   hgrid="C96"  nlev="26"                  ic_ymd="101">atm/cam/inic/fv3/cami_0000-01-01_C96_L26_c100513.nc</ncdata>
 <ncdata dyn="fv3"   hgrid="C192" nlev="32"                  ic_ymd="101">atm/cam/inic/fv3/cami-mam3_0000-01-01_C192_L32_c141031.nc</ncdata>
 <ncdata dyn="fv3"   hgrid="C192" nlev="30"                  ic_ymd="101">atm/cam/inic/fv3/cami-mam3_0000-01-01_C192_L30_c100618.nc</ncdata>
+<ncdata dyn="fv3"   hgrid="C192" nlev="26"                  ic_ymd="101">atm/cam/inic/fv3/cami_0000-01-01_C192_L26_c100513.nc</ncdata>
 <ncdata dyn="fv3"   hgrid="C384" nlev="32"                  ic_ymd="101">atm/cam/inic/fv3/cami-mam3_0000-01-01_C384_L32_c141031.nc</ncdata>
 <ncdata dyn="fv3"   hgrid="C384" nlev="30"                  ic_ymd="101">atm/cam/inic/fv3/cami-mam3_0000-01-01_C384_L30_c100618.nc</ncdata>
+<ncdata dyn="fv3"   hgrid="C384" nlev="26"                  ic_ymd="101">atm/cam/inic/fv3/cami_0000-01-01_C384_L26_c100513.nc</ncdata>
 
 <ncdata dyn="fv3"   hgrid="C24"  nlev="70"                  ic_ymd="101" >atm/waccm/ic/f2000.waccm-mam3_C24_L70.cam2.i.0017-01-01.c120410.nc</ncdata>
 <ncdata dyn="fv3"   hgrid="C48"  nlev="70"                  ic_ymd="101" >atm/waccm/ic/f2000.waccm-mam3_C48_L70.cam2.i.0017-01-01.c120410.nc</ncdata>
@@ -490,14 +497,29 @@
 <!-- Time-variant CO2 fossil fuel emissions -->
 <co2flux_fuel_file hgrid="0.9x1.25" sim_year="1850-2000">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_0.9x1.25_c20181011.nc</co2flux_fuel_file>
 <co2flux_fuel_file hgrid="1.9x2.5"  sim_year="1850-2000">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_1.9x2.5_c20181011.nc</co2flux_fuel_file>
+<co2flux_fuel_file hgrid="C384" sim_year="1850-2000">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_0.9x1.25_c20181011.nc</co2flux_fuel_file>
+<co2flux_fuel_file hgrid="C192" sim_year="1850-2000">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_0.9x1.25_c20181011.nc</co2flux_fuel_file>
+<co2flux_fuel_file hgrid="C96" sim_year="1850-2000">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_0.9x1.25_c20181011.nc</co2flux_fuel_file>
+<co2flux_fuel_file hgrid="C48" sim_year="1850-2000">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_1.9x2.5_c20181011.nc</co2flux_fuel_file>
+<co2flux_fuel_file hgrid="C24" sim_year="1850-2000">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_1.9x2.5_c20181011.nc</co2flux_fuel_file>
 
 <ac_CO2_emis hgrid="0.9x1.25">ac_CO2_filelist_175001-201512_fv_0.9x1.25_c20181011.txt</ac_CO2_emis>
 <ac_CO2_emis hgrid="1.9x2.5" >ac_CO2_filelist_175001-201512_fv_1.9x2.5_c20181011.txt</ac_CO2_emis>
+<ac_CO2_emis hgrid="C384">ac_CO2_filelist_175001-201512_fv_0.9x1.25_c20181011.txt</ac_CO2_emis>
+<ac_CO2_emis hgrid="C192">ac_CO2_filelist_175001-201512_fv_0.9x1.25_c20181011.txt</ac_CO2_emis>
+<ac_CO2_emis hgrid="C96">ac_CO2_filelist_175001-201512_fv_0.9x1.25_c20181011.txt</ac_CO2_emis>
+<ac_CO2_emis hgrid="C48" >ac_CO2_filelist_175001-201512_fv_1.9x2.5_c20181011.txt</ac_CO2_emis>
+<ac_CO2_emis hgrid="C24" >ac_CO2_filelist_175001-201512_fv_1.9x2.5_c20181011.txt</ac_CO2_emis>
 <aircraft_datapath >atm/cam/ggas</aircraft_datapath>
 <aircraft_type     >SERIAL</aircraft_type>
 <!-- These CO2 aircraft emission files are the same as in the aircraft_specifier file above (for cam.input_data_list) -->
 <aircraft_co2_file  hgrid="0.9x1.25">atm/cam/ggas/emissions-cmip6_CO2_anthro_ac_175001-201512_fv_0.9x1.25_c20181011.nc</aircraft_co2_file>
 <aircraft_co2_file  hgrid="1.9x2.5" >atm/cam/ggas/emissions-cmip6_CO2_anthro_ac_175001-201512_fv_1.9x2.5_c20181011.nc</aircraft_co2_file>
+<aircraft_co2_file  hgrid="C384">atm/cam/ggas/emissions-cmip6_CO2_anthro_ac_175001-201512_fv_0.9x1.25_c20181011.nc</aircraft_co2_file>
+<aircraft_co2_file  hgrid="C192">atm/cam/ggas/emissions-cmip6_CO2_anthro_ac_175001-201512_fv_0.9x1.25_c20181011.nc</aircraft_co2_file>
+<aircraft_co2_file  hgrid="C96">atm/cam/ggas/emissions-cmip6_CO2_anthro_ac_175001-201512_fv_0.9x1.25_c20181011.nc</aircraft_co2_file>
+<aircraft_co2_file  hgrid="C48" >atm/cam/ggas/emissions-cmip6_CO2_anthro_ac_175001-201512_fv_1.9x2.5_c20181011.nc</aircraft_co2_file>
+<aircraft_co2_file  hgrid="C24" >atm/cam/ggas/emissions-cmip6_CO2_anthro_ac_175001-201512_fv_1.9x2.5_c20181011.nc</aircraft_co2_file>
 
 <!-- DMS surface emissions -->
 <bndtvdms          hgrid="128x256"  >atm/cam/scyc/DMS_emissions_128x256_clim_c040122.nc</bndtvdms>
@@ -2004,8 +2026,8 @@
 
 <fv3_clock_grain dyn="fv3"  >LOOP</fv3_clock_grain>
 
-<fv3_domains_stack_size dyn="fv3">3000000</fv3_domains_stack_size>
-<fv3_stack_size         dyn="fv3">4000000</fv3_stack_size>
+<fv3_domains_stack_size dyn="fv3">6000000</fv3_domains_stack_size>
+<fv3_stack_size         dyn="fv3">6000000</fv3_stack_size>
 
 <fv3_print_memory_usage dyn="fv3">.true.</fv3_print_memory_usage>
 
@@ -2044,6 +2066,7 @@
 <fv3_qsize_condensate_loading phys="cam4"                               > 3         </fv3_qsize_condensate_loading>
 <fv3_qsize_condensate_loading phys="cam5"                               > 3         </fv3_qsize_condensate_loading>
 <fv3_qsize_condensate_loading phys="cam6"                               > 5         </fv3_qsize_condensate_loading>
+<fv3_qsize_condensate_loading phys="cam6"   microphys="mg3"             > 6         </fv3_qsize_condensate_loading>
 <fv3_qsize_condensate_loading phys="held_suarez"                        > 1         </fv3_qsize_condensate_loading>
 <fv3_qsize_condensate_loading phys="adiabatic"                          > 1         </fv3_qsize_condensate_loading>
 <fv3_qsize_condensate_loading phys="kessler"                            > 3         </fv3_qsize_condensate_loading>
@@ -2052,6 +2075,7 @@
 <fv3_nwat phys="cam4"                                                       > 3         </fv3_nwat>
 <fv3_nwat phys="cam5"                                                       > 3         </fv3_nwat>
 <fv3_nwat phys="cam6"                                                       > 5         </fv3_nwat>
+<fv3_nwat phys="cam6"  microphys="mg3"                                      > 6         </fv3_nwat>
 <fv3_nwat phys="held_suarez"                                                > 1         </fv3_nwat>
 <fv3_nwat phys="adiabatic"                                                  > 1         </fv3_nwat>
 <fv3_nwat phys="kessler"                                                    > 3         </fv3_nwat>
