@@ -1036,6 +1036,9 @@
 !$omp parallel do private(ilat)
       do ilat = idlat,nmlath-idlat
          pot_smo(:,ilat) = matmul( pot(:,ilat-idlat:ilat+idlat),w )*wgt
+      end do
+
+      do ilat = idlat,nmlath-idlat
          pot(:,ilat) = pot_smo(:,ilat)
       end do
 
