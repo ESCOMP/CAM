@@ -149,8 +149,8 @@ contains
     lchnk = state%lchnk
     ncol  = state%ncol
 
-    lyr_surf = 1
-    lyr_toa = 30
+    lyr_surf = 30
+    lyr_toa = 1
 
     ! initialize individual parameterization tendencies
     lq           = .false.
