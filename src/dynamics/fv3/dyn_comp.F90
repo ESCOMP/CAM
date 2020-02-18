@@ -301,6 +301,7 @@ subroutine dyn_init(dyn_in, dyn_out)
   use physconst,       only: cpwv, cpliq, cpice
   use time_manager,    only: get_step_size,get_curr_date
   use time_manager_mod,only: time_type
+  use units,           only: getunit, freeunit
 
   ! arguments:
    type (dyn_import_t),     intent(out) :: dyn_in
@@ -367,6 +368,7 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    real, parameter:: cv_vap = 3.*rvgas        ! < 1384.5
    real, parameter:: cv_air =  cp_air - rdgas !< = rdgas * (7/2-1) = 2.5*rdgas=717.68
+   integer        :: unito
 
    !-----------------------------------------------------------------------
 
@@ -477,14 +479,28 @@ subroutine dyn_init(dyn_in, dyn_out)
       end if
    end do
 
-   !---------Space in ATM structure for constituents was allocated in dyn_init.
-   !---------now that cam has registered all tracers create entries in fms tracer_manager
-   !---------we will build fms fieldtable internal file that can be read by tracermanager
-   do i=1,pcnst
-      write(fieldtable(i), '(a,a,a)') '"tracer" "atmos_mod" "'//trim(cnst_name_ffsl(i))//'" /'
-   end do
-   
-   call tracer_manager_init(fieldtable)
+   if (masterproc) then
+
+      write(iulog,*) 'Creating field_table file to load tracer fields into fv3'
+      unito = getunit()
+      ! overwrite file if it exists.
+      open( unito, file='field_table', status='replace' )
+      do i=1,pcnst
+         write(unito, '(a,a,a)') '"tracer" "atmos_mod" "'//trim(cnst_name_ffsl(i))//'" /'
+      end do
+      close(unito)
+      call freeunit(unito)
+      call tracer_manager_init()
+   end if
+!!$   !---------This code requires minor mods to FMS field_manager and tracer_manager.
+!!$   !---------Space in ATM structure for constituents was allocated in dyn_init.
+!!$   !---------now that cam has registered all tracers create entries in fms tracer_manager
+!!$   !---------we will build fms fieldtable internal file that can be read by tracermanager
+!!$   do i=1,pcnst
+!!$      write(fieldtable(i), '(a,a,a)') '"tracer" "atmos_mod" "'//trim(cnst_name_ffsl(i))//'" /'
+!!$   end do
+!!$
+!!$   call tracer_manager_init(fieldtable)
 
 
    do m=1,pcnst  
