@@ -57,11 +57,16 @@ public :: &
 
 type dyn_import_t
    !
-   ! Number of cells, edges, and vertices in this block
+   ! Number of cells, edges, vertices, and vertical layers in this block
    !
-   integer                             :: nCells     ! Number of cells, including halo cells
-   integer                             :: nEdges     ! Number of edges, including halo edges
-   integer                             :: nVertices  ! Number of vertices, including halo vertices
+   integer                        :: nCells           ! Number of cells, including halo cells
+   integer                        :: nEdges           ! Number of edges, including halo edges
+   integer                        :: nVertices        ! Number of vertices, including halo vertices
+   integer                        :: nVertLevels      ! Number of vertical layers
+
+   integer                        :: nCellsSolve      ! Number of cells, excluding halo cells
+   integer                        :: nEdgesSolve      ! Number of edges, excluding halo edges
+   integer                        :: nVerticesSolve   ! Number of vertices, excluding halo vertices
 
    !
    ! State that is directly prognosed by the dycore
@@ -111,8 +116,6 @@ type dyn_import_t
    real(r8), dimension(:,:),   pointer :: rho     ! Dry density [kg/m^3]             (nver,ncol)
    real(r8), dimension(:,:),   pointer :: ux      ! Zonal veloc at center [m/s]      (nver,ncol)
    real(r8), dimension(:,:),   pointer :: uy      ! Meridional veloc at center [m/s] (nver,ncol)
-   real(r8), dimension(:,:),   pointer :: pmid    ! Full non-hydrostatic pressure [Pa]
-                                                  ! at layer midpoints               (nver,ncol)
 
    !
    ! Tendencies from physics
@@ -127,11 +130,16 @@ end type dyn_import_t
 
 type dyn_export_t
    !
-   ! Number of cells, edges, and vertices in this block
+   ! Number of cells, edges, vertices, and vertical layers in this block
    !
-   integer                             :: nCells     ! Number of cells, including halo cells
-   integer                             :: nEdges     ! Number of edges, including halo edges
-   integer                             :: nVertices  ! Number of vertices, including halo vertices
+   integer                        :: nCells           ! Number of cells, including halo cells
+   integer                        :: nEdges           ! Number of edges, including halo edges
+   integer                        :: nVertices        ! Number of vertices, including halo vertices
+   integer                        :: nVertLevels      ! Number of vertical layers
+
+   integer                        :: nCellsSolve      ! Number of cells, excluding halo cells
+   integer                        :: nEdgesSolve      ! Number of edges, excluding halo edges
+   integer                        :: nVerticesSolve   ! Number of vertices, excluding halo vertices
 
    !
    ! State that is directly prognosed by the dycore
@@ -168,8 +176,10 @@ type dyn_export_t
    real(r8), dimension(:,:),   pointer :: rho     ! Dry density [kg/m^3]             (nver,ncol)
    real(r8), dimension(:,:),   pointer :: ux      ! Zonal veloc at center [m/s]      (nver,ncol)
    real(r8), dimension(:,:),   pointer :: uy      ! Meridional veloc at center [m/s] (nver,ncol)
-   real(r8), dimension(:,:),   pointer :: pmid    ! Full non-hydrostatic pressure [Pa]
+   real(r8), dimension(:,:),   pointer :: pmiddry ! Dry hydrostatic pressure [Pa]
                                                   ! at layer midpoints               (nver,ncol)
+   real(r8), dimension(:,:),   pointer :: pintdry ! Dry hydrostatic pressure [Pa]
+                                                  ! at layer interfaces            (nver+1,ncol)
 end type dyn_export_t
 
 real(r8), parameter :: rad2deg = 180.0_r8 / pi
@@ -277,6 +287,10 @@ subroutine dyn_init(dyn_in, dyn_out)
    integer, pointer :: nCells
    integer, pointer :: nEdges
    integer, pointer :: nVertices
+   integer, pointer :: nVertLevels
+   integer, pointer :: nCellsSolve
+   integer, pointer :: nEdgesSolve
+   integer, pointer :: nVerticesSolve
    integer, pointer :: index_qv
 
    !----------------------------------------------------------------------------
@@ -301,6 +315,18 @@ subroutine dyn_init(dyn_in, dyn_out)
    call mpas_pool_get_dimension(mesh_pool, 'nVertices', nVertices)
    dyn_in % nVertices = nVertices
 
+   call mpas_pool_get_dimension(mesh_pool, 'nVertLevels', nVertLevels)
+   dyn_in % nVertLevels = nVertLevels
+
+   call mpas_pool_get_dimension(mesh_pool, 'nCellsSolve', nCellsSolve)
+   dyn_in % nCellsSolve = nCellsSolve
+
+   call mpas_pool_get_dimension(mesh_pool, 'nEdgesSolve', nEdgesSolve)
+   dyn_in % nEdgesSolve = nEdgesSolve
+
+   call mpas_pool_get_dimension(mesh_pool, 'nVerticesSolve', nVerticesSolve)
+   dyn_in % nVerticesSolve = nVerticesSolve
+
    call mpas_pool_get_array(state_pool, 'u',                      dyn_in % uperp,   timeLevel=2)
    call mpas_pool_get_array(state_pool, 'w',                      dyn_in % w,       timeLevel=2)
    call mpas_pool_get_array(state_pool, 'theta_m',                dyn_in % theta_m, timeLevel=2)
@@ -324,7 +350,6 @@ subroutine dyn_init(dyn_in, dyn_out)
    call mpas_pool_get_array(diag_pool,  'rho',                    dyn_in % rho)
    call mpas_pool_get_array(diag_pool,  'uReconstructZonal',      dyn_in % ux)
    call mpas_pool_get_array(diag_pool,  'uReconstructMeridional', dyn_in % uy)
-   call mpas_pool_get_array(diag_pool,  'pressure',               dyn_in % pmid)
 
    call mpas_pool_get_array(tend_physics_pool, 'tend_ru_physics',     dyn_in % ru_tend)
    call mpas_pool_get_array(tend_physics_pool, 'tend_rtheta_physics', dyn_in % rtheta_tend)
@@ -333,6 +358,7 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    !
    ! Let dynamics export state point to memory managed by MPAS-Atmosphere
+   ! Exception: pmiddry and pintdry are not managed by the MPAS infrastructure
    !
    call mpas_pool_get_dimension(mesh_pool, 'nCells', nCells)
    dyn_out % nCells = nCells
@@ -342,6 +368,18 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    call mpas_pool_get_dimension(mesh_pool, 'nVertices', nVertices)
    dyn_out % nVertices = nVertices
+
+   call mpas_pool_get_dimension(mesh_pool, 'nVertLevels', nVertLevels)
+   dyn_out % nVertLevels = nVertLevels
+
+   call mpas_pool_get_dimension(mesh_pool, 'nCellsSolve', nCellsSolve)
+   dyn_out % nCellsSolve = nCellsSolve
+
+   call mpas_pool_get_dimension(mesh_pool, 'nEdgesSolve', nEdgesSolve)
+   dyn_out % nEdgesSolve = nEdgesSolve
+
+   call mpas_pool_get_dimension(mesh_pool, 'nVerticesSolve', nVerticesSolve)
+   dyn_out % nVerticesSolve = nVerticesSolve
 
    call mpas_pool_get_array(state_pool, 'u',                      dyn_out % uperp,   timeLevel=1)
    call mpas_pool_get_array(state_pool, 'w',                      dyn_out % w,       timeLevel=1)
@@ -361,7 +399,9 @@ subroutine dyn_init(dyn_in, dyn_out)
    call mpas_pool_get_array(diag_pool,  'rho',                    dyn_out % rho)
    call mpas_pool_get_array(diag_pool,  'uReconstructZonal',      dyn_out % ux)
    call mpas_pool_get_array(diag_pool,  'uReconstructMeridional', dyn_out % uy)
-   call mpas_pool_get_array(diag_pool,  'pressure',               dyn_out % pmid)
+
+   allocate(dyn_out % pmiddry(nVertLevels,   nCells))
+   allocate(dyn_out % pintdry(nVertLevels+1, nCells))
 
    if (initial_run) then
       call read_inidat(dyn_in)
@@ -409,6 +449,10 @@ subroutine dyn_final(dyn_in, dyn_out)
    dyn_in % nCells = 0
    dyn_in % nEdges = 0
    dyn_in % nVertices = 0
+   dyn_in % nVertLevels = 0
+   dyn_in % nCellsSolve = 0
+   dyn_in % nEdgesSolve = 0
+   dyn_in % nVerticesSolve = 0
    nullify(dyn_in % uperp)
    nullify(dyn_in % w)
    nullify(dyn_in % theta_m)
@@ -427,7 +471,6 @@ subroutine dyn_final(dyn_in, dyn_out)
    nullify(dyn_in % rho)
    nullify(dyn_in % ux)
    nullify(dyn_in % uy)
-   nullify(dyn_in % pmid)
    nullify(dyn_in % ru_tend)
    nullify(dyn_in % rtheta_tend)
    nullify(dyn_in % rho_tend)
@@ -438,6 +481,10 @@ subroutine dyn_final(dyn_in, dyn_out)
    dyn_out % nCells = 0
    dyn_out % nEdges = 0
    dyn_out % nVertices = 0
+   dyn_out % nVertLevels = 0
+   dyn_out % nCellsSolve = 0
+   dyn_out % nEdgesSolve = 0
+   dyn_out % nVerticesSolve = 0
    nullify(dyn_out % uperp)
    nullify(dyn_out % w)
    nullify(dyn_out % theta_m)
@@ -452,7 +499,8 @@ subroutine dyn_final(dyn_in, dyn_out)
    nullify(dyn_out % rho)
    nullify(dyn_out % ux)
    nullify(dyn_out % uy)
-   nullify(dyn_out % pmid)
+   deallocate(dyn_out % pmiddry)
+   deallocate(dyn_out % pintdry)
 
 end subroutine dyn_final
 
@@ -490,8 +538,6 @@ subroutine read_inidat(dyn_in)
    real(r8), dimension(:,:),   pointer :: rho     ! Dry density [kg/m^3]             (nver,ncol)
    real(r8), dimension(:,:),   pointer :: ux      ! Zonal veloc at center [m/s]      (nver,ncol)
    real(r8), dimension(:,:),   pointer :: uy      ! Meridional veloc at center [m/s] (nver,ncol)
-   real(r8), dimension(:,:),   pointer :: pmid    ! Full non-hydrostatic pressure [Pa]
-                                                  ! at layer midpoints               (nver,ncol)
    real(r8), dimension(:,:),   pointer :: ru_tend ! Normal horizontal momentum tendency
                                                   ! from physics [kg/m^2/s]         (nver,nedge)
    real(r8), dimension(:,:),   pointer :: rtheta_tend ! Tendency of rho*theta/zz
@@ -655,7 +701,6 @@ subroutine read_inidat(dyn_in)
    rho => dyn_in % rho
    ux => dyn_in % ux
    uy => dyn_in % uy
-   pmid => dyn_in % pmid
    ru_tend => dyn_in % ru_tend
    rtheta_tend => dyn_in % rtheta_tend
    rho_tend => dyn_in % rho_tend
@@ -684,10 +729,6 @@ subroutine read_inidat(dyn_in)
    ! Standard atmosphere (for MPAS, k=1 is the layer closest to the surface)
    do klev=1,nVertLevelsSolve+1
       zint(klev,1:nCellsSolve) = zint_ref(nVertLevelsSolve+1-klev+1)
-   end do
-
-   do klev=1,nVertLevelsSolve
-      pmid(klev,1:nCellsSolve) = pmid_ref(nVertLevelsSolve-klev+1)
    end do
 
    do klev=1,nVertLevelsSolve

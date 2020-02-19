@@ -71,7 +71,8 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    ! LOCAL VARIABLES
 
    ! Variables from dynamics export container
-   real(r8), pointer :: pmid(:,:)
+   real(r8), pointer :: pmiddry(:,:)
+   real(r8), pointer :: pintdry(:,:)
    real(r8), pointer :: zint(:,:)
    real(r8), pointer :: zz(:,:)
    real(r8), pointer :: fzm(:)
@@ -99,7 +100,8 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
 
    MPAS_DEBUG_WRITE(1, 'begin '//subname)
 
-   pmid => dyn_out % pmid
+   pmiddry => dyn_out % pmiddry
+   pintdry => dyn_out % pintdry
    zint => dyn_out % zint
    zz => dyn_out % zz
    fzm => dyn_out % fzm
@@ -111,6 +113,8 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    theta_m => dyn_out % theta_m
    tracers => dyn_out % tracers
    index_qv = dyn_out % index_qv
+
+   call dry_hydrostatic_pressure(dyn_out%nCellsSolve, dyn_out%nVertLevels, zz, zint, rho_zz, theta_m, pmiddry, pintdry)
 
    call t_startf('dpcopy')
    if (local_dp_map) then
@@ -125,29 +129,29 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
          do icol = 1, ncols
             i = global_to_local_cell(pgcols(icol))        ! local (to process) column index
 
-            phys_state(lchnk)%psdry(icol) = rho_zz(1,i) * zz(1,i) * 9.806 * 0.5 * (zint(2,i) - zint(1,i)) + pmid(1,i)   ! psd
+            phys_state(lchnk)%psdry(icol) = pintdry(1,i)       ! psd
             phys_state(lchnk)%phis(icol) = zint(1,i) * 9.806   ! phis
 
             do k = 1, pver
-               phys_state(lchnk)%t(icol,k) = theta_m(k,i) / (1.0_r8 + 1.61_r8 * tracers(index_qv,k,i)) * (pmid(k,i) / 1.0e5)**(287.0_r8 / 1003.0_r8)   ! t
+               phys_state(lchnk)%t(icol,k) = theta_m(k,i) / (1.0_r8 + 1.61_r8 * tracers(index_qv,k,i)) * (pmiddry(k,i) / 1.0e5)**(287.0_r8 / 1003.0_r8)   ! t
                phys_state(lchnk)%u(icol,k) = ux(k,i)
                phys_state(lchnk)%v(icol,k) = uy(k,i)
                phys_state(lchnk)%omega(icol,k) = -rho_zz(k,i) * zz(k,i) * 9.806 * 0.5 * (w(k,i) + w(k+1,i))   ! omega
-               phys_state(lchnk)%pmiddry(icol,k)=pmid(k,i)   ! Wrong: these are full pressures at present
-               phys_state(lchnk)%pmid(icol,k) = pmid(k,i)
+               phys_state(lchnk)%pmiddry(icol,k) = pmiddry(k,i)
+               phys_state(lchnk)%pmid(icol,k) = pmiddry(k,i)    ! Wrong: need to convert from dry pressure
                phys_state(lchnk)%zi(icol,k) = zint(k,i)
                phys_state(lchnk)%zm(icol,k) = 0.5_r8 * (zint(k,i) + zint(k+1,i))   ! zmid
             end do
             phys_state(lchnk)%zi(icol,pverp) = zint(pverp,i)
 
-            phys_state(lchnk)%pint(icol,1) = rho_zz(1,i) * zz(1,i) * 9.806 * 0.5 * (zint(2,i) - zint(1,i)) + pmid(1,i)
-            phys_state(lchnk)%pintdry(icol,1) = rho_zz(1,i) * zz(1,i) * 9.806 * 0.5 * (zint(2,i) - zint(1,i)) + pmid(1,i)
+            phys_state(lchnk)%pint(icol,1) = pintdry(1,i)  ! Wrong: need to convert from dry pressure
+            phys_state(lchnk)%pintdry(icol,1) = pintdry(1,i)
             do k=2,pver
-               phys_state(lchnk)%pint(icol,k) = fzp(k) * pmid(k-1,i) + fzm(k) * pmid(k,i)
-               phys_state(lchnk)%pintdry(icol,k) = fzp(k) * pmid(k-1,i) + fzm(k) * pmid(k,i)   ! Wrong: this is still full pressure
+               phys_state(lchnk)%pint(icol,k) = pintdry(k,i)  ! Wrong: need to convert from dry pressure
+               phys_state(lchnk)%pintdry(icol,k) = pinddry(k,i)
             end do
-            phys_state(lchnk)%pint(icol,pverp) = rho_zz(pver,i) * zz(pver,i) * 9.806 * 0.5 * (zint(pver,i) - zint(pver+1,i)) + pmid(pver,i)
-            phys_state(lchnk)%pintdry(icol,pverp) = rho_zz(pver,i) * zz(pver,i) * 9.806 * 0.5 * (zint(pver,i) - zint(pver+1,i)) + pmid(pver,i)
+            phys_state(lchnk)%pint(icol,pverp) = pintdry(pverp,i)  ! Wrong: need to convert from dry pressure
+            phys_state(lchnk)%pintdry(icol,pverp) = pintdry(pverp,i)
 
             do m=1,pcnst
                do k=1,pver
@@ -178,15 +182,15 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
             ig = col_indices_in_block(icol,nblk)   !  global column index
             i = global_to_local_cell(ig)           !  local (to process) column index
 
-            bbuffer(bpter(icol,0))   = rho_zz(1,i) * zz(1,i) * 9.806 * 0.5 * (zint(2,i) - zint(1,i)) + pmid(1,i)   ! psd
+            bbuffer(bpter(icol,0))   = pintdry(1,i)        ! psd
             bbuffer(bpter(icol,0)+1) = zint(1,i) * 9.806   ! phis
 
             do k=1,pver
-               bbuffer(bpter(icol,k))   = theta_m(k,i) / (1.0_r8 + 1.61_r8 * tracers(index_qv,k,i)) * (pmid(k,i) / 1.0e5)**(287.0_r8 / 1003.0_r8)   ! t
+               bbuffer(bpter(icol,k))   = theta_m(k,i) / (1.0_r8 + 1.61_r8 * tracers(index_qv,k,i)) * (pmiddry(k,i) / 1.0e5)**(287.0_r8 / 1003.0_r8)   ! t
                bbuffer(bpter(icol,k)+1) = ux(k,i)
                bbuffer(bpter(icol,k)+2) = uy(k,i)
                bbuffer(bpter(icol,k)+3) = -rho_zz(k,i) * zz(k,i) * 9.806 * 0.5 * (w(k,i) + w(k+1,i))   ! omega
-               bbuffer(bpter(icol,k)+4) = pmid(k,i)    ! Full pressure, not dry pressure
+               bbuffer(bpter(icol,k)+4) = pmiddry(k,i)
                bbuffer(bpter(icol,k)+5) = 0.5_r8 * (zint(k,i) + zint(k+1,i))   ! zmid
 
                do m=1,pcnst
@@ -198,11 +202,11 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
                bbuffer(bpter(icol,k)+7+pcnst) = zint(k+1,i)
             end do
 
-            bbuffer(bpter(icol,0)+6+pcnst) = rho_zz(1,i) * zz(1,i) * 9.806 * 0.5 * (zint(2,i) - zint(1,i)) + pmid(1,i)
+            bbuffer(bpter(icol,0)+6+pcnst) = pintdry(1,i)
             do k=2,pver
-               bbuffer(bpter(icol,k-1)+6+pcnst) = fzp(k) * pmid(k-1,i) + fzm(k) * pmid(k,i)    ! Full pressure, not dry pressure
+               bbuffer(bpter(icol,k-1)+6+pcnst) = pintdry(k,i)
             end do
-            bbuffer(bpter(icol,pver)+6+pcnst) = rho_zz(pver,i) * zz(pver,i) * 9.806 * 0.5 * (zint(pver,i) - zint(pver+1,i)) + pmid(pver,i)
+            bbuffer(bpter(icol,pver)+6+pcnst) = pintdry(pverp,i)
 
          end do
 
@@ -292,7 +296,6 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
    real(r8), allocatable, dimension(:) :: bbuffer, cbuffer ! transpose buffers
 
    ! Variables from dynamics import container
-   real(r8), pointer :: pmid(:,:)
    real(r8), pointer :: zint(:,:)
    real(r8), pointer :: zz(:,:)
    real(r8), pointer :: rho_zz(:,:)
@@ -310,7 +313,6 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
 
    MPAS_DEBUG_WRITE(1, 'begin '//subname)
 
-   pmid => dyn_in % pmid
    zint => dyn_in % zint
    zz => dyn_in % zz
    rho_zz => dyn_in % rho_zz
@@ -570,5 +572,88 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
    end do
 
 end subroutine derived_phys
+
+
+!-----------------------------------------------------------------------
+!  routine dry_hydrostatic_pressure
+!
+!> \brief Compute dry hydrostatic pressure at layer interfaces and midpoints
+!> \details
+!>  Given arrays of zz, zgrid, rho_zz, and theta_m from the MPAS-A prognostic
+!>  state, compute dry hydrostatic pressure at layer interfaces and midpoints.
+!>  The vertical dimension for 3-d arrays is innermost, and k=1 represents
+!>  the lowest layer or level in the fields.
+!>
+!>  IMPORTANT NOTE: At present, this routine is probably not correct when there
+!>                  is moisture in the atmosphere.
+!
+!-----------------------------------------------------------------------
+subroutine dry_hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, theta_m, pmiddry, pintdry)
+
+   implicit none
+
+   ! Arguments
+   integer, intent(in) :: nCells
+   integer, intent(in) :: nVertLevels
+   real(r8), dimension(nVertLevels, nCells), intent(in) :: zz         ! d(zeta)/dz [-]
+   real(r8), dimension(nVertLevels+1, nCells), intent(in) :: zgrid    ! geometric heights of layer interfaces [m]
+   real(r8), dimension(nVertLevels, nCells), intent(in) :: rho_zz     ! dry density / zz [kg m^-3]
+   real(r8), dimension(nVertLevels, nCells), intent(in) :: theta_m    ! potential temperature * (1 + Rv/Rd * qv)
+   real(r8), dimension(nVertLevels, nCells), intent(out) :: pmiddry   ! layer midpoint dry hydrostatic pressure [Pa]
+   real(r8), dimension(nVertLevels+1, nCells), intent(out) :: pintdry ! layer interface dry hydrostatic pressure [Pa]
+
+   ! Constants (which should probably come from elsewhere?)
+   real(r8), parameter :: cp = 1004.5_r8
+   real(r8), parameter :: rgas = 287.0_r8
+   real(r8), parameter :: cv = 717.5_r8
+   real(r8), parameter :: p0 = 1.0e5_r8
+   real(r8), parameter :: g = 9.806_r8
+
+   ! Local variables
+   integer :: iCell, k
+   real(r8), dimension(nCells) :: ptop_int   ! Extrapolated pressure at top of the model
+   real(r8), dimension(nCells) :: ptop_mid   ! Full non-hydrostatic pressure at top layer midpoint
+   real(r8), dimension(nCells) :: ttop_mid   ! Temperature at top layer midpoint
+   real(r8), dimension(nVertLevels) :: dz    ! Geometric layer thickness in column
+   real(r8) :: pi, t
+
+   !
+   ! Compute full non-hydrostatic pressure and temperature at top layer midpoint
+   !
+   ptop_mid(:) = p0 * (rgas * rho_zz(nVertLevels,:) * zz(nVertLevels,:) * theta_m(nVertLevels,:) / p0)**(cp/cv)
+   ttop_mid(:) = theta_m(nVertLevels,:) * &
+                 (zz(nVertLevels,:) * rgas * rho_zz(nVertLevels,:) * theta_m(nVertLevels,:) / p0)**(rgas/(cp-rgas))
+
+
+   !
+   ! Extrapolate upward from top layer midpoint to top of the model
+   ! The formula used here results from combination of the hypsometric equation with the equation
+   ! for the layer mid-point pressure (i.e., (pint_top + pint_bot)/2 = pmid)
+   !
+   ! TODO: Should temperature here be virtual temperature?
+   !
+   ptop_int(:) = 2.0 * ptop_mid(:) / (1.0 + exp( (zgrid(nVertLevels+1,:) - zgrid(nVertLevels,:)) * g / rgas / ttop_mid(:)))
+
+
+   !
+   ! For each column, integrate downward from model top to compute dry hydrostatic pressure at layer
+   ! midpoints and interfaces. The pressure averaged to layer midpoints should be consistent with
+   ! the ideal gas law using the rho_zz and theta_m values prognosed by MPAS at layer midpoints.
+   !
+   ! TODO: Should temperature here be virtual temperature?
+   ! TODO: Is it problematic that the computed temperature is consistent with the non-hydrostatic pressure?
+   !
+   do iCell = 1, nCells
+
+      dz(:) = zgrid(2:nVertLevels+1,iCell) - zgrid(1:nVertLevels,iCell)
+
+      pintdry(nVertLevels+1,iCell) = ptop_int(iCell)
+      do k = nVertLevels, 1, -1
+         pintdry(k,iCell) = pintdry(k+1,iCell) + g * zz(k,iCell) * rho_zz(k,iCell) * dz(k)
+         pmiddry(k,iCell) = 0.5 * (pintdry(k+1,iCell) + pintdry(k,iCell))
+      end do
+   end do
+
+end subroutine dry_hydrostatic_pressure
 
 end module dp_coupling
