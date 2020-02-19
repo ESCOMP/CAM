@@ -88,7 +88,6 @@ subroutine stepon_run1(dtime_out, phys_state, phys_tend, pbuf2d, dyn_in, dyn_out
 
     use physics_buffer, only: physics_buffer_desc
     use dp_coupling,    only: d_p_coupling
-    use dyn_comp,    only: calc_tot_energy_dynamics
 
     implicit none
 
@@ -133,18 +132,14 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out)
 
     call t_barrierf('sync_p_d_coupling', mpicom)
 #if ( defined CALC_ENERGY )
-    call t_startf('calc_tot_energy_dynamics_dED')
-    call calc_tot_energy_dynamics(dyn_in%atm, 1, 1, 1, 1, 'dED')
-    call t_stopf('calc_tot_energy_dynamics_dED')
+    call calc_tot_energy_dynamics(dyn_in%atm, 'dED')
 #endif
     call t_startf('p_d_coupling')
     call p_d_coupling(phys_state, phys_tend, dyn_in)
     call t_stopf('p_d_coupling')
 
 #if ( defined CALC_ENERGY )
-    call t_startf('calc_tot_energy_dynamics_dBD')
-    call calc_tot_energy_dynamics(dyn_in%atm, 1, 1, 1, 1, 'dBD')
-    call t_stopf('calc_tot_energy_dynamics_dBD')
+    call calc_tot_energy_dynamics(dyn_in%atm, 'dBD')
 #endif
 end subroutine stepon_run2
 

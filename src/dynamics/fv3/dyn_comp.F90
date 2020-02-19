@@ -839,7 +839,7 @@ subroutine dyn_run(dyn_state)
 #endif
   
 #if ( defined CALC_ENERGY )
-  call calc_tot_energy_dynamics(atm, 1, 1, 1, 1, 'dBF')
+  call calc_tot_energy_dynamics(atm,'dBF')
 #endif
   
 end subroutine dyn_run
@@ -1695,7 +1695,7 @@ function get_ldof(is,ie,js,je,nlev) result(ldof)
 end function get_ldof
 
 !=======================================================================
-  subroutine calc_tot_energy_dynamics(atm,nets,nete,tl,tl_qdp,outfld_name_suffix)
+  subroutine calc_tot_energy_dynamics(atm,outfld_name_suffix)
     use physconst,              only: gravit, cpair, rearth,omega
     use cam_history,            only: outfld, hist_fld_active
     use constituents,           only: cnst_get_ind
@@ -1706,7 +1706,6 @@ end function get_ldof
     !------------------------------Arguments--------------------------------
     
     type(fv_atmos_type), pointer, intent(in) :: Atm(:)  
-    integer          , intent(in) :: tl, tl_qdp,nets,nete!, n_fvm
     character*(*)    , intent(in) :: outfld_name_suffix ! suffix for "outfld" names
     
     !---------------------------Local storage-------------------------------

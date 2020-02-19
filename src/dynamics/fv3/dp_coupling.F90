@@ -593,7 +593,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
      call outfld('FT', RESHAPE(t_dt(is:ie, j, :),(/idim,pver/)), idim, j)
   end do
 
-  call calc_tot_energy_dynamics(dyn_in%atm, 1, 1, 1, 1, 'dAP')
+  call calc_tot_energy_dynamics(dyn_in%atm,'dAP')
   
 
   !set the D-Grid winds from the physics A-grid winds/tendencies.
