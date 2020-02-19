@@ -1660,12 +1660,12 @@ subroutine micro_mg_tend ( &
 
      !  graupel/hail size distributions and properties
 
-     if (do_graupel) then
-        call size_dist_param_basic(mg_graupel_props, qgic(:,k), ngic(:,k), &
-          lamg(:,k), mgncol, n0=n0g(:,k))
-     end if
      if (do_hail) then
         call size_dist_param_basic(mg_hail_props, qgic(:,k), ngic(:,k), &
+          lamg(:,k), mgncol, n0=n0g(:,k))
+     end if
+     if (do_graupel) then
+        call size_dist_param_basic(mg_graupel_props, qgic(:,k), ngic(:,k), &
           lamg(:,k), mgncol, n0=n0g(:,k))
      end if
         
@@ -2661,14 +2661,16 @@ subroutine micro_mg_tend ( &
         end if
 
         ! fallspeed for graupel
-        if (do_graupel) then
-           call size_dist_param_basic(mg_graupel_props, dumg(i,k), dumng(i,k), &
-             lamg(i,k))
-        end if
+
         if (do_hail) then
            call size_dist_param_basic(mg_hail_props, dumg(i,k), dumng(i,k), &
              lamg(i,k))
         end if
+        if (do_graupel) then
+           call size_dist_param_basic(mg_graupel_props, dumg(i,k), dumng(i,k), &
+             lamg(i,k))
+        end if
+
             
         if (lamg(i,k).ge.qsmall) then
 
@@ -3525,12 +3527,12 @@ subroutine micro_mg_tend ( &
 
            dum = dumng(i,k)
 
-           if (do_graupel) then
-              call size_dist_param_basic(mg_graupel_props, dumg(i,k), dumng(i,k), &
-                lamg(i,k))
-           end if
            if (do_hail) then
               call size_dist_param_basic(mg_hail_props, dumg(i,k), dumng(i,k), &
+                lamg(i,k))
+           end if
+           if (do_graupel) then
+              call size_dist_param_basic(mg_graupel_props, dumg(i,k), dumng(i,k), &
                 lamg(i,k))
            end if
               
