@@ -2097,7 +2097,7 @@ subroutine gw_rdg_calc( &
 
 
    ! Set tndmax, default values in old codes was 400 ms^-1 day^-1
-   tndmax_gwrdg = 40._r8 / 86400._r8
+   tndmax_gwrdg = 20._r8 / 86400._r8
    
    ! initialize accumulated momentum fluxes and tendencies
    taurx = 0._r8
