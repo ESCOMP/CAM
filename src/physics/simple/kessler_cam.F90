@@ -42,7 +42,6 @@ contains
     use physconst,      only: cpair, latvap,pstd, rair, rhoh2o
     use constituents,   only: cnst_name, cnst_longname, bpcnst, apcnst
     use cam_history,    only: addfld, add_default, horiz_only
-    use kessler_mod,    only: kessler_set_const
 
       use state_converters, only: pres_to_density_dry_init
       use kessler,          only: kessler_init
