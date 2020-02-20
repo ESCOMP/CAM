@@ -2083,6 +2083,9 @@ subroutine gw_rdg_calc( &
    ! Energy change used by fixer.
    real(r8) :: de(ncol)
 
+   ! Local tendency limiter just for ridge scheme
+   real(r8) :: tndmax_gwrdg
+
    character(len=1) :: cn
    character(len=9) :: fname(4)
    !----------------------------------------------------------------------------
@@ -2092,6 +2095,10 @@ subroutine gw_rdg_calc( &
    allocate(gwut(ncol,pver,band_oro%ngwv:band_oro%ngwv))
    allocate(c(ncol,band_oro%ngwv:band_oro%ngwv))
 
+
+   ! Set tndmax, default values in old codes was 400 ms^-1 day^-1
+   tndmax_gwrdg = 40._r8 / 86400._r8
+   
    ! initialize accumulated momentum fluxes and tendencies
    taurx = 0._r8
    taury = 0._r8 
@@ -2130,7 +2137,8 @@ subroutine gw_rdg_calc( &
          effgw, c, kvtt, q, dse, tau, utgw, vtgw, &
          ttgw, qtgw, egwdffi,   gwut, dttdf, dttke, &
          kwvrdg=kwvrdg, & 
-         satfac_in = 1._r8, lapply_vdiff=gw_rdg_do_vdiff )
+         satfac_in = 1._r8, lapply_vdiff=gw_rdg_do_vdiff, &
+         tndmax_override = tndmax_gwrdg )
 
       ! Add the tendencies from each ridge to the totals.
       do k = 1, pver
