@@ -510,9 +510,6 @@ subroutine read_inidat(dyn_in)
    integer :: nCellsSolve
    integer :: i, k, kk, m
 
-
-   integer :: klev
-
    type(file_desc_t), pointer :: fh_ini
 
    real(r8), allocatable :: latvals(:)
