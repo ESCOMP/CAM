@@ -6,15 +6,13 @@ module dyn_comp
 
 use shr_kind_mod,       only: r8=>shr_kind_r8
 use spmd_utils,         only: iam, masterproc, mpicom, npes
-use physconst,          only: pi
+use physconst,          only: pi, gravit, rair, cpair
 
 use pmgrid,             only: plev, plevp
 use constituents,       only: pcnst, cnst_name, cnst_read_iv
 
 use cam_control_mod,    only: initial_run
 use cam_initfiles,      only: initial_file_get_id, topo_file_get_id
-
-use dyn_grid,           only: nCellsSolve, nEdgesSolve, nVertLevelsSolve
 
 use cam_grid_support,   only: cam_grid_id, cam_grid_get_gcid, &
                               cam_grid_dimensions, cam_grid_get_dim_names, &
@@ -185,6 +183,9 @@ end type dyn_export_t
 real(r8), parameter :: rad2deg = 180.0_r8 / pi
 real(r8), parameter :: deg2rad = pi / 180.0_r8
 
+! The global cell indices are used to seed the RNG which is used to apply
+! random perturbations to the initial temperature field.
+integer, allocatable :: glob_ind(:)
 
 !=========================================================================================
 contains
@@ -293,6 +294,8 @@ subroutine dyn_init(dyn_in, dyn_out)
    integer, pointer :: nVerticesSolve
    integer, pointer :: index_qv
 
+   integer, pointer :: indexToCellID(:) ! global indices of cell centers
+
    !----------------------------------------------------------------------------
 
    MPAS_DEBUG_WRITE(0, 'begin '//subname)
@@ -302,10 +305,8 @@ subroutine dyn_init(dyn_in, dyn_out)
    call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'diag',  diag_pool)
    call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'tend_physics', tend_physics_pool)
 
-
-   !
    ! Let dynamics import state point to memory managed by MPAS-Atmosphere
-   !
+
    call mpas_pool_get_dimension(mesh_pool, 'nCells', nCells)
    dyn_in % nCells = nCells
 
@@ -355,31 +356,16 @@ subroutine dyn_init(dyn_in, dyn_out)
    call mpas_pool_get_array(tend_physics_pool, 'tend_rtheta_physics', dyn_in % rtheta_tend)
    call mpas_pool_get_array(tend_physics_pool, 'tend_rho_physics',    dyn_in % rho_tend)
 
-
-   !
    ! Let dynamics export state point to memory managed by MPAS-Atmosphere
    ! Exception: pmiddry and pintdry are not managed by the MPAS infrastructure
-   !
-   call mpas_pool_get_dimension(mesh_pool, 'nCells', nCells)
-   dyn_out % nCells = nCells
 
-   call mpas_pool_get_dimension(mesh_pool, 'nEdges', nEdges)
-   dyn_out % nEdges = nEdges
-
-   call mpas_pool_get_dimension(mesh_pool, 'nVertices', nVertices)
-   dyn_out % nVertices = nVertices
-
-   call mpas_pool_get_dimension(mesh_pool, 'nVertLevels', nVertLevels)
-   dyn_out % nVertLevels = nVertLevels
-
-   call mpas_pool_get_dimension(mesh_pool, 'nCellsSolve', nCellsSolve)
-   dyn_out % nCellsSolve = nCellsSolve
-
-   call mpas_pool_get_dimension(mesh_pool, 'nEdgesSolve', nEdgesSolve)
-   dyn_out % nEdgesSolve = nEdgesSolve
-
-   call mpas_pool_get_dimension(mesh_pool, 'nVerticesSolve', nVerticesSolve)
-   dyn_out % nVerticesSolve = nVerticesSolve
+   dyn_out % nCells         = dyn_in % nCells
+   dyn_out % nEdges         = dyn_in % nEdges
+   dyn_out % nVertices      = dyn_in % nVertices
+   dyn_out % nVertLevels    = dyn_in % nVertLevels
+   dyn_out % nCellsSolve    = dyn_in % nCellsSolve
+   dyn_out % nEdgesSolve    = dyn_in % nEdgesSolve
+   dyn_out % nVerticesSolve = dyn_in % nVerticesSolve
 
    call mpas_pool_get_array(state_pool, 'u',                      dyn_out % uperp,   timeLevel=1)
    call mpas_pool_get_array(state_pool, 'w',                      dyn_out % w,       timeLevel=1)
@@ -387,21 +373,24 @@ subroutine dyn_init(dyn_in, dyn_out)
    call mpas_pool_get_array(state_pool, 'rho_zz',                 dyn_out % rho_zz,  timeLevel=1)
    call mpas_pool_get_array(state_pool, 'scalars',                dyn_out % tracers, timeLevel=1)
 
-   call mpas_pool_get_dimension(state_pool, 'index_qv', index_qv)
-   dyn_out % index_qv = index_qv
+   dyn_out % index_qv = dyn_in % index_qv
 
-   call mpas_pool_get_array(mesh_pool,  'zgrid',                  dyn_out % zint)
-   call mpas_pool_get_array(mesh_pool,  'zz',                     dyn_out % zz)
-   call mpas_pool_get_array(mesh_pool,  'fzm',                    dyn_out % fzm)
-   call mpas_pool_get_array(mesh_pool,  'fzp',                    dyn_out % fzp)
+   dyn_out % zint  => dyn_in % zint
+   dyn_out % zz    => dyn_in % zz
+   dyn_out % fzm   => dyn_in % fzm
+   dyn_out % fzp   => dyn_in % fzp
 
-   call mpas_pool_get_array(diag_pool,  'theta',                  dyn_out % theta)
-   call mpas_pool_get_array(diag_pool,  'rho',                    dyn_out % rho)
-   call mpas_pool_get_array(diag_pool,  'uReconstructZonal',      dyn_out % ux)
-   call mpas_pool_get_array(diag_pool,  'uReconstructMeridional', dyn_out % uy)
+   dyn_out % theta => dyn_in % theta
+   dyn_out % rho   => dyn_in % rho
+   dyn_out % ux    => dyn_in % ux
+   dyn_out % uy    => dyn_in % uy
 
    allocate(dyn_out % pmiddry(nVertLevels,   nCells))
    allocate(dyn_out % pintdry(nVertLevels+1, nCells))
+
+   call mpas_pool_get_array(mesh_pool, 'indexToCellID', indexToCellID)
+   allocate(glob_ind(nCellsSolve))
+   glob_ind = indexToCellID(1:nCellsSolve)
 
    if (initial_run) then
       call read_inidat(dyn_in)
@@ -510,7 +499,6 @@ end subroutine dyn_final
 
 subroutine read_inidat(dyn_in)
 
-   use dyn_grid, only : nCellsSolve, nEdgesSolve, nVertLevelsSolve
    use cam_mpas_subdriver, only : domain_ptr, cam_mpas_update_halo, cam_mpas_cell_to_edge_winds
 
    ! Set initial conditions.  Either from analytic expressions or read from file.
@@ -519,232 +507,184 @@ subroutine read_inidat(dyn_in)
    type(dyn_import_t), target, intent(inout) :: dyn_in
 
    ! Local variables
-   integer :: klev, icol
+   integer :: nCellsSolve
+   integer :: i, k, kk, m
+
+
+   integer :: klev
 
    type(file_desc_t), pointer :: fh_ini
-   type(file_desc_t), pointer :: fh_topo
 
-   real(r8), dimension(:,:),   pointer :: uperp   ! Normal velocity at edges [m/s]  (nver,nedge)
-   real(r8), dimension(:,:),   pointer :: w       ! Vertical velocity [m/s]        (nver+1,ncol)
-   real(r8), dimension(:,:),   pointer :: theta_m ! Moist potential temperature [K]  (nver,ncol)
-   real(r8), dimension(:,:),   pointer :: rho_zz  ! Dry density [kg/m^3]
-                                                  ! divided by d(zeta)/dz            (nver,ncol)
-   real(r8), dimension(:,:,:), pointer :: tracers ! Tracers [kg/kg dry air]       (nq,nver,ncol)
-   real(r8), dimension(:,:),   pointer :: zint    ! Geometric height [m]
-                                                  ! at layer interfaces            (nver+1,ncol)
-   real(r8), dimension(:,:),   pointer :: zz      ! Vertical coordinate metric [dimensionless]
-                                                  ! at layer midpoints               (nver,ncol)
-   real(r8), dimension(:,:),   pointer :: theta   ! Potential temperature [K]        (nver,ncol)
-   real(r8), dimension(:,:),   pointer :: rho     ! Dry density [kg/m^3]             (nver,ncol)
-   real(r8), dimension(:,:),   pointer :: ux      ! Zonal veloc at center [m/s]      (nver,ncol)
-   real(r8), dimension(:,:),   pointer :: uy      ! Meridional veloc at center [m/s] (nver,ncol)
-   real(r8), dimension(:,:),   pointer :: ru_tend ! Normal horizontal momentum tendency
-                                                  ! from physics [kg/m^2/s]         (nver,nedge)
-   real(r8), dimension(:,:),   pointer :: rtheta_tend ! Tendency of rho*theta/zz
-                                                      ! from physics [kg K/m^3/s]    (nver,ncol)
-   real(r8), dimension(:,:),   pointer :: rho_tend ! Dry air density tendency
-                                                   ! from physics [kg/m^3/s]         (nver,ncol)
+   real(r8), allocatable :: latvals(:)
+   real(r8), allocatable :: lonvals(:)
+   real(r8), pointer     :: latvals_deg(:)
+   real(r8), pointer     :: lonvals_deg(:)
 
-   real(r8) :: t
+   real(r8), pointer :: uperp(:,:)   ! Normal velocity at edges [m/s]  (nver,nedge)
+   real(r8), pointer :: w(:,:)       ! Vertical velocity [m/s]        (nver+1,ncol)
+   real(r8), pointer :: theta_m(:,:) ! Moist potential temperature [K]  (nver,ncol)
+   real(r8), pointer :: rho_zz(:,:)  ! Dry density [kg/m^3]
+                                     ! divided by d(zeta)/dz            (nver,ncol)
+   real(r8), pointer :: tracers(:,:,:) ! Tracers [kg/kg dry air]       (nq,nver,ncol)
+   real(r8), pointer :: zint(:,:)    ! Geometric height [m]
+                                     ! at layer interfaces            (nver+1,ncol)
+   real(r8), pointer :: zz(:,:)      ! Vertical coordinate metric [dimensionless]
+                                     ! at layer midpoints               (nver,ncol)
+   real(r8), pointer :: theta(:,:)   ! Potential temperature [K]        (nver,ncol)
+   real(r8), pointer :: rho(:,:)     ! Dry density [kg/m^3]             (nver,ncol)
+   real(r8), pointer :: ux(:,:)      ! Zonal veloc at center [m/s]      (nver,ncol)
+   real(r8), pointer :: uy(:,:)      ! Meridional veloc at center [m/s] (nver,ncol)
 
-   real(r8), parameter, dimension(32) :: pmid_ref = [    370.0507, &
-                772.0267, &
-               1460.0401, &
-               2456.1190, &
-               3510.4428, &
-               4394.9775, &
-               5258.6650, &
-               6260.5462, &
-               7505.1291, &
-               8937.0345, &
-              10513.9623, &
-              12368.9543, &
-              14551.4143, &
-              17119.0922, &
-              20139.5649, &
-              23688.5536, &
-              27855.9967, &
-              32754.2135, &
-              38514.6948, &
-              45288.6443, &
-              53254.6026, &
-              61865.3664, &
-              70121.4348, &
-              77405.1773, &
-              83215.3208, &
-              87125.5307, &
-              89903.9705, &
-              92494.3081, &
-              94874.9828, &
-              97027.0667, &
-              98931.3386, &
-             100572.0510 ]
 
-   real(r8), parameter, dimension(33) :: pint_ref = [  228.8976, &
-              511.2039, &
-             1032.8496, &
-             1887.2306, &
-             3025.0074, &
-             3995.8781, &
-             4794.0770, &
-             5723.2531, &
-             6797.8393, &
-             8212.4188, &
-             9661.6502, &
-            11366.2745, &
-            13371.6342, &
-            15731.1944, &
-            18506.9901, &
-            21772.1397, &
-            25604.9675, &
-            30107.0258, &
-            35401.4011, &
-            41627.9885, &
-            48949.3000, &
-            57559.9052, &
-            66170.8275, &
-            74072.0421, &
-            80738.3125, &
-            85692.3292, &
-            88558.7323, &
-            91249.2088, &
-            93739.4075, &
-            96010.5582, &
-            98043.5752, &
-            99819.1020, &
-            101325.0000 ]
+   integer,  allocatable :: m_ind(:)
+   real(r8), allocatable :: &
+      cam2d(:,:), cam3d(:,:,:), cam4d(:,:,:,:) ! temp arrays using CAM data order
 
-   real(r8), parameter, dimension(32) :: zmid_ref = [ 38524.2527, &
-             33230.5418, &
-             28850.1087, &
-             25327.9309, &
-             22900.7199, &
-             21425.0307, &
-             20281.2855, &
-             19173.2056, &
-             18028.1748, &
-             16913.4272, &
-             15882.8868, &
-             14852.4477, &
-             13821.9328, &
-             12791.3613, &
-             11760.8767, &
-             10726.9401, &
-              9674.2358, &
-              8589.4962, &
-              7470.6318, &
-              6316.6734, &
-              5126.5126, &
-              3987.1676, &
-              3008.7228, &
-              2220.0977, &
-              1632.9889, &
-              1256.2718, &
-               998.0675, &
-               763.0978, &
-               551.8000, &
-               364.4534, &
-               201.4641, &
-                63.0587 ]
+   ! temp arrays using MPAS data order
+   real(r8), allocatable :: t(:,:)       ! temperature
+   real(r8), allocatable :: pintdry(:,:) ! dry interface pressures
+   real(r8), allocatable :: pmiddry(:,:) ! dry midpoint pressures
+   real(r8), allocatable :: pmid(:,:)    ! midpoint pressures
 
-   real(r8), parameter, dimension(33) :: zint_ref = [ 41426.9190, &
-             35621.5865, &
-             30839.4971, &
-             26860.7204, &
-             23795.1414, &
-             22006.2985, &
-             20843.7630, &
-             19718.8080, &
-             18627.6033, &
-             17428.7463, &
-             16398.1081, &
-             15367.6655, &
-             14337.2299, &
-             13306.6357, &
-             12276.0870, &
-             11245.6664, &
-             10208.2138, &
-              9140.2578, &
-              8038.7346, &
-              6902.5289, &
-              5730.8179, &
-              4522.2073, &
-              3452.1278, &
-              2565.3178, &
-              1874.8775, &
-              1391.1003, &
-              1121.4432, &
-               874.6918, &
-               651.5038, &
-               452.0961, &
-               276.8108, &
-               126.1175, &
-                 0.0000 ]
+   real(r8) :: dz, h
 
-   integer :: i, k
-   real(r8), pointer                :: latvals_deg(:)
-
-   character(len=*), parameter :: subname = 'dyn_comp::read_inidat'
+   character(len=*), parameter :: subname = 'dyn_comp:read_inidat'
    !--------------------------------------------------------------------------------------
 
    MPAS_DEBUG_WRITE(0, 'begin '//subname)
 
-   
-   uperp => dyn_in % uperp
-   w => dyn_in % w
-   theta_m => dyn_in % theta_m
-   rho_zz => dyn_in % rho_zz
-   tracers => dyn_in % tracers
-   zint => dyn_in % zint
-   zz => dyn_in % zz
-   theta => dyn_in % theta
-   rho => dyn_in % rho
-   ux => dyn_in % ux
-   uy => dyn_in % uy
-   ru_tend => dyn_in % ru_tend
-   rtheta_tend => dyn_in % rtheta_tend
-   rho_tend => dyn_in % rho_tend
-
    fh_ini  => initial_file_get_id()
-   fh_topo => topo_file_get_id()
+
+   nCellsSolve = dyn_in % nCellsSolve
+   
+   uperp    => dyn_in % uperp
+   w        => dyn_in % w
+   theta_m  => dyn_in % theta_m
+   rho_zz   => dyn_in % rho_zz
+   tracers  => dyn_in % tracers
+   zint     => dyn_in % zint
+   zz       => dyn_in % zz
+   theta    => dyn_in % theta
+   rho      => dyn_in % rho
+   ux       => dyn_in % ux
+   uy       => dyn_in % uy
+
+   ! Check that number of advected tracers is consistent with MPAS.
+   if (pcnst /= size(tracers, 1)) then
+      write(iulog,*) subname//': number of tracers, pcnst:', size(tracers,1), pcnst
+      call endrun(subname//': number of tracers /= pcnst')
+   end if
+
+   ! lat/lon needed in radians
+   latvals_deg => cam_grid_get_latvals(cam_grid_id('mpas_cell'))
+   lonvals_deg => cam_grid_get_lonvals(cam_grid_id('mpas_cell'))
+   allocate(latvals(nCellsSolve))
+   allocate(lonvals(nCellsSolve))
+   latvals(:) = latvals_deg(:)*deg2rad
+   lonvals(:) = lonvals_deg(:)*deg2rad
+
+   ! Set ICs.  Either from analytic expressions or read from file.
+
+   allocate( &
+      cam2d(nCellsSolve,1),            &
+      cam3d(nCellsSolve,plev,1),       &
+      cam4d(nCellsSolve,plev,1,pcnst), &
+      t(plev,nCellsSolve),             &
+      pintdry(plevp,nCellsSolve),      &
+      pmiddry(plev,nCellsSolve),       &
+      pmid(plev,nCellsSolve) )
+
+   if (analytic_ic_active()) then
+
+      w(:,1:nCellsSolve) = 0.0_r8
+
+      ! U, V cell center velocity components
+
+      call analytic_ic_set_ic(vcoord, latvals, lonvals, glob_ind, U=cam3d)
+      do k = 1, plev
+         kk = plev - k + 1
+         do i = 1, nCellsSolve
+            ux(kk,i) = cam3d(i,k,1)
+         end do
+      end do
+
+      call analytic_ic_set_ic(vcoord, latvals, lonvals, glob_ind, V=cam3d)
+      do k = 1, plev
+         kk = plev - k + 1
+         do i = 1, nCellsSolve
+            uy(kk,i) = cam3d(i,k,1)
+         end do
+      end do
+
+      ! Compute uperp by projecting ux and uy from cell centers to edges
+      call cam_mpas_update_halo('uReconstructZonal')       ! ux => uReconstructZonal
+      call cam_mpas_update_halo('uReconstructMeridional')  ! uy => uReconstructMeridional
+      call cam_mpas_cell_to_edge_winds(dyn_in % nEdges, ux, uy, dyn_in % east, dyn_in % north, &
+                                       dyn_in % normal, dyn_in % cellsOnEdge, uperp)
 
 
-   !
-   ! Set placeholder state
-   !
-   ! No winds
-   w(:,1:nCellsSolve) = 0.0_r8
-   ux(:,1:nCellsSolve) = 0.0_r8
-   uy(:,1:nCellsSolve) = 0.0_r8
+      ! Constituents
 
-   ! Compute uperp by projecting ux and uy from cell centers to edges
-   call cam_mpas_update_halo('uReconstructZonal')       ! ux => uReconstructZonal
-   call cam_mpas_update_halo('uReconstructMeridional')  ! uy => uReconstructMeridional
-   call cam_mpas_cell_to_edge_winds(dyn_in % nEdges, ux, uy, dyn_in % east, dyn_in % north, dyn_in % normal, &
-                                    dyn_in % cellsOnEdge, uperp)
+      allocate(m_ind(pcnst))
+      do m = 1, pcnst
+         m_ind(m) = m
+      end do
+      call analytic_ic_set_ic(vcoord, latvals, lonvals, glob_ind, m_cnst=m_ind, Q=cam4d)
+      do m = 1, pcnst
+         ! will need translation between MPAS and CAM constituent indexing
+         do k = 1, plev
+            kk = plev - k + 1
+            do i = 1, nCellsSolve
+               tracers(m,kk,i) = cam4d(i,k,1,m)
+            end do
+         end do
+      end do
+      deallocate(m_ind)
 
-   ! No tracers
-   tracers(:,:,1:nCellsSolve) = 0.0_r8
+      ! Temperature
 
-   ! Standard atmosphere (for MPAS, k=1 is the layer closest to the surface)
-   do klev=1,nVertLevelsSolve+1
-      zint(klev,1:nCellsSolve) = zint_ref(nVertLevelsSolve+1-klev+1)
-   end do
+      call analytic_ic_set_ic(vcoord, latvals, lonvals, glob_ind, T=cam3d)
+      do k = 1, plev
+         kk = plev - k + 1
+         do i = 1, nCellsSolve
+            t(kk,i) = cam3d(i,k,1)
+         end do
+      end do
 
-   do klev=1,nVertLevelsSolve
-      t = (zint_ref(nVertLevelsSolve-klev+1) - zint_ref(nVertLevelsSolve-klev+1+1)) * 9.806/287.0 &
-          / log(pint_ref(nVertLevelsSolve-klev+1+1) / pint_ref(nVertLevelsSolve-klev+1))
-      theta(klev,1:nCellsSolve) = t * (1.0e5 / pmid_ref(nVertLevelsSolve-klev+1))**(287.0/1003.0)
-      rho(klev,1:nCellsSolve) = pmid_ref(nVertLevelsSolve-klev+1) / (287.0 * t)
-   end do
+      ! Pressures are needed to convert temperature to potential temperature.
 
-   theta_m(:,1:nCellsSolve) = theta(:,1:nCellsSolve)    ! With no moisture, theta_m := theta
-   rho_zz(:,1:nCellsSolve) = rho(:,1:nCellsSolve) / zz(:,1:nCellsSolve)
+      call analytic_ic_set_ic(vcoord, latvals, lonvals, glob_ind, PS=cam2d)
+      do i = 1, nCellsSolve
+         pintdry(1,i) = cam2d(i,1)
+      end do
+      
+      ! Use Hypsometric eqn to set pressure profiles
+      do i = 1, nCellsSolve
+         do k = 2, plevp
+            dz = zint(k,i) - zint(k-1,i)
+            h = rair * t(k-1,i) / gravit
+            pintdry(k,i) = pintdry(k-1,i)*exp(-dz/h)
+            pmiddry(k-1,i) = 0.5_r8*(pintdry(k-1,i) + pintdry(k,i))
+            ! for now assume dry atm
+            pmid(k-1,i) = pmiddry(k-1,i)
+         end do
+      end do
 
-   ! Initially, no tendencies from physics
-   ru_tend(:,1:nEdgesSolve) = 0.0_r8
-   rtheta_tend(:,1:nCellsSolve) = 0.0_r8
-   rho_tend(:,1:nCellsSolve) = 0.0_r8
+      do i = 1, nCellsSolve
+         do k = 1, plev
+            theta(k,i) = t(k,i) * (1.0e5 / pmid(k,i))**(rair/cpair)
+            rho(k,i) = pmid(k,i) / (rair * t(k,i))
+         end do
+      end do
+
+      theta_m(:,1:nCellsSolve) = theta(:,1:nCellsSolve)    ! With no moisture, theta_m := theta
+      rho_zz(:,1:nCellsSolve) = rho(:,1:nCellsSolve) / zz(:,1:nCellsSolve)
+
+   else
+
+      call endrun(subname//': reading initial data not implemented')
+   end if
+
 
 end subroutine read_inidat
 
