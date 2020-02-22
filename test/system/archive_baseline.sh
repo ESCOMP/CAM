@@ -33,7 +33,7 @@ BASELINE ARCHIVED LOCATION
 
 	hobart, izumi:     /fs/cgd/csm/models/atm/cam/pretag_bl/TAGNAME_pgi
 	                   /fs/cgd/csm/models/atm/cam/pretag_bl/TAGNAME_nag
-        cheyenne:  /glade/p/cesmdata/cseg/cam_baselines/TAGNAME
+        cheyenne:  /glade/p/cesm/amwg/cam_baselines/TAGNAME
 
 
 
@@ -105,7 +105,7 @@ case $hostname in
       CAM_FC="INTEL"
     fi
     test_file_list="tests_pretag_cheyenne"
-    baselinedir="/glade/p/cesmdata/cseg/cam_baselines/$1"
+    baselinedir="/glade/p/cesm/amwg/cam_baselines/$1"
   ;;
 
   * ) echo "ERROR: machine $hostname not currently supported"; exit 1 ;;
@@ -116,14 +116,17 @@ if [ -n "$CESM_TESTDIR" ]; then
     echo " "
     case $hostname in
 	ch*)
-	    echo "CESM Archiving to /glade/p/cesmdata/cseg/cesm_baselines/$1"
+	    echo "CESM Archiving to /glade/p/cesm/amwg/cesm_baselines/$1"
+            ../../cime/scripts/Tools/bless_test_results -p -t '' -c '' -r $CESM_TESTDIR --baseline-root /glade/p/cesm/amwg/cesm_baselines -b $1 -f -s
 	    ;;
 
 	hobart)
 	    echo "CESM Archiving to /fs/cgd/csm/models/atm/cam/cesm_baselines/$1"
+            ../../cime/scripts/Tools/bless_test_results -p -t '' -c '' -r $CESM_TESTDIR -b $1 -f -s
 	    ;;
 	izumi)
 	    echo "CESM Archiving to /fs/cgd/csm/models/atm/cam/cesm_baselines/$1"
+            ../../cime/scripts/Tools/bless_test_results -p -t '' -c '' -r $CESM_TESTDIR -b $1 -f -s
 	    ;;
     esac
     echo " "

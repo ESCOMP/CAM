@@ -744,6 +744,7 @@ contains
     use subcol,             only: subcol_init
     use qbo,                only: qbo_init
     use qneg_module,        only: qneg_init
+    use lunar_tides,        only: lunar_tides_init
     use iondrag,            only: iondrag_init, do_waccm_ions
 #if ( defined OFFLINE_DYN )
     use metdata,            only: metdata_phys_init
@@ -903,6 +904,8 @@ contains
 
     call qbo_init
 
+    call lunar_tides_init()
+    
     call iondrag_init(pref_mid)
     ! Geomagnetic module -- after iondrag_init
     if (epp_ionization_active) then
@@ -1284,6 +1287,7 @@ contains
     use nudging,            only: Nudge_Model,Nudge_ON,nudging_timestep_tend
     use cam_snapshot,       only: cam_snapshot_all_outfld_tphysac
     use cam_snapshot,       only: cam_snapshot_ptend_outfld
+    use lunar_tides,        only: lunar_tides_tend
 
     !
     ! Arguments
@@ -1631,6 +1635,12 @@ contains
 
     ! Check energy integrals
     call check_energy_chng(state, tend, "qborelax", nstep, ztodt, zero, zero, zero, zero)
+
+    ! Lunar tides
+    call lunar_tides_tend( state, ptend )
+    call physics_update(state, ptend, ztodt, tend)
+    ! Check energy integrals
+    call check_energy_chng(state, tend, "lunar_tides", nstep, ztodt, zero, zero, zero, zero)
 
     ! Ion drag calculation
     call t_startf ( 'iondrag' )
