@@ -6,7 +6,7 @@ module dimensions_mod
 
 
   !These are convenience variables for local use only, and are set to values in Atm%
-  integer, public :: npx, npy, npz, ncnst, pnats, dnats
+  integer, public :: npx, npy, npz, ncnst, pnats, dnats, num_family, nt_prog
   integer, public :: nq                       ! transported tracers
 
   integer,               public :: qsize_condensate_loading = 1 !how many water variables to include in full density

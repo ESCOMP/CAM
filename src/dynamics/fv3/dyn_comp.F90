@@ -43,7 +43,7 @@ module dyn_comp
     use cam_logfile,     only: iulog
     use constants_mod,   only: cp_air, kappa, rvgas, rdgas
     use constituents,    only: pcnst, cnst_name, cnst_longname, tottnam, cnst_get_ind
-    use dimensions_mod,  only: npx, npy, npz, ncnst, pnats, dnats,nq, &
+    use dimensions_mod,  only: npx, npy, npz, ncnst, pnats, dnats,nq,num_family,nt_prog, &
                                qsize_condensate_loading_idx,qsize_condensate_loading_cp,qsize_condensate_loading_cv, &
                                qsize_condensate_loading_idx_gll, qsize_condensate_loading, &
                                cnst_name_ffsl, cnst_longname_ffsl,qsize,fv3_lcp_moist,fv3_lcv_moist,qsize_tracer_idx_cam2dyn,fv3_scale_ttend
@@ -65,7 +65,7 @@ module dyn_comp
     use spmd_utils,      only: masterproc, masterprocid, mpicom, npes,iam
     use spmd_utils,      only: mpi_real8, mpi_integer, mpi_character, mpi_logical
     use time_manager_mod,only: set_date, NOLEAP, set_calendar_type
-    use tracer_manager_mod,     only: get_tracer_index,tracer_manager_init
+    use tracer_manager_mod,     only: get_tracer_index,tracer_manager_init,register_tracers
 
 
 
@@ -298,6 +298,7 @@ subroutine dyn_init(dyn_in, dyn_out)
   use fv_diagnostics_mod, only: fv_diag_init, fv_time
   use fv_mp_mod,       only: fill_corners, YDir, switch_current_Atm
   use infnan,          only: inf, assignment(=)
+  use perf_mod,        only: t_barrierf
   use physconst,       only: cpwv, cpliq, cpice
   use time_manager,    only: get_step_size,get_curr_date
   use time_manager_mod,only: time_type
@@ -480,7 +481,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    end do
 
    if (masterproc) then
-
+      
       write(iulog,*) 'Creating field_table file to load tracer fields into fv3'
       unito = getunit()
       ! overwrite file if it exists.
@@ -490,8 +491,13 @@ subroutine dyn_init(dyn_in, dyn_out)
       end do
       close(unito)
       call freeunit(unito)
-      call tracer_manager_init()
    end if
+   ! call tracer_manager_init()
+   call register_tracers (MODEL_ATMOS, ncnst, nt_prog, pnats, num_family)
+   if (masterproc) then
+      write(*,*) 'ncnst=', ncnst,' num_prog=',nt_prog,' pnats=',pnats,' dnats=',dnats,' num_family=',num_family         
+      print*, ''
+   endif
 !!$   !---------This code requires minor mods to FMS field_manager and tracer_manager.
 !!$   !---------Space in ATM structure for constituents was allocated in dyn_init.
 !!$   !---------now that cam has registered all tracers create entries in fms tracer_manager
@@ -502,6 +508,7 @@ subroutine dyn_init(dyn_in, dyn_out)
 !!$
 !!$   call tracer_manager_init(fieldtable)
 
+   call t_barrierf ('sync_tracer_register', mpicom)
 
    do m=1,pcnst  
       !  just check condensate loading tracers as they are mapped above

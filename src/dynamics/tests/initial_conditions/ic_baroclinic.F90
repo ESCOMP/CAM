@@ -1,4 +1,3 @@
-#define FV3_init
 module ic_baroclinic
   !-----------------------------------------------------------------------
   !
@@ -109,13 +108,13 @@ contains
     integer                           :: nlev
     integer                           :: ncnst
     character(len=*), parameter       :: subname = 'BC_WAV_SET_IC'
-    real(r8)                          :: ztop,ptop,p1,p2
+    real(r8)                          :: ztop,ptop
     real(r8)                          :: uk,vk,Tvk,qk,pk !mid-level state
     real(r8)                          :: psurface
     real(r8)                          :: wvp,qdry
     logical                           :: lU, lV, lT, lQ, l3d_vars
     logical                           :: cnst1_is_moisture
-    real(r8), allocatable             :: pdry_half(:), pwet_half(:),zdry_half(:),zk(:),zk_half(:)
+    real(r8), allocatable             :: pdry_half(:), pwet_half(:),zdry_half(:),zk(:)
 
     if ((vcoord == vc_moist_pressure) .or. (vcoord == vc_dry_pressure)) then
       !
@@ -226,7 +225,6 @@ contains
       end if
 
       allocate(zk(nlev+1))
-      allocate(zk_half(nlev+1))
       if ((lq.or.lt) .and. (vcoord == vc_dry_pressure)) then
         allocate(pdry_half(nlev+1))
         allocate(pwet_half(nlev+1))
@@ -245,40 +243,17 @@ contains
             psurface = psurf_moist-wvp
           end if
 
-
-
-#ifdef FV3_init
-          do k=1,nlev+1
-            ! compute pressure levels
-            pk = hyai(k)*ps0 + hybi(k)*psurface
-            ! find height of pressure surface
-            zk_half(k) = iterate_z_given_pressure(pk,(vcoord == vc_dry_pressure),ptop,latvals(i),ztop) 
-          end do
-          zk(1:nlev)=0.5_r8*(zk_half(1:nlev)+zk_half(2:nlev+1))
-#else
           do k=1,nlev
             ! compute pressure levels
             pk = hyam(k)*ps0 + hybm(k)*psurface
             ! find height of pressure surface
             zk(k) = iterate_z_given_pressure(pk,(vcoord == vc_dry_pressure),ptop,latvals(i),ztop)
           end do
-#endif
-
           do k=1,nlev
             !
             ! wind components
             !
-#ifdef FV3_init
-!            !
-!            ! derive temperature from hydrostatic balance
-!            !
-            p1 = log(hyai(k+1)*ps0 + hybi(k+1)*psurface)
-            p2 = log(hyai(k  )*ps0 + hybi(k  )*psurface)
-            tvk = (gravit/rair)*(zk_half(k)-zk_half(k+1))/(p1-p2)
-            if (lu.or.lv) call uv_given_z(zk(k),uk,vk,latvals(i),lonvals(i),tvk)
-#else
             if (lu.or.lv) call uv_given_z(zk(k),uk,vk,latvals(i),lonvals(i))
-#endif
             if (lu) U(i,k)   = uk
             if (lv) V(i,k)   = vk
             !
@@ -286,36 +261,14 @@ contains
             !
             if ((lq.or.lt).and.(vcoord == vc_moist_pressure)) then
               if (analytic_ic_is_moist()) then
-#ifdef FV3_init
-                p1 = hyai(k+1)*ps0 + hybi(k+1)*psurface
-                p2 = hyai(k  )*ps0 + hybi(k  )*psurface
-                pk = (p1-p2)/(log(p1)-log(p2))
-                qk = qv_given_moist_pressure(pk,latvals(i)) 
-#else
                 pk = moist_pressure_given_z(zk(k),latvals(i))
-                qk = qv_given_moist_pressure(pk,latvals(i)) 
-#endif
+                qk = qv_given_moist_pressure(pk,latvals(i))
               else
                 qk = 0.d0
               end if
               if (lq .and. cnst1_is_moisture) Q(i,k,1) = qk
               if (lt) then
-#ifdef FV3_init
-                !
-                ! derive temperature from hydrostatic balance
-                !
-                p1 = log(hyai(k+1)*ps0 + hybi(k+1)*psurface)
-                p2 = log(hyai(k  )*ps0 + hybi(k  )*psurface)
-                tvk = (gravit/rair)*(zk_half(k)-zk_half(k+1))/(p1-p2)
-!                write(*,*) "k",k
-!                write(*,*) "p1,p1",p1,p2,hyai(k+1)*ps0 + hybi(k+1)*psurface,hyai(k  )*ps0 + hybi(k  )*psurface
-!                write(*,*) "zk(k)-zk(k+1)",zk(k)-zk(k+1),zk(k),zk(k+1)
-!                write(*,*) "gravit,R",gravit,rair
-!                write(*,*) "tvk",tvk
-!                write(*,*) " "
-#else
                 tvk    = Tv_given_z(zk(k),latvals(i))
-#endif                
                 T(i,k) = tvk / (1.d0 + Mvap * qk)
               end if
             end if
@@ -546,14 +499,13 @@ contains
     Tv_given_z = 1.0_r8 / (rratio**2 * (tau1 - tau2 * inttermT))
   END FUNCTION Tv_given_z
 
-  SUBROUTINE uv_given_z(z,u,v,lat,lon,Tv)
-    IMPLICIT NONE
+  SUBROUTINE uv_given_z(z,u,v,lat,lon)
+
     real(r8), INTENT(IN)  :: z, lat, lon
-    real(r8), INTENT(IN), optional  :: Tv
     real(r8), INTENT(OUT) :: u,v
-    real(r8) :: aref, omegaref
-    real(r8) :: T0, constH, constC, scaledZ, inttau2, rratio
-    real(r8) :: inttermU, bigU, rcoslat, omegarcoslat
+    real(r8)              :: aref, omegaref
+    real(r8)              :: T0, constH, constC, scaledZ, inttau2, rratio
+    real(r8)              :: inttermU, bigU, rcoslat, omegarcoslat
     !------------------------------------------------
     !   Compute test case constants
     !------------------------------------------------
@@ -580,11 +532,7 @@ contains
     !   Initialize velocity field
     !-----------------------------------------------------
     inttermU = (rratio * cos(lat))**(KK - 1.0_r8) - (rratio * cos(lat))**(KK + 1.0_r8)
-    if (present(Tv)) then
-      bigU = gravit / aref * KK * inttau2 * inttermU * Tv
-    else
-      bigU = gravit / aref * KK * inttau2 * inttermU * Tv_given_z(z,lat)
-    end if
+    bigU = gravit / aref * KK * inttau2 * inttermU * Tv_given_z(z,lat)
     if (deep .eq. 0) then
        rcoslat = aref * cos(lat)
     else
