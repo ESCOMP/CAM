@@ -38,22 +38,13 @@ public :: &
 contains
 !=========================================================================================
 
-
-!-----------------------------------------------------------------------
-!  routine stepon_init
-!
-!> \brief Initialize dynamics timestepping
-!> \details
-!>  More details go here...
-!
-!-----------------------------------------------------------------------
 subroutine stepon_init(dyn_in, dyn_out)
 
    use cam_history,    only: addfld, add_default, horiz_only
    use cam_history,    only: register_vector_field
 
-   type (dyn_import_t), intent(inout) :: dyn_in  ! Dynamics import container (unused)
-   type (dyn_export_t), intent(inout) :: dyn_out ! Dynamics export container (unused)
+   type (dyn_import_t), intent(inout) :: dyn_in  ! Dynamics import container
+   type (dyn_export_t), intent(inout) :: dyn_out ! Dynamics export container
 
    integer :: m
 
@@ -61,21 +52,6 @@ subroutine stepon_init(dyn_in, dyn_out)
 
 
    MPAS_DEBUG_WRITE(1, 'begin '//subname)
-
-   !
-   ! Copy initial dynamics import state set in read_inidat to dynamics export state
-   !
-   dyn_out % uperp(:,:)     = dyn_in % uperp(:,:)
-   dyn_out % w(:,:)         = dyn_in % w(:,:)
-   dyn_out % theta_m(:,:)   = dyn_in % theta_m(:,:)
-   dyn_out % rho_zz(:,:)    = dyn_in % rho_zz(:,:)
-   dyn_out % tracers(:,:,:) = dyn_in % tracers(:,:,:)
-
-   !
-   ! No need to copy zint, theta, rho, ux, uy, or pmid, since dynamics import and export
-   ! states point to the same pool storage for these fields in MPAS-Atmosphere
-   !
-
 
    ! Forcing from physics
    call addfld('FU',  (/ 'lev' /), 'A', 'm/s2', 'Zonal wind forcing term', gridname='physgrid')
@@ -96,10 +72,6 @@ subroutine stepon_init(dyn_in, dyn_out)
       call addfld(trim(cnst_name(m))//'&IC', (/ 'lev' /), 'I', 'kg/kg', cnst_longname(m), gridname='physgrid')
       call add_default(trim(cnst_name(m))//'&IC',0, 'I')
    end do
-
-   call addfld('PHIS_SM',  horiz_only, 'I', 'm2/s2', 'Surface geopotential (smoothed)',                gridname='physgrid')
-   call addfld('SGH_SM',   horiz_only, 'I', 'm',     'Standard deviation of orography (smoothed)',     gridname='physgrid')
-   call addfld('SGH30_SM', horiz_only, 'I', 'm',     'Standard deviation of 30s orography (smoothed)', gridname='physgrid')
 
 end subroutine stepon_init
 

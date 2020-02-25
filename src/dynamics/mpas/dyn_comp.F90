@@ -393,8 +393,18 @@ subroutine dyn_init(dyn_in, dyn_out)
    glob_ind = indexToCellID(1:nCellsSolve)
 
    if (initial_run) then
+
       call read_inidat(dyn_in)
       call clean_iodesc_list()
+
+      ! Initialize dyn_out from dyn_in since it is needed to run the physics package
+      ! as part of the CAM initialization before a dycore step is taken.
+      dyn_out % uperp(:,:nCellsSolve)     = dyn_in % uperp(:,:nCellsSolve)
+      dyn_out % w(:,:nCellsSolve)         = dyn_in % w(:,:nCellsSolve)
+      dyn_out % theta_m(:,:nCellsSolve)   = dyn_in % theta_m(:,:nCellsSolve)
+      dyn_out % rho_zz(:,:nCellsSolve)    = dyn_in % rho_zz(:,:nCellsSolve)
+      dyn_out % tracers(:,:,:nCellsSolve) = dyn_in % tracers(:,:,:nCellsSolve)
+
    end if
 
 end subroutine dyn_init
