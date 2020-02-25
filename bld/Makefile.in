@@ -156,11 +156,17 @@ endif
 
 ifneq ($(strip $(MPAS_LIBDIR)),)
 # Rules to build MPAS in its own library.
-$(MPAS_LIBDIR)/libmpas.a: cam_abortutils.o pio.o
+#
+# To ensure that the MPAS-A dycore library is always updated whenever dycore source
+# files are changed, the libmpas target here is declared as PHONY; under ideal circumstances
+# this isn't necessary, since libmpas should never be an actual file (the library that is created
+# is named libmpas.a), but adding the PHONY declaration provides an extra bit of safety
+.PHONY: libmpas
+libmpas: cam_abortutils.o pio.o
 	$(MAKE) -C $(MPAS_LIBDIR) CC=$(CC) FC=$(FC) FFLAGS="$(FREEFLAGS) $(FFLAGS)" \
 	FCINCLUDES="-I.."
 
-dyn_grid.o: $(MPAS_LIBDIR)/libmpas.a
+dyn_grid.o: libmpas
 endif
 
 # Rules to build MCT library. 

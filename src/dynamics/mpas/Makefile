@@ -1,5 +1,3 @@
-.SUFFIXES: .F .F90 .o
-
 CPPFLAGS := -D_MPI -DMPAS_NATIVE_TIMERS -DMPAS_GIT_VERSION=unknown -DMPAS_NAMELIST_SUFFIX=atmosphere
 ifdef PIODEF
   CPPFLAGS += $(PIODEF)
@@ -253,14 +251,16 @@ cam_mpas_subdriver.o: mpas_atm_core_interface.o mpas_derived_types.o mpas_framew
 clean:
 	rm registry Registry_processed.xml *.inc *.o *.mod lib*.a
 
+# Cancel the built-in implicit rule for Modula-2 files (.mod) to avoid having 'make'
+# try to create .o files from Fortran .mod files
+%.o : %.mod
 
-
-.c.o:
+%.o : %.c
 	$(CC) -c $(CFLAGS) -DUNDERSCORE $(CPPFLAGS) $(CPPINCLUDES) -I$(MPAS_SRC_ROOT)/external/ezxml $<
 
-.F.o:
+%.o : %.F
 	$(FC) -c $(CPPFLAGS) $(FFLAGS) $(CPPINCLUDES) $(FCINCLUDES) $<
 
-.F90.o:
+%.o : %.F90
 	$(FC) -c $(CPPFLAGS) $(FFLAGS) $(CPPINCLUDES) $(FCINCLUDES) $<
 
