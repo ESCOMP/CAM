@@ -79,7 +79,7 @@ integer ::      &
    maxEdges,    &    ! maximum number of edges per cell
    nVertLevels       ! number of vertical layers (yes, layers and not layer interfaces...)
 
-integer, pointer, public :: &
+integer, pointer :: &
    nCellsSolve,     &
    nEdgesSolve,     &
    nVerticesSolve,  &

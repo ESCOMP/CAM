@@ -9,10 +9,11 @@ module dp_coupling
 use shr_kind_mod,   only: r8=>shr_kind_r8
 use pmgrid,         only: plev
 use ppgrid,         only: begchunk, endchunk, pcols, pver, pverp
-use constituents,   only: pcnst, cnst_name
+use constituents,   only: pcnst, cnst_type
+use physconst,      only: gravit, cpairv, cappa, rairv, rh2o, zvir
 
 use spmd_dyn,       only: local_dp_map, block_buf_nrecs, chunk_buf_nrecs
-use spmd_utils,     only: mpicom, iam
+use spmd_utils,     only: mpicom, iam, masterproc
 
 use dyn_grid,       only: max_col_per_block=>maxNCells, get_block_gcol_cnt_d, &
                           col_indices_in_block, global_to_local_cell=>local_col_index
@@ -31,8 +32,6 @@ use cam_logfile,    only: iulog
 use perf_mod,       only: t_startf, t_stopf, t_barrierf
 use cam_abortutils, only: endrun
 
-!  use mpas_cam_interface,  only: mpas_to_cam, cam_to_mpas
-
 implicit none
 private
 save
@@ -44,33 +43,30 @@ public :: &
 
 integer, parameter :: nblocks_per_pe = 1
 
+real(r8), parameter :: pref = 1.e5_r8 ! reference pressure (Pa)
+
 !=========================================================================================
 contains
 !=========================================================================================
 
-
-!-----------------------------------------------------------------------
-!  routine d_p_coupling
-!
-!> \brief Dynamics to physics coupling
-!> \details
-!>  Handles coupling of current dynamics state to the physics by filling
-!>  in arrays in the phys_state based on the contents of the dynamics export
-!>  state in dyn_out.
-!
-!-----------------------------------------------------------------------
 subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
 
-   use dyn_grid, only : nCellsSolve, nVertLevelsSolve
+   ! Convert the dynamics output state into the physics input state.
+   ! Note that all pressures and tracer mixing ratios coming from the dycore are based on
+   ! dry air mass.
 
+   ! arguments
    type(physics_state),       intent(inout) :: phys_state(begchunk:endchunk)
    type(physics_tend ),       intent(inout) :: phys_tend(begchunk:endchunk)
    type(dyn_export_t),        intent(inout) :: dyn_out
    type(physics_buffer_desc), pointer       :: pbuf2d(:,:)
 
-   ! LOCAL VARIABLES
+   ! local variables
 
    ! Variables from dynamics export container
+   integer :: nCellsSolve
+   integer :: index_qv
+
    real(r8), pointer :: pmiddry(:,:)
    real(r8), pointer :: pintdry(:,:)
    real(r8), pointer :: zint(:,:)
@@ -84,88 +80,86 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    real(r8), pointer :: theta_m(:,:)
    real(r8), pointer :: tracers(:,:,:)
 
-   integer :: lchnk, icol, k      ! indices over chunks, columns, layers
+
+   integer :: lchnk, icol, k, kk      ! indices over chunks, columns, layers
    integer :: ncols, ig, nblk, nb, m, i
-   integer :: index_qv
 
    integer :: pgcols(pcols)
-   integer :: tsize                 ! amount of data per grid point passed to physics
-   integer :: bpter(max_col_per_block,0:pver)    ! offsets into block buffer for packing data
-   integer :: cpter(pcols,0:pver)   ! offsets into chunk buffer for unpacking data
+   integer :: tsize                           ! amount of data per grid point passed to physics
+   integer :: bpter(max_col_per_block,0:pver) ! offsets into block buffer for packing data
+   integer :: cpter(pcols,0:pver)             ! offsets into chunk buffer for unpacking data
 
    real(r8), allocatable, dimension(:) :: bbuffer, cbuffer ! transpose buffers
 
-   character(len=*), parameter :: subname = 'dp_coupling::d_p_coupling'
-
+   character(len=*), parameter :: subname = 'd_p_coupling'
+   !----------------------------------------------------------------------------
 
    MPAS_DEBUG_WRITE(1, 'begin '//subname)
 
-   pmiddry => dyn_out % pmiddry
-   pintdry => dyn_out % pintdry
-   zint => dyn_out % zint
-   zz => dyn_out % zz
-   fzm => dyn_out % fzm
-   fzp => dyn_out % fzp
-   rho_zz => dyn_out % rho_zz
-   ux => dyn_out % ux
-   uy => dyn_out % uy
-   w => dyn_out % w
-   theta_m => dyn_out % theta_m
-   tracers => dyn_out % tracers
-   index_qv = dyn_out % index_qv
+   nCellsSolve = dyn_out%nCellsSolve
+   index_qv    = dyn_out % index_qv
 
-   call dry_hydrostatic_pressure(dyn_out%nCellsSolve, dyn_out%nVertLevels, zz, zint, rho_zz, theta_m, pmiddry, pintdry)
+   pmiddry  => dyn_out % pmiddry
+   pintdry  => dyn_out % pintdry
+   zint     => dyn_out % zint
+   zz       => dyn_out % zz
+   fzm      => dyn_out % fzm
+   fzp      => dyn_out % fzp
+   rho_zz   => dyn_out % rho_zz
+   ux       => dyn_out % ux
+   uy       => dyn_out % uy
+   w        => dyn_out % w
+   theta_m  => dyn_out % theta_m
+   tracers  => dyn_out % tracers
+
+   ! diagnose pintdry, pmiddry
+   call dry_hydrostatic_pressure( &
+      nCellsSolve, plev, zz, zint, rho_zz, theta_m, pmiddry, pintdry)
 
    call t_startf('dpcopy')
+
    if (local_dp_map) then
 
-#ifdef USE_TOTALLY_UNTESTED_MPAS_CODE
-      !$omp parallel do private (lchnk, ncols, icol, i, k, m, pgcols)
+      !$omp parallel do private (lchnk, ncols, icol, i, k, kk, m, pgcols)
       do lchnk = begchunk, endchunk
 
          ncols = get_ncols_p(lchnk)                         ! number of columns in this chunk
-         call get_gcol_all_p(lchnk, pcols, pgcols)          ! global column indices
+         call get_gcol_all_p(lchnk, pcols, pgcols)          ! global column indices in chunk
 
          do icol = 1, ncols
-            i = global_to_local_cell(pgcols(icol))        ! local (to process) column index
+            i = global_to_local_cell(pgcols(icol))          ! column index in dynamics block
 
-            phys_state(lchnk)%psdry(icol) = pintdry(1,i)       ! psd
-            phys_state(lchnk)%phis(icol) = zint(1,i) * 9.806   ! phis
+            phys_state(lchnk)%psdry(icol) = pintdry(1,i)
+            phys_state(lchnk)%phis(icol) = zint(1,i) * gravit
 
             do k = 1, pver
-               phys_state(lchnk)%t(icol,k) = theta_m(k,i) / (1.0_r8 + 1.61_r8 * tracers(index_qv,k,i)) * (pmiddry(k,i) / 1.0e5)**(287.0_r8 / 1003.0_r8)   ! t
-               phys_state(lchnk)%u(icol,k) = ux(k,i)
-               phys_state(lchnk)%v(icol,k) = uy(k,i)
-               phys_state(lchnk)%omega(icol,k) = -rho_zz(k,i) * zz(k,i) * 9.806 * 0.5 * (w(k,i) + w(k+1,i))   ! omega
-               phys_state(lchnk)%pmiddry(icol,k) = pmiddry(k,i)
-               phys_state(lchnk)%pmid(icol,k) = pmiddry(k,i)    ! Wrong: need to convert from dry pressure
-               phys_state(lchnk)%zi(icol,k) = zint(k,i)
-               phys_state(lchnk)%zm(icol,k) = 0.5_r8 * (zint(k,i) + zint(k+1,i))   ! zmid
-            end do
-            phys_state(lchnk)%zi(icol,pverp) = zint(pverp,i)
+               kk = pver - k + 1                            ! vertical index in dynamics block
 
-            phys_state(lchnk)%pint(icol,1) = pintdry(1,i)  ! Wrong: need to convert from dry pressure
-            phys_state(lchnk)%pintdry(icol,1) = pintdry(1,i)
-            do k=2,pver
-               phys_state(lchnk)%pint(icol,k) = pintdry(k,i)  ! Wrong: need to convert from dry pressure
-               phys_state(lchnk)%pintdry(icol,k) = pinddry(k,i)
+               phys_state(lchnk)%t(icol,k)       = theta_m(kk,i)  ! convert to temperature in derived_phys
+               phys_state(lchnk)%u(icol,k)       = ux(kk,i)
+               phys_state(lchnk)%v(icol,k)       = uy(kk,i)
+               phys_state(lchnk)%omega(icol,k)   = -rho_zz(kk,i)*zz(kk,i)*gravit*0.5_r8*(w(kk,i)+w(kk+1,i))   ! omega
+               phys_state(lchnk)%pmiddry(icol,k) = pmiddry(kk,i)
             end do
-            phys_state(lchnk)%pint(icol,pverp) = pintdry(pverp,i)  ! Wrong: need to convert from dry pressure
-            phys_state(lchnk)%pintdry(icol,pverp) = pintdry(pverp,i)
 
-            do m=1,pcnst
-               do k=1,pver
-                  phys_state(lchnk)%q(icol,k,m) = tracers(m,k,i)
+            do k = 1, pverp
+               kk = pverp - k + 1
+               phys_state(lchnk)%pintdry(icol,k) = pintdry(kk,i)
+            end do
+
+            do m = 1, pcnst
+               do k = 1, pver
+                  kk = pver - k + 1
+                  ! *** needs conversion of constituent indices
+                  phys_state(lchnk)%q(icol,k,m) = tracers(m,kk,i)
                end do
             end do
          end do
       end do
-#endif
-
 
    else  ! .not. local_dp_map
 
-      tsize = 8 + pcnst
+      tsize = 6 + pcnst
       allocate(bbuffer(tsize*block_buf_nrecs))    ! block buffer
       bbuffer = 0.0_r8
       allocate(cbuffer(tsize*chunk_buf_nrecs))    ! chunk buffer
@@ -176,40 +170,31 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
          nblk = iam * nblocks_per_pe + nb   ! global block index
          ncols = get_block_gcol_cnt_d(nblk) ! number of columns in this block
 
-         call block_to_chunk_send_pters(nblk,max_col_per_block,pver+1,tsize,bpter)
+         call block_to_chunk_send_pters(nblk, max_col_per_block, pverp, tsize, bpter)
 
-         do icol=1,ncols
+         do icol = 1, ncols
             ig = col_indices_in_block(icol,nblk)   !  global column index
             i = global_to_local_cell(ig)           !  local (to process) column index
 
-            bbuffer(bpter(icol,0))   = pintdry(1,i)        ! psd
-            bbuffer(bpter(icol,0)+1) = zint(1,i) * 9.806   ! phis
+            bbuffer(bpter(icol,0))   = pintdry(1,i)         ! psdry
+            bbuffer(bpter(icol,0)+1) = zint(1,i) * gravit   ! phis
 
-            do k=1,pver
-               bbuffer(bpter(icol,k))   = theta_m(k,i) / (1.0_r8 + 1.61_r8 * tracers(index_qv,k,i)) * (pmiddry(k,i) / 1.0e5)**(287.0_r8 / 1003.0_r8)   ! t
+            do k = 1, pver
+               bbuffer(bpter(icol,k))   = theta_m(k,i) ! convert to temperature in derived_phys
                bbuffer(bpter(icol,k)+1) = ux(k,i)
                bbuffer(bpter(icol,k)+2) = uy(k,i)
-               bbuffer(bpter(icol,k)+3) = -rho_zz(k,i) * zz(k,i) * 9.806 * 0.5 * (w(k,i) + w(k+1,i))   ! omega
+               bbuffer(bpter(icol,k)+3) = -rho_zz(k,i) * zz(k,i) * gravit * 0.5_r8 * (w(k,i) + w(k+1,i))   ! omega
                bbuffer(bpter(icol,k)+4) = pmiddry(k,i)
-               bbuffer(bpter(icol,k)+5) = 0.5_r8 * (zint(k,i) + zint(k+1,i))   ! zmid
-
                do m=1,pcnst
-                  bbuffer(bpter(icol,k)+5+m) = tracers(m,k,i)
+                  ! *** needs conversion of constituent indices
+                  bbuffer(bpter(icol,k)+4+m) = tracers(m,k,i)
                end do
             end do
 
-            do k=0,pver
-               bbuffer(bpter(icol,k)+7+pcnst) = zint(k+1,i)
+            do k = 1, pverp
+               bbuffer(bpter(icol,k-1)+5+pcnst) = pintdry(k,i)
             end do
-
-            bbuffer(bpter(icol,0)+6+pcnst) = pintdry(1,i)
-            do k=2,pver
-               bbuffer(bpter(icol,k-1)+6+pcnst) = pintdry(k,i)
-            end do
-            bbuffer(bpter(icol,pver)+6+pcnst) = pintdry(pverp,i)
-
          end do
-
       end do
 
       call t_barrierf ('sync_blk_to_chk', mpicom)
@@ -217,39 +202,35 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
       call transpose_block_to_chunk(tsize, bbuffer, cbuffer)
       call t_stopf  ('block_to_chunk')
 
-      !$omp parallel do private (lchnk, ncols, icol, k, m, cpter)
+      !$omp parallel do private (lchnk, ncols, icol, k, kk, m, cpter)
       do lchnk = begchunk,endchunk
          ncols = phys_state(lchnk)%ncol
 
-         call block_to_chunk_recv_pters(lchnk,pcols,pver+1,tsize,cpter)
+         call block_to_chunk_recv_pters(lchnk, pcols, pverp, tsize, cpter)
 
          do icol = 1, ncols
 
             phys_state(lchnk)%psdry(icol)    = cbuffer(cpter(icol,0))
             phys_state(lchnk)%phis(icol)     = cbuffer(cpter(icol,0)+1)
 
-            do k=1,pver
-
-               phys_state(lchnk)%t      (icol,k)  = cbuffer(cpter(icol,k))
-               phys_state(lchnk)%u      (icol,k)  = cbuffer(cpter(icol,k)+1)
-               phys_state(lchnk)%v      (icol,k)  = cbuffer(cpter(icol,k)+2)
-               phys_state(lchnk)%omega  (icol,k)  = cbuffer(cpter(icol,k)+3)
-               phys_state(lchnk)%pmiddry(icol,k)  = cbuffer(cpter(icol,k)+4)
-               phys_state(lchnk)%zm     (icol,k)  = cbuffer(cpter(icol,k)+5)
-
-               do m=1,pcnst
-                  phys_state(lchnk)%q  (icol,k,m) = cbuffer(cpter(icol,k)+5+m)
+            ! do the vertical reorder here when assigning to phys_state
+            do k = 1, pver
+               kk = pver - k + 1
+               phys_state(lchnk)%t      (icol,kk)  = cbuffer(cpter(icol,k))
+               phys_state(lchnk)%u      (icol,kk)  = cbuffer(cpter(icol,k)+1)
+               phys_state(lchnk)%v      (icol,kk)  = cbuffer(cpter(icol,k)+2)
+               phys_state(lchnk)%omega  (icol,kk)  = cbuffer(cpter(icol,k)+3)
+               phys_state(lchnk)%pmiddry(icol,kk)  = cbuffer(cpter(icol,k)+4)
+               do m = 1, pcnst
+                  phys_state(lchnk)%q  (icol,kk,m) = cbuffer(cpter(icol,k)+4+m)
                end do
-
             end do
 
-            do k=0,pver
-               phys_state(lchnk)%pintdry(icol,k+1) = cbuffer(cpter(icol,k)+6+pcnst)
-               phys_state(lchnk)%zi     (icol,k+1) = cbuffer(cpter(icol,k)+7+pcnst)
+            do k = 0, pver
+               kk = pverp - k
+               phys_state(lchnk)%pintdry(icol,kk) = cbuffer(cpter(icol,k)+5+pcnst)
             end do
-
          end do
-
       end do
 
       deallocate( bbuffer )
@@ -264,6 +245,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
 
 end subroutine d_p_coupling
 
+!=========================================================================================
 
 !-----------------------------------------------------------------------
 !  routine p_d_coupling
@@ -426,171 +408,172 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
 
 end subroutine p_d_coupling
 
+!=========================================================================================
 
-!-----------------------------------------------------------------------
-!  routine derived_phys
-!
-!> \brief Derives physics fields
-!> \details
-!>  Derives fields needed by the physics after some fields have been
-!>  set by d_p_coupling and before the call to physics.
-!
-!-----------------------------------------------------------------------
 subroutine derived_phys(phys_state, phys_tend, pbuf2d)
 
-   use constituents,  only: qmin
-   use physconst,     only: cpair, gravit, rair, zvir, cappa
-   use spmd_utils,    only: masterproc
-   use ppgrid,        only: pver
+   ! Compute fields in the physics state object which are diagnosed from the
+   ! MPAS prognostic fields.
+
    use physics_types, only: set_state_pdry, set_wet_to_dry
+   use geopotential,  only: geopotential_t
    use check_energy,  only: check_energy_timestep_init
    use shr_vmath_mod, only: shr_vmath_log
-   use physics_buffer, only : physics_buffer_desc, pbuf_get_chunk
 
+   ! Arguments
    type(physics_state),       intent(inout) :: phys_state(begchunk:endchunk)
    type(physics_tend ),       intent(inout) :: phys_tend(begchunk:endchunk)
    type(physics_buffer_desc), pointer       :: pbuf2d(:,:)
 
-   integer :: lchnk
-   real(r8) :: qbot                 ! bottom level q before change
-   real(r8) :: qbotm1               ! bottom-1 level q before change
-   real(r8) :: dqreq                ! q change at pver-1 required to remove q<qmin at pver
-   real(r8) :: qmavl                ! available q at level pver-1
+   ! Local variables
+   integer :: k, lchnk, m, ncol
+
+   real(r8) :: factor(pcols,pver)
+   real(r8) :: zvirv(pcols,pver)
+
 
    real(r8) :: ke(pcols,begchunk:endchunk)   
    real(r8) :: se(pcols,begchunk:endchunk)   
    real(r8) :: ke_glob(1),se_glob(1)
 
-   integer :: m, i, k, ncol
    type(physics_buffer_desc), pointer :: pbuf_chnk(:)
 
-   real(r8):: p00
 
    character(len=*), parameter :: subname = 'dp_coupling::derived_phys'
-
+   !----------------------------------------------------------------------------
 
    MPAS_DEBUG_WRITE(1, 'begin '//subname)
 
-   p00   = 1.e5_r8
-
-   ! Evaluate derived quantities
-
-   !$omp parallel do private (lchnk, ncol, k, i)
+   !$omp parallel do private (lchnk, ncol, k, factor)
    do lchnk = begchunk,endchunk
       ncol = get_ncols_p(lchnk)
 
-!       do k=1,pver
-!          call shr_vmath_log(phys_state(lchnk)%pint(1:ncol,k),phys_state(lchnk)%lnpint(1:ncol,k),ncol)
-!          call shr_vmath_log(phys_state(lchnk)%pmid(1:ncol,k),phys_state(lchnk)%lnpmid(1:ncol,k),ncol)
-!       end do
-!       call shr_vmath_log(phys_state(lchnk)%pint(1:ncol,pverp),phys_state(lchnk)%lnpint(1:ncol,pverp),ncol)
-!
-!       do k=1,pver
-!          do i=1,ncol
-!             phys_state(lchnk)%pdel (i,k) = phys_state(lchnk)%pint(i,k+1) - phys_state(lchnk)%pint(i,k)
-!             phys_state(lchnk)%rpdel(i,k) = 1._r8/phys_state(lchnk)%pdel(i,k)
-!             phys_state(lchnk)%exner (i,k) = (phys_state(lchnk)%pint(i,pver+1) &
-!                                             / phys_state(lchnk)%pmid(i,k))**cappa
-!          end do
-!       end do
+      ! The dry pressure profiles are derived using hydrostatic formulas
+      ! and the dry air mass from MPAS.
 
-      do k=1,pver
-         do i=1,ncol
-            phys_state(lchnk)%pdeldry(i,k) = phys_state(lchnk)%pintdry(i,k+1) - phys_state(lchnk)%pintdry(i,k)
-         end do
+      ! Derived variables for dry pressure profiles:
+
+      do k = 1, pver
+
+         phys_state(lchnk)%pdeldry(:ncol,k) = phys_state(lchnk)%pintdry(:ncol,k+1) - &
+                                              phys_state(lchnk)%pintdry(:ncol,k)
+
+         phys_state(lchnk)%rpdeldry(:ncol,k) = 1._r8 / phys_state(lchnk)%pdeldry(:ncol,k)
+
+         call shr_vmath_log(phys_state(lchnk)%pintdry(:ncol,k), &
+                            phys_state(lchnk)%lnpintdry(:ncol,k), ncol)
+
+         call shr_vmath_log(phys_state(lchnk)%pmiddry(:ncol,k), &
+                            phys_state(lchnk)%lnpmiddry(:ncol,k), ncol)
+
       end do
-      phys_state(lchnk)%rpdeldry(:ncol,:) = 1._r8/phys_state(lchnk)%pdeldry(:ncol,:)
-      phys_state(lchnk)%lnpmiddry(:ncol,:) = log(phys_state(lchnk)%pmiddry(:ncol,:))
-      phys_state(lchnk)%lnpintdry(:ncol,:) = log(phys_state(lchnk)%pintdry(:ncol,:))
 
-      do k=1,pver
-         phys_state(lchnk)%pdel(:ncol,k) = phys_state(lchnk)%pdeldry(:ncol,k)/(1._r8-phys_state(lchnk)%q(:ncol,k,1))
+      call shr_vmath_log(phys_state(lchnk)%pintdry(:ncol,pverp), &
+                         phys_state(lchnk)%lnpintdry(:ncol,pverp), ncol)
 
-         !SHP-PS
-         !phys_state(lchnk)%pdel(:ncol,k) = phys_state(lchnk)%pdeldry(:ncol,k)*(1._r8 + &
-         !                                  phys_state(lchnk)%q(:ncol,k,1)/(rair/rh2o*(1._r8-phys_state(lchnk)%q(:ncol,k,1))))
+
+      ! Add in the water vapor mass to compute the moist pressure profiles
+      ! used by CAM's physics packages.
+      ! **N.B.** The input water vapor mixing ratio in phys_state is based on dry air.  It
+      !          gets converted to a wet basis later.
+
+      do k = 1, pver
+         ! To be consistent with total energy formula in physic's check_energy module only
+         ! include water vapor in in moist pdel.  
+         factor(:ncol,k) = 1._r8 + phys_state(lchnk)%q(:ncol,k,1)
+         phys_state(lchnk)%pdel(:ncol,k)  = phys_state(lchnk)%pdeldry(:ncol,k)*factor(:ncol,k)
+         phys_state(lchnk)%rpdel(:ncol,k) = 1._r8 / phys_state(lchnk)%pdel(:ncol,k)
       end do
-       
-      phys_state(lchnk)%ps(:ncol) = phys_state(lchnk)%pintdry(:ncol,1)
+
+      ! Assume no water vapor above top of model.
       phys_state(lchnk)%pint(:ncol,1) = phys_state(lchnk)%pintdry(:ncol,1)
-      do k=1,pver
-         phys_state(lchnk)%pint(:ncol,k+1) = phys_state(lchnk)%pint(:ncol,k)+phys_state(lchnk)%pdel(:ncol,k)
-         phys_state(lchnk)%pmid(:ncol,k) = (phys_state(lchnk)%pint(:ncol,k+1)+phys_state(lchnk)%pint(:ncol,k))/2._r8
-         phys_state(lchnk)%ps(:ncol) = phys_state(lchnk)%ps(:ncol) + phys_state(lchnk)%pdel(:ncol,k)
+      do k = 1, pver
+         phys_state(lchnk)%pint(:ncol,k+1) = phys_state(lchnk)%pint(:ncol,k) + &
+                                             phys_state(lchnk)%pdel(:ncol,k)
+         call shr_vmath_log(phys_state(lchnk)%pint(:ncol,k), &
+                            phys_state(lchnk)%lnpint(:ncol,k), ncol)
+      end do
+      call shr_vmath_log(phys_state(lchnk)%pint(:ncol,pverp), &
+                         phys_state(lchnk)%lnpint(:ncol,pverp), ncol)
+
+      phys_state(lchnk)%ps(:ncol) = phys_state(lchnk)%pint(:ncol,pverp)
+
+      do k = 1, pver
+         phys_state(lchnk)%pmid(:ncol,k) = (phys_state(lchnk)%pint(:ncol,k+1) + &
+                                            phys_state(lchnk)%pint(:ncol,k)) / 2._r8
+
+         call shr_vmath_log(phys_state(lchnk)%pmid(:ncol,k), &
+                            phys_state(lchnk)%lnpmid(:ncol,k), ncol)
       end do
 
-      do k=1,pver
-         call shr_vmath_log(phys_state(lchnk)%pint(1:ncol,k),phys_state(lchnk)%lnpint(1:ncol,k),ncol)
-         call shr_vmath_log(phys_state(lchnk)%pmid(1:ncol,k),phys_state(lchnk)%lnpmid(1:ncol,k),ncol)
-      end do
-      call shr_vmath_log(phys_state(lchnk)%pint(1:ncol,pverp),phys_state(lchnk)%lnpint(1:ncol,pverp),ncol)
-
-      do k=1,pver
-         do i=1,ncol
-            phys_state(lchnk)%pdel (i,k) = phys_state(lchnk)%pint(i,k+1) - phys_state(lchnk)%pint(i,k)
-            phys_state(lchnk)%rpdel(i,k) = 1._r8/phys_state(lchnk)%pdel(i,k)
-!             phys_state(lchnk)%exner (i,k) = (phys_state(lchnk)%pint(i,pver+1) / phys_state(lchnk)%pmid(i,k))**cappa 
-            phys_state(lchnk)%exner (i,k) = (p00 / phys_state(lchnk)%pmid(i,k))**cappa
-         end do
+      do k = 1, pver
+         phys_state(lchnk)%exner(:ncol,k) = (pref / phys_state(lchnk)%pmid(:ncol,k))**cappa
       end do
 
+      ! convert the MPAS modified moist potential temperature to temperature
+      do k = 1, pver
+         phys_state(lchnk)%t(:ncol,k) = phys_state(lchnk)%t(:ncol,k) &
+            / (1.0_r8 + (rh2o/rairv(:ncol,k,lchnk))*phys_state(lchnk)%q(:ncol,k,1)) &
+            * (phys_state(lchnk)%pmiddry(:ncol,k)/pref)**(rairv(:ncol,k,lchnk)/cpairv(:ncol,k,lchnk))
+      end do
+
+      ! Tracers from MPAS are in dry mixing ratio units.  CAM's physics package expects constituents
+      ! which have been declared to be type 'wet' when they are registered to be represented by mixing
+      ! ratios based on moist air mass (dry air + water vapor).  Do appropriate conversion here.
+      factor(:ncol,:) = 1._r8/factor(:ncol,:)
+      do m = 1,pcnst
+         if (cnst_type(m) == 'wet') then
+            phys_state(lchnk)%q(:ncol,:,m) = factor(:ncol,:)*phys_state(lchnk)%q(:ncol,:,m)
+         end if
+      end do
+
+      ! fill zvirv 2D variables to be compatible with geopotential_t interface
+      zvirv(:,:) = zvir
+
+      ! Compute geopotential height above surface - based on full pressure
+      call geopotential_t( &
+         phys_state(lchnk)%lnpint, phys_state(lchnk)%lnpmid,   phys_state(lchnk)%pint,          &
+         phys_state(lchnk)%pmid,   phys_state(lchnk)%pdel,     phys_state(lchnk)%rpdel,         &
+         phys_state(lchnk)%t,      phys_state(lchnk)%q(:,:,1), rairv(:,:,lchnk), gravit, zvirv, &
+         phys_state(lchnk)%zi,     phys_state(lchnk)%zm,       ncol)
 
       ! Compute initial dry static energy, include surface geopotential
       do k = 1, pver
-         do i=1,ncol
 #if FIX_TOTE
-            ! general formula:  E = CV_air T + phis + gravit*zi )
-            ! hydrostatic case: integrate zi term by parts, use CP=CV+R to get:
-            ! E = CP_air T + phis   (Holton Section 8.3)
-            ! to use this, update geopotential.F90, and other not-yet-found physics routines:
-            ! (check boundary layer code, others which have gravit and zi() or zm()
-            phys_state(lchnk)%s(i,k) = cpair*phys_state(lchnk)%t(i,k) &
-                                      + phys_state(lchnk)%phis(i)
+         ! general formula:  E = CV_air T + phis + gravit*zi )
+         ! hydrostatic case: integrate zi term by parts, use CP=CV+R to get:
+         ! E = CP_air T + phis   (Holton Section 8.3)
+         ! to use this, update geopotential.F90, and other not-yet-found physics routines:
+         ! (check boundary layer code, others which have gravit and zi() or zm()
+         phys_state(lchnk)%s(:ncol,k) = cpairv(:ncol,k,lchnk)*phys_state(lchnk)%t(:ncol,k) &
+            + phys_state(lchnk)%phis(:ncol)
 #else
-            phys_state(lchnk)%s(i,k) = cpair*phys_state(lchnk)%t(i,k) &
-                  + gravit*phys_state(lchnk)%zm(i,k) + phys_state(lchnk)%phis(i)
+         phys_state(lchnk)%s(:ncol,k) = cpairv(:ncol,k,lchnk)*phys_state(lchnk)%t(:ncol,k) &
+            + gravit*phys_state(lchnk)%zm(:ncol,k) + phys_state(lchnk)%phis(:ncol)
 #endif
-         end do
       end do
 
       ! Compute energy and water integrals of input state
       pbuf_chnk => pbuf_get_chunk(pbuf2d, lchnk)
       call check_energy_timestep_init(phys_state(lchnk), phys_tend(lchnk), pbuf_chnk)
 
-
-#if 0
-      ke(:,lchnk) = 0._r8
-      se(:,lchnk) = 0._r8
-      do k = 1, pver
-         do i = 1, ncol
-            ke(i,lchnk) = ke(i,lchnk) + ( 0.5_r8*(phys_state(lchnk)%u(i,k)**2 + phys_state(lchnk)%v(i,k)**2)*phys_state(lchnk)%pdel(i,k) )/gravit
-            se(i,lchnk) = se(i,lchnk) + phys_state(lchnk)%s(i,k         )*phys_state(lchnk)%pdel(i,k)/gravit
-         end do
-      end do
-#endif
-
    end do
 
 end subroutine derived_phys
 
+!=========================================================================================
 
-!-----------------------------------------------------------------------
-!  routine dry_hydrostatic_pressure
-!
-!> \brief Compute dry hydrostatic pressure at layer interfaces and midpoints
-!> \details
-!>  Given arrays of zz, zgrid, rho_zz, and theta_m from the MPAS-A prognostic
-!>  state, compute dry hydrostatic pressure at layer interfaces and midpoints.
-!>  The vertical dimension for 3-d arrays is innermost, and k=1 represents
-!>  the lowest layer or level in the fields.
-!>
-!>  IMPORTANT NOTE: At present, this routine is probably not correct when there
-!>                  is moisture in the atmosphere.
-!
-!-----------------------------------------------------------------------
 subroutine dry_hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, theta_m, pmiddry, pintdry)
 
-   implicit none
+   ! Compute dry hydrostatic pressure at layer interfaces and midpoints
+   !
+   ! Given arrays of zz, zgrid, rho_zz, and theta_m from the MPAS-A prognostic
+   ! state, compute dry hydrostatic pressure at layer interfaces and midpoints.
+   ! The vertical dimension for 3-d arrays is innermost, and k=1 represents
+   ! the lowest layer or level in the fields.
+   !
+   ! IMPORTANT NOTE: At present, this routine is probably not correct when there
+   !                 is moisture in the atmosphere.
 
    ! Arguments
    integer, intent(in) :: nCells
@@ -655,5 +638,7 @@ subroutine dry_hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, thet
    end do
 
 end subroutine dry_hydrostatic_pressure
+
+!=========================================================================================
 
 end module dp_coupling
