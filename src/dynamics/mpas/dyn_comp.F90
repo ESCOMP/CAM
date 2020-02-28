@@ -276,14 +276,17 @@ end subroutine dyn_register
 
 subroutine dyn_init(dyn_in, dyn_out)
 
-   use cam_mpas_subdriver, only : domain_ptr
+   use cam_mpas_subdriver, only : domain_ptr, cam_mpas_init_phase4
    use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_array, mpas_pool_get_dimension
    use mpas_derived_types, only : mpas_pool_type
+   use mpas_kind_types, only : StrKIND
 
    ! arguments:
    type(dyn_import_t), intent(out)  :: dyn_in
    type(dyn_export_t), intent(out)  :: dyn_out
 
+   ! Local variables:
+   integer :: ierr
    character(len=*), parameter :: subname = 'dyn_comp::dyn_init'
 
    type(mpas_pool_type), pointer :: mesh_pool
@@ -417,11 +420,16 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    end if
 
+   call cam_mpas_init_phase4(endrun)
+
 end subroutine dyn_init
 
 !=========================================================================================
 
 subroutine dyn_run(dyn_in, dyn_out)
+
+   use cam_mpas_subdriver, only : cam_mpas_run
+   use mpas_timekeeping, only : MPAS_TimeInterval_type, MPAS_set_timeInterval
 
    ! Advances the dynamics state provided in dyn_in by one physics
    ! timestep to produce dynamics state held in dyn_out.
@@ -430,18 +438,27 @@ subroutine dyn_run(dyn_in, dyn_out)
    type (dyn_export_t), intent(inout)  :: dyn_out
 
    ! local variables
+   integer :: ierr
+   type (MPAS_TimeInterval_type) :: integrationLength
 
    character(len=*), parameter :: subname = 'dyn_comp::dyn_run'
    !----------------------------------------------------------------------------
 
    MPAS_DEBUG_WRITE(0, 'begin '//subname)
 
+   ! TODO: How should we obtain the physics timestep and ensure that the dynamics
+   !       timestep evenly divides that value?
+   call MPAS_set_timeInterval(integrationLength, S=1800, S_n=0, S_d=1)
+
+   call cam_mpas_run(integrationLength)
 
 end subroutine dyn_run
 
 !=========================================================================================
 
 subroutine dyn_final(dyn_in, dyn_out)
+
+   use cam_mpas_subdriver, only : cam_mpas_finalize
 
    ! Deallocates the dynamics import and export states, and finalizes
    ! the MPAS dycore.
@@ -512,6 +529,8 @@ subroutine dyn_final(dyn_in, dyn_out)
    nullify(dyn_out % uy)
    deallocate(dyn_out % pmiddry)
    deallocate(dyn_out % pintdry)
+
+   call cam_mpas_finalize()
 
 end subroutine dyn_final
 

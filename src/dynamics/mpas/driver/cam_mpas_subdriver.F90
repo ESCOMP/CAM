@@ -11,7 +11,7 @@ module cam_mpas_subdriver
 !-------------------------------------------------------------------------------
 
 
-    use mpas_derived_types, only : core_type, dm_info, domain_type
+    use mpas_derived_types, only : core_type, dm_info, domain_type, MPAS_Clock_type
 
     public :: cam_mpas_init_phase1, &
               cam_mpas_init_phase2, &
@@ -24,6 +24,7 @@ module cam_mpas_subdriver
               cam_mpas_compute_unit_vectors, &
               cam_mpas_update_halo, &
               cam_mpas_cell_to_edge_winds, &
+              cam_mpas_run, &
               cam_mpas_finalize
     public :: corelist, domain_ptr
 
@@ -32,6 +33,7 @@ module cam_mpas_subdriver
 
     type (core_type), pointer :: corelist => null()
     type (domain_type), pointer :: domain_ptr => null()
+    type (MPAS_Clock_type), pointer :: clock => null()
 
     !
     ! This interface should be compatible with CAM's endrun routine
@@ -390,40 +392,120 @@ contains
     !
     !> \brief Finish MPAS initialization
     !> \author Michael Duda
-    !> \date   9 August 2019
+    !> \date   29 February 2020
     !> \details
-    !>  This routine completes the initialization of the MPAS core.
+    !>  This routine completes the initialization of the MPAS core, essentially
+    !>  following what is done in mpas_atm_core.F::atm_core_init(), but without
+    !>  any calls to the MPAS-A diagnostics framework or the MPAS stream manager.
     !
     !-----------------------------------------------------------------------
     subroutine cam_mpas_init_phase4(endrun)
 
-!       use mpas_log, only : mpas_log_write
-!       use mpas_derived_types, only : MPAS_LOG_ERR
-!       use pio, only : file_desc_t
-!       use iso_c_binding, only : c_int, c_char, c_ptr, c_loc
-
-!       use mpas_derived_types, only : MPAS_Time_type, MPAS_TimeInterval_type
-!       use mpas_derived_types, only : MPAS_IO_PNETCDF, MPAS_IO_PNETCDF5, MPAS_IO_NETCDF, MPAS_IO_NETCDF4
-!       use mpas_derived_types, only : MPAS_START_TIME
-!       use mpas_derived_types, only : MPAS_STREAM_MGR_NOERR
-!       use mpas_timekeeping, only : mpas_get_clock_time, mpas_get_time, mpas_expand_string, mpas_set_time, &
-!                                    mpas_set_timeInterval
-!       use mpas_stream_manager, only : MPAS_stream_mgr_init, mpas_build_stream_filename, MPAS_stream_mgr_validate_streams
-!       use mpas_kind_types, only : StrKIND
-!       use mpas_c_interfacing, only : mpas_c_to_f_string, mpas_f_to_c_string
-!       use mpas_bootstrapping, only : mpas_bootstrap_framework_phase1, mpas_bootstrap_framework_phase2
+       use mpas_timekeeping, only : mpas_get_clock_time, mpas_get_time, MPAS_START_TIME
+       use mpas_kind_types, only : StrKIND, RKIND
+       use mpas_atm_dimensions, only : mpas_atm_set_dims
+       use mpas_atm_threading, only : mpas_atm_threading_init
+       use mpas_derived_types, only : mpas_pool_type, field2DReal, MPAS_Time_type
+       use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_dimension, mpas_pool_get_config, &
+                                      mpas_pool_get_field, mpas_pool_get_array, mpas_pool_initialize_time_levels
+       use atm_core, only : atm_mpas_init_block, core_clock => clock
+       use mpas_dmpar, only : mpas_dmpar_exch_halo_field
 
        implicit none
 
        procedure(halt_model) :: endrun
 
+       real (kind=RKIND), pointer :: dt
+
+       character(len=StrKIND) :: timeStamp
+       integer :: i
+       logical, pointer :: config_do_restart
+
+       type (mpas_pool_type), pointer :: state
+       type (mpas_pool_type), pointer :: mesh
+       type (mpas_pool_type), pointer :: diag
+       type (field2DReal), pointer :: u_field, pv_edge_field, ru_field, rw_field
+       character (len=StrKIND), pointer :: xtime
+       character (len=StrKIND), pointer :: initial_time1, initial_time2
+       type (MPAS_Time_Type) :: startTime
+
+       integer, pointer :: nVertLevels, maxEdges, maxEdges2, num_scalars
+
+       integer :: ierr
+       character(len=StrKIND) :: startTimeStamp
+
+
        !
-       ! Initialize core
+       ! Setup threading
        !
-!       iErr = domain_ptr % core % core_init(domain_ptr, timeStamp)
-!       if ( ierr /= 0 ) then
-!          call endrun('Core init failed for core '//trim(domain_ptr % core % coreName))
-!       end if
+       call mpas_atm_threading_init(domain_ptr % blocklist, ierr)
+       if ( ierr /= 0 ) then
+          call endrun('Threading setup failed for core '//trim(domain_ptr % core % coreName))
+       end if
+
+
+       !
+       ! Set up inner dimensions used by arrays in optimized dynamics routines
+       !
+       call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'state', state)
+       call mpas_pool_get_dimension(state, 'nVertLevels', nVertLevels)
+       call mpas_pool_get_dimension(state, 'maxEdges', maxEdges)
+       call mpas_pool_get_dimension(state, 'maxEdges2', maxEdges2)
+       call mpas_pool_get_dimension(state, 'num_scalars', num_scalars)
+       call mpas_atm_set_dims(nVertLevels, maxEdges, maxEdges2, num_scalars)
+
+       !
+       ! Set "local" clock to point to the clock contained in the domain type
+       !
+       clock => domain_ptr % clock
+       core_clock => domain_ptr % clock
+
+
+       call mpas_pool_get_config(domain_ptr % blocklist % configs, 'config_do_restart', config_do_restart)
+       call mpas_pool_get_config(domain_ptr % blocklist % configs, 'config_dt', dt)
+
+
+       if (.not. config_do_restart) then
+           call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'state', state)
+           call mpas_pool_initialize_time_levels(state)
+       end if
+
+
+       !
+       ! Set startTimeStamp based on the start time of the simulation clock
+       !
+       startTime = mpas_get_clock_time(clock, MPAS_START_TIME, ierr)
+       call mpas_get_time(startTime, dateTimeString=startTimeStamp) 
+
+
+       call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'state', state)
+       call mpas_pool_get_field(state, 'u', u_field, 1)
+       call mpas_dmpar_exch_halo_field(u_field)
+
+       call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'mesh', mesh)
+       call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'state', state)
+
+       call atm_mpas_init_block(domain_ptr % dminfo, domain_ptr % streamManager, domain_ptr % blocklist, mesh, dt)
+
+       call mpas_pool_get_array(state, 'xtime', xtime, 1)
+       xtime = startTimeStamp
+
+       ! Initialize initial_time in second time level. We need to do this because initial state
+       ! is read into time level 1, and if we write output from the set of state arrays that
+       ! represent the original time level 2, the initial_time field will be invalid.
+       call mpas_pool_get_array(state, 'initial_time', initial_time1, 1)
+       call mpas_pool_get_array(state, 'initial_time', initial_time2, 2)
+       initial_time2 = initial_time1
+
+       call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'diag', diag)
+       call mpas_pool_get_field(diag, 'pv_edge', pv_edge_field)
+       call mpas_dmpar_exch_halo_field(pv_edge_field)
+
+       call mpas_pool_get_field(diag, 'ru', ru_field)
+       call mpas_dmpar_exch_halo_field(ru_field)
+
+       call mpas_pool_get_field(diag, 'rw', rw_field)
+       call mpas_dmpar_exch_halo_field(rw_field)
 
     end subroutine cam_mpas_init_phase4
 
@@ -1170,18 +1252,101 @@ contains
 
 
     !-----------------------------------------------------------------------
+    !  routine cam_mpas_run
+    !
+    !> \brief  Integrate dynamical state for the specified length of time
+    !> \author Michael Duda
+    !> \date   29 February 2020
+    !> \details
+    !>  This routine calls the dynamical solver in a loop, with each iteration
+    !>  of the loop stepping the dynamical state forward by one dynamics
+    !>  time step and stopping after the state has been advanced by the time
+    !>  interval specified by the integrationLength argument.
+    !
+    !-----------------------------------------------------------------------
+    subroutine cam_mpas_run(integrationLength)
+
+       use atm_core, only : atm_do_timestep
+       use mpas_derived_types, only : MPAS_Time_type, MPAS_TimeInterval_type, mpas_pool_type
+       use mpas_kind_types, only : StrKIND, RKIND
+       use mpas_log, only : mpas_log_write
+       use mpas_pool_routines, only : mpas_pool_get_config, mpas_pool_get_subpool, mpas_pool_shift_time_levels
+       use mpas_timekeeping, only : mpas_advance_clock, mpas_get_clock_time, mpas_get_time, MPAS_NOW, &
+                                    operator(.lt.), operator(+)
+       use mpas_timer, only : mpas_timer_start, mpas_timer_stop
+
+       implicit none
+
+       integer :: ierr
+
+       type (MPAS_TimeInterval_type) :: integrationLength
+
+       real (kind=RKIND), pointer :: dt
+       type (MPAS_Time_Type) :: currTime
+       type (MPAS_Time_type) :: runUntilTime
+       character(len=StrKIND) :: timeStamp
+       type (mpas_pool_type), pointer :: state
+
+       integer, save :: itimestep = 1
+
+       ! Eventually, dt should be domain specific
+       call mpas_pool_get_config(domain_ptr % blocklist % configs, 'config_dt', dt)
+
+       call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'state', state)
+
+       ! During integration, time level 1 stores the model state at the beginning of the
+       !   time step, and time level 2 stores the state advanced dt in time by timestep(...)
+
+       currTime = mpas_get_clock_time(clock, MPAS_NOW, ierr)
+       runUntilTime = currTime + integrationLength
+
+       do while (currTime < runUntilTime)
+          call mpas_get_time(curr_time=currTime, dateTimeString=timeStamp, ierr=ierr)         
+          call mpas_log_write('Dynamics timestep beginning at '//trim(timeStamp))
+
+          call mpas_timer_start('time integration')
+          call atm_do_timestep(domain_ptr, dt, itimestep)
+          call mpas_timer_stop('time integration')   
+
+          ! Move time level 2 fields back into time level 1 for next time step
+          call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'state', state)
+          call mpas_pool_shift_time_levels(state)
+         
+          ! Advance clock before writing output
+          itimestep = itimestep + 1
+          call mpas_advance_clock(clock)
+          currTime = mpas_get_clock_time(clock, MPAS_NOW, ierr)
+       end do
+
+    end subroutine cam_mpas_run
+
+
+    !-----------------------------------------------------------------------
     !  routine cam_mpas_finalize
     !
     !> \brief  Finalize the MPAS core and infrastructure
     !> \author Michael Duda
-    !> \date   19 April 2019
+    !> \date   29 February 2020
     !> \details
-    !>  This routine mirrors the functionality in stand-alone MPAS's mpas_finalize.
+    !>  This routine finalizes the MPAS-A dycore and any infrastructure that
+    !>  was set-up during the simulation. The work here mirrors that done in
+    !>  mpas_atm_core.F::atm_core_finalize(), except there is no need to finalize
+    !>  the MPAS-A diagnostics framework or stand-alone physics modules.
     !
     !-----------------------------------------------------------------------
     subroutine cam_mpas_finalize()
 
+       use mpas_decomp, only : mpas_decomp_destroy_decomp_list
+       use mpas_timekeeping, only : mpas_destroy_clock
+       use mpas_atm_threading, only : mpas_atm_threading_finalize
+
        implicit none
+
+       integer :: ierr
+
+       call mpas_destroy_clock(clock, ierr)
+       call mpas_decomp_destroy_decomp_list(domain_ptr % decompositions)
+       call mpas_atm_threading_finalize(domain_ptr % blocklist)
 
     end subroutine cam_mpas_finalize
 
