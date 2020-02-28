@@ -77,6 +77,12 @@ type dyn_import_t
    real(r8), dimension(:,:,:), pointer :: tracers ! Tracers [kg/kg dry air]       (nq,nver,ncol)
 
    !
+   ! Base state variables
+   !
+   real(r8), dimension(:,:),   pointer :: rho_base    ! Base-state dry air density [kg/m^3]  (nver,ncol)
+   real(r8), dimension(:,:),   pointer :: theta_base  ! Base-state potential temperature [K] (nver,ncol)
+
+   !
    ! Indices of tracers
    !
    integer                             :: index_qv  ! Index in tracers array of water vapor
@@ -328,11 +334,14 @@ subroutine dyn_init(dyn_in, dyn_out)
    call mpas_pool_get_dimension(mesh_pool, 'nVerticesSolve', nVerticesSolve)
    dyn_in % nVerticesSolve = nVerticesSolve
 
-   call mpas_pool_get_array(state_pool, 'u',                      dyn_in % uperp,   timeLevel=2)
-   call mpas_pool_get_array(state_pool, 'w',                      dyn_in % w,       timeLevel=2)
-   call mpas_pool_get_array(state_pool, 'theta_m',                dyn_in % theta_m, timeLevel=2)
-   call mpas_pool_get_array(state_pool, 'rho_zz',                 dyn_in % rho_zz,  timeLevel=2)
-   call mpas_pool_get_array(state_pool, 'scalars',                dyn_in % tracers, timeLevel=2)
+   call mpas_pool_get_array(state_pool, 'u',                      dyn_in % uperp,   timeLevel=1)
+   call mpas_pool_get_array(state_pool, 'w',                      dyn_in % w,       timeLevel=1)
+   call mpas_pool_get_array(state_pool, 'theta_m',                dyn_in % theta_m, timeLevel=1)
+   call mpas_pool_get_array(state_pool, 'rho_zz',                 dyn_in % rho_zz,  timeLevel=1)
+   call mpas_pool_get_array(state_pool, 'scalars',                dyn_in % tracers, timeLevel=1)
+
+   call mpas_pool_get_array(diag_pool, 'rho_base',                dyn_in % rho_base)
+   call mpas_pool_get_array(diag_pool, 'theta_base',              dyn_in % theta_base)
 
    call mpas_pool_get_dimension(state_pool, 'index_qv', index_qv)
    dyn_in % index_qv = index_qv
@@ -367,11 +376,11 @@ subroutine dyn_init(dyn_in, dyn_out)
    dyn_out % nEdgesSolve    = dyn_in % nEdgesSolve
    dyn_out % nVerticesSolve = dyn_in % nVerticesSolve
 
-   call mpas_pool_get_array(state_pool, 'u',                      dyn_out % uperp,   timeLevel=1)
-   call mpas_pool_get_array(state_pool, 'w',                      dyn_out % w,       timeLevel=1)
-   call mpas_pool_get_array(state_pool, 'theta_m',                dyn_out % theta_m, timeLevel=1)
-   call mpas_pool_get_array(state_pool, 'rho_zz',                 dyn_out % rho_zz,  timeLevel=1)
-   call mpas_pool_get_array(state_pool, 'scalars',                dyn_out % tracers, timeLevel=1)
+   call mpas_pool_get_array(state_pool, 'u',                      dyn_out % uperp,   timeLevel=2)
+   call mpas_pool_get_array(state_pool, 'w',                      dyn_out % w,       timeLevel=2)
+   call mpas_pool_get_array(state_pool, 'theta_m',                dyn_out % theta_m, timeLevel=2)
+   call mpas_pool_get_array(state_pool, 'rho_zz',                 dyn_out % rho_zz,  timeLevel=2)
+   call mpas_pool_get_array(state_pool, 'scalars',                dyn_out % tracers, timeLevel=2)
 
    dyn_out % index_qv = dyn_in % index_qv
 
@@ -395,6 +404,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    if (initial_run) then
 
       call read_inidat(dyn_in)
+      call set_base_state(dyn_in)
       call clean_iodesc_list()
 
       ! Initialize dyn_out from dyn_in since it is needed to run the physics package
@@ -457,6 +467,8 @@ subroutine dyn_final(dyn_in, dyn_out)
    nullify(dyn_in % theta_m)
    nullify(dyn_in % rho_zz)
    nullify(dyn_in % tracers)
+   nullify(dyn_in % rho_base)
+   nullify(dyn_in % theta_base)
    dyn_in % index_qv = 0
    nullify(dyn_in % zint)
    nullify(dyn_in % zz)
@@ -694,6 +706,46 @@ subroutine read_inidat(dyn_in)
 
 
 end subroutine read_inidat
+
+!========================================================================================
+
+subroutine set_base_state(dyn_in)
+
+   ! Set base-state fields for dynamics assuming an isothermal atmosphere
+
+   ! Arguments
+   type(dyn_import_t), intent(inout) :: dyn_in
+
+   ! Local variables
+   real(r8), parameter :: t0b = 250.0      ! Temperature [K]
+   real(r8), parameter :: p0  = 1.0e5      ! Reference pressure [Pa]
+   real(r8), parameter :: gravity = 9.806  ! Gravity [m/s^2]
+   real(r8), parameter :: Rgas = 287.0     ! Dry air gas constant [J/kg/K]
+   real(r8), parameter :: cp = 1004.0      ! Specific heat at constant pressure [J/kg/K]
+
+   integer :: iCell, klev
+   real(r8), dimension(:,:), pointer :: zint
+   real(r8), dimension(:,:), pointer :: rho_base
+   real(r8), dimension(:,:), pointer :: theta_base
+   real(r8) :: zmid
+   real(r8) :: exner
+   real(r8) :: pres
+
+
+   zint       => dyn_in % zint
+   rho_base   => dyn_in % rho_base
+   theta_base => dyn_in % theta_base
+
+   do iCell = 1, dyn_in % nCellsSolve
+      do klev = 1, dyn_in % nVertLevels
+         zmid = 0.5_r8 * (zint(klev,iCell) + zint(klev+1,iCell))   ! Layer midpoint geometric height
+         pres = p0 * exp(-gravity * zmid / Rgas / t0b)
+         theta_base(klev,iCell) = t0b / (pres / p0)**(Rgas/cp)
+         rho_base(klev,iCell) = pres / Rgas / t0b
+      end do
+   end do
+
+end subroutine set_base_state
 
 !========================================================================================
 
