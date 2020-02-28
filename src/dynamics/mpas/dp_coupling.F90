@@ -126,13 +126,13 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
          ncols = get_ncols_p(lchnk)                         ! number of columns in this chunk
          call get_gcol_all_p(lchnk, pcols, pgcols)          ! global column indices in chunk
 
-         do icol = 1, ncols
+         do icol = 1, ncols                                 ! column index in physics chunk
             i = global_to_local_cell(pgcols(icol))          ! column index in dynamics block
 
             phys_state(lchnk)%psdry(icol) = pintdry(1,i)
             phys_state(lchnk)%phis(icol) = zint(1,i) * gravit
 
-            do k = 1, pver
+            do k = 1, pver                                  ! vertical index in physics chunk
                kk = pver - k + 1                            ! vertical index in dynamics block
 
                phys_state(lchnk)%t(icol,k)       = theta_m(kk,i)  ! convert to temperature in derived_phys
@@ -172,9 +172,9 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
 
          call block_to_chunk_send_pters(nblk, max_col_per_block, pverp, tsize, bpter)
 
-         do icol = 1, ncols
-            ig = col_indices_in_block(icol,nblk)   !  global column index
-            i = global_to_local_cell(ig)           !  local (to process) column index
+         do icol = 1, ncols                        ! column index in physics chunk
+            ig = col_indices_in_block(icol,nblk)   ! global column index
+            i = global_to_local_cell(ig)           ! column index in dynamics block
 
             bbuffer(bpter(icol,0))   = pintdry(1,i)         ! psdry
             bbuffer(bpter(icol,0)+1) = zint(1,i) * gravit   ! phis
@@ -247,33 +247,25 @@ end subroutine d_p_coupling
 
 !=========================================================================================
 
-!-----------------------------------------------------------------------
-!  routine p_d_coupling
-!
-!> \brief Physics to dynamics coupling
-!> \details
-!>  Handles coupling of physics to the dynamics by filling in arrays in
-!>  the dynamics import state based on the contents of updated state and
-!>  tendencies from the physics.
-!
-!-----------------------------------------------------------------------
 subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
 
-   ! arguments
+   ! Convert the physics output state and tendencies into the dynamics input state.
+
+   ! Arguments
    type(physics_state), intent(inout) :: phys_state(begchunk:endchunk)
    type(physics_tend ), intent(inout) :: phys_tend(begchunk:endchunk)
    type(dyn_import_t),  intent(inout) :: dyn_in
 
-   ! LOCAL VARIABLES
+   ! Local variables
    integer :: ic , ncols                            ! index
    integer :: lchnk, icol, k      ! indices over chunks, columns, layers
 
    integer :: m, i, j, nb, nblk, ig
    integer :: pgcols(pcols)
 
-   integer :: tsize                 ! amount of data per grid point passed to physics
-   integer :: cpter(pcols,0:pver)   ! offsets into chunk buffer for packing data
-   integer :: bpter(max_col_per_block,0:pver)    ! offsets into block buffer for unpacking data
+   integer :: tsize                           ! amount of data per grid point passed to dynamics
+   integer :: cpter(pcols,0:pver)             ! offsets into chunk buffer for packing data
+   integer :: bpter(max_col_per_block,0:pver) ! offsets into block buffer for unpacking data
 
    real(r8), allocatable, dimension(:) :: bbuffer, cbuffer ! transpose buffers
 
@@ -291,7 +283,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
    real(r8), pointer :: rho_tend(:,:)
 
    character(len=*), parameter :: subname = 'dp_coupling::p_d_coupling'
-
+   !----------------------------------------------------------------------------
 
    MPAS_DEBUG_WRITE(1, 'begin '//subname)
 
