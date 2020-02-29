@@ -699,6 +699,16 @@ subroutine read_inidat(dyn_in)
       theta_m(:,1:nCellsSolve) = theta(:,1:nCellsSolve)    ! With no moisture, theta_m := theta
       rho_zz(:,1:nCellsSolve) = rho(:,1:nCellsSolve) / zz(:,1:nCellsSolve)
 
+      ! Update halos for initial state fields
+
+      call cam_mpas_update_halo('u')         ! u is the name of uperp in the MPAS state pool
+      call cam_mpas_update_halo('w')
+      call cam_mpas_update_halo('scalars')   ! scalars is the name of tracers in the MPAS state pool
+      call cam_mpas_update_halo('theta_m')
+      call cam_mpas_update_halo('theta')
+      call cam_mpas_update_halo('rho_zz')
+      call cam_mpas_update_halo('rho')
+
    else
 
       call endrun(subname//': reading initial data not implemented')
@@ -712,6 +722,8 @@ end subroutine read_inidat
 subroutine set_base_state(dyn_in)
 
    ! Set base-state fields for dynamics assuming an isothermal atmosphere
+
+   use cam_mpas_subdriver, only : cam_mpas_update_halo
 
    ! Arguments
    type(dyn_import_t), intent(inout) :: dyn_in
@@ -744,6 +756,9 @@ subroutine set_base_state(dyn_in)
          rho_base(klev,iCell) = pres / Rgas / t0b
       end do
    end do
+
+   call cam_mpas_update_halo('rho_base')
+   call cam_mpas_update_halo('theta_base')
 
 end subroutine set_base_state
 
