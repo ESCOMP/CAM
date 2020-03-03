@@ -1061,7 +1061,7 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
     fi
     testargs="${testargs} --test-id ${test_id}"
     if [ -n "${BL_TESTDIR}" ]; then
-      testargs="${testargs} --compare $( basename ${BL_TESTDIR} )"
+      testargs="${testargs} --compare ${BL_TESTDIR} "
     fi
     if [ -n "${use_existing}" ]; then
       testargs="${testargs} --use-existing"
