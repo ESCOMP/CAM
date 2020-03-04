@@ -34,7 +34,7 @@ help () {
   echo "${hprefix}   'env var1=setting var2=setting '"
   echo ""
   echo "Supported ENVIRONMENT variables"
-  echo "BL_TESTDIR:        Default = none (used to set CESM baseline compare dir)"
+  echo "BL_TESTDIR:        Default = none (used to set baseline compare dir)"
   echo "CAM_ACCOUNT:       Default = none"
   echo "CAM_BATCHQ:        Default = machine dependent"
   echo "CAM_FC:            Default = machine dependent"
