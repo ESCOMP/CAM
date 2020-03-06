@@ -10,7 +10,7 @@ on:
   #directly to the repo.
   push:
     branches:
-      - fake_development
+      - cam_development
 
 jobs:
   #This job is designed to close any issues or pull requests specified
