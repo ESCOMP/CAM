@@ -388,7 +388,7 @@
     </machines>
   </test>
 <!--              381                         -->
-  <test compset="QPC6HIST" grid="f09_f09_mg17" name="SMS_P48x1_D_Ln3" testmods="cam/outfrq3s">
+  <test compset="QPHISTC6" grid="f09_f09_mg17" name="SMS_P48x1_D_Ln3" testmods="cam/outfrq3s">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>

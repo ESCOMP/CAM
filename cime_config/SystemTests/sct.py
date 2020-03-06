@@ -40,14 +40,15 @@ class SCT(SystemTestsCompareTwo):
 
 
     def _case_two_setup(self):
-        append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "ncdata         = '../camrun.cam.i.0000-09-01-00000.nc'")
+        case_name = self._case.get_value("CASE")
+        append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "ncdata         = '../"+case_name+".cam.i.0000-09-01-00000.nc'")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "NDENS    = 1,1,1,1,1,1")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "MFILT    = 1,7,1,1,1,1")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "nhtfrq   = 1,1,1,1,1,1")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "fincl2='TDIFF','QDIFF','LANDFRAC'")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "scmlon= 140.")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "scmlat= -20.")
-        append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "iopfile = '../camrun.cam.h1.0000-09-01-00000.nc'")
+        append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "iopfile = '../"+case_name+".cam.h1.0000-09-01-00000.nc'")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "inithist_all = .true.")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "scm_cambfb_mode                = .true.")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "scm_use_obs_uv         = .true.")
@@ -58,9 +59,12 @@ class SCT(SystemTestsCompareTwo):
 
         mach_name = self._case.get_value("MACH")
         mach_obj = Machines(machine=mach_name)
-        if mach_obj.is_valid_MPIlib("mpi-serial"):
-            self._case.set_value("MPILIB","mpi-serial")
+#        if mach_obj.is_valid_MPIlib("mpi-serial"):
+#            self._case.set_value("MPILIB","mpi-serial")
 
+        self._case.set_value("PTS_MODE","TRUE")
+        self._case.set_value("PTS_LAT",-20.0)
+        self._case.set_value("PTS_LON",140.0)
 
         CAM_CONFIG_OPTS = self._case1.get_value("CAM_CONFIG_OPTS")
         self._case.set_value("CAM_CONFIG_OPTS","{} -scam".format(CAM_CONFIG_OPTS))
