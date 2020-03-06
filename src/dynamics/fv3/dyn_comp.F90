@@ -52,7 +52,6 @@ module dyn_comp
     use fms_io_mod,      only: set_domain, nullify_domain
     use fv_arrays_mod,   only: fv_atmos_type, fv_grid_bounds_type
     use fv_grid_utils_mod,only: cubed_to_latlon, mid_pt_sphere, inner_prod, get_latlon_vector, get_unit_vect2, g_sum
-    use fv_mp_mod,       only: mp_barrier
     use fv_nesting_mod,  only: twoway_nesting
     use infnan,          only: isnan
     use mpp_domains_mod, only: mpp_update_domains, domain2D, DGRID_NE
@@ -492,7 +491,8 @@ subroutine dyn_init(dyn_in, dyn_out)
       close(unito)
       call freeunit(unito)
    end if
-   ! call tracer_manager_init()
+!!$   !---------must make sure the field_table file is written before reading across processors
+   call mpibarrier (mpicom)
    call register_tracers (MODEL_ATMOS, ncnst, nt_prog, pnats, num_family)
    if (masterproc) then
       write(*,*) 'ncnst=', ncnst,' num_prog=',nt_prog,' pnats=',pnats,' dnats=',dnats,' num_family=',num_family         
@@ -508,14 +508,13 @@ subroutine dyn_init(dyn_in, dyn_out)
 !!$
 !!$   call tracer_manager_init(fieldtable)
 
-   call t_barrierf ('sync_tracer_register', mpicom)
 
    do m=1,pcnst  
       !  just check condensate loading tracers as they are mapped above
       if(qsize_tracer_idx_cam2dyn(m).le.qsize_condensate_loading) then
          fv3idx  = get_tracer_index (MODEL_ATMOS, cnst_name_ffsl(qsize_tracer_idx_cam2dyn(m)) )
          if (fv3idx.ne.qsize_tracer_idx_cam2dyn(m)) then
-            write(6,*)'m,fv3idx,qsize_tracer_idx_cam2dyn=',m,fv3idx,qsize_tracer_idx_cam2dyn,cnst_name_ffsl
+            write(6,*)'m,fv3idx,qsize_tracer_idx_cam2dyn=',m,fv3idx,qsize_tracer_idx_cam2dyn,cnst_name_ffsl,mpp_pe()
             call endrun(subname//': ERROR: CAM/FV3 Tracer mapping incorrect')
          end if
       end if
