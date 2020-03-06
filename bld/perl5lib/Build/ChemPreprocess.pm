@@ -38,7 +38,7 @@ sub chem_preprocess
     my $usr_mech_infile = $cfg_ref->get('usr_mech_infile');
     my $prog_species = $cfg_ref->get('prog_species');
     my $chem_pkg = $cfg_ref->get('chem');
-    my $cam_root = $cfg_ref->get('cam_root');
+    my $cam_dir = $cfg_ref->get('cam_dir');
     my $cam_bld = $cfg_ref->get('cam_bld');
     my $chem_proc_src = $cfg_ref->get('chem_proc_src');
     my $force_build = $cfg_ref->get('build_chem_proc');
@@ -51,7 +51,7 @@ sub chem_preprocess
 
     my $chem_proc_bld = "$cam_bld/chem_proc";
 
-    my $chem_preprocessor = "$cam_root/components/cam/chem_proc";
+    my $chem_preprocessor = "$cam_dir/chem_proc";
 
     my $chem_mech_infile;
 
@@ -88,7 +88,7 @@ sub chem_preprocess
 	    $usr_mech_infile = "$chem_proc_bld/chem_mech.in";
 	    write_chem_preproc($usr_mech_infile, $cfg_ref, $chem_preprocessor , $chem_proc_bld);
 	} else {
-	    $usr_mech_infile = "$cam_root/components/cam/src/chemistry/pp_${chem_pkg}/chem_mech.in";
+	    $usr_mech_infile = "$cam_dir/src/chemistry/pp_${chem_pkg}/chem_mech.in";
 	}
     }
 

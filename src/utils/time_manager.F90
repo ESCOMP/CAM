@@ -31,6 +31,7 @@ public ::&
    get_curr_time,            &! return components of elapsed time since reference date at end of current timestep
    get_prev_time,            &! return components of elapsed time since reference date at beg of current timestep
    get_curr_calday,          &! return calendar day at end of current timestep
+   get_julday,               &! return julian day from input date, time 
    get_calday,               &! return calendar day from input date
    is_first_step,            &! return true on first step of initial run
    is_first_restart_step,    &! return true on first step of restart or branch run
@@ -837,6 +838,41 @@ function get_curr_calday(offset)
    end if
 
 end function get_curr_calday
+  
+!==========================================================================
+! return julian day
+function get_julday(yr_in,mon,day,sec) result(julday)
+
+  integer,  intent(in) :: yr_in,mon,day,sec
+
+  real(r8) :: julday
+
+  integer :: yr
+  integer :: itimes(3), j, a,y,m
+
+  yr = yr_in
+
+  if (yr < 1000) then
+     if (yr < 40) then
+        yr = yr + 2000
+     else
+        yr = yr + 1900
+     endif
+  endif
+
+  itimes(1) = int(mon)
+  itimes(2) = int(day)
+  itimes(3) = int(yr)
+
+  a = int((14._r8-real(itimes(1),kind=r8))/12._r8)
+  y = itimes(3)+4800-a
+  m = itimes(1)+12*a-3
+  j = itimes(2) + int((153._r8*real(m,kind=r8)+2._r8) / 5._r8) + 365*y + &
+       int(real(y,kind=r8)/4._r8) - int(real(y,kind=r8)/100._r8) + int(real(y,kind=r8)/400._r8)- 32045
+  julday = real(j,kind=r8) + real(sec,kind=r8)/86400._r8
+
+end function get_julday
+!==========================================================================
 !=========================================================================================
 
 function get_calday(ymd, tod)

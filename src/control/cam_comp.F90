@@ -87,6 +87,7 @@ subroutine cam_init( &
    use history_scam,     only: scm_intht
    use cam_pio_utils,    only: init_pio_subsystem
    use cam_instance,     only: inst_suffix
+   use cam_snapshot,     only: cam_snapshot_deactivate
 
 #if (defined BFB_CAM_SCAM_IOP)
    use history_defaults, only: initialize_iop_history
@@ -193,7 +194,7 @@ subroutine cam_init( &
 #endif
    end if
 
-   call phys_init( phys_state, phys_tend, pbuf2d,  cam_out )
+   call phys_init( phys_state, phys_tend, pbuf2d, cam_in, cam_out )
 
    call bldfld ()       ! master field list (if branch, only does hash tables)
 
@@ -203,6 +204,8 @@ subroutine cam_init( &
 
    if (single_column) call scm_intht()
    call intht(model_doi_url)
+
+   call cam_snapshot_deactivate()
 
 end subroutine cam_init
 

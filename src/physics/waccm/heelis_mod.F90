@@ -1,6 +1,5 @@
 !-----------------------------------------------------------------------
-! extracted from components/cam/src/ionosphere/waccmx/heelis.F90
-! to be used by waccm physics
+!  Heelis empirical model to calculate high-latitude electric potential
 !-----------------------------------------------------------------------
 module heelis_mod
 
@@ -30,14 +29,12 @@ module heelis_mod
 
 contains
 !-----------------------------------------------------------------------
-  subroutine heelis_update()
+  subroutine heelis_update(max_ctpoten)
     use physconst, only: pi
     use mag_parms, only: get_mag_parms
-!
-! This is called at every timestep because ctpoten may change with time.
-! Time-dependent ctpoten (kV) is read from TIMEGCM and WACCM input files, 
-! unless it was provided as a constant by the user via namelist (namelist.F90).
-!
+
+    real(r8), optional, intent(in) :: max_ctpoten ! max cross cap potential kV
+    !
     real(r8) :: rcp, rhp, arad
     real(r8) :: byloc      ! local By; now is just a hook, and set to 0. 
     integer,  parameter :: isouth = 1
@@ -45,7 +42,13 @@ contains
     real(r8), parameter :: h2deg = 15._r8   ! hour to degree
     real(r8), parameter :: dtr = pi/180._r8
 
+!
+! This is called at every timestep because ctpoten may change with time.
+!
     call get_mag_parms( hpower = hpower, ctpoten = ctpoten )
+    if (present(max_ctpoten)) then
+       ctpoten = min(ctpoten,max_ctpoten)
+    end if
 
     byloc  = 0._r8
 
@@ -53,7 +56,7 @@ contains
     dskofc(:) =  0._r8
     phin(:)   =  180._r8*dtr
 
-    phid(isouth) = (9.39_r8 + 0.21_r8*byloc - 12._r8) * h2deg * dtr   ! In keeping with TIE-GCM2.0, phid also changed in mo_aurora.F90
+    phid(isouth) = (9.39_r8 + 0.21_r8*byloc - 12._r8) * h2deg * dtr
     phid(inorth) = (9.39_r8 - 0.21_r8*byloc - 12._r8) * h2deg * dtr
     phin(isouth) = (23.50_r8 + 0.15_r8*byloc - 12._r8) * h2deg * dtr
     phin(inorth) = (23.50_r8 - 0.15_r8*byloc - 12._r8) * h2deg * dtr

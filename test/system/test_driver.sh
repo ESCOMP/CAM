@@ -34,7 +34,7 @@ help () {
   echo "${hprefix}   'env var1=setting var2=setting '"
   echo ""
   echo "Supported ENVIRONMENT variables"
-  echo "BL_TESTDIR:        Default = none (used to set CESM baseline compare dir)"
+  echo "BL_TESTDIR:        Default = none (used to set baseline compare dir)"
   echo "CAM_ACCOUNT:       Default = none"
   echo "CAM_BATCHQ:        Default = machine dependent"
   echo "CAM_FC:            Default = machine dependent"
@@ -1099,7 +1099,7 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
     fi
     testargs="${testargs} --test-id ${test_id}"
     if [ -n "${BL_TESTDIR}" ]; then
-      testargs="${testargs} --compare $( basename  ${BL_TESTDIR%"_${CAM_FC,,}"} )"
+      testargs="${testargs} --compare ${BL_TESTDIR} "
     fi
     if [ -n "${use_existing}" ]; then
       testargs="${testargs} --use-existing"

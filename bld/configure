@@ -3173,61 +3173,27 @@ EOF
 
 sub set_horiz_grid
 {
-    # Set the parameters for the specified dycore and horizontal grid.  The
-    # parameters are read from an input file, and if no dycore/grid matches are
-    # found then issue error message.
+    # Set parameters for the specified dycore and horizontal grid.
+    #
     # This routine uses the configuration defined at the package level ($cfg_ref).
 
     my ($hgrid_file, $cfg_ref) = @_;
-    my $xml = XML::Lite->new( $hgrid_file );
-    my $root = $xml->root_element();
-
-    # Check for valid root node
-    my $name = $root->get_name();
-    $name eq "config_horiz_grid" or die
-        "file $hgrid_file is not a horizontal grid parameters file\n";
 
     # Get dycore/grid from the package's configuration
     my $dyn_pkg = $cfg_ref->get('dyn');
     my $hgrid   = $cfg_ref->get('hgrid');
 
-    # Read the grid parameters from $hgrid_file.
-    my @e = $xml->elements_by_name( "horiz_grid" );
-    my %a = ();
+    if ( $dyn_pkg eq 'se') {
 
-    # Search for matching dycore/grid.
-    my $found = 0;
-  HGRID:
-    while ( my $e = shift @e ) {
-        %a = $e->get_attributes();
-        if ( $dyn_pkg eq $a{'dyn'} and $hgrid eq $a{'hgrid'} ) {
-            $found = 1;
-            last HGRID;
-        }
-    }
+        # For SE dycore parse the parameters out of the grid specifier string.
 
-    # Die unless search was successful.
-    unless ($found) { die "set_horiz_grid: no match for dycore $dyn_pkg and hgrid $hgrid\n"; }
+        $hgrid =~ m/ne(\d+)np(\d+)/;
+        $cfg_ref->set('csne', $1);
+        $cfg_ref->set('csnp', $2);
 
-    # Set parameter values -- dycore specific.
-    if ( $dyn_pkg =~ m/eul/ ) {
-        $cfg_ref->set('nlat', $a{'nlat'});
-        $cfg_ref->set('nlon', $a{'nlon'});
-        $cfg_ref->set('trm',  $a{'m'});
-        $cfg_ref->set('trn',  $a{'n'});
-        $cfg_ref->set('trk',  $a{'k'});
-    }
-    elsif ( $dyn_pkg eq 'fv' ) {
-        $cfg_ref->set('nlat', $a{'nlat'});
-        $cfg_ref->set('nlon', $a{'nlon'});
-    }
-    elsif ( $dyn_pkg eq 'fvcubed' ) {
-        $cfg_ref->set('csnp', $a{'csnp'});
-    }
-    elsif ( $dyn_pkg eq 'se') {
-        $cfg_ref->set('csne', $a{'csne'});
-        $cfg_ref->set('csnp', $a{'csnp'});
-        $cfg_ref->set('npg',  $a{'npg'});
+        my $npg = 0;
+        if ($hgrid =~ m/\.pg(\d+)/) { $npg = $1; }
+        $cfg_ref->set('npg',  $npg);
 
         # To allow more flexibility when matching grid attributes in the namelist
         # defaults file split the GLL and physics grid specifiers in the hgrid
@@ -3235,22 +3201,70 @@ sub set_horiz_grid
         # the config_cache file.  The physics grid specifier is stored separately
         # in the npg parameter.
 
-        $hgrid =~ s/\.pg\d//;   # strip the '.pgN' extension
+        $hgrid =~ s/\.pg\d+//;   # strip the '.pgN' extension
         $cfg_ref->set('hgrid', $hgrid);
     }
+    else {
 
-    # Override resolution settings to configure for SCAM mode.  The override is needed
-    # because in SCAM mode the -hgrid option is used to specify the resolution of default
-    # datasets from which single data columns are extracted.
-    my $scam = $cfg_ref->get('scam');
-    if ($scam) {
-        $cfg_ref->set('nlat', 1);
-        $cfg_ref->set('nlon', 1);
-        $cfg_ref->set('trm',  1);
-        $cfg_ref->set('trn',  1);
-        $cfg_ref->set('trk',  1);
+        # For non-SE dycores the parameters are read from an input file,
+        # and if no dycore/grid matches are found then issue error message.
+
+        my $xml = XML::Lite->new( $hgrid_file );
+        my $root = $xml->root_element();
+
+        # Check for valid root node
+        my $name = $root->get_name();
+        $name eq "config_horiz_grid" or die
+            "file $hgrid_file is not a horizontal grid parameters file\n";
+
+        # Read the grid parameters from $hgrid_file.
+        my @e = $xml->elements_by_name( "horiz_grid" );
+        my %a = ();
+
+        # Search for matching dycore/grid.
+        my $found = 0;
+        HGRID: while ( my $e = shift @e ) {
+            %a = $e->get_attributes();
+            if ( $dyn_pkg eq $a{'dyn'} and $hgrid eq $a{'hgrid'} ) {
+                $found = 1;
+                last HGRID;
+            }
+        }
+
+        # Die unless search was successful.
+        unless ($found) { die "set_horiz_grid: no match for dycore $dyn_pkg and hgrid $hgrid\n"; }
+
+        # Set parameter values -- dycore specific.
+        if ( $dyn_pkg =~ m/eul/ ) {
+            $cfg_ref->set('nlat', $a{'nlat'});
+            $cfg_ref->set('nlon', $a{'nlon'});
+            $cfg_ref->set('trm',  $a{'m'});
+            $cfg_ref->set('trn',  $a{'n'});
+            $cfg_ref->set('trk',  $a{'k'});
+
+            # Override resolution settings to configure for SCAM mode.  The override is needed
+            # because in SCAM mode the -hgrid option is used to specify the resolution of default
+            # datasets from which single data columns are extracted.
+            my $scam = $cfg_ref->get('scam');
+            if ($scam) {
+                $cfg_ref->set('nlat', 1);
+                $cfg_ref->set('nlon', 1);
+                $cfg_ref->set('trm',  1);
+                $cfg_ref->set('trn',  1);
+                $cfg_ref->set('trk',  1);
+            }
+        }
+        elsif ( $dyn_pkg eq 'fv' ) {
+            $cfg_ref->set('nlat', $a{'nlat'});
+            $cfg_ref->set('nlon', $a{'nlon'});
+        }
+        elsif ( $dyn_pkg eq 'fvcubed' ) {
+            $cfg_ref->set('csnp', $a{'csnp'});
+        }
+        else {
+            die "set_horiz_grid: unrecognized dycore: $dyn_pkg\n";
+        }
     }
-
 }
 
 #-------------------------------------------------------------------------------

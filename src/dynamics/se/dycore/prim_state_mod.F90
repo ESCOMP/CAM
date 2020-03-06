@@ -293,6 +293,7 @@ CONTAINS
 #ifdef waccm_debug
     call prim_printstate_cslam_gamma(elem, tl,hybrid,nets,nete, fvm)
 #endif
+    call prim_printstate_U(elem, tl,hybrid,nets,nete, fvm) 
   end subroutine prim_printstate
 
 
@@ -432,4 +433,51 @@ CONTAINS
        end if
     end if
   end subroutine adjust_nsplit
+
+  subroutine prim_printstate_U(elem, tl,hybrid,nets,nete, fvm)
+    type (element_t),             intent(inout) :: elem(:)
+    type(fvm_struct),             intent(inout) :: fvm(:)
+    type (TimeLevel_t), target,   intent(in)    :: tl
+    type (hybrid_t),              intent(in)    :: hybrid
+    integer,                      intent(in)    :: nets,nete
+
+    ! Local variables...
+    integer            :: k,ie
+
+    real (kind=r8), dimension(nets:nete,nlev) :: max_local
+    real (kind=r8), dimension(nets:nete,nlev) :: min_local    
+    real (kind=r8), dimension(nlev)           :: max_p
+    real (kind=r8), dimension(nlev)           :: min_p
+    integer        :: n0, n0_qdp, q, nm, nm2
+
+    !dt=tstep*qsplit
+    !dt = tstep*qsplit*rsplit  ! vertical REMAP timestep
+    !dynamics variables in n0 are at time =  'time': time=tl%nstep*tstep
+    if (hybrid%masterthread) then
+       write(iulog,*) "nstep=",tl%nstep," time=",Time_at(tl%nstep)/(24*3600)," [day]"
+    end if
+    ! dynamics timelevels
+    n0=tl%n0
+    call TimeLevel_Qdp( tl, qsplit, n0_qdp)
+
+    do ie=nets,nete
+      do k=1,nlev
+        max_local(ie,k)  = MAXVAL(elem(ie)%state%v(:,:,:,k,n0))
+        min_local(ie,k)  = MINVAL(elem(ie)%state%v(:,:,:,k,n0))
+      end do
+    end do
+    !JMD This is a Thread Safe Reduction
+    do k = 1, nlev
+      max_p(k) = Parallelmax(max_local(:,k),hybrid)
+      min_p(k) = Parallelmin(min_local(:,k),hybrid)      
+    end do
+    if (hybrid%masterthread) then
+       write(iulog,*)   '  '
+       write(iulog,*)   'min/max of wind components in each layer'
+       write(iulog,*)   '  '
+       do k=1,nlev
+          write(iulog,*) 'k,V (min max)= ',k,min_p(k),max_p(k)
+       end do
+    end if
+  end subroutine prim_printstate_U
 end module prim_state_mod
