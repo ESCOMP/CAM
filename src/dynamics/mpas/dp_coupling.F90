@@ -96,7 +96,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
 
    MPAS_DEBUG_WRITE(1, 'begin '//subname)
 
-   nCellsSolve = dyn_out%nCellsSolve
+   nCellsSolve = dyn_out % nCellsSolve
    index_qv    = dyn_out % index_qv
 
    pmiddry  => dyn_out % pmiddry
@@ -203,7 +203,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
       call t_stopf  ('block_to_chunk')
 
       !$omp parallel do private (lchnk, ncols, icol, k, kk, m, cpter)
-      do lchnk = begchunk,endchunk
+      do lchnk = begchunk, endchunk
          ncols = phys_state(lchnk)%ncol
 
          call block_to_chunk_recv_pters(lchnk, pcols, pverp, tsize, cpter)
@@ -249,7 +249,10 @@ end subroutine d_p_coupling
 
 subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
 
-   ! Convert the physics output state and tendencies into the dynamics input state.
+   ! Convert the physics output state and tendencies into the dynamics
+   ! input state.  Begin by redistributing the output of the physics package
+   ! to the block data structure.  Then derive the tendencies required by
+   ! MPAS.
 
    ! Arguments
    type(physics_state), intent(inout) :: phys_state(begchunk:endchunk)
@@ -257,104 +260,112 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
    type(dyn_import_t),  intent(inout) :: dyn_in
 
    ! Local variables
-   integer :: ic , ncols                            ! index
-   integer :: lchnk, icol, k      ! indices over chunks, columns, layers
+   integer :: lchnk, icol, k, kk      ! indices over chunks, columns, layers
+   integer :: i, ig, m, nb, nblk, ncols
 
-   integer :: m, i, j, nb, nblk, ig
+   real(r8) :: factor
+
+   ! Variables from dynamics import container
+   integer :: nCellsSolve
+   integer :: index_qv
+
+   real(r8), pointer :: tracers(:,:,:)
+
+   ! CAM physics output redistributed to blocks.
+   real(r8), allocatable :: t_tend(:,:)
+   real(r8), allocatable :: u_tend(:,:)
+   real(r8), allocatable :: v_tend(:,:)
+
+
    integer :: pgcols(pcols)
-
    integer :: tsize                           ! amount of data per grid point passed to dynamics
    integer :: cpter(pcols,0:pver)             ! offsets into chunk buffer for packing data
    integer :: bpter(max_col_per_block,0:pver) ! offsets into block buffer for unpacking data
 
    real(r8), allocatable, dimension(:) :: bbuffer, cbuffer ! transpose buffers
 
-   ! Variables from dynamics import container
-   real(r8), pointer :: zint(:,:)
-   real(r8), pointer :: zz(:,:)
-   real(r8), pointer :: rho_zz(:,:)
-   real(r8), pointer :: ux(:,:)
-   real(r8), pointer :: uy(:,:)
-   real(r8), pointer :: theta(:,:)
-   real(r8), pointer :: w(:,:)
-   real(r8), pointer :: tracers(:,:,:)
-   real(r8), pointer :: ru_tend(:,:)
-   real(r8), pointer :: rtheta_tend(:,:)
-   real(r8), pointer :: rho_tend(:,:)
-
    character(len=*), parameter :: subname = 'dp_coupling::p_d_coupling'
    !----------------------------------------------------------------------------
 
    MPAS_DEBUG_WRITE(1, 'begin '//subname)
 
-   zint => dyn_in % zint
-   zz => dyn_in % zz
-   rho_zz => dyn_in % rho_zz
-   ux => dyn_in % ux
-   uy => dyn_in % uy
-   theta => dyn_in % theta
-   w => dyn_in % w
+   nCellsSolve = dyn_in % nCellsSolve
+   index_qv    = dyn_in % index_qv
+
    tracers => dyn_in % tracers
-   ru_tend => dyn_in % ru_tend
-   rtheta_tend => dyn_in % rtheta_tend
-   rho_tend => dyn_in % rho_tend
+
+   allocate( &
+      t_tend(pver,nCellsSolve), &
+      u_tend(pver,nCellsSolve), &
+      v_tend(pver,nCellsSolve)  )
 
    call t_startf('pd_copy')
    if (local_dp_map) then
 
       !$omp parallel do private (lchnk, ncols, icol, i, k, m, pgcols)
-      do lchnk=begchunk,endchunk
-         ncols=get_ncols_p(lchnk)                         ! number of columns in this chunk
-         call get_gcol_all_p(lchnk,pcols,pgcols)          ! global column indices
-         do icol=1,ncols
-            i = global_to_local_cell(pgcols(icol))        ! local (to process) column index
+      do lchnk = begchunk, endchunk
 
-            do k=1,pver
-#ifdef USE_UNCOMPILABLE_MPAS_CODE
-               temp_tend(k,i) = phys_tend(lchnk)%dtdt(icol,k)
-               ux_tend(k,i)   = phys_tend(lchnk)%dudt(icol,k)
-               uy_tend(k,i)   = phys_tend(lchnk)%dvdt(icol,k)
-#endif
-               do m=1,pcnst
-                  tracers(m,k,i) = phys_state(lchnk)%q(icol,k,m)
+         ncols = get_ncols_p(lchnk)                     ! number of columns in this chunk
+         call get_gcol_all_p(lchnk, pcols, pgcols)      ! global column indices
+
+         do icol = 1, ncols                             ! column index in physics chunk
+            i = global_to_local_cell(pgcols(icol))      ! column index in dynamics block
+
+            do k = 1, pver                              ! vertical index in physics chunk
+               kk = pver - k + 1                        ! vertical index in dynamics block
+
+               t_tend(kk,i) = phys_tend(lchnk)%dtdt(icol,k)
+               u_tend(kk,i) = phys_tend(lchnk)%dudt(icol,k)
+               v_tend(kk,i) = phys_tend(lchnk)%dvdt(icol,k)
+
+               ! convert wet mixing ratios to dry
+               factor = phys_state(lchnk)%pdel(icol,k)/phys_state(lchnk)%pdeldry(icol,k)
+               do m = 1, pcnst
+                  ! *** will need conversion between CAM and MPAS tracer indices
+                  if (cnst_type(m) == 'wet') then
+                     tracers(m,kk,i) = phys_state(lchnk)%q(icol,k,m)*factor
+                  else
+                     tracers(m,kk,i) = phys_state(lchnk)%q(icol,k,m)
+                  end if
                end do
+
             end do
-
          end do
-
       end do
 
    else
 
       tsize = 3 + pcnst
-
       allocate( bbuffer(tsize*block_buf_nrecs) )
+      bbuffer = 0.0_r8
       allocate( cbuffer(tsize*chunk_buf_nrecs) )
+      cbuffer = 0.0_r8
 
       !$omp parallel do private (lchnk, ncols, icol, k, m, cpter)
-      do lchnk = begchunk,endchunk
+      do lchnk = begchunk, endchunk
          ncols = get_ncols_p(lchnk)
 
-         call chunk_to_block_send_pters(lchnk,pcols,pver+1,tsize,cpter)
+         call chunk_to_block_send_pters(lchnk, pcols, pverp, tsize, cpter)
 
-         do icol=1,ncols
-            cbuffer(cpter(icol,0):cpter(icol,0)+2+pcnst) = 0.0_r8
-         end do
+         do icol = 1, ncols
 
-         do icol=1,ncols
+            do k = 1, pver
+               cbuffer(cpter(icol,k))   = phys_tend(lchnk)%dtdt(icol,k)
+               cbuffer(cpter(icol,k)+1) = phys_tend(lchnk)%dudt(icol,k)
+               cbuffer(cpter(icol,k)+2) = phys_tend(lchnk)%dvdt(icol,k)
 
-            do k=1,pver
-               cbuffer   (cpter(icol,k))     = phys_tend(lchnk)%dtdt(icol,k)
-               cbuffer   (cpter(icol,k)+1)   = phys_tend(lchnk)%dudt(icol,k)
-               cbuffer   (cpter(icol,k)+2)   = phys_tend(lchnk)%dvdt(icol,k)
-
-               do m=1,pcnst
-                  cbuffer(cpter(icol,k)+2+m) = phys_state(lchnk)%q(icol,k,m)
+               ! convert wet mixing ratios to dry
+               factor = phys_state(lchnk)%pdel(icol,k)/phys_state(lchnk)%pdeldry(icol,k)
+               do m = 1, pcnst
+                  if (cnst_type(m) == 'wet') then
+                     cbuffer(cpter(icol,k)+2+m) = phys_state(lchnk)%q(icol,k,m)*factor
+                  else
+                     cbuffer(cpter(icol,k)+2+m) = phys_state(lchnk)%q(icol,k,m)
+                  end if
                end do
+
             end do
-
          end do
-
       end do
 
       call t_barrierf('sync_chk_to_blk', mpicom)
@@ -362,41 +373,43 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
       call transpose_chunk_to_block(tsize, cbuffer, bbuffer)
       call t_stopf  ('chunk_to_block')
 
-      !$omp parallel do private (nb, nblk, ncols, icol, ig, i, k, m, bpter)
+      !$omp parallel do private (nb, nblk, ncols, icol, ig, i, k, kk, m, bpter)
       do nb = 1, nblocks_per_pe
          nblk = iam * nblocks_per_pe + nb   !  global block index
          ncols = get_block_gcol_cnt_d(nblk) !  number of columns in this block
 
-         call chunk_to_block_recv_pters(nblk,max_col_per_block,pver+1,tsize,bpter)
+         call chunk_to_block_recv_pters(nblk, max_col_per_block, pverp, tsize, bpter)
 
-         do icol=1,ncols
-            ig = col_indices_in_block(icol,nblk)   !  global column index
-            i = global_to_local_cell(ig)           !  local (to process) column index
+         do icol = 1, ncols                       ! column index in physics chunk
+            ig = col_indices_in_block(icol,nblk)  ! global column index
+            i = global_to_local_cell(ig)          ! column index in dynamics block
 
-            do k=1,pver
+            ! flip vertical index here
+            do k = 1, pver                        ! vertical index in physics chunk
+               kk = pver - k + 1                  ! vertical index in dynamics block
 
-#ifdef USE_UNCOMPILABLE_MPAS_CODE
-               temp_tend(k,i) = bbuffer(bpter(icol,k))
-               ux_tend  (k,i) = bbuffer(bpter(icol,k)+1)
-               uy_tend  (k,i) = bbuffer(bpter(icol,k)+2)
-#endif
+               t_tend(kk,i) = bbuffer(bpter(icol,k))
+               u_tend(kk,i) = bbuffer(bpter(icol,k)+1)
+               v_tend(kk,i) = bbuffer(bpter(icol,k)+2)
 
-               do m=1,pcnst
-                  tracers(m,k,i) = bbuffer(bpter(icol,k)+2+m)
+               do m = 1, pcnst
+                  tracers(m,kk,i) = bbuffer(bpter(icol,k)+2+m)
                end do
 
             end do
-            
          end do
-
       end do
 
       deallocate( bbuffer )
       deallocate( cbuffer )
 
    end if
-
    call t_stopf('pd_copy')
+
+   call t_startf('derived_tend')
+   call derived_tend(nCellsSolve, t_tend, u_tend, v_tend, dyn_in)
+   call t_stopf('derived_tend')
+
 
 end subroutine p_d_coupling
 
@@ -407,7 +420,6 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
    ! Compute fields in the physics state object which are diagnosed from the
    ! MPAS prognostic fields.
 
-   use physics_types, only: set_state_pdry, set_wet_to_dry
    use geopotential,  only: geopotential_t
    use check_energy,  only: check_energy_timestep_init
    use shr_vmath_mod, only: shr_vmath_log
@@ -423,13 +435,7 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
    real(r8) :: factor(pcols,pver)
    real(r8) :: zvirv(pcols,pver)
 
-
-   real(r8) :: ke(pcols,begchunk:endchunk)   
-   real(r8) :: se(pcols,begchunk:endchunk)   
-   real(r8) :: ke_glob(1),se_glob(1)
-
    type(physics_buffer_desc), pointer :: pbuf_chnk(:)
-
 
    character(len=*), parameter :: subname = 'dp_coupling::derived_phys'
    !----------------------------------------------------------------------------
@@ -552,6 +558,49 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
    end do
 
 end subroutine derived_phys
+
+!=========================================================================================
+
+subroutine derived_tend(nCellsSolve, t_tend, u_tend, v_tend, dyn_in)
+
+   ! Derive the physics tendencies required by MPAS from the tendencies produced by
+   ! CAM's physics package.
+
+   ! Arguments
+   integer,             intent(in)    :: nCellsSolve
+   real(r8),            intent(in)    :: t_tend(pver,nCellsSolve) ! physics dtdt
+   real(r8),            intent(in)    :: u_tend(pver,nCellsSolve) ! physics dudt
+   real(r8),            intent(in)    :: v_tend(pver,nCellsSolve) ! physics dvdt
+   type(dyn_import_t),  intent(inout) :: dyn_in
+
+   ! Local variables
+
+
+   ! variables from dynamics import container
+   integer :: nEdgesSolve
+   real(r8), pointer :: ru_tend(:,:)
+   real(r8), pointer :: rtheta_tend(:,:)
+   real(r8), pointer :: rho_tend(:,:)
+
+
+   character(len=*), parameter :: subname = 'dp_coupling:derived_tend'
+   !----------------------------------------------------------------------------
+
+   MPAS_DEBUG_WRITE(1, 'begin '//subname)
+
+   nEdgesSolve = dyn_in % nEdgesSolve
+   ru_tend     => dyn_in % ru_tend
+   rtheta_tend => dyn_in % rtheta_tend
+   rho_tend    => dyn_in % rho_tend
+
+   ! insert code to derive MPAS dycore tendencies from CAM physics tendencies.
+   ! set to zero for now...
+
+   ru_tend     = 0._r8
+   rtheta_tend = 0._r8
+   rho_tend    = 0._r8
+
+end subroutine derived_tend
 
 !=========================================================================================
 
