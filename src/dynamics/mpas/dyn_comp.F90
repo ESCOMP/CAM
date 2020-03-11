@@ -249,8 +249,11 @@ subroutine dyn_readnl(NLFileName)
    call get_run_duration(nday, nsec)
    call mpas_pool_add_config(domain_ptr % configs, 'config_run_duration', trim(nday2str(nday))//'_'//sec2hms(nsec))
 
+   ! Although the following namelist options are not expected to be used by CAM-MPAS, the MPAS-A dycore
+   ! references these options, and they therefore must be defined in the configs pool
    call mpas_pool_add_config(domain_ptr % configs, 'config_restart_timestamp_name', 'restart_timestamp')
    call mpas_pool_add_config(domain_ptr % configs, 'config_IAU_option', 'off')
+   call mpas_pool_add_config(domain_ptr % configs, 'config_do_DAcycling', .false.)
 
    call cam_mpas_init_phase2(pio_subsystem, endrun, timemgr_get_calendar_cf())
 
