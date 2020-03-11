@@ -629,7 +629,7 @@
     </machines>
   </test>
 <!--              001                        -->
-  <test compset="QPC5" grid="T42_T42_mg17" name="SCT_D_Ln7" testmods="cam/outfrq3s">
+  <test compset="QPC5" grid="T42_T42_mg17" name="SCT_D_Ln7" testmods="cam/scm_prep">
     <machines>
       <machine name="cheyenne" compiler="intel" category="cam_test"/>
     </machines>
