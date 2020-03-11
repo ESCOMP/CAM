@@ -41,14 +41,15 @@ class SCT(SystemTestsCompareTwo):
 
     def _case_two_setup(self):
         case_name = self._case.get_value("CASE")
-        append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "ncdata         = '../"+case_name+".cam.i.0000-09-01-00000.nc'")
+        RUN_STARTDATE = self._case1.get_value("RUN_STARTDATE")
+        append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "ncdata         = '../"+case_name+".cam.i."+RUN_STARTDATE+"-00000.nc'")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "NDENS    = 1,1,1,1,1,1")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "MFILT    = 1,7,1,1,1,1")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "nhtfrq   = 1,1,1,1,1,1")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "fincl2='TDIFF','QDIFF','LANDFRAC'")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "scmlon= 140.")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "scmlat= -20.")
-        append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "iopfile = '../"+case_name+".cam.h1.0000-09-01-00000.nc'")
+        append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "iopfile = '../"+case_name+".cam.h1."+RUN_STARTDATE+"-00000.nc'")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "inithist_all = .true.")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "scm_cambfb_mode                = .true.")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "scm_use_obs_uv         = .true.")
