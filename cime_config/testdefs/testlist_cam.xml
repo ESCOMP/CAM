@@ -607,7 +607,7 @@
 <!--              391                        -->
   <test compset="QPX2000" grid="f19_f19_mg17" name="ERC_D_Ln9" testmods="cam/outfrq3s_WX81">
     <machines>
-      <machine name="cheyenne" compiler="intel" category="cam_test"/>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
   </test>
 <!--              730                        -->
