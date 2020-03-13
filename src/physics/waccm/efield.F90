@@ -73,10 +73,15 @@
 !------------------------------------------------------------------------------
 ! mag. grid dimensions (assumed resolution of 2deg)
 !------------------------------------------------------------------------------
-      integer, parameter ::  &
-      nmlon = 180,       &  ! mlon
-      nmlat = 90,        &  ! mlat
-      nmlath= nmlat/2       ! mlat/2
+      integer, parameter ::   &
+           nmlon = 180,       & ! mlon
+           nmlat = 90,        & ! mlat
+           nmlath= nmlat/2      ! mlat/2
+
+      integer, parameter ::   &
+           nmlon1f = nmlon/4, & ! 1 fourth mlon
+           nmlon2f = nmlon/2, & ! 2 fourths mlon
+           nmlon3f = 3*nmlon/4  ! 3 fourths mlon 
 
       real(r8) ::        &
         ylatm(0:nmlat),  &   ! magnetic latitudes (deg)
@@ -166,6 +171,10 @@
 
       real(r8) :: epotential_max = huge(1._r8) ! max cross cap potential kV
 
+      integer :: ip1f(0:nmlon)=-huge(1)
+      integer :: ip2f(0:nmlon)=-huge(1)
+      integer :: ip3f(0:nmlon)=-huge(1)
+
       contains
 
       subroutine efield_init(efield_lflux_file, efield_hflux_file, efield_potential_max)
@@ -181,6 +190,7 @@
       character(len=*), intent(in) :: efield_hflux_file
       real(r8),         intent(in) :: efield_potential_max ! cross cap electric potential maximum
 
+      integer :: i
       real(r8) :: nanval
       nanval=nan
 
@@ -198,6 +208,21 @@
       call prep_pnm     ! set up the constant factors for P_n^m & dP/d phi
 
       epotential_max = efield_potential_max
+
+      do i = 0,nmlon
+        ip1f(i) = i + nmlon1f
+        if( ip1f(i) > nmlon ) then
+           ip1f(i) = ip1f(i) - nmlon
+        end if
+        ip2f(i) = i + nmlon2f
+        if( ip2f(i) > nmlon ) then
+           ip2f(i) = ip2f(i) - nmlon
+        end if
+        ip3f(i) = i + nmlon3f
+        if( ip3f(i) > nmlon ) then
+           ip3f(i) = ip3f(i) - nmlon
+        end if
+      end do
 
       end subroutine efield_init
 
@@ -1422,7 +1447,7 @@
 ! Author: A. Maute Dec 2003  am 12/16/03
 !-----------------------------------------------------------------------
 
-      integer  :: i, j, ip1f, ip2f, ip3f
+      integer  :: i, j
       real(r8) :: coslm, r, fac, wrk
       real(r8) :: wrk1d(0:nmlon)
 
@@ -1481,26 +1506,14 @@
 !-----------------------------------------------------------------------
 ! Poles:
 !-----------------------------------------------------------------------
-!$omp parallel do private(i, ip1f,ip2f,ip3f)
+!$omp parallel do private(i)
       do i = 0,nmlon
-        ip1f = i + nmlon/4
-        if( ip1f > nmlon ) then
-           ip1f = ip1f - nmlon
-        end if
-        ip2f = i + nmlon/2
-        if( ip2f > nmlon ) then
-           ip2f = ip2f - nmlon
-        end if
-        ip3f = i + 3*nmlon/4
-        if( ip3f > nmlon ) then
-           ip3f = ip3f - nmlon
-        end if
-        ed1(i,0)     = .25_r8*(ed1(i,1) - ed1(ip2f,1) + ed2(ip1f,1) - ed2(ip3f,1))
-        ed1(i,nmlat) = .25_r8*(ed1(i,nmlat-1) - ed1(ip2f,nmlat-1) &
-                               + ed2(ip1f,nmlat-1) - ed2(ip3f,nmlat-1))
-        ed2(i,0)     = .25_r8*(ed2(i,1) - ed2(ip2f,1) - ed1(ip1f,1) + ed1(ip3f,1))
-        ed2(i,nmlat) = .25_r8*(ed2(i,nmlat-1) - ed2(ip2f,nmlat-1) &
-                               - ed1(ip1f,nmlat-1) + ed1(ip3f,nmlat-1))
+        ed1(i,0)     = .25_r8*(ed1(i,1) - ed1(ip2f(i),1) + ed2(ip1f(i),1) - ed2(ip3f(i),1))
+        ed1(i,nmlat) = .25_r8*(ed1(i,nmlat-1) - ed1(ip2f(i),nmlat-1) &
+                               + ed2(ip1f(i),nmlat-1) - ed2(ip3f(i),nmlat-1))
+        ed2(i,0)     = .25_r8*(ed2(i,1) - ed2(ip2f(i),1) - ed1(ip1f(i),1) + ed1(ip3f(i),1))
+        ed2(i,nmlat) = .25_r8*(ed2(i,nmlat-1) - ed2(ip2f(i),nmlat-1) &
+                               - ed1(ip1f(i),nmlat-1) + ed1(ip3f(i),nmlat-1))
       end do
 
       end subroutine DerivPotential

@@ -572,7 +572,7 @@
       <machine name="cheyenne" compiler="intel" category="waccm"/>
     </machines>
   </test>
-  <test compset="FW1850" grid="f09_f09_mg17" name="SMS_Ld1" testmods="cam/reduced_hist1d">
+  <test compset="FW1850" grid="f09_f09_mg17" name="SMS_Ln9" testmods="cam/reduced_hist3s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
@@ -984,6 +984,23 @@
   <test compset="FWscHIST" grid="f19_f19_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
+    </machines>
+  </test>
+  <test compset="FW2000climo" grid="ne30pg3_ne30pg3_mg17" name="ERP_Ln9" testmods="cam/outfrq9s_wcm_ne30">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="waccm"/>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+    </machines>
+  </test>
+  <test compset="FW2000climo" grid="ne30pg3_ne30pg3_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s_wcm_ne30">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="waccm"/>
+    </machines>
+  </test>
+  <test compset="FW2000climo" grid="ne30_ne30_mg17" name="SMS_Ln9" testmods="cam/outfrq9s_wcm_ne30">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="waccm"/>
+      <machine name="cheyenne" compiler="intel" category="prealpha"/>
     </machines>
   </test>
   <test compset="PC4" grid="f19_f19_mg17" name="SMS" testmods="cam/cam4_port">

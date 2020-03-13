@@ -431,7 +431,7 @@ elemental subroutine size_dist_param_liq_line(props, qcic, ncic, rho, pgam, lamc
      ! arguments.)
      props_loc = props
 
-     ! Get pgam from fit to observations of martin et al. 1994
+     ! Get pgam from fit Rotstayn and Liu 2003 (changed from Martin 1994 for CAM6)
      pgam = 1.0_r8 - 0.7_r8 * exp(-0.008_r8*1.e-6_r8*ncic*rho)
      pgam = 1._r8/(pgam**2) - 1._r8
      pgam = max(pgam, 2._r8)
@@ -481,7 +481,7 @@ subroutine size_dist_param_liq_vect(props, qcic, ncic, rho, pgam, lamc, mgncol)
         ! (Elemental routines that operate on arrays can't modify scalar
         ! arguments.)
         props_loc = props
-        ! Get pgam from fit to observations of martin et al. 1994
+        ! Get pgam from fit by Rotstayn and Liu 2003 (changed from Martin 1994 for CAM6)
         pgam(i) = 1.0_r8 - 0.7_r8 * exp(-0.008_r8*1.e-6_r8*ncic(i)*rho(i))
         pgam(i) = 1._r8/(pgam(i)**2) - 1._r8
         pgam(i) = max(pgam(i), 2._r8)

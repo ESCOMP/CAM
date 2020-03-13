@@ -1958,6 +1958,10 @@
 <history_clubb>                .true.   </history_clubb>
 <history_dust>                 .false.  </history_dust>
 
+
+<cam_snapshot_before_num>  -1 </cam_snapshot_before_num>
+<cam_snapshot_after_num>   -1 </cam_snapshot_after_num>
+
 <!-- ================================================================== -->
 <!-- Defaults for SE                                                    -->
 <!-- ================================================================== -->
