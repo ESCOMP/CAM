@@ -1,0 +1,4 @@
+inithist     = 'ENDOFRUN'
+empty_htapes = .true.
+fincl1       = 'PHIS:I'
+nhtfrq       = -1

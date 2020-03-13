@@ -4,3 +4,4 @@
 ./xmlchange RUN_STARTDATE="1995-01-01"
 ./xmlchange MAX_MPITASKS_PER_NODE="24"
 
+./xmlchange CAM_NML_USE_CASE=UNSET

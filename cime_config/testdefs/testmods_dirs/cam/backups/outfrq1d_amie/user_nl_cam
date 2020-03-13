@@ -1,0 +1,8 @@
+mfilt=1,1,1,1,1,1
+ndens=1,1,1,1,1,1
+nhtfrq=-24,-24,-24,-24,-24,-24
+steady_state_ion_elec_temp=.false.
+ionos_epotential_amie=.true.
+amienh_file = '$DIN_LOC_ROOT/atm/waccm/amie_data/oct27_31_2003_nh.nc'
+amiesh_file = '$DIN_LOC_ROOT/atm/waccm/amie_data/oct27_31_2003_sh.nc'
+fincl6 = 'amie_phihm','amie_efxm','amie_kevm','amie_efxg','amie_kevg','amie_efx_phys','amie_kev_phys'

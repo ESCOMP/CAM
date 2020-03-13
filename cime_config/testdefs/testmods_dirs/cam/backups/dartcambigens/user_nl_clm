@@ -1,0 +1,9 @@
+use_init_interp                = .true.
+check_finidat_year_consistency = .false.
+hist_empty_htapes              = .true.
+hist_fincl1                    = 'TSA'
+hist_nhtfrq                    = -1
+hist_mfilt                     = 1
+hist_avgflag_pertape           = 'I'
+urban_hac                      = 'OFF'
+building_temp_method           = 0

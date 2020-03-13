@@ -1,0 +1,3 @@
+./xmlchange ROF_NCPL=\$ATM_NCPL
+./xmlchange GLC_NCPL=\$ATM_NCPL
+./xmlchange --append CAM_CONFIG_OPTS="-analytic_ic -nlev 32"

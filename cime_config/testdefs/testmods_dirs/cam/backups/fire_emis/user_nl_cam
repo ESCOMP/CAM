@@ -1,0 +1,16 @@
+
+ fire_emis_factors_file = '$DIN_LOC_ROOT/lnd/clm2/firedata/fire_emis_factors_c140116.nc'
+ fire_emis_specifier = 'bc_a1 = BC','pom_a1 = 1.4*OC', 'SO2 = SO2'
+ fire_emis_elevated = .true.
+
+ fincl1 = 'FireFrc_SO2','FireFrc_bc_a1','FireFrc_pom_a1','FireFrc_pom_a1_num_a1','FireFrc_bc_a1_num_a1',
+          'FireVFLX_SO2','FireVFLX_bc_a1','FireVFLX_pom_a1',
+          'FireSFLX_SO2','FireSFLX_bc_a1','FireSFLX_pom_a1','Fire_ZTOP',
+ fincl2 = 'FireFrc_SO2','FireFrc_bc_a1','FireFrc_pom_a1','FireFrc_pom_a1_num_a1','FireFrc_bc_a1_num_a1',
+          'FireVFLX_SO2','FireVFLX_bc_a1','FireVFLX_pom_a1',
+          'FireSFLX_SO2','FireSFLX_bc_a1','FireSFLX_pom_a1','Fire_ZTOP',
+
+ mfilt=1,24
+ ndens=1,1,1,1,1,1
+ nhtfrq=-24,-1
+ inithist='ENDOFRUN'

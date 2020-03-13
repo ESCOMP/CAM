@@ -1,0 +1,3 @@
+./xmlchange EPS_AAREA=1.e-4
+./xmlchange RUN_STARTDATE=2013-10-01
+./xmlchange ATM_NCPL=384

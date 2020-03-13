@@ -250,13 +250,13 @@
     </machines>
   </test>
 <!--              112 tsm, ter, tbl                              -->
-  <test compset="QPC3" grid="T5_T5_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s">
+  <test compset="QPC3" grid="T5_T5_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s_usecase">
     <machines>
       <machine name="izumi" compiler="pgi" category="aux_cam"/>
     </machines>
   </test>
 <!--              113 tsm, ter, T8                              -->
-  <test compset="QPC4" grid="T42_T42_mg17" name="ERC_D_Ln9" testmods="cam/outfrq3s">
+  <test compset="QPC4" grid="T42_T42_mg17" name="ERC_D_Ln9" testmods="cam/outfrq3s_usecase">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -388,7 +388,7 @@
     </machines>
   </test>
 <!--              381                         -->
-  <test compset="QPHISTC6" grid="f09_f09_mg17" name="SMS_P48x1_D_Ln3" testmods="cam/outfrq3s">
+  <test compset="QPHISTC6" grid="f09_f09_mg17" name="SMS_P48x1_D_Ln3" testmods="cam/outfrq3s_usecase">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -450,7 +450,7 @@
 <!--              707  tsm teq                      -->
   <test compset="FADIAB" grid="ne5pg2_ne5pg2_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s">
     <machines>
-      <machine name="izumi" compiler="pgi" category="cam_test"/>
+      <machine name="izumi" compiler="pgi" category="aux_cam"/>
     </machines>
   </test>
 <!--              711    ter                    -->
@@ -508,13 +508,13 @@
     </machines>
   </test>
 <!--              720                        -->
-  <test compset="QPC4" grid="ne16_ne16_mg17" name="ERC_D_Ln9" testmods="cam/outfrq3s">
+  <test compset="QPC4" grid="ne16_ne16_mg17" name="ERC_D_Ln9" testmods="cam/outfrq3s_usecase">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
   </test>
 <!--              721     -->
-  <test compset="QPC4" grid="ne16pg3_ne16pg3_mg17" name="ERC_D_Ln9" testmods="cam/outfrq3s">
+  <test compset="QPC4" grid="ne16pg3_ne16pg3_mg17" name="ERC_D_Ln9" testmods="cam/outfrq3s_usecase">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -557,13 +557,13 @@
   </test>
 
 <!--              150                        -->
-  <test compset="FDABIP04" grid="T42_T42_mg17" name="ERC_D_Ln9" testmods="cam/outfrq3s">
+  <test compset="FDABIP04" grid="T42_T42_mg17" name="ERC_D_Ln9" testmods="cam/outfrq3s_usecase">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
   </test>
 <!--              151                        -->
-  <test compset="FHS94" grid="T42_T42_mg17" name="ERC_D_Ln9" testmods="cam/outfrq3s">
+  <test compset="FHS94" grid="T42_T42_mg17" name="ERC_D_Ln9" testmods="cam/outfrq3s_usecase">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
@@ -575,19 +575,19 @@
     </machines>
   </test>
 <!--              353                        -->
-  <test compset="QPC41850" grid="f19_f19_mg17" name="ERC_D_Ln9" testmods="cam/co2rmp">
+  <test compset="QPC41850" grid="f19_f19_mg17" name="ERC_D_Ln9" testmods="cam/co2rmp_usecase">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
   </test>
 <!--              360                        -->
-  <test compset="QPC5HIST" grid="f19_f19_mg17" name="SMS_D_Ld2" testmods="cam/volc">
+  <test compset="QPC5HIST" grid="f19_f19_mg17" name="SMS_D_Ld2" testmods="cam/volc_usecase">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
   </test>
 <!--              370                        -->
-  <test compset="PC2000climo" grid="f19_f19_mg17" name="SMS_D_Ln9" testmods="cam/outfrq3s">
+  <test compset="PC2000climo" grid="f19_f19_mg17" name="SMS_D_Ln9" testmods="cam/outfrq3s_usecase">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
@@ -599,7 +599,7 @@
     </machines>
   </test>
 <!--              390                        -->
-  <test compset="QPX2000" grid="f19_f19_mg17" name="ERC_D_Ln9" testmods="cam/outfrq3s">
+  <test compset="QPX2000" grid="f19_f19_mg17" name="ERC_D_Ln9" testmods="cam/outfrq3s_usecase">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
@@ -617,13 +617,13 @@
     </machines>
   </test>
 <!--              735                        -->
-  <test compset="QPC5HIST" grid="ne16_ne16_mg17" name="ERC_D_Ln9" testmods="cam/outfrq3s">
+  <test compset="QPC5HIST" grid="ne16_ne16_mg17" name="ERC_D_Ln9" testmods="cam/outfrq3s_usecase">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
   </test>
 <!--              742                        -->
-  <test compset="QPC6HIST" grid="ne16pg3_ne16pg3_mg17" name="ERC_D_Ln9_P144x1" testmods="cam/outfrq3s">
+  <test compset="QPC6HIST" grid="ne16pg3_ne16pg3_mg17" name="ERC_D_Ln9_P144x1" testmods="cam/outfrq3s_usecase">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>

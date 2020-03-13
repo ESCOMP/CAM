@@ -1,0 +1,5 @@
+mfilt=1,1,1,1,1,1
+ndens=1,1,1,1,1,1
+nhtfrq=3,3,3,3,3,3
+inithist='ENDOFRUN'
+fexcl1='UTGWORO','VTGWORO','TAUGWX','TAUGWY'

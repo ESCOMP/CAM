@@ -1,0 +1,2 @@
+./xmlchange ROF_NCPL=\$ATM_NCPL
+./xmlchange RUN_STARTDATE=2005-12-31

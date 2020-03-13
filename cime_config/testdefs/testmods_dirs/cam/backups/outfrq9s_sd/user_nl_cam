@@ -1,0 +1,24 @@
+mfilt=1,1,1,1,1,1
+ndens=1,1,1,1,1,1
+nhtfrq=9,9,9,9,9,9
+inithist='ENDOFRUN'
+
+ncdata = '$DIN_LOC_ROOT/atm/cam/inic/fv/cami-mam3_0000-01-01_1.9x2.5_L32_c150407.nc'
+bnd_topo = '$DIN_LOC_ROOT/atm/cam/met/MERRA2/fv_1.9x2.5_nc3000_Nsw084_Nrs016_Co120_Fi001_ZR_MERRA2_PHIS_c180925.nc'
+met_data_file = '$DIN_LOC_ROOT/atm/cam/met/MERRA2/1.9x2.5_L32/MERRA2_1.9x2.5_L32_20000101.nc'
+met_rlx_time = 48.0
+met_qflx_factor  = 0.84 
+met_srf_land = .false.
+met_srf_rad  = .true.
+met_srf_refs = .true.
+met_srf_sst  = .true.
+met_srf_tau  = .true.
+met_nudge_temp = .false.
+met_srf_land_scale=.true.
+met_rlx_time    = 50.
+met_rlx_bot     = 20.
+met_rlx_top     = 35.
+met_rlx_bot_top = 10.
+met_rlx_bot_bot = 5.
+
+clubb_do_energyfix=.false.

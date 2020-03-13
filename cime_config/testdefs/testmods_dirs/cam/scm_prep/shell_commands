@@ -3,3 +3,4 @@
 ./xmlchange GLC_NCPL=\$ATM_NCPL
 ./xmlchange RUN_STARTDATE="0000-09-01"
 ./xmlchange CAM_CPPDEFS='noclubb_sgs camiop'
+./xmlchange CAM_NML_USE_CASE=UNSET
