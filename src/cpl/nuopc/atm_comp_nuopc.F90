@@ -87,7 +87,8 @@ module atm_comp_nuopc
   character(*)    ,parameter  :: u_FILE_u = &
        __FILE__
 
-  logical :: dart_mode = .false.
+  logical :: dart_mode       = .false.
+  logical :: mediator_active = .true.
 
   character(len=CL)      :: orb_mode        ! attribute - orbital mode
   integer                :: orb_iyear       ! attribute - orbital year
@@ -112,7 +113,6 @@ contains
     character(len=*),parameter  :: subname=trim(modName)//':(SetServices) '
 
     rc = ESMF_SUCCESS
-    if (dbug_flag > 5) call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO)
 
     ! the NUOPC gcomp component will register the generic methods
 
@@ -155,8 +155,6 @@ contains
          specRoutine=ModelFinalize, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    if (dbug_flag > 5) call ESMF_LogWrite(subname//' done', ESMF_LOGMSG_INFO)
-
   end subroutine SetServices
 
   !===============================================================================
@@ -198,7 +196,6 @@ contains
     !-------------------------------------------------------------------------------
 
     rc = ESMF_SUCCESS
-    if (dbug_flag > 5) call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO)
 
     call ESMF_VMGetCurrent(vm, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
@@ -272,10 +269,17 @@ contains
        call shr_sys_abort(subname//'Need to set attribute ScalarFieldIdxNextSwCday')
     endif
 
-    call advertise_fields(gcomp, flds_scalar_name, rc)
+    call NUOPC_CompAttributeGet(gcomp, name="OCN_model", value=cvalue, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
-    if (dbug_flag > 5) call ESMF_LogWrite(subname//' done', ESMF_LOGMSG_INFO)
+    if (trim(cvalue) == 'socn') then
+       mediator_active = .false.
+    else
+       mediator_active = .true.
+    end if
+    if (mediator_active) then
+       call advertise_fields(gcomp, flds_scalar_name, rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    end if
 
   end subroutine InitializeAdvertise
 
@@ -366,7 +370,6 @@ contains
     !-------------------------------------------------------------------------------
 
     rc = ESMF_SUCCESS
-    if (dbug_flag > 5) call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO)
 
     call shr_file_setLogUnit (iulog)
 
@@ -697,43 +700,26 @@ contains
     ! Create cam export array and set the state scalars
     !--------------------------------
 
-    call export_fields( gcomp, cam_out, rc=rc  )
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
-    call get_horiz_grid_dim_d(hdim1_d, hdim2_d)
-    call State_SetScalar(dble(hdim1_d), flds_scalar_index_nx, exportState, &
-         flds_scalar_name, flds_scalar_num, rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    call State_SetScalar(dble(hdim2_d), flds_scalar_index_ny, exportState, &
-         flds_scalar_name, flds_scalar_num, rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
-    !--------------------------------
-    ! diagnostics
-    !--------------------------------
-
-    if (dbug_flag > 1) then
-       call State_diagnose(exportState,subname//':ES',rc=rc)
+    if (mediator_active) then
+       call export_fields( gcomp, cam_out, rc=rc  )
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    endif
 
-#ifdef USE_ESMF_METADATA
-    convCIM  = "CIM"
-    purpComp = "Model Component Simulation Description"
-    call ESMF_AttributeAdd(comp, convention=convCIM, purpose=purpComp, rc=rc)
-    call ESMF_AttributeSet(comp, "ShortName", "CAM", convention=convCIM, purpose=purpComp, rc=rc)
-    call ESMF_AttributeSet(comp, "LongName", "Community Atmosphere Model", convention=convCIM, purpose=purpComp, rc=rc)
-    call ESMF_AttributeSet(comp, "Description", "Community Atmosphere Model", convention=convCIM, purpose=purpComp, rc=rc)
-    call ESMF_AttributeSet(comp, "ReleaseDate", "2017", convention=convCIM, purpose=purpComp, rc=rc)
-    call ESMF_AttributeSet(comp, "ModelType", "Atmosphere", convention=convCIM, purpose=purpComp, rc=rc)
-    call ESMF_AttributeSet(comp, "Name", "TBD", convention=convCIM, purpose=purpComp, rc=rc)
-    call ESMF_AttributeSet(comp, "EmailAddress", TBD, convention=convCIM, purpose=purpComp, rc=rc)
-    call ESMF_AttributeSet(comp, "ResponsiblePartyRole", "contact", convention=convCIM, purpose=purpComp, rc=rc)
-#endif
+       call get_horiz_grid_dim_d(hdim1_d, hdim2_d)
+       call State_SetScalar(dble(hdim1_d), flds_scalar_index_nx, exportState, &
+            flds_scalar_name, flds_scalar_num, rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+       call State_SetScalar(dble(hdim2_d), flds_scalar_index_ny, exportState, &
+            flds_scalar_name, flds_scalar_num, rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+       ! diagnostics
+       if (dbug_flag > 1) then
+          call State_diagnose(exportState,subname//':ES',rc=rc)
+          if (ChkErr(rc,__LINE__,u_FILE_u)) return
+       endif
+    end if
 
     call shr_file_setLogUnit (shrlogunit)
-
-    if (dbug_flag > 5) call ESMF_LogWrite(subname//' done', ESMF_LOGMSG_INFO)
 
 #if (defined _MEMTRACE)
     if(masterproc) then
@@ -775,7 +761,6 @@ contains
     !-------------------------------------------------------------------------------
 
     rc = ESMF_SUCCESS
-    if (dbug_flag > 5) call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO)
 
     call shr_file_getLogUnit (shrlogunit)
     call shr_file_setLogUnit (iulog)
@@ -871,79 +856,78 @@ contains
     ! Note - cam_run1 is called on restart only to have cam internal state consistent with the
     ! cam_out state sent to the coupler
 
-    if (stepno == 0) then
-       call import_fields( gcomp, cam_in, rc=rc )
-       if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
+    if (.not. mediator_active) then
        call cam_run1 ( cam_in, cam_out )
-
-       call export_fields( gcomp, cam_out, rc=rc )
-       if (ChkErr(rc,__LINE__,u_FILE_u)) return
     else
-       call cam_read_srfrest( gcomp, clock, rc=rc )
+       if (stepno == 0) then
+          call import_fields( gcomp, cam_in, rc=rc )
+          if (ChkErr(rc,__LINE__,u_FILE_u)) return
+          call cam_run1 ( cam_in, cam_out )
+          call export_fields( gcomp, cam_out, rc=rc )
+          if (ChkErr(rc,__LINE__,u_FILE_u)) return
+       else
+          call cam_read_srfrest( gcomp, clock, rc=rc )
+          if (ChkErr(rc,__LINE__,u_FILE_u)) return
+          call import_fields( gcomp, cam_in, restart_init=.true., rc=rc )
+          if (ChkErr(rc,__LINE__,u_FILE_u)) return
+          call cam_run1 ( cam_in, cam_out )
+          call export_fields( gcomp, cam_out, rc=rc )
+          if (ChkErr(rc,__LINE__,u_FILE_u)) return
+       end if
+
+       ! Compute time of next radiation computation, like in run method for exact restart
+       dtime = get_step_size()
+       nstep = get_nstep()
+       if (nstep < 1 .or. dtime < atm_cpl_dt) then
+          nextsw_cday = radiation_nextsw_cday()
+       else if (dtime == atm_cpl_dt) then
+          caldayp1 = get_curr_calday(offset=int(dtime))
+          nextsw_cday = radiation_nextsw_cday()
+          if (caldayp1 /= nextsw_cday) nextsw_cday = -1._r8
+       else
+          call shr_sys_abort('dtime must be less than or equal to atm_cpl_dt')
+       end if
+
+       call State_SetScalar(nextsw_cday, flds_scalar_index_nextsw_cday, exportState, &
+            flds_scalar_name, flds_scalar_num, rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-       call import_fields( gcomp, cam_in, restart_init=.true., rc=rc )
+       !--------------------------------
+       ! diagnostics
+       !--------------------------------
+
+       if (dbug_flag > 1) then
+          call State_diagnose(exportState,subname//':ES',rc=rc)
+          if (ChkErr(rc,__LINE__,u_FILE_u)) return
+       endif
+
+       !--------------------------------
+       ! CAM data is now fully initialized
+       !--------------------------------
+
+       call ESMF_StateGet(exportState, itemCount=fieldCount, rc=rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-       call cam_run1 ( cam_in, cam_out )
-
-       call export_fields( gcomp, cam_out, rc=rc )
-       if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    end if
-
-    ! Compute time of next radiation computation, like in run method for exact restart
-    dtime = get_step_size()
-    nstep = get_nstep()
-    if (nstep < 1 .or. dtime < atm_cpl_dt) then
-       nextsw_cday = radiation_nextsw_cday()
-    else if (dtime == atm_cpl_dt) then
-       caldayp1 = get_curr_calday(offset=int(dtime))
-       nextsw_cday = radiation_nextsw_cday()
-       if (caldayp1 /= nextsw_cday) nextsw_cday = -1._r8
-    else
-       call shr_sys_abort('dtime must be less than or equal to atm_cpl_dt')
-    end if
-
-    call State_SetScalar(nextsw_cday, flds_scalar_index_nextsw_cday, exportState, &
-         flds_scalar_name, flds_scalar_num, rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
-    !--------------------------------
-    ! diagnostics
-    !--------------------------------
-
-    if (dbug_flag > 1) then
-       call State_diagnose(exportState,subname//':ES',rc=rc)
-       if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    endif
-
-    !--------------------------------
-    ! CAM data is now fully initialized
-    !--------------------------------
-
-    call ESMF_StateGet(exportState, itemCount=fieldCount, rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
-    allocate(fieldNameList(fieldCount))
-    call ESMF_StateGet(exportState, itemNameList=fieldNameList, rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
-    do n=1, fieldCount
-       call ESMF_StateGet(exportState, itemName=fieldNameList(n), field=field, rc=rc)
+       allocate(fieldNameList(fieldCount))
+       call ESMF_StateGet(exportState, itemNameList=fieldNameList, rc=rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-       call NUOPC_SetAttribute(field, name="Updated", value="true", rc=rc)
-       if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    end do
-    deallocate(fieldNameList)
+       do n=1, fieldCount
+          call ESMF_StateGet(exportState, itemName=fieldNameList(n), field=field, rc=rc)
+          if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    ! check whether all Fields in the exportState are "Updated"
-    if (NUOPC_IsUpdated(exportState)) then
-       call NUOPC_CompAttributeSet(gcomp, name="InitializeDataComplete", value="true", rc=rc)
+          call NUOPC_SetAttribute(field, name="Updated", value="true", rc=rc)
+          if (ChkErr(rc,__LINE__,u_FILE_u)) return
+       end do
+       deallocate(fieldNameList)
 
-       call ESMF_LogWrite("CAM - Initialize-Data-Dependency SATISFIED!!!", ESMF_LOGMSG_INFO, rc=rc)
-       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+       ! check whether all Fields in the exportState are "Updated"
+       if (NUOPC_IsUpdated(exportState)) then
+          call NUOPC_CompAttributeSet(gcomp, name="InitializeDataComplete", value="true", rc=rc)
+
+          call ESMF_LogWrite("CAM - Initialize-Data-Dependency SATISFIED!!!", ESMF_LOGMSG_INFO, rc=rc)
+          if (ChkErr(rc,__LINE__,u_FILE_u)) return
+       end if
     end if
 
     !--------------------------------
@@ -965,14 +949,13 @@ contains
 
   subroutine ModelAdvance(gcomp, rc)
 
-    ! !DESCRIPTION:
     ! Run CAM
 
-    ! !ARGUMENTS:
+    ! Input/output variables
     type(ESMF_GridComp)  :: gcomp
     integer, intent(out) :: rc
 
-    ! !LOCAL VARIABLES:
+    ! local variables
     type(ESMF_Clock)        :: clock
     type(ESMF_Alarm)        :: alarm
     type(ESMF_Time)         :: time
@@ -1010,7 +993,6 @@ contains
     !-------------------------------------------------------------------------------
 
     rc = ESMF_SUCCESS
-    if (dbug_flag > 5) call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO)
 
     call shr_file_getLogUnit (shrlogunit)
     call shr_file_setLogUnit (iulog)
@@ -1067,8 +1049,10 @@ contains
     call State_diagnose(importState, string=subname//':IS', rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    call import_fields( gcomp, cam_in, rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    if (mediator_active) then
+       call import_fields( gcomp, cam_in, rc=rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    end if
 
     call t_stopf  ('CAM_import')
 
@@ -1178,7 +1162,7 @@ contains
     ! Write merged surface data restart file if appropriate
     !--------------------------------
 
-    if (rstwr) then
+    if (rstwr .and. mediator_active) then
        call cam_write_srfrest( gcomp, &
             yr_spec=yr_sync, mon_spec=mon_sync, day_spec=day_sync, sec_spec=tod_sync, rc=rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
@@ -1230,8 +1214,6 @@ contains
 
     call shr_file_setLogUnit (shrlogunit)
 
-    if (dbug_flag > 5) call ESMF_LogWrite(subname//' done', ESMF_LOGMSG_INFO)
-
   end subroutine ModelAdvance
 
   !===============================================================================
@@ -1262,7 +1244,6 @@ contains
     !-------------------------------------------------------------------------------
 
     rc = ESMF_SUCCESS
-    if (dbug_flag > 5) call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO)
 
     ! query the Component for its clocks
     call NUOPC_ModelGet(gcomp, driverClock=dclock, modelClock=mclock, rc=rc)
@@ -1355,8 +1336,6 @@ contains
     call ESMF_ClockSet(mclock, currTime=dcurrtime, timeStep=dtimestep, stopTime=mstoptime, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    if (dbug_flag > 5) call ESMF_LogWrite(subname//' done', ESMF_LOGMSG_INFO)
-
   end subroutine ModelSetRunClock
 
   !===============================================================================
@@ -1377,7 +1356,6 @@ contains
     !--------------------------------
 
     rc = ESMF_SUCCESS
-    if (dbug_flag > 5) call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO)
 
     call shr_file_getLogUnit (shrlogunit)
     call shr_file_setLogUnit (iulog)
@@ -1389,8 +1367,6 @@ contains
     end if
 
     call shr_file_setLogUnit (shrlogunit)
-
-    if (dbug_flag > 5) call ESMF_LogWrite(subname//' done', ESMF_LOGMSG_INFO)
 
   end subroutine ModelFinalize
 
