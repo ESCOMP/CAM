@@ -431,8 +431,10 @@ end subroutine dyn_init
 
 subroutine dyn_run(dyn_in, dyn_out)
 
-   use cam_mpas_subdriver, only : cam_mpas_run
+   use cam_mpas_subdriver, only : cam_mpas_run, domain_ptr
    use mpas_timekeeping, only : MPAS_TimeInterval_type, MPAS_set_timeInterval
+   use mpas_pool_routines, only : mpas_pool_get_config
+   use time_manager, only : get_step_size
 
    ! Advances the dynamics state provided in dyn_in by one physics
    ! timestep to produce dynamics state held in dyn_out.
@@ -443,16 +445,54 @@ subroutine dyn_run(dyn_in, dyn_out)
    ! local variables
    integer :: ierr
    type (MPAS_TimeInterval_type) :: integrationLength
+   real(r8) :: dtime
+   real(r8), pointer :: mpas_dt
+   real(r8) :: dt_ratio
+   character(len=128) :: errmsg
 
    character(len=*), parameter :: subname = 'dyn_comp::dyn_run'
    !----------------------------------------------------------------------------
 
    MPAS_DEBUG_WRITE(0, 'begin '//subname)
 
-   ! TODO: How should we obtain the physics timestep and ensure that the dynamics
-   !       timestep evenly divides that value?
-   call MPAS_set_timeInterval(integrationLength, S=1800, S_n=0, S_d=1)
+   !
+   ! Get CAM time step
+   !
+   dtime = get_step_size()
 
+   !
+   ! Get MPAS-A dycore time step
+   !
+   call mpas_pool_get_config(domain_ptr % configs, 'config_dt', mpas_dt)
+
+   !
+   ! Calculate time step ratio
+   !
+   dt_ratio = dtime / mpas_dt
+
+   !
+   ! Stop if the dycore time step does not evenly divide the CAM time step
+   !
+   if (ceiling(dt_ratio) /= floor(dt_ratio)) then
+      write(errmsg, '(a,f9.3,a,f9.3,a)') 'The ratio of the CAM timestep, ', dtime, &
+                                         ' to the MPAS-A dycore timestep, ', mpas_dt, ' is not an integer'
+      call endrun(subname//': '//trim(errmsg))
+   end if
+
+   !
+   ! If dtime has no fractional part, set the interval over which the dycore should integrate
+   ! during this call to dyn_run
+   !
+   if (ceiling(dtime) == floor(dtime)) then
+      call MPAS_set_timeInterval(integrationLength, S=floor(dtime), S_n=0, S_d=1)
+   else
+      call endrun(subname//': The CAM timestep must not have a fractional part for the MPAS-A dycore at present.'// &
+                  ' We should fix this.')
+   end if
+
+   !
+   ! Call the MPAS-A dycore
+   !
    call cam_mpas_run(integrationLength)
 
 end subroutine dyn_run
