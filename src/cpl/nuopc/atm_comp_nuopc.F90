@@ -196,6 +196,9 @@ contains
     !-------------------------------------------------------------------------------
 
     rc = ESMF_SUCCESS
+    if (dbug_flag > 5) then
+       call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO)
+    end if
 
     call ESMF_VMGetCurrent(vm, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
@@ -281,6 +284,9 @@ contains
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
     end if
 
+    if (dbug_flag > 5) then
+       call ESMF_LogWrite(subname//' done', ESMF_LOGMSG_INFO)
+    end if
   end subroutine InitializeAdvertise
 
   !===============================================================================
@@ -370,6 +376,9 @@ contains
     !-------------------------------------------------------------------------------
 
     rc = ESMF_SUCCESS
+    if (dbug_flag > 5) then
+       call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO)
+    end if
 
     call shr_file_setLogUnit (iulog)
 
@@ -730,6 +739,10 @@ contains
     endif
 #endif
 
+    if (dbug_flag > 5) then
+       call ESMF_LogWrite(subname//' done', ESMF_LOGMSG_INFO)
+    end if
+
   end subroutine InitializeRealize
 
   !===============================================================================
@@ -761,6 +774,9 @@ contains
     !-------------------------------------------------------------------------------
 
     rc = ESMF_SUCCESS
+    if (dbug_flag > 5) then
+       call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO)
+    end if
 
     call shr_file_getLogUnit (shrlogunit)
     call shr_file_setLogUnit (iulog)
@@ -943,6 +959,9 @@ contains
     endif
 #endif
 
+    if (dbug_flag > 5) then
+       call ESMF_LogWrite(subname//' done', ESMF_LOGMSG_INFO)
+    end if
   end subroutine DataInitialize
 
   !===============================================================================
@@ -1053,7 +1072,6 @@ contains
        call import_fields( gcomp, cam_in, rc=rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
     end if
-
     call t_stopf  ('CAM_import')
 
     !--------------------------------
@@ -1495,6 +1513,8 @@ contains
     character(len=CL) :: msgstr   ! temporary
     character(len=*) , parameter :: subname = "(cam_orbital_update)"
     !-------------------------------------------
+
+    rc = ESMF_SUCCESS
 
     if (trim(orb_mode) == trim(orb_variable_year)) then
        call ESMF_ClockGet(clock, CurrTime=CurrTime, rc=rc)

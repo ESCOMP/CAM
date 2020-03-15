@@ -1083,6 +1083,7 @@ contains
     integer                :: n
     type(ESMF_Field)       :: field
     character(len=80)      :: stdname
+    character(CL)          :: msg
     character(len=*),parameter  :: subname='(atm_import_export:fldlist_realize)'
     ! ----------------------------------------------
 
@@ -1098,8 +1099,6 @@ contains
              call SetScalarField(field, flds_scalar_name, flds_scalar_num, rc=rc)
              if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
           else
-             call ESMF_LogWrite(trim(subname)//trim(tag)//" Field = "//trim(stdname)//" is connected using mesh", &
-                  ESMF_LOGMSG_INFO)
              ! Create the field
              if (fldlist(n)%ungridded_lbound > 0 .and. fldlist(n)%ungridded_ubound > 0) then
                 field = ESMF_FieldCreate(mesh, ESMF_TYPEKIND_R8, name=stdname, meshloc=ESMF_MESHLOC_ELEMENT, &
@@ -1107,9 +1106,14 @@ contains
                      ungriddedUbound=(/fldlist(n)%ungridded_ubound/), &
                      gridToFieldMap=(/2/), rc=rc)
                 if (ChkErr(rc,__LINE__,u_FILE_u)) return
+                write(msg,*) trim(subname)// trim(tag)//" Field = "//trim(stdname)// " is connected using mesh ", &
+                     "with lbound ", fldlist(n)%ungridded_lbound,' and with ubound ',fldlist(n)%ungridded_ubound
+                call ESMF_LogWrite(msg, ESMF_LOGMSG_INFO)
              else
                 field = ESMF_FieldCreate(mesh, ESMF_TYPEKIND_R8, name=stdname, meshloc=ESMF_MESHLOC_ELEMENT, rc=rc)
                 if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
+                write(msg,*) trim(subname)// trim(tag)//" Field = "//trim(stdname)// " is connected using mesh "
+                call ESMF_LogWrite(msg, ESMF_LOGMSG_INFO)
              end if
           endif
 
