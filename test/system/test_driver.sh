@@ -91,7 +91,11 @@ while [ "${1:0:1}" == "-" ]; do
             if [ $# -lt 2 ]; then
                 perr "${1} requires a directory name)"
             fi
-            archive_dir="${2}"
+            if [ -z "$BL_TESTDIR" ]; then
+                echo "\$BL_TESTDIR needs to be set when using --archive-cime."
+                exit 1
+            fi
+            archive_dir="${BL_TESTDIR%/*}/${2}"
             shift
             ;;
 

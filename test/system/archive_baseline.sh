@@ -1,4 +1,4 @@
-#!/bin/sh -f
+#!/bin/sh 
 
 echo
 
@@ -115,30 +115,52 @@ case $hostname in
 esac
 
 if [ -d ${baselinedir} ]; then
-   echo "ERROR: Baseline $baselinedir already exists."
-   exit 1
+   echo " "
+   echo "WARNING: Baseline $baselinedir already exists."
 fi
+
+#
+# CESM baseline archiving.
+#
 
 if [ -n "$CESM_TESTDIR" ]; then
 
     echo " "
-    echo "Making baselinedir 1"
-    mkdir $baselinedir
-    root_baselinedir=`dirname $baselinedir`
-    echo "CESM Archiving to $root_baselinedir/$cam_tag"
-    ../../cime/scripts/Tools/bless_test_results -p -t '' -c '' -r $CESM_TESTDIR --baseline-root $root_baselinedir -b $cam_tag -f -s
+    if [ ! -d ${baselinedir} ]; then
+        mkdir $baselinedir
+    fi
+    # Test to see if CESM baselines already exists.
+    BASELINE_EXISTS=`ls  ${baselinedir}/*/cpl.log.gz 2>/dev/null | wc -l `
+    if [ $BASELINE_EXISTS != 0 ]; then
+        echo "WARNING: CESM baselines already exists.  Continuing to CAM stand alone archiving."
+    else
+        root_baselinedir=`dirname $baselinedir`
+        echo "CESM archiving to $root_baselinedir/$cam_tag"
+        ../../cime/scripts/Tools/bless_test_results -p -t '' -c '' -r $CESM_TESTDIR --baseline-root $root_baselinedir -b $cam_tag -f -s
+    fi
 
-    echo " "
 fi
 
-echo
-echo "Archiving to ${baselinedir}"
-echo
+#
+#  CAM baseline archiving
+#
 
 if [ ! -d $baselinedir ]; then
-     echo "Making baselinedir 2"
      mkdir $baselinedir
+else
+    # Test to see if CAM baselines already exists.
+    BASELINE_EXISTS=`ls  ${baselinedir}/*/test.log 2>/dev/null | grep TSM | wc -l`
+    if [ $BASELINE_EXISTS != 0 ]; then
+        echo "WARNING: CAM baselines already exists,  Exiting"
+        echo
+        exit
+    fi
 fi
+
+echo
+echo "CAM archiving to ${baselinedir}"
+echo
+
 
 if [ ! -d ${baselinedir} ]; then
    echo "ERROR: Failed to make ${baselinedir}"
