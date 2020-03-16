@@ -408,7 +408,7 @@
 <!--              471                         -->
   <test compset="QPWmaC6" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s">
     <machines>
-      <machine name="izumi" compiler="nag" category="cam_test"/>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
   </test>
 <!--              700                         -->
@@ -438,7 +438,7 @@
 <!--              705 teq                        -->
   <test compset="FADIAB" grid="ne5_ne5_mg37" name="PEM_D_Ln9" testmods="cam/outfrq3s">
     <machines>
-      <machine name="izumi" compiler="nag" category="cam_test"/>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
   </test>
 <!--              706  tsm teq                      -->
@@ -474,13 +474,13 @@
 <!--              701                        -->
   <test compset="QPC5" grid="ne5_ne5_mg37" name="PLB_D_Ln9" testmods="cam/outfrq3s_ttrac_lb0">
     <machines>
-      <machine name="izumi" compiler="nag" category="cam_test"/>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
   </test>
 <!--              702                        -->
   <test compset="QPC5" grid="ne5_ne5_mg37" name="PLB_D_Ln9" testmods="cam/outfrq3s_ttrac_lb1">
     <machines>
-      <machine name="izumi" compiler="nag" category="cam_test"/>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
   </test>
 <!--              703                        -->
@@ -540,13 +540,13 @@
 <!--              003                        -->
   <test compset="QPSCAMC5" grid="T42_T42_mg17" name="SMS_D_Ln7" testmods="cam/scmarm">
     <machines>
-      <machine name="izumi" compiler="nag" category="cam_test"/>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
   </test>
 <!-- 319 -->
   <test compset="QPC2000climo" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s_sathist">
     <machines>
-      <machine name="cheyenne" compiler="intel" category="cam_test"/>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
   </test>
 <!--              004ish                        -->
