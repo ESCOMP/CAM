@@ -587,7 +587,7 @@
     </machines>
   </test>
 <!--              370                        -->
-  <test compset="PC2000climo" grid="f19_f19_mg17" name="SMS_D_Ln9" testmods="cam/outfrq3s_usecase">
+  <test compset="QPC2000climo" grid="f19_f19_mg17" name="SMS_D_Ln9" testmods="cam/outfrq3s_usecase">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
