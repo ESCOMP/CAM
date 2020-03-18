@@ -264,11 +264,7 @@ subroutine set_time_float_from_date( time, year, month, day, sec )
   endif
 
   call ESMF_TimeSet( date, yy=year, mm=month, dd=useday, s=sec, calendar=tm_cal, rc=rc)
-  !
-  ! If the subroutine returned error, check if it is Feb 29 of a non-leap year
-  ! (legitimately used by the time-interpolation routines in tracer_data.F90)
-  ! in which case, substitute Feb 28 for the day
-  !
+
   if ( rc .ne. ESMF_SUCCESS ) then
      call chkrc(rc, sub//': error return from ESMF_TimeSet for set_time_float_from_date')        
   endif
