@@ -328,24 +328,31 @@ contains
           ! no local data
        elseif (lrank == 1) then
           if (size(dataPtr1d) > 0) then
-             write(msgString,'(A,3g14.7,i8)') trim(string)//': '//trim(lfieldnamelist(n)), &
+             write(msgString,'(A,a)') trim(string)//': for 1d field '//trim(lfieldnamelist(n))
+             call ESMF_LogWrite(trim(msgString), ESMF_LOGMSG_INFO)
+             write(msgString,'(A,3g14.7,i8)') trim(string)//': 1d field '//trim(lfieldnamelist(n)), &
                   minval(dataPtr1d), maxval(dataPtr1d), sum(dataPtr1d), size(dataPtr1d)
+             call ESMF_LogWrite(trim(msgString), ESMF_LOGMSG_INFO)
           else
              write(msgString,'(A,a)') trim(string)//': '//trim(lfieldnamelist(n))," no data"
+             call ESMF_LogWrite(trim(msgString), ESMF_LOGMSG_INFO)
           endif
        elseif (lrank == 2) then
           if (size(dataPtr2d) > 0) then
-             write(msgString,'(A,3g14.7,i8)') trim(string)//': '//trim(lfieldnamelist(n)), &
+             write(msgString,'(A,a)') trim(string)//': for 2d field '//trim(lfieldnamelist(n))
+             call ESMF_LogWrite(trim(msgString), ESMF_LOGMSG_INFO)
+             write(msgString,'(A,3g14.7,i8)') trim(string)//': 2d field '//trim(lfieldnamelist(n)), &
                   minval(dataPtr2d), maxval(dataPtr2d), sum(dataPtr2d), size(dataPtr2d)
+             call ESMF_LogWrite(trim(msgString), ESMF_LOGMSG_INFO)
           else
              write(msgString,'(A,a)') trim(string)//': '//trim(lfieldnamelist(n))," no data"
+             call ESMF_LogWrite(trim(msgString), ESMF_LOGMSG_INFO)
           endif
        else
           call ESMF_LogWrite(trim(subname)//": ERROR rank not supported ", ESMF_LOGMSG_ERROR)
           rc = ESMF_FAILURE
           return
        endif
-       call ESMF_LogWrite(trim(msgString), ESMF_LOGMSG_INFO)
     enddo
 
     deallocate(lfieldnamelist)

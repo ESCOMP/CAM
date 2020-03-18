@@ -70,7 +70,7 @@ contains
   subroutine advertise_fields(gcomp, flds_scalar_name, rc)
 
     use spmd_utils        , only : masterproc
-    use seq_drydep_mod    , only : seq_drydep_readnl, seq_drydep_init
+    use seq_drydep_mod    , only : seq_drydep_readnl
     use shr_megan_mod     , only : shr_megan_readnl
     use shr_fire_emis_mod , only : shr_fire_emis_readnl
     use shr_carma_mod     , only : shr_carma_readnl
@@ -97,7 +97,7 @@ contains
     !-------------------------------------------------------------------------------
 
     rc = ESMF_SUCCESS
-    if (dbug_flag > 10) call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO)
+    call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO)
 
     call NUOPC_ModelGet(gcomp, importState=importState, exportState=exportState, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
@@ -109,23 +109,23 @@ contains
     call NUOPC_CompAttributeGet(gcomp, name='flds_co2a', value=cvalue, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     read(cvalue,*) flds_co2a
-    call ESMF_LogWrite('flds_co2a = '// trim(cvalue), ESMF_LOGMSG_INFO)
+    call ESMF_LogWrite(trim(subname)//'flds_co2a = '// trim(cvalue), ESMF_LOGMSG_INFO)
 
     call NUOPC_CompAttributeGet(gcomp, name='flds_co2b', value=cvalue, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     read(cvalue,*) flds_co2b
-    call ESMF_LogWrite('flds_co2b = '// trim(cvalue), ESMF_LOGMSG_INFO)
+    call ESMF_LogWrite(trim(subname)//'flds_co2b = '// trim(cvalue), ESMF_LOGMSG_INFO)
 
     call NUOPC_CompAttributeGet(gcomp, name='flds_co2c', value=cvalue, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     read(cvalue,*) flds_co2c
-    call ESMF_LogWrite('flds_co2c = '// trim(cvalue), ESMF_LOGMSG_INFO)
+    call ESMF_LogWrite(trim(subname)//'flds_co2c = '// trim(cvalue), ESMF_LOGMSG_INFO)
 
     !--------------------------------
     ! Export fields
     !--------------------------------
 
-    if (dbug_flag > 10) call ESMF_LogWrite(subname//' export fields', ESMF_LOGMSG_INFO)
+    call ESMF_LogWrite(trim(subname)//' export fields', ESMF_LOGMSG_INFO)
     call fldlist_add(fldsFrAtm_num, fldsFrAtm, trim(flds_scalar_name))
 
     call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Sa_topo'       )
@@ -165,7 +165,7 @@ contains
     ! (1) => dstdry1, (2) => dstdry2, (3) => dstdry3, (4) => dstdry4 
     call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Faxa_dstdry', ungridded_lbound=1, ungridded_ubound=4)
 
-    if (dbug_flag > 10) call ESMF_LogWrite(subname//' export fields co2', ESMF_LOGMSG_INFO)
+    call ESMF_LogWrite(subname//' export fields co2', ESMF_LOGMSG_INFO)
 
     ! from atm co2 fields
     if (flds_co2a .or. flds_co2b .or. flds_co2c) then
@@ -182,7 +182,7 @@ contains
     end if
 
     ! Now advertise above export fields
-    if (dbug_flag > 10) call ESMF_LogWrite(subname//' advertise export fields ', ESMF_LOGMSG_INFO)
+    call ESMF_LogWrite(trim(subname)//' advertise export fields ', ESMF_LOGMSG_INFO)
     do n = 1,fldsFrAtm_num
        call NUOPC_Advertise(exportState, standardName=fldsFrAtm(n)%stdname, &
             TransferOfferGeomObject='will provide', rc=rc)
@@ -193,7 +193,7 @@ contains
     ! Import fields
     !-----------------
 
-    if (dbug_flag > 10) call ESMF_LogWrite(subname//' Import Fields', ESMF_LOGMSG_INFO)
+    call ESMF_LogWrite(trim(subname)//' Import Fields', ESMF_LOGMSG_INFO)
 
     call fldlist_add(fldsToAtm_num, fldsToAtm, trim(flds_scalar_name))
 
@@ -236,13 +236,14 @@ contains
        call set_active_Faoo_fco2_ocn(.true.)
     end if
 
+    call ESMF_LogWrite(trim(subname)//' here1', ESMF_LOGMSG_INFO)
     ! dry deposition velocities from land - ALSO initialize drydep here
     call seq_drydep_readnl("drv_flds_in", drydep_nflds)
     if (drydep_nflds > 0) then
        call fldlist_add(fldsToAtm_num, fldsToAtm, 'Sl_ddvel', ungridded_lbound=1, ungridded_ubound=drydep_nflds)
     end if
-    call seq_drydep_init( )
 
+    call ESMF_LogWrite(trim(subname)//' here2', ESMF_LOGMSG_INFO)
     ! MEGAN VOC emissions fluxes from land
     call shr_megan_readnl('drv_flds_in', megan_nflds)
     if (megan_nflds > 0) then
@@ -250,6 +251,7 @@ contains
        call set_active_Fall_flxvoc(.true.)
     end if
 
+    call ESMF_LogWrite(trim(subname)//' here3', ESMF_LOGMSG_INFO)
     ! fire emissions fluxes from land
     call shr_fire_emis_readnl('drv_flds_in', emis_nflds)
     if (emis_nflds > 0) then
@@ -258,6 +260,7 @@ contains
        call set_active_Fall_flxfire(.true.)
     end if
 
+    call ESMF_LogWrite(trim(subname)//' here4', ESMF_LOGMSG_INFO)
     ! CARMA volumetric soil water from land
     call shr_carma_readnl('drv_flds_in', carma_fields)
     if (carma_fields /= ' ') then
@@ -265,16 +268,19 @@ contains
        call set_active_Sl_soilw(.true.) ! check for carma
     end if
 
+    call ESMF_LogWrite(trim(subname)//' here5', ESMF_LOGMSG_INFO)
+
     ! ------------------------------------------
     ! Now advertise above import fields
     ! ------------------------------------------
+    call ESMF_LogWrite(trim(subname)//' advertise import fields ', ESMF_LOGMSG_INFO)
     do n = 1,fldsToAtm_num
        call NUOPC_Advertise(importState, standardName=fldsToAtm(n)%stdname, &
             TransferOfferGeomObject='will provide', rc=rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
     enddo
 
-    if (dbug_flag > 10) call ESMF_LogWrite(subname//' done', ESMF_LOGMSG_INFO)
+    call ESMF_LogWrite(trim(subname)//' done', ESMF_LOGMSG_INFO)
 
   end subroutine advertise_fields
 
@@ -296,6 +302,8 @@ contains
     !---------------------------------------------------------------------------
 
     rc = ESMF_SUCCESS
+
+    call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO)
 
     call NUOPC_ModelGet(gcomp, importState=importState, exportState=exportState, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
@@ -319,6 +327,8 @@ contains
          tag=subname//':camImport',&
          mesh=Emesh, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    call ESMF_LogWrite(trim(subname)//' done', ESMF_LOGMSG_INFO)
 
   end subroutine realize_fields
 
