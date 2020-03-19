@@ -341,7 +341,6 @@ contains
                                                    silhs_config_flags )
 
       ! Print the SILHS configurable flags
-      write(iulog,'(a,i0,a)') " SILHS configurable flags set in thread ", iam, ":"
       call print_silhs_config_flags_api( iulog, silhs_config_flags ) ! Intent(in)
 
       ! Values from the namelist

@@ -1970,9 +1970,9 @@ end subroutine clubb_init_cnst
    sclrm(:,:)           = 0._r8
    
    !  Compute inverse exner function consistent with CLUBB's definition, which uses a constant
-   !  surface pressure.  CAM's exner (in state does not).  Therefore, for consistent 
+   !  surface pressure.  CAM's exner (in state) does not.  Therefore, for consistent 
    !  treatment with CLUBB code, anytime exner is needed to treat CLUBB variables 
-   !  (such as thlm), use "inv_exner_clubb" other wise use the exner in state
+   !  (such as thlm), use "inv_exner_clubb" otherwise use the exner in state
 
    do k=1,pver
      do i=1,ncol
