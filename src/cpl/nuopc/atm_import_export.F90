@@ -53,9 +53,9 @@ module atm_import_export
   integer                :: emis_nflds   ! number of fire emission fields from lnd-> atm
 
   ! from atm-<lnd
-  integer, public        :: ndep_nflds   ! number  of nitrogen deposition fields from atm->lnd/ocn 
+  integer, public        :: ndep_nflds   ! number  of nitrogen deposition fields from atm->lnd/ocn
 
-  integer                :: dbug_flag = 6    ! ESMF log output 
+  integer                :: dbug_flag = 6    ! ESMF log output
   integer, parameter     :: debug_import = 0 ! internal debug level
   integer, parameter     :: debug_export = 0 ! internal debug level
   character(*),parameter :: F01 = "('(cam_import_export) ',a,i8,2x,i8,2x,d21.14)"
@@ -158,11 +158,11 @@ contains
     call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Faxa_ocph', ungridded_lbound=1, ungridded_ubound=3)
 
     ! from atm - wet dust deposition frluxes (4 sizes)
-    ! (1) => dstwet1, (2) => dstwet2, (3) => dstwet3, (4) => dstwet4 
+    ! (1) => dstwet1, (2) => dstwet2, (3) => dstwet3, (4) => dstwet4
     call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Faxa_dstwet', ungridded_lbound=1, ungridded_ubound=4)
 
     ! from atm - dry dust deposition frluxes (4 sizes)
-    ! (1) => dstdry1, (2) => dstdry2, (3) => dstdry3, (4) => dstdry4 
+    ! (1) => dstdry1, (2) => dstdry2, (3) => dstdry3, (4) => dstdry4
     call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Faxa_dstdry', ungridded_lbound=1, ungridded_ubound=4)
 
     call ESMF_LogWrite(subname//' export fields co2', ESMF_LOGMSG_INFO)
@@ -292,7 +292,7 @@ contains
     type(ESMF_GridComp) , intent(inout) :: gcomp
     type(ESMF_Mesh)     , intent(in)    :: Emesh
     character(len=*)    , intent(in)    :: flds_scalar_name
-    integer             , intent(in)    :: flds_scalar_num 
+    integer             , intent(in)    :: flds_scalar_num
     integer             , intent(out)   :: rc
 
     ! local variables
@@ -337,7 +337,7 @@ contains
   subroutine import_fields( gcomp, cam_in, restart_init, rc)
 
     ! -----------------------------------------------------
-    ! Set field pointers in import state and 
+    ! Set field pointers in import state and
     ! copy from field pointer to chunk array data structure
     ! -----------------------------------------------------
 
@@ -706,7 +706,7 @@ contains
           do i=1, get_ncols_p(c)
 
              ! co2 flux from ocn
-             if (exists_fco2_ocn /= 0) then
+             if (exists_fco2_ocn) then
                 cam_in(c)%cflx(i,c_i(1)) = cam_in(c)%fco2_ocn(i)
              else if (co2_readFlux_ocn) then
                 ! convert from molesCO2/m2/s to kgCO2/m2/s
@@ -819,7 +819,7 @@ contains
     ! 2d pointers
     real(r8), pointer :: fldptr_ndep(:,:)
     real(r8), pointer :: fldptr_bcph(:,:)  , fldptr_ocph(:,:)
-    real(r8), pointer :: fldptr_dstwet(:,:), fldptr_dstdry(:,:) 
+    real(r8), pointer :: fldptr_dstwet(:,:), fldptr_dstdry(:,:)
     ! 1d pointers
     real(r8), pointer :: fldptr_soll(:)    , fldptr_sols(:)
     real(r8), pointer :: fldptr_solld(:)   , fldptr_solsd(:)
@@ -829,8 +829,8 @@ contains
     real(r8), pointer :: fldptr_topo(:)    , fldptr_zbot(:)
     real(r8), pointer :: fldptr_ubot(:)    , fldptr_vbot(:)
     real(r8), pointer :: fldptr_pbot(:)    , fldptr_tbot(:)
-    real(r8), pointer :: fldptr_shum(:)    , fldptr_dens(:) 
-    real(r8), pointer :: fldptr_ptem(:)    , fldptr_pslv(:) 
+    real(r8), pointer :: fldptr_shum(:)    , fldptr_dens(:)
+    real(r8), pointer :: fldptr_ptem(:)    , fldptr_pslv(:)
     real(r8), pointer :: fldptr_co2prog(:) , fldptr_co2diag(:)
     character(len=*), parameter :: subname='(atm_import_export:export_fields)'
     !---------------------------------------------------------------------------
@@ -1232,7 +1232,7 @@ contains
           call shr_sys_abort('variable '//trim(fldname)//' must be present ')
        end if
     end if
-       
+
     call ESMF_StateGet(State, itemName=trim(fldname), field=lfield, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
