@@ -706,6 +706,38 @@ end subroutine clubb_init_cnst
     if (clubb_rainevap_turb) do_rainturb = .true.
     if (clubb_expldiff) do_expldiff = .true.
     
+! Check that all namelists have been set
+  if(clubb_timestep == unset_r8) call endrun(sub//": FATAL: clubb_timestep is not set")
+  if(clubb_rnevap_effic == unset_r8) call endrun(sub//": FATAL:clubb_rnevap_effic  is not set")
+
+  if(clubb_c1 == unset_r8) call endrun(sub//": FATAL: clubb_c1 is not set")
+  if(clubb_c1b == unset_r8) call endrun(sub//": FATAL: clubb_c1b is not set")
+  if(clubb_C2rt == unset_r8) call endrun(sub//": FATAL: clubb_C2rt is not set")
+  if(clubb_C2thl == unset_r8) call endrun(sub//": FATAL: clubb_C2thl is not set")
+  if(clubb_C2rtthl == unset_r8) call endrun(sub//": FATAL: clubb_C2rtthl is not set")
+  if(clubb_C4 == unset_r8) call endrun(sub//": FATAL: clubb_C4 is not set")
+  if(clubb_C8 == unset_r8) call endrun(sub//": FATAL: clubb_C8 is not set")
+  if(clubb_C8b == unset_r8) call endrun(sub//": FATAL: clubb_C8b is not set")
+  if(clubb_C7 == unset_r8) call endrun(sub//": FATAL: clubb_C7 is not set")
+  if(clubb_C7b == unset_r8) call endrun(sub//": FATAL: clubb_C7b is not set")
+  if(clubb_c11 == unset_r8) call endrun(sub//": FATAL: clubb_c11 is not set")
+  if(clubb_c11b == unset_r8) call endrun(sub//": FATAL: clubb_c11b is not set")
+  if(clubb_c14 == unset_r8) call endrun(sub//": FATAL: clubb_c14 is not set")
+  if(clubb_c_K9 == unset_r8) call endrun(sub//": FATAL: clubb_c_K9 is not set")
+  if(clubb_nu9 == unset_r8) call endrun(sub//": FATAL: clubb_nu9 is not set")
+  if(clubb_c_K10 == unset_r8) call endrun(sub//": FATAL: clubb_c_K10 is not set")
+  if(clubb_c_K10h == unset_r8) call endrun(sub//": FATAL: clubb_c_K10h is not set")
+  if(clubb_gamma_coef == unset_r8) call endrun(sub//": FATAL: clubb_gamma_coef is not set")
+  if(clubb_gamma_coefb == unset_r8) call endrun(sub//": FATAL: clubb_gamma_coefb is not set")
+  if(clubb_beta == unset_r8) call endrun(sub//": FATAL: clubb_beta is not set")
+  if(clubb_lambda0_stability_coef == unset_r8) call endrun(sub//": FATAL: clubb_lambda0_stability_coef is not set")
+  if(clubb_lmin_coef == unset_r8) call endrun(sub//": FATAL: clubb_lmin_coef is not set")
+  if(clubb_mult_coef == unset_r8) call endrun(sub//": FATAL: clubb_mult_coef is not set")
+  if(clubb_Skw_denom_coef == unset_r8) call endrun(sub//": FATAL: clubb_Skw_denom_coef is not set")
+  if(clubb_skw_max_mag == unset_r8) call endrun(sub//": FATAL: clubb_skw_max_mag is not set")
+  if(clubb_up2_vp2_factor == unset_r8) call endrun(sub//": FATAL: clubb_up2_vp2_factor is not set")
+  if(clubb_C_wp2_splat == unset_r8) call endrun(sub//": FATAL: clubb_C_wp2_splatis not set")
+
 #endif
   end subroutine clubb_readnl
 
@@ -840,14 +872,14 @@ end subroutine clubb_init_cnst
        pdf_implicit_coefs_terms_chnk(pcols,begchunk:endchunk) )
 
     ! Allocate (in the vertical) and zero PDF parameters
-    do j = 1, pcols, 1
-       do l = begchunk, endchunk, 1
+    do l = begchunk, endchunk, 1
+       do j = 1, pcols, 1
           call init_pdf_params_api( pverp+1-top_lev, pdf_params_chnk(j,l) )
           call init_pdf_params_api( pverp+1-top_lev, pdf_params_zm_chnk(j,l) )
           call init_pdf_implicit_coefs_terms_api( pverp+1-top_lev, sclr_dim, &
                                                   pdf_implicit_coefs_terms_chnk(j,l) )
-       enddo ! l = begchunk, endchunk, 1
-    enddo ! j = 1, pcols, 1
+       enddo ! j = 1, pcols, 1
+    enddo ! l = begchunk, endchunk, 1
 
     ! ----------------------------------------------------------------- !
     ! Determine how many constituents CLUBB will transport.  Note that  
@@ -1060,7 +1092,6 @@ end subroutine clubb_init_cnst
     endif
 
     ! Print configurable CLUBB flags
-    write(iulog,'(a,i0,a)') " CLUBB configurable flags set in thread ", iam, ":"
     call print_clubb_config_flags_api( iulog, clubb_config_flags ) ! Intent(in)
 
     ! ----------------------------------------------------------------- !
