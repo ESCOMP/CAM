@@ -533,7 +533,9 @@ add_default($nl, 'cime_model', 'val'=>'cesm');
 # CESM driver defaults
 add_default($nl, 'coldair_outbreak_mod', 'val'=>'.true.');
 add_default($nl, 'flux_max_iteration', 'val'=>'5');
-
+# Compoistion of air
+add_default($nl, 'dry_air_composition');
+add_default($nl, 'moist_air_composition');
 # Spectral Element dycore
 my $dyn = $cfg->get('dyn');
 if ($dyn =~ /se/) {add_default($nl, 'vect_map', 'val'=>'cart3d');}
@@ -3542,7 +3544,6 @@ if ($dyn =~ /se/) {
                   se_nu_div
                   se_nu_p
                   se_nu_top
-                  se_qsize_condensate_loading
                   se_qsplit
                   se_rsplit
                   se_statediag_numtrac

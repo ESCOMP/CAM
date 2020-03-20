@@ -11,12 +11,11 @@ module dimensions_mod
 
 ! set MAX number of tracers.  actual number of tracers is a run time argument  
 #ifdef FVM_TRACERS
-  integer, parameter         :: qsize_d = 6 ! SE tracers (currently SE supports 6 condensate loading tracers)
+  integer, parameter         :: qsize_d =10 ! SE tracers (currently SE supports 10 condensate loading tracers)
 #else
   integer, parameter         :: ntrac_d = 0 ! No fvm tracers if CSLAM is off
 #endif
 
-  integer,               public :: qsize_condensate_loading = 1 !how many water variables to include in full density
   !
   ! The variables below hold indices of water vapor and condensate loading tracers as well as
   ! associated heat capacities (initialized in dyn_init):
@@ -30,10 +29,6 @@ module dimensions_mod
   !
   ! but when running with CSLAM then SE tracers are only the water tracers included in the condensate loading
   !
-  integer,            allocatable, public :: qsize_condensate_loading_idx(:)    
-  integer,            allocatable, public :: qsize_condensate_loading_idx_gll(:)
-  real(r8),           allocatable, public :: qsize_condensate_loading_cp(:)
-  real(r8),           allocatable, public :: qsize_condensate_loading_R(:)
   character(len=16),  allocatable, public :: cnst_name_gll(:)     ! constituent names for SE tracers
   character(len=128), allocatable, public :: cnst_longname_gll(:) ! long name of SE tracers
   !
@@ -114,8 +109,6 @@ module dimensions_mod
   integer, public :: nPhysProc                          ! This is the number of physics processors/ per dynamics processor
   integer, public :: nnodes,npart,nmpi_per_node
   integer, public :: GlobalUniqueCols
-
-
 
   public :: set_mesh_dimensions
 

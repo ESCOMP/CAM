@@ -88,7 +88,7 @@ contains
 !===============================================================================
 
 subroutine dyn_readnl(NLFileName)
-
+   use physconst,      only: thermodynamic_active_species_num
    use namelist_utils, only: find_group_name
    use namelist_mod,   only: homme_set_defaults, homme_postprocess_namelist
    use units,          only: getunit, freeunit
@@ -113,7 +113,7 @@ subroutine dyn_readnl(NLFileName)
    use control_mod,    only: raytau0, raykrange, rayk0 
                
    use dimensions_mod, only: ne, npart
-   use dimensions_mod, only: qsize_condensate_loading, lcp_moist
+   use dimensions_mod, only: lcp_moist
    use dimensions_mod, only: hypervis_dynamic_ref_state,large_Courant_incr
    use dimensions_mod, only: fvm_supercycling, fvm_supercycling_jet
    use dimensions_mod, only: kmin_jet, kmax_jet
@@ -130,7 +130,6 @@ subroutine dyn_readnl(NLFileName)
    real(r8)                     :: uniform_res_hypervis_scaling,nu_fac
 
    ! SE Namelist variables
-   integer                      :: se_qsize_condensate_loading
    integer                      :: se_fine_ne
    integer                      :: se_ftype
    integer                      :: se_statediag_numtrac
@@ -171,10 +170,9 @@ subroutine dyn_readnl(NLFileName)
    integer                      :: se_phys_dyn_cp
    real(r8)                     :: se_raytau0
    real(r8)                     :: se_raykrange
-   integer                      :: se_rayk0 
+   integer                      :: se_rayk0
    
    namelist /dyn_se_inparm/        &
-      se_qsize_condensate_loading, &
       se_fine_ne,                  & ! For refined meshes
       se_ftype,                    & ! forcing type
       se_statediag_numtrac,        &
@@ -222,11 +220,11 @@ subroutine dyn_readnl(NLFileName)
       se_phys_dyn_cp,              &
       se_raytau0,                  &
       se_raykrange,                &
-      se_rayk0 
+      se_rayk0
 
    !--------------------------------------------------------------------------
 
-   ! defaults for variables not set by build-namelist
+   ! defaults for variables not set by build-namelist   
    se_fine_ne                  = -1
    se_hypervis_power           = 0
    se_hypervis_scaling         = 0
@@ -253,7 +251,6 @@ subroutine dyn_readnl(NLFileName)
    end if
 
    ! Broadcast namelist values to all PEs
-   call MPI_bcast(se_qsize_condensate_loading, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_fine_ne, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_ftype, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_statediag_numtrac, 1, mpi_integer, masterprocid, mpicom, ierr)
@@ -330,7 +327,6 @@ subroutine dyn_readnl(NLFileName)
    rk_stage_user            = 3
    topology                 = "cube"
    ! Finally, set the HOMME variables which have different names
-   qsize_condensate_loading = se_qsize_condensate_loading
    fine_ne                  = se_fine_ne
    ftype                    = se_ftype
    statediag_numtrac        = MIN(se_statediag_numtrac,pcnst)
@@ -371,12 +367,12 @@ subroutine dyn_readnl(NLFileName)
    raytau0                  = se_raytau0 
    raykrange                = se_raykrange
    rayk0                    = se_rayk0
-
+   
    if (fv_nphys > 0) then
       ! Use finite volume physics grid and CSLAM for tracer advection
       nphys_pts = fv_nphys*fv_nphys
       tracer_transport_type = TRACERTRANSPORT_CONSISTENT_SE_FVM
-      qsize = qsize_condensate_loading ! number tracers advected by GLL
+      qsize = thermodynamic_active_species_num ! number tracers advected by GLL
       ntrac = pcnst                    ! number tracers advected by CSLAM
    else
       ! Use GLL grid for physics and tracer advection
@@ -461,7 +457,6 @@ subroutine dyn_readnl(NLFileName)
       write(iulog, '(a,i0)')   'dyn_readnl: se_statefreq                  = ',se_statefreq
       write(iulog, '(a,i0)')   'dyn_readnl: se_tstep_type                 = ',se_tstep_type
       write(iulog, '(a,i0)')   'dyn_readnl: se_vert_remap_q_alg           = ',se_vert_remap_q_alg
-      write(iulog, '(a,i0)')   'dyn_readnl: se_qsize_condensate_loading   = ',se_qsize_condensate_loading
       write(iulog, '(a,l4)')   'dyn_readnl: se_hypervis_dynamic_ref_state = ',hypervis_dynamic_ref_state
       write(iulog, '(a,l4)')   'dyn_readnl: lcp_moist                     = ',lcp_moist
       write(iulog, '(a,i0)')   'dyn_readnl: se_fvm_supercycling           = ',fvm_supercycling
@@ -542,19 +537,18 @@ end subroutine dyn_register
 !=========================================================================================
 
 subroutine dyn_init(dyn_in, dyn_out)
-
    use prim_advance_mod,   only: prim_advance_init
    use dyn_grid,           only: elem, fvm
    use cam_pio_utils,      only: clean_iodesc_list
-   use physconst,          only: cpwv, cpliq, cpice, rh2o
+   use physconst,          only: cpwv, cpliq, cpice, cpair, rh2o
+   use physconst,          only: thermodynamic_active_species_num, thermodynamic_active_species_idx
+   use physconst,          only: thermodynamic_active_species_idx_dycore
    use cam_history,        only: addfld, add_default, horiz_only, register_vector_field
    use gravity_waves_sources, only: gws_init
 
    use thread_mod,         only: horz_num_threads
    use hybrid_mod,         only: get_loop_ranges, config_thread_region
-   use dimensions_mod,     only: qsize_condensate_loading,qsize_condensate_loading_idx
-   use dimensions_mod,     only: qsize_condensate_loading_idx_gll, nu_scale_top
-   use dimensions_mod,     only: qsize_condensate_loading_cp, qsize_condensate_loading_R
+   use dimensions_mod,     only: nu_scale_top
    use dimensions_mod,     only: ksponge_end
    use dimensions_mod,     only: cnst_name_gll, cnst_longname_gll, nu_div_scale_top
    use dimensions_mod,     only: irecons_tracer_lev, irecons_tracer, otau
@@ -576,6 +570,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    type(hybrid_t)      :: hybrid
 
    integer :: ixcldice, ixcldliq, ixrain, ixsnow, ixgraupel
+   integer :: ixo2, ixo, ixh, ixn !needed for WACCM-x   
    integer :: m_cnst, m
 
    ! variables for initializing energy and axial angular momentum diagnostics   
@@ -613,7 +608,6 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    integer :: istage, ivars
    character (len=108) :: str1, str2, str3
-   integer, parameter :: qcondensate_max = 6
 
    logical :: history_budget      ! output tendencies and state variables for budgets
    integer :: budget_hfile_num
@@ -624,62 +618,16 @@ subroutine dyn_init(dyn_in, dyn_out)
    
    !----------------------------------------------------------------------------
 
-   if (qsize_condensate_loading > qcondensate_max) then
-     call endrun(subname//': se_qsize_condensate_loading not setup for more than 6 forms of water')
-   end if
-
+   write(*,*) "xxx dyn_comp"
    ! Now allocate and set condenstate vars
-   allocate(qsize_condensate_loading_idx(qcondensate_max))
-   allocate(qsize_condensate_loading_idx_gll(qcondensate_max))
-   allocate(qsize_condensate_loading_cp(qcondensate_max))
-   allocate(qsize_condensate_loading_R(qcondensate_max))
-
    allocate(cnst_name_gll(qsize))     ! constituent names for gll tracers
    allocate(cnst_longname_gll(qsize)) ! long name of constituents for gll tracers
 
-   ! water vapor is always tracer 1
-   qsize_condensate_loading_idx(1) = 1
-   qsize_condensate_loading_cp(1)  = cpwv
-   qsize_condensate_loading_R(1)   = rh2o
-
-   call cnst_get_ind('CLDLIQ', ixcldliq, abort=.false.)
-   if (ixcldliq < 1.and.qsize_condensate_loading > 1) &
-        call endrun(subname//': ERROR: qsize_condensate_loading >1 but CLDLIQ not available')
-   qsize_condensate_loading_idx(2) = ixcldliq
-   qsize_condensate_loading_cp(2)  = cpliq
-   qsize_condensate_loading_R(2)   = 0.0_r8
-
-   call cnst_get_ind('CLDICE', ixcldice, abort=.false.)
-   if (ixcldice < 1.and.qsize_condensate_loading > 2) &
-        call endrun(subname//': ERROR: qsize_condensate_loading >2 but CLDICE not available')
-   qsize_condensate_loading_idx(3) = ixcldice
-   qsize_condensate_loading_cp(3)  = cpice
-   qsize_condensate_loading_R(3)   = 0.0_r8
-
-   call cnst_get_ind('RAINQM', ixrain, abort=.false.)
-   if (ixrain < 1.and.qsize_condensate_loading > 3) &
-        call endrun(subname//': ERROR: qsize_condensate_loading >3 but RAINQM not available')
-   qsize_condensate_loading_idx(4) = ixrain
-   qsize_condensate_loading_cp(4)  = cpliq
-   qsize_condensate_loading_R(4)   = 0.0_r8
-
-   call cnst_get_ind('SNOWQM', ixsnow, abort=.false.)
-   if (ixsnow < 1.and.qsize_condensate_loading > 4) &
-        call endrun(subname//': ERROR: qsize_condensate_loading >4 but SNOWQM not available')
-   qsize_condensate_loading_idx(5) = ixsnow
-   qsize_condensate_loading_cp(5)  = cpice
-   qsize_condensate_loading_R(5)   = 0.0_r8
-
-   call cnst_get_ind('GRAUQM', ixgraupel, abort=.false.)
-   if (ixgraupel < 1.and.qsize_condensate_loading > 5) &
-        call endrun(subname//': ERROR: qsize_condensate_loading >5 but GRAUQM not available')
-   qsize_condensate_loading_idx(6) = ixgraupel
-   qsize_condensate_loading_cp(6)  = cpice
-   qsize_condensate_loading_R(6)   = 0.0_r8
+   ! if user wants to add more condensate loading tracers add them here ....
+   
    !
    ! if adding more condensate loading tracers remember to increase qsize_d in dimensions_mod
    !
-   qsize_condensate_loading_idx_gll(:) = -1
    do m=1,qsize
      !
      ! The "_gll" index variables below are used to keep track of condensate-loading tracers
@@ -694,24 +642,24 @@ subroutine dyn_init(dyn_in, dyn_out)
      !
      if (ntrac>0) then
        !
-       ! note that in this case qsize = qsize_condensate_loading
+       ! note that in this case qsize = thermodynamic_active_species_num
        !
-       qsize_condensate_loading_idx_gll(m) = m
-       cnst_name_gll    (m)                = cnst_name    (qsize_condensate_loading_idx(m))
-       cnst_longname_gll(m)                = cnst_longname(qsize_condensate_loading_idx(m))
+       thermodynamic_active_species_idx_dycore(m) = m
+       cnst_name_gll    (m)                = cnst_name    (thermodynamic_active_species_idx(m))
+       cnst_longname_gll(m)                = cnst_longname(thermodynamic_active_species_idx(m))
      else
        !
        ! if not running with CSLAM then the condensate-loading water tracers are not necessarily
        ! indexed contiguously (are indexed as in physics)
        !
-       if (m.le.qcondensate_max) qsize_condensate_loading_idx_gll(m) = qsize_condensate_loading_idx(m)
+       if (m.le.thermodynamic_active_species_num) thermodynamic_active_species_idx_dycore(m) = thermodynamic_active_species_idx(m)
        cnst_name_gll    (m)                = cnst_name    (m)
        cnst_longname_gll(m)                = cnst_longname(m)
      end if
 
    end do
 
-   ! if user wants to add more condensate loading tracers add them here ....
+
 
    !
    ! Initialize the import/export objects
@@ -732,9 +680,9 @@ subroutine dyn_init(dyn_in, dyn_out)
    call set_phis(dyn_in)
 
    if (initial_run) then
-      call read_inidat(dyn_in)
-      call clean_iodesc_list()
-   end if
+     call read_inidat(dyn_in)
+     call clean_iodesc_list()
+   end if    
    !
    ! initialize Rayleigh friction
    !
@@ -896,10 +844,10 @@ end subroutine dyn_init
 !=========================================================================================
 
 subroutine dyn_run(dyn_state)
-
+   use physconst,        only: cpair,thermodynamic_active_species_num
+   use physconst,        only: thermodynamic_active_species_idx_dycore
    use prim_advance_mod, only: calc_tot_energy_dynamics
    use prim_driver_mod,  only: prim_run_subcycle
-   use dimensions_mod,   only: qsize_condensate_loading, qsize_condensate_loading_idx_gll
    use dimensions_mod,   only: cnst_name_gll
    use time_mod,         only: tstep, nsplit, timelevel_qdp
    use hybrid_mod,       only: config_thread_region, get_loop_ranges
@@ -1003,8 +951,8 @@ subroutine dyn_run(dyn_state)
          do j=1,np
            do i = 1, np
              pdel     = dyn_state%elem(ie)%state%dp3d(i,j,k,tl_f)
-             do nq=1,qsize_condensate_loading
-               m_cnst = qsize_condensate_loading_idx_gll(nq)
+             do nq=1,thermodynamic_active_species_num
+               m_cnst = thermodynamic_active_species_idx_dycore(nq)
                pdel = pdel + (dyn_state%elem(ie)%state%qdp(i,j,k,m_cnst,n0_qdp)+dyn_state%elem(ie)%derived%FQ(i,j,k,m_cnst)*dtime)
              end do             
              dyn_state%elem(ie)%derived%FDP(i,j,k) = pdel
@@ -1088,17 +1036,16 @@ end subroutine dyn_final
 !===============================================================================
 
 subroutine read_inidat(dyn_in)
-
+   use physconst,           only: thermodynamic_active_species_num
    use shr_sys_mod,         only: shr_sys_flush
    use hycoef,              only: hyai, hybi, ps0
    use const_init,          only: cnst_init_default
 
    use element_mod,         only: timelevels
-   use dimensions_mod,      only: qsize_condensate_loading
-   use dimensions_mod,      only: qsize_condensate_loading_idx
    use fvm_mapping,         only: dyn2fvm_mass_vars
    use control_mod,         only: runtype,initial_global_ave_dry_ps
    use prim_driver_mod,     only: prim_set_dry_mass
+   use physconst,           only: thermodynamic_active_species_idx
    
    ! Arguments
    type (dyn_import_t), target, intent(inout) :: dyn_in   ! dynamics import
@@ -1537,8 +1484,8 @@ subroutine read_inidat(dyn_in)
       !
       factor_array(:,:,:,:) = 1.0_r8
       do ie = 1, nelemd
-         do k = 1, qsize_condensate_loading
-            m_cnst = qsize_condensate_loading_idx(k)
+         do k = 1, thermodynamic_active_species_num
+            m_cnst = thermodynamic_active_species_idx(k)
             factor_array(:,:,:,ie) = factor_array(:,:,:,ie) - qtmp(:,:,:,ie,m_cnst)
          end do
       end do
@@ -1571,8 +1518,8 @@ subroutine read_inidat(dyn_in)
 
       factor_array(:,:,:,:) = 1.0_r8
       do ie = 1, nelemd
-         do k = 1, qsize_condensate_loading
-            m_cnst = qsize_condensate_loading_idx(k)
+         do k = 1, thermodynamic_active_species_num
+            m_cnst = thermodynamic_active_species_idx(k)
             factor_array(:,:,:,ie) = factor_array(:,:,:,ie) + qtmp(:,:,:,ie,m_cnst)
          end do
       end do
@@ -1654,8 +1601,8 @@ subroutine read_inidat(dyn_in)
 
    if (ntrac > 0) then
       do ie = 1, nelemd
-         do nq = 1, qsize_condensate_loading
-            m_cnst = qsize_condensate_loading_idx(nq)
+         do nq = 1, thermodynamic_active_species_num
+            m_cnst = thermodynamic_active_species_idx(nq)
             do k = 1, nlev
                do j = 1, np
                   do i = 1, np
@@ -1841,11 +1788,11 @@ subroutine set_phis(dyn_in)
       fieldname = 'PHIS'
       if (dyn_field_exists(fh_topo, trim(fieldname))) then
          if (fv_nphys == 0) then
-            call read_dyn_var(fieldname, fh_topo, 'ncol', phis_tmp)
+           call read_dyn_var(fieldname, fh_topo, 'ncol', phis_tmp)
          else
-            call read_phys_field_2d(fieldname, fh_topo, 'ncol', phis_phys_tmp)
-            call map_phis_from_physgrid_to_gll(dyn_in%fvm, elem, phis_phys_tmp, &
-                                               phis_tmp, pmask)
+           call read_phys_field_2d(fieldname, fh_topo, 'ncol', phis_phys_tmp)
+           call map_phis_from_physgrid_to_gll(dyn_in%fvm, elem, phis_phys_tmp, &
+                phis_tmp, pmask)
          end if
       else
          call endrun(subname//': Could not find PHIS field on input datafile')

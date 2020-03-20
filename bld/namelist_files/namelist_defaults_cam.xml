@@ -1952,6 +1952,18 @@
 <cam_snapshot_after_num>   -1 </cam_snapshot_after_num>
 
 <!-- ================================================================== -->
+<!-- Defaults for composition of air                                    -->
+<!-- ================================================================== -->
+
+<dry_air_composition                           >''                                 </dry_air_composition>
+<dry_air_composition waccmx="1"                >'O     ','O2    ','H     ','N2    '</dry_air_composition>
+
+<moist_air_composition                         >'Q     '                                    </moist_air_composition>
+<moist_air_composition phys="cam4"             >'Q     ','CLDLIQ','CLDICE'                  </moist_air_composition>
+<moist_air_composition phys="cam5"             >'Q     ','CLDLIQ','CLDICE'                  </moist_air_composition>
+<moist_air_composition phys="cam6"             >'Q     ','CLDLIQ','CLDICE','RAINQM','SNOWQM'</moist_air_composition>
+
+<!-- ================================================================== -->
 <!-- Defaults for SE                                                    -->
 <!-- ================================================================== -->
 
@@ -2022,15 +2034,6 @@
 <se_raytau0   waccm_phys="1"     >  0.0  </se_raytau0>
 <se_raykrange waccm_phys="1"     >  3    </se_raykrange>
 <se_rayk0     waccm_phys="1"     >  2    </se_rayk0>
-
-<se_qsize_condensate_loading                    > 3 </se_qsize_condensate_loading>
-<se_qsize_condensate_loading phys="cam4"        > 3 </se_qsize_condensate_loading>
-<se_qsize_condensate_loading phys="cam5"        > 3 </se_qsize_condensate_loading>
-<se_qsize_condensate_loading phys="cam6"        > 5 </se_qsize_condensate_loading>
-<se_qsize_condensate_loading phys="held_suarez" > 1 </se_qsize_condensate_loading>
-<se_qsize_condensate_loading phys="adiabatic"   > 1 </se_qsize_condensate_loading>
-<se_qsize_condensate_loading phys="kessler"     > 1 </se_qsize_condensate_loading>
-<se_qsize_condensate_loading phys="tj2016"      > 1 </se_qsize_condensate_loading>
 
 <se_qsplit > 1 </se_qsplit>
 

@@ -959,10 +959,10 @@ contains
     use fvm_control_volume_mod, only : fvm_struct
     use control_mod,            only : se_prescribed_wind_2d
     use dimensions_mod        , only : ntrac
-    use dimensions_mod        , only : qsize_condensate_loading, qsize_condensate_loading_idx_gll
-    use dimensions_mod,         only : lcp_moist,qsize_condensate_loading_cp
+    use dimensions_mod,         only : lcp_moist
     use cam_logfile,            only : iulog
-    use physconst,              only : pi
+    use physconst,              only : pi,comp_thermo,get_dp
+    use physconst             , only : thermodynamic_active_species_idx_dycore    
     use thread_mod            , only : omp_set_nested
     type (hybrid_t),  intent(in)    :: hybrid  ! distributed parallel structure (shared)
     type(fvm_struct), intent(inout) :: fvm(:)
@@ -1003,12 +1003,8 @@ contains
         ! compute internal energy on Lagrangian levels
         ! (do it here since qdp is overwritten by remap1)
         !
-        internal_energy_star = cpair*elem(ie)%state%dp3d(:,:,:,np1)
-        do q=1,qsize_condensate_loading
-          m_cnst = qsize_condensate_loading_idx_gll(q)
-          internal_energy_star = internal_energy_star+&
-               qsize_condensate_loading_cp(q)*elem(ie)%state%qdp(:,:,:,m_cnst,np1_qdp)
-        end do
+        call comp_thermo(1,np,1,np,1,nlev,qsize,elem(ie)%state%qdp(:,:,:,:,np1_qdp),2, thermodynamic_active_species_idx_dycore,&
+             temp=elem(ie)%state%t(:,:,:,np1),dp=elem(ie)%state%dp3d(:,:,:,np1),dp_cp=internal_energy_star)
         internal_energy_star = internal_energy_star*elem(ie)%state%t(:,:,:,np1)
       end if
       !
@@ -1025,13 +1021,7 @@ contains
         elem(ie)%state%dp3d(:,:,k,np1) = dp_dry(:,:,k)
       enddo
       !
-      dp_star_moist(:,:,:) = dp_star_dry(:,:,:)
-      do q=1,qsize_condensate_loading
-        m_cnst = qsize_condensate_loading_idx_gll(q)
-        do k=1,nlev
-          dp_star_moist(:,:,k)= dp_star_moist(:,:,k)+elem(ie)%state%Qdp(:,:,k,m_cnst,np1_qdp)
-        end do
-      end do
+      call get_dp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,np1_qdp),thermodynamic_active_species_idx_dycore,dp_star_dry,dp_star_moist(:,:,:))
       !
       ! DEBUGGING CODE
       !
@@ -1070,13 +1060,7 @@ contains
       !
       ! compute moist reference pressure level thickness
       !
-      dp_moist(:,:,:) = dp_dry(:,:,:)
-      do q=1,qsize_condensate_loading
-        m_cnst = qsize_condensate_loading_idx_gll(q)
-        do k=1,nlev
-          dp_moist(:,:,k) = dp_moist(:,:,k)+elem(ie)%state%Qdp(:,:,k,m_cnst,np1_qdp)
-        end do
-      end do
+      call get_dp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,np1_qdp),thermodynamic_active_species_idx_dycore,dp_dry,dp_moist(:,:,:))
       
 !#define fv3remap
 #ifndef fv3remap      
@@ -1089,11 +1073,9 @@ contains
         !
         ! compute sum c^(l)_p*m^(l)*dp on arrival (Eulerian) grid
         !       
-        ttmp(:,:,:,2) = cpair*dp_dry
-        do q=1,qsize_condensate_loading
-          m_cnst = qsize_condensate_loading_idx_gll(q)
-          ttmp(:,:,:,2) = ttmp(:,:,:,2)+qsize_condensate_loading_cp(q)*elem(ie)%state%qdp(:,:,:,m_cnst,np1_qdp)
-        end do
+        call comp_thermo(1,np,1,np,1,nlev,qsize,elem(ie)%state%qdp(:,:,:,:,np1_qdp),2, thermodynamic_active_species_idx_dycore,&
+             temp=elem(ie)%state%t(:,:,:,np1),dp=dp_dry,dp_cp=ttmp(:,:,:,2))
+        
         elem(ie)%state%t(:,:,:,np1)=internal_energy_star/ttmp(:,:,:,2)
       else
         internal_energy_star(:,:,:)=elem(ie)%state%t(:,:,:,np1)*dp_star_moist

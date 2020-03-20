@@ -3,7 +3,6 @@ module test_fvm_mapping
   use fvm_control_volume_mod, only: fvm_struct
   use cam_history,            only: outfld
   use physconst,              only: pi
-  use dimensions_mod,         only: qsize_condensate_loading,qsize_condensate_loading_idx
   use dimensions_mod,         only: np, nelemd, nlev, npsq, ntrac
   use element_mod,            only: element_t
   implicit none
@@ -65,8 +64,8 @@ contains
     call addfld(trim(name),   (/ 'lev' /),  'I','','Error in scalar mapped to physics grid')
     call add_default (trim(name), 1, ' ')
 
-    do nq=ntrac,ntrac!xxx 2,qsize_condensate_loading
-      m_cnst = nq!xxx qsize_condensate_loading_idx(nq)
+    do nq=ntrac,ntrac
+      m_cnst = nq
       name = 'f2p_'//trim(cnst_name(m_cnst))//'_fvm'
       call addfld(trim(name),   (/ 'lev' /),  'I','','Exact water tracer on fvm grid',gridname='FVM')
       call add_default (trim(name), 1, ' ')
@@ -153,8 +152,8 @@ contains
     end do
     
     phys_state%pdel(1:ncols,:) = phys_state%pdeldry(1:ncols,:) !make sure there is no conversion from wet to dry
-    do nq=ntrac,ntrac!xxx 2,qsize_condensate_loading
-      m_cnst = nq!xxx qsize_condensate_loading_idx(nq)
+    do nq=ntrac,ntrac
+      m_cnst = nq
       do icol=1,ncols
         do k=1,num_fnc
           phys_state%q(icol,k,m_cnst)   = test_func(phys_state%lat(icol), phys_state%lon(icol), k, k)
@@ -226,8 +225,8 @@ contains
     end do
 
     do ie = nets,nete
-      do nq=ntrac,ntrac!xxx 2,qsize_condensate_loading
-        m_cnst = nq!xxx qsize_condensate_loading_idx(nq)
+      do nq=ntrac,ntrac
+        m_cnst = nq
         name = 'p2d_'//trim(cnst_name(m_cnst))//'_gll'
         call outfld(TRIM(name), RESHAPE(elem(ie)%derived%fq(:,:,:,nq),(/npsq,nlev/)), npsq, ie)
         !        call outfld(trim(name),&
@@ -245,8 +244,8 @@ contains
         call outfld(TRIM(name), RESHAPE(elem(ie)%derived%fq(:,:,:,nq),(/npsq,nlev/)), npsq, ie)
       end do
       if (ntrac>0) then
-        do nq=ntrac,ntrac!xxx 2,qsize_condensate_loading
-          m_cnst = nq!xxx qsize_condensate_loading_idx(nq)
+        do nq=ntrac,ntrac
+          m_cnst = nq
           name = 'p2f_'//trim(cnst_name(m_cnst))//'_fvm'
           !
           ! cly
@@ -294,8 +293,8 @@ contains
     hybrid = config_thread_region(par,'serial')
     call get_loop_ranges(hybrid,ibeg=nets,iend=nete)
     do ie=nets,nete
-      do nq=ntrac,ntrac!xxx 2,qsize_condensate_loading        
-        m_cnst = nq!xxx qsize_condensate_loading_idx(nq)
+      do nq=ntrac,ntrac
+        m_cnst = nq
         name = 'f2p_'//trim(cnst_name(m_cnst))//'_fvm'
         do k=1,num_fnc
           do j=1,nc
@@ -380,8 +379,8 @@ contains
       call outfld('d2p_u', phys_state(lchnk)%U(1:pcols,1:pver), pcols, lchnk)
       call outfld('d2p_v', phys_state(lchnk)%V(1:pcols,1:pver), pcols, lchnk)
       if (ntrac>0) then
-        do nq=ntrac,ntrac!xxx 2,qsize_condensate_loading
-          m_cnst = nq!xxx qsize_condensate_loading_idx(nq)
+        do nq=ntrac,ntrac
+          m_cnst = nq
           name = 'f2p_'//trim(cnst_name(m_cnst))
           !
           ! cly

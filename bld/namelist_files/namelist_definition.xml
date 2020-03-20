@@ -6795,18 +6795,17 @@ Default: None.
 </entry>
 
 <!-- SE dycore -->
-
-<entry id="se_qsize_condensate_loading" type="integer" category="se"
-       group="dyn_se_inparm" valid_values="1,2,3,4,5,6" >
-Number of water tracers active in condensate-loading terms in dynamical core
-1: water vapor only
-2: water vapor and cloud liquid
-3: water vapor, cloud liquid and cloud ice
-4: water vapor, cloud liquid, cloud ice and rain
-5: water vapor, cloud liquid, cloud ice, rain and snow
-6: water vapor, cloud liquid, cloud ice, rain, snow and graupel
-Default: 3 for CAM4, CAM5; 5 for CAM6; 1 for Held_Suarez, Adiabatic and Kessler
+<entry id="dry_air_composition" type="char*6(20)"  category="se"
+       group="air_composition_nl" valid_values="" >
+List of components of dry air.
+Default: none
 </entry>
+<entry id="moist_air_composition" type="char*6(20)"  category="se"
+       group="air_composition_nl" valid_values="" >
+List of components of moist air excluding dry air components.
+Default: none
+</entry>
+
 
 <entry id="se_fine_ne" type="integer" category="se"
        group="dyn_se_inparm" valid_values="" >
