@@ -237,6 +237,15 @@
   </test>
 
 <!--              CAM Stand alone                          -->
+<!--     012        -->
+  <test compset="PC4" grid="f19_f19_mg17" name="SMS_D_Ld5" testmods="cam/cam4_port5d">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
+  </test>
 <!--              111 tsm, ter, tbr, tbl                              -->
   <test compset="QPC5" grid="T5_T5_mg37" name="ERI_D_Ln18" testmods="cam/ghgrmp_e8">
     <machines>
@@ -569,13 +578,13 @@
     </machines>
   </test>
 <!--              331                        -->
-  <test compset="QPC41850" grid="f45_f45_mg37" name="ERI_D_Ln18" testmods="cam/co2rmp">
+  <test compset="QPC41850" grid="f45_f45_mg37" name="ERI_D_Ln18" testmods="cam/co2rmp_usecase">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
   </test>
 <!--              353                        -->
-  <test compset="QPC41850" grid="f19_f19_mg17" name="ERC_D_Ln9" testmods="cam/co2rmp_usecase">
+  <test compset="QPC4" grid="f19_f19_mg17" name="ERC_D_Ln9" testmods="cam/outfrq3s_tmoz">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
@@ -599,7 +608,7 @@
     </machines>
   </test>
 <!--              390                        -->
-  <test compset="QPX2000" grid="f19_f19_mg17" name="ERC_D_Ln9" testmods="cam/outfrq3s_usecase">
+  <test compset="QPX2000" grid="f19_f19_mg17" name="ERC_D_Ln9" testmods="cam/outfrq3s_waccm_ma">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
@@ -623,7 +632,7 @@
     </machines>
   </test>
 <!--              742                        -->
-  <test compset="QPC6HIST" grid="ne16pg3_ne16pg3_mg17" name="ERC_D_Ln9_P144x1" testmods="cam/outfrq3s_usecase">
+  <test compset="QPC6HIST" grid="ne16pg3_ne16pg3_mg17" name="ERC_D_Ln9_P144x1" testmods="cam/outfrq3s_ttrac_usecase">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
