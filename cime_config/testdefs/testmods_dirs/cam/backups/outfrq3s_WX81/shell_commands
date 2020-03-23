@@ -1,4 +1,0 @@
-./xmlchange ROF_NCPL=\$ATM_NCPL
-./xmlchange GLC_NCPL=\$ATM_NCPL
-./xmlchange --append CAM_CONFIG_OPTS="-ionosphere wxi -nlev 81"
-

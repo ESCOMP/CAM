@@ -1,3 +1,0 @@
-./xmlchange CALENDAR=GREGORIAN
-./xmlchange PIO_TYPENAME=pnetcdf
-./xmlchange ATM_NCPL=48
