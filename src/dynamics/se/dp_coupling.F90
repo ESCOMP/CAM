@@ -484,9 +484,10 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
                   phys_state(lchnk)%q(icol,ilyr,m) = factor*phys_state(lchnk)%q(icol,ilyr,m)
                end if
             end do
-         end do
-       end do
-       call thermodynamic_consistency(ncols,pver,phys_state(lchnk), phys_tend(lchnk))            
+          end do
+        end do
+       call thermodynamic_consistency( &
+            phys_state(lchnk), phys_tend(lchnk), ncols, pver)
    end do
 
 
@@ -904,25 +905,24 @@ end subroutine derived_phys_dry
 
 !=========================================================================================
 
-subroutine thermodynamic_consistency(ncols,pver,phys_state, phys_tend)
-
+subroutine thermodynamic_consistency(phys_state, phys_tend, ncols, pver)
+  !
    ! Adjust the physics temperature tendency for thermal energy consistency with the
    ! dynamics.
    ! Note: mixing ratios are assumed to be dry.
-   
-   use physconst,         only: thermodynamic_active_species_num, thermodynamic_active_species_idx
-   use physconst,         only: thermodynamic_active_species_cp
+   !
    use dimensions_mod,    only: lcp_moist
+   use physconst,         only: comp_thermo   
    use control_mod,       only: phys_dyn_cp
-   use physconst,         only: cpair,comp_thermo
+   use physconst,         only: cpair
 
    type(physics_state), intent(in)    :: phys_state
    type(physics_tend ), intent(inout) :: phys_tend  
-   integer,  intent(in)               :: ncols,pver
+   integer,  intent(in)               :: ncols, pver
   
-   integer :: nq, m
-   real(r8):: facor, sum_water, sum_cp, factor,inv_cp(ncols,1,pver)
+   real(r8):: inv_cp(ncols,pver)
    !----------------------------------------------------------------------------
+
    if (lcp_moist.and.phys_dyn_cp==1) then
      !
      ! scale temperature tendency so that thermal energy increment from physics
@@ -931,9 +931,8 @@ subroutine thermodynamic_consistency(ncols,pver,phys_state, phys_tend)
      ! note that if lcp_moist=.false. then there is thermal energy increment
      ! consistency (not taking into account dme adjust) 
      !
-     !
-     call comp_thermo(1,ncols,1,1,1,pver,thermodynamic_active_species_num,phys_state%q(1:ncols,1:pver,:),1,inv_cp=.true.,cp=inv_cp)
-     phys_tend%dtdt(1:ncols,1:pver) = phys_tend%dtdt(1:ncols,1:pver)*cpair*inv_cp(:,1,:)
+     call comp_thermo(1,ncols,1,pver,1,1,pcnst,phys_state%q(1:ncols,1:pver,:),1,inv_cp=.true.,cp=inv_cp)
+     phys_tend%dtdt(1:ncols,1:pver) = phys_tend%dtdt(1:ncols,1:pver)*cpair*inv_cp
    end if 
 end subroutine thermodynamic_consistency
 

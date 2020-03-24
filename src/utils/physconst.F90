@@ -859,7 +859,7 @@ subroutine composition_init()
      if (mixing_ratio==1) then
        do nq=dry_air_composition_num+1,thermodynamic_active_species_num
          itrac = idx_local(nq)
-         sum_species(:,:,:) = sum_species(:,:,:) + tracer(:,:,:,itrac)             
+         sum_species(:,:,:) = sum_species(:,:,:) + tracer(:,:,:,itrac)
        end do
      else
        do nq=dry_air_composition_num+1,thermodynamic_active_species_num

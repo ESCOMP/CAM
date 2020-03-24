@@ -48,7 +48,6 @@ contains
     endif
   end subroutine prim_advance_init
   
-  
   subroutine prim_advance_exp(elem, fvm, deriv, hvcoord, hybrid,dt, tl,  nets, nete)   
     use control_mod,       only: prescribed_wind, tstep_type, qsplit
     use derivative_mod,    only: derivative_t
@@ -294,7 +293,7 @@ contains
 
     call t_stopf('prim_advance_exp')
   end subroutine prim_advance_exp
-
+  
 
   subroutine applyCAMforcing(elem,fvm,np1,np1_qdp,dt_dribble,dt_phys,nets,nete,nsubstep)
     use dimensions_mod,         only: np, nc, nlev, qsize, ntrac, nelemd
@@ -459,8 +458,7 @@ contains
     end if
     if (ftype==1.and.nsubstep==1) call calc_tot_energy_dynamics(elem,fvm,nets,nete,np1,np1_qdp,'p2d')
     if (ntrac>0) deallocate(ftmp_fvm)
-  end subroutine applyCAMforcing
-
+  end subroutine applyCAMforcing  
 
   subroutine advance_hypervis_dp(edge3,elem,fvm,hybrid,deriv,nt,qn0,nets,nete,dt2,eta_ave_w,inv_cp_full,hvcoord)
     !
@@ -774,7 +772,7 @@ contains
     !***************************************************************
     !
     dt=dt2/hypervis_subcycle_sponge
-    call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dBS')
+    call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dBS')    
     if (nu_top>0) then
       kblk = ksponge_end    
       do ic=1,hypervis_subcycle_sponge      
@@ -1086,10 +1084,10 @@ contains
      use bndry_mod,       only: bndry_exchange
      use hybvcoord_mod,   only: hvcoord_t
      use physconst,       only: rair, epsilo, cappa, cpair
+     use physconst,       only: thermodynamic_active_species_num, comp_thermo
      use prim_si_mod,     only: preq_hydrostatic
      use control_mod,     only: se_met_nudge_u, se_met_nudge_p, se_met_nudge_t, se_met_tevolve
-     use physconst,       only: comp_thermo, thermodynamic_active_species_num
-     use physconst,       only: thermodynamic_active_species_idx_dycore     
+     
      use time_mod, only : tevolve
      
      implicit none
@@ -1103,6 +1101,7 @@ contains
      real (kind=r8)       , intent(in) :: inv_cp_full(np,np,nlev,nets:nete)
      real (kind=r8)       , intent(in) :: qwater(np,np,nlev,thermodynamic_active_species_num,nets:nete)
      integer              , intent(in) :: qidx(thermodynamic_active_species_num)
+     
      real (kind=r8) :: eta_ave_w  ! weighting for eta_dot_dpdn mean flux
      
      ! local
@@ -1146,6 +1145,11 @@ contains
      call t_adj_detailf(+1)
      call t_startf('compute_and_apply_rhs')
      do ie=nets,nete
+       !
+       ! compute virtual temperature and sum_water
+       !       
+       call comp_thermo(1,np,1,np,1,nlev,thermodynamic_active_species_num,qwater(:,:,:,:,ie),1,&
+            qidx,temp=elem(ie)%state%T(:,:,:,n0),sum_q=sum_water(:,:,:),t_v=t_v(:,:,:))       
        phi => elem(ie)%derived%phi(:,:,:)
        
        ! ==================================================
@@ -1158,11 +1162,7 @@ contains
        ! ============================
        ! compute p and delta p
        ! ============================
-       !
-       ! compute virtual temperature and sum_water
-       !       
-       call comp_thermo(1,np,1,np,1,nlev,thermodynamic_active_species_num,qwater(:,:,:,:,ie),1,&
-            qidx,temp=elem(ie)%state%T(:,:,:,n0),sum_q=sum_water,t_v=t_v)       
+       
        do k=1,nlev
          ! vertically lagrangian code: we advect dp3d instead of ps
          ! we also need grad(p) at all levels (not just grad(ps))
@@ -1574,7 +1574,6 @@ contains
      endif
    end subroutine distribute_flux_at_corners
 
-
   subroutine calc_tot_energy_dynamics(elem,fvm,nets,nete,tl,tl_qdp,outfld_name_suffix)
     use dimensions_mod,         only: npsq,nlev,np,lcp_moist,nc,ntrac,qsize
     use physconst,              only: gravit, cpair, rearth,omega
@@ -1761,14 +1760,12 @@ contains
 
   end subroutine calc_tot_energy_dynamics
 
-
   subroutine output_qdp_var_dynamics(qdp,nx,num_trac,nets,nete,outfld_name)
     use dimensions_mod, only: nlev,ntrac,nelemd
     use physconst     , only: gravit
     use cam_history   , only: outfld, hist_fld_active
     use constituents  , only: cnst_get_ind
     use control_mod,    only: TRACERTRANSPORT_SE_GLL, tracer_transport_type
-    use physconst,      only: thermodynamic_active_species_num
     !------------------------------Arguments--------------------------------
 
     integer      ,intent(in) :: nx,num_trac,nets,nete
@@ -1829,7 +1826,6 @@ contains
       call outfld(name_out,f_out,nx*nx,ie)
     end if
   end subroutine util_function
-
 
    subroutine compute_omega(hybrid,n0,qn0,elem,deriv,nets,nete,dt,hvcoord)
      use control_mod,    only : nu_p, hypervis_subcycle
@@ -1946,6 +1942,7 @@ contains
      end if
      !call FreeEdgeBuffer(edgeOmega)
    end subroutine compute_omega
+
 
   subroutine calc_dp3d_reference(elem,edge3,hybrid,nets,nete,nt,hvcoord,dp3d_ref)
     !
