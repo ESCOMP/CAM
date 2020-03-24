@@ -29,11 +29,13 @@ public :: wetdep_inputs_set
 real(r8), parameter :: cmftau = 3600._r8
 real(r8), parameter :: rhoh2o = 1000._r8            ! density of water
 real(r8), parameter :: molwta = 28.97_r8            ! molecular weight dry air gm/mole
+real(r8), parameter :: omsm = 1._r8-2*epsilon(1._r8) ! used to prevent roundoff errors below zero
 
 type wetdep_inputs_t
    real(r8), pointer :: cldt(:,:) => null()  ! cloud fraction
    real(r8), pointer :: qme(:,:) => null()
    real(r8), pointer :: prain(:,:) => null()
+   real(r8), pointer :: bergso(:,:) => null()
    real(r8), pointer :: evapr(:,:) => null()
    real(r8) :: cldcu(pcols,pver)     ! convective cloud fraction, currently empty
    real(r8) :: evapc(pcols,pver)     ! Evaporation rate of convective precipitation
@@ -48,6 +50,7 @@ end type wetdep_inputs_t
 integer :: cld_idx             = 0
 integer :: qme_idx             = 0 
 integer :: prain_idx           = 0 
+integer :: bergso_idx          = 0 
 integer :: nevapr_idx          = 0 
 
 integer :: icwmrdp_idx         = 0 
@@ -70,9 +73,12 @@ subroutine wetdep_init()
   use physics_buffer, only: pbuf_get_index
   use constituents,   only: cnst_get_ind
 
+  integer :: ierr
+
   cld_idx             = pbuf_get_index('CLD')    
   qme_idx             = pbuf_get_index('QME')    
   prain_idx           = pbuf_get_index('PRAIN')  
+  bergso_idx          = pbuf_get_index('BERGSO', errcode=ierr )  
   nevapr_idx          = pbuf_get_index('NEVAPR') 
 
   icwmrdp_idx         = pbuf_get_index('ICWMRDP') 
@@ -133,6 +139,15 @@ subroutine wetdep_inputs_set( state, pbuf, inputs )
   call pbuf_get_field(pbuf, dp_frac_idx,     dp_frac )
   call pbuf_get_field(pbuf, nevapr_shcu_idx, evapcsh )
   call pbuf_get_field(pbuf, nevapr_dpcu_idx, evapcdp )
+
+  if (bergso_idx>0) then
+     call pbuf_get_field(pbuf, bergso_idx, inputs%bergso )
+  else
+     if (.not. associated(inputs%bergso)) then
+        allocate(inputs%bergso(pcols,pver))
+        inputs%bergso(:,:) = 0.0_r8
+     endif
+  endif
 
   inputs%cldcu(:ncol,:)  = dp_frac(:ncol,:) + sh_frac(:ncol,:)
   cldst(:ncol,:)          = inputs%cldt(:ncol,:) - inputs%cldcu(:ncol,:)       ! Stratiform cloud fraction
@@ -282,7 +297,7 @@ subroutine wetdepa_v2(                                  &
    sol_fact, ncol, scavcoef, is_strat_cloudborne, qqcw, &
    f_act_conv, icscavt, isscavt, bcscavt, bsscavt,      &
    convproc_do_aer, rcscavt, rsscavt,                   &
-   sol_facti_in, sol_factic_in )
+   sol_facti_in, sol_factic_in, convproc_do_evaprain_atonce_in, bergso_in )
 
    !----------------------------------------------------------------------- 
    !
@@ -347,13 +362,14 @@ subroutine wetdepa_v2(                                  &
    logical,  intent(in),  optional :: convproc_do_aer
    real(r8), intent(out), optional :: rcscavt(pcols,pver)     ! resuspension, convective
    real(r8), intent(out), optional :: rsscavt(pcols,pver)     ! resuspension, stratiform
+   logical,  intent(in),  optional :: convproc_do_evaprain_atonce_in
+   real(r8), intent(in),  optional :: bergso_in(pcols,pver)
 
    ! local variables
 
    integer :: i, k
    logical :: out_resuspension
 
-   real(r8) :: omsm                 ! 1 - (a small number)
    real(r8) :: clds(pcols)          ! stratiform cloud fraction
    real(r8) :: fracev(pcols)        ! fraction of precip from above that is evaporating
    real(r8) :: fracev_cu(pcols)     ! Fraction of convective precip from above that is evaporating
@@ -394,9 +410,21 @@ subroutine wetdepa_v2(                                  &
    real(r8) :: sol_factic(pcols,pver) ! in cloud fraction of aerosol scavenged for convective clouds
 
    real(r8) :: rdeltat
+   logical  :: convproc_do_evaprain_atonce
+   real(r8) :: adj_precs(pcols,pver) ! adjusted rate of production of stratiform precip
+
    ! ------------------------------------------------------------------------
 
-   omsm = 1._r8-2*epsilon(1._r8) ! used to prevent roundoff errors below zero
+   if (present(convproc_do_evaprain_atonce_in)) then
+      convproc_do_evaprain_atonce = convproc_do_evaprain_atonce_in
+   else
+      convproc_do_evaprain_atonce = .false.
+   endif
+   if (convproc_do_evaprain_atonce .and. present(bergso_in)) then
+      adj_precs(:ncol,:) = precs(:ncol,:)-bergso_in(:ncol,:)
+   else
+      adj_precs(:ncol,:) = precs(:ncol,:)
+   endif
 
    ! default (if other sol_facts aren't in call, set all to required sol_fact)
    sol_facti = sol_fact
@@ -447,6 +475,13 @@ subroutine wetdepa_v2(                                  &
          !                 which evaporates within this layer
          fracev(i) = evaps(i,k)*pdog(i) &
                      /max(1.e-12_r8,precabs(i))
+                     
+         ! If resuspending aerosol only when all the rain has totally
+         ! evaporated then zero out any aerosol tendency for partial
+         ! evaporation.
+         if (convproc_do_evaprain_atonce .and. (evaps(i,k)*pdog(i).ne.precabs(i))) then
+            fracev(i) = 0._r8
+         end if
 
          ! trap to ensure reasonable ratio bounds
          fracev(i) = max(0._r8,min(1._r8,fracev(i)))
@@ -489,9 +524,10 @@ subroutine wetdepa_v2(                                  &
 
                ! stratiform scavenging
 
-               fracp(i) = precs(i,k)*deltat / &
+               fracp(i) = adj_precs(i,k) *deltat / &
                           max( 1.e-12_r8, cwat(i,k) + precs(i,k)*deltat )
                fracp(i) = max( 0._r8, min(1._r8, fracp(i)) )
+
                st_scav_ic(i) = sol_facti *fracp(i)*tracer(i,k)*rdeltat
 
                st_scav_bc(i) = 0._r8
@@ -713,7 +749,6 @@ end subroutine wetdepa_v2
                                 ! in terms of mixing ratios
       real(r8) mpla                 ! moles / liter H2O entering the layer from above
       real(r8) mplb                 ! moles / liter H2O leaving the layer below
-      real(r8) omsm                 ! 1 - (a small number)
       real(r8) part                 !  partial pressure of tracer in atmospheres
       real(r8) patm                 ! total pressure in atmospheres
       real(r8) pdog                 ! work variable (pdel/gravit)
@@ -752,8 +787,6 @@ end subroutine wetdepa_v2
       !    and sol_factic is 1.0 for both cloudborne and interstitial.
 
       ! ------------------------------------------------------------------------
-!      omsm = 1.-1.e-10          ! used to prevent roundoff errors below zero
-      omsm = 1._r8-2*epsilon(1._r8) ! used to prevent roundoff errors below zero
       precmin =  0.1_r8/8.64e4_r8      ! set critical value to 0.1 mm/day in kg/m2/s
 
       adjfac = deltat/(max(deltat,cmftau)) ! adjustment factor from hack scheme
@@ -1026,7 +1059,6 @@ end subroutine wetdepa_v2
                                 ! in terms of mixing ratios
       real(r8) mpla                 ! moles / liter H2O entering the layer from above
       real(r8) mplb                 ! moles / liter H2O leaving the layer below
-      real(r8) omsm                 ! 1 - (a small number)
       real(r8) part                 !  partial pressure of tracer in atmospheres
       real(r8) patm                 ! total pressure in atmospheres
       real(r8) pdog                 ! work variable (pdel/gravit)
@@ -1054,8 +1086,6 @@ end subroutine wetdepa_v2
       real(r8) cldmabs(pcols)       ! maximum cloud at or above this level
       real(r8) cldmabc(pcols)       ! maximum cloud at or above this level
       !-----------------------------------------------------------
-
-      omsm = 1._r8-2*epsilon(1._r8)   ! used to prevent roundoff errors below zero
 
       adjfac = deltat/(max(deltat,cmftau)) ! adjustment factor from hack scheme
 

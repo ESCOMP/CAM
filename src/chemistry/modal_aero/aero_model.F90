@@ -116,6 +116,7 @@ contains
     use namelist_utils,  only: find_group_name
     use units,           only: getunit, freeunit
     use mpishorthand
+    use modal_aero_convproc,   only: ma_convproc_readnl 
 
     character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
@@ -162,6 +163,8 @@ contains
     wetdep_list = aer_wetdep_list
     drydep_list = aer_drydep_list
 
+    call ma_convproc_readnl(nlfile)
+    
   end subroutine aero_model_readnl
 
   !=============================================================================
@@ -968,7 +971,7 @@ contains
     use modal_aero_data
     use modal_aero_calcsize,   only: modal_aero_calcsize_sub
     use modal_aero_wateruptake,only: modal_aero_wateruptake_dr
-    use modal_aero_convproc,   only: deepconv_wetdep_history, ma_convproc_intr
+    use modal_aero_convproc,   only: deepconv_wetdep_history, ma_convproc_intr, convproc_do_evaprain_atonce
 
     ! args
 
@@ -1063,8 +1066,12 @@ contains
 
     type(wetdep_inputs_t) :: dep_inputs
 
+    real(r8) :: dcondt_resusp3d(2*pcnst,pcols, pver)
+
     lchnk = state%lchnk
     ncol  = state%ncol
+
+    dcondt_resusp3d(:,:,:) = 0._r8
 
     call physics_ptend_init(ptend, state%psetcols, 'aero_model_wetdep', lq=wetdep_lq)
     
@@ -1303,7 +1310,8 @@ contains
                      f_act_conv=f_act_conv, &
                      icscavt=icscavt, isscavt=isscavt, bcscavt=bcscavt, bsscavt=bsscavt, &
                      convproc_do_aer=convproc_do_aer, rcscavt=rcscavt, rsscavt=rsscavt,  &
-                     sol_facti_in=sol_facti, sol_factic_in=sol_factic )
+                     sol_facti_in=sol_facti, sol_factic_in=sol_factic, &
+                     convproc_do_evaprain_atonce_in=convproc_do_evaprain_atonce )
 
                 do_hygro_sum_del = .false.
                 if ( lspec > 0 ) do_hygro_sum_del = .true. 
@@ -1518,7 +1526,7 @@ contains
                    else
                       fldcw => qqcw_get_field(pbuf, mm,lchnk)
                    endif
-                   
+
                    call wetdepa_v2(state%pmid, state%q(:,:,1), state%pdel, &
                         dep_inputs%cldt, dep_inputs%cldcu, dep_inputs%cmfdqr, &
                         dep_inputs%evapc, dep_inputs%conicw, dep_inputs%prain, dep_inputs%qme, &
@@ -1529,7 +1537,9 @@ contains
                         is_strat_cloudborne=.true.,  &
                         icscavt=icscavt, isscavt=isscavt, bcscavt=bcscavt, bsscavt=bsscavt, &
                         convproc_do_aer=convproc_do_aer, rcscavt=rcscavt, rsscavt=rsscavt,  &
-                        sol_facti_in=sol_facti, sol_factic_in=sol_factic )
+                        sol_facti_in=sol_facti, sol_factic_in=sol_factic, &
+                        convproc_do_evaprain_atonce_in=convproc_do_evaprain_atonce, &
+                        bergso_in=dep_inputs%bergso )
 
                    if(convproc_do_aer) then
                       ! save resuspension of cloudborne species
@@ -1603,7 +1613,36 @@ contains
     if (convproc_do_aer) then
        call t_startf('ma_convproc')
        call ma_convproc_intr( state, ptend, pbuf, dt,                &
-               nsrflx_mzaer2cnvpr, qsrflx_mzaer2cnvpr, aerdepwetis)
+            nsrflx_mzaer2cnvpr, qsrflx_mzaer2cnvpr, aerdepwetis, &
+            dcondt_resusp3d)
+       
+       if (convproc_do_evaprain_atonce) then
+          do m = 1, ntot_amode ! main loop over aerosol modes
+             do lphase = strt_loop,end_loop, stride_loop 
+                ! loop over interstitial (1) and cloud-borne (2) forms
+                do lspec = 0, nspec_amode(m)+1 ! loop over number + chem constituents + water
+                   if (lspec == 0) then ! number
+                      if (lphase == 1) then
+                         mm = numptr_amode(m)
+                      else
+                         mm = numptrcw_amode(m)
+                      endif
+                   else if (lspec <= nspec_amode(m)) then ! non-water mass
+                      if (lphase == 1) then
+                         mm = lmassptr_amode(lspec,m)
+                      else
+                         mm = lmassptrcw_amode(lspec,m)
+                      endif
+                   endif
+                   if (lphase .eq. 2) then
+                      fldcw => qqcw_get_field(pbuf, mm,lchnk)
+                      fldcw(:ncol,:) = fldcw(:ncol,:) + dcondt_resusp3d(mm,:ncol,:)*dt
+                   end if
+                end do ! loop over number + chem constituents + water
+             end do  ! lphase
+          end do   ! m aerosol modes
+       end if
+
        call t_stopf('ma_convproc')
     endif
 
