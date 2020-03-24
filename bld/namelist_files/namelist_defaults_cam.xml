@@ -2066,7 +2066,8 @@
 <!-- ================================================================== -->
 <mpas_time_integration>SRK3</mpas_time_integration>
 <mpas_time_integration_order>2</mpas_time_integration_order>
-<mpas_dt>720.0</mpas_dt>
+<mpas_dt                 > 1800.0 </mpas_dt>
+<mpas_dt hgrid="mpasa120">  600.0 </mpas_dt>
 <mpas_split_dynamics_transport>true</mpas_split_dynamics_transport>
 <mpas_number_of_sub_steps>2</mpas_number_of_sub_steps>
 <mpas_dynamics_split_steps>3</mpas_dynamics_split_steps>
