@@ -123,9 +123,8 @@ end subroutine ma_convproc_register
 !=========================================================================================
 subroutine ma_convproc_readnl(nlfile)
   
-  use namelist_utils,  only: find_group_name
-  use units,           only: getunit, freeunit
-  use spmd_utils,      only: mpicom, masterprocid, mpi_real8, mpi_logical
+  use namelist_utils, only: find_group_name
+  use spmd_utils,     only: mpicom, masterprocid, mpi_real8, mpi_logical
 
   character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
@@ -138,8 +137,7 @@ subroutine ma_convproc_readnl(nlfile)
 
   ! Read namelist
   if (masterproc) then
-     unitn = getunit()
-     open( unitn, file=trim(nlfile), status='old' )
+     open( newunit=unitn, file=trim(nlfile), status='old' )
      call find_group_name(unitn, 'aerosol_convproc_opts', status=ierr)
      if (ierr == 0) then
         read(unitn, aerosol_convproc_opts, iostat=ierr)
@@ -148,7 +146,6 @@ subroutine ma_convproc_readnl(nlfile)
         end if
      end if
      close(unitn)
-     call freeunit(unitn)
   end if
 
   ! Broadcast namelist variables

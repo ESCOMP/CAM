@@ -274,11 +274,11 @@ subroutine clddiag(t, pmid, pdel, cmfdqr, evapc, &
          sumpppr_st(i) = sumpppr_st(i) + lprecp_st
 
          rain(i,k) = 0._r8
-         if(t(i,k) .gt. tmelt) then
+         if(t(i,k) > tmelt) then
             rho = pmid(i,k)/(rair*t(i,k))
             vfall = convfw/sqrt(rho)
             rain(i,k) = sumppr(i)/(rho*vfall)
-            if (rain(i,k).lt.1.e-14_r8) rain(i,k) = 0._r8
+            if (rain(i,k) < 1.e-14_r8) rain(i,k) = 0._r8
          endif
       end do
    end do
@@ -479,7 +479,7 @@ subroutine wetdepa_v2(                                  &
          ! If resuspending aerosol only when all the rain has totally
          ! evaporated then zero out any aerosol tendency for partial
          ! evaporation.
-         if (convproc_do_evaprain_atonce .and. (evaps(i,k)*pdog(i).ne.precabs(i))) then
+         if (convproc_do_evaprain_atonce .and. (evaps(i,k)*pdog(i)/=precabs(i))) then
             fracev(i) = 0._r8
          end if
 
@@ -601,7 +601,7 @@ subroutine wetdepa_v2(                                  &
          ! make sure we dont take out more than is there
          ! ratio of amount available to amount removed
          rat(i) = tracer(i,k)/max(deltat*(srcc(i)+srcs(i)),1.e-36_r8)
-         if (rat(i).lt.1._r8) then
+         if (rat(i)<1._r8) then
             srcs(i) = srcs(i)*rat(i)
             srcc(i) = srcc(i)*rat(i)
          endif
@@ -656,7 +656,7 @@ subroutine wetdepa_v2(                                  &
 
       if ( found ) then
          do i = 1,ncol
-            if (dblchek(i) .lt. 0._r8) then
+            if (dblchek(i) < 0._r8) then
                write(iulog,*) ' wetdapa: negative value ', i, k, tracer(i,k), &
                   dblchek(i), scavt(i,k), srct(i), rat(i), fracev(i)
             endif
@@ -933,7 +933,7 @@ end subroutine wetdepa_v2
             ! make sure we dont take out more than is there
             ! ratio of amount available to amount removed
             rat(i) = tracer(i,k)/max(deltat*(srcc+srcs),1.e-36_r8)
-            if (rat(i).lt.1._r8) then
+            if (rat(i) < 1._r8) then
                srcs = srcs*rat(i)
                srcc = srcc*rat(i)
             endif
@@ -977,7 +977,7 @@ end subroutine wetdepa_v2
 
          if ( found ) then
             do i = 1,ncol
-               if (dblchek(i) .lt. 0._r8) then
+               if (dblchek(i) < 0._r8) then
                   write(iulog,*) ' wetdapa: negative value ', i, k, tracer(i,k), &
                        dblchek(i), scavt(i,k), srct(i), rat(i), fracev(i)
                endif
@@ -1173,7 +1173,7 @@ end subroutine wetdepa_v2
             ! flux of tracer by below cloud processes
             !++mcb -- removed wtpl because it is now not assigned and previously
             !          when it was assigned it was unnecessary:  if(tc.gt.0)wtpl=1
-            if (tc.gt.0) then
+            if (tc>0.0_r8) then
                !               scavbc = precxx*wtpl*mplb ! if liquid
                scavbc = precxx*mplb ! if liquid
             else

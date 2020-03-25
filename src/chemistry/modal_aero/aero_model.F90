@@ -1634,7 +1634,7 @@ contains
                          mm = lmassptrcw_amode(lspec,m)
                       endif
                    endif
-                   if (lphase .eq. 2) then
+                   if (lphase == 2) then
                       fldcw => qqcw_get_field(pbuf, mm,lchnk)
                       fldcw(:ncol,:) = fldcw(:ncol,:) + dcondt_resusp3d(mm,:ncol,:)*dt
                    end if
@@ -2203,7 +2203,7 @@ contains
                scavratenum, scavratevol, lunerr )
 
           nnfit = nnfit + 1
-          if (nnfit .gt. nnfit_maxd) then
+          if (nnfit > nnfit_maxd) then
              write(lunerr,9110)
              call endrun()
           end if
@@ -2446,14 +2446,14 @@ contains
 
              dumdgratio = dgn_awet(i,k,m)/dgnum_amode(m)
 
-             if ((dumdgratio .ge. 0.99_r8) .and. (dumdgratio .le. 1.01_r8)) then
+             if ((dumdgratio >= 0.99_r8) .and. (dumdgratio <= 1.01_r8)) then
                 scavimpvol = scavimptblvol(0,m)
                 scavimpnum = scavimptblnum(0,m)
              else
                 xgrow = log( dumdgratio ) / dlndg_nimptblgrow
                 jgrow = int( xgrow )
-                if (xgrow .lt. 0._r8) jgrow = jgrow - 1
-                if (jgrow .lt. nimptblgrow_mind) then
+                if (xgrow < 0._r8) jgrow = jgrow - 1
+                if (jgrow < nimptblgrow_mind) then
                    jgrow = nimptblgrow_mind
                    xgrow = jgrow
                 else
@@ -2547,7 +2547,7 @@ contains
    rhi = .250_r8
    dr = 0.005_r8
    nr = 1 + nint( (rhi-rlo)/dr )
-   if (nr .gt. nrainsvmax) then
+   if (nr > nrainsvmax) then
       write(lunerr,9110)
       call endrun()
    end if
@@ -2571,7 +2571,7 @@ contains
    xhi = xg3 + max( 4._r8*sx, 2._r8*dx )
 
    na = 1 + nint( (xhi-xlo)/dx )
-   if (na .gt. naerosvmax) then
+   if (na > naerosvmax) then
       write(lunerr,9120)
       call endrun()
    end if
@@ -2606,13 +2606,13 @@ contains
       xnumrainsv(i) = exp( -r/2.7e-2_r8 )
 
       d = 2._r8*r
-      if (d .le. 0.007_r8) then
+      if (d <= 0.007_r8) then
          vfallstp = 2.88e5_r8 * d**2._r8
-      else if (d .le. 0.025_r8) then
+      else if (d <= 0.025_r8) then
          vfallstp = 2.8008e4_r8 * d**1.528_r8
-      else if (d .le. 0.1_r8) then
+      else if (d <= 0.1_r8) then
          vfallstp = 4104.9_r8 * d**1.008_r8
-      else if (d .le. 0.25_r8) then
+      else if (d <= 0.25_r8) then
          vfallstp = 1812.1_r8 * d**0.638_r8
       else
          vfallstp = 1069.8_r8 * d**0.235_r8
@@ -2703,7 +2703,7 @@ contains
          dum = log( 1._r8 + reynolds )
          sstar = (1.2_r8 + dum/12._r8) / (1._r8 + dum)
          eimpact = 0._r8
-         if (stokes .gt. sstar) then
+         if (stokes > sstar) then
 	    dum = stokes - sstar
 	    eimpact = (dum/(dum+0.6666667_r8)) ** 1.5_r8
          end if
