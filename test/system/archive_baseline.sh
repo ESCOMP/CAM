@@ -114,7 +114,7 @@ case $hostname in
   * ) echo "ERROR: machine $hostname not currently supported"; exit 1 ;;
 esac
 
-if [ -d ${baselinedir} ]; then
+if [ -d "${baselinedir}" ]; then
    echo " "
    echo "WARNING: Baseline $baselinedir already exists."
 fi
@@ -126,7 +126,7 @@ fi
 if [ -n "$CESM_TESTDIR" ]; then
 
     echo " "
-    if [ ! -d ${baselinedir} ]; then
+    if [ ! -d "${baselinedir}" ]; then
         mkdir $baselinedir
     fi
     # Test to see if CESM baselines already exists.
@@ -145,7 +145,7 @@ fi
 #  CAM baseline archiving
 #
 
-if [ ! -d $baselinedir ]; then
+if [ ! -d "$baselinedir" ]; then
      mkdir $baselinedir
 else
     # Test to see if CAM baselines already exists.
@@ -162,7 +162,7 @@ echo "CAM archiving to ${baselinedir}"
 echo
 
 
-if [ ! -d ${baselinedir} ]; then
+if [ ! -d "${baselinedir}" ]; then
    echo "ERROR: Failed to make ${baselinedir}"
    exit 1
 fi
