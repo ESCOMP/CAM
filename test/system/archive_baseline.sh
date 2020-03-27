@@ -1,4 +1,4 @@
-#!/bin/sh -f
+#!/bin/sh 
 
 echo
 
@@ -33,7 +33,7 @@ BASELINE ARCHIVED LOCATION
 
 	hobart, izumi:     /fs/cgd/csm/models/atm/cam/pretag_bl/TAGNAME_pgi
 	                   /fs/cgd/csm/models/atm/cam/pretag_bl/TAGNAME_nag
-        cheyenne:  /glade/p/cesmdata/cseg/cam_baselines/TAGNAME
+        cheyenne:  /glade/p/cesm/amwg/cam_baselines/TAGNAME
 
 
 
@@ -87,7 +87,8 @@ case $hostname in
       CAM_FC="PGI"
     fi
     test_file_list="tests_pretag_hobart_${CAM_FC,,}"
-    baselinedir="/fs/cgd/csm/models/atm/cam/pretag_bl/$1_${CAM_FC,,}"
+    cam_tag=$1_${CAM_FC,,}
+    baselinedir="/fs/cgd/csm/models/atm/cam/pretag_bl/$cam_tag"
   ;;
 
   iz*)
@@ -96,7 +97,8 @@ case $hostname in
       CAM_FC="PGI"
     fi
     test_file_list="tests_pretag_izumi_${CAM_FC,,}"
-    baselinedir="/fs/cgd/csm/models/atm/cam/pretag_bl/$1_${CAM_FC,,}"
+    cam_tag=$1_${CAM_FC,,}
+    baselinedir="/fs/cgd/csm/models/atm/cam/pretag_bl/$cam_tag"
   ;;
 
   ch*)
@@ -105,43 +107,62 @@ case $hostname in
       CAM_FC="INTEL"
     fi
     test_file_list="tests_pretag_cheyenne"
-    baselinedir="/glade/p/cesmdata/cseg/cam_baselines/$1"
+    cam_tag=$1
+    baselinedir="/glade/p/cesm/amwg/cesm_baselines/$cam_tag"
   ;;
 
   * ) echo "ERROR: machine $hostname not currently supported"; exit 1 ;;
 esac
 
+if [ -d "${baselinedir}" ]; then
+   echo " "
+   echo "WARNING: Baseline $baselinedir already exists."
+fi
+
+#
+# CESM baseline archiving.
+#
+
 if [ -n "$CESM_TESTDIR" ]; then
 
     echo " "
-    case $hostname in
-	ch*)
-	    echo "CESM Archiving to /glade/p/cesmdata/cseg/cesm_baselines/$1"
-	    ;;
+    if [ ! -d "${baselinedir}" ]; then
+        mkdir $baselinedir
+    fi
+    # Test to see if CESM baselines already exists.
+    BASELINE_EXISTS=`ls  ${baselinedir}/*/cpl.log.gz 2>/dev/null | wc -l `
+    if [ $BASELINE_EXISTS != 0 ]; then
+        echo "WARNING: CESM baselines already exists.  Continuing to CAM stand alone archiving."
+    else
+        root_baselinedir=`dirname $baselinedir`
+        echo "CESM archiving to $root_baselinedir/$cam_tag"
+        ../../cime/scripts/Tools/bless_test_results -p -t '' -c '' -r $CESM_TESTDIR --baseline-root $root_baselinedir -b $cam_tag -f -s
+    fi
 
-	hobart)
-	    echo "CESM Archiving to /fs/cgd/csm/models/atm/cam/cesm_baselines/$1"
-	    ;;
-	izumi)
-	    echo "CESM Archiving to /fs/cgd/csm/models/atm/cam/cesm_baselines/$1"
-	    ;;
-    esac
-    echo " "
+fi
 
-    ../../cime/scripts/Tools/bless_test_results -p -t '' -c '' -r $CESM_TESTDIR -b $1 -f -s
+#
+#  CAM baseline archiving
+#
+
+if [ ! -d "$baselinedir" ]; then
+     mkdir $baselinedir
+else
+    # Test to see if CAM baselines already exists.
+    BASELINE_EXISTS=`ls  ${baselinedir}/*/test.log 2>/dev/null | grep TSM | wc -l`
+    if [ $BASELINE_EXISTS != 0 ]; then
+        echo "WARNING: CAM baselines already exists,  Exiting"
+        echo
+        exit
+    fi
 fi
 
 echo
-echo "Archiving to ${baselinedir}"
+echo "CAM archiving to ${baselinedir}"
 echo
-if [ -d ${baselinedir} ]; then
-   echo "ERROR: Baseline $baselinedir already exists."
-   exit 1
-fi
 
-mkdir $baselinedir
 
-if [ ! -d ${baselinedir} ]; then
+if [ ! -d "${baselinedir}" ]; then
    echo "ERROR: Failed to make ${baselinedir}"
    exit 1
 fi
