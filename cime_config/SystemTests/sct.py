@@ -13,6 +13,10 @@ from CIME.SystemTests.system_tests_compare_two import SystemTestsCompareTwo
 from CIME.XML.standard_module_setup import *
 from CIME.SystemTests.test_utils.user_nl_utils import append_to_user_nl_files
 from CIME.XML.machines import Machines
+from CIME.test_status import *
+from CIME.utils import run_cmd
+
+
 
 
 logger = logging.getLogger(__name__)
@@ -27,12 +31,11 @@ class SCT(SystemTestsCompareTwo):
                                        run_two_description = 'Changed phys_loadbalance')
 
     def _case_one_setup(self):
-#        self._case.set_value("phys_loadbalance".cam,2)
-        append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "NDENS = 1,1phys_loadbalance = 2")
-        append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "MFILT = 1,10phys_loadbalance = 2")
-        append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "nhtfrq = 0,1phys_loadbalance = 2")
+#        append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "NDENS = 1,1phys_loadbalance = 2")
+#        append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "MFILT = 1,10phys_loadbalance = 2")
+#        append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "nhtfrq = 0,1phys_loadbalance = 2")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "inithist = 'CAMIOP'")
-        append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "inithist_all = .true.")
+#        append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "inithist_all = .true.")
 
         CAM_CONFIG_OPTS = self._case1.get_value("CAM_CONFIG_OPTS")
         self._case.set_value("CAM_CONFIG_OPTS","{} -camiop".format(CAM_CONFIG_OPTS))
@@ -50,7 +53,8 @@ class SCT(SystemTestsCompareTwo):
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "scmlon= 140.")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "scmlat= -20.")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "iopfile = '../"+case_name+".cam.h1."+RUN_STARTDATE+"-00000.nc'")
-        append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "inithist_all = .true.")
+#        append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "inithist_all = .true.")
+        append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "inithist = 'YEARLY'")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "scm_cambfb_mode                = .true.")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "scm_use_obs_uv         = .true.")
         for comp in self._case.get_values("COMP_CLASSES"):
@@ -70,6 +74,19 @@ class SCT(SystemTestsCompareTwo):
         CAM_CONFIG_OPTS = self._case1.get_value("CAM_CONFIG_OPTS")
         self._case.set_value("CAM_CONFIG_OPTS","{} -scam".format(CAM_CONFIG_OPTS))
         self._case.case_setup(test_mode=True, reset=True)
+
+    def _component_compare_test(self, suffix1, suffix2,
+                                success_change=False,
+                                ignore_fieldlist_diffs=False):
+        with self._test_status:
+            stat,netcdf_filename,err=run_cmd('ls ./run/case2run/*h1*8400.nc ')
+            stat,answer,err=run_cmd('ncdump -ff -p 9,17 -v QDIFF,TDIFF '+netcdf_filename+' | egrep //\.\*DIFF | sed s/^\ \*// | sed s/\[,\;\].\*\$// | uniq')
+            if answer == "0":
+                self._test_status.set_status("{}_{}_{}".format(COMPARE_PHASE, self._run_one_suffix, self._run_two_suffix), TEST_PASS_STATUS)
+            else:
+                self._test_status.set_status("{}_{}_{}".format(COMPARE_PHASE, self._run_one_suffix, self._run_two_suffix), TEST_FAIL_STATUS)
+        
+
 
 
 
