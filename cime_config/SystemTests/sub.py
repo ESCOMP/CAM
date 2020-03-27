@@ -47,5 +47,7 @@ class SUB(SystemTestsCompareTwo):
                                 contents = "subcol_tstcp_noAvg= .true.")
 
     def _case_two_setup(self):
-        pass
+        append_to_user_nl_files(caseroot = self._get_caseroot(),
+                                component = "cam",
+                                contents = "pbuf_global_allocate=.false.")
 

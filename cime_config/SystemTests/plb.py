@@ -18,7 +18,8 @@ class PLB(SystemTestsCompareTwo):
 
     def __init__(self, case):
         SystemTestsCompareTwo.__init__(self, case,
-                                       separate_builds = False,
+                                       separate_builds = True,
+                                       ignore_fieldlist_diffs = True,
                                        run_two_suffix = 'default',
                                        run_one_description = 'Default phys_loadbalance',
                                        run_two_description = 'Changed phys_loadbalance')
@@ -30,5 +31,7 @@ class PLB(SystemTestsCompareTwo):
                                 contents = "phys_loadbalance = 2")
 
     def _case_two_setup(self):
-        pass
+        CAM_CONFIG_OPTS = self._case1.get_value("CAM_CONFIG_OPTS")
+        self._case.set_value("CAM_CONFIG_OPTS",CAM_CONFIG_OPTS.replace(' -nadv_tt 5 -cppdefs -DTRACER_CHECK',''))
+
 
