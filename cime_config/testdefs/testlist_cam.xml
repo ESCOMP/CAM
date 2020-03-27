@@ -255,7 +255,7 @@
 <!--              111 tmc                                             -->
   <test compset="QPC5" grid="T5_T5_mg37" name="TMC_D" testmods="cam/ghgrmp_e8">
     <machines>
-      <machine name="izumi" compiler="nag" category="aux_cam1"/>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
   </test>
 <!--              112 tsm, ter, tbl                              -->
@@ -306,7 +306,7 @@
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
   </test>
-<!--              302                         -->
+<!--              303                         -->
   <test compset="QPC5" grid="f10_f10_mg37" name="PLB_D_Ln9" testmods="cam/outfrq3s_ttrac_lb3">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
