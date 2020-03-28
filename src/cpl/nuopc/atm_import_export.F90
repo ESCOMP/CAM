@@ -46,16 +46,12 @@ module atm_import_export
   type (fldlist_type) , public, protected :: fldsToAtm(fldsMax)
   type (fldlist_type) , public, protected :: fldsFrAtm(fldsMax)
 
-  ! from lnd->atm
-  character(len=cx)      :: carma_fields ! list of CARMA fields from lnd->atm
-  integer                :: drydep_nflds ! number of dry deposition velocity fields lnd-> atm
-  integer                :: megan_nflds  ! number of MEGAN voc fields from lnd-> atm
-  integer                :: emis_nflds   ! number of fire emission fields from lnd-> atm
-
-  ! from atm-<lnd
-  integer, public        :: ndep_nflds   ! number  of nitrogen deposition fields from atm->lnd/ocn
-
-  integer                :: dbug_flag = 6    ! ESMF log output
+  character(len=cx)      :: carma_fields     ! list of CARMA fields from lnd->atm
+  integer                :: drydep_nflds     ! number of dry deposition velocity fields lnd-> atm
+  integer                :: megan_nflds      ! number of MEGAN voc fields from lnd-> atm
+  integer                :: emis_nflds       ! number of fire emission fields from lnd-> atm
+  integer, public        :: ndep_nflds       ! number  of nitrogen deposition fields from atm->lnd/ocn
+  integer                :: dbug_flag = 0    ! ESMF log output
   integer, parameter     :: debug_import = 0 ! internal debug level
   integer, parameter     :: debug_export = 0 ! internal debug level
   character(*),parameter :: F01 = "('(cam_import_export) ',a,i8,2x,i8,2x,d21.14)"
