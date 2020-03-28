@@ -72,30 +72,30 @@ module atm_comp_nuopc
   ! Private module data
   !--------------------------------------------------------------------------
 
-  character(len=CL)           :: flds_scalar_name = ''
-  integer                     :: flds_scalar_num = 0
-  integer                     :: flds_scalar_index_nx = 0
-  integer                     :: flds_scalar_index_ny = 0
-  integer                     :: flds_scalar_index_nextsw_cday = 0
+  character(len=CL)            :: flds_scalar_name = ''
+  integer                      :: flds_scalar_num = 0
+  integer                      :: flds_scalar_index_nx = 0
+  integer                      :: flds_scalar_index_ny = 0
+  integer                      :: flds_scalar_index_nextsw_cday = 0
 
-  integer         , parameter :: dbug_flag = 6
-  type(cam_in_t)  , pointer   :: cam_in(:)
-  type(cam_out_t) , pointer   :: cam_out(:)
-  integer         , pointer   :: dof(:)              ! global index space decomposition
-  character(len=256)          :: rsfilename_spec_cam ! Filename specifier for restart surface file
-  character(*)    ,parameter  :: modName =  "(atm_comp_nuopc)"
-  character(*)    ,parameter  :: u_FILE_u = &
+  integer         , parameter  :: dbug_flag = 0
+  type(cam_in_t)  , pointer    :: cam_in(:)
+  type(cam_out_t) , pointer    :: cam_out(:)
+  integer         , pointer    :: dof(:)              ! global index space decomposition
+  character(len=256)           :: rsfilename_spec_cam ! Filename specifier for restart surface file
+  character(*)    ,parameter   :: modName =  "(atm_comp_nuopc)"
+  character(*)    ,parameter   :: u_FILE_u = &
        __FILE__
 
-  logical :: dart_mode       = .false.
-  logical :: mediator_active = .true.
+  logical                      :: dart_mode = .false.
+  logical                      :: mediator_present
 
-  character(len=CL)      :: orb_mode        ! attribute - orbital mode
-  integer                :: orb_iyear       ! attribute - orbital year
-  integer                :: orb_iyear_align ! attribute - associated with model year
-  real(R8)               :: orb_obliq       ! attribute - obliquity in degrees
-  real(R8)               :: orb_mvelp       ! attribute - moving vernal equinox longitude
-  real(R8)               :: orb_eccen       ! attribute and update-  orbital eccentricity
+  character(len=CL)            :: orb_mode            ! attribute - orbital mode
+  integer                      :: orb_iyear           ! attribute - orbital year
+  integer                      :: orb_iyear_align     ! attribute - associated with model year
+  real(R8)                     :: orb_obliq           ! attribute - obliquity in degrees
+  real(R8)                     :: orb_mvelp           ! attribute - moving vernal equinox longitude
+  real(R8)                     :: orb_eccen           ! attribute and update-  orbital eccentricity
 
   character(len=*) , parameter :: orb_fixed_year       = 'fixed_year'
   character(len=*) , parameter :: orb_variable_year    = 'variable_year'
@@ -272,17 +272,17 @@ contains
        call shr_sys_abort(subname//'Need to set attribute ScalarFieldIdxNextSwCday')
     endif
 
-    call NUOPC_CompAttributeGet(gcomp, name="OCN_model", value=cvalue, rc=rc)
+    call NUOPC_CompAttributeGet(gcomp, name="mediator_present", value=cvalue, isPresent=isPresent, isSet=isSet, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    if (trim(cvalue) == 'socn') then
-       mediator_active = .false.
+    if (isPresent .and. isSet) then
+       read (cvalue,*) mediator_present
+       if (mediator_present) then
+          call advertise_fields(gcomp, flds_scalar_name, rc)
+          if (ChkErr(rc,__LINE__,u_FILE_u)) return
+       end if
     else
-       mediator_active = .true.
-    end if
-    if (mediator_active) then
-       call advertise_fields(gcomp, flds_scalar_name, rc)
-       if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    end if
+       call shr_sys_abort(subname//'Need to set attribute mediator_present')
+    endif
 
     if (dbug_flag > 5) then
        call ESMF_LogWrite(subname//' done', ESMF_LOGMSG_INFO)
@@ -709,7 +709,7 @@ contains
     ! Create cam export array and set the state scalars
     !--------------------------------
 
-    if (mediator_active) then
+    if (mediator_present) then
        call export_fields( gcomp, cam_out, rc=rc  )
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
@@ -804,77 +804,76 @@ contains
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
     endif
 
-    !--------------------------------
-    ! Determine if all the import state has been initialized
-    ! And if not initialized, then return
-    !--------------------------------
+    if (mediator_present) then
 
-    call ESMF_StateGet(importState, itemCount=fieldCount, rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+       !--------------------------------
+       ! Determine if all the import state has been initialized
+       ! And if not initialized, then return
+       !--------------------------------
 
-    allocate(fieldNameList(fieldCount))
-    call ESMF_StateGet(importState, itemNameList=fieldNameList, rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    importDone = .true.
-    do n=1, fieldCount
-       call ESMF_StateGet(importState, itemName=fieldNameList(n), field=field, rc=rc)
+       call ESMF_StateGet(importState, itemCount=fieldCount, rc=rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-       atCorrectTime = NUOPC_IsAtTime(field, currTime, rc=rc)
+       allocate(fieldNameList(fieldCount))
+       call ESMF_StateGet(importState, itemNameList=fieldNameList, rc=rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
-       if (.not. atCorrectTime) then
-          call ESMF_LogWrite("CAM - Initialize-Data-Dependency NOT YET SATISFIED!!!", ESMF_LOGMSG_INFO, rc=rc)
+       importDone = .true.
+       do n=1, fieldCount
+          call ESMF_StateGet(importState, itemName=fieldNameList(n), field=field, rc=rc)
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-          importDone = .false.
-          exit  ! break out of the loop when first not satisfied found
+          atCorrectTime = NUOPC_IsAtTime(field, currTime, rc=rc)
+          if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+          if (.not. atCorrectTime) then
+             call ESMF_LogWrite("CAM - Initialize-Data-Dependency NOT YET SATISFIED!!!", ESMF_LOGMSG_INFO, rc=rc)
+             if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+             importDone = .false.
+             exit  ! break out of the loop when first not satisfied found
+          end if
+       end do
+       deallocate(fieldNameList)
+
+       !--------------------------------
+       ! Import state has not been initialized - RETURN
+       !--------------------------------
+
+       if (.not. importDone) then
+          ! Simply return if the import has not been initialized
+          call ESMF_LogWrite("CAM - Initialize-Data-Dependency Returning to mediator without doing tphysbc", &
+               ESMF_LOGMSG_INFO, rc=rc)
+          if (ChkErr(rc,__LINE__,u_FILE_u)) return
+          RETURN
        end if
-    end do
-    deallocate(fieldNameList)
 
-    !--------------------------------
-    ! Import state has not been initialized - RETURN
-    !--------------------------------
+       !--------------------------------
+       ! Import state has been initialized - continue with tphysbc
+       !--------------------------------
 
-    if (.not. importDone) then
-       ! Simply return if the import has not been initialized
-       call ESMF_LogWrite("CAM - Initialize-Data-Dependency Returning to mediator without doing tphysbc", &
-            ESMF_LOGMSG_INFO, rc=rc)
+       call ESMF_LogWrite("CAM - Initialize-Data-Dependency doing tphysbc", ESMF_LOGMSG_INFO, rc=rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
-       RETURN
-    end if
 
-    !--------------------------------
-    ! Import state has been initialized - continue with tphysbc
-    !--------------------------------
+       !--------------------------------
+       ! get the current step number and coupling interval
+       !--------------------------------
 
-    call ESMF_LogWrite("CAM - Initialize-Data-Dependency doing tphysbc", ESMF_LOGMSG_INFO, rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+       call ESMF_ClockGet( clock, TimeStep=timeStep, advanceCount=stepno, rc=rc )
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    !--------------------------------
-    ! get the current step number and coupling interval
-    !--------------------------------
+       call ESMF_TimeIntervalGet( timeStep, s=atm_cpl_dt, rc=rc )
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    call ESMF_ClockGet( clock, TimeStep=timeStep, advanceCount=stepno, rc=rc )
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+       !--------------------------------
+       ! For initial run, unpack the import state, run cam radiation/clouds and return
+       ! For restart run, read the import state from the restart and run radiation/clouds and return
+       !--------------------------------
 
-    call ESMF_TimeIntervalGet( timeStep, s=atm_cpl_dt, rc=rc )
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+       ! Note - cam_run1 is called only for the purposes of finishing the
+       ! flux averaged calculation to compute cam-out
+       ! Note - cam_run1 is called on restart only to have cam internal state consistent with the
+       ! cam_out state sent to the coupler
 
-    !--------------------------------
-    ! For initial run, unpack the import state, run cam radiation/clouds and return
-    ! For restart run, read the import state from the restart and run radiation/clouds and return
-    !--------------------------------
-
-    ! Note - cam_run1 is called only for the purposes of finishing the
-    ! flux averaged calculation to compute cam-out
-    ! Note - cam_run1 is called on restart only to have cam internal state consistent with the
-    ! cam_out state sent to the coupler
-
-    if (.not. mediator_active) then
-       call cam_run1 ( cam_in, cam_out )
-    else
        if (stepno == 0) then
           call import_fields( gcomp, cam_in, rc=rc )
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
@@ -940,10 +939,19 @@ contains
        ! check whether all Fields in the exportState are "Updated"
        if (NUOPC_IsUpdated(exportState)) then
           call NUOPC_CompAttributeSet(gcomp, name="InitializeDataComplete", value="true", rc=rc)
+          if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
           call ESMF_LogWrite("CAM - Initialize-Data-Dependency SATISFIED!!!", ESMF_LOGMSG_INFO, rc=rc)
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
        end if
+
+    else  ! mediator is not present
+
+       call cam_run1 ( cam_in, cam_out )
+
+       call NUOPC_CompAttributeSet(gcomp, name="InitializeDataComplete", value="true", rc=rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
     end if
 
     !--------------------------------
@@ -962,6 +970,7 @@ contains
     if (dbug_flag > 5) then
        call ESMF_LogWrite(subname//' done', ESMF_LOGMSG_INFO)
     end if
+
   end subroutine DataInitialize
 
   !===============================================================================
@@ -1008,6 +1017,7 @@ contains
     logical                 :: rstwr       ! .true. ==> write restart file before returning
     logical                 :: nlend       ! Flag signaling last time-step
     integer                 :: lbnum
+    logical                 :: first_time = .true.
     character(len=*),parameter  :: subname=trim(modName)//':(ModelAdvance) '
     !-------------------------------------------------------------------------------
 
@@ -1047,36 +1057,35 @@ contains
     call ESMF_TimeGet(nexttime, yy=yr_sync, mm=mon_sync, dd=day_sync, s=tod_sync, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    call State_GetScalar(importState, flds_scalar_index_nextsw_cday, nextsw_cday, &
-         flds_scalar_name, flds_scalar_num, rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
     !----------------------
     ! Update and load orbital parameters
     !----------------------
 
-    call cam_orbital_update(clock, iulog, masterproc, eccen, obliqr, lambm0, mvelpp, rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
-    call cam_ctrl_set_orbit(eccen, obliqr, lambm0, mvelpp)
-
-    !--------------------------------
-    ! Unpack import state
-    !--------------------------------
-
-    call t_startf ('CAM_import')
-    call State_diagnose(importState, string=subname//':IS', rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
-    if (mediator_active) then
-       call import_fields( gcomp, cam_in, rc=rc)
+    if (trim(orb_mode) == trim(orb_variable_year) .or. first_time) then
+       call cam_orbital_update(clock, iulog, masterproc, eccen, obliqr, lambm0, mvelpp, rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
+       call cam_ctrl_set_orbit(eccen, obliqr, lambm0, mvelpp)
     end if
-    call t_stopf  ('CAM_import')
+    first_time = .false.
 
     !--------------------------------
     ! Run cam
     !--------------------------------
+
+    ! Unpack import state
+    if (mediator_present) then
+       call t_startf ('CAM_import')
+       call State_GetScalar(importState, flds_scalar_index_nextsw_cday, nextsw_cday, &
+            flds_scalar_name, flds_scalar_num, rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+       call State_diagnose(importState, string=subname//':IS', rc=rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+       call import_fields( gcomp, cam_in, rc=rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+       call t_stopf  ('CAM_import')
+    end if
 
     dosend = .false.
     do while (.not. dosend)
@@ -1140,50 +1149,57 @@ contains
        call cam_run1 ( cam_in, cam_out )
        call t_stopf  ('CAM_run1')
 
-       ! Map output from cam to nuopc state fields
+    end do
 
+    if (mediator_present) then
+       ! Set export fields
        call t_startf ('CAM_export')
        call export_fields( gcomp, cam_out, rc )
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
        call t_stopf ('CAM_export')
 
-    end do
+       ! Set the coupling scalars
+       ! Return time of next radiation calculation - albedos will need to be
+       ! calculated by each surface model at this time
 
-    !--------------------------------
-    ! Set the coupling scalars
-    !--------------------------------
-
-    ! Return time of next radiation calculation - albedos will need to be
-    ! calculated by each surface model at this time
-
-    call ESMF_ClockGet( clock, TimeStep=timeStep, rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    call ESMF_TimeIntervalGet( timeStep, s=atm_cpl_dt, rc=rc )
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
-    dtime = get_step_size()
-    if (dtime < atm_cpl_dt) then
-       nextsw_cday = radiation_nextsw_cday()
-    else if (dtime == atm_cpl_dt) then
-       caldayp1 = get_curr_calday(offset=int(dtime))
-       nextsw_cday = radiation_nextsw_cday()
-       if (caldayp1 /= nextsw_cday) nextsw_cday = -1._r8
-    else
-       call shr_sys_abort('dtime must be less than or equal to atm_cpl_dt')
-    end if
-
-    call State_SetScalar(nextsw_cday, flds_scalar_index_nextsw_cday, exportState, &
-         flds_scalar_name, flds_scalar_num, rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
-    !--------------------------------
-    ! Write merged surface data restart file if appropriate
-    !--------------------------------
-
-    if (rstwr .and. mediator_active) then
-       call cam_write_srfrest( gcomp, &
-            yr_spec=yr_sync, mon_spec=mon_sync, day_spec=day_sync, sec_spec=tod_sync, rc=rc)
+       call ESMF_ClockGet( clock, TimeStep=timeStep, rc=rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
+       call ESMF_TimeIntervalGet( timeStep, s=atm_cpl_dt, rc=rc )
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+       dtime = get_step_size()
+       if (dtime < atm_cpl_dt) then
+          nextsw_cday = radiation_nextsw_cday()
+       else if (dtime == atm_cpl_dt) then
+          caldayp1 = get_curr_calday(offset=int(dtime))
+          nextsw_cday = radiation_nextsw_cday()
+          if (caldayp1 /= nextsw_cday) nextsw_cday = -1._r8
+       else
+          call shr_sys_abort('dtime must be less than or equal to atm_cpl_dt')
+       end if
+
+       call State_SetScalar(nextsw_cday, flds_scalar_index_nextsw_cday, exportState, &
+            flds_scalar_name, flds_scalar_num, rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+       ! diagnostics
+       if (dbug_flag > 1) then
+          call State_diagnose(exportState, string=subname//':ES',rc=rc)
+          if (ChkErr(rc,__LINE__,u_FILE_u)) return
+          if (masterproc) then
+             call log_clock_advance(clock, 'CAM', iulog, rc)
+             if (ChkErr(rc,__LINE__,u_FILE_u)) return
+          end if
+       endif
+
+       !--------------------------------
+       ! Write merged surface data restart file if appropriate
+       !--------------------------------
+       if (rstwr) then
+          call cam_write_srfrest( gcomp, &
+               yr_spec=yr_sync, mon_spec=mon_sync, day_spec=day_sync, sec_spec=tod_sync, rc=rc)
+          if (ChkErr(rc,__LINE__,u_FILE_u)) return
+       end if
     end if
 
     ! Check for consistency of internal cam clock with master sync clock
@@ -1205,19 +1221,6 @@ contains
        write(iulog,*)'sync ymd=',ymd_sync,' sync tod= ',tod_sync
        call shr_sys_abort( subname//': CAM clock is not in sync with master Sync Clock' )
     end if
-
-    !--------------------------------
-    ! diagnostics
-    !--------------------------------
-
-    if (dbug_flag > 1) then
-       call State_diagnose(exportState, string=subname//':ES',rc=rc)
-       if (ChkErr(rc,__LINE__,u_FILE_u)) return
-       if (masterproc) then
-          call log_clock_advance(clock, 'CAM', iulog, rc)
-          if (ChkErr(rc,__LINE__,u_FILE_u)) return
-       end if
-    endif
 
 #if (defined _MEMTRACE)
     if(masterproc) then
@@ -1399,7 +1402,7 @@ contains
     ! input/output variables
     type(ESMF_GridComp) , intent(in)    :: gcomp
     integer             , intent(in)    :: logunit
-    logical             , intent(in)    :: mastertask 
+    logical             , intent(in)    :: mastertask
     integer             , intent(out)   :: rc              ! output error
 
     ! local variables
@@ -1493,12 +1496,12 @@ contains
   subroutine cam_orbital_update(clock, logunit,  mastertask, eccen, obliqr, lambm0, mvelpp, rc)
 
     !----------------------------------------------------------
-    ! Update orbital settings 
+    ! Update orbital settings
     !----------------------------------------------------------
 
     ! input/output variables
     type(ESMF_Clock) , intent(in)    :: clock
-    integer          , intent(in)    :: logunit 
+    integer          , intent(in)    :: logunit
     logical          , intent(in)    :: mastertask
     real(R8)         , intent(inout) :: eccen  ! orbital eccentricity
     real(R8)         , intent(inout) :: obliqr ! Earths obliquity in rad
@@ -1508,7 +1511,7 @@ contains
 
     ! local variables
     type(ESMF_Time)   :: CurrTime ! current time
-    integer           :: year     ! model year at current time 
+    integer           :: year     ! model year at current time
     integer           :: orb_year ! orbital year for current orbital computation
     character(len=CL) :: msgstr   ! temporary
     character(len=*) , parameter :: subname = "(cam_orbital_update)"
@@ -1523,7 +1526,7 @@ contains
        if (chkerr(rc,__LINE__,u_FILE_u)) return
        orb_year = orb_iyear + (year - orb_iyear_align)
     else
-       orb_year = orb_iyear 
+       orb_year = orb_iyear
     end if
 
     eccen = orb_eccen
