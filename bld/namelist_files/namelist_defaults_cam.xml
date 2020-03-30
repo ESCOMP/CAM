@@ -1341,11 +1341,12 @@
 <clubb_C8b                              silhs="1" > 0.02    </clubb_C8b>
 <clubb_C11                              silhs="1" > 0.5     </clubb_C11>
 <clubb_C11b                             silhs="1" > 0.5     </clubb_C11b>
-<clubb_c14                              silhs="1" > 0.5     </clubb_c14>
+<clubb_c14                              silhs="1" > 1.0     </clubb_c14>
 <clubb_c_K9                             silhs="1" > 0.25    </clubb_c_K9>
 <clubb_nu9                              silhs="1" > 20.0    </clubb_nu9>
 <clubb_c_K10                            silhs="1" > 2.0     </clubb_c_K10>
 <clubb_c_K10h                           silhs="1" > 1.0     </clubb_c_K10h>
+<clubb_do_adv                           silhs="1" > .false. </clubb_do_adv>
 <clubb_gamma_coef                       silhs="1" > 0.24    </clubb_gamma_coef>
 <clubb_gamma_coefb                      silhs="1" > 0.37    </clubb_gamma_coefb>
 <clubb_lambda0_stability_coef           silhs="1" > 0.03    </clubb_lambda0_stability_coef>
@@ -1362,7 +1363,7 @@
 <clubb_l_min_wp2_from_corr_wx           silhs="1" > .true.  </clubb_l_min_wp2_from_corr_wx>
 <clubb_l_min_xp2_from_corr_wx           silhs="1" > .true.  </clubb_l_min_xp2_from_corr_wx>
 <clubb_l_predict_upwp_vpwp              silhs="1" > .true.  </clubb_l_predict_upwp_vpwp>
-<clubb_l_rcm_supersat_adj               silhs="1" > .true.  </clubb_l_rcm_supersat_adj>
+<clubb_l_rcm_supersat_adj               silhs="1" > .false. </clubb_l_rcm_supersat_adj>
 <clubb_l_stability_correct_tau_zm       silhs="1" > .false. </clubb_l_stability_correct_tau_zm>
 <clubb_l_trapezoidal_rule_zm            silhs="1" > .false. </clubb_l_trapezoidal_rule_zm>
 <clubb_l_trapezoidal_rule_zt            silhs="1" > .false. </clubb_l_trapezoidal_rule_zt>
