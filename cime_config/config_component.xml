@@ -237,7 +237,9 @@
       <value compset="SSP245_CAM60%WCTS" >waccm_tsmlt_ssp245_cam6</value>
       <value compset="SSP370_CAM60%WCTS" >waccm_tsmlt_ssp370_cam6</value>
       <value compset="SSP534_CAM60%WCTS" >waccm_tsmlt_ssp534_cam6</value>
+      <value compset="SSP534EXT_CAM60%WCTS">waccm_tsmlt_ssp534ext_cam6</value> 
       <value compset="SSP585_CAM60%WCTS" >waccm_tsmlt_ssp585_cam6</value>
+      <value compset="SSP585EXT_CAM60%WCTS">waccm_tsmlt_ssp585ext_cam6</value>
       <value compset="RCP2_CAM40"        >2005-2100_cam4_rcp26</value>
       <value compset="RCP4_CAM40"        >2005-2100_cam4_rcp45</value>
       <value compset="RCP4_CAM40.*_BGC%B">2005-2100_cam4_rcp45_bgc</value>

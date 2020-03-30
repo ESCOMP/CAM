@@ -472,7 +472,6 @@
         <value compset="2000"          grid="a%0.23x0.31.*_oi%0.23x0.31"     >$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_0.23x0.31_2000climo_c180511.nc</value>
 
         <value compset="2000_CAM60%WCTS" grid="a%0.9x1.25.*_oi%0.9x1.25"     >$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_0.9x1.25_clim_c040926.nc</value>
-        <value compset="2000_CAM60%WCTS" grid="a%1.9x2.5.*_oi%1.9x2.5"       >$DIN_LOC_ROOT/atm/cam/sst/f2000.waccm-mam3_1.9x2.5_L70.cam2.i.0017-01-01.c120410.nc</value>
 
         <value compset="2010"          grid=".+"                             >$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_1x1_2010climo_c180511.nc</value>
         <value compset="2010"          grid="a%T31.*_oi%T31"                 >$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_48x96_2010climo_c180511.nc</value>
