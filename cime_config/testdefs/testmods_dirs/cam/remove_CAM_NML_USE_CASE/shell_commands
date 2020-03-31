@@ -1,2 +1,0 @@
-./xmlchange CAM_NML_USE_CASE="UNSET"
-./xmlchange CAM_NML_USE_CASE=UNSET
