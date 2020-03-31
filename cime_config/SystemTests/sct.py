@@ -45,7 +45,7 @@ class SCT(SystemTestsCompareTwo):
     def _case_two_setup(self):
         case_name = self._case.get_value("CASE")
         RUN_STARTDATE = self._case1.get_value("RUN_STARTDATE")
-        append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "ncdata         = '../"+case_name+".cam.i."+RUN_STARTDATE+"-00000.nc'")
+        append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "ncdata = '../"+case_name+".cam.i."+RUN_STARTDATE+"-00000.nc'")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "NDENS    = 1,1,1,1,1,1")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "MFILT    = 1,7,1,1,1,1")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "nhtfrq   = 1,1,1,1,1,1")
@@ -64,8 +64,8 @@ class SCT(SystemTestsCompareTwo):
 
         mach_name = self._case.get_value("MACH")
         mach_obj = Machines(machine=mach_name)
-#        if mach_obj.is_valid_MPIlib("mpi-serial"):
-#            self._case.set_value("MPILIB","mpi-serial")
+        if mach_obj.is_valid_MPIlib("mpi-serial"):
+            self._case.set_value("MPILIB","mpi-serial")
 
         self._case.set_value("PTS_MODE","TRUE")
         self._case.set_value("PTS_LAT",-20.0)
