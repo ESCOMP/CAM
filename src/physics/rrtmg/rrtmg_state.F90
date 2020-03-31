@@ -83,13 +83,11 @@ contains
     type(physics_state), intent(in) :: pstate
     type(cam_in_t),      intent(in) :: cam_in
 
-    type(rrtmg_state_t), pointer  :: rstate
+    type(rrtmg_state_t) :: rstate
 
     real(r8) dy                   ! Temporary layer pressure thickness
     real(r8) :: tint(pcols,pverp)    ! Model interface temperature
     integer  :: ncol, i, kk, k
-
-    allocate( rstate )
 
     allocate( rstate%h2ovmr(pcols,num_rrtmg_levs) )
     allocate( rstate%o3vmr(pcols,num_rrtmg_levs) )
@@ -158,7 +156,7 @@ contains
     type(physics_state), intent(in), target :: pstate
     type(physics_buffer_desc),  pointer :: pbuf(:)
     integer,             intent(in) :: icall                     ! index through climate/diagnostic radiation calls
-    type(rrtmg_state_t), pointer    :: rstate
+    type(rrtmg_state_t)             :: rstate
 
     real(r8), pointer, dimension(:,:) :: sp_hum ! specific humidity
     real(r8), pointer, dimension(:,:) :: n2o    ! nitrous oxide mass mixing ratio
@@ -246,7 +244,7 @@ contains
 
     implicit none
 
-    type(rrtmg_state_t), pointer   :: rstate
+    type(rrtmg_state_t) :: rstate
 
     deallocate(rstate%h2ovmr)
     deallocate(rstate%o3vmr)
@@ -263,9 +261,6 @@ contains
     deallocate(rstate%pintmb)
     deallocate(rstate%tlay)
     deallocate(rstate%tlev)
-
-    deallocate( rstate )
-    nullify(rstate)
 
   endsubroutine rrtmg_state_destroy
 
