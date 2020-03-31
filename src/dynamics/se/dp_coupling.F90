@@ -738,11 +738,11 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
    ! Finally compute energy and water column integrals of the physics input state.
 
    use constituents,  only: qmin
-   use physconst,     only: cpair, gravit, rair, zvir, cappa, rairv,rh2o,rair
+   use physconst,     only: cpair, gravit, zvir, cappa, rairv
    use geopotential,  only: geopotential_t
    use physics_types, only: set_state_pdry, set_wet_to_dry
    use check_energy,  only: check_energy_timestep_init
-   use hycoef,        only: hyam, hybm, hyai, hybi, ps0
+   use hycoef,        only: hyai, hybi, ps0
    use shr_vmath_mod, only: shr_vmath_log
    use gmean_mod,     only: gmean
    use qneg_module,   only: qneg3
@@ -912,7 +912,7 @@ subroutine thermodynamic_consistency(phys_state, phys_tend, ncols, pver)
    ! Note: mixing ratios are assumed to be dry.
    !
    use dimensions_mod,    only: lcp_moist
-   use physconst,         only: comp_thermo   
+   use physconst,         only: get_cp
    use control_mod,       only: phys_dyn_cp
    use physconst,         only: cpair
 
@@ -931,7 +931,7 @@ subroutine thermodynamic_consistency(phys_state, phys_tend, ncols, pver)
      ! note that if lcp_moist=.false. then there is thermal energy increment
      ! consistency (not taking into account dme adjust) 
      !
-     call comp_thermo(1,ncols,1,pver,1,1,pcnst,phys_state%q(1:ncols,1:pver,:),1,inv_cp=.true.,cp=inv_cp)
+     call get_cp(1,ncols,1,pver,1,1,pcnst,phys_state%q(1:ncols,1:pver,:),.true.,inv_cp)
      phys_tend%dtdt(1:ncols,1:pver) = phys_tend%dtdt(1:ncols,1:pver)*cpair*inv_cp
    end if 
 end subroutine thermodynamic_consistency

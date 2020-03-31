@@ -213,7 +213,7 @@ subroutine diag_dynvar_ic(elem, fvm)
    use element_mod,            only: element_t
    use fvm_control_volume_mod, only: fvm_struct
    use fvm_mapping,            only: fvm2dyn
-   use physconst,              only: comp_thermo, get_ps,thermodynamic_active_species_idx
+   use physconst,              only: get_sum_species, get_ps,thermodynamic_active_species_idx
    use physconst,              only: thermodynamic_active_species_idx_dycore   
    use hycoef,                 only: hyai, ps0
    ! arguments
@@ -349,8 +349,8 @@ subroutine diag_dynvar_ic(elem, fvm)
          call outfld('V&IC', RESHAPE(elem(ie)%state%v(:,:,2,:,tl_f), (/npsq,nlev/)), npsq, ie)
 
          if (fv_nphys < 1) then
-           call comp_thermo(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,tl_qdp),2,thermodynamic_active_species_idx_dycore,&
-                dp=elem(ie)%state%dp3d(:,:,:,tl_f),sum_q=factor_array)
+           call get_sum_species(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,tl_qdp),thermodynamic_active_species_idx_dycore,&
+                factor_array,dp_dry=elem(ie)%state%dp3d(:,:,:,tl_f))
             factor_array(:,:,:) = 1.0_r8/factor_array(:,:,:)
             do m_cnst = 1, qsize
                if (cnst_type(m_cnst) == 'wet') then
@@ -378,7 +378,7 @@ subroutine diag_dynvar_ic(elem, fvm)
          allocate(factor_array(nc,nc,nlev))
          llimiter = .true.
          do ie = nets, nete
-           call comp_thermo(1,nc,1,nc,1,nlev,ntrac,fvm(ie)%c(1:nc,1:nc,:,:),1,thermodynamic_active_species_idx,sum_q=factor_array)
+           call get_sum_species(1,nc,1,nc,1,nlev,ntrac,fvm(ie)%c(1:nc,1:nc,:,:),thermodynamic_active_species_idx,factor_array)
            factor_array(:,:,:) = 1.0_r8/factor_array(:,:,:)
            do m_cnst = 1, ntrac
              if (cnst_type(m_cnst) == 'wet') then

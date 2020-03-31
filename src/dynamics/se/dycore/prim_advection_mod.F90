@@ -961,7 +961,7 @@ contains
     use dimensions_mod        , only : ntrac
     use dimensions_mod,         only : lcp_moist
     use cam_logfile,            only : iulog
-    use physconst,              only : pi,comp_thermo,get_dp
+    use physconst,              only : pi,get_thermal_energy,get_dp
     use physconst             , only : thermodynamic_active_species_idx_dycore    
     use thread_mod            , only : omp_set_nested
     type (hybrid_t),  intent(in)    :: hybrid  ! distributed parallel structure (shared)
@@ -1003,9 +1003,9 @@ contains
         ! compute internal energy on Lagrangian levels
         ! (do it here since qdp is overwritten by remap1)
         !
-        call comp_thermo(1,np,1,np,1,nlev,qsize,elem(ie)%state%qdp(:,:,:,:,np1_qdp),2, thermodynamic_active_species_idx_dycore,&
-             temp=elem(ie)%state%t(:,:,:,np1),dp=elem(ie)%state%dp3d(:,:,:,np1),dp_cp=internal_energy_star)
-        internal_energy_star = internal_energy_star*elem(ie)%state%t(:,:,:,np1)
+        call get_thermal_energy(1,np,1,np,1,nlev,qsize,elem(ie)%state%qdp(:,:,:,:,np1_qdp),   &
+             elem(ie)%state%t(:,:,:,np1),elem(ie)%state%dp3d(:,:,:,np1),internal_energy_star, &
+             thermodynamic_active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
       end if
       !
       !  REMAP u,v,T from levels in dp3d() to REF levels
@@ -1021,7 +1021,7 @@ contains
         elem(ie)%state%dp3d(:,:,k,np1) = dp_dry(:,:,k)
       enddo
       !
-      call get_dp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,np1_qdp),thermodynamic_active_species_idx_dycore,dp_star_dry,dp_star_moist(:,:,:))
+      call get_dp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,np1_qdp),2,thermodynamic_active_species_idx_dycore,dp_star_dry,dp_star_moist(:,:,:))
       !
       ! DEBUGGING CODE
       !
@@ -1060,7 +1060,7 @@ contains
       !
       ! compute moist reference pressure level thickness
       !
-      call get_dp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,np1_qdp),thermodynamic_active_species_idx_dycore,dp_dry,dp_moist(:,:,:))
+      call get_dp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,np1_qdp),2,thermodynamic_active_species_idx_dycore,dp_dry,dp_moist(:,:,:))
       
 !#define fv3remap
 #ifndef fv3remap      
@@ -1073,8 +1073,10 @@ contains
         !
         ! compute sum c^(l)_p*m^(l)*dp on arrival (Eulerian) grid
         !       
-        call comp_thermo(1,np,1,np,1,nlev,qsize,elem(ie)%state%qdp(:,:,:,:,np1_qdp),2, thermodynamic_active_species_idx_dycore,&
-             temp=elem(ie)%state%t(:,:,:,np1),dp=dp_dry,dp_cp=ttmp(:,:,:,2))
+        ttmp(:,:,:,1) = 1.0_r8
+        call get_thermal_energy(1,np,1,np,1,nlev,qsize,elem(ie)%state%qdp(:,:,:,:,np1_qdp),   &
+             ttmp(:,:,:,1),dp_dry,ttmp(:,:,:,2), &
+             thermodynamic_active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
         
         elem(ie)%state%t(:,:,:,np1)=internal_energy_star/ttmp(:,:,:,2)
       else

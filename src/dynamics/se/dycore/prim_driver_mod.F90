@@ -183,7 +183,7 @@ contains
     use control_mod,            only: statefreq,disable_diagnostics,qsplit, rsplit, variable_nsplit
     use control_mod,            only: del2_physics_tendencies
     use prim_advance_mod,       only: applycamforcing, del2_sponge_uvt_tendencies
-    use prim_advance_mod,       only: calc_tot_energy_dynamics,compute_omega
+    use prim_advance_mod,       only: calc_tot_energy_dynamics,compute_omega,two_dz_filter
     use prim_state_mod,         only: prim_printstate, adjust_nsplit
     use prim_advection_mod,     only: vertical_remap, deriv
     use thread_mod,             only: omp_get_thread_num
@@ -288,7 +288,13 @@ contains
     call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%np1,np1_qdp,'dAR')
 
     if (nsubstep==nsplit) then
-      call compute_omega(hybrid,tl%np1,np1_qdp,elem,deriv,nets,nete,dt,hvcoord)      
+      call compute_omega(hybrid,tl%np1,np1_qdp,elem,deriv,nets,nete,dt,hvcoord)
+!      do ie=nets,nete
+!        call two_dz_filter(elem(ie)%state%Qdp(:,:,:,:,np1_qdp),elem(ie)%state%dp3d(:,:,:,tl%np1),elem(ie)%state%T(:,:,:,tl%np1),&
+!             elem(ie)%state%v(:,:,:,:,tl%np1),dt,ie)
+!      end do
+      
+      
     end if
 
     ! now we have:
@@ -568,10 +574,8 @@ contains
         !
         call Prim_Advec_Tracers_fvm(elem,fvm,hvcoord,hybrid,&
              dt_q,tl,nets,nete,ghostBufQnhcJet_h,ghostBufQ1_h, ghostBufFluxJet_h,kmin_jet,kmax_jet)
-      end if
-        
+      end if       
 
-      
 #ifdef waccm_debug
       do ie=nets,nete
         call outfld('CSLAM_gamma', RESHAPE(fvm(ie)%CSLAM_gamma(:,:,:,1), &

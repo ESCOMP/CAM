@@ -540,7 +540,6 @@ subroutine dyn_init(dyn_in, dyn_out)
    use prim_advance_mod,   only: prim_advance_init
    use dyn_grid,           only: elem, fvm
    use cam_pio_utils,      only: clean_iodesc_list
-   use physconst,          only: cpwv, cpliq, cpice, cpair, rh2o
    use physconst,          only: thermodynamic_active_species_num, thermodynamic_active_species_idx
    use physconst,          only: thermodynamic_active_species_idx_dycore
    use cam_history,        only: addfld, add_default, horiz_only, register_vector_field
@@ -570,7 +569,6 @@ subroutine dyn_init(dyn_in, dyn_out)
    type(hybrid_t)      :: hybrid
 
    integer :: ixcldice, ixcldliq, ixrain, ixsnow, ixgraupel
-   integer :: ixo2, ixo, ixh, ixn !needed for WACCM-x   
    integer :: m_cnst, m
 
    ! variables for initializing energy and axial angular momentum diagnostics   
@@ -618,7 +616,6 @@ subroutine dyn_init(dyn_in, dyn_out)
    
    !----------------------------------------------------------------------------
 
-   write(*,*) "xxx dyn_comp"
    ! Now allocate and set condenstate vars
    allocate(cnst_name_gll(qsize))     ! constituent names for gll tracers
    allocate(cnst_longname_gll(qsize)) ! long name of constituents for gll tracers
@@ -757,6 +754,13 @@ subroutine dyn_init(dyn_in, dyn_out)
       if (use_gw_front .or. use_gw_front_igw) call gws_init(elem)
    end if  ! iam < par%nprocs
 
+   call addfld ('Ri_number',  (/ 'lev' /), 'A', '', 'Richardson number',     gridname='GLL')
+   call addfld ('Ri_mixing',  (/ 'lev' /), 'A', '', 'Richardson number based mixing',     gridname='GLL')
+   call addfld ('two_dz_filter_dT',  (/ 'lev' /), 'A', '', 'Temperature increment from 2dz filter',     gridname='GLL')
+   call addfld ('two_dz_filter_dU',  (/ 'lev' /), 'A', '', 'Zontal wind increment from 2dz filter',     gridname='GLL')
+   call addfld ('two_dz_filter_dV',  (/ 'lev' /), 'A', '', 'Meridional wind increment from 2dz filter',     gridname='GLL')
+
+   
    ! Forcing from physics on the GLL grid
    call addfld ('FU',  (/ 'lev' /), 'A', 'm/s2', 'Zonal wind forcing term on GLL grid',     gridname='GLL')
    call addfld ('FV',  (/ 'lev' /), 'A', 'm/s2', 'Meridional wind forcing term on GLL grid',gridname='GLL')
@@ -844,7 +848,7 @@ end subroutine dyn_init
 !=========================================================================================
 
 subroutine dyn_run(dyn_state)
-   use physconst,        only: cpair,thermodynamic_active_species_num
+   use physconst,        only: thermodynamic_active_species_num
    use physconst,        only: thermodynamic_active_species_idx_dycore
    use prim_advance_mod, only: calc_tot_energy_dynamics
    use prim_driver_mod,  only: prim_run_subcycle
@@ -1064,7 +1068,6 @@ subroutine read_inidat(dyn_in)
    real(r8), allocatable            :: phis_tmp(:,:)      ! (npsp,nelemd)
    real(r8), allocatable            :: factor_array(:,:,:,:) ! (np,np,nlev,nelemd)
    logical,  allocatable            :: pmask(:)           ! (npsq*nelemd) unique grid vals
-   logical,  allocatable            :: pmask_phys(:)
 
    character(len=max_hcoordname_len):: grid_name
    real(r8), allocatable            :: latvals(:),latvals_phys(:)
@@ -1083,8 +1086,6 @@ subroutine read_inidat(dyn_in)
 
    character(len=max_fieldname_len) :: dimname, varname
    integer                          :: ierr
-   integer                          :: ncol_did
-   integer                          :: ncol_size
 
    integer                          :: rndm_seed_sz
    integer, allocatable             :: rndm_seed(:)
