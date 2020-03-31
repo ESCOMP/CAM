@@ -5,11 +5,11 @@
 # and no other git files or directories.
 
 # Return codes in use:
-# 1: Not a git repository.
-# 2: Missing ".git" directory.
-# 3: Missing ".gitignore" file.
-# 4: Missing ".github" file.
-# 5: More than three ".git*" files.
+# 1: Not a git repository
+# 2: Missing ".git" directory
+# 3: Missing ".gitignore" file
+# 4: Missing ".github" directory
+# 5: More than three ".git*" files or directories
 # 6: Error from running an external command
 
 # Utility to check return code.
