@@ -61,7 +61,7 @@ contains
     use fvm_control_volume_mod, only: fvm_struct
     use control_mod,       only: raytau0
     use physconst,         only: get_cp, thermodynamic_active_species_num
-    use physconst,         only: get_cp_dry, get_R_dry
+    use physconst,         only: get_kappa_dry
     use physconst,         only: thermodynamic_active_species_idx_dycore
     
     implicit none
@@ -84,7 +84,6 @@ contains
     real (kind=r8) :: inv_cp_full_tmp(np,np,nlev,nets:nete)
     real (kind=r8) :: qwater(np,np,nlev,thermodynamic_active_species_num,nets:nete)
     integer        :: qidx(thermodynamic_active_species_num)
-    real (kind=r8) :: R_dry(np,np,nlev), cp_dry(np,np,nlev) 
     real (kind=r8) :: kappa(np,np,nlev,nets:nete)
     call t_startf('prim_advance_exp')
     nm1   = tl%nm1
@@ -171,9 +170,7 @@ contains
       end do
     end if
     do ie=nets,nete
-       call get_R_dry(1,np,1,np,1,nlev,thermodynamic_active_species_num,qwater(:,:,:,:,ie),qidx,R_dry)     
-       call get_cp_dry(1,np,1,np,1,nlev,thermodynamic_active_species_num,qwater(:,:,:,:,ie),qidx,cp_dry)       
-       kappa(:,:,:,ie) = R_dry(:,:,:)/cp_dry(:,:,:)
+       call get_kappa_dry(1,np,1,np,1,nlev,thermodynamic_active_species_num,qwater(:,:,:,:,ie),qidx,kappa(:,:,:,ie))
      end do
 
     

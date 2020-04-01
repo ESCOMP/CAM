@@ -47,6 +47,7 @@ public  :: get_gz_given_dp_Tv   !
 public  :: get_Richardson_number
 public  :: get_hydrostatic_static_energy
 public  :: get_R_dry
+public  :: get_kappa_dry
 
 
 ! Constants based off share code or defined in physconst
@@ -837,7 +838,7 @@ subroutine composition_init()
        pint_local(:,:,k) = dp_local(:,:,k-1)+pint_local(:,:,k-1)
      end do
 
-     call get_pmid_from_dp(i0,i1,j0,j1,nlev,dp,ptop,pmid,pint)
+     call get_pmid_from_dp(i0,i1,j0,j1,nlev,dp_local,ptop,pmid,pint_local)
      
      if (present(pint)) pint=pint_local
      if (present(dp)) dp=dp_local
@@ -849,7 +850,7 @@ subroutine composition_init()
      real(r8), intent(in)  :: dp(i0:i1,j0:j1,nlev)        !dry pressure level thickness     
      real(r8), intent(in)  :: ptop
      real(r8), intent(out) :: pmid(i0:i1,j0:j1,nlev)
-     real(r8), optional, intent(out) :: pint(i0:i1,j0:j1,nlev)
+     real(r8), optional, intent(out) :: pint(i0:i1,j0:j1,nlev+1)
 
      real(r8) :: pint_local(i0:i1,j0:j1,nlev+1)     ! interface pressure
      integer  :: k
@@ -958,16 +959,13 @@ subroutine composition_init()
      real(r8), optional, intent(out) :: t_v(i0:i1,j0:j1,nlev)    !
      
 
-     real(r8), dimension(i0:i1,j0:j1,nlev)   :: pmid_local, t_v_local, R_dry
+     real(r8), dimension(i0:i1,j0:j1,nlev)   :: pmid_local, t_v_local, R_dry, dp_local
      real(r8), dimension(i0:i1,j0:j1,nlev+1) :: pint
      real(r8), dimension(i0:i1,j0:j1)        :: gzh, Rdry_tv
      integer :: k
 
-     if (present(dp)) then
-       call get_pmid_from_dpdry(i0,i1,j0,j1,nlev,ntrac,tracer,mixing_ratio,thermodynamic_active_species_idx,dp_dry,ptop,pmid_local,pint=pint,dp=dp)
-     else
-       call get_pmid_from_dpdry(i0,i1,j0,j1,nlev,ntrac,tracer,mixing_ratio,thermodynamic_active_species_idx,dp_dry,ptop,pmid_local,pint=pint)       
-     end if
+     call get_pmid_from_dpdry(i0,i1,j0,j1,nlev,ntrac,tracer,mixing_ratio,thermodynamic_active_species_idx,dp_dry,ptop,pmid_local,pint=pint,dp=dp_local)       
+
      if (mixing_ratio==1) then 
        call get_virtual_temp(i0,i1,j0,j1,1,nlev,ntrac,tracer,t_v_local,temp=temp,&
             thermodynamic_active_species_idx_dycore=thermodynamic_active_species_idx)
@@ -977,10 +975,11 @@ subroutine composition_init()
             thermodynamic_active_species_idx_dycore=thermodynamic_active_species_idx)
 !       call get_R_dry(i0,i1,j0,j1,1,nlev,ntrac,tracer,thermodynamic_active_species_idx,R_dry,dp_dry)            
      end if
-     call get_gz_given_dp_Tv(i0,i1,j0,j1,nlev,dp,T_v_local,phis,ptop,gz,pmid_local)
+     call get_gz_given_dp_Tv(i0,i1,j0,j1,nlev,dp_local,T_v_local,phis,ptop,gz,pmid_local)
 
      if (present(pmid)) pmid=pmid_local
      if (present(T_v))  T_v=T_v_local
+     if (present(dp))   dp=dp_local
    end subroutine get_gz
 
    subroutine get_gz_given_dp_Tv(i0,i1,j0,j1,nlev,dp,T_v,phis,ptop,gz,pmid)
