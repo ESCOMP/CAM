@@ -411,7 +411,6 @@ subroutine wetdepa_v2(                                  &
 
    real(r8) :: rdeltat
    logical  :: convproc_do_evaprain_atonce
-   real(r8) :: adj_precs(pcols,pver) ! adjusted rate of production of stratiform precip
 
    ! ------------------------------------------------------------------------
 
@@ -419,11 +418,6 @@ subroutine wetdepa_v2(                                  &
       convproc_do_evaprain_atonce = convproc_do_evaprain_atonce_in
    else
       convproc_do_evaprain_atonce = .false.
-   endif
-   if (convproc_do_evaprain_atonce .and. present(bergso_in)) then
-      adj_precs(:ncol,:) = precs(:ncol,:)-bergso_in(:ncol,:)
-   else
-      adj_precs(:ncol,:) = precs(:ncol,:)
    endif
 
    ! default (if other sol_facts aren't in call, set all to required sol_fact)
@@ -523,9 +517,14 @@ subroutine wetdepa_v2(                                  &
                conv_scav_bc(i) = 0._r8
 
                ! stratiform scavenging
+               if (convproc_do_evaprain_atonce .and. present(bergso_in)) then
+                  fracp(i) = (precs(i,k)-bergso_in(i,k))*deltat / &
+                       max( 1.e-12_r8, cwat(i,k) + precs(i,k)*deltat )
+               else
+                  fracp(i) = precs(i,k)*deltat / &
+                       max( 1.e-12_r8, cwat(i,k) + precs(i,k)*deltat )
+               endif
 
-               fracp(i) = adj_precs(i,k) *deltat / &
-                          max( 1.e-12_r8, cwat(i,k) + precs(i,k)*deltat )
                fracp(i) = max( 0._r8, min(1._r8, fracp(i)) )
 
                st_scav_ic(i) = sol_facti *fracp(i)*tracer(i,k)*rdeltat
