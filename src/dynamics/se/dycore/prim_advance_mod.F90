@@ -1091,7 +1091,7 @@ contains
      use edgetype_mod,    only: edgedescriptor_t
      use bndry_mod,       only: bndry_exchange
      use hybvcoord_mod,   only: hvcoord_t
-     use physconst,       only: epsilo, get_gz_given_dp_Tv_R, Rair, cpair !
+     use physconst,       only: epsilo, get_gz_given_dp_Tv, Rair, cpair !
      use physconst,       only: thermodynamic_active_species_num, get_virtual_temp, get_cp_dry
      use physconst,       only: thermodynamic_active_species_idx_dycore,get_R_dry
      use control_mod,     only: se_met_nudge_u, se_met_nudge_p, se_met_nudge_t, se_met_tevolve
@@ -1169,7 +1169,7 @@ contains
          dp_full(:,:,k) = sum_water(:,:,k)*dp_dry(:,:,k)
        end do
        ptop = hvcoord%hyai(1)*hvcoord%ps0
-       call get_gz_given_dp_Tv_R(1,np,1,np,nlev,dp_full,T_v,elem(ie)%state%phis,phi,pmid=p_full,ptop=ptop)
+       call get_gz_given_dp_Tv(1,np,1,np,nlev,dp_full,T_v,elem(ie)%state%phis,ptop,phi,pmid=p_full)
        do k=1,nlev
          ! vertically lagrangian code: we advect dp3d instead of ps
          ! we also need grad(p) at all levels (not just grad(ps))

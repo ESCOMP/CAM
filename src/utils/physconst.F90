@@ -43,7 +43,7 @@ public  :: get_cp_dry           !compute (generalized) heat capacity for dry air
 public  :: get_sum_species      !compute sum of thermodynamically active species: dp_dry*sum_species=dp
 public  :: get_virtual_theta    !compute virtual potential temperature
 public  :: get_gz               !
-public  :: get_gz_given_dp_Tv_R !
+public  :: get_gz_given_dp_Tv   !
 public  :: get_Richardson_number
 public  :: get_hydrostatic_static_energy
 public  :: get_R_dry
@@ -977,34 +977,29 @@ subroutine composition_init()
             thermodynamic_active_species_idx_dycore=thermodynamic_active_species_idx)
 !       call get_R_dry(i0,i1,j0,j1,1,nlev,ntrac,tracer,thermodynamic_active_species_idx,R_dry,dp_dry)            
      end if
-     call get_gz_given_dp_Tv_R(i0,i1,j0,j1,nlev,dp,T_v_local,phis,gz,pmid_local)
+     call get_gz_given_dp_Tv(i0,i1,j0,j1,nlev,dp,T_v_local,phis,ptop,gz,pmid_local)
 
      if (present(pmid)) pmid=pmid_local
      if (present(T_v))  T_v=T_v_local
    end subroutine get_gz
 
-   subroutine get_gz_given_dp_Tv_R(i0,i1,j0,j1,nlev,dp,T_v,phis,gz,pmid,pmid_in,ptop)
+   subroutine get_gz_given_dp_Tv(i0,i1,j0,j1,nlev,dp,T_v,phis,ptop,gz,pmid)
      use dycore, only: dycore_is          
      integer,  intent(in)  :: i0,i1,j0,j1,nlev
      real(r8), intent(in)  :: dp(i0:i1,j0:j1,nlev)               !          
      real(r8), intent(in)  :: T_v(i0:i1,j0:j1,nlev)  
      real(r8), intent(in)  :: phis(i0:i1,j0:j1)
+     real(r8), intent(in)  :: ptop          
      real(r8), intent(out) :: gz(i0:i1,j0:j1,nlev)               !
      real(r8), optional, intent(out) :: pmid(i0:i1,j0:j1,nlev)   !
-     real(r8), optional, intent(in)  :: pmid_in(i0:i1,j0:j1,nlev)    !
-     real(r8), optional, intent(in)  :: ptop
+
 
      real(r8), dimension(i0:i1,j0:j1,nlev)   :: pmid_local
      real(r8), dimension(i0:i1,j0:j1,nlev+1) :: pint
      real(r8), dimension(i0:i1,j0:j1)        :: gzh, Rdry_tv
      integer :: k
 
-     if (.not.present(pmid_in)) then
-       if (.not.present(ptop)) call endrun('get_gz_given_dp_Tv_R: ptop required for pmid calcuation')         
-       call get_pmid_from_dp(i0,i1,j0,j1,nlev,dp,ptop,pmid_local,pint)
-     else
-       pmid_local = pmid_in
-     end if
+     call get_pmid_from_dp(i0,i1,j0,j1,nlev,dp,ptop,pmid_local,pint)
      !
      ! integrate hydrostatic eqn
      !
@@ -1024,7 +1019,7 @@ subroutine composition_init()
        end do       
      end if
      if (present(pmid)) pmid=pmid_local
-   end subroutine get_gz_given_dp_Tv_R
+   end subroutine get_gz_given_dp_Tv
 
 
 
