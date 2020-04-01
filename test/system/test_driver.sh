@@ -73,7 +73,7 @@ SUMMARY_FILE="${SUMMARY_FILE:-`pwd -P`/cam_test_summaries}"
 
 # These variables may be modified by script switches (./test_driver.sh -h)
 cam_email_summary=false
-cesm_test_suite="aux_cam1"
+cesm_test_suite="aux_cam"
 force=false
 gmake_j=0
 interactive=false
@@ -198,11 +198,10 @@ case $hostname in
     CAM_RESTART_THREADS=1
 
     mach_workspace="/glade/scratch"
-    CESM_BASELINE="/glade/p/cesm/amwg/cesm_baselines"
 
     # Check for CESM baseline directory
-    if [ ! -d "${CESM_BASELINE}/$( basename  ${BL_TESTDIR%"_${CAM_FC,,}"} )" ] && [ -n $BL_TESTDIR ]; then
-        echo "CESM_BASELINE ${CESM_BASELINE}/$( basename  ${BL_TESTDIR%"_${CAM_FC,,}"} ) not found .  Check BL_TESTDIR for correct tag name."
+    if [ ! -d "${BL_TESTDIR}" ] && [ -n "{$BL_TESTDIR}" ]; then
+        echo "CESM_BASELINE ${BL_TESTDIR} not found .  Check BL_TESTDIR for correct tag name."
         exit
     fi 
 
@@ -361,11 +360,10 @@ EOF
     fi
 
     mach_workspace="/scratch/cluster"
-    CESM_BASELINE="/fs/cgd/csm/ccsm_baselines"
 
     # Check for CESM baseline directory
-    if [ ! -d "${CESM_BASELINE}/$( basename  ${BL_TESTDIR%"_${CAM_FC,,}"} )" ] && [ -n $BL_TESTDIR ]; then
-        echo "CESM_BASELINE ${CESM_BASELINE}/$( basename  ${BL_TESTDIR%"_${CAM_FC,,}"} ) not found .  Check BL_TESTDIR for correct tag name."
+    if [ ! -d "${BL_TESTDIR}" ] && [ -n "{$BL_TESTDIR}" ]; then
+        echo "CESM_BASELINE ${BL_TESTDIR} not found .  Check BL_TESTDIR for correct tag name."
         exit
     fi 
 
@@ -503,13 +501,12 @@ submit_script_cime="${submit_script}"
     fi
 
     mach_workspace="/scratch/cluster"
-    CESM_BASELINE="/fs/cgd/csm/ccsm_baselines"
 
     # Check for CESM baseline directory
-    if [ ! -d "${CESM_BASELINE}/$( basename  ${BL_TESTDIR%"_${CAM_FC,,}"} )" ] && [ -n $BL_TESTDIR ]; then
-        echo "CESM_BASELINE ${CESM_BASELINE}/$( basename  ${BL_TESTDIR%"_${CAM_FC,,}"} ) not found .  Check BL_TESTDIR for correct tag name."
+    if [ ! -d "${BL_TESTDIR}" ] && [ -n "{$BL_TESTDIR}" ]; then
+        echo "CESM_BASELINE ${BL_TESTDIR} not found .  Check BL_TESTDIR for correct tag name."
         exit
-    fi
+    fi 
 
 
 ##vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv writing to batch script vvvvvvvvvvvvvvvvvvv
@@ -639,13 +636,12 @@ fi
     fi
 
     mach_workspace="/scratch/cluster"
-    CESM_BASELINE="/fs/cgd/csm/ccsm_baselines"
 
     # Check for CESM baseline directory
-    if [ ! -d "${CESM_BASELINE}/$( basename  ${BL_TESTDIR%"_${CAM_FC,,}"} )" ] && [ -n $BL_TESTDIR ]; then
-        echo "CESM_BASELINE ${CESM_BASELINE}/$( basename  ${BL_TESTDIR%"_${CAM_FC,,}"} ) not found .  Check BL_TESTDIR for correct tag name."
+    if [ ! -d "${BL_TESTDIR}" ] && [ -n "{$BL_TESTDIR}" ]; then
+        echo "CESM_BASELINE ${BL_TESTDIR} not found .  Check BL_TESTDIR for correct tag name."
         exit
-    fi
+    fi 
 
 ##vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv writing to batch script vvvvvvvvvvvvvvvvvvv
 
