@@ -73,7 +73,7 @@ SUMMARY_FILE="${SUMMARY_FILE:-`pwd -P`/cam_test_summaries}"
 
 # These variables may be modified by script switches (./test_driver.sh -h)
 cam_email_summary=false
-cesm_test_suite="aux_cam"
+cesm_test_suite="aux_cam1"
 force=false
 gmake_j=0
 interactive=false
@@ -198,7 +198,7 @@ case $hostname in
     CAM_RESTART_THREADS=1
 
     mach_workspace="/glade/scratch"
-    CESM_BASELINE="/glade/p/cesmdata/cseg/cesm_baselines"
+    CESM_BASELINE="/glade/p/cesm/amwg/cesm_baselines"
 
     # Check for CESM baseline directory
     if [ ! -d "${CESM_BASELINE}/$( basename  ${BL_TESTDIR%"_${CAM_FC,,}"} )" ] && [ -n $BL_TESTDIR ]; then
@@ -1088,12 +1088,19 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
     else
       testargs="${testargs} --xml-compiler intel"
     fi
-    if [ -n "${BATCH}" ]; then
-      testargs="${testargs} --queue ${CAM_BATCHQ} --test-root ${cesm_testdir} --output-root ${cesm_testdir}"
-    else
-      testargs="${testargs} --test-root ${cesm_testdir} --output-root ${cesm_testdir}"
-      testargs="${testargs} --no-batch"
-    fi
+    case $hostname in
+        # cheyenne
+        chey* | r* )
+          testargs="${testargs} --queue ${CAM_BATCHQ} --test-root ${cesm_testdir} --output-root ${cesm_testdir}"
+          ;;
+        *)
+          if [ -n "${BATCH}" || "${HOSTNAME}" in ch* r* ]; then
+            testargs="${testargs} --queue ${CAM_BATCHQ} --test-root ${cesm_testdir} --output-root ${cesm_testdir}"
+          else
+            testargs="${testargs} --test-root ${cesm_testdir} --output-root ${cesm_testdir}"
+            testargs="${testargs} --no-batch"
+          fi
+    esac
     if [ -n "${CAM_ACCOUNT}" ]; then
       testargs="${testargs} --project ${CAM_ACCOUNT}"
     fi
