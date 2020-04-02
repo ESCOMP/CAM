@@ -1034,7 +1034,7 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
   fi
 
   for cesm_test in ${cesm_test_suite}; do
-    testargs="--xml-category ${cesm_test} --xml-machine ${cesm_test_mach}"
+    testargs="--xml-category ${cesm_test} --xml-machine ${cesm_test_mach} --retry 2"
 
     if [ -n "${use_existing}" ]; then
       test_id="${use_existing}"
