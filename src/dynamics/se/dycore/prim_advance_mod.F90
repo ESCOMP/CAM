@@ -2293,7 +2293,7 @@ contains
 !      kbot = k_bot
 !    else
 !      kbot = 48!xxx nlev
-      kbot = 48!xxx nlev
+      kbot = nlev
 !    endif
     if ( ptop < 2.0_r8 ) then
       t_min = t1_min

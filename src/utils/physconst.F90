@@ -860,8 +860,8 @@ subroutine composition_init()
        pint_local(:,:,k) = dp(:,:,k-1)+pint_local(:,:,k-1)
      end do
 
-!     if (dycore_is ('LR').or.dycore_is ('SE')) then
-     if (dycore_is ('LR')) then       
+     if (dycore_is ('LR').or.dycore_is ('SE')) then
+!     if (dycore_is ('LR')) then       
        do k=1,nlev
          pmid(:,:,k) = dp(:,:,k)/(log(pint_local(:,:,k+1))-log(pint_local(:,:,k)))
        end do
@@ -1003,8 +1003,8 @@ subroutine composition_init()
      ! integrate hydrostatic eqn
      !
      gzh = phis
-     if (dycore_is ('LR')) then
-!     if (dycore_is ('LR').or.dycore_is ('SE')) then       
+!     if (dycore_is ('LR')) then
+     if (dycore_is ('LR').or.dycore_is ('SE')) then       
        do k=nlev,1,-1
          Rdry_tv(:,:) = Rair*T_v(:,:,k)
          gz(:,:,k) = gzh(:,:)+Rdry_tv(:,:)*(1.0_r8-pint(:,:,k)/pmid_local(:,:,k))
@@ -1427,7 +1427,7 @@ subroutine composition_init()
      sum_cp = thermodynamic_active_species_cp(0)
      do nq=1,thermodynamic_active_species_num
        itrac = idx_local(nq)              
-       sum_cp(:,:,:)      = sum_cp(:,:,:)+thermodynamic_active_species_cp(nq)*tracer(:,:,:,itrac)
+       sum_cp(:,:,:)      = sum_cp(:,:,:)+thermodynamic_active_species_cp(nq)*tracer(:,:,:,itrac)*factor(:,:,:)
      end do
      if (inv_cp) then
        cp=sum_species/sum_cp

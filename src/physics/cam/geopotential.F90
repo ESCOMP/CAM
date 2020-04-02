@@ -77,7 +77,7 @@ contains
     rog(:ncol,:) = rair(:ncol,:) / gravit
 
 ! Set dynamics flag
-    fvdyn = dycore_is ('LR')
+    fvdyn = dycore_is ('LR').or.dycore_is ('SE')
 
 ! The surface height is zero by definition.
     do i = 1,ncol
