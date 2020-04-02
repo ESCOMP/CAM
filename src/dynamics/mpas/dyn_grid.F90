@@ -716,6 +716,9 @@ subroutine setup_time_invariant(fh_ini)
    ! but in future, some of these fields could be computed
    ! here based on other fields that were read
 
+   use mpas_rbf_interpolation, only : mpas_rbf_interp_initialize
+   use mpas_vector_reconstruction, only : mpas_init_reconstruct
+
    ! Arguments
    type(file_desc_t), pointer :: fh_ini
 
@@ -749,6 +752,12 @@ subroutine setup_time_invariant(fh_ini)
                      nVertLevelsSolve, plev
       call endrun(routine//': ERROR: number levels in IC file does not match plev.')
    end if
+
+   ! Initialize fields needed for reconstruction of cell-centered winds from edge-normal winds
+   ! Note: This same pair of calls happens a second time later in the initialization of
+   !       the MPAS-A dycore (in atm_mpas_init_block), but the redundant calls do no harm
+   call mpas_rbf_interp_initialize(meshPool)
+   call mpas_init_reconstruct(meshPool)
 
    ! Compute the zeta coordinate at layer interfaces and midpoints.  Store
    ! in arrays using CAM vertical index order for use in CAM coordinate objects.

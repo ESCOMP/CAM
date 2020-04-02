@@ -584,6 +584,9 @@ end subroutine dyn_final
 subroutine read_inidat(dyn_in)
 
    use cam_mpas_subdriver, only : domain_ptr, cam_mpas_update_halo, cam_mpas_cell_to_edge_winds
+   use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_array
+   use mpas_derived_types, only : mpas_pool_type
+   use mpas_vector_reconstruction, only : mpas_reconstruct
 
    ! Set initial conditions.  Either from analytic expressions or read from file.
 
@@ -628,6 +631,13 @@ subroutine read_inidat(dyn_in)
    real(r8), allocatable :: pmid(:,:)    ! midpoint pressures
 
    real(r8) :: dz, h
+
+   type(mpas_pool_type), pointer :: mesh_pool
+   type(mpas_pool_type), pointer :: diag_pool
+
+   real(r8), pointer :: uReconstructX(:,:)
+   real(r8), pointer :: uReconstructY(:,:)
+   real(r8), pointer :: uReconstructZ(:,:)
 
    character(len=*), parameter :: subname = 'dyn_comp:read_inidat'
    !--------------------------------------------------------------------------------------
@@ -776,6 +786,27 @@ subroutine read_inidat(dyn_in)
       call endrun(subname//': reading initial data not implemented')
    end if
 
+   !
+   ! Reconstruct ux and uy from uperp
+   !
+   nullify(mesh_pool)
+   nullify(diag_pool)
+   call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'mesh', mesh_pool)
+   call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'diag', diag_pool)
+
+   ! The uReconstruct{X,Y,Z} arguments to mpas_reconstruct are required, but these
+   ! field already exist in the diag pool
+   nullify(uReconstructX)
+   nullify(uReconstructY)
+   nullify(uReconstructZ)
+   call mpas_pool_get_array(diag_pool, 'uReconstructX', uReconstructX)
+   call mpas_pool_get_array(diag_pool, 'uReconstructY', uReconstructY)
+   call mpas_pool_get_array(diag_pool, 'uReconstructZ', uReconstructZ)
+
+   call mpas_reconstruct(mesh_pool, uperp, &
+                         uReconstructX, uReconstructY, uReconstructZ, &
+                         ux, uy &
+                        )
 
 end subroutine read_inidat
 
