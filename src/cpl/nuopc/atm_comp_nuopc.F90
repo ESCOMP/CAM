@@ -10,6 +10,7 @@ module atm_comp_nuopc
   use NUOPC               , only : NUOPC_CompAttributeGet, NUOPC_Advertise
   use NUOPC               , only : NUOPC_SetAttribute, NUOPC_CompAttributeGet, NUOPC_CompAttributeSet
   use NUOPC_Model         , only : model_routine_SS           => SetServices
+  use NUOPC_Model         , only : SetVM
   use NUOPC_Model         , only : model_label_Advance        => label_Advance
   use NUOPC_Model         , only : model_label_DataInitialize => label_DataInitialize
   use NUOPC_Model         , only : model_label_SetRunClock    => label_SetRunClock
@@ -52,7 +53,7 @@ module atm_comp_nuopc
   private ! except
 
   public :: SetServices
-
+  public :: SetVM
   !--------------------------------------------------------------------------
   ! Private interfaces
   !--------------------------------------------------------------------------
