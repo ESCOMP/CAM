@@ -984,7 +984,7 @@ subroutine ma_convproc_tend(                                           &
    integer :: kactcntb        ! Counter for activation diagnostic output
    integer :: kactfirst       ! Lowest layer with activation (= cloudbase)
    integer :: kbot            ! Cloud-flux bottom layer for current i (=mx(i))
-   integer :: kbot_prevap     ! Lowest layer for doing resuspension from evaporating precip ! REASTER 08/05/2015
+   integer :: kbot_prevap     ! Lowest layer for doing resuspension from evaporating precip
    integer :: ktop            ! Cloud-flux top    layer for current i (=jt(i))
                               ! Layers between kbot,ktop have mass fluxes
                               !    but not all have cloud water, because the
@@ -1213,14 +1213,9 @@ i_loop_main_aa: &
 ! Zero out values at "top of cloudtop", "base of cloudbase"
       ktop = jt(i)
       kbot = mx(i)
-! REASTER 08/05/2015 BEGIN
 ! usually the updraft ( & downdraft) start ( & end ) at kbot=pver, but sometimes kbot < pver
 ! transport, activation, resuspension, and wet removal only occur between kbot >= k >= ktop
 ! resuspension from evaporating precip can occur at k > kbot when kbot < pver
-! in the first version of this routine, the precp evap resusp tendencies for k > kbot were ignored, 
-!    but that is now fixed
-! this was a minor bug with quite minor affects on the aerosol, 
-!    because convective precip evap is (or used to be) much less than stratiform precip evap )
       kbot_prevap = pver
       mu_i(:) = 0.0_r8
       md_i(:) = 0.0_r8

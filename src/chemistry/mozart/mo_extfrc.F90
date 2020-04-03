@@ -13,6 +13,7 @@ module mo_extfrc
   use cam_logfile,   only : iulog
   use tracer_data,   only : trfld,trfile
   use mo_constants,  only : avogadro
+  use ioFileMod,     only : getfil
 
   implicit none
 
@@ -101,6 +102,7 @@ contains
     character(len=256) :: tmp_string = ' '
     character(len=32) :: xchr = ' '
     real(r8) :: xdbl
+    character(len=256) :: locfn
 
     !-----------------------------------------------------------------------
  
@@ -248,7 +250,8 @@ contains
 
        forcings(m)%nsectors = 0
 
-       call cam_pio_openfile ( ncid, trim(forcings(m)%filename), PIO_NOWRITE)
+       call getfil (forcings(m)%filename, locfn, 0)
+       call cam_pio_openfile ( ncid, trim(locfn), PIO_NOWRITE)
        ierr = pio_inquire (ncid, nVariables=nvars)
 
        call pio_seterrorhandling(ncid, PIO_BCAST_ERROR)
