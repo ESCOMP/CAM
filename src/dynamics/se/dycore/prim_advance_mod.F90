@@ -782,6 +782,7 @@ contains
     !
     !***************************************************************
     !
+    dt=dt2/hypervis_subcycle_sponge
     call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dBS')
     if (nu_top>0) then
       kblk = ksponge_end    

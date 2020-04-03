@@ -2882,9 +2882,9 @@ $nl->set_variable_value('phys_ctl_nl', 'cam_chempkg', $cam_chempkg);
 
 
 # Check the snapshot settings.
-check_snapshot_settings();
 add_default($nl, 'cam_snapshot_before_num');
 add_default($nl, 'cam_snapshot_after_num');
+check_snapshot_settings();
 
 # Tropopause climatology
 if (!$simple_phys) {
@@ -3051,10 +3051,13 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_C2rt');
    add_default($nl, 'clubb_C2thl');
    add_default($nl, 'clubb_C2rtthl');
+   add_default($nl, 'clubb_C4');
    add_default($nl, 'clubb_C7');
    add_default($nl, 'clubb_C7b');
    add_default($nl, 'clubb_C8');
    add_default($nl, 'clubb_C8b');
+   add_default($nl, 'clubb_c_K9');
+   add_default($nl, 'clubb_nu9');
    add_default($nl, 'clubb_c_K10');
    add_default($nl, 'clubb_c_K10h');
    add_default($nl, 'clubb_do_liqsupersat');
@@ -3066,6 +3069,7 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_Skw_denom_coef');
    add_default($nl, 'clubb_skw_max_mag');
    add_default($nl, 'clubb_up2_vp2_factor');
+   add_default($nl, 'clubb_C_wp2_splat');
 
    add_default($nl, 'clubb_l_brunt_vaisala_freq_moist');
    add_default($nl, 'clubb_l_call_pdf_closure_twice');
@@ -3085,6 +3089,8 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_l_use_ice_latent');
    add_default($nl, 'clubb_l_use_thvm_in_bv_freq');
    add_default($nl, 'clubb_l_vert_avg_closure');
+   add_default($nl, 'clubb_l_diag_Lscale_from_tau');
+   add_default($nl, 'clubb_l_damp_wp2_using_em');
 }
 
 # Tuning for wet scavenging of modal aerosols
@@ -4509,9 +4515,6 @@ sub check_snapshot_settings {
     my $cam_snapshot_after_num   =  $nl->get_variable_value('phys_ctl_nl', 'cam_snapshot_after_num');
     my $microphys = $cfg->get('microphys');
 
-    # Set the empty_htapes always to false for snapshot runs
-    $nl->set_variable_value('cam_history_nl', 'empty_htapes', $FALSE);
-
     if (($cam_snapshot_before_num >= 0) or ($cam_snapshot_after_num >= 0)) {
         print  "cam_snapshot settings\n";
         print "cam_take_snapshot_before = $cam_take_snapshot_before\n";
@@ -4521,6 +4524,9 @@ sub check_snapshot_settings {
     } else {
         return;  # No snapshots are requested
     }
+
+    # Set the empty_htapes always to false for snapshot runs
+    $nl->set_variable_value('cam_history_nl', 'empty_htapes', $FALSE);
 
     # Check for "take_snapshot" and history file number both being set or not set.  Only one set is an error
     if ( ((defined $cam_take_snapshot_before ) xor  (defined $cam_snapshot_before_num))) {

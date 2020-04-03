@@ -20,6 +20,9 @@ module subcol_SILHS
    use clubb_api_module, only: &
         hmp2_ip_on_hmm2_ip_slope_type, &
         hmp2_ip_on_hmm2_ip_intrcpt_type
+
+   use silhs_api_module, only: &
+        silhs_config_flags_type
 #endif
 #endif
    use physconst,     only: cpair, gravit, latvap, latice, rair
@@ -100,6 +103,8 @@ module subcol_SILHS
 #ifdef SILHS
     type(hmp2_ip_on_hmm2_ip_slope_type) :: subcol_SILHS_hmp2_ip_on_hmm2_ip_slope    
     type(hmp2_ip_on_hmm2_ip_intrcpt_type) :: subcol_SILHS_hmp2_ip_on_hmm2_ip_intrcpt
+
+    type(silhs_config_flags_type) :: silhs_config_flags
 #endif
 #endif
 
@@ -233,17 +238,20 @@ contains
 #ifdef CLUBB_SGS
 #ifdef SILHS
       use clubb_api_module,        only: core_rknd, &
-                                         l_prescribed_avg_deltaz, &
-                                         l_diagnose_correlations, &
-                                         l_calc_w_corr, l_use_cloud_cover, &
-                                         l_fix_w_chi_eta_correlations, l_const_Nc_in_cloud, &
                                          pdf_dim, &
                                          setup_corr_varnce_array_api, &
                                          init_pdf_hydromet_arrays_api, &
                                          Ncnp2_on_Ncnm2, &
                                          set_clubb_debug_level_api
 
-    use silhs_api_module, only :         l_lh_importance_sampling
+      use silhs_api_module,        only: set_default_silhs_config_flags_api, &
+                                         initialize_silhs_config_flags_type_api, &
+                                         print_silhs_config_flags_api
+
+      use spmd_utils,              only: iam
+
+      use clubb_intr,              only: init_clubb_config_flags, &
+                                         clubb_config_flags
 
 #endif
 #endif
@@ -272,6 +280,23 @@ contains
           iiNi,         & ! Hydrometeor array index for ice concentration, Ni
           iiNg            ! Hydrometeor array index for graupel concentration, Ng
 
+      integer :: &
+          cluster_allocation_strategy
+
+      logical :: &
+          l_lh_importance_sampling, &
+          l_Lscale_vert_avg, &
+          l_lh_straight_mc, &
+          l_lh_clustered_sampling, &
+          l_rcm_in_cloud_k_lh_start, &
+          l_random_k_lh_start, &
+          l_max_overlap_in_cloud, &
+          l_lh_instant_var_covar_src, &
+          l_lh_limit_weights, &
+          l_lh_var_frac, &
+          l_lh_normalize_weights
+
+
       ! Set CLUBB's debug level
       ! This is called in module clubb_intr; no need to do it here.
 !      call set_clubb_debug_level_api( 0 )
@@ -279,14 +304,44 @@ contains
       !-------------------------------
       ! CLUBB-SILHS Parameters (global module variables)
       !-------------------------------
+      call set_default_silhs_config_flags_api( cluster_allocation_strategy, &
+                                               l_lh_importance_sampling, &
+                                               l_Lscale_vert_avg, &
+                                               l_lh_straight_mc, &
+                                               l_lh_clustered_sampling, &
+                                               l_rcm_in_cloud_k_lh_start, &
+                                               l_random_k_lh_start, &
+                                               l_max_overlap_in_cloud, &
+                                               l_lh_instant_var_covar_src, &
+                                               l_lh_limit_weights, &
+                                               l_lh_var_frac, &
+                                               l_lh_normalize_weights )
 
-      l_fix_w_chi_eta_correlations = .true.
+      call init_clubb_config_flags( clubb_config_flags ) ! In/Out
+      clubb_config_flags%l_fix_w_chi_eta_correlations = .true.
       l_lh_importance_sampling = .true.
-      l_diagnose_correlations = .false.
-      l_calc_w_corr = .false.
+      clubb_config_flags%l_diagnose_correlations = .false.
+      clubb_config_flags%l_calc_w_corr = .false.
 !      l_prescribed_avg_deltaz = .false.
-      l_use_cloud_cover = .false.
-      l_const_Nc_in_cloud = .true.
+      clubb_config_flags%l_use_cloud_cover = .false.
+      clubb_config_flags%l_const_Nc_in_cloud = .true.
+
+      call initialize_silhs_config_flags_type_api( cluster_allocation_strategy, &
+                                                   l_lh_importance_sampling, &
+                                                   l_Lscale_vert_avg, &
+                                                   l_lh_straight_mc, &
+                                                   l_lh_clustered_sampling, &
+                                                   l_rcm_in_cloud_k_lh_start, &
+                                                   l_random_k_lh_start, &
+                                                   l_max_overlap_in_cloud, &
+                                                   l_lh_instant_var_covar_src, &
+                                                   l_lh_limit_weights, &
+                                                   l_lh_var_frac, &
+                                                   l_lh_normalize_weights, &
+                                                   silhs_config_flags )
+
+      ! Print the SILHS configurable flags
+      call print_silhs_config_flags_api( iulog, silhs_config_flags ) ! Intent(in)
 
       ! Values from the namelist
       docldfracscaling = subcol_SILHS_use_clear_col
@@ -384,7 +439,8 @@ contains
 
 
       call setup_corr_varnce_array_api( corr_file_path_cloud, corr_file_path_below, &
-                                    iunit )
+                                        iunit, &
+                                        clubb_config_flags%l_fix_w_chi_eta_correlations )
       call freeunit(iunit) 
 
       !-------------------------------
@@ -524,9 +580,10 @@ contains
                                          read_parameters_api
    
       use silhs_api_module, only :       generate_silhs_sample_api, & ! Ncn_to_Nc, &
-                                         lh_clipped_variables_type, &
                                          clip_transform_silhs_output_api, &
                                          est_kessler_microphys_api
+
+      use clubb_intr, only:              clubb_config_flags
 #endif
 #endif
       
@@ -618,7 +675,6 @@ contains
       !Output from generate_silhs_sample
       !--------------
       real(r8), allocatable, dimension(:,:,:) :: X_nl_all_levs ! Sample transformed to normal-lognormal
-      real(r8), allocatable, dimension(:,:,:) :: X_nl_all_levs_raw ! Raw (unclipped) SILHS samples
       real(r8), allocatable, dimension(:,:)   :: lh_sample_point_weights ! Subcolumn weights
       integer,  allocatable, dimension(:,:)    :: X_mixt_comp_all_levs ! Which Mixture Component
 
@@ -636,8 +692,12 @@ contains
       !----------------
       ! Output from clip_transform_silhs_output_api
       !----------------
-      type(lh_clipped_variables_type), dimension(:,:), allocatable :: &
-        lh_clipped_vars
+      real( kind = core_rknd ), dimension(:,:), allocatable :: &
+        lh_rt_clipped,  & ! rt generated from silhs sample points
+        lh_thl_clipped, & ! thl generated from silhs sample points
+        lh_rc_clipped,  & ! rc generated from silhs sample points
+        lh_rv_clipped,  & ! rv generated from silhs sample points
+        lh_Nc_clipped     ! Nc generated from silhs sample points
 
       logical, parameter :: &
         l_use_Ncn_to_Nc = .true.  ! Whether to call Ncn_to_Nc (.true.) or not (.false.);
@@ -905,8 +965,11 @@ contains
          allocate( lh_sample_point_weights(pverp-top_lev+1,num_subcols) )
          allocate( X_mixt_comp_all_levs(pverp-top_lev+1,num_subcols) )
          allocate( X_nl_all_levs(pverp-top_lev+1,num_subcols,pdf_dim) )
-         allocate( X_nl_all_levs_raw(pverp-top_lev+1,num_subcols,pdf_dim) )
-         allocate( lh_clipped_vars(pverp-top_lev+1,num_subcols) )
+         allocate( lh_rt_clipped(pverp-top_lev+1,num_subcols) )
+         allocate( lh_thl_clipped(pverp-top_lev+1,num_subcols) )
+         allocate( lh_rc_clipped(pverp-top_lev+1,num_subcols) )
+         allocate( lh_rv_clipped(pverp-top_lev+1,num_subcols) )
+         allocate( lh_Nc_clipped(pverp-top_lev+1,num_subcols) )
          ! Allocate arrays for output to either history files or for updating state_sc
          allocate( rc_all_points(pverp-top_lev+1, num_subcols) )
          allocate( rain_all_pts(pverp-top_lev+1, num_subcols) )
@@ -943,18 +1006,23 @@ contains
          wphydrometp = 0.0_r8
      
          ! make the call
-         call setup_pdf_parameters_api( pverp-top_lev+1, pdf_dim, ztodt, &             ! In
-                                        Nc_in_cloud, rcm_in, cld_frac_in, &            ! In
-                                        ice_supersat_frac_in, hydromet, wphydrometp, & ! In
-                                        corr_array_n_cloud, corr_array_n_below, &      ! In
-                                        pdf_params_chnk(1:pverp-top_lev+1,i,lchnk), &  ! In
-                                        l_stats_samp, &    ! In
-                                        hydrometp2, &                                  ! Out
-                                        mu_x_1, mu_x_2, &                              ! Out
-                                        sigma_x_1, sigma_x_2, &                        ! Out
-                                        corr_array_1, corr_array_2, &                  ! Out
-                                        corr_cholesky_mtx_1, corr_cholesky_mtx_2, &    ! Out
-                                        hydromet_pdf_params )                          ! Out
+         call setup_pdf_parameters_api( pverp-top_lev+1, pdf_dim, ztodt, &                 ! In
+                                        Nc_in_cloud, rcm_in, cld_frac_in, &                ! In
+                                        ice_supersat_frac_in, hydromet, wphydrometp, &     ! In
+                                        corr_array_n_cloud, corr_array_n_below, &          ! In
+                                        pdf_params_chnk(i,lchnk), l_stats_samp, &          ! In
+                                        clubb_config_flags%l_use_precip_frac, &            ! In
+                                        clubb_config_flags%l_predict_upwp_vpwp, &          ! In
+                                        clubb_config_flags%l_diagnose_correlations, &      ! In
+                                        clubb_config_flags%l_calc_w_corr, &                ! In
+                                        clubb_config_flags%l_const_Nc_in_cloud, &          ! In
+                                        clubb_config_flags%l_fix_w_chi_eta_correlations, & ! In
+                                        hydrometp2, &                                      ! Out
+                                        mu_x_1, mu_x_2, &                                  ! Out
+                                        sigma_x_1, sigma_x_2, &                            ! Out
+                                        corr_array_1, corr_array_2, &                      ! Out
+                                        corr_cholesky_mtx_1, corr_cholesky_mtx_2, &        ! Out
+                                        hydromet_pdf_params )                              ! Out
 
          ! Calculate radiation only once in a while
          ! l_rad_itime = (mod( itime, floor(dt_rad/dt_main) ) == 0 .or. itime == 1)  
@@ -1004,32 +1072,38 @@ contains
          call generate_silhs_sample_api &
               ( iter, pdf_dim, num_subcols, sequence_length, pverp-top_lev+1, & ! In
                 l_calc_weights_all_levs_itime, &                   ! In 
-                pdf_params_chnk(1:pverp-top_lev+1,i,lchnk), delta_zm, rcm_in, Lscale, & ! In
+                pdf_params_chnk(i,lchnk), delta_zm, rcm_in, Lscale, & ! In
                 rho_ds_zt, mu_x_1, mu_x_2, sigma_x_1, sigma_x_2, & ! In 
                 corr_cholesky_mtx_1, corr_cholesky_mtx_2, &        ! In
-                hydromet_pdf_params, &                             ! In
-                X_nl_all_levs_raw, X_mixt_comp_all_levs, &         ! Out
+                hydromet_pdf_params, silhs_config_flags, &         ! In
+                clubb_config_flags%l_uv_nudge, &                   ! In
+                clubb_config_flags%l_tke_aniso, &                  ! In
+                clubb_config_flags%l_standard_term_ta, &           ! In
+                clubb_config_flags%l_single_C2_Skw, &              ! In
+                X_nl_all_levs, X_mixt_comp_all_levs, &             ! Out
                 lh_sample_point_weights)                           ! Out
 
          ! Extract clipped variables from subcolumns
          call clip_transform_silhs_output_api( pverp-top_lev+1, num_subcols, &   ! In
                                                pdf_dim, hydromet_dim, & ! In
                                                X_mixt_comp_all_levs, & ! In
-                                               X_nl_all_levs_raw, &    ! In
-                                               pdf_params_chnk(1:pverp-top_lev+1,i,lchnk), & ! In
+                                               X_nl_all_levs, &        ! In
+                                               pdf_params_chnk(i,lchnk), & ! In
                                                l_use_Ncn_to_Nc, & ! In
-                                               lh_clipped_vars, & ! Out
-                                               X_nl_all_levs )    ! Out
+                                               lh_rt_clipped, lh_thl_clipped, & ! Out
+                                               lh_rc_clipped, lh_rv_clipped, & ! Out
+                                               lh_Nc_clipped ) ! Out
 
          ! Test subcolumns by comparing to an estimate of kessler autoconversion
          call est_kessler_microphys_api &
               ( pverp-top_lev+1, num_subcols, pdf_dim, X_nl_all_levs, &
-                pdf_params_chnk(1:pverp-top_lev+1,i,lchnk), &
+                pdf_params_chnk(i,lchnk), &
                 rcm_in, cld_frac_in, X_mixt_comp_all_levs, lh_sample_point_weights, &
+                silhs_config_flags%l_lh_importance_sampling, &
                 lh_AKm, AKm, AKstd, AKstd_cld, AKm_rcm, AKm_rcc, lh_rcm_avg)
 
          ! Calc column liquid water for output (rcm)
-         rc_all_points = lh_clipped_vars(:,:)%rc
+         rc_all_points = lh_rc_clipped(:,:)
 
          if ( iiPDF_rr > 0 ) then
              ! Calc subcolumn precipitating liq water for output (rrm)
@@ -1064,7 +1138,7 @@ contains
          ! Calc subcolumn vert velocity for output (wm)
          w_all_points = real( X_nl_all_levs(:,:,iiPDF_w), kind=r8 )
          ! Calc cloud liq water number conc 
-         nclw_all_pts = lh_clipped_vars(:,:)%Nc
+         nclw_all_pts = lh_Nc_clipped(:,:)
          ! Calc mean liquid water potential temp for clear air
          !call THL_profile(pver, state%t(i,:), invs_exner(i,:), No_cloud, Temp_prof)
 
@@ -1101,14 +1175,14 @@ contains
          ! Updating state variables
          do k = top_lev, pverp
             do j = 1, num_subcols
-               RT_lh_out(    stncol+j,k ) = lh_clipped_vars(pverp-k+1,j)%rt
+               RT_lh_out(    stncol+j,k ) = lh_rt_clipped(pverp-k+1,j)
                RCM_lh_out(   stncol+j,k ) = rc_all_points(pverp-k+1,j)
                NCLW_lh_out(  stncol+j,k ) = nclw_all_pts(pverp-k+1,j)
                ICE_lh_out(   stncol+j,k ) = ice_all_pts(pverp-k+1,j)
                NICE_lh_out(  stncol+j,k ) = nice_all_pts(pverp-k+1,j)
 !               RVM_lh_out(j,k) = RT_lh_out(stncol+j,k)-RCM_lh_out(stncol+j,k)-ICE_lh_out(stncol+j,k)
-               RVM_lh_out(   stncol+j,k ) = lh_clipped_vars(pverp-k+1,j)%rv
-               THL_lh_out(   stncol+j,k ) = lh_clipped_vars(pverp-k+1,j)%thl
+               RVM_lh_out(   stncol+j,k ) = lh_rv_clipped(pverp-k+1,j)
+               THL_lh_out(   stncol+j,k ) = lh_thl_clipped(pverp-k+1,j)
                RAIN_lh_out(  stncol+j,k ) = rain_all_pts(pverp-k+1,j)
                NRAIN_lh_out( stncol+j,k ) = nrain_all_pts(pverp-k+1,j)
                SNOW_lh_out(  stncol+j,k ) = snow_all_pts(pverp-k+1,j)
@@ -1286,7 +1360,8 @@ contains
      
          ! Deallocate the dynamic arrays used
          deallocate( lh_sample_point_weights, X_mixt_comp_all_levs, &
-                     X_nl_all_levs, X_nl_all_levs_raw, lh_clipped_vars, &
+                     X_nl_all_levs, lh_rt_clipped, lh_thl_clipped, lh_rc_clipped, &
+                     lh_rv_clipped, lh_Nc_clipped, &
                      corr_array_1, corr_array_2, mu_x_1, mu_x_2, sigma_x_1, &
                      sigma_x_2, corr_cholesky_mtx_1, corr_cholesky_mtx_2 )
          ! deallocate( RVM_lh_out ) 
@@ -1554,10 +1629,11 @@ contains
        ! Make the call!!!!!
        call lh_microphys_var_covar_driver_api &
             ( pverp-top_lev+1, ns, ztodt, height_depndt_weights(igrdcol,1:pverp-top_lev+1,1:ns), &
-              pdf_params_chnk(1:pverp-top_lev+1,igrdcol,lchnk), &
+              pdf_params_chnk(igrdcol,lchnk), &
               rt_all_clubb(igrdcol,1:pverp-top_lev+1,1:ns), thl_all_clubb(igrdcol,1:pverp-top_lev+1,1:ns), &
               w_all_clubb(igrdcol,1:pverp-top_lev+1,1:ns), qctend_clubb(igrdcol,1:pverp-top_lev+1,1:ns), &
               qvtend_clubb(igrdcol,1:pverp-top_lev+1,1:ns), thltend_clubb(igrdcol,1:pverp-top_lev+1,1:ns), &
+              silhs_config_flags%l_lh_instant_var_covar_src, &
               rtp2_mc_zt(igrdcol,1:pverp-top_lev+1), thlp2_mc_zt(igrdcol,1:pverp-top_lev+1), &
               wprtp_mc_zt(igrdcol,1:pverp-top_lev+1), wpthlp_mc_zt(igrdcol,1:pverp-top_lev+1), &
               rtpthlp_mc_zt(igrdcol,1:pverp-top_lev+1) )
