@@ -42,6 +42,7 @@ contains
     use physconst,      only: cpair, latvap,pstd, rair, rhoh2o
     use constituents,   only: cnst_name, cnst_longname, bpcnst, apcnst
     use cam_history,    only: addfld, add_default, horiz_only
+    use cam_abortutils, only: endrun
 
       use state_converters, only: pres_to_density_dry_init
       use kessler,          only: kessler_init
@@ -69,17 +70,17 @@ contains
       if (errflg == 0) then
          call kessler_init(cpair, latvap, pstd, rhoh2o, errmsg, errflg)
       else
-         return
+         call endrun('kessler_cam_init error: Error returned from kessler_init')
       end if
       if (errflg == 0) then
          call pres_to_density_dry_init(cpair, rair, errmsg, errflg)
       else
-         return
+         call endrun('kessler_cam_init error: Error returned from pres_to_density_dry_init')
       end if
       if (errflg == 0) then
          call calc_exner_init(errmsg, errflg)
       else
-         return
+         call endrun('kessler_cam_init error: Error returned from calc_exner_init')
       end if
 
   end subroutine kessler_cam_init
@@ -101,7 +102,6 @@ contains
     use kessler,          only: kessler_run
     use state_converters, only: wet_to_dry_run
     use state_converters, only: dry_to_wet_run
-    use geopotential_t,   only: geopotential_t_run
     use state_converters, only: pres_to_density_dry_run
     use state_converters, only: temp_to_potential_temp_run
     use state_converters, only: calc_exner_run
@@ -148,7 +148,7 @@ contains
     lchnk = state%lchnk
     ncol  = state%ncol
 
-    lyr_surf = 30
+    lyr_surf = pver
     lyr_toa = 1
 
     ! initialize individual parameterization tendencies
@@ -172,38 +172,38 @@ contains
     if (errflg == 0) then
        call calc_exner_run(ncol, pver, cpair, rair, state%pmid, pk, errmsg, errflg)
     else
-       return
+       call endrun('kessler_tend error: Error returned from calc_exner_run')
     end if
     if (errflg == 0) then
        call temp_to_potential_temp_run(ncol, pver, temp, pk, th, errmsg, errflg)
     else
-       return
+       call endrun('kessler_tend error: Error returned from temp_to_potential_temp_run')
     end if
     if (errflg == 0) then
        call pres_to_density_dry_run(ncol, pver, state%pmiddry, temp, rho, errmsg, errflg)
     else
-       return
+       call endrun('kessler_tend error: Error returned from pres_to_density_dry_run')
     end if
     if (errflg == 0) then
        call wet_to_dry_run(ncol, pver, state%pdel, state%pdeldry, qv, qc, qr, errmsg, errflg)
     else
-       return
+       call endrun('kessler_tend error: Error returned from wet_to_dry_run')
     end if
     if (errflg == 0) then
        call kessler_run(ncol, pver, ztodt, lyr_surf, lyr_toa,        &
                         rho, state%zm, pk, th, qv, qc, qr, prec_sed, errmsg, errflg)
     else
-       return
+       call endrun('kessler_tend error: Error returned from kessler_run')
     end if
     if (errflg == 0) then
        call potential_temp_to_temp_run(ncol, pver, th, pk, temp, errmsg, errflg)
     else
-         return
+       call endrun('kessler_tend error: Error returned from potential_temp_to_temp_run')
     end if
     if (errflg == 0) then
        call dry_to_wet_run(ncol, pver, state%pdel, state%pdeldry, qv, qc, qr, errmsg, errflg)
     else
-       return
+       call endrun('kessler_tend error: Error returned from dry_to_wet_run')
     end if
 
     ! Back out tendencies from updated fields
