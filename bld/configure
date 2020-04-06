@@ -2811,9 +2811,7 @@ sub write_filepath
 
     if ($simple_phys) {
       print $fh "$camsrcdir/src/physics/simple\n";
-      if ($phys_pkg eq "kessler") {
-        print $fh "$camsrcdir/src/atmos_phys/kessler\n";
-      }
+      print $fh "$camsrcdir/src/atmos_phys/kessler\n";
     }
 
     if ($carma ne 'none') {
