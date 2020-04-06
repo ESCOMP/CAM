@@ -69,18 +69,21 @@ contains
 
       if (errflg == 0) then
          call kessler_init(cpair, latvap, pstd, rhoh2o, errmsg, errflg)
-      else
-         call endrun('kessler_cam_init error: Error returned from kessler_init')
+         if (errflg /=0) then
+            call endrun('kessler_cam_init error: Error returned from kessler_init: '//trim(errmsg))
+         end if
       end if
       if (errflg == 0) then
          call pres_to_density_dry_init(cpair, rair, errmsg, errflg)
-      else
-         call endrun('kessler_cam_init error: Error returned from pres_to_density_dry_init')
+         if (errflg /=0) then
+            call endrun('kessler_cam_init error: Error returned from pres_to_density_dry_init: '//trim(errmsg))
+         end if
       end if
       if (errflg == 0) then
          call calc_exner_init(errmsg, errflg)
-      else
-         call endrun('kessler_cam_init error: Error returned from calc_exner_init')
+         if (errflg /=0) then
+            call endrun('kessler_cam_init error: Error returned from calc_exner_init: '//trim(errmsg))
+         end if
       end if
 
   end subroutine kessler_cam_init
@@ -171,39 +174,46 @@ contains
     
     if (errflg == 0) then
        call calc_exner_run(ncol, pver, cpair, rair, state%pmid, pk, errmsg, errflg)
-    else
-       call endrun('kessler_tend error: Error returned from calc_exner_run')
+       if (errflg /=0) then
+          call endrun('kessler_tend error: Error returned from calc_exner_run: '//trim(errmsg))
+       end if
     end if
     if (errflg == 0) then
        call temp_to_potential_temp_run(ncol, pver, temp, pk, th, errmsg, errflg)
-    else
-       call endrun('kessler_tend error: Error returned from temp_to_potential_temp_run')
+       if (errflg /=0) then
+          call endrun('kessler_tend error: Error returned from temp_to_potential_temp_run: '//trim(errmsg))
+       end if
     end if
     if (errflg == 0) then
        call pres_to_density_dry_run(ncol, pver, state%pmiddry, temp, rho, errmsg, errflg)
-    else
-       call endrun('kessler_tend error: Error returned from pres_to_density_dry_run')
+       if (errflg /=0) then
+          call endrun('kessler_tend error: Error returned from pres_to_density_dry_run: '//trim(errmsg))
+       end if
     end if
     if (errflg == 0) then
        call wet_to_dry_run(ncol, pver, state%pdel, state%pdeldry, qv, qc, qr, errmsg, errflg)
-    else
-       call endrun('kessler_tend error: Error returned from wet_to_dry_run')
+       if (errflg /=0) then
+          call endrun('kessler_tend error: Error returned from wet_to_dry_run: '//trim(errmsg))
+       end if
     end if
     if (errflg == 0) then
        call kessler_run(ncol, pver, ztodt, lyr_surf, lyr_toa,        &
                         rho, state%zm, pk, th, qv, qc, qr, prec_sed, errmsg, errflg)
-    else
-       call endrun('kessler_tend error: Error returned from kessler_run')
+       if (errflg /=0) then
+          call endrun('kessler_tend error: Error returned from kessler_run: '//trim(errmsg))
+       end if
     end if
     if (errflg == 0) then
        call potential_temp_to_temp_run(ncol, pver, th, pk, temp, errmsg, errflg)
-    else
-       call endrun('kessler_tend error: Error returned from potential_temp_to_temp_run')
+       if (errflg /=0) then
+          call endrun('kessler_tend error: Error returned from potential_temp_to_temp_run: '//trim(errmsg))
+       end if
     end if
     if (errflg == 0) then
        call dry_to_wet_run(ncol, pver, state%pdel, state%pdeldry, qv, qc, qr, errmsg, errflg)
-    else
-       call endrun('kessler_tend error: Error returned from dry_to_wet_run')
+       if (errflg /=0) then
+          call endrun('kessler_tend error: Error returned from dry_to_wet_run: '//trim(errmsg))
+       end if
     end if
 
     ! Back out tendencies from updated fields
