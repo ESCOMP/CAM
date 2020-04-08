@@ -34,7 +34,7 @@ help () {
   echo "${hprefix}   'env var1=setting var2=setting '"
   echo ""
   echo "Supported ENVIRONMENT variables"
-  echo "BL_TESTDIR:        Default = none (used to set CESM baseline compare dir)"
+  echo "BL_TESTDIR:        Default = none (used to set baseline compare dir)"
   echo "CAM_ACCOUNT:       Default = none"
   echo "CAM_BATCHQ:        Default = machine dependent"
   echo "CAM_FC:            Default = machine dependent"
@@ -91,7 +91,11 @@ while [ "${1:0:1}" == "-" ]; do
             if [ $# -lt 2 ]; then
                 perr "${1} requires a directory name)"
             fi
-            archive_dir="${2}"
+            if [ -z "$BL_TESTDIR" ]; then
+                echo "\$BL_TESTDIR needs to be set when using --archive-cime."
+                exit 1
+            fi
+            archive_dir="${BL_TESTDIR%/*}/${2}"
             shift
             ;;
 
@@ -230,10 +234,6 @@ export ACCOUNT=$CAM_ACCOUNT
 # them to set the pe_layout
 export CAM_THREADS=$CAM_THREADS
 export CAM_TASKS=$CAM_TASKS
-
-##Cheyenne hacks to avoid MPI_LAUNCH_TIMEOUT
-MPI_IB_CONGESTED=1
-MPI_LAUNCH_TIMEOUT=40
 
 source /glade/u/apps/ch/opt/lmod/7.5.3/lmod/lmod/init/sh
 
@@ -1065,7 +1065,7 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
     fi
     testargs="${testargs} --test-id ${test_id}"
     if [ -n "${BL_TESTDIR}" ]; then
-      testargs="${testargs} --compare $( basename ${BL_TESTDIR} )"
+      testargs="${testargs} --compare ${BL_TESTDIR} "
     fi
     if [ -n "${use_existing}" ]; then
       testargs="${testargs} --use-existing"
