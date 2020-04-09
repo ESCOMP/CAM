@@ -254,6 +254,12 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
    ! to the block data structure.  Then derive the tendencies required by
    ! MPAS.
 
+   use cam_mpas_subdriver, only : domain_ptr
+   use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_field, mpas_pool_get_array
+   use mpas_field_routines, only : mpas_allocate_scratch_field, mpas_deallocate_scratch_field
+   use mpas_derived_types, only : mpas_pool_type, field2DReal
+   use time_manager, only : get_step_size
+
    ! Arguments
    type(physics_state), intent(inout) :: phys_state(begchunk:endchunk)
    type(physics_tend ), intent(inout) :: phys_tend(begchunk:endchunk)
@@ -264,17 +270,21 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
    integer :: i, ig, m, nb, nblk, ncols
 
    real(r8) :: factor
+   real(r8) :: dt_phys
 
    ! Variables from dynamics import container
    integer :: nCellsSolve
+   integer :: nCells
+   integer :: nEdgesSolve
    integer :: index_qv
 
    real(r8), pointer :: tracers(:,:,:)
 
    ! CAM physics output redistributed to blocks.
    real(r8), allocatable :: t_tend(:,:)
-   real(r8), allocatable :: u_tend(:,:)
-   real(r8), allocatable :: v_tend(:,:)
+   real(r8), allocatable :: qv_tend(:,:)
+   real(r8), pointer :: u_tend(:,:)
+   real(r8), pointer :: v_tend(:,:)
 
 
    integer :: pgcols(pcols)
@@ -284,20 +294,37 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
 
    real(r8), allocatable, dimension(:) :: bbuffer, cbuffer ! transpose buffers
 
+   type (mpas_pool_type), pointer :: tend_physics
+   type (field2DReal), pointer :: tend_uzonal, tend_umerid
+
    character(len=*), parameter :: subname = 'dp_coupling::p_d_coupling'
    !----------------------------------------------------------------------------
 
    MPAS_DEBUG_WRITE(1, 'begin '//subname)
 
    nCellsSolve = dyn_in % nCellsSolve
+   nCells      = dyn_in % nCells
    index_qv    = dyn_in % index_qv
 
    tracers => dyn_in % tracers
 
-   allocate( &
-      t_tend(pver,nCellsSolve), &
-      u_tend(pver,nCellsSolve), &
-      v_tend(pver,nCellsSolve)  )
+   allocate( t_tend(pver,nCellsSolve) )
+   allocate( qv_tend(pver,nCellsSolve) )
+
+   nullify(tend_physics)
+   call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'tend_physics', tend_physics)
+
+   nullify(tend_uzonal)
+   nullify(tend_umerid)
+   call mpas_pool_get_field(tend_physics, 'tend_uzonal', tend_uzonal)
+   call mpas_pool_get_field(tend_physics, 'tend_umerid', tend_umerid)
+   call mpas_allocate_scratch_field(tend_uzonal)
+   call mpas_allocate_scratch_field(tend_umerid)
+   call mpas_pool_get_array(tend_physics, 'tend_uzonal', u_tend)
+   call mpas_pool_get_array(tend_physics, 'tend_umerid', v_tend)
+
+   ! Physics coupling interval, used to compute tendency of qv
+   dt_phys = get_step_size()
 
    call t_startf('pd_copy')
    if (local_dp_map) then
@@ -323,8 +350,14 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
                do m = 1, pcnst
                   ! *** will need conversion between CAM and MPAS tracer indices
                   if (cnst_type(m) == 'wet') then
+                     if (m == index_qv) then
+                        qv_tend(kk,i) = (phys_state(lchnk)%q(icol,k,m)*factor - tracers(m,kk,i)) / dt_phys
+                     end if
                      tracers(m,kk,i) = phys_state(lchnk)%q(icol,k,m)*factor
                   else
+                     if (m == index_qv) then
+                        qv_tend(kk,i) = (phys_state(lchnk)%q(icol,k,m) - tracers(m,kk,i)) / dt_phys
+                     end if
                      tracers(m,kk,i) = phys_state(lchnk)%q(icol,k,m)
                   end if
                end do
@@ -393,6 +426,9 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
                v_tend(kk,i) = bbuffer(bpter(icol,k)+2)
 
                do m = 1, pcnst
+                  if (m == index_qv) then
+                     qv_tend(kk,i) = (bbuffer(bpter(icol,k)+2+m) - tracers(m,kk,i)) / dt_phys
+                  end if
                   tracers(m,kk,i) = bbuffer(bpter(icol,k)+2+m)
                end do
 
@@ -407,9 +443,11 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
    call t_stopf('pd_copy')
 
    call t_startf('derived_tend')
-   call derived_tend(nCellsSolve, t_tend, u_tend, v_tend, dyn_in)
+   call derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, qv_tend, dyn_in)
    call t_stopf('derived_tend')
 
+   call mpas_deallocate_scratch_field(tend_uzonal)
+   call mpas_deallocate_scratch_field(tend_umerid)
 
 end subroutine p_d_coupling
 
@@ -561,44 +599,129 @@ end subroutine derived_phys
 
 !=========================================================================================
 
-subroutine derived_tend(nCellsSolve, t_tend, u_tend, v_tend, dyn_in)
+subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, qv_tend, dyn_in)
 
    ! Derive the physics tendencies required by MPAS from the tendencies produced by
    ! CAM's physics package.
 
+   use cam_mpas_subdriver, only : cam_mpas_cell_to_edge_winds, cam_mpas_update_halo
+   use mpas_constants, only : R_v => rv, R_d => rgas
+
    ! Arguments
    integer,             intent(in)    :: nCellsSolve
-   real(r8),            intent(in)    :: t_tend(pver,nCellsSolve) ! physics dtdt
-   real(r8),            intent(in)    :: u_tend(pver,nCellsSolve) ! physics dudt
-   real(r8),            intent(in)    :: v_tend(pver,nCellsSolve) ! physics dvdt
+   integer,             intent(in)    :: nCells
+   real(r8),            intent(in)    :: t_tend(pver,nCellsSolve)  ! physics dtdt
+   real(r8),            intent(in)    :: qv_tend(pver,nCellsSolve) ! physics dqvdt
+   real(r8),            intent(inout) :: u_tend(pver,nCells+1)     ! physics dudt
+   real(r8),            intent(inout) :: v_tend(pver,nCells+1)     ! physics dvdt
    type(dyn_import_t),  intent(inout) :: dyn_in
+
 
    ! Local variables
 
-
    ! variables from dynamics import container
-   integer :: nEdgesSolve
+   integer :: nEdges
    real(r8), pointer :: ru_tend(:,:)
    real(r8), pointer :: rtheta_tend(:,:)
    real(r8), pointer :: rho_tend(:,:)
 
+   real(r8), pointer :: normal(:,:)
+   real(r8), pointer :: east(:,:)
+   real(r8), pointer :: north(:,:)
+   integer, pointer :: cellsOnEdge(:,:)
+
+   real(r8), pointer :: theta(:,:)
+   real(r8), pointer :: exner(:,:)
+   real(r8), pointer :: rho_zz(:,:)
+   real(r8), pointer :: tracers(:,:,:)
+
+   integer :: index_qv
+
+   ! Constants
+   real(r8), parameter :: Rv_over_Rd = R_v / R_d
 
    character(len=*), parameter :: subname = 'dp_coupling:derived_tend'
    !----------------------------------------------------------------------------
 
    MPAS_DEBUG_WRITE(1, 'begin '//subname)
 
-   nEdgesSolve = dyn_in % nEdgesSolve
+   nEdges = dyn_in % nEdges
    ru_tend     => dyn_in % ru_tend
    rtheta_tend => dyn_in % rtheta_tend
    rho_tend    => dyn_in % rho_tend
 
-   ! insert code to derive MPAS dycore tendencies from CAM physics tendencies.
-   ! set to zero for now...
+   east        => dyn_in % east
+   north       => dyn_in % north
+   normal      => dyn_in % normal
+   cellsOnEdge => dyn_in % cellsOnEdge
 
-   ru_tend     = 0._r8
-   rtheta_tend = 0._r8
-   rho_tend    = 0._r8
+   theta       => dyn_in % theta
+   exner       => dyn_in % exner
+   rho_zz      => dyn_in % rho_zz
+   tracers     => dyn_in % tracers
+
+   index_qv    =  dyn_in % index_qv
+
+
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+   ! Momentum tendency
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+
+   !
+   ! Couple u and v tendencies with rho_zz
+   !
+   u_tend(:,:) = u_tend(:,:) * rho_zz(:,:)
+   v_tend(:,:) = v_tend(:,:) * rho_zz(:,:)
+
+   !
+   ! Update halos for u_tend and v_tend
+   !
+   call cam_mpas_update_halo('tend_uzonal')   ! dyn_in % u_tend
+   call cam_mpas_update_halo('tend_umerid')   ! dyn_in % v_tend
+
+   !
+   ! Project u and v tendencies to edge normal tendency
+   !
+   call cam_mpas_cell_to_edge_winds(nEdges, u_tend, v_tend, east, north, normal, &
+                                    cellsOnEdge, ru_tend)
+
+   !
+   ! Update halo for edge normal tendency
+   !
+   call cam_mpas_update_halo('tend_ru_physics')
+
+
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+   ! Temperature tendency
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+
+   !
+   ! Convert temperature tendency to potential temperature tendency
+   !
+   rtheta_tend(:,1:nCellsSolve) = t_tend(:,1:nCellsSolve) / exner(:,1:nCellsSolve)
+
+   !
+   ! Couple theta tendency with rho_zz
+   !
+   rtheta_tend(:,1:nCellsSolve) = rtheta_tend(:,1:nCellsSolve) * rho_zz(:,1:nCellsSolve)
+
+   !
+   ! Modify with moisture terms
+   !
+   rtheta_tend(:,1:nCellsSolve) = rtheta_tend(:,1:nCellsSolve) * (1.0_r8 + Rv_over_Rd * tracers(index_qv,:,1:nCellsSolve))
+   rtheta_tend(:,1:nCellsSolve) = rtheta_tend(:,1:nCellsSolve) + Rv_over_Rd * theta(:,1:nCellsSolve) * qv_tend(:,1:nCellsSolve)
+
+   !
+   ! Update halo for rtheta_m tendency
+   !
+   call cam_mpas_update_halo('tend_rtheta_physics')
+
+
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+   ! Density tendency
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+
+   rho_tend = 0.0_r8
 
 end subroutine derived_tend
 

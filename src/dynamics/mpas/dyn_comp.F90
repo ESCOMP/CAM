@@ -117,6 +117,7 @@ type dyn_import_t
    ! State that may be directly derived from dycore prognostic state
    !
    real(r8), dimension(:,:),   pointer :: theta   ! Potential temperature [K]        (nver,ncol)
+   real(r8), dimension(:,:),   pointer :: exner   ! Exner function [-]               (nver,ncol)
    real(r8), dimension(:,:),   pointer :: rho     ! Dry density [kg/m^3]             (nver,ncol)
    real(r8), dimension(:,:),   pointer :: ux      ! Zonal veloc at center [m/s]      (nver,ncol)
    real(r8), dimension(:,:),   pointer :: uy      ! Meridional veloc at center [m/s] (nver,ncol)
@@ -177,6 +178,7 @@ type dyn_export_t
    ! State that may be directly derived from dycore prognostic state
    !
    real(r8), dimension(:,:),   pointer :: theta   ! Potential temperature [K]        (nver,ncol)
+   real(r8), dimension(:,:),   pointer :: exner   ! Exner function [-]               (nver,ncol)
    real(r8), dimension(:,:),   pointer :: rho     ! Dry density [kg/m^3]             (nver,ncol)
    real(r8), dimension(:,:),   pointer :: ux      ! Zonal veloc at center [m/s]      (nver,ncol)
    real(r8), dimension(:,:),   pointer :: uy      ! Meridional veloc at center [m/s] (nver,ncol)
@@ -363,6 +365,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    call mpas_pool_get_array(mesh_pool,  'cellsOnEdge',            dyn_in % cellsOnEdge)
 
    call mpas_pool_get_array(diag_pool,  'theta',                  dyn_in % theta)
+   call mpas_pool_get_array(diag_pool,  'exner',                  dyn_in % exner)
    call mpas_pool_get_array(diag_pool,  'rho',                    dyn_in % rho)
    call mpas_pool_get_array(diag_pool,  'uReconstructZonal',      dyn_in % ux)
    call mpas_pool_get_array(diag_pool,  'uReconstructMeridional', dyn_in % uy)
@@ -396,6 +399,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    dyn_out % fzp   => dyn_in % fzp
 
    dyn_out % theta => dyn_in % theta
+   dyn_out % exner => dyn_in % exner
    dyn_out % rho   => dyn_in % rho
    dyn_out % ux    => dyn_in % ux
    dyn_out % uy    => dyn_in % uy
@@ -435,6 +439,7 @@ subroutine dyn_run(dyn_in, dyn_out)
    use mpas_timekeeping, only : MPAS_TimeInterval_type, MPAS_set_timeInterval
    use mpas_pool_routines, only : mpas_pool_get_config
    use time_manager, only : get_step_size
+   use mpas_constants, only : R_v => rv, R_d => rgas
 
    ! Advances the dynamics state provided in dyn_in by one physics
    ! timestep to produce dynamics state held in dyn_out.
@@ -449,6 +454,11 @@ subroutine dyn_run(dyn_in, dyn_out)
    real(r8), pointer :: mpas_dt
    real(r8) :: dt_ratio
    character(len=128) :: errmsg
+
+   integer :: index_qv
+
+   ! Constants
+   real(r8), parameter :: Rv_over_Rd = R_v / R_d
 
    character(len=*), parameter :: subname = 'dyn_comp::dyn_run'
    !----------------------------------------------------------------------------
@@ -495,6 +505,13 @@ subroutine dyn_run(dyn_in, dyn_out)
    !
    call cam_mpas_run(integrationLength)
 
+   !
+   ! Update diagnostic fields in dynamics export state
+   ! NB: these same fields are pointed to by the dynamics import state
+   !
+   index_qv = dyn_out % index_qv
+   dyn_out % theta(:,:) = dyn_out % theta_m(:,:) / (1.0_r8 + Rv_over_Rd * dyn_out % tracers(index_qv,:,:))
+
 end subroutine dyn_run
 
 !=========================================================================================
@@ -539,6 +556,7 @@ subroutine dyn_final(dyn_in, dyn_out)
    nullify(dyn_in % normal)
    nullify(dyn_in % cellsOnEdge)
    nullify(dyn_in % theta)
+   nullify(dyn_in % exner)
    nullify(dyn_in % rho)
    nullify(dyn_in % ux)
    nullify(dyn_in % uy)
@@ -567,6 +585,7 @@ subroutine dyn_final(dyn_in, dyn_out)
    nullify(dyn_out % fzm)
    nullify(dyn_out % fzp)
    nullify(dyn_out % theta)
+   nullify(dyn_out % exner)
    nullify(dyn_out % rho)
    nullify(dyn_out % ux)
    nullify(dyn_out % uy)
