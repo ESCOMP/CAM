@@ -71,7 +71,7 @@ public :: &
    dyn_grid_get_colndx, &
    physgrid_copy_attributes_d
 
-! vertical reference heights (m)
+! vertical reference heights (m) in CAM top to bottom order.
 real(r8) :: zw(plevp), zw_mid(plev)
 
 integer ::      &
@@ -161,10 +161,10 @@ subroutine dyn_grid_init()
       write(iulog,'(a)')' Reference Layer Locations: '
       write(iulog,'(a)')' index      height (m)              pressure (hPa) '
       do k= 1, plev
-         write(iulog,9830) k, zw(k), pref_edge(k)
-         write(iulog,9840)    zw_mid(k), pref_mid(k)
+         write(iulog,9830) k, zw(k), pref_edge(k)/100._r8
+         write(iulog,9840)    zw_mid(k), pref_mid(k)/100._r8
       end do
-      write(iulog,9830) plevp, zw(plevp), pref_edge(plevp)
+      write(iulog,9830) plevp, zw(plevp), pref_edge(plevp)/100._r8
    end if
 
    ! Query global grid dimensions from MPAS
@@ -825,9 +825,9 @@ subroutine define_cam_grids()
    allocate(gidx(nCellsSolve))
    gidx = indexToCellID(1:nCellsSolve)
 
-   lat_coord => horiz_coord_create('lat', 'ncol', nCells_g, 'latitude',      &
+   lat_coord => horiz_coord_create('latCell', 'nCells', nCells_g, 'latitude',      &
           'degrees_north', 1, nCellsSolve, latCell(1:nCellsSolve)*rad2deg, map=gidx)
-   lon_coord => horiz_coord_create('lon', 'ncol', nCells_g, 'longitude',     &
+   lon_coord => horiz_coord_create('lonCell', 'nCells', nCells_g, 'longitude',     &
           'degrees_east', 1, nCellsSolve, lonCell(1:nCellsSolve)*rad2deg, map=gidx)
  
    ! Map for cell centers grid
@@ -844,7 +844,7 @@ subroutine define_cam_grids()
    allocate(area_unit(nCellsSolve))
    area_unit = areaCell(1:nCellsSolve) / 6371229.0_r8**2.0_r8
    call cam_grid_attribute_register('mpas_cell', 'area', 'cell areas (radian^2)',  &
-          'ncol', area_unit, gidx)
+          'nCells', area_unit, gidx)
 
    ! gidx can be deallocated.  Values are copied into the coordinate and attribute objects.
    deallocate(gidx)
@@ -873,9 +873,9 @@ subroutine define_cam_grids()
    allocate(gidx(nEdgesSolve))
    gidx = indexToEdgeID(1:nEdgesSolve)
 
-   lat_coord => horiz_coord_create('lat_edge', 'nedge', nEdges_g, 'latitude',      &
+   lat_coord => horiz_coord_create('latEdge', 'nEdges', nEdges_g, 'latitude',      &
           'degrees_north', 1, nEdgesSolve, latEdge(1:nEdgesSolve)*rad2deg, map=gidx)
-   lon_coord => horiz_coord_create('lon_edge', 'nedge', nEdges_g, 'longitude',     &
+   lon_coord => horiz_coord_create('lonEdge', 'nEdges', nEdges_g, 'longitude',     &
           'degrees_east', 1, nEdgesSolve, lonEdge(1:nEdgesSolve)*rad2deg, map=gidx)
  
    ! Map for edge node grid

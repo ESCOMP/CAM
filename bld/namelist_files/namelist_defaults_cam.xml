@@ -188,6 +188,8 @@
 <ncdata dyn="se" hgrid="ne30np4"  nlev="70" sim_year="1850">atm/waccm/ic/waccm5_1850_ne30np4_L70_0001-01-11-00000_c151217.nc</ncdata>
 <ncdata dyn="se" hgrid="ne30np4"  nlev="70"                >atm/waccm/ic/fw2000_ne30np4_L70_c181221.nc</ncdata>
 
+<ncdata hgrid="mpasa480" nlev="26" >atm/cam/inic/mpas/mpasa480_L26_v6.1_bwave.nc</ncdata>
+
 <!-- Topography -->
 <bnd_topo hgrid="256x512" >atm/cam/topo/topo-from-cami_0000-01-01_256x512_L26_c030918.nc</bnd_topo>
 <bnd_topo hgrid="128x256" >atm/cam/topo/USGS-gtopo30_128x256_c050520.nc</bnd_topo>
@@ -241,6 +243,7 @@
 <use_topo_file aquaplanet="1"     > .false. </use_topo_file>
 <use_topo_file phys="held_suarez" > .false. </use_topo_file>
 <use_topo_file analytic_ic="1"    > .false. </use_topo_file>
+<use_topo_file dyn="mpas"         > .false. </use_topo_file>
 
 <!-- Mesh files for refined SE grids -->
 <se_mesh_file> none </se_mesh_file>

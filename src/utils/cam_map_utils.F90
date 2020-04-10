@@ -552,11 +552,13 @@ contains
     integer,       optional,   intent(in)    :: dest_in(:)
 
     ! Local variables
+    integer                                  :: ndest
     integer                                  :: d(max_dests)
 
     if (associated(this%map)) then
       if (present(dest_in)) then
-        d = dest_in
+        ndest = size(dest_in)
+        d(:ndest) = dest_in(:ndest)
       else
         d = this%dest
       end if

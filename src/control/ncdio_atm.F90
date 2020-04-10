@@ -19,6 +19,7 @@ module ncdio_atm
   use cam_abortutils, only: endrun
   use scamMod,        only: scmlat,scmlon,single_column
   use cam_logfile,    only: iulog
+  use string_utils,   only: to_lower
   !
   ! !PUBLIC TYPES:
   implicit none
@@ -525,6 +526,7 @@ contains
     character(len=*), parameter :: subname='INFLD_REAL_2D_3D' ! subroutine name
     character(len=128)        :: errormsg
     character(len=PIO_MAX_NAME) :: field_dnames(2)
+    character(len=PIO_MAX_NAME) :: file_dnames(3)
 
     ! For SCAM
     real(r8)                  :: closelat, closelon
@@ -574,7 +576,8 @@ contains
     !
     ! Check if field is on file; get netCDF variable id
     !
-    call cam_pio_check_var(ncid, varname, varid, ndims, dimids, dimlens, readvar_tmp)
+    call cam_pio_check_var(ncid, varname, varid, ndims, dimids, dimlens, &
+       readvar_tmp, dimnames=file_dnames)
 
     ! If field is on file:
     !
@@ -606,7 +609,7 @@ contains
       else
          ! Check that the number of columns in the file matches the number of
          ! columns in the grid object.
-         if (dimlens(1) /= grid_dimlens(1)) then
+         if (dimlens(1) /= grid_dimlens(1) .and. dimlens(2) /= grid_dimlens(1)) then
             readvar = .false.
             return
          end if
@@ -614,7 +617,7 @@ contains
         ! Check to make sure that the 3rd dimension is time
         if (ndims == 3) then
           ierr = pio_inq_dimname(ncid, dimids(3), tmpname)
-          if (trim(tmpname) /= 'time') then
+          if (to_lower(trim(tmpname)) /= 'time') then
             call endrun(trim(subname)//': dimension mismatch for '//trim(varname))
           end if
         end if
@@ -640,7 +643,7 @@ contains
       else
         ! All distributed array processing
         call cam_grid_get_decomp(grid_id, arraydimsize, dimlens(1:2),        &
-             pio_double, iodesc, field_dnames=field_dnames)
+             pio_double, iodesc, field_dnames=field_dnames, file_dnames=file_dnames(1:2))
         call pio_read_darray(ncid, varid, iodesc, field, ierr)
       end if
 
