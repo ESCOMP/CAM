@@ -9,7 +9,7 @@ module atm_import_export
   use ESMF            , only : operator(/=), operator(==)
   use shr_kind_mod    , only : r8=>shr_kind_r8, i8=>shr_kind_i8, cl=>shr_kind_cl, cs=>shr_kind_cs, cx=>shr_kind_cx
   use shr_sys_mod     , only : shr_sys_abort
-  use atm_shr_methods , only : chkerr
+  use nuopc_shr_methods , only : chkerr
   use cam_logfile     , only : iulog
   use srf_field_check , only : set_active_Sl_ram1
   use srf_field_check , only : set_active_Sl_fv

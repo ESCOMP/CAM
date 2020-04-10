@@ -31,8 +31,8 @@ module atm_comp_nuopc
   use time_manager        , only : get_curr_calday, advance_timestep, get_curr_date, get_nstep, get_step_size
   use atm_import_export   , only : advertise_fields, realize_fields
   use atm_import_export   , only : import_fields, export_fields
-  use atm_shr_methods     , only : chkerr, state_setscalar, state_getscalar, state_diagnose, alarmInit
-  use atm_shr_methods     , only : set_component_logging, get_component_instance, log_clock_advance
+  use nuopc_shr_methods   , only : chkerr, state_setscalar, state_getscalar, state_diagnose, alarmInit
+  use nuopc_shr_methods   , only : set_component_logging, get_component_instance, log_clock_advance
   use ioFileMod
   use perf_mod            , only : t_startf, t_stopf
   use ppgrid              , only : pcols, begchunk, endchunk
