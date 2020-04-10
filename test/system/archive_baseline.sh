@@ -87,7 +87,8 @@ case $hostname in
       CAM_FC="PGI"
     fi
     test_file_list="tests_pretag_hobart_${CAM_FC,,}"
-    baselinedir="/fs/cgd/csm/models/atm/cam/pretag_bl/$1_${CAM_FC,,}"
+    cam_tag=$1_${CAM_FC,,}
+    baselinedir="/fs/cgd/csm/models/atm/cam/pretag_bl/$cam_tag"
   ;;
 
   iz*)
@@ -96,7 +97,8 @@ case $hostname in
       CAM_FC="PGI"
     fi
     test_file_list="tests_pretag_izumi_${CAM_FC,,}"
-    baselinedir="/fs/cgd/csm/models/atm/cam/pretag_bl/$1_${CAM_FC,,}"
+    cam_tag=$1_${CAM_FC,,}
+    baselinedir="/fs/cgd/csm/models/atm/cam/pretag_bl/$cam_tag"
   ;;
 
   ch*)
@@ -105,44 +107,38 @@ case $hostname in
       CAM_FC="INTEL"
     fi
     test_file_list="tests_pretag_cheyenne"
-    baselinedir="/glade/p/cesm/amwg/cam_baselines/$1"
+    cam_tag=$1
+    baselinedir="/glade/p/cesm/amwg/cesm_baselines/$cam_tag"
   ;;
 
   * ) echo "ERROR: machine $hostname not currently supported"; exit 1 ;;
 esac
 
-if [ -n "$CESM_TESTDIR" ]; then
-
-    echo " "
-    case $hostname in
-	ch*)
-	    echo "CESM Archiving to /glade/p/cesm/amwg/cesm_baselines/$1"
-            ../../cime/scripts/Tools/bless_test_results -p -t '' -c '' -r $CESM_TESTDIR --baseline-root /glade/p/cesm/amwg/cesm_baselines -b $1 -f -s
-	    ;;
-
-	hobart)
-	    echo "CESM Archiving to /fs/cgd/csm/models/atm/cam/cesm_baselines/$1"
-            ../../cime/scripts/Tools/bless_test_results -p -t '' -c '' -r $CESM_TESTDIR -b $1 -f -s
-	    ;;
-	izumi)
-	    echo "CESM Archiving to /fs/cgd/csm/models/atm/cam/cesm_baselines/$1"
-            ../../cime/scripts/Tools/bless_test_results -p -t '' -c '' -r $CESM_TESTDIR -b $1 -f -s
-	    ;;
-    esac
-    echo " "
-
-    ../../cime/scripts/Tools/bless_test_results -p -t '' -c '' -r $CESM_TESTDIR -b $1 -f -s
-fi
-
-echo
-echo "Archiving to ${baselinedir}"
-echo
 if [ -d ${baselinedir} ]; then
    echo "ERROR: Baseline $baselinedir already exists."
    exit 1
 fi
 
-mkdir $baselinedir
+if [ -n "$CESM_TESTDIR" ]; then
+
+    echo " "
+    echo "Making baselinedir 1"
+    mkdir $baselinedir
+    root_baselinedir=`dirname $baselinedir`
+    echo "CESM Archiving to $root_baselinedir/$cam_tag"
+    ../../cime/scripts/Tools/bless_test_results -p -t '' -c '' -r $CESM_TESTDIR --baseline-root $root_baselinedir -b $cam_tag -f -s
+
+    echo " "
+fi
+
+echo
+echo "Archiving to ${baselinedir}"
+echo
+
+if [ ! -d $baselinedir ]; then
+     echo "Making baselinedir 2"
+     mkdir $baselinedir
+fi
 
 if [ ! -d ${baselinedir} ]; then
    echo "ERROR: Failed to make ${baselinedir}"
