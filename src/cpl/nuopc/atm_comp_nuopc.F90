@@ -396,17 +396,9 @@ contains
     !----------------------------------------------------------------------------
     ! determine instance information
     !----------------------------------------------------------------------------
-    call ESMF_AttributeGet(gcomp, name="inst_suffix", isPresent=isPresent, rc=rc)
+    call get_component_instance(gcomp, inst_suffix, inst_index, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    if (isPresent) then
-       call NUOPC_CompAttributeGet(gcomp, name="inst_suffix", value=inst_suffix, rc=rc)
-       if (ChkErr(rc,__LINE__,u_FILE_u)) return
-       cvalue = inst_suffix(2:)
-       read(cvalue, *) inst_index
-    else
-       inst_suffix = ''
-       inst_index = 1
-    end if
+
     inst_name = 'ATM'//inst_suffix
     ! Set filename specifier for restart surface file
     ! (%c=caseid, $y=year, $m=month, $d=day, $s=seconds in day)
@@ -425,6 +417,7 @@ contains
     call NUOPC_CompAttributeGet(gcomp, name='MCTID', value=cvalue, rc=rc)
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
     read(cvalue,*) compid
+    print *,__FILE__,__LINE__,inst_name, inst_index, inst_suffix
     call cam_instance_init(compid, inst_name, inst_index, inst_suffix)
 
     !----------------------
