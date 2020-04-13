@@ -2436,8 +2436,10 @@ contains
     if (hist_fld_active('Ri_mixing')) then
       call outfld('Ri_mixing',RESHAPE(mixing(:,:,1:nlev)/dp_dry(:,:,:), (/npsq,nlev/)), npsq, ie)
     end if
-    if (hist_fld_active('Ri_mixing_fvm')) then
-      call outfld('Ri_mixing_fvm',RESHAPE(mixing_fvm(:,:,1:nlev)/dp_dry_fvm(:,:,:), (/nc*nc,nlev/)), nc*nc, ie)
+    if (ntrac>0) then
+      if (hist_fld_active('Ri_mixing_fvm')) then
+        call outfld('Ri_mixing_fvm',RESHAPE(mixing_fvm(:,:,1:nlev)/dp_dry_fvm(:,:,:), (/nc*nc,nlev/)), nc*nc, ie)
+      end if
     end if
     !
     !update fields
@@ -2452,13 +2454,14 @@ contains
           qdp(:,:,k,iq) = qdp(:,:,k,iq) + (qdp0(:,:,k,iq) - qdp(:,:,k,iq))*fra
         enddo
       enddo
-
-      do iq=1,ntrac
-        do k=1,kbot
-          q_fvm(:,:,k,iq) = q_fvm(:,:,k,iq) + (q0_fvm(:,:,k,iq) - q_fvm(:,:,k,iq))*fra
+      if (ntrac>0) then
+        do iq=1,ntrac
+          do k=1,kbot
+            q_fvm(:,:,k,iq) = q_fvm(:,:,k,iq) + (q0_fvm(:,:,k,iq) - q_fvm(:,:,k,iq))*fra
+          enddo
         enddo
-      enddo
-    endif
+      endif
+    end if
   end subroutine two_dz_filter
   
 end module prim_advance_mod
