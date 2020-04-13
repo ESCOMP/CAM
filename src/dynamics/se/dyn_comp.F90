@@ -572,8 +572,8 @@ subroutine dyn_init(dyn_in, dyn_out)
    integer :: m_cnst, m
 
    ! variables for initializing energy and axial angular momentum diagnostics   
-   character (len = 3), dimension(12) :: stage = (/"dED","dAF","dBD","dAD","dAR","dBF","dBH","dCH","dAH",'dBS','dAS','p2d'/)
-   character (len = 70),dimension(12) :: stage_txt = (/&
+   character (len = 3), dimension(14) :: stage = (/"dED","dAF","dBD","dAD","dAR","dBF","dBH","dCH","dAH",'dBS','dAS','dBZ','dAZ','p2d'/)
+   character (len = 70),dimension(14) :: stage_txt = (/&
       " end of previous dynamics                           ",& !dED
       " from previous remapping or state passed to dynamics",& !dAF - state in beginning of nsplit loop
       " state after applying CAM forcing                   ",& !dBD - state after applyCAMforcing
@@ -584,7 +584,9 @@ subroutine dyn_init(dyn_in, dyn_out)
       " state after hypervis but before adding heating term",& !dCH
       " state after hypervis                               ",& !dAH
       " state before sponge layer diffusion                ",& !dBS - state before sponge del2
-      " state after sponge layer diffusion                 ",& !dAS - state after sponge del2            
+      " state after sponge layer diffusion                 ",& !dAS - state after sponge del2
+      " state before two dz filter                         ",& !dBZ
+      " state after two dz filter                          ",& !dAZ
       " phys2dyn mapping errors (requires ftype-1)         " & !p2d - for assessing phys2dyn mapping errors
       /)
    character (len = 2)  , dimension(8) :: vars  = (/"WV"  ,"WL"  ,"WI"  ,"SE"   ,"KE"   ,"MR"   ,"MO"   ,"TT"   /)
@@ -756,6 +758,7 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    call addfld ('Ri_number',  (/ 'lev' /), 'A', '', 'Richardson number',     gridname='GLL')
    call addfld ('Ri_mixing',  (/ 'lev' /), 'A', '', 'Richardson number based mixing',     gridname='GLL')
+   call addfld ('Ri_mixing_fvm',  (/ 'lev' /), 'A', '', 'Richardson number based mixing',     gridname='FVM')
    call addfld ('two_dz_filter_dT',  (/ 'lev' /), 'A', '', 'Temperature increment from 2dz filter',     gridname='GLL')
    call addfld ('two_dz_filter_dU',  (/ 'lev' /), 'A', '', 'Zontal wind increment from 2dz filter',     gridname='GLL')
    call addfld ('two_dz_filter_dV',  (/ 'lev' /), 'A', '', 'Meridional wind increment from 2dz filter',     gridname='GLL')

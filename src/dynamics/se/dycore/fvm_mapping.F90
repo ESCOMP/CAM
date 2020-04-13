@@ -24,7 +24,7 @@ module fvm_mapping
   private
 
   public :: phys2dyn_forcings_fvm, dyn2phys, dyn2phys_vector, dyn2phys_all_vars,dyn2fvm_mass_vars
-  public :: phys2dyn,fvm2dyn
+  public :: phys2dyn,fvm2dyn,dyn2fvm
   save
   integer                                            :: save_max_overlap
   real(kind=r8), allocatable, dimension(:,:,:,:,:)   :: save_air_mass_overlap
@@ -416,7 +416,8 @@ contains
              inv_darea_dp_fvm,q_gll(:,:,k,m_cnst))
       end do
     end do
-  end subroutine dyn2fvm_mass_vars
+  end subroutine dyn2fvm_mass_vars  
+  
   !
   ! this subroutine assumes that the fvm halo has already been filled
   ! (if nc/=fv_nphys)

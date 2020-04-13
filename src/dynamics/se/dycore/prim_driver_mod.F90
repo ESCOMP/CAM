@@ -280,6 +280,22 @@ contains
     call vertical_remap(hybrid,elem,fvm,hvcoord,dt_remap,tl%np1,np1_qdp,nets,nete)
     call t_stopf('vertical_remap')
 
+    call t_startf('two_dz_filter')
+    call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%np1,np1_qdp,'dBZ')        
+!    if (ntrac>0) then
+!      do ie=nets,nete
+!        call two_dz_filter(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp),elem(ie)%state%dp3d(:,:,:,tl%np1),elem(ie)%state%T(:,:,:,tl%np1),&
+!             elem(ie)%state%v(:,:,:,:,tl%np1),dt_remap,ie,&
+!             metdet=elem(ie)%metdet, dp_dry_fvm=fvm(ie)%dp_fvm(1:nc,1:nc,:),q_fvm=fvm(ie)%c(1:nc,1:nc,:,:))
+!      end do      
+!    else
+!      do ie=nets,nete
+!        call two_dz_filter(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp),elem(ie)%state%dp3d(:,:,:,tl%np1),elem(ie)%state%T(:,:,:,tl%np1),&
+!             elem(ie)%state%v(:,:,:,:,tl%np1),dt_remap,ie)
+!      end do
+!    end if
+    call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%np1,np1_qdp,'dAZ')    
+    call t_stopf('two_dz_filter')
 
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -288,13 +304,7 @@ contains
     call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%np1,np1_qdp,'dAR')
 
     if (nsubstep==nsplit) then
-      call compute_omega(hybrid,tl%np1,np1_qdp,elem,deriv,nets,nete,dt,hvcoord)
-!      do ie=nets,nete
-!        call two_dz_filter(elem(ie)%state%Qdp(:,:,:,:,np1_qdp),elem(ie)%state%dp3d(:,:,:,tl%np1),elem(ie)%state%T(:,:,:,tl%np1),&
-!             elem(ie)%state%v(:,:,:,:,tl%np1),dt,ie)
-!      end do
-      
-      
+      call compute_omega(hybrid,tl%np1,np1_qdp,elem,deriv,nets,nete,dt,hvcoord)           
     end if
 
     ! now we have:

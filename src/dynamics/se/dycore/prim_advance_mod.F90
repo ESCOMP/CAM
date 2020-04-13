@@ -2237,15 +2237,20 @@ contains
   !
   ! SE version of fv_sg_adj from FV3
   !
-  subroutine two_dz_filter(qdp,dp_dry,temp,v,dt,ie)
-    use physconst,      only: get_gz,get_Richardson_number,get_hydrostatic_static_energy
+  subroutine two_dz_filter(qdp,dp_dry,temp,v,dt,ie,metdet,dp_dry_fvm,q_fvm)
+    use physconst,      only: get_gz,get_Richardson_number,get_hydrostatic_static_energy,get_sum_species
     use physconst,      only: thermodynamic_active_species_idx_dycore    
-    use dimensions_mod, only: np, nlev, qsize, npsq
+    use dimensions_mod, only: np, nlev, qsize, npsq, nc, ntrac
     use hycoef,         only: hyai, ps0
     use cam_history,    only: outfld, hist_fld_active
-    real(kind=r8), intent(inout) :: qdp(np,np,nlev,qsize),dp_dry(np,np,nlev),temp(np,np,nlev), v(np,np,2,nlev)
+    use fvm_mapping,    only: dyn2fvm
+    real(kind=r8), intent(inout) :: qdp(np,np,nlev,qsize),temp(np,np,nlev), v(np,np,2,nlev)
+    real(kind=r8), intent(in)    :: dp_dry(np,np,nlev)
+    !
+    real(kind=r8), optional, intent(in)    :: dp_dry_fvm(nc,nc,nlev), metdet(np,np)
+    real(kind=r8), optional, intent(inout) :: q_fvm(nc,nc,nlev,ntrac)
     real(kind=r8), intent(in)    :: dt
-!    integer, optional, intent(in):: k_bot
+    !    integer, optional, intent(in):: k_bot
     integer, intent(in)          :: ie
 
     ! Values at 0 Deg C
@@ -2261,21 +2266,29 @@ contains
     real(kind=r8), dimension(np,np,nlev)  :: pmid, dp, hd
     real(kind=r8), dimension(np,np,nlev)  :: T0
     real(kind=r8), dimension(np,np,2,nlev):: v0
-    real(kind=r8), dimension(np,np,nlev,qsize)  :: q0    
+    real(kind=r8), dimension(np,np,nlev,qsize)  :: qdp0    
     real(kind=r8), dimension(np,np,nlev)  :: KE,thermalE,gz
     real(kind=r8), dimension(np,np,nlev+1):: Ri
-    real(kind=r8), dimension(np,np,nlev)  :: mixing
+    real(kind=r8), dimension(np,np,nlev)  :: mixing, sum_species
     real(kind=r8), dimension(np,np)       :: phis
     real(kind=r8) :: ptop, ri_ref,rdt, mc, T_min, T_max, ratio, h0, fra, tau
     real(kind=r8) :: k_bot!xxx
-    integer       :: i,j,k,kbot,km1,n,m,iq
-
-    tau = 10800.0_r8! should be input xxx
+    integer       :: i,j,k,kbot,km1,n,m,iq,mc_dry
+    !
+    ! vairables for mapping tracer mixing to fvm grid
+    !
+    real (kind=r8) :: mixing_fvm(nc,nc,nlev),one(np,np)
+    real (kind=r8) :: q0_fvm(nc,nc,nlev,ntrac),inv_fvm_area(nc,nc)
+    
+    tau = 3600.0_r8! should be input xxx
     fra = dt/real(tau)
     
     do iq=1,qsize
-      q0(:,:,:,iq) = qdp(:,:,:,iq)/dp_dry(:,:,:)
+      qdp0(:,:,:,iq) = qdp(:,:,:,iq)!/dp_dry(:,:,:)
     end do
+    if (ntrac>0) then
+      q0_fvm(:,:,:,:) = q_fvm(:,:,:,:)
+    end if
     v0 = v(:,:,:,:)    
     T0 = temp(:,:,:)
 
@@ -2283,9 +2296,6 @@ contains
     
     ptop = hyai(1)*ps0
     
-!    call get_virtual_theta(1,np,1,np,nlev,qsize,qdp,2,thermodynamic_active_species_idx_dycore,dp_dry,hyai(1)*ps0,temp,theta_v)
-    !    call get_gz(1,np,1,np,nlev,qsize,qdp,2,thermodynamic_active_species_idx_dycore,dp_dry,hyai(1)*ps0,temp,gz)
-
     rdt = 1./ dt
 
 !    if ( present(k_bot) ) then
@@ -2313,10 +2323,11 @@ contains
       else
         ratio = real(n)/real(m)
       endif
-      call get_Richardson_number(1,np,1,np,nlev,qsize,qdp,2,thermodynamic_active_species_idx_dycore,&
+      call get_Richardson_number(1,np,1,np,nlev,qsize,qdp0,2,thermodynamic_active_species_idx_dycore,&
            dp_dry,ptop,T0,v0,Ri,pmid=pmid,dp=dp)
-      call get_hydrostatic_static_energy(1,np,1,np,nlev,qsize,qdp,2,thermodynamic_active_species_idx_dycore,&
+      call get_hydrostatic_static_energy(1,np,1,np,nlev,qsize,qdp0,2,thermodynamic_active_species_idx_dycore,&
            dp_dry,ptop,T0,phis,v0,KE,thermalE,gz)
+      call get_sum_species(1,np,1,np,1,nlev,qsize,qdp0,thermodynamic_active_species_idx_dycore,sum_species,dp_dry=dp_dry)      
       hd(:,:,:) = thermalE(:,:,:)+KE(:,:,:)+gz(:,:,:)
       do k=kbot, 2, -1
         km1 = k-1        
@@ -2345,12 +2356,13 @@ contains
 
             if ( Ri(i,j,k) < ri_ref ) then
               ! Compute equivalent mass flux: mc              
-              mc = ratio*dp(i,j,km1)*dp(i,j,k)/(dp(i,j,km1)+dp(i,j,k))*(1._r8-max(0.0_r8,Ri(i,j,k)/ri_ref))**2
-              mixing(i,j,k) = mixing(i,j,k)+mc
+              mc            = ratio*dp(i,j,km1)*dp(i,j,k)/(dp(i,j,km1)+dp(i,j,k))*(1._r8-max(0.0_r8,Ri(i,j,k)/ri_ref))**2
+              mc_dry        = mc/sum_species(i,j,k)
+              mixing(i,j,k) = mixing(i,j,k)+mc_dry              
               do iq=1,qsize
-                h0 = mc*(q0(i,j,k,iq)-q0(i,j,km1,iq))
-                q0(i,j,km1,iq) = q0(i,j,km1,iq) + h0/dp_dry(i,j,km1)  
-                q0(i,j,k  ,iq) = q0(i,j,k  ,iq) - h0/dp_dry(i,j,k  )  
+                h0 = mc_dry*(qdp0(i,j,k,iq)/dp_dry(i,j,km1)-qdp0(i,j,km1,iq)/dp_dry(i,j,km1))
+                qdp0(i,j,km1,iq) = qdp0(i,j,km1,iq) + h0
+                qdp0(i,j,k  ,iq) = qdp0(i,j,k  ,iq) - h0
               enddo
               ! u:
               h0 = mc*(v0(i,j,1,k)-v0(i,j,1,km1))
@@ -2367,12 +2379,45 @@ contains
             endif
           enddo
         end do
-      end do
+      end do      
       !-------------- 
       ! Retrive Temp:
-      !--------------      
-      T0(:,:,:) = T0(:,:,:)*(hd(:,:,:)-gz(:,:,:)-KE(:,:,:))/thermalE(:,:,:)
+      !--------------
+      hd(:,:,:) = hd(:,:,:)*dp(:,:,:)
+      call get_Richardson_number(1,np,1,np,nlev,qsize,qdp0,2,thermodynamic_active_species_idx_dycore,&
+           dp_dry,ptop,T0,v0,Ri,pmid=pmid,dp=dp)      
+      call get_hydrostatic_static_energy(1,np,1,np,nlev,qsize,qdp0,2,thermodynamic_active_species_idx_dycore,&
+           dp_dry,ptop,T0,phis,v0,KE,thermalE,gz)
+      T0(:,:,:) = T0(:,:,:)*(hd(:,:,:)-gz(:,:,:)*dp(:,:,:)-KE(:,:,:)*dp(:,:,:))/(thermalE(:,:,:)*dp(:,:,:))
     enddo       ! n-loop
+
+    if (ntrac>0) then
+      !
+      ! do mixing on FVM variables ...
+      !
+      mixing_fvm(:,:,1) = 0.0_r8
+      one=1.0_r8
+      inv_fvm_area(:,:)= dyn2fvm(one(:,:),metdet)
+      inv_fvm_area(:,:)= 1.0_r8/inv_fvm_area(:,:)
+      
+      do k=kbot, 2, -1
+        km1 = k-1
+
+        mixing_fvm(:,:,k)= dyn2fvm(mixing(:,:,k),metdet,inv_fvm_area(:,:))
+        do iq=1,ntrac
+          do j=1,nc          
+            do i=1,nc
+              mixing_fvm(i,j,k)=MIN(MAX(mixing_fvm(i,j,k),0.0_r8),1.0_r8)
+              h0 = mixing_fvm(i,j,k)*(q0_fvm(i,j,k,iq)-q0_fvm(i,j,km1,iq))
+              q0_fvm(i,j,km1,iq) = q0_fvm(i,j,km1,iq) + h0/dp_dry_fvm(i,j,km1)  
+              q0_fvm(i,j,k  ,iq) = q0_fvm(i,j,k  ,iq) - h0/dp_dry_fvm(i,j,k  )
+            end do
+          end do
+        end do
+      enddo
+      
+    end if
+    
     if (hist_fld_active('two_dz_filter_dT')) then
       call outfld('two_dz_filter_dT',RESHAPE((T0(:,:,:)-temp(:,:,:))*fra, (/npsq,nlev/)), npsq, ie)
     end if
@@ -2389,7 +2434,10 @@ contains
       call outfld('Ri_number',RESHAPE(Ri(:,:,1:nlev), (/npsq,nlev/)), npsq, ie)
     end if
     if (hist_fld_active('Ri_mixing')) then
-      call outfld('Ri_mixing',RESHAPE(mixing(:,:,1:nlev), (/npsq,nlev/)), npsq, ie)
+      call outfld('Ri_mixing',RESHAPE(mixing(:,:,1:nlev)/dp_dry(:,:,:), (/npsq,nlev/)), npsq, ie)
+    end if
+    if (hist_fld_active('Ri_mixing_fvm')) then
+      call outfld('Ri_mixing_fvm',RESHAPE(mixing_fvm(:,:,1:nlev)/dp_dry_fvm(:,:,:), (/nc*nc,nlev/)), nc*nc, ie)
     end if
     !
     !update fields
@@ -2401,7 +2449,13 @@ contains
       enddo
       do iq=1,qsize
         do k=1,kbot
-          qdp(:,:,k,iq) = qdp(:,:,k,iq) + (q0(:,:,k,iq)*dp_dry(:,:,k) - qdp(:,:,k,iq))*fra
+          qdp(:,:,k,iq) = qdp(:,:,k,iq) + (qdp0(:,:,k,iq) - qdp(:,:,k,iq))*fra
+        enddo
+      enddo
+
+      do iq=1,ntrac
+        do k=1,kbot
+          q_fvm(:,:,k,iq) = q_fvm(:,:,k,iq) + (q0_fvm(:,:,k,iq) - q_fvm(:,:,k,iq))*fra
         enddo
       enddo
     endif

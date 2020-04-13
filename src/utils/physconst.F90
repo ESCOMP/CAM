@@ -1267,7 +1267,7 @@ subroutine composition_init()
      integer  :: nq,itrac
      
      if (present(dp_dry)) then
-       factor = dp_dry(:,:,:)
+       factor = 1.0_r8/dp_dry(:,:,:)
      else
        factor = 1.0_r8
      endif
