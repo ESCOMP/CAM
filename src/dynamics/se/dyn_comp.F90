@@ -758,7 +758,9 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    call addfld ('Ri_number',  (/ 'lev' /), 'A', '', 'Richardson number',     gridname='GLL')
    call addfld ('Ri_mixing',  (/ 'lev' /), 'A', '', 'Richardson number based mixing',     gridname='GLL')
-   call addfld ('Ri_mixing_fvm',  (/ 'lev' /), 'A', '', 'Richardson number based mixing',     gridname='FVM')
+   if (ntrac>0) then
+     call addfld ('Ri_mixing_fvm',  (/ 'lev' /), 'A', '', 'Richardson number based mixing',     gridname='FVM')
+   end if
    call addfld ('two_dz_filter_dT',  (/ 'lev' /), 'A', '', 'Temperature increment from 2dz filter',     gridname='GLL')
    call addfld ('two_dz_filter_dU',  (/ 'lev' /), 'A', '', 'Zontal wind increment from 2dz filter',     gridname='GLL')
    call addfld ('two_dz_filter_dV',  (/ 'lev' /), 'A', '', 'Meridional wind increment from 2dz filter',     gridname='GLL')
