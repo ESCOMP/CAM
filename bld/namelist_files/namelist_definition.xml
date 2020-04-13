@@ -6688,6 +6688,47 @@ Otherwise they are treated as surface emissions.
 Default: TRUE
 </entry>
 
+<entry id="ocean_salinity_file" type="char*256" input_pathname="abs" category="Ocean_emissions"
+       group="ocean_emis_nl" valid_values="" >
+File containing ocean salinity
+Default: none
+</entry>
+
+<entry id="csw_specifier" type="char*256(1000)" category="cam_chem"
+       group="chem_inparm" valid_values="" >
+List of full pathnames of surface emission datasets.
+
+The chemistry package reads in seawater concentration data from a set of netcdf files in
+units of "nanomoles per liter".  Each tracer species seawater conc is read from its
+own file as directed by the namelist variable <varname>csw_specifier</varname>.  The
+<varname>csw_specifier</varname> variable tells the model which species have seawater 
+conc and the file path for the corresponding species.  
+
+Default: set by build-namelist.
+</entry>
+
+<entry id="csw_type" type="char*32" category="cam_chem"
+       group="chem_inparm" valid_values="CYCLICAL,SERIAL,INTERP_MISSING_MONTHS,FIXED" >
+Type of time interpolation of seawater concentration datasets specified.
+Can be set to 'CYCLICAL', 'SERIAL', 'INTERP_MISSING_MONTHS', or 'FIXED'.
+by <varname>srf_emis_specifier</varname>. 
+Default: 'CYCLICAL'
+</entry>
+
+<entry id="csw_cycle_yr" type="integer" category="cam_chem"
+       group="chem_inparm" valid_values="" >
+The cycle year of the seawater concentration data
+if <varname>srf_emis_type</varname>  is 'CYCLICAL'.
+Format: YYYY
+Default: 0
+</entry>
+
+<entry id="bubble_mediated_transfer" type="logical" category="cam_chem"
+       group="chem_inparm" valid_values="" >
+Bubble-mediated sea-air transfer. See ocean_emis.F90 for details.
+Default: FALSE
+</entry>
+
 <entry id="ndep_list" type="char*16(2)" category="Nitrogen Deposition"
        group="ndep_inparm" valid_values="" >
 List of nitrogen deposition fluxes to be sent from CAM to surface models.
