@@ -530,19 +530,12 @@ subroutine get_horiz_grid_d(nxy, clat_d_out, clon_d_out, area_d_out, &
 
 end subroutine get_horiz_grid_d
 
+!=========================================================================================
 
-!-----------------------------------------------------------------------
-!  routine physgrid_copy_attributes_d
-!
-!> \brief Create list of attributes for physics grid to copy from dynamics grid
-!> \details
-!>  Create list of attributes for the physics grid that should be copied
-!>  from the corresponding grid object on the dynamics decomposition
-!>
-!>  The purpose of this routine is not entirely clear.
-!
-!-----------------------------------------------------------------------
 subroutine physgrid_copy_attributes_d(gridname, grid_attribute_names)
+
+   ! Create list of attributes for the physics grid that should be copied
+   ! from the corresponding grid object on the dynamics decomposition
 
    use cam_grid_support, only: max_hcoordname_len
 
@@ -552,14 +545,14 @@ subroutine physgrid_copy_attributes_d(gridname, grid_attribute_names)
    character(len=*), parameter :: subname = 'dyn_grid::physgrid_copy_attributes_d'
 
 
-!   MPAS_DEBUG_WRITE(0, 'begin '//subname)
-
+   ! Do not let the physics grid copy the mpas_cell "area" attribute because
+   ! it is using a different dimension name.
    gridname = 'mpas_cell'
-   allocate(grid_attribute_names(1))
-   grid_attribute_names(1) = 'area'
+   allocate(grid_attribute_names(0))
 
 end subroutine physgrid_copy_attributes_d
 
+!=========================================================================================
 
 !-----------------------------------------------------------------------
 !  routine get_dyn_grid_parm_real1d
@@ -800,7 +793,6 @@ subroutine define_cam_grids()
    real(r8), dimension(:), pointer :: latCell   ! cell center latitude (radians)
    real(r8), dimension(:), pointer :: lonCell   ! cell center longitude (radians)
    real(r8), dimension(:), pointer :: areaCell  ! cell areas in m^2
-   real(r8), dimension(:), pointer :: area_unit ! cell areas on unit sphere (radians^2)
 
    integer,  dimension(:), pointer :: indexToEdgeID ! global indices of edge nodes
    real(r8), dimension(:), pointer :: latEdge   ! edge node latitude (radians)
@@ -841,10 +833,6 @@ subroutine define_cam_grids()
    ! cell center grid
    call cam_grid_register('mpas_cell', dyn_decomp, lat_coord, lon_coord,     &
           grid_map, block_indexed=.false., unstruct=.true.)
-   allocate(area_unit(nCellsSolve))
-   area_unit = areaCell(1:nCellsSolve) / 6371229.0_r8**2.0_r8
-   call cam_grid_attribute_register('mpas_cell', 'area', 'cell areas (radian^2)',  &
-          'nCells', area_unit, gidx)
 
    ! gidx can be deallocated.  Values are copied into the coordinate and attribute objects.
    deallocate(gidx)
@@ -852,10 +840,6 @@ subroutine define_cam_grids()
    ! grid_map memory cannot be deallocated.  The cam_filemap_t object just points
    ! to it.  Pointer can be disassociated.
    nullify(grid_map) ! Map belongs to grid now
-
-   ! area_unit memory cannot be deallocated.  The cam_grid_attribute_1d_r8_t object points
-   ! to it.  Pointer can be disassociated.
-   nullify(area_unit)
 
    ! pointers to coordinate object can be nullified.  Memory is now pointed to by the
    ! grid object.
