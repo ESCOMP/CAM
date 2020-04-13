@@ -414,11 +414,12 @@ subroutine dyn_init(dyn_in, dyn_out)
    if (initial_run) then
 
       call read_inidat(dyn_in)
-      call set_base_state(dyn_in)
       call clean_iodesc_list()
 
       ! Initialize dyn_out from dyn_in since it is needed to run the physics package
       ! as part of the CAM initialization before a dycore step is taken.
+      dyn_out % ux(:,:nCellsSolve)        = dyn_in % ux(:,:nCellsSolve)
+      dyn_out % uy(:,:nCellsSolve)        = dyn_in % uy(:,:nCellsSolve)
       dyn_out % uperp(:,:nCellsSolve)     = dyn_in % uperp(:,:nCellsSolve)
       dyn_out % w(:,:nCellsSolve)         = dyn_in % w(:,:nCellsSolve)
       dyn_out % theta_m(:,:nCellsSolve)   = dyn_in % theta_m(:,:nCellsSolve)
@@ -428,6 +429,14 @@ subroutine dyn_init(dyn_in, dyn_out)
    end if
 
    call cam_mpas_init_phase4(endrun)
+
+!++dbg
+   call addfld ('u_in',   (/ 'lev' /),  'A', 'm/s', 'uperp input', gridname='mpas_edge')
+   call addfld ('w_in',   (/ 'ilev' /), 'A', 'm/s', 'w input', gridname='mpas_cell')
+   call addfld ('th_in',  (/ 'lev' /),  'A', 'K', 'theta_m input', gridname='mpas_cell')
+   call addfld ('rho_in', (/ 'lev' /),  'A', 'kg/m^3', 'rho_zz input', gridname='mpas_cell')
+   call addfld ('q_in',   (/ 'lev' /),  'A', 'kg/kg', 'qv input', gridname='mpas_cell')
+!--dbg
 
 end subroutine dyn_init
 
@@ -461,6 +470,11 @@ subroutine dyn_run(dyn_in, dyn_out)
    real(r8), parameter :: Rv_over_Rd = R_v / R_d
 
    character(len=*), parameter :: subname = 'dyn_comp::dyn_run'
+!++dbg
+integer :: i, k, kk
+integer :: nCellsSolve, nEdgesSolve
+real(r8), allocatable :: arr2d(:,:)
+!--dbg
    !----------------------------------------------------------------------------
 
    MPAS_DEBUG_WRITE(0, 'begin '//subname)
@@ -499,10 +513,60 @@ subroutine dyn_run(dyn_in, dyn_out)
       call endrun(subname//': The CAM timestep must not have a fractional part for the MPAS-A dycore at present.'// &
                   ' We should fix this.')
    end if
+!++dbg
+   nCellsSolve = dyn_in%nCellsSolve
+   nEdgesSolve = dyn_in%nEdgesSolve
 
-   !
+   allocate(arr2d(nEdgesSolve,plev))
+   do k = 1, plev
+      kk = plev - k + 1
+      do i = 1, nEdgesSolve
+         arr2d(i,k) = dyn_in%uperp(kk,i)
+      end do
+   end do
+   call outfld('u_in', arr2d, nEdgesSolve, 1)
+   deallocate(arr2d)
+
+   allocate(arr2d(nCellsSolve,plevp))
+   do k = 1, plevp
+      kk = plevp - k + 1
+      do i = 1, nCellsSolve
+         arr2d(i,k) = dyn_in%w(kk,i)
+      end do
+   end do
+   call outfld('w_in', arr2d, nCellsSolve, 1)
+   deallocate(arr2d)
+
+   allocate(arr2d(nCellsSolve,plev))
+
+   do k = 1, plev
+      kk = plev - k + 1
+      do i = 1, nCellsSolve
+         arr2d(i,k) = dyn_in%theta_m(kk,i)
+      end do
+   end do
+   call outfld('th_in', arr2d, nCellsSolve, 1)
+
+   do k = 1, plev
+      kk = plev - k + 1
+      do i = 1, nCellsSolve
+         arr2d(i,k) = dyn_in%rho_zz(kk,i)
+      end do
+   end do
+   call outfld('rho_in', arr2d, nCellsSolve, 1)
+
+   do k = 1, plev
+      kk = plev - k + 1
+      do i = 1, nCellsSolve
+         arr2d(i,k) = dyn_in%tracers(1,kk,i)
+      end do
+   end do
+   call outfld('q_in', arr2d, nCellsSolve, 1)
+
+   deallocate(arr2d)
+!--dbg
+
    ! Call the MPAS-A dycore
-   !
    call cam_mpas_run(integrationLength)
 
    !
@@ -602,18 +666,18 @@ end subroutine dyn_final
 
 subroutine read_inidat(dyn_in)
 
+   ! Set initial conditions.  Either from analytic expressions or read from file.
+
    use cam_mpas_subdriver, only : domain_ptr, cam_mpas_update_halo, cam_mpas_cell_to_edge_winds
    use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_array
    use mpas_derived_types, only : mpas_pool_type
    use mpas_vector_reconstruction, only : mpas_reconstruct
 
-   ! Set initial conditions.  Either from analytic expressions or read from file.
-
    ! arguments
    type(dyn_import_t), target, intent(inout) :: dyn_in
 
    ! Local variables
-   integer :: nCellsSolve
+   integer :: nCellsSolve, nEdgesSolve
    integer :: i, k, kk, m
 
    type(file_desc_t), pointer :: fh_ini
@@ -637,7 +701,10 @@ subroutine read_inidat(dyn_in)
    real(r8), pointer :: rho(:,:)     ! Dry density [kg/m^3]             (nver,ncol)
    real(r8), pointer :: ux(:,:)      ! Zonal veloc at center [m/s]      (nver,ncol)
    real(r8), pointer :: uy(:,:)      ! Meridional veloc at center [m/s] (nver,ncol)
+   real(r8), pointer :: theta_base(:,:)
+   real(r8), pointer :: rho_base(:,:)
 
+   integer :: ixqv
 
    integer,  allocatable :: m_ind(:)
    real(r8), allocatable :: &
@@ -648,8 +715,10 @@ subroutine read_inidat(dyn_in)
    real(r8), allocatable :: pintdry(:,:) ! dry interface pressures
    real(r8), allocatable :: pmiddry(:,:) ! dry midpoint pressures
    real(r8), allocatable :: pmid(:,:)    ! midpoint pressures
+   real(r8), allocatable :: mpas3d(:,:,:)
 
    real(r8) :: dz, h
+   logical  :: readvar
 
    type(mpas_pool_type), pointer :: mesh_pool
    type(mpas_pool_type), pointer :: diag_pool
@@ -666,18 +735,24 @@ subroutine read_inidat(dyn_in)
    fh_ini  => initial_file_get_id()
 
    nCellsSolve = dyn_in % nCellsSolve
+   nEdgesSolve = dyn_in % nEdgesSolve
+
+   ixqv        = dyn_in % index_qv
    
-   uperp    => dyn_in % uperp
-   w        => dyn_in % w
-   theta_m  => dyn_in % theta_m
-   rho_zz   => dyn_in % rho_zz
-   tracers  => dyn_in % tracers
-   zint     => dyn_in % zint
-   zz       => dyn_in % zz
-   theta    => dyn_in % theta
-   rho      => dyn_in % rho
-   ux       => dyn_in % ux
-   uy       => dyn_in % uy
+   uperp      => dyn_in % uperp
+   w          => dyn_in % w
+   theta_m    => dyn_in % theta_m
+   rho_zz     => dyn_in % rho_zz
+   tracers    => dyn_in % tracers
+
+   zint       => dyn_in % zint
+   zz         => dyn_in % zz
+   theta      => dyn_in % theta
+   rho        => dyn_in % rho
+   ux         => dyn_in % ux
+   uy         => dyn_in % uy
+   rho_base   => dyn_in % rho_base
+   theta_base => dyn_in % theta_base
 
    ! Check that number of advected tracers is consistent with MPAS.
    if (pcnst /= size(tracers, 1)) then
@@ -732,6 +807,7 @@ subroutine read_inidat(dyn_in)
       call cam_mpas_cell_to_edge_winds(dyn_in % nEdges, ux, uy, dyn_in % east, dyn_in % north, &
                                        dyn_in % normal, dyn_in % cellsOnEdge, uperp)
 
+      call cam_mpas_update_halo('u')         ! u is the name of uperp in the MPAS state pool
 
       ! Constituents
 
@@ -782,7 +858,7 @@ subroutine read_inidat(dyn_in)
 
       do i = 1, nCellsSolve
          do k = 1, plev
-            theta(k,i) = t(k,i) * (1.0e5 / pmid(k,i))**(rair/cpair)
+            theta(k,i) = t(k,i) * (1.0e5_r8 / pmid(k,i))**(rair/cpair)
             rho(k,i) = pmid(k,i) / (rair * t(k,i))
          end do
       end do
@@ -790,42 +866,121 @@ subroutine read_inidat(dyn_in)
       theta_m(:,1:nCellsSolve) = theta(:,1:nCellsSolve)    ! With no moisture, theta_m := theta
       rho_zz(:,1:nCellsSolve) = rho(:,1:nCellsSolve) / zz(:,1:nCellsSolve)
 
-      ! Update halos for initial state fields
-
-      call cam_mpas_update_halo('u')         ! u is the name of uperp in the MPAS state pool
-      call cam_mpas_update_halo('w')
-      call cam_mpas_update_halo('scalars')   ! scalars is the name of tracers in the MPAS state pool
-      call cam_mpas_update_halo('theta_m')
-      call cam_mpas_update_halo('theta')
-      call cam_mpas_update_halo('rho_zz')
-      call cam_mpas_update_halo('rho')
+      ! Set theta_base and rho_base
+      call set_base_state(dyn_in)
 
    else
 
-      call endrun(subname//': reading initial data not implemented')
+      ! read uperp
+      allocate( mpas3d(plev,nEdgesSolve,1) )
+      call infld('u', fh_ini, 'lev', 'nEdges', 1, plev, 1, nEdgesSolve, 1, 1, &
+                 mpas3d, readvar, gridname='mpas_edge')
+      if (readvar) then
+         uperp(:,:nEdgesSolve) = mpas3d(:,:nEdgesSolve,1)
+      else
+         call endrun(subname//': failed to read u from initial file')
+      end if
+      deallocate( mpas3d )
+
+      call cam_mpas_update_halo('u')         ! u is the name of uperp in the MPAS state pool
+
+      ! Reconstruct ux and uy from uperp.
+      ! This is only needed because during CAM's initialization the physics package
+      ! is called before the dycore advances a step.
+      nullify(mesh_pool)
+      nullify(diag_pool)
+      call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'mesh', mesh_pool)
+      call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'diag', diag_pool)
+
+      ! The uReconstruct{X,Y,Z} arguments to mpas_reconstruct are required, but these
+      ! field already exist in the diag pool
+      nullify(uReconstructX)
+      nullify(uReconstructY)
+      nullify(uReconstructZ)
+      call mpas_pool_get_array(diag_pool, 'uReconstructX', uReconstructX)
+      call mpas_pool_get_array(diag_pool, 'uReconstructY', uReconstructY)
+      call mpas_pool_get_array(diag_pool, 'uReconstructZ', uReconstructZ)
+
+      call mpas_reconstruct(mesh_pool, uperp, &
+         uReconstructX, uReconstructY, uReconstructZ, &
+         ux, uy)
+
+      ! read w
+      allocate( mpas3d(plevp,nCellsSolve,1) )
+      call infld('w', fh_ini, 'ilev', 'nCells', 1, plevp, 1, nCellsSolve, 1, 1, &
+                 mpas3d, readvar, gridname='mpas_cell')
+      if (readvar) then
+         w(:,1:nCellsSolve) = mpas3d(:,:nCellsSolve,1)
+      else
+         call endrun(subname//': failed to read w from initial file')
+      end if
+      deallocate( mpas3d )
+
+      ! read qv
+      allocate( mpas3d(plev,nCellsSolve,1) )
+      call infld('qv', fh_ini, 'lev', 'nCells', 1, plev, 1, nCellsSolve, 1, 1, &
+                 mpas3d, readvar, gridname='mpas_cell')
+      if (readvar) then
+         tracers(ixqv,:,1:nCellsSolve) = mpas3d(:,:nCellsSolve,1)
+      else
+         call endrun(subname//': failed to read qv from initial file')
+      end if
+
+      ! read theta
+      call infld('theta', fh_ini, 'lev', 'nCells', 1, plev, 1, nCellsSolve, 1, 1, &
+                 mpas3d, readvar, gridname='mpas_cell')
+      if (readvar) then
+         theta(:,1:nCellsSolve) = mpas3d(:,:nCellsSolve,1)
+      else
+         call endrun(subname//': failed to read theta from initial file')
+      end if
+
+      ! *** TD: add adjustment for moisture
+      theta_m(:,1:nCellsSolve) = theta(:,1:nCellsSolve)
+
+      ! read rho
+      call infld('rho', fh_ini, 'lev', 'nCells', 1, plev, 1, nCellsSolve, 1, 1, &
+                 mpas3d, readvar, gridname='mpas_cell')
+      if (readvar) then
+         rho(:,1:nCellsSolve) = mpas3d(:,:nCellsSolve,1)
+      else
+         call endrun(subname//': failed to read rho from initial file')
+      end if
+
+      rho_zz(:,1:nCellsSolve) = rho(:,1:nCellsSolve) / zz(:,1:nCellsSolve)
+
+      ! read theta_base
+      call infld('theta_base', fh_ini, 'lev', 'nCells', 1, plev, 1, nCellsSolve, 1, 1, &
+                 mpas3d, readvar, gridname='mpas_cell')
+      if (readvar) then
+         theta_base(:,1:nCellsSolve) = mpas3d(:,:nCellsSolve,1)
+      else
+         call endrun(subname//': failed to read theta_base from initial file')
+      end if
+
+      ! read rho_base
+      call infld('rho_base', fh_ini, 'lev', 'nCells', 1, plev, 1, nCellsSolve, 1, 1, &
+                 mpas3d, readvar, gridname='mpas_cell')
+      if (readvar) then
+         rho_base(:,1:nCellsSolve) = mpas3d(:,:nCellsSolve,1)
+      else
+         call endrun(subname//': failed to read theta_base from initial file')
+      end if
+
+      deallocate( mpas3d )
+
    end if
 
-   !
-   ! Reconstruct ux and uy from uperp
-   !
-   nullify(mesh_pool)
-   nullify(diag_pool)
-   call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'mesh', mesh_pool)
-   call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'diag', diag_pool)
-
-   ! The uReconstruct{X,Y,Z} arguments to mpas_reconstruct are required, but these
-   ! field already exist in the diag pool
-   nullify(uReconstructX)
-   nullify(uReconstructY)
-   nullify(uReconstructZ)
-   call mpas_pool_get_array(diag_pool, 'uReconstructX', uReconstructX)
-   call mpas_pool_get_array(diag_pool, 'uReconstructY', uReconstructY)
-   call mpas_pool_get_array(diag_pool, 'uReconstructZ', uReconstructZ)
-
-   call mpas_reconstruct(mesh_pool, uperp, &
-                         uReconstructX, uReconstructY, uReconstructZ, &
-                         ux, uy &
-                        )
+   ! Update halos for initial state fields
+   ! halo for 'u' updated in both branches of conditional above
+   call cam_mpas_update_halo('w')
+   call cam_mpas_update_halo('scalars')   ! scalars is the name of tracers in the MPAS state pool
+   call cam_mpas_update_halo('theta_m')
+   call cam_mpas_update_halo('theta')
+   call cam_mpas_update_halo('rho_zz')
+   call cam_mpas_update_halo('rho')
+   call cam_mpas_update_halo('rho_base')
+   call cam_mpas_update_halo('theta_base')
 
 end subroutine read_inidat
 
@@ -834,8 +989,6 @@ end subroutine read_inidat
 subroutine set_base_state(dyn_in)
 
    ! Set base-state fields for dynamics assuming an isothermal atmosphere
-
-   use cam_mpas_subdriver, only : cam_mpas_update_halo
 
    ! Arguments
    type(dyn_import_t), intent(inout) :: dyn_in
@@ -852,9 +1005,8 @@ subroutine set_base_state(dyn_in)
    real(r8), dimension(:,:), pointer :: rho_base
    real(r8), dimension(:,:), pointer :: theta_base
    real(r8) :: zmid
-   real(r8) :: exner
    real(r8) :: pres
-
+   !--------------------------------------------------------------------------------------
 
    zint       => dyn_in % zint
    rho_base   => dyn_in % rho_base
@@ -868,9 +1020,6 @@ subroutine set_base_state(dyn_in)
          rho_base(klev,iCell) = pres / Rgas / t0b
       end do
    end do
-
-   call cam_mpas_update_halo('rho_base')
-   call cam_mpas_update_halo('theta_base')
 
 end subroutine set_base_state
 

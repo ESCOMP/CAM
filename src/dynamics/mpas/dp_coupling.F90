@@ -71,8 +71,6 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    real(r8), pointer :: pintdry(:,:)
    real(r8), pointer :: zint(:,:)
    real(r8), pointer :: zz(:,:)
-   real(r8), pointer :: fzm(:)
-   real(r8), pointer :: fzp(:)
    real(r8), pointer :: rho_zz(:,:)
    real(r8), pointer :: ux(:,:)
    real(r8), pointer :: uy(:,:)
@@ -103,8 +101,6 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    pintdry  => dyn_out % pintdry
    zint     => dyn_out % zint
    zz       => dyn_out % zz
-   fzm      => dyn_out % fzm
-   fzp      => dyn_out % fzp
    rho_zz   => dyn_out % rho_zz
    ux       => dyn_out % ux
    uy       => dyn_out % uy
