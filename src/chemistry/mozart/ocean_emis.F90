@@ -534,9 +534,10 @@ contains
     OstwaldSolubilityCoefficient = OstwaldSolubilityCoefficient * (Cgas_ppt*1.0E-12_r8*P_atm)         ! mol / L
     OstwaldSolubilityCoefficient = OstwaldSolubilityCoefficient * 0.082_r8 * T_air_K / P_atm          ! L / L
     k_water_m_s_bubble = ((47.0_r8*u10_m_s + FracCoverage_WhiteCaps*(115200.0_r8 - 47.0_r8* u10_m_s)) &
-                       *(SchmidtNumberInWater**-0.5_r8)  &
+                       *(SchmidtNumberInWater**(-0.5_r8))  &
                        + FracCoverage_WhiteCaps * (-37.0_r8/OstwaldSolubilityCoefficient &
-                       + 6120.0_r8*(OstwaldSolubilityCoefficient**-0.37_r8) *(SchmidtNumberInWater**-0.18_r8))) * 2.8e-6_r8
+                       + 6120.0_r8*(OstwaldSolubilityCoefficient**(-0.37_r8)) *(SchmidtNumberInWater**(-0.18_r8)))) &
+                       * 2.8e-6_r8
   End Function k_water_m_s_bubble
 
 
