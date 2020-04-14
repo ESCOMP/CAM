@@ -24,7 +24,7 @@
 
 module ocean_emis
 
-  use shr_kind_mod,   only : r8=>shr_kind_r8, cl=>shr_kind_cl, cs=>shr_kind_cs
+  use shr_kind_mod,   only : r8=>shr_kind_r8, cl=>shr_kind_cl
   use ppgrid,         only : pcols, begchunk,endchunk
   use spmd_utils,     only : masterproc
   use cam_abortutils, only : endrun
@@ -130,7 +130,7 @@ contains
     ! Broadcast namelist variables
     ! ============================
     call mpi_bcast(ocean_salinity_file, len(ocean_salinity_file),   mpi_character, masterprocid, mpicom, ierr)
-    call mpi_bcast(csw_specifier,       len(csw_specifier(1))*gas_pcnst,mpi_character, masterprocid, mpicom, ierr)
+    call mpi_bcast(csw_specifier,       cl*gas_pcnst,               mpi_character, masterprocid, mpicom, ierr)
     call mpi_bcast(csw_type,            len(csw_type),              mpi_character, masterprocid, mpicom, ierr)
     call mpi_bcast(csw_cycle_yr,        1,                          mpi_integer,   masterprocid, mpicom, ierr)
     call mpi_bcast(bubble_mediated_transfer, 1,                     mpi_logical,   masterprocid, mpicom, ierr)
@@ -155,7 +155,7 @@ contains
     character(len=cl)     :: filen
     real(r8), allocatable :: file_lats(:), file_lons(:)
     real(r8), allocatable :: wrk2d(:,:)
-    real(r8)              :: to_lats(pcols), to_lons(pcols), wrk(pcols)
+    real(r8)              :: to_lats(pcols), to_lons(pcols)
     type(interp_type)     :: lon_wgts, lat_wgts 
 
     real(r8), parameter   :: zero=0_r8, twopi=2_r8*pi, degs2rads = pi/180._r8
@@ -232,8 +232,6 @@ contains
     use tracer_data,    only : advance_trcdata
     use physics_buffer, only : physics_buffer_desc
 
-    implicit none
-
     type(physics_state), intent(in)    :: state(begchunk:endchunk)                 
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
     integer                            :: m
@@ -253,8 +251,6 @@ contains
     use physics_types, only : physics_state
     use ppgrid,        only : pver                      
 
-    implicit none
-
     integer, intent(in)                     :: lchnk, ncol
     type(physics_state), target, intent(in) :: state        ! Physics state variables
     real(r8), intent(in)                    :: u10(:)       ! Wind speed at 10m
@@ -263,7 +259,7 @@ contains
     real(r8), intent(in)                    :: icefrac(:)   ! Ice fraction
     real(r8), intent(inout)                 :: sflx(:,:)    ! Surface emissions (kg/m^2/s)
 
-    integer             :: i, m, n, isec, SpeciesID
+    integer             :: m, isec, SpeciesID
     real(r8)            :: Csw_col(ncol)
     Character(Len=16)   :: SpeciesName
     real(r8)            :: MW_species
@@ -275,8 +271,6 @@ contains
     ! Get seawater concentrations and calculate the flux
     ! ==================================================
     Csw_loop : do m = 1, n_Csw_files
-
-       n = Csw_nM(m)%spc_ndx
 
        Csw_col(:) = 0._r8
        ! do isec = 1,Csw_nM(m)%nsectors ! no need to loop. only one sector at this point
@@ -568,7 +562,7 @@ contains
     ! =================================================
     Integer                   :: ncol, SpeciesIndex
     Real(r8), Dimension(ncol) :: DiffusivityInWater_cm2_s, DynamicViscosityWater, T_water_K, Salinity_PartsPerThousand
-    Real(r8)                  :: AssociationFactor = 2.6_r8     ! ... for water
+    Real(r8), parameter       :: AssociationFactor = 2.6_r8     ! ... for water
     Real(r8)                  :: Vb, MW_species
     Vb = LiquidMolarVolume_cm3_mol(SpeciesIndex)
     MW_species = MolecularWeight(SpeciesIndex)
@@ -708,7 +702,6 @@ contains
     Endif
   End Function LiquidMolarVolume_cm3_mol
 
-!!$  subroutine cseawater_ini(csw_specifier, csw_type_in, csw_cycle_yr, bubble_mediated_transfer )
   subroutine cseawater_ini()
 
     use mo_chem_utls,     only : get_spc_ndx 
@@ -719,13 +712,6 @@ contains
     use pio,              only : pio_seterrorhandling, PIO_BCAST_ERROR,PIO_INTERNAL_ERROR       
     use string_utils,     only : GLC    
 
-    implicit none
-!!$
-!!$    character(len=*),   intent(in) :: csw_specifier(:)          ! Read from user_nl_cam
-!!$    character(len=*),   intent(in) :: csw_type_in               ! Read from user_nl_cam
-!!$    integer,            intent(in) :: csw_cycle_yr              ! Read from user_nl_cam
-!!$    logical,            intent(in) :: bubble_mediated_transfer  ! Read from user_nl_cam
-!!$
     integer             :: i, j, l, m, n, nn, astat, vid, ierr, nvars, isec
     integer             :: indx(gas_pcnst)      
     type(file_desc_t)   :: ncid
