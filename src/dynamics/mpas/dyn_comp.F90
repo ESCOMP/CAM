@@ -417,9 +417,8 @@ subroutine dyn_init(dyn_in, dyn_out)
       call clean_iodesc_list()
 
       ! Initialize dyn_out from dyn_in since it is needed to run the physics package
-      ! as part of the CAM initialization before a dycore step is taken.
-      dyn_out % ux(:,:nCellsSolve)        = dyn_in % ux(:,:nCellsSolve)
-      dyn_out % uy(:,:nCellsSolve)        = dyn_in % uy(:,:nCellsSolve)
+      ! as part of the CAM initialization before a dycore step is taken.  This is only
+      ! needed for the fields that have 2 time levels in the MPAS state_pool.
       dyn_out % uperp(:,:nCellsSolve)     = dyn_in % uperp(:,:nCellsSolve)
       dyn_out % w(:,:nCellsSolve)         = dyn_in % w(:,:nCellsSolve)
       dyn_out % theta_m(:,:nCellsSolve)   = dyn_in % theta_m(:,:nCellsSolve)
@@ -429,14 +428,6 @@ subroutine dyn_init(dyn_in, dyn_out)
    end if
 
    call cam_mpas_init_phase4(endrun)
-
-!++dbg
-   call addfld ('u_in',   (/ 'lev' /),  'A', 'm/s', 'uperp input', gridname='mpas_edge')
-   call addfld ('w_in',   (/ 'ilev' /), 'A', 'm/s', 'w input', gridname='mpas_cell')
-   call addfld ('th_in',  (/ 'lev' /),  'A', 'K', 'theta_m input', gridname='mpas_cell')
-   call addfld ('rho_in', (/ 'lev' /),  'A', 'kg/m^3', 'rho_zz input', gridname='mpas_cell')
-   call addfld ('q_in',   (/ 'lev' /),  'A', 'kg/kg', 'qv input', gridname='mpas_cell')
-!--dbg
 
 end subroutine dyn_init
 
@@ -470,11 +461,6 @@ subroutine dyn_run(dyn_in, dyn_out)
    real(r8), parameter :: Rv_over_Rd = R_v / R_d
 
    character(len=*), parameter :: subname = 'dyn_comp::dyn_run'
-!++dbg
-integer :: i, k, kk
-integer :: nCellsSolve, nEdgesSolve
-real(r8), allocatable :: arr2d(:,:)
-!--dbg
    !----------------------------------------------------------------------------
 
    MPAS_DEBUG_WRITE(0, 'begin '//subname)
@@ -513,58 +499,6 @@ real(r8), allocatable :: arr2d(:,:)
       call endrun(subname//': The CAM timestep must not have a fractional part for the MPAS-A dycore at present.'// &
                   ' We should fix this.')
    end if
-!++dbg
-   nCellsSolve = dyn_in%nCellsSolve
-   nEdgesSolve = dyn_in%nEdgesSolve
-
-   allocate(arr2d(nEdgesSolve,plev))
-   do k = 1, plev
-      kk = plev - k + 1
-      do i = 1, nEdgesSolve
-         arr2d(i,k) = dyn_in%uperp(kk,i)
-      end do
-   end do
-   call outfld('u_in', arr2d, nEdgesSolve, 1)
-   deallocate(arr2d)
-
-   allocate(arr2d(nCellsSolve,plevp))
-   do k = 1, plevp
-      kk = plevp - k + 1
-      do i = 1, nCellsSolve
-         arr2d(i,k) = dyn_in%w(kk,i)
-      end do
-   end do
-   call outfld('w_in', arr2d, nCellsSolve, 1)
-   deallocate(arr2d)
-
-   allocate(arr2d(nCellsSolve,plev))
-
-   do k = 1, plev
-      kk = plev - k + 1
-      do i = 1, nCellsSolve
-         arr2d(i,k) = dyn_in%theta_m(kk,i)
-      end do
-   end do
-   call outfld('th_in', arr2d, nCellsSolve, 1)
-
-   do k = 1, plev
-      kk = plev - k + 1
-      do i = 1, nCellsSolve
-         arr2d(i,k) = dyn_in%rho_zz(kk,i)
-      end do
-   end do
-   call outfld('rho_in', arr2d, nCellsSolve, 1)
-
-   do k = 1, plev
-      kk = plev - k + 1
-      do i = 1, nCellsSolve
-         arr2d(i,k) = dyn_in%tracers(1,kk,i)
-      end do
-   end do
-   call outfld('q_in', arr2d, nCellsSolve, 1)
-
-   deallocate(arr2d)
-!--dbg
 
    ! Call the MPAS-A dycore
    call cam_mpas_run(integrationLength)
