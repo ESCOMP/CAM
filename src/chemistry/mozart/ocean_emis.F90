@@ -59,7 +59,6 @@ module ocean_emis
   type(Csw), allocatable :: Csw_nM(:)
   integer                :: n_Csw_files 
 
-  character(len=cl)             :: ocean_salinity_file = 'NONE'
   real(r8), allocatable :: salinity(:,:)      
 
   ! ================
@@ -84,12 +83,13 @@ module ocean_emis
   Type(SaltLib), Dimension(HowManySalts)    :: SaltList ! Library for the salt properties
 
   ! ===========================  
-  ! seawater concentration: WSY
+  ! seawater concentration:
   ! ===========================
-  character(len=cl) :: csw_specifier(gas_pcnst) = ''
-  character(len=24) :: csw_type = 'CYCLICAL' ! 'CYCLICAL' | 'SERIAL' |  'INTERP_MISSING_MONTHS'
+  character(len=cl) :: csw_specifier(gas_pcnst) = ''                    
+  character(len=24) :: csw_type = 'CYCLICAL' ! 'CYCLICAL' | 'SERIAL' | 'INTERP_MISSING_MONTHS'
   integer           :: csw_cycle_yr  = 0
   logical           :: bubble_mediated_transfer = .false.                                                                                                      
+  character(len=cl) :: ocean_salinity_file = 'NONE'
 
 contains
 
@@ -134,6 +134,11 @@ contains
     call mpi_bcast(csw_type,            len(csw_type),              mpi_character, masterprocid, mpicom, ierr)
     call mpi_bcast(csw_cycle_yr,        1,                          mpi_integer,   masterprocid, mpicom, ierr)
     call mpi_bcast(bubble_mediated_transfer, 1,                     mpi_logical,   masterprocid, mpicom, ierr)
+
+    if (masterproc) then
+      write(iulog,*) 'ocean_emis_readnl: ocean_salinity_file = '//trim(ocean_salinity_file)
+      write(iulog,*) 'ocean_emis_readnl: bubble_mediated_transfer = ',bubble_mediated_transfer
+    end if
 
   end subroutine ocean_emis_readnl
 
@@ -720,7 +725,6 @@ contains
     integer             :: csw_indexes(gas_pcnst)
     real(r8)            :: csw_scalefactor(gas_pcnst)
 
-    character(len=32)   :: csw_type = ' '
     character(len=80)   :: file_interp_type = ' '
 
     character(len=16)   :: spc_name
