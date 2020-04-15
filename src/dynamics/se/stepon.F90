@@ -50,6 +50,7 @@ subroutine stepon_init(dyn_in, dyn_out )
    call addfld('U_gll'     ,(/ 'lev' /), 'I', 'm/s ','U wind on gll grid',gridname='GLL')
    call addfld('V_gll'     ,(/ 'lev' /), 'I', 'm/s ','V wind on gll grid',gridname='GLL')
    call addfld('T_gll'     ,(/ 'lev' /), 'I', 'K '  ,'T on gll grid'     ,gridname='GLL')
+   call addfld('dp_ref_gll' ,(/ 'lev' /), 'I', '  '  ,'dp dry / dp_ref on gll grid'     ,gridname='GLL')
    call addfld('PSDRY_gll' ,horiz_only , 'I', 'Pa ' ,'psdry on gll grid' ,gridname='GLL')
    call addfld('PS_gll'    ,horiz_only , 'I', 'Pa ' ,'ps on gll grid'    ,gridname='GLL')
    call addfld('PHIS_gll'  ,horiz_only , 'I', 'Pa ' ,'PHIS on gll grid'  ,gridname='GLL')
@@ -214,8 +215,8 @@ subroutine diag_dynvar_ic(elem, fvm)
    use fvm_control_volume_mod, only: fvm_struct
    use fvm_mapping,            only: fvm2dyn
    use physconst,              only: get_sum_species, get_ps,thermodynamic_active_species_idx
-   use physconst,              only: thermodynamic_active_species_idx_dycore   
-   use hycoef,                 only: hyai, ps0
+   use physconst,              only: thermodynamic_active_species_idx_dycore,get_dp_ref
+   use hycoef,                 only: hyai, hybi, ps0
    ! arguments
    type(element_t) , intent(in)    :: elem(1:nelemd)
    type(fvm_struct), intent(inout) :: fvm(:)
@@ -231,7 +232,7 @@ subroutine diag_dynvar_ic(elem, fvm)
    real(r8), allocatable :: fld_fvm(:,:,:,:,:), fld_gll(:,:,:,:,:)
    real(r8), allocatable :: fld_2d(:,:)
    logical,  allocatable :: llimiter(:)
-   real(r8)              :: qtmp(np,np,nlev)
+   real(r8)              :: qtmp(np,np,nlev), dp_ref(np,np,nlev), ps_ref(np,np)
    real(r8), allocatable :: factor_array(:,:,:)
    !----------------------------------------------------------------------------
 
@@ -293,6 +294,18 @@ subroutine diag_dynvar_ic(elem, fvm)
             end do
          end do
          call outfld('T_gll', ftmp(:,:,1), npsq, ie)
+      end do
+   end if
+
+   if (hist_fld_active('dp_ref_gll')) then
+     do ie = 1, nelemd       
+       call get_dp_ref(hyai,hybi,ps0,1,np,1,np,1,nlev,elem(ie)%state%phis(:,:),dp_ref(:,:,:),ps_ref(:,:))
+         do j = 1, np
+            do i = 1, np
+               ftmp(i+(j-1)*np,:,1) = elem(ie)%state%dp3d(i,j,:,tl_f)/dp_ref(i,j,:)
+            end do
+         end do
+         call outfld('dp_ref_gll', ftmp(:,:,1), npsq, ie)
       end do
    end if
 

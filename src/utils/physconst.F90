@@ -48,7 +48,7 @@ public  :: get_Richardson_number
 public  :: get_hydrostatic_static_energy
 public  :: get_R_dry
 public  :: get_kappa_dry
-
+public  :: get_dp_ref
 
 ! Constants based off share code or defined in physconst
 
@@ -1435,5 +1435,21 @@ subroutine composition_init()
        cp=sum_cp/sum_species
      end if
    end subroutine get_cp
+
+   subroutine get_dp_ref(hyai, hybi, ps0, i0,i1,j0,j1,k0,k1,phis,dp_ref,ps_ref)
+     integer,  intent(in)           :: i0,i1,j0,j1,k0,k1
+     real(r8), intent(in)           :: hyai(k0:k1+1),hybi(k0:k1+1),ps0
+     real(r8), intent(in)           :: phis(i0:i1,j0:j1)
+     real(r8), intent(out)          :: dp_ref(i0:i1,j0:j1,k0:k1)
+     real(r8), intent(out)          :: ps_ref(i0:i1,j0:j1)
+     integer :: k
+     !
+     ! use static reference pressure (hydrostatic balance incl. effect of topography)
+     !
+     ps_ref(:,:) = ps0*exp(-phis(:,:)/(Rair*Tref))
+     do k=k0,k1
+       dp_ref(:,:,k) = ((hyai(k+1)-hyai(k))*ps0 + (hybi(k+1)-hybi(k))*ps_ref(:,:))
+     end do
+   end subroutine get_dp_ref
 
 end module physconst

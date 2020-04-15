@@ -475,7 +475,7 @@ contains
     !  For correct scaling, dt2 should be the same 'dt2' used in the leapfrog advace
     !
     !
-    use physconst,      only: gravit, cappa, rair, cpair, tref, lapse_rate
+    use physconst,      only: gravit, cappa, rair, cpair, tref, lapse_rate, get_dp_ref
     use dimensions_mod, only: np, nlev, nc, ntrac
     use dimensions_mod, only: hypervis_dynamic_ref_state,nu_scale_top,ksponge_end
     use dimensions_mod, only: max_nu_scale_del4
@@ -546,11 +546,8 @@ contains
       ! use static reference pressure (hydrostatic balance incl. effect of topography)
       !
       do ie=nets,nete
-        ps_ref(:,:,ie) = hvcoord%ps0*exp(-elem(ie)%state%phis(:,:)/(Rair*Tref))
-        do k=1,nlev
-          dp3d_ref(:,:,k,ie) = ((hvcoord%hyai(k+1)-hvcoord%hyai(k))*hvcoord%ps0 + &
-               (hvcoord%hybi(k+1)-hvcoord%hybi(k))*ps_ref(:,:,ie))
-        end do
+        call get_dp_ref(hvcoord%hyai, hvcoord%hybi, hvcoord%ps0,1,np,1,np,1,nlev,&
+             elem(ie)%state%phis(:,:),dp3d_ref(:,:,:,ie),ps_ref(:,:,ie))
       end do
     endif
     !      
