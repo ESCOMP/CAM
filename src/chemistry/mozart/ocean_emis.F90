@@ -309,7 +309,7 @@ contains
        ! Add the ocean flux to the other fluxes 
        ! Make sure this ocean module is called after other surface emissions are set
        ! ===========================================================================
-       sflx(:ncol,SpeciesID) = sflx(:ncol,SpeciesID) + oceanflux_kg_m2_s(:ncol) * ocnfrac
+       sflx(:ncol,SpeciesID) = sflx(:ncol,SpeciesID) + oceanflux_kg_m2_s(:ncol) * ocnfrac(:ncol)
 
        ! ====================================
        ! Write stuff into the historial files
