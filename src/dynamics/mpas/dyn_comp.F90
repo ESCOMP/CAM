@@ -34,11 +34,12 @@ use pio,                only: file_desc_t, pio_seterrorhandling, PIO_BCAST_ERROR
                               pio_inq_dimid, pio_inq_dimlen, PIO_NOERR
 
 use time_manager,       only: get_start_date, get_stop_date, get_run_duration, &
-                              timemgr_get_calendar_cf
+                              timemgr_get_calendar_cf, get_step_size
 
 use cam_logfile,        only: iulog
 use cam_abortutils,     only: endrun
 
+use mpas_timekeeping,   only : MPAS_TimeInterval_type
 
 implicit none
 private
@@ -195,6 +196,9 @@ real(r8), parameter :: deg2rad = pi / 180.0_r8
 ! random perturbations to the initial temperature field.
 integer, allocatable :: glob_ind(:)
 
+type (MPAS_TimeInterval_type) :: integrationLength ! set to CAM's dynamics/physics coupling interval
+logical :: swap_time_level_ptrs
+
 !=========================================================================================
 contains
 !=========================================================================================
@@ -282,9 +286,10 @@ end subroutine dyn_register
 subroutine dyn_init(dyn_in, dyn_out)
 
    use cam_mpas_subdriver, only : domain_ptr, cam_mpas_init_phase4
-   use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_array, mpas_pool_get_dimension
+   use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_array, mpas_pool_get_dimension, &
+                                  mpas_pool_get_config
+   use mpas_timekeeping,   only : MPAS_set_timeInterval
    use mpas_derived_types, only : mpas_pool_type
-   use mpas_kind_types, only : StrKIND
 
    ! arguments:
    type(dyn_import_t), intent(out)  :: dyn_in
@@ -292,7 +297,6 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    ! Local variables:
    integer :: ierr
-   character(len=*), parameter :: subname = 'dyn_comp::dyn_init'
 
    type(mpas_pool_type), pointer :: mesh_pool
    type(mpas_pool_type), pointer :: state_pool
@@ -310,6 +314,12 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    integer, pointer :: indexToCellID(:) ! global indices of cell centers
 
+   real(r8) :: dtime
+   real(r8), pointer :: mpas_dt
+   real(r8) :: dt_ratio
+   character(len=128) :: errmsg
+
+   character(len=*), parameter :: subname = 'dyn_comp::dyn_init'
    !----------------------------------------------------------------------------
 
    MPAS_DEBUG_WRITE(0, 'begin '//subname)
@@ -429,16 +439,42 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    call cam_mpas_init_phase4(endrun)
 
+   ! Check that CAM's timestep, i.e., the dynamics/physics coupling interval, is an integer multiple
+   ! of the MPAS timestep.
+
+   ! Get CAM time step
+   dtime = get_step_size()
+
+   ! Get MPAS-A dycore time step
+   call mpas_pool_get_config(domain_ptr % configs, 'config_dt', mpas_dt)
+
+   ! Calculate time step ratio
+   dt_ratio = dtime / mpas_dt
+
+   ! Stop if the dycore time step does not evenly divide the CAM time step
+   if (ceiling(dt_ratio) /= floor(dt_ratio)) then
+      write(errmsg, '(a,f9.3,a,f9.3,a)') 'The ratio of the CAM timestep, ', dtime, &
+                                         ' to the MPAS-A dycore timestep, ', mpas_dt, ' is not an integer'
+      call endrun(subname//': '//trim(errmsg))
+   end if
+
+   ! dtime has no fractional part, but use nint to deal with any roundoff errors.
+   ! Set the interval over which the dycore should integrate during each call to dyn_run.
+   call MPAS_set_timeInterval(integrationLength, S=nint(dtime), S_n=0, S_d=1)
+
+   ! MPAS updates the time level index in its state pool each dycore time step (mpas_dt).  If
+   ! the CAM timestep is an odd multiple of mpas_dt, then the pointers in the dyn_in/dyn_out
+   ! objects need a corresponding update.  Set the following logical variable to indicate
+   ! whether the pointer update is needed.
+   swap_time_level_ptrs = mod( nint(dt_ratio), 2) == 1
+
 end subroutine dyn_init
 
 !=========================================================================================
 
 subroutine dyn_run(dyn_in, dyn_out)
 
-   use cam_mpas_subdriver, only : cam_mpas_run, domain_ptr
-   use mpas_timekeeping, only : MPAS_TimeInterval_type, MPAS_set_timeInterval
-   use mpas_pool_routines, only : mpas_pool_get_config
-   use time_manager, only : get_step_size
+   use cam_mpas_subdriver, only : cam_mpas_run
    use mpas_constants, only : R_v => rv, R_d => rgas
 
    ! Advances the dynamics state provided in dyn_in by one physics
@@ -448,13 +484,6 @@ subroutine dyn_run(dyn_in, dyn_out)
    type (dyn_export_t), intent(inout)  :: dyn_out
 
    ! local variables
-   integer :: ierr
-   type (MPAS_TimeInterval_type) :: integrationLength
-   real(r8) :: dtime
-   real(r8), pointer :: mpas_dt
-   real(r8) :: dt_ratio
-   character(len=128) :: errmsg
-
    integer :: index_qv
 
    ! Constants
@@ -465,48 +494,14 @@ subroutine dyn_run(dyn_in, dyn_out)
 
    MPAS_DEBUG_WRITE(0, 'begin '//subname)
 
-   !
-   ! Get CAM time step
-   !
-   dtime = get_step_size()
-
-   !
-   ! Get MPAS-A dycore time step
-   !
-   call mpas_pool_get_config(domain_ptr % configs, 'config_dt', mpas_dt)
-
-   !
-   ! Calculate time step ratio
-   !
-   dt_ratio = dtime / mpas_dt
-
-   !
-   ! Stop if the dycore time step does not evenly divide the CAM time step
-   !
-   if (ceiling(dt_ratio) /= floor(dt_ratio)) then
-      write(errmsg, '(a,f9.3,a,f9.3,a)') 'The ratio of the CAM timestep, ', dtime, &
-                                         ' to the MPAS-A dycore timestep, ', mpas_dt, ' is not an integer'
-      call endrun(subname//': '//trim(errmsg))
-   end if
-
-   !
-   ! If dtime has no fractional part, set the interval over which the dycore should integrate
-   ! during this call to dyn_run
-   !
-   if (ceiling(dtime) == floor(dtime)) then
-      call MPAS_set_timeInterval(integrationLength, S=floor(dtime), S_n=0, S_d=1)
-   else
-      call endrun(subname//': The CAM timestep must not have a fractional part for the MPAS-A dycore at present.'// &
-                  ' We should fix this.')
-   end if
-
    ! Call the MPAS-A dycore
    call cam_mpas_run(integrationLength)
 
-   !
+   ! Update pointers for prognostic fields if necessary
+   if (swap_time_level_ptrs) call shift_time_levels(dyn_in, dyn_out)
+
    ! Update diagnostic fields in dynamics export state
    ! NB: these same fields are pointed to by the dynamics import state
-   !
    index_qv = dyn_out % index_qv
    dyn_out % theta(:,:) = dyn_out % theta_m(:,:) / (1.0_r8 + Rv_over_Rd * dyn_out % tracers(index_qv,:,:))
 
@@ -958,7 +953,45 @@ subroutine set_base_state(dyn_in)
 end subroutine set_base_state
 
 !========================================================================================
+subroutine shift_time_levels(dyn_in, dyn_out)
 
+   ! The MPAS dycore may do substepping of the CAM dynamics/physics coupling interval.
+   ! The pool time indices are shifted each dycore timestep.  If there are an odd number
+   ! of these shifts, then CAM needs a corresponding update to the pointers in the
+   ! dyn_in and dyn_out objects
+
+   ! arguments
+   type (dyn_import_t), intent(inout)  :: dyn_in
+   type (dyn_export_t), intent(inout)  :: dyn_out
+
+   ! local variables
+   real(r8), dimension(:,:),   pointer :: ptr2d
+   real(r8), dimension(:,:,:), pointer :: ptr3d
+   !--------------------------------------------------------------------------------------
+
+   ptr2d             => dyn_out % uperp
+   dyn_out % uperp   => dyn_in % uperp
+   dyn_in % uperp    => ptr2d
+
+   ptr2d             => dyn_out % w
+   dyn_out % w       => dyn_in % w
+   dyn_in % w        => ptr2d
+
+   ptr2d             => dyn_out % theta_m
+   dyn_out % theta_m => dyn_in % theta_m
+   dyn_in % theta_m  => ptr2d
+
+   ptr2d             => dyn_out % rho_zz
+   dyn_out % rho_zz  => dyn_in % rho_zz
+   dyn_in % rho_zz   => ptr2d
+
+   ptr3d             => dyn_out % tracers
+   dyn_out % tracers => dyn_in % tracers
+   dyn_in % tracers  => ptr3d
+
+end subroutine shift_time_levels
+
+!========================================================================================
 !-----------------------------------------------------------------------
 !  routine cam_mpas_namelist_read
 !

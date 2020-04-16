@@ -63,6 +63,10 @@ subroutine stepon_init(dyn_in, dyn_out)
    call addfld ('theta', (/ 'lev' /),  'A', 'K',   'potential temperature', gridname='mpas_cell')
    call addfld ('rho',   (/ 'lev' /),  'A', 'kg/m^3', 'dry air density', gridname='mpas_cell')
    call addfld ('qv',    (/ 'lev' /),  'A', 'kg/kg', 'water vapor dry mmr', gridname='mpas_cell')
+   call addfld ('uReconstructZonal', (/ 'lev' /),  'A', 'm/s', &
+                'zonal velocity at cell centers', gridname='mpas_cell')
+   call addfld ('uReconstructMeridional', (/ 'lev' /),  'A', 'm/s', &
+                'meridional velocity at cell centers', gridname='mpas_cell')
 
 end subroutine stepon_init
 
@@ -229,6 +233,22 @@ subroutine diag_dynvar_ic(dyn_out)
       end do
    end do
    call outfld('qv', arr2d, nCellsSolve, 1)
+
+   do k = 1, plev
+      kk = plev - k + 1
+      do i = 1, nCellsSolve
+         arr2d(i,k) = dyn_out%ux(kk,i)
+      end do
+   end do
+   call outfld('uReconstructZonal', arr2d, nCellsSolve, 1)
+
+   do k = 1, plev
+      kk = plev - k + 1
+      do i = 1, nCellsSolve
+         arr2d(i,k) = dyn_out%uy(kk,i)
+      end do
+   end do
+   call outfld('uReconstructMeridional', arr2d, nCellsSolve, 1)
 
    deallocate(arr2d)
 
