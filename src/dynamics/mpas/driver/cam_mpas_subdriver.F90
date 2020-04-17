@@ -25,7 +25,8 @@ module cam_mpas_subdriver
               cam_mpas_update_halo, &
               cam_mpas_cell_to_edge_winds, &
               cam_mpas_run, &
-              cam_mpas_finalize
+              cam_mpas_finalize, &
+              cam_mpas_debug_stream
     public :: corelist, domain_ptr
 
     private
@@ -1442,6 +1443,177 @@ contains
        end do
 
     end subroutine add_stream_attributes
+
+
+    subroutine cam_mpas_debug_stream(domain, filename)
+
+       use mpas_io_streams, only : MPAS_createStream, MPAS_closeStream, MPAS_streamAddField, MPAS_writeStream
+       use mpas_derived_types, only : MPAS_IO_WRITE, MPAS_IO_NETCDF, MPAS_STREAM_NOERR, MPAS_Stream_type, MPAS_pool_type, &
+                                      field0DReal, field1DReal, field2DReal, field3DReal, field4DReal, field5DReal, &
+                                      field1DInteger, field2DInteger, field3DInteger
+       use mpas_pool_routines, only : MPAS_pool_get_subpool, MPAS_pool_get_field, MPAS_pool_create_pool, MPAS_pool_destroy_pool, &
+                                      MPAS_pool_add_config
+
+       use mpas_derived_types, only : MPAS_Pool_iterator_type, MPAS_POOL_FIELD, MPAS_POOL_REAL, MPAS_POOL_INTEGER
+       use mpas_pool_routines, only : mpas_pool_begin_iteration, mpas_pool_get_next_member, mpas_pool_get_config
+
+       implicit none
+
+       type (domain_type), intent(inout) :: domain
+       character(len=*), intent(in) :: filename
+
+       type (MPAS_Pool_iterator_type) :: itr
+
+       integer :: ierr
+       type (MPAS_pool_type), pointer :: allFields
+
+       type (field0DReal), pointer :: field_real0d
+       type (field1DReal), pointer :: field_real1d
+       type (field2DReal), pointer :: field_real2d
+       type (field3DReal), pointer :: field_real3d
+       type (field4DReal), pointer :: field_real4d
+       type (field5DReal), pointer :: field_real5d
+       type (field1DInteger), pointer :: field_int1d
+       type (field2DInteger), pointer :: field_int2d
+       type (field3DInteger), pointer :: field_int3d
+
+       type (MPAS_Stream_type) :: stream
+
+
+       call MPAS_createStream(stream, domain % ioContext, trim(filename), MPAS_IO_NETCDF, MPAS_IO_WRITE, &
+                              clobberFiles=.true., ierr=ierr)
+
+       allFields => domain % blocklist % allFields
+
+       call mpas_pool_begin_iteration(allFields)
+       do while (mpas_pool_get_next_member(allFields, itr))
+
+          if (index(trim(itr % memberName), 'OwnedIndices') /= 0) then
+             cycle
+          end if
+
+          if ( itr % memberType == MPAS_POOL_FIELD) then
+
+             write(0,*) trim(itr % memberName)
+             if (itr % dataType == MPAS_POOL_REAL) then
+                if (itr % nDims == 0) then
+                   nullify(field_real0d)
+                   call mpas_pool_get_field(allFields, trim(itr % memberName), field_real0d)
+                   if (associated(field_real0d)) then
+                      call MPAS_streamAddField(stream, field_real0d, ierr=ierr)
+                      if (ierr /= MPAS_STREAM_NOERR) then
+                         write(0,*) '*** Failed to add field '//trim(itr % memberName)
+                      end if
+                   else
+                      write(0,*) '*** Failed to get field '//trim(itr % memberName)
+                   end if
+                else if (itr % nDims == 1) then
+                   nullify(field_real1d)
+                   call mpas_pool_get_field(allFields, trim(itr % memberName), field_real1d)
+                   if (associated(field_real1d)) then
+                      call MPAS_streamAddField(stream, field_real1d, ierr=ierr)
+                      if (ierr /= MPAS_STREAM_NOERR) then
+                         write(0,*) '*** Failed to add field '//trim(itr % memberName)
+                      end if
+                   else
+                      write(0,*) '*** Failed to get field '//trim(itr % memberName)
+                   end if
+                else if (itr % nDims == 2) then
+                   nullify(field_real2d)
+                   call mpas_pool_get_field(allFields, trim(itr % memberName), field_real2d)
+                   if (associated(field_real2d)) then
+                      call MPAS_streamAddField(stream, field_real2d, ierr=ierr)
+                      if (ierr /= MPAS_STREAM_NOERR) then
+                         write(0,*) '*** Failed to add field '//trim(itr % memberName)
+                      end if
+                   else
+                      write(0,*) '*** Failed to get field '//trim(itr % memberName)
+                   end if
+                else if (itr % nDims == 3) then
+                   nullify(field_real3d)
+                   call mpas_pool_get_field(allFields, trim(itr % memberName), field_real3d)
+                   if (associated(field_real3d)) then
+                      call MPAS_streamAddField(stream, field_real3d, ierr=ierr)
+                      if (ierr /= MPAS_STREAM_NOERR) then
+                         write(0,*) '*** Failed to add field '//trim(itr % memberName)
+                      end if
+                   else
+                      write(0,*) '*** Failed to get field '//trim(itr % memberName)
+                   end if
+                else if (itr % nDims == 4) then
+                   nullify(field_real4d)
+                   call mpas_pool_get_field(allFields, trim(itr % memberName), field_real4d)
+                   if (associated(field_real4d)) then
+                      call MPAS_streamAddField(stream, field_real4d, ierr=ierr)
+                      if (ierr /= MPAS_STREAM_NOERR) then
+                         write(0,*) '*** Failed to add field '//trim(itr % memberName)
+                      end if
+                   else
+                      write(0,*) '*** Failed to get field '//trim(itr % memberName)
+                   end if
+                else if (itr % nDims == 5) then
+                   nullify(field_real5d)
+                   call mpas_pool_get_field(allFields, trim(itr % memberName), field_real5d)
+                   if (associated(field_real5d)) then
+                      call MPAS_streamAddField(stream, field_real5d, ierr=ierr)
+                      if (ierr /= MPAS_STREAM_NOERR) then
+                         write(0,*) '*** Failed to add field '//trim(itr % memberName)
+                      end if
+                   else
+                      write(0,*) '*** Failed to get field '//trim(itr % memberName)
+                   end if
+                end if
+             else if (itr % dataType == MPAS_POOL_INTEGER) then
+                if (itr % nDims == 1) then
+                   nullify(field_int1d)
+                   call mpas_pool_get_field(allFields, trim(itr % memberName), field_int1d)
+                   if (associated(field_int1d)) then
+                      call MPAS_streamAddField(stream, field_int1d, ierr=ierr)
+                      if (ierr /= MPAS_STREAM_NOERR) then
+                         write(0,*) '*** Failed to add field '//trim(itr % memberName)
+                      end if
+                   else
+                      write(0,*) '*** Failed to get field '//trim(itr % memberName)
+                   end if
+                else if (itr % nDims == 2) then
+                   nullify(field_int2d)
+                   call mpas_pool_get_field(allFields, trim(itr % memberName), field_int2d)
+                   if (associated(field_int2d)) then
+                      call MPAS_streamAddField(stream, field_int2d, ierr=ierr)
+                      if (ierr /= MPAS_STREAM_NOERR) then
+                         write(0,*) '*** Failed to add field '//trim(itr % memberName)
+                      end if
+                   else
+                      write(0,*) '*** Failed to get field '//trim(itr % memberName)
+                   end if
+                else if (itr % nDims == 3) then
+                   nullify(field_int3d)
+                   call mpas_pool_get_field(allFields, trim(itr % memberName), field_int3d)
+                   if (associated(field_int3d)) then
+                      call MPAS_streamAddField(stream, field_int3d, ierr=ierr)
+                      if (ierr /= MPAS_STREAM_NOERR) then
+                         write(0,*) '*** Failed to add field '//trim(itr % memberName)
+                      end if
+                   else
+                      write(0,*) '*** Failed to get field '//trim(itr % memberName)
+                   end if
+                end if
+             end if
+
+           end if
+       end do
+
+       call MPAS_writeStream(stream, 1, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) then
+          write(0,*) '*** Error writing stream'
+       end if
+
+       call MPAS_closeStream(stream, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) then
+          write(0,*) '*** Error closing stream'
+       end if
+
+    end subroutine cam_mpas_debug_stream
 
 
 end module cam_mpas_subdriver
