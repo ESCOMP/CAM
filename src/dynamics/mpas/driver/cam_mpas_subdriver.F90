@@ -789,6 +789,7 @@ contains
        type (field1DReal), pointer :: latEdge, lonEdge, xEdge, yEdge, zEdge
        type (field1DReal), pointer :: latVertex, lonVertex, xVertex, yVertex, zVertex
        type (field1DInteger), pointer :: indexToCellID, indexToEdgeID, indexToVertexID
+       type (field1DReal), pointer :: fEdge, fVertex
        type (field1DReal), pointer :: areaCell, areaTriangle, dcEdge, dvEdge, angleEdge
        type (field2DReal), pointer :: kiteAreasOnVertex, weightsOnEdge
        type (field1DReal), pointer :: meshDensity
@@ -831,6 +832,9 @@ contains
        call mpas_pool_get_field(meshPool, 'indexToCellID', indexToCellID)
        call mpas_pool_get_field(meshPool, 'indexToEdgeID', indexToEdgeID)
        call mpas_pool_get_field(meshPool, 'indexToVertexID', indexToVertexID)
+
+       call mpas_pool_get_field(meshPool, 'fEdge', fEdge)
+       call mpas_pool_get_field(meshPool, 'fVertex', fVertex)
 
        call mpas_pool_get_field(meshPool, 'areaCell', areaCell)
        call mpas_pool_get_field(meshPool, 'areaTriangle', areaTriangle)
@@ -901,6 +905,9 @@ contains
        call MPAS_streamAddField(mesh_stream, indexToEdgeID, ierr=ierr)
        call MPAS_streamAddField(mesh_stream, indexToVertexID, ierr=ierr)
 
+       call MPAS_streamAddField(mesh_stream, fEdge, ierr=ierr)
+       call MPAS_streamAddField(mesh_stream, fVertex, ierr=ierr)
+
        call MPAS_streamAddField(mesh_stream, areaCell, ierr=ierr)
        call MPAS_streamAddField(mesh_stream, areaTriangle, ierr=ierr)
        call MPAS_streamAddField(mesh_stream, dcEdge, ierr=ierr)
@@ -948,7 +955,7 @@ contains
        call MPAS_streamAddField(mesh_stream, defc_a, ierr=ierr)
        call MPAS_streamAddField(mesh_stream, defc_b, ierr=ierr)
 
-       call MPAS_readStream(mesh_stream, 0, ierr=ierr)
+       call MPAS_readStream(mesh_stream, 1, ierr=ierr)
 
        call MPAS_closeStream(mesh_stream, ierr=ierr)
 
@@ -977,6 +984,9 @@ contains
        call MPAS_dmpar_exch_halo_field(indexToCellID)
        call MPAS_dmpar_exch_halo_field(indexToEdgeID)
        call MPAS_dmpar_exch_halo_field(indexToVertexID)
+
+       call MPAS_dmpar_exch_halo_field(fEdge)
+       call MPAS_dmpar_exch_halo_field(fVertex)
 
        call MPAS_dmpar_exch_halo_field(areaCell)
        call MPAS_dmpar_exch_halo_field(areaTriangle)
