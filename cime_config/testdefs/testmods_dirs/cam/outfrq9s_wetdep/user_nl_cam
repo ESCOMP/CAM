@@ -1,0 +1,9 @@
+convproc_do_aer = .true.
+convproc_do_evaprain_atonce = .true.
+convproc_pom_spechygro = 0.2D0
+convproc_wup_max       = 15.0D0
+fincl1 = 'BERGSO','QRAIN','QSNOW'
+mfilt=1,1,1,1,1,1,1,1,1
+ndens=1,1,1,1,1,1,1,1,1
+nhtfrq=9,9,9,9,9,9,9,9,9
+inithist='ENDOFRUN'

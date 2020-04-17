@@ -258,8 +258,10 @@ integer :: &
    frzcnt_idx = -1, &
    frzdep_idx = -1
 
-   logical :: allow_sed_supersat  ! allow supersaturated conditions after sedimentation loop
-   logical :: micro_do_sb_physics = .false. ! do SB 2001 autoconversion and accretion 
+logical :: allow_sed_supersat  ! allow supersaturated conditions after sedimentation loop
+logical :: micro_do_sb_physics = .false. ! do SB 2001 autoconversion and accretion 
+
+integer :: bergso_idx = -1
 
 interface p
    module procedure p1
@@ -518,6 +520,7 @@ subroutine micro_mg_cam_register
    call pbuf_add_field('PRAIN',      'physpkg',dtype_r8,(/pcols,pver/), prain_idx)
    call pbuf_add_field('NEVAPR',     'physpkg',dtype_r8,(/pcols,pver/), nevapr_idx)
    call pbuf_add_field('PRER_EVAP',  'global', dtype_r8,(/pcols,pver/), prer_evap_idx)
+   call pbuf_add_field('BERGSO',     'physpkg',dtype_r8,(/pcols,pver/), bergso_idx)
 
    call pbuf_add_field('WSEDL',      'physpkg',dtype_r8,(/pcols,pver/), wsedl_idx)
 
@@ -605,6 +608,7 @@ subroutine micro_mg_cam_register
       call pbuf_register_subcol('PRAIN',       'micro_mg_cam_register', prain_idx)
       call pbuf_register_subcol('NEVAPR',      'micro_mg_cam_register', nevapr_idx)
       call pbuf_register_subcol('PRER_EVAP',   'micro_mg_cam_register', prer_evap_idx)
+      call pbuf_register_subcol('BERGSO',      'micro_mg_cam_register', bergso_idx)
 
       call pbuf_register_subcol('WSEDL',       'micro_mg_cam_register', wsedl_idx)
 
@@ -1234,6 +1238,7 @@ subroutine micro_mg_cam_init(pbuf2d)
       call pbuf_set_field(pbuf2d, evprain_st_idx, 0._r8)
       call pbuf_set_field(pbuf2d, evpsnow_st_idx, 0._r8)
       call pbuf_set_field(pbuf2d, prer_evap_idx,  0._r8)
+      call pbuf_set_field(pbuf2d, bergso_idx, 0._r8)
 
       if (qrain_idx > 0)   call pbuf_set_field(pbuf2d, qrain_idx, 0._r8)
       if (qsnow_idx > 0)   call pbuf_set_field(pbuf2d, qsnow_idx, 0._r8)
@@ -1367,7 +1372,8 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8), pointer :: mu(:,:)           ! Size distribution shape parameter for radiation
    real(r8), pointer :: lambdac(:,:)      ! Size distribution slope parameter for radiation
    real(r8), pointer :: des(:,:)          ! Snow effective diameter (m)
-   real(r8), pointer :: degrau(:,:)          ! Graupel effective diameter (m)
+   real(r8), pointer :: degrau(:,:)       ! Graupel effective diameter (m)
+   real(r8), pointer :: bergso(:,:)       ! Conversion of cloud water to snow from bergeron
 
    real(r8) :: rho(state%psetcols,pver)
    real(r8) :: cldmax(state%psetcols,pver)
@@ -1422,7 +1428,6 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8), target :: mnuccto(state%psetcols,pver)
    real(r8), target :: msacwio(state%psetcols,pver)
    real(r8), target :: psacwso(state%psetcols,pver)
-   real(r8), target :: bergso(state%psetcols,pver)
    real(r8), target :: bergo(state%psetcols,pver)
    real(r8), target :: melto(state%psetcols,pver)
    real(r8), target :: homoo(state%psetcols,pver)
@@ -1687,10 +1692,10 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8), pointer :: CC_ni(:,:)        ! Grid-mean microphysical tendency
    real(r8), pointer :: CC_qlst(:,:)      ! In-liquid stratus microphysical tendency
 
-  ! variables for heterogeneous freezing
-  real(r8), pointer :: frzimm(:,:)
-  real(r8), pointer :: frzcnt(:,:)
-  real(r8), pointer :: frzdep(:,:)
+   ! variables for heterogeneous freezing
+   real(r8), pointer :: frzimm(:,:)
+   real(r8), pointer :: frzcnt(:,:)
+   real(r8), pointer :: frzdep(:,:)
 
    real(r8), pointer :: qme(:,:)
 
@@ -1826,7 +1831,6 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8) :: homoo_grid(pcols,pver)
    real(r8) :: msacwio_grid(pcols,pver)
    real(r8) :: psacwso_grid(pcols,pver)
-   real(r8) :: bergso_grid(pcols,pver)
    real(r8) :: cmeiout_grid(pcols,pver)
    real(r8) :: qireso_grid(pcols,pver)
    real(r8) :: prcio_grid(pcols,pver)
@@ -1909,6 +1913,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8), pointer :: icswp_grid(:,:)
    real(r8), pointer :: ast_grid(:,:)
    real(r8), pointer :: cldfsnow_grid(:,:)
+   real(r8), pointer :: bergso_grid(:,:)
 
    real(r8), pointer :: icgrauwp_grid(:,:)
    real(r8), pointer :: cldfgrau_grid(:,:)
@@ -2022,6 +2027,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    call pbuf_get_field(pbuf, sadsnow_idx,     sadsnow,     col_type=col_type)
    call pbuf_get_field(pbuf, wsedl_idx,       wsedl,       col_type=col_type)
    call pbuf_get_field(pbuf, qme_idx,         qme,         col_type=col_type)
+   call pbuf_get_field(pbuf, bergso_idx,      bergso,      col_type=col_type)
    if (degrau_idx > 0)   call pbuf_get_field(pbuf, degrau_idx,   degrau,   col_type=col_type)
    if (icgrauwp_idx > 0) call pbuf_get_field(pbuf, icgrauwp_idx, icgrauwp, col_type=col_type)
    if (cldfgrau_idx > 0) call pbuf_get_field(pbuf, cldfgrau_idx, cldfgrau, col_type=col_type)
@@ -2087,6 +2093,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
       call pbuf_get_field(pbuf, sadsnow_idx,     sadsnow_grid)
       call pbuf_get_field(pbuf, wsedl_idx,       wsedl_grid)
       call pbuf_get_field(pbuf, qme_idx,         qme_grid)
+      call pbuf_get_field(pbuf, bergso_idx,      bergso_grid)
       if (degrau_idx > 0)   call pbuf_get_field(pbuf, degrau_idx,   degrau_grid)
       if (icgrauwp_idx > 0) call pbuf_get_field(pbuf, icgrauwp_idx, icgrauwp_grid)
       if (cldfgrau_idx > 0) call pbuf_get_field(pbuf, cldfgrau_idx, cldfgrau_grid)
@@ -2119,7 +2126,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
 
    call pbuf_get_field(pbuf, evprain_st_idx,  evprain_st_grid)
    call pbuf_get_field(pbuf, evpsnow_st_idx,  evpsnow_st_grid)
-      call pbuf_get_field(pbuf, am_evp_st_idx,   am_evp_st_grid)
+   call pbuf_get_field(pbuf, am_evp_st_idx,   am_evp_st_grid)
    
    !-------------------------------------------------------------------------------------
    ! Microphysics assumes 'liquid stratus frac = ice stratus frac
@@ -2639,6 +2646,8 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    qme(:ncol,:top_lev-1) = 0._r8
    qme(:ncol,top_lev:pver) = cmeliq(:ncol,top_lev:pver) + cmeiout(:ncol,top_lev:pver)
 
+   bergso(:ncol,:top_lev-1) = 0._r8
+
    ! For precip, accumulate only total precip in prec_pcw and snow_pcw variables.
    ! Other precip output variables are set to 0
    ! Do not subscript by ncol here, because in physpkg we divide the whole
@@ -2756,8 +2765,9 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
       call subcol_field_avg(nevapr,    ngrdcol, lchnk, nevapr_grid)
       call subcol_field_avg(prain,     ngrdcol, lchnk, prain_grid)
       call subcol_field_avg(evapsnow,  ngrdcol, lchnk, evpsnow_st_grid)
+      call subcol_field_avg(bergso,    ngrdcol, lchnk, bergso_grid)
 
-         call subcol_field_avg(am_evp_st, ngrdcol, lchnk, am_evp_st_grid)
+      call subcol_field_avg(am_evp_st, ngrdcol, lchnk, am_evp_st_grid)
 
       ! Average fields which are not in pbuf
       call subcol_field_avg(qrout,     ngrdcol, lchnk, qrout_grid)
@@ -2773,7 +2783,6 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
       call subcol_field_avg(homoo,     ngrdcol, lchnk, homoo_grid)
       call subcol_field_avg(msacwio,   ngrdcol, lchnk, msacwio_grid)
       call subcol_field_avg(psacwso,   ngrdcol, lchnk, psacwso_grid)
-      call subcol_field_avg(bergso,    ngrdcol, lchnk, bergso_grid)
       call subcol_field_avg(cmeiout,   ngrdcol, lchnk, cmeiout_grid)
       call subcol_field_avg(qireso,    ngrdcol, lchnk, qireso_grid)
       call subcol_field_avg(prcio,     ngrdcol, lchnk, prcio_grid)
@@ -2853,8 +2862,9 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
       qme_grid        => qme
       nevapr_grid     => nevapr
       prain_grid      => prain
+      bergso_grid     => bergso
 
-         am_evp_st_grid  = am_evp_st
+      am_evp_st_grid  = am_evp_st
 
       evpsnow_st_grid = evapsnow
       qrout_grid      = qrout
@@ -2870,7 +2880,6 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
       homoo_grid      = homoo
       msacwio_grid    = msacwio
       psacwso_grid    = psacwso
-      bergso_grid     = bergso
       cmeiout_grid    = cmeiout
       qireso_grid     = qireso
       prcio_grid      = prcio
