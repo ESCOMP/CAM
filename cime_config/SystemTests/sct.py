@@ -14,7 +14,8 @@ from CIME.XML.standard_module_setup import *
 from CIME.SystemTests.test_utils.user_nl_utils import append_to_user_nl_files
 from CIME.XML.machines import Machines
 from CIME.test_status import *
-from CIME.utils import run_cmd
+from CIME.utils import run_cmd,get_model
+
 
 
 
@@ -31,14 +32,9 @@ class SCT(SystemTestsCompareTwo):
                                        run_two_description = 'Changed phys_loadbalance')
 
     def _case_one_setup(self):
-#        append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "NDENS = 1,1phys_loadbalance = 2")
-#        append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "MFILT = 1,10phys_loadbalance = 2")
-#        append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "nhtfrq = 0,1phys_loadbalance = 2")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "inithist = 'CAMIOP'")
-#        append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "inithist_all = .true.")
 
         CAM_CONFIG_OPTS = self._case1.get_value("CAM_CONFIG_OPTS")
-        self._case.set_value("CAM_CONFIG_OPTS","{} -camiop".format(CAM_CONFIG_OPTS))
 
 
 
@@ -53,7 +49,6 @@ class SCT(SystemTestsCompareTwo):
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "scmlon= 140.")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "scmlat= -20.")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "iopfile = '../"+case_name+".cam.h1."+RUN_STARTDATE+"-00000.nc'")
-#        append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "inithist_all = .true.")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "inithist = 'YEARLY'")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "scm_cambfb_mode                = .true.")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "scm_use_obs_uv         = .true.")
@@ -64,16 +59,47 @@ class SCT(SystemTestsCompareTwo):
 
         mach_name = self._case.get_value("MACH")
         mach_obj = Machines(machine=mach_name)
-        if mach_obj.is_valid_MPIlib("mpi-serial"):
-            self._case.set_value("MPILIB","mpi-serial")
 
         self._case.set_value("PTS_MODE","TRUE")
         self._case.set_value("PTS_LAT",-20.0)
         self._case.set_value("PTS_LON",140.0)
 
         CAM_CONFIG_OPTS = self._case1.get_value("CAM_CONFIG_OPTS")
-        self._case.set_value("CAM_CONFIG_OPTS","{} -scam".format(CAM_CONFIG_OPTS))
+        self._case.set_value("CAM_CONFIG_OPTS","{} -scam ".format(CAM_CONFIG_OPTS))
         self._case.case_setup(test_mode=True, reset=True)
+
+    def build_phase(self, sharedlib_only=False, model_only=False):
+        # Subtle issue: case1 is already in a writeable state since it tends to be opened
+        # with a with statement in all the API entrances in CIME. case2 was created via clone,
+        # not a with statement, so it's not in a writeable state, so we need to use a with
+        # statement here to put it in a writeable state.
+        with self._case2:
+            if self._separate_builds:
+                self._activate_case1()
+                self.build_indv(sharedlib_only=sharedlib_only, model_only=model_only)
+                self._activate_case2()
+                # Although we're doing separate builds, it still makes sense
+                # to share the sharedlibroot area with case1 so we can reuse
+                # pieces of the build from there.
+                if get_model() != "e3sm":
+                    # We need to turn off this change for E3SM because it breaks
+                    # the MPAS build system
+                    self._case2.set_value("SHAREDLIBROOT",
+                                          self._case1.get_value("SHAREDLIBROOT")+"/case2bld")
+
+                self.build_indv(sharedlib_only=sharedlib_only, model_only=model_only)
+            else:
+                self._activate_case1()
+                self.build_indv(sharedlib_only=sharedlib_only, model_only=model_only)
+                # pio_typename may be changed during the build if the default is not a
+                # valid value for this build, update case2 to reflect this change
+                for comp in self._case1.get_values("COMP_CLASSES"):
+                    comp_pio_typename = "{}_PIO_TYPENAME".format(comp)
+                    self._case2.set_value(comp_pio_typename, self._case1.get_value(comp_pio_typename))
+
+                # The following is needed when _case_two_setup has a case_setup call
+                # despite sharing the build (e.g., to change NTHRDS)
+                self._case2.set_value("BUILD_COMPLETE",True)
 
     def _component_compare_test(self, suffix1, suffix2,
                                 success_change=False,
