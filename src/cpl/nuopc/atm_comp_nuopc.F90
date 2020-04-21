@@ -48,6 +48,7 @@ module atm_comp_nuopc
   use pio                 , only : pio_closefile, pio_inq_varid, pio_put_att, pio_enddef
   use pio                 , only : pio_read_darray, pio_write_darray, pio_def_var, pio_inq_varid
   use pio                 , only : pio_noerr, pio_bcast_error, pio_internal_error, pio_seterrorhandling
+!$use omp_lib             , only : omp_set_num_threads
 
   implicit none
   private ! except
@@ -293,7 +294,7 @@ contains
   !===============================================================================
 
   subroutine InitializeRealize(gcomp, importState, exportState, clock, rc)
-
+    use ESMF, only : ESMF_VMGet
     ! input/output variables
     type(ESMF_GridComp)  :: gcomp
     type(ESMF_State)     :: importState
@@ -302,6 +303,7 @@ contains
     integer, intent(out) :: rc
 
     ! local variables
+    type(ESMF_VM)           :: vm
     type(ESMF_Time)         :: currTime                          ! Current time
     type(ESMF_Time)         :: startTime                         ! Start time
     type(ESMF_Time)         :: stopTime                          ! Stop time
@@ -360,11 +362,11 @@ contains
     integer                 :: inst_index
     character(CS)           :: inst_suffix
     integer                 :: lmpicom
-    type(ESMF_VM)           :: vm
     logical                 :: isPresent
     character(len=512)      :: diro
     character(len=512)      :: logfile
     integer                 :: compid                            ! component id
+    integer                 :: localPet, localPeCount
     logical                 :: initial_run                       ! startup mode which only requires a minimal initial file
     logical                 :: restart_run                       ! continue a previous run; requires a restart file
     logical                 :: branch_run                        ! branch from a previous run; requires a restart file
@@ -387,11 +389,17 @@ contains
     ! generate local mpi comm
     !----------------------------------------------------------------------------
 
-    call ESMF_GridCompGet(gcomp, vm=vm, rc=rc)
+    call ESMF_GridCompGet(gcomp, vm=vm, localpet=localPet, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     call ESMF_VMGet(vm, mpiCommunicator=lmpicom, rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    if (chkerr(rc,__LINE__,u_FILE_u)) return
+
+    call ESMF_VMGet(vm, pet=localPet, peCount=localPeCount, rc=rc)
+    if (chkerr(rc,__LINE__,u_FILE_u)) return
+
+!$  call omp_set_num_threads(localPeCount)
+    print *,__FILE__,__LINE__,localPeCount
 
     !----------------------------------------------------------------------------
     ! determine instance information
@@ -417,7 +425,6 @@ contains
     call NUOPC_CompAttributeGet(gcomp, name='MCTID', value=cvalue, rc=rc)
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
     read(cvalue,*) compid
-    print *,__FILE__,__LINE__,inst_name, inst_index, inst_suffix
     call cam_instance_init(compid, inst_name, inst_index, inst_suffix)
 
     !----------------------
@@ -970,7 +977,7 @@ contains
   !===============================================================================
 
   subroutine ModelAdvance(gcomp, rc)
-
+    use ESMF, only : ESMF_GridCompGet, esmf_vmget, esmf_vm
     ! Run CAM
 
     ! Input/output variables
@@ -978,6 +985,7 @@ contains
     integer, intent(out) :: rc
 
     ! local variables
+    type(ESMF_VM)           :: vm
     type(ESMF_Clock)        :: clock
     type(ESMF_Alarm)        :: alarm
     type(ESMF_Time)         :: time
@@ -1011,11 +1019,19 @@ contains
     logical                 :: rstwr       ! .true. ==> write restart file before returning
     logical                 :: nlend       ! Flag signaling last time-step
     integer                 :: lbnum
+    integer                 :: localPet, localPeCount
     logical                 :: first_time = .true.
     character(len=*),parameter  :: subname=trim(modName)//':(ModelAdvance) '
     !-------------------------------------------------------------------------------
 
     rc = ESMF_SUCCESS
+
+    call ESMF_GridCompGet(gcomp, vm=vm, localPet=localPet, rc=rc)
+    if (chkerr(rc,__LINE__,u_FILE_u)) return
+    call ESMF_VMGet(vm, pet=localPet, peCount=localPeCount, rc=rc)
+    if (chkerr(rc,__LINE__,u_FILE_u)) return
+
+!$  call omp_set_num_threads(localPeCount)
 
     call shr_file_getLogUnit (shrlogunit)
     call shr_file_setLogUnit (iulog)
