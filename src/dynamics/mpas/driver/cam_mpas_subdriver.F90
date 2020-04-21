@@ -1455,7 +1455,7 @@ contains
     end subroutine add_stream_attributes
 
 
-    subroutine cam_mpas_debug_stream(domain, filename)
+    subroutine cam_mpas_debug_stream(domain, filename, timeLevel)
 
        use mpas_io_streams, only : MPAS_createStream, MPAS_closeStream, MPAS_streamAddField, MPAS_writeStream
        use mpas_derived_types, only : MPAS_IO_WRITE, MPAS_IO_NETCDF, MPAS_STREAM_NOERR, MPAS_Stream_type, MPAS_pool_type, &
@@ -1471,6 +1471,7 @@ contains
 
        type (domain_type), intent(inout) :: domain
        character(len=*), intent(in) :: filename
+       integer, intent(in), optional :: timeLevel
 
        type (MPAS_Pool_iterator_type) :: itr
 
@@ -1491,7 +1492,7 @@ contains
 
 
        call MPAS_createStream(stream, domain % ioContext, trim(filename), MPAS_IO_NETCDF, MPAS_IO_WRITE, &
-                              clobberFiles=.true., ierr=ierr)
+                              clobberFiles=.true., clobberRecords=.true., truncateFiles=.true., ierr=ierr)
 
        allFields => domain % blocklist % allFields
 
@@ -1504,11 +1505,14 @@ contains
 
           if ( itr % memberType == MPAS_POOL_FIELD) then
 
-             write(0,*) trim(itr % memberName)
              if (itr % dataType == MPAS_POOL_REAL) then
                 if (itr % nDims == 0) then
                    nullify(field_real0d)
-                   call mpas_pool_get_field(allFields, trim(itr % memberName), field_real0d)
+                   if (itr % nTimeLevels > 1) then
+                      call mpas_pool_get_field(allFields, trim(itr % memberName), field_real0d, timeLevel=timeLevel)
+                   else
+                      call mpas_pool_get_field(allFields, trim(itr % memberName), field_real0d)
+                   end if
                    if (associated(field_real0d)) then
                       call MPAS_streamAddField(stream, field_real0d, ierr=ierr)
                       if (ierr /= MPAS_STREAM_NOERR) then
@@ -1519,7 +1523,11 @@ contains
                    end if
                 else if (itr % nDims == 1) then
                    nullify(field_real1d)
-                   call mpas_pool_get_field(allFields, trim(itr % memberName), field_real1d)
+                   if (itr % nTimeLevels > 1) then
+                      call mpas_pool_get_field(allFields, trim(itr % memberName), field_real1d, timeLevel=timeLevel)
+                   else
+                      call mpas_pool_get_field(allFields, trim(itr % memberName), field_real1d)
+                   end if
                    if (associated(field_real1d)) then
                       call MPAS_streamAddField(stream, field_real1d, ierr=ierr)
                       if (ierr /= MPAS_STREAM_NOERR) then
@@ -1530,7 +1538,11 @@ contains
                    end if
                 else if (itr % nDims == 2) then
                    nullify(field_real2d)
-                   call mpas_pool_get_field(allFields, trim(itr % memberName), field_real2d)
+                   if (itr % nTimeLevels > 1) then
+                      call mpas_pool_get_field(allFields, trim(itr % memberName), field_real2d, timeLevel=timeLevel)
+                   else
+                      call mpas_pool_get_field(allFields, trim(itr % memberName), field_real2d)
+                   end if
                    if (associated(field_real2d)) then
                       call MPAS_streamAddField(stream, field_real2d, ierr=ierr)
                       if (ierr /= MPAS_STREAM_NOERR) then
@@ -1541,7 +1553,11 @@ contains
                    end if
                 else if (itr % nDims == 3) then
                    nullify(field_real3d)
-                   call mpas_pool_get_field(allFields, trim(itr % memberName), field_real3d)
+                   if (itr % nTimeLevels > 1) then
+                      call mpas_pool_get_field(allFields, trim(itr % memberName), field_real3d, timeLevel=timeLevel)
+                   else
+                      call mpas_pool_get_field(allFields, trim(itr % memberName), field_real3d)
+                   end if
                    if (associated(field_real3d)) then
                       call MPAS_streamAddField(stream, field_real3d, ierr=ierr)
                       if (ierr /= MPAS_STREAM_NOERR) then
@@ -1552,7 +1568,11 @@ contains
                    end if
                 else if (itr % nDims == 4) then
                    nullify(field_real4d)
-                   call mpas_pool_get_field(allFields, trim(itr % memberName), field_real4d)
+                   if (itr % nTimeLevels > 1) then
+                      call mpas_pool_get_field(allFields, trim(itr % memberName), field_real4d, timeLevel=timeLevel)
+                   else
+                      call mpas_pool_get_field(allFields, trim(itr % memberName), field_real4d)
+                   end if
                    if (associated(field_real4d)) then
                       call MPAS_streamAddField(stream, field_real4d, ierr=ierr)
                       if (ierr /= MPAS_STREAM_NOERR) then
@@ -1563,7 +1583,11 @@ contains
                    end if
                 else if (itr % nDims == 5) then
                    nullify(field_real5d)
-                   call mpas_pool_get_field(allFields, trim(itr % memberName), field_real5d)
+                   if (itr % nTimeLevels > 1) then
+                      call mpas_pool_get_field(allFields, trim(itr % memberName), field_real5d, timeLevel=timeLevel)
+                   else
+                      call mpas_pool_get_field(allFields, trim(itr % memberName), field_real5d)
+                   end if
                    if (associated(field_real5d)) then
                       call MPAS_streamAddField(stream, field_real5d, ierr=ierr)
                       if (ierr /= MPAS_STREAM_NOERR) then
@@ -1576,7 +1600,11 @@ contains
              else if (itr % dataType == MPAS_POOL_INTEGER) then
                 if (itr % nDims == 1) then
                    nullify(field_int1d)
-                   call mpas_pool_get_field(allFields, trim(itr % memberName), field_int1d)
+                   if (itr % nTimeLevels > 1) then
+                      call mpas_pool_get_field(allFields, trim(itr % memberName), field_int1d, timeLevel=timeLevel)
+                   else
+                      call mpas_pool_get_field(allFields, trim(itr % memberName), field_int1d)
+                   end if
                    if (associated(field_int1d)) then
                       call MPAS_streamAddField(stream, field_int1d, ierr=ierr)
                       if (ierr /= MPAS_STREAM_NOERR) then
@@ -1587,7 +1615,11 @@ contains
                    end if
                 else if (itr % nDims == 2) then
                    nullify(field_int2d)
-                   call mpas_pool_get_field(allFields, trim(itr % memberName), field_int2d)
+                   if (itr % nTimeLevels > 1) then
+                      call mpas_pool_get_field(allFields, trim(itr % memberName), field_int2d, timeLevel=timeLevel)
+                   else
+                      call mpas_pool_get_field(allFields, trim(itr % memberName), field_int2d)
+                   end if
                    if (associated(field_int2d)) then
                       call MPAS_streamAddField(stream, field_int2d, ierr=ierr)
                       if (ierr /= MPAS_STREAM_NOERR) then
@@ -1598,7 +1630,11 @@ contains
                    end if
                 else if (itr % nDims == 3) then
                    nullify(field_int3d)
-                   call mpas_pool_get_field(allFields, trim(itr % memberName), field_int3d)
+                   if (itr % nTimeLevels > 1) then
+                      call mpas_pool_get_field(allFields, trim(itr % memberName), field_int3d, timeLevel=timeLevel)
+                   else
+                      call mpas_pool_get_field(allFields, trim(itr % memberName), field_int3d)
+                   end if
                    if (associated(field_int3d)) then
                       call MPAS_streamAddField(stream, field_int3d, ierr=ierr)
                       if (ierr /= MPAS_STREAM_NOERR) then
@@ -1615,12 +1651,12 @@ contains
 
        call MPAS_writeStream(stream, 1, ierr=ierr)
        if (ierr /= MPAS_STREAM_NOERR) then
-          write(0,*) '*** Error writing stream'
+          write(0,*) '*** Error writing stream ', ierr
        end if
 
        call MPAS_closeStream(stream, ierr=ierr)
        if (ierr /= MPAS_STREAM_NOERR) then
-          write(0,*) '*** Error closing stream'
+          write(0,*) '*** Error closing stream ', ierr
        end if
 
     end subroutine cam_mpas_debug_stream
