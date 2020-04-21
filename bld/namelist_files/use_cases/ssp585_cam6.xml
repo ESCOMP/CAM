@@ -34,8 +34,8 @@
          'so4_a1   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_so4_a1_anthro-ag-ship_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
          'so4_a1   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_so4_a1_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
          'so4_a2   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_so4_a2_anthro-res_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
-         'SOAG ->   $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_SOAGx1.5_anthro_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
-         'SOAG ->  $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_SOAGx1.5_bb_surface_mol_175001-210101_0.9x1.25_c20190224.nc',
+         'SOAG ->   $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_SOAGx1.5_anthro_surface_mol_175001-210101_0.9x1.25_c20200403.nc',
+         'SOAG ->  $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_SOAGx1.5_bb_surface_mol_175001-210101_0.9x1.25_c20200403.nc',
          'SOAG ->  $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp585/emissions-cmip6-ScenarioMIP_IAMC-REMIND-MAGPIE-ssp585-1-1_SOAGx1.5_biogenic_surface_mol_175001-210101_0.9x1.25_c20190226.nc'
 </srf_emis_specifier>
 
