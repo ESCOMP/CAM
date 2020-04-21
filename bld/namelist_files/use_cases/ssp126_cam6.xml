@@ -2,7 +2,7 @@
 
 <namelist_defaults>
 
-<ext_frc_specifier>             
+<ext_frc_specifier>
          'H2O    -> $INPUTDATA_ROOT/atm/cam/chem/emis/elev/H2OemissionCH4oxidationx2_3D_L70_2014-2101_CMIP6-SSP1-2.6_c190307.nc',
          'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp126/emissions-cmip6-ScenarioMIP_IAMC-IMAGE-ssp126-1-1_num_so4_a1_anthro-ene_vertical_mol_175001-210101_0.9x1.25_c20190225.nc',
          'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_num_a1_so4_contvolcano_vertical_850-5000_0.9x1.25_c20170724.nc',
@@ -32,7 +32,7 @@
          'SO2      -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp126/emissions-cmip6-ScenarioMIP_IAMC-IMAGE-ssp126-1-1_SO2_bb_surface_mol_175001-210101_0.9x1.25_c20190225.nc',
          'so4_a1   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp126/emissions-cmip6-ScenarioMIP_IAMC-IMAGE-ssp126-1-1_so4_a1_anthro-ag-ship_surface_mol_175001-210101_0.9x1.25_c20190225.nc',
          'so4_a1   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp126/emissions-cmip6-ScenarioMIP_IAMC-IMAGE-ssp126-1-1_so4_a1_bb_surface_mol_175001-210101_0.9x1.25_c20190225.nc',
-         'so4_a2   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp126/emissions-cmip6-ScenarioMIP_IAMC-IMAGE-ssp126-1-1_so4_a2_anthro-res_surface_mol_175001-210101_0.9x1.25_c20200403.nc',
+         'so4_a2   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp126/emissions-cmip6-ScenarioMIP_IAMC-IMAGE-ssp126-1-1_so4_a2_anthro-res_surface_mol_175001-210101_0.9x1.25_c20190225.nc',
          'SOAG     ->  $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp126/emissions-cmip6-ScenarioMIP_IAMC-IMAGE-ssp126-1-1_SOAGx1.5_anthro_surface_mol_175001-210101_0.9x1.25_c20200403.nc',
          'SOAG     ->  $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp126/emissions-cmip6-ScenarioMIP_IAMC-IMAGE-ssp126-1-1_SOAGx1.5_bb_surface_mol_175001-210101_0.9x1.25_c20200403.nc',
          'SOAG     ->  $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp/emissions-cmip6-SOAGx1.5_biogenic_surface_mol_175001-210101_0.9x1.25_c20190329.nc'
@@ -61,7 +61,7 @@
 
   <prescribed_strataero_type    >     'SERIAL'                                                                     </prescribed_strataero_type>
   <prescribed_strataero_datapath>     'atm/cam/ozone_strataero'                                                    </prescribed_strataero_datapath>
-  <prescribed_strataero_file>         'ozone_strataero_WACCM_L70_zm5day_2015-2100_SSP126_c190221.nc'               </prescribed_strataero_file> 
+  <prescribed_strataero_file>         'ozone_strataero_WACCM_L70_zm5day_2015-2100_SSP126_c190221.nc'               </prescribed_strataero_file>
   <prescribed_strataero_use_chemtrop> .true.                                                                       </prescribed_strataero_use_chemtrop>
 
 
