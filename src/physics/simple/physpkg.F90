@@ -705,7 +705,7 @@ contains
 
     call t_startf('energy_fixer')
 
-    if (adiabatic .and. (.not. dycore_is('EUL'))) then
+    if (adiabatic .and. (.not. dycore_is('EUL')) .and. (.not. dycore_is('MPAS'))) then
       call check_energy_fix(state, ptend, nstep, flx_heat)
       call physics_update(state, ptend, ztodt, tend)
       call check_energy_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)

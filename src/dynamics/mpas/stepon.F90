@@ -68,6 +68,14 @@ subroutine stepon_init(dyn_in, dyn_out)
    call addfld ('uReconstructMeridional', (/ 'lev' /),  'A', 'm/s', &
                 'meridional velocity at cell centers', gridname='mpas_cell')
 
+   ! physics forcings on dycore grids
+   call addfld ('ru_tend',     (/ 'lev' /),  'A', 'kg/m^2/s', &
+                'physics tendency of normal horizontal momentum', gridname='mpas_edge')
+   call addfld ('rtheta_tend', (/ 'lev' /),  'A', 'kg K/m^3/s', &
+                'physics tendency of rho*theta/zz', gridname='mpas_cell')
+   call addfld ('rho_tend', (/ 'lev' /),  'A', 'kg/m^3/s', &
+                'physics tendency of dry air density', gridname='mpas_cell')
+
 end subroutine stepon_init
 
 !=========================================================================================
@@ -90,11 +98,12 @@ subroutine stepon_run1(dtime_out, phys_state, phys_tend, &
 
    dtime_out = get_step_size()
 
-   ! This call will output the initial fields the first time it is called.  That's
+   ! This call writes the inputs to the physics package on the dynamics grids.
+   ! It will output the initial fields the first time it is called.  That's
    ! because stepon_run1 is called as part of the initialization sequence before
    ! a call is made to the dycore.  On subsequent calls dyn_out will contain the
    ! dycore output.
-   call diag_dynvar_ic(dyn_out)
+   call write_dynvar(dyn_out)
    
    call t_barrierf('sync_d_p_coupling', mpicom)
    call t_startf('d_p_coupling')
@@ -124,6 +133,9 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out)
    ! copy from phys structures -> dynamics structures
    call p_d_coupling(phys_state, phys_tend, dyn_in)
    call t_stopf('p_d_coupling')
+
+   ! write physics forcings input to dycore
+   call write_forcings(dyn_in)
 
 end subroutine stepon_run2
 
@@ -169,10 +181,10 @@ end subroutine stepon_final
 ! Private
 !=========================================================================================
 
-subroutine diag_dynvar_ic(dyn_out)
+subroutine write_dynvar(dyn_out)
 
    ! agruments
-   type(dyn_export_t), intent(inout) :: dyn_out
+   type(dyn_export_t), intent(in) :: dyn_out
 
    ! local variables
    integer :: i, k, kk
@@ -180,7 +192,7 @@ subroutine diag_dynvar_ic(dyn_out)
    integer :: qv_idx
    real(r8), allocatable :: arr2d(:,:)
 
-   character(len=*), parameter :: subname = 'stepon::stepon_final'
+   character(len=*), parameter :: subname = 'stepon::write_dynvar'
    !----------------------------------------------------------------------------
 
 
@@ -252,6 +264,57 @@ subroutine diag_dynvar_ic(dyn_out)
 
    deallocate(arr2d)
 
-end subroutine diag_dynvar_ic
+end subroutine write_dynvar
+
+!=========================================================================================
+
+subroutine write_forcings(dyn_in)
+
+   ! agruments
+   type(dyn_import_t), intent(in) :: dyn_in
+
+   ! local variables
+   integer :: i, k, kk
+   integer :: nCellsSolve, nEdgesSolve
+   real(r8), allocatable :: arr2d(:,:)
+
+   character(len=*), parameter :: subname = 'stepon::write_forcings'
+   !----------------------------------------------------------------------------
+
+
+   nCellsSolve = dyn_in%nCellsSolve
+   nEdgesSolve = dyn_in%nEdgesSolve
+
+   allocate(arr2d(nEdgesSolve,plev))
+   do k = 1, plev
+      kk = plev - k + 1
+      do i = 1, nEdgesSolve
+         arr2d(i,k) = dyn_in%ru_tend(kk,i)
+      end do
+   end do
+   call outfld('ru_tend', arr2d, nEdgesSolve, 1)
+   deallocate(arr2d)
+
+   allocate(arr2d(nCellsSolve,plev))
+
+   do k = 1, plev
+      kk = plev - k + 1
+      do i = 1, nCellsSolve
+         arr2d(i,k) = dyn_in%rtheta_tend(kk,i)
+      end do
+   end do
+   call outfld('rtheta_tend', arr2d, nCellsSolve, 1)
+
+   do k = 1, plev
+      kk = plev - k + 1
+      do i = 1, nCellsSolve
+         arr2d(i,k) = dyn_in%rho_tend(kk,i)
+      end do
+   end do
+   call outfld('rho_tend', arr2d, nCellsSolve, 1)
+
+   deallocate(arr2d)
+
+end subroutine write_forcings
 
 end module stepon

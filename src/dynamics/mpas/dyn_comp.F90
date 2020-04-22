@@ -352,11 +352,11 @@ subroutine dyn_init(dyn_in, dyn_out)
    call mpas_pool_get_dimension(mesh_pool, 'nVerticesSolve', nVerticesSolve)
    dyn_in % nVerticesSolve = nVerticesSolve
 
-   call mpas_pool_get_array(state_pool, 'u',                      dyn_in % uperp,   timeLevel=1)
-   call mpas_pool_get_array(state_pool, 'w',                      dyn_in % w,       timeLevel=1)
-   call mpas_pool_get_array(state_pool, 'theta_m',                dyn_in % theta_m, timeLevel=1)
-   call mpas_pool_get_array(state_pool, 'rho_zz',                 dyn_in % rho_zz,  timeLevel=1)
-   call mpas_pool_get_array(state_pool, 'scalars',                dyn_in % tracers, timeLevel=1)
+   call mpas_pool_get_array(state_pool, 'u',                      dyn_in % uperp,   timeLevel=2)
+   call mpas_pool_get_array(state_pool, 'w',                      dyn_in % w,       timeLevel=2)
+   call mpas_pool_get_array(state_pool, 'theta_m',                dyn_in % theta_m, timeLevel=2)
+   call mpas_pool_get_array(state_pool, 'rho_zz',                 dyn_in % rho_zz,  timeLevel=2)
+   call mpas_pool_get_array(state_pool, 'scalars',                dyn_in % tracers, timeLevel=2)
 
    call mpas_pool_get_array(diag_pool, 'rho_base',                dyn_in % rho_base)
    call mpas_pool_get_array(diag_pool, 'theta_base',              dyn_in % theta_base)
@@ -395,11 +395,11 @@ subroutine dyn_init(dyn_in, dyn_out)
    dyn_out % nEdgesSolve    = dyn_in % nEdgesSolve
    dyn_out % nVerticesSolve = dyn_in % nVerticesSolve
 
-   call mpas_pool_get_array(state_pool, 'u',                      dyn_out % uperp,   timeLevel=2)
-   call mpas_pool_get_array(state_pool, 'w',                      dyn_out % w,       timeLevel=2)
-   call mpas_pool_get_array(state_pool, 'theta_m',                dyn_out % theta_m, timeLevel=2)
-   call mpas_pool_get_array(state_pool, 'rho_zz',                 dyn_out % rho_zz,  timeLevel=2)
-   call mpas_pool_get_array(state_pool, 'scalars',                dyn_out % tracers, timeLevel=2)
+   call mpas_pool_get_array(state_pool, 'u',                      dyn_out % uperp,   timeLevel=1)
+   call mpas_pool_get_array(state_pool, 'w',                      dyn_out % w,       timeLevel=1)
+   call mpas_pool_get_array(state_pool, 'theta_m',                dyn_out % theta_m, timeLevel=1)
+   call mpas_pool_get_array(state_pool, 'rho_zz',                 dyn_out % rho_zz,  timeLevel=1)
+   call mpas_pool_get_array(state_pool, 'scalars',                dyn_out % tracers, timeLevel=1)
 
    dyn_out % index_qv = dyn_in % index_qv
 
@@ -429,7 +429,7 @@ subroutine dyn_init(dyn_in, dyn_out)
       ! Initialize dyn_out from dyn_in since it is needed to run the physics package
       ! as part of the CAM initialization before a dycore step is taken.  This is only
       ! needed for the fields that have 2 time levels in the MPAS state_pool.
-      dyn_out % uperp(:,:nCellsSolve)     = dyn_in % uperp(:,:nCellsSolve)
+      dyn_out % uperp(:,:nEdgesSolve)     = dyn_in % uperp(:,:nEdgesSolve)
       dyn_out % w(:,:nCellsSolve)         = dyn_in % w(:,:nCellsSolve)
       dyn_out % theta_m(:,:nCellsSolve)   = dyn_in % theta_m(:,:nCellsSolve)
       dyn_out % rho_zz(:,:nCellsSolve)    = dyn_in % rho_zz(:,:nCellsSolve)
