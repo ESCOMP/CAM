@@ -867,7 +867,7 @@ subroutine dyn_final(dyn_in, dyn_out, restart_file)
 
   Atm => dyn_in%Atm
 
-  call fv_end(Atm, grids_on_this_pe, .false.)
+  call fv_end(Atm, grids_on_this_pe)
 
   deallocate( u_dt, v_dt, t_dt)
 

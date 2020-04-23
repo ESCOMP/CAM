@@ -214,6 +214,7 @@ OPTIONS
      -debug             Switch to turn on building CAM with debugging compiler options.
      -cosp_libdir <dir> Directory containing COSP library.
      -esmf_libdir <dir> Directory containing ESMF library and esmf.mk file.
+     -fv3core_libdir <dir>  Directory containing FV3 library.
      -fc <name>         User specified Fortran compiler.  Overrides Makefile default.
      -fc_type <name>    Type of Fortran compiler [pgi | intel | gnu | pathscale
                         | ibm | nag].  This argument is used in conjunction
@@ -485,9 +486,6 @@ EOF
 
 if ($print>=2) { print "CAM root directory: $cam_root$eol"; }
 
-# Root Source directory
-my $camsrcdir = $cfg_ref->get('cam_dir');
-
 #-----------------------------------------------------------------------------------------------
 # CAM build directory.
 my $cam_bld;
@@ -728,8 +726,7 @@ if (defined $opts{'dyn'}) {
 my $dyn_pkg = $cfg_ref->get('dyn');
 
 if ($dyn_pkg eq 'fv3' and $spmd eq 'OFF') {
-    die "configure: FATAL: the fv3 dycore requires at least 6 tasks.\n".
-        "Specify these via either the -ntasks or the -spmd arguments. $eol";
+    die "configure: FATAL: the fv3 dycore requires at least 6 tasks SPMD must not be switched off.$eol";
 }
 
 if ($print>=2) { print "Dynamics package: $dyn_pkg$eol"; }
@@ -1179,8 +1176,6 @@ if ($cosp and ($phys_pkg ne 'cam5' and $phys_pkg ne 'cam6')) {
 }
 
 if ($cosp and $print>=2) { print "COSP simulator enabled$eol"; }
-
-if ($dyn_pkg eq 'fv3' and $print>=2) { print "FV3 dynamics enabled$eol"; }
 
 #-----------------------------------------------------------------------------------------------
 # Checks for SPCAM compatability
@@ -2413,7 +2408,7 @@ if ($dyn_pkg eq 'fv3') {
     if ($print) { print "creating $fv3core_libdir/Filepath\n"; }
 
     # Create the FV3CORE Makefile from a template and copy it into the fv3core bld directory
-    write_fv3_makefile("$camsrcdir/src/dynamics/fv3/Makefile.in.fv3",  "$fv3core_libdir/Makefile");
+    write_fv3_makefile("$cam_dir/src/dynamics/fv3/Makefile.in.fv3",  "$fv3core_libdir/Makefile");
     if ($print) { print "creating $fv3core_libdir/Makefile\n"; }
 }
 
@@ -2813,7 +2808,7 @@ sub write_fv3core_filepath
     my  $fh = new IO::File;
 
     $fh->open(">$file") or die "** can't open filepath file: $file\n";
-    my $cam_root   = $cfg_ref->get('cam_root');
+    my $camsrcdir   = $cfg_ref->get('cam_dir');
     my $CASEROOT = "$ENV{'CASEROOT'}";
     print $fh "$CASEROOT/SourceMods/src.cam\n";
     print $fh "$camsrcdir/src/dynamics/fv3/fv3_src_override\n";
@@ -2878,7 +2873,6 @@ sub write_filepath
 
     if ($simple_phys) {
       print $fh "$camsrcdir/src/physics/simple\n";
-      print $fh "$camsrcdir/src/atmos_phys/kessler\n";
     }
 
     if ($carma ne 'none') {
@@ -2987,7 +2981,6 @@ sub write_filepath
     print $fh "$camsrcdir/src/cpl/$cpl\n";
     print $fh "$camsrcdir/src/control\n";
     print $fh "$camsrcdir/src/utils\n";
-    print $fh "$camsrcdir/src/atmos_phys/utilities\n";
 
     if ($cam_build) {
 
@@ -3301,6 +3294,11 @@ sub set_horiz_grid
 
         $hgrid =~ s/\.pg\d+//;   # strip the '.pgN' extension
         $cfg_ref->set('hgrid', $hgrid);
+    } 
+    elsif ( $dyn_pkg eq 'fv3') {
+        # For FV3 dycore parse the parameters out of the grid specifier string.
+        $hgrid =~ m/C(\d+)/;
+        $cfg_ref->set('hgrid', $hgrid);
     }
     else {
 
@@ -3357,7 +3355,7 @@ sub set_horiz_grid
             $cfg_ref->set('nlon', $a{'nlon'});
         }
         elsif ( $dyn_pkg eq 'fv3' ) {
-            $cfg_ref->set('csnp', $a{'csnp'});
+#            $cfg_ref->set('csnp', $a{'csnp'});
         }
         else {
             die "set_horiz_grid: unrecognized dycore: $dyn_pkg\n";

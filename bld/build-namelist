@@ -3480,14 +3480,6 @@ if ($dyn eq 'fv') {
 # FV3 dycore
 if ( $dyn eq 'fv3') {
 
-    # # If the -ntasks argument has been set, then use it to set the default
-    # # FV decomposition unless the user has already set it.
-    # my $layout = $nl->get_value('layout');
-    # if (defined $opts{'ntasks'} and ! defined $layout ) {
-    #     $layout = fv3_decomp_set();
-    #     add_default($nl, 'layout', 'val'=>$layout);
-    # }
-
     add_default($nl, 'fv3_adjust_dry_mass');
     add_default($nl, 'fv3_beta');
     add_default($nl, 'fv3_clock_grain');
@@ -4083,7 +4075,6 @@ if (defined $nl_group{'camexp'}) { delete $nl_group{'camexp'}; }
 @comp_groups = sort keys %nl_group;
 $outfile = "$opts{'dir'}/atm_in";
 $nl->write($outfile, 'groups'=>\@comp_groups);
-delete @nl_group{@comp_groups};
 if ($print>=1) { print "CAM writing namelist to atm_in $eol"; }
 
 #-----------------------------------------------------------------------------------------------

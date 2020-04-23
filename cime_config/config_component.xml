@@ -151,11 +151,10 @@
       <value compset="_CAM\d0%WX.*%SDYN">-nlev 145</value>
 
       <!-- Simple models -->
-      <value compset="_CAM%HS94" grid="(%ne[0-9])|(%C[0-9])|(%[0-9.]+x)">-analytic_ic</value>
       <value compset="_CAM%ADIAB">-phys adiabatic</value>
       <value compset="_CAM%DABIP04">-phys adiabatic</value>
       <value compset="_CAM%TJ16">-phys tj2016 -analytic_ic</value>
-      <value compset="_CAM%HS94">-phys held_suarez</value>
+      <value compset="_CAM%HS94">-phys held_suarez -analytic_ic</value>
       <value compset="_CAM%KESSLER">-phys kessler -chem terminator -analytic_ic</value>
 
       <!-- Aquaplanet -->
