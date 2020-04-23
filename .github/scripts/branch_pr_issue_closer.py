@@ -55,7 +55,7 @@ def  project_card_move(oa_token, column_id, card_id):
     #create required argument strings from inputs:
     github_oa_header = ''' "Authorization: token {0}" '''.format(oa_token)
     github_url_str = '''https://api.github.com/projects/columns/cards/{0}/moves'''.format(card_id)
-    json_post_inputs = ''' '{"position":"top", "column_id":%i}' ''' %column_id  #format() can't be used due to curly brackets in string.
+    json_post_inputs = ''' '{{"position":"top", "column_id":{}}}' '''.format(column_id)
 
     #Create curl command line string:
     curl_cmdline = '''curl -H '''+github_oa_header+''' -H "Accept: application/vnd.github.inertia-preview+json" -X POST -d '''+\
@@ -101,9 +101,7 @@ def end_script(msg):
     """
     Prints message to screen, and then exits script.
     """
-    print("\n")
-    print(msg)
-    print("\n")
+    print("\n{}\n".format(msg))
     print("Issue closing check has completed successfully.")
     sys.exit(0)
 
@@ -154,8 +152,6 @@ def _main_prog():
 
     commit_message = github_commit.commit.message
 
-    print(commit_message)
-
     #+++++++++++++++++++++++++++++++
     #Search for github PR merge text
     #+++++++++++++++++++++++++++++++
@@ -177,7 +173,8 @@ def _main_prog():
         #Extract first word:
         first_word = post_msg_word_list[0]
 
-        print(first_word)
+        #Print merged pr number to screen:
+        print("Merged PR: {}".format(first_word))
 
         try:
             #Try assuming the word is just a number:
@@ -222,31 +219,21 @@ def _main_prog():
     #Create integer list of all open issues:
     #++++++++++++++++++++++++++++++++++++++
 
-    #create new list:
-    open_issues = list()
-
     #Extract list of open issues from repo:
     open_repo_issues = cam_repo.get_issues(state='open')
 
-    #Loop over all open repo issues:
-    for issue in open_repo_issues:
-        #Add issue number to "open_issues" list:
-        open_issues.append(issue.number)
+    #Collect all open repo issues:
+    open_issues = [issue.number for issue in open_repo_issues]
 
     #+++++++++++++++++++++++++++++++++++++++++++++
     #Create integer list of all open pull requests
     #+++++++++++++++++++++++++++++++++++++++++++++
 
-    #create new list:
-    open_pulls = list()
-
     #Extract list of open PRs from repo:
     open_repo_pulls = cam_repo.get_pulls(state='open')
 
-    #Loop over all open repo issues:
-    for pull in open_repo_pulls:
-        #Add pr number to "open_pulls" list:
-        open_pulls.append(pull.number)
+    #Collect all open pull requests:
+    open_pulls = [pr.number for pr in open_repo_pulls]
 
     #+++++++++++++++++++++++++++++++++++++++++++++++++
     #Check if one of the keywords exists in PR message
@@ -260,11 +247,8 @@ def _main_prog():
     #Create regex pattern to find keywords:
     keyword_pattern = re.compile(r'(^|\s)close(\s|s\s|d\s)|(^|\s)fix(\s|es\s|ed\s)|(^|\s)resolve(\s|s\s|d\s)')
 
-    #Extract Pull Request message:
-    pr_message = merged_pull.body
-
-    #Make entire message lower-case:
-    pr_msg_lower = pr_message.lower()
+    #Extract (lower case) Pull Request message:
+    pr_msg_lower = merged_pull.body.lower()
 
     #search for at least one keyword:
     if keyword_pattern.search(pr_msg_lower) is not None:
@@ -279,7 +263,8 @@ def _main_prog():
    #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     #create issue pattern ("the number symbol {#} + a number"),
-    #which ends with either a space or a comma:
+    #which ends with either a space, a comma, a period, or
+    #the end of the string itself:
     issue_pattern = re.compile(r'#[0-9]+(\s|,|$)|.')
 
     #Create new "close" issues list:
@@ -297,11 +282,8 @@ def _main_prog():
         #Check if first word matches issue pattern:
         if issue_pattern.match(tmp_msg_str) is not None:
 
-            #If so, then split string into words:
-            tmp_word_list = tmp_msg_str.split()
-
-            #Extract first word:
-            first_word = tmp_word_list[0]
+            #If so, then look for an issue number immediately following
+            first_word = tmp_msg_str.split()[0]
 
             #Extract issue number from first word:
             try:
@@ -310,7 +292,7 @@ def _main_prog():
             except ValueError:
                 #If not, then ignore last letter:
                 try:
-                    issue_num = int(first_word[1:len(first_word)-1])
+                    issue_num = int(first_word[1:-1])
                 except ValueError:
                     #If ignoring the first and last letter doesn't work,
                     #then the match was likely a false positive,
@@ -329,6 +311,16 @@ def _main_prog():
     if not close_issues and not close_pulls:
         endmsg = "No issue or PR numbers were found in the merged PR message.  Thus there is nothing to close."
         end_script(endmsg)
+
+    #Print list of referenced issues to screen:
+    if close_issues:
+        print("Issues referenced by the merged PR: "+", ".join(\
+              str(issue) for issue in close_issues))
+
+    #Print list of referenced PRs to screen:
+    if close_pulls:
+        print("PRs referenced by the merged PR: "+", ".join(\
+              str(pull) for pull in close_pulls))
 
     #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     #Determine name of project associated with merged Pull Request
@@ -371,15 +363,15 @@ def _main_prog():
                         endmsg = "Merged Pull Request found in two different projects, so script will do nothing."
                         end_script(endmsg)
 
+    #Print project name associated with merged PR:
+    print("merged PR project name: {}".format(proj_mod_name))
+
     #++++++++++++++++++++++++++++++++++++++++
     #Extract repo project "To do" card issues
     #++++++++++++++++++++++++++++++++++++++++
 
-    #Intialize project issue number list:
-    proj_issues = list()
-
-    #Initalize project issue count list:
-    proj_issue_count = list()
+    #Initalize issue counting dictionary:
+    proj_issues_count = dict()
 
     #Initalize issue id to project card id dictionary:
     proj_issue_card_ids = dict()
@@ -397,7 +389,7 @@ def _main_prog():
                 #If so, then extract cards:
                 cards = column.get_cards()
 
-                #Loop over cards:
+               #Loop over cards:
                 for card in cards:
                     #Extract card content:
                     card_content = card.get_content()
@@ -405,30 +397,31 @@ def _main_prog():
                     #Next, check if card issue number matches any of the "close" issue numbers from the PR:
                     if card_content.number in close_issues:
 
-                        #If so, then check if issue number is already in proj_issues:
-                        if card_content.number in proj_issues:
-                            #If it is already present, then extract index of issue:
-                            iss_idx = proj_issues.index(card_content.number)
-
+                        #If so, then check if issue number is already in proj_issues_count:
+                        if card_content.number in proj_issues_count:
                             #Add one to project issue counter:
-                            proj_issue_count[iss_idx] += 1
-
-                        else:
-                            #If not, then append to project issues and counter list:
-                            proj_issues.append(card_content.number)
-                            proj_issue_count.append(1)
+                            proj_issues_count[card_content.number] += 1
 
                             #Also add issue id and card id to id dictionary used for card move, if in relevant project:
                             if project.name == proj_mod_name:
-                                proj_issue_card_ids.update({card_content.number:card.id})
+                                proj_issue_card_ids[card_content.number] = card.id
+
+                        else:
+                            #If not, then append to project issues count dictionary:
+                            proj_issues_count[card_content.number] = 1
+
+                            #Also add issue id and card id to id dictionary used for card move, if in relevant project:
+                            if project.name == proj_mod_name:
+                                proj_issue_card_ids[card_content.number] = card.id
 
             #Otherwise, check if column name matches "closed issues" column:
             elif column.name == "closed issues" and project.name == proj_mod_name:
                 #If so, then save column id:
-                column_id = column.id
+                #column_id = column.id
+                column_target_id = column.id
 
     #If no project cards are found that match the issue, then exit script:
-    if not proj_issues:
+    if not proj_issues_count:
         endmsg = "No project cards match the issue being closed, so the script will do nothing."
         end_script(endmsg)
 
@@ -442,16 +435,10 @@ def _main_prog():
     #"closed issues" column.
     #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    #Loop over project issues that have been "closed" by merged PR:
-    for issue_num in proj_issues:
+    #Loop over project issues and counts that have been "closed" by merged PR:
+    for issue_num, issue_count in proj_issues_count.items():
 
-        #Determine list index:
-        iss_idx = proj_issues.index(issue_num)
-
-        #determine project issue count:
-        issue_count = proj_issue_count[iss_idx]
-
-        #if issue count is just one, then close issue:
+        #If issue count is just one, then close issue:
         if issue_count == 1:
             #Extract github issue object:
             cam_issue = cam_repo.get_issue(number=issue_num)
@@ -463,7 +450,7 @@ def _main_prog():
             card_id = proj_issue_card_ids[issue_num]
 
             #Then move the card on the relevant project page to the "closed issues" column:
-            project_card_move(token.strip(), column_id, card_id)
+            project_card_move(token.strip(), column_target_id, card_id)
 
     #++++++++++++++++++++++++++++++++++++++++++++++++++++++
     #Finally, close all Pull Requests in "close_pulls" list:
