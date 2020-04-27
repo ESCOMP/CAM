@@ -1,5 +1,4 @@
 #define OVERLAP 1
-
 module prim_advection_mod
 !
 ! two formulations.  both are conservative
@@ -940,8 +939,7 @@ contains
   call t_stopf('advance_hypervis_scalar')
   end subroutine advance_hypervis_scalar
 
-
-  subroutine vertical_remap(hybrid,elem,fvm,hvcoord,dt,np1,np1_qdp,nets,nete)
+subroutine vertical_remap(hybrid,elem,fvm,hvcoord,dt,np1,np1_qdp,nets,nete)
     ! This routine is called at the end of the vertically Lagrangian
     ! dynamics step to compute the vertical flux needed to get back
     ! to reference eta levels
@@ -957,19 +955,18 @@ contains
     use vertremap_mod,          only : remap1, remap1_nofilter
     use hybrid_mod            , only : hybrid_t, config_thread_region,get_loop_ranges, PrintHybrid
     use fvm_control_volume_mod, only : fvm_struct
-    use control_mod,            only : se_prescribed_wind_2d
     use dimensions_mod        , only : ntrac
     use dimensions_mod,         only : lcp_moist
     use cam_logfile,            only : iulog
-    use physconst,              only : pi,get_thermal_energy,get_dp
+    use physconst,              only : pi,get_thermal_energy,get_dp,get_virtual_temp
     use physconst             , only : thermodynamic_active_species_idx_dycore    
     use thread_mod            , only : omp_set_nested
+    use control_mod,            only : vert_remap_q_alg          
     type (hybrid_t),  intent(in)    :: hybrid  ! distributed parallel structure (shared)
     type(fvm_struct), intent(inout) :: fvm(:)
     type (element_t), intent(inout) :: elem(:)
     !
-    real (kind=r8) :: cdp(1:nc,1:nc,nlev,ntrac)
-    real (kind=r8) :: dpc(nc,nc,nlev),dpc_star(nc,nc,nlev)
+    real (kind=r8) :: dpc_star(nc,nc,nlev)
     
     type (hvcoord_t) :: hvcoord
     real (kind=r8)   :: dt
@@ -980,7 +977,7 @@ contains
     real(r8), parameter                    :: rad2deg = 180.0_r8/pi
     integer :: region_num_threads,qbeg,qend
     type (hybrid_t) :: hybridnew,hybridnew2 
-    real (kind=r8) :: ptop
+    real (kind=r8)  :: ptop
     ! reference levels:
     !   dp(k) = (hyai(k+1)-hyai(k))*ps0 + (hybi(k+1)-hybi(k))*ps(i,j)
     !   hybi(1)=0          pure pressure at top of atmosphere
@@ -998,14 +995,24 @@ contains
     !
     ptop = hvcoord%hyai(1)*hvcoord%ps0
     do ie=nets,nete
-      if (lcp_moist) then
+      if (vert_remap_q_alg>-20) then      
+        if (lcp_moist) then
+          !
+          ! compute internal energy on Lagrangian levels
+          ! (do it here since qdp is overwritten by remap1)
+          !
+          call get_thermal_energy(1,np,1,np,1,nlev,qsize,elem(ie)%state%qdp(:,:,:,:,np1_qdp),   &
+               elem(ie)%state%t(:,:,:,np1),elem(ie)%state%dp3d(:,:,:,np1),internal_energy_star, &
+               thermodynamic_active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
+        end if
+      else
         !
-        ! compute internal energy on Lagrangian levels
-        ! (do it here since qdp is overwritten by remap1)
+        ! map Tv over lnp
         !
-        call get_thermal_energy(1,np,1,np,1,nlev,qsize,elem(ie)%state%qdp(:,:,:,:,np1_qdp),   &
-             elem(ie)%state%t(:,:,:,np1),elem(ie)%state%dp3d(:,:,:,np1),internal_energy_star, &
-             thermodynamic_active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
+        call get_virtual_temp(1,np,1,np,1,nlev,qsize,elem(ie)%state%qdp(:,:,:,:,np1_qdp),    &
+             internal_energy_star,dp_dry=elem(ie)%state%dp3d(:,:,:,np1),                     &
+             thermodynamic_active_species_idx_dycore=thermodynamic_active_species_idx_dycore)             
+        internal_energy_star = internal_energy_star*elem(ie)%state%t(:,:,:,np1)
       end if
       !
       !  REMAP u,v,T from levels in dp3d() to REF levels
@@ -1056,118 +1063,91 @@ contains
 !      else
 !        call remap1(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp),np,1,qsize,qsize,dp_star_dry,dp_dry)
 !      endif
-      call remap1(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp),np,1,qsize,qsize,dp_star_dry,dp_dry,0,ptop)
+      call remap1(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp),np,1,qsize,qsize,dp_star_dry,dp_dry,ptop,0,.true.)
       !
       ! compute moist reference pressure level thickness
       !
-      call get_dp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,np1_qdp),2,thermodynamic_active_species_idx_dycore,dp_dry,dp_moist(:,:,:))
+      call get_dp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,np1_qdp),2,&
+           thermodynamic_active_species_idx_dycore,dp_dry,dp_moist(:,:,:))
       
-!#define fv3remap
-#ifndef fv3remap      
       dp_inv=1.0_R8/dp_moist !for efficiency      
-      !
-      ! remap internal energy and back out temperature
-      !
-      if (lcp_moist) then
-        call remap1(internal_energy_star,np,1,1,1,dp_star_dry,dp_dry,2,ptop)
+      if (vert_remap_q_alg>-20) then
         !
-        ! compute sum c^(l)_p*m^(l)*dp on arrival (Eulerian) grid
-        !       
-        ttmp(:,:,:,1) = 1.0_r8
-        call get_thermal_energy(1,np,1,np,1,nlev,qsize,elem(ie)%state%qdp(:,:,:,:,np1_qdp),   &
-             ttmp(:,:,:,1),dp_dry,ttmp(:,:,:,2), &
-             thermodynamic_active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
-        
-        elem(ie)%state%t(:,:,:,np1)=internal_energy_star/ttmp(:,:,:,2)
+        ! remap internal energy and back out temperature
+        !        
+        if (lcp_moist) then
+          call remap1(internal_energy_star,np,1,1,1,dp_star_dry,dp_dry,ptop,1,.true.)
+          !
+          ! compute sum c^(l)_p*m^(l)*dp on arrival (Eulerian) grid
+          !       
+          ttmp(:,:,:,1) = 1.0_r8
+          call get_thermal_energy(1,np,1,np,1,nlev,qsize,elem(ie)%state%qdp(:,:,:,:,np1_qdp),   &
+               ttmp(:,:,:,1),dp_dry,ttmp(:,:,:,2), &
+               thermodynamic_active_species_idx_dycore=thermodynamic_active_species_idx_dycore)          
+          elem(ie)%state%t(:,:,:,np1)=internal_energy_star/ttmp(:,:,:,2)
+        else
+          internal_energy_star(:,:,:)=elem(ie)%state%t(:,:,:,np1)*dp_star_moist
+          call remap1(internal_energy_star,np,1,1,1,dp_star_moist,dp_moist,ptop,1,.true.)
+          elem(ie)%state%t(:,:,:,np1)=internal_energy_star*dp_inv        
+        end if
       else
-        internal_energy_star(:,:,:)=elem(ie)%state%t(:,:,:,np1)*dp_star_moist
-        call remap1(internal_energy_star,np,1,1,1,dp_star_moist,dp_moist,2,ptop)
-        elem(ie)%state%t(:,:,:,np1)=internal_energy_star*dp_inv        
+        !
+        ! map Tv over log(p)
+        !
+        call remap1(internal_energy_star,np,1,1,1,dp_star_moist,dp_moist,ptop,1,.false.)
+        call get_virtual_temp(1,np,1,np,1,nlev,qsize,elem(ie)%state%qdp(:,:,:,:,np1_qdp),       &
+             ttmp(:,:,:,1),dp_dry=dp_dry,                                                       &
+             thermodynamic_active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
+        !
+        ! convert new Tv to T
+        !
+        elem(ie)%state%t(:,:,:,np1)=internal_energy_star/ttmp(:,:,:,1)
       end if
-#else
-      call remap1(elem(ie)%state%t(:,:,:,np1),np,1,1,1,dp_star_moist,dp_moist,2,ptop)
-#endif      
       !
       ! remap velocity components
       !
-#ifndef fv3remap                  
-      ttmp(:,:,:,1)=elem(ie)%state%v(:,:,1,:,np1)*dp_star_moist
-      ttmp(:,:,:,2)=elem(ie)%state%v(:,:,2,:,np1)*dp_star_moist
-#else
-      ttmp(:,:,:,1)=elem(ie)%state%v(:,:,1,:,np1)
-      ttmp(:,:,:,2)=elem(ie)%state%v(:,:,2,:,np1)
-#endif      
-      call remap1(ttmp,np,1,2,2,dp_star_moist,dp_moist,3,ptop) ! remap with PPM filter
+!      ttmp(:,:,:,1)=elem(ie)%state%v(:,:,1,:,np1)*dp_star_moist
+!      ttmp(:,:,:,2)=elem(ie)%state%v(:,:,2,:,np1)*dp_star_moist
+!      call remap1(ttmp,np,1,2,2,dp_star_moist,dp_moist,ptop,-1,.true.) ! remap with PPM filter
+      call remap1(elem(ie)%state%v(:,:,1,:,np1),np,1,1,1,dp_star_moist,dp_moist,ptop,-1,.false.) ! remap with PPM filter
+      call remap1(elem(ie)%state%v(:,:,2,:,np1),np,1,1,1,dp_star_moist,dp_moist,ptop,-1,.false.) ! remap with PPM filter
       !call remap1_nofilter(ttmp,np,2,dp_star_moist,dp_moist)
-#ifndef fv3remap            
-      if ( .not. se_prescribed_wind_2d ) &
-           elem(ie)%state%v(:,:,1,:,np1)=ttmp(:,:,:,1)*dp_inv
-      if ( .not. se_prescribed_wind_2d ) &
-           elem(ie)%state%v(:,:,2,:,np1)=ttmp(:,:,:,2)*dp_inv
-#endif      
+!      elem(ie)%state%v(:,:,1,:,np1)=ttmp(:,:,:,1)*dp_inv
+!      elem(ie)%state%v(:,:,2,:,np1)=ttmp(:,:,:,2)*dp_inv
 #ifdef REMAP_TE
         ! back out T from TE
       elem(ie)%state%t(:,:,:,np1) = &
            ( elem(ie)%state%t(:,:,:,np1) - ( (elem(ie)%state%v(:,:,1,:,np1)**2 + &
            elem(ie)%state%v(:,:,2,:,np1)**2)/2))/cpair
       
-#endif
-      
-      ! remap the gll tracers from lagrangian levels (dp_star)  to REF levels dp
-      if (qsize>0) then
-        
-        if ( se_prescribed_wind_2d ) then
-          ! Peter Lauritzen et al, "The terminator 'toy'-chemistry test: A simple tool to assess errors in transport schemes",
-          !   submitted to Geosci Model Dev, Oct 2014
-          ! -- code to let dp evolve without vertical transport of tracers (consistent mass tracer coupling)
-          do q=1,qsize
-            do k=1,nlev
-              do j=1,np
-                do i=1,np
-                  !elem(ie)%state%Qdp(i,j,k,q,np1_qdp) = elem(ie)%state%Qdp(i,j,k,q,np1_qdp) * dp(i,j,k)/dp_star(i,j,k)
-                  ttmp(i,j,k,1)= elem(ie)%state%Qdp(i,j,k,q,np1_qdp) / dp_star_moist(i,j,k) ! This is the actual q
-                  elem(ie)%state%Qdp(i,j,k,q,np1_qdp) = ttmp(i,j,k,1) * dp_moist(i,j,k)
-                enddo
-              enddo
-            enddo
-          enddo
-        endif
-      endif
+#endif      
     enddo
+    
     if (ntrac>0) then
       do ie=nets,nete
+        dpc_star=fvm(ie)%dp_fvm(1:nc,1:nc,:)        
         do k=1,nlev
          do j=1,nc
            do i=1,nc
-              !
-              ! compute source (cdp) and target (dpc) pressure grids for vertical remapping
-              !
-              dpc(i,j,k) = (hvcoord%hyai(k+1) - hvcoord%hyai(k))*hvcoord%ps0 + &
-                   (hvcoord%hybi(k+1) - hvcoord%hybi(k))*fvm(ie)%psc(i,j)
-              cdp(i,j,k,1:ntrac)=fvm(ie)%c(i,j,k,1:ntrac)*fvm(ie)%dp_fvm(i,j,k)
+             !
+             ! new pressure levels on CSLAM grid
+             !
+             fvm(ie)%dp_fvm(i,j,k) = (hvcoord%hyai(k+1) - hvcoord%hyai(k))*hvcoord%ps0 + &
+                  (hvcoord%hybi(k+1) - hvcoord%hybi(k))*fvm(ie)%psc(i,j)
             end do
           end do
         end do
-        dpc_star=fvm(ie)%dp_fvm(1:nc,1:nc,:)
         if(ntrac>tracer_num_threads) then 
           call omp_set_nested(.true.)
           !$OMP PARALLEL NUM_THREADS(tracer_num_threads), DEFAULT(SHARED), PRIVATE(hybridnew2,qbeg,qend)
           hybridnew2 = config_thread_region(hybrid,'ctracer')
           call get_loop_ranges(hybridnew2, qbeg=qbeg, qend=qend)
-          call remap1(cdp,nc,qbeg,qend,ntrac,dpc_star,dpc,0,ptop)
+          call remap1(fvm(ie)%c(1:nc,1:nc,:,1:ntrac),nc,qbeg,qend,ntrac,dpc_star,fvm(ie)%dp_fvm(1:nc,1:nc,:),ptop,0,.false.)
           !$OMP END PARALLEL 
           call omp_set_nested(.false.)
         else
-          call remap1(cdp,nc,1,ntrac,ntrac,dpc_star,dpc,0,ptop)
+          call remap1(fvm(ie)%c(1:nc,1:nc,:,1:ntrac),nc,1,ntrac,ntrac,dpc_star,fvm(ie)%dp_fvm(1:nc,1:nc,:),ptop,0,.false.)
         endif
-        do k=1,nlev
-          do j=1,nc
-            do i=1,nc
-              fvm(ie)%dp_fvm(i,j,k)=dpc(i,j,k)
-              fvm(ie)%c(i,j,k,1:ntrac)=cdp(i,j,k,1:ntrac)/dpc(i,j,k)
-            end do
-          end do
-        end do
       enddo
     end if
   end subroutine vertical_remap
