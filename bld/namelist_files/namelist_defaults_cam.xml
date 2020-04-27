@@ -2071,6 +2071,7 @@
 <mpas_time_integration_order>2</mpas_time_integration_order>
 <mpas_dt                 > 1800.0 </mpas_dt>
 <mpas_dt hgrid="mpasa120">  600.0 </mpas_dt>
+
 <mpas_split_dynamics_transport>true</mpas_split_dynamics_transport>
 <mpas_number_of_sub_steps>2</mpas_number_of_sub_steps>
 <mpas_dynamics_split_steps>3</mpas_dynamics_split_steps>
@@ -2081,7 +2082,10 @@
 <mpas_h_theta_eddy_visc4>0.0</mpas_h_theta_eddy_visc4>
 <mpas_v_theta_eddy_visc2>0.0</mpas_v_theta_eddy_visc2>
 <mpas_horiz_mixing>2d_smagorinsky</mpas_horiz_mixing>
-<mpas_len_disp>120000.0</mpas_len_disp>
+
+<mpas_len_disp hgrid="mpasa480">480000.0</mpas_len_disp>
+<mpas_len_disp hgrid="mpasa120">120000.0</mpas_len_disp>
+
 <mpas_visc4_2dsmag>0.05</mpas_visc4_2dsmag>
 <mpas_del4u_div_factor>10.0</mpas_del4u_div_factor>
 <mpas_w_adv_order>3</mpas_w_adv_order>

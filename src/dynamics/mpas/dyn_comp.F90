@@ -52,7 +52,8 @@ public :: &
    dyn_register, &
    dyn_init,     &
    dyn_run,      &
-   dyn_final
+   dyn_final,    &
+   swap_time_level_ptrs
 
 type dyn_import_t
    !
@@ -352,11 +353,11 @@ subroutine dyn_init(dyn_in, dyn_out)
    call mpas_pool_get_dimension(mesh_pool, 'nVerticesSolve', nVerticesSolve)
    dyn_in % nVerticesSolve = nVerticesSolve
 
-   call mpas_pool_get_array(state_pool, 'u',                      dyn_in % uperp,   timeLevel=2)
-   call mpas_pool_get_array(state_pool, 'w',                      dyn_in % w,       timeLevel=2)
-   call mpas_pool_get_array(state_pool, 'theta_m',                dyn_in % theta_m, timeLevel=2)
-   call mpas_pool_get_array(state_pool, 'rho_zz',                 dyn_in % rho_zz,  timeLevel=2)
-   call mpas_pool_get_array(state_pool, 'scalars',                dyn_in % tracers, timeLevel=2)
+   call mpas_pool_get_array(state_pool, 'u',                      dyn_in % uperp,   timeLevel=1)
+   call mpas_pool_get_array(state_pool, 'w',                      dyn_in % w,       timeLevel=1)
+   call mpas_pool_get_array(state_pool, 'theta_m',                dyn_in % theta_m, timeLevel=1)
+   call mpas_pool_get_array(state_pool, 'rho_zz',                 dyn_in % rho_zz,  timeLevel=1)
+   call mpas_pool_get_array(state_pool, 'scalars',                dyn_in % tracers, timeLevel=1)
 
    call mpas_pool_get_array(diag_pool, 'rho_base',                dyn_in % rho_base)
    call mpas_pool_get_array(diag_pool, 'theta_base',              dyn_in % theta_base)
@@ -395,12 +396,12 @@ subroutine dyn_init(dyn_in, dyn_out)
    dyn_out % nEdgesSolve    = dyn_in % nEdgesSolve
    dyn_out % nVerticesSolve = dyn_in % nVerticesSolve
 
-   call mpas_pool_get_array(state_pool, 'u',                      dyn_out % uperp,   timeLevel=1)
-   call mpas_pool_get_array(state_pool, 'w',                      dyn_out % w,       timeLevel=1)
-   call mpas_pool_get_array(state_pool, 'theta_m',                dyn_out % theta_m, timeLevel=1)
-   call mpas_pool_get_array(state_pool, 'rho_zz',                 dyn_out % rho_zz,  timeLevel=1)
-   call mpas_pool_get_array(state_pool, 'scalars',                dyn_out % tracers, timeLevel=1)
-
+   call mpas_pool_get_array(state_pool, 'u',                      dyn_out % uperp,   timeLevel=2)
+   call mpas_pool_get_array(state_pool, 'w',                      dyn_out % w,       timeLevel=2)
+   call mpas_pool_get_array(state_pool, 'theta_m',                dyn_out % theta_m, timeLevel=2)
+   call mpas_pool_get_array(state_pool, 'rho_zz',                 dyn_out % rho_zz,  timeLevel=2)
+   call mpas_pool_get_array(state_pool, 'scalars',                dyn_out % tracers, timeLevel=2)
+   
    dyn_out % index_qv = dyn_in % index_qv
 
    dyn_out % zint  => dyn_in % zint
@@ -484,8 +485,11 @@ subroutine dyn_run(dyn_in, dyn_out)
    type (dyn_export_t), intent(inout)  :: dyn_out
 
    ! local variables
+   integer :: nCellsSolve
    integer :: index_qv
 
+   real(r8), pointer :: zz(:,:)      ! Vertical coordinate metric [dimensionless]
+                                     ! at layer midpoints               (nver,ncol)
    ! Constants
    real(r8), parameter :: Rv_over_Rd = R_v / R_d
 
@@ -494,16 +498,19 @@ subroutine dyn_run(dyn_in, dyn_out)
 
    MPAS_DEBUG_WRITE(0, 'begin '//subname)
 
+   nCellsSolve =  dyn_out % nCellsSolve
+   zz          => dyn_out % zz
+
    ! Call the MPAS-A dycore
    call cam_mpas_run(integrationLength)
-
-   ! Update pointers for prognostic fields if necessary
-   if (swap_time_level_ptrs) call shift_time_levels(dyn_in, dyn_out)
 
    ! Update diagnostic fields in dynamics export state
    ! NB: these same fields are pointed to by the dynamics import state
    index_qv = dyn_out % index_qv
-   dyn_out % theta(:,:) = dyn_out % theta_m(:,:) / (1.0_r8 + Rv_over_Rd * dyn_out % tracers(index_qv,:,:))
+   dyn_out % theta(:,1:nCellsSolve) = dyn_out % theta_m(:,1:nCellsSolve) / &
+                        (1.0_r8 + Rv_over_Rd * dyn_out % tracers(index_qv,:,1:nCellsSolve))
+
+   dyn_out % rho(:,1:nCellsSolve) = dyn_out % rho_zz(:,1:nCellsSolve) * zz(:,1:nCellsSolve)
 
 end subroutine dyn_run
 
@@ -951,45 +958,6 @@ subroutine set_base_state(dyn_in)
    end do
 
 end subroutine set_base_state
-
-!========================================================================================
-subroutine shift_time_levels(dyn_in, dyn_out)
-
-   ! The MPAS dycore may do substepping of the CAM dynamics/physics coupling interval.
-   ! The pool time indices are shifted each dycore timestep.  If there are an odd number
-   ! of these shifts, then CAM needs a corresponding update to the pointers in the
-   ! dyn_in and dyn_out objects
-
-   ! arguments
-   type (dyn_import_t), intent(inout)  :: dyn_in
-   type (dyn_export_t), intent(inout)  :: dyn_out
-
-   ! local variables
-   real(r8), dimension(:,:),   pointer :: ptr2d
-   real(r8), dimension(:,:,:), pointer :: ptr3d
-   !--------------------------------------------------------------------------------------
-
-   ptr2d             => dyn_out % uperp
-   dyn_out % uperp   => dyn_in % uperp
-   dyn_in % uperp    => ptr2d
-
-   ptr2d             => dyn_out % w
-   dyn_out % w       => dyn_in % w
-   dyn_in % w        => ptr2d
-
-   ptr2d             => dyn_out % theta_m
-   dyn_out % theta_m => dyn_in % theta_m
-   dyn_in % theta_m  => ptr2d
-
-   ptr2d             => dyn_out % rho_zz
-   dyn_out % rho_zz  => dyn_in % rho_zz
-   dyn_in % rho_zz   => ptr2d
-
-   ptr3d             => dyn_out % tracers
-   dyn_out % tracers => dyn_in % tracers
-   dyn_in % tracers  => ptr3d
-
-end subroutine shift_time_levels
 
 !========================================================================================
 !-----------------------------------------------------------------------
