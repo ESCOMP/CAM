@@ -72,13 +72,13 @@ contains
             if( pe2(i,k+1) <= pe1(i,l+1) ) then
               ! entire new grid is within the original grid
               pr = (pe2(i,k+1)-pe1(i,l)) / dp1(i,l)
-              q2(i,j,k) = q4(2,i,l) + 0.5*(q4(4,i,l)+q4(3,i,l)-q4(2,i,l))  &
+              q2(i,j,k) = q4(2,i,l) + 0.5_r8*(q4(4,i,l)+q4(3,i,l)-q4(2,i,l))  &
                    *(pr+pl)-q4(4,i,l)*r3*(pr*(pr+pl)+pl**2)
               k0 = l
               goto 555
             else
               ! Fractional area...
-              qsum = (pe1(i,l+1)-pe2(i,k))*(q4(2,i,l)+0.5*(q4(4,i,l)+   &
+              qsum = (pe1(i,l+1)-pe2(i,k))*(q4(2,i,l)+0.5_r8*(q4(4,i,l)+   &
                    q4(3,i,l)-q4(2,i,l))*(1.+pl)-q4(4,i,l)*           &
                    (r3*(1.+pl*(1.+pl))))
               do m=l+1,km
@@ -89,7 +89,7 @@ contains
                 else
                   dp = pe2(i,k+1)-pe1(i,m)
                   esl = dp / dp1(i,m)
-                  qsum = qsum + dp*(q4(2,i,m)+0.5*esl*               &
+                  qsum = qsum + dp*(q4(2,i,m)+0.5_r8*esl*               &
                        (q4(3,i,m)-q4(2,i,m)+q4(4,i,m)*(1.-r23*esl)))
                   k0 = m
                   goto 123
@@ -154,7 +154,7 @@ contains
               pr = (pe2(i,k+1)-pe1(i,l)) / dp1(i,l)
               fac1 = pr + pl
               fac2 = r3*(pr*fac1 + pl*pl) 
-              fac1 = 0.5*fac1
+              fac1 = 0.5_r8*fac1
               do iq=1,nq
                 q2(i,k,iq) = q4(2,i,l,iq) + (q4(4,i,l,iq)+q4(3,i,l,iq)-q4(2,i,l,iq))*fac1  &
                      -  q4(4,i,l,iq)*fac2
@@ -164,9 +164,9 @@ contains
             else
               ! Fractional area...
               dp = pe1(i,l+1) - pe2(i,k)
-              fac1 = 1. + pl
-              fac2 = r3*(1.+pl*fac1)
-              fac1 = 0.5*fac1
+              fac1 = 1.0_r8 + pl
+              fac2 = r3*(1.0_r8+pl*fac1)
+              fac1 = 0.5_r8*fac1
               do iq=1,nq
                 qsum(iq) = dp*(q4(2,i,l,iq) + (q4(4,i,l,iq)+   &
                      q4(3,i,l,iq) - q4(2,i,l,iq))*fac1 - q4(4,i,l,iq)*fac2)
@@ -181,8 +181,8 @@ contains
                 else
                   dp = pe2(i,k+1)-pe1(i,m)
                   esl = dp / dp1(i,m)
-                  fac1 = 0.5*esl
-                  fac2 = 1.-r23*esl
+                  fac1 = 0.5_r8*esl
+                  fac2 = 1.0_r8-r23*esl
                   do iq=1,nq
                     qsum(iq) = qsum(iq) + dp*( q4(2,i,m,iq) + fac1*(         &
                          q4(3,i,m,iq)-q4(2,i,m,iq)+q4(4,i,m,iq)*fac2 ) )
@@ -271,15 +271,15 @@ contains
               if( pe2(i,k+1) <= pe1(i,l+1) ) then
                 ! entire new grid is within the original grid
                 pr = (pe2(i,k+1)-pe1(i,l)) / dp1(i,l)
-                q2(i,j,k) = q4(2,i,l) + 0.5*(q4(4,i,l)+q4(3,i,l)-q4(2,i,l))  &
+                q2(i,j,k) = q4(2,i,l) + 0.5_r8*(q4(4,i,l)+q4(3,i,l)-q4(2,i,l))  &
                      *(pr+pl)-q4(4,i,l)*r3*(pr*(pr+pl)+pl**2)
                 k0 = l
                 goto 555
               else
                 ! Fractional area...
-                qsum = (pe1(i,l+1)-pe2(i,k))*(q4(2,i,l)+0.5*(q4(4,i,l)+   &
-                     q4(3,i,l)-q4(2,i,l))*(1.+pl)-q4(4,i,l)*           &
-                     (r3*(1.+pl*(1.+pl))))
+                qsum = (pe1(i,l+1)-pe2(i,k))*(q4(2,i,l)+0.5_r8*(q4(4,i,l)+   &
+                     q4(3,i,l)-q4(2,i,l))*(1.0_r8+pl)-q4(4,i,l)*           &
+                     (r3*(1.0_r8+pl*(1.0_r8+pl))))
                 do m=l+1,km
                   ! locate the bottom edge: pe2(i,k+1)
                   if( pe2(i,k+1) > pe1(i,m+1) ) then
@@ -288,8 +288,8 @@ contains
                   else
                     dp = pe2(i,k+1)-pe1(i,m)
                     esl = dp / dp1(i,m)
-                    qsum = qsum + dp*(q4(2,i,m)+0.5*esl*               &
-                         (q4(3,i,m)-q4(2,i,m)+q4(4,i,m)*(1.-r23*esl)))
+                    qsum = qsum + dp*(q4(2,i,m)+0.5_r8*esl*               &
+                         (q4(3,i,m)-q4(2,i,m)+q4(4,i,m)*(1.0_r8-r23*esl)))
                     k0 = m
                     goto 123
                   endif
@@ -350,8 +350,8 @@ contains
       
       do k=2,km1
         do i=i1,i2
-          c1  = (delp(i,k-1)+0.5*delp(i,k))/d4(i,k+1)
-          c2  = (delp(i,k+1)+0.5*delp(i,k))/d4(i,k)
+          c1  = (delp(i,k-1)+0.5_r8*delp(i,k))/d4(i,k+1)
+          c2  = (delp(i,k+1)+0.5_r8*delp(i,k))/d4(i,k)
           df2(i,k) = delp(i,k)*(c1*delq(i,k) + c2*delq(i,k-1)) /      &
                (d4(i,k)+delp(i,k+1))
           dc(i,k) = sign( min(abs(df2(i,k)),              &
@@ -369,7 +369,7 @@ contains
           c1 = delq(i,k-1)*delp(i,k-1) / d4(i,k)
           a1 = d4(i,k-1) / (d4(i,k) + delp(i,k-1))
           a2 = d4(i,k+1) / (d4(i,k) + delp(i,k))
-          a4(2,i,k) = a4(1,i,k-1) + c1 + 2./(d4(i,k-1)+d4(i,k+1)) *    &
+          a4(2,i,k) = a4(1,i,k-1) + c1 + 2.0_r8/(d4(i,k-1)+d4(i,k+1)) *    &
                ( delp(i,k)*(c1*(a1 - a2)+a2*dc(i,k-1)) -          &
                delp(i,k-1)*a1*dc(i,k  ) )
         enddo
@@ -383,32 +383,32 @@ contains
         d1 = delp(i,1)
         d2 = delp(i,2)
         qm = (d2*a4(1,i,1)+d1*a4(1,i,2)) / (d1+d2)
-        dq = 2.*(a4(1,i,2)-a4(1,i,1)) / (d1+d2)
-        c1 = 4.*(a4(2,i,3)-qm-d2*dq) / ( d2*(2.*d2*d2+d1*(d2+3.*d1)) )
-        c3 = dq - 0.5*c1*(d2*(5.*d1+d2)-3.*d1*d1)
-        a4(2,i,2) = qm - 0.25*c1*d1*d2*(d2+3.*d1)
+        dq = 2.0_r8*(a4(1,i,2)-a4(1,i,1)) / (d1+d2)
+        c1 = 4.0_r8*(a4(2,i,3)-qm-d2*dq) / ( d2*(2.0_r8*d2*d2+d1*(d2+3.0_r8*d1)) )
+        c3 = dq - 0.5_r8*c1*(d2*(5.0_r8*d1+d2)-3.0_r8*d1*d1)
+        a4(2,i,2) = qm - 0.25_r8*c1*d1*d2*(d2+3.0_r8*d1)
         ! Top edge:
         !-------------------------------------------------------
-        a4(2,i,1) = d1*(2.*c1*d1**2-c3) + a4(2,i,2)
+        a4(2,i,1) = d1*(2.0_r8*c1*d1**2-c3) + a4(2,i,2)
         !-------------------------------------------------------
         !        a4(2,i,1) = (12./7.)*a4(1,i,1)-(13./14.)*a4(1,i,2)+(3./14.)*a4(1,i,3)
         !-------------------------------------------------------
         ! No over- and undershoot condition
         a4(2,i,2) = max( a4(2,i,2), min(a4(1,i,1), a4(1,i,2)) )
         a4(2,i,2) = min( a4(2,i,2), max(a4(1,i,1), a4(1,i,2)) )
-        dc(i,1) =  0.5*(a4(2,i,2) - a4(1,i,1))
+        dc(i,1) =  0.5_r8*(a4(2,i,2) - a4(1,i,1))
       enddo
       
       ! Enforce monotonicity  within the top layer
       
       if( iv==0 ) then
         do i=i1,i2
-          a4(2,i,1) = max(0., a4(2,i,1))
-          a4(2,i,2) = max(0., a4(2,i,2))
+          a4(2,i,1) = max(0.0_r8, a4(2,i,1))
+          a4(2,i,2) = max(0.0_r8, a4(2,i,2))
         enddo
       elseif( iv==-1 ) then
         do i=i1,i2
-          if ( a4(2,i,1)*a4(1,i,1) <= 0. ) a4(2,i,1) = 0.
+          if ( a4(2,i,1)*a4(1,i,1) <= 0.0_r8 ) a4(2,i,1) = 0.0_r8
         enddo
       elseif( abs(iv)==2 ) then
         do i=i1,i2
@@ -423,20 +423,20 @@ contains
         d1 = delp(i,km)
         d2 = delp(i,km1)
         qm = (d2*a4(1,i,km)+d1*a4(1,i,km1)) / (d1+d2)
-        dq = 2.*(a4(1,i,km1)-a4(1,i,km)) / (d1+d2)
-        c1 = (a4(2,i,km1)-qm-d2*dq) / (d2*(2.*d2*d2+d1*(d2+3.*d1)))
-        c3 = dq - 2.0*c1*(d2*(5.*d1+d2)-3.*d1*d1)
-        a4(2,i,km) = qm - c1*d1*d2*(d2+3.*d1)
+        dq = 2.0_r8*(a4(1,i,km1)-a4(1,i,km)) / (d1+d2)
+        c1 = (a4(2,i,km1)-qm-d2*dq) / (d2*(2.0_r8*d2*d2+d1*(d2+3.0_r8*d1)))
+        c3 = dq - 2.0_r8*c1*(d2*(5.*d1+d2)-3.0_r8*d1*d1)
+        a4(2,i,km) = qm - c1*d1*d2*(d2+3.0_r8*d1)
         ! Bottom edge:
         !-----------------------------------------------------
-        a4(3,i,km) = d1*(8.*c1*d1**2-c3) + a4(2,i,km)
+        a4(3,i,km) = d1*(8.0_r8*c1*d1**2-c3) + a4(2,i,km)
         !        dc(i,km) = 0.5*(a4(3,i,km) - a4(1,i,km))
         !-----------------------------------------------------
         !        a4(3,i,km) = (12./7.)*a4(1,i,km)-(13./14.)*a4(1,i,km-1)+(3./14.)*a4(1,i,km-2)
         ! No over- and under-shoot condition
         a4(2,i,km) = max( a4(2,i,km), min(a4(1,i,km), a4(1,i,km1)) )
         a4(2,i,km) = min( a4(2,i,km), max(a4(1,i,km), a4(1,i,km1)) )
-        dc(i,km) = 0.5*(a4(1,i,km) - a4(2,i,km))
+        dc(i,km) = 0.5_r8*(a4(1,i,km) - a4(2,i,km))
       enddo
       
       
@@ -445,14 +445,14 @@ contains
 #ifdef BOT_MONO
       do i=i1,i2
         a4(4,i,km) = 0
-        if( a4(3,i,km) * a4(1,i,km) <= 0. ) a4(3,i,km) = 0.
+        if( a4(3,i,km) * a4(1,i,km) <= 0.0_r8 ) a4(3,i,km) = 0.0_r8
         d1 = a4(1,i,km) - a4(2,i,km)
         d2 = a4(3,i,km) - a4(1,i,km)
-        if ( d1*d2 < 0. ) then
+        if ( d1*d2 < 0.0_r8 ) then
           a4(2,i,km) = a4(1,i,km)
           a4(3,i,km) = a4(1,i,km)
         else
-          dq = sign(min(abs(d1),abs(d2),0.5*abs(delq(i,km-1))), d1)
+          dq = sign(min(abs(d1),abs(d2),0.5_r8*abs(delq(i,km-1))), d1)
           a4(2,i,km) = a4(1,i,km) - dq
           a4(3,i,km) = a4(1,i,km) + dq
         endif
@@ -460,12 +460,12 @@ contains
 #else
       if( iv==0 ) then
         do i=i1,i2
-          a4(2,i,km) = max(0.,a4(2,i,km))
-          a4(3,i,km) = max(0.,a4(3,i,km))
+          a4(2,i,km) = max(0.0_r8,a4(2,i,km))
+          a4(3,i,km) = max(0.0_r8,a4(3,i,km))
         enddo
       elseif( iv<0 ) then
         do i=i1,i2
-          if( a4(1,i,km)*a4(3,i,km) <= 0. )  a4(3,i,km) = 0.
+          if( a4(1,i,km)*a4(3,i,km) <= 0.0_r8 )  a4(3,i,km) = 0.0_r8
         enddo
       endif
 #endif
@@ -482,7 +482,7 @@ contains
       ! Top 2 and bottom 2 layers always use monotonic mapping
       do k=1,2
         do i=i1,i2
-          a4(4,i,k) = 3.*(2.*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
+          a4(4,i,k) = 3.0_r8*(2.0_r8*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
         enddo
         call ppm_limiters(dc(i1,k), a4(1,i1,k), it, 0)
       enddo
@@ -496,15 +496,15 @@ contains
             ! Method#1
             !           h2(i,k) = delq(i,k) - delq(i,k-1)
             ! Method#2 - better
-            h2(i,k) = 2.*(dc(i,k+1)/delp(i,k+1) - dc(i,k-1)/delp(i,k-1))  &
-                 / ( delp(i,k)+0.5*(delp(i,k-1)+delp(i,k+1)) )        &
+            h2(i,k) = 2.0_r8*(dc(i,k+1)/delp(i,k+1) - dc(i,k-1)/delp(i,k-1))  &
+                 / ( delp(i,k)+0.5_r8*(delp(i,k-1)+delp(i,k+1)) )        &
                  * delp(i,k)**2 
             ! Method#3
 !!!            h2(i,k) = dc(i,k+1) - dc(i,k-1)
           enddo
         enddo
         
-        fac = 1.5           ! original quasi-monotone
+        fac = 1.5_r8           ! original quasi-monotone
         
         do k=3,km-2
           do i=i1,i2
@@ -512,7 +512,7 @@ contains
             !        qmp   = a4(1,i,k) + 2.0*delq(i,k-1)
             !        lac   = a4(1,i,k) + fac*h2(i,k-1) + 0.5*delq(i,k-1)
             !
-            pmp   = 2.*dc(i,k)
+            pmp   = 2.0_r8*dc(i,k)
             qmp   = a4(1,i,k) + pmp
             lac   = a4(1,i,k) + fac*h2(i,k-1) + dc(i,k)
             a4(3,i,k) = min(max(a4(3,i,k), min(a4(1,i,k), qmp, lac)),    &
@@ -528,7 +528,7 @@ contains
             !-------------
             ! Recompute A6
             !-------------
-            a4(4,i,k) = 3.*(2.*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
+            a4(4,i,k) = 3.0_r8*(2.0_r8*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
           enddo
           ! Additional constraint to ensure positivity when kord=7
           if (iv == 0 .and. kord >= 6 )                      &
@@ -544,7 +544,7 @@ contains
         do k=3,km-2
           if( kord /= 4) then
             do i=i1,i2
-              a4(4,i,k) = 3.*(2.*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
+              a4(4,i,k) = 3.0_r8*(2.0_r8*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
             enddo
           endif
           if(kord/=6) call ppm_limiters(dc(i1,k), a4(1,i1,k), it, lmt)
@@ -553,7 +553,7 @@ contains
       
       do k=km1,km
         do i=i1,i2
-          a4(4,i,k) = 3.*(2.*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
+          a4(4,i,k) = 3.0_r8*(2.0_r8*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
         enddo
         call ppm_limiters(dc(i1,k), a4(1,i1,k), it, 0)
       enddo
@@ -583,19 +583,19 @@ contains
       if(lmt == 0) then
         ! Standard PPM constraint
         do i=1,itot
-          if(dm(i) == 0.) then
+          if(dm(i) == 0.0_r8) then
             a4(2,i) = a4(1,i)
             a4(3,i) = a4(1,i)
-            a4(4,i) = 0.
+            a4(4,i) = 0.0_r8
           else
             da1  = a4(3,i) - a4(2,i)
             da2  = da1**2
             a6da = a4(4,i)*da1
             if(a6da < -da2) then
-              a4(4,i) = 3.*(a4(2,i)-a4(1,i))
+              a4(4,i) = 3.0_r8*(a4(2,i)-a4(1,i))
               a4(3,i) = a4(2,i) - a4(4,i)
             elseif(a6da > da2) then
-              a4(4,i) = 3.*(a4(3,i)-a4(1,i))
+              a4(4,i) = 3.0_r8*(a4(3,i)-a4(1,i))
               a4(2,i) = a4(3,i) - a4(4,i)
             endif
           endif
@@ -606,10 +606,10 @@ contains
         ! Improved full monotonicity constraint (Lin 2004)
         ! Note: no need to provide first guess of A6 <-- a4(4,i)
         do i=1, itot
-          qmp = 2.*dm(i)
+          qmp = 2.0_r8*dm(i)
           a4(2,i) = a4(1,i)-sign(min(abs(qmp),abs(a4(2,i)-a4(1,i))), qmp)
           a4(3,i) = a4(1,i)+sign(min(abs(qmp),abs(a4(3,i)-a4(1,i))), qmp)
-          a4(4,i) = 3.*( 2.*a4(1,i) - (a4(2,i)+a4(3,i)) )
+          a4(4,i) = 3.0_r8*( 2.0_r8*a4(1,i) - (a4(2,i)+a4(3,i)) )
         enddo
         
       elseif (lmt == 2) then
@@ -617,17 +617,17 @@ contains
         ! Positive definite constraint
         do i=1,itot
           if( abs(a4(3,i)-a4(2,i)) < -a4(4,i) ) then
-            fmin = a4(1,i)+0.25*(a4(3,i)-a4(2,i))**2/a4(4,i)+a4(4,i)*r12
-            if( fmin < 0. ) then
+            fmin = a4(1,i)+0.25_r8*(a4(3,i)-a4(2,i))**2/a4(4,i)+a4(4,i)*r12
+            if( fmin < 0.0_r8 ) then
               if(a4(1,i)<a4(3,i) .and. a4(1,i)<a4(2,i)) then
                 a4(3,i) = a4(1,i)
                 a4(2,i) = a4(1,i)
-                a4(4,i) = 0.
+                a4(4,i) = 0.0_r8
               elseif(a4(3,i) > a4(2,i)) then
-                a4(4,i) = 3.*(a4(2,i)-a4(1,i))
+                a4(4,i) = 3.0_r8*(a4(2,i)-a4(1,i))
                 a4(3,i) = a4(2,i) - a4(4,i)
               else
-                a4(4,i) = 3.*(a4(3,i)-a4(1,i))
+                a4(4,i) = 3.0_r8*(a4(3,i)-a4(1,i))
                 a4(2,i) = a4(3,i) - a4(4,i)
               endif
             endif
@@ -661,21 +661,21 @@ contains
       
       if ( iv .eq. -2 ) then
         do i=i1,i2
-          gam(i,2) = 0.5
-          q(i,1) = 1.5*a4(1,i,1)
+          gam(i,2) = 0.5_r8
+          q(i,1) = 1.5_r8*a4(1,i,1)
         enddo
         do k=2,km-1
           do i=i1, i2
             grat = delp(i,k-1) / delp(i,k)
-            bet =  2. + grat + grat - gam(i,k)
-            q(i,k) = (3.*(a4(1,i,k-1)+a4(1,i,k)) - q(i,k-1))/bet
+            bet =  2.0_r8 + grat + grat - gam(i,k)
+            q(i,k) = (3.0_r8*(a4(1,i,k-1)+a4(1,i,k)) - q(i,k-1))/bet
             gam(i,k+1) = grat / bet
           enddo
         enddo
         do i=i1,i2
           grat = delp(i,km-1) / delp(i,km) 
-          q(i,km) = (3.*(a4(1,i,km-1)+a4(1,i,km)) - grat*qs(i) - q(i,km-1)) /  &
-               (2. + grat + grat - gam(i,km))
+          q(i,km) = (3.0_r8*(a4(1,i,km-1)+a4(1,i,km)) - grat*qs(i) - q(i,km-1)) /  &
+               (2.0_r8 + grat + grat - gam(i,km))
           q(i,km+1) = qs(i)
         enddo
         do k=km-1,1,-1
@@ -686,24 +686,24 @@ contains
       else
         do i=i1,i2
           grat = delp(i,2) / delp(i,1)   ! grid ratio
-          bet = grat*(grat+0.5)
-          q(i,1) = ( (grat+grat)*(grat+1.)*a4(1,i,1) + a4(1,i,2) ) / bet
-          gam(i,1) = ( 1. + grat*(grat+1.5) ) / bet
+          bet = grat*(grat+0.5_r8)
+          q(i,1) = ( (grat+grat)*(grat+1.0_r8)*a4(1,i,1) + a4(1,i,2) ) / bet
+          gam(i,1) = ( 1.0_r8 + grat*(grat+1.5_r8) ) / bet
         enddo
         
         do k=2,km
           do i=i1,i2
             d4(i) = delp(i,k-1) / delp(i,k)
-            bet =  2. + d4(i) + d4(i) - gam(i,k-1)
-            q(i,k) = ( 3.*(a4(1,i,k-1)+d4(i)*a4(1,i,k)) - q(i,k-1) )/bet
+            bet =  2.0_r8 + d4(i) + d4(i) - gam(i,k-1)
+            q(i,k) = ( 3.0_r8*(a4(1,i,k-1)+d4(i)*a4(1,i,k)) - q(i,k-1) )/bet
             gam(i,k) = d4(i) / bet
           enddo
         enddo
         
         do i=i1,i2
-          a_bot = 1. + d4(i)*(d4(i)+1.5)
-          q(i,km+1) = (2.*d4(i)*(d4(i)+1.)*a4(1,i,km)+a4(1,i,km-1)-a_bot*q(i,km))  &
-               / ( d4(i)*(d4(i)+0.5) - a_bot*gam(i,km) )
+          a_bot = 1.0_r8 + d4(i)*(d4(i)+1.5_r8)
+          q(i,km+1) = (2.0_r8*d4(i)*(d4(i)+1.0_r8)*a4(1,i,km)+a4(1,i,km-1)-a_bot*q(i,km))  &
+               / ( d4(i)*(d4(i)+0.5_r8) - a_bot*gam(i,km) )
         enddo
         
         do k=km,1,-1
@@ -719,7 +719,7 @@ contains
           do i=i1,i2
             a4(2,i,k) = q(i,k  )
             a4(3,i,k) = q(i,k+1)
-            a4(4,i,k) = 3.*(2.*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
+            a4(4,i,k) = 3.0_r8*(2.0_r8*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
           enddo
         enddo
         return
@@ -745,18 +745,18 @@ contains
       ! Interior:
       do k=3,km-1
         do i=i1,i2
-          if ( gam(i,k-1)*gam(i,k+1)>0. ) then
+          if ( gam(i,k-1)*gam(i,k+1)>0.0_r8 ) then
             ! Apply large-scale constraint to ALL fields if not local max/min
             q(i,k) = min( q(i,k), max(a4(1,i,k-1),a4(1,i,k)) )
             q(i,k) = max( q(i,k), min(a4(1,i,k-1),a4(1,i,k)) )
           else
-            if ( gam(i,k-1) > 0. ) then
+            if ( gam(i,k-1) > 0.0_r8 ) then
               ! There exists a local max
               q(i,k) = max(q(i,k), min(a4(1,i,k-1),a4(1,i,k)))
             else
               ! There exists a local min
               q(i,k) = min(q(i,k), max(a4(1,i,k-1),a4(1,i,k)))
-              if ( iv==0 ) q(i,k) = max(0., q(i,k))
+              if ( iv==0 ) q(i,k) = max(0.0_r8, q(i,k))
             endif
           endif
         enddo
@@ -778,18 +778,18 @@ contains
       do k=1,km
         if ( k==1 .or. k==km ) then
           do i=i1,i2
-            extm(i,k) = (a4(2,i,k)-a4(1,i,k)) * (a4(3,i,k)-a4(1,i,k)) > 0.
+            extm(i,k) = (a4(2,i,k)-a4(1,i,k)) * (a4(3,i,k)-a4(1,i,k)) > 0.0_r8
           enddo
         else
           do i=i1,i2
-            extm(i,k) = gam(i,k)*gam(i,k+1) < 0.
+            extm(i,k) = gam(i,k)*gam(i,k+1) < 0.0_r8
           enddo
         endif
         if ( abs(kord) > 9 ) then
           do i=i1,i2
-            x0 = 2.*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k))
+            x0 = 2.0_r8*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k))
             x1 = abs(a4(2,i,k)-a4(3,i,k))
-            a4(4,i,k) = 3.*x0
+            a4(4,i,k) = 3.0_r8*x0
             ext5(i,k) = abs(x0) > x1
             ext6(i,k) = abs(a4(4,i,k)) > x1
           enddo
@@ -804,30 +804,30 @@ contains
       
       if ( iv==0 ) then
         do i=i1,i2
-          a4(2,i,1) = max(0., a4(2,i,1))
+          a4(2,i,1) = max(0.0_r8, a4(2,i,1))
         enddo
       elseif ( iv==-1 ) then 
         do i=i1,i2
-          if ( a4(2,i,1)*a4(1,i,1) <= 0. ) a4(2,i,1) = 0.
+          if ( a4(2,i,1)*a4(1,i,1) <= 0.0_r8 ) a4(2,i,1) = 0.0_r8
         enddo
       elseif ( iv==2 ) then
         do i=i1,i2
           a4(2,i,1) = a4(1,i,1)
           a4(3,i,1) = a4(1,i,1)
-          a4(4,i,1) = 0.
+          a4(4,i,1) = 0.0_r8
         enddo
       endif
       
       if ( iv/=2 ) then
         do i=i1,i2
-          a4(4,i,1) = 3.*(2.*a4(1,i,1) - (a4(2,i,1)+a4(3,i,1)))
+          a4(4,i,1) = 3.0_r8*(2.0_r8*a4(1,i,1) - (a4(2,i,1)+a4(3,i,1)))
         enddo
         call cs_limiters(im, extm(i1,1), a4(1,i1,1), 1)
       endif
       
       ! k=2
       do i=i1,i2
-        a4(4,i,2) = 3.*(2.*a4(1,i,2) - (a4(2,i,2)+a4(3,i,2)))
+        a4(4,i,2) = 3.0_r8*(2.0_r8*a4(1,i,2) - (a4(2,i,2)+a4(3,i,2)))
       enddo
       call cs_limiters(im, extm(i1,2), a4(1,i1,2), 2)
       
@@ -838,17 +838,17 @@ contains
         if ( abs(kord)<9 ) then
           do i=i1,i2
             ! Left  edges
-            pmp_1 = a4(1,i,k) - 2.*gam(i,k+1)
-            lac_1 = pmp_1 + 1.5*gam(i,k+2)
+            pmp_1 = a4(1,i,k) - 2.0_r8*gam(i,k+1)
+            lac_1 = pmp_1 + 1.5_r8*gam(i,k+2)
             a4(2,i,k) = min(max(a4(2,i,k), min(a4(1,i,k), pmp_1, lac_1)),   &
                  max(a4(1,i,k), pmp_1, lac_1) )
             ! Right edges
-            pmp_2 = a4(1,i,k) + 2.*gam(i,k)
-            lac_2 = pmp_2 - 1.5*gam(i,k-1)
+            pmp_2 = a4(1,i,k) + 2.0_r8*gam(i,k)
+            lac_2 = pmp_2 - 1.5_r8*gam(i,k-1)
             a4(3,i,k) = min(max(a4(3,i,k), min(a4(1,i,k), pmp_2, lac_2)),    &
                  max(a4(1,i,k), pmp_2, lac_2) )
             
-            a4(4,i,k) = 3.*(2.*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
+            a4(4,i,k) = 3.0_r8*(2.0_r8*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
           enddo
           
         elseif ( abs(kord)==9 ) then
@@ -857,30 +857,30 @@ contains
               ! grid-scale 2-delta-z wave detected
               a4(2,i,k) = a4(1,i,k)
               a4(3,i,k) = a4(1,i,k)
-              a4(4,i,k) = 0.
+              a4(4,i,k) = 0.0_r8
             else if ( extm(i,k) .and. extm(i,k+1) ) then
               ! grid-scale 2-delta-z wave detected
               a4(2,i,k) = a4(1,i,k)
               a4(3,i,k) = a4(1,i,k)
-              a4(4,i,k) = 0.
+              a4(4,i,k) = 0.0_r8
             else if ( extm(i,k) .and. a4(1,i,k)<qmin ) then
               ! grid-scale 2-delta-z wave detected
               a4(2,i,k) = a4(1,i,k)
               a4(3,i,k) = a4(1,i,k)
-              a4(4,i,k) = 0.
+              a4(4,i,k) = 0.0_r8
             else
-              a4(4,i,k) = 3.*(2.*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
+              a4(4,i,k) = 3.0_r8*(2.0_r8*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
               ! Check within the smooth region if subgrid profile is non-monotonic
               if( abs(a4(4,i,k)) > abs(a4(2,i,k)-a4(3,i,k)) ) then
-                pmp_1 = a4(1,i,k) - 2.*gam(i,k+1)
-                lac_1 = pmp_1 + 1.5*gam(i,k+2)
+                pmp_1 = a4(1,i,k) - 2.0_r8*gam(i,k+1)
+                lac_1 = pmp_1 + 1.5_r8*gam(i,k+2)
                 a4(2,i,k) = min(max(a4(2,i,k), min(a4(1,i,k), pmp_1, lac_1)),  &
                      max(a4(1,i,k), pmp_1, lac_1) )
-                pmp_2 = a4(1,i,k) + 2.*gam(i,k)
-                lac_2 = pmp_2 - 1.5*gam(i,k-1)
+                pmp_2 = a4(1,i,k) + 2.0_r8*gam(i,k)
+                lac_2 = pmp_2 - 1.5_r8*gam(i,k-1)
                 a4(3,i,k) = min(max(a4(3,i,k), min(a4(1,i,k), pmp_2, lac_2)),  &
                      max(a4(1,i,k), pmp_2, lac_2) )
-                a4(4,i,k) = 3.*(2.*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
+                a4(4,i,k) = 3.0_r8*(2.0_r8*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
               endif
             endif
           enddo
@@ -891,50 +891,50 @@ contains
                 a4(2,i,k) = a4(1,i,k)
                 a4(3,i,k) = a4(1,i,k)
               elseif ( ext6(i,k-1) .or. ext6(i,k+1) ) then
-                pmp_1 = a4(1,i,k) - 2.*gam(i,k+1)
-                lac_1 = pmp_1 + 1.5*gam(i,k+2)
+                pmp_1 = a4(1,i,k) - 2.0_r8*gam(i,k+1)
+                lac_1 = pmp_1 + 1.5_r8*gam(i,k+2)
                 a4(2,i,k) = min(max(a4(2,i,k), min(a4(1,i,k), pmp_1, lac_1)),  &
                      max(a4(1,i,k), pmp_1, lac_1) )
-                pmp_2 = a4(1,i,k) + 2.*gam(i,k)
-                lac_2 = pmp_2 - 1.5*gam(i,k-1)
+                pmp_2 = a4(1,i,k) + 2.0_r8*gam(i,k)
+                lac_2 = pmp_2 - 1.5_r8*gam(i,k-1)
                 a4(3,i,k) = min(max(a4(3,i,k), min(a4(1,i,k), pmp_2, lac_2)),  &
                      max(a4(1,i,k), pmp_2, lac_2) )
               endif
             elseif( ext6(i,k) ) then
               if( ext5(i,k-1) .or. ext5(i,k+1) ) then
-                pmp_1 = a4(1,i,k) - 2.*gam(i,k+1)
-                lac_1 = pmp_1 + 1.5*gam(i,k+2)
+                pmp_1 = a4(1,i,k) - 2.0_r8*gam(i,k+1)
+                lac_1 = pmp_1 + 1.5_r8*gam(i,k+2)
                 a4(2,i,k) = min(max(a4(2,i,k), min(a4(1,i,k), pmp_1, lac_1)),  &
                      max(a4(1,i,k), pmp_1, lac_1) )
-                pmp_2 = a4(1,i,k) + 2.*gam(i,k)
-                lac_2 = pmp_2 - 1.5*gam(i,k-1)
+                pmp_2 = a4(1,i,k) + 2.0_r8*gam(i,k)
+                lac_2 = pmp_2 - 1.5_r8*gam(i,k-1)
                 a4(3,i,k) = min(max(a4(3,i,k), min(a4(1,i,k), pmp_2, lac_2)),  &
                      max(a4(1,i,k), pmp_2, lac_2) )
               endif
             endif
           enddo
           do i=i1,i2
-            a4(4,i,k) = 3.*(2.*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
+            a4(4,i,k) = 3.0_r8*(2.0_r8*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
           enddo
         elseif ( abs(kord)==12 ) then
           do i=i1,i2
             if( extm(i,k) ) then
               a4(2,i,k) = a4(1,i,k)
               a4(3,i,k) = a4(1,i,k)
-              a4(4,i,k) = 0.
+              a4(4,i,k) = 0.0_r8
             else        ! not a local extremum
-              a4(4,i,k) = 6.*a4(1,i,k) - 3.*(a4(2,i,k)+a4(3,i,k))
+              a4(4,i,k) = 6.0_r8*a4(1,i,k) - 3.0_r8*(a4(2,i,k)+a4(3,i,k))
               ! Check within the smooth region if subgrid profile is non-monotonic
               if( abs(a4(4,i,k)) > abs(a4(2,i,k)-a4(3,i,k)) ) then
-                pmp_1 = a4(1,i,k) - 2.*gam(i,k+1)
-                lac_1 = pmp_1 + 1.5*gam(i,k+2)
+                pmp_1 = a4(1,i,k) - 2.0_r8*gam(i,k+1)
+                lac_1 = pmp_1 + 1.5_r8*gam(i,k+2)
                 a4(2,i,k) = min(max(a4(2,i,k), min(a4(1,i,k), pmp_1, lac_1)),  &
                      max(a4(1,i,k), pmp_1, lac_1) )
-                pmp_2 = a4(1,i,k) + 2.*gam(i,k)
-                lac_2 = pmp_2 - 1.5*gam(i,k-1)
+                pmp_2 = a4(1,i,k) + 2.0_r8*gam(i,k)
+                lac_2 = pmp_2 - 1.5_r8*gam(i,k-1)
                 a4(3,i,k) = min(max(a4(3,i,k), min(a4(1,i,k), pmp_2, lac_2)),  &
                      max(a4(1,i,k), pmp_2, lac_2) )
-                a4(4,i,k) = 6.*a4(1,i,k) - 3.*(a4(2,i,k)+a4(3,i,k))
+                a4(4,i,k) = 6.0_r8*a4(1,i,k) - 3.0_r8*(a4(2,i,k)+a4(3,i,k))
               endif
             endif
           enddo
@@ -949,12 +949,12 @@ contains
             endif
           enddo
           do i=i1,i2
-            a4(4,i,k) = 3.*(2.*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
+            a4(4,i,k) = 3.0_r8*(2.0_r8*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
           enddo
         elseif ( abs(kord)==14 ) then
           
           do i=i1,i2
-            a4(4,i,k) = 3.*(2.*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
+            a4(4,i,k) = 3.0_r8*(2.0_r8*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
           enddo
           
         elseif ( abs(kord)==15 ) then   ! Revised abs(kord)=9 scheme
@@ -969,18 +969,18 @@ contains
               a4(2,i,k) = a4(1,i,k)
               a4(3,i,k) = a4(1,i,k)
             elseif( ext6(i,k) ) then
-              pmp_1 = a4(1,i,k) - 2.*gam(i,k+1)
-              lac_1 = pmp_1 + 1.5*gam(i,k+2)
+              pmp_1 = a4(1,i,k) - 2.0_r8*gam(i,k+1)
+              lac_1 = pmp_1 + 1.5_r8*gam(i,k+2)
               a4(2,i,k) = min(max(a4(2,i,k), min(a4(1,i,k), pmp_1, lac_1)),  &
                    max(a4(1,i,k), pmp_1, lac_1) )
-              pmp_2 = a4(1,i,k) + 2.*gam(i,k)
-              lac_2 = pmp_2 - 1.5*gam(i,k-1)
+              pmp_2 = a4(1,i,k) + 2.0_r8*gam(i,k)
+              lac_2 = pmp_2 - 1.5_r8*gam(i,k-1)
               a4(3,i,k) = min(max(a4(3,i,k), min(a4(1,i,k), pmp_2, lac_2)),  &
                    max(a4(1,i,k), pmp_2, lac_2) )
             endif
           enddo
           do i=i1,i2
-            a4(4,i,k) = 3.*(2.*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
+            a4(4,i,k) = 3.0_r8*(2.0_r8*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
           enddo
         elseif ( abs(kord)==16 ) then
           do i=i1,i2
@@ -990,20 +990,20 @@ contains
                 a4(3,i,k) = a4(1,i,k)
               elseif ( ext6(i,k-1) .or. ext6(i,k+1) ) then
                 ! Left  edges
-                pmp_1 = a4(1,i,k) - 2.*gam(i,k+1)
-                lac_1 = pmp_1 + 1.5*gam(i,k+2)
+                pmp_1 = a4(1,i,k) - 2.0_r8*gam(i,k+1)
+                lac_1 = pmp_1 + 1.5_r8*gam(i,k+2)
                 a4(2,i,k) = min(max(a4(2,i,k), min(a4(1,i,k), pmp_1, lac_1)),   &
                      max(a4(1,i,k), pmp_1, lac_1) )
                 ! Right edges
-                pmp_2 = a4(1,i,k) + 2.*gam(i,k)
-                lac_2 = pmp_2 - 1.5*gam(i,k-1)
+                pmp_2 = a4(1,i,k) + 2.0_r8*gam(i,k)
+                lac_2 = pmp_2 - 1.5_r8*gam(i,k-1)
                 a4(3,i,k) = min(max(a4(3,i,k), min(a4(1,i,k), pmp_2, lac_2)),    &
                      max(a4(1,i,k), pmp_2, lac_2) )
               endif
             endif
           enddo
           do i=i1,i2
-            a4(4,i,k) = 3.*(2.*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
+            a4(4,i,k) = 3.0_r8*(2.0_r8*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
           enddo
         else      ! kord = 11, 13
           do i=i1,i2
@@ -1011,9 +1011,9 @@ contains
               ! Noisy region:
               a4(2,i,k) = a4(1,i,k)
               a4(3,i,k) = a4(1,i,k)
-              a4(4,i,k) = 0.
+              a4(4,i,k) = 0.0_r8
             else
-              a4(4,i,k) = 3.*(2.*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
+              a4(4,i,k) = 3.0_r8*(2.0_r8*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
             endif
           enddo
         endif
@@ -1028,17 +1028,17 @@ contains
       !----------------------------------
       if ( iv==0 ) then
         do i=i1,i2
-          a4(3,i,km) = max(0., a4(3,i,km))
+          a4(3,i,km) = max(0.0_r8, a4(3,i,km))
         enddo
       elseif ( iv .eq. -1 ) then 
         do i=i1,i2
-          if ( a4(3,i,km)*a4(1,i,km) <= 0. )  a4(3,i,km) = 0.
+          if ( a4(3,i,km)*a4(1,i,km) <= 0.0_r8 )  a4(3,i,km) = 0.0_r8
         enddo
       endif
       
       do k=km-1,km
         do i=i1,i2
-          a4(4,i,k) = 3.*(2.*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
+          a4(4,i,k) = 3.0_r8*(2.0_r8*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
         enddo
         if(k==(km-1)) call cs_limiters(im, extm(i1,k), a4(1,i1,k), 2)
         if(k== km   ) call cs_limiters(im, extm(i1,k), a4(1,i1,k), 1)
@@ -1070,21 +1070,21 @@ contains
       
       if ( iv .eq. -2 ) then
         do i=i1,i2
-          gam(i,2) = 0.5
-          q(i,1) = 1.5*a4(1,i,1)
+          gam(i,2) = 0.5_r8
+          q(i,1) = 1.5_r8*a4(1,i,1)
         enddo
         do k=2,km-1
           do i=i1, i2
             grat = delp(i,k-1) / delp(i,k)
-            bet =  2. + grat + grat - gam(i,k)
-            q(i,k) = (3.*(a4(1,i,k-1)+a4(1,i,k)) - q(i,k-1))/bet
+            bet =  2.0_r8 + grat + grat - gam(i,k)
+            q(i,k) = (3.0_r8*(a4(1,i,k-1)+a4(1,i,k)) - q(i,k-1))/bet
             gam(i,k+1) = grat / bet
           enddo
         enddo
         do i=i1,i2
           grat = delp(i,km-1) / delp(i,km) 
-          q(i,km) = (3.*(a4(1,i,km-1)+a4(1,i,km)) - grat*qs(i) - q(i,km-1)) /  &
-               (2. + grat + grat - gam(i,km))
+          q(i,km) = (3.0_r8*(a4(1,i,km-1)+a4(1,i,km)) - grat*qs(i) - q(i,km-1)) /  &
+               (2.0_r8 + grat + grat - gam(i,km))
           q(i,km+1) = qs(i)
         enddo
         do k=km-1,1,-1
@@ -1095,24 +1095,24 @@ contains
       else
         do i=i1,i2
           grat = delp(i,2) / delp(i,1)   ! grid ratio
-          bet = grat*(grat+0.5)
-          q(i,1) = ( (grat+grat)*(grat+1.)*a4(1,i,1) + a4(1,i,2) ) / bet
-          gam(i,1) = ( 1. + grat*(grat+1.5) ) / bet
+          bet = grat*(grat+0.5_r8)
+          q(i,1) = ( (grat+grat)*(grat+1.0_r8)*a4(1,i,1) + a4(1,i,2) ) / bet
+          gam(i,1) = ( 1.0_r8 + grat*(grat+1.5_r8) ) / bet
         enddo
         
         do k=2,km
           do i=i1,i2
             d4(i) = delp(i,k-1) / delp(i,k)
-            bet =  2. + d4(i) + d4(i) - gam(i,k-1)
-            q(i,k) = ( 3.*(a4(1,i,k-1)+d4(i)*a4(1,i,k)) - q(i,k-1) )/bet
+            bet =  2.0_r8 + d4(i) + d4(i) - gam(i,k-1)
+            q(i,k) = ( 3.0_r8*(a4(1,i,k-1)+d4(i)*a4(1,i,k)) - q(i,k-1) )/bet
             gam(i,k) = d4(i) / bet
           enddo
         enddo
         
         do i=i1,i2
-          a_bot = 1. + d4(i)*(d4(i)+1.5)
-          q(i,km+1) = (2.*d4(i)*(d4(i)+1.)*a4(1,i,km)+a4(1,i,km-1)-a_bot*q(i,km))  &
-               / ( d4(i)*(d4(i)+0.5) - a_bot*gam(i,km) )
+          a_bot = 1.0_r8 + d4(i)*(d4(i)+1.5_r8)
+          q(i,km+1) = (2.0_r8*d4(i)*(d4(i)+1.0_r8)*a4(1,i,km)+a4(1,i,km-1)-a_bot*q(i,km))  &
+               / ( d4(i)*(d4(i)+0.5_r8) - a_bot*gam(i,km) )
         enddo
         
         do k=km,1,-1
@@ -1127,7 +1127,7 @@ contains
           do i=i1,i2
             a4(2,i,k) = q(i,k  )
             a4(3,i,k) = q(i,k+1)
-            a4(4,i,k) = 3.*(2.*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
+            a4(4,i,k) = 3.0_r8*(2.0_r8*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
           enddo
         enddo
         return
@@ -1154,18 +1154,18 @@ contains
       ! Interior:
       do k=3,km-1
         do i=i1,i2
-          if ( gam(i,k-1)*gam(i,k+1)>0. ) then
+          if ( gam(i,k-1)*gam(i,k+1)>0.0_r8 ) then
             ! Apply large-scale constraint to ALL fields if not local max/min
             q(i,k) = min( q(i,k), max(a4(1,i,k-1),a4(1,i,k)) )
             q(i,k) = max( q(i,k), min(a4(1,i,k-1),a4(1,i,k)) )
           else
-            if ( gam(i,k-1) > 0. ) then
+            if ( gam(i,k-1) > 0.0_r8 ) then
               ! There exists a local max
               q(i,k) = max(q(i,k), min(a4(1,i,k-1),a4(1,i,k)))
             else
               ! There exists a local min
               q(i,k) = min(q(i,k), max(a4(1,i,k-1),a4(1,i,k)))
-              if ( iv==0 ) q(i,k) = max(0., q(i,k))
+              if ( iv==0 ) q(i,k) = max(0.0_r8, q(i,k))
             endif
           endif
         enddo
@@ -1187,18 +1187,18 @@ contains
       do k=1,km
         if ( k==1 .or. k==km ) then
           do i=i1,i2
-            extm(i,k) = (a4(2,i,k)-a4(1,i,k)) * (a4(3,i,k)-a4(1,i,k)) > 0.
+            extm(i,k) = (a4(2,i,k)-a4(1,i,k)) * (a4(3,i,k)-a4(1,i,k)) > 0.0_r8
           enddo
         else
           do i=i1,i2
-            extm(i,k) = gam(i,k)*gam(i,k+1) < 0.
+            extm(i,k) = gam(i,k)*gam(i,k+1) < 0.0_r8
           enddo
         endif
         if ( abs(kord) > 9 ) then
           do i=i1,i2
-            x0 = 2.*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k))
+            x0 = 2.0_r8*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k))
             x1 = abs(a4(2,i,k)-a4(3,i,k))
-            a4(4,i,k) = 3.*x0
+            a4(4,i,k) = 3.0_r8*x0
             ext5(i,k) = abs(x0) > x1
             ext6(i,k) = abs(a4(4,i,k)) > x1
           enddo
@@ -1213,30 +1213,30 @@ contains
       
       if ( iv==0 ) then
         do i=i1,i2
-          a4(2,i,1) = max(0., a4(2,i,1))
+          a4(2,i,1) = max(0.0_r8, a4(2,i,1))
         enddo
       elseif ( iv==-1 ) then 
         do i=i1,i2
-          if ( a4(2,i,1)*a4(1,i,1) <= 0. ) a4(2,i,1) = 0.
+          if ( a4(2,i,1)*a4(1,i,1) <= 0.0_r8 ) a4(2,i,1) = 0.0_r8
         enddo
       elseif ( iv==2 ) then
         do i=i1,i2
           a4(2,i,1) = a4(1,i,1)
           a4(3,i,1) = a4(1,i,1)
-          a4(4,i,1) = 0.
+          a4(4,i,1) = 0.0_r8
         enddo
       endif
       
       if ( iv/=2 ) then
         do i=i1,i2
-          a4(4,i,1) = 3.*(2.*a4(1,i,1) - (a4(2,i,1)+a4(3,i,1)))
+          a4(4,i,1) = 3.0_r8*(2.0_r8*a4(1,i,1) - (a4(2,i,1)+a4(3,i,1)))
         enddo
         call cs_limiters(im, extm(i1,1), a4(1,i1,1), 1)
       endif
       
       ! k=2
       do i=i1,i2
-        a4(4,i,2) = 3.*(2.*a4(1,i,2) - (a4(2,i,2)+a4(3,i,2)))
+        a4(4,i,2) = 3.0_r8*(2.0_r8*a4(1,i,2) - (a4(2,i,2)+a4(3,i,2)))
       enddo
       call cs_limiters(im, extm(i1,2), a4(1,i1,2), 2)
       
@@ -1247,17 +1247,17 @@ contains
         if ( abs(kord)<9 ) then
           do i=i1,i2
             ! Left  edges
-            pmp_1 = a4(1,i,k) - 2.*gam(i,k+1)
-            lac_1 = pmp_1 + 1.5*gam(i,k+2)
+            pmp_1 = a4(1,i,k) - 2.0_r8*gam(i,k+1)
+            lac_1 = pmp_1 + 1.5_r8*gam(i,k+2)
             a4(2,i,k) = min(max(a4(2,i,k), min(a4(1,i,k), pmp_1, lac_1)),   &
                  max(a4(1,i,k), pmp_1, lac_1) )
             ! Right edges
-            pmp_2 = a4(1,i,k) + 2.*gam(i,k)
-            lac_2 = pmp_2 - 1.5*gam(i,k-1)
+            pmp_2 = a4(1,i,k) + 2.0_r8*gam(i,k)
+            lac_2 = pmp_2 - 1.5_r8*gam(i,k-1)
             a4(3,i,k) = min(max(a4(3,i,k), min(a4(1,i,k), pmp_2, lac_2)),    &
                  max(a4(1,i,k), pmp_2, lac_2) )
             
-            a4(4,i,k) = 3.*(2.*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
+            a4(4,i,k) = 3.0_r8*(2.0_r8*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
           enddo
           
         elseif ( abs(kord)==9 ) then
@@ -1266,25 +1266,25 @@ contains
               ! grid-scale 2-delta-z wave detected
               a4(2,i,k) = a4(1,i,k)
               a4(3,i,k) = a4(1,i,k)
-              a4(4,i,k) = 0.
+              a4(4,i,k) = 0.0_r8
             else if ( extm(i,k) .and. extm(i,k+1) ) then  ! c90_mp122
               ! grid-scale 2-delta-z wave detected
               a4(2,i,k) = a4(1,i,k)
               a4(3,i,k) = a4(1,i,k)
-              a4(4,i,k) = 0.
+              a4(4,i,k) = 0.0_r8
             else
-              a4(4,i,k) = 6.*a4(1,i,k) - 3.*(a4(2,i,k)+a4(3,i,k))
+              a4(4,i,k) = 6.0_r8*a4(1,i,k) - 3.0_r8*(a4(2,i,k)+a4(3,i,k))
               ! Check within the smooth region if subgrid profile is non-monotonic
               if( abs(a4(4,i,k)) > abs(a4(2,i,k)-a4(3,i,k)) ) then
-                pmp_1 = a4(1,i,k) - 2.*gam(i,k+1)
-                lac_1 = pmp_1 + 1.5*gam(i,k+2)
+                pmp_1 = a4(1,i,k) - 2.0_r8*gam(i,k+1)
+                lac_1 = pmp_1 + 1.5_r8*gam(i,k+2)
                 a4(2,i,k) = min(max(a4(2,i,k), min(a4(1,i,k), pmp_1, lac_1)),  &
                      max(a4(1,i,k), pmp_1, lac_1) )
-                pmp_2 = a4(1,i,k) + 2.*gam(i,k)
-                lac_2 = pmp_2 - 1.5*gam(i,k-1)
+                pmp_2 = a4(1,i,k) + 2.0_r8*gam(i,k)
+                lac_2 = pmp_2 - 1.5_r8*gam(i,k-1)
                 a4(3,i,k) = min(max(a4(3,i,k), min(a4(1,i,k), pmp_2, lac_2)),  &
                      max(a4(1,i,k), pmp_2, lac_2) )
-                a4(4,i,k) = 6.*a4(1,i,k) - 3.*(a4(2,i,k)+a4(3,i,k))
+                a4(4,i,k) = 6.0_r8*a4(1,i,k) - 3.0_r8*(a4(2,i,k)+a4(3,i,k))
               endif
             endif
           enddo
@@ -1295,30 +1295,30 @@ contains
                 a4(2,i,k) = a4(1,i,k)
                 a4(3,i,k) = a4(1,i,k)
               elseif ( ext6(i,k-1) .or. ext6(i,k+1) ) then
-                pmp_1 = a4(1,i,k) - 2.*gam(i,k+1)
-                lac_1 = pmp_1 + 1.5*gam(i,k+2)
+                pmp_1 = a4(1,i,k) - 2.0_r8*gam(i,k+1)
+                lac_1 = pmp_1 + 1.5_r8*gam(i,k+2)
                 a4(2,i,k) = min(max(a4(2,i,k), min(a4(1,i,k), pmp_1, lac_1)),  &
                      max(a4(1,i,k), pmp_1, lac_1) )
-                pmp_2 = a4(1,i,k) + 2.*gam(i,k)
-                lac_2 = pmp_2 - 1.5*gam(i,k-1)
+                pmp_2 = a4(1,i,k) + 2.0_r8*gam(i,k)
+                lac_2 = pmp_2 - 1.5_r8*gam(i,k-1)
                 a4(3,i,k) = min(max(a4(3,i,k), min(a4(1,i,k), pmp_2, lac_2)),  &
                      max(a4(1,i,k), pmp_2, lac_2) )
               endif
             elseif( ext6(i,k) ) then
               if( ext5(i,k-1) .or. ext5(i,k+1) ) then
-                pmp_1 = a4(1,i,k) - 2.*gam(i,k+1)
-                lac_1 = pmp_1 + 1.5*gam(i,k+2)
+                pmp_1 = a4(1,i,k) - 2.0_r8*gam(i,k+1)
+                lac_1 = pmp_1 + 1.5_r8*gam(i,k+2)
                 a4(2,i,k) = min(max(a4(2,i,k), min(a4(1,i,k), pmp_1, lac_1)),  &
                      max(a4(1,i,k), pmp_1, lac_1) )
-                pmp_2 = a4(1,i,k) + 2.*gam(i,k)
-                lac_2 = pmp_2 - 1.5*gam(i,k-1)
+                pmp_2 = a4(1,i,k) + 2.0_r8*gam(i,k)
+                lac_2 = pmp_2 - 1.5_r8*gam(i,k-1)
                 a4(3,i,k) = min(max(a4(3,i,k), min(a4(1,i,k), pmp_2, lac_2)),  &
                      max(a4(1,i,k), pmp_2, lac_2) )
               endif
             endif
           enddo
           do i=i1,i2
-            a4(4,i,k) = 3.*(2.*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
+            a4(4,i,k) = 3.0_r8*(2.0_r8*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
           enddo
         elseif ( abs(kord)==12 ) then
           do i=i1,i2
@@ -1326,20 +1326,20 @@ contains
               ! grid-scale 2-delta-z wave detected
               a4(2,i,k) = a4(1,i,k)
               a4(3,i,k) = a4(1,i,k)
-              a4(4,i,k) = 0.
+              a4(4,i,k) = 0.0_r8
             else        ! not a local extremum
-              a4(4,i,k) = 6.*a4(1,i,k) - 3.*(a4(2,i,k)+a4(3,i,k))
+              a4(4,i,k) = 6.0_r8*a4(1,i,k) - 3.0_r8*(a4(2,i,k)+a4(3,i,k))
               ! Check within the smooth region if subgrid profile is non-monotonic
               if( abs(a4(4,i,k)) > abs(a4(2,i,k)-a4(3,i,k)) ) then
-                pmp_1 = a4(1,i,k) - 2.*gam(i,k+1)
-                lac_1 = pmp_1 + 1.5*gam(i,k+2)
+                pmp_1 = a4(1,i,k) - 2.0_r8*gam(i,k+1)
+                lac_1 = pmp_1 + 1.5_r8*gam(i,k+2)
                 a4(2,i,k) = min(max(a4(2,i,k), min(a4(1,i,k), pmp_1, lac_1)),  &
                      max(a4(1,i,k), pmp_1, lac_1) )
-                pmp_2 = a4(1,i,k) + 2.*gam(i,k)
-                lac_2 = pmp_2 - 1.5*gam(i,k-1)
+                pmp_2 = a4(1,i,k) + 2.0_r8*gam(i,k)
+                lac_2 = pmp_2 - 1.5_r8*gam(i,k-1)
                 a4(3,i,k) = min(max(a4(3,i,k), min(a4(1,i,k), pmp_2, lac_2)),  &
                      max(a4(1,i,k), pmp_2, lac_2) )
-                a4(4,i,k) = 6.*a4(1,i,k) - 3.*(a4(2,i,k)+a4(3,i,k))
+                a4(4,i,k) = 6.0_r8*a4(1,i,k) - 3.0_r8*(a4(2,i,k)+a4(3,i,k))
               endif
             endif
           enddo
@@ -1354,12 +1354,12 @@ contains
             endif
           enddo
           do i=i1,i2
-            a4(4,i,k) = 3.*(2.*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
+            a4(4,i,k) = 3.0_r8*(2.0_r8*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
           enddo
         elseif ( abs(kord)==14 ) then
           
           do i=i1,i2
-            a4(4,i,k) = 3.*(2.*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
+            a4(4,i,k) = 3.0_r8*(2.0_r8*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
           enddo
           
         elseif ( abs(kord)==15 ) then   ! revised kord=9 scehem
@@ -1372,18 +1372,18 @@ contains
               endif
             elseif( ext6(i,k) ) then
               ! Check within the smooth region if subgrid profile is non-monotonic
-              pmp_1 = a4(1,i,k) - 2.*gam(i,k+1)
-              lac_1 = pmp_1 + 1.5*gam(i,k+2)
+              pmp_1 = a4(1,i,k) - 2.0_r8*gam(i,k+1)
+              lac_1 = pmp_1 + 1.5_r8*gam(i,k+2)
               a4(2,i,k) = min(max(a4(2,i,k), min(a4(1,i,k), pmp_1, lac_1)),  &
                    max(a4(1,i,k), pmp_1, lac_1) )
-              pmp_2 = a4(1,i,k) + 2.*gam(i,k)
-              lac_2 = pmp_2 - 1.5*gam(i,k-1)
+              pmp_2 = a4(1,i,k) + 2.0_r8*gam(i,k)
+              lac_2 = pmp_2 - 1.5_r8*gam(i,k-1)
               a4(3,i,k) = min(max(a4(3,i,k), min(a4(1,i,k), pmp_2, lac_2)),  &
                    max(a4(1,i,k), pmp_2, lac_2) )
             endif
           enddo
           do i=i1,i2
-            a4(4,i,k) = 3.*(2.*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
+            a4(4,i,k) = 3.0_r8*(2.0_r8*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
           enddo
         elseif ( abs(kord)==16 ) then
           do i=i1,i2
@@ -1393,20 +1393,20 @@ contains
                 a4(3,i,k) = a4(1,i,k)
               elseif ( ext6(i,k-1) .or. ext6(i,k+1) ) then
                 ! Left  edges
-                pmp_1 = a4(1,i,k) - 2.*gam(i,k+1)
-                lac_1 = pmp_1 + 1.5*gam(i,k+2)
+                pmp_1 = a4(1,i,k) - 2.0_r8*gam(i,k+1)
+                lac_1 = pmp_1 + 1.5_r8*gam(i,k+2)
                 a4(2,i,k) = min(max(a4(2,i,k), min(a4(1,i,k), pmp_1, lac_1)),   &
                      max(a4(1,i,k), pmp_1, lac_1) )
                 ! Right edges
-                pmp_2 = a4(1,i,k) + 2.*gam(i,k)
-                lac_2 = pmp_2 - 1.5*gam(i,k-1)
+                pmp_2 = a4(1,i,k) + 2.0_r8*gam(i,k)
+                lac_2 = pmp_2 - 1.5_r8*gam(i,k-1)
                 a4(3,i,k) = min(max(a4(3,i,k), min(a4(1,i,k), pmp_2, lac_2)),    &
                      max(a4(1,i,k), pmp_2, lac_2) )
               endif
             endif
           enddo
           do i=i1,i2
-            a4(4,i,k) = 3.*(2.*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
+            a4(4,i,k) = 3.0_r8*(2.0_r8*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
           enddo
         else      ! kord = 11
           do i=i1,i2
@@ -1414,9 +1414,9 @@ contains
               ! Noisy region:
               a4(2,i,k) = a4(1,i,k)
               a4(3,i,k) = a4(1,i,k)
-              a4(4,i,k) = 0.
+              a4(4,i,k) = 0.0_r8
             else
-              a4(4,i,k) = 3.*(2.*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
+              a4(4,i,k) = 3.0_r8*(2.0_r8*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
             endif
           enddo
         endif
@@ -1431,17 +1431,17 @@ contains
       !----------------------------------
       if ( iv==0 ) then
         do i=i1,i2
-          a4(3,i,km) = max(0., a4(3,i,km))
+          a4(3,i,km) = max(0.0_r8, a4(3,i,km))
         enddo
       elseif ( iv .eq. -1 ) then 
         do i=i1,i2
-          if ( a4(3,i,km)*a4(1,i,km) <= 0. )  a4(3,i,km) = 0.
+          if ( a4(3,i,km)*a4(1,i,km) <= 0.0_r8 )  a4(3,i,km) = 0.0_r8
         enddo
       endif
       
       do k=km-1,km
         do i=i1,i2
-          a4(4,i,k) = 3.*(2.*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
+          a4(4,i,k) = 3.0_r8*(2.0_r8*a4(1,i,k) - (a4(2,i,k)+a4(3,i,k)))
         enddo
         if(k==(km-1)) call cs_limiters(im, extm(i1,k), a4(1,i1,k), 2)
         if(k== km   ) call cs_limiters(im, extm(i1,k), a4(1,i1,k), 1)
@@ -1461,23 +1461,23 @@ contains
       if ( iv==0 ) then
         ! Positive definite constraint
         do i=1,im
-          if( a4(1,i)<=0.) then
+          if( a4(1,i)<=0.0_r8) then
             a4(2,i) = a4(1,i)
             a4(3,i) = a4(1,i)
-            a4(4,i) = 0.
+            a4(4,i) = 0.0_r8
           else
             if( abs(a4(3,i)-a4(2,i)) < -a4(4,i) ) then
-              if( (a4(1,i)+0.25*(a4(3,i)-a4(2,i))**2/a4(4,i)+a4(4,i)*r12) < 0. ) then
+              if( (a4(1,i)+0.25_r8*(a4(3,i)-a4(2,i))**2/a4(4,i)+a4(4,i)*r12) < 0.0_r8 ) then
                 ! local minimum is negative
                 if( a4(1,i)<a4(3,i) .and. a4(1,i)<a4(2,i) ) then
                   a4(3,i) = a4(1,i)
                   a4(2,i) = a4(1,i)
-                  a4(4,i) = 0.
+                  a4(4,i) = 0.0_r8
                 elseif( a4(3,i) > a4(2,i) ) then
-                  a4(4,i) = 3.*(a4(2,i)-a4(1,i))
+                  a4(4,i) = 3.0_r8*(a4(2,i)-a4(1,i))
                   a4(3,i) = a4(2,i) - a4(4,i)
                 else
-                  a4(4,i) = 3.*(a4(3,i)-a4(1,i))
+                  a4(4,i) = 3.0_r8*(a4(3,i)-a4(1,i))
                   a4(2,i) = a4(3,i) - a4(4,i)
                 endif
               endif
@@ -1486,19 +1486,19 @@ contains
         enddo
       elseif ( iv==1 ) then
         do i=1,im
-          if( (a4(1,i)-a4(2,i))*(a4(1,i)-a4(3,i))>=0. ) then
+          if( (a4(1,i)-a4(2,i))*(a4(1,i)-a4(3,i))>=0.0_r8 ) then
             a4(2,i) = a4(1,i)
             a4(3,i) = a4(1,i)
-            a4(4,i) = 0.
+            a4(4,i) = 0.0_r8
           else
             da1  = a4(3,i) - a4(2,i)
             da2  = da1**2
             a6da = a4(4,i)*da1
             if(a6da < -da2) then
-              a4(4,i) = 3.*(a4(2,i)-a4(1,i))
+              a4(4,i) = 3.0_r8*(a4(2,i)-a4(1,i))
               a4(3,i) = a4(2,i) - a4(4,i)
             elseif(a6da > da2) then
-              a4(4,i) = 3.*(a4(3,i)-a4(1,i))
+              a4(4,i) = 3.0_r8*(a4(3,i)-a4(1,i))
               a4(2,i) = a4(3,i) - a4(4,i)
             endif
           endif
@@ -1509,16 +1509,16 @@ contains
           if( extm(i) ) then
             a4(2,i) = a4(1,i)
             a4(3,i) = a4(1,i)
-            a4(4,i) = 0.
+            a4(4,i) = 0.0_r8
           else
             da1  = a4(3,i) - a4(2,i)
             da2  = da1**2
             a6da = a4(4,i)*da1
             if(a6da < -da2) then
-              a4(4,i) = 3.*(a4(2,i)-a4(1,i))
+              a4(4,i) = 3.0_r8*(a4(2,i)-a4(1,i))
               a4(3,i) = a4(2,i) - a4(4,i)
             elseif(a6da > da2) then
-              a4(4,i) = 3.*(a4(3,i)-a4(1,i))
+              a4(4,i) = 3.0_r8*(a4(3,i)-a4(1,i))
               a4(2,i) = a4(3,i) - a4(4,i)
             endif
           endif
@@ -1545,9 +1545,9 @@ contains
         do k=km,2,-1
           k1 = k-1
           do i=1,im
-            if( q(i,k,ic) < 0. ) then
+            if( q(i,k,ic) < 0.0_r8 ) then
               q(i,k1,ic) = q(i,k1,ic) + q(i,k,ic)*dp(i,k)/dp(i,k1)
-              q(i,k ,ic) = 0.
+              q(i,k ,ic) = 0.0_r8
             endif
           enddo
         enddo
@@ -1555,18 +1555,18 @@ contains
         do k=1,km-1
           k1 = k+1
           do i=1,im
-            if( q(i,k,ic) < 0. ) then
+            if( q(i,k,ic) < 0.0_r8 ) then
               q(i,k1,ic) = q(i,k1,ic) + q(i,k,ic)*dp(i,k)/dp(i,k1)
-              q(i,k ,ic) = 0.
+              q(i,k ,ic) = 0.0_r8
             endif
           enddo
         enddo
 #else
         ! Top layer
         do i=1,im
-          if( q(i,1,ic) < 0. ) then
+          if( q(i,1,ic) < 0.0_r8 ) then
             q(i,2,ic) = q(i,2,ic) + q(i,1,ic)*dp(i,1)/dp(i,2)
-            q(i,1,ic) = 0.
+            q(i,1,ic) = 0.0_r8
           endif
         enddo
         
@@ -1574,15 +1574,15 @@ contains
         zfix(:) = .false.
         do k=2,km-1
           do i=1,im
-            if( q(i,k,ic) < 0. ) then
+            if( q(i,k,ic) < 0.0_r8 ) then
               zfix(i) = .true.
-              if ( q(i,k-1,ic) > 0. ) then
+              if ( q(i,k-1,ic) > 0.0_r8 ) then
                 ! Borrow from above
                 dq = min ( q(i,k-1,ic)*dp(i,k-1), -q(i,k,ic)*dp(i,k) ) 
                 q(i,k-1,ic) = q(i,k-1,ic) - dq/dp(i,k-1)
                 q(i,k  ,ic) = q(i,k  ,ic) + dq/dp(i,k  )
               endif
-              if ( q(i,k,ic)<0.0 .and. q(i,k+1,ic)>0. ) then
+              if ( q(i,k,ic)<0.0_r8 .and. q(i,k+1,ic)>0.0_r8 ) then
                 ! Borrow from below:
                 dq = min ( q(i,k+1,ic)*dp(i,k+1), -q(i,k,ic)*dp(i,k) ) 
                 q(i,k+1,ic) = q(i,k+1,ic) - dq/dp(i,k+1)
@@ -1595,7 +1595,7 @@ contains
         ! Bottom layer
         k = km
         do i=1,im
-          if( q(i,k,ic)<0. .and. q(i,k-1,ic)>0.) then
+          if( q(i,k,ic)<0.0_r8 .and. q(i,k-1,ic)>0.0_r8) then
             zfix(i) = .true.
             ! Borrow from above
             qup =  q(i,k-1,ic)*dp(i,k-1)
@@ -1609,20 +1609,20 @@ contains
         ! Perform final check and non-local fix if needed
         do i=1,im
           if ( zfix(i) ) then
-            sum0 = 0.
+            sum0 = 0.0_r8
             do k=2,km
               dm(k) = q(i,k,ic)*dp(i,k)
               sum0 = sum0 + dm(k)
             enddo
             
-            if ( sum0 > 0. ) then
-              sum1 = 0.
+            if ( sum0 > 0.0_r8 ) then
+              sum1 = 0.0_r8
               do k=2,km
-                sum1 = sum1 + max(0., dm(k))
+                sum1 = sum1 + max(0.0_r8, dm(k))
               enddo
               fac = sum0 / sum1
               do k=2,km
-                q(i,k,ic) = max(0., fac*dm(k)/dp(i,k))
+                q(i,k,ic) = max(0.0_r8, fac*dm(k)/dp(i,k))
               enddo
             endif
             

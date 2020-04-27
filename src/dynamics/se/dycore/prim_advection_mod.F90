@@ -939,20 +939,19 @@ contains
   call t_stopf('advance_hypervis_scalar')
   end subroutine advance_hypervis_scalar
 
-subroutine vertical_remap(hybrid,elem,fvm,hvcoord,dt,np1,np1_qdp,nets,nete)
+  subroutine vertical_remap(hybrid,elem,fvm,hvcoord,dt,np1,np1_qdp,nets,nete)
+    !
     ! This routine is called at the end of the vertically Lagrangian
     ! dynamics step to compute the vertical flux needed to get back
     ! to reference eta levels
     !
-    ! input:
-    !     derived%dp()  delta p on levels at beginning of timestep
-    !     state%dp3d(np1)  delta p on levels at end of timestep
-    ! output:
-    !     state%psdry(np1)          surface pressure at time np1
+    ! map tracers
+    ! map velocity components
+    ! map temperature (either by mapping thermal energy or virtual temperature over log(p)
+    ! (controlled by vert_remap_q_alg > -20 or <= -20)
     !
-    
     use hybvcoord_mod, only          : hvcoord_t
-    use vertremap_mod,          only : remap1, remap1_nofilter
+    use vertremap_mod,          only : remap1
     use hybrid_mod            , only : hybrid_t, config_thread_region,get_loop_ranges, PrintHybrid
     use fvm_control_volume_mod, only : fvm_struct
     use dimensions_mod        , only : ntrac
@@ -966,35 +965,22 @@ subroutine vertical_remap(hybrid,elem,fvm,hvcoord,dt,np1,np1_qdp,nets,nete)
     type(fvm_struct), intent(inout) :: fvm(:)
     type (element_t), intent(inout) :: elem(:)
     !
-    real (kind=r8) :: dpc_star(nc,nc,nlev)
+    real (kind=r8)   :: dpc_star(nc,nc,nlev) !Lagrangian levels on CSLAM grid
     
     type (hvcoord_t) :: hvcoord
-    real (kind=r8)   :: dt
     integer          :: ie,i,j,k,np1,nets,nete,np1_qdp,q, m_cnst
-    real (kind=r8), dimension(np,np,nlev)  :: dp_moist,dp_star_moist, dp_inv,dp_dry,dp_star_dry
+    real (kind=r8), dimension(np,np,nlev)  :: dp_moist,dp_star_moist, dp_dry,dp_star_dry
     real (kind=r8), dimension(np,np,nlev)  :: internal_energy_star
     real (kind=r8), dimension(np,np,nlev,2):: ttmp
     real(r8), parameter                    :: rad2deg = 180.0_r8/pi
     integer :: region_num_threads,qbeg,qend
     type (hybrid_t) :: hybridnew,hybridnew2 
     real (kind=r8)  :: ptop
-    ! reference levels:
-    !   dp(k) = (hyai(k+1)-hyai(k))*ps0 + (hybi(k+1)-hybi(k))*ps(i,j)
-    !   hybi(1)=0          pure pressure at top of atmosphere
-    !   hyai(1)=ptop
-    !   hyai(nlev+1) = 0   pure sigma at bottom
-    !   hybi(nlev+1) = 1
-    !
-    ! sum over k=1,nlev
-    !  sum(dp(k)) = (hyai(nlev+1)-hyai(1))*ps0 + (hybi(nlev+1)-hybi(1))*ps
-    !             = -ps0 + ps
-    !  ps =  ps0+sum(dp(k))
-    !
-    ! reference levels:
-    !    dp(k) = (hyai(k+1)-hyai(k))*ps0 + (hybi(k+1)-hybi(k))*ps
-    !
     ptop = hvcoord%hyai(1)*hvcoord%ps0
     do ie=nets,nete
+      !
+      ! prepare for mapping of temperature
+      !
       if (vert_remap_q_alg>-20) then      
         if (lcp_moist) then
           !
@@ -1007,7 +993,7 @@ subroutine vertical_remap(hybrid,elem,fvm,hvcoord,dt,np1,np1_qdp,nets,nete)
         end if
       else
         !
-        ! map Tv over lnp
+        ! map Tv over log(p) following FV and FV3
         !
         call get_virtual_temp(1,np,1,np,1,nlev,qsize,elem(ie)%state%qdp(:,:,:,:,np1_qdp),    &
              internal_energy_star,dp_dry=elem(ie)%state%dp3d(:,:,:,np1),                     &
@@ -1015,11 +1001,12 @@ subroutine vertical_remap(hybrid,elem,fvm,hvcoord,dt,np1,np1_qdp,nets,nete)
         internal_energy_star = internal_energy_star*elem(ie)%state%t(:,:,:,np1)
       end if
       !
-      !  REMAP u,v,T from levels in dp3d() to REF levels
+      ! update final psdry
       !
-      ! update final ps
       elem(ie)%state%psdry(:,:) = ptop + &
            sum(elem(ie)%state%dp3d(:,:,:,np1),3)
+      !
+      ! compute dry vertical coordinate (Lagrangian and reference levels)
       !
       do k=1,nlev
         dp_star_dry(:,:,k) = elem(ie)%state%dp3d(:,:,k,np1)
@@ -1030,9 +1017,9 @@ subroutine vertical_remap(hybrid,elem,fvm,hvcoord,dt,np1,np1_qdp,nets,nete)
       !
       call get_dp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,np1_qdp),2,thermodynamic_active_species_idx_dycore,dp_star_dry,dp_star_moist(:,:,:))
       !
-      ! DEBUGGING CODE
+      ! Check if Lagrangian leves have crossed
       !
-      if (minval(dp_star_moist)<0) then
+      if (minval(dp_star_moist)<1.0E-12_r8) then
         write(iulog,*) "NEGATIVE LAYER THICKNESS DIAGNOSTICS:"
         write(iulog,*) " "
         do j=1,np
@@ -1070,7 +1057,9 @@ subroutine vertical_remap(hybrid,elem,fvm,hvcoord,dt,np1,np1_qdp,nets,nete)
       call get_dp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,np1_qdp),2,&
            thermodynamic_active_species_idx_dycore,dp_dry,dp_moist(:,:,:))
       
-      dp_inv=1.0_R8/dp_moist !for efficiency      
+      !
+      ! Remapping of temperature
+      !
       if (vert_remap_q_alg>-20) then
         !
         ! remap internal energy and back out temperature
@@ -1088,11 +1077,11 @@ subroutine vertical_remap(hybrid,elem,fvm,hvcoord,dt,np1,np1_qdp,nets,nete)
         else
           internal_energy_star(:,:,:)=elem(ie)%state%t(:,:,:,np1)*dp_star_moist
           call remap1(internal_energy_star,np,1,1,1,dp_star_moist,dp_moist,ptop,1,.true.)
-          elem(ie)%state%t(:,:,:,np1)=internal_energy_star*dp_inv        
+          elem(ie)%state%t(:,:,:,np1)=internal_energy_star/dp_moist
         end if
       else
         !
-        ! map Tv over log(p)
+        ! map Tv over log(p); following FV and FV3
         !
         call remap1(internal_energy_star,np,1,1,1,dp_star_moist,dp_moist,ptop,1,.false.)
         call get_virtual_temp(1,np,1,np,1,nlev,qsize,elem(ie)%state%qdp(:,:,:,:,np1_qdp),       &
@@ -1106,14 +1095,8 @@ subroutine vertical_remap(hybrid,elem,fvm,hvcoord,dt,np1,np1_qdp,nets,nete)
       !
       ! remap velocity components
       !
-!      ttmp(:,:,:,1)=elem(ie)%state%v(:,:,1,:,np1)*dp_star_moist
-!      ttmp(:,:,:,2)=elem(ie)%state%v(:,:,2,:,np1)*dp_star_moist
-!      call remap1(ttmp,np,1,2,2,dp_star_moist,dp_moist,ptop,-1,.true.) ! remap with PPM filter
       call remap1(elem(ie)%state%v(:,:,1,:,np1),np,1,1,1,dp_star_moist,dp_moist,ptop,-1,.false.) ! remap with PPM filter
       call remap1(elem(ie)%state%v(:,:,2,:,np1),np,1,1,1,dp_star_moist,dp_moist,ptop,-1,.false.) ! remap with PPM filter
-      !call remap1_nofilter(ttmp,np,2,dp_star_moist,dp_moist)
-!      elem(ie)%state%v(:,:,1,:,np1)=ttmp(:,:,:,1)*dp_inv
-!      elem(ie)%state%v(:,:,2,:,np1)=ttmp(:,:,:,2)*dp_inv
 #ifdef REMAP_TE
         ! back out T from TE
       elem(ie)%state%t(:,:,:,np1) = &
@@ -1124,6 +1107,9 @@ subroutine vertical_remap(hybrid,elem,fvm,hvcoord,dt,np1,np1_qdp,nets,nete)
     enddo
     
     if (ntrac>0) then
+      !
+      ! vertical remapping of CSLAM tracers
+      !
       do ie=nets,nete
         dpc_star=fvm(ie)%dp_fvm(1:nc,1:nc,:)        
         do k=1,nlev
