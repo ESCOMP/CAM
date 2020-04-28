@@ -188,6 +188,10 @@ type dyn_export_t
                                                   ! at layer midpoints               (nver,ncol)
    real(r8), dimension(:,:),   pointer :: pintdry ! Dry hydrostatic pressure [Pa]
                                                   ! at layer interfaces            (nver+1,ncol)
+   real(r8), dimension(:,:),   pointer :: vorticity   ! Relative vertical vorticity [s^-1]
+                                                      !                              (nver,nvtx)
+   real(r8), dimension(:,:),   pointer :: divergence  ! Horizontal velocity divergence [s^-1]
+                                                      !                              (nver,ncol)
 end type dyn_export_t
 
 real(r8), parameter :: rad2deg = 180.0_r8 / pi
@@ -418,6 +422,9 @@ subroutine dyn_init(dyn_in, dyn_out)
    allocate(dyn_out % pmiddry(nVertLevels,   nCells))
    allocate(dyn_out % pintdry(nVertLevels+1, nCells))
 
+   call mpas_pool_get_array(diag_pool, 'vorticity',  dyn_out % vorticity)
+   call mpas_pool_get_array(diag_pool, 'divergence', dyn_out % divergence)
+
    call mpas_pool_get_array(mesh_pool, 'indexToCellID', indexToCellID)
    allocate(glob_ind(nCellsSolve))
    glob_ind = indexToCellID(1:nCellsSolve)
@@ -476,7 +483,6 @@ end subroutine dyn_init
 subroutine dyn_run(dyn_in, dyn_out)
 
    use cam_mpas_subdriver, only : cam_mpas_run
-   use mpas_constants, only : R_v => rv, R_d => rgas
 
    ! Advances the dynamics state provided in dyn_in by one physics
    ! timestep to produce dynamics state held in dyn_out.
@@ -485,32 +491,14 @@ subroutine dyn_run(dyn_in, dyn_out)
    type (dyn_export_t), intent(inout)  :: dyn_out
 
    ! local variables
-   integer :: nCellsSolve
-   integer :: index_qv
-
-   real(r8), pointer :: zz(:,:)      ! Vertical coordinate metric [dimensionless]
-                                     ! at layer midpoints               (nver,ncol)
-   ! Constants
-   real(r8), parameter :: Rv_over_Rd = R_v / R_d
 
    character(len=*), parameter :: subname = 'dyn_comp::dyn_run'
    !----------------------------------------------------------------------------
 
    MPAS_DEBUG_WRITE(0, 'begin '//subname)
 
-   nCellsSolve =  dyn_out % nCellsSolve
-   zz          => dyn_out % zz
-
    ! Call the MPAS-A dycore
    call cam_mpas_run(integrationLength)
-
-   ! Update diagnostic fields in dynamics export state
-   ! NB: these same fields are pointed to by the dynamics import state
-   index_qv = dyn_out % index_qv
-   dyn_out % theta(:,1:nCellsSolve) = dyn_out % theta_m(:,1:nCellsSolve) / &
-                        (1.0_r8 + Rv_over_Rd * dyn_out % tracers(index_qv,:,1:nCellsSolve))
-
-   dyn_out % rho(:,1:nCellsSolve) = dyn_out % rho_zz(:,1:nCellsSolve) * zz(:,1:nCellsSolve)
 
 end subroutine dyn_run
 
@@ -591,6 +579,8 @@ subroutine dyn_final(dyn_in, dyn_out)
    nullify(dyn_out % uy)
    deallocate(dyn_out % pmiddry)
    deallocate(dyn_out % pintdry)
+   nullify(dyn_out % vorticity)
+   nullify(dyn_out % divergence)
 
    call cam_mpas_finalize()
 

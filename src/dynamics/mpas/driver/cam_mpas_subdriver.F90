@@ -1281,10 +1281,12 @@ contains
        use mpas_derived_types, only : MPAS_Time_type, MPAS_TimeInterval_type, mpas_pool_type
        use mpas_kind_types, only : StrKIND, RKIND
        use mpas_log, only : mpas_log_write
-       use mpas_pool_routines, only : mpas_pool_get_config, mpas_pool_get_subpool, mpas_pool_shift_time_levels
+       use mpas_pool_routines, only : mpas_pool_get_config, mpas_pool_get_dimension, mpas_pool_get_array, &
+                                      mpas_pool_get_subpool, mpas_pool_shift_time_levels
        use mpas_timekeeping, only : mpas_advance_clock, mpas_get_clock_time, mpas_get_time, MPAS_NOW, &
                                     operator(.lt.), operator(+)
        use mpas_timer, only : mpas_timer_start, mpas_timer_stop
+       use mpas_constants, only : R_v => rv, R_d => rgas
 
        implicit none
 
@@ -1296,7 +1298,14 @@ contains
        type (MPAS_Time_Type) :: currTime
        type (MPAS_Time_type) :: runUntilTime
        character(len=StrKIND) :: timeStamp
-       type (mpas_pool_type), pointer :: state
+       type (mpas_pool_type), pointer :: state, diag, mesh
+
+       real(kind=RKIND), parameter :: Rv_over_Rd = R_v / R_d
+
+       integer, pointer :: index_qv
+       integer, pointer :: nCellsSolve
+       real(kind=RKIND), dimension(:,:), pointer :: theta_m, rho_zz, zz, theta, rho
+       real(kind=RKIND), dimension(:,:,:), pointer :: scalars
 
        integer, save :: itimestep = 1
 
@@ -1304,6 +1313,8 @@ contains
        call mpas_pool_get_config(domain_ptr % blocklist % configs, 'config_dt', dt)
 
        call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'state', state)
+       call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'diag', diag)
+       call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'mesh', mesh)
 
        ! During integration, time level 1 stores the model state at the beginning of the
        !   time step, and time level 2 stores the state advanced dt in time by timestep(...)
@@ -1328,6 +1339,21 @@ contains
           call mpas_advance_clock(clock)
           currTime = mpas_get_clock_time(clock, MPAS_NOW, ierr)
        end do
+
+       !
+       ! Compute diagnostic fields from the final prognostic state
+       !
+       call mpas_pool_get_dimension(state, 'index_qv', index_qv)
+       call mpas_pool_get_dimension(state, 'nCellsSolve', nCellsSolve)
+       call mpas_pool_get_array(state, 'theta_m', theta_m, timeLevel=1)
+       call mpas_pool_get_array(state, 'rho_zz', rho_zz, timeLevel=1)
+       call mpas_pool_get_array(state, 'scalars', scalars, timeLevel=1)
+       call mpas_pool_get_array(mesh, 'zz', zz)
+       call mpas_pool_get_array(diag, 'theta', theta)
+       call mpas_pool_get_array(diag, 'rho', rho)
+
+       rho(:,1:nCellsSolve) = rho_zz(:,1:nCellsSolve) * zz(:,1:nCellsSolve)
+       theta(:,1:nCellsSolve) = theta_m(:,1:nCellsSolve) / (1.0_RKIND + Rv_over_Rd * scalars(index_qv,:,1:nCellsSolve))
 
     end subroutine cam_mpas_run
 
