@@ -785,7 +785,7 @@ contains
             call laplace_sphere_wk(elem(ie)%state%dp3d(:,:,k,nt),deriv,elem(ie),lap_dp,var_coef=.false.)
             ! increased second-order divergence damping
             nu_ratio1=1.0_r8
-            call vlaplace_sphere_wk(elem(ie)%state%v(:,:,:,k,nt),deriv,elem(ie),lap_v, var_coef=.false.,&
+            call vlaplace_sphere_wk(elem(ie)%state%v(:,:,:,k,nt),deriv,elem(ie),.true.,lap_v, var_coef=.false.,&
                  nu_ratio=nu_ratio1)
             
             !OMP_COLLAPSE_SIMD
@@ -979,7 +979,7 @@ contains
           call laplace_sphere_wk(elem(ie)%derived%FT(:,:,k),deriv,elem(ie),lap_t,var_coef=.false.)
           ! increased second-order divergence damping
           nu_ratio1=1.0_r8
-          call vlaplace_sphere_wk(elem(ie)%derived%FM(:,:,:,k),deriv,elem(ie),lap_v, var_coef=.false.,&
+          call vlaplace_sphere_wk(elem(ie)%derived%FM(:,:,:,k),deriv,elem(ie),.true.,lap_v, var_coef=.false.,&
                nu_ratio=nu_ratio1)
           
           !OMP_COLLAPSE_SIMD

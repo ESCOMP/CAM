@@ -121,7 +121,7 @@ subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,
       end if
       call laplace_sphere_wk(tmp,deriv,elem(ie),dptens(:,:,k,ie),var_coef=var_coef1)
 
-      call vlaplace_sphere_wk(elem(ie)%state%v(:,:,:,k,nt),deriv,elem(ie),vtens(:,:,:,k,ie), &
+      call vlaplace_sphere_wk(elem(ie)%state%v(:,:,:,k,nt),deriv,elem(ie),.true.,vtens(:,:,:,k,ie), &
            var_coef=var_coef1,nu_ratio=nu_ratio1)
     enddo
     
@@ -177,7 +177,7 @@ subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,
 
       v(:,:,1)=elem(ie)%rspheremp(:,:)*vtens(:,:,1,k,ie)
       v(:,:,2)=elem(ie)%rspheremp(:,:)*vtens(:,:,2,k,ie)
-      call vlaplace_sphere_wk(v(:,:,:),deriv,elem(ie),vtens(:,:,:,k,ie), &
+      call vlaplace_sphere_wk(v(:,:,:),deriv,elem(ie),.true.,vtens(:,:,:,k,ie), &
            var_coef=.true.,nu_ratio=nu_ratio2)
       
     enddo

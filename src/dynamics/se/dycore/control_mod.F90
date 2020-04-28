@@ -133,5 +133,9 @@ module control_mod
   real(r8), public :: raytau0
   real(r8), public :: raykrange
   integer,  public :: rayk0 
+  !
+  ! molecular diffusion
+  !  
+  logical, public :: molecular_diff=.true.!xxx set via namelist
   
 end module control_mod
