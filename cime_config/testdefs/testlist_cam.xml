@@ -597,7 +597,7 @@
   </test>
   <test compset="FWma2000climo" grid="ne30pg3_ne30pg3_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s">
     <machines>
-      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+      <machine name="cheyenne" compiler="intel" category="prebeta"/>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
     </machines>
     <options>
