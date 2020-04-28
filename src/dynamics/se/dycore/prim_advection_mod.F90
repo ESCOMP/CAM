@@ -939,7 +939,7 @@ contains
   call t_stopf('advance_hypervis_scalar')
   end subroutine advance_hypervis_scalar
 
-  subroutine vertical_remap(hybrid,elem,fvm,hvcoord,dt,np1,np1_qdp,nets,nete)
+  subroutine vertical_remap(hybrid,elem,fvm,hvcoord,np1,np1_qdp,nets,nete)
     !
     ! This routine is called at the end of the vertically Lagrangian
     ! dynamics step to compute the vertical flux needed to get back

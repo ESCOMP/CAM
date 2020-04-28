@@ -277,7 +277,7 @@ contains
       end do
     end if
     call t_startf('vertical_remap')
-    call vertical_remap(hybrid,elem,fvm,hvcoord,dt_remap,tl%np1,np1_qdp,nets,nete)
+    call vertical_remap(hybrid,elem,fvm,hvcoord,tl%np1,np1_qdp,nets,nete)
     call t_stopf('vertical_remap')
 
     call t_startf('two_dz_filter')
