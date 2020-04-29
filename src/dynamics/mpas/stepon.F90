@@ -19,7 +19,7 @@ use dp_coupling,    only: d_p_coupling, p_d_coupling
 
 use camsrfexch,     only: cam_out_t     
 
-use cam_history,    only: addfld, outfld
+use cam_history,    only: addfld, outfld, hist_fld_active
 
 use time_manager,   only: get_step_size, get_nstep
 use perf_mod,       only: t_startf, t_stopf, t_barrierf
@@ -68,6 +68,10 @@ subroutine stepon_init(dyn_in, dyn_out)
                 'zonal velocity at cell centers', gridname='mpas_cell')
    call addfld ('uReconstructMeridional', (/ 'lev' /),  'A', 'm/s', &
                 'meridional velocity at cell centers', gridname='mpas_cell')
+   call addfld ('divergence', (/ 'lev' /), 'A', '1/s', &
+                'Horizontal velocity divergence at cell center', gridname='mpas_cell')
+   call addfld ('vorticity', (/ 'lev' /), 'A', '1/s', &
+                'Relative vorticity at vertices', gridname='mpas_vertex')
 
    ! physics forcings on dycore grids
    call addfld ('ru_tend',     (/ 'lev' /),  'A', 'kg/m^2/s', &
@@ -197,7 +201,7 @@ subroutine write_dynvar(dyn_out)
 
    ! local variables
    integer :: i, k, kk
-   integer :: nCellsSolve, nEdgesSolve
+   integer :: nCellsSolve, nEdgesSolve, nVerticesSolve
    integer :: qv_idx
    real(r8), allocatable :: arr2d(:,:)
 
@@ -205,73 +209,110 @@ subroutine write_dynvar(dyn_out)
    !----------------------------------------------------------------------------
 
 
-   nCellsSolve = dyn_out%nCellsSolve
-   nEdgesSolve = dyn_out%nEdgesSolve
-   qv_idx      = dyn_out%index_qv
+   nCellsSolve    = dyn_out%nCellsSolve
+   nEdgesSolve    = dyn_out%nEdgesSolve
+   nVerticesSolve = dyn_out%nVerticesSolve
+   qv_idx         = dyn_out%index_qv
 
-   allocate(arr2d(nEdgesSolve,plev))
-   do k = 1, plev
-      kk = plev - k + 1
-      do i = 1, nEdgesSolve
-         arr2d(i,k) = dyn_out%uperp(kk,i)
+   if (hist_fld_active('u')) then
+      allocate(arr2d(nEdgesSolve,plev))
+      do k = 1, plev
+         kk = plev - k + 1
+         do i = 1, nEdgesSolve
+            arr2d(i,k) = dyn_out%uperp(kk,i)
+         end do
       end do
-   end do
-   call outfld('u', arr2d, nEdgesSolve, 1)
-   deallocate(arr2d)
+      call outfld('u', arr2d, nEdgesSolve, 1)
+      deallocate(arr2d)
+   end if
 
-   allocate(arr2d(nCellsSolve,plevp))
-   do k = 1, plevp
-      kk = plevp - k + 1
-      do i = 1, nCellsSolve
-         arr2d(i,k) = dyn_out%w(kk,i)
+   if (hist_fld_active('w')) then
+      allocate(arr2d(nCellsSolve,plevp))
+      do k = 1, plevp
+         kk = plevp - k + 1
+         do i = 1, nCellsSolve
+            arr2d(i,k) = dyn_out%w(kk,i)
+         end do
       end do
-   end do
-   call outfld('w', arr2d, nCellsSolve, 1)
-   deallocate(arr2d)
+      call outfld('w', arr2d, nCellsSolve, 1)
+      deallocate(arr2d)
+   end if
 
    allocate(arr2d(nCellsSolve,plev))
 
-   do k = 1, plev
-      kk = plev - k + 1
-      do i = 1, nCellsSolve
-         arr2d(i,k) = dyn_out%theta(kk,i)
+   if (hist_fld_active('theta')) then
+      do k = 1, plev
+         kk = plev - k + 1
+         do i = 1, nCellsSolve
+            arr2d(i,k) = dyn_out%theta(kk,i)
+         end do
       end do
-   end do
-   call outfld('theta', arr2d, nCellsSolve, 1)
+      call outfld('theta', arr2d, nCellsSolve, 1)
+   end if
 
-   do k = 1, plev
-      kk = plev - k + 1
-      do i = 1, nCellsSolve
-         arr2d(i,k) = dyn_out%rho(kk,i)
+   if (hist_fld_active('rho')) then
+      do k = 1, plev
+         kk = plev - k + 1
+         do i = 1, nCellsSolve
+            arr2d(i,k) = dyn_out%rho(kk,i)
+         end do
       end do
-   end do
-   call outfld('rho', arr2d, nCellsSolve, 1)
+      call outfld('rho', arr2d, nCellsSolve, 1)
+   end if
 
-   do k = 1, plev
-      kk = plev - k + 1
-      do i = 1, nCellsSolve
-         arr2d(i,k) = dyn_out%tracers(qv_idx,kk,i)
+   if (hist_fld_active('qv')) then
+      do k = 1, plev
+         kk = plev - k + 1
+         do i = 1, nCellsSolve
+            arr2d(i,k) = dyn_out%tracers(qv_idx,kk,i)
+         end do
       end do
-   end do
-   call outfld('qv', arr2d, nCellsSolve, 1)
+      call outfld('qv', arr2d, nCellsSolve, 1)
+   end if
 
-   do k = 1, plev
-      kk = plev - k + 1
-      do i = 1, nCellsSolve
-         arr2d(i,k) = dyn_out%ux(kk,i)
+   if (hist_fld_active('uReconstructZonal')) then
+      do k = 1, plev
+         kk = plev - k + 1
+         do i = 1, nCellsSolve
+            arr2d(i,k) = dyn_out%ux(kk,i)
+         end do
       end do
-   end do
-   call outfld('uReconstructZonal', arr2d, nCellsSolve, 1)
+      call outfld('uReconstructZonal', arr2d, nCellsSolve, 1)
+   end if
 
-   do k = 1, plev
-      kk = plev - k + 1
-      do i = 1, nCellsSolve
-         arr2d(i,k) = dyn_out%uy(kk,i)
+   if (hist_fld_active('uReconstructMeridional')) then
+      do k = 1, plev
+         kk = plev - k + 1
+         do i = 1, nCellsSolve
+            arr2d(i,k) = dyn_out%uy(kk,i)
+         end do
       end do
-   end do
-   call outfld('uReconstructMeridional', arr2d, nCellsSolve, 1)
+      call outfld('uReconstructMeridional', arr2d, nCellsSolve, 1)
+   end if
+
+   if (hist_fld_active('divergence')) then
+      do k = 1, plev
+         kk = plev - k + 1
+         do i = 1, nCellsSolve
+            arr2d(i,k) = dyn_out%divergence(kk,i)
+         end do
+      end do
+      call outfld('divergence', arr2d, nCellsSolve, 1)
+   end if
 
    deallocate(arr2d)
+
+   if (hist_fld_active('vorticity')) then
+      allocate(arr2d(nVerticesSolve,plev))
+      do k = 1, plev
+         kk = plev - k + 1
+         do i = 1, nVerticesSolve
+            arr2d(i,k) = dyn_out%vorticity(kk,i)
+         end do
+      end do
+      call outfld('vorticity', arr2d, nVerticesSolve, 1)
+      deallocate(arr2d)
+   end if
 
 end subroutine write_dynvar
 
@@ -294,33 +335,39 @@ subroutine write_forcings(dyn_in)
    nCellsSolve = dyn_in%nCellsSolve
    nEdgesSolve = dyn_in%nEdgesSolve
 
-   allocate(arr2d(nEdgesSolve,plev))
-   do k = 1, plev
-      kk = plev - k + 1
-      do i = 1, nEdgesSolve
-         arr2d(i,k) = dyn_in%ru_tend(kk,i)
+   if (hist_fld_active('ru_tend')) then
+      allocate(arr2d(nEdgesSolve,plev))
+      do k = 1, plev
+         kk = plev - k + 1
+         do i = 1, nEdgesSolve
+            arr2d(i,k) = dyn_in%ru_tend(kk,i)
+         end do
       end do
-   end do
-   call outfld('ru_tend', arr2d, nEdgesSolve, 1)
-   deallocate(arr2d)
+      call outfld('ru_tend', arr2d, nEdgesSolve, 1)
+      deallocate(arr2d)
+   end if
 
    allocate(arr2d(nCellsSolve,plev))
 
-   do k = 1, plev
-      kk = plev - k + 1
-      do i = 1, nCellsSolve
-         arr2d(i,k) = dyn_in%rtheta_tend(kk,i)
+   if (hist_fld_active('rtheta_tend')) then
+      do k = 1, plev
+         kk = plev - k + 1
+         do i = 1, nCellsSolve
+            arr2d(i,k) = dyn_in%rtheta_tend(kk,i)
+         end do
       end do
-   end do
-   call outfld('rtheta_tend', arr2d, nCellsSolve, 1)
+      call outfld('rtheta_tend', arr2d, nCellsSolve, 1)
+   end if
 
-   do k = 1, plev
-      kk = plev - k + 1
-      do i = 1, nCellsSolve
-         arr2d(i,k) = dyn_in%rho_tend(kk,i)
+   if (hist_fld_active('rho_tend')) then
+      do k = 1, plev
+         kk = plev - k + 1
+         do i = 1, nCellsSolve
+            arr2d(i,k) = dyn_in%rho_tend(kk,i)
+         end do
       end do
-   end do
-   call outfld('rho_tend', arr2d, nCellsSolve, 1)
+      call outfld('rho_tend', arr2d, nCellsSolve, 1)
+   end if
 
    deallocate(arr2d)
 

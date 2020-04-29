@@ -46,8 +46,9 @@ implicit none
 private
 save
 
-integer, parameter :: dyn_decomp  = 101 ! cell center grid
-integer, parameter :: edge_decomp = 102 ! edge node grid
+integer, parameter :: dyn_decomp    = 101 ! cell center grid
+integer, parameter :: edge_decomp   = 102 ! edge node grid
+integer, parameter :: vertex_decomp = 103 ! vertex node grid
 integer, parameter :: ptimelevels = 2
 
 public :: &
@@ -798,6 +799,10 @@ subroutine define_cam_grids()
    real(r8), dimension(:), pointer :: latEdge   ! edge node latitude (radians)
    real(r8), dimension(:), pointer :: lonEdge   ! edge node longitude (radians)
 
+   integer,  dimension(:), pointer :: indexToVertexID ! global indices of vertex nodes
+   real(r8), dimension(:), pointer :: latVertex ! vertex node latitude (radians)
+   real(r8), dimension(:), pointer :: lonVertex ! vertex node longitude (radians)
+
    character(len=*), parameter :: subname = 'dyn_grid::define_cam_grids'
    !----------------------------------------------------------------------------
 
@@ -878,7 +883,40 @@ subroutine define_cam_grids()
    nullify(grid_map)
    nullify(lat_coord)
    nullify(lon_coord)
+
+   !-----------------------------------------------------------!
+   ! Construct coordinate and grid objects for vertex node grid. !
+   !-----------------------------------------------------------!
+
+   call mpas_pool_get_array(meshPool, 'indexToVertexID', indexToVertexID)
+   call mpas_pool_get_array(meshPool, 'latVertex', latVertex)
+   call mpas_pool_get_array(meshPool, 'lonVertex', lonVertex)
+
+   allocate(gidx(nVerticesSolve))
+   gidx = indexToVertexID(1:nVerticesSolve)
+
+   lat_coord => horiz_coord_create('latVertex', 'nVertices', nVertices_g, 'latitude',      &
+          'degrees_north', 1, nVerticesSolve, latVertex(1:nVerticesSolve)*rad2deg, map=gidx)
+   lon_coord => horiz_coord_create('lonVertex', 'nVertices', nVertices_g, 'longitude',     &
+          'degrees_east', 1, nVerticesSolve, lonVertex(1:nVerticesSolve)*rad2deg, map=gidx)
  
+   ! Map for vertex node grid
+   allocate(grid_map(3, nVerticesSolve))
+   do i = 1, nVerticesSolve
+      grid_map(1, i) = i
+      grid_map(2, i) = 1
+      grid_map(3, i) = gidx(i)
+   end do
+
+   ! Vertex node grid object
+   call cam_grid_register('mpas_vertex', vertex_decomp, lat_coord, lon_coord,     &
+          grid_map, block_indexed=.false., unstruct=.true.)
+
+   deallocate(gidx)
+   nullify(grid_map)
+   nullify(lat_coord)
+   nullify(lon_coord)
+   
 end subroutine define_cam_grids
 
 end module dyn_grid
