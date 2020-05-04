@@ -1276,10 +1276,10 @@
 <clubb_rnevap_effic                               > 1.0D0   </clubb_rnevap_effic>
 
 <clubb_timestep                                   > 300.0D0 </clubb_timestep>
-<clubb_timestep  hgrid="ne120np4"                 > 225.0D0 </clubb_timestep>
-<clubb_timestep  hgrid="ne0np4CONUS.ne30x8"       > 225.0D0 </clubb_timestep>
-<clubb_timestep  hgrid="ne0np4.ARCTIC.ne30x4"     > 225.0D0 </clubb_timestep>
-<clubb_timestep  hgrid="ne0np4.ARCTICGRIS.ne30x8" > 225.0D0 </clubb_timestep>
+<clubb_timestep  hgrid="ne120np4"                 > 150.0D0 </clubb_timestep>
+<clubb_timestep  hgrid="ne0np4CONUS.ne30x8"       > 75.0D0 </clubb_timestep>
+<clubb_timestep  hgrid="ne0np4.ARCTIC.ne30x4"     > 150.0D0 </clubb_timestep>
+<clubb_timestep  hgrid="ne0np4.ARCTICGRIS.ne30x8" > 75.0D0 </clubb_timestep>
 
 <clubb_c1                                         > 1.0     </clubb_c1>
 <clubb_c1b                                        > 1.0     </clubb_c1b>
