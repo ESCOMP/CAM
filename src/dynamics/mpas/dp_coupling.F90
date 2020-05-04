@@ -55,6 +55,8 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    ! Note that all pressures and tracer mixing ratios coming from the dycore are based on
    ! dry air mass.
 
+   use mpas_constants, only : R_v => rv, R_d => rgas
+
    ! arguments
    type(physics_state),       intent(inout) :: phys_state(begchunk:endchunk)
    type(physics_tend ),       intent(inout) :: phys_tend(begchunk:endchunk)
@@ -76,6 +78,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    real(r8), pointer :: uy(:,:)
    real(r8), pointer :: w(:,:)
    real(r8), pointer :: theta_m(:,:)
+   real(r8), pointer :: exner(:,:)
    real(r8), pointer :: tracers(:,:,:)
 
 
@@ -88,6 +91,9 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    integer :: cpter(pcols,0:pver)             ! offsets into chunk buffer for unpacking data
 
    real(r8), allocatable, dimension(:) :: bbuffer, cbuffer ! transpose buffers
+
+   ! Constants
+   real(r8), parameter :: Rv_over_Rd = R_v / R_d
 
    character(len=*), parameter :: subname = 'd_p_coupling'
    !----------------------------------------------------------------------------
@@ -106,6 +112,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    uy       => dyn_out % uy
    w        => dyn_out % w
    theta_m  => dyn_out % theta_m
+   exner    => dyn_out % exner
    tracers  => dyn_out % tracers
 
    ! diagnose pintdry, pmiddry
@@ -131,7 +138,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
             do k = 1, pver                                  ! vertical index in physics chunk
                kk = pver - k + 1                            ! vertical index in dynamics block
 
-               phys_state(lchnk)%t(icol,k)       = theta_m(kk,i)  ! convert to temperature in derived_phys
+               phys_state(lchnk)%t(icol,k)       = theta_m(kk,i) / (1.0_r8 + Rv_over_Rd * tracers(index_qv,kk,i)) * exner(kk,i)
                phys_state(lchnk)%u(icol,k)       = ux(kk,i)
                phys_state(lchnk)%v(icol,k)       = uy(kk,i)
                phys_state(lchnk)%omega(icol,k)   = -rho_zz(kk,i)*zz(kk,i)*gravit*0.5_r8*(w(kk,i)+w(kk+1,i))   ! omega
@@ -176,7 +183,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
             bbuffer(bpter(icol,0)+1) = zint(1,i) * gravit   ! phis
 
             do k = 1, pver
-               bbuffer(bpter(icol,k))   = theta_m(k,i) ! convert to temperature in derived_phys
+               bbuffer(bpter(icol,k))   = theta_m(k,i) / (1.0_r8 + Rv_over_Rd * tracers(index_qv,k,i)) * exner(k,i)
                bbuffer(bpter(icol,k)+1) = ux(k,i)
                bbuffer(bpter(icol,k)+2) = uy(k,i)
                bbuffer(bpter(icol,k)+3) = -rho_zz(k,i) * zz(k,i) * gravit * 0.5_r8 * (w(k,i) + w(k+1,i))   ! omega
@@ -540,13 +547,6 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
 
       do k = 1, pver
          phys_state(lchnk)%exner(:ncol,k) = (pref / phys_state(lchnk)%pmid(:ncol,k))**cappa
-      end do
-
-      ! convert the MPAS modified moist potential temperature to temperature
-      do k = 1, pver
-         phys_state(lchnk)%t(:ncol,k) = phys_state(lchnk)%t(:ncol,k) &
-            / (1.0_r8 + (rh2o/rairv(:ncol,k,lchnk))*phys_state(lchnk)%q(:ncol,k,1)) &
-            * (phys_state(lchnk)%pmiddry(:ncol,k)/pref)**(rairv(:ncol,k,lchnk)/cpairv(:ncol,k,lchnk))
       end do
 
       ! Tracers from MPAS are in dry mixing ratio units.  CAM's physics package expects constituents
