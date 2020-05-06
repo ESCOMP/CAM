@@ -2046,8 +2046,8 @@
 <se_nu_p>-1 </se_nu_p>
 <se_nu_p se_refined_mesh="1" hypervis_type="scalar" > 1.5625e13 </se_nu_p>
 
-<se_nu_top                                   > 1.25e5 </se_nu_top>
-<se_nu_top se_refined_mesh="1"               > 2.0e5  </se_nu_top>
+<se_nu_top                                   > 5.0e5 </se_nu_top>
+<se_nu_top se_refined_mesh="1"               > 5.0e5  </se_nu_top>
 <se_nu_top waccm_phys="1"                    > 2.5e6  </se_nu_top>
 <se_nu_top se_refined_mesh="1" waccm_phys="1"> 2.0e5 </se_nu_top>
 
