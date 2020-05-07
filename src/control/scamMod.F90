@@ -164,11 +164,11 @@ logical, public ::  have_asdir             = .false. ! dataset contains asdir
 logical, public ::  have_asdif             = .false. ! dataset contains asdif
 logical, public ::  use_camiop             = .false. ! use cam generated forcing 
 logical, public ::  use_3dfrc              = .false. ! use 3d forcing
-logical, public ::  use_userdata           = .false. 
 logical, public ::  isrestart              = .false. ! If this is a restart step or not
   
 ! SCAM namelist defaults
 
+logical, public ::  scm_backfill_iop_w_init = .false. ! Backfill missing IOP data from initial file
 logical, public ::  scm_relaxation         = .false. ! Use relaxation
 logical, public ::  scm_crm_mode           = .false. ! Use column radiation mode
 logical, public ::  scm_cambfb_mode        = .false. ! Use extra CAM IOP fields to assure bit for bit match with CAM run
@@ -236,7 +236,7 @@ subroutine scam_readnl(nlfile,single_column_in,scmlat_in,scmlon_in)
        scm_cambfb_mode,scm_crm_mode,scm_zadv_uv,scm_zadv_T,scm_zadv_q,&
        scm_use_obs_T, scm_use_obs_uv, scm_use_obs_qv, &
        scm_relax_linear, scm_relax_tau_top_sec, &
-       scm_relax_tau_bot_sec, scm_force_latlon, scm_relax_fincl
+       scm_relax_tau_bot_sec, scm_force_latlon, scm_relax_fincl, scm_backfill_iop_w_init
 
   single_column=single_column_in
 
