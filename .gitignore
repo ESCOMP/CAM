@@ -8,7 +8,6 @@ src/physics/clubb
 src/physics/cosp2/src
 src/physics/silhs
 
-
 # Ignore compiled python
 buildnmlc
 buildcppc
@@ -18,3 +17,12 @@ buildcppc
 .#*
 \#*#
 *.swp
+
+# Ignore test output files
+test_dr.o*
+cime-tests.o*
+aux_cam_*.log
+td.*.log
+td.*.status
+test_driver_*.sh
+cam_test_summaries

@@ -41,6 +41,8 @@
         ylatm, ylonm        ! magnetic longitudes,latitudes (deg) (0:nmlat),(0:nmlon)
       use apex, only : apex_subsol, apex_magloctm
       use cam_history,  only: outfld, addfld, add_default, horiz_only ! for history saves
+      use shr_assert_mod, only: shr_assert_in_domain
+      use phys_control, only: phys_getopts
 
       implicit none
 
@@ -62,7 +64,7 @@
       real(r8), parameter :: rtd = 180._r8/pi ! radians to degrees
       real(r8), parameter :: hr2d = 360._r8/24._r8
 
-      logical, parameter :: debug =.true.
+      logical :: state_debug_checks = .false.
 
       contains
 
@@ -82,13 +84,13 @@
       logical :: history_waccm
 
 
-      call phys_getopts(history_waccm_out=history_waccm)
+      call phys_getopts(history_waccm_out=history_waccm, state_debug_checks_out=state_debug_checks)
 
 !-----------------------------------------------------------------------
 ! Add mag field output to master field list:
 !-----------------------------------------------------------------------
       call addfld('EF_EAST', horiz_only,'I','V/m', 'eastward electric field')
-      call addfld('EF_WEST', horiz_only,'I','V/m', 'northward electric field')
+      call addfld('EF_NORTH', horiz_only,'I','V/m', 'northward electric field')
       call addfld('EF_UP',   horiz_only,'I','V/m', 'upward electric field')
       call addfld('EF1_MAP', horiz_only,'I','V/m', 'map. mag. eastward ef')
       call addfld('EF2_MAP', horiz_only,'I','V/m', 'map. mag. northward ef')
@@ -198,6 +200,11 @@
      integer  :: i, iphi1, iphi2, ilam1, ilam2
      real(r8) :: t, u, collat, collon
 
+     if (state_debug_checks) then
+        call shr_assert_in_domain(ed1, is_nan=.false., varname="ed1", msg="NaN found in exbdrift::map_mag2geo")
+        call shr_assert_in_domain(ed2, is_nan=.false., varname="ed2", msg="NaN found in exbdrift::map_mag2geo")
+        call shr_assert_in_domain(potent, is_nan=.false., varname="potent", msg="NaN found in exbdrift::map_mag2geo")
+     end if
 
      do i = 1,pcol
        collat = alatm(i,lchnk)*rtd      ! mag lats (deg) [-90:90]
@@ -223,18 +230,25 @@
        t = (collon - ylonm(iphi1))/(ylonm(iphi2) - ylonm(iphi1))
        u = (collat + 90._r8 - ylatm(ilam1))/(ylatm(ilam2) - ylatm(ilam1))
        ed1_geo(i) = (1._r8 - t)*(1._r8 - u)*ed1(iphi1,ilam1) + &
-        	    t*(1._r8 - u)*	  ed1(iphi2,ilam1) + &
-        	    t*u*	  ed1(iphi2,ilam2) + &
-        	    (1._r8 - t)*u*	  ed1(iphi1,ilam2) 
+                    t*(1._r8 - u)*ed1(iphi2,ilam1) + &
+                    t*u*          ed1(iphi2,ilam2) + &
+                    (1._r8 - t)*u*ed1(iphi1,ilam2) 
        ed2_geo(i) = (1._r8 - t)*(1._r8 - u)*ed2(iphi1,ilam1) + &
-        	    t*(1._r8 - u)*	  ed2(iphi2,ilam1) + &
-        	    t*u*	  ed2(iphi2,ilam2) + &
-        	    (1._r8 - t)*u*	  ed2(iphi1,ilam2) 
+                    t*(1._r8 - u)*ed2(iphi2,ilam1) + &
+                    t*u*          ed2(iphi2,ilam2) + &
+                    (1._r8 - t)*u*ed2(iphi1,ilam2) 
        epot_geo(i)= (1._r8 - t)*(1._r8 - u)*potent(iphi1,ilam1) + &
-        	    t*(1._r8 - u)*	  potent(iphi2,ilam1) + &
-        	    t*u*	  potent(iphi2,ilam2) + &
-        	    (1._r8 - t)*u*	  potent(iphi1,ilam2) 
+                    t*(1._r8 - u)*potent(iphi2,ilam1) + &
+                    t*u*          potent(iphi2,ilam2) + &
+                    (1._r8 - t)*u*potent(iphi1,ilam2)
+       
      end do ! i = 1,pcol
+
+     if (state_debug_checks) then
+        call shr_assert_in_domain(ed1_geo, is_nan=.false., varname="ed1_geo", msg="NaN found in exbdrift::map_mag2geo")
+        call shr_assert_in_domain(ed2_geo, is_nan=.false., varname="ed2_geo", msg="NaN found in exbdrift::map_mag2geo")
+        call shr_assert_in_domain(epot_geo, is_nan=.false., varname="epot__geo", msg="NaN found in exbdrift::map_mag2geo")
+     endif
 
      call outfld( 'EF1_MAP', ed1_geo, pcol, lchnk)
      call outfld( 'EF2_MAP', ed2_geo, pcol, lchnk)
@@ -276,7 +290,7 @@
    end do
 
    call outfld( 'EF_EAST', elfld(1,:), pcol, lchnk)
-   call outfld( 'EF_WEST', elfld(2,:), pcol, lchnk)
+   call outfld( 'EF_NORTH', elfld(2,:), pcol, lchnk)
    call outfld( 'EF_UP', elfld(3,:), pcol, lchnk)
 
    end subroutine rot_efield
@@ -340,6 +354,12 @@
       vi(i,:) = vi(i,:)*fac
       wi(i,:) = wi(i,:)*fac
    end do ! i = 1,pcol	
+
+   if (state_debug_checks) then
+      call shr_assert_in_domain(ui(:pcol,:), is_nan=.false., varname="ui", msg="NaN found in exbdrift::iondrift")
+      call shr_assert_in_domain(vi(:pcol,:), is_nan=.false., varname="vi", msg="NaN found in exbdrift::iondrift")
+      call shr_assert_in_domain(wi(:pcol,:), is_nan=.false., varname="wi", msg="NaN found in exbdrift::iondrift")
+   endif
 
 #ifdef SW_DEBUG
    if( lchnk == 25 ) then

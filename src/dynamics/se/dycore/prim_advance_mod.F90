@@ -12,8 +12,9 @@ module prim_advance_mod
   save
   
   public :: prim_advance_exp, prim_advance_init, applyCAMforcing, calc_tot_energy_dynamics, compute_omega
+  public :: del2_sponge_uvt_tendencies
 
-  type (EdgeBuffer_t) :: edge3p1,edgeOmega
+  type (EdgeBuffer_t) :: edge3,edgeOmega,edgeSponge
   real (kind=r8), allocatable :: ur_weights(:)
 
 contains
@@ -21,15 +22,16 @@ contains
   subroutine prim_advance_init(par, elem)
     use edge_mod,       only: initEdgeBuffer
     use element_mod,    only: element_t
-    use dimensions_mod, only: nlev
+    use dimensions_mod, only: nlev,ksponge_end
     use control_mod,    only: qsplit,nu_p
     
     type (parallel_t)                       :: par
     type (element_t), target, intent(inout) :: elem(:)
     integer                                 :: i
 
-    call initEdgeBuffer(par,edge3p1,elem,4*nlev+1,bndry_type=HME_BNDRY_P2P, nthreads=horz_num_threads)
-    call initEdgeBuffer(par,edgeOmega,elem,nlev,bndry_type=HME_BNDRY_P2P, nthreads=horz_num_threads)
+    call initEdgeBuffer(par,edge3   ,elem,4*nlev   ,bndry_type=HME_BNDRY_P2P, nthreads=horz_num_threads)
+    call initEdgeBuffer(par,edgeSponge,elem,4*ksponge_end,bndry_type=HME_BNDRY_P2P, nthreads=horz_num_threads)
+    call initEdgeBuffer(par,edgeOmega ,elem,nlev         ,bndry_type=HME_BNDRY_P2P, nthreads=horz_num_threads)
     
     if(.not. allocated(ur_weights)) allocate(ur_weights(qsplit))
     ur_weights(:)=0.0_r8
@@ -59,6 +61,7 @@ contains
     use dimensions_mod,    only: qsize_condensate_loading_cp, lcp_moist
     use physconst,         only: cpair
     use fvm_control_volume_mod, only: fvm_struct
+    use control_mod,       only: raytau0
     
     implicit none
     
@@ -174,6 +177,8 @@ contains
     end if
     
     dt_vis = dt
+
+    if (raytau0>0) call rayleigh_friction(elem,n0,nets,nete,dt)    
     if (tstep_type==1) then
       ! RK2-SSP 3 stage.  matches tracer scheme. optimal SSP CFL, but
       ! not optimal for regular CFL
@@ -276,7 +281,7 @@ contains
     ! for consistency, dt_vis = t-1 - t*, so this is timestep method dependent
 
     ! forward-in-time, hypervis applied to dp3d
-    call advance_hypervis_dp(edge3p1,elem,fvm,hybrid,deriv,np1,qn0,nets,nete,dt_vis,eta_ave_w,&
+    call advance_hypervis_dp(edge3,elem,fvm,hybrid,deriv,np1,qn0,nets,nete,dt_vis,eta_ave_w,&
          inv_cp_full,hvcoord)
 
     call t_stopf('advance_hypervis')
@@ -297,25 +302,26 @@ contains
   end subroutine prim_advance_exp
 
 
-  subroutine applyCAMforcing(elem,fvm,np1,np1_qdp,dt_q,nets,nete,nsubstep)
+  subroutine applyCAMforcing(elem,fvm,np1,np1_qdp,dt_dribble,dt_phys,nets,nete,nsubstep)
     use dimensions_mod,         only: np, nc, nlev, qsize, ntrac, nelemd
     use element_mod,            only: element_t
     use time_mod,               only: nsplit
-    use control_mod,            only: ftype
+    use control_mod,            only: ftype, ftype_conserve
     use fvm_control_volume_mod, only: fvm_struct
-    
+    use dimensions_mod,         only: qsize_condensate_loading, qsize_condensate_loading_idx_gll    
     type (element_t)     , intent(inout) :: elem(:)
     type(fvm_struct)     , intent(inout) :: fvm(:)
-    real (kind=r8), intent(in) :: dt_q
+    real (kind=r8), intent(in) :: dt_dribble, dt_phys
     integer,  intent(in) :: np1,nets,nete,np1_qdp,nsubstep
     
     ! local
-    integer :: i,j,k,ie,q
-    real (kind=r8) :: v1,dt_local, dt_local_tracer,tmp
-    real (kind=r8) :: dt_local_tracer_fvm
+    integer :: i,j,k,ie,q,m_cnst,nq
+    real (kind=r8) :: v1,dt_local, dt_local_tracer,tmp,stmp
+    real (kind=r8) :: dt_local_tracer_fvm,pdel
     real (kind=r8) :: ftmp(np,np,nlev,qsize,nets:nete) !diagnostics
     real (kind=r8), allocatable :: ftmp_fvm(:,:,:,:,:) !diagnostics
 
+    
     if (ntrac>0) allocate(ftmp_fvm(nc,nc,nlev,ntrac,nets:nete))
 
     if (ftype==0) then
@@ -324,17 +330,17 @@ contains
       !                       add adjustments to state after each
       !                       vertical remap
       !
-      dt_local            = dt_q
-      dt_local_tracer     = dt_q
-      dt_local_tracer_fvm = dt_q
+      dt_local            = dt_dribble
+      dt_local_tracer     = dt_dribble
+      dt_local_tracer_fvm = dt_dribble
     else if (ftype==1) then
       !
       ! CAM-FV-stype forcing, i.e. equivalent to updating state once in the
       ! beginning of dynamics
       !
-      dt_local            = nsplit*dt_q
-      dt_local_tracer     = nsplit*dt_q
-      dt_local_tracer_fvm = nsplit*dt_q
+      dt_local            = dt_phys
+      dt_local_tracer     = dt_phys
+      dt_local_tracer_fvm = dt_phys
       if (nsubstep.ne.1) then
         !
         ! do nothing
@@ -347,16 +353,16 @@ contains
       !
       ! do state-update for tracers and "dribbling" forcing for u,v,T
       !
-      dt_local            = dt_q
+      dt_local            = dt_dribble
       if (ntrac>0) then
-        dt_local_tracer     = dt_q
-        dt_local_tracer_fvm = nsplit*dt_q
+        dt_local_tracer     = dt_dribble
+        dt_local_tracer_fvm = dt_phys
         if (nsubstep.ne.1) then
           dt_local_tracer_fvm = 0.0_r8
         end if
       else
-        dt_local_tracer     = nsplit*dt_q
-        dt_local_tracer_fvm = nsplit*dt_q
+        dt_local_tracer     = dt_phys
+        dt_local_tracer_fvm = dt_phys
         if (nsubstep.ne.1) then
           dt_local_tracer     = 0.0_r8
           dt_local_tracer_fvm = 0.0_r8
@@ -364,12 +370,7 @@ contains
       end if
     end if
 
-    do ie=nets,nete
-       elem(ie)%state%T(:,:,:,np1) = elem(ie)%state%T(:,:,:,np1) + &
-            dt_local*elem(ie)%derived%FT(:,:,:)
-       elem(ie)%state%v(:,:,:,:,np1) = elem(ie)%state%v(:,:,:,:,np1) + &
-            dt_local*elem(ie)%derived%FM(:,:,:,:)
-      
+    do ie=nets,nete      
       !
       ! tracers
       !
@@ -428,13 +429,43 @@ contains
       else
         if (ntrac>0) ftmp_fvm(:,:,:,:,ie) = 0.0_r8
       end if
+      
+      
+      if (ftype_conserve==1) then
+        do k=1,nlev
+          do j=1,np
+            do i = 1,np
+              pdel     = elem(ie)%state%dp3d(i,j,k,np1)
+              do nq=1,qsize_condensate_loading
+                m_cnst = qsize_condensate_loading_idx_gll(nq)
+                pdel = pdel + elem(ie)%state%Qdp(i,j,k,m_cnst,np1_qdp)
+              end do
+              pdel=elem(ie)%derived%FDP(i,j,k)/pdel
+
+              elem(ie)%state%T(i,j,k,np1) = elem(ie)%state%T(i,j,k,np1) + &
+                   dt_local*elem(ie)%derived%FT(i,j,k)*pdel
+              !
+              ! momentum conserving: dp*u
+              !
+              elem(ie)%state%v(i,j,1,k,np1) = elem(ie)%state%v(i,j,1,k,np1) + &
+                   dt_local*elem(ie)%derived%FM(i,j,1,k)*pdel!elem(ie)%state%dp3d(i,j,k,np1)
+              elem(ie)%state%v(i,j,2,k,np1) = elem(ie)%state%v(i,j,2,k,np1) + &
+                   dt_local*elem(ie)%derived%FM(i,j,2,k)*pdel!/elem(ie)%state%dp3d(i,j,k,np1)
+            end do
+          end do
+        end do
+      else
+        elem(ie)%state%T(:,:,:,np1) = elem(ie)%state%T(:,:,:,np1) + &
+             dt_local*elem(ie)%derived%FT(:,:,:)
+        elem(ie)%state%v(:,:,:,:,np1) = elem(ie)%state%v(:,:,:,:,np1) + &
+             dt_local*elem(ie)%derived%FM(:,:,:,:)
+      end if
     end do
     if (ntrac>0) then
       call output_qdp_var_dynamics(ftmp_fvm(:,:,:,:,:),nc,ntrac,nets,nete,'PDC')
     else
       call output_qdp_var_dynamics(ftmp(:,:,:,:,:),np,qsize,nets,nete,'PDC')
     end if
-    call calc_tot_energy_dynamics(elem,fvm,nets,nete,np1,np1_qdp,'dBD')
     if (ftype==1.and.nsubstep==1) call calc_tot_energy_dynamics(elem,fvm,nets,nete,np1,np1_qdp,'p2d')
     if (ntrac>0) deallocate(ftmp_fvm)
   end subroutine applyCAMforcing
@@ -450,11 +481,11 @@ contains
     !  For correct scaling, dt2 should be the same 'dt2' used in the leapfrog advace
     !
     !
-    use physconst,      only: gravit, cappa, rair, cpair
+    use physconst,      only: gravit, cappa, rair, cpair, tref, lapse_rate
     use dimensions_mod, only: np, nlev, nc, ntrac
     use dimensions_mod, only: hypervis_dynamic_ref_state,nu_scale_top,ksponge_end
     use dimensions_mod, only: max_nu_scale_del4
-    use control_mod,    only: nu, nu_s, hypervis_subcycle, nu_p, nu_top, hypervis_scaling
+    use control_mod,    only: nu, nu_s, hypervis_subcycle,hypervis_subcycle_sponge, nu_p, nu_top, hypervis_scaling
     use hybrid_mod,     only: hybrid_t!, get_loop_ranges
     use element_mod,    only: element_t
     use derivative_mod, only: derivative_t, laplace_sphere_wk, vlaplace_sphere_wk
@@ -506,16 +537,13 @@ contains
     real (kind=r8)                     :: rhypervis_subcycle
     real (kind=r8)                     :: nu_ratio1,nu_scale_del4_top
 
-    real(r8), parameter :: Tref        =  288.0_r8           ! reference temperature [K]
-    real(r8), parameter :: lapse_rate  =  0.0065_r8          ! reference lapse rate [K/m]
-
     if (nu_s == 0 .and. nu == 0 .and. nu_p==0 ) return;
 
     if (hypervis_dynamic_ref_state) then
       !
       ! use dynamic reference pressure (P. Callaghan)
       !
-      call calc_dp3d_reference(elem,edge3p1,hybrid,nets,nete,nt,hvcoord,dp3d_ref)
+      call calc_dp3d_reference(elem,edge3,hybrid,nets,nete,nt,hvcoord,dp3d_ref)
       do ie=nets,nete
         ps_ref(:,:,ie) = hvcoord%hyai(1)*hvcoord%ps0 + sum(elem(ie)%state%dp3d(:,:,:,nt),3)
       end do
@@ -589,84 +617,29 @@ contains
           ! note: DSS commutes with time stepping, so we can time advance and then DSS.
           ! note: weak operators alreayd have mass matrix "included"
           
-          ! biharmonic terms need a negative sign:
-          if (nu_top>0 .and. k.le.ksponge_end) then
-            call laplace_sphere_wk(elem(ie)%state%T(:,:,k,nt),deriv,elem(ie),lap_t,var_coef=.false.)
-            call laplace_sphere_wk(elem(ie)%state%dp3d(:,:,k,nt),deriv,elem(ie),lap_dp,var_coef=.false.)
-            ! increased second-order divergence damping
-            nu_ratio1=1.0_r8
-            call vlaplace_sphere_wk(elem(ie)%state%v(:,:,:,k,nt),deriv,elem(ie),lap_v, var_coef=.false.,&
-                 nu_ratio=nu_ratio1)
-            
-            nu_scale_del4_top=1.0_r8
-            if (k.le.ksponge_end) then
-              !
-              ! increase del4 damping in sponge
-              !
-              nu_scale_del4_top=MAX(MIN(nu_scale_top(k),max_nu_scale_del4),1.0_r8)
-            end if
-            
-            !OMP_COLLAPSE_SIMD
-            !DIR_VECTOR_ALIGNED
-            do j=1,np
-              do i=1,np
-                !                    ttens(i,j,k,ie)   = nu_scale_top(k)*nu_top*lap_t(i,j)  
-                !                    dptens(i,j,k,ie)  = nu_scale_top(k)*nu_top*lap_dp(i,j) 
-                !                    vtens(i,j,1,k,ie) = nu_scale_top(k)*nu_top*lap_v(i,j,1)
-                !                    vtens(i,j,2,k,ie) = nu_scale_top(k)*nu_top*lap_v(i,j,2)
-                !
-                ! code below has both del2 and del4 in sponge - if uncommenting remember to
-                ! add del4 mass flux for cslam in sponge below
-                !
-                ttens(i,j,k,ie)   = (-nu_s*nu_scale_del4_top*ttens(i,j,k,ie)   + nu_scale_top(k)*nu_top*lap_t(i,j)  )
-                dptens(i,j,k,ie)  = (-nu_p*nu_scale_del4_top*dptens(i,j,k,ie)  + nu_scale_top(k)*nu_top*lap_dp(i,j) )
-                vtens(i,j,1,k,ie) = (-nu  *nu_scale_del4_top*vtens(i,j,1,k,ie) + nu_scale_top(k)*nu_top*lap_v(i,j,1))
-                vtens(i,j,2,k,ie) = (-nu  *nu_scale_del4_top*vtens(i,j,2,k,ie) + nu_scale_top(k)*nu_top*lap_v(i,j,2))
-              enddo
+          !OMP_COLLAPSE_SIMD
+          !DIR_VECTOR_ALIGNED
+          do j=1,np
+            do i=1,np
+              ttens(i,j,k,ie)   = -nu_s*ttens(i,j,k,ie)
+              dptens(i,j,k,ie)  = -nu_p*dptens(i,j,k,ie)
+              vtens(i,j,1,k,ie) = -nu*vtens(i,j,1,k,ie)
+              vtens(i,j,2,k,ie) = -nu*vtens(i,j,2,k,ie)
             enddo
-          else
-            !OMP_COLLAPSE_SIMD
-            !DIR_VECTOR_ALIGNED
-            do j=1,np
-              do i=1,np
-                ttens(i,j,k,ie)   = -nu_s*ttens(i,j,k,ie)
-                dptens(i,j,k,ie)  = -nu_p*dptens(i,j,k,ie)
-                vtens(i,j,1,k,ie) = -nu*vtens(i,j,1,k,ie)
-                vtens(i,j,2,k,ie) = -nu*vtens(i,j,2,k,ie)
-              enddo
-            enddo
-          endif
+          enddo
           
           if (ntrac>0) then
-            if (nu_top>0 .and. k.le.ksponge_end) then
-              !
-              ! del2 mass flux for CSLAM (note that we do not have del4 in sponge layer)
-              !
-              call subcell_Laplace_fluxes(elem(ie)%state%dp3d(:,:,k,nt),deriv,elem(ie),np,nc,laplace_fluxes)
-              elem(ie)%sub_elem_mass_flux(:,:,:,k) = elem(ie)%sub_elem_mass_flux(:,:,:,k) + &
-                   rhypervis_subcycle*eta_ave_w*nu_scale_top(k)*nu_top*laplace_fluxes
-              do j=1,nc
-                do i=1,nc
-                  !
-                  ! del4 mass flux for CSLAM
-                  !
-                  elem(ie)%sub_elem_mass_flux(i,j,:,k) = elem(ie)%sub_elem_mass_flux(i,j,:,k) - &
-                       rhypervis_subcycle*eta_ave_w*nu_p*nu_scale_del4_top*dpflux(i,j,:,k,ie)
-                enddo
+            !OMP_COLLAPSE_SIMD
+            !DIR_VECTOR_ALIGNED
+            do j=1,nc
+              do i=1,nc
+                !
+                ! del4 mass flux for CSLAM
+                !
+                elem(ie)%sub_elem_mass_flux(i,j,:,k) = elem(ie)%sub_elem_mass_flux(i,j,:,k) - &
+                     rhypervis_subcycle*eta_ave_w*nu_p*dpflux(i,j,:,k,ie)
               enddo
-            else
-              !OMP_COLLAPSE_SIMD
-              !DIR_VECTOR_ALIGNED
-              do j=1,nc
-                do i=1,nc
-                  !
-                  ! del4 mass flux for CSLAM
-                  !
-                  elem(ie)%sub_elem_mass_flux(i,j,:,k) = elem(ie)%sub_elem_mass_flux(i,j,:,k) - &
-                       rhypervis_subcycle*eta_ave_w*nu_p*dpflux(i,j,:,k,ie)
-                enddo
-              enddo
-            endif
+            enddo
           endif
           
           ! NOTE: we will DSS all tendicies, EXCEPT for dp3d, where we DSS the new state
@@ -802,8 +775,291 @@ contains
       enddo
     end do
     call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dAH')
+    !
+    !***************************************************************
+    !
+    ! sponge layer damping
+    !
+    !***************************************************************
+    !
+    dt=dt2/hypervis_subcycle_sponge
+    call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dBS')
+    if (nu_top>0) then
+      kblk = ksponge_end    
+      do ic=1,hypervis_subcycle_sponge      
+        rhypervis_subcycle=1.0_r8/real(hypervis_subcycle_sponge,kind=r8)
+        do ie=nets,nete
+          do k=1,ksponge_end
+            call laplace_sphere_wk(elem(ie)%state%T(:,:,k,nt),deriv,elem(ie),lap_t,var_coef=.false.)
+            call laplace_sphere_wk(elem(ie)%state%dp3d(:,:,k,nt),deriv,elem(ie),lap_dp,var_coef=.false.)
+            ! increased second-order divergence damping
+            nu_ratio1=1.0_r8
+            call vlaplace_sphere_wk(elem(ie)%state%v(:,:,:,k,nt),deriv,elem(ie),lap_v, var_coef=.false.,&
+                 nu_ratio=nu_ratio1)
+            
+            !OMP_COLLAPSE_SIMD
+            !DIR_VECTOR_ALIGNED
+            do j=1,np
+              do i=1,np
+                ttens(i,j,k,ie)   = nu_scale_top(k)*nu_top*lap_t(i,j)  
+                dptens(i,j,k,ie)  = nu_scale_top(k)*nu_top*lap_dp(i,j) 
+                vtens(i,j,1,k,ie) = nu_scale_top(k)*nu_top*lap_v(i,j,1)
+                vtens(i,j,2,k,ie) = nu_scale_top(k)*nu_top*lap_v(i,j,2)
+              enddo
+            enddo
+            
+            if (ntrac>0) then
+              !
+              ! del2 mass flux for CSLAM (note that we do not have del4 in sponge layer)
+              !
+              call subcell_Laplace_fluxes(elem(ie)%state%dp3d(:,:,k,nt),deriv,elem(ie),np,nc,laplace_fluxes)
+              elem(ie)%sub_elem_mass_flux(:,:,:,k) = elem(ie)%sub_elem_mass_flux(:,:,:,k) + &
+                   rhypervis_subcycle*eta_ave_w*nu_scale_top(k)*nu_top*laplace_fluxes
+            endif
+            
+            ! NOTE: we will DSS all tendicies, EXCEPT for dp3d, where we DSS the new state
+            !OMP_COLLAPSE_SIMD
+            !DIR_VECTOR_ALIGNED
+            do j=1,np
+              do i=1,np
+                elem(ie)%state%dp3d(i,j,k,nt) = elem(ie)%state%dp3d(i,j,k,nt)*elem(ie)%spheremp(i,j)&
+                     + dt*dptens(i,j,k,ie)
+              enddo
+            enddo
+            
+          enddo
+          
+          
+          kptr = 0
+          call edgeVpack(edgeSponge,ttens(:,:,1:ksponge_end,ie),kblk,kptr,ie)
+          
+          kptr = ksponge_end
+          call edgeVpack(edgeSponge,vtens(:,:,1,1:ksponge_end,ie),kblk,kptr,ie)
+          
+          kptr = 2*ksponge_end
+          call edgeVpack(edgeSponge,vtens(:,:,2,1:ksponge_end,ie),kblk,kptr,ie)
+          
+          kptr = 3*ksponge_end        
+          call edgeVpack(edgeSponge,elem(ie)%state%dp3d(:,:,1:ksponge_end,nt),kblk,kptr,ie)
+        enddo
+        
+        call bndry_exchange(hybrid,edgeSponge,location='advance_hypervis_sponge')
+        
+        do ie=nets,nete
+          
+          kptr = 0
+          call edgeVunpack(edgeSponge,ttens(:,:,1:ksponge_end,ie),kblk,kptr,ie)
+          
+          kptr = ksponge_end        
+          call edgeVunpack(edgeSponge,vtens(:,:,1,1:ksponge_end,ie),kblk,kptr,ie)
+          
+          kptr = 2*ksponge_end        
+          call edgeVunpack(edgeSponge,vtens(:,:,2,1:ksponge_end,ie),kblk,kptr,ie)
+          
+          if (ntrac>0) then
+            do k=1,ksponge_end
+              temp(:,:,k) = elem(ie)%state%dp3d(:,:,k,nt) / elem(ie)%spheremp  ! STATE before DSS
+              corners(0:np+1,0:np+1,k) = 0.0_r8
+              corners(1:np  ,1:np  ,k) = elem(ie)%state%dp3d(1:np,1:np,k,nt) ! fill in interior data of STATE*mass
+            enddo
+          endif
+          kptr = 3*ksponge_end                
+          call edgeVunpack(edgeSponge,elem(ie)%state%dp3d(:,:,1:ksponge_end,nt),kblk,kptr,ie)        
+          
+          if (ntrac>0) then
+            desc = elem(ie)%desc
+            
+            kptr = 3*ksponge_end                          
+            call edgeDGVunpack(edgeSponge,corners(:,:,1:ksponge_end),kblk,kptr,ie)
+            do k=1,ksponge_end
+              corners(:,:,k) = corners(:,:,k)/dt !note: array size is 0:np+1
+              !OMP_COLLAPSE_SIMD
+              !DIR_VECTOR_ALIGNED
+              do j=1,np
+                do i=1,np
+                  temp(i,j,k) =  elem(ie)%rspheremp(i,j)*elem(ie)%state%dp3d(i,j,k,nt) - temp(i,j,k)
+                  temp(i,j,k) =  temp(i,j,k)/dt
+                enddo
+              enddo
+              
+              call distribute_flux_at_corners(cflux, corners(:,:,k), desc%getmapP)
+              
+              cflux(1,1,:)   = elem(ie)%rspheremp(1,  1) * cflux(1,1,:)
+              cflux(2,1,:)   = elem(ie)%rspheremp(np, 1) * cflux(2,1,:)
+              cflux(1,2,:)   = elem(ie)%rspheremp(1, np) * cflux(1,2,:)
+              cflux(2,2,:)   = elem(ie)%rspheremp(np,np) * cflux(2,2,:)
+              
+              call subcell_dss_fluxes(temp(:,:,k), np, nc, elem(ie)%metdet,cflux,tempflux)
+              elem(ie)%sub_elem_mass_flux(:,:,:,k) = elem(ie)%sub_elem_mass_flux(:,:,:,k) + &
+                   rhypervis_subcycle*eta_ave_w*tempflux
+            end do
+          endif
+          
+          ! apply inverse mass matrix, accumulate tendencies
+          !$omp parallel do num_threads(vert_num_threads) private(k,i,j)
+          do k=1,ksponge_end
+            !OMP_COLLAPSE_SIMD
+            !DIR_VECTOR_ALIGNED
+            do j=1,np
+              do i=1,np
+                vtens(i,j,1,k,ie)=dt*vtens(i,j,1,k,ie)*elem(ie)%rspheremp(i,j)
+                vtens(i,j,2,k,ie)=dt*vtens(i,j,2,k,ie)*elem(ie)%rspheremp(i,j)
+                ttens(i,j,k,ie)=dt*ttens(i,j,k,ie)*elem(ie)%rspheremp(i,j)
+                elem(ie)%state%dp3d(i,j,k,nt)=elem(ie)%state%dp3d(i,j,k,nt)*elem(ie)%rspheremp(i,j)
+              enddo
+            enddo
+          enddo
+          !$omp parallel do num_threads(vert_num_threads) private(k,i,j)
+          do k=1,ksponge_end
+            !OMP_COLLAPSE_SIMD
+            !DIR_VECTOR_ALIGNED
+            do j=1,np
+              do i=1,np
+                ! update v first (gives better results than updating v after heating)
+                elem(ie)%state%v(i,j,:,k,nt)=elem(ie)%state%v(i,j,:,k,nt) + &
+                     vtens(i,j,:,k,ie)
+                elem(ie)%state%T(i,j,k,nt)=elem(ie)%state%T(i,j,k,nt) &
+                     +ttens(i,j,k,ie)
+              enddo
+            enddo
+          enddo
+        end do
+      end do
+    end if
+    call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dAS')        
   end subroutine advance_hypervis_dp
-   
+
+  subroutine del2_sponge_uvt_tendencies(elem,hybrid,deriv,nets,nete,dt_phys)
+    !
+    !  take one timestep of:
+    !          u(:,:,:,np) = u(:,:,:,np) +  dt2*nu*laplacian**order ( u )
+    !          T(:,:,:,np) = T(:,:,:,np) +  dt2*nu_s*laplacian**order ( T )
+    !
+    !
+    !  For correct scaling, dt2 should be the same 'dt2' used in the leapfrog advace
+    !
+    !
+    use dimensions_mod, only: np, nlev, nc, ntrac
+    use dimensions_mod, only: nu_scale_top,ksponge_end
+    use control_mod,    only: nu, nu_s, hypervis_subcycle_sponge, nu_p, nu_top, hypervis_scaling
+    use hybrid_mod,     only: hybrid_t!, get_loop_ranges
+    use element_mod,    only: element_t
+    use derivative_mod, only: derivative_t, laplace_sphere_wk, vlaplace_sphere_wk
+    use edge_mod,       only: edgevpack, edgevunpack, edgeDGVunpack
+    use edgetype_mod,   only: EdgeBuffer_t, EdgeDescriptor_t
+    use bndry_mod,      only: bndry_exchange
+    use viscosity_mod,  only: biharmonic_wk_dp3d
+    
+    type (hybrid_t)    , intent(in)   :: hybrid
+    type (element_t)   , intent(inout), target :: elem(:)
+    type (derivative_t), intent(in  ) :: deriv
+    integer            , intent(in)   :: nets,nete
+    real (kind=r8)     , intent(in)   :: dt_phys
+
+    ! local
+    integer :: k,kptr,i,j,ie,ic
+    integer :: kbeg, kend, kblk
+    real (kind=r8), dimension(np,np,2,nlev,nets:nete)      :: vtens
+    real (kind=r8), dimension(np,np,nlev,nets:nete)        :: ttens
+    type (EdgeDescriptor_t)                                :: desc    
+    
+    real (kind=r8), dimension(np,np)   :: lap_t
+    real (kind=r8), dimension(np,np,2) :: lap_v
+    real (kind=r8)                     :: dt
+    real (kind=r8)                     :: nu_ratio1
+
+    kbeg=1; kend=nlev
+    
+    kblk = kend - kbeg + 1
+
+    dt=dt_phys/hypervis_subcycle_sponge
+    
+    !
+    !***************************************************************
+    !
+    ! sponge layer damping
+    !
+    !***************************************************************
+    !
+    kblk = ksponge_end    
+    do ic=1,hypervis_subcycle_sponge
+      do ie=nets,nete
+        do k=1,ksponge_end
+          call laplace_sphere_wk(elem(ie)%derived%FT(:,:,k),deriv,elem(ie),lap_t,var_coef=.false.)
+          ! increased second-order divergence damping
+          nu_ratio1=1.0_r8
+          call vlaplace_sphere_wk(elem(ie)%derived%FM(:,:,:,k),deriv,elem(ie),lap_v, var_coef=.false.,&
+               nu_ratio=nu_ratio1)
+          
+          !OMP_COLLAPSE_SIMD
+          !DIR_VECTOR_ALIGNED
+          do j=1,np
+            do i=1,np
+              ttens(i,j,k,ie)   = nu_scale_top(k)*nu_top*lap_t(i,j)*0.1_r8
+              vtens(i,j,1,k,ie) = nu_scale_top(k)*nu_top*lap_v(i,j,1)*0.1_r8
+              vtens(i,j,2,k,ie) = nu_scale_top(k)*nu_top*lap_v(i,j,2)*0.1_r8
+            enddo
+          enddo
+        enddo
+        
+        
+        kptr = 0
+        call edgeVpack(edgeSponge,ttens(:,:,1:ksponge_end,ie),kblk,kptr,ie)
+        
+        kptr = ksponge_end
+        call edgeVpack(edgeSponge,vtens(:,:,1,1:ksponge_end,ie),kblk,kptr,ie)
+        
+        kptr = 2*ksponge_end
+        call edgeVpack(edgeSponge,vtens(:,:,2,1:ksponge_end,ie),kblk,kptr,ie)
+      enddo
+      
+      call bndry_exchange(hybrid,edgeSponge,location='advance_hypervis_fsponge')
+      
+      do ie=nets,nete
+        
+        kptr = 0
+        call edgeVunpack(edgeSponge,ttens(:,:,1:ksponge_end,ie),kblk,kptr,ie)
+
+        kptr = ksponge_end        
+        call edgeVunpack(edgeSponge,vtens(:,:,1,1:ksponge_end,ie),kblk,kptr,ie)
+
+        kptr = 2*ksponge_end        
+        call edgeVunpack(edgeSponge,vtens(:,:,2,1:ksponge_end,ie),kblk,kptr,ie)
+        
+
+        ! apply inverse mass matrix, accumulate tendencies
+        !$omp parallel do num_threads(vert_num_threads) private(k,i,j)
+        do k=1,ksponge_end
+          !OMP_COLLAPSE_SIMD
+          !DIR_VECTOR_ALIGNED
+          do j=1,np
+            do i=1,np
+              vtens(i,j,1,k,ie)=dt*vtens(i,j,1,k,ie)*elem(ie)%rspheremp(i,j)
+              vtens(i,j,2,k,ie)=dt*vtens(i,j,2,k,ie)*elem(ie)%rspheremp(i,j)
+              ttens(i,j,k,ie)=dt*ttens(i,j,k,ie)*elem(ie)%rspheremp(i,j)
+            enddo
+          enddo
+        enddo
+        !$omp parallel do num_threads(vert_num_threads) private(k,i,j)
+        do k=1,ksponge_end
+          !OMP_COLLAPSE_SIMD
+          !DIR_VECTOR_ALIGNED
+          do j=1,np
+            do i=1,np
+              ! update v first (gives better results than updating v after heating)
+              elem(ie)%derived%FM(i,j,:,k)=elem(ie)%derived%FM(i,j,:,k) + &
+                   vtens(i,j,:,k,ie)
+              elem(ie)%derived%FT(i,j,k)=elem(ie)%derived%FT(i,j,k) &
+                   +ttens(i,j,k,ie)
+            enddo
+          enddo
+        enddo
+      end do       
+    end do
+  end subroutine del2_sponge_uvt_tendencies
+
+
+  
    subroutine compute_and_apply_rhs(np1,nm1,n0,dt2,elem,hvcoord,hybrid,&
         deriv,nets,nete,eta_ave_w,inv_cp_full,qwater)
      ! ===================================
@@ -830,7 +1086,7 @@ contains
      !
      ! ===================================
      use dimensions_mod,  only: np, nc, nlev
-     use dimensions_mod,  only: qsize_condensate_loading, ntrac
+     use dimensions_mod,  only: qsize_condensate_loading, qsize_condensate_loading_R, ntrac
      use hybrid_mod,      only: hybrid_t
      use element_mod,     only: element_t
      use derivative_mod,  only: derivative_t, divergence_sphere, gradient_sphere, vorticity_sphere
@@ -934,11 +1190,21 @@ contains
          do nq=1,qsize_condensate_loading
            sum_water(:,:,k) = sum_water(:,:,k) + qwater(:,:,k,nq,ie)
          end do
-         do j=1,np
-           do i=1,np
-             t_v(i,j,k)  = elem(ie)%state%T(i,j,k,n0)*(1+inv_epsilon*qwater(i,j,k,1,ie))/sum_water(i,j,k)
+
+         t_v(:,:,k)  = Rair*elem(ie)%state%T(:,:,k,n0)
+         do nq=1,qsize_condensate_loading
+           do j=1,np
+             do i=1,np
+               t_v(i,j,k)  = t_v(i,j,k)+elem(ie)%state%T(i,j,k,n0)*qsize_condensate_loading_R(nq)*qwater(i,j,k,nq,ie)
+             end do
            end do
          end do
+         do j=1,np
+           do i=1,np
+             t_v(i,j,k)  = t_v(i,j,k)/(Rair*sum_water(i,j,k))
+           end do
+         end do
+
          !
          ! convert to gas pressure (dry + water vapor pressure)
          ! (assumes T and q are constant in the layer)
@@ -1181,29 +1447,29 @@ contains
        !
        ! =========================================================
        kptr=0
-       call edgeVpack(edge3p1, elem(ie)%state%T(:,:,:,np1),nlev,kptr,ie)
+       call edgeVpack(edge3, elem(ie)%state%T(:,:,:,np1),nlev,kptr,ie)
        
        kptr=nlev
-       call edgeVpack(edge3p1, elem(ie)%state%v(:,:,:,:,np1),2*nlev,kptr,ie)
+       call edgeVpack(edge3, elem(ie)%state%v(:,:,:,:,np1),2*nlev,kptr,ie)
        
        kptr=kptr+2*nlev
-       call edgeVpack(edge3p1, elem(ie)%state%dp3d(:,:,:,np1),nlev,kptr, ie)
+       call edgeVpack(edge3, elem(ie)%state%dp3d(:,:,:,np1),nlev,kptr, ie)
      end do
      
      ! =============================================================
      ! Insert communications here: for shared memory, just a single
      ! sync is required
      ! =============================================================
-     call bndry_exchange(hybrid,edge3p1,location='edge3p1')
+     call bndry_exchange(hybrid,edge3,location='edge3')
      do ie=nets,nete
        ! ===========================================================
        ! Unpack the edges for vgrad_T and v tendencies...
        ! ===========================================================
        kptr=0
-       call edgeVunpack(edge3p1, elem(ie)%state%T(:,:,:,np1), nlev, kptr, ie)
+       call edgeVunpack(edge3, elem(ie)%state%T(:,:,:,np1), nlev, kptr, ie)
        
        kptr=nlev
-       call edgeVunpack(edge3p1, elem(ie)%state%v(:,:,:,:,np1), 2*nlev, kptr, ie)
+       call edgeVunpack(edge3, elem(ie)%state%v(:,:,:,:,np1), 2*nlev, kptr, ie)
        
        if (ntrac>0.and.eta_ave_w.ne.0._r8) then
          do k=1,nlev
@@ -1214,12 +1480,12 @@ contains
        corners = 0.0_r8
        corners(1:np,1:np,:) = elem(ie)%state%dp3d(:,:,:,np1)
        kptr=kptr+2*nlev
-       call edgeVunpack(edge3p1, elem(ie)%state%dp3d(:,:,:,np1),nlev,kptr,ie)
+       call edgeVunpack(edge3, elem(ie)%state%dp3d(:,:,:,np1),nlev,kptr,ie)
        
        if  (ntrac>0.and.eta_ave_w.ne.0._r8) then
          desc = elem(ie)%desc
 
-         call edgeDGVunpack(edge3p1, corners, nlev, kptr, ie)
+         call edgeDGVunpack(edge3, corners, nlev, kptr, ie)
 
          corners = corners/dt2
          
@@ -2017,4 +2283,26 @@ contains
     return
   end subroutine fill_element
 
+  subroutine rayleigh_friction(elem,nt,nets,nete,dt)
+    use dimensions_mod, only: np, nlev, otau
+    use hybrid_mod,     only: hybrid_t!, get_loop_ranges
+    use element_mod,    only: element_t
+    
+    type (element_t)   , intent(inout), target :: elem(:)
+    integer            , intent(in)   :: nets,nete, nt
+    real(r8)                          :: dt
+
+    real(r8) :: c1, c2
+    integer  :: k,ie
+
+    do ie=nets,nete
+      do k=1,nlev
+        c2 = 1._r8 / (1._r8 + otau(k)*dt)
+        c1 = -otau(k) * c2 * dt
+        elem(ie)%state%v(:,:,:,k,nt) = elem(ie)%state%v(:,:,:,k,nt)+c1 * elem(ie)%state%v(:,:,:,k,nt)
+!         ptend%s(:ncol,k) = c3 * (state%u(:ncol,k)**2 + state%v(:ncol,k)**2)
+      enddo
+    end do    
+  end subroutine rayleigh_friction
+  
 end module prim_advance_mod

@@ -1,0 +1,5 @@
+mfilt=1,1,1,1,1,1
+ndens=1,1,1,1,1,1
+nhtfrq=9,9,9,9,9,9
+inithist='ENDOFRUN'
+ncdata = '$DIN_LOC_ROOT/atm/cam/inic/fv/cami-mam3_0000-01-31_1.9x2.5_L30_KESSLER_c200224.nc'

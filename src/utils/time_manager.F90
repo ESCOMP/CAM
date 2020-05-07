@@ -31,6 +31,7 @@ public ::&
    get_curr_time,            &! return components of elapsed time since reference date at end of current timestep
    get_prev_time,            &! return components of elapsed time since reference date at beg of current timestep
    get_curr_calday,          &! return calendar day at end of current timestep
+   get_julday,               &! return julian day from input date, time 
    get_calday,               &! return calendar day from input date
    is_first_step,            &! return true on first step of initial run
    is_first_restart_step,    &! return true on first step of restart or branch run
@@ -256,20 +257,17 @@ subroutine set_time_float_from_date( time, year, month, day, sec )
   type(ESMF_TimeInterval) :: diff
   integer :: useday
 
-  call ESMF_TimeSet( date, yy=year, mm=month, dd=day, s=sec, calendar=tm_cal, rc=rc)
-  !
-  ! If the subroutine returned error, check if it is Feb 29 of a non-leap year
-  ! (legitimately used by the time-interpolation routines in tracer_data.F90)
-  ! in which case, substitute Feb 28 for the day
-  !
+  if ( (calendar==shr_cal_noleap) .and. (month==2) .and. (day==29) ) then ! workaround leap days for NOLEAP cal
+     useday = 28
+  else 
+     useday = day
+  endif
+
+  call ESMF_TimeSet( date, yy=year, mm=month, dd=useday, s=sec, calendar=tm_cal, rc=rc)
+
   if ( rc .ne. ESMF_SUCCESS ) then
-     if ( ( month .eq. 2 ) .and. ( day .eq. 29 ) ) then ! assume the failure is because it is leap day
-        useday = 28
-        call ESMF_TimeSet( date, yy=year, mm=month, dd=useday, s=sec, calendar=tm_cal, rc=rc)
-     else  ! legitimate error, let the model quit
-        call chkrc(rc, sub//': error return from ESMF_TimeSet for set_time_float_from_date')        
-     endif 
-  endif  
+     call chkrc(rc, sub//': error return from ESMF_TimeSet for set_time_float_from_date')        
+  endif
 
   call ESMF_ClockGet(tm_clock, refTime=ref_date, rc=rc )
   call chkrc(rc, sub//': error return from ESMF_ClockGet for set_time_float_from_date')
@@ -837,6 +835,41 @@ function get_curr_calday(offset)
    end if
 
 end function get_curr_calday
+  
+!==========================================================================
+! return julian day
+function get_julday(yr_in,mon,day,sec) result(julday)
+
+  integer,  intent(in) :: yr_in,mon,day,sec
+
+  real(r8) :: julday
+
+  integer :: yr
+  integer :: itimes(3), j, a,y,m
+
+  yr = yr_in
+
+  if (yr < 1000) then
+     if (yr < 40) then
+        yr = yr + 2000
+     else
+        yr = yr + 1900
+     endif
+  endif
+
+  itimes(1) = int(mon)
+  itimes(2) = int(day)
+  itimes(3) = int(yr)
+
+  a = int((14._r8-real(itimes(1),kind=r8))/12._r8)
+  y = itimes(3)+4800-a
+  m = itimes(1)+12*a-3
+  j = itimes(2) + int((153._r8*real(m,kind=r8)+2._r8) / 5._r8) + 365*y + &
+       int(real(y,kind=r8)/4._r8) - int(real(y,kind=r8)/100._r8) + int(real(y,kind=r8)/400._r8)- 32045
+  julday = real(j,kind=r8) + real(sec,kind=r8)/86400._r8
+
+end function get_julday
+!==========================================================================
 !=========================================================================================
 
 function get_calday(ymd, tod)

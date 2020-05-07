@@ -69,7 +69,7 @@ contains
     real(r8), optional, intent(inout) :: V(:,:)     ! meridional velocity
     real(r8), optional, intent(inout) :: T(:,:)     ! temperature
     real(r8), optional, intent(inout) :: PS(:)      ! surface pressure
-    real(r8), optional, intent(inout) :: PHIS(:)    ! surface geopotential
+    real(r8), optional, intent(out)   :: PHIS(:)    ! surface geopotential
     real(r8), optional, intent(inout) :: Q(:,:,:)   ! tracer (ncol, lev, m)
     integer,  optional, intent(in)    :: m_cnst(:)  ! tracer indices (reqd. if Q)
     logical,  optional, intent(in)    :: mask(:)    ! Only init where .true.
@@ -143,6 +143,7 @@ contains
     !*******************************
     !
     if (present(PHIS)) then
+      phis = 0.0_r8
       tmp =  u0 * (cos((eta_sfc-eta0)*pi*0.5_r8))**1.5_r8
       where(mask_use)
         PHIS(:) = ((-2._r8*(sin(latvals(:)))**6 * ((cos(latvals(:)))**2 + 1._r8/3._r8) + 10._r8/63._r8)*tmp   &
