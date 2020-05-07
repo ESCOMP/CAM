@@ -3,13 +3,13 @@ transport_mod.F
 tpcore_window_mod.F90
 tpcore_bc_mod.F90
 tpcore_fvdas_mod.F90
-olson_landmap_mod.F90
+flexgrid_read_mod.F90
 geosfp_read_mod.F90
+get_met_mod.F90
 modis_lai_mod.F90
 hco_interp_mod.F90
 merra2_read_mod.F90
 regrid_a2a_mod.F90
-land_mercury_mod.F
 hcoio_read_std_mod.F90
 hcoio_dataread_mod.F90
 hco_readlist_mod.F90
@@ -43,8 +43,6 @@ diag3.F
 hcoi_gc_main_mod.F90
 gamap_mod.F
 initialize.F
-mixing_mod.F90
-vdiff_mod.F90
 input_mod.F
 cleanup.F
 main.F
