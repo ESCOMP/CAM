@@ -350,8 +350,8 @@ def _main_prog():
                     #Extract card content:
                     card_content = card.get_content()
 
-                    #Next, check if card number matches merged PR number:
-                    if card_content.number == pr_num:
+                    #Next, check if card number exists and matches merged PR number:
+                    if card_content is not None and card_content.number == pr_num:
                         #If so, and if Project name is None, then set string:
                         if proj_mod_name is None:
                             proj_mod_name = project.name
