@@ -228,6 +228,7 @@ subroutine scam_readnl(nlfile,single_column_in,scmlat_in,scmlon_in)
   integer  :: iatt
   integer  :: ret
   integer  :: latidx, lonidx
+  logical  :: adv
   real(r8) :: ioplat,ioplon
 
 ! this list should include any variable that you might want to include in the namelist
@@ -303,6 +304,45 @@ subroutine scam_readnl(nlfile,single_column_in,scmlat_in,scmlon_in)
         scmlon = ioplon
      end if
      
+     if (masterproc) then
+        write (iulog,*) 'Single Column Model Options: '
+        write (iulog,*) '============================='
+        write (iulog,*) '  iopfile                     = ',trim(iopfile)
+        write (iulog,*) '  scm_backfill_iop_w_init     = ',scm_backfill_iop_w_init
+        write (iulog,*) '  scm_cambfb_mode             = ',scm_cambfb_mode
+        write (iulog,*) '  scm_crm_mode                = ',scm_crm_mode
+        write (iulog,*) '  scm_force_latlon            = ',scm_force_latlon
+        write (iulog,*) '  scm_iop_Tg                  = ',scm_iop_Tg
+        write (iulog,*) '  scm_iop_lhflxshflxTg        = ',scm_iop_lhflxshflxTg
+        write (iulog,*) '  scm_relaxation              = ',scm_relaxation
+        write (iulog,*) '  scm_relax_bot_p             = ',scm_relax_bot_p
+        write (iulog,*) '  scm_relax_linear            = ',scm_relax_linear
+        write (iulog,*) '  scm_relax_tau_bot_sec       = ',scm_relax_tau_bot_sec
+        write (iulog,*) '  scm_relax_tau_sec           = ',scm_relax_tau_sec
+        write (iulog,*) '  scm_relax_tau_top_sec       = ',scm_relax_tau_top_sec
+        write (iulog,*) '  scm_relax_top_p             = ',scm_relax_top_p
+        write (iulog,*) '  scm_use_obs_T               = ',scm_use_obs_T
+        write (iulog,*) '  scm_use_obs_qv              = ',scm_use_obs_qv
+        write (iulog,*) '  scm_use_obs_uv              = ',scm_use_obs_uv
+        write (iulog,*) '  scm_zadv_T                  = ',trim(scm_zadv_T)
+        write (iulog,*) '  scm_zadv_q                  = ',trim(scm_zadv_q)
+        write (iulog,*) '  scm_zadv_uv                 = ',trim(scm_zadv_uv)
+        write (iulog,*) '  scm_relax_finc: '
+        ! output scm_relax_fincl character array
+        do i=1,pcnst
+           if (scm_relax_fincl(i) .ne. '') then
+              adv = mod(i,4)==0
+              if (adv) then
+                 write (iulog, "(A18)") "'"//trim(scm_relax_fincl(i))//"',"
+              else
+                 write (iulog, "(A18)", ADVANCE="NO") "'"//trim(scm_relax_fincl(i))//"',"
+              end if
+           else
+              exit
+           end if
+        end do
+        print *
+     end if
   end if
      
 end subroutine scam_readnl
