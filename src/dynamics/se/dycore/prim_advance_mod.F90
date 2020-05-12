@@ -855,6 +855,7 @@ contains
               v1new = v1 + du(k)
               v2new = v2 + dv(k)
               heating = 0.5_r8*((v1new*v1new+v2new*v2new) - (v1*v1+v2*v2))!xxx
+!              heating = 0.0_r8
 !              heating = (vtens(i,j,1,k,ie)*v1  + vtens(i,j,2,k,ie)*v2 )!trunk              
               elem(ie)%state%T(i,j,k,nt)=elem(ie)%state%T(i,j,k,nt) &
                    -heating*inv_cp_full(i,j,k,ie)+dtemp(k)
@@ -893,44 +894,47 @@ contains
       end do
     end if
 
-      if (molecular_diff>0) then
-        do ie=nets,nete
-          call get_molecular_diff_coef(1,np,1,np,ksponge_end,nlev,&
-               elem(ie)%state%T(:,:,:,nt),.false.,km_sponge_factor(1:ksponge_end),kmvis(:,:,:,ie),kmcnd(:,:,:,ie))
-
-          call get_rho_dry(1,np,1,np,ksponge_end,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,qn0),  &
-               elem(ie)%state%T(:,:,:,nt),ptop,elem(ie)%state%dp3d(:,:,:,nt),&
-               .true.,rho_dry=rho_dry(:,:,:,ie),                                              &
-               thermodynamic_active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
-!          do k=1,ksponge_end
-!            kmvis  (:,:,k,ie) = kmvis_ref(k)!xx
-!            kmcnd  (:,:,k,ie) = kmcnd_ref(k)!xx
-!            rho_dry(:,:,k,ie) = rho_ref(k)  
-!          end do
-
+    if (molecular_diff>0) then
+      do ie=nets,nete
+        call get_molecular_diff_coef(1,np,1,np,ksponge_end,nlev,&
+             elem(ie)%state%T(:,:,:,nt),.false.,km_sponge_factor(1:ksponge_end),kmvis(:,:,:,ie),kmcnd(:,:,:,ie))
+        
+        call get_rho_dry(1,np,1,np,ksponge_end,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,qn0),  &
+             elem(ie)%state%T(:,:,:,nt),ptop,elem(ie)%state%dp3d(:,:,:,nt),&
+             .true.,rho_dry=rho_dry(:,:,:,ie),                                              &
+             thermodynamic_active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
+        !          do k=1,ksponge_end
+        !            kmvis  (:,:,k,ie) = kmvis_ref(k)!xx
+        !            kmcnd  (:,:,k,ie) = kmcnd_ref(k)!xx
+        !            rho_dry(:,:,k,ie) = rho_ref(k)  
+        !          end do
+        do k=1,ksponge_end
+          kmcnd(:,:,k,ie) = kmcnd(:,:,k,ie)/kmcnd_ref(k) !scale by reference value (very large)
+          kmvis(:,:,k,ie) = kmvis(:,:,k,ie)/kmvis_ref(k) !scale by reference value (very large)        
         end do
-        !
-        ! diagnostics
-        !
-        if (hist_fld_active('nu_kmvis')) then
-          do ie=nets,nete
-            tmp_kmvis = 0.0_r8
-            do k=1,ksponge_end
-              tmp_kmvis(:,:,k) = kmvis(:,:,k,ie)/rho_dry(:,:,k,ie)
-            end do
-            call outfld('nu_kmvis',RESHAPE(tmp_kmvis(:,:,:), (/npsq,nlev/)), npsq, ie)
+      end do
+      !
+      ! diagnostics
+      !
+      if (hist_fld_active('nu_kmvis')) then
+        do ie=nets,nete
+          tmp_kmvis = 0.0_r8
+          do k=1,ksponge_end
+            tmp_kmvis(:,:,k) = kmvis(:,:,k,ie)/rho_dry(:,:,k,ie)
           end do
-        end if
-        if (hist_fld_active('nu_kmcnd')) then
-          do ie=nets,nete
-            tmp_kmcnd = 0.0_r8
-            do k=1,ksponge_end
-              tmp_kmcnd(:,:,k) = kmcnd(:,:,k,ie)*inv_cp_full(:,:,k,ie)/rho_dry(:,:,k,ie)
-            end do
-            call outfld('nu_kmcnd',RESHAPE(tmp_kmcnd(:,:,:), (/npsq,nlev/)), npsq, ie)
-          end do
-        end if
+          call outfld('nu_kmvis',RESHAPE(tmp_kmvis(:,:,:), (/npsq,nlev/)), npsq, ie)
+        end do
       end if
+      if (hist_fld_active('nu_kmcnd')) then
+        do ie=nets,nete
+          tmp_kmcnd = 0.0_r8
+          do k=1,ksponge_end
+            tmp_kmcnd(:,:,k) = kmcnd(:,:,k,ie)*inv_cp_full(:,:,k,ie)/rho_dry(:,:,k,ie)
+          end do
+          call outfld('nu_kmcnd',RESHAPE(tmp_kmcnd(:,:,:), (/npsq,nlev/)), npsq, ie)
+        end do
+      end if
+    end if
   
   
   
@@ -986,8 +990,7 @@ contains
                 enddo
               enddo
             else
-              kmcnd(:,:,k,ie) = kmcnd(:,:,k,ie)/kmcnd_ref(k) !scale by reference value (very large)
-              kmvis(:,:,k,ie) = kmvis(:,:,k,ie)/kmvis_ref(k) !scale by reference value (very large)
+
               
               call vlaplace_sphere_wk_mol(elem(ie)%state%v(:,:,:,k,nt),deriv,elem(ie),kmvis(:,:,k,ie),lap_v)
               call laplace_sphere_wk(elem(ie)%state%T(:,:,k,nt),deriv,elem(ie),lap_t ,var_coef=.false.,mol_nu=kmcnd(:,:,k,ie))
