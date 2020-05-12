@@ -893,15 +893,6 @@ contains
       end do
     end if
 
-  
-  
-  
-    dt=dt2/hypervis_subcycle_sponge
-    call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dBS')    
-    if (ksponge_end>0) then
-      !
-      !
-      !
       if (molecular_diff>0) then
         do ie=nets,nete
           call get_molecular_diff_coef(1,np,1,np,ksponge_end,nlev,&
@@ -940,6 +931,15 @@ contains
           end do
         end if
       end if
+  
+  
+  
+    dt=dt2/hypervis_subcycle_sponge
+    call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dBS')    
+    if (ksponge_end>0) then
+      !
+      !
+      !
       !
       !
       !
