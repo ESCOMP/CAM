@@ -2867,6 +2867,7 @@ sub write_filepath
        print $fh "$camsrcdir/src/physics/silhs\n";
     }
 
+    print $fh "$camsrcdir/src/physics/pumas\n";
 
     # Superparameterization
     if ($phys_pkg eq 'spcam_m2005' or $phys_pkg eq 'spcam_sam1mom') {
