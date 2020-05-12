@@ -601,7 +601,7 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, qv_tend, dy
    ! CAM's physics package.
 
    use cam_mpas_subdriver, only : cam_mpas_cell_to_edge_winds, cam_mpas_update_halo
-   use mpas_constants, only : R_v => rv, R_d => rgas
+   use mpas_constants, only : Rv_over_Rd => rvord
 
    ! Arguments
    integer,             intent(in)    :: nCellsSolve
@@ -632,9 +632,6 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, qv_tend, dy
    real(r8), pointer :: tracers(:,:,:)
 
    integer :: index_qv
-
-   ! Constants
-   real(r8), parameter :: Rv_over_Rd = R_v / R_d
 
    character(len=*), parameter :: subname = 'dp_coupling:derived_tend'
    !----------------------------------------------------------------------------
@@ -735,6 +732,8 @@ subroutine dry_hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, thet
    ! IMPORTANT NOTE: At present, this routine is probably not correct when there
    !                 is moisture in the atmosphere.
 
+   use mpas_constants, only : cp, rgas, cv, gravity, p0
+
    ! Arguments
    integer, intent(in) :: nCells
    integer, intent(in) :: nVertLevels
@@ -744,13 +743,6 @@ subroutine dry_hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, thet
    real(r8), dimension(nVertLevels, nCells), intent(in) :: theta_m    ! potential temperature * (1 + Rv/Rd * qv)
    real(r8), dimension(nVertLevels, nCells), intent(out) :: pmiddry   ! layer midpoint dry hydrostatic pressure [Pa]
    real(r8), dimension(nVertLevels+1, nCells), intent(out) :: pintdry ! layer interface dry hydrostatic pressure [Pa]
-
-   ! Constants (which should probably come from elsewhere?)
-   real(r8), parameter :: cp = 1004.5_r8
-   real(r8), parameter :: rgas = 287.0_r8
-   real(r8), parameter :: cv = 717.5_r8
-   real(r8), parameter :: p0 = 1.0e5_r8
-   real(r8), parameter :: g = 9.806_r8
 
    ! Local variables
    integer :: iCell, k
@@ -775,7 +767,8 @@ subroutine dry_hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, thet
    !
    ! TODO: Should temperature here be virtual temperature?
    !
-   ptop_int(:) = 2.0 * ptop_mid(:) / (1.0 + exp( (zgrid(nVertLevels+1,:) - zgrid(nVertLevels,:)) * g / rgas / ttop_mid(:)))
+   ptop_int(:) = 2.0 * ptop_mid(:) &
+                 / (1.0 + exp( (zgrid(nVertLevels+1,:) - zgrid(nVertLevels,:)) * gravity / rgas / ttop_mid(:)))
 
 
    !
@@ -792,7 +785,7 @@ subroutine dry_hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, thet
 
       pintdry(nVertLevels+1,iCell) = ptop_int(iCell)
       do k = nVertLevels, 1, -1
-         pintdry(k,iCell) = pintdry(k+1,iCell) + g * zz(k,iCell) * rho_zz(k,iCell) * dz(k)
+         pintdry(k,iCell) = pintdry(k+1,iCell) + gravity * zz(k,iCell) * rho_zz(k,iCell) * dz(k)
          pmiddry(k,iCell) = 0.5 * (pintdry(k+1,iCell) + pintdry(k,iCell))
       end do
    end do

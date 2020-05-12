@@ -295,6 +295,7 @@ subroutine dyn_init(dyn_in, dyn_out)
                                   mpas_pool_get_config
    use mpas_timekeeping,   only : MPAS_set_timeInterval
    use mpas_derived_types, only : mpas_pool_type
+   use mpas_constants,     only : mpas_constants_compute_derived
 
    ! arguments:
    type(dyn_import_t), intent(out)  :: dyn_in
@@ -475,6 +476,8 @@ subroutine dyn_init(dyn_in, dyn_out)
    ! objects need a corresponding update.  Set the following logical variable to indicate
    ! whether the pointer update is needed.
    swap_time_level_ptrs = mod( nint(dt_ratio), 2) == 1
+
+   call mpas_constants_compute_derived()
 
 end subroutine dyn_init
 
@@ -914,6 +917,8 @@ end subroutine read_inidat
 
 subroutine set_base_state(dyn_in)
 
+   use mpas_constants, only : gravity, cp, Rgas, p0
+
    ! Set base-state fields for dynamics assuming an isothermal atmosphere
 
    ! Arguments
@@ -921,10 +926,6 @@ subroutine set_base_state(dyn_in)
 
    ! Local variables
    real(r8), parameter :: t0b = 250.0      ! Temperature [K]
-   real(r8), parameter :: p0  = 1.0e5      ! Reference pressure [Pa]
-   real(r8), parameter :: gravity = 9.806  ! Gravity [m/s^2]
-   real(r8), parameter :: Rgas = 287.0     ! Dry air gas constant [J/kg/K]
-   real(r8), parameter :: cp = 1004.0      ! Specific heat at constant pressure [J/kg/K]
 
    integer :: iCell, klev
    real(r8), dimension(:,:), pointer :: zint
