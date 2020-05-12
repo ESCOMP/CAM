@@ -834,15 +834,15 @@ contains
         
         do j=1,np
           do i=1,np
-            if (masterproc.and.i==1.and.j==1) then
-              do k=1,ksponge_end
-                write(iulog,*) "before u",k,elem(ie)%state%v(1,1,1,k,nt)
-              end do
-              
-              do k=1,ksponge_end
-                write(iulog,*) "before T",k,elem(ie)%state%T(1,1,k,nt)
-              end do
-            end if
+!            if (masterproc.and.i==1.and.j==1) then
+!              do k=1,ksponge_end
+!                write(iulog,*) "before u",k,elem(ie)%state%v(1,1,1,k,nt)
+!              end do
+!              
+!              do k=1,ksponge_end
+!                write(iulog,*) "before T",k,elem(ie)%state%T(1,1,k,nt)
+!              end do
+!            end if
             call solve_diffusion(dt2,np,nlev,i,j,ksponge_end,pmid,pint,kmcnd(:,:,:,ie)/cpair,elem(ie)%state%T(:,:,:,nt),0,dtemp)
             call solve_diffusion(dt2,np,nlev,i,j,ksponge_end,pmid,pint,kmvis(:,:,:,ie),elem(ie)%state%v(:,:,1,:,nt),1,du)
             call solve_diffusion(dt2,np,nlev,i,j,ksponge_end,pmid,pint,kmvis(:,:,:,ie),elem(ie)%state%v(:,:,2,:,nt),1,dv)
@@ -865,25 +865,25 @@ contains
             end do
             !temperature diffusion and frictional heating missing
 
-            if (masterproc.and.i==1.and.j==1) then
-              do k=1,ksponge_end
-                write(iulog,*) "after u",k,elem(ie)%state%v(1,1,1,k,nt)
-              end do
-
-              do k=1,ksponge_end
-                write(iulog,*) "du",k,du(k)
-              end do
-              do k=1,ksponge_end
-                write(iulog,*) "after T",k,elem(ie)%state%T(1,1,k,nt)
-              end do
-              do k=1,ksponge_end
-                write(iulog,*) "dtemp",k,dtemp(k)
-              end do
-
-              do k=1,ksponge_end
-                write(iulog,*) "dtempk",k,dtempk(k)
-              end do
-            end if
+ !           if (masterproc.and.i==1.and.j==1) then
+ !             do k=1,ksponge_end
+ !               write(iulog,*) "after u",k,elem(ie)%state%v(1,1,1,k,nt)
+ !             end do
+!
+!              do k=1,ksponge_end
+!                write(iulog,*) "du",k,du(k)
+!              end do
+!              do k=1,ksponge_end
+!                write(iulog,*) "after T",k,elem(ie)%state%T(1,1,k,nt)
+!              end do
+!              do k=1,ksponge_end
+!                write(iulog,*) "dtemp",k,dtemp(k)
+!              end do
+!
+!              do k=1,ksponge_end
+!                write(iulog,*) "dtempk",k,dtempk(k)
+!              end do
+!            end if
             
             !              call solve_diffusion(dt,np,nlev,i,j,ksponge_end,pmid,pint,kmcnd,elem(ie)%state%T(:,:,:,nt))
           end do

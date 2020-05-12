@@ -513,7 +513,7 @@ subroutine dyn_readnl(NLFileName)
       write(iulog, '(a,e9.2)') 'dyn_readnl: se_raytau0         = ', raytau0
       write(iulog, '(a,e9.2)') 'dyn_readnl: se_raykrange       = ', raykrange
       write(iulog, '(a,i0)'  ) 'dyn_readnl: se_rayk0           = ', rayk0  
-      write(iulog, '(a,e9.2)') 'dyn_readnl: se_molecular_diff  = ', rayk0  
+      write(iulog, '(a,e9.2)') 'dyn_readnl: se_molecular_diff  = ', molecular_diff
    end if
 
    call native_mapping_readnl(NLFileName)
