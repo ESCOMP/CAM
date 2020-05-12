@@ -196,7 +196,7 @@ contains
   !
   ! ================================
 
-  subroutine print_cfl(elem,hybrid,nets,nete,dtnu,ptop,&
+  subroutine print_cfl(elem,hybrid,nets,nete,dtnu,ptop,pmid,&
        dt_remap_actual,dt_tracer_fvm_actual,dt_tracer_se_actual,&
        dt_dyn_actual,dt_dyn_visco_actual,dt_dyn_del2_actual,dt_tracer_visco_actual,dt_phys)
     !
@@ -207,13 +207,14 @@ contains
     !
     use hybrid_mod,     only: hybrid_t, PrintHybrid
     use element_mod,    only: element_t
-    use dimensions_mod, only: np,ne,nelem,nelemd,nc,nhe,qsize,ntrac,nu_scale_top,nlev,large_Courant_incr
-    use dimensions_mod, only: max_nu_scale_del4
+    use dimensions_mod, only: np,ne,nelem,nelemd,nc,nhe,qsize,ntrac,nlev,large_Courant_incr
+    use dimensions_mod, only: nu_scale_top,nu_div_lev,nu_lev
+
     use quadrature_mod, only: gausslobatto, quadrature_t
     
     use reduction_mod,  only: ParallelMin,ParallelMax
     use physconst,      only: ra, rearth, pi
-    use control_mod,    only: nu, nu_q, nu_div, nu_top, fine_ne, rk_stage_user, max_hypervis_courant
+    use control_mod,    only: nu, nu_div, nu_q, nu_p, nu_s, nu_top, fine_ne, rk_stage_user, max_hypervis_courant
     use control_mod,    only: tstep_type, hypervis_power, hypervis_scaling, del2_physics_tendencies
     use cam_abortutils, only: endrun
     use parallel_mod,   only: global_shared_buf, global_shared_sum
@@ -221,13 +222,13 @@ contains
     use bndry_mod,      only: bndry_exchange
     use time_mod,       only: tstep
     use mesh_mod,       only: MeshUseMeshFile
-    use control_mod,    only: nu, nu_div, nu_p, nu_q, nu_s
     use dimensions_mod, only: ksponge_end
-    
+
+  
     type(element_t)      , intent(inout) :: elem(:)
     integer              , intent(in) :: nets,nete
     type (hybrid_t)      , intent(in) :: hybrid
-    real (kind=r8), intent(in) :: dtnu, ptop
+    real (kind=r8), intent(in) :: dtnu, ptop, pmid(nlev)
     !
     ! actual time-steps
     !
@@ -245,6 +246,7 @@ contains
     real (kind=r8) :: x, y, noreast, nw, se, sw
     real (kind=r8), dimension(np,np,nets:nete) :: zeta
     real (kind=r8) :: lambda_max, lambda_vis, min_gw, lambda,umax, ugw
+    real (kind=r8) :: press,scale1,scale2,scale3
     integer :: ie,corner, i, j, rowind, colind, k
     type (quadrature_t)    :: gp
     character(LEN=256) :: rk_str
@@ -555,16 +557,41 @@ contains
       ! CAM setting
       !
       call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu_div,2.5_r8 ,'_div')     
+      nu_div_lev(:)     = nu_div!(1.0_r8-scale1)*nu_div+scale1*2.0_r8*nu_div!+scale3*2.0_r8*nu_div
+      nu_lev(:)         = nu!(1.0_r8-scale1)*nu    +scale1*nu_p
     else
       !
       ! WACCM setting
       !
-      call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu_div,5.0_r8 ,'_div')
+!      call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu_div,5.0_r8 ,'_div')
+      call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu_div,2.5_r8 ,'_div')!xxx
+      if (hybrid%masterthread) write(iulog,*) ": sponge layer viscosity scaling factor"
+      do k=1,nlev
+        press = pmid(k)
+        
+        !      scale = 0.5_r8*(1.0_r8+tanh(1.0_r8*log(10.0_r8/press))) !experimental for WACCM (version 1 - starts at 60km and full strenth at 80km)
+        !      scale = 0.5_r8*(1.0_r8+tanh(0.5_r8*log(0.10_r8/press))) !experimental for WACCM (version 2 - starts at 80km and full strength at 120km) -UNSTABLE
+        
+        !scale3 = 0.5_r8*(1.0_r8+tanh(1.0_r8*log(    0.01_r8/press))) !experimental for WACCM (version 2 - starts at 80km and full strength at 120km)
+        !scale2 = 0.5_r8*(1.0_r8+tanh(1.0_r8*log( 1000.0_r8/press))) !experimental for WACCM (version 2 - starts at 80km and full strength at 120km)
+
+        scale1 = 0.5_r8*(1.0_r8+tanh(2.0_r8*log(100.0_r8/press)))
+        nu_div_lev(k)     = (1.0_r8-scale1)*nu_div+scale1*2.0_r8*nu_div!+scale3*2.0_r8*nu_div
+        nu_lev(k)         = (1.0_r8-scale1)*nu    +scale1*nu_p
+!        nu_div_lev(k)     = nu_div!(1.0_r8-scale1)*nu_div+scale1*2.0_r8*nu_div!+scale3*2.0_r8*nu_div
+!        nu_lev(k)         = nu!(1.0_r8-scale1)*nu    +scale1*nu_p
+        if (hybrid%masterthread) write(iulog,*) "nu_lev=",k,nu_lev(k)
+        if (hybrid%masterthread) write(iulog,*) "nu_div_lev=",k,nu_div_lev(k)
+      end do
     end if
     if (hybrid%masterthread) write(iulog,*) 'del2_physics_tendencies= ',del2_physics_tendencies
 
     if (nu_q<0) nu_q = nu_p ! necessary for consistency
     if (nu_s<0) nu_s = nu_p ! temperature damping is always equal to nu_p
+
+    !
+    !
+    !
     
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !
@@ -624,11 +651,10 @@ contains
     else
       dt_max_tracer_fvm = -1.0_r8
     end if
-    dt_max_hypervis        = s_hypervis/(MAX(nu_div,nu)*normDinv_hypervis)
+    dt_max_hypervis        = s_hypervis/(MAX(MAXVAL(nu_div_lev(:)),MAXVAL(nu_lev(:)))*normDinv_hypervis)
     dt_max_hypervis_tracer = s_hypervis/(nu_q*normDinv_hypervis)
     dt_max_laplacian_top   = 1.0_r8/(nu_top*((ra*max_normDinv)**2)*lambda_vis)
     
-    max_nu_scale_del4=max(0.9_r8*dt_max_hypervis/dt_dyn_visco_actual,1.0_r8)
     if (hybrid%masterthread) then        
       write(iulog,'(a,f10.2,a)') ' '
       write(iulog,'(a,f10.2,a)') 'Estimates for maximum stable and actual time-steps for different aspects of algorithm:'

@@ -1217,7 +1217,10 @@ contains
         enddo
       elseif ( iv==-1 ) then 
         do i=i1,i2
-          if ( a4(2,i,1)*a4(1,i,1) <= 0.0_r8 ) a4(2,i,1) = 0.0_r8
+          a4(2,i,1) = a4(1,i,1)!phl turn 2dz limiter on winds in sponge - layer 1
+          a4(3,i,1) = a4(1,i,1)!phl turn 2dz limiter on winds in sponge - layer 1
+          a4(4,i,1) = 0.0_r8   !phl turn 2dz limiter on winds in sponge - layer 1
+!phl          if ( a4(2,i,1)*a4(1,i,1) <= 0.0_r8 ) a4(2,i,1) = 0.0_r8
         enddo
       elseif ( iv==2 ) then
         do i=i1,i2
@@ -1234,11 +1237,19 @@ contains
         call cs_limiters(im, extm(i1,1), a4(1,i1,1), 1)
       endif
       
-      ! k=2
-      do i=i1,i2
-        a4(4,i,2) = 3.0_r8*(2.0_r8*a4(1,i,2) - (a4(2,i,2)+a4(3,i,2)))
-      enddo
-      call cs_limiters(im, extm(i1,2), a4(1,i1,2), 2)
+      if ( iv/=-1 ) then      !phl
+        ! k=2
+        do i=i1,i2
+          a4(4,i,2) = 3.0_r8*(2.0_r8*a4(1,i,2) - (a4(2,i,2)+a4(3,i,2)))
+        enddo
+        call cs_limiters(im, extm(i1,2), a4(1,i1,2), 2)
+      else        
+        do i=i1,i2             !phl
+          a4(2,i,2) = a4(1,i,2)!phl turn 2dz limiter on winds in sponge - layer 2
+          a4(3,i,2) = a4(1,i,2)!phl turn 2dz limiter on winds in sponge - layer 2
+          a4(4,i,2) = 0.0_r8   !phl turn 2dz limiter on winds in sponge - layer 2
+        end do                 !phl
+      end if                   !phl
       
       !-------------------------------------
       ! Huynh's 2nd constraint for interior:

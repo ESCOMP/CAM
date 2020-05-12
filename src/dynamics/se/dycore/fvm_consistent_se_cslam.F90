@@ -887,7 +887,7 @@ contains
     real (kind=r8) :: xq2,xq2i, rho, rhoi, yrh, w_static(num_area)
 
     integer :: iseg,iarea,iter,ipt
-    integer, parameter :: iter_max=40 !changed from 20 to 40 (in WACCM top levels iteration did not converge with 20)
+    integer, parameter :: iter_max=40
     logical :: lexit_after_one_more_iteration
 
     lexit_after_one_more_iteration = .false.

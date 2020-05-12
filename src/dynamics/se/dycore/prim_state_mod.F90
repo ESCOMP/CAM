@@ -343,7 +343,7 @@ CONTAINS
 #endif
 
   subroutine adjust_nsplit(elem, tl,hybrid,nets,nete, fvm, omega_cn)
-    use dimensions_mod,         only: nu_div_scale_top,ksponge_end
+    use dimensions_mod,         only: ksponge_end
     use dimensions_mod,         only: fvm_supercycling, fvm_supercycling_jet
     use time_mod,               only: tstep
     use control_mod,            only: rsplit, qsplit

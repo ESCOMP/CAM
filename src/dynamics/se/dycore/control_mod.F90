@@ -136,6 +136,6 @@ module control_mod
   !
   ! molecular diffusion
   !  
-  logical, public :: molecular_diff=.true.!xxx set via namelist
+  real(r8), public :: molecular_diff=-1.0
   
 end module control_mod

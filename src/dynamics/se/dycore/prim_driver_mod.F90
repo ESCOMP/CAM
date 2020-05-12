@@ -118,7 +118,9 @@ contains
 
     ! CAM has set tstep based on dtime before calling prim_init2(),
     ! so only now does HOMME learn the timstep.  print them out:
-    call print_cfl(elem,hybrid,nets,nete,dtnu,hvcoord%hyai(1)*hvcoord%ps0,&
+    call print_cfl(elem,hybrid,nets,nete,dtnu,&
+         !p top and p mid levels
+         hvcoord%hyai(1)*hvcoord%ps0,(hvcoord%hyam(:)+hvcoord%hybm(:))*hvcoord%ps0,&
          !dt_remap,dt_tracer_fvm,dt_tracer_se
          tstep*qsplit*rsplit,tstep*qsplit*fvm_supercycling,tstep*qsplit,&
          !dt_dyn,dt_dyn_visco,dt_tracer_visco, dt_phys
@@ -245,9 +247,14 @@ contains
 
     call TimeLevel_Qdp( tl, qsplit, n0_qdp)
 
-    if (del2_physics_tendencies) &
-         call del2_sponge_uvt_tendencies(elem,hybrid,deriv,nets,nete,dt_phys)
-    
+    if (r==1) then
+      !
+      ! filter physics tendencies
+      !
+      if (del2_physics_tendencies) &
+           call del2_sponge_uvt_tendencies(elem,hybrid,deriv,nets,nete,dt_phys)
+    end if
+
     call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%n0,n0_qdp,'dAF')
     call ApplyCAMForcing(elem,fvm,tl%n0,n0_qdp,dt_remap,dt_phys,nets,nete,nsubstep)
     call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%n0,n0_qdp,'dBD')    
@@ -304,7 +311,7 @@ contains
     call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%np1,np1_qdp,'dAR')
 
     if (nsubstep==nsplit) then
-      call compute_omega(hybrid,tl%np1,np1_qdp,elem,deriv,nets,nete,dt,hvcoord)           
+      call compute_omega(hybrid,tl%np1,np1_qdp,elem,deriv,nets,nete,dt_remap,hvcoord)           
     end if
 
     ! now we have:

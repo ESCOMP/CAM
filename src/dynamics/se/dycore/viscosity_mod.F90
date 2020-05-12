@@ -53,7 +53,7 @@ CONTAINS
 subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,nt,nets,nete,kbeg,kend,&
      dp3d_ref,T_ref)
   use derivative_mod, only : subcell_Laplace_fluxes
-  use dimensions_mod, only : ntrac, nu_div_scale_top
+  use dimensions_mod, only : ntrac, nu_div_lev,nu_lev
   
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ! compute weak biharmonic operator
@@ -95,16 +95,16 @@ subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,
     do k=kbeg,kend
        nu_ratio1=1
        nu_ratio2=1
-       if (nu_div/=nu) then
+       if (nu_div_lev(k)/=nu_lev(k)) then
           if(hypervis_scaling /= 0) then
              ! we have a problem with the tensor in that we cant seperate
              ! div and curl components.  So we do, with tensor V:
              ! nu * (del V del ) * ( nu_ratio * grad(div) - curl(curl))             
-             nu_ratio1=nu_div_scale_top(k)*nu_div/nu
+             nu_ratio1=nu_div_lev(k)/nu_lev(k)
              nu_ratio2=1
           else
-             nu_ratio1=sqrt(nu_div_scale_top(k)*nu_div/nu)
-             nu_ratio2=sqrt(nu_div_scale_top(k)*nu_div/nu)
+            nu_ratio1=sqrt(nu_div_lev(k)/nu_lev(k))!*nu_div/nu)
+            nu_ratio2=sqrt(nu_div_lev(k)/nu_lev(k))!*nu_div/nu)
           endif
        endif
 

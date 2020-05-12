@@ -6877,6 +6877,17 @@ time (days) at model top.  If 0.0 then no Rayleigh friction is applied.
 Default: 0.
 </entry>
 
+<entry id="se_molecular_diff" type="real" category="se"
+       group="dyn_se_inparm" valid_values="" >
+se_molecular_diff = 1: Activate molecular diffusion and thermal conductivity in the
+dynamical core.
+If se_molecular_diff > 1 then the molecular diffusion and thermal conductivity
+coefficients will be increased by a factor of se_molecular_diff (used for sponge layer
+diffusion).
+se_molecular_diff = 0: Code not activated.
+Default: 0.
+</entry>
+
 <entry id="se_hypervis_subcycle_q" type="integer" category="se"
        group="dyn_se_inparm" valid_values="" >
 Number of hyperviscosity subcycles done in tracer advection code.
@@ -7089,7 +7100,7 @@ Mapping of temperature:
 
 Negative values will use FV3 vertical remapping algorithm
      
- -4: Monotone PPM (-40 is same as 04 but mapping Tv over p for temperature)
+ -4: Monotone PPM (-40 is same as 4 but mapping Tv over p for temperature)
  -6: PPM
  -7: PPM with Hyunh’s second constraint (see L04)
  -9: Monotonic cubic spline with 2∆z oscillations removed

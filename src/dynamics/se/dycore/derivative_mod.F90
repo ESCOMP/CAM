@@ -1778,16 +1778,6 @@ end do
 
     laplace = gradient_sphere_wk_testcov(div,deriv,elem) - &
          curl_sphere_wk_testcov(vor,deriv,elem)
-    do n=1,np
-       do m=1,np
-          ! add in correction so we dont damp rigid rotation
-#define UNDAMPRR
-#ifdef UNDAMPRR
-          laplace(m,n,1)=laplace(m,n,1) + 2*elem%spheremp(m,n)*v(m,n,1)*(ra**2)!xxx remove
-          laplace(m,n,2)=laplace(m,n,2) + 2*elem%spheremp(m,n)*v(m,n,2)*(ra**2)
-#endif
-       enddo
-    enddo
   end subroutine vlaplace_sphere_wk_mol
 
 

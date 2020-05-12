@@ -863,7 +863,6 @@ subroutine composition_init()
      end do
 
      if (dycore_is ('LR').or.dycore_is ('SE')) then
-!     if (dycore_is ('LR')) then       
        do k=k0,k1
          pmid(:,:,k) = dp(:,:,k)/(log(pint_local(:,:,k+1))-log(pint_local(:,:,k)))
        end do
@@ -902,9 +901,9 @@ subroutine composition_init()
      ! compute kappa = Rd/cpd
      !
      if (mixing_ratio==1) then
-       call get_kappa_dry(i0,i1,j0,j1,1,nlev,ntrac,tracer,thermodynamic_active_species_idx,kappa_dry,dp_dry)
+       call get_kappa_dry(i0,i1,j0,j1,1,nlev,nlev,ntrac,tracer,thermodynamic_active_species_idx,kappa_dry,dp_dry)
      else
-       call get_kappa_dry(i0,i1,j0,j1,1,nlev,ntrac,tracer,thermodynamic_active_species_idx,kappa_dry)
+       call get_kappa_dry(i0,i1,j0,j1,1,nlev,nlev,ntrac,tracer,thermodynamic_active_species_idx,kappa_dry)
      end if
      p00=pstd
      if (inv_exner) then
@@ -1005,7 +1004,6 @@ subroutine composition_init()
      ! integrate hydrostatic eqn
      !
      gzh = phis
-!     if (dycore_is ('LR')) then
      if (dycore_is ('LR').or.dycore_is ('SE')) then       
        do k=nlev,1,-1
          Rdry_tv(:,:) = Rair*T_v(:,:,k)
@@ -1093,9 +1091,9 @@ subroutine composition_init()
 
      call get_gz(i0,i1,j0,j1,nlev,ntrac,tracer,mixing_ratio,thermodynamic_active_species_idx,dp_dry,ptop,temp,phis,gz,T_v=T_v)
      if (mixing_ratio==1) then
-       call get_cp_dry      (i0,i1,j0,j1,1,nlev,ntrac,tracer,thermodynamic_active_species_idx,cp_dry)       
+       call get_cp_dry      (i0,i1,j0,j1,1,nlev,nlev,ntrac,tracer,thermodynamic_active_species_idx,cp_dry)       
      else
-       call get_cp_dry      (i0,i1,j0,j1,1,nlev,ntrac,tracer,thermodynamic_active_species_idx,cp_dry,dp_dry=dp_dry)              
+       call get_cp_dry      (i0,i1,j0,j1,1,nlev,nlev,ntrac,tracer,thermodynamic_active_species_idx,cp_dry,dp_dry=dp_dry)              
      end if
      
      thermalE(:,:,:) = cp_dry(:,:,:)*T_v(:,:,:)
@@ -1148,11 +1146,11 @@ subroutine composition_init()
    !
    !****************************************************************************************************************
    !     
-   subroutine get_cp_dry(i0,i1,j0,j1,k0,k1,ntrac,tracer,thermodynamic_active_species_idx,cp_dry,dp_dry)
-     integer,  intent(in)  :: i0,i1,j0,j1,k0,k1,ntrac
-     real(r8), intent(in)  :: tracer(i0:i1,j0:j1,k0:k1,1:ntrac) ! Tracer array
+   subroutine get_cp_dry(i0,i1,j0,j1,k0,k1,nlev,ntrac,tracer,thermodynamic_active_species_idx,cp_dry,dp_dry)
+     integer,  intent(in)  :: i0,i1,j0,j1,k0,k1,ntrac,nlev
+     real(r8), intent(in)  :: tracer(i0:i1,j0:j1,nlev,1:ntrac) ! Tracer array
      integer,  intent(in)  :: thermodynamic_active_species_idx(:)
-     real(r8), optional, intent(in) :: dp_dry(i0:i1,j0:j1,k0:k1)       ! dry pressure level thickness
+     real(r8), optional, intent(in) :: dp_dry(i0:i1,j0:j1,nlev)       ! dry pressure level thickness
      real(r8), intent(out) :: cp_dry(i0:i1,j0:j1,k0:k1)       ! dry pressure level thickness     
      
      integer :: i,j,k,m_cnst,nq
@@ -1189,14 +1187,16 @@ subroutine composition_init()
    !
    !****************************************************************************************************************
    !     
-   subroutine get_R_dry(i0,i1,j0,j1,k0,k1,ntrac,tracer,thermodynamic_active_species_idx,R_dry,dp_dry)
-     integer,  intent(in)  :: i0,i1,j0,j1,k0,k1,ntrac
-     real(r8), intent(in)  :: tracer(i0:i1,j0:j1,k0:k1,1:ntrac)  ! Tracer array
+   subroutine get_R_dry(i0,i1,j0,j1,k0,k1,nlev,ntrac,tracer,thermodynamic_active_species_idx,R_dry,dp_dry)
+     integer,  intent(in)  :: i0,i1,j0,j1,k0,k1,ntrac, nlev
+     real(r8), intent(in)  :: tracer(i0:i1,j0:j1,nlev,1:ntrac)   ! Tracer array
      integer,  intent(in)  :: thermodynamic_active_species_idx(:)! index of active species in tracer
-     real(r8), optional, intent(in) :: dp_dry(i0:i1,j0:j1,k0:k1) ! dry pressure level thickness
+     real(r8), optional, intent(in) :: dp_dry(i0:i1,j0:j1,nlev)  ! dry pressure level thickness
      real(r8), intent(out) :: R_dry(i0:i1,j0:j1,k0:k1)           ! dry air Gas constant
      
      integer :: i,j,k,m_cnst,nq, factor(i0:i1,j0:j1,k0:k1)
+     real(r8):: o_mwi,o2_mwi,n2_mwi, mmro2, mmrn2, mmro, mbar
+
      !
      ! dry air not species dependent
      !
@@ -1208,7 +1208,10 @@ subroutine composition_init()
        else
          factor = 1.0_r8
        endif       
-       call endrun('get_R_dry not coded yet for species dependent cp')         
+       call endrun('get_R_dry not coded yet for species dependent cp')
+       !
+       ! if k1=nlev+1 then extrapolate value of R_dry ... NOT CODED YET
+       !
        do nq=1,dry_air_composition_num
          m_cnst = thermodynamic_active_species_idx(nq)       
          do k=k0,k1
@@ -1222,12 +1225,12 @@ subroutine composition_init()
      end if
    end subroutine get_R_dry
 
-   subroutine get_kappa_dry(i0,i1,j0,j1,k0,k1,ntrac,tracer,thermodynamic_active_species_idx,kappa_dry,dp_dry)
-     integer,  intent(in)  :: i0,i1,j0,j1,k0,k1,ntrac
-     real(r8), intent(in)  :: tracer(i0:i1,j0:j1,k0:k1,1:ntrac) ! Tracer array
+   subroutine get_kappa_dry(i0,i1,j0,j1,k0,k1,nlev,ntrac,tracer,thermodynamic_active_species_idx,kappa_dry,dp_dry)
+     integer,  intent(in)  :: i0,i1,j0,j1,k0,k1,ntrac,nlev
+     real(r8), intent(in)  :: tracer(i0:i1,j0:j1,nlev,1:ntrac) ! Tracer array
      integer,  intent(in)  :: thermodynamic_active_species_idx(:)
      real(r8), intent(out) :: kappa_dry(i0:i1,j0:j1,k0:k1)      
-     real(r8), optional, intent(in) :: dp_dry(i0:i1,j0:j1,k0:k1) ! dry pressure level thickness
+     real(r8), optional, intent(in) :: dp_dry(i0:i1,j0:j1,nlev) ! dry pressure level thickness
      real(r8), allocatable, dimension(:,:,:) :: cp_dry,R_dry
      !
      ! dry air not species dependent
@@ -1238,11 +1241,11 @@ subroutine composition_init()
        allocate(R_dry(i0:i1,j0:j1,k0:k1))
        allocate(cp_dry(i0:i1,j0:j1,k0:k1))
        if (present(dp_dry)) then
-         call get_cp_dry(i0,i1,j0,j1,k0,k1,ntrac,tracer,thermodynamic_active_species_idx,cp_dry,dp_dry=dp_dry)         
-         call get_R_dry(i0,i1,j0,j1,k0,k1,ntrac,tracer,thermodynamic_active_species_idx,R_dry,dp_dry=dp_dry)         
+         call get_cp_dry(i0,i1,j0,j1,k0,k1,nlev,ntrac,tracer,thermodynamic_active_species_idx,cp_dry,dp_dry=dp_dry)         
+         call get_R_dry(i0,i1,j0,j1,k0,k1,nlev,ntrac,tracer,thermodynamic_active_species_idx,R_dry,dp_dry=dp_dry)         
        else
-         call get_cp_dry(i0,i1,j0,j1,k0,k1,ntrac,tracer,thermodynamic_active_species_idx,cp_dry)         
-         call get_R_dry(i0,i1,j0,j1,k0,k1,ntrac,tracer,thermodynamic_active_species_idx,R_dry)         
+         call get_cp_dry(i0,i1,j0,j1,k0,k1,nlev,ntrac,tracer,thermodynamic_active_species_idx,cp_dry)         
+         call get_R_dry(i0,i1,j0,j1,k0,k1,nlev,ntrac,tracer,thermodynamic_active_species_idx,R_dry)         
        end if
        kappa_dry = R_dry/cp_dry
        deallocate(R_dry,cp_dry)
@@ -1454,12 +1457,13 @@ subroutine composition_init()
      end do
    end subroutine get_dp_ref
 
-   subroutine get_molecular_diff_coef(i0,i1,j0,j1,k1,temp,get_at_interfaces,kmvis,kmcnd)
+   subroutine get_molecular_diff_coef(i0,i1,j0,j1,k1,nlev,temp,get_at_interfaces,sponge_factor,kmvis,kmcnd)
      use cam_logfile,     only: iulog
      ! args
-     integer,  intent(in)           :: i0,i1,j0,j1,k1
-     real(r8), intent(in)           :: temp(i0:i1,j0:j1,1:k1) ! Temperature
+     integer,  intent(in)           :: i0,i1,j0,j1,k1,nlev
+     real(r8), intent(in)           :: temp(i0:i1,j0:j1,nlev) ! Temperature
      logical,  intent(in)           :: get_at_interfaces
+     real(r8), intent(in)           :: sponge_factor(1:k1)
      real(r8), intent(out)          :: kmvis(i0:i1,j0:j1,1:k1)
      real(r8), intent(out)          :: kmcnd(i0:i1,j0:j1,1:k1)
      !
@@ -1471,7 +1475,7 @@ subroutine composition_init()
      ! local vars
      integer :: i,j,k
      real(r8):: mmro, mmro2, mmrh, mmrn2            ! Mass mixing ratios of O, O2, H, and N
-     real(r8):: o_imw, o2_imw, n2_imw               ! Inverse molecular weights
+     real(r8):: o_mwi, o2_mwi, n2_mwi               ! Inverse molecular weights
      real(r8):: mbar                                ! Mean mass at mid level
      real(r8):: dof1, dof2                          ! Degress of freedom for cpairv calculation
      real(r8):: kv1, kv2, kv3, kv4                  ! Coefficients for kmvis calculation
@@ -1494,36 +1498,37 @@ subroutine composition_init()
        !
        ! assume well-mixed gas
        !
-       o_imw  = 1._r8/16._r8
-       o2_imw = 1._r8/32._r8
-       n2_imw = 1._r8/28._r8
+       o_mwi  = 1._r8/16._r8
+       o2_mwi = 1._r8/32._r8
+       n2_mwi = 1._r8/28._r8
        mmro2  = 0.235_r8
        mmrn2  = 0.765_r8
        mmro   = 0.0_r8
-       mbar   = mwdry
-       cnst_vis = (kv1*mmro2*o2_imw+kv2*mmrn2*n2_imw+kv3*mmro*o_imw)*mbar*1.e-7_r8
-       cnst_cnd = (kc1*mmro2*o2_imw+kc2*mmrn2*n2_imw+kc3*mmro*o_imw)*mbar*1.e-5_r8
+       mbar = 1._r8/(mmro*o_mwi+mmro2*o2_mwi+mmrn2*n2_mwi)
+
+       cnst_vis = (kv1*mmro2*o2_mwi+kv2*mmrn2*n2_mwi+kv3*mmro*o_mwi)*mbar*1.e-7_r8
+       cnst_cnd = (kc1*mmro2*o2_mwi+kc2*mmrn2*n2_mwi+kc3*mmro*o_mwi)*mbar*1.e-5_r8
        if (get_at_interfaces) then
-           do k=1,k1
+           do k=2,k1
              do j=j0,j1
                do i=i0,i1
-                 temp_local   = 0.5_r8*(temp(i,j,k)+temp(i,j,k-1))
-                 kmvis(i,j,k) = cnst_vis*temp_local**kv4                               
-                 kmcnd(i,j,k) = cnst_cnd*temp_local**kc4
+                 temp_local   = 0.5_r8*(temp(i,j,k+1)+temp(i,j,k))
+                 kmvis(i,j,k) = sponge_factor(k)*cnst_vis*temp_local**kv4                               
+                 kmcnd(i,j,k) = sponge_factor(k)*cnst_cnd*temp_local**kc4
                end do
              end do
            end do
            !
            ! extrapolate top level value
            !
-           kmvis(i0:i1,j0:j1,1) = 1.5_r8*kmvis(i0:i1,j0:j1,1)-0.5_r8*kmvis(i0:i1,j0:j1,2)
-           kmcnd(i0:i1,j0:j1,1) = 1.5_r8*kmcnd(i0:i1,j0:j1,1)-0.5_r8*kmcnd(i0:i1,j0:j1,2)
+           kmvis(i0:i1,j0:j1,1) = 1.5_r8*kmvis(i0:i1,j0:j1,2)-0.5_r8*kmvis(i0:i1,j0:j1,3)
+           kmcnd(i0:i1,j0:j1,1) = 1.5_r8*kmcnd(i0:i1,j0:j1,2)-0.5_r8*kmcnd(i0:i1,j0:j1,3)
        else
          do k=1,k1
            do j=j0,j1
              do i=i0,i1
-               kmvis(i,j,k) = cnst_vis*temp(i,j,k)**kv4                               
-               kmcnd(i,j,k) = cnst_cnd*temp(i,j,k)**kc4
+               kmvis(i,j,k) = sponge_factor(k)*cnst_vis*temp(i,j,k)**kv4                               
+               kmcnd(i,j,k) = sponge_factor(k)*cnst_cnd*temp(i,j,k)**kc4
              end do
            end do
          end do
@@ -1533,15 +1538,16 @@ subroutine composition_init()
      end if
    end subroutine get_molecular_diff_coef
 
-   subroutine get_rho_dry(i0,i1,j0,j1,k1,ntrac,tracer,temp,ptop,dp_dry,&
-        rho_dry, rhoi_dry,thermodynamic_active_species_idx_dycore,pint_out)
+   subroutine get_rho_dry(i0,i1,j0,j1,k1,nlev,ntrac,tracer,temp,ptop,dp_dry,tracer_mass,&
+        rho_dry, rhoi_dry,thermodynamic_active_species_idx_dycore,pint_out,pmid_out)
      use cam_logfile,     only: iulog
      ! args
-     integer,  intent(in)           :: i0,i1,j0,j1,k1,ntrac
-     real(r8), intent(in)           :: tracer(i0:i1,j0:j1,1:k1,ntrac) ! Tracer array
-     real(r8), intent(in)           :: temp(i0:i1,j0:j1,1:k1) ! Temperature
+     integer,  intent(in)           :: i0,i1,j0,j1,k1,ntrac,nlev
+     real(r8), intent(in)           :: tracer(i0:i1,j0:j1,nlev,ntrac) ! Tracer array
+     real(r8), intent(in)           :: temp(i0:i1,j0:j1,1:nlev) ! Temperature
      real(r8), intent(in)           :: ptop
-     real(r8), intent(in)           :: dp_dry(i0:i1,j0:j1,1:k1)
+     real(r8), intent(in)           :: dp_dry(i0:i1,j0:j1,nlev)
+     logical,  intent(in)           :: tracer_mass
      real(r8), optional,intent(out) :: rho_dry(i0:i1,j0:j1,1:k1)
      real(r8), optional,intent(out) :: rhoi_dry(i0:i1,j0:j1,1:k1+1)
      !
@@ -1550,12 +1556,14 @@ subroutine composition_init()
      !
      integer, optional, dimension(:) :: thermodynamic_active_species_idx_dycore
      real(r8),optional,intent(out)   :: pint_out(i0:i1,j0:j1,1:k1+1)
+     real(r8),optional,intent(out)   :: pmid_out(i0:i1,j0:j1,1:k1)
      
      ! local vars
      integer :: i,j,k
      real(r8),  dimension(i0:i1,j0:j1,1:k1)              :: factor, pmid
      integer, dimension(thermodynamic_active_species_num) :: idx_local,idx
      real(r8):: pint(i0:i1,j0:j1,1:k1+1)
+     real(r8), allocatable :: R_dry(:,:,:)
      real(r8):: temp_local
 
      !
@@ -1563,25 +1571,38 @@ subroutine composition_init()
      !
      call get_pmid_from_dp(i0,i1,j0,j1,1,k1,dp_dry,ptop,pmid,pint=pint)
      if (present(pint_out)) pint_out=pint
-
+     if (present(pint_out)) pmid_out=pmid
      if (dry_air_composition_num==0) then
        if (present(rhoi_dry)) then
+         allocate(R_dry(i0:i1,j0:j1,1:k1+1))
+         if (tracer_mass) then           
+           call get_R_dry(i0,i1,j0,j1,1,k1+1,nlev,ntrac,tracer,thermodynamic_active_species_idx,R_dry,dp_dry=dp_dry)
+         else
+           call get_R_dry(i0,i1,j0,j1,1,k1+1,nlev,ntrac,tracer,thermodynamic_active_species_idx,R_dry)
+         end if        
          do k=2,k1+1
            rhoi_dry(i0:i1,j0:j1,k) = 0.5_r8*(temp(i0:i1,j0:j1,k)+temp(i0:i1,j0:j1,k-1))!could be more accurate!
-           rhoi_dry(i0:i1,j0:j1,k) = pint(i0:i1,j0:j1,k)/(rhoi_dry(i0:i1,j0:j1,k)*Rair) !ideal gas law for dry air
+           rhoi_dry(i0:i1,j0:j1,k) = pint(i0:i1,j0:j1,k)/(rhoi_dry(i0:i1,j0:j1,k)*R_dry(i0:i1,j0:j1,k)) !ideal gas law for dry air
          end do
          !
          ! extrapolate top level value
          !
          k=1
          rhoi_dry(i0:i1,j0:j1,k) = 1.5_r8*(temp(i0:i1,j0:j1,1)-0.5_r8*temp(i0:i1,j0:j1,2))
-         rhoi_dry(i0:i1,j0:j1,k) = pint(i0:i1,j0:j1,1)/rhoi_dry(i0:i1,j0:j1,k)*Rair !ideal gas law for dry air
+         rhoi_dry(i0:i1,j0:j1,k) = pint(i0:i1,j0:j1,1)/(rhoi_dry(i0:i1,j0:j1,k)*R_dry(i0:i1,j0:j1,k)) !ideal gas law for dry air
+         deallocate(R_dry)
        end if
        if (present(rho_dry)) then
+         allocate(R_dry(i0:i1,j0:j1,1:k1))
+         if (tracer_mass) then
+           call get_R_dry(i0,i1,j0,j1,1,k1,nlev,ntrac,tracer,thermodynamic_active_species_idx,R_dry,dp_dry=dp_dry)
+         else
+           call get_R_dry(i0,i1,j0,j1,1,k1,nlev,ntrac,tracer,thermodynamic_active_species_idx,R_dry)
+         end if         
          do k=1,k1
            do j=j0,j1
              do i=i0,i1
-               rho_dry(i,j,k) = pmid(i,j,k)/(temp(i,j,k)*Rair) !ideal gas law for dry air
+               rho_dry(i,j,k) = pmid(i,j,k)/(temp(i,j,k)*R_dry(i,j,k)) !ideal gas law for dry air
              end do
            end do
          end do
@@ -1609,24 +1630,25 @@ subroutine composition_init()
 
 
 
-   subroutine get_molecular_diff_coef_reference(k0,k1,tref,pmid,kmvis_ref,kmcnd_ref)
+   subroutine get_molecular_diff_coef_reference(k0,k1,tref,pmid,sponge_factor,kmvis_ref,kmcnd_ref,rho_ref)
      use cam_logfile,     only: iulog
      ! args
      integer,  intent(in)           :: k0,k1
      real(r8), intent(in)           :: tref !reference temperature
      real(r8), intent(in)           :: pmid(k0:k1)
+     real(r8), intent(in)           :: sponge_factor(k0:k1)
      real(r8), intent(out)          :: kmvis_ref(k0:k1)
      real(r8), intent(out)          :: kmcnd_ref(k0:k1)
+     real(r8), intent(out)          :: rho_ref(k0:k1)
      
      ! local vars
      integer :: k
      real(r8):: mmro, mmro2, mmrh, mmrn2            ! Mass mixing ratios of O, O2, H, and N
-     real(r8):: o_imw, o2_imw, n2_imw               ! Inverse molecular weights
+     real(r8):: o_mwi, o2_mwi, n2_mwi               ! Inverse molecular weights
      real(r8):: mbar                                ! Mean mass at mid level
      real(r8):: dof1, dof2                          ! Degress of freedom for cpairv calculation
      real(r8):: kv1, kv2, kv3, kv4                  ! Coefficients for kmvis calculation
      real(r8):: kc1, kc2, kc3, kc4                  ! Coefficients for kmcnd calculation
-     real(r8):: inv_rho                             ! inverse density
     
      !--------------------------------------------
      ! Set constants needed for updates
@@ -1642,30 +1664,26 @@ subroutine composition_init()
      !
      ! assume well-mixed gas
      !
-     o_imw  = 1._r8/16._r8
-     o2_imw = 1._r8/32._r8
-     n2_imw = 1._r8/28._r8
+     o_mwi  = 1._r8/16._r8
+     o2_mwi = 1._r8/32._r8
+     n2_mwi = 1._r8/28._r8
      mmro2  = 0.235_r8
      mmrn2  = 0.765_r8
      mmro   = 0.0_r8
-     mbar   = mwdry
+!     mbar   = mwdry
+     mbar = 1._r8/( mmro *o_mwi  + mmro2*o2_mwi + mmrn2*n2_mwi)
      do k=k0,k1
-!       inv_rho      = tref*Rair/pmid(k) !ideal gas law for dry air
-       kmvis_ref(k) = (kv1*mmro2*o2_imw+        &
-            kv2*mmrn2*n2_imw+        &
-            kv3*mmro*o_imw)*mbar*    &
-            tref**kv4 * 1.e-7_r8
-       !
-       ! multiply by 1/rho
-       !
-!       kmvis_ref(k) = kmvis_ref(k)*inv_rho
-
-
-       kmcnd_ref(k) = (kc1*mmro2*o2_imw+             &
-            kc2*mmrn2*n2_imw+        &
-            kc3*mmro*o_imw)*mbar*    &
-            tref**kc4 * 1.e-5_r8
-!       kmcnd_ref(k) = kmcnd_ref(k)*inv_rho/cpair
+       rho_ref(k) = pmid(k)/(tref*Rair) !ideal gas law for dry air
+       kmvis_ref(k) = sponge_factor(k)* &
+            (kv1*mmro2*o2_mwi+          &
+            kv2*mmrn2*n2_mwi+           &
+            kv3*mmro*o_mwi)*mbar*       &
+            tref**kv4 * 1.e-7_r8 
+       kmcnd_ref(k) = sponge_factor(k)* &
+            (kc1*mmro2*o2_mwi+          &
+            kc2*mmrn2*n2_mwi+           &
+            kc3*mmro*o_mwi)*mbar*       &
+            tref**kc4 * 1.e-5_r8 
      end do
    end subroutine get_molecular_diff_coef_reference
 

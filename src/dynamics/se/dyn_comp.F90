@@ -110,8 +110,7 @@ subroutine dyn_readnl(NLFileName)
    use control_mod,    only: fine_ne, hypervis_power, hypervis_scaling
    use control_mod,    only: max_hypervis_courant, statediag_numtrac,refined_mesh
    use control_mod,    only: se_met_nudge_u, se_met_nudge_p, se_met_nudge_t, se_met_tevolve
-   use control_mod,    only: raytau0, raykrange, rayk0 
-               
+   use control_mod,    only: raytau0, raykrange, rayk0, molecular_diff
    use dimensions_mod, only: ne, npart
    use dimensions_mod, only: lcp_moist
    use dimensions_mod, only: hypervis_dynamic_ref_state,large_Courant_incr
@@ -171,6 +170,7 @@ subroutine dyn_readnl(NLFileName)
    real(r8)                     :: se_raytau0
    real(r8)                     :: se_raykrange
    integer                      :: se_rayk0
+   real(r8)                     :: se_molecular_diff
    
    namelist /dyn_se_inparm/        &
       se_fine_ne,                  & ! For refined meshes
@@ -220,7 +220,8 @@ subroutine dyn_readnl(NLFileName)
       se_phys_dyn_cp,              &
       se_raytau0,                  &
       se_raykrange,                &
-      se_rayk0
+      se_rayk0,                    &
+      se_molecular_diff    
 
    !--------------------------------------------------------------------------
 
@@ -299,6 +300,7 @@ subroutine dyn_readnl(NLFileName)
    call MPI_bcast(se_rayk0 , 1, mpi_integer, masterprocid, mpicom, ierr)   
    call MPI_bcast(se_raykrange, 1, mpi_real8, masterprocid, mpicom, ierr)
    call MPI_bcast(se_raytau0, 1, mpi_real8, masterprocid, mpicom, ierr)
+   call MPI_bcast(se_molecular_diff, 1, mpi_real8, masterprocid, mpicom, ierr)
    
    if (se_npes <= 0) then
       call endrun('dyn_readnl: ERROR: se_npes must be > 0')
@@ -367,6 +369,8 @@ subroutine dyn_readnl(NLFileName)
    raytau0                  = se_raytau0 
    raykrange                = se_raykrange
    rayk0                    = se_rayk0
+   molecular_diff           = se_molecular_diff    
+
    
    if (fv_nphys > 0) then
       ! Use finite volume physics grid and CSLAM for tracer advection
@@ -506,9 +510,10 @@ subroutine dyn_readnl(NLFileName)
       write(iulog,'(a,l1)') 'dyn_readnl: write restart data on unstructured grid = ', &
                             se_write_restart_unstruct
 
-      write(iulog, '(a,e9.2)') 'dyn_readnl: se_raytau0    = ', raytau0
-      write(iulog, '(a,e9.2)') 'dyn_readnl: se_raykrange  = ', raykrange
-      write(iulog, '(a,i0)'  ) 'dyn_readnl: se_rayk0      = ', rayk0  
+      write(iulog, '(a,e9.2)') 'dyn_readnl: se_raytau0         = ', raytau0
+      write(iulog, '(a,e9.2)') 'dyn_readnl: se_raykrange       = ', raykrange
+      write(iulog, '(a,i0)'  ) 'dyn_readnl: se_rayk0           = ', rayk0  
+      write(iulog, '(a,e9.2)') 'dyn_readnl: se_molecular_diff  = ', rayk0  
    end if
 
    call native_mapping_readnl(NLFileName)
@@ -541,30 +546,30 @@ subroutine dyn_init(dyn_in, dyn_out)
    use dyn_grid,           only: elem, fvm
    use cam_pio_utils,      only: clean_iodesc_list
    use physconst,          only: thermodynamic_active_species_num, thermodynamic_active_species_idx
-   use physconst,          only: thermodynamic_active_species_idx_dycore
+   use physconst,          only: thermodynamic_active_species_idx_dycore, rair, cpair
    use cam_history,        only: addfld, add_default, horiz_only, register_vector_field
    use gravity_waves_sources, only: gws_init
 
    use thread_mod,         only: horz_num_threads
    use hybrid_mod,         only: get_loop_ranges, config_thread_region
-   use dimensions_mod,     only: nu_scale_top
-   use dimensions_mod,     only: ksponge_end
-   use dimensions_mod,     only: cnst_name_gll, cnst_longname_gll, nu_div_scale_top
+   use dimensions_mod,     only: nu_scale_top, nu_lev, nu_div_lev
+   use dimensions_mod,     only: ksponge_end, kmvis_ref, kmcnd_ref,rho_ref,km_sponge_factor
+   use dimensions_mod,     only: cnst_name_gll, cnst_longname_gll
    use dimensions_mod,     only: irecons_tracer_lev, irecons_tracer, otau
    use prim_driver_mod,    only: prim_init2
    use time_mod,           only: time_at
-   use control_mod,        only: runtype, raytau0, raykrange, rayk0 
+   use control_mod,        only: runtype, raytau0, raykrange, rayk0, molecular_diff, nu_top
    use test_fvm_mapping,   only: test_mapping_addfld
    use phys_control,       only: phys_getopts
-
+   use physconst,          only: get_molecular_diff_coef_reference
    ! Dummy arguments:
    type(dyn_import_t), intent(out) :: dyn_in
    type(dyn_export_t), intent(out) :: dyn_out
 
    ! Local variables
-   integer             :: ithr, nets, nete, ie, k
+   integer             :: ithr, nets, nete, ie, k, kmol_end
    real(r8), parameter :: Tinit = 300.0_r8
-   real(r8)            :: press, ptop
+   real(r8)            :: press, ptop, tref
 
    type(hybrid_t)      :: hybrid
 
@@ -614,7 +619,7 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    character(len=*), parameter :: subname = 'dyn_init'
 
-   real(r8) :: tau0, krange, otau0
+   real(r8) :: tau0, krange, otau0, scale
    
    !----------------------------------------------------------------------------
 
@@ -704,6 +709,38 @@ subroutine dyn_init(dyn_in, dyn_out)
      end if
    end if
 
+   kmol_end = 1
+   if (molecular_diff>0) then
+     if (masterproc) write(iulog,*) subname//": initialize molecular diffusion reference profiles"
+     tref = 600._r8     !mean value at model top for solar min/max
+!     km_sponge_factor = 200.0_r8!strable for 1 month
+     km_sponge_factor = 100.0_r8!strable for 1 month
+     km_sponge_factor = molecular_diff
+!     km_sponge_factor = 10.0_r8!unstable
+!     km_sponge_factor = 50.0_r8!unstable
+     call get_molecular_diff_coef_reference(1,nlev,tref,&
+          (hvcoord%hyam(:)+hvcoord%hybm(:))*hvcoord%ps0,km_sponge_factor,& !pmid
+          kmvis_ref,kmcnd_ref,rho_ref)
+
+     do k=1,nlev
+       kmvis_ref(k) = MIN(kmvis_ref(k),nu_top*rho_ref(k))
+       kmcnd_ref(k) = MIN(kmcnd_ref(k),nu_top*cpair*rho_ref(k))
+       if (MIN(kmvis_ref(k)/rho_ref(k),kmcnd_ref(k)/(cpair*rho_ref(k)))>100.0_r8) then !only apply molecular viscosity where viscosity is > 100 m/s^2
+         if (masterproc) then
+           write(iulog,*) "k,p,effective nu for kmvis_ref,effective nu for kmcnd_ref",k,(hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0,&
+                kmvis_ref(k)/rho_ref(k),kmcnd_ref(k)/(cpair*rho_ref(k))
+         end if
+         kmol_end = k
+       end if
+     end do
+   else
+     !
+     ! xxx this will lead to issues if sponge goes lower than viscosity
+     !
+     kmvis_ref(k) = 0.0_r8
+     kmcnd_ref(k) = 0.0_r8
+   end if
+
    !
    ! compute scaling of sponge layer damping (following cd_core.F90 in CAM-FV)
    !   
@@ -712,38 +749,46 @@ subroutine dyn_init(dyn_in, dyn_out)
      press = (hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0
      ptop  = hvcoord%hyai(1)*hvcoord%ps0
      nu_scale_top(k) = 8.0_r8*(1.0_r8+tanh(1.0_r8*log(ptop/press))) ! tau will be maximum 8 at model top
+!     nu_scale_top(k) = 0.5_r8*(1.0_r8+tanh(2.0_r8*log(0.006_r8/press))) !experimental for WACCM
+!     nu_scale_top(k)     = 0.5_r8*(1.0_r8+tanh(1.0_r8*log(0.006_r8/press))) !experimental for WACCM
      !
      ! reduce order of CSLAM tracer advection
      !
      if (nu_scale_top(k).ge.2.0_r8) then
-       irecons_tracer_lev(k) = 1
+!       irecons_tracer_lev(k) = 1!xxx
+       irecons_tracer_lev(k) = irecons_tracer
        ksponge_end = k
      else if (nu_scale_top(k).ge.1.0_r8) then
-        irecons_tracer_lev(k) = 3
+!        irecons_tracer_lev(k) = 3
+        irecons_tracer_lev(k) = irecons_tracer
         ksponge_end = k
      else if (nu_scale_top(k).ge.0.15_r8) then
         irecons_tracer_lev(k) = irecons_tracer
         ksponge_end = k
+ !    else if (nu_scale_top(k).ge.0.001_r8) then
+ !       irecons_tracer_lev(k) = irecons_tracer
+ !       ksponge_end = k
      else
         irecons_tracer_lev(k) = irecons_tracer
-     end if
-
-     if (masterproc) then
-       if (nu_scale_top(k)>0.15_r8) then
-         write(iulog,*) subname//": nu_scale_top ",k,nu_scale_top(k)
-         if (ntrac>0) then
-           if (irecons_tracer_lev(k)==3) &
-              write(iulog,*) subname//&
-              ": CSLAM reconstruction reduced to Piecewise Linear Method   in layer k=",k
-           if (irecons_tracer_lev(k)==1) &
-              write(iulog,*) subname//&
-              ": CSLAM reconstruction reduced to Piecewise Constant Method in layer k=",k
-         end if
-       end if
+        nu_scale_top(k) = 0.0_r8
      end if
    end do
-   ksponge_end = MAX(ksponge_end,1)
-   if (masterproc) write(iulog,*) subname//": ksponge_end = ",ksponge_end
+   ksponge_end = MAX(MAX(ksponge_end,1),kmol_end)
+
+   if (masterproc) then
+     write(iulog,*) subname//": ksponge_end = ",ksponge_end
+     do k=1,ksponge_end
+       write(iulog,*) subname//": nu_scale_top ",k,nu_scale_top(k)
+       if (ntrac>0) then
+         if (irecons_tracer_lev(k)==3) &
+              write(iulog,*) subname//&
+              ": CSLAM reconstruction reduced to Piecewise Linear Method   in layer k=",k
+         if (irecons_tracer_lev(k)==1) &
+              write(iulog,*) subname//&
+              ": CSLAM reconstruction reduced to Piecewise Constant Method in layer k=",k
+       end if
+     end do
+   end if
 
    if (iam < par%nprocs) then
       call prim_advance_init(par,elem)
@@ -764,6 +809,9 @@ subroutine dyn_init(dyn_in, dyn_out)
    call addfld ('two_dz_filter_dT',  (/ 'lev' /), 'A', '', 'Temperature increment from 2dz filter',     gridname='GLL')
    call addfld ('two_dz_filter_dU',  (/ 'lev' /), 'A', '', 'Zontal wind increment from 2dz filter',     gridname='GLL')
    call addfld ('two_dz_filter_dV',  (/ 'lev' /), 'A', '', 'Meridional wind increment from 2dz filter',     gridname='GLL')
+
+   call addfld ('nu_kmvis',  (/ 'lev' /), 'A', '', 'Molecular viscosity on momentum',    gridname='GLL')
+   call addfld ('nu_kmcnd',  (/ 'lev' /), 'A', '', 'Molecular viscosity on temperature', gridname='GLL')
 
    
    ! Forcing from physics on the GLL grid
@@ -990,7 +1038,6 @@ subroutine dyn_run(dyn_state)
    if (ldiag) then 
       abs_ps_tend(:,:,nets:nete) = 0.0_r8
    endif
-
 
    do n = 1, nsplit_local
 
