@@ -2732,7 +2732,7 @@ contains
     !
     real(kind=r8), dimension(nlay) :: current_guess,next_iterate
     real(kind=r8)                  :: alp, alm, value_level0
-    integer                        :: k,iter, niterations=20 
+    integer                        :: k,iter, niterations=4 
     
     ! Make the guess for the next time step equal to the initial value
     current_guess(:)= fld(i,j,1:nlay)
