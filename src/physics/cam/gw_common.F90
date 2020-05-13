@@ -269,8 +269,7 @@ subroutine gw_drag_prof(ncol, band, p, src_level, tend_level, dt, &
      piln, rhoi,    nm,   ni,  ubm,  ubi,  xv,    yv,   &
      effgw,      c, kvtt, q,   dse,  tau,  utgw,  vtgw, &
      ttgw, qtgw, egwdffi,   gwut, dttdf, dttke, ro_adjust, &
-     kwvrdg, satfac_in, lapply_effgw_in, lapply_vdiff , &
-     tndmax_override )
+     kwvrdg, satfac_in, lapply_effgw_in, lapply_vdiff )
 
   !-----------------------------------------------------------------------
   ! Solve for the drag profile from the multiple gravity wave drag
@@ -363,10 +362,6 @@ subroutine gw_drag_prof(ncol, band, p, src_level, tend_level, dt, &
   real(r8), intent(in), optional :: &
        satfac_in
 
-  ! Separate tendency limiter option
-  real(r8), intent(in), optional :: &
-      tndmax_override
-
   logical, intent(in), optional :: lapply_effgw_in, lapply_vdiff
 
   !---------------------------Local storage-------------------------------
@@ -397,30 +392,12 @@ subroutine gw_drag_prof(ncol, band, p, src_level, tend_level, dt, &
   ! unless overidden by satfac_in
   real(r8) :: satfac
 
-  real(r8) :: tndmax_applied
-
   logical :: lapply_effgw,do_vertical_diffusion
 
   ! LU decomposition.
   type(TriDiagDecomp) :: decomp
 
   !------------------------------------------------------------------------
-
-
-  !--------------------------
-  ! 3 values of tndmax...
-  !   tndmax_override: optional input to gw_drag_prof
-  !   tndmax: Set in preamble
-  !   tndmax_applied: What is actually used here
-  !---------------------
-  ! Behavior
-  !   If tndmax_override is NOT present use preamble value
-  !---------------------
-  if (present(tndmax_override)) then
-     tndmax_applied = tndmax_override
-  else
-     tndmax_applied = tndmax
-  endif
 
   if (present(satfac_in)) then
      satfac = satfac_in
@@ -605,7 +582,7 @@ subroutine gw_drag_prof(ncol, band, p, src_level, tend_level, dt, &
         ! near reversing c-u.
         ubtl = min(ubtl, umcfac * abs(c(:,l)-ubm(:,k)) / dt)
 
-        if (.not. lapply_effgw) ubtl = min(ubtl, tndmax_applied)
+        if (.not. lapply_effgw) ubtl = min(ubtl, tndmax)
         
         where (k <= tend_level)
 
@@ -625,8 +602,8 @@ subroutine gw_drag_prof(ncol, band, p, src_level, tend_level, dt, &
         ! permitted.
         ! This can only happen above tend_level, so don't bother checking the
         ! level explicitly.
-        where (abs(ubt(:,k)) > tndmax_applied )
-           ubt_lim_ratio = tndmax_applied / abs(ubt(:,k))
+        where (abs(ubt(:,k)) > tndmax)
+           ubt_lim_ratio = tndmax/abs(ubt(:,k))
            ubt(:,k) = ubt_lim_ratio * ubt(:,k)
         elsewhere
            ubt_lim_ratio = 1._r8
@@ -642,6 +619,16 @@ subroutine gw_drag_prof(ncol, band, p, src_level, tend_level, dt, &
         ! new stress will be smaller than the old stress, causing stress
         ! divergence in the next layer down. This smoothes large stress
         ! divergences downward while conserving total stress.
+
+!++jtb (5/12/2020)
+        ! Protection on SMALL gwut to prevent floating point
+        ! issues.  Need to track this down
+        !--------------------------------------------------
+        where( abs(gwut(:,k,l)) < 1.e-15 )
+           gwut(:,k,l)=0._r8
+        endwhere   
+!--
+
         where (k <= tend_level)
            tau(:,l,k+1) = tau(:,l,k) + & 
                 abs(gwut(:,k,l)) * p%del(:,k) / gravit 
