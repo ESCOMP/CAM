@@ -859,7 +859,7 @@ contains
 !              heating = (vtens(i,j,1,k,ie)*v1  + vtens(i,j,2,k,ie)*v2 )!trunk              
               elem(ie)%state%T(i,j,k,nt)=elem(ie)%state%T(i,j,k,nt) &
                    -heating*inv_cp_full(i,j,k,ie)+dtemp(k)
-              dtempk(k) =  -heating*inv_cp_full(i,j,k,ie)!xxx
+!              dtempk(k) =  -heating*inv_cp_full(i,j,k,ie)!xxx
               ! update v first (gives better results than updating v after heating)
               elem(ie)%state%v(i,j,1,k,nt)=v1new
               elem(ie)%state%v(i,j,2,k,nt)=v2new
@@ -908,10 +908,6 @@ contains
         !            kmcnd  (:,:,k,ie) = kmcnd_ref(k)!xx
         !            rho_dry(:,:,k,ie) = rho_ref(k)  
         !          end do
-        do k=1,ksponge_end
-          kmcnd(:,:,k,ie) = kmcnd(:,:,k,ie)/kmcnd_ref(k) !scale by reference value (very large)
-          kmvis(:,:,k,ie) = kmvis(:,:,k,ie)/kmvis_ref(k) !scale by reference value (very large)        
-        end do
       end do
       !
       ! diagnostics
@@ -934,6 +930,12 @@ contains
           call outfld('nu_kmcnd',RESHAPE(tmp_kmcnd(:,:,:), (/npsq,nlev/)), npsq, ie)
         end do
       end if
+      do ie=nets,nete
+        do k=1,ksponge_end
+          kmcnd(:,:,k,ie) = kmcnd(:,:,k,ie)/kmcnd_ref(k) !scale by reference value (very large)
+          kmvis(:,:,k,ie) = kmvis(:,:,k,ie)/kmvis_ref(k) !scale by reference value (very large)        
+        end do
+      end do
     end if
   
   

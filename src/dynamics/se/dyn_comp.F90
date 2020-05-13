@@ -712,23 +712,19 @@ subroutine dyn_init(dyn_in, dyn_out)
    kmol_end = 1
    if (molecular_diff>0) then
      if (masterproc) write(iulog,*) subname//": initialize molecular diffusion reference profiles"
-     tref = 600._r8     !mean value at model top for solar min/max
-!     km_sponge_factor = 200.0_r8!strable for 1 month
-     km_sponge_factor = 100.0_r8!strable for 1 month
+     tref = 1000._r8     !mean value at model top for solar min/max
      km_sponge_factor = molecular_diff
-!     km_sponge_factor = 10.0_r8!unstable
-!     km_sponge_factor = 50.0_r8!unstable
      call get_molecular_diff_coef_reference(1,nlev,tref,&
           (hvcoord%hyam(:)+hvcoord%hybm(:))*hvcoord%ps0,km_sponge_factor,& !pmid
           kmvis_ref,kmcnd_ref,rho_ref)
 
      do k=1,nlev
-       kmvis_ref(k) = MIN(kmvis_ref(k),nu_top*rho_ref(k))
-       kmcnd_ref(k) = MIN(kmcnd_ref(k),nu_top*cpair*rho_ref(k))
-       if (MIN(kmvis_ref(k)/rho_ref(k),kmcnd_ref(k)/(cpair*rho_ref(k)))>100.0_r8) then !only apply molecular viscosity where viscosity is > 100 m/s^2
+!       kmvis_ref(k) = MIN(kmvis_ref(k),nu_top*rho_ref(k))
+!       kmcnd_ref(k) = MIN(kmcnd_ref(k),nu_top*cpair*rho_ref(k))
+       if (MIN(kmvis_ref(k)/rho_ref(k),kmcnd_ref(k)/(cpair*rho_ref(k)))>1000.0_r8) then !only apply molecular viscosity where viscosity is > 1000 m/s^2
          if (masterproc) then
-           write(iulog,*) "k,p,effective nu for kmvis_ref,effective nu for kmcnd_ref",k,(hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0,&
-                kmvis_ref(k)/rho_ref(k),kmcnd_ref(k)/(cpair*rho_ref(k))
+           write(iulog,*) "k, p, km_sponge_factor                   :",k,(hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0,km_sponge_factor(k)
+           write(iulog,*) "kmvis_ref/rho_ref, kmcnd_ref/(cp*rho_ref): ",kmvis_ref(k)/rho_ref(k),kmcnd_ref(k)/(cpair*rho_ref(k))
          end if
          kmol_end = k
        end if
