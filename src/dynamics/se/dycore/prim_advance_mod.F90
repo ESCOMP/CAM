@@ -1006,7 +1006,7 @@ contains
                 do i=1,np                  
                   inv_rho = 1.0_r8/rho_dry(i,j,k,ie)  
                   ttens(i,j,k,ie)   = kmcnd_ref(k)*inv_cp_full(i,j,k,ie)*inv_rho*lap_t(i,j)
-                  dptens(i,j,k,ie)  = kmcnd_ref(k)*inv_cp_full(i,j,k,ie)*inv_rho*lap_dp(i,j) 
+                  dptens(i,j,k,ie)  = 0.0_r8!kmcnd_ref(k)*inv_cp_full(i,j,k,ie)*inv_rho*lap_dp(i,j) 
                   vtens(i,j,1,k,ie) = kmvis_ref(k)*inv_rho*lap_v(i,j,1)
                   vtens(i,j,2,k,ie) = kmvis_ref(k)*inv_rho*lap_v(i,j,2)
                 end do
