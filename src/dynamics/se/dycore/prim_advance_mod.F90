@@ -812,6 +812,7 @@ contains
     !
     ! vertical diffusion
     !
+     call t_startf('vertical_molec_diff')
     if (molecular_diff>0) then
       do ie=nets,nete
         !
@@ -893,7 +894,8 @@ contains
         
       end do
     end if
-
+    call t_stopf('vertical_molec_diff')
+    call t_startf('sponge_diff')
     if (molecular_diff>0) then
       do ie=nets,nete
         call get_molecular_diff_coef(1,np,1,np,ksponge_end,nlev,&
@@ -1166,6 +1168,7 @@ contains
           enddo
         end do
       end do
+      call t_stopf('sponge_diff')
     endif
     call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dAS')        
 
