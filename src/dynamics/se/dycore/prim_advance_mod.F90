@@ -844,9 +844,9 @@ contains
 !                write(iulog,*) "before T",k,elem(ie)%state%T(1,1,k,nt)
 !              end do
 !            end if
-            call solve_diffusion(dt2,np,nlev,i,j,ksponge_end,pmid,pint,kmcnd(:,:,:,ie)/cpair,elem(ie)%state%T(:,:,:,nt),0,dtemp)
-            call solve_diffusion(dt2,np,nlev,i,j,ksponge_end,pmid,pint,kmvis(:,:,:,ie),elem(ie)%state%v(:,:,1,:,nt),0,du)
-            call solve_diffusion(dt2,np,nlev,i,j,ksponge_end,pmid,pint,kmvis(:,:,:,ie),elem(ie)%state%v(:,:,2,:,nt),0,dv)
+            call solve_diffusion(dt2,np,nlev,i,j,ksponge_end,pmid,pint,kmcnd(:,:,:,ie)/cpair,elem(ie)%state%T(:,:,:,nt),-1,dtemp)
+            call solve_diffusion(dt2,np,nlev,i,j,ksponge_end,pmid,pint,kmvis(:,:,:,ie),elem(ie)%state%v(:,:,1,:,nt),-1,du)
+            call solve_diffusion(dt2,np,nlev,i,j,ksponge_end,pmid,pint,kmvis(:,:,:,ie),elem(ie)%state%v(:,:,2,:,nt),-1,dv)
             !
             ! frictional heating
             !
@@ -2741,7 +2741,7 @@ contains
       !next_iterate(1) = (initial_value(1) + alp * current_guess(i+1) + alm * current_guess(1)) /(1. + alp + alm) ! top BC, u'=0
       if (boundary_condition==0) then
         next_iterate(1) = fld(i,j,1) ! u doesn't get prognosed by diffusion at top      
-      else
+      else if (boundary_condition==1) then
         value_level0 = 0.75_r8*fld(i,j,1)!value above sponge 
                                          !- 0.75 given level 1 winds around 50 +/- 25 in WACCM is sponge_factor=100
                                          !- 0.90 given level 1 winds around 100 +/- 25 in WACCM is sponge_factor=100
@@ -2749,6 +2749,9 @@ contains
         alp = dt*(km(i,j,k+1)*gravit*gravit/(pmid(i,j,k)-pmid(i,j,k+1)))/(pint(i,j,k)-pint(i,j,k+1))
         alm = dt*(km(i,j,k  )*gravit*gravit/(0.5_r8*(pmid(i,j,1)-pmid(i,j,2))))/(pint(i,j,k)-pint(i,j,k+1))
         next_iterate(k) = (fld(i,j,k) + alp * current_guess(k+1) + alm * value_level0)/(1._r8 + alp + alm)
+      else
+        next_iterate(1) = (initial_value(1) + alp * current_guess(2) + alm * current_guess(1)) /(1. + alp + alm)
+        next_iterate(k) = (fld(i,j,1) + alp * current_guess(2) + alm * current_guess(1))/(1._r8 + alp + alm)
       end if
       do k = 2, nlay-1
         alp = dt*(km(i,j,k+1)*gravit*gravit/(pmid(i,j,k  )-pmid(i,j,k+1)))/(pint(i,j,k)-pint(i,j,k+1))
