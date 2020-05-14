@@ -75,7 +75,7 @@ module chemistry
   CHARACTER(LEN=500) :: chemInputsDir
 
   ! GEOS-Chem state variables
-  TYPE(OptInput),ALLOCATABLE      :: Input_Opt(:)   ! Input Options object
+  TYPE(OptInput)                  :: Input_Opt      ! Input Options object
   TYPE(ChmState),ALLOCATABLE      :: State_Chm(:)   ! Chemistry State object
   TYPE(GrdState),ALLOCATABLE      :: State_Grid(:)  ! Grid State object
   TYPE(MetState),ALLOCATABLE      :: State_Met(:)   ! Meteorology State object
@@ -359,6 +359,8 @@ contains
     use Transfer_Mod,  only : Init_Transfer
     use Linoz_Mod,     only : Linoz_Read
 
+    use Drydep_Mod,    only : Init_Drydep
+
     TYPE(physics_state), INTENT(IN):: phys_state(BEGCHUNK:ENDCHUNK)
     TYPE(physics_buffer_desc), POINTER :: pbuf2d(:,:)
 
@@ -393,6 +395,8 @@ contains
     ! NLEV: number of vertical levels
     NLEV  = PVER
 
+    write(iulog,'(2(a,x,I6,x))') 'chem_init called on PE ', myCPU, ' of ', nCPUs
+
     ! The GEOS-Chem grids on every "chunk" will all be the same size, to avoid
     ! the possibility of having differently-sized chunks
     NX = 1
@@ -400,8 +404,6 @@ contains
     NZ = NLEV
 
     ! This ensures that each process allocates everything needed for its chunks
-    ALLOCATE(Input_Opt(BEGCHUNK:ENDCHUNK) , STAT=IERR)
-    IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating Input_Opt')
     ALLOCATE(State_Chm(BEGCHUNK:ENDCHUNK) , STAT=IERR)
     IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating State_Chm')
     ALLOCATE(State_Grid(BEGCHUNK:ENDCHUNK), STAT=IERR)
@@ -409,21 +411,23 @@ contains
     ALLOCATE(State_Met(BEGCHUNK:ENDCHUNK) , STAT=IERR)
     IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating State_Met')
 
-    DO I = BEGCHUNK, ENDCHUNK
-
-        ! Only treat the first chunk as the "root" CPU
-        am_I_Root = ((I.eq.BEGCHUNK) .and. MasterProc)
+    am_I_Root = MasterProc
 
         ! Set some basic flags
-        Input_Opt(I)%Max_BPCH_Diag     = 1000
-        Input_Opt(I)%Max_AdvectSpc     = 500
-        Input_Opt(I)%Max_Families      = 250
+    Input_Opt%Max_BPCH_Diag     = 1000
+    Input_Opt%Max_AdvectSpc     = 500
+    Input_Opt%Max_Families      = 250
 
-        Input_Opt(I)%Linoz_NLevels     = 25
-        Input_Opt(I)%Linoz_NLat        = 18
-        Input_Opt(I)%Linoz_NMonths     = 12
-        Input_Opt(I)%Linoz_NFields     = 7
-        Input_Opt(I)%RootCPU           = MasterProc
+    Input_Opt%Linoz_NLevels     = 25
+    Input_Opt%Linoz_NLat        = 18
+    Input_Opt%Linoz_NMonths     = 12
+    Input_Opt%Linoz_NFields     = 7
+    Input_Opt%RootCPU           = MasterProc
+
+    DO I = BEGCHUNK, ENDCHUNK
+
+        ! Only treat the first chunk as the "root"
+        am_I_Root = ((I.EQ.BEGCHUNK) .and. MasterProc)
 
         ! Initialize fields of the Grid State object
         CALL Init_State_Grid( am_I_Root  = am_I_Root,      &
@@ -439,7 +443,7 @@ contains
         State_Grid(I)%NZ = NZ
         ! Initialize GEOS-Chem horizontal grid structure
         CALL GC_Init_Grid( am_I_Root  = am_I_Root,      &
-                           Input_Opt  = Input_Opt(I),   &
+                           Input_Opt  = Input_Opt,      &
                            State_Grid = State_Grid(I),  &
                            RC         = RC          )
         IF ( RC /= GC_SUCCESS ) THEN
@@ -447,18 +451,36 @@ contains
             CALL Error_Stop( ErrMsg, ThisLoc )
         ENDIF
 
-        ! Set default values
-        CALL Set_Input_Opt( am_I_Root, Input_Opt(I), RC )
+    ENDDO
+
+    ! Note - this is called AFTER chem_readnl, after X, and after
+    ! every constituent has had its initial conditions read. Any
+    ! constituent which is not found in the CAM restart file will
+    ! then have already had a call to chem_implements_cnst, and will
+    ! have then had a call to chem_init_cnst to set a default VMR
+    ! Call the routine GC_Allocate_All (located in module file
+    ! GeosCore/gc_environment_mod.F90) to allocate all lat/lon
+    ! allocatable arrays used by GEOS-Chem.
+    CALL GC_Allocate_All ( am_I_Root      = MasterProc,           &
+                           Input_Opt      = Input_Opt,            &
+                           State_Grid     = State_Grid(BEGCHUNK), &
+                           value_I_Lo     = 1,                    &
+                           value_J_Lo     = 1,                    &
+                           value_I_Hi     = NX,                   &
+                           value_J_Hi     = NY,                   &
+                           value_IM       = NX,                   &
+                           value_JM       = NY,                   &
+                           value_LM       = NZ,                   &
+                           value_IM_WORLD = NX,                   &
+                           value_JM_WORLD = NY,                   &
+                           value_LM_WORLD = NZ,                   &
+                           value_LLSTRAT  = 59,                   & !TMMF
+                           RC             = RC        )
         IF ( RC /= GC_SUCCESS ) THEN
-            ErrMsg = 'Error encountered within call to "Set_Input_Opt"!'
+       ErrMsg = 'Error encountered in "GC_Allocate_All"!'
            CALL Error_Stop( ErrMsg, ThisLoc )
         ENDIF
 
-        ! Each Input_Opt object should be indexed independently, but
-        ! for now, we can just associate all of them with the same CPU
-        Input_Opt(I)%myCPU = myCPU
-
-    ENDDO
 
     ! TODO: Mimic GEOS-Chem's reading of input options
     !IF (MasterProc) THEN
@@ -471,17 +493,158 @@ contains
 
     ! For now just hard-code it
     ! First setup directories
-    DO I = BEGCHUNK, ENDCHUNK
-        Input_Opt(I)%Chem_Inputs_Dir      = TRIM(chemInputsDir)
-    ENDDO
+    Input_Opt%Chem_Inputs_Dir      = TRIM(chemInputsDir)
 
-    DO I = BEGCHUNK, ENDCHUNK
         ! Simulation menu
-        Input_Opt(I)%NYMDb                = 20000101
-        Input_Opt(I)%NHMSb                =   000000
-        Input_Opt(I)%NYMDe                = 20010101
-        Input_Opt(I)%NHMSe                =   000000
+    Input_Opt%NYMDb                = 20000101
+    Input_Opt%NHMSb                =   000000
+    Input_Opt%NYMDe                = 20010101
+    Input_Opt%NHMSe                =   000000
+
+    ! Now READ_SIMULATION_MENU
+    Input_Opt%ITS_A_CH4_SIM          = .False.
+    Input_Opt%ITS_A_CO2_SIM          = .False.
+    Input_Opt%ITS_A_FULLCHEM_SIM     = .True.
+    Input_Opt%ITS_A_MERCURY_SIM      = .False.
+    Input_Opt%ITS_A_POPS_SIM         = .False.
+    Input_Opt%ITS_A_RnPbBe_SIM       = .False.
+    Input_Opt%ITS_A_TAGO3_SIM        = .False.
+    Input_Opt%ITS_A_TAGCO_SIM        = .False.
+    Input_Opt%ITS_AN_AEROSOL_SIM     = .False.
+
+    ! Now READ_ADVECTED_SPECIES_MENU
+    Input_Opt%N_Advect               = NTracers
+    IF (Input_Opt%N_Advect.GT.Input_Opt%Max_AdvectSpc) THEN
+        CALL ENDRUN('Number of tracers exceeds max count')
+    ENDIF
+    ! Assign tracer names
+    DO J = 1, Input_Opt%N_Advect
+        Input_Opt%AdvectSpc_Name(J) = TRIM(TRACERNAMES(J))
     ENDDO
+    ! No tagged species
+    Input_Opt%LSplit = .False.
+
+    ! Now READ_TRANSPORT_MENU
+    Input_Opt%LTran                  = .True.
+    Input_Opt%LFill                  = .True.
+    Input_Opt%TPCore_IOrd            = 3
+    Input_Opt%TPCore_JOrd            = 3
+    Input_Opt%TPCore_KOrd            = 3
+
+    ! Now READ_CONVECTION_MENU
+    ! For now, TMMF
+    Input_Opt%LConv                  = .False.
+    Input_Opt%LTurb                  = .False.
+    Input_Opt%LNLPBL                 = .False.
+
+    ! Now READ_EMISSIONS_MENU
+    Input_Opt%LEmis                  = .False.
+    Input_Opt%HCOConfigFile          = 'HEMCO_Config.rc'
+    Input_Opt%LFix_PBL_Bro           = .False.
+
+    ! Set surface VMRs - turn this off so that CAM can handle it
+    Input_Opt%LCH4Emis               = .False.
+    Input_Opt%LCH4SBC                = .False.
+    Input_Opt%LOCSEmis               = .False.
+    Input_Opt%LCFCEmis               = .False.
+    Input_Opt%LClEmis                = .False.
+    Input_Opt%LBrEmis                = .False.
+    Input_Opt%LN2OEmis               = .False.
+    Input_Opt%LBasicEmis             = .False.
+
+    ! Set initial conditions
+    Input_Opt%LSetH2O                = .True.
+
+    ! CFC control
+    Input_Opt%CFCYear                = 0
+
+    ! Now READ_AEROSOL_MENU
+    Input_Opt%LSulf               = .True.
+    Input_Opt%LMetalcatSO2        = .True.
+    Input_Opt%LCarb               = .True.
+    Input_Opt%LBrC                = .False.
+    Input_Opt%LSOA                = .True.
+    Input_Opt%LSVPOA              = .False.
+    Input_Opt%LOMOC               = .False.
+    Input_Opt%LDust               = .True.
+    Input_Opt%LDstUp              = .False.
+    Input_Opt%LSSalt              = .True.
+    Input_Opt%SalA_rEdge_um(1)    = 0.01e+0_fp
+    Input_Opt%SalA_rEdge_um(2)    = 0.50e+0_fp
+    Input_Opt%SalC_rEdge_um(1)    = 0.50e+0_fp
+    Input_Opt%SalC_rEdge_um(2)    = 8.00e+0_fp
+    Input_Opt%LMPOA               = .False.
+    Input_Opt%LGravStrat          = .True.
+    Input_Opt%LSolidPSC           = .True.
+    Input_Opt%LHomNucNAT          = .False.
+    Input_Opt%T_NAT_Supercool     = 3.0e+0_fp
+    Input_Opt%P_Ice_Supersat      = 1.2e+0_fp
+    Input_Opt%LPSCChem            = .True.
+    Input_Opt%LStratOD            = .True.
+    Input_Opt%hvAerNIT            = .False.
+    Input_Opt%hvAerNIT_JNIT       = .False.
+    Input_Opt%hvAerNIT_JNITs      = .False.
+    Input_Opt%JNITChanA           = 0e+0_fp
+    Input_Opt%JNITChanB           = 0e+0_fp
+
+    ! Now READ_DEPOSITION_MENU
+    ! Disable dry/wet dep for now
+    Input_Opt%LDryD                  = .False.
+    Input_Opt%LWetD                  = .False.
+    Input_Opt%CO2_Effect             = .False.
+    Input_Opt%CO2_Level              = 390.0_fp
+    Input_Opt%CO2_Ref                = 390.0_fp
+
+    ! Now READ_CHEMISTRY_MENU
+    Input_Opt%LChem                  = .True.
+    Input_Opt%LSChem                 = .True.
+    Input_Opt%LLinoz                 = .True.
+    Input_Opt%LSynoz                 = .True.
+    Input_Opt%LUCX                   = .True.
+    Input_Opt%LActiveH2O             = .True.
+    Input_Opt%Use_Online_O3          = .True.
+    ! Expect to get total overhead ozone, although it shouldn not
+    ! make too much of a difference since we want to use "full-UCX"
+    Input_Opt%Use_O3_from_Met        = .True.
+    Input_Opt%Use_TOMS_O3            = .False.
+    Input_Opt%Gamma_HO2              = 0.2e+0_fp
+
+    ! Read in data for Linoz. All CPUs allocate one array to hold the data. Only
+    ! the root CPU reads in the data; then we copy it out to a temporary array,
+    ! broadcast to all other CPUs, and finally duplicate the data into every
+    ! copy of Input_Opt
+    IF (Input_Opt%LLinoz) THEN
+        ! Allocate array for broadcast
+        nLinoz = Input_Opt%Linoz_NLevels * &
+                 Input_Opt%Linoz_NLat    * &
+                 Input_Opt%Linoz_NMonths * &
+                 Input_Opt%Linoz_NFields
+        ALLOCATE( linozData( Input_Opt%Linoz_NLevels,     &
+                             Input_Opt%Linoz_NLat,        &
+                             Input_Opt%Linoz_NMonths,     &
+                             Input_Opt%Linoz_NFields  ), STAT=IERR)
+        IF (IERR.NE.0) CALL ENDRUN('Failure while allocating linozData')
+        linozData = 0.0e+0_r8
+
+        IF ( MasterProc ) THEN
+            ! Read data in to Input_Opt%Linoz_TParm
+            CALL Linoz_Read( MasterProc, Input_Opt, RC )
+            IF ( RC /= GC_SUCCESS ) THEN
+               ErrMsg = 'Error encountered in "Linoz_Read"!'
+               CALL Error_Stop( ErrMsg, ThisLoc )
+            ENDIF
+            ! Copy the data to a temporary array
+            linozData = REAL(Input_Opt%LINOZ_TPARM,r8)
+        ENDIF
+#if defined( SPMD )
+        CALL MPIBCAST(linozData, nLinoz, MPIR8, 0, MPICOM )
+#endif
+        IF ( .NOT. MasterProc ) THEN
+            Input_Opt%LINOZ_TPARM = REAL(linozData,fp)
+        ENDIF
+        DEALLOCATE(linozData)
+    ENDIF
+
 
     ! Note: The following calculations do not setup the gridcell areas.
     !       In any case, we will need to be constantly updating this grid
@@ -549,213 +712,22 @@ contains
     DEALLOCATE(latEdgeArr)
 
 
-    ! Now READ_SIMULATION_MENU
-    DO I = BEGCHUNK, ENDCHUNK
-        Input_Opt(I)%ITS_A_CH4_SIM          = .False.
-        Input_Opt(I)%ITS_A_CO2_SIM          = .False.
-        Input_Opt(I)%ITS_A_FULLCHEM_SIM     = .True.
-        Input_Opt(I)%ITS_A_MERCURY_SIM      = .False.
-        Input_Opt(I)%ITS_A_POPS_SIM         = .False.
-        Input_Opt(I)%ITS_A_RnPbBe_SIM       = .False.
-        Input_Opt(I)%ITS_A_TAGO3_SIM        = .False.
-        Input_Opt(I)%ITS_A_TAGCO_SIM        = .False.
-        Input_Opt(I)%ITS_AN_AEROSOL_SIM     = .False.
-    ENDDO
-
-    ! Now READ_ADVECTED_SPECIES_MENU
-    DO I = BEGCHUNK, ENDCHUNK
-        Input_Opt(I)%N_Advect               = NTracers
-        IF (Input_Opt(I)%N_Advect.GT.Input_Opt(I)%Max_AdvectSpc) THEN
-            CALL ENDRUN('Number of tracers exceeds max count')
-        ENDIF
-        ! Assign tracer names
-        DO J = 1, Input_Opt(I)%N_Advect
-            Input_Opt(I)%AdvectSpc_Name(J) = TRIM(TRACERNAMES(J))
-        ENDDO
-        ! No tagged species
-        Input_Opt(I)%LSplit = .False.
-    ENDDO
-
-    ! Now READ_TRANSPORT_MENU
-    DO I = BEGCHUNK, ENDCHUNK
-        Input_Opt(I)%LTran                  = .True.
-        Input_Opt(I)%LFill                  = .True.
-        Input_Opt(I)%TPCore_IOrd            = 3
-        Input_Opt(I)%TPCore_JOrd            = 3
-        Input_Opt(I)%TPCore_KOrd            = 3
-    ENDDO
-
-    ! Now READ_CONVECTION_MENU
-    ! For now, TMMF
-    DO I = BEGCHUNK, ENDCHUNK
-        Input_Opt(I)%LConv                  = .False.
-        Input_Opt(I)%LTurb                  = .False.
-        Input_Opt(I)%LNLPBL                 = .False.
-    ENDDO
-
-    ! Now READ_EMISSIONS_MENU
-    DO I = BEGCHUNK, ENDCHUNK
-        Input_Opt(I)%LEmis                  = .False.
-        Input_Opt(I)%HCOConfigFile          = 'HEMCO_Config.rc'
-        Input_Opt(I)%LFix_PBL_Bro           = .False.
-
-        ! Set surface VMRs - turn this off so that CAM can handle it
-        Input_Opt(I)%LCH4Emis               = .False.
-        Input_Opt(I)%LCH4SBC                = .False.
-        Input_Opt(I)%LOCSEmis               = .False.
-        Input_Opt(I)%LCFCEmis               = .False.
-        Input_Opt(I)%LClEmis                = .False.
-        Input_Opt(I)%LBrEmis                = .False.
-        Input_Opt(I)%LN2OEmis               = .False.
-        Input_Opt(I)%LBasicEmis             = .False.
-
-        ! Set initial conditions
-        Input_Opt(I)%LSetH2O                = .True.
-
-        ! CFC control
-        Input_Opt(I)%CFCYear                = 0
-    ENDDO
-
-    ! Now READ_AEROSOL_MENU
-    DO I = BEGCHUNK, ENDCHUNK
-        Input_Opt(I)%LSulf               = .True.
-        Input_Opt(I)%LMetalcatSO2        = .True.
-        Input_Opt(I)%LCarb               = .True.
-        Input_Opt(I)%LBrC                = .False.
-        Input_Opt(I)%LSOA                = .True.
-        Input_Opt(I)%LSVPOA              = .False.
-        Input_Opt(I)%LOMOC               = .False.
-        Input_Opt(I)%LDust               = .True.
-        Input_Opt(I)%LDstUp              = .False.
-        Input_Opt(I)%LSSalt              = .True.
-        Input_Opt(I)%SalA_rEdge_um(1)    = 0.01e+0_fp
-        Input_Opt(I)%SalA_rEdge_um(2)    = 0.50e+0_fp
-        Input_Opt(I)%SalC_rEdge_um(1)    = 0.50e+0_fp
-        Input_Opt(I)%SalC_rEdge_um(2)    = 8.00e+0_fp
-        Input_Opt(I)%LMPOA               = .False.
-        Input_Opt(I)%LGravStrat          = .True.
-        Input_Opt(I)%LSolidPSC           = .True.
-        Input_Opt(I)%LHomNucNAT          = .False.
-        Input_Opt(I)%T_NAT_Supercool     = 3.0e+0_fp
-        Input_Opt(I)%P_Ice_Supersat      = 1.2e+0_fp
-        Input_Opt(I)%LPSCChem            = .True.
-        Input_Opt(I)%LStratOD            = .True.
-        Input_Opt(I)%hvAerNIT            = .False.
-        Input_Opt(I)%hvAerNIT_JNIT       = .False.
-        Input_Opt(I)%hvAerNIT_JNITs      = .False.
-        Input_Opt(I)%JNITChanA           = 0e+0_fp
-        Input_Opt(I)%JNITChanB           = 0e+0_fp
-    ENDDO
-
-    ! Now READ_DEPOSITION_MENU
-    ! Disable dry/wet dep for now
-    DO I = BEGCHUNK, ENDCHUNK
-        Input_Opt(I)%LDryD                  = .False.
-        Input_Opt(I)%LWetD                  = .False.
-        Input_Opt(I)%CO2_Effect             = .False.
-        Input_Opt(I)%CO2_Level              = 390.0_fp
-        Input_Opt(I)%CO2_Ref                = 390.0_fp
-    ENDDO
-
-    ! Now READ_CHEMISTRY_MENU
-    DO I = BEGCHUNK, ENDCHUNK
-        Input_Opt(I)%LChem                  = .True.
-        Input_Opt(I)%LSChem                 = .True.
-        Input_Opt(I)%LLinoz                 = .True.
-        Input_Opt(I)%LSynoz                 = .True.
-        Input_Opt(I)%LUCX                   = .True.
-        Input_Opt(I)%LActiveH2O             = .True.
-        Input_Opt(I)%Use_Online_O3          = .True.
-        ! Expect to get total overhead ozone, although it shouldn not
-        ! make too much of a difference since we want to use "full-UCX"
-        Input_Opt(I)%Use_O3_from_Met        = .True.
-        Input_Opt(I)%Use_TOMS_O3            = .False.
-        Input_Opt(I)%Gamma_HO2              = 0.2e+0_fp
-    ENDDO
-
-    ! Read in data for Linoz. All CPUs allocate one array to hold the data. Only
-    ! the root CPU reads in the data; then we copy it out to a temporary array,
-    ! broadcast to all other CPUs, and finally duplicate the data into every
-    ! copy of Input_Opt
-    IF (Input_Opt(BEGCHUNK)%LLinoz) THEN
-        ! Allocate array for broadcast
-        nLinoz = Input_Opt(BEGCHUNK)%Linoz_NLevels * &
-                 Input_Opt(BEGCHUNK)%Linoz_NLat    * &
-                 Input_Opt(BEGCHUNK)%Linoz_NMonths * &
-                 Input_Opt(BEGCHUNK)%Linoz_NFields 
-        ALLOCATE( linozData( Input_Opt(BEGCHUNK)%Linoz_NLevels,     &
-                             Input_Opt(BEGCHUNK)%Linoz_NLat,        &
-                             Input_Opt(BEGCHUNK)%Linoz_NMonths,     &
-                             Input_Opt(BEGCHUNK)%Linoz_NFields  ), STAT=IERR)
-        IF (IERR.NE.0) CALL ENDRUN('Failure while allocating linozData')
-        linozData = 0.0e+0_r8
-
-        IF ( MasterProc ) THEN
-            ! Read data in to Input_Opt%Linoz_TParm
-            CALL Linoz_Read( MasterProc, Input_Opt(BEGCHUNK), RC )
-            IF ( RC /= GC_SUCCESS ) THEN
-               ErrMsg = 'Error encountered in "Linoz_Read"!'
-               CALL Error_Stop( ErrMsg, ThisLoc )
-            ENDIF
-            ! Copy the data to a temporary array
-            linozData = REAL(Input_Opt(BEGCHUNK)%LINOZ_TPARM,r8)
-        ENDIF
-#if defined( SPMD )
-        CALL MPIBCAST(linozData, nLinoz, MPIR8, 0, MPICOM )
-#endif
-        ! Now copy the data to all other Input_Opt copies
-        DO I=BEGCHUNK,ENDCHUNK
-        Input_Opt(I)%LINOZ_TPARM = REAL(linozData,fp)
-        ENDDO
-        DEALLOCATE(linozData)
-    ENDIF
-
-    ! Note - this is called AFTER chem_readnl, after X, and after
-    ! every constituent has had its initial conditions read. Any
-    ! constituent which is not found in the CAM restart file will
-    ! then have already had a call to chem_implements_cnst, and will
-    ! have then had a call to chem_init_cnst to set a default VMR
-    ! Call the routine GC_Allocate_All (located in module file
-    ! GeosCore/gc_environment_mod.F90) to allocate all lat/lon
-    ! allocatable arrays used by GEOS-Chem.
-    CALL GC_Allocate_All ( am_I_Root      = MasterProc,           &
-                           Input_Opt      = Input_Opt(BEGCHUNK),  &
-                           State_Grid     = State_Grid(BEGCHUNK), &
-                           value_I_Lo     = 1,                    &
-                           value_J_Lo     = 1,                    &
-                           value_I_Hi     = NX,                   &
-                           value_J_Hi     = NY,                   &
-                           value_IM       = NX,                   &
-                           value_JM       = NY,                   &
-                           value_LM       = NZ,                   &
-                           value_IM_WORLD = NX,                   &
-                           value_JM_WORLD = NY,                   &
-                           value_LM_WORLD = NZ,                   &
-                           value_LLSTRAT  = 59,                   & !TMMF
-                           RC             = RC        )
-    IF ( RC /= GC_SUCCESS ) THEN
-       ErrMsg = 'Error encountered in "GC_Allocate_All"!'
-       CALL Error_Stop( ErrMsg, ThisLoc )
-    ENDIF
-
     ! Set the times held by "time_mod"
     CALL Accept_External_Date_Time( am_I_Root   = MasterProc,                &
-                                    value_NYMDb = Input_Opt(BEGCHUNK)%NYMDb, &
-                                    value_NHMSb = Input_Opt(BEGCHUNK)%NHMSb, &
-                                    value_NYMDe = Input_Opt(BEGCHUNK)%NYMDe, &
-                                    value_NHMSe = Input_Opt(BEGCHUNK)%NHMSe, &
-                                    value_NYMD  = Input_Opt(BEGCHUNK)%NYMDb, &
-                                    value_NHMS  = Input_Opt(BEGCHUNK)%NHMSb, &
+                                    value_NYMDb = Input_Opt%NYMDb, &
+                                    value_NHMSb = Input_Opt%NHMSb, &
+                                    value_NYMDe = Input_Opt%NYMDe, &
+                                    value_NHMSe = Input_Opt%NHMSe, &
+                                    value_NYMD  = Input_Opt%NYMDb, &
+                                    value_NHMS  = Input_Opt%NHMSb, &
                                     RC          = RC                )
     IF ( RC /= GC_SUCCESS ) THEN
        ErrMsg = 'Error encountered in "Accept_External_Date_Time"!'
        CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
-    DO I = BEGCHUNK, ENDCHUNK
         ! Start by setting some dummy timesteps
-        CALL GC_Update_Timesteps(I,300.0E+0_r8)
-    ENDDO
+    CALL GC_Update_Timesteps(300.0E+0_r8)
 
     ! Initialize the state objects for each chunk
     DO I = BEGCHUNK, ENDCHUNK
@@ -767,7 +739,7 @@ contains
             CALL Error_Stop( ErrMsg, ThisLoc )
         ENDIF
 
-        CALL Init_State_Chm( am_I_Root, Input_Opt(I),     &
+        CALL Init_State_Chm( am_I_Root, Input_Opt,        &
                              State_Chm(I), State_Grid(I), &
                              RC )
         IF ( RC /= GC_SUCCESS ) THEN
@@ -775,11 +747,21 @@ contains
             CALL Error_Stop( ErrMsg, ThisLoc )
         ENDIF
 
-        ! Now replicate GC_Init_Extra...
-
         ! Start with v/v dry (CAM standard)
         State_Chm(I)%Spc_Units = 'v/v dry'
     ENDDO
+
+    ! Now replicate GC_Init_Extra
+    IF ( Input_Opt%LDryD) THEN
+        CALL Init_Drydep( MasterProc, Input_Opt, &
+                          State_Chm(BEGCHUNK),   &
+                          State_Grid(BEGCHUNK), RC )
+        IF ( RC /= GC_SUCCESS ) THEN
+            ErrMsg = 'Error encountered in "Init_Drydep"!'
+            CALL Error_Stop( ErrMsg, ThisLoc )
+        ENDIF
+    ENDIF
+
     ! Init_FJX..
     ! Init_Pressure...
     ! Init_PBL_Mix...
@@ -817,23 +799,22 @@ contains
 
 !===============================================================================
 
-  subroutine GC_Update_Timesteps(LCHNK,DT)
+  subroutine GC_Update_Timesteps(DT)
 
     use Time_Mod,       only : Set_Timesteps
     use cam_abortutils, only : endrun
 
-    INTEGER,  INTENT(IN) :: LCHNK
     REAL(r8), INTENT(IN) :: DT
     INTEGER              :: DT_MIN
     INTEGER, SAVE        :: DT_MIN_LAST = -1
 
     DT_MIN = NINT(DT)
 
-    Input_Opt(LCHNK)%TS_CHEM = DT_MIN
-    Input_Opt(LCHNK)%TS_EMIS = DT_MIN
-    Input_Opt(LCHNK)%TS_CONV = DT_MIN
-    Input_Opt(LCHNK)%TS_DYN  = DT_MIN
-    Input_Opt(LCHNK)%TS_RAD  = DT_MIN
+    Input_Opt%TS_CHEM = DT_MIN
+    Input_Opt%TS_EMIS = DT_MIN
+    Input_Opt%TS_CONV = DT_MIN
+    Input_Opt%TS_DYN  = DT_MIN
+    Input_Opt%TS_RAD  = DT_MIN
 
     ! Only bother updating the module information if there's been a change
     IF (DT_MIN .NE. DT_MIN_LAST) THEN
@@ -882,18 +863,21 @@ contains
     ncol  = state%ncol
 
    ! Need to update the timesteps throughout the code
-    CALL GC_Update_Timesteps(LCHNK,DT)
+    CALL GC_Update_Timesteps(DT)
 
     ! Need to be super careful that the module arrays are updated and correctly
-    ! set
+    ! set. NOTE: First thing - you'll need to flip all the data vertically
 
     ! 1. Update State_Met etc for this timestep
+
+    ! 2. Copy tracers into State_Chm
 
     !if (MasterProc) WRITE(iulog,*) ' --> TEND SIZE: ', size(state%ncol)
     !if (MasterProc) WRITE(iulog,'(a,2(x,I6))') ' --> TEND SIDE:  ', lbound(state%ncol),ubound(state%ncol)
 
-
     IF (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_TIMESTEP_TEND'
+
+    ! NOTE: Re-flip all the arrays vertically or suffer the consequences
     lq(:) = .false.
     DO n=1,pcnst
         !m = map2chm(n)
@@ -954,21 +938,21 @@ contains
     ! Finalize GEOS-Chem
     IF (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_FINAL'
     
-    ! Loop over each chunk and cleanup the independent variables
+    ! Loop over each chunk and cleanup the variables
     DO I = BEGCHUNK, ENDCHUNK
         am_I_Root = ((I.eq.BEGCHUNK) .and. MasterProc)
-        CALL CLEANUP_INPUT_OPT( am_I_Root, Input_Opt(I), RC )
         CALL CLEANUP_STATE_MET( am_I_Root, State_Met(I), RC )
         CALL CLEANUP_STATE_CHM( am_I_Root, State_Chm(I), RC )
     ENDDO
+    ! Cleanup Input_Opt
+    CALL CLEANUP_INPUT_OPT( am_I_Root, Input_Opt, RC )
 
     ! Finally deallocate state variables
-    IF (ALLOCATED(Input_Opt))     DEALLOCATE(Input_Opt)
     IF (ALLOCATED(State_Chm))     DEALLOCATE(State_Chm)
     IF (ALLOCATED(State_Grid))    DEALLOCATE(State_Grid)
     IF (ALLOCATED(State_Met))     DEALLOCATE(State_Met)
 
-    IF (MasterProc) WRITE(iulog,'(a,4(x,L1))') ' --> DEALLOC CHECK : ', ALLOCATED(Input_Opt), ALLOCATED(State_Chm), ALLOCATED(State_Grid), ALLOCATED(State_Met)
+    IF (MasterProc) WRITE(iulog,'(a,3(x,L1))') ' --> DEALLOC CHECK : ', ALLOCATED(State_Chm), ALLOCATED(State_Grid), ALLOCATED(State_Met)
 
     RETURN
 
