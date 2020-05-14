@@ -399,6 +399,16 @@
       <lname>2000_CAM40%GC_CLM40%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV</lname>
   </compset>
 
+  <compset>
+      <alias>FGC_CLM45</alias>
+      <lname>2000_CAM40%GC_CLM45%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+      <alias>FGC_CLM50</alias>
+      <lname>2000_CAM40%GC_CLM50%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV</lname>
+  </compset>
+
   <!-- ENTRIES -->
 
   <entries>

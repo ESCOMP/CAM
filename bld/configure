@@ -126,6 +126,9 @@ OPTIONS
                           waccm_ma_sulfur | waccm_sc | waccm_sc_mam4 | waccm_tsmlt_mam4 | 
                           terminator | geoschem | none ].
                         Default: trop_mam4 for cam6 and trop_mam3 for cam5.
+     -clm_vers <name>   Version of land model to use. This option is only used when chem
+                        is set to 'geoschem'.
+                        [ 4.0 | 4.5 | 5.0 ]
      -[no]clubb_sgs     Switch on [off] CLUBB_SGS.  Default: on for cam6, otherwise off.
      -clubb_opts <list> Comma separated list of CLUBB options to turn on/off.  By default they are all off.
                         Current option is: clubb_do_adv (Advect CLUBB moments)
@@ -303,6 +306,7 @@ GetOptions(
     "ccsm_seq"                  => \$opts{'ccsm_seq'},
     "cflags=s"                  => \$opts{'cflags'},
     "chem=s"                    => \$opts{'chem'},
+    "clm_vers=s"                => \$opts{'clm_vers'},
     "clubb_sgs!"                => \$opts{'clubb_sgs'},
     "clubb_opts=s"              => \$opts{'clubb_opts'},
     "co2_cycle"                 => \$opts{'co2_cycle'},
@@ -1430,9 +1434,20 @@ if ($chem_pkg =~ '_mam3') {
 
 # TMMF - wedge in GEOS-Chem CPP definitions here
 if ($chem_pkg =~ 'geoschem') {
-    $chem_cppdefs .= ' -DEXTERNAL_GRID -DEXTERNAL_FORCING -DMODEL_ -DMODEL_CESM -DUCX -DLINUX_IFORT -DUSE_REAL8 ';
+    $chem_cppdefs .= ' -DEXTERNAL_GRID -DEXTERNAL_FORCING -DLINUX_IFORT -DUSE_REAL8 -DMODEL_ -DMODEL_CESM';
     # TMMF - Temporary fix
     $chem_nadv = 200;
+    if (defined $opts{'clm_vers'}) {
+        if ($opts{'clm_vers'} =~ 'CLM4.0') {
+            $chem_cppdefs .= ' -DCLM40'
+        }
+        elsif ($opts{'clm_vers'} =~ 'CLM4.5') {
+            $chem_cppdefs .= ' -DCLM45'
+        }
+        elsif ($opts{'clm_vers'} =~ 'CLM5.0') {
+            $chem_cppdefs .= ' -DCLM50'
+        }
+    }
 }
 
 

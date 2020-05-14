@@ -13,7 +13,7 @@ contains
     use phys_grid ,     only: get_ncols_p
     use ppgrid    ,     only: begchunk, endchunk       
     use shr_const_mod,  only: shr_const_stebol
-    use seq_drydep_mod, only: n_drydep
+    use seq_drydep_mod, only: n_drydep, NLUse, NPatch
     use shr_fire_emis_mod, only: shr_fire_emis_mechcomps_n
     use co2_cycle     , only: c_i, co2_readFlux_ocn, co2_readFlux_fuel
     use co2_cycle     , only: co2_transport, co2_time_interp_ocn, co2_time_interp_fuel
@@ -101,6 +101,24 @@ contains
              cam_in(c)%depvel(i,:n_drydep) = &
                   x2a(index_x2a_Sl_ddvel:index_x2a_Sl_ddvel+n_drydep-1, ig)
           endif
+
+          ! for landunit weights
+          if (index_x2a_Sl_lwtgcell  /= 0 )  then
+             cam_in(c)%lwtgcell(i,:NLUse) = &
+                 x2a(index_x2a_Sl_lwtgcell:index_x2a_Sl_lwtgcell+NLUse-1, ig)
+          end if
+
+          ! for patch weights
+          if (index_x2a_Sl_pwtgcell  /= 0 )  then
+             cam_in(c)%pwtgcell(i,:NPatch) = &
+                 x2a(index_x2a_Sl_pwtgcell:index_x2a_Sl_pwtgcell+NPatch-1, ig)
+          end if
+
+          ! for leaf area indices
+          if (index_x2a_Sl_lai       /= 0 )  then
+             cam_in(c)%lai(i,:NPatch) = &
+                 x2a(index_x2a_Sl_lai:index_x2a_Sl_lai+NPatch-1, ig)
+          end if
           !
           ! fields needed to calculate water isotopes to ocean evaporation processes
           !

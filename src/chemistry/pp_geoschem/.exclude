@@ -6,7 +6,6 @@ tpcore_fvdas_mod.F90
 flexgrid_read_mod.F90
 geosfp_read_mod.F90
 get_met_mod.F90
-modis_lai_mod.F90
 hco_interp_mod.F90
 merra2_read_mod.F90
 regrid_a2a_mod.F90
