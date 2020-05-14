@@ -2750,7 +2750,6 @@ contains
         alm = dt*(km(i,j,k  )*gravit*gravit/(0.5_r8*(pmid(i,j,1)-pmid(i,j,2))))/(pint(i,j,k)-pint(i,j,k+1))
         next_iterate(k) = (fld(i,j,k) + alp * current_guess(k+1) + alm * value_level0)/(1._r8 + alp + alm)
       else
-        next_iterate(1) = (initial_value(1) + alp * current_guess(2) + alm * current_guess(1)) /(1. + alp + alm)
         next_iterate(k) = (fld(i,j,1) + alp * current_guess(2) + alm * current_guess(1))/(1._r8 + alp + alm)
       end if
       do k = 2, nlay-1
