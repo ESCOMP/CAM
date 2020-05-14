@@ -423,7 +423,7 @@ contains
         Input_Opt(I)%Linoz_NLat        = 18
         Input_Opt(I)%Linoz_NMonths     = 12
         Input_Opt(I)%Linoz_NFields     = 7
-        Input_Opt(I)%RootCPU           = am_I_Root
+        Input_Opt(I)%RootCPU           = MasterProc
 
         ! Initialize fields of the Grid State object
         CALL Init_State_Grid( am_I_Root  = am_I_Root,      &
@@ -757,6 +757,40 @@ contains
         CALL GC_Update_Timesteps(I,300.0E+0_r8)
     ENDDO
 
+    ! Initialize the state objects for each chunk
+    DO I = BEGCHUNK, ENDCHUNK
+        ! This reproduces GC_Init_Stateobj without the State_Diag object
+        am_I_Root = (MasterProc .AND. (I == BEGCHUNK))
+        CALL Init_State_Met( am_I_Root, State_Grid(I), State_Met(I), RC )
+        IF ( RC /= GC_SUCCESS ) THEN
+            ErrMsg = 'Error encountered in "Init_State_Met"!'
+            CALL Error_Stop( ErrMsg, ThisLoc )
+        ENDIF
+
+        CALL Init_State_Chm( am_I_Root, Input_Opt(I),     &
+                             State_Chm(I), State_Grid(I), &
+                             RC )
+        IF ( RC /= GC_SUCCESS ) THEN
+            ErrMsg = 'Error encountered in "Init_State_Chm"!'
+            CALL Error_Stop( ErrMsg, ThisLoc )
+        ENDIF
+
+        ! Now replicate GC_Init_Extra...
+
+        ! Start with v/v dry (CAM standard)
+        State_Chm(I)%Spc_Units = 'v/v dry'
+    ENDDO
+    ! Init_FJX..
+    ! Init_Pressure...
+    ! Init_PBL_Mix...
+    ! Init_Chemistry...
+    ! Init_TOMS...
+    ! Emissions_Init...
+    ! Init_UCX...
+    ! Convert_Spc_Units...
+
+
+
     ! Can add history output here too with the "addfld" & "add_default" routines
     ! Note that constituents are already output by default
     CALL addfld ( 'BCPI', (/'lev'/), 'A', 'mole/mole', trim('BCPI')//' mixing ratio' )
@@ -792,9 +826,6 @@ contains
     REAL(r8), INTENT(IN) :: DT
     INTEGER              :: DT_MIN
     INTEGER, SAVE        :: DT_MIN_LAST = -1
-    LOGICAL              :: am_I_Root
-
-    am_I_Root = (MasterProc .AND. (LCHNK.EQ.BEGCHUNK))
 
     DT_MIN = NINT(DT)
 
@@ -808,7 +839,7 @@ contains
     IF (DT_MIN .NE. DT_MIN_LAST) THEN
         IF (MasterProc) WRITE(iulog,'(a,F7.1,a)') ' --> GC: updating dt to ', DT, ' seconds'
 
-        CALL Set_Timesteps( am_I_Root,             &
+        CALL Set_Timesteps( MasterProc,            &
                             CHEMISTRY  =  DT_MIN,  &
                             EMISSION   =  DT_MIN,  &
                             DYNAMICS   =  DT_MIN,  &
@@ -913,6 +944,8 @@ contains
   subroutine chem_final
 
     USE Input_Opt_Mod, ONLY : CLEANUP_INPUT_OPT
+    USE State_Chm_Mod, ONLY : CLEANUP_STATE_CHM
+    USE State_Met_Mod, ONLY : CLEANUP_STATE_MET
     Use UCX_Mod,       ONLY : CLEANUP_UCX
 
     INTEGER :: I, RC
@@ -925,6 +958,8 @@ contains
     DO I = BEGCHUNK, ENDCHUNK
         am_I_Root = ((I.eq.BEGCHUNK) .and. MasterProc)
         CALL CLEANUP_INPUT_OPT( am_I_Root, Input_Opt(I), RC )
+        CALL CLEANUP_STATE_MET( am_I_Root, State_Met(I), RC )
+        CALL CLEANUP_STATE_CHM( am_I_Root, State_Chm(I), RC )
     ENDDO
 
     ! Finally deallocate state variables
