@@ -2800,7 +2800,7 @@ sub write_filepath
             print $fh "$chem_src_dir/geoschem_src/HEMCO/Core\n";
             print $fh "$chem_src_dir/geoschem_src/HEMCO/Extensions\n";
             print $fh "$chem_src_dir/geoschem_src/HEMCO/Interfaces\n";
-            print $fh "$chem_src_dir/geoschem_src/ISOROPIA\n";
+            print $fh "$chem_src_dir/geoschem_src/ISORROPIA\n";
             print $fh "$chem_src_dir/geoschem_src/KPP/Standard\n"; }
 #            print $fh "$camsrcdir/cam/src/chemistry/pp_geoschem\n"; }
     }
