@@ -1755,7 +1755,7 @@ end do
   !
   ! version of vlaplace_sphere_wk for molecular diffusion
   !
-  subroutine vlaplace_sphere_wk_mol(v,deriv,elem,mol_nu,laplace)
+  subroutine vlaplace_sphere_wk_mol(v,deriv,elem,undamprrcart,mol_nu,laplace)
     !
     !   input:  v = vector in lat-lon coordinates
     !   ouput:  weak laplacian of v, in lat-lon coordinates
@@ -1763,6 +1763,7 @@ end do
     real(kind=r8), intent(in)      :: v(np,np,2)
     type (derivative_t), intent(in):: deriv
     type (element_t), intent(in)   :: elem
+    logical,             intent(in) :: undamprrcart
     real(kind=r8), intent(in)      :: mol_nu(np,np)
     real(kind=r8), intent(out)     :: laplace(np,np,2)
 
@@ -1778,6 +1779,18 @@ end do
 
     laplace = gradient_sphere_wk_testcov(div,deriv,elem) - &
          curl_sphere_wk_testcov(vor,deriv,elem)
+
+    if (undamprrcart) then
+      do n=1,np
+        do m=1,np
+          ! add in correction so we dont damp rigid rotation
+          laplace(m,n,1)=laplace(m,n,1) + 2*elem%spheremp(m,n)*v(m,n,1)*(ra**2)
+          laplace(m,n,2)=laplace(m,n,2) + 2*elem%spheremp(m,n)*v(m,n,2)*(ra**2)
+        enddo
+      enddo
+    end if
+
+
   end subroutine vlaplace_sphere_wk_mol
 
 
