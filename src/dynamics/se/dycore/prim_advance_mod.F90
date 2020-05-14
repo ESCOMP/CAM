@@ -845,8 +845,8 @@ contains
 !              end do
 !            end if
             call solve_diffusion(dt2,np,nlev,i,j,ksponge_end,pmid,pint,kmcnd(:,:,:,ie)/cpair,elem(ie)%state%T(:,:,:,nt),0,dtemp)
-            call solve_diffusion(dt2,np,nlev,i,j,ksponge_end,pmid,pint,kmvis(:,:,:,ie),elem(ie)%state%v(:,:,1,:,nt),1,du)
-            call solve_diffusion(dt2,np,nlev,i,j,ksponge_end,pmid,pint,kmvis(:,:,:,ie),elem(ie)%state%v(:,:,2,:,nt),1,dv)
+            call solve_diffusion(dt2,np,nlev,i,j,ksponge_end,pmid,pint,kmvis(:,:,:,ie),elem(ie)%state%v(:,:,1,:,nt),0,du)
+            call solve_diffusion(dt2,np,nlev,i,j,ksponge_end,pmid,pint,kmvis(:,:,:,ie),elem(ie)%state%v(:,:,2,:,nt),0,dv)
             !
             ! frictional heating
             !
