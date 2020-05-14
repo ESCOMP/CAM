@@ -11,11 +11,12 @@ module chemistry
   !use mo_gas_phase_chemdr, only: map2chm
   !use mo_constants,        only: pi
   use shr_const_mod,       only: molw_dryair=>SHR_CONST_MWDAIR
-  !use mo_chem_utls,        only : get_spc_ndx
   !use chem_mods,           only : gas_pcnst, adv_mass
   !use mo_sim_dat, only: set_sim_dat
+  use seq_drydep_mod,      only : nddvels => n_drydep, drydep_list
   use spmd_utils,          only : MasterProc, myCPU=>Iam, nCPUs=>npes
   use cam_logfile,         only : iulog
+  use string_utils,        only : to_upper
 
   !--------------------------------------------------------------------
   ! Basic GEOS-Chem modules
@@ -115,6 +116,17 @@ module chemistry
   ! Strings
   CHARACTER(LEN=255)              :: ThisLoc
   CHARACTER(LEN=255)              :: ErrMsg
+
+#define ALLDDVEL_GEOSCHEM 0
+#define OCNDDVEL_GEOSCHEM 0
+#define OCNDDVEL_MOZART   1
+
+#if ( OCNDDVEL_MOZART )
+  ! Filenames to compute dry deposition velocities similarly to MOZART
+  CHARACTER(LEN=255)              :: MOZART_depvel_lnd_file = 'depvel_lnd_file'
+  CHARACTER(LEN=255)              :: MOZART_clim_soilw_file = 'clim_soilw_file'
+  CHARACTER(LEN=255)              :: MOZART_season_wes_file = 'season_wes_file'
+#endif
 
 !================================================================================================
 contains
@@ -342,27 +354,84 @@ contains
     use cam_abortutils, only : endrun
     use units,          only : getunit, freeunit
     use mpishorthand
-    use gckpp_Model,    only : NSPEC, SPC_NAMES
+    use gckpp_Model,    only : nSpec, Spc_Names
+    use mo_chem_utls,   only : get_spc_ndx
+    use chem_mods,      only : drySpc_ndx
 
     ! args
     CHARACTER(LEN=*), INTENT(IN) :: nlfile  ! filepath for file containing namelist input
 
     ! Local variables
-    INTEGER :: I, UNITN, IERR
-    CHARACTER(LEN=500) :: LINE
-    logical :: menuFound, validSLS
+    INTEGER                      :: I, N, nIgnored
+    INTEGER                      :: UNITN, IERR
+    CHARACTER(LEN=500)           :: line
+    LOGICAL                      :: menuFound
+    LOGICAL                      :: validSLS
+
+#if ( OCNDDVEL_MOZART )
+    namelist /chem_inparm/ MOZART_depvel_lnd_file, &
+                           MOZART_clim_soilw_file, &
+                           MOZART_season_wes_file
+#endif
+
+    nIgnored = 0
 
     ! Set paths
-    inputGeosPath='/n/home10/tfritz/UT/runs/4x5_standard/input.geos.template'
-    chemInputsDir='/n/holylfs/EXTERNAL_REPOS/GEOS-CHEM/gcgrid/gcdata/ExtData/CHEM_INPUTS/'
     inputGeosPath='/home/fritzt/input.geos.template'
     chemInputsDir='/net/d06/data/GCdata/ExtData/CHEM_INPUTS/'
 
-    IF (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_READNL'
-
-    ! TODO: Read in input.geos and get species names
+#if ( ALLDDVEL_GEOSCHEM + OCNDDVEL_GEOSCHEM + OCNDDVEL_MOZART != 1 )
     IF (MasterProc) THEN
+        Write(iulog,'(/,a)') REPEAT( "=", 79 )
+        Write(iulog,'(a)') " Preprocessor flags are not set correctly in chemistry.F90"
+        Write(iulog,'(a)') " The user needs to decide how to compute dry deposition velocities"
+        Write(iulog,'(a)') " Three options appear: "
+        Write(iulog,'(a)') " + Let GEOS-Chem calculate all dry deposition velocities."
+        Write(iulog,'(a)') "   Required setup:"
+        Write(iulog,'(a)') "   ALLDDVEL_GEOSCHEM == 1"
+        Write(iulog,'(a)') "   OCNDDVEL_GEOSCHEM == 0"
+        Write(iulog,'(a)') "   OCNDDVEL_MOZART   == 0"
+        Write(iulog,'(a)') " + Let CLM compute dry deposition velocities over land and let"
+        Write(iulog,'(a)') "   GEOS-Chem compute velocities over ocean and ice"
+        Write(iulog,'(a)') "   Required setup:"
+        Write(iulog,'(a)') "   ALLDDVEL_GEOSCHEM == 0"
+        Write(iulog,'(a)') "   OCNDDVEL_GEOSCHEM == 1"
+        Write(iulog,'(a)') "   OCNDDVEL_MOZART   == 0"
+        Write(iulog,'(a)') " + Let CLM compute dry deposition velocities over land and"
+        Write(iulog,'(a)') "   compute velocities over ocean and ice in a similar way as"
+        Write(iulog,'(a)') "   MOZART"
+        Write(iulog,'(a)') "   Required setup:"
+        Write(iulog,'(a)') "   ALLDDVEL_GEOSCHEM == 0"
+        Write(iulog,'(a)') "   OCNDDVEL_GEOSCHEM == 0"
+        Write(iulog,'(a)') "   OCNDDVEL_MOZART   == 1"
+        Write(iulog,'(a)') REPEAT( "=", 79 )
+        CALL ENDRUN('Incorrect definitions for dry deposition velocities')
+    ENDIF
+#endif
+
+    ALLOCATE(drySpc_ndx(nddvels), STAT=IERR)
+    IF ( IERR .NE. 0 ) CALL ENDRUN('Failed to allocate drySpc_ndx')
+
+    IF (MasterProc) THEN
+
+        Write(iulog,'(/,a)') REPEAT( '=', 50 )
+        Write(iulog,'(a)') REPEAT( '=', 50 )
+        Write(iulog,'(a)') 'This is the GEOS-CHEM / CESM interface'
+        Write(iulog,'(a)') REPEAT( '=', 50 )
+        Write(iulog,'(a)') ' + Routines written by Thibaud M. Fritz'
+        Write(iulog,'(a)') ' + Laboratory for Aviation and the Environment,'
+        Write(iulog,'(a)') ' + Department of Aeronautics and Astronautics,'
+        Write(iulog,'(a)') ' + Massachusetts Institute of Technology'
+        Write(iulog,'(a)') REPEAT( '=', 50 )
+
+        Write(iulog,'(/,/, a)') 'Now defining GEOS-Chem tracers and dry deposition mapping...'
+
         UNITN = GETUNIT()
+
+        !==============================================================
+        ! Opening input.geos and go to ADVECTED SPECIES MENU
+        !==============================================================
+
         OPEN( UNITN, FILE=TRIM(inputGeosPath), STATUS='OLD', IOSTAT=IERR )
         IF (IERR .NE. 0) THEN
             CALL ENDRUN('chem_readnl: ERROR opening input.geos')
@@ -371,25 +440,29 @@ contains
         ! Go to ADVECTED SPECIES MENU
         menuFound = .False.
         DO WHILE (.NOT.menuFound)
-            READ( UNITN, '(a)', IOSTAT=IERR ) LINE
+            READ( UNITN, '(a)', IOSTAT=IERR ) line
             IF (IERR.NE.0) THEN
                 CALL ENDRUN('chem_readnl: ERROR finding advected species menu')
-            ELSEIF (INDEX(LINE,'ADVECTED SPECIES MENU') > 0) then
+            ELSEIF (INDEX(line,'ADVECTED SPECIES MENU') > 0) then
                 menuFound=.True.
             ENDIF
         ENDDO
 
+        !==============================================================
+        ! Read list of GEOS-Chem tracers
+        !==============================================================
+
         DO
             ! Read line
-            READ(UNITN,'(26x,a)', IOSTAT=IERR) LINE
+            READ(UNITN,'(26x,a)', IOSTAT=IERR) line
 
-            IF ( INDEX( TRIM(LINE), '---' ) > 0 ) EXIT
+            IF ( INDEX( TRIM(line), '---' ) > 0 ) EXIT
 
             nTracers = nTracers + 1
-            tracerNames(nTracers) = TRIM(LINE)
+            tracerNames(nTracers) = TRIM(line)
 
-            WRITE(iulog,'(a,I5,a,a)') ' --> GC Tracer ', nTracers, ': ', TRIM(LINE)
         ENDDO
+
         CLOSE(UNITN)
         CALL FREEUNIT(UNITN)
 
@@ -398,34 +471,100 @@ contains
             WRITE(tracerNames(I),'(a,I0.4)') 'GCTRC_', I
         ENDDO
 
-        ! Now go through the KPP mechanism and add any species not implemented by
-        ! the tracer list in input.geos
-        IF ( NSPEC > nSlsMax ) THEN
+        !==============================================================
+        ! Now go through the KPP mechanism and add any species not
+        ! implemented by the tracer list in input.geos
+        !==============================================================
+
+        IF ( nSpec > nSlsMax ) THEN
             CALL ENDRUN('chem_readnl: too many species - increase nSlsmax')
         ENDIF
 
         nSls = 0
-        DO I=1,NSPEC
+        DO I = 1, nSpec
             ! Get the name of the species from KPP
-            LINE = ADJUSTL(TRIM(SPC_NAMES(I)))
+            line = ADJUSTL(TRIM(Spc_Names(I)))
             ! Only add this
-            validSLS = ( (.NOT.ANY(TRIM(LINE).EQ.tracerNames)).AND.&
-                         (.NOT.(LINE(1:2) == 'RR')) )
+            validSLS = ( .NOT. ANY(TRIM(line) .EQ. tracerNames) )
             IF (validSLS) THEN
                 ! Genuine new short-lived species
                 nSls = nSls + 1
-                slsNames(nSls) = TRIM(LINE)
-                WRITE(iulog,'(a,I5,a,a)') ' --> GC species ', nSls, ': ', TRIM(LINE)
+                slsNames(nSls) = TRIM(line)
             ENDIF
         ENDDO
+
+        !==============================================================
+        ! Get mapping between dry deposition species and species set
+        !==============================================================
+
+        DO N = 1, nddvels
+
+           ! The species names need to be convert to upper case as, 
+           ! for instance, BR2 != Br2
+           drySpc_ndx(N) = get_spc_ndx( to_upper(drydep_list(N)) )
+
+           IF ( drySpc_ndx(N) < 0 ) THEN
+              Write(iulog,'(a,a)') ' ## Ignoring dry deposition of ', &
+                                   TRIM(drydep_list(N))
+              nIgnored = nIgnored + 1
+            ENDIF
+        ENDDO
+
+        IF ( nIgnored > 0 ) THEN
+            Write(iulog,'(a,a)') ' The species listed above have dry', &
+              ' deposition turned off for one of the following reasons:'
+            Write(iulog,'(a)') '  - They are not present in the GEOS-Chem tracer list.'
+            Write(iulog,'(a)') '  - They have a synonym (e.g. CH2O and HCHO).'
+        ENDIF
+
+        !==============================================================
+        ! Print summary
+        !==============================================================
+
+        Write(iulog,'(/, a)') '### Summary of GEOS-Chem species: '
+        Write(iulog,'( a)') REPEAT( '-', 50 )
+        Write(iulog,'( a)') '+ List of advected species: '
+        Write(iulog,100) 'ID', 'Tracer', 'Dry deposition (T/F)'
+        DO N = 1, nTracers
+            WRITE(iulog,110) N, TRIM(tracerNames(N)), any(drySpc_ndx .eq. N)
+        ENDDO
+
+        Write(iulog,'(/, a)') '+ List of short-lived species: '
+        DO N = 1, nSls
+            WRITE(iulog,120) N, TRIM(slsNames(N))
+        ENDDO
+
+  100   FORMAT( 1x, A3, 3x, A10, 1x, A25 )
+  110   FORMAT( 1x, I3, 3x, A10, 1x, L15 )
+  120   FORMAT( 1x, I3, 3x, A10 )
+
+        !==============================================================
+
     ENDIF
 
+    !==================================================================
     ! Broadcast to all processors
+    !==================================================================
+
 #if defined( SPMD )
     CALL MPIBCAST(nTracers,    1,                               MPIINT,  0, MPICOM )
     CALL MPIBCAST(tracerNames, LEN(tracerNames(1))*nTracersMax, MPICHAR, 0, MPICOM )
     CALL MPIBCAST(nSls,        1,                               MPIINT,  0, MPICOM )
     CALL MPIBCAST(slsNames,    LEN(slsNames(1))*nSlsMax,        MPICHAR, 0, MPICOM )
+    CALL MPIBCAST(drySpc_ndx,             nddvels,                         MPIINT,  0, MPICOM )
+
+#if ( OCNDDVEL_MOZART )
+    !==============================================================
+    ! The following lines should only be called if we compute
+    ! velocities over the ocean and ice in a MOZART-like way.
+    ! Thibaud M. Fritz - 26 Feb 2020
+    !==============================================================
+
+    CALL MPIBCAST(MOZART_depvel_lnd_file, LEN(MOZART_depvel_lnd_file),     MPICHAR, 0, MPICOM)
+    CALL MPIBCAST(MOZART_clim_soilw_file, LEN(MOZART_clim_soilw_file),     MPICHAR, 0, MPICOM)
+    CALL MPIBCAST(MOZART_season_wes_file, LEN(MOZART_season_wes_file),     MPICHAR, 0, MPICOM)
+#endif
+
 #endif
 
     ! Update "short_lived_species" arrays - will eventually unify these
@@ -492,6 +631,7 @@ contains
     !-----------------------------------------------------------------------
     use physics_buffer, only: physics_buffer_desc, pbuf_get_index
     use cam_history,    only: addfld, add_default, horiz_only
+    use chem_mods,      only: map2GC_dryDep, drySpc_ndx
 
     use mpishorthand
     use cam_abortutils, only : endrun
@@ -517,9 +657,14 @@ contains
     !use Transfer_Mod,  only : Init_Transfer
     use Linoz_Mod,     only : Linoz_Read
 
+#if ( OCNDDVEL_MOZART )
+    use seq_drydep_mod, only: drydep_method, DD_XLND 
+    use mo_drydep,      only: drydep_inti
+#endif
+
     use CMN_Size_Mod
 
-    use Drydep_Mod,    only : Init_Drydep
+    use Drydep_Mod,    only : Init_Drydep, DepName, nDVZind
     use Carbon_Mod,    only : Init_Carbon
     use Dust_Mod,      only : Init_Dust
     use Seasalt_Mod,   only : Init_Seasalt
@@ -549,7 +694,8 @@ contains
     INTEGER               :: IWAIT, IERR
     INTEGER               :: nX, nY, nZ
     INTEGER               :: iX, jY
-    INTEGER               :: I, J, L, RC
+    INTEGER               :: I, J, L, N
+    INTEGER               :: RC
     INTEGER               :: NLINOZ
 
     ! Logicals
@@ -571,6 +717,7 @@ contains
     REAL(fp), ALLOCATABLE :: Ap_CAM_Flip(:), Bp_CAM_Flip(:)
 
     REAL(r8), POINTER     :: SlsPtr(:,:,:)
+
 
     ! Assume a successful return until otherwise
     RC                      = GC_SUCCESS
@@ -812,8 +959,20 @@ contains
     Input_Opt%JNITChanB           = 0e+0_fp
 
     ! Now READ_DEPOSITION_MENU
-    ! Disable dry dep for now
     Input_Opt%LDryD                  = .True.
+    !==================================================================
+    ! Add the following options:
+    ! + GEOS-Chem computes ALL dry-deposition velocities
+    ! + CLM computes land velocities. Velocities over ocean and ice are
+    !   computed in a MOZART-like way
+    ! + CLM computes land velocities. Velocities over ocean and ice are
+    !   computed from GEOS-Chem
+    !
+    ! Note: What to do about aerosols? Who should compute the dry
+    !       deposition velocities
+    !
+    ! Thibaud M. Fritz - 26 Feb 2020
+    !==================================================================
     Input_Opt%LWetD                  = .True.
     Input_Opt%CO2_Effect             = .False.
     Input_Opt%CO2_Level              = 390.0_fp
@@ -1017,6 +1176,56 @@ contains
             ErrMsg = 'Error encountered in "Init_Drydep"!'
             CALL Error_Stop( ErrMsg, ThisLoc )
         ENDIF
+
+        !==============================================================
+        ! Get mapping between CESM dry deposited species and the 
+        ! indices of State_Chm%DryDepVel. This needs to be done after
+        ! Init_Drydep
+        ! Thibaud M. Fritz - 04 Mar 2020
+        !==============================================================
+
+        ALLOCATE(map2GC_dryDep(nddvels), STAT=IERR)
+        IF ( IERR .NE. 0 ) CALL ENDRUN('Failed to allocate map2GC_dryDep')
+
+        DO N = 1, nddvels
+
+            ! Initialize index to -1
+            map2GC_dryDep(N) = -1
+
+            IF ( drySpc_ndx(N) > 0 ) THEN
+
+                ! Convert to upper case
+                SpcName = to_upper(drydep_list(N))
+
+                DO I = 1, State_Chm(BEGCHUNK)%nDryDep
+                    IF ( TRIM( SpcName ) == TRIM( to_upper(depName(I)) ) ) THEN
+                        map2GC_dryDep(N) = nDVZind(I)
+                        EXIT
+                    ENDIF
+                ENDDO
+
+            ENDIF
+
+        ENDDO
+
+#if ( OCNDDVEL_MOZART )
+        !==============================================================
+        ! The following line should only be called if we compute
+        ! velocities over the ocean and ice in a MOZART-like way.
+        ! Thibaud M. Fritz - 26 Feb 2020
+        !==============================================================
+
+        IF ( drydep_method == DD_XLND ) THEN
+           CALL drydep_inti( MOZART_depvel_lnd_file, &
+                           MOZART_clim_soilw_file, &
+                           MOZART_season_wes_file )
+        ELSE
+            Write(iulog,'(a,a)') ' drydep_method is set to: ', TRIM(drydep_method)
+            CALL ENDRUN('drydep_method must be DD_XLND to compute dry deposition' // &
+                ' velocities similarly to MOZART over ocean and ice!')
+        ENDIF
+#endif
+
     ENDIF
 
     !=================================================================
@@ -1284,6 +1493,7 @@ contains
     !ENDIF
     !
 
+#if   ( ALLDDVEL_GEOSCHEM || OCNDDVEL_GEOSCHEM )
     !! Populate the State_Met%LandTypeFrac field with data from HEMCO
     !CALL Init_LandTypeFrac( am_I_Root = MasterProc,           &
     !                        Input_Opt = Input_Opt,            &
@@ -1307,6 +1517,7 @@ contains
     !   ErrMsg = 'Error encountered in "Compute_Olson_Landmap"!'
     !   CALL Error_Stop( ErrMsg, ThisLoc )
     !ENDIF
+#endif
 
     ! Initialize PBL quantities but do not do mixing
     ! Add option for non-local PBL (Lin, 03/31/09)
@@ -1454,6 +1665,15 @@ contains
 
     use phys_grid,        only: get_ncols_p, get_rlat_all_p, get_rlon_all_p
 
+    use chem_mods,           only: drySpc_ndx, map2GC_dryDep
+#if   ( ALLDDVEL_GEOSCHEM || OCNDDVEL_GEOSCHEM )
+    use Drydep_Mod,          only: Do_Drydep
+#elif ( OCNDDVEL_MOZART )
+    use mo_drydep,           only: drydep_update, drydep_fromlnd
+#endif
+    use Drydep_Mod,          only: DEPNAME !TMMF, this is just needed for debug
+    use Drydep_Mod,          only: Update_DryDepSav
+
     use Dao_Mod,          only: Set_Dry_Surface_Pressure
     use Dao_Mod,          only: AirQnt
     use GC_Grid_Mod,      only: SetGridFromCtr
@@ -1466,7 +1686,6 @@ contains
     use Wetscav_Mod,         only: Setup_Wetscav, Do_WetDep
     use CMN_Size_Mod,     only: PTop
     use PBL_Mix_Mod,         only: Compute_PBL_Height
-    use Drydep_Mod,          only : Do_Drydep
 
     use Tropopause,          only: Tropopause_findChemTrop, Tropopause_Find
 
@@ -1481,7 +1700,7 @@ contains
     ! Grid area
     use PhysConst,        only: Gravit
     use PhysConstants,    only: Re
-    use Phys_Grid,        only: get_area_all_p
+    use Phys_Grid,           only: get_area_all_p, get_lat_all_p, get_lon_all_p
 
     use Short_Lived_Species, only : Get_Short_Lived_Species
     use Short_Lived_Species, only : Set_Short_Lived_Species
@@ -1530,8 +1749,21 @@ contains
     REAL(r8)          :: RelHum(State%NCOL, PVER)     ! Relative humidity [0-1]
     REAL(r8)          :: SatV  (State%NCOL, PVER)     ! Work arrays
     REAL(r8)          :: SatQ  (State%NCOL, PVER)     ! Work arrays
-    REAL(r8)          :: QH2O  (State%NCOL, PVER)     ! Specific humidity [kg/kg]
+    REAL(r8)          :: qH2O  (State%NCOL, PVER)     ! Specific humidity [kg/kg]
     REAL(r8)          :: H2OVMR(State%NCOL, PVER)     ! H2O volume mixing ratio
+#if ( OCNDDVEL_MOZART )
+    REAL(r8)          :: windSpeed(State%NCOL)        ! Wind speed at ground level [m/s]
+    REAL(r8)          :: potT(State%NCOL)             ! Potential temperature [K]
+
+    INTEGER           :: latndx(PCOLS)
+    INTEGER           :: lonndx(PCOLS)
+
+    ! For MOZART's dry deposition over ocean and ice
+    ! Deposition velocity (cm/s)
+    REAL(r8)          :: MOZART_depVel(State%NCOL, nTracersMax)
+    ! Deposition flux (/cm^2/s)
+    REAL(r8)          :: MOZART_depFlx(State%NCOL, nTracersMax)
+#endif
 
     ! Because of strat chem
     LOGICAL, SAVE :: SCHEM_READY = .FALSE.
@@ -1552,16 +1784,9 @@ contains
     REAL(r8)     :: Sd_Ice, Sd_Lnd, Sd_Avg, Frc_Ice
 
     ! Estimating cloud optical depth
-    !REAL(r8)     :: LWC(PCOLS,PVER)
-    !REAL(r8)     :: IWC(PCOLS,PVER)
-    !REAL(r8)     :: LWP(PCOLS,PVER)
-    !REAL(r8)     :: IWP(PCOLS,PVER)
-    !REAL(r8)     :: CldLiq(PCOLS,PVER)
-    !REAL(r8)     :: CldIce(PCOLS,PVER)
     REAL(r8)     :: cld(PCOLS,PVER)
     REAL(r8)     :: TauCli(PCOLS,PVER)
     REAL(r8)     :: TauClw(PCOLS,PVER)
-    !REAL(r8)     :: localMult
     REAL(r8), PARAMETER :: re_m   = 1.0e-05_r8 ! Cloud drop radius in m
     REAL(r8), PARAMETER :: cldMin = 1.0e-02_r8 ! Minimum cloud cover
     REAL(r8), PARAMETER :: cnst   = 1.5e+00_r8 / (re_m * 1.0e+03_r8 * g0) 
@@ -1619,8 +1844,8 @@ contains
     ! retrieve this from State_Met which is chunked
     !CALL get_rlat_all_p( LCHNK, NCOL, Rlats )
     !CALL get_rlon_all_p( LCHNK, NCOL, Rlons )
-    Rlats(1:NCOL) = State%Lat(1:NCOL)
-    Rlons(1:NCOL) = State%Lon(1:NCOL)
+    Rlats(1:nY) = State%Lat(1:nY)
+    Rlons(1:nY) = State%Lon(1:nY)
 
     lonMidArr = 0.0e+0_f4
     latMidArr = 0.0e+0_f4
@@ -1644,7 +1869,7 @@ contains
     ENDIF
 
     ! Set area
-    CALL Get_Area_All_p( LCHNK, NCOL, Col_Area )
+    CALL Get_Area_All_p( LCHNK, nY, Col_Area )
 
     ! Field      : AREA_M2
     ! Description: Grid box surface area
@@ -1684,7 +1909,7 @@ contains
 
     ! Retrieve previous value of species data
     SlsData(:,:,:) = 0.0e+0_r8
-    CALL Get_Short_Lived_Species( SlsData, LCHNK, NCOL, Pbuf )
+    CALL Get_Short_Lived_Species( SlsData, LCHNK, nY, Pbuf )
 
     ! Remap and flip them
     DO N = 1, nSls
@@ -1703,8 +1928,7 @@ contains
 
     ! Calculate COS(SZA)
     Calday = Get_Curr_Calday( )
-    CALL Zenith( Calday, Rlats, Rlons, CSZA, NCOL )
-    !CALL Outfld( 'SZA', SZA, NCOL, LCHNK )
+    CALL Zenith( Calday, Rlats, Rlons, CSZA, nY )
 
     ! Get all required data from physics buffer
     TIM_NDX = Pbuf_Old_Tim_Idx()
@@ -1720,29 +1944,29 @@ contains
 
     ! Get VMR and MMR of H2O
     H2OVMR = 0.0e0_fp
-    QH2O   = 0.0e0_fp
+    qH2O   = 0.0e0_fp
     ! Note MWDRY = 28.966 g/mol
     DO J = 1, nY
         DO L = 1, nZ
-            QH2O(J,L) = REAL(State_Chm(LCHNK)%Species(1,J,L,iH2O),r8)
-            H2OVMR(J,L) = QH2O(J,L) * MWDry / 18.016e+0_fp
+            qH2O(J,L) = REAL(State_Chm(LCHNK)%Species(1,J,L,iH2O),r8)
+            H2OVMR(J,L) = qH2O(J,L) * MWDry / 18.016e+0_fp
         ENDDO
     ENDDO
 
     ! Calculate RH (range 0-1, note still level 1 = TOA)
-    RELHUM(:,:) = 0.0e+0_r8
-    CALL QSat(State%T(:NCOL,:), State%Pmid(:NCOL,:), SatV, SatQ)
+    relHum(:,:) = 0.0e+0_r8
+    CALL QSat(State%T(:nY,:), State%Pmid(:nY,:), SatV, SatQ)
     DO J = 1, nY
         DO L = 1, nZ
-            RELHUM(J,L) = 0.622e+0_r8 * H2OVMR(J,L) / SatQ(J,L)
-            RELHUM(J,L) = MAX( 0.0e+0_r8, MIN( 1.0e+0_r8, RELHUM(J,L) ) )
+            relHum(J,L) = 0.622e+0_r8 * H2OVMR(J,L) / SatQ(J,L)
+            relHum(J,L) = MAX( 0.0e+0_r8, MIN( 1.0e+0_r8, relHum(J,L) ) )
         ENDDO
     ENDDO
 
     ! Estimate roughness height VERY roughly
     Z0 = 0.0e+0_r8
     DO J = 1, nY
-        IF (Cam_in%LandFrac(J).GE.0.5e+0_r8) THEN
+        IF (cam_in%LandFrac(J).GE.0.5e+0_r8) THEN
             Z0(J) = 0.035e+0_r8
         ELSE
             Z0(J) = 0.0001e+0_r8
@@ -1819,9 +2043,9 @@ contains
    ! Calculate snow depth
     snowDepth = 0.0e+0_r8
     DO J = 1, nY
-        Sd_Ice  = MAX(0.0e+0_r8,Cam_in%Snowhice(J))
-        Sd_Lnd  = MAX(0.0e+0_r8,Cam_in%Snowhland(J))
-        Frc_Ice = MAX(0.0e+0_r8,Cam_in%Icefrac(J))
+        Sd_Ice  = MAX(0.0e+0_r8,cam_in%Snowhice(J))
+        Sd_Lnd  = MAX(0.0e+0_r8,cam_in%Snowhland(J))
+        Frc_Ice = MAX(0.0e+0_r8,cam_in%Icefrac(J))
        IF (Frc_Ice > 0.0e+0_r8) THEN
            Sd_Avg = (Sd_Lnd*(1.0e+0_r8 - Frc_Ice)) + (Sd_Ice * Frc_Ice)
        ELSE
@@ -1834,7 +2058,7 @@ contains
     ! Description: Visible surface albedo
     ! Unit       : -
     ! Dimensions : nX, nY
-    State_Met(LCHNK)%ALBD      (1,:) = Cam_in%Asdir(:)
+    State_Met(LCHNK)%ALBD      (1,:) = cam_in%Asdir(:)
 
     ! Field      : CLDFRC
     ! Description: Column cloud fraction
@@ -1850,8 +2074,8 @@ contains
     ! Description: Latent heat flux, sensible heat flux
     ! Unit       : W/m^2
     ! Dimensions : nX, nY
-    State_Met(LCHNK)%EFLUX     (1,:) = Cam_in%Lhf(:)
-    State_Met(LCHNK)%HFLUX     (1,:) = Cam_in%Shf(:)
+    State_Met(LCHNK)%EFLUX     (1,:) = cam_in%Lhf(:)
+    State_Met(LCHNK)%HFLUX     (1,:) = cam_in%Shf(:)
 
     ! Field      : FRCLND, FRLAND, FROCEAN, FRSEAICE, FRLAKE, FRLANDIC
     ! Description: Olson land fraction
@@ -1864,9 +2088,9 @@ contains
     ! Unit       : -
     ! Dimensions : nX, nY
     State_Met(LCHNK)%FRCLND    (1,:) = 0.0e+0_fp ! Olson land fraction
-    State_Met(LCHNK)%FRLAND    (1,:) = Cam_in%LandFrac(:)
-    State_Met(LCHNK)%FROCEAN   (1,:) = Cam_in%OcnFrac(:) + Cam_in%IceFrac(:)
-    State_Met(LCHNK)%FRSEAICE  (1,:) = Cam_in%IceFrac(:)
+    State_Met(LCHNK)%FRLAND    (1,:) = cam_in%LandFrac(:)
+    State_Met(LCHNK)%FROCEAN   (1,:) = cam_in%OcnFrac(:) + cam_in%IceFrac(:)
+    State_Met(LCHNK)%FRSEAICE  (1,:) = cam_in%IceFrac(:)
     State_Met(LCHNK)%FRLAKE    (1,:) = 0.0e+0_fp
     State_Met(LCHNK)%FRLANDIC  (1,:) = 0.0e+0_fp
     State_Met(LCHNK)%FRSNO     (1,:) = 0.0e+0_fp
@@ -1911,9 +2135,9 @@ contains
     ! Unit       : kg/m^2/s
     ! Dimensions : nX, nY
     State_Met(LCHNK)%PRECANV   (1,:) = 0.0e+0_fp
-    State_Met(LCHNK)%PRECCON   (1,:) = Cam_Out%Precc(:)
-    State_Met(LCHNK)%PRECLSC   (1,:) = Cam_Out%Precl(:)
-    State_Met(LCHNK)%PRECTOT   (1,:) = Cam_Out%Precc(:) + Cam_Out%Precl(:)
+    State_Met(LCHNK)%PRECCON   (1,:) = cam_out%Precc(:)
+    State_Met(LCHNK)%PRECLSC   (1,:) = cam_out%Precl(:)
+    State_Met(LCHNK)%PRECTOT   (1,:) = cam_out%Precc(:) + cam_out%Precl(:)
 
     ! Field      : TROPP
     ! Description: Tropopause pressure
@@ -1938,8 +2162,8 @@ contains
     ! Description: Surface temperature, surface skin temperature
     ! Unit       : K
     ! Dimensions : nX, nY
-    State_Met(LCHNK)%TS        (1,:) = Cam_in%TS(:)
-    State_Met(LCHNK)%TSKIN     (1,:) = Cam_in%TS(:)
+    State_Met(LCHNK)%TS        (1,:) = cam_in%TS(:)
+    State_Met(LCHNK)%TSKIN     (1,:) = cam_in%TS(:)
 
     ! Field      : SWGDN
     ! Description: Incident radiation @ ground
@@ -1982,7 +2206,7 @@ contains
     ! Description: Friction velocity
     ! Unit       : m/s
     ! Dimensions : nX, nY
-    State_Met(LCHNK)%USTAR     (1,:) = Cam_In%UStar(:)
+    State_Met(LCHNK)%USTAR     (1,:) = cam_in%UStar(:)
 
     ! Field      : Z0
     ! Description: Surface roughness length
@@ -2130,8 +2354,8 @@ contains
             ! Note       : Since we are using online meteorology, we do not have
             !              access to the data at the next time step
             !              Compute tendency in g H2O/kg air/s (tmmf, 1/13/20) ?
-            State_Met(LCHNK)%SPHU1    (1,J,L) = QH2O(J,nZ+1-L)    * 1.0e+3_fp    ! g/kg
-            State_Met(LCHNK)%SPHU2    (1,J,L) = QH2O(J,nZ+1-L)    * 1.0e+3_fp    ! g/kg
+            State_Met(LCHNK)%SPHU1    (1,J,L) = qH2O(J,nZ+1-L)    * 1.0e+3_fp    ! g/kg
+            State_Met(LCHNK)%SPHU2    (1,J,L) = qH2O(J,nZ+1-L)    * 1.0e+3_fp    ! g/kg
 
             ! Field      : TMPU1, TMPU2
             ! Description: Temperature at current and next timestep
@@ -2324,7 +2548,6 @@ contains
        CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
-
     ! Initialize strat chem if not already done. This has to be done here because
     ! it needs to have non-zero values in State_Chm%AD, which only happens after
     ! the first call to AirQnt
@@ -2368,39 +2591,6 @@ contains
     !IF ( RC /= GC_SUCCESS ) THEN
     !   ErrMsg = 'Error encountered in "Emissions_Run"!'
     !   CALL Error_Stop( ErrMsg, ThisLoc )
-    !ENDIF
-
-    !==============================================================
-    !        ***** L E A F   A R E A   I N D I C E S *****
-    !==============================================================
-    !IF ( newDay ) THEN
-    !
-    !   ! Initialize the State_Met%XLAI_NATIVE field from HEMCO
-    !   CALL Get_XlaiNative_from_HEMCO( am_I_Root = MasterProc,       &
-    !                                   Input_Opt = Input_Opt,        &
-    !                                   State_Met = State_Met(LCHNK), &
-    !                                   RC        = RC               )
-    !
-    !   ! Trap potential errors
-    !   IF ( RC /= GC_SUCCESS ) THEN
-    !      ErrMsg =
-    !        'Error encountered in "Get_XlaiNative_from_HEMCO"!'
-    !      CALL Error_Stop( ErrMsg, ThisLoc )
-    !   ENDIF
-    !
-    !   ! Compute State_Met%XLAI (for drydep) and State_Met%MODISLAI,
-    !   ! which is the average LAI per grid box (for soil NOx emissions)
-    !   CALL Compute_Xlai( am_I_Root  = MasterProc,        &
-    !                      Input_Opt  = Input_Opt,         &
-    !                      State_Grid = State_Grid(LCHNK), &
-    !                      State_Met  = State_Met(LCHNK),  &
-    !                      RC         = RC                )
-    !
-    !   ! Trap potential errors
-    !   IF ( RC /= GC_SUCCESS ) THEN
-    !      ErrMsg = 'Error encountered in "Compute_Xlai"!'
-    !      CALL Error_Stop( ErrMsg, ThisLoc )
-    !   ENDIF
     !ENDIF
 
     !----------------------------------------------------------
@@ -2510,6 +2700,17 @@ contains
     ! Move this call from the PBL mixing routines because the PBL
     ! height is used by drydep and some of the emissions routines.
     ! (ckeller, 3/5/15) 
+    ! This function updates:
+    !  ====================================================================
+    !  (1)  InPbl      : Logical indicating if we are in the PBL    [-]
+    !  (2)  PBL_TOP_L  : Number of layers in the PBL                [-]
+    !  (3)  PBL_TOP_hPa: Pressure at the top of the PBL             [hPa]
+    !  (4)  PBL_TOP_m  : PBL height                                 [m]
+    !  (5)  PBL_THICK  : PBL thickness                              [hPa]
+    !  (6)  F_OF_PBL   : Fraction of grid box within the PBL        [-]
+    !  (7)  F_UNDER_PBLTOP: Fraction of grid box underneath the PBL top [-]
+    !  (8)  PBL_MAX_L  : Model level where PBL top occurs           [-]
+    !  ====================================================================
     CALL Compute_PBL_Height( am_I_Root  = rootChunk,         &
                              State_Grid = State_Grid(LCHNK), &
                              State_Met  = State_Met(LCHNK),  &
@@ -2526,12 +2727,48 @@ contains
     ! Now always do emissions here, even for full-mixing
     ! (ckeller, 3/5/15)
     !--------------------------------------------------------------
-    !===========================================================
+    !==================================================================
     !         ***** D R Y   D E P O S I T I O N *****
-    !===========================================================
-    IF ( Input_Opt%LDryD ) THEN
+    !==================================================================
+    !==================================================================
+    ! Compute dry deposition velocities
+    !
+    ! CLM computes dry deposition velocities over land.
+    ! We need to merge the land component passed through cam_in and
+    ! the ocn/ice dry deposition velocities.
+    !
+    ! If using the CLM velocities, two options show up:
+    ! 1. Compute dry deposition velocities over ocean and ice similarly
+    !    to the way MOZART does it (OCNDDVEL_MOZART)
+    ! 2. Use GEOS-Chem's dry deposition module to compute velocities
+    !    and then scale them with the ocean fraction (OCNDDVEL_GEOSCHEM)
+    !
+    ! A third option would be to let GEOS-Chem compute dry deposition
+    ! velocity (ALLDDVEL_GEOSCHEM), even though this would not be ideal.
+    !
+    ! drydep_method must be DD_XLND if we want a MOZART-like to compute
+    ! dry deposition velocities over ocean and ice.
+    !
+    ! The following options are currently supported:
+    ! - ALLDDVEL_GEOSCHEM
+    ! - OCNDDVEL_GEOSCHEM
+    !
+    !==================================================================
+    !
+    ! State_Chm expects dry deposition velocities in m/s, whereas
+    ! CLM returns land deposition velocities in cm/s!
+    !
+    ! For now, dry deposition velocities are only computed for gases 
+    ! (which is what CLM deals with). Dry deposition for aerosols is
+    ! work in progress.
+    !
+    ! Thibaud M. Fritz - 27 Feb 2020
+    !==================================================================
 
-       ! Compute drydep velocities
+    IF ( Input_Opt%LDryD ) THEN
+#if   ( ALLDDVEL_GEOSCHEM || OCNDDVEL_GEOSCHEM )
+
+       ! Compute drydep velocities and update State_Chm%DryDepVel
        CALL Do_Drydep( am_I_Root  = rootChunk,         &
                        Input_Opt  = Input_Opt,         &
                        State_Chm  = State_Chm(LCHNK),  &
@@ -2545,6 +2782,144 @@ contains
           ErrMsg = 'Error encountered in "Do_Drydep!"!'
           CALL Error_Stop( ErrMsg, ThisLoc )
        ENDIF
+
+#if   ( OCNDDVEL_GEOSCHEM )
+
+       DO N = 1, nddvels
+
+          ! Print debug
+          IF ( rootChunk .AND. 0 ) THEN
+              IF ( N == 1 ) THEN
+              Write(iulog,*) "Number of GC dry deposition species = ", &
+                  SIZE(State_Chm(LCHNK)%DryDepVel(:,:,:),3)
+              Write(iulog,*) "Number of CESM dry deposition species = ", &
+                  nddvels
+              ENDIF
+              Write(iulog,*) "N          = ", N
+              Write(iulog,*) "drySpc_ndx = ", drySpc_ndx(N)
+              Write(iulog,*) "GC index   = ", map2GC_dryDep(N)
+              IF ( map2GC_dryDep(N) > 0 ) THEN
+                  Write(iulog,*) "GC name    = ", TRIM(DEPNAME(map2GC_dryDep(N)))
+              ENDIF
+              Write(iulog,*) "dry Species= ", TRIM(drydep_list(N))
+              IF ( drySpc_ndx(N) > 0 ) THEN
+                  Write(iulog,*) "tracerName = ", TRIM(tracerNames(drySpc_ndx(N)))
+              ENDIF
+              Write(iulog,*) "CLM-depVel = ", &
+            MAXVAL(cam_in%depvel(:nY,N)) * 1.0e-02_fp, " [m/s]"
+              IF ( map2GC_dryDep(N) > 0 ) THEN
+                  Write(iulog,*) "GC-depVel  = ", &
+            MAXVAL(State_Chm(LCHNK)%DryDepVel(1,:nY,map2GC_dryDep(N))), " [m/s]"
+              ENDIF
+          ENDIF
+
+          IF ( map2GC_dryDep(N) > 0 ) THEN
+              ! State_Chm%DryDepVel is in m/s
+              State_Chm(LCHNK)%DryDepVel(1,:nY,map2GC_dryDep(N)) = &
+                 ! This first bit corresponds to the dry deposition
+                 ! velocities over land as computed from CLM and
+                 ! converted to m/s. This is scaled by the fraction
+                 ! of land.
+                   cam_in%depVel(:nY,N) * 1.0e-02_fp &
+                    * MAX(0._fp, 1.0_fp - State_Met(LCHNK)%FROCEAN(1,:nY)) &
+                 ! This second bit corresponds to the dry deposition
+                 ! velocities over ocean and sea ice as computed from
+                 ! GEOS-Chem. This is scaled by the fraction of ocean
+                 ! and sea ice.
+                 + State_Chm(LCHNK)%DryDepVel(1,:nY,map2GC_dryDep(N)) &
+                   * State_Met(LCHNK)%FROCEAN(1,:nY)
+          ENDIF
+       ENDDO
+
+#endif
+
+#elif ( OCNDDVEL_MOZART )
+       ! This routine updates the deposition velocities from CLM in the
+       ! pointer lnd(LCHNK)%dvel as long as drydep_method == DD_XLND is
+       ! True.
+       CALL drydep_update( State, cam_in )
+
+       windSpeed(:nY) = SQRT( State%U(:nY,nZ)*State%U(:nY,nZ) + &
+                              State%V(:nY,nZ)*State%V(:nY,nZ)  )
+       potT(:nY)      = State%T(:nY,nZ) * (1._fp + qH2O(:nY,nZ))
+
+       CALL get_lat_all_p( LCHNK, nY, latndx )
+       CALL get_lon_all_p( LCHNK, nY, lonndx )
+
+       CALL drydep_fromlnd( ocnfrac      = cam_in%ocnfrac(:),             &
+                            icefrac      = cam_in%icefrac(:),             &
+                            ncdate       = currYMD,                       &
+                            sfc_temp     = cam_in%TS(:),                  &
+                            pressure_sfc = State%PS(:),                   &
+                            wind_speed   = windSpeed(:),                  &
+                            spec_hum     = qH2O(:,nZ),                    &
+                            air_temp     = State%T(:,nZ),                 &
+                            pressure_10m = State%PMid(:,nZ),              &
+                            rain         = State_Met(LCHNK)%PRECTOT(1,:), &
+                            snow         = cam_in%Snowhland(:),           &
+                            solar_flux   = State_Met(LCHNK)%SWGDN(1,:),   &
+                            dvelocity    = MOZART_depVel(:,:),            &
+                            dflx         = MOZART_depFlx(:,:),            &
+                            State_Chm    = State_Chm(LCHNK),              &
+                            tv           = potT(:),                       &
+                            soilw        = -99._fp,                       &
+                            rh           = relHum(:,nZ),                  &
+                            ncol         = nY,                            &
+                            lonndx       = lonndx(:),                     &
+                            latndx       = latndx(:),                     &
+                            lchnk        = LCHNK                         )
+
+       DO N = 1, nddvels
+
+          ! Print debug
+          IF ( rootChunk .AND. 1 ) THEN
+              IF ( N == 1 ) THEN
+              Write(iulog,*) "Number of GC dry deposition species = ", &
+                  SIZE(State_Chm(LCHNK)%DryDepVel(:,:,:),3)
+              Write(iulog,*) "Number of CESM dry deposition species = ", &
+                  nddvels
+              ENDIF
+              Write(iulog,*) "N          = ", N
+              Write(iulog,*) "drySpc_ndx = ", drySpc_ndx(N)
+              Write(iulog,*) "GC index   = ", map2GC_dryDep(N)
+              IF ( map2GC_dryDep(N) > 0 ) THEN
+                  Write(iulog,*) "GC name    = ", TRIM(DEPNAME(map2GC_dryDep(N)))
+              ENDIF
+              Write(iulog,*) "dry Species= ", TRIM(drydep_list(N))
+              IF ( drySpc_ndx(N) > 0 ) THEN
+                  Write(iulog,*) "tracerName = ", TRIM(tracerNames(drySpc_ndx(N)))
+              ENDIF
+              Write(iulog,*) "CLM-depVel    = ", &
+            MAXVAL(cam_in%depvel(:nY,N)) * 1.0e-02_fp, " [m/s]", LCHNK
+              IF ( drySpc_ndx(N) > 0 ) THEN
+                  Write(iulog,*) "Merged depVel = ", &
+            MAXVAL(MOZART_depVel(:nY,drySpc_ndx(N))) * 1.0e-02_fp, " [m/s]", LCHNK
+              ENDIF
+          ENDIF
+
+          IF ( ( map2GC_dryDep(N) > 0 ) .AND. ( drySpc_ndx(N) > 0 ) ) THEN
+              ! State_Chm%DryDepVel is in m/s
+              State_Chm(LCHNK)%DryDepVel(1,:nY,map2GC_dryDep(N)) = &
+                 MOZART_depVel(:nY,drySpc_ndx(N)) * 1.0e-02_fp
+          ENDIF
+
+       ENDDO
+
+#else
+       ! We should be in one of the cases above as any exceptions should be
+       ! caught when running chem_readnl, but just for safety's safe:
+       CALL ENDRUN('Incorrect definitions for dry deposition velocities')
+#endif
+
+       CALL Update_DryDepSav( am_I_Root  = rootChunk,         &
+                              Input_Opt  = Input_Opt,         &
+                              State_Chm  = State_Chm(LCHNK),  &
+                              State_Diag = State_Diag(LCHNK), &
+                              State_Grid = State_Grid(LCHNK), &
+                              State_Met  = State_Met(LCHNK),  &
+                              RC         = RC                )
+
+       !CALL ENDRUN('Exit on purpose')
     ENDIF
 
     !!===========================================================
@@ -2654,9 +3029,6 @@ contains
                        State_Diag = State_Diag(LCHNK), &
                        State_Grid = State_Grid(LCHNK), &
                        State_Met  = State_Met(LCHNK),  &
-                       myCPU      = myCPU,             &
-                       LCHNK      = LCHNK,             &
-                       iO3        = iO3,               &
                        RC         = RC        )
 
     IF ( RC /= GC_SUCCESS ) THEN
@@ -2708,7 +3080,7 @@ contains
             ENDDO
         ENDIF
     ENDDO
-    CALL Set_Short_Lived_Species( SlsData, LCHNK, NCOL, Pbuf )
+    CALL Set_Short_Lived_Species( SlsData, LCHNK, nY, Pbuf )
 
     ! Write diagnostic output
     DO N=1, pcnst
@@ -2729,7 +3101,7 @@ contains
                     Mass1         = Mass1 + (MMR1*AirMass)
                 ENDDO
             ENDDO
-            CALL OutFld( TRIM(SpcName), VMR(:NCOL,:), NCOL, LCHNK )
+            CALL OutFld( TRIM(SpcName), VMR(:nY,:), nY, LCHNK )
         ENDIF
     ENDDO
 
@@ -2743,7 +3115,7 @@ contains
                     VMR(J,nZ+1-K) = REAL(State_Chm(LCHNK)%Species(1,J,K,M),r8) * SLSMWratio(N)
                 ENDDO
             ENDDO
-            CALL OutFld( TRIM(SpcName), VMR(:NCOL,:), NCOL, LCHNK )
+            CALL OutFld( TRIM(SpcName), VMR(:nY,:), nY, LCHNK )
         ENDIF
     ENDDO
 
@@ -3022,7 +3394,7 @@ contains
                     SFlx(I,N) = SFlx(I,N) + 1.0e-10_r8
                 ENDIF
             ENDDO
-            Cam_in%CFlx(:NCOL,M) = Cam_in%CFlx(:NCOL,M) + SFlx(:NCOL,N)
+            cam_in%CFlx(:NCOL,M) = cam_in%CFlx(:NCOL,M) + SFlx(:NCOL,N)
         ENDIF
     ENDDO
 

@@ -7,28 +7,41 @@
       implicit none
       save
 
-      INTEGER, PARAMETER :: NTracersMax = 200    ! Must be equal to nadv_chem
-      INTEGER            :: NTracers
-      CHARACTER(LEN=255) :: TracerNames(NTracersMax)
-      CHARACTER(LEN=255) :: TracerLongNames(NTracersMax)
-      REAL(r8)           :: Adv_Mass(NTracersMax)
-      REAL(r8)           :: MWRatio(NTracersMax)
-      REAL(r8)           :: Ref_MMR(NTracersMax)
+      INTEGER, PARAMETER :: nTracersMax = 200    ! Must be equal to nadv_chem
+      INTEGER            :: nTracers
+      CHARACTER(LEN=255) :: tracerNames(nTracersMax)
+      CHARACTER(LEN=255) :: tracerLongNames(nTracersMax)
+      REAL(r8)           :: adv_Mass(nTracersMax)
+      REAL(r8)           :: MWRatio(nTracersMax)
+      REAL(r8)           :: ref_MMR(nTracersMax)
 
       ! Short-lived species (i.e. not advected)
-      INTEGER, PARAMETER :: NSlsMax = 500        ! UNadvected species only
-      INTEGER            :: NSls    
-      CHARACTER(LEN=255) :: SlsNames(NSlsMax)
-      CHARACTER(LEN=255) :: SlsLongnames(NSlsMax)
-      REAL(r8)           :: Sls_Ref_MMR(NSlsMax)
-      REAL(r8)           :: SlsMWRatio(NSlsMax)
+      INTEGER, PARAMETER :: nSlsMax = 500        ! UNadvected species only
+      INTEGER            :: nSls    
+      CHARACTER(LEN=255) :: slsNames(nSlsMax)
+      CHARACTER(LEN=255) :: slsLongnames(nSlsMax)
+      REAL(r8)           :: sls_Ref_MMR(nSlsMax)
+      REAL(r8)           :: slsMWRatio(nSlsMax)
 
       ! Mapping between constituents and GEOS-Chem tracers
-      INTEGER :: Map2GC(pcnst)
-      INTEGER :: Map2GC_Sls(NSlsMax)
+      INTEGER              :: map2GC(pcnst)
+      INTEGER              :: map2GC_Sls(nSlsMax)
+
+      !-----------------------------
+      ! Dry deposition index mapping
+      !-----------------------------
+      ! drySpc_ndx maps drydep_list onto tracerNames such that
+      ! tracerNames(drySpc_ndx(:)) = drydep_list(:)
+      INTEGER, ALLOCATABLE :: drySpc_ndx(:)
+
+      ! map2GC_dryDep maps drydep_list onto the GEOS-Chem dry deposition
+      ! velocity arrays such that
+      ! State_Chm%DryDepVel(1,:,map2GC_dryDep(:)) = cam_in%depVel(:,:)
+      INTEGER, ALLOCATABLE :: map2GC_dryDep(:)
+
 
       ! Mapping from constituents to raw index
-      INTEGER :: Map2Idx(pcnst)
+      INTEGER              :: map2Idx(pcnst)
 
       INTEGER, PARAMETER :: phtcnt = 40, & ! number of photolysis reactions
                             rxntot = 212, & ! number of total reactions
