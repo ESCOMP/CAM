@@ -50,12 +50,16 @@
 <srf_emis_cycle_yr>2000</srf_emis_cycle_yr>
 <!-- History Files -->
 
-<mfilt>            1 </mfilt>
-<nhtfrq>           0 </nhtfrq>
-<avgflag_pertape> 'A' </avgflag_pertape>
+<mfilt>            1, 24 </mfilt>
+<nhtfrq>           0, -1 </nhtfrq>
+<avgflag_pertape> 'A', 'A' </avgflag_pertape>
 
 <fincl1>
-  'Q', 'U', 'V', 'OMEGA', 'T', 'PS', 'BCPI',
+  'Q', 'U', 'V', 'OMEGA', 'T', 'PS',
 </fincl1>
+
+<fincl2>
+    'O3', 'NO', 'NO2', 'CO', 'HNO3', 'CH4',
+</fincl2>
 
 </namelist_defaults>

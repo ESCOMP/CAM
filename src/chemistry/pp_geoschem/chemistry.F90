@@ -61,18 +61,22 @@ module chemistry
 
   ! Private data
   !===== SDE DEBUG =====
-  integer, parameter :: ntracersmax = 200    ! Must be equal to nadv_chem
-  integer            :: ntracers
-  character(len=255) :: tracernames(ntracersmax)
-  integer            :: indices(ntracersmax)
-  real(r8)           :: adv_mass(ntracersmax)
-  real(r8)           :: ref_mmr(ntracersmax)
+  integer, parameter :: NTracersMax = 200    ! Must be equal to nadv_chem
+  integer            :: NTracers
+  character(len=255) :: TracerNames(NTracersMax)
+  character(len=255) :: TracerLongNames(NTracersMax)
+  integer            :: Indices(NTracersMax)
+  real(r8)           :: Adv_Mass(NTracersMax)
+  real(r8)           :: MWRatio(NTracersMax)
+  real(r8)           :: Ref_MMR(NTracersMax)
 
   ! Short-lived species (i.e. not advected)
-  integer, parameter :: nslsmax = 500        ! UNadvected species only
-  integer            :: nsls
-  character(len=255) :: slsnames(nslsmax)
-  real(r8)           :: sls_ref_mmr(nslsmax)
+  integer, parameter :: NSlsMax = 500        ! UNadvected species only
+  integer            :: NSls
+  character(len=255) :: SlsNames(NSlsMax)
+  character(len=255) :: SlsLongNames(NSlsMax)
+  real(r8)           :: Sls_Ref_MMR(NSlsMax)
+  real(r8)           :: SLSMWRatio(NSlsMax)
   !===== SDE DEBUG =====
 
   ! Location of valid input.geos
@@ -82,8 +86,11 @@ module chemistry
   CHARACTER(LEN=500) :: chemInputsDir
 
   ! Mapping between constituents and GEOS-Chem tracers
-  INTEGER :: map2GC(pcnst)
-  INTEGER :: map2GC_sls(nslsmax)
+  INTEGER :: Map2GC(pcnst)
+  INTEGER :: Map2GC_Sls(NSlsMax)
+
+  ! Mapping from constituents to raw index
+  INTEGER :: Map2Idx(pcnst)
 
   !-----------------------------
   ! Derived type objects
@@ -145,14 +152,14 @@ contains
     Type(OptInput)         :: IO
     TYPE(Species), POINTER :: ThisSpc
 
-    INTEGER            :: i, n
+    INTEGER            :: I, N, M
     REAL(r8)           :: cptmp
     REAL(r8)           :: mwtmp
     REAL(r8)           :: qmin
-    REAL(r8)           :: ref_vmr
+    REAL(r8)           :: Ref_VMR
     CHARACTER(LEN=128) :: mixtype
     CHARACTER(LEN=128) :: molectype
-    CHARACTER(LEN=128) :: lng_name
+    CHARACTER(LEN=128) :: Lng_Name
     LOGICAL            :: camout
     LOGICAL            :: ic_from_cam2
     LOGICAL            :: has_fixed_ubc
@@ -228,23 +235,29 @@ contains
 
     ! At the moment, we force nadv_chem=200 in the setup file
     ! Default
-    map2GC = -1
-    ref_mmr(:) = 0.0e+0_r8
+    Map2GC = -1
+    Ref_MMR(:) = 0.0e+0_r8
+    MWRatio(:) = 1.0e+0_r8
+    TracerLongNames = ''
 
     DO I = 1, NTRACERSMAX
         IF (I.LE.NTRACERS) THEN
-            N = Ind_(TRACERNAMES(I))
+            N           = Ind_(TracerNames(I))
             ThisSpc => SC%SpcData(N)%Info
-            lng_name    = TRIM(ThisSpc%FullName)
-            mwtmp       = REAL(ThisSpc%MW_g,r8)
-            ref_vmr     = REAL(ThisSpc%BackgroundVV,r8)
-            adv_mass(I) = mwtmp
-            ref_mmr(I)  = ref_vmr / (MWDry / mwtmp)
+            Lng_Name    = TRIM(ThisSpc%FullName)
+            MWTmp       = REAL(ThisSpc%MW_g,r8)
+            Ref_VMR     = REAL(ThisSpc%BackgroundVV,r8)
+            Adv_Mass(I) = MWTmp
+            Ref_MMR(I)  = Ref_VMR / (MWDry / MWTmp)
        ELSE
-           lng_name = TRIM(TRACERNAMES(I))
-           adv_mass(I) = 1000.0e+0_r8 * (0.001e+0_r8)
-           ref_mmr(I)  = 1.0e-38_r8
+           Lng_Name    = TRIM(TracerNames(I))
+           MWTmp       = 1000.0e+0_r8 * (0.001e+0_r8)
+           Adv_Mass(I) = MWTmp
+           Ref_MMR(I)  = 1.0e-38_r8
        ENDIF
+       MWRatio(I) = MWDry/MWTmp
+       TracerLongNames(I) = TRIM(Lng_Name)
+
        ! dummy value for specific heat of constant pressure (Cp)
        cptmp = 666._r8
        ! minimum mixing ratio
@@ -270,23 +283,32 @@ contains
                       fixed_ubflx=has_fixed_ubflx, longname=trim(lng_name) )
 
        ! Add to GC mapping. When starting a timestep, we will want to update the
-       ! concentration of State_Chm(x)%Species(1,iCol,iLev,i) with data from
+       ! concentration of State_Chm(x)%Species(1,iCol,iLev,m) with data from
        ! constituent n
-       IF (I.LE.NTRACERS) map2GC(n) = I
+       M = Ind_(TRIM(TracerNames(I)))
+       IF ( M > 0 ) THEN
+           Map2GC(N)  = M
+           Map2Idx(N) = I
+       ENDIF
        ! Nullify pointer
        ThisSpc => NULL()
     ENDDO
 
-    map2gc_sls = 0
-    sls_ref_mmr(:) = 0.0e+0_r8
-    DO I = 1, nsls
-        N = Ind_(slsnames(I))
+    Map2GC_Sls = 0
+    Sls_Ref_MMR(:) = 0.0e+0_r8
+    SlsMWRatio(:)  = -1.0e+0_r8
+    SlsLongNames = ''
+    DO I = 1, NSls
+        N = Ind_(SlsNames(I))
         IF (N.GT.0) THEN
             ThisSpc => SC%SpcData(N)%Info
-            mwtmp          = REAL(ThisSpc%MW_g,r8)
-            ref_vmr        = REAL(ThisSpc%BackgroundVV,r8)
-            sls_ref_mmr(I) = ref_vmr / (mwdry / mwtmp)
-            map2gc_sls(I)  = N
+            MWTmp           = REAL(ThisSpc%MW_g,r8)
+            Ref_VMR         = REAL(ThisSpc%BackgroundVV,r8)
+            Lng_Name        = TRIM(ThisSpc%FullName)
+            SlsLongNames(I) = Lng_Name
+            Sls_Ref_MMR(I)  = Ref_VMR / (MWDry / MWTmp)
+            SlsMWRatio(I)   = MWDry / MWTmp
+            Map2GC_Sls(I)   = N
             ThisSpc  => NULL()
         ENDIF
     ENDDO
@@ -298,7 +320,7 @@ contains
        ! modules outside of chemistry
        ! More information:
        ! http://www.cesm.ucar.edu/models/atm-cam/docs/phys-interface/node5.html
-       !call pbuf_add_field('ShortLivedSpecies','global',dtype_r8,(/pcols,pver,nslvd/),pbf_idx)
+    !call pbuf_add_field('ShortLivedSpecies','global',dtype_r8,(/PCOLS,PVER,NSlvd/),pbf_idx)
        ! returned values
        !  n : mapping in CAM
        ! map2chm is a mozart variable
@@ -377,11 +399,11 @@ contains
 
         ! Now go through the KPP mechanism and add any species not implemented by
         ! the tracer list in input.geos
-        IF ( NSPEC > NSLSMAX ) THEN
-            CALL ENDRUN('chem_readnl: too many species - increase nslsmax')
+        IF ( NSPEC > NSlsMax ) THEN
+            CALL ENDRUN('chem_readnl: too many species - increase NSlsmax')
         ENDIF
 
-        NSLS = 0
+        NSls = 0
         DO I=1,NSPEC
             ! Get the name of the species from KPP
             LINE = ADJUSTL(TRIM(SPC_NAMES(I)))
@@ -390,19 +412,19 @@ contains
                          (.NOT.(LINE(1:2) == 'RR')) )
             IF (validSLS) THEN
                 ! Genuine new short-lived species
-                NSLS = NSLS + 1
-                SLSNAMES(NSLS) = TRIM(LINE)
-                WRITE(iulog,'(a,I5,a,a)') ' --> GC species ',nsls, ': ', TRIM(LINE)
+                NSls = NSls + 1
+                SLSNAMES(NSls) = TRIM(LINE)
+                WRITE(iulog,'(a,I5,a,a)') ' --> GC species ', NSls, ': ', TRIM(LINE)
             ENDIF
         ENDDO
     ENDIF
 
     ! Broadcast to all processors
 #if defined( SPMD )
-    CALL MPIBCAST(NTRACERS,    1,                               MPIINT,  0, MPICOM )
-    CALL MPIBCAST(TRACERNAMES, LEN(TRACERNAMES(1))*NTRACERSMAX, MPICHAR, 0, MPICOM )
-    CALL MPIBCAST(NSLS,        1,                               MPIINT,  0, MPICOM )
-    CALL MPIBCAST(SLSNAMES,    LEN(SLSNAMES(1))*NSLSMAX,        MPICHAR, 0, MPICOM )
+    CALL MPIBCAST(NTracers,    1,                               MPIINT,  0, MPICOM )
+    CALL MPIBCAST(TracerNames, LEN(TracerNames(1))*NTracersMax, MPICHAR, 0, MPICOM )
+    CALL MPIBCAST(NSls,        1,                               MPIINT,  0, MPICOM )
+    CALL MPIBCAST(SlsNames,    LEN(SlsNames(1))*NSlsMax,        MPICHAR, 0, MPICOM )
 #endif
 
   end subroutine chem_readnl
@@ -523,7 +545,7 @@ contains
 
     ! Strings
     CHARACTER(LEN=255)       :: historyConfigFile
-
+    CHARACTER(LEN=255)    :: SpcName
 
     ! Grid setup
     REAL(fp)              :: lonVal,  latVal
@@ -1221,9 +1243,6 @@ contains
      &                 State_Grid = State_Grid(BEGCHUNK) )
     ENDIF
 
-    ! Init_PBL_Mix...
-    ! Convert_Spc_Units...
-
     ! Get the index of H2O
     iH2O = Ind_('H2O')
     iO3  = Ind_('O3')
@@ -1235,8 +1254,21 @@ contains
 
     ! Can add history output here too with the "addfld" & "add_default" routines
     ! Note that constituents are already output by default
-    CALL addfld ( 'BCPI', (/'lev'/), 'A', 'mole/mole', trim('BCPI')//' mixing ratio' )
-    CALL add_default ( 'BCPI',   1, ' ')
+    ! Add all species as output fields if desired
+    DO I = 1, NTracers
+        SpcName = TRIM(TracerNames(I))
+        CALL AddFld( TRIM(SpcName), (/ 'lev' /), 'A', 'mol/mol', TRIM(TracerLongNames(I))//' concentration')
+        IF (TRIM(SpcName) == 'O3') THEN
+            CALL Add_Default ( TRIM(SpcName), 1, ' ')
+        ENDIF
+    ENDDO
+    DO I =1, NSls
+        SpcName = TRIM(SlsNames(I))
+        CALL AddFld( TRIM(SpcName), (/ 'lev' /), 'A', 'mol/mol', TRIM(SlsLongNames(I))//' concentration')
+        !CALL Add_Default(TRIM(SpcName), 1, '')
+    ENDDO
+    !CALL AddFld ( 'BCPI', (/'lev'/), 'A', 'mole/mole', trim('BCPI')//' mixing ratio' )
+    !CALL Add_Default ( 'BCPI',   1, ' ')
 
     IF (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_INIT'
 
@@ -1336,12 +1368,12 @@ contains
     TYPE(cam_in_t),      INTENT(INOUT) :: cam_in
     TYPE(cam_out_t),     INTENT(IN)    :: cam_out
     TYPE(physics_buffer_desc), POINTER :: pbuf(:)
-    REAL(r8), OPTIONAL,  INTENT(OUT)   :: fh2o(pcols) ! h2o flux to balance source from chemistry
+    REAL(r8), OPTIONAL,  INTENT(OUT)   :: fh2o(PCOLS) ! h2o flux to balance source from chemistry
 
     ! Initial MMR for all species
-    REAL(r8) :: mmr_beg(pcols,pver,nsls+ntracers)
-    REAL(r8) :: mmr_end(pcols,pver,nsls+ntracers)
-    REAL(r8) :: mmr_tend(pcols,pver,nsls+ntracers)
+    REAL(r8) :: MMR_Beg(PCOLS,PVER,NSls+NTracers)
+    REAL(r8) :: MMR_End(PCOLS,PVER,NSls+NTracers)
+    REAL(r8) :: MMR_TEnd(PCOLS,PVER,NSls+NTracers)
 
 
     ! Mapping (?)
@@ -1359,16 +1391,16 @@ contains
         Rlats, Rlons                               ! Chunk latitudes and longitudes (radians)
 
     REAL(r8), POINTER :: PBLH(:)                      ! PBL height on each chunk
-    REAL(r8) :: RelHum(State%NCOL, pver)           ! Relative humidity [0-1]
-    REAL(r8) :: SatV  (State%NCOL, pver)           ! Work arrays
-    REAL(r8) :: SatQ  (State%NCOL, pver)           ! Work arrays
-    REAL(r8) :: QH2O  (State%NCOL, pver)           ! Specific humidity [kg/kg]
-    REAL(r8) :: H2Ovmr(State%NCOL, pver)           ! H2O volume mixing ratio
+    REAL(r8)          :: RelHum(State%NCOL, PVER)     ! Relative humidity [0-1]
+    REAL(r8)          :: SatV  (State%NCOL, PVER)     ! Work arrays
+    REAL(r8)          :: SatQ  (State%NCOL, PVER)     ! Work arrays
+    REAL(r8)          :: QH2O  (State%NCOL, PVER)     ! Specific humidity [kg/kg]
+    REAL(r8)          :: H2OVMR(State%NCOL, PVER)     ! H2O volume mixing ratio
 
     ! Because of strat chem
     LOGICAL, SAVE :: SCHEM_READY = .FALSE.
 
-    REAL(f4)      :: lonMidArr(1,pcols), latMidArr(1,pcols)
+    REAL(f4)      :: lonMidArr(1,PCOLS), latMidArr(1,PCOLS)
     INTEGER       :: iMaxLoc(1)
 
     REAL(r8)      :: Col_Area(State%NCOL)
@@ -1376,16 +1408,17 @@ contains
     ! Calculating SZA
     REAL(r8)      :: Calday
 
+    ! For archiving
+    CHARACTER(LEN=255) :: SpcName
+    REAL(r8)           :: VMR(State%NCOL,PVER)
+    REAL(r8)           :: MMR0, MMR1, Mass0, Mass1, AirMass, Mass10r, Mass10a
+
     LOGICAL       :: rootChunk
     INTEGER       :: RC
 
-    ! Here's where you'll call DO_CHEMISTRY
-    ! NOTE: State_Met etc are in an ARRAY - so we will want to always pass
-    ! State_Met%(lchnk) and so on
-
-    ! lchnk: which chunk we have on this process
+    ! LCHNK: which chunk we have on this process
     LCHNK = State%LCHNK
-    ! ncol: number of atmospheric columns on this chunk
+    ! NCOL: number of atmospheric columns on this chunk
     NCOL  = State%NCOL
 
     ! Am I the first chunk on the first CPU?
@@ -1450,16 +1483,16 @@ contains
 
     lq(:) = .FALSE.
 
-    mmr_beg = 0.0e+0_r8
+    MMR_Beg = 0.0e+0_r8
     DO N = 1, pcnst
-        M = map2GC(N)
+        M = Map2GC(N)
         IF (M > 0) THEN
             I = 1
             DO J = 1, NCOL
-                DO K = 1, pver
+                DO K = 1, PVER
                     ! CURRENTLY KG/KG DRY
-                    mmr_beg(J,K,M) = State%q(J,pver+1-K,N)
-                    State_Chm(LCHNK)%Species(1,J,K,M) = REAL(mmr_beg(J,K,M),fp)
+                    MMR_Beg(J,K,M) = State%q(J,PVER+1-K,N)
+                    State_Chm(LCHNK)%Species(1,J,K,M) = REAL(MMR_Beg(J,K,M),fp)
                 ENDDO
             ENDDO
             lq(N) = .TRUE.
@@ -1467,10 +1500,10 @@ contains
     ENDDO
 
     ! TEMPORARY: initalize all unadvected species to background values
-    DO N = 1, nsls
-        M = map2gc_sls(N)
+    DO N = 1, NSls
+        M = Map2GC_Sls(N)
         IF (M > 0) THEN
-            State_Chm(LCHNK)%Species(:,:,:,M) = REAL(sls_ref_mmr(N),fp)
+            State_Chm(LCHNK)%Species(:,:,:,M) = REAL(Sls_Ref_MMR(N),fp)
         ENDIF
     ENDDO
 
@@ -1485,14 +1518,14 @@ contains
     CALL pbuf_get_field(pbuf, NDX_PBLH, PBLH)
 
     ! Get VMR and MMR of H2O
-    H2Ovmr = 0.0e0_fp
+    H2OVMR = 0.0e0_fp
     QH2O   = 0.0e0_fp
     ! Note MWDRY = 28.966 g/mol
 
     DO J = 1, NY
         DO L = 1, NZ
-            QH2O(J,L) = State_Chm(LCHNK)%Species(1,J,K,iH2O)
-            H2Ovmr(J,L) = QH2O(J,L) * MWDry / 18.016e+0_fp 
+            QH2O(J,L) = REAL(State_Chm(LCHNK)%Species(1,J,K,iH2O),r8)
+            H2OVMR(J,L) = QH2O(J,L) * MWDry / 18.016e+0_fp
         ENDDO
     ENDDO
 
@@ -1501,7 +1534,7 @@ contains
     CALL QSat(State%T(:NCOL,:), State%Pmid(:NCOL,:), SatV, SatQ)
     DO J = 1, NY
         DO L = 1, NZ
-            RELHUM(J,L) = 0.622e+0_r8 * H2Ovmr(J,L) / SatQ(J,L)
+            RELHUM(J,L) = 0.622e+0_r8 * H2OVMR(J,L) / SatQ(J,L)
             RELHUM(J,L) = MAX( 0.0e+0_r8, MIN( 1.0e+0_r8, RELHUM(J,L) ) )
         ENDDO
     ENDDO
@@ -1700,7 +1733,7 @@ contains
     ! Initialize strat chem if not already done. This has to be done here because
     ! it needs to have non-zero values in State_Chm%AD, which only happens after
     ! the first call to AirQnt
-    IF ( (.not.schem_ready) .and. Input_Opt%LSCHEM ) THEN
+    IF ( (.not.SCHEM_READY) .and. Input_Opt%LSCHEM ) THEN
         CALL Init_Strat_Chem( am_I_Root  = rootChunk,         &
                               Input_Opt  = Input_Opt,         &
                               State_Chm  = State_Chm(LCHNK),  &
@@ -1712,7 +1745,7 @@ contains
            ErrMsg = 'Could not initialize strat-chem!'
            CALL Error_Stop( ErrMsg, ThisLoc )
         ENDIF
-        schem_ready = .True.
+        SCHEM_READY = .True.
     ENDIF
 
     ! Run chemistry
@@ -1739,29 +1772,65 @@ contains
 
 
 
-    !IF (MasterProc) WRITE(iulog,*) ' --> TEND SIZE: ', size(State%ncol)
-    !IF (MasterProc) WRITE(iulog,'(a,2(x,I6))') ' --> TEND SIDE:  ', lbound(State%ncol),ubound(State%ncol)
+    !IF (MasterProc) WRITE(iulog,*) ' --> TEND SIZE: ', size(State%NCOL)
+    !IF (MasterProc) WRITE(iulog,'(a,2(x,I6))') ' --> TEND SIDE:  ', lbound(State%NCOL),ubound(State%NCOL)
 
     ! Make sure State_Chm(lchnk) is back in kg/kg dry!
 
     ! Reset H2O MMR to the initial value (no chemistry tendency in H2O just
     ! yet)
-    State_Chm(LCHNK)%Species(1,:,:,iH2O) = mmr_beg(:,:,iH2O)
+    State_Chm(LCHNK)%Species(1,:,:,iH2O) = MMR_Beg(:,:,iH2O)
+
+    ! Write diagnostic output
+    DO N=1, pcnst
+        M = Map2GC(N)
+        I = Map2IDX(N)
+        IF ( M > 0 ) THEN
+            SpcName = TracerNames(I)
+            VMR     = 0.0e+0_r8
+            Mass0   = 0.0e+0_r8
+            Mass1   = 0.0e+0_r8
+            DO J = 1, NCOL
+                DO K = 1, PVER
+                    AirMass         = REAL(State_Met(LCHNK)%AD(1,J,K),r8)
+                    MMR0            = MMR_Beg(J,K,M)
+                    MMR1            = REAL(State_Chm(LCHNK)%Species(1,J,K,M),r8)
+                    VMR(J,PVER+1-K) = MMR1 * MWRatio(I)
+                    Mass0           = Mass0 + (MMR0*AirMass)
+                    Mass1           = Mass1 + (MMR1*AirMass)
+                ENDDO
+            ENDDO
+            CALL OutFld( TRIM(SpcName), VMR(:NCOL,:), NCOL, LCHNK )
+        ENDIF
+    ENDDO
+    DO N = 1, NSls
+        SpcName = SlsNames(n)
+        VMR = 0.0e+0_r8
+        M = Map2GC_Sls(n)
+        IF ( M > 0 ) THEN
+            DO J = 1, NCOL
+                DO K = 1, PVER
+                    VMR(J,PVER+1-K) = REAL(State_Chm(LCHNK)%Species(1,J,K,M),r8) * SLSMWratio(N)
+                ENDDO
+            ENDDO
+            CALL OutFld( TRIM(SpcName), VMR(:NCOL,:), NCOL, LCHNK )
+        ENDIF
+    ENDDO
 
     ! NOTE: Re-flip all the arrays vertically or suffer the consequences
     ! ptend%q dimensions: [column, ?, species]
-    ptend%q(:,:,:) = 0.0e+0_r8
-    mmr_end = 0.0e+0_r8
+    Ptend%Q(:,:,:) = 0.0e+0_r8
+    MMR_End = 0.0e+0_r8
     DO N = 1, pcnst
-        M = map2GC(N)
+        M = Map2GC(N)
         IF (M > 0) THEN
             I = 1
             DO J = 1, NCOL
-                DO K = 1, pver
+                DO K = 1, PVER
                     ! CURRENTLY KG/KG
-                    mmr_end (J,K,M) = REAL(State_Chm(LCHNK)%Species(1,J,K,M),r8)
-                    mmr_tend(J,K,M) = mmr_end(J,K,M) - mmr_beg(J,K,M)
-                    ptend%q(J,pver+1-K,N) = (mmr_end(J,K,M)-mmr_beg(J,K,M))/dT
+                    MMR_End (J,K,M) = REAL(State_Chm(LCHNK)%Species(1,J,K,M),r8)
+                    MMR_TEnd(J,K,M) = MMR_End(J,K,M) - MMR_Beg(J,K,M)
+                    ptend%q(J,PVER+1-K,N) = (MMR_End(J,K,M)-MMR_Beg(J,K,M))/dT
                 ENDDO
             ENDDO
         ENDIF
@@ -1769,7 +1838,7 @@ contains
 
     IF (PRESENT(fh2o)) THEN
         fh2o(:NCOL) = 0.0e+0_r8
-        !DO K = 1, pver
+        !DO K = 1, PVER
         !   fh2o(:NCOL) = fh2o(:NCOL) + Ptend%Q(:NCOL,K,iH2O)*State%Pdel(:NCOL,K)/Gravit
         !ENDDO
     ENDIF
@@ -1783,10 +1852,10 @@ contains
   subroutine chem_init_cnst(name, latvals, lonvals, mask, q)
 
     CHARACTER(LEN=*), INTENT(IN)  :: name       !  constituent name
-    REAL(r8),         INTENT(IN)  :: latvals(:) ! lat in degrees (ncol)
-    REAL(r8),         INTENT(IN)  :: lonvals(:) ! lon in degrees (ncol)
+    REAL(r8),         INTENT(IN)  :: latvals(:) ! lat in degrees (NCOL)
+    REAL(r8),         INTENT(IN)  :: lonvals(:) ! lon in degrees (NCOL)
     LOGICAL,          INTENT(IN)  :: mask(:)    ! Only initialize where .true.
-    REAL(r8),         INTENT(OUT) :: q(:,:)     ! kg tracer/kg dry air (ncol, pver
+    REAL(r8),         INTENT(OUT) :: q(:,:)     ! kg tracer/kg dry air (NCOL, PVER
     ! Used to initialize tracer fields if desired.
     ! Will need a simple mapping structure as well as the CAM tracer registration
     ! routines.
