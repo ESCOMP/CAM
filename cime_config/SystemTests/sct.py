@@ -14,7 +14,7 @@ from CIME.XML.standard_module_setup import *
 from CIME.SystemTests.test_utils.user_nl_utils import append_to_user_nl_files
 from CIME.XML.machines import Machines
 from CIME.test_status import *
-from CIME.utils import run_cmd,get_model
+from CIME.utils import run_cmd, get_model, append_testlog
 
 
 
@@ -107,10 +107,16 @@ class SCT(SystemTestsCompareTwo):
         with self._test_status:
             stat,netcdf_filename,err=run_cmd('ls ./run/case2run/*h1*8400.nc ')
             stat,answer,err=run_cmd('ncdump -ff -p 9,17 -v QDIFF,TDIFF '+netcdf_filename+' | egrep //\.\*DIFF | sed s/^\ \*// | sed s/\[,\;\].\*\$// | uniq')
+            comments="Checking QDIFF,TDIFF in SCAM run."
+            append_testlog(comments, self._orig_caseroot)
             if answer == "0":
                 self._test_status.set_status("{}_{}_{}".format(COMPARE_PHASE, self._run_one_suffix, self._run_two_suffix), TEST_PASS_STATUS)
+                comments="QDIFF,TDIFF: PASS"
             else:
                 self._test_status.set_status("{}_{}_{}".format(COMPARE_PHASE, self._run_one_suffix, self._run_two_suffix), TEST_FAIL_STATUS)
+                comments="QDIFF,TDIFF: FAIL, None zero answers"
+            append_testlog(comments, self._orig_caseroot)
+
         
 
 
