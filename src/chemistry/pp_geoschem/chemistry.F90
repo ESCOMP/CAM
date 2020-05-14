@@ -39,6 +39,23 @@ module chemistry
   ! Exit routine in CAM
   use cam_abortutils,      only : endrun
 
+  use chem_mods,           only : ntracersmax
+  use chem_mods,           only : ntracers
+  use chem_mods,           only : tracernames
+  use chem_mods,           only : tracerlongnames
+  use chem_mods,           only : adv_mass
+  use chem_mods,           only : mwratio
+  use chem_mods,           only : ref_mmr
+  use chem_mods,           only : nslsmax
+  use chem_mods,           only : nsls    
+  use chem_mods,           only : slsnames
+  use chem_mods,           only : slslongnames
+  use chem_mods,           only : sls_ref_mmr
+  use chem_mods,           only : slsmwratio
+  use chem_mods,           only : map2gc
+  use chem_mods,           only : map2gc_sls
+  use chem_mods,           only : map2idx
+
   IMPLICIT NONE
   PRIVATE
   SAVE
@@ -61,38 +78,11 @@ module chemistry
   public :: chem_emissions
   public :: chem_timestep_init
 
-  ! Private data
-  !===== SDE DEBUG =====
-  integer, parameter :: NTracersMax = 200    ! Must be equal to nadv_chem
-  integer            :: NTracers
-  character(len=255) :: TracerNames(NTracersMax)
-  character(len=255) :: TracerLongNames(NTracersMax)
-  integer            :: Indices(NTracersMax)
-  real(r8)           :: Adv_Mass(NTracersMax)
-  real(r8)           :: MWRatio(NTracersMax)
-  real(r8)           :: Ref_MMR(NTracersMax)
-
-  ! Short-lived species (i.e. not advected)
-  integer, parameter :: NSlsMax = 500        ! UNadvected species only
-  integer            :: NSls
-  character(len=255) :: SlsNames(NSlsMax)
-  character(len=255) :: SlsLongNames(NSlsMax)
-  real(r8)           :: Sls_Ref_MMR(NSlsMax)
-  real(r8)           :: SLSMWRatio(NSlsMax)
-  !===== SDE DEBUG =====
-
   ! Location of valid input.geos
   CHARACTER(LEN=500) :: inputGeosPath
 
   ! Location of chemistry input (for now)
   CHARACTER(LEN=500) :: chemInputsDir
-
-  ! Mapping between constituents and GEOS-Chem tracers
-  INTEGER :: Map2GC(pcnst)
-  INTEGER :: Map2GC_Sls(NSlsMax)
-
-  ! Mapping from constituents to raw index
-  INTEGER :: Map2Idx(pcnst)
 
   !-----------------------------
   ! Derived type objects
@@ -105,7 +95,7 @@ module chemistry
   TYPE(DgnList )                  :: Diag_List      ! Diagnostics list object
 
   ! Indices of critical species
-  INTEGER                         :: iH2O, iO3, iCH4, iCO
+  INTEGER                    :: iH2O, iO3, iCH4, iCO, iNO
 
   ! Indices in the physics buffer
   INTEGER                    :: NDX_PBLH    ! PBL height [m]
@@ -539,6 +529,8 @@ contains
     use UCX_Mod,       only : Init_UCX
 
     use PBL_Mix_Mod,   only : Init_PBL_Mix
+
+    use GC_Emissions_Mod, only : GC_Emissions_Init
 
     TYPE(physics_state), INTENT(IN):: phys_state(BEGCHUNK:ENDCHUNK)
     TYPE(physics_buffer_desc), POINTER :: pbuf2d(:,:)
@@ -1284,6 +1276,7 @@ contains
     iO3  = Ind_('O3')
     iCH4 = Ind_('CH4')
     iCO  = Ind_('CO')
+    iNO  = Ind_('NO')
 
     ! Get indices for physical fields in physics buffer
     NDX_PBLH    = Pbuf_Get_Index('PblH'  )
@@ -1315,6 +1308,10 @@ contains
         CALL AddFld( TRIM(SpcName), (/ 'lev' /), 'A', 'mol/mol', TRIM(SlsLongNames(I))//' concentration')
         !CALL Add_Default(TRIM(SpcName), 1, '')
     ENDDO
+
+    ! Initialize emissions interface (this will eventually handle HEMCO)
+    CALL GC_Emissions_Init
+
     !CALL AddFld ( 'BCPI', (/'lev'/), 'A', 'mole/mole', trim('BCPI')//' mixing ratio' )
     !CALL Add_Default ( 'BCPI',   1, ' ')
 
@@ -1332,8 +1329,7 @@ contains
 
     IF (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_TIMESTEP_INIT'
 
-    ! This is when we want to update State_Met and so on
-    ! Note that here we have been passed MANY chunks
+    ! Not sure what we would realistically do here rather than in tend
 
   end subroutine chem_timestep_init
 
@@ -2138,6 +2134,8 @@ contains
     ! Special: cleans up after NDXX_Setup
     use Diag_Mod,       only : Cleanup_Diag
 
+    use GC_Emissions_Mod, only: GC_Emissions_Final
+
     INTEGER :: I, RC
     LOGICAL :: am_I_Root
 
@@ -2171,6 +2169,8 @@ contains
        ErrMsg = 'Error encountered in "Cleanup_WetScav"!'
        CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
+
+    CALL GC_Emissions_Final
 
     ! Call extra cleanup routines, from modules in Headers/
     CALL Cleanup_CMN_O3( MasterProc, RC )
@@ -2268,19 +2268,53 @@ contains
   subroutine chem_emissions( state, cam_in )
     use camsrfexch, only : cam_in_t
 
+    use PhysConstants,    only: PI, PI_180
+
     ! Arguments:
 
     TYPE(physics_state),    INTENT(IN)    :: state   ! Physics state variables
     TYPE(cam_in_t),         INTENT(INOUT) :: cam_in  ! import state
 
+    REAL(r8) :: Rlats(State%NCOL)
+    REAL(r8) :: Rlons(State%NCOL)
+    REAL(r8) :: Dlat, Dlon
+    REAL(r8) :: SFlx(State%NCOL,NTracers)
+
+    INTEGER :: M, N, I
     INTEGER :: LCHNK, NCOL
     LOGICAL :: rootChunk
+
+    LOGICAL, SAVE :: FIRST = .TRUE.
 
     ! LCHNK: which chunk we have on this process
     LCHNK = State%LCHNK
     ! NCOL: number of atmospheric columns on this chunk
     NCOL  = State%NCOL
     rootChunk = ( MasterProc.and.(LCHNK.EQ.BEGCHUNK) )
+
+    SFlx(:,:) = 0.0e+0_r8
+    Rlats(1:ncol) = State%Lat(1:NCOL)
+    Rlons(1:ncol) = State%Lon(1:NCOL)
+
+    IF (FIRST) THEN
+    ENDIF
+
+    !TMMF
+    ! Test: emit 1e-10 kg/m2/s of NO in a square around Europe
+    DO M = 1, PCNST
+        N = Map2GC(M)
+        IF ((N>0).and.(N==iNO)) THEN
+            SFlx(:,N) = 0.0e+0_r8
+            DO I = 1, NCOL
+                Dlat = Rlats(i) / REAL(PI_180,r8)
+                Dlon = Rlons(i) / REAL(PI_180,r8)
+                IF ((Dlat > 50.0e+0_r8).and.(Dlat < 60.0e+0_r8).and.(Dlon > -15.0e+0_r8).and.(Dlon < 5.0e+0_r8)) THEN
+                    SFlx(I,N) = SFlx(I,N) + 1.0e-10_r8
+                ENDIF
+            ENDDO
+            Cam_in%CFlx(:NCOL,M) = Cam_in%CFlx(:NCOL,M) + SFlx(:NCOL,N)
+        ENDIF
+    ENDDO
 
     IF (rootChunk) WRITE(iulog,'(a)') 'GCCALL CHEM_EMISSIONS'
 
