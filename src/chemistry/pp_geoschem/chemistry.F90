@@ -229,6 +229,7 @@ contains
     ! At the moment, we force nadv_chem=200 in the setup file
     ! Default
     map2GC = -1
+    ref_mmr(:) = 0.0e+0_r8
 
     DO I = 1, NTRACERSMAX
         IF (I.LE.NTRACERS) THEN
@@ -277,6 +278,7 @@ contains
     ENDDO
 
     map2gc_sls = 0
+    sls_ref_mmr(:) = 0.0e+0_r8
     DO I = 1, nsls
         N = Ind_(slsnames(I))
         IF (N.GT.0) THEN
@@ -1736,8 +1738,6 @@ contains
     !IF (MasterProc) WRITE(iulog,*) ' --> TEND SIZE: ', size(State%ncol)
     !IF (MasterProc) WRITE(iulog,'(a,2(x,I6))') ' --> TEND SIDE:  ', lbound(State%ncol),ubound(State%ncol)
 
-    IF ( rootChunk ) WRITE(iulog,'(a)') 'GCCALL CHEM_TIMESTEP_TEND'
-
     ! Make sure State_Chm(lchnk) is back in kg/kg dry!
 
     ! Reset H2O MMR to the initial value (no chemistry tendency in H2O just
@@ -1764,6 +1764,7 @@ contains
     ENDDO
     IF (present(fh2o)) fh2o(:) = 0.0e+0_r8
 
+    IF (rootChunk) WRITE(iulog,'(a)') ' GEOS-Chem chemistry step completed'
     RETURN
 
   end subroutine chem_timestep_tend
@@ -1780,21 +1781,27 @@ contains
     ! Will need a simple mapping structure as well as the CAM tracer registration
     ! routines.
 
-    INTEGER :: ILEV, NLEV
-    REAL(r8) :: QTemp
+    INTEGER  :: ILEV, NLEV, I
+    REAL(r8) :: QTemp, Min_MMR
 
-    if (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_INIT_CNST'
+    IF (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_INIT_CNST'
 
     NLEV = SIZE(Q, 2)
-    IF ( ANY( TRACERNAMES .EQ. NAME ) ) THEN
-        ! Retrieve a "background value" for this from the database
-       DO ILEV=1,NLEV
-          WHERE(MASK)
-             ! Set to the minimum mixing ratio
-             q(:,ILEV) = 1.0e-38_r8
-          ENDWHERE
-       ENDDO
-    ENDIF
+    ! Retrieve a "background value" for this from the database
+    Min_MMR = 1.0e-38_r8
+    DO I = 1, NTracers
+        IF (TRIM(TracerNames(I)).eq.TRIM(name)) THEN
+            Min_MMR = Ref_MMR(i)
+            EXIT
+        ENDIF
+    ENDDO
+
+    DO ILEV=1,NLEV
+       WHERE(MASK)
+          ! Set to the minimum mixing ratio
+          Q(:,ILEV) = Min_MMR
+       ENDWHERE
+    ENDDO
 
   end subroutine chem_init_cnst
 
