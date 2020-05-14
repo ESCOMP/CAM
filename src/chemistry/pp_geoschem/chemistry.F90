@@ -20,8 +20,10 @@ module chemistry
   !--------------------------------------------------------------------
   ! Basic GEOS-Chem modules
   !--------------------------------------------------------------------
+  USE DiagList_Mod,        ONLY : DgnList    ! Derived type for diagnostics list
   USE Input_Opt_Mod,       ONLY : OptInput   ! Derived type for Input Options
   USE State_Chm_Mod,       ONLY : ChmState   ! Derived type for Chemistry State object
+  USE State_Diag_Mod,      ONLY : DgnState   ! Derived type for Diagnostics State object
   USE State_Grid_Mod,      ONLY : GrdState   ! Derived type for Grid State object
   USE State_Met_Mod,       ONLY : MetState   ! Derived type for Meteorology State object
   USE ErrCode_Mod                            ! Error codes for success or failure
@@ -74,11 +76,15 @@ module chemistry
   ! Location of chemistry input (for now)
   CHARACTER(LEN=500) :: chemInputsDir
 
-  ! GEOS-Chem state variables
+  !-----------------------------
+  ! Derived type objects
+  !-----------------------------
   TYPE(OptInput)                  :: Input_Opt      ! Input Options object
   TYPE(ChmState),ALLOCATABLE      :: State_Chm(:)   ! Chemistry State object
+  TYPE(DgnState),ALLOCATABLE      :: State_Diag(:)  ! Diagnostics State object
   TYPE(GrdState),ALLOCATABLE      :: State_Grid(:)  ! Grid State object
   TYPE(MetState),ALLOCATABLE      :: State_Met(:)   ! Meteorology State object
+  TYPE(DgnList )                  :: Diag_List      ! Diagnostics list object
 
   ! Integer
   INTEGER                         :: RC
@@ -347,6 +353,7 @@ contains
     use State_Chm_Mod
     use State_Grid_Mod
     use State_Met_Mod
+    use DiagList_Mod,   only : Init_DiagList, Print_DiagList
     use GC_Environment_Mod
     use GC_Grid_Mod,    only : SetGridFromCtrEdges
 
@@ -356,21 +363,45 @@ contains
     use Time_Mod,      only : Accept_External_Date_Time
     !use Time_Mod,      only : Set_Begin_Time,   Set_End_Time
     !use Time_Mod,      only : Set_Current_Time, Set_DiagB
-    use Transfer_Mod,  only : Init_Transfer
+    !use Transfer_Mod,  only : Init_Transfer
     use Linoz_Mod,     only : Linoz_Read
 
+    use CMN_Size_Mod
+
     use Drydep_Mod,    only : Init_Drydep
+    use Carbon_Mod,    only : Init_Carbon
+    use Dust_Mod,      only : Init_Dust
+    use Seasalt_Mod,   only : Init_Seasalt
+    use Sulfate_Mod,   only : Init_Sulfate
+    use Aerosol_Mod,   only : Init_Aerosol
+    use WetScav_Mod,   only : Init_WetScav
+    use TOMS_Mod,      only : Init_TOMS
+    use Pressure_Mod,  only : Init_Pressure
 
     TYPE(physics_state), INTENT(IN):: phys_state(BEGCHUNK:ENDCHUNK)
     TYPE(physics_buffer_desc), POINTER :: pbuf2d(:,:)
 
     ! Local variables
+
+    !----------------------------
+    ! Scalars
+    !----------------------------
+
+    ! Integers
     INTEGER :: LCHNK(BEGCHUNK:ENDCHUNK), NCOL(BEGCHUNK:ENDCHUNK)
     INTEGER               :: IWAIT, IERR
-
     INTEGER               :: NX, NY, NZ
+    INTEGER               :: IX, IY, IZ
     INTEGER               :: NLEV, I, J, L, RC
     INTEGER               :: NLINOZ
+
+    ! Logicals
+    LOGICAL               :: am_I_Root
+    LOGICAL               :: prtDebug
+
+    ! Strings
+    CHARACTER(LEN=255)       :: historyConfigFile
+
 
     ! Grid setup
     REAL(fp)              :: lonVal,  latVal
@@ -379,7 +410,6 @@ contains
     REAL(f4), ALLOCATABLE :: lonEdgeArr(:,:), latEdgeArr(:,:)
     REAL(r8), ALLOCATABLE :: linozData(:,:,:,:)
 
-    LOGICAL :: am_I_Root
 
     ! Assume a successful return until otherwise
     RC                      = GC_SUCCESS
@@ -406,6 +436,8 @@ contains
     ! This ensures that each process allocates everything needed for its chunks
     ALLOCATE(State_Chm(BEGCHUNK:ENDCHUNK) , STAT=IERR)
     IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating State_Chm')
+    ALLOCATE(State_Diag(BEGCHUNK:ENDCHUNK) , STAT=IERR)
+    IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating State_Diag')
     ALLOCATE(State_Grid(BEGCHUNK:ENDCHUNK), STAT=IERR)
     IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating State_Grid')
     ALLOCATE(State_Met(BEGCHUNK:ENDCHUNK) , STAT=IERR)
@@ -702,7 +734,6 @@ contains
            CALL Error_Stop( ErrMsg, ThisLoc )
         ENDIF
 
-        CALL Init_Transfer( State_Grid(L), 0, 0 )
     ENDDO
     DEALLOCATE(lonMidArr)
     DEALLOCATE(latMidArr)
@@ -734,37 +765,218 @@ contains
        CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
-    DO I = BEGCHUNK, ENDCHUNK
-        ! This reproduces GC_Init_Stateobj without the State_Diag object
-        am_I_Root = (MasterProc .AND. (I == BEGCHUNK))
-        CALL Init_State_Met( am_I_Root, State_Grid(I), State_Met(I), RC )
-        IF ( RC /= GC_SUCCESS ) THEN
-            ErrMsg = 'Error encountered in "Init_State_Met"!'
-            CALL Error_Stop( ErrMsg, ThisLoc )
-        ENDIF
+    ! Set a flag to denote if we should print ND70 debug output
+    prtDebug            = ( Input_Opt%LPRT .and. MasterProc )
 
-        CALL Init_State_Chm( am_I_Root, Input_Opt,        &
-                             State_Chm(I), State_Grid(I), &
-                             RC )
+    ! Debug output
+    IF ( prtDebug ) CALL Debug_Msg( '### MAIN: a READ_INPUT_FILE' )
+
+    historyConfigFile = 'HISTORY.rc' ! InputOpt not yet initialized
+    CALL Init_DiagList( MasterProc, historyConfigFile, Diag_List, RC )
+    IF ( RC /= GC_SUCCESS ) THEN
+        ErrMsg = 'Error encountered in "Init_State_Met"!'
+        CALL Error_Stop( ErrMsg, ThisLoc )
+    ENDIF
+
+    !### Print diagnostic list if needed for debugging
+    IF ( prtDebug ) CALL Print_DiagList( am_I_Root, Diag_List, RC )
+
+    DO I = BEGCHUNK, ENDCHUNK
+        am_I_Root = (MasterProc .AND. (I == BEGCHUNK))
+
+        CALL GC_Init_StateObj( am_I_Root  = am_I_Root,     &  ! Root CPU (Y/N)?
+     &                         Diag_List  = Diag_List,     &  ! Diagnostic list obj
+     &                         Input_Opt  = Input_Opt,     &  ! Input Options
+     &                         State_Chm  = State_Chm(I),  &  ! Chemistry State
+     &                         State_Diag = State_Diag(I), &  ! Diagnostics State
+     &                         State_Grid = State_Grid(I), &  ! Grid State
+     &                         State_Met  = State_Met(I),  &  ! Meteorology State
+     &                         RC         = RC            )   ! Success or failure
+
+        ! Trap potential errors
         IF ( RC /= GC_SUCCESS ) THEN
-            ErrMsg = 'Error encountered in "Init_State_Chm"!'
+            ErrMsg = 'Error encountered in "GC_Init_StateObj"!'
             CALL Error_Stop( ErrMsg, ThisLoc )
         ENDIF
 
         ! Start with v/v dry (CAM standard)
         State_Chm(I)%Spc_Units = 'v/v dry'
+
     ENDDO
 
     ! Now replicate GC_Init_Extra
     IF ( Input_Opt%LDryD) THEN
-        CALL Init_Drydep( MasterProc, Input_Opt, &
-                          State_Chm(BEGCHUNK),   &
-                          State_Grid(BEGCHUNK), RC )
+
+        ! Setup for dry deposition
+        CALL Init_Drydep( am_I_Root = MasterProc,            &
+     &                    Input_Opt = Input_Opt,             &
+     &                    State_Chm = State_Chm(BEGCHUNK),   &
+     &                    State_Diag = State_Diag(BEGCHUNK), &
+     &                    State_Grid = State_Grid(BEGCHUNK), &
+     &                    RC         = RC                   )
+
         IF ( RC /= GC_SUCCESS ) THEN
             ErrMsg = 'Error encountered in "Init_Drydep"!'
             CALL Error_Stop( ErrMsg, ThisLoc )
         ENDIF
     ENDIF
+
+    !=================================================================
+    ! Call setup routines for wet deposition
+    !
+    ! We need to initialize the wetdep module if either wet
+    ! deposition or convection is turned on, so that we can do the
+    ! large-scale and convective scavenging.  Also initialize the
+    ! wetdep module if both wetdep and convection are turned off,
+    ! but chemistry is turned on.  The INIT_WETSCAV routine will also
+    ! allocate the H2O2s and SO2s arrays that are referenced in the
+    ! convection code. (bmy, 9/23/15)
+    !=================================================================
+    IF ( Input_Opt%LConv .OR. &
+         Input_Opt%LWetD .OR. &
+         Input_Opt%LChem ) THEN
+        CALL Init_WetScav( am_I_Root  = MasterProc,           &
+     &                     Input_Opt  = Input_Opt,            &
+     &                     State_Chm  = State_Chm(BEGCHUNK),  &
+     &                     State_Diag = State_Diag(BEGCHUNK), &
+     &                     State_Grid = State_Grid(BEGCHUNK), &
+     &                     RC         = RC                   )
+
+        IF ( RC /= GC_SUCCESS ) THEN
+            ErrMsg = 'Error encountered in "Init_WetScav"!'
+            CALL Error_Stop( ErrMsg, ThisLoc )
+        ENDIF
+    ENDIF
+
+    !-----------------------------------------------------------------
+    ! Call SET_VDIFF_VALUES so that we can pass several values from
+    ! Input_Opt to the vdiff_mod.F90.  This replaces the functionality
+    ! of logical_mod.F and tracer_mod.F..  This has to be called
+    ! after the input.geos file has been read from disk.
+    !-----------------------------------------------------------------
+    !CALL Set_VDiff_Values( am_I_Root = MasterProc,           &
+    !&                       Input_Opt = Input_Opt,           &
+    !&                       State_Chm = State_Chm(BEGCHUNK), &
+    !&                       RC        = RC )
+
+    !&IF (RC /= GC_SUCCESS) THEN
+    !    ErrMsg = 'Error encountered in "Set_VDiff_Values"!'
+    !    CALL Error_Stop( ErrMsg, ThisLoc )
+    !ENDIF
+
+    !-----------------------------------------------------------------
+    ! Initialize the GET_NDEP_MOD for soil NOx deposition (bmy, 6/17/16)
+    !-----------------------------------------------------------------
+    !CALL Init_Get_NDep( am_I_Root  = MasterProc,           &
+    !&                   Input_Opt  = Input_Opt,            &
+    !&                   State_Chm  = State_Chm(BEGCHUNK),  &
+    !&                   State_Diag = State_Diag(BEGCHUNK), &
+    !&                   RC         = RC                   )
+    !
+    !IF (RC /= GC_SUCCESS) THEN
+    !    ErrMsg = 'Error encountered in "Init_Get_NDep"!'
+    !    CALL Error_Stop( ErrMsg, ThisLoc )
+    !ENDIF
+
+    !-----------------------------------------------------------------
+    ! Initialize "carbon_mod.F"
+    !-----------------------------------------------------------------
+    IF (Input_Opt%LCarb) THEN
+        CALL Init_Carbon( am_I_Root = MasterProc,            &
+     &                    Input_Opt = Input_Opt,             &
+     &                    State_Chm = State_Chm(BEGCHUNK),   &
+     &                    State_Diag = State_Diag(BEGCHUNK), &
+     &                    State_Grid = State_Grid(BEGCHUNK), &
+     &                    RC         = RC                   )
+
+        IF ( RC /= GC_SUCCESS ) THEN
+            ErrMsg = 'Error encountered in "Init_Carbon"!'
+            CALL Error_Stop( ErrMsg, ThisLoc )
+        ENDIF
+    ENDIF
+
+    IF (Input_Opt%LDust) THEN
+        CALL Init_Dust( am_I_Root  = MasterProc,           &
+     &                  Input_Opt  = Input_Opt,            &
+     &                  State_Chm  = State_Chm(BEGCHUNK),  &
+     &                  State_Diag = State_Diag(BEGCHUNK), &
+     &                  State_Grid = State_Grid(BEGCHUNK), &
+     &                  RC         = RC                    )
+
+        IF ( RC /= GC_SUCCESS ) THEN
+            ErrMsg = 'Error encountered in "Init_Dust"!'
+            CALL Error_Stop( ErrMsg, ThisLoc )
+        ENDIF
+    ENDIF
+
+    IF (Input_Opt%LSSalt) THEN
+        CALL Init_Seasalt( am_I_Root  = MasterProc,           &
+     &                     Input_Opt  = Input_Opt,            &
+     &                     State_Chm  = State_Chm(BEGCHUNK),  &
+     &                     State_Diag = State_Diag(BEGCHUNK), &
+     &                     State_Grid = State_Grid(BEGCHUNK), &
+     &                     RC         = RC                    )
+
+        IF ( RC /= GC_SUCCESS ) THEN
+            ErrMsg = 'Error encountered in "Init_Seasalt"!'
+            CALL Error_Stop( ErrMsg, ThisLoc )
+        ENDIF
+    ENDIF
+
+    IF (Input_Opt%LSulf) THEN
+        CALL Init_Sulfate( am_I_Root  = MasterProc,           &
+     &                     Input_Opt  = Input_Opt,            &
+     &                     State_Chm  = State_Chm(BEGCHUNK),  &
+     &                     State_Diag = State_Diag(BEGCHUNK), &
+     &                     State_Grid = State_Grid(BEGCHUNK), &
+     &                     RC         = RC                    )
+
+        IF ( RC /= GC_SUCCESS ) THEN
+            ErrMsg = 'Error encountered in "Init_Sulfate"!'
+            CALL Error_Stop( ErrMsg, ThisLoc )
+        ENDIF
+    ENDIF
+
+    IF (Input_Opt%LSulf.OR.Input_Opt%LCarb.OR.Input_Opt%LDust.OR.Input_Opt%LSSalt) THEN
+        CALL Init_Aerosol( am_I_Root  = MasterProc,           &
+     &                     Input_Opt  = Input_Opt,            &
+     &                     State_Chm  = State_Chm(BEGCHUNK),  &
+     &                     State_Diag = State_Diag(BEGCHUNK), &
+     &                     State_Grid = State_Grid(BEGCHUNK), &
+     &                     RC         = RC                    )
+
+        IF ( RC /= GC_SUCCESS ) THEN
+            ErrMsg = 'Error encountered in "Init_Aerosol"!'
+            CALL Error_Stop( ErrMsg, ThisLoc )
+        ENDIF
+    ENDIF
+
+    CALL Init_Toms( am_I_Root  = MasterProc,           &
+     &              Input_Opt  = Input_Opt,            &
+     &              State_Chm  = State_Chm(BEGCHUNK),  &
+     &              State_Diag = State_Diag(BEGCHUNK), &
+     &              State_Grid = State_Grid(BEGCHUNK), &
+     &              RC         = RC                    )
+
+    IF ( RC /= GC_SUCCESS ) THEN
+        ErrMsg = 'Error encountered in "Init_TOMS"!'
+        CALL Error_Stop( ErrMsg, ThisLoc )
+    ENDIF
+
+    ! This is a bare subroutine - no module
+    CALL NDXX_Setup( MasterProc,           &
+     &               Input_Opt,            &
+     &               State_Chm(BEGCHUNK),  &
+     &               State_Grid(BEGCHUNK), &
+     &               RC                    )
+
+    IF ( RC /= GC_SUCCESS ) THEN
+        ErrMsg = 'Error encountered in "Init_NDXX_Setup"!'
+        CALL Error_Stop( ErrMsg, ThisLoc )
+    ENDIF
+
+
+
 
     ! Init_FJX..
     ! Init_Pressure...
@@ -931,10 +1143,26 @@ contains
 !===============================================================================
   subroutine chem_final
 
-    USE Input_Opt_Mod, ONLY : CLEANUP_INPUT_OPT
-    USE State_Chm_Mod, ONLY : CLEANUP_STATE_CHM
-    USE State_Met_Mod, ONLY : CLEANUP_STATE_MET
-    Use UCX_Mod,       ONLY : CLEANUP_UCX
+    use Input_Opt_Mod,  only : Cleanup_Input_Opt
+    use State_Chm_Mod,  only : Cleanup_State_Chm
+    use State_Diag_Mod, only : Cleanup_State_Diag
+    use State_Grid_Mod, only : Cleanup_State_Grid
+    use State_Met_Mod,  only : Cleanup_State_Met
+    use Error_Mod,      only : Cleanup_Error
+
+    use FlexChem_Mod,   only : Cleanup_FlexChem
+    use UCX_Mod,        only : Cleanup_UCX
+    use Drydep_Mod,     only : Cleanup_Drydep
+    use WetScav_Mod,    only : Cleanup_Wetscav
+    use Carbon_Mod,     only : Cleanup_Carbon
+    use Dust_Mod,       only : Cleanup_Dust
+    use Seasalt_Mod,    only : Cleanup_Seasalt
+    use Aerosol_Mod,    only : Cleanup_Aerosol
+    use TOMS_Mod,       only : Cleanup_Toms
+    use Sulfate_Mod,    only : Cleanup_Sulfate
+
+    ! Special: cleans up after NDXX_Setup
+    use Diag_Mod,       only : Cleanup_Diag
 
     INTEGER :: I, RC
     LOGICAL :: am_I_Root
@@ -942,21 +1170,57 @@ contains
     ! Finalize GEOS-Chem
     IF (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_FINAL'
     
+    CALL Cleanup_UCX( MasterProc )
+    CALL Cleanup_Aerosol
+    CALL Cleanup_Carbon
+    CALL Cleanup_Drydep
+    CALL Cleanup_Dust
+    CALL Cleanup_FlexChem( am_I_Root, RC )
+    IF ( RC /= GC_SUCCESS ) THEN
+       ErrMsg = 'Error encountered in "Cleanup_FlexChem"!'
+       CALL Error_Stop( ErrMsg, ThisLoc )
+       RETURN
+    ENDIF
+
+    CALL Cleanup_Seasalt
+    CALL Cleanup_Sulfate
+    CALL Cleanup_Toms( MasterProc, RC )
+    IF ( RC /= GC_SUCCESS ) THEN
+       ErrMsg = 'Error encountered in "Cleanup_Toms"!'
+       CALL Error_Stop( ErrMsg, ThisLoc )
+       RETURN
+    ENDIF
+
+    CALL Cleanup_WetScav( MasterProc, RC)
+    IF ( RC /= GC_SUCCESS ) THEN
+       ErrMsg = 'Error encountered in "Cleanup_WetScav"!'
+       CALL Error_Stop( ErrMsg, ThisLoc )
+       RETURN
+    ENDIF
+
+    CALL Cleanup_Diag
+
+    ! Cleanup Input_Opt
+    CALL Cleanup_Input_Opt( MasterProc, Input_Opt, RC )
+
     ! Loop over each chunk and cleanup the variables
     DO I = BEGCHUNK, ENDCHUNK
         am_I_Root = ((I.eq.BEGCHUNK) .and. MasterProc)
-        CALL CLEANUP_STATE_MET( am_I_Root, State_Met(I), RC )
-        CALL CLEANUP_STATE_CHM( am_I_Root, State_Chm(I), RC )
+
+        CALL Cleanup_State_Chm ( am_I_Root, State_Chm(I),  RC )
+        CALL Cleanup_State_Diag( am_I_Root, State_Diag(I), RC )
+        CALL Cleanup_State_Grid( am_I_Root, State_Grid(I), RC )
+        CALL Cleanup_State_Met ( am_I_Root, State_Met(I),  RC )
     ENDDO
-    ! Cleanup Input_Opt
-    CALL CLEANUP_INPUT_OPT( am_I_Root, Input_Opt, RC )
+    CALL Cleanup_Error
 
     ! Finally deallocate state variables
     IF (ALLOCATED(State_Chm))     DEALLOCATE(State_Chm)
+    IF (ALLOCATED(State_Diag))    DEALLOCATE(State_Diag)
     IF (ALLOCATED(State_Grid))    DEALLOCATE(State_Grid)
     IF (ALLOCATED(State_Met))     DEALLOCATE(State_Met)
 
-    IF (MasterProc) WRITE(iulog,'(a,3(x,L1))') ' --> DEALLOC CHECK : ', ALLOCATED(State_Chm), ALLOCATED(State_Grid), ALLOCATED(State_Met)
+    IF (MasterProc) WRITE(iulog,'(a,4(x,L1))') ' --> DEALLOC CHECK : ', ALLOCATED(State_Chm), ALLOCATED(State_Diag), ALLOCATED(State_Grid), ALLOCATED(State_Met)
 
     RETURN
 

@@ -15,7 +15,6 @@ hcoio_dataread_mod.F90
 hco_readlist_mod.F90
 hcox_paranox_mod.F90
 hco_config_mod.F90
-planeflight_mod.F
 hco_driver_mod.F90
 hcox_driver_mod.F90
 hcox_lightnox_mod.F90
@@ -44,7 +43,6 @@ diag3.F
 hcoi_gc_main_mod.F90
 gamap_mod.F
 initialize.F
-ndxx_setup.F
 mixing_mod.F90
 vdiff_mod.F90
 input_mod.F
