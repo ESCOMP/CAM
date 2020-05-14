@@ -39,22 +39,22 @@ module chemistry
   ! Exit routine in CAM
   use cam_abortutils,      only : endrun
 
-  use chem_mods,           only : ntracersmax
-  use chem_mods,           only : ntracers
-  use chem_mods,           only : tracernames
-  use chem_mods,           only : tracerlongnames
-  use chem_mods,           only : adv_mass
-  use chem_mods,           only : mwratio
+  use chem_mods,           only : nTracersMax
+  use chem_mods,           only : nTracers
+  use chem_mods,           only : tracerNames
+  use chem_mods,           only : tracerLongNames
+  use chem_mods,           only : adv_Mass
+  use chem_mods,           only : mwRatio
   use chem_mods,           only : ref_mmr
-  use chem_mods,           only : nslsmax
-  use chem_mods,           only : nsls    
-  use chem_mods,           only : slsnames
-  use chem_mods,           only : slslongnames
+  use chem_mods,           only : nSlsMax
+  use chem_mods,           only : nSls    
+  use chem_mods,           only : slsNames
+  use chem_mods,           only : slsLongNames
   use chem_mods,           only : sls_ref_mmr
-  use chem_mods,           only : slsmwratio
-  use chem_mods,           only : map2gc
-  use chem_mods,           only : map2gc_sls
-  use chem_mods,           only : map2idx
+  use chem_mods,           only : slsmwRatio
+  use chem_mods,           only : map2GC
+  use chem_mods,           only : map2GC_Sls
+  use chem_mods,           only : map2Idx
 
   IMPLICIT NONE
   PRIVATE
@@ -172,8 +172,9 @@ contains
     LOGICAL            :: has_fixed_ubflx
 
     INTEGER            :: RC
+
     ! SDE 2018-05-02: This seems to get called before anything else
-    ! That includes CHEM_INIT
+    ! that includes CHEM_INIT
     ! At this point, mozart calls SET_SIM_DAT, which is specified by each
     ! mechanism separately (ie mozart/chemistry.F90 calls the subroutine
     ! set_sim_dat which is in pp_[mechanism]/mo_sim_dat.F90. That sets a lot of
@@ -204,7 +205,7 @@ contains
     IO%LPRT                = .False.
     IO%N_Advect            = nTracers
     DO I = 1, nTracers
-        IO%AdvectSpc_Name(I) = TRIM(tracernames(I))
+        IO%AdvectSpc_Name(I) = TRIM(tracerNames(I))
     ENDDO
     IO%SalA_rEdge_um(1)    = 0.01e+0_fp
     IO%SalA_rEdge_um(2)    = 0.50e+0_fp
@@ -216,7 +217,7 @@ contains
     Input_Opt%myCPU        = myCPU
 
     CALL Init_State_Grid( am_I_Root  = .False.,       &
-                          State_Grid = State_Grid(I), &
+                          State_Grid = SG     , &
                           RC         = RC         )
 
     IF ( RC /= GC_SUCCESS ) THEN
@@ -224,9 +225,9 @@ contains
         CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
-    State_Grid(I)%NX = 1
-    State_Grid(I)%NY = 1
-    State_Grid(I)%NZ = 1
+    SG%NX = 1
+    SG%NY = 1
+    SG%NZ = 1
 
     CALL Init_State_Chm( am_I_Root  = .False., &
                          Input_Opt  = IO,      &
@@ -246,8 +247,8 @@ contains
     MWRatio(:) = 1.0e+0_r8
     TracerLongNames = ''
 
-    DO I = 1, NTRACERSMAX
-        IF (I.LE.NTRACERS) THEN
+    DO I = 1, nTracersMax
+        IF (I.LE.nTracers) THEN
             N           = Ind_(TracerNames(I))
             ThisSpc => SC%SpcData(N)%Info
             Lng_Name    = TRIM(ThisSpc%FullName)
@@ -283,10 +284,10 @@ contains
        !write(tracernames(i),'(a,I0.4)') 'GCTRC_', i
        ! NOTE: In MOZART, this only gets called for tracers
        ! This is the call to add a "constituent"
-       CALL cnst_add( trim(tracernames(i)), adv_mass(i), cptmp, qmin, n, &
+       CALL cnst_add( TRIM(tracerNames(I)), adv_Mass(I), cptmp, qmin, N, &
                       readiv=ic_from_cam2, mixtype=mixtype, cam_outfld=camout, &
                       molectype=molectype, fixed_ubc=has_fixed_ubc, &
-                      fixed_ubflx=has_fixed_ubflx, longname=trim(lng_name) )
+                      fixed_ubflx=has_fixed_ubflx, longname=TRIM(Lng_Name) )
 
        ! Add to GC mapping. When starting a timestep, we will want to update the
        ! concentration of State_Chm(x)%Species(1,iCol,iLev,m) with data from
@@ -341,7 +342,7 @@ contains
     use cam_abortutils, only : endrun
     use units,          only : getunit, freeunit
     use mpishorthand
-    use gckpp_Model,    only : nspec, spc_names
+    use gckpp_Model,    only : NSPEC, SPC_NAMES
 
     ! args
     CHARACTER(LEN=*), INTENT(IN) :: nlfile  ! filepath for file containing namelist input
@@ -352,15 +353,17 @@ contains
     logical :: menuFound, validSLS
 
     ! Set paths
-    inputGeosPath='/n/scratchlfs/jacob_lab/elundgren/UT/runs/4x5_standard/input.geos.template'
+    inputGeosPath='/n/home10/tfritz/UT/runs/4x5_standard/input.geos.template'
     chemInputsDir='/n/holylfs/EXTERNAL_REPOS/GEOS-CHEM/gcgrid/gcdata/ExtData/CHEM_INPUTS/'
+    inputGeosPath='/home/fritzt/input.geos.template'
+    chemInputsDir='/net/d06/data/GCdata/ExtData/CHEM_INPUTS/'
 
     IF (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_READNL'
 
     ! TODO: Read in input.geos and get species names
     IF (MasterProc) THEN
         UNITN = GETUNIT()
-        OPEN( UNITN, FILE=TRIM(inputGeosPath), STATUS='old', IOSTAT=IERR )
+        OPEN( UNITN, FILE=TRIM(inputGeosPath), STATUS='OLD', IOSTAT=IERR )
         IF (IERR .NE. 0) THEN
             CALL ENDRUN('chem_readnl: ERROR opening input.geos')
         ENDIF
@@ -376,60 +379,60 @@ contains
             ENDIF
         ENDDO
 
-        ! Skip first line
-        READ(UNITN,'(a)',IOSTAT=IERR) LINE
-        ! Read in tracer count
-        READ(UNITN,'(26x,I)',IOSTAT=IERR) NTRACERS
-        ! Skip divider line
-        READ(UNITN,'(a)',IOSTAT=IERR) LINE
-        ! Read in each tracer
-        DO I=1,NTRACERS
-            READ(UNITN,'(26x,a)',iostat=ierr) line
-            tracernames(i) = trim(line)
+        DO
+            ! Read line
+            READ(UNITN,'(26x,a)', IOSTAT=IERR) LINE
+
+            IF ( INDEX( TRIM(LINE), '---' ) > 0 ) EXIT
+
+            nTracers = nTracers + 1
+            tracerNames(nTracers) = TRIM(LINE)
+
+            WRITE(iulog,'(a,I5,a,a)') ' --> GC Tracer ', nTracers, ': ', TRIM(LINE)
         ENDDO
         CLOSE(UNITN)
         CALL FREEUNIT(UNITN)
 
         ! Assign remaining tracers dummy names
-        DO I=(NTRACERS+1),NTRACERSMAX
-            WRITE(TRACERNAMES(I),'(a,I0.4)') 'GCTRC_',I
+        DO I = (nTracers+1), nTracersMax
+            WRITE(tracerNames(I),'(a,I0.4)') 'GCTRC_', I
         ENDDO
 
         ! Now go through the KPP mechanism and add any species not implemented by
         ! the tracer list in input.geos
-        IF ( NSPEC > NSlsMax ) THEN
+        IF ( NSPEC > nSlsMax ) THEN
             CALL ENDRUN('chem_readnl: too many species - increase NSlsmax')
         ENDIF
 
-        NSls = 0
+        nSls = 0
         DO I=1,NSPEC
             ! Get the name of the species from KPP
             LINE = ADJUSTL(TRIM(SPC_NAMES(I)))
             ! Only add this
-            validSLS = ( (.NOT.ANY(TRIM(LINE).EQ.TRACERNAMES)).AND.&
+            validSLS = ( (.NOT.ANY(TRIM(LINE).EQ.tracerNames)).AND.&
                          (.NOT.(LINE(1:2) == 'RR')) )
             IF (validSLS) THEN
                 ! Genuine new short-lived species
-                NSls = NSls + 1
-                SLSNAMES(NSls) = TRIM(LINE)
-                WRITE(iulog,'(a,I5,a,a)') ' --> GC species ', NSls, ': ', TRIM(LINE)
+                nSls = nSls + 1
+                slsNames(nSls) = TRIM(LINE)
+                WRITE(iulog,'(a,I5,a,a)') ' --> GC species ', nSls, ': ', TRIM(LINE)
             ENDIF
         ENDDO
     ENDIF
 
     ! Broadcast to all processors
 #if defined( SPMD )
-    CALL MPIBCAST(NTracers,    1,                               MPIINT,  0, MPICOM )
-    CALL MPIBCAST(TracerNames, LEN(TracerNames(1))*NTracersMax, MPICHAR, 0, MPICOM )
-    CALL MPIBCAST(NSls,        1,                               MPIINT,  0, MPICOM )
-    CALL MPIBCAST(SlsNames,    LEN(SlsNames(1))*NSlsMax,        MPICHAR, 0, MPICOM )
+    CALL MPIBCAST(nTracers,    1,                               MPIINT,  0, MPICOM )
+    CALL MPIBCAST(tracerNames, LEN(tracerNames(1))*nTracersMax, MPICHAR, 0, MPICOM )
+    CALL MPIBCAST(nSls,        1,                               MPIINT,  0, MPICOM )
+    CALL MPIBCAST(slsNames,    LEN(slsNames(1))*nSlsMax,        MPICHAR, 0, MPICOM )
 #endif
 
     ! Update "short_lived_species" arrays - will eventually unify these
-    NSlvd = NSls
-    ALLOCATE(Slvd_Lst(NSlvd), STAT=IERR)
+    nSlvd = nSls
+    ALLOCATE(slvd_Lst(nSlvd), STAT=IERR)
     IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating Slvd_Lst')
-    ALLOCATE(Slvd_Ref_MMR(NSlvd), STAT=IERR)
+    ALLOCATE(slvd_Ref_MMR(nSlvd), STAT=IERR)
     IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating Slvd_Ref_MMR')
     DO I=1,NSls
         Slvd_Lst(I) = TRIM(SlsNames(I))
@@ -467,8 +470,8 @@ contains
 
     chem_implements_cnst = .false.
 
-    DO I = 1, NTRACERS
-       IF (TRIM(TRACERNAMES(I)) .eq. TRIM(NAME)) THEN
+    DO I = 1, nTracers
+       IF (TRIM(tracerNames(I)) .eq. TRIM(NAME)) THEN
           chem_implements_cnst = .true.
           EXIT
        ENDIF
@@ -614,15 +617,13 @@ contains
     ALLOCATE(State_Met(BEGCHUNK:ENDCHUNK) , STAT=IERR)
     IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating State_Met')
 
-        ! Set some basic flags
-    Input_Opt%Max_BPCH_Diag     = 1000
-    Input_Opt%Max_AdvectSpc     = 500
-    Input_Opt%Max_Families      = 250
-
     ! Initialize fields of the Input Options object
     CALL Set_Input_Opt( am_I_Root = MasterProc, &
                         Input_Opt = Input_Opt,  &
                         RC        = RC         )
+
+    ! Set some basic flags
+    Input_Opt%LUCX      = .True.
 
     IF ( RC /= GC_SUCCESS ) THEN
         ErrMsg = 'Error encountered within call to "Set_Input_Opt"!'
@@ -690,7 +691,6 @@ contains
     Input_Opt%myCPU    = myCPU
     Input_Opt%rootCPU  = MasterProc
 
-
     ! TODO: Mimic GEOS-Chem's reading of input options
     !IF (MasterProc) THEN
     !   CALL Read_Input_File( am_I_Root   = .True., &
@@ -722,13 +722,13 @@ contains
     Input_Opt%ITS_AN_AEROSOL_SIM     = .False.
 
     ! Now READ_ADVECTED_SPECIES_MENU
-    Input_Opt%N_Advect               = NTracers
+    Input_Opt%N_Advect               = nTracers
     IF (Input_Opt%N_Advect.GT.Input_Opt%Max_AdvectSpc) THEN
         CALL ENDRUN('Number of tracers exceeds max count')
     ENDIF
     ! Assign tracer names
     DO J = 1, Input_Opt%N_Advect
-        Input_Opt%AdvectSpc_Name(J) = TRIM(TRACERNAMES(J))
+        Input_Opt%AdvectSpc_Name(J) = TRIM(tracerNames(J))
     ENDDO
     ! No tagged species
     Input_Opt%LSplit = .False.
@@ -954,14 +954,15 @@ contains
     IF ( prtDebug ) CALL Debug_Msg( '### MAIN: a READ_INPUT_FILE' )
 
     historyConfigFile = 'HISTORY.rc' ! InputOpt not yet initialized
-    CALL Init_DiagList( MasterProc, historyConfigFile, Diag_List, RC )
-    IF ( RC /= GC_SUCCESS ) THEN
-        ErrMsg = 'Error encountered in "Init_State_Met"!'
-        CALL Error_Stop( ErrMsg, ThisLoc )
-    ENDIF
+    !TMMF need to pass input.geos path
+    !CALL Init_DiagList( MasterProc, historyConfigFile, Diag_List, RC )
+    !IF ( RC /= GC_SUCCESS ) THEN
+    !   ErrMsg = 'Error encountered in "Init_DiagList"!'
+    !   CALL Error_Stop( ErrMsg, ThisLoc )
+    !ENDIF
 
-    !### Print diagnostic list if needed for debugging
-    IF ( prtDebug ) CALL Print_DiagList( am_I_Root, Diag_List, RC )
+    !!### Print diagnostic list if needed for debugging
+    !IF ( prtDebug ) CALL Print_DiagList( am_I_Root, Diag_List, RC )
 
     DO I = BEGCHUNK, ENDCHUNK
         am_I_Root = (MasterProc .AND. (I == BEGCHUNK))
@@ -1119,7 +1120,10 @@ contains
         ENDIF
     ENDIF
 
-    IF (Input_Opt%LSulf.OR.Input_Opt%LCarb.OR.Input_Opt%LDust.OR.Input_Opt%LSSalt) THEN
+    IF ( Input_Opt%LSulf .OR. &
+         Input_Opt%LCarb .OR. &
+         Input_Opt%LDust .OR. &
+         Input_Opt%LSSalt ) THEN
         CALL Init_Aerosol( am_I_Root  = MasterProc,           &
      &                     Input_Opt  = Input_Opt,            &
      &                     State_Chm  = State_Chm(BEGCHUNK),  &
@@ -1209,37 +1213,44 @@ contains
         Bp_CAM_Flip(I) = hybi(nZ+2-I)
     ENDDO
 
-    DO I = BEGCHUNK, ENDCHUNK
-    
-        !-----------------------------------------------------------------
-        ! Initialize the hybrid pressure module.  Define Ap and Bp.
-        !-----------------------------------------------------------------
-        CALL Init_Pressure( am_I_Root  = MasterProc,    &  ! Root CPU (Y/N)?
-        &                   State_Grid = State_Grid(I), &  ! Grid State
-        &                   RC         = RC            )   ! Success or failure
+    !-----------------------------------------------------------------
+    ! Initialize the hybrid pressure module.  Define Ap and Bp.
+    !-----------------------------------------------------------------
+    CALL Init_Pressure( am_I_Root  = MasterProc,           &  ! Root CPU (Y/N)?
+                        State_Grid = State_Grid(BEGCHUNK), &  ! Grid State
+                        RC         = RC                   )   ! Success or failure
 
-        ! Trapping errors
-        IF ( RC /= GC_SUCCESS ) THEN
-           ErrMsg = 'Error encountered in "Init_Pressure"!'
-           CALL Error_Stop( ErrMsg, ThisLoc )
-        ENDIF
+    ! Trapping errors
+    IF ( RC /= GC_SUCCESS ) THEN
+       ErrMsg = 'Error encountered in "Init_Pressure"!'
+       CALL Error_Stop( ErrMsg, ThisLoc )
+    ENDIF
 
-        !-----------------------------------------------------------------
-        ! Pass external Ap and Bp to GEOS-Chem's Pressure_Mod
-        !-----------------------------------------------------------------
-        CALL Accept_External_ApBp( am_I_Root  = MasterProc,    &  ! Root CPU (Y/N)?
-        &                          State_Grid = State_Grid(I), &  ! Grid State
-        &                          ApIn       = Ap_CAM_Flip,   &  ! "A" term for hybrid grid
-        &                          BpIn       = Bp_CAM_Flip,   &  ! "B" term for hybrid grid
-        &                          RC         = RC            )   ! Success or failure
+    !-----------------------------------------------------------------
+    ! Pass external Ap and Bp to GEOS-Chem's Pressure_Mod
+    !-----------------------------------------------------------------
+    CALL Accept_External_ApBp( am_I_Root  = MasterProc,    &  ! Root CPU (Y/N)?
+                               State_Grid = State_Grid(BEGCHUNK), &  ! Grid State
+                               ApIn       = Ap_CAM_Flip,          &  ! "A" term for hybrid grid
+                               BpIn       = Bp_CAM_Flip,          &  ! "B" term for hybrid grid
+                               RC         = RC                   )   ! Success or failure
 
-        ! Trapping errors
-        IF ( RC /= GC_SUCCESS ) THEN
-           ErrMsg = 'Error encountered in "Accept_External_ApBp"!'
-           CALL Error_Stop( ErrMsg, ThisLoc )
-        ENDIF
+    ! Print vertical coordinates
+    IF ( MasterProc ) THEN
+        WRITE( 6, '(a)'   ) REPEAT( '=', 79 )
+        WRITE( 6, '(a,/)' ) 'V E R T I C A L   G R I D   S E T U P'
+        WRITE( 6, '( ''Ap '', /, 6(f11.6,1x) )' ) Ap_CAM_Flip(1:State_Grid(BEGCHUNK)%NZ+1)
+        WRITE( 6, '(a)'   )
+        WRITE( 6, '( ''Bp '', /, 6(f11.6,1x) )' ) Bp_CAM_Flip(1:State_Grid(BEGCHUNK)%NZ+1)
+        WRITE( 6, '(a)'   ) REPEAT( '=', 79 )
+    ENDIF
 
-    ENDDO
+    ! Trapping errors
+    IF ( RC /= GC_SUCCESS ) THEN
+       ErrMsg = 'Error encountered in "Accept_External_ApBp"!'
+       CALL Error_Stop( ErrMsg, ThisLoc )
+    ENDIF
+
     DEALLOCATE(Ap_CAM_Flip,Bp_CAM_Flip)
 
     IF (Input_Opt%Its_A_FullChem_Sim .OR. &
@@ -1263,7 +1274,8 @@ contains
     !                      HcoConfig=HcoConfig )
     !ASSERT_(RC==GC_SUCCESS)
 
-    IF (Input_Opt%LChem.and.Input_Opt%LUCX) THEN
+    IF ( Input_Opt%LChem .AND. &
+         Input_Opt%LUCX ) THEN
         CALL Init_UCX( am_I_Root  = MasterProc,           &
      &                 Input_Opt  = Input_Opt,            &
      &                 State_Chm  = State_Chm(BEGCHUNK),  &
@@ -1279,11 +1291,11 @@ contains
     iNO  = Ind_('NO')
 
     ! Get indices for physical fields in physics buffer
-    NDX_PBLH    = Pbuf_Get_Index('PblH'  )
-    NDX_FSDS    = Pbuf_Get_Index('Fsds'  )
-    NDX_CLDTOP  = Pbuf_Get_Index('CldTop')
-    NDX_CLDFRC  = Pbuf_Get_Index('Cld'   )
-    NDX_PRAIN   = Pbuf_Get_Index('PRain' )
+    NDX_PBLH     = Pbuf_Get_Index('pblh'     )
+    NDX_FSDS     = Pbuf_Get_Index('FSDS'     )
+    NDX_CLDTOP   = Pbuf_Get_Index('CLDTOP'   )
+    NDX_CLDFRC   = Pbuf_Get_Index('CLD'      )
+    NDX_PRAIN    = Pbuf_Get_Index('PRAIN'    )
     NDX_NEVAPR   = Pbuf_Get_Index('NEVAPR'   )
     NDX_RPRDTOT  = Pbuf_Get_Index('RPRDTOT'  )
     NDX_LSFLXPRC = Pbuf_Get_Index('LS_FLXPRC')
