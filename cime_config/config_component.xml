@@ -11,7 +11,7 @@
     <desc atm="CAM60[%1PCT][%4xCO2][%CCTS][%CFIRE][%CVBSX][%PORT][%RCO2][%SCAM][%SDYN][%WCCM][%WCMD][%WCSC][%WCTS]">CAM cam6 physics:</desc>
     <desc atm="CAM50[%CCTS][%CLB][%PORT][%RCO2][%SCAM][%SDYN][%WCSC][%WCTS]"              >CAM cam5 physics:</desc>
     <desc atm="CAM40[%PORT][%RCO2][%SCAM][%SDYN][%TMOZ][%WXIE][%WXIED][%WCMD]"                   >CAM cam4 physics:</desc>
-    <desc atm="CAM[%ADIAB][%DABIP04][%TJ16][%HS94][%KESSLER][%RCO2][%SPCAMS][%SPCAMCLBS][%SPCAMM][%SPCAMCLBM]">CAM simplified and non-versioned physics :</desc>
+    <desc atm="CAM[%ADIAB][%DABIP04][%TJ16][%HS94][%GC][%KESSLER][%RCO2][%SPCAMS][%SPCAMCLBS][%SPCAMM][%SPCAMCLBM]">CAM simplified and non-versioned physics :</desc>
 
   <!--
     ===============
@@ -154,6 +154,7 @@
       <value compset="_CAM%DABIP04">-phys adiabatic</value>
       <value compset="_CAM%TJ16">-phys tj2016 -analytic_ic</value>
       <value compset="_CAM%HS94">-phys held_suarez</value>
+      <value compset="_CAM%GC">-chem geoschem</value>
       <value compset="_CAM%KESSLER">-phys kessler -chem terminator -analytic_ic</value>
 
       <!-- Aquaplanet -->
