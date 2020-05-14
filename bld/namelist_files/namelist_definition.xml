@@ -6696,29 +6696,35 @@ Default: none
 
 <entry id="csw_specifier" type="char*256(1000)" category="ocean_emissions"
        group="ocean_emis_nl" valid_values="" >
-List of full pathnames of surface emission datasets.
+Specifies a list of chemical species and corresponding seawater concentration files.
+Each tracer species seawater concentration is read from its own file as directed by the
+namelist variable {{ hilight }}csw_specifier{{ closehilight }}.  The
+{{ hilight }}csw_specifier{{ closehilight }} variable tells the model which species have seawater 
+concentration and the file path for the corresponding species.  Each file path may be
+proceeded by a scaling factor.  
+Example:
 
-The chemistry package reads in seawater concentration data from a set of netcdf files in
-units of "nanomoles per liter".  Each tracer species seawater conc is read from its
-own file as directed by the namelist variable <varname>csw_specifier</varname>.  The
-<varname>csw_specifier</varname> variable tells the model which species have seawater 
-conc and the file path for the corresponding species.  
+csw_specifier = 'DMS      -> /path/Csw_DMS_HiResML_f09f09_1990_2019_20190616a.nc',
+                'CH3COCH3 -> 0.75*/path/Csw_Acetone_HiResML_f09f09_1990_2019_20190814a.nc'
 
-Default: set by build-namelist.
+These can be read in as a time series of data, cycyle over a given year, or be fixed to a given date
+as directed by {{ hilight }}csw_time_time{{ closehilight }}.
+
+Default: none
 </entry>
 
-<entry id="csw_type" type="char*32" category="ocean_emissions"
+<entry id="csw_time_type" type="char*32" category="ocean_emissions"
        group="ocean_emis_nl" valid_values="CYCLICAL,SERIAL,INTERP_MISSING_MONTHS,FIXED" >
 Type of time interpolation of seawater concentration datasets specified.
 Can be set to 'CYCLICAL', 'SERIAL', 'INTERP_MISSING_MONTHS', or 'FIXED'.
-by <varname>srf_emis_specifier</varname>. 
+by {{ hilight }}csw_specifier{{ closehilight }}. 
 Default: 'CYCLICAL'
 </entry>
 
 <entry id="csw_cycle_yr" type="integer" category="ocean_emissions"
        group="ocean_emis_nl" valid_values="" >
 The cycle year of the seawater concentration data
-if <varname>srf_emis_type</varname>  is 'CYCLICAL'.
+if {{ hilight }}csw_time_type{{ closehilight }}  is 'CYCLICAL'.
 Format: YYYY
 Default: 0
 </entry>
