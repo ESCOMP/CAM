@@ -33,7 +33,7 @@ module chemistry
   public :: chem_write_restart
   public :: chem_read_restart
   public :: chem_init_restart
-  public :: chem_readnl                    ! read chem namelist 
+  public :: chem_readnl                    ! read chem namelist
 
   public :: chem_emissions
   public :: chem_timestep_init
@@ -73,10 +73,10 @@ contains
   subroutine chem_register
 
     use physics_buffer, only : pbuf_add_field, dtype_r8
-    !----------------------------------------------------------------------- 
-    ! 
+    !-----------------------------------------------------------------------
+    !
     ! Purpose: register advected constituents for chemistry
-    ! 
+    !
     !-----------------------------------------------------------------------
     integer            :: i, n
     real(r8)           :: cptmp
@@ -138,6 +138,8 @@ contains
                       readiv=ic_from_cam2, mixtype=mixtype, cam_outfld=camout, &
                       molectype=molectype, fixed_ubc=has_fixed_ubc, &
                       fixed_ubflx=has_fixed_ubflx, longname=trim(lng_name) )
+    end do
+
        ! MOZART uses this for short-lived species. Not certain exactly what it
        ! does, but note that the "ShortLivedSpecies" physics buffer already
        ! needs to have been initialized, which we haven't done. Physics buffers
@@ -152,47 +154,96 @@ contains
        !map2chm(n) = i
        !indices(i) = 0
        ! ===== SDE DEBUG =====
-    end do
 
   end subroutine chem_register
 
   subroutine chem_readnl(nlfile)
-    ! Gonna want to read in input.geos, etc. Somehow.
+    ! This is the FIRST routine to get called - so it should read in
+    ! GEOS-Chem options from input.geos without actually doing any
+    ! initialization
+
+    use cam_abortutils, only : endrun
+    use units,          only : getunit, freeunit
+    use mpishorthand
+    use gckpp_Model,    only : nspec, spc_names
 
     ! args
     character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
     ! Local variables
-    integer :: i
+    integer :: i, unitn, ierr
+    character(len=500) :: line
+    logical :: menuFound, validSLS
+
+    ! Hard-code for now
+    character(len=500) :: inputGeosPath
+    inputGeosPath='/n/scratchlfs/jacob_lab/elundgren/UT/runs/4x5_standard/input.geos.template'
 
     if (masterproc) write(iulog,'(a)') 'GCCALL CHEM_READNL'
 
     ! TODO: Read in input.geos and get species names
-    ntracers=6
-    do i=1,ntracers
-       ! TEMPORARY: Hardcode 2 species (BCPI in output, H2 still needed for
-       ! lower boundary condition)
-       if (i==1) then
-          tracernames(i) = 'BCPI'
-       elseif (i==2) then
-          tracernames(i) = 'OCS'
-       elseif (i==3) then
-          tracernames(i) = 'N2O'
-       elseif (i==4) then
-          tracernames(i) = 'CH4'
-       elseif (i==5) then
-          tracernames(i) = 'CFC11'
-       elseif (i==6) then
-          tracernames(i) = 'CFC12'
-       else
-          write(tracernames(i),'(a,I0.4)') 'GCTRC_',i
+    if (masterproc) then
+        unitn = getunit()
+        open( unitn, file=trim(inputGeosPath), status='old', iostat=ierr )
+        if (ierr .ne. 0) then
+            call endrun('chem_readnl: ERROR opening input.geos')
+        end if
+        ! Go to ADVECTED SPECIES MENU
+        menuFound = .False.
+        Do While (.not.menuFound)
+            read( unitn, '(a)', iostat=ierr ) line
+            if (ierr.ne.0) then
+                call endrun('chem_readnl: ERROR finding advected species menu')
+            else  if (index(line,'ADVECTED SPECIES MENU') > 0) then
+                menuFound=.True.
        end if
     end do
-
-    ! Assign remaining species dummy names
+        ! Skip first line
+        read(unitn,'(a)',iostat=ierr) line
+        ! Read in tracer count
+        read(unitn,'(26x,I)',iostat=ierr) ntracers
+        ! Skip divider line
+        read(unitn,'(a)',iostat=ierr) line
+        ! Read in each tracer
+        do i=1,ntracers
+            read(unitn,'(26x,a)',iostat=ierr) line
+            tracernames(i) = trim(line)
+        end do
+        close(unitn)
+        call freeunit(unitn)
+        ! Assign remaining tracers dummy names
     do i=(ntracers+1),ntracersmax
        write(tracernames(i),'(a,I0.4)') 'GCTRC_',i
     end do
+
+        ! Now go through the KPP mechanism and add any species not implemented by
+        ! the tracer list in input.geos
+        if ( nspec > nslsmax ) then
+            call endrun('chem_readnl: too many species - increase nslsmax')
+        end If
+        nsls = 0
+        do i=1,nspec
+            ! Get the name of the species from KPP
+            line = adjustl(trim(spc_names(i)))
+            ! Only add this
+            validSLS = ( (.not.any(trim(line).eq.tracernames)).and.&
+                         (.not.(line(1:2) == 'RR')) )
+            if (validSLS) then
+                ! Genuine new short-lived species
+                nsls = nsls + 1
+                slsnames(nsls) = trim(line)
+                write(iulog,'(a,I5,a,a)') ' --> GC species ',nsls, ': ',trim(line)
+            end if
+        end do
+    end if
+
+    ! Broadcast to all processors
+#if defined( SPMD )
+    call mpibcast(ntracers,    1,                               mpiint,  0,        mpicom )
+    call mpibcast(tracernames, len(tracernames(1))*ntracersmax, mpichar, 0, mpicom )
+    call mpibcast(nsls,        1,                               mpiint,  0, mpicom )
+    call mpibcast(slsnames,    len(slsnames(1))*nslsmax,        mpichar, 0, mpicom )
+#endif
 
   end subroutine chem_readnl
 
@@ -209,12 +260,12 @@ contains
 !================================================================================================
 
   function chem_implements_cnst(name)
-    !----------------------------------------------------------------------- 
-    ! 
+    !-----------------------------------------------------------------------
+    !
     ! Purpose: return true if specified constituent is implemented by this package
-    ! 
+    !
     ! Author: B. Eaton
-    ! 
+    !
     !-----------------------------------------------------------------------
     implicit none
     !-----------------------------Arguments---------------------------------
@@ -223,10 +274,10 @@ contains
     logical :: chem_implements_cnst        ! return value
 
     integer :: i
-    
+
     chem_implements_cnst = .false.
 
-    do i = 1, ntracersmax
+    do i = 1, ntracers
        if (trim(tracernames(i)) .eq. trim(name)) then
           chem_implements_cnst = .true.
           exit
@@ -237,13 +288,13 @@ contains
   end function chem_implements_cnst
 
 !===============================================================================
-  
+
   subroutine chem_init(phys_state, pbuf2d)
-    !----------------------------------------------------------------------- 
-    ! 
+    !-----------------------------------------------------------------------
+    !
     ! Purpose: initialize GEOS-Chem parts (state objects, mainly)
     !          (and declare history variables)
-    ! 
+    !
     !-----------------------------------------------------------------------
     use physics_buffer, only: physics_buffer_desc
     use cam_history,    only: addfld, add_default, horiz_only
@@ -337,7 +388,7 @@ contains
 
 !===============================================================================
   subroutine chem_final
-    
+
     ! Finalize GEOS-Chem
     if (masterproc) write(iulog,'(a)') 'GCCALL CHEM_FINAL'
 
@@ -387,7 +438,7 @@ contains
   end subroutine chem_read_restart
 !================================================================================
   subroutine chem_emissions( state, cam_in )
-    use camsrfexch, only : cam_in_t     
+    use camsrfexch, only : cam_in_t
 
     ! Arguments:
 
