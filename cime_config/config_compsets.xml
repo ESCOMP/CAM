@@ -386,7 +386,17 @@
 
   <compset>
       <alias>GEOSCHEM</alias>
-      <lname>2000_CAM%GC_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>
+      <lname>2000_CAM40%GC_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+      <alias>GEOSCHEMTEST</alias>
+      <lname>2000_CAM%GCHS_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+      <alias>FGC</alias>
+      <lname>2000_CAM40%GC_CLM40%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV</lname>
   </compset>
 
   <!-- ENTRIES -->

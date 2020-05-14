@@ -666,10 +666,10 @@ if (defined $opts{'chem'}) {
 
     # If the user has specified a simple physics package...
     if ($simple_phys) {
-        # the only valid chemistry options are 'none' and 'terminator'
-        if (($chem_pkg ne 'none') and ($chem_pkg ne 'terminator')) {
+        # the only valid chemistry options are 'none', 'terminator' and 'geoschem'
+        if (($chem_pkg ne 'none') and ($chem_pkg ne 'terminator') and ($chem_pkg ne 'geoschem')) {
             die "configure ERROR: -phys=$phys_pkg  -chem=$chem_pkg\n".
-                "                 -chem can only be set to 'none' or 'terminator'.\n";
+                "                 -chem can only be set to 'none', 'terminator' or 'geoschem'.\n";
         }
     }
     elsif ($phys_pkg =~ m/^cam3$|^cam4$|^spcam_sam1mom$/) {
@@ -1413,10 +1413,10 @@ if ($customize) {
     }
     if ($print>=2) { print "Chem preprocessor compiler: $chemproc_fc $eol"; }
     ($chem_nadv) = chem_preprocess($cfg_ref,$print,$chemproc_fc);
-} elsif ($chem_pkg ne 'none') {
+} elsif ($chem_pkg ne 'none' and $chem_pkg !~ 'geoschem') {
    # copy over chem docs
-    copy("$chem_src_dir/chem_mech.doc",$cam_bld) or die "copy failed $! \n";
-    copy("$chem_src_dir/chem_mech.in" ,$cam_bld) or die "copy failed $! \n";
+    copy("$chem_src_dir/chem_mech.doc",$cam_bld) or die "copy of chem_mec.doc failed $! \n";
+    copy("$chem_src_dir/chem_mech.in" ,$cam_bld) or die "copy of chem_mech.in failed $! \n";
     ($chem_nadv) = chem_number_adv($chem_src_dir);
 }
 
@@ -1431,6 +1431,8 @@ if ($chem_pkg =~ '_mam3') {
 # TMMF - wedge in GEOS-Chem CPP definitions here
 if ($chem_pkg =~ 'geoschem') {
     $chem_cppdefs .= ' -DEXTERNAL_GRID -DEXTERNAL_FORCING';
+    # TMMF - Temporary fix
+    $chem_nadv = 200;
 }
 
 
@@ -2799,15 +2801,9 @@ sub write_filepath
             print $fh "$chem_src_dir/geoschem_src/HEMCO/Extensions\n";
             print $fh "$chem_src_dir/geoschem_src/HEMCO/Interfaces\n";
             print $fh "$chem_src_dir/geoschem_src/ISOROPIA\n";
-            print $fh "$chem_src_dir/geoschem_src/KPP/Standard\n";
-            print $fh "$camsrcdir/cam/src/chemistry/pp_terminator\n"; }
+            print $fh "$chem_src_dir/geoschem_src/KPP/Standard\n"; }
+#            print $fh "$camsrcdir/cam/src/chemistry/pp_geoschem\n"; }
     }
-    if ($chem =~ /_mam/) {
-        print $fh "$camsrcdir/src/chemistry/modal_aero\n";
-    } else {
-        print $fh "$camsrcdir/src/chemistry/bulk_aero\n";
-    }
-    print $fh "$camsrcdir/src/chemistry/aerosol\n";
 
     if ($waccmx) {
         print $fh "$camsrcdir/src/physics/waccmx\n";
@@ -2826,9 +2822,15 @@ sub write_filepath
     # -- Updated by TMMF - 11/2019
     if ($chem_pkg ne 'geoschem') {
         print $fh "$camsrcdir/cam/src/chemistry/mozart\n";
-    }
-    else {
-        print $fh "$camsrcdir/cam/src/chemistry/mozart\n";
+        if ($chem =~ /_mam/) {
+            print $fh "$camsrcdir/cam/src/chemistry/modal_aero\n";
+        } else {
+            print $fh "$camsrcdir/cam/src/chemistry/bulk_aero\n";
+        }
+        print $fh "$camsrcdir/cam/src/chemistry/aerosol\n";
+#    }
+#    else {
+#        print $fh "$camsrcdir/cam/src/chemistry/mozart\n";
     }
     # --
 
