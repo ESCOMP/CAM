@@ -168,7 +168,7 @@ contains
     if (masterproc) write(iulog,'(a)') 'GCCALL CHEM_READNL'
 
     ! TODO: Read in input.geos and get species names
-    ntracers=2
+    ntracers=6
     do i=1,ntracers
        ! TEMPORARY: Hardcode 2 species (BCPI in output, H2 still needed for
        ! lower boundary condition)
@@ -176,6 +176,14 @@ contains
           tracernames(i) = 'BCPI'
        elseif (i==2) then
           tracernames(i) = 'OCS'
+       elseif (i==3) then
+          tracernames(i) = 'N2O'
+       elseif (i==4) then
+          tracernames(i) = 'CH4'
+       elseif (i==5) then
+          tracernames(i) = 'CFC11'
+       elseif (i==6) then
+          tracernames(i) = 'CFC12'
        else
           write(tracernames(i),'(a,I0.4)') 'GCTRC_',i
        end if
