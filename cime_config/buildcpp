@@ -40,6 +40,7 @@ def buildcpp(case):
     compiler = case.get_value("COMPILER") # for chem preprocessor
     nthrds_atm = case.get_value("NTHRDS_ATM")
     cam_config_opts = case.get_value("CAM_CONFIG_OPTS")
+    clm_config_opts = case.get_value("CLM_CONFIG_OPTS")
 
     # level information for CAM is part of the atm grid name - and must be stripped out
     nlev = ''
@@ -92,6 +93,14 @@ def buildcpp(case):
         config_opts += ["-ocn", "pop"]
     else:
         config_opts += ["-ocn", comp_ocn]
+
+    if '-chem geoschem' in cam_config_opts:
+        if 'clm4_0' in clm_config_opts:
+            config_opts += ["-clm_vers", "CLM4.0"]
+        elif 'clm4_5' in clm_config_opts:
+            config_opts += ["-clm_vers", "CLM4.5"]
+        elif 'clm5_0' in clm_config_opts:
+            config_opts += ["-clm_vers", "CLM5.0"]
 
     # Add user options.
     config_opts += cam_config_opts.split(" ")

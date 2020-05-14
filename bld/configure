@@ -124,8 +124,11 @@ OPTIONS
                         [ trop_mam3 | trop_mam4 | trop_mam7 | trop_mozart | trop_strat_mam4_vbs | trop_strat_mam4_vbsext | 
                           waccm_ma | waccm_mad | waccm_mad_mam4 | waccm_ma_mam4 | 
                           waccm_ma_sulfur | waccm_sc | waccm_sc_mam4 | waccm_tsmlt_mam4 | 
-                          terminator | none ].
+                          terminator | geoschem | none ].
                         Default: trop_mam4 for cam6 and trop_mam3 for cam5.
+     -clm_vers <name>   Version of land model to use. This option is only used when chem
+                        is set to 'geoschem'.
+                        [ 4.0 | 4.5 | 5.0 ]
      -[no]clubb_sgs     Switch on [off] CLUBB_SGS.  Default: on for cam6, otherwise off.
      -clubb_opts <list> Comma separated list of CLUBB options to turn on/off.  By default they are all off.
                         Current option is: clubb_do_adv (Advect CLUBB moments)
@@ -303,6 +306,7 @@ GetOptions(
     "ccsm_seq"                  => \$opts{'ccsm_seq'},
     "cflags=s"                  => \$opts{'cflags'},
     "chem=s"                    => \$opts{'chem'},
+    "clm_vers=s"                => \$opts{'clm_vers'},
     "clubb_sgs!"                => \$opts{'clubb_sgs'},
     "clubb_opts=s"              => \$opts{'clubb_opts'},
     "co2_cycle"                 => \$opts{'co2_cycle'},
@@ -666,10 +670,10 @@ if (defined $opts{'chem'}) {
 
     # If the user has specified a simple physics package...
     if ($simple_phys) {
-        # the only valid chemistry options are 'none' and 'terminator'
-        if (($chem_pkg ne 'none') and ($chem_pkg ne 'terminator')) {
+        # the only valid chemistry options are 'none', 'terminator' and 'geoschem'
+        if (($chem_pkg ne 'none') and ($chem_pkg ne 'terminator') and ($chem_pkg ne 'geoschem')) {
             die "configure ERROR: -phys=$phys_pkg  -chem=$chem_pkg\n".
-                "                 -chem can only be set to 'none' or 'terminator'.\n";
+                "                 -chem can only be set to 'none', 'terminator' or 'geoschem'.\n";
         }
     }
     elsif ($phys_pkg =~ m/^cam3$|^cam4$|^spcam_sam1mom$/) {
@@ -1413,10 +1417,10 @@ if ($customize) {
     }
     if ($print>=2) { print "Chem preprocessor compiler: $chemproc_fc $eol"; }
     ($chem_nadv) = chem_preprocess($cfg_ref,$print,$chemproc_fc);
-} elsif ($chem_pkg ne 'none') {
+} elsif ($chem_pkg ne 'none' and $chem_pkg !~ 'geoschem') {
    # copy over chem docs
-    copy("$chem_src_dir/chem_mech.doc",$cam_bld) or die "copy failed $! \n";
-    copy("$chem_src_dir/chem_mech.in" ,$cam_bld) or die "copy failed $! \n";
+    copy("$chem_src_dir/chem_mech.doc",$cam_bld) or die "copy of chem_mec.doc failed $! \n";
+    copy("$chem_src_dir/chem_mech.in" ,$cam_bld) or die "copy of chem_mech.in failed $! \n";
     ($chem_nadv) = chem_number_adv($chem_src_dir);
 }
 
@@ -1427,6 +1431,25 @@ if ($chem_pkg =~ '_mam3') {
 } elsif ($chem_pkg =~ '_mam7') {
     $chem_cppdefs = ' -DMODAL_AERO -DMODAL_AERO_7MODE ';
 }
+
+# TMMF - wedge in GEOS-Chem CPP definitions here
+if ($chem_pkg =~ 'geoschem') {
+    $chem_cppdefs .= ' -DEXTERNAL_GRID -DEXTERNAL_FORCING -DLINUX_IFORT -DUSE_REAL8 -DMODEL_ -DMODEL_CESM';
+    # TMMF - Temporary fix
+    $chem_nadv = 200;
+    if (defined $opts{'clm_vers'}) {
+        if ($opts{'clm_vers'} =~ 'CLM4.0') {
+            $chem_cppdefs .= ' -DCLM40'
+        }
+        elsif ($opts{'clm_vers'} =~ 'CLM4.5') {
+            $chem_cppdefs .= ' -DCLM45'
+        }
+        elsif ($opts{'clm_vers'} =~ 'CLM5.0') {
+            $chem_cppdefs .= ' -DCLM50'
+        }
+    }
+}
+
 
 # CARMA sectional microphysics
 #
@@ -2785,13 +2808,17 @@ sub write_filepath
     }
     if ($chem_src_dir) {
         print $fh "$chem_src_dir\n";
+        if ($chem_pkg eq 'geoschem') {
+            print $fh "$chem_src_dir/geoschem_src/GeosCore\n";
+            print $fh "$chem_src_dir/geoschem_src/GeosUtil\n";
+            print $fh "$chem_src_dir/geoschem_src/Headers\n";
+            print $fh "$chem_src_dir/geoschem_src/HEMCO/Core\n";
+            print $fh "$chem_src_dir/geoschem_src/HEMCO/Extensions\n";
+            print $fh "$chem_src_dir/geoschem_src/HEMCO/Interfaces\n";
+            print $fh "$chem_src_dir/geoschem_src/ISORROPIA\n";
+            print $fh "$chem_src_dir/geoschem_src/KPP/Standard\n"; }
+#            print $fh "$camsrcdir/cam/src/chemistry/pp_geoschem\n"; }
     }
-    if ($chem =~ /_mam/) {
-        print $fh "$camsrcdir/src/chemistry/modal_aero\n";
-    } else {
-        print $fh "$camsrcdir/src/chemistry/bulk_aero\n";
-    }
-    print $fh "$camsrcdir/src/chemistry/aerosol\n";
 
     if ($waccmx) {
         print $fh "$camsrcdir/src/physics/waccmx\n";
@@ -2804,7 +2831,21 @@ sub write_filepath
     }
     print $fh "$camsrcdir/src/ionosphere\n";
 
-    print $fh "$camsrcdir/src/chemistry/mozart\n";
+    # -- Added by MSL - 1/2018
+    # -- Updated by TMMF - 11/2019
+    if ($chem_pkg ne 'geoschem') {
+        print $fh "$camsrcdir/cam/src/chemistry/mozart\n";
+        if ($chem =~ /_mam/) {
+            print $fh "$camsrcdir/cam/src/chemistry/modal_aero\n";
+        } else {
+            print $fh "$camsrcdir/cam/src/chemistry/bulk_aero\n";
+        }
+        print $fh "$camsrcdir/cam/src/chemistry/aerosol\n";
+#    }
+#    else {
+#        print $fh "$camsrcdir/cam/src/chemistry/mozart\n";
+    }
+    # --
     print $fh "$camsrcdir/src/chemistry/utils\n";
 
     if ($rad eq 'rrtmg') {

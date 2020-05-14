@@ -10,8 +10,8 @@
    -->
     <desc atm="CAM60[%1PCT][%4xCO2][%CCTS][%CFIRE][%CVBSX][%PORT][%RCO2][%SCAM][%WCCM][%WCMD][%WCSC][%WCTS]">CAM cam6 physics:</desc>
     <desc atm="CAM50[%CCTS][%CLB][%PORT][%RCO2][%SCAM][%WCSC][%WCTS]"              >CAM cam5 physics:</desc>
-    <desc atm="CAM40[%PORT][%RCO2][%SCAM][%TMOZ][%WXIE][%WXIED][%WCMD]"                   >CAM cam4 physics:</desc>
-    <desc atm="CAM[%ADIAB][%DABIP04][%TJ16][%HS94][%KESSLER][%RCO2][%SPCAMS][%SPCAMCLBS][%SPCAMM][%SPCAMCLBM]">CAM simplified and non-versioned physics :</desc>
+    <desc atm="CAM40[%PORT][%RCO2][%SCAM][%TMOZ][%WXIE][%WXIED][%WCMD][%GC]"                   >CAM cam4 physics:</desc>
+    <desc atm="CAM[%ADIAB][%DABIP04][%TJ16][%HS94][%GCHS][%KESSLER][%RCO2][%SPCAMS][%SPCAMCLBS][%SPCAMM][%SPCAMCLBM]">CAM simplified and non-versioned physics :</desc>
 
   <!--
     ===============
@@ -65,6 +65,8 @@
     <desc option="DABIP04"      >CAM dry adiabatic baroclinic instability (Polvani et al., 2004):</desc>
     <desc option="TJ16"         >CAM moist Held-Suarez forcing (Thatcher and Jablonowski, 2016):</desc>
     <desc option="HS94"         >CAM dry Held-Suarez forcing (Held and Suarez (1994)):</desc>
+    <desc option="GC"           >CAM with GEOS-Chem:</desc>
+    <desc option="GCHS"         >CAM with GEOS-Chem dycore test:</desc>
     <desc option="KESSLER"      >CAM moist dynamical core test with Ullrich et al. (2014) baroclinic wave IC, Kessler physics and terminator chemistry:</desc>
 
   <!--
@@ -154,6 +156,8 @@
       <value compset="_CAM%DABIP04">-phys adiabatic</value>
       <value compset="_CAM%TJ16">-phys tj2016 -analytic_ic</value>
       <value compset="_CAM%HS94">-phys held_suarez</value>
+      <value compset="_CAM40%GC">-chem geoschem</value>
+      <value compset="_CAM%GCHS">-phys held_suarez -chem geoschem -analytic_ic</value>
       <value compset="_CAM%KESSLER">-phys kessler -chem terminator -analytic_ic</value>
 
       <!-- Aquaplanet -->
@@ -255,6 +259,10 @@
 
       <!-- SCAM defaults to ARM97, all other IOPs are in usermods_dirs -->
       <value compset="CAM[456]0%SCAM"    >scam_arm97</value>
+
+      <value compset="2000_CAM40%GC"     >geoschem</value>
+      <value compset="CAM%GC"            >geoschem</value>
+      <value compset="CAM%GCHS"          >geoschem_baro_moist</value>
     </values>
     <group>run_component_cam</group>
     <file>env_run.xml</file>

@@ -3,6 +3,8 @@ module cam_cpl_indices
   use seq_flds_mod
   use mct_mod
   use seq_drydep_mod, only: drydep_fields_token, lnd_drydep
+  use seq_drydep_mod, only: luse_fields_token, patch_fields_token
+  use seq_drydep_mod, only: lai_fields_token
   use shr_megan_mod,  only: shr_megan_fields_token, shr_megan_mechcomps_n
   use shr_fire_emis_mod, only: shr_fire_emis_fields_token, shr_fire_emis_ztop_token, shr_fire_emis_mechcomps_n
 
@@ -86,6 +88,9 @@ module cam_cpl_indices
   integer :: index_x2a_So_re           ! square of atm/ocn exch. coeff 
   integer :: index_x2a_So_ssq          ! surface saturation specific humidity in ocean 
   integer :: index_x2a_Sl_ddvel        ! dry deposition velocities from land
+  integer :: index_x2a_Sl_lwtgcell     ! landunit area weights
+  integer :: index_x2a_Sl_pwtgcell     ! patch area weights
+  integer :: index_x2a_Sl_lai          ! leaf area indices
   integer :: index_x2a_Sx_u10          ! 10m wind
 
 contains
@@ -157,9 +162,15 @@ contains
     endif
 
     if ( lnd_drydep )then
-       index_x2a_Sl_ddvel   = mct_avect_indexra(x2a, trim(drydep_fields_token))
+       index_x2a_Sl_ddvel    = mct_avect_indexra(x2a, trim(drydep_fields_token))
+       index_x2a_Sl_lwtgcell = mct_avect_indexra(x2a, trim(luse_fields_token))
+       index_x2a_Sl_pwtgcell = mct_avect_indexra(x2a, trim(patch_fields_token))
+       index_x2a_Sl_lai      = mct_avect_indexra(x2a, trim(lai_fields_token))
     else
-       index_x2a_Sl_ddvel   = 0
+       index_x2a_Sl_ddvel    = 0
+       index_x2a_Sl_lwtgcell = 0
+       index_x2a_Sl_pwtgcell = 0
+       index_x2a_Sl_lai      = 0
     end if
 
     index_a2x_Sa_z          = mct_avect_indexra(a2x,'Sa_z')
