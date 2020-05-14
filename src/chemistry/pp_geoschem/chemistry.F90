@@ -14,16 +14,16 @@ module chemistry
   !use mo_chem_utls,        only : get_spc_ndx
   !use chem_mods,           only : gas_pcnst, adv_mass
   !use mo_sim_dat, only: set_sim_dat
-  use spmd_utils,          only : masterproc
+  use spmd_utils,          only : MasterProc
   use cam_logfile,         only : iulog
 
   use Input_Opt_Mod,       only : OptInput
   use State_Met_Mod,       only : MetState
   use State_Chm_Mod,       only : ChmState
 
-  implicit none
-  private
-  save
+  IMPLICIT NONE
+  PRIVATE
+  SAVE
   !
   ! Public interfaces
   !
@@ -58,7 +58,7 @@ module chemistry
   !===== SDE DEBUG =====
 
   ! Location of valid input.geos
-  character(len=500) :: inputGeosPath
+  CHARACTER(LEN=500) :: inputGeosPath
 
   ! GEOS-Chem state variables
   Type(OptInput),Allocatable      :: Input_Opt(:)
@@ -69,15 +69,15 @@ module chemistry
 contains
 !================================================================================================
 
-  logical function chem_is (name)
+  LOGICAL function chem_is (NAME)
 
-    character(len=*), intent(in) :: name
+    CHARACTER(LEN=*), INTENT(IN) :: NAME
 
     chem_is = .false.
-    if (name == 'geoschem' ) then
+    IF (NAME == 'geoschem' ) THEN
        chem_is = .true.
-    end if
-    if (masterproc) write(iulog,'(a)') 'GCCALL CHEM_IS'
+    ENDIF
+    IF (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_IS'
 
   end function chem_is
 
@@ -91,16 +91,16 @@ contains
     ! Purpose: register advected constituents for chemistry
     !
     !-----------------------------------------------------------------------
-    integer            :: i, n
-    real(r8)           :: cptmp
-    real(r8)           :: qmin
-    character(len=128) :: mixtype
-    character(len=128) :: molectype
-    character(len=128) :: lng_name
-    logical            :: camout
-    logical            :: ic_from_cam2
-    logical            :: has_fixed_ubc
-    logical            :: has_fixed_ubflx
+    INTEGER            :: i, n
+    REAL(r8)           :: cptmp
+    REAL(r8)           :: qmin
+    CHARACTER(LEN=128) :: mixtype
+    CHARACTER(LEN=128) :: molectype
+    CHARACTER(LEN=128) :: lng_name
+    LOGICAL            :: camout
+    LOGICAL            :: ic_from_cam2
+    LOGICAL            :: has_fixed_ubc
+    LOGICAL            :: has_fixed_ubflx
     ! SDE 2018-05-02: This seems to get called before anything else
     ! That includes CHEM_INIT
     ! At this point, mozart calls SET_SIM_DAT, which is specified by each
@@ -108,26 +108,26 @@ contains
     ! set_sim_dat which is in pp_[mechanism]/mo_sim_dat.F90. That sets a lot of
     ! data in other places, notably in "chem_mods"
 
-    if (masterproc) write(iulog,'(a)') 'GCCALL CHEM_REGISTER'
+    if (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_REGISTER'
     ! At the moment, we force nadv_chem=200 in the setup file
-    ntracers = 200
-    do i = 1, ntracersmax
+    NTRACERS = 200
+    DO I = 1, NTRACERSMAX
        ! TODO: Read input.geos in chem_readnl to get tracernames(1:ntracers)
        ! TODO: Get all other species properties here from species database
        ! Hard-code for now
-       select case (tracernames(i))
-          case ('BCPI')
+       SELECT CASE (TRACERNAMES(I))
+          CASE ('BCPI')
              lng_name = 'Hydrophilic black carbon'
              ! Molar mass (g/mol)
              adv_mass(i) = 1000.0e+0_r8 * (0.012e+0_r8)
-          case ('OCS')
+          CASE ('OCS')
              lng_name = 'Carbonyl sulfide'
              ! Molar mass (g/mol)
              adv_mass(i) = 1000.0e+0_r8 * (0.060e+0_r8)
-          case default
+          CASE DEFAULT
              lng_name = tracernames(i)
              adv_mass(i) = 1000.0e+0_r8 * (0.001e+0_r8)
-       end select
+       END SELECT
        ! dummy value for specific heat of constant pressure (Cp)
        cptmp = 666._r8
        ! minimum mixing ratio
@@ -147,11 +147,11 @@ contains
        !write(tracernames(i),'(a,I0.4)') 'GCTRC_', i
        ! NOTE: In MOZART, this only gets called for tracers
        ! This is the call to add a "constituent"
-       call cnst_add( trim(tracernames(i)), adv_mass(i), cptmp, qmin, n, &
+       CALL cnst_add( trim(tracernames(i)), adv_mass(i), cptmp, qmin, n, &
                       readiv=ic_from_cam2, mixtype=mixtype, cam_outfld=camout, &
                       molectype=molectype, fixed_ubc=has_fixed_ubc, &
                       fixed_ubflx=has_fixed_ubflx, longname=trim(lng_name) )
-    end do
+    ENDDO
 
        ! MOZART uses this for short-lived species. Not certain exactly what it
        ! does, but note that the "ShortLivedSpecies" physics buffer already
@@ -181,72 +181,76 @@ contains
     use gckpp_Model,    only : nspec, spc_names
 
     ! args
-    character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
+    CHARACTER(LEN=*), INTENT(IN) :: nlfile  ! filepath for file containing namelist input
 
     ! Local variables
-    integer :: i, unitn, ierr
-    character(len=500) :: line
+    INTEGER :: I, UNITN, IERR
+    CHARACTER(LEN=500) :: LINE
     logical :: menuFound, validSLS
 
     inputGeosPath='/n/scratchlfs/jacob_lab/elundgren/UT/runs/4x5_standard/input.geos.template'
 
-    if (masterproc) write(iulog,'(a)') 'GCCALL CHEM_READNL'
+    IF (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_READNL'
 
     ! TODO: Read in input.geos and get species names
-    if (masterproc) then
-        unitn = getunit()
-        open( unitn, file=trim(inputGeosPath), status='old', iostat=ierr )
-        if (ierr .ne. 0) then
-            call endrun('chem_readnl: ERROR opening input.geos')
-        end if
+    IF (MasterProc) THEN
+        UNITN = GETUNIT()
+        OPEN( UNITN, FILE=TRIM(inputGeosPath), STATUS='old', IOSTAT=IERR )
+        IF (IERR .NE. 0) THEN
+            CALL ENDRUN('chem_readnl: ERROR opening input.geos')
+        ENDIF
+
         ! Go to ADVECTED SPECIES MENU
         menuFound = .False.
-        Do While (.not.menuFound)
-            read( unitn, '(a)', iostat=ierr ) line
-            if (ierr.ne.0) then
-                call endrun('chem_readnl: ERROR finding advected species menu')
-            else  if (index(line,'ADVECTED SPECIES MENU') > 0) then
+        DO WHILE (.NOT.menuFound)
+            READ( UNITN, '(a)', IOSTAT=IERR ) LINE
+            IF (IERR.NE.0) THEN
+                CALL ENDRUN('chem_readnl: ERROR finding advected species menu')
+            ELSEIF (INDEX(LINE,'ADVECTED SPECIES MENU') > 0) then
                 menuFound=.True.
-       end if
-    end do
+            ENDIF
+        ENDDO
+
         ! Skip first line
-        read(unitn,'(a)',iostat=ierr) line
+        READ(UNITN,'(a)',IOSTAT=IERR) LINE
         ! Read in tracer count
-        read(unitn,'(26x,I)',iostat=ierr) ntracers
+        READ(UNITN,'(26x,I)',IOSTAT=IERR) NTRACERS
         ! Skip divider line
-        read(unitn,'(a)',iostat=ierr) line
+        READ(UNITN,'(a)',IOSTAT=IERR) LINE
         ! Read in each tracer
-        do i=1,ntracers
-            read(unitn,'(26x,a)',iostat=ierr) line
+        DO I=1,NTRACERS
+            READ(UNITN,'(26x,a)',iostat=ierr) line
             tracernames(i) = trim(line)
-        end do
-        close(unitn)
-        call freeunit(unitn)
+        ENDDO
+        CLOSE(UNITN)
+        CALL FREEUNIT(UNITN)
+
         ! Assign remaining tracers dummy names
-    do i=(ntracers+1),ntracersmax
-       write(tracernames(i),'(a,I0.4)') 'GCTRC_',i
-    end do
+        DO I=(NTRACERS+1),NTRACERSMAX
+            WRITE(TRACERNAMES(I),'(a,I0.4)') 'GCTRC_',I
+        ENDDO
 
         ! Now go through the KPP mechanism and add any species not implemented by
         ! the tracer list in input.geos
-        if ( nspec > nslsmax ) then
-            call endrun('chem_readnl: too many species - increase nslsmax')
-        end If
-        nsls = 0
-        do i=1,nspec
+        IF ( NSPEC > NSLSMAX ) THEN
+            CALL ENDRUN('chem_readnl: too many species - increase nslsmax')
+        ENDIF
+
+        NSLS = 0
+        DO I=1,NSPEC
             ! Get the name of the species from KPP
-            line = adjustl(trim(spc_names(i)))
+            LINE = ADJUSTL(TRIM(SPC_NAMES(I)))
             ! Only add this
-            validSLS = ( (.not.any(trim(line).eq.tracernames)).and.&
-                         (.not.(line(1:2) == 'RR')) )
-            if (validSLS) then
+            validSLS = ( (.NOT.ANY(TRIM(LINE).EQ.TRACERNAMES)).AND.&
+                         (.NOT.(LINE(1:2) == 'RR')) )
+            IF (validSLS) THEN
                 ! Genuine new short-lived species
-                nsls = nsls + 1
-                slsnames(nsls) = trim(line)
-                write(iulog,'(a,I5,a,a)') ' --> GC species ',nsls, ': ',trim(line)
-            end if
-        end do
-    end if
+                NSLS = NSLS + 1
+                SLSNAMES(NSLS) = TRIM(LINE)
+                WRITE(iulog,'(a,I5,a,a)') ' --> GC species ',nsls, ': ', TRIM(LINE)
+            ENDIF
+        ENDDO
+    ENDIF
 
     ! Broadcast to all processors
 #if defined( SPMD )
@@ -265,7 +269,9 @@ contains
     logical :: chem_is_active
     !-----------------------------------------------------------------------
     chem_is_active = .true.
-    if (masterproc) write(iulog,'(a)') 'GCCALL CHEM_IS_ACTIVE'
+
+    IF (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_IS_ACTIVE'
+
   end function chem_is_active
 
 !================================================================================================
@@ -278,24 +284,25 @@ contains
     ! Author: B. Eaton
     !
     !-----------------------------------------------------------------------
-    implicit none
+    IMPLICIT NONE
     !-----------------------------Arguments---------------------------------
 
-    character(len=*), intent(in) :: name   ! constituent name
-    logical :: chem_implements_cnst        ! return value
+    CHARACTER(LEN=*), INTENT(IN) :: name   ! constituent name
+    LOGICAL :: chem_implements_cnst        ! return value
 
-    integer :: i
+    INTEGER :: I
 
     chem_implements_cnst = .false.
 
-    do i = 1, ntracers
-       if (trim(tracernames(i)) .eq. trim(name)) then
+    DO I = 1, NTRACERS
+       IF (TRIM(TRACERNAMES(I)) .eq. TRIM(NAME)) THEN
           chem_implements_cnst = .true.
-          exit
-       end if
-    end do
+          EXIT
+       ENDIF
+    ENDDO
 
-    if (masterproc) write(iulog,'(a)') 'GCCALL CHEM_IMPLEMENTS_CNST'
+    IF (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_IMPLEMENTS_CNST'
+
   end function chem_implements_cnst
 
 !===============================================================================
@@ -315,32 +322,37 @@ contains
     use State_Chm_Mod
     use GC_Environment_Mod
 
-    type(physics_state), intent(in):: phys_state(begchunk:endchunk)
-    type(physics_buffer_desc), pointer :: pbuf2d(:,:)
+    TYPE(physics_state), INTENT(IN):: phys_state(BEGCHUNK:ENDCHUNK)
+    TYPE(physics_buffer_desc), POINTER :: pbuf2d(:,:)
 
-    integer :: lchnk(begchunk:endchunk), ncol(begchunk:endchunk)
-    integer :: iwait
+    INTEGER :: LCHNK(BEGCHUNK:ENDCHUNK), NCOL(BEGCHUNK:ENDCHUNK)
+    INTEGER :: IWAIT
 
-    integer :: iipar, jjpar, llpar
-    integer :: nlev, i
+    INTEGER :: IIPAR, JJPAR, LLPAR
+    INTEGER :: NLEV, I, RC
+
+    LOGICAL :: am_I_Root
 
     ! lchnk: which chunks we have on this process
-    lchnk = phys_state%lchnk
+    LCHNK = PHYS_STATE%LCHNK
     ! ncol: number of atmospheric columns for each chunk
-    ncol  = phys_state%ncol
+    NCOL  = PHYS_STATE%NCOL
     ! nlev: number of vertical levels
-    nlev  = pver
+    NLEV  = PVER
 
     ! This ensures that each process allocates everything needed for its chunks
-    if (.not.allocated(Input_Opt)) then
-        Allocate(Input_Opt(begchunk:endchunk))
-        Allocate(State_Met(begchunk:endchunk))
-        Allocate(State_Chm(begchunk:endchunk))
-        if (masterproc) write(iulog,'(a,3(x,L1))') ' --> ALLOC CHECK   : ', Allocated(Input_Opt), Allocated(State_Met), Allocated(State_Chm)
-    end if
-    write(iulog,'(a,x,L1,2(x,I6))') ' --> SIZE  CHECK   : ', masterproc,lbound(Input_Opt),ubound(Input_Opt)
+    IF (.NOT.ALLOCATED(Input_Opt)) THEN
+        ALLOCATE(Input_Opt(BEGCHUNK:ENDCHUNK))
+        ALLOCATE(State_Met(BEGCHUNK:ENDCHUNK))
+        ALLOCATE(State_Chm(BEGCHUNK:ENDCHUNK))
+        IF (MasterProc) WRITE(iulog,'(a,3(x,L1))') ' --> ALLOC CHECK   : ', ALLOCATED(Input_Opt), ALLOCATED(State_Met), ALLOCATED(State_Chm)
+    ENDIF
+    WRITE(iulog,'(a,x,L1,2(x,I6))') ' --> SIZE  CHECK   : ', MasterProc, LBOUND(Input_Opt), UBOUND(Input_Opt)
 
-    Do i = begchunk, endchunk
+    DO I = BEGCHUNK, ENDCHUNK
+
+        ! Only treat the first chunk as the "root" CPU
+        am_I_Root = ((I.eq.BEGCHUNK) .and. MasterProc)
 
         ! Set some basic flags
         Input_Opt(i)%Max_BPCH_Diag     = 1000
@@ -351,19 +363,20 @@ contains
         Input_Opt(i)%Linoz_NLat        = 18
         Input_Opt(i)%Linoz_NMonths     = 12
         Input_Opt(i)%Linoz_NFields     = 7
-        Input_Opt(i)%RootCPU           = ((i.eq.begchunk) .and. MasterProc)
+        Input_Opt(i)%RootCPU           = am_I_Root
 
         IIPAR = 1
-        JJPAR = ncol(i)
-        LLPAR = nlev
+        JJPAR = NCOL(I)
+        LLPAR = NLEV
 
-    end do
+    ENDDO
 
     ! Can add history output here too with the "addfld" & "add_default" routines
     ! Note that constituents are already output by default
-    call addfld ( 'BCPI', (/'lev'/), 'A', 'mole/mole', trim('BCPI')//' mixing ratio' )
-    call add_default ( 'BCPI',   1, ' ')
-    if (masterproc) write(iulog,'(a)') 'GCCALL CHEM_INIT'
+    CALL addfld ( 'BCPI', (/'lev'/), 'A', 'mole/mole', trim('BCPI')//' mixing ratio' )
+    CALL add_default ( 'BCPI',   1, ' ')
+
+    IF (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_INIT'
 
   end subroutine chem_init
 
@@ -372,10 +385,10 @@ contains
   subroutine chem_timestep_init(phys_state, pbuf2d)
     use physics_buffer,   only: physics_buffer_desc
 
-    type(physics_state), intent(in):: phys_state(begchunk:endchunk)
-    type(physics_buffer_desc), pointer :: pbuf2d(:,:)
+    TYPE(physics_state), INTENT(IN):: phys_state(begchunk:endchunk)
+    TYPE(physics_buffer_desc), POINTER :: pbuf2d(:,:)
 
-    if (masterproc) write(iulog,'(a)') 'GCCALL CHEM_TIMESTEP_INIT'
+    IF (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_TIMESTEP_INIT'
 
     ! This is when we want to update State_Met and so on
     ! Note that here we have been passed MANY chunks
@@ -390,13 +403,13 @@ contains
     use cam_history,      only: outfld
     use camsrfexch,       only: cam_in_t, cam_out_t
 
-    real(r8),            intent(in)    :: dt          ! time step
-    type(physics_state), intent(in)    :: state       ! Physics state variables
-    type(physics_ptend), intent(out)   :: ptend       ! indivdual parameterization tendencies
-    type(cam_in_t),      intent(inout) :: cam_in
-    type(cam_out_t),     intent(in)    :: cam_out
-    type(physics_buffer_desc), pointer :: pbuf(:)
-    real(r8), optional,  intent(out)   :: fh2o(pcols) ! h2o flux to balance source from chemistry
+    REAL(r8),            INTENT(IN)    :: dt          ! time step
+    TYPE(physics_state), INTENT(IN)    :: state       ! Physics state variables
+    TYPE(physics_ptend), INTENT(OUT)   :: ptend       ! indivdual parameterization tendencies
+    TYPE(cam_in_t),      INTENT(INOUT) :: cam_in
+    TYPE(cam_out_t),     INTENT(IN)    :: cam_out
+    TYPE(physics_buffer_desc), POINTER :: pbuf(:)
+    REAL(r8), OPTIONAL,  INTENT(OUT)   :: fh2o(pcols) ! h2o flux to balance source from chemistry
 
     ! Mapping (?)
     logical :: lq(pcnst)
@@ -416,73 +429,93 @@ contains
 
     ! 1. Update State_Met etc for this timestep
 
-    !if (masterproc) write(iulog,*) ' --> TEND SIZE: ', size(state%ncol)
-    !if (masterproc) write(iulog,'(a,2(x,I6))') ' --> TEND SIDE:  ', lbound(state%ncol),ubound(state%ncol)
+    !if (MasterProc) WRITE(iulog,*) ' --> TEND SIZE: ', size(state%ncol)
+    !if (MasterProc) WRITE(iulog,'(a,2(x,I6))') ' --> TEND SIDE:  ', lbound(state%ncol),ubound(state%ncol)
 
 
-    if (masterproc) write(iulog,'(a)') 'GCCALL CHEM_TIMESTEP_TEND'
+    IF (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_TIMESTEP_TEND'
     lq(:) = .false.
-    do n=1,pcnst
+    DO n=1,pcnst
         !m = map2chm(n)
         m=0
-        if (m > 0) lq(n) = .true.
-    end do
-    call physics_ptend_init(ptend, state%psetcols, 'chemistry', lq=lq)
+        IF (m > 0) lq(n) = .true.
+    ENDDO
+
+    CALL physics_ptend_init(ptend, state%psetcols, 'chemistry', lq=lq)
     ! ptend%q dimensions: [column, ?, species]
     !ptend%q(:ncol,:,:) = 0.0e+0_r8
     !ptend%q(:ncol,:,:) = 0.0e+0_r8
     ptend%q(:,:,:) = 0.0e+0_r8
-    if (present(fh2o)) fh2o(:) = 0.0e+0_r8
+    IF (present(fh2o)) fh2o(:) = 0.0e+0_r8
 
-    return
+    RETURN
+
   end subroutine chem_timestep_tend
 
 !===============================================================================
   subroutine chem_init_cnst(name, latvals, lonvals, mask, q)
 
-    character(len=*), intent(in)  :: name       !  constituent name
-    real(r8),         intent(in)  :: latvals(:) ! lat in degrees (ncol)
-    real(r8),         intent(in)  :: lonvals(:) ! lon in degrees (ncol)
-    logical,          intent(in)  :: mask(:)    ! Only initialize where .true.
-    real(r8),         intent(out) :: q(:,:)     ! kg tracer/kg dry air (ncol, plev
+    CHARACTER(LEN=*), INTENT(IN)  :: name       !  constituent name
+    REAL(r8),         INTENT(IN)  :: latvals(:) ! lat in degrees (ncol)
+    REAL(r8),         INTENT(IN)  :: lonvals(:) ! lon in degrees (ncol)
+    LOGICAL,          INTENT(IN)  :: mask(:)    ! Only initialize where .true.
+    REAL(r8),         INTENT(OUT) :: q(:,:)     ! kg tracer/kg dry air (ncol, plev
     ! Used to initialize tracer fields if desired.
     ! Will need a simple mapping structure as well as the CAM tracer registration
     ! routines.
 
-    integer :: ilev, nlev
+    INTEGER :: ILEV, NLEV
 
-    if (masterproc) write(iulog,'(a)') 'GCCALL CHEM_INIT_CNST'
+    if (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_INIT_CNST'
 
-    nlev = size(q, 2)
-    if ( any( tracernames .eq. name ) ) then
-       do ilev=1,nlev
-          where(mask)
+    NLEV = SIZE(Q, 2)
+    IF ( ANY( TRACERNAMES .EQ. NAME ) ) THEN
+       DO ILEV=1,NLEV
+          WHERE(MASK)
              ! Set to the minimum mixing ratio
-             q(:,ilev) = 1.0e-38_r8
-          end where
-       end do
-    end if
+             q(:,ILEV) = 1.0e-38_r8
+          ENDWHERE
+       ENDDO
+    ENDIF
 
   end subroutine chem_init_cnst
 
 !===============================================================================
   subroutine chem_final
 
-    ! Finalize GEOS-Chem
-    if (masterproc) write(iulog,'(a)') 'GCCALL CHEM_FINAL'
-    If (allocated(Input_Opt))     Deallocate(Input_Opt)
-    If (allocated(State_Met))     Deallocate(State_Met)
-    If (allocated(State_Chm))     Deallocate(State_Chm)
-    if (masterproc) write(iulog,'(a,3(x,L1))') ' --> DEALLOC CHECK : ', Allocated(Input_Opt), Allocated(State_Met), Allocated(State_Chm)
+    USE Input_Opt_Mod, ONLY : CLEANUP_INPUT_OPT
 
-    return
+    INTEGER :: I, RC
+    LOGICAL :: am_I_Root
+
+    ! Finalize GEOS-Chem
+    IF (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_FINAL'
+    
+    ! Loop over each chunk
+    DO I = BEGCHUNK, ENDCHUNK
+        am_I_Root = ((I.eq.BEGCHUNK) .and. MasterProc)
+        CALL CLEANUP_INPUT_OPT( am_I_Root, Input_Opt(i), RC )
+    ENDDO
+
+    ! Finally deallocate state variables
+    IF (ALLOCATED(Input_Opt))     DEALLOCATE(Input_Opt)
+    IF (ALLOCATED(State_Met))     DEALLOCATE(State_Met)
+    IF (ALLOCATED(State_Chm))     DEALLOCATE(State_Chm)
+
+    IF (MasterProc) WRITE(iulog,'(a,3(x,L1))') ' --> DEALLOC CHECK : ', ALLOCATED(Input_Opt), ALLOCATED(State_Met), ALLOCATED(State_Chm)
+
+    RETURN
+
   end subroutine chem_final
 !===============================================================================
   subroutine chem_init_restart(File)
     use pio, only : file_desc_t
-    type(file_desc_t) :: File
-    if (masterproc) write(iulog,'(a)') 'GCCALL CHEM_INIT_RESTART'
-    return
+    TYPE(file_desc_t) :: File
+    
+    IF (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_INIT_RESTART'
+
+    RETURN
+
   end subroutine chem_init_restart
 !===============================================================================
   subroutine chem_write_restart( File )
@@ -490,10 +523,10 @@ contains
     !use tracer_srcs, only: write_tracer_srcs_restart
     !use linoz_data,  only: write_linoz_data_restart
     use pio, only : file_desc_t
-    implicit none
-    type(file_desc_t) :: File
+    IMPLICIT NONE
+    TYPE(file_desc_t) :: File
 
-    if (masterproc) write(iulog,'(a)') 'GCCALL CHEM_WRITE_RESTART'
+    IF (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_WRITE_RESTART'
     !
     ! data for offline tracers
     !
@@ -508,10 +541,10 @@ contains
     !use linoz_data,  only: read_linoz_data_restart
 
     use pio, only : file_desc_t
-    implicit none
-    type(file_desc_t) :: File
+    IMPLICIT NONE
+    TYPE(file_desc_t) :: File
 
-    if (masterproc) write(iulog,'(a)') 'GCCALL CHEM_READ_RESTART'
+    if (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_READ_RESTART'
     !
     ! data for offline tracers
     !
@@ -525,9 +558,10 @@ contains
 
     ! Arguments:
 
-    type(physics_state),    intent(in)    :: state   ! Physics state variables
-    type(cam_in_t),         intent(inout) :: cam_in  ! import state
-    if (masterproc) write(iulog,'(a)') 'GCCALL CHEM_EMISSIONS'
+    TYPE(physics_state),    INTENT(IN)    :: state   ! Physics state variables
+    TYPE(cam_in_t),         INTENT(INOUT) :: cam_in  ! import state
+
+    IF (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_EMISSIONS'
 
   end subroutine chem_emissions
 
