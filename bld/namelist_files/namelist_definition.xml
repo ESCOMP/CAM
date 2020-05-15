@@ -6899,18 +6899,17 @@ Default: FALSE
 </entry>
 
 <!-- SE dycore -->
-
-<entry id="se_qsize_condensate_loading" type="integer" category="se"
-       group="dyn_se_inparm" valid_values="1,2,3,4,5,6" >
-Number of water tracers active in condensate-loading terms in dynamical core
-1: water vapor only
-2: water vapor and cloud liquid
-3: water vapor, cloud liquid and cloud ice
-4: water vapor, cloud liquid, cloud ice and rain
-5: water vapor, cloud liquid, cloud ice, rain and snow
-6: water vapor, cloud liquid, cloud ice, rain, snow and graupel
-Default: 3 for CAM4, CAM5; 5 for CAM6; 1 for Held_Suarez, Adiabatic and Kessler
+<entry id="dry_air_composition" type="char*6(20)"  category="se"
+       group="air_composition_nl" valid_values="" >
+List of components of dry air.
+Default: none
 </entry>
+<entry id="moist_air_composition" type="char*6(20)"  category="se"
+       group="air_composition_nl" valid_values="" >
+List of components of moist air excluding dry air components.
+Default: none
+</entry>
+
 
 <entry id="se_fine_ne" type="integer" category="se"
        group="dyn_se_inparm" valid_values="" >
@@ -6979,6 +6978,17 @@ Default: 0.5.
        group="dyn_se_inparm" valid_values="" >
 Rayleigh friction parameter to determine the approximate value of the decay
 time (days) at model top.  If 0.0 then no Rayleigh friction is applied.
+Default: 0.
+</entry>
+
+<entry id="se_molecular_diff" type="real" category="se"
+       group="dyn_se_inparm" valid_values="" >
+se_molecular_diff = 1: Activate molecular diffusion and thermal conductivity in the
+dynamical core.
+If se_molecular_diff > 1 then the molecular diffusion and thermal conductivity
+coefficients will be increased by a factor of se_molecular_diff (used for sponge layer
+diffusion).
+se_molecular_diff = 0: Code not activated.
 Default: 0.
 </entry>
 
@@ -7176,15 +7186,31 @@ Default: 3
 </entry>
 
 <entry id="se_vert_remap_q_alg" type="integer" category="se"
-       group="dyn_se_inparm" valid_values="1,2,10">
+       group="dyn_se_inparm" valid_values="1,2,10,-4,-9,-40,-90">
 CAM-SE vertical remap algorithm
-1: PPM vertical remap with mirroring at the boundaries
-   (solid wall bc's, high-order throughout)
-   PCoM in sponge
-2: PPM vertical remap without mirroring at the boundaries
-   (no bc's enforced, first-order at two cells bordering top and bottom
-   boundaries)
-10: PPM with linear extrapolation in ghost cells
+  1: PPM vertical remap with mirroring at the boundaries
+     (solid wall bc's, high-order throughout)
+  2: PPM vertical remap without mirroring at the boundaries
+     (no bc's enforced, first-order at two cells bordering top and bottom
+     boundaries)
+10: PPM with linear extrapolation in ghost cells (code from A. Bradley, DOE)
+
+Mapping of temperature:
+
+    For se_vert_remap_q_alg>-20: cp*T is mapped (thermal energy conserving)
+                                 using mapping algorithm se_vert_remap_q_alg
+    For se_vert_remap_q_alg<-20: mapping Tv over p or mapping Tv over log(p)
+                                 using mapping algorithm se_vert_remap_q_alg/10
+
+Negative values will use FV3 vertical remapping algorithm
+     
+ -4: Monotone PPM (-40 is same as 4 but mapping Tv over p for temperature)
+ -6: PPM
+ -7: PPM with Hyunh’s second constraint (see L04)
+ -9: Monotonic cubic spline with 2∆z oscillations removed
+-10: Selectively monotonic cubic spline, where local extrema are retained, with 2∆z oscillations removed
+-11: Non-monotonic (linear) cubic spline with 2∆z oscillations removed; if an invalid value for kord is given, this scheme is used
+-13: Monotonic cubic spline with 2∆z oscillations removed
 Default: Set by build-namelist.
 </entry>
 

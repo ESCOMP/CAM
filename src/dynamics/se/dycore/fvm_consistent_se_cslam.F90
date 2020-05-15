@@ -4,7 +4,7 @@ module fvm_consistent_se_cslam
   use dimensions_mod,         only: irecons_tracer
   use dimensions_mod,         only: kmin_jet,kmax_jet
   use cam_abortutils,         only: endrun
-  use cam_logfile,            only: iulog
+!  use cam_logfile,            only: iulog
 
   use time_mod,               only: timelevel_t
   use element_mod,            only: element_t
@@ -538,7 +538,7 @@ contains
             end do
             call get_flux_segments_area_iterate(x,x_static,dx_static,dx,x_start,dgam_vec,num_seg,num_seg_static,&
                  num_seg_max,num_area,dp_area,flowcase,gamma,mass_flux_se(i,j,iside),0.0_r8,gamma_max,          &
-                 gsweights,gspts)
+                 gsweights,gspts,ilev)
             !call t_stopf('fvm:swept_area:get_gamma')
             !
             ! pack segments for high-order weights computation
@@ -580,8 +580,8 @@ contains
             end do
             fvm%se_flux(i,j,iside,ilev) = mass_flux_se(i,j,iside)-flux
             if (fvm%se_flux(i,j,iside,ilev)>1.0E-13_r8.and.(ilev<kmin_jet.or.ilev>kmax_jet)) then
-              write(iulog,*) "CN excess flux outside of pre-scribed jet region"
-              write(iulog,*) "Increase jet region with kmin_jet and kmax_jet ",&
+              write(*,*) "CN excess flux outside of pre-scribed jet region"
+              write(*,*) "Increase jet region with kmin_jet and kmax_jet ",&
                    ilev,fvm%se_flux(i,j,iside,ilev),mass_flux_se(i,j,iside),flux,flowcase,&
                    kmin_jet,kmax_jet
               call endrun('ERROR in CSLAM: local Courant number is > 1; Increase kmin_jet/kmax_jet?')
@@ -836,14 +836,14 @@ contains
                    x_tmp(:,:,:),x_static(:,:,:,iside,i,j),dx_static(:,:,:,iside,i,j),dx_tmp(:,:,:),&
                    x_start(:,:,iside,i,j),dgam_vec(:,:,iside,i,j),num_seg(:,iside),num_seg_static(:,iside),&
                    num_seg_max,num_area,dp_area,flowcase(iside),gamma(iside),flux_se,0.0_r8,1.0_r8,        &
-                   gsweights,gspts)
+                   gsweights,gspts,k)
               fvm%se_flux(i,j,iside,k) = ABS(SUM(gamma(iside)*dgam_vec(:,1,iside,i,j)))
 #ifdef waccm_debug
               fvm%CSLAM_gamma(i,j,k,iside) = gamma(iside)
 #endif              
               if (gamma(iside)>1_r8) then
                  if (.not.large_Courant_incr) then
-                    write(iulog,*) 'ERROR in CSLAM: local Courant number is >1: gamma=',gamma(iside),' k=',k
+                    write(*,*) 'ERROR in CSLAM: local Courant number is >1: gamma=',gamma(iside),' k=',k
                     call endrun('ERROR in CSLAM: local Courant number is > 1; set namelist se_large_Courant_incr=.true. ')
                  endif
                 gamma(iside)=1.0_r8-eps
@@ -863,7 +863,7 @@ contains
 
 
   subroutine get_flux_segments_area_iterate(x,x_static,dx_static,dx,x_start,dgam_vec,num_seg,num_seg_static,&
-       num_seg_max,num_area,c,flow_case,gamma,flux,gamma_min,gamma_max,gsweights,gspts)
+       num_seg_max,num_area,c,flow_case,gamma,flux,gamma_min,gamma_max,gsweights,gspts,ilev)
     implicit none
     integer                                                , intent(in)    :: num_area, num_seg_max
     REAL(KIND=r8), dimension(2,num_seg_max,num_area), intent(in)    :: x_static, dx_static
@@ -872,7 +872,7 @@ contains
     REAL(KIND=r8), dimension(2,8)                   , intent(in) :: x_start, dgam_vec
     REAL(KIND=r8)                                   , intent(inout) :: gamma
     REAL(KIND=r8)                                   , intent(in) :: flux,gamma_min,gamma_max
-    integer                                                , intent(in) :: flow_case
+    integer                                                , intent(in) :: flow_case,ilev
 
     real (kind=r8), dimension(num_area)             , intent(in) :: c
     real (kind=r8), dimension(ngpc)                 , intent(in) :: gsweights, gspts
@@ -887,7 +887,7 @@ contains
     real (kind=r8) :: xq2,xq2i, rho, rhoi, yrh, w_static(num_area)
 
     integer :: iseg,iarea,iter,ipt
-    integer, parameter :: iter_max=20
+    integer, parameter :: iter_max=40
     logical :: lexit_after_one_more_iteration
 
     lexit_after_one_more_iteration = .false.
@@ -1243,7 +1243,7 @@ contains
            ! dgamma set to minimum displacement to avoid f2-f1=0
            !
            gamma3=gamma2-SIGN(1.0_r8,dgamma)*eps
-           write(iulog,*) "WARNING: setting gamma to min",gamma3,iter
+!xxx           write(*,*) "WARNING: setting gamma to min: gamma3,iter,ilev",gamma3,iter,ilev
          end if
          gamma3=MAX(gamma3,gamma_min)
          !
@@ -1252,8 +1252,8 @@ contains
          gamma1 = gamma2; f1 = f2; gamma2 = gamma3;
        endif
      end do
-     if (iter>iter_max) write(iulog,*) "WARNING: iteration not converged",&
-          ABS(f2),flux,gamma1,gamma2,gamma3
+     if (iter>iter_max) write(*,*) "WARNING: iteration not converged",&
+          ABS(f2),flux,gamma1,gamma2,gamma3,ilev
   end subroutine get_flux_segments_area_iterate
 
   subroutine define_swept_areas(fvm,ilev,displ,base_vec,base_vtx,idx)

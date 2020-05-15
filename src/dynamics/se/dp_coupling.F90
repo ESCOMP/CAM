@@ -484,10 +484,10 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
                   phys_state(lchnk)%q(icol,ilyr,m) = factor*phys_state(lchnk)%q(icol,ilyr,m)
                end if
             end do
-            call thermodynamic_consistency( &
-               phys_state(lchnk), phys_tend(lchnk), icol, ilyr, q_prev(icol,ilyr,1,lchnk))
-         end do
-      end do
+          end do
+        end do
+       call thermodynamic_consistency( &
+            phys_state(lchnk), phys_tend(lchnk), ncols, pver)
    end do
 
 
@@ -738,11 +738,11 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
    ! Finally compute energy and water column integrals of the physics input state.
 
    use constituents,  only: qmin
-   use physconst,     only: cpair, gravit, rair, zvir, cappa, rairv,rh2o,rair
+   use physconst,     only: cpair, gravit, zvir, cappa, rairv
    use geopotential,  only: geopotential_t
    use physics_types, only: set_state_pdry, set_wet_to_dry
    use check_energy,  only: check_energy_timestep_init
-   use hycoef,        only: hyam, hybm, hyai, hybi, ps0
+   use hycoef,        only: hyai, hybi, ps0
    use shr_vmath_mod, only: shr_vmath_log
    use gmean_mod,     only: gmean
    use qneg_module,   only: qneg3
@@ -905,35 +905,25 @@ end subroutine derived_phys_dry
 
 !=========================================================================================
 
-subroutine thermodynamic_consistency(phys_state, phys_tend, icol, ilyr, q_prev)
-
+subroutine thermodynamic_consistency(phys_state, phys_tend, ncols, pver)
+  !
    ! Adjust the physics temperature tendency for thermal energy consistency with the
    ! dynamics.
    ! Note: mixing ratios are assumed to be dry.
-   
-   use dimensions_mod,    only: qsize_condensate_loading,qsize_condensate_loading_idx
-   use dimensions_mod,    only: qsize_condensate_loading_cp, lcp_moist
+   !
+   use dimensions_mod,    only: lcp_moist
+   use physconst,         only: get_cp
    use control_mod,       only: phys_dyn_cp
    use physconst,         only: cpair
 
    type(physics_state), intent(in)    :: phys_state
    type(physics_tend ), intent(inout) :: phys_tend  
-   integer,  intent(in)               :: icol,ilyr
-   real(r8), intent(in)               :: q_prev
+   integer,  intent(in)               :: ncols, pver
   
-   integer :: nq, m
-   real(r8):: facor, sum_water, sum_cp, factor
+   real(r8):: inv_cp(ncols,pver)
    !----------------------------------------------------------------------------
 
    if (lcp_moist.and.phys_dyn_cp==1) then
-     factor = 1.0_r8
-     sum_cp    = cpair
-     sum_water = 1.0_r8                    
-     do nq=1,qsize_condensate_loading
-       m = qsize_condensate_loading_idx(nq)
-       sum_cp  = sum_cp+qsize_condensate_loading_cp(nq)*phys_state%q(icol,ilyr,m)
-       sum_water = sum_water + phys_state%q(icol,ilyr,m)
-     end do
      !
      ! scale temperature tendency so that thermal energy increment from physics
      ! matches SE (not taking into account dme adjust)
@@ -941,9 +931,8 @@ subroutine thermodynamic_consistency(phys_state, phys_tend, icol, ilyr, q_prev)
      ! note that if lcp_moist=.false. then there is thermal energy increment
      ! consistency (not taking into account dme adjust) 
      !
-     !
-     factor = cpair*sum_water/sum_cp
-     phys_tend%dtdt(icol,ilyr) = phys_tend%dtdt(icol,ilyr)*factor
+     call get_cp(1,ncols,1,pver,1,1,pcnst,phys_state%q(1:ncols,1:pver,:),.true.,inv_cp)
+     phys_tend%dtdt(1:ncols,1:pver) = phys_tend%dtdt(1:ncols,1:pver)*cpair*inv_cp
    end if 
 end subroutine thermodynamic_consistency
 

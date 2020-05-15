@@ -89,6 +89,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    use inic_analytic_utils, only: analytic_ic_readnl
    use rate_diags,          only: rate_diags_readnl
    use tracers,             only: tracers_readnl
+   use physconst,           only: air_composition_readnl
    use nudging,             only: nudging_readnl
 
    use dyn_comp,            only: dyn_readnl
@@ -167,6 +168,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    call tropopause_readnl(nlfilename)
    call aoa_tracers_readnl(nlfilename)
    call tracers_readnl(nlfilename)
+   call air_composition_readnl(nlfilename)
    call aerodep_flx_readnl(nlfilename)
    call prescribed_ozone_readnl(nlfilename)
    call prescribed_aero_readnl(nlfilename)

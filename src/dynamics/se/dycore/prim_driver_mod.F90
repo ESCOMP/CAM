@@ -118,7 +118,9 @@ contains
 
     ! CAM has set tstep based on dtime before calling prim_init2(),
     ! so only now does HOMME learn the timstep.  print them out:
-    call print_cfl(elem,hybrid,nets,nete,dtnu,hvcoord%hyai(1)*hvcoord%ps0,&
+    call print_cfl(elem,hybrid,nets,nete,dtnu,&
+         !p top and p mid levels
+         hvcoord%hyai(1)*hvcoord%ps0,(hvcoord%hyam(:)+hvcoord%hybm(:))*hvcoord%ps0,&
          !dt_remap,dt_tracer_fvm,dt_tracer_se
          tstep*qsplit*rsplit,tstep*qsplit*fvm_supercycling,tstep*qsplit,&
          !dt_dyn,dt_dyn_visco,dt_tracer_visco, dt_phys
@@ -183,7 +185,7 @@ contains
     use control_mod,            only: statefreq,disable_diagnostics,qsplit, rsplit, variable_nsplit
     use control_mod,            only: del2_physics_tendencies
     use prim_advance_mod,       only: applycamforcing, del2_sponge_uvt_tendencies
-    use prim_advance_mod,       only: calc_tot_energy_dynamics,compute_omega
+    use prim_advance_mod,       only: calc_tot_energy_dynamics,compute_omega,two_dz_filter
     use prim_state_mod,         only: prim_printstate, adjust_nsplit
     use prim_advection_mod,     only: vertical_remap, deriv
     use thread_mod,             only: omp_get_thread_num
@@ -245,9 +247,14 @@ contains
 
     call TimeLevel_Qdp( tl, qsplit, n0_qdp)
 
-    if (del2_physics_tendencies) &
-         call del2_sponge_uvt_tendencies(elem,hybrid,deriv,nets,nete,dt_phys)
-    
+    if (r==1) then
+      !
+      ! filter physics tendencies
+      !
+      if (del2_physics_tendencies) &
+           call del2_sponge_uvt_tendencies(elem,hybrid,deriv,nets,nete,dt_phys)
+    end if
+
     call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%n0,n0_qdp,'dAF')
     call ApplyCAMForcing(elem,fvm,tl%n0,n0_qdp,dt_remap,dt_phys,nets,nete,nsubstep)
     call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%n0,n0_qdp,'dBD')    
@@ -277,9 +284,25 @@ contains
       end do
     end if
     call t_startf('vertical_remap')
-    call vertical_remap(hybrid,elem,fvm,hvcoord,dt_remap,tl%np1,np1_qdp,nets,nete)
+    call vertical_remap(hybrid,elem,fvm,hvcoord,tl%np1,np1_qdp,nets,nete)
     call t_stopf('vertical_remap')
 
+    call t_startf('two_dz_filter')
+    call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%np1,np1_qdp,'dBZ')        
+!    if (ntrac>0) then
+!      do ie=nets,nete
+!        call two_dz_filter(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp),elem(ie)%state%dp3d(:,:,:,tl%np1),elem(ie)%state%T(:,:,:,tl%np1),&
+!             elem(ie)%state%v(:,:,:,:,tl%np1),dt_remap,ie,&
+!             metdet=elem(ie)%metdet, dp_dry_fvm=fvm(ie)%dp_fvm(1:nc,1:nc,:),q_fvm=fvm(ie)%c(1:nc,1:nc,:,:))
+!      end do      
+!    else
+!      do ie=nets,nete
+!        call two_dz_filter(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp),elem(ie)%state%dp3d(:,:,:,tl%np1),elem(ie)%state%T(:,:,:,tl%np1),&
+!             elem(ie)%state%v(:,:,:,:,tl%np1),dt_remap,ie)
+!      end do
+!    end if
+    call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%np1,np1_qdp,'dAZ')    
+    call t_stopf('two_dz_filter')
 
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -288,7 +311,7 @@ contains
     call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%np1,np1_qdp,'dAR')
 
     if (nsubstep==nsplit) then
-      call compute_omega(hybrid,tl%np1,np1_qdp,elem,deriv,nets,nete,dt,hvcoord)      
+      call compute_omega(hybrid,tl%np1,np1_qdp,elem,deriv,nets,nete,dt_remap,hvcoord)           
     end if
 
     ! now we have:
@@ -568,10 +591,8 @@ contains
         !
         call Prim_Advec_Tracers_fvm(elem,fvm,hvcoord,hybrid,&
              dt_q,tl,nets,nete,ghostBufQnhcJet_h,ghostBufQ1_h, ghostBufFluxJet_h,kmin_jet,kmax_jet)
-      end if
-        
+      end if       
 
-      
 #ifdef waccm_debug
       do ie=nets,nete
         call outfld('CSLAM_gamma', RESHAPE(fvm(ie)%CSLAM_gamma(:,:,:,1), &

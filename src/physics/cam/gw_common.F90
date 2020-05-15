@@ -619,6 +619,16 @@ subroutine gw_drag_prof(ncol, band, p, src_level, tend_level, dt, &
         ! new stress will be smaller than the old stress, causing stress
         ! divergence in the next layer down. This smoothes large stress
         ! divergences downward while conserving total stress.
+
+!++jtb (5/12/2020)
+        ! Protection on SMALL gwut to prevent floating point
+        ! issues.  Need to track this down
+        !--------------------------------------------------
+        where( abs(gwut(:,k,l)) < 1.e-15 )
+           gwut(:,k,l)=0._r8
+        endwhere   
+!--
+
         where (k <= tend_level)
            tau(:,l,k+1) = tau(:,l,k) + & 
                 abs(gwut(:,k,l)) * p%del(:,k) / gravit 

@@ -133,5 +133,9 @@ module control_mod
   real(r8), public :: raytau0
   real(r8), public :: raykrange
   integer,  public :: rayk0 
+  !
+  ! molecular diffusion
+  !  
+  real(r8), public :: molecular_diff=-1.0
   
 end module control_mod
