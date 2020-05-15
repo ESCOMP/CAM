@@ -576,8 +576,8 @@ contains
         !scale2 = 0.5_r8*(1.0_r8+tanh(1.0_r8*log( 1000.0_r8/press))) !experimental for WACCM (version 2 - starts at 80km and full strength at 120km)
 
         scale1 = 0.5_r8*(1.0_r8+tanh(2.0_r8*log(100.0_r8/press)))
-!        nu_div_lev(k)     = (1.0_r8-scale1)*nu_div+scale1*2.0_r8*nu_div!+scale3*2.0_r8*nu_div
-        nu_div_lev(k)     = nu_div
+        nu_div_lev(k)     = (1.0_r8-scale1)*nu_div+scale1*2.0_r8*nu_div!+scale3*2.0_r8*nu_div
+!        nu_div_lev(k)     = nu_div
         nu_lev(k)         = (1.0_r8-scale1)*nu    +scale1*nu_p
 !        nu_lev(k)         = nu
         if (hybrid%masterthread) write(iulog,*) "nu_lev=",k,nu_lev(k)
