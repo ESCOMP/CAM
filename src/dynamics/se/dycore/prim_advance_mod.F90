@@ -1011,8 +1011,6 @@ contains
                   vtens(i,j,2,k,ie) = kmvis_ref(k)*inv_rho*lap_v(i,j,2)
                 end do
               end do
-!              kmcnd(:,:,k,ie) = kmcnd(:,:,k,ie)*kmcnd_ref(k) !xxx
-!              kmvis(:,:,k,ie) = kmvis(:,:,k,ie)*kmvis_ref(k) !xxx
             end if
             
             if (ntrac>0) then
