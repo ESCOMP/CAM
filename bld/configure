@@ -2831,8 +2831,6 @@ sub write_filepath
     }
     print $fh "$camsrcdir/src/ionosphere\n";
 
-    print $fh "$camsrcdir/src/chemistry/mozart\n";
-    print $fh "$camsrcdir/src/chemistry/utils\n";
     # -- Added by MSL - 1/2018
     # -- Updated by TMMF - 11/2019
     if ($chem_pkg ne 'geoschem') {
@@ -2848,6 +2846,7 @@ sub write_filepath
 #        print $fh "$camsrcdir/cam/src/chemistry/mozart\n";
     }
     # --
+    print $fh "$camsrcdir/src/chemistry/utils\n";
 
     if ($rad eq 'rrtmg') {
         print $fh "$camsrcdir/src/physics/rrtmg\n";

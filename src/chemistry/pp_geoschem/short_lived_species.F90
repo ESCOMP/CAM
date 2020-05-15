@@ -105,13 +105,13 @@ contains
     type(file_desc_t), intent(inout) :: ncid_ini
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
-    integer          :: m,n,lchnk
-    integer          :: grid_id
+    integer            :: m,n,lchnk
+    integer            :: grid_id
     character(len=255) :: fieldname
-    character(len=4) :: dim1name, dim2name
-    logical          :: found
-    real(r8),pointer :: tmpptr(:,:,:)   ! temporary pointer
-    real(r8),pointer :: tmpptr2(:,:,:)   ! temporary pointer
+    character(len=4)   :: dim1name, dim2name
+    logical            :: found
+    real(r8),pointer   :: tmpptr(:,:,:)    ! temporary pointer
+    real(r8),pointer   :: tmpptr2(:,:,:)   ! temporary pointer
     character(len=*), parameter :: subname='INITIALIZE_SHORT_LIVED_SPECIES'
 
     if ( nslvd < 1 ) return
@@ -131,8 +131,7 @@ contains
     do m=1,nslvd
        !n = map(m)
        !fieldname = solsym(n)
-       !write(fieldname,'(a,a)') 'GCSL', m
-       write(fieldname,'(a,a)') 'GCSL_', trim(slvd_lst(m))
+       write(fieldname,'(a,a)') trim(slvd_lst(m))
        call infld( fieldname,ncid_ini,dim1name, 'lev', dim2name, 1, pcols, 1, pver, begchunk, endchunk, &
                    tmpptr, found, gridname='physgrid')
 

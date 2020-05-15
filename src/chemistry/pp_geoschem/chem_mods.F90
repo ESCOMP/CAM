@@ -2,8 +2,8 @@
 !--------------------------------------------------------------
 ! ... Basic chemistry parameters and arrays
 !--------------------------------------------------------------
-      use shr_kind_mod, only : r8 => shr_kind_r8
-      use constituents, only : pcnst
+      use shr_kind_mod,    only : r8 => shr_kind_r8
+      use constituents,    only : pcnst
       implicit none
       save
 
