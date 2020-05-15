@@ -1286,7 +1286,7 @@ contains
        use mpas_timekeeping, only : mpas_advance_clock, mpas_get_clock_time, mpas_get_time, MPAS_NOW, &
                                     operator(.lt.), operator(+)
        use mpas_timer, only : mpas_timer_start, mpas_timer_stop
-       use mpas_constants, only : R_v => rv, R_d => rgas
+       use mpas_constants, only : Rv_over_Rd => rvord
 
        implicit none
 
@@ -1299,8 +1299,6 @@ contains
        type (MPAS_Time_type) :: runUntilTime
        character(len=StrKIND) :: timeStamp
        type (mpas_pool_type), pointer :: state, diag, mesh
-
-       real(kind=RKIND), parameter :: Rv_over_Rd = R_v / R_d
 
        integer, pointer :: index_qv
        integer, pointer :: nCellsSolve
