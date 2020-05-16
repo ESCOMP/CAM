@@ -8,6 +8,7 @@ src/physics/clubb
 src/physics/cosp2/src
 src/physics/silhs
 src/chemistry/pp_geoschem/geoschem_src
+src/hemco
 
 # Ignore compiled python
 buildnmlc

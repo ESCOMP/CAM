@@ -3913,6 +3913,15 @@ cache file to be consistent with how CAM was built.
 Default: set by build-namelist
 </entry>
 
+<entry id="cam_physics_mesh" type="char*256" input_pathname="abs"
+       category="build" group="phys_ctl_nl" valid_values="" >
+Full pathname to CAM physics grid ESMF mesh file.
+N.B. this variable may not be set by the user.
+It is set by build-namelist via information in the configure
+cache file to be consistent with how CAM was built.
+Default: set by build-namelist
+</entry>
+
 <entry id="waccmx_opt" type="char*16" category="waccmx"
        group="phys_ctl_nl" valid_values="ionosphere,neutral,off" >
 Runtime options of upper thermosphere WACCM-X.  'ionosphere' for
@@ -3998,6 +4007,14 @@ Default: NONE.
        group="ionosphere_nl" valid_values="" >
 Full pathname of AMIE inputs for southern hemisphere.
 Default: NONE.
+</entry>
+
+<!-- HEMCO -->
+<entry id="hemco_config_file" type="char*256" input_pathname="abs" category="hemco"
+       group="hemco_nl" valid_values="" >
+Full pathname of dataset for coefficient data used in Weimer05
+high latitude electric potential model.
+Default: set by build-namelist.
 </entry>
 
 <!-- Reference Pressures -->

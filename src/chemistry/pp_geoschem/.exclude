@@ -6,19 +6,8 @@ tpcore_fvdas_mod.F90
 flexgrid_read_mod.F90
 geosfp_read_mod.F90
 get_met_mod.F90
-hco_interp_mod.F90
 merra2_read_mod.F90
 regrid_a2a_mod.F90
-hcoio_read_std_mod.F90
-hcoio_dataread_mod.F90
-hco_readlist_mod.F90
-hcox_paranox_mod.F90
-hco_config_mod.F90
-hco_driver_mod.F90
-hcox_driver_mod.F90
-hcox_lightnox_mod.F90
-hcoi_standalone_mod.F90
-hemco_standalone.F90
 restart_mod.F
 pops_mod.F
 diag49_mod.F
@@ -45,4 +34,6 @@ initialize.F
 input_mod.F
 cleanup.F
 main.F
-mo_sim_dat.F90
+hcoi_gc_diagn_include.H
+hcoi_gc_diagn_mod.F90
+hcoi_gc_main_mod.F90
