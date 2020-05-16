@@ -2830,9 +2830,6 @@ sub write_filepath
             print $fh "$chem_src_dir/geoschem_src/GeosCore\n";
             print $fh "$chem_src_dir/geoschem_src/GeosUtil\n";
             print $fh "$chem_src_dir/geoschem_src/Headers\n";
-            print $fh "$chem_src_dir/geoschem_src/HEMCO/Core\n";
-            print $fh "$chem_src_dir/geoschem_src/HEMCO/Extensions\n";
-            print $fh "$chem_src_dir/geoschem_src/HEMCO/Interfaces\n";
             print $fh "$chem_src_dir/geoschem_src/ISORROPIA\n";
             print $fh "$chem_src_dir/geoschem_src/KPP/Standard\n"; }
 #            print $fh "$camsrcdir/cam/src/chemistry/pp_geoschem\n"; }
@@ -2857,9 +2854,13 @@ sub write_filepath
         # we may eventually remove all this
         print $fh "$camsrcdir/src/hemco/HEMCO/src/Shared\n";
 
-        # to remove - need to use pio
+        # right now shared files have been renamed for no-conflict
+        # if ($chem_pkg ne 'geoschem') {
         print $fh "$camsrcdir/src/hemco/HEMCO/src/Shared/Headers\n";
         print $fh "$camsrcdir/src/hemco/HEMCO/src/Shared/GeosUtil\n";
+        # }
+
+        # to remove - need to use pio
         print $fh "$camsrcdir/src/hemco/HEMCO/src/Shared/NcdfUtil\n";
 
         # hplin 2/16/20: temporarily add hemco src code directories manually
