@@ -139,6 +139,7 @@ OPTIONS
                         Makefile defaults.  E.g. -cppdefs '-DVAR1 -DVAR2'
      -dyn <name>        Dynamical core option: [eul | fv | se].  Default: fv.
      -edit_chem_mech    Invokes CAMCHEM_EDITOR to allow the user to edit the chemistry mechanism file
+     -hemco             Switch enables the use of the Harmonized Emissions Component.
      -hgrid <name>      Specify horizontal grid.  Use nlatxnlon for spectral grids;
                         dlatxdlon for fv grids (dlat and dlon are the grid cell size
                         in degrees for latitude and longitude respectively); nexnp for
@@ -324,6 +325,7 @@ GetOptions(
     "fopt=s"                    => \$opts{'fopt'},
     "gmake=s"                   => \$opts{'gmake'},
     "h|help"                    => \$opts{'help'},
+    "hemco"                     => \$opts{'hemco'},
     "hgrid=s"                   => \$opts{'hgrid'},
     "ionosphere=s"              => \$opts{'ionosphere'},
     "lapack_libdir=s"           => \$opts{'lapack_libdir'},
@@ -1609,6 +1611,14 @@ $nadv = $cfg_ref->get('nadv');
 if ($print>=2) { print "Total advected constituents: $nadv$eol"; }
 
 #-----------------------------------------------------------------------------------------------
+
+# Harmonized Emissions Component (HEMCO)
+if (defined $opts{'hemco'}) {
+    $cfg_ref->set('hemco', $opts{'hemco'});
+}
+my $hemco  = $cfg_ref->get('hemco');
+
+#-----------------------------------------------------------------------------------------------
 # Makefile configuration #######################################################################
 #-----------------------------------------------------------------------------------------------
 
@@ -1994,6 +2004,13 @@ $cfg_cppdefs .= ' -DHAVE_VPRINTF -DHAVE_TIMES -DHAVE_GETTIMEOFDAY -DHAVE_COMM_F2
 unless ($target_os eq 'aix' or $target_os =~ 'bg' or $target_os eq 'darwin') {
     $cfg_cppdefs .= ' -DHAVE_NANOTIME -DBIT64 -DHAVE_SLASHPROC';
 }
+
+# Harmonized Emissions Component (HEMCO)
+if ($hemco) {
+    $cfg_cppdefs .= ' -DMODEL_ -DMODEL_CESM -DHEMCO_CESM -DUSE_REAL8 ';
+    print "Compiling highly-experimental HEMCO with CESM.$eol";
+}
+
 #-----------------------------------------------------------------------------------------------
 # External libraries ###########################################################################
 #-----------------------------------------------------------------------------------------------
@@ -2753,6 +2770,7 @@ sub write_filepath
     my $waccm_phys    = $cfg_ref->get('waccm_phys');
     my $waccmx        = $cfg_ref->get('waccmx');
     my $ionos         = $cfg_ref->get('ionosphere');
+    my $hemco         = $cfg_ref->get('hemco');
     my $carma         = $cfg_ref->get('carma');
     my $rad           = $cfg_ref->get('rad');
     my $dyn           = $cfg_ref->get('dyn');
@@ -2830,6 +2848,26 @@ sub write_filepath
         print $fh "$camsrcdir/src/physics/waccm\n";
     }
     print $fh "$camsrcdir/src/ionosphere\n";
+
+    # -- Added by hplin - 5/2020
+    if ($hemco) {
+        print $fh "$camsrcdir/src/hemco\n";
+
+        # if not compiling with GEOS-Chem; coordinate this with tfritz later
+        # we may eventually remove all this
+        print $fh "$camsrcdir/src/hemco/HEMCO/src/Shared\n";
+
+        # to remove - need to use pio
+        print $fh "$camsrcdir/src/hemco/HEMCO/src/Shared/Headers\n";
+        print $fh "$camsrcdir/src/hemco/HEMCO/src/Shared/GeosUtil\n";
+        print $fh "$camsrcdir/src/hemco/HEMCO/src/Shared/NcdfUtil\n";
+
+        # hplin 2/16/20: temporarily add hemco src code directories manually
+        # until we figure out a better compile routine.
+        print $fh "$camsrcdir/src/hemco/HEMCO/src/Core\n";
+        print $fh "$camsrcdir/src/hemco/HEMCO/src/Extensions\n";
+        print $fh "$camsrcdir/src/hemco/HEMCO/src/Interfaces\n";
+    }
 
     # -- Added by MSL - 1/2018
     # -- Updated by TMMF - 11/2019
