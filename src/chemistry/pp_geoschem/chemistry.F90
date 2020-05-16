@@ -163,6 +163,8 @@ contains
     use Input_Opt_Mod,       only : Set_Input_Opt,  Cleanup_Input_Opt
     use Species_Mod,         only : Species
 
+    use mo_sim_dat,          only : set_sim_dat
+
     !-----------------------------------------------------------------------
     !
     ! Purpose: register advected constituents for chemistry
@@ -198,6 +200,11 @@ contains
 
     IF (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_REGISTER'
 
+    ! hplin 2020-05-16: Call set_sim_dat to populate chemistry constituent information
+    ! from mo_sim_dat.F90 in other places. This is needed for HEMCO_CESM.
+    call set_sim_dat()
+    if(masterproc) write(iulog,*) 'GCCALL after set_sim_dat'
+
     ! Generate fake state_chm
     IO%Max_BPCH_Diag       = 1000
     IO%Max_AdvectSpc       = 500
@@ -208,6 +215,8 @@ contains
     CALL Set_Input_Opt( am_I_Root = .False., &
                         Input_Opt = IO,      &
                         RC        = RC       )
+
+    if(masterproc) write(iulog,*) 'GCCALL after Set_Input_Opt'
 
     IF ( RC /= GC_SUCCESS ) THEN
         ErrMsg = 'Could not generate reference input options object!'
