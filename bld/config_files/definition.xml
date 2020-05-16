@@ -55,6 +55,10 @@ Ionosphere model used in WACCMX.
 <entry id="phys" valid_values="cam3,cam4,cam5,cam6,cam_dev,held_suarez,adiabatic,kessler,tj2016,spcam_sam1mom,spcam_m2005" value="">
 Physics package: cam3, cam4, cam5, cam6, cam_dev, held_suarez, adiabatic, kessler, tj2016, spcam_sam1mom, spcam_m2005.
 </entry>
+<entry id="hemco" valid_values="0,1" value="1">
+Switch to turn on Harmonized Emissions Component (HEMCO): 0 => no, 1 => yes.
+WARNING THIS IS ON BY DEFAULT FOR DEVELOPMENT - DO NOT SUBMIT THIS TO PRODUCTION CODE
+</entry>
 <entry id="microphys" valid_values="rk,mg1,mg2,mg3,spcam_m2005,spcam_sam1mom,none" value="">
 Microphysics package: rk (Rasch and Kristjansson), mg1 (Morrison and
 Gettelman two moment scheme CAM5.1), mg2 (Morrison and Gettelman second
