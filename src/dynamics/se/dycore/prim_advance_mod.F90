@@ -828,8 +828,13 @@ contains
              thermodynamic_active_species_idx_dycore=thermodynamic_active_species_idx_dycore,&
              pint_out=pint,pmid_out=pmid)
 
-        kmvis(:,:,:,ie) = kmvis(:,:,:,ie)*rhoi_dry(:,:,1:ksponge_end)
-        kmcnd(:,:,:,ie) = kmcnd(:,:,:,ie)*rhoi_dry(:,:,1:ksponge_end)
+
+        do k=1,ksponge_end
+          kmvis  (:,:,k,ie) = kmvis_ref(k)*rhoi_dry(:,:,k)!xx
+          kmcnd  (:,:,k,ie) = kmcnd_ref(k)*rhoi_dry(:,:,k)!xx
+        end do
+!xxx        kmvis(:,:,:,ie) = kmvis(:,:,:,ie)*rhoi_dry(:,:,1:ksponge_end)
+!xxx        kmcnd(:,:,:,ie) = kmcnd(:,:,:,ie)*rhoi_dry(:,:,1:ksponge_end)
         
         !all computed above but pint and pmid don't have ie index
         
@@ -845,8 +850,8 @@ contains
 !              end do
 !            end if
             call solve_diffusion(dt2,np,nlev,i,j,ksponge_end,pmid,pint,kmcnd(:,:,:,ie)/cpair,elem(ie)%state%T(:,:,:,nt),0,dtemp)
-            call solve_diffusion(dt2,np,nlev,i,j,ksponge_end,pmid,pint,kmvis(:,:,:,ie),elem(ie)%state%v(:,:,1,:,nt),0,du)
-            call solve_diffusion(dt2,np,nlev,i,j,ksponge_end,pmid,pint,kmvis(:,:,:,ie),elem(ie)%state%v(:,:,2,:,nt),0,dv)
+            call solve_diffusion(dt2,np,nlev,i,j,ksponge_end,pmid,pint,kmvis(:,:,:,ie),elem(ie)%state%v(:,:,1,:,nt),1,du)
+            call solve_diffusion(dt2,np,nlev,i,j,ksponge_end,pmid,pint,kmvis(:,:,:,ie),elem(ie)%state%v(:,:,2,:,nt),1,dv)
             !
             ! frictional heating
             !
@@ -905,11 +910,11 @@ contains
              elem(ie)%state%T(:,:,:,nt),ptop,elem(ie)%state%dp3d(:,:,:,nt),&
              .true.,rho_dry=rho_dry(:,:,:,ie),                                              &
              thermodynamic_active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
-        !          do k=1,ksponge_end
-        !            kmvis  (:,:,k,ie) = kmvis_ref(k)!xx
-        !            kmcnd  (:,:,k,ie) = kmcnd_ref(k)!xx
-        !            rho_dry(:,:,k,ie) = rho_ref(k)  
-        !          end do
+        do k=1,ksponge_end
+          kmvis  (:,:,k,ie) = kmvis_ref(k)!xx
+          kmcnd  (:,:,k,ie) = kmcnd_ref(k)!xx
+!          rho_dry(:,:,k,ie) = rho_ref(k)  !xx
+        end do
       end do
       !
       ! diagnostics
@@ -996,7 +1001,7 @@ contains
             else
 
               
-              call vlaplace_sphere_wk_mol(elem(ie)%state%v(:,:,:,k,nt),deriv,elem(ie),.true.,kmvis(:,:,k,ie),lap_v)
+              call vlaplace_sphere_wk_mol(elem(ie)%state%v(:,:,:,k,nt),deriv,elem(ie),.false.,kmvis(:,:,k,ie),lap_v)
               call laplace_sphere_wk(elem(ie)%state%T(:,:,k,nt),deriv,elem(ie),lap_t ,var_coef=.false.,mol_nu=kmcnd(:,:,k,ie))
               call laplace_sphere_wk(elem(ie)%state%dp3d(:,:,k,nt),deriv,elem(ie),lap_dp,var_coef=.false.,mol_nu=kmcnd(:,:,k,ie))
 
