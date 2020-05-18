@@ -6707,8 +6707,8 @@ Example:
 csw_specifier = 'DMS      -> /path/Csw_DMS_HiResML_f09f09_1990_2019_20190616a.nc',
                 'CH3COCH3 -> 0.75*/path/Csw_Acetone_HiResML_f09f09_1990_2019_20190814a.nc'
 
-These can be read in as a time series of data, cycyle over a given year, or be fixed to a given date
-as directed by {{ hilight }}csw_time_time{{ closehilight }}.
+These can be read in as a time series of data, cyle over a given year, or be fixed to a given date
+as directed by {{ hilight }}csw_time_type{{ closehilight }}.
 
 Default: none
 </entry>

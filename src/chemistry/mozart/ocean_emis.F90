@@ -303,7 +303,6 @@ contains
 
     integer             :: m, isec, SpeciesID
     real(r8)            :: Csw_col(ncol)
-    Character(Len=16)   :: SpeciesName
     real(r8)            :: MW_species
     real(r8) :: oceanflux_kg_m2_s(ncol)        
 
@@ -318,8 +317,7 @@ contains
        isec = 1
        Csw_col(:ncol) = Csw_nM(m)%scalefactor*Csw_nM(m)%fields(isec)%data(:ncol,1,lchnk)
 
-       SpeciesName = Csw_nM(m)%species
-       MW_species = MolecularWeight(SpeciesIndex( SpeciesName )) 
+       MW_species = MolecularWeight(SpeciesIndex( Csw_nM(m)%species )) 
 
        call cnst_get_ind( trim(Csw_nM(m)%species), SpeciesID, abort=.true. )
 
@@ -327,7 +325,7 @@ contains
 
        where (ocnfrac(:ncol) >= 0.2_r8 .and. Csw_col(:ncol) >= 0._r8)   ! calculate flux only for ocean
           oceanflux_kg_m2_s(:ncol) = Flux_kg_m2_s( &
-               Csw_nM(m)%species,                  & !
+               Csw_nM(m)%species,                  & ! name of species
                state%q(:ncol,pver,SpeciesID) * (28.97_r8/MW_species) * 1.0e+12_r8, & ! air concentration (ppt)
                Csw_col(:ncol),                     & ! sea water concentration (nM)
                state%t(:ncol,pver),                & ! air temperature (K)
@@ -455,6 +453,7 @@ contains
     ! ===========================================================================
     ! This is the main module function. Input variables:
     ! ---------------------------------------------------------------------------
+    !    - SpeciesName: name of species
     !    - Cgas_ppt: mixing ratio (parts per trillion) of trace gas of interest 
     !      in the gas-phase (lowest modeling layer)
     !    - Cwater_nM: concentration of trace gas of interest in the surface ocean
@@ -463,6 +462,7 @@ contains
     !    - P_atm: air pressure in atm at sea surface level
     !    - T_water_K: sea surface temperature
     !    - Salinity_PartsPerThousand: surface ocean salinity
+    !    - switch_bubble: bubble-mediated transfer switch
     ! All must be 1D arrays with same dimension(ncol, so CESM-compatible)
     ! ===========================================================================
     Integer                   :: ncol, SpeciesID
@@ -499,13 +499,13 @@ contains
 
 
   Function k_air_m_s(SpeciesIndex, u10_m_s, T_air_K, P_atm, ncol)
+    use shr_const_mod, only: vonKarman=>SHR_CONST_KARMAN
     ! =============================================================================
     ! Air-side transfer velocity. Slightly modified NOAA COARE (Fairall et al 2003; 
     ! Feffery et al 2010), as recommended by Johnson Ocean Sci. 2010. 
     ! Dynamic viscosity of air: Tsilingiris 2008
     ! =============================================================================
     Integer                   :: ncol, SpeciesIndex
-    Real(r8)                  :: vonKarman = 0.4_r8
     Real(r8), Dimension(ncol) :: k_air_m_s 
     Real(r8), Dimension(ncol) :: u10_m_s, T_air_K, P_atm, ustar_m_s, DragCoeff
     Real(r8), Dimension(ncol) :: DynamicViscosityAir_kg_m_s, DensityAir_kg_m3, DiffusivityInAir, SchmidtNumberInAir
@@ -767,7 +767,7 @@ contains
     character(len=*), parameter :: subname = 'cseawater_ini'
 
     ! ========================================================  
-    ! Read sea water concentration specifier from tne namelist
+    ! Read sea water concentration specifier from the namelist
     ! ========================================================
 
     nn = 0
@@ -816,12 +816,12 @@ contains
 
     n_Csw_files = nn
 
-    if (masterproc) write(iulog,*) 'cseawater_ini: n_Csw_files = ',n_Csw_files
+    if (masterproc) write(iulog,*) subname//': n_Csw_files = ',n_Csw_files
 
     allocate( Csw_nM(n_Csw_files), stat=astat )
     if( astat/= 0 ) then
-       write(iulog,*) 'cseawater_ini: failed to allocate Csw_nM array; error = ',astat
-       call endrun('cseawater_ini: failed to allocate Csw_nM array')
+       write(iulog,*) subname//': failed to allocate Csw_nM array; error = ',astat
+       call endrun(subname//': failed to allocate Csw_nM array')
     end if
 
     ! -------------------------------------------
@@ -868,8 +868,8 @@ contains
              if (ierr /= PIO_NOERR) then
                 call endrun(subname//': pio_inq_varname varname FAILED')
              endif
-             write(iulog,*) 'cseawater_ini: Skipping variable ', trim(varname),', ndims = ',vndims(vid), &
-                  ' , species=',trim(Csw_nM(m)%species)
+             write(iulog,*) subname//': Skipping variable ', trim(varname),', ndims = ',vndims(vid), &
+                            ', species=',trim(Csw_nM(m)%species)
              cycle
           end if
 
@@ -879,8 +879,8 @@ contains
 
        allocate( Csw_nM(m)%sectors(Csw_nM(m)%nsectors), stat=astat )
        if( astat/= 0 ) then
-          write(iulog,*) 'cseawater_ini: failed to allocate Csw_nM(m)%sectors array; error = ',astat
-          call endrun
+          write(iulog,*) subname//': failed to allocate Csw_nM(m)%sectors array; error = ',astat
+          call endrun(subname//': failed to allocate Csw_nM(m)%sectors array')
        end if
 
        isec = 1
@@ -921,7 +921,7 @@ contains
     enddo spc_loop
 
     ! ===================================
-    ! Output stuff in the historial files
+    ! Output stuff to the history files
     ! ===================================
     do m = 1, n_Csw_files
        call addfld('OCN_FLUX_' // trim(Csw_nM(m)%species), horiz_only, 'A', 'kg/m2/s', &

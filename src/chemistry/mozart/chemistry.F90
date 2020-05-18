@@ -679,7 +679,7 @@ end function chem_is
    call species_sums_readnl(nlfile)
    call ocean_emis_readnl(nlfile)
 
- endsubroutine chem_readnl
+ end subroutine chem_readnl
 
 !================================================================================================
 
