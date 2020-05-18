@@ -22,16 +22,19 @@ jobs:
     - uses: actions/checkout@v2
     # acquire specific version of python
     - name: Set up Python 3.6
+      if: github.repository == 'ESCOMP/CAM' #Only run on main repo
       uses: actions/setup-python@v1
       with:
         python-version: '3.6' # Semantic version range syntax or exact version of a Python version
     # install required python packages
     - name: Install dependencies
+      if: github.repository == 'ESCOMP/CAM' #Only run on main repo
       run: |
         python -m pip install --upgrade pip  # Install latest version of PIP
         pip install PyGithub                 # Install PyGithub python package
     # run CAM issue-closing script
     - name: python action scripts
+      if: github.repository == 'ESCOMP/CAM' #Only run on main repo
       env:
         ACCESS_TOKEN: ${{ secrets.WRITE_ACCESS_TOKEN }}
         TRIGGER_SHA: ${{ github.sha }}
