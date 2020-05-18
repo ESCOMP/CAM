@@ -28,13 +28,13 @@
 !--------------------------------------------------------------
       integer :: ios
 
-      is_scalar = .false.
-      is_vector = .true.
+      ! is_scalar = .false.
+      ! is_vector = .true.
 
-      clscnt(:) = (/     30,     0,     0,   191,     0 /)
+      ! clscnt(:) = (/     30,     0,     0,   191,     0 /)
 
-      cls_rxt_cnt(:,1) = (/     37,    61,     0,    30 /)
-      cls_rxt_cnt(:,4) = (/     23,   174,   326,   191 /)
+      ! cls_rxt_cnt(:,1) = (/     37,    61,     0,    30 /)
+      ! cls_rxt_cnt(:,4) = (/     23,   174,   326,   191 /)
 
       solsym(:273) = (/ 'CH2I2          ','CH2ICL         ','CH2IBR         ', &
                         'NITs           ','NIT            ','AERI           ', &
