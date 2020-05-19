@@ -428,7 +428,6 @@
   </test>
   <test compset="FCHIST" grid="f09_f09_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s_ocnemis">
     <machines>
-      <machine name="cheyenne" compiler="intel" category="ocnemis"/>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
     </machines>
@@ -438,7 +437,6 @@
   </test>
   <test compset="FCHIST" grid="f09_f09_mg17" name="ERP_Ln9" testmods="cam/outfrq9s_ocnemis">
     <machines>
-      <machine name="cheyenne" compiler="intel" category="ocnemis"/>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
     </machines>
   </test>
