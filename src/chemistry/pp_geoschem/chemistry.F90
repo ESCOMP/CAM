@@ -184,6 +184,7 @@ contains
     CHARACTER(LEN=128)     :: mixtype
     CHARACTER(LEN=128)     :: molectype
     CHARACTER(LEN=128)     :: lng_Name
+    CHARACTER(LEN=64)      :: cnstName
     LOGICAL                :: camout
     LOGICAL                :: ic_from_cam2
     LOGICAL                :: has_fixed_ubc
@@ -273,14 +274,14 @@ contains
     tracerLongNames = ''
 
     DO I = 1, nTracersMax
-        IF (I.LE.nTracers) THEN
-            N           = Ind_(tracerNames(I))
-            ThisSpc     => SC%SpcData(N)%Info
-            lng_Name    = TRIM(ThisSpc%FullName)
-            MWTmp       = REAL(ThisSpc%MW_g,r8)
-            ref_VMR     = REAL(ThisSpc%BackgroundVV,r8)
-            adv_Mass(I) = MWTmp
-            ref_MMR(I)  = ref_VMR / (MWDry / MWTmp)
+       IF (I.LE.nTracers) THEN
+           N           = Ind_(tracerNames(I))
+           ThisSpc     => SC%SpcData(N)%Info
+           lng_Name    = TRIM(ThisSpc%FullName)
+           MWTmp       = REAL(ThisSpc%MW_g,r8)
+           ref_VMR     = REAL(ThisSpc%BackgroundVV,r8)
+           adv_Mass(I) = MWTmp
+           ref_MMR(I)  = ref_VMR / (MWDry / MWTmp)
        ELSE
            lng_Name    = TRIM(tracerNames(I))
            MWTmp       = 1000.0e+0_r8 * (0.001e+0_r8)
@@ -306,13 +307,53 @@ contains
        has_fixed_ubc = .false.
        ! Use a fixed flux condition at the upper boundary
        has_fixed_ubflx = .false.
-       !write(tracernames(i),'(a,I0.4)') 'GCTRC_', i
        ! NOTE: In MOZART, this only gets called for tracers
        ! This is the call to add a "constituent"
-       CALL cnst_add( TRIM(tracerNames(I)), adv_Mass(I), cptmp, qmin, N, &
-                      readiv=ic_from_cam2, mixtype=mixtype, cam_outfld=camout, &
-                      molectype=molectype, fixed_ubc=has_fixed_ubc, &
-                      fixed_ubflx=has_fixed_ubflx, longname=TRIM(lng_Name) )
+       cnstName = TRIM(tracerNames(I))
+       ! Special handlings
+       IF ( cnstName == 'ACET' ) THEN
+           cnstName = 'CH3COCH3'
+       ELSEIF ( cnstName == 'ALD2' ) THEN
+           cnstName = 'CH3CHO'
+       ELSEIF ( cnstName == 'PRPE' ) THEN
+           cnstName = 'C3H6'
+       ELSEIF ( cnstName == 'HNO4' ) THEN
+           cnstName = 'HO2NO2'
+       ELSEIF ( cnstName == 'HNO2' ) THEN
+           cnstName = 'HONO'
+       ELSEIF ( cnstName == 'MP'   ) THEN
+           cnstName = 'CH3OOH'
+       ELSEIF ( cnstName == 'HAC'  ) THEN
+           cnstName = 'HYAC'
+       ELSEIF ( cnstName == 'GLYC' ) THEN
+           cnstName = 'GLYALD'
+       ELSEIF ( cnstName == 'MAP' ) THEN
+           cnstName = 'CH3COOOH'
+       ELSEIF ( cnstName == 'EOH' ) THEN
+           cnstName = 'C2H5OH'
+       ELSEIF ( cnstName == 'MGLY' ) THEN
+           cnstName = 'CH3COCHO'
+       ELSEIF ( cnstName == 'GLYX' ) THEN
+           cnstName = 'GLYOXAL'
+       ELSEIF ( cnstName == 'ACTA' ) THEN
+           cnstName = 'CH3COOH'
+       ELSEIF ( cnstName == 'TOLU' ) THEN
+           cnstName = 'TOLUENE'
+       ELSEIF ( cnstName == 'HCHO' ) THEN
+           cnstName = 'CH2O'
+       ENDIF
+       ! GEOS-Chem lumped species are not on restart file.
+       ! Bromine, chlorine, iodine and halons species are missing
+       ! from CESM restart file.
+       ! These species will just be uniformily set to some low
+       ! concentration.
+       ! TMMF - 05/19/2020
+       CALL cnst_add( cnstName, adv_Mass(I), cptmp, qmin, N,  &
+                      readiv=ic_from_cam2, mixtype=mixtype,   &
+                      cam_outfld=camout, molectype=molectype, &
+                      fixed_ubc=has_fixed_ubc,                &
+                      fixed_ubflx=has_fixed_ubflx,            &
+                      longname=TRIM(lng_Name) )
 
        ! Add to GC mapping. When starting a timestep, we will want to update the
        ! concentration of State_Chm(x)%Species(1,iCol,iLev,m) with data from
@@ -638,13 +679,11 @@ contains
     chem_implements_cnst = .false.
 
     DO I = 1, nTracers
-       IF (TRIM(tracerNames(I)) .eq. TRIM(NAME)) THEN
+       IF (TRIM(tracerNames(I)) .eq. TRIM(name)) THEN
           chem_implements_cnst = .true.
           EXIT
        ENDIF
     ENDDO
-
-    IF (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_IMPLEMENTS_CNST'
 
   end function chem_implements_cnst
 
@@ -3997,7 +4036,7 @@ contains
 
     IF (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_INIT_CNST'
 
-    NLEV = SIZE(Q, 2)
+    NLEV = SIZE(q, 2)
     ! Retrieve a "background value" for this from the database
     Min_MMR = 1.0e-38_r8
     DO I = 1, nTracers
@@ -4008,9 +4047,9 @@ contains
     ENDDO
 
     DO ILEV = 1, NLEV
-        WHERE(MASK)
+        WHERE(mask)
             ! Set to the minimum mixing ratio
-            Q(:,ILEV) = Min_MMR
+            q(:,ILEV) = Min_MMR
         END WHERE
     ENDDO
 
