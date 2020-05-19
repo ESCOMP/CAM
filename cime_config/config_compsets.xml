@@ -157,6 +157,8 @@
   <compset>
     <alias>QPC6</alias>
     <lname>2000_CAM60_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
+    <science_support grid="f09_f09_mg17"/>
+    <science_support grid="f19_f19_mg17"/>
   </compset>
 
   <compset>
