@@ -564,7 +564,7 @@ contains
       ! WACCM setting
       !
 !      call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu_div,5.0_r8 ,'_div')
-      call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu_div,2.5_r8 ,'_div')!xxx
+      call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu_div,2.5_r8 ,'_div')
       if (hybrid%masterthread) write(iulog,*) ": sponge layer viscosity scaling factor"
       do k=1,nlev
         press = pmid(k)

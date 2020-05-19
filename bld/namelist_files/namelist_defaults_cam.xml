@@ -1999,7 +1999,9 @@
 
 <se_hypervis_dynamic_ref_state> .false.  </se_hypervis_dynamic_ref_state>
 <se_lcp_moist                 > .true.  </se_lcp_moist>
+
 <se_large_Courant_incr        > .true.  </se_large_Courant_incr>
+<se_large_Courant_incr  waccm_phys="1"> .false.  </se_large_Courant_incr>
 
 <se_hypervis_power> 0 </se_hypervis_power>
 
@@ -2007,7 +2009,7 @@
 
 <se_hypervis_subcycle>                             3 </se_hypervis_subcycle>
 <se_hypervis_subcycle hgrid="ne0np4CONUS.ne30x8">  1 </se_hypervis_subcycle>
-<se_hypervis_subcycle waccm_phys="1">              2 </se_hypervis_subcycle>
+<se_hypervis_subcycle waccm_phys="1">              1 </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne16np4">            4 </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne0np4.ARCTIC.ne30x4"> 2 </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne0np4.ARCTICGRIS.ne30x8"> 2 </se_hypervis_subcycle>
