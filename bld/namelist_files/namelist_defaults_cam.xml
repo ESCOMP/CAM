@@ -177,8 +177,8 @@
 <ncdata dyn="se" hgrid="ne0np4.ARCTICGRIS.ne30x8" nlev="32" ic_ymd="101">atm/cam/inic/se/F2000climo_ARCTICGRIS_ne30x8_mt12_0001-01-31_c200110.nc</ncdata>
 
 <ncdata dyn="se" hgrid="ne5np4"   nlev="66"                >atm/waccm/ic/wa3_ne5np4_1950_spinup.cam2.i.1960-01-01-00000_c150810.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4"  nlev="70" sim_year="1850">atm/waccm/ic/waccm5_1850_ne30np4_L70_0001-01-11-00000_c151217.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4"  nlev="70"                >/glade/p/cgd/amp/pel/inic/waccm.nlev70.FW2000climo.i.nc</ncdata>
+<ncdata dyn="se" hgrid="ne30np4"  nlev="70"                >/glade/p/cgd/amp/pel/inic/FWsc2000.ne30pg3_ne30pg3_nlev70.i.nc</ncdata>
+<ncdata dyn="se" hgrid="ne30np4"  nlev="110"               >/glade/p/cgd/amp/pel/inic/FWsc2000.ne30pg3_ne30pg3_nlev110.i.nc</ncdata>
 
 <!-- Topography -->
 <bnd_topo hgrid="256x512" >atm/cam/topo/topo-from-cami_0000-01-01_256x512_L26_c030918.nc</bnd_topo>
@@ -534,15 +534,18 @@
 <effgw_oro>0.125D0</effgw_oro>
 
 <effgw_cm>1.D0</effgw_cm>
-<taubgnd            >1.5D-3</taubgnd>
-<taubgnd hgrid="4x5">1.0D-3</taubgnd>
+
+<taubgnd                 >1.5D-3</taubgnd>
+<taubgnd hgrid="4x5"     >1.0D-3</taubgnd>
 <taubgnd hgrid="0.9x1.25">2.5D-3</taubgnd>
+<taubgnd hgrid="ne30np4" >1.25D-3</taubgnd>
 
 <effgw_cm_igw>0.1D0</effgw_cm_igw>
 <taubgnd_igw>12.0D-3</taubgnd_igw>
 
-<frontgfc            >1.25D-15</frontgfc>
-<frontgfc hgrid="4x5">7.5D-16</frontgfc>
+<frontgfc                 >1.25D-15</frontgfc>
+<frontgfc hgrid="ne30np4" >3.00D-15</frontgfc>
+<frontgfc hgrid="4x5"     >7.5D-16</frontgfc>
 <frontgfc hgrid="0.9x1.25">3.0D-15</frontgfc>
 
 <!-- Polar taper is needed for stability in FV, possibly because grid -->
@@ -557,10 +560,12 @@
 
 <!-- gravity wave settings -->
 <effgw_beres_dp>0.1D0</effgw_beres_dp>
-<effgw_beres_dp hgrid="0.9x1.25">0.4D0</effgw_beres_dp>
-<effgw_beres_dp waccm_phys="0">0.55D0</effgw_beres_dp>
-<effgw_beres_dp waccm_phys="1" hgrid="0.9x1.25">0.5D0</effgw_beres_dp>
-<effgw_beres_dp chem="trop_strat_mam4_vbs" hgrid="0.9x1.25">0.5D0</effgw_beres_dp>
+<effgw_beres_dp hgrid="0.9x1.25"                              >0.4D0</effgw_beres_dp>
+<effgw_beres_dp waccm_phys="0"                                >0.55D0</effgw_beres_dp>
+<effgw_beres_dp waccm_phys="1" hgrid="0.9x1.25"               >0.5D0</effgw_beres_dp>
+<effgw_beres_dp waccm_phys="1" hgrid="ne30np4" nlev="70"      >0.35D0</effgw_beres_dp>
+<effgw_beres_dp waccm_phys="1" hgrid="ne30np4" nlev="110"     >0.7D0</effgw_beres_dp>
+<effgw_beres_dp chem="trop_strat_mam4_vbs" hgrid="0.9x1.25"   >0.5D0</effgw_beres_dp>
 <effgw_beres_dp chem="trop_strat_mam4_vbsext" hgrid="0.9x1.25">0.5D0</effgw_beres_dp>
 <effgw_oro      nlev="60"     >0.0625D0</effgw_oro>
 
@@ -624,7 +629,7 @@
 
 <!-- For scaling lightning sources of NOx -->
 <lght_no_prd_factor                                              >1.00D0</lght_no_prd_factor>
-<lght_no_prd_factor             hgrid="ne30np4"                  >2.00D0</lght_no_prd_factor>
+<lght_no_prd_factor phys="cam6" hgrid="ne30np4"                  >1.80D0</lght_no_prd_factor>
 <lght_no_prd_factor phys="cam6" hgrid="0.9x1.25"                 >1.50D0</lght_no_prd_factor>
 <lght_no_prd_factor phys="cam6"                   offline_dyn="1">1.30D0</lght_no_prd_factor>
 <lght_no_prd_factor phys="cam6" hgrid="0.9x1.25"  offline_dyn="1">1.60D0</lght_no_prd_factor>
@@ -1291,7 +1296,8 @@
 <clubb_c11                                        > 0.7D0   </clubb_c11>
 <clubb_c11b                                       > 0.35D0  </clubb_c11b>
 <clubb_c14                                        > 2.2D0   </clubb_c14>
-<clubb_c14 dyn="se"                               > 1.6D0   </clubb_c14>
+<!-- clubb_c14 dyn="se" was 1.6???xxxx -->
+<clubb_c14 dyn="se"                               > 1.9D0   </clubb_c14>
 <clubb_c_K9                                       > 0.25    </clubb_c_K9>
 <clubb_nu9                                        > 20.0    </clubb_nu9>
 <clubb_c_K10                                      > 0.5     </clubb_c_K10>
@@ -1519,7 +1525,7 @@
 
 <dust_emis_fact dyn="se"                   phys="cam5"                    >0.55D0</dust_emis_fact>
 <dust_emis_fact dyn="fv"                   phys="cam5"   clubb_sgs="1"    >0.22D0</dust_emis_fact>
-<dust_emis_fact dyn="se"                   phys="cam6"                    >0.55D0</dust_emis_fact>
+<dust_emis_fact dyn="se"                   phys="cam6"                    >0.70D0</dust_emis_fact>
 <dust_emis_fact dyn="fv"                   phys="cam6"                    >0.70D0</dust_emis_fact>
 <dust_emis_fact dyn="fv"                   phys="spcam_m2005" spcam_clubb_sgs="1"    >0.13D0</dust_emis_fact>
 
@@ -1696,7 +1702,8 @@
 <cldfrc_premit dyn="eul" hgrid="128x256"                              > 25000.0D0 </cldfrc_premit>
 <cldfrc_premit dyn="eul" hgrid="256x512"                              > 25000.0D0 </cldfrc_premit>
 <cldfrc_premit dyn="eul" hgrid="512x1024"                             > 25000.0D0 </cldfrc_premit>
-<cldfrc_premit dyn="se"                                               > 25000.0D0 </cldfrc_premit>
+<!-- xxx check default was 25000.0 for cldfrc_premit dyn="se"  -->
+<cldfrc_premit dyn="se"                                               > 75000.0D0 </cldfrc_premit>
 <cldfrc_premit                                      pbl="uw"          > 40000.0D0 </cldfrc_premit>
 <cldfrc_premit dyn="fv"  hgrid="0.23x0.31"          pbl="uw"          > 40000.0D0 </cldfrc_premit>
 <cldfrc_premit dyn="fv"  hgrid="0.47x0.63"          pbl="uw"          > 40000.0D0 </cldfrc_premit>
@@ -2058,7 +2065,6 @@
 <se_nu_p se_refined_mesh="1" hypervis_type="scalar" > 1.5625e13 </se_nu_p>
 
 <se_nu_top               > 5.0e5 </se_nu_top>
-<se_nu_top waccm_phys="1"> 1.5e6 </se_nu_top>
 
 <se_raytau0                      >  0.0 </se_raytau0>
 <se_raykrange                    >  0.5  </se_raykrange>
@@ -2069,7 +2075,7 @@
 <se_rayk0     waccm_phys="1"     >  2    </se_rayk0>
 
 <se_molecular_diff               >  0.0 </se_molecular_diff>
-<se_molecular_diff waccm_phys="1">100.0 </se_molecular_diff>
+<se_molecular_diff waccm_phys="1"> 50.0 </se_molecular_diff>
 
 <se_qsplit > 1 </se_qsplit>
 
@@ -2094,7 +2100,7 @@
 
 <se_tstep_type > 4 </se_tstep_type>
 
-<se_vert_remap_q_alg> 10 </se_vert_remap_q_alg>
+<se_vert_remap_q_alg> -9 </se_vert_remap_q_alg>
 
 <!-- Nudging -->
 <se_met_nudge_u> 2.0e-5 </se_met_nudge_u>
