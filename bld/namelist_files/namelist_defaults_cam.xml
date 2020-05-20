@@ -2075,7 +2075,7 @@
 <se_rayk0     waccm_phys="1"     >  2    </se_rayk0>
 
 <se_molecular_diff               >  0.0 </se_molecular_diff>
-<se_molecular_diff waccm_phys="1"> 50.0 </se_molecular_diff>
+<se_molecular_diff waccm_phys="1"> 75.0 </se_molecular_diff>
 
 <se_qsplit > 1 </se_qsplit>
 
