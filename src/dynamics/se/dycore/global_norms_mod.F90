@@ -215,7 +215,7 @@ contains
     use reduction_mod,  only: ParallelMin,ParallelMax
     use physconst,      only: ra, rearth, pi
     use control_mod,    only: nu, nu_div, nu_q, nu_p, nu_s, nu_top, fine_ne, rk_stage_user, max_hypervis_courant
-    use control_mod,    only: tstep_type, hypervis_power, hypervis_scaling, del2_physics_tendencies
+    use control_mod,    only: tstep_type, hypervis_power, hypervis_scaling
     use cam_abortutils, only: endrun
     use parallel_mod,   only: global_shared_buf, global_shared_sum
     use edge_mod,       only: initedgebuffer, FreeEdgeBuffer, edgeVpack, edgeVunpack
@@ -551,7 +551,6 @@ contains
     call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu_p  ,1.0_r8 ,'_p  ')
     call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu    ,0.5_r8,'    ') 
     !0.25 was unstable in year 8 of coupled simulation
-    del2_physics_tendencies=.false.
     if (ptop>100.0_r8) then
       !
       ! CAM setting
@@ -585,7 +584,6 @@ contains
         if (hybrid%masterthread) write(iulog,*) "nu_div_lev=",k,nu_div_lev(k)
       end do
     end if
-    if (hybrid%masterthread) write(iulog,*) 'del2_physics_tendencies= ',del2_physics_tendencies
 
     if (nu_q<0) nu_q = nu_p ! necessary for consistency
     if (nu_s<0) nu_s = nu_p ! temperature damping is always equal to nu_p

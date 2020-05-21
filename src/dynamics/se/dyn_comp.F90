@@ -708,82 +708,66 @@ subroutine dyn_init(dyn_in, dyn_out)
        enddo
      end if
    end if
-
+   !
+   ! initialize diffusion in dycore
+   !
    kmol_end = 1
    if (molecular_diff>0) then
+     !
+     ! molecular diffusion and thermal conductivity reference values
+     !
      if (masterproc) write(iulog,*) subname//": initialize molecular diffusion reference profiles"
-     tref = 1000._r8     !mean value at model top for solar min/max
+     tref = 600._r8     !mean value at model top for solar max
      km_sponge_factor = molecular_diff
      call get_molecular_diff_coef_reference(1,nlev,tref,&
           (hvcoord%hyam(:)+hvcoord%hybm(:))*hvcoord%ps0,km_sponge_factor,& !pmid
           kmvis_ref,kmcnd_ref,rho_ref)
 
      do k=1,nlev
-!       kmvis_ref(k) = MIN(kmvis_ref(k),nu_top*rho_ref(k))
-!       kmcnd_ref(k) = MIN(kmcnd_ref(k),nu_top*cpair*rho_ref(k))
        if (MIN(kmvis_ref(k)/rho_ref(k),kmcnd_ref(k)/(cpair*rho_ref(k)))>1000.0_r8) then !only apply molecular viscosity where viscosity is > 1000 m/s^2
          if (masterproc) then
            write(iulog,*) "k, p, km_sponge_factor                   :",k,(hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0,km_sponge_factor(k)
            write(iulog,*) "kmvis_ref/rho_ref, kmcnd_ref/(cp*rho_ref): ",kmvis_ref(k)/rho_ref(k),kmcnd_ref(k)/(cpair*rho_ref(k))
          end if
          kmol_end = k
+       else 
+         kmvis_ref(k) = 0.0_r8
+         kmcnd_ref(k) = 0.0_r8
        end if
      end do
    else
-     !
-     ! xxx this will lead to issues if sponge goes lower than viscosity
-     !
-     kmvis_ref(k) = 0.0_r8
-     kmcnd_ref(k) = 0.0_r8
+     kmvis_ref(k) = -1.0E6_r8
+     kmcnd_ref(k) = -1.0E6_r8
+     kmol_end     = 0
    end if
-
    !
-   ! compute scaling of sponge layer damping (following cd_core.F90 in CAM-FV)
+   irecons_tracer_lev(:) = irecons_tracer !use high-order CSLAM in all layers
+   !
+   ! compute scaling of traditional sponge layer damping (following cd_core.F90 in CAM-FV)
    !   
-   if (masterproc) write(iulog,*) subname//": sponge layer viscosity scaling factor"
-   do k=1,nlev
-     press = (hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0
-     ptop  = hvcoord%hyai(1)*hvcoord%ps0
-     nu_scale_top(k) = 8.0_r8*(1.0_r8+tanh(1.0_r8*log(ptop/press))) ! tau will be maximum 8 at model top
-!     nu_scale_top(k) = 0.5_r8*(1.0_r8+tanh(2.0_r8*log(0.006_r8/press))) !experimental for WACCM
-!     nu_scale_top(k)     = 0.5_r8*(1.0_r8+tanh(1.0_r8*log(0.006_r8/press))) !experimental for WACCM
-     !
-     ! reduce order of CSLAM tracer advection
-     !
-     if (nu_scale_top(k).ge.2.0_r8) then
-!       irecons_tracer_lev(k) = 1!xxx
-       irecons_tracer_lev(k) = irecons_tracer
-       ksponge_end = k
-     else if (nu_scale_top(k).ge.1.0_r8) then
-!        irecons_tracer_lev(k) = 3
-        irecons_tracer_lev(k) = irecons_tracer
-        ksponge_end = k
-     else if (nu_scale_top(k).ge.0.15_r8) then
-        irecons_tracer_lev(k) = irecons_tracer
-        ksponge_end = k
- !    else if (nu_scale_top(k).ge.0.001_r8) then
- !       irecons_tracer_lev(k) = irecons_tracer
- !       ksponge_end = k
-     else
-        irecons_tracer_lev(k) = irecons_tracer
-        nu_scale_top(k) = 0.0_r8
-     end if
-   end do
-   ksponge_end = MAX(MAX(ksponge_end,1),kmol_end)
-
-   if (masterproc) then
-     write(iulog,*) subname//": ksponge_end = ",ksponge_end
-     do k=1,ksponge_end
-       write(iulog,*) subname//": nu_scale_top ",k,nu_scale_top(k)
-       if (ntrac>0) then
-         if (irecons_tracer_lev(k)==3) &
-              write(iulog,*) subname//&
-              ": CSLAM reconstruction reduced to Piecewise Linear Method   in layer k=",k
-         if (irecons_tracer_lev(k)==1) &
-              write(iulog,*) subname//&
-              ": CSLAM reconstruction reduced to Piecewise Constant Method in layer k=",k
+   if (nu_top>0) then
+     if (masterproc) write(iulog,*) subname//": sponge layer viscosity scaling factor"
+     do k=1,nlev
+       press = (hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0
+       ptop  = hvcoord%hyai(1)*hvcoord%ps0
+       nu_scale_top(k) = 8.0_r8*(1.0_r8+tanh(1.0_r8*log(ptop/press))) ! tau will be maximum 8 at model top       
+       if (nu_scale_top(k).ge.0.15_r8) then
+         ksponge_end = k
+       else
+         nu_scale_top(k) = 0.0_r8
        end if
      end do
+   else
+     ksponge_end = 0
+   end if
+   ksponge_end = MAX(MAX(ksponge_end,1),kmol_end)     
+   if (masterproc) then
+     write(iulog,*) subname//": ksponge_end = ",ksponge_end
+     if (nu_top>0) then
+       do k=1,ksponge_end
+         write(iulog,*) subname//": nu_scale_top ",k,nu_scale_top(k)
+       end do
+     end if
    end if
 
    if (iam < par%nprocs) then
@@ -806,8 +790,9 @@ subroutine dyn_init(dyn_in, dyn_out)
    call addfld ('two_dz_filter_dU',  (/ 'lev' /), 'A', '', 'Zontal wind increment from 2dz filter',     gridname='GLL')
    call addfld ('two_dz_filter_dV',  (/ 'lev' /), 'A', '', 'Meridional wind increment from 2dz filter',     gridname='GLL')
 
-   call addfld ('nu_kmvis',  (/ 'lev' /), 'A', '', 'Molecular viscosity on momentum',    gridname='GLL')
-   call addfld ('nu_kmcnd',  (/ 'lev' /), 'A', '', 'Molecular viscosity on temperature', gridname='GLL')
+   call addfld ('nu_kmvis',  (/ 'lev' /), 'A', '', 'Molecular viscosity Laplacian coefficient',    gridname='GLL')
+   call addfld ('nu_kmcnd',  (/ 'lev' /), 'A', '', 'Thermal conductivity Laplacian coefficient', gridname='GLL')
+   call addfld ('nu_kmcnd_dp',  (/ 'lev' /), 'A', '', 'Thermal conductivity like Laplacian coefficient on dp', gridname='GLL')
 
    
    ! Forcing from physics on the GLL grid

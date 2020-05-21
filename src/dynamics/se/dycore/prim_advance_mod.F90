@@ -549,7 +549,7 @@ contains
     real (kind=r8)                              :: v1,v2,v1new,v2new,dt,heating,T0,T1
     real (kind=r8)                              :: laplace_fluxes(nc,nc,4)
     real (kind=r8)                              :: rhypervis_subcycle
-    real (kind=r8)                              :: nu_ratio1, ptop, inv_rho
+    real (kind=r8)                              :: nu_ratio1, ptop, inv_rho, nu_dp
     real (kind=r8), dimension(ksponge_end)      :: dtemp,du,dv
 
     if (nu_s == 0 .and. nu == 0 .and. nu_p==0 ) return;
@@ -810,8 +810,8 @@ contains
         !
         ! compute molecular diffusion and thermal conductivity coefficients at interfaces
         !
-        !call get_molecular_diff_coef(1,np,1,np,ksponge_end,nlev,&
-        !     elem(ie)%state%T(:,:,:,nt),.true.,km_sponge_factor,kmvis(:,:,:,ie),kmcnd(:,:,:,ie))
+!        call get_molecular_diff_coef(1,np,1,np,ksponge_end,nlev,&
+!             elem(ie)%state%T(:,:,:,nt),.true.,km_sponge_factor,kmvis(:,:,:,ie),kmcnd(:,:,:,ie))
         !        
         call get_rho_dry(1,np,1,np,ksponge_end,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,qn0),  &
              elem(ie)%state%T(:,:,:,nt),ptop,elem(ie)%state%dp3d(:,:,:,nt),&
@@ -824,8 +824,8 @@ contains
         do k=1,ksponge_end
           kmvis  (:,:,k,ie) = kmvis_ref(k)*rhoi_dry(:,:,k)
           kmcnd  (:,:,k,ie) = kmcnd_ref(k)*rhoi_dry(:,:,k)
-          !        kmvis(:,:,:,ie) = kmvis(:,:,:,ie)*rhoi_dry(:,:,k)
-          !        kmcnd(:,:,:,ie) = kmcnd(:,:,:,ie)*rhoi_dry(:,:,k)
+!          kmvis(:,:,k,ie) = kmvis(:,:,k,ie)*rhoi_dry(:,:,k)
+!          kmcnd(:,:,k,ie) = kmcnd(:,:,k,ie)*rhoi_dry(:,:,k)
         end do
         !
         ! do vertical diffusion
@@ -860,8 +860,8 @@ contains
         !
         ! compute molecular diffusion and thermal conductivity coefficients at mid-levels
         !
-        !        call get_molecular_diff_coef(1,np,1,np,ksponge_end,nlev,&
-        !             elem(ie)%state%T(:,:,:,nt),.false.,km_sponge_factor(1:ksponge_end),kmvis(:,:,:,ie),kmcnd(:,:,:,ie))
+!        call get_molecular_diff_coef(1,np,1,np,ksponge_end,nlev,&
+!             elem(ie)%state%T(:,:,:,nt),.false.,km_sponge_factor(1:ksponge_end),kmvis(:,:,:,ie),kmcnd(:,:,:,ie))
         !        
         call get_rho_dry(1,np,1,np,ksponge_end,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,qn0),  &
              elem(ie)%state%T(:,:,:,nt),ptop,elem(ie)%state%dp3d(:,:,:,nt),&
@@ -897,10 +897,22 @@ contains
           call outfld('nu_kmcnd',RESHAPE(tmp_kmcnd(:,:,:), (/npsq,nlev/)), npsq, ie)
         end do
       end if
+      if (hist_fld_active('nu_kmcnd_dp')) then
+        do ie=nets,nete
+          tmp_kmcnd = 0.0_r8
+          do k=1,ksponge_end
+            tmp_kmcnd(:,:,k) = kmcnd(:,:,k,ie)/(cpair*rho_ref(k))
+          end do
+          call outfld('nu_kmcnd_dp',RESHAPE(tmp_kmcnd(:,:,:), (/npsq,nlev/)), npsq, ie)
+        end do
+      end if
+      !
+      ! scale by reference value (very large)
+      !
       do ie=nets,nete
         do k=1,ksponge_end
-          kmcnd(:,:,k,ie) = kmcnd(:,:,k,ie)/kmcnd_ref(k) !scale by reference value (very large)
-          kmvis(:,:,k,ie) = kmvis(:,:,k,ie)/kmvis_ref(k) !scale by reference value (very large)        
+          kmcnd(:,:,k,ie) = kmcnd(:,:,k,ie)/kmcnd_ref(k) 
+          kmvis(:,:,k,ie) = kmvis(:,:,k,ie)/kmvis_ref(k) 
         end do
       end do
     end if
@@ -914,57 +926,72 @@ contains
       rhypervis_subcycle=1.0_r8/real(hypervis_subcycle_sponge,kind=r8)
       do ie=nets,nete
         do k=1,ksponge_end
-          !
-          ! sponge
-          !
-          if (molecular_diff.LE.0) then
+          if (nu_top>0) then
+            !**********************************
             !
             ! traditional sponge formulation
             !
+            !**********************************
             call laplace_sphere_wk(elem(ie)%state%T(:,:,k,nt),deriv,elem(ie),lap_t,var_coef=.false.)
             call laplace_sphere_wk(elem(ie)%state%dp3d(:,:,k,nt),deriv,elem(ie),lap_dp,var_coef=.false.)
             nu_ratio1=1.0_r8
             call vlaplace_sphere_wk(elem(ie)%state%v(:,:,:,k,nt),deriv,elem(ie),.true.,lap_v, var_coef=.false.,&
                  nu_ratio=nu_ratio1)
-            
+            nu_dp = nu_scale_top(k)*nu_top            
             !OMP_COLLAPSE_SIMD
             !DIR_VECTOR_ALIGNED
             do j=1,np
               do i=1,np
-                ttens(i,j,k,ie)   = nu_scale_top(k)*nu_top*lap_t(i,j)  
-                dptens(i,j,k,ie)  = nu_scale_top(k)*nu_top*lap_dp(i,j) 
-                vtens(i,j,1,k,ie) = nu_scale_top(k)*nu_top*lap_v(i,j,1)
-                vtens(i,j,2,k,ie) = nu_scale_top(k)*nu_top*lap_v(i,j,2)
+                ttens(i,j,k,ie)   = nu_dp*lap_t(i,j)  
+                dptens(i,j,k,ie)  = nu_dp*lap_dp(i,j) 
+                vtens(i,j,1,k,ie) = nu_dp*lap_v(i,j,1)
+                vtens(i,j,2,k,ie) = nu_dp*lap_v(i,j,2)
               enddo
             enddo
-          else
+          else 
+            nu_dp = 0.0_r8
+            do j=1,np
+              do i=1,np
+                ttens(i,j,k,ie)   = 0.0_r8
+                dptens(i,j,k,ie)  = 0.0_r8
+                vtens(i,j,1,k,ie) = 0.0_r8
+                vtens(i,j,2,k,ie) = 0.0_r8
+              enddo
+            enddo
+          end if
+          if (molecular_diff>0) then
+            !************************************************************************
             !
             ! sponge formulation using molecular diffusion and thermal conductivity 
             !
+            !************************************************************************
             call vlaplace_sphere_wk_mol(elem(ie)%state%v(:,:,:,k,nt),deriv,elem(ie),.false.,kmvis(:,:,k,ie),lap_v)
             call laplace_sphere_wk(elem(ie)%state%T(:,:,k,nt),deriv,elem(ie),lap_t ,var_coef=.false.,mol_nu=kmcnd(:,:,k,ie))
-            call laplace_sphere_wk(elem(ie)%state%dp3d(:,:,k,nt),deriv,elem(ie),lap_dp,var_coef=.false.,mol_nu=kmcnd(:,:,k,ie))
+!            call laplace_sphere_wk(elem(ie)%state%dp3d(:,:,k,nt),deriv,elem(ie),lap_dp,var_coef=.false.,mol_nu=kmcnd(:,:,k,ie))
+            call laplace_sphere_wk(elem(ie)%state%dp3d(:,:,k,nt),deriv,elem(ie),lap_dp,var_coef=.false.)!constant coefficient for dp
             
+            nu_dp = nu_dp+kmcnd_ref(k)/(cpair*rho_ref(k))
+
             !OMP_COLLAPSE_SIMD
             !DIR_VECTOR_ALIGNED
             do j=1,np
               do i=1,np                  
                 inv_rho = 1.0_r8/rho_dry(i,j,k,ie)  
-                ttens(i,j,k,ie)   = kmcnd_ref(k)*inv_cp_full(i,j,k,ie)*inv_rho*lap_t(i,j)
-                dptens(i,j,k,ie)  = kmcnd_ref(k)*inv_cp_full(i,j,k,ie)*inv_rho*lap_dp(i,j) 
-                vtens(i,j,1,k,ie) = kmvis_ref(k)*inv_rho*lap_v(i,j,1)
-                vtens(i,j,2,k,ie) = kmvis_ref(k)*inv_rho*lap_v(i,j,2)
+                ttens(i,j,k,ie)   = ttens(i,j,k,ie)  + kmcnd_ref(k)*inv_cp_full(i,j,k,ie)*inv_rho*lap_t(i,j)
+                dptens(i,j,k,ie)  = dptens(i,j,k,ie) + nu_dp*lap_dp(i,j) 
+                vtens(i,j,1,k,ie) = vtens(i,j,1,k,ie)+ kmvis_ref(k)*inv_rho*lap_v(i,j,1)
+                vtens(i,j,2,k,ie) = vtens(i,j,2,k,ie)+ kmvis_ref(k)*inv_rho*lap_v(i,j,2)
               end do
             end do
           end if
           
           if (ntrac>0) then
             !
-            ! del2 mass flux for CSLAM (note that we do not have del4 in sponge layer)
+            ! mass flux for CSLAM due to sponge layer diffusion on dp
             !
-            call subcell_Laplace_fluxes(elem(ie)%state%dp3d(:,:,k,nt),deriv,elem(ie),np,nc,laplace_fluxes)
+            call subcell_Laplace_fluxes(elem(ie)%state%dp3d(:,:,k,nt),deriv,elem(ie),np,nc,laplace_fluxes)!,coef=kmcnd(:,:,k,ie))
             elem(ie)%sub_elem_mass_flux(:,:,:,k) = elem(ie)%sub_elem_mass_flux(:,:,:,k) + &
-                 rhypervis_subcycle*eta_ave_w*nu_scale_top(k)*nu_top*laplace_fluxes
+                 rhypervis_subcycle*eta_ave_w*nu_dp*laplace_fluxes
           endif
           
           ! NOTE: we will DSS all tendicies, EXCEPT for dp3d, where we DSS the new state

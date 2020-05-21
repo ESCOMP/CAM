@@ -183,8 +183,7 @@ contains
     use hybvcoord_mod, only : hvcoord_t
     use time_mod,               only: TimeLevel_t, timelevel_update, timelevel_qdp, nsplit
     use control_mod,            only: statefreq,disable_diagnostics,qsplit, rsplit, variable_nsplit
-    use control_mod,            only: del2_physics_tendencies
-    use prim_advance_mod,       only: applycamforcing, del2_sponge_uvt_tendencies
+    use prim_advance_mod,       only: applycamforcing
     use prim_advance_mod,       only: calc_tot_energy_dynamics,compute_omega,two_dz_filter
     use prim_state_mod,         only: prim_printstate, adjust_nsplit
     use prim_advection_mod,     only: vertical_remap, deriv
@@ -246,14 +245,6 @@ contains
 
 
     call TimeLevel_Qdp( tl, qsplit, n0_qdp)
-
-    if (r==1) then
-      !
-      ! filter physics tendencies
-      !
-      if (del2_physics_tendencies) &
-           call del2_sponge_uvt_tendencies(elem,hybrid,deriv,nets,nete,dt_phys)
-    end if
 
     call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%n0,n0_qdp,'dAF')
     call ApplyCAMForcing(elem,fvm,tl%n0,n0_qdp,dt_remap,dt_phys,nets,nete,nsubstep)
