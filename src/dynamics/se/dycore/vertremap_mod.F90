@@ -39,7 +39,7 @@ module vertremap_mod
 !=======================================================================================================!
 
     subroutine remap1(Qdp,nx,qstart,qstop,qsize,dp1,dp2,ptop,identifier,Qdp_mass,kord)
-      use fv_mapz,      only: map1_ppm 
+      use fv_mapz,      only: map1_ppm
       ! remap 1 field
       ! input:  Qdp   field to be remapped (NOTE: MASS, not MIXING RATIO)
       !         dp1   layer thickness (source)
@@ -65,17 +65,21 @@ module vertremap_mod
       integer        :: kord_local(qsize)
 
       kord_local = kord
-      
+
       if (any(kord(:).GE.0)) then
         if (.not.qdp_mass) then
           do itrac=1,qsize
-            Qdp(:,:,:,itrac) = Qdp(:,:,:,itrac)*dp1(:,:,:)
+            if (kord(itrac).GE.0) then            
+              Qdp(:,:,:,itrac) = Qdp(:,:,:,itrac)*dp1(:,:,:)
+            end if
           end do
         end if        
         call remap_Q_ppm(qdp,nx,qstart,qstop,qsize,dp1,dp2,kord)
         if (.not.qdp_mass) then
           do itrac=1,qsize
-            Qdp(:,:,:,itrac) = Qdp(:,:,:,itrac)/dp2(:,:,:)
+            if (kord(itrac).GE.0) then            
+              Qdp(:,:,:,itrac) = Qdp(:,:,:,itrac)/dp2(:,:,:)
+            end if
           end do
         end if        
       endif
@@ -89,7 +93,7 @@ module vertremap_mod
           kord_local = abs(kord)
           logp    = .false.
         else
-          kord_local = abs(kord/10)
+          kord_local = abs(kord/10)         
           if (identifier==1) then
             logp    = .true.
           else
@@ -102,7 +106,9 @@ module vertremap_mod
         if (qdp_mass) then
           inv_dp = 1.0_r8/dp1
           do itrac=1,qsize
-            Qdp(:,:,:,itrac) = Qdp(:,:,:,itrac)*inv_dp(:,:,:)
+            if (kord(itrac)<0) then            
+              Qdp(:,:,:,itrac) = Qdp(:,:,:,itrac)*inv_dp(:,:,:)
+            end if
           end do
         end if
         if (logp) then
@@ -125,7 +131,7 @@ module vertremap_mod
             
             do itrac=1,qsize
               if (kord(itrac)<0) then
-                call map1_ppm( nlev, pe1(:,:),   Qdp(:,:,:,itrac),   gz,   &!phl
+                call map1_ppm( nlev, pe1(:,:),   Qdp(:,:,:,itrac),   gz,   &
                      nlev, pe2(:,:),    Qdp(:,:,:,itrac),               &
                      1, nx, j, 1, nx, 1, nx, identifier, kord_local(itrac))
               end if
@@ -157,7 +163,9 @@ module vertremap_mod
         end if
         if (qdp_mass) then
           do itrac=1,qsize
-            Qdp(:,:,:,itrac) = Qdp(:,:,:,itrac)*dp2(:,:,:)
+            if (kord(itrac)<0) then
+              Qdp(:,:,:,itrac) = Qdp(:,:,:,itrac)*dp2(:,:,:)
+            end if
           end do
         end if
       end if
@@ -402,7 +410,7 @@ subroutine remap_Q_ppm(Qdp,nx,qstart,qstop,qsize,dp1,dp2,kord)
       !From here, we loop over tracers for only those portions which depend on tracer data, which includes PPM limiting and
       !mass accumulation
       do q = qstart, qstop
-        if (kord(q)>0) then
+        if (kord(q).GE.0) then
         !Accumulate the old mass up to old grid cell interface locations to simplify integration
         !during remapping. Also, divide out the grid spacing so we're working with actual tracer
         !values and can conserve mass. The option for ifndef ZEROHORZ I believe is there to ensure
