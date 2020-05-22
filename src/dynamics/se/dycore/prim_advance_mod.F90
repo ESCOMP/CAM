@@ -12,7 +12,6 @@ module prim_advance_mod
   save
   
   public :: prim_advance_exp, prim_advance_init, applyCAMforcing, calc_tot_energy_dynamics, compute_omega
-  public :: del2_sponge_uvt_tendencies, two_dz_filter
 
   type (EdgeBuffer_t) :: edge3,edgeOmega,edgeSponge
   real (kind=r8), allocatable :: ur_weights(:)
@@ -51,7 +50,7 @@ contains
   subroutine prim_advance_exp(elem, fvm, deriv, hvcoord, hybrid,dt, tl,  nets, nete)   
     use control_mod,       only: prescribed_wind, tstep_type, qsplit
     use derivative_mod,    only: derivative_t
-    use dimensions_mod,    only: np, nlev, ntrac
+    use dimensions_mod,    only: np, nlev
     use element_mod,       only: element_t
     use hybvcoord_mod,     only: hvcoord_t
     use hybrid_mod,        only: hybrid_t
@@ -79,9 +78,8 @@ contains
     ! Local
     real (kind=r8) :: dt_vis, eta_ave_w
     real (kind=r8) :: dp(np,np)
-    integer        :: ie,nm1,n0,np1,k,qn0,i,j,m_cnst, nq
-    real (kind=r8) :: inv_cp_full(np,np,nlev,nets:nete), sum_cp, sum_water
-    real (kind=r8) :: inv_cp_full_tmp(np,np,nlev,nets:nete)
+    integer        :: ie,nm1,n0,np1,k,qn0,m_cnst, nq
+    real (kind=r8) :: inv_cp_full(np,np,nlev,nets:nete)
     real (kind=r8) :: qwater(np,np,nlev,thermodynamic_active_species_num,nets:nete)
     integer        :: qidx(thermodynamic_active_species_num)
     real (kind=r8) :: kappa(np,np,nlev,nets:nete)
@@ -301,9 +299,8 @@ contains
   
 
   subroutine applyCAMforcing(elem,fvm,np1,np1_qdp,dt_dribble,dt_phys,nets,nete,nsubstep)
-    use dimensions_mod,         only: np, nc, nlev, qsize, ntrac, nelemd
+    use dimensions_mod,         only: np, nc, nlev, qsize, ntrac
     use element_mod,            only: element_t
-    use time_mod,               only: nsplit
     use control_mod,            only: ftype, ftype_conserve
     use fvm_control_volume_mod, only: fvm_struct
     use physconst,              only: get_dp, thermodynamic_active_species_idx_dycore
@@ -313,8 +310,8 @@ contains
     integer,  intent(in) :: np1,nets,nete,np1_qdp,nsubstep
     
     ! local
-    integer :: i,j,k,ie,q,m_cnst,nq
-    real (kind=r8) :: v1,dt_local, dt_local_tracer,tmp,stmp
+    integer :: i,j,k,ie,q
+    real (kind=r8) :: v1,dt_local, dt_local_tracer,tmp
     real (kind=r8) :: dt_local_tracer_fvm
     real (kind=r8) :: ftmp(np,np,nlev,qsize,nets:nete) !diagnostics
     real (kind=r8) :: pdel(np,np,nlev)
@@ -476,12 +473,11 @@ contains
     !  For correct scaling, dt2 should be the same 'dt2' used in the leapfrog advace
     !
     !
-    use physconst,      only: gravit, cappa, rair, cpair, tref, lapse_rate, get_dp_ref
-    use physconst,      only: dry_air_composition_num
+    use physconst,      only: gravit, cappa, cpair, tref, lapse_rate, get_dp_ref
     use dimensions_mod, only: np, nlev, nc, ntrac, npsq, qsize
     use dimensions_mod, only: hypervis_dynamic_ref_state,ksponge_end
     use dimensions_mod, only: nu_scale_top,nu_lev,kmvis_ref,kmcnd_ref,rho_ref,km_sponge_factor
-    use control_mod,    only: nu, nu_s, hypervis_subcycle,hypervis_subcycle_sponge, nu_p, nu_top, hypervis_scaling
+    use control_mod,    only: nu, nu_s, hypervis_subcycle,hypervis_subcycle_sponge, nu_p, nu_top
     use control_mod,    only: molecular_diff
     use hybrid_mod,     only: hybrid_t!, get_loop_ranges
     use element_mod,    only: element_t
@@ -497,10 +493,6 @@ contains
     use physconst,       only: get_molecular_diff_coef,get_rho_dry
     use cam_history,     only: outfld, hist_fld_active
 
-    use shr_const_mod,  only: shr_const_rgas
-    use shr_const_mod,  only: shr_const_rdair
-    use shr_const_mod,  only: shr_const_cpdair
-    
     type (hybrid_t)    , intent(in)   :: hybrid
     type (element_t)   , intent(inout), target :: elem(:)
     type(fvm_struct)   , intent(in)   :: fvm(:)
@@ -511,12 +503,6 @@ contains
     type (hvcoord_t)   , intent(in)   :: hvcoord
     real (kind=r8) :: eta_ave_w  ! weighting for mean flux terms
     real (kind=r8) :: dt2
-    !
-    ! for vertical diffusion
-    !
-    real (kind=r8) :: inv_dpi(np,np)
-    real (kind=r8), dimension(np,np,ksponge_end+1) :: coefU, coefV, coefT
-
     ! local
     integer :: k,kptr,i,j,ie,ic
     integer :: kbeg, kend, kblk
@@ -529,7 +515,6 @@ contains
     real (kind=r8)                                         :: temp      (np,np,nlev)
     real (kind=r8)                                         :: tempflux(nc,nc,4)
     real (kind=r8), dimension(nc,nc,4,nlev,nets:nete)      :: dpflux
-    real (kind=r8), dimension(np,np,nlev)                  :: nabla4_pk,pk,inv_dpk
     type (EdgeDescriptor_t)                                :: desc    
     
     ! NOTE: PGI compiler bug: when using spheremp, rspheremp and ps as pointers to elem(ie)% members,
@@ -543,7 +528,6 @@ contains
     real (kind=r8), dimension(np,np,ksponge_end,nets:nete):: kmvis,kmcnd,rho_dry
     real (kind=r8), dimension(np,np,ksponge_end+1):: pint,rhoi_dry
     real (kind=r8), dimension(np,np,ksponge_end  ):: pmid
-    real (kind=r8), dimension(ksponge_end  )     :: sponge_factor
     real (kind=r8), dimension(np,np,nlev)       :: tmp_kmvis,tmp_kmcnd
     real (kind=r8), dimension(np,np,2)          :: lap_v
     real (kind=r8)                              :: v1,v2,v1new,v2new,dt,heating,T0,T1
@@ -1128,139 +1112,6 @@ contains
     call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dAS')        
   end subroutine advance_hypervis_dp
 
-  subroutine del2_sponge_uvt_tendencies(elem,hybrid,deriv,nets,nete,dt_phys)
-    !
-    !  take one timestep of:
-    !          u(:,:,:,np) = u(:,:,:,np) +  dt2*nu*laplacian**order ( u )
-    !          T(:,:,:,np) = T(:,:,:,np) +  dt2*nu_s*laplacian**order ( T )
-    !
-    !
-    !  For correct scaling, dt2 should be the same 'dt2' used in the leapfrog advace
-    !
-    !
-    use dimensions_mod, only: np, nlev, nc, ntrac
-    use dimensions_mod, only: nu_scale_top,ksponge_end
-    use control_mod,    only: nu, nu_s, hypervis_subcycle_sponge, nu_p, nu_top, hypervis_scaling
-    use hybrid_mod,     only: hybrid_t!, get_loop_ranges
-    use element_mod,    only: element_t
-    use derivative_mod, only: derivative_t, laplace_sphere_wk, vlaplace_sphere_wk
-    use edge_mod,       only: edgevpack, edgevunpack, edgeDGVunpack
-    use edgetype_mod,   only: EdgeBuffer_t, EdgeDescriptor_t
-    use bndry_mod,      only: bndry_exchange
-    use viscosity_mod,  only: biharmonic_wk_dp3d
-    
-    type (hybrid_t)    , intent(in)   :: hybrid
-    type (element_t)   , intent(inout), target :: elem(:)
-    type (derivative_t), intent(in  ) :: deriv
-    integer            , intent(in)   :: nets,nete
-    real (kind=r8)     , intent(in)   :: dt_phys
-
-    ! local
-    integer :: k,kptr,i,j,ie,ic
-    integer :: kbeg, kend, kblk
-    real (kind=r8), dimension(np,np,2,nlev,nets:nete)      :: vtens
-    real (kind=r8), dimension(np,np,nlev,nets:nete)        :: ttens
-    type (EdgeDescriptor_t)                                :: desc    
-    
-    real (kind=r8), dimension(np,np)   :: lap_t
-    real (kind=r8), dimension(np,np,2) :: lap_v
-    real (kind=r8)                     :: dt
-    real (kind=r8)                     :: nu_ratio1
-
-    kbeg=1; kend=nlev
-    
-    kblk = kend - kbeg + 1
-
-    dt=dt_phys/hypervis_subcycle_sponge
-    
-    !
-    !***************************************************************
-    !
-    ! sponge layer damping
-    !
-    !***************************************************************
-    !
-    kblk = ksponge_end    
-    do ic=1,hypervis_subcycle_sponge
-      do ie=nets,nete
-        do k=1,ksponge_end
-          call laplace_sphere_wk(elem(ie)%derived%FT(:,:,k),deriv,elem(ie),lap_t,var_coef=.false.)
-          ! increased second-order divergence damping
-          nu_ratio1=1.0_r8
-          call vlaplace_sphere_wk(elem(ie)%derived%FM(:,:,:,k),deriv,elem(ie),.true.,lap_v, var_coef=.false.,&
-               nu_ratio=nu_ratio1)
-          
-          !OMP_COLLAPSE_SIMD
-          !DIR_VECTOR_ALIGNED
-          do j=1,np
-            do i=1,np
-!              ttens(i,j,k,ie)   = nu_scale_top(k)*nu_top*lap_t(i,j)*0.1_r8
-!              vtens(i,j,1,k,ie) = nu_scale_top(k)*nu_top*lap_v(i,j,1)*0.1_r8
-!              vtens(i,j,2,k,ie) = nu_scale_top(k)*nu_top*lap_v(i,j,2)*0.1_r8
-
-              ttens(i,j,k,ie)   = 1.0E6_r8*lap_t(i,j)!*0.1_r8
-              vtens(i,j,1,k,ie) = 1.0E6_r8*lap_v(i,j,1)!*0.1_r8
-              vtens(i,j,2,k,ie) = 1.0E6_r8*lap_v(i,j,2)!*0.1_r8
-            enddo
-          enddo
-        enddo
-        
-        
-        kptr = 0
-        call edgeVpack(edgeSponge,ttens(:,:,1:ksponge_end,ie),kblk,kptr,ie)
-        
-        kptr = ksponge_end
-        call edgeVpack(edgeSponge,vtens(:,:,1,1:ksponge_end,ie),kblk,kptr,ie)
-        
-        kptr = 2*ksponge_end
-        call edgeVpack(edgeSponge,vtens(:,:,2,1:ksponge_end,ie),kblk,kptr,ie)
-      enddo
-      
-      call bndry_exchange(hybrid,edgeSponge,location='advance_hypervis_fsponge')
-      
-      do ie=nets,nete
-        
-        kptr = 0
-        call edgeVunpack(edgeSponge,ttens(:,:,1:ksponge_end,ie),kblk,kptr,ie)
-
-        kptr = ksponge_end        
-        call edgeVunpack(edgeSponge,vtens(:,:,1,1:ksponge_end,ie),kblk,kptr,ie)
-
-        kptr = 2*ksponge_end        
-        call edgeVunpack(edgeSponge,vtens(:,:,2,1:ksponge_end,ie),kblk,kptr,ie)
-        
-
-        ! apply inverse mass matrix, accumulate tendencies
-        !$omp parallel do num_threads(vert_num_threads) private(k,i,j)
-        do k=1,ksponge_end
-          !OMP_COLLAPSE_SIMD
-          !DIR_VECTOR_ALIGNED
-          do j=1,np
-            do i=1,np
-              vtens(i,j,1,k,ie)=dt*vtens(i,j,1,k,ie)*elem(ie)%rspheremp(i,j)
-              vtens(i,j,2,k,ie)=dt*vtens(i,j,2,k,ie)*elem(ie)%rspheremp(i,j)
-              ttens(i,j,k,ie)=dt*ttens(i,j,k,ie)*elem(ie)%rspheremp(i,j)
-            enddo
-          enddo
-        enddo
-        !$omp parallel do num_threads(vert_num_threads) private(k,i,j)
-        do k=1,ksponge_end
-          !OMP_COLLAPSE_SIMD
-          !DIR_VECTOR_ALIGNED
-          do j=1,np
-            do i=1,np
-              ! update v first (gives better results than updating v after heating)
-              elem(ie)%derived%FM(i,j,:,k)=elem(ie)%derived%FM(i,j,:,k) + &
-                   vtens(i,j,:,k,ie)
-              elem(ie)%derived%FT(i,j,k)=elem(ie)%derived%FT(i,j,k) &
-                   +ttens(i,j,k,ie)
-            enddo
-          enddo
-        enddo
-      end do       
-    end do
-  end subroutine del2_sponge_uvt_tendencies
-
 
   
    subroutine compute_and_apply_rhs(np1,nm1,n0,dt2,elem,hvcoord,hybrid,&
@@ -1343,7 +1194,7 @@ contains
      real (kind=r8), dimension(np,np)                              :: suml
      real (kind=r8) :: vtens1(np,np,nlev),vtens2(np,np,nlev),ttens(np,np,nlev)
      real (kind=r8) :: stashdp3d (np,np,nlev),tempdp3d(np,np), tempflux(nc,nc,4)
-     real (kind=r8) :: inv_epsilon, ckk, term, T_v(np,np,nlev)
+     real (kind=r8) :: ckk, term, T_v(np,np,nlev)
      real (kind=r8), dimension(np,np,2) :: grad_exner
      real (kind=r8), dimension(np,np)   :: theta_v
 
@@ -1352,11 +1203,10 @@ contains
      
      real (kind=r8) :: sum_water(np,np,nlev), density_inv
      real (kind=r8) :: E,v1,v2,glnps1,glnps2
-     integer        :: i,j,k,kptr,ie,nq
+     integer        :: i,j,k,kptr,ie
      real (kind=r8) :: u_m_umet, v_m_vmet, t_m_tmet, ptop
 
 !JMD  call t_barrierf('sync_compute_and_apply_rhs', hybrid%par%comm)
-     inv_epsilon = 1/Epsilo
      call t_adj_detailf(+1)
      call t_startf('compute_and_apply_rhs')
      do ie=nets,nete
@@ -1773,7 +1623,7 @@ contains
     use constituents,           only: cnst_get_ind
     use hycoef,                 only: hyai, ps0
     use fvm_control_volume_mod, only: fvm_struct
-    use physconst,              only: thermodynamic_active_species_num, get_dp, get_cp
+    use physconst,              only: get_dp, get_cp
     use physconst,              only: thermodynamic_active_species_idx_dycore
     use dimensions_mod,         only: cnst_name_gll
     !------------------------------Arguments--------------------------------
@@ -1804,7 +1654,7 @@ contains
     real(kind=r8) :: mr_cnst, mo_cnst, cos_lat, mr_tmp, mo_tmp
     real(kind=r8) :: cp(np,np,nlev)
     
-    integer :: ie,i,j,k,nq,m_cnst
+    integer :: ie,i,j,k
     integer :: ixwv,ixcldice, ixcldliq, ixtt ! CLDICE, CLDLIQ and test tracer indices
     character(len=16) :: name_out1,name_out2,name_out3,name_out4,name_out5,name_out6
 
@@ -1952,11 +1802,9 @@ contains
   end subroutine calc_tot_energy_dynamics
 
   subroutine output_qdp_var_dynamics(qdp,nx,num_trac,nets,nete,outfld_name)
-    use dimensions_mod, only: nlev,ntrac,nelemd
-    use physconst     , only: gravit
+    use dimensions_mod, only: nlev,ntrac
     use cam_history   , only: outfld, hist_fld_active
     use constituents  , only: cnst_get_ind
-    use control_mod,    only: TRACERTRANSPORT_SE_GLL, tracer_transport_type
     !------------------------------Arguments--------------------------------
 
     integer      ,intent(in) :: nx,num_trac,nets,nete
@@ -2020,7 +1868,6 @@ contains
 
    subroutine compute_omega(hybrid,n0,qn0,elem,deriv,nets,nete,dt,hvcoord)
      use control_mod,    only : nu_p, hypervis_subcycle
-     use edge_mod,       only : initEdgeBuffer, FreeEdgeBuffer
      use dimensions_mod, only : np, nlev, qsize
      use hybrid_mod,     only : hybrid_t
      use element_mod,    only : element_t
@@ -2039,18 +1886,15 @@ contains
      real (kind=r8)       , intent(in)            :: dt
      type (hvcoord_t)     , intent(in)            :: hvcoord
 
-     integer        :: i,j,k,ie,kptr,ic,m_cnst,nq
+     integer        :: i,j,k,ie,kptr,ic
      real (kind=r8) :: ckk, suml(np,np), v1, v2, term
      real (kind=r8) :: dp_full(np,np,nlev)
      real (kind=r8) :: p_full(np,np,nlev),grad_p_full(np,np,2),vgrad_p_full(np,np,nlev)
      real (kind=r8) :: divdp_full(np,np,nlev),vdp_full(np,np,2)
      real(kind=r8)  :: Otens(np,np  ,nlev,nets:nete), dt_hyper, sum_water(np,np,nlev)
 
-     ! type (EdgeBuffer_t) :: edgeOmega
      logical, parameter  :: del4omega = .true.
-!     logical, parameter  :: del4omega = .false.
 
-     !call initEdgeBuffer(hybrid%par,edgeOmega,elem,nlev,bndry_type=HME_BNDRY_P2P, nthreads=horz_num_threads)
      do ie=nets,nete
        call get_dp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,qn0),2,thermodynamic_active_species_idx_dycore,elem(ie)%state%dp3d(:,:,:,n0),dp_full)
         do k=1,nlev
@@ -2423,7 +2267,7 @@ contains
   end subroutine fill_element
 
   subroutine rayleigh_friction(elem,nt,nets,nete,dt)
-    use dimensions_mod, only: np, nlev, otau
+    use dimensions_mod, only: nlev, otau
     use hybrid_mod,     only: hybrid_t!, get_loop_ranges
     use element_mod,    only: element_t
     
@@ -2443,236 +2287,7 @@ contains
       enddo
     end do    
   end subroutine rayleigh_friction
-  !
-  ! SE version of fv_sg_adj from FV3
-  !
-  subroutine two_dz_filter(qdp,dp_dry,temp,v,dt,ie,metdet,dp_dry_fvm,q_fvm)
-    use physconst,      only: get_gz,get_Richardson_number,get_hydrostatic_static_energy,get_sum_species
-    use physconst,      only: thermodynamic_active_species_idx_dycore    
-    use dimensions_mod, only: np, nlev, qsize, npsq, nc, ntrac
-    use hycoef,         only: hyai, ps0
-    use cam_history,    only: outfld, hist_fld_active
-    use fvm_mapping,    only: dyn2fvm
-    use dimensions_mod, only: nu_scale_top,ksponge_end
-    real(kind=r8), intent(inout) :: qdp(np,np,nlev,qsize),temp(np,np,nlev), v(np,np,2,nlev)
-    real(kind=r8), intent(in)    :: dp_dry(np,np,nlev)
-    !
-    real(kind=r8), optional, intent(in)    :: dp_dry_fvm(nc,nc,nlev), metdet(np,np)
-    real(kind=r8), optional, intent(inout) :: q_fvm(nc,nc,nlev,ntrac)
-    real(kind=r8), intent(in)    :: dt
-    !    integer, optional, intent(in):: k_bot
-    integer, intent(in)          :: ie
 
-    ! Values at 0 Deg C
-    
-    real, parameter:: ri_max = 1.0_r8
-    real, parameter:: ri_min = 0.25_r8
-    real, parameter:: t1_min = 160.0_r8
-    real, parameter:: t2_min = 165.0_r8
-    real, parameter:: t2_max = 315.0_r8
-    real, parameter:: t3_max = 325.0_r8
-
-    
-    real(kind=r8), dimension(np,np,nlev)  :: pmid, dp, hd
-    real(kind=r8), dimension(np,np,nlev)  :: T0
-    real(kind=r8), dimension(np,np,2,nlev):: v0
-    real(kind=r8), dimension(np,np,nlev,qsize)  :: qdp0    
-    real(kind=r8), dimension(np,np,nlev)  :: KE,thermalE,gz
-    real(kind=r8), dimension(np,np,nlev+1):: Ri
-    real(kind=r8), dimension(np,np,nlev)  :: mixing, sum_species
-    real(kind=r8), dimension(np,np)       :: phis
-    real(kind=r8) :: ptop, ri_ref,rdt, mc, T_min, T_max, ratio, h0, fra, tau
-    real(kind=r8) :: k_bot!xxx
-    integer       :: i,j,k,kbot,km1,n,m,iq,mc_dry
-    !
-    ! vairables for mapping tracer mixing to fvm grid
-    !
-    real (kind=r8) :: mixing_fvm(nc,nc,nlev),one(np,np)
-    real (kind=r8) :: q0_fvm(nc,nc,nlev,ntrac),inv_fvm_area(nc,nc)
-    return
-    tau = 1800.0_r8! should be input xxx
-    fra = dt/real(tau)
-    do iq=1,qsize
-      qdp0(:,:,:,iq) = qdp(:,:,:,iq)!/dp_dry(:,:,:)
-    end do
-    if (ntrac>0) then
-      q0_fvm(:,:,:,:) = q_fvm(:,:,:,:)
-    end if
-    v0 = v(:,:,:,:)    
-    T0 = temp(:,:,:)
-
-    phis = 0.0_r8
-    
-    ptop = hyai(1)*ps0
-    
-    rdt = 1./ dt
-
-!    if ( present(k_bot) ) then
-!      if ( k_bot < 3 ) return
-!      kbot = k_bot
-!    else
-      kbot = 48!xxx nlev
-!      kbot = ksponge_end!48!xxx nlev
-!      kbot = nlev
-!    endif
-    if ( ptop < 2.0_r8 ) then
-      t_min = t1_min
-    else
-      t_min = t2_min
-    endif
-    t_max = t3_max
-
-    m=3
-    
-    mixing = 0.0_r8 !diagnostic only
-    do n=1,m
-      if ( m==3 ) then
-        if ( n==1) ratio = 0.25_r8
-        if ( n==2) ratio = 0.5_r8
-        if ( n==3) ratio = 0.999_r8
-      else
-        ratio = real(n)/real(m)
-      endif
-      call get_Richardson_number(1,np,1,np,nlev,qsize,qdp0,2,thermodynamic_active_species_idx_dycore,&
-           dp_dry,ptop,T0,v0,Ri,pmid=pmid,dp=dp)
-      call get_hydrostatic_static_energy(1,np,1,np,nlev,qsize,qdp0,2,thermodynamic_active_species_idx_dycore,&
-           dp_dry,ptop,T0,phis,v0,KE,thermalE,gz)
-      call get_sum_species(1,np,1,np,1,nlev,qsize,qdp0,thermodynamic_active_species_idx_dycore,sum_species,dp_dry=dp_dry)      
-      hd(:,:,:) = thermalE(:,:,:)+KE(:,:,:)+gz(:,:,:)
-      do k=kbot, 2, -1
-        km1 = k-1        
-        do j=1,np
-          do i=1,np
-            if ( T0(i,j,km1)>t_max .and. T0(i,j,km1)>T0(i,j,k) ) then
-              ! top layer unphysically warm
-              Ri(i,j,k) = 0.
-            elseif ( T0(i,j,k)<t_min ) then
-              Ri(i,j,k) = min(Ri(i,j,k), 0.1_r8)
-            endif
-            ! Adjustment for K-H instability:
-            ! Add moist 2-dz instability consideration:
-!!!         ri_ref = min(ri_max, ri_min + (ri_max-ri_min)*dim(500.e2,pm(i,k))/250.e2 )
-            ri_ref = min(ri_max, ri_min + (ri_max-ri_min)*dim(400.e2_r8,pmid(i,j,k))/200.e2_r8)
-            !           
-            ! Enhancing mixing at the model top
-            !
-            if ( k==2 ) then
-              ri_ref = 4._r8*ri_ref
-            elseif ( k==3 ) then
-              ri_ref = 2._r8*ri_ref
-            elseif ( k==4 ) then
-              ri_ref = 1.5_r8*ri_ref
-            endif
-
-            if ( Ri(i,j,k) < ri_ref ) then
-              ! Compute equivalent mass flux: mc              
-              mc            = ratio*dp(i,j,km1)*dp(i,j,k)/(dp(i,j,km1)+dp(i,j,k))*(1._r8-max(0.0_r8,Ri(i,j,k)/ri_ref))**2
-              mc_dry        = mc/sum_species(i,j,k)
-              mixing(i,j,k) = mixing(i,j,k)+mc_dry              
-              do iq=1,qsize
-                h0 = mc_dry*(qdp0(i,j,k,iq)/dp_dry(i,j,km1)-qdp0(i,j,km1,iq)/dp_dry(i,j,km1))
-                qdp0(i,j,km1,iq) = qdp0(i,j,km1,iq) + h0
-                qdp0(i,j,k  ,iq) = qdp0(i,j,k  ,iq) - h0
-              enddo
-              ! u:
-              h0 = mc*(v0(i,j,1,k)-v0(i,j,1,km1))
-              v0(i,j,1,km1) = v0(i,j,1,km1) + h0/dp(i,j,km1)
-              v0(i,j,1,k  ) = v0(i,j,1,k  ) - h0/dp(i,j,k  )
-              ! v:
-              h0 = mc*(v0(i,j,2,k)-v0(i,j,2,km1))
-              v0(i,j,2,km1) = v0(i,j,2,km1) + h0/dp(i,j,km1)
-              v0(i,j,2,k  ) = v0(i,j,2,k  ) - h0/dp(i,j,k  )              
-              ! Static energy
-              h0 = mc*(hd(i,j,k)-hd(i,j,km1))
-              hd(i,j,km1) = hd(i,j,km1) + h0/dp(i,j,km1)
-              hd(i,j,k  ) = hd(i,j,k  ) - h0/dp(i,j,k  )
-            endif
-          enddo
-        end do
-      end do      
-      !-------------- 
-      ! Retrive Temp:
-      !--------------
-      hd(:,:,:) = hd(:,:,:)*dp(:,:,:)
-      call get_Richardson_number(1,np,1,np,nlev,qsize,qdp0,2,thermodynamic_active_species_idx_dycore,&
-           dp_dry,ptop,T0,v0,Ri,pmid=pmid,dp=dp)      
-      call get_hydrostatic_static_energy(1,np,1,np,nlev,qsize,qdp0,2,thermodynamic_active_species_idx_dycore,&
-           dp_dry,ptop,T0,phis,v0,KE,thermalE,gz)
-      T0(:,:,:) = T0(:,:,:)*(hd(:,:,:)-gz(:,:,:)*dp(:,:,:)-KE(:,:,:)*dp(:,:,:))/(thermalE(:,:,:)*dp(:,:,:))
-    enddo       ! n-loop
-
-    if (ntrac>0) then
-      !
-      ! do mixing on FVM variables ...
-      !
-      mixing_fvm(:,:,1) = 0.0_r8
-      one=1.0_r8
-      inv_fvm_area(:,:)= dyn2fvm(one(:,:),metdet)
-      inv_fvm_area(:,:)= 1.0_r8/inv_fvm_area(:,:)
-      
-      do k=kbot, 2, -1
-        km1 = k-1
-
-        mixing_fvm(:,:,k)= dyn2fvm(mixing(:,:,k),metdet,inv_fvm_area(:,:))
-        do iq=1,ntrac
-          do j=1,nc          
-            do i=1,nc
-              mixing_fvm(i,j,k)=MIN(MAX(mixing_fvm(i,j,k),0.0_r8),1.0_r8)
-              h0 = mixing_fvm(i,j,k)*(q0_fvm(i,j,k,iq)-q0_fvm(i,j,km1,iq))
-              q0_fvm(i,j,km1,iq) = q0_fvm(i,j,km1,iq) + h0/dp_dry_fvm(i,j,km1)  
-              q0_fvm(i,j,k  ,iq) = q0_fvm(i,j,k  ,iq) - h0/dp_dry_fvm(i,j,k  )
-            end do
-          end do
-        end do
-      enddo
-      
-    end if
-    
-    if (hist_fld_active('two_dz_filter_dT')) then
-      call outfld('two_dz_filter_dT',RESHAPE((T0(:,:,:)-temp(:,:,:))*fra, (/npsq,nlev/)), npsq, ie)
-    end if
-    
-    if (hist_fld_active('two_dz_filter_dU')) then
-      call outfld('two_dz_filter_dU',RESHAPE((v0(:,:,1,:)-V(:,:,1,:))*fra, (/npsq,nlev/)), npsq, ie)
-    end if
-    
-    if (hist_fld_active('two_dz_filter_dV')) then
-      call outfld('two_dz_filter_dV',RESHAPE((v0(:,:,2,:)-V(:,:,2,:))*fra, (/npsq,nlev/)), npsq, ie)
-    end if
-    
-    if (hist_fld_active('Ri_number')) then
-      call outfld('Ri_number',RESHAPE(Ri(:,:,1:nlev), (/npsq,nlev/)), npsq, ie)
-    end if
-    if (hist_fld_active('Ri_mixing')) then
-      call outfld('Ri_mixing',RESHAPE(mixing(:,:,1:nlev)/dp_dry(:,:,:), (/npsq,nlev/)), npsq, ie)
-    end if
-    if (ntrac>0) then
-      if (hist_fld_active('Ri_mixing_fvm')) then
-        call outfld('Ri_mixing_fvm',RESHAPE(mixing_fvm(:,:,1:nlev)/dp_dry_fvm(:,:,:), (/nc*nc,nlev/)), nc*nc, ie)
-      end if
-    end if
-    !
-    !update fields
-    !
-!    if ( fra < 1.0_r8 ) then
-      do k=1, kbot
-        v(:,:,:,k) =v(:,:,:,k) +(v0(:,:,:,k)-v(:,:,:,k))*fra!*nu_scale_top(k)
-        temp(:,:,k)=temp(:,:,k)+(T0(:,:,k)-temp(:,:,k))*fra!*nu_scale_top(k)
-      enddo
-      do iq=1,qsize
-        do k=1,kbot
-          qdp(:,:,k,iq) = qdp(:,:,k,iq) + (qdp0(:,:,k,iq) - qdp(:,:,k,iq))*fra!*nu_scale_top(k)
-        enddo
-      enddo
-      if (ntrac>0) then
-        do iq=1,ntrac
-          do k=1,kbot
-            q_fvm(:,:,k,iq) = q_fvm(:,:,k,iq) + (q0_fvm(:,:,k,iq) - q_fvm(:,:,k,iq))!*fra*nu_scale_top(k)
-          enddo
-        enddo
-      endif
-!    end if
-  end subroutine two_dz_filter
 
    
   subroutine solve_diffusion(dt,nx,nlev,i,j,nlay,pmid,pint,km,fld,boundary_condition,dfld)

@@ -59,7 +59,7 @@ contains
 !   variables used to calculate CFL
     real (kind=r8) :: dtnu            ! timestep*viscosity parameter
     real (kind=r8) :: dt_dyn_vis      ! viscosity timestep used in dynamics
-    real (kind=r8) :: dt_dyn_del2_sponge 
+    real (kind=r8) :: dt_dyn_del2_sponge, dt_remap 
     real (kind=r8) :: dt_tracer_vis      ! viscosity timestep used in tracers
 
     real (kind=r8) :: dp
@@ -84,7 +84,7 @@ contains
     dt_dyn_vis = tstep
     dt_dyn_del2_sponge = tstep
     dt_tracer_vis=tstep*qsplit
-
+    dt_remap=dt_tracer_vis*rsplit
     ! compute most restrictive condition:
     ! note: dtnu ignores subcycling
     dtnu=max(dt_dyn_vis*max(nu,nu_div), dt_tracer_vis*nu_q)
@@ -137,7 +137,7 @@ contains
 
      n0=tl%n0
      call TimeLevel_Qdp( tl, qsplit, n0_qdp)
-     call compute_omega(hybrid,n0,n0_qdp,elem,deriv,nets,nete,tstep,hvcoord)
+     call compute_omega(hybrid,n0,n0_qdp,elem,deriv,nets,nete,dt_remap,hvcoord)
 
      if (hybrid%masterthread) write(iulog,*) "initial state:"
      call prim_printstate(elem, tl, hybrid,nets,nete, fvm)
@@ -184,7 +184,7 @@ contains
     use time_mod,               only: TimeLevel_t, timelevel_update, timelevel_qdp, nsplit
     use control_mod,            only: statefreq,disable_diagnostics,qsplit, rsplit, variable_nsplit
     use prim_advance_mod,       only: applycamforcing
-    use prim_advance_mod,       only: calc_tot_energy_dynamics,compute_omega,two_dz_filter
+    use prim_advance_mod,       only: calc_tot_energy_dynamics,compute_omega
     use prim_state_mod,         only: prim_printstate, adjust_nsplit
     use prim_advection_mod,     only: vertical_remap, deriv
     use thread_mod,             only: omp_get_thread_num
@@ -277,24 +277,6 @@ contains
     call t_startf('vertical_remap')
     call vertical_remap(hybrid,elem,fvm,hvcoord,tl%np1,np1_qdp,nets,nete)
     call t_stopf('vertical_remap')
-
-    call t_startf('two_dz_filter')
-    call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%np1,np1_qdp,'dBZ')        
-!    if (ntrac>0) then
-!      do ie=nets,nete
-!        call two_dz_filter(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp),elem(ie)%state%dp3d(:,:,:,tl%np1),elem(ie)%state%T(:,:,:,tl%np1),&
-!             elem(ie)%state%v(:,:,:,:,tl%np1),dt_remap,ie,&
-!             metdet=elem(ie)%metdet, dp_dry_fvm=fvm(ie)%dp_fvm(1:nc,1:nc,:),q_fvm=fvm(ie)%c(1:nc,1:nc,:,:))
-!      end do      
-!    else
-!      do ie=nets,nete
-!        call two_dz_filter(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp),elem(ie)%state%dp3d(:,:,:,tl%np1),elem(ie)%state%T(:,:,:,tl%np1),&
-!             elem(ie)%state%v(:,:,:,:,tl%np1),dt_remap,ie)
-!      end do
-!    end if
-    call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%np1,np1_qdp,'dAZ')    
-    call t_stopf('two_dz_filter')
-
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! time step is complete.
