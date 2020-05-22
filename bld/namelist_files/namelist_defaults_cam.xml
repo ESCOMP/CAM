@@ -1296,8 +1296,7 @@
 <clubb_c11                                        > 0.7D0   </clubb_c11>
 <clubb_c11b                                       > 0.35D0  </clubb_c11b>
 <clubb_c14                                        > 2.2D0   </clubb_c14>
-<!-- clubb_c14 dyn="se" was 1.6???xxxx -->
-<clubb_c14 dyn="se"                               > 1.9D0   </clubb_c14>
+<clubb_c14 dyn="se"                               > 1.6D0   </clubb_c14>
 <clubb_c_K9                                       > 0.25    </clubb_c_K9>
 <clubb_nu9                                        > 20.0    </clubb_nu9>
 <clubb_c_K10                                      > 0.5     </clubb_c_K10>
