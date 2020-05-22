@@ -2102,7 +2102,7 @@
 <se_tstep_type > 4 </se_tstep_type>
 
 <se_vert_remap_uvTq_alg  > -9 </se_vert_remap_uvTq_alg>
-<se_vert_remap_tracer_alg> -9 </se_vert_remap_tracer_alg>
+<se_vert_remap_tracer_alg> 10 </se_vert_remap_tracer_alg>
 
 <!-- Nudging -->
 <se_met_nudge_u> 2.0e-5 </se_met_nudge_u>
