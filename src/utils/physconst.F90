@@ -1630,12 +1630,12 @@ subroutine composition_init()
 
 
 
-   subroutine get_molecular_diff_coef_reference(k0,k1,tref,pmid,sponge_factor,kmvis_ref,kmcnd_ref,rho_ref)
+   subroutine get_molecular_diff_coef_reference(k0,k1,tref,press,sponge_factor,kmvis_ref,kmcnd_ref,rho_ref)
      use cam_logfile,     only: iulog
      ! args
      integer,  intent(in)           :: k0,k1
      real(r8), intent(in)           :: tref !reference temperature
-     real(r8), intent(in)           :: pmid(k0:k1)
+     real(r8), intent(in)           :: press(k0:k1)
      real(r8), intent(in)           :: sponge_factor(k0:k1)
      real(r8), intent(out)          :: kmvis_ref(k0:k1)
      real(r8), intent(out)          :: kmcnd_ref(k0:k1)
@@ -1673,7 +1673,7 @@ subroutine composition_init()
 !     mbar   = mwdry
      mbar = 1._r8/( mmro *o_mwi  + mmro2*o2_mwi + mmrn2*n2_mwi)
      do k=k0,k1
-       rho_ref(k) = pmid(k)/(tref*Rair) !ideal gas law for dry air
+       rho_ref(k) = press(k)/(tref*Rair) !ideal gas law for dry air
        kmvis_ref(k) = sponge_factor(k)* &
             (kv1*mmro2*o2_mwi+          &
             kv2*mmrn2*n2_mwi+           &

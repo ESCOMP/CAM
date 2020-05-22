@@ -711,40 +711,44 @@ subroutine dyn_init(dyn_in, dyn_out)
    !
    ! initialize diffusion in dycore
    !
-   kmol_end = 1
-   if (molecular_diff>0) then
+   kmol_end = 0
+   if (molecular_diff>0) then     
      !
      ! molecular diffusion and thermal conductivity reference values
      !
      if (masterproc) write(iulog,*) subname//": initialize molecular diffusion reference profiles"
-     tref = 600._r8     !mean value at model top for solar max
+     tref = 1000._r8     !mean value at model top for solar max
      km_sponge_factor = molecular_diff
+     !
+     ! get rho, kmvis and kmcnd at mid-levels
+     !
      call get_molecular_diff_coef_reference(1,nlev,tref,&
-          (hvcoord%hyam(:)+hvcoord%hybm(:))*hvcoord%ps0,km_sponge_factor,& !pmid
+          (hvcoord%hyam(:)+hvcoord%hybm(:))*hvcoord%ps0,km_sponge_factor,&
           kmvis_ref,kmcnd_ref,rho_ref)
-
+     
      do k=1,nlev
        if (MIN(kmvis_ref(k)/rho_ref(k),kmcnd_ref(k)/(cpair*rho_ref(k)))>1000.0_r8) then !only apply molecular viscosity where viscosity is > 1000 m/s^2
          if (masterproc) then
-           write(iulog,*) "k, p, km_sponge_factor                   :",k,(hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0,km_sponge_factor(k)
-           write(iulog,*) "kmvis_ref/rho_ref, kmcnd_ref/(cp*rho_ref): ",kmvis_ref(k)/rho_ref(k),kmcnd_ref(k)/(cpair*rho_ref(k))
+           write(iulog,'(a,i3,1e11.4,i4)') "k, p, km_sponge_factor                   :",k,(hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0,km_sponge_factor(k)
+           write(iulog,'(a,2e11.4)') "kmvis_ref/rho_ref, kmcnd_ref/(cp*rho_ref): ",kmvis_ref(k)/rho_ref(k),kmcnd_ref(k)/(cpair*rho_ref(k))
          end if
          kmol_end = k
        else 
-         kmvis_ref(k) = 0.0_r8
+        kmvis_ref(k) = 0.0_r8
          kmcnd_ref(k) = 0.0_r8
        end if
      end do
    else
-     kmvis_ref(k) = -1.0E6_r8
-     kmcnd_ref(k) = -1.0E6_r8
-     kmol_end     = 0
+     kmvis_ref(:) = -1.0E6_r8
+     kmcnd_ref(:) = -1.0E6_r8
+     rho_ref(:)   = -1.0E6_r8
    end if
    !
    irecons_tracer_lev(:) = irecons_tracer !use high-order CSLAM in all layers
    !
    ! compute scaling of traditional sponge layer damping (following cd_core.F90 in CAM-FV)
    !   
+   nu_scale_top(:) = 0.0_r8
    if (nu_top>0) then
      if (masterproc) write(iulog,*) subname//": sponge layer viscosity scaling factor"
      do k=1,nlev
@@ -765,7 +769,7 @@ subroutine dyn_init(dyn_in, dyn_out)
      write(iulog,*) subname//": ksponge_end = ",ksponge_end
      if (nu_top>0) then
        do k=1,ksponge_end
-         write(iulog,*) subname//": nu_scale_top ",k,nu_scale_top(k)
+         write(iulog,'(a,i3,1e11.4)') subname//": nu_scale_top ",k,nu_scale_top(k)
        end do
      end if
    end if

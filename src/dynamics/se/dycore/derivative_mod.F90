@@ -1769,7 +1769,7 @@ end do
 
     real(kind=r8) :: vor(np,np),div(np,np)
 
-    integer :: n,m!xxx
+    integer :: n,m
 
     call divergence_sphere(v,deriv,elem,div)
     call vorticity_sphere(v,deriv,elem,vor)
@@ -2090,7 +2090,7 @@ end do
 
   end subroutine subcell_div_fluxes
 
-  subroutine subcell_Laplace_fluxes(u, deriv, elem, p, n, fluxes,coef)
+  subroutine subcell_Laplace_fluxes(u, deriv, elem, p, n, fluxes)
 
     implicit none
 
@@ -2099,7 +2099,6 @@ end do
     type (derivative_t)  , intent(in)  :: deriv
     type (element_t)     , intent(in)  :: elem
     real (kind=r8), intent(in)  :: u(p,p)
-    real (kind=r8), optional, intent(in)  :: coef(p,p)
 
     real (kind=r8)              :: g(p,p,2)
     real (kind=r8)              :: v(p,p,2)
@@ -2113,11 +2112,6 @@ end do
 
     v(:,:,1) = elem%Dinv(:,:,1,1)*g(:,:,1) + elem%Dinv(:,:,1,2)*g(:,:,2)
     v(:,:,2) = elem%Dinv(:,:,2,1)*g(:,:,1) + elem%Dinv(:,:,2,2)*g(:,:,2)
-
-    if (present(coef)) then   !xxx
-      v(:,:,1) =v(:,:,1)*coef!xxx
-      v(:,:,2) =v(:,:,2)*coef!xxx
-    end if!xxx
 
     do j=1,p
     do i=1,p

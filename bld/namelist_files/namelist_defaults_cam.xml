@@ -2024,7 +2024,7 @@
 <se_hypervis_subcycle  hgrid="ne0np4.ARCTICGRIS.ne30x8"> 2 </se_hypervis_subcycle>
 
 <se_hypervis_subcycle_sponge>                            1                </se_hypervis_subcycle_sponge>
-<se_hypervis_subcycle_sponge waccm_phys="1">             4                </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge waccm_phys="1">             1                </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne0np4CONUS.ne30x8"> 4                </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"> 12</se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne0np4.ARCTIC.ne30x4"> 4 </se_hypervis_subcycle_sponge>

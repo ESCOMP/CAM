@@ -222,8 +222,8 @@ contains
     use bndry_mod,      only: bndry_exchange
     use time_mod,       only: tstep
     use mesh_mod,       only: MeshUseMeshFile
-    use dimensions_mod, only: ksponge_end
-
+    use dimensions_mod, only: ksponge_end, kmvis_ref, kmcnd_ref,rho_ref
+    use physconst,      only: cpair
   
     type(element_t)      , intent(inout) :: elem(:)
     integer              , intent(in) :: nets,nete
@@ -246,7 +246,7 @@ contains
     real (kind=r8) :: x, y, noreast, nw, se, sw
     real (kind=r8), dimension(np,np,nets:nete) :: zeta
     real (kind=r8) :: lambda_max, lambda_vis, min_gw, lambda,umax, ugw
-    real (kind=r8) :: press,scale1,scale2,scale3
+    real (kind=r8) :: press,scale1,scale2,scale3, max_laplace
     integer :: ie,corner, i, j, rowind, colind, k
     type (quadrature_t)    :: gp
     character(LEN=256) :: rk_str
@@ -652,7 +652,10 @@ contains
     end if
     dt_max_hypervis        = s_hypervis/(MAX(MAXVAL(nu_div_lev(:)),MAXVAL(nu_lev(:)))*normDinv_hypervis)
     dt_max_hypervis_tracer = s_hypervis/(nu_q*normDinv_hypervis)
-    dt_max_laplacian_top   = 1.0_r8/(nu_top*((ra*max_normDinv)**2)*lambda_vis)
+
+    max_laplace = MAX(MAXVAL(nu_scale_top(:))*nu_top,MAXVAL(kmvis_ref(:)/rho_ref(:)))
+    max_laplace = MAX(max_laplace,MAXVAL(kmcnd_ref(:)/(cpair*rho_ref(:))))
+    dt_max_laplacian_top   = 1.0_r8/(max_laplace*((ra*max_normDinv)**2)*lambda_vis)
     
     if (hybrid%masterthread) then        
       write(iulog,'(a,f10.2,a)') ' '
@@ -680,18 +683,16 @@ contains
         if (dt_tracer_fvm_actual>dt_max_tracer_fvm) write(iulog,*) 'WARNING: dt_tracer_fvm theortically unstable'
       end if
       write(iulog,'(a,f10.2)') '* dt_remap (vertical remap dt) ',dt_remap_actual
-      
-      do k=1,nlev
-        if (nu_scale_top(k)>0.15_r8) then
-          if(nu_top>0) then
-            write(iulog,'(a,i2,a,f10.2,a,f10.2,a)') '* dt level',k,'    (del2 sponge           ; u,v,T,dM) < ',&
-                 dt_max_laplacian_top/nu_scale_top(k),'s',dt_dyn_del2_actual,'s'
-            if (dt_dyn_del2_actual>dt_max_laplacian_top/nu_scale_top(k)) &
-                 write(iulog,*) 'WARNING: theoretically unstable in sponge; increase se_hypervis_subcycle_sponge'
-          end if
-        end if
+      do k=1,ksponge_end
+        max_laplace = MAX(nu_scale_top(k)*nu_top,kmvis_ref(k)/rho_ref(k))
+        max_laplace = MAX(max_laplace,kmcnd_ref(k)/(cpair*rho_ref(k)))
+        dt_max_laplacian_top   = 1.0_r8/(max_laplace*((ra*max_normDinv)**2)*lambda_vis)
+
+        write(iulog,'(a,f10.2,a,f10.2,a)') '* dt    (del2 sponge           ; u,v,T,dM) < ',&
+             dt_max_laplacian_top,'s',dt_dyn_del2_actual,'s'
+        if (dt_dyn_del2_actual>dt_max_laplacian_top) &
+             write(iulog,*) 'WARNING: theoretically unstable in sponge; increase se_hypervis_subcycle_sponge'
       end do
-      
       write(iulog,*) ' '
       if (hypervis_power /= 0) then
         write(iulog,'(a,3e11.4)')'Scalar hyperviscosity (dynamics): ave,min,max = ', &
