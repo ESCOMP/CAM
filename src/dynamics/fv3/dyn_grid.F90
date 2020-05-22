@@ -52,8 +52,6 @@ module dyn_grid
     integer, parameter, public :: dyn_decomp_ew = 102
     integer, parameter, public :: dyn_decomp_ns = 103
     integer, parameter, public :: dyn_decomp_z = 104
-    integer, parameter, public :: dyn_decomp_ew_rst = 105
-    integer, parameter, public :: dyn_decomp_ns_rst = 106
     integer, public ::  ntiles   = -999
     integer, public ::  nest_pes = 0
     integer, public ::  p_split  = 1
@@ -112,7 +110,7 @@ public :: grid_ew,grid_ns
               get_block_lvl_cnt_d, get_block_levels_d, get_block_owner_d, &
               get_gcol_block_d, get_gcol_block_cnt_d, &
               get_horiz_grid_d, get_horiz_grid_dim_d
-    public :: get_dyn_grid_parm, get_block_ldof_d
+    public :: get_dyn_grid_parm
     public :: get_dyn_grid_parm_real1d, get_dyn_grid_parm_real2d
     public :: dyn_grid_get_elem_coords
     public :: dyn_grid_get_colndx
@@ -678,6 +676,23 @@ end subroutine get_horiz_grid_dim_d
 
 
 subroutine define_cam_grids(Atm)
+
+   ! Create grid objects on the dynamics decomposition for grids used by
+   ! the dycore.  The decomposed grid object contains data for the elements
+   ! in each task and information to map that data to the global grid.
+   !
+   ! Notes on dynamic memory management:
+   !
+   ! . Coordinate values and the map passed to the horiz_coord_create
+   !   method are copied to the object.  The memory may be deallocated
+   !   after the object is created.
+   !
+   ! . The area values passed to cam_grid_attribute_register are only pointed
+   !   to by the attribute object, so that memory cannot be deallocated.  But the
+   !   map is copied.
+   !
+   ! . The grid_map passed to cam_grid_register is just pointed to.
+   !   Cannot be deallocated.
   
   use cam_grid_support,  only: horiz_coord_t, horiz_coord_create, cam_grid_get_local_size
   use cam_grid_support,  only: cam_grid_register, cam_grid_attribute_register
@@ -726,7 +741,6 @@ subroutine define_cam_grids(Atm)
   integer :: ncols_loc = 0     ! number of dynamics columns
   integer :: ncols_loc_ew = 0     ! number of dynamics columns for Dgrid ew
   integer :: ncols_loc_ns = 0     ! number of dynamics columns for Dgrid ew
-  integer :: glob_pts_rst         ! number of dynamics columns for Dgrid restarts (includes dup points.)
   integer :: nx,ny
 
   area  => Atm(mytile)%gridstruct%area_64
@@ -924,34 +938,6 @@ subroutine define_cam_grids(Atm)
   nullify(lat_coord)         ! Belongs to grid
   nullify(lon_coord)         ! Belongs to grid
   
-! create ew grid of all pts for restarts (number of tile points for ew ns grids is npx-1*(npy)*6 or npx*(npy-1)*6, both are equivalent since npx=npy
-
-  lat_coord => horiz_coord_create('lat_d_ew_rst', 'ncol_d_ew_rst', uniqpts_glob_ew, 'latitude',      &
-       'degrees_north', 1, size(pelat_deg_ew), pelat_deg_ew, map=pemap_dups_ew)
-  lon_coord => horiz_coord_create('lon_d_ew_rst', 'ncol_d_ew_rst', uniqpts_glob_ew, 'longitude',     &
-       'degrees_east', 1, size(pelon_deg_ew), pelon_deg_ew, map=pemap_dups_ew)
-  
-  allocate(grid_map(3, (ie-is+2)*(je-js+1)))
-  grid_map = 0
-  do j = js, je
-     do i = is, ie+1
-        mapind = mylindex_ew(i,j)
-        grid_map(1, mapind) = i
-        grid_map(2, mapind) = j
-        grid_map(3, mapind) = pemap_dups_ew(mapind)
-     end do
-  end do
-  
-  call cam_grid_register('FFSL_EW_RST', dyn_decomp_ew_rst, lat_coord, lon_coord,          &
-       grid_map, block_indexed=.false., unstruct=.true.)
-  call cam_grid_attribute_register('FFSL_EW_RST', 'cell', '', 1)
-  ! grid_map cannot be deallocated as the cam_filemap_t object just points
-  ! to it.  It can be nullified.
-  nullify(grid_map)
-  nullify(lat_coord)         ! Belongs to grid
-  nullify(lon_coord)         ! Belongs to grid
-  
-
   lat_coord => horiz_coord_create('lat_d_ns', 'ncol_d_ns',  uniqpts_glob_ns, 'latitude',      &
        'degrees_north', 1, size(pelat_deg_ns), pelat_deg_ns, map=pemap_ns)
   lon_coord => horiz_coord_create('lon_d_ns', 'ncol_d_ns',  uniqpts_glob_ns, 'longitude',     &
@@ -978,36 +964,6 @@ subroutine define_cam_grids(Atm)
   nullify(grid_map)
   nullify(lat_coord)         ! Belongs to grid
   nullify(lon_coord)         ! Belongs to grid
-
-! Create nw non uniq grid (includes duplicate points) for restarts
-
-  lat_coord => horiz_coord_create('lat_d_ns_rst', 'ncol_d_ns_rst',  uniqpts_glob_ns, 'latitude',      &
-       'degrees_north', 1, size(pelat_deg_ns), pelat_deg_ns, map=pemap_dups_ns)
-  lon_coord => horiz_coord_create('lon_d_ns_rst', 'ncol_d_ns_rst',  uniqpts_glob_ns, 'longitude',     &
-       'degrees_east', 1, size(pelon_deg_ns), pelon_deg_ns, map=pemap_dups_ns)
-
-  allocate(grid_map(3, (ie-is+1)*(je-js+2)))
-  grid_map = 0
-  mapind = 1
-  do j = js, je+1
-     do i = is, ie
-        mapind = mylindex_ns(i,j)
-        grid_map(1, mapind) = i
-        grid_map(2, mapind) = j
-        grid_map(3, mapind) = pemap_dups_ns(mapind)
-     end do
-  end do
-  
-  call cam_grid_register('FFSL_NS_RST', dyn_decomp_ns_rst, lat_coord, lon_coord,          &
-       grid_map, block_indexed=.false., unstruct=.true.)
-  call cam_grid_attribute_register('FFSL_NS_RST', 'cell', '', 1)
-
-  ! grid_map cannot be deallocated as the cam_filemap_t object just points
-  ! to it.  It can be nullified.
-  nullify(grid_map)
-  nullify(lat_coord)         ! Belongs to grid
-  nullify(lon_coord)         ! Belongs to grid
-
 
   deallocate(pelon_deg)
   deallocate(pelat_deg)
@@ -1089,21 +1045,6 @@ integer function get_dyn_grid_parm(name) result(ival)
     end if
 
 end function get_dyn_grid_parm
-
-!=======================================================================
-
-subroutine get_block_ldof_d(nlev, ldof)
-
-    use pio, only: pio_offset
-
-    implicit none
-
-    integer, intent(in) :: nlev
-    integer(kind=pio_offset), pointer :: ldof(:)
-
-    call endrun('get_block_ldof_d: currently not avaliable.')
-
-end subroutine get_block_ldof_d
 
 !=======================================================================
 

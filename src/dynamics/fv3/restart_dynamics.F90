@@ -8,7 +8,6 @@ module restart_dynamics
     use dyn_comp,         only: dyn_import_t, dyn_export_t
     use dyn_grid,         only: mytile
     use fv_arrays_mod,    only: fv_atmos_type
-    use mpp_mod,          only: mpp_chksum
     use pio,              only: file_desc_t, var_desc_t
     use shr_kind_mod,     only: r8 => shr_kind_r8, i8 => shr_kind_i8
     use spmd_utils,       only: masterproc
@@ -22,7 +21,6 @@ module restart_dynamics
 
     integer :: ncol_d_dimid, ncol_d_ew_dimid, ncol_d_ns_dimid,  nlev_dimid, nlevp_dimid, npz
     type(var_desc_t), allocatable :: qdesc(:)
-    integer(i8) :: checksum
     integer :: is,ie,js,je
 
 
@@ -170,8 +168,6 @@ subroutine write_restart_dynamics(File, dyn_out)
     jlen=je-js+1
 
     ! create map for distributed write of 2D fields
-    checksum=mpp_chksum(atm(mytile)%phis(is:ie,js:je))
-    if (masterproc) write(iulog,*)'writing PHIS is:ie,js:je CHKSUM=',checksum
     allocate(var2d(ilen,jlen))
     array_lens_2d = (/ilen,jlen/)
     file_lens_1d  = (/grid_dimlens(1)/)
@@ -179,14 +175,10 @@ subroutine write_restart_dynamics(File, dyn_out)
     call cam_grid_get_decomp(grid_id, array_lens_2d, file_lens_1d, pio_double, iodesc)
     call PIO_Write_Darray(File, phisdesc, iodesc, var2d, ierr)
 
-    checksum=mpp_chksum(atm(mytile)%ps(is:ie,js:je))
-    if (masterproc) write(iulog,*)'writing PS is:ie,js:je CHKSUM=',checksum
     var2d=Atm(mytile)%ps(is:ie,js:je)
     call PIO_Write_Darray(File, psdesc, iodesc, var2d, ierr)
     deallocate(var2d)
 
-    checksum=mpp_chksum(atm(mytile)%ua(is:ie,js:je,1:npz))   
-    if (masterproc) write(iulog,*)'writing UA is:ie,js:je CHKSUM=',checksum
     allocate(var3d(ilen,npz,jlen))
     array_lens_3d = (/ilen,npz,jlen/)
     file_lens_2d  = (/grid_dimlens(1), npz/)
@@ -194,29 +186,19 @@ subroutine write_restart_dynamics(File, dyn_out)
     var3d=RESHAPE(Atm(mytile)%ua(is:ie,js:je,1:npz),(/ilen,npz,jlen/),ORDER=(/1,3,2/))
     call PIO_Write_Darray(File, Udesc, iodesc3d, var3d, ierr)
 
-    checksum=mpp_chksum(atm(mytile)%va(is:ie,js:je,1:npz))
-    if (masterproc) write(iulog,*)'writing VA is:ie,js:je CHKSUM=',checksum
     var3d=RESHAPE(Atm(mytile)%va(is:ie,js:je,1:npz),(/ilen,npz,jlen/),ORDER=(/1,3,2/))
     call PIO_Write_Darray(File, Vdesc, iodesc3d, var3d , ierr)
 
-    checksum=mpp_chksum(atm(mytile)%omga(is:ie,js:je,1:npz))
-    if (masterproc) write(iulog,*)'writing omga is:ie,js:je CHKSUM=',checksum
     var3d=RESHAPE(Atm(mytile)%omga(is:ie,js:je,1:npz),(/ilen,npz,jlen/),ORDER=(/1,3,2/))
     call PIO_Write_Darray(File, Omegadesc, iodesc3d, var3d, ierr)
 
-    checksum=mpp_chksum(atm(mytile)%delp(is:ie,js:je,1:npz))
-    if (masterproc) write(iulog,*)'writing delp is:ie,js:je CHKSUM=',checksum
     var3d=RESHAPE(Atm(mytile)%delp(is:ie,js:je,1:npz),(/ilen,npz,jlen/),ORDER=(/1,3,2/))
     call PIO_Write_Darray(File, delpdesc, iodesc3d, var3d, ierr)
 
-    checksum=mpp_chksum(atm(mytile)%pt(is:ie,js:je,1:npz))
-    if (masterproc) write(iulog,*)'writing T is:ie,js:je CHKSUM=',checksum
     var3d=RESHAPE(Atm(mytile)%pt(is:ie,js:je,1:npz),(/ilen,npz,jlen/),ORDER=(/1,3,2/))
     call PIO_Write_Darray(File, Tdesc, iodesc3d, var3d, ierr)
 
     do m = 1, pcnst
-       checksum=mpp_chksum(atm(mytile)%q(is:ie,js:je,1:npz,m))
-       if (masterproc) write(iulog,*)'writing Q is:ie,js:je ',m,' of ',pcnst,' CHKSUM=',checksum
        var3d=RESHAPE(Atm(mytile)%q(is:ie,js:je,1:npz,m),(/ilen,npz,jlen/),ORDER=(/1,3,2/))
        call PIO_Write_Darray(File, Qdesc(m), iodesc3d, var3d, ierr)
     end do
@@ -225,8 +207,6 @@ subroutine write_restart_dynamics(File, dyn_out)
     deallocate(var3d)
     
    ! create map for distributed write of 3D NS fields
-    checksum=mpp_chksum(atm(mytile)%u(is:ie,js:je+1,1:npz))
-    if (masterproc) write(iulog,*)'writing US is:ie,js:je+1 CHKSUM=',checksum
     allocate(var3d_ns(ilen,npz,(jlen+1)))
     array_lens_3d = (/ilen , npz, (jlen+1)/)
     file_lens_2d  = (/grid_dimlens_ns(1), npz/)
@@ -237,8 +217,6 @@ subroutine write_restart_dynamics(File, dyn_out)
 
    ! create map for distributed write of 3D EW fields
 
-    checksum=mpp_chksum(atm(mytile)%v(is:ie+1,js:je,1:npz))
-    if (masterproc) write(iulog,*)'writing VS is:ie+1,js:je CHKSUM=',checksum
     allocate(var3d_ew((ilen+1),npz,jlen))
     array_lens_3d = (/(ilen+1), npz, jlen /)
     file_lens_2d  = (/grid_dimlens_ew(1), npz/)
@@ -255,10 +233,10 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
 
     use cam_history_support,    only: max_fieldname_len
     use constituents,  only: cnst_name, pcnst
-    use dimensions_mod,only: npz
+    use dimensions_mod,only: npz,npy,npx
     use dyn_comp,      only: dyn_init
     use dyn_grid,      only: Atm
-    use mpp_domains_mod, only: mpp_update_domains, DGRID_NE
+    use mpp_domains_mod, only: mpp_update_domains, DGRID_NE, mpp_get_boundary
     use pio,           only: file_desc_t, pio_double, &
                              pio_inq_dimid, pio_inq_dimlen, pio_inq_varid, &
                              pio_read_darray, file_desc_t, io_desc_t, pio_double,pio_offset_kind,&
@@ -304,10 +282,8 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
    real(r8),    allocatable :: var3d(:,:,:)
    real(r8),    allocatable :: var3d_ns(:,:,:)
    real(r8),    allocatable :: var3d_ew(:,:,:)
-   real(r8),    allocatable :: var3d_ns_tmp(:,:,:)
-   real(r8),    allocatable :: var3d_ew_tmp(:,:,:)
-   real(r8),    allocatable :: var3d_ns_rst(:,:,:)
-   real(r8),    allocatable :: var3d_ew_rst(:,:,:)
+   real(r8),    allocatable :: ebuffer(:,:)
+   real(r8),    allocatable :: nbuffer(:,:)
 
    logical :: found
 
@@ -328,6 +304,8 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
    tl = 1
 
    npz    = Atm(mytile)%npz
+   npy    = Atm(mytile)%npy
+   npx    = Atm(mytile)%npx
    is = Atm(mytile)%bd%is
    ie = Atm(mytile)%bd%ie
    js = Atm(mytile)%bd%js
@@ -485,57 +463,42 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
     deallocate(var3d)
     deallocate(qdesc)
 
-    ! US - For ew and ns grids PIO 1 can not read a single file point to
-    !      multiple processors.  For now I am reading twice, once to get the
-    !      uniq points distributed and the second time to read those points
-    !      required on more than one processor. (ie those points at the 
-    !      n/s e/w DGRID boundaries between processors
+    ! US and VS  After reading unique points on D grid call get_boundary routine to fill
+    ! missing points on the north and east block boundaries which are duplicated between
+    ! adjacent blocks.
 
     allocate(var3d_ns(is:ie, npz,js:je+1))
-    allocate(var3d_ns_tmp(is:ie, npz,js:je+1))
-    allocate(var3d_ns_rst(is:ie, npz, js:je+1))
+    allocate(var3d_ew(is:ie+1, npz, js:je))
+    allocate(ebuffer(npy+2,npz))
+    allocate(nbuffer(npx+2,npz))
+
     var3d_ns = 0._r8
-    var3d_ns_tmp = 0._r8
-    var3d_ns_rst = 0._r8
-    call PIO_Read_Darray(File, USdesc, iodesc3d_ns, var3d_ns_tmp, ierr)
-    var3d_ns=var3d_ns_tmp
-    ! US hack to read in duplicate points on adjacent processor
-    ! should fill in zeros in the decomposed global array from previous read
-    call PIO_Read_Darray(File, USdesc, iodesc3d_ns_rst, var3d_ns_rst, ierr)
-    where(var3d_ns_tmp.eq.0)
-       var3d_ns = var3d_ns_rst
-    end where
+    var3d_ew = 0._r8
+    nbuffer  = 0._r8
+    ebuffer  = 0._r8
+    call PIO_Read_Darray(File, USdesc, iodesc3d_ns, var3d_ns, ierr)
     atm(mytile)%u(is:ie,js:je+1,1:npz) = RESHAPE(var3d_ns,(/ilen,jlen+1,npz/),ORDER=(/1,3,2/))
 
-    deallocate(var3d_ns)
-    deallocate(var3d_ns_rst)
-    deallocate(var3d_ns_tmp)
-
-    allocate(var3d_ew(is:ie+1, npz, js:je))
-    allocate(var3d_ew_tmp(is:ie+1, npz, js:je))
-    allocate(var3d_ew_rst(is:ie+1, npz, js:je))
-    var3d_ew = 0._r8
-    var3d_ew_tmp = 0._r8
-    var3d_ew_rst = 0._r8
-
-    ! VS
-    call PIO_Read_Darray(File, VSdesc, iodesc3d_ew, var3d_ew_tmp, ierr)
-    var3d_ew=var3d_ew_tmp
-
-
-    ! VS hack to read in duplicate points on adjacent processor
-    ! should fill in zeros in the decomposed global array from previous read
-    call PIO_Read_Darray(File, VSdesc, iodesc3d_ew_rst, var3d_ew_rst, ierr)
-    where(var3d_ew_tmp.eq.0)
-       var3d_ew = var3d_ew_rst
-    end where
+    call PIO_Read_Darray(File, VSdesc, iodesc3d_ew, var3d_ew, ierr)
     atm(mytile)%v(is:ie+1,js:je,1:npz) = RESHAPE(var3d_ew,(/ilen+1,jlen,npz/),ORDER=(/1,3,2/))
 
-    deallocate(var3d_ew)
-    deallocate(var3d_ew_tmp)
-    deallocate(var3d_ew_rst)
+    call mpp_get_boundary(atm(mytile)%u, atm(mytile)%v, atm(mytile)%domain, ebuffery=ebuffer,  &
+         nbufferx=nbuffer, gridtype=DGRID_NE )
 
-    ! Update halo points on each processor and print out checksums
+    do k=1,npz
+       do i=is,ie
+          atm(mytile)%u(i,je+1,k) = nbuffer(i-is+1,k)
+       enddo
+       do j=js,je
+          atm(mytile)%v(ie+1,j,k) = ebuffer(j-js+1,k)
+       enddo
+    enddo
+    deallocate(var3d_ns)
+    deallocate(var3d_ew)
+    deallocate(ebuffer)
+    deallocate(nbuffer)
+
+    ! Update halo points on each processor
 
     call mpp_update_domains( Atm(mytile)%phis, Atm(mytile)%domain )
     call mpp_update_domains( atm(mytile)%ps,   Atm(mytile)%domain )
@@ -544,29 +507,6 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
     call mpp_update_domains( atm(mytile)%delp,   Atm(mytile)%domain )
     call mpp_update_domains( atm(mytile)%omga,   Atm(mytile)%domain )
     call mpp_update_domains( atm(mytile)%q,    Atm(mytile)%domain )
-
-    checksum=mpp_chksum(atm(mytile)%phis(is:ie,js:je))
-    if (masterproc) write(iulog,*)'reading PHIS is:ie,js:je CHKSUM=',checksum
-    checksum=mpp_chksum(atm(mytile)%ps(is:ie,js:je))
-    if (masterproc) write(iulog,*)'reading PS is:ie,js:je CHKSUM=',checksum
-    checksum=mpp_chksum(atm(mytile)%ua(is:ie,js:je,:))
-    if (masterproc) write(iulog,*)'reading UA is:ie,js:je CHKSUM=',checksum
-    checksum=mpp_chksum(atm(mytile)%va(is:ie,js:je,:))
-    if (masterproc) write(iulog,*)'reading VA is:ie,js:je CHKSUM=',checksum
-    checksum=mpp_chksum(atm(mytile)%u(is:ie,js:je+1,:))
-    if (masterproc) write(iulog,*)'reading US is:ie,js:je CHKSUM=',checksum
-    checksum=mpp_chksum(atm(mytile)%v(is:ie+1,js:je,:))
-    if (masterproc) write(iulog,*)'reading VS is:ie,js:je CHKSUM=',checksum
-    checksum=mpp_chksum(atm(mytile)%pt(is:ie,js:je,:))
-    if (masterproc) write(iulog,*)'reading T is:ie,js:je CHKSUM=',checksum
-    checksum=mpp_chksum(atm(mytile)%delp(is:ie,js:je,:))
-    if (masterproc) write(iulog,*)'reading delp is:ie,js:je CHKSUM=',checksum
-    checksum=mpp_chksum(atm(mytile)%omga(is:ie,js:je,:))
-    if (masterproc) write(iulog,*)'reading omga is:ie,js:je CHKSUM=',checksum
-    do m = 1, pcnst
-       checksum=mpp_chksum(atm(mytile)%q(is:ie,js:je,:,m))
-       if (masterproc) write(iulog,*)'reading Q is:ie,js:je ',m,' of ',pcnst,' CHKSUM=',checksum
-    end do
 
     call dyn_init(dyn_in, dyn_out)
 

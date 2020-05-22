@@ -82,7 +82,6 @@ module dyn_comp
          dyn_export_t
 
     public calc_tot_energy_dynamics
-    public :: frontgf_idx, frontga_idx, uzm_idx
 
 type dyn_import_t
   type (fv_atmos_type),  pointer :: Atm(:) => null()
@@ -96,11 +95,6 @@ end type dyn_export_t
 ! the dycore to know what physics package is responsible for the forcing.
 logical, parameter         :: convt = .true.
 logical :: first_time = .true.
-! Indices for fields that are computed in the dynamics and passed to the physics
-! via the physics buffer
-integer, protected :: frontgf_idx  = -1
-integer, protected :: frontga_idx  = -1
-integer, protected :: uzm_idx = -1
 
 ! Private interfaces
 interface read_dyn_var
@@ -138,12 +132,55 @@ subroutine dyn_readnl(nlfilename)
   ! FV3 Namelist variables
   integer                      :: fv3_qsize_condensate_loading, fv3_npes
   
+  ! fms_nml namelist variables - these namelist variables defined in fv3 library without fv3_
+
+  character(len=256) :: fv3_clock_grain
+  integer            :: fv3_domains_stack_size, fv3_stack_size
+  logical            :: fv3_print_memory_usage
+
+  ! fv_core namelist variables - these namelist variables defined in fv3 library without fv3_
+
+  integer            :: fv3_consv_te, fv3_dnats, fv3_fv_sg_adj, fv3_grid_type, &
+                        fv3_hord_dp, fv3_hord_mt, fv3_hord_tm, fv3_hord_tr, fv3_hord_vt, &
+                        fv3_io_layout, fv3_k_split, fv3_kord_mt, fv3_kord_tm, fv3_kord_tr, &
+                        fv3_kord_wz, fv3_layout, fv3_n_split, fv3_n_sponge, fv3_na_init, &
+                        fv3_ncnst, fv3_nord, fv3_npx, fv3_npy, fv3_npz, fv3_ntiles, &
+                        fv3_nwat, fv3_print_freq 
+
+  real               :: fv3_beta, fv3_d2_bg, fv3_d2_bg_k1, fv3_d2_bg_k2, fv3_d4_bg, &
+                        fv3_d_con, fv3_d_ext, fv3_dddmp, fv3_delt_max, fv3_ke_bg, &
+                        fv3_rf_cutoff, fv3_tau, fv3_vtdm4 
+
+  logical            :: fv3_adjust_dry_mass, fv3_consv_am, fv3_do_sat_adj, fv3_do_vort_damp, &
+                        fv3_dwind_2d, fv3_fill, fv3_fv_debug, fv3_fv_diag, fv3_hydrostatic, &
+                        fv3_make_nh, fv3_no_dycore, fv3_range_warn, fv3_uniform_vert_spacing, &
+                        fv3_z_tracer
+  
   namelist /dyn_fv3_inparm/          &
        fv3_scale_ttend, &
        fv3_lcp_moist, &
        fv3_lcv_moist, &
        fv3_qsize_condensate_loading, &
        fv3_npes
+
+  namelist /fv_core/          &
+       fv3_adjust_dry_mass,fv3_beta,fv3_consv_am,fv3_consv_te,fv3_d2_bg, &
+       fv3_d2_bg_k1,fv3_d2_bg_k2,fv3_d4_bg,fv3_d_con,fv3_d_ext,fv3_dddmp, &
+       fv3_delt_max,fv3_dnats,fv3_do_sat_adj,fv3_do_vort_damp,fv3_dwind_2d, &
+       fv3_fill,fv3_fv_debug,fv3_fv_diag,fv3_fv_sg_adj,fv3_grid_type, &
+       fv3_hord_dp,fv3_hord_mt,fv3_hord_tm,fv3_hord_tr,fv3_hord_vt, &
+       fv3_hydrostatic,fv3_io_layout,fv3_k_split,fv3_ke_bg,fv3_kord_mt, &
+       fv3_kord_tm,fv3_kord_tr,fv3_kord_wz,fv3_layout,fv3_make_nh, &
+       fv3_n_split,fv3_n_sponge,fv3_na_init,fv3_ncnst,fv3_no_dycore, &
+       fv3_nord,fv3_npx,fv3_npy,fv3_npz,fv3_ntiles,fv3_nwat, &
+       fv3_print_freq,fv3_range_warn,fv3_rf_cutoff,fv3_tau, &
+       fv3_uniform_vert_spacing,fv3_vtdm4,fv3_z_tracer
+
+  namelist /fms_nml/          &
+  fv3_clock_grain, &
+  fv3_domains_stack_size, &
+  fv3_print_memory_usage, &
+  fv3_stack_size
 
   character(len = 20), dimension(5) :: group_names = (/  &
   "main_nml            ", &
@@ -157,10 +194,10 @@ subroutine dyn_readnl(nlfilename)
 
   !--------------------------------------------------------------------------
   
-  ! defaults for variables not set by build-namelist
-  fv3_npes                     = npes
+  ! defaults for namelist variables not set by build-namelist
+  fv3_clock_grain  = 'NONE'
 
-  ! Read the namelist (dyn_se_inparm)
+  ! Read the namelist (dyn_fv3_inparm)
   if (masterproc) then
      unitn = getunit()
      open( unitn, file=trim(NLFileName), status='old' )
@@ -188,6 +225,74 @@ subroutine dyn_readnl(nlfilename)
 
   qsize_condensate_loading = fv3_qsize_condensate_loading
   qsize = pcnst
+  !
+  ! write fv3 dycore namelist options to log
+  !
+  if (masterproc) then
+     write (iulog,*) 'FV3 dycore Options: '
+     write (iulog,*) '  fv3_adjust_dry_mass       = ',fv3_adjust_dry_mass
+     write (iulog,*) '  fv3_beta                  = ',fv3_beta
+     write (iulog,*) '  fv3_clock_grain           = ',trim(fv3_clock_grain)
+     write (iulog,*) '  fv3_consv_am              = ',fv3_consv_am
+     write (iulog,*) '  fv3_consv_te              = ',fv3_consv_te
+     write (iulog,*) '  fv3_d2_bg                 = ',fv3_d2_bg
+     write (iulog,*) '  fv3_d2_bg_k1              = ',fv3_d2_bg_k1
+     write (iulog,*) '  fv3_d2_bg_k2              = ',fv3_d2_bg_k2
+     write (iulog,*) '  fv3_d4_bg                 = ',fv3_d4_bg
+     write (iulog,*) '  fv3_d_con                 = ',fv3_d_con
+     write (iulog,*) '  fv3_d_ext                 = ',fv3_d_ext
+     write (iulog,*) '  fv3_dddmp                 = ',fv3_dddmp
+     write (iulog,*) '  fv3_delt_max              = ',fv3_delt_max
+     write (iulog,*) '  fv3_dnats                 = ',fv3_dnats
+     write (iulog,*) '  fv3_do_sat_adj            = ',fv3_do_sat_adj
+     write (iulog,*) '  fv3_do_vort_damp          = ',fv3_do_vort_damp
+     write (iulog,*) '  fv3_domains_stack_size    = ',fv3_domains_stack_size
+     write (iulog,*) '  fv3_dwind_2d              = ',fv3_dwind_2d
+     write (iulog,*) '  fv3_fill                  = ',fv3_fill
+     write (iulog,*) '  fv3_fv_debug              = ',fv3_fv_debug
+     write (iulog,*) '  fv3_fv_diag               = ',fv3_fv_diag
+     write (iulog,*) '  fv3_fv_sg_adj             = ',fv3_fv_sg_adj
+     write (iulog,*) '  fv3_grid_type             = ',fv3_grid_type
+     write (iulog,*) '  fv3_hord_dp               = ',fv3_hord_dp
+     write (iulog,*) '  fv3_hord_mt               = ',fv3_hord_mt
+     write (iulog,*) '  fv3_hord_tm               = ',fv3_hord_tm
+     write (iulog,*) '  fv3_hord_tr               = ',fv3_hord_tr
+     write (iulog,*) '  fv3_hord_vt               = ',fv3_hord_vt
+     write (iulog,*) '  fv3_hydrostatic           = ',fv3_hydrostatic
+     write (iulog,*) '  fv3_io_layout             = ',fv3_io_layout
+     write (iulog,*) '  fv3_k_split               = ',fv3_k_split
+     write (iulog,*) '  fv3_ke_bg                 = ',fv3_ke_bg
+     write (iulog,*) '  fv3_kord_mt               = ',fv3_kord_mt
+     write (iulog,*) '  fv3_kord_tm               = ',fv3_kord_tm
+     write (iulog,*) '  fv3_kord_tr               = ',fv3_kord_tr
+     write (iulog,*) '  fv3_kord_wz               = ',fv3_kord_wz
+     write (iulog,*) '  fv3_layout                = ',fv3_layout
+     write (iulog,*) '  fv3_lcp_moist             = ',fv3_lcp_moist
+     write (iulog,*) '  fv3_lcv_moist             = ',fv3_lcv_moist
+     write (iulog,*) '  fv3_make_nh               = ',fv3_make_nh
+     write (iulog,*) '  fv3_n_split               = ',fv3_n_split
+     write (iulog,*) '  fv3_n_sponge              = ',fv3_n_sponge
+     write (iulog,*) '  fv3_na_init               = ',fv3_na_init
+     write (iulog,*) '  fv3_ncnst                 = ',fv3_ncnst
+     write (iulog,*) '  fv3_no_dycore             = ',fv3_no_dycore
+     write (iulog,*) '  fv3_nord                  = ',fv3_nord
+     write (iulog,*) '  fv3_npx                   = ',fv3_npx
+     write (iulog,*) '  fv3_npy                   = ',fv3_npy
+     write (iulog,*) '  fv3_npz                   = ',fv3_npz
+     write (iulog,*) '  fv3_ntiles                = ',fv3_ntiles
+     write (iulog,*) '  fv3_nwat                  = ',fv3_nwat
+     write (iulog,*) '  fv3_print_freq            = ',fv3_print_freq
+     write (iulog,*) '  fv3_print_memory_usage    = ',fv3_print_memory_usage
+     write (iulog,*) '  fv3_qsize_condensate_loading = ',fv3_qsize_condensate_loading
+     write (iulog,*) '  fv3_range_warn            = ',fv3_range_warn
+     write (iulog,*) '  fv3_rf_cutoff             = ',fv3_rf_cutoff
+     write (iulog,*) '  fv3_scale_ttend           = ',fv3_scale_ttend
+     write (iulog,*) '  fv3_stack_size            = ',fv3_stack_size
+     write (iulog,*) '  fv3_tau                   = ',fv3_tau
+     write (iulog,*) '  fv3_uniform_vert_spacing  = ',fv3_uniform_vert_spacing
+     write (iulog,*) '  fv3_vtdm4                 = ',fv3_vtdm4
+     write (iulog,*) '  fv3_z_tracer              = ',fv3_z_tracer
+  end if
 
   ! Create the input.nml namelist needed by the fv3dycore.
   ! Read strings one at a time from the fv3 namelist groups, strip off the leading 'fv3_' from the variable names and write to input.nml.
@@ -258,24 +363,8 @@ end subroutine dyn_readnl
 
 subroutine dyn_register()
 
-   use physics_buffer,  only: pbuf_add_field, dtype_r8
-   use phys_control,    only: use_gw_front, use_gw_front_igw
-   use qbo,             only: qbo_use_forcing
-
    ! These fields are computed by the dycore and passed to the physics via the
    ! physics buffer.
-
-   if (use_gw_front .or. use_gw_front_igw) then
-      call pbuf_add_field("FRONTGF", "global", dtype_r8, (/pcols,pver/), &
-         frontgf_idx)
-      call pbuf_add_field("FRONTGA", "global", dtype_r8, (/pcols,pver/), &
-         frontga_idx)
-   end if
-
-   if (qbo_use_forcing) then
-      call pbuf_add_field("UZM", "global", dtype_r8, (/pcols,pver/), &
-         uzm_idx)
-   end if
 
 end subroutine dyn_register
 
@@ -498,16 +587,6 @@ subroutine dyn_init(dyn_in, dyn_out)
       write(*,*) 'ncnst=', ncnst,' num_prog=',nt_prog,' pnats=',pnats,' dnats=',dnats,' num_family=',num_family         
       print*, ''
    endif
-!!$   !---------This code requires minor mods to FMS field_manager and tracer_manager.
-!!$   !---------Space in ATM structure for constituents was allocated in dyn_init.
-!!$   !---------now that cam has registered all tracers create entries in fms tracer_manager
-!!$   !---------we will build fms fieldtable internal file that can be read by tracermanager
-!!$   do i=1,pcnst
-!!$      write(fieldtable(i), '(a,a,a)') '"tracer" "atmos_mod" "'//trim(cnst_name_ffsl(i))//'" /'
-!!$   end do
-!!$
-!!$   call tracer_manager_init(fieldtable)
-
 
    do m=1,pcnst  
       !  just check condensate loading tracers as they are mapped above
@@ -992,12 +1071,12 @@ subroutine read_inidat(dyn_in)
   type(var_desc_t) :: psdesc
   type(var_desc_t) :: phisdesc
   type(var_desc_t), allocatable :: qdesc(:)
-  type(io_desc_t),pointer :: iodesc2d, iodesc3d,iodesc3d_ns,iodesc3d_ew,iodesc3d_ns_rst,iodesc3d_ew_rst
+  type(io_desc_t),pointer :: iodesc2d, iodesc3d,iodesc3d_ns,iodesc3d_ew
   integer :: array_lens_3d(3), array_lens_2d(2), array_lens_1d(1)
   integer :: file_lens_2d(2), file_lens_1d(1)
-  integer :: grid_id,grid_id_ns,grid_id_ew,ilen,jlen,grid_id_ns_rst,grid_id_ew_rst
-  integer :: grid_dimlens(2),grid_dimlens_ns(2),grid_dimlens_ew(2),grid_dimlens_ns_rst(2),grid_dimlens_ew_rst(2)
-  real(r8), allocatable :: var3d(:,:,:), var3d_ew(:,:,:), var3d_ew_tmp(:,:,:), var3d_ew_rst(:,:,:), var3d_ns(:,:,:), var3d_ns_tmp(:,:,:), var3d_ns_rst(:,:,:), var2d(:,:)
+  integer :: grid_id,grid_id_ns,grid_id_ew,ilen,jlen
+  integer :: grid_dimlens(2),grid_dimlens_ns(2),grid_dimlens_ew(2)
+  real(r8), allocatable :: var3d(:,:,:), var3d_ew(:,:,:), var3d_ns(:,:,:), var2d(:,:)
 
   Atm => dyn_in%Atm
 
@@ -1214,15 +1293,6 @@ subroutine read_inidat(dyn_in)
           npx, npy, npz, 1, Atm(mytile)%gridstruct%grid_type, Atm(mytile)%domain, Atm(mytile)%gridstruct%nested, Atm(mytile)%flagstruct%c2l_ord, Atm(mytile)%bd)
 
      deallocate(dbuf3)
-     deallocate(latvals_rad)
-     deallocate(lonvals_rad)
-     deallocate(latvals_rad_ew)
-     deallocate(latvals_rad_ns)
-     deallocate(lonvals_rad_ew)
-     deallocate(lonvals_rad_ns)
-     deallocate(glob_inddups)
-     deallocate(glob_inddups_ew)
-     deallocate(glob_inddups_ns)
      !-----------------------------------------------------------------------
 
   else
@@ -1285,14 +1355,9 @@ subroutine read_inidat(dyn_in)
      grid_id = cam_grid_id('FFSL')
      grid_id_ns = cam_grid_id('FFSL_NS')
      grid_id_ew = cam_grid_id('FFSL_EW')
-     grid_id_ns_rst = cam_grid_id('FFSL_NS_RST')
-     grid_id_ew_rst = cam_grid_id('FFSL_EW_RST')
      call cam_grid_dimensions(grid_id, grid_dimlens)
      call cam_grid_dimensions(grid_id_ew, grid_dimlens_ew)
      call cam_grid_dimensions(grid_id_ns, grid_dimlens_ns)
-     call cam_grid_dimensions(grid_id_ew_rst, grid_dimlens_ew_rst)
-     call cam_grid_dimensions(grid_id_ns_rst, grid_dimlens_ns_rst)
-     if (masterproc) write(iulog,*)'reading grid dimensions',grid_id,grid_id_ew,grid_id_ns,grid_id_ew_rst,grid_id_ns_rst
      if (ncols_ns /= grid_dimlens_ns(1)) then
         write(iulog,*) 'Restart file ncol_ns does not match model. ncols_ns (file, model):',&
              ncols_ns, grid_dimlens_ns(1)
@@ -1316,21 +1381,11 @@ subroutine read_inidat(dyn_in)
      file_lens_2d  = (/grid_dimlens_ns(1), npz/)
      call cam_grid_get_decomp(grid_id_ns, array_lens_3d, file_lens_2d, pio_double, iodesc3d_ns)
      
-     ! create map for distributed write of 3D NS RST fields (reading dups - map has gindex for dups only all others 0)
-     array_lens_3d = (/ilen, npz, jlen+1/)
-     file_lens_2d  = (/grid_dimlens_ns_rst(1), npz/)
-     call cam_grid_get_decomp(grid_id_ns_rst, array_lens_3d, file_lens_2d, pio_double, iodesc3d_ns_rst)
-     
      ! create map for distributed write of 3D EW fields
      array_lens_3d = (/ilen+1, npz, jlen/)
      file_lens_2d  = (/grid_dimlens_ew(1), npz/)
      call cam_grid_get_decomp(grid_id_ew, array_lens_3d, file_lens_2d, pio_double, iodesc3d_ew)
     
-     ! create map for distributed write of 3D EW RST fields  (reading dups - map has gindex for dups only all others 0)
-     array_lens_3d = (/ilen+1, npz, jlen/)
-     file_lens_2d  = (/grid_dimlens_ew_rst(1), npz/)
-     call cam_grid_get_decomp(grid_id_ew_rst, array_lens_3d, file_lens_2d, pio_double, iodesc3d_ew_rst)
-     
      allocate(var2d(is:ie,js:je))
      var2d = 0._r8
      ! PS
@@ -1450,6 +1505,17 @@ subroutine read_inidat(dyn_in)
      call pio_seterrorhandling(fh_ini, err_handling)
 
   end if ! analytic_ic_active
+
+  deallocate(latvals_rad)
+  deallocate(lonvals_rad)
+  deallocate(latvals_rad_ew)
+  deallocate(latvals_rad_ns)
+  deallocate(lonvals_rad_ew)
+  deallocate(lonvals_rad_ns)
+  deallocate(glob_inddups)
+  deallocate(glob_inddups_ew)
+  deallocate(glob_inddups_ns)
+
 
   ! If a topo file is specified use it.  This will overwrite the PHIS set by the
   ! analytic IC option.

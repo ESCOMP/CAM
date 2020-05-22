@@ -2873,6 +2873,7 @@ sub write_filepath
 
     if ($simple_phys) {
       print $fh "$camsrcdir/src/physics/simple\n";
+      print $fh "$camsrcdir/src/atmos_phys/kessler\n";
     }
 
     if ($carma ne 'none') {
@@ -2981,6 +2982,7 @@ sub write_filepath
     print $fh "$camsrcdir/src/cpl/$cpl\n";
     print $fh "$camsrcdir/src/control\n";
     print $fh "$camsrcdir/src/utils\n";
+    print $fh "$camsrcdir/src/atmos_phys/utilities\n";
 
     if ($cam_build) {
 
