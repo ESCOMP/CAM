@@ -393,14 +393,7 @@ CONTAINS
        nsplit=2*nsplit_baseline
        fvm_supercycling     = rsplit
        fvm_supercycling_jet = rsplit
-       nu_top=2.0_r8*nu_top
-       
-!       nu_div_scale_top(1:ksponge_end  ) = 2.0_r8
-!       nu_div_scale_top(ksponge_end  +1) = 2.00_r8
-!       nu_div_scale_top(ksponge_end  +2) = 1.75_r8
-!       nu_div_scale_top(ksponge_end  +3) = 1.5_r8
-!       nu_div_scale_top(ksponge_end  +4) = 1.25_r8
-
+       nu_top=2.0_r8*nu_top       
       !
       ! write diagnostics to log file
       !

@@ -948,19 +948,19 @@ contains
     ! map tracers
     ! map velocity components
     ! map temperature (either by mapping thermal energy or virtual temperature over log(p)
-    ! (controlled by vert_remap_q_alg > -20 or <= -20)
+    ! (controlled by vert_remap_uvTq_alg > -20 or <= -20)
     !
     use hybvcoord_mod, only          : hvcoord_t
     use vertremap_mod,          only : remap1
     use hybrid_mod            , only : hybrid_t, config_thread_region,get_loop_ranges, PrintHybrid
     use fvm_control_volume_mod, only : fvm_struct
     use dimensions_mod        , only : ntrac
-    use dimensions_mod,         only : lcp_moist
+    use dimensions_mod,         only : lcp_moist, kord_tr,kord_tr_cslam
     use cam_logfile,            only : iulog
     use physconst,              only : pi,get_thermal_energy,get_dp,get_virtual_temp
     use physconst             , only : thermodynamic_active_species_idx_dycore    
     use thread_mod            , only : omp_set_nested
-    use control_mod,            only : vert_remap_q_alg          
+    use control_mod,             only: vert_remap_uvTq_alg
     type (hybrid_t),  intent(in)    :: hybrid  ! distributed parallel structure (shared)
     type(fvm_struct), intent(inout) :: fvm(:)
     type (element_t), intent(inout) :: elem(:)
@@ -973,15 +973,18 @@ contains
     real (kind=r8), dimension(np,np,nlev)  :: internal_energy_star
     real (kind=r8), dimension(np,np,nlev,2):: ttmp
     real(r8), parameter                    :: rad2deg = 180.0_r8/pi
-    integer :: region_num_threads,qbeg,qend
+    integer :: region_num_threads,qbeg,qend,kord_uvT(1)
     type (hybrid_t) :: hybridnew,hybridnew2 
     real (kind=r8)  :: ptop
+
+    kord_uvT = vert_remap_uvTq_alg
+    
     ptop = hvcoord%hyai(1)*hvcoord%ps0
     do ie=nets,nete
       !
       ! prepare for mapping of temperature
       !
-      if (vert_remap_q_alg>-20) then      
+      if (vert_remap_uvTq_alg>-20) then      
         if (lcp_moist) then
           !
           ! compute internal energy on Lagrangian levels
@@ -1050,7 +1053,7 @@ contains
 !      else
 !        call remap1(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp),np,1,qsize,qsize,dp_star_dry,dp_dry)
 !      endif
-      call remap1(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp),np,1,qsize,qsize,dp_star_dry,dp_dry,ptop,0,.true.)
+      call remap1(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp),np,1,qsize,qsize,dp_star_dry,dp_dry,ptop,0,.true.,kord_tr)
       !
       ! compute moist reference pressure level thickness
       !
@@ -1060,12 +1063,12 @@ contains
       !
       ! Remapping of temperature
       !
-      if (vert_remap_q_alg>-20) then
+      if (vert_remap_uvTq_alg>-20) then      
         !
         ! remap internal energy and back out temperature
         !        
         if (lcp_moist) then
-          call remap1(internal_energy_star,np,1,1,1,dp_star_dry,dp_dry,ptop,1,.true.)
+          call remap1(internal_energy_star,np,1,1,1,dp_star_dry,dp_dry,ptop,1,.true.,kord_uvT)
           !
           ! compute sum c^(l)_p*m^(l)*dp on arrival (Eulerian) grid
           !       
@@ -1076,14 +1079,14 @@ contains
           elem(ie)%state%t(:,:,:,np1)=internal_energy_star/ttmp(:,:,:,2)
         else
           internal_energy_star(:,:,:)=elem(ie)%state%t(:,:,:,np1)*dp_star_moist
-          call remap1(internal_energy_star,np,1,1,1,dp_star_moist,dp_moist,ptop,1,.true.)
+          call remap1(internal_energy_star,np,1,1,1,dp_star_moist,dp_moist,ptop,1,.true.,kord_uvT)
           elem(ie)%state%t(:,:,:,np1)=internal_energy_star/dp_moist
         end if
       else
         !
         ! map Tv over log(p); following FV and FV3
         !
-        call remap1(internal_energy_star,np,1,1,1,dp_star_moist,dp_moist,ptop,1,.false.)
+        call remap1(internal_energy_star,np,1,1,1,dp_star_moist,dp_moist,ptop,1,.false.,kord_uvT)
         call get_virtual_temp(1,np,1,np,1,nlev,qsize,elem(ie)%state%qdp(:,:,:,:,np1_qdp),       &
              ttmp(:,:,:,1),dp_dry=dp_dry,                                                       &
              thermodynamic_active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
@@ -1095,8 +1098,8 @@ contains
       !
       ! remap velocity components
       !
-      call remap1(elem(ie)%state%v(:,:,1,:,np1),np,1,1,1,dp_star_moist,dp_moist,ptop,-1,.false.) ! remap with PPM filter
-      call remap1(elem(ie)%state%v(:,:,2,:,np1),np,1,1,1,dp_star_moist,dp_moist,ptop,-1,.false.) ! remap with PPM filter
+      call remap1(elem(ie)%state%v(:,:,1,:,np1),np,1,1,1,dp_star_moist,dp_moist,ptop,-1,.false.,kord_uvT)
+      call remap1(elem(ie)%state%v(:,:,2,:,np1),np,1,1,1,dp_star_moist,dp_moist,ptop,-1,.false.,kord_uvT)
 #ifdef REMAP_TE
         ! back out T from TE
       elem(ie)%state%t(:,:,:,np1) = &
@@ -1128,11 +1131,11 @@ contains
           !$OMP PARALLEL NUM_THREADS(tracer_num_threads), DEFAULT(SHARED), PRIVATE(hybridnew2,qbeg,qend)
           hybridnew2 = config_thread_region(hybrid,'ctracer')
           call get_loop_ranges(hybridnew2, qbeg=qbeg, qend=qend)
-          call remap1(fvm(ie)%c(1:nc,1:nc,:,1:ntrac),nc,qbeg,qend,ntrac,dpc_star,fvm(ie)%dp_fvm(1:nc,1:nc,:),ptop,0,.false.)
+          call remap1(fvm(ie)%c(1:nc,1:nc,:,1:ntrac),nc,qbeg,qend,ntrac,dpc_star,fvm(ie)%dp_fvm(1:nc,1:nc,:),ptop,0,.false.,kord_tr_cslam)
           !$OMP END PARALLEL 
           call omp_set_nested(.false.)
         else
-          call remap1(fvm(ie)%c(1:nc,1:nc,:,1:ntrac),nc,1,ntrac,ntrac,dpc_star,fvm(ie)%dp_fvm(1:nc,1:nc,:),ptop,0,.false.)
+          call remap1(fvm(ie)%c(1:nc,1:nc,:,1:ntrac),nc,1,ntrac,ntrac,dpc_star,fvm(ie)%dp_fvm(1:nc,1:nc,:),ptop,0,.false.,kord_tr_cslam)
         endif
       enddo
     end if

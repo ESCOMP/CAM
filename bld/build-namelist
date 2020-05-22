@@ -3557,7 +3557,8 @@ if ($dyn =~ /se/) {
                   se_tracer_num_threads
                   se_tstep_type
                   se_vert_num_threads
-                  se_vert_remap_q_alg
+                  se_vert_remap_uvTq_alg
+                  se_vert_remap_tracer_alg
 		  se_fvm_supercycling
 		  se_fvm_supercycling_jet
 		  se_kmin_jet

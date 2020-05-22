@@ -103,7 +103,8 @@ subroutine dyn_readnl(NLFileName)
    use control_mod,    only: hypervis_subcycle, hypervis_subcycle_sponge
    use control_mod,    only: hypervis_subcycle_q, statefreq, runtype
    use control_mod,    only: nu, nu_div, nu_p, nu_q, nu_top, qsplit, rsplit
-   use control_mod,    only: vert_remap_q_alg, tstep_type, rk_stage_user
+   use control_mod,    only: vert_remap_uvTq_alg, vert_remap_tracer_alg
+   use control_mod,    only: tstep_type, rk_stage_user
    use control_mod,    only: ftype, limiter_option, partmethod
    use control_mod,    only: topology, phys_dyn_cp
    use control_mod,    only: remap_type, variable_nsplit
@@ -153,7 +154,8 @@ subroutine dyn_readnl(NLFileName)
    integer                      :: se_rsplit
    integer                      :: se_statefreq
    integer                      :: se_tstep_type
-   integer                      :: se_vert_remap_q_alg
+   integer                      :: se_vert_remap_uvTq_alg
+   integer                      :: se_vert_remap_tracer_alg
    integer                      :: se_horz_num_threads
    integer                      :: se_vert_num_threads
    integer                      :: se_tracer_num_threads
@@ -197,7 +199,8 @@ subroutine dyn_readnl(NLFileName)
       se_rsplit,                   &
       se_statefreq,                & ! number of steps per printstate call
       se_tstep_type,               &
-      se_vert_remap_q_alg,         &
+      se_vert_remap_uvTq_alg,      &
+      se_vert_remap_tracer_alg,    &
       se_met_nudge_u,              &
       se_met_nudge_p,              &
       se_met_nudge_t,              &
@@ -275,7 +278,8 @@ subroutine dyn_readnl(NLFileName)
    call MPI_bcast(se_rsplit, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_statefreq, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_tstep_type, 1, mpi_integer, masterprocid, mpicom, ierr)
-   call MPI_bcast(se_vert_remap_q_alg, 1, mpi_integer, masterprocid, mpicom, ierr)
+   call MPI_bcast(se_vert_remap_uvTq_alg, 1, mpi_integer, masterprocid, mpicom, ierr)
+   call MPI_bcast(se_vert_remap_tracer_alg, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_met_nudge_u, 1, MPI_real8, masterprocid, mpicom,ierr)
    call MPI_bcast(se_met_nudge_p, 1, MPI_real8, masterprocid, mpicom,ierr)
    call MPI_bcast(se_met_nudge_t, 1, MPI_real8, masterprocid, mpicom,ierr)
@@ -355,7 +359,8 @@ subroutine dyn_readnl(NLFileName)
    rsplit                   = se_rsplit
    statefreq                = se_statefreq
    tstep_type               = se_tstep_type
-   vert_remap_q_alg         = se_vert_remap_q_alg
+   vert_remap_uvTq_alg      = se_vert_remap_uvTq_alg
+   vert_remap_tracer_alg    = se_vert_remap_tracer_alg
    fv_nphys                 = se_fv_nphys
    hypervis_dynamic_ref_state = se_hypervis_dynamic_ref_state
    lcp_moist                = se_lcp_moist
@@ -460,7 +465,8 @@ subroutine dyn_readnl(NLFileName)
       write(iulog, '(a,i0)')   'dyn_readnl: se_rsplit                     = ',se_rsplit
       write(iulog, '(a,i0)')   'dyn_readnl: se_statefreq                  = ',se_statefreq
       write(iulog, '(a,i0)')   'dyn_readnl: se_tstep_type                 = ',se_tstep_type
-      write(iulog, '(a,i0)')   'dyn_readnl: se_vert_remap_q_alg           = ',se_vert_remap_q_alg
+      write(iulog, '(a,i0)')   'dyn_readnl: se_vert_remap_uvTq_alg        = ',se_vert_remap_uvTq_alg
+      write(iulog, '(a,i0)')   'dyn_readnl: se_vert_remap_tracer_alg      = ',se_vert_remap_tracer_alg
       write(iulog, '(a,l4)')   'dyn_readnl: se_hypervis_dynamic_ref_state = ',hypervis_dynamic_ref_state
       write(iulog, '(a,l4)')   'dyn_readnl: lcp_moist                     = ',lcp_moist
       write(iulog, '(a,i0)')   'dyn_readnl: se_fvm_supercycling           = ',fvm_supercycling
@@ -555,13 +561,14 @@ subroutine dyn_init(dyn_in, dyn_out)
    use dimensions_mod,     only: nu_scale_top, nu_lev, nu_div_lev
    use dimensions_mod,     only: ksponge_end, kmvis_ref, kmcnd_ref,rho_ref,km_sponge_factor
    use dimensions_mod,     only: cnst_name_gll, cnst_longname_gll
-   use dimensions_mod,     only: irecons_tracer_lev, irecons_tracer, otau
+   use dimensions_mod,     only: irecons_tracer_lev, irecons_tracer, otau, kord_tr, kord_tr_cslam
    use prim_driver_mod,    only: prim_init2
    use time_mod,           only: time_at
    use control_mod,        only: runtype, raytau0, raykrange, rayk0, molecular_diff, nu_top
    use test_fvm_mapping,   only: test_mapping_addfld
    use phys_control,       only: phys_getopts
    use physconst,          only: get_molecular_diff_coef_reference
+   use control_mod,        only: vert_remap_uvTq_alg, vert_remap_tracer_alg
    ! Dummy arguments:
    type(dyn_import_t), intent(out) :: dyn_in
    type(dyn_export_t), intent(out) :: dyn_out
@@ -626,10 +633,16 @@ subroutine dyn_init(dyn_in, dyn_out)
    allocate(cnst_longname_gll(qsize)) ! long name of constituents for gll tracers
 
    ! if user wants to add more condensate loading tracers add them here ....
-   
-   !
-   ! if adding more condensate loading tracers remember to increase qsize_d in dimensions_mod
-   !
+
+
+   allocate(kord_tr(qsize))
+   kord_tr(:) = vert_remap_tracer_alg
+   if (ntrac>0) then
+     allocate(kord_tr_cslam(ntrac))
+     kord_tr_cslam(:) = vert_remap_tracer_alg
+   end if
+
+
    do m=1,qsize
      !
      ! The "_gll" index variables below are used to keep track of condensate-loading tracers
@@ -647,18 +660,23 @@ subroutine dyn_init(dyn_in, dyn_out)
        ! note that in this case qsize = thermodynamic_active_species_num
        !
        thermodynamic_active_species_idx_dycore(m) = m
-       cnst_name_gll    (m)                = cnst_name    (thermodynamic_active_species_idx(m))
-       cnst_longname_gll(m)                = cnst_longname(thermodynamic_active_species_idx(m))
+       kord_tr_cslam(thermodynamic_active_species_idx(m)) = vert_remap_uvTq_alg
+       kord_tr(m)                                 = vert_remap_uvTq_alg       
+       cnst_name_gll    (m)                       = cnst_name    (thermodynamic_active_species_idx(m))
+       cnst_longname_gll(m)                       = cnst_longname(thermodynamic_active_species_idx(m))
      else
        !
        ! if not running with CSLAM then the condensate-loading water tracers are not necessarily
        ! indexed contiguously (are indexed as in physics)
        !
-       if (m.le.thermodynamic_active_species_num) thermodynamic_active_species_idx_dycore(m) = thermodynamic_active_species_idx(m)
+       if (m.le.thermodynamic_active_species_num) then
+         thermodynamic_active_species_idx_dycore(m) = thermodynamic_active_species_idx(m)
+         kord_tr(thermodynamic_active_species_idx_dycore(m)) = vert_remap_uvTq_alg
+       end if
        cnst_name_gll    (m)                = cnst_name    (m)
        cnst_longname_gll(m)                = cnst_longname(m)
-     end if
-
+       
+     end if     
    end do
 
 
@@ -732,8 +750,8 @@ subroutine dyn_init(dyn_in, dyn_out)
          end if
          kmol_end = k
        else 
-        kmvis_ref(k) = 0.0_r8
-         kmcnd_ref(k) = 0.0_r8
+         kmvis_ref(k) = 1.0_r8
+         kmcnd_ref(k) = 1.0_r8
        end if
      end do
    else

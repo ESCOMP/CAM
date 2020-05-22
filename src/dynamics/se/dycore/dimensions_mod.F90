@@ -69,6 +69,8 @@ module dimensions_mod
   integer, public :: kmin_jet,kmax_jet !min and max level index for the jet
   integer, public :: fvm_supercycling    
   integer, public :: fvm_supercycling_jet
+
+  integer, allocatable, public :: kord_tr(:), kord_tr_cslam(:)
   
   real(r8), public :: nu_scale_top(PLEV)! scaling of del2 viscosity in sopnge layer (initialized in dyn_comp)
   real(r8), public :: nu_lev(PLEV)    
@@ -76,9 +78,6 @@ module dimensions_mod
   integer,  public :: ksponge_end       ! sponge is active k=1,ksponge_end
   real(r8), public :: nu_div_lev(PLEV) = 1.0_r8 ! scaling of viscosity in sponge layer
                                                       ! (set in prim_state; if applicable)
-
- real(r8), public :: nu_div_scale_top(PLEV) = 1.0_r8 !xxx remove
-
   real(r8), public :: kmvis_ref(PLEV)        !reference profiles for molecular diffusion 
   real(r8), public :: kmcnd_ref(PLEV)        !reference profiles for molecular diffusion  
   real(r8), public :: rho_ref(PLEV)          !reference profiles for rho

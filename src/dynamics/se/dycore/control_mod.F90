@@ -33,19 +33,14 @@ module control_mod
 
   logical, public :: refined_mesh
 
-! vert_remap_q_alg:    0  default value, Zerroukat monotonic splines
-!                      1  PPM vertical remap with mirroring at the boundaries
-!                         (solid wall bc's, high-order throughout)
-!                      2  PPM vertical remap without mirroring at the boundaries
-!                         (no bc's enforced, first-order at two cells bordering top and bottom boundaries)
-  integer, public :: vert_remap_q_alg = 0
+  integer, public :: vert_remap_q_alg = 10
 
 
- integer, public :: cubed_sphere_map = -1  ! -1 = chosen at run time
-                                           !  0 = equi-angle Gnomonic (default)
-                                           !  1 = equi-spaced Gnomonic (not yet coded)
-                                           !  2 = element-local projection  (for var-res)
-                                           !  3 = parametric (not yet coded)
+  integer, public :: cubed_sphere_map = -1  ! -1 = chosen at run time
+                                            !  0 = equi-angle Gnomonic (default)
+                                            !  1 = equi-spaced Gnomonic (not yet coded)
+                                            !  2 = element-local projection  (for var-res)
+                                            !  3 = parametric (not yet coded)
 
 !tolerance to define smth small, was introduced for lim 8 in 2d and 3d
   real (kind=r8), public, parameter :: tol_limiter=1.0e-13_r8
@@ -135,5 +130,7 @@ module control_mod
   ! molecular diffusion
   !  
   real(r8), public :: molecular_diff=-1.0
+
+  integer, public  :: vert_remap_uvTq_alg, vert_remap_tracer_alg
   
 end module control_mod

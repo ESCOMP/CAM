@@ -24,7 +24,6 @@ module vertremap_mod
   use perf_mod,               only: t_startf, t_stopf ! _EXTERNAL
   use parallel_mod,           only: parallel_t
   use cam_abortutils,         only: endrun
-  use control_mod,            only: vert_remap_q_alg
 
   implicit none
   
@@ -39,8 +38,7 @@ module vertremap_mod
 
 !=======================================================================================================!
 
-    subroutine remap1(Qdp,nx,qstart,qstop,qsize,dp1,dp2,ptop,identifier,Qdp_mass)
-      use control_mod,  only: vert_remap_q_alg
+    subroutine remap1(Qdp,nx,qstart,qstop,qsize,dp1,dp2,ptop,identifier,Qdp_mass,kord)
       use fv_mapz,      only: map1_ppm 
       ! remap 1 field
       ! input:  Qdp   field to be remapped (NOTE: MASS, not MIXING RATIO)
@@ -56,32 +54,42 @@ module vertremap_mod
       integer, intent(in) :: identifier  !0: tracers, 1: T, -1: u,v
       real (kind=r8), intent(in) :: ptop
       logical, intent(in) :: Qdp_mass
+      integer, intent(in) :: kord(qsize)
       ! ========================
       ! Local Variables
       ! ========================
       real (kind=r8) :: pe1(nx,nlev+1),pe2(nx,nlev+1),inv_dp(nx,nx,nlev),dp2_local(nx,nlev)
       real (kind=r8) :: tmp(nx,nlev), gz(nx)
-      integer        :: kord_tr(qsize),i,j,k,itrac
-      logical        :: logp      
+      integer        :: i,j,k,itrac
+      logical        :: logp
+      integer        :: kord_local(qsize)
 
-      if (vert_remap_q_alg.GE.0) then
+      kord_local = kord
+      
+      if (any(kord(:).GE.0)) then
         if (.not.qdp_mass) then
           do itrac=1,qsize
             Qdp(:,:,:,itrac) = Qdp(:,:,:,itrac)*dp1(:,:,:)
           end do
         end if        
-        call remap_Q_ppm(qdp,nx,qstart,qstop,qsize,dp1,dp2)
+        call remap_Q_ppm(qdp,nx,qstart,qstop,qsize,dp1,dp2,kord)
         if (.not.qdp_mass) then
           do itrac=1,qsize
             Qdp(:,:,:,itrac) = Qdp(:,:,:,itrac)/dp2(:,:,:)
           end do
         end if        
-      else        
-        if (vert_remap_q_alg>-20) then
-          kord_tr = abs(vert_remap_q_alg)
+      endif
+      if (any(kord(:)<0)) then
+        !
+        ! check if remapping over p or log(p)
+        !
+        ! can not mix and match here (all kord's must >-20 or <=-20)
+        !
+        if (any(kord(:)>-20)) then
+          kord_local = abs(kord)
           logp    = .false.
         else
-          kord_tr = abs(vert_remap_q_alg/10)
+          kord_local = abs(kord/10)
           if (identifier==1) then
             logp    = .true.
           else
@@ -116,11 +124,13 @@ module vertremap_mod
             end do
             
             do itrac=1,qsize
-              call map1_ppm( nlev, pe1(:,:),   Qdp(:,:,:,itrac),   gz,   &!phl
-                   nlev, pe2(:,:),    Qdp(:,:,:,itrac),               &
-                   1, nx, j, 1, nx, 1, nx, identifier, kord_tr(itrac))
+              if (kord(itrac)<0) then
+                call map1_ppm( nlev, pe1(:,:),   Qdp(:,:,:,itrac),   gz,   &!phl
+                     nlev, pe2(:,:),    Qdp(:,:,:,itrac),               &
+                     1, nx, j, 1, nx, 1, nx, identifier, kord_local(itrac))
+              end if
             end do
-            !      call mapn_tracer(qsize, nlev, pe1, pe2, Qdp, dp2_local, kord_tr, j,     &
+            !      call mapn_tracer(qsize, nlev, pe1, pe2, Qdp, dp2_local, kord, j,     &
             !           1, nx, 1, nx, 1, nx, 0.0_r8, fill)
           end do
         else
@@ -135,11 +145,13 @@ module vertremap_mod
             end do
             pe1(:,nlev+1) = pe2(:,nlev+1)
             do itrac=1,qsize
-              call map1_ppm( nlev, pe1(:,:),   Qdp(:,:,:,itrac),   gz,   &!phl
-                   nlev, pe2(:,:),    Qdp(:,:,:,itrac),               &
-                   1, nx, j, 1, nx, 1, nx, identifier, kord_tr(itrac))
+              if (kord(itrac)<0) then
+                call map1_ppm( nlev, pe1(:,:),   Qdp(:,:,:,itrac),   gz,   &!phl
+                     nlev, pe2(:,:),    Qdp(:,:,:,itrac),               &
+                     1, nx, j, 1, nx, 1, nx, identifier, kord_local(itrac))
+              end if
             end do
-            !      call mapn_tracer(qsize, nlev, pe1, pe2, Qdp, dp2_local, kord_tr, j,     &
+            !      call mapn_tracer(qsize, nlev, pe1, pe2, Qdp, dp2_local, kord, j,     &
             !           1, nx, 1, nx, 1, nx, 0.0_r8, fill)
           end do
         end if
@@ -299,7 +311,7 @@ end subroutine remap1_nofilter
 
 !This uses the exact same model and reference grids and data as remap_Q, but it interpolates
 !using PPM instead of splines.
-subroutine remap_Q_ppm(Qdp,nx,qstart,qstop,qsize,dp1,dp2)
+subroutine remap_Q_ppm(Qdp,nx,qstart,qstop,qsize,dp1,dp2,kord)
   ! remap 1 field
   ! input:  Qdp   field to be remapped (NOTE: MASS, not MIXING RATIO)
   !         dp1   layer thickness (source)
@@ -307,12 +319,11 @@ subroutine remap_Q_ppm(Qdp,nx,qstart,qstop,qsize,dp1,dp2)
   !
   ! output: remaped Qdp, conserving mass
   !
-  use control_mod, only : vert_remap_q_alg
-
   implicit none
   integer,intent(in) :: nx,qstart,qstop,qsize
   real (kind=r8), intent(inout) :: Qdp(nx,nx,nlev,qsize)
   real (kind=r8), intent(in) :: dp1(nx,nx,nlev),dp2(nx,nx,nlev)
+  integer       , intent(in) :: kord(qsize)
   ! Local Variables
   integer, parameter :: gs = 2                              !Number of cells to place in the ghost region
   real(kind=r8), dimension(       nlev+2 ) :: pio    !Pressure at interfaces for old grid
@@ -386,11 +397,12 @@ subroutine remap_Q_ppm(Qdp,nx,qstart,qstop,qsize,dp1,dp2)
 
       !This turned out a big optimization, remembering that only parts of the PPM algorithm depends on the data, namely the
       !limiting. So anything that depends only on the grid is pre-computed outside the tracer loop.
-      ppmdx(:,:) = compute_ppm_grids( dpo )
+      ppmdx(:,:) = compute_ppm_grids( dpo)
 
       !From here, we loop over tracers for only those portions which depend on tracer data, which includes PPM limiting and
       !mass accumulation
       do q = qstart, qstop
+        if (kord(q)>0) then
         !Accumulate the old mass up to old grid cell interface locations to simplify integration
         !during remapping. Also, divide out the grid spacing so we're working with actual tracer
         !values and can conserve mass. The option for ifndef ZEROHORZ I believe is there to ensure
@@ -402,8 +414,8 @@ subroutine remap_Q_ppm(Qdp,nx,qstart,qstop,qsize,dp1,dp2)
           masso(k+1) = masso(k) + ao(k) !Accumulate the old mass. This will simplify the remapping
           ao(k) = ao(k) / dpo(k)        !Divide out the old grid spacing because we want the tracer mixing ratio, not mass.
         enddo
-        !Fill in ghost values. Ignored if vert_remap_q_alg == 2
-        if (vert_remap_q_alg == 10) then
+        !Fill in ghost values. Ignored if kord == 2
+        if (kord(q) == 10) then
           ext(1) = minval(ao(1:nlev))
           ext(2) = maxval(ao(1:nlev))
           call linextrap(dpo(2), dpo(1), dpo(0), dpo(-1), ao(2), ao(1), ao(0), ao(-1), ext(1), ext(2))
@@ -416,7 +428,7 @@ subroutine remap_Q_ppm(Qdp,nx,qstart,qstop,qsize,dp1,dp2)
           enddo
         end if
         !Compute monotonic and conservative PPM reconstruction over every cell
-        coefs(:,:) = compute_ppm( ao , ppmdx )
+        coefs(:,:) = compute_ppm( ao , ppmdx, kord(q) )
         !Compute tracer values on the new grid by integrating from the old cell bottom to the new
         !cell interface to form a new grid mass accumulation. Taking the difference between
         !accumulation at successive interfaces gives the mass inside each cell. Since Qdp is
@@ -428,6 +440,7 @@ subroutine remap_Q_ppm(Qdp,nx,qstart,qstop,qsize,dp1,dp2)
           Qdp(i,j,k,q) = massn2 - massn1
           massn1 = massn2
         enddo
+        end if
       enddo
     enddo
   enddo
@@ -492,11 +505,11 @@ end function compute_ppm_grids
 
 
 !This computes a limited parabolic interpolant using a net 5-cell stencil, but the stages of computation are broken up into 3 stages
-function compute_ppm( a , dx )    result(coefs)
-  use control_mod, only: vert_remap_q_alg
+function compute_ppm( a , dx , kord)    result(coefs)
   implicit none
   real(kind=r8), intent(in) :: a    (    -1:nlev+2)  !Cell-mean values
   real(kind=r8), intent(in) :: dx   (10,  0:nlev+1)  !grid spacings
+  integer,       intent(in) :: kord
   real(kind=r8) ::             coefs(0:2,   nlev  )  !PPM coefficients (for parabola)
   real(kind=r8) :: ai (0:nlev  )                     !fourth-order accurate, then limited interface values
   real(kind=r8) :: dma(0:nlev+1)                     !An expression from Collela's '84 publication
@@ -537,8 +550,8 @@ function compute_ppm( a , dx )    result(coefs)
     coefs(2,j) = 3._r8 * (-2._r8 * a(j) + ( al + ar ))
   enddo
 
-  !If vert_remap_q_alg == 2, use piecewise constant in the boundaries, and don't use ghost cells.
-  if (vert_remap_q_alg == 2) then
+  !If kord == 2, use piecewise constant in the boundaries, and don't use ghost cells.
+  if (kord == 2) then
     coefs(0,1:2) = a(1:2)
     coefs(1:2,1:2) = 0._r8
     coefs(0,nlev-1:nlev) = a(nlev-1:nlev)
