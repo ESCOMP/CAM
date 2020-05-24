@@ -152,9 +152,7 @@ subroutine dyn_grid_init()
    use tracer_manager_mod, only: get_tracer_index
    use units,              only: getunit, freeunit
    use xgrid_mod,          only: grid_box_type
-   use pio,                only: file_desc_t, pio_seterrorhandling, pio_bcast_error, &
-                                 pio_internal_error, pio_noerr, pio_inq_dimid,       &
-                                 pio_inq_dimlen
+   use pio,                only: file_desc_t
 
    ! Local variables
 
@@ -178,32 +176,15 @@ subroutine dyn_grid_init()
    integer, allocatable :: be_size(:)
 
    integer :: unitn               ! File unit number
-   integer :: ierr                ! Error code 
    integer :: n                   ! index
    integer :: nlat,nlon,mlat,mlon
 
 !-----------------------------------------------------------------------
-integer :: ncolid,ncollen
 
 character(len=128) :: version = '$Id$'
 character(len=128) :: tagname = '$Name$'
 type (block_control_type), target   :: Atm_block
 integer :: is,ie,js,je,npes,tsize,ssize
-
-   !-----------------------------------------------------------------------
-
-   ! Get file handle for initial file and first consistency check
-   fh_ini => initial_file_get_id()
-
-   call pio_seterrorhandling(fh_ini, pio_bcast_error)
-   ierr = pio_inq_dimid(fh_ini, 'ncol', ncolid)
-   call pio_seterrorhandling(fh_ini, pio_internal_error)
-
-   if (ierr /= pio_noerr) then
-      call endrun(sub//': ERROR: initial dataset not on unstructured grid')
-   else      
-      ierr = pio_inq_dimlen(fh_ini, ncolid, ncollen)
-   end if
 
    !-----------------------------------------------------------------------
    !  from couple_main initialize atm structure - initializes fv3 grid
@@ -256,6 +237,8 @@ integer :: is,ie,js,je,npes,tsize,ssize
    pnats  = Atm(mytile)%flagstruct%pnats
    dnats = Atm(mytile)%flagstruct%dnats ! Number of non-advected consituents (as seen by dynamics)
 
+   if (npz /= plev) call endrun('dyn_grid_init: FV3 dycore levels (npz) does not match model levels (plev)')
+
 !-----------------------------------------------------------------------
 !--- get block extents for each task/pe
 !-----------------------------------------------------------------------
@@ -273,11 +256,14 @@ integer :: is,ie,js,je,npes,tsize,ssize
    deallocate(rtmp)
    deallocate(be_size)
 
- ! Initialize hybrid coordinate arrays
- call hycoef_init(fh_ini)
+   ! Get file handle for initial file
+   fh_ini => initial_file_get_id()
 
- ! Initialize reference pressures
- call ref_pres_init(hypi, hypm, nprlev)
+   ! Initialize hybrid coordinate arrays
+   call hycoef_init(fh_ini)
+   
+   ! Initialize reference pressures
+   call ref_pres_init(hypi, hypm, nprlev)
 
    ! Hybrid coordinate info for FV grid object
    Atm(mytile)%ks = plev
@@ -1091,8 +1077,6 @@ subroutine dyn_grid_get_colndx( igcol, ncols, owners, indx, jndx)
   use spmd_utils,       only: iam
    ! For each global column index return the owning task.  If the column is owned
    ! by this task, then also return the MPI process indicies for that column
-   !
-   ! NOTE: this routine needs to be updated for the physgrid
 
   integer, intent(in)  :: ncols
   integer, intent(in)  :: igcol(ncols)

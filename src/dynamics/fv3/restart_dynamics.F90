@@ -271,11 +271,11 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
    type(var_desc_t) :: psdesc
    type(var_desc_t) :: phisdesc
    type(var_desc_t), allocatable :: qdesc(:)
-   type(io_desc_t),pointer :: iodesc2d, iodesc3d,iodesc3d_ns,iodesc3d_ew,iodesc,iodesc3d_ns_rst,iodesc3d_ew_rst
+   type(io_desc_t),pointer :: iodesc2d, iodesc3d,iodesc3d_ns,iodesc3d_ew,iodesc
    integer :: array_lens_3d(3), array_lens_2d(2), array_lens_1d(1)
    integer :: file_lens_2d(2), file_lens_1d(1)
-   integer :: grid_id,grid_id_ns,grid_id_ew,ilen,jlen,grid_id_ns_rst,grid_id_ew_rst
-   integer :: grid_dimlens(2),grid_dimlens_ns(2),grid_dimlens_ew(2),grid_dimlens_ns_rst(2),grid_dimlens_ew_rst(2)
+   integer :: grid_id,grid_id_ns,grid_id_ew,ilen,jlen
+   integer :: grid_dimlens(2),grid_dimlens_ns(2),grid_dimlens_ew(2)
    character(len=max_hcoordname_len) :: dimname1, dimname2
 
    real(r8),    allocatable :: var2d(:,:)
@@ -355,15 +355,6 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
    call cam_pio_handle_error(ierr, sub//': cannot find ncol_d')
    ierr = PIO_Inq_dimlen(File, ncol_d_dimid, ncols_d)
    
-   
-   ! ierr = PIO_Inq_DimID(File, 'ncol_d_ns_rst', ncol_d_ns_rst_dimid)
-   ! call cam_pio_handle_error(ierr, sub//': cannot find ncol_d_ns_rst')
-   ! ierr = PIO_Inq_dimlen(File, ncol_d_ns_rst_dimid, ncols_d_ns_rst)
-   
-   ! ierr = PIO_Inq_DimID(File, 'ncol_d_ew_rst', ncol_d_ew_rst_dimid)
-   ! call cam_pio_handle_error(ierr, sub//': cannot find ncol_d_ew_rst')
-   ! ierr = PIO_Inq_dimlen(File, ncol_d_ew_rst_dimid, ncols_d_ew_rst)
-
    ierr = PIO_Inq_DimID(File, 'ncol_d_ns', ncol_d_ns_dimid)
    call cam_pio_handle_error(ierr, sub//': cannot find ncol_d_ns')
    ierr = PIO_Inq_dimlen(File, ncol_d_ns_dimid, ncols_d_ns)
@@ -375,13 +366,9 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
    grid_id = cam_grid_id('FFSL')
    grid_id_ns = cam_grid_id('FFSL_NS')
    grid_id_ew = cam_grid_id('FFSL_EW')
-   grid_id_ns_rst = cam_grid_id('FFSL_NS_RST')
-   grid_id_ew_rst = cam_grid_id('FFSL_EW_RST')
    call cam_grid_dimensions(grid_id, grid_dimlens)
    call cam_grid_dimensions(grid_id_ew, grid_dimlens_ew)
    call cam_grid_dimensions(grid_id_ns, grid_dimlens_ns)
-   call cam_grid_dimensions(grid_id_ew_rst, grid_dimlens_ew_rst)
-   call cam_grid_dimensions(grid_id_ns_rst, grid_dimlens_ns_rst)
    
    if (ncols_d_ns /= grid_dimlens_ns(1)) then
       write(iulog,*) 'Restart file ncol_d_ns does not match model. ncols_d_ns (file, model):',&
@@ -406,20 +393,10 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
     file_lens_2d  = (/grid_dimlens_ns(1), npz/)
     call cam_grid_get_decomp(grid_id_ns, array_lens_3d, file_lens_2d, pio_double, iodesc3d_ns)
     
-   ! create map for distributed write of 3D NS RST fields (reading dups - map has gindex for dups only all others 0)
-    array_lens_3d = (/ilen, npz, jlen+1/)
-    file_lens_2d  = (/grid_dimlens_ns_rst(1), npz/)
-    call cam_grid_get_decomp(grid_id_ns_rst, array_lens_3d, file_lens_2d, pio_double, iodesc3d_ns_rst)
-
    ! create map for distributed write of 3D EW fields
     array_lens_3d = (/ilen+1, npz, jlen/)
     file_lens_2d  = (/grid_dimlens_ew(1), npz/)
     call cam_grid_get_decomp(grid_id_ew, array_lens_3d, file_lens_2d, pio_double, iodesc3d_ew)
-    
-   ! create map for distributed write of 3D EW RST fields  (reading dups - map has gindex for dups only all others 0)
-    array_lens_3d = (/ilen+1, npz, jlen/)
-    file_lens_2d  = (/grid_dimlens_ew_rst(1), npz/)
-    call cam_grid_get_decomp(grid_id_ew_rst, array_lens_3d, file_lens_2d, pio_double, iodesc3d_ew_rst)
     
     allocate(var2d(is:ie,js:je))
     var2d = 0._r8

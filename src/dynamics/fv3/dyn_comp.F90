@@ -132,18 +132,12 @@ subroutine dyn_readnl(nlfilename)
   ! FV3 Namelist variables
   integer                      :: fv3_qsize_condensate_loading, fv3_npes
   
-  ! fms_nml namelist variables - these namelist variables defined in fv3 library without fv3_
-
-  character(len=256) :: fv3_clock_grain
-  integer            :: fv3_domains_stack_size, fv3_stack_size
-  logical            :: fv3_print_memory_usage
-
   ! fv_core namelist variables - these namelist variables defined in fv3 library without fv3_
 
   integer            :: fv3_consv_te, fv3_dnats, fv3_fv_sg_adj, fv3_grid_type, &
                         fv3_hord_dp, fv3_hord_mt, fv3_hord_tm, fv3_hord_tr, fv3_hord_vt, &
-                        fv3_io_layout, fv3_k_split, fv3_kord_mt, fv3_kord_tm, fv3_kord_tr, &
-                        fv3_kord_wz, fv3_layout, fv3_n_split, fv3_n_sponge, fv3_na_init, &
+                        fv3_io_layout(2), fv3_k_split, fv3_kord_mt, fv3_kord_tm, fv3_kord_tr, &
+                        fv3_kord_wz, fv3_layout(2), fv3_n_split, fv3_n_sponge, fv3_na_init, &
                         fv3_ncnst, fv3_nord, fv3_npx, fv3_npy, fv3_npz, fv3_ntiles, &
                         fv3_nwat, fv3_print_freq 
 
@@ -155,7 +149,32 @@ subroutine dyn_readnl(nlfilename)
                         fv3_dwind_2d, fv3_fill, fv3_fv_debug, fv3_fv_diag, fv3_hydrostatic, &
                         fv3_make_nh, fv3_no_dycore, fv3_range_warn, fv3_uniform_vert_spacing, &
                         fv3_z_tracer
+
+  ! fms_nml namelist variables - these namelist variables defined in fv3 library without fv3_
+
+  character(len=256) :: fv3_clock_grain
+  integer            :: fv3_domains_stack_size
+  integer            :: fv3_stack_size
+  logical            :: fv3_print_memory_usage
+
   
+
+  character(len=256) :: inrec  ! first 80 characters of input record
+  character(len=256) :: inrec2 ! left adjusted input record
+
+  character(len = 20), dimension(5) :: group_names = (/  &
+  "main_nml            ", &
+  "fv_core_nml         ", &
+  "surf_map_nml        ", &
+  "test_case_nml       ", &
+  "fms_nml             "/)
+
+  namelist /fms_nml/          &
+       fv3_clock_grain, &
+       fv3_domains_stack_size, &
+       fv3_print_memory_usage, &
+       fv3_stack_size
+
   namelist /dyn_fv3_inparm/          &
        fv3_scale_ttend, &
        fv3_lcp_moist, &
@@ -163,7 +182,7 @@ subroutine dyn_readnl(nlfilename)
        fv3_qsize_condensate_loading, &
        fv3_npes
 
-  namelist /fv_core/          &
+  namelist /fv_core_nml/          &
        fv3_adjust_dry_mass,fv3_beta,fv3_consv_am,fv3_consv_te,fv3_d2_bg, &
        fv3_d2_bg_k1,fv3_d2_bg_k2,fv3_d4_bg,fv3_d_con,fv3_d_ext,fv3_dddmp, &
        fv3_delt_max,fv3_dnats,fv3_do_sat_adj,fv3_do_vort_damp,fv3_dwind_2d, &
@@ -175,30 +194,13 @@ subroutine dyn_readnl(nlfilename)
        fv3_nord,fv3_npx,fv3_npy,fv3_npz,fv3_ntiles,fv3_nwat, &
        fv3_print_freq,fv3_range_warn,fv3_rf_cutoff,fv3_tau, &
        fv3_uniform_vert_spacing,fv3_vtdm4,fv3_z_tracer
-
-  namelist /fms_nml/          &
-  fv3_clock_grain, &
-  fv3_domains_stack_size, &
-  fv3_print_memory_usage, &
-  fv3_stack_size
-
-  character(len = 20), dimension(5) :: group_names = (/  &
-  "main_nml            ", &
-  "fv_core_nml         ", &
-  "surf_map_nml        ", &
-  "test_case_nml       ", &
-  "fms_nml             "/)
-
-  character(len=256) :: inrec  ! first 80 characters of input record
-  character(len=256) :: inrec2 ! left adjusted input record
-
   !--------------------------------------------------------------------------
   
   ! defaults for namelist variables not set by build-namelist
-  fv3_clock_grain  = 'NONE'
+  fv3_npes         = npes
 
-  ! Read the namelist (dyn_fv3_inparm)
   if (masterproc) then
+  ! Read the namelist (dyn_fv3_inparm)
      unitn = getunit()
      open( unitn, file=trim(NLFileName), status='old' )
      call find_group_name(unitn, 'dyn_fv3_inparm', status=ierr)
@@ -206,6 +208,30 @@ subroutine dyn_readnl(nlfilename)
         read(unitn, dyn_fv3_inparm, iostat=ierr)
         if (ierr /= 0) then
            call endrun('dyn_readnl: ERROR reading dyn_fv3_inparm namelist')
+        end if
+     end if
+     close(unitn)
+     call freeunit(unitn)
+  ! Read the namelist (fms_nml)
+     unitn = getunit()
+     open( unitn, file=trim(NLFileName), status='old' )
+     call find_group_name(unitn, 'fms_nml', status=ierr)
+     if (ierr == 0) then
+        read(unitn, fms_nml, iostat=ierr)
+        if (ierr /= 0) then
+           call endrun('dyn_readnl: ERROR reading fms_nml namelist')
+        end if
+     end if
+     close(unitn)
+     call freeunit(unitn)
+  ! Read the namelist (fv_core_nml)
+     unitn = getunit()
+     open( unitn, file=trim(NLFileName), status='old' )
+     call find_group_name(unitn, 'fv_core_nml', status=ierr)
+     if (ierr == 0) then
+        read(unitn, fv_core_nml, iostat=ierr)
+        if (ierr /= 0) then
+           call endrun('dyn_readnl: ERROR reading fv_core_nml namelist')
         end if
      end if
      close(unitn)
@@ -246,7 +272,6 @@ subroutine dyn_readnl(nlfilename)
      write (iulog,*) '  fv3_dnats                 = ',fv3_dnats
      write (iulog,*) '  fv3_do_sat_adj            = ',fv3_do_sat_adj
      write (iulog,*) '  fv3_do_vort_damp          = ',fv3_do_vort_damp
-     write (iulog,*) '  fv3_domains_stack_size    = ',fv3_domains_stack_size
      write (iulog,*) '  fv3_dwind_2d              = ',fv3_dwind_2d
      write (iulog,*) '  fv3_fill                  = ',fv3_fill
      write (iulog,*) '  fv3_fv_debug              = ',fv3_fv_debug
@@ -282,7 +307,7 @@ subroutine dyn_readnl(nlfilename)
      write (iulog,*) '  fv3_ntiles                = ',fv3_ntiles
      write (iulog,*) '  fv3_nwat                  = ',fv3_nwat
      write (iulog,*) '  fv3_print_freq            = ',fv3_print_freq
-     write (iulog,*) '  fv3_print_memory_usage    = ',fv3_print_memory_usage
+     write (iulog,*) '  fv3_domains_stack_size    = ',fv3_domains_stack_size
      write (iulog,*) '  fv3_qsize_condensate_loading = ',fv3_qsize_condensate_loading
      write (iulog,*) '  fv3_range_warn            = ',fv3_range_warn
      write (iulog,*) '  fv3_rf_cutoff             = ',fv3_rf_cutoff
@@ -911,18 +936,6 @@ subroutine dyn_run(dyn_state)
           Atm(mytile)%w, Atm(mytile)%delz, u_dt, v_dt, t_dt, Atm(mytile)%flagstruct%n_sponge)
   endif
   
-#ifdef USE_Q_DT
-  if ( .not. Atm(mytile)%flagstruct%hydrostatic .and. w_diff /= NO_TRACER ) then
-!$OMP parallel do default (none) &
-!$OMP              shared (isc, iec, jsc, jec, w_diff, n, Atm, q_dt) &
-!$OMP             private (k)
-     do k=1, npz
-        Atm(mytile)%q(isc:iec,jsc:jec,k,w_diff) = Atm(mytile)%w(isc:iec,jsc:jec,k) + w0_big
-        q_dt(:,:,k,w_diff) = 0._r8
-     enddo
-  endif
-#endif
-  
 #if ( defined CALC_ENERGY )
   call calc_tot_energy_dynamics(atm,'dBF')
 #endif
@@ -1010,7 +1023,6 @@ subroutine read_inidat(dyn_in)
   character(len=*), parameter      :: subname='READ_INIDAT'
   real(r8), allocatable            :: phis_tmp(:,:) 
   integer(iMap), pointer           :: ldof(:),ldof_ew(:),ldof_ns(:) ! Basic (2D) grid dof
-  logical,  allocatable            :: pmask(:)           ! (npsq*nelemd) unique grid vals
 
   ! Variables for analytic initial conditions
   integer,  allocatable            :: glob_inddups(:),glob_inddups_ew(:),glob_inddups_ns(:)
@@ -1053,12 +1065,10 @@ subroutine read_inidat(dyn_in)
   real(r8), dimension(2) :: pa
   real(r8), dimension(3) :: e1,ex,ey
   integer :: fnlev,nlev_dimid
-  integer :: hdim_len, ncols_ns, ncols_ew, ncols
+  integer :: hdim_len, ncols
   
   integer :: npz_dimid
   integer :: ncol_dimid
-  integer :: ncol_ns_dimid
-  integer :: ncol_ew_dimid
   integer :: m_ffsl
   
   type(var_desc_t) :: omegadesc
@@ -1071,10 +1081,10 @@ subroutine read_inidat(dyn_in)
   type(var_desc_t) :: psdesc
   type(var_desc_t) :: phisdesc
   type(var_desc_t), allocatable :: qdesc(:)
-  type(io_desc_t),pointer :: iodesc2d, iodesc3d,iodesc3d_ns,iodesc3d_ew
+  type(io_desc_t),pointer :: iodesc2d, iodesc3d
   integer :: array_lens_3d(3), array_lens_2d(2), array_lens_1d(1)
   integer :: file_lens_2d(2), file_lens_1d(1)
-  integer :: grid_id,grid_id_ns,grid_id_ew,ilen,jlen
+  integer :: grid_id,ilen,jlen
   integer :: grid_dimlens(2),grid_dimlens_ns(2),grid_dimlens_ew(2)
   real(r8), allocatable :: var3d(:,:,:), var3d_ew(:,:,:), var3d_ns(:,:,:), var2d(:,:)
 
@@ -1110,9 +1120,7 @@ subroutine read_inidat(dyn_in)
   call cam_grid_get_gcid(cam_grid_id('FFSL'), ldof)
   ldof_size=(je-js+1)*(ie-is+1)
   allocate(phis_tmp(ldof_size,1))
-  allocate(pmask(ldof_size))
   phis_tmp(:,:)=0._r8
-  pmask(:) = .true.
 
   nullify(latvals_rad_ew)
   nullify(lonvals_rad_ew)
@@ -1229,7 +1237,7 @@ subroutine read_inidat(dyn_in)
      deallocate(dbuf3)
 
      call analytic_ic_set_ic(vcoord, latvals_rad, lonvals_rad, glob_inddups,            &
-          Q=dbuf4(:,:,:,1:pcnst), m_cnst=m_ind, mask=pmask(:))
+          Q=dbuf4(:,:,:,1:pcnst), m_cnst=m_ind)
      deallocate(m_ind)
 
      ! Tracers to be advected on FFSL grid.
@@ -1298,14 +1306,6 @@ subroutine read_inidat(dyn_in)
   else
      ! Read ICs from file. 
      call pio_seterrorhandling(fh_ini, pio_bcast_error, err_handling)
-
-     ierr = PIO_Inq_DimID(fh_ini, 'lev', nlev_dimid)
-     ierr = PIO_Inq_dimlen(fh_ini, nlev_dimid, fnlev)
-     if (npz /= fnlev) then
-        write(iulog,*) 'Initial condition file nlev does not match model. nlev (file, namelist):', &
-             fnlev, npz
-        call endrun(subname//': Initial Condition File file nlev does not match model.')
-     end if
      
      ! variable descriptors of required dynamics fields
 
@@ -1335,34 +1335,13 @@ subroutine read_inidat(dyn_in)
 
      allocate(qdesc(pcnst))
 
-     ! check whether the restart fields on the GLL grid contain unique columns
-     ! or the fv3 task structure (ncol_ns = (ie-is+1)*(je-js+2)+npes columns)
-     ! or the fv3 task structure (ncol_ew = (ie-is+2)*(je-js+1)+npes columns)
-     
      ierr = PIO_Inq_DimID(fh_ini, 'ncol', ncol_dimid)
      call cam_pio_handle_error(ierr, subname//': cannot find ncol')
      ierr = PIO_Inq_dimlen(fh_ini, ncol_dimid, ncols)
      
      
-     ierr = PIO_Inq_DimID(fh_ini, 'ncol_ns', ncol_ns_dimid)
-     call cam_pio_handle_error(ierr, subname//': cannot find ncol_ns')
-     ierr = PIO_Inq_dimlen(fh_ini, ncol_ns_dimid, ncols_ns)
-     
-     ierr = PIO_Inq_DimID(fh_ini, 'ncol_ew', ncol_ew_dimid)
-     call cam_pio_handle_error(ierr, subname//': cannot find ncol_ew')
-     ierr = PIO_Inq_dimlen(fh_ini, ncol_ew_dimid, ncols_ew)
-     
      grid_id = cam_grid_id('FFSL')
-     grid_id_ns = cam_grid_id('FFSL_NS')
-     grid_id_ew = cam_grid_id('FFSL_EW')
      call cam_grid_dimensions(grid_id, grid_dimlens)
-     call cam_grid_dimensions(grid_id_ew, grid_dimlens_ew)
-     call cam_grid_dimensions(grid_id_ns, grid_dimlens_ns)
-     if (ncols_ns /= grid_dimlens_ns(1)) then
-        write(iulog,*) 'Restart file ncol_ns does not match model. ncols_ns (file, model):',&
-             ncols_ns, grid_dimlens_ns(1)
-        call endrun(subname//': Restart file ncols_fvm does not match model.')
-     end if
      
      ilen = ie-is+1
      jlen = je-js+1
@@ -1376,16 +1355,6 @@ subroutine read_inidat(dyn_in)
      file_lens_2d  = (/grid_dimlens(1), npz/)
      call cam_grid_get_decomp(grid_id, array_lens_3d, file_lens_2d, pio_double, iodesc3d)
      
-     ! create map for distributed write of 3D NS fields
-     array_lens_3d = (/ilen, npz, jlen+1/)
-     file_lens_2d  = (/grid_dimlens_ns(1), npz/)
-     call cam_grid_get_decomp(grid_id_ns, array_lens_3d, file_lens_2d, pio_double, iodesc3d_ns)
-     
-     ! create map for distributed write of 3D EW fields
-     array_lens_3d = (/ilen+1, npz, jlen/)
-     file_lens_2d  = (/grid_dimlens_ew(1), npz/)
-     call cam_grid_get_decomp(grid_id_ew, array_lens_3d, file_lens_2d, pio_double, iodesc3d_ew)
-    
      allocate(var2d(is:ie,js:je))
      var2d = 0._r8
      ! PS
@@ -1475,7 +1444,7 @@ subroutine read_inidat(dyn_in)
            dbuf3=0._r8
            if (masterproc) write(iulog,*)'Missing ',trim(cnst_name(m_cnst)),' constituent number',m_cnst,size(latvals_rad),size(dbuf3)
            if (masterproc) write(iulog,*)'Initializing ',trim(cnst_name(m_cnst)),'fv3 constituent number ',m_cnst_ffsl,' to default'
-           call cnst_init_default(m_cnst, latvals_rad, lonvals_rad, dbuf3, pmask)
+           call cnst_init_default(m_cnst, latvals_rad, lonvals_rad, dbuf3)
            do k=1, plev
               indx = 1
               do j = js, je
@@ -1559,9 +1528,7 @@ subroutine read_inidat(dyn_in)
 !
 !  Initial condition should be consistent with fv3 dynamics and wouldn't normally need any adjustment here but I am using an 
 !  interpolated fv initial condition with mixing ratios based off of (dry mass + vapor) and needs to be (dry mass + vapor + condensates)
-!
      fv2fv3_mixratio=.true.
-
      if (fv2fv3_mixratio) then 
         allocate(pstmp(isd:ied,jsd:jed))
         pstmp(:,:) = atm(mytile)%ps(:,:)
@@ -1692,7 +1659,6 @@ subroutine read_inidat(dyn_in)
   call mpp_update_domains( atm(mytile)%q,    Atm(mytile)%domain )
 
   ! Cleanup
-  deallocate(pmask)
   deallocate(phis_tmp)
   
   if (associated(ldof)) then
@@ -2070,7 +2036,6 @@ end function get_ldof
                tt_glob=g_sum(Atm(mytile)%domain, tt(is:ie,js:je), is, ie, js, je, Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
           if (masterproc) then
       
-             write(iulog, *) 'Using default g_sum quick'
              if (fv3_lcp_moist) then
                 write(iulog, '(a,e25.17)') 'global wet static energy se_'//trim(outfld_name_suffix)//')            = ',se_glob
              else
