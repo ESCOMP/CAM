@@ -2037,19 +2037,6 @@
 <se_max_hypervis_courant > 1.0e99 </se_max_hypervis_courant>
 <se_max_hypervis_courant se_refined_mesh="1" hypervis_type="scalar" > 1.9 </se_max_hypervis_courant>
 
-<se_nsplit>                   2 </se_nsplit>
-<se_nsplit hgrid="ne16np4" >  1 </se_nsplit>
-
-<se_nsplit hgrid="ne5np4"   waccm_phys="1"        >  3  </se_nsplit>
-<se_nsplit hgrid="ne16np4"  waccm_phys="1"        >  3  </se_nsplit>
-<se_nsplit hgrid="ne30np4"  waccm_phys="1"        >  5  </se_nsplit>
-<se_nsplit hgrid="ne30np4"  waccm_phys="1" npg="2">  5  </se_nsplit>
-<se_nsplit hgrid="ne30np4"  waccm_phys="1" npg="3">  5  </se_nsplit>
-
-<se_nsplit hgrid="ne0np4CONUS.ne30x8"               > 3 </se_nsplit>
-<se_nsplit hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"> 3 </se_nsplit>
-<se_nsplit hgrid="ne0np4TESTONLY.ne5x4"> 7 </se_nsplit>
-
 <se_variable_nsplit                       >.false.</se_variable_nsplit>
 
 <se_phys_dyn_cp>1</se_phys_dyn_cp>
@@ -2076,7 +2063,7 @@
 <se_rayk0     waccm_phys="1"     >  2    </se_rayk0>
 
 <se_molecular_diff               >  0.0 </se_molecular_diff>
-<se_molecular_diff waccm_phys="1"> 75.0 </se_molecular_diff>
+<se_molecular_diff waccm_phys="1">100.0 </se_molecular_diff>
 
 <se_qsplit > 1 </se_qsplit>
 
@@ -2086,8 +2073,20 @@
 <se_refined_mesh hgrid="ne0np4.ARCTIC.ne30x4" > .true. </se_refined_mesh>
 <se_refined_mesh hgrid="ne0np4.ARCTICGRIS.ne30x8" > .true. </se_refined_mesh>
 
+<se_nsplit>                   2 </se_nsplit>
+<se_nsplit hgrid="ne16np4" >  1 </se_nsplit>
+
+<se_nsplit hgrid="ne5np4"   waccm_phys="1"            >  3  </se_nsplit>
+<se_nsplit hgrid="ne16np4"  waccm_phys="1"            >  3  </se_nsplit>
+<se_nsplit hgrid="ne30np4"  waccm_phys="1"            >  5  </se_nsplit>
+<se_nsplit hgrid="ne30np4"  waccm_phys="1"  nlev="110">  4  </se_nsplit>
+
+<se_nsplit hgrid="ne0np4CONUS.ne30x8"               > 3 </se_nsplit>
+<se_nsplit hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"> 3 </se_nsplit>
+<se_nsplit hgrid="ne0np4TESTONLY.ne5x4"> 7 </se_nsplit>
+
 <se_rsplit                                          > 3 </se_rsplit>
-<se_rsplit waccm_phys="1"> 4 </se_rsplit>
+<se_rsplit waccm_phys="1"                           > 4 </se_rsplit>
 <se_rsplit hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"> 8 </se_rsplit>
 
 <se_fvm_supercycling>-1</se_fvm_supercycling>

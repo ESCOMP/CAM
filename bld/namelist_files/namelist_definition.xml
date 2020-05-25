@@ -6986,8 +6986,8 @@ Default: 0.
 se_molecular_diff = 1: Activate molecular diffusion and thermal conductivity in the
 dynamical core.
 If se_molecular_diff > 1 then the molecular diffusion and thermal conductivity
-coefficients will be increased by a factor of se_molecular_diff (used for sponge layer
-diffusion).
+coefficients will be multiplied by a factor of se_molecular_diff (used for sponge layer
+diffusion in middle atmosphere model).
 se_molecular_diff = 0: Code not activated.
 Default: 0.
 </entry>
