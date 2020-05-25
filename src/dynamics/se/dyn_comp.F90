@@ -219,7 +219,6 @@ subroutine dyn_readnl(NLFileName)
       se_fvm_supercycling_jet,     &
       se_kmin_jet,                 &
       se_kmax_jet,                 &
-      se_variable_nsplit,          &
       se_phys_dyn_cp,              &
       se_raytau0,                  &
       se_raykrange,                &
@@ -299,7 +298,6 @@ subroutine dyn_readnl(NLFileName)
    call MPI_bcast(se_fvm_supercycling_jet, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_kmin_jet, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_kmax_jet, 1, mpi_integer, masterprocid, mpicom, ierr)
-   call MPI_bcast(se_variable_nsplit, 1, mpi_logical, masterprocid, mpicom, ierr)
    call MPI_bcast(se_phys_dyn_cp, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_rayk0 , 1, mpi_integer, masterprocid, mpicom, ierr)   
    call MPI_bcast(se_raykrange, 1, mpi_real8, masterprocid, mpicom, ierr)
@@ -369,7 +367,7 @@ subroutine dyn_readnl(NLFileName)
    fvm_supercycling_jet     = se_fvm_supercycling_jet
    kmin_jet                 = se_kmin_jet
    kmax_jet                 = se_kmax_jet   
-   variable_nsplit          = se_variable_nsplit
+   variable_nsplit          = .false.
    phys_dyn_cp              = se_phys_dyn_cp
    raytau0                  = se_raytau0 
    raykrange                = se_raykrange
@@ -447,7 +445,6 @@ subroutine dyn_readnl(NLFileName)
       end if
       write(iulog, '(a,i0)')   'dyn_readnl: se_npes                     = ',se_npes
       write(iulog, '(a,i0)')   'dyn_readnl: se_nsplit                   = ',se_nsplit
-      write(iulog, '(a,l4)')   'dyn_readnl: se_variable_nsplit          = ',se_variable_nsplit
       write(iulog, '(a,i0)')   'dyn_readnl: se_phys_dyn_cp              = ',se_phys_dyn_cp
       !
       ! se_nu<0 then coefficients are set automatically in module global_norms_mod

@@ -3563,7 +3563,6 @@ if ($dyn =~ /se/) {
 		  se_fvm_supercycling_jet
 		  se_kmin_jet
 		  se_kmax_jet
-		  se_variable_nsplit
 		  se_phys_dyn_cp
 		  se_raytau0
 		  se_raykrange

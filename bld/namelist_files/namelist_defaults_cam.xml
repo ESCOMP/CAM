@@ -2037,8 +2037,6 @@
 <se_max_hypervis_courant > 1.0e99 </se_max_hypervis_courant>
 <se_max_hypervis_courant se_refined_mesh="1" hypervis_type="scalar" > 1.9 </se_max_hypervis_courant>
 
-<se_variable_nsplit                       >.false.</se_variable_nsplit>
-
 <se_phys_dyn_cp>1</se_phys_dyn_cp>
 
 <se_nu>-1</se_nu>

@@ -7038,14 +7038,6 @@ Number of dynamics steps per physics timestep.
 Default: Set by build-namelist.
 </entry>
 
-<entry id="se_variable_nsplit" type="logical" category="se"
-       group="dyn_se_inparm" valid_values="" >
-If TRUE nsplit is dynamically adjusted (increased by 2 if vertical
-velocity Courant number is larger than 0.85) and reset when vertical
-velocity Courant number is less than 0.38
-Set by build-namelist.
-</entry>
-
 <entry id="se_phys_dyn_cp" type="integer" category="se"
        group="dyn_se_inparm" valid_values="0,1,2" >
 Scaling of temperature increment for different levels of
