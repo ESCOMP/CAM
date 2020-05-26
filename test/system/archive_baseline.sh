@@ -7,7 +7,7 @@ if [ $# -ne 1 ]; then
     exit 1
 fi
 
-if [ $1 == "-help" ]; then
+if [ $1 == "-help" ] || [ $1 == "--help" ]; then
 cat << EOF1
 NAME
 
@@ -71,13 +71,6 @@ EOF1
 exit
 fi
 
-if [ -z "$CAM_TESTDIR" ]; then
-  echo "ERROR: please set CAM_TESTDIR"
-  echo
-  exit 1
-fi
-
-
 hostname=`hostname`
 case $hostname in
 
@@ -122,7 +115,6 @@ fi
 if [ -n "$CESM_TESTDIR" ]; then
 
     echo " "
-    echo "Making baselinedir 1"
     mkdir $baselinedir
     root_baselinedir=`dirname $baselinedir`
     echo "CESM Archiving to $root_baselinedir/$cam_tag"
@@ -131,54 +123,56 @@ if [ -n "$CESM_TESTDIR" ]; then
     echo " "
 fi
 
-echo
-echo "Archiving to ${baselinedir}"
-echo
+if [ -n "$CESM_TESTDIR" ]; then
+    echo
+    echo "Archiving to ${baselinedir}"
+    echo
 
-if [ ! -d $baselinedir ]; then
-     echo "Making baselinedir 2"
-     mkdir $baselinedir
+    if [ ! -d $baselinedir ]; then
+         mkdir $baselinedir
+    fi
+
+    if [ ! -d ${baselinedir} ]; then
+       echo "ERROR: Failed to make ${baselinedir}"
+       exit 1
+    fi
+
+    echo "Archiving the following directories."
+    test_list=""
+    while read input_line; do
+        test_list="${input_line} "
+      for test_id in ${test_list}; do
+          master_line=`grep $test_id input_tests_master`
+           str1=${master_line%% *}
+           temp=${master_line#$str1 }
+           str2=${temp%% *}
+
+           temp=${temp#$str2 }
+           str3=${temp%% *}
+           temp=${temp#$str3 }
+           str4=${temp%% *}
+           temp=${temp#$str4 }
+           str5=${temp%% *}
+
+           temp=${str2%%.*}
+           scr1=${temp#"TBL"}
+           scr1=${temp#"TBL"}
+
+
+
+           if grep -c TBL ${str2} > /dev/null; then
+             case="TSM${scr1}.$str3.$str4.$str5"
+             ls -ld ${CAM_TESTDIR}/${case}
+             cp -rp ${CAM_TESTDIR}/${case} ${baselinedir}/${case}
+             chmod -R a+r ${baselinedir}
+             chmod -R g+w ${baselinedir}
+           fi
+
+      done
+
+    done < ${test_file_list}
+
 fi
-
-if [ ! -d ${baselinedir} ]; then
-   echo "ERROR: Failed to make ${baselinedir}"
-   exit 1
-fi
-
-echo "Archiving the following directories."
-test_list=""
-while read input_line; do
-    test_list="${input_line} "
-  for test_id in ${test_list}; do
-      master_line=`grep $test_id input_tests_master`
-       str1=${master_line%% *}
-       temp=${master_line#$str1 }
-       str2=${temp%% *}
-
-       temp=${temp#$str2 }
-       str3=${temp%% *}
-       temp=${temp#$str3 }
-       str4=${temp%% *}
-       temp=${temp#$str4 }
-       str5=${temp%% *}
-
-       temp=${str2%%.*}
-       scr1=${temp#"TBL"}
-       scr1=${temp#"TBL"}
-
-
-
-       if grep -c TBL ${str2} > /dev/null; then
-         case="TSM${scr1}.$str3.$str4.$str5"
-         ls -ld ${CAM_TESTDIR}/${case}
-         cp -rp ${CAM_TESTDIR}/${case} ${baselinedir}/${case}
-         chmod -R a+r ${baselinedir}
-         chmod -R g+w ${baselinedir}
-       fi
-
-  done
-
-done < ${test_file_list}
 
 case $hostname in
 
