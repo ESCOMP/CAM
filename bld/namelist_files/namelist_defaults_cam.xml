@@ -177,7 +177,8 @@
 <ncdata dyn="se" hgrid="ne0np4.ARCTICGRIS.ne30x8" nlev="32" ic_ymd="101">atm/cam/inic/se/F2000climo_ARCTICGRIS_ne30x8_mt12_0001-01-31_c200110.nc</ncdata>
 
 <ncdata dyn="se" hgrid="ne5np4"   nlev="66"                >atm/waccm/ic/wa3_ne5np4_1950_spinup.cam2.i.1960-01-01-00000_c150810.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4"  nlev="70"                >/glade/p/cgd/amp/pel/inic/FWsc2000.ne30pg3_ne30pg3_nlev70.i.nc</ncdata>
+<ncdata dyn="se" hgrid="ne30np4"  nlev="70"  npg="3"       >/glade/p/cgd/amp/pel/inic/FWsc2000.ne30pg3_ne30pg3_nlev70.i.nc</ncdata>
+<ncdata dyn="se" hgrid="ne30np4"  nlev="70"                >/glade/p/cgd/amp/pel/inic/FWsc2000.ne30_ne30_nlev70.i.nc</ncdata>
 <ncdata dyn="se" hgrid="ne30np4"  nlev="110"               >/glade/p/cgd/amp/pel/inic/FWsc2000.ne30pg3_ne30pg3_nlev110.i.nc</ncdata>
 
 <!-- Topography -->
@@ -1988,8 +1989,8 @@
 <!-- Defaults for composition of air                                    -->
 <!-- ================================================================== -->
 
-<dry_air_composition                           >''                                 </dry_air_composition>
-<dry_air_composition waccmx="1"                >'O     ','O2    ','H     ','N2    '</dry_air_composition>
+<dry_air_composition                              >''                                 </dry_air_composition>
+<dry_air_composition    waccmx="1"                >'O     ','O2    ','H     ','N2    '</dry_air_composition>
 
 <moist_air_composition                         >'Q     '                                    </moist_air_composition>
 <moist_air_composition phys="cam4"             >'Q     ','CLDLIQ','CLDICE'                  </moist_air_composition>
@@ -2009,7 +2010,6 @@
 <se_lcp_moist                 > .true.  </se_lcp_moist>
 
 <se_large_Courant_incr        > .true.  </se_large_Courant_incr>
-<se_large_Courant_incr  waccm_phys="1"> .false.  </se_large_Courant_incr>
 
 <se_hypervis_power> 0 </se_hypervis_power>
 

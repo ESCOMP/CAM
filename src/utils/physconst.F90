@@ -146,6 +146,7 @@ integer,  allocatable, protected, public :: thermodynamic_active_species_idx(:)
 integer,  allocatable,            public :: thermodynamic_active_species_idx_dycore(:)    
 real(r8), allocatable, protected, public :: thermodynamic_active_species_cp(:)
 real(r8), allocatable, protected, public :: thermodynamic_active_species_R(:)
+real(r8), allocatable, protected, public :: thermodynamic_active_species_mwi(:)
 
 !================================================================================================
 contains
@@ -388,10 +389,12 @@ subroutine composition_init()
    allocate(thermodynamic_active_species_idx_dycore(1:i))
    allocate(thermodynamic_active_species_cp(0:i))
    allocate(thermodynamic_active_species_R(0:i))
-   thermodynamic_active_species_idx=-999
-   thermodynamic_active_species_idx_dycore=-999
-   thermodynamic_active_species_cp= 0.0_r8
-   thermodynamic_active_species_R = 0.0_r8
+   allocate(thermodynamic_active_species_mwi(0:i))
+   thermodynamic_active_species_idx        = -999
+   thermodynamic_active_species_idx_dycore = -999
+   thermodynamic_active_species_cp         = 0.0_r8
+   thermodynamic_active_species_R          = 0.0_r8
+   thermodynamic_active_species_mwi        = 0.0_r8
    !
    ! define cp and R for species in species_name
    !
@@ -408,13 +411,14 @@ subroutine composition_init()
      dof1 = 5._r8
      dof2 = 7._r8
      if (TRIM(dry_air_composition(dry_air_composition_num))=='N2') then
-       call cnst_get_ind('N2' ,ix, abort=.false.)
+       call cnst_get_ind('N' ,ix, abort=.false.)
        if (ix<1) then
          write(iulog, *) subname//' dry air component not found: ', dry_air_composition(dry_air_composition_num)
          call endrun(subname // ':: dry air component not found')         
        else         
-         mw = 0.5_r8/cnst_mw(ix)
+         mw = 2.0_r8*cnst_mw(ix)
          cp_derived_species = 0.5_r8*shr_const_rgas*dof2/mw !N2
+         thermodynamic_active_species_mwi(dry_air_composition_num) = 1.0_r8/mw
        end if
        !
        ! if last major species is not N2 then add code here
@@ -454,6 +458,7 @@ subroutine composition_init()
          thermodynamic_active_species_idx(icnst) = ix
          thermodynamic_active_species_cp (icnst) = 0.5_r8*shr_const_rgas*dof1/mw- cp_derived_species  !O
          thermodynamic_active_species_R  (icnst) = 0.0_r8 !xxx
+         thermodynamic_active_species_mwi(icnst) = 1.0_r8/mw
          icnst = icnst+1
        end if
        !
@@ -469,6 +474,7 @@ subroutine composition_init()
          thermodynamic_active_species_idx(icnst) = ix
          thermodynamic_active_species_cp (icnst) = 0.5_r8*shr_const_rgas*dof2/mw- cp_derived_species  !O2
          thermodynamic_active_species_R  (icnst) = 0.0_r8 !xxx
+         thermodynamic_active_species_mwi(icnst) = 1.0_r8/mw
          icnst = icnst+1
        end if
        !
@@ -484,6 +490,7 @@ subroutine composition_init()
          thermodynamic_active_species_idx(icnst) = ix
          thermodynamic_active_species_cp (icnst) = 0.5_r8*shr_const_rgas*dof2/mw- cp_derived_species  !O2
          thermodynamic_active_species_R  (icnst) = 0.0_r8 !xxx
+         thermodynamic_active_species_mwi(icnst) = 1.0_r8/mw
          icnst = icnst+1
        end if
        !
@@ -493,7 +500,23 @@ subroutine composition_init()
        write(iulog, *) subname//' dry air component not found: ', dry_air_composition(i)
        call endrun(subname // ':: dry air component not found')         
      end select
+     
+     if (masterproc) then
+       write(iulog, *) "Dry air composition ",TRIM(dry_air_composition(i)),&
+            icnst-1,thermodynamic_active_species_idx(icnst-1),&
+            thermodynamic_active_species_mwi(icnst-1),&
+            thermodynamic_active_species_cp(icnst-1)
+     end if
    end do   
+   i = dry_air_composition_num
+   if (masterproc) then
+     write(iulog, *) "Dry air composition ",TRIM(dry_air_composition(i)),&
+          icnst-1,thermodynamic_active_species_idx(icnst-1),&
+          thermodynamic_active_species_mwi(icnst-1),&
+          thermodynamic_active_species_cp(icnst-1)
+   end if
+     
+
    !
    !************************************************************************************
    !
@@ -620,7 +643,8 @@ subroutine composition_init()
 !
 !---------------------------Local storage-------------------------------------------------------------
     integer :: i,k                                 ! column,level,constituent indices
-
+    integer :: icnst, ispecies
+    real(r8):: residual
     real(r8):: mmro, mmro2, mmrh, mmrn2            ! Mass mixing ratios of O, O2, H, and N
     real(r8):: mbarvi, tint                        ! Mean mass, temperature, and specific heat on interface levels
     real(r8):: dof1, dof2                          ! Degress of freedom for cpairv calculation
@@ -665,6 +689,20 @@ subroutine composition_init()
                                       mmro2*o2_mwi + &
                                       mmrn2*n2_mwi + &
                                       mmrh *h_mwi )
+
+           mbarv(i,k,lchnk) = 0.0_r8
+           residual         = 1.0_r8
+           do icnst=1,dry_air_composition_num-1
+             ispecies = thermodynamic_active_species_idx(icnst)
+             mbarv(i,k,lchnk) = mbarv(i,k,lchnk)+mmr(i,k,ispecies)*to_moist_fact(i,k)*thermodynamic_active_species_mwi(icnst)
+             residual         = residual-mmr(i,k,ispecies)*to_moist_fact(i,k)
+           end do
+           icnst=dry_air_composition_num
+           ispecies = thermodynamic_active_species_idx(icnst)
+           mbarv(i,k,lchnk) = mbarv(i,k,lchnk)+residual*thermodynamic_active_species_mwi(icnst)
+
+           mbarv(i,k,lchnk) = 1.0_r8/mbarv(i,k,lchnk)
+
            rairv(i,k,lchnk) = shr_const_rgas / mbarv(i,k,lchnk)
            cpairv(i,k,lchnk) = 0.5_r8*shr_const_rgas &
                              * ( dof1*mmro *o_mwi  + &
@@ -1534,7 +1572,7 @@ subroutine composition_init()
          end do
        end if
      else
-       call endrun('NOT CODED yet get_molecular_diff_coef')
+       call endrun('get_molecular_diff_coef: NOT CODED yet')
      end if
    end subroutine get_molecular_diff_coef
 
