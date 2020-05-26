@@ -27,7 +27,7 @@ help () {
   echo "${hprefix} [ --archive-cime <directory> ] (directory for archiving baselines of cime tests)"
   echo "${hprefix} [ --cesm <test_name(s)> ] (default aux_cam)"
   echo "${hprefix} [ --no-cesm ] (do not run any CESM test or test suite)"
-  echo "${hprefix} [ --no-cam ] (do not run CAM regression tests"
+  echo "${hprefix} [ --cam ] (Run CAM regression tests, default is not to run CAM regression tests."
   echo "${hprefix} [ --rerun-cesm <test_id> ] (rerun the cesm tests with the --use-existing-flag)"
   echo ""
   echo "${hprefix} **pass environment variables by preceding above commands with:"
@@ -77,7 +77,7 @@ cesm_test_suite="aux_cam"
 force=false
 gmake_j=0
 interactive=false
-run_cam_regression=true
+run_cam_regression=false
 use_existing=''
 
 # Initialize variables which may not be set
@@ -134,8 +134,8 @@ while [ "${1:0:1}" == "-" ]; do
 	-j ) shift; gmake_j=$1
              ;;
 
-        --no-cam )
-            run_cam_regression=false
+        --cam )
+            run_cam_regression=true
             ;;
 
         --no-cesm )
