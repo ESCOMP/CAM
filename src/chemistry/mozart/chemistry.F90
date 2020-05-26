@@ -355,8 +355,9 @@ end function chem_is
     use noy_ubc,          only: noy_ubc_readnl
     use mo_sulf,          only: sulf_readnl
     use species_sums_diags,only: species_sums_readnl
+    use ocean_emis,       only: ocean_emis_readnl
 
-   ! args
+    ! args
 
     character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
@@ -676,8 +677,9 @@ end function chem_is
    call noy_ubc_readnl(nlfile)
    call sulf_readnl(nlfile)
    call species_sums_readnl(nlfile)
+   call ocean_emis_readnl(nlfile)
 
-  endsubroutine chem_readnl
+ end subroutine chem_readnl
 
 !================================================================================================
 
@@ -770,6 +772,7 @@ end function chem_is_active
     use noy_ubc,             only : noy_ubc_init
     use fire_emissions,      only : fire_emissions_init
     use short_lived_species, only : short_lived_species_initic
+    use ocean_emis,          only : ocean_emis_init
     
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
     type(physics_state), intent(in):: phys_state(begchunk:endchunk)
@@ -963,6 +966,8 @@ end function chem_is_active
      call fire_emissions_init()
 
      call short_lived_species_initic()
+
+     call ocean_emis_init()
      
   end subroutine chem_init
 
@@ -975,6 +980,7 @@ end function chem_is_active
     use cam_history,      only: outfld
     use mo_srf_emissions, only: set_srf_emissions
     use fire_emissions,   only: fire_emissions_srf
+    use ocean_emis,       only: ocean_emis_getflux
 
     ! Arguments:
 
@@ -1035,6 +1041,9 @@ end function chem_is_active
 
     ! fire surface emissions if not elevated forcing
     call fire_emissions_srf( lchnk, ncol, cam_in%fireflx, cam_in%cflx )
+
+    ! air-sea exchange of trace gases
+    call ocean_emis_getflux(lchnk, ncol, state, cam_in%u10, cam_in%sst, cam_in%ocnfrac, cam_in%icefrac, cam_in%cflx)
 
   end subroutine chem_emissions
 
@@ -1146,6 +1155,7 @@ end function chem_is_active
 
     use cfc11star,         only : update_cfc11star
     use physics_buffer,    only : physics_buffer_desc
+    use ocean_emis,        only : ocean_emis_advance
 
     implicit none
 
@@ -1228,6 +1238,8 @@ end function chem_is_active
     ! Galatic Cosmic Rays ...
     call gcr_ionization_adv( pbuf2d, phys_state )
     call epp_ionization_adv()
+
+    call ocean_emis_advance( pbuf2d, phys_state )
 
   end subroutine chem_timestep_init
 

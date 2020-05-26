@@ -2811,6 +2811,7 @@ sub write_filepath
 
     if ($simple_phys) {
       print $fh "$camsrcdir/src/physics/simple\n";
+      print $fh "$camsrcdir/src/atmos_phys/kessler\n";
     }
 
     if ($carma ne 'none') {
@@ -2866,6 +2867,7 @@ sub write_filepath
        print $fh "$camsrcdir/src/physics/silhs\n";
     }
 
+    print $fh "$camsrcdir/src/physics/pumas\n";
 
     # Superparameterization
     if ($phys_pkg eq 'spcam_m2005' or $phys_pkg eq 'spcam_sam1mom') {
@@ -2919,6 +2921,7 @@ sub write_filepath
     print $fh "$camsrcdir/src/cpl/$cpl\n";
     print $fh "$camsrcdir/src/control\n";
     print $fh "$camsrcdir/src/utils\n";
+    print $fh "$camsrcdir/src/atmos_phys/utilities\n";
 
     if ($cam_build) {
 
@@ -2932,25 +2935,25 @@ sub write_filepath
             print $fh "$cam_root/cime/src/share/esmf_wrf_timemgr\n";
         }
 
-        # Sequential Driver
+       # Sequential Driver
         print $fh "$cam_root/cime/src/drivers/mct/main\n";
         print $fh "$cam_root/cime/src/drivers/mct/shr\n";
 
-	# Ocean package.
-	if ($ocn eq 'dom') {
-	    print $fh "$camsrcdir/src/utils/cam_dom\n";
-	}
-	elsif ($ocn eq 'docn' or $ocn eq 'som') {
-	    print $fh "$cam_root/cime/src/components/data_comps_mct/docn\n";
-	    print $fh "$cam_root/cime/src/components/data_comps_mct/docn/src\n";
-	}
-	elsif ($ocn eq 'aquaplanet') {
-	    print $fh "$camsrcdir/src/utils/cam_aqua\n";
-	    print $fh "$camsrcdir/src/utils/cam_aqua/cpl\n";
-	}
-	elsif ($ocn eq 'socn') {
-	    print $fh "$cam_root/cime/src/components/stub_comps_mct/socn/src\n";
-	}
+        # Ocean package.
+        if ($ocn eq 'dom') {
+            print $fh "$camsrcdir/src/utils/cam_dom\n";
+        }
+        elsif ($ocn eq 'docn' or $ocn eq 'som') {
+            print $fh "$cam_root/cime/src/components/data_comps_mct/docn\n";
+            print $fh "$cam_root/cime/src/components/data_comps_mct/docn/src\n";
+        }
+        elsif ($ocn eq 'aquaplanet') {
+            print $fh "$camsrcdir/src/utils/cam_aqua\n";
+            print $fh "$camsrcdir/src/utils/cam_aqua/cpl\n";
+        }
+        elsif ($ocn eq 'socn') {
+            print $fh "$cam_root/cime/src/components/stub_comps_mct/socn/src\n";
+        }
 
         # Land package
         print $fh "$cam_root/cime/src/components/stub_comps_mct/slnd/src\n";

@@ -190,7 +190,7 @@ contains
     use chemistry,          only: chem_init, chem_is_active
     use cam_diagnostics,    only: diag_init
     use held_suarez_cam,    only: held_suarez_init
-    use kessler_cam,        only: kessler_init
+    use kessler_cam,        only: kessler_cam_init
     use tj2016_cam,         only: thatcher_jablonowski_init
     use tracers,            only: tracers_init
     use wv_saturation,      only: wv_sat_init
@@ -250,7 +250,7 @@ contains
     if (ideal_phys) then
       call held_suarez_init(pbuf2d)
     else if (kessler_phys) then
-      call kessler_init(pbuf2d)
+      call kessler_cam_init(pbuf2d)
     else if (tj2016_phys) then
       call thatcher_jablonowski_init(pbuf2d)
     end if

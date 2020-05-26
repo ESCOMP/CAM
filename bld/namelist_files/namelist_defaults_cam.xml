@@ -143,13 +143,13 @@
 <ncdata dyn="se" hgrid="ne16np4"  nlev="32"             ic_ymd="101" >atm/cam/inic/se/ape_topo_cam4_ne16np4_L32_c171020.nc</ncdata>
 <ncdata dyn="se" hgrid="ne30np4"  nlev="26"             ic_ymd="101" >atm/cam/inic/se/ape_topo_cam4_ne30np4_L26_c171020.nc</ncdata>
 <ncdata dyn="se" hgrid="ne30np4"  nlev="30"             ic_ymd="101" >atm/cam/inic/se/ape_topo_cam4_ne30np4_L30_c171020.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4"  nlev="32"             ic_ymd="101" >atm/cam/inic/se/ape_topo_cam6_ne30np4_L32_c171023.nc</ncdata>
+<ncdata dyn="se" hgrid="ne30np4"  nlev="32"             ic_ymd="101" >atm/cam/inic/se/F2000climo_ne30pg3_mg17_01-01-00000_c200424.nc</ncdata>
 <ncdata dyn="se" hgrid="ne60np4"  nlev="26"             ic_ymd="101" >atm/cam/inic/se/ape_topo_cam4_ne60np4_L26_c171018.nc</ncdata>
 <ncdata dyn="se" hgrid="ne60np4"  nlev="30"             ic_ymd="101" >atm/cam/inic/se/ape_topo_cam4_ne60np4_L30_c171020.nc</ncdata>
 <ncdata dyn="se" hgrid="ne60np4"  nlev="32"             ic_ymd="101" >atm/cam/inic/se/ape_topo_cam4_ne60np4_L32_c171020.nc</ncdata>
 <ncdata dyn="se" hgrid="ne120np4" nlev="26"             ic_ymd="101" >atm/cam/inic/se/ape_topo_cam4_ne120np4_L26_c171018.nc</ncdata>
 <ncdata dyn="se" hgrid="ne120np4" nlev="30"             ic_ymd="101" >atm/cam/inic/se/ape_topo_cam4_ne120np4_L30_c171024.nc</ncdata>
-<ncdata dyn="se" hgrid="ne120np4" nlev="32"             ic_ymd="101" >atm/cam/inic/se/ape_topo_cam4_ne120np4_L32_c171023.nc</ncdata>
+<ncdata dyn="se" hgrid="ne120np4" nlev="32"             ic_ymd="101" >atm/cam/inic/se/F2000climo_ne120pg3_mt13_01-01-00000_c200420.nc</ncdata>
 <ncdata dyn="se" hgrid="ne240np4" nlev="26"             ic_ymd="101" >atm/cam/inic/homme/cami_1850-01-01_ne240np4_L26_c110314.nc</ncdata>
 <ncdata dyn="se" hgrid="ne240np4" nlev="26"             ic_ymd="901" >atm/cam/inic/homme/cami_0000-09-01_ne240np4_L26_c061106.nc</ncdata>
 
@@ -173,9 +173,9 @@
 <ncdata dyn="se" hgrid="ne120np4"  nlev="32"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/ape_cam6_ne120np4_L32_c170908.nc</ncdata>
 <ncdata dyn="se" hgrid="ne240np4"  nlev="32"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/ape_cam6_ne240np4_L32_c170908.nc</ncdata>
 
-<ncdata dyn="se" hgrid="ne0np4CONUS.ne30x8"       nlev="32" ic_ymd="101">atm/cam/inic/se/F2000climo_CONUS_ne30x8_mt12_L32_0001-01-16_c200115.nc</ncdata>
-<ncdata dyn="se" hgrid="ne0np4.ARCTIC.ne30x4"     nlev="32" ic_ymd="101">atm/cam/inic/se/F2000climo_ARCTIC_ne30x4_mt12_0001-02-01_c191203.nc</ncdata>
-<ncdata dyn="se" hgrid="ne0np4.ARCTICGRIS.ne30x8" nlev="32" ic_ymd="101">atm/cam/inic/se/F2000climo_ARCTICGRIS_ne30x8_mt12_0001-01-31_c200110.nc</ncdata>
+<ncdata dyn="se" hgrid="ne0np4CONUS.ne30x8"       nlev="32" ic_ymd="101">atm/cam/inic/se/F2000climo_CONUS_30x8_mt12_mg3_01-01-00000_c200421.nc</ncdata>
+<ncdata dyn="se" hgrid="ne0np4.ARCTIC.ne30x4"     nlev="32" ic_ymd="101">atm/cam/inic/se/FHIST_ARCTIC_ne30x4_mt12_1979bc-mg3_01-01-00000_c200424.nc</ncdata>
+<ncdata dyn="se" hgrid="ne0np4.ARCTICGRIS.ne30x8" nlev="32" ic_ymd="101">atm/cam/inic/se/FHIST_ARCTICGRIS_ne30x8_mt12_1979bc-mg3_01-01-00000_c200428.nc</ncdata>
 
 <ncdata dyn="se" hgrid="ne5np4"   nlev="66"                >atm/waccm/ic/wa3_ne5np4_1950_spinup.cam2.i.1960-01-01-00000_c150810.nc</ncdata>
 <ncdata dyn="se" hgrid="ne30np4"  nlev="70" sim_year="1850">atm/waccm/ic/waccm5_1850_ne30np4_L70_0001-01-11-00000_c151217.nc</ncdata>
@@ -224,9 +224,9 @@
 <bnd_topo hgrid="ne60np4"  npg="4">atm/cam/topo/se/ne60pg4_nc3000_Co030_Fi001_PF_nullRR_Nsw021_20171018.nc</bnd_topo>
 <bnd_topo hgrid="ne120np4" npg="4">atm/cam/topo/se/ne120pg4_nc3000_Co015_Fi001_PF_nullRR_Nsw010_20171014.nc</bnd_topo>
 
-<bnd_topo hgrid="ne0np4CONUS.ne30x8"       >atm/cam/topo/se/ne30x8_CONUS_nc3000_Co060_Fi001_MulG_PF_RR_Nsw042_c200115.nc</bnd_topo>
-<bnd_topo hgrid="ne0np4.ARCTIC.ne30x4"     >atm/cam/topo/se/ne30x4_ARCTIC_nc3000_Co060_Fi001_MulG_PF_RR_Nsw042_c200109.nc</bnd_topo>
-<bnd_topo hgrid="ne0np4.ARCTICGRIS.ne30x8" >atm/cam/topo/se/ne30x8_ARCTICGRIS_nc3000_Co060_Fi001_MulG_PF_RR_Nsw042_c200110.nc</bnd_topo>
+<bnd_topo hgrid="ne0np4CONUS.ne30x8"       >atm/cam/topo/se/ne30x8_CONUS_nc3000_Co060_Fi001_MulG_PF_RR_Nsw042_c200428.nc</bnd_topo>
+<bnd_topo hgrid="ne0np4.ARCTIC.ne30x4"     >atm/cam/topo/se/ne30x4_ARCTIC_nc3000_Co060_Fi001_MulG_PF_RR_Nsw042_c200428.nc</bnd_topo>
+<bnd_topo hgrid="ne0np4.ARCTICGRIS.ne30x8" >atm/cam/topo/se/ne30x8_ARCTICGRIS_nc3000_Co060_Fi001_MulG_PF_RR_Nsw042_c200428.nc</bnd_topo>
 
 <!-- Ridge parameterization (gamma) -->
 <bnd_rdggm hgrid="0.9x1.25">atm/cam/topo/fv_0.9x1.25_nc3000_Nsw006_Nrs002_Co008_Fi001_ZR_c160505.nc</bnd_rdggm>
@@ -1278,6 +1278,9 @@
 
 <clubb_timestep                                   > 300.0D0 </clubb_timestep>
 <clubb_timestep  hgrid="ne120np4"                 > 150.0D0 </clubb_timestep>
+<clubb_timestep  hgrid="ne0np4CONUS.ne30x8"       > 75.0D0 </clubb_timestep>
+<clubb_timestep  hgrid="ne0np4.ARCTIC.ne30x4"     > 150.0D0 </clubb_timestep>
+<clubb_timestep  hgrid="ne0np4.ARCTICGRIS.ne30x8" > 75.0D0 </clubb_timestep>
 
 <clubb_c1                                         > 1.0     </clubb_c1>
 <clubb_c1b                                        > 1.0     </clubb_c1b>
@@ -1292,6 +1295,7 @@
 <clubb_c11                                        > 0.7D0   </clubb_c11>
 <clubb_c11b                                       > 0.35D0  </clubb_c11b>
 <clubb_c14                                        > 2.2D0   </clubb_c14>
+<clubb_c14 dyn="se"                               > 1.6D0   </clubb_c14>
 <clubb_c_K9                                       > 0.25    </clubb_c_K9>
 <clubb_nu9                                        > 20.0    </clubb_nu9>
 <clubb_c_K10                                      > 0.5     </clubb_c_K10>
@@ -1299,6 +1303,7 @@
 <clubb_do_liqsupersat                             > .false. </clubb_do_liqsupersat>
 <clubb_gamma_coef                                 > 0.308   </clubb_gamma_coef>
 <clubb_gamma_coef hgrid="1.9x2.5"                 > 0.280   </clubb_gamma_coef>
+<clubb_gamma_coef dyn="se"                        > 0.270   </clubb_gamma_coef>
 <clubb_gamma_coefb                                > 0.32    </clubb_gamma_coefb>
 <clubb_beta                                       > 2.4     </clubb_beta>
 <clubb_lambda0_stability_coef                     > 0.04    </clubb_lambda0_stability_coef>
@@ -2042,7 +2047,7 @@
 <se_nu_p>-1 </se_nu_p>
 <se_nu_p se_refined_mesh="1" hypervis_type="scalar" > 1.5625e13 </se_nu_p>
 
-<se_nu_top                                   > 1.25e5 </se_nu_top>
+<se_nu_top                                   > 5.0e5 </se_nu_top>
 <se_nu_top se_refined_mesh="1"               > 2.0e5  </se_nu_top>
 <se_nu_top waccm_phys="1"                    > 2.5e6  </se_nu_top>
 <se_nu_top se_refined_mesh="1" waccm_phys="1"> 2.0e5 </se_nu_top>

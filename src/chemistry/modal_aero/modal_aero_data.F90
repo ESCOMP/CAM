@@ -259,6 +259,7 @@
          lptr2_bc_a_amode(ntot_amode,nbc),   lptr2_bc_cw_amode(ntot_amode,nbc), &
          lptr2_soa_g_amode(nsoa) &
          )
+    lmassptr_amode = -999999
     lptr2_soa_g_amode = -999999
 
     allocate( specrefndxsw(nswbands,nspec_max,ntot_amode ) )

@@ -721,6 +721,16 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
+  <test compset="F2000climo" grid="f09_f09_mg17" name="ERP_Ln9" testmods="cam/outfrq9s_wetdep">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="wetdep"/>
+    </machines>
+  </test>
+  <test compset="F2000climo" grid="f09_f09_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s_wetdep">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="wetdep"/>
+    </machines>
+  </test>
   <test compset="QPC4" grid="f19_f19_mg17" name="ERP_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="test_release"/>
@@ -825,7 +835,7 @@
       <machine name="cheyenne" compiler="intel" category="camchem"/>
     </machines>
   </test>
-  <test compset="FCHIST" grid="f09_f09_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s">
+  <test compset="FCHIST" grid="f09_f09_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s_ocnemis">
     <machines>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
@@ -833,6 +843,11 @@
     <options>
       <option name="wallclock">00:30:00</option>
     </options>
+  </test>
+  <test compset="FCHIST" grid="f09_f09_mg17" name="ERP_Ln9" testmods="cam/outfrq9s_ocnemis">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="camchem"/>
+    </machines>
   </test>
   <test compset="FCHIST" grid="ne0CONUSne30x8_ne0CONUSne30x8_mt12" name="SMS_D_Ln9" testmods="cam/outfrq9s_refined_camchem">
     <machines>
@@ -953,6 +968,74 @@
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
       <machine name="cheyenne" compiler="intel" category="prebeta"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:20:00</option>
+    </options>
+  </test>
+  <test compset="FW2000climo" grid="f19_f19_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="prebeta"/>
+      <machine name="cheyenne" compiler="intel" category="waccm"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:20:00</option>
+    </options>
+  </test>
+  <test compset="FWma2000climo" grid="f19_f19_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+      <machine name="cheyenne" compiler="intel" category="waccm"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:20:00</option>
+    </options>
+  </test>
+  <test compset="FWma2000climo" grid="f09_f09_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="prealpha"/>
+      <machine name="cheyenne" compiler="intel" category="waccm"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:20:00</option>
+    </options>
+  </test>
+  <test compset="FWma2000climo" grid="ne30pg3_ne30pg3_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="prebeta"/>
+      <machine name="cheyenne" compiler="intel" category="waccm"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:20:00</option>
+    </options>
+  </test>
+  <test compset="FW2000climo" grid="f19_f19_mg17" name="ERP_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="waccm"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:20:00</option>
+    </options>
+  </test>
+  <test compset="FWma2000climo" grid="f19_f19_mg17" name="ERP_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="waccm"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:20:00</option>
+    </options>
+  </test>
+  <test compset="FWma2000climo" grid="f09_f09_mg17" name="ERP_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="waccm"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:20:00</option>
+    </options>
+  </test>
+  <test compset="FWma2000climo" grid="ne30pg3_ne30pg3_mg17" name="ERP_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="waccm"/>
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>

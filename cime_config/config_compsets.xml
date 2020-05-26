@@ -422,6 +422,11 @@
   <!-- ****************************** -->
 
   <compset>
+    <alias>FWma2000climo</alias>
+    <lname>2000_CAM60%WCCM_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
+  </compset>
+
+  <compset>
     <alias>FW2000climo</alias>
     <lname>2000_CAM60%WCTS_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
   </compset>
