@@ -5,7 +5,7 @@ This is a CAM specific test:
 Verifies that single column is working by checking that T and Q
 only have round off differences.
 
-(1) 3d
+(1) 3D
 (2) scam 
 
 """
@@ -15,7 +15,7 @@ from CIME.XML.standard_module_setup import *
 from CIME.SystemTests.test_utils.user_nl_utils import append_to_user_nl_files
 from CIME.XML.machines import Machines
 from CIME.test_status import *
-from CIME.utils import run_cmd, get_model, append_testlog
+from CIME.utils import run_cmd, append_testlog
 
 import sys
 
@@ -30,7 +30,7 @@ class SCT(SystemTestsCompareTwo):
         SystemTestsCompareTwo.__init__(self, case,
                                        separate_builds = True,
                                        run_two_suffix = 'default',
-                                       run_one_description = '3d CAM run',
+                                       run_one_description = '3D CAM run',
                                        run_two_description = 'SCAM run')
 
     def _case_one_setup(self):
