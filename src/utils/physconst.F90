@@ -381,7 +381,6 @@ subroutine composition_init()
    integer :: icnst,ix,i
 
    real(r8):: dof1, dof2 ! Degress of freedom for cp calculation
-   real(r8):: cp_derived_species
 
    i = dry_air_composition_num+moist_air_composition_num
    
@@ -417,8 +416,9 @@ subroutine composition_init()
          call endrun(subname // ':: dry air component not found')         
        else         
          mw = 2.0_r8*cnst_mw(ix)
-         cp_derived_species = 0.5_r8*shr_const_rgas*dof2/mw !N2
-         thermodynamic_active_species_mwi(dry_air_composition_num) = 1.0_r8/mw
+         icnst = dry_air_composition_num
+         thermodynamic_active_species_cp (icnst) = 0.5_r8*shr_const_rgas*dof2/mw !N2
+         thermodynamic_active_species_mwi(icnst) = 1.0_r8/mw
        end if
        !
        ! if last major species is not N2 then add code here
@@ -456,7 +456,7 @@ subroutine composition_init()
        else
          mw = cnst_mw(ix)
          thermodynamic_active_species_idx(icnst) = ix
-         thermodynamic_active_species_cp (icnst) = 0.5_r8*shr_const_rgas*dof1/mw- cp_derived_species  !O
+         thermodynamic_active_species_cp (icnst) = 0.5_r8*shr_const_rgas*dof1/mw
          thermodynamic_active_species_R  (icnst) = 0.0_r8 !xxx
          thermodynamic_active_species_mwi(icnst) = 1.0_r8/mw
          icnst = icnst+1
@@ -472,7 +472,7 @@ subroutine composition_init()
        else
          mw = cnst_mw(ix)
          thermodynamic_active_species_idx(icnst) = ix
-         thermodynamic_active_species_cp (icnst) = 0.5_r8*shr_const_rgas*dof2/mw- cp_derived_species  !O2
+         thermodynamic_active_species_cp (icnst) = 0.5_r8*shr_const_rgas*dof2/mw
          thermodynamic_active_species_R  (icnst) = 0.0_r8 !xxx
          thermodynamic_active_species_mwi(icnst) = 1.0_r8/mw
          icnst = icnst+1
@@ -488,7 +488,7 @@ subroutine composition_init()
        else
          mw = cnst_mw(ix)
          thermodynamic_active_species_idx(icnst) = ix
-         thermodynamic_active_species_cp (icnst) = 0.5_r8*shr_const_rgas*dof2/mw- cp_derived_species  !O2
+         thermodynamic_active_species_cp (icnst) = 0.5_r8*shr_const_rgas*dof1/mw
          thermodynamic_active_species_R  (icnst) = 0.0_r8 !xxx
          thermodynamic_active_species_mwi(icnst) = 1.0_r8/mw
          icnst = icnst+1
@@ -524,6 +524,7 @@ subroutine composition_init()
    !
    !************************************************************************************
    !
+   icnst = dry_air_composition_num+1
    do i=1,moist_air_composition_num
      select case (TRIM(moist_air_composition(i)))
        !
@@ -644,7 +645,7 @@ subroutine composition_init()
 !---------------------------Local storage-------------------------------------------------------------
     integer :: i,k                                 ! column,level,constituent indices
     integer :: icnst, ispecies
-    real(r8):: residual
+    real(r8):: residual, mm
     real(r8):: mmro, mmro2, mmrh, mmrn2            ! Mass mixing ratios of O, O2, H, and N
     real(r8):: mbarvi, tint                        ! Mean mass, temperature, and specific heat on interface levels
     real(r8):: dof1, dof2                          ! Degress of freedom for cpairv calculation
@@ -691,24 +692,22 @@ subroutine composition_init()
                                       mmrh *h_mwi )
 
            mbarv(i,k,lchnk) = 0.0_r8
+           cpairv(i,k,lchnk)= 0.0_r8
            residual         = 1.0_r8
-           do icnst=1,dry_air_composition_num-1
+           do icnst=1,dry_air_composition_num-1             
              ispecies = thermodynamic_active_species_idx(icnst)
-             mbarv(i,k,lchnk) = mbarv(i,k,lchnk)+mmr(i,k,ispecies)*to_moist_fact(i,k)*thermodynamic_active_species_mwi(icnst)
-             residual         = residual-mmr(i,k,ispecies)*to_moist_fact(i,k)
+             mm       = mmr(i,k,ispecies)*to_moist_fact(i,k)
+             mbarv(i,k,lchnk) = mbarv(i,k,lchnk) + mm*thermodynamic_active_species_mwi(icnst)
+             residual         = residual         - mm
+             cpairv(i,k,lchnk)= cpairv(i,k,lchnk)+ mm*thermodynamic_active_species_cp (icnst)
            end do
            icnst=dry_air_composition_num
            ispecies = thermodynamic_active_species_idx(icnst)
-           mbarv(i,k,lchnk) = mbarv(i,k,lchnk)+residual*thermodynamic_active_species_mwi(icnst)
-
+           mbarv(i,k,lchnk) = mbarv(i,k,lchnk) +residual*thermodynamic_active_species_mwi(icnst)
            mbarv(i,k,lchnk) = 1.0_r8/mbarv(i,k,lchnk)
+           cpairv(i,k,lchnk)= cpairv(i,k,lchnk)+residual*thermodynamic_active_species_cp (icnst)
 
            rairv(i,k,lchnk) = shr_const_rgas / mbarv(i,k,lchnk)
-           cpairv(i,k,lchnk) = 0.5_r8*shr_const_rgas &
-                             * ( dof1*mmro *o_mwi  + &
-                                 dof2*mmro2*o2_mwi + &
-                                 dof2*mmrn2*n2_mwi + &
-                                 dof1*mmrh *h_mwi )
 
            cappav(i,k,lchnk) = rairv(i,k,lchnk)/cpairv(i,k,lchnk)
         enddo
@@ -1466,7 +1465,9 @@ subroutine composition_init()
        itrac = idx_local(nq)       
        sum_species(:,:,:) = sum_species(:,:,:) + tracer(:,:,:,itrac)*factor(:,:,:)
      end do
-
+     !
+     ! xxx code not correct for species dependent
+     !
      sum_cp = thermodynamic_active_species_cp(0)
      do nq=1,thermodynamic_active_species_num
        itrac = idx_local(nq)              
