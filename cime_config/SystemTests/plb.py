@@ -11,6 +11,7 @@ Verifies that changeing pyhysics load balancing doesn't change answers
 from CIME.SystemTests.system_tests_compare_two import SystemTestsCompareTwo
 from CIME.XML.standard_module_setup import *
 from CIME.SystemTests.test_utils.user_nl_utils import append_to_user_nl_files
+from CIME.utils import append_testlog
 
 logger = logging.getLogger(__name__)
 
@@ -25,13 +26,16 @@ class PLB(SystemTestsCompareTwo):
                                        run_two_description = 'Changed phys_loadbalance')
 
     def _case_one_setup(self):
-#        self._case.set_value("phys_loadbalance".cam,2)
         append_to_user_nl_files(caseroot = self._get_caseroot(),
                                 component = "cam",
                                 contents = "phys_loadbalance = 2")
+        comments = "Setting phys_loadbalance to default 2."
+        append_testlog(comments, self._orig_caseroot)
 
     def _case_two_setup(self):
         CAM_CONFIG_OPTS = self._case1.get_value("CAM_CONFIG_OPTS")
         self._case.set_value("CAM_CONFIG_OPTS",CAM_CONFIG_OPTS.replace(' -nadv_tt 5 -cppdefs -DTRACER_CHECK',''))
+        comments = "Setting phys_loadbalance to value that's set in the testmod."
+        append_testlog(comments, self._orig_caseroot)
 
 

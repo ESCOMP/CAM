@@ -5,6 +5,7 @@ CAM mass conservation test  This class inherits from SystemTestsCommon
 from CIME.XML.standard_module_setup import *
 from CIME.SystemTests.system_tests_common import SystemTestsCommon
 from CIME.test_status import *
+from CIME.utils import append_testlog
 import glob, gzip
 
 
@@ -39,6 +40,8 @@ class TMC(SystemTestsCommon):
                 if first_val != re.findall('\s*[\d]+ name=TT_UN [^0-9]+([\S]+)',line):
                     with self._test_status:
                         self._test_status.set_status(RUN_PHASE, TEST_FAIL_STATUS)
+                    comments = "CAM mass conservation test FAILED."
+                    CIME.utils.append_testlog(comments, self._orig_caseroot)
             first_var = 1.1
 
     def _get_latest_cesm_logs(self):

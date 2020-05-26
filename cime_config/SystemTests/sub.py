@@ -11,6 +11,8 @@ Verifies that turning sub columns on and off doesn't change answers
 from CIME.SystemTests.system_tests_compare_two import SystemTestsCompareTwo
 from CIME.XML.standard_module_setup import *
 from CIME.SystemTests.test_utils.user_nl_utils import append_to_user_nl_files
+from CIME.utils import append_testlog
+
 
 logger = logging.getLogger(__name__)
 
@@ -45,9 +47,13 @@ class SUB(SystemTestsCompareTwo):
         append_to_user_nl_files(caseroot = self._get_caseroot(),
                                 component = "cam",
                                 contents = "subcol_tstcp_noAvg= .true.")
+        comments = "Sub columns on."
+        append_testlog(comments, self._orig_caseroot)
 
     def _case_two_setup(self):
         append_to_user_nl_files(caseroot = self._get_caseroot(),
                                 component = "cam",
                                 contents = "pbuf_global_allocate=.false.")
+        comments = "Sub columns off."
+        append_testlog(comments, self._orig_caseroot)
 
