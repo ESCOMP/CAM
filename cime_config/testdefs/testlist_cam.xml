@@ -537,13 +537,13 @@
 <!--              002 tsc                       -->
   <test compset="QPC4" grid="T42_T42_mg17" name="SCT_D_Ln7" testmods="cam/scm_prep">
     <machines>
-      <machine name="izumi" compiler="pgi" category="cam_test"/>
+      <machine name="izumi" compiler="pgi" category="aux_cam"/>
     </machines>
   </test>
 <!--              sc004 tsc                       -->
   <test compset="QPC6" grid="T42_T42_mg17" name="SCT_D_Ln7" testmods="cam/scm_prep_c6">
     <machines>
-      <machine name="izumi" compiler="pgi" category="cam_test"/>
+      <machine name="izumi" compiler="pgi" category="aux_cam"/>
     </machines>
   </test>
 <!--              003                        -->
@@ -640,7 +640,7 @@
 <!--              001                        -->
   <test compset="QPC5" grid="T42_T42_mg17" name="SCT_D_Ln7" testmods="cam/scm_prep">
     <machines>
-      <machine name="cheyenne" compiler="intel" category="cam_test"/>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
   </test>
 
@@ -919,15 +919,6 @@
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
-  </test>
-  <!--  DART -->
-  <test compset="FHS94" grid="f45_f45_mg37" name="DAE" testmods="cam/dae">
-    <machines>
-      <machine name="izumi" compiler="nag" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="wallclock"> 00:20:00 </option>
-    </options>
   </test>
 
 <!--              @@@@@@@@@@@@@@@@@@@@@@                 -->
