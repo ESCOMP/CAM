@@ -3,3 +3,4 @@
 ./xmlchange MAX_MPITASKS_PER_NODE="24"
 ./xmlchange CAM_NML_USE_CASE=UNSET
 ./xmlchange CAM_CONFIG_OPTS="-phys held_suarez"
+./xmlchange RUN_STARTDATE="00000101"
