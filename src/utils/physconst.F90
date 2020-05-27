@@ -146,7 +146,9 @@ integer,  allocatable, protected, public :: thermodynamic_active_species_idx(:)
 integer,  allocatable,            public :: thermodynamic_active_species_idx_dycore(:)    
 real(r8), allocatable, protected, public :: thermodynamic_active_species_cp(:)
 real(r8), allocatable, protected, public :: thermodynamic_active_species_R(:)
-real(r8), allocatable, protected, public :: thermodynamic_active_species_mwi(:)
+real(r8), allocatable, protected, public :: thermodynamic_active_species_mwi(:)!inverse molecular weights dry air
+real(r8), allocatable, protected, public :: thermodynamic_active_species_kv(:) !molecular diffusion
+real(r8), allocatable, protected, public :: thermodynamic_active_species_kc(:) !thermal conductivity
 
 !================================================================================================
 contains
@@ -382,18 +384,23 @@ subroutine composition_init()
 
    real(r8):: dof1, dof2 ! Degress of freedom for cp calculation
 
-   i = dry_air_composition_num+moist_air_composition_num
-   
-   allocate(thermodynamic_active_species_idx(1:i))
-   allocate(thermodynamic_active_species_idx_dycore(1:i))
+   i = dry_air_composition_num+moist_air_composition_num  
+   allocate(thermodynamic_active_species_idx(i))
+   allocate(thermodynamic_active_species_idx_dycore(i))
    allocate(thermodynamic_active_species_cp(0:i))
    allocate(thermodynamic_active_species_R(0:i))
-   allocate(thermodynamic_active_species_mwi(0:i))
+
+   i = dry_air_composition_num
+   allocate(thermodynamic_active_species_mwi(i))
+   allocate(thermodynamic_active_species_kv(i))
+   allocate(thermodynamic_active_species_kc(i))
    thermodynamic_active_species_idx        = -999
    thermodynamic_active_species_idx_dycore = -999
    thermodynamic_active_species_cp         = 0.0_r8
    thermodynamic_active_species_R          = 0.0_r8
    thermodynamic_active_species_mwi        = 0.0_r8
+   thermodynamic_active_species_kv         = 0.0_r8
+   thermodynamic_active_species_kc         = 0.0_r8
    !
    ! define cp and R for species in species_name
    !
@@ -418,7 +425,10 @@ subroutine composition_init()
          mw = 2.0_r8*cnst_mw(ix)
          icnst = dry_air_composition_num
          thermodynamic_active_species_cp (icnst) = 0.5_r8*shr_const_rgas*dof2/mw !N2
+         thermodynamic_active_species_R  (icnst) = shr_const_rgas/mw
          thermodynamic_active_species_mwi(icnst) = 1.0_r8/mw
+         thermodynamic_active_species_kv(icnst)  = 3.42_r8
+         thermodynamic_active_species_kc(icnst)  = 56._r8
        end if
        !
        ! if last major species is not N2 then add code here
@@ -457,8 +467,10 @@ subroutine composition_init()
          mw = cnst_mw(ix)
          thermodynamic_active_species_idx(icnst) = ix
          thermodynamic_active_species_cp (icnst) = 0.5_r8*shr_const_rgas*dof1/mw
-         thermodynamic_active_species_R  (icnst) = 0.0_r8 !xxx
+         thermodynamic_active_species_R  (icnst) = shr_const_rgas/mw
          thermodynamic_active_species_mwi(icnst) = 1.0_r8/mw
+         thermodynamic_active_species_kv(icnst)  = 3.9_r8
+         thermodynamic_active_species_kc(icnst)  = 75.9_r8
          icnst = icnst+1
        end if
        !
@@ -473,8 +485,10 @@ subroutine composition_init()
          mw = cnst_mw(ix)
          thermodynamic_active_species_idx(icnst) = ix
          thermodynamic_active_species_cp (icnst) = 0.5_r8*shr_const_rgas*dof2/mw
-         thermodynamic_active_species_R  (icnst) = 0.0_r8 !xxx
+         thermodynamic_active_species_R  (icnst) = shr_const_rgas/mw
          thermodynamic_active_species_mwi(icnst) = 1.0_r8/mw
+         thermodynamic_active_species_kv(icnst)  = 4.03_r8
+         thermodynamic_active_species_kc(icnst)  = 56._r8
          icnst = icnst+1
        end if
        !
@@ -489,8 +503,10 @@ subroutine composition_init()
          mw = cnst_mw(ix)
          thermodynamic_active_species_idx(icnst) = ix
          thermodynamic_active_species_cp (icnst) = 0.5_r8*shr_const_rgas*dof1/mw
-         thermodynamic_active_species_R  (icnst) = 0.0_r8 !xxx
+         thermodynamic_active_species_R  (icnst) = shr_const_rgas/mw
          thermodynamic_active_species_mwi(icnst) = 1.0_r8/mw
+         thermodynamic_active_species_kv(icnst)  = 0.0_r8
+         thermodynamic_active_species_kc(icnst)  = 0.0_r8
          icnst = icnst+1
        end if
        !
@@ -509,11 +525,13 @@ subroutine composition_init()
      end if
    end do   
    i = dry_air_composition_num
-   if (masterproc) then
-     write(iulog, *) "Dry air composition ",TRIM(dry_air_composition(i)),&
-          icnst-1,thermodynamic_active_species_idx(icnst-1),&
-          thermodynamic_active_species_mwi(icnst-1),&
-          thermodynamic_active_species_cp(icnst-1)
+   if (i>0) then
+     if (masterproc) then
+       write(iulog, *) "Dry air composition ",TRIM(dry_air_composition(i)),&
+            icnst-1,thermodynamic_active_species_idx(icnst-1),&
+            thermodynamic_active_species_mwi(icnst-1),&
+            thermodynamic_active_species_cp(icnst-1)
+     end if
    end if
      
 
@@ -646,25 +664,15 @@ subroutine composition_init()
     integer :: i,k                                 ! column,level,constituent indices
     integer :: icnst, ispecies
     real(r8):: residual, mm
-    real(r8):: mmro, mmro2, mmrh, mmrn2            ! Mass mixing ratios of O, O2, H, and N
     real(r8):: mbarvi, tint                        ! Mean mass, temperature, and specific heat on interface levels
-    real(r8):: dof1, dof2                          ! Degress of freedom for cpairv calculation
-    real(r8):: kv1, kv2, kv3, kv4                  ! Coefficients for kmvis calculation
-    real(r8):: kc1, kc2, kc3, kc4                  ! Coefficients for kmcnd calculation
-    real(r8) :: to_moist_fact(ncol,pver)
+    real(r8):: kv4                                 ! Coefficients for kmvis calculation
+    real(r8):: kc4                                 ! Coefficients for kmcnd calculation
+    real(r8):: to_moist_fact(ncol,pver)
     
     !--------------------------------------------
     ! Set constants needed for updates
     !--------------------------------------------
-    dof1 = 5._r8
-    dof2 = 7._r8
-    kv1  = 4.03_r8
-    kv2  = 3.42_r8
-    kv3  = 3.9_r8
     kv4  = 0.69_r8
-    kc1  = 56._r8
-    kc2  = 56._r8
-    kc3  = 75.9_r8
     kc4  = 0.69_r8
 
     to_moist_fact(:,:) = 1._r8
@@ -673,24 +681,11 @@ subroutine composition_init()
        to_moist_fact(:ncol,:) = to_moist_factor(:ncol,:)
     end if
 
-    if (o2_ndx<0 .or. o_ndx<0 .or. h_ndx<0) then
-       call endrun('physconst_update: ERROR -- needed constituents are not available')
-    endif
-
      !--------------------------------------------
      ! update cpairv, rairv, mbarv, and cappav
      !--------------------------------------------
      do k=1,pver
         do i=1,ncol
-           mmro  = mmr(i,k,o_ndx)*to_moist_fact(i,k) ! convert to moist mass mixing ratios
-           mmro2 = mmr(i,k,o2_ndx)*to_moist_fact(i,k)
-           mmrh  = mmr(i,k,h_ndx)*to_moist_fact(i,k)
-           mmrn2 = 1._r8-mmro-mmro2-mmrh
-           mbarv(i,k,lchnk) = 1._r8/( mmro *o_mwi  + &
-                                      mmro2*o2_mwi + &
-                                      mmrn2*n2_mwi + &
-                                      mmrh *h_mwi )
-
            mbarv(i,k,lchnk) = 0.0_r8
            cpairv(i,k,lchnk)= 0.0_r8
            residual         = 1.0_r8
@@ -715,21 +710,25 @@ subroutine composition_init()
 
      do k=2,pver
         do i=1,ncol
-           mmro  = .5_r8*(mmr(i,k-1,o_ndx) *to_moist_fact(i,k-1)+mmr(i,k,o_ndx) *to_moist_fact(i,k))
-           mmro2 = .5_r8*(mmr(i,k-1,o2_ndx)*to_moist_fact(i,k-1)+mmr(i,k,o2_ndx)*to_moist_fact(i,k))
-           mmrh  = .5_r8*(mmr(i,k-1,h_ndx) *to_moist_fact(i,k-1)+mmr(i,k,h_ndx) *to_moist_fact(i,k))
-           mmrn2 = 1._r8-mmro-mmro2-mmrh
-           mbarvi = .5_r8*(mbarv(i,k-1,lchnk)+mbarv(i,k,lchnk))
-           tint = .5_r8*(t(i,k-1)+t(i,k))
+          kmvis(i,k,lchnk) = 0.0_r8
+          kmcnd(i,k,lchnk) = 0.0_r8
+          residual = 1.0_r8
+          do icnst=1,dry_air_composition_num-1             
+            ispecies = thermodynamic_active_species_idx(icnst)
+            mm       = 0.5_r8*(mmr(i,k,ispecies)*to_moist_fact(i,k)+mmr(i,k-1,ispecies)*to_moist_fact(i,k-1))
+            kmvis(i,k,lchnk) = kmvis(i,k,lchnk)+thermodynamic_active_species_kv(icnst)*thermodynamic_active_species_mwi(icnst)*mm
+            kmcnd(i,k,lchnk) = kmcnd(i,k,lchnk)+thermodynamic_active_species_kc(icnst)*thermodynamic_active_species_mwi(icnst)*mm
+            residual         = residual - mm
+          end do
+          icnst=dry_air_composition_num
+          ispecies = thermodynamic_active_species_idx(icnst)
+          kmvis(i,k,lchnk) = kmvis(i,k,lchnk)+thermodynamic_active_species_kv(icnst)*thermodynamic_active_species_mwi(icnst)*residual
+          kmcnd(i,k,lchnk) = kmcnd(i,k,lchnk)+thermodynamic_active_species_kc(icnst)*thermodynamic_active_species_mwi(icnst)*residual
 
-           kmvis(i,k,lchnk) = (kv1*mmro2*o2_mwi+        &
-                               kv2*mmrn2*n2_mwi+        &
-                               kv3*mmro*o_mwi)*mbarvi*  &
-                               tint**kv4 * 1.e-7_r8
-           kmcnd(i,k,lchnk) = (kc1*mmro2*o2_mwi+             &
-                               kc2*mmrn2*n2_mwi+        &
-                               kc3*mmro*o_mwi)*mbarvi*   &
-                               tint**kc4 * 1.e-5_r8
+          tint = .5_r8*(t(i,k-1)+t(i,k))
+          mbarvi = 0.5_r8*(mbarv(i,k-1,lchnk)+mbarv(i,k,lchnk))
+          kmvis(i,k,lchnk) = kmvis(i,k,lchnk)*mbarvi*tint**kv4*1.e-7_r8                              
+          kmcnd(i,k,lchnk) = kmcnd(i,k,lchnk)*mbarvi*tint**kc4*1.e-5_r8
         enddo
      enddo
      do i=1,ncol
@@ -753,15 +752,11 @@ subroutine composition_init()
      real(r8), optional, intent(out) :: cpv(i0:i1,j0:j1,k0:k1) 
 
      ! local vars
-     integer :: i,j,k
+     integer :: i,j,k,icnst,ispecies
      real(r8),  dimension(i0:i1,j0:j1,k0:k1) :: rgas_var, cp_var, mmro, mmro2, mmrh, mmrn2
-
+     real(r8) :: residual, mm
      real(r8), parameter :: dof1 = 5.0_r8 ! Degrees of freedom for cpair3v calculation
      real(r8), parameter :: dof2 = 7.0_r8 ! Degrees of freedom for cpair3v calculation
-
-     if (o2_ndx<0 .or. o_ndx<0 .or. h_ndx<0) then
-        call endrun('physconst_calc_kappav: ERROR -- things are not initialized')
-     endif
 
      !-----------------------------------------------------------------------
      !  Calculate constituent dependent specific heat, gas constant and cappa
@@ -769,26 +764,21 @@ subroutine composition_init()
 !$omp parallel do private(i,j,k)
      do k = k0,k1
         do j = j0,j1
-           do i = i0,i1
-              mmro(i,j,k)  = tracer(i,j,k,o_ndx)
-              mmro2(i,j,k) = tracer(i,j,k,o2_ndx)
-              mmrh(i,j,k)  = tracer(i,j,k,h_ndx)
-              mmrn2(i,j,k) = 1._r8-mmro(i,j,k)-mmro2(i,j,k)-mmrh(i,j,k)
-
-              rgas_var(i,j,k) = shr_const_rgas &
-                              * ( mmro (i,j,k)*o_mwi + &
-                                  mmro2(i,j,k)*o2_mwi + &
-                                  mmrn2(i,j,k)*n2_mwi + &
-                                  mmrh (i,j,k)*h_mwi )
-
-              cp_var(i,j,k) = 0.5_r8*shr_const_rgas &
-                            * ( dof1*mmro (i,j,k)*o_mwi + &
-                                dof2*mmro2(i,j,k)*o2_mwi + &
-                                dof2*mmrn2(i,j,k)*n2_mwi + &
-                                dof1*mmrh (i,j,k)*h_mwi )
-
-              kappav(i,j,k) = rgas_var(i,j,k)/cp_var(i,j,k)
-
+          do i = i0,i1
+            residual        = 1.0_r8
+            rgas_var(i,j,k) = 0.0_r8
+            cp_var(i,j,k)   = 0.0_r8
+            do icnst=1,dry_air_composition_num-1             
+              ispecies = thermodynamic_active_species_idx(icnst)
+              mm       = tracer(i,j,k,ispecies)
+              rgas_var(i,j,k) = rgas_var(i,j,k)+ mm*thermodynamic_active_species_R(icnst)
+              cp_var(i,j,k)   = cp_var(i,j,k)+ mm*thermodynamic_active_species_cp(icnst)
+              residual        = residual - mm
+            end do
+            icnst=dry_air_composition_num
+            rgas_var(i,j,k) = rgas_var(i,j,k)+ residual*thermodynamic_active_species_R(icnst)
+            cp_var(i,j,k)   = cp_var(i,j,k)+ residual*thermodynamic_active_species_cp(icnst)
+            kappav(i,j,k)   = rgas_var(i,j,k)/cp_var(i,j,k)
            enddo
         enddo
      enddo
@@ -1496,6 +1486,7 @@ subroutine composition_init()
      end do
    end subroutine get_dp_ref
 
+
    subroutine get_molecular_diff_coef(i0,i1,j0,j1,k1,nlev,temp,get_at_interfaces,sponge_factor,kmvis,kmcnd)
      use cam_logfile,     only: iulog
      ! args
@@ -1576,6 +1567,7 @@ subroutine composition_init()
        call endrun('get_molecular_diff_coef: NOT CODED yet')
      end if
    end subroutine get_molecular_diff_coef
+
 
    subroutine get_rho_dry(i0,i1,j0,j1,k1,nlev,ntrac,tracer,temp,ptop,dp_dry,tracer_mass,&
         rho_dry, rhoi_dry,thermodynamic_active_species_idx_dycore,pint_out,pmid_out)
