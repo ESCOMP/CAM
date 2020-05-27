@@ -9,7 +9,7 @@ use spmd_utils,         only: iam, masterproc, mpicom, npes
 use physconst,          only: pi, gravit, rair, cpair
 
 use pmgrid,             only: plev, plevp
-use constituents,       only: pcnst, cnst_name, cnst_read_iv
+use constituents,       only: pcnst, cnst_name
 
 use cam_control_mod,    only: initial_run
 use cam_initfiles,      only: initial_file_get_id, topo_file_get_id
@@ -77,6 +77,11 @@ type dyn_import_t
    real(r8), dimension(:,:),   pointer :: rho_zz  ! Dry density [kg/m^3]
                                                   ! divided by d(zeta)/dz            (nver,ncol)
    real(r8), dimension(:,:,:), pointer :: tracers ! Tracers [kg/kg dry air]       (nq,nver,ncol)
+
+   !
+   ! Index map between MPAS tracers and CAM constituents
+   !
+   integer, dimension(:), pointer :: mpas_from_cam_cnst => null()
 
    !
    ! Base state variables
@@ -163,6 +168,11 @@ type dyn_export_t
    !
    integer                             :: index_qv  ! Index in tracers array of water vapor
                                                     ! mixing ratio
+
+   !
+   ! Index map between MPAS tracers and CAM constituents
+   !
+   integer, dimension(:), pointer :: cam_from_mpas_cnst => null()
 
    !
    ! Invariant -- the vertical coordinate in MPAS-A is a height coordinate
@@ -291,6 +301,7 @@ end subroutine dyn_register
 subroutine dyn_init(dyn_in, dyn_out)
 
    use cam_mpas_subdriver, only : domain_ptr, cam_mpas_init_phase4
+   use cam_mpas_subdriver, only : cam_mpas_define_scalars
    use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_array, mpas_pool_get_dimension, &
                                   mpas_pool_get_config
    use mpas_timekeeping,   only : MPAS_set_timeInterval
@@ -325,10 +336,23 @@ subroutine dyn_init(dyn_in, dyn_out)
    real(r8) :: dt_ratio
    character(len=128) :: errmsg
 
+   !
+   ! The cnst_moist_names array should list every constituent name in CAM
+   ! that represents a moisture species
+   !
+   character(len=*), dimension(6), parameter :: cnst_moist_names = [character(len=8) :: &
+                                                                    'Q', 'CLDLIQ', 'CLDICE', 'RAINQM', 'SNOWQM', 'GRAUQM']
+
    character(len=*), parameter :: subname = 'dyn_comp::dyn_init'
    !----------------------------------------------------------------------------
 
    MPAS_DEBUG_WRITE(0, 'begin '//subname)
+
+   if (cam_mpas_define_scalars(domain_ptr % blocklist, cnst_name, cnst_moist_names, &
+                               dyn_in % mpas_from_cam_cnst, dyn_out % cam_from_mpas_cnst) /= 0) then
+      write(errmsg, '(a)') 'Set-up of constituents for MPAS-A dycore failed.'
+      call endrun(subname//': '//trim(errmsg))
+   end if
 
    call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'mesh',  mesh_pool)
    call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'state', state_pool)
@@ -535,6 +559,7 @@ subroutine dyn_final(dyn_in, dyn_out)
    nullify(dyn_in % theta_m)
    nullify(dyn_in % rho_zz)
    nullify(dyn_in % tracers)
+   deallocate(dyn_in % mpas_from_cam_cnst)
    nullify(dyn_in % rho_base)
    nullify(dyn_in % theta_base)
    dyn_in % index_qv = 0
@@ -570,6 +595,7 @@ subroutine dyn_final(dyn_in, dyn_out)
    nullify(dyn_out % theta_m)
    nullify(dyn_out % rho_zz)
    nullify(dyn_out % tracers)
+   deallocate(dyn_out % cam_from_mpas_cnst)
    dyn_out % index_qv = 0
    nullify(dyn_out % zint)
    nullify(dyn_out % zz)

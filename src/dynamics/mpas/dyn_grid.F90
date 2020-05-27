@@ -122,6 +122,8 @@ subroutine dyn_grid_init()
 
    use cam_history_support, only: add_vert_coord
 
+   use constituents,        only: pcnst
+
    type(file_desc_t), pointer :: fh_ini
 
    integer  :: k
@@ -138,7 +140,9 @@ subroutine dyn_grid_init()
    ! Get filehandle for initial file
    fh_ini => initial_file_get_id()
 
-   call cam_mpas_init_phase3(fh_ini, endrun)
+   ! MPAS-A always requires at least one scalar (qv), so the call to cam_mpas_init_phase3
+   ! ensures this with max(pcnst,1) for the num_scalars argument
+   call cam_mpas_init_phase3(fh_ini, max(pcnst,1), endrun)
 
    ! Read or compute all time-invariant fields for the MPAS-A dycore
    ! Time-invariant fields are stored in the MPAS mesh pool.  This call

@@ -17,6 +17,7 @@ module cam_mpas_subdriver
               cam_mpas_init_phase2, &
               cam_mpas_init_phase3, &
               cam_mpas_init_phase4, &
+              cam_mpas_define_scalars, &
               cam_mpas_get_global_dims, &
               cam_mpas_get_global_coords, &
               cam_mpas_get_global_blocks, &
@@ -208,10 +209,12 @@ contains
     !> \date   19 April 2019
     !> \details
     !>  This routine completes the initialization of the MPAS infrastructure and
-    !>  the MPAS core.
+    !>  the MPAS core, including the allocation of all fields managed by MPAS.
+    !>  The num_scalars argument should be set to CAM's value for PCNST,
+    !>  the number of constituents.
     !
     !-----------------------------------------------------------------------
-    subroutine cam_mpas_init_phase3(fh_ini, endrun)
+    subroutine cam_mpas_init_phase3(fh_ini, num_scalars, endrun)
 
        use mpas_log, only : mpas_log_write
        use mpas_derived_types, only : MPAS_LOG_ERR
@@ -228,10 +231,12 @@ contains
        use mpas_kind_types, only : StrKIND
        use mpas_c_interfacing, only : mpas_c_to_f_string, mpas_f_to_c_string
        use mpas_bootstrapping, only : mpas_bootstrap_framework_phase1, mpas_bootstrap_framework_phase2
+       use mpas_pool_routines, only : mpas_pool_add_config
 
        implicit none
 
        type (file_desc_t), pointer :: fh_ini
+       integer, intent(in) :: num_scalars
        procedure(halt_model) :: endrun
 
        integer :: ierr
@@ -338,6 +343,13 @@ contains
 #else
        mesh_filename = 'external mesh file'
 #endif
+
+       !
+       ! Adding a config named 'cam_pcnst' with the number of constituents will indicate to
+       ! MPAS-A setup code that it is operating as a CAM dycore, and that it is necessary to
+       ! allocate scalars separately from other Registry-defined fields
+       !
+       call mpas_pool_add_config(domain_ptr % configs, 'cam_pcnst', num_scalars)
 
 ! Use the call below if we intend to bootstrap from an input stream; also define MPAS_USE_STREAMS
 !       call mpas_bootstrap_framework_phase1(domain_ptr, mesh_filename, mesh_iotype)
@@ -509,6 +521,228 @@ contains
        call mpas_dmpar_exch_halo_field(rw_field)
 
     end subroutine cam_mpas_init_phase4
+
+
+    !-----------------------------------------------------------------------
+    !  routine cam_mpas_define_scalars
+    !
+    !> \brief  Define the names of constituents at run-time
+    !> \author Michael Duda
+    !> \date   21 May 2020
+    !> \details
+    !>  Given an array of constituent names, which must have size equal to the number
+    !>  of scalars that were set in the call to cam_mpas_init_phase3, and given
+    !>  an array of names of scalars that are moisture species, this routine defines
+    !>  scalar constituents for the MPAS-A dycore.
+    !>  Because the MPAS-A dycore expects all moisture constituents to appear in
+    !>  a contiguous range of constituent indices, this routine may in general need
+    !>  to reorder the constituents; to allow for mapping of indices between CAM
+    !>  physics and the MPAS-A dycore, this routine returns index mapping arrays
+    !>  mpas_from_cam_cnst and cam_from_mpas_cnst.
+    !>  
+    !
+    !-----------------------------------------------------------------------
+    function cam_mpas_define_scalars(block, cnst_names, cnst_moist_names, &
+                                     mpas_from_cam_cnst, cam_from_mpas_cnst) result(ierr)
+
+       use mpas_derived_types, only : block_type
+
+       use mpas_derived_types, only : mpas_pool_type, field3dReal
+       use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_field, &
+                                      mpas_pool_get_dimension, mpas_pool_add_dimension
+       use mpas_attlist, only : mpas_add_att
+       use mpas_log, only : mpas_log_write
+       use mpas_derived_types, only : MPAS_LOG_ERR
+
+       implicit none
+
+       type (block_type), pointer :: block
+       character(len=*), dimension(:), intent(in) :: cnst_names
+       character(len=*), dimension(:), intent(in) :: cnst_moist_names
+       integer, dimension(:), pointer :: mpas_from_cam_cnst, cam_from_mpas_cnst
+       integer :: ierr
+
+       integer :: i, j, timeLevs
+       integer, pointer :: num_scalars
+       integer :: num_moist
+       integer :: idx_passive
+       type (mpas_pool_type), pointer :: statePool
+       type (mpas_pool_type), pointer :: tendPool
+       type (field3dReal), pointer :: scalarsField
+
+
+       ierr = 0
+
+
+       !
+       ! Define scalars
+       !
+       nullify(statePool)
+       call mpas_pool_get_subpool(block % structs, 'state', statePool)
+
+       if (.not. associated(statePool)) then
+          call mpas_log_write('The ''state'' pool was not found by cam_mpas_define_scalars', &
+                              messageType=MPAS_LOG_ERR)
+          ierr = 1
+          return
+       end if
+
+       nullify(num_scalars)
+       call mpas_pool_get_dimension(statePool, 'num_scalars', num_scalars)
+
+       !
+       ! The num_scalars dimension should have been defined by atm_core_interface::atm_allocate_scalars, and
+       ! if this dimension does not exist, something has gone wrong
+       !
+       if (.not. associated(num_scalars)) then
+          call mpas_log_write('The num_scalars dimension does not exist in the ''state'' pool', &
+                              messageType=MPAS_LOG_ERR)
+          ierr = 1
+          return
+       end if
+
+       !
+       ! If at runtime there are more than num_scalars in the array of constituent names provided by CAM,
+       ! something has gone wrong
+       !
+       if (size(cnst_names) > num_scalars) then
+          call mpas_log_write('The number of constituent names is larger than the num_scalars dimension', &
+                              messageType=MPAS_LOG_ERR)
+          call mpas_log_write('size(cnst_names) = $i, num_scalars = $i', intArgs=[size(cnst_names), num_scalars], &
+                              messageType=MPAS_LOG_ERR)
+          ierr = 1
+          return
+       end if
+
+       !
+       ! In CAM, the first scalar (if there are any) is always Q (specific humidity); if this is not
+       ! the case, something has gone wrong
+       !
+       if (size(cnst_names) > 0) then
+          if (trim(cnst_names(1)) /= 'Q') then
+             call mpas_log_write('The first constituent is not Q', messageType=MPAS_LOG_ERR)
+             ierr = 1
+             return
+          end if
+       end if
+
+       !
+       ! Determine which of the constituents are moisture species
+       !
+       allocate(mpas_from_cam_cnst(num_scalars))
+       mpas_from_cam_cnst(:) = 0
+       num_moist = 0
+       do i = 1, size(cnst_names)
+          do j = 1, size(cnst_moist_names)
+             if (trim(cnst_names(i)) == trim(cnst_moist_names(j))) then
+                num_moist = num_moist + 1
+                mpas_from_cam_cnst(num_moist) = i
+                exit
+             end if
+          end do
+       end do
+
+       !
+       ! If CAM has no scalars, let the only scalar in MPAS be 'qv' (a moisture species)
+       !
+       if (num_scalars == 1 .and. size(cnst_names) == 0) then
+          num_moist = 1
+       end if
+
+       !
+       ! Assign non-moisture constituents to mpas_from_cam_cnst(num_moist+1:size(cnst_names))
+       !
+       idx_passive = num_moist + 1
+       do i = 1, size(cnst_names)
+          do j = 1, size(cnst_names)
+             if (mpas_from_cam_cnst(j) == i) exit
+          end do
+
+          ! If CAM constituent i is not already mapped as a moist constituent
+          if (j > size(cnst_names)) then
+             mpas_from_cam_cnst(idx_passive) = i
+             idx_passive = idx_passive + 1
+          end if
+       end do
+
+       !
+       ! Create inverse map, cam_from_mpas_cnst
+       !
+       allocate(cam_from_mpas_cnst(num_scalars))
+       cam_from_mpas_cnst(:) = 0
+
+       do i = 1, size(cnst_names)
+          cam_from_mpas_cnst(mpas_from_cam_cnst(i)) = i
+       end do
+
+       timeLevs = 2
+
+       do i = 1, timeLevs
+          nullify(scalarsField)
+          call mpas_pool_get_field(statePool, 'scalars', scalarsField, timeLevel=i)
+
+          if (.not. associated(scalarsField)) then
+             call mpas_log_write('The ''scalars'' field was not found in the ''state'' pool', &
+                                 messageType=MPAS_LOG_ERR)
+             ierr = 1
+             return
+          end if
+
+          if (i == 1) call mpas_pool_add_dimension(statePool, 'index_qv', 1)
+          scalarsField % constituentNames(1) = 'qv'
+          call mpas_add_att(scalarsField % attLists(1) % attList, 'units', 'kg kg^{-1}')
+          call mpas_add_att(scalarsField % attLists(1) % attList, 'long_name', 'Water vapor mixing ratio')
+
+          do j = 2, size(cnst_names)
+             scalarsField % constituentNames(j) = trim(cnst_names(mpas_from_cam_cnst(j)))
+          end do
+
+       end do
+
+       call mpas_pool_add_dimension(statePool, 'moist_start', 1)
+       call mpas_pool_add_dimension(statePool, 'moist_end', num_moist)
+
+
+       !
+       ! Define scalars_tend
+       !
+       nullify(tendPool)
+       call mpas_pool_get_subpool(block % structs, 'tend', tendPool)
+
+       if (.not. associated(tendPool)) then
+          call mpas_log_write('The ''tend'' pool was not found by cam_mpas_define_scalars', &
+                              messageType=MPAS_LOG_ERR)
+          ierr = 1
+          return
+       end if
+
+       timeLevs = 1
+
+       do i = 1, timeLevs
+          nullify(scalarsField)
+          call mpas_pool_get_field(tendPool, 'scalars_tend', scalarsField, timeLevel=i)
+
+          if (.not. associated(scalarsField)) then
+             call mpas_log_write('The ''scalars_tend'' field was not found in the ''tend'' pool', &
+                                 messageType=MPAS_LOG_ERR)
+             ierr = 1
+             return
+          end if
+
+          if (i == 1) call mpas_pool_add_dimension(tendPool, 'index_qv', 1)
+          scalarsField % constituentNames(1) = 'qv'
+          call mpas_add_att(scalarsField % attLists(1) % attList, 'units', 'kg m^{-3} s^{-1}')
+          call mpas_add_att(scalarsField % attLists(1) % attList, 'long_name', 'Tendency of water vapor mixing ratio')
+
+          do j = 2, size(cnst_names)
+             scalarsField % constituentNames(j) = trim(cnst_names(mpas_from_cam_cnst(j)))
+          end do
+       end do
+
+       call mpas_pool_add_dimension(tendPool, 'moist_start', 1)
+       call mpas_pool_add_dimension(tendPool, 'moist_end', num_moist)
+
+    end function cam_mpas_define_scalars
 
 
     !-----------------------------------------------------------------------
