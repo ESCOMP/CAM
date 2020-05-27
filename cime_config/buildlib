@@ -38,7 +38,6 @@ def _build_fms(caseroot, libroot, bldroot):
            fmsbuildlib = os.path.join(srcroot,"libraries","FMS","buildlib")
            fmsbuilddir = os.path.join(case.get_value("EXEROOT"),"FMS")
            if not os.path.exists(fmsbuildlib):
-               #todo: call checkout_externals to get this component
                expect(False, "FMS external not found")
            else:
                stat, _, err = run_cmd("{} {} {} {}".format(fmsbuildlib, case.get_value("EXEROOT"), fmsbuilddir, caseroot), verbose=True)
@@ -47,9 +46,6 @@ def _build_fms(caseroot, libroot, bldroot):
                libfms = os.path.join(bldroot,"FMS","libfms.a")
                if os.path.exists(libfms):
                    shutil.copy(libfms, libroot)
-                   # filenames = glob.glob("*.mod")
-                   # for filename in filenames:
-                   #     shutil.copy(filename, os.path.join(libroot,"include"))
 
 ###############################################################################
 def _build_cam():

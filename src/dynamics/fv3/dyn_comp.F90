@@ -47,7 +47,7 @@ module dyn_comp
                                qsize_condensate_loading_idx,qsize_condensate_loading_cp,qsize_condensate_loading_cv, &
                                qsize_condensate_loading_idx_gll, qsize_condensate_loading, &
                                cnst_name_ffsl, cnst_longname_ffsl,qsize,fv3_lcp_moist,fv3_lcv_moist,qsize_tracer_idx_cam2dyn,fv3_scale_ttend
-    use dyn_grid,        only: grid_ew,grid_ns, mytile
+    use dyn_grid,        only: mytile
     use field_manager_mod, only: MODEL_ATMOS
     use fms_io_mod,      only: set_domain, nullify_domain
     use fv_arrays_mod,   only: fv_atmos_type, fv_grid_bounds_type
@@ -725,16 +725,6 @@ subroutine dyn_init(dyn_in, dyn_out)
    end do
 
    ! Energy diagnostics and axial angular momentum diagnostics
-   call addfld ('ABS_dPSdt',  horiz_only, 'A', 'Pa/s', 'Absolute surface pressure tendency',gridname='FFSL')
-
-   call addfld ('WV_PDC',   horiz_only, 'A', 'kg/m2','Total column water vapor lost in physics-dynamics coupling',gridname='FFSL')
-   call addfld ('WL_PDC',   horiz_only, 'A', 'kg/m2','Total column cloud water lost in physics-dynamics coupling',gridname='FFSL')
-   call addfld ('WI_PDC',   horiz_only, 'A', 'kg/m2','Total column cloud ice lost in physics-dynamics coupling'  ,gridname='FFSL')
-   call addfld ('WR_PDC',   horiz_only, 'A', 'kg/m2','Total column rain water lost in physics-dynamics coupling',gridname='FFSL')
-   call addfld ('WS_PDC',   horiz_only, 'A', 'kg/m2','Total column snow water lost in physics-dynamics coupling',gridname='FFSL')
-   call addfld ('WG_PDC',   horiz_only, 'A', 'kg/m2','Total column graupel water lost in physics-dynamics coupling'  ,gridname='FFSL')
-   call addfld ('TT_PDC',   horiz_only, 'A', 'kg/m2','Total column test tracer lost in physics-dynamics coupling'  ,gridname='FFSL')
-
    do istage = 1,SIZE(stage)
       do ivars=1,SIZE(vars)
          write(str1,*) TRIM(ADJUSTL(vars(ivars))),TRIM(ADJUSTL("_")),TRIM(ADJUSTL(stage(istage)))
@@ -977,10 +967,9 @@ subroutine read_inidat(dyn_in)
   use dyn_tests_utils,       only: vc_moist_pressure,vc_dry_pressure
   use pmgrid,                only: plev
   use constituents,          only: pcnst
-  use pio,                   only: file_desc_t, pio_global, pio_double, pio_offset, &
-                             pio_get_att, pio_inq_dimid, pio_inq_dimlen, pio_inq_varid, &
-                             pio_read_darray, file_desc_t, io_desc_t, pio_double,pio_offset_kind,&
-                             pio_seterrorhandling, pio_bcast_error,pio_get_local_array_size, pio_freedecomp, var_desc_t
+  use pio,                   only: pio_inq_dimid, pio_inq_dimlen, pio_inq_varid, &
+                             pio_read_darray, file_desc_t, io_desc_t, pio_double, &
+                             pio_seterrorhandling, pio_bcast_error, var_desc_t
 
   use ppgrid,                only: pver
   use ncdio_atm,             only: infld
@@ -989,14 +978,11 @@ subroutine read_inidat(dyn_in)
   use const_init,            only: cnst_init_default
   use cam_initfiles,         only: initial_file_get_id, topo_file_get_id, pertlim
   use cam_grid_support,      only: cam_grid_id, cam_grid_get_gcid, &
-       cam_grid_dimensions, cam_grid_get_decomp, &
-       cam_grid_get_latvals, cam_grid_get_lonvals,  &
-       iMap
+                                   cam_grid_dimensions, cam_grid_get_decomp, &
+                                   cam_grid_get_latvals, cam_grid_get_lonvals,iMap
   use cam_history_support,   only: max_fieldname_len
   use hycoef,                only: hyai, hybi, ps0
-  use dyn_grid,              only: mygindex,mygindex_ew,mygindex_ns, &
-                                   mylindex,mylindex_ew,mylindex_ns, &
-                                   mygindexdups,mygindexdups_ew,mygindexdups_ns
+  use dyn_grid,              only: mygindex, mylindex, mygindexdups
   use cam_pio_utils,         only: cam_pio_handle_error
   implicit none
 
@@ -1022,10 +1008,10 @@ subroutine read_inidat(dyn_in)
   character(len=128)               :: errmsg
   character(len=*), parameter      :: subname='READ_INIDAT'
   real(r8), allocatable            :: phis_tmp(:,:) 
-  integer(iMap), pointer           :: ldof(:),ldof_ew(:),ldof_ns(:) ! Basic (2D) grid dof
+  integer(iMap), pointer           :: ldof(:) ! Basic (2D) grid dof
 
   ! Variables for analytic initial conditions
-  integer,  allocatable            :: glob_inddups(:),glob_inddups_ew(:),glob_inddups_ns(:)
+  integer,  allocatable            :: glob_inddups(:)
   integer,  allocatable            :: m_ind(:)
   integer                          :: vcoord
   integer                          :: pio_errtype
@@ -1034,8 +1020,8 @@ subroutine read_inidat(dyn_in)
   real(r8), allocatable            :: dbuf2(:,:)         ! (pcol,nblk=1)
   real(r8), allocatable            :: dbuf3(:,:,:)       ! (pcol,plev,nblk=1)
   real(r8), allocatable            :: dbuf4(:,:,:,:)       ! (pcol,plev,nblk=1,pcnst)
-  real(r8), pointer                :: latvals_deg(:),latvals_rad_ew(:),latvals_rad_ns(:)
-  real(r8), pointer                :: lonvals_deg(:),lonvals_rad_ew(:),lonvals_rad_ns(:)
+  real(r8), pointer                :: latvals_deg(:)
+  real(r8), pointer                :: lonvals_deg(:)
   real(r8), allocatable            :: latvals(:)
   real(r8), allocatable            :: lonvals(:)
   real(r8), allocatable            :: latvals_rad(:)
@@ -1058,7 +1044,7 @@ subroutine read_inidat(dyn_in)
 
   !-----------------------------------------------------------------------
   integer                :: is,ie,js,je,isd,ied,jsd,jed
-  integer                :: blksize,blksize_ew,blksize_ns
+  integer                :: blksize
   logical                :: fv2fv3_mixratio
   integer                :: sphum, liq_wat, ice_wat, rainwat, snowwat,graupel
   real(r8)               :: u1
@@ -1075,8 +1061,6 @@ subroutine read_inidat(dyn_in)
   type(var_desc_t) :: delpdesc
   type(var_desc_t) :: udesc
   type(var_desc_t) :: vdesc
-  type(var_desc_t) :: usdesc
-  type(var_desc_t) :: vsdesc
   type(var_desc_t) :: tdesc
   type(var_desc_t) :: psdesc
   type(var_desc_t) :: phisdesc
@@ -1085,8 +1069,8 @@ subroutine read_inidat(dyn_in)
   integer :: array_lens_3d(3), array_lens_2d(2), array_lens_1d(1)
   integer :: file_lens_2d(2), file_lens_1d(1)
   integer :: grid_id,ilen,jlen
-  integer :: grid_dimlens(2),grid_dimlens_ns(2),grid_dimlens_ew(2)
-  real(r8), allocatable :: var3d(:,:,:), var3d_ew(:,:,:), var3d_ns(:,:,:), var2d(:,:)
+  integer :: grid_dimlens(2)
+  real(r8), allocatable :: var3d(:,:,:), var2d(:,:)
 
   Atm => dyn_in%Atm
 
@@ -1100,8 +1084,6 @@ subroutine read_inidat(dyn_in)
   jed = Atm(mytile)%bd%jed
 
   nullify(ldof)
-  nullify(ldof_ew)
-  nullify(ldof_ns)
 
 !  fh_ini  => initial_file_get_id()
   fh_topo => topo_file_get_id()
@@ -1122,23 +1104,10 @@ subroutine read_inidat(dyn_in)
   allocate(phis_tmp(ldof_size,1))
   phis_tmp(:,:)=0._r8
 
-  nullify(latvals_rad_ew)
-  nullify(lonvals_rad_ew)
-  nullify(latvals_rad_ns)
-  nullify(lonvals_rad_ns)
-
   blksize=(ie-is+1)*(je-js+1)
-  blksize_ew=(ie-is+2)*(je-js+1)
-  blksize_ns=(ie-is+1)*(je-js+2)
   allocate(latvals_rad(blksize))
   allocate(lonvals_rad(blksize))
-  allocate(latvals_rad_ew(blksize_ew))
-  allocate(lonvals_rad_ew(blksize_ew))
-  allocate(latvals_rad_ns(blksize_ns))
-  allocate(lonvals_rad_ns(blksize_ns))
   allocate(glob_inddups(blksize))
-  allocate(glob_inddups_ew(blksize_ew))
-  allocate(glob_inddups_ns(blksize_ns))
 
   do j = js, je
      do i = is, ie
@@ -1149,23 +1118,6 @@ subroutine read_inidat(dyn_in)
      end do
   end do
 
-  do j = js, je
-     do i = is, ie+1
-        n=mylindex_ew(i,j)
-        lonvals_rad_ew(n) = grid_ew(i,j,1)
-        latvals_rad_ew(n) = grid_ew(i,j,2)
-        glob_inddups_ew(n) = mygindexdups_ew(i,j)
-     end do
-  end do
-
-  do j = js, je+1
-     do i = is, ie
-        n=mylindex_ns(i,j)
-        lonvals_rad_ns(n) = grid_ns(i,j,1)
-        latvals_rad_ns(n) = grid_ns(i,j,2)
-        glob_inddups_ns(n)    = mygindexdups_ns(i,j)
-     end do
-  end do
   ! Set ICs.  Either from analytic expressions or read from file.
 
   if (analytic_ic_active()) then
@@ -1253,55 +1205,8 @@ subroutine read_inidat(dyn_in)
      end do
      deallocate(dbuf4)
 
-     allocate(dbuf3(blksize_ew,plev,1))
-
-! Get just the U wind for the ew grid points as well as ns 
-! This will become atm(mytile)%v
-     call analytic_ic_set_ic(vcoord, latvals_rad_ew, lonvals_rad_ew, glob_inddups_ew,            &
-          U=dbuf3(:,:,:))
-
-
-
-     do j = js, je
-        do i = is, ie+1
-           ! calculate rotation (u1) for D-grid V coordinate from lat/lon A-grid representation
-           call mid_pt_sphere(grid(i,j,1:2),grid(i,j+1,1:2),pa)
-           call get_unit_vect2(grid(i,j,1:2),grid(i,j+1,1:2),e1)
-           call get_latlon_vector(pa,ex,ey)
-           u1 = inner_prod(e1,ex) !v components
-           ! V
-           n=mylindex_ew(i,j)
-           atm(mytile)%v(i,j,:) = dbuf3(n, :, 1)*u1
-        end do
-     end do
-
-     deallocate(dbuf3)
-     allocate(dbuf3(blksize_ns,plev,1))
-     
-     call analytic_ic_set_ic(vcoord, latvals_rad_ns, lonvals_rad_ns,glob_inddups_ns,            &
-          U=dbuf3(:,:,:))
-
-     do j = js, je+1
-        do i = is, ie
-           ! calculate rotation (u1) for D-grid U coordinate from lat/lon representation
-           call mid_pt_sphere(grid(i,j,1:2),grid(i+1,j,1:2),pa)
-           call get_unit_vect2(grid(i,j,1:2),grid(i+1,j,1:2),e1)
-           call get_latlon_vector(pa,ex,ey)
-           u1 = inner_prod(e1,ex) !u components
-           ! don't need this           u2 = inner_prod(e1,ey)
-           ! U
-           n=mylindex_ns(i,j)
-           atm(mytile)%u(i,j,:) = dbuf3(n, :, 1)*u1
-        end do
-     end do
-
-     call mpp_update_domains( atm(mytile)%u,atm(mytile)%v,   Atm(mytile)%domain, gridtype=DGRID_NE )
-     
-     call cubed_to_latlon(Atm(mytile)%u, Atm(mytile)%v, Atm(mytile)%ua, Atm(mytile)%va, Atm(mytile)%gridstruct, &
-          npx, npy, npz, 1, Atm(mytile)%gridstruct%grid_type, Atm(mytile)%domain, Atm(mytile)%gridstruct%nested, Atm(mytile)%flagstruct%c2l_ord, Atm(mytile)%bd)
-
-     deallocate(dbuf3)
      !-----------------------------------------------------------------------
+     call a2d3djt(atm(mytile)%ua, atm(mytile)%va, atm(mytile)%u, atm(mytile)%v, is,  ie,  js,  je, isd, ied, jsd, jed, npx,npy, npz, atm(mytile)%gridstruct, atm(mytile)%domain)
 
   else
      ! Read ICs from file. 
@@ -1313,11 +1218,6 @@ subroutine read_inidat(dyn_in)
      call cam_pio_handle_error(ierr, subname//': cannot find U')
      ierr = PIO_Inq_varid(fh_ini, 'V',     Vdesc)
      call cam_pio_handle_error(ierr, subname//': cannot find V')
-     ! variable descriptors of required dynamics fields
-     ierr = PIO_Inq_varid(fh_ini, 'US',     usdesc)
-     call cam_pio_handle_error(ierr, subname//': cannot find US')
-     ierr = PIO_Inq_varid(fh_ini, 'VS',     Vsdesc)
-     call cam_pio_handle_error(ierr, subname//': cannot find VS')
      ierr = PIO_Inq_varid(fh_ini, 'T',     tdesc)
      call cam_pio_handle_error(ierr, subname//': cannot find T')
      ierr = PIO_Inq_varid(fh_ini, 'PS', psdesc)
@@ -1477,13 +1377,7 @@ subroutine read_inidat(dyn_in)
 
   deallocate(latvals_rad)
   deallocate(lonvals_rad)
-  deallocate(latvals_rad_ew)
-  deallocate(latvals_rad_ns)
-  deallocate(lonvals_rad_ew)
-  deallocate(lonvals_rad_ns)
   deallocate(glob_inddups)
-  deallocate(glob_inddups_ew)
-  deallocate(glob_inddups_ns)
 
 
   ! If a topo file is specified use it.  This will overwrite the PHIS set by the
@@ -1649,7 +1543,7 @@ subroutine read_inidat(dyn_in)
   end if
 
   ! once we've read or initialized all the fields we call update_domains to
-  ! update the redundent columns in the dynamics
+  ! update the halo regions
 
   call mpp_update_domains( Atm(mytile)%phis, Atm(mytile)%domain )
   call mpp_update_domains( atm(mytile)%ps,   Atm(mytile)%domain )
