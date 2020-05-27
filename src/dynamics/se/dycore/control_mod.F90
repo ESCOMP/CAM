@@ -8,11 +8,6 @@ module control_mod
   integer, public, parameter :: MAX_FILE_LEN=240
 !  character(len=MAX_STRING_LEN)    , public :: integration    ! time integration (only one currently supported is "explicit")
 
-  ! Tracer transport type
-  integer, public, parameter :: TRACERTRANSPORT_SE_GLL            = 1
-  integer, public, parameter :: TRACERTRANSPORT_CONSISTENT_SE_FVM = 2
-  integer, public            :: tracer_transport_type = TRACERTRANSPORT_SE_GLL
-
 !shallow water advection tests:
 !kmass points to a level with density.  other levels contain test tracers
 
@@ -99,14 +94,6 @@ module control_mod
 !            (\div * tensor * \grad) operator uses cartesian laplace
 !
 
-  integer, public :: prescribed_wind=0    ! fix the velocities?
-  logical, public :: se_prescribed_wind_2d=.false.
-  real (kind=r8), public :: se_met_nudge_u = 0.D0  ! velocity nudging rate (1/sec)
-  real (kind=r8), public :: se_met_nudge_p = 0.D0  ! pressure nudging rate (1/sec)
-  real (kind=r8), public :: se_met_nudge_t = 0.D0  ! temperature nudging rate (1/sec)
-  integer,               public :: se_met_tevolve = 0     ! switch to turn on time evolution of nudging within dynamics
-  integer,               public :: prescribed_vertwind = 0
-
   real (kind=r8), public :: initial_global_ave_dry_ps = 0._r8 ! scale dry surface pressure to initial_global_ave_dry_ps
 
   integer, public, parameter :: west  = 1
@@ -119,7 +106,6 @@ module control_mod
   integer, public, parameter :: nwest = 7
   integer, public, parameter :: neast = 8
 
-  logical, public :: disable_diagnostics = .FALSE.
   !
   ! parameters for sponge layer Rayleigh damping
   !

@@ -2101,12 +2101,6 @@
 <se_vert_remap_uvTq_alg  > -9 </se_vert_remap_uvTq_alg>
 <se_vert_remap_tracer_alg> 10 </se_vert_remap_tracer_alg>
 
-<!-- Nudging -->
-<se_met_nudge_u> 2.0e-5 </se_met_nudge_u>
-<se_met_nudge_t> 2.0e-5 </se_met_nudge_t>
-<se_met_nudge_p> 0.0 </se_met_nudge_p>
-<se_met_tevolve> 0 </se_met_tevolve>
-
 <!-- Option to write SCRIP grid file -->
 <se_write_grid_file> no </se_write_grid_file>
 

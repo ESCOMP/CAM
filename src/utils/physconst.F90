@@ -416,6 +416,10 @@ subroutine composition_init()
      !
      dof1 = 5._r8
      dof2 = 7._r8
+     !
+     ! last major species in dry_air_composition is derived from the others and constants associated with it
+     ! are initialized here
+     !
      if (TRIM(dry_air_composition(dry_air_composition_num))=='N2') then
        call cnst_get_ind('N' ,ix, abort=.false.)
        if (ix<1) then

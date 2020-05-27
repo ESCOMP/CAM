@@ -133,7 +133,6 @@ contains
   subroutine Prim_Advec_Tracers_fvm(elem,fvm,hvcoord,hybrid,&
         dt,tl,nets,nete,ghostbufQnhc,ghostBufQ1, ghostBufFlux,kmin,kmax)
     use fvm_consistent_se_cslam, only: run_consistent_se_cslam
-    use control_mod,             only: tracer_transport_type,TRACERTRANSPORT_CONSISTENT_SE_FVM
     use edgetype_mod,            only: edgebuffer_t    
     implicit none
     type (element_t), intent(inout)   :: elem(:)
@@ -155,13 +154,8 @@ contains
     ! 2D advection step
     !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    if (tracer_transport_type == TRACERTRANSPORT_CONSISTENT_SE_FVM) then
-      call run_consistent_se_cslam(elem,fvm,hybrid,dt,tl,nets,nete,hvcoord,&
+    call run_consistent_se_cslam(elem,fvm,hybrid,dt,tl,nets,nete,hvcoord,&
            ghostbufQnhc,ghostBufQ1, ghostBufFlux,kmin,kmax)
-    else
-      call endrun('Bad tracer_transport_type in Prim_Advec_Tracers_fvm')
-    end if
-
     call t_stopf('prim_advec_tracers_fvm')
   end subroutine Prim_Advec_Tracers_fvm
 

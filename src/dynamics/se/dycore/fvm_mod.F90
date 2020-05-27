@@ -287,8 +287,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     use parallel_mod,           only: parallel_t
     use cam_abortutils,         only: endrun
     use cam_logfile,            only: iulog
-    use control_mod,            only: tracer_transport_type, rsplit
-    use control_mod,            only: TRACERTRANSPORT_CONSISTENT_SE_FVM
+    use control_mod,            only: rsplit
     use dimensions_mod,         only: qsize, qsize_d
     use dimensions_mod,         only: fvm_supercycling, fvm_supercycling_jet
     use dimensions_mod,         only: nc,nhe, nhc, nlev,ntrac, ntrac_d,ns, nhr
@@ -306,7 +305,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
         write(iulog,*) "|-----------------------------------------|"
         write(iulog,*) "                                           "
       end if
-      if (tracer_transport_type == TRACERTRANSPORT_CONSISTENT_SE_FVM) then
+      if (ntrac>0) then
         if (par%masterproc) then 
           write(iulog,*) "Running consistent SE-CSLAM, Lauritzen et al. (2017, MWR)."
           write(iulog,*) "CSLAM = Conservative Semi-LAgrangian Multi-tracer scheme"

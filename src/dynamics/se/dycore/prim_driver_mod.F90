@@ -182,7 +182,7 @@ contains
 !
     use hybvcoord_mod, only : hvcoord_t
     use time_mod,               only: TimeLevel_t, timelevel_update, timelevel_qdp, nsplit
-    use control_mod,            only: statefreq,disable_diagnostics,qsplit, rsplit, variable_nsplit
+    use control_mod,            only: statefreq,qsplit, rsplit, variable_nsplit
     use prim_advance_mod,       only: applycamforcing
     use prim_advance_mod,       only: calc_tot_energy_dynamics,compute_omega
     use prim_state_mod,         only: prim_printstate, adjust_nsplit
@@ -226,7 +226,6 @@ contains
         compute_diagnostics=.true.
       endif
     end if
-    if(disable_diagnostics) compute_diagnostics=.false.
     !
     ! initialize variables for computing vertical Courant number
     !
@@ -373,7 +372,6 @@ contains
     use hybvcoord_mod,          only: hvcoord_t
     use time_mod,               only: TimeLevel_t, timelevel_update
     use control_mod,            only: statefreq, qsplit, nu_p
-    use control_mod,            only: TRACERTRANSPORT_CONSISTENT_SE_FVM, tracer_transport_type
     use thread_mod,             only: omp_get_thread_num
     use prim_advance_mod,       only: prim_advance_exp
     use prim_advection_mod,     only: prim_advec_tracers_remap, prim_advec_tracers_fvm, deriv
@@ -525,7 +523,7 @@ contains
     !
     ! only run fvm transport every fvm_supercycling rstep
     !
-    if (tracer_transport_type == TRACERTRANSPORT_CONSISTENT_SE_FVM.and.ntrac>0) then
+    if (ntrac>0) then
       !
       ! FVM transport
       !

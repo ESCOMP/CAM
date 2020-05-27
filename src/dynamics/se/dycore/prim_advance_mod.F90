@@ -4,7 +4,6 @@ module prim_advance_mod
   use perf_mod,       only: t_startf, t_stopf, t_adj_detailf !, t_barrierf _EXTERNAL
   use cam_abortutils, only: endrun
   use parallel_mod,   only: parallel_t, HME_BNDRY_P2P!,HME_BNDRY_A2A
-  use control_mod,    only: se_prescribed_wind_2d
   use thread_mod ,    only: horz_num_threads, vert_num_threads, omp_set_nested
 
   implicit none
@@ -48,7 +47,7 @@ contains
   end subroutine prim_advance_init
   
   subroutine prim_advance_exp(elem, fvm, deriv, hvcoord, hybrid,dt, tl,  nets, nete)   
-    use control_mod,       only: prescribed_wind, tstep_type, qsplit
+    use control_mod,       only: tstep_type, qsplit
     use derivative_mod,    only: derivative_t
     use dimensions_mod,    only: np, nlev
     use element_mod,       only: element_t
@@ -113,31 +112,6 @@ contains
 
     ! default weights for computing mean dynamics fluxes
     eta_ave_w = 1_r8/qsplit
-
-    if (1==prescribed_wind .and. .not.se_prescribed_wind_2d) then
-      do ie=nets,nete
-        do k=1,nlev
-          elem(ie)%state%dp3d(:,:,k,np1) = elem(ie)%state%dp3d(:,:,k,n0)
-        enddo
-      end do
-
-      
-      
-      do ie=nets,nete
-        ! subcycling code uses a mean flux to advect tracers
-        !$omp parallel do num_threads (vert_num_threads) private(k,dp)
-        do k=1,nlev
-          dp(:,:) = elem(ie)%state%dp3d(:,:,k,tl%n0)
-          
-          elem(ie)%derived%vn0(:,:,1,k)=elem(ie)%derived%vn0(:,:,1,k)+&
-               eta_ave_w*elem(ie)%state%v(:,:,1,k,n0)*dp(:,:)
-          elem(ie)%derived%vn0(:,:,2,k)=elem(ie)%derived%vn0(:,:,2,k)+&
-               eta_ave_w*elem(ie)%state%v(:,:,2,k,n0)*dp(:,:)
-        enddo
-      end do
-      call t_stopf('prim_advance_exp')
-      return
-    endif    
     
     ! ==================================
     ! Take timestep
@@ -1134,10 +1108,6 @@ contains
      ! Combining the dt advance and DSS unpack operation in one routine
      ! allows us to fuse these two loops for more cache reuse
      !
-     ! note: for prescribed velocity case, velocity will be computed at
-     ! "real_time", which should be the time of timelevel n0.
-     !
-     !
      ! ===================================
      use dimensions_mod,  only: np, nc, nlev, ntrac
      use hybrid_mod,      only: hybrid_t
@@ -1151,7 +1121,6 @@ contains
      use physconst,       only: epsilo, get_gz_given_dp_Tv, Rair, cpair !
      use physconst,       only: thermodynamic_active_species_num, get_virtual_temp, get_cp_dry
      use physconst,       only: thermodynamic_active_species_idx_dycore,get_R_dry
-     use control_mod,     only: se_met_nudge_u, se_met_nudge_p, se_met_nudge_t, se_met_tevolve
      
      use time_mod, only : tevolve
      
@@ -1253,14 +1222,6 @@ contains
              vdp_full(i,j,2,k) = v2*dp_full(i,j,k)
            end do
          end do
-         ! ============================
-         ! compute grad(P-P_met)
-         ! ============================
-         if (se_met_nudge_p.gt.0._r8) then
-           suml(:,:) = elem(ie)%derived%ps_met(:,:)+tevolve*elem(ie)%derived%dpsdt_met(:,:)
-           call gradient_sphere(suml,deriv,elem(ie)%Dinv,vtemp)
-           grad_p_m_pmet(:,:,:,k) = grad_p_full(:,:,:,k) - hvcoord%hybm(k)*vtemp
-         endif
          ! ================================
          ! Accumulate mean Vel_rho flux in vn0
          ! ================================
@@ -1372,48 +1333,7 @@ contains
                   - v1*(elem(ie)%fcor(i,j) + vort(i,j,k))        &
                   - vtemp(i,j,2) - glnps2
              ttens(i,j,k)  =  - vgrad_T(i,j) + &
-                  density_inv*omega_full(i,j,k)*inv_cp_full(i,j,k,ie)
-             
-             if (se_prescribed_wind_2d) then
-               vtens1(i,j,k) = 0._r8
-               vtens2(i,j,k) = 0._r8
-               ttens(i,j,k) = 0._r8
-             else
-               if(se_met_nudge_u.gt.0._r8)then
-                 u_m_umet = v1 - &
-                      elem(ie)%derived%u_met(i,j,k) - &
-                      se_met_tevolve*tevolve*elem(ie)%derived%dudt_met(i,j,k)
-                 v_m_vmet = v2 - &
-                      elem(ie)%derived%v_met(i,j,k) - &
-                      se_met_tevolve*tevolve*elem(ie)%derived%dvdt_met(i,j,k)
-                 
-                 vtens1(i,j,k) =   vtens1(i,j,k) - se_met_nudge_u*u_m_umet * elem(ie)%derived%nudge_factor(i,j,k)
-                 
-                 elem(ie)%derived%Utnd(i+(j-1)*np,k) = elem(ie)%derived%Utnd(i+(j-1)*np,k) &
-                      + se_met_nudge_u*u_m_umet * elem(ie)%derived%nudge_factor(i,j,k)
-                 
-                 vtens2(i,j,k) =   vtens2(i,j,k) - se_met_nudge_u*v_m_vmet * elem(ie)%derived%nudge_factor(i,j,k)
-                 
-                 elem(ie)%derived%Vtnd(i+(j-1)*np,k) = elem(ie)%derived%Vtnd(i+(j-1)*np,k) &
-                      + se_met_nudge_u*v_m_vmet * elem(ie)%derived%nudge_factor(i,j,k)
-                 
-               endif
-               
-               if(se_met_nudge_p.gt.0._r8)then
-                 vtens1(i,j,k) =   vtens1(i,j,k) - se_met_nudge_p*grad_p_m_pmet(i,j,1,k)  * elem(ie)%derived%nudge_factor(i,j,k)
-                 vtens2(i,j,k) =   vtens2(i,j,k) - se_met_nudge_p*grad_p_m_pmet(i,j,2,k)  * elem(ie)%derived%nudge_factor(i,j,k)
-               endif
-               
-               if(se_met_nudge_t.gt.0._r8)then
-                 t_m_tmet = elem(ie)%state%T(i,j,k,n0) - &
-                      elem(ie)%derived%T_met(i,j,k) - &
-                      se_met_tevolve*tevolve*elem(ie)%derived%dTdt_met(i,j,k)
-                 ttens(i,j,k)  = ttens(i,j,k) - se_met_nudge_t*t_m_tmet * elem(ie)%derived%nudge_factor(i,j,k)
-                 elem(ie)%derived%Ttnd(i+(j-1)*np,k) = elem(ie)%derived%Ttnd(i+(j-1)*np,k) &
-                      + se_met_nudge_t*t_m_tmet * elem(ie)%derived%nudge_factor(i,j,k)
-               endif
-             endif
-             
+                  density_inv*omega_full(i,j,k)*inv_cp_full(i,j,k,ie)                         
            end do
          end do
          

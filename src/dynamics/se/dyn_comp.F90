@@ -98,19 +98,15 @@ subroutine dyn_readnl(NLFileName)
    use dp_mapping,     only: nphys_pts
    use native_mapping, only: native_mapping_readnl
 
-   use control_mod,    only: TRACERTRANSPORT_SE_GLL, tracer_transport_type
-   use control_mod,    only: TRACERTRANSPORT_CONSISTENT_SE_FVM
    use control_mod,    only: hypervis_subcycle, hypervis_subcycle_sponge
    use control_mod,    only: hypervis_subcycle_q, statefreq, runtype
    use control_mod,    only: nu, nu_div, nu_p, nu_q, nu_top, qsplit, rsplit
    use control_mod,    only: vert_remap_uvTq_alg, vert_remap_tracer_alg
    use control_mod,    only: tstep_type, rk_stage_user
    use control_mod,    only: ftype, limiter_option, partmethod
-   use control_mod,    only: topology, phys_dyn_cp
-   use control_mod,    only: remap_type, variable_nsplit
+   use control_mod,    only: topology, phys_dyn_cp, variable_nsplit
    use control_mod,    only: fine_ne, hypervis_power, hypervis_scaling
    use control_mod,    only: max_hypervis_courant, statediag_numtrac,refined_mesh
-   use control_mod,    only: se_met_nudge_u, se_met_nudge_p, se_met_nudge_t, se_met_tevolve
    use control_mod,    only: raytau0, raykrange, rayk0, molecular_diff
    use dimensions_mod, only: ne, npart
    use dimensions_mod, only: lcp_moist
@@ -201,10 +197,6 @@ subroutine dyn_readnl(NLFileName)
       se_tstep_type,               &
       se_vert_remap_uvTq_alg,      &
       se_vert_remap_tracer_alg,    &
-      se_met_nudge_u,              &
-      se_met_nudge_p,              &
-      se_met_nudge_t,              &
-      se_met_tevolve,              &
       se_write_grid_file,          &
       se_grid_filename,            &
       se_write_gll_corners,        &
@@ -279,10 +271,6 @@ subroutine dyn_readnl(NLFileName)
    call MPI_bcast(se_tstep_type, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_vert_remap_uvTq_alg, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_vert_remap_tracer_alg, 1, mpi_integer, masterprocid, mpicom, ierr)
-   call MPI_bcast(se_met_nudge_u, 1, MPI_real8, masterprocid, mpicom,ierr)
-   call MPI_bcast(se_met_nudge_p, 1, MPI_real8, masterprocid, mpicom,ierr)
-   call MPI_bcast(se_met_nudge_t, 1, MPI_real8, masterprocid, mpicom,ierr)
-   call MPI_bcast(se_met_tevolve, 1, MPI_integer, masterprocid, mpicom,ierr)
    call MPI_bcast(se_fv_nphys, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_write_grid_file, 16,  mpi_character, masterprocid, mpicom, ierr)
    call MPI_bcast(se_grid_filename, shr_kind_cl, mpi_character, masterprocid, mpicom, ierr)
@@ -378,13 +366,11 @@ subroutine dyn_readnl(NLFileName)
    if (fv_nphys > 0) then
       ! Use finite volume physics grid and CSLAM for tracer advection
       nphys_pts = fv_nphys*fv_nphys
-      tracer_transport_type = TRACERTRANSPORT_CONSISTENT_SE_FVM
       qsize = thermodynamic_active_species_num ! number tracers advected by GLL
       ntrac = pcnst                    ! number tracers advected by CSLAM
    else
       ! Use GLL grid for physics and tracer advection
       nphys_pts = npsq
-      tracer_transport_type = TRACERTRANSPORT_SE_GLL
       qsize = pcnst
       ntrac = 0
    end if
@@ -482,16 +468,6 @@ subroutine dyn_readnl(NLFileName)
            write(iulog, '(a)') 'Using tensor viscosity (Guba et al., 2014)'
            write(iulog, '(a,e11.4)') 'dyn_readnl: se_hypervis_scaling = ',se_hypervis_scaling
          end if
-      end if
-      if ((se_met_nudge_u /= 0._r8) .or. (se_met_nudge_p /= 0._r8) .or.       &
-         (se_met_nudge_t /= 0._r8) .or. (se_met_tevolve /= 0)) then
-         write(iulog, '(a)') 'dyn_readnl: Nudging:'
-         write(iulog,'(a,e14.6)') "          :  se_met_nudge_u = ", se_met_nudge_u
-         write(iulog,'(a,e14.6)') "          :  se_met_nudge_p = ", se_met_nudge_p
-         write(iulog,'(a,e14.6)') "          :  se_met_nudge_t = ", se_met_nudge_t
-         write(iulog,'(a,i0)')    "          :  se_met_tevolve = ", se_met_tevolve
-      else
-         write(iulog, '(a)') 'dyn_readnl: Nudging off'
       end if
 
       if (fv_nphys > 0) then
