@@ -1090,7 +1090,7 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
           testargs="${testargs} --queue ${CAM_BATCHQ} --test-root ${cesm_testdir} --output-root ${cesm_testdir}"
           ;;
         *)
-          if [ -n "${BATCH}" || "${HOSTNAME}" in ch* r* ]; then
+          if [ -n "${BATCH}" ] || [ "${HOSTNAME}" in ch* r* ]; then
             testargs="${testargs} --queue ${CAM_BATCHQ} --test-root ${cesm_testdir} --output-root ${cesm_testdir}"
           else
             testargs="${testargs} --test-root ${cesm_testdir} --output-root ${cesm_testdir}"
