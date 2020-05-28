@@ -127,9 +127,6 @@ real(r8), public, dimension(:,:,:), pointer :: mbarv  ! composition dependent at
 real(r8), public, dimension(:,:,:), pointer :: kmvis  ! molecular viscosity      kg/m/s
 real(r8), public, dimension(:,:,:), pointer :: kmcnd  ! molecular conductivity   J/m/s/K
 
-real(r8) :: o2_mwi, o_mwi, h_mwi, n2_mwi ! inverse molecular weights
-integer :: o2_ndx=-1, o_ndx=-1, h_ndx=-1 ! constituent indexes
-
 !--------------- Variables for consistent themodynamics --------------------
 !
 ! composition of air
@@ -326,7 +323,6 @@ subroutine physconst_init()
 
    integer :: n_ndx
    integer :: ierr
-   real(r8) :: o2_mw, o_mw, h_mw, n_mw
 
    !-------------------------------------------------------------------------------
    !  Allocate constituent dependent properties
@@ -346,29 +342,6 @@ subroutine physconst_init()
    rairv(:pcols,:pver,begchunk:endchunk) = rair
    cappav(:pcols,:pver,begchunk:endchunk) = rair/cpair
    mbarv(:pcols,:pver,begchunk:endchunk) = mwdry
-
-   call cnst_get_ind('O2',o2_ndx,abort=.false.)
-   call cnst_get_ind('O' ,o_ndx, abort=.false.)
-   call cnst_get_ind('H' ,h_ndx, abort=.false.)
-   call cnst_get_ind('N' ,n_ndx, abort=.false.)
-
-   if (o2_ndx>0) then
-      o2_mw = cnst_mw(o2_ndx)
-      o2_mwi = 1.0_r8/o2_mw
-   endif
-   if (o_ndx>0) then
-      o_mw = cnst_mw(o_ndx)
-      o_mwi = 1.0_r8/o_mw
-   endif
-   if (h_ndx>0) then
-      h_mw = cnst_mw(h_ndx)
-      h_mwi = 1.0_r8/h_mw
-   endif
-   if (n_ndx>0) then
-      n_mw = cnst_mw(n_ndx)
-      n2_mwi = 0.5_r8/n_mw
-   endif
-
 end subroutine physconst_init
 
 
