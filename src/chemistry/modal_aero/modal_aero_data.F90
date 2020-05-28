@@ -58,7 +58,8 @@
       real(r8), public, protected, allocatable :: dgnum_amode(:)
       real(r8), public, protected, allocatable :: dgnumlo_amode(:)
       real(r8), public, protected, allocatable :: dgnumhi_amode(:)
-
+      integer,  public, protected, allocatable :: mode_size_order(:)
+      
       !   input sigmag_amode
       real(r8), public, protected, allocatable :: sigmag_amode(:)
 
@@ -176,6 +177,7 @@
        mcalcwater_amode(:) = 0
     endif
     allocate(dgnum_amode(ntot_amode))
+    allocate(mode_size_order(ntot_amode))
     allocate(dgnumlo_amode(ntot_amode))
     allocate(dgnumhi_amode(ntot_amode))
     allocate(sigmag_amode(ntot_amode))
@@ -408,7 +410,7 @@
        !--------------------------------------------------------------
        ! ... local variables
        !--------------------------------------------------------------
-       integer :: l, m, i, lchnk
+       integer :: l, m, i, lchnk, tmp
        integer :: m_idx, s_idx, ndx
 
        character(len=3) :: trnum       ! used to hold mode number (as characters)
@@ -433,6 +435,8 @@
              sigmag=sigmag_amode(m), dgnum=dgnum_amode(m), dgnumlo=dgnumlo_amode(m), &
              dgnumhi=dgnumhi_amode(m), rhcrystal=rhcrystal_amode(m), rhdeliques=rhdeliques_amode(m))
 
+          mode_size_order(m) = m
+                       
           !   compute frequently used parameters: ln(sigmag),
           !   volume-to-number and volume-to-surface conversions, ...
           alnsg_amode(m) = log( sigmag_amode(m) )
@@ -449,6 +453,17 @@
           alnv2nhi_amode(m) = log( voltonumbhi_amode(m) )
 
        end do
+
+       do i = 1, ntot_amode-1 ! order from largest to smallest
+          do m = 2, ntot_amode
+             if (dgnum_amode(mode_size_order(m-1))<dgnum_amode(mode_size_order(m))) then
+                tmp = mode_size_order(m-1)
+                mode_size_order(m-1)= mode_size_order(m)
+                mode_size_order(m) = tmp
+             endif
+          enddo
+       enddo
+       
        lptr2_soa_g_amode(:) = -1
        soa_ndx = 0
        do i = 1, pcnst

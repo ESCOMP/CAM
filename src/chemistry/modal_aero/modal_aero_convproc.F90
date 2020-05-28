@@ -20,6 +20,7 @@ use spmd_utils,      only: masterproc
 use physconst,       only: gravit, rair
 use ppgrid,          only: pver, pcols, pverp
 use constituents,    only: pcnst, cnst_name
+use constituents,    only: cnst_species_class, cnst_spec_class_aerosol, cnst_spec_class_gas
 use phys_control,    only: phys_getopts
 
 use physics_types,   only: physics_state, physics_ptend, physics_ptend_init
@@ -32,7 +33,9 @@ use error_messages,  only: alloc_err
 use cam_abortutils,  only: endrun
 
 use modal_aero_data, only: lmassptr_amode, nspec_amode, ntot_amode, numptr_amode
-use constituents,    only: cnst_species_class, cnst_spec_class_aerosol, cnst_spec_class_gas
+use modal_aero_data, only: lptr_so4_a_amode, lptr_dust_a_amode, lptr_nacl_a_amode, mode_size_order
+use modal_aero_data, only: lptr2_pom_a_amode, lptr2_soa_a_amode, lptr2_bc_a_amode, nsoa, npoa, nbc
+use modal_aero_data, only: lptr_msa_a_amode, lptr_nh4_a_amode, lptr_no3_a_amode
  
 implicit none
 private
@@ -111,6 +114,8 @@ integer :: cmfmc_sh_idx       = 0
 integer :: sh_e_ed_ratio_idx  = 0
 
 integer :: istat
+
+logical, parameter :: debug=.false.
 
 !=========================================================================================
 contains
@@ -908,7 +913,6 @@ subroutine ma_convproc_tend(                                           &
       lmassptr_amode, lmassptrcw_amode, &
       ntot_amode, ntot_amode, &
       nspec_amode, numptr_amode, numptrcw_amode
-!  use units, only: getunit
 
    implicit none
 
@@ -2183,7 +2187,8 @@ end subroutine ma_convproc_tend
    real(r8) :: tmpa, tmpb, tmpc, tmpd
    real(r8) :: tmpdp                 ! delta-pressure (mb)
    real(r8) :: wd_flux(pcnst_extd)   ! tracer wet deposition flux at base of current layer [(kg/kg/s)*mb]
-   integer :: fm, cm, n1, n2
+   integer :: i
+   character(len=4) :: spcstr
 !-----------------------------------------------------------------------
 
 
@@ -2223,37 +2228,36 @@ end subroutine ma_convproc_tend
          end if
       end do
  
-      ! Do resuspension of aerosols from rain to coarse mode (large particle) rather
+      ! Do resuspension of aerosols species from rain to coarse mode (large particle) rather
       ! than to individual modes.
+      
       if (convproc_do_evaprain_atonce) then
-         if (ntot_amode<=4) then
-            do m = 2,ntot_amode
-               if ( m==2 ) then
-                  fm = 2 ! finer mode (aitken)
-                  cm = 1 ! coarser mode (accum)
-               else if ( m==3 ) then
-                  fm = 1 ! accum mode
-                  cm = 3 ! coarse mode
-               else
-                  fm = m-1  ! finer mode
-                  cm = m    ! coarser mode
-               end if
 
-               do l = 1,nspec_amode(m)
-                  n1 = lmassptr_amode(l,fm) ! smaller mode
-                  n2 = lmassptr_amode(l,cm) ! larger mode
-                  if (n1>0 .and. n2>0) then
-                     ! accumulate to the larger mode
-                     dcondt_prevap(n2,k) = dcondt_prevap(n2,k) + dcondt_prevap(n1,k)
-                     dcondt_prevap(n1,k) = 0._r8
-                  end if
-               end do
-            end do
-         else
-            call endrun('ma_precpevap_convproc: not able to do resuspension of aerosols from rain to coarse mode')
-         endif
+         call accumulate_to_larger_mode( 'SO4', lptr_so4_a_amode, dcondt_prevap(:,k) )
+         call accumulate_to_larger_mode( 'DUST',lptr_dust_a_amode,dcondt_prevap(:,k) )
+         call accumulate_to_larger_mode( 'NACL',lptr_nacl_a_amode,dcondt_prevap(:,k) )
+         call accumulate_to_larger_mode( 'MSA', lptr_msa_a_amode, dcondt_prevap(:,k) )
+         call accumulate_to_larger_mode( 'NH4', lptr_nh4_a_amode, dcondt_prevap(:,k) )
+         call accumulate_to_larger_mode( 'NO3', lptr_no3_a_amode, dcondt_prevap(:,k) )
+
+         spcstr = '    '
+         do i = 1,nsoa
+            if (nsoa>1) write(spcstr,'(i4)') i
+            call accumulate_to_larger_mode( 'SOA'//adjustl(spcstr), lptr2_soa_a_amode(:,i), dcondt_prevap(:,k) )
+         enddo
+         spcstr = '    '
+         do i = 1,npoa
+            if (npoa>1) write(spcstr,'(i4)') i
+            call accumulate_to_larger_mode( 'POM'//adjustl(spcstr), lptr2_pom_a_amode(:,i), dcondt_prevap(:,k) )
+         enddo            
+         spcstr = '    '
+         do i = 1,nbc
+            if (nbc>1) write(spcstr,'(i4)') i
+            call accumulate_to_larger_mode( 'BC'//adjustl(spcstr), lptr2_bc_a_amode(:,i), dcondt_prevap(:,k) )
+         enddo            
+
       end if
-
+      
       pr_flux = max( 0.0_r8, pr_flux-del_pr_flux_evap )
 
       if (idiag_prevap > 0) then
@@ -2277,8 +2281,37 @@ end subroutine ma_convproc_tend
    return
    end subroutine ma_precpevap_convproc
 
+!=========================================================================================
+   subroutine accumulate_to_larger_mode( spc_name, lptr, prevap )
 
+     character(len=*), intent(in) :: spc_name
+     integer,  intent(in) :: lptr(:)
+     real(r8), intent(inout) :: prevap(:)
 
+     integer :: m,n, nl,ns
+
+     ! find constituent index of the largest mode for the species 
+     loop1: do m = 1,ntot_amode-1
+        nl = lptr(mode_size_order(m))
+        if (nl>0) exit loop1
+     end do loop1
+
+     if (.not. nl>0) return
+
+     ! accumulate the smaller modes into the largest mode
+     do n = m+1,ntot_amode
+        ns = lptr(mode_size_order(n))
+        if (ns>0) then
+           prevap(nl) = prevap(nl) + prevap(ns)
+           prevap(ns) = 0._r8
+           if (masterproc .and. debug) then
+              write(iulog,'(a,i3,a,i3)') trim(spc_name)//' mode number accumulate ',ns,'->',nl
+           endif
+        endif
+     end do
+
+   end subroutine accumulate_to_larger_mode
+       
 !=========================================================================================
    subroutine ma_activate_convproc(             &
               conu,       dconudt,   conent,    &
