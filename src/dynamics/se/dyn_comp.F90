@@ -533,6 +533,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    use hybrid_mod,         only: get_loop_ranges, config_thread_region
    use dimensions_mod,     only: nu_scale_top, nu_lev, nu_div_lev
    use dimensions_mod,     only: ksponge_end, kmvis_ref, kmcnd_ref,rho_ref,km_sponge_factor
+   use dimensions_mod,     only: kmvisi_ref, kmcndi_ref,rhoi_ref
    use dimensions_mod,     only: cnst_name_gll, cnst_longname_gll
    use dimensions_mod,     only: irecons_tracer_lev, irecons_tracer, otau, kord_tr, kord_tr_cslam
    use prim_driver_mod,    only: prim_init2
@@ -598,7 +599,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    character(len=*), parameter :: subname = 'dyn_init'
 
    real(r8) :: tau0, krange, otau0, scale
-   
+   real(r8) :: km_sponge_factor_local(nlev+1)
    !----------------------------------------------------------------------------
 
    ! Now allocate and set condenstate vars
@@ -708,6 +709,10 @@ subroutine dyn_init(dyn_in, dyn_out)
      if (masterproc) write(iulog,*) subname//": initialize molecular diffusion reference profiles"
      tref = 1000._r8     !mean value at model top for solar max
      km_sponge_factor = molecular_diff
+     km_sponge_factor_local = molecular_diff
+     call get_molecular_diff_coef_reference(1,nlev+1,tref,&
+          (hvcoord%hyai(:)+hvcoord%hybi(:))*hvcoord%ps0, km_sponge_factor_local,&
+          kmvisi_ref,kmcndi_ref,rhoi_ref)
      !
      ! get rho, kmvis and kmcnd at mid-levels
      !

@@ -451,6 +451,7 @@ contains
     use dimensions_mod, only: np, nlev, nc, ntrac, npsq, qsize
     use dimensions_mod, only: hypervis_dynamic_ref_state,ksponge_end
     use dimensions_mod, only: nu_scale_top,nu_lev,kmvis_ref,kmcnd_ref,rho_ref,km_sponge_factor
+    use dimensions_mod, only: kmvisi_ref,kmcndi_ref,rhoi_ref
     use control_mod,    only: nu, nu_s, hypervis_subcycle,hypervis_subcycle_sponge, nu_p, nu_top
     use control_mod,    only: molecular_diff
     use hybrid_mod,     only: hybrid_t!, get_loop_ranges
@@ -500,6 +501,7 @@ contains
     real (kind=r8), dimension(np,np)            :: lap_t,lap_dp
     real (kind=r8), dimension(np,np)            :: tmp, tmp2
     real (kind=r8), dimension(np,np,ksponge_end,nets:nete):: kmvis,kmcnd,rho_dry
+    real (kind=r8), dimension(np,np,ksponge_end+1):: kmvisi,kmcndi
     real (kind=r8), dimension(np,np,ksponge_end+1):: pint,rhoi_dry
     real (kind=r8), dimension(np,np,ksponge_end  ):: pmid
     real (kind=r8), dimension(np,np,nlev)       :: tmp_kmvis,tmp_kmcnd
@@ -777,19 +779,19 @@ contains
           ! compute molecular diffusion and thermal conductivity coefficients at interfaces
           !
           call get_molecular_diff_coef(1,np,1,np,ksponge_end,nlev,&
-               elem(ie)%state%T(:,:,:,nt),.true.,km_sponge_factor,kmvis(:,:,:,ie),kmcnd(:,:,:,ie))
+               elem(ie)%state%T(:,:,:,nt),1,km_sponge_factor,kmvisi(:,:,:),kmcndi(:,:,:),1)
           
-          do k=1,ksponge_end
-            kmvis(:,:,k,ie) = kmvis(:,:,k,ie)*rhoi_dry(:,:,k)
-            kmcnd(:,:,k,ie) = kmcnd(:,:,k,ie)*rhoi_dry(:,:,k)
+          do k=1,ksponge_end+1
+            kmvisi(:,:,k) = kmvisi(:,:,k)*rhoi_dry(:,:,k)
+            kmcndi(:,:,k) = kmcndi(:,:,k)*rhoi_dry(:,:,k)
           end do
         else
           !
           ! constant coefficients
           !
-          do k=1,ksponge_end
-            kmvis  (:,:,k,ie) = kmvis_ref(k)*rhoi_dry(:,:,k)
-            kmcnd  (:,:,k,ie) = kmcnd_ref(k)*rhoi_dry(:,:,k)
+          do k=1,ksponge_end+1
+            kmvisi(:,:,k) = kmvisi_ref(k)*rhoi_dry(:,:,k)
+            kmcndi(:,:,k) = kmcndi_ref(k)*rhoi_dry(:,:,k)
           end do
         end if
         !
@@ -797,10 +799,10 @@ contains
         !        
         do j=1,np
           do i=1,np
-            call solve_diffusion(dt2,np,nlev,i,j,ksponge_end,pmid,pint,kmcnd(:,:,:,ie)/cpair,elem(ie)%state%T(:,:,:,nt),&
+            call solve_diffusion(dt2,np,nlev,i,j,ksponge_end,pmid,pint,kmcndi(:,:,:)/cpair,elem(ie)%state%T(:,:,:,nt),&
                  0,dtemp)
-            call solve_diffusion(dt2,np,nlev,i,j,ksponge_end,pmid,pint,kmvis(:,:,:,ie),elem(ie)%state%v(:,:,1,:,nt),1,du)
-            call solve_diffusion(dt2,np,nlev,i,j,ksponge_end,pmid,pint,kmvis(:,:,:,ie),elem(ie)%state%v(:,:,2,:,nt),1,dv)
+            call solve_diffusion(dt2,np,nlev,i,j,ksponge_end,pmid,pint,kmvisi(:,:,:),elem(ie)%state%v(:,:,1,:,nt),1,du)
+            call solve_diffusion(dt2,np,nlev,i,j,ksponge_end,pmid,pint,kmvisi(:,:,:),elem(ie)%state%v(:,:,2,:,nt),1,dv)
             do k=1,ksponge_end
               v1    = elem(ie)%state%v(i,j,1,k,nt)
               v2    = elem(ie)%state%v(i,j,2,k,nt)
@@ -838,7 +840,7 @@ contains
           ! compute molecular diffusion and thermal conductivity coefficients at mid-levels
           !
           call get_molecular_diff_coef(1,np,1,np,ksponge_end,nlev,&
-               elem(ie)%state%T(:,:,:,nt),.false.,km_sponge_factor(1:ksponge_end),kmvis(:,:,:,ie),kmcnd(:,:,:,ie))
+               elem(ie)%state%T(:,:,:,nt),0,km_sponge_factor(1:ksponge_end),kmvis(:,:,:,ie),kmcnd(:,:,:,ie),1)
           !        
         end do
       else
@@ -2214,7 +2216,7 @@ contains
     use physconst,      only: gravit
     real(kind=r8), intent(in)    :: dt
     integer      , intent(in)    :: nlay, nlev,nx, i, j
-    real(kind=r8), intent(in)    :: pmid(nx,nx,nlay),pint(nx,nx,nlay+1),km(nx,nx,nlay)
+    real(kind=r8), intent(in)    :: pmid(nx,nx,nlay),pint(nx,nx,nlay+1),km(nx,nx,nlay+1)
     real(kind=r8), intent(in)    :: fld(nx,nx,nlev)
     real(kind=r8), intent(out)   :: dfld(nlay)
     integer :: boundary_condition

@@ -650,6 +650,9 @@ subroutine composition_init()
 
 !===============================================================================
 
+
+!===============================================================================
+
   subroutine physconst_update(mmr, t, lchnk, ncol, to_moist_factor)
 
 !-----------------------------------------------------------------------
@@ -665,19 +668,8 @@ subroutine composition_init()
     real(r8),  optional, intent(in) :: to_moist_factor(:,:)
 !
 !---------------------------Local storage-------------------------------------------------------------
-    integer :: i,k                                 ! column,level,constituent indices
-    integer :: icnst, ispecies
-    real(r8):: residual, mm
-    real(r8):: mbarvi, tint                        ! Mean mass, temperature, and specific heat on interface levels
-    real(r8):: kv4                                 ! Coefficients for kmvis calculation
-    real(r8):: kc4                                 ! Coefficients for kmcnd calculation
     real(r8):: to_moist_fact(ncol,pver)
-    
-    !--------------------------------------------
-    ! Set constants needed for updates
-    !--------------------------------------------
-    kv4  = 0.69_r8
-    kc4  = 0.69_r8
+    real(r8):: sponge_factor(pver)
 
     to_moist_fact(:,:) = 1._r8
 
@@ -688,64 +680,15 @@ subroutine composition_init()
      !--------------------------------------------
      ! update cpairv, rairv, mbarv, and cappav
      !--------------------------------------------
-     do k=1,pver
-        do i=1,ncol
-           mbarv(i,k,lchnk) = 0.0_r8
-           cpairv(i,k,lchnk)= 0.0_r8
-           residual         = 1.0_r8
-           do icnst=1,dry_air_composition_num-1             
-             ispecies = thermodynamic_active_species_idx(icnst)
-             mm       = mmr(i,k,ispecies)*to_moist_fact(i,k)
-             mbarv(i,k,lchnk) = mbarv(i,k,lchnk) + mm*thermodynamic_active_species_mwi(icnst)
-             residual         = residual         - mm
-             cpairv(i,k,lchnk)= cpairv(i,k,lchnk)+ mm*thermodynamic_active_species_cp (icnst)
-           end do
-           icnst=dry_air_composition_num
-           ispecies = thermodynamic_active_species_idx(icnst)
-           mbarv(i,k,lchnk) = mbarv(i,k,lchnk) +residual*thermodynamic_active_species_mwi(icnst)
-           mbarv(i,k,lchnk) = 1.0_r8/mbarv(i,k,lchnk)
-           cpairv(i,k,lchnk)= cpairv(i,k,lchnk)+residual*thermodynamic_active_species_cp (icnst)
-
-           rairv(i,k,lchnk) = shr_const_rgas / mbarv(i,k,lchnk)
-
-           cappav(i,k,lchnk) = rairv(i,k,lchnk)/cpairv(i,k,lchnk)
-        enddo
-     enddo
-
-     do k=2,pver
-        do i=1,ncol
-          kmvis(i,k,lchnk) = 0.0_r8
-          kmcnd(i,k,lchnk) = 0.0_r8
-          residual = 1.0_r8
-          do icnst=1,dry_air_composition_num-1             
-            ispecies = thermodynamic_active_species_idx(icnst)
-            mm       = 0.5_r8*(mmr(i,k,ispecies)*to_moist_fact(i,k)+mmr(i,k-1,ispecies)*to_moist_fact(i,k-1))
-            kmvis(i,k,lchnk) = kmvis(i,k,lchnk)+thermodynamic_active_species_kv(icnst)*thermodynamic_active_species_mwi(icnst)*mm
-            kmcnd(i,k,lchnk) = kmcnd(i,k,lchnk)+thermodynamic_active_species_kc(icnst)*thermodynamic_active_species_mwi(icnst)*mm
-            residual         = residual - mm
-          end do
-          icnst=dry_air_composition_num
-          ispecies = thermodynamic_active_species_idx(icnst)
-          kmvis(i,k,lchnk) = kmvis(i,k,lchnk)+thermodynamic_active_species_kv(icnst)*thermodynamic_active_species_mwi(icnst)*residual
-          kmcnd(i,k,lchnk) = kmcnd(i,k,lchnk)+thermodynamic_active_species_kc(icnst)*thermodynamic_active_species_mwi(icnst)*residual
-
-          tint = .5_r8*(t(i,k-1)+t(i,k))
-          mbarvi = 0.5_r8*(mbarv(i,k-1,lchnk)+mbarv(i,k,lchnk))
-          kmvis(i,k,lchnk) = kmvis(i,k,lchnk)*mbarvi*tint**kv4*1.e-7_r8                              
-          kmcnd(i,k,lchnk) = kmcnd(i,k,lchnk)*mbarvi*tint**kc4*1.e-5_r8
-        enddo
-     enddo
-     do i=1,ncol
-        kmvis(i,1,lchnk) = 1.5_r8*kmvis(i,2,lchnk)-.5_r8*kmvis(i,3,lchnk)
-        kmcnd(i,1,lchnk) = 1.5_r8*kmcnd(i,2,lchnk)-.5_r8*kmcnd(i,3,lchnk)
-        kmvis(i,pverp,lchnk) = kmvis(i,pver,lchnk)
-        kmcnd(i,pverp,lchnk) = kmcnd(i,pver,lchnk)
-     enddo
-
+     call get_R_dry (1,ncol,1,1,1,pver,1,pver,pcnst,mmr(:ncol,:,:),thermodynamic_active_species_idx,rairv(:ncol,:,lchnk) ,fact=to_moist_fact(:ncol,:))
+     call get_cp_dry(1,ncol,1,1,1,pver,1,pver,pcnst,mmr(:ncol,:,:),thermodynamic_active_species_idx,cpairv(:ncol,:,lchnk),fact=to_moist_fact(:ncol,:))
+     call get_mbarv (1,ncol,1,1,1,pver,pver,pcnst,mmr(:ncol,:,:),thermodynamic_active_species_idx,mbarv(:ncol,:,lchnk) ,fact=to_moist_fact(:ncol,:))
+     sponge_factor = 1.0_r8
+     call get_molecular_diff_coef(1,ncol,1,1,pver,pver,t,1,sponge_factor,kmvis(:ncol,:,lchnk),kmcnd(:ncol,:,lchnk), pcnst, &
+          tracer=mmr, fact=to_moist_fact(:ncol,:), thermodynamic_active_species_idx=thermodynamic_active_species_idx)
    end subroutine physconst_update
 
 !===============================================================================
-
    subroutine physconst_calc_kappav( i0,i1,j0,j1,k0,k1,ntotq, tracer, kappav, cpv )
      ! assumes moist MMRs
      
@@ -756,32 +699,18 @@ subroutine composition_init()
      real(r8), optional, intent(out) :: cpv(i0:i1,j0:j1,k0:k1) 
 
      ! local vars
-     integer :: i,j,k,icnst,ispecies
-     real(r8),  dimension(i0:i1,j0:j1,k0:k1) :: rgas_var, cp_var, mmro, mmro2, mmrh, mmrn2
-     real(r8) :: residual, mm
-     real(r8), parameter :: dof1 = 5.0_r8 ! Degrees of freedom for cpair3v calculation
-     real(r8), parameter :: dof2 = 7.0_r8 ! Degrees of freedom for cpair3v calculation
+     real(r8),  dimension(i0:i1,j0:j1,k0:k1) :: rgas_var, cp_var
+     integer :: i,j,k
 
      !-----------------------------------------------------------------------
      !  Calculate constituent dependent specific heat, gas constant and cappa
      !-----------------------------------------------------------------------
+     call get_R_dry (i0,i1,j0,j1,k0,k1,k0,k1,ntotq,tracer,thermodynamic_active_species_idx,rgas_var)
+     call get_cp_dry(i0,i1,j0,j1,k0,k1,k0,k1,ntotq,tracer,thermodynamic_active_species_idx,cp_var)
 !$omp parallel do private(i,j,k)
      do k = k0,k1
         do j = j0,j1
           do i = i0,i1
-            residual        = 1.0_r8
-            rgas_var(i,j,k) = 0.0_r8
-            cp_var(i,j,k)   = 0.0_r8
-            do icnst=1,dry_air_composition_num-1             
-              ispecies = thermodynamic_active_species_idx(icnst)
-              mm       = tracer(i,j,k,ispecies)
-              rgas_var(i,j,k) = rgas_var(i,j,k)+ mm*thermodynamic_active_species_R(icnst)
-              cp_var(i,j,k)   = cp_var(i,j,k)+ mm*thermodynamic_active_species_cp(icnst)
-              residual        = residual - mm
-            end do
-            icnst=dry_air_composition_num
-            rgas_var(i,j,k) = rgas_var(i,j,k)+ residual*thermodynamic_active_species_R(icnst)
-            cp_var(i,j,k)   = cp_var(i,j,k)+ residual*thermodynamic_active_species_cp(icnst)
             kappav(i,j,k)   = rgas_var(i,j,k)/cp_var(i,j,k)
            enddo
         enddo
@@ -792,6 +721,7 @@ subroutine composition_init()
      endif
 
    end subroutine physconst_calc_kappav
+
    !
    !****************************************************************************************************************
    !
@@ -1122,9 +1052,9 @@ subroutine composition_init()
 
      call get_gz(i0,i1,j0,j1,nlev,ntrac,tracer,mixing_ratio,thermodynamic_active_species_idx,dp_dry,ptop,temp,phis,gz,T_v=T_v)
      if (mixing_ratio==1) then
-       call get_cp_dry      (i0,i1,j0,j1,1,nlev,nlev,ntrac,tracer,thermodynamic_active_species_idx,cp_dry)       
+       call get_cp_dry      (i0,i1,j0,j1,1,nlev,1,nlev,ntrac,tracer,thermodynamic_active_species_idx,cp_dry)       
      else
-       call get_cp_dry      (i0,i1,j0,j1,1,nlev,nlev,ntrac,tracer,thermodynamic_active_species_idx,cp_dry,dp_dry=dp_dry)              
+       call get_cp_dry      (i0,i1,j0,j1,1,nlev,1,nlev,ntrac,tracer,thermodynamic_active_species_idx,cp_dry,fact=1.0_r8/dp_dry)              
      end if
      
      thermalE(:,:,:) = cp_dry(:,:,:)*T_v(:,:,:)
@@ -1177,35 +1107,47 @@ subroutine composition_init()
    !
    !****************************************************************************************************************
    !     
-   subroutine get_cp_dry(i0,i1,j0,j1,k0,k1,nlev,ntrac,tracer,thermodynamic_active_species_idx,cp_dry,dp_dry)
-     integer,  intent(in)  :: i0,i1,j0,j1,k0,k1,ntrac,nlev
-     real(r8), intent(in)  :: tracer(i0:i1,j0:j1,nlev,1:ntrac) ! Tracer array
+   subroutine get_cp_dry(i0,i1,j0,j1,k0,k1,k0_trac,k1_trac,ntrac,tracer,thermodynamic_active_species_idx,cp_dry,fact)
+     integer,  intent(in)  :: i0,i1,j0,j1,k0,k1,ntrac,k0_trac,k1_trac
+     real(r8), intent(in)  :: tracer(i0:i1,j0:j1,k0_trac:k1_trac,1:ntrac) ! Tracer array
      integer,  intent(in)  :: thermodynamic_active_species_idx(:)
-     real(r8), optional, intent(in) :: dp_dry(i0:i1,j0:j1,nlev)       ! dry pressure level thickness
+     real(r8), optional, intent(in) :: fact(i0:i1,j0:j1,k0_trac:k1_trac)       ! dry pressure level thickness
      real(r8), intent(out) :: cp_dry(i0:i1,j0:j1,k0:k1)       ! dry pressure level thickness     
      
-     integer :: i,j,k,m_cnst,nq
-     real(r8) :: factor(i0:i1,j0:j1,k0:k1)       ! dry pressure level thickness          
+     integer  :: i,j,k,m_cnst,nq
+     real(r8) :: factor(i0:i1,j0:j1,k0_trac:k1_trac)       ! dry pressure level thickness          
+     real(r8) :: residual(i0:i1,j0:j1,k0:k1), mm
      !
      ! dry air not species dependent
      !
      if (dry_air_composition_num==0) then
        cp_dry = cpair
      else
-       if (present(dp_dry)) then
-         factor = dp_dry(:,:,:)
+       if (present(fact)) then
+         factor = fact(:,:,:)
        else
          factor = 1.0_r8
-       endif
+       endif       
 
-       call endrun('get_cp_dry not coded yet for species dependent cp')         
-       do nq=1,dry_air_composition_num
+       cp_dry = 0.0_r8
+       residual = 1.0_r8
+       do nq=1,dry_air_composition_num-1
          m_cnst = thermodynamic_active_species_idx(nq)       
          do k=k0,k1
            do j=j0,j1
              do i = i0,i1
-               cp_dry(i,j,k) = 0.0_r8
+               mm = tracer(i,j,k,m_cnst)*factor(i,j,k)
+               cp_dry(i,j,k) = cp_dry(i,j,k)+thermodynamic_active_species_cp(nq)*mm
+               residual(i,j,k) = residual(i,j,k) - mm
              end do
+           end do
+         end do
+       end do
+       nq = dry_air_composition_num
+       do k=k0,k1
+         do j=j0,j1
+           do i = i0,i1
+             cp_dry(i,j,k) = cp_dry(i,j,k)+thermodynamic_active_species_cp(nq)*residual(i,j,k)
            end do
          end do
        end do
@@ -1218,50 +1160,108 @@ subroutine composition_init()
    !
    !****************************************************************************************************************
    !     
-   subroutine get_R_dry(i0,i1,j0,j1,k0,k1,nlev,ntrac,tracer,thermodynamic_active_species_idx,R_dry,dp_dry)
-     integer,  intent(in)  :: i0,i1,j0,j1,k0,k1,ntrac, nlev
-     real(r8), intent(in)  :: tracer(i0:i1,j0:j1,nlev,1:ntrac)   ! Tracer array
+   subroutine get_R_dry(i0,i1,j0,j1,k0,k1,k0_trac,k1_trac,ntrac,tracer,thermodynamic_active_species_idx,R_dry,fact)
+     integer,  intent(in)  :: i0,i1,j0,j1,k0,k1,ntrac,k0_trac,k1_trac
+     real(r8), intent(in)  :: tracer(i0:i1,j0:j1,k0_trac:k1_trac,1:ntrac)   ! Tracer array
      integer,  intent(in)  :: thermodynamic_active_species_idx(:)! index of active species in tracer
-     real(r8), optional, intent(in) :: dp_dry(i0:i1,j0:j1,nlev)  ! dry pressure level thickness
      real(r8), intent(out) :: R_dry(i0:i1,j0:j1,k0:k1)           ! dry air Gas constant
+     real(r8), optional, intent(in) :: fact(i0:i1,j0:j1,k0_trac:k1_trac)  ! dry pressure level thickness
      
-     integer :: i,j,k,m_cnst,nq, factor(i0:i1,j0:j1,k0:k1)
-     real(r8):: o_mwi,o2_mwi,n2_mwi, mmro2, mmrn2, mmro, mbar
-
+     integer :: i,j,k,m_cnst,nq
+     real(r8):: factor(i0:i1,j0:j1,k0_trac:k1_trac), residual(i0:i1,j0:j1,k0:k1), mm
      !
      ! dry air not species dependent
      !
      if (dry_air_composition_num==0) then
        R_dry = rair
      else
-       if (present(dp_dry)) then
-         factor = dp_dry(:,:,:)
+       if (present(fact)) then
+         factor = fact(:,:,:)
        else
          factor = 1.0_r8
        endif       
-       call endrun('get_R_dry not coded yet for species dependent cp')
-       !
-       ! if k1=nlev+1 then extrapolate value of R_dry ... NOT CODED YET
-       !
-       do nq=1,dry_air_composition_num
+
+       R_dry = 0.0_r8
+       residual = 1.0_r8
+       do nq=1,dry_air_composition_num-1
          m_cnst = thermodynamic_active_species_idx(nq)       
          do k=k0,k1
            do j=j0,j1
              do i = i0,i1
-               R_dry(i,j,k) = 0.0_r8
+               mm = tracer(i,j,k,m_cnst)*factor(i,j,k)
+               R_dry(i,j,k) = R_dry(i,j,k)+thermodynamic_active_species_R(nq)*mm
+               residual(i,j,k) = residual(i,j,k) - mm
              end do
+           end do
+         end do
+       end do
+       nq = dry_air_composition_num
+       do k=k0,k1
+         do j=j0,j1
+           do i = i0,i1
+             R_dry(i,j,k) = R_dry(i,j,k)+thermodynamic_active_species_R(nq)*residual(i,j,k)
            end do
          end do
        end do
      end if
    end subroutine get_R_dry
+   !
+   ! molecular weight dry air
+   !
+   subroutine get_mbarv(i0,i1,j0,j1,k0,k1,nlev,ntrac,tracer,thermodynamic_active_species_idx,mbarv,fact)
+     integer,  intent(in)  :: i0,i1,j0,j1,k0,k1,ntrac, nlev
+     real(r8), intent(in)  :: tracer(i0:i1,j0:j1,nlev,1:ntrac)   ! Tracer array
+     integer,  intent(in)  :: thermodynamic_active_species_idx(:)! index of active species in tracer
+     real(r8), intent(out) :: mbarv(i0:i1,j0:j1,k0:k1)           ! dry air Gas constant
+     real(r8), optional, intent(in) :: fact(i0:i1,j0:j1,nlev)  ! dry pressure level thickness
+     
+     integer :: i,j,k,m_cnst,nq
+     real(r8):: factor(i0:i1,j0:j1,k0:k1), residual(i0:i1,j0:j1,k0:k1), mm
+     !
+     ! dry air not species dependent
+     !
+     if (dry_air_composition_num==0) then
+       mbarv = mwdry
+     else
+       if (present(fact)) then
+         factor = fact(:,:,:)
+       else
+         factor = 1.0_r8
+       endif       
 
-   subroutine get_kappa_dry(i0,i1,j0,j1,k0,k1,nlev,ntrac,tracer,thermodynamic_active_species_idx,kappa_dry,dp_dry)
+       mbarv = 0.0_r8
+       residual = 1.0_r8
+       do nq=1,dry_air_composition_num-1
+         m_cnst = thermodynamic_active_species_idx(nq)       
+         do k=k0,k1
+           do j=j0,j1
+             do i = i0,i1
+               mm = tracer(i,j,k,m_cnst)*factor(i,j,k)
+               mbarv(i,j,k) = mbarv(i,j,k)+thermodynamic_active_species_mwi(nq)*mm
+               residual(i,j,k) = residual(i,j,k) - mm
+             end do
+           end do
+         end do
+       end do
+       nq = dry_air_composition_num
+       do k=k0,k1
+         do j=j0,j1
+           do i = i0,i1
+             mbarv(i,j,k) = mbarv(i,j,k)+thermodynamic_active_species_mwi(nq)*residual(i,j,k)
+           end do
+         end do
+       end do
+       mbarv(i0:i1,j0:j1,k0:k1) = 1.0_r8/mbarv(i0:i1,j0:j1,k0:k1)
+     end if
+   end subroutine get_mbarv
+
+
+   subroutine get_kappa_dry(i0,i1,j0,j1,k0,k1,nlev,ntrac,tracer,thermodynamic_active_species_idx,kappa_dry,fact)
      integer,  intent(in)  :: i0,i1,j0,j1,k0,k1,ntrac,nlev
      real(r8), intent(in)  :: tracer(i0:i1,j0:j1,nlev,1:ntrac) ! Tracer array
      integer,  intent(in)  :: thermodynamic_active_species_idx(:)
      real(r8), intent(out) :: kappa_dry(i0:i1,j0:j1,k0:k1)      
-     real(r8), optional, intent(in) :: dp_dry(i0:i1,j0:j1,nlev) ! dry pressure level thickness
+     real(r8), optional, intent(in) :: fact(i0:i1,j0:j1,nlev) ! dry pressure level thickness
      real(r8), allocatable, dimension(:,:,:) :: cp_dry,R_dry
      !
      ! dry air not species dependent
@@ -1271,12 +1271,12 @@ subroutine composition_init()
      else
        allocate(R_dry(i0:i1,j0:j1,k0:k1))
        allocate(cp_dry(i0:i1,j0:j1,k0:k1))
-       if (present(dp_dry)) then
-         call get_cp_dry(i0,i1,j0,j1,k0,k1,nlev,ntrac,tracer,thermodynamic_active_species_idx,cp_dry,dp_dry=dp_dry)         
-         call get_R_dry(i0,i1,j0,j1,k0,k1,nlev,ntrac,tracer,thermodynamic_active_species_idx,R_dry,dp_dry=dp_dry)         
+       if (present(fact)) then
+         call get_cp_dry(i0,i1,j0,j1,k0,k1,1,nlev,ntrac,tracer,thermodynamic_active_species_idx,cp_dry,fact=fact)         
+         call get_R_dry(i0,i1,j0,j1,k0,k1,1,nlev,ntrac,tracer,thermodynamic_active_species_idx,R_dry,fact=fact)         
        else
-         call get_cp_dry(i0,i1,j0,j1,k0,k1,nlev,ntrac,tracer,thermodynamic_active_species_idx,cp_dry)         
-         call get_R_dry(i0,i1,j0,j1,k0,k1,nlev,ntrac,tracer,thermodynamic_active_species_idx,R_dry)         
+         call get_cp_dry(i0,i1,j0,j1,k0,k1,1,nlev,ntrac,tracer,thermodynamic_active_species_idx,cp_dry)         
+         call get_R_dry(i0,i1,j0,j1,k0,k1,1,nlev,ntrac,tracer,thermodynamic_active_species_idx,R_dry)         
        end if
        kappa_dry = R_dry/cp_dry
        deallocate(R_dry,cp_dry)
@@ -1491,15 +1491,22 @@ subroutine composition_init()
    end subroutine get_dp_ref
 
 
-   subroutine get_molecular_diff_coef(i0,i1,j0,j1,k1,nlev,temp,get_at_interfaces,sponge_factor,kmvis,kmcnd)
+   subroutine get_molecular_diff_coef(i0,i1,j0,j1,k1,nlev,temp,get_at_interfaces,sponge_factor,kmvis,kmcnd, ntrac,&
+        tracer, fact, thermodynamic_active_species_idx, mbarv_in)
      use cam_logfile,     only: iulog
      ! args
      integer,  intent(in)           :: i0,i1,j0,j1,k1,nlev
      real(r8), intent(in)           :: temp(i0:i1,j0:j1,nlev) ! Temperature
-     logical,  intent(in)           :: get_at_interfaces
+     integer,  intent(in)           :: get_at_interfaces
      real(r8), intent(in)           :: sponge_factor(1:k1)
-     real(r8), intent(out)          :: kmvis(i0:i1,j0:j1,1:k1)
-     real(r8), intent(out)          :: kmcnd(i0:i1,j0:j1,1:k1)
+     real(r8), intent(out)          :: kmvis(i0:i1,j0:j1,1:k1+get_at_interfaces)
+     real(r8), intent(out)          :: kmcnd(i0:i1,j0:j1,1:k1+get_at_interfaces)
+     integer , intent(in)           :: ntrac
+     real(r8), intent(in), optional :: tracer(i0:i1,j0:j1,nlev,1:ntrac) ! Tracer array
+     integer,  intent(in), optional :: thermodynamic_active_species_idx(:)! index of active species in tracer
+     real(r8), intent(in), optional :: fact(i0:i1,j0:j1,nlev) 
+     real(r8), intent(in), optional :: mbarv_in(i0:i1,j0:j1,1:k1) 
+
      !
      ! array of indicies for index of thermodynamic active species in dycore tracer array
      ! (if different from physics index)
@@ -1507,14 +1514,15 @@ subroutine composition_init()
 
      
      ! local vars
-     integer :: i,j,k
+     integer :: i,j,k,icnst,ispecies
      real(r8):: mmro, mmro2, mmrh, mmrn2            ! Mass mixing ratios of O, O2, H, and N
      real(r8):: o_mwi, o2_mwi, n2_mwi               ! Inverse molecular weights
-     real(r8):: mbar                                ! Mean mass at mid level
+     real(r8):: mbar,mbarvi,mm,residual             ! Mean mass at mid level
      real(r8):: dof1, dof2                          ! Degress of freedom for cpairv calculation
      real(r8):: kv1, kv2, kv3, kv4                  ! Coefficients for kmvis calculation
      real(r8):: kc1, kc2, kc3, kc4                  ! Coefficients for kmcnd calculation
      real(r8):: cnst_vis, cnst_cnd, temp_local
+     real(r8) :: factor(i0:i1,j0:j1,1:k1),mbarv(i0:i1,j0:j1,1:k1)       
 
      !--------------------------------------------
      ! Set constants needed for updates
@@ -1542,11 +1550,11 @@ subroutine composition_init()
 
        cnst_vis = (kv1*mmro2*o2_mwi+kv2*mmrn2*n2_mwi+kv3*mmro*o_mwi)*mbar*1.e-7_r8
        cnst_cnd = (kc1*mmro2*o2_mwi+kc2*mmrn2*n2_mwi+kc3*mmro*o_mwi)*mbar*1.e-5_r8
-       if (get_at_interfaces) then
+       if (get_at_interfaces==1) then
            do k=2,k1
              do j=j0,j1
                do i=i0,i1
-                 temp_local   = 0.5_r8*(temp(i,j,k+1)+temp(i,j,k))
+                 temp_local   = 0.5_r8*(temp(i,j,k)+temp(i,j,k-1))
                  kmvis(i,j,k) = sponge_factor(k)*cnst_vis*temp_local**kv4                               
                  kmcnd(i,j,k) = sponge_factor(k)*cnst_cnd*temp_local**kc4
                end do
@@ -1557,7 +1565,7 @@ subroutine composition_init()
            !
            kmvis(i0:i1,j0:j1,1) = 1.5_r8*kmvis(i0:i1,j0:j1,2)-0.5_r8*kmvis(i0:i1,j0:j1,3)
            kmcnd(i0:i1,j0:j1,1) = 1.5_r8*kmcnd(i0:i1,j0:j1,2)-0.5_r8*kmcnd(i0:i1,j0:j1,3)
-       else
+       else if (get_at_interfaces==0) then 
          do k=1,k1
            do j=j0,j1
              do i=i0,i1
@@ -1566,9 +1574,61 @@ subroutine composition_init()
              end do
            end do
          end do
+       else
+         call endrun('get_molecular_diff_coef: get_at_interfaces must be 0 or 1')
        end if
      else
-       call endrun('get_molecular_diff_coef: NOT CODED yet')
+       if (present(fact)) then
+         factor = fact(:,:,:)
+       else
+         factor = 1.0_r8
+       endif  
+       if (present(mbarv_in)) then
+         mbarv = mbarv_in
+       else
+         call get_mbarv(i0,i1,j0,j1,1,k1,nlev,ntrac,tracer,thermodynamic_active_species_idx,mbarv,fact)
+       end if
+       !
+       ! major species dependent code xxxcompute mbar
+       !
+       if (get_at_interfaces==1) then
+         do k=2,k1
+           do j=j0,j1
+             do i=i0,i1               
+               kmvis(i,j,k) = 0.0_r8
+               kmcnd(i,j,k) = 0.0_r8
+               residual = 1.0_r8
+               do icnst=1,dry_air_composition_num-1             
+                 ispecies = thermodynamic_active_species_idx(icnst)
+                 mm       = 0.5_r8*(tracer(i,j,k,ispecies)*factor(i,j,k)+tracer(i,j,k-1,ispecies)*factor(i,j,k-1))
+                 kmvis(i,j,k) = kmvis(i,j,k)+thermodynamic_active_species_kv(icnst)*thermodynamic_active_species_mwi(icnst)*mm
+                 kmcnd(i,j,k) = kmcnd(i,j,k)+thermodynamic_active_species_kc(icnst)*thermodynamic_active_species_mwi(icnst)*mm
+                 residual         = residual - mm
+               end do
+               icnst=dry_air_composition_num
+               ispecies = thermodynamic_active_species_idx(icnst)
+               kmvis(i,j,k) = kmvis(i,j,k)+thermodynamic_active_species_kv(icnst)*thermodynamic_active_species_mwi(icnst)*residual
+               kmcnd(i,j,k) = kmcnd(i,j,k)+thermodynamic_active_species_kc(icnst)*thermodynamic_active_species_mwi(icnst)*residual
+               
+               temp_local = .5_r8*(temp(i,j,k-1)+temp(i,j,k))
+               mbarvi = 0.5_r8*(mbarv(i,j,k-1)+mbarv(i,j,k))
+               kmvis(i,j,k) = kmvis(i,j,k)*mbarvi*temp_local**kv4*1.e-7_r8                              
+               kmcnd(i,j,k) = kmcnd(i,j,k)*mbarvi*temp_local**kc4*1.e-5_r8
+             enddo
+           enddo
+         end do
+         do j=j0,j1
+           do i=i0,i1
+             kmvis(i,j,1)    = 1.5_r8*kmvis(i,j,2)-.5_r8*kmvis(i,j,3)
+             kmcnd(i,j,1)    = 1.5_r8*kmcnd(i,j,2)-.5_r8*kmcnd(i,j,3)
+             kmvis(i,j,k1+1) = kmvis(i,j,k1)
+             kmcnd(i,j,k1+1) = kmcnd(i,j,k1)
+           end do
+         end do
+       else if (get_at_interfaces==0) then 
+       else
+         call endrun('get_molecular_diff_coef: get_at_interfaces must be 0 or 1')
+       end if
      end if
    end subroutine get_molecular_diff_coef
 
@@ -1611,9 +1671,9 @@ subroutine composition_init()
        if (present(rhoi_dry)) then
          allocate(R_dry(i0:i1,j0:j1,1:k1+1))
          if (tracer_mass) then           
-           call get_R_dry(i0,i1,j0,j1,1,k1+1,nlev,ntrac,tracer,thermodynamic_active_species_idx,R_dry,dp_dry=dp_dry)
+           call get_R_dry(i0,i1,j0,j1,1,k1+1,1,nlev,ntrac,tracer,thermodynamic_active_species_idx,R_dry,fact=1.0_r8/dp_dry)
          else
-           call get_R_dry(i0,i1,j0,j1,1,k1+1,nlev,ntrac,tracer,thermodynamic_active_species_idx,R_dry)
+           call get_R_dry(i0,i1,j0,j1,1,k1+1,1,nlev,ntrac,tracer,thermodynamic_active_species_idx,R_dry)
          end if        
          do k=2,k1+1
            rhoi_dry(i0:i1,j0:j1,k) = 0.5_r8*(temp(i0:i1,j0:j1,k)+temp(i0:i1,j0:j1,k-1))!could be more accurate!
@@ -1630,9 +1690,9 @@ subroutine composition_init()
        if (present(rho_dry)) then
          allocate(R_dry(i0:i1,j0:j1,1:k1))
          if (tracer_mass) then
-           call get_R_dry(i0,i1,j0,j1,1,k1,nlev,ntrac,tracer,thermodynamic_active_species_idx,R_dry,dp_dry=dp_dry)
+           call get_R_dry(i0,i1,j0,j1,1,k1,1,nlev,ntrac,tracer,thermodynamic_active_species_idx,R_dry,fact=1.0_r8/dp_dry)
          else
-           call get_R_dry(i0,i1,j0,j1,1,k1,nlev,ntrac,tracer,thermodynamic_active_species_idx,R_dry)
+           call get_R_dry(i0,i1,j0,j1,1,k1,1,nlev,ntrac,tracer,thermodynamic_active_species_idx,R_dry)
          end if         
          do k=1,k1
            do j=j0,j1
