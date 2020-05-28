@@ -970,6 +970,10 @@ contains
     Input_Opt%TPCore_JOrd            = 3
     Input_Opt%TPCore_KOrd            = 3
 
+    ! Now READ_PHOTOLYSIS_MENU
+    Input_Opt%FAST_JX_DIR            ='/glade/p/univ/umit0034/ExtData/' // &
+     'CHEM_INPUTS/FAST_JX/v2019-06/'
+
     ! Now READ_CONVECTION_MENU
     ! For now, TMMF
     Input_Opt%LConv                  = .False.
