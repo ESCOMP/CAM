@@ -123,7 +123,7 @@ if [ -n "$CESM_TESTDIR" ]; then
     echo " "
 fi
 
-if [ -n "$CESM_TESTDIR" ]; then
+if [ -n "$CAM_TESTDIR" ]; then
     echo
     echo "Archiving to ${baselinedir}"
     echo
