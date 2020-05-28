@@ -738,7 +738,9 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
    ! Finally compute energy and water column integrals of the physics input state.
 
    use constituents,  only: qmin
-   use physconst,     only: cpair, gravit, zvir, cappa, rairv
+   use physconst,     only: cpair, gravit, zvir, cappa, rairv, physconst_update
+   use shr_const_mod, only: shr_const_rwv
+   use phys_control,  only: waccmx_is
    use geopotential,  only: geopotential_t
    use physics_types, only: set_state_pdry, set_wet_to_dry
    use check_energy,  only: check_energy_timestep_init
@@ -862,9 +864,22 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
          end if
       end do
 
+!-----------------------------------------------------------------------------
+! Call physconst_update to compute cpairv, rairv, mbarv, and cappav as constituent dependent variables
+! and compute molecular viscosity(kmvis) and conductivity(kmcnd)
+!-----------------------------------------------------------------------------
+      if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
+        call physconst_update(phys_state(lchnk)%q, phys_state(lchnk)%t, lchnk, ncol)
+      endif
 
-      ! fill zvirv 2D variables to be compatible with geopotential_t interface
-      zvirv(:,:) = zvir
+!------------------------------------------------------------------------
+! Fill local zvirv variable; calculated for WACCM-X
+!------------------------------------------------------------------------
+      if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
+        zvirv(:,:) = shr_const_rwv / rairv(:,:,lchnk) -1._r8
+      else
+        zvirv(:,:) = zvir
+      endif
 
       ! Compute initial geopotential heights - based on full pressure
       call geopotential_t (phys_state(lchnk)%lnpint, phys_state(lchnk)%lnpmid  , phys_state(lchnk)%pint  , &

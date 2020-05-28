@@ -1316,7 +1316,11 @@ subroutine composition_init()
      !
      ! "mass-weighted" cp (dp must be dry)
      !
-     thermal_energy(:,:,:) = thermodynamic_active_species_cp(0)*dp_dry(:,:,:) !xxx change for species dependent dry air
+     if (dry_air_composition_num==0) then
+       thermal_energy(:,:,:) = thermodynamic_active_species_cp(0)*dp_dry(:,:,:)
+     else
+       thermal_energy(:,:,:) = 0.0_r8
+     end if
      !
      ! tracer is in units of m*dp ("mass"), where m is dry mixing ratio and dry pressure level thickness
      !         
@@ -1355,7 +1359,7 @@ subroutine composition_init()
      
      ! local vars
      integer :: nq,i,j,k, itrac
-     real(r8),  dimension(i0:i1,j0:j1,k0:k1)  :: sum_species, factor
+     real(r8),  dimension(i0:i1,j0:j1,k0:k1)  :: sum_species, factor, Rd
      integer, dimension(thermodynamic_active_species_num) :: idx_local,idx
 
      if (present(thermodynamic_active_species_idx_dycore)) then
@@ -1375,16 +1379,17 @@ subroutine composition_init()
        itrac = idx_local(nq)       
        sum_species(:,:,:) = sum_species(:,:,:) + tracer(:,:,:,itrac)*factor(:,:,:)
      end do
-     
-     t_v(:,:,:)  = Rair
+   
+     call get_R_dry (i0,i1,j0,j1,k0,k1,k0,k1,ntrac,tracer,idx_local,Rd,fact=factor)
+     t_v(:,:,:)  = Rd(:,:,:)
      do nq=1,thermodynamic_active_species_num
        itrac = idx_local(nq)
        t_v(:,:,:) = t_v(:,:,:)+thermodynamic_active_species_R(nq)*tracer(:,:,:,itrac)*factor(:,:,:)
      end do
      if (present(temp)) then
-       t_v(:,:,:)  = t_v(:,:,:)*temp(:,:,:)/(Rair*sum_species)
+       t_v(:,:,:)  = t_v(:,:,:)*temp(:,:,:)/(Rd*sum_species)
      else
-       t_v(:,:,:)  = t_v(:,:,:)/(Rair*sum_species)       
+       t_v(:,:,:)  = t_v(:,:,:)/(Rd*sum_species)       
      end if
      if (present(sum_q)) sum_q=sum_species
    end subroutine get_virtual_temp
@@ -1425,10 +1430,12 @@ subroutine composition_init()
        itrac = idx_local(nq)       
        sum_species(:,:,:) = sum_species(:,:,:) + tracer(:,:,:,itrac)*factor(:,:,:)
      end do
-     !
-     ! xxx code not correct for species dependent
-     !
-     sum_cp = thermodynamic_active_species_cp(0)
+
+     if (dry_air_composition_num==0) then
+       sum_cp = thermodynamic_active_species_cp(0)
+     else
+       call get_cp_dry(i0,i1,j0,j1,k0,k1,k0,k1,ntrac,tracer,idx_local,sum_cp)
+     end if
      do nq=1,thermodynamic_active_species_num
        itrac = idx_local(nq)              
        sum_cp(:,:,:)      = sum_cp(:,:,:)+thermodynamic_active_species_cp(nq)*tracer(:,:,:,itrac)*factor(:,:,:)
@@ -1555,7 +1562,7 @@ subroutine composition_init()
          call get_mbarv(i0,i1,j0,j1,1,k1,nlev,ntrac,tracer,thermodynamic_active_species_idx,mbarv,fact)
        end if
        !
-       ! major species dependent code xxxcompute mbar
+       ! major species dependent code
        !
        if (get_at_interfaces==1) then
          do k=2,k1
@@ -1625,70 +1632,47 @@ subroutine composition_init()
      real(r8):: pint(i0:i1,j0:j1,1:k1+1)
      real(r8), allocatable :: R_dry(:,:,:)
      real(r8):: temp_local
-
      !
-     ! we assume that air is dry where molecular viscosity is important
+     ! we assume that air is dry where molecular viscosity may be significant
      !
      call get_pmid_from_dp(i0,i1,j0,j1,1,k1,dp_dry,ptop,pmid,pint=pint)
      if (present(pint_out)) pint_out=pint
      if (present(pint_out)) pmid_out=pmid
-     if (dry_air_composition_num==0) then
-       if (present(rhoi_dry)) then
-         allocate(R_dry(i0:i1,j0:j1,1:k1+1))
-         if (tracer_mass) then           
-           call get_R_dry(i0,i1,j0,j1,1,k1+1,1,nlev,ntrac,tracer,thermodynamic_active_species_idx,R_dry,fact=1.0_r8/dp_dry)
-         else
-           call get_R_dry(i0,i1,j0,j1,1,k1+1,1,nlev,ntrac,tracer,thermodynamic_active_species_idx,R_dry)
-         end if        
-         do k=2,k1+1
-           rhoi_dry(i0:i1,j0:j1,k) = 0.5_r8*(temp(i0:i1,j0:j1,k)+temp(i0:i1,j0:j1,k-1))!could be more accurate!
-           rhoi_dry(i0:i1,j0:j1,k) = pint(i0:i1,j0:j1,k)/(rhoi_dry(i0:i1,j0:j1,k)*R_dry(i0:i1,j0:j1,k)) !ideal gas law for dry air
-         end do
-         !
-         ! extrapolate top level value
-         !
-         k=1
-         rhoi_dry(i0:i1,j0:j1,k) = 1.5_r8*(temp(i0:i1,j0:j1,1)-0.5_r8*temp(i0:i1,j0:j1,2))
-         rhoi_dry(i0:i1,j0:j1,k) = pint(i0:i1,j0:j1,1)/(rhoi_dry(i0:i1,j0:j1,k)*R_dry(i0:i1,j0:j1,k)) !ideal gas law for dry air
-         deallocate(R_dry)
+     if (present(rhoi_dry)) then
+       allocate(R_dry(i0:i1,j0:j1,1:k1+1))
+       if (tracer_mass) then           
+         call get_R_dry(i0,i1,j0,j1,1,k1+1,1,nlev,ntrac,tracer,thermodynamic_active_species_idx,R_dry,fact=1.0_r8/dp_dry)
+       else
+         call get_R_dry(i0,i1,j0,j1,1,k1+1,1,nlev,ntrac,tracer,thermodynamic_active_species_idx,R_dry)
        end if
-       if (present(rho_dry)) then
-         allocate(R_dry(i0:i1,j0:j1,1:k1))
-         if (tracer_mass) then
-           call get_R_dry(i0,i1,j0,j1,1,k1,1,nlev,ntrac,tracer,thermodynamic_active_species_idx,R_dry,fact=1.0_r8/dp_dry)
-         else
-           call get_R_dry(i0,i1,j0,j1,1,k1,1,nlev,ntrac,tracer,thermodynamic_active_species_idx,R_dry)
-         end if         
-         do k=1,k1
-           do j=j0,j1
-             do i=i0,i1
-               rho_dry(i,j,k) = pmid(i,j,k)/(temp(i,j,k)*R_dry(i,j,k)) !ideal gas law for dry air
-             end do
+       do k=2,k1+1
+         rhoi_dry(i0:i1,j0:j1,k) = 0.5_r8*(temp(i0:i1,j0:j1,k)+temp(i0:i1,j0:j1,k-1))!could be more accurate!
+         rhoi_dry(i0:i1,j0:j1,k) = pint(i0:i1,j0:j1,k)/(rhoi_dry(i0:i1,j0:j1,k)*R_dry(i0:i1,j0:j1,k)) !ideal gas law for dry air
+       end do
+       !
+       ! extrapolate top level value
+       !
+       k=1
+       rhoi_dry(i0:i1,j0:j1,k) = 1.5_r8*(temp(i0:i1,j0:j1,1)-0.5_r8*temp(i0:i1,j0:j1,2))
+       rhoi_dry(i0:i1,j0:j1,k) = pint(i0:i1,j0:j1,1)/(rhoi_dry(i0:i1,j0:j1,k)*R_dry(i0:i1,j0:j1,k)) !ideal gas law for dry air
+       deallocate(R_dry)
+     end if
+     if (present(rho_dry)) then
+       allocate(R_dry(i0:i1,j0:j1,1:k1))
+       if (tracer_mass) then
+         call get_R_dry(i0,i1,j0,j1,1,k1,1,nlev,ntrac,tracer,thermodynamic_active_species_idx,R_dry,fact=1.0_r8/dp_dry)
+       else
+         call get_R_dry(i0,i1,j0,j1,1,k1,1,nlev,ntrac,tracer,thermodynamic_active_species_idx,R_dry)
+       end if
+       do k=1,k1
+         do j=j0,j1
+           do i=i0,i1
+             rho_dry(i,j,k) = pmid(i,j,k)/(temp(i,j,k)*R_dry(i,j,k)) !ideal gas law for dry air
            end do
          end do
-       end if
-     else
-       call endrun('NOT CODED yet get_molecular_diff_coef')
-       
-       !     if (present(thermodynamic_active_species_idx_dycore)) then
-       !       idx_local = thermodynamic_active_species_idx_dycore
-       !     else
-       !       idx_local = thermodynamic_active_species_idx
-       !     end if
-       !
-       !     if (present(dp_dry)) then
-       !       factor = 1.0_r8/dp_dry
-       !     else
-       !       factor = 1.0_r8       
-       !     end if
-       
-       !
-       ! convert qdp to q of dp_dry present
-       !
+       end do
      end if
    end subroutine get_rho_dry
-
-
 
    subroutine get_molecular_diff_coef_reference(k0,k1,tref,press,sponge_factor,kmvis_ref,kmcnd_ref,rho_ref)
      use cam_logfile,     only: iulog

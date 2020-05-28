@@ -1988,8 +1988,8 @@
 <!-- ================================================================== -->
 <!-- Defaults for composition of air                                    -->
 <!-- ================================================================== -->
-
-<dry_air_composition    waccmx="1"                >'O     ','O2    ','H     ','N2    '</dry_air_composition>
+<dry_air_composition                           >''</dry_air_composition>
+<dry_air_composition    waccmx="1"             >'O     ','O2    ','H     ','N2    '</dry_air_composition>
 
 <moist_air_composition                         >'Q     '                                    </moist_air_composition>
 <moist_air_composition phys="cam4"             >'Q     ','CLDLIQ','CLDICE'                  </moist_air_composition>
