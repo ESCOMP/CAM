@@ -29,6 +29,7 @@ help () {
   echo "${hprefix} [ --no-cesm ] (do not run any CESM test or test suite)"
   echo "${hprefix} [ --cam ] (Run CAM regression tests, default is not to run CAM regression tests."
   echo "${hprefix} [ --rerun-cesm <test_id> ] (rerun the cesm tests with the --use-existing-flag)"
+  echo "${hprefix} [ --batch  Allow cime tests to run in parallel."
   echo ""
   echo "${hprefix} **pass environment variables by preceding above commands with:"
   echo "${hprefix}   'env var1=setting var2=setting '"
@@ -47,7 +48,6 @@ help () {
   echo "CAM_TAG:           Default = none (used to set CESM baseline dir)"
   echo "CAM_TASKS:         Default = 32"
   echo "CAM_TESTDIR:       Default = <user_scratch_dir>/test-driver.<jobid>"
-  echo "BATCH:             Default = none (used to allow cime test to run in batch mode"
   echo ""
   echo "Less common ENVIRONMENT variables"
   echo "CALDERA_BATCHQ:    Default = caldera"
@@ -79,6 +79,7 @@ gmake_j=0
 interactive=false
 run_cam_regression=false
 use_existing=''
+batch=false
 
 # Initialize variables which may not be set
 submit_script=''
@@ -148,6 +149,10 @@ while [ "${1:0:1}" == "-" ]; do
             fi
             use_existing="${2}"
             shift
+            ;;
+
+        --batch )
+            batch=true
             ;;
 
     esac
@@ -1026,9 +1031,6 @@ if [ -n "${CAM_FC}" ]; then
 fi
 
 if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
-  if [ "${hostname:0:6}" != "hobart" ]; then
-    module load python
-  fi
   if [ "${hostname:0:5}" != "izumi" ]; then
     module load python
   fi
@@ -1090,7 +1092,7 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
           testargs="${testargs} --queue ${CAM_BATCHQ} --test-root ${cesm_testdir} --output-root ${cesm_testdir}"
           ;;
         *)
-          if [ -n "${BATCH}" ] || [ "${HOSTNAME}" in ch* r* ]; then
+          if  $batch; then
             testargs="${testargs} --queue ${CAM_BATCHQ} --test-root ${cesm_testdir} --output-root ${cesm_testdir}"
           else
             testargs="${testargs} --test-root ${cesm_testdir} --output-root ${cesm_testdir}"
