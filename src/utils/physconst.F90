@@ -163,7 +163,6 @@ contains
     ! Local variables
     integer :: unitn, ierr
     integer :: i
-    integer :: num_names
     character(len=*), parameter :: subname = 'air_composition_readnl'
     
     namelist /air_composition_nl/ dry_air_composition, moist_air_composition
@@ -319,9 +318,6 @@ end subroutine physconst_readnl
 !===============================================================================
 
 subroutine physconst_init()
-   use constituents, only: cnst_get_ind, cnst_mw
-
-   integer :: n_ndx
    integer :: ierr
 
    !-------------------------------------------------------------------------------
@@ -864,7 +860,7 @@ subroutine composition_init()
      real(r8), intent(in)  :: temp(i0:i1,j0:j1,nlev)             !temperature
      real(r8), intent(out) :: theta_v(i0:i1,j0:j1,nlev)          !virtual potential temperature
 
-     real(r8) :: iexner(i0:i1,j0:j1,nlev),p00
+     real(r8) :: iexner(i0:i1,j0:j1,nlev)
 
      call get_exner(i0,i1,j0,j1,nlev,ntrac,tracer,mixing_ratio,thermodynamic_active_species_idx,dp_dry,ptop,.true.,iexner)
      
@@ -894,9 +890,8 @@ subroutine composition_init()
      real(r8), optional, intent(out) :: t_v(i0:i1,j0:j1,nlev)    !
      
 
-     real(r8), dimension(i0:i1,j0:j1,nlev)   :: pmid_local, t_v_local, R_dry, dp_local
+     real(r8), dimension(i0:i1,j0:j1,nlev)   :: pmid_local, t_v_local, dp_local
      real(r8), dimension(i0:i1,j0:j1,nlev+1) :: pint
-     real(r8), dimension(i0:i1,j0:j1)        :: gzh, Rdry_tv
      integer :: k
 
      call get_pmid_from_dpdry(i0,i1,j0,j1,nlev,ntrac,tracer,mixing_ratio,thermodynamic_active_species_idx,dp_dry,ptop,pmid_local,pint=pint,dp=dp_local)       
@@ -1362,7 +1357,6 @@ subroutine composition_init()
      integer :: nq,i,j,k, itrac
      real(r8),  dimension(i0:i1,j0:j1,k0:k1)  :: sum_species, factor
      integer, dimension(thermodynamic_active_species_num) :: idx_local,idx
-     real(r8),  dimension(i0:i1,j0:j1,k0:k1,thermodynamic_active_species_num) :: mthermo
 
      if (present(thermodynamic_active_species_idx_dycore)) then
        idx_local = thermodynamic_active_species_idx_dycore
@@ -1413,7 +1407,6 @@ subroutine composition_init()
      integer :: nq,i,j,k, itrac
      real(r8),  dimension(i0:i1,j0:j1,k0:k1)  :: sum_species, sum_cp, factor
      integer, dimension(thermodynamic_active_species_num) :: idx_local,idx
-     real(r8),  dimension(i0:i1,j0:j1,k0:k1,thermodynamic_active_species_num) :: mthermo
 
      if (present(thermodynamic_active_species_idx_dycore)) then
        idx_local = thermodynamic_active_species_idx_dycore
@@ -1628,8 +1621,7 @@ subroutine composition_init()
      
      ! local vars
      integer :: i,j,k
-     real(r8),  dimension(i0:i1,j0:j1,1:k1)              :: factor, pmid
-     integer, dimension(thermodynamic_active_species_num) :: idx_local,idx
+     real(r8),  dimension(i0:i1,j0:j1,1:k1)              :: pmid
      real(r8):: pint(i0:i1,j0:j1,1:k1+1)
      real(r8), allocatable :: R_dry(:,:,:)
      real(r8):: temp_local
@@ -1711,10 +1703,9 @@ subroutine composition_init()
      
      ! local vars
      integer :: k
-     real(r8):: mmro, mmro2, mmrh, mmrn2            ! Mass mixing ratios of O, O2, H, and N
+     real(r8):: mmro, mmro2, mmrn2            ! Mass mixing ratios of O, O2, and N
      real(r8):: o_mwi, o2_mwi, n2_mwi               ! Inverse molecular weights
      real(r8):: mbar                                ! Mean mass at mid level
-     real(r8):: dof1, dof2                          ! Degress of freedom for cpairv calculation
      real(r8):: kv1, kv2, kv3, kv4                  ! Coefficients for kmvis calculation
      real(r8):: kc1, kc2, kc3, kc4                  ! Coefficients for kmcnd calculation
     
