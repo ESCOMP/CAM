@@ -1702,8 +1702,6 @@
 <cldfrc_premit dyn="eul" hgrid="128x256"                              > 25000.0D0 </cldfrc_premit>
 <cldfrc_premit dyn="eul" hgrid="256x512"                              > 25000.0D0 </cldfrc_premit>
 <cldfrc_premit dyn="eul" hgrid="512x1024"                             > 25000.0D0 </cldfrc_premit>
-<!-- xxx check default was 25000.0 for cldfrc_premit dyn="se"  -->
-<cldfrc_premit dyn="se"                                               > 75000.0D0 </cldfrc_premit>
 <cldfrc_premit                                      pbl="uw"          > 40000.0D0 </cldfrc_premit>
 <cldfrc_premit dyn="fv"  hgrid="0.23x0.31"          pbl="uw"          > 40000.0D0 </cldfrc_premit>
 <cldfrc_premit dyn="fv"  hgrid="0.47x0.63"          pbl="uw"          > 40000.0D0 </cldfrc_premit>
