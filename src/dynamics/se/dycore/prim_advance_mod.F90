@@ -59,9 +59,8 @@ contains
     use fvm_control_volume_mod, only: fvm_struct
     use control_mod,       only: raytau0
     use physconst,         only: get_cp, thermodynamic_active_species_num
-    use physconst,         only: get_kappa_dry
+    use physconst,         only: get_kappa_dry, dry_air_composition_num
     use physconst,         only: thermodynamic_active_species_idx_dycore
-    
     implicit none
     
     type (element_t), intent(inout), target   :: elem(:)
@@ -107,6 +106,9 @@ contains
     !                 run with qsplit=1
     !                 (K&G 2nd order method has CFL=4. tiny CFL improvement not worth 2nd order)
     !
+
+    if (dry_air_composition_num) &
+      call endrun('ERROR: SE dycore not ready for species dependent thermodynamics - ABORT')
 
     call omp_set_nested(.true.)
 
