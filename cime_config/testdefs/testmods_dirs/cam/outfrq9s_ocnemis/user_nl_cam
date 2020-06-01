@@ -1,0 +1,10 @@
+mfilt=1,1,1,1,1,1,1,1,1
+ndens=1,1,1,1,1,1,1,1,1
+nhtfrq=9,9,9,9,9,9,9,9,9
+inithist='ENDOFRUN'
+ocean_salinity_file = '$DIN_LOC_ROOT/atm/cam/chem/ocnexch/SSS_recooked_0-360_c171120.nc'
+csw_specifier = 'DMS      -> 1.0 * $DIN_LOC_ROOT/atm/cam/chem/ocnexch/Csw_DMS_HiResML_f09f09_1990_2019_20190616a.nc',
+                'CH3COCH3 -> 0.75* $DIN_LOC_ROOT/atm/cam/chem/ocnexch/Csw_Acetone_HiResML_f09f09_1990_2019_20190814a.nc'
+csw_time_type = 'INTERP_MISSING_MONTHS'
+bubble_mediated_transfer = .FALSE.
+fincl3='OCN_FLUX_DMS', 'Csw_DMS','OCN_FLUX_CH3COCH3', 'Csw_CH3COCH3'

@@ -3576,7 +3576,7 @@ if ($dyn =~ /se/) {
     add_default($nl, 'se_refined_mesh');
     my $refined_mesh = $nl->get_value('se_refined_mesh');
     if ($refined_mesh =~ m/$TRUE/i) {
-        $opts{'refined_mesh'} = "1";
+        $opts{'se_refined_mesh'} = "1";
 
         add_default($nl, 'se_mesh_file');
         my $se_mesh_file = $nl->get_value('se_mesh_file');

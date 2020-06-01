@@ -309,7 +309,7 @@ def _main_prog():
 
     #If no issue numbers are present after any of the keywords, then exit script:
     if not close_issues and not close_pulls:
-        endmsg = "No issue or PR numbers were found in the merged PR message.  Thus there is nothing to close."
+        endmsg = "No open issue or PR numbers were found in the merged PR message.  Thus there is nothing to close."
         end_script(endmsg)
 
     #Print list of referenced issues to screen:
