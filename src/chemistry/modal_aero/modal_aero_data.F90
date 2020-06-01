@@ -151,11 +151,9 @@
 
     character(len=6) :: xname_numptr, xname_numptrcw
     character(len=1) :: modechr
-    integer :: m, l, iptr,i, n, tot_spec, idx
+    integer :: m, l, iptr,i, idx
     character(len=3) :: trnum       ! used to hold mode number (as characters)
 
-    character(len=20) :: dumStr1, specNameMode
-    character(len=1000) :: msg
     character(len=32) :: spec_name, mode_type
     character(len=1) :: modestr
 
@@ -411,20 +409,14 @@
        ! ... local variables
        !--------------------------------------------------------------
        integer :: l, m, i, lchnk, tmp
-       integer :: m_idx, s_idx, ndx
 
-       character(len=3) :: trnum       ! used to hold mode number (as characters)
        integer :: qArrIndex
-       integer  :: numaerosols     ! number of bulk aerosols in climate list
-       character(len=20) :: bulkname
        complex(r8), pointer  :: refindex_aer_sw(:), &
             refindex_aer_lw(:)
        real(r8), pointer :: qqcw(:,:)
        real(r8), parameter :: huge_r8 = huge(1._r8)
        character(len=*), parameter :: routine='modal_aero_initialize'
        character(len=32) :: spec_type
-       character(len=32) :: spec_name
-       character(len=1) :: modestr
        integer :: soa_ndx
 
        !-----------------------------------------------------------------------
@@ -863,7 +855,7 @@
        implicit none
 
        !   local variables
-       integer :: i, l, l2, lmassa, lmassc, m
+       integer :: i, l, lmassa, lmassc, m
        character(len=1000) :: msg
        character*8 :: dumname
        character*3 :: tmpch3
@@ -1127,8 +1119,6 @@
           m, laptr, lcptr, txtdum )
        !
        !   does some output for initaermodes_setspecptrs
-
-       use constituents, only: pcnst, cnst_name
 
        implicit none
 
