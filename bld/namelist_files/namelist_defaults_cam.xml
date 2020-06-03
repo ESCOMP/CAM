@@ -173,14 +173,15 @@
 <ncdata dyn="se" hgrid="ne240np4"  nlev="32"  aquaplanet="1" ic_ymd="101" >atm/cam/inic/se/ape_cam6_ne240np4_L32_c170908.nc</ncdata>
 
 <ncdata dyn="se" hgrid="ne0np4CONUS.ne30x8"       nlev="32" ic_ymd="101">atm/cam/inic/se/F2000climo_CONUS_30x8_mt12_mg3_01-01-00000_c200421.nc</ncdata>
-<ncdata dyn="se" hgrid="ne0np4CONUS.ne30x8"       nlev="70" ic_ymd="101">/glade/p/cgd/amp/pel/inic/FW2000.CONUS_nlev70.i.nc</ncdata>
 <ncdata dyn="se" hgrid="ne0np4.ARCTIC.ne30x4"     nlev="32" ic_ymd="101">atm/cam/inic/se/FHIST_ARCTIC_ne30x4_mt12_1979bc-mg3_01-01-00000_c200424.nc</ncdata>
 <ncdata dyn="se" hgrid="ne0np4.ARCTICGRIS.ne30x8" nlev="32" ic_ymd="101">atm/cam/inic/se/FHIST_ARCTICGRIS_ne30x8_mt12_1979bc-mg3_01-01-00000_c200428.nc</ncdata>
 
-<ncdata dyn="se" hgrid="ne5np4"   nlev="66"                >atm/waccm/ic/wa3_ne5np4_1950_spinup.cam2.i.1960-01-01-00000_c150810.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4"  nlev="70"  npg="3"       >/glade/p/cgd/amp/pel/inic/FWsc2000.ne30pg3_ne30pg3_nlev70.i.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4"  nlev="70"                >/glade/p/cgd/amp/pel/inic/FWsc2000.ne30_ne30_nlev70.i.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4"  nlev="110"               >/glade/p/cgd/amp/pel/inic/FWsc2000.ne30pg3_ne30pg3_nlev110.i.nc</ncdata>
+<ncdata dyn="se" hgrid="ne5np4"   nlev="66"           ic_ymd="101">atm/waccm/ic/wa3_ne5np4_1950_spinup.cam2.i.1960-01-01-00000_c150810.nc</ncdata>
+<ncdata dyn="se" hgrid="ne30np4"  nlev="70"           ic_ymd="101">atm/waccm/ic/FW2000_ne30_L70_01-01-0001_c200602.nc</ncdata>
+<ncdata dyn="se" hgrid="ne30np4"  nlev="70"  npg="3"  ic_ymd="101">atm/waccm/ic/FW2000_ne30pg3_L70_01-01-0001_c200602.nc</ncdata>
+<ncdata dyn="se" hgrid="ne30np4"  nlev="110"          ic_ymd="101">atm/waccm/ic/FWsc2000_ne30pg3_L110_01-01-0001_c200521.nc</ncdata>
+
+<ncdata dyn="se" hgrid="ne0np4CONUS.ne30x8"       nlev="70" ic_ymd="101">atm/waccm/ic/FW2000_CONUS_30x8_L70_01-01-0001_c200602.nc</ncdata>
 
 <!-- Topography -->
 <bnd_topo hgrid="256x512" >atm/cam/topo/topo-from-cami_0000-01-01_256x512_L26_c030918.nc</bnd_topo>
