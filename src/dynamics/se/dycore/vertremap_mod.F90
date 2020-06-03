@@ -549,8 +549,8 @@ function compute_ppm( a , dx , kord)    result(coefs)
       al = a(j)
       ar = a(j)
     endif
-    if ( (ar - al) * (a(j) - (al + ar)/2._r8) >  (ar - al)**2/6. ) al = 3._r8*a(j) - 2._r8 * ar
-    if ( (ar - al) * (a(j) - (al + ar)/2._r8) < -(ar - al)**2/6. ) ar = 3._r8*a(j) - 2._r8 * al
+    if ( (ar - al) * (a(j) - (al + ar)/2._r8) >  (ar - al)**2/6._r8 ) al = 3._r8*a(j) - 2._r8 * ar
+    if ( (ar - al) * (a(j) - (al + ar)/2._r8) < -(ar - al)**2/6._r8 ) ar = 3._r8*a(j) - 2._r8 * al
     !Computed these coefficients from the edge values and cell mean in Maple. Assumes normalized coordinates: xi=(x-x0)/dx
     coefs(0,j) = 1.5_r8 * a(j) - ( al + ar ) / 4._r8
     coefs(1,j) = ar - al
