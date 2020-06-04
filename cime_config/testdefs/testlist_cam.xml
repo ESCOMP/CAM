@@ -773,7 +773,6 @@
   </test>
   <test compset="FXmadHIST" grid="f19_f19_mg17" name="ERS_Ln9"   testmods="cam/outfrq9s" supported="false">
     <machines>
-      <machine name="cheyenne" compiler="intel" category="prebeta"/>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
     </machines>
     <options>
