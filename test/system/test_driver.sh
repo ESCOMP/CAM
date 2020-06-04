@@ -207,7 +207,7 @@ cat > ${submit_script_cb} << EOF
 #PBS -q $CAM_BATCHQ
 #PBS -A $CAM_ACCOUNT
 #PBS -l walltime=2:00:00
-#PBS -l nodes=i007:select=1:ncpus=36:mpiprocs=36
+#PBS -l select=1:ncpus=36:mpiprocs=36
 #PBS -j oe
 #PBS -l inception=login
 
