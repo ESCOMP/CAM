@@ -198,6 +198,9 @@ subroutine ma_convproc_init
    call addfld('DP_KCLDBASE', horiz_only, 'A', '1', &
                'Deep conv. cloudbase level index' )
 
+   call addfld ('WUP', (/ 'lev' /), 'A', 'm/s','ZM vertical velocity')
+   call addfld ('DPFRAC', (/ 'lev' /), 'A', 'unitless','ZM cloud fraction')
+
    ! output wet deposition fields to history
    !    I = in-cloud removal;     E = precip-evap resuspension
    !    C = convective (total);   D = deep convective
@@ -1088,6 +1091,9 @@ subroutine ma_convproc_tend(                                           &
 
    character(len=16) :: cnst_name_extd(pcnst_extd)
 
+   !Fractional area of ensemble mean updrafts in ZM scheme set to 0.01
+   !Chosen to reproduce vertical vecocities in GATEIII GIGALES (Khairoutdinov etal 2009, JAMES)
+   real(r8), parameter :: zm_areafrac = 0.01_r8 
 !-----------------------------------------------------------------------
 !
 
@@ -1118,6 +1124,8 @@ subroutine ma_convproc_tend(                                           &
    xx_mfup_max(:) = 0.0_r8
    xx_wcldbase(:) = 0.0_r8
    xx_kcldbase(:) = 0.0_r8
+
+   wup(:) = 0.0_r8
 
 ! set doconvproc_extd (extended array) values
 ! inititialize aqfrac to 1.0 for activated aerosol species, 0.0 otherwise
@@ -1410,20 +1418,10 @@ k_loop_main_bb: &
 ! shallow - wup = (mup in kg/m2/s) / [rhoair * (updraft area)]
                wup(k) = (mu_i(kp1) + mu_i(k))*0.5_r8*hund_ovr_g &
                       / (rhoair_i(k) * (cldfrac_i(k)*0.5_r8))
-               wup(k) = max( 0.1_r8, wup(k) )
             else
-! deep - the above method overestimates updraft area and underestimate wup
-!    the following is based lemone and zipser (j atmos sci, 1980, p. 2455)
-!    peak updraft (= 4 m/s) is sort of a "grand median" from their GATE data
-!       and Thunderstorm Project data which they also show
-!    the vertical profile shape is a crude fit to their median updraft profile
-               zkm = zmagl(k)*1.0e-3_r8
-               if (zkm .ge. 1.0_r8) then
-                  wup(k) = 4.0_r8*((zkm/4.0_r8)**0.21_r8)
-               else
-                  wup(k) = 2.9897_r8*(zkm**0.5_r8)
-               end if
-               wup(k) = max( 0.1_r8, min(convproc_wup_max, wup(k) ) )
+! deep - as in shallow, but assumed constant updraft_area with height zm_areafrac
+               wup(k) = (mu_i(kp1) + mu_i(k))*0.5_r8*hund_ovr_g &
+                      / (rhoair_i(k) * zm_areafrac)
             end if
 
 ! compute lagrangian transport time (dt_u) and updraft fractional area (fa_u)
