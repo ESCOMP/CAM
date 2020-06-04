@@ -454,6 +454,8 @@ subroutine dyn_init(dyn_in, dyn_out)
    allocate(glob_ind(nCellsSolve))
    glob_ind = indexToCellID(1:nCellsSolve)
 
+   call mpas_constants_compute_derived()
+
    if (initial_run) then
 
       call read_inidat(dyn_in)
@@ -500,8 +502,6 @@ subroutine dyn_init(dyn_in, dyn_out)
    ! objects need a corresponding update.  Set the following logical variable to indicate
    ! whether the pointer update is needed.
    swap_time_level_ptrs = mod( nint(dt_ratio), 2) == 1
-
-   call mpas_constants_compute_derived()
 
 end subroutine dyn_init
 
@@ -627,6 +627,7 @@ subroutine read_inidat(dyn_in)
    use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_array
    use mpas_derived_types, only : mpas_pool_type
    use mpas_vector_reconstruction, only : mpas_reconstruct
+   use mpas_constants, only : Rv_over_Rd => rvord
 
    ! arguments
    type(dyn_import_t), target, intent(inout) :: dyn_in
@@ -660,6 +661,7 @@ subroutine read_inidat(dyn_in)
    real(r8), pointer :: rho_base(:,:)
 
    integer :: ixqv
+   integer, dimension(:), pointer :: mpas_from_cam_cnst
 
    integer,  allocatable :: m_ind(:)
    real(r8), allocatable :: &
@@ -693,6 +695,7 @@ subroutine read_inidat(dyn_in)
    nEdgesSolve = dyn_in % nEdgesSolve
 
    ixqv        = dyn_in % index_qv
+   mpas_from_cam_cnst => dyn_in % mpas_from_cam_cnst
    
    uperp      => dyn_in % uperp
    w          => dyn_in % w
@@ -772,11 +775,10 @@ subroutine read_inidat(dyn_in)
       end do
       call analytic_ic_set_ic(vcoord, latvals, lonvals, glob_ind, m_cnst=m_ind, Q=cam4d)
       do m = 1, pcnst
-         ! will need translation between MPAS and CAM constituent indexing
          do k = 1, plev
             kk = plev - k + 1
             do i = 1, nCellsSolve
-               tracers(m,kk,i) = cam4d(i,k,1,m)
+               tracers(m,kk,i) = cam4d(i,k,1,mpas_from_cam_cnst(m))
             end do
          end do
       end do
@@ -818,7 +820,7 @@ subroutine read_inidat(dyn_in)
          end do
       end do
 
-      theta_m(:,1:nCellsSolve) = theta(:,1:nCellsSolve)    ! With no moisture, theta_m := theta
+      theta_m(:,1:nCellsSolve) = theta(:,1:nCellsSolve) * (1.0_r8 + Rv_over_Rd * tracers(ixqv,:,1:nCellsSolve))
       rho_zz(:,1:nCellsSolve) = rho(:,1:nCellsSolve) / zz(:,1:nCellsSolve)
 
       ! Set theta_base and rho_base
@@ -890,8 +892,7 @@ subroutine read_inidat(dyn_in)
          call endrun(subname//': failed to read theta from initial file')
       end if
 
-      ! *** TD: add adjustment for moisture
-      theta_m(:,1:nCellsSolve) = theta(:,1:nCellsSolve)
+      theta_m(:,1:nCellsSolve) = theta(:,1:nCellsSolve) * (1.0_r8 + Rv_over_Rd * tracers(ixqv,:,1:nCellsSolve))
 
       ! read rho
       call infld('rho', fh_ini, 'lev', 'nCells', 1, plev, 1, nCellsSolve, 1, 1, &

@@ -68,6 +68,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    ! Variables from dynamics export container
    integer :: nCellsSolve
    integer :: index_qv
+   integer, dimension(:), pointer :: cam_from_mpas_cnst
 
    real(r8), pointer :: pmiddry(:,:)
    real(r8), pointer :: pintdry(:,:)
@@ -99,6 +100,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
 
    nCellsSolve = dyn_out % nCellsSolve
    index_qv    = dyn_out % index_qv
+   cam_from_mpas_cnst => dyn_out % cam_from_mpas_cnst
 
    pmiddry  => dyn_out % pmiddry
    pintdry  => dyn_out % pintdry
@@ -151,8 +153,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
             do m = 1, pcnst
                do k = 1, pver
                   kk = pver - k + 1
-                  ! *** needs conversion of constituent indices
-                  phys_state(lchnk)%q(icol,k,m) = tracers(m,kk,i)
+                  phys_state(lchnk)%q(icol,k,m) = tracers(cam_from_mpas_cnst(m),kk,i)
                end do
             end do
          end do
@@ -188,8 +189,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
                bbuffer(bpter(icol,k)+3) = -rho_zz(k,i) * zz(k,i) * gravit * 0.5_r8 * (w(k,i) + w(k+1,i))   ! omega
                bbuffer(bpter(icol,k)+4) = pmiddry(k,i)
                do m=1,pcnst
-                  ! *** needs conversion of constituent indices
-                  bbuffer(bpter(icol,k)+4+m) = tracers(m,k,i)
+                  bbuffer(bpter(icol,k)+4+m) = tracers(cam_from_mpas_cnst(m),k,i)
                end do
             end do
 
@@ -279,6 +279,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
    integer :: nCells
    integer :: nEdgesSolve
    integer :: index_qv
+   integer, dimension(:), pointer :: mpas_from_cam_cnst
 
    real(r8), pointer :: tracers(:,:,:)
 
@@ -307,6 +308,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
    nCellsSolve = dyn_in % nCellsSolve
    nCells      = dyn_in % nCells
    index_qv    = dyn_in % index_qv
+   mpas_from_cam_cnst => dyn_in % mpas_from_cam_cnst
 
    tracers => dyn_in % tracers
 
@@ -350,17 +352,16 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
                ! convert wet mixing ratios to dry
                factor = phys_state(lchnk)%pdel(icol,k)/phys_state(lchnk)%pdeldry(icol,k)
                do m = 1, pcnst
-                  ! *** will need conversion between CAM and MPAS tracer indices
-                  if (cnst_type(m) == 'wet') then
+                  if (cnst_type(mpas_from_cam_cnst(m)) == 'wet') then
                      if (m == index_qv) then
-                        qv_tend(kk,i) = (phys_state(lchnk)%q(icol,k,m)*factor - tracers(m,kk,i)) / dt_phys
+                        qv_tend(kk,i) = (phys_state(lchnk)%q(icol,k,mpas_from_cam_cnst(m))*factor - tracers(index_qv,kk,i)) / dt_phys
                      end if
-                     tracers(m,kk,i) = phys_state(lchnk)%q(icol,k,m)*factor
+                     tracers(m,kk,i) = phys_state(lchnk)%q(icol,k,mpas_from_cam_cnst(m))*factor
                   else
                      if (m == index_qv) then
-                        qv_tend(kk,i) = (phys_state(lchnk)%q(icol,k,m) - tracers(m,kk,i)) / dt_phys
+                        qv_tend(kk,i) = (phys_state(lchnk)%q(icol,k,mpas_from_cam_cnst(m)) - tracers(index_qv,kk,i)) / dt_phys
                      end if
-                     tracers(m,kk,i) = phys_state(lchnk)%q(icol,k,m)
+                     tracers(m,kk,i) = phys_state(lchnk)%q(icol,k,mpas_from_cam_cnst(m))
                   end if
                end do
 
@@ -429,9 +430,9 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
 
                do m = 1, pcnst
                   if (m == index_qv) then
-                     qv_tend(kk,i) = (bbuffer(bpter(icol,k)+2+m) - tracers(m,kk,i)) / dt_phys
+                     qv_tend(kk,i) = (bbuffer(bpter(icol,k)+2+mpas_from_cam_cnst(m)) - tracers(index_qv,kk,i)) / dt_phys
                   end if
-                  tracers(m,kk,i) = bbuffer(bpter(icol,k)+2+m)
+                  tracers(m,kk,i) = bbuffer(bpter(icol,k)+2+mpas_from_cam_cnst(m))
                end do
 
             end do
