@@ -1,125 +1,119 @@
 module dyn_grid
-
-    ! Purpose: Definition of dynamics computational grid.
-    !
-    ! Method: Variables are private; interface routines used to extract
-    !         information for use in user code. Global column index range
-    !         defined using full (unreduced) grid.
-    !
-    ! Entry points:
-    !      get_block_bounds_d       get first and last indices in global
-    !                               block ordering
-    !      get_block_gcol_d         get column indices for given block
-    !      get_block_gcol_cnt_d     get number of columns in given block
-    !      get_block_lvl_cnt_d      get number of vertical levels in column
-    !      get_block_levels_d       get vertical levels in column
-    !      get_gcol_block_d         get global block indices and local columns
-    !                               index for given global column index
-    !      get_gcol_block_cnt_d     get number of blocks containing data
-    !                               from a given global column index
-    !      get_block_owner_d        get process "owning" given block
-    !      get_horiz_grid_d         get horizontal grid coordinates
-    !      get_horiz_grid_dim_d     get horizontal dimensions of dynamics grid
-    !      dyn_grid_get_elem_coords get coordinates of a specified block element
-    !                               of the dynamics grid
-    !      dyn_grid_get_colndx      get block/column and MPI process indices
-    !                               corresponding to a specified global column index
-    !
-    ! Author: Jim Edwards and Patrick Worley
+!-------------------------------------------------------------------------------
+! Define FV3 computational grids on the dynamics decomposition.
+!
+! The grid used by the FV3 dynamics is called the FSSL grid and is a
+! gnomonic cubed sphere consisting of 6 tiled faces. Each tile consists
+! of an array of cells whose coordinates are great circles. The grid
+! nomenclature (C96, C384, etc.) describes the number of cells along
+! the top and side of a tile face (square). All prognostic variables
+! are 3-D cell-mean values (cell center), except for the horizontal winds,
+! which are 2-D face-mean values located on the cell walls (D-Grid winds).
+! Each tile can be decomposed into a number of subdomains (consisting of
+! one or more cells) which correspond to "blocks" in the physics/dynamics
+! coupler terminology. The namelist variable "layout" consists of 2 integers
+! and determines the size/shape of the blocks by dividing the tile into a
+! number of horizonal and vertical sections. The total number of blocks in
+! the global domain is therefore layout(1)*layout(2)*ntiles. The decomposition
+! and communication infrastructure is provided by the GFDL FMS library.
+!
+! Module responsibilities:
+!
+! . Provide the physics/dynamics coupler (in module phys_grid) with data for the
+!   physics grid on the dynamics decomposition.
+!
+! . Create CAM grid objects that are used by the I/O functionality to read
+!   data from an unstructured grid format to the dynamics data structures, and
+!   to write from the dynamics data structures to unstructured grid format.  The
+!   global column ordering for the unstructured grid is determined by the FV3 dycore.
+!
+!-------------------------------------------------------------------------------
 
     use cam_abortutils,   only: endrun
     use cam_grid_support, only: iMap
     use cam_logfile,      only: iulog
-    use dimensions_mod,   only: npx, npy, npz, ncnst, pnats, dnats,nq
-    use fms_mod,          only: open_namelist_file, file_exist, check_nml_error,  &
-                                error_mesg, fms_init, write_version_number, FATAL
+    use dimensions_mod,   only: npx, npy, npz, ncnst,nq
+    use fms_mod,          only: fms_init, write_version_number
     use fv_arrays_mod,    only: fv_atmos_type
     use fv_control_mod,   only: ngrids,fv_init
     use fv_mp_mod,        only: mp_bcst
-    use mpp_domains_mod,  only: domain2d,mpp_domains_set_stack_size
     use mpp_mod,          only: mpp_pe, mpp_root_pe
     use physconst,        only: rearth,pi
     use shr_kind_mod,     only: r8 => shr_kind_r8
-    use spmd_utils,       only: mpicom
+    use spmd_utils,       only: mpicom, masterproc
 
     implicit none
     private
     save
 
     ! The FV3 dynamics grids
-    real(r8), parameter :: rad2deg = 180._r8/pi
-    integer, parameter, public :: dyn_decomp   = 101
-    integer, parameter, public :: dyn_decomp_ew = 102
-    integer, parameter, public :: dyn_decomp_ns = 103
-    integer, parameter, public :: dyn_decomp_z = 104
-    integer, public ::  ntiles   = -999
-    integer, public ::  nest_pes = 0
-    integer, public ::  p_split  = 1
+    integer, parameter :: dyn_decomp   = 101
+    integer, parameter :: dyn_decomp_ew = 102
+    integer, parameter :: dyn_decomp_ns = 103
 
-    integer, parameter, public :: ptimelevels = 2  ! number of time levels in the dycore
+    integer, parameter :: ptimelevels = 2  ! number of time levels in the dycore
 
-    !These are convenience variables for local use only, and are set to values in Atm%
-    real(r8)    :: zvir
-    integer :: sec, seconds, days
-    logical :: cold_start = .false.       ! read in initial condition
-    
-    integer, dimension(:), allocatable :: id_tracerdt_dyn
-    integer :: sphum, liq_wat, rainwat, ice_wat, snowwat, graupel  !condensate species
-    
     integer :: mytile = 1
+    integer :: p_split  = 1
     integer, allocatable :: pelist(:)
-    logical, allocatable, public :: grids_on_this_pe(:)
+
+    real(r8), parameter :: rad2deg = 180._r8/pi
+
+    logical, allocatable :: grids_on_this_pe(:)
     type(fv_atmos_type), allocatable, target :: Atm(:)
     
-    integer :: id_udt_dyn, id_vdt_dyn
-    
-    real(r8), parameter:: w0_big = 60.  ! to prevent negative w-tracer diffusion
     real(r8), allocatable :: block_extents_g(:,:)
+
+public ::             &
+   dyn_decomp,        &
+   p_split,           &
+   grids_on_this_pe,  &
+   ptimelevels
+
 !-----------------------------------------------------------------------
 ! Calculate Global Index
 
 integer, allocatable, target, dimension(:,:) :: mygindex,mygindex_ew,mygindex_ns
-integer, allocatable, target, dimension(:,:) :: mygindexdups,mygindexdups_ew,mygindexdups_ns
-integer, allocatable, target, dimension(:,:) :: mygindex_tiles,mygindex_tiles_ew,mygindex_tiles_ns
-integer, allocatable, target, dimension(:,:) :: mylindex,mylindex_ew,mylindex_ns
-integer                                      :: mybindex,mybindex_ew,mybindex_ns
+integer, allocatable, target, dimension(:,:) :: mylindex
+integer                                      :: mybindex
 real(r8), allocatable, target, dimension(:,:,:) ::   locidx_g
 real(r8), allocatable, target, dimension(:,:,:) ::   blkidx_g
 real(r8), allocatable, target, dimension(:,:,:) ::   gindex_g
 real(r8), allocatable, target, dimension(:,:) ::   gblidx_g
 
 integer, public :: uniqpts_glob = 0     ! number of dynamics columns
-integer, public :: uniqpts_glob_ew = 0     ! number of dynamics columns for Dgrid ew
-integer, public :: uniqpts_glob_ns = 0     ! number of dynamics columns for Dgrid ew
-integer, public :: uniqpts_loc = 0     ! number of dynamics columns
-integer, public :: uniqpts_loc_ew = 0     ! number of dynamics columns for Dgrid ew
-integer, public :: uniqpts_loc_ns = 0     ! number of dynamics columns for Dgrid ew
+integer, public :: uniqpts_glob_ew = 0     ! number of dynamics columns for D grid ew
+integer, public :: uniqpts_glob_ns = 0     ! number of dynamics columns for D grid ns
 
-!real(r8), allocatable, dimension(:,:,:) :: grid_ew, grid_ns
 real(r8), pointer, dimension(:,:,:) :: grid_ew, grid_ns
 
 public :: mygindex,mygindex_ew,mygindex_ns
-public :: mygindexdups, mygindexdups_ew,mygindexdups_ns
-public :: mygindex_tiles, mygindex_tiles_ew,mygindex_tiles_ns
-public :: mylindex,mylindex_ew,mylindex_ns
-public :: mybindex,mybindex_ew,mybindex_ns
-public :: grid_ew,grid_ns
+public :: mylindex
+public :: mybindex
 !-----------------------------------------------------------------------
+public :: &
+   dyn_grid_init,            &
+   get_block_bounds_d,       & ! get first and last indices in global block ordering
+   get_block_gcol_d,         & ! get column indices for given block
+   get_block_gcol_cnt_d,     & ! get number of columns in given block
+   get_block_lvl_cnt_d,      & ! get number of vertical levels in column
+   get_block_levels_d,       & ! get vertical levels in column
+   get_block_owner_d,        & ! get process "owning" given block
+   get_gcol_block_d,         & ! get global block indices and local columns
+                               ! index for given global column index
+   get_gcol_block_cnt_d,     & ! get number of blocks containing data
+                               ! from a given global column index
+   get_horiz_grid_dim_d,     &
+   get_horiz_grid_d,         & ! get horizontal grid coordinates
+   get_dyn_grid_parm,        &
+   get_dyn_grid_parm_real1d, &
+   dyn_grid_get_elem_coords, & ! get coordinates of a specified block element
+   dyn_grid_get_colndx,      & ! get element block/column and MPI process indices
+                               ! corresponding to a specified global column index
+   physgrid_copy_attributes_d
 
-    public :: get_block_bounds_d, get_block_gcol_d, get_block_gcol_cnt_d, &
-              get_block_lvl_cnt_d, get_block_levels_d, get_block_owner_d, &
-              get_gcol_block_d, get_gcol_block_cnt_d, &
-              get_horiz_grid_d, get_horiz_grid_dim_d
-    public :: get_dyn_grid_parm
-    public :: get_dyn_grid_parm_real1d, get_dyn_grid_parm_real2d
-    public :: dyn_grid_get_elem_coords
-    public :: dyn_grid_get_colndx
-    public :: define_cam_grids
-    public :: physgrid_copy_attributes_d
-    public :: dyn_grid_init
-    public Atm, mytile
+public Atm, mytile
 
-    real(r8), public, pointer :: w(:) => null()        ! weights
     real(r8), pointer :: clat(:) => null()     ! model latitudes (radians)
     real(r8), pointer :: clon(:,:) => null()   ! model longitudes (radians)
     real(r8), pointer :: latdeg(:) => null()   ! model latitudes (degrees)
@@ -142,7 +136,6 @@ subroutine dyn_grid_init()
    use fv_restart_mod,     only: fv_restart
    use hycoef,             only: hycoef_init, hyai, hybi, hypi, hypm, nprlev
    use memutils_mod,       only: print_memuse_stats
-   use mpp_mod,            only: mpp_init
    use mpp_mod,            only: mpp_init, mpp_npes, mpp_get_current_pelist,mpp_gather
    use namelist_utils,     only: find_group_name
    use pmgrid,             only: plev
@@ -177,7 +170,7 @@ subroutine dyn_grid_init()
 
    integer :: unitn               ! File unit number
    integer :: n                   ! index
-   integer :: nlat,nlon,mlat,mlon
+   integer :: nlat,nlon
 
 !-----------------------------------------------------------------------
 
@@ -203,8 +196,6 @@ integer :: is,ie,js,je,npes,tsize,ssize
 
    allocate(pelist(mpp_npes()))
    call mpp_get_current_pelist(pelist)
-
-   zvir = rvgas/rdgas - 1.
 
 !---- compute physics/atmos time step in seconds ----
 
@@ -234,8 +225,6 @@ integer :: is,ie,js,je,npes,tsize,ssize
    npy   = Atm(mytile)%flagstruct%npy
    npz    = Atm(mytile)%flagstruct%npz
    nq     = Atm(mytile)%flagstruct%ncnst - Atm(mytile)%flagstruct%pnats
-   pnats  = Atm(mytile)%flagstruct%pnats
-   dnats = Atm(mytile)%flagstruct%dnats ! Number of non-advected consituents (as seen by dynamics)
 
    if (npz /= plev) call endrun('dyn_grid_init: FV3 dycore levels (npz) does not match model levels (plev)')
 
@@ -277,9 +266,6 @@ integer :: is,ie,js,je,npes,tsize,ssize
    ! Define the CAM grids
    call define_cam_grids(Atm)
 
-!  This is adjusted via fms_nml variable domain_stack_size (for cam namelist use fv3_domain_stack_size)
-!   call mpp_domains_set_stack_size(3000000)
-
 end subroutine dyn_grid_init
 
 !=======================================================================
@@ -320,11 +306,12 @@ subroutine get_block_gcol_d(blockid, size, cdex)
         call endrun ('get_block_gcol_d: block sizes are not consistent.')
     end if
 
+    n=1
     do j = js, je
         do i = is, ie
-            n=locidx_g(i,j,tile)
-            cdex(n) = gindex_g(i,j,tile)
-        end do
+            cdex(n)= ((j-1)*(npx-1)+i)+((npx-1)*(npy-1)*(tile-1))
+            n=n+1
+         end do
     end do
 
 end subroutine get_block_gcol_d
@@ -409,8 +396,7 @@ subroutine get_gcol_block_d(gcol, cnt, blockid, bcid, localblockid)
     integer, intent(out) :: bcid(cnt)    ! column index within block
     integer, intent(out), optional :: localblockid(cnt)
 
-    integer :: ind(2),tot
-    integer :: tmpblkid(npx-1,npy-1,6),tmplcid(npx-1,npy-1,6)
+    integer :: tot
 
     if (cnt .ne. 1) then
        call endrun ('get_gcol_block_d: cnt is not equal to 1:.')
@@ -645,6 +631,68 @@ end subroutine get_horiz_grid_d
 
 !=======================================================================
 
+subroutine get_horiz_grid_d1(nxy, clat_d_out, clon_d_out, area_d_out, wght_d_out, lat_d_out, lon_d_out)
+
+  implicit none
+
+  integer, intent(in)             :: nxy           ! array sizes
+  real(r8), intent(out), optional :: clat_d_out(:) ! column latitudes
+  real(r8), intent(out), optional :: clon_d_out(:) ! column longitudes
+  real(r8), intent(out), optional :: area_d_out(:) ! column surface area
+  real(r8), intent(out), optional :: wght_d_out(:) ! column integration
+  real(r8), intent(out), optional :: lat_d_out(:)  ! column degree latitudes
+  real(r8), intent(out), optional :: lon_d_out(:)  ! column degree longitudes
+
+  ! local variables
+  character(len=*), parameter :: sub = 'get_horiz_grid_d'
+  real(r8), allocatable       :: tmparr(:,:)
+  real(r8), pointer           :: area(:,:)
+  real(r8), pointer           :: agrid(:,:,:)
+  integer                     :: is,ie,js,je
+
+  area  => Atm(mytile)%gridstruct%area_64
+  agrid => Atm(mytile)%gridstruct%agrid_64
+  is = Atm(mytile)%bd%is
+  ie = Atm(mytile)%bd%ie
+  js = Atm(mytile)%bd%js
+  je = Atm(mytile)%bd%je
+
+  if (present(clon_d_out)) then
+     if (size(clon_d_out) /= nxy) call endrun(sub//': bad clon_d_out array size')
+     call create_global(agrid(is:ie,js:je,1), clon_d_out)
+  end if
+  if (present(clat_d_out)) then
+     if (size(clat_d_out) /= nxy) call endrun(sub//': bad clat_d_out array size')
+     call create_global(agrid(is:ie,js:je,2), clat_d_out)
+  end if
+  if (present(area_d_out).or.present(wght_d_out)) then
+     allocate(tmparr(is:ie,js:je))
+     tmparr(is:ie,js:je) = area  (is:ie,js:je) / (rearth * rearth)
+     if (present(area_d_out)) then
+        if (size(area_d_out) /= nxy) call endrun(sub//': bad area_d_out array size')
+        call create_global(tmparr, area_d_out)
+     end if
+     if (present(wght_d_out)) then
+        if (size(wght_d_out) /= nxy) call endrun(sub//': bad wght_d_out array size')
+        call create_global(tmparr, wght_d_out)
+     end if
+     deallocate(tmparr)
+  end if
+  if (present(lon_d_out)) then
+     if (size(lon_d_out) /= nxy) call endrun(sub//': bad clon_d_out array size')
+     call create_global(agrid(is:ie,js:je,1), lon_d_out)
+     lon_d_out=lon_d_out*rad2deg
+  end if
+  if (present(lat_d_out)) then
+     if (size(lat_d_out) /= nxy) call endrun(sub//': bad clat_d_out array size')
+     call create_global(agrid(is:ie,js:je,2), lat_d_out)
+     lat_d_out=lat_d_out*rad2deg
+  end if
+
+end subroutine get_horiz_grid_d1
+
+!=======================================================================
+
 subroutine get_horiz_grid_dim_d(hdim1_d, hdim2_d)
     use spmd_utils,    only : npes
     implicit none
@@ -679,13 +727,13 @@ subroutine define_cam_grids(Atm)
    !
    ! . The grid_map passed to cam_grid_register is just pointed to.
    !   Cannot be deallocated.
-  
-  use cam_grid_support,  only: horiz_coord_t, horiz_coord_create, cam_grid_get_local_size
+
+  use cam_grid_support,  only: horiz_coord_t, horiz_coord_create
   use cam_grid_support,  only: cam_grid_register, cam_grid_attribute_register
   use fv_grid_utils_mod, only: mid_pt_sphere
   use mpp_mod,           only: mpp_pe, mpp_npes
   use fv_mp_mod,         only: mp_gather, mp_bcst, mp_barrier
-  use spmd_utils,        only : npes
+  use spmd_utils,        only: npes,iam
   use physconst,         only: rearth
   implicit none
   
@@ -695,7 +743,7 @@ subroutine define_cam_grids(Atm)
   type(horiz_coord_t), pointer :: lat_coord
   type(horiz_coord_t), pointer :: lon_coord
   
-  integer(iMap), pointer :: grid_map(:,:),grid_map_dups(:,:)
+  integer(iMap), pointer :: grid_map(:,:)
 
   integer :: n, i, j, mapind,is,ie,js,je,isd,ied,jsd,jed,ierr,tile,nregions
   real(r8), pointer, dimension(:,:,:) :: agrid
@@ -705,8 +753,6 @@ subroutine define_cam_grids(Atm)
   real(r8), pointer :: pelon_deg(:)
   real(r8), pointer :: pelat_deg(:)
   real(r8), pointer :: pelon_deg_ew(:)
-  logical, pointer  :: mask_ew(:)
-  logical, pointer  :: mask_ns(:)
   real(r8), pointer :: pelat_deg_ew(:)
   real(r8), pointer :: pelon_deg_ns(:)
   real(r8), pointer :: pelat_deg_ns(:)
@@ -716,11 +762,8 @@ subroutine define_cam_grids(Atm)
   integer(iMap), pointer :: pemap(:)
   integer(iMap), pointer :: pemap_ew(:)
   integer(iMap), pointer :: pemap_ns(:)
-  integer(iMap), pointer :: pemap_dups_ew(:)
-  integer(iMap), pointer :: pemap_dups_ns(:)
   character(12)          :: filename
   character(2)          :: cgid
-  integer               :: masterproc,gid
   integer :: ncols_glob = 0     ! number of dynamics columns
   integer :: ncols_glob_ew = 0     ! number of dynamics columns for Dgrid ew
   integer :: ncols_glob_ns = 0     ! number of dynamics columns for Dgrid ns
@@ -750,9 +793,7 @@ subroutine define_cam_grids(Atm)
   allocate(grid_ew(isd:ied+1,jsd:jed,2))
   allocate(grid_ns(isd:ied,jsd:jed+1,2))
   allocate(pelon_deg((ie-is+1)*(je-js+1)))
-  allocate(mask_ns((ie-is+1)*(je-js+2)))
   allocate(pelon_deg_ns((ie-is+1)*(je-js+2)))
-  allocate(mask_ew((ie-is+2)*(je-js+1)))
   allocate(pelon_deg_ew((ie-is+2)*(je-js+1)))
   allocate(pelat_deg((ie-is+1)*(je-js+1)))
   allocate(pelat_deg_ew((ie-is+2)*(je-js+1)))
@@ -762,16 +803,13 @@ subroutine define_cam_grids(Atm)
   allocate(pemap((ie-is+1)*(je-js+1)))
   allocate(pemap_ew((ie-is+2)*(je-js+1)))
   allocate(pemap_ns((ie-is+1)*(je-js+2)))
-  allocate(pemap_dups_ew((ie-is+2)*(je-js+1)))
-  allocate(pemap_dups_ns((ie-is+1)*(je-js+2)))
-
 
   do j=jsd,jed
      do i=isd,ied+1
         call mid_pt_sphere(grid(i,  j,1:2), grid(i,  j+1,1:2), grid_ew(i,j,:))
      end do
   end do
-  
+
   do j=jsd,jed+1
      do i=isd,ied
         call mid_pt_sphere(grid(i,j  ,1:2), grid(i+1,j  ,1:2), grid_ns(i,j,:))
@@ -785,26 +823,76 @@ subroutine define_cam_grids(Atm)
   allocate(mygindex(is:ie,js:je))
   allocate(mygindex_ew(is:ie+1,js:je))
   allocate(mygindex_ns(is:ie,js:je+1))
-
-  allocate(mygindexdups(is:ie,js:je))
-  allocate(mygindexdups_ew(is:ie+1,js:je))
-  allocate(mygindexdups_ns(is:ie,js:je+1))
-
-  allocate(mygindex_tiles(is:ie,js:je))
-  allocate(mygindex_tiles_ew(is:ie+1,js:je))
-  allocate(mygindex_tiles_ns(is:ie,js:je+1))
-
   allocate(mylindex(is:ie,js:je))
-  allocate(mylindex_ew(is:ie+1,js:je))
-  allocate(mylindex_ns(is:ie,js:je+1))
 
-  masterproc = mpp_root_pe()
-  gid = mpp_pe()
+  !  calculate local portion of global A-Grid index array
+  !  unique global indexing bottom left to top right of each tile consecutively. Dups reported as 0
+  mygindex=0
+  mylindex=0
+ 
+  mybindex = mpp_pe() + 1
 
-  call calc_global_index(is,ie  ,js,je   ,npx-1 ,npy-1 ,tile, nregions, mygindex   ,mylindex   ,mybindex   ,mygindexdups, mygindex_tiles, 'gridew.txt' ,uniqpts_loc    ,uniqpts_glob)
-  call calc_global_index(is,ie+1,js,je   ,npx   ,npy-1 ,tile, nregions, mygindex_ew,mylindex_ew,mybindex_ew,mygindexdups_ew, mygindex_tiles_ew, 'gridew.txt' ,uniqpts_loc_ew ,uniqpts_glob_ew)
-  call calc_global_index(is,ie  ,js,je+1 ,npx-1 ,npy   ,tile, nregions, mygindex_ns,mylindex_ns,mybindex_ns,mygindexdups_ns, mygindex_tiles_ns, 'gridns.txt' ,uniqpts_loc_ns ,uniqpts_glob_ns)
+  mapind = 1
+  do j = js, je
+     do i = is, ie
+        mygindex(i,j)=((j-1)*(npx-1)+i)+((npx-1)*(npy-1)*(tile-1))
+        mylindex(i,j)=mapind
+        mapind = mapind + 1
+        if (iam.eq.0) write(iulog,*)'iam,i,j,mygindex=',iam,i,j,mygindex(i,j)
+     end do
+  end do
 
+  ! output local and global uniq points
+  uniqpts_glob=(npx-1)*(npy-1)*6
+
+  !  calculate local portion of global NS index array
+  !  unique global indexing bottom left to top right of each tile consecutively. Dups reported as 0
+  !  North tile edges of 2,4,6 are duplicates of south edge of 3,5,1 and are reported as 0 in mygindex array
+  mygindex_ns=0
+  if (je+1.eq.npy) then
+     do j = js, je+mod(tile,2)
+        do i = is, ie
+           mygindex_ns(i,j)=(i-1)*(npy-(mod(tile-1,2))) + j + (int((tile-1)/2)*(npx-1)*(npy-1)) + (int(tile/2)*(npx-1)*(npy))
+        end do
+     end do
+  else
+     do j = js, je+1
+        do i = is, ie
+           mygindex_ns(i,j)=(i-1)*(npy-(mod(tile-1,2))) + j + (int((tile-1)/2)*(npx-1)*(npy-1)) + (int(tile/2)*(npx-1)*(npy))
+        end do
+     end do
+  end if
+  ! appropriate tile boundaries already 0'd  need to
+  ! zero inner tile je+1 boundaries (These are also repeated points between tasks in ns direction))
+  if (je+1.ne.npy) mygindex_ns(is:ie,je+1)=0
+
+  ! output local and global uniq points
+  uniqpts_glob_ns=((2*npy)-1)*(npx-1)*3
+
+
+  !  calculate local portion of global EW index array
+  !  unique global indexing bottom left to top right of each tile consecutively. Dups reported as 0
+  !  East tile edges of 1,3,5 are duplicates of west edge of 2,4,6 and are reported as 0 in mygindex array
+  mygindex_ew=0
+  do j = js, je
+     if (ie+1.eq.npx) then
+        do i = is, ie+mod(tile-1,2)
+           mygindex_ew(i,j)=(j-1)*(npx-(mod(tile,2))) + i + (int(tile/2)*(npx-1)*(npy-1)) + (int((tile-1)/2)*(npx)*(npy-1))
+        end do
+     else
+        do i = is, ie+1
+           mygindex_ew(i,j)=(j-1)*(npx-(mod(tile,2))) + i + (int(tile/2)*(npx-1)*(npy-1)) + (int((tile-1)/2)*(npx)*(npy-1))
+        end do
+     end if
+  end do
+
+  ! appropriate east tile boundaries already 0'd from above need to
+  ! zero inner tile ie+1 boundaries on appropriate processors
+  ! (These are also repeated points between tasks in ew direction)
+  if (ie+1.ne.npx) mygindex_ew(ie+1,js:je)=0
+
+  ! global EW uniq points
+  uniqpts_glob_ew=((2*npx)-1)*(npy-1)*3
 
   blkidx_g(is:ie,js:je,tile)=mybindex
   locidx_g(is:ie,js:je,tile)=mylindex(is:ie,js:je)
@@ -831,59 +919,58 @@ subroutine define_cam_grids(Atm)
   !-----------------------
   ! Create FFSL grid object
   !-----------------------
-  
+
   ! Calculate the mapping between FFSL points and file order (tile1 thru tile6)
+  mapind = 1
   do j = js, je
      do i = is, ie
-        n = mylindex(i,j)
-        pelon_deg(n) = agrid(i,j,1) * rad2deg
-        pelat_deg(n) = agrid(i,j,2) * rad2deg
-        area_ffsl(n) = area(i,j)/(rearth*rearth)
-        pemap(n)     = mygindex(i,j)
+        pelon_deg(mapind) = agrid(i,j,1) * rad2deg
+        pelat_deg(mapind) = agrid(i,j,2) * rad2deg
+        area_ffsl(mapind) = area(i,j)/(rearth*rearth)
+        pemap(mapind)     = mygindex(i,j)
+        mapind = mapind + 1
      end do
   end do
 
   pelon_deg_ew = 0
   pelat_deg_ew = 0
+  mapind = 1
   do j = js, je
      do i = is, ie+1
-        n=mylindex_ew(i,j)
         lonrad=grid_ew(i,j,1)
         latrad=grid_ew(i,j,2)
-        pelon_deg_ew(n) = lonrad * rad2deg
-        pelat_deg_ew(n) = latrad * rad2deg
-        pemap_ew(n)     = mygindex_ew(i,j)
-        pemap_dups_ew(n) = mygindexdups_ew(i,j)
+        pelon_deg_ew(mapind) = lonrad * rad2deg
+        pelat_deg_ew(mapind) = latrad * rad2deg
+        pemap_ew(mapind)     = mygindex_ew(i,j)
+        mapind = mapind + 1
      end do
   end do
-  mask_ew=pemap_ew.ne.0
   pelon_deg_ns = 0
   pelat_deg_ns = 0
-
+  mapind = 1
   do j = js, je+1
      do i = is, ie
-        n=mylindex_ns(i,j)
         lonrad=grid_ns(i,j,1)
         latrad=grid_ns(i,j,2)
-        pelon_deg_ns(n) = lonrad * rad2deg
-        pelat_deg_ns(n) = latrad * rad2deg
-        pemap_ns(n)     = mygindex_ns(i,j)
-        pemap_dups_ns(n) = mygindexdups_ns(i,j)
+        pelon_deg_ns(mapind) = lonrad * rad2deg
+        pelat_deg_ns(mapind) = latrad * rad2deg
+        pemap_ns(mapind)     = mygindex_ns(i,j)
+        mapind = mapind + 1
      end do
   end do
-  mask_ns=pemap_ns.ne.0
     
   allocate(grid_map(3, (ie-is+1)*(je-js+1)))
   grid_map = 0
+  mapind = 1
   do j = js, je
      do i = is, ie
-        mapind=mylindex(i,j)
         grid_map(1, mapind) = i
         grid_map(2, mapind) = j
         grid_map(3, mapind) = pemap(mapind)
+        mapind = mapind + 1
      end do
   end do
-  
+
   lat_coord => horiz_coord_create('lat_d', 'ncol_d', uniqpts_glob, 'latitude',      &
        'degrees_north', 1, size(pelat_deg), pelat_deg, map=pemap)
   lon_coord => horiz_coord_create('lon_d', 'ncol_d', uniqpts_glob, 'longitude',     &
@@ -903,18 +990,19 @@ subroutine define_cam_grids(Atm)
        'degrees_north', 1, size(pelat_deg_ew), pelat_deg_ew, map=pemap_ew)
   lon_coord => horiz_coord_create('lon_d_ew', 'ncol_d_ew',  uniqpts_glob_ew, 'longitude',     &
        'degrees_east', 1, size(pelon_deg_ew), pelon_deg_ew, map=pemap_ew)
-  
+
   allocate(grid_map(3, (ie-is+2)*(je-js+1)))
   grid_map = 0
+  mapind = 1
   do j = js, je
      do i = is, ie+1
-        mapind = mylindex_ew(i,j)
         grid_map(1, mapind) = i
         grid_map(2, mapind) = j
         grid_map(3, mapind) = pemap_ew(mapind)
+        mapind = mapind + 1
      end do
   end do
-  
+
   call cam_grid_register('FFSL_EW', dyn_decomp_ew, lat_coord, lon_coord,          &
        grid_map, block_indexed=.false., unstruct=.true.)
   call cam_grid_attribute_register('FFSL_EW', 'cell', '', 1)
@@ -923,24 +1011,24 @@ subroutine define_cam_grids(Atm)
   nullify(grid_map)
   nullify(lat_coord)         ! Belongs to grid
   nullify(lon_coord)         ! Belongs to grid
-  
+
   lat_coord => horiz_coord_create('lat_d_ns', 'ncol_d_ns',  uniqpts_glob_ns, 'latitude',      &
        'degrees_north', 1, size(pelat_deg_ns), pelat_deg_ns, map=pemap_ns)
   lon_coord => horiz_coord_create('lon_d_ns', 'ncol_d_ns',  uniqpts_glob_ns, 'longitude',     &
        'degrees_east', 1, size(pelon_deg_ns), pelon_deg_ns, map=pemap_ns)
-  
+
   allocate(grid_map(3, (ie-is+1)*(je-js+2)))
   grid_map = 0
   mapind = 1
   do j = js, je+1
      do i = is, ie
-        mapind = mylindex_ns(i,j)
         grid_map(1, mapind) = i
         grid_map(2, mapind) = j
         grid_map(3, mapind) = pemap_ns(mapind)
+        mapind = mapind + 1
      end do
   end do
-  
+
   call cam_grid_register('FFSL_NS', dyn_decomp_ns, lat_coord, lon_coord,          &
        grid_map, block_indexed=.false., unstruct=.true.)
   call cam_grid_attribute_register('FFSL_NS', 'cell', '', 1)
@@ -960,9 +1048,7 @@ subroutine define_cam_grids(Atm)
   deallocate(pemap)
   deallocate(pemap_ew)
   deallocate(pemap_ns)
-  deallocate(pemap_dups_ew)
-  deallocate(pemap_dups_ns)
-  
+
 end subroutine define_cam_grids
 
 subroutine physgrid_copy_attributes_d(gridname, grid_attribute_names)
@@ -995,7 +1081,7 @@ integer function get_dyn_grid_parm(name) result(ival)
     ie = Atm(mytile)%bd%ie
     js = Atm(mytile)%bd%js
     je = Atm(mytile)%bd%je
-    
+
     if(name.eq.'ne') then
         ival = -1
     else if (name.eq.'np') then
@@ -1060,14 +1146,14 @@ function get_dyn_grid_parm_real1d(name) result(rval)
     character(len=*), intent(in) :: name
     real(r8), pointer :: rval(:)
 
-    if (name .eq. 'clat') then
-        rval => clat
-    else if (name .eq. 'latdeg') then
-        rval => latdeg
-    else if (name .eq. 'w') then
-        rval => w
+    if(name.eq.'w') then
+       call endrun('get_dyn_grid_parm_real1d: w not defined')
+    else if(name.eq.'clat') then
+       call endrun('get_dyn_grid_parm_real1d: clat not supported, use get_horiz_grid_d')
+    else if(name.eq.'latdeg') then
+       call endrun('get_dyn_grid_parm_real1d: latdeg not defined')
     else
-        nullify(rval)
+       nullify(rval)
     end if
 
 end function get_dyn_grid_parm_real1d
@@ -1127,227 +1213,54 @@ subroutine dyn_grid_get_elem_coords(ie, rlon, rlat, cdex)
 
 end subroutine dyn_grid_get_elem_coords
 
+!=========================================================================================
 
-subroutine calc_global_index(ilocs,iloce,jlocs,jloce,nxtile,nytile,tile,nregions,locgindex,lindex,bindex,locgindex_justdups,locgindex_tile, name,uniq_pts_loc,uniq_pts_glob)
+subroutine create_global(arr_d, global_out)
 
+  use fv_mp_mod,         only: mp_gather, mp_bcst
   implicit none
-  character(10), intent(in)                                            :: name
-  integer, intent(in)                                                 :: ilocs,iloce,jlocs,jloce
-  integer, intent(in)                                                 :: tile,nregions
-  integer, intent(in)                                                 :: nxtile,nytile
-  integer, intent(inout)                                              :: uniq_pts_loc,uniq_pts_glob
-  integer, dimension(ilocs:iloce,jlocs:jloce), intent(inout)          :: locgindex,lindex,locgindex_tile,locgindex_justdups
-  integer, intent(inout)                                              :: bindex
- 
-  integer :: i,j,k,n,alen,tile_alen
-  integer gid,masterproc
-  real(r8), allocatable :: gindex_zeros4dups(:,:,:)
-  real(r8), allocatable :: gindex_tiles(:,:,:)
-  integer, dimension(ilocs:iloce,jlocs:jloce)                         :: locgindex_wdups
-
-! Calculate Global Index
-!-----------------------------------------------------------------------
   
-  masterproc = mpp_root_pe()
-  gid = mpp_pe()+1
-
-  !-----------------------------------------------------------------------
-  locgindex(:,:) = 0
-  locgindex_tile(:,:) = 0
-  locgindex_wdups(:,:) = 0
-  lindex(:,:) = 0          
-  allocate(gindex_zeros4dups    ( nxtile,  nytile, nregions))
-  allocate(gindex_tiles    ( nxtile,  nytile, nregions))
-  gindex_zeros4dups=0
-  gindex_tiles=0
-
-  bindex = mpp_pe() + 1
+  real(r8), intent(in)  :: arr_d(:,:)    ! input array
+  real(r8), intent(out) :: global_out(:) ! global output in block order
   
-  !                             5 6
-  !Tiles are laid out:        3 4
-  !                         1 2
-  ! 
-  ! pattern repeats so tile 1 also sits on top of 6
+  ! local variables
+  integer :: i, j, k, is, ie, js, je
+  integer, pointer :: ntiles_g
+  integer, pointer :: tile
+  real(r8), allocatable     :: globid(:,:,:)
+  real(r8), allocatable     :: globarr_by_tile(:,:,:)
+  
+  ntiles_g => Atm(mytile)%gridstruct%ntiles_g
+  tile=>  Atm(mytile)%tile
+  is = Atm(mytile)%bd%is
+  ie = Atm(mytile)%bd%ie
+  js = Atm(mytile)%bd%js
+  je = Atm(mytile)%bd%je
+  
+  if (.not. allocated(globid)) then
+     if (masterproc) write(iulog, *) 'INFO: Non-scalable action: Allocating global blocks in FV3 dycore.'
+     allocate(globid(npx-1, npy-1, ntiles_g))
+     globid(is:ie,js:je,tile) = mygindex(is:ie,js:je)
+     call mp_gather(globid, is, ie, js, je, npx-1, npy-1, ntiles_g)
+   end if
 
-  ! build the indicies.  All grid types will use these counts for the
-  ! local version of gindex. Each grid type will just zero out the appropropriate
-  ! rows or columns depending on the grid type tile number.
+  if (.not. allocated(globarr_by_tile)) then
+     if (masterproc) write(iulog, *) 'INFO: Non-scalable action: Allocating global blocks in FV3 dycore.'
+     allocate(globarr_by_tile(npx-1, npy-1, ntiles_g))
+  end if
 
-
-  if (nytile.gt.nxtile) then ! create  locgindex for NS grid
-
-     ! for ns grids 
-     ! if tile 2,4,6 then don't count north boundary points
-     ! lindex ordering by rows
-
-     gindex_zeros4dups=0
-     alen=1
-     tile_alen=1
-     do n = 1, nregions
-        do j = 1, nytile
-           do i = 1, nxtile
-              gindex_tiles(i,j,n)=tile_alen
-              tile_alen=tile_alen+1
-              if (n.eq.2.or.n.eq.4.or.n.eq.6) then
-                 if (j.ne.nytile) then
-                    gindex_zeros4dups(i,j,n)=alen
-                    alen=alen+1
-                 else
-                    gindex_zeros4dups(i,j,n)=0
-                 end if
-              else
-                 gindex_zeros4dups(i,j,n)=alen
-                 alen=alen+1
-              end if
+  globarr_by_tile(is:ie,js:je,tile)=arr_d(is:ie,js:je)
+  call mp_gather(globarr_by_tile, is, ie, js, je, npx-1, npy-1, ntiles_g)
+  if (masterproc) then
+     do k = 1, ntiles_g
+        do j = 1, npy-1
+           do i = 1, npx-1
+              global_out(globid(i,j,k)) = globarr_by_tile(i,j,k)
            end do
         end do
      end do
-
-     locgindex(ilocs:iloce,jlocs:jloce)=gindex_zeros4dups(ilocs:iloce,jlocs:jloce,tile)
-
-     ! appropriate tile boundaries (nytile) already 0'd from gindex_zeros4dups need to 
-     ! zero inner tile je boundaries (These are also repeated points between tasks in ns direction))
-     
-     if (jloce.ne.nytile) then
-        locgindex(ilocs:iloce,jloce)=0
-     end if
-
-     ! output local and global uniq points
-     uniq_pts_glob=count(gindex_zeros4dups.ne.0)
-     uniq_pts_loc=count(locgindex(ilocs:iloce,jlocs:jloce).ne.0)
-
-     ! locgindex_wdups eq gindex_zeros4dups with all northern boundaries 0's filled from adjacent row on next tile
-     locgindex_wdups(ilocs:iloce,jlocs:jloce)=gindex_zeros4dups(ilocs:iloce,jlocs:jloce,tile)
-     if (tile.eq.2.or.tile.eq.4) then !need to pull row 1 from next tile.
-        if (jloce.eq.nytile) locgindex_wdups(ilocs:iloce,jloce)=gindex_zeros4dups(ilocs:iloce,1,tile+1)
-     end if
-     if (tile.eq.6) then ! need to pull 1st row of tile 1
-        if (jloce.eq.nytile) locgindex_wdups(ilocs:iloce,jloce)=gindex_zeros4dups(ilocs:iloce,1,1)
-     endif
-
-     locgindex_justdups=0
-     where (locgindex(ilocs:iloce,jlocs:jloce).eq.0)
-        locgindex_justdups=locgindex_wdups
-     end where
-
-     !lindex ordered by row
-     alen=1
-     do j = jlocs, jloce
-        do i = ilocs, iloce
-           lindex(i,j)=alen
-           locgindex_tile(i,j)=gindex_tiles(i,j,tile)
-           alen=alen+1
-        end do
-     end do
-
   end if
-
-  if (nxtile.gt.nytile) then ! create locgindex for EW grid
-
-     ! for ew grids 
-     ! if tile 1,3,5 then don't count East boundary points
-     ! lindex ordering by row
-
-     gindex_zeros4dups=0
-     alen=1
-     tile_alen=1
-     do n = 1, nregions
-        do j = 1, nytile
-           do i = 1, nxtile
-              gindex_tiles(i,j,n)=tile_alen
-              tile_alen=tile_alen+1
-              if (n.eq.1.or.n.eq.3.or.n.eq.5) then
-                 if (i.ne.nxtile) then
-                    gindex_zeros4dups(i,j,n)=alen
-                    alen=alen+1
-                 else
-                    gindex_zeros4dups(i,j,n)=0
-                 end if
-              else
-                 gindex_zeros4dups(i,j,n)=alen
-                 alen=alen+1
-              end if
-           end do
-        end do
-     end do
-
-     locgindex(ilocs:iloce,jlocs:jloce)=gindex_zeros4dups(ilocs:iloce,jlocs:jloce,tile)
-
-     ! appropriate tile boundaries (nxtile) already 0'd from gindex_zeros4dups need to 
-     ! zero inner tile ie boundaries (These are also repeated points between tasks in ew direction)
-     if (iloce.ne.nxtile) then
-        locgindex(iloce,jlocs:jloce)=0
-     end if
-
-     ! output local and global uniq points
-     uniq_pts_glob=count(gindex_zeros4dups.ne.0)
-     uniq_pts_loc=count(locgindex(ilocs:iloce,jlocs:jloce).ne.0)
-
-     ! locgindex_wdups eq gindex_zeros4dups with eastern boundaries of tiles 1,3,5 (zeros) 
-     ! filled from adjacent column on next tile
-     locgindex_wdups(ilocs:iloce,jlocs:jloce)=gindex_zeros4dups(ilocs:iloce,jlocs:jloce,tile)
-     if (tile.eq.1.or.tile.eq.3.or.tile.eq.5) then !need to pull row 1 from next tile.
-        if (iloce.eq.nxtile) locgindex_wdups(iloce,jlocs:jloce)=gindex_zeros4dups(1,jlocs:jloce,tile+1)
-     end if
-     
-     locgindex_justdups=0
-     where (locgindex(ilocs:iloce,jlocs:jloce).eq.0)
-        locgindex_justdups=locgindex_wdups
-     end where
-
-     alen=1
-     do j = jlocs, jloce
-        do i = ilocs, iloce
-           lindex(i,j)=alen
-           locgindex_tile(i,j)=gindex_tiles(i,j,tile)
-           alen=alen+1
-        end do
-     end do
-
-  end if
-  
-  if (nytile.eq.nxtile) then ! create  locgindex for A
-
-     ! for a-grids just sequential ordering
-     ! lindex ordering by rows
-     gindex_zeros4dups=0
-     alen=1
-     do n = 1, nregions
-        do j = 1, nytile
-           do i = 1, nxtile
-              gindex_tiles(i,j,n)=alen
-              gindex_zeros4dups(i,j,n)=alen
-              alen=alen+1
-           end do
-        end do
-     end do
-
-     locgindex_wdups(ilocs:iloce,jlocs:jloce)=gindex_zeros4dups(ilocs:iloce,jlocs:jloce,tile)
-     locgindex(ilocs:iloce,jlocs:jloce)=gindex_zeros4dups(ilocs:iloce,jlocs:jloce,tile)
-     locgindex_justdups=0
-     where (locgindex(ilocs:iloce,jlocs:jloce).eq.0)
-        locgindex_justdups=locgindex_wdups
-     end where
-
-     ! output local and global uniq points
-     uniq_pts_glob=count(gindex_zeros4dups.ne.0)
-     uniq_pts_loc=count(locgindex(ilocs:iloce,jlocs:jloce).ne.0)
-     !lindex ordered by row
-     alen=1
-     do j = jlocs, jloce
-        do i = ilocs, iloce
-           lindex(i,j)=alen
-           locgindex_tile(i,j)=gindex_tiles(i,j,tile)
-           alen=alen+1
-        end do
-     end do
-
-  end if
-
-  deallocate(gindex_zeros4dups)
-  deallocate(gindex_tiles)
-
-  !-----------------------------------------------------------------------
-end subroutine calc_global_index
+  call mp_bcst(global_out, (npx-1)*(npy-1)*ntiles_g)
+end subroutine create_global
 
 end module dyn_grid

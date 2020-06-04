@@ -2056,13 +2056,6 @@
 
 <fv3_print_memory_usage dyn="fv3">.true.</fv3_print_memory_usage>
 
-<fv3_seconds dyn="fv3"  >1800</fv3_seconds>
-
-<!-- these are recommendations for GFS -->
-<fv3_dt_atmos dyn="fv3"                 >1800</fv3_dt_atmos>
-<fv3_dt_atmos dyn="fv3"     hgrid="C192">900</fv3_dt_atmos>
-<fv3_dt_atmos dyn="fv3"     hgrid="C384">450</fv3_dt_atmos>
-
 <!-- fv_core_nml defaults (alpha order ===============================  -->
 
 <fv3_adjust_dry_mass                                                        > .F.       </fv3_adjust_dry_mass>
@@ -2143,7 +2136,6 @@
 <fv3_npy                                       hgrid="C192"                 > 193       </fv3_npy>
 <fv3_npy                                       hgrid="C384"                 > 385       </fv3_npy>
 <fv3_ntiles                                                                 > 6         </fv3_ntiles>
-<fv3_m_split                                                                > 0         </fv3_m_split>
 <fv3_n_split                                                                > 6         </fv3_n_split>
 <fv3_n_sponge                                                               > 0         </fv3_n_sponge>
 <!-- phys_hydrostatic only used for non hydro simulation

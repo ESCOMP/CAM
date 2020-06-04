@@ -43,30 +43,26 @@ module dyn_comp
     use cam_logfile,     only: iulog
     use constants_mod,   only: cp_air, kappa, rvgas, rdgas
     use constituents,    only: pcnst, cnst_name, cnst_longname, tottnam, cnst_get_ind
-    use dimensions_mod,  only: npx, npy, npz, ncnst, pnats, dnats,nq,num_family,nt_prog, &
+    use dimensions_mod,  only: npx, npy, npz, ncnst, pnats, dnats, nq, num_family, nt_prog, &
                                qsize_condensate_loading_idx,qsize_condensate_loading_cp,qsize_condensate_loading_cv, &
-                               qsize_condensate_loading_idx_gll, qsize_condensate_loading, &
-                               cnst_name_ffsl, cnst_longname_ffsl,qsize,fv3_lcp_moist,fv3_lcv_moist,qsize_tracer_idx_cam2dyn,fv3_scale_ttend
+                               qsize_condensate_loading_idx_gll, qsize_condensate_loading, cnst_name_ffsl, &
+                               cnst_longname_ffsl,qsize,fv3_lcp_moist,fv3_lcv_moist,qsize_tracer_idx_cam2dyn,fv3_scale_ttend
     use dyn_grid,        only: mytile
     use field_manager_mod, only: MODEL_ATMOS
     use fms_io_mod,      only: set_domain, nullify_domain
     use fv_arrays_mod,   only: fv_atmos_type, fv_grid_bounds_type
-    use fv_grid_utils_mod,only: cubed_to_latlon, mid_pt_sphere, inner_prod, get_latlon_vector, get_unit_vect2, g_sum
+    use fv_grid_utils_mod,only: cubed_to_latlon, g_sum
     use fv_nesting_mod,  only: twoway_nesting
     use infnan,          only: isnan
     use mpp_domains_mod, only: mpp_update_domains, domain2D, DGRID_NE
-    use mpp_mod,         only: mpp_set_current_pelist,mpp_pe,mpp_chksum,mpp_sum,mpp_npes
+    use mpp_mod,         only: mpp_set_current_pelist,mpp_pe
     use physconst,       only: gravit, cpair, rearth,omega
-    use physics_types,   only: physics_state, physics_tend
-    use ppgrid,          only: pcols, pver, begchunk, endchunk
+    use ppgrid,          only: pver
     use shr_kind_mod,    only: r8 => shr_kind_r8, r4 => shr_kind_r4, i8 => shr_kind_i8
-    use shr_sys_mod,     only: shr_sys_flush
     use spmd_utils,      only: masterproc, masterprocid, mpicom, npes,iam
-    use spmd_utils,      only: mpi_real8, mpi_integer, mpi_character, mpi_logical
+    use spmd_utils,      only: mpi_integer, mpi_logical
     use time_manager_mod,only: set_date, NOLEAP, set_calendar_type
-    use tracer_manager_mod,     only: get_tracer_index,tracer_manager_init,register_tracers
-
-
+    use tracer_manager_mod,     only: get_tracer_index
 
     implicit none
     private
@@ -91,11 +87,6 @@ type dyn_export_t
   type (fv_atmos_type),  pointer :: Atm(:) => null()
 end type dyn_export_t
 
-! The FV core is always called in its "full physics" mode.  We don't want
-! the dycore to know what physics package is responsible for the forcing.
-logical, parameter         :: convt = .true.
-logical :: first_time = .true.
-
 ! Private interfaces
 interface read_dyn_var
   module procedure read_dyn_field_2d
@@ -105,11 +96,9 @@ end interface read_dyn_var
 real(r8), public, allocatable :: u_dt(:,:,:), v_dt(:,:,:), t_dt(:,:,:)
 
 !These are convenience variables for local use only, and are set to values in Atm%
-integer(i8) :: checksum
 real(r8) ::  zvir, dt_atmos_real
 
 integer :: ldof_size
-integer :: grid_size
 
 real(r8), allocatable,dimension(:,:,:)       :: se_dyn,ke_dyn,wv_dyn,wl_dyn,wi_dyn, &
                                                 wr_dyn,ws_dyn,wg_dyn,tt_dyn,mo_dyn,mr_dyn
@@ -156,8 +145,6 @@ subroutine dyn_readnl(nlfilename)
   integer            :: fv3_domains_stack_size
   integer            :: fv3_stack_size
   logical            :: fv3_print_memory_usage
-
-  
 
   character(len=256) :: inrec  ! first 80 characters of input record
   character(len=256) :: inrec2 ! left adjusted input record
@@ -237,7 +224,8 @@ subroutine dyn_readnl(nlfilename)
      close(unitn)
      call freeunit(unitn)
   end if
-  if ((fv3_lcp_moist.eqv.fv3_lcv_moist) .and. (fv3_lcv_moist.eqv..true.)) call endrun('dyn_readnl: ERROR reading dyn_fv3_inparm namelist fv3_lcp_moist and fv3_lcv_moist can not both be true')
+  if ((fv3_lcp_moist.eqv.fv3_lcv_moist) .and. (fv3_lcv_moist.eqv..true.)) &
+       call endrun('dyn_readnl: ERROR reading dyn_fv3_inparm namelist fv3_lcp_moist and fv3_lcv_moist can not both be true')
 
   ! Broadcast namelist values to all PEs
   call MPI_bcast(fv3_qsize_condensate_loading, 1, mpi_integer, masterprocid, mpicom, ierr)
@@ -320,7 +308,8 @@ subroutine dyn_readnl(nlfilename)
   end if
 
   ! Create the input.nml namelist needed by the fv3dycore.
-  ! Read strings one at a time from the fv3 namelist groups, strip off the leading 'fv3_' from the variable names and write to input.nml.
+  ! Read strings one at a time from the fv3 namelist groups,
+  ! strip off the leading 'fv3_' from the variable names and write to input.nml.
   ! This could be replaced by also by writing to the internal namelist file
 
   if (masterproc) then
@@ -403,18 +392,18 @@ subroutine dyn_init(dyn_in, dyn_out)
   
   
   use cam_control_mod, only: initial_run
-  use cam_history,     only: addfld, add_default, horiz_only
+  use cam_history,     only: addfld, horiz_only
   use cam_history,     only: register_vector_field
   use cam_pio_utils,   only: clean_iodesc_list
   use diag_manager_mod,only: diag_manager_init
-  use dyn_grid,        only: Atm, grids_on_this_pe
+  use dyn_grid,        only: Atm
   use fv_diagnostics_mod, only: fv_diag_init, fv_time
   use fv_mp_mod,       only: fill_corners, YDir, switch_current_Atm
   use infnan,          only: inf, assignment(=)
-  use perf_mod,        only: t_barrierf
   use physconst,       only: cpwv, cpliq, cpice
-  use time_manager,    only: get_step_size,get_curr_date
+  use time_manager,    only: get_curr_date
   use time_manager_mod,only: time_type
+  use tracer_manager_mod,     only: register_tracers
   use units,           only: getunit, freeunit
 
   ! arguments:
@@ -439,21 +428,19 @@ subroutine dyn_init(dyn_in, dyn_out)
    integer :: dd             ! CAM current day
    integer :: tod             ! CAM current time of day (sec)
 
-   integer ::   sphum, liq_wat, ice_wat, rainwat, snowwat,graupel
-   integer :: ixcldice, ixcldliq, ixrain, ixsnow, ixgraupel
    character(len=*), parameter :: subname = 'dyn_init'
 
-   ! variables for initializing energy and axial angular momentum diagnostics                                                                                                             
+   ! variables for initializing energy and axial angular momentum diagnostics
    character (len = 3), dimension(8) :: stage = (/"dED","dAP","dBD","dAT","dAF","dAD","dAR","dBF"/)
    character (len = 70),dimension(8) :: stage_txt = (/&
         " end of previous dynamics                           ",& !dED
         " after physics increment on A-grid                  ",& !dAP
         " state after applying CAM forcing                   ",& !dBD - state after applyCAMforcing
         " state after top of atmosphere damping (Rayleigh)   ",& !dAT 
-        " from previous remapping or state passed to dynamics",& !dAF - state in beginning of ksplit loop                                                               
-        " before vertical remapping                          ",& !dAD - state before vertical remapping                                                                                     
-        " after vertical remapping                           ",& !dAR - state at end of nsplit loop                                                                                         
-        " state passed to parameterizations                  " & !dBF                                                                                                                       
+        " from previous remapping or state passed to dynamics",& !dAF - state in beginning of ksplit loop
+        " before vertical remapping                          ",& !dAD - state before vertical remapping
+        " after vertical remapping                           ",& !dAR - state at end of nsplit loop
+        " state passed to parameterizations                  " & !dBF
         /)
    character (len = 2)  , dimension(11) :: vars = (/"WV","WL","WI","WR","WS","WG","SE","KE","MR","MO","TT"/)
    character (len = 70), dimension(11)  :: vars_descriptor = (/&
@@ -477,8 +464,8 @@ subroutine dyn_init(dyn_in, dyn_out)
    integer :: istage, ivars
    character (len=108) :: str1, str2, str3
    integer :: is,isd,ie,ied,js,jsd,je,jed
+   integer :: ixrain, ixsnow, ixgraupel, ixcldice, ixcldliq
    integer :: fv3idx,icnst_ffsl,k
-   character(len=1024) :: fieldtable(pcnst)
 
    real, parameter:: cv_vap = 3.*rvgas        ! < 1384.5
    real, parameter:: cv_air =  cp_air - rdgas !< = rdgas * (7/2-1) = 2.5*rdgas=717.68
@@ -576,7 +563,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    end if
 
    if (icnst_ffsl /= qsize_condensate_loading) &
-        call endrun(subname//': ERROR: qsize_condensate_loading not equal to the number of water constituents added to q array')
+        call endrun(subname//': ERROR: qsize_condensate_loading not equal to the number of water constituents in q array')
 
    !Now add all other CAM tracer after any of the condensates in the fv3 tracer array 
    do m=1,pcnst
@@ -609,7 +596,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    call mpibarrier (mpicom)
    call register_tracers (MODEL_ATMOS, ncnst, nt_prog, pnats, num_family)
    if (masterproc) then
-      write(*,*) 'ncnst=', ncnst,' num_prog=',nt_prog,' pnats=',pnats,' dnats=',dnats,' num_family=',num_family         
+      write(iulog,*) 'ncnst=', ncnst,' num_prog=',nt_prog,' pnats=',pnats,' dnats=',dnats,' num_family=',num_family
       print*, ''
    endif
 
@@ -618,7 +605,7 @@ subroutine dyn_init(dyn_in, dyn_out)
       if(qsize_tracer_idx_cam2dyn(m).le.qsize_condensate_loading) then
          fv3idx  = get_tracer_index (MODEL_ATMOS, cnst_name_ffsl(qsize_tracer_idx_cam2dyn(m)) )
          if (fv3idx.ne.qsize_tracer_idx_cam2dyn(m)) then
-            write(6,*)'m,fv3idx,qsize_tracer_idx_cam2dyn=',m,fv3idx,qsize_tracer_idx_cam2dyn,cnst_name_ffsl,mpp_pe()
+            write(iulog,*)'m,fv3idx,qsize_tracer_idx_cam2dyn=',m,fv3idx,qsize_tracer_idx_cam2dyn,cnst_name_ffsl,mpp_pe()
             call endrun(subname//': ERROR: CAM/FV3 Tracer mapping incorrect')
          end if
       end if
@@ -708,7 +695,6 @@ subroutine dyn_init(dyn_in, dyn_out)
  fv_time = Time
 
 !----- initialize atmos_axes and fv_dynamics diagnostics
-       !I've had trouble getting this to work with multiple grids at a time; worth revisiting?
    call fv_diag_init(Atm(mytile:mytile), Atm(mytile)%atmos_axes, Time, npx, npy, npz, Atm(mytile)%flagstruct%p_ref)
 
    ! Forcing from physics on the FFSL grid
@@ -757,12 +743,10 @@ subroutine dyn_run(dyn_state)
   ! DESCRIPTION: Driver for the NASA finite-volume dynamical core
 
 
-  use cam_history,            only: outfld, hist_fld_active
   use dimensions_mod,         only: npz
   use dyn_grid,               only: p_split,grids_on_this_pe
   use fv_control_mod,         only: ngrids
   use fv_dynamics_mod,        only: fv_dynamics
-  use fv_mp_mod,              only: switch_current_Atm
   use fv_sg_mod,              only: fv_subgrid_z
   use time_manager,           only: get_step_size
   use tracer_manager_mod,     only: get_tracer_index, NO_TRACER
@@ -772,9 +756,8 @@ subroutine dyn_run(dyn_state)
   type (dyn_export_t), intent(inout) :: dyn_state
 
 
-  integer :: itrac, psc,idim
+  integer :: psc,idim
   integer :: k, w_diff, nt_dyn,j,i
-  real(r8), allocatable :: testarr(:,:)
   type(fv_atmos_type), pointer         :: Atm(:)  
   integer :: is,isc,isd,ie,iec,ied,js,jsc,jsd,je,jec,jed
   
@@ -841,8 +824,9 @@ subroutine dyn_run(dyn_state)
           Atm(mytile)%parent_grid, Atm(mytile)%domain, &
 #if ( defined CALC_ENERGY )
           Atm(mytile)%diss_est, &
-          qsize,qsize_condensate_loading,qsize_condensate_loading_idx,qsize_tracer_idx_cam2dyn,qsize_condensate_loading_cp,qsize_condensate_loading_cp, &
-          se_dyn, ke_dyn, wv_dyn,wl_dyn,wi_dyn,wr_dyn,ws_dyn,wg_dyn,tt_dyn,mo_dyn,mr_dyn,gravit, cpair, rearth,omega,fv3_lcp_moist,fv3_lcv_moist)
+          qsize,qsize_condensate_loading,qsize_condensate_loading_idx,qsize_tracer_idx_cam2dyn, &
+          qsize_condensate_loading_cp,qsize_condensate_loading_cp, se_dyn, ke_dyn, wv_dyn,wl_dyn, &
+          wi_dyn,wr_dyn,ws_dyn,wg_dyn,tt_dyn,mo_dyn,mr_dyn,gravit, cpair, rearth,omega,fv3_lcp_moist,fv3_lcv_moist)
 #else
           Atm(mytile)%diss_est)
 #endif
@@ -935,26 +919,13 @@ end subroutine dyn_run
 !=======================================================================
 
 subroutine dyn_final(dyn_in, dyn_out, restart_file)
-  use dyn_grid,           only: grids_on_this_pe
-  use fms_mod,            only: fms_end
-  use fv_control_mod,     only: fv_end
   implicit none
 
   type (dyn_import_t),      intent(inout) :: dyn_in
   type (dyn_export_t),      intent(inout) :: dyn_out
   character(len=*),optional,intent(in)    :: restart_file
-  type(fv_atmos_type), pointer         :: Atm(:)  
   
-  !---- Call FV dynamics -----
-
-  Atm => dyn_in%Atm
-
-  call fv_end(Atm, grids_on_this_pe)
-
   deallocate( u_dt, v_dt, t_dt)
-
-  ! fms finalization
-  call fms_end()
 
 end subroutine dyn_final
 
@@ -967,30 +938,19 @@ subroutine read_inidat(dyn_in)
   use dyn_tests_utils,       only: vc_moist_pressure,vc_dry_pressure
   use pmgrid,                only: plev
   use constituents,          only: pcnst
-  use pio,                   only: pio_inq_dimid, pio_inq_dimlen, pio_inq_varid, &
-                             pio_read_darray, file_desc_t, io_desc_t, pio_double, &
-                             pio_seterrorhandling, pio_bcast_error, var_desc_t
-
+  use pio,                   only: file_desc_t, pio_seterrorhandling, pio_bcast_error
   use ppgrid,                only: pver
-  use ncdio_atm,             only: infld
   use cam_abortutils,        only: endrun
   use constituents,          only: pcnst, cnst_name, cnst_read_iv,qmin, cnst_type
   use const_init,            only: cnst_init_default
   use cam_initfiles,         only: initial_file_get_id, topo_file_get_id, pertlim
-  use cam_grid_support,      only: cam_grid_id, cam_grid_get_gcid, &
-                                   cam_grid_dimensions, cam_grid_get_decomp, &
-                                   cam_grid_get_latvals, cam_grid_get_lonvals,iMap
+  use cam_grid_support,      only: cam_grid_id, cam_grid_get_gcid, iMap
   use cam_history_support,   only: max_fieldname_len
   use hycoef,                only: hyai, hybi, ps0
-  use dyn_grid,              only: mygindex, mylindex, mygindexdups
-  use cam_pio_utils,         only: cam_pio_handle_error
+  use dyn_grid,              only: mygindex, mylindex
   implicit none
 
   type (dyn_import_t), target, intent(inout) :: dyn_in   ! dynamics import
-
-  real(r8), allocatable :: tmp(:,:,:)
-
-  type(io_desc_t) :: iodesc
 
   logical :: found
 
@@ -1015,15 +975,10 @@ subroutine read_inidat(dyn_in)
   integer,  allocatable            :: m_ind(:)
   integer                          :: vcoord
   integer                          :: pio_errtype
-  integer                          :: ncol_did
   integer                          :: dims(2)
   real(r8), allocatable            :: dbuf2(:,:)         ! (pcol,nblk=1)
   real(r8), allocatable            :: dbuf3(:,:,:)       ! (pcol,plev,nblk=1)
   real(r8), allocatable            :: dbuf4(:,:,:,:)       ! (pcol,plev,nblk=1,pcnst)
-  real(r8), pointer                :: latvals_deg(:)
-  real(r8), pointer                :: lonvals_deg(:)
-  real(r8), allocatable            :: latvals(:)
-  real(r8), allocatable            :: lonvals(:)
   real(r8), allocatable            :: latvals_rad(:)
   real(r8), allocatable            :: lonvals_rad(:)
   integer                          :: rndm_seed_sz
@@ -1031,45 +986,21 @@ subroutine read_inidat(dyn_in)
   logical                          :: inic_wet !initial condition is based on wet pressure and water species
   integer                          :: m_cnst,m_cnst_ffsl
   integer                          :: indx, nq
-  integer                          :: ierr,ig,err_handling
-  character(len=max_fieldname_len) :: dimname, varname
-  integer                          :: ncol_size
+  integer                          :: ierr,err_handling
+  character(len=max_fieldname_len) :: dimname
   real(r8)                         :: pertval
-  real(r8), allocatable            :: pstmp(:,:), psdry(:,:)
+  real(r8), allocatable            :: pstmp(:,:)
   real(r8), pointer, dimension(:,:,:)  :: agrid,grid
-  real(r8), allocatable            :: gz(:,:,:),factor_mixd2dvc(:,:,:)
   real (r8)                        :: tracermass(pcnst),delpdry
   real (r8)                        :: fv3_totwatermass, fv3_airmass
   real (r8)                        :: initial_global_ave_dry_ps,reldif
 
-  !-----------------------------------------------------------------------
   integer                :: is,ie,js,je,isd,ied,jsd,jed
   integer                :: blksize
   logical                :: fv2fv3_mixratio
-  integer                :: sphum, liq_wat, ice_wat, rainwat, snowwat,graupel
-  real(r8)               :: u1
-  real(r8), dimension(2) :: pa
-  real(r8), dimension(3) :: e1,ex,ey
-  integer :: fnlev,nlev_dimid
-  integer :: hdim_len, ncols
   
-  integer :: npz_dimid
-  integer :: ncol_dimid
   integer :: m_ffsl
-  
-  type(var_desc_t) :: omegadesc
-  type(var_desc_t) :: delpdesc
-  type(var_desc_t) :: udesc
-  type(var_desc_t) :: vdesc
-  type(var_desc_t) :: tdesc
-  type(var_desc_t) :: psdesc
-  type(var_desc_t) :: phisdesc
-  type(var_desc_t), allocatable :: qdesc(:)
-  type(io_desc_t),pointer :: iodesc2d, iodesc3d
-  integer :: array_lens_3d(3), array_lens_2d(2), array_lens_1d(1)
-  integer :: file_lens_2d(2), file_lens_1d(1)
-  integer :: grid_id,ilen,jlen
-  integer :: grid_dimlens(2)
+  integer :: ilen,jlen
   real(r8), allocatable :: var3d(:,:,:), var2d(:,:)
 
   Atm => dyn_in%Atm
@@ -1085,18 +1016,12 @@ subroutine read_inidat(dyn_in)
 
   nullify(ldof)
 
-!  fh_ini  => initial_file_get_id()
   fh_topo => topo_file_get_id()
   fh_ini  = initial_file_get_id()
 
   Atm => dyn_in%Atm
   grid => atm(mytile)%gridstruct%grid_64
   agrid => atm(mytile)%gridstruct%agrid_64
-
-  ! The grid name is defined in dyn_grid::define_cam_grids.
-  ! Get the number of columns in the global grid.
-  call cam_grid_dimensions('FFSL', dims)
-  grid_size = dims(1)
 
   ! Set mask to indicate which columns are active
   call cam_grid_get_gcid(cam_grid_id('FFSL'), ldof)
@@ -1114,7 +1039,7 @@ subroutine read_inidat(dyn_in)
         n=mylindex(i,j)
         lonvals_rad(n) = agrid(i,j,1)
         latvals_rad(n) = agrid(i,j,2)
-        glob_inddups(n) = mygindexdups(i,j)
+        glob_inddups(n) = mygindex(i,j)
      end do
   end do
 
@@ -1144,7 +1069,6 @@ subroutine read_inidat(dyn_in)
            atm(mytile)%ps(i,j) =   dbuf2(n, 1)
         end do
      end do
-     deallocate(dbuf2)
      
      call analytic_ic_set_ic(vcoord, latvals_rad, lonvals_rad, glob_inddups ,            &
           PHIS_OUT=phis_tmp(:,:))
@@ -1185,12 +1109,8 @@ subroutine read_inidat(dyn_in)
         end do
      end do
 
-
-     deallocate(dbuf3)
-
      call analytic_ic_set_ic(vcoord, latvals_rad, lonvals_rad, glob_inddups,            &
           Q=dbuf4(:,:,:,1:pcnst), m_cnst=m_ind)
-     deallocate(m_ind)
 
      ! Tracers to be advected on FFSL grid.
      do m_cnst = 1, pcnst
@@ -1203,72 +1123,48 @@ subroutine read_inidat(dyn_in)
            end do
         end do
      end do
-     deallocate(dbuf4)
 
      !-----------------------------------------------------------------------
-     call a2d3djt(atm(mytile)%ua, atm(mytile)%va, atm(mytile)%u, atm(mytile)%v, is,  ie,  js,  je, isd, ied, jsd, jed, npx,npy, npz, atm(mytile)%gridstruct, atm(mytile)%domain)
+     call a2d3djt(atm(mytile)%ua, atm(mytile)%va, atm(mytile)%u, atm(mytile)%v, is,  ie,  js,  je, &
+                  isd, ied, jsd, jed, npx,npy, npz, atm(mytile)%gridstruct, atm(mytile)%domain)
+
+     deallocate(dbuf2)
+     deallocate(dbuf3)
+     deallocate(dbuf4)
+     deallocate(m_ind)
 
   else
      ! Read ICs from file. 
+
+     allocate(dbuf3(blksize,plev,1))
+     allocate(var2d(is:ie,js:je))
+     allocate(var3d(is:ie,js:je,npz))
+
      call pio_seterrorhandling(fh_ini, pio_bcast_error, err_handling)
      
-     ! variable descriptors of required dynamics fields
-
-     ierr = PIO_Inq_varid(fh_ini, 'U',     udesc)
-     call cam_pio_handle_error(ierr, subname//': cannot find U')
-     ierr = PIO_Inq_varid(fh_ini, 'V',     Vdesc)
-     call cam_pio_handle_error(ierr, subname//': cannot find V')
-     ierr = PIO_Inq_varid(fh_ini, 'T',     tdesc)
-     call cam_pio_handle_error(ierr, subname//': cannot find T')
-     ierr = PIO_Inq_varid(fh_ini, 'PS', psdesc)
-     call cam_pio_handle_error(ierr, subname//': cannot find PS')
-
      fieldname  = 'PS'
      fieldname2 = 'PSDRY'
      if (dyn_field_exists(fh_ini, trim(fieldname), required=.false.)) then
         inic_wet = .true.
+        call read_dyn_var(trim(fieldname), fh_ini, 'ncol', var2d)
      elseif (dyn_field_exists(fh_ini, trim(fieldname2), required=.false.)) then
         inic_wet = .false.
+        call read_dyn_var(trim(fieldname2), fh_ini, 'ncol', var2d)
      else
         call endrun(trim(subname)//': PS or PSDRY must be on ncdata')
      end if
-
-     allocate(qdesc(pcnst))
-
-     ierr = PIO_Inq_DimID(fh_ini, 'ncol', ncol_dimid)
-     call cam_pio_handle_error(ierr, subname//': cannot find ncol')
-     ierr = PIO_Inq_dimlen(fh_ini, ncol_dimid, ncols)
-     
-     
-     grid_id = cam_grid_id('FFSL')
-     call cam_grid_dimensions(grid_id, grid_dimlens)
+     atm(mytile)%ps(is:ie,js:je) = var2d
      
      ilen = ie-is+1
      jlen = je-js+1
-     ! create map for distributed write of 2D fields
-     array_lens_2d = (/ilen,jlen/)
-     file_lens_1d  = (/grid_dimlens(1)/)
-     call cam_grid_get_decomp(grid_id, array_lens_2d, file_lens_1d, pio_double, iodesc2d)
-     
-     ! create map for distributed write of 3D fields
-     array_lens_3d = (/ilen,npz, jlen/)
-     file_lens_2d  = (/grid_dimlens(1), npz/)
-     call cam_grid_get_decomp(grid_id, array_lens_3d, file_lens_2d, pio_double, iodesc3d)
-     
-     allocate(var2d(is:ie,js:je))
-     var2d = 0._r8
-     ! PS
-     call PIO_Read_Darray(fh_ini, psdesc, iodesc2d, var2d, ierr)
-     atm(mytile)%ps(is:ie,js:je) = var2d
-     checksum=mpp_chksum(atm(mytile)%ps(is:ie,js:je))
 
-     allocate(var3d(is:ie,npz,js:je))
-     var3d = 0._r8
-     
      ! T
-     call PIO_Read_Darray(fh_ini, Tdesc, iodesc3d, var3d, ierr)
-     atm(mytile)%pt(is:ie,js:je,1:npz)=RESHAPE(var3d,(/ilen,jlen,npz/),ORDER=(/1,3,2/))
-     checksum=mpp_chksum(atm(mytile)%pt(is:ie,js:je,1:npz))
+     if (dyn_field_exists(fh_ini, 'T')) then
+        call read_dyn_var('T', fh_ini, 'ncol_d', var3d)
+        atm(mytile)%pt(is:ie,js:je,1:npz)=var3d(is:ie,js:je,1:npz)
+     else
+         call endrun(trim(subname)//': T not found')
+     end if
      
      if (pertlim .ne. 0.0_r8) then
         if(masterproc) then
@@ -1280,7 +1176,6 @@ subroutine read_inidat(dyn_in)
         allocate(rndm_seed(rndm_seed_sz))
 
         ! seed random number generator based on global index
-        ! (possibly include a flag to allow clock-based random seeding)
         allocate(glob_inddups(blksize))
 
         do i=is,ie
@@ -1299,31 +1194,33 @@ subroutine read_inidat(dyn_in)
         deallocate(glob_inddups)
      end if
 
-
-     
      ! V
-     call PIO_Read_Darray(fh_ini, Vdesc, iodesc3d, var3d, ierr)
-     atm(mytile)%va(is:ie,js:je,1:npz)=RESHAPE(var3d,(/ilen,jlen,npz/),ORDER=(/1,3,2/))
-     checksum=mpp_chksum(atm(mytile)%va(is:ie,js:je,1:npz))
+     if (dyn_field_exists(fh_ini, 'V')) then
+        call read_dyn_var('V', fh_ini, 'ncol_d', var3d)
+        atm(mytile)%va(is:ie,js:je,1:npz)=var3d(is:ie,js:je,1:npz)
+     else
+         call endrun(trim(subname)//': V not found')
+     end if
 
-     ! U
-     call PIO_Read_Darray(fh_ini, Udesc, iodesc3d, var3d, ierr)
-     atm(mytile)%ua(is:ie,js:je,1:npz)   =RESHAPE(var3d,(/ilen,jlen,npz/),ORDER=(/1,3,2/))
-     checksum=mpp_chksum(atm(mytile)%ua(is:ie,js:je,1:npz))
+     if (dyn_field_exists(fh_ini, 'U')) then
+        call read_dyn_var('U', fh_ini, 'ncol_d', var3d)
+        atm(mytile)%ua(is:ie,js:je,1:npz)   =var3d(is:ie,js:je,1:npz)
+     else
+         call endrun(trim(subname)//': U not found')
+     end if
 
-     ! Q 
-        m=1
-        ierr = PIO_Inq_varid(fh_ini, trim(cnst_name(m)), Qdesc(m))
-        call cam_pio_handle_error(ierr, subname//': cannot find '//trim(cnst_name(m)))
-        call PIO_Read_Darray(fh_ini, Qdesc(m), iodesc3d, var3d, ierr)
-        atm(mytile)%q(is:ie,js:je,1:npz,m) = RESHAPE(var3d,(/ilen,jlen,npz/),ORDER=(/1,3,2/))
-        checksum=mpp_chksum(atm(mytile)%q(is:ie,js:je,1:npz,m))
+     m_cnst=1
+     if (dyn_field_exists(fh_ini, 'Q')) then
+        call read_dyn_var('Q', fh_ini, 'ncol_d', var3d)
+        atm(mytile)%q(is:ie,js:je,1:npz,m_cnst) = var3d(is:ie,js:je,1:npz)
+     else
+         call endrun(trim(subname)//': Q not found')
+     end if
      
      ! Read in or cold-initialize all the tracer fields
      ! Copy tracers defined on unstructured grid onto distributed FFSL grid
      ! Make sure tracers have at least minimum value
         
-     allocate(dbuf3(blksize,plev,1))
      do m_cnst = 2, pcnst
         m_cnst_ffsl=qsize_tracer_idx_cam2dyn(m_cnst)
         found = .false.
@@ -1334,16 +1231,14 @@ subroutine read_inidat(dyn_in)
         end if
 
         if(found) then
-           var3d=0._r8
-           ierr = PIO_Inq_varid(fh_ini, trim(cnst_name(m_cnst)), Qdesc(m_cnst))
-           call cam_pio_handle_error(ierr, subname//': cannot find '//trim(cnst_name(m_cnst)))
-           call PIO_Read_Darray(fh_ini, Qdesc(m_cnst), iodesc3d, var3d, ierr)
-           atm(mytile)%q(is:ie,js:je,1:npz,m_cnst_ffsl) = RESHAPE(var3d,(/ilen,jlen,npz/),ORDER=(/1,3,2/))
-           checksum=mpp_chksum(atm(mytile)%q(is:ie,js:je,1:npz,m_cnst_ffsl))
+           call read_dyn_var(trim(cnst_name(m_cnst)), fh_ini, 'ncol_d', var3d)
+           atm(mytile)%q(is:ie,js:je,1:npz,m_cnst_ffsl) =  var3d(is:ie,js:je,1:npz)
         else
            dbuf3=0._r8
-           if (masterproc) write(iulog,*)'Missing ',trim(cnst_name(m_cnst)),' constituent number',m_cnst,size(latvals_rad),size(dbuf3)
-           if (masterproc) write(iulog,*)'Initializing ',trim(cnst_name(m_cnst)),'fv3 constituent number ',m_cnst_ffsl,' to default'
+           if (masterproc) write(iulog,*)'Missing ',trim(cnst_name(m_cnst)),' constituent number', &
+                m_cnst,size(latvals_rad),size(dbuf3)
+           if (masterproc) write(iulog,*)'Initializing ',trim(cnst_name(m_cnst)),'fv3 constituent number ',&
+                m_cnst_ffsl,' to default'
            call cnst_init_default(m_cnst, latvals_rad, lonvals_rad, dbuf3)
            do k=1, plev
               indx = 1
@@ -1354,24 +1249,24 @@ subroutine read_inidat(dyn_in)
                  end do
               end do
            end do
-           checksum=mpp_chksum(atm(mytile)%q(is:ie,js:je,1:npz,m_cnst_ffsl))
         end if
 
      end do ! pcnst
 
-     deallocate(dbuf3)
-     deallocate(var3d)
-     deallocate(qdesc)
-     
+     call a2d3djt(atm(mytile)%ua, atm(mytile)%va, atm(mytile)%u, atm(mytile)%v, is,  ie,  js,  je, &
+                  isd, ied, jsd, jed, npx,npy, npz, atm(mytile)%gridstruct, atm(mytile)%domain)
 
-     call a2d3djt(atm(mytile)%ua, atm(mytile)%va, atm(mytile)%u, atm(mytile)%v, is,  ie,  js,  je, isd, ied, jsd, jed, npx,npy, npz, atm(mytile)%gridstruct, atm(mytile)%domain)
-
-     ! recreating a set of A winds from D winds using cubed_to_latlon to be consistent with what is done in the energy diagnostics. 
+     ! recreating a set of A winds from D winds using cubed_to_latlon to be consistent with energy diagnostics.
      call cubed_to_latlon(Atm(mytile)%u, Atm(mytile)%v, Atm(mytile)%ua, Atm(mytile)%va, Atm(mytile)%gridstruct, &
-          npx, npy, npz, 1, Atm(mytile)%gridstruct%grid_type, Atm(mytile)%domain, Atm(mytile)%gridstruct%nested, Atm(mytile)%flagstruct%c2l_ord, Atm(mytile)%bd)
+          npx, npy, npz, 1, Atm(mytile)%gridstruct%grid_type, Atm(mytile)%domain, Atm(mytile)%gridstruct%nested, &
+          Atm(mytile)%flagstruct%c2l_ord, Atm(mytile)%bd)
 
      ! Put the error handling back the way it was
      call pio_seterrorhandling(fh_ini, err_handling)
+
+     deallocate(dbuf3)
+     deallocate(var2d)
+     deallocate(var3d)
 
   end if ! analytic_ic_active
 
@@ -1411,17 +1306,17 @@ subroutine read_inidat(dyn_in)
         atm(mytile)%phis(i,j) = phis_tmp(indx,1)
      end do
   end do
-  checksum=mpp_chksum(atm(mytile)%phis(is:ie,js:je))
 
-  !                                                                                                                                                                                     
+  !
   ! initialize delp and mixing ratios
-  !                                                                                                                                                                                     
+  !
 
   if (inic_wet) then
 
 !
-!  Initial condition should be consistent with fv3 dynamics and wouldn't normally need any adjustment here but I am using an 
-!  interpolated fv initial condition with mixing ratios based off of (dry mass + vapor) and needs to be (dry mass + vapor + condensates)
+!  Initial condition should be consistent with fv3 dynamics and wouldn't normally need any adjustment
+!  here but I am using an interpolated fv initial condition with mixing ratios based off of (dry mass + vapor)
+!  and fv3 needs it to be (dry mass + vapor + condensates)
      fv2fv3_mixratio=.true.
      if (fv2fv3_mixratio) then 
         allocate(pstmp(isd:ied,jsd:jed))
@@ -1453,7 +1348,8 @@ subroutine read_inidat(dyn_in)
                     if (tracermass(m_ffsl).ne.0) then
                        reldif=(Atm(mytile)%delp(i,j,k)*Atm(mytile)%q(i,j,k,m_ffsl)-tracermass(m_ffsl))/tracermass(m_ffsl)
                        if (reldif.gt.1.0e-15_r8) &
-                       write(iulog,*)'mass inconsistency new, old, relative error=',iam,cnst_name(m),Atm(mytile)%delp(i,j,k)*Atm(mytile)%q(i,j,k,m_ffsl),tracermass(m_ffsl),reldif
+                            write(iulog,*)'mass inconsistency new, old, relative error=',iam,cnst_name(m),&
+                            Atm(mytile)%delp(i,j,k)*Atm(mytile)%q(i,j,k,m_ffsl),tracermass(m_ffsl),reldif
                     end if
                  end do
               end do
@@ -1484,7 +1380,8 @@ subroutine read_inidat(dyn_in)
                  m_ffsl=qsize_tracer_idx_cam2dyn(m)
                  reldif=(Atm(mytile)%delp(i,j,k)*Atm(mytile)%q(i,j,k,m_ffsl)-tracermass(m_ffsl))/tracermass(m_ffsl)
                  if (reldif.gt.1.0e-15_r8) &
-                      write(iulog,*)'mass inconsistency new, old, relative error=',iam,cnst_name(m),Atm(mytile)%delp(i,j,k)*Atm(mytile)%q(i,j,k,m_ffsl),tracermass(m_ffsl),reldif
+                      write(iulog,*)'mass inconsistency new, old, relative error=',iam,cnst_name(m), &
+                      Atm(mytile)%delp(i,j,k)*Atm(mytile)%q(i,j,k,m_ffsl),tracermass(m_ffsl),reldif
               end do
            end do
         end do
@@ -1510,7 +1407,6 @@ subroutine read_inidat(dyn_in)
      enddo
   enddo
   
-! TODO: consider swapping loops for better OMP performance (vertical dependency)
 !$omp parallel do private(i,j,k)
   do j=js,je
      do k=1,pver
@@ -1526,7 +1422,8 @@ subroutine read_inidat(dyn_in)
         do i=is,ie
            Atm(mytile)%pk(i,j,k+1)= Atm(mytile)%pe(i,k+1,j) ** kappa
            Atm(mytile)%peln(i,k+1,j) = log(Atm(mytile)%pe(i,k+1,j))
-           Atm(mytile)%pkz(i,j,k) = (Atm(mytile)%pk(i,j,k+1)-Atm(mytile)%pk(i,j,k))/(kappa*(Atm(mytile)%peln(i,k+1,j)-Atm(mytile)%peln(i,k,j)))
+           Atm(mytile)%pkz(i,j,k) = (Atm(mytile)%pk(i,j,k+1)-Atm(mytile)%pk(i,j,k)) / &
+           (kappa*(Atm(mytile)%peln(i,k+1,j)-Atm(mytile)%peln(i,k,j)))
         enddo
      enddo
   enddo
@@ -1536,7 +1433,8 @@ subroutine read_inidat(dyn_in)
         do j=js,je
            do i=is,ie
               Atm(mytile)%w ( i,j,k ) = 0.
-              Atm(mytile)%delz ( i,j,k ) = -rdgas/gravit*Atm(mytile)%pt( i,j,k ) * ( Atm(mytile)%peln( i,k+1,j ) - Atm(mytile)%peln( i,k,j ) )
+              Atm(mytile)%delz ( i,j,k ) = -rdgas/gravit*Atm(mytile)%pt( i,j,k ) * &
+                   ( Atm(mytile)%peln( i,k+1,j ) - Atm(mytile)%peln( i,k,j ) )
            enddo
         enddo
      enddo
@@ -1562,77 +1460,12 @@ subroutine read_inidat(dyn_in)
   
 end subroutine read_inidat
 
-
 !=======================================================================
 
-subroutine get_dyn_decomp(is,ie,js,je,nlev, datatype, iodesc)
-
-    use pio,           only: io_desc_t, pio_initdecomp
-    use cam_pio_utils, only: pio_subsystem
-    use dyn_grid,      only: get_horiz_grid_dim_d
-
-    implicit none
-
-    integer, intent(in) :: nlev, datatype
-    type(io_desc_t), intent(out) :: iodesc
-    integer, pointer :: ldof(:)
-    integer :: dimlens(2), dimcnt
-    integer :: is,ie,js,je
-
-    dimcnt = 1
-    call get_horiz_grid_dim_d(dimlens(1))
-    if (nlev .gt. 1) then
-        dimlens(2) = nlev
-        dimcnt = dimcnt + 1
-    end if
-
-    ldof => get_ldof(is,ie,js,je,nlev)
-    call pio_initdecomp(pio_subsystem, datatype, dimlens(1:dimcnt), ldof, iodesc)
-
-    deallocate(ldof)
-
-end subroutine get_dyn_decomp
-
-!=======================================================================
-
-function get_ldof(is,ie,js,je,nlev) result(ldof)
-
-    use dyn_grid,          only: get_horiz_grid_dim_d,mygindex
-
-    implicit none
-
-    integer, intent(in) :: is,ie,js,je
-    integer, intent(in) :: nlev
-    integer, pointer :: ldof(:)
-
-    integer :: lcnt, i, j, k, ig, offset, hdim
-
-    call get_horiz_grid_dim_d(hdim)
-
-    lcnt = nlev * (ie - is + 1) * (je - js + 1)
-    allocate(ldof(lcnt))
-
-    ig = 1
-    ldof(:) = 0
-    do k = 1, nlev
-        do j = js, je
-            do i = is, ie
-                offset = mygindex(i, j)
-                ldof(ig) = offset + (k - 1) * hdim
-                ig = ig + 1
-            end do
-        end do
-    end do
-
-end function get_ldof
-
-!=======================================================================
   subroutine calc_tot_energy_dynamics(atm,outfld_name_suffix)
     use physconst,              only: gravit, cpair, rearth,omega
     use cam_history,            only: outfld, hist_fld_active
     use constituents,           only: cnst_get_ind
-    use hycoef,                 only: hyai, ps0
-    use constituents,           only: pcnst
     use pmgrid,                 only: plev
     use fv_mp_mod,              only: ng
     !------------------------------Arguments--------------------------------
@@ -1654,7 +1487,6 @@ end function get_ldof
     real(kind=r8) :: wv_tmp,wl_tmp,wi_tmp,wr_tmp,ws_tmp,wg_tmp
     real(kind=r8) :: tt_tmp
 
-    real(kind=r8), allocatable :: areasqrad(:,:)
     !
     ! global axial angular momentum (AAM) can be separated into one part (mr) associatedwith the relative motion 
     ! of the atmosphere with respect to the planets surface (also known as wind AAM) and another part (mo) 
@@ -1673,7 +1505,7 @@ end function get_ldof
     character(len=16) :: name_out1,name_out2,name_out3,name_out4,name_out5,name_out6,name_out7,name_out8,name_out9
 
     integer :: is,ie,js,je,isd,ied,jsd,jed,lchnk,ncol
-    logical :: printglobals = .true.
+    logical :: printglobals = .false.
     !-----------------------------------------------------------------------
 
     is = Atm(mytile)%bd%is
@@ -1793,10 +1625,12 @@ end function get_ldof
                    do nq=1,qsize_condensate_loading
                       m_cnst_ffsl=qsize_condensate_loading_idx(nq)
                       if (fv3_lcp_moist) then
-                         se_tmp = se_tmp+qsize_condensate_loading_cp(nq)*Atm(mytile)%q(i,j,k,m_cnst_ffsl)*Atm(mytile)%delp(i,j,k)
+                         se_tmp = se_tmp+qsize_condensate_loading_cp(nq)*Atm(mytile)%q(i,j,k,m_cnst_ffsl) * &
+                              Atm(mytile)%delp(i,j,k)
                       end if
                       if (fv3_lcv_moist) then
-                         se_tmp = se_tmp+qsize_condensate_loading_cv(nq)*Atm(mytile)%q(i,j,k,m_cnst_ffsl)*Atm(mytile)%delp(i,j,k)
+                         se_tmp = se_tmp+qsize_condensate_loading_cv(nq)*Atm(mytile)%q(i,j,k,m_cnst_ffsl) * &
+                              Atm(mytile)%delp(i,j,k)
                       end if
                    end do
                    se_tmp = se_tmp*Atm(mytile)%pt(i,j,k)/gravit
@@ -1918,32 +1752,42 @@ end function get_ldof
        end do
 
        if (printglobals) then
-          se_glob=g_sum(Atm(mytile)%domain, se(is:ie,js:je), is, ie, js, je, Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
-          ke_glob=g_sum(Atm(mytile)%domain, ke(is:ie,js:je), is, ie, js, je, Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
-          wv_glob=g_sum(Atm(mytile)%domain, wv(is:ie,js:je), is, ie, js, je, Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
-          wl_glob=g_sum(Atm(mytile)%domain, wl(is:ie,js:je), is, ie, js, je, Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
-          wi_glob=g_sum(Atm(mytile)%domain, wi(is:ie,js:je), is, ie, js, je, Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
-          wr_glob=g_sum(Atm(mytile)%domain, wr(is:ie,js:je), is, ie, js, je, Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
-          ws_glob=g_sum(Atm(mytile)%domain, ws(is:ie,js:je), is, ie, js, je, Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
-          wg_glob=g_sum(Atm(mytile)%domain, wg(is:ie,js:je), is, ie, js, je, Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
+          se_glob=g_sum(Atm(mytile)%domain, se(is:ie,js:je), is, ie, js, je, &
+                  Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
+          ke_glob=g_sum(Atm(mytile)%domain, ke(is:ie,js:je), is, ie, js, je, &
+                  Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
+          wv_glob=g_sum(Atm(mytile)%domain, wv(is:ie,js:je), is, ie, js, je, &
+                  Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
+          wl_glob=g_sum(Atm(mytile)%domain, wl(is:ie,js:je), is, ie, js, je, &
+                  Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
+          wi_glob=g_sum(Atm(mytile)%domain, wi(is:ie,js:je), is, ie, js, je, &
+                  Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
+          wr_glob=g_sum(Atm(mytile)%domain, wr(is:ie,js:je), is, ie, js, je, &
+                  Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
+          ws_glob=g_sum(Atm(mytile)%domain, ws(is:ie,js:je), is, ie, js, je, &
+                  Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
+          wg_glob=g_sum(Atm(mytile)%domain, wg(is:ie,js:je), is, ie, js, je, &
+                  Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
           if (ixtt > 1) &
-               tt_glob=g_sum(Atm(mytile)%domain, tt(is:ie,js:je), is, ie, js, je, Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
+               tt_glob=g_sum(Atm(mytile)%domain, tt(is:ie,js:je), is, ie, js, je, &
+                       Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
           if (masterproc) then
       
              if (fv3_lcp_moist) then
-                write(iulog, '(a,e25.17)') 'global wet static energy se_'//trim(outfld_name_suffix)//')            = ',se_glob
+                write(iulog, '(a,e25.17)') 'global wet static energy se_'//trim(outfld_name_suffix)//')        = ',se_glob
              else
-                write(iulog, '(a,e25.17)') 'global dry static energy se_'//trim(outfld_name_suffix)//')            = ',se_glob
+                write(iulog, '(a,e25.17)') 'global dry static energy se_'//trim(outfld_name_suffix)//')        = ',se_glob
              end if
-             write(iulog, '(a,e25.17)') 'global kinetic energy ke_'//trim(outfld_name_suffix)//')               = ',ke_glob
-             write(iulog, '(a,e25.17)') 'global total energy se_plus_ke_'//trim(outfld_name_suffix)//')         = ',(ke_glob+se_glob)
-             write(iulog, '(a,e25.17)') 'global column integrated vapor wv_'//trim(outfld_name_suffix)//'       = ',wv_glob
-             write(iulog, '(a,e25.17)') 'global column integrated liquid wl_'//trim(outfld_name_suffix)//'      = ',wl_glob
-             write(iulog, '(a,e25.17)') 'global column integrated ice wi_'//trim(outfld_name_suffix)//'         = ',wi_glob
-             write(iulog, '(a,e25.17)') 'global column integrated liquid rain wr_'//trim(outfld_name_suffix)//'       = ',wr_glob
-             write(iulog, '(a,e25.17)') 'global column integrated liquid snow ws_'//trim(outfld_name_suffix)//'      = ',ws_glob
-             write(iulog, '(a,e25.17)') 'global column integrated graupel wg_'//trim(outfld_name_suffix)//'         = ',wg_glob
-             if (ixtt > 1)      write(iulog, '(a,e25.17)') 'global column integrated test tracer tt_'//trim(outfld_name_suffix)//' = ',tt_glob
+             write(iulog, '(a,e25.17)') 'global kinetic energy ke_'//trim(outfld_name_suffix)//')           = ',ke_glob
+             write(iulog, '(a,e25.17)') 'global total energy se_plus_ke_'//trim(outfld_name_suffix)//')     = ',(ke_glob+se_glob)
+             write(iulog, '(a,e25.17)') 'global column integrated vapor wv_'//trim(outfld_name_suffix)//'   = ',wv_glob
+             write(iulog, '(a,e25.17)') 'global column integrated liquid wl_'//trim(outfld_name_suffix)//'  = ',wl_glob
+             write(iulog, '(a,e25.17)') 'global column integrated ice wi_'//trim(outfld_name_suffix)//'     = ',wi_glob
+             write(iulog, '(a,e25.17)') 'global column integrated liquid rain wr_'//trim(outfld_name_suffix)//'   = ',wr_glob
+             write(iulog, '(a,e25.17)') 'global column integrated liquid snow ws_'//trim(outfld_name_suffix)//'  = ',ws_glob
+             write(iulog, '(a,e25.17)') 'global column integrated graupel wg_'//trim(outfld_name_suffix)//'     = ',wg_glob
+             if (ixtt > 1) write(iulog, '(a,e25.17)') &
+                  'global column integrated test tracer tt_'//trim(outfld_name_suffix)//' = ',tt_glob
           end if
        end if
     end if
@@ -1990,11 +1834,13 @@ end function get_ldof
       end do
 
       if (printglobals) then
-         mr_glob=g_sum(Atm(mytile)%domain, mr(is:ie,js:je), is, ie, js, je, Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
-         mo_glob=g_sum(Atm(mytile)%domain, mo(is:ie,js:je), is, ie, js, je, Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
+         mr_glob=g_sum(Atm(mytile)%domain, mr(is:ie,js:je), is, ie, js, je, &
+                 Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
+         mo_glob=g_sum(Atm(mytile)%domain, mo(is:ie,js:je), is, ie, js, je, &
+                 Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
          if (masterproc) then
-            write(iulog, '(a,e25.17)') 'global column integrated wind AAM name_out1_'//trim(outfld_name_suffix)//'         = ',mr_glob
-            write(iulog, '(a,e25.17)') 'global column integrated mass AAM name_out1_'//trim(outfld_name_suffix)//'         = ',mo_glob
+            write(iulog, '(a,e25.17)') 'global column integrated wind AAM name_out1_'//trim(outfld_name_suffix)//' = ',mr_glob
+            write(iulog, '(a,e25.17)') 'global column integrated mass AAM name_out1_'//trim(outfld_name_suffix)//' = ',mo_glob
          end if
       end if
    end if
@@ -2099,7 +1945,7 @@ end function dyn_field_exists
     !--------------------------------------------------------------------------
 
     buffer = 0.0_r8
-    call infld(fieldname, fh, 'ncol', 'lev', 1, ldof_size, 1, pver,     &
+    call infld(fieldname, fh,dimname, 'lev', 1, ldof_size, 1, pver,     &
                1, 1, buffer, found, gridname='FFSL')
     if(.not. found) then
       call endrun('READ_DYN_FIELD_3D: Could not find '//trim(fieldname)//' field on input datafile')
@@ -2141,7 +1987,7 @@ subroutine set_dry_mass(atm,fixed_global_ave_dry_ps)
   
   !----------------------------------------------------------------------------
   
-  use constituents,          only: pcnst, cnst_name, cnst_read_iv,qmin, cnst_type
+  use constituents,          only: pcnst, qmin
   use cam_logfile,           only: iulog
   use hycoef,                only: hyai, hybi, ps0
   use dimensions_mod,        only: npz
@@ -2151,9 +1997,11 @@ subroutine set_dry_mass(atm,fixed_global_ave_dry_ps)
   real (kind=r8), intent(in)                 :: fixed_global_ave_dry_ps
 
   ! local
-  real (kind=r8)               :: global_ave_ps_inic,global_ave_dryps_inic,global_ave_dryps_scaled,global_ave_ps_new,global_ave_dryps_new
-  real (r8), allocatable       :: factor(:,:,:),delpwet(:,:,:),delpdry(:,:,:),newdelp(:,:,:),psdry(:,:),psdry_scaled(:,:),psdry_new(:,:)
-  integer                      :: i, j ,k, m,is,ie,js,je,m_ffsl
+  real (kind=r8)               :: global_ave_ps_inic,global_ave_dryps_inic,global_ave_dryps_scaled, &
+                                  global_ave_ps_new,global_ave_dryps_new
+  real (r8), allocatable       :: factor(:,:,:),delpwet(:,:,:),delpdry(:,:,:),newdelp(:,:,:),psdry(:,:), &
+                                  psdry_scaled(:,:),psdry_new(:,:)
+  integer                      :: i, j ,k, m,is,ie,js,je
 
   is = Atm(mytile)%bd%is
   ie = Atm(mytile)%bd%ie
@@ -2171,13 +2019,14 @@ subroutine set_dry_mass(atm,fixed_global_ave_dry_ps)
   if (fixed_global_ave_dry_ps == 0) return;
   
   ! get_global_ave_surface_pressure - must use bitwise sum (reproducable) to get with different decompositions.
-  !  global_ave_ps_inic=g_sum(Atm(mytile)%domain, Atm(mytile)%ps(is:ie,js:je), is, ie, js, je, Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1)
-  global_ave_ps_inic=g_sum(Atm(mytile)%domain, Atm(mytile)%ps(is:ie,js:je), is, ie, js, je, Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
+  global_ave_ps_inic=g_sum(Atm(mytile)%domain, Atm(mytile)%ps(is:ie,js:je), is, ie, js, je, &
+                           Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
   
   do k=1,pver
      do j = js, je
         do i = is, ie
-           delpdry(i,j,k)=Atm(mytile)%delp(i,j,k)*(1.0_r8-sum(Atm(mytile)%q(i,j,k,qsize_condensate_loading_idx(1:qsize_condensate_loading))))
+           delpdry(i,j,k)=Atm(mytile)%delp(i,j,k) * &
+                          (1.0_r8-sum(Atm(mytile)%q(i,j,k,qsize_condensate_loading_idx(1:qsize_condensate_loading))))
            delpwet(i,j,k)=Atm(mytile)%delp(i,j,k)-delpdry(i,j,k)
         end do
      end do
@@ -2191,12 +2040,13 @@ subroutine set_dry_mass(atm,fixed_global_ave_dry_ps)
      end do
   end do
 
-!  global_ave_dryps_inic=g_sum(Atm(mytile)%domain, psdry(is:ie,js:je), is, ie, js, je, Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1)
-  global_ave_dryps_inic=g_sum(Atm(mytile)%domain, psdry(is:ie,js:je), is, ie, js, je, Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
+  global_ave_dryps_inic=g_sum(Atm(mytile)%domain, psdry(is:ie,js:je), is, ie, js, je, &
+                        Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
 
   psdry_scaled = psdry*(fixed_global_ave_dry_ps/global_ave_dryps_inic)
 
-  global_ave_dryps_scaled=g_sum(Atm(mytile)%domain, psdry_scaled(is:ie,js:je), is, ie, js, je, Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
+  global_ave_dryps_scaled=g_sum(Atm(mytile)%domain, psdry_scaled(is:ie,js:je), is, ie, js, je, &
+                          Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
 
   !use adjusted psdry to calculate new dp_dry throughout atmosphere
   do k=1,pver
@@ -2232,9 +2082,10 @@ subroutine set_dry_mass(atm,fixed_global_ave_dry_ps)
         psdry_new(i,j)=hyai(1)*ps0+sum(delpdry(i, j, :))
      end do
   end do
-!  global_ave_ps_new=g_sum(Atm(mytile)%domain, Atm(mytile)%ps(is:ie,js:je), is, ie, js, je, Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1)
-  global_ave_ps_new=   g_sum(Atm(mytile)%domain, Atm(mytile)%ps(is:ie,js:je), is, ie, js, je, Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
-  global_ave_dryps_new=g_sum(Atm(mytile)%domain, psdry_new(is:ie,js:je), is, ie, js, je, Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
+  global_ave_ps_new=   g_sum(Atm(mytile)%domain, Atm(mytile)%ps(is:ie,js:je), is, ie, js, je, &
+                             Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
+  global_ave_dryps_new=g_sum(Atm(mytile)%domain, psdry_new(is:ie,js:je), is, ie, js, je, &
+                             Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
 
   if (masterproc) then
      write (iulog,*) "------ info from set_dry_mass -----------------------------------------------------------"

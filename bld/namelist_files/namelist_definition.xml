@@ -8767,19 +8767,8 @@ water vapor loading. The masses of the first nwat tracer species
 will be added to the dry air mass, so that p is the mass of dry air,
 water vapor, and the included condensate species. The value used
 depends on the microphysics in the physics package you are using.
-For GFS physics with only a single condensate species, set to
-2. For schemes with prognostic cloud water and cloud ice, such as
-GFDL AM2/AM3/AM4 Rotsteyn-Klein or Morrison-Gettlean microphysics,
-set to 3. For warm-rain (Kessler) microphysics set to 4
-(with an inactive ice tracer), which only handles three species but
-uses 4 to avoid interference with the R-K physics. For schemes such
-as WSM5 or Ferrier that have prognostic rain and snow but not hail,
-set to 5 (not yet implemented). For six-category schemes that also
-74A.1. Entries in fv_core_nml
-have prognostic hail or graupel, such as the GFDL, Thompson, or
-WSM6 microphysics, set to 6. A value of 0 turns off condensate
-loading. 3 by default.
-Default: none
+This value is set by namelist defaults.
+Default:
 </entry>
 
 <entry id="fv3_n_split" type="integer" category="dyn_fv3"

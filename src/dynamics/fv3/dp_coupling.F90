@@ -10,9 +10,10 @@ use constituents,      only: pcnst
 use dimensions_mod,    only: ncnst,npx,npy,npz,pnats,nq, &
                              qsize_condensate_loading_idx,qsize_condensate_loading_cp,qsize_condensate_loading_cv,&
                              qsize_condensate_loading_idx_gll, qsize_condensate_loading, qsize_condensate_loading, &
-                             cnst_name_ffsl, cnst_longname_ffsl,qsize,fv3_lcp_moist,fv3_lcv_moist,qsize_tracer_idx_cam2dyn,fv3_scale_ttend
+                             cnst_name_ffsl, cnst_longname_ffsl,qsize,fv3_lcp_moist,fv3_lcv_moist, &
+                             qsize_tracer_idx_cam2dyn,fv3_scale_ttend
 use dyn_comp,          only: dyn_export_t, dyn_import_t
-use dyn_grid,          only: get_gcol_block_d,mytile,p_split,grids_on_this_pe
+use dyn_grid,          only: get_gcol_block_d,mytile
 use fv_grid_utils_mod, only: g_sum
 use hycoef,            only: hyam, hybm, hyai, hybi, ps0
 use mpp_domains_mod,   only: mpp_update_domains, domain2D, DGRID_NE
@@ -77,16 +78,16 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
   integer                                   :: ncols
 
   ! LOCAL Allocatables
-  integer, allocatable,  dimension(:,:)     :: bpter    !((ie-is+1)*(je-js+1),0:pver)    ! offsets into block buffer for packing data
+  integer, allocatable,  dimension(:,:)     :: bpter    !((ie-is+1)*(je-js+1),0:pver) ! packing data block buffer offset
   real(r8),  allocatable, dimension(:)      :: bbuffer, cbuffer ! transpose buffers
   real(r8), allocatable, dimension(:,:)     :: phis_tmp !((ie-is+1)*(je-js+1),     1) ! temporary array to hold phis
   real(r8), allocatable, dimension(:,:)     :: ps_tmp   !((ie-is+1)*(je-js+1),     1) ! temporary array to hold ps
   real(r8), allocatable, dimension(:,:,:)   :: T_tmp    !((ie-is+1)*(je-js+1),pver,1) ! temporary array to hold T
-  real(r8), allocatable, dimension(:,:,:)   :: omega_tmp    !((ie-is+1)*(je-js+1),pver,      1) ! temporary array to hold omega
-  real(r8), allocatable, dimension(:,:,:)   :: pdel_tmp     !((ie-is+1)*(je-js+1),pver,      1) ! temporary array to hold omega
-  real(r8), allocatable, dimension(:,:,:)   :: u_tmp    !((ie-is+1)*(je-js+1),pver,1) ! temporary array to hold u and v
-  real(r8), allocatable, dimension(:,:,:)   :: v_tmp    !((ie-is+1)*(je-js+1),pver,1) ! temporary array to hold u and v
-  real(r8), allocatable, dimension(:,:,:,:) :: q_tmp    !((ie-is+1)*(je-js+1),pver,pcnst,1) ! temporary to hold advected constituents
+  real(r8), allocatable, dimension(:,:,:)   :: omega_tmp!((ie-is+1)*(je-js+1),pver,1) ! temporary array to hold omega
+  real(r8), allocatable, dimension(:,:,:)   :: pdel_tmp !((ie-is+1)*(je-js+1),pver,1) ! temporary array to hold omega
+  real(r8), allocatable, dimension(:,:,:)   :: u_tmp !((ie-is+1)*(je-js+1),pver,1) ! temp array to hold u and v
+  real(r8), allocatable, dimension(:,:,:)   :: v_tmp !((ie-is+1)*(je-js+1),pver,1) ! temp array to hold u and v
+  real(r8), allocatable, dimension(:,:,:,:) :: q_tmp !((ie-is+1)*(je-js+1),pver,pcnst,1) ! temp to hold advected constituents
   
   !-----------------------------------------------------------------------
   
@@ -292,7 +293,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
   integer :: w_diff,nt_dyn
   integer :: yy,mm,dd,tt
 
-  integer, allocatable, dimension(:,:) :: bpter   !((ie-is+1)*(je-js+1),0:pver)    ! offsets into block buffer for packing data
+  integer, allocatable, dimension(:,:) :: bpter   !((ie-is+1)*(je-js+1),0:pver)    ! packing data block buffer offsets
   real(r8),  allocatable, dimension(:) :: bbuffer, cbuffer ! transpose buffers
 
   real (r8)                            :: dt
@@ -488,7 +489,8 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
 
   ! Update delp and mixing ratios to account for the difference between CAM and FV3 total air mass
   ! CAM total air mass (pdel)  = (dry + vapor)
-  ! FV3 total air mass (delp at beg of phys * mix ratio) = drymass + (vapor + condensate [liq_wat,ice_wat,rainwat,snowwat,graupel])*mix ratio
+  ! FV3 total air mass (delp at beg of phys * mix ratio) =
+  ! drymass + (vapor + condensate [liq_wat,ice_wat,rainwat,snowwat,graupel])*mix ratio
   ! FV3 tracer mixing ratios = tracer mass / FV3 total air mass
   ! convert the (dry+vap) mixing ratios to be based off of FV3 condensate loaded airmass (dry+vap+cond). When 
   ! d_p_coupling/derive_phys_dry is called the mixing ratios are again parsed out into wet and 
@@ -538,7 +540,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
               cpfv3=(1._r8-qall)*cp_air+cpfv3
               ! scale factor for t_dt so temperature tendency derived from CAM moist air (dry+vap - constant pressure)
               ! can be applied to FV3 wet air (dry+vap+cond - constant volume)
-              
+
               t_tendadj(i,j,k)=cp_air/cpfv3 
               
               if (.not.Atm(mytile)%flagstruct%hydrostatic) then
@@ -556,9 +558,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
      end do
   end do
 
-
-
-!$omp parallel do private(i, j)
+  !$omp parallel do private(i, j)
   do j=js,je
      do i=is,ie
         Atm(mytile)%pe(i,1,j)   = Atm(mytile)%ptop
@@ -582,7 +582,8 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
         do i=is,ie
            Atm(mytile)%pk(i,j,k+1)= Atm(mytile)%pe(i,k+1,j) ** kappa
            Atm(mytile)%peln(i,k+1,j) = log(Atm(mytile)%pe(i,k+1,j))
-           Atm(mytile)%pkz(i,j,k) = (Atm(mytile)%pk(i,j,k+1)-Atm(mytile)%pk(i,j,k))/(kappa*(Atm(mytile)%peln(i,k+1,j)-Atm(mytile)%peln(i,k,j)))
+           Atm(mytile)%pkz(i,j,k) = (Atm(mytile)%pk(i,j,k+1)-Atm(mytile)%pk(i,j,k))/ &
+                                    (kappa*(Atm(mytile)%peln(i,k+1,j)-Atm(mytile)%peln(i,k,j)))
         enddo
      enddo
   enddo
@@ -600,19 +601,20 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
   if ( Atm(mytile)%flagstruct%dwind_2d ) then
      call endrun('dwind_2d update is not implemented')
   else
-     call atend2dstate3d(  u_dt, v_dt, Atm(mytile)%u ,Atm(mytile)%v, is,  ie,  js,  je, isd, ied, jsd, jed, npx,npy, npz, Atm(mytile)%gridstruct, Atm(mytile)%domain, dt)
+     call atend2dstate3d(  u_dt, v_dt, Atm(mytile)%u ,Atm(mytile)%v, is,  ie,  js,  je, &
+                           isd, ied, jsd, jed, npx,npy, npz, Atm(mytile)%gridstruct, Atm(mytile)%domain, dt)
   endif
 
   ! Again we are rederiving the A winds from the Dwinds to give our energy dynamics a consistent wind.
   call cubed_to_latlon(Atm(mytile)%u, Atm(mytile)%v, Atm(mytile)%ua, Atm(mytile)%va, Atm(mytile)%gridstruct, &
-          npx, npy, npz, 1, Atm(mytile)%gridstruct%grid_type, Atm(mytile)%domain, Atm(mytile)%gridstruct%nested, Atm(mytile)%flagstruct%c2l_ord, Atm(mytile)%bd)
+                       npx, npy, npz, 1, Atm(mytile)%gridstruct%grid_type, Atm(mytile)%domain, &
+                       Atm(mytile)%gridstruct%nested, Atm(mytile)%flagstruct%c2l_ord, Atm(mytile)%bd)
 
   !$omp parallel do private(i, j)
   do j=js,je
      do i=is,ie
         Atm(mytile)%u_srf=Atm(mytile)%ua(i,j,pver)
         Atm(mytile)%v_srf=Atm(mytile)%va(i,j,pver)
-        !!jt used?        Atm(mytile)%ts
      enddo
   enddo
 
@@ -696,7 +698,9 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d, atm)
      ncol = get_ncols_p(lchnk)
      do k=1,pver
         do i=1,ncol
-           phys_state(lchnk)%pdeldry(i,k)=phys_state(lchnk)%pdel(i,k)*(1._r8-sum(phys_state(lchnk)%q(i,k,qsize_condensate_loading_idx_gll(1:qsize_condensate_loading))))
+           phys_state(lchnk)%pdeldry(i,k) = &
+                phys_state(lchnk)%pdel(i,k) * &
+                (1._r8-sum(phys_state(lchnk)%q(i,k,qsize_condensate_loading_idx_gll(1:qsize_condensate_loading))))
            do m = 1,pcnst
               tracermass(m)=phys_state(lchnk)%pdel(i,k)*phys_state(lchnk)%q(i,k,m)
            end do
@@ -1024,7 +1028,8 @@ subroutine fv3_tracer_diags(atm)
   do k=1,npz
      do j = js, je
         do i = is, ie
-           delpdry(i,j,k)=Atm(mytile)%delp(i,j,k)*(1.0_r8-sum(Atm(mytile)%q(i,j,k,qsize_condensate_loading_idx(1:qsize_condensate_loading))))
+           delpdry(i,j,k) = Atm(mytile)%delp(i,j,k) * &
+                            (1.0_r8-sum(Atm(mytile)%q(i,j,k,qsize_condensate_loading_idx(1:qsize_condensate_loading))))
         end do
      end do
   end do
@@ -1037,8 +1042,10 @@ subroutine fv3_tracer_diags(atm)
      end do
   end do
 
-  global_ps=g_sum(Atm(mytile)%domain, Atm(mytile)%ps(is:ie,js:je), is, ie, js, je, Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1)
-  global_dryps=g_sum(Atm(mytile)%domain, psdry(is:ie,js:je), is, ie, js, je, Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1)
+  global_ps = g_sum(Atm(mytile)%domain, Atm(mytile)%ps(is:ie,js:je), is, ie, js, je, &
+              Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1)
+  global_dryps = g_sum(Atm(mytile)%domain, psdry(is:ie,js:je), is, ie, js, je, &
+                 Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1)
 !-------------------
 ! Vertical mass sum for all tracers
 !-------------------
@@ -1054,15 +1061,16 @@ subroutine fv3_tracer_diags(atm)
         kstrat = k
      enddo
      call z_sum(Atm,is,ie,js,je, kstrat, Atm(mytile)%q(is:ie,js:je,1:kstrat,1 ), q_strat,psum) 
-     qm_strat = g_sum(Atm(mytile)%domain, q_strat(is:ie,js:je), is, ie, js, je, Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1) * 1.e6           &
-          / psum
+     qm_strat = g_sum(Atm(mytile)%domain, q_strat(is:ie,js:je), is, ie, js, je, &
+                Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1) * 1.e6 / psum
   endif
   
   !-------------------
   ! Get global mean mass for all tracers
   !-------------------
   do m=1,pcnst
-     qtot(m) = g_sum(Atm(mytile)%domain, psq(is,js,m), is, ie, js, je, Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1)/gravit
+     qtot(m) = g_sum(Atm(mytile)%domain, psq(is,js,m), is, ie, js, je, &
+               Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1)/gravit
   enddo
   
   if (masterproc) then
