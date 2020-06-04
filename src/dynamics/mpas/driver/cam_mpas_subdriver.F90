@@ -569,6 +569,8 @@ contains
        type (mpas_pool_type), pointer :: statePool
        type (mpas_pool_type), pointer :: tendPool
        type (field3dReal), pointer :: scalarsField
+       character(len=128) :: tempstr
+       character :: moisture_char
 
 
        ierr = 0
@@ -701,6 +703,28 @@ contains
 
        call mpas_pool_add_dimension(statePool, 'moist_start', 1)
        call mpas_pool_add_dimension(statePool, 'moist_end', num_moist)
+
+       !
+       ! Print a tabular summary of the mapping between constituent indices
+       !
+       call mpas_log_write('')
+       call mpas_log_write('  i MPAS constituent mpas_from_cam_cnst(i)       i CAM constituent  cam_from_mpas_cnst(i)')
+       call mpas_log_write('------------------------------------------     ------------------------------------------')
+       do i = 1, min(num_scalars, size(cnst_names))
+          if (i <= num_moist) then
+             moisture_char = '*'
+          else
+             moisture_char = ' '
+          end if
+          write(tempstr, '(i3,1x,a16,1x,i18,8x,i3,1x,a16,1x,i18)') i, trim(scalarsField % constituentNames(i))//moisture_char, &
+                                                                   mpas_from_cam_cnst(i), &
+                                                                   i, trim(cnst_names(i)), &
+                                                                   cam_from_mpas_cnst(i)
+          call mpas_log_write(trim(tempstr))
+       end do
+       call mpas_log_write('------------------------------------------     ------------------------------------------')
+       call mpas_log_write('* = constituent used as a moisture species in MPAS-A dycore')
+       call mpas_log_write('')
 
 
        !
