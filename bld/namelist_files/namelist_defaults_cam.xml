@@ -2000,7 +2000,7 @@
 <!-- ================================================================== -->
 
 <se_fine_ne                            >   0 </se_fine_ne>
-<se_fine_ne hgrid="ne0np4CONUS.ne30x8" > 120 </se_fine_ne>
+<se_fine_ne hgrid="ne0np4CONUS.ne30x8" > 240 </se_fine_ne>
 
 <se_ftype> 2 </se_ftype>
 
@@ -2013,20 +2013,17 @@
 
 <se_hypervis_scaling se_refined_mesh="1" hypervis_type="tensor" >3.0D0 </se_hypervis_scaling>
 
-<se_hypervis_subcycle                                  > 3 </se_hypervis_subcycle>
-<se_hypervis_subcycle  hgrid="ne0np4CONUS.ne30x8"      > 1 </se_hypervis_subcycle>
-<se_hypervis_subcycle  waccm_phys="1"                  > 1 </se_hypervis_subcycle>
-<se_hypervis_subcycle  hgrid="ne16np4"                 > 4 </se_hypervis_subcycle>
-<se_hypervis_subcycle  hgrid="ne0np4.ARCTIC.ne30x4"    > 2 </se_hypervis_subcycle>
-<se_hypervis_subcycle  hgrid="ne0np4.ARCTICGRIS.ne30x8"> 2 </se_hypervis_subcycle>
+<se_hypervis_subcycle                                            > 3 </se_hypervis_subcycle>
+<se_hypervis_subcycle  waccm_phys="1"                            > 1 </se_hypervis_subcycle>
+<se_hypervis_subcycle  hgrid="ne16np4"                           > 4 </se_hypervis_subcycle>
+<se_hypervis_subcycle  se_refined_mesh="1"                       > 2 </se_hypervis_subcycle>
+<se_hypervis_subcycle  hgrid="ne0np4CONUS.ne30x8" waccm_phys="1" > 1 </se_hypervis_subcycle>
 
 <se_hypervis_subcycle_sponge                                          > 1  </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge waccm_phys="1"                           > 1  </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne120np4"                         > 4  </se_hypervis_subcycle_sponge>
-<se_hypervis_subcycle_sponge hgrid="ne0np4CONUS.ne30x8"               > 4  </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge se_refined_mesh="1"                      > 4  </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"> 4  </se_hypervis_subcycle_sponge>
-<se_hypervis_subcycle_sponge hgrid="ne0np4.ARCTIC.ne30x4"             > 4  </se_hypervis_subcycle_sponge>
-<se_hypervis_subcycle_sponge hgrid="ne0np4.ARCTICGRIS.ne30x8"         > 4  </se_hypervis_subcycle_sponge>
 
 <se_hypervis_subcycle_q>1                 </se_hypervis_subcycle_q>
 <se_hypervis_subcycle_q hgrid="ne16np4">2 </se_hypervis_subcycle_q>
@@ -2079,8 +2076,7 @@
 <se_nsplit hgrid="ne30np4"  waccm_phys="1"            >  5  </se_nsplit>
 <se_nsplit hgrid="ne30np4"  waccm_phys="1"  nlev="110">  4  </se_nsplit>
 
-<se_nsplit hgrid="ne0np4CONUS.ne30x8"               > 3 </se_nsplit>
-<se_nsplit hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"> 5 </se_nsplit>
+<se_nsplit hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"> 3 </se_nsplit>
 <se_nsplit hgrid="ne0np4TESTONLY.ne5x4"> 7 </se_nsplit>
 
 <se_rsplit                                          > 3 </se_rsplit>
