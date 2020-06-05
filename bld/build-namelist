@@ -4369,7 +4369,7 @@ sub fv3_decomp_set{
 # variable layout.  The value of layout is nx,ny where nx and ny are
 # respecitively the number of x, y, subdomains of an FV3 tile in the multi-2D decomposition.
 # The following constraints must be observed:
-# 1) nx*ny*6 = ntasks (ny*nz*6 must be equal to ntasks.  fv3 can handle other cases but for
+# 1) nx*ny*6 = ntasks (nx*ny*6 must be equal to ntasks.  fv3 can handle other cases but for
 #                     now this decomp routine requires that constraint.
 #                     Assume the user will set the
 #                     decomp explicitly if that is what is desired.)
@@ -4407,7 +4407,7 @@ sub fv3_decomp_set{
 	  
 	  $ny = int $tasks/$nx/6;
           print "nx=$nx ny=$ny xpts=$xpts ypts=$ypts\n";
-	  # test that $ny divides $xpts exactly
+	  # test that $ny divides $ypts exactly
 	  # if so then get aspect ratio
 	  if ($ny != 0) {
             print "ny != 0\n";

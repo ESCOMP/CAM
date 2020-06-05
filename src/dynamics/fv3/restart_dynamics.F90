@@ -36,8 +36,6 @@ subroutine init_restart_dynamics(File, dyn_out)
                              pio_seterrorhandling, pio_bcast_error, &
                              pio_def_var, &
                              pio_inq_dimid
-    use spmd_utils,    only : npes
-
     implicit none
 
     type(file_desc_t),  intent(inout) :: file
@@ -118,21 +116,10 @@ subroutine write_restart_dynamics(File, dyn_out)
     integer(pio_offset_kind), parameter :: t_idx = 1
     type (fv_atmos_type),  pointer :: Atm(:)
 
-    type(io_desc_t),pointer :: iodesc2d, iodesc3d,iodesc3d_ns,iodesc3d_ew,iodesc
+    type(io_desc_t),pointer :: iodesc3d,iodesc3d_ns,iodesc3d_ew,iodesc
     real(r8), allocatable :: var3d(:,:,:), var3d_ew(:,:,:), var3d_ns(:,:,:), var2d(:,:)
-    integer :: i,j,k,m, ierr
-    integer :: ncols_d
-    integer, pointer :: ldof(:),ldof_ew(:),ldof_ns(:)
-    integer :: vsize2d, vsize3d
-    integer :: ndcur, nscur
-    real(kind=r8) :: time
-    integer :: yy             ! CAM current year
-    integer :: mm             ! CAM current month
-    integer :: dd             ! CAM current day
-    integer :: tt             ! CAM current time of day (sec)
-    integer, dimension(6) :: date = (/ 0, 0, 0, 0, 0, 0 /)
-    character(len=32) :: timestamp   
-    integer :: array_lens_3d(3), array_lens_2d(2), array_lens_1d(1)
+    integer :: m, ierr
+    integer :: array_lens_3d(3), array_lens_2d(2)
     integer :: file_lens_2d(2), file_lens_1d(1)
     integer :: grid_id,grid_id_ns,grid_id_ew
     integer :: grid_dimlens(2),grid_dimlens_ew(2),grid_dimlens_ns(2)
@@ -151,8 +138,10 @@ subroutine write_restart_dynamics(File, dyn_out)
     grid_id_ew = cam_grid_id('FFSL_EW')
     grid_id_ns = cam_grid_id('FFSL_NS')
     
-    ! write coordinate variables for unstructured FFSL, NS and EW restart grid (restart grids have tile based global indicies with duplicate edge points
-    ! being given uniq indicies. All duplicate point written out to restart file) - io overhead = 6 tile edges are duplicated and read from the file
+    ! write coordinate variables for unstructured FFSL, NS and EW restart grid 
+    ! (restart grids have tile based global indicies with duplicate edge points
+    ! being given uniq indicies. All duplicate point written out to restart file)
+    ! - io overhead = 6 tile edges are duplicated and read from the file
     ! instead of mpi gathers to fill in duplicates.
 
     call cam_grid_write_var(File, grid_id)
@@ -253,10 +242,9 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
    integer :: tl
    integer :: i, k, m, j
    integer :: ierr, err_handling
-   integer :: fnlev, fnc
-   integer :: hdim_len, ncols_d_ns, ncols_d_ew, ncols_d
+   integer :: fnlev
+   integer :: ncols_d_ns, ncols_d_ew, ncols_d
 
-   integer :: npz_dimid
    integer :: ncol_d_dimid
    integer :: ncol_d_ns_dimid
    integer :: ncol_d_ew_dimid
@@ -271,12 +259,11 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
    type(var_desc_t) :: psdesc
    type(var_desc_t) :: phisdesc
    type(var_desc_t), allocatable :: qdesc(:)
-   type(io_desc_t),pointer :: iodesc2d, iodesc3d,iodesc3d_ns,iodesc3d_ew,iodesc
-   integer :: array_lens_3d(3), array_lens_2d(2), array_lens_1d(1)
+   type(io_desc_t),pointer :: iodesc2d, iodesc3d,iodesc3d_ns,iodesc3d_ew
+   integer :: array_lens_3d(3), array_lens_2d(2)
    integer :: file_lens_2d(2), file_lens_1d(1)
    integer :: grid_id,grid_id_ns,grid_id_ew,ilen,jlen
    integer :: grid_dimlens(2),grid_dimlens_ns(2),grid_dimlens_ew(2)
-   character(len=max_hcoordname_len) :: dimname1, dimname2
 
    real(r8),    allocatable :: var2d(:,:)
    real(r8),    allocatable :: var3d(:,:,:)
@@ -285,10 +272,7 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
    real(r8),    allocatable :: ebuffer(:,:)
    real(r8),    allocatable :: nbuffer(:,:)
 
-   logical :: found
-
    character(len=*), parameter               :: sub = 'read_restart_dynamics'
-   character(len=max_fieldname_len)          :: fieldname
    !----------------------------------------------------------------------------
 
    ! Note1: the hybrid coefficients are read from the same location as for an

@@ -38,7 +38,7 @@ subroutine stepon_init(dyn_in, dyn_out)
   type (dyn_export_t)   :: dyn_out            ! Dynamics export container
   
    ! local variables
-   integer :: m, m_cnst,m_cnst_ffsl
+   integer :: m_cnst,m_cnst_ffsl
    !----------------------------------------------------------------------------
    ! These fields on dynamics grid are output before the call to d_p_coupling.
    do m_cnst = 1, qsize
@@ -158,8 +158,6 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
     type (dyn_export_t), intent(inout) :: dyn_out ! Dynamics export container
     type (cam_out_t), intent(inout) :: cam_out(begchunk:endchunk)
 
-    integer :: rc
-
     call t_barrierf('sync_dyn_run', mpicom)
     call t_startf('dyn_run')
     call dyn_run(dyn_out)
@@ -202,7 +200,7 @@ subroutine diag_dyn_in(dyn_in,suffx)
   
   
   ! local variables
-  integer              :: is,ie,js,je, j, m_cnst,m_cnst_ffsl,k
+  integer              :: is,ie,js,je, j, m_cnst,m_cnst_ffsl
   integer              :: idim
   character(len=fieldname_len) :: tfname
 
@@ -236,7 +234,7 @@ subroutine diag_dyn_in(dyn_in,suffx)
      tfname = trim(cnst_name(m_cnst))//'_mass_ffsl'//trim(suffx)
      if (hist_fld_active(tfname)) then
         do j = js, je
-           call outfld(tfname, RESHAPE((Atm(mytile)%q(is:ie, j, :, m_cnst_ffsl)*Atm(mytile)%delp(is:ie, j, :)),(/idim,npz/)), idim, j)
+           call outfld(tfname,RESHAPE((Atm(mytile)%q(is:ie,j,:,m_cnst_ffsl)*Atm(mytile)%delp(is:ie,j,:)),(/idim,npz/)),idim,j)
         end do
      end if
   end do
@@ -309,7 +307,7 @@ subroutine diag_dyn_out(dyn_in,suffx)
   
   
   ! local variables
-  integer              :: is,ie,js,je, j, m_cnst,m_cnst_ffsl,k
+  integer              :: is,ie,js,je, j, m_cnst,m_cnst_ffsl
   integer              :: idim
   character(len=fieldname_len) :: tfname
 
@@ -342,7 +340,7 @@ subroutine diag_dyn_out(dyn_in,suffx)
      tfname = trim(cnst_name(m_cnst))//'_mass_ffsl'//trim(suffx)
      if (hist_fld_active(tfname)) then
         do j = js, je
-           call outfld(tfname, RESHAPE((Atm(mytile)%q(is:ie, j, :, m_cnst_ffsl)*Atm(mytile)%delp(is:ie, j, :)),(/idim,npz/)), idim, j)
+           call outfld(tfname,RESHAPE((Atm(mytile)%q(is:ie,j,:,m_cnst_ffsl)*Atm(mytile)%delp(is:ie,j,:)),(/idim,npz/)),idim, j)
         end do
      end if
   end do

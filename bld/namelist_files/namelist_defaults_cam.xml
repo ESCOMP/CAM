@@ -2056,20 +2056,17 @@
 
 <fv3_print_memory_usage dyn="fv3">.true.</fv3_print_memory_usage>
 
-<!-- fv_core_nml defaults (alpha order ===============================  -->
-
-<fv3_adjust_dry_mass                                                        > .F.       </fv3_adjust_dry_mass>
-<!-- <a_imp                                                                  > 1         </a_imp>   -->
+<fv3_adjust_dry_mass                                                        > .false.   </fv3_adjust_dry_mass>
 <fv3_beta                                                                   > 0         </fv3_beta>
-<fv3_consv_am                                                               > .F.       </fv3_consv_am>
+<fv3_consv_am                                                               > .false.   </fv3_consv_am>
 <fv3_consv_te                                                               > 0         </fv3_consv_te>
-<fv3_dddmp                                                                  > 0.0       </fv3_dddmp>
-<fv3_delt_max                                                               > 0.0       </fv3_delt_max> <!-- 0 for monotonic -->
+<fv3_dddmp                                                                  > 0.0D0     </fv3_dddmp>
+<fv3_delt_max                                                               > 0.0D0     </fv3_delt_max>
 <fv3_dnats                                                                  > 0         </fv3_dnats>
-<fv3_do_sat_adj                                                             > .F.       </fv3_do_sat_adj>  
-<fv3_do_vort_damp      dyn="fv3nh"                                          > .T.       </fv3_do_vort_damp>  <!-- true for nonhydro -->
-<fv3_do_vort_damp      dyn="fv3"                                            > .F.       </fv3_do_vort_damp>  <!-- false for monotonic -->
-<fv3_dwind_2d                                                               > .F.       </fv3_dwind_2d>
+<fv3_do_sat_adj                                                             > .false.   </fv3_do_sat_adj>  
+<fv3_do_vort_damp      dyn="fv3nh"                                          > .true.    </fv3_do_vort_damp>
+<fv3_do_vort_damp      dyn="fv3"                                            > .false.   </fv3_do_vort_damp>
+<fv3_dwind_2d                                                               > .false.   </fv3_dwind_2d>
 <fv3_d_con             dyn="fv3"                                            > 0         </fv3_d_con>
 <fv3_d_con             dyn="fv3nh"                                          > 0         </fv3_d_con>
 <fv3_d_ext                                                                  > 0         </fv3_d_ext>
@@ -2077,9 +2074,9 @@
 <fv3_d2_bg_k1                                                               > 0.15D0   </fv3_d2_bg_k1>
 <fv3_d2_bg_k2                                                               > 0.02D0   </fv3_d2_bg_k2>
 <fv3_d4_bg                                                                  > 0.15D0   </fv3_d4_bg>
-<fv3_fill                                                                   > .T.       </fv3_fill>
-<fv3_fv_debug                                                               > .F.       </fv3_fv_debug>
-<fv3_fv_diag                                                                > .F.       </fv3_fv_diag>
+<fv3_fill                                                                   > .true.    </fv3_fill>
+<fv3_fv_debug                                                               > .false.   </fv3_fv_debug>
+<fv3_fv_diag                                                                > .false.   </fv3_fv_diag>
 <fv3_qsize_condensate_loading                                           > 3         </fv3_qsize_condensate_loading>
 <fv3_qsize_condensate_loading phys="cam4"                               > 3         </fv3_qsize_condensate_loading>
 <fv3_qsize_condensate_loading phys="cam5"                               > 3         </fv3_qsize_condensate_loading>
@@ -2099,7 +2096,6 @@
 <fv3_nwat phys="kessler"                                                    > 3         </fv3_nwat>
 <fv3_nwat phys="tj2016"                                                     > 1         </fv3_nwat>
 <fv3_fv_sg_adj                                                              > 0         </fv3_fv_sg_adj>
-<!-- <fv_sg_adj                                                              > 450       </fv_sg_adj> -->
 <fv3_grid_type                                                              > 0         </fv3_grid_type>
 <fv3_hord_dp        dyn="fv3"                                               > -10        </fv3_hord_dp>
 <fv3_hord_mt        dyn="fv3"                                               > 10         </fv3_hord_mt>
@@ -2110,8 +2106,8 @@
 <fv3_hord_mt        dyn="fv3nh"                                             > 5         </fv3_hord_mt>
 <fv3_hord_tm        dyn="fv3nh"                                             > 5         </fv3_hord_tm>
 <fv3_hord_vt        dyn="fv3nh"                                             > 5         </fv3_hord_vt>
-<fv3_hydrostatic    dyn="fv3"                                               > .T.       </fv3_hydrostatic>
-<fv3_hydrostatic    dyn="fv3nh"                                             > .F.       </fv3_hydrostatic>
+<fv3_hydrostatic    dyn="fv3"                                               > .true.    </fv3_hydrostatic>
+<fv3_hydrostatic    dyn="fv3nh"                                             > .false.   </fv3_hydrostatic>
 <fv3_io_layout                                                              > 1,1       </fv3_io_layout>
 <fv3_ke_bg                                                                  > 0         </fv3_ke_bg>
 <fv3_kord_mt                                                                > 9         </fv3_kord_mt>
@@ -2119,10 +2115,10 @@
 <fv3_kord_tr                                                                > 9         </fv3_kord_tr>
 <fv3_kord_wz                                                                > 9         </fv3_kord_wz>
 <fv3_k_split                                                                > 2         </fv3_k_split>
-<fv3_make_nh                                                                > .F.       </fv3_make_nh>
+<fv3_make_nh                                                                > .false.   </fv3_make_nh>
 <fv3_na_init                                                                > 0         </fv3_na_init>
 <fv3_nord                                                                   > 3         </fv3_nord>
-<fv3_no_dycore                                                              > .F.       </fv3_no_dycore>
+<fv3_no_dycore                                                              > .false.   </fv3_no_dycore>
 <!-- grid corners in x-direction per tile ============================== -->
 <fv3_npx                                       hgrid="C24"                  > 25        </fv3_npx>
 <fv3_npx                                       hgrid="C48"                  > 49        </fv3_npx>
@@ -2138,21 +2134,16 @@
 <fv3_ntiles                                                                 > 6         </fv3_ntiles>
 <fv3_n_split                                                                > 6         </fv3_n_split>
 <fv3_n_sponge                                                               > 0         </fv3_n_sponge>
-<!-- phys_hydrostatic only used for non hydro simulation
-<phys_hydrostatic                                                       > .F.       </phys_hydrostatic> -->
 <fv3_print_freq                                                             > 1         </fv3_print_freq>
-<!--p_fac                                                                  > 0.1D0    </p_fac>  only used for non_hydrostatic runs -->
-<fv3_range_warn                                                             > .F.       </fv3_range_warn>
+<fv3_range_warn                                                             > .false.   </fv3_range_warn>
 <fv3_rf_cutoff                                                              > 750       </fv3_rf_cutoff>
 <fv3_tau                                                                    > 10        </fv3_tau>
 <!-- <uniform_vert_spacing                                                   >           </uniform_vert_spacing> -->
 <!-- use_hydro_pressure only needed for GFS physics
-<use_hydro_pressure                                                     > .F.       </use_hydro_pressure>
+<use_hydro_pressure                                                     > .false.   </use_hydro_pressure>
 -->
-<!-- vtdm4 set to 0 for monotonic scheme-->
-<fv3_vtdm4                                                                  > 0.0       </fv3_vtdm4>
-<!-- <vtdm4           dyn="fv3nh"                                            > 0.04      </vtdm4>-->
-<fv3_z_tracer                                                               > .F.       </fv3_z_tracer>
+<fv3_vtdm4                                                                  > 0.0D0       </fv3_vtdm4>
+<fv3_z_tracer                                                               > .false.   </fv3_z_tracer>
 
 <!-- ================================================================== -->
 <!-- Defaults for SE                                                    -->

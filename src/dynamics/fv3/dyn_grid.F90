@@ -114,11 +114,6 @@ public :: &
 
 public Atm, mytile
 
-    real(r8), pointer :: clat(:) => null()     ! model latitudes (radians)
-    real(r8), pointer :: clon(:,:) => null()   ! model longitudes (radians)
-    real(r8), pointer :: latdeg(:) => null()   ! model latitudes (degrees)
-    real(r8), pointer :: londeg(:,:) => null() ! model longitudes (degrees)
-
 !=======================================================================
 contains
 !=======================================================================
@@ -130,54 +125,32 @@ subroutine dyn_grid_init()
    use block_control_mod,  only: block_control_type, define_blocks_packed
    use cam_initfiles,      only: initial_file_get_id
    use constants_mod,      only: constants_init
-   use constants_mod,      only: rdgas, rvgas
-   use fms_mod,            only: close_file
    use fv_mp_mod,          only: switch_current_Atm
-   use fv_restart_mod,     only: fv_restart
    use hycoef,             only: hycoef_init, hyai, hybi, hypi, hypm, nprlev
-   use memutils_mod,       only: print_memuse_stats
    use mpp_mod,            only: mpp_init, mpp_npes, mpp_get_current_pelist,mpp_gather
-   use namelist_utils,     only: find_group_name
    use pmgrid,             only: plev
    use ref_pres,           only: ref_pres_init
    use sat_vapor_pres_mod, only: sat_vapor_pres_init
-   use time_manager,       only: get_curr_date,get_step_size
-   use tracer_manager_mod, only: get_tracer_index
-   use units,              only: getunit, freeunit
-   use xgrid_mod,          only: grid_box_type
+   use time_manager,       only: get_step_size
    use pio,                only: file_desc_t
 
    ! Local variables
 
-   integer :: i, k, lat
-
-   real(r8) :: dt
-   real(r8) :: dp
-   real(r8) :: sum
+   type(file_desc_t),      pointer :: fh_ini
+   type (block_control_type), target   :: Atm_block
 
    character(len=*), parameter :: sub='dyn_grid_init'
+   integer, parameter :: be_arrlen = 5
+   character(len=128) :: version = '$Id$'
+   character(len=128) :: tagname = '$Name$'
 
-   integer :: m
-   integer :: unit, io
-   character(len = 256) :: err_msg
-   character(len = 9) :: month
-   
-   type(file_desc_t),      pointer :: fh_ini
    real(r8) :: dt_atmos_real = 0.
    real(r8),allocatable :: rtmp(:)
-   real(r8) :: block_extents(5)
+   real(r8) :: block_extents(be_arrlen)
    integer, allocatable :: be_size(:)
 
-   integer :: unitn               ! File unit number
-   integer :: n                   ! index
-   integer :: nlat,nlon
-
-!-----------------------------------------------------------------------
-
-character(len=128) :: version = '$Id$'
-character(len=128) :: tagname = '$Name$'
-type (block_control_type), target   :: Atm_block
-integer :: is,ie,js,je,npes,tsize,ssize
+   integer :: i, k, lat
+   integer :: is,ie,js,je,npes,n
 
    !-----------------------------------------------------------------------
    !  from couple_main initialize atm structure - initializes fv3 grid
@@ -232,15 +205,18 @@ integer :: is,ie,js,je,npes,tsize,ssize
 !--- get block extents for each task/pe
 !-----------------------------------------------------------------------
    npes=mpp_npes()
-   allocate(block_extents_g(5,npes))
-   allocate(rtmp(5*npes))
+   allocate(block_extents_g(be_arrlen,npes))
+   allocate(rtmp(be_arrlen*npes))
    allocate(be_size(npes))
-   ssize=5
-   be_size(:)=ssize
-   block_extents(1)=is;block_extents(2)=ie;block_extents(3)=js;block_extents(4)=je;block_extents(5)=Atm(mytile)%tile
-   call mpp_gather(block_extents,ssize,rtmp,be_size)
-   call mp_bcst(rtmp,5*npes)
-   block_extents_g=reshape(rtmp,(/5,npes/))
+   be_size(:)=be_arrlen
+   block_extents(1)=is
+   block_extents(2)=ie
+   block_extents(3)=js
+   block_extents(4)=je
+   block_extents(5)=Atm(mytile)%tile
+   call mpp_gather(block_extents,be_arrlen,rtmp,be_size)
+   call mp_bcst(rtmp,be_arrlen*npes)
+   block_extents_g=reshape(rtmp,(/be_arrlen,npes/))
 
    deallocate(rtmp)
    deallocate(be_size)
@@ -452,21 +428,17 @@ subroutine get_horiz_grid_d(nxy, clat_d_out, clon_d_out, area_d_out, wght_d_out,
     real(r8), allocatable :: clon_d(:,:,:)
     real(r8), allocatable :: clat_d(:,:,:)
     real(r8), allocatable :: area_d(:,:,:)
-    real(r8),  allocatable :: indx_d(:,:,:)
+    real(r8), allocatable :: indx_d(:,:,:)
 
     real(r8), pointer, dimension(:,:,:) :: agrid
     real(r8), pointer, dimension(:,:)   :: area
     integer,  pointer                   :: ntiles_g,tile
-    integer                             :: is,ie,js,je
-    integer                             :: masterproc,gid
+    integer                             :: is,ie,js,je,ind
 !
     is = Atm(mytile)%bd%is
     ie = Atm(mytile)%bd%ie
     js = Atm(mytile)%bd%js
     je = Atm(mytile)%bd%je
-
-    masterproc = mpp_root_pe()
-    gid = mpp_pe()
 
     area  => Atm(mytile)%gridstruct%area_64
     agrid => Atm(mytile)%gridstruct%agrid_64
@@ -493,7 +465,7 @@ subroutine get_horiz_grid_d(nxy, clat_d_out, clon_d_out, area_d_out, wght_d_out,
     end do
 
     call mp_gather(indx_d, is, ie, js, je, npx-1, npy-1, ntiles_g)
-    if (gid == masterproc) then
+    if (masterproc) then
         if (maxval(indx_d) .gt. nxy .or. minval(indx_d) .lt. 1) then
             write(iulog,*)'GET_HORIZ_GRID_D: indx_d is out of bound. nxy = ',nxy
             call endrun
@@ -502,11 +474,12 @@ subroutine get_horiz_grid_d(nxy, clat_d_out, clon_d_out, area_d_out, wght_d_out,
 
     if (present(clat_d_out)) then
         call mp_gather(clat_d, is, ie, js, je, npx-1, npy-1, ntiles_g)
-        if (gid == masterproc) then
+        if (masterproc) then
             do k = 1, ntiles_g
                 do j = 1, npy-1
                     do i = 1, npx-1
-                        clat_d_mpi(indx_d(i,j,k)) = clat_d(i,j,k)
+                       ind=indx_d(i,j,k)
+                       clat_d_mpi(ind) = clat_d(i,j,k)
                     end do
                 end do
             end do
@@ -521,11 +494,12 @@ subroutine get_horiz_grid_d(nxy, clat_d_out, clon_d_out, area_d_out, wght_d_out,
 
     if (present(clon_d_out)) then
         call mp_gather(clon_d, is, ie, js, je, npx-1, npy-1, ntiles_g)
-        if (gid == masterproc) then
+        if (masterproc) then
             do k = 1, ntiles_g
                 do j = 1, npy-1
                     do i = 1, npx-1
-                        clon_d_mpi(indx_d(i,j,k)) = clon_d(i,j,k)
+                       ind=indx_d(i,j,k)
+                       clon_d_mpi(ind) = clon_d(i,j,k)
                     end do
                 end do
             end do
@@ -540,11 +514,12 @@ subroutine get_horiz_grid_d(nxy, clat_d_out, clon_d_out, area_d_out, wght_d_out,
 
     if (present(lat_d_out)) then
         call mp_gather(clat_d, is, ie, js, je, npx-1, npy-1, ntiles_g)
-        if (gid == masterproc) then
+        if (masterproc) then
             do k = 1, ntiles_g
                 do j = 1, npy-1
                     do i = 1, npx-1
-                        clat_d_mpi(indx_d(i,j,k)) = clat_d(i,j,k)
+                       ind=indx_d(i,j,k)
+                       clat_d_mpi(ind) = clat_d(i,j,k)
                     end do
                 end do
             end do
@@ -559,11 +534,12 @@ subroutine get_horiz_grid_d(nxy, clat_d_out, clon_d_out, area_d_out, wght_d_out,
 
     if (present(lon_d_out)) then
         call mp_gather(clon_d, is, ie, js, je, npx-1, npy-1, ntiles_g)
-        if (gid == masterproc) then
+        if (masterproc) then
             do k = 1, ntiles_g
                 do j = 1, npy-1
                     do i = 1, npx-1
-                        clon_d_mpi(indx_d(i,j,k)) = clon_d(i,j,k)
+                       ind=indx_d(i,j,k)
+                       clon_d_mpi(ind) = clon_d(i,j,k)
                     end do
                 end do
             end do
@@ -578,11 +554,12 @@ subroutine get_horiz_grid_d(nxy, clat_d_out, clon_d_out, area_d_out, wght_d_out,
 
     if (present(area_d_out)) then
         call mp_gather(area_d, is, ie, js, je, npx-1, npy-1, ntiles_g)
-        if (gid == masterproc) then
+        if (masterproc) then
             do k = 1, ntiles_g
                 do j = 1, npy-1
                     do i = 1, npx-1
-                        area_d_mpi(indx_d(i,j,k)) = area_d(i,j,k)
+                       ind=indx_d(i,j,k)
+                       area_d_mpi(ind) = area_d(i,j,k)
                     end do
                 end do
             end do
@@ -597,11 +574,12 @@ subroutine get_horiz_grid_d(nxy, clat_d_out, clon_d_out, area_d_out, wght_d_out,
 
     if (present(wght_d_out)) then
         call mp_gather(area_d, is, ie, js, je, npx-1, npy-1, ntiles_g)
-        if (gid == masterproc) then
+        if (masterproc) then
             do k = 1, ntiles_g
                 do j = 1, npy-1
                     do i = 1, npx-1
-                        wght_d_mpi(indx_d(i,j,k)) = area_d(i,j,k)
+                       ind=indx_d(i,j,k)
+                       wght_d_mpi(ind) = area_d(i,j,k)
                     end do
                 end do
             end do
@@ -612,14 +590,6 @@ subroutine get_horiz_grid_d(nxy, clat_d_out, clon_d_out, area_d_out, wght_d_out,
         else
             call endrun('wght_d_mpi is not full filled')
         end if
-    end if
-
-    if (present(clat_d_out) .and. present(clon_d_out)) then
-        if (.not. associated(clat)) then
-            allocate(clat(nxy), clon(nxy,1))
-        end if
-        clat(:  ) = clat_d_out
-        clon(:,1) = clon_d_out
     end if
 
     deallocate(clon_d)
@@ -731,9 +701,9 @@ subroutine define_cam_grids(Atm)
   use cam_grid_support,  only: horiz_coord_t, horiz_coord_create
   use cam_grid_support,  only: cam_grid_register, cam_grid_attribute_register
   use fv_grid_utils_mod, only: mid_pt_sphere
-  use mpp_mod,           only: mpp_pe, mpp_npes
-  use fv_mp_mod,         only: mp_gather, mp_bcst, mp_barrier
-  use spmd_utils,        only: npes,iam
+  use mpp_mod,           only: mpp_pe
+  use fv_mp_mod,         only: mp_gather, mp_bcst
+  use spmd_utils,        only: iam
   use physconst,         only: rearth
   implicit none
   
@@ -745,7 +715,7 @@ subroutine define_cam_grids(Atm)
   
   integer(iMap), pointer :: grid_map(:,:)
 
-  integer :: n, i, j, mapind,is,ie,js,je,isd,ied,jsd,jed,ierr,tile,nregions
+  integer :: n, i, j, mapind,is,ie,js,je,isd,ied,jsd,jed,tile,nregions
   real(r8), pointer, dimension(:,:,:) :: agrid
   real(r8), pointer, dimension(:,:,:) :: grid
   real(r8), pointer, dimension(:,:)   :: area
@@ -756,21 +726,11 @@ subroutine define_cam_grids(Atm)
   real(r8), pointer :: pelat_deg_ew(:)
   real(r8), pointer :: pelon_deg_ns(:)
   real(r8), pointer :: pelat_deg_ns(:)
-  real(r8), pointer :: coord_map_ns(:)
-  real(r8), pointer :: coord_map_ew(:)
-  real(r8)               :: pt(2),lonrad,latrad
+  real(r8)               :: lonrad,latrad
   integer(iMap), pointer :: pemap(:)
   integer(iMap), pointer :: pemap_ew(:)
   integer(iMap), pointer :: pemap_ns(:)
-  character(12)          :: filename
-  character(2)          :: cgid
-  integer :: ncols_glob = 0     ! number of dynamics columns
-  integer :: ncols_glob_ew = 0     ! number of dynamics columns for Dgrid ew
-  integer :: ncols_glob_ns = 0     ! number of dynamics columns for Dgrid ns
-  integer :: ncols_loc = 0     ! number of dynamics columns
-  integer :: ncols_loc_ew = 0     ! number of dynamics columns for Dgrid ew
-  integer :: ncols_loc_ns = 0     ! number of dynamics columns for Dgrid ew
-  integer :: nx,ny
+  integer :: nx,ny,ind
 
   area  => Atm(mytile)%gridstruct%area_64
   agrid => Atm(mytile)%gridstruct%agrid_64
@@ -785,9 +745,6 @@ subroutine define_cam_grids(Atm)
   jed = Atm(mytile)%bd%jed
   tile = Atm(mytile)%tile
   nregions = Atm(mytile)%gridstruct%ntiles_g
-  ncols_glob= (npx-1)*(npy-1)*nregions
-  ncols_glob_ew= (npx)*(npy-1)*nregions
-  ncols_glob_ns= (npx-1)*(npy)*nregions
 
   allocate(area_ffsl((ie-is+1)*(je-js+1)))
   allocate(grid_ew(isd:ied+1,jsd:jed,2))
@@ -797,9 +754,7 @@ subroutine define_cam_grids(Atm)
   allocate(pelon_deg_ew((ie-is+2)*(je-js+1)))
   allocate(pelat_deg((ie-is+1)*(je-js+1)))
   allocate(pelat_deg_ew((ie-is+2)*(je-js+1)))
-  allocate(coord_map_ew((ie-is+2)*(je-js+1)))
   allocate(pelat_deg_ns((ie-is+1)*(je-js+2)))
-  allocate(coord_map_ns((ie-is+1)*(je-js+2)))
   allocate(pemap((ie-is+1)*(je-js+1)))
   allocate(pemap_ew((ie-is+2)*(je-js+1)))
   allocate(pemap_ns((ie-is+1)*(je-js+2)))
@@ -910,8 +865,9 @@ subroutine define_cam_grids(Atm)
   do n = 1, nregions
      do j=1,nx
         do i=1,ny
-           gblidx_g(gindex_g(i,j,n),1)=blkidx_g(i,j,n)
-           gblidx_g(gindex_g(i,j,n),2)=locidx_g(i,j,n)
+           ind=gindex_g(i,j,n)
+           gblidx_g(ind,1)=blkidx_g(i,j,n)
+           gblidx_g(ind,2)=locidx_g(i,j,n)
         end do
      end do
   end do
@@ -1117,25 +1073,6 @@ integer function get_dyn_grid_parm(name) result(ival)
     end if
 
 end function get_dyn_grid_parm
-
-!=======================================================================
-
-function get_dyn_grid_parm_real2d(name) result(rval)
-
-    implicit none
-
-    character(len=*), intent(in) :: name
-    real(r8), pointer :: rval(:,:)
-
-    if (name .eq. 'clon') then
-       rval => clon
-    else if (name .eq. 'londeg') then
-       rval => londeg
-    else
-       nullify(rval)
-    end if
-
-end function get_dyn_grid_parm_real2d
 
 !=======================================================================
 

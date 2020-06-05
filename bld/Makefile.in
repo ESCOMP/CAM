@@ -772,7 +772,7 @@ ifeq ($(UNAMES),Darwin)
       mod_path += -I$(FV3CORE_LIBDIR)
     endif
 
-    # COSP FV3 and FMS needs to autopromote to get its precision to match CAM
+    # COSP, FV3 and FMS needs to autopromote to get its precision to match CAM
     FC_AUTO_R8  := -autodouble
 
     # NOTE: use-asm is require to work with Xcode 3.2.2 and ifort 11.1.088. Perhaps this
@@ -851,7 +851,7 @@ ifeq ($(UNAMES),Darwin)
       mod_path += -I$(FV3CORE_LIBDIR)
     endif
 
-    # COSP FV3 needs to autopromote to get its precision to match CAM
+    # COSP, FV3 and FMS needs to autopromote to get its precision to match CAM
     FC_AUTO_R8   := -qrealsize=8
 
     FFLAGS     := $(cpp_path) $(mod_path) $(FPPFLAGS) -qspillsize=2500 

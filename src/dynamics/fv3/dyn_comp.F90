@@ -44,9 +44,10 @@ module dyn_comp
     use constants_mod,   only: cp_air, kappa, rvgas, rdgas
     use constituents,    only: pcnst, cnst_name, cnst_longname, tottnam, cnst_get_ind
     use dimensions_mod,  only: npx, npy, npz, ncnst, pnats, dnats, nq, num_family, nt_prog, &
-                               qsize_condensate_loading_idx,qsize_condensate_loading_cp,qsize_condensate_loading_cv, &
-                               qsize_condensate_loading_idx_gll, qsize_condensate_loading, cnst_name_ffsl, &
-                               cnst_longname_ffsl,qsize,fv3_lcp_moist,fv3_lcv_moist,qsize_tracer_idx_cam2dyn,fv3_scale_ttend
+                               qsize_condensate_loading_idx,qsize_condensate_loading_cp, &
+                               qsize_condensate_loading_cv,qsize_condensate_loading_idx_gll, &
+                               qsize_condensate_loading, cnst_name_ffsl,cnst_longname_ffsl, &
+                               qsize,fv3_lcp_moist,fv3_lcv_moist,qsize_tracer_idx_cam2dyn,fv3_scale_ttend
     use dyn_grid,        only: mytile
     use field_manager_mod, only: MODEL_ATMOS
     use fms_io_mod,      only: set_domain, nullify_domain
@@ -224,9 +225,9 @@ subroutine dyn_readnl(nlfilename)
      close(unitn)
      call freeunit(unitn)
   end if
-  if ((fv3_lcp_moist.eqv.fv3_lcv_moist) .and. (fv3_lcv_moist.eqv..true.)) &
-       call endrun('dyn_readnl: ERROR reading dyn_fv3_inparm namelist fv3_lcp_moist and fv3_lcv_moist can not both be true')
-
+  if ((fv3_lcp_moist.eqv.fv3_lcv_moist) .and. (fv3_lcv_moist.eqv..true.)) then
+     call endrun('dyn_readnl: fv3_lcp_moist and fv3_lcv_moist can not both be true')
+  endif
   ! Broadcast namelist values to all PEs
   call MPI_bcast(fv3_qsize_condensate_loading, 1, mpi_integer, masterprocid, mpicom, ierr)
   call MPI_bcast(fv3_npes, 1, mpi_integer, masterprocid, mpicom, ierr)
@@ -465,11 +466,12 @@ subroutine dyn_init(dyn_in, dyn_out)
    character (len=108) :: str1, str2, str3
    integer :: is,isd,ie,ied,js,jsd,je,jed
    integer :: ixrain, ixsnow, ixgraupel, ixcldice, ixcldliq
-   integer :: fv3idx,icnst_ffsl,k
+   integer :: fv3idx,icnst_ffsl
 
    real, parameter:: cv_vap = 3.*rvgas        ! < 1384.5
    real, parameter:: cv_air =  cp_air - rdgas !< = rdgas * (7/2-1) = 2.5*rdgas=717.68
    integer        :: unito
+   integer, parameter  :: ndiag = 5
 
    !-----------------------------------------------------------------------
 
@@ -562,9 +564,9 @@ subroutine dyn_init(dyn_in, dyn_out)
       qsize_tracer_idx_cam2dyn(ixgraupel) = icnst_ffsl
    end if
 
-   if (icnst_ffsl /= qsize_condensate_loading) &
-        call endrun(subname//': ERROR: qsize_condensate_loading not equal to the number of water constituents in q array')
-
+   if (icnst_ffsl /= qsize_condensate_loading) then
+      call endrun(subname//':qsize_condensate_loading not equal to q array water constituents')
+   end if
    !Now add all other CAM tracer after any of the condensates in the fv3 tracer array 
    do m=1,pcnst
       if (m.ne.1.and. &
@@ -596,7 +598,8 @@ subroutine dyn_init(dyn_in, dyn_out)
    call mpibarrier (mpicom)
    call register_tracers (MODEL_ATMOS, ncnst, nt_prog, pnats, num_family)
    if (masterproc) then
-      write(iulog,*) 'ncnst=', ncnst,' num_prog=',nt_prog,' pnats=',pnats,' dnats=',dnats,' num_family=',num_family
+      write(iulog,*) 'ncnst=', ncnst,' num_prog=',nt_prog,' pnats=',pnats,' dnats=',dnats, &
+                     ' num_family=',num_family
       print*, ''
    endif
 
@@ -605,7 +608,8 @@ subroutine dyn_init(dyn_in, dyn_out)
       if(qsize_tracer_idx_cam2dyn(m).le.qsize_condensate_loading) then
          fv3idx  = get_tracer_index (MODEL_ATMOS, cnst_name_ffsl(qsize_tracer_idx_cam2dyn(m)) )
          if (fv3idx.ne.qsize_tracer_idx_cam2dyn(m)) then
-            write(iulog,*)'m,fv3idx,qsize_tracer_idx_cam2dyn=',m,fv3idx,qsize_tracer_idx_cam2dyn,cnst_name_ffsl,mpp_pe()
+            write(iulog,*)'m,fv3idx,qsize_tracer_idx_cam2dyn=',m, &
+                 fv3idx,qsize_tracer_idx_cam2dyn,cnst_name_ffsl,mpp_pe()
             call endrun(subname//': ERROR: CAM/FV3 Tracer mapping incorrect')
          end if
       end if
@@ -695,7 +699,7 @@ subroutine dyn_init(dyn_in, dyn_out)
  fv_time = Time
 
 !----- initialize atmos_axes and fv_dynamics diagnostics
-   call fv_diag_init(Atm(mytile:mytile), Atm(mytile)%atmos_axes, Time, npx, npy, npz, Atm(mytile)%flagstruct%p_ref)
+   call fv_diag_init(Atm(mytile:mytile),Atm(mytile)%atmos_axes,Time,npx,npy,npz,Atm(mytile)%flagstruct%p_ref)
 
    ! Forcing from physics on the FFSL grid
    call addfld ('FU',  (/ 'lev' /), 'A', 'm/s2', 'Zonal wind forcing term on FFSL grid',     gridname='FFSL')
@@ -706,7 +710,8 @@ subroutine dyn_init(dyn_in, dyn_out)
    do m = 1, qsize
      call addfld ('F'//trim(cnst_name_ffsl(m))//'_ffsl',  (/ 'lev' /), 'I', 'kg/kg/s',   &
           trim(cnst_longname(m))//' mixing ratio forcing term (q_new-q_old) on FFSL grid', gridname='FFSL')
-     call addfld(tottnam(m),(/ 'lev' /),'A','kg/kg/s',trim(cnst_name_ffsl(m))//' horz + vert + fixer tendency ',  &
+     call addfld(tottnam(m),(/ 'lev' /),'A','kg/kg/s', &
+          trim(cnst_name_ffsl(m))//' horz + vert + fixer tendency ',  &
                   gridname='FFSL')
    end do
 
@@ -717,21 +722,22 @@ subroutine dyn_init(dyn_in, dyn_out)
          write(str2,*) TRIM(ADJUSTL(vars_descriptor(ivars))),&
              TRIM(ADJUSTL(" ")),TRIM(ADJUSTL(stage_txt(istage)))
          write(str3,*) TRIM(ADJUSTL(vars_unit(ivars)))
-         call addfld (TRIM(ADJUSTL(str1)),   horiz_only, 'A', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)),gridname='FFSL')
+         call addfld (TRIM(ADJUSTL(str1)),horiz_only,'A',TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)), &
+              gridname='FFSL')
       end do
    end do
 
-   allocate(se_dyn(is:ie,js:je,5))
-   allocate(ke_dyn(is:ie,js:je,5))
-   allocate(wv_dyn(is:ie,js:je,5))
-   allocate(wl_dyn(is:ie,js:je,5))
-   allocate(wi_dyn(is:ie,js:je,5))
-   allocate(wr_dyn(is:ie,js:je,5))
-   allocate(ws_dyn(is:ie,js:je,5))
-   allocate(wg_dyn(is:ie,js:je,5))
-   allocate(tt_dyn(is:ie,js:je,5))
-   allocate(mr_dyn(is:ie,js:je,5))
-   allocate(mo_dyn(is:ie,js:je,5))
+   allocate(se_dyn(is:ie,js:je,ndiag))
+   allocate(ke_dyn(is:ie,js:je,ndiag))
+   allocate(wv_dyn(is:ie,js:je,ndiag))
+   allocate(wl_dyn(is:ie,js:je,ndiag))
+   allocate(wi_dyn(is:ie,js:je,ndiag))
+   allocate(wr_dyn(is:ie,js:je,ndiag))
+   allocate(ws_dyn(is:ie,js:je,ndiag))
+   allocate(wg_dyn(is:ie,js:je,ndiag))
+   allocate(tt_dyn(is:ie,js:je,ndiag))
+   allocate(mr_dyn(is:ie,js:je,ndiag))
+   allocate(mo_dyn(is:ie,js:je,ndiag))
 
 
 end subroutine dyn_init
@@ -757,7 +763,7 @@ subroutine dyn_run(dyn_state)
 
 
   integer :: psc,idim
-  integer :: k, w_diff, nt_dyn,j,i
+  integer :: w_diff, nt_dyn,i
   type(fv_atmos_type), pointer         :: Atm(:)  
   integer :: is,isc,isd,ie,iec,ied,js,jsc,jsd,je,jec,jed
   
@@ -826,7 +832,8 @@ subroutine dyn_run(dyn_state)
           Atm(mytile)%diss_est, &
           qsize,qsize_condensate_loading,qsize_condensate_loading_idx,qsize_tracer_idx_cam2dyn, &
           qsize_condensate_loading_cp,qsize_condensate_loading_cp, se_dyn, ke_dyn, wv_dyn,wl_dyn, &
-          wi_dyn,wr_dyn,ws_dyn,wg_dyn,tt_dyn,mo_dyn,mr_dyn,gravit, cpair, rearth,omega,fv3_lcp_moist,fv3_lcv_moist)
+          wi_dyn,wr_dyn,ws_dyn,wg_dyn,tt_dyn,mo_dyn,mr_dyn,gravit,cpair,rearth,omega,fv3_lcp_moist,&
+          fv3_lcv_moist)
 #else
           Atm(mytile)%diss_est)
 #endif
@@ -956,8 +963,6 @@ subroutine read_inidat(dyn_in)
 
   character(len = 40) :: fieldname,fieldname2
 
-  integer :: lsize
-
   integer :: i, j, k, m, n
 
   type(file_desc_t), pointer :: fh_topo
@@ -965,7 +970,6 @@ subroutine read_inidat(dyn_in)
   type(fv_atmos_type), pointer         :: Atm(:)  
 
 
-  character(len=128)               :: errmsg
   character(len=*), parameter      :: subname='READ_INIDAT'
   real(r8), allocatable            :: phis_tmp(:,:) 
   integer(iMap), pointer           :: ldof(:) ! Basic (2D) grid dof
@@ -975,7 +979,6 @@ subroutine read_inidat(dyn_in)
   integer,  allocatable            :: m_ind(:)
   integer                          :: vcoord
   integer                          :: pio_errtype
-  integer                          :: dims(2)
   real(r8), allocatable            :: dbuf2(:,:)         ! (pcol,nblk=1)
   real(r8), allocatable            :: dbuf3(:,:,:)       ! (pcol,plev,nblk=1)
   real(r8), allocatable            :: dbuf4(:,:,:,:)       ! (pcol,plev,nblk=1,pcnst)
@@ -985,9 +988,8 @@ subroutine read_inidat(dyn_in)
   integer, allocatable             :: rndm_seed(:)
   logical                          :: inic_wet !initial condition is based on wet pressure and water species
   integer                          :: m_cnst,m_cnst_ffsl
-  integer                          :: indx, nq
-  integer                          :: ierr,err_handling
-  character(len=max_fieldname_len) :: dimname
+  integer                          :: indx
+  integer                          :: err_handling
   real(r8)                         :: pertval
   real(r8), allocatable            :: pstmp(:,:)
   real(r8), pointer, dimension(:,:,:)  :: agrid,grid
@@ -1256,9 +1258,9 @@ subroutine read_inidat(dyn_in)
      call a2d3djt(atm(mytile)%ua, atm(mytile)%va, atm(mytile)%u, atm(mytile)%v, is,  ie,  js,  je, &
                   isd, ied, jsd, jed, npx,npy, npz, atm(mytile)%gridstruct, atm(mytile)%domain)
 
-     ! recreating a set of A winds from D winds using cubed_to_latlon to be consistent with energy diagnostics.
-     call cubed_to_latlon(Atm(mytile)%u, Atm(mytile)%v, Atm(mytile)%ua, Atm(mytile)%va, Atm(mytile)%gridstruct, &
-          npx, npy, npz, 1, Atm(mytile)%gridstruct%grid_type, Atm(mytile)%domain, Atm(mytile)%gridstruct%nested, &
+     ! recreating A winds from D winds using cubed_to_latlon to be consistent with energy diagnostics.
+     call cubed_to_latlon(Atm(mytile)%u,Atm(mytile)%v,Atm(mytile)%ua,Atm(mytile)%va,Atm(mytile)%gridstruct, &
+          npx,npy,npz,1,Atm(mytile)%gridstruct%grid_type,Atm(mytile)%domain,Atm(mytile)%gridstruct%nested, &
           Atm(mytile)%flagstruct%c2l_ord, Atm(mytile)%bd)
 
      ! Put the error handling back the way it was
@@ -1342,11 +1344,12 @@ subroutine read_inidat(dyn_in)
                  Atm(mytile)%delp(i,j,k) = fv3_airmass
                  Atm(mytile)%q(i,j,k,1:pcnst) = tracermass(1:pcnst)/fv3_airmass
                  Atm(mytile)%ps(i,j)=Atm(mytile)%ps(i,j)+Atm(mytile)%delp(i, j, k)
-                 ! check new tracermass all should be wet and consistent with mass before conversion to fv3 mix ratio
+                 ! check new tracermass 
                  do m=1,pcnst
                     m_ffsl=qsize_tracer_idx_cam2dyn(m)
                     if (tracermass(m_ffsl).ne.0) then
-                       reldif=(Atm(mytile)%delp(i,j,k)*Atm(mytile)%q(i,j,k,m_ffsl)-tracermass(m_ffsl))/tracermass(m_ffsl)
+                       reldif=(Atm(mytile)%delp(i,j,k)*Atm(mytile)%q(i,j,k,m_ffsl) - &
+                               tracermass(m_ffsl))/tracermass(m_ffsl)
                        if (reldif.gt.1.0e-15_r8) &
                             write(iulog,*)'mass inconsistency new, old, relative error=',iam,cnst_name(m),&
                             Atm(mytile)%delp(i,j,k)*Atm(mytile)%q(i,j,k,m_ffsl),tracermass(m_ffsl),reldif
@@ -1375,10 +1378,11 @@ subroutine read_inidat(dyn_in)
               Atm(mytile)%delp(i,j,k) = fv3_airmass
               Atm(mytile)%q(i,j,k,1:pcnst) = tracermass(1:pcnst)/fv3_airmass
               Atm(mytile)%ps(i,j)=Atm(mytile)%ps(i,j)+Atm(mytile)%delp(i, j, k)
-              ! check new tracermass all should be wet and consistent with mass before conversion to fv3 mix ratio
+              ! check new tracermass 
               do m=1,pcnst
                  m_ffsl=qsize_tracer_idx_cam2dyn(m)
-                 reldif=(Atm(mytile)%delp(i,j,k)*Atm(mytile)%q(i,j,k,m_ffsl)-tracermass(m_ffsl))/tracermass(m_ffsl)
+                 reldif=(Atm(mytile)%delp(i,j,k)*Atm(mytile)%q(i,j,k,m_ffsl)-tracermass(m_ffsl))/ &
+                        tracermass(m_ffsl)
                  if (reldif.gt.1.0e-15_r8) &
                       write(iulog,*)'mass inconsistency new, old, relative error=',iam,cnst_name(m), &
                       Atm(mytile)%delp(i,j,k)*Atm(mytile)%q(i,j,k,m_ffsl),tracermass(m_ffsl),reldif
@@ -1445,7 +1449,7 @@ subroutine read_inidat(dyn_in)
 
   call mpp_update_domains( Atm(mytile)%phis, Atm(mytile)%domain )
   call mpp_update_domains( atm(mytile)%ps,   Atm(mytile)%domain )
-  call mpp_update_domains( atm(mytile)%u,atm(mytile)%v,   Atm(mytile)%domain, gridtype=DGRID_NE, complete=.true. )
+  call mpp_update_domains( atm(mytile)%u,atm(mytile)%v,Atm(mytile)%domain,gridtype=DGRID_NE,complete=.true. )
   call mpp_update_domains( atm(mytile)%pt,   Atm(mytile)%domain )
   call mpp_update_domains( atm(mytile)%delp,   Atm(mytile)%domain )
   call mpp_update_domains( atm(mytile)%q,    Atm(mytile)%domain )
@@ -1462,7 +1466,7 @@ end subroutine read_inidat
 
 !=======================================================================
 
-  subroutine calc_tot_energy_dynamics(atm,outfld_name_suffix)
+  subroutine calc_tot_energy_dynamics(atm,suffix)
     use physconst,              only: gravit, cpair, rearth,omega
     use cam_history,            only: outfld, hist_fld_active
     use constituents,           only: cnst_get_ind
@@ -1471,13 +1475,13 @@ end subroutine read_inidat
     !------------------------------Arguments--------------------------------
     
     type(fv_atmos_type), pointer, intent(in) :: Atm(:)  
-    character*(*)    , intent(in) :: outfld_name_suffix ! suffix for "outfld" names
+    character*(*)    , intent(in) :: suffix ! suffix for "outfld" names
     
     !---------------------------Local storage-------------------------------
     
     real(kind=r8), allocatable :: se(:,:)                          ! Dry Static energy (J/m2)
     real(kind=r8), allocatable :: ke(:,:)                          ! kinetic energy    (J/m2)
-    real(kind=r8), allocatable :: wv(:,:),wl(:,:),wi(:,:), &       ! col integ vap/liq/ice/rain/sno/graup(kg/m2)
+    real(kind=r8), allocatable :: wv(:,:),wl(:,:),wi(:,:), &       ! col integ constiuents(kg/m2)
                                   wr(:,:),ws(:,:),wg(:,:)          ! column integrated vapor       (kg/m2)
     real(kind=r8), allocatable :: tt(:,:)                          ! column integrated test tracer (kg/m2)
     real(kind=r8), allocatable :: dp(:,:,:)
@@ -1488,23 +1492,25 @@ end subroutine read_inidat
     real(kind=r8) :: tt_tmp
 
     !
-    ! global axial angular momentum (AAM) can be separated into one part (mr) associatedwith the relative motion 
-    ! of the atmosphere with respect to the planets surface (also known as wind AAM) and another part (mo) 
-    ! associated with the angular velocity OMEGA (2*pi/d, where d is the length of the day) of the planet 
-    ! (also known as mass AAM)
+    ! global axial angular momentum (AAM) can be separated into one part (mr) 
+    ! associatedwith the relative motion of the atmosphere with respect to the planets surface 
+    ! (also known as wind AAM) and another part (mo) associated with the angular velocity OMEGA  
+    ! (2*pi/d, where d is the length of the day) of the planet (also known as mass AAM)
     !
     real(kind=r8), allocatable :: mr(:,:)  ! wind AAM                        
     real(kind=r8), allocatable :: mo(:,:)  ! mass AAM
     real(kind=r8) :: mr_cnst, mo_cnst, cos_lat, mr_tmp, mo_tmp
 
-    real(kind=r8) :: se_glob, ke_glob, wv_glob, wl_glob, wi_glob, wr_glob, ws_glob, wg_glob, tt_glob, mr_glob, mo_glob
+    real(kind=r8) :: se_glob, ke_glob, wv_glob, wl_glob, wi_glob, &
+                     wr_glob, ws_glob, wg_glob, tt_glob, mr_glob, mo_glob
 
-    integer :: i,j,k,nq,m_cnst,n,idim,m_cnst_ffsl
+    integer :: i,j,k,nq,n,idim,m_cnst_ffsl
     integer :: ixcldice, ixcldliq, ixtt,ixcldliq_ffsl,ixcldice_ffsl ! CLDICE, CLDLIQ and test tracer indices
     integer :: ixrain, ixsnow, ixgraupel,ixrain_ffsl, ixsnow_ffsl, ixgraupel_ffsl
-    character(len=16) :: name_out1,name_out2,name_out3,name_out4,name_out5,name_out6,name_out7,name_out8,name_out9
+    character(len=16) :: name_out1,name_out2,name_out3,name_out4, &
+                         name_out5,name_out6,name_out7,name_out8,name_out9
 
-    integer :: is,ie,js,je,isd,ied,jsd,jed,lchnk,ncol
+    integer :: is,ie,js,je,isd,ied,jsd,jed
     logical :: printglobals = .false.
     !-----------------------------------------------------------------------
 
@@ -1543,19 +1549,20 @@ end subroutine read_inidat
     allocate(dp(is:ie,js:je,npz))
     allocate(ps_local(is:ie,js:je))
 
-    name_out1 = 'SE_'   //trim(outfld_name_suffix)
-    name_out2 = 'KE_'   //trim(outfld_name_suffix)
-    name_out3 = 'WV_'   //trim(outfld_name_suffix)
-    name_out4 = 'WL_'   //trim(outfld_name_suffix)
-    name_out5 = 'WI_'   //trim(outfld_name_suffix)
-    name_out6 = 'WR_'   //trim(outfld_name_suffix)
-    name_out7 = 'WS_'   //trim(outfld_name_suffix)
-    name_out8 = 'WG_'   //trim(outfld_name_suffix)
-    name_out9 = 'TT_'   //trim(outfld_name_suffix)
+    name_out1 = 'SE_'   //trim(suffix)
+    name_out2 = 'KE_'   //trim(suffix)
+    name_out3 = 'WV_'   //trim(suffix)
+    name_out4 = 'WL_'   //trim(suffix)
+    name_out5 = 'WI_'   //trim(suffix)
+    name_out6 = 'WR_'   //trim(suffix)
+    name_out7 = 'WS_'   //trim(suffix)
+    name_out8 = 'WG_'   //trim(suffix)
+    name_out9 = 'TT_'   //trim(suffix)
 
 
-    if ( hist_fld_active(name_out1).or.hist_fld_active(name_out2).or.hist_fld_active(name_out3).or.&
-         hist_fld_active(name_out4).or.hist_fld_active(name_out5).or.hist_fld_active(name_out6).or..true.) then
+    if ( hist_fld_active(name_out1).or.hist_fld_active(name_out2).or. &
+         hist_fld_active(name_out3).or.hist_fld_active(name_out4).or. &
+         hist_fld_active(name_out5).or.hist_fld_active(name_out6).or..true.) then
        if (qsize_condensate_loading>1) then
           call cnst_get_ind('CLDLIQ', ixcldliq, abort=.false.)
           call cnst_get_ind('CLDICE', ixcldice, abort=.false.)
@@ -1608,7 +1615,7 @@ end subroutine read_inidat
                 !
                 ke_tmp   = 0.5_r8*(Atm(mytile)%va(i,j,k)**2+ Atm(mytile)%ua(i,j,k)**2)*dp(i,j,k)/gravit
                 if (abs(Atm(mytile)%ua(i,j,k))>200.0.or.abs(Atm(mytile)%va(i,j,k))>200.0) then
-                   write(*,*) "yyy",Atm(mytile)%ua(i,j,k),Atm(mytile)%va(i,j,k),outfld_name_suffix
+                   write(*,*) "yyy",Atm(mytile)%ua(i,j,k),Atm(mytile)%va(i,j,k),suffix
                 end if
 
                 if (fv3_lcp_moist.or.fv3_lcv_moist) then
@@ -1774,20 +1781,20 @@ end subroutine read_inidat
           if (masterproc) then
       
              if (fv3_lcp_moist) then
-                write(iulog, '(a,e25.17)') 'global wet static energy se_'//trim(outfld_name_suffix)//')        = ',se_glob
+                write(iulog, '(a,e25.17)') 'static energy se_'//trim(suffix)//')        = ',se_glob
              else
-                write(iulog, '(a,e25.17)') 'global dry static energy se_'//trim(outfld_name_suffix)//')        = ',se_glob
+                write(iulog, '(a,e25.17)') 'static energy se_'//trim(suffix)//')        = ',se_glob
              end if
-             write(iulog, '(a,e25.17)') 'global kinetic energy ke_'//trim(outfld_name_suffix)//')           = ',ke_glob
-             write(iulog, '(a,e25.17)') 'global total energy se_plus_ke_'//trim(outfld_name_suffix)//')     = ',(ke_glob+se_glob)
-             write(iulog, '(a,e25.17)') 'global column integrated vapor wv_'//trim(outfld_name_suffix)//'   = ',wv_glob
-             write(iulog, '(a,e25.17)') 'global column integrated liquid wl_'//trim(outfld_name_suffix)//'  = ',wl_glob
-             write(iulog, '(a,e25.17)') 'global column integrated ice wi_'//trim(outfld_name_suffix)//'     = ',wi_glob
-             write(iulog, '(a,e25.17)') 'global column integrated liquid rain wr_'//trim(outfld_name_suffix)//'   = ',wr_glob
-             write(iulog, '(a,e25.17)') 'global column integrated liquid snow ws_'//trim(outfld_name_suffix)//'  = ',ws_glob
-             write(iulog, '(a,e25.17)') 'global column integrated graupel wg_'//trim(outfld_name_suffix)//'     = ',wg_glob
+             write(iulog, '(a,e25.17)') 'kinetic energy ke_'//trim(suffix)//')           = ',ke_glob
+             write(iulog, '(a,e25.17)') 'total energy se_plus_ke_'//trim(suffix)//')     = ',(ke_glob+se_glob)
+             write(iulog, '(a,e25.17)') 'integrated vapor wv_'//trim(suffix)//'   = ',wv_glob
+             write(iulog, '(a,e25.17)') 'integrated liquid wl_'//trim(suffix)//'  = ',wl_glob
+             write(iulog, '(a,e25.17)') 'integrated ice wi_'//trim(suffix)//'     = ',wi_glob
+             write(iulog, '(a,e25.17)') 'integrated liquid rain wr_'//trim(suffix)//'   = ',wr_glob
+             write(iulog, '(a,e25.17)') 'integrated liquid snow ws_'//trim(suffix)//'  = ',ws_glob
+             write(iulog, '(a,e25.17)') 'integrated graupel wg_'//trim(suffix)//'     = ',wg_glob
              if (ixtt > 1) write(iulog, '(a,e25.17)') &
-                  'global column integrated test tracer tt_'//trim(outfld_name_suffix)//' = ',tt_glob
+                  'global column integrated test tracer tt_'//trim(suffix)//' = ',tt_glob
           end if
        end if
     end if
@@ -1805,8 +1812,8 @@ end subroutine read_inidat
     ! MR is equation (6) without \Delta A and sum over areas (areas are in units of radians**2)
     ! MO is equation (7) without \Delta A and sum over areas (areas are in units of radians**2)
     !
-    name_out1 = 'MR_'   //trim(outfld_name_suffix)
-    name_out2 = 'MO_'   //trim(outfld_name_suffix)
+    name_out1 = 'MR_'   //trim(suffix)
+    name_out2 = 'MO_'   //trim(suffix)
 
     if ( hist_fld_active(name_out1).or.hist_fld_active(name_out2)) then
 
@@ -1839,8 +1846,8 @@ end subroutine read_inidat
          mo_glob=g_sum(Atm(mytile)%domain, mo(is:ie,js:je), is, ie, js, je, &
                  Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
          if (masterproc) then
-            write(iulog, '(a,e25.17)') 'global column integrated wind AAM name_out1_'//trim(outfld_name_suffix)//' = ',mr_glob
-            write(iulog, '(a,e25.17)') 'global column integrated mass AAM name_out1_'//trim(outfld_name_suffix)//' = ',mo_glob
+            write(iulog, '(a,e25.17)') 'integrated wind AAM name_out1_'//trim(suffix)//' = ',mr_glob
+            write(iulog, '(a,e25.17)') 'integrated mass AAM name_out1_'//trim(suffix)//' = ',mo_glob
          end if
       end if
    end if
@@ -2018,15 +2025,15 @@ subroutine set_dry_mass(atm,fixed_global_ave_dry_ps)
 
   if (fixed_global_ave_dry_ps == 0) return;
   
-  ! get_global_ave_surface_pressure - must use bitwise sum (reproducable) to get with different decompositions.
+  ! get_global_ave_surface_pressure - must use bitwise sum (reproducable)
   global_ave_ps_inic=g_sum(Atm(mytile)%domain, Atm(mytile)%ps(is:ie,js:je), is, ie, js, je, &
                            Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
   
   do k=1,pver
      do j = js, je
         do i = is, ie
-           delpdry(i,j,k)=Atm(mytile)%delp(i,j,k) * &
-                          (1.0_r8-sum(Atm(mytile)%q(i,j,k,qsize_condensate_loading_idx(1:qsize_condensate_loading))))
+           delpdry(i,j,k)=Atm(mytile)%delp(i,j,k) * (1.0_r8 - &
+                          sum(Atm(mytile)%q(i,j,k,qsize_condensate_loading_idx(1:qsize_condensate_loading))))
            delpwet(i,j,k)=Atm(mytile)%delp(i,j,k)-delpdry(i,j,k)
         end do
      end do
@@ -2088,11 +2095,13 @@ subroutine set_dry_mass(atm,fixed_global_ave_dry_ps)
                              Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
 
   if (masterproc) then
-     write (iulog,*) "------ info from set_dry_mass -----------------------------------------------------------"
+     write (iulog,*) "-------------------------- set_dry_mass---------------------------------------------"
      write (iulog,*) "Scaling dry surface pressure to global average of = ",&
           fixed_global_ave_dry_ps/100.0_r8,"hPa"
-     write (iulog,*) "Average surface pressure in initial condition = ",global_ave_ps_inic/100.0_r8,"hPa"
-     write (iulog,*) "Average dry surface pressure in initial condition = ",global_ave_dryps_inic/100.0_r8,"hPa"
+     write (iulog,*) "Average surface pressure in initial condition = ", &
+          global_ave_ps_inic/100.0_r8,"hPa"
+     write (iulog,*) "Average dry surface pressure in initial condition = ",&
+          global_ave_dryps_inic/100.0_r8,"hPa"
      write (iulog,*) "Average surface pressure after scaling = ",global_ave_ps_new/100.0_r8,"hPa"
      write (iulog,*) "Average dry surface pressure after scaling = ",global_ave_dryps_new/100.0_r8,"hPa"
      write (iulog,*) "Change in surface pressure           = ",&
@@ -2100,9 +2109,10 @@ subroutine set_dry_mass(atm,fixed_global_ave_dry_ps)
      write (iulog,*) "Change in dry surface pressure           = ",&
           global_ave_dryps_new-global_ave_dryps_inic,"Pa"
      write (iulog,*) "Mixing ratios have been scaled so that total mass of tracer is conserved"
-     write (iulog,*) "Total precipitable water before scaling = ", (global_ave_ps_inic-global_ave_dryps_inic)/gravit, '(kg/m**2)'
-     write (iulog,*) "Total precipitable water after  scaling = ", (global_ave_ps_new-global_ave_dryps_new)/gravit, '(kg/m**2)'
-     write (iulog,*) "------ end info from set_dry_mass -------------------------------------------------------"
+     write (iulog,*) "Total precipitable water before scaling = ", &
+          (global_ave_ps_inic-global_ave_dryps_inic)/gravit, '(kg/m**2)'
+     write (iulog,*) "Total precipitable water after  scaling = ", &
+          (global_ave_ps_new-global_ave_dryps_new)/gravit, '(kg/m**2)'
   endif
   
   deallocate(factor)
@@ -2136,7 +2146,7 @@ subroutine a2d3djt(ua, va, u, v, is,  ie,  js,  je, isd, ied, jsd, jed, npx,npy,
   real(r8) ve(is:ie+1,js-1:je+1,  3)    ! 3D winds at edges
   real(r8), dimension(is:ie):: ut1, ut2, ut3
   real(r8), dimension(js:je):: vt1, vt2, vt3
-  integer i, j, k, m, im2, jm2
+  integer i, j, k, im2, jm2
 
   real(r8), pointer, dimension(:,:,:) :: vlon, vlat
   real(r8), pointer, dimension(:,:,:,:) :: es, ew

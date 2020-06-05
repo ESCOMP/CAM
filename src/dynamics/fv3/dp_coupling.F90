@@ -20,9 +20,9 @@ use mpp_domains_mod,   only: mpp_update_domains, domain2D, DGRID_NE
 use perf_mod,          only: t_startf, t_stopf, t_barrierf
 use physconst,         only: cpair, gravit, rair, zvir, cappa, rairv
 use phys_grid,         only: get_ncols_p, get_gcol_all_p, block_to_chunk_send_pters, &
-     transpose_block_to_chunk, block_to_chunk_recv_pters, &
-     chunk_to_block_send_pters, transpose_chunk_to_block, &
-     chunk_to_block_recv_pters
+                             transpose_block_to_chunk, block_to_chunk_recv_pters, &
+                             chunk_to_block_send_pters, transpose_chunk_to_block, &
+                             chunk_to_block_recv_pters
 use physics_types,     only: physics_state, physics_tend
 use ppgrid,            only: begchunk, endchunk, pcols, pver, pverp
 use shr_kind_mod,      only: r8=>shr_kind_r8, i8 => shr_kind_i8
@@ -245,7 +245,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
   ! since derived_phys_dry takes care of that.
 
   call t_startf('derived_phys_dry')
-  call derived_phys_dry(phys_state, phys_tend, pbuf2d,Atm )
+  call derived_phys_dry(phys_state, phys_tend, pbuf2d)
   call t_stopf('derived_phys_dry')
 
 #if ( defined CALC_MASS )
@@ -279,9 +279,8 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
   ! LOCAL VARIABLES
 
   integer :: cpter(pcols,0:pver)    ! offsets into chunk buffer for unpacking data
-  integer :: date(6)
   integer :: ib                     ! indices over elements
-  integer :: idim,gid,m_cnst
+  integer :: idim
   integer :: ioff
   integer :: is,isd,ie,ied,js,jsd,je,jed
   integer :: lchnk, icol, ilyr      ! indices over chunks, columns, layers
@@ -290,15 +289,13 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
   integer :: pgcols(pcols), idmb1(1), idmb2(1), idmb3(1)
   integer :: pnats
   integer :: tsize                 ! amount of data per grid point passed to physics
-  integer :: w_diff,nt_dyn
-  integer :: yy,mm,dd,tt
 
   integer, allocatable, dimension(:,:) :: bpter   !((ie-is+1)*(je-js+1),0:pver)    ! packing data block buffer offsets
   real(r8),  allocatable, dimension(:) :: bbuffer, cbuffer ! transpose buffers
 
   real (r8)                            :: dt
   real (r8)                            :: fv3_totwatermass, fv3_airmass
-  real (r8)                            :: qall,cpfv3,newpt
+  real (r8)                            :: qall,cpfv3
   real (r8)                            :: tracermass(pcnst)
 
   type (fv_atmos_type),  pointer :: Atm(:)
@@ -316,7 +313,6 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
   real(r8),  allocatable, dimension(:,:,:)   :: v_dt_tmp      ! temporary to hold tendencies
   real(r8),  allocatable, dimension(:,:,:)   :: v_tmp         ! temporary array to hold u and v
   real(r8),  allocatable, dimension(:,:,:,:) :: q_tmp         ! temporary to hold 
-  real(r8)                                   :: dt_atmos, zvir
 
   !-----------------------------------------------------------------------
 
@@ -356,7 +352,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
      do lchnk = begchunk, endchunk
         ncols = get_ncols_p(lchnk)
         call get_gcol_all_p(lchnk, pcols, pgcols)
-        call set_state_pdry(phys_state(lchnk))	 ! First get dry pressure to use for this timestep
+        call set_state_pdry(phys_state(lchnk))    ! First get dry pressure to use for this timestep
         do icol = 1, ncols
            call get_gcol_block_d(pgcols(icol), 1, idmb1, idmb2, idmb3)
            ib   = idmb3(1)
@@ -643,11 +639,10 @@ end subroutine p_d_coupling
 
 !=======================================================================
 
-subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d, atm)
+subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
 
   use check_energy,   only: check_energy_timestep_init
   use constituents,   only: qmin
-  use fv_arrays_mod,  only: fv_atmos_type
   use geopotential,   only: geopotential_t
   use physics_buffer, only: physics_buffer_desc, pbuf_get_chunk
   use physics_types,  only: set_wet_to_dry
@@ -661,7 +656,6 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d, atm)
   type(physics_state), intent(inout), dimension(begchunk:endchunk) :: phys_state
   type(physics_tend ), intent(inout), dimension(begchunk:endchunk) :: phys_tend
   type(physics_buffer_desc),      pointer     :: pbuf2d(:,:)
-  type (fv_atmos_type),intent(inout), pointer    :: atm(:)
 
   ! local variables
 
@@ -671,13 +665,6 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d, atm)
 
   real(r8) :: cam_totwatermass, cam_airmass
   real(r8) :: tracermass(pcnst)
-  real(r8) :: dqreq                ! q change at pver-1 required to remove q<qmin at pver
-  real(r8) :: ke(pcols,begchunk:endchunk)   
-  real(r8) :: ke_glob(1),se_glob(1)
-  real(r8) :: qbot                 ! bottom level q before change
-  real(r8) :: qbotm1               ! bottom-1 level q before change
-  real(r8) :: qmavl                ! available q at level pver-1
-  real(r8) :: se(pcols,begchunk:endchunk)   
   real(r8) :: zvirv(pcols,pver)    ! Local zvir array pointer
 
   !----------------------------------------------------------------------------
@@ -829,7 +816,7 @@ subroutine atend2dstate3d(u_dt, v_dt, u, v, is,  ie,  js,  je, isd, ied, jsd, je
 
   ! local:
 
-  integer i, j, k, m, im2, jm2
+  integer i, j, k, im2, jm2
   real(r8) dt5
   real(r8) ue(is-1:ie+1,js:je+1,3)    ! 3D winds at edges
   real(r8) v3(is-1:ie+1,js-1:je+1,3)
@@ -1007,11 +994,11 @@ subroutine fv3_tracer_diags(atm)
   type (fv_atmos_type), intent(in),  pointer :: Atm(:)
 
   ! Locals
-  integer                      :: i, j ,k, m,is,ie,js,je,m_ffsl
+  integer                      :: i, j ,k, m,is,ie,js,je
   integer kstrat,ng
   real(r8)                     :: global_ps,global_dryps
   real(r8)                     :: qm_strat
-  real(r8)                     :: qtot(500), qwat, psum
+  real(r8)                     :: qtot(500), psum
   real(r8), allocatable        :: delpwet(:,:,:),delpdry(:,:,:),psdry(:,:),psq(:,:,:),q_strat(:,:)
 
   is = Atm(mytile)%bd%is
