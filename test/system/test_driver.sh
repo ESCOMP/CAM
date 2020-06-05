@@ -1107,7 +1107,7 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
       testargs="${testargs} --compare ${BL_TESTDIR} "
     fi
     if [ -n "${use_existing}" ]; then
-      testargs="${testargs} --use-existing"
+      testargs="${testargs} --use-existing -o"
     fi
     if [ -n "${archive_dir}" ]; then
       testargs="${testargs} --generate ${archive_dir}"
