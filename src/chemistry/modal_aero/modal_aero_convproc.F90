@@ -198,9 +198,6 @@ subroutine ma_convproc_init
    call addfld('DP_KCLDBASE', horiz_only, 'A', '1', &
                'Deep conv. cloudbase level index' )
 
-   call addfld ('WUP', (/ 'lev' /), 'A', 'm/s','ZM vertical velocity')
-   call addfld ('DPFRAC', (/ 'lev' /), 'A', 'unitless','ZM cloud fraction')
-
    ! output wet deposition fields to history
    !    I = in-cloud removal;     E = precip-evap resuspension
    !    C = convective (total);   D = deep convective
@@ -2215,9 +2212,8 @@ end subroutine ma_convproc_tend
          end if
       end do
  
-      ! Do resuspension of aerosols species from rain to coarse mode (large particle) rather
+      ! Do resuspension of aerosol species from rain to coarse mode (large particle) rather
       ! than to individual modes.
-      
       if (convproc_do_evaprain_atonce) then
 
          call accumulate_to_larger_mode( 'SO4', lptr_so4_a_amode, dcondt_prevap(:,k) )
