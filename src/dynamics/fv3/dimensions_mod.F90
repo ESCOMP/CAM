@@ -6,10 +6,12 @@ module dimensions_mod
 
 
   !These are convenience variables for local use only, and are set to values in Atm%
-  integer, public :: npx, npy, npz, ncnst, pnats, dnats, num_family, nt_prog
-  integer, public :: nq                       ! transported tracers
+  integer, public :: npx, npy
 
-  integer,               public :: qsize_condensate_loading = 1 !how many water variables to include in full density
+  integer, parameter, public :: nlev=PLEV
+  integer, parameter, public :: nlevp=nlev+1
+
+  integer,            public :: qsize_condensate_loading = 1 !how many water variables to include in full density
   !
   ! The variables below hold indices of water vapor and condensate loading tracers as well as
   ! associated heat capacities (initialized in dyn_init):
@@ -33,9 +35,6 @@ module dimensions_mod
   logical           , public :: fv3_lcp_moist   = .false. 
   logical           , public :: fv3_lcv_moist   = .false. 
   logical           , public :: fv3_scale_ttend = .false. 
-  integer                    :: qsize           = 0 !qsize is set in dyn_comp
-
-  public :: qsize
 
 end module dimensions_mod
 

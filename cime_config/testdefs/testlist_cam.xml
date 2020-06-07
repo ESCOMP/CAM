@@ -598,9 +598,7 @@
   </test>
   <test compset="F2000climo" grid="C48_C48_mg17" name="ERS_Ln9" testmods="cam/outfrq9s">
     <machines>
-      <machine name="cheyenne" compiler="gnu" category="fv3_cam"/>
-      <machine name="cheyenne" compiler="intel" category="prealpha"/>
-      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+      <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
     </machines>
     <options>
       <option name="wallclock">00:10:00</option>
@@ -619,6 +617,7 @@
 
   <test compset="QPC6" grid="C48_C48_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
     <machines>
+      <machine name="cheyenne" compiler="intel" category="prealpha"/>
       <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
     </machines>
     <options>
@@ -627,6 +626,7 @@
   </test>
   <test compset="QPC6" grid="C96_C96_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
     <machines>
+      <machine name="cheyenne" compiler="intel" category="prealpha"/>
       <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
     </machines>
     <options>
@@ -670,6 +670,8 @@
 
   <test compset="F2000climo" grid="C96_C96_mg17" name="ERP_Ln9" testmods="cam/outfrq9s_mg3">
     <machines>
+      <machine name="cheyenne" compiler="intel" category="prebeta"/>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
       <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
     </machines>
     <options>

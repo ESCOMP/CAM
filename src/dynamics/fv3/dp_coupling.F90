@@ -7,10 +7,10 @@ module dp_coupling
 use cam_abortutils,    only: endrun
 use cam_logfile,       only: iulog
 use constituents,      only: pcnst
-use dimensions_mod,    only: ncnst,npx,npy,npz,pnats,nq, &
+use dimensions_mod,    only: npx,npy,nlev, &
                              qsize_condensate_loading_idx,qsize_condensate_loading_cp,qsize_condensate_loading_cv,&
                              qsize_condensate_loading_idx_gll, qsize_condensate_loading, qsize_condensate_loading, &
-                             cnst_name_ffsl, cnst_longname_ffsl,qsize,fv3_lcp_moist,fv3_lcv_moist, &
+                             cnst_name_ffsl, cnst_longname_ffsl,fv3_lcp_moist,fv3_lcv_moist, &
                              qsize_tracer_idx_cam2dyn,fv3_scale_ttend
 use dyn_comp,          only: dyn_export_t, dyn_import_t
 use dyn_grid,          only: get_gcol_block_d,mytile
@@ -130,7 +130,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
            !
            do m = 1, pcnst
               m_ffsl=qsize_tracer_idx_cam2dyn(m)
-              if (m.le.nq) then
+              if (m.le.pcnst) then
                  Q_tmp(n, k, m, 1) = Atm(mytile)%q(i, j, k, m_ffsl)
               else
                  Q_tmp(n, k, m, 1) = Atm(mytile)%qdiag(i, j, k, m_ffsl)
@@ -284,10 +284,9 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
   integer :: ioff
   integer :: is,isd,ie,ied,js,jsd,je,jed
   integer :: lchnk, icol, ilyr      ! indices over chunks, columns, layers
-  integer :: m, n, i, j, k,m_ffsl
+  integer :: m, n, i, j, k,m_ffsl,nq
   integer :: ncols
   integer :: pgcols(pcols), idmb1(1), idmb2(1), idmb3(1)
-  integer :: pnats
   integer :: tsize                 ! amount of data per grid point passed to physics
 
   integer, allocatable, dimension(:,:) :: bpter   !((ie-is+1)*(je-js+1),0:pver)    ! packing data block buffer offsets
@@ -333,7 +332,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
 
   call set_domain ( Atm(mytile)%domain )
 
-  allocate(delpdry(isd:ied,jsd:jed,npz))
+  allocate(delpdry(isd:ied,jsd:jed,nlev))
   allocate(t_dt_tmp((ie-is+1)*(je-js+1),pver,1))
   allocate(u_dt_tmp((ie-is+1)*(je-js+1),pver,1))
   allocate(v_dt_tmp((ie-is+1)*(je-js+1),pver,1))
@@ -443,15 +442,11 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
 
   end if
 
-  allocate(u_dt(isd:ied,jsd:jed,npz))
-  allocate(v_dt(isd:ied,jsd:jed,npz))
-  allocate(t_dt(is:ie,js:je,npz))
-  allocate(t_tendadj(is:ie,js:je,npz))
+  allocate(u_dt(isd:ied,jsd:jed,nlev))
+  allocate(v_dt(isd:ied,jsd:jed,nlev))
+  allocate(t_dt(is:ie,js:je,nlev))
+  allocate(t_tendadj(is:ie,js:je,nlev))
   u_dt=0._r8;v_dt=0._r8;t_dt=0._r8
-
-  ncnst = Atm(mytile)%ncnst
-  pnats = Atm(mytile)%flagstruct%pnats
-  nq = ncnst-pnats
 
   dt = get_step_size()
 
@@ -472,7 +467,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
            do m = 1, pcnst
               ! dynamics tracers may be in a different order from cam tracer array
               m_ffsl=qsize_tracer_idx_cam2dyn(m)
-              if (m.le.nq) then
+              if (m.le.pcnst) then
                  Atm(mytile)%q(i, j, k, m_ffsl) = Q_tmp(n, k, m, 1)
               else
                  Atm(mytile)%qdiag(i, j, k, m_ffsl) = Q_tmp(n, k, m, 1)
@@ -598,12 +593,12 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
      call endrun('dwind_2d update is not implemented')
   else
      call atend2dstate3d(  u_dt, v_dt, Atm(mytile)%u ,Atm(mytile)%v, is,  ie,  js,  je, &
-                           isd, ied, jsd, jed, npx,npy, npz, Atm(mytile)%gridstruct, Atm(mytile)%domain, dt)
+                           isd, ied, jsd, jed, npx,npy, nlev, Atm(mytile)%gridstruct, Atm(mytile)%domain, dt)
   endif
 
   ! Again we are rederiving the A winds from the Dwinds to give our energy dynamics a consistent wind.
   call cubed_to_latlon(Atm(mytile)%u, Atm(mytile)%v, Atm(mytile)%ua, Atm(mytile)%va, Atm(mytile)%gridstruct, &
-                       npx, npy, npz, 1, Atm(mytile)%gridstruct%grid_type, Atm(mytile)%domain, &
+                       npx, npy, nlev, 1, Atm(mytile)%gridstruct%grid_type, Atm(mytile)%domain, &
                        Atm(mytile)%gridstruct%nested, Atm(mytile)%flagstruct%c2l_ord, Atm(mytile)%bd)
 
   !$omp parallel do private(i, j)
@@ -798,19 +793,19 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
 
 end subroutine derived_phys_dry
 
-subroutine atend2dstate3d(u_dt, v_dt, u, v, is,  ie,  js,  je, isd, ied, jsd, jed, npx,npy, npz, gridstruct, domain, dt)
+subroutine atend2dstate3d(u_dt, v_dt, u, v, is,  ie,  js,  je, isd, ied, jsd, jed, npx,npy, nlev, gridstruct, domain, dt)
 
   use fv_arrays_mod,      only: fv_grid_type
   use mpp_domains_mod,    only: mpp_update_domains,  DGRID_NE
 
   ! arguments
-  integer, intent(IN) :: npx,npy, npz
+  integer, intent(IN) :: npx,npy, nlev
   integer, intent(in):: is,  ie,  js,  je
   integer, intent(in):: isd, ied, jsd, jed
   real(r8), intent(in):: dt
-  real(r8), intent(inout), dimension(isd:ied,jsd:jed,npz):: u_dt, v_dt
-  real(r8), intent(inout):: u(isd:ied,  jsd:jed+1,npz)
-  real(r8), intent(inout):: v(isd:ied+1,jsd:jed  ,npz)
+  real(r8), intent(inout), dimension(isd:ied,jsd:jed,nlev):: u_dt, v_dt
+  real(r8), intent(inout):: u(isd:ied,  jsd:jed+1,nlev)
+  real(r8), intent(inout):: v(isd:ied+1,jsd:jed  ,nlev)
   type(domain2d), intent(INOUT) :: domain
   type(fv_grid_type), intent(IN), target :: gridstruct
 
@@ -844,11 +839,11 @@ subroutine atend2dstate3d(u_dt, v_dt, u, v, is,  ie,  js,  je, isd, ied, jsd, je
   im2 = (npx-1)/2
   jm2 = (npy-1)/2
 
-!$OMP parallel do default(none) shared(is,ie,js,je,npz,gridstruct,u,dt5,u_dt,v,v_dt,  &
+!$OMP parallel do default(none) shared(is,ie,js,je,nlev,gridstruct,u,dt5,u_dt,v,v_dt,  &
 !$OMP                                  vlon,vlat,jm2,edge_vect_w,npx,edge_vect_e,im2, &
 !$OMP                                  edge_vect_s,npy,edge_vect_n,es,ew)             &
 !$OMP                          private(ut1, ut2, ut3, vt1, vt2, vt3, ue, ve, v3)
-  do k=1, npz
+  do k=1, nlev
 
      ! Compute 3D wind/tendency on A grid
        do j=js-1,je+1
@@ -985,7 +980,7 @@ subroutine fv3_tracer_diags(atm)
   ! Dry/Wet surface pressure diagnostics
 
   use constituents,          only: pcnst
-  use dimensions_mod,        only: npz,qsize_condensate_loading_idx, qsize_condensate_loading, &
+  use dimensions_mod,        only: nlev,qsize_condensate_loading_idx, qsize_condensate_loading, &
                                    cnst_name_ffsl
   use dyn_grid,              only: mytile
   use fv_arrays_mod,         only: fv_atmos_type
@@ -1007,12 +1002,12 @@ subroutine fv3_tracer_diags(atm)
   je = Atm(mytile)%bd%je
   ng = Atm(mytile)%ng
 
-  allocate(delpdry(is:ie,js:je,npz))
-  allocate(delpwet(is:ie,js:je,npz))
+  allocate(delpdry(is:ie,js:je,nlev))
+  allocate(delpwet(is:ie,js:je,nlev))
   allocate(psdry(is:ie,js:je))
   allocate(psq(is:ie,js:je,pcnst))
   allocate(q_strat(is:ie,js:je))
-  do k=1,npz
+  do k=1,nlev
      do j = js, je
         do i = is, ie
            delpdry(i,j,k) = Atm(mytile)%delp(i,j,k) * &
@@ -1038,12 +1033,12 @@ subroutine fv3_tracer_diags(atm)
 !-------------------
   psq(:,:,:) = 0._r8
   do m=1,pcnst
-     call z_sum(Atm,is,ie,js,je,npz,Atm(mytile)%q(is:ie,js:je,1:npz,m),psq(is:ie,js:je,m),psum) 
+     call z_sum(Atm,is,ie,js,je,nlev,Atm(mytile)%q(is:ie,js:je,1:nlev,m),psq(is:ie,js:je,m),psum) 
   end do
 ! Mean water vapor in the "stratosphere" (75 mb and above):
   if ( Atm(mytile)%idiag%phalf(2)< 75. ) then
      kstrat = 1
-     do k=1,npz
+     do k=1,nlev
         if ( Atm(mytile)%idiag%phalf(k+1) > 75. ) exit
         kstrat = k
      enddo

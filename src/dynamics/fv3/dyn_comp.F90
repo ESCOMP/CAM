@@ -43,11 +43,11 @@ module dyn_comp
     use cam_logfile,     only: iulog
     use constants_mod,   only: cp_air, kappa, rvgas, rdgas
     use constituents,    only: pcnst, cnst_name, cnst_longname, tottnam, cnst_get_ind
-    use dimensions_mod,  only: npx, npy, npz, ncnst, pnats, dnats, nq, num_family, nt_prog, &
+    use dimensions_mod,  only: npx, npy, nlev, &
                                qsize_condensate_loading_idx,qsize_condensate_loading_cp, &
                                qsize_condensate_loading_cv,qsize_condensate_loading_idx_gll, &
                                qsize_condensate_loading, cnst_name_ffsl,cnst_longname_ffsl, &
-                               qsize,fv3_lcp_moist,fv3_lcv_moist,qsize_tracer_idx_cam2dyn,fv3_scale_ttend
+                               fv3_lcp_moist,fv3_lcv_moist,qsize_tracer_idx_cam2dyn,fv3_scale_ttend
     use dyn_grid,        only: mytile
     use field_manager_mod, only: MODEL_ATMOS
     use fms_io_mod,      only: set_domain, nullify_domain
@@ -62,7 +62,6 @@ module dyn_comp
     use shr_kind_mod,    only: r8 => shr_kind_r8, r4 => shr_kind_r4, i8 => shr_kind_i8
     use spmd_utils,      only: masterproc, masterprocid, mpicom, npes,iam
     use spmd_utils,      only: mpi_integer, mpi_logical
-    use time_manager_mod,only: set_date, NOLEAP, set_calendar_type
     use tracer_manager_mod,     only: get_tracer_index
 
     implicit none
@@ -82,6 +81,8 @@ module dyn_comp
 
 type dyn_import_t
   type (fv_atmos_type),  pointer :: Atm(:) => null()
+  integer,               pointer :: mygindex(:,:) => null()
+  integer,               pointer :: mylindex(:,:) => null()
 end type dyn_import_t
 
 type dyn_export_t
@@ -239,7 +240,6 @@ subroutine dyn_readnl(nlfilename)
   end if
 
   qsize_condensate_loading = fv3_qsize_condensate_loading
-  qsize = pcnst
   !
   ! write fv3 dycore namelist options to log
   !
@@ -396,22 +396,17 @@ subroutine dyn_init(dyn_in, dyn_out)
   use cam_history,     only: addfld, horiz_only
   use cam_history,     only: register_vector_field
   use cam_pio_utils,   only: clean_iodesc_list
-  use diag_manager_mod,only: diag_manager_init
-  use dyn_grid,        only: Atm
+  use dyn_grid,        only: Atm,mygindex,mylindex
   use fv_diagnostics_mod, only: fv_diag_init, fv_time
   use fv_mp_mod,       only: fill_corners, YDir, switch_current_Atm
   use infnan,          only: inf, assignment(=)
   use physconst,       only: cpwv, cpliq, cpice
-  use time_manager,    only: get_curr_date
-  use time_manager_mod,only: time_type
   use tracer_manager_mod,     only: register_tracers
   use units,           only: getunit, freeunit
 
   ! arguments:
    type (dyn_import_t),     intent(out) :: dyn_in
    type (dyn_export_t),     intent(out) :: dyn_out
-   
-   type (time_type) :: Time_init, Time
                        
    character(len=*), parameter :: sub='dyn_init'
    character(len = 256)        :: err_msg
@@ -472,7 +467,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    real, parameter:: cv_air =  cp_air - rdgas !< = rdgas * (7/2-1) = 2.5*rdgas=717.68
    integer        :: unito
    integer, parameter  :: ndiag = 5
-
+   integer             :: ncnst, pnats, dnats, num_family, nt_prog
    !-----------------------------------------------------------------------
 
    ! Setup the condensate loading arrays and fv3/cam tracer mapping and
@@ -480,13 +475,13 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    allocate(qsize_condensate_loading_idx(qsize_condensate_loading))
    allocate(qsize_condensate_loading_idx_gll(qsize_condensate_loading))
-   allocate(qsize_tracer_idx_cam2dyn(qsize))
+   allocate(qsize_tracer_idx_cam2dyn(pcnst))
    qsize_tracer_idx_cam2dyn(:)=-1
    allocate(qsize_condensate_loading_cp(qsize_condensate_loading))
    allocate(qsize_condensate_loading_cv(qsize_condensate_loading))
    
-   allocate(cnst_name_ffsl(qsize))     ! constituent names for ffsl tracers
-   allocate(cnst_longname_ffsl(qsize)) ! long name of constituents for ffsl tracers
+   allocate(cnst_name_ffsl(pcnst))     ! constituent names for ffsl tracers
+   allocate(cnst_longname_ffsl(pcnst)) ! long name of constituents for ffsl tracers
 
 
    ! set up the condensate loading array
@@ -597,10 +592,8 @@ subroutine dyn_init(dyn_in, dyn_out)
 !!$   !---------must make sure the field_table file is written before reading across processors
    call mpibarrier (mpicom)
    call register_tracers (MODEL_ATMOS, ncnst, nt_prog, pnats, num_family)
-   if (masterproc) then
-      write(iulog,*) 'ncnst=', ncnst,' num_prog=',nt_prog,' pnats=',pnats,' dnats=',dnats, &
-                     ' num_family=',num_family
-      print*, ''
+   if (ncnst.ne.pcnst) then 
+      call endrun(subname//': ERROR: FMS tracer Manager has inconsistent tracer numbers')
    endif
 
    do m=1,pcnst  
@@ -626,11 +619,13 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    ! Data initialization
    dyn_in%Atm  => Atm
+   dyn_in%mygindex  => mygindex
+   dyn_in%mylindex  => mylindex
    dyn_out%Atm => Atm
 
-   allocate(u_dt(isd:ied,jsd:jed,npz))
-   allocate(v_dt(isd:ied,jsd:jed,npz))
-   allocate(t_dt(isd:ied,jsd:jed,npz))
+   allocate(u_dt(isd:ied,jsd:jed,nlev))
+   allocate(v_dt(isd:ied,jsd:jed,nlev))
+   allocate(t_dt(isd:ied,jsd:jed,nlev))
    u_dt(:,:,:)=0._r8; v_dt(:,:,:)=0._r8; t_dt(:,:,:)=0._r8
 
    fC    => atm(mytile)%gridstruct%fC
@@ -660,10 +655,10 @@ subroutine dyn_init(dyn_in, dyn_out)
    call mpp_update_domains( f0, domain )
    if (cubed_sphere) call fill_corners(f0, npx, npy, YDir)
    
-   delp(isd:is-1,jsd:js-1,1:npz)=0._r8
-   delp(isd:is-1,je+1:jed,1:npz)=0._r8
-   delp(ie+1:ied,jsd:js-1,1:npz)=0._r8
-   delp(ie+1:ied,je+1:jed,1:npz)=0._r8
+   delp(isd:is-1,jsd:js-1,1:nlev)=0._r8
+   delp(isd:is-1,je+1:jed,1:nlev)=0._r8
+   delp(ie+1:ied,jsd:js-1,1:nlev)=0._r8
+   delp(ie+1:ied,je+1:jed,1:nlev)=0._r8
    
    if (initial_run) then
       
@@ -673,33 +668,8 @@ subroutine dyn_init(dyn_in, dyn_out)
       
    end if
 
- call set_calendar_type(NOLEAP, err_msg)
-
- call get_curr_date(yy, mm, dd, tod)
- 
- ! use namelist value (either no restart or override flag on)
- date(1) = yy
- date(2) = mm
- date(3) = dd
- date(4) = int(tod / 3600)
- date(5) = int((tod - date(4) * 3600) / 60)
- date(6) = tod - date(4) * 3600 - date(5) * 60
- 
- ! initialize diagnostics manager  
- call diag_manager_init(TIME_INIT = date)
- 
- Time_init  = set_date(date(1), date(2), date(3), date(4), date(5), date(6))
- Atm(mytile)%Time_init = Time_init
-
- ! Allocate grid variables to be used to calculate gradient in 2nd order flux exchange
- ! This data is only needed for the COARSEST grid.
- call switch_current_Atm(Atm(mytile))
- 
- call set_domain ( Atm(mytile)%domain )
- fv_time = Time
-
-!----- initialize atmos_axes and fv_dynamics diagnostics
-   call fv_diag_init(Atm(mytile:mytile),Atm(mytile)%atmos_axes,Time,npx,npy,npz,Atm(mytile)%flagstruct%p_ref)
+   call switch_current_Atm(Atm(mytile))
+   call set_domain ( Atm(mytile)%domain )
 
    ! Forcing from physics on the FFSL grid
    call addfld ('FU',  (/ 'lev' /), 'A', 'm/s2', 'Zonal wind forcing term on FFSL grid',     gridname='FFSL')
@@ -707,7 +677,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    call register_vector_field('FU', 'FV')
    call addfld ('FT',  (/ 'lev' /), 'A', 'K/s', 'Temperature forcing term on FFSL grid',gridname='FFSL')
 
-   do m = 1, qsize
+   do m = 1, pcnst
      call addfld ('F'//trim(cnst_name_ffsl(m))//'_ffsl',  (/ 'lev' /), 'I', 'kg/kg/s',   &
           trim(cnst_longname(m))//' mixing ratio forcing term (q_new-q_old) on FFSL grid', gridname='FFSL')
      call addfld(tottnam(m),(/ 'lev' /),'A','kg/kg/s', &
@@ -749,7 +719,7 @@ subroutine dyn_run(dyn_state)
   ! DESCRIPTION: Driver for the NASA finite-volume dynamical core
 
 
-  use dimensions_mod,         only: npz
+  use dimensions_mod,         only: nlev
   use dyn_grid,               only: p_split,grids_on_this_pe
   use fv_control_mod,         only: ngrids
   use fv_dynamics_mod,        only: fv_dynamics
@@ -789,8 +759,7 @@ subroutine dyn_run(dyn_state)
   jed = Atm(mytile)%bd%jed
   
   idim=ie-is+1
-
-  nq = Atm(mytile)%ncnst - Atm(mytile)%flagstruct%pnats
+ 
   dt_atmos_real=get_step_size()
 
   se_dyn = 0._r8
@@ -811,10 +780,10 @@ subroutine dyn_run(dyn_state)
 
   do psc=1,abs(p_split)
 
-     call fv_dynamics(npx, npy, npz, nq, Atm(mytile)%ng, dt_atmos_real/real(abs(p_split)),&
+     call fv_dynamics(npx, npy, nlev, pcnst, Atm(mytile)%ng, dt_atmos_real/real(abs(p_split)),&
           Atm(mytile)%flagstruct%consv_te, Atm(mytile)%flagstruct%fill,  &
           Atm(mytile)%flagstruct%reproduce_sum, kappa, cp_air, zvir,&
-          Atm(mytile)%ptop, Atm(mytile)%ks, nq,                          &
+          Atm(mytile)%ptop, Atm(mytile)%ks, pcnst,                          &
           Atm(mytile)%flagstruct%n_split, Atm(mytile)%flagstruct%q_split,&
           Atm(mytile)%u, Atm(mytile)%v, Atm(mytile)%w, Atm(mytile)%delz,           &
           Atm(mytile)%flagstruct%hydrostatic,                       &
@@ -830,7 +799,7 @@ subroutine dyn_run(dyn_state)
           Atm(mytile)%parent_grid, Atm(mytile)%domain, &
 #if ( defined CALC_ENERGY )
           Atm(mytile)%diss_est, &
-          qsize,qsize_condensate_loading,qsize_condensate_loading_idx,qsize_tracer_idx_cam2dyn, &
+          pcnst,qsize_condensate_loading,qsize_condensate_loading_idx,qsize_tracer_idx_cam2dyn, &
           qsize_condensate_loading_cp,qsize_condensate_loading_cp, se_dyn, ke_dyn, wv_dyn,wl_dyn, &
           wi_dyn,wr_dyn,ws_dyn,wg_dyn,tt_dyn,mo_dyn,mr_dyn,gravit,cpair,rearth,omega,fv3_lcp_moist,&
           fv3_lcv_moist)
@@ -905,11 +874,11 @@ subroutine dyn_run(dyn_state)
 
   ! Perform grid-scale dry adjustment if fv_sg_adj > 0
   if ( Atm(mytile)%flagstruct%fv_sg_adj > 0 ) then
-     nt_dyn = nq
+     nt_dyn = pcnst
      if ( w_diff /= NO_TRACER ) then
-        nt_dyn = nq - 1
+        nt_dyn = pcnst - 1
      endif
-     call fv_subgrid_z(isd, ied, jsd, jed, isc, iec, jsc, jec, npz, &
+     call fv_subgrid_z(isd, ied, jsd, jed, isc, iec, jsc, jec, nlev, &
           nt_dyn, dt_atmos_real, Atm(mytile)%flagstruct%fv_sg_adj,      &
           Atm(mytile)%flagstruct%nwat, Atm(mytile)%delp, Atm(mytile)%pe,     &
           Atm(mytile)%peln, Atm(mytile)%pkz, Atm(mytile)%pt, Atm(mytile)%q,       &
@@ -954,7 +923,6 @@ subroutine read_inidat(dyn_in)
   use cam_grid_support,      only: cam_grid_id, cam_grid_get_gcid, iMap
   use cam_history_support,   only: max_fieldname_len
   use hycoef,                only: hyai, hybi, ps0
-  use dyn_grid,              only: mygindex, mylindex
   implicit none
 
   type (dyn_import_t), target, intent(inout) :: dyn_in   ! dynamics import
@@ -965,9 +933,11 @@ subroutine read_inidat(dyn_in)
 
   integer :: i, j, k, m, n
 
-  type(file_desc_t), pointer :: fh_topo
-  type(file_desc_t)          :: fh_ini
-  type(fv_atmos_type), pointer         :: Atm(:)  
+  type(file_desc_t),     pointer :: fh_topo       => null()
+  type(fv_atmos_type),   pointer :: Atm(:)        => null()
+  integer,               pointer :: mylindex(:,:) => null()
+  integer,               pointer :: mygindex(:,:) => null()
+  type(file_desc_t)              :: fh_ini
 
 
   character(len=*), parameter      :: subname='READ_INIDAT'
@@ -975,7 +945,7 @@ subroutine read_inidat(dyn_in)
   integer(iMap), pointer           :: ldof(:) ! Basic (2D) grid dof
 
   ! Variables for analytic initial conditions
-  integer,  allocatable            :: glob_inddups(:)
+  integer,  allocatable            :: glob_ind(:)
   integer,  allocatable            :: m_ind(:)
   integer                          :: vcoord
   integer                          :: pio_errtype
@@ -1006,6 +976,10 @@ subroutine read_inidat(dyn_in)
   real(r8), allocatable :: var3d(:,:,:), var2d(:,:)
 
   Atm => dyn_in%Atm
+  grid => Atm(mytile)%gridstruct%grid_64
+  agrid => Atm(mytile)%gridstruct%agrid_64
+  mylindex => dyn_in%mylindex
+  mygindex => dyn_in%mygindex
 
   is = Atm(mytile)%bd%is
   ie = Atm(mytile)%bd%ie
@@ -1021,9 +995,6 @@ subroutine read_inidat(dyn_in)
   fh_topo => topo_file_get_id()
   fh_ini  = initial_file_get_id()
 
-  Atm => dyn_in%Atm
-  grid => atm(mytile)%gridstruct%grid_64
-  agrid => atm(mytile)%gridstruct%agrid_64
 
   ! Set mask to indicate which columns are active
   call cam_grid_get_gcid(cam_grid_id('FFSL'), ldof)
@@ -1034,14 +1005,14 @@ subroutine read_inidat(dyn_in)
   blksize=(ie-is+1)*(je-js+1)
   allocate(latvals_rad(blksize))
   allocate(lonvals_rad(blksize))
-  allocate(glob_inddups(blksize))
+  allocate(glob_ind(blksize))
 
   do j = js, je
      do i = is, ie
         n=mylindex(i,j)
         lonvals_rad(n) = agrid(i,j,1)
         latvals_rad(n) = agrid(i,j,2)
-        glob_inddups(n) = mygindex(i,j)
+        glob_ind(n) = mygindex(i,j)
      end do
   end do
 
@@ -1063,7 +1034,7 @@ subroutine read_inidat(dyn_in)
         m_ind(m_cnst) = m_cnst
      end do
 
-     call analytic_ic_set_ic(vcoord, latvals_rad, lonvals_rad, glob_inddups,PS=dbuf2)
+     call analytic_ic_set_ic(vcoord, latvals_rad, lonvals_rad, glob_ind,PS=dbuf2)
      do j = js, je
         do i = is, ie
            ! PS
@@ -1072,10 +1043,10 @@ subroutine read_inidat(dyn_in)
         end do
      end do
      
-     call analytic_ic_set_ic(vcoord, latvals_rad, lonvals_rad, glob_inddups ,            &
+     call analytic_ic_set_ic(vcoord, latvals_rad, lonvals_rad, glob_ind ,            &
           PHIS_OUT=phis_tmp(:,:))
 
-     call analytic_ic_set_ic(vcoord, latvals_rad, lonvals_rad, glob_inddups,            &
+     call analytic_ic_set_ic(vcoord, latvals_rad, lonvals_rad, glob_ind,            &
           T=dbuf3(:,:,:))
 
      do j = js, je
@@ -1088,7 +1059,7 @@ subroutine read_inidat(dyn_in)
 
 
      dbuf3=0._r8
-     call analytic_ic_set_ic(vcoord, latvals_rad, lonvals_rad, glob_inddups,            &
+     call analytic_ic_set_ic(vcoord, latvals_rad, lonvals_rad, glob_ind,            &
           U=dbuf3(:,:,:))
 
      do j = js, je
@@ -1100,7 +1071,7 @@ subroutine read_inidat(dyn_in)
      end do
 
      dbuf3=0._r8
-     call analytic_ic_set_ic(vcoord, latvals_rad, lonvals_rad, glob_inddups,            &
+     call analytic_ic_set_ic(vcoord, latvals_rad, lonvals_rad, glob_ind,            &
           V=dbuf3(:,:,:))
 
      do j = js, je
@@ -1111,7 +1082,7 @@ subroutine read_inidat(dyn_in)
         end do
      end do
 
-     call analytic_ic_set_ic(vcoord, latvals_rad, lonvals_rad, glob_inddups,            &
+     call analytic_ic_set_ic(vcoord, latvals_rad, lonvals_rad, glob_ind,            &
           Q=dbuf4(:,:,:,1:pcnst), m_cnst=m_ind)
 
      ! Tracers to be advected on FFSL grid.
@@ -1128,7 +1099,7 @@ subroutine read_inidat(dyn_in)
 
      !-----------------------------------------------------------------------
      call a2d3djt(atm(mytile)%ua, atm(mytile)%va, atm(mytile)%u, atm(mytile)%v, is,  ie,  js,  je, &
-                  isd, ied, jsd, jed, npx,npy, npz, atm(mytile)%gridstruct, atm(mytile)%domain)
+                  isd, ied, jsd, jed, npx,npy, nlev, atm(mytile)%gridstruct, atm(mytile)%domain)
 
      deallocate(dbuf2)
      deallocate(dbuf3)
@@ -1140,7 +1111,7 @@ subroutine read_inidat(dyn_in)
 
      allocate(dbuf3(blksize,plev,1))
      allocate(var2d(is:ie,js:je))
-     allocate(var3d(is:ie,js:je,npz))
+     allocate(var3d(is:ie,js:je,nlev))
 
      call pio_seterrorhandling(fh_ini, pio_bcast_error, err_handling)
      
@@ -1163,7 +1134,7 @@ subroutine read_inidat(dyn_in)
      ! T
      if (dyn_field_exists(fh_ini, 'T')) then
         call read_dyn_var('T', fh_ini, 'ncol_d', var3d)
-        atm(mytile)%pt(is:ie,js:je,1:npz)=var3d(is:ie,js:je,1:npz)
+        atm(mytile)%pt(is:ie,js:je,1:nlev)=var3d(is:ie,js:je,1:nlev)
      else
          call endrun(trim(subname)//': T not found')
      end if
@@ -1177,13 +1148,10 @@ subroutine read_inidat(dyn_in)
         call random_seed(size=rndm_seed_sz)
         allocate(rndm_seed(rndm_seed_sz))
 
-        ! seed random number generator based on global index
-        allocate(glob_inddups(blksize))
-
         do i=is,ie
            do j=js,je
               indx=mylindex(i,j)
-              rndm_seed = glob_inddups(indx)
+              rndm_seed = glob_ind(indx)
               call random_seed(put=rndm_seed)
               do k=1,plev
                  call random_number(pertval)
@@ -1193,20 +1161,19 @@ subroutine read_inidat(dyn_in)
            end do
         end do
         deallocate(rndm_seed)
-        deallocate(glob_inddups)
      end if
 
      ! V
      if (dyn_field_exists(fh_ini, 'V')) then
         call read_dyn_var('V', fh_ini, 'ncol_d', var3d)
-        atm(mytile)%va(is:ie,js:je,1:npz)=var3d(is:ie,js:je,1:npz)
+        atm(mytile)%va(is:ie,js:je,1:nlev)=var3d(is:ie,js:je,1:nlev)
      else
          call endrun(trim(subname)//': V not found')
      end if
 
      if (dyn_field_exists(fh_ini, 'U')) then
         call read_dyn_var('U', fh_ini, 'ncol_d', var3d)
-        atm(mytile)%ua(is:ie,js:je,1:npz)   =var3d(is:ie,js:je,1:npz)
+        atm(mytile)%ua(is:ie,js:je,1:nlev)   =var3d(is:ie,js:je,1:nlev)
      else
          call endrun(trim(subname)//': U not found')
      end if
@@ -1214,7 +1181,7 @@ subroutine read_inidat(dyn_in)
      m_cnst=1
      if (dyn_field_exists(fh_ini, 'Q')) then
         call read_dyn_var('Q', fh_ini, 'ncol_d', var3d)
-        atm(mytile)%q(is:ie,js:je,1:npz,m_cnst) = var3d(is:ie,js:je,1:npz)
+        atm(mytile)%q(is:ie,js:je,1:nlev,m_cnst) = var3d(is:ie,js:je,1:nlev)
      else
          call endrun(trim(subname)//': Q not found')
      end if
@@ -1234,7 +1201,7 @@ subroutine read_inidat(dyn_in)
 
         if(found) then
            call read_dyn_var(trim(cnst_name(m_cnst)), fh_ini, 'ncol_d', var3d)
-           atm(mytile)%q(is:ie,js:je,1:npz,m_cnst_ffsl) =  var3d(is:ie,js:je,1:npz)
+           atm(mytile)%q(is:ie,js:je,1:nlev,m_cnst_ffsl) =  var3d(is:ie,js:je,1:nlev)
         else
            dbuf3=0._r8
            if (masterproc) write(iulog,*)'Missing ',trim(cnst_name(m_cnst)),' constituent number', &
@@ -1256,11 +1223,11 @@ subroutine read_inidat(dyn_in)
      end do ! pcnst
 
      call a2d3djt(atm(mytile)%ua, atm(mytile)%va, atm(mytile)%u, atm(mytile)%v, is,  ie,  js,  je, &
-                  isd, ied, jsd, jed, npx,npy, npz, atm(mytile)%gridstruct, atm(mytile)%domain)
+                  isd, ied, jsd, jed, npx,npy, nlev, atm(mytile)%gridstruct, atm(mytile)%domain)
 
      ! recreating A winds from D winds using cubed_to_latlon to be consistent with energy diagnostics.
      call cubed_to_latlon(Atm(mytile)%u,Atm(mytile)%v,Atm(mytile)%ua,Atm(mytile)%va,Atm(mytile)%gridstruct, &
-          npx,npy,npz,1,Atm(mytile)%gridstruct%grid_type,Atm(mytile)%domain,Atm(mytile)%gridstruct%nested, &
+          npx,npy,nlev,1,Atm(mytile)%gridstruct%grid_type,Atm(mytile)%domain,Atm(mytile)%gridstruct%nested, &
           Atm(mytile)%flagstruct%c2l_ord, Atm(mytile)%bd)
 
      ! Put the error handling back the way it was
@@ -1274,7 +1241,7 @@ subroutine read_inidat(dyn_in)
 
   deallocate(latvals_rad)
   deallocate(lonvals_rad)
-  deallocate(glob_inddups)
+  deallocate(glob_ind)
 
 
   ! If a topo file is specified use it.  This will overwrite the PHIS set by the
@@ -1433,7 +1400,7 @@ subroutine read_inidat(dyn_in)
   enddo
 !!  Initialize non hydrostatic variables if needed
   if (.not. Atm(mytile)%flagstruct%hydrostatic) then
-     do k=1,npz
+     do k=1,nlev
         do j=js,je
            do i=is,ie
               Atm(mytile)%w ( i,j,k ) = 0.
@@ -1546,7 +1513,7 @@ end subroutine read_inidat
     allocate(tt(is:ie,js:je))
     allocate(mr(is:ie,js:je))
     allocate(mo(is:ie,js:je))
-    allocate(dp(is:ie,js:je,npz))
+    allocate(dp(is:ie,js:je,nlev))
     allocate(ps_local(is:ie,js:je))
 
     name_out1 = 'SE_'   //trim(suffix)
@@ -1580,7 +1547,7 @@ end subroutine read_inidat
        call cnst_get_ind('TT_LW', ixtt, abort=.false.)
        if (ixtt.le.0) ixtt = -1
           
-       dp(is:ie,js:je,1:npz)=Atm(mytile)%delp(is:ie,js:je,1:npz)
+       dp(is:ie,js:je,1:nlev)=Atm(mytile)%delp(is:ie,js:je,1:nlev)
        !
        ! Compute frozen static energy in 3 parts:  KE, SE, and energy associated with vapor and liquid
        !
@@ -1997,7 +1964,7 @@ subroutine set_dry_mass(atm,fixed_global_ave_dry_ps)
   use constituents,          only: pcnst, qmin
   use cam_logfile,           only: iulog
   use hycoef,                only: hyai, hybi, ps0
-  use dimensions_mod,        only: npz
+  use dimensions_mod,        only: nlev
   use dyn_grid,              only: mytile
 
   type (fv_atmos_type), intent(in),  pointer :: Atm(:)
@@ -2014,10 +1981,10 @@ subroutine set_dry_mass(atm,fixed_global_ave_dry_ps)
   ie = Atm(mytile)%bd%ie
   js = Atm(mytile)%bd%js
   je = Atm(mytile)%bd%je
-  allocate(factor(is:ie,js:je,npz))
-  allocate(delpdry(is:ie,js:je,npz))
-  allocate(delpwet(is:ie,js:je,npz))
-  allocate(newdelp(is:ie,js:je,npz))
+  allocate(factor(is:ie,js:je,nlev))
+  allocate(delpdry(is:ie,js:je,nlev))
+  allocate(delpwet(is:ie,js:je,nlev))
+  allocate(newdelp(is:ie,js:je,nlev))
   allocate(psdry(is:ie,js:je))
   allocate(psdry_scaled(is:ie,js:je))
   allocate(psdry_new(is:ie,js:je))
@@ -2126,17 +2093,17 @@ subroutine set_dry_mass(atm,fixed_global_ave_dry_ps)
 end subroutine set_dry_mass
 !=========================================================================================
 
-subroutine a2d3djt(ua, va, u, v, is,  ie,  js,  je, isd, ied, jsd, jed, npx,npy, npz, gridstruct, domain)
+subroutine a2d3djt(ua, va, u, v, is,  ie,  js,  je, isd, ied, jsd, jed, npx,npy, nlev, gridstruct, domain)
 
   use mpp_domains_mod,    only: mpp_update_domains,  DGRID_NE
   use fv_arrays_mod,      only: fv_grid_type
 
   integer, intent(in):: is,  ie,  js,  je
   integer, intent(in):: isd, ied, jsd, jed
-  integer, intent(IN) :: npx,npy, npz
-  real(r8), intent(inout):: u(isd:ied,  jsd:jed+1,npz)
-  real(r8), intent(inout):: v(isd:ied+1,jsd:jed  ,npz)
-  real(r8), intent(inout), dimension(isd:ied,jsd:jed,npz):: ua, va
+  integer, intent(IN) :: npx,npy, nlev
+  real(r8), intent(inout):: u(isd:ied,  jsd:jed+1,nlev)
+  real(r8), intent(inout):: v(isd:ied+1,jsd:jed  ,nlev)
+  real(r8), intent(inout), dimension(isd:ied,jsd:jed,nlev):: ua, va
   type(fv_grid_type), intent(IN), target :: gridstruct
   type(domain2d), intent(INOUT) :: domain
 
@@ -2168,11 +2135,11 @@ subroutine a2d3djt(ua, va, u, v, is,  ie,  js,  je, isd, ied, jsd, jed, npx,npy,
   im2 = (npx-1)/2
   jm2 = (npy-1)/2
 
-!$OMP parallel do default(none) shared(is,ie,js,je,npz,gridstruct,u,ua,v,va,  &
+!$OMP parallel do default(none) shared(is,ie,js,je,nlev,gridstruct,u,ua,v,va,  &
 !$OMP                                  vlon,vlat,jm2,edge_vect_w,npx,edge_vect_e,im2, &
 !$OMP                                  edge_vect_s,npy,edge_vect_n,es,ew)             &
 !$OMP                          private(i,j,k,ut1, ut2, ut3, vt1, vt2, vt3, ue, ve, v3)
-  do k=1, npz
+  do k=1, nlev
 
      ! Compute 3D wind/tendency on A grid
      do j=js-1,je+1

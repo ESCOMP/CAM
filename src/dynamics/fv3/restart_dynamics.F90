@@ -19,7 +19,7 @@ module restart_dynamics
 
     type(var_desc_t) :: udesc, vdesc, tdesc, psdesc, phisdesc, usdesc,vsdesc,delpdesc,omegadesc
 
-    integer :: ncol_d_dimid, ncol_d_ew_dimid, ncol_d_ns_dimid,  nlev_dimid, nlevp_dimid, npz
+    integer :: ncol_d_dimid, ncol_d_ew_dimid, ncol_d_ns_dimid,  nlev_dimid, nlevp_dimid
     type(var_desc_t), allocatable :: qdesc(:)
     integer :: is,ie,js,je
 
@@ -103,6 +103,7 @@ subroutine write_restart_dynamics(File, dyn_out)
 
     use hycoef,          only: write_restart_hycoef
     use constituents,    only: pcnst
+    use dimensions_mod,  only: nlev
     use pio,             only: pio_offset_kind, io_desc_t, pio_double, pio_write_darray
     use time_manager,    only: get_curr_time, get_curr_date
 
@@ -128,7 +129,6 @@ subroutine write_restart_dynamics(File, dyn_out)
     call write_restart_hycoef(File)
 
     Atm=>dyn_out%atm
-    npz    = Atm(mytile)%npz
     is = Atm(mytile)%bd%is
     ie = Atm(mytile)%bd%ie
     js = Atm(mytile)%bd%js
@@ -168,27 +168,27 @@ subroutine write_restart_dynamics(File, dyn_out)
     call PIO_Write_Darray(File, psdesc, iodesc, var2d, ierr)
     deallocate(var2d)
 
-    allocate(var3d(ilen,npz,jlen))
-    array_lens_3d = (/ilen,npz,jlen/)
-    file_lens_2d  = (/grid_dimlens(1), npz/)
+    allocate(var3d(ilen,nlev,jlen))
+    array_lens_3d = (/ilen,nlev,jlen/)
+    file_lens_2d  = (/grid_dimlens(1), nlev/)
     call cam_grid_get_decomp(grid_id, array_lens_3d, file_lens_2d, pio_double, iodesc3d)
-    var3d=RESHAPE(Atm(mytile)%ua(is:ie,js:je,1:npz),(/ilen,npz,jlen/),ORDER=(/1,3,2/))
+    var3d=RESHAPE(Atm(mytile)%ua(is:ie,js:je,1:nlev),(/ilen,nlev,jlen/),ORDER=(/1,3,2/))
     call PIO_Write_Darray(File, Udesc, iodesc3d, var3d, ierr)
 
-    var3d=RESHAPE(Atm(mytile)%va(is:ie,js:je,1:npz),(/ilen,npz,jlen/),ORDER=(/1,3,2/))
+    var3d=RESHAPE(Atm(mytile)%va(is:ie,js:je,1:nlev),(/ilen,nlev,jlen/),ORDER=(/1,3,2/))
     call PIO_Write_Darray(File, Vdesc, iodesc3d, var3d , ierr)
 
-    var3d=RESHAPE(Atm(mytile)%omga(is:ie,js:je,1:npz),(/ilen,npz,jlen/),ORDER=(/1,3,2/))
+    var3d=RESHAPE(Atm(mytile)%omga(is:ie,js:je,1:nlev),(/ilen,nlev,jlen/),ORDER=(/1,3,2/))
     call PIO_Write_Darray(File, Omegadesc, iodesc3d, var3d, ierr)
 
-    var3d=RESHAPE(Atm(mytile)%delp(is:ie,js:je,1:npz),(/ilen,npz,jlen/),ORDER=(/1,3,2/))
+    var3d=RESHAPE(Atm(mytile)%delp(is:ie,js:je,1:nlev),(/ilen,nlev,jlen/),ORDER=(/1,3,2/))
     call PIO_Write_Darray(File, delpdesc, iodesc3d, var3d, ierr)
 
-    var3d=RESHAPE(Atm(mytile)%pt(is:ie,js:je,1:npz),(/ilen,npz,jlen/),ORDER=(/1,3,2/))
+    var3d=RESHAPE(Atm(mytile)%pt(is:ie,js:je,1:nlev),(/ilen,nlev,jlen/),ORDER=(/1,3,2/))
     call PIO_Write_Darray(File, Tdesc, iodesc3d, var3d, ierr)
 
     do m = 1, pcnst
-       var3d=RESHAPE(Atm(mytile)%q(is:ie,js:je,1:npz,m),(/ilen,npz,jlen/),ORDER=(/1,3,2/))
+       var3d=RESHAPE(Atm(mytile)%q(is:ie,js:je,1:nlev,m),(/ilen,nlev,jlen/),ORDER=(/1,3,2/))
        call PIO_Write_Darray(File, Qdesc(m), iodesc3d, var3d, ierr)
     end do
 
@@ -196,21 +196,21 @@ subroutine write_restart_dynamics(File, dyn_out)
     deallocate(var3d)
     
    ! create map for distributed write of 3D NS fields
-    allocate(var3d_ns(ilen,npz,(jlen+1)))
-    array_lens_3d = (/ilen , npz, (jlen+1)/)
-    file_lens_2d  = (/grid_dimlens_ns(1), npz/)
+    allocate(var3d_ns(ilen,nlev,(jlen+1)))
+    array_lens_3d = (/ilen , nlev, (jlen+1)/)
+    file_lens_2d  = (/grid_dimlens_ns(1), nlev/)
     call cam_grid_get_decomp(grid_id_ns, array_lens_3d, file_lens_2d, pio_double, iodesc3d_ns)
-    var3d_ns=RESHAPE(Atm(mytile)%u(is:ie,js:je+1,1:npz),(/ilen,npz,jlen+1/),ORDER=(/1,3,2/))
+    var3d_ns=RESHAPE(Atm(mytile)%u(is:ie,js:je+1,1:nlev),(/ilen,nlev,jlen+1/),ORDER=(/1,3,2/))
     call PIO_Write_Darray(File, USdesc, iodesc3d_ns, var3d_ns, ierr)
     deallocate(var3d_ns)
 
    ! create map for distributed write of 3D EW fields
 
-    allocate(var3d_ew((ilen+1),npz,jlen))
-    array_lens_3d = (/(ilen+1), npz, jlen /)
-    file_lens_2d  = (/grid_dimlens_ew(1), npz/)
+    allocate(var3d_ew((ilen+1),nlev,jlen))
+    array_lens_3d = (/(ilen+1), nlev, jlen /)
+    file_lens_2d  = (/grid_dimlens_ew(1), nlev/)
     call cam_grid_get_decomp(grid_id_ew, array_lens_3d, file_lens_2d, pio_double, iodesc3d_ew)
-    var3d_ew=RESHAPE(Atm(mytile)%v(is:ie+1,js:je,1:npz),(/(ilen+1),npz,jlen/),ORDER=(/1,3,2/))
+    var3d_ew=RESHAPE(Atm(mytile)%v(is:ie+1,js:je,1:nlev),(/(ilen+1),nlev,jlen/),ORDER=(/1,3,2/))
     call PIO_Write_Darray(File, VSdesc, iodesc3d_ew, var3d_ew, ierr)
     deallocate(var3d_ew)
 
@@ -222,7 +222,7 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
 
     use cam_history_support,    only: max_fieldname_len
     use constituents,  only: cnst_name, pcnst
-    use dimensions_mod,only: npz,npy,npx
+    use dimensions_mod,only: npy,npx,nlev
     use dyn_comp,      only: dyn_init
     use dyn_grid,      only: Atm
     use mpp_domains_mod, only: mpp_update_domains, DGRID_NE, mpp_get_boundary
@@ -287,9 +287,6 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
 
    tl = 1
 
-   npz    = Atm(mytile)%npz
-   npy    = Atm(mytile)%npy
-   npx    = Atm(mytile)%npx
    is = Atm(mytile)%bd%is
    ie = Atm(mytile)%bd%ie
    js = Atm(mytile)%bd%js
@@ -299,9 +296,9 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
 
    ierr = PIO_Inq_DimID(File, 'lev', nlev_dimid)
    ierr = PIO_Inq_dimlen(File, nlev_dimid, fnlev)
-   if (npz /= fnlev) then
+   if (nlev /= fnlev) then
       write(iulog,*) 'Restart file nlev does not match model. nlev (file, namelist):', &
-                     fnlev, npz
+                     fnlev, nlev
       call endrun(sub//': Restart file nlev does not match model.')
    end if
 
@@ -368,18 +365,18 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
     call cam_grid_get_decomp(grid_id, array_lens_2d, file_lens_1d, pio_double, iodesc2d)
 
    ! create map for distributed write of 3D fields
-    array_lens_3d = (/ilen,npz, jlen/)
-    file_lens_2d  = (/grid_dimlens(1), npz/)
+    array_lens_3d = (/ilen,nlev, jlen/)
+    file_lens_2d  = (/grid_dimlens(1), nlev/)
     call cam_grid_get_decomp(grid_id, array_lens_3d, file_lens_2d, pio_double, iodesc3d)
     
    ! create map for distributed write of 3D NS fields
-    array_lens_3d = (/ilen, npz, jlen+1/)
-    file_lens_2d  = (/grid_dimlens_ns(1), npz/)
+    array_lens_3d = (/ilen, nlev, jlen+1/)
+    file_lens_2d  = (/grid_dimlens_ns(1), nlev/)
     call cam_grid_get_decomp(grid_id_ns, array_lens_3d, file_lens_2d, pio_double, iodesc3d_ns)
     
    ! create map for distributed write of 3D EW fields
-    array_lens_3d = (/ilen+1, npz, jlen/)
-    file_lens_2d  = (/grid_dimlens_ew(1), npz/)
+    array_lens_3d = (/ilen+1, nlev, jlen/)
+    file_lens_2d  = (/grid_dimlens_ew(1), nlev/)
     call cam_grid_get_decomp(grid_id_ew, array_lens_3d, file_lens_2d, pio_double, iodesc3d_ew)
     
     allocate(var2d(is:ie,js:je))
@@ -393,32 +390,32 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
     deallocate(var2d)
 
     
-    allocate(var3d(is:ie,npz,js:je))
+    allocate(var3d(is:ie,nlev,js:je))
     var3d = 0._r8
 
     ! OMEGA
     call PIO_Read_Darray(File, omegadesc, iodesc3d, var3d, ierr)
-    Atm(mytile)%omga(is:ie,js:je,1:npz)=RESHAPE(var3d,(/ilen,jlen,npz/),ORDER=(/1,3,2/))
+    Atm(mytile)%omga(is:ie,js:je,1:nlev)=RESHAPE(var3d,(/ilen,jlen,nlev/),ORDER=(/1,3,2/))
 
     ! DELP
     call PIO_Read_Darray(File, delpdesc, iodesc3d, var3d, ierr)
-    atm(mytile)%delp(is:ie,js:je,1:npz)=RESHAPE(var3d,(/ilen,jlen,npz/),ORDER=(/1,3,2/))
+    atm(mytile)%delp(is:ie,js:je,1:nlev)=RESHAPE(var3d,(/ilen,jlen,nlev/),ORDER=(/1,3,2/))
 
     ! T
     call PIO_Read_Darray(File, Tdesc, iodesc3d, var3d, ierr)
-    atm(mytile)%pt(is:ie,js:je,1:npz)=RESHAPE(var3d,(/ilen,jlen,npz/),ORDER=(/1,3,2/))
+    atm(mytile)%pt(is:ie,js:je,1:nlev)=RESHAPE(var3d,(/ilen,jlen,nlev/),ORDER=(/1,3,2/))
 
     ! V
     call PIO_Read_Darray(File, Vdesc, iodesc3d, var3d, ierr)
-    atm(mytile)%va(is:ie,js:je,1:npz)=RESHAPE(var3d,(/ilen,jlen,npz/),ORDER=(/1,3,2/))
+    atm(mytile)%va(is:ie,js:je,1:nlev)=RESHAPE(var3d,(/ilen,jlen,nlev/),ORDER=(/1,3,2/))
 
     ! U
     call PIO_Read_Darray(File, Udesc, iodesc3d, var3d, ierr)
-    atm(mytile)%ua(is:ie,js:je,1:npz)   =RESHAPE(var3d,(/ilen,jlen,npz/),ORDER=(/1,3,2/))
+    atm(mytile)%ua(is:ie,js:je,1:nlev)   =RESHAPE(var3d,(/ilen,jlen,nlev/),ORDER=(/1,3,2/))
     ! tracers
     do m = 1, pcnst
        call PIO_Read_Darray(File, Qdesc(m), iodesc3d, var3d, ierr)
-       atm(mytile)%q(is:ie,js:je,1:npz,m) = RESHAPE(var3d,(/ilen,jlen,npz/),ORDER=(/1,3,2/))
+       atm(mytile)%q(is:ie,js:je,1:nlev,m) = RESHAPE(var3d,(/ilen,jlen,nlev/),ORDER=(/1,3,2/))
     end do
 
     deallocate(var3d)
@@ -428,25 +425,25 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
     ! missing points on the north and east block boundaries which are duplicated between
     ! adjacent blocks.
 
-    allocate(var3d_ns(is:ie, npz,js:je+1))
-    allocate(var3d_ew(is:ie+1, npz, js:je))
-    allocate(ebuffer(npy+2,npz))
-    allocate(nbuffer(npx+2,npz))
+    allocate(var3d_ns(is:ie, nlev,js:je+1))
+    allocate(var3d_ew(is:ie+1, nlev, js:je))
+    allocate(ebuffer(npy+2,nlev))
+    allocate(nbuffer(npx+2,nlev))
 
     var3d_ns = 0._r8
     var3d_ew = 0._r8
     nbuffer  = 0._r8
     ebuffer  = 0._r8
     call PIO_Read_Darray(File, USdesc, iodesc3d_ns, var3d_ns, ierr)
-    atm(mytile)%u(is:ie,js:je+1,1:npz) = RESHAPE(var3d_ns,(/ilen,jlen+1,npz/),ORDER=(/1,3,2/))
+    atm(mytile)%u(is:ie,js:je+1,1:nlev) = RESHAPE(var3d_ns,(/ilen,jlen+1,nlev/),ORDER=(/1,3,2/))
 
     call PIO_Read_Darray(File, VSdesc, iodesc3d_ew, var3d_ew, ierr)
-    atm(mytile)%v(is:ie+1,js:je,1:npz) = RESHAPE(var3d_ew,(/ilen+1,jlen,npz/),ORDER=(/1,3,2/))
+    atm(mytile)%v(is:ie+1,js:je,1:nlev) = RESHAPE(var3d_ew,(/ilen+1,jlen,nlev/),ORDER=(/1,3,2/))
 
     call mpp_get_boundary(atm(mytile)%u, atm(mytile)%v, atm(mytile)%domain, ebuffery=ebuffer,  &
          nbufferx=nbuffer, gridtype=DGRID_NE )
 
-    do k=1,npz
+    do k=1,nlev
        do i=is,ie
           atm(mytile)%u(i,je+1,k) = nbuffer(i-is+1,k)
        enddo

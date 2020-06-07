@@ -32,7 +32,7 @@ module dyn_grid
     use cam_abortutils,   only: endrun
     use cam_grid_support, only: iMap
     use cam_logfile,      only: iulog
-    use dimensions_mod,   only: npx, npy, npz, ncnst,nq
+    use dimensions_mod,   only: npx, npy
     use fms_mod,          only: fms_init, write_version_number
     use fv_arrays_mod,    only: fv_atmos_type
     use fv_control_mod,   only: ngrids,fv_init
@@ -63,6 +63,7 @@ module dyn_grid
     type(fv_atmos_type), allocatable, target :: Atm(:)
     
     real(r8), allocatable :: block_extents_g(:,:)
+    real(r8), allocatable :: tile_decomp(:,:)
 
 public ::             &
    dyn_decomp,        &
@@ -73,9 +74,8 @@ public ::             &
 !-----------------------------------------------------------------------
 ! Calculate Global Index
 
-integer, allocatable, target, dimension(:,:) :: mygindex,mygindex_ew,mygindex_ns
+integer, allocatable, target, dimension(:,:) :: mygindex
 integer, allocatable, target, dimension(:,:) :: mylindex
-integer                                      :: mybindex
 real(r8), allocatable, target, dimension(:,:,:) ::   locidx_g
 real(r8), allocatable, target, dimension(:,:,:) ::   blkidx_g
 real(r8), allocatable, target, dimension(:,:,:) ::   gindex_g
@@ -87,9 +87,8 @@ integer, public :: uniqpts_glob_ns = 0     ! number of dynamics columns for D gr
 
 real(r8), pointer, dimension(:,:,:) :: grid_ew, grid_ns
 
-public :: mygindex,mygindex_ew,mygindex_ns
+public :: mygindex
 public :: mylindex
-public :: mybindex
 !-----------------------------------------------------------------------
 public :: &
    dyn_grid_init,            &
@@ -130,7 +129,6 @@ subroutine dyn_grid_init()
    use mpp_mod,            only: mpp_init, mpp_npes, mpp_get_current_pelist,mpp_gather
    use pmgrid,             only: plev
    use ref_pres,           only: ref_pres_init
-   use sat_vapor_pres_mod, only: sat_vapor_pres_init
    use time_manager,       only: get_step_size
    use pio,                only: file_desc_t
 
@@ -140,7 +138,7 @@ subroutine dyn_grid_init()
    type (block_control_type), target   :: Atm_block
 
    character(len=*), parameter :: sub='dyn_grid_init'
-   integer, parameter :: be_arrlen = 5
+   integer, parameter :: be_arrlen = 7
    character(len=128) :: version = '$Id$'
    character(len=128) :: tagname = '$Name$'
 
@@ -162,7 +160,6 @@ subroutine dyn_grid_init()
    
    call fms_init
    call constants_init
-   call sat_vapor_pres_init
 
 !-----------------------------------------------------------------------
 ! initialize atmospheric model -----
@@ -193,13 +190,10 @@ subroutine dyn_grid_init()
    ie = Atm(mytile)%bd%ie
    js = Atm(mytile)%bd%js
    je = Atm(mytile)%bd%je
-   ncnst  = Atm(mytile)%flagstruct%ncnst
    npx   = Atm(mytile)%flagstruct%npx
    npy   = Atm(mytile)%flagstruct%npy
-   npz    = Atm(mytile)%flagstruct%npz
-   nq     = Atm(mytile)%flagstruct%ncnst - Atm(mytile)%flagstruct%pnats
 
-   if (npz /= plev) call endrun('dyn_grid_init: FV3 dycore levels (npz) does not match model levels (plev)')
+   if (Atm(mytile)%flagstruct%npz /= plev) call endrun('dyn_grid_init: FV3 dycore levels (npz) does not match model levels (plev)')
 
 !-----------------------------------------------------------------------
 !--- get block extents for each task/pe
@@ -214,6 +208,9 @@ subroutine dyn_grid_init()
    block_extents(3)=js
    block_extents(4)=je
    block_extents(5)=Atm(mytile)%tile
+   block_extents(6)=mpp_pe() + 1
+   block_extents(7)=((js-1)*(npx-1)+is)+((npx-1)*(npy-1)*(Atm(mytile)%tile-1))
+
    call mpp_gather(block_extents,be_arrlen,rtmp,be_size)
    call mp_bcst(rtmp,be_arrlen*npes)
    block_extents_g=reshape(rtmp,(/be_arrlen,npes/))
@@ -365,6 +362,7 @@ end function get_block_owner_d
 subroutine get_gcol_block_d(gcol, cnt, blockid, bcid, localblockid)
  
     use dimensions_mod,     only: npx, npy
+    use spmd_utils,        only: iam
     implicit none
     integer, intent(in)  :: gcol         ! global column index
     integer, intent(in)  :: cnt          ! size of blockid and bcid arrays
@@ -715,6 +713,8 @@ subroutine define_cam_grids(Atm)
   
   integer(iMap), pointer :: grid_map(:,:)
 
+  integer, allocatable, target, dimension(:,:) :: mygindex_ew,mygindex_ns
+  integer                                      :: mybindex
   integer :: n, i, j, mapind,is,ie,js,je,isd,ied,jsd,jed,tile,nregions
   real(r8), pointer, dimension(:,:,:) :: agrid
   real(r8), pointer, dimension(:,:,:) :: grid
@@ -793,7 +793,6 @@ subroutine define_cam_grids(Atm)
         mygindex(i,j)=((j-1)*(npx-1)+i)+((npx-1)*(npy-1)*(tile-1))
         mylindex(i,j)=mapind
         mapind = mapind + 1
-        if (iam.eq.0) write(iulog,*)'iam,i,j,mygindex=',iam,i,j,mygindex(i,j)
      end do
   end do
 
@@ -1004,6 +1003,8 @@ subroutine define_cam_grids(Atm)
   deallocate(pemap)
   deallocate(pemap_ew)
   deallocate(pemap_ns)
+  deallocate(mygindex_ew)
+  deallocate(mygindex_ns)
 
 end subroutine define_cam_grids
 

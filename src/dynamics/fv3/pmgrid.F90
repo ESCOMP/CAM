@@ -1,16 +1,15 @@
 module pmgrid
 
-! Initialize grid point resolution parameters
+! PLON and PLAT do not correspond to the number of latitudes and longitudes in
+! this version of dynamics.
 
 implicit none
+save
 
-integer, parameter :: plon   = PLON       ! number of longitudes
-integer, parameter :: plev   = PLEV       ! number of vertical levels
-integer, parameter :: plat   = PLAT       ! number of latitudes
+integer, parameter :: plev   = PLEV      ! number of vertical levels
+integer, parameter :: plevp  = plev + 1
 
-integer, parameter :: plevp  = plev+1     ! plev + 1
-integer, parameter :: plnlv = plon*plev   ! Length of multilevel field slice
-
-integer :: spmd_on = 0 ! 1 for Spmd, 0 for non-Spmd
+integer, parameter :: plon   = 1
+integer, parameter :: plat   = 1
 
 end module pmgrid

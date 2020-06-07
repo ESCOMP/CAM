@@ -8315,7 +8315,7 @@ Default: FALSE
 
 <entry id="fv3_dwind_2d" type="logical" category="dyn_fv3"
        group="fv_core_nml" valid_values="" >
-Logical: whether to use a simpler & faster algorithm for interpolating the A-grid (cell-centered) wind tendencies computed from
+Logical: whether to use a simpler and faster algorithm for interpolating the A-grid (cell-centered) wind tendencies computed from
 the physics to the D-grid. Typically, the A-grid wind tendencies are
 first converted in 3D cartesian coordinates and then interpolated
 before converting back to 2D local coordinates. When this option
