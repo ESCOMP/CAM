@@ -107,8 +107,8 @@ contains
     !                 (K&G 2nd order method has CFL=4. tiny CFL improvement not worth 2nd order)
     !
 
-!xxx    if (dry_air_composition_num > 0) &
-!xxx      call endrun('ERROR: SE dycore not ready for species dependent thermodynamics - ABORT')
+    if (dry_air_composition_num > 0) &
+      call endrun('ERROR: SE dycore not ready for species dependent thermodynamics - ABORT')
 
     call omp_set_nested(.true.)
 
