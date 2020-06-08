@@ -100,8 +100,8 @@ contains
             else
               ! Fractional area...
               qsum = (pe1(i,l+1)-pe2(i,k))*(q4(2,i,l)+0.5_r8*(q4(4,i,l)+   &
-                   q4(3,i,l)-q4(2,i,l))*(1.+pl)-q4(4,i,l)*           &
-                   (r3*(1.+pl*(1.+pl))))
+                   q4(3,i,l)-q4(2,i,l))*(1._r8+pl)-q4(4,i,l)*           &
+                   (r3*(1._r8+pl*(1._r8+pl))))
               do m=l+1,km
                 ! locate the bottom edge: pe2(i,k+1)
                 if( pe2(i,k+1) > pe1(i,m+1) ) then
@@ -111,7 +111,7 @@ contains
                   dp = pe2(i,k+1)-pe1(i,m)
                   esl = dp / dp1(i,m)
                   qsum = qsum + dp*(q4(2,i,m)+0.5_r8*esl*               &
-                       (q4(3,i,m)-q4(2,i,m)+q4(4,i,m)*(1.-r23*esl)))
+                       (q4(3,i,m)-q4(2,i,m)+q4(4,i,m)*(1._r8-r23*esl)))
                   k0 = m
                   goto 123
                 endif
@@ -446,7 +446,7 @@ contains
         qm = (d2*a4(1,i,km)+d1*a4(1,i,km1)) / (d1+d2)
         dq = 2.0_r8*(a4(1,i,km1)-a4(1,i,km)) / (d1+d2)
         c1 = (a4(2,i,km1)-qm-d2*dq) / (d2*(2.0_r8*d2*d2+d1*(d2+3.0_r8*d1)))
-        c3 = dq - 2.0_r8*c1*(d2*(5.*d1+d2)-3.0_r8*d1*d1)
+        c3 = dq - 2.0_r8*c1*(d2*(5._r8*d1+d2)-3.0_r8*d1*d1)
         a4(2,i,km) = qm - c1*d1*d2*(d2+3.0_r8*d1)
         ! Bottom edge:
         !-----------------------------------------------------
