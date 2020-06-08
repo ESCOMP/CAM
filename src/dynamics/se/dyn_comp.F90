@@ -723,7 +723,7 @@ subroutine dyn_init(dyn_in, dyn_out)
      do k=1,nlev
        if (MIN(kmvis_ref(k)/rho_ref(k),kmcnd_ref(k)/(cpair*rho_ref(k)))>1000.0_r8) then !only apply molecular viscosity where viscosity is > 1000 m/s^2
          if (masterproc) then
-           write(iulog,'(a,i3,1e11.4,i4)') "k, p, km_sponge_factor                   :",k,(hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0,km_sponge_factor(k)
+           write(iulog,'(a,i3,2e11.4)') "k, p, km_sponge_factor                   :",k,(hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0,km_sponge_factor(k)
            write(iulog,'(a,2e11.4)') "kmvis_ref/rho_ref, kmcnd_ref/(cp*rho_ref): ",kmvis_ref(k)/rho_ref(k),kmcnd_ref(k)/(cpair*rho_ref(k))
          end if
          kmol_end = k
