@@ -156,7 +156,7 @@ contains
   subroutine air_composition_readnl(nlfile)
     use namelist_utils,  only: find_group_name
     use units,           only: getunit, freeunit
-    use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_integer, mpi_character
+    use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_character
     use spmd_utils,      only: masterproc    
     ! args
     character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
@@ -350,7 +350,7 @@ contains
     use cam_logfile,     only: iulog
     character(len=*), parameter :: subname = 'composition_init'
     real(r8) :: mw, dof1, dof2
-    integer  :: icnst,ix,i,ierr
+    integer  :: icnst,ix,i
     
     i = dry_air_composition_num+moist_air_composition_num  
     allocate(thermodynamic_active_species_idx(i))
@@ -798,7 +798,6 @@ contains
 
      real(r8) :: pint_local(i0:i1,j0:j1,k0:k1+1)        
      integer  :: k
-     integer :: i,j
 
      pint_local(:,:,k0) = ptop
      do k=k0+1,k1+1
@@ -907,7 +906,6 @@ contains
 
      real(r8), dimension(i0:i1,j0:j1,nlev)   :: pmid_local, t_v_local, dp_local, R_dry
      real(r8), dimension(i0:i1,j0:j1,nlev+1) :: pint
-     integer :: k
 
      call get_pmid_from_dpdry(i0,i1,j0,j1,nlev,ntrac,tracer,mixing_ratio,thermodynamic_active_species_idx,dp_dry,ptop,pmid_local,pint=pint,dp=dp_local)       
      if (mixing_ratio==1) then 
@@ -1036,7 +1034,6 @@ contains
      real(r8), intent(out) :: KE(i0:i1,j0:j1,nlev),thermalE(i0:i1,j0:j1,nlev),gz(i0:i1,j0:j1,nlev)
 
      real(r8), dimension(i0:i1,j0:j1,nlev):: T_v,cp_dry
-     real(r8), dimension(i0:i1,j0:j1)     :: pt1, pt2
 
      call get_gz(i0,i1,j0,j1,nlev,ntrac,tracer,mixing_ratio,thermodynamic_active_species_idx,dp_dry,ptop,temp,phis,gz,T_v=T_v)
      if (mixing_ratio==1) then
@@ -1210,8 +1207,8 @@ contains
      real(r8), intent(out) :: R(i0:i1,j0:j1,k0:k1)                       !generalized gas constant
      real(r8), optional, intent(in) :: fact(i0:i1,j0:j1,k0_trac:k1_trac) !factor for converting tracer to dry mixing ratio
      
-     integer :: i,j,k,m_cnst,nq,itrac
-     real(r8):: factor(i0:i1,j0:j1,k0_trac:k1_trac), residual(i0:i1,j0:j1,k0:k1), mm
+     integer :: nq,itrac
+     real(r8):: factor(i0:i1,j0:j1,k0_trac:k1_trac)
      real(r8), dimension(i0:i1,j0:j1,k0:k1)              :: sum_species
      integer, dimension(thermodynamic_active_species_num):: idx_local
      if (present(fact)) then
@@ -1427,8 +1424,8 @@ contains
      integer, optional, dimension(:) :: thermodynamic_active_species_idx_dycore
      
      ! local vars
-     integer :: nq,i,j,k, itrac
-     real(r8),  dimension(i0:i1,j0:j1,k0:k1)  :: sum_species, factor, Rd
+     integer :: itrac
+     real(r8),  dimension(i0:i1,j0:j1,k0:k1)              :: sum_species, factor, Rd
      integer, dimension(thermodynamic_active_species_num) :: idx_local,idx
 
      if (present(thermodynamic_active_species_idx_dycore)) then
@@ -1486,7 +1483,7 @@ contains
      ! local vars
      integer :: nq,i,j,k, itrac
      real(r8),  dimension(i0:i1,j0:j1,k0:k1)  :: sum_species, sum_cp, factor
-     integer, dimension(thermodynamic_active_species_num) :: idx_local,idx
+     integer, dimension(thermodynamic_active_species_num) :: idx_local
 
      if (present(thermodynamic_active_species_idx_dycore)) then
        idx_local = thermodynamic_active_species_idx_dycore
@@ -1552,7 +1549,6 @@ contains
    !
    subroutine get_rho_dry(i0,i1,j0,j1,k1,nlev,ntrac,tracer,temp,ptop,dp_dry,tracer_mass,&
         rho_dry, rhoi_dry,thermodynamic_active_species_idx_dycore,pint_out,pmid_out)
-     use cam_logfile,     only: iulog
      ! args
      integer,  intent(in)           :: i0,i1,j0,j1,k1,ntrac,nlev
      real(r8), intent(in)           :: tracer(i0:i1,j0:j1,nlev,ntrac) ! Tracer array
@@ -1566,7 +1562,6 @@ contains
      ! array of indicies for index of thermodynamic active species in dycore tracer array
      ! (if different from physics index)
      !
-     integer, optional, dimension(:) :: thermodynamic_active_species_idx_dycore
      real(r8),optional,intent(out)   :: pint_out(i0:i1,j0:j1,1:k1+1)
      real(r8),optional,intent(out)   :: pmid_out(i0:i1,j0:j1,1:k1)
      
@@ -1575,7 +1570,6 @@ contains
      real(r8),  dimension(i0:i1,j0:j1,1:k1)              :: pmid
      real(r8):: pint(i0:i1,j0:j1,1:k1+1)
      real(r8), allocatable :: R_dry(:,:,:)
-     real(r8):: temp_local
      !
      ! we assume that air is dry where molecular viscosity may be significant
      !
@@ -1626,7 +1620,6 @@ contains
    !
    subroutine get_molecular_diff_coef(i0,i1,j0,j1,k1,nlev,temp,get_at_interfaces,sponge_factor,kmvis,kmcnd, ntrac,&
         tracer, fact, thermodynamic_active_species_idx_dycore, mbarv_in)
-     use cam_logfile,     only: iulog
      ! args
      integer,  intent(in)           :: i0,i1,j0,j1,k1,nlev
      real(r8), intent(in)           :: temp(i0:i1,j0:j1,nlev) ! temperature
@@ -1645,15 +1638,14 @@ contains
      ! local vars
      !
      integer :: i,j,k,icnst,ispecies
-     real(r8):: mmro, mmro2, mmrh, mmrn2            ! Mass mixing ratios of O, O2, H, and N
+     real(r8):: mmro, mmro2, mmrn2                  ! Mass mixing ratios of O, O2, and N
      real(r8):: o_mwi, o2_mwi, n2_mwi               ! Inverse molecular weights
      real(r8):: mbar,mbarvi,mm,residual             ! Mean mass at mid level
-     real(r8):: dof1, dof2                          ! Degress of freedom for cpairv calculation
      real(r8):: kv1, kv2, kv3, kv4                  ! Coefficients for kmvis calculation
      real(r8):: kc1, kc2, kc3, kc4                  ! Coefficients for kmcnd calculation
      real(r8):: cnst_vis, cnst_cnd, temp_local
-     real(r8) :: factor(i0:i1,j0:j1,1:k1),mbarv(i0:i1,j0:j1,1:k1)       
-     integer, dimension(thermodynamic_active_species_num)                   :: idx_local
+     real(r8), dimension(i0:i1,j0:j1,1:k1)                :: factor,mbarv       
+     integer,  dimension(thermodynamic_active_species_num):: idx_local
      !--------------------------------------------
      ! Set constants needed for updates
      !--------------------------------------------
@@ -1774,7 +1766,6 @@ contains
    !*************************************************************************************************************************
    !
    subroutine get_molecular_diff_coef_reference(k0,k1,tref,press,sponge_factor,kmvis_ref,kmcnd_ref,rho_ref)
-     use cam_logfile,     only: iulog
      ! args
      integer,  intent(in)           :: k0,k1                !min/max vertical index
      real(r8), intent(in)           :: tref                 !reference temperature
