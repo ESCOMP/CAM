@@ -55,12 +55,12 @@ contains
     use hybrid_mod,        only: hybrid_t
     use time_mod,          only: TimeLevel_t,  timelevel_qdp, tevolve
     use dimensions_mod,    only: lcp_moist
-    use physconst,         only: cpair        
     use fvm_control_volume_mod, only: fvm_struct
     use control_mod,       only: raytau0
     use physconst,         only: get_cp, thermodynamic_active_species_num
     use physconst,         only: get_kappa_dry, dry_air_composition_num
     use physconst,         only: thermodynamic_active_species_idx_dycore
+    use physconst,         only: cpair, rair
     implicit none
     
     type (element_t), intent(inout), target   :: elem(:)
@@ -107,8 +107,8 @@ contains
     !                 (K&G 2nd order method has CFL=4. tiny CFL improvement not worth 2nd order)
     !
 
-    if (dry_air_composition_num) &
-      call endrun('ERROR: SE dycore not ready for species dependent thermodynamics - ABORT')
+!xxx    if (dry_air_composition_num > 0) &
+!xxx      call endrun('ERROR: SE dycore not ready for species dependent thermodynamics - ABORT')
 
     call omp_set_nested(.true.)
 
@@ -140,12 +140,13 @@ contains
       end do
     else
       do ie=nets,nete
-        inv_cp_full(:,:,:,ie) = 1.0_r8/cpair !xxx can we remove?
+        inv_cp_full(:,:,:,ie) = 1.0_r8/cpair
       end do
     end if
     do ie=nets,nete
-       call get_kappa_dry(1,np,1,np,1,nlev,nlev,thermodynamic_active_species_num,qwater(:,:,:,:,ie),qidx,kappa(:,:,:,ie))
-     end do
+      call get_kappa_dry(1,np,1,np,1,nlev,nlev,thermodynamic_active_species_num,qwater(:,:,:,:,ie),qidx,kappa(:,:,:,ie))
+      !kappa(:,:,:,ie) = rair/cpair
+    end do
 
     
     dt_vis = dt
@@ -768,7 +769,7 @@ contains
     ! vertical diffusion
     !
     call t_startf('vertical_molec_diff')
-    if (molecular_diff>0) then
+    if (molecular_diff>1) then
       do ie=nets,nete        
         call get_rho_dry(1,np,1,np,ksponge_end,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,qn0),  &
              elem(ie)%state%T(:,:,:,nt),ptop,elem(ie)%state%dp3d(:,:,:,nt),&
@@ -776,18 +777,21 @@ contains
              thermodynamic_active_species_idx_dycore=thermodynamic_active_species_idx_dycore,&
              pint_out=pint,pmid_out=pmid)
         
-        if (molecular_diff==1) then
-          !
-          ! compute molecular diffusion and thermal conductivity coefficients at interfaces
-          !
-          call get_molecular_diff_coef(1,np,1,np,ksponge_end,nlev,&
-               elem(ie)%state%T(:,:,:,nt),1,km_sponge_factor,kmvisi(:,:,:),kmcndi(:,:,:),1)
-          
-          do k=1,ksponge_end+1
-            kmvisi(:,:,k) = kmvisi(:,:,k)*rhoi_dry(:,:,k)
-            kmcndi(:,:,k) = kmcndi(:,:,k)*rhoi_dry(:,:,k)
-          end do
-        else
+!        if (molecular_diff==1) then
+!          !
+!          ! compute molecular diffusion and thermal conductivity coefficients at interfaces
+!          !
+!          call get_molecular_diff_coef(1,np,1,np,ksponge_end,nlev,&
+!               elem(ie)%state%T(:,:,:,nt),1,km_sponge_factor,kmvisi(:,:,:),kmcndi(:,:,:),qsize,&
+!               elem(ie)%state%Qdp(:,:,:,:,qn0),fact=1.0_r8/elem(ie)%state%dp3d(:,:,1:ksponge_end,nt),&               
+!               thermodynamic_active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
+!
+!          
+!          do k=1,ksponge_end+1
+!            kmvisi(:,:,k) = kmvisi(:,:,k)*rhoi_dry(:,:,k)
+!            kmcndi(:,:,k) = kmcndi(:,:,k)*rhoi_dry(:,:,k)
+!          end do
+!        else
           !
           ! constant coefficients
           !
@@ -795,7 +799,7 @@ contains
             kmvisi(:,:,k) = kmvisi_ref(k)*rhoi_dry(:,:,k)
             kmcndi(:,:,k) = kmcndi_ref(k)*rhoi_dry(:,:,k)
           end do
-        end if
+!        end if
         !
         ! do vertical diffusion
         !        
@@ -842,8 +846,9 @@ contains
           ! compute molecular diffusion and thermal conductivity coefficients at mid-levels
           !
           call get_molecular_diff_coef(1,np,1,np,ksponge_end,nlev,&
-               elem(ie)%state%T(:,:,:,nt),0,km_sponge_factor(1:ksponge_end),kmvis(:,:,:,ie),kmcnd(:,:,:,ie),1)
-          !        
+               elem(ie)%state%T(:,:,:,nt),0,km_sponge_factor(1:ksponge_end),kmvis(:,:,:,ie),kmcnd(:,:,:,ie),qsize,&
+               elem(ie)%state%Qdp(:,:,:,:,qn0),fact=1.0_r8/elem(ie)%state%dp3d(:,:,1:ksponge_end,nt),&               
+               thermodynamic_active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
         end do
       else
         !
@@ -1122,10 +1127,10 @@ contains
      use edgetype_mod,    only: edgedescriptor_t
      use bndry_mod,       only: bndry_exchange
      use hybvcoord_mod,   only: hvcoord_t
-     use physconst,       only: epsilo, get_gz_given_dp_Tv, Rair, cpair !
+     use physconst,       only: epsilo, get_gz_given_dp_Tv_Rdry
      use physconst,       only: thermodynamic_active_species_num, get_virtual_temp, get_cp_dry
      use physconst,       only: thermodynamic_active_species_idx_dycore,get_R_dry
-     
+     use physconst,       only: dry_air_composition_num,get_exner
      use time_mod, only : tevolve
      
      implicit none
@@ -1143,12 +1148,13 @@ contains
      
      real (kind=r8) :: eta_ave_w  ! weighting for eta_dot_dpdn mean flux
      
-     ! local
-     real (kind=r8), pointer, dimension(:,:,:)                     :: phi
+    ! local
+     real (kind=r8), dimension(np,np,nlev)                         :: phi
      real (kind=r8), dimension(np,np,nlev)                         :: omega_full
      real (kind=r8), dimension(np,np,nlev)                         :: divdp_dry
      real (kind=r8), dimension(np,np,nlev)                         :: divdp_full
      real (kind=r8), dimension(np,np,2)                            :: vtemp    
+     real (kind=r8), dimension(np,np,2)                            :: grad_kappa_term
      real (kind=r8), dimension(np,np,2,nlev)                       :: vdp_dry  
      real (kind=r8), dimension(np,np,2,nlev)                       :: vdp_full 
      real (kind=r8), dimension(np,np,nlev)                         :: vgrad_p_full
@@ -1160,8 +1166,10 @@ contains
      real (kind=r8), dimension(np,np,nlev)                         :: vort         ! vorticity
      real (kind=r8), dimension(np,np,nlev)                         :: p_dry        ! pressure dry
      real (kind=r8), dimension(np,np,nlev)                         :: dp_dry       ! delta pressure dry
+     real (kind=r8), dimension(np,np,nlev)                         :: R_dry, cp_dry! 
      real (kind=r8), dimension(np,np,nlev)                         :: p_full       ! pressure
-     real (kind=r8), dimension(np,np,nlev)                         :: dp_full      ! delta pressure
+     real (kind=r8), dimension(np,np,nlev)                         :: dp_full
+     real (kind=r8), dimension(np,np)                              :: exner
      real (kind=r8), dimension(0:np+1,0:np+1,nlev)                 :: corners
      real (kind=r8), dimension(2,2,2)                              :: cflux
      real (kind=r8), dimension(np,np)                              :: suml
@@ -1171,7 +1179,6 @@ contains
      real (kind=r8), dimension(np,np,2) :: grad_exner
      real (kind=r8), dimension(np,np)   :: theta_v
 
-     real (kind=r8), dimension(np,np)   :: exner
      type (EdgeDescriptor_t):: desc
      
      real (kind=r8) :: sum_water(np,np,nlev), density_inv
@@ -1182,6 +1189,7 @@ contains
 !JMD  call t_barrierf('sync_compute_and_apply_rhs', hybrid%par%comm)
      call t_adj_detailf(+1)
      call t_startf('compute_and_apply_rhs')
+     ptop = hvcoord%hyai(1)*hvcoord%ps0
      do ie=nets,nete
        !
        ! compute virtual temperature and sum_water
@@ -1189,16 +1197,19 @@ contains
        call get_virtual_temp(1,np,1,np,1,nlev,thermodynamic_active_species_num,qwater(:,:,:,:,ie),&
             t_v(:,:,:),temp=elem(ie)%state%T(:,:,:,n0),sum_q =sum_water(:,:,:),&
             thermodynamic_active_species_idx_dycore=qidx)
-!       call get_R_dry(1,np,1,np,1,nlev,thermodynamic_active_species_num,qwater(:,:,:,:,ie),qidx,R_dry)     
-!       call get_cp_dry(1,np,1,np,1,nlev,thermodynamic_active_species_num,qwater(:,:,:,:,ie),qidx,cp_dry) 
-       phi => elem(ie)%derived%phi(:,:,:)
+       call get_R_dry(1,np,1,np,1,nlev,1,nlev,thermodynamic_active_species_num,&
+            qwater(:,:,:,:,ie),qidx,R_dry)     
+       call get_cp_dry(1,np,1,np,1,nlev,1,nlev,thermodynamic_active_species_num,&
+            qwater(:,:,:,:,ie),qidx,cp_dry) 
+!       call get_exner(1,np,1,np,nlev,thermodynamic_active_species_num,qwater(:,:,:,:,ie),1,qidx,&
+!            elem(ie)%state%dp3d(:,:,:,n0),ptop,hvcoord%ps0,.false.,exner(:,:,:),poverp0=poverp0(:,:,:))
+!       phi => elem(ie)%derived%phi(:,:,:)
 
        do k=1,nlev
          dp_dry(:,:,k)  = elem(ie)%state%dp3d(:,:,k,n0)
-         dp_full(:,:,k) = sum_water(:,:,k)*dp_dry(:,:,k)
+         dp_full(:,:,k) = sum_water(:,:,k)*dp_dry(:,:,k)         
        end do
-       ptop = hvcoord%hyai(1)*hvcoord%ps0
-       call get_gz_given_dp_Tv(1,np,1,np,nlev,dp_full,T_v,elem(ie)%state%phis,ptop,phi,pmid=p_full)
+       call get_gz_given_dp_Tv_Rdry(1,np,1,np,nlev,dp_full,T_v,R_dry,elem(ie)%state%phis,ptop,phi,pmid=p_full)
        do k=1,nlev
          ! vertically lagrangian code: we advect dp3d instead of ps
          ! we also need grad(p) at all levels (not just grad(ps))
@@ -1313,17 +1324,26 @@ contains
          ! vtemp = grad ( E + PHI )
          ! vtemp = gradient_sphere(Ephi(:,:),deriv,elem(ie)%Dinv)
          call gradient_sphere(Ephi(:,:),deriv,elem(ie)%Dinv,vtemp)
-
+         
          exner(:,:)=(p_full(:,:,k)/hvcoord%ps0)**kappa(:,:,k,ie)
          theta_v(:,:)=T_v(:,:,k)/exner(:,:)
-         call gradient_sphere(exner(:,:),deriv,elem(ie)%Dinv,grad_exner(:,:,:))
+         call gradient_sphere(exner(:,:),deriv,elem(ie)%Dinv,grad_exner)
+
+         if (dry_air_composition_num>0) then
+           call gradient_sphere(kappa(:,:,k,ie),deriv,elem(ie)%Dinv,grad_kappa_term)
+           suml = exner(:,:)*LOG(p_full(:,:,k)/hvcoord%ps0)
+           grad_kappa_term(:,:,1)=-suml*grad_kappa_term(:,:,1)
+           grad_kappa_term(:,:,2)=-suml*grad_kappa_term(:,:,2)
+         else
+          grad_kappa_term = 0.0_r8 
+         end if
 
          do j=1,np
            do i=1,np
-             density_inv = Rair*T_v(i,j,k)/p_full(i,j,k)
+             density_inv = R_dry(i,j,k)*T_v(i,j,k)/p_full(i,j,k)
 
-             glnps1 = cpair*theta_v(i,j)*grad_exner(i,j,1)
-             glnps2 = cpair*theta_v(i,j)*grad_exner(i,j,2)
+             glnps1 = cp_dry(i,j,k)*theta_v(i,j)*grad_exner(i,j,1)+grad_kappa_term(i,j,1)
+             glnps2 = cp_dry(i,j,k) *theta_v(i,j)*grad_exner(i,j,2)+grad_kappa_term(i,j,2)
 !             glnps1  = density_inv*grad_p_full(i,j,1,k)
 !             glnps2  = density_inv*grad_p_full(i,j,2,k)
              v1     = elem(ie)%state%v(i,j,1,k,n0)
