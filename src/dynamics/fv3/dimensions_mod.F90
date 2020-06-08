@@ -6,7 +6,7 @@ module dimensions_mod
 
 
   !These are convenience variables for local use only, and are set to values in Atm%
-  integer, public :: npx, npy
+  integer, public :: npx, npy, ntiles
 
   integer, parameter, public :: nlev=PLEV
   integer, parameter, public :: nlevp=nlev+1

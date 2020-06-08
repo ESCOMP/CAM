@@ -57,7 +57,7 @@ module dyn_comp
     use infnan,          only: isnan
     use mpp_domains_mod, only: mpp_update_domains, domain2D, DGRID_NE
     use mpp_mod,         only: mpp_set_current_pelist,mpp_pe
-    use physconst,       only: gravit, cpair, rearth,omega
+    use physconst,       only: gravit, cpair, rearth, omega, pi
     use ppgrid,          only: pver
     use shr_kind_mod,    only: r8 => shr_kind_r8, r4 => shr_kind_r4, i8 => shr_kind_i8
     use spmd_utils,      only: masterproc, masterprocid, mpicom, npes,iam
@@ -104,6 +104,10 @@ integer :: ldof_size
 
 real(r8), allocatable,dimension(:,:,:)       :: se_dyn,ke_dyn,wv_dyn,wl_dyn,wi_dyn, &
                                                 wr_dyn,ws_dyn,wg_dyn,tt_dyn,mo_dyn,mr_dyn
+
+real(r8), parameter :: rad2deg = 180.0_r8 / pi
+real(r8), parameter :: deg2rad = pi / 180.0_r8
+
 !=======================================================================
 contains
 !=======================================================================
@@ -920,7 +924,8 @@ subroutine read_inidat(dyn_in)
   use constituents,          only: pcnst, cnst_name, cnst_read_iv,qmin, cnst_type
   use const_init,            only: cnst_init_default
   use cam_initfiles,         only: initial_file_get_id, topo_file_get_id, pertlim
-  use cam_grid_support,      only: cam_grid_id, cam_grid_get_gcid, iMap
+  use cam_grid_support,      only: cam_grid_id, cam_grid_get_gcid, iMap, &
+                                   cam_grid_get_latvals, cam_grid_get_lonvals
   use cam_history_support,   only: max_fieldname_len
   use hycoef,                only: hyai, hybi, ps0
   implicit none
@@ -974,6 +979,8 @@ subroutine read_inidat(dyn_in)
   integer :: m_ffsl
   integer :: ilen,jlen
   real(r8), allocatable :: var3d(:,:,:), var2d(:,:)
+  real(r8), pointer                :: latvals_deg(:)
+  real(r8), pointer                :: lonvals_deg(:)
 
   Atm => dyn_in%Atm
   grid => Atm(mytile)%gridstruct%grid_64
@@ -1002,16 +1009,18 @@ subroutine read_inidat(dyn_in)
   allocate(phis_tmp(ldof_size,1))
   phis_tmp(:,:)=0._r8
 
+  latvals_deg => cam_grid_get_latvals(cam_grid_id('FFSL'))
+  lonvals_deg => cam_grid_get_lonvals(cam_grid_id('FFSL'))
   blksize=(ie-is+1)*(je-js+1)
   allocate(latvals_rad(blksize))
   allocate(lonvals_rad(blksize))
-  allocate(glob_ind(blksize))
+  latvals_rad(:) = latvals_deg(:)*deg2rad
+  lonvals_rad(:) = lonvals_deg(:)*deg2rad
 
+  allocate(glob_ind(blksize))
   do j = js, je
      do i = is, ie
         n=mylindex(i,j)
-        lonvals_rad(n) = agrid(i,j,1)
-        latvals_rad(n) = agrid(i,j,2)
         glob_ind(n) = mygindex(i,j)
      end do
   end do
@@ -1225,10 +1234,10 @@ subroutine read_inidat(dyn_in)
      call a2d3djt(atm(mytile)%ua, atm(mytile)%va, atm(mytile)%u, atm(mytile)%v, is,  ie,  js,  je, &
                   isd, ied, jsd, jed, npx,npy, nlev, atm(mytile)%gridstruct, atm(mytile)%domain)
 
-     ! recreating A winds from D winds using cubed_to_latlon to be consistent with energy diagnostics.
-     call cubed_to_latlon(Atm(mytile)%u,Atm(mytile)%v,Atm(mytile)%ua,Atm(mytile)%va,Atm(mytile)%gridstruct, &
-          npx,npy,nlev,1,Atm(mytile)%gridstruct%grid_type,Atm(mytile)%domain,Atm(mytile)%gridstruct%nested, &
-          Atm(mytile)%flagstruct%c2l_ord, Atm(mytile)%bd)
+!!$     ! recreating A winds from D winds using cubed_to_latlon to be consistent with energy diagnostics.
+!!$     call cubed_to_latlon(Atm(mytile)%u,Atm(mytile)%v,Atm(mytile)%ua,Atm(mytile)%va,Atm(mytile)%gridstruct, &
+!!$          npx,npy,nlev,1,Atm(mytile)%gridstruct%grid_type,Atm(mytile)%domain,Atm(mytile)%gridstruct%nested, &
+!!$          Atm(mytile)%flagstruct%c2l_ord, Atm(mytile)%bd)
 
      ! Put the error handling back the way it was
      call pio_seterrorhandling(fh_ini, err_handling)

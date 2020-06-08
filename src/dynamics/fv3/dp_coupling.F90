@@ -29,10 +29,6 @@ use shr_kind_mod,      only: r8=>shr_kind_r8, i8 => shr_kind_i8
 use spmd_dyn,          only: local_dp_map, block_buf_nrecs, chunk_buf_nrecs
 use spmd_utils,        only: mpicom, iam, npes,masterproc
 
-#if ( defined CALC_MASS )
-use phys_gmean,        only: gmean_mass
-#endif
-
 implicit none
 private
 public :: d_p_coupling, p_d_coupling
@@ -109,10 +105,6 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
   allocate(Q_tmp    ((ie-is+1)*(je-js+1),pver,pcnst, 1))
 
   ps_tmp=0._r8;phis_tmp=0._r8;T_tmp=0._r8;u_tmp=0._r8;v_tmp=0._r8;omega_tmp=0._r8;pdel_tmp=0._r8;Q_tmp=0._r8
-
-#if ( defined CALC_MASS )
-  call fv3_tracer_diags(atm)
-#endif
 
   n = 1
   do j = js, je
@@ -248,10 +240,6 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
   call derived_phys_dry(phys_state, phys_tend, pbuf2d)
   call t_stopf('derived_phys_dry')
 
-#if ( defined CALC_MASS )
-  call gmean_mass ('Phys Tracers output from d_p_coupling', phys_state)
-#endif
-
 end subroutine d_p_coupling
 
 !=======================================================================
@@ -315,9 +303,6 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
 
   !-----------------------------------------------------------------------
 
-#if ( defined CALC_MASS )
-  call gmean_mass ('Phys Tracers input at p_d_coupling', phys_state)
-#endif  
   Atm=>dyn_in%atm
 
   is = Atm(mytile)%bd%is
@@ -328,7 +313,6 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
   ied = Atm(mytile)%bd%ied
   jsd = Atm(mytile)%bd%jsd
   jed = Atm(mytile)%bd%jed
-
 
   call set_domain ( Atm(mytile)%domain )
 
@@ -341,10 +325,12 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
   allocate(U_tmp((ie-is+1)*(je-js+1),pver,1))
   allocate(V_tmp((ie-is+1)*(je-js+1),pver,1))
   allocate(Q_tmp((ie-is+1)*(je-js+1),pver,pcnst,1))
+  allocate(u_dt(isd:ied,jsd:jed,nlev))
+  allocate(v_dt(isd:ied,jsd:jed,nlev))
+  allocate(t_dt(is:ie,js:je,nlev))
+  allocate(t_tendadj(is:ie,js:je,nlev))
+
   Atm=>dyn_in%atm
-
-  delpdry=0._r8;t_dt_tmp=0._r8;u_dt_tmp=0._r8;v_dt_tmp=0._r8;pdel_tmp=0._r8;pdeldry_tmp=0._r8;Q_tmp=0._r8
-
 
   if (local_dp_map) then
 !$omp parallel do private (lchnk, ncols, pgcols, icol, idmb1, idmb2, idmb3, ib, ioff, ilyr, m)
@@ -442,12 +428,6 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
 
   end if
 
-  allocate(u_dt(isd:ied,jsd:jed,nlev))
-  allocate(v_dt(isd:ied,jsd:jed,nlev))
-  allocate(t_dt(is:ie,js:je,nlev))
-  allocate(t_tendadj(is:ie,js:je,nlev))
-  u_dt=0._r8;v_dt=0._r8;t_dt=0._r8
-
   dt = get_step_size()
 
   idim=ie-is+1
@@ -503,14 +483,6 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
         end do
      end do
   end do
-   
-   deallocate(t_dt_tmp)
-   deallocate(u_dt_tmp)
-   deallocate(v_dt_tmp)
-   deallocate(pdel_tmp)
-   deallocate(pdeldry_tmp)
-   deallocate(delpdry)
-   
    
    ! update dynamics temperature from physics tendency
    ! if using fv3_lcv_moist adjust temperature tendency to conserve energy across phys/dynamics
@@ -609,16 +581,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
      enddo
   enddo
 
-
-  deallocate(u_dt)
-  deallocate(v_dt)
-  deallocate(t_dt)
-  deallocate(U_tmp)
-  deallocate(V_tmp)
-  deallocate(Q_tmp)
-  deallocate(t_tendadj)
-
-
+  ! update halo regions
   call mpp_update_domains( Atm(mytile)%delp, Atm(mytile)%domain )
   call mpp_update_domains( Atm(mytile)%ps, Atm(mytile)%domain )
   call mpp_update_domains( Atm(mytile)%phis, Atm(mytile)%domain )
@@ -627,9 +590,20 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
   call mpp_update_domains( atm(mytile)%pt,   Atm(mytile)%domain )
   call mpp_update_domains( atm(mytile)%q,    Atm(mytile)%domain )
 
-#if ( defined CALC_MASS )
-  call fv3_tracer_diags(atm)
-#endif
+  deallocate(delpdry)
+  deallocate(t_dt_tmp)
+  deallocate(u_dt_tmp)
+  deallocate(v_dt_tmp)
+  deallocate(pdel_tmp)
+  deallocate(pdeldry_tmp)
+  deallocate(U_tmp)
+  deallocate(V_tmp)
+  deallocate(Q_tmp)
+  deallocate(u_dt)
+  deallocate(v_dt)
+  deallocate(t_dt)
+  deallocate(t_tendadj)
+
 end subroutine p_d_coupling
 
 !=======================================================================
@@ -767,18 +741,8 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
      ! Compute initial dry static energy, include surface geopotential
      do k = 1, pver
         do i = 1, ncol
-#if FIX_TOTE
-           ! general formula:  E = CV_air T + phis + gravit*zi )
-           ! hydrostatic case: integrate zi term by parts, use CP=CV+R to get:
-           ! E = CP_air T + phis   (Holton Section 8.3)
-           ! to use this, update geopotential.F90, and other not-yet-found physics routines:
-           ! (check boundary layer code, others which have gravit and zi() or zm()
-           phys_state(lchnk)%s(i,k) = cpair*phys_state(lchnk)%t(i,k) &
-                + phys_state(lchnk)%phis(i)
-#else
            phys_state(lchnk)%s(i,k) = cpair*phys_state(lchnk)%t(i,k) &
                 + gravit*phys_state(lchnk)%zm(i,k) + phys_state(lchnk)%phis(i)
-#endif
         end do
      end do
      ! Ensure tracers are all positive
