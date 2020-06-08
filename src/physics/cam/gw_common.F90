@@ -621,10 +621,10 @@ subroutine gw_drag_prof(ncol, band, p, src_level, tend_level, dt, &
         ! divergences downward while conserving total stress.
 
         ! Protection on SMALL gwut to prevent floating point
-        ! issues.  Need to track this down (jtb, 5/12/2020)
+        ! issues.
         !--------------------------------------------------
         where( abs(gwut(:,k,l)) < 1.e-15_r8 )
-           gwut(:,k,l)=0._r8
+           gwut(:,k,l) = 0._r8
         endwhere   
 
         where (k <= tend_level)
