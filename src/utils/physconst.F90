@@ -1424,7 +1424,7 @@ contains
      integer, optional, dimension(:) :: thermodynamic_active_species_idx_dycore
      
      ! local vars
-     integer :: itrac
+     integer :: itrac,nq
      real(r8),  dimension(i0:i1,j0:j1,k0:k1)              :: sum_species, factor, Rd
      integer, dimension(thermodynamic_active_species_num) :: idx_local,idx
 
@@ -1562,6 +1562,7 @@ contains
      ! array of indicies for index of thermodynamic active species in dycore tracer array
      ! (if different from physics index)
      !
+     integer, optional, intent(in), dimension(:) :: thermodynamic_active_species_idx_dycore
      real(r8),optional,intent(out)   :: pint_out(i0:i1,j0:j1,1:k1+1)
      real(r8),optional,intent(out)   :: pmid_out(i0:i1,j0:j1,1:k1)
      
