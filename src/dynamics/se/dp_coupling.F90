@@ -748,6 +748,7 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
    use shr_vmath_mod, only: shr_vmath_log
    use gmean_mod,     only: gmean
    use qneg_module,   only: qneg3
+   use constituents,  only: cnst_get_ind
 
    ! arguments
    type(physics_state), intent(inout), dimension(begchunk:endchunk) :: phys_state
@@ -769,8 +770,28 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
 
    integer :: m, i, k, ncol
 
+!--------------------------------------------
+!  Variables needed for WACCM-X
+!--------------------------------------------
+    integer  :: ixo, ixo2, ixh, ixh2, ixn  ! indices into state structure for O, O2, H, H2, and N
+    real(r8) :: mmrSum_O_O2_H                ! Sum of mass mixing ratios for O, O2, and H
+    real(r8), parameter :: mmrMin=1.e-20_r8  ! lower limit of o2, o, and h mixing ratios
+    real(r8), parameter :: N2mmrMin=1.e-6_r8 ! lower limit of o2, o, and h mixing ratios
+
    type(physics_buffer_desc), pointer :: pbuf_chnk(:)
    !----------------------------------------------------------------------------
+
+!------------------------------------------------------
+!  Get indices to access O, O2, H, H2, and N species
+!------------------------------------------------------
+    if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
+      call cnst_get_ind('O', ixo)
+      call cnst_get_ind('O2', ixo2)
+      call cnst_get_ind('H', ixh)
+      call cnst_get_ind('H2', ixh2)
+      call cnst_get_ind('N', ixn)
+    endif
+
 
    ! Evaluate derived quantities
 
@@ -863,6 +884,36 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
             end do
          end if
       end do
+!-----------------------------------------------------------------------------------------------------------------
+! Ensure O2 + O + H (N2) mmr greater than one.  Check for unusually large H2 values and set to lower value
+!-----------------------------------------------------------------------------------------------------------------
+       if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
+          do i=1,ncol
+             do k=1,pver
+
+                if (phys_state(lchnk)%q(i,k,ixo) < mmrMin) phys_state(lchnk)%q(i,k,ixo) = mmrMin
+                if (phys_state(lchnk)%q(i,k,ixo2) < mmrMin) phys_state(lchnk)%q(i,k,ixo2) = mmrMin
+
+                mmrSum_O_O2_H = phys_state(lchnk)%q(i,k,ixo)+phys_state(lchnk)%q(i,k,ixo2)+phys_state(lchnk)%q(i,k,ixh)
+
+                if ((1._r8-mmrMin-mmrSum_O_O2_H) < 0._r8) then
+
+                   phys_state(lchnk)%q(i,k,ixo) = phys_state(lchnk)%q(i,k,ixo) * (1._r8 - N2mmrMin) / mmrSum_O_O2_H
+
+                   phys_state(lchnk)%q(i,k,ixo2) = phys_state(lchnk)%q(i,k,ixo2) * (1._r8 - N2mmrMin) / mmrSum_O_O2_H
+
+                   phys_state(lchnk)%q(i,k,ixh) = phys_state(lchnk)%q(i,k,ixh) * (1._r8 - N2mmrMin) / mmrSum_O_O2_H
+
+                endif
+
+                if(phys_state(lchnk)%q(i,k,ixh2) .gt. 6.e-5_r8) then
+                   phys_state(lchnk)%q(i,k,ixh2) = 6.e-5_r8
+                endif
+
+             end do
+          end do
+       endif
+
 
 !-----------------------------------------------------------------------------
 ! Call physconst_update to compute cpairv, rairv, mbarv, and cappav as constituent dependent variables
