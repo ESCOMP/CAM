@@ -172,4 +172,4 @@ clean_objs:
 	rm -f $(OBJS) *.mod *.o
 
 clean:
-	rm -f libfv3core $(OBJS) *.mod *.o
+	rm -f libfv3core.a $(OBJS) *.mod *.o

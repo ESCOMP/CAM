@@ -1793,7 +1793,7 @@ contains
        do i=1,ncol
           if (cam_in%ocnfrac(i) /= 1._r8) then
              labort = .true.
-             if (masterproc) write(iulog,*) 'oceacfrac(',i,')=',cam_in%ocnfrac(i)
+             if (masterproc) write(iulog,*) 'oceanfrac(',i,')=',cam_in%ocnfrac(i)
           end if
        end do
        if (labort) then

@@ -3546,8 +3546,8 @@ if ( $dyn eq 'fv3') {
     add_default($nl, 'fv3_lcv_moist');
     add_default($nl, 'fv3_lcp_moist');
 
-# If the -ntasks argument has been set, then use it to set the default
-# FV3 decomposition unless the user has already set it.
+    # If the user hasn't specified a decomposition via the fv3 namelist 
+    # parameter layout then use -ntasks to determine the decomposition.
     my $layout = $nl->get_value('fv3_layout');
     if (defined $opts{'ntasks'} and ! defined $layout ) {
 	$layout = fv3_decomp_set();
@@ -4396,34 +4396,24 @@ sub fv3_decomp_set{
             "  -ntask argument to build-namelist is wrong.";
     }
 
-    #   integer divisors of xpts/4
-    # 	@tiledivisors = grep { $xpts % $_ == 0 } 1 .. $xpts/4;
-    
-    
   NZ: for ($nx = 1; $nx <= int $xpts/4; ++$nx) {
       
       # test that $nx divides $xpts evenly
       if ($xpts%$nx == 0) {
-	  
 	  $ny = int $tasks/$nx/6;
-          print "nx=$nx ny=$ny xpts=$xpts ypts=$ypts\n";
 	  # test that $ny divides $ypts exactly
 	  # if so then get aspect ratio
 	  if ($ny != 0) {
-            print "ny != 0\n";
 	      if ($ypts%$ny == 0 and  $nx*$ny*6 == $tasks) {
-		  print "ypts%ny == 0 and nx*ny*6 == tasks\n";
 		  if ($nx == $ny) {
 		      $layoutx=$nx;
 		      $layouty=$ny;
 		      last NZ;
 		  }else{
-		      print "nx != ny old aspect=$aspect\n";
 		      if (max($nx,$ny) / min($nx,$ny) < $aspect) {
 			  $aspect=max($nx,$ny) / min($nx,$ny);
 			  $layoutx=$nx;
 			  $layouty=$ny;
-  		          print "current aspect less than old current aspect=$aspect setting layoutx=$nx layouty=$ny\n";
 		      }
 		  }
 	      }
@@ -4432,7 +4422,6 @@ sub fv3_decomp_set{
     }
     # die if algorithm failed
     if ($layoutx > $xpts/4 or $layouty > $ypts/4  or  $layoutx*$layouty*6 != $tasks) {
-	print "tasks=$tasks layoutx=$layoutx layouty=$layoutx\n" ;
         die "$ProgName - ERROR: fv3_decomp_set failed to find a decomposition.\n" .
             "  layout needs to be set by the user.";
     }
