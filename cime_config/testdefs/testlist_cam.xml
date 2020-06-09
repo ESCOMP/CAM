@@ -314,12 +314,12 @@
   </test>
   <test compset="F2000climo" grid="f09_f09_mg17" name="ERP_Ln9" testmods="cam/outfrq9s_wetdep">
     <machines>
-      <machine name="cheyenne" compiler="intel" category="wetdep"/>
+      <machine name="cheyenne" compiler="intel" category="camchem"/>
     </machines>
   </test>
   <test compset="F2000climo" grid="f09_f09_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s_wetdep">
     <machines>
-      <machine name="cheyenne" compiler="intel" category="wetdep"/>
+      <machine name="cheyenne" compiler="intel" category="camchem"/>
     </machines>
   </test>
   <test compset="QPC4" grid="f19_f19_mg17" name="ERP_Ln9" testmods="cam/outfrq9s">
@@ -406,7 +406,7 @@
       <machine name="cheyenne" compiler="intel" category="camchem"/>
     </machines>
   </test>
-  <test compset="FC2000climo" grid="f09_f09_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s">
+  <test compset="FC2000climo" grid="f09_f09_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s_wetdep">
     <machines>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
       <machine name="cheyenne" compiler="intel" category="prebeta"/>
@@ -414,6 +414,11 @@
     <options>
       <option name="wallclock">00:20:00</option>
     </options>
+  </test>
+  <test compset="FC2000climo" grid="f09_f09_mg17" name="ERP_Ln9" testmods="cam/outfrq9s_wetdep">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="camchem"/>
+    </machines>
   </test>
   <test compset="FC2000climo" grid="f09_f09_mg17" name="ERP_Ld3" testmods="cam/outfrq1d">
     <machines>

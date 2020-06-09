@@ -20,19 +20,21 @@ use spmd_utils,      only: masterproc
 use physconst,       only: gravit, rair
 use ppgrid,          only: pver, pcols, pverp
 use constituents,    only: pcnst, cnst_name
+use constituents,    only: cnst_species_class, cnst_spec_class_aerosol, cnst_spec_class_gas
 use phys_control,    only: phys_getopts
 
-use physics_types,   only: physics_state, physics_ptend, physics_ptend_init
-use physics_buffer,  only: pbuf_add_field, physics_buffer_desc, pbuf_get_index, pbuf_get_field
+use physics_types,   only: physics_state, physics_ptend
+use physics_buffer,  only: physics_buffer_desc, pbuf_get_index, pbuf_get_field
 
 use time_manager,    only: get_nstep
 use cam_history,     only: outfld, addfld, add_default, horiz_only
 use cam_logfile,     only: iulog
-use error_messages,  only: alloc_err	
 use cam_abortutils,  only: endrun
 
 use modal_aero_data, only: lmassptr_amode, nspec_amode, ntot_amode, numptr_amode
-use constituents,    only: cnst_species_class, cnst_spec_class_aerosol, cnst_spec_class_gas
+use modal_aero_data, only: lptr_so4_a_amode, lptr_dust_a_amode, lptr_nacl_a_amode, mode_size_order
+use modal_aero_data, only: lptr2_pom_a_amode, lptr2_soa_a_amode, lptr2_bc_a_amode, nsoa, npoa, nbc
+use modal_aero_data, only: lptr_msa_a_amode, lptr_nh4_a_amode, lptr_no3_a_amode
  
 implicit none
 private
@@ -111,6 +113,8 @@ integer :: cmfmc_sh_idx       = 0
 integer :: sh_e_ed_ratio_idx  = 0
 
 integer :: istat
+
+logical, parameter :: debug=.false.
 
 !=========================================================================================
 contains
@@ -334,7 +338,6 @@ subroutine ma_convproc_intr( state, ptend, pbuf, ztodt,             &
    integer  :: l, ll, lchnk
    integer  :: n, ncol
 
-   real(r8) :: dpdry(pcols,pver)
    real(r8) :: dqdt(pcols,pver,pcnst)
    real(r8) :: dt
    real(r8) :: qa(pcols,pver,pcnst), qb(pcols,pver,pcnst)
@@ -525,7 +528,7 @@ subroutine ma_convproc_dp_intr(                &
 
    real(r8) :: dpdry(pcols,pver)     ! layer delta-p-dry (mb)
    real(r8) :: fracice(pcols,pver)   ! Ice fraction of cloud droplets
-   real(r8) :: qaa(pcols,pver,pcnst), qbb(pcols,pver,pcnst)
+   real(r8) :: qaa(pcols,pver,pcnst)
    real(r8) :: xx_mfup_max(pcols), xx_wcldbase(pcols), xx_kcldbase(pcols)
 
    ! physics buffer fields 
@@ -655,7 +658,7 @@ subroutine ma_convproc_sh_intr(                 &
 
    integer :: i
    integer :: itmpveca(pcols)
-   integer :: k, kaa, kbb, kcc, kk
+   integer :: k, kaa, kbb, kk
    integer :: l, lchnk, lun
    integer :: maxg_minval
    integer :: ncol, nstep
@@ -663,8 +666,7 @@ subroutine ma_convproc_sh_intr(                 &
    real(r8) :: dpdry(pcols,pver)     ! layer delta-p-dry (mb)
    real(r8) :: fracice(pcols,pver)   ! Ice fraction of cloud droplets
    real(r8) :: qaa(pcols,pver,pcnst)
-   real(r8) :: tmpa, tmpb, tmpc, tmpd, tmpe, tmpf
-   real(r8) :: tmpveca(300), tmpvecb(300), tmpvecc(300)
+   real(r8) :: tmpa, tmpb
    real(r8) :: xx_mfup_max(pcols), xx_wcldbase(pcols), xx_kcldbase(pcols)
 
    ! variables that mimic the zm-deep counterparts
@@ -899,16 +901,10 @@ subroutine ma_convproc_tend(                                           &
 ! 
 !-----------------------------------------------------------------------
 
-   use shr_kind_mod, only: r8=>shr_kind_r8
-   use ppgrid, only: pcols, pver
-   use physconst, only: gravit, rair, rhoh2o
-   use constituents, only: pcnst, cnst_name
-
    use modal_aero_data, only:  cnst_name_cw, &
       lmassptr_amode, lmassptrcw_amode, &
       ntot_amode, ntot_amode, &
       nspec_amode, numptr_amode, numptrcw_amode
-!  use units, only: getunit
 
    implicit none
 
@@ -1081,7 +1077,7 @@ subroutine ma_convproc_tend(                                           &
    real(r8) relerr_cut           ! relative error criterion for diagnostics
    real(r8) rhoair_i(pver)       ! air density at current i
    real(r8) small                ! a small number
-   real(r8) tmpa, tmpb, tmpc     ! work variables
+   real(r8) tmpa, tmpb           ! work variables
    real(r8) tmpf                 ! work variables
    real(r8) tmpveca(pcnst_extd)  ! work variables
    real(r8) tmpmata(pcnst_extd,3) ! work variables
@@ -1092,6 +1088,9 @@ subroutine ma_convproc_tend(                                           &
 
    character(len=16) :: cnst_name_extd(pcnst_extd)
 
+   !Fractional area of ensemble mean updrafts in ZM scheme set to 0.01
+   !Chosen to reproduce vertical vecocities in GATEIII GIGALES (Khairoutdinov etal 2009, JAMES)
+   real(r8), parameter :: zm_areafrac = 0.01_r8 
 !-----------------------------------------------------------------------
 !
 
@@ -1122,6 +1121,8 @@ subroutine ma_convproc_tend(                                           &
    xx_mfup_max(:) = 0.0_r8
    xx_wcldbase(:) = 0.0_r8
    xx_kcldbase(:) = 0.0_r8
+
+   wup(:) = 0.0_r8
 
 ! set doconvproc_extd (extended array) values
 ! inititialize aqfrac to 1.0 for activated aerosol species, 0.0 otherwise
@@ -1414,20 +1415,10 @@ k_loop_main_bb: &
 ! shallow - wup = (mup in kg/m2/s) / [rhoair * (updraft area)]
                wup(k) = (mu_i(kp1) + mu_i(k))*0.5_r8*hund_ovr_g &
                       / (rhoair_i(k) * (cldfrac_i(k)*0.5_r8))
-               wup(k) = max( 0.1_r8, wup(k) )
             else
-! deep - the above method overestimates updraft area and underestimate wup
-!    the following is based lemone and zipser (j atmos sci, 1980, p. 2455)
-!    peak updraft (= 4 m/s) is sort of a "grand median" from their GATE data
-!       and Thunderstorm Project data which they also show
-!    the vertical profile shape is a crude fit to their median updraft profile
-               zkm = zmagl(k)*1.0e-3_r8
-               if (zkm .ge. 1.0_r8) then
-                  wup(k) = 4.0_r8*((zkm/4.0_r8)**0.21_r8)
-               else
-                  wup(k) = 2.9897_r8*(zkm**0.5_r8)
-               end if
-               wup(k) = max( 0.1_r8, min(convproc_wup_max, wup(k) ) )
+! deep - as in shallow, but assumed constant updraft_area with height zm_areafrac
+               wup(k) = (mu_i(kp1) + mu_i(k))*0.5_r8*hund_ovr_g &
+                      / (rhoair_i(k) * zm_areafrac)
             end if
 
 ! compute lagrangian transport time (dt_u) and updraft fractional area (fa_u)
@@ -2137,9 +2128,6 @@ end subroutine ma_convproc_tend
 !
 !-----------------------------------------------------------------------
 
-   use ppgrid, only: pcols, pver
-   use constituents, only: pcnst
-
    use modal_aero_data, only:  &
       lmassptrcw_amode, nspec_amode, numptrcw_amode
 
@@ -2183,7 +2171,8 @@ end subroutine ma_convproc_tend
    real(r8) :: tmpa, tmpb, tmpc, tmpd
    real(r8) :: tmpdp                 ! delta-pressure (mb)
    real(r8) :: wd_flux(pcnst_extd)   ! tracer wet deposition flux at base of current layer [(kg/kg/s)*mb]
-   integer :: fm, cm, n1, n2
+   integer :: i
+   character(len=4) :: spcstr
 !-----------------------------------------------------------------------
 
 
@@ -2223,37 +2212,35 @@ end subroutine ma_convproc_tend
          end if
       end do
  
-      ! Do resuspension of aerosols from rain to coarse mode (large particle) rather
+      ! Do resuspension of aerosol species from rain to coarse mode (large particle) rather
       ! than to individual modes.
       if (convproc_do_evaprain_atonce) then
-         if (ntot_amode<=4) then
-            do m = 2,ntot_amode
-               if ( m==2 ) then
-                  fm = 2 ! finer mode (aitken)
-                  cm = 1 ! coarser mode (accum)
-               else if ( m==3 ) then
-                  fm = 1 ! accum mode
-                  cm = 3 ! coarse mode
-               else
-                  fm = m-1  ! finer mode
-                  cm = m    ! coarser mode
-               end if
 
-               do l = 1,nspec_amode(m)
-                  n1 = lmassptr_amode(l,fm) ! smaller mode
-                  n2 = lmassptr_amode(l,cm) ! larger mode
-                  if (n1>0 .and. n2>0) then
-                     ! accumulate to the larger mode
-                     dcondt_prevap(n2,k) = dcondt_prevap(n2,k) + dcondt_prevap(n1,k)
-                     dcondt_prevap(n1,k) = 0._r8
-                  end if
-               end do
-            end do
-         else
-            call endrun('ma_precpevap_convproc: not able to do resuspension of aerosols from rain to coarse mode')
-         endif
+         call accumulate_to_larger_mode( 'SO4', lptr_so4_a_amode, dcondt_prevap(:,k) )
+         call accumulate_to_larger_mode( 'DUST',lptr_dust_a_amode,dcondt_prevap(:,k) )
+         call accumulate_to_larger_mode( 'NACL',lptr_nacl_a_amode,dcondt_prevap(:,k) )
+         call accumulate_to_larger_mode( 'MSA', lptr_msa_a_amode, dcondt_prevap(:,k) )
+         call accumulate_to_larger_mode( 'NH4', lptr_nh4_a_amode, dcondt_prevap(:,k) )
+         call accumulate_to_larger_mode( 'NO3', lptr_no3_a_amode, dcondt_prevap(:,k) )
+
+         spcstr = '    '
+         do i = 1,nsoa
+            if (nsoa>1) write(spcstr,'(i4)') i
+            call accumulate_to_larger_mode( 'SOA'//adjustl(spcstr), lptr2_soa_a_amode(:,i), dcondt_prevap(:,k) )
+         enddo
+         spcstr = '    '
+         do i = 1,npoa
+            if (npoa>1) write(spcstr,'(i4)') i
+            call accumulate_to_larger_mode( 'POM'//adjustl(spcstr), lptr2_pom_a_amode(:,i), dcondt_prevap(:,k) )
+         enddo            
+         spcstr = '    '
+         do i = 1,nbc
+            if (nbc>1) write(spcstr,'(i4)') i
+            call accumulate_to_larger_mode( 'BC'//adjustl(spcstr), lptr2_bc_a_amode(:,i), dcondt_prevap(:,k) )
+         enddo            
+
       end if
-
+      
       pr_flux = max( 0.0_r8, pr_flux-del_pr_flux_evap )
 
       if (idiag_prevap > 0) then
@@ -2277,8 +2264,37 @@ end subroutine ma_convproc_tend
    return
    end subroutine ma_precpevap_convproc
 
+!=========================================================================================
+   subroutine accumulate_to_larger_mode( spc_name, lptr, prevap )
 
+     character(len=*), intent(in) :: spc_name
+     integer,  intent(in) :: lptr(:)
+     real(r8), intent(inout) :: prevap(:)
 
+     integer :: m,n, nl,ns
+
+     ! find constituent index of the largest mode for the species 
+     loop1: do m = 1,ntot_amode-1
+        nl = lptr(mode_size_order(m))
+        if (nl>0) exit loop1
+     end do loop1
+
+     if (.not. nl>0) return
+
+     ! accumulate the smaller modes into the largest mode
+     do n = m+1,ntot_amode
+        ns = lptr(mode_size_order(n))
+        if (ns>0) then
+           prevap(nl) = prevap(nl) + prevap(ns)
+           prevap(ns) = 0._r8
+           if (masterproc .and. debug) then
+              write(iulog,'(a,i3,a,i3)') trim(spc_name)//' mode number accumulate ',ns,'->',nl
+           endif
+        endif
+     end do
+
+   end subroutine accumulate_to_larger_mode
+       
 !=========================================================================================
    subroutine ma_activate_convproc(             &
               conu,       dconudt,   conent,    &
@@ -2331,14 +2347,12 @@ end subroutine ma_convproc_tend
 !
 !-----------------------------------------------------------------------
 
-   use ppgrid, only: pver
-   use constituents, only: pcnst, cnst_name
    use ndrop, only: activate_modal
 
    use modal_aero_data, only:  lmassptr_amode, lmassptrcw_amode, &
       ntot_amode, &
       nspec_amode, ntot_amode, numptr_amode, numptrcw_amode, &
-      sigmag_amode, specdens_amode, spechygro, &
+      specdens_amode, spechygro, &
       voltonumblo_amode, voltonumbhi_amode
 
    implicit none
@@ -2374,7 +2388,7 @@ end subroutine ma_convproc_tend
 
 !-----------------------------------------------------------------------
 ! local variables
-   integer  :: l, ll, la, lc, n
+   integer  :: ll, la, lc, n
 
    real(r8) :: delact                ! working variable
    real(r8) :: dt_u_inv              ! 1.0/dt_u
@@ -2489,31 +2503,9 @@ end subroutine ma_convproc_tend
    wminf = wbar
    wmaxf = wbar
 
-!  -ubroutine activate_modal(                            &
-!        wbar, sigw, wdiab, wminf, wmaxf, tair, rhoair,  &
-!        na, pmode, nmode, volume, sigman, hygro,        &
-!        fn, fm, fluxn, fluxm, flux_fullact              )
-!     real(r8) wbar          ! grid cell mean vertical velocity (m/s)
-!     real(r8) sigw          ! subgrid standard deviation of vertical vel (m/s)
-!     real(r8) wdiab         ! diabatic vertical velocity (0 if adiabatic)
-!     real(r8) wminf         ! minimum updraft velocity for integration (m/s)
-!     real(r8) wmaxf         ! maximum updraft velocity for integration (m/s)
-!     real(r8) tair          ! air temperature (K)
-!     real(r8) rhoair        ! air density (kg/m3)
-!     real(r8) na(pmode)     ! aerosol number concentration (/m3)
-!     integer pmode          ! dimension of modes
-!     integer nmode          ! number of aerosol modes
-!     real(r8) volume(pmode) ! aerosol volume concentration (m3/m3)
-!     real(r8) sigman(pmode) ! geometric standard deviation of aerosol size distribution
-!     real(r8) hygro(pmode)  ! hygroscopicity of aerosol mode
-   !call activate_modal(                                                    & !BSINGH- in CAM5_1_31, the arg. list of activate_modal has reduced
-   !      wbar, sigw, wdiab, wminf, wmaxf, tair, rhoair,                    & 
-   !      naerosol, ntot_amode, ntot_amode, vaerosol, sigmag_amode, hygro,  &
-   !      fn, fm, fluxn, fluxm, flux_fullact                                )
-
    call activate_modal(                                                    &
          wbar, sigw, wdiab, wminf, wmaxf, tair, rhoair,                    &
-         naerosol, ntot_amode, vaerosol, hygro,                            &!BSINGH- A repeated 'ntot_amode' and 'sigmag_amode' is deleted from the arg. list
+         naerosol, ntot_amode, vaerosol, hygro,                            &
          fn, fm, fluxn, fluxm, flux_fullact                                )
    
 
@@ -2615,14 +2607,12 @@ end subroutine ma_convproc_tend
 !
 !-----------------------------------------------------------------------
 
-   use ppgrid, only: pver
-   use constituents, only: pcnst, cnst_name
    use ndrop, only: activate_modal
 
    use modal_aero_data, only:  lmassptr_amode, lmassptrcw_amode, &
       ntot_amode, &
       nspec_amode, ntot_amode, numptr_amode, numptrcw_amode, &
-      sigmag_amode, specdens_amode, spechygro, &
+      specdens_amode, spechygro, &
       voltonumblo_amode, voltonumbhi_amode
 
    use rad_constituents,only: rad_cnst_get_info
@@ -2659,7 +2649,7 @@ end subroutine ma_convproc_tend
 
 !-----------------------------------------------------------------------
 ! local variables
-   integer  :: l, ll, la, lc, n
+   integer  :: ll, la, lc, n
 
    real(r8) :: delact                ! working variable
    real(r8) :: dt_u_inv              ! 1.0/dt_u
@@ -2789,34 +2779,11 @@ end subroutine ma_convproc_tend
    wminf = wbar
    wmaxf = wbar
 
-!  -ubroutine activate_modal(                                &
-!        wbar, sigw, wdiab, wminf, wmaxf, tair, rhoair,      &
-!        na, pmode, nmode, volume, sigman, hygro,            &
-!        fn, fm, fluxn, fluxm, flux_fullact, smax_prescribed )
-!     real(r8) wbar          ! grid cell mean vertical velocity (m/s)
-!     real(r8) sigw          ! subgrid standard deviation of vertical vel (m/s)
-!     real(r8) wdiab         ! diabatic vertical velocity (0 if adiabatic)
-!     real(r8) wminf         ! minimum updraft velocity for integration (m/s)
-!     real(r8) wmaxf         ! maximum updraft velocity for integration (m/s)
-!     real(r8) tair          ! air temperature (K)
-!     real(r8) rhoair        ! air density (kg/m3)
-!     real(r8) na(pmode)     ! aerosol number concentration (/m3)
-!     integer pmode          ! dimension of modes
-!     integer nmode          ! number of aerosol modes
-!     real(r8) volume(pmode) ! aerosol volume concentration (m3/m3)
-!     real(r8) sigman(pmode) ! geometric standard deviation of aerosol size distribution
-!     real(r8) hygro(pmode)  ! hygroscopicity of aerosol mode
-!     real(r8), optional :: smax_prescribed  ! prescribed max. supersaturation for secondary activation
    if (k == kactfirst) then
-! at cloud base - do primary activation
-      !call activate_modal(                                                 &!BSINGH- in CAM5_1_31, the arg. list of activate_modal has reduced
-      !   wbar, sigw, wdiab, wminf, wmaxf, tair, rhoair,                    &
-      !   naerosol, ntot_amode, ntot_amode, vaerosol, sigmag_amode, hygro,  &
-      !   fn, fm, fluxn, fluxm, flux_fullact                                )
 
       call activate_modal(                                                 &
          wbar, sigw, wdiab, wminf, wmaxf, tair, rhoair,                    &
-         naerosol, ntot_amode, vaerosol, hygro,                            &!BSINGH- A repeated 'ntot_amode' and 'sigmag_amode' is deleted from the arg. list
+         naerosol, ntot_amode, vaerosol, hygro,                            &
          fn, fm, fluxn, fluxm, flux_fullact                                )
 
 
@@ -2824,13 +2791,9 @@ end subroutine ma_convproc_tend
 ! above cloud base - do secondary activation with prescribed supersat 
 ! that is constant with height
       smax_prescribed = method2_activate_smaxmax
-      !call activate_modal(                                                 &!BSINGH- in CAM5_1_31, the arg. list of activate_modal has reduced
-      !   wbar, sigw, wdiab, wminf, wmaxf, tair, rhoair,                    &
-      !   naerosol, ntot_amode, ntot_amode, vaerosol, sigmag_amode, hygro,  &
-      !   fn, fm, fluxn, fluxm, flux_fullact, smax_prescribed               )
       call activate_modal(                                                 &
          wbar, sigw, wdiab, wminf, wmaxf, tair, rhoair,                    &
-         naerosol, ntot_amode, vaerosol, hygro,                            &!BSINGH- A repeated 'ntot_amode' and 'sigmag_amode' is deleted from the arg. list
+         naerosol, ntot_amode, vaerosol, hygro,                            &
          fn, fm, fluxn, fluxm, flux_fullact, smax_prescribed               )
    end if
 
@@ -2920,9 +2883,6 @@ end subroutine ma_convproc_tend
 ! Author: R. Easter
 !
 !-----------------------------------------------------------------------
-
-   use ppgrid, only: pver
-   use constituents, only: pcnst
 
    use modal_aero_data, only:  lmassptr_amode, lmassptrcw_amode, &
       nspec_amode, ntot_amode, numptr_amode, numptrcw_amode
