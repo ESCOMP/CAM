@@ -1791,10 +1791,9 @@ contains
     if (aqua_planet) then
        labort = .false.
        do i=1,ncol
-!jt          if (cam_in%ocnfrac(i) /= 1._r8) labort = .true.
           if (cam_in%ocnfrac(i) /= 1._r8) then
              labort = .true.
-             write(6,*) 'oceacfrac(',i,')=',cam_in%ocnfrac(i)
+             if (masterproc) write(iulog,*) 'oceacfrac(',i,')=',cam_in%ocnfrac(i)
           end if
        end do
        if (labort) then

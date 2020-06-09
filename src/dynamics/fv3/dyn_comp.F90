@@ -319,15 +319,6 @@ subroutine dyn_readnl(nlfilename)
 
   if (masterproc) then
 
-     ! write the file diag_table for the fv3 diag_manager
-     unito = getunit()
-     ! overwrite file if it exists.
-     open( unito, file='diag_table', status='replace' )
-     write(unito,'(a)')'20161003.00Z.Cxx.64bit.non-mono'
-     write(unito,'(a)')'2016 10 03 00 0 0'
-     close(unito)
-     call freeunit(unito)
-     
      write(iulog,*) 'Creating fv3 input.nml file from atm_in fv3_xxx namelist parameters'
      ! Read the namelist (main_nml)
      ! open the file input.nml
@@ -401,7 +392,7 @@ subroutine dyn_init(dyn_in, dyn_out)
   use cam_history,     only: register_vector_field
   use cam_pio_utils,   only: clean_iodesc_list
   use dyn_grid,        only: Atm,mygindex,mylindex
-  use fv_diagnostics_mod, only: fv_diag_init, fv_time
+  use fv_diagnostics_mod, only: fv_diag_init
   use fv_mp_mod,       only: fill_corners, YDir, switch_current_Atm
   use infnan,          only: inf, assignment(=)
   use physconst,       only: cpwv, cpliq, cpice
@@ -413,20 +404,14 @@ subroutine dyn_init(dyn_in, dyn_out)
    type (dyn_export_t),     intent(out) :: dyn_out
                        
    character(len=*), parameter :: sub='dyn_init'
-   character(len = 256)        :: err_msg
    real(r8)                    :: alpha
 
-   real(r8), pointer, dimension(:,:)            :: fC,f0
+
+   real(r8), pointer, dimension(:,:)            :: fC,f0   ! Coriolis parameters
    real(r8), pointer, dimension(:,:,:)          :: grid,agrid,delp
    logical, pointer :: cubed_sphere
    type(domain2d), pointer     :: domain
    integer                     :: i,j,m
-   integer :: date(6)
-
-   integer :: yy             ! CAM current year
-   integer :: mm             ! CAM current month
-   integer :: dd             ! CAM current day
-   integer :: tod             ! CAM current time of day (sec)
 
    character(len=*), parameter :: subname = 'dyn_init'
 
@@ -471,7 +456,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    real, parameter:: cv_air =  cp_air - rdgas !< = rdgas * (7/2-1) = 2.5*rdgas=717.68
    integer        :: unito
    integer, parameter  :: ndiag = 5
-   integer             :: ncnst, pnats, dnats, num_family, nt_prog
+   integer             :: ncnst, pnats, num_family, nt_prog
    !-----------------------------------------------------------------------
 
    ! Setup the condensate loading arrays and fv3/cam tracer mapping and
@@ -640,6 +625,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    cubed_sphere => atm(mytile)%gridstruct%cubed_sphere
    delp =>  Atm(mytile)%delp
 
+   ! initialize Coriolis parameters which are used in sw_core.
    f0(:,:) = inf
    fC(:,:) = inf
    alpha = 0._r8
@@ -737,7 +723,7 @@ subroutine dyn_run(dyn_state)
 
 
   integer :: psc,idim
-  integer :: w_diff, nt_dyn,i
+  integer :: w_diff, nt_dyn
   type(fv_atmos_type), pointer         :: Atm(:)  
   integer :: is,isc,isd,ie,iec,ied,js,jsc,jsd,je,jec,jed
   
@@ -916,7 +902,7 @@ end subroutine dyn_final
 subroutine read_inidat(dyn_in)
   use inic_analytic,         only: analytic_ic_active, analytic_ic_set_ic
   use dyn_tests_utils,       only: vc_moist_pressure,vc_dry_pressure
-  use pmgrid,                only: plev
+  use dimensions_mod,        only: nlev
   use constituents,          only: pcnst
   use pio,                   only: file_desc_t, pio_seterrorhandling, pio_bcast_error
   use ppgrid,                only: pver
@@ -954,9 +940,9 @@ subroutine read_inidat(dyn_in)
   integer,  allocatable            :: m_ind(:)
   integer                          :: vcoord
   integer                          :: pio_errtype
-  real(r8), allocatable            :: dbuf2(:,:)         ! (pcol,nblk=1)
-  real(r8), allocatable            :: dbuf3(:,:,:)       ! (pcol,plev,nblk=1)
-  real(r8), allocatable            :: dbuf4(:,:,:,:)       ! (pcol,plev,nblk=1,pcnst)
+  real(r8), allocatable            :: dbuf2(:,:)         
+  real(r8), allocatable            :: dbuf3(:,:,:)       
+  real(r8), allocatable            :: dbuf4(:,:,:,:)     
   real(r8), allocatable            :: latvals_rad(:)
   real(r8), allocatable            :: lonvals_rad(:)
   integer                          :: rndm_seed_sz
@@ -1032,8 +1018,8 @@ subroutine read_inidat(dyn_in)
      inic_wet = .true.
      ! First, initialize all the variables, then assign
      allocate(dbuf2(blksize,1))
-     allocate(dbuf3(blksize,plev,1))
-     allocate(dbuf4(blksize,plev, 1,pcnst))
+     allocate(dbuf3(blksize,nlev,1))
+     allocate(dbuf4(blksize,nlev, 1,pcnst))
      dbuf2 = 0.0_r8
      dbuf3 = 0.0_r8
      dbuf4 = 0.0_r8
@@ -1118,7 +1104,7 @@ subroutine read_inidat(dyn_in)
   else
      ! Read ICs from file. 
 
-     allocate(dbuf3(blksize,plev,1))
+     allocate(dbuf3(blksize,nlev,1))
      allocate(var2d(is:ie,js:je))
      allocate(var3d(is:ie,js:je,nlev))
 
@@ -1162,7 +1148,7 @@ subroutine read_inidat(dyn_in)
               indx=mylindex(i,j)
               rndm_seed = glob_ind(indx)
               call random_seed(put=rndm_seed)
-              do k=1,plev
+              do k=1,nlev
                  call random_number(pertval)
                  pertval = 2.0_r8*pertlim*(0.5_r8 - pertval)
                  atm(mytile)%pt(i,j,k) = atm(mytile)%pt(i,j,k)*(1.0_r8 + pertval)
@@ -1218,7 +1204,7 @@ subroutine read_inidat(dyn_in)
            if (masterproc) write(iulog,*)'Initializing ',trim(cnst_name(m_cnst)),'fv3 constituent number ',&
                 m_cnst_ffsl,' to default'
            call cnst_init_default(m_cnst, latvals_rad, lonvals_rad, dbuf3)
-           do k=1, plev
+           do k=1, nlev
               indx = 1
               do j = js, je
                  do i = is, ie
@@ -1233,11 +1219,6 @@ subroutine read_inidat(dyn_in)
 
      call a2d3djt(atm(mytile)%ua, atm(mytile)%va, atm(mytile)%u, atm(mytile)%v, is,  ie,  js,  je, &
                   isd, ied, jsd, jed, npx,npy, nlev, atm(mytile)%gridstruct, atm(mytile)%domain)
-
-!!$     ! recreating A winds from D winds using cubed_to_latlon to be consistent with energy diagnostics.
-!!$     call cubed_to_latlon(Atm(mytile)%u,Atm(mytile)%v,Atm(mytile)%ua,Atm(mytile)%va,Atm(mytile)%gridstruct, &
-!!$          npx,npy,nlev,1,Atm(mytile)%gridstruct%grid_type,Atm(mytile)%domain,Atm(mytile)%gridstruct%nested, &
-!!$          Atm(mytile)%flagstruct%c2l_ord, Atm(mytile)%bd)
 
      ! Put the error handling back the way it was
      call pio_seterrorhandling(fh_ini, err_handling)
@@ -1446,7 +1427,7 @@ end subroutine read_inidat
     use physconst,              only: gravit, cpair, rearth,omega
     use cam_history,            only: outfld, hist_fld_active
     use constituents,           only: cnst_get_ind
-    use pmgrid,                 only: plev
+    use dimensions_mod,         only: nlev
     use fv_mp_mod,              only: ng
     !------------------------------Arguments--------------------------------
     
@@ -1480,7 +1461,7 @@ end subroutine read_inidat
     real(kind=r8) :: se_glob, ke_glob, wv_glob, wl_glob, wi_glob, &
                      wr_glob, ws_glob, wg_glob, tt_glob, mr_glob, mo_glob
 
-    integer :: i,j,k,nq,n,idim,m_cnst_ffsl
+    integer :: i,j,k,nq,idim,m_cnst_ffsl
     integer :: ixcldice, ixcldliq, ixtt,ixcldliq_ffsl,ixcldice_ffsl ! CLDICE, CLDLIQ and test tracer indices
     integer :: ixrain, ixsnow, ixgraupel,ixrain_ffsl, ixsnow_ffsl, ixgraupel_ffsl
     character(len=16) :: name_out1,name_out2,name_out3,name_out4, &
@@ -1571,7 +1552,7 @@ end subroutine read_inidat
        wg    = 0.0_r8
        tt    = 0.0_r8
 
-       do k = 1, plev
+       do k = 1, nlev
           do j=js,je
              do i = is, ie
                 !
@@ -1651,7 +1632,7 @@ end subroutine read_inidat
        
        if (ixcldliq > 1) then
           ixcldliq_ffsl = qsize_tracer_idx_cam2dyn(ixcldliq)
-          do k = 1, plev
+          do k = 1, nlev
              do j = js, je
                 do i = is, ie
                    wl_tmp   = Atm(mytile)%q(i,j,k,ixcldliq_ffsl)*Atm(mytile)%delp(i,j,k)/gravit
@@ -1663,7 +1644,7 @@ end subroutine read_inidat
        
        if (ixcldice > 1) then
           ixcldice_ffsl = qsize_tracer_idx_cam2dyn(ixcldice)
-          do k = 1, plev
+          do k = 1, nlev
              do j = js, je
                 do i = is, ie
                    wi_tmp   = Atm(mytile)%q(i,j,k,ixcldice_ffsl)*Atm(mytile)%delp(i,j,k)/gravit
@@ -1675,7 +1656,7 @@ end subroutine read_inidat
 
        if (ixrain > 1) then
           ixrain_ffsl = qsize_tracer_idx_cam2dyn(ixrain)
-          do k = 1, plev
+          do k = 1, nlev
              do j = js, je
                 do i = is, ie
                    wr_tmp   = Atm(mytile)%q(i,j,k,ixrain_ffsl)*Atm(mytile)%delp(i,j,k)/gravit
@@ -1687,7 +1668,7 @@ end subroutine read_inidat
        
        if (ixsnow > 1) then
           ixsnow_ffsl = qsize_tracer_idx_cam2dyn(ixsnow)
-          do k = 1, plev
+          do k = 1, nlev
              do j = js, je
                 do i = is, ie
                    ws_tmp   = Atm(mytile)%q(i,j,k,ixsnow_ffsl)*Atm(mytile)%delp(i,j,k)/gravit
@@ -1699,7 +1680,7 @@ end subroutine read_inidat
 
        if (ixgraupel > 1) then
           ixgraupel_ffsl = qsize_tracer_idx_cam2dyn(ixgraupel)
-          do k = 1, plev
+          do k = 1, nlev
              do j = js, je
                 do i = is, ie
                    wg_tmp   = Atm(mytile)%q(i,j,k,ixgraupel_ffsl)*Atm(mytile)%delp(i,j,k)/gravit
@@ -1711,7 +1692,7 @@ end subroutine read_inidat
 
        
        if (ixtt > 1) then
-          do k = 1, plev
+          do k = 1, nlev
              do j = js, je
                 do i = is, ie
                    tt_tmp   = Atm(mytile)%q(i,j,k,ixtt)*Atm(mytile)%delp(i,j,k)/gravit
@@ -1799,7 +1780,7 @@ end subroutine read_inidat
       mo_cnst = omega*rearth**4/gravit
       mr    = 0.0_r8
       mo    = 0.0_r8
-      do k = 1, plev
+      do k = 1, nlev
          do j=js,je
             do i = is,ie
                cos_lat = cos(Atm(mytile)%gridstruct%agrid_64(i,j,2))

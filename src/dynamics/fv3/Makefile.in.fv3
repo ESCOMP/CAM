@@ -1,20 +1,20 @@
 .SUFFIXES : .F .f .c .o .a .f90 .f95
 ########################################################################
 #
-# The Makefile for building the FMS library is created by CAM's configure
+# The Makefile for building the FV3 library is created by CAM's configure
 # using this template and prepending the following macros:
 #
 # The macro CAM_BLD is also prepended.  It is the build directory of the CAM
 # code and it contains the abortutils.mod file.  The abortutils module is
-# referenced by FMS code in order to perform an abort which is appropriate
+# referenced by FV3 code in order to perform an abort which is appropriate
 # for the CESM system.
 #
 # The main customization required for the library to link with CAM is to
 # use autopromotion of the default real type to real*8.  This is required
-# in most, though not all, of the FMS files.  Also, some compilers require
+# in most, though not all, of the FV3 files.  Also, some compilers require
 # special flags to specify fixed or free format source (rather than depend
 # on filename extensions).  Thus, the explicit rules at the end of this
-# template for compiling FMS files have been modified to allow different
+# template for compiling FV3 files have been modified to allow different
 # sets of flags for 1) files that cannot be compiled with autopromotion,
 # and 2) files that use fixed format source.
 #
@@ -172,4 +172,4 @@ clean_objs:
 	rm -f $(OBJS) *.mod *.o
 
 clean:
-	rm -f libfms.a $(OBJS) *.mod *.o fort.*
+	rm -f libfv3core $(OBJS) *.mod *.o

@@ -337,7 +337,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
      do lchnk = begchunk, endchunk
         ncols = get_ncols_p(lchnk)
         call get_gcol_all_p(lchnk, pcols, pgcols)
-        call set_state_pdry(phys_state(lchnk))    ! First get dry pressure to use for this timestep
+        call set_state_pdry(phys_state(lchnk)) ! First get dry pressure to use for this timestep
         do icol = 1, ncols
            call get_gcol_block_d(pgcols(icol), 1, idmb1, idmb2, idmb3)
            ib   = idmb3(1)

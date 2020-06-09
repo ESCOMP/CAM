@@ -135,7 +135,6 @@ subroutine dyn_grid_init()
    ! Local variables
 
    type(file_desc_t),      pointer :: fh_ini
-   type (block_control_type), target   :: Atm_block
 
    character(len=*), parameter :: sub='dyn_grid_init'
    character(len=128) :: version = '$Id$'
@@ -143,7 +142,7 @@ subroutine dyn_grid_init()
 
    real(r8) :: dt_atmos_real = 0.
 
-   integer :: i, j, k, lat, tile, ind
+   integer :: i, j, k, tile
    integer :: is,ie,js,je,n,nx,ny
 
    !-----------------------------------------------------------------------
@@ -191,7 +190,8 @@ subroutine dyn_grid_init()
    ntiles = Atm(mytile)%gridstruct%ntiles_g
    tile = Atm(mytile)%tile
 
-   if (Atm(mytile)%flagstruct%npz /= plev) call endrun('dyn_grid_init: FV3 dycore levels (npz) does not match model levels (plev)')
+   if (Atm(mytile)%flagstruct%npz /= plev) &
+        call endrun('dyn_grid_init: FV3 dycore levels (npz) does not match model levels (plev)')
 
 
    ! Get file handle for initial file
@@ -335,7 +335,8 @@ subroutine get_block_gcol_d(blockid, size, cdex)
     if (size .ne. (ie - is + 1) * (je - js + 1)) then
        call endrun ('get_block_gcol_d: block sizes are not consistent.')
     end if
-
+    ! the following algorithm for cdex calculates global ids for a block 
+    ! given the tile,and i,j column locations on tile.
     n=1
     do j = js, je
         do i = is, ie
@@ -443,9 +444,8 @@ subroutine get_gcol_block_d(gcol, cnt, blockid, bcid, localblockid)
     ! The FV3 dycore assigns each global column to a singe element.  So cnt is assumed
     ! to be 1.
 
-    use dimensions_mod,     only: npx, npy, ntiles
+    use dimensions_mod,     only: npx, npy
     use fv_mp_mod,          only: mp_gather, mp_bcst
-    use spmd_utils,        only: iam
 
     implicit none
 
@@ -458,7 +458,7 @@ subroutine get_gcol_block_d(gcol, cnt, blockid, bcid, localblockid)
 
     ! local variables
     integer :: tot
-    integer :: ijk(3),nx,ny,is,ie,js,je,tile
+    integer :: ijk(3)
     !----------------------------------------------------------------------------
 
     if (cnt .ne. 1) then
@@ -630,7 +630,7 @@ subroutine define_cam_grids(Atm)
 
   integer, allocatable, target, dimension(:,:) :: mygid, mygid_ew,mygid_ns
   integer                                      :: mybindex
-  integer :: n, i, j, mapind,is,ie,js,je,isd,ied,jsd,jed,tile
+  integer :: i, j, mapind,is,ie,js,je,isd,ied,jsd,jed,tile
   real(r8), pointer, dimension(:,:,:) :: agrid
   real(r8), pointer, dimension(:,:,:) :: grid
   real(r8), pointer, dimension(:,:)   :: area
@@ -645,7 +645,6 @@ subroutine define_cam_grids(Atm)
   integer(iMap), pointer :: pemap(:)
   integer(iMap), pointer :: pemap_ew(:)
   integer(iMap), pointer :: pemap_ns(:)
-  integer :: nx,ny,ind
 
   area  => Atm(mytile)%gridstruct%area_64
   agrid => Atm(mytile)%gridstruct%agrid_64
