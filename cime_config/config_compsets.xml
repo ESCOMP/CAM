@@ -375,42 +375,27 @@
 
   <compset>
     <alias>FX2000</alias>
-    <lname>2000_CAM40%WXIE_CLM50%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV</lname>
-  </compset>
-
-  <compset>
-    <alias>FC6X2000</alias>
     <lname>2000_CAM60%WXIE_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
   <compset>
-    <alias>FC6XHIST</alias>
+    <alias>FXHIST</alias>
     <lname>HIST_CAM60%WXIE_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
   <compset>
-    <alias>FXHIST</alias>
-    <lname>HIST_CAM40%WXIE_CLM50%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV</lname>
-  </compset>
-
-  <compset>
     <alias>FXmadHIST</alias>
-    <lname>HIST_CAM40%WXIED_CLM50%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV</lname>
+    <lname>HIST_CAM60%WXIED_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
   <compset>
     <alias>FXSD</alias>
-    <lname>HIST_CAM40%WXIE%SDYN_CLM50%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV</lname>
-  </compset>
-
-  <compset>
-    <alias>FC6XSD</alias>
     <lname>HIST_CAM60%WXIE%SDYN_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
   <compset>
     <alias>FXmadSD</alias>
-    <lname>HIST_CAM40%WXIED%SDYN_CLM50%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV</lname>
+    <lname>HIST_CAM60%WXIED%SDYN_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
   <!-- ENTRIES -->
