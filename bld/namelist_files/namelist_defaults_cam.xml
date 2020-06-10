@@ -2051,8 +2051,7 @@
 <se_nu_top                    > 5.0e5 </se_nu_top>
 <se_nu_top se_refined_mesh="1"> 2.0e5  </se_nu_top>
 <!-- WACCM uses molecular/thermal diffusion in sponge   -->
-<se_nu_top waccm_phys="1"                     > 0.0   </se_nu_top>
-<se_nu_top waccm_phys="1" se_refined_mesh="1" > 0.0   </se_nu_top>
+<se_nu_top waccm_phys="1"     > 0.0   </se_nu_top>
 
 <se_raytau0                      >  0.0 </se_raytau0>
 <se_raykrange                    >  0.5  </se_raykrange>

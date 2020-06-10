@@ -1669,7 +1669,7 @@ end do
     type (derivative_t), intent(in)     :: deriv
     type (element_t), intent(in)        :: elem
     real(kind=r8)                       :: laplace(np,np)
-    logical,       intent(in), optional :: var_coef
+    logical,       intent(in)           :: var_coef
     real(kind=r8), intent(in), optional :: mol_nu(np,np)  !variable nu (e.g. molecular diffusion)
 
     real(kind=r8)             :: laplace2(np,np)
@@ -1800,10 +1800,10 @@ end do
 !   input:  v = vector in lat-lon coordinates
 !   ouput:  weak laplacian of v, in lat-lon coordinates
 
-    real(kind=r8), intent(in) :: v(np,np,2)
-    logical                         :: var_coef
+    real(kind=r8),       intent(in) :: v(np,np,2)
     type (derivative_t), intent(in) :: deriv
     type (element_t),    intent(in) :: elem
+    logical              intent(in) :: var_coef
     logical,             intent(in) :: undamprrcart
     real(kind=r8)                   :: laplace(np,np,2)
     ! Local
@@ -1829,14 +1829,12 @@ end do
                                 dum_cart(:,:,3)*elem%vec_sphere2cart(:,:,3,component)
     end do
 
-!#define UNDAMPRRCART
-!#ifdef UNDAMPRRCART
     if (undamprrcart) then
       ! add in correction so we dont damp rigid rotation
       laplace(:,:,1)=laplace(:,:,1) + 2*elem%spheremp(:,:)*v(:,:,1)*(ra**2)
       laplace(:,:,2)=laplace(:,:,2) + 2*elem%spheremp(:,:)*v(:,:,2)*(ra**2)
     end if
-!#endif
+
   end function vlaplace_sphere_wk_cartesian
 
 
@@ -1882,11 +1880,8 @@ end do
       do n=1,np
         do m=1,np
           ! add in correction so we dont damp rigid rotation
-!#define UNDAMPRR
-!#ifdef UNDAMPRR
           laplace(m,n,1)=laplace(m,n,1) + 2*elem%spheremp(m,n)*v(m,n,1)*(ra**2)
           laplace(m,n,2)=laplace(m,n,2) + 2*elem%spheremp(m,n)*v(m,n,2)*(ra**2)
-!#endif
         enddo
       enddo
     end if

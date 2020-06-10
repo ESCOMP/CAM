@@ -533,7 +533,7 @@ add_default($nl, 'cime_model', 'val'=>'cesm');
 # CESM driver defaults
 add_default($nl, 'coldair_outbreak_mod', 'val'=>'.true.');
 add_default($nl, 'flux_max_iteration', 'val'=>'5');
-# Compoistion of air
+# Composition of air
 add_default($nl, 'dry_air_composition');
 add_default($nl, 'moist_air_composition');
 # Spectral Element dycore

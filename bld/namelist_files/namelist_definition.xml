@@ -7228,11 +7228,11 @@ Default: 3
        group="dyn_se_inparm" valid_values="1,2,10,-4,-9,-10,-11,-13,-40,-90,-100,-110,-130">
 CAM-SE vertical remap algorithm for u,v,T, and water species
   1: PPM vertical remap with mirroring at the boundaries
-     (solid wall bc's, high-order throughout)
+     (solid wall boundary conditions, high-order throughout)
   2: PPM vertical remap without mirroring at the boundaries
-     (no bc's enforced, first-order at two cells bordering top and bottom
+     (no boundary conditions enforced, first-order at two cells bordering top and bottom
      boundaries)
-10:  PPM with linear extrapolation in ghost cells (code from A. Bradley, DOE)
+ 10: PPM with linear extrapolation in ghost cells (code from A. Bradley, DOE)
 
 Mapping of temperature:
 
@@ -7246,17 +7246,33 @@ Mapping of temperature:
 Negative values will use FV3 vertical remapping algorithm
      
  -4: Monotone PPM (-40 is same as 4 but mapping Tv over p for temperature)
- -9: Monotonic cubic spline with 2∆z oscillations removed
--10: Selectively monotonic cubic spline, where local extrema are retained, with 2∆z oscillations removed
--11: Non-monotonic (linear) cubic spline with 2∆z oscillations removed; if an invalid value for kord is given, this scheme is used
--13: Monotonic cubic spline with 2∆z oscillations removed
+ -9: Monotonic cubic spline with 2*delta_z oscillations removed
+-10: Selectively monotonic cubic spline, where local extrema are retained,
+     with 2*delta_z oscillations removed
+-11: Non-monotonic (linear) cubic spline with 2*delta_z oscillations removed;
+     This scheme is used if an invalid value for kord is given.
+-13: Monotonic cubic spline with 2*delta_z oscillations removed
 Default: Set by build-namelist.
 </entry>
 
 <entry id="se_vert_remap_tracer_alg" type="integer" category="se"
        group="dyn_se_inparm" valid_values="1,2,10,-4,-9,-11,-13">
-Same as se_vert_remap_q_alg but for non-water tracers
-  Default: Set by build-namelist.
+CAM-SE vertical remap algorithm for non-water tracers
+  1: PPM vertical remap with mirroring at the boundaries
+     (solid wall boundary conditions, high-order throughout)
+  2: PPM vertical remap without mirroring at the boundaries
+     (no boundary conditions enforced, first-order at two cells bordering top and bottom
+     boundaries)
+ 10: PPM with linear extrapolation in ghost cells (code from A. Bradley, DOE)
+
+Negative values will use FV3 vertical remapping algorithm
+     
+ -4: Monotone PPM
+ -9: Monotonic cubic spline with 2*delta_z oscillations removed
+-11: Non-monotonic (linear) cubic spline with 2*delta_z oscillations removed;
+     This scheme is used if an invalid value for kord is given.
+-13: Monotonic cubic spline with 2*delta_z oscillations removed
+Default: Set by build-namelist.
 </entry>
 
 <entry id="se_write_restart_unstruct" type="logical" category="se"
