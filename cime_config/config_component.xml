@@ -8,7 +8,7 @@
       CAM
     ===============
    -->
-    <desc atm="CAM60[%1PCT][%4xCO2][%CCTS][%CFIRE][%CVBSX][%PORT][%RCO2][%SCAM][%SDYN][%WCCM][%WCMD][%WCSC][%WCTS][%WXIE]">CAM cam6 physics:</desc>
+    <desc atm="CAM60[%1PCT][%4xCO2][%CCTS][%CFIRE][%CVBSX][%PORT][%RCO2][%SCAM][%SDYN][%WCCM][%WCMD][%WCSC][%WCTS][%WXIE][%WXIED]">CAM cam6 physics:</desc>
     <desc atm="CAM50[%CCTS][%CLB][%PORT][%RCO2][%SCAM][%SDYN][%WCSC][%WCTS]"              >CAM cam5 physics:</desc>
     <desc atm="CAM40[%PORT][%RCO2][%SCAM][%SDYN][%TMOZ][%WXIE][%WXIED][%WCMD]"                   >CAM cam4 physics:</desc>
     <desc atm="CAM[%ADIAB][%DABIP04][%TJ16][%HS94][%KESSLER][%RCO2][%SPCAMS][%SPCAMCLBS][%SPCAMM][%SPCAMCLBM]">CAM simplified and non-versioned physics :</desc>
@@ -136,12 +136,12 @@
       <value compset="_(CAM50|CAM60)%WCMD">-chem waccm_mad_mam4</value>
       <value compset="_(CAM50|CAM60)%WCSC">-chem waccm_sc_mam4</value>
       <value compset="_(CAM50|CAM60)%WCTS">-chem waccm_tsmlt_mam4</value>
-      <value compset="_CAM40%WX">-waccmx</value>
-      <value compset="_CAM\d0%WXIE">-ionosphere wxie</value>
+      <value compset="_CAM40%WCMD">-chem waccm_mad</value>
+      <value compset="_CAM\d0%WXIE">-waccmx -ionosphere wxie</value>
       <value compset="_CAM40%WXIE(_|%)">-chem waccm_ma</value>
       <value compset="_CAM40%WXIED">-chem waccm_mad</value>
-      <value compset="_CAM40%WCMD">-chem waccm_mad</value>
-      <value compset="_CAM60%WX">-chem waccm_ma_mam4 -waccmx</value>
+      <value compset="_CAM60%WXIE(_|%)">-chem waccm_ma_mam4</value>
+      <value compset="_CAM60%WXIED">-chem waccm_mad_mam4</value>
 
       <value compset="_CAM.*%SDYN">-offline_dyn</value>
       <value compset="_CAM\d0%SDYN_CLM">-nlev 56</value>
@@ -246,6 +246,7 @@
 
       <value compset="_CAM40%WXIED%SDYN"  >sd_waccmx_ma_cam4</value>
       <value compset="_CAM40%WXIE%SDYN"   >sd_waccmx_ma_cam4</value>
+      <value compset="_CAM60%WXIED%SDYN"  >sd_waccmx_ma_cam6</value>
       <value compset="_CAM60%WXIE%SDYN"   >sd_waccmx_ma_cam6</value>
       <value compset="_CAM60%WCTS%SDYN"   >sd_waccm_tsmlt_cam6</value>
       <value compset="_CAM60%WCCM%SDYN"   >sd_waccm_ma_cam6</value>
