@@ -24,7 +24,7 @@ help () {
   echo "${hprefix} [ -h ] (displays this help message)"
   echo "${hprefix} [ -i ] (interactive usage)"
   echo "${hprefix} [ -j ] (number of jobs for gmake)"
-  echo "${hprefix} [ --archive-cime <directory> ] (directory for archiving baselines of cime tests)"
+  echo "${hprefix} [ --baseline-dir <directory> ] (directory for saving baselines of cime tests)"
   echo "${hprefix} [ --cesm <test_name(s)> ] (default aux_cam)"
   echo "${hprefix} [ --no-cesm ] (do not run any CESM test or test suite)"
   echo "${hprefix} [ --cam ] (Run CAM regression tests, default is not to run CAM regression tests."
@@ -89,11 +89,11 @@ submit_script_cime=''
 while [ "${1:0:1}" == "-" ]; do
     case $1 in
 
-        --archive-cime )
+        --baseline-dir )
             if [ $# -lt 2 ]; then
                 perr "${1} requires a directory name)"
             fi
-            archive_dir="${2}"
+            baseline_dir="${2}"
             shift
             ;;
 
@@ -579,7 +579,7 @@ elif [ "\$CAM_FC" = "NAG" ]; then
     input_file="tests_pretag_izumi_nag"
     export CCSM_MACH="izumi_nag"
 else
-    module load compiler/pgi/18.10
+    module load compiler/pgi/20.1
     export CFG_STRING=" -cc mpicc -fc_type pgi -fc mpif90 -cppdefs -DNO_MPI2 -cppdefs -DNO_MPIMOD "
     export INC_NETCDF=\${NETCDF_PATH}/include
     export LIB_NETCDF=\${NETCDF_PATH}/lib
@@ -1109,8 +1109,10 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
     if [ -n "${use_existing}" ]; then
       testargs="${testargs} --use-existing -o"
     fi
-    if [ -n "${archive_dir}" ]; then
-      testargs="${testargs} --generate ${archive_dir}"
+    if [ -n "${baseline_dir}" ]; then
+      testargs="${testargs} --generate ${baseline_dir}"
+    else
+      testargs="${testargs} --generate ${cesm_testdir}/baselines"
     fi
 
 
