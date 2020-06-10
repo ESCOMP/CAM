@@ -1116,6 +1116,7 @@ contains
     endif
 
     drydepflx(:,:) = 0._r8
+    wetdepflx_diag(:,:) = 0._r8
     do m = 1,pcnst
        n = map2chm( m )
        if ( n > 0 ) then

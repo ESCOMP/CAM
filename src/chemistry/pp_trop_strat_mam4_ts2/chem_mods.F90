@@ -5,27 +5,27 @@
       use shr_kind_mod, only : r8 => shr_kind_r8
       implicit none
       save
-      integer, parameter :: phtcnt = 123, & ! number of photolysis reactions
-                            rxntot = 542, & ! number of total reactions
-                            gascnt = 419, & ! number of gas phase reactions
+      integer, parameter :: phtcnt = 167, & ! number of photolysis reactions
+                            rxntot = 905, & ! number of total reactions
+                            gascnt = 738, & ! number of gas phase reactions
                             nabscol = 2, & ! number of absorbing column densities
-                            gas_pcnst = 229, & ! number of "gas phase" species
+                            gas_pcnst = 317, & ! number of "gas phase" species
                             nfs = 3, & ! number of "fixed" species
                             relcnt = 0, & ! number of relationship species
                             grpcnt = 0, & ! number of group members
-                            nzcnt = 2080, & ! number of non-zero matrix entries
-                            extcnt = 16, & ! number of species with external forcing
+                            nzcnt = 3862, & ! number of non-zero matrix entries
+                            extcnt = 17, & ! number of species with external forcing
                             clscnt1 = 31, & ! number of species in explicit class
                             clscnt2 = 0, & ! number of species in hov class
                             clscnt3 = 0, & ! number of species in ebi class
-                            clscnt4 = 198, & ! number of species in implicit class
+                            clscnt4 = 286, & ! number of species in implicit class
                             clscnt5 = 0, & ! number of species in rodas class
                             indexm = 1, & ! index of total atm density in invariant array
                             indexh2o = 0, & ! index of water vapor density
                             clsze = 1, & ! loop length for implicit chemistry
-                            rxt_tag_cnt = 542, &
+                            rxt_tag_cnt = 905, &
                             enthalpy_cnt = 18, &
-                            nslvd = 41
+                            nslvd = 84
       integer :: clscnt(5) = 0
       integer :: cls_rxt_cnt(4,5) = 0
       integer :: clsmap(gas_pcnst,5) = 0

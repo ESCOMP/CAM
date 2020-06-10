@@ -49,6 +49,76 @@ module mo_usrrxt
   integer :: usr_NTERPOOH_aer_ndx
   integer :: usr_NC4CHO_aer_ndx
   integer :: usr_NC4CH2OH_aer_ndx
+!TS2
+ integer :: usr_ISOPZD1O2_ndx
+ integer :: usr_ISOPZD4O2_ndx
+ integer :: usr_ISOPFDN_aer_ndx
+ integer :: usr_ISOPFNP_aer_ndx 
+ integer :: usr_ISOPN2B_aer_ndx
+ integer :: usr_ISOPN1D_aer_ndx
+ integer :: usr_ISOPN4D_aer_ndx
+ integer :: usr_INOOHD_aer_ndx
+ integer :: usr_INHEB_aer_ndx
+ integer :: usr_INHED_aer_ndx
+ integer :: usr_MACRN_aer_ndx
+ integer :: usr_ISOPHFP_aer_ndx
+ integer :: usr_IEPOX_aer_ndx
+ integer :: usr_DHPMPAL_aer_ndx
+ integer :: usr_ICHE_aer_ndx
+ integer :: usr_ISOPFNC_aer_ndx
+ integer :: usr_ISOPFDNC_aer_ndx
+ integer :: usr_ISOPB1O2_NOn_ndx
+ integer :: usr_ISOPB1O2_NOa_ndx
+ integer :: usr_ISOPB4O2_NOn_ndx
+ integer :: usr_ISOPB4O2_NOa_ndx
+ integer :: usr_ISOPED1O2_NOn_ndx
+ integer :: usr_ISOPED1O2_NOa_ndx
+ integer :: usr_ISOPED4O2_NOn_ndx
+ integer :: usr_ISOPED4O2_NOa_ndx
+ integer :: usr_ISOPZD1O2_NOn_ndx
+ integer :: usr_ISOPZD1O2_NOa_ndx
+ integer :: usr_ISOPZD4O2_NOn_ndx
+ integer :: usr_ISOPZD4O2_NOa_ndx
+ integer :: usr_ISOPNO3_NOn_ndx
+ integer :: usr_ISOPNO3_NOa_ndx
+ integer :: usr_MVKO2_NOn_ndx
+ integer :: usr_MVKO2_NOa_ndx
+ integer :: usr_MACRO2_NOn_ndx
+ integer :: usr_MACRO2_NOa_ndx
+ integer :: usr_IEPOXOO_NOn_ndx
+ integer :: usr_IEPOXOO_NOa_ndx
+ integer :: usr_ISOPN1DO2_NOn_ndx
+ integer :: usr_ISOPN1DO2_NOa_ndx
+ integer :: usr_ISOPN2BO2_NOn_ndx
+ integer :: usr_ISOPN2BO2_NOa_ndx
+ integer :: usr_ISOPN3BO2_NOn_ndx
+ integer :: usr_ISOPN3BO2_NOa_ndx
+ integer :: usr_ISOPN4DO2_NOn_ndx
+ integer :: usr_ISOPN4DO2_NOa_ndx
+ integer :: usr_ISOPNBNO3O2_NOn_ndx
+ integer :: usr_ISOPNBNO3O2_NOa_ndx
+ integer :: usr_ISOPNOOHBO2_NOn_ndx
+ integer :: usr_ISOPNOOHBO2_NOa_ndx
+ integer :: usr_ISOPNOOHDO2_NOn_ndx
+ integer :: usr_ISOPNOOHDO2_NOa_ndx
+ integer :: usr_NC4CHOO2_NOn_ndx
+ integer :: usr_NC4CHOO2_NOa_ndx
+ integer :: tag_MCO3_NO2_ndx
+ integer :: tag_TERPACO3_NO2_ndx
+ integer :: usr_TERPAPAN_M_ndx
+ integer :: tag_TERPA2CO3_NO2_ndx
+ integer :: usr_TERPA2PAN_M_ndx
+ integer :: tag_TERPA3CO3_NO2_ndx
+ integer :: usr_TERPA3PAN_M_ndx
+ integer :: usr_TERPNT_aer_ndx
+ integer :: usr_TERPNT1_aer_ndx
+ integer :: usr_TERPNPT_aer_ndx
+ integer :: usr_TERPNPT1_aer_ndx
+ integer :: usr_TERPFDN_aer_ndx
+ integer :: usr_SQTN_aer_ndx
+ integer :: usr_TERPHFN_aer_ndx
+ integer :: usr_TERPDHDP_aer_ndx
+ integer :: usr_TERPACID_aer_ndx
 !
   integer :: usr_OA_O2_NDX
   integer :: usr_XNO2NO3_M_ndx
@@ -216,6 +286,76 @@ contains
     usr_NTERPOOH_aer_ndx = get_rxt_ndx( 'usr_NTERPOOH_aer' )
     usr_NC4CHO_aer_ndx   = get_rxt_ndx( 'usr_NC4CHO_aer' )
     usr_NC4CH2OH_aer_ndx = get_rxt_ndx( 'usr_NC4CH2OH_aer' )
+!TS2
+    usr_ISOPZD1O2_ndx        = get_rxt_ndx( 'usr_ISOPZD1O2' )
+    usr_ISOPZD4O2_ndx        = get_rxt_ndx( 'usr_ISOPZD4O2' )
+    usr_ISOPFDN_aer_ndx      = get_rxt_ndx( 'usr_ISOPFDN_aer' )
+    usr_ISOPFNP_aer_ndx      = get_rxt_ndx( 'usr_ISOPFNP_aer' )
+    usr_ISOPN2B_aer_ndx      = get_rxt_ndx( 'usr_ISOPN2B_aer' )
+    usr_ISOPN1D_aer_ndx      = get_rxt_ndx( 'usr_ISOPN1D_aer' )
+    usr_ISOPN4D_aer_ndx      = get_rxt_ndx( 'usr_ISOPN4D_aer' )
+    usr_INOOHD_aer_ndx       = get_rxt_ndx( 'usr_INOOHD_aer' )
+    usr_INHEB_aer_ndx        = get_rxt_ndx( 'usr_INHEB_aer' )
+    usr_INHED_aer_ndx        = get_rxt_ndx( 'usr_INHED_aer' )
+    usr_MACRN_aer_ndx        = get_rxt_ndx( 'usr_MACRN_aer' )
+    usr_ISOPHFP_aer_ndx      = get_rxt_ndx( 'usr_ISOPHFP_aer' )
+    usr_IEPOX_aer_ndx        = get_rxt_ndx( 'usr_IEPOX_aer' )
+    usr_DHPMPAL_aer_ndx      = get_rxt_ndx( 'usr_DHPMPAL_aer' )
+    usr_ICHE_aer_ndx         = get_rxt_ndx( 'usr_ICHE_aer' )
+    usr_ISOPFNC_aer_ndx      = get_rxt_ndx( 'usr_ISOPFNC_aer' )
+    usr_ISOPFDNC_aer_ndx     = get_rxt_ndx( 'usr_ISOPFDNC_aer' )
+    usr_ISOPB1O2_NOn_ndx     = get_rxt_ndx( 'usr_ISOPB1O2_NOn' )
+    usr_ISOPB1O2_NOa_ndx     = get_rxt_ndx( 'usr_ISOPB1O2_NOa' )
+    usr_ISOPB4O2_NOn_ndx     = get_rxt_ndx( 'usr_ISOPB4O2_NOn' )
+    usr_ISOPB4O2_NOa_ndx     = get_rxt_ndx( 'usr_ISOPB4O2_NOa' )
+    usr_ISOPED1O2_NOn_ndx    = get_rxt_ndx( 'usr_ISOPED1O2_NOn' )
+    usr_ISOPED1O2_NOa_ndx    = get_rxt_ndx( 'usr_ISOPED1O2_NOa' )
+    usr_ISOPED4O2_NOn_ndx    = get_rxt_ndx( 'usr_ISOPED4O2_NOn' )
+    usr_ISOPED4O2_NOa_ndx    = get_rxt_ndx( 'usr_ISOPED4O2_NOa' )
+    usr_ISOPZD1O2_NOn_ndx    = get_rxt_ndx( 'usr_ISOPZD1O2_NOn' )
+    usr_ISOPZD1O2_NOa_ndx    = get_rxt_ndx( 'usr_ISOPZD1O2_NOa' )
+    usr_ISOPZD4O2_NOn_ndx    = get_rxt_ndx( 'usr_ISOPZD4O2_NOn' )
+    usr_ISOPZD4O2_NOa_ndx    = get_rxt_ndx( 'usr_ISOPZD4O2_NOa' )
+    usr_ISOPNO3_NOn_ndx      = get_rxt_ndx( 'usr_ISOPNO3_NOn' )
+    usr_ISOPNO3_NOa_ndx      = get_rxt_ndx( 'usr_ISOPNO3_NOa' )
+    usr_MVKO2_NOn_ndx        = get_rxt_ndx( 'usr_MVKO2_NOn' )
+    usr_MVKO2_NOa_ndx        = get_rxt_ndx( 'usr_MVKO2_NOa' )
+    usr_MACRO2_NOn_ndx       = get_rxt_ndx( 'usr_MACRO2_NOn' )
+    usr_MACRO2_NOa_ndx       = get_rxt_ndx( 'usr_MACRO2_NOa' )
+    usr_IEPOXOO_NOn_ndx     = get_rxt_ndx( 'usr_IEPOXOO_NOn' )
+    usr_IEPOXOO_NOa_ndx     = get_rxt_ndx( 'usr_IEPOXOO_NOa' )
+    usr_ISOPN1DO2_NOn_ndx     = get_rxt_ndx( 'usr_ISOPN1DO2_NOn' )
+    usr_ISOPN1DO2_NOa_ndx     = get_rxt_ndx( 'usr_ISOPN1DO2_NOa' )
+    usr_ISOPN2BO2_NOn_ndx     = get_rxt_ndx( 'usr_ISOPN2BO2_NOn' )
+    usr_ISOPN2BO2_NOa_ndx     = get_rxt_ndx( 'usr_ISOPN2BO2_NOa' )
+    usr_ISOPN3BO2_NOn_ndx     = get_rxt_ndx( 'usr_ISOPN3BO2_NOn' )
+    usr_ISOPN3BO2_NOa_ndx     = get_rxt_ndx( 'usr_ISOPN3BO2_NOa' )
+    usr_ISOPN4DO2_NOn_ndx     = get_rxt_ndx( 'usr_ISOPN4DO2_NOn' )
+    usr_ISOPN4DO2_NOa_ndx     = get_rxt_ndx( 'usr_ISOPN4DO2_NOa' )
+    usr_ISOPNBNO3O2_NOn_ndx     = get_rxt_ndx( 'usr_ISOPNBNO3O2_NOn' )
+    usr_ISOPNBNO3O2_NOa_ndx     = get_rxt_ndx( 'usr_ISOPNBNO3O2_NOa' )
+    usr_ISOPNOOHBO2_NOn_ndx     = get_rxt_ndx( 'usr_ISOPNOOHBO2_NOn' )
+    usr_ISOPNOOHBO2_NOa_ndx     = get_rxt_ndx( 'usr_ISOPNOOHBO2_NOa' )
+    usr_ISOPNOOHDO2_NOn_ndx     = get_rxt_ndx( 'usr_ISOPNOOHDO2_NOn' )
+    usr_ISOPNOOHDO2_NOa_ndx     = get_rxt_ndx( 'usr_ISOPNOOHDO2_NOa' )
+    usr_NC4CHOO2_NOn_ndx     = get_rxt_ndx( 'usr_NC4CHOO2_NOn' )
+    usr_NC4CHOO2_NOa_ndx     = get_rxt_ndx( 'usr_NC4CHOO2_NOa' )
+    tag_MCO3_NO2_ndx   = get_rxt_ndx( 'tag_MCO3_NO2' )
+    tag_TERPACO3_NO2_ndx  = get_rxt_ndx( 'tag_TERPACO3_NO2' )
+    usr_TERPAPAN_M_ndx     = get_rxt_ndx( 'usr_TERPAPAN_M' )
+    tag_TERPA2CO3_NO2_ndx  = get_rxt_ndx( 'tag_TERPA2CO3_NO2' )
+    usr_TERPA2PAN_M_ndx     = get_rxt_ndx( 'usr_TERPA2PAN_M' )
+    tag_TERPA3CO3_NO2_ndx  = get_rxt_ndx( 'tag_TERPA3CO3_NO2' )
+    usr_TERPA3PAN_M_ndx     = get_rxt_ndx( 'usr_TERPA3PAN_M' )
+    usr_TERPNT_aer_ndx       = get_rxt_ndx( 'usr_TERPNT_aer' )
+    usr_TERPNT1_aer_ndx      = get_rxt_ndx( 'usr_TERPNT1_aer' )
+    usr_TERPNPT_aer_ndx      = get_rxt_ndx( 'usr_TERPNPT_aer' )
+    usr_TERPNPT1_aer_ndx     = get_rxt_ndx( 'usr_TERPNPT1_aer' )
+    usr_TERPFDN_aer_ndx        = get_rxt_ndx( 'usr_TERPFDN_aer' )
+    usr_SQTN_aer_ndx        = get_rxt_ndx( 'usr_SQTN_aer' )
+    usr_TERPHFN_aer_ndx        = get_rxt_ndx( 'usr_TERPHFN_aer' )
+    usr_TERPDHDP_aer_ndx        = get_rxt_ndx( 'usr_TERPDHDP_aer' )
+    usr_TERPACID_aer_ndx        = get_rxt_ndx( 'usr_TERPACID_aer' )
  !
  ! additional reactions for O3A/XNO
  !
@@ -424,7 +564,24 @@ contains
                             ,usr_CO_OH_b_ndx,tag_C2H4_OH_ndx,tag_C3H6_OH_ndx,tag_CH3CO3_NO2_ndx,usr_PAN_M_ndx,usr_CH3COCH3_OH_ndx &
                             ,usr_MCO3_NO2_ndx,usr_MPAN_M_ndx,usr_XOOH_OH_ndx,usr_SO2_OH_ndx,usr_DMS_OH_ndx,usr_HO2_aer_ndx &
                             ,usr_GLYOXAL_aer_ndx,usr_ISOPNITA_aer_ndx,usr_ISOPNITB_aer_ndx,usr_ONITR_aer_ndx,usr_HONITR_aer_ndx &
-                            ,usr_TERPNIT_aer_ndx,usr_NTERPOOH_aer_ndx,usr_NC4CHO_aer_ndx,usr_NC4CH2OH_aer_ndx
+                            ,usr_TERPNIT_aer_ndx,usr_NTERPOOH_aer_ndx,usr_NC4CHO_aer_ndx,usr_NC4CH2OH_aer_ndx,usr_ISOPZD1O2_ndx &
+                            ,usr_ISOPZD4O2_ndx,usr_ISOPFDN_aer_ndx,usr_ISOPFNP_aer_ndx,usr_ISOPN2B_aer_ndx,usr_ISOPN1D_aer_ndx &
+                            ,usr_ISOPN4D_aer_ndx,usr_INOOHD_aer_ndx,usr_INHEB_aer_ndx,usr_INHED_aer_ndx,usr_MACRN_aer_ndx &
+                            ,usr_ISOPHFP_aer_ndx,usr_IEPOX_aer_ndx,usr_DHPMPAL_aer_ndx,usr_ISOPB1O2_NOn_ndx,usr_ISOPB1O2_NOa_ndx &
+                            ,usr_ISOPB4O2_NOn_ndx,usr_ISOPB4O2_NOa_ndx,usr_ISOPED1O2_NOn_ndx,usr_ISOPED1O2_NOa_ndx &
+                            ,usr_ISOPED4O2_NOn_ndx,usr_ISOPED4O2_NOa_ndx,usr_ISOPZD1O2_NOn_ndx,usr_ISOPZD1O2_NOa_ndx &
+                            ,usr_ISOPZD4O2_NOn_ndx,usr_ISOPZD4O2_NOa_ndx,usr_ISOPNO3_NOn_ndx,usr_ISOPNO3_NOa_ndx &
+                            ,usr_MVKO2_NOn_ndx,usr_MVKO2_NOa_ndx,usr_MACRO2_NOn_ndx,usr_MACRO2_NOa_ndx &
+                            ,usr_IEPOXOO_NOn_ndx,usr_IEPOXOO_NOa_ndx,usr_ISOPN1DO2_NOn_ndx,usr_ISOPN1DO2_NOa_ndx &
+                            ,usr_ISOPN2BO2_NOn_ndx,usr_ISOPN2BO2_NOa_ndx,usr_ISOPN3BO2_NOn_ndx,usr_ISOPN3BO2_NOa_ndx &
+                            ,usr_ISOPN4DO2_NOn_ndx,usr_ISOPN4DO2_NOa_ndx,usr_ISOPNBNO3O2_NOn_ndx,usr_ISOPNBNO3O2_NOa_ndx &
+                            ,usr_ISOPNOOHBO2_NOn_ndx,usr_ISOPNOOHBO2_NOa_ndx,usr_ISOPNOOHDO2_NOn_ndx,usr_ISOPNOOHDO2_NOa_ndx &
+                            ,usr_NC4CHOO2_NOn_ndx,usr_NC4CHOO2_NOa_ndx,tag_MCO3_NO2_ndx &
+                            ,usr_TERPNT_aer_ndx,tag_TERPA2CO3_NO2_ndx,usr_TERPA2PAN_M_ndx &
+                            ,usr_TERPNT1_aer_ndx,usr_TERPNPT_aer_ndx,usr_TERPNPT1_aer_ndx,usr_TERPFDN_aer_ndx,usr_SQTN_aer_ndx &
+                            ,usr_TERPHFN_aer_ndx,usr_TERPDHDP_aer_ndx,usr_TERPACID_aer_ndx,tag_TERPACO3_NO2_ndx &
+                            ,usr_TERPAPAN_M_ndx,tag_TERPA3CO3_NO2_ndx, usr_TERPA3PAN_M_ndx,usr_ICHE_aer_ndx,usr_ISOPFNC_aer_ndx &
+                            ,usr_ISOPFDNC_aer_ndx
 
     end if
 
@@ -493,9 +650,33 @@ contains
     real(r8), parameter :: gamma_honitr    = 0.005_r8        ! 
     real(r8), parameter :: gamma_terpnit   = 0.01_r8         ! 
     real(r8), parameter :: gamma_nterpooh  = 0.01_r8         ! 
-    real(r8), parameter :: gamma_nc4cho    = 0.005_r8        !
+    real(r8), parameter :: gamma_nc4cho    = 0.02_r8        !
     real(r8), parameter :: gamma_nc4ch2oh  = 0.005_r8        !
-
+!TS2 species
+    real(r8), parameter :: gamma_isopfdn  = 0.1_r8          ! Marais 2015 for C5-LVOC
+    real(r8), parameter :: gamma_isopfnp  = 0.1_r8          ! Marais 2015 for C5-LVOC
+    real(r8), parameter :: gamma_isopn2b  = 0.02_r8        ! All isoprene nitrates Wolfe
+    real(r8), parameter :: gamma_isopn1d  = 0.02_r8        !
+    real(r8), parameter :: gamma_isopn4d  = 0.02_r8        !
+    real(r8), parameter :: gamma_inoohd   = 0.02_r8        !
+    real(r8), parameter :: gamma_inheb    = 0.02_r8       !Marais 2015 for IEPOX
+    real(r8), parameter :: gamma_inhed    = 0.02_r8       !Marais 2015 for IEPOX
+    real(r8), parameter :: gamma_macrn    = 0.02_r8        !
+    real(r8), parameter :: gamma_isophfp  = 0.1_r8          !Marais 2015 for C5-LVOC
+    real(r8), parameter :: gamma_iepox    = 0.0042_r8       !Marais 2015 for IEPOX
+    real(r8), parameter :: gamma_dhpmpal  = 0.1_r8          !Marais 2015 for C5-LVOC
+    real(r8), parameter :: gamma_iche     = 0.0042_r8       !Marais 2015 for IEPOX
+    real(r8), parameter :: gamma_isopfnc  = 0.1_r8          ! Marais 2015 for C5-LVOC
+    real(r8), parameter :: gamma_isopfdnc = 0.1_r8          ! Marais 2015 for C5-LVOC
+    real(r8), parameter :: gamma_terpnt   = 0.02_r8        !
+    real(r8), parameter :: gamma_terpnt1  = 0.02_r8        !
+    real(r8), parameter :: gamma_terpnpt  = 0.02_r8        !
+    real(r8), parameter :: gamma_terpnpt1 = 0.02_r8        !
+    real(r8), parameter :: gamma_terpfdn  = 0.1_r8        !
+    real(r8), parameter :: gamma_sqtn     = 0.1_r8        !
+    real(r8), parameter :: gamma_terphfn  = 0.1_r8        !
+    real(r8), parameter :: gamma_terpdhdp = 0.1_r8        !
+    real(r8), parameter :: gamma_terpacid = 0.01_r8        !
 
     integer  ::  i, k
     integer  ::  l
@@ -520,6 +701,11 @@ contains
 !TS1 species
     real(r8) ::  c_isopnita, c_isopnitb, c_onitr, c_honitr, c_terpnit, c_nterpooh
     real(r8) ::  c_nc4cho, c_nc4ch2oh
+!T2 species
+    real(r8) ::  c_isopfdn, c_isopfnp, c_isopn2b, c_isopn1d, c_isopn4d, c_inoohd 
+    real(r8) ::  c_inheb, c_inhed, c_macrn, c_isophfp, c_iepox, c_dhpmpal
+    real(r8) ::  c_iche, c_isopfnc, c_isopfdnc
+    real(r8) ::  c_terpnt, c_terpnt1, c_terpnpt, c_terpnpt1, c_terpfdn, c_sqtn, c_terphfn, c_terpdhdp, c_terpacid
 
     real(r8) ::  amas
     !-----------------------------------------------------------------
@@ -569,7 +755,13 @@ contains
     integer :: ntot_amode
 
     real(r8), pointer :: sfc_array(:,:,:), dm_array(:,:,:)
-    
+ !TS2
+    real(r8) ::  aterm(ncol)
+    real(r8) ::  natom
+    real(r8) ::  nyield
+    real(r8) ::  acorr
+    real(r8) ::  exp_natom
+   
     ! get info about the modal aerosols
     ! get ntot_amode
     call rad_cnst_get_info(0, nmodes=ntot_amode)
@@ -796,15 +988,15 @@ contains
 !	... mpan + m --> mco3 + no2 + m (JPL15-10)
 !-----------------------------------------------------------------
        if( usr_MPAN_M_ndx > 0 ) then
-          if( usr_MCO3_NO2_ndx > 0 ) then
-             rxt(:,k,usr_MPAN_M_ndx) = rxt(:,k,usr_MCO3_NO2_ndx) * 1.111e28_r8 * exp_fac(:)
+          if( tag_MCO3_NO2_ndx > 0 ) then
+             rxt(:,k,usr_MPAN_M_ndx) = rxt(:,k,tag_MCO3_NO2_ndx) * 1.111e28_r8 * exp_fac(:)
           else
              rxt(:,k,usr_MPAN_M_ndx) = 0._r8
           end if
        end if
        if( usr_XMPAN_M_ndx > 0 ) then
-          if( usr_MCO3_NO2_ndx > 0 ) then
-             rxt(:,k,usr_XMPAN_M_ndx) = rxt(:,k,usr_MCO3_NO2_ndx) * 1.111e28_r8 * exp_fac(:)
+          if( tag_MCO3_NO2_ndx > 0 ) then
+             rxt(:,k,usr_XMPAN_M_ndx) = rxt(:,k,tag_MCO3_NO2_ndx) * 1.111e28_r8 * exp_fac(:)
           else
              rxt(:,k,usr_XMPAN_M_ndx) = 0._r8
           end if
@@ -821,7 +1013,36 @@ contains
              rxt(:,k,usr_PBZNIT_M_ndx) = 0._r8
           end if
        end if
-
+!-----------------------------------------------------------------
+!       ... TERPAPAN + m --> TERPACO3 + no2 + m
+!-----------------------------------------------------------------
+       if( usr_TERPAPAN_M_ndx > 0 ) then
+          if( tag_TERPACO3_NO2_ndx > 0 ) then
+             rxt(:,k,usr_TERPAPAN_M_ndx) = rxt(:,k,tag_TERPACO3_NO2_ndx) * 1.111e28_r8 * exp_fac(:)
+          else
+             rxt(:,k,usr_TERPAPAN_M_ndx) = 0._r8
+          end if
+       end if
+!-----------------------------------------------------------------
+!       ... TERPA2PAN + m --> TERPA2CO3 + no2 + m
+!-----------------------------------------------------------------
+       if( usr_TERPA2PAN_M_ndx > 0 ) then
+          if( tag_TERPA2CO3_NO2_ndx > 0 ) then
+             rxt(:,k,usr_TERPA2PAN_M_ndx) = rxt(:,k,tag_TERPA2CO3_NO2_ndx) * 1.111e28_r8 * exp_fac(:)
+          else
+             rxt(:,k,usr_TERPA2PAN_M_ndx) = 0._r8
+          end if
+       end if
+!-----------------------------------------------------------------
+!       ... TERPA3PAN + m --> TERPA3CO3 + no2 + m
+!-----------------------------------------------------------------
+       if( usr_TERPA3PAN_M_ndx > 0 ) then
+          if( tag_TERPA3CO3_NO2_ndx > 0 ) then
+             rxt(:,k,usr_TERPA3PAN_M_ndx) = rxt(:,k,tag_TERPA3CO3_NO2_ndx) * 1.111e28_r8 * exp_fac(:)
+          else
+             rxt(:,k,usr_TERPA3PAN_M_ndx) = 0._r8
+          end if
+       end if
 !-----------------------------------------------------------------
 !       ... xooh + oh -> h2o + oh
 !-----------------------------------------------------------------
@@ -855,6 +1076,367 @@ contains
           fc(:) = 3.0e-31_r8 *(300._r8*tinv(:))**3.3_r8
           ko(:) = fc(:)*m(:,k)/(1._r8 + fc(:)*m(:,k)/1.5e-12_r8) 
           rxt(:,k,usr_SO2_OH_ndx) = ko(:)*.6_r8**(1._r8 + (log10(fc(:)*m(:,k)/1.5e-12_r8))**2._r8)**(-1._r8)
+       end if
+!RHS TS2
+!-----------------------------------------------------------------
+!       ... ISOPZD1O2 --> HPALD etc. Wennberg 2018 for rate
+!-----------------------------------------------------------------
+       if( usr_ISOPZD1O2_ndx > 0 ) then
+          call comp_exp( exp_fac, -12200._r8*tinv, ncol )
+          ko(:) = 5.05e15_r8 * exp_fac(:)
+          call comp_exp( exp_fac, 1.e8_r8*tinv**3._r8, ncol )
+          rxt(:,k,usr_ISOPZD1O2_ndx) = ko(:)*exp_fac(:)
+       end if
+!-----------------------------------------------------------------
+!       ... ISOPZD4O2 --> HPALD etc. Wennberg 2018 for rate
+!-----------------------------------------------------------------
+       if( usr_ISOPZD4O2_ndx > 0 ) then
+          call comp_exp( exp_fac, -7160._r8*tinv, ncol )
+          ko(:) = 2.22e9_r8 * exp_fac(:)
+          call comp_exp( exp_fac, 1.e8_r8*tinv**3._r8, ncol )
+          rxt(:,k,usr_ISOPZD4O2_ndx) = ko(:)*exp_fac(:)
+       end if
+!-----------------------------------------------------------------
+!       ... ISOPB1O2_NOn Temp/Pressure Dependent Nitrate Yield
+!-----------------------------------------------------------------
+       if( usr_ISOPB1O2_NOn_ndx > 0 ) then
+          nyield = (1._r8-0.14_r8)/0.14_r8
+          natom = 6.0_r8
+          exp_natom = exp( natom )
+          acorr = (2.0e-22_r8*exp_natom*2.45e19_r8)/(1._r8+((2.0e-22_r8* & 
+                      exp_natom*2.45e19_r8)/(0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))* &
+                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*2.45e19_r8)/ &
+                      (0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))**2._r8))
+          aterm(:) = (2.0e-22_r8*exp_natom*m(:,k))/(1._r8+((2.0e-22_r8* & 
+                      exp_natom*m(:,k))/(0.43_r8*(298._r8*tinv(:))**8._r8)))* &
+                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*m(:,k))/ &
+                      (0.43_r8*(298._r8*tinv(:))**8._r8)))**2._r8))  
+          call comp_exp( exp_fac, 360._r8*tinv, ncol )
+          rxt(:,k,usr_ISOPB1O2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:)*aterm(:)/(aterm(:)+acorr*nyield)
+          rxt(:,k,usr_ISOPB1O2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:)*acorr*nyield/(aterm(:)+acorr*nyield)
+       end if
+!-----------------------------------------------------------------
+!       ... ISOPB4O2_NOn Temp/Pressure Dependent Nitrate Yield
+!-----------------------------------------------------------------
+       if( usr_ISOPB4O2_NOn_ndx > 0 ) then
+          nyield = (1._r8-0.13_r8)/0.13_r8
+          natom = 6.0_r8
+          exp_natom = exp( natom )
+          acorr = (2.0e-22_r8*exp_natom*2.45e19_r8)/(1._r8+((2.0e-22_r8* & 
+                      exp_natom*2.45e19_r8)/(0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))* &
+                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*2.45e19_r8)/ &
+                      (0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))**2._r8))
+          aterm(:) = (2.0e-22_r8*exp_natom*m(:,k))/(1._r8+((2.0e-22_r8* & 
+                      exp_natom*m(:,k))/(0.43_r8*(298._r8*tinv(:))**8._r8)))* &
+                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*m(:,k))/ &
+                      (0.43_r8*(298._r8*tinv(:))**8._r8)))**2._r8))  
+          call comp_exp( exp_fac, 360._r8*tinv, ncol )
+          rxt(:,k,usr_ISOPB4O2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:)*aterm(:)/(aterm(:)+acorr*nyield)
+          rxt(:,k,usr_ISOPB4O2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:)*acorr*nyield/(aterm(:)+acorr*nyield)
+       end if
+!-----------------------------------------------------------------
+!       ... ISOPED1O2_NOn Temp/Pressure Dependent Nitrate Yield
+!-----------------------------------------------------------------
+       if( usr_ISOPED1O2_NOn_ndx > 0 ) then
+          nyield = (1._r8-0.12_r8)/0.12_r8
+          natom = 6.0_r8
+          exp_natom = exp( natom )
+          acorr = (2.0e-22_r8*exp_natom*2.45e19_r8)/(1._r8+((2.0e-22_r8* & 
+                      exp_natom*2.45e19_r8)/(0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))* &
+                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*2.45e19_r8)/ &
+                      (0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))**2._r8))
+          aterm(:) = (2.0e-22_r8*exp_natom*m(:,k))/(1._r8+((2.0e-22_r8* & 
+                      exp_natom*m(:,k))/(0.43_r8*(298._r8*tinv(:))**8._r8)))* &
+                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*m(:,k))/ &
+                      (0.43_r8*(298._r8*tinv(:))**8._r8)))**2._r8))  
+          call comp_exp( exp_fac, 360._r8*tinv, ncol )
+        rxt(:,k,usr_ISOPED1O2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:)*aterm(:)/(aterm(:)+acorr*nyield)
+        rxt(:,k,usr_ISOPED1O2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:)*acorr*nyield/(aterm(:)+acorr*nyield)
+       end if
+!-----------------------------------------------------------------
+!       ... ISOPED4O2_NOn Temp/Pressure Dependent Nitrate Yield
+!-----------------------------------------------------------------
+       if( usr_ISOPED4O2_NOn_ndx > 0 ) then
+          nyield = (1._r8-0.12_r8)/0.12_r8
+          natom = 6.0_r8
+          exp_natom = exp( natom )
+          acorr = (2.0e-22_r8*exp_natom*2.45e19_r8)/(1._r8+((2.0e-22_r8* & 
+                      exp_natom*2.45e19_r8)/(0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))* &
+                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*2.45e19_r8)/ &
+                      (0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))**2._r8))
+          aterm(:) = (2.0e-22_r8*exp_natom*m(:,k))/(1._r8+((2.0e-22_r8* & 
+                      exp_natom*m(:,k))/(0.43_r8*(298._r8*tinv(:))**8._r8)))* &
+                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*m(:,k))/ &
+                      (0.43_r8*(298._r8*tinv(:))**8._r8)))**2._r8))  
+          call comp_exp( exp_fac, 360._r8*tinv, ncol )
+          rxt(:,k,usr_ISOPED4O2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:)*aterm(:)/(aterm(:)+acorr*nyield)
+          rxt(:,k,usr_ISOPED4O2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:)*acorr*nyield/(aterm(:)+acorr*nyield)
+       end if
+!-----------------------------------------------------------------
+!       ... ISOPZD1O2_NOn Temp/Pressure Dependent Nitrate Yield
+!-----------------------------------------------------------------
+       if( usr_ISOPZD1O2_NOn_ndx > 0 ) then
+          nyield = (1._r8-0.12_r8)/0.12_r8
+          natom = 6.0_r8
+          exp_natom = exp( natom )
+          acorr = (2.0e-22_r8*exp_natom*2.45e19_r8)/(1._r8+((2.0e-22_r8* & 
+                      exp_natom*2.45e19_r8)/(0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))* &
+                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*2.45e19_r8)/ &
+                      (0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))**2._r8))
+          aterm(:) = (2.0e-22_r8*exp_natom*m(:,k))/(1._r8+((2.0e-22_r8* & 
+                      exp_natom*m(:,k))/(0.43_r8*(298._r8*tinv(:))**8._r8)))* &
+                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*m(:,k))/ &
+                      (0.43_r8*(298._r8*tinv(:))**8._r8)))**2._r8))  
+          call comp_exp( exp_fac, 360._r8*tinv, ncol )
+          rxt(:,k,usr_ISOPZD1O2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:)*aterm(:)/(aterm(:)+acorr*nyield)
+          rxt(:,k,usr_ISOPZD1O2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:)*acorr*nyield/(aterm(:)+acorr*nyield)
+       end if
+!-----------------------------------------------------------------
+!       ... ISOPZD4O2_NOn Temp/Pressure Dependent Nitrate Yield
+!-----------------------------------------------------------------
+       if( usr_ISOPZD4O2_NOn_ndx > 0 ) then
+          nyield = (1._r8-0.12_r8)/0.12_r8
+          natom = 6.0_r8
+          exp_natom = exp( natom )
+          acorr = (2.0e-22_r8*exp_natom*2.45e19_r8)/(1._r8+((2.0e-22_r8* & 
+                      exp_natom*2.45e19_r8)/(0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))* &
+                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*2.45e19_r8)/ &
+                      (0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))**2._r8))
+          aterm(:) = (2.0e-22_r8*exp_natom*m(:,k))/(1._r8+((2.0e-22_r8* & 
+                      exp_natom*m(:,k))/(0.43_r8*(298._r8*tinv(:))**8._r8)))* &
+                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*m(:,k))/ &
+                      (0.43_r8*(298._r8*tinv(:))**8._r8)))**2._r8))  
+          call comp_exp( exp_fac, 360._r8*tinv, ncol )
+          rxt(:,k,usr_ISOPZD4O2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:)*aterm(:)/(aterm(:)+acorr*nyield)
+          rxt(:,k,usr_ISOPZD4O2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:)*acorr*nyield/(aterm(:)+acorr*nyield)
+       end if
+!-----------------------------------------------------------------
+!       ... ISOPNO3_NOn Temp/Pressure Dependent Nitrate Yield
+!-----------------------------------------------------------------
+       if( usr_ISOPNO3_NOn_ndx > 0 ) then
+          nyield = (1._r8-0.135_r8)/0.135_r8
+          natom = 9.0_r8
+          exp_natom = exp( natom )
+          acorr = (2.0e-22_r8*exp_natom*2.45e19_r8)/(1._r8+((2.0e-22_r8* & 
+                      exp_natom*2.45e19_r8)/(0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))* &
+                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*2.45e19_r8)/ &
+                      (0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))**2._r8))
+          aterm(:) = (2.0e-22_r8*exp_natom*m(:,k))/(1._r8+((2.0e-22_r8* & 
+                      exp_natom*m(:,k))/(0.43_r8*(298._r8*tinv(:))**8._r8)))* &
+                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*m(:,k))/ &
+                      (0.43_r8*(298._r8*tinv(:))**8._r8)))**2._r8))  
+          call comp_exp( exp_fac, 360._r8*tinv, ncol )
+          rxt(:,k,usr_ISOPNO3_NOn_ndx) = 2.7e-12_r8 * exp_fac(:)*aterm(:)/(aterm(:)+acorr*nyield)
+          rxt(:,k,usr_ISOPNO3_NOa_ndx) = 2.7e-12_r8 * exp_fac(:)*acorr*nyield/(aterm(:)+acorr*nyield)
+       end if
+!-----------------------------------------------------------------
+!       ... MVKO2_NOn Temp/Pressure Dependent Nitrate Yield
+!-----------------------------------------------------------------
+       if( usr_MVKO2_NOn_ndx > 0 ) then
+          nyield = (1._r8-0.04_r8)/0.04_r8
+          natom = 6.0_r8
+          exp_natom = exp( natom )
+          acorr = (2.0e-22_r8*exp_natom*2.45e19_r8)/(1._r8+((2.0e-22_r8* & 
+                      exp_natom*2.45e19_r8)/(0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))* &
+                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*2.45e19_r8)/ &
+                      (0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))**2._r8))
+          aterm(:) = (2.0e-22_r8*exp_natom*m(:,k))/(1._r8+((2.0e-22_r8* & 
+                      exp_natom*m(:,k))/(0.43_r8*(298._r8*tinv(:))**8._r8)))* &
+                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*m(:,k))/ &
+                      (0.43_r8*(298._r8*tinv(:))**8._r8)))**2._r8))  
+          call comp_exp( exp_fac, 360._r8*tinv, ncol )
+          rxt(:,k,usr_MVKO2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:)*aterm(:)/(aterm(:)+acorr*nyield)
+          rxt(:,k,usr_MVKO2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:)*acorr*nyield/(aterm(:)+acorr*nyield)
+       end if
+!-----------------------------------------------------------------
+!       ... MACRO2_NOn Temp/Pressure Dependent Nitrate Yield
+!-----------------------------------------------------------------
+       if( usr_MACRO2_NOn_ndx > 0 ) then
+          nyield = (1._r8-0.06_r8)/0.06_r8
+          natom = 6.0_r8
+          exp_natom = exp( natom )
+          acorr = (2.0e-22_r8*exp_natom*2.45e19_r8)/(1._r8+((2.0e-22_r8* & 
+                      exp_natom*2.45e19_r8)/(0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))* &
+                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*2.45e19_r8)/ &
+                      (0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))**2._r8))
+          aterm(:) = (2.0e-22_r8*exp_natom*m(:,k))/(1._r8+((2.0e-22_r8* & 
+                      exp_natom*m(:,k))/(0.43_r8*(298._r8*tinv(:))**8._r8)))* &
+                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*m(:,k))/ &
+                      (0.43_r8*(298._r8*tinv(:))**8._r8)))**2._r8))  
+          call comp_exp( exp_fac, 360._r8*tinv, ncol )
+        rxt(:,k,usr_MACRO2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:)*aterm(:)/(aterm(:)+acorr*nyield)
+        rxt(:,k,usr_MACRO2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:)*acorr*nyield/(aterm(:)+acorr*nyield)
+       end if
+!-----------------------------------------------------------------
+!       ... IEPOXOO_NOn Temp/Pressure Dependent Nitrate Yield
+!-----------------------------------------------------------------
+       if( usr_IEPOXOO_NOn_ndx > 0 ) then
+          nyield = (1._r8-0.025_r8)/0.025_r8
+          natom = 8.0_r8
+          exp_natom = exp( natom )
+          acorr = (2.0e-22_r8*exp_natom*2.45e19_r8)/(1._r8+((2.0e-22_r8* & 
+                      exp_natom*2.45e19_r8)/(0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))* &
+                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*2.45e19_r8)/ &
+                      (0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))**2._r8))
+          aterm(:) = (2.0e-22_r8*exp_natom*m(:,k))/(1._r8+((2.0e-22_r8* & 
+                      exp_natom*m(:,k))/(0.43_r8*(298._r8*tinv(:))**8._r8)))* &
+                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*m(:,k))/ &
+                      (0.43_r8*(298._r8*tinv(:))**8._r8)))**2._r8))  
+          call comp_exp( exp_fac, 360._r8*tinv, ncol )
+          rxt(:,k,usr_IEPOXOO_NOn_ndx) = 2.7e-12_r8 * exp_fac(:)*aterm(:)/(aterm(:)+acorr*nyield)
+          rxt(:,k,usr_IEPOXOO_NOa_ndx) = 2.7e-12_r8 * exp_fac(:)*acorr*nyield/(aterm(:)+acorr*nyield)
+       end if
+!-----------------------------------------------------------------
+!       ... ISOPN1DO2_NOn Temp/Pressure Dependent Nitrate Yield
+!-----------------------------------------------------------------
+       if( usr_ISOPN1DO2_NOn_ndx > 0 ) then
+          nyield = (1._r8-0.084_r8)/0.084_r8
+          natom = 11.0_r8
+          exp_natom = exp( natom )
+          acorr = (2.0e-22_r8*exp_natom*2.45e19_r8)/(1._r8+((2.0e-22_r8* & 
+                      exp_natom*2.45e19_r8)/(0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))* &
+                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*2.45e19_r8)/ &
+                      (0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))**2._r8))
+          aterm(:) = (2.0e-22_r8*exp_natom*m(:,k))/(1._r8+((2.0e-22_r8* & 
+                      exp_natom*m(:,k))/(0.43_r8*(298._r8*tinv(:))**8._r8)))* &
+                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*m(:,k))/ &
+                      (0.43_r8*(298._r8*tinv(:))**8._r8)))**2._r8))  
+          call comp_exp( exp_fac, 360._r8*tinv, ncol )
+          rxt(:,k,usr_ISOPN1DO2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:)*aterm(:)/(aterm(:)+acorr*nyield)
+          rxt(:,k,usr_ISOPN1DO2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:)*acorr*nyield/(aterm(:)+acorr*nyield)
+       end if
+!-----------------------------------------------------------------
+!       ... ISOPN2BO2_NOn Temp/Pressure Dependent Nitrate Yield
+!-----------------------------------------------------------------
+       if( usr_ISOPN2BO2_NOn_ndx > 0 ) then
+          nyield = (1._r8-0.065_r8)/0.065_r8
+          natom = 11.0_r8
+          exp_natom = exp( natom )
+          acorr = (2.0e-22_r8*exp_natom*2.45e19_r8)/(1._r8+((2.0e-22_r8* & 
+                      exp_natom*2.45e19_r8)/(0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))* &
+                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*2.45e19_r8)/ &
+                      (0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))**2._r8))
+          aterm(:) = (2.0e-22_r8*exp_natom*m(:,k))/(1._r8+((2.0e-22_r8* & 
+                      exp_natom*m(:,k))/(0.43_r8*(298._r8*tinv(:))**8._r8)))* &
+                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*m(:,k))/ &
+                      (0.43_r8*(298._r8*tinv(:))**8._r8)))**2._r8))  
+          call comp_exp( exp_fac, 360._r8*tinv, ncol )
+        rxt(:,k,usr_ISOPN2BO2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:)*aterm(:)/(aterm(:)+acorr*nyield)
+        rxt(:,k,usr_ISOPN2BO2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:)*acorr*nyield/(aterm(:)+acorr*nyield)
+       end if
+!-----------------------------------------------------------------
+!       ... ISOPN3BO2_NOn Temp/Pressure Dependent Nitrate Yield
+!-----------------------------------------------------------------
+       if( usr_ISOPN3BO2_NOn_ndx > 0 ) then
+          nyield = (1._r8-0.053_r8)/0.053_r8
+          natom = 11.0_r8
+          exp_natom = exp( natom )
+          acorr = (2.0e-22_r8*exp_natom*2.45e19_r8)/(1._r8+((2.0e-22_r8* & 
+                      exp_natom*2.45e19_r8)/(0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))* &
+                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*2.45e19_r8)/ &
+                      (0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))**2._r8))
+          aterm(:) = (2.0e-22_r8*exp_natom*m(:,k))/(1._r8+((2.0e-22_r8* & 
+                      exp_natom*m(:,k))/(0.43_r8*(298._r8*tinv(:))**8._r8)))* &
+                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*m(:,k))/ &
+                      (0.43_r8*(298._r8*tinv(:))**8._r8)))**2._r8))  
+          call comp_exp( exp_fac, 360._r8*tinv, ncol )
+          rxt(:,k,usr_ISOPN3BO2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:)*aterm(:)/(aterm(:)+acorr*nyield)
+          rxt(:,k,usr_ISOPN3BO2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:)*acorr*nyield/(aterm(:)+acorr*nyield)
+       end if
+!-----------------------------------------------------------------
+!       ... ISOPN4DO2_NOn Temp/Pressure Dependent Nitrate Yield
+!-----------------------------------------------------------------
+       if( usr_ISOPN4DO2_NOn_ndx > 0 ) then
+          nyield = (1._r8-0.165_r8)/0.165_r8
+          natom = 11.0_r8
+          exp_natom = exp( natom )
+          acorr = (2.0e-22_r8*exp_natom*2.45e19_r8)/(1._r8+((2.0e-22_r8* & 
+                      exp_natom*2.45e19_r8)/(0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))* &
+                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*2.45e19_r8)/ &
+                      (0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))**2._r8))
+          aterm(:) = (2.0e-22_r8*exp_natom*m(:,k))/(1._r8+((2.0e-22_r8* & 
+                      exp_natom*m(:,k))/(0.43_r8*(298._r8*tinv(:))**8._r8)))* &
+                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*m(:,k))/ &
+                      (0.43_r8*(298._r8*tinv(:))**8._r8)))**2._r8))  
+          call comp_exp( exp_fac, 360._r8*tinv, ncol )
+          rxt(:,k,usr_ISOPN4DO2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:)*aterm(:)/(aterm(:)+acorr*nyield)
+          rxt(:,k,usr_ISOPN4DO2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:)*acorr*nyield/(aterm(:)+acorr*nyield)
+       end if
+!-----------------------------------------------------------------
+!       ... ISOPNBNO3O2_NOn Temp/Pressure Dependent Nitrate Yield
+!-----------------------------------------------------------------
+       if( usr_ISOPNBNO3O2_NOn_ndx > 0 ) then
+          nyield = (1._r8-0.203_r8)/0.203_r8
+          natom = 11.0_r8
+          exp_natom = exp( natom )
+          acorr = (2.0e-22_r8*exp_natom*2.45e19_r8)/(1._r8+((2.0e-22_r8* & 
+                      exp_natom*2.45e19_r8)/(0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))* &
+                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*2.45e19_r8)/ &
+                      (0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))**2._r8))
+          aterm(:) = (2.0e-22_r8*exp_natom*m(:,k))/(1._r8+((2.0e-22_r8* & 
+                      exp_natom*m(:,k))/(0.43_r8*(298._r8*tinv(:))**8._r8)))* &
+                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*m(:,k))/ &
+                      (0.43_r8*(298._r8*tinv(:))**8._r8)))**2._r8))  
+          call comp_exp( exp_fac, 360._r8*tinv, ncol )
+          rxt(:,k,usr_ISOPNBNO3O2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:)*aterm(:)/(aterm(:)+acorr*nyield)
+          rxt(:,k,usr_ISOPNBNO3O2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:)*acorr*nyield/(aterm(:)+acorr*nyield)
+       end if
+!-----------------------------------------------------------------
+!       ... ISOPNOOHBO2_NOn Temp/Pressure Dependent Nitrate Yield
+!-----------------------------------------------------------------
+       if( usr_ISOPNOOHBO2_NOn_ndx > 0 ) then
+          nyield = (1._r8-0.141_r8)/0.141_r8
+          natom = 12.0_r8
+          exp_natom = exp( natom )
+          acorr = (2.0e-22_r8*exp_natom*2.45e19_r8)/(1._r8+((2.0e-22_r8* & 
+                      exp_natom*2.45e19_r8)/(0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))* &
+                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*2.45e19_r8)/ &
+                      (0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))**2._r8))
+          aterm(:) = (2.0e-22_r8*exp_natom*m(:,k))/(1._r8+((2.0e-22_r8* & 
+                      exp_natom*m(:,k))/(0.43_r8*(298._r8*tinv(:))**8._r8)))* &
+                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*m(:,k))/ &
+                      (0.43_r8*(298._r8*tinv(:))**8._r8)))**2._r8))  
+          call comp_exp( exp_fac, 360._r8*tinv, ncol )
+          rxt(:,k,usr_ISOPNOOHBO2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:)*aterm(:)/(aterm(:)+acorr*nyield)
+          rxt(:,k,usr_ISOPNOOHBO2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:)*acorr*nyield/(aterm(:)+acorr*nyield)
+       end if
+!-----------------------------------------------------------------
+!       ... ISOPNOOHDO2_NOn Temp/Pressure Dependent Nitrate Yield
+!-----------------------------------------------------------------
+       if( usr_ISOPNOOHDO2_NOn_ndx > 0 ) then
+          nyield = (1._r8-0.045_r8)/0.045_r8
+          natom = 12.0_r8
+          exp_natom = exp( natom )
+          acorr = (2.0e-22_r8*exp_natom*2.45e19_r8)/(1._r8+((2.0e-22_r8* & 
+                      exp_natom*2.45e19_r8)/(0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))* &
+                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*2.45e19_r8)/ &
+                      (0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))**2._r8))
+          aterm(:) = (2.0e-22_r8*exp_natom*m(:,k))/(1._r8+((2.0e-22_r8* & 
+                      exp_natom*m(:,k))/(0.43_r8*(298._r8*tinv(:))**8._r8)))* &
+                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*m(:,k))/ &
+                      (0.43_r8*(298._r8*tinv(:))**8._r8)))**2._r8))  
+          call comp_exp( exp_fac, 360._r8*tinv, ncol )
+          rxt(:,k,usr_ISOPNOOHDO2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:)*aterm(:)/(aterm(:)+acorr*nyield)
+          rxt(:,k,usr_ISOPNOOHDO2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:)*acorr*nyield/(aterm(:)+acorr*nyield)
+       end if
+!-----------------------------------------------------------------
+!       ... NC4CHOO2_NOn Temp/Pressure Dependent Nitrate Yield
+!-----------------------------------------------------------------
+       if( usr_NC4CHOO2_NOn_ndx > 0 ) then
+          nyield = (1._r8-0.021_r8)/0.021_r8
+          natom = 11.0_r8
+          exp_natom = exp( natom )
+          acorr = (2.0e-22_r8*exp_natom*2.45e19_r8)/(1._r8+((2.0e-22_r8* & 
+                      exp_natom*2.45e19_r8)/(0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))* &
+                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*2.45e19_r8)/ &
+                      (0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))**2._r8))
+          aterm(:) = (2.0e-22_r8*exp_natom*m(:,k))/(1._r8+((2.0e-22_r8* & 
+                      exp_natom*m(:,k))/(0.43_r8*(298._r8*tinv(:))**8._r8)))* &
+                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*m(:,k))/ &
+                      (0.43_r8*(298._r8*tinv(:))**8._r8)))**2._r8))  
+          call comp_exp( exp_fac, 360._r8*tinv, ncol )
+          rxt(:,k,usr_NC4CHOO2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:)*aterm(:)/(aterm(:)+acorr*nyield)
+          rxt(:,k,usr_NC4CHOO2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:)*acorr*nyield/(aterm(:)+acorr*nyield)
        end if
 !
 ! reduced hydrocarbon scheme
@@ -902,7 +1484,30 @@ contains
              c_nterpooh = 0.957e3_r8 * sqrt_t(i)        ! mean molecular speed of nterpooh
              c_nc4cho   = 1.21e3_r8 * sqrt_t(i)         ! mean molecular speed of nc4cho
              c_nc4ch2oh = 1.20e3_r8 * sqrt_t(i)         ! mean molecular speed of nc4ch2oh
-
+             c_isopfdn  = 9.68e2_r8 * sqrt_t(i)         ! mean molecular speed of isopfdn
+             c_isopfnp  = 1.04e3_r8 * sqrt_t(i)         ! mean molecular speed of isopfnp
+             c_isopn2b  = 1.20e3_r8 * sqrt_t(i)         ! mean molecular speed of isopn2
+             c_isopn1d  = 1.20e3_r8 * sqrt_t(i)         ! mean molecular speed of isopn1d
+             c_isopn4d  = 1.20e3_r8 * sqrt_t(i)         ! mean molecular speed of isopn4d
+             c_inoohd   = 1.14e3_r8 * sqrt_t(i)         ! mean molecular speed of inoohd
+             c_inheb    = 1.14e3_r8 * sqrt_t(i)         ! mean molecular speed of inheb
+             c_inhed    = 1.14e3_r8 * sqrt_t(i)         ! mean molecular speed of inhed
+             c_macrn    = 1.19e3_r8 * sqrt_t(i)         ! mean molecular speed of macrn
+             c_isophfp  = 1.19e3_r8 * sqrt_t(i)         ! mean molecular speed of isophfp
+             c_iepox    = 1.34e3_r8 * sqrt_t(i)         ! mean molecular speed of iepox
+             c_dhpmpal  = 1.24e3_r8 * sqrt_t(i)         ! mean molecular speed of dhpmpal
+             c_iche     = 1.35e3_r8 * sqrt_t(i)         ! mean molecular speed of iche
+             c_isopfnc  = 1.04e3_r8 * sqrt_t(i)         ! mean molecular speed of isopfnc
+             c_isopfdnc = 9.72e2_r8 * sqrt_t(i)         ! mean molecular speed of isopfdnc
+             c_terpnt   = 9.92e2_r8 * sqrt_t(i)         ! mean molecular speed of terpnt
+             c_terpnt1  = 9.92e2_r8 * sqrt_t(i)         ! mean molecular speed of terpnt1
+             c_terpnpt  = 9.57e2_r8 * sqrt_t(i)         ! mean molecular speed of terpnpt
+             c_terpnpt1 = 9.57e2_r8 * sqrt_t(i)         ! mean molecular speed of terpnpt1
+             c_terpfdn  = 8.48e2_r8 * sqrt_t(i)         ! mean molecular speed of terpfdn
+             c_sqtn     = 8.64e2_r8 * sqrt_t(i)         ! mean molecular speed of sqtn
+             c_terphfn  = 8.93e2_r8 * sqrt_t(i)         ! mean molecular speed of terphfn
+             c_terpdhdp = 9.47e2_r8 * sqrt_t(i)         ! mean molecular speed of terpdhdp
+             c_terpacid = 1.07e3_r8 * sqrt_t(i)         ! mean molecular speed of terpacid
              !-------------------------------------------------------------------------
              !  Heterogeneous reaction rates for uptake of a gas on an aerosol:
              !    rxt = sfc / ( (rad_aer/Dg_gas) + (4/(c_gas*gamma_gas)))
@@ -998,6 +1603,150 @@ contains
              !-------------------------------------------------------------------------
              if( usr_NC4CH2OH_aer_ndx > 0 ) then
                 rxt(i,k,usr_NC4CH2OH_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_nc4ch2oh, gamma_nc4ch2oh )
+             end if
+             !-------------------------------------------------------------------------
+             ! 	...  ISOPFDN -> HNO3 (on sulfate, nh4no3, oc2, soa)
+             !-------------------------------------------------------------------------
+             if( usr_ISOPFDN_aer_ndx > 0 ) then
+                rxt(i,k,usr_ISOPFDN_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_isopfdn, gamma_isopfdn )
+             end if
+             !-------------------------------------------------------------------------
+             ! 	...  ISOPFNP ->  (on sulfate, nh4no3, oc2, soa)
+             !-------------------------------------------------------------------------
+             if( usr_ISOPFNP_aer_ndx > 0 ) then
+                rxt(i,k,usr_ISOPFNP_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_isopfnp, gamma_isopfnp )
+             end if
+             !-------------------------------------------------------------------------
+             ! 	...  ISOPN2B -> HNO3 (on sulfate, nh4no3, oc2, soa)
+             !-------------------------------------------------------------------------
+             if( usr_ISOPN2B_aer_ndx > 0 ) then
+                rxt(i,k,usr_ISOPN2B_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_isopn2b, gamma_isopn2b )
+             end if
+             !-------------------------------------------------------------------------
+             ! 	...  ISOPN1D -> HNO3 (on sulfate, nh4no3, oc2, soa)
+             !-------------------------------------------------------------------------
+             if( usr_ISOPN1D_aer_ndx > 0 ) then
+                rxt(i,k,usr_ISOPN1D_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_isopn1d, gamma_isopn1d )
+             end if
+             !-------------------------------------------------------------------------
+             ! 	...  ISOPN4D -> HNO3 (on sulfate, nh4no3, oc2, soa)
+             !-------------------------------------------------------------------------
+             if( usr_ISOPN4D_aer_ndx > 0 ) then
+                rxt(i,k,usr_ISOPN4D_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_isopn4d, gamma_isopn4d )
+             end if
+             !-------------------------------------------------------------------------
+             ! 	...  INOOHD -> HNO3 (on sulfate, nh4no3, oc2, soa)
+             !-------------------------------------------------------------------------
+             if( usr_INOOHD_aer_ndx > 0 ) then
+                rxt(i,k,usr_INOOHD_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_inoohd, gamma_inoohd )
+             end if
+             !-------------------------------------------------------------------------
+             ! 	...  INHEB -> HNO3 (on sulfate, nh4no3, oc2, soa)
+             !-------------------------------------------------------------------------
+             if( usr_INHEB_aer_ndx > 0 ) then
+                rxt(i,k,usr_INHEB_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_inheb, gamma_inheb )
+             end if
+             !-------------------------------------------------------------------------
+             ! 	...  INHED -> HNO3 (on sulfate, nh4no3, oc2, soa)
+             !-------------------------------------------------------------------------
+             if( usr_INHED_aer_ndx > 0 ) then
+                rxt(i,k,usr_INHED_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_inhed, gamma_inhed )
+             end if
+             !-------------------------------------------------------------------------
+             ! 	...  MACRN -> HNO3 (on sulfate, nh4no3, oc2, soa)
+             !-------------------------------------------------------------------------
+             if( usr_MACRN_aer_ndx > 0 ) then
+                rxt(i,k,usr_MACRN_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_macrn, gamma_macrn )
+             end if
+             !-------------------------------------------------------------------------
+             ! 	...  ISOPHFP ->  (on sulfate, nh4no3, oc2, soa)
+             !-------------------------------------------------------------------------
+             if( usr_ISOPHFP_aer_ndx > 0 ) then
+                rxt(i,k,usr_ISOPHFP_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_isophfp, gamma_isophfp )
+             end if
+             !-------------------------------------------------------------------------
+             ! 	...  IEPOX ->  (on sulfate, nh4no3, oc2, soa)
+             !-------------------------------------------------------------------------
+             if( usr_IEPOX_aer_ndx > 0 ) then
+                rxt(i,k,usr_IEPOX_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_iepox, gamma_iepox )
+             end if
+             !-------------------------------------------------------------------------
+             ! 	...  DHPMPAL ->  (on sulfate, nh4no3, oc2, soa)
+             !-------------------------------------------------------------------------
+             if( usr_DHPMPAL_aer_ndx > 0 ) then
+                rxt(i,k,usr_DHPMPAL_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_dhpmpal, gamma_dhpmpal )
+             end if
+             !-------------------------------------------------------------------------
+             ! 	...  ICHE ->  (on sulfate, nh4no3, oc2, soa)
+             !-------------------------------------------------------------------------
+             if( usr_ICHE_aer_ndx > 0 ) then
+                rxt(i,k,usr_ICHE_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_iche, gamma_iche )
+             end if
+             !-------------------------------------------------------------------------
+             ! 	...  ISOPFNC ->  (on sulfate, nh4no3, oc2, soa)
+             !-------------------------------------------------------------------------
+             if( usr_ISOPFNC_aer_ndx > 0 ) then
+                rxt(i,k,usr_ISOPFNC_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_isopfnc, gamma_isopfnc )
+             end if
+             !-------------------------------------------------------------------------
+             ! 	...  ISOPFDNC ->  (on sulfate, nh4no3, oc2, soa)
+             !-------------------------------------------------------------------------
+             if( usr_ISOPFDNC_aer_ndx > 0 ) then
+                rxt(i,k,usr_ISOPFDNC_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_isopfdnc, gamma_isopfdnc )
+             end if
+             !-------------------------------------------------------------------------
+             ! 	...  TERPNT -> HNO3 (on sulfate, nh4no3, oc2, soa)
+             !-------------------------------------------------------------------------
+             if( usr_TERPNT_aer_ndx > 0 ) then
+                rxt(i,k,usr_TERPNT_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_terpnt, gamma_terpnt )
+             end if
+             !-------------------------------------------------------------------------
+             ! 	...  TERPNT1 -> HNO3 (on sulfate, nh4no3, oc2, soa)
+             !-------------------------------------------------------------------------
+             if( usr_TERPNT1_aer_ndx > 0 ) then
+                rxt(i,k,usr_TERPNT1_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_terpnt1, gamma_terpnt1 )
+             end if
+             !-------------------------------------------------------------------------
+             ! 	...  TERPNPT -> HNO3 (on sulfate, nh4no3, oc2, soa)
+             !-------------------------------------------------------------------------
+             if( usr_TERPNPT_aer_ndx > 0 ) then
+                rxt(i,k,usr_TERPNPT_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_terpnpt, gamma_terpnpt )
+             end if
+             !-------------------------------------------------------------------------
+             ! 	...  TERPNPT1 -> HNO3 (on sulfate, nh4no3, oc2, soa)
+             !-------------------------------------------------------------------------
+             if( usr_TERPNPT1_aer_ndx > 0 ) then
+                rxt(i,k,usr_TERPNPT1_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_terpnpt1, gamma_terpnpt1 )
+             end if
+             !-------------------------------------------------------------------------
+             ! 	...  TERPFDN -> HNO3 (on sulfate, nh4no3, oc2, soa)
+             !-------------------------------------------------------------------------
+             if( usr_TERPFDN_aer_ndx > 0 ) then
+                rxt(i,k,usr_TERPFDN_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_terpfdn, gamma_terpfdn )
+             end if
+             !-------------------------------------------------------------------------
+             ! 	...  SQTN ->  (on sulfate, nh4no3, oc2, soa)
+             !-------------------------------------------------------------------------
+             if( usr_SQTN_aer_ndx > 0 ) then
+                rxt(i,k,usr_SQTN_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_sqtn, gamma_sqtn )
+             end if
+             !-------------------------------------------------------------------------
+             ! 	...  TERPHFN ->  (on sulfate, nh4no3, oc2, soa)
+             !-------------------------------------------------------------------------
+             if( usr_TERPHFN_aer_ndx > 0 ) then
+                rxt(i,k,usr_TERPHFN_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_terphfn, gamma_terphfn )
+             end if
+             !-------------------------------------------------------------------------
+             ! 	...  TERPDHDP ->  (on sulfate, nh4no3, oc2, soa)
+             !-------------------------------------------------------------------------
+             if( usr_TERPDHDP_aer_ndx > 0 ) then
+                rxt(i,k,usr_TERPDHDP_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_terpdhdp, gamma_terpdhdp )
+             end if
+             !-------------------------------------------------------------------------
+             ! 	...  TERPACID ->  (on sulfate, nh4no3, oc2, soa)
+             !-------------------------------------------------------------------------
+             if( usr_TERPACID_aer_ndx > 0 ) then
+                rxt(i,k,usr_TERPACID_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_terpacid, gamma_terpacid )
              end if
 
           end do long_loop
