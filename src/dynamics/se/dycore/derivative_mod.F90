@@ -1803,7 +1803,7 @@ end do
     real(kind=r8),       intent(in) :: v(np,np,2)
     type (derivative_t), intent(in) :: deriv
     type (element_t),    intent(in) :: elem
-    logical              intent(in) :: var_coef
+    logical,             intent(in) :: var_coef
     logical,             intent(in) :: undamprrcart
     real(kind=r8)                   :: laplace(np,np,2)
     ! Local
