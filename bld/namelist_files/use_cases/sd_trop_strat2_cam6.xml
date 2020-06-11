@@ -63,9 +63,9 @@
 
 <!-- History Files -->
 
-<mfilt>           1,30,365,240,240,480,365,73,30  </mfilt>
-<nhtfrq>          0,-24,-24,-3,-1,1,-24,-120,-240 </nhtfrq>
-<avgflag_pertape>'A','A','A','A','A','A','A','A','I'</avgflag_pertape>
+<mfilt>           1,   1 </mfilt>
+<nhtfrq>          0,   0 </nhtfrq>
+<avgflag_pertape>'A','A' </avgflag_pertape>
 
 <history_amwg>.true.</history_amwg>
 <history_aerosol>.false.</history_aerosol>
@@ -195,6 +195,45 @@
          'WD_MEK', 'WD_MPAN',
          'WD_N2O5', 'WD_NO', 'WD_NO2', 'WD_PAN', 'WD_PBZNIT', 'WD_PHENOL', 'WD_TEPOMUC','WD_TOLUENE', 'WD_XYLENES', 'WD_XYLOL'
 </fincl1>
+<fincl2>
+       'MEG_APIN','MEG_BPIN','MEG_LIMON','MEG_MYRC',
+       'ISOPFDN', 'ISOPFNP', 'ISOPN3B', 'ISOPN2B', 'ISOPN1D', 'ISOPN4D', 
+       'ISOPNBNO3', 'ISOPNOOHB', 'ISOPNOOHD', 'INHEB','INHED',
+       'HPALD1','HPALD4','ISOPHFP',
+       'MVKN', 'MACRN', 'HMHP', 'NO3CH2CHO', 'HYPERACET', 'HCOCH2OOH', 
+       'DHPMPAL', 'MVKOOH', 'ISOPOH',
+       'HPALDB1C','HPALDB4C','ICHE','ISOPFDNC','ISOPFNC',
+       'TERPNT', 'TERPNS','TERPNT1', 'TERPNS1', 'TERPNPT', 'TERPNPS', 'TERPNPT1', 
+       'TERPNPS1', 'TERPFDN', 'SQTN', 'TERPHFN',
+       'TERP1OOH', 'TERPDHDP', 'TERPF2', 'TERPF1', 'TERPA', 'TERPA2', 'TERPK', 'TERPAPAN', 
+       'TERPACID', 'TERPA2PAN',
+       'TERPACID2','TERPACID3','TERPA3PAN','TERPOOHL','TERPA3',
+       'APIN','BPIN','LIMON','MYRC',
+       'DF_ISOPFDN', 'DF_ISOPFNP', 'DF_ISOPN3B', 'DF_ISOPN2B', 'DF_ISOPN1D', 'DF_ISOPN4D', 'DF_ISOPNBNO3', 'DF_ISOPNOOHB', 'DF_ISOPNOOHD',
+       'DF_INHEB','DF_INHED', 
+       'DF_HPALD1','DF_HPALD4','DF_ISOPHFP','DF_MVKN', 'DF_MACRN', 'DF_HMHP' 'DF_NO3CH2CHO',
+       'DF_HYPERACET', 'DF_HCOCH2OOH', 'DF_DHPMPAL', 'DF_MVKOOH', 'DF_ISOPOH',
+       'DF_HPALDB1C','DF_HPALDB4C','DF_ICHE','DF_ISOPFDNC','DF_ISOPFNC',
+       'DF_TERPNT', 'DF_TERPNS','DF_TERPNT1', 'DF_TERPNS1', 'DF_TERPNPT', 'DF_TERPNPS', 
+       'DF_TERPNPT1', 'DF_TERPNPS1', 'DF_TERPFDN', 'DF_SQTN', 'DF_TERPHFN',
+       'DF_TERP1OOH', 'DF_TERPDHDP', 'DF_TERPF2', 'DF_TERPF1', 'DF_TERPA', 
+       'DF_TERPA2', 'DF_TERPK', 'DF_TERPAPAN', 'DF_TERPACID', 'DF_TERPA2PAN', 
+       'DF_TERPACID2','DF_TERPACID3','DF_TERPA3PAN','DF_TERPOOHL','DF_TERPA3',
+       'DF_APIN','DF_BPIN','DF_LIMON','DF_MYRC',
+       'WD_ISOPFDN', 'WD_ISOPFNP', 'WD_ISOPN3B', 'WD_ISOPN2B', 'WD_ISOPN1D', 'WD_ISOPN4D', 
+       'WD_ISOPNBNO3', 'WD_ISOPNOOHB', 'WD_ISOPNOOHD',
+       'WD_INHEB','WD_INHED', 
+       'WD_HPALD1','WD_HPALD4','WD_ISOPHFP','WD_MVKN', 'WD_MACRN', 'WD_HMHP' 'WD_NO3CH2CHO',
+       'WD_HYPERACET', 'WD_HCOCH2OOH', 'WD_DHPMPAL', 'WD_MVKOOH', 'WD_ISOPOH',
+       'WD_HPALDB1C','WD_HPALDB4C','WD_ICHE','WD_ISOPFDNC','WD_ISOPFNC',
+       'WD_TERPNT', 'WD_TERPNS','WD_TERPNT1', 'WD_TERPNS1', 'WD_TERPNPT', 'WD_TERPNPS', 
+       'WD_TERPNPT1', 'WD_TERPNPS1', 'WD_TERPFDN', 'WD_SQTN', 'WD_TERPHFN',
+       'WD_TERP1OOH', 'WD_TERPDHDP', 'WD_TERPF2', 'WD_TERPF1', 'WD_TERPA', 
+       'WD_TERPA2', 'WD_TERPK', 'WD_TERPAPAN','WD_TERPACID','WD_TERPA2PAN',
+       'WD_TERPACID2','WD_TERPACID3','WD_TERPA3PAN','WD_TERPOOHL','WD_TERPA3',
+       'WD_APIN','WD_BPIN','WD_LIMON','WD_MYRC'
+</fincl2>
+
 <rxn_rate_sums>
     'O3_Prod = NO_HO2 + CH3O2_NO + HOCH2OO_NO + C2H5O2_NO + CH3CO3_NO + EO2_NO + C3H7O2_NO + PO2_NO + ',
                'RO2_NO + ENEO2_NO + MACRO2_NOa + jhonitr + ',

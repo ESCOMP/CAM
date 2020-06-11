@@ -4,7 +4,7 @@
 
 <start_ymd>00010101</start_ymd>
 
-<ncdata dyn="fv" hgrid="0.9x1.25">atm/cam/inic/fv/f.e20.FC2010.f09_f09.144.TS1.001.cam.i.0007-01-01-00000.nc</ncdata>
+<sim_year>2010</sim_year>
 
 <!-- Solar data -->
 <solar_irrad_data_file>atm/cam/solar/SolarForcing2006-2014avg_c180917.nc</solar_irrad_data_file>
