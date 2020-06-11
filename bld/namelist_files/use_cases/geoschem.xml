@@ -6,18 +6,12 @@
 
 <co2vmr>367.0e-6</co2vmr>
 
-<ncdata hgrid="1.9x2.5" >atm/cam/inic/fv/cami-chem_1990-01-01_1.9x2.5_L26_c080114.nc</ncdata>
+<ncdata hgrid="0.9x1.25">atm/cam/inic/fv/f.e20.FWAMIP.f09_f09.134.1975.009.cam.i.2010-01-01_32L_c170403.nc</ncdata>
 
 <!-- Solar constant from Lean (via Caspar Ammann) -->
 <solar_data_file>atm/cam/solar/spectral_irradiance_Lean_1610-2009_ann_c100405.nc</solar_data_file>
 <solar_data_ymd>20000101</solar_data_ymd>
 <solar_data_type>FIXED</solar_data_type>
-
-<!-- Prescribed BAM data is from Jean-Francois Lamarque -->
-<prescribed_aero_datapath>atm/cam/chem/trop_mozart_aero/aero</prescribed_aero_datapath>
-<prescribed_aero_file>aero_1.9x2.5_L26_1850-2005_c091112.nc</prescribed_aero_file>
-<prescribed_aero_type>CYCLICAL</prescribed_aero_type>
-<prescribed_aero_cycle_yr>2000</prescribed_aero_cycle_yr>
 
 <!-- aerosol deposition -->
 <aerodep_flx_datapath>atm/cam/chem/trop_mozart_aero/aero</aerodep_flx_datapath>

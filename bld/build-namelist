@@ -716,6 +716,10 @@ if ( ($chem ne 'none') or ( $prog_species ) ){
             $prescribe_aerosols = $FALSE;
         }
 
+        if ($chem =~ /geoschem/) {
+            $prescribe_aerosols = $FALSE;
+        }
+
         add_default($nl, 'aer_wetdep_list', 'val'=>$aer_wetdep_list );
 
         if (!($chem =~ /_mam/)) {
