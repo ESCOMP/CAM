@@ -503,7 +503,7 @@
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
     <options>
-      <option name="comment" >381 tsm, ter</option>
+      <option name="comment" >381 tsm</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
@@ -583,7 +583,7 @@
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
     <options>
-      <option name="comment" >705 tsm, teq</option>
+      <option name="comment" >705 teq</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
@@ -643,7 +643,7 @@
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
     <options>
-      <option name="comment" >702 teq</option>
+      <option name="comment" >701 teq</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
@@ -754,16 +754,6 @@
     </machines>
     <options>
       <option name="comment" >003 tsm</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-<!-- 319 -->
-  <test compset="QPC2000climo" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s_sathist">
-    <machines>
-      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >319 tsm, ter</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
