@@ -179,7 +179,7 @@ contains
 
     use mo_chem_utls,    only: get_inv_ndx
     use cam_history,     only: addfld, add_default, horiz_only
-    use mo_chem_utls,    only: get_rxt_ndx, get_spc_ndx
+    use mo_chem_utls,    only: get_spc_ndx
     use modal_aero_data, only: cnst_name_cw
     use modal_aero_data, only: modal_aero_data_init
     use rad_constituents,only: rad_cnst_get_info
