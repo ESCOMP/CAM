@@ -2928,6 +2928,7 @@ sub write_filepath
        print $fh "$camsrcdir/src/physics/silhs\n";
     }
 
+    print $fh "$camsrcdir/src/physics/pumas\n";
 
     # Superparameterization
     if ($phys_pkg eq 'spcam_m2005' or $phys_pkg eq 'spcam_sam1mom') {
@@ -2995,46 +2996,46 @@ sub write_filepath
             print $fh "$cam_root/cime/src/share/esmf_wrf_timemgr\n";
         }
 
-        # Sequential Driver
+       # Sequential Driver
         print $fh "$cam_root/cime/src/drivers/mct/main\n";
         print $fh "$cam_root/cime/src/drivers/mct/shr\n";
 
-	# Ocean package.
-	if ($ocn eq 'dom') {
-	    print $fh "$camsrcdir/src/utils/cam_dom\n";
-	}
-	elsif ($ocn eq 'docn' or $ocn eq 'som') {
-	    print $fh "$cam_root/cime/src/components/data_comps/docn\n";
-	    print $fh "$cam_root/cime/src/components/data_comps/docn/mct\n";
-	}
-	elsif ($ocn eq 'aquaplanet') {
-	    print $fh "$camsrcdir/src/utils/cam_aqua\n";
-	    print $fh "$camsrcdir/src/utils/cam_aqua/cpl\n";
-	}
-	elsif ($ocn eq 'socn') {
-	    print $fh "$cam_root/cime/src/components/stub_comps/socn/mct\n";
-	}
+        # Ocean package.
+        if ($ocn eq 'dom') {
+            print $fh "$camsrcdir/src/utils/cam_dom\n";
+        }
+        elsif ($ocn eq 'docn' or $ocn eq 'som') {
+            print $fh "$cam_root/cime/src/components/data_comps_mct/docn\n";
+            print $fh "$cam_root/cime/src/components/data_comps_mct/docn/src\n";
+        }
+        elsif ($ocn eq 'aquaplanet') {
+            print $fh "$camsrcdir/src/utils/cam_aqua\n";
+            print $fh "$camsrcdir/src/utils/cam_aqua/cpl\n";
+        }
+        elsif ($ocn eq 'socn') {
+            print $fh "$cam_root/cime/src/components/stub_comps_mct/socn/src\n";
+        }
 
         # Land package
-        print $fh "$cam_root/cime/src/components/stub_comps/slnd/mct\n";
+        print $fh "$cam_root/cime/src/components/stub_comps_mct/slnd/src\n";
 
         # Sea ice package
-        print $fh "$cam_root/cime/src/components/stub_comps/sice/mct\n";
+        print $fh "$cam_root/cime/src/components/stub_comps_mct/sice/src\n";
 
         # Land ice package
-        print $fh "$cam_root/cime/src/components/stub_comps/sglc/mct\n";
+        print $fh "$cam_root/cime/src/components/stub_comps_mct/sglc/src\n";
 
         # include stub ESP component
-        print $fh "$cam_root/cime/src/components/stub_comps/sesp/mct\n";
+        print $fh "$cam_root/cime/src/components/stub_comps_mct/sesp/src\n";
 
         # Runoff package
-        print $fh "$cam_root/cime/src/components/stub_comps/srof/mct\n";
+        print $fh "$cam_root/cime/src/components/stub_comps_mct/srof/src\n";
 
         # Wave package
-        print $fh "$cam_root/cime/src/components/stub_comps/swav/mct\n";
+        print $fh "$cam_root/cime/src/components/stub_comps_mct/swav/src\n";
 
         # IAC package
-        print $fh "$cam_root/cime/src/components/stub_comps/siac/mct\n";
+        print $fh "$cam_root/cime/src/components/stub_comps_mct/siac/src\n";
 
         # Share utilities
         print $fh "$cam_root/cime/src/share/util\n";
