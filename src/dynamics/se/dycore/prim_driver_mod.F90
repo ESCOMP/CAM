@@ -467,9 +467,9 @@ contains
         do j=1,nc
           x = SUM(tempflux(i,j,:))
           if (ABS(tempmass(i,j)).lt.1e-11_r8 .and. 1e-11_r8.lt.ABS(x)) then
-            print *,__FILE__,__LINE__,"**CSLAM mass-flux ERROR***",ie,k,i,j,tempmass(i,j),x
+            write(iulog,*) __FILE__,__LINE__,"**CSLAM mass-flux ERROR***",ie,k,i,j,tempmass(i,j),x
           elseif (1e-5_r8.lt.ABS((tempmass(i,j)-x)/tempmass(i,j))) then
-            print *,__FILE__,__LINE__,"**CSLAM mass-flux ERROR**",ie,k,i,j,tempmass(i,j),x,&
+            write(iulog,*) __FILE__,__LINE__,"**CSLAM mass-flux ERROR**",ie,k,i,j,tempmass(i,j),x,&
                    ABS((tempmass(i,j)-x)/tempmass(i,j))
           endif
         end do

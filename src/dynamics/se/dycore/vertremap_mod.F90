@@ -1,4 +1,3 @@
-#define fv3remap
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !! Begin GPU remap module  !!
 !! by Rick Archibald, 2010  !!
@@ -31,9 +30,7 @@ module vertremap_mod
   public remap1_nofilter         ! remap any field, splines, no filter
 ! todo: tweak interface to match remap1 above, rename remap1_ppm:
   public remap_q_ppm             ! remap state%Q, PPM, monotone
-#ifdef fv3remap
-  real(kind=r8), parameter::  r3 = 1._r8/3._r8, r23 = 2._r8/3._r8, r12 = 1._r8/12._r8
-#endif  
+
   contains
 
 !=======================================================================================================!
@@ -454,7 +451,7 @@ subroutine remap_Q_ppm(Qdp,nx,qstart,qstop,qsize,dp1,dp2,kord)
   enddo
 ! call t_stopf('remap_Q_ppm')
 end subroutine remap_Q_ppm
-!#endif
+
 ! Find k such that pio(k) <= pivot < pio(k+1). Provide a reasonable input
 ! value for k.
 subroutine binary_search(pio, pivot, k)
@@ -554,7 +551,6 @@ function compute_ppm( a , dx , kord)    result(coefs)
     !Computed these coefficients from the edge values and cell mean in Maple. Assumes normalized coordinates: xi=(x-x0)/dx
     coefs(0,j) = 1.5_r8 * a(j) - ( al + ar ) / 4._r8
     coefs(1,j) = ar - al
-    ! coefs(2,j) = -6. * a(j) + 3. * ( al + ar )
     coefs(2,j) = 3._r8 * (-2._r8 * a(j) + ( al + ar ))
   enddo
 

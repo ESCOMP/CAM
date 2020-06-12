@@ -405,7 +405,8 @@ contains
       
       
       if (ftype_conserve==1) then
-        call get_dp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,np1_qdp),2,thermodynamic_active_species_idx_dycore,elem(ie)%state%dp3d(:,:,:,np1),pdel)
+        call get_dp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,np1_qdp),2, &
+            thermodynamic_active_species_idx_dycore,elem(ie)%state%dp3d(:,:,:,np1),pdel)
         do k=1,nlev
           do j=1,np
             do i = 1,np
@@ -712,13 +713,6 @@ contains
           enddo
         enddo
 
-
-        ! apply hypervis to u -> u+utens:
-        ! E0 = dpdn * .5*u dot u + dpdn * T  + dpdn*PHIS
-        ! E1 = dpdn * .5*(u+utens) dot (u+utens) + dpdn * (T-X) + dpdn*PHIS
-        ! E1-E0:   dpdn (u dot utens) + dpdn .5 utens dot utens   - dpdn X
-        !      X = (u dot utens) + .5 utens dot utens
-        !  alt:  (u+utens) dot utens
         !$omp parallel do num_threads(vert_num_threads) private(k,i,j)
         do k=kbeg,kend
           !OMP_COLLAPSE_SIMD
@@ -776,30 +770,13 @@ contains
              .true.,rhoi_dry=rhoi_dry(:,:,:),                           &
              thermodynamic_active_species_idx_dycore=thermodynamic_active_species_idx_dycore,&
              pint_out=pint,pmid_out=pmid)
-        
-!        if (molecular_diff==1) then
-!          !
-!          ! compute molecular diffusion and thermal conductivity coefficients at interfaces
-!          !
-!          call get_molecular_diff_coef(1,np,1,np,ksponge_end,nlev,&
-!               elem(ie)%state%T(:,:,:,nt),1,km_sponge_factor,kmvisi(:,:,:),kmcndi(:,:,:),qsize,&
-!               elem(ie)%state%Qdp(:,:,:,:,qn0),fact=1.0_r8/elem(ie)%state%dp3d(:,:,1:ksponge_end,nt),&               
-!               thermodynamic_active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
-!
-!          
-!          do k=1,ksponge_end+1
-!            kmvisi(:,:,k) = kmvisi(:,:,k)*rhoi_dry(:,:,k)
-!            kmcndi(:,:,k) = kmcndi(:,:,k)*rhoi_dry(:,:,k)
-!          end do
-!        else
-          !
-          ! constant coefficients
-          !
-          do k=1,ksponge_end+1
-            kmvisi(:,:,k) = kmvisi_ref(k)*rhoi_dry(:,:,k)
-            kmcndi(:,:,k) = kmcndi_ref(k)*rhoi_dry(:,:,k)
-          end do
-!        end if
+        !
+        ! constant coefficients
+        !
+        do k=1,ksponge_end+1
+           kmvisi(:,:,k) = kmvisi_ref(k)*rhoi_dry(:,:,k)
+           kmcndi(:,:,k) = kmcndi_ref(k)*rhoi_dry(:,:,k)
+        end do
         !
         ! do vertical diffusion
         !        
@@ -972,7 +949,7 @@ contains
                  rhypervis_subcycle*eta_ave_w*nu_dp*laplace_fluxes
           endif
           
-          ! NOTE: we will DSS all tendicies, EXCEPT for dp3d, where we DSS the new state
+          ! NOTE: we will DSS all tendencies, EXCEPT for dp3d, where we DSS the new state
           !OMP_COLLAPSE_SIMD
           !DIR_VECTOR_ALIGNED
           do j=1,np
@@ -1201,9 +1178,6 @@ contains
             qwater(:,:,:,:,ie),qidx,R_dry)     
        call get_cp_dry(1,np,1,np,1,nlev,1,nlev,thermodynamic_active_species_num,&
             qwater(:,:,:,:,ie),qidx,cp_dry) 
-!       call get_exner(1,np,1,np,nlev,thermodynamic_active_species_num,qwater(:,:,:,:,ie),1,qidx,&
-!            elem(ie)%state%dp3d(:,:,:,n0),ptop,hvcoord%ps0,.false.,exner(:,:,:),poverp0=poverp0(:,:,:))
-!       phi => elem(ie)%derived%phi(:,:,:)
 
        do k=1,nlev
          dp_dry(:,:,k)  = elem(ie)%state%dp3d(:,:,k,n0)
@@ -1344,8 +1318,6 @@ contains
 
              glnps1 = cp_dry(i,j,k)*theta_v(i,j)*grad_exner(i,j,1)+grad_kappa_term(i,j,1)
              glnps2 = cp_dry(i,j,k) *theta_v(i,j)*grad_exner(i,j,2)+grad_kappa_term(i,j,2)
-!             glnps1  = density_inv*grad_p_full(i,j,1,k)
-!             glnps2  = density_inv*grad_p_full(i,j,2,k)
              v1     = elem(ie)%state%v(i,j,1,k,n0)
              v2     = elem(ie)%state%v(i,j,2,k,n0)
              
@@ -1622,11 +1594,9 @@ contains
         !
         ! when using CSLAM the condensates on the GLL grid may be located in a different index than in physics
         !
-        ixwv = -1!to avoid compiletime error in code below
+        ixwv = -1
         call cnst_get_ind('CLDLIQ' , ixcldliq, abort=.false.,cnst_name_in=cnst_name_gll)
         call cnst_get_ind('CLDICE' , ixcldice, abort=.false.,cnst_name_in=cnst_name_gll)        
-!        ixcldliq = thermodynamic_active_species_idx_dycore(2)
-!        ixcldice = thermodynamic_active_species_idx_dycore(3)
       end if
       call cnst_get_ind('TT_LW' , ixtt    , abort=.false.)
       !
@@ -2280,7 +2250,6 @@ contains
       
       ! before the next iterate, make the current guess equal to the values of the last iteration
       current_guess(:) = next_iterate(:)
-      !print *, next_iterate
     end do
     dfld(:) = next_iterate(:) - fld(i,j,1:nlay)
 

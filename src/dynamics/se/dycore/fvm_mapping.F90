@@ -171,6 +171,7 @@ contains
        !
        !*****************************************************************************************
        !
+       ! nflds is ft, fu, fv, + thermo species
        nflds = 3+thermodynamic_active_species_num
        allocate(fld_phys(1-nhc_phys:fv_nphys+nhc_phys,1-nhc_phys:fv_nphys+nhc_phys,nlev,nflds,nets:nete))
        allocate(fld_gll(np,np,nlev,nflds,nets:nete))
@@ -193,22 +194,6 @@ contains
                   fvm(ie)%fc_phys(1:fv_nphys,1:fv_nphys,k,thermodynamic_active_species_idx(m_cnst))
            end do
          end do
-         !
-         ! adhoc extra smoothing in sponge for fu,fv,ft
-         !
-!         do m_cnst=1,3
-!            do k=1,ksponge_end
-!               if (nu_scale_top(k).ge.1.0_r8) then !only in top 3 levels (WACCM and CAM)
-!                  element_ave = 0.0_r8
-!                  do j=1,fv_nphys
-!                     do i=1,fv_nphys
-!                        element_ave = element_ave+fld_phys(i,j,k,m_cnst,ie)
-!                     end do
-!                  end do
-!                  fld_phys(1:fv_nphys,1:fv_nphys,k,m_cnst,ie) = element_ave/(dble(fv_nphys*fv_nphys))
-!               end if
-!            end do
-!         end do
       end do
          !
        ! do mapping

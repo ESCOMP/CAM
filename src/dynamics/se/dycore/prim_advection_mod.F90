@@ -1012,7 +1012,8 @@ contains
         elem(ie)%state%dp3d(:,:,k,np1) = dp_dry(:,:,k)
       enddo
       !
-      call get_dp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,np1_qdp),2,thermodynamic_active_species_idx_dycore,dp_star_dry,dp_star_moist(:,:,:))
+      call get_dp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,np1_qdp),2,&
+         thermodynamic_active_species_idx_dycore,dp_star_dry,dp_star_moist(:,:,:))
       !
       ! Check if Lagrangian leves have crossed
       !
@@ -1021,7 +1022,7 @@ contains
         write(iulog,*) " "
         do j=1,np
           do i=1,np
-            if (minval(dp_star_moist(i,j,:))<0) then
+            if (minval(dp_star_moist(i,j,:))<1.0e-12_r8) then
               write(iulog,'(A13,2f6.2)') "(lon,lat) = ",&
                    elem(ie)%spherep(i,j)%lon*rad2deg,elem(ie)%spherep(i,j)%lat*rad2deg
               write(iulog,*) " "
@@ -1034,19 +1035,7 @@ contains
         end do
         call endrun('negative moist layer thickness.  timestep or remap time too large')
       endif
-! For some reason there is a bug in the threading when threading over tracers is activiated for this loop 
-!      print *,'vertical_remap: qsize: ',qsize
-!      if(qsize>tracer_num_threads) then 
-!        call omp_set_nested(.true.)
-!        !$OMP PARALLEL NUM_THREADS(tracer_num_threads), DEFAULT(SHARED), PRIVATE(hybridnew,qbeg,qend)
-!        hybridnew = config_thread_region(hybrid,'tracer')
-!        call get_loop_ranges(hybridnew, qbeg=qbeg, qend=qend)
-!        call remap1(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp),np,qbeg,qend,qsize,dp_star_dry,dp_dry)
-!        !$OMP END PARALLEL
-!        call omp_set_nested(.false.)
-!      else
-!        call remap1(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp),np,1,qsize,qsize,dp_star_dry,dp_dry)
-!      endif
+
       call remap1(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp),np,1,qsize,qsize,dp_star_dry,dp_dry,ptop,0,.true.,kord_tr)
       !
       ! compute moist reference pressure level thickness
@@ -1125,11 +1114,13 @@ contains
           !$OMP PARALLEL NUM_THREADS(tracer_num_threads), DEFAULT(SHARED), PRIVATE(hybridnew2,qbeg,qend)
           hybridnew2 = config_thread_region(hybrid,'ctracer')
           call get_loop_ranges(hybridnew2, qbeg=qbeg, qend=qend)
-          call remap1(fvm(ie)%c(1:nc,1:nc,:,1:ntrac),nc,qbeg,qend,ntrac,dpc_star,fvm(ie)%dp_fvm(1:nc,1:nc,:),ptop,0,.false.,kord_tr_cslam)
+          call remap1(fvm(ie)%c(1:nc,1:nc,:,1:ntrac),nc,qbeg,qend,ntrac,dpc_star, &
+                      fvm(ie)%dp_fvm(1:nc,1:nc,:),ptop,0,.false.,kord_tr_cslam)
           !$OMP END PARALLEL 
           call omp_set_nested(.false.)
         else
-          call remap1(fvm(ie)%c(1:nc,1:nc,:,1:ntrac),nc,1,ntrac,ntrac,dpc_star,fvm(ie)%dp_fvm(1:nc,1:nc,:),ptop,0,.false.,kord_tr_cslam)
+          call remap1(fvm(ie)%c(1:nc,1:nc,:,1:ntrac),nc,1,ntrac,ntrac,dpc_star, &
+                      fvm(ie)%dp_fvm(1:nc,1:nc,:),ptop,0,.false.,kord_tr_cslam)
         endif
       enddo
     end if

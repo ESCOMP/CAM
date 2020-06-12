@@ -163,7 +163,6 @@ subroutine dyn_readnl(NLFileName)
    integer                      :: se_fvm_supercycling_jet
    integer                      :: se_kmin_jet
    integer                      :: se_kmax_jet
-   logical                      :: se_variable_nsplit
    integer                      :: se_phys_dyn_cp
    real(r8)                     :: se_raytau0
    real(r8)                     :: se_raykrange
@@ -721,10 +720,13 @@ subroutine dyn_init(dyn_in, dyn_out)
           kmvis_ref,kmcnd_ref,rho_ref)
      
      do k=1,nlev
-       if (MIN(kmvis_ref(k)/rho_ref(k),kmcnd_ref(k)/(cpair*rho_ref(k)))>1000.0_r8) then !only apply molecular viscosity where viscosity is > 1000 m/s^2
+       ! only apply molecular viscosity where viscosity is > 1000 m/s^2
+       if (MIN(kmvis_ref(k)/rho_ref(k),kmcnd_ref(k)/(cpair*rho_ref(k)))>1000.0_r8) then
          if (masterproc) then
-           write(iulog,'(a,i3,2e11.4)') "k, p, km_sponge_factor                   :",k,(hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0,km_sponge_factor(k)
-           write(iulog,'(a,2e11.4)') "kmvis_ref/rho_ref, kmcnd_ref/(cp*rho_ref): ",kmvis_ref(k)/rho_ref(k),kmcnd_ref(k)/(cpair*rho_ref(k))
+            write(iulog,'(a,i3,2e11.4)') "k, p, km_sponge_factor                   :",k, &
+               (hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0,km_sponge_factor(k)
+            write(iulog,'(a,2e11.4)') "kmvis_ref/rho_ref, kmcnd_ref/(cp*rho_ref): ", &
+               kmvis_ref(k)/rho_ref(k),kmcnd_ref(k)/(cpair*rho_ref(k))
          end if
          kmol_end = k
        else 

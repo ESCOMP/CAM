@@ -547,36 +547,26 @@ contains
     deallocate(gp%points)
     deallocate(gp%weights)
 
-
     call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu_p  ,1.0_r8 ,'_p  ')
     call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu    ,0.5_r8,'    ') 
-    !0.25 was unstable in year 8 of coupled simulation
     if (ptop>100.0_r8) then
       !
       ! CAM setting
       !
       call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu_div,2.5_r8 ,'_div')     
-      nu_div_lev(:)     = nu_div!(1.0_r8-scale1)*nu_div+scale1*2.0_r8*nu_div!+scale3*2.0_r8*nu_div
-      nu_lev(:)         = nu!(1.0_r8-scale1)*nu    +scale1*nu_p
+      nu_div_lev(:)     = nu_div
+      nu_lev(:)         = nu
     else
       !
       ! WACCM setting
       !
-!      call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu_div,5.0_r8 ,'_div')
       call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu_div,2.5_r8 ,'_div')
       if (hybrid%masterthread) write(iulog,*) ": sponge layer viscosity scaling factor"
       do k=1,nlev
         press = pmid(k)
         
-        !      scale = 0.5_r8*(1.0_r8+tanh(1.0_r8*log(10.0_r8/press))) !experimental for WACCM (version 1 - starts at 60km and full strenth at 80km)
-        !      scale = 0.5_r8*(1.0_r8+tanh(0.5_r8*log(0.10_r8/press))) !experimental for WACCM (version 2 - starts at 80km and full strength at 120km) -UNSTABLE
-        
-        !scale3 = 0.5_r8*(1.0_r8+tanh(1.0_r8*log(    0.01_r8/press))) !experimental for WACCM (version 2 - starts at 80km and full strength at 120km)
-        !scale2 = 0.5_r8*(1.0_r8+tanh(1.0_r8*log( 1000.0_r8/press))) !experimental for WACCM (version 2 - starts at 80km and full strength at 120km)
-
         scale1 = 0.5_r8*(1.0_r8+tanh(2.0_r8*log(100.0_r8/press)))
-!        scale1 = 0.5_r8*(1.0_r8+tanh(0.5_r8*log(0.10_r8/press))) !experimental for WACCM (version 2 - starts at 80km and full strength at 120km) -UNSTABLE
-        nu_div_lev(k)     = (1.0_r8-scale1)*nu_div+scale1*2.0_r8*nu_div!+scale3*2.0_r8*nu_div
+        nu_div_lev(k)     = (1.0_r8-scale1)*nu_div+scale1*2.0_r8*nu_div
         nu_div_lev(k)     = nu_div
         nu_lev(k)         = (1.0_r8-scale1)*nu    +scale1*nu_p
         nu_lev(k)         = nu

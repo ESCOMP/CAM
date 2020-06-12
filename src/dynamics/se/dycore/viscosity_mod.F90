@@ -103,8 +103,8 @@ subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,
              nu_ratio1=nu_div_lev(k)/nu_lev(k)
              nu_ratio2=1
           else
-            nu_ratio1=sqrt(nu_div_lev(k)/nu_lev(k))!*nu_div/nu)
-            nu_ratio2=sqrt(nu_div_lev(k)/nu_lev(k))!*nu_div/nu)
+            nu_ratio1=sqrt(nu_div_lev(k)/nu_lev(k))
+            nu_ratio2=sqrt(nu_div_lev(k)/nu_lev(k))
           endif
        endif
 
