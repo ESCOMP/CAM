@@ -4,9 +4,6 @@
 
 <start_ymd>00010101</start_ymd>
 
-<dust_emis_fact>0.8D0</dust_emis_fact> 
-<lght_no_prd_factor>1.80D0</lght_no_prd_factor>
-
 <!-- Solar data -->
 <solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-22991231_c171031.nc</solar_irrad_data_file>
 
