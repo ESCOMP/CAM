@@ -496,12 +496,6 @@ contains
     real (kind=r8), dimension(nc,nc,4,nlev,nets:nete)      :: dpflux
     type (EdgeDescriptor_t)                                :: desc    
     
-    ! NOTE: PGI compiler bug: when using spheremp, rspheremp and ps as pointers to elem(ie)% members,
-    !       data is incorrect (offset by a few numbers actually)
-    !       removed for now.
-    !       real (kind=r8), dimension(:,:), pointer :: spheremp,rspheremp
-    !       real (kind=r8), dimension(:,:,:), pointer   :: ps
-    
     real (kind=r8), dimension(np,np)            :: lap_t,lap_dp
     real (kind=r8), dimension(np,np)            :: tmp, tmp2
     real (kind=r8), dimension(np,np,ksponge_end,nets:nete):: kmvis,kmcnd,rho_dry
@@ -2225,9 +2219,7 @@ contains
       if (boundary_condition==0) then
         next_iterate(1) = fld(i,j,1) ! u doesn't get prognosed by diffusion at top      
       else if (boundary_condition==1) then
-        value_level0 = 0.75_r8*fld(i,j,1)!value above sponge 
-                                         !- 0.75 given level 1 winds around 50 +/- 25 in WACCM is sponge_factor=100
-                                         !- 0.90 given level 1 winds around 100 +/- 25 in WACCM is sponge_factor=100
+        value_level0 = 0.75_r8*fld(i,j,1) ! value above sponge 
         k=1
         alp = dt*(km(i,j,k+1)*gravit*gravit/(pmid(i,j,k)-pmid(i,j,k+1)))/(pint(i,j,k)-pint(i,j,k+1))
         alm = dt*(km(i,j,k  )*gravit*gravit/(0.5_r8*(pmid(i,j,1)-pmid(i,j,2))))/(pint(i,j,k)-pint(i,j,k+1))

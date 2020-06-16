@@ -1729,19 +1729,19 @@ end do
 !
 !   One combination NOT supported:  tensorHV and nu_div/=nu then abort
 !
-    real(kind=r8), intent(in) :: v(np,np,2)
-    logical, intent(in), optional   :: var_coef
-    type (derivative_t), intent(in) :: deriv
-    type (element_t),    intent(in) :: elem
-    logical,             intent(in) :: undamprrcart
-    real(kind=r8),         optional :: nu_ratio
-    real(kind=r8),      intent(out) :: laplace(np,np,2)
+    real(kind=r8),           intent(in)  :: v(np,np,2)
+    type (derivative_t),     intent(in)  :: deriv
+    type (element_t),        intent(in)  :: elem
+    logical,                 intent(in)  :: undamprrcart
+    real(kind=r8),           intent(out) :: laplace(np,np,2)
+    logical,       optional, intent(in)  :: var_coef
+    real(kind=r8), optional, intent(in)  :: nu_ratio
 
 
     if (hypervis_scaling/=0 .and. var_coef) then
        ! tensorHV is turned on - requires cartesian formulation
        if (present(nu_ratio)) then
-          if (nu_ratio /= 1) then
+          if (nu_ratio /= 1._r8) then
              call endrun('ERROR: tensorHV can not be used with nu_div/=nu')
           endif
        endif
@@ -1849,13 +1849,15 @@ end do
 !                 = < PHI grad(div) >  - < PHI curl(vor) >
 !                 = grad_wk(div) - curl_wk(vor)
 !
-    real(kind=r8),       intent(in) :: v(np,np,2)
-    logical,             intent(in) :: var_coef
-    type (derivative_t), intent(in) :: deriv
-    type (element_t),    intent(in) :: elem
-    logical,             intent(in) :: undamprrcart
-    real(kind=r8)                   :: laplace(np,np,2)
-    real(kind=r8), optional         :: nu_ratio
+    real(kind=r8),           intent(in) :: v(np,np,2)
+    logical,                 intent(in) :: var_coef
+    type (derivative_t),     intent(in) :: deriv
+    type (element_t),        intent(in) :: elem
+    logical,                 intent(in) :: undamprrcart
+    real(kind=r8), optional, intent(in) :: nu_ratio
+
+    real(kind=r8)                       :: laplace(np,np,2)
+
     ! Local
 
     integer i,j,l,m,n

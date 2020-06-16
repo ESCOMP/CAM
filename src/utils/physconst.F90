@@ -33,26 +33,27 @@ public  :: composition_init
 !
 ! See Lauritzen et al. (2018) for formulaes
 !
-public  :: get_dp                             !compute pressure level thickness from dry dp and dry mixing ratios
-public  :: get_pmid_from_dp                   !compute full level pressure from dp (approximation depends on dycore)
-public  :: get_ps                             !compute surface pressure
-public  :: get_thermal_energy                 !compute thermal energy quantity = dp*cp*T
-public  :: get_virtual_temp                   !compute virtual temperature
-public  :: get_cp                             !compute (generalized) heat capacity
-public  :: get_cp_dry                         !compute (generalized) heat capacity for dry air
-public  :: get_sum_species                    !compute sum of thermodynamically active species: dp_dry*sum_species=dp
-public  :: get_virtual_theta                  !compute virtual potential temperature
-public  :: get_gz                             !compute geopotential
-public  :: get_gz_given_dp_Tv_Rdry            !compute geopotential (with dp,dry R and Tv as input)
-public  :: get_Richardson_number              !compute Richardon number
-public  :: get_hydrostatic_static_energy      
-public  :: get_R_dry
-public  :: get_kappa_dry
-public  :: get_dp_ref
-public  :: get_molecular_diff_coef
-public  :: get_molecular_diff_coef_reference
-public  :: get_rho_dry
-public  :: get_exner
+public  :: get_dp                             ! pressure level thickness from dry dp and dry mixing ratios
+public  :: get_pmid_from_dp                   ! full level pressure from dp (approximation depends on dycore)
+public  :: get_ps                             ! surface pressure
+public  :: get_thermal_energy                 ! thermal energy quantity = dp*cp*T
+public  :: get_virtual_temp                   ! virtual temperature
+public  :: get_cp                             ! (generalized) heat capacity
+public  :: get_cp_dry                         ! (generalized) heat capacity for dry air
+public  :: get_sum_species                    ! sum of thermodynamically active species: dp_dry*sum_species=dp
+public  :: get_virtual_theta                  ! virtual potential temperature
+public  :: get_gz                             ! geopotential
+public  :: get_gz_given_dp_Tv_Rdry            ! geopotential (with dp,dry R and Tv as input)
+public  :: get_Richardson_number              ! Richardson number at layer interfaces
+public  :: get_hydrostatic_static_energy      ! geopotential, dry static energy, and kinetic energy
+public  :: get_R_dry                          ! (generalized) dry air gas constant
+public  :: get_kappa_dry                      ! (generalized) dry kappa = R_dry/cp_dry
+public  :: get_dp_ref                         ! reference pressure layer thickness (include topography)
+public  :: get_molecular_diff_coef            ! molecular diffusion and thermal conductivity
+public  :: get_molecular_diff_coef_reference  ! reference vertical profile of density, molecular diffusion and thermal conductivity
+public  :: get_rho_dry                        ! dry densisty from temperature (temp) and pressure (dp_dry and tracer)
+public  :: get_exner                          ! Exner pressure
+
 ! Constants based off share code or defined in physconst
 
 real(r8), public, parameter :: avogad      = shr_const_avogad     ! Avogadro's number (molecules/kmole)
@@ -213,8 +214,7 @@ contains
     
     use namelist_utils,  only: find_group_name
     use units,           only: getunit, freeunit
-    use mpishorthand
-    use spmd_utils,      only: masterproc
+    use spmd_utils,      only: masterproc, mpicom, masterprocid, mpi_real8
     use cam_logfile,     only: iulog
     
     character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
@@ -225,7 +225,7 @@ contains
     logical :: newg, newsday, newmwh2o, newcpwv, newmwdry, newcpair, newrearth, newtmelt, newomega
     
     
-    ! Physical constants needing to be reset (ie. for aqua planet experiments)
+    ! Physical constants needing to be reset (e.g., for aqua planet experiments)
     namelist /physconst_nl/  gravit, sday, mwh2o, cpwv, mwdry, cpair, rearth, tmelt, omega
 
     !-----------------------------------------------------------------------------
@@ -244,19 +244,16 @@ contains
       call freeunit(unitn)
     end if
     
-#ifdef SPMD
     ! Broadcast namelist variables
-    call mpibcast(gravit,      1,  mpir8,   0, mpicom)
-    call mpibcast(sday,        1,  mpir8,   0, mpicom)
-    call mpibcast(mwh2o,       1,  mpir8,   0, mpicom)
-    call mpibcast(cpwv,        1,  mpir8,   0, mpicom)
-    call mpibcast(mwdry,       1,  mpir8,   0, mpicom)
-    call mpibcast(cpair,       1,  mpir8,   0, mpicom)
-    call mpibcast(rearth,      1,  mpir8,   0, mpicom)
-    call mpibcast(tmelt,       1,  mpir8,   0, mpicom)
-    call mpibcast(omega,       1,  mpir8,   0, mpicom)
-    
-#endif
+    call MPI_bcast(gravit, 1, mpi_real8, masterprocid, mpicom, ierr)
+    call MPI_bcast(sday,   1, mpi_real8, masterprocid, mpicom, ierr)
+    call MPI_bcast(mwh2o,  1, mpi_real8, masterprocid, mpicom, ierr)
+    call MPI_bcast(cpwv,   1, mpi_real8, masterprocid, mpicom, ierr)
+    call MPI_bcast(mwdry,  1, mpi_real8, masterprocid, mpicom, ierr)
+    call MPI_bcast(cpair,  1, mpi_real8, masterprocid, mpicom, ierr)
+    call MPI_bcast(rearth, 1, mpi_real8, masterprocid, mpicom, ierr)
+    call MPI_bcast(tmelt,  1, mpi_real8, masterprocid, mpicom, ierr)
+    call MPI_bcast(omega,  1, mpi_real8, masterprocid, mpicom, ierr)
     
     newg     =  gravit .ne. shr_const_g
     newsday  =  sday   .ne. shr_const_sday
@@ -267,8 +264,6 @@ contains
     newrearth=  rearth .ne. shr_const_rearth
     newtmelt =  tmelt  .ne. shr_const_tkfrz
     newomega =  omega  .ne. shr_const_omega
-    
-    
     
     if (newg .or. newsday .or. newmwh2o .or. newcpwv .or. newmwdry .or. newrearth .or. newtmelt .or. newomega) then
       if (masterproc) then

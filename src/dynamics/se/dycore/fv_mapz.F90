@@ -1,4 +1,13 @@
 
+!**************************************************************************************
+!
+! fv_mapz contains vertical remapping algorithms that come from the FV3 dycore.
+! They have been minimally modified for use in CAM.
+!
+! The following license statement is from the original code.
+!
+!**************************************************************************************
+  
 !***********************************************************************
 !*                   GNU Lesser General Public License                 
 !*
@@ -20,12 +29,6 @@
 !* If not, see <http://www.gnu.org/licenses/>.
 !***********************************************************************
 module fv_mapz
-  
-  !**************************************************************************************
-  !
-  ! Vertical remapping algorithms from FV3 minimally modified for use in CAM
-  !
-  !**************************************************************************************
   
   use shr_kind_mod,           only: r8=>shr_kind_r8
   use cam_abortutils,         only: endrun
@@ -1238,9 +1241,6 @@ contains
         enddo
       elseif ( iv==-1 ) then 
         do i=i1,i2
-!          a4(2,i,1) = a4(1,i,1)!phl turn 2dz limiter on winds in sponge - layer 1
-!          a4(3,i,1) = a4(1,i,1)!phl turn 2dz limiter on winds in sponge - layer 1
-!          a4(4,i,1) = 0.0_r8   !phl turn 2dz limiter on winds in sponge - layer 1
           if ( a4(2,i,1)*a4(1,i,1) <= 0.0_r8 ) a4(2,i,1) = 0.0_r8
         enddo
       elseif ( iv==2 ) then
@@ -1258,19 +1258,10 @@ contains
         call cs_limiters(im, extm(i1,1), a4(1,i1,1), 1)
       endif
       
-!      if ( iv/=-1 ) then      !phl
-        ! k=2
-        do i=i1,i2
-          a4(4,i,2) = 3.0_r8*(2.0_r8*a4(1,i,2) - (a4(2,i,2)+a4(3,i,2)))
-        enddo
-        call cs_limiters(im, extm(i1,2), a4(1,i1,2), 2)
-!      else        
-!        do i=i1,i2             !phl
-!          a4(2,i,2) = a4(1,i,2)!phl turn 2dz limiter on winds in sponge - layer 2
-!          a4(3,i,2) = a4(1,i,2)!phl turn 2dz limiter on winds in sponge - layer 2
-!          a4(4,i,2) = 0.0_r8   !phl turn 2dz limiter on winds in sponge - layer 2
-!        end do                 !phl
-!      end if                   !phl
+      do i=i1,i2
+        a4(4,i,2) = 3.0_r8*(2.0_r8*a4(1,i,2) - (a4(2,i,2)+a4(3,i,2)))
+      enddo
+      call cs_limiters(im, extm(i1,2), a4(1,i1,2), 2)
       
       !-------------------------------------
       ! Huynh's 2nd constraint for interior:

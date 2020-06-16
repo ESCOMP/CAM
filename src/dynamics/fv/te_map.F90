@@ -511,7 +511,7 @@ contains
                 write(iulog,*) "Run will ABORT!"
                 write(iulog,*) "Suggest to increase NSPLTVRM"
                 do kk=1,km
-                  write(iulog,'(A21,I5,A1,3f12.8)') "k,dp(unit=hPa),u,v: ",&
+                  write(iulog,'(A21,I5,A1,3f16.12)') "k,dp(unit=hPa),u,v: ",&
                        kk," ",(pe(i,kk,j)-pe(i,kk-1,j))/100.0_r8,u(i,j,kk),v(i,j,kk)
                 end do
                 call endrun('te_map: Lagrangian levels are crossing')
