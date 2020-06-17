@@ -1274,7 +1274,7 @@ subroutine read_inidat(dyn_in)
 
   !
   ! initialize delp and mixing ratios (fv3 is wet ie dry+wet condenstates)
-  ! convert mixing ratios based off of dry+vap first if needed
+  ! convert mixing ratios based off of dry+vap (cam initial conditions) first if needed
   !
   if (inic_wet) then
 
@@ -1289,6 +1289,7 @@ subroutine read_inidat(dyn_in)
      !  convert to (dry mass + vapor + condensates)
      !
      if (dryplusq) then
+        if (masterproc) write (iulog,*)'Converting initial data mixing ratios from dry+vap to dry+all wet constituents'
         allocate(pstmp(isd:ied,jsd:jed))
         pstmp(:,:) = atm(mytile)%ps(:,:)
         atm(mytile)%ps(:,:)=hyai(1)*ps0
@@ -2333,8 +2334,8 @@ subroutine check_mixing_ratios(atm,dryplusq,dryplusall)
   global_ave_mass_q=g_sum(Atm(mytile)%domain, massq2d(is:ie,js:je), is, ie, js, je, &
                            Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
 
-  if (abs(global_ave_ps-global_ave_drypsq-global_ave_mass_q).lt.masstol) dryplusq=.true.
-  if (abs(global_ave_ps-global_ave_drypsall-global_ave_mass_q).lt.masstol) dryplusall=.true.
+  if (abs((global_ave_ps-global_ave_drypsq-global_ave_mass_q)/global_ave_ps).lt.masstol) dryplusq=.true.
+  if (abs((global_ave_ps-global_ave_drypsall-global_ave_mass_q)/global_ave_ps).lt.masstol) dryplusall=.true.
 
   deallocate(delp)
   deallocate(delpdryq)
