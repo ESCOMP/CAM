@@ -773,25 +773,13 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
 !--------------------------------------------
 !  Variables needed for WACCM-X
 !--------------------------------------------
-    integer  :: ixo, ixo2, ixh, ixh2, ixn  ! indices into state structure for O, O2, H, H2, and N
+    integer  :: ixo, ixo2, ixh, ixh2         ! indices into state structure for O, O2, H, H2, and N
     real(r8) :: mmrSum_O_O2_H                ! Sum of mass mixing ratios for O, O2, and H
     real(r8), parameter :: mmrMin=1.e-20_r8  ! lower limit of o2, o, and h mixing ratios
     real(r8), parameter :: N2mmrMin=1.e-6_r8 ! lower limit of o2, o, and h mixing ratios
 
    type(physics_buffer_desc), pointer :: pbuf_chnk(:)
    !----------------------------------------------------------------------------
-
-!------------------------------------------------------
-!  Get indices to access O, O2, H, H2, and N species
-!------------------------------------------------------
-    if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
-      call cnst_get_ind('O', ixo)
-      call cnst_get_ind('O2', ixo2)
-      call cnst_get_ind('H', ixh)
-      call cnst_get_ind('H2', ixh2)
-      call cnst_get_ind('N', ixn)
-    endif
-
 
    ! Evaluate derived quantities
 
@@ -888,6 +876,12 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
 ! Ensure O2 + O + H (N2) mmr greater than one.  Check for unusually large H2 values and set to lower value
 !-----------------------------------------------------------------------------------------------------------------
        if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
+
+          call cnst_get_ind('O', ixo)
+          call cnst_get_ind('O2', ixo2)
+          call cnst_get_ind('H', ixh)
+          call cnst_get_ind('H2', ixh2)
+
           do i=1,ncol
              do k=1,pver
 
