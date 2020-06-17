@@ -445,12 +445,6 @@
       </values>
     </entry>
 
-    <entry id="EPS_AAREA">
-      <values match="first">
-	<value grid="a%ne0np4CONUS">1.e-4</value>
-      </values>
-    </entry>
-
     <!-- Overrides for WACCMX -->
     <entry id="ATM_NCPL">
       <values match="first">

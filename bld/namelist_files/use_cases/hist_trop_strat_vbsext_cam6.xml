@@ -7,7 +7,7 @@
 <ncdata dyn="fv" hgrid="0.9x1.25">atm/cam/inic/fv/f.e20.FCHIST.f09_f09_mg17.cesm2_0_rel.emis_fix.fullVBS.cam.i.1996-01-01-00000_c180716.nc</ncdata>
 
 <!-- Solar data -->
-<solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-22991231_c171031.nc</solar_irrad_data_file>
+<solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-23000102_c20200615.nc</solar_irrad_data_file>
 
 <!-- WACCM GW Settings -->
 <use_gw_front>.true.</use_gw_front>
