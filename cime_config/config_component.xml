@@ -27,14 +27,15 @@
     ===============
    -->
     <desc atm="CAM[456]0%SCAM">CAM stand-alone single column mode -- need to define usermods directory with IOP settings:</desc>
-    <desc atm="[%SDYN][%NUDG]">CAM winds and temperature nudged towards prescribed meteorology:</desc>
+    <desc atm="[%SDYN]">CAM specified dynamics is used in finite volume dynamical core:</desc>
+    <desc atm="[%NUDG]">CAM physics is nudged towards prescribed meteorology:</desc>
   <!--
     ===============
      CAM Options
     ===============
    -->
-    <desc option="CCTS1"        >CAM-Chem TS1.1 troposphere/stratosphere chemistry with modal aersols :</desc>
-    <desc option="CCTS2"        >CAM-Chem TS2.1 troposphere/stratosphere chemistry with modal aersols :</desc>
+    <desc option="CCTS1"        >CAM-Chem troposphere/stratosphere chemistry with simplified VBS-SOA (tag:MZ272_TS1.1_simpleVBS_20200302):</desc>
+    <desc option="CCTS2"        >CAM-Chem troposphere/stratosphere chemistry with simplified VBS-SOA and detailed isoprene and monoterpene scheme (tag:MZ275_TS2_1_isop_mt_simplevbs_no_20200410):</desc>
     <desc option="CFIRE"        >CAM-Chem troposphere/stratosphere chem with simplified volatility basis set SOA scheme and fire emissons :</desc>
     <desc option="CLB"          >CAM CLUBB - turned on by default in CAM60:</desc>
     <desc option="CVBSX"        >CAM-Chem troposphere/stratosphere chem with extended volatility basis set SOA scheme and modal aersols :</desc>

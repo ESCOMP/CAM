@@ -29,9 +29,9 @@
 <!-- nudging -->
 
 <Nudge_Model>.true.</Nudge_Model>
-<Nudge_Path hgrid="0.9x1.25" nlev="32">'/glade/p/acom/MUSICA/met_data/MERRA2_fv09_32L/'</Nudge_Path>
-<Nudge_Path hgrid="ne30np4" nlev="32">'/glade/p/acom/MUSICA/met_data/MERRA2_ne30_32L/'</Nudge_Path>
-<Nudge_Path hgrid="ne30np4" npg="3" nlev="32">'/glade/p/acom/MUSICA/met_data/MERRA2_ne30pg3_32L/'</Nudge_Path>
+<Nudge_Path hgrid="0.9x1.25" nlev="32">'atm/cam/met/nudging/MERRA2_fv09_32L/'</Nudge_Path>
+<Nudge_Path hgrid="ne30np4" nlev="32">'atm/cam/met/nudging/MERRA2_ne30_32L/'</Nudge_Path>
+<Nudge_Path hgrid="ne30np4" npg="3" nlev="32">'atm/cam/met/nudging/MERRA2_ne30pg3_32L/'</Nudge_Path>
 <Nudge_File_Template hgrid="0.9x1.25" nlev="32">'%y/MERRA2_fv09.cam2.i.%y-%m-%d-%s.nc'</Nudge_File_Template>
 <Nudge_File_Template hgrid="ne30np4" nlev="32">'%y/MERRA2_ne30np4_L32.cam2.i.%y-%m-%d-%s.nc'</Nudge_File_Template>
 <Nudge_File_Template hgrid="ne30np4" npg="3" nlev="32">'%y/MERRA2_ne30pg3_L32.cam2.i.%y-%m-%d-%s.nc'</Nudge_File_Template>

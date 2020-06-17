@@ -1289,7 +1289,7 @@ is_freezing_a : &
              fax_wrk(l,2) = fax
            endif
 upper_level : &
-     if( L > 1 ) then
+           if( L > 1 ) then
              if( CFR(LM1) >= CFMIN ) then
                CFXX(LM1) = CFR(LM1)
              else
