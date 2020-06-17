@@ -144,6 +144,7 @@ subroutine dyn_grid_init()
 
    integer :: i, j, k, tile
    integer :: is,ie,js,je,n,nx,ny
+   character(len=128) :: errmsg
 
    !-----------------------------------------------------------------------
    !  from couple_main initialize atm structure - initializes fv3 grid
@@ -190,9 +191,10 @@ subroutine dyn_grid_init()
    ntiles = Atm(mytile)%gridstruct%ntiles_g
    tile = Atm(mytile)%tile
 
-   if (Atm(mytile)%flagstruct%npz /= plev) &
-        call endrun('dyn_grid_init: FV3 dycore levels (npz) does not match model levels (plev)')
-
+   if (Atm(mytile)%flagstruct%npz /= plev) then
+      write(errmsg,*) 'FV3 dycore levels (npz),',Atm(mytile)%flagstruct%npz,' do not match model levels (plev)',plev
+      call endrun(sub//':'//errmsg)
+   end if
 
    ! Get file handle for initial file
    fh_ini => initial_file_get_id()
@@ -404,11 +406,12 @@ subroutine get_block_levels_d(blockid, bcid, lvlsiz, levels)
 
     ! local variables
     integer :: k
+    character(len=128) :: errmsg
     !---------------------------------------------------------------------------
 
     if (lvlsiz < plev + 1) then
-        write(iulog,*)'GET_BLOCK_LEVELS_D: levels array not large enough (',lvlsiz,' < ',plev + 1,')'
-        call endrun
+       write(errmsg,*) 'levels array not large enough (', lvlsiz,' < ',plev + 1,')'
+       call endrun('GET_BLOCK_LEVELS_D: '//trim(errmsg))
     else
         do k = 0, plev
             levels(k+1) = k

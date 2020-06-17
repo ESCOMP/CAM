@@ -333,7 +333,7 @@ subroutine dyn_readnl(nlfilename)
         rewind(unitn)        
         call find_group_name(unitn, trim(group_names(i)), status=ierr)
         
-        if (ierr == 0) then ! we found it now copy each line until endding '/' to input.nml
+        if (ierr == 0) then ! Found it. Copy each line to input.nml until '/' is encountered.
 
            ! write group name to input.nml
            read(unitn, '(a)', iostat=ios, end=100) inrec
@@ -449,7 +449,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    integer :: istage, ivars
    character (len=108) :: str1, str2, str3
    integer :: is,isd,ie,ied,js,jsd,je,jed
-   integer :: ixrain, ixsnow, ixgraupel, ixcldice, ixcldliq
+   integer :: ixrain, ixsnow, ixgraupel, ixcldice, ixcldliq, ixhum
    integer :: fv3idx,icnst_ffsl
 
    real, parameter:: cv_vap = 3.*rvgas        ! < 1384.5
@@ -457,6 +457,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    integer        :: unito
    integer, parameter  :: ndiag = 5
    integer             :: ncnst, pnats, num_family, nt_prog
+   character(len=128) :: errmsg
    !-----------------------------------------------------------------------
 
    ! Setup the condensate loading arrays and fv3/cam tracer mapping and
@@ -475,18 +476,22 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    ! set up the condensate loading array
    if (qsize_condensate_loading > 6) then
-     call endrun(subname//': fv3_qsize_condensate_loading not setup for more than 6 forms of water')
+     call endrun(subname//': fv3_qsize_condensate_loading is limited to 6 wet condensates')
    end if
    
+   icnst_ffsl = 0
    ! water vapor is always tracer 1
-   icnst_ffsl = 1
-   cnst_name_ffsl(icnst_ffsl)='sphum'
-   cnst_longname_ffsl(1) = cnst_longname(1)
-   qsize_condensate_loading_idx(1) = 1
-   qsize_condensate_loading_idx_gll(1) = 1
-   qsize_condensate_loading_cp(1) = cpwv
-   qsize_condensate_loading_cv(1) = cv_vap
-   qsize_tracer_idx_cam2dyn(1) = icnst_ffsl
+   ixhum = 1
+   if (ixhum >= 1) then
+      icnst_ffsl= icnst_ffsl+1
+      cnst_name_ffsl(icnst_ffsl)='sphum'
+      cnst_longname_ffsl(icnst_ffsl) = cnst_longname(ixhum)
+      qsize_condensate_loading_idx(icnst_ffsl) = icnst_ffsl
+      qsize_condensate_loading_idx_gll(icnst_ffsl) = ixhum
+      qsize_condensate_loading_cp(icnst_ffsl) = cpwv
+      qsize_condensate_loading_cv(icnst_ffsl) = cv_vap
+      qsize_tracer_idx_cam2dyn(ixhum) = icnst_ffsl
+   end if
 
    call cnst_get_ind('CLDLIQ', ixcldliq, abort=.false.)
    if (ixcldliq > 1) then
@@ -549,11 +554,11 @@ subroutine dyn_init(dyn_in, dyn_out)
    end if
 
    if (icnst_ffsl /= qsize_condensate_loading) then
-      call endrun(subname//':qsize_condensate_loading not equal to q array water constituents')
+      call endrun(subname//': Size of qsize_condensate_loading not equal to total FV3 dynamics water constituents')
    end if
    !Now add all other CAM tracer after any of the condensates in the fv3 tracer array 
    do m=1,pcnst
-      if (m.ne.1.and. &
+      if (m.ne.ixhum.and. &
            m.ne.ixcldliq.and. &
            m.ne.ixcldice.and. &
            m.ne.ixsnow.and. &
@@ -590,9 +595,8 @@ subroutine dyn_init(dyn_in, dyn_out)
       if(qsize_tracer_idx_cam2dyn(m).le.qsize_condensate_loading) then
          fv3idx  = get_tracer_index (MODEL_ATMOS, cnst_name_ffsl(qsize_tracer_idx_cam2dyn(m)) )
          if (fv3idx.ne.qsize_tracer_idx_cam2dyn(m)) then
-            write(iulog,*)'m,fv3idx,qsize_tracer_idx_cam2dyn=',m, &
-                 fv3idx,qsize_tracer_idx_cam2dyn,cnst_name_ffsl,mpp_pe()
-            call endrun(subname//': ERROR: CAM/FV3 Tracer mapping incorrect')
+            write(errmsg,*) subname//': Physics index ',m,'and FV3 tracer index',fv3idx,' are inconsistent'
+            call endrun(errmsg)
          end if
       end if
    end do
@@ -960,13 +964,15 @@ subroutine read_inidat(dyn_in)
 
   integer                :: is,ie,js,je,isd,ied,jsd,jed
   integer                :: blksize
-  logical                :: fv2fv3_mixratio
   
   integer :: m_ffsl
   integer :: ilen,jlen
   real(r8), allocatable :: var3d(:,:,:), var2d(:,:)
   real(r8), pointer                :: latvals_deg(:)
   real(r8), pointer                :: lonvals_deg(:)
+  logical                :: dryplusq,dryplusall
+
+  !-----------------------------------------------------------------------
 
   Atm => dyn_in%Atm
   grid => Atm(mytile)%gridstruct%grid_64
@@ -1267,17 +1273,22 @@ subroutine read_inidat(dyn_in)
   end do
 
   !
-  ! initialize delp and mixing ratios
+  ! initialize delp and mixing ratios (fv3 is wet ie dry+wet condenstates)
+  ! convert mixing ratios based off of dry+vap first if needed
   !
-
   if (inic_wet) then
 
-!
-!  Initial condition should be consistent with fv3 dynamics and wouldn't normally need any adjustment
-!  here but I am using an interpolated fv initial condition with mixing ratios based off of (dry mass + vapor)
-!  and fv3 needs it to be (dry mass + vapor + condensates)
-     fv2fv3_mixratio=.true.
-     if (fv2fv3_mixratio) then 
+     call check_mixing_ratios(atm,dryplusq,dryplusall)
+
+     ! If mixing ratios not based off of dry+vap  or dry+vap+wet constitutents then err out.
+     if (.not.(dryplusq.or.dryplusall)) then
+        call endrun(subname//': Initial condition mixing ratios inconsistent with wet airmass')
+     end if
+     !
+     !  If using interpolated initial condition with mixing ratios based off of (dry mass + vapor)
+     !  convert to (dry mass + vapor + condensates)
+     !
+     if (dryplusq) then
         allocate(pstmp(isd:ied,jsd:jed))
         pstmp(:,:) = atm(mytile)%ps(:,:)
         atm(mytile)%ps(:,:)=hyai(1)*ps0
@@ -1301,17 +1312,6 @@ subroutine read_inidat(dyn_in)
                  Atm(mytile)%delp(i,j,k) = fv3_airmass
                  Atm(mytile)%q(i,j,k,1:pcnst) = tracermass(1:pcnst)/fv3_airmass
                  Atm(mytile)%ps(i,j)=Atm(mytile)%ps(i,j)+Atm(mytile)%delp(i, j, k)
-                 ! check new tracermass 
-                 do m=1,pcnst
-                    m_ffsl=qsize_tracer_idx_cam2dyn(m)
-                    if (tracermass(m_ffsl).ne.0) then
-                       reldif=(Atm(mytile)%delp(i,j,k)*Atm(mytile)%q(i,j,k,m_ffsl) - &
-                               tracermass(m_ffsl))/tracermass(m_ffsl)
-                       if (reldif.gt.1.0e-15_r8) &
-                            write(iulog,*)'mass inconsistency new, old, relative error=',iam,cnst_name(m),&
-                            Atm(mytile)%delp(i,j,k)*Atm(mytile)%q(i,j,k,m_ffsl),tracermass(m_ffsl),reldif
-                    end if
-                 end do
               end do
            end do
         end do
@@ -1324,7 +1324,7 @@ subroutine read_inidat(dyn_in)
      do k=1,pver
         do j = js, je
            do i = is, ie
-              ! this delp is (dry+vap) using the moist ps read in.
+              ! this delp is assumed dry.
               delpdry = (((hyai(k+1) - hyai(k))*ps0)         +                &
                    ((hybi(k+1) - hybi(k))*pstmp(i,j)))
               do m=1,pcnst
@@ -1449,9 +1449,9 @@ end subroutine read_inidat
     real(kind=r8) :: tt_tmp
 
     !
-    ! global axial angular momentum (AAM) can be separated into one part (mr) 
-    ! associatedwith the relative motion of the atmosphere with respect to the planets surface 
-    ! (also known as wind AAM) and another part (mo) associated with the angular velocity OMEGA  
+    ! global axial angular momentum (AAM) can be separated into one part (mr)
+    ! associated with the relative motion of the atmosphere with respect to the planet surface
+    ! (also known as wind AAM) and another part (mo) associated with the angular velocity OMEGA
     ! (2*pi/d, where d is the length of the day) of the planet (also known as mass AAM)
     !
     real(kind=r8), allocatable :: mr(:,:)  ! wind AAM                        
@@ -1519,7 +1519,9 @@ end subroutine read_inidat
 
     if ( hist_fld_active(name_out1).or.hist_fld_active(name_out2).or. &
          hist_fld_active(name_out3).or.hist_fld_active(name_out4).or. &
-         hist_fld_active(name_out5).or.hist_fld_active(name_out6).or..true.) then
+         hist_fld_active(name_out5).or.hist_fld_active(name_out6).or. &
+         hist_fld_active(name_out7).or.hist_fld_active(name_out8).or. &
+         hist_fld_active(name_out9)) then
        if (qsize_condensate_loading>1) then
           call cnst_get_ind('CLDLIQ', ixcldliq, abort=.false.)
           call cnst_get_ind('CLDICE', ixcldice, abort=.false.)
@@ -1571,9 +1573,6 @@ end subroutine read_inidat
                 ! kinetic energy using cam dp only dry + vap
                 !
                 ke_tmp   = 0.5_r8*(Atm(mytile)%va(i,j,k)**2+ Atm(mytile)%ua(i,j,k)**2)*dp(i,j,k)/gravit
-                if (abs(Atm(mytile)%ua(i,j,k))>200.0.or.abs(Atm(mytile)%va(i,j,k))>200.0) then
-                   write(*,*) "yyy",Atm(mytile)%ua(i,j,k),Atm(mytile)%va(i,j,k),suffix
-                end if
 
                 if (fv3_lcp_moist.or.fv3_lcv_moist) then
                    !
@@ -1737,11 +1736,7 @@ end subroutine read_inidat
                        Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
           if (masterproc) then
       
-             if (fv3_lcp_moist) then
-                write(iulog, '(a,e25.17)') 'static energy se_'//trim(suffix)//')        = ',se_glob
-             else
-                write(iulog, '(a,e25.17)') 'static energy se_'//trim(suffix)//')        = ',se_glob
-             end if
+             write(iulog, '(a,e25.17)') 'static energy se_'//trim(suffix)//')        = ',se_glob
              write(iulog, '(a,e25.17)') 'kinetic energy ke_'//trim(suffix)//')           = ',ke_glob
              write(iulog, '(a,e25.17)') 'total energy se_plus_ke_'//trim(suffix)//')     = ',(ke_glob+se_glob)
              write(iulog, '(a,e25.17)') 'integrated vapor wv_'//trim(suffix)//'   = ',wv_glob
@@ -1803,8 +1798,8 @@ end subroutine read_inidat
          mo_glob=g_sum(Atm(mytile)%domain, mo(is:ie,js:je), is, ie, js, je, &
                  Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
          if (masterproc) then
-            write(iulog, '(a,e25.17)') 'integrated wind AAM name_out1_'//trim(suffix)//' = ',mr_glob
-            write(iulog, '(a,e25.17)') 'integrated mass AAM name_out1_'//trim(suffix)//' = ',mo_glob
+            write(iulog, '(a,e25.17)') 'integrated wind AAM '//name_out1//' = ',mr_glob
+            write(iulog, '(a,e25.17)') 'integrated mass AAM '//name_out2//' = ',mo_glob
          end if
       end if
    end if
@@ -2259,6 +2254,98 @@ subroutine a2d3djt(ua, va, u, v, is,  ie,  js,  je, isd, ied, jsd, jed, npx,npy,
   call mpp_update_domains(u, v, domain, gridtype=DGRID_NE)
 
 end subroutine a2d3djt
+
+subroutine check_mixing_ratios(atm,dryplusq,dryplusall)
+
+!-------------------------------------------------------------------------------
+! Check mixing ratios to see if they are based off a total mass
+! of dry+q (mass conserved in cam physics) or a wet mass of dry+all wet condensates
+!-------------------------------------------------------------------------------
+
+  use dimensions_mod,         only: nlev
+  use fv_grid_utils_mod,      only: g_sum
+  use hycoef,                 only: hyai, hybi, ps0
+  use physconst,              only: gravit
+  implicit none
+
+  ! args
+  type(fv_atmos_type), pointer, intent(in) :: Atm(:)
+  logical,intent(out)                      :: dryplusq,dryplusall
+
+  ! Local variables
+
+  integer                         :: i,j,k,is,ie,js,je
+  real (r8), allocatable          :: delp(:,:,:),delpdryq(:,:,:),delpdryall(:,:,:),psdryq(:,:),&
+                                     psdryall(:,:),massq(:,:,:),massq2d(:,:)
+  real (kind=r8)                  :: global_ave_ps,global_ave_drypsq,global_ave_drypsall, &
+                                     global_ave_mass_q
+  real(r8), parameter             :: masstol = 1.e-12_r8
+
+  !-----------------------------------------------------------------------
+
+  is = Atm(mytile)%bd%is
+  ie = Atm(mytile)%bd%ie
+  js = Atm(mytile)%bd%js
+  je = Atm(mytile)%bd%je
+
+  dryplusq=.false.
+  dryplusall=.false.
+
+  allocate(delp(is:ie,js:je,nlev))
+  allocate(delpdryq(is:ie,js:je,nlev))
+  allocate(delpdryall(is:ie,js:je,nlev))
+  allocate(massq(is:ie,js:je,nlev))
+  allocate(massq2d(is:ie,js:je))
+  allocate(psdryq(is:ie,js:je))
+  allocate(psdryall(is:ie,js:je))
+
+  do k=1,nlev
+     do j = js, je
+        do i = is, ie
+           delp(i, j, k) = (((hyai(k+1) - hyai(k))*ps0)         +                &
+                ((hybi(k+1) - hybi(k))*Atm(mytile)%ps(i,j)))
+           delpdryall(i,j,k)=delp(i,j,k) * (1.0_r8 - &
+                          sum(Atm(mytile)%q(i,j,k,qsize_condensate_loading_idx(1:qsize_condensate_loading))))
+           delpdryq(i,j,k)=delp(i,j,k) * (1.0_r8 - Atm(mytile)%q(i,j,k,1))
+           massq(i,j,k)=delp(i,j,k)*Atm(mytile)%q(i,j,k,1)
+        end do
+     end do
+  end do
+  !
+  ! vertically integrate mass dry and mass q
+  !
+  do j = js, je
+     do i = is, ie
+        psdryq(i,j) = hyai(1)*ps0 + sum(delpdryq(i,j,:))
+        psdryall(i,j) = hyai(1)*ps0 + sum(delpdryall(i,j,:))
+        massq2d(i,j)= sum(massq(i,j,:))
+     end do
+  end do
+  !
+  ! global integrals
+  !
+  global_ave_ps=g_sum(Atm(mytile)%domain, Atm(mytile)%ps(is:ie,js:je), is, ie, js, je, &
+                           Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
+  global_ave_drypsq=g_sum(Atm(mytile)%domain, psdryq(is:ie,js:je), is, ie, js, je, &
+                        Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
+  global_ave_drypsall=g_sum(Atm(mytile)%domain, psdryall(is:ie,js:je), is, ie, js, je, &
+                        Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
+  global_ave_mass_q=g_sum(Atm(mytile)%domain, massq2d(is:ie,js:je), is, ie, js, je, &
+                           Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
+
+  if (abs(global_ave_ps-global_ave_drypsq-global_ave_mass_q).lt.masstol) dryplusq=.true.
+  if (abs(global_ave_ps-global_ave_drypsall-global_ave_mass_q).lt.masstol) dryplusall=.true.
+
+  deallocate(delp)
+  deallocate(delpdryq)
+  deallocate(massq)
+  deallocate(massq2d)
+  deallocate(psdryq)
+  deallocate(delpdryall)
+  deallocate(psdryall)
+
+end subroutine check_mixing_ratios
+
 
 end module dyn_comp
 

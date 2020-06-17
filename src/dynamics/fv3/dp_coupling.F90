@@ -80,9 +80,9 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
   real(r8), allocatable, dimension(:,:)     :: ps_tmp   !((ie-is+1)*(je-js+1),     1) ! temporary array to hold ps
   real(r8), allocatable, dimension(:,:,:)   :: T_tmp    !((ie-is+1)*(je-js+1),pver,1) ! temporary array to hold T
   real(r8), allocatable, dimension(:,:,:)   :: omega_tmp!((ie-is+1)*(je-js+1),pver,1) ! temporary array to hold omega
-  real(r8), allocatable, dimension(:,:,:)   :: pdel_tmp !((ie-is+1)*(je-js+1),pver,1) ! temporary array to hold omega
-  real(r8), allocatable, dimension(:,:,:)   :: u_tmp !((ie-is+1)*(je-js+1),pver,1) ! temp array to hold u and v
-  real(r8), allocatable, dimension(:,:,:)   :: v_tmp !((ie-is+1)*(je-js+1),pver,1) ! temp array to hold u and v
+  real(r8), allocatable, dimension(:,:,:)   :: pdel_tmp !((ie-is+1)*(je-js+1),pver,1) ! temporary array to hold pdel
+  real(r8), allocatable, dimension(:,:,:)   :: u_tmp !((ie-is+1)*(je-js+1),pver,1) ! temp array to hold u
+  real(r8), allocatable, dimension(:,:,:)   :: v_tmp !((ie-is+1)*(je-js+1),pver,1) ! temp array to hold v
   real(r8), allocatable, dimension(:,:,:,:) :: q_tmp !((ie-is+1)*(je-js+1),pver,pcnst,1) ! temp to hold advected constituents
   
   !-----------------------------------------------------------------------
@@ -697,7 +697,7 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
      do k=1,pver
         do i=1,ncol
            phys_state(lchnk)%rpdeldry(i,k) = 1._r8/phys_state(lchnk)%pdeldry(i,k)
-           phys_state(lchnk)%pmiddry (i,k) = 0.5D0*(phys_state(lchnk)%pintdry(i,k+1) + &
+           phys_state(lchnk)%pmiddry (i,k) = 0.5_r8*(phys_state(lchnk)%pintdry(i,k+1) + &
                 phys_state(lchnk)%pintdry(i,k))
         end do
         call shr_vmath_log(phys_state(lchnk)%pmiddry(1:ncol,k), &
@@ -758,20 +758,24 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
 end subroutine derived_phys_dry
 
 subroutine atend2dstate3d(u_dt, v_dt, u, v, is,  ie,  js,  je, isd, ied, jsd, jed, npx,npy, nlev, gridstruct, domain, dt)
+!----------------------------------------------------------------------------
+! This routine adds the a-grid wind tendencies returned by the physics to the d-state
+! wind being sent to the dynamics.
+!----------------------------------------------------------------------------
 
   use fv_arrays_mod,      only: fv_grid_type
   use mpp_domains_mod,    only: mpp_update_domains,  DGRID_NE
 
   ! arguments
-  integer, intent(IN) :: npx,npy, nlev
+  integer, intent(in) :: npx,npy, nlev
   integer, intent(in):: is,  ie,  js,  je
   integer, intent(in):: isd, ied, jsd, jed
   real(r8), intent(in):: dt
   real(r8), intent(inout), dimension(isd:ied,jsd:jed,nlev):: u_dt, v_dt
   real(r8), intent(inout):: u(isd:ied,  jsd:jed+1,nlev)
   real(r8), intent(inout):: v(isd:ied+1,jsd:jed  ,nlev)
-  type(domain2d), intent(INOUT) :: domain
-  type(fv_grid_type), intent(IN), target :: gridstruct
+  type(domain2d), intent(inout) :: domain
+  type(fv_grid_type), intent(in), target :: gridstruct
 
   ! local:
 
@@ -1000,9 +1004,10 @@ subroutine fv3_tracer_diags(atm)
      call z_sum(Atm,is,ie,js,je,nlev,Atm(mytile)%q(is:ie,js:je,1:nlev,m),psq(is:ie,js:je,m),psum) 
   end do
 ! Mean water vapor in the "stratosphere" (75 mb and above):
+  qm_strat = 0._r8
   if ( Atm(mytile)%idiag%phalf(2)< 75. ) then
      kstrat = 1
-     do k=1,nlev
+     do k=2,nlev
         if ( Atm(mytile)%idiag%phalf(k+1) > 75. ) exit
         kstrat = k
      enddo

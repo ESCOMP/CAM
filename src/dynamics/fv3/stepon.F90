@@ -34,8 +34,8 @@ subroutine stepon_init(dyn_in, dyn_out)
   
   implicit none
   
-  type (dyn_import_t)   :: dyn_in             ! Dynamics import container
-  type (dyn_export_t)   :: dyn_out            ! Dynamics export container
+  type (dyn_import_t), intent(inout)   :: dyn_in             ! Dynamics import container
+  type (dyn_export_t), intent(inout)   :: dyn_out            ! Dynamics export container
   
    ! local variables
    integer :: m_cnst,m_cnst_ffsl
@@ -95,8 +95,8 @@ subroutine stepon_run1(dtime_out, phys_state, phys_tend, pbuf2d, dyn_in, dyn_out
     type (physics_state), intent(inout) :: phys_state(begchunk:endchunk)
     type (physics_tend),  intent(inout) :: phys_tend(begchunk:endchunk)
     type (physics_buffer_desc), pointer :: pbuf2d(:,:)
-    type (dyn_import_t)                 :: dyn_in  ! Dynamics import container
-    type (dyn_export_t)                 :: dyn_out ! Dynamics export container
+    type (dyn_import_t),  intent(inout) :: dyn_in  ! Dynamics import container
+    type (dyn_export_t),  intent(inout) :: dyn_out ! Dynamics export container
 
     dtime_out = get_step_size()
 
@@ -184,115 +184,8 @@ subroutine stepon_final(dyn_in, dyn_out)
 
 end subroutine stepon_final
 
-!=========================================================================================
-
-subroutine diag_dyn_in(dyn_in,suffx)
-
-  use cam_history,            only: write_inithist, outfld, hist_fld_active, fieldname_len
-  use constituents,           only: cnst_name, pcnst
-  use dyn_grid,               only: mytile
-  use fv_arrays_mod,          only: fv_atmos_type
-  use dimensions_mod,         only: nlev
-  implicit none
-  
-  type (dyn_import_t),  intent(in) :: dyn_in
-  character*(*)      ,  intent(in) :: suffx ! suffix for "outfld" names
-  
-  
-  ! local variables
-  integer              :: is,ie,js,je, j, m_cnst,m_cnst_ffsl
-  integer              :: idim
-  character(len=fieldname_len) :: tfname
-
-  type (fv_atmos_type),  pointer :: Atm(:)
-  
-  !----------------------------------------------------------------------------
-  
-  Atm=>dyn_in%atm
-  
-  is = Atm(mytile)%bd%is
-  ie = Atm(mytile)%bd%ie
-  js = Atm(mytile)%bd%js
-  je = Atm(mytile)%bd%je
-  
-  idim=ie-is+1
-  
-  ! Output tracer fields for analysis of advection schemes
-  do m_cnst = 1, pcnst
-     m_cnst_ffsl=qsize_tracer_idx_cam2dyn(m_cnst)
-     tfname = trim(cnst_name(m_cnst))//'_ffsl'//trim(suffx)
-     if (hist_fld_active(tfname)) then
-        do j = js, je
-           call outfld(tfname, RESHAPE(Atm(mytile)%q(is:ie, j, :, m_cnst_ffsl),(/idim,nlev/)), idim, j)
-        end do
-     end if
-  end do
-
-  ! Output tracer fields for analysis of advection schemes
-  do m_cnst = 1, pcnst
-     m_cnst_ffsl=qsize_tracer_idx_cam2dyn(m_cnst)
-     tfname = trim(cnst_name(m_cnst))//'_mass_ffsl'//trim(suffx)
-     if (hist_fld_active(tfname)) then
-        do j = js, je
-           call outfld(tfname,RESHAPE((Atm(mytile)%q(is:ie,j,:,m_cnst_ffsl)*Atm(mytile)%delp(is:ie,j,:)),(/idim,nlev/)),idim,j)
-        end do
-     end if
-  end do
-  
-  if (hist_fld_active('U_ffsl'//trim(suffx)) .or. hist_fld_active('V_ffsl'//trim(suffx))) then
-     do j = js, je
-        call outfld('U_ffsl'//trim(suffx), RESHAPE(Atm(mytile)%ua(is:ie, j, :),(/idim,nlev/)), idim, j)
-        call outfld('V_ffsl'//trim(suffx), RESHAPE(Atm(mytile)%va(is:ie, j, :),(/idim,nlev/)), idim, j)
-     end do
-  end if
-
-  if (hist_fld_active('U_ffsl_ns'//trim(suffx))) then
-     do j = js, je+1
-        call outfld('U_ffsl_ns'//trim(suffx), RESHAPE(Atm(mytile)%u(is:ie, j, :),(/idim,nlev/)), idim, j)
-     end do
-  end if
-  if (hist_fld_active('V_ffsl_ew'//trim(suffx))) then
-     do j = js, je
-        call outfld('V_ffsl_ew'//trim(suffx), RESHAPE(Atm(mytile)%v(is:ie+1, j, :),(/idim+1,nlev/)), idim+1, j)
-     end do
-  end if
-  
-  if (hist_fld_active('T_ffsl'//trim(suffx))) then
-     do j = js, je
-        call outfld('T_ffsl'//trim(suffx), RESHAPE(Atm(mytile)%pt(is:ie, j, :),(/idim,nlev/)), idim, j)
-     end do
-  end if
-
-  if (hist_fld_active('PS_ffsl'//trim(suffx))) then
-     do j = js, je
-        call outfld('PS_ffsl'//trim(suffx), Atm(mytile)%ps(is:ie, j), idim, j)
-     end do
-  end if
-  
-  if (hist_fld_active('PHIS_ffsl'//trim(suffx))) then
-     do j = js, je
-        call outfld('PHIS_ffsl'//trim(suffx), Atm(mytile)%phis(is:ie, j), idim, j)
-     end do
-  end if
-  
-  if (write_inithist()) then
-     
-     do j = js, je
-        call outfld('T&IC', RESHAPE(Atm(mytile)%pt(is:ie, j, :),(/idim,nlev/)), idim, j)
-        call outfld('U&IC', RESHAPE(Atm(mytile)%ua(is:ie, j, :),(/idim,nlev/)), idim, j)
-        call outfld('V&IC', RESHAPE(Atm(mytile)%va(is:ie, j, :),(/idim,nlev/)), idim, j)
-        call outfld('PS&IC', Atm(mytile)%ps(is:ie, j), idim, j)
-        call outfld('PHIS&IC', Atm(mytile)%phis(is:ie, j), idim, j)
-        
-        do m_cnst = 1, pcnst
-           m_cnst_ffsl=qsize_tracer_idx_cam2dyn(m_cnst)
-           call outfld(trim(cnst_name(m_cnst))//'&IC', RESHAPE(Atm(mytile)%q(is:ie, j, :, m_cnst_ffsl),(/idim,nlev/)), idim, j)
-        end do
-     end do
-  end if  ! if (write_inithist)
-
-end subroutine diag_dyn_in
 !=======================================================================
+
 subroutine diag_dyn_out(dyn_in,suffx)
 
   use cam_history,            only: write_inithist, outfld, hist_fld_active, fieldname_len

@@ -297,9 +297,7 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
    ierr = PIO_Inq_DimID(File, 'lev', nlev_dimid)
    ierr = PIO_Inq_dimlen(File, nlev_dimid, fnlev)
    if (nlev /= fnlev) then
-      write(iulog,*) 'Restart file nlev does not match model. nlev (file, namelist):', &
-                     fnlev, nlev
-      call endrun(sub//': Restart file nlev does not match model.')
+      call endrun(sub//': Restart file nlev dimension does not match number of model levels')
    end if
 
    ! variable descriptors of required dynamics fields
@@ -350,13 +348,19 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
    call cam_grid_dimensions(grid_id, grid_dimlens)
    call cam_grid_dimensions(grid_id_ew, grid_dimlens_ew)
    call cam_grid_dimensions(grid_id_ns, grid_dimlens_ns)
-   
-   if (ncols_d_ns /= grid_dimlens_ns(1)) then
-      write(iulog,*) 'Restart file ncol_d_ns does not match model. ncols_d_ns (file, model):',&
-           ncols_d_ns, grid_dimlens_ns(1)
-      call endrun(sub//': Restart file ncols_d_ns does not match model.')
+
+   if (ncols_d /= grid_dimlens(1)) then
+      call endrun(sub//':Restart file ncol_d dimension does not match number of model A-Grid columns')
    end if
-   
+
+   if (ncols_d_ns /= grid_dimlens_ns(1)) then
+      call endrun(sub//':Restart file ncol_d_ns dimension does not match the number of model D-Grid ns columns')
+   end if
+
+   if (ncols_d_ew /= grid_dimlens_ew(1)) then
+      call endrun(sub//':Restart file ncol_d_ew dimension does not match the number of model D-Grid ew columns')
+   end if
+
    ilen = ie-is+1
    jlen = je-js+1
    ! create map for distributed write of 2D fields
