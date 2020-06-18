@@ -25,6 +25,7 @@ help () {
   echo "${hprefix} [ -i ] (interactive usage)"
   echo "${hprefix} [ -j ] (number of jobs for gmake)"
   echo "${hprefix} [ --baseline-dir <directory> ] (directory for saving baselines of cime tests)"
+  echo "${hprefix} [ --no-baseline] (baselines of cime tests are not saved)"
   echo "${hprefix} [ --cesm <test_name(s)> ] (default aux_cam)"
   echo "${hprefix} [ --no-cesm ] (do not run any CESM test or test suite)"
   echo "${hprefix} [ --cam ] (Run CAM regression tests, default is not to run CAM regression tests."
@@ -96,6 +97,9 @@ while [ "${1:0:1}" == "-" ]; do
             baseline_dir="${2}"
             shift
             ;;
+
+        --no-baseline ) no_baseline=false
+             ;;
 
         -b ) export CAM_BASEBACK="YES"
              ;;
@@ -1109,10 +1113,12 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
     if [ -n "${use_existing}" ]; then
       testargs="${testargs} --use-existing -o"
     fi
-    if [ -n "${baseline_dir}" ]; then
-      testargs="${testargs} --generate ${baseline_dir}"
-    else
-      testargs="${testargs} --generate ${cesm_testdir}/baselines"
+    if [ "$no_baseline" != false ]; then
+       if [ -n "${baseline_dir}" ]; then
+         testargs="${testargs} --generate ${baseline_dir}"
+       else
+        testargs="${testargs} --generate ${cesm_testdir}/baselines"
+      fi
     fi
 
 
