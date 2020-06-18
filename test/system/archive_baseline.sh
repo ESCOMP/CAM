@@ -118,7 +118,13 @@ if [ -n "$CESM_TESTDIR" ]; then
     mkdir $baselinedir
     root_baselinedir=`dirname $baselinedir`
     echo "CESM Archiving to $root_baselinedir/$cam_tag"
-    ../../cime/scripts/Tools/bless_test_results -p -t '' -c '' -r $CESM_TESTDIR --baseline-root $root_baselinedir -b $cam_tag -f -s
+    if [ -d $CESM_TESTDIR/baselines ]; then
+      echo "Using cp to archive baselines."
+      cp -r $CESM_TESTDIR/baselines/. $root_baselinedir/$cam_tag
+    else
+      echo "Using bless_test_results to archive baselines."
+      ../../cime/scripts/Tools/bless_test_results -p -t '' -c '' -r $CESM_TESTDIR --baseline-root $root_baselinedir -b $cam_tag -f -s
+    fi
 
     echo " "
 fi
