@@ -438,7 +438,7 @@
   </test>
   <test compset="FC2010climo" grid="ne30_ne30_mg17" name="SMS_Ld1" testmods="cam/outfrq1d">
     <machines>
-      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+      <machine name="cheyenne" compiler="intel" category="prealpha"/>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
     </machines>
     <options>
