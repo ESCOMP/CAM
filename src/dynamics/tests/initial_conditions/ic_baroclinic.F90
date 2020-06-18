@@ -341,18 +341,6 @@ contains
                mask=mask_use, verbose=verbose_use, notfound=.false.,&
                z=zlocal)               
           
-#if 0
-          do k = 1, nlev
-            do i=1,ncol
-              if (mask_use(i)) then
-                Q(i,k,m) = test_func(latvals(i),lonvals(i), k, m)
-              end if
-            end do
-          end do
-          if(masterproc .and. verbose_use) then
-            write(iulog,*) '          ', trim(cnst_name(m_cnst(m))), ' initialized by "',subname,'"'
-          end if
-#endif
         end do
 
       end if ! vcoord
