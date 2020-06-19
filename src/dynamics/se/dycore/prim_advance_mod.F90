@@ -145,7 +145,6 @@ contains
     end if
     do ie=nets,nete
       call get_kappa_dry(1,np,1,np,1,nlev,nlev,thermodynamic_active_species_num,qwater(:,:,:,:,ie),qidx,kappa(:,:,:,ie))
-      !kappa(:,:,:,ie) = rair/cpair
     end do
 
     

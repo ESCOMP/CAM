@@ -588,7 +588,7 @@ end function integrate_parabola
 
     real(kind=r8) :: x1,x2,x3,x4,a
 
-   x1 = half*dx1
+    x1 = half*dx1
     x2 = x1 + half*(dx1 + dx2)
     x3 = x2 + half*(dx2 + dx3)
     x4 = x3 + half*(dx3 + dx4)
