@@ -1618,6 +1618,13 @@ contains
      real(r8),  dimension(i0:i1,j0:j1,1:k1)              :: pmid
      real(r8):: pint(i0:i1,j0:j1,1:k1+1)
      real(r8), allocatable :: R_dry(:,:,:)
+     integer,  dimension(thermodynamic_active_species_num):: idx_local
+
+     if (present(active_species_idx_dycore)) then
+       idx_local = active_species_idx_dycore
+     else
+       idx_local = thermodynamic_active_species_idx
+     end if
      !
      ! we assume that air is dry where molecular viscosity may be significant
      !
@@ -1627,9 +1634,9 @@ contains
      if (present(rhoi_dry)) then
        allocate(R_dry(i0:i1,j0:j1,1:k1+1))
        if (tracer_mass) then           
-         call get_R_dry(i0,i1,j0,j1,1,k1+1,1,nlev,ntrac,tracer,thermodynamic_active_species_idx,R_dry,fact=1.0_r8/dp_dry)
+         call get_R_dry(i0,i1,j0,j1,1,k1+1,1,nlev,ntrac,tracer,idx_local,R_dry,fact=1.0_r8/dp_dry)
        else
-         call get_R_dry(i0,i1,j0,j1,1,k1+1,1,nlev,ntrac,tracer,thermodynamic_active_species_idx,R_dry)
+         call get_R_dry(i0,i1,j0,j1,1,k1+1,1,nlev,ntrac,tracer,idx_local,R_dry)
        end if
        do k=2,k1+1
          rhoi_dry(i0:i1,j0:j1,k) = 0.5_r8*(temp(i0:i1,j0:j1,k)+temp(i0:i1,j0:j1,k-1))!could be more accurate!
@@ -1646,9 +1653,9 @@ contains
      if (present(rho_dry)) then
        allocate(R_dry(i0:i1,j0:j1,1:k1))
        if (tracer_mass) then
-         call get_R_dry(i0,i1,j0,j1,1,k1,1,nlev,ntrac,tracer,thermodynamic_active_species_idx,R_dry,fact=1.0_r8/dp_dry)
+         call get_R_dry(i0,i1,j0,j1,1,k1,1,nlev,ntrac,tracer,idx_local,R_dry,fact=1.0_r8/dp_dry)
        else
-         call get_R_dry(i0,i1,j0,j1,1,k1,1,nlev,ntrac,tracer,thermodynamic_active_species_idx,R_dry)
+         call get_R_dry(i0,i1,j0,j1,1,k1,1,nlev,ntrac,tracer,idx_local,R_dry)
        end if
        do k=1,k1
          do j=j0,j1
