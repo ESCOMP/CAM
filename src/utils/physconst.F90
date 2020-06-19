@@ -26,7 +26,6 @@ public  :: physconst_readnl
 public  :: physconst_init
 public  :: physconst_update
 public  :: physconst_calc_kappav
-public  :: air_composition_readnl
 public  :: composition_init
 !
 ! subroutines to compute thermodynamic quantities
@@ -170,194 +169,203 @@ real(r8), parameter :: &
 
 !================================================================================================
 contains
-  !================================================================================================
-  !
-  ! Read namelist variables.
-  subroutine air_composition_readnl(nlfile)
-    use namelist_utils,  only: find_group_name
-    use units,           only: getunit, freeunit
-    use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_character
-    use spmd_utils,      only: masterproc    
-    ! args
-    character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
-    
-    ! Local variables
-    integer :: unitn, ierr
-    integer :: i
-    character(len=*), parameter :: subname = 'air_composition_readnl'
-    
-    namelist /air_composition_nl/ dry_air_composition, moist_air_composition
-    
-    !-----------------------------------------------------------------------------
-    
-    dry_air_composition   = (/ (' ', i=1,num_names_max) /)
-    moist_air_composition = (/ (' ', i=1,num_names_max) /)    
-    
-    if (masterproc) then
-      unitn = getunit()
-      open( unitn, file=trim(nlfile), status='old' )
-      call find_group_name(unitn, 'air_composition_nl', status=ierr)
-      if (ierr == 0) then
-        read(unitn, air_composition_nl, iostat=ierr)
-        if (ierr /= 0) then
-          call endrun(subname // ':: ERROR reading namelist')
-        end if
-      end if
-      close(unitn)
-      call freeunit(unitn)
-    end if
-    
-    call mpi_bcast(dry_air_composition, len(dry_air_composition)*num_names_max, mpi_character, &
-         mstrid, mpicom, ierr)
-    if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: dry_air_composition")
-    call mpi_bcast(moist_air_composition, len(moist_air_composition)*num_names_max, mpi_character, &
-         mstrid, mpicom, ierr)
-    if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: moist_air_composition")
-    
-    dry_air_composition_num=0
-    moist_air_composition_num=0
-    do i=1,num_names_max
-      if (.not.LEN(TRIM(dry_air_composition(i)))==0) then
-        dry_air_composition_num=dry_air_composition_num+1
-      endif
-      if (.not.LEN(TRIM(moist_air_composition(i)))==0) then
-        moist_air_composition_num=moist_air_composition_num+1
-      endif
-    end do
-    thermodynamic_active_species_num = dry_air_composition_num+moist_air_composition_num
-  end subroutine air_composition_readnl
-  
-  
-  
-  subroutine physconst_readnl(nlfile)
-    
-    use namelist_utils,  only: find_group_name
-    use units,           only: getunit, freeunit
-    use spmd_utils,      only: masterproc, mpicom, masterprocid, mpi_real8
-    use cam_logfile,     only: iulog
-    
-    character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
-   
-    ! Local variables
-    integer :: unitn, ierr
-    character(len=*), parameter :: subname = 'physconst_readnl'
-    logical :: newg, newsday, newmwh2o, newcpwv, newmwdry, newcpair, newrearth, newtmelt, newomega
-    
-    
-    ! Physical constants needing to be reset (e.g., for aqua planet experiments)
-    namelist /physconst_nl/  gravit, sday, mwh2o, cpwv, mwdry, cpair, rearth, tmelt, omega
+!================================================================================================
 
-    !-----------------------------------------------------------------------------
-    
-    if (masterproc) then
+! Read namelist variables.
+subroutine physconst_readnl(nlfile)
+
+   use namelist_utils,  only: find_group_name
+   use units,           only: getunit, freeunit
+   use spmd_utils,      only: masterproc, mpicom, masterprocid, mpi_real8, mpi_character
+   use cam_logfile,     only: iulog
+
+   character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
+
+   ! Local variables
+   integer :: unitn, ierr, i
+   character(len=*), parameter :: subname = 'physconst_readnl'
+   logical :: newg, newsday, newmwh2o, newcpwv, newmwdry, newcpair, newrearth, newtmelt, newomega
+
+
+   ! Physical constants needing to be reset (e.g., for aqua planet experiments)
+   namelist /physconst_nl/  gravit, sday, mwh2o, cpwv, mwdry, cpair, rearth, tmelt, omega
+
+   ! Variable components of dry air and water species in air
+   namelist /air_composition_nl/ dry_air_composition, moist_air_composition
+   !-----------------------------------------------------------------------------
+
+   if (masterproc) then
       unitn = getunit()
       open( unitn, file=trim(nlfile), status='old' )
       call find_group_name(unitn, 'physconst_nl', status=ierr)
       if (ierr == 0) then
-        read(unitn, physconst_nl, iostat=ierr)
-        if (ierr /= 0) then
-          call endrun(subname // ':: ERROR reading namelist')
-        end if
+         read(unitn, physconst_nl, iostat=ierr)
+         if (ierr /= 0) then
+            call endrun(subname // ':: ERROR reading namelist')
+         end if
       end if
       close(unitn)
       call freeunit(unitn)
-    end if
-    
-    ! Broadcast namelist variables
-    call MPI_bcast(gravit, 1, mpi_real8, masterprocid, mpicom, ierr)
-    call MPI_bcast(sday,   1, mpi_real8, masterprocid, mpicom, ierr)
-    call MPI_bcast(mwh2o,  1, mpi_real8, masterprocid, mpicom, ierr)
-    call MPI_bcast(cpwv,   1, mpi_real8, masterprocid, mpicom, ierr)
-    call MPI_bcast(mwdry,  1, mpi_real8, masterprocid, mpicom, ierr)
-    call MPI_bcast(cpair,  1, mpi_real8, masterprocid, mpicom, ierr)
-    call MPI_bcast(rearth, 1, mpi_real8, masterprocid, mpicom, ierr)
-    call MPI_bcast(tmelt,  1, mpi_real8, masterprocid, mpicom, ierr)
-    call MPI_bcast(omega,  1, mpi_real8, masterprocid, mpicom, ierr)
-    
-    newg     =  gravit .ne. shr_const_g
-    newsday  =  sday   .ne. shr_const_sday
-    newmwh2o =  mwh2o  .ne. shr_const_mwwv
-    newcpwv  =  cpwv   .ne. shr_const_cpwv
-    newmwdry =  mwdry  .ne. shr_const_mwdair
-    newcpair =  cpair  .ne. shr_const_cpdair
-    newrearth=  rearth .ne. shr_const_rearth
-    newtmelt =  tmelt  .ne. shr_const_tkfrz
-    newomega =  omega  .ne. shr_const_omega
-    
-    if (newg .or. newsday .or. newmwh2o .or. newcpwv .or. newmwdry .or. newrearth .or. newtmelt .or. newomega) then
+   end if
+
+   ! Broadcast namelist variables
+   call MPI_bcast(gravit, 1, mpi_real8, masterprocid, mpicom, ierr)
+   call MPI_bcast(sday,   1, mpi_real8, masterprocid, mpicom, ierr)
+   call MPI_bcast(mwh2o,  1, mpi_real8, masterprocid, mpicom, ierr)
+   call MPI_bcast(cpwv,   1, mpi_real8, masterprocid, mpicom, ierr)
+   call MPI_bcast(mwdry,  1, mpi_real8, masterprocid, mpicom, ierr)
+   call MPI_bcast(cpair,  1, mpi_real8, masterprocid, mpicom, ierr)
+   call MPI_bcast(rearth, 1, mpi_real8, masterprocid, mpicom, ierr)
+   call MPI_bcast(tmelt,  1, mpi_real8, masterprocid, mpicom, ierr)
+   call MPI_bcast(omega,  1, mpi_real8, masterprocid, mpicom, ierr)
+
+   newg     =  gravit .ne. shr_const_g
+   newsday  =  sday   .ne. shr_const_sday
+   newmwh2o =  mwh2o  .ne. shr_const_mwwv
+   newcpwv  =  cpwv   .ne. shr_const_cpwv
+   newmwdry =  mwdry  .ne. shr_const_mwdair
+   newcpair =  cpair  .ne. shr_const_cpdair
+   newrearth=  rearth .ne. shr_const_rearth
+   newtmelt =  tmelt  .ne. shr_const_tkfrz
+   newomega =  omega  .ne. shr_const_omega
+
+   if (newg .or. newsday .or. newmwh2o .or. newcpwv .or. newmwdry .or. newrearth .or. newtmelt .or. newomega) then
       if (masterproc) then
-        write(iulog,*)'****************************************************************************'
-        write(iulog,*)'***    New Physical Constant Values set via namelist                     ***'
-        write(iulog,*)'***                                                                      ***'
-        write(iulog,*)'***    Physical Constant    Old Value                  New Value         ***'
-        if (newg)       write(iulog,*)'***       GRAVIT    ',shr_const_g,gravit,'***'
-        if (newsday)    write(iulog,*)'***       SDAY      ',shr_const_sday,sday,'***'
-        if (newmwh2o)   write(iulog,*)'***       MWH20     ',shr_const_mwwv,mwh2o,'***'
-        if (newcpwv)    write(iulog,*)'***       CPWV      ',shr_const_cpwv,cpwv,'***'
-        if (newmwdry)   write(iulog,*)'***       MWDRY     ',shr_const_mwdair,mwdry,'***'
-        if (newcpair)   write(iulog,*)'***       CPAIR     ',shr_const_cpdair,cpair,'***'
-        if (newrearth)  write(iulog,*)'***       REARTH    ',shr_const_rearth,rearth,'***'
-        if (newtmelt)   write(iulog,*)'***       TMELT     ',shr_const_tkfrz,tmelt,'***'
-        if (newomega)   write(iulog,*)'***       OMEGA     ',shr_const_omega,omega,'***'
-        write(iulog,*)'****************************************************************************'
+         write(iulog,*)'****************************************************************************'
+         write(iulog,*)'***    New Physical Constant Values set via namelist                     ***'
+         write(iulog,*)'***                                                                      ***'
+         write(iulog,*)'***    Physical Constant    Old Value                  New Value         ***'
+         if (newg)       write(iulog,*)'***       GRAVIT    ',shr_const_g,gravit,'***'
+         if (newsday)    write(iulog,*)'***       SDAY      ',shr_const_sday,sday,'***'
+         if (newmwh2o)   write(iulog,*)'***       MWH20     ',shr_const_mwwv,mwh2o,'***'
+         if (newcpwv)    write(iulog,*)'***       CPWV      ',shr_const_cpwv,cpwv,'***'
+         if (newmwdry)   write(iulog,*)'***       MWDRY     ',shr_const_mwdair,mwdry,'***'
+         if (newcpair)   write(iulog,*)'***       CPAIR     ',shr_const_cpdair,cpair,'***'
+         if (newrearth)  write(iulog,*)'***       REARTH    ',shr_const_rearth,rearth,'***'
+         if (newtmelt)   write(iulog,*)'***       TMELT     ',shr_const_tkfrz,tmelt,'***'
+         if (newomega)   write(iulog,*)'***       OMEGA     ',shr_const_omega,omega,'***'
+         write(iulog,*)'****************************************************************************'
       end if
       rga         = 1._r8/gravit
       ra          = 1._r8/rearth
       if (.not. newomega) then
-        omega       = 2.0_r8*pi/sday
+         omega       = 2.0_r8*pi/sday
       end if
       cpvir       = cpwv/cpair - 1._r8
       epsilo      = mwh2o/mwdry
-      
+
       !  rair and rh2o have to be defined before any of the variables that use them
-      
+
       rair        = r_universal/mwdry
       rh2o        = r_universal/mwh2o
-      
+
       cappa       = rair/cpair
       rhodair     = pstd/(rair*tmelt)
       zvir        =  (rh2o/rair)-1.0_R8
       ez          = omega / sqrt(0.375_r8)
       Cpd_on_Cpv  = cpair/cpwv
-      
+
       ! Adjust constants in shr_flux_mod.
       call shr_flux_adjust_constants(zvir=zvir, cpvir=cpvir, gravit=gravit)
-      
-    else
-      ez          = omega / sqrt(0.375_r8)
-    end if
-    
-  end subroutine physconst_readnl
-  
-  subroutine physconst_init()
-    integer :: ierr
 
-    !-------------------------------------------------------------------------------
-    !  Allocate constituent dependent properties
-    !-------------------------------------------------------------------------------
-    allocate( cpairv(pcols,pver,begchunk:endchunk), &
-         rairv(pcols,pver,begchunk:endchunk),  &
-         cappav(pcols,pver,begchunk:endchunk), &
-         mbarv(pcols,pver,begchunk:endchunk),  &
-         kmvis(pcols,pverp,begchunk:endchunk), &
-         kmcnd(pcols,pverp,begchunk:endchunk), stat=ierr )
-    if ( ierr /= 0 ) call endrun('physconst: allocate failed in physconst_init')
+   else
+      ez          = omega / sqrt(0.375_r8)
+   end if
+
+   ! Read variable components of dry air and water species in air
+
+   dry_air_composition   = (/ (' ', i=1,num_names_max) /)
+   moist_air_composition = (/ (' ', i=1,num_names_max) /)    
     
-    !-------------------------------------------------------------------------------
-    !  Initialize constituent dependent properties
-    !-------------------------------------------------------------------------------
-    cpairv(:pcols,:pver,begchunk:endchunk) = cpair
-    rairv(:pcols,:pver,begchunk:endchunk) = rair
-    cappav(:pcols,:pver,begchunk:endchunk) = rair/cpair
-    mbarv(:pcols,:pver,begchunk:endchunk) = mwdry
-  end subroutine physconst_init
-  !
-  !****************************************************************************************************************
-  !
-  !
-  !
-  !****************************************************************************************************************
-  !
+   if (masterproc) then
+      unitn = getunit()
+      open( unitn, file=trim(nlfile), status='old' )
+      call find_group_name(unitn, 'air_composition_nl', status=ierr)
+      if (ierr == 0) then
+         read(unitn, air_composition_nl, iostat=ierr)
+         if (ierr /= 0) then
+            call endrun(subname // ':: ERROR reading namelist')
+         end if
+      end if
+      close(unitn)
+      call freeunit(unitn)
+   end if
+    
+   call mpi_bcast(dry_air_composition, len(dry_air_composition)*num_names_max, mpi_character, &
+                  masterprocid, mpicom, ierr)
+   call mpi_bcast(moist_air_composition, len(moist_air_composition)*num_names_max, mpi_character, &
+                  masterprocid, mpicom, ierr)
+    
+   dry_air_composition_num   = 0
+   moist_air_composition_num = 0
+   do i = 1, num_names_max
+      if (.not. LEN(TRIM(dry_air_composition(i)))==0) then
+         dry_air_composition_num = dry_air_composition_num + 1
+      end if
+      if (.not. LEN(TRIM(moist_air_composition(i)))==0) then
+         moist_air_composition_num = moist_air_composition_num + 1
+      endif
+   end do
+   thermodynamic_active_species_num = dry_air_composition_num+moist_air_composition_num
+
+   if (masterproc) then
+
+      write(iulog,*)'****************************************************************************'
+      write(iulog,*)' '
+
+      if (dry_air_composition_num == 0) then
+         write(iulog,*)' Thermodynamic properties of dry air are fixed at troposphere values'
+      else
+         write(iulog,*)' Thermodynamic properties of dry air are based on variable'
+         write(iulog,*)' composition of the following species:'
+         do i = 1, dry_air_composition_num
+            write(iulog,*)'   ', trim(dry_air_composition(i))
+         end do
+         write(iulog,*) ' '
+      end if
+
+      write(iulog,*)' Thermodynamic properties of moist air are based on variable'
+      write(iulog,*)' composition of the following water species:'
+      do i = 1, moist_air_composition_num
+         write(iulog,*)'   ', trim(moist_air_composition(i))
+      end do
+
+      write(iulog,*)' '
+      write(iulog,*)'****************************************************************************'
+
+   end if
+
+end subroutine physconst_readnl
+
+!===============================================================================
+
+subroutine physconst_init()
+
+   integer :: ierr
+
+   !-------------------------------------------------------------------------------
+   !  Allocate constituent dependent properties
+   !-------------------------------------------------------------------------------
+   allocate( cpairv(pcols,pver,begchunk:endchunk), &
+             rairv(pcols,pver,begchunk:endchunk),  &
+             cappav(pcols,pver,begchunk:endchunk), &
+             mbarv(pcols,pver,begchunk:endchunk),  &
+             kmvis(pcols,pverp,begchunk:endchunk), &
+             kmcnd(pcols,pverp,begchunk:endchunk), stat=ierr )
+   if ( ierr /= 0 ) call endrun('physconst: allocate failed in physconst_init')
+
+   !-------------------------------------------------------------------------------
+   !  Initialize constituent dependent properties
+   !-------------------------------------------------------------------------------
+   cpairv(:pcols,:pver,begchunk:endchunk) = cpair
+   rairv(:pcols,:pver,begchunk:endchunk) = rair
+   cappav(:pcols,:pver,begchunk:endchunk) = rair/cpair
+   mbarv(:pcols,:pver,begchunk:endchunk) = mwdry
+
+end subroutine physconst_init
+
+!===============================================================================
+
   subroutine composition_init()
     use constituents, only: cnst_get_ind, cnst_mw
     use spmd_utils,      only: masterproc
