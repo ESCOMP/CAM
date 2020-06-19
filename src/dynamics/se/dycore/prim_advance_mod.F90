@@ -136,7 +136,7 @@ contains
     if (lcp_moist) then
       do ie=nets,nete
         call get_cp(1,np,1,np,1,nlev,thermodynamic_active_species_num,qwater(:,:,:,:,ie),&
-             .true.,inv_cp_full(:,:,:,ie),thermodynamic_active_species_idx_dycore=qidx)
+             .true.,inv_cp_full(:,:,:,ie),active_species_idx_dycore=qidx)
       end do
     else
       do ie=nets,nete
@@ -762,7 +762,7 @@ contains
         call get_rho_dry(1,np,1,np,ksponge_end,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,qn0),  &
              elem(ie)%state%T(:,:,:,nt),ptop,elem(ie)%state%dp3d(:,:,:,nt),&
              .true.,rhoi_dry=rhoi_dry(:,:,:),                           &
-             thermodynamic_active_species_idx_dycore=thermodynamic_active_species_idx_dycore,&
+             active_species_idx_dycore=thermodynamic_active_species_idx_dycore,&
              pint_out=pint,pmid_out=pmid)
         !
         ! constant coefficients
@@ -808,7 +808,7 @@ contains
         call get_rho_dry(1,np,1,np,ksponge_end,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,qn0),  &
              elem(ie)%state%T(:,:,:,nt),ptop,elem(ie)%state%dp3d(:,:,:,nt),&
              .true.,rho_dry=rho_dry(:,:,:,ie),                                              &
-             thermodynamic_active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
+             active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
       end do
 
       if (molecular_diff==1) then
@@ -819,7 +819,7 @@ contains
           call get_molecular_diff_coef(1,np,1,np,ksponge_end,nlev,&
                elem(ie)%state%T(:,:,:,nt),0,km_sponge_factor(1:ksponge_end),kmvis(:,:,:,ie),kmcnd(:,:,:,ie),qsize,&
                elem(ie)%state%Qdp(:,:,:,:,qn0),fact=1.0_r8/elem(ie)%state%dp3d(:,:,1:ksponge_end,nt),&               
-               thermodynamic_active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
+               active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
         end do
       else
         !
@@ -1167,7 +1167,7 @@ contains
        !
        call get_virtual_temp(1,np,1,np,1,nlev,thermodynamic_active_species_num,qwater(:,:,:,:,ie),&
             t_v(:,:,:),temp=elem(ie)%state%T(:,:,:,n0),sum_q =sum_water(:,:,:),&
-            thermodynamic_active_species_idx_dycore=qidx)
+            active_species_idx_dycore=qidx)
        call get_R_dry(1,np,1,np,1,nlev,1,nlev,thermodynamic_active_species_num,&
             qwater(:,:,:,:,ie),qidx,R_dry)     
        call get_cp_dry(1,np,1,np,1,nlev,1,nlev,thermodynamic_active_species_num,&
@@ -1531,6 +1531,7 @@ contains
     use element_mod,            only: element_t
     use cam_history,            only: outfld, hist_fld_active
     use constituents,           only: cnst_get_ind
+    use sting_utils,            only: str_get_ind
     use hycoef,                 only: hyai, ps0
     use fvm_control_volume_mod, only: fvm_struct
     use physconst,              only: get_dp, get_cp
@@ -1589,8 +1590,8 @@ contains
         ! when using CSLAM the condensates on the GLL grid may be located in a different index than in physics
         !
         ixwv = -1
-        call cnst_get_ind('CLDLIQ' , ixcldliq, abort=.false.,cnst_name_in=cnst_name_gll)
-        call cnst_get_ind('CLDICE' , ixcldice, abort=.false.,cnst_name_in=cnst_name_gll)        
+        call str_get_ind(cnst_name_gll, 'CLDLIQ' , ixcldliq, abort=.false.)
+        call str_get_ind(cnst_name_gll, 'CLDICE' , ixcldice, abort=.false.)        
       end if
       call cnst_get_ind('TT_LW' , ixtt    , abort=.false.)
       !
@@ -1603,7 +1604,7 @@ contains
              elem(ie)%state%dp3d(:,:,:,tl),pdel,ps=ps,ptop=hyai(1)*ps0)
         call get_cp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,tl_qdp),&
              .false.,cp,dp_dry=elem(ie)%state%dp3d(:,:,:,tl),&
-             thermodynamic_active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
+             active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
         do k = 1, nlev
           do j=1,np
             do i = 1, np
@@ -1680,8 +1681,8 @@ contains
     name_out2 = 'MO_'   //trim(outfld_name_suffix)
 
     if ( hist_fld_active(name_out1).or.hist_fld_active(name_out2)) then
-      call cnst_get_ind('CLDLIQ' , ixcldliq, abort=.false.,cnst_name_in=cnst_name_gll)
-      call cnst_get_ind('CLDICE' , ixcldice, abort=.false.,cnst_name_in=cnst_name_gll)              
+      call str_get_ind(cnst_name_gll, 'CLDLIQ', ixcldliq, abort=.false.)
+      call str_get_ind(cnst_name_gll, 'CLDICE', ixcldice, abort=.false.)
       mr_cnst = rearth**3/gravit
       mo_cnst = omega*rearth**4/gravit
       do ie=nets,nete

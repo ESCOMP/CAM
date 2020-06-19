@@ -349,7 +349,7 @@ end function cnst_num_avail
 
 !==============================================================================
 
-subroutine cnst_get_ind (name, ind, abort,cnst_name_in)
+subroutine cnst_get_ind (name, ind, abort)
 
    ! Get the index of a constituent.  Optional abort argument allows returning
    ! control to caller when constituent name is not found.  Default behavior is
@@ -359,7 +359,6 @@ subroutine cnst_get_ind (name, ind, abort,cnst_name_in)
    character(len=*),  intent(in)  :: name  ! constituent name
    integer,           intent(out) :: ind   ! global constituent index (in q array)
    logical, optional, intent(in)  :: abort ! optional flag controlling abort
-   character(len=16), optional    :: cnst_name_in(:)     ! constituent names (if different than physics)   
 
    !---------------------------Local workspace-----------------------------
    integer :: m                                   ! tracer index
@@ -368,21 +367,12 @@ subroutine cnst_get_ind (name, ind, abort,cnst_name_in)
    !-----------------------------------------------------------------------
 
    ! Find tracer name in list
-   if (present(cnst_name_in)) then
-     do m = 1, size(cnst_name_in)
-       if (name == cnst_name_in(m)) then
+   do m = 1, pcnst
+      if (name == cnst_name(m)) then
          ind  = m
          return
-       end if
-     end do
-   else
-     do m = 1, pcnst
-       if (name == cnst_name(m)) then
-         ind  = m
-         return
-       end if
-     end do
-   end if
+      end if
+   end do
 
    ! Unrecognized name
    abort_on_error = .true.

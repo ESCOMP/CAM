@@ -986,7 +986,7 @@ contains
           !
           call get_thermal_energy(1,np,1,np,1,nlev,qsize,elem(ie)%state%qdp(:,:,:,:,np1_qdp),   &
                elem(ie)%state%t(:,:,:,np1),elem(ie)%state%dp3d(:,:,:,np1),internal_energy_star, &
-               thermodynamic_active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
+               active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
         end if
       else
         !
@@ -994,7 +994,7 @@ contains
         !
         call get_virtual_temp(1,np,1,np,1,nlev,qsize,elem(ie)%state%qdp(:,:,:,:,np1_qdp),    &
              internal_energy_star,dp_dry=elem(ie)%state%dp3d(:,:,:,np1),                     &
-             thermodynamic_active_species_idx_dycore=thermodynamic_active_species_idx_dycore)             
+             active_species_idx_dycore=thermodynamic_active_species_idx_dycore)             
         internal_energy_star = internal_energy_star*elem(ie)%state%t(:,:,:,np1)
       end if
       !
@@ -1058,7 +1058,7 @@ contains
           ttmp(:,:,:,1) = 1.0_r8
           call get_thermal_energy(1,np,1,np,1,nlev,qsize,elem(ie)%state%qdp(:,:,:,:,np1_qdp),   &
                ttmp(:,:,:,1),dp_dry,ttmp(:,:,:,2), &
-               thermodynamic_active_species_idx_dycore=thermodynamic_active_species_idx_dycore)          
+               active_species_idx_dycore=thermodynamic_active_species_idx_dycore)          
           elem(ie)%state%t(:,:,:,np1)=internal_energy_star/ttmp(:,:,:,2)
         else
           internal_energy_star(:,:,:)=elem(ie)%state%t(:,:,:,np1)*dp_star_moist
@@ -1072,7 +1072,7 @@ contains
         call remap1(internal_energy_star,np,1,1,1,dp_star_moist,dp_moist,ptop,1,.false.,kord_uvT)
         call get_virtual_temp(1,np,1,np,1,nlev,qsize,elem(ie)%state%qdp(:,:,:,:,np1_qdp),       &
              ttmp(:,:,:,1),dp_dry=dp_dry,                                                       &
-             thermodynamic_active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
+             active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
         !
         ! convert new Tv to T
         !
