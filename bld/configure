@@ -1942,7 +1942,7 @@ if ($dyn_pkg eq 'se') {
 
 # Parameters for fv3 dycore.
 if ($dyn_pkg eq 'fv3') {
-$cfg_cppdefs .= " -Duse_libMPI -Duse_netCDF";
+    $cfg_cppdefs .= " -Duse_libMPI -Duse_netCDF";
 }
 
 # Resolution parameters for vertical grid, number of constituents, chunk size
@@ -3355,9 +3355,6 @@ sub set_horiz_grid
         elsif ( $dyn_pkg eq 'fv' ) {
             $cfg_ref->set('nlat', $a{'nlat'});
             $cfg_ref->set('nlon', $a{'nlon'});
-        }
-        elsif ( $dyn_pkg eq 'fv3' ) {
-#            $cfg_ref->set('csnp', $a{'csnp'});
         }
         else {
             die "set_horiz_grid: unrecognized dycore: $dyn_pkg\n";

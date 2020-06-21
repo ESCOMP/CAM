@@ -33,7 +33,7 @@ module dyn_comp
 !      delz  ! layer thickness (meters)
 !      ze0   ! height at layer edges for remapping
 !      q_con ! total condensates
-!      
+!
 !----------------------------------------------------------------------
 !----------------------------------------------------------------------
 
@@ -44,9 +44,7 @@ module dyn_comp
     use constants_mod,   only: cp_air, kappa, rvgas, rdgas
     use constituents,    only: pcnst, cnst_name, cnst_longname, tottnam, cnst_get_ind
     use dimensions_mod,  only: npx, npy, nlev, &
-                               qsize_condensate_loading_idx,qsize_condensate_loading_cp, &
-                               qsize_condensate_loading_cv,qsize_condensate_loading_idx_gll, &
-                               qsize_condensate_loading, cnst_name_ffsl,cnst_longname_ffsl, &
+                               cnst_name_ffsl,cnst_longname_ffsl, &
                                fv3_lcp_moist,fv3_lcv_moist,qsize_tracer_idx_cam2dyn,fv3_scale_ttend
     use dyn_grid,        only: mytile
     use field_manager_mod, only: MODEL_ATMOS
@@ -120,13 +118,13 @@ subroutine dyn_readnl(nlfilename)
 
   ! args
   character(len=*), intent(in) :: nlfilename
-  
+
   ! Local variables
   integer                      :: unitn,unito, ierr,i,ios
 
   ! FV3 Namelist variables
   integer                      :: fv3_qsize_condensate_loading, fv3_npes
-  
+
   ! fv_core namelist variables - these namelist variables defined in fv3 library without fv3_
 
   integer            :: fv3_consv_te, fv3_dnats, fv3_fv_sg_adj, fv3_grid_type, &
@@ -134,11 +132,11 @@ subroutine dyn_readnl(nlfilename)
                         fv3_io_layout(2), fv3_k_split, fv3_kord_mt, fv3_kord_tm, fv3_kord_tr, &
                         fv3_kord_wz, fv3_layout(2), fv3_n_split, fv3_n_sponge, fv3_na_init, &
                         fv3_ncnst, fv3_nord, fv3_npx, fv3_npy, fv3_npz, fv3_ntiles, &
-                        fv3_nwat, fv3_print_freq 
+                        fv3_nwat, fv3_print_freq
 
   real               :: fv3_beta, fv3_d2_bg, fv3_d2_bg_k1, fv3_d2_bg_k2, fv3_d4_bg, &
                         fv3_d_con, fv3_d_ext, fv3_dddmp, fv3_delt_max, fv3_ke_bg, &
-                        fv3_rf_cutoff, fv3_tau, fv3_vtdm4 
+                        fv3_rf_cutoff, fv3_tau, fv3_vtdm4
 
   logical            :: fv3_adjust_dry_mass, fv3_consv_am, fv3_do_sat_adj, fv3_do_vort_damp, &
                         fv3_dwind_2d, fv3_fill, fv3_fv_debug, fv3_fv_diag, fv3_hydrostatic, &
@@ -188,7 +186,7 @@ subroutine dyn_readnl(nlfilename)
        fv3_print_freq,fv3_range_warn,fv3_rf_cutoff,fv3_tau, &
        fv3_uniform_vert_spacing,fv3_vtdm4,fv3_z_tracer
   !--------------------------------------------------------------------------
-  
+
   ! defaults for namelist variables not set by build-namelist
   fv3_npes         = npes
 
@@ -243,7 +241,6 @@ subroutine dyn_readnl(nlfilename)
      call endrun('dyn_readnl: ERROR: fv3_npes must be > 0')
   end if
 
-  qsize_condensate_loading = fv3_qsize_condensate_loading
   !
   ! write fv3 dycore namelist options to log
   !
@@ -328,25 +325,25 @@ subroutine dyn_readnl(nlfilename)
 
      unitn = getunit()
      open( unitn, file=trim(NLFileName), status='old' )
-     
+
      do i=1,SIZE(group_names(:))
-        rewind(unitn)        
+        rewind(unitn)
         call find_group_name(unitn, trim(group_names(i)), status=ierr)
-        
+
         if (ierr == 0) then ! Found it. Copy each line to input.nml until '/' is encountered.
 
            ! write group name to input.nml
            read(unitn, '(a)', iostat=ios, end=100) inrec
            if (ios .ne. 0) call endrun('ERROR: dyn_readnl - error reading fv3 namelist')
            write(unito,'(a)') trim(inrec)
-           
+
            ios = 0
            do while (ios <= 0)
-              
+
               read(unitn, '(a)', iostat=ios, end=100) inrec
-              
+
               if (ios <= 0) then  ! ios < 0  indicates an end of record condition
-                 
+
                  ! remove leading blanks and check for leading '/'
                  inrec2 = adjustl(inrec)
                  if (inrec2(1:4) == 'fv3_') then
@@ -381,12 +378,12 @@ end subroutine dyn_register
 !=============================================================================================
 
 subroutine dyn_init(dyn_in, dyn_out)
-  
+
   ! DESCRIPTION: Initialize the FV dynamical core
-  
+
   ! Initialize FV dynamical core state variables
-  
-  
+
+
   use cam_control_mod, only: initial_run
   use cam_history,     only: addfld, horiz_only
   use cam_history,     only: register_vector_field
@@ -396,13 +393,15 @@ subroutine dyn_init(dyn_in, dyn_out)
   use fv_mp_mod,       only: fill_corners, YDir, switch_current_Atm
   use infnan,          only: inf, assignment(=)
   use physconst,       only: cpwv, cpliq, cpice
+  use physconst,          only: thermodynamic_active_species_num, thermodynamic_active_species_idx
+  use physconst,          only: thermodynamic_active_species_idx_dycore, rair, cpair
   use tracer_manager_mod,     only: register_tracers
   use units,           only: getunit, freeunit
 
   ! arguments:
    type (dyn_import_t),     intent(out) :: dyn_in
    type (dyn_export_t),     intent(out) :: dyn_out
-                       
+
    character(len=*), parameter :: sub='dyn_init'
    real(r8)                    :: alpha
 
@@ -421,7 +420,7 @@ subroutine dyn_init(dyn_in, dyn_out)
         " end of previous dynamics                           ",& !dED
         " after physics increment on A-grid                  ",& !dAP
         " state after applying CAM forcing                   ",& !dBD - state after applyCAMforcing
-        " state after top of atmosphere damping (Rayleigh)   ",& !dAT 
+        " state after top of atmosphere damping (Rayleigh)   ",& !dAT
         " from previous remapping or state passed to dynamics",& !dAF - state in beginning of ksplit loop
         " before vertical remapping                          ",& !dAD - state before vertical remapping
         " after vertical remapping                           ",& !dAR - state at end of nsplit loop
@@ -450,7 +449,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    character (len=108) :: str1, str2, str3
    integer :: is,isd,ie,ied,js,jsd,je,jed
    integer :: ixrain, ixsnow, ixgraupel, ixcldice, ixcldliq, ixhum
-   integer :: fv3idx,icnst_ffsl
+   integer :: fv3idx,idx
 
    real, parameter:: cv_vap = 3.*rvgas        ! < 1384.5
    real, parameter:: cv_air =  cp_air - rdgas !< = rdgas * (7/2-1) = 2.5*rdgas=717.68
@@ -461,118 +460,62 @@ subroutine dyn_init(dyn_in, dyn_out)
    !-----------------------------------------------------------------------
 
    ! Setup the condensate loading arrays and fv3/cam tracer mapping and
-   ! finish initializing fv3 by allocating the tracer arrays in the fv3 atm structure 
+   ! finish initializing fv3 by allocating the tracer arrays in the fv3 atm structure
 
-   allocate(qsize_condensate_loading_idx(qsize_condensate_loading))
-   allocate(qsize_condensate_loading_idx_gll(qsize_condensate_loading))
    allocate(qsize_tracer_idx_cam2dyn(pcnst))
    qsize_tracer_idx_cam2dyn(:)=-1
-   allocate(qsize_condensate_loading_cp(qsize_condensate_loading))
-   allocate(qsize_condensate_loading_cv(qsize_condensate_loading))
-   
    allocate(cnst_name_ffsl(pcnst))     ! constituent names for ffsl tracers
    allocate(cnst_longname_ffsl(pcnst)) ! long name of constituents for ffsl tracers
 
 
    ! set up the condensate loading array
-   if (qsize_condensate_loading > 6) then
-     call endrun(subname//': fv3_qsize_condensate_loading is limited to 6 wet condensates')
-   end if
-   
-   icnst_ffsl = 0
-   ! water vapor is always tracer 1
-   ixhum = 1
-   if (ixhum >= 1) then
-      icnst_ffsl= icnst_ffsl+1
-      cnst_name_ffsl(icnst_ffsl)='sphum'
-      cnst_longname_ffsl(icnst_ffsl) = cnst_longname(ixhum)
-      qsize_condensate_loading_idx(icnst_ffsl) = icnst_ffsl
-      qsize_condensate_loading_idx_gll(icnst_ffsl) = ixhum
-      qsize_condensate_loading_cp(icnst_ffsl) = cpwv
-      qsize_condensate_loading_cv(icnst_ffsl) = cv_vap
-      qsize_tracer_idx_cam2dyn(ixhum) = icnst_ffsl
+   if (thermodynamic_active_species_num > 6) then
+     call endrun(subname//': fv3_thermodynamic_active_species_num is limited to 6 wet condensates')
    end if
 
-   call cnst_get_ind('CLDLIQ', ixcldliq, abort=.false.)
-   if (ixcldliq > 1) then
-      icnst_ffsl= icnst_ffsl+1
-      cnst_name_ffsl(icnst_ffsl)='liq_wat'
-      cnst_longname_ffsl(icnst_ffsl) = cnst_longname(ixcldliq)
-      qsize_condensate_loading_idx(icnst_ffsl) = icnst_ffsl
-      qsize_condensate_loading_idx_gll(icnst_ffsl) = ixcldliq
-      qsize_condensate_loading_cp(icnst_ffsl)  = cpliq
-      qsize_condensate_loading_cv(icnst_ffsl)  = cpliq
-      qsize_tracer_idx_cam2dyn(ixcldliq) = icnst_ffsl
-   end if
-
-   call cnst_get_ind('CLDICE', ixcldice, abort=.false.)
-   if (ixcldice  > 1) then
-      icnst_ffsl= icnst_ffsl+1
-      cnst_name_ffsl(icnst_ffsl)='ice_wat'
-      cnst_longname_ffsl(icnst_ffsl) = cnst_longname(ixcldice)
-      qsize_condensate_loading_idx(icnst_ffsl) = icnst_ffsl
-      qsize_condensate_loading_idx_gll(icnst_ffsl) = ixcldice
-      qsize_condensate_loading_cp(icnst_ffsl)  = cpice
-      qsize_condensate_loading_cv(icnst_ffsl)  = cpice
-      qsize_tracer_idx_cam2dyn(ixcldice) = icnst_ffsl
-   end if
-
-   call cnst_get_ind('RAINQM', ixrain, abort=.false.)
-   if (ixrain > 1) then
-      icnst_ffsl= icnst_ffsl+1
-      cnst_name_ffsl(icnst_ffsl)='rainwat'
-      cnst_longname_ffsl(icnst_ffsl) = cnst_longname(ixrain)
-      qsize_condensate_loading_idx(icnst_ffsl) = icnst_ffsl
-      qsize_condensate_loading_idx_gll(icnst_ffsl) = ixrain
-      qsize_condensate_loading_cp(icnst_ffsl)  = cpliq
-      qsize_condensate_loading_cv(icnst_ffsl)  = cpliq
-      qsize_tracer_idx_cam2dyn(ixrain) = icnst_ffsl
-   end if
-
-   call cnst_get_ind('SNOWQM', ixsnow, abort=.false.)
-   if (ixsnow > 1) then
-      icnst_ffsl= icnst_ffsl+1
-      cnst_name_ffsl(icnst_ffsl)='snowwat'
-      cnst_longname_ffsl(icnst_ffsl) = cnst_longname(ixsnow)
-      qsize_condensate_loading_idx(icnst_ffsl) = icnst_ffsl
-      qsize_condensate_loading_idx_gll(icnst_ffsl) = ixsnow
-      qsize_condensate_loading_cp(icnst_ffsl)  = cpice
-      qsize_condensate_loading_cv(icnst_ffsl)  = cpice
-      qsize_tracer_idx_cam2dyn(ixsnow) = icnst_ffsl
-   end if
-
-   call cnst_get_ind('GRAUQM', ixgraupel, abort=.false.)
-   if (ixgraupel > 1) then
-      icnst_ffsl= icnst_ffsl+1
-      cnst_name_ffsl(icnst_ffsl)='graupel'
-      cnst_longname_ffsl(icnst_ffsl) = cnst_longname(ixgraupel)
-      qsize_condensate_loading_idx(icnst_ffsl) = icnst_ffsl
-      qsize_condensate_loading_idx_gll(icnst_ffsl) = ixgraupel
-      qsize_condensate_loading_cp(icnst_ffsl)  = cpice
-      qsize_condensate_loading_cv(icnst_ffsl)  = cpice
-      qsize_tracer_idx_cam2dyn(ixgraupel) = icnst_ffsl
-   end if
-
-   if (icnst_ffsl /= qsize_condensate_loading) then
-      call endrun(subname//': Size of qsize_condensate_loading not equal to total FV3 dynamics water constituents')
-   end if
-   !Now add all other CAM tracer after any of the condensates in the fv3 tracer array 
-   do m=1,pcnst
-      if (m.ne.ixhum.and. &
-           m.ne.ixcldliq.and. &
-           m.ne.ixcldice.and. &
-           m.ne.ixsnow.and. &
-           m.ne.ixrain.and. &
-           m.ne.ixgraupel) then
-         icnst_ffsl=icnst_ffsl+1
-         cnst_name_ffsl(icnst_ffsl)=cnst_name(m)
-         cnst_longname_ffsl(m) = cnst_longname(m)
-         qsize_tracer_idx_cam2dyn(m) = icnst_ffsl
-      end if
+   !For FV3 Q must be the first species in the fv3 tracer array followed by wet constituents
+   idx=1
+   do m=1,thermodynamic_active_species_num
+      idx=idx+1
+      select case ( trim(cnst_name(thermodynamic_active_species_idx(m))) )
+         case ( 'Q' )
+            cnst_name_ffsl(1)='sphum'
+            idx=idx-1
+         case ( 'CLDLIQ' )
+            cnst_name_ffsl(idx)='liq_wat'
+         case ( 'CLDICE' )
+            cnst_name_ffsl(idx)='ice_wat'
+         case ( 'RAINQM' )
+            cnst_name_ffsl(idx)='rainwat'
+         case ( 'SNOWQM' )
+            cnst_name_ffsl(idx)='snowwat'
+         case ( 'GRAUQM' )
+            cnst_name_ffsl(idx)='graupel'
+         end select
+         if (trim(cnst_name(m)).eq.'Q') then
+            thermodynamic_active_species_idx_dycore(1) = 1
+            cnst_longname_ffsl(1) = cnst_longname(thermodynamic_active_species_idx(m))
+            qsize_tracer_idx_cam2dyn(m) = 1
+         else
+            thermodynamic_active_species_idx_dycore(idx) = idx
+            cnst_longname_ffsl(idx) = cnst_longname(thermodynamic_active_species_idx(m))
+            qsize_tracer_idx_cam2dyn(thermodynamic_active_species_idx(m))  = thermodynamic_active_species_idx_dycore(idx)
+         end if
    end do
 
+   !Now add all other CAM tracer after any of the condensates in the fv3 tracer array
+   idx=thermodynamic_active_species_num
+   do m=1,pcnst
+      if (.not. ANY(thermodynamic_active_species_idx == m)) then
+         idx=idx+1
+         cnst_name_ffsl(idx)=cnst_name(m)
+         cnst_longname_ffsl(idx) = cnst_longname(m)
+         qsize_tracer_idx_cam2dyn(m) = idx
+      end if
+   end do
+   !Now add all other CAM tracer after any of the condensates in the fv3 tracer array
    if (masterproc) then
-      
+
       write(iulog,*) 'Creating field_table file to load tracer fields into fv3'
       unito = getunit()
       ! overwrite file if it exists.
@@ -586,13 +529,13 @@ subroutine dyn_init(dyn_in, dyn_out)
 !!$   !---------must make sure the field_table file is written before reading across processors
    call mpibarrier (mpicom)
    call register_tracers (MODEL_ATMOS, ncnst, nt_prog, pnats, num_family)
-   if (ncnst.ne.pcnst) then 
+   if (ncnst.ne.pcnst) then
       call endrun(subname//': ERROR: FMS tracer Manager has inconsistent tracer numbers')
    endif
 
-   do m=1,pcnst  
+   do m=1,pcnst
       !  just check condensate loading tracers as they are mapped above
-      if(qsize_tracer_idx_cam2dyn(m).le.qsize_condensate_loading) then
+      if(qsize_tracer_idx_cam2dyn(m).le.thermodynamic_active_species_num) then
          fv3idx  = get_tracer_index (MODEL_ATMOS, cnst_name_ffsl(qsize_tracer_idx_cam2dyn(m)) )
          if (fv3idx.ne.qsize_tracer_idx_cam2dyn(m)) then
             write(errmsg,*) subname//': Physics index ',m,'and FV3 tracer index',fv3idx,' are inconsistent'
@@ -648,18 +591,18 @@ subroutine dyn_init(dyn_in, dyn_out)
    enddo
    call mpp_update_domains( f0, domain )
    if (cubed_sphere) call fill_corners(f0, npx, npy, YDir)
-   
+
    delp(isd:is-1,jsd:js-1,1:nlev)=0._r8
    delp(isd:is-1,je+1:jed,1:nlev)=0._r8
    delp(ie+1:ied,jsd:js-1,1:nlev)=0._r8
    delp(ie+1:ied,je+1:jed,1:nlev)=0._r8
-   
+
    if (initial_run) then
-      
+
       ! Read in initial data
       call read_inidat(dyn_in)
       call clean_iodesc_list()
-      
+
    end if
 
    call switch_current_Atm(Atm(mytile))
@@ -718,19 +661,20 @@ subroutine dyn_run(dyn_state)
   use fv_control_mod,         only: ngrids
   use fv_dynamics_mod,        only: fv_dynamics
   use fv_sg_mod,              only: fv_subgrid_z
+  use physconst,              only: thermodynamic_active_species_num, thermodynamic_active_species_idx_dycore
   use time_manager,           only: get_step_size
   use tracer_manager_mod,     only: get_tracer_index, NO_TRACER
 
   implicit none
-  
+
   type (dyn_export_t), intent(inout) :: dyn_state
 
 
   integer :: psc,idim
   integer :: w_diff, nt_dyn
-  type(fv_atmos_type), pointer         :: Atm(:)  
+  type(fv_atmos_type), pointer         :: Atm(:)
   integer :: is,isc,isd,ie,iec,ied,js,jsc,jsd,je,jec,jed
-  
+
   !---- Call FV dynamics -----
 
   Atm => dyn_state%Atm
@@ -751,9 +695,9 @@ subroutine dyn_run(dyn_state)
   ied = Atm(mytile)%bd%ied
   jsd = Atm(mytile)%bd%jsd
   jed = Atm(mytile)%bd%jed
-  
+
   idim=ie-is+1
- 
+
   dt_atmos_real=get_step_size()
 
   se_dyn = 0._r8
@@ -793,8 +737,8 @@ subroutine dyn_run(dyn_state)
           Atm(mytile)%parent_grid, Atm(mytile)%domain, &
 #if ( defined CALC_ENERGY )
           Atm(mytile)%diss_est, &
-          pcnst,qsize_condensate_loading,qsize_condensate_loading_idx,qsize_tracer_idx_cam2dyn, &
-          qsize_condensate_loading_cp,qsize_condensate_loading_cp, se_dyn, ke_dyn, wv_dyn,wl_dyn, &
+          pcnst,thermodynamic_active_species_num,thermodynamic_active_species_idx_dycore,qsize_tracer_idx_cam2dyn, &
+          thermodynamic_active_species_cp,thermodynamic_active_species_cp, se_dyn, ke_dyn, wv_dyn,wl_dyn, &
           wi_dyn,wr_dyn,ws_dyn,wg_dyn,tt_dyn,mo_dyn,mr_dyn,gravit,cpair,rearth,omega,fv3_lcp_moist,&
           fv3_lcv_moist)
 #else
@@ -804,7 +748,7 @@ subroutine dyn_run(dyn_state)
      if (ngrids > 1 .and. (psc < p_split .or. p_split < 0)) then
         call twoway_nesting(Atm, ngrids, grids_on_this_pe, zvir)
      endif
-     
+
   end do !p_split
 #if ( defined CALC_ENERGY )
   call write_dyn_var(se_dyn(is:ie,js:je,1),'SE_dAF',Atm(mytile)%bd)
@@ -818,7 +762,7 @@ subroutine dyn_run(dyn_state)
   call write_dyn_var(tt_dyn(is:ie,js:je,1),'TT_dAF',Atm(mytile)%bd)
   call write_dyn_var(mo_dyn(is:ie,js:je,1),'MO_dAF',Atm(mytile)%bd)
   call write_dyn_var(mr_dyn(is:ie,js:je,1),'MR_dAF',Atm(mytile)%bd)
-  
+
   call write_dyn_var(se_dyn(is:ie,js:je,2),'SE_dAD',Atm(mytile)%bd)
   call write_dyn_var(ke_dyn(is:ie,js:je,2),'KE_dAD',Atm(mytile)%bd)
   call write_dyn_var(wv_dyn(is:ie,js:je,2),'WV_dAD',Atm(mytile)%bd)
@@ -853,7 +797,7 @@ subroutine dyn_run(dyn_state)
   call write_dyn_var(wg_dyn(is:ie,js:je,4),'WG_dAT',Atm(mytile)%bd)
   call write_dyn_var(tt_dyn(is:ie,js:je,4),'TT_dAT',Atm(mytile)%bd)
   call write_dyn_var(mo_dyn(is:ie,js:je,4),'MO_dAT',Atm(mytile)%bd)
-  call write_dyn_var(mr_dyn(is:ie,js:je,4),'MR_dAT',Atm(mytile)%bd)  
+  call write_dyn_var(mr_dyn(is:ie,js:je,4),'MR_dAT',Atm(mytile)%bd)
 #endif
 
   !-----------------------------------------------------
@@ -863,7 +807,7 @@ subroutine dyn_run(dyn_state)
   u_dt(:,:,:)   = 0._r8
   v_dt(:,:,:)   = 0._r8
   t_dt(:,:,:)   = 0._r8
-  
+
   w_diff = get_tracer_index (MODEL_ATMOS, 'w_diff' )
 
   ! Perform grid-scale dry adjustment if fv_sg_adj > 0
@@ -879,11 +823,11 @@ subroutine dyn_run(dyn_state)
           Atm(mytile)%ua, Atm(mytile)%va, Atm(mytile)%flagstruct%hydrostatic,&
           Atm(mytile)%w, Atm(mytile)%delz, u_dt, v_dt, t_dt, Atm(mytile)%flagstruct%n_sponge)
   endif
-  
+
 #if ( defined CALC_ENERGY )
   call calc_tot_energy_dynamics(atm,'dBF')
 #endif
-  
+
 end subroutine dyn_run
 
 !=======================================================================
@@ -894,7 +838,7 @@ subroutine dyn_final(dyn_in, dyn_out, restart_file)
   type (dyn_import_t),      intent(inout) :: dyn_in
   type (dyn_export_t),      intent(inout) :: dyn_out
   character(len=*),optional,intent(in)    :: restart_file
-  
+
   deallocate( u_dt, v_dt, t_dt)
 
 end subroutine dyn_final
@@ -908,6 +852,7 @@ subroutine read_inidat(dyn_in)
   use dyn_tests_utils,       only: vc_moist_pressure,vc_dry_pressure
   use dimensions_mod,        only: nlev
   use constituents,          only: pcnst
+  use physconst,             only: thermodynamic_active_species_num, thermodynamic_active_species_idx_dycore
   use pio,                   only: file_desc_t, pio_seterrorhandling, pio_bcast_error
   use ppgrid,                only: pver
   use cam_abortutils,        only: endrun
@@ -936,7 +881,7 @@ subroutine read_inidat(dyn_in)
 
 
   character(len=*), parameter      :: subname='READ_INIDAT'
-  real(r8), allocatable            :: phis_tmp(:,:) 
+  real(r8), allocatable            :: phis_tmp(:,:)
   integer(iMap), pointer           :: ldof(:) ! Basic (2D) grid dof
 
   ! Variables for analytic initial conditions
@@ -944,9 +889,9 @@ subroutine read_inidat(dyn_in)
   integer,  allocatable            :: m_ind(:)
   integer                          :: vcoord
   integer                          :: pio_errtype
-  real(r8), allocatable            :: dbuf2(:,:)         
-  real(r8), allocatable            :: dbuf3(:,:,:)       
-  real(r8), allocatable            :: dbuf4(:,:,:,:)     
+  real(r8), allocatable            :: dbuf2(:,:)
+  real(r8), allocatable            :: dbuf3(:,:,:)
+  real(r8), allocatable            :: dbuf4(:,:,:,:)
   real(r8), allocatable            :: latvals_rad(:)
   real(r8), allocatable            :: lonvals_rad(:)
   integer                          :: rndm_seed_sz
@@ -964,7 +909,7 @@ subroutine read_inidat(dyn_in)
 
   integer                :: is,ie,js,je,isd,ied,jsd,jed
   integer                :: blksize
-  
+
   integer :: m_ffsl
   integer :: ilen,jlen
   real(r8), allocatable :: var3d(:,:,:), var2d(:,:)
@@ -1043,7 +988,7 @@ subroutine read_inidat(dyn_in)
            atm(mytile)%ps(i,j) =   dbuf2(n, 1)
         end do
      end do
-     
+
      call analytic_ic_set_ic(vcoord, latvals_rad, lonvals_rad, glob_ind ,            &
           PHIS_OUT=phis_tmp(:,:))
 
@@ -1108,27 +1053,29 @@ subroutine read_inidat(dyn_in)
      deallocate(m_ind)
 
   else
-     ! Read ICs from file. 
+     ! Read ICs from file.
 
      allocate(dbuf3(blksize,nlev,1))
      allocate(var2d(is:ie,js:je))
      allocate(var3d(is:ie,js:je,nlev))
 
      call pio_seterrorhandling(fh_ini, pio_bcast_error, err_handling)
-     
-     fieldname  = 'PS'
-     fieldname2 = 'PSDRY'
+     ! PSDRY is unambiguous so use that field first if it exists and reset mixing ratios to
+     ! wet for FV3. PS (inic_wet) is assumed to be DRY+All wet condensates but could also be
+     ! DRY+Q (CAM physics)
+     fieldname   = 'PSDRY'
+     fieldname2  = 'PS'
      if (dyn_field_exists(fh_ini, trim(fieldname), required=.false.)) then
-        inic_wet = .true.
+        inic_wet = .false.
         call read_dyn_var(trim(fieldname), fh_ini, 'ncol', var2d)
      elseif (dyn_field_exists(fh_ini, trim(fieldname2), required=.false.)) then
-        inic_wet = .false.
+        inic_wet = .true.
         call read_dyn_var(trim(fieldname2), fh_ini, 'ncol', var2d)
      else
         call endrun(trim(subname)//': PS or PSDRY must be on ncdata')
      end if
      atm(mytile)%ps(is:ie,js:je) = var2d
-     
+
      ilen = ie-is+1
      jlen = je-js+1
 
@@ -1139,7 +1086,7 @@ subroutine read_inidat(dyn_in)
      else
          call endrun(trim(subname)//': T not found')
      end if
-     
+
      if (pertlim .ne. 0.0_r8) then
         if(masterproc) then
            write(iulog,*) trim(subname), ': Adding random perturbation bounded', &
@@ -1186,11 +1133,11 @@ subroutine read_inidat(dyn_in)
      else
          call endrun(trim(subname)//': Q not found')
      end if
-     
+
      ! Read in or cold-initialize all the tracer fields
      ! Copy tracers defined on unstructured grid onto distributed FFSL grid
      ! Make sure tracers have at least minimum value
-        
+
      do m_cnst = 2, pcnst
         m_cnst_ffsl=qsize_tracer_idx_cam2dyn(m_cnst)
         found = .false.
@@ -1273,52 +1220,10 @@ subroutine read_inidat(dyn_in)
   end do
 
   !
-  ! initialize delp and mixing ratios (fv3 is wet ie dry+wet condenstates)
-  ! convert mixing ratios based off of dry+vap (cam initial conditions) first if needed
+  ! If inic_wet assume PS is dry+wet condensates (fv3 airmass) otherwise
+  ! initialize delp and mixing ratios use dry airmass
   !
-  if (inic_wet) then
-
-     call check_mixing_ratios(atm,dryplusq,dryplusall)
-
-     ! If mixing ratios not based off of dry+vap  or dry+vap+wet constitutents then err out.
-     if (.not.(dryplusq.or.dryplusall)) then
-        call endrun(subname//': Initial condition mixing ratios inconsistent with wet airmass')
-     end if
-     !
-     !  If using interpolated initial condition with mixing ratios based off of (dry mass + vapor)
-     !  convert to (dry mass + vapor + condensates)
-     !
-     if (dryplusq) then
-        if (masterproc) write (iulog,*)'Converting initial data mixing ratios from dry+vap to dry+all wet constituents'
-        allocate(pstmp(isd:ied,jsd:jed))
-        pstmp(:,:) = atm(mytile)%ps(:,:)
-        atm(mytile)%ps(:,:)=hyai(1)*ps0
-        do k=1,pver
-           do j = js, je
-              do i = is, ie
-                 ! this delp is (dry+vap) using the moist ps read in.
-                 Atm(mytile)%delp(i, j, k) = (((hyai(k+1) - hyai(k))*ps0)         +                &
-                      ((hybi(k+1) - hybi(k))*pstmp(i,j)))
-                 delpdry=Atm(mytile)%delp(i,j,k)*(1.0_r8-Atm(mytile)%q(i,j,k,1))
-                 do m=1,pcnst
-                    m_ffsl=qsize_tracer_idx_cam2dyn(m)
-                    if (cnst_type(m) == 'wet') then
-                       tracermass(m_ffsl)=Atm(mytile)%delp(i,j,k)*Atm(mytile)%q(i,j,k,m_ffsl)
-                    else
-                       tracermass(m_ffsl)=delpdry*Atm(mytile)%q(i,j,k,m_ffsl)
-                    end if
-                 end do
-                 fv3_totwatermass=sum(tracermass(qsize_condensate_loading_idx(1:qsize_condensate_loading)))
-                 fv3_airmass =  delpdry + fv3_totwatermass
-                 Atm(mytile)%delp(i,j,k) = fv3_airmass
-                 Atm(mytile)%q(i,j,k,1:pcnst) = tracermass(1:pcnst)/fv3_airmass
-                 Atm(mytile)%ps(i,j)=Atm(mytile)%ps(i,j)+Atm(mytile)%delp(i, j, k)
-              end do
-           end do
-        end do
-        deallocate(pstmp)
-     end if
-  else
+  if (.not. inic_wet) then
      allocate(pstmp(isd:ied,jsd:jed))
      pstmp(:,:) = atm(mytile)%ps(:,:)
      atm(mytile)%ps(:,:)=hyai(1)*ps0
@@ -1331,12 +1236,12 @@ subroutine read_inidat(dyn_in)
               do m=1,pcnst
                  tracermass(m)=delpdry*Atm(mytile)%q(i,j,k,m)
               end do
-              fv3_totwatermass=sum(tracermass(qsize_condensate_loading_idx(1:qsize_condensate_loading)))
+              fv3_totwatermass=sum(tracermass(thermodynamic_active_species_idx_dycore(1:thermodynamic_active_species_num)))
               fv3_airmass =  delpdry + fv3_totwatermass
               Atm(mytile)%delp(i,j,k) = fv3_airmass
               Atm(mytile)%q(i,j,k,1:pcnst) = tracermass(1:pcnst)/fv3_airmass
               Atm(mytile)%ps(i,j)=Atm(mytile)%ps(i,j)+Atm(mytile)%delp(i, j, k)
-              ! check new tracermass 
+              ! check new tracermass
               do m=1,pcnst
                  m_ffsl=qsize_tracer_idx_cam2dyn(m)
                  reldif=(Atm(mytile)%delp(i,j,k)*Atm(mytile)%q(i,j,k,m_ffsl)-tracermass(m_ffsl))/ &
@@ -1358,7 +1263,7 @@ subroutine read_inidat(dyn_in)
   if (.not. associated(fh_topo)) initial_global_ave_dry_ps = 101325._r8-245._r8
   if (analytic_ic_active()     ) initial_global_ave_dry_ps = 0                  !do not scale psdry
   call set_dry_mass(Atm, initial_global_ave_dry_ps)
-  
+
 
   !$omp parallel do private(i, j)
   do j=js,je
@@ -1368,7 +1273,7 @@ subroutine read_inidat(dyn_in)
         Atm(mytile)%peln(i,1,j) = log(Atm(mytile)%ptop )
      enddo
   enddo
-  
+
 !$omp parallel do private(i,j,k)
   do j=js,je
      do k=1,pver
@@ -1377,7 +1282,7 @@ subroutine read_inidat(dyn_in)
         enddo
      enddo
   enddo
-  
+
 !$omp parallel do private(i,j,k)
   do j=js,je
      do k=1,pver
@@ -1414,36 +1319,38 @@ subroutine read_inidat(dyn_in)
 
   ! Cleanup
   deallocate(phis_tmp)
-  
+
   if (associated(ldof)) then
      deallocate(ldof)
      nullify(ldof)
   end if
-  
+
 end subroutine read_inidat
 
 !=======================================================================
 
   subroutine calc_tot_energy_dynamics(atm,suffix)
     use physconst,              only: gravit, cpair, rearth,omega
+    use physconst,              only: thermodynamic_active_species_num,thermodynamic_active_species_idx_dycore
+    use physconst,              only: thermodynamic_active_species_cp
     use cam_history,            only: outfld, hist_fld_active
     use constituents,           only: cnst_get_ind
     use dimensions_mod,         only: nlev
     use fv_mp_mod,              only: ng
     !------------------------------Arguments--------------------------------
-    
-    type(fv_atmos_type), pointer, intent(in) :: Atm(:)  
+
+    type(fv_atmos_type), pointer, intent(in) :: Atm(:)
     character*(*)    , intent(in) :: suffix ! suffix for "outfld" names
-    
+
     !---------------------------Local storage-------------------------------
-    
+
     real(kind=r8), allocatable :: se(:,:)                          ! Dry Static energy (J/m2)
     real(kind=r8), allocatable :: ke(:,:)                          ! kinetic energy    (J/m2)
     real(kind=r8), allocatable :: wv(:,:),wl(:,:),wi(:,:), &       ! col integ constiuents(kg/m2)
                                   wr(:,:),ws(:,:),wg(:,:)          ! column integrated vapor       (kg/m2)
     real(kind=r8), allocatable :: tt(:,:)                          ! column integrated test tracer (kg/m2)
     real(kind=r8), allocatable :: dp(:,:,:)
-    real(kind=r8), allocatable :: ps_local(:,:) 
+    real(kind=r8), allocatable :: ps_local(:,:)
     real(kind=r8) :: se_tmp
     real(kind=r8) :: ke_tmp
     real(kind=r8) :: wv_tmp,wl_tmp,wi_tmp,wr_tmp,ws_tmp,wg_tmp
@@ -1455,7 +1362,7 @@ end subroutine read_inidat
     ! (also known as wind AAM) and another part (mo) associated with the angular velocity OMEGA
     ! (2*pi/d, where d is the length of the day) of the planet (also known as mass AAM)
     !
-    real(kind=r8), allocatable :: mr(:,:)  ! wind AAM                        
+    real(kind=r8), allocatable :: mr(:,:)  ! wind AAM
     real(kind=r8), allocatable :: mo(:,:)  ! mass AAM
     real(kind=r8) :: mr_cnst, mo_cnst, cos_lat, mr_tmp, mo_tmp
 
@@ -1481,17 +1388,17 @@ end subroutine read_inidat
     jsd = Atm(mytile)%bd%jsd
     jed = Atm(mytile)%bd%jed
 
-    se_glob = 0._r8; 
-    ke_glob = 0._r8; 
-    wv_glob = 0._r8; 
-    wl_glob = 0._r8; 
-    wi_glob = 0._r8; 
-    wr_glob = 0._r8; 
-    ws_glob = 0._r8; 
-    wg_glob = 0._r8; 
-    tt_glob = 0._r8; 
-    mr_glob = 0._r8; 
-    mo_glob = 0._r8; 
+    se_glob = 0._r8;
+    ke_glob = 0._r8;
+    wv_glob = 0._r8;
+    wl_glob = 0._r8;
+    wi_glob = 0._r8;
+    wr_glob = 0._r8;
+    ws_glob = 0._r8;
+    wg_glob = 0._r8;
+    tt_glob = 0._r8;
+    mr_glob = 0._r8;
+    mo_glob = 0._r8;
 
     allocate(se(is:ie,js:je))
     allocate(ke(is:ie,js:je))
@@ -1523,7 +1430,7 @@ end subroutine read_inidat
          hist_fld_active(name_out5).or.hist_fld_active(name_out6).or. &
          hist_fld_active(name_out7).or.hist_fld_active(name_out8).or. &
          hist_fld_active(name_out9)) then
-       if (qsize_condensate_loading>1) then
+       if (thermodynamic_active_species_num>1) then
           call cnst_get_ind('CLDLIQ', ixcldliq, abort=.false.)
           call cnst_get_ind('CLDICE', ixcldice, abort=.false.)
           call cnst_get_ind('RAINQM', ixrain, abort=.false.)
@@ -1533,13 +1440,13 @@ end subroutine read_inidat
           ixcldliq = -1
           ixcldice = -1
           ixrain = -1
-          ixsnow = -1 
+          ixsnow = -1
           ixgraupel = -1
        end if
-       
+
        call cnst_get_ind('TT_LW', ixtt, abort=.false.)
        if (ixtt.le.0) ixtt = -1
-          
+
        dp(is:ie,js:je,1:nlev)=Atm(mytile)%delp(is:ie,js:je,1:nlev)
        !
        ! Compute frozen static energy in 3 parts:  KE, SE, and energy associated with vapor and liquid
@@ -1562,11 +1469,11 @@ end subroutine read_inidat
                 ! make energy consistent with CAM physics (only water vapor and dry air in pressure)
                 !
                 !
-                if ((.not.fv3_lcp_moist).and.(.not.fv3_lcv_moist).and.qsize_condensate_loading>1) then
-                   dp(i,j,k) = Atm(mytile)%delp(i,j,k)             
-                   ! adjust dp to include just dry + vap to use below 
-                   do nq=2,qsize_condensate_loading                 
-                      m_cnst_ffsl=qsize_condensate_loading_idx(nq)
+                if ((.not.fv3_lcp_moist).and.(.not.fv3_lcv_moist).and.thermodynamic_active_species_num>1) then
+                   dp(i,j,k) = Atm(mytile)%delp(i,j,k)
+                   ! adjust dp to include just dry + vap to use below
+                   do nq=2,thermodynamic_active_species_num
+                      m_cnst_ffsl=thermodynamic_active_species_idx_dycore(nq)
                       dp(i,j,k) = dp(i,j,k)-Atm(mytile)%delp(i,j,k)*Atm(mytile)%q(i,j,k,m_cnst_ffsl)
                    end do
                 end if
@@ -1580,26 +1487,26 @@ end subroutine read_inidat
                    ! Internal energy formula including all condensates and corresponding heat capacities
                    !
                    ! Start with energy of dry air and add energy of condensates
-                   dp(i,j,k) = Atm(mytile)%delp(i,j,k)             
-                   do nq=1,qsize_condensate_loading                 
-                      m_cnst_ffsl=qsize_condensate_loading_idx(nq)
+                   dp(i,j,k) = Atm(mytile)%delp(i,j,k)
+                   do nq=1,thermodynamic_active_species_num
+                      m_cnst_ffsl=thermodynamic_active_species_idx_dycore(nq)
                       dp(i,j,k) = dp(i,j,k)-Atm(mytile)%delp(i,j,k)*Atm(mytile)%q(i,j,k,m_cnst_ffsl)
                    end do
                    se_tmp = cpair*dp(i,j,k)
-                   do nq=1,qsize_condensate_loading
-                      m_cnst_ffsl=qsize_condensate_loading_idx(nq)
+                   do nq=1,thermodynamic_active_species_num
+                      m_cnst_ffsl=thermodynamic_active_species_idx_dycore(nq)
                       if (fv3_lcp_moist) then
-                         se_tmp = se_tmp+qsize_condensate_loading_cp(nq)*Atm(mytile)%q(i,j,k,m_cnst_ffsl) * &
+                         se_tmp = se_tmp+thermodynamic_active_species_cp(nq)*Atm(mytile)%q(i,j,k,m_cnst_ffsl) * &
                               Atm(mytile)%delp(i,j,k)
                       end if
                       if (fv3_lcv_moist) then
-                         se_tmp = se_tmp+qsize_condensate_loading_cv(nq)*Atm(mytile)%q(i,j,k,m_cnst_ffsl) * &
-                              Atm(mytile)%delp(i,j,k)
+!!jt fix this                         se_tmp = se_tmp+thermodynamic_active_species_cv(nq)*Atm(mytile)%q(i,j,k,m_cnst_ffsl) * &
+!!jt fix this                              Atm(mytile)%delp(i,j,k)
                       end if
                    end do
                    se_tmp = se_tmp*Atm(mytile)%pt(i,j,k)/gravit
                    ! reset dp to delp to use below fv3_lcp_moist case
-                   dp(i,j,k) = Atm(mytile)%delp(i,j,k)             
+                   dp(i,j,k) = Atm(mytile)%delp(i,j,k)
                 else
                    !
                    ! using CAM physics definition of internal energy
@@ -1607,7 +1514,7 @@ end subroutine read_inidat
                    se_tmp   = cpair*Atm(mytile)%pt(i,j,k)*dp(i,j,k)/gravit
                 end if
                 wv_tmp   =  Atm(mytile)%q(i,j,k,1)*Atm(mytile)%delp(i,j,k)/gravit
-                
+
                 se(i,j) = se(i,j) + se_tmp
                 ke(i,j) = ke(i,j) + ke_tmp
                 wv(i,j) = wv(i,j) + wv_tmp
@@ -1615,7 +1522,7 @@ end subroutine read_inidat
              end do
           end do
        end do
-       
+
        do j=js,je
           do i = is,ie
              ps_local(i,j) =   Atm(mytile)%ptop+sum(dp(i,j,:))
@@ -1627,9 +1534,9 @@ end subroutine read_inidat
             se(i,j) = se(i,j) + Atm(mytile)%phis(i,j)*ps_local(i,j)/gravit
           end do
        end do
-       
+
        ! Don't require cloud liq/ice to be present.  Allows for adiabatic/ideal phys.
-       
+
        if (ixcldliq > 1) then
           ixcldliq_ffsl = qsize_tracer_idx_cam2dyn(ixcldliq)
           do k = 1, nlev
@@ -1641,7 +1548,7 @@ end subroutine read_inidat
              end do
           end do
        end if
-       
+
        if (ixcldice > 1) then
           ixcldice_ffsl = qsize_tracer_idx_cam2dyn(ixcldice)
           do k = 1, nlev
@@ -1665,7 +1572,7 @@ end subroutine read_inidat
              end do
           end do
        end if
-       
+
        if (ixsnow > 1) then
           ixsnow_ffsl = qsize_tracer_idx_cam2dyn(ixsnow)
           do k = 1, nlev
@@ -1690,7 +1597,7 @@ end subroutine read_inidat
           end do
        end if
 
-       
+
        if (ixtt > 1) then
           do k = 1, nlev
              do j = js, je
@@ -1736,7 +1643,7 @@ end subroutine read_inidat
                tt_glob=g_sum(Atm(mytile)%domain, tt(is:ie,js:je), is, ie, js, je, &
                        Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
           if (masterproc) then
-      
+
              write(iulog, '(a,e25.17)') 'static energy se_'//trim(suffix)//')        = ',se_glob
              write(iulog, '(a,e25.17)') 'kinetic energy ke_'//trim(suffix)//')           = ',ke_glob
              write(iulog, '(a,e25.17)') 'total energy se_plus_ke_'//trim(suffix)//')     = ',(ke_glob+se_glob)
@@ -1751,15 +1658,15 @@ end subroutine read_inidat
           end if
        end if
     end if
-    
+
     !
     ! Axial angular momentum diagnostics
     !
-    ! Code follows 
+    ! Code follows
     !
     ! Lauritzen et al., (2014): Held-Suarez simulations with the Community Atmosphere Model
     ! Spectral Element (CAM-SE) dynamical core: A global axial angularmomentum analysis using Eulerian
-    ! and floating Lagrangian vertical coordinates. J. Adv. Model. Earth Syst. 6,129-140, 
+    ! and floating Lagrangian vertical coordinates. J. Adv. Model. Earth Syst. 6,129-140,
     ! doi:10.1002/2013MS000268
     !
     ! MR is equation (6) without \Delta A and sum over areas (areas are in units of radians**2)
@@ -1782,7 +1689,7 @@ end subroutine read_inidat
                cos_lat = cos(Atm(mytile)%gridstruct%agrid_64(i,j,2))
                mr_tmp   = mr_cnst*Atm(mytile)%ua(i,j,k)*Atm(mytile)%delp(i,j,k)*cos_lat
                mo_tmp   = mo_cnst*Atm(mytile)%delp(i,j,k)*cos_lat**2
-               
+
                mr   (i,j) = mr(i,j) + mr_tmp
                mo   (i,j) = mo(i,j) + mo_tmp
             end do
@@ -1924,34 +1831,35 @@ subroutine write_dyn_var(field,outfld_name,bd)
 
   use cam_history,            only: outfld
   implicit none
-  
+
   type(fv_grid_bounds_type), intent(IN) :: bd
   real(r8), intent(IN)          :: field(bd%is:bd%ie,bd%js:bd%je)
   character*(*)    , intent(IN) :: outfld_name ! suffix for "outfld" names
 
   ! local variables
   integer              :: idim, j
-  
+
   !----------------------------------------------------------------------------
   idim=bd%ie-bd%is+1
   do j=bd%js,bd%je
      ! Output energy diagnostics
      call outfld(trim(outfld_name)  ,field(bd%is:bd%ie,j)       ,idim, j)
   end do
-  
+
 end subroutine write_dyn_var
 
 !=========================================================================================
 
 subroutine set_dry_mass(atm,fixed_global_ave_dry_ps)
-  
+
   !----------------------------------------------------------------------------
-  
+
   use constituents,          only: pcnst, qmin
   use cam_logfile,           only: iulog
   use hycoef,                only: hyai, hybi, ps0
   use dimensions_mod,        only: nlev
   use dyn_grid,              only: mytile
+  use physconst,             only: thermodynamic_active_species_num,thermodynamic_active_species_idx_dycore
 
   type (fv_atmos_type), intent(in),  pointer :: Atm(:)
   real (kind=r8), intent(in)                 :: fixed_global_ave_dry_ps
@@ -1977,16 +1885,16 @@ subroutine set_dry_mass(atm,fixed_global_ave_dry_ps)
 
 
   if (fixed_global_ave_dry_ps == 0) return;
-  
+
   ! get_global_ave_surface_pressure - must use bitwise sum (reproducable)
   global_ave_ps_inic=g_sum(Atm(mytile)%domain, Atm(mytile)%ps(is:ie,js:je), is, ie, js, je, &
                            Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
-  
+
   do k=1,pver
      do j = js, je
         do i = is, ie
            delpdry(i,j,k)=Atm(mytile)%delp(i,j,k) * (1.0_r8 - &
-                          sum(Atm(mytile)%q(i,j,k,qsize_condensate_loading_idx(1:qsize_condensate_loading))))
+                          sum(Atm(mytile)%q(i,j,k,thermodynamic_active_species_idx_dycore(1:thermodynamic_active_species_num))))
            delpwet(i,j,k)=Atm(mytile)%delp(i,j,k)-delpdry(i,j,k)
         end do
      end do
@@ -2067,7 +1975,7 @@ subroutine set_dry_mass(atm,fixed_global_ave_dry_ps)
      write (iulog,*) "Total precipitable water after  scaling = ", &
           (global_ave_ps_new-global_ave_dryps_new)/gravit, '(kg/m**2)'
   endif
-  
+
   deallocate(factor)
   deallocate(delpdry)
   deallocate(delpwet)
@@ -2256,98 +2164,4 @@ subroutine a2d3djt(ua, va, u, v, is,  ie,  js,  je, isd, ied, jsd, jed, npx,npy,
 
 end subroutine a2d3djt
 
-subroutine check_mixing_ratios(atm,dryplusq,dryplusall)
-
-!-------------------------------------------------------------------------------
-! Check mixing ratios to see if they are based off a total mass
-! of dry+q (mass conserved in cam physics) or a wet mass of dry+all wet condensates
-!-------------------------------------------------------------------------------
-
-  use dimensions_mod,         only: nlev
-  use fv_grid_utils_mod,      only: g_sum
-  use hycoef,                 only: hyai, hybi, ps0
-  use physconst,              only: gravit
-  implicit none
-
-  ! args
-  type(fv_atmos_type), pointer, intent(in) :: Atm(:)
-  logical,intent(out)                      :: dryplusq,dryplusall
-
-  ! Local variables
-
-  integer                         :: i,j,k,is,ie,js,je
-  real (r8), allocatable          :: delp(:,:,:),delpdryq(:,:,:),delpdryall(:,:,:),psdryq(:,:),&
-                                     psdryall(:,:),massq(:,:,:),massq2d(:,:)
-  real (kind=r8)                  :: global_ave_ps,global_ave_drypsq,global_ave_drypsall, &
-                                     global_ave_mass_q
-  real(r8), parameter             :: masstol = 1.e-12_r8
-
-  !-----------------------------------------------------------------------
-
-  is = Atm(mytile)%bd%is
-  ie = Atm(mytile)%bd%ie
-  js = Atm(mytile)%bd%js
-  je = Atm(mytile)%bd%je
-
-  dryplusq=.false.
-  dryplusall=.false.
-
-  allocate(delp(is:ie,js:je,nlev))
-  allocate(delpdryq(is:ie,js:je,nlev))
-  allocate(delpdryall(is:ie,js:je,nlev))
-  allocate(massq(is:ie,js:je,nlev))
-  allocate(massq2d(is:ie,js:je))
-  allocate(psdryq(is:ie,js:je))
-  allocate(psdryall(is:ie,js:je))
-
-  do k=1,nlev
-     do j = js, je
-        do i = is, ie
-           delp(i, j, k) = (((hyai(k+1) - hyai(k))*ps0)         +                &
-                ((hybi(k+1) - hybi(k))*Atm(mytile)%ps(i,j)))
-           delpdryall(i,j,k)=delp(i,j,k) * (1.0_r8 - &
-                          sum(Atm(mytile)%q(i,j,k,qsize_condensate_loading_idx(1:qsize_condensate_loading))))
-           delpdryq(i,j,k)=delp(i,j,k) * (1.0_r8 - Atm(mytile)%q(i,j,k,1))
-           massq(i,j,k)=delp(i,j,k)*Atm(mytile)%q(i,j,k,1)
-        end do
-     end do
-  end do
-  !
-  ! vertically integrate mass dry and mass q
-  !
-  do j = js, je
-     do i = is, ie
-        psdryq(i,j) = hyai(1)*ps0 + sum(delpdryq(i,j,:))
-        psdryall(i,j) = hyai(1)*ps0 + sum(delpdryall(i,j,:))
-        massq2d(i,j)= sum(massq(i,j,:))
-     end do
-  end do
-  !
-  ! global integrals
-  !
-  global_ave_ps=g_sum(Atm(mytile)%domain, Atm(mytile)%ps(is:ie,js:je), is, ie, js, je, &
-                           Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
-  global_ave_drypsq=g_sum(Atm(mytile)%domain, psdryq(is:ie,js:je), is, ie, js, je, &
-                        Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
-  global_ave_drypsall=g_sum(Atm(mytile)%domain, psdryall(is:ie,js:je), is, ie, js, je, &
-                        Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
-  global_ave_mass_q=g_sum(Atm(mytile)%domain, massq2d(is:ie,js:je), is, ie, js, je, &
-                           Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
-
-  if (abs((global_ave_ps-global_ave_drypsq-global_ave_mass_q)/global_ave_ps).lt.masstol) dryplusq=.true.
-  if (abs((global_ave_ps-global_ave_drypsall-global_ave_mass_q)/global_ave_ps).lt.masstol) dryplusall=.true.
-
-  deallocate(delp)
-  deallocate(delpdryq)
-  deallocate(massq)
-  deallocate(massq2d)
-  deallocate(psdryq)
-  deallocate(delpdryall)
-  deallocate(psdryall)
-
-end subroutine check_mixing_ratios
-
-
 end module dyn_comp
-
-

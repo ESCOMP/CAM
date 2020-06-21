@@ -8,8 +8,6 @@ use cam_abortutils,    only: endrun
 use cam_logfile,       only: iulog
 use constituents,      only: pcnst
 use dimensions_mod,    only: npx,npy,nlev, &
-                             qsize_condensate_loading_idx,qsize_condensate_loading_cp,qsize_condensate_loading_cv,&
-                             qsize_condensate_loading_idx_gll, qsize_condensate_loading, qsize_condensate_loading, &
                              cnst_name_ffsl, cnst_longname_ffsl,fv3_lcp_moist,fv3_lcv_moist, &
                              qsize_tracer_idx_cam2dyn,fv3_scale_ttend
 use dyn_comp,          only: dyn_export_t, dyn_import_t
@@ -254,6 +252,8 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
   use fms_mod,                only: set_domain
   use fv_arrays_mod,          only: fv_atmos_type, fv_grid_type
   use fv_grid_utils_mod,      only: cubed_to_latlon
+  use physconst,              only: thermodynamic_active_species_num,thermodynamic_active_species_idx_dycore
+  use physconst,              only: thermodynamic_active_species_cp
   use physics_types,          only: set_state_pdry
   use time_manager,           only: get_step_size,get_curr_date
 
@@ -475,7 +475,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
            do m = 1,pcnst
               tracermass(m)=Atm(mytile)%delp(i,j,k)*Atm(mytile)%q(i,j,k,m)
            end do
-           fv3_totwatermass=sum(tracermass(qsize_condensate_loading_idx(1:qsize_condensate_loading)))
+           fv3_totwatermass=sum(tracermass(thermodynamic_active_species_idx_dycore(1:thermodynamic_active_species_num)))
            fv3_airmass =  delpdry(i,j,k) + fv3_totwatermass
            Atm(mytile)%delp(i,j,k) = fv3_airmass
            Atm(mytile)%q(i,j,k,1:pcnst) = tracermass(1:pcnst)/fv3_airmass
@@ -494,11 +494,11 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
            if (fv3_scale_ttend) then
               qall=0._r8
               cpfv3=0._r8
-              do nq=1,qsize_condensate_loading
-                 m_ffsl = qsize_condensate_loading_idx(nq)
+              do nq=1,thermodynamic_active_species_num
+                 m_ffsl = thermodynamic_active_species_idx_dycore(nq)
                  qall=qall+Atm(mytile)%q(i,j,k,m_ffsl)
-                 if (fv3_lcp_moist) cpfv3 = cpfv3+qsize_condensate_loading_cp(nq)*Atm(mytile)%q(i,j,k,m_ffsl)
-                 if (fv3_lcv_moist) cpfv3 = cpfv3+qsize_condensate_loading_cv(nq)*Atm(mytile)%q(i,j,k,m_ffsl)
+                 if (fv3_lcp_moist) cpfv3 = cpfv3+thermodynamic_active_species_cp(nq)*Atm(mytile)%q(i,j,k,m_ffsl)
+!jt fix this                 if (fv3_lcv_moist) cpfv3 = cpfv3+thermodynamic_active_species_cv(nq)*Atm(mytile)%q(i,j,k,m_ffsl)
               end do
               cpfv3=(1._r8-qall)*cp_air+cpfv3
               ! scale factor for t_dt so temperature tendency derived from CAM moist air (dry+vap - constant pressure)
@@ -615,6 +615,8 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
   use geopotential,   only: geopotential_t
   use physics_buffer, only: physics_buffer_desc, pbuf_get_chunk
   use physics_types,  only: set_wet_to_dry
+  use physconst,      only: thermodynamic_active_species_num,thermodynamic_active_species_idx_dycore
+  use physconst,      only: thermodynamic_active_species_idx
   use ppgrid,         only: pver
   use qneg_module,    only: qneg3
   use shr_vmath_mod,  only: shr_vmath_log
@@ -656,7 +658,7 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
         do i=1,ncol
            phys_state(lchnk)%pdeldry(i,k) = &
                 phys_state(lchnk)%pdel(i,k) * &
-                (1._r8-sum(phys_state(lchnk)%q(i,k,qsize_condensate_loading_idx_gll(1:qsize_condensate_loading))))
+                (1._r8-sum(phys_state(lchnk)%q(i,k,thermodynamic_active_species_idx(1:thermodynamic_active_species_num))))
            do m = 1,pcnst
               tracermass(m)=phys_state(lchnk)%pdel(i,k)*phys_state(lchnk)%q(i,k,m)
            end do
@@ -765,6 +767,7 @@ subroutine atend2dstate3d(u_dt, v_dt, u, v, is,  ie,  js,  je, isd, ied, jsd, je
 
   use fv_arrays_mod,      only: fv_grid_type
   use mpp_domains_mod,    only: mpp_update_domains,  DGRID_NE
+  use physconst,          only: thermodynamic_active_species_num,thermodynamic_active_species_idx_dycore
 
   ! arguments
   integer, intent(in) :: npx,npy, nlev
@@ -948,10 +951,10 @@ subroutine fv3_tracer_diags(atm)
   ! Dry/Wet surface pressure diagnostics
 
   use constituents,          only: pcnst
-  use dimensions_mod,        only: nlev,qsize_condensate_loading_idx, qsize_condensate_loading, &
-                                   cnst_name_ffsl
+  use dimensions_mod,        only: nlev,cnst_name_ffsl
   use dyn_grid,              only: mytile
   use fv_arrays_mod,         only: fv_atmos_type
+  use physconst,             only: thermodynamic_active_species_num,thermodynamic_active_species_idx_dycore
 
   ! arguments
   type (fv_atmos_type), intent(in),  pointer :: Atm(:)
@@ -979,7 +982,7 @@ subroutine fv3_tracer_diags(atm)
      do j = js, je
         do i = is, ie
            delpdry(i,j,k) = Atm(mytile)%delp(i,j,k) * &
-                            (1.0_r8-sum(Atm(mytile)%q(i,j,k,qsize_condensate_loading_idx(1:qsize_condensate_loading))))
+                            (1.0_r8-sum(Atm(mytile)%q(i,j,k,thermodynamic_active_species_idx_dycore(1:thermodynamic_active_species_num))))
         end do
      end do
   end do

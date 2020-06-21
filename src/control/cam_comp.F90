@@ -88,7 +88,7 @@ subroutine cam_init( &
    use cam_pio_utils,    only: init_pio_subsystem
    use cam_instance,     only: inst_suffix
    use cam_snapshot,     only: cam_snapshot_deactivate
-
+   use physconst,        only: composition_init
 #if (defined BFB_CAM_SCAM_IOP)
    use history_defaults, only: initialize_iop_history
 #endif
@@ -174,6 +174,7 @@ subroutine cam_init( &
    ! are set in dyn_init
    call chem_surfvals_init()
 
+   call composition_init()
    ! initialize ionosphere
    call ionosphere_init()
 

@@ -2049,6 +2049,17 @@
 <cam_snapshot_after_num>   -1 </cam_snapshot_after_num>
 
 <!-- ================================================================== -->
+<!-- Defaults for composition of air                                    -->
+<!-- ================================================================== -->
+<dry_air_composition                           >''</dry_air_composition>
+<dry_air_composition    waccmx="1"             >'O     ','O2    ','H     ','N2    '</dry_air_composition>
+
+<moist_air_composition                         >'Q     '                                    </moist_air_composition>
+<moist_air_composition phys="cam4"             >'Q     ','CLDLIQ','CLDICE'                  </moist_air_composition>
+<moist_air_composition phys="cam5"             >'Q     ','CLDLIQ','CLDICE'                  </moist_air_composition>
+<moist_air_composition phys="cam6"             >'Q     ','CLDLIQ','CLDICE','RAINQM','SNOWQM'</moist_air_composition>
+
+<!-- ================================================================== -->
 <!-- Defaults for FV3                                                   -->
 <!-- ================================================================== -->
 <fv3_lcp_moist dyn="fv3" > .false.  </fv3_lcp_moist>

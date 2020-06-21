@@ -8,6 +8,8 @@ src/physics/clubb
 src/physics/cosp2/src
 src/physics/silhs
 src/physics/pumas
+src/dynamics/fv3/atmos_cubed_sphere
+libraries/FMS
 
 # Ignore compiled python
 buildnmlc

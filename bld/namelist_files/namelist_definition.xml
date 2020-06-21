@@ -6945,19 +6945,29 @@ Switch to apply lunar tidal tendencies to neutral winds.
 Default: FALSE
 </entry>
 
-<!-- SE dycore -->
+<!-- Dry air major species -->
 
-<entry id="se_qsize_condensate_loading" type="integer" category="se"
-       group="dyn_se_inparm" valid_values="1,2,3,4,5,6" >
-Number of water tracers active in condensate-loading terms in dynamical core
-1: water vapor only
-2: water vapor and cloud liquid
-3: water vapor, cloud liquid and cloud ice
-4: water vapor, cloud liquid, cloud ice and rain
-5: water vapor, cloud liquid, cloud ice, rain and snow
-6: water vapor, cloud liquid, cloud ice, rain, snow and graupel
-Default: 3 for CAM4, CAM5; 5 for CAM6; 1 for Held_Suarez, Adiabatic and Kessler
+<entry id="dry_air_composition" type="char*6(20)"  category="se"
+       group="air_composition_nl" valid_values="" >
+List of major species of dry air.  If not set then the composition of dry
+air is considered fixed at tropospheric conditions and the properties of
+dry air are constant.  If set then the list of major species is assumed to
+have 'N2' listed last.  This information is currently used only for
+computing the variable properties of air in WACCM-X configurations.
+Default: Set by build-namelist.
 </entry>
+
+<!-- Water species in moist air -->
+
+<entry id="moist_air_composition" type="char*6(20)"  category="se"
+       group="air_composition_nl" valid_values="" >
+List of water species that are included in "moist" air.  This is currently
+used only by the SE dycore to generalize the computation of the moist air
+mass and thermodynamic properties.
+Default: Set by build-namelist.
+</entry>
+
+<!-- SE dycore -->
 
 <entry id="se_fine_ne" type="integer" category="se"
        group="dyn_se_inparm" valid_values="" >
