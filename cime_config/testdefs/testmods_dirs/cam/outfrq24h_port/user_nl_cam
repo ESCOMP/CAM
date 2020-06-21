@@ -15,5 +15,5 @@
  ndens=1,1,1,1,1,1
  nhtfrq=-24,-24,-24,-24,-24,-24
  use_topo_file=.false.
- depvel_lnd_file='/fs/cgd/csm/inputdata/atm/cam/chem/trop_mozart/dvel/regrid_vegetation_all_zero_aquaplanet_1deg_regularGrid_c20170421.nc'
+ depvel_lnd_file='$DIN_LOC_ROOT/atm/cam/chem/trop_mozart/dvel/regrid_vegetation_all_zero_aquaplanet_1deg_regularGrid_c20170421.nc'
  atm_dep_flux=.false.

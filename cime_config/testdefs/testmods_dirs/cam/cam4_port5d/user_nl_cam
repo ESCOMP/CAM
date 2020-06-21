@@ -13,6 +13,6 @@
  rad_data_output = .false.
  mfilt=100,100
  nhtfrq=-120,73
- ncdata='/glade/p/cesmdata/cseg/inputdata/atm/cam/inic/fv/aqua_0006-01-01_1.9x2.5_L26_c161020.nc'
+ ncdata='$DIN_LOC_ROOT/atm/cam/inic/fv/aqua_0006-01-01_1.9x2.5_L26_c161020.nc'
  use_topo_file=.false. 
  atm_dep_flux=.false.
