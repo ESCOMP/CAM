@@ -1,5 +1,5 @@
 """
-Implementation of the CAM sub column test test.
+Implementation of the CAM sub column test.
 
 This is a CAM specific test:
 Verifies that turning sub columns on and off doesn't change answers
