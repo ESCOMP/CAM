@@ -3630,6 +3630,7 @@ if ($dyn =~ /se/) {
                   se_nu_div
                   se_nu_p
                   se_nu_top
+                  se_qsize_condensate_loading
                   se_qsplit
                   se_rsplit
                   se_statediag_numtrac

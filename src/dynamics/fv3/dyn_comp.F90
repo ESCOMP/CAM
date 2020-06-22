@@ -513,7 +513,7 @@ subroutine dyn_init(dyn_in, dyn_out)
          qsize_tracer_idx_cam2dyn(m) = idx
       end if
    end do
-   !Now add all other CAM tracer after any of the condensates in the fv3 tracer array
+
    if (masterproc) then
 
       write(iulog,*) 'Creating field_table file to load tracer fields into fv3'
@@ -661,7 +661,8 @@ subroutine dyn_run(dyn_state)
   use fv_control_mod,         only: ngrids
   use fv_dynamics_mod,        only: fv_dynamics
   use fv_sg_mod,              only: fv_subgrid_z
-  use physconst,              only: thermodynamic_active_species_num, thermodynamic_active_species_idx_dycore
+  use physconst,              only: thermodynamic_active_species_num, thermodynamic_active_species_idx_dycore, &
+                                    thermodynamic_active_species_cp
   use time_manager,           only: get_step_size
   use tracer_manager_mod,     only: get_tracer_index, NO_TRACER
 
@@ -915,7 +916,6 @@ subroutine read_inidat(dyn_in)
   real(r8), allocatable :: var3d(:,:,:), var2d(:,:)
   real(r8), pointer                :: latvals_deg(:)
   real(r8), pointer                :: lonvals_deg(:)
-  logical                :: dryplusq,dryplusall
 
   !-----------------------------------------------------------------------
 
@@ -1218,12 +1218,44 @@ subroutine read_inidat(dyn_in)
         atm(mytile)%phis(i,j) = phis_tmp(indx,1)
      end do
   end do
-
   !
-  ! If inic_wet assume PS is dry+wet condensates (fv3 airmass) otherwise
-  ! initialize delp and mixing ratios use dry airmass
+  ! initialize delp (and possibly mixing ratios) from IC fields.
   !
-  if (.not. inic_wet) then
+  if (inic_wet) then
+     !
+     ! /delp/mix ratios/ps consistent with fv3 airmass (dry+all wet tracers) assuming IC is CAM phys airmass (dry+q only)
+     !
+     allocate(pstmp(isd:ied,jsd:jed))
+     pstmp(:,:) = atm(mytile)%ps(:,:)
+     atm(mytile)%ps(:,:)=hyai(1)*ps0
+     do k=1,pver
+        do j = js, je
+           do i = is, ie
+              ! this delp is (dry+vap) using the moist ps read in.
+              Atm(mytile)%delp(i, j, k) = (((hyai(k+1) - hyai(k))*ps0)         +                &
+                   ((hybi(k+1) - hybi(k))*pstmp(i,j)))
+              delpdry=Atm(mytile)%delp(i,j,k)*(1.0_r8-Atm(mytile)%q(i,j,k,1))
+              do m=1,pcnst
+                 m_ffsl=qsize_tracer_idx_cam2dyn(m)
+                 if (cnst_type(m) == 'wet') then
+                    tracermass(m_ffsl)=Atm(mytile)%delp(i,j,k)*Atm(mytile)%q(i,j,k,m_ffsl)
+                 else
+                    tracermass(m_ffsl)=delpdry*Atm(mytile)%q(i,j,k,m_ffsl)
+                 end if
+              end do
+              fv3_totwatermass=sum(tracermass(thermodynamic_active_species_idx_dycore(1:thermodynamic_active_species_num)))
+              fv3_airmass =  delpdry + fv3_totwatermass
+              Atm(mytile)%delp(i,j,k) = fv3_airmass
+              Atm(mytile)%q(i,j,k,1:pcnst) = tracermass(1:pcnst)/fv3_airmass
+              Atm(mytile)%ps(i,j)=Atm(mytile)%ps(i,j)+Atm(mytile)%delp(i, j, k)
+           end do
+        end do
+     end do
+     deallocate(pstmp)
+  else
+     !
+     ! Make delp/mix ratios/ps consistent with fv3 airmass (dry+all wet constituents) assuming IC based off dry airmass
+     !
      allocate(pstmp(isd:ied,jsd:jed))
      pstmp(:,:) = atm(mytile)%ps(:,:)
      atm(mytile)%ps(:,:)=hyai(1)*ps0
@@ -1500,8 +1532,8 @@ end subroutine read_inidat
                               Atm(mytile)%delp(i,j,k)
                       end if
                       if (fv3_lcv_moist) then
-!!jt fix this                         se_tmp = se_tmp+thermodynamic_active_species_cv(nq)*Atm(mytile)%q(i,j,k,m_cnst_ffsl) * &
-!!jt fix this                              Atm(mytile)%delp(i,j,k)
+                         se_tmp = se_tmp+thermodynamic_active_species_cp(nq)*Atm(mytile)%q(i,j,k,m_cnst_ffsl) * &
+                              Atm(mytile)%delp(i,j,k)
                       end if
                    end do
                    se_tmp = se_tmp*Atm(mytile)%pt(i,j,k)/gravit

@@ -1942,7 +1942,7 @@ if ($dyn_pkg eq 'se') {
 
 # Parameters for fv3 dycore.
 if ($dyn_pkg eq 'fv3') {
-    $cfg_cppdefs .= " -Duse_libMPI -Duse_netCDF";
+    $cfg_cppdefs .= " -Duse_libMPI -Duse_netCDF -DUSE_COND -DMOIST_CAPPA";
 }
 
 # Resolution parameters for vertical grid, number of constituents, chunk size

@@ -2062,7 +2062,7 @@
 <!-- ================================================================== -->
 <!-- Defaults for FV3                                                   -->
 <!-- ================================================================== -->
-<fv3_lcp_moist dyn="fv3" > .false.  </fv3_lcp_moist>
+<fv3_lcp_moist dyn="fv3" > .true.   </fv3_lcp_moist>
 <fv3_lcv_moist dyn="fv3" > .false.  </fv3_lcv_moist>
 
 <fv3_clock_grain dyn="fv3"  >LOOP</fv3_clock_grain>
