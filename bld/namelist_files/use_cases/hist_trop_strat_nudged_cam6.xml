@@ -32,13 +32,17 @@
 <Nudge_Path hgrid="0.9x1.25" nlev="32">'atm/cam/met/nudging/MERRA2_fv09_32L/'</Nudge_Path>
 <Nudge_Path hgrid="ne30np4" nlev="32">'atm/cam/met/nudging/MERRA2_ne30_32L/'</Nudge_Path>
 <Nudge_Path hgrid="ne30np4" npg="3" nlev="32">'atm/cam/met/nudging/MERRA2_ne30pg3_32L/'</Nudge_Path>
+<Nudge_Path hgrid="ne0np4CONUS.ne30x8" nlev="32">'atm/cam/met/nudging/MERRA2_ne0CONUS30x8_L32/'</Nudge_Path>
 <Nudge_File_Template hgrid="0.9x1.25" nlev="32">'%y/MERRA2_fv09.cam2.i.%y-%m-%d-%s.nc'</Nudge_File_Template>
 <Nudge_File_Template hgrid="ne30np4" nlev="32">'%y/MERRA2_ne30np4_L32.cam2.i.%y-%m-%d-%s.nc'</Nudge_File_Template>
 <Nudge_File_Template hgrid="ne30np4" npg="3" nlev="32">'%y/MERRA2_ne30pg3_L32.cam2.i.%y-%m-%d-%s.nc'</Nudge_File_Template>
+<Nudge_File_Template hgrid="ne0np4CONUS.ne30x8" nlev="32">'%y/MERRA2_ne0CONUS30x8_L32.cam2.i.%y-%m-%d-%s.nc'</Nudge_File_Template>
 <Nudge_Force_Opt>0</Nudge_Force_Opt>
 <Nudge_TimeScale_Opt>0</Nudge_TimeScale_Opt>
 <Nudge_Times_Per_Day>4</Nudge_Times_Per_Day>
+<Nudge_Times_Per_Day hgrid="ne0np4CONUS.ne30x8">8</Nudge_Times_Per_Day>
 <Model_Times_Per_Day>24</Model_Times_Per_Day>
+<Model_Times_Per_Day hgrid="ne0np4CONUS.ne30x8">48</Model_Times_Per_Day>
 <Nudge_Uprof>1</Nudge_Uprof>
 <Nudge_Ucoef>0.06</Nudge_Ucoef>
 <Nudge_Vprof>1</Nudge_Vprof>
@@ -50,18 +54,26 @@
 <Nudge_PSprof>0</Nudge_PSprof>
 <Nudge_PScoef>0.00</Nudge_PScoef>
 <Nudge_Beg_Year>2010</Nudge_Beg_Year>
+<Nudge_Beg_Year hgrid="ne0np4CONUS.ne30x8">2013</Nudge_Beg_Year>
 <Nudge_Beg_Month>1</Nudge_Beg_Month>
 <Nudge_Beg_Day>1</Nudge_Beg_Day>
 <Nudge_End_Year>2020</Nudge_End_Year>
 <Nudge_End_Month>12</Nudge_End_Month>
 <Nudge_End_Day>31</Nudge_End_Day>
 <Nudge_Hwin_lat0>0.0</Nudge_Hwin_lat0>
+<Nudge_Hwin_lat0 hgrid="ne0np4CONUS.ne30x8">37.</Nudge_Hwin_lat0>
 <Nudge_Hwin_latWidth>9999.</Nudge_Hwin_latWidth>
+<Nudge_Hwin_latWidth hgrid="ne0np4CONUS.ne30x8">56.</Nudge_Hwin_latWidth>
 <Nudge_Hwin_latDelta>1.</Nudge_Hwin_latDelta>
+<Nudge_Hwin_latDelta hgrid="ne0np4CONUS.ne30x8">5.</Nudge_Hwin_latDelta>
 <Nudge_Hwin_lon0>180.</Nudge_Hwin_lon0>
+<Nudge_Hwin_lon0 hgrid="ne0np4CONUS.ne30x8">264.</Nudge_Hwin_lon0>
 <Nudge_Hwin_lonWidth>9999.</Nudge_Hwin_lonWidth>
+<Nudge_Hwin_lonWidth hgrid="ne0np4CONUS.ne30x8">94.</Nudge_Hwin_lonWidth>
 <Nudge_Hwin_lonDelta>1.</Nudge_Hwin_lonDelta>
+<Nudge_Hwin_lonDelta hgrid="ne0np4CONUS.ne30x8">5.</Nudge_Hwin_lonDelta>
 <Nudge_Hwin_Invert>.false.</Nudge_Hwin_Invert>
+<Nudge_Hwin_Invert hgrid="ne0np4CONUS.ne30x8">.true.</Nudge_Hwin_Invert>
 <Nudge_Vwin_Hindex>33.</Nudge_Vwin_Hindex>
 <Nudge_Vwin_Hdelta>0.001</Nudge_Vwin_Hdelta>
 <Nudge_Vwin_Lindex>0.</Nudge_Vwin_Lindex>

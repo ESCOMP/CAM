@@ -2355,6 +2355,18 @@ if ($chem =~ /_mam4/ and $phys =~ /cam6/) {
             %species = (%species,
                     'MTERP_bb_srf_file' => 'MTERP' );
         }
+        if ($cfg->get('hgrid') =~ /ne0np4CONUS.ne30x8/) {
+            %species = (%species,
+                    'BIGALD_bb_srf_file' => 'BIGALD',
+                    'CH3COCHO_bb_srf_file' => 'CH3COCHO',
+                    'CRESOL_bb_srf_file' => 'CRESOL',
+                    'HYAC_bb_srf_file' => 'HYAC',
+                    'ISOP_an_srf_file' => 'ISOP',
+                    'MACR_bb_srf_file' => 'MACR',
+                    'MVK_bb_srf_file' => 'MVK',
+                    'MTERP_an_srf_file' => 'MTERP',
+                    'NO2_bb_srf_file' => 'NO2' );
+        }
         if ($chem =~ /_vbsext/) {
             %species = (%species,
                     'IVOC_an_srf_file' => 'IVOCff',
