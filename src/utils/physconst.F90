@@ -1503,7 +1503,7 @@ end subroutine physconst_init
    
      call get_R_dry (i0,i1,j0,j1,k0,k1,k0,k1,ntrac,tracer,idx_local,Rd,fact=factor)
      t_v(:,:,:)  = Rd(:,:,:)
-     do nq=1,thermodynamic_active_species_num
+     do nq=dry_air_species_num+1,thermodynamic_active_species_num
        itrac = idx_local(nq)
        t_v(:,:,:) = t_v(:,:,:)+thermodynamic_active_species_R(nq)*tracer(:,:,:,itrac)*factor(:,:,:)
      end do
