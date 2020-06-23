@@ -5,7 +5,6 @@
 <start_ymd>00010101</start_ymd>
 
 <ncdata dyn="fv" hgrid="0.9x1.25">atm/cam/inic/fv/f.e20.FCHIST.f09_f09_mg17.cesm2_0_rel.emis_fix.001.cam.i.1996-01-01-00000_c180716.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4">atm/cam/inic/se/f.e20.FCHIST.ne30_ne30.chem01_cam5_4_152.001.cam.i.2011-01-01-00000_c171215.nc</ncdata>
 
 <!-- Solar data -->
 <solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-23000102_c20200615.nc</solar_irrad_data_file>
