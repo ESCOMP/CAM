@@ -534,8 +534,8 @@ add_default($nl, 'cime_model', 'val'=>'cesm');
 add_default($nl, 'coldair_outbreak_mod', 'val'=>'.true.');
 add_default($nl, 'flux_max_iteration', 'val'=>'5');
 # Composition of air
-add_default($nl, 'dry_air_composition');
-add_default($nl, 'moist_air_composition');
+add_default($nl, 'dry_air_species');
+add_default($nl, 'water_species_in_air');
 # Spectral Element dycore
 my $dyn = $cfg->get('dyn');
 if ($dyn =~ /se/) {add_default($nl, 'vect_map', 'val'=>'cart3d');}

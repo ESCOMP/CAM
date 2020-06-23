@@ -6947,7 +6947,7 @@ Default: FALSE
 
 <!-- Dry air major species -->
 
-<entry id="dry_air_composition" type="char*6(20)"  category="se"
+<entry id="dry_air_species" type="char*6(20)"  category="physconst"
        group="air_composition_nl" valid_values="" >
 List of major species of dry air.  If not set then the composition of dry
 air is considered fixed at tropospheric conditions and the properties of
@@ -6959,7 +6959,7 @@ Default: Set by build-namelist.
 
 <!-- Water species in moist air -->
 
-<entry id="moist_air_composition" type="char*6(20)"  category="se"
+<entry id="water_species_in_air" type="char*6(20)"  category="physconst"
        group="air_composition_nl" valid_values="" >
 List of water species that are included in "moist" air.  This is currently
 used only by the SE dycore to generalize the computation of the moist air
@@ -7042,9 +7042,9 @@ Default: 0.
 <entry id="se_molecular_diff" type="real" category="se"
        group="dyn_se_inparm" valid_values="" >
 Used by SE dycore to apply sponge layer diffusion to U, V, and T for
-stability of WACCM configurations.  This is not a physical diffusion term
-but rather a artificial diffusion that is modeled on molecular diffusion by
-using actual molecular diffusion coefficients multiplied by the value of
+stability of WACCM configurations. The diffusion is modeled on 3D molecular
+diffusion and thermal conductivity by using actual molecular diffusion and
+thermal conductivity coefficients multiplied by the value of
 se_molecular_diff.
 
 If set &lt;= 0.0 then the code is not activated.  If set &gt; 0.0 then

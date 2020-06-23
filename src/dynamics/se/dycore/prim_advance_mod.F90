@@ -58,7 +58,7 @@ contains
     use fvm_control_volume_mod, only: fvm_struct
     use control_mod,       only: raytau0
     use physconst,         only: get_cp, thermodynamic_active_species_num
-    use physconst,         only: get_kappa_dry, dry_air_composition_num
+    use physconst,         only: get_kappa_dry, dry_air_species_num
     use physconst,         only: thermodynamic_active_species_idx_dycore
     use physconst,         only: cpair, rair
     implicit none
@@ -107,7 +107,7 @@ contains
     !                 (K&G 2nd order method has CFL=4. tiny CFL improvement not worth 2nd order)
     !
 
-    if (dry_air_composition_num > 0) &
+    if (dry_air_species_num > 0) &
       call endrun('ERROR: SE dycore not ready for species dependent thermodynamics - ABORT')
 
     call omp_set_nested(.true.)
@@ -1100,7 +1100,7 @@ contains
      use physconst,       only: epsilo, get_gz_given_dp_Tv_Rdry
      use physconst,       only: thermodynamic_active_species_num, get_virtual_temp, get_cp_dry
      use physconst,       only: thermodynamic_active_species_idx_dycore,get_R_dry
-     use physconst,       only: dry_air_composition_num,get_exner
+     use physconst,       only: dry_air_species_num,get_exner
      use time_mod, only : tevolve
      
      implicit none
@@ -1296,7 +1296,7 @@ contains
          theta_v(:,:)=T_v(:,:,k)/exner(:,:)
          call gradient_sphere(exner(:,:),deriv,elem(ie)%Dinv,grad_exner)
 
-         if (dry_air_composition_num>0) then
+         if (dry_air_species_num>0) then
            call gradient_sphere(kappa(:,:,k,ie),deriv,elem(ie)%Dinv,grad_kappa_term)
            suml = exner(:,:)*LOG(p_full(:,:,k)/hvcoord%ps0)
            grad_kappa_term(:,:,1)=-suml*grad_kappa_term(:,:,1)
