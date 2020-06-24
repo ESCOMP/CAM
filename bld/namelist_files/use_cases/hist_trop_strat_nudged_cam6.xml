@@ -82,9 +82,13 @@
 
 <!-- History Files -->
 
-<mfilt>           1,   1 </mfilt>
-<nhtfrq>          0,   0 </nhtfrq>
-<avgflag_pertape>'A','A' </avgflag_pertape>
+<mfilt           >  1,  30 </mfilt>
+<nhtfrq          >  0, -24 </nhtfrq>
+<avgflag_pertape >'A', 'A' </avgflag_pertape>
+
+<mfilt           chem="trop_strat_mam4_ts2">  1,   1 </mfilt>
+<nhtfrq          chem="trop_strat_mam4_ts2">  0,   0 </nhtfrq>
+<avgflag_pertape chem="trop_strat_mam4_ts2">'A', 'A' </avgflag_pertape>
 
 <history_amwg>.true.</history_amwg>
 <history_aerosol>.false.</history_aerosol>
@@ -315,6 +319,17 @@
          'WD_MEK', 'WD_MPAN',
          'WD_N2O5', 'WD_NO', 'WD_NO2', 'WD_PAN', 'WD_PBZNIT', 'WD_PHENOL', 'WD_TEPOMUC','WD_TOLUENE', 'WD_XYLENES', 'WD_XYLOL'
 </fincl1>
+<fincl2 chem="trop_strat_mam4_vbs" hgrid="ne0np4CONUS.ne30x8">
+   'PMID', 'PDELDRY','PS','PHIS:I','Z3','T','U','V','Q','TROP_P', 'CLOUD',
+   'CO','O3','O3S','NO2','NO','OH','ISOP','SO2', 'PAN', 'HNO3', 'C2H6', 'C3H8', 'CH2O', 'CH3COCH3', 
+   'SFISOP','SFCO','SFNO','SFNO2',
+   'PM25_SRF', 'so4_a1','so4_a2','so4_a3','dst_a1','dst_a2','dst_a3','soa_a1','soa_a2',
+   'ncl_a1','ncl_a2','ncl_a3','bc_a1', 'bc_a4','pom_a1','pom_a4', 'AODVISdn',
+</fincl2>
+<mmr_sums chem="trop_strat_mam4_vbs" hgrid="ne0np4CONUS.ne30x8">
+  'soa_a1 = soa1_a1 + soa2_a1 + soa3_a1 + soa4_a1 + soa5_a1', 
+  'soa_a2 = soa1_a2 + soa2_a2 + soa3_a2 + soa4_a2 + soa5_a2'
+</mmr_sums>
 <fincl2 chem="trop_strat_mam4_ts2">
        'MEG_APIN','MEG_BPIN','MEG_LIMON','MEG_MYRC',
        'ISOPFDN', 'ISOPFNP', 'ISOPN3B', 'ISOPN2B', 'ISOPN1D', 'ISOPN4D', 
