@@ -1530,7 +1530,7 @@ contains
     use element_mod,            only: element_t
     use cam_history,            only: outfld, hist_fld_active
     use constituents,           only: cnst_get_ind
-    use sting_utils,            only: strlist_get_ind
+    use string_utils,           only: strlist_get_ind
     use hycoef,                 only: hyai, ps0
     use fvm_control_volume_mod, only: fvm_struct
     use physconst,              only: get_dp, get_cp
