@@ -1530,7 +1530,7 @@ contains
     use element_mod,            only: element_t
     use cam_history,            only: outfld, hist_fld_active
     use constituents,           only: cnst_get_ind
-    use sting_utils,            only: str_get_ind
+    use sting_utils,            only: strlist_get_ind
     use hycoef,                 only: hyai, ps0
     use fvm_control_volume_mod, only: fvm_struct
     use physconst,              only: get_dp, get_cp
@@ -1589,8 +1589,8 @@ contains
         ! when using CSLAM the condensates on the GLL grid may be located in a different index than in physics
         !
         ixwv = -1
-        call str_get_ind(cnst_name_gll, 'CLDLIQ' , ixcldliq, abort=.false.)
-        call str_get_ind(cnst_name_gll, 'CLDICE' , ixcldice, abort=.false.)        
+        call strlist_get_ind(cnst_name_gll, 'CLDLIQ' , ixcldliq, abort=.false.)
+        call strlist_get_ind(cnst_name_gll, 'CLDICE' , ixcldice, abort=.false.)        
       end if
       call cnst_get_ind('TT_LW' , ixtt    , abort=.false.)
       !
@@ -1680,8 +1680,8 @@ contains
     name_out2 = 'MO_'   //trim(outfld_name_suffix)
 
     if ( hist_fld_active(name_out1).or.hist_fld_active(name_out2)) then
-      call str_get_ind(cnst_name_gll, 'CLDLIQ', ixcldliq, abort=.false.)
-      call str_get_ind(cnst_name_gll, 'CLDICE', ixcldice, abort=.false.)
+      call strlist_get_ind(cnst_name_gll, 'CLDLIQ', ixcldliq, abort=.false.)
+      call strlist_get_ind(cnst_name_gll, 'CLDICE', ixcldice, abort=.false.)
       mr_cnst = rearth**3/gravit
       mo_cnst = omega*rearth**4/gravit
       do ie=nets,nete

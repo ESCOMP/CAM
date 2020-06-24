@@ -241,7 +241,7 @@ end function GLC
 
 !=========================================================================================
 
-subroutine str_get_ind(strlist, str, ind, abort)
+subroutine strlist_get_ind(strlist, str, ind, abort)
 
    ! Get the index of a given string in a list of strings.  Optional abort argument
    ! allows returning control to caller when the string is not found.  Default
@@ -256,7 +256,7 @@ subroutine str_get_ind(strlist, str, ind, abort)
    ! Local variables
    integer :: m
    logical :: abort_on_error
-   character(len=*), parameter :: sub='str_get_ind'
+   character(len=*), parameter :: sub='strlist_get_ind'
    !----------------------------------------------------------------------------
 
    ! Find string in list
@@ -279,7 +279,7 @@ subroutine str_get_ind(strlist, str, ind, abort)
    ! error return
    ind = -1
 
-end subroutine str_get_ind
+end subroutine strlist_get_ind
 
 !=========================================================================================
 
