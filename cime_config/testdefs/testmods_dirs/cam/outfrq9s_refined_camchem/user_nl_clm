@@ -24,10 +24,3 @@
 hist_nhtfrq = 9
 hist_mfilt  = 1
 hist_ndens  = 1
-
-finidat = '$DIN_LOC_ROOT/lnd/clm2/initdata/opt_se_cslam_topo.FCHIST.ne30_ne30_mg17.default_spin_up_TS1.clm2.r.2012-11-01-00000_c190810.nc'
-use_init_interp = .true.
-
-fsurdat = '$DIN_LOC_ROOT/lnd/clm2/surfdata_map/surfdata_ne0CONUSne30x8_hist_16pfts_Irrig_CMIP6_simyr1850_c190814.nc'
-
-flanduse_timeseries = '$DIN_LOC_ROOT/lnd/clm2/surfdata_map/landuse.timeseries_ne0CONUSne30x8_hist_16pfts_Irrig_CMIP6_simyr1850-2015_c190815.nc'

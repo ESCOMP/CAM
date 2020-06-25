@@ -19,6 +19,7 @@ module mo_chm_diags
   public :: het_diags
 
   integer :: id_n,id_no,id_no2,id_no3,id_n2o5,id_hno3,id_ho2no2,id_clono2,id_brono2
+  integer :: id_isopfdn, id_isopfdnc, id_terpfdn !these are dinitrates
   integer :: id_cl,id_clo,id_hocl,id_cl2,id_cl2o2,id_oclo,id_hcl,id_brcl
   integer :: id_ccl4,id_cfc11,id_cfc113,id_ch3ccl3,id_cfc12,id_ch3cl,id_hcfc22,id_cf3br,id_cf2clbr
   integer :: id_cfc114,id_cfc115,id_hcfc141b,id_hcfc142b,id_h1202,id_h2402,id_ch2br2,id_chbr3
@@ -34,7 +35,7 @@ module mo_chm_diags
 
   logical :: has_jeuvs, has_jno_i, has_jno
 
-  integer :: nox_species(3),  noy_species(26)
+  integer :: nox_species(3),  noy_species(56)
   integer :: clox_species(6), cloy_species(9), tcly_species(21)
   integer :: brox_species(4), broy_species(6), tbry_species(13)
   integer :: foy_species(4),  tfy_species(16)
@@ -89,6 +90,12 @@ contains
     integer :: id_soa,  id_oc1, id_oc2, id_cb1, id_cb2
     integer :: id_soam,id_soai,id_soat,id_soab,id_soax
     integer :: id_bry, id_cly 
+    integer :: id_isopn2b, id_isopn3b, id_isopn1d, id_isopn4d, id_isopnbno3
+    integer :: id_isopfnp, id_isopnoohb, id_isopnoohd, id_inheb, id_inhed
+    integer :: id_no3ch2cho, id_macrn, id_mvkn, id_isopfnc, id_terpns
+    integer :: id_terpnt, id_terpnt1, id_terpns1, id_terpnpt, id_terpnps
+    integer :: id_terpnpt1, id_terpnps1, id_sqtn, id_terphfn
+    integer :: id_terpapan, id_terpa2pan, id_terpa3pan
 
     logical :: history_aerosol      ! Output the MAM aerosol tendencies
     logical :: history_chemistry
@@ -210,6 +217,37 @@ contains
     id_nh4     = get_spc_ndx( 'NH4' )
     id_nh4no3  = get_spc_ndx( 'NH4NO3' )
 
+    id_isopn2b   = get_spc_ndx( 'ISOPN2B' )
+    id_isopn3b   = get_spc_ndx( 'ISOPN3B' )
+    id_isopn1d   = get_spc_ndx( 'ISOPN1D' )
+    id_isopn4d   = get_spc_ndx( 'ISOPN4D' )
+    id_isopnbno3 = get_spc_ndx('ISOPNBNO3' )
+    id_isopfdn   = get_spc_ndx( 'ISOPFDN' )
+    id_isopfdnc  = get_spc_ndx( 'ISOPFDNC')
+    id_terpfdn   = get_spc_ndx( 'TERPFDN' )
+    id_isopfnp   = get_spc_ndx( 'ISOPFNP' )
+    id_isopnoohb = get_spc_ndx( 'ISOPNOOHB' )
+    id_isopnoohd = get_spc_ndx( 'ISOPNOOHD' )
+    id_inheb     = get_spc_ndx( 'INHEB' )
+    id_inhed     = get_spc_ndx( 'INHED' )
+    id_no3ch2cho = get_spc_ndx( 'NO3CH2CHO' )
+    id_macrn     = get_spc_ndx( 'MACRN' )
+    id_mvkn      = get_spc_ndx( 'MVKN' )
+    id_isopfnc   = get_spc_ndx( 'ISOPFNC' )
+    id_terpns    = get_spc_ndx( 'TERPNS' )
+    id_terpnt    = get_spc_ndx( 'TERPNT' )
+    id_terpnt1   = get_spc_ndx( 'TERPNT1' )
+    id_terpns1   = get_spc_ndx( 'TERPNS1' )
+    id_terpnpt   = get_spc_ndx( 'TERPNPT' )
+    id_terpnps   = get_spc_ndx( 'TERPNPS' )
+    id_terpnpt1  = get_spc_ndx( 'TERPNPT1' )
+    id_terpnps1  = get_spc_ndx( 'TERPNPS1' )
+    id_sqtn      = get_spc_ndx( 'SQTN' )
+    id_terphfn   = get_spc_ndx( 'TERPHFN' )
+    id_terpapan  = get_spc_ndx( 'TERPAPAN' )
+    id_terpa2pan = get_spc_ndx( 'TERPA2PAN' )
+    id_terpa3pan = get_spc_ndx( 'TERPA3PAN' )
+
     id_dst01   = get_spc_ndx( 'DST01' )
     id_dst02   = get_spc_ndx( 'DST02' )
     id_dst03   = get_spc_ndx( 'DST03' )
@@ -240,7 +278,14 @@ contains
     noy_species = (/ id_n, id_no, id_no2, id_no3, id_n2o5, id_hno3, id_ho2no2, id_clono2, &
                      id_brono2, id_pan, id_onit, id_mpan, id_isopno3, id_onitr, id_nh4no3, &
                      id_honitr, id_alknit, id_isopnita, id_isopnitb, id_isopnooh, id_nc4ch2oh, &
-                     id_nc4cho, id_noa, id_nterpooh, id_pbznit, id_terpnit /)
+                     id_nc4cho, id_noa, id_nterpooh, id_pbznit, id_terpnit, & 
+                     id_isopn2b, id_isopn3b, id_isopn1d, id_isopn4d, id_isopnbno3, &
+                     id_isopfdn, id_isopfdnc, id_terpfdn, &                               
+                     id_isopfnp, id_isopnoohb, id_isopnoohd, id_inheb, id_inhed, &
+                     id_no3ch2cho, id_macrn, id_mvkn, id_isopfnc, id_terpns, &
+                     id_terpnt, id_terpnt1, id_terpns1, id_terpnpt, id_terpnps, &
+                     id_terpnpt1, id_terpnps1, id_sqtn, id_terphfn, &
+                     id_terpapan, id_terpa2pan, id_terpa3pan /)
 !... HOX species
     hox_species = (/ id_h, id_oh, id_ho2, id_h2o2 /)
 
@@ -573,6 +618,8 @@ contains
        if ( m == id_ch4 .or. m == id_n2o5 .or. m == id_cfc12 .or. m == id_cl2 .or. m == id_cl2o2 .or. m==id_h2o2  ) then
           wgt = 2._r8
        elseif (m == id_cfc114 .or. m == id_hcfc141b .or. m == id_h1202 .or. m == id_h2402 .or. m == id_ch2br2 ) then
+          wgt = 2._r8
+       elseif (m == id_isopfdn .or. m == id_isopfdnc .or. m == id_terpfdn ) then
           wgt = 2._r8
        elseif ( m == id_cfc11 .or. m == id_cfc113 .or. m == id_ch3ccl3 .or. m == id_chbr3 ) then
           wgt = 3._r8
