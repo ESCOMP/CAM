@@ -7,7 +7,7 @@
 <ncdata dyn="fv" hgrid="0.9x1.25">atm/cam/inic/fv/f.e20.FCHIST.f09_f09_mg17.cesm2_0_rel.emis_fix.fullVBS.cam.i.1996-01-01-00000_c180716.nc</ncdata>
 
 <!-- Solar data -->
-<solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-22991231_c171031.nc</solar_irrad_data_file>
+<solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-23000102_c20200615.nc</solar_irrad_data_file>
 
 <!-- WACCM GW Settings -->
 <use_gw_front>.true.</use_gw_front>
@@ -46,7 +46,7 @@
 
 <!-- Monthly --> 
 <fincl1>
-         'CFC11STAR', 'AODDUST', 'AODDUST2', 'T', 'U', 'V', 'O3', 'OH', 'O3S',  'O3S_Loss',  'O3S_LOSS', 
+         'CFC11STAR', 'AODDUST', 'AODDUST2', 'T', 'U', 'V', 'O3', 'OH', 'O3S',  
          'NO3', 'HO2', 'LNO_COL_PROD', 'NO2_CLXF', 'SFNO', 'SFNH3', 'BRO', 'CH3CL',
          'CLO', 'CO2', 'HCL', 'HO2', 'HOCL', 'H2O', 'PHIS', 'Z3',
          'BENZENE', 'C2H2', 'C2H4', 'C2H6', 'C3H8', 'CCL4', 'CFC11', 'CFC113',
@@ -111,8 +111,7 @@
          'SOAGff0_CHMP', 'SOAGff1_CHMP', 'SOAGff2_CHMP', 'SOAGff3_CHMP', 'SOAGff4_CHMP',
          'IVOCbb_CHML', 'SVOCbb_CHML', 'IVOCff_CHML', 'SVOCff_CHML','O3_CHMP', 'O3_CHML', 'CH4_CHML', 'CO_CHMP', 'CO_CHML',
          'CH3CCL3_CHML', 'SO2_CHML', 'MASS', 'ABSORB',
-         'OddOx_Ox_Loss', 'OddOx_HOx_Loss', 'OddOx_NOx_Loss', 'OddOx_CLOxBROx_Loss','Ox_Prod', 'Ox_Loss', 
-         'OddOx_Loss_Tot', 'OddOx_Prod_Tot', 'O3_Prod', 'O3_Loss', 'r_HO2_O3', 'r_OH_O3', 'r_OH_O', 'r_O1D_H2O',
+         'r_HO2_O3', 'r_OH_O3', 'r_OH_O', 'r_O1D_H2O',
          'r_N2O5_aer', 'r_NO2_aer', 'r_NO3_aer', 'jo3_a', 'jno2', 'jpan', 'jh2o2', 'jcl2o2',
          'bc_a1', 'bc_a4', 'dst_a1', 'dst_a2', 'dst_a3', 'ncl_a1', 'ncl_a1', 'ncl_a2',
          'ncl_a3', 'pomff1_a1', 'pomff1_a4', 'pombb1_a1', 'pombb1_a4','so4_a1', 'so4_a2', 'so4_a3',
@@ -186,7 +185,10 @@
          'r_jsoabg1_a1', 'r_jsoabg2_a1', 'r_jsoabg3_a1', 'r_jsoabg4_a1', 'r_jsoabg5_a1',
          'r_GLYOXAL_aer', 'H2SO4_sfnnuc1', 'num_a2_sfnnuc1', 'TMOCS',
          'TMSO2', 'TMDMS', 'TMso4_a1', 'TMso4_a2', 'TMso4_a3', 'BURDENDUSTdn', 'BURDENPOMdn', 'BURDENSO4dn',
-         'BURDENSOAdn', 'BURDENSEASALTdn', 'BURDENBCdn', 'PM25'
+         'BURDENSOAdn', 'BURDENSEASALTdn', 'BURDENBCdn', 'PM25',
+         'O3_Prod','O3_Loss','O3S_Loss','RO2_NO_sum','O3_alkenes','RO2_NO3_sum','RO2_HO2_sum','RO2_RO2_sum','RCO2_NO2_sum',
+         'OddOx_Ox_Loss','OddOx_HOx_Loss','OddOx_NOx_Loss','OddOx_CLOxBROx_Loss','OddOx_Loss_Tot','OddOx_Prod_Tot',
+         'Ox_Prod','Ox_Loss'
 </fincl1>
 
 </namelist_defaults>

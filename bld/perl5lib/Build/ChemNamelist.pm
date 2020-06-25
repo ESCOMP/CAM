@@ -13,7 +13,7 @@ use strict;
 use Exporter;
 use FindBin qw($Bin);
 use lib "$Bin/perl5lib";
-use Build::ChemPreprocess qw(get_species_list);
+use Build::ChemPreprocess qw(get_species_list get_species_nottransported_list);
 
 our @ISA = qw(Exporter);
 our @EXPORT = qw(set_dep_lists set_aero_modes_info chem_has_species);
@@ -48,6 +48,7 @@ sub set_dep_lists
          $aer_scav_coef, $gas_drydep_list ) ;
 
     my @species_list ;
+    my @nottransported_list ;
     if ($chem_proc_src) {
 	if (defined $ENV{CASEBUILD}) {
             #needed to expand $CASEBUILD in $chem_proc_src for CESM scripts
@@ -55,6 +56,7 @@ sub set_dep_lists
             $chem_proc_src =~ s/\$CASEBUILD/$root/;
 	}
 	@species_list = get_species_list($chem_proc_src);
+	@nottransported_list = get_species_nottransported_list($chem_proc_src);
     } else {
 	if (defined $ENV{CODEROOT}) {
             #needed to expand $CODEROOT in $chem_src_dir for CESM scripts
@@ -62,16 +64,18 @@ sub set_dep_lists
             $chem_src_dir =~ s/\$CODEROOT/$root/;
 	}
 	@species_list = get_species_list($chem_src_dir);
+	@nottransported_list = get_species_nottransported_list($chem_src_dir);
     }
     if ($print_lvl>=2) {print "Chemistry species : @species_list \n" ;}
+    if ($print_lvl>=2) {print "Not transported species : @nottransported_list \n" ;}
 
-    $gas_wetdep_list = get_gas_wetdep_list( $cfgdir, $print_lvl, @species_list );
+    $gas_wetdep_list = get_gas_wetdep_list( $cfgdir, $print_lvl, \@species_list, \@nottransported_list );
 
-    $aer_wetdep_list = get_aer_wetdep_list( $cfgdir, $print_lvl, @species_list );
+    $aer_wetdep_list = get_aer_wetdep_list( $cfgdir, $print_lvl, \@species_list, \@nottransported_list );
 
-    $gas_drydep_list = get_gas_drydep_list( $cfgdir, $print_lvl, @species_list );
+    $gas_drydep_list = get_gas_drydep_list( $cfgdir, $print_lvl, \@species_list, \@nottransported_list );
 
-    $aer_drydep_list = get_aer_drydep_list( $cfgdir, $print_lvl, @species_list );
+    $aer_drydep_list = get_aer_drydep_list( $cfgdir, $print_lvl, \@species_list, \@nottransported_list );
 
     # set solubility factors for aerosols
     if (length($aer_wetdep_list)>2){ 
@@ -199,11 +203,11 @@ sub print_modal_info
 #-------------------------------------------------------------------------------
 sub get_gas_drydep_list
 {
-    my ($cfg_dir,$print_lvl,@species_list) = @_;
+    my ($cfg_dir,$print_lvl,$species_list,$nottransported_list) = @_;
 
     my $master_file = "$cfg_dir/namelist_files/master_gas_drydep_list.xml";
 
-    my $list = get_dep_list($master_file,$print_lvl,@species_list);
+    my $list = get_dep_list($master_file,$print_lvl,$species_list,$nottransported_list);
 
     if ($print_lvl>=2) {print " dry dep list : $list  \n" ;}
 
@@ -214,11 +218,11 @@ sub get_gas_drydep_list
 #-------------------------------------------------------------------------------
 sub get_aer_drydep_list
 {
-    my ($cfg_dir,$print_lvl,@species_list) = @_;
+    my ($cfg_dir,$print_lvl,$species_list,$nottransported_list) = @_;
 
     my $master_file = "$cfg_dir/namelist_files/master_aer_drydep_list.xml";
 
-    my $list = get_dep_list($master_file,$print_lvl,@species_list);
+    my $list = get_dep_list($master_file,$print_lvl,$species_list,$nottransported_list);
 
     if ($print_lvl>=2) {print " aer drydep list : $list  \n" ;}
     return ($list);
@@ -227,11 +231,11 @@ sub get_aer_drydep_list
 #-------------------------------------------------------------------------------
 sub get_aer_wetdep_list
 {
-    my ($cfg_dir,$print_lvl,@species_list) = @_;
+    my ($cfg_dir,$print_lvl,$species_list,$nottransported_list) = @_;
 
     my $master_file = "$cfg_dir/namelist_files/master_aer_wetdep_list.xml";
 
-    my $list = get_dep_list($master_file,$print_lvl,@species_list);
+    my $list = get_dep_list($master_file,$print_lvl,$species_list,$nottransported_list);
 
     if ($print_lvl>=2) {print " aer wet dep list : $list  \n" ;}
     return ($list);
@@ -240,11 +244,11 @@ sub get_aer_wetdep_list
 #-------------------------------------------------------------------------------
 sub get_gas_wetdep_list
 {
-    my ($cfg_dir,$print_lvl,@species_list) = @_;
+    my ($cfg_dir,$print_lvl,$species_list,$nottransported_list) = @_;
 
     my $master_file = "$cfg_dir/namelist_files/master_gas_wetdep_list.xml";
 
-    my $list = get_dep_list($master_file,$print_lvl,@species_list);
+    my $list = get_dep_list($master_file,$print_lvl,$species_list,$nottransported_list);
 
     if ($print_lvl>=2) {print " gas wet dep list : $list  \n" ;}
 
@@ -254,9 +258,12 @@ sub get_gas_wetdep_list
 #-------------------------------------------------------------------------------
 sub get_dep_list
 {
-    my ($master_file,$print_lvl,@species_list) = @_;
+    my ($master_file,$print_lvl, $species_list_ref, $nottransported_list_ref) = @_;
 
     if ($print_lvl>=2){ print "Using chemistry master list file $master_file \n"; }
+
+    my @species_list = @{$species_list_ref};
+    my @nottransported_list = @{$nottransported_list_ref};
 
     my @master_list = read_master_list_file($master_file);
 
@@ -264,9 +271,11 @@ sub get_dep_list
     my $first = 1; my $pre = "";
     foreach my $name (sort @species_list) {
 	foreach my $item (@master_list) {
-	    if ($name eq $item) { 
-		$list .= $pre .  quote_string($name) ;
-                if ($first) { $pre = ","; $first = 0; }
+	    if (!($item ~~ @nottransported_list)) {
+		if ($name eq $item) {
+		    $list .= $pre .  quote_string($name) ;
+		    if ($first) { $pre = ","; $first = 0; }
+		}
 	    }
 	}
     }
