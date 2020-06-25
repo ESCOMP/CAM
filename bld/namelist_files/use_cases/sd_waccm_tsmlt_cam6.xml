@@ -115,8 +115,7 @@
    'NH_5', 'NHDEP', 'NITROP_PD', 'NO2', 'NO2_CLXF', 'NO3', 'NO', 'NOA', 'NOp', 'NOX', 'NOY', 'Np', 'NTERPO2', 'NTERPOOH', 
    'num_a1', 'num_a1_CLXF', 'num_a1DDF', 'num_a2', 'num_a2_CLXF', 'num_a2DDF', 'num_a2_sfnnuc1', 'num_a3', 'num_a3DDF', 'num_a4', 
    'num_a4DDF', 'num_c1', 'num_c1DDF', 'num_c2', 'num_c2DDF', 'num_c3', 'num_c3DDF', 'num_c4', 'num_c4DDF', 'NUMLIQ', 'O1D', 'O2_1D', 
-   'O2_1S', 'O2', 'O2p', 'O3', 'O3S', 'O3_CHML', 'O3_CHMP', 'O3_Loss', 'O3_Prod', 'O3S_Loss', 'O', 'OCLO', 'OCS', 'OddOx_CLOxBROx_Loss', 
-   'OddOx_HOx_Loss', 'OddOx_Loss_Tot', 'OddOx_NOx_Loss', 'OddOx_Ox_Loss', 'OddOx_Prod_Tot', 'Ox_Prod', 'Ox_Loss', 'OH', 'OMEGA', 'OMEGAT', 'ONITR', 'Op', 
+   'O2_1S', 'O2', 'O2p', 'O3', 'O3S', 'O3_CHML', 'O3_CHMP', 'O', 'OCLO', 'OCS', 'OH', 'OMEGA', 'OMEGAT', 'ONITR', 'Op', 
    'PAN', 'PBLH', 'PBZNIT', 'PDELDRY', 'PHENO2', 'PHENO', 'PHENOL', 'PHENOOH', 'PHIS', 'PM25',  'PO2', 'pom_a1', 'pom_a1DDF', 'pom_a1SFWET', 
    'pom_a4', 'pom_a4DDF', 'pom_a4SFWET', 'pom_c1', 'pom_c1DDF', 'pom_c1SFWET', 'pom_c4', 'pom_c4DDF', 'pom_c4SFWET', 
    'POOH', 'PRECC', 'PRECT', 'PS', 'PSL', 'PTEQ', 'PTTEND', 'Q', 'QFLX', 'QRAIN', 'QREFHT', 'QRL', 'QRLC', 'QRS', 
@@ -124,7 +123,7 @@
    'r_het10', 'r_het11', 'r_het12', 'r_het13', 'r_het15', 'r_het16', 'r_het17', 'r_het1', 'r_het2', 'r_het3', 'r_het4', 'r_het5', 
    'r_het6', 'r_het7', 'r_het8', 'r_het9', 'r_HO2_O3', 'RHREFHT', 'r_jsoa1_a1', 'r_jsoa1_a2', 'r_jsoa2_a1', 'r_jsoa2_a2', 
    'r_jsoa3_a1', 'r_jsoa3_a2', 'r_jsoa4_a1', 'r_jsoa4_a2', 'r_jsoa5_a1', 'r_jsoa5_a2', 'r_N2O5_aer', 'r_NO2_aer', 'r_NO3_aer', 'r_O1D_H2O', 
-   'r_OH_O3', 'r_OH_O', 'ROOH', 'RO2', 'RO2_NO_sum', 'RO2_NO3_sum', 'RO2_HO2_sum', 'RO2_RO2_sum', 'RCO2_NO2_sum',
+   'r_OH_O3', 'r_OH_O', 'ROOH', 'RO2', 
    'S', 'SAD_AERO', 'SAD_ICE', 'SAD_LNAT', 'SAD_SULFC', 'SAD_TROP', 'SF6', 'SFbc_a4', 'SFBCARY', 
    'SFBENZENE', 'SFBIGALK', 'SFBIGENE', 'SFC2H2', 'SFC2H4', 'SFC2H5OH', 'SFC2H6', 'SFC3H6', 'SFC3H8', 'SFCH2O', 'SFCH3CHO', 'SFCH3CN', 
    'SFCH3COCH3', 'SFCH3COCHO', 'SFCH3COOH', 'SFCH3OH', 'SFCO', 'SFDMS', 'SFdst_a1', 'SFdst_a2', 'SFdst_a3', 'SFGLYALD', 'SFHCN', 'SFHCOOH', 
@@ -158,7 +157,10 @@
    'WD_ONITR', 'WD_PHENOOH', 'WD_POOH', 'WD_ROOH', 'WD_SO2', 'WD_SOAG0', 'WD_SOAG1', 'WD_SOAG2', 'WD_SOAG3', 'WD_SOAG4', 'WD_SVOC', 
    'WD_TERP2OOH', 'WD_TERPNIT', 'WD_TERPOOH', 'WD_TERPROD1', 'WD_TERPROD2', 'WD_TOLOOH', 'WD_XOOH', 'WD_XYLENOOH', 'WD_XYLOLOOH', 
    'wet_deposition_NHx_as_N', 'wet_deposition_NOy_as_N', 'Wzm', 'XO2', 'XOOH', 'XYLENES', 'XYLENO2', 'XYLENOOH', 'XYLOL', 'XYLOLO2', 
-   'XYLOLOOH', 'Z3', 'ZMDQ', 'ZMDT', 'ZMMTT', 'ZMMU'
+   'XYLOLOOH', 'Z3', 'ZMDQ', 'ZMDT', 'ZMMTT', 'ZMMU',
+   'O3_Prod','O3_Loss','O3S_Loss','RO2_NO_sum','O3_alkenes','RO2_NO3_sum','RO2_HO2_sum','RO2_RO2_sum','RCO2_NO2_sum',
+   'OddOx_Ox_Loss','OddOx_HOx_Loss','OddOx_NOx_Loss','OddOx_CLOxBROx_Loss','OddOx_Loss_Tot','OddOx_Prod_Tot',
+   'Ox_Prod','Ox_Loss'
 </fincl1>
 
 <fincl2>

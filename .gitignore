@@ -10,6 +10,7 @@ src/physics/silhs
 src/physics/pumas
 src/dynamics/fv3/atmos_cubed_sphere
 libraries/FMS
+src/atmos_phys
 
 # Ignore compiled python
 buildnmlc

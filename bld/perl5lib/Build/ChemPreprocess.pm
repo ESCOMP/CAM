@@ -21,7 +21,7 @@ use File::Copy;
 use File::Compare;
 
 our @ISA = qw(Exporter);
-our @EXPORT = qw(chem_preprocess chem_number_adv get_species_list);
+our @EXPORT = qw(chem_preprocess chem_number_adv get_species_list get_species_nottransported_list);
 our $VERSION = 1.00;
 
 my $print ;
@@ -217,6 +217,41 @@ sub get_species_list
     $/ = $end_of_rec;
 
     return ( @species_list );
+}
+
+sub get_species_nottransported_list
+{
+    my ($chem_src_dir) = @_;
+
+    if (! -e $chem_src_dir ) {
+	die "**** ERROR ****\n  ChemPreprocess::get_species_nottransported_list cannot find $chem_src_dir \n";
+    }
+
+    my @nottransported_list ;
+
+    my $end_of_rec = $/;
+    $/ = "/)";
+
+    open INPUT, "$chem_src_dir/mo_sim_dat.F90";
+
+    while ( my $data = <INPUT> ) {
+	if ( $data =~ /\s*slvd_lst\(:/  ) {
+	    chomp $data ;
+ 
+	    my @list = split( /\//, $data );
+	    my @spec_list = split( /\W+/, @list[ $#list ] );
+	    foreach my $item (@spec_list) {
+		if ( length($item) > 0 ){
+		    push ( @nottransported_list, $item );
+		}
+	    }
+
+	}
+    }
+    close INPUT;
+    $/ = $end_of_rec;
+
+    return ( @nottransported_list );
 }
 
 sub run_shell_command {

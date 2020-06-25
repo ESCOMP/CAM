@@ -1481,7 +1481,7 @@ contains
                 data, found, gridname='physgrid', timelevel=recno )
 
     if(.not. found) then
-       call endrun('tracer_data::read_physgrid_2d: Could not find '//trim(varname)//' field in met input datafile')
+       call endrun('tracer_data::read_physgrid_2d: Could not find '//trim(varname)//' field in input datafile')
     end if
 
   end subroutine read_physgrid_2d
@@ -1515,7 +1515,7 @@ contains
                 data, found, gridname='physgrid', timelevel=recno )
 
     if(.not. found) then
-       call endrun('tracer_data::read_physgrid_3d: Could not find '//trim(varname)//' field in met input datafile')
+       call endrun('tracer_data::read_physgrid_3d: Could not find '//trim(varname)//' field in input datafile')
     end if
 
   end subroutine read_physgrid_3d
