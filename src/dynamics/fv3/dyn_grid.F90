@@ -361,7 +361,7 @@ integer function get_block_gcol_cnt_d(blockid)
     integer, intent(in) :: blockid
     !----------------------------------------------------------------------------
 
-    get_block_gcol_cnt_d=count(blkidx_g.eq.blockid)
+    get_block_gcol_cnt_d=count(blkidx_g == blockid)
 
 end function get_block_gcol_cnt_d
 
@@ -464,18 +464,18 @@ subroutine get_gcol_block_d(gcol, cnt, blockid, bcid, localblockid)
     integer :: ijk(3)
     !----------------------------------------------------------------------------
 
-    if (cnt .ne. 1) then
+    if (cnt /= 1) then
        call endrun ('get_gcol_block_d: cnt is not equal to 1:.')
     end if
     tot=(npx-1)*(npy-1)*6
-    if (gcol.lt.1.or.gcol.gt.tot) then
+    if (gcol < 1.or.gcol > tot) then
        call endrun ('get_gcol_block_d: global column number is out of bounds')
     else
 
-       ijk=maxloc(blkidx_g,mask=gindex_g.eq.gcol)
+       ijk=maxloc(blkidx_g,mask=gindex_g == gcol)
        blockid(1) = blkidx_g(ijk(1),ijk(2),ijk(3))
 
-       ijk=maxloc(locidx_g,mask=gindex_g.eq.gcol)
+       ijk=maxloc(locidx_g,mask=gindex_g == gcol)
        bcid(1) = locidx_g(ijk(1),ijk(2),ijk(3))
     end if
 
@@ -709,7 +709,7 @@ subroutine define_cam_grids(Atm)
   !  unique global indexing bottom left to top right of each tile consecutively. Dups reported as 0
   !  North tile edges of 2,4,6 are duplicates of south edge of 3,5,1 and are reported as 0 in mygid array
   mygid_ns=0
-  if (je+1.eq.npy) then
+  if (je+1 == npy) then
      do j = js, je+mod(tile,2)
         do i = is, ie
            mygid_ns(i,j)=(i-1)*(npy-(mod(tile-1,2))) + j + (int((tile-1)/2)*(npx-1)*(npy-1)) + (int(tile/2)*(npx-1)*(npy))
@@ -724,14 +724,14 @@ subroutine define_cam_grids(Atm)
   end if
   ! appropriate tile boundaries already 0'd  need to
   ! zero inner tile je+1 boundaries (These are also repeated points between tasks in ns direction))
-  if (je+1.ne.npy) mygid_ns(is:ie,je+1)=0
+  if (je+1 /= npy) mygid_ns(is:ie,je+1)=0
 
   !  calculate local portion of global EW index array
   !  unique global indexing bottom left to top right of each tile consecutively. Dups reported as 0
   !  East tile edges of 1,3,5 are duplicates of west edge of 2,4,6 and are reported as 0 in mygid array
   mygid_ew=0
   do j = js, je
-     if (ie+1.eq.npx) then
+     if (ie+1 == npx) then
         do i = is, ie+mod(tile-1,2)
            mygid_ew(i,j)=(j-1)*(npx-(mod(tile,2))) + i + (int(tile/2)*(npx-1)*(npy-1)) + (int((tile-1)/2)*(npx)*(npy-1))
         end do
@@ -745,7 +745,7 @@ subroutine define_cam_grids(Atm)
   ! appropriate east tile boundaries already 0'd from above need to
   ! zero inner tile ie+1 boundaries on appropriate processors
   ! (These are also repeated points between tasks in ew direction)
-  if (ie+1.ne.npx) mygid_ew(ie+1,js:je)=0
+  if (ie+1 /= npx) mygid_ew(ie+1,js:je)=0
 
   !-----------------------
   ! Create FFSL grid object
@@ -937,13 +937,13 @@ integer function get_dyn_grid_parm(name) result(ival)
     js = Atm(mytile)%bd%js
     je = Atm(mytile)%bd%je
 
-    if (name .eq. 'plat') then
+    if (name == 'plat') then
         ival = plat
-    else if (name .eq. 'plon') then
+    else if (name == 'plon') then
         ival = (je-js+1)*(ie-is+1)
-    else if (name .eq. 'plev') then
+    else if (name == 'plev') then
         ival = plev
-    else if (name .eq. 'plevp') then
+    else if (name == 'plevp') then
         ival = plevp
     else
         call endrun('get_dyn_grid_parm: undefined name: '//adjustl(trim(name)))
@@ -965,11 +965,11 @@ function get_dyn_grid_parm_real1d(name) result(rval)
     real(r8), pointer :: rval(:)
     !----------------------------------------------------------------------------
 
-    if(name.eq.'w') then
+    if(name == 'w') then
        call endrun('get_dyn_grid_parm_real1d: w not defined')
-    else if(name.eq.'clat') then
+    else if(name == 'clat') then
        call endrun('get_dyn_grid_parm_real1d: clat not supported, use get_horiz_grid_d')
-    else if(name.eq.'latdeg') then
+    else if(name == 'latdeg') then
        call endrun('get_dyn_grid_parm_real1d: latdeg not defined')
     else
        nullify(rval)
@@ -1008,8 +1008,8 @@ subroutine dyn_grid_get_colndx( igcol, ncols, owners, indx, jndx)
      call  get_gcol_block_d( igcol(i), 1, blockid, bcid, lclblockid )
      owners(i) = get_block_owner_d(blockid(1))
 
-     if ( iam==owners(i) ) then
-        if (minval(abs(bcid(1)-mylindex)) .eq. 0) then
+     if ( iam == owners(i) ) then
+        if (minval(abs(bcid(1)-mylindex)) == 0) then
            ind = minloc(abs(bcid(1)-mylindex))
            indx(i) = is+ind(1)-1
            jndx(i) = js+ind(2)-1

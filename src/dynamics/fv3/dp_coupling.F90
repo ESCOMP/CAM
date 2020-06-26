@@ -120,7 +120,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
            !
            do m = 1, pcnst
               m_ffsl=qsize_tracer_idx_cam2dyn(m)
-              if (m.le.pcnst) then
+              if (m <= pcnst) then
                  Q_tmp(n, k, m, 1) = Atm(mytile)%q(i, j, k, m_ffsl)
               else
                  Q_tmp(n, k, m, 1) = Atm(mytile)%qdiag(i, j, k, m_ffsl)
@@ -168,7 +168,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
      allocate(cbuffer(tsize*chunk_buf_nrecs))
      allocate(bpter((ie-is+1)*(je-js+1),0:pver))
 
-     if (iam .lt. npes) then
+     if (iam < npes) then
         call block_to_chunk_send_pters(iam+1, (ie-is+1)*(je-js+1), pver+1, tsize, bpter)
         do icol = 1, (ie-is+1)*(je-js+1)
            bbuffer(bpter(icol,0)+2:bpter(icol,0)+tsize-1) = 0.0_r8
@@ -402,7 +402,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
      call transpose_chunk_to_block(tsize, cbuffer, bbuffer)
      call t_stopf  ('chunk_to_block')
 
-     if (iam .lt. npes) then
+     if (iam < npes) then
 
         call chunk_to_block_recv_pters(iam+1, (ie-is+1)*(je-js+1), pver+1, tsize, bpter)
         do icol = 1, (ie-is+1)*(je-js+1)
@@ -447,7 +447,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
            do m = 1, pcnst
               ! dynamics tracers may be in a different order from cam tracer array
               m_ffsl=qsize_tracer_idx_cam2dyn(m)
-              if (m.le.pcnst) then
+              if (m <= pcnst) then
                  Atm(mytile)%q(i, j, k, m_ffsl) = Q_tmp(n, k, m, 1)
               else
                  Atm(mytile)%qdiag(i, j, k, m_ffsl) = Q_tmp(n, k, m, 1)
@@ -793,6 +793,8 @@ subroutine atend2dstate3d(u_dt, v_dt, u, v, is,  ie,  js,  je, isd, ied, jsd, je
   real(r8), pointer, dimension(:,:,:) :: vlon, vlat
   real(r8), pointer, dimension(:,:,:,:) :: es, ew
 
+  !----------------------------------------------------------------------------
+
   es   => gridstruct%es
   ew   => gridstruct%ew
   vlon => gridstruct%vlon
@@ -966,6 +968,8 @@ subroutine fv3_tracer_diags(atm)
   real(r8)                     :: qm_strat
   real(r8)                     :: qtot(500), psum
   real(r8), allocatable        :: delpwet(:,:,:),delpdry(:,:,:),psdry(:,:),psq(:,:,:),q_strat(:,:)
+
+  !----------------------------------------------------------------------------
 
   is = Atm(mytile)%bd%is
   ie = Atm(mytile)%bd%ie

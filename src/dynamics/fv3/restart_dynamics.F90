@@ -1,5 +1,9 @@
 module restart_dynamics
 
+! Write and read dynamics fields from the restart file.  For exact restart
+! it is necessary to write all element data, including duplicate columns,
+! to the file.
+
     use cam_abortutils,   only: endrun
     use cam_grid_support, only: cam_grid_header_info_t, cam_grid_id, cam_grid_write_attr, &
                                 cam_grid_write_var, cam_grid_get_decomp, cam_grid_dimensions, max_hcoordname_len
@@ -38,9 +42,11 @@ subroutine init_restart_dynamics(File, dyn_out)
                              pio_inq_dimid
     implicit none
 
+    ! arguments
     type(file_desc_t),  intent(inout) :: file
     type(dyn_export_t), intent(in)    :: dyn_out
 
+    ! local variables
     integer :: vdimids(2)
     integer :: ierr, i, err_handling
     integer :: time_dimid
@@ -49,6 +55,8 @@ subroutine init_restart_dynamics(File, dyn_out)
     
     integer :: grid_id,grid_id_ns,grid_id_ew
     type(cam_grid_header_info_t) :: info,info_ew,info_ns
+
+    !---------------------------------------------------------------------------
 
     Atm=>dyn_out%atm
 
@@ -109,9 +117,9 @@ subroutine write_restart_dynamics(File, dyn_out)
 
     implicit none
 
-    type(file_desc_t) :: File
+    ! arguments
+    type(file_desc_t), intent(inout) :: File
     type(dyn_export_t), intent(in)  :: dyn_out
-
 
     ! local variables
     integer(pio_offset_kind), parameter :: t_idx = 1
@@ -125,6 +133,8 @@ subroutine write_restart_dynamics(File, dyn_out)
     integer :: grid_id,grid_id_ns,grid_id_ew
     integer :: grid_dimlens(2),grid_dimlens_ew(2),grid_dimlens_ns(2)
     integer :: ilen,jlen
+
+    !---------------------------------------------------------------------------
 
     call write_restart_hycoef(File)
 

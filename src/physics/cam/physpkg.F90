@@ -1734,8 +1734,8 @@ contains
     tmp_cldliq(:ncol,:pver) = state%q(:ncol,:pver,ixcldliq)
     tmp_cldice(:ncol,:pver) = state%q(:ncol,:pver,ixcldice)
 
-    ! For not 'FV', physics_dme_adjust is called for energy diagnostic purposes only.  So, save off tracers
-    if (.not.dycore_is('FV').and.&
+    ! For not ('FV'|'FV3'), physics_dme_adjust is called for energy diagnostic purposes only.  So, save off tracers
+    if (.not.(dycore_is('FV').or.dycore_is('FV3')).and.&
          (hist_fld_active('SE_pAM').or.hist_fld_active('KE_pAM').or.hist_fld_active('WV_pAM').or.&
          hist_fld_active('WL_pAM').or.hist_fld_active('WI_pAM'))) then
       tmp_trac(:ncol,:pver,:pcnst) = state%q(:ncol,:pver,:pcnst)

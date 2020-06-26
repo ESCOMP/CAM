@@ -112,7 +112,6 @@ contains
 subroutine dyn_readnl(nlfilename)
 
   ! Read dynamics namelist group from atm_in and write to fv3 input.nml file
-  use units,           only: getunit, freeunit
   use namelist_utils,  only: find_group_name
   use constituents,    only: pcnst
 
@@ -192,8 +191,7 @@ subroutine dyn_readnl(nlfilename)
 
   if (masterproc) then
   ! Read the namelist (dyn_fv3_inparm)
-     unitn = getunit()
-     open( unitn, file=trim(NLFileName), status='old' )
+     open( newunit=unitn, file=trim(NLFileName), status='old' )
      call find_group_name(unitn, 'dyn_fv3_inparm', status=ierr)
      if (ierr == 0) then
         read(unitn, dyn_fv3_inparm, iostat=ierr)
@@ -202,10 +200,8 @@ subroutine dyn_readnl(nlfilename)
         end if
      end if
      close(unitn)
-     call freeunit(unitn)
   ! Read the namelist (fms_nml)
-     unitn = getunit()
-     open( unitn, file=trim(NLFileName), status='old' )
+     open( newunit=unitn, file=trim(NLFileName), status='old' )
      call find_group_name(unitn, 'fms_nml', status=ierr)
      if (ierr == 0) then
         read(unitn, fms_nml, iostat=ierr)
@@ -214,10 +210,8 @@ subroutine dyn_readnl(nlfilename)
         end if
      end if
      close(unitn)
-     call freeunit(unitn)
   ! Read the namelist (fv_core_nml)
-     unitn = getunit()
-     open( unitn, file=trim(NLFileName), status='old' )
+     open( newunit=unitn, file=trim(NLFileName), status='old' )
      call find_group_name(unitn, 'fv_core_nml', status=ierr)
      if (ierr == 0) then
         read(unitn, fv_core_nml, iostat=ierr)
@@ -226,7 +220,6 @@ subroutine dyn_readnl(nlfilename)
         end if
      end if
      close(unitn)
-     call freeunit(unitn)
   end if
   if ((fv3_lcp_moist.eqv.fv3_lcv_moist) .and. (fv3_lcv_moist.eqv..true.)) then
      call endrun('dyn_readnl: fv3_lcp_moist and fv3_lcv_moist can not both be true')
@@ -319,12 +312,10 @@ subroutine dyn_readnl(nlfilename)
      write(iulog,*) 'Creating fv3 input.nml file from atm_in fv3_xxx namelist parameters'
      ! Read the namelist (main_nml)
      ! open the file input.nml
-     unito = getunit()
      ! overwrite file if it exists.
-     open( unito, file='input.nml', status='replace' )
+     open( newunit=unito, file='input.nml', status='replace' )
 
-     unitn = getunit()
-     open( unitn, file=trim(NLFileName), status='old' )
+     open( newunit=unitn, file=trim(NLFileName), status='old' )
 
      do i=1,SIZE(group_names(:))
         rewind(unitn)
@@ -334,7 +325,7 @@ subroutine dyn_readnl(nlfilename)
 
            ! write group name to input.nml
            read(unitn, '(a)', iostat=ios, end=100) inrec
-           if (ios .ne. 0) call endrun('ERROR: dyn_readnl - error reading fv3 namelist')
+           if (ios /= 0) call endrun('ERROR: dyn_readnl - error reading fv3 namelist')
            write(unito,'(a)') trim(inrec)
 
            ios = 0
@@ -356,9 +347,7 @@ subroutine dyn_readnl(nlfilename)
         end if
      end do
      close(unitn)
-     call freeunit(unitn)
      close(unito)
-     call freeunit(unito)
   end if
   return
 100 continue
@@ -396,12 +385,12 @@ subroutine dyn_init(dyn_in, dyn_out)
   use physconst,          only: thermodynamic_active_species_num, thermodynamic_active_species_idx
   use physconst,          only: thermodynamic_active_species_idx_dycore, rair, cpair
   use tracer_manager_mod,     only: register_tracers
-  use units,           only: getunit, freeunit
 
   ! arguments:
    type (dyn_import_t),     intent(out) :: dyn_in
    type (dyn_export_t),     intent(out) :: dyn_out
 
+   ! Locals
    character(len=*), parameter :: sub='dyn_init'
    real(r8)                    :: alpha
 
@@ -492,7 +481,7 @@ subroutine dyn_init(dyn_in, dyn_out)
          case ( 'GRAUQM' )
             cnst_name_ffsl(idx)='graupel'
          end select
-         if (trim(cnst_name(m)).eq.'Q') then
+         if (trim(cnst_name(m)) == 'Q') then
             thermodynamic_active_species_idx_dycore(1) = 1
             cnst_longname_ffsl(1) = cnst_longname(thermodynamic_active_species_idx(m))
             qsize_tracer_idx_cam2dyn(m) = 1
@@ -517,27 +506,25 @@ subroutine dyn_init(dyn_in, dyn_out)
    if (masterproc) then
 
       write(iulog,*) 'Creating field_table file to load tracer fields into fv3'
-      unito = getunit()
       ! overwrite file if it exists.
-      open( unito, file='field_table', status='replace' )
+      open( newunit=unito, file='field_table', status='replace' )
       do i=1,pcnst
          write(unito, '(a,a,a)') '"tracer" "atmos_mod" "'//trim(cnst_name_ffsl(i))//'" /'
       end do
       close(unito)
-      call freeunit(unito)
    end if
 !!$   !---------must make sure the field_table file is written before reading across processors
    call mpibarrier (mpicom)
    call register_tracers (MODEL_ATMOS, ncnst, nt_prog, pnats, num_family)
-   if (ncnst.ne.pcnst) then
+   if (ncnst /= pcnst) then
       call endrun(subname//': ERROR: FMS tracer Manager has inconsistent tracer numbers')
    endif
 
    do m=1,pcnst
       !  just check condensate loading tracers as they are mapped above
-      if(qsize_tracer_idx_cam2dyn(m).le.thermodynamic_active_species_num) then
+      if(qsize_tracer_idx_cam2dyn(m) <= thermodynamic_active_species_num) then
          fv3idx  = get_tracer_index (MODEL_ATMOS, cnst_name_ffsl(qsize_tracer_idx_cam2dyn(m)) )
-         if (fv3idx.ne.qsize_tracer_idx_cam2dyn(m)) then
+         if (fv3idx /= qsize_tracer_idx_cam2dyn(m)) then
             write(errmsg,*) subname//': Physics index ',m,'and FV3 tracer index',fv3idx,' are inconsistent'
             call endrun(errmsg)
          end if
@@ -668,9 +655,10 @@ subroutine dyn_run(dyn_state)
 
   implicit none
 
+  ! Arguments
   type (dyn_export_t), intent(inout) :: dyn_state
 
-
+  ! Locals
   integer :: psc,idim
   integer :: w_diff, nt_dyn
   type(fv_atmos_type), pointer         :: Atm(:)
@@ -836,9 +824,12 @@ end subroutine dyn_run
 subroutine dyn_final(dyn_in, dyn_out, restart_file)
   implicit none
 
+  ! Arguments
   type (dyn_import_t),      intent(inout) :: dyn_in
   type (dyn_export_t),      intent(inout) :: dyn_out
   character(len=*),optional,intent(in)    :: restart_file
+
+  !----------------------------------------------------------------------------
 
   deallocate( u_dt, v_dt, t_dt)
 
@@ -866,8 +857,10 @@ subroutine read_inidat(dyn_in)
   use hycoef,                only: hyai, hybi, ps0
   implicit none
 
+  ! Arguments:
   type (dyn_import_t), target, intent(inout) :: dyn_in   ! dynamics import
 
+  ! Locals:
   logical :: found
 
   character(len = 40) :: fieldname,fieldname2
@@ -1087,7 +1080,7 @@ subroutine read_inidat(dyn_in)
          call endrun(trim(subname)//': T not found')
      end if
 
-     if (pertlim .ne. 0.0_r8) then
+     if (pertlim /= 0.0_r8) then
         if(masterproc) then
            write(iulog,*) trim(subname), ': Adding random perturbation bounded', &
                 'by +/- ', pertlim, ' to initial temperature field'
@@ -1278,7 +1271,7 @@ subroutine read_inidat(dyn_in)
                  m_ffsl=qsize_tracer_idx_cam2dyn(m)
                  reldif=(Atm(mytile)%delp(i,j,k)*Atm(mytile)%q(i,j,k,m_ffsl)-tracermass(m_ffsl))/ &
                         tracermass(m_ffsl)
-                 if (reldif.gt.1.0e-15_r8) &
+                 if (reldif > 1.0e-15_r8) &
                       write(iulog,*)'mass inconsistency new, old, relative error=',iam,cnst_name(m), &
                       Atm(mytile)%delp(i,j,k)*Atm(mytile)%q(i,j,k,m_ffsl),tracermass(m_ffsl),reldif
               end do
@@ -1477,7 +1470,7 @@ end subroutine read_inidat
        end if
 
        call cnst_get_ind('TT_LW', ixtt, abort=.false.)
-       if (ixtt.le.0) ixtt = -1
+       if (ixtt <= 0) ixtt = -1
 
        dp(is:ie,js:je,1:nlev)=Atm(mytile)%delp(is:ie,js:je,1:nlev)
        !
@@ -1766,6 +1759,7 @@ logical function dyn_field_exists(fh, fieldname, required)
    use pio,            only: file_desc_t, var_desc_t, PIO_inq_varid
    use pio,            only: PIO_NOERR
 
+   ! Arguments
    type(file_desc_t), intent(in) :: fh
    character(len=*),  intent(in) :: fieldname
    logical, optional, intent(in) :: required
@@ -1864,6 +1858,7 @@ subroutine write_dyn_var(field,outfld_name,bd)
   use cam_history,            only: outfld
   implicit none
 
+  ! Arguments
   type(fv_grid_bounds_type), intent(IN) :: bd
   real(r8), intent(IN)          :: field(bd%is:bd%ie,bd%js:bd%je)
   character*(*)    , intent(IN) :: outfld_name ! suffix for "outfld" names
@@ -1893,6 +1888,7 @@ subroutine set_dry_mass(atm,fixed_global_ave_dry_ps)
   use dyn_grid,              only: mytile
   use physconst,             only: thermodynamic_active_species_num,thermodynamic_active_species_idx_dycore
 
+  ! Arguments
   type (fv_atmos_type), intent(in),  pointer :: Atm(:)
   real (kind=r8), intent(in)                 :: fixed_global_ave_dry_ps
 
@@ -2024,6 +2020,7 @@ subroutine a2d3djt(ua, va, u, v, is,  ie,  js,  je, isd, ied, jsd, jed, npx,npy,
   use mpp_domains_mod,    only: mpp_update_domains,  DGRID_NE
   use fv_arrays_mod,      only: fv_grid_type
 
+  ! arguments
   integer, intent(in):: is,  ie,  js,  je
   integer, intent(in):: isd, ied, jsd, jed
   integer, intent(IN) :: npx,npy, nlev
