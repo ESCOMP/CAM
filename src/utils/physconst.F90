@@ -1276,7 +1276,7 @@ end subroutine physconst_init
        itrac = idx_local(nq)       
        sum_species(:,:,:) = sum_species(:,:,:) + tracer(:,:,:,itrac)*factor(:,:,:)
      end do
-     do nq=1,thermodynamic_active_species_num
+     do nq=dry_air_species_num+1,thermodynamic_active_species_num
        itrac = idx_local(nq)              
        R(:,:,:)      = R(:,:,:)+thermodynamic_active_species_R(nq)*tracer(:,:,:,itrac)*factor(:,:,:)
      end do
@@ -1561,7 +1561,7 @@ end subroutine physconst_init
      if (dry_air_species_num==0) then
        sum_cp = thermodynamic_active_species_cp(0)
      else
-       call get_cp_dry(i0,i1,j0,j1,k0,k1,k0,k1,ntrac,tracer,idx_local,sum_cp)
+       call get_cp_dry(i0,i1,j0,j1,k0,k1,k0,k1,ntrac,tracer,idx_local,sum_cp,fact=factor)
      end if
      do nq=dry_air_species_num+1,thermodynamic_active_species_num
        itrac = idx_local(nq)              
@@ -1572,6 +1572,7 @@ end subroutine physconst_init
      else
        cp=sum_cp/sum_species
      end if
+
    end subroutine get_cp
    !
    !*************************************************************************************************************************

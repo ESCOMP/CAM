@@ -1083,13 +1083,6 @@ contains
       !
       call remap1(elem(ie)%state%v(:,:,1,:,np1),np,1,1,1,dp_star_moist,dp_moist,ptop,-1,.false.,kord_uvT)
       call remap1(elem(ie)%state%v(:,:,2,:,np1),np,1,1,1,dp_star_moist,dp_moist,ptop,-1,.false.,kord_uvT)
-#ifdef REMAP_TE
-        ! back out T from TE
-      elem(ie)%state%t(:,:,:,np1) = &
-           ( elem(ie)%state%t(:,:,:,np1) - ( (elem(ie)%state%v(:,:,1,:,np1)**2 + &
-           elem(ie)%state%v(:,:,2,:,np1)**2)/2))/cpair
-      
-#endif      
     enddo
     
     if (ntrac>0) then

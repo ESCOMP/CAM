@@ -7041,13 +7041,13 @@ Default: 0.
 
 <entry id="se_molecular_diff" type="real" category="se"
        group="dyn_se_inparm" valid_values="" >
-Used by SE dycore to apply sponge layer diffusion to U, V, and T for
+Used by SE dycore to apply sponge layer diffusion to u, v, and T for
 stability of WACCM configurations. The diffusion is modeled on 3D molecular
 diffusion and thermal conductivity by using actual molecular diffusion and
 thermal conductivity coefficients multiplied by the value of
 se_molecular_diff.
 
-If set &lt;= 0.0 then the code is not activated.  If set &gt; 0.0 then
+If set &lt; 0.0 then the code is not activated.  If set &gt; 0.0 then
 the molecular diffusion and thermal conductivity coefficients will be
 multiplied by a factor of se_molecular_diff.
 
@@ -7251,12 +7251,10 @@ CAM-SE vertical remap algorithm for u,v,T, and water species
 
 Mapping of temperature:
 
-    For se_vert_remap_q_alg>-20: cp*T is mapped (thermal energy conserving)
-                                 using mapping algorithm se_vert_remap_q_alg
-    For se_vert_remap_q_alg<-20: mapping Tv over p 
-                                 using mapping algorithm se_vert_remap_q_alg
-				 or mapping Tv over log(p)
-                                 using mapping algorithm se_vert_remap_q_alg/10
+    For se_vert_remap_uvTq_alg &gt; -20: cp*T is mapped (thermal energy conserving)
+                                    using mapping algorithm se_vert_remap_uvTq_alg
+    For se_vert_remap_uvTq_alg &lt; -20: mapping Tv over log(p)
+                                    using mapping algorithm se_vert_remap_uvTq_alg/10
 
 Negative values will use FV3 vertical remapping algorithm
      

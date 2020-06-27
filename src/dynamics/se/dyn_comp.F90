@@ -133,7 +133,7 @@ subroutine dyn_readnl(NLFileName)
    real(r8)                     :: se_hypervis_power
    real(r8)                     :: se_hypervis_scaling
    integer                      :: se_hypervis_subcycle
-   integer                      :: se_hypervis_subcycle_sponge   
+   integer                      :: se_hypervis_subcycle_sponge
    integer                      :: se_hypervis_subcycle_q
    integer                      :: se_limiter_option
    real(r8)                     :: se_max_hypervis_courant
@@ -168,7 +168,7 @@ subroutine dyn_readnl(NLFileName)
    real(r8)                     :: se_raykrange
    integer                      :: se_rayk0
    real(r8)                     :: se_molecular_diff
-   
+
    namelist /dyn_se_inparm/        &
       se_fine_ne,                  & ! For refined meshes
       se_ftype,                    & ! forcing type
@@ -177,7 +177,7 @@ subroutine dyn_readnl(NLFileName)
       se_hypervis_power,           &
       se_hypervis_scaling,         &
       se_hypervis_subcycle,        &
-      se_hypervis_subcycle_sponge, &      
+      se_hypervis_subcycle_sponge, &
       se_hypervis_subcycle_q,      &
       se_limiter_option,           &
       se_max_hypervis_courant,     &
@@ -214,11 +214,11 @@ subroutine dyn_readnl(NLFileName)
       se_raytau0,                  &
       se_raykrange,                &
       se_rayk0,                    &
-      se_molecular_diff    
+      se_molecular_diff
 
    !--------------------------------------------------------------------------
 
-   ! defaults for variables not set by build-namelist   
+   ! defaults for variables not set by build-namelist
    se_fine_ne                  = -1
    se_hypervis_power           = 0
    se_hypervis_scaling         = 0
@@ -251,7 +251,7 @@ subroutine dyn_readnl(NLFileName)
    call MPI_bcast(se_hypervis_power, 1, mpi_real8, masterprocid, mpicom, ierr)
    call MPI_bcast(se_hypervis_scaling, 1, mpi_real8, masterprocid, mpicom, ierr)
    call MPI_bcast(se_hypervis_subcycle, 1, mpi_integer, masterprocid, mpicom, ierr)
-   call MPI_bcast(se_hypervis_subcycle_sponge, 1, mpi_integer, masterprocid, mpicom, ierr)   
+   call MPI_bcast(se_hypervis_subcycle_sponge, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_hypervis_subcycle_q, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_limiter_option, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_max_hypervis_courant, 1, mpi_real8, masterprocid, mpicom, ierr)
@@ -286,11 +286,11 @@ subroutine dyn_readnl(NLFileName)
    call MPI_bcast(se_kmin_jet, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_kmax_jet, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_phys_dyn_cp, 1, mpi_integer, masterprocid, mpicom, ierr)
-   call MPI_bcast(se_rayk0 , 1, mpi_integer, masterprocid, mpicom, ierr)   
+   call MPI_bcast(se_rayk0 , 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_raykrange, 1, mpi_real8, masterprocid, mpicom, ierr)
    call MPI_bcast(se_raytau0, 1, mpi_real8, masterprocid, mpicom, ierr)
    call MPI_bcast(se_molecular_diff, 1, mpi_real8, masterprocid, mpicom, ierr)
-   
+
    if (se_npes <= 0) then
       call endrun('dyn_readnl: ERROR: se_npes must be > 0')
    end if
@@ -353,15 +353,15 @@ subroutine dyn_readnl(NLFileName)
    fvm_supercycling         = se_fvm_supercycling
    fvm_supercycling_jet     = se_fvm_supercycling_jet
    kmin_jet                 = se_kmin_jet
-   kmax_jet                 = se_kmax_jet   
+   kmax_jet                 = se_kmax_jet
    variable_nsplit          = .false.
    phys_dyn_cp              = se_phys_dyn_cp
-   raytau0                  = se_raytau0 
+   raytau0                  = se_raytau0
    raykrange                = se_raykrange
    rayk0                    = se_rayk0
-   molecular_diff           = se_molecular_diff    
+   molecular_diff           = se_molecular_diff
 
-   
+
    if (fv_nphys > 0) then
       ! Use finite volume physics grid and CSLAM for tracer advection
       nphys_pts = fv_nphys*fv_nphys
@@ -416,12 +416,12 @@ subroutine dyn_readnl(NLFileName)
 
    if (se_kmin_jet<0            ) kmin_jet             = 1
    if (se_kmax_jet<0            ) kmax_jet             = nlev
-   
+
    if (masterproc) then
       write(iulog, '(a,i0)')   'dyn_readnl: se_ftype                    = ',ftype
       write(iulog, '(a,i0)')   'dyn_readnl: se_statediag_numtrac        = ',statediag_numtrac
       write(iulog, '(a,i0)')   'dyn_readnl: se_hypervis_subcycle        = ',se_hypervis_subcycle
-      write(iulog, '(a,i0)')   'dyn_readnl: se_hypervis_subcycle_sponge = ',se_hypervis_subcycle_sponge      
+      write(iulog, '(a,i0)')   'dyn_readnl: se_hypervis_subcycle_sponge = ',se_hypervis_subcycle_sponge
       write(iulog, '(a,i0)')   'dyn_readnl: se_hypervis_subcycle_q      = ',se_hypervis_subcycle_q
       write(iulog, '(a,l4)')   'dyn_readnl: se_large_Courant_incr       = ',se_large_Courant_incr
       write(iulog, '(a,i0)')   'dyn_readnl: se_limiter_option           = ',se_limiter_option
@@ -434,7 +434,7 @@ subroutine dyn_readnl(NLFileName)
       !
       ! se_nu<0 then coefficients are set automatically in module global_norms_mod
       !
-      if (se_nu_div>0) &      
+      if (se_nu_div>0) &
            write(iulog, '(a,e9.2)') 'dyn_readnl: se_nu                       = ',se_nu
       if (se_nu_div>0) &
            write(iulog, '(a,e9.2)') 'dyn_readnl: se_nu_div                   = ',se_nu_div
@@ -454,7 +454,7 @@ subroutine dyn_readnl(NLFileName)
       write(iulog, '(a,i0)')   'dyn_readnl: se_fvm_supercycling           = ',fvm_supercycling
       write(iulog, '(a,i0)')   'dyn_readnl: se_fvm_supercycling_jet       = ',fvm_supercycling_jet
       write(iulog, '(a,i0)')   'dyn_readnl: se_kmin_jet                   = ',kmin_jet
-      write(iulog, '(a,i0)')   'dyn_readnl: se_kmax_jet                   = ',kmax_jet      
+      write(iulog, '(a,i0)')   'dyn_readnl: se_kmax_jet                   = ',kmax_jet
       if (se_refined_mesh) then
          write(iulog, '(a)') 'dyn_readnl: Refined mesh simulation'
          write(iulog, '(a)') 'dyn_readnl: se_mesh_file = ',trim(se_mesh_file)
@@ -490,7 +490,7 @@ subroutine dyn_readnl(NLFileName)
 
       write(iulog, '(a,e9.2)') 'dyn_readnl: se_raytau0         = ', raytau0
       write(iulog, '(a,e9.2)') 'dyn_readnl: se_raykrange       = ', raykrange
-      write(iulog, '(a,i0)'  ) 'dyn_readnl: se_rayk0           = ', rayk0  
+      write(iulog, '(a,i0)'  ) 'dyn_readnl: se_rayk0           = ', rayk0
       write(iulog, '(a,e9.2)') 'dyn_readnl: se_molecular_diff  = ', molecular_diff
    end if
 
@@ -556,7 +556,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    integer :: ixcldice, ixcldliq, ixrain, ixsnow, ixgraupel
    integer :: m_cnst, m
 
-   ! variables for initializing energy and axial angular momentum diagnostics   
+   ! variables for initializing energy and axial angular momentum diagnostics
    character (len = 3), dimension(12) :: stage = (/"dED","dAF","dBD","dAD","dAR","dBF","dBH","dCH","dAH",'dBS','dAS','p2d'/)
    character (len = 70),dimension(12) :: stage_txt = (/&
       " end of previous dynamics                           ",& !dED
@@ -587,7 +587,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    character (len = 14), dimension(8)  :: &
       vars_unit = (/&
       "kg/m2        ","kg/m2        ","kg/m2        ","J/m2         ",&
-      "J/m2         ","kg*m2/s*rad2 ","kg*m2/s*rad2 ","kg/m2        "/)   
+      "J/m2         ","kg*m2/s*rad2 ","kg*m2/s*rad2 ","kg/m2        "/)
 
    integer :: istage, ivars
    character (len=108) :: str1, str2, str3
@@ -634,7 +634,7 @@ subroutine dyn_init(dyn_in, dyn_out)
        !
        thermodynamic_active_species_idx_dycore(m) = m
        kord_tr_cslam(thermodynamic_active_species_idx(m)) = vert_remap_uvTq_alg
-       kord_tr(m)                                 = vert_remap_uvTq_alg       
+       kord_tr(m)                                 = vert_remap_uvTq_alg
        cnst_name_gll    (m)                       = cnst_name    (thermodynamic_active_species_idx(m))
        cnst_longname_gll(m)                       = cnst_longname(thermodynamic_active_species_idx(m))
      else
@@ -648,8 +648,8 @@ subroutine dyn_init(dyn_in, dyn_out)
        end if
        cnst_name_gll    (m)                = cnst_name    (m)
        cnst_longname_gll(m)                = cnst_longname(m)
-       
-     end if     
+
+     end if
    end do
 
 
@@ -675,7 +675,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    if (initial_run) then
      call read_inidat(dyn_in)
      call clean_iodesc_list()
-   end if    
+   end if
    !
    ! initialize Rayleigh friction
    !
@@ -701,7 +701,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    ! initialize diffusion in dycore
    !
    kmol_end = 0
-   if (molecular_diff>0) then     
+   if (molecular_diff>0) then
      !
      ! molecular diffusion and thermal conductivity reference values
      !
@@ -718,7 +718,7 @@ subroutine dyn_init(dyn_in, dyn_out)
      call get_molecular_diff_coef_reference(1,nlev,tref,&
           (hvcoord%hyam(:)+hvcoord%hybm(:))*hvcoord%ps0,km_sponge_factor,&
           kmvis_ref,kmcnd_ref,rho_ref)
-     
+
      do k=1,nlev
        ! only apply molecular viscosity where viscosity is > 1000 m/s^2
        if (MIN(kmvis_ref(k)/rho_ref(k),kmcnd_ref(k)/(cpair*rho_ref(k)))>1000.0_r8) then
@@ -729,28 +729,28 @@ subroutine dyn_init(dyn_in, dyn_out)
                kmvis_ref(k)/rho_ref(k),kmcnd_ref(k)/(cpair*rho_ref(k))
          end if
          kmol_end = k
-       else 
+       else
          kmvis_ref(k) = 1.0_r8
          kmcnd_ref(k) = 1.0_r8
        end if
      end do
    else
-     kmvis_ref(:) = -1.0E6_r8
-     kmcnd_ref(:) = -1.0E6_r8
-     rho_ref(:)   = -1.0E6_r8
+     kmvis_ref(:) = -huge(1.0_r8)
+     kmcnd_ref(:) = -huge(1.0_r8)
+     rho_ref(:)   = -huge(1.0_r8)
    end if
    !
    irecons_tracer_lev(:) = irecons_tracer !use high-order CSLAM in all layers
    !
    ! compute scaling of traditional sponge layer damping (following cd_core.F90 in CAM-FV)
-   !   
+   !
    nu_scale_top(:) = 0.0_r8
    if (nu_top>0) then
      if (masterproc) write(iulog,*) subname//": sponge layer viscosity scaling factor"
      do k=1,nlev
        press = (hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0
        ptop  = hvcoord%hyai(1)*hvcoord%ps0
-       nu_scale_top(k) = 8.0_r8*(1.0_r8+tanh(1.0_r8*log(ptop/press))) ! tau will be maximum 8 at model top       
+       nu_scale_top(k) = 8.0_r8*(1.0_r8+tanh(1.0_r8*log(ptop/press))) ! tau will be maximum 8 at model top
        if (nu_scale_top(k).ge.0.15_r8) then
          ksponge_end = k
        else
@@ -760,7 +760,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    else
      ksponge_end = 0
    end if
-   ksponge_end = MAX(MAX(ksponge_end,1),kmol_end)     
+   ksponge_end = MAX(MAX(ksponge_end,1),kmol_end)
    if (masterproc) then
      write(iulog,*) subname//": ksponge_end = ",ksponge_end
      if (nu_top>0) then
@@ -785,7 +785,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    call addfld ('nu_kmcnd',   (/ 'lev' /), 'A', '', 'Thermal conductivity Laplacian coefficient'           , gridname='GLL')
    call addfld ('nu_kmcnd_dp',(/ 'lev' /), 'A', '', 'Thermal conductivity like Laplacian coefficient on dp', gridname='GLL')
 
-   
+
    ! Forcing from physics on the GLL grid
    call addfld ('FU',  (/ 'lev' /), 'A', 'm/s2', 'Zonal wind forcing term on GLL grid',     gridname='GLL')
    call addfld ('FV',  (/ 'lev' /), 'A', 'm/s2', 'Meridional wind forcing term on GLL grid',gridname='GLL')
@@ -856,9 +856,9 @@ subroutine dyn_init(dyn_in, dyn_out)
      do m = 1, pcnst
        call addfld(tottnam(m),(/ 'lev' /),'A','kg/kg/s',trim(cnst_name(m))//' horz + vert',  &
             gridname='GLL')
-     end do     
+     end do
    end if
-   call phys_getopts(history_budget_out=history_budget, history_budget_histfile_num_out=budget_hfile_num)   
+   call phys_getopts(history_budget_out=history_budget, history_budget_histfile_num_out=budget_hfile_num)
    if ( history_budget ) then
       call cnst_get_ind('CLDLIQ', ixcldliq)
       call cnst_get_ind('CLDICE', ixcldice)
@@ -900,7 +900,7 @@ subroutine dyn_run(dyn_state)
 
    real(r8), allocatable, dimension(:,:,:) :: ps_before
    real(r8), allocatable, dimension(:,:,:) :: abs_ps_tend
-   real (kind=r8)                          :: omega_cn(2,nelemd) !min and max of vertical Courant number    
+   real (kind=r8)                          :: omega_cn(2,nelemd) !min and max of vertical Courant number
    !----------------------------------------------------------------------------
 
 #ifdef debug_coupling
@@ -928,7 +928,7 @@ subroutine dyn_run(dyn_state)
 
    tl_f = TimeLevel%n0   ! timelevel which was adjusted by physics
    call TimeLevel_Qdp(TimeLevel, qsplit, n0_qdp)!get n0_qdp for diagnostics call
-   
+
    ! output physics forcing
    if (hist_fld_active('FU') .or. hist_fld_active('FV') .or.hist_fld_active('FT')) then
       do ie = nets, nete
@@ -958,7 +958,7 @@ subroutine dyn_run(dyn_state)
    end do
 
 
-   
+
    ! convert elem(ie)%derived%fq to mass tendency
    do ie = nets, nete
       do m = 1, qsize
@@ -983,15 +983,15 @@ subroutine dyn_run(dyn_state)
              do nq=1,thermodynamic_active_species_num
                m_cnst = thermodynamic_active_species_idx_dycore(nq)
                pdel = pdel + (dyn_state%elem(ie)%state%qdp(i,j,k,m_cnst,n0_qdp)+dyn_state%elem(ie)%derived%FQ(i,j,k,m_cnst)*dtime)
-             end do             
+             end do
              dyn_state%elem(ie)%derived%FDP(i,j,k) = pdel
-           end do           
+           end do
          end do
-       end do       
+       end do
      end do
    end if
 
-   
+
    if (ntrac > 0) then
       do ie = nets, nete
          do m = 1, ntrac
@@ -1007,7 +1007,7 @@ subroutine dyn_run(dyn_state)
       end do
    end if
 
-   if (ldiag) then 
+   if (ldiag) then
       abs_ps_tend(:,:,nets:nete) = 0.0_r8
    endif
 
@@ -1044,7 +1044,7 @@ subroutine dyn_run(dyn_state)
    call calc_tot_energy_dynamics(dyn_state%elem,dyn_state%fvm, nets, nete, TimeLevel%n0, n0_qdp,'dBF')
    !$OMP END PARALLEL
 
-   if (ldiag) then 
+   if (ldiag) then
       deallocate(ps_before,abs_ps_tend)
    endif
    ! output vars on CSLAM fvm grid
@@ -1074,7 +1074,7 @@ subroutine read_inidat(dyn_in)
    use control_mod,         only: runtype,initial_global_ave_dry_ps
    use prim_driver_mod,     only: prim_set_dry_mass
    use physconst,           only: thermodynamic_active_species_idx
-   
+
    ! Arguments
    type (dyn_import_t), target, intent(inout) :: dyn_in   ! dynamics import
 
@@ -1132,7 +1132,7 @@ subroutine read_inidat(dyn_in)
    integer,  allocatable            :: m_ind(:)
    real(r8), allocatable            :: dbuf4(:,:,:,:)
    !----------------------------------------------------------------------------
-   
+
    fh_ini  => initial_file_get_id()
    fh_topo => topo_file_get_id()
 
@@ -1371,9 +1371,9 @@ subroutine read_inidat(dyn_in)
       ! Cleanup
       deallocate(dbuf2)
       deallocate(dbuf3)
-    
+
    end if ! analytic_ic_active
-    
+
    ! Read in or cold-initialize all the tracer fields.
    ! Data is read in on the GLL grid.
    ! Both GLL and FVM tracer fields are initialized based on the
@@ -1414,18 +1414,18 @@ subroutine read_inidat(dyn_in)
    allocate(dbuf3(npsq,nlev,nelemd))
 
    do m_cnst = cnst_start, pcnst
-      
+
       found = .false.
       if (cnst_read_iv(m_cnst)) then
          found = dyn_field_exists(fh_ini, trim(cnst_name(m_cnst)), required=.false.)
       end if
-      
+
       if (found) then
          call read_dyn_var(trim(cnst_name(m_cnst)), fh_ini, dimname, dbuf3)
       else
          call cnst_init_default(m_cnst, latvals, lonvals, dbuf3, pmask)
       end if
-      
+
       do ie = 1, nelemd
          ! Copy tracers defined on GLL grid into Eulerian array
          ! Make sure tracers have at least minimum value
@@ -1446,10 +1446,10 @@ subroutine read_inidat(dyn_in)
       end do
 
    end do ! pcnst
-    
+
    ! Cleanup
    deallocate(dbuf3)
-    
+
    ! Put the error handling back the way it was
    call pio_seterrorhandling(fh_ini, pio_errtype)
 
@@ -1604,7 +1604,7 @@ subroutine read_inidat(dyn_in)
    end if
 
    ! scale PS to achieve prescribed dry mass following FV dycore (dryairm.F90)
-#ifndef planet_mars   
+#ifndef planet_mars
    if (runtype == 0) then
       initial_global_ave_dry_ps = 98288.0_r8
       if (.not. associated(fh_topo)) then
@@ -1768,7 +1768,7 @@ subroutine set_phis(dyn_in)
         elem(ie)%sub_elem_mass_flux=0.0_r8
 #ifdef waccm_debug
         dyn_in%fvm(ie)%CSLAM_gamma = 0.0_r8
-#endif    
+#endif
       end do
    end if
 

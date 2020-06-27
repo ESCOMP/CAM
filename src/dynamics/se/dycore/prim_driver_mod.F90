@@ -3,6 +3,7 @@
 module prim_driver_mod
   use shr_kind_mod,           only: r8=>shr_kind_r8
   use cam_logfile,            only: iulog
+  use cam_abortutils,         only: endrun
   use dimensions_mod,         only: np, nlev, nelem, nelemd, GlobalUniqueCols, qsize, nc,nhc
   use hybrid_mod,             only: hybrid_t, config_thread_region, PrintHybrid
   use derivative_mod,         only: derivative_t
@@ -26,7 +27,6 @@ contains
   subroutine prim_init2(elem, fvm, hybrid, nets, nete, tl, hvcoord)
     use dimensions_mod,         only: irecons_tracer, fvm_supercycling
     use dimensions_mod,         only: fv_nphys, ntrac, nc
-    use cam_abortutils,         only: endrun
     use parallel_mod,           only: syncmp
     use time_mod,               only: timelevel_t, tstep, phys_tscale, nsplit, TimeLevel_Qdp
     use time_mod,               only: nsplit_baseline,rsplit_baseline
@@ -468,9 +468,11 @@ contains
           x = SUM(tempflux(i,j,:))
           if (ABS(tempmass(i,j)).lt.1e-11_r8 .and. 1e-11_r8.lt.ABS(x)) then
             write(iulog,*) __FILE__,__LINE__,"**CSLAM mass-flux ERROR***",ie,k,i,j,tempmass(i,j),x
+            call endrun('**CSLAM mass-flux ERROR***')
           elseif (1e-5_r8.lt.ABS((tempmass(i,j)-x)/tempmass(i,j))) then
             write(iulog,*) __FILE__,__LINE__,"**CSLAM mass-flux ERROR**",ie,k,i,j,tempmass(i,j),x,&
                    ABS((tempmass(i,j)-x)/tempmass(i,j))
+            call endrun('**CSLAM mass-flux ERROR**')
           endif
         end do
         end do

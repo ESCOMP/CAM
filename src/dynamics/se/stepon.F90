@@ -287,7 +287,7 @@ subroutine diag_dynvar_ic(elem, fvm)
    end if
 
    if (hist_fld_active('T_gll')) then
-     do ie = 1, nelemd       
+      do ie = 1, nelemd
          do j = 1, np
             do i = 1, np
                ftmp(i+(j-1)*np,:,1) = elem(ie)%state%T(i,j,:,tl_f)

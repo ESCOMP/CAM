@@ -44,7 +44,6 @@ module vertremap_mod
       !
       ! output: remaped Qdp, conserving mass, monotone on Q=Qdp/dp
       !
-      implicit none
       integer, intent(in) :: nx,qstart,qstop,qsize
       real (kind=r8), intent(inout) :: Qdp(nx,nx,nlev,qsize)
       real (kind=r8), intent(in) :: dp1(nx,nx,nlev),dp2(nx,nx,nlev)
@@ -63,10 +62,10 @@ module vertremap_mod
 
       kord_local = kord
 
-      if (any(kord(:).GE.0)) then
+      if (any(kord(:) >= 0)) then
         if (.not.qdp_mass) then
           do itrac=1,qsize
-            if (kord(itrac).GE.0) then            
+            if (kord(itrac) >= 0) then            
               Qdp(:,:,:,itrac) = Qdp(:,:,:,itrac)*dp1(:,:,:)
             end if
           end do
@@ -74,7 +73,7 @@ module vertremap_mod
         call remap_Q_ppm(qdp,nx,qstart,qstop,qsize,dp1,dp2,kord)
         if (.not.qdp_mass) then
           do itrac=1,qsize
-            if (kord(itrac).GE.0) then            
+            if (kord(itrac) >= 0) then            
               Qdp(:,:,:,itrac) = Qdp(:,:,:,itrac)/dp2(:,:,:)
             end if
           end do
@@ -215,7 +214,7 @@ subroutine remap1_nofilter(Qdp,nx,qsize,dp1,dp2)
           zv(k+1) = zv(k)+Qcol(k)
         enddo
 
-        if (ABS(z2c(nlev+1)-z1c(nlev+1)).GE.0.000001_r8) then
+        if (ABS(z2c(nlev+1)-z1c(nlev+1)) >= 0.000001_r8) then
           write(6,*) 'SURFACE PRESSURE IMPLIED BY ADVECTION SCHEME'
           write(6,*) 'NOT CORRESPONDING TO SURFACE PRESSURE IN    '
           write(6,*) 'DATA FOR MODEL LEVELS'
@@ -235,7 +234,7 @@ subroutine remap1_nofilter(Qdp,nx,qsize,dp1,dp2)
         zkr(nlev+1) = nlev
         kloop: do k = 2,nlev
           do jk = ilev,nlev+1
-            if (z1c(jk).ge.z2c(k)) then
+            if (z1c(jk) >= z2c(k)) then
               ilev      = jk
               zkr(k)   = jk-1
               cycle kloop
@@ -407,7 +406,7 @@ subroutine remap_Q_ppm(Qdp,nx,qstart,qstop,qsize,dp1,dp2,kord)
       !From here, we loop over tracers for only those portions which depend on tracer data, which includes PPM limiting and
       !mass accumulation
       do q = qstart, qstop
-        if (kord(q).GE.0) then
+        if (kord(q) >= 0) then
         !Accumulate the old mass up to old grid cell interface locations to simplify integration
         !during remapping. Also, divide out the grid spacing so we're working with actual tracer
         !values and can conserve mass. The option for ifndef ZEROHORZ I believe is there to ensure
