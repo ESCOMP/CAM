@@ -748,7 +748,7 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
    use shr_vmath_mod, only: shr_vmath_log
    use gmean_mod,     only: gmean
    use qneg_module,   only: qneg3
-   use constituents,  only: cnst_get_ind
+   use dyn_comp,      only: ixo, ixo2, ixh, ixh2
 
    ! arguments
    type(physics_state), intent(inout), dimension(begchunk:endchunk) :: phys_state
@@ -770,10 +770,9 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
 
    integer :: m, i, k, ncol
 
-!--------------------------------------------
-!  Variables needed for WACCM-X
-!--------------------------------------------
-    integer  :: ixo, ixo2, ixh, ixh2         ! indices into state structure for O, O2, H, H2, and N
+   !--------------------------------------------
+   !  Variables needed for WACCM-X
+   !--------------------------------------------
     real(r8) :: mmrSum_O_O2_H                ! Sum of mass mixing ratios for O, O2, and H
     real(r8), parameter :: mmrMin=1.e-20_r8  ! lower limit of o2, o, and h mixing ratios
     real(r8), parameter :: N2mmrMin=1.e-6_r8 ! lower limit of o2, o, and h mixing ratios
@@ -872,15 +871,11 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
             end do
          end if
       end do
-!-----------------------------------------------------------------------------------------------------------------
-! Ensure O2 + O + H (N2) mmr greater than one.  Check for unusually large H2 values and set to lower value
-!-----------------------------------------------------------------------------------------------------------------
+      !------------------------------------------------------------
+      ! Ensure O2 + O + H (N2) mmr greater than one.
+      ! Check for unusually large H2 values and set to lower value.
+      !------------------------------------------------------------
        if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
-
-          call cnst_get_ind('O', ixo)
-          call cnst_get_ind('O2', ixo2)
-          call cnst_get_ind('H', ixh)
-          call cnst_get_ind('H2', ixh2)
 
           do i=1,ncol
              do k=1,pver
@@ -908,19 +903,14 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
           end do
        endif
 
-
-!-----------------------------------------------------------------------------
-! Call physconst_update to compute cpairv, rairv, mbarv, and cappav as constituent dependent variables
-! and compute molecular viscosity(kmvis) and conductivity(kmcnd)
-!-----------------------------------------------------------------------------
+      !-----------------------------------------------------------------------------
+      ! Call physconst_update to compute cpairv, rairv, mbarv, and cappav as
+      ! constituent dependent variables.
+      ! Compute molecular viscosity(kmvis) and conductivity(kmcnd).
+      ! Fill local zvirv variable; calculated for WACCM-X.
+      !-----------------------------------------------------------------------------
       if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
         call physconst_update(phys_state(lchnk)%q, phys_state(lchnk)%t, lchnk, ncol)
-      endif
-
-!------------------------------------------------------------------------
-! Fill local zvirv variable; calculated for WACCM-X
-!------------------------------------------------------------------------
-      if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
         zvirv(:,:) = shr_const_rwv / rairv(:,:,lchnk) -1._r8
       else
         zvirv(:,:) = zvir

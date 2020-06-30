@@ -2304,8 +2304,9 @@
 
 <se_tstep_type > 4 </se_tstep_type>
 
-<se_vert_remap_uvTq_alg  > -9 </se_vert_remap_uvTq_alg>
-<se_vert_remap_tracer_alg> 10 </se_vert_remap_tracer_alg>
+<se_vert_remap_T        > thermal_energy_over_P </se_vert_remap_T>
+<se_vert_remap_uvTq_alg  > FV3_CS                </se_vert_remap_uvTq_alg>
+<se_vert_remap_tracer_alg> PPM_bc_linear_extrapolation </se_vert_remap_tracer_alg>
 
 <!-- Option to write SCRIP grid file -->
 <se_write_grid_file> no </se_write_grid_file>

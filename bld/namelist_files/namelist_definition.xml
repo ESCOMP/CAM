@@ -7239,52 +7239,53 @@ Number of tracers to include in logfile diagnostics for SE dycore
 Default: 3
 </entry>
 
-<entry id="se_vert_remap_uvTq_alg" type="integer" category="se"
-       group="dyn_se_inparm" valid_values="1,2,10,-4,-9,-10,-11,-13,-40,-90,-100,-110,-130">
-CAM-SE vertical remap algorithm for u,v,T, and water species
-  1: PPM vertical remap with mirroring at the boundaries
-     (solid wall boundary conditions, high-order throughout)
-  2: PPM vertical remap without mirroring at the boundaries
-     (no boundary conditions enforced, first-order at two cells bordering top and bottom
-     boundaries)
- 10: PPM with linear extrapolation in ghost cells (code from A. Bradley, DOE)
+<entry id="se_vert_remap_T" type="char*32" category="se"
+       group="dyn_se_inparm" valid_values="thermal_energy_over_P,Tv_over_logP">
+CAM-SE vertical remapping of temperature:
+"thermal_energy_over_P": Map cp*T (thermal energy conserving) using a
+                         pressure coordinate.
+"Tv_over_logP"         : Map virtual temperature using a log pressure coordinate.
 
-Mapping of temperature:
-
-    For se_vert_remap_uvTq_alg &gt; -20: cp*T is mapped (thermal energy conserving)
-                                    using mapping algorithm se_vert_remap_uvTq_alg
-    For se_vert_remap_uvTq_alg &lt; -20: mapping Tv over log(p)
-                                    using mapping algorithm se_vert_remap_uvTq_alg/10
-
-Negative values will use FV3 vertical remapping algorithm
-     
- -4: Monotone PPM (-40 is same as 4 but mapping Tv over p for temperature)
- -9: Monotonic cubic spline with 2*delta_z oscillations removed
--10: Selectively monotonic cubic spline, where local extrema are retained,
-     with 2*delta_z oscillations removed
--11: Non-monotonic (linear) cubic spline with 2*delta_z oscillations removed;
-     This scheme is used if an invalid value for kord is given.
--13: Monotonic cubic spline with 2*delta_z oscillations removed
 Default: Set by build-namelist.
 </entry>
 
-<entry id="se_vert_remap_tracer_alg" type="integer" category="se"
-       group="dyn_se_inparm" valid_values="1,2,10,-4,-9,-11,-13">
-CAM-SE vertical remap algorithm for non-water tracers
-  1: PPM vertical remap with mirroring at the boundaries
+<entry id="se_vert_remap_uvTq_alg" type="char*32" category="se"
+       group="dyn_se_inparm" valid_values="PPM_bc_mirror,PPM_bc_PCoM,PPM_bc_linear_extrapolation,FV3_PPM,FV3_CS,FV3_CS_2dz_filter,FV3_non_monotone_CS_2dz_filter">
+CAM-SE vertical remap algorithm for u,v,T, and water species.
+PPM_bc_mirror: PPM vertical remap with mirroring at the boundaries
      (solid wall boundary conditions, high-order throughout)
-  2: PPM vertical remap without mirroring at the boundaries
+PPM_bc_PCoM: PPM vertical remap without mirroring at the boundaries
      (no boundary conditions enforced, first-order at two cells bordering top and bottom
      boundaries)
- 10: PPM with linear extrapolation in ghost cells (code from A. Bradley, DOE)
+PPM_bc_linear_extrapolation: PPM with linear extrapolation in ghost cells (code from A. Bradley, DOE)
 
-Negative values will use FV3 vertical remapping algorithm
+The following options use the FV3 vertical remapping algorithm.
      
- -4: Monotone PPM
- -9: Monotonic cubic spline with 2*delta_z oscillations removed
--11: Non-monotonic (linear) cubic spline with 2*delta_z oscillations removed;
-     This scheme is used if an invalid value for kord is given.
--13: Monotonic cubic spline with 2*delta_z oscillations removed
+FV3_PPM: Monotone PPM
+FV3_CS: Monotonic cubic spline with 2*delta_z oscillations removed
+FV3_CS_2dz_filter: Selectively monotonic cubic spline, where local extrema are retained,
+     with 2*delta_z oscillations removed
+FV3_non_monotone_CS_2dz_filter: Non-monotonic (linear) cubic spline with 2*delta_z oscillations removed;
+
+Default: Set by build-namelist.
+</entry>
+
+<entry id="se_vert_remap_tracer_alg" type="char*32" category="se"
+       group="dyn_se_inparm" valid_values="PPM_bc_mirror,PPM_bc_PCoM,PPM_bc_linear_extrapolation,FV3_PPM,FV3_CS,FV3_non_monotone_CS_2dz_filter">
+CAM-SE vertical remap algorithm for non-water tracers
+PPM_bc_mirror: PPM vertical remap with mirroring at the boundaries
+     (solid wall boundary conditions, high-order throughout)
+PPM_bc_PCoM: PPM vertical remap without mirroring at the boundaries
+     (no boundary conditions enforced, first-order at two cells bordering top and bottom
+     boundaries)
+PPM_bc_linear_extrapolation: PPM with linear extrapolation in ghost cells (code from A. Bradley, DOE)
+
+The following options use the FV3 vertical remapping algorithm.
+     
+FV3_PPM: Monotone PPM
+FV3_CS: Monotonic cubic spline with 2*delta_z oscillations removed
+FV3_non_monotone_CS_2dz_filter: Non-monotonic (linear) cubic spline with 2*delta_z oscillations removed;
+
 Default: Set by build-namelist.
 </entry>
 

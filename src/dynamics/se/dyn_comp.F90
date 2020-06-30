@@ -9,7 +9,7 @@ use constituents,           only: pcnst, cnst_get_ind, cnst_name, cnst_longname,
                                   cnst_read_iv, qmin, cnst_type, tottnam
 use cam_control_mod,        only: initial_run
 use cam_initfiles,          only: initial_file_get_id, topo_file_get_id, pertlim
-use phys_control,           only: use_gw_front, use_gw_front_igw
+use phys_control,           only: use_gw_front, use_gw_front_igw, waccmx_is
 use dyn_grid,               only: timelevel, hvcoord, edgebuf
 
 use cam_grid_support,       only: cam_grid_id, cam_grid_get_gcid, &
@@ -74,6 +74,13 @@ logical, public, protected :: write_restart_unstruct
 ! Frontogenesis indices
 integer, public    :: frontgf_idx      = -1
 integer, public    :: frontga_idx      = -1
+
+! constituent indices for waccm-x dry air properties
+integer, public, protected :: &
+   ixo  = -1, &
+   ixo2 = -1, &
+   ixh  = -1, &
+   ixh2 = -1
 
 interface read_dyn_var
   module procedure read_dyn_field_2d
@@ -150,8 +157,9 @@ subroutine dyn_readnl(NLFileName)
    integer                      :: se_rsplit
    integer                      :: se_statefreq
    integer                      :: se_tstep_type
-   integer                      :: se_vert_remap_uvTq_alg
-   integer                      :: se_vert_remap_tracer_alg
+   character(len=32)            :: se_vert_remap_T
+   character(len=32)            :: se_vert_remap_uvTq_alg
+   character(len=32)            :: se_vert_remap_tracer_alg
    integer                      :: se_horz_num_threads
    integer                      :: se_vert_num_threads
    integer                      :: se_tracer_num_threads
@@ -194,6 +202,7 @@ subroutine dyn_readnl(NLFileName)
       se_rsplit,                   &
       se_statefreq,                & ! number of steps per printstate call
       se_tstep_type,               &
+      se_vert_remap_T,             &
       se_vert_remap_uvTq_alg,      &
       se_vert_remap_tracer_alg,    &
       se_write_grid_file,          &
@@ -268,8 +277,9 @@ subroutine dyn_readnl(NLFileName)
    call MPI_bcast(se_rsplit, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_statefreq, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_tstep_type, 1, mpi_integer, masterprocid, mpicom, ierr)
-   call MPI_bcast(se_vert_remap_uvTq_alg, 1, mpi_integer, masterprocid, mpicom, ierr)
-   call MPI_bcast(se_vert_remap_tracer_alg, 1, mpi_integer, masterprocid, mpicom, ierr)
+   call MPI_bcast(se_vert_remap_T, 32, mpi_character, masterprocid, mpicom, ierr)
+   call MPI_bcast(se_vert_remap_uvTq_alg, 32, mpi_character, masterprocid, mpicom, ierr)
+   call MPI_bcast(se_vert_remap_tracer_alg, 32, mpi_character, masterprocid, mpicom, ierr)
    call MPI_bcast(se_fv_nphys, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_write_grid_file, 16,  mpi_character, masterprocid, mpicom, ierr)
    call MPI_bcast(se_grid_filename, shr_kind_cl, mpi_character, masterprocid, mpicom, ierr)
@@ -344,8 +354,12 @@ subroutine dyn_readnl(NLFileName)
    rsplit                   = se_rsplit
    statefreq                = se_statefreq
    tstep_type               = se_tstep_type
-   vert_remap_uvTq_alg      = se_vert_remap_uvTq_alg
-   vert_remap_tracer_alg    = se_vert_remap_tracer_alg
+   vert_remap_uvTq_alg      = set_vert_remap(se_vert_remap_T, se_vert_remap_uvTq_alg)
+   vert_remap_tracer_alg    = set_vert_remap(se_vert_remap_T, se_vert_remap_tracer_alg)
+!++dbg
+if(masterproc) &
+write(iulog,*)'uvTq, tracer=',vert_remap_uvTq_alg,vert_remap_tracer_alg
+!--dbg
    fv_nphys                 = se_fv_nphys
    hypervis_dynamic_ref_state = se_hypervis_dynamic_ref_state
    lcp_moist                = se_lcp_moist
@@ -360,7 +374,6 @@ subroutine dyn_readnl(NLFileName)
    raykrange                = se_raykrange
    rayk0                    = se_rayk0
    molecular_diff           = se_molecular_diff
-
 
    if (fv_nphys > 0) then
       ! Use finite volume physics grid and CSLAM for tracer advection
@@ -447,8 +460,9 @@ subroutine dyn_readnl(NLFileName)
       write(iulog, '(a,i0)')   'dyn_readnl: se_rsplit                     = ',se_rsplit
       write(iulog, '(a,i0)')   'dyn_readnl: se_statefreq                  = ',se_statefreq
       write(iulog, '(a,i0)')   'dyn_readnl: se_tstep_type                 = ',se_tstep_type
-      write(iulog, '(a,i0)')   'dyn_readnl: se_vert_remap_uvTq_alg        = ',se_vert_remap_uvTq_alg
-      write(iulog, '(a,i0)')   'dyn_readnl: se_vert_remap_tracer_alg      = ',se_vert_remap_tracer_alg
+      write(iulog, '(a,a)')    'dyn_readnl: se_vert_remap_T               = ',trim(se_vert_remap_T)
+      write(iulog, '(a,a)')    'dyn_readnl: se_vert_remap_uvTq_alg        = ',trim(se_vert_remap_uvTq_alg)
+      write(iulog, '(a,a)')    'dyn_readnl: se_vert_remap_tracer_alg      = ',trim(se_vert_remap_tracer_alg)
       write(iulog, '(a,l4)')   'dyn_readnl: se_hypervis_dynamic_ref_state = ',hypervis_dynamic_ref_state
       write(iulog, '(a,l4)')   'dyn_readnl: lcp_moist                     = ',lcp_moist
       write(iulog, '(a,i0)')   'dyn_readnl: se_fvm_supercycling           = ',fvm_supercycling
@@ -495,6 +509,61 @@ subroutine dyn_readnl(NLFileName)
    end if
 
    call native_mapping_readnl(NLFileName)
+
+   !---------------------------------------------------------------------------
+   contains
+   !---------------------------------------------------------------------------
+
+      integer function set_vert_remap( remap_T, remap_alg )
+
+         ! Convert namelist input strings to the internally used integers.
+
+         character(len=*), intent(in) :: remap_T    ! scheme for remapping temperature
+         character(len=*), intent(in) :: remap_alg  ! remapping algorithm
+
+         ! check valid remap_T values:
+         if (remap_T /= 'thermal_energy_over_P' .and. remap_T /= 'Tv_over_logP') then
+            write(iulog,*)'set_vert_remap: invalid remap_T= ',trim(remap_T)
+            call endrun('set_vert_remap: invalid remap_T')
+         end if
+
+         select case (remap_alg)
+         case ('PPM_bc_mirror')
+            set_vert_remap = 1
+         case ('PPM_bc_PCoM')
+            set_vert_remap = 2
+         case ('PPM_bc_linear_extrapolation')
+            set_vert_remap = 10
+         case ('FV3_PPM')
+            if (remap_T == 'thermal_energy_over_P') then
+               set_vert_remap = -4
+            else
+               set_vert_remap = -40
+            end if
+         case ('FV3_CS')
+            if (remap_T == 'thermal_energy_over_P') then
+               set_vert_remap = -9
+            else
+               set_vert_remap = -90
+            end if
+         case ('FV3_CS_2dz_filter')
+            if (remap_T == 'thermal_energy_over_P') then
+               set_vert_remap = -10
+            else
+               set_vert_remap = -100
+            end if
+         case ('FV3_non_monotone_CS_2dz_filter')
+            if (remap_T == 'thermal_energy_over_P') then
+               set_vert_remap = -11
+            else
+               set_vert_remap = -110
+            end if
+         case default
+            write(iulog,*)'set_vert_remap: invalid remap_alg= ',trim(remap_alg)
+            call endrun('set_vert_remap: invalid remap_alg')
+         end select
+
+      end function set_vert_remap
 
 end subroutine dyn_readnl
 
@@ -604,9 +673,6 @@ subroutine dyn_init(dyn_in, dyn_out)
    ! Now allocate and set condenstate vars
    allocate(cnst_name_gll(qsize))     ! constituent names for gll tracers
    allocate(cnst_longname_gll(qsize)) ! long name of constituents for gll tracers
-
-   ! if user wants to add more condensate loading tracers add them here ....
-
 
    allocate(kord_tr(qsize))
    kord_tr(:) = vert_remap_tracer_alg
@@ -865,6 +931,14 @@ subroutine dyn_init(dyn_in, dyn_out)
       call add_default(tottnam(       1), budget_hfile_num, ' ')
       call add_default(tottnam(ixcldliq), budget_hfile_num, ' ')
       call add_default(tottnam(ixcldice), budget_hfile_num, ' ')
+   end if
+
+   ! constituent indices for waccm-x
+   if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
+      call cnst_get_ind('O',  ixo)
+      call cnst_get_ind('O2', ixo2)
+      call cnst_get_ind('H',  ixh)
+      call cnst_get_ind('H2', ixh2)
    end if
 
    call test_mapping_addfld
