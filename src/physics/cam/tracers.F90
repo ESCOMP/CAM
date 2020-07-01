@@ -74,7 +74,7 @@ character(len=16), parameter :: analytic_names(num_analytic) =     &
        'TT_EM8          ', 'TT_Y2_2         ', 'TT_Y32_16       ', &
        'TT_LATP2        ', 'TT_LONP2        ', 'TT_COSB         ', &
        'TT_CCOSB        ', 'TT_lCCOSB       '/)
-    
+
 
 logical :: analytic_tracer(num_names_max)
 
@@ -277,7 +277,7 @@ subroutine tracers_init_cnst(name, latvals, lonvals, mask, q, z)
 
    found = .false.
    if (tracers_suite_flag) then
-     
+
      do m = 1, test_tracer_num
        if (name ==  get_tracer_name(m))  then
          call init_cnst_tr(m, latvals, lonvals, mask, q)
@@ -285,16 +285,16 @@ subroutine tracers_init_cnst(name, latvals, lonvals, mask, q, z)
          exit
        endif
      end do
-     
+
    else
-     
+
      do m = 1, test_tracer_num
        if (name == test_tracer_names(m)) then
          if (analytic_tracer(m)) then
            if (present(z)) then
              call test_func_set(name, latvals, lonvals, mask, q, z=z)
            else
-             call test_func_set(name, latvals, lonvals, mask, q)               
+             call test_func_set(name, latvals, lonvals, mask, q)
            end if
            found = .true.
            exit
@@ -355,7 +355,7 @@ subroutine test_func_set(name, latvals, lonvals, mask, q, z)
 
    do i = 1, size(mask)
      if (mask(i)) then
-       if (present(z)) then       
+       if (present(z)) then
          do k = 1, size(q, 2)
            q(i,k) = test_func(name, latvals(i), lonvals(i), k, z=z(i,k))
          end do
@@ -390,7 +390,7 @@ function test_func(name, lat, lon, k, z) result(fout)
    real(r8), parameter :: deg2rad = pi/180._r8
    real(r8), parameter :: z0 = 4500.0_r8 !Eq 9 in Kent et al. (2012)
    real(r8), parameter :: zz = 1000.0_r8  !Eq 9 in Kent et al. (2012)
-   
+
    real(r8) :: lon1, lat1, R0, Rg1
    real(r8) :: eta, eta_c, d1, f1, f2, c
    real(r8) :: cos_tmp, sin_tmp
@@ -404,10 +404,10 @@ function test_func(name, lat, lon, k, z) result(fout)
      !
      R0 = 0.25_r8
      lon1  = pi/9.0_r8
-     lat1  = 2.0_r8*pi/9.0_r8     
+     lat1  = 2.0_r8*pi/9.0_r8
      Rg1 = acos(sin(lat1)*sin(lat)+cos(lat1)*cos(lat)*cos(lon-lon1))
      c = 1.0_r8
-     
+
      if ((Rg1 <= R0) .AND. (abs(lon-lon1) >= R0/6)) then
        fout = c
      elseif ((Rg1 <= R0) .AND. (abs(lon-lon1) < R0/6) &
@@ -422,10 +422,10 @@ function test_func(name, lat, lon, k, z) result(fout)
      !
      R0 = 0.25_r8
      lon1  = pi/9.0_r8
-     lat1  = 2.0_r8*pi/9.0_r8     
+     lat1  = 2.0_r8*pi/9.0_r8
      Rg1 = acos(sin(lat1)*sin(lat)+cos(lat1)*cos(lat)*cos(lon-lon1))
      c = 1.0_r8/3.0_r8
-     
+
      if ((Rg1 <= R0) .AND. (abs(lon-lon1) >= R0/6)) then
        fout = c
      elseif ((Rg1 <= R0) .AND. (abs(lon-lon1) < R0/6) &
@@ -433,7 +433,7 @@ function test_func(name, lat, lon, k, z) result(fout)
        fout = c
      else
        fout = 0.1_r8
-     endif     
+     endif
    case('TT_SLOT2')
      !
      !   Slotted cylinder for 3 tracer test
@@ -443,7 +443,7 @@ function test_func(name, lat, lon, k, z) result(fout)
      lat1  = 2.0_r8*pi/9.0_r8+pi/18.0_r8
      Rg1 = acos(sin(lat1)*sin(lat)+cos(lat1)*cos(lat)*cos(lon-lon1))
      c = 2.0_r8/3.0_r8
-     
+
      if ((Rg1 <= R0) .AND. (abs(lon-lon1) >= R0/6)) then
        fout = c
      elseif ((Rg1 <= R0) .AND. (abs(lon-lon1) < R0/6) &
@@ -460,10 +460,10 @@ function test_func(name, lat, lon, k, z) result(fout)
      !
      R0 = 0.25_r8
      lon1  = pi/9.0_r8
-     lat1  = 2.0_r8*pi/9.0_r8     
+     lat1  = 2.0_r8*pi/9.0_r8
      Rg1 = acos(sin(lat1)*sin(lat)+cos(lat1)*cos(lat)*cos(lon-lon1))
      c = 1.0_r8/3.0_r8
-     
+
      if ((Rg1 <= R0) .AND. (abs(lon-lon1) >= R0/6)) then
        f1 = c
      elseif ((Rg1 <= R0) .AND. (abs(lon-lon1) < R0/6) &
@@ -471,7 +471,7 @@ function test_func(name, lat, lon, k, z) result(fout)
        f1 = c
      else
        f1 = 0.1_r8
-     endif     
+     endif
 
      R0 = 0.25_r8
      lon1  = pi/9.0_r8
@@ -485,7 +485,7 @@ function test_func(name, lat, lon, k, z) result(fout)
        f2 = c
      else
        f2 = 0.1_r8
-     endif          
+     endif
 
      fout = 1.0_r8-(f1+f2)
    case('TT_GBALL')
@@ -498,36 +498,36 @@ function test_func(name, lat, lon, k, z) result(fout)
      eta_c = 0.6_r8
      sin_tmp = SIN(lat1)*SIN(lat)
      cos_tmp = COS(lat1)*COS(lat)
-     
+
      Rg1 = ACOS( sin_tmp + cos_tmp*COS(lon-lon1) )    ! great circle distance
      eta =  (hyam(k)*ps0 + hybm(k)*psurf_moist)/psurf_moist
      fout = EXP(- ((Rg1*R0)**2 + ((eta-eta_c)/0.1_r8)**2))
      IF (ABS(fout) < 1.0E-8_r8) fout = 0.0_r8
-     
+
    case('TT_TANH')
      !
      !
      !
      fout = 0.5_r8 * ( tanh( 3.0_r8*abs(lat)-pi ) + 1.0_r8)
-     
+
    case('TT_EM8')
      fout = 1.0e-8_r8
-     
+
    case('TT_Y2_2')
      !
      ! approximately Y^2_2 spherical harmonic
      !
      fout = 0.5_r8 + 0.5_r8*(cos(lat)*cos(lat)*cos(2.0_r8*lon))
-     
+
    case('TT_Y32_16')
      !
      ! approximately Y32_16 spherical harmonic
      !
      fout = 0.5_r8 + 0.5_r8*(cos(16*lon)*(sin(2_r8*lat)**16))
-     
+
    case('TT_LATP2')
      fout = 2.0_r8 + lat
-     
+
    case('TT_LONP2')
      fout = 2.0_r8 + cos(lon)
    case('TT_COSB')
@@ -538,44 +538,44 @@ function test_func(name, lat, lon, k, z) result(fout)
      R0    = 0.9_r8*1.0_r8/2.0_r8           ! radius of the perturbation
      lon1  = pi/9.0_r8
      lat1  = 2.0_r8*pi/9.0_r8
-     
+
      sin_tmp = SIN(lat1)*SIN(lat)
      cos_tmp = COS(lat1)*COS(lat)
      Rg1 = ACOS( sin_tmp + cos_tmp*COS(lon-lon1) )    ! great circle distance
-     
+
      if (present(z)) THEN
        d1 = MIN(1.0_r8,(Rg1/R0)**2+((z-z0)/zz)**2)
      else
        d1 = MIN(1.0_r8,(Rg1/R0)**2)
      end if
 
-     if (Rg1 < R0) then      
+     if (Rg1 < R0) then
        fout = 0.1_r8+0.5_r8*(1.0_r8+COS(pi*d1))
      else
        fout = 0.1_r8
-     end if     
-     !      IF (ABS(fout) < 1.0E-8_r8) fout = 0.0_r8     
-     !      eta_c = 0.6_r8      
+     end if
+     !      IF (ABS(fout) < 1.0E-8_r8) fout = 0.0_r8
+     !      eta_c = 0.6_r8
      !      eta =  (hyam(k)*ps0 + hybm(k)*psurf_moist)/psurf_moist
    case('TT_CCOSB')
      !
      ! Correlated cosine bell
      !
-     R0    = 0.9_r8*1.0_r8/2.0_r8           ! radius of the perturbation     
+     R0    = 0.9_r8*1.0_r8/2.0_r8           ! radius of the perturbation
      lon1  = pi/9.0_r8
      lat1  = 2.0_r8*pi/9.0_r8
-     
+
      sin_tmp = SIN(lat1)*SIN(lat)
      cos_tmp = COS(lat1)*COS(lat)
      Rg1 = ACOS( sin_tmp + cos_tmp*COS(lon-lon1) )    ! great circle distance
-     
+
      if (present(z)) THEN
        d1 = MIN(1.0_r8,(Rg1/R0)**2+((z-z0)/zz)**2)
      else
        d1 = MIN(1.0_r8,(Rg1/R0)**2)
      end if
 
-     if (Rg1 < R0) then      
+     if (Rg1 < R0) then
        f1 = 0.1_r8+0.5_r8*(1.0_r8+COS(pi*d1))
      else
        f1 = 0.1_r8
@@ -586,21 +586,21 @@ function test_func(name, lat, lon, k, z) result(fout)
      !
      ! Correlated cosine bell
      !
-     R0    = 0.9_r8*1.0_r8/2.0_r8           ! radius of the perturbation     
+     R0    = 0.9_r8*1.0_r8/2.0_r8           ! radius of the perturbation
      lon1  = pi/9.0_r8
      lat1  = 2.0_r8*pi/9.0_r8
-     
+
      sin_tmp = SIN(lat1)*SIN(lat)
      cos_tmp = COS(lat1)*COS(lat)
      Rg1 = ACOS( sin_tmp + cos_tmp*COS(lon-lon1) )    ! great circle distance
-     
+
      if (present(z)) THEN
        d1 = MIN(1.0_r8,(Rg1/R0)**2+((z-z0)/zz)**2)
      else
        d1 = MIN(1.0_r8,(Rg1/R0)**2)
      end if
 
-     if (Rg1 < R0) then      
+     if (Rg1 < R0) then
        f1 = 0.1_r8+0.5_r8*(1.0_r8+COS(pi*d1))
      else
        f1 = 0.1_r8
@@ -608,9 +608,9 @@ function test_func(name, lat, lon, k, z) result(fout)
 
      fout=1.0_r8-f1
 
-   case default     
+   case default
      call endrun("test_func: ERROR: name not recognized")
-   end select   
+   end select
 end function test_func
 
 !

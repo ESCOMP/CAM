@@ -175,7 +175,6 @@ contains
 subroutine physconst_readnl(nlfile)
 
    use namelist_utils,  only: find_group_name
-   use units,           only: getunit, freeunit
    use spmd_utils,      only: masterproc, mpicom, masterprocid, mpi_real8, mpi_character
    use cam_logfile,     only: iulog
 
@@ -195,8 +194,7 @@ subroutine physconst_readnl(nlfile)
    !-----------------------------------------------------------------------------
 
    if (masterproc) then
-      unitn = getunit()
-      open( unitn, file=trim(nlfile), status='old' )
+      open( newunit=unitn, file=trim(nlfile), status='old' )
       call find_group_name(unitn, 'physconst_nl', status=ierr)
       if (ierr == 0) then
          read(unitn, physconst_nl, iostat=ierr)
@@ -205,7 +203,6 @@ subroutine physconst_readnl(nlfile)
          end if
       end if
       close(unitn)
-      call freeunit(unitn)
    end if
 
    ! Broadcast namelist variables
@@ -278,8 +275,7 @@ subroutine physconst_readnl(nlfile)
    water_species_in_air = (/ (' ', i=1,num_names_max) /)    
     
    if (masterproc) then
-      unitn = getunit()
-      open( unitn, file=trim(nlfile), status='old' )
+      open( newunit=unitn, file=trim(nlfile), status='old' )
       call find_group_name(unitn, 'air_composition_nl', status=ierr)
       if (ierr == 0) then
          read(unitn, air_composition_nl, iostat=ierr)
@@ -288,7 +284,6 @@ subroutine physconst_readnl(nlfile)
          end if
       end if
       close(unitn)
-      call freeunit(unitn)
    end if
     
    call mpi_bcast(dry_air_species, len(dry_air_species)*num_names_max, mpi_character, &

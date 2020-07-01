@@ -356,10 +356,6 @@ subroutine dyn_readnl(NLFileName)
    tstep_type               = se_tstep_type
    vert_remap_uvTq_alg      = set_vert_remap(se_vert_remap_T, se_vert_remap_uvTq_alg)
    vert_remap_tracer_alg    = set_vert_remap(se_vert_remap_T, se_vert_remap_tracer_alg)
-!++dbg
-if(masterproc) &
-write(iulog,*)'uvTq, tracer=',vert_remap_uvTq_alg,vert_remap_tracer_alg
-!--dbg
    fv_nphys                 = se_fv_nphys
    hypervis_dynamic_ref_state = se_hypervis_dynamic_ref_state
    lcp_moist                = se_lcp_moist
@@ -801,9 +797,11 @@ subroutine dyn_init(dyn_in, dyn_out)
        end if
      end do
    else
-     kmvis_ref(:) = -huge(1.0_r8)
-     kmcnd_ref(:) = -huge(1.0_r8)
-     rho_ref(:)   = -huge(1.0_r8)
+     ! -1.0E6 is an arbitrary unrealistic value.  But it is used in the calculation
+     ! of a diagnostic quantity in global_norms_mod so can't be set to huge or nan.
+     kmvis_ref(:) = -1.0E6_r8
+     kmcnd_ref(:) = -1.0E6_r8
+     rho_ref(:)   = -1.0E6_r8
    end if
    !
    irecons_tracer_lev(:) = irecons_tracer !use high-order CSLAM in all layers
