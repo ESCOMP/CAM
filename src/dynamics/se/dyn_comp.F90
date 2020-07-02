@@ -7,7 +7,7 @@ use physconst,              only: pi
 use spmd_utils,             only: iam, masterproc
 use constituents,           only: pcnst, cnst_get_ind, cnst_name, cnst_longname, &
                                   cnst_read_iv, qmin, cnst_type, tottnam
-use cam_control_mod,        only: initial_run
+use cam_control_mod,        only: initial_run, simple_phys
 use cam_initfiles,          only: initial_file_get_id, topo_file_get_id, pertlim
 use phys_control,           only: use_gw_front, use_gw_front_igw
 use dyn_grid,               only: timelevel, hvcoord, edgebuf
@@ -1638,7 +1638,7 @@ subroutine read_inidat(dyn_in)
       if (.not. associated(fh_topo)) then
          initial_global_ave_dry_ps = 101325._r8 - 245._r8
       end if
-      if (analytic_ic_active()) then
+      if (simple_phys) then
          initial_global_ave_dry_ps = 0                  !do not scale psdry
       end if
       if (iam < par%nprocs) then
