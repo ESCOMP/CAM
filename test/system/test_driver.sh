@@ -1,4 +1,4 @@
-#!/bin/sh -f
+#!/bin/sh
 #
 # test_driver.sh:  driver for the testing of CAM with standalone scripts
 #
@@ -30,6 +30,7 @@ help () {
   echo "${hprefix} [ --no-cesm ] (do not run any CESM test or test suite)"
   echo "${hprefix} [ --cam ] (Run CAM regression tests, default is not to run CAM regression tests."
   echo "${hprefix} [ --rerun-cesm <test_id> ] (rerun the cesm tests with the --use-existing-flag)"
+  echo "${hprefix} [ --namelists-only ] (Only perform namelist actions for tests.  Incompatible with --rerun-cesm.)"
   echo "${hprefix} [ --batch  Allow cime tests to run in parallel."
   echo ""
   echo "${hprefix} **pass environment variables by preceding above commands with:"
@@ -80,6 +81,7 @@ gmake_j=0
 interactive=false
 run_cam_regression=false
 use_existing=''
+namelists_only=false
 batch=false
 
 # Initialize variables which may not be set
@@ -153,6 +155,18 @@ while [ "${1:0:1}" == "-" ]; do
             fi
             use_existing="${2}"
             shift
+            if $namelists_only ; then
+              echo "test_driver.sh: FATAL ERROR: --rerun-cesm and --namelists-only were set"
+              exit 1
+            fi
+            ;;
+
+        --namelists-only )
+            namelists_only=true
+            if [ "${use_existing}" != "" ]; then
+              echo "test_driver.sh: FATAL ERROR: --namelists-only and --rerun-cesm were set"
+              exit 1
+            fi
             ;;
 
         --batch )
@@ -1111,8 +1125,42 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
       testargs="${testargs} --compare ${BL_TESTDIR} "
     fi
     if [ -n "${use_existing}" ]; then
-      testargs="${testargs} --use-existing -o"
+      testargs="${testargs} --use-existing -o "
     fi
+    if  $namelists_only ; then
+      testargs="${testargs} --namelists-only "
+    fi
+    #  Check for a change in BL_TESTDIR                                                                   #
+    if [ -n "${BL_TESTDIR}" ] && [ "${use_existing}" != "" ]; then
+        #Check if BL_TESTDIR changed
+        cmd="query_testlists --xml-category $cesm_test --xml-machine  ${cesm_test_mach}"
+        if [ -n "${CAM_FC}" ]; then
+            cmd="${cmd} --xml-compiler ${CAM_FC,,}"
+        else
+            cmd="${cmd} --xml-compiler intel"
+        fi
+        cmd="`pwd -P`/../../cime/scripts/"$cmd
+        cime_testlist=`$cmd`
+        for i in $(echo $cime_testlist | tr " " "\n")
+        do
+          if [[ $i =~ ${cesm_test_mach} ]]; then
+            orig_baseline=`cd $cesm_testdir/$i*$test_id && ./xmlquery BASELINE_NAME_CMP --value`
+            if [ $orig_baseline != ${BL_TESTDIR} ]; then
+              echo "Changing BL_TESTDIR for $i."
+                `cd $cesm_testdir/$i*$test_id && ./xmlchange BASELINE_NAME_CMP=$BL_TESTDIR`
+              if [[ $i == ERI* ]]; then #Need to do special stuff to get ERI to rerun with new baseline.
+                `cd $cesm_testdir/$i*$test_id && sed -i '/RUN/c\FAIL '$i' RUN' TestStatus`
+                result=`cd $cesm_testdir/$i*$test_id && pwd && ./.case.test --reset -s`
+              else
+                `cd $cesm_testdir/$i*$test_id && sed -i '/RUN/c\PEND '$i' RUN' TestStatus`
+              fi
+            else
+              echo "Checking for changed BL_TESTDIR for $i."
+            fi
+          fi
+        done
+    fi
+
     if [ "$no_baseline" != false ]; then
        if [ -n "${baseline_dir}" ]; then
          testargs="${testargs} --generate ${baseline_dir}"
