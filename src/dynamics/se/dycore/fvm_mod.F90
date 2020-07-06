@@ -287,8 +287,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     use parallel_mod,           only: parallel_t
     use cam_abortutils,         only: endrun
     use cam_logfile,            only: iulog
-    use control_mod,            only: tracer_transport_type, rsplit
-    use control_mod,            only: TRACERTRANSPORT_CONSISTENT_SE_FVM
+    use control_mod,            only: rsplit
     use dimensions_mod,         only: qsize, qsize_d
     use dimensions_mod,         only: fvm_supercycling, fvm_supercycling_jet
     use dimensions_mod,         only: nc,nhe, nhc, nlev,ntrac, ntrac_d,ns, nhr
@@ -306,7 +305,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
         write(iulog,*) "|-----------------------------------------|"
         write(iulog,*) "                                           "
       end if
-      if (tracer_transport_type == TRACERTRANSPORT_CONSISTENT_SE_FVM) then
+      if (ntrac>0) then
         if (par%masterproc) then 
           write(iulog,*) "Running consistent SE-CSLAM, Lauritzen et al. (2017, MWR)."
           write(iulog,*) "CSLAM = Conservative Semi-LAgrangian Multi-tracer scheme"
@@ -444,11 +443,12 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     use fvm_control_volume_mod, only: fvm_mesh,fvm_set_cubeboundary
     use bndry_mod,              only: compute_ghost_corner_orientation
     use dimensions_mod,         only: nlev, nc, nhc, nhe, ntrac, ntrac_d, np
-    use dimensions_mod,         only: nhc_phys, fv_nphys, qsize_condensate_loading
+    use dimensions_mod,         only: nhc_phys, fv_nphys
     use dimensions_mod,         only: fvm_supercycling, fvm_supercycling_jet
     use dimensions_mod,         only: kmin_jet,kmax_jet
     use hycoef,                 only: hyai, hybi, ps0
     use derivative_mod,         only: subcell_integration
+    use physconst,              only: thermodynamic_active_species_num
     
     type (fvm_struct) :: fvm(:)
     type (element_t)  :: elem(:)
@@ -500,7 +500,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     if (fv_nphys.ne.nc) then
        call initghostbuffer(hybrid%par,ghostBufPG_s,elem,nlev*(4+ntrac),nhc_phys,fv_nphys,nthreads=1)
     else
-       call initghostbuffer(hybrid%par,ghostBufPG_s,elem,nlev*(3+qsize_condensate_loading),nhc_phys,fv_nphys,nthreads=1)
+       call initghostbuffer(hybrid%par,ghostBufPG_s,elem,nlev*(3+thermodynamic_active_species_num),nhc_phys,fv_nphys,nthreads=1)
     end if
     
     if (fvm_supercycling.ne.fvm_supercycling_jet) then

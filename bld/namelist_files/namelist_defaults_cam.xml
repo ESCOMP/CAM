@@ -181,9 +181,12 @@
 <ncdata dyn="se" hgrid="ne0np4.ARCTIC.ne30x4"     nlev="32" ic_ymd="101">atm/cam/inic/se/FHIST_ARCTIC_ne30x4_mt12_1979bc-mg3_01-01-00000_c200424.nc</ncdata>
 <ncdata dyn="se" hgrid="ne0np4.ARCTICGRIS.ne30x8" nlev="32" ic_ymd="101">atm/cam/inic/se/FHIST_ARCTICGRIS_ne30x8_mt12_1979bc-mg3_01-01-00000_c200428.nc</ncdata>
 
-<ncdata dyn="se" hgrid="ne5np4"   nlev="66"                >atm/waccm/ic/wa3_ne5np4_1950_spinup.cam2.i.1960-01-01-00000_c150810.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4"  nlev="70" sim_year="1850">atm/waccm/ic/waccm5_1850_ne30np4_L70_0001-01-11-00000_c151217.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4"  nlev="70"                >atm/waccm/ic/fw2000_ne30np4_L70_c181221.nc</ncdata>
+<ncdata dyn="se" hgrid="ne5np4"   nlev="66"           ic_ymd="101">atm/waccm/ic/wa3_ne5np4_1950_spinup.cam2.i.1960-01-01-00000_c150810.nc</ncdata>
+<ncdata dyn="se" hgrid="ne30np4"  nlev="70"           ic_ymd="101">atm/waccm/ic/FW2000_ne30_L70_01-01-0001_c200602.nc</ncdata>
+<ncdata dyn="se" hgrid="ne30np4"  nlev="70"  npg="3"  ic_ymd="101">atm/waccm/ic/FW2000_ne30pg3_L70_01-01-0001_c200602.nc</ncdata>
+<ncdata dyn="se" hgrid="ne30np4"  nlev="110"          ic_ymd="101">atm/waccm/ic/FWsc2000_ne30pg3_L110_01-01-0001_c200521.nc</ncdata>
+
+<ncdata dyn="se" hgrid="ne0np4CONUS.ne30x8"       nlev="70" ic_ymd="101">atm/waccm/ic/FW2000_CONUS_30x8_L70_01-01-0001_c200602.nc</ncdata>
 
 <!-- Topography -->
 <bnd_topo hgrid="256x512" >atm/cam/topo/topo-from-cami_0000-01-01_256x512_L26_c030918.nc</bnd_topo>
@@ -539,15 +542,18 @@
 <effgw_oro>0.125D0</effgw_oro>
 
 <effgw_cm>1.D0</effgw_cm>
-<taubgnd            >1.5D-3</taubgnd>
-<taubgnd hgrid="4x5">1.0D-3</taubgnd>
+
+<taubgnd                 >1.5D-3</taubgnd>
+<taubgnd hgrid="4x5"     >1.0D-3</taubgnd>
 <taubgnd hgrid="0.9x1.25">2.5D-3</taubgnd>
+<taubgnd hgrid="ne30np4" >1.25D-3</taubgnd>
 
 <effgw_cm_igw>0.1D0</effgw_cm_igw>
 <taubgnd_igw>12.0D-3</taubgnd_igw>
 
-<frontgfc            >1.25D-15</frontgfc>
-<frontgfc hgrid="4x5">7.5D-16</frontgfc>
+<frontgfc                 >1.25D-15</frontgfc>
+<frontgfc hgrid="ne30np4" >3.00D-15</frontgfc>
+<frontgfc hgrid="4x5"     >7.5D-16</frontgfc>
 <frontgfc hgrid="0.9x1.25">3.0D-15</frontgfc>
 
 <!-- Polar taper is needed for stability in FV, possibly because grid -->
@@ -562,10 +568,12 @@
 
 <!-- gravity wave settings -->
 <effgw_beres_dp>0.1D0</effgw_beres_dp>
-<effgw_beres_dp hgrid="0.9x1.25">0.4D0</effgw_beres_dp>
-<effgw_beres_dp waccm_phys="0">0.55D0</effgw_beres_dp>
-<effgw_beres_dp waccm_phys="1" hgrid="0.9x1.25">0.5D0</effgw_beres_dp>
-<effgw_beres_dp chem="trop_strat_mam4_vbs" hgrid="0.9x1.25">0.5D0</effgw_beres_dp>
+<effgw_beres_dp hgrid="0.9x1.25"                              >0.4D0</effgw_beres_dp>
+<effgw_beres_dp waccm_phys="0"                                >0.55D0</effgw_beres_dp>
+<effgw_beres_dp waccm_phys="1" hgrid="0.9x1.25"               >0.5D0</effgw_beres_dp>
+<effgw_beres_dp waccm_phys="1" hgrid="ne30np4" nlev="70"      >0.325D0</effgw_beres_dp>
+<effgw_beres_dp waccm_phys="1" hgrid="ne30np4" nlev="110"     >0.7D0</effgw_beres_dp>
+<effgw_beres_dp chem="trop_strat_mam4_vbs" hgrid="0.9x1.25"   >0.5D0</effgw_beres_dp>
 <effgw_beres_dp chem="trop_strat_mam4_vbsext" hgrid="0.9x1.25">0.5D0</effgw_beres_dp>
 <effgw_oro      nlev="60"     >0.0625D0</effgw_oro>
 
@@ -1722,7 +1730,7 @@
 
 <dust_emis_fact dyn="se"                   phys="cam5"                    >0.55D0</dust_emis_fact>
 <dust_emis_fact dyn="fv"                   phys="cam5"   clubb_sgs="1"    >0.22D0</dust_emis_fact>
-<dust_emis_fact dyn="se"                   phys="cam6"                    >0.55D0</dust_emis_fact>
+<dust_emis_fact dyn="se"                   phys="cam6"                    >0.70D0</dust_emis_fact>
 <dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam6"          chem="trop_strat_mam4_vbs">0.8D0</dust_emis_fact>
 <dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam6" chem="trop_strat_mam4_vbs">0.8D0</dust_emis_fact>
 <dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam6"          chem="trop_strat_mam4_ts1">0.8D0</dust_emis_fact>
@@ -1905,7 +1913,6 @@
 <cldfrc_premit dyn="eul" hgrid="128x256"                              > 25000.0D0 </cldfrc_premit>
 <cldfrc_premit dyn="eul" hgrid="256x512"                              > 25000.0D0 </cldfrc_premit>
 <cldfrc_premit dyn="eul" hgrid="512x1024"                             > 25000.0D0 </cldfrc_premit>
-<cldfrc_premit dyn="se"                                               > 25000.0D0 </cldfrc_premit>
 <cldfrc_premit                                      pbl="uw"          > 40000.0D0 </cldfrc_premit>
 <cldfrc_premit dyn="fv"  hgrid="0.23x0.31"          pbl="uw"          > 40000.0D0 </cldfrc_premit>
 <cldfrc_premit dyn="fv"  hgrid="0.47x0.63"          pbl="uw"          > 40000.0D0 </cldfrc_premit>
@@ -2188,35 +2195,45 @@
 <cam_snapshot_after_num>   -1 </cam_snapshot_after_num>
 
 <!-- ================================================================== -->
+<!-- Defaults for composition of air                                    -->
+<!-- ================================================================== -->
+<dry_air_species                           >''</dry_air_species>
+<dry_air_species    waccmx="1"             >'O', 'O2', 'H', 'N2'</dry_air_species>
+
+<water_species_in_air                         >'Q'                                    </water_species_in_air>
+<water_species_in_air phys="cam4"             >'Q','CLDLIQ','CLDICE'                  </water_species_in_air>
+<water_species_in_air phys="cam5"             >'Q','CLDLIQ','CLDICE'                  </water_species_in_air>
+<water_species_in_air phys="cam6"             >'Q','CLDLIQ','CLDICE','RAINQM','SNOWQM'</water_species_in_air>
+
+<!-- ================================================================== -->
 <!-- Defaults for SE                                                    -->
 <!-- ================================================================== -->
 
 <se_fine_ne                            >   0 </se_fine_ne>
-<se_fine_ne hgrid="ne0np4CONUS.ne30x8" > 120 </se_fine_ne>
+<se_fine_ne hgrid="ne0np4CONUS.ne30x8" > 240 </se_fine_ne>
 
 <se_ftype> 2 </se_ftype>
 
 <se_hypervis_dynamic_ref_state> .false.  </se_hypervis_dynamic_ref_state>
 <se_lcp_moist                 > .true.  </se_lcp_moist>
+
 <se_large_Courant_incr        > .true.  </se_large_Courant_incr>
 
 <se_hypervis_power> 0 </se_hypervis_power>
 
 <se_hypervis_scaling se_refined_mesh="1" hypervis_type="tensor" >3.0D0 </se_hypervis_scaling>
 
-<se_hypervis_subcycle>                             3 </se_hypervis_subcycle>
-<se_hypervis_subcycle hgrid="ne0np4CONUS.ne30x8">  2 </se_hypervis_subcycle>
-<se_hypervis_subcycle waccm_phys="1">              1 </se_hypervis_subcycle>
-<se_hypervis_subcycle  hgrid="ne16np4">            4 </se_hypervis_subcycle>
-<se_hypervis_subcycle  hgrid="ne0np4.ARCTIC.ne30x4"> 2 </se_hypervis_subcycle>
-<se_hypervis_subcycle  hgrid="ne0np4.ARCTICGRIS.ne30x8"> 2 </se_hypervis_subcycle>
+<se_hypervis_subcycle                                            > 3 </se_hypervis_subcycle>
+<se_hypervis_subcycle  waccm_phys="1"                            > 1 </se_hypervis_subcycle>
+<se_hypervis_subcycle  hgrid="ne16np4"                           > 4 </se_hypervis_subcycle>
+<se_hypervis_subcycle  se_refined_mesh="1"                       > 2 </se_hypervis_subcycle>
+<se_hypervis_subcycle  hgrid="ne0np4CONUS.ne30x8" waccm_phys="1" > 1 </se_hypervis_subcycle>
 
-<se_hypervis_subcycle_sponge>                            1                </se_hypervis_subcycle_sponge>
-<se_hypervis_subcycle_sponge waccm_phys="1">             3                </se_hypervis_subcycle_sponge>
-<se_hypervis_subcycle_sponge hgrid="ne0np4CONUS.ne30x8"> 4                </se_hypervis_subcycle_sponge>
-<se_hypervis_subcycle_sponge hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"> 20</se_hypervis_subcycle_sponge>
-<se_hypervis_subcycle_sponge hgrid="ne0np4.ARCTIC.ne30x4"> 4 </se_hypervis_subcycle_sponge>
-<se_hypervis_subcycle_sponge hgrid="ne0np4.ARCTICGRIS.ne30x8"> 4 </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge                                          > 1  </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge waccm_phys="1"                           > 1  </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge hgrid="ne120np4"                         > 4  </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge se_refined_mesh="1"                      > 4  </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"> 7  </se_hypervis_subcycle_sponge>
 
 <se_hypervis_subcycle_q>1                 </se_hypervis_subcycle_q>
 <se_hypervis_subcycle_q hgrid="ne16np4">2 </se_hypervis_subcycle_q>
@@ -2225,21 +2242,6 @@
 
 <se_max_hypervis_courant > 1.0e99 </se_max_hypervis_courant>
 <se_max_hypervis_courant se_refined_mesh="1" hypervis_type="scalar" > 1.9 </se_max_hypervis_courant>
-
-<se_nsplit>                   2 </se_nsplit>
-<se_nsplit hgrid="ne16np4" >  1 </se_nsplit>
-
-<se_nsplit hgrid="ne5np4"   waccm_phys="1"        >  3  </se_nsplit>
-<se_nsplit hgrid="ne16np4"  waccm_phys="1"        >  3  </se_nsplit>
-<se_nsplit hgrid="ne30np4"  waccm_phys="1"        > 12  </se_nsplit>
-<se_nsplit hgrid="ne30np4"  waccm_phys="1" npg="2">  6  </se_nsplit>
-<se_nsplit hgrid="ne30np4"  waccm_phys="1" npg="3">  6  </se_nsplit>
-
-<se_nsplit hgrid="ne0np4CONUS.ne30x8"               > 2 </se_nsplit>
-<se_nsplit hgrid="ne0np4CONUS.ne30x8" waccm_phys="1">12 </se_nsplit>
-<se_nsplit hgrid="ne0np4TESTONLY.ne5x4"> 7 </se_nsplit>
-
-<se_variable_nsplit                       >.false.</se_variable_nsplit>
 
 <se_phys_dyn_cp>1</se_phys_dyn_cp>
 
@@ -2252,11 +2254,10 @@
 <se_nu_p>-1 </se_nu_p>
 <se_nu_p se_refined_mesh="1" hypervis_type="scalar" > 1.5625e13 </se_nu_p>
 
-<se_nu_top                                   > 5.0e5 </se_nu_top>
-<se_nu_top se_refined_mesh="1"               > 2.0e5  </se_nu_top>
-<se_nu_top waccm_phys="1"                    > 2.5e6  </se_nu_top>
-<se_nu_top se_refined_mesh="1" waccm_phys="1"> 2.0e5 </se_nu_top>
-
+<se_nu_top                    > 5.0e5 </se_nu_top>
+<se_nu_top se_refined_mesh="1"> 2.0e5  </se_nu_top>
+<!-- WACCM uses molecular/thermal diffusion in sponge   -->
+<se_nu_top waccm_phys="1"     > 0.0   </se_nu_top>
 
 <se_raytau0                      >  0.0 </se_raytau0>
 <se_raykrange                    >  0.5  </se_raykrange>
@@ -2266,14 +2267,8 @@
 <se_raykrange waccm_phys="1"     >  3    </se_raykrange>
 <se_rayk0     waccm_phys="1"     >  2    </se_rayk0>
 
-<se_qsize_condensate_loading                    > 3 </se_qsize_condensate_loading>
-<se_qsize_condensate_loading phys="cam4"        > 3 </se_qsize_condensate_loading>
-<se_qsize_condensate_loading phys="cam5"        > 3 </se_qsize_condensate_loading>
-<se_qsize_condensate_loading phys="cam6"        > 5 </se_qsize_condensate_loading>
-<se_qsize_condensate_loading phys="held_suarez" > 1 </se_qsize_condensate_loading>
-<se_qsize_condensate_loading phys="adiabatic"   > 1 </se_qsize_condensate_loading>
-<se_qsize_condensate_loading phys="kessler"     > 1 </se_qsize_condensate_loading>
-<se_qsize_condensate_loading phys="tj2016"      > 1 </se_qsize_condensate_loading>
+<se_molecular_diff               >  0.0 </se_molecular_diff>
+<se_molecular_diff waccm_phys="1">100.0 </se_molecular_diff>
 
 <se_qsplit > 1 </se_qsplit>
 
@@ -2283,10 +2278,20 @@
 <se_refined_mesh hgrid="ne0np4.ARCTIC.ne30x4" > .true. </se_refined_mesh>
 <se_refined_mesh hgrid="ne0np4.ARCTICGRIS.ne30x8" > .true. </se_refined_mesh>
 
+<se_nsplit>                   2 </se_nsplit>
+<se_nsplit hgrid="ne16np4" >  1 </se_nsplit>
+
+<se_nsplit hgrid="ne5np4"   waccm_phys="1"            >  3  </se_nsplit>
+<se_nsplit hgrid="ne16np4"  waccm_phys="1"            >  3  </se_nsplit>
+<se_nsplit hgrid="ne30np4"  waccm_phys="1"            >  5  </se_nsplit>
+<se_nsplit hgrid="ne30np4"  waccm_phys="1"  nlev="110">  4  </se_nsplit>
+
+<se_nsplit hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"> 5 </se_nsplit>
+<se_nsplit hgrid="ne0np4TESTONLY.ne5x4"> 7 </se_nsplit>
+
 <se_rsplit                                          > 3 </se_rsplit>
-<se_rsplit waccm_phys="1" npg="2"                   > 5 </se_rsplit>
-<se_rsplit waccm_phys="1" npg="3"                   > 5 </se_rsplit>
-<se_rsplit hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"> 3 </se_rsplit>
+<se_rsplit waccm_phys="1"                           > 4 </se_rsplit>
+<se_rsplit hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"> 5 </se_rsplit>
 
 <se_fvm_supercycling>-1</se_fvm_supercycling>
 <se_fvm_supercycling_jet>-1</se_fvm_supercycling_jet>
@@ -2299,13 +2304,9 @@
 
 <se_tstep_type > 4 </se_tstep_type>
 
-<se_vert_remap_q_alg> 1 </se_vert_remap_q_alg>
-
-<!-- Nudging -->
-<se_met_nudge_u> 2.0e-5 </se_met_nudge_u>
-<se_met_nudge_t> 2.0e-5 </se_met_nudge_t>
-<se_met_nudge_p> 0.0 </se_met_nudge_p>
-<se_met_tevolve> 0 </se_met_tevolve>
+<se_vert_remap_T        > thermal_energy_over_P </se_vert_remap_T>
+<se_vert_remap_uvTq_alg  > FV3_CS                </se_vert_remap_uvTq_alg>
+<se_vert_remap_tracer_alg> PPM_bc_linear_extrapolation </se_vert_remap_tracer_alg>
 
 <!-- Option to write SCRIP grid file -->
 <se_write_grid_file> no </se_write_grid_file>
