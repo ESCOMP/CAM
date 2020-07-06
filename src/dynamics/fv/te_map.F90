@@ -147,6 +147,7 @@ contains
       integer :: jfirst, jlast         ! starting & ending latitude index
       integer :: myidxy_y, iam
       integer :: nprxy_x, nprxy_y
+      integer :: kk
 
 ! Local variables for Partial Remapping
 ! -------------------------------------
@@ -502,17 +503,21 @@ contains
         i1w = i1-1
         if (i1 == 1) i1w = im
         do k=1,km+1
-           do i=i1,i2
-              pe1(i,k) = pe(i,k,j)
-              if (k>1) then
-                if (pe1(i,k)-pe1(i,k-1)<lagrangianlevcrit) then
-                  write(iulog,*) "Lagrangian levels are crossing", lagrangianlevcrit
-                  write(iulog,*) "Run will ABORT!"
-                  write(iulog,*) "Suggest to increase NSPLTVRM"
-                  call endrun('te_map: Lagrangian levels are crossing')
-                endif
+          do i=i1,i2
+            pe1(i,k) = pe(i,k,j)
+            if (k>1) then
+              if (pe1(i,k)-pe1(i,k-1)<lagrangianlevcrit) then                
+                write(iulog,*) "Lagrangian levels are crossing", lagrangianlevcrit
+                write(iulog,*) "Run will ABORT!"
+                write(iulog,*) "Suggest to increase NSPLTVRM"
+                do kk=1,km
+                  write(iulog,'(A21,I5,A1,3f16.12)') "k,dp(unit=hPa),u,v: ",&
+                       kk," ",(pe(i,kk,j)-pe(i,kk-1,j))/100.0_r8,u(i,j,kk),v(i,j,kk)
+                end do
+                call endrun('te_map: Lagrangian levels are crossing')
               endif
-           enddo
+            endif
+          enddo
            if( itot == im ) then
                pe1w(k) = pe(i1w,k,j)
 #if defined( SPMD )
