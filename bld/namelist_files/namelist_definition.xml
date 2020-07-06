@@ -7047,7 +7047,7 @@ diffusion and thermal conductivity by using actual molecular diffusion and
 thermal conductivity coefficients multiplied by the value of
 se_molecular_diff.
 
-If set &lt; 0.0 then the code is not activated.  If set &gt; 0.0 then
+If set &lt;= 0.0 then the code is not activated.  If set &gt; 0.0 then
 the molecular diffusion and thermal conductivity coefficients will be
 multiplied by a factor of se_molecular_diff.
 
