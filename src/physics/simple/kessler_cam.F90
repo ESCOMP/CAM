@@ -16,6 +16,7 @@ module kessler_cam
 
   ! physics buffer indices
   integer :: prec_sed_idx  = 0
+  integer :: relhum_idx    = 0
 
 !========================================================================================
 contains
@@ -32,6 +33,7 @@ contains
          longname='Grid box averaged rain water amount', is_convtran1=.true.)
 
     call pbuf_add_field('PREC_SED', 'physpkg', dtype_r8, (/pcols/), prec_sed_idx)
+    call pbuf_add_field('RELHUM',   'physpkg', dtype_r8, (/pcols,pver/), relhum_idx)
 
   end subroutine kessler_register
 
@@ -68,7 +70,7 @@ contains
     ! Initialize Kessler with CAM physical constants
 
       if (errflg == 0) then
-         call kessler_init(cpair, latvap, pstd, rhoh2o, errmsg, errflg)
+         call kessler_init(cpair, latvap, pstd, rair, rhoh2o, errmsg, errflg)
          if (errflg /=0) then
             call endrun('kessler_cam_init error: Error returned from kessler_init: '//trim(errmsg))
          end if
@@ -141,6 +143,7 @@ contains
     integer                            :: errflg
 
     real(r8), pointer                  :: prec_sed(:) ! total precip from cloud sedimentation
+    real(r8), pointer                  :: relhum(:,:) ! relative humidity
 
     integer :: i
 
@@ -163,6 +166,7 @@ contains
          ls=.true., lu=.true., lv=.true., lq=lq)
 
     call pbuf_get_field(pbuf, prec_sed_idx, prec_sed)
+    call pbuf_get_field(pbuf, relhum_idx,   relhum)
 
     do k = 1, pver
       ! Create temporaries for state variables changed by Kessler routine
@@ -198,7 +202,7 @@ contains
     end if
     if (errflg == 0) then
        call kessler_run(ncol, pver, ztodt, lyr_surf, lyr_toa,        &
-                        rho, state%zm, pk, th, qv, qc, qr, prec_sed, errmsg, errflg)
+                        rho, state%zm, pk, th, qv, qc, qr, prec_sed, relhum, errmsg, errflg)
        if (errflg /=0) then
           call endrun('kessler_tend error: Error returned from kessler_run: '//trim(errmsg))
        end if
