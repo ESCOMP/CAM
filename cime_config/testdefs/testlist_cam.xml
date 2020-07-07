@@ -135,6 +135,18 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
+
+  <test compset="F2000climo" grid="C96_C96_mg17" name="ERP_Ln9" testmods="cam/outfrq9s_mg3">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="prebeta"/>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+      <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
+  </test>
+
 <!--              CAM Aquaplanet COMPSETS                 -->
 
   <test compset="QPC6" grid="f19_f19_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
@@ -230,6 +242,32 @@
   <test compset="QSC4" grid="f19_f19_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prebeta"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
+  </test>
+
+  <test compset="QPC6" grid="C48_C48_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="prealpha"/>
+      <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
+  </test>
+  <test compset="QPC5" grid="C48_C48_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
+  </test>
+  <test compset="QPC4" grid="C48_C48_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
     </machines>
     <options>
       <option name="wallclock">00:10:00</option>
@@ -552,6 +590,49 @@
       <option name="wallclock">00:40:00</option>
     </options>
   </test>
+
+  <!--  Test of finite volume CAM-SE grid with CSLAM tracer advection -->
+  <test compset="FKESSLER" grid="ne5pg3_ne5pg3_mg37" name="ERS_Ln27" testmods="cam/outfrq9s" supported="false">
+    <machines>
+      <machine name="hobart" compiler="nag" category="aux_cam"/>
+    </machines>
+  </test>
+  <!--  DART -->
+  <test compset="FHS94" grid="f45_f45_mg37" name="DAE" testmods="cam/dae">
+    <machines>
+      <machine name="hobart" compiler="nag" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock"> 00:20:00 </option>
+    </options>
+  </test>
+<!-- SPCAM testing -->
+  <test compset="FSPCAMS" grid="C48_C48_mg17" name="ERS_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
+  </test>
+  <test compset="FSPCAMM" grid="C48_C48_mg17" name="ERS_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:20:00</option>
+    </options>
+  </test>
+  <test compset="FSPCAMCLBM" grid="C48_C48_mg17" name="ERS_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
+    </machines>
+  </test>
+  <test compset="FSPCAMCLBS" grid="C48_C48_mg17" name="ERS_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
+    </machines>
+  </test>
   <test compset="FSPCAMS" grid="f19_f19_mg17" name="ERS_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="hobart" compiler="nag" category="test_spcam"/>
@@ -587,21 +668,6 @@
       <machine name="hobart" compiler="intel" category="test_spcam"/>
     </machines>
   </test>
-  <!--  Test of finite volume CAM-SE grid with CSLAM tracer advection -->
-  <test compset="FKESSLER" grid="ne5pg3_ne5pg3_mg37" name="ERS_Ln27" testmods="cam/outfrq9s" supported="false">
-    <machines>
-      <machine name="hobart" compiler="nag" category="aux_cam"/>
-    </machines>
-  </test>
-  <!--  DART -->
-  <test compset="FHS94" grid="f45_f45_mg37" name="DAE" testmods="cam/dae">
-    <machines>
-      <machine name="hobart" compiler="nag" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="wallclock"> 00:20:00 </option>
-    </options>
-  </test>
 <!--              @@@@@@@@@@@@@@@@@@@@@@@@@@@                 -->
 <!--              FV3CAM COMPSETS for testing only            -->
 <!--                    (unsupported)                         -->
@@ -625,7 +691,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="F2000climo" grid="C96_C96_mg37" name="SMS_Lm13" testmods="cam/outfrq1m" supported="false">
+  <test compset="F2000climo" grid="C96_C96_mg17" name="SMS_Lm13" testmods="cam/outfrq1m" supported="false">
     <machines>
       <machine name="cheyenne" compiler="intel" category="fv3_cam_long"/>
     </machines>
@@ -695,34 +761,6 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-<!--              CAM Aquaplanet COMPSETS                 -->
-
-  <test compset="QPC6" grid="C48_C48_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
-    <machines>
-      <machine name="cheyenne" compiler="intel" category="prealpha"/>
-      <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
-    </machines>
-    <options>
-      <option name="wallclock">00:10:00</option>
-    </options>
-  </test>
-  <test compset="QPC5" grid="C48_C48_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
-    <machines>
-      <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
-    </machines>
-    <options>
-      <option name="wallclock">00:10:00</option>
-    </options>
-  </test>
-  <test compset="QPC4" grid="C48_C48_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
-    <machines>
-      <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
-    </machines>
-    <options>
-      <option name="wallclock">00:10:00</option>
-    </options>
-  </test>
-
 <!--              CAM Simple Models                       -->
 
   <test compset="FHS94" grid="C48_C48_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
@@ -740,17 +778,6 @@
       <machine name="cheyenne" compiler="pgi" category="fv3_cam"/>
     </machines>
   </test>
-
-  <test compset="F2000climo" grid="C96_C96_mg17" name="ERP_Ln9" testmods="cam/outfrq9s_mg3">
-    <machines>
-      <machine name="cheyenne" compiler="intel" category="prebeta"/>
-      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
-      <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
-    </machines>
-    <options>
-      <option name="wallclock">00:10:00</option>
-    </options>
-  </test>
   <test compset="QPC4" grid="C48_C48_mg17" name="ERP_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
@@ -758,38 +785,6 @@
     <options>
       <option name="wallclock">00:10:00</option>
     </options>
-  </test>
-  <test compset="FSPCAMS" grid="C48_C48_mg17" name="ERS_Ln9" testmods="cam/outfrq9s">
-    <machines>
-      <machine name="hobart" compiler="pgi" category="fv3_cam"/>
-      <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
-    </machines>
-  </test>
-  <test compset="FSPCAMS" grid="C48_C48_mg17" name="ERS_Ln9" testmods="cam/outfrq9s">
-    <machines>
-      <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
-    </machines>
-    <options>
-      <option name="wallclock">00:10:00</option>
-    </options>
-  </test>
-  <test compset="FSPCAMM" grid="C48_C48_mg17" name="ERS_Ln9" testmods="cam/outfrq9s">
-    <machines>
-      <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
-    </machines>
-    <options>
-      <option name="wallclock">00:20:00</option>
-    </options>
-  </test>
-  <test compset="FSPCAMCLBM" grid="C48_C48_mg17" name="ERS_Ln9" testmods="cam/outfrq9s">
-    <machines>
-      <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
-    </machines>
-  </test>
-  <test compset="FSPCAMCLBS" grid="C48_C48_mg17" name="ERS_Ln9" testmods="cam/outfrq9s">
-    <machines>
-      <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
-    </machines>
   </test>
 
 <!--              @@@@@@@@@@@@@@@@@@@@@@                 -->

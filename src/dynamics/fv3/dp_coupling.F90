@@ -34,7 +34,7 @@ public :: d_p_coupling, p_d_coupling
 !=======================================================================
 contains
 !=======================================================================
-  
+
 subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
 
   ! Convert the dynamics output state into the physics input state.
@@ -47,8 +47,6 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
   use fv_grid_utils_mod,  only: cubed_to_latlon
   use physics_buffer,     only: physics_buffer_desc
 
-  implicit none
-  
   ! arguments
   type (dyn_export_t),  intent(inout)                               :: dyn_out    ! dynamics export
   type (physics_buffer_desc), pointer                               :: pbuf2d(:,:)
@@ -61,9 +59,9 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
   integer :: ioff
   integer :: lchnk, icol, ilyr      ! indices over chunks, columns, layers
   integer :: m, m_ffsl, n, i, j, k
-  
+
   integer :: cpter(pcols,              0:pver)    ! offsets into chunk buffer for unpacking data
-  
+
   integer :: pgcols(pcols), idmb1(1), idmb2(1), idmb3(1)
   integer :: tsize                 ! amount of data per grid point passed to physics
   type (fv_atmos_type),  pointer :: Atm(:)
@@ -73,7 +71,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
 
   ! LOCAL Allocatables
   integer, allocatable,  dimension(:,:)     :: bpter    !((ie-is+1)*(je-js+1),0:pver) ! packing data block buffer offset
-  real(r8),  allocatable, dimension(:)      :: bbuffer, cbuffer ! transpose buffers
+  real(r8), allocatable, dimension(:)       :: bbuffer, cbuffer ! transpose buffers
   real(r8), allocatable, dimension(:,:)     :: phis_tmp !((ie-is+1)*(je-js+1),     1) ! temporary array to hold phis
   real(r8), allocatable, dimension(:,:)     :: ps_tmp   !((ie-is+1)*(je-js+1),     1) ! temporary array to hold ps
   real(r8), allocatable, dimension(:,:,:)   :: T_tmp    !((ie-is+1)*(je-js+1),pver,1) ! temporary array to hold T
@@ -82,11 +80,11 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
   real(r8), allocatable, dimension(:,:,:)   :: u_tmp !((ie-is+1)*(je-js+1),pver,1) ! temp array to hold u
   real(r8), allocatable, dimension(:,:,:)   :: v_tmp !((ie-is+1)*(je-js+1),pver,1) ! temp array to hold v
   real(r8), allocatable, dimension(:,:,:,:) :: q_tmp !((ie-is+1)*(je-js+1),pver,pcnst,1) ! temp to hold advected constituents
-  
+
   !-----------------------------------------------------------------------
-  
+
   Atm=>dyn_out%atm
-  
+
   is = Atm(mytile)%bd%is
   ie = Atm(mytile)%bd%ie
   js = Atm(mytile)%bd%js
@@ -102,7 +100,14 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
   allocate(pdel_tmp ((ie-is+1)*(je-js+1),pver,      1))
   allocate(Q_tmp    ((ie-is+1)*(je-js+1),pver,pcnst, 1))
 
-  ps_tmp=0._r8;phis_tmp=0._r8;T_tmp=0._r8;u_tmp=0._r8;v_tmp=0._r8;omega_tmp=0._r8;pdel_tmp=0._r8;Q_tmp=0._r8
+  ps_tmp   = 0._r8
+  phis_tmp = 0._r8
+  T_tmp    = 0._r8
+  u_tmp    = 0._r8
+  v_tmp    = 0._r8
+  omega_tmp= 0._r8
+  pdel_tmp = 0._r8
+  Q_tmp    = 0._r8
 
   n = 1
   do j = js, je
@@ -115,16 +120,12 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
            v_tmp    (n, k, 1) = Atm(mytile)%va (i, j, k)
            omega_tmp(n, k, 1) = Atm(mytile)%omga(i, j, k)
            pdel_tmp (n, k, 1) = Atm(mytile)%delp(i, j, k)
-           !  
+           !
            ! The fv3 constituent array may be in a different order than the cam array, remap here.
            !
            do m = 1, pcnst
               m_ffsl=qsize_tracer_idx_cam2dyn(m)
-              if (m <= pcnst) then
-                 Q_tmp(n, k, m, 1) = Atm(mytile)%q(i, j, k, m_ffsl)
-              else
-                 Q_tmp(n, k, m, 1) = Atm(mytile)%qdiag(i, j, k, m_ffsl)
-              endif
+              Q_tmp(n, k, m, 1) = Atm(mytile)%q(i, j, k, m_ffsl)
            end do
         end do
         n = n + 1
@@ -248,16 +249,14 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
 
   use cam_history,            only: outfld
   use constants_mod,          only: cp_air, kappa
-  use dyn_comp,               only: calc_tot_energy_dynamics  
+  use dyn_comp,               only: calc_tot_energy_dynamics
   use fms_mod,                only: set_domain
-  use fv_arrays_mod,          only: fv_atmos_type, fv_grid_type
+  use fv_arrays_mod,          only: fv_atmos_type
   use fv_grid_utils_mod,      only: cubed_to_latlon
   use physconst,              only: thermodynamic_active_species_num,thermodynamic_active_species_idx_dycore
-  use physconst,              only: thermodynamic_active_species_cp
+  use physconst,              only: thermodynamic_active_species_cp,thermodynamic_active_species_cv,dry_air_species_num
   use physics_types,          only: set_state_pdry
-  use time_manager,           only: get_step_size,get_curr_date
-
-  implicit none
+  use time_manager,           only: get_step_size
 
   ! arguments
   type (physics_state), intent(inout), dimension(begchunk:endchunk) :: phys_state
@@ -276,6 +275,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
   integer :: ncols
   integer :: pgcols(pcols), idmb1(1), idmb2(1), idmb3(1)
   integer :: tsize                 ! amount of data per grid point passed to physics
+  integer :: num_wet_species       ! total number of wet species (first tracers in FV3 tracer array)
 
   integer, allocatable, dimension(:,:) :: bpter   !((ie-is+1)*(je-js+1),0:pver)    ! packing data block buffer offsets
   real(r8),  allocatable, dimension(:) :: bbuffer, cbuffer ! transpose buffers
@@ -288,8 +288,8 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
   type (fv_atmos_type),  pointer :: Atm(:)
 
   real(r8),  allocatable, dimension(:,:,:)   :: delpdry       ! temporary to hold tendencies
-  real(r8),  allocatable, dimension(:,:,:)   :: pdel_tmp      ! temporary to hold 
-  real(r8),  allocatable, dimension(:,:,:)   :: pdeldry_tmp   ! temporary to hold 
+  real(r8),  allocatable, dimension(:,:,:)   :: pdel_tmp      ! temporary to hold
+  real(r8),  allocatable, dimension(:,:,:)   :: pdeldry_tmp   ! temporary to hold
   real(r8),  allocatable, dimension(:,:,:)   :: t_dt          ! temporary to hold tendencies
   real(r8),  allocatable, dimension(:,:,:)   :: t_dt_tmp      ! temporary to hold tendencies
   real(r8),  allocatable, dimension(:,:,:)   :: t_tendadj     ! temporary array to temperature tendency adjustment
@@ -299,7 +299,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
   real(r8),  allocatable, dimension(:,:,:)   :: v_dt          ! temporary to hold tendencies
   real(r8),  allocatable, dimension(:,:,:)   :: v_dt_tmp      ! temporary to hold tendencies
   real(r8),  allocatable, dimension(:,:,:)   :: v_tmp         ! temporary array to hold u and v
-  real(r8),  allocatable, dimension(:,:,:,:) :: q_tmp         ! temporary to hold 
+  real(r8),  allocatable, dimension(:,:,:,:) :: q_tmp         ! temporary to hold
 
   !-----------------------------------------------------------------------
 
@@ -447,11 +447,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
            do m = 1, pcnst
               ! dynamics tracers may be in a different order from cam tracer array
               m_ffsl=qsize_tracer_idx_cam2dyn(m)
-              if (m <= pcnst) then
-                 Atm(mytile)%q(i, j, k, m_ffsl) = Q_tmp(n, k, m, 1)
-              else
-                 Atm(mytile)%qdiag(i, j, k, m_ffsl) = Q_tmp(n, k, m, 1)
-              end if
+              Atm(mytile)%q(i, j, k, m_ffsl) = Q_tmp(n, k, m, 1)
            end do
         end do
         n = n + 1
@@ -463,10 +459,10 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
   ! FV3 total air mass (delp at beg of phys * mix ratio) =
   ! drymass + (vapor + condensate [liq_wat,ice_wat,rainwat,snowwat,graupel])*mix ratio
   ! FV3 tracer mixing ratios = tracer mass / FV3 total air mass
-  ! convert the (dry+vap) mixing ratios to be based off of FV3 condensate loaded airmass (dry+vap+cond). When 
-  ! d_p_coupling/derive_phys_dry is called the mixing ratios are again parsed out into wet and 
+  ! convert the (dry+vap) mixing ratios to be based off of FV3 condensate loaded airmass (dry+vap+cond). When
+  ! d_p_coupling/derive_phys_dry is called the mixing ratios are again parsed out into wet and
   ! dry for physics.
-
+  num_wet_species=thermodynamic_active_species_num-dry_air_species_num
    ! recalculate ps based on new delp
   Atm(mytile)%ps(:,:)=hyai(1)*ps0
   do k=1,pver
@@ -475,7 +471,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
            do m = 1,pcnst
               tracermass(m)=Atm(mytile)%delp(i,j,k)*Atm(mytile)%q(i,j,k,m)
            end do
-           fv3_totwatermass=sum(tracermass(thermodynamic_active_species_idx_dycore(1:thermodynamic_active_species_num)))
+           fv3_totwatermass=sum(tracermass(thermodynamic_active_species_idx_dycore(1:num_wet_species)))
            fv3_airmass =  delpdry(i,j,k) + fv3_totwatermass
            Atm(mytile)%delp(i,j,k) = fv3_airmass
            Atm(mytile)%q(i,j,k,1:pcnst) = tracermass(1:pcnst)/fv3_airmass
@@ -483,11 +479,11 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
         end do
      end do
   end do
-   
+
    ! update dynamics temperature from physics tendency
    ! if using fv3_lcv_moist adjust temperature tendency to conserve energy across phys/dynamics
    ! interface accounting for differences in the moist/wet assumptions
-   
+
    do k = 1, pver
       do j = js, je
          do i = is, ie
@@ -498,16 +494,16 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
                  m_ffsl = thermodynamic_active_species_idx_dycore(nq)
                  qall=qall+Atm(mytile)%q(i,j,k,m_ffsl)
                  if (fv3_lcp_moist) cpfv3 = cpfv3+thermodynamic_active_species_cp(nq)*Atm(mytile)%q(i,j,k,m_ffsl)
-!jt fix this                 if (fv3_lcv_moist) cpfv3 = cpfv3+thermodynamic_active_species_cv(nq)*Atm(mytile)%q(i,j,k,m_ffsl)
+                 if (fv3_lcv_moist) cpfv3 = cpfv3+thermodynamic_active_species_cv(nq)*Atm(mytile)%q(i,j,k,m_ffsl)
               end do
               cpfv3=(1._r8-qall)*cp_air+cpfv3
               ! scale factor for t_dt so temperature tendency derived from CAM moist air (dry+vap - constant pressure)
               ! can be applied to FV3 wet air (dry+vap+cond - constant volume)
 
-              t_tendadj(i,j,k)=cp_air/cpfv3 
-              
+              t_tendadj(i,j,k)=cp_air/cpfv3
+
               if (.not.Atm(mytile)%flagstruct%hydrostatic) then
-                 ! update to nonhydrostatic variable delz to account for phys temperature adjustment. 
+                 ! update to nonhydrostatic variable delz to account for phys temperature adjustment.
                  Atm(mytile)%delz(i, j, k) = Atm(mytile)%delz(i,j,k)/Atm(mytile)%pt(i, j, k)
                  Atm(mytile)%pt (i, j, k) = Atm(mytile)%pt (i, j, k) + t_dt(i, j, k)*dt*t_tendadj(i,j,k)
                  Atm(mytile)%delz(i, j, k) = Atm(mytile)%delz(i,j,k)*Atm(mytile)%pt (i, j, k)
@@ -558,7 +554,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
   end do
 
   call calc_tot_energy_dynamics(dyn_in%atm,'dAP')
-  
+
 
   !set the D-Grid winds from the physics A-grid winds/tendencies.
   if ( Atm(mytile)%flagstruct%dwind_2d ) then
@@ -616,12 +612,10 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
   use physics_buffer, only: physics_buffer_desc, pbuf_get_chunk
   use physics_types,  only: set_wet_to_dry
   use physconst,      only: thermodynamic_active_species_num,thermodynamic_active_species_idx_dycore
-  use physconst,      only: thermodynamic_active_species_idx
+  use physconst,      only: thermodynamic_active_species_idx,dry_air_species_num
   use ppgrid,         only: pver
   use qneg_module,    only: qneg3
   use shr_vmath_mod,  only: shr_vmath_log
-
-  implicit none
 
   ! arguments
   type(physics_state), intent(inout), dimension(begchunk:endchunk) :: phys_state
@@ -630,13 +624,13 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
 
   ! local variables
 
+  integer                         :: num_wet_species       ! total number of wet species (first tracers in FV3 tracer array)
+  integer                         :: lchnk
+  integer                         :: m, i, k, ncol
 
-  integer  :: lchnk
-  integer  :: m, i, k, ncol
-
-  real(r8) :: cam_totwatermass, cam_airmass
-  real(r8) :: tracermass(pcnst)
-  real(r8) :: zvirv(pcols,pver)    ! Local zvir array pointer
+  real(r8)                        :: cam_totwatermass, cam_airmass
+  real(r8), dimension(pcnst)      :: tracermass
+  real(r8), dimension(pcols,pver) :: zvirv    ! Local zvir array pointer
 
   !----------------------------------------------------------------------------
 
@@ -652,13 +646,14 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
   ! Following this loop call wet_to_dry to convert CAM's dry constituents to their dry mixing ratio.
 
 !!! omp parallel do private (lchnk, ncol, k, i, zvirv, pbuf_chnk,m,cam_airmass,cam_totwatermass)
+  num_wet_species=thermodynamic_active_species_num-dry_air_species_num
   do lchnk = begchunk,endchunk
      ncol = get_ncols_p(lchnk)
      do k=1,pver
         do i=1,ncol
            phys_state(lchnk)%pdeldry(i,k) = &
                 phys_state(lchnk)%pdel(i,k) * &
-                (1._r8-sum(phys_state(lchnk)%q(i,k,thermodynamic_active_species_idx(1:thermodynamic_active_species_num))))
+                (1._r8-sum(phys_state(lchnk)%q(i,k,thermodynamic_active_species_idx(1:num_wet_species))))
            do m = 1,pcnst
               tracermass(m)=phys_state(lchnk)%pdel(i,k)*phys_state(lchnk)%q(i,k,m)
            end do
@@ -767,16 +762,15 @@ subroutine atend2dstate3d(u_dt, v_dt, u, v, is,  ie,  js,  je, isd, ied, jsd, je
 
   use fv_arrays_mod,      only: fv_grid_type
   use mpp_domains_mod,    only: mpp_update_domains,  DGRID_NE
-  use physconst,          only: thermodynamic_active_species_num,thermodynamic_active_species_idx_dycore
 
   ! arguments
-  integer, intent(in) :: npx,npy, nlev
-  integer, intent(in):: is,  ie,  js,  je
-  integer, intent(in):: isd, ied, jsd, jed
-  real(r8), intent(in):: dt
-  real(r8), intent(inout), dimension(isd:ied,jsd:jed,nlev):: u_dt, v_dt
-  real(r8), intent(inout):: u(isd:ied,  jsd:jed+1,nlev)
-  real(r8), intent(inout):: v(isd:ied+1,jsd:jed  ,nlev)
+  integer, intent(in)  :: npx,npy, nlev
+  integer, intent(in)  :: is,  ie,  js,  je,&
+                          isd, ied, jsd, jed
+  real(r8), intent(in) :: dt
+  real(r8), intent(inout), dimension(isd:ied,jsd:jed,nlev)     :: u_dt, v_dt
+  real(r8), intent(inout), dimension(isd:ied,  jsd:jed+1,nlev) :: u
+  real(r8), intent(inout), dimension(isd:ied+1,jsd:jed  ,nlev) :: v
   type(domain2d), intent(inout) :: domain
   type(fv_grid_type), intent(in), target :: gridstruct
 
@@ -784,14 +778,14 @@ subroutine atend2dstate3d(u_dt, v_dt, u, v, is,  ie,  js,  je, isd, ied, jsd, je
 
   integer i, j, k, im2, jm2
   real(r8) dt5
-  real(r8) ue(is-1:ie+1,js:je+1,3)    ! 3D winds at edges
-  real(r8) v3(is-1:ie+1,js-1:je+1,3)
-  real(r8) ve(is:ie+1,js-1:je+1,  3)    ! 3D winds at edges
-  real(r8), dimension(is:ie):: ut1, ut2, ut3
-  real(r8), dimension(js:je):: vt1, vt2, vt3
-  real(r8), pointer, dimension(:) :: edge_vect_w, edge_vect_e, edge_vect_s, edge_vect_n
-  real(r8), pointer, dimension(:,:,:) :: vlon, vlat
-  real(r8), pointer, dimension(:,:,:,:) :: es, ew
+  real(r8), dimension(is-1:ie+1,js:je+1,3)   :: ue    ! 3D winds at edges
+  real(r8), dimension(is-1:ie+1,js-1:je+1,3) :: v3
+  real(r8), dimension(is:ie+1,js-1:je+1,  3) :: ve    ! 3D winds at edges
+  real(r8), dimension(is:ie)                 :: ut1, ut2, ut3
+  real(r8), dimension(js:je)                 :: vt1, vt2, vt3
+  real(r8), pointer, dimension(:)            :: edge_vect_w, edge_vect_e, edge_vect_s, edge_vect_n
+  real(r8), pointer, dimension(:,:,:)        :: vlon, vlat
+  real(r8), pointer, dimension(:,:,:,:)      :: es, ew
 
   !----------------------------------------------------------------------------
 
@@ -850,13 +844,13 @@ subroutine atend2dstate3d(u_dt, v_dt, u, v, is,  ie,  js,  je, isd, ied, jsd, je
              i = 1
              do j=js,je
                 if ( j>jm2 ) then
-                   vt1(j) = edge_vect_w(j)*ve(i,j-1,1)+(1.-edge_vect_w(j))*ve(i,j,1)
-                   vt2(j) = edge_vect_w(j)*ve(i,j-1,2)+(1.-edge_vect_w(j))*ve(i,j,2)
-                   vt3(j) = edge_vect_w(j)*ve(i,j-1,3)+(1.-edge_vect_w(j))*ve(i,j,3)
+                   vt1(j) = edge_vect_w(j)*ve(i,j-1,1)+(1._r8-edge_vect_w(j))*ve(i,j,1)
+                   vt2(j) = edge_vect_w(j)*ve(i,j-1,2)+(1._r8-edge_vect_w(j))*ve(i,j,2)
+                   vt3(j) = edge_vect_w(j)*ve(i,j-1,3)+(1._r8-edge_vect_w(j))*ve(i,j,3)
                 else
-                   vt1(j) = edge_vect_w(j)*ve(i,j+1,1)+(1.-edge_vect_w(j))*ve(i,j,1)
-                   vt2(j) = edge_vect_w(j)*ve(i,j+1,2)+(1.-edge_vect_w(j))*ve(i,j,2)
-                   vt3(j) = edge_vect_w(j)*ve(i,j+1,3)+(1.-edge_vect_w(j))*ve(i,j,3)
+                   vt1(j) = edge_vect_w(j)*ve(i,j+1,1)+(1._r8-edge_vect_w(j))*ve(i,j,1)
+                   vt2(j) = edge_vect_w(j)*ve(i,j+1,2)+(1._r8-edge_vect_w(j))*ve(i,j,2)
+                   vt3(j) = edge_vect_w(j)*ve(i,j+1,3)+(1._r8-edge_vect_w(j))*ve(i,j,3)
                 endif
              enddo
              do j=js,je
@@ -870,13 +864,13 @@ subroutine atend2dstate3d(u_dt, v_dt, u, v, is,  ie,  js,  je, isd, ied, jsd, je
              i = npx
              do j=js,je
                 if ( j>jm2 ) then
-                   vt1(j) = edge_vect_e(j)*ve(i,j-1,1)+(1.-edge_vect_e(j))*ve(i,j,1)
-                   vt2(j) = edge_vect_e(j)*ve(i,j-1,2)+(1.-edge_vect_e(j))*ve(i,j,2)
-                   vt3(j) = edge_vect_e(j)*ve(i,j-1,3)+(1.-edge_vect_e(j))*ve(i,j,3)
+                   vt1(j) = edge_vect_e(j)*ve(i,j-1,1)+(1._r8-edge_vect_e(j))*ve(i,j,1)
+                   vt2(j) = edge_vect_e(j)*ve(i,j-1,2)+(1._r8-edge_vect_e(j))*ve(i,j,2)
+                   vt3(j) = edge_vect_e(j)*ve(i,j-1,3)+(1._r8-edge_vect_e(j))*ve(i,j,3)
                 else
-                   vt1(j) = edge_vect_e(j)*ve(i,j+1,1)+(1.-edge_vect_e(j))*ve(i,j,1)
-                   vt2(j) = edge_vect_e(j)*ve(i,j+1,2)+(1.-edge_vect_e(j))*ve(i,j,2)
-                   vt3(j) = edge_vect_e(j)*ve(i,j+1,3)+(1.-edge_vect_e(j))*ve(i,j,3)
+                   vt1(j) = edge_vect_e(j)*ve(i,j+1,1)+(1._r8-edge_vect_e(j))*ve(i,j,1)
+                   vt2(j) = edge_vect_e(j)*ve(i,j+1,2)+(1._r8-edge_vect_e(j))*ve(i,j,2)
+                   vt3(j) = edge_vect_e(j)*ve(i,j+1,3)+(1._r8-edge_vect_e(j))*ve(i,j,3)
                 endif
              enddo
              do j=js,je
@@ -890,13 +884,13 @@ subroutine atend2dstate3d(u_dt, v_dt, u, v, is,  ie,  js,  je, isd, ied, jsd, je
              j = 1
              do i=is,ie
                 if ( i>im2 ) then
-                   ut1(i) = edge_vect_s(i)*ue(i-1,j,1)+(1.-edge_vect_s(i))*ue(i,j,1)
-                   ut2(i) = edge_vect_s(i)*ue(i-1,j,2)+(1.-edge_vect_s(i))*ue(i,j,2)
-                   ut3(i) = edge_vect_s(i)*ue(i-1,j,3)+(1.-edge_vect_s(i))*ue(i,j,3)
+                   ut1(i) = edge_vect_s(i)*ue(i-1,j,1)+(1._r8-edge_vect_s(i))*ue(i,j,1)
+                   ut2(i) = edge_vect_s(i)*ue(i-1,j,2)+(1._r8-edge_vect_s(i))*ue(i,j,2)
+                   ut3(i) = edge_vect_s(i)*ue(i-1,j,3)+(1._r8-edge_vect_s(i))*ue(i,j,3)
                 else
-                   ut1(i) = edge_vect_s(i)*ue(i+1,j,1)+(1.-edge_vect_s(i))*ue(i,j,1)
-                   ut2(i) = edge_vect_s(i)*ue(i+1,j,2)+(1.-edge_vect_s(i))*ue(i,j,2)
-                   ut3(i) = edge_vect_s(i)*ue(i+1,j,3)+(1.-edge_vect_s(i))*ue(i,j,3)
+                   ut1(i) = edge_vect_s(i)*ue(i+1,j,1)+(1._r8-edge_vect_s(i))*ue(i,j,1)
+                   ut2(i) = edge_vect_s(i)*ue(i+1,j,2)+(1._r8-edge_vect_s(i))*ue(i,j,2)
+                   ut3(i) = edge_vect_s(i)*ue(i+1,j,3)+(1._r8-edge_vect_s(i))*ue(i,j,3)
                 endif
              enddo
              do i=is,ie
@@ -909,13 +903,13 @@ subroutine atend2dstate3d(u_dt, v_dt, u, v, is,  ie,  js,  je, isd, ied, jsd, je
              j = npy
              do i=is,ie
                 if ( i>im2 ) then
-                   ut1(i) = edge_vect_n(i)*ue(i-1,j,1)+(1.-edge_vect_n(i))*ue(i,j,1)
-                   ut2(i) = edge_vect_n(i)*ue(i-1,j,2)+(1.-edge_vect_n(i))*ue(i,j,2)
-                   ut3(i) = edge_vect_n(i)*ue(i-1,j,3)+(1.-edge_vect_n(i))*ue(i,j,3)
+                   ut1(i) = edge_vect_n(i)*ue(i-1,j,1)+(1._r8-edge_vect_n(i))*ue(i,j,1)
+                   ut2(i) = edge_vect_n(i)*ue(i-1,j,2)+(1._r8-edge_vect_n(i))*ue(i,j,2)
+                   ut3(i) = edge_vect_n(i)*ue(i-1,j,3)+(1._r8-edge_vect_n(i))*ue(i,j,3)
                 else
-                   ut1(i) = edge_vect_n(i)*ue(i+1,j,1)+(1.-edge_vect_n(i))*ue(i,j,1)
-                   ut2(i) = edge_vect_n(i)*ue(i+1,j,2)+(1.-edge_vect_n(i))*ue(i,j,2)
-                   ut3(i) = edge_vect_n(i)*ue(i+1,j,3)+(1.-edge_vect_n(i))*ue(i,j,3)
+                   ut1(i) = edge_vect_n(i)*ue(i+1,j,1)+(1._r8-edge_vect_n(i))*ue(i,j,1)
+                   ut2(i) = edge_vect_n(i)*ue(i+1,j,2)+(1._r8-edge_vect_n(i))*ue(i,j,2)
+                   ut3(i) = edge_vect_n(i)*ue(i+1,j,3)+(1._r8-edge_vect_n(i))*ue(i,j,3)
                 endif
              enddo
              do i=is,ie
@@ -956,18 +950,21 @@ subroutine fv3_tracer_diags(atm)
   use dimensions_mod,        only: nlev,cnst_name_ffsl
   use dyn_grid,              only: mytile
   use fv_arrays_mod,         only: fv_atmos_type
-  use physconst,             only: thermodynamic_active_species_num,thermodynamic_active_species_idx_dycore
+  use physconst,             only: thermodynamic_active_species_num,thermodynamic_active_species_idx_dycore, &
+                                   dry_air_species_num
 
   ! arguments
   type (fv_atmos_type), intent(in),  pointer :: Atm(:)
 
   ! Locals
   integer                      :: i, j ,k, m,is,ie,js,je
-  integer kstrat,ng
+  integer                      :: num_wet_species       ! total number of wet species
+  integer                      :: kstrat,ng
   real(r8)                     :: global_ps,global_dryps
   real(r8)                     :: qm_strat
-  real(r8)                     :: qtot(500), psum
-  real(r8), allocatable        :: delpwet(:,:,:),delpdry(:,:,:),psdry(:,:),psq(:,:,:),q_strat(:,:)
+  real(r8)                     :: qtot(pcnst), psum
+  real(r8), allocatable, dimension(:,:,:)  :: delpdry, psq
+  real(r8), allocatable, dimension(:,:)    :: psdry, q_strat
 
   !----------------------------------------------------------------------------
 
@@ -978,15 +975,15 @@ subroutine fv3_tracer_diags(atm)
   ng = Atm(mytile)%ng
 
   allocate(delpdry(is:ie,js:je,nlev))
-  allocate(delpwet(is:ie,js:je,nlev))
   allocate(psdry(is:ie,js:je))
   allocate(psq(is:ie,js:je,pcnst))
   allocate(q_strat(is:ie,js:je))
+  num_wet_species=thermodynamic_active_species_num-dry_air_species_num
   do k=1,nlev
      do j = js, je
         do i = is, ie
            delpdry(i,j,k) = Atm(mytile)%delp(i,j,k) * &
-                            (1.0_r8-sum(Atm(mytile)%q(i,j,k,thermodynamic_active_species_idx_dycore(1:thermodynamic_active_species_num))))
+                            (1.0_r8-sum(Atm(mytile)%q(i,j,k,thermodynamic_active_species_idx_dycore(1:num_wet_species))))
         end do
      end do
   end do
@@ -1008,21 +1005,21 @@ subroutine fv3_tracer_diags(atm)
 !-------------------
   psq(:,:,:) = 0._r8
   do m=1,pcnst
-     call z_sum(Atm,is,ie,js,je,nlev,Atm(mytile)%q(is:ie,js:je,1:nlev,m),psq(is:ie,js:je,m),psum) 
+     call z_sum(Atm,is,ie,js,je,nlev,Atm(mytile)%q(is:ie,js:je,1:nlev,m),psq(is:ie,js:je,m))
   end do
 ! Mean water vapor in the "stratosphere" (75 mb and above):
   qm_strat = 0._r8
-  if ( Atm(mytile)%idiag%phalf(2)< 75. ) then
+  if ( Atm(mytile)%idiag%phalf(2)< 75._r8 ) then
      kstrat = 1
      do k=2,nlev
-        if ( Atm(mytile)%idiag%phalf(k+1) > 75. ) exit
+        if ( Atm(mytile)%idiag%phalf(k+1) > 75._r8 ) exit
         kstrat = k
      enddo
-     call z_sum(Atm,is,ie,js,je, kstrat, Atm(mytile)%q(is:ie,js:je,1:kstrat,1 ), q_strat,psum) 
+     call z_sum(Atm,is,ie,js,je, kstrat, Atm(mytile)%q(is:ie,js:je,1:kstrat,1 ), q_strat,psum)
      qm_strat = g_sum(Atm(mytile)%domain, q_strat(is:ie,js:je), is, ie, js, je, &
-                Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1) * 1.e6 / psum
+                Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1) * 1.e6_r8 / psum
   endif
-  
+
   !-------------------
   ! Get global mean mass for all tracers
   !-------------------
@@ -1030,7 +1027,7 @@ subroutine fv3_tracer_diags(atm)
      qtot(m) = g_sum(Atm(mytile)%domain, psq(is,js,m), is, ie, js, je, &
                Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1)/gravit
   enddo
-  
+
   if (masterproc) then
      write(iulog,*)'Total Surface Pressure (mb)                  = ',global_ps/100.0_r8,"hPa"
      write(iulog,*)'Mean Dry Surface Pressure (mb)               = ',global_dryps/100.0_r8,"hPa"
@@ -1042,7 +1039,6 @@ subroutine fv3_tracer_diags(atm)
 
 
   deallocate(delpdry)
-  deallocate(delpwet)
   deallocate(psdry)
   deallocate(psq)
   deallocate(q_strat)
@@ -1055,20 +1051,18 @@ subroutine z_sum(atm,is,ie,js,je,km,q,msum,gpsum)
 
   use fv_arrays_mod,   only: fv_atmos_type
 
-  implicit none
-
   ! arguments
 
-  type (fv_atmos_type), intent(in),  pointer :: Atm(:)
-  integer, intent(in)                        :: is, ie, js, je
-  integer, intent(in)                        :: km
-  real(r8), intent(in)                       :: q(is:ie, js:je, km)
-  real(r8), intent(out)                      :: gpsum
-  real(r8), intent(out)                      :: msum(is:ie,js:je)
-  
+  type (fv_atmos_type), intent(in),  pointer        :: Atm(:)
+  integer, intent(in)                               :: is, ie, js, je
+  integer, intent(in)                               :: km
+  real(r8), intent(in), dimension(is:ie, js:je, km) :: q
+  real(r8), intent(out), dimension(is:ie,js:je)     :: msum
+  real(r8), intent(out), optional                   :: gpsum
+
   ! LOCAL VARIABLES
   integer :: i,j,k
-  real(r8):: psum(is:ie,js:je)
+  real(r8), dimension(is:ie,js:je)           :: psum
   !----------------------------------------------------------------------------
   msum=0._r8
   psum=0._r8
@@ -1084,7 +1078,9 @@ subroutine z_sum(atm,is,ie,js,je,km,q,msum,gpsum)
         enddo
      enddo
   enddo
-  gpsum = g_sum(Atm(mytile)%domain, psum, is, ie, js, je, Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1)
+  if (present(gpsum)) then
+     gpsum = g_sum(Atm(mytile)%domain, psum, is, ie, js, je, Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1)
+  end if
 end subroutine z_sum
 
 end module dp_coupling

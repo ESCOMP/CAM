@@ -38,6 +38,7 @@ contains
     ! Dummy arguments
     integer,             intent(in)    :: hfilenum
     type(interp_info_t), intent(inout) :: interp_info(:)
+    call endrun('ERROR:set_interp_hfile - This routine is a stub, you shouldnt get here')
   end subroutine set_interp_hfile
 
   subroutine write_interpolated_scalar(File, varid, fld, numlev, data_type, decomp_type) 
@@ -48,7 +49,7 @@ contains
     type(var_desc_t), intent(inout) :: varid
     real(r8), intent(in) :: fld(:,:,:)
     integer, intent(in) :: numlev, data_type, decomp_type
-    call endrun('This routine is a stub, you shouldnt get here')
+    call endrun('ERROR:write_interpolated_scalar - This routine is a stub, you shouldnt get here')
 
   end subroutine write_interpolated_scalar
 
@@ -59,7 +60,7 @@ contains
     type(var_desc_t), intent(inout) :: varidu, varidv
     real(r8), intent(in) :: fldu(:,:,:), fldv(:,:,:)
     integer, intent(in) :: numlev, data_type, decomp_type
-    call endrun('This routine is a stub, you shouldnt get here')
+    call endrun('ERROR:write_interpolated_vector - This routine is a stub, you shouldnt get here')
 
   end subroutine write_interpolated_vector
 

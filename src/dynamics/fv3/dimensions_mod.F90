@@ -11,7 +11,6 @@ module dimensions_mod
   integer, parameter, public :: nlev=PLEV
   integer, parameter, public :: nlevp=nlev+1
 
-  integer,            public :: qsize_condensate_loading = 1 !how many water variables to include in full density
   !
   ! The variables below hold indices of water vapor and condensate loading tracers as well as
   ! associated heat capacities (initialized in dyn_init):
@@ -20,10 +19,6 @@ module dimensions_mod
   !   qsize_condensate_loading_idx_gll = CAM index of water tracers included in condensate loading terms given FV3 index
   !
   integer,            allocatable, public :: qsize_tracer_idx_cam2dyn(:)
-  integer,            allocatable, public :: qsize_condensate_loading_idx(:)    
-  integer,            allocatable, public :: qsize_condensate_loading_idx_gll(:)
-  real(r8),           allocatable, public :: qsize_condensate_loading_cp(:)
-  real(r8),           allocatable, public :: qsize_condensate_loading_cv(:)
   character(len=16),  allocatable, public :: cnst_name_ffsl(:)     ! constituent names for FV3 tracers
   character(len=128), allocatable, public :: cnst_longname_ffsl(:) ! long name of FV3 tracers
   !

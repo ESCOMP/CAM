@@ -40,7 +40,6 @@ subroutine init_restart_dynamics(File, dyn_out)
                              pio_seterrorhandling, pio_bcast_error, &
                              pio_def_var, &
                              pio_inq_dimid
-    implicit none
 
     ! arguments
     type(file_desc_t),  intent(inout) :: file
@@ -114,8 +113,6 @@ subroutine write_restart_dynamics(File, dyn_out)
     use dimensions_mod,  only: nlev
     use pio,             only: pio_offset_kind, io_desc_t, pio_double, pio_write_darray
     use time_manager,    only: get_curr_time, get_curr_date
-
-    implicit none
 
     ! arguments
     type(file_desc_t), intent(inout) :: File

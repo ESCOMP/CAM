@@ -46,10 +46,8 @@ def _build_fms(caseroot, libroot, bldroot):
                shutil.copy(libfms, libroot)
 
 ###############################################################################
-def _build_cam():
+def _build_cam(caseroot, libroot, bldroot):
 ###############################################################################
-
-    caseroot, libroot, bldroot = parse_input(sys.argv)
 
     with Case(caseroot, read_only=False) as case:
 
@@ -114,7 +112,7 @@ def _build_cam():
 def _main_func():
     caseroot, libroot, bldroot = parse_input(sys.argv)
     _build_fms(caseroot, libroot, bldroot)
-    _build_cam()
+    _build_cam(caseroot, libroot, bldroot)
 
 ###############################################################################
 

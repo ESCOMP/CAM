@@ -1941,7 +1941,7 @@ if ($dyn_pkg eq 'se') {
     }
 }
 
-# Parameters for fv3 dycore.
+# FV3 preprocessor symbols to use FMS decomposition functionality and more accurate FV3 thermodynamics.
 if ($dyn_pkg eq 'fv3') {
     $cfg_cppdefs .= " -Duse_libMPI -Duse_netCDF -DUSE_COND -DMOIST_CAPPA";
 }
@@ -2399,9 +2399,8 @@ if ($dyn_pkg eq 'fv3') {
     $cfg_ref->set('ldflags', $ldflags);
 
     # create the build directory for fv3core
-    my $bld_dir = $fv3core_libdir;
-    unless (-d $bld_dir or mkdirp($bld_dir)) {
-        die "** Could not create the fv3core build directory: $bld_dir\n";
+    unless (-d $fv3core_libdir or mkdirp($fv3core_libdir)) {
+        die "** Could not create the fv3core build directory: $fv3core_libdir\n";
     }
 
     # Write the filepath file.

@@ -4435,7 +4435,7 @@ from the rain as the rain evaporates. If TRUE the aerosols are released only whe
 evaporates and the mass of given aerosol components is released back in the most coarse mode for
 such component. For example, dust, sea salt and sulfate aerosols released by the rain evaporation are
 redistributed to coarse mode aerosol mass.  Also, released POM, SOA and BC mass are redistributed into
-accumulated mode aerosol mass. 
+accumulated mode aerosol mass.
 Default: .false.
 </entry>
 
@@ -6699,9 +6699,9 @@ Default: none
 Specifies a list of chemical species and corresponding seawater concentration files.
 Each tracer species seawater concentration is read from its own file as directed by the
 namelist variable {{ hilight }}csw_specifier{{ closehilight }}.  The
-{{ hilight }}csw_specifier{{ closehilight }} variable tells the model which species have seawater 
+{{ hilight }}csw_specifier{{ closehilight }} variable tells the model which species have seawater
 concentration and the file path for the corresponding species.  Each file path may be
-proceeded by a scaling factor.  
+proceeded by a scaling factor.
 Example:
 
 csw_specifier = 'DMS      -> /path/Csw_DMS_HiResML_f09f09_1990_2019_20190616a.nc',
@@ -6717,7 +6717,7 @@ Default: none
        group="ocean_emis_nl" valid_values="CYCLICAL,SERIAL,INTERP_MISSING_MONTHS,FIXED" >
 Type of time interpolation of seawater concentration datasets specified.
 Can be set to 'CYCLICAL', 'SERIAL', 'INTERP_MISSING_MONTHS', or 'FIXED'.
-by {{ hilight }}csw_specifier{{ closehilight }}. 
+by {{ hilight }}csw_specifier{{ closehilight }}.
 Default: 'CYCLICAL'
 </entry>
 
@@ -8316,18 +8316,18 @@ Default: none
 <entry id="fv3_domains_stack_size" type="integer" category="dyn_fv3"
        group="fms_nml" valid_values="" >
 Integer: The size in words of the MPP_DOMAINS user stack. If
-domains_stack_size > 0, the following MPP_DOMAINS routine is called:
-call mpp_domains_set_stack_size (domains_stack_size). If
-domains_stack_size = 0 (default) then the default size set by
-mpp_domains_mod is used. 
+fv3_domains_stack_size > 0, the following MPP_DOMAINS routine is called:
+call mpp_domains_set_stack_size (fv3_domains_stack_size). If
+fv3_domains_stack_size = 0 then the size set by
+mpp_domains_mod is used.
 Default: 6000000
 </entry>
 
 <entry id="fv3_stack_size" type="integer" category="dyn_fv3"
        group="fms_nml" valid_values="" >
-Integer: The size in words of the MPP user stack. If stack_size > 0, the following
-MPP routine is called: call mpp_set_stack_size (stack_size). If stack_size = 0 (default) 
-then the default size set by mpp_mod is used.
+Integer: The size in words of the MPP user stack. If fv3_stack_size > 0, the following
+MPP routine is called: call mpp_set_stack_size (fv3_stack_size). If fv3_stack_size = 0
+then the defaults set by mpp_mod is used.
 Default: 6000000
 </entry>
 
@@ -8342,12 +8342,12 @@ Default: FALSE
 <entry id="fv3_adjust_dry_mass" type="logical" category="dyn_fv3"
        group="fv_core_nml" valid_values="" >
 Logical: whether to adjust the global dry-air mass to
-the value set by dry_mass. This is only done in an initialization
+the value set by fv3_adjust_dry_mass. This is only done in an initialization
 step, particularly when using an initial condition from an external
 dataset, interpolated from another resolution (either horizontal or
 vertical), or when changing the topography, so that the global mass
-of the atmosphere matches some estimate of observed value. False
-by default. It is recommended to only set this to True when initializing the model.
+of the atmosphere matches some estimate of observed value. It is
+recommended to only set this to True when initializing the model.
 Default: FALSE
 </entry>
 
@@ -8361,17 +8361,16 @@ will equally weight the PGF determined at times n and n+1, but may not
 be stable; values larger than 0.45 are not recommended. A value of 0.4
 is recommended for most hydrostatic simulations, which allows an
 improved representation of inertia-gravity waves in the tropics. In
-non-hydrostatic simulations using the semi-implicit solver (a_imp >
-0.5) the values of a_imp and beta should add to 1, so that the
+non-hydrostatic simulations using the semi-implicit solver (a_imp &gt; 0.5)
+the values of a_imp and fv3_beta should add to 1, so that the
 time-centering is consistent between the PGF and the nonhydrostatic
 solver. Proper range is 0 to 0.45.
-Default: 0
+Default: 0.
 </entry>
 
 <entry id="fv3_consv_am" type="logical" category="dyn_fv3"
        group="fv_core_nml" valid_values="" >
-Logical: whether to enable Angular momentum fixer. False
-by default.
+Logical: whether to enable Angular momentum fixer.
 Default: FALSE
 </entry>
 
@@ -8382,7 +8381,7 @@ between calls of the physics, to be added back globally as heat;
 essentially the strength of the energy fixer in the physics. Note that
 this is a global energy fixer and cannot add back energy locally.
 The default algorithm increments the potential temperature so the
-pressure gradients are unchanged. 0 by default. Proper range is 0
+pressure gradients are unchanged. Proper range is 0
 to 1. 1 will restore the energy completely to its original value before
 entering the physics; a value of 0.7 roughly causes the energy fixer
 to compensate for the amount of energy changed by the physics in
@@ -8393,7 +8392,7 @@ Default: 0
 <entry id="fv3_dddmp" type="real" category="dyn_fv3"
        group="fv_core_nml" valid_values="" >
 Real: Dimensionless coefficient for the second-order Smagorinsky type
-divergence damping. 0.0 by default. 0.2 (the Smagorinsky
+divergence damping. 0.0 is the default but 0.2 (the Smagorinsky
 constant) is recommended if ICs are noisy
 Default: 0.0
 </entry>
@@ -8401,11 +8400,10 @@ Default: 0.0
 <entry id="fv3_delt_max" type="real" category="dyn_fv3"
        group="fv_core_nml" valid_values="" >
 Real: maximum allowed magnitude of the dissipative heating
-rate, K s−1; larger magnitudes are clipped to this amount. This can
-help avoid instability that can occur due to strong heating when d_con > 0. 
-A value of 0.008 (a rate equivalent to about 800 K/day) is sufficient
-to stabilize the model at 3-km resolution. Set to 1 by default, which
-effectively disables this limitation.
+rate, K/s; larger magnitudes are clipped to this amount. This can
+help avoid instability that can occur due to strong heating when d_con > 0.
+A value of 0.008 (a rate equivalent to about 800K per day) is sufficient
+to stabilize the model at 3 km resolution.
 Default: 0.0
 </entry>
 
@@ -8413,27 +8411,28 @@ Default: 0.0
        group="fv_core_nml" valid_values="" >
 Integer: The number of tracers which are not to be advected by
 the dynamical core, but still passed into the dynamical core; the last
-dnats+pnats tracers in field_table are not advected. 0 by default.
+dnats+pnats tracers in field_table are not advected.
 Default: 0
 </entry>
 
 <entry id="fv3_do_sat_adj" type="logical" category="dyn_fv3"
        group="fv_core_nml" valid_values="" >
-Logical: If true activate Fast Saturation Adjustment Module. It adjusts 
-cloud water evaporation (cloud water →water vapor), cloud water freezing 
-(cloud water →cloud ice), and cloud ice deposition (water vapor →cloud ice).
+Logical: If true activate Fast Saturation Adjustment Module. It adjusts
+cloud water evaporation (cloud water change to water vapor), cloud water freezing
+(cloud water change to cloud ice), and cloud ice deposition 
+(water vapor change to cloud ice).
 Default: FALSE
 </entry>
 
 <entry id="fv3_do_vort_damp" type="logical" category="dyn_fv3"
        group="fv_core_nml" valid_values="" >
-Logical: whether to apply flux damping (of strength governed by vtdm4)
+Logical: whether to apply flux damping (of strength governed by fv3_vtdm4)
 to the fluxes of vorticity, air mass, and nonhydrostatic vertical
 velocity (there is no dynamically correct way to
 add explicit diffusion to the tracer fluxes). The form is the same
 as is used for the divergence damping, including the same order
-(from nord) damping, unless nord = 0, in which case this damping
-is fourth-order, or if nord = 3, in which case this damping is
+(from fv3_nord) damping, unless fv3_nord = 0, in which case this damping
+is fourth-order, or if fv3_nord = 3, in which case this damping is
 sixth-order (instead of eighth-order). We recommend enabling this
 damping when the linear or non-monotonic horizontal advection
 schemes are enabled, but is unnecessary and not recommended
@@ -8455,15 +8454,15 @@ Default: FALSE
        group="fv_core_nml" valid_values="" >
 Real: Fraction of kinetic energy lost to net damping (divergence
 and vorticity) to be converted to heat. Acts as a dissipative heating
-mechanism in the dynamical core. 0. by default. Proper range is 0
+mechanism in the dynamical core. Proper range is 0
 to 1. Note that this is a local, physically correct, energy fixer.
 Default: 0
 </entry>
 
 <entry id="fv3_d_ext" type="real" category="dyn_fv3"
        group="fv_core_nml" valid_values="" >
-Real: coefficient for external (barotropic) mode damping. 0.02 by
-default. Proper range is 0 to 0.02. A value of 0.01 or 0.02 may help
+Real: coefficient for external (barotropic) mode damping.
+Proper range is 0 to 0.02. A value of 0.01 or 0.02 may help
 improve the models maximum stable time step in low-resolution
 (2-degree or poorer) simulations; otherwise a value of 0 is recommended.
 Default: 0
@@ -8472,19 +8471,19 @@ Default: 0
 <entry id="fv3_d2_bg" type="real" category="dyn_fv3"
        group="fv_core_nml" valid_values="" >
 Real: coefficient for background second-order divergence damping.
-This option remains active even if nord is nonzero. 0.0 by
-default. Proper range is 0 to 0.02.
+This option remains active even if fv3_nord is nonzero.
+Proper range is 0 to 0.02.
 Default: 0.0
 </entry>
 
 <entry id="fv3_d2_bg_k1" type="real" category="dyn_fv3"
        group="fv_core_nml" valid_values="" >
 Real: strength of second-order diffusion in the top sponge
-layer. This value, and d2_bg_k2, will be changed
+layer. This value, and fv3_d2_bg_k2, will be changed
 appropriately in the model (depending on the height of model top),
-so the actual damping may be very reduced. See atmos_cubed_sphere/model/dyn_cor
+so the actual damping may be very reduced. See atmos_cubed_sphere/model/dyn_core
 for details. Recommended range is 0. to 0.2. Note that since diffusion is
-converted to heat if d_con > 0 larger amounts of spongelayer diffusion may be less stable.
+converted to heat if fv3_d_con > 0 larger amounts of spongelayer diffusion may be less stable.
 Default: 0.15
 </entry>
 
@@ -8492,7 +8491,7 @@ Default: 0.15
        group="fv_core_nml" valid_values="" >
 Real: strength of second-order diffusion in the second sponge
 layer from the model top. This value should be
-lower than d2_bg_k1.
+lower than fv3_d2_bg_k1.
 Default: 0.02
 </entry>
 
@@ -8501,9 +8500,9 @@ Default: 0.02
 Real: Dimensionless coefficient for background higher-order
 divergence damping. If no second-order divergence
 damping is used, then values between 0.1 and 0.16 are recommended.
-Requires nord > 0. Note that the scaling for d4_bg differs from that
-of d2_bg; nord >= 1 and d4_bg = 0.16 will be less diffusive than
-nord = 0 and d2_bg = 0.02.
+Requires fv3_nord > 0. Note that the scaling for fv3_d4_bg differs from that
+of fv3_d2_bg; fv3_nord >= 1 and fv3_d4_bg = 0.16 will be less diffusive than
+fv3_nord = 0 and fv3_d2_bg = 0.02.
 Default: 0.15
 </entry>
 
@@ -8511,8 +8510,8 @@ Default: 0.15
        group="fv_core_nml" valid_values="" >
 Logical: Fills in negative tracer values by taking positive tracers from
 the cells above and below. This option is useful when the physical
-parameterizations produced negatives. 
-Default: FALSE
+parameterizations produced negatives.
+Default: TRUE
 </entry>
 
 <entry id="fv3_fv_debug" type="logical"  category="dyn_fv3"
@@ -8527,37 +8526,22 @@ true to print diagnostics
 Default: FALSE
 </entry>
 
-<entry id="fv3_qsize_condensate_loading" type="integer" category="dyn_fv3"
-       group="dyn_fv3_inparm" valid_values="" >
-Number of water tracers active in condensate-loading terms in dynamical core
-1: water vapor only
-2: water vapor and cloud liquid
-3: water vapor, cloud liquid and cloud ice
-4: water vapor, cloud liquid, cloud ice and rain
-5: water vapor, cloud liquid, cloud ice, rain and snow
-6: water vapor, cloud liquid, cloud ice, rain, snow and graupel
-Default: 3 for CAM4, CAM5; 5 for CAM6; 1 for Held_Suarez, Adiabatic and Kessler
-</entry>
-
-
 <entry id="fv3_lcp_moist" type="logical" category="dyn_fv3"
        group="dyn_fv3_inparm" valid_values="" >
-If TRUE the continous equations the dynamical core is based on will conserve a 
+If TRUE the continuous equations the dynamical core is based on will conserve a
 comprehensive moist total energy based on cp for dry air and all condensates.
-If FALSE the continous equations the dynamical core is based on will conserve 
-a total energy based on cp for dry air and no condensates (same total energy as 
-CAM physics uses).
+If FALSE the continuous equations the dynamical core is based on will conserve
+a total energy based on cp for dry air only (same total energy as CAM physics uses).
 For more details see Lauritzen et al., (2018;DOI:10.1029/2017MS001257)
-Default: FALSE
+Default: TRUE
 </entry>
 
 <entry id="fv3_lcv_moist" type="logical" category="dyn_fv3"
        group="dyn_fv3_inparm" valid_values="" >
-If TRUE the continous equations the dynamical core is based on will conserve a 
+If TRUE the continuous equations the dynamical core is based on will conserve a
 comprehensive moist total energy based on cv for dry air and all condensates.
-If FALSE the continous equations the dynamical core is based on will conserve 
-a total energy based on cp for dry air and no condensates (same total energy as 
-CAM physics uses).
+If FALSE the continuous equations the dynamical core is based on will conserve
+a total energy based on cp for dry air only (same total energy as CAM physics uses).
 For more details see Lauritzen et al., (2018;DOI:10.1029/2017MS001257)
 Default: FALSE
 </entry>
@@ -8568,9 +8552,8 @@ Integer: timescale (in seconds) at which to remove two-delta-z
 instability when the local (between two adjacent levels) Richardson
 number is less than 1. This is achieved by local mixing, which conserves
 mass, momentum, and total energy. Values of 0 or smaller
-disable this feature. If n_sponge lt 0 then the mixing is applied
-only to the top n_sponge layers of the domain. Set to -1 (inactive)
-by default. Proper range is 0 to 3600.
+disable this feature. If fv3_n_sponge &lt; 0 then the mixing is applied
+only to the top fv3_n_sponge layers of the domain. Proper range is 0 to 3600.
 Default: 0
 </entry>
 
@@ -8579,122 +8562,139 @@ Default: 0
 Integer: which type of grid to use. If 0, the equidistant gnomonic
 cubed-sphere will be used. If 4, a doubly-periodic f-plane cartesian
 grid will be used. If -1, the grid is read from INPUT/grid_spec.nc.
-Values 2, 3, 5, 6, and 7 are not supported and will likely not run.
+Other FV3 grid type values (2, 3, 5, 6, and 7) are not supported
+and will likely not run.
 Default: 0
 </entry>
 
 <entry id="fv3_hord_dp" type="integer" category="dyn_fv3"
        group="fv_core_nml" valid_values="" >
 Integer: horizontal advection scheme for mass. A positivity
-constraint may be warranted for hord_dp but not strictly necessary.
+constraint may be warranted for fv3_hord_dp but not strictly necessary.
 
 Hord horizontal advection method
 ================================
-5     Unlimited “fifth-order” scheme with 2∆x filter; fastest and
+5     Unlimited “fifth-order” scheme with 2 delta x filter; fastest and
       least diffusive
 6     Intermediate-strength monotonicity constraint. Gives best
       ACC but weaker TCs
 7     #6 with a positive-definite constraint
 8     Lin 2004 monotone PPM constraint; overall best for tracers?
 9     Hunyh constraint: more expensive but less diffusive than #8
-10    9, with a 2∆x filter, and the Huynh constraint applied only if a
+10    9, with a 2 delta x filter, and the Huynh constraint applied only if a
       certain condition is met; otherwise unlimited
 -5    #5 with a positive-definite constraint
-Default: 9
+-10   #10 with a positive-definite constraint
+Default: -10 (hydrostatic) or -5 (non-hydrostatic)
 </entry>
 
 <entry id="fv3_hord_mt" type="integer" category="dyn_fv3"
        group="fv_core_nml" valid_values="" >
 Integer: horizontal advection scheme for momentum fluxes. A
-complete list of kord options is given in the table below. 9 by
-default, which uses the third-order piecewise-parabolic method with
-the monotonicity constraint of Huynh, which is less diffusive than
-other constraints. For hydrostatic simulation, 8 (the L04 monotonicity
-constraint) is recommended; for nonhydrostatic simulation, the
-completely unlimited (“linear” or non-monotone) PPM scheme is
-recommended. If no monotonicity constraint is applied, enabling
-the flux damping (do_vort_damp = .true.) is highly recommended
-to control grid-scale noise. It is also recommended that hord_mt,
-hord_vt, hord_tm, and hord_dp use the same value, to ensure consistent
+complete list of kord options is given in the table below.
+10 is the default for hydrostatic simulations, using a
+limited form of the monotonicity constraint
+of Huynh, which is less diffusive than other constraints.
+5 is the default for non-hydrostatic simulations which uses the
+completely unlimited (“linear” or non-monotone) PPM scheme.
+If no monotonicity constraint is applied, enabling
+the flux damping (fv3_do_vort_damp = .true.) is highly recommended
+to control grid-scale noise. It is also recommended that fv3_hord_mt,
+fv3_hord_vt, fv3_hord_tm, and fv3_hord_dp use the same value, to ensure consistent
 transport of all dynamical fields, unless a positivity constraint
-on mass advection (hord_dp) is desired.
+on mass advection (fv3_hord_dp) is desired.
 
 Hord horizontal advection method
 ================================
-5     Unlimited “fifth-order” scheme with 2∆x filter; fastest and
+5     Unlimited “fifth-order” scheme with 2 delta x filter; fastest and
       least diffusive
 6     Intermediate-strength monotonicity constraint. Gives best
       ACC but weaker TCs
 7     #6 with a positive-definite constraint
 8     Lin 2004 monotone PPM constraint; overall best for tracers?
 9     Hunyh constraint: more expensive but less diffusive than #8
-10    9, with a 2∆x filter, and the Huynh constraint applied only if a
+10    9, with a 2 delta x filter, and the Huynh constraint applied only if a
       certain condition is met; otherwise unlimited
 -5    #5 with a positive-definite constraint
-Default: -10
+-10   #10 with a positive-definite constraint
+Default: 10 (hydrostatic) or 5 (non-hydrostatic)
+
 </entry>
 
 <entry id="fv3_hord_tm" type="integer" category="dyn_fv3"
        group="fv_core_nml" valid_values="" >
 Integer: horizontal advection scheme for potential temperature
-and layer thickness in nonhydrostatic simulations. 9 by default.
+and layer thickness in nonhydrostatic simulations.
+10 is the default for hydrostatic simulations, using a
+limited form of the monotonicity constraint
+of Huynh, which is less diffusive than other constraints.
+5 is the default for non-hydrostatic simulations which uses the
+completely unlimited (“linear” or non-monotone) PPM scheme.
 
 Hord horizontal advection method
 ================================
-5     Unlimited “fifth-order” scheme with 2∆x filter; fastest and
+5     Unlimited “fifth-order” scheme with 2 delta x filter; fastest and
       least diffusive
 6     Intermediate-strength monotonicity constraint. Gives best
       ACC but weaker TCs
 7     #6 with a positive-definite constraint
 8     Lin 2004 monotone PPM constraint; overall best for tracers?
 9     Hunyh constraint: more expensive but less diffusive than #8
-10    9, with a 2∆x filter, and the Huynh constraint applied only if a
+10    9, with a 2 delta x filter, and the Huynh constraint applied only if a
       certain condition is met; otherwise unlimited
 -5    #5 with a positive-definite constraint
-Default: 10
+-10   #10 with a positive-definite constraint
+Default: 10 (hydrostatic) or 5 (non-hydrostatic)
 </entry>
 
 <entry id="fv3_hord_tr" type="integer" category="dyn_fv3"
        group="fv_core_nml" valid_values="" >
-Integer: horizontal advection scheme for tracers. 12 by default.
+Integer: horizontal advection scheme for tracers. 8 by default.
 This value can differ from the other hord options since tracers are
-sub-cycled (if inline_q == False) and require positive-definite
+sub-cycled and require positive-definite
 advection to control the appearance of non-physical negative masses.
 8 (fastest) or 10 (least diffusive) are typically recommended.
 
 Hord horizontal advection method
 ================================
-5     Unlimited “fifth-order” scheme with 2∆x filter; fastest and
+5     Unlimited “fifth-order” scheme with 2 delta x filter; fastest and
       least diffusive
 6     Intermediate-strength monotonicity constraint. Gives best
       ACC but weaker TCs
 7     #6 with a positive-definite constraint
 8     Lin 2004 monotone PPM constraint; overall best for tracers?
 9     Hunyh constraint: more expensive but less diffusive than #8
-10    9, with a 2∆x filter, and the Huynh constraint applied only if a
+10    9, with a 2 delta x filter, and the Huynh constraint applied only if a
       certain condition is met; otherwise unlimited
 -5    #5 with a positive-definite constraint
-Default: 8
+-10   #10 with a positive-definite constraint
+Default:8
 </entry>
 
 <entry id="fv3_hord_vt" type="integer" category="dyn_fv3"
        group="fv_core_nml" valid_values="" >
 Integer: horizontal advection scheme for absolute vorticity and
-for vertical velocity in nonhydrostatic simulations. 9 by default.
+for vertical velocity in nonhydrostatic simulations.
+10 is the default for hydrostatic simulations, using a
+limited form of the monotonicity constraint
+of Huynh, which is less diffusive than other constraints.
+5 is the default for non-hydrostatic simulations which uses the
+completely unlimited (“linear” or non-monotone) PPM scheme.
 
 Hord horizontal advection method
 ================================
-5     Unlimited “fifth-order” scheme with 2∆x filter; fastest and
+5     Unlimited “fifth-order” scheme with 2 delta x filter; fastest and
       least diffusive
 6     Intermediate-strength monotonicity constraint. Gives best
       ACC but weaker TCs
 7     #6 with a positive-definite constraint
 8     Lin 2004 monotone PPM constraint; overall best for tracers?
 9     Hunyh constraint: more expensive but less diffusive than #8
-10    9, with a 2∆x filter, and the Huynh constraint applied only if a
+10    9, with a 2 delta x filter, and the Huynh constraint applied only if a
       certain condition is met; otherwise unlimited
 -5    #5 with a positive-definite constraint
-Default: 10
+-10   #10 with a positive-definite constraint
+Default: 10 (hydrostatic) or 5 (non-hydrostatic)
 </entry>
 
 <entry id="fv3_hydrostatic" type="logical" category="dyn_fv3"
@@ -8704,28 +8704,16 @@ solver.
 Default: TRUE
 </entry>
 
-<entry id="fv3_io_layout" type="integer(2)" category="dyn_fv3"
-       group="fv_core_nml" valid_values="" >
-Integer(2): Layout of output files on each tile. 1,1
-which combines all restart and history files on a tile into one file.
-For 0,0, every process writes out its own restart and history files. If
-not equal to 1,1, you will have to use mppnccombine to combine
-these output files prior to post-processing, or if you want to change
-the number of PEs. Both entries must divide the respective value in
-layout.
-Default: 1,1
-</entry>
-
 <entry id="fv3_ke_bg" type="real" category="dyn_fv3"
        group="fv_core_nml" valid_values="" >
 Real: background KE production (m^2/s^3) over a small step
-Use this to conserve total energy if consv_te=0
+Use this to conserve total energy if fv3_consv_te=0
 Default: 0
 </entry>
 
 <entry id="fv3_kord_mt" type="integer" category="dyn_fv3"
        group="fv_core_nml" valid_values="" >
-Integer: vertical remapping scheme for the winds. 8 by default;
+Integer: vertical remapping scheme for the winds.
 9 is recommended as the safest option, although 10, and 11 can also
 be useful.
 
@@ -8735,9 +8723,9 @@ kord table
 6    Vanilla PPM
 7    PPM with Hyunh’s monotonicity constraint(more expensive but less diffusive)
 9    Monotonic Cubic Spline
-10   Selectively (local extrema retained) monotonic Cubic Spline with 2∆z
+10   Selectively (local extrema retained) monotonic Cubic Spline with 2 delta z
      oscillations removed
-11   Non-monotonic cubic spline with 2∆z oscillations removed
+11   Non-monotonic cubic spline with 2 delta z oscillations removed
 Default: 9
 
 </entry>
@@ -8746,24 +8734,25 @@ Default: 9
        group="fv_core_nml" valid_values="" >
 Integer: vertical remapping scheme for temperature. If positive (not
 recommended), then vertical remapping is performed on
-total energy instead of temperature (see remap_t below). -8 by default.
+total energy instead of temperature (see remap_t below).
 kord table
 ==========
 4    Monotone PPM
 6    Vanilla PPM
 7    PPM with Hyunh’s monotonicity constraint(more expensive but less diffusive)
 9    Monotonic Cubic Spline
-10   Selectively (local extrema retained) monotonic Cubic Spline with 2∆z
+10   Selectively (local extrema retained) monotonic Cubic Spline with 2 delta z
      oscillations removed
-11   Non-monotonic cubic spline with 2∆z oscillations removed
+11   Non-monotonic cubic spline with 2 delta z oscillations removed
+-9   Monotonic Cubic Spline with a positive-definite constraint
 Default: -9
 </entry>
 
 <entry id="fv3_kord_tr" type="integer" category="dyn_fv3"
        group="fv_core_nml" valid_values="" >
-Integer: vertical remapping scheme for tracers. 8 by default. 9
-or 11 recommended. It is often recommended to use the same value
-for kord_tr as for kord_tm.
+Integer: vertical remapping scheme for tracers.
+9 or 11 recommended.  It is recommended that the value
+of fv3_kord_tr should match fv3_kord_tm.
 
 kord table
 ==========
@@ -8771,17 +8760,17 @@ kord table
 6    Vanilla PPM
 7    PPM with Hyunh’s monotonicity constraint(more expensive but less diffusive)
 9    Monotonic Cubic Spline
-10   Selectively (local extrema retained) monotonic Cubic Spline with 2∆z
+10   Selectively (local extrema retained) monotonic Cubic Spline with 2 delta z
      oscillations removed
-11   Non-monotonic cubic spline with 2∆z oscillations removed
+11   Non-monotonic cubic spline with 2 delta z oscillations removed
 Default: 9
 </entry>
 
 <entry id="fv3_kord_wz" type="integer" category="dyn_fv3"
        group="fv_core_nml" valid_values="" >
-Integer: verticalremapping scheme for vertical velocity in
-nonhydrostatic simulations. 8 by default; 9 recommended. It is also
-recommended to use the same value for kord_wz as for kord_mt.
+Integer: vertical remapping scheme for vertical velocity in
+nonhydrostatic simulations. It is recommended that the value
+of fv3_kord_wz should match fv3_kord_mt.
 
 kord table
 ==========
@@ -8789,23 +8778,23 @@ kord table
 6    Vanilla PPM
 7    PPM with Hyunh’s monotonicity constraint(more expensive but less diffusive)
 9    Monotonic Cubic Spline
-10   Selectively (local extrema retained) monotonic Cubic Spline with 2∆z
+10   Selectively (local extrema retained) monotonic Cubic Spline with 2 delta z
      oscillations removed
-11   Non-monotonic cubic spline with 2∆z oscillations removed
+11   Non-monotonic cubic spline with 2 delta z oscillations removed
 Default: 9
 </entry>
 
 <entry id="fv3_k_split" type="integer" category="dyn_fv3"
        group="fv_core_nml" valid_values="" >
 Integer: number of vertical remappings per dt_atmos (physics
-time step). 1 by default.
+time step).
 Default: 2
 </entry>
 
 <entry id="fv3_layout" type="integer(2)" category="dyn_fv3"
        group="fv_core_nml" valid_values="" >
 Integer(2): Processor layout on each tile. The number of PEs
-assigned to a domain must equal layout(1)*layout(2)*ntiles. Must be
+assigned to a domain must equal fv3_layout(1)*fv3_layout(2)*ntiles. Must be
 set.
 Default: none
 </entry>
@@ -8827,17 +8816,17 @@ Default: 0
 
 <entry id="fv3_ncnst" type="integer" category="dyn_fv3"
        group="fv_core_nml" valid_values="" >
-Integer: Number of tracer species advected by fv_tracer in the dynamical core.  
-Typically this is set automatically by reading in values from field_table, 
-but ncnst can be set to a smaller value so only the first ncnst tracers 
-listed in field_table are not advected. 
+Integer: Number of tracer species advected by fv_tracer in the dynamical core.
+Typically this is set automatically by reading in values from field_table,
+but fv3_ncnst can be set to a smaller value so only the first ncnst tracers
+listed in field_table are not advected.
 Default: none
 </entry>
 
 <entry id="fv3_nord" type="integer" category="dyn_fv3"
        group="fv_core_nml" valid_values="" >
 Integer: order of divergence damping: 0 for second-order; 1 for
-fourth-order (default); 2 for sixth-order; 3 for eighth-order.
+fourth-order; 2 for sixth-order; 3 for eighth-order.
 Sixth-order may yield a better solution for low resolutions (one degree or
 coarser) by virtue of it being more scale-selective and will not damp
 moderately-well-resolved disturbances as much as does lower-order
@@ -8865,7 +8854,7 @@ Default: none
 <entry id="fv3_npy" type="integer" category="dyn_fv3"
        group="fv_core_nml" valid_values="" >
 Integer: Number of grid corners in the y-direction on one tile of the
-domain. This value should be identical to npx on a cubed-sphere
+domain. This value should be identical to fv3_npx on a cubed-sphere
 grid; doubly periodic or nested grids do not have this restriction.
 Must be set.
 Default: none
@@ -8873,7 +8862,7 @@ Default: none
 
 <entry id="fv3_npz" type="integer" category="dyn_fv3"
        group="fv_core_nml" valid_values="" >
-z Integer: Number of vertical levels. Each choice of npz comes with a
+z Integer: Number of vertical levels. Each choice of fv3_npz comes with a
 pre-defined set of hybrid sigma-pressure levels and model top (see
 fv_eta.F90). Must be set.
 Default: none
@@ -8896,22 +8885,21 @@ will be added to the dry air mass, so that p is the mass of dry air,
 water vapor, and the included condensate species. The value used
 depends on the microphysics in the physics package you are using.
 This value is set by namelist defaults.
-Default:
+Default: None
 </entry>
 
 <entry id="fv3_n_split" type="integer" category="dyn_fv3"
        group="fv_core_nml" valid_values="" >
 Integer: number of small dynamics (acoustic) time steps between
-vertical remapping. 0 by default, in which case the model
-produces a good first guess by examining the resolution, dt_atmos, and
-k_split.
+vertical remapping. A setting of 0 allows the model to choose a value
+by examining the resolution, dt_atmos, and fv3_k_split.
 Default: 6
 </entry>
 
 <entry id="fv3_n_sponge" type="integer" category="dyn_fv3"
        group="fv_core_nml" valid_values="" >
 Integer: controls the number of layers at the upper boundary
-on which the 2∆x filter is applied.
+on which the 2 delta x filter is applied.
 Default: 0
 </entry>
 
@@ -8928,8 +8916,8 @@ Default: 0
        group="fv_core_nml" valid_values="" >
 Logical: checks whether the values of the prognostic variables
 are within a reasonable range at the end of a dynamics time
-step, and prints a warning if not. False by default; adds
-computational overhead, so we only recommend using this when debugging.
+step, and prints a warning if not. Adds computational overhead,
+so we only recommend using this when debugging.
 Default: FALSE
 </entry>
 
@@ -8944,8 +8932,8 @@ Default: 750
        group="fv_core_nml" valid_values="" >
 Real: time scale (in days) for Rayleigh friction applied to horizontal
 and vertical winds; lost kinetic energy is converted to heat, except
-on nested grids. 0.0 by default, which disables damping. Larger
-values yield less damping. For models with tops at 1 mb or lower
+on nested grids. 0.0 disables damping. Larger values yield less damping.
+For models with tops at 1 mb or lower
 values between 10 and 30 are useful for preventing overly-strong
 polar night jets; for higher-top hydrostatic models values between
 5 and 15 should be considered; and for non-hydrostatic models
@@ -8954,35 +8942,20 @@ higher-resolution.
 Default: 10
 </entry>
 
-<entry id="fv3_uniform_vert_spacing" type="logical" category="dyn_fv3"
-       group="fv_core_nml" valid_values="" >
-Uniform spacing in pressure. Only a few values of npz support non-uniform spacing.
-Default: True
-</entry>
-
 <entry id="fv3_vtdm4" type="real" category="dyn_fv3"
        group="fv_core_nml" valid_values="" >
 Real: coefficient for background other-variable damping. The
-value of vtdm4 should be less than that of d4_bg. A good first guess
-for vtdm4 is about one-third the value of d4_bg. 0.0 by default.
-Requires do_vort_damp to be .true. Disabled for values less than
+value of fv3_vtdm4 should be less than that of fv3_d4_bg. A good first guess
+for fv3_vtdm4 is about one-third the value of fv3_d4_bg.
+Requires fv3_do_vort_damp to be .true. Disabled for values less than
 1.e-3. Other-variable damping should not be used if a monotonic
 horizontal advection scheme is used.
 Default: 0.0
 </entry>
 
-<entry id="fv3_z_tracer" type="logical" category="dyn_fv3"
-       group="fv_core_nml" valid_values="" >
-Logical: whether to transport sub-cycled tracers layer-by-layer,
-each with its own computed sub-cycling time step (if q_split = 0).
-This may improve efficiency for very large numbers of tracers. False
-by default; currently not implemented.
-Default: FALSE
-</entry>
-
 <entry id="fv3_scale_ttend" type="logical" category="dyn_fv3"
        group="dyn_fv3_inparm" valid_values="" >
-If TRUE perform temp tendency scaling before send to fv3 dynamics 
+If TRUE perform temp tendency scaling before send to fv3 dynamics
 Default: FALSE
 </entry>
 

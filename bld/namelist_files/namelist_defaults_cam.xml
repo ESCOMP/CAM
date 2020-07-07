@@ -2269,8 +2269,6 @@
 <!-- ================================================================== -->
 <!-- Defaults for FV3                                                   -->
 <!-- ================================================================== -->
-<fv3_lcp_moist dyn="fv3" > .true.   </fv3_lcp_moist>
-<fv3_lcv_moist dyn="fv3" > .false.  </fv3_lcv_moist>
 
 <fv3_clock_grain dyn="fv3"  >LOOP</fv3_clock_grain>
 
@@ -2300,15 +2298,8 @@
 <fv3_fill                                                                   > .true.    </fv3_fill>
 <fv3_fv_debug                                                               > .false.   </fv3_fv_debug>
 <fv3_fv_diag                                                                > .false.   </fv3_fv_diag>
-<fv3_qsize_condensate_loading                                           > 3         </fv3_qsize_condensate_loading>
-<fv3_qsize_condensate_loading phys="cam4"                               > 3         </fv3_qsize_condensate_loading>
-<fv3_qsize_condensate_loading phys="cam5"                               > 3         </fv3_qsize_condensate_loading>
-<fv3_qsize_condensate_loading phys="cam6"                               > 5         </fv3_qsize_condensate_loading>
-<fv3_qsize_condensate_loading phys="cam6"   microphys="mg3"             > 6         </fv3_qsize_condensate_loading>
-<fv3_qsize_condensate_loading phys="held_suarez"                        > 1         </fv3_qsize_condensate_loading>
-<fv3_qsize_condensate_loading phys="adiabatic"                          > 1         </fv3_qsize_condensate_loading>
-<fv3_qsize_condensate_loading phys="kessler"                            > 3         </fv3_qsize_condensate_loading>
-<fv3_qsize_condensate_loading phys="tj2016"                             > 1         </fv3_qsize_condensate_loading>
+<fv3_lcp_moist dyn="fv3"                                                    > .true.   </fv3_lcp_moist>
+<fv3_lcv_moist dyn="fv3"                                                    > .false.  </fv3_lcv_moist>
 <fv3_nwat                                                                   > 3         </fv3_nwat>
 <fv3_nwat phys="cam4"                                                       > 3         </fv3_nwat>
 <fv3_nwat phys="cam5"                                                       > 3         </fv3_nwat>
@@ -2331,7 +2322,6 @@
 <fv3_hord_vt        dyn="fv3nh"                                             > 5         </fv3_hord_vt>
 <fv3_hydrostatic    dyn="fv3"                                               > .true.    </fv3_hydrostatic>
 <fv3_hydrostatic    dyn="fv3nh"                                             > .false.   </fv3_hydrostatic>
-<fv3_io_layout                                                              > 1,1       </fv3_io_layout>
 <fv3_ke_bg                                                                  > 0         </fv3_ke_bg>
 <fv3_kord_mt                                                                > 9         </fv3_kord_mt>
 <fv3_kord_tm                                                                > -9        </fv3_kord_tm>
@@ -2359,14 +2349,10 @@
 <fv3_n_sponge                                                               > 0         </fv3_n_sponge>
 <fv3_print_freq                                                             > 1         </fv3_print_freq>
 <fv3_range_warn                                                             > .false.   </fv3_range_warn>
+<fv3_scale_ttend                                                            > .false.   </fv3_scale_ttend>
 <fv3_rf_cutoff                                                              > 750       </fv3_rf_cutoff>
 <fv3_tau                                                                    > 10        </fv3_tau>
-<!-- <uniform_vert_spacing                                                   >           </uniform_vert_spacing> -->
-<!-- use_hydro_pressure only needed for GFS physics
-<use_hydro_pressure                                                     > .false.   </use_hydro_pressure>
--->
 <fv3_vtdm4                                                                  > 0.0D0       </fv3_vtdm4>
-<fv3_z_tracer                                                               > .false.   </fv3_z_tracer>
 
 <!-- ================================================================== -->
 <!-- Defaults for SE                                                    -->

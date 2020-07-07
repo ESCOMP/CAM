@@ -3613,13 +3613,14 @@ if ( $dyn eq 'fv3') {
     add_default($nl, 'fv3_hord_tr');
     add_default($nl, 'fv3_hord_vt');
     add_default($nl, 'fv3_hydrostatic');
-    add_default($nl, 'fv3_io_layout');
     add_default($nl, 'fv3_k_split');
     add_default($nl, 'fv3_ke_bg');
     add_default($nl, 'fv3_kord_mt');
     add_default($nl, 'fv3_kord_tm');
     add_default($nl, 'fv3_kord_tr');
     add_default($nl, 'fv3_kord_wz');
+    add_default($nl, 'fv3_lcv_moist');
+    add_default($nl, 'fv3_lcp_moist');
     add_default($nl, 'fv3_make_nh');
     add_default($nl, 'fv3_n_split');
     add_default($nl, 'fv3_n_sponge');
@@ -3632,13 +3633,12 @@ if ( $dyn eq 'fv3') {
     add_default($nl, 'fv3_nwat');
     add_default($nl, 'fv3_print_freq');
     add_default($nl, 'fv3_print_memory_usage');
-    add_default($nl, 'fv3_qsize_condensate_loading');
     add_default($nl, 'fv3_range_warn');
     add_default($nl, 'fv3_rf_cutoff');
+    add_default($nl, 'fv3_scale_ttend');
     add_default($nl, 'fv3_stack_size');
     add_default($nl, 'fv3_tau');
     add_default($nl, 'fv3_vtdm4');
-    add_default($nl, 'fv3_z_tracer');
 
     # By default, FV3 uses nlev levels
     if (! defined $opts{'fv3_npz'}) {
@@ -3648,9 +3648,6 @@ if ( $dyn eq 'fv3') {
         add_default($nl, 'fv3_ncnst', 'val'=>$cfg->get('nadv'));
     }
     
-    add_default($nl, 'fv3_lcv_moist');
-    add_default($nl, 'fv3_lcp_moist');
-
     # If the user hasn't specified a decomposition via the fv3 namelist 
     # parameter layout then use -ntasks to determine the decomposition.
     my $layout = $nl->get_value('fv3_layout');
@@ -4420,7 +4417,7 @@ sub fv_decomp_set{
 
 # Return a decomposition for the FV dycore, expressed as the value for the namelist
 # variable npr_yz.  The value of npr_yz is ny,nz,nx,ny where ny, nz, and nx are
-# respecitively the number of y, z, and x subdomains in the multi-2D decomposition.
+# respectively the number of y, z, and x subdomains in the multi-2D decomposition.
 # The following constraints must be observed:
 # 1) ny*nz = ntasks  (ny*nz can be less than ntasks in the case that the dynamics runs
 #                     on a subset of the total tasks.  Assume the user will set the
