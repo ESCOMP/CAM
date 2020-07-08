@@ -676,8 +676,8 @@
   <test compset="F2000climo" grid="C96_C96_mg17" name="ERP_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
-      <machine name="hobart" compiler="intel"   category="fv3_cam"/>
-      <machine name="hobart" compiler="pgi"     category="fv3_cam"/>
+      <machine name="izumi" compiler="intel"   category="fv3_cam"/>
+      <machine name="izumi" compiler="pgi"     category="fv3_cam"/>
     </machines>
     <options>
       <option name="wallclock">00:10:00</option>
