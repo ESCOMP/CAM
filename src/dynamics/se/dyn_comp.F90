@@ -6,7 +6,8 @@ use shr_kind_mod,           only: r8=>shr_kind_r8, shr_kind_cl
 use physconst,              only: pi
 use spmd_utils,             only: iam, masterproc
 use constituents,           only: pcnst, cnst_get_ind, cnst_name, cnst_longname, &
-                                  cnst_read_iv, qmin, cnst_type, tottnam
+                                  cnst_read_iv, qmin, cnst_type, tottnam,        &
+                                  cnst_is_water_specie
 use cam_control_mod,        only: initial_run, simple_phys
 use cam_initfiles,          only: initial_file_get_id, topo_file_get_id, pertlim
 use phys_control,           only: use_gw_front, use_gw_front_igw, waccmx_is
@@ -1177,7 +1178,6 @@ subroutine read_inidat(dyn_in)
    logical                          :: inic_wet           ! true if initial condition is based on
                                                           ! wet pressure and water species
    integer                          :: kptr, m_cnst
-   integer                          :: cnst_start
    type(EdgeBuffer_t)               :: edge
 
    character(len=max_fieldname_len) :: dimname, varname
@@ -1455,7 +1455,7 @@ subroutine read_inidat(dyn_in)
    !
    ! If analytic ICs are being used, we allow constituents in an initial
    ! file to overwrite mixing ratios set by the default constituent initialization
-   ! except for water vapor.
+   ! except for the water species.
 
    if (ntrac > qsize) then
       if (ntrac < pcnst) then
@@ -1468,14 +1468,11 @@ subroutine read_inidat(dyn_in)
       call endrun(trim(subname)//errmsg)
    end if
 
-   cnst_start = 1
-   if (analytic_ic_active()) cnst_start = 2
-
    ! If using analytic ICs the initial file only needs the horizonal grid
    ! dimension checked in the case that the file contains constituent mixing
    ! ratios.
-   do m_cnst = cnst_start, pcnst
-      if (cnst_read_iv(m_cnst)) then
+   do m_cnst = 1, pcnst
+      if (cnst_read_iv(m_cnst) .and. .not. cnst_is_water_specie(cnst_name(m_cnst))) then
          if (dyn_field_exists(fh_ini, trim(cnst_name(m_cnst)), required=.false.)) then
             call check_file_layout(fh_ini, elem, dyn_cols, 'ncdata', .true., dimname)
             exit
@@ -1485,7 +1482,9 @@ subroutine read_inidat(dyn_in)
 
    allocate(dbuf3(npsq,nlev,nelemd))
 
-   do m_cnst = cnst_start, pcnst
+   do m_cnst = 1, pcnst
+
+      if (analytic_ic_active() .and. cnst_is_water_specie(cnst_name(m_cnst))) cycle
 
       found = .false.
       if (cnst_read_iv(m_cnst)) then
