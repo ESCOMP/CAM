@@ -3730,7 +3730,6 @@ if ($dyn =~ /se/) {
                   se_nu_div
                   se_nu_p
                   se_nu_top
-                  se_qsize_condensate_loading
                   se_qsplit
                   se_rsplit
                   se_statediag_numtrac
@@ -3738,16 +3737,18 @@ if ($dyn =~ /se/) {
                   se_tracer_num_threads
                   se_tstep_type
                   se_vert_num_threads
-                  se_vert_remap_q_alg
+                  se_vert_remap_T
+                  se_vert_remap_uvTq_alg
+                  se_vert_remap_tracer_alg
 		  se_fvm_supercycling
 		  se_fvm_supercycling_jet
 		  se_kmin_jet
 		  se_kmax_jet
-		  se_variable_nsplit
 		  se_phys_dyn_cp
 		  se_raytau0
 		  se_raykrange
 		  se_rayk0
+                  se_molecular_diff
         );
 
     my %opts;

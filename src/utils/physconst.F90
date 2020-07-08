@@ -368,6 +368,7 @@ end subroutine physconst_init
     use cam_logfile,     only: iulog
     character(len=*), parameter :: subname = 'composition_init'
     real(r8) :: mw, dof1, dof2, dof3
+
     integer  :: icnst,ix,i
 
     ! standard dry air (constant composition)

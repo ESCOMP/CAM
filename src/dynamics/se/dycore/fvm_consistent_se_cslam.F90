@@ -77,7 +77,7 @@ contains
 
     inJetCall = .false.
     if(((kminp .ne. 1) .or. (kmaxp .ne. nlev)) .and. vert_num_threads>1) then 
-       print *,'WARNING: deactivating vertical threading for JET region call'   
+       write(iulog,*)'WARNING: deactivating vertical threading for JET region call'   
        inJetCall = .true.
        region_num_threads = 1
     else
@@ -538,7 +538,7 @@ contains
             end do
             call get_flux_segments_area_iterate(x,x_static,dx_static,dx,x_start,dgam_vec,num_seg,num_seg_static,&
                  num_seg_max,num_area,dp_area,flowcase,gamma,mass_flux_se(i,j,iside),0.0_r8,gamma_max,          &
-                 gsweights,gspts)
+                 gsweights,gspts,ilev)
             !call t_stopf('fvm:swept_area:get_gamma')
             !
             ! pack segments for high-order weights computation
@@ -836,7 +836,7 @@ contains
                    x_tmp(:,:,:),x_static(:,:,:,iside,i,j),dx_static(:,:,:,iside,i,j),dx_tmp(:,:,:),&
                    x_start(:,:,iside,i,j),dgam_vec(:,:,iside,i,j),num_seg(:,iside),num_seg_static(:,iside),&
                    num_seg_max,num_area,dp_area,flowcase(iside),gamma(iside),flux_se,0.0_r8,1.0_r8,        &
-                   gsweights,gspts)
+                   gsweights,gspts,k)
               fvm%se_flux(i,j,iside,k) = ABS(SUM(gamma(iside)*dgam_vec(:,1,iside,i,j)))
 #ifdef waccm_debug
               fvm%CSLAM_gamma(i,j,k,iside) = gamma(iside)
@@ -863,7 +863,7 @@ contains
 
 
   subroutine get_flux_segments_area_iterate(x,x_static,dx_static,dx,x_start,dgam_vec,num_seg,num_seg_static,&
-       num_seg_max,num_area,c,flow_case,gamma,flux,gamma_min,gamma_max,gsweights,gspts)
+       num_seg_max,num_area,c,flow_case,gamma,flux,gamma_min,gamma_max,gsweights,gspts,ilev)
     implicit none
     integer                                                , intent(in)    :: num_area, num_seg_max
     REAL(KIND=r8), dimension(2,num_seg_max,num_area), intent(in)    :: x_static, dx_static
@@ -872,7 +872,7 @@ contains
     REAL(KIND=r8), dimension(2,8)                   , intent(in) :: x_start, dgam_vec
     REAL(KIND=r8)                                   , intent(inout) :: gamma
     REAL(KIND=r8)                                   , intent(in) :: flux,gamma_min,gamma_max
-    integer                                                , intent(in) :: flow_case
+    integer                                                , intent(in) :: flow_case,ilev
 
     real (kind=r8), dimension(num_area)             , intent(in) :: c
     real (kind=r8), dimension(ngpc)                 , intent(in) :: gsweights, gspts
@@ -887,7 +887,7 @@ contains
     real (kind=r8) :: xq2,xq2i, rho, rhoi, yrh, w_static(num_area)
 
     integer :: iseg,iarea,iter,ipt
-    integer, parameter :: iter_max=20
+    integer, parameter :: iter_max=40
     logical :: lexit_after_one_more_iteration
 
     lexit_after_one_more_iteration = .false.
@@ -1243,7 +1243,6 @@ contains
            ! dgamma set to minimum displacement to avoid f2-f1=0
            !
            gamma3=gamma2-SIGN(1.0_r8,dgamma)*eps
-           write(iulog,*) "WARNING: setting gamma to min",gamma3,iter
          end if
          gamma3=MAX(gamma3,gamma_min)
          !
@@ -1253,7 +1252,7 @@ contains
        endif
      end do
      if (iter>iter_max) write(iulog,*) "WARNING: iteration not converged",&
-          ABS(f2),flux,gamma1,gamma2,gamma3
+          ABS(f2),flux,gamma1,gamma2,gamma3,ilev
   end subroutine get_flux_segments_area_iterate
 
   subroutine define_swept_areas(fvm,ilev,displ,base_vec,base_vtx,idx)

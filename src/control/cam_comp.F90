@@ -177,7 +177,7 @@ subroutine cam_init( &
    call composition_init()
    ! initialize ionosphere
    call ionosphere_init()
-
+   
    if (initial_run_in) then
 
       call dyn_init(dyn_in, dyn_out)
