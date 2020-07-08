@@ -11,8 +11,6 @@ contains
 
 logical function dycore_is(name)
 
-    implicit none
-
     character(len=*) :: name
   
     dycore_is = .false.

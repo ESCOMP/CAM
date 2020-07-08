@@ -44,7 +44,7 @@ contains
   subroutine write_interpolated_scalar(File, varid, fld, numlev, data_type, decomp_type) 
     use pio, only : file_desc_t, var_desc_t
     use shr_kind_mod, only : r8=>shr_kind_r8
-    implicit none
+
     type(file_desc_t), intent(inout) :: File
     type(var_desc_t), intent(inout) :: varid
     real(r8), intent(in) :: fld(:,:,:)
@@ -55,7 +55,7 @@ contains
 
   subroutine write_interpolated_vector(File, varidu, varidv, fldu, fldv, numlev, data_type, decomp_type) 
     use pio, only : file_desc_t, var_desc_t
-    implicit none
+
     type(file_desc_t), intent(inout) :: File
     type(var_desc_t), intent(inout) :: varidu, varidv
     real(r8), intent(in) :: fldu(:,:,:), fldv(:,:,:)

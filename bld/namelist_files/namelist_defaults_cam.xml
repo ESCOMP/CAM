@@ -2259,12 +2259,12 @@
 <!-- Defaults for composition of air                                    -->
 <!-- ================================================================== -->
 <dry_air_species                           >''</dry_air_species>
-<dry_air_species    waccmx="1"             >'O     ','O2    ','H     ','N2    '</dry_air_species>
+<dry_air_species    waccmx="1"             >'O', 'O2', 'H', 'N2'</dry_air_species>
 
-<water_species_in_air                         >'Q     '                                    </water_species_in_air>
-<water_species_in_air phys="cam4"             >'Q     ','CLDLIQ','CLDICE'                  </water_species_in_air>
-<water_species_in_air phys="cam5"             >'Q     ','CLDLIQ','CLDICE'                  </water_species_in_air>
-<water_species_in_air phys="cam6"             >'Q     ','CLDLIQ','CLDICE','RAINQM','SNOWQM'</water_species_in_air>
+<water_species_in_air                         >'Q'                                    </water_species_in_air>
+<water_species_in_air phys="cam4"             >'Q','CLDLIQ','CLDICE'                  </water_species_in_air>
+<water_species_in_air phys="cam5"             >'Q','CLDLIQ','CLDICE'                  </water_species_in_air>
+<water_species_in_air phys="cam6"             >'Q','CLDLIQ','CLDICE','RAINQM','SNOWQM'</water_species_in_air>
 
 <!-- ================================================================== -->
 <!-- Defaults for FV3                                                   -->

@@ -93,7 +93,7 @@ interface read_dyn_var
   module procedure read_dyn_field_3d
 end interface read_dyn_var
 
-real(r8), public, allocatable :: u_dt(:,:,:), v_dt(:,:,:), t_dt(:,:,:)
+real(r8), public, allocatable, dimension(:,:,:) :: u_dt, v_dt, t_dt
 
 !These are convenience variables for local use only, and are set to values in Atm%
 real(r8) ::  zvir, dt_atmos_real
@@ -882,40 +882,34 @@ subroutine read_inidat(dyn_in)
 
 
   character(len=*), parameter      :: subname='READ_INIDAT'
-  real(r8), allocatable            :: phis_tmp(:,:)
 
   ! Variables for analytic initial conditions
-  integer,  allocatable            :: glob_ind(:)
-  integer,  allocatable            :: m_ind(:)
-  integer                          :: vcoord
-  integer                          :: pio_errtype
-  real(r8), allocatable            :: dbuf2(:,:)
-  real(r8), allocatable            :: dbuf3(:,:,:)
-  real(r8), allocatable            :: dbuf4(:,:,:,:)
-  real(r8), allocatable            :: latvals_rad(:)
-  real(r8), allocatable            :: lonvals_rad(:)
-  integer                          :: rndm_seed_sz
-  integer, allocatable             :: rndm_seed(:)
-  logical                          :: inic_wet !initial condition is based on wet pressure and water species
-  integer                          :: m_cnst,m_cnst_ffsl
-  integer                          :: indx
-  integer                          :: err_handling
-  real(r8)                         :: pertval
-  real(r8), allocatable            :: pstmp(:,:)
-  real(r8), pointer, dimension(:,:,:)  :: agrid,grid
-  real (r8)                        :: tracermass(pcnst),delpdry
-  real (r8)                        :: fv3_totwatermass, fv3_airmass
-  real (r8)                        :: initial_global_ave_dry_ps,reldif
-
-  integer                :: is,ie,js,je,isd,ied,jsd,jed
-  integer                :: blksize
-
-  integer :: m_ffsl
-  integer :: ilen,jlen
-  integer :: num_wet_species       ! total number of wet species (first tracers in FV3 tracer array)
-  real(r8), allocatable :: var3d(:,:,:), var2d(:,:)
-  real(r8), pointer                :: latvals_deg(:)
-  real(r8), pointer                :: lonvals_deg(:)
+  integer, allocatable, dimension(:)        :: glob_ind, m_ind,rndm_seed
+  integer                                   :: is,ie,js,je,isd,ied,jsd,jed
+  integer                                   :: blksize
+  integer                                   :: indx
+  integer                                   :: err_handling
+  integer                                   :: m_cnst,m_cnst_ffsl
+  integer                                   :: m_ffsl
+  integer                                   :: ilen,jlen
+  integer                                   :: num_wet_species! (wet species are first tracers in FV3 tracer array)
+  integer                                   :: pio_errtype
+  integer                                   :: rndm_seed_sz
+  integer                                   :: vcoord
+  real(r8), pointer, dimension(:)           :: latvals_deg(:)
+  real(r8), pointer, dimension(:)           :: lonvals_deg(:)
+  real(r8), allocatable, dimension(:)       :: latvals_rad, lonvals_rad
+  real(r8), allocatable, dimension(:,:)     :: dbuf2
+  real(r8), allocatable, dimension(:,:)     :: pstmp
+  real(r8), allocatable, dimension(:,:)     :: phis_tmp, var2d
+  real(r8), allocatable, dimension(:,:,:)   :: dbuf3, var3d
+  real(r8), allocatable, dimension(:,:,:,:) :: dbuf4
+  real(r8), pointer, dimension(:,:,:)       :: agrid,grid
+  real(r8)                                  :: pertval
+  real(r8)                                  :: tracermass(pcnst),delpdry
+  real(r8)                                  :: fv3_totwatermass, fv3_airmass
+  real(r8)                                  :: initial_global_ave_dry_ps,reldif
+  logical                                   :: inic_wet !initial condition is based on wet pressure and water species
 
   !-----------------------------------------------------------------------
 
@@ -1376,13 +1370,12 @@ end subroutine read_inidat
 
     !---------------------------Local storage-------------------------------
 
-    real(kind=r8), allocatable :: se(:,:)                          ! Dry Static energy (J/m2)
-    real(kind=r8), allocatable :: ke(:,:)                          ! kinetic energy    (J/m2)
-    real(kind=r8), allocatable :: wv(:,:),wl(:,:),wi(:,:), &       ! col integ constiuents(kg/m2)
-                                  wr(:,:),ws(:,:),wg(:,:)          ! column integrated vapor       (kg/m2)
-    real(kind=r8), allocatable :: tt(:,:)                          ! column integrated test tracer (kg/m2)
-    real(kind=r8), allocatable :: dp(:,:,:)
-    real(kind=r8), allocatable :: ps_local(:,:)
+    real(kind=r8), allocatable, dimension(:,:) :: se,              &! Dry Static energy (J/m2)
+                                                  ke,              &! kinetic energy    (J/m2)
+                                                  ps_local          ! ps temp based on CAM or FV3 airmass
+    real(kind=r8), allocatable, dimension(:,:) :: wv,wl,wi,wr,ws,wg ! col integ constiuents(kg/m2)
+    real(kind=r8), allocatable, dimension(:,:) :: tt                ! column integrated test tracer (kg/m2)
+    real(kind=r8), allocatable, dimension(:,:,:) :: dp,delpograv
     real(kind=r8) :: se_tmp, dpdry
     real(kind=r8) :: ke_tmp
     real(kind=r8) :: wv_tmp,wl_tmp,wi_tmp,wr_tmp,ws_tmp,wg_tmp
@@ -1394,8 +1387,8 @@ end subroutine read_inidat
     ! (also known as wind AAM) and another part (mo) associated with the angular velocity OMEGA
     ! (2*pi/d, where d is the length of the day) of the planet (also known as mass AAM)
     !
-    real(kind=r8), allocatable :: mr(:,:)  ! wind AAM
-    real(kind=r8), allocatable :: mo(:,:)  ! mass AAM
+    real(kind=r8), allocatable, dimension(:,:) :: mr  ! wind AAM
+    real(kind=r8), allocatable, dimension(:,:) :: mo  ! mass AAM
     real(kind=r8) :: mr_cnst, mo_cnst, cos_lat, mr_tmp, mo_tmp
 
     real(kind=r8) :: se_glob, ke_glob, wv_glob, wl_glob, wi_glob, &
@@ -1420,17 +1413,17 @@ end subroutine read_inidat
     jsd = Atm(mytile)%bd%jsd
     jed = Atm(mytile)%bd%jed
 
-    se_glob = 0._r8;
-    ke_glob = 0._r8;
-    wv_glob = 0._r8;
-    wl_glob = 0._r8;
-    wi_glob = 0._r8;
-    wr_glob = 0._r8;
-    ws_glob = 0._r8;
-    wg_glob = 0._r8;
-    tt_glob = 0._r8;
-    mr_glob = 0._r8;
-    mo_glob = 0._r8;
+    se_glob = 0._r8
+    ke_glob = 0._r8
+    wv_glob = 0._r8
+    wl_glob = 0._r8
+    wi_glob = 0._r8
+    wr_glob = 0._r8
+    ws_glob = 0._r8
+    wg_glob = 0._r8
+    tt_glob = 0._r8
+    mr_glob = 0._r8
+    mo_glob = 0._r8
 
     allocate(se(is:ie,js:je))
     allocate(ke(is:ie,js:je))
@@ -1444,6 +1437,7 @@ end subroutine read_inidat
     allocate(mr(is:ie,js:je))
     allocate(mo(is:ie,js:je))
     allocate(dp(is:ie,js:je,nlev))
+    allocate(delpograv(is:ie,js:je,nlev))
     allocate(ps_local(is:ie,js:je))
 
     se_name = 'SE_'   //trim(suffix)
@@ -1491,6 +1485,8 @@ end subroutine read_inidat
        ws    = 0.0_r8
        wg    = 0.0_r8
        tt    = 0.0_r8
+
+       delpograv(is:ie,js:je,1:nlev) = Atm(mytile)%delp(is:ie,js:je,1:nlev)/gravit ! temporary
 
        !
        ! Calculate Energy, CAM or FV3 based on fv3_lcp_moist and fv3_lcv_moist
@@ -1542,7 +1538,7 @@ end subroutine read_inidat
                    se_tmp = se_tmp*Atm(mytile)%pt(i,j,k)/gravit
                 end if
                 ke_tmp   = 0.5_r8*(Atm(mytile)%va(i,j,k)**2+ Atm(mytile)%ua(i,j,k)**2)*dp(i,j,k)/gravit
-                wv_tmp   =  Atm(mytile)%q(i,j,k,1)*Atm(mytile)%delp(i,j,k)/gravit
+                wv_tmp   =  Atm(mytile)%q(i,j,k,1)*delpograv(i,j,k)
 
                 se(i,j) = se(i,j) + se_tmp
                 ke(i,j) = ke(i,j) + ke_tmp
@@ -1570,7 +1566,7 @@ end subroutine read_inidat
           do k = 1, nlev
              do j = js, je
                 do i = is, ie
-                   wl_tmp   = Atm(mytile)%q(i,j,k,ixcldliq_ffsl)*Atm(mytile)%delp(i,j,k)/gravit
+                   wl_tmp   = Atm(mytile)%q(i,j,k,ixcldliq_ffsl)*delpograv(i,j,k)
                    wl   (i,j) = wl(i,j) + wl_tmp
                 end do
              end do
@@ -1582,7 +1578,7 @@ end subroutine read_inidat
           do k = 1, nlev
              do j = js, je
                 do i = is, ie
-                   wi_tmp   = Atm(mytile)%q(i,j,k,ixcldice_ffsl)*Atm(mytile)%delp(i,j,k)/gravit
+                   wi_tmp   = Atm(mytile)%q(i,j,k,ixcldice_ffsl)*delpograv(i,j,k)
                    wi(i,j)    = wi(i,j) + wi_tmp
                 end do
              end do
@@ -1594,7 +1590,7 @@ end subroutine read_inidat
           do k = 1, nlev
              do j = js, je
                 do i = is, ie
-                   wr_tmp   = Atm(mytile)%q(i,j,k,ixrain_ffsl)*Atm(mytile)%delp(i,j,k)/gravit
+                   wr_tmp   = Atm(mytile)%q(i,j,k,ixrain_ffsl)*delpograv(i,j,k)
                    wr   (i,j) = wr(i,j) + wr_tmp
                 end do
              end do
@@ -1606,7 +1602,7 @@ end subroutine read_inidat
           do k = 1, nlev
              do j = js, je
                 do i = is, ie
-                   ws_tmp   = Atm(mytile)%q(i,j,k,ixsnow_ffsl)*Atm(mytile)%delp(i,j,k)/gravit
+                   ws_tmp   = Atm(mytile)%q(i,j,k,ixsnow_ffsl)*delpograv(i,j,k)
                    ws(i,j)    = ws(i,j) + ws_tmp
                 end do
              end do
@@ -1618,7 +1614,7 @@ end subroutine read_inidat
           do k = 1, nlev
              do j = js, je
                 do i = is, ie
-                   wg_tmp   = Atm(mytile)%q(i,j,k,ixgraupel_ffsl)*Atm(mytile)%delp(i,j,k)/gravit
+                   wg_tmp   = Atm(mytile)%q(i,j,k,ixgraupel_ffsl)*delpograv(i,j,k)
                    wg(i,j)    = wg(i,j) + wg_tmp
                 end do
              end do
@@ -1630,7 +1626,7 @@ end subroutine read_inidat
           do k = 1, nlev
              do j = js, je
                 do i = is, ie
-                   tt_tmp   = Atm(mytile)%q(i,j,k,ixtt)*Atm(mytile)%delp(i,j,k)/gravit
+                   tt_tmp   = Atm(mytile)%q(i,j,k,ixtt)*delpograv(i,j,k)
                    tt   (i,j) = tt(i,j) + tt_tmp
                 end do
              end do
@@ -1734,14 +1730,15 @@ end subroutine read_inidat
          mo_glob=g_sum(Atm(mytile)%domain, mo(is:ie,js:je), is, ie, js, je, &
                  Atm(mytile)%ng, Atm(mytile)%gridstruct%area_64, 1, .true.)
          if (masterproc) then
-            write(iulog, '(a,e25.17)') 'integrated wind AAM '//mr_name//' = ',mr_glob
-            write(iulog, '(a,e25.17)') 'integrated mass AAM '//mo_name//' = ',mo_glob
+            write(iulog, '(a,e25.17)') 'integrated wind AAM '//trim(mr_name)//' = ',mr_glob
+            write(iulog, '(a,e25.17)') 'integrated mass AAM '//trim(mo_name)//' = ',mo_glob
          end if
       end if
    end if
 
   deallocate(ps_local)
   deallocate(dp)
+  deallocate(delpograv)
   deallocate(se)
   deallocate(ke)
   deallocate(wv)
@@ -1861,9 +1858,9 @@ subroutine write_dyn_var(field,outfld_name,bd)
   use cam_history,            only: outfld
 
   ! Arguments
-  type(fv_grid_bounds_type), intent(IN) :: bd
-  real(r8), intent(IN)          :: field(bd%is:bd%ie,bd%js:bd%je)
-  character(len=*)    , intent(IN) :: outfld_name ! suffix for "outfld" names
+  type(fv_grid_bounds_type), intent(in) :: bd
+  real(r8), intent(in)          :: field(bd%is:bd%ie,bd%js:bd%je)
+  character(len=*)    , intent(in) :: outfld_name ! suffix for "outfld" names
 
   ! local variables
   integer              :: idim, j
@@ -1895,12 +1892,12 @@ subroutine set_dry_mass(atm,fixed_global_ave_dry_ps)
   real (kind=r8), intent(in)                 :: fixed_global_ave_dry_ps
 
   ! local
-  real (kind=r8)               :: global_ave_ps_inic,global_ave_dryps_inic,global_ave_dryps_scaled, &
-                                  global_ave_ps_new,global_ave_dryps_new
-  real (r8), allocatable       :: factor(:,:,:),delpwet(:,:,:),delpdry(:,:,:),newdelp(:,:,:),psdry(:,:), &
-                                  psdry_scaled(:,:),psdry_new(:,:)
-  integer                      :: i, j ,k, m,is,ie,js,je
-  integer :: num_wet_species       ! total number of wet species (first tracers in FV3 tracer array)
+  real (kind=r8)                             :: global_ave_ps_inic,global_ave_dryps_inic,global_ave_dryps_scaled, &
+                                                global_ave_ps_new,global_ave_dryps_new
+  real (r8), allocatable, dimension(:,:)     :: psdry, psdry_scaled, psdry_new
+  real (r8), allocatable, dimension(:,:,:)   :: factor, delpwet, delpdry, newdelp
+  integer                                    :: i, j ,k, m,is,ie,js,je
+  integer                                    :: num_wet_species   ! first tracers in FV3 tracer array
 
   is = Atm(mytile)%bd%is
   ie = Atm(mytile)%bd%ie
@@ -2027,26 +2024,26 @@ subroutine a2d3djt(ua, va, u, v, is,  ie,  js,  je, isd, ied, jsd, jed, npx,npy,
   use fv_arrays_mod,      only: fv_grid_type
 
   ! arguments
-  integer, intent(in):: is,  ie,  js,  je
-  integer, intent(in):: isd, ied, jsd, jed
-  integer, intent(IN) :: npx,npy, nlev
-  real(r8), intent(inout):: u(isd:ied,  jsd:jed+1,nlev)
-  real(r8), intent(inout):: v(isd:ied+1,jsd:jed  ,nlev)
-  real(r8), intent(inout), dimension(isd:ied,jsd:jed,nlev):: ua, va
-  type(fv_grid_type), intent(IN), target :: gridstruct
-  type(domain2d), intent(INOUT) :: domain
+  integer, intent(in)                                          :: is,  ie,  js,  je
+  integer, intent(in)                                          :: isd, ied, jsd, jed
+  integer, intent(in)                                          :: npx,npy, nlev
+  real(r8), intent(inout), dimension(isd:ied,  jsd:jed+1,nlev) :: u
+  real(r8), intent(inout), dimension(isd:ied+1,jsd:jed  ,nlev) :: v
+  real(r8), intent(inout), dimension(isd:ied,jsd:jed,nlev)     :: ua, va
+  type(fv_grid_type), intent(in), target                       :: gridstruct
+  type(domain2d), intent(inout)                                :: domain
 
   ! local:
-  real(r8) v3(is-1:ie+1,js-1:je+1,3)
-  real(r8) ue(is-1:ie+1,js:je+1,3)    ! 3D winds at edges
-  real(r8) ve(is:ie+1,js-1:je+1,  3)    ! 3D winds at edges
-  real(r8), dimension(is:ie):: ut1, ut2, ut3
-  real(r8), dimension(js:je):: vt1, vt2, vt3
-  integer i, j, k, im2, jm2
+  real(r8), dimension(is-1:ie+1,js-1:je+1,3) :: v3
+  real(r8), dimension(is-1:ie+1,js:je+1,3)   :: ue    ! 3D winds at edges
+  real(r8), dimension(is:ie+1,js-1:je+1,  3) :: ve    ! 3D winds at edges
+  real(r8), dimension(is:ie)                 :: ut1, ut2, ut3
+  real(r8), dimension(js:je)                 :: vt1, vt2, vt3
+  integer                                    :: i, j, k, im2, jm2
 
-  real(r8), pointer, dimension(:,:,:) :: vlon, vlat
-  real(r8), pointer, dimension(:,:,:,:) :: es, ew
-  real(r8), pointer, dimension(:) :: edge_vect_w, edge_vect_e, edge_vect_s, edge_vect_n
+  real(r8), pointer, dimension(:,:,:)        :: vlon, vlat
+  real(r8), pointer, dimension(:,:,:,:)      :: es, ew
+  real(r8), pointer, dimension(:)            :: edge_vect_w, edge_vect_e, edge_vect_s, edge_vect_n
 
   es   => gridstruct%es
   ew   => gridstruct%ew

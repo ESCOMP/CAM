@@ -32,8 +32,6 @@ subroutine stepon_init(dyn_in, dyn_out)
   use cam_history,    only: addfld, add_default, horiz_only
   use constituents,   only: pcnst, cnst_name, cnst_longname
   
-  implicit none
-  
   type (dyn_import_t), intent(inout)   :: dyn_in             ! Dynamics import container
   type (dyn_export_t), intent(inout)   :: dyn_out            ! Dynamics export container
   
@@ -89,8 +87,6 @@ subroutine stepon_run1(dtime_out, phys_state, phys_tend, pbuf2d, dyn_in, dyn_out
     use physics_buffer, only: physics_buffer_desc
     use dp_coupling,    only: d_p_coupling
 
-    implicit none
-
     real(r8),             intent(out)   :: dtime_out   ! Time-step
     type (physics_state), intent(inout) :: phys_state(begchunk:endchunk)
     type (physics_tend),  intent(inout) :: phys_tend(begchunk:endchunk)
@@ -121,7 +117,6 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out)
 
     use dp_coupling, only: p_d_coupling
     use dyn_comp,    only: calc_tot_energy_dynamics
-    implicit none
 
     type (physics_state), intent(inout) :: phys_state(begchunk:endchunk)
     type (physics_tend),  intent(inout) :: phys_tend(begchunk:endchunk)
@@ -150,8 +145,6 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
     use camsrfexch, only: cam_out_t
     use dyn_comp,   only: dyn_run
 
-    implicit none
-
     real(r8), intent(in) :: dtime            ! Time-step
     type (physics_state), intent(in):: phys_state(begchunk:endchunk)
     type (dyn_import_t), intent(inout) :: dyn_in  ! Dynamics import container
@@ -173,8 +166,6 @@ subroutine stepon_final(dyn_in, dyn_out)
 
     use dyn_comp,   only: dyn_final
 
-    implicit none
-
     type (dyn_import_t), intent(inout) :: dyn_in  ! Dynamics import container
     type (dyn_export_t), intent(inout) :: dyn_out ! Dynamics export container
 
@@ -193,7 +184,6 @@ subroutine diag_dyn_out(dyn_in,suffx)
   use dyn_grid,               only: mytile
   use fv_arrays_mod,          only: fv_atmos_type
   use dimensions_mod,         only: nlev
-  implicit none
   
   type (dyn_export_t),  intent(in) :: dyn_in
   character*(*)      ,  intent(in) :: suffx ! suffix for "outfld" names

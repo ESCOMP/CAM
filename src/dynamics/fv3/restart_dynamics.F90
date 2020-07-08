@@ -280,6 +280,7 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
    real(r8),    allocatable :: nbuffer(:,:)
 
    character(len=*), parameter               :: sub = 'read_restart_dynamics'
+   character(len=256) :: errormsg
    !----------------------------------------------------------------------------
 
    ! Note1: the hybrid coefficients are read from the same location as for an
@@ -304,7 +305,9 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
    ierr = PIO_Inq_DimID(File, 'lev', nlev_dimid)
    ierr = PIO_Inq_dimlen(File, nlev_dimid, fnlev)
    if (nlev /= fnlev) then
-      call endrun(sub//': Restart file nlev dimension does not match number of model levels')
+      write(errormsg, *) ': Restart file nlev dimension does not match model levels:',&
+           'file nlev=',fnlev,', model nlev=',nlev
+      call endrun(sub//trim(errormsg))
    end if
 
    ! variable descriptors of required dynamics fields
@@ -357,15 +360,21 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
    call cam_grid_dimensions(grid_id_ns, grid_dimlens_ns)
 
    if (ncols_d /= grid_dimlens(1)) then
-      call endrun(sub//':Restart file ncol_d dimension does not match number of model A-Grid columns')
+      write(errormsg, *) ':Restart file ncol_d dimension does not match number of model A-Grid columns',&
+           'Restart ncols_d=',ncols_d,', A-Grid ncols=',grid_dimlens(1)
+      call endrun(sub//trim(errormsg))
    end if
 
    if (ncols_d_ns /= grid_dimlens_ns(1)) then
-      call endrun(sub//':Restart file ncol_d_ns dimension does not match the number of model D-Grid ns columns')
+      write(errormsg, *) ':Restart file ncol_d dimension does not match number of model D-Grid ns columns',&
+           'Restart ncols_d_ns=',ncols_d_ns,', D-Grid ns ncols=',grid_dimlens_ns(1)
+      call endrun(sub//trim(errormsg))
    end if
 
    if (ncols_d_ew /= grid_dimlens_ew(1)) then
-      call endrun(sub//':Restart file ncol_d_ew dimension does not match the number of model D-Grid ew columns')
+      write(errormsg, *) ':Restart file ncol_d dimension does not match number of model D-Grid ew columns',&
+           'Restart ncols_d_ew=',ncols_d_ew,', D-Grid ew ncols=',grid_dimlens_ew(1)
+      call endrun(sub//trim(errormsg))
    end if
 
    ilen = ie-is+1
