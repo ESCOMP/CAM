@@ -946,7 +946,7 @@ end subroutine dyn_init
 !=========================================================================================
 
 subroutine dyn_run(dyn_state)
-   use physconst,        only: thermodynamic_active_species_num
+   use physconst,        only: thermodynamic_active_species_num, dry_air_species_num
    use physconst,        only: thermodynamic_active_species_idx_dycore
    use prim_advance_mod, only: calc_tot_energy_dynamics
    use prim_driver_mod,  only: prim_run_subcycle
@@ -1053,7 +1053,7 @@ subroutine dyn_run(dyn_state)
          do j=1,np
            do i = 1, np
              pdel     = dyn_state%elem(ie)%state%dp3d(i,j,k,tl_f)
-             do nq=1,thermodynamic_active_species_num
+             do nq=dry_air_species_num+1,thermodynamic_active_species_num
                m_cnst = thermodynamic_active_species_idx_dycore(nq)
                pdel = pdel + (dyn_state%elem(ie)%state%qdp(i,j,k,m_cnst,n0_qdp)+dyn_state%elem(ie)%derived%FQ(i,j,k,m_cnst)*dtime)
              end do
@@ -1137,7 +1137,7 @@ end subroutine dyn_final
 !===============================================================================
 
 subroutine read_inidat(dyn_in)
-   use physconst,           only: thermodynamic_active_species_num
+   use physconst,           only: thermodynamic_active_species_num, dry_air_species_num
    use shr_sys_mod,         only: shr_sys_flush
    use hycoef,              only: hyai, hybi, ps0
    use const_init,          only: cnst_init_default
@@ -1580,7 +1580,7 @@ subroutine read_inidat(dyn_in)
       !
       factor_array(:,:,:,:) = 1.0_r8
       do ie = 1, nelemd
-         do k = 1, thermodynamic_active_species_num
+         do k = dry_air_species_num+1, thermodynamic_active_species_num
             m_cnst = thermodynamic_active_species_idx(k)
             factor_array(:,:,:,ie) = factor_array(:,:,:,ie) - qtmp(:,:,:,ie,m_cnst)
          end do
@@ -1614,7 +1614,7 @@ subroutine read_inidat(dyn_in)
 
       factor_array(:,:,:,:) = 1.0_r8
       do ie = 1, nelemd
-         do k = 1, thermodynamic_active_species_num
+         do k = dry_air_species_num+1, thermodynamic_active_species_num
             m_cnst = thermodynamic_active_species_idx(k)
             factor_array(:,:,:,ie) = factor_array(:,:,:,ie) + qtmp(:,:,:,ie,m_cnst)
          end do

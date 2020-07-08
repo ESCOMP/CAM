@@ -404,7 +404,7 @@ contains
 
 
       if (ftype_conserve==1) then
-        call get_dp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,np1_qdp),2, &
+        call get_dp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp),2, &
             thermodynamic_active_species_idx_dycore,elem(ie)%state%dp3d(:,:,:,np1),pdel)
         do k=1,nlev
           do j=1,np
@@ -758,7 +758,7 @@ contains
     call t_startf('vertical_molec_diff')
     if (molecular_diff>1) then
       do ie=nets,nete
-        call get_rho_dry(1,np,1,np,ksponge_end,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,qn0),  &
+        call get_rho_dry(1,np,1,np,ksponge_end,nlev,qsize,elem(ie)%state%Qdp(:,:,:,1:qsize,qn0),  &
              elem(ie)%state%T(:,:,:,nt),ptop,elem(ie)%state%dp3d(:,:,:,nt),&
              .true.,rhoi_dry=rhoi_dry(:,:,:),                           &
              active_species_idx_dycore=thermodynamic_active_species_idx_dycore,&
@@ -804,7 +804,7 @@ contains
     !
     if (molecular_diff>0) then
       do ie=nets,nete
-        call get_rho_dry(1,np,1,np,ksponge_end,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,qn0),  &
+        call get_rho_dry(1,np,1,np,ksponge_end,nlev,qsize,elem(ie)%state%Qdp(:,:,:,1:qsize,qn0),  &
              elem(ie)%state%T(:,:,:,nt),ptop,elem(ie)%state%dp3d(:,:,:,nt),&
              .true.,rho_dry=rho_dry(:,:,:,ie),                                              &
              active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
@@ -817,7 +817,7 @@ contains
           !
           call get_molecular_diff_coef(1,np,1,np,ksponge_end,nlev,&
                elem(ie)%state%T(:,:,:,nt),0,km_sponge_factor(1:ksponge_end),kmvis(:,:,:,ie),kmcnd(:,:,:,ie),qsize,&
-               elem(ie)%state%Qdp(:,:,:,:,qn0),fact=1.0_r8/elem(ie)%state%dp3d(:,:,1:ksponge_end,nt),&
+               elem(ie)%state%Qdp(:,:,:,1:qsize,qn0),fact=1.0_r8/elem(ie)%state%dp3d(:,:,1:ksponge_end,nt),&
                active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
         end do
       else
@@ -1088,7 +1088,7 @@ contains
      ! allows us to fuse these two loops for more cache reuse
      !
      ! ===================================
-     use dimensions_mod,  only: np, nc, nlev, ntrac
+     use dimensions_mod,  only: np, nc, nlev, ntrac, ksponge_end
      use hybrid_mod,      only: hybrid_t
      use element_mod,     only: element_t
      use derivative_mod,  only: derivative_t, divergence_sphere, gradient_sphere, vorticity_sphere
@@ -1151,7 +1151,7 @@ contains
 
      type (EdgeDescriptor_t):: desc
 
-     real (kind=r8) :: sum_water(np,np,nlev), density_inv
+     real (kind=r8) :: sum_water(np,np,nlev), density_inv(np,np)
      real (kind=r8) :: E,v1,v2,glnps1,glnps2
      integer        :: i,j,k,kptr,ie
      real (kind=r8) :: u_m_umet, v_m_vmet, t_m_tmet, ptop
@@ -1291,26 +1291,33 @@ contains
          ! vtemp = grad ( E + PHI )
          ! vtemp = gradient_sphere(Ephi(:,:),deriv,elem(ie)%Dinv)
          call gradient_sphere(Ephi(:,:),deriv,elem(ie)%Dinv,vtemp)
+         density_inv(:,:) = R_dry(:,:,k)*T_v(:,:,k)/p_full(:,:,k)
 
-         exner(:,:)=(p_full(:,:,k)/hvcoord%ps0)**kappa(:,:,k,ie)
-         theta_v(:,:)=T_v(:,:,k)/exner(:,:)
-         call gradient_sphere(exner(:,:),deriv,elem(ie)%Dinv,grad_exner)
+         if (dry_air_species_num==0) then        
+           exner(:,:)=(p_full(:,:,k)/hvcoord%ps0)**kappa(:,:,k,ie)
+           theta_v(:,:)=T_v(:,:,k)/exner(:,:)
+           call gradient_sphere(exner(:,:),deriv,elem(ie)%Dinv,grad_exner)
 
-         if (dry_air_species_num>0) then
+           grad_exner(:,:,1) = cp_dry(:,:,k)*theta_v(:,:)*grad_exner(:,:,1)
+           grad_exner(:,:,2) = cp_dry(:,:,k)*theta_v(:,:)*grad_exner(:,:,2)
+         else
+           exner(:,:)=(p_full(:,:,k)/hvcoord%ps0)**kappa(:,:,k,ie)
+           theta_v(:,:)=T_v(:,:,k)/exner(:,:)
+           call gradient_sphere(exner(:,:),deriv,elem(ie)%Dinv,grad_exner)
+
            call gradient_sphere(kappa(:,:,k,ie),deriv,elem(ie)%Dinv,grad_kappa_term)
            suml = exner(:,:)*LOG(p_full(:,:,k)/hvcoord%ps0)
            grad_kappa_term(:,:,1)=-suml*grad_kappa_term(:,:,1)
            grad_kappa_term(:,:,2)=-suml*grad_kappa_term(:,:,2)
-         else
-          grad_kappa_term = 0.0_r8
+
+           grad_exner(:,:,1) = cp_dry(:,:,k)*theta_v(:,:)*(grad_exner(:,:,1)+grad_kappa_term(:,:,1))
+           grad_exner(:,:,2) = cp_dry(:,:,k)*theta_v(:,:)*(grad_exner(:,:,2)+grad_kappa_term(:,:,2))
          end if
 
          do j=1,np
            do i=1,np
-             density_inv = R_dry(i,j,k)*T_v(i,j,k)/p_full(i,j,k)
-
-             glnps1 = cp_dry(i,j,k)*theta_v(i,j)*grad_exner(i,j,1)+grad_kappa_term(i,j,1)
-             glnps2 = cp_dry(i,j,k) *theta_v(i,j)*grad_exner(i,j,2)+grad_kappa_term(i,j,2)
+             glnps1 = grad_exner(i,j,1)
+             glnps2 = grad_exner(i,j,2)
              v1     = elem(ie)%state%v(i,j,1,k,n0)
              v2     = elem(ie)%state%v(i,j,2,k,n0)
 
@@ -1322,7 +1329,7 @@ contains
                   - v1*(elem(ie)%fcor(i,j) + vort(i,j,k))        &
                   - vtemp(i,j,2) - glnps2
              ttens(i,j,k)  =  - vgrad_T(i,j) + &
-                  density_inv*omega_full(i,j,k)*inv_cp_full(i,j,k,ie)
+                  density_inv(i,j)*omega_full(i,j,k)*inv_cp_full(i,j,k,ie)
            end do
          end do
 
@@ -1599,9 +1606,9 @@ contains
       do ie=nets,nete
         se    = 0.0_r8
         ke    = 0.0_r8
-        call get_dp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,tl_qdp),2,thermodynamic_active_species_idx_dycore,&
+        call get_dp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,1:qsize,tl_qdp),2,thermodynamic_active_species_idx_dycore,&
              elem(ie)%state%dp3d(:,:,:,tl),pdel,ps=ps,ptop=hyai(1)*ps0)
-        call get_cp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,tl_qdp),&
+        call get_cp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,1:qsize,tl_qdp),&
              .false.,cp,dp_dry=elem(ie)%state%dp3d(:,:,:,tl),&
              active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
         do k = 1, nlev
@@ -1687,7 +1694,7 @@ contains
       do ie=nets,nete
         mr    = 0.0_r8
         mo    = 0.0_r8
-        call get_dp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,tl_qdp),2,thermodynamic_active_species_idx_dycore,&
+        call get_dp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,1:qsize,tl_qdp),2,thermodynamic_active_species_idx_dycore,&
              elem(ie)%state%dp3d(:,:,:,tl),pdel,ps=ps,ptop=hyai(1)*ps0)
         do k = 1, nlev
           do j=1,np
@@ -1804,7 +1811,8 @@ contains
      logical, parameter  :: del4omega = .true.
 
      do ie=nets,nete
-       call get_dp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,qn0),2,thermodynamic_active_species_idx_dycore,elem(ie)%state%dp3d(:,:,:,n0),dp_full)
+        call get_dp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,1:qsize,qn0),2,&
+           thermodynamic_active_species_idx_dycore,elem(ie)%state%dp3d(:,:,:,n0),dp_full)
         do k=1,nlev
            if (k==1) then
               p_full(:,:,k) = hvcoord%hyai(k)*hvcoord%ps0 + dp_full(:,:,k)/2
