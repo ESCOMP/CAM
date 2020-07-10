@@ -484,10 +484,10 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
                   phys_state(lchnk)%q(icol,ilyr,m) = factor*phys_state(lchnk)%q(icol,ilyr,m)
                end if
             end do
-            call thermodynamic_consistency( &
-               phys_state(lchnk), phys_tend(lchnk), icol, ilyr, q_prev(icol,ilyr,1,lchnk))
-         end do
-      end do
+          end do
+        end do
+       call thermodynamic_consistency( &
+            phys_state(lchnk), phys_tend(lchnk), ncols, pver)
    end do
 
 
@@ -738,14 +738,17 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
    ! Finally compute energy and water column integrals of the physics input state.
 
    use constituents,  only: qmin
-   use physconst,     only: cpair, gravit, rair, zvir, cappa, rairv,rh2o,rair
+   use physconst,     only: cpair, gravit, zvir, cappa, rairv, physconst_update
+   use shr_const_mod, only: shr_const_rwv
+   use phys_control,  only: waccmx_is
    use geopotential,  only: geopotential_t
    use physics_types, only: set_state_pdry, set_wet_to_dry
    use check_energy,  only: check_energy_timestep_init
-   use hycoef,        only: hyam, hybm, hyai, hybi, ps0
+   use hycoef,        only: hyai, hybi, ps0
    use shr_vmath_mod, only: shr_vmath_log
    use gmean_mod,     only: gmean
    use qneg_module,   only: qneg3
+   use dyn_comp,      only: ixo, ixo2, ixh, ixh2
 
    ! arguments
    type(physics_state), intent(inout), dimension(begchunk:endchunk) :: phys_state
@@ -766,6 +769,13 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
    real(r8) :: factor_array(pcols,nlev)
 
    integer :: m, i, k, ncol
+
+   !--------------------------------------------
+   !  Variables needed for WACCM-X
+   !--------------------------------------------
+    real(r8) :: mmrSum_O_O2_H                ! Sum of mass mixing ratios for O, O2, and H
+    real(r8), parameter :: mmrMin=1.e-20_r8  ! lower limit of o2, o, and h mixing ratios
+    real(r8), parameter :: N2mmrMin=1.e-6_r8 ! lower limit of o2, o, and h mixing ratios
 
    type(physics_buffer_desc), pointer :: pbuf_chnk(:)
    !----------------------------------------------------------------------------
@@ -861,10 +871,50 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
             end do
          end if
       end do
+      !------------------------------------------------------------
+      ! Ensure O2 + O + H (N2) mmr greater than one.
+      ! Check for unusually large H2 values and set to lower value.
+      !------------------------------------------------------------
+       if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
 
+          do i=1,ncol
+             do k=1,pver
 
-      ! fill zvirv 2D variables to be compatible with geopotential_t interface
-      zvirv(:,:) = zvir
+                if (phys_state(lchnk)%q(i,k,ixo) < mmrMin) phys_state(lchnk)%q(i,k,ixo) = mmrMin
+                if (phys_state(lchnk)%q(i,k,ixo2) < mmrMin) phys_state(lchnk)%q(i,k,ixo2) = mmrMin
+
+                mmrSum_O_O2_H = phys_state(lchnk)%q(i,k,ixo)+phys_state(lchnk)%q(i,k,ixo2)+phys_state(lchnk)%q(i,k,ixh)
+
+                if ((1._r8-mmrMin-mmrSum_O_O2_H) < 0._r8) then
+
+                   phys_state(lchnk)%q(i,k,ixo) = phys_state(lchnk)%q(i,k,ixo) * (1._r8 - N2mmrMin) / mmrSum_O_O2_H
+
+                   phys_state(lchnk)%q(i,k,ixo2) = phys_state(lchnk)%q(i,k,ixo2) * (1._r8 - N2mmrMin) / mmrSum_O_O2_H
+
+                   phys_state(lchnk)%q(i,k,ixh) = phys_state(lchnk)%q(i,k,ixh) * (1._r8 - N2mmrMin) / mmrSum_O_O2_H
+
+                endif
+
+                if(phys_state(lchnk)%q(i,k,ixh2) .gt. 6.e-5_r8) then
+                   phys_state(lchnk)%q(i,k,ixh2) = 6.e-5_r8
+                endif
+
+             end do
+          end do
+       endif
+
+      !-----------------------------------------------------------------------------
+      ! Call physconst_update to compute cpairv, rairv, mbarv, and cappav as
+      ! constituent dependent variables.
+      ! Compute molecular viscosity(kmvis) and conductivity(kmcnd).
+      ! Fill local zvirv variable; calculated for WACCM-X.
+      !-----------------------------------------------------------------------------
+      if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
+        call physconst_update(phys_state(lchnk)%q, phys_state(lchnk)%t, lchnk, ncol)
+        zvirv(:,:) = shr_const_rwv / rairv(:,:,lchnk) -1._r8
+      else
+        zvirv(:,:) = zvir
+      endif
 
       ! Compute initial geopotential heights - based on full pressure
       call geopotential_t (phys_state(lchnk)%lnpint, phys_state(lchnk)%lnpmid  , phys_state(lchnk)%pint  , &
@@ -905,35 +955,25 @@ end subroutine derived_phys_dry
 
 !=========================================================================================
 
-subroutine thermodynamic_consistency(phys_state, phys_tend, icol, ilyr, q_prev)
-
+subroutine thermodynamic_consistency(phys_state, phys_tend, ncols, pver)
+  !
    ! Adjust the physics temperature tendency for thermal energy consistency with the
    ! dynamics.
    ! Note: mixing ratios are assumed to be dry.
-   
-   use dimensions_mod,    only: qsize_condensate_loading,qsize_condensate_loading_idx
-   use dimensions_mod,    only: qsize_condensate_loading_cp, lcp_moist
+   !
+   use dimensions_mod,    only: lcp_moist
+   use physconst,         only: get_cp
    use control_mod,       only: phys_dyn_cp
    use physconst,         only: cpair
 
    type(physics_state), intent(in)    :: phys_state
    type(physics_tend ), intent(inout) :: phys_tend  
-   integer,  intent(in)               :: icol,ilyr
-   real(r8), intent(in)               :: q_prev
+   integer,  intent(in)               :: ncols, pver
   
-   integer :: nq, m
-   real(r8):: facor, sum_water, sum_cp, factor
+   real(r8):: inv_cp(ncols,pver)
    !----------------------------------------------------------------------------
 
    if (lcp_moist.and.phys_dyn_cp==1) then
-     factor = 1.0_r8
-     sum_cp    = cpair
-     sum_water = 1.0_r8                    
-     do nq=1,qsize_condensate_loading
-       m = qsize_condensate_loading_idx(nq)
-       sum_cp  = sum_cp+qsize_condensate_loading_cp(nq)*phys_state%q(icol,ilyr,m)
-       sum_water = sum_water + phys_state%q(icol,ilyr,m)
-     end do
      !
      ! scale temperature tendency so that thermal energy increment from physics
      ! matches SE (not taking into account dme adjust)
@@ -941,9 +981,8 @@ subroutine thermodynamic_consistency(phys_state, phys_tend, icol, ilyr, q_prev)
      ! note that if lcp_moist=.false. then there is thermal energy increment
      ! consistency (not taking into account dme adjust) 
      !
-     !
-     factor = cpair*sum_water/sum_cp
-     phys_tend%dtdt(icol,ilyr) = phys_tend%dtdt(icol,ilyr)*factor
+     call get_cp(1,ncols,1,pver,1,1,pcnst,phys_state%q(1:ncols,1:pver,:),.true.,inv_cp)
+     phys_tend%dtdt(1:ncols,1:pver) = phys_tend%dtdt(1:ncols,1:pver)*cpair*inv_cp
    end if 
 end subroutine thermodynamic_consistency
 

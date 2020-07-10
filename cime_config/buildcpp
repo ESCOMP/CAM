@@ -69,6 +69,9 @@ def buildcpp(case):
     if atm_grid == 'ne30pg3':
         atm_grid = 'ne30np4.pg3'
 
+    # Need to relax this error tolerance for the SE variable resolution grids
+    if atm_grid[0:3] == 'ne0':
+        case.set_value("EPS_AAREA", "1.0e-04")
 
     # if need to build - then construct configure command
     config_opts = ["-s", "-fc_type", compiler, "-ccsm_seq",

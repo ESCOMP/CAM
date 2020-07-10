@@ -108,17 +108,6 @@
 <fv_div24del2flag>42</fv_div24del2flag>
 
 <rxn_rate_sums>
-  'OddOx_HOx_Loss = HO2_O + HO2_O3 + OH_O + OH_O3 + H_O3',
-  'OddOx_Ox_Loss  = 2.0*O_O3 + O1D_H2O',
-  'OddOx_NOx_Loss = 2.0*NO2_O + 2.0*jno3_b',
-  'OddOx_CLOxBROx_Loss = 2.0*CLO_O + 2.0*jcl2o2 + 2.0*CLO_CLOa + 2.0*CLO_CLOb + 2.0*BRO_CLOb + 2.0*BRO_CLOc + 2.0*BRO_BRO + 2.0*BRO_O + CLO_HO2 + BRO_HO2',
-  'OddOx_Loss_Tot = 2.0*O_O3 + O1D_H2O + HO2_O + HO2_O3 + OH_O + OH_O3 + H_O3 + 2.0*NO2_O + 2.0*jno3_b + 2.0*CLO_O + 2.0*jcl2o2 + 2.0*CLO_CLOa +',
-                   '2.0*CLO_CLOb + 2.0*BRO_CLOb + 2.0*BRO_CLOc + 2.0*BRO_BRO + 2.0*BRO_O + CLO_HO2 + BRO_HO2',
-  'OddOx_Prod_Tot = 2.0*jo2_a + 2.0*jo2_b',
-  'O3_Prod = NO_HO2 + CH3O2_NO',
-  'O3_Loss = O1D_H2O + OH_O3 + HO2_O3',
-  'RO2_NO_sum  = NO_HO2 + CH3O2_NO',
-  'RO2_HO2_sum = CH3O2_HO2',
   'SolIonRate_Tot = jeuv_1 + jeuv_2 + jeuv_3 + jeuv_4 + jeuv_5 + jeuv_6 + jeuv_7 + jeuv_8 + jeuv_9 + jeuv_10 + jeuv_11 + jeuv_14 + jeuv_15 + jeuv_16 +',
                    'jeuv_17 + jeuv_18 + jeuv_19 + jeuv_20 + jeuv_21 + jeuv_22 + jeuv_23',
 </rxn_rate_sums>
