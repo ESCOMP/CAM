@@ -46,7 +46,7 @@ use physconst,          only: pi
 
 use pmgrid,             only: plon, plat
 use constituents,       only: pcnst, cnst_name, cnst_read_iv, qmin, cnst_type, &
-                              cnst_is_water_specie
+                              cnst_is_a_water_species
 
 use time_manager,       only: get_step_size
 
@@ -2982,7 +2982,7 @@ subroutine read_inidat(dyn_in)
   ! ratios.
   if (analytic_ic_active()) then
      do m = 1, pcnst
-        if (cnst_read_iv(m) .and. .not. cnst_is_water_specie(cnst_name(m))) then
+        if (cnst_read_iv(m) .and. .not. cnst_is_a_water_species(cnst_name(m))) then
            if (dyn_field_exists(fh_ini, trim(cnst_name(m)), required=.false.)) then
               ierr = pio_inq_dimid(fh_ini, 'lon' , lonid)
               ierr = pio_inq_dimid(fh_ini, 'lat' , latid)
@@ -3002,7 +3002,7 @@ subroutine read_inidat(dyn_in)
 
   do m = 1, pcnst
 
-    if (analytic_ic_active() .and. cnst_is_water_specie(cnst_name(m))) cycle
+    if (analytic_ic_active() .and. cnst_is_a_water_species(cnst_name(m))) cycle
 
     readvar   = .false.
     fieldname = cnst_name(m)

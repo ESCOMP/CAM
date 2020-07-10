@@ -7,7 +7,7 @@ use physconst,              only: pi
 use spmd_utils,             only: iam, masterproc
 use constituents,           only: pcnst, cnst_get_ind, cnst_name, cnst_longname, &
                                   cnst_read_iv, qmin, cnst_type, tottnam,        &
-                                  cnst_is_water_specie
+                                  cnst_is_a_water_species
 use cam_control_mod,        only: initial_run, simple_phys
 use cam_initfiles,          only: initial_file_get_id, topo_file_get_id, pertlim
 use phys_control,           only: use_gw_front, use_gw_front_igw, waccmx_is
@@ -1472,7 +1472,7 @@ subroutine read_inidat(dyn_in)
    ! dimension checked in the case that the file contains constituent mixing
    ! ratios.
    do m_cnst = 1, pcnst
-      if (cnst_read_iv(m_cnst) .and. .not. cnst_is_water_specie(cnst_name(m_cnst))) then
+      if (cnst_read_iv(m_cnst) .and. .not. cnst_is_a_water_species(cnst_name(m_cnst))) then
          if (dyn_field_exists(fh_ini, trim(cnst_name(m_cnst)), required=.false.)) then
             call check_file_layout(fh_ini, elem, dyn_cols, 'ncdata', .true., dimname)
             exit
@@ -1484,7 +1484,7 @@ subroutine read_inidat(dyn_in)
 
    do m_cnst = 1, pcnst
 
-      if (analytic_ic_active() .and. cnst_is_water_specie(cnst_name(m_cnst))) cycle
+      if (analytic_ic_active() .and. cnst_is_a_water_species(cnst_name(m_cnst))) cycle
 
       found = .false.
       if (cnst_read_iv(m_cnst)) then
