@@ -42,36 +42,36 @@ subroutine stepon_init(dyn_in, dyn_out)
    do m_cnst = 1, pcnst
      m_cnst_ffsl=qsize_tracer_idx_cam2dyn(m_cnst)
      call addfld(trim(cnst_name(m_cnst))//'_ffsl',  (/ 'lev' /), 'I', 'kg/kg',   &
-          trim(cnst_longname(m_cnst)), gridname='FFSL')
+          trim(cnst_longname(m_cnst)), gridname='FFSLHIST')
      call addfld(trim(cnst_name(m_cnst))//'_mass_ffsl',  (/ 'lev' /), 'I', 'kg/kg',   &
-          trim(cnst_longname(m_cnst))//'*dp', gridname='FFSL')
+          trim(cnst_longname(m_cnst))//'*dp', gridname='FFSLHIST')
    end do
-   call addfld('U_ffsl'     ,(/ 'lev' /), 'I', 'm/s ','U wind on A grid after dynamics',gridname='FFSL')
-   call addfld('V_ffsl'     ,(/ 'lev' /), 'I', 'm/s ','V wind on A grid after dynamics',gridname='FFSL')
-   call addfld('U_ffsl_ns'     ,(/ 'lev' /), 'I', 'm/s ','U wind on NS grid after dynamics',gridname='FFSL_NS')
-   call addfld('V_ffsl_ew'     ,(/ 'lev' /), 'I', 'm/s ','V wind on EW grid after dynamics',gridname='FFSL_EW')
-   call addfld('T_ffsl'     ,(/ 'lev' /), 'I', 'K '  ,'T on A grid grid after dynamics'     ,gridname='FFSL')
-   call addfld('PS_ffsl', horiz_only,  'I', 'Pa', 'Surface pressure on A grid after dynamics',gridname='FFSL')
-   call addfld('PHIS_ffsl', horiz_only,  'I', 'Pa', 'Geopotential height on A grid after dynamics',gridname='FFSL')
+   call addfld('U_ffsl'     ,(/ 'lev' /), 'I', 'm/s ','U wind on A grid after dynamics',gridname='FFSLHIST')
+   call addfld('V_ffsl'     ,(/ 'lev' /), 'I', 'm/s ','V wind on A grid after dynamics',gridname='FFSLHIST')
+   call addfld('U_ffsl_ns'     ,(/ 'lev' /), 'I', 'm/s ','U wind on NS grid after dynamics',gridname='FFSLHIST_NS')
+   call addfld('V_ffsl_ew'     ,(/ 'lev' /), 'I', 'm/s ','V wind on EW grid after dynamics',gridname='FFSLHIST_EW')
+   call addfld('T_ffsl'     ,(/ 'lev' /), 'I', 'K '  ,'T on A grid grid after dynamics'     ,gridname='FFSLHIST')
+   call addfld('PS_ffsl', horiz_only,  'I', 'Pa', 'Surface pressure on A grid after dynamics',gridname='FFSLHIST')
+   call addfld('PHIS_ffsl', horiz_only,  'I', 'Pa', 'Geopotential height on A grid after dynamics',gridname='FFSLHIST')
 
 
    ! Fields for initial condition files
-   call addfld('U&IC',   (/ 'lev' /),  'I', 'm/s', 'Zonal wind',     gridname='FFSL' )
-   call addfld('V&IC',   (/ 'lev' /),  'I', 'm/s', 'Meridional wind',gridname='FFSL' )
+   call addfld('U&IC',   (/ 'lev' /),  'I', 'm/s', 'Zonal wind',     gridname='FFSLHIST' )
+   call addfld('V&IC',   (/ 'lev' /),  'I', 'm/s', 'Meridional wind',gridname='FFSLHIST' )
    ! Don't need to register U&IC V&IC as vector components since we don't interpolate IC files
    call add_default('U&IC',0, 'I')
    call add_default('V&IC',0, 'I')
     
-   call addfld('PS&IC', horiz_only,  'I', 'Pa', 'Surface pressure',gridname='FFSL')
-   call addfld('PHIS&IC', horiz_only,  'I', 'Pa', 'PHIS on ffsl grid',gridname='FFSL')
-   call addfld('T&IC',  (/ 'lev' /), 'I', 'K',  'Temperature',            gridname='FFSL')
+   call addfld('PS&IC', horiz_only,  'I', 'Pa', 'Surface pressure',gridname='FFSLHIST')
+   call addfld('PHIS&IC', horiz_only,  'I', 'Pa', 'PHIS on ffsl grid',gridname='FFSLHIST')
+   call addfld('T&IC',  (/ 'lev' /), 'I', 'K',  'Temperature',            gridname='FFSLHIST')
    call add_default('PS&IC',0, 'I')
    call add_default('PHIS&IC',0, 'I')
    call add_default('T&IC    ',0, 'I')
 
    do m_cnst = 1,pcnst
       call addfld(trim(cnst_name(m_cnst))//'&IC', (/ 'lev' /), 'I', 'kg/kg', &
-                  trim(cnst_longname(m_cnst)), gridname='FFSL')
+                  trim(cnst_longname(m_cnst)), gridname='FFSLHIST')
       call add_default(trim(cnst_name(m_cnst))//'&IC', 0, 'I')
    end do
 

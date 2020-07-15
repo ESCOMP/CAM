@@ -606,17 +606,17 @@ subroutine dyn_init(dyn_in, dyn_out)
    call set_domain ( Atm(mytile)%domain )
 
    ! Forcing from physics on the FFSL grid
-   call addfld ('FU',  (/ 'lev' /), 'A', 'm/s2', 'Zonal wind forcing term on FFSL grid',     gridname='FFSL')
-   call addfld ('FV',  (/ 'lev' /), 'A', 'm/s2', 'Meridional wind forcing term on FFSL grid',gridname='FFSL')
+   call addfld ('FU',  (/ 'lev' /), 'A', 'm/s2', 'Zonal wind forcing term on FFSL grid',     gridname='FFSLHIST')
+   call addfld ('FV',  (/ 'lev' /), 'A', 'm/s2', 'Meridional wind forcing term on FFSL grid',gridname='FFSLHIST')
    call register_vector_field('FU', 'FV')
-   call addfld ('FT',  (/ 'lev' /), 'A', 'K/s', 'Temperature forcing term on FFSL grid',gridname='FFSL')
+   call addfld ('FT',  (/ 'lev' /), 'A', 'K/s', 'Temperature forcing term on FFSL grid',gridname='FFSLHIST')
 
    do m = 1, pcnst
      call addfld ('F'//trim(cnst_name_ffsl(m))//'_ffsl',  (/ 'lev' /), 'I', 'kg/kg/s',   &
-          trim(cnst_longname(m))//' mixing ratio forcing term (q_new-q_old) on FFSL grid', gridname='FFSL')
+          trim(cnst_longname(m))//' mixing ratio forcing term (q_new-q_old) on FFSL grid', gridname='FFSLHIST')
      call addfld(tottnam(m),(/ 'lev' /),'A','kg/kg/s', &
           trim(cnst_name_ffsl(m))//' horz + vert + fixer tendency ',  &
-                  gridname='FFSL')
+                  gridname='FFSLHIST')
    end do
 
    ! Energy diagnostics and axial angular momentum diagnostics
@@ -627,7 +627,7 @@ subroutine dyn_init(dyn_in, dyn_out)
              TRIM(ADJUSTL(" ")),TRIM(ADJUSTL(stage_txt(istage)))
          write(str3,*) TRIM(ADJUSTL(vars_unit(ivars)))
          call addfld (TRIM(ADJUSTL(str1)),horiz_only,'A',TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)), &
-              gridname='FFSL')
+              gridname='FFSLHIST')
       end do
    end do
 

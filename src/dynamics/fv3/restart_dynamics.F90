@@ -123,7 +123,6 @@ subroutine write_restart_dynamics(File, dyn_out)
     type (fv_atmos_type),  pointer :: Atm(:)
 
     type(io_desc_t),pointer :: iodesc3d,iodesc3d_ns,iodesc3d_ew,iodesc
-    real(r8), allocatable :: var3d(:,:,:), var3d_ew(:,:,:), var3d_ns(:,:,:), var2d(:,:)
     integer :: m, ierr
     integer :: array_lens_3d(3), array_lens_2d(2)
     integer :: file_lens_2d(2), file_lens_1d(1)
@@ -164,62 +163,49 @@ subroutine write_restart_dynamics(File, dyn_out)
     jlen=je-js+1
 
     ! create map for distributed write of 2D fields
-    allocate(var2d(ilen,jlen))
     array_lens_2d = (/ilen,jlen/)
     file_lens_1d  = (/grid_dimlens(1)/)
-    var2d=Atm(mytile)%phis(is:ie,js:je)
     call cam_grid_get_decomp(grid_id, array_lens_2d, file_lens_1d, pio_double, iodesc)
-    call PIO_Write_Darray(File, phisdesc, iodesc, var2d, ierr)
+    ! Write PHIS 
+    call PIO_Write_Darray(File, phisdesc, iodesc, Atm(mytile)%phis(is:ie,js:je), ierr)
+    ! Write PS 
+    call PIO_Write_Darray(File, psdesc, iodesc, Atm(mytile)%ps(is:ie,js:je), ierr)
 
-    var2d=Atm(mytile)%ps(is:ie,js:je)
-    call PIO_Write_Darray(File, psdesc, iodesc, var2d, ierr)
-    deallocate(var2d)
-
-    allocate(var3d(ilen,nlev,jlen))
-    array_lens_3d = (/ilen,nlev,jlen/)
+    array_lens_3d = (/ilen,jlen,nlev/)
     file_lens_2d  = (/grid_dimlens(1), nlev/)
     call cam_grid_get_decomp(grid_id, array_lens_3d, file_lens_2d, pio_double, iodesc3d)
-    var3d=RESHAPE(Atm(mytile)%ua(is:ie,js:je,1:nlev),(/ilen,nlev,jlen/),ORDER=(/1,3,2/))
-    call PIO_Write_Darray(File, Udesc, iodesc3d, var3d, ierr)
-
-    var3d=RESHAPE(Atm(mytile)%va(is:ie,js:je,1:nlev),(/ilen,nlev,jlen/),ORDER=(/1,3,2/))
-    call PIO_Write_Darray(File, Vdesc, iodesc3d, var3d , ierr)
-
-    var3d=RESHAPE(Atm(mytile)%omga(is:ie,js:je,1:nlev),(/ilen,nlev,jlen/),ORDER=(/1,3,2/))
-    call PIO_Write_Darray(File, Omegadesc, iodesc3d, var3d, ierr)
-
-    var3d=RESHAPE(Atm(mytile)%delp(is:ie,js:je,1:nlev),(/ilen,nlev,jlen/),ORDER=(/1,3,2/))
-    call PIO_Write_Darray(File, delpdesc, iodesc3d, var3d, ierr)
-
-    var3d=RESHAPE(Atm(mytile)%pt(is:ie,js:je,1:nlev),(/ilen,nlev,jlen/),ORDER=(/1,3,2/))
-    call PIO_Write_Darray(File, Tdesc, iodesc3d, var3d, ierr)
-
+    ! Write U a-grid
+    call PIO_Write_Darray(File, Udesc, iodesc3d, Atm(mytile)%ua(is:ie,js:je,1:nlev), ierr)
+    ! Write V a-grid
+    call PIO_Write_Darray(File, Vdesc, iodesc3d, Atm(mytile)%va(is:ie,js:je,1:nlev) , ierr)
+    ! Write OMEGA a-grid
+    call PIO_Write_Darray(File, Omegadesc, iodesc3d, Atm(mytile)%omga(is:ie,js:je,1:nlev), ierr)
+    ! Write DELP a-grid
+    call PIO_Write_Darray(File, delpdesc, iodesc3d, Atm(mytile)%delp(is:ie,js:je,1:nlev), ierr)
+    ! Write PT a-grid
+    call PIO_Write_Darray(File, Tdesc, iodesc3d, Atm(mytile)%pt(is:ie,js:je,1:nlev), ierr)
+    ! Write Tracers a-grid
     do m = 1, pcnst
-       var3d=RESHAPE(Atm(mytile)%q(is:ie,js:je,1:nlev,m),(/ilen,nlev,jlen/),ORDER=(/1,3,2/))
-       call PIO_Write_Darray(File, Qdesc(m), iodesc3d, var3d, ierr)
+       call PIO_Write_Darray(File, Qdesc(m), iodesc3d, Atm(mytile)%q(is:ie,js:je,1:nlev,m), ierr)
     end do
 
     deallocate(qdesc)
-    deallocate(var3d)
     
    ! create map for distributed write of 3D NS fields
-    allocate(var3d_ns(ilen,nlev,(jlen+1)))
-    array_lens_3d = (/ilen , nlev, (jlen+1)/)
+    array_lens_3d = (/ilen ,(jlen+1), nlev/)
     file_lens_2d  = (/grid_dimlens_ns(1), nlev/)
     call cam_grid_get_decomp(grid_id_ns, array_lens_3d, file_lens_2d, pio_double, iodesc3d_ns)
-    var3d_ns=RESHAPE(Atm(mytile)%u(is:ie,js:je+1,1:nlev),(/ilen,nlev,jlen+1/),ORDER=(/1,3,2/))
-    call PIO_Write_Darray(File, USdesc, iodesc3d_ns, var3d_ns, ierr)
-    deallocate(var3d_ns)
+
+    !WRITE US
+    call PIO_Write_Darray(File, USdesc, iodesc3d_ns, Atm(mytile)%u(is:ie,js:je+1,1:nlev), ierr)
 
    ! create map for distributed write of 3D EW fields
-
-    allocate(var3d_ew((ilen+1),nlev,jlen))
-    array_lens_3d = (/(ilen+1), nlev, jlen /)
+    array_lens_3d = (/(ilen+1), jlen, nlev /)
     file_lens_2d  = (/grid_dimlens_ew(1), nlev/)
     call cam_grid_get_decomp(grid_id_ew, array_lens_3d, file_lens_2d, pio_double, iodesc3d_ew)
-    var3d_ew=RESHAPE(Atm(mytile)%v(is:ie+1,js:je,1:nlev),(/(ilen+1),nlev,jlen/),ORDER=(/1,3,2/))
-    call PIO_Write_Darray(File, VSdesc, iodesc3d_ew, var3d_ew, ierr)
-    deallocate(var3d_ew)
+
+    !WRITE VS
+    call PIO_Write_Darray(File, VSdesc, iodesc3d_ew, Atm(mytile)%v(is:ie+1,js:je,1:nlev), ierr)
 
 end subroutine write_restart_dynamics
 
@@ -272,10 +258,6 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
    integer :: grid_id,grid_id_ns,grid_id_ew,ilen,jlen
    integer :: grid_dimlens(2),grid_dimlens_ns(2),grid_dimlens_ew(2)
 
-   real(r8),    allocatable :: var2d(:,:)
-   real(r8),    allocatable :: var3d(:,:,:)
-   real(r8),    allocatable :: var3d_ns(:,:,:)
-   real(r8),    allocatable :: var3d_ew(:,:,:)
    real(r8),    allocatable :: ebuffer(:,:)
    real(r8),    allocatable :: nbuffer(:,:)
 
@@ -319,7 +301,6 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
    call cam_pio_handle_error(ierr, sub//': cannot find UA')
    ierr = PIO_Inq_varid(File, 'V',     Vdesc)
    call cam_pio_handle_error(ierr, sub//': cannot find VA')
-   ! variable descriptors of required dynamics fields
    ierr = PIO_Inq_varid(File, 'US',     usdesc)
    call cam_pio_handle_error(ierr, sub//': cannot find US')
    ierr = PIO_Inq_varid(File, 'VS',     Vsdesc)
@@ -385,84 +366,56 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
     call cam_grid_get_decomp(grid_id, array_lens_2d, file_lens_1d, pio_double, iodesc2d)
 
    ! create map for distributed write of 3D fields
-    array_lens_3d = (/ilen,nlev, jlen/)
+    array_lens_3d = (/ilen, jlen,nlev/)
     file_lens_2d  = (/grid_dimlens(1), nlev/)
     call cam_grid_get_decomp(grid_id, array_lens_3d, file_lens_2d, pio_double, iodesc3d)
     
    ! create map for distributed write of 3D NS fields
-    array_lens_3d = (/ilen, nlev, jlen+1/)
+    array_lens_3d = (/ilen, jlen+1, nlev/)
     file_lens_2d  = (/grid_dimlens_ns(1), nlev/)
     call cam_grid_get_decomp(grid_id_ns, array_lens_3d, file_lens_2d, pio_double, iodesc3d_ns)
     
    ! create map for distributed write of 3D EW fields
-    array_lens_3d = (/ilen+1, nlev, jlen/)
+    array_lens_3d = (/ilen+1, jlen, nlev/)
     file_lens_2d  = (/grid_dimlens_ew(1), nlev/)
     call cam_grid_get_decomp(grid_id_ew, array_lens_3d, file_lens_2d, pio_double, iodesc3d_ew)
     
-    allocate(var2d(is:ie,js:je))
-    var2d = 0._r8
     ! PS
-    call PIO_Read_Darray(File, psdesc, iodesc2d, var2d, ierr)
-    atm(mytile)%ps(is:ie,js:je) = var2d
+    call PIO_Read_Darray(File, psdesc, iodesc2d,atm(mytile)%ps(is:ie,js:je), ierr)
     ! PHIS
-    call PIO_Read_Darray(File, phisdesc, iodesc2d, var2d, ierr)
-    atm(mytile)%phis(is:ie,js:je) = var2d
-    deallocate(var2d)
-
-    
-    allocate(var3d(is:ie,nlev,js:je))
-    var3d = 0._r8
-
+    call PIO_Read_Darray(File, phisdesc, iodesc2d, atm(mytile)%phis(is:ie,js:je), ierr)
     ! OMEGA
-    call PIO_Read_Darray(File, omegadesc, iodesc3d, var3d, ierr)
-    Atm(mytile)%omga(is:ie,js:je,1:nlev)=RESHAPE(var3d,(/ilen,jlen,nlev/),ORDER=(/1,3,2/))
-
+    call PIO_Read_Darray(File, omegadesc, iodesc3d,Atm(mytile)%omga(is:ie,js:je,1:nlev), ierr)
     ! DELP
-    call PIO_Read_Darray(File, delpdesc, iodesc3d, var3d, ierr)
-    atm(mytile)%delp(is:ie,js:je,1:nlev)=RESHAPE(var3d,(/ilen,jlen,nlev/),ORDER=(/1,3,2/))
-
+    call PIO_Read_Darray(File, delpdesc, iodesc3d, atm(mytile)%delp(is:ie,js:je,1:nlev), ierr)
     ! T
-    call PIO_Read_Darray(File, Tdesc, iodesc3d, var3d, ierr)
-    atm(mytile)%pt(is:ie,js:je,1:nlev)=RESHAPE(var3d,(/ilen,jlen,nlev/),ORDER=(/1,3,2/))
-
+    call PIO_Read_Darray(File, Tdesc, iodesc3d,atm(mytile)%pt(is:ie,js:je,1:nlev) , ierr)
     ! V
-    call PIO_Read_Darray(File, Vdesc, iodesc3d, var3d, ierr)
-    atm(mytile)%va(is:ie,js:je,1:nlev)=RESHAPE(var3d,(/ilen,jlen,nlev/),ORDER=(/1,3,2/))
-
+    call PIO_Read_Darray(File, Vdesc, iodesc3d, atm(mytile)%va(is:ie,js:je,1:nlev), ierr)
     ! U
-    call PIO_Read_Darray(File, Udesc, iodesc3d, var3d, ierr)
-    atm(mytile)%ua(is:ie,js:je,1:nlev)   =RESHAPE(var3d,(/ilen,jlen,nlev/),ORDER=(/1,3,2/))
+    call PIO_Read_Darray(File, Udesc, iodesc3d, atm(mytile)%ua(is:ie,js:je,1:nlev), ierr)
     ! tracers
     do m = 1, pcnst
-       call PIO_Read_Darray(File, Qdesc(m), iodesc3d, var3d, ierr)
-       atm(mytile)%q(is:ie,js:je,1:nlev,m) = RESHAPE(var3d,(/ilen,jlen,nlev/),ORDER=(/1,3,2/))
+       call PIO_Read_Darray(File, Qdesc(m), iodesc3d, atm(mytile)%q(is:ie,js:je,1:nlev,m), ierr)
     end do
 
-    deallocate(var3d)
     deallocate(qdesc)
 
     ! US and VS  After reading unique points on D grid call get_boundary routine to fill
     ! missing points on the north and east block boundaries which are duplicated between
     ! adjacent blocks.
 
-    allocate(var3d_ns(is:ie, nlev,js:je+1))
-    allocate(var3d_ew(is:ie+1, nlev, js:je))
     allocate(ebuffer(npy+2,nlev))
     allocate(nbuffer(npx+2,nlev))
-
-    var3d_ns = 0._r8
-    var3d_ew = 0._r8
     nbuffer  = 0._r8
     ebuffer  = 0._r8
-    call PIO_Read_Darray(File, USdesc, iodesc3d_ns, var3d_ns, ierr)
-    atm(mytile)%u(is:ie,js:je+1,1:nlev) = RESHAPE(var3d_ns,(/ilen,jlen+1,nlev/),ORDER=(/1,3,2/))
-
-    call PIO_Read_Darray(File, VSdesc, iodesc3d_ew, var3d_ew, ierr)
-    atm(mytile)%v(is:ie+1,js:je,1:nlev) = RESHAPE(var3d_ew,(/ilen+1,jlen,nlev/),ORDER=(/1,3,2/))
-
+    ! US
+    call PIO_Read_Darray(File, USdesc, iodesc3d_ns, atm(mytile)%u(is:ie,js:je+1,1:nlev), ierr)
+    ! VS
+    call PIO_Read_Darray(File, VSdesc, iodesc3d_ew, atm(mytile)%v(is:ie+1,js:je,1:nlev), ierr)
+    ! US/VS duplicates
     call mpp_get_boundary(atm(mytile)%u, atm(mytile)%v, atm(mytile)%domain, ebuffery=ebuffer,  &
          nbufferx=nbuffer, gridtype=DGRID_NE )
-
     do k=1,nlev
        do i=is,ie
           atm(mytile)%u(i,je+1,k) = nbuffer(i-is+1,k)
@@ -471,8 +424,6 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
           atm(mytile)%v(ie+1,j,k) = ebuffer(j-js+1,k)
        enddo
     enddo
-    deallocate(var3d_ns)
-    deallocate(var3d_ew)
     deallocate(ebuffer)
     deallocate(nbuffer)
 

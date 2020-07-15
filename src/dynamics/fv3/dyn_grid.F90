@@ -50,6 +50,9 @@ module dyn_grid
     integer, parameter :: dyn_decomp   = 101
     integer, parameter :: dyn_decomp_ew = 102
     integer, parameter :: dyn_decomp_ns = 103
+    integer, parameter :: dyn_decomp_hist   = 104
+    integer, parameter :: dyn_decomp_hist_ew = 105
+    integer, parameter :: dyn_decomp_hist_ns = 106
 
     integer, parameter :: ptimelevels = 2  ! number of time levels in the dycore
 
@@ -779,11 +782,20 @@ subroutine define_cam_grids(Atm)
   lon_coord => horiz_coord_create('lon_d', 'ncol_d', uniqpts_glob, 'longitude',     &
        'degrees_east', 1, size(pelon_deg), pelon_deg, map=pemap)
 
+  ! register dynamic A-grid, src_in(/1,2/) allows ilev,jlev,nlev ordering for restart IO
   call cam_grid_register('FFSL', dyn_decomp, lat_coord, lon_coord,          &
-       grid_map, block_indexed=.false., unstruct=.true.)
+       grid_map, block_indexed=.false., unstruct=.true.,src_in=(/1,2/))
   call cam_grid_attribute_register('FFSL', 'cell', '', 1)
   call cam_grid_attribute_register('FFSL', 'area_d', 'FFSL grid areas', &
          'ncol_d', area_ffsl, map=pemap)
+
+  ! register grid for writing dynamics A-Grid fields in history files 
+  call cam_grid_register('FFSLHIST', dyn_decomp_hist, lat_coord, lon_coord,          &
+       grid_map, block_indexed=.false., unstruct=.true.)
+  call cam_grid_attribute_register('FFSLHIST', 'cell', '', 1)
+  call cam_grid_attribute_register('FFSLHIST', 'area_d', 'FFSLHIST grid areas', &
+         'ncol_d', area_ffsl, map=pemap)
+
   ! grid_map cannot be deallocated as the cam_filemap_t object just points
   ! to it.  It can be nullified.
   nullify(grid_map)
@@ -816,9 +828,16 @@ subroutine define_cam_grids(Atm)
      end do
   end do
 
+  ! register dynamic D-grid, src_in(/1,2/) allows ilev,jlev,nlev ordering for restart IO
   call cam_grid_register('FFSL_EW', dyn_decomp_ew, lat_coord, lon_coord,          &
-       grid_map, block_indexed=.false., unstruct=.true.)
+       grid_map, block_indexed=.false., unstruct=.true.,src_in=(/1,2/))
   call cam_grid_attribute_register('FFSL_EW', 'cell', '', 1)
+
+  ! register grid for writing dynamics D-Grid fields in history files
+  call cam_grid_register('FFSLHIST_EW', dyn_decomp_hist_ew, lat_coord, lon_coord,          &
+       grid_map, block_indexed=.false., unstruct=.true.)
+  call cam_grid_attribute_register('FFSLHIST_EW', 'cell', '', 1)
+
   ! grid_map cannot be deallocated as the cam_filemap_t object just points
   ! to it.  It can be nullified.
   nullify(grid_map)
@@ -847,9 +866,15 @@ subroutine define_cam_grids(Atm)
      end do
   end do
 
+  ! register dynamic D-grid, src_in(/1,2/) allows ilev,jlev,nlev ordering for restart IO
   call cam_grid_register('FFSL_NS', dyn_decomp_ns, lat_coord, lon_coord,          &
-       grid_map, block_indexed=.false., unstruct=.true.)
+       grid_map, block_indexed=.false., unstruct=.true.,src_in=(/1,2/))
   call cam_grid_attribute_register('FFSL_NS', 'cell', '', 1)
+
+  ! register grid for writing dynamics D-Grid fields in history files
+  call cam_grid_register('FFSLHIST_NS', dyn_decomp_hist_ns, lat_coord, lon_coord,          &
+       grid_map, block_indexed=.false., unstruct=.true.)
+  call cam_grid_attribute_register('FFSLHIST_NS', 'cell', '', 1)
 
   ! grid_map cannot be deallocated as the cam_filemap_t object just points
   ! to it.  It can be nullified.
