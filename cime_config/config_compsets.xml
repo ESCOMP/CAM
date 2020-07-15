@@ -105,11 +105,6 @@
   </compset>
 
   <compset>
-    <alias>FC4</alias>
-    <lname>2000_CAM40_CLM50%SP_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
-  </compset>
-
-  <compset>
     <alias>QPX2000</alias>
     <lname>2000_CAM40%WXIE_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
   </compset>
