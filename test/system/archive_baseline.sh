@@ -147,34 +147,32 @@ if [ -n "$CAM_TESTDIR" ]; then
     test_list=""
     while read input_line; do
         test_list="${input_line} "
-      for test_id in ${test_list}; do
-          master_line=`grep $test_id input_tests_master`
-           str1=${master_line%% *}
-           temp=${master_line#$str1 }
-           str2=${temp%% *}
+        for test_id in ${test_list}; do
+            master_line=`grep $test_id input_tests_master`
+            str1=${master_line%% *}
+            temp=${master_line#$str1 }
+            str2=${temp%% *}
 
-           temp=${temp#$str2 }
-           str3=${temp%% *}
-           temp=${temp#$str3 }
-           str4=${temp%% *}
-           temp=${temp#$str4 }
-           str5=${temp%% *}
+            temp=${temp#$str2 }
+            str3=${temp%% *}
+            temp=${temp#$str3 }
+            str4=${temp%% *}
+            temp=${temp#$str4 }
+            str5=${temp%% *}
 
-           temp=${str2%%.*}
-           scr1=${temp#"TBL"}
-           scr1=${temp#"TBL"}
+            temp=${str2%%.*}
+            scr1=${temp#"TBL"}
+            scr1=${temp#"TBL"}
 
+            if grep -c TBL ${str2} > /dev/null; then
+                case="TSM${scr1}.$str3.$str4.$str5"
+                ls -ld ${CAM_TESTDIR}/${case}
+                cp -rp ${CAM_TESTDIR}/${case} ${baselinedir}/${case}
+                chmod -R a+r ${baselinedir}
+                chmod -R g+w ${baselinedir}
+            fi
 
-
-           if grep -c TBL ${str2} > /dev/null; then
-             case="TSM${scr1}.$str3.$str4.$str5"
-             ls -ld ${CAM_TESTDIR}/${case}
-             cp -rp ${CAM_TESTDIR}/${case} ${baselinedir}/${case}
-             chmod -R a+r ${baselinedir}
-             chmod -R g+w ${baselinedir}
-           fi
-
-      done
+        done
 
     done < ${test_file_list}
 
