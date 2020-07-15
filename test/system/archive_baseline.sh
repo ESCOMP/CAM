@@ -115,7 +115,7 @@ fi
 if [ -n "$CESM_TESTDIR" ]; then
 
     echo " "
-    mkdir $baselinedir
+    mkdir -p $baselinedir
     root_baselinedir=`dirname $baselinedir`
     echo "CESM Archiving to $root_baselinedir/$cam_tag"
     if [ -d $CESM_TESTDIR/baselines ]; then
@@ -135,7 +135,7 @@ if [ -n "$CAM_TESTDIR" ]; then
     echo
 
     if [ ! -d $baselinedir ]; then
-         mkdir $baselinedir
+         mkdir -p $baselinedir
     fi
 
     if [ ! -d ${baselinedir} ]; then
