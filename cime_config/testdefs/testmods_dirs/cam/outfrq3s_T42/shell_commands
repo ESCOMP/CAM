@@ -1,5 +1,0 @@
-./xmlchange ROF_NCPL=\$ATM_NCPL
-./xmlchange GLC_NCPL=\$ATM_NCPL
-./xmlchange EPS_AAREA=9.0e-4
-./xmlchange EPS_AGRID=9.0e-5
-./xmlchange CAM_NML_USE_CASE=UNSET
