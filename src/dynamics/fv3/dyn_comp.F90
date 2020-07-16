@@ -133,7 +133,7 @@ subroutine dyn_readnl(nlfilename)
                         fv3_ncnst, fv3_nord, fv3_npx, fv3_npy, fv3_npz, fv3_ntiles, &
                         fv3_nwat, fv3_print_freq
 
-  real               :: fv3_beta, fv3_d2_bg, fv3_d2_bg_k1, fv3_d2_bg_k2, fv3_d4_bg, &
+  real(r8)           :: fv3_beta, fv3_d2_bg, fv3_d2_bg_k1, fv3_d2_bg_k2, fv3_d4_bg, &
                         fv3_d_con, fv3_d_ext, fv3_dddmp, fv3_delt_max, fv3_ke_bg, &
                         fv3_rf_cutoff, fv3_tau, fv3_vtdm4
 
@@ -436,8 +436,6 @@ subroutine dyn_init(dyn_in, dyn_out)
    integer :: is,isd,ie,ied,js,jsd,je,jed
    integer :: fv3idx,idx
 
-   real, parameter:: cv_vap = 3._r8*rvgas        ! < 1384.5
-   real, parameter:: cv_air =  cp_air - rdgas !< = rdgas * (7/2-1) = 2.5*rdgas=717.68
    integer        :: unito
    integer, parameter  :: ndiag = 5
    integer             :: ncnst, pnats, num_family, nt_prog
