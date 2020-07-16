@@ -223,7 +223,7 @@ case $hostname in
     mach_workspace="/glade/scratch"
 
     # Check for CESM baseline directory
-    if [ ! -d "${BL_TESTDIR}" ] && [ -n "{$BL_TESTDIR}" ]; then
+    if [ -n "{$BL_TESTDIR}" ] && [ ! -d "${BL_TESTDIR}" ]; then
         echo "CESM_BASELINE ${BL_TESTDIR} not found .  Check BL_TESTDIR for correct tag name."
         exit
     fi 
