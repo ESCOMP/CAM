@@ -73,6 +73,11 @@ def buildcpp(case):
     if atm_grid[0:3] == 'ne0':
         case.set_value("EPS_AAREA", "1.0e-04")
 
+    # Need to relax this error tolerance for the T42 grids
+    if atm_grid[0:6] == '64x128':
+        case.set_value("EPS_AAREA", "1.0e-04")
+        case.set_value("EPS_AGRID", "1.0e-05")
+
     # if need to build - then construct configure command
     config_opts = ["-s", "-fc_type", compiler, "-ccsm_seq",
                    "-dyn", cam_dycore, "-hgrid", atm_grid, "-cpl", comp_interface,

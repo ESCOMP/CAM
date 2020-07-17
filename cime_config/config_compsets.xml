@@ -515,20 +515,6 @@
   <!-- ENTRIES -->
 
   <entries>
-
-    <entry id="EPS_AAREA">
-      <values match="last">
-        <value grid="a%T42_l%null_oi%T42_r%null_g%null_w%null_z%null_m%gx1v7">9.0e-4</value>
-        <value grid="a%ne0np4CONUS.ne30x8_l%ne0np4CONUS.ne30x8_oi%ne0np4CONUS.ne30x8">9.0e-06</value>
-      </values>
-    </entry>
-
-    <entry id="EPS_AGRID">
-      <values match="last">
-        <value grid="a%T42_l%null_oi%T42_r%null_g%null_w%null_z%null_m%gx1v7">9.0e-5</value>
-      </values>
-    </entry>
-
     <entry id="RUN_STARTDATE">
       <values match="last">
 	<value  compset="CAM[456]0%SCAM">1997-06-18</value>
