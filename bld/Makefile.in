@@ -41,6 +41,7 @@
 # F_OPTIMIZATION_OVERRIDE
 #               Use this to replace default Fortran compiler optimization.
 # COSP_LIBDIR   Directory where COSP library will be built.
+# MPAS_LIBDIR   Directory where MPAS library will be built.
 # MCT_LIBDIR    Directory where MCT library will be built.
 # PIO_BUILD_DIR Directory where PIO will be built (pio2 only)
 # PIO_INSTALL_DIR Directory containing PIO libraries and include files (pio2 only)
@@ -151,6 +152,21 @@ $(COSP_LIBDIR)/libcosp.a: cam_abortutils.o
 	$(MAKE) -C $(COSP_LIBDIR)
 
 cospsimulator_intr.o: $(COSP_LIBDIR)/libcosp.a
+endif
+
+ifneq ($(strip $(MPAS_LIBDIR)),)
+# Rules to build MPAS in its own library.
+#
+# To ensure that the MPAS-A dycore library is always updated whenever dycore source
+# files are changed, the libmpas target here is declared as PHONY; under ideal circumstances
+# this isn't necessary, since libmpas should never be an actual file (the library that is created
+# is named libmpas.a), but adding the PHONY declaration provides an extra bit of safety
+.PHONY: libmpas
+libmpas: cam_abortutils.o pio.o
+	$(MAKE) -C $(MPAS_LIBDIR) CC=$(CC) FC=$(FC) FFLAGS="$(FREEFLAGS) $(FFLAGS)" \
+	FCINCLUDES="-I.."
+
+dyn_grid.o: libmpas
 endif
 
 # Rules to build MCT library. 
@@ -357,6 +373,9 @@ endif
 ifneq ($(strip $(COSP_LIBDIR)),)
   mod_path += -I$(COSP_LIBDIR)
 endif
+ifneq ($(strip $(MPAS_LIBDIR)),)
+  mod_path += -I$(MPAS_LIBDIR)
+endif
 
 # PGI
 
@@ -411,7 +430,7 @@ ifeq ($(FC_TYPE),intel)
                    -qno-opt-dynamic-align -assume realloc_lhs -xHost
   FC_FLAGS_O3OPT:= $(FC_FLAGS)
   FC_FLAGS_NOOPT:= -ftz -convert big_endian -O0
-  FREEFLAGS     := 
+  FREEFLAGS     := -free
   FIXEDFLAGS    := -fixed -132
   LDFLAGS       :=
 

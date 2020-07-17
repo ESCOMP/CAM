@@ -25,12 +25,25 @@
 <dtime dyn="se"    hgrid="ne0np4.ARCTIC.ne30x4">450</dtime>
 <dtime dyn="se"    hgrid="ne0np4.ARCTICGRIS.ne30x8">225</dtime>
 
-<!-- Initial conditions -->
-<!-- Vertical coordinates only, good for analytic initial conditions -->
+<dtime dyn="mpas"                  >1800</dtime>
+
+<!-- Initial files -->
+
+<!-- Vertical coordinates only -->
 <ncdata nlev="26" analytic_ic="1" >atm/cam/inic/cam_vcoords_L26_c180105.nc</ncdata>
 <ncdata nlev="30" analytic_ic="1" >atm/cam/inic/cam_vcoords_L30_c180105.nc</ncdata>
 <ncdata nlev="32" analytic_ic="1" >atm/cam/inic/cam_vcoords_L32_c180105.nc</ncdata>
 
+<!-- Vertical coordinates and grid only -->
+<ncdata hgrid="mpasa480" nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa480_L32_v6.1.grid.nc</ncdata>
+<ncdata hgrid="mpasa120" nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa120_L32_v6.1.grid.nc</ncdata>
+<ncdata hgrid="mpasa60"  nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa60_L32_v6.1.grid.nc</ncdata>
+<ncdata hgrid="mpasa30"  nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa30_L32_v6.1.grid.nc</ncdata>
+<ncdata hgrid="mpasa15"  nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa15_L32_v6.1.grid.nc</ncdata>
+<ncdata hgrid="mpasa12"  nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa12_L32_v6.1.grid.nc</ncdata>
+<ncdata hgrid="mpasa15-3" nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa15-3_L32_v6.1.grid.nc</ncdata>
+
+<!-- Files with initial conditions -->
 <ncdata dyn="fv"  hgrid="0.23x0.31" nlev="26" ic_ymd="101"      >atm/cam/inic/fv/cami_0000-01-01_0.23x0.31_L26_c100513.nc</ncdata>
 <ncdata dyn="fv"  hgrid="0.23x0.31" nlev="26" ic_ymd="901"      >atm/cam/inic/fv/cami_0000-09-01_0.23x0.31_L26_c061106.nc</ncdata>
 <ncdata dyn="fv"  hgrid="0.47x0.63" nlev="26" ic_ymd="101"      >atm/cam/inic/fv/cami_1980-01-01_0.47x0.63_L26_c071226.nc</ncdata>
@@ -190,6 +203,8 @@
 
 <ncdata dyn="se" hgrid="ne0np4CONUS.ne30x8"       nlev="70" ic_ymd="101">atm/waccm/ic/FW2000_CONUS_30x8_L70_01-01-0001_c200602.nc</ncdata>
 
+<ncdata hgrid="mpasa480" nlev="26" >atm/cam/inic/mpas/mpasa480_L26_v6.1_bwave.nc</ncdata>
+
 <!-- Topography -->
 <bnd_topo hgrid="256x512" >atm/cam/topo/topo-from-cami_0000-01-01_256x512_L26_c030918.nc</bnd_topo>
 <bnd_topo hgrid="128x256" >atm/cam/topo/USGS-gtopo30_128x256_c050520.nc</bnd_topo>
@@ -246,6 +261,7 @@
 <use_topo_file aquaplanet="1"     > .false. </use_topo_file>
 <use_topo_file phys="held_suarez" > .false. </use_topo_file>
 <use_topo_file analytic_ic="1"    > .false. </use_topo_file>
+<use_topo_file dyn="mpas"         > .false. </use_topo_file>
 
 <!-- Mesh files for refined SE grids -->
 <se_mesh_file> none </se_mesh_file>
@@ -2512,6 +2528,67 @@
 <se_horz_num_threads> 0 </se_horz_num_threads>
 <se_tracer_num_threads> 0 </se_tracer_num_threads>
 <se_vert_num_threads> 0 </se_vert_num_threads>
+
+
+<!-- ================================================================== -->
+<!-- Defaults for MPAS                                                  -->
+<!-- ================================================================== -->
+<mpas_time_integration>SRK3</mpas_time_integration>
+<mpas_time_integration_order>2</mpas_time_integration_order>
+<mpas_dt                 > 1800.0 </mpas_dt>
+<mpas_dt hgrid="mpasa120">  600.0 </mpas_dt>
+
+<mpas_split_dynamics_transport>true</mpas_split_dynamics_transport>
+<mpas_number_of_sub_steps>2</mpas_number_of_sub_steps>
+<mpas_dynamics_split_steps>3</mpas_dynamics_split_steps>
+<mpas_h_mom_eddy_visc2>0.0</mpas_h_mom_eddy_visc2>
+<mpas_h_mom_eddy_visc4>0.0</mpas_h_mom_eddy_visc4>
+<mpas_v_mom_eddy_visc2>0.0</mpas_v_mom_eddy_visc2>
+<mpas_h_theta_eddy_visc2>0.0</mpas_h_theta_eddy_visc2>
+<mpas_h_theta_eddy_visc4>0.0</mpas_h_theta_eddy_visc4>
+<mpas_v_theta_eddy_visc2>0.0</mpas_v_theta_eddy_visc2>
+<mpas_horiz_mixing>2d_smagorinsky</mpas_horiz_mixing>
+
+<mpas_len_disp hgrid="mpasa480">480000.0</mpas_len_disp>
+<mpas_len_disp hgrid="mpasa120">120000.0</mpas_len_disp>
+
+<mpas_visc4_2dsmag>0.05</mpas_visc4_2dsmag>
+<mpas_del4u_div_factor>10.0</mpas_del4u_div_factor>
+<mpas_w_adv_order>3</mpas_w_adv_order>
+<mpas_theta_adv_order>3</mpas_theta_adv_order>
+<mpas_scalar_adv_order>3</mpas_scalar_adv_order>
+<mpas_u_vadv_order>3</mpas_u_vadv_order>
+<mpas_w_vadv_order>3</mpas_w_vadv_order>
+<mpas_theta_vadv_order>3</mpas_theta_vadv_order>
+<mpas_scalar_vadv_order>3</mpas_scalar_vadv_order>
+<mpas_scalar_advection>true</mpas_scalar_advection>
+<mpas_positive_definite>false</mpas_positive_definite>
+<mpas_monotonic>true</mpas_monotonic>
+<mpas_coef_3rd_order>0.25</mpas_coef_3rd_order>
+<mpas_smagorinsky_coef>0.125</mpas_smagorinsky_coef>
+<mpas_mix_full>true</mpas_mix_full>
+<mpas_epssm>0.1</mpas_epssm>
+<mpas_smdiv>0.1</mpas_smdiv>
+<mpas_apvm_upwinding>0.5</mpas_apvm_upwinding>
+<mpas_h_ScaleWithMesh>true</mpas_h_ScaleWithMesh>
+<mpas_num_halos>2</mpas_num_halos>
+<mpas_zd>22000.0</mpas_zd>
+<mpas_xnutr>0.2</mpas_xnutr>
+<mpas_number_of_blocks>0</mpas_number_of_blocks>
+<mpas_explicit_proc_decomp>false</mpas_explicit_proc_decomp>
+<mpas_proc_decomp_file_prefix>graph.info.part.</mpas_proc_decomp_file_prefix>
+<mpas_do_restart>false</mpas_do_restart>
+<mpas_print_global_minmax_vel>true</mpas_print_global_minmax_vel>
+<mpas_print_detailed_minmax_vel>false</mpas_print_detailed_minmax_vel>
+<mpas_print_global_minmax_sca>false</mpas_print_global_minmax_sca>
+
+<mpas_block_decomp_file_prefix hgrid="mpasa480">atm/cam/inic/mpas/mpasa480.graph.info.part.</mpas_block_decomp_file_prefix>
+<mpas_block_decomp_file_prefix hgrid="mpasa120">atm/cam/inic/mpas/mpasa120.graph.info.part.</mpas_block_decomp_file_prefix>
+<mpas_block_decomp_file_prefix hgrid="mpasa60">atm/cam/inic/mpas/mpasa60.graph.info.part.</mpas_block_decomp_file_prefix>
+<mpas_block_decomp_file_prefix hgrid="mpasa30">atm/cam/inic/mpas/mpasa30.graph.info.part.</mpas_block_decomp_file_prefix>
+<mpas_block_decomp_file_prefix hgrid="mpasa15">atm/cam/inic/mpas/mpasa15.graph.info.part.</mpas_block_decomp_file_prefix>
+<mpas_block_decomp_file_prefix hgrid="mpasa12">atm/cam/inic/mpas/mpasa12.graph.info.part.</mpas_block_decomp_file_prefix>
+<mpas_block_decomp_file_prefix hgrid="mpasa15-3">atm/cam/inic/mpas/mpasa15-3.graph.info.part.</mpas_block_decomp_file_prefix>
 
 <!-- ================================================================== -->
 <!-- Defaults for driver namelist seq_infodata_inparm                   -->

@@ -9,6 +9,11 @@ src/physics/cosp2/src
 src/physics/silhs
 src/physics/pumas
 src/atmos_phys
+src/dynamics/mpas/core_atmosphere
+src/dynamics/mpas/external
+src/dynamics/mpas/framework
+src/dynamics/mpas/operators
+src/dynamics/mpas/tools
 
 # Ignore compiled python
 buildnmlc

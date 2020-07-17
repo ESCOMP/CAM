@@ -309,6 +309,7 @@ module cam_history_support
   public     :: get_hist_coord_index, hist_coord_name, hist_coord_size
   public     :: sec2hms, date2yyyymmdd
   public     :: hist_dimension_name
+  public     :: nday2str
 
   interface add_hist_coord
     module procedure add_hist_coord_regonly
@@ -1964,6 +1965,10 @@ contains
 80  format(i2.2,':',i2.2,':',i2.2)
     return
   end function sec2hms
+
+
+  !#######################################################################
+
   character(len=10) function date2yyyymmdd (date)
 
     ! Input arguments
@@ -2009,6 +2014,25 @@ contains
      end do    
      
   end function hist_dimension_name
+
+  !#######################################################################
+
+  character(len=10) function nday2str(nday)
+
+     ! return integer number of days as a left justified string
+
+     ! arguments
+     integer, intent(in) :: nday ! number of days
+
+     ! local variables
+     character(len=10) :: str
+
+     write(str,80) nday
+80   format(i10)
+     
+     nday2str = adjustl(str)
+
+  end function nday2str
 
   !#######################################################################
 

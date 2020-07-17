@@ -552,11 +552,13 @@ contains
     integer,       optional,   intent(in)    :: dest_in(:)
 
     ! Local variables
+    integer                                  :: ndest
     integer                                  :: d(max_dests)
 
     if (associated(this%map)) then
       if (present(dest_in)) then
-        d = dest_in
+        ndest = size(dest_in)
+        d(:ndest) = dest_in(:ndest)
       else
         d = this%dest
       end if
@@ -937,7 +939,9 @@ contains
           dims(rank + this%src(i) + 1, 1) = 0
           dims(rank + this%src(i) + 1, 2) = -1
         end if
-       ! No else (zero means unused position)
+      else
+        ! src(i)==0 means unused position
+        dims(i,:) = 0
       end if
     end do
   end subroutine cam_filemap_get_array_bounds

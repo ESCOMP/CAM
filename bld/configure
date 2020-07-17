@@ -234,6 +234,7 @@ OPTIONS
      -ldflags <string>  A string of user specified load options.  Appended to
                         Makefile defaults.
      -linker <name>     User specified linker.  Overrides Makefile default of \$(FC).
+     -mpas_libdir <dir> Directory containing MPAS library.
      -mct_libdir <dir>  Directory containing MCT library.  Default: build the library from source
                         in a subdirectory of \$cam_bld.
      -mpi_inc <dir>     Directory containing MPI include files.
@@ -333,6 +334,7 @@ GetOptions(
     "max_n_rad_cnst=s"          => \$opts{'max_n_rad_cnst'},
     "mct_libdir=s"              => \$opts{'mct_libdir'},
     "microphys=s"               => \$opts{'microphys'},
+    "mpas_libdir=s"             => \$opts{'mpas_libdir'},
     "mpi_inc=s"                 => \$opts{'mpi_inc'},
     "mpi_lib=s"                 => \$opts{'mpi_lib'},
     "nadv=s"                    => \$opts{'nadv'},
@@ -1298,6 +1300,9 @@ elsif ($dyn_pkg eq 'eul') {
 }
 elsif ($dyn_pkg eq 'se') {
     $hgrid = 'ne16np4';
+}
+elsif ($dyn_pkg eq 'mpas') {
+    $hgrid = 'mpasa480';
 }
 $cfg_ref->set('hgrid', $hgrid);
 
@@ -2368,6 +2373,36 @@ if ($cosp) {
     if ($print) { print "creating $cosp_libdir/Makefile\n"; }
 }
 
+#-----------------------------------------------------------------------------------------------
+# MPAS library.
+if ($dyn_pkg eq 'mpas') {
+
+    # Set the directory used to build MPAS.  Add location and library name
+    # to the user specified load flags.
+    my $mpas_libdir = '';
+    if (defined $opts{'mpas_libdir'}) {
+      $mpas_libdir = $opts{'mpas_libdir'};
+    } else
+    {
+        $mpas_libdir = "$cam_bld/mpas";
+    }
+
+    $cfg_ref->set('mpas_libdir', "$mpas_libdir");
+
+    my $ldflags = $cfg_ref->get('ldflags');
+    $ldflags .= " -L$mpas_libdir -lmpas ";
+    $cfg_ref->set('ldflags', $ldflags);
+
+    # create the build directory for mpas
+    my $bld_dir = $mpas_libdir;
+    unless (-d $bld_dir or mkdirp($bld_dir)) {
+        die "** Could not create the mpas build directory: $bld_dir\n";
+    }
+
+    # Create the MPAS Makefile from a template and copy it into the mpas bld directory
+    write_mpas_makefile("$cfgdir/../src/dynamics/mpas/Makefile", "$mpas_libdir/Makefile");
+    if ($print) { print "creating $mpas_libdir/Makefile\n"; }
+}
 
 #-----------------------------------------------------------------------------------------------
 # MCT library.
@@ -3046,6 +3081,7 @@ sub write_makefile
     my $fopt         = $cfg_ref->get('fopt');
     my $ldflags      = $cfg_ref->get('ldflags');
     my $cosp_libdir  = $cfg_ref->get('cosp_libdir');
+    my $mpas_libdir  = $cfg_ref->get('mpas_libdir');
     my $mct_libdir   = $cfg_ref->get('mct_libdir');
     my $pio_build_dir   = $cfg_ref->get('pio_build_dir');
     my $pio_install_dir = $cfg_ref->get('pio_install_dir');
@@ -3097,6 +3133,7 @@ USER_FFLAGS     := $fflags
 F_OPTIMIZATION_OVERRIDE := $fopt
 USER_LDFLAGS    := $ldflags
 COSP_LIBDIR     := $cosp_libdir
+MPAS_LIBDIR     := $mpas_libdir
 MCT_LIBDIR      := $mct_libdir
 PIO_BUILD_DIR   := $pio_build_dir
 PIO_INSTALL_DIR := $pio_install_dir
@@ -3153,6 +3190,34 @@ EOF
 
 #-------------------------------------------------------------------------------
 
+sub write_mpas_makefile
+{
+
+    my ($file_in, $file_out) = @_;
+    my  $fh_in = new IO::File;
+    my  $fh_out = new IO::File;
+
+    $fh_out->open(">$file_out") or die "** can't open file: $file_out\n";
+
+    print $fh_out  <<"EOF";
+
+MPAS_SRC_ROOT := $cam_root/src/dynamics/mpas
+
+EOF
+
+    # Copy the "template" makefile to the new makefile.
+    $fh_in->open("<$file_in") or die "** can't open file: $file_in\n";
+    while (<$fh_in>) {
+        print $fh_out $_;
+    }
+
+    $fh_out->close;
+    $fh_in->close;
+}
+
+
+#-------------------------------------------------------------------------------
+
 sub write_config_h
 {
     my ($file) = @_;
@@ -3183,7 +3248,7 @@ sub set_horiz_grid
 
     my ($hgrid_file, $cfg_ref) = @_;
 
-    # Get dycore/grid from the package's configuration
+    # Get dycore/grid from the configuration object
     my $dyn_pkg = $cfg_ref->get('dyn');
     my $hgrid   = $cfg_ref->get('hgrid');
 
@@ -3208,9 +3273,9 @@ sub set_horiz_grid
         $hgrid =~ s/\.pg\d+//;   # strip the '.pgN' extension
         $cfg_ref->set('hgrid', $hgrid);
     }
-    else {
+    elsif ($dyn_pkg =~ m/^eul$|^fv/) {
 
-        # For non-SE dycores the parameters are read from an input file,
+        # For EUL and FV dycores the parameters are read from an input file,
         # and if no dycore/grid matches are found then issue error message.
 
         my $xml = XML::Lite->new( $hgrid_file );
