@@ -561,7 +561,7 @@ end subroutine physconst_init
           mw = cnst_mw(ix)
           thermodynamic_active_species_idx(icnst) = ix
           thermodynamic_active_species_cp (icnst) = cpwv
-          thermodynamic_active_species_cv (icnst) = = 0.5_r8*shr_const_rgas*dof3/mw
+          thermodynamic_active_species_cv (icnst) = 0.5_r8*shr_const_rgas*dof3/mw
           thermodynamic_active_species_R  (icnst) = rh2o
           icnst = icnst+1
         end if
