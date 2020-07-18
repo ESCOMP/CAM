@@ -8340,15 +8340,15 @@ Default: none
        group="fms_nml" valid_values="" >
 The level of clock granularity used for performance timing sections
 of code. Possible values in order of increasing detail are:
-'NONE', 'COMPONENT', 'SUBCOMPONENT', 'MODULE_DRIVER', 'MODULE', 'ROUTINE',
-'LOOP', and 'INFRA'.
+NONE, COMPONENT, SUBCOMPONENT, MODULE_DRIVER, MODULE, ROUTINE,
+LOOP, and INFRA.
 Default: none
 </entry>
 
 <entry id="fv3_domains_stack_size" type="integer" category="dyn_fv3"
        group="fms_nml" valid_values="" >
 Integer: The size in words of the MPP_DOMAINS user stack. If
-fv3_domains_stack_size > 0, the following MPP_DOMAINS routine is called:
+fv3_domains_stack_size &gt; 0, the following MPP_DOMAINS routine is called:
 call mpp_domains_set_stack_size (fv3_domains_stack_size). If
 fv3_domains_stack_size = 0 then the size set by
 mpp_domains_mod is used.
@@ -8357,7 +8357,7 @@ Default: 6000000
 
 <entry id="fv3_stack_size" type="integer" category="dyn_fv3"
        group="fms_nml" valid_values="" >
-Integer: The size in words of the MPP user stack. If fv3_stack_size > 0, the following
+Integer: The size in words of the MPP user stack. If fv3_stack_size &gt; 0, the following
 MPP routine is called: call mpp_set_stack_size (fv3_stack_size). If fv3_stack_size = 0
 then the defaults set by mpp_mod is used.
 Default: 6000000
@@ -8433,7 +8433,7 @@ Default: 0.0
        group="fv_core_nml" valid_values="" >
 Real: maximum allowed magnitude of the dissipative heating
 rate, K/s; larger magnitudes are clipped to this amount. This can
-help avoid instability that can occur due to strong heating when d_con > 0.
+help avoid instability that can occur due to strong heating when d_con &gt; 0.
 A value of 0.008 (a rate equivalent to about 800K per day) is sufficient
 to stabilize the model at 3 km resolution.
 Default: 0.0
@@ -8515,7 +8515,7 @@ layer. This value, and fv3_d2_bg_k2, will be changed
 appropriately in the model (depending on the height of model top),
 so the actual damping may be very reduced. See atmos_cubed_sphere/model/dyn_core
 for details. Recommended range is 0. to 0.2. Note that since diffusion is
-converted to heat if fv3_d_con > 0 larger amounts of spongelayer diffusion may be less stable.
+converted to heat if fv3_d_con &gt; 0 larger amounts of spongelayer diffusion may be less stable.
 Default: 0.15
 </entry>
 
@@ -8532,8 +8532,8 @@ Default: 0.02
 Real: Dimensionless coefficient for background higher-order
 divergence damping. If no second-order divergence
 damping is used, then values between 0.1 and 0.16 are recommended.
-Requires fv3_nord > 0. Note that the scaling for fv3_d4_bg differs from that
-of fv3_d2_bg; fv3_nord >= 1 and fv3_d4_bg = 0.16 will be less diffusive than
+Requires fv3_nord &gt; 0. Note that the scaling for fv3_d4_bg differs from that
+of fv3_d2_bg; fv3_nord ge 1 and fv3_d4_bg = 0.16 will be less diffusive than
 fv3_nord = 0 and fv3_d2_bg = 0.02.
 Default: 0.15
 </entry>
@@ -8606,7 +8606,7 @@ constraint may be warranted for fv3_hord_dp but not strictly necessary.
 
 Hord horizontal advection method
 ================================
-5     Unlimited “fifth-order” scheme with 2 delta x filter; fastest and
+5     Unlimited fifth-order scheme with 2 delta x filter; fastest and
       least diffusive
 6     Intermediate-strength monotonicity constraint. Gives best
       ACC but weaker TCs
@@ -8628,7 +8628,7 @@ complete list of kord options is given in the table below.
 limited form of the monotonicity constraint
 of Huynh, which is less diffusive than other constraints.
 5 is the default for non-hydrostatic simulations which uses the
-completely unlimited (“linear” or non-monotone) PPM scheme.
+completely unlimited (linear or non-monotone) PPM scheme.
 If no monotonicity constraint is applied, enabling
 the flux damping (fv3_do_vort_damp = .true.) is highly recommended
 to control grid-scale noise. It is also recommended that fv3_hord_mt,
@@ -8638,7 +8638,7 @@ on mass advection (fv3_hord_dp) is desired.
 
 Hord horizontal advection method
 ================================
-5     Unlimited “fifth-order” scheme with 2 delta x filter; fastest and
+5     Unlimited fifth-order scheme with 2 delta x filter; fastest and
       least diffusive
 6     Intermediate-strength monotonicity constraint. Gives best
       ACC but weaker TCs
@@ -8661,11 +8661,11 @@ and layer thickness in nonhydrostatic simulations.
 limited form of the monotonicity constraint
 of Huynh, which is less diffusive than other constraints.
 5 is the default for non-hydrostatic simulations which uses the
-completely unlimited (“linear” or non-monotone) PPM scheme.
+completely unlimited (linear or non-monotone) PPM scheme.
 
 Hord horizontal advection method
 ================================
-5     Unlimited “fifth-order” scheme with 2 delta x filter; fastest and
+5     Unlimited fifth-order scheme with 2 delta x filter; fastest and
       least diffusive
 6     Intermediate-strength monotonicity constraint. Gives best
       ACC but weaker TCs
@@ -8689,7 +8689,7 @@ advection to control the appearance of non-physical negative masses.
 
 Hord horizontal advection method
 ================================
-5     Unlimited “fifth-order” scheme with 2 delta x filter; fastest and
+5     Unlimited fifth-order scheme with 2 delta x filter; fastest and
       least diffusive
 6     Intermediate-strength monotonicity constraint. Gives best
       ACC but weaker TCs
@@ -8711,11 +8711,11 @@ for vertical velocity in nonhydrostatic simulations.
 limited form of the monotonicity constraint
 of Huynh, which is less diffusive than other constraints.
 5 is the default for non-hydrostatic simulations which uses the
-completely unlimited (“linear” or non-monotone) PPM scheme.
+completely unlimited (linear or non-monotone) PPM scheme.
 
 Hord horizontal advection method
 ================================
-5     Unlimited “fifth-order” scheme with 2 delta x filter; fastest and
+5     Unlimited fifth-order scheme with 2 delta x filter; fastest and
       least diffusive
 6     Intermediate-strength monotonicity constraint. Gives best
       ACC but weaker TCs
@@ -8753,7 +8753,7 @@ kord table
 ==========
 4    Monotone PPM
 6    Vanilla PPM
-7    PPM with Hyunh’s monotonicity constraint(more expensive but less diffusive)
+7    PPM with Hyunh monotonicity constraint(more expensive but less diffusive)
 9    Monotonic Cubic Spline
 10   Selectively (local extrema retained) monotonic Cubic Spline with 2 delta z
      oscillations removed
@@ -8771,7 +8771,7 @@ kord table
 ==========
 4    Monotone PPM
 6    Vanilla PPM
-7    PPM with Hyunh’s monotonicity constraint(more expensive but less diffusive)
+7    PPM with Hyunh monotonicity constraint(more expensive but less diffusive)
 9    Monotonic Cubic Spline
 10   Selectively (local extrema retained) monotonic Cubic Spline with 2 delta z
      oscillations removed
@@ -8790,7 +8790,7 @@ kord table
 ==========
 4    Monotone PPM
 6    Vanilla PPM
-7    PPM with Hyunh’s monotonicity constraint(more expensive but less diffusive)
+7    PPM with Hyunh monotonicity constraint(more expensive but less diffusive)
 9    Monotonic Cubic Spline
 10   Selectively (local extrema retained) monotonic Cubic Spline with 2 delta z
      oscillations removed
@@ -8808,7 +8808,7 @@ kord table
 ==========
 4    Monotone PPM
 6    Vanilla PPM
-7    PPM with Hyunh’s monotonicity constraint(more expensive but less diffusive)
+7    PPM with Hyunh monotonicity constraint(more expensive but less diffusive)
 9    Monotonic Cubic Spline
 10   Selectively (local extrema retained) monotonic Cubic Spline with 2 delta z
      oscillations removed
@@ -8956,7 +8956,7 @@ Default: FALSE
 <entry id="fv3_rf_cutoff" type="real" category="dyn_fv3"
        group="fv_core_nml" valid_values="" >
 Real: pressure below which no Rayleigh damping is applied if
-tau > 0.
+tau &gt; 0.
 Default: 750
 </entry>
 

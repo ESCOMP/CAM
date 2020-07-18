@@ -405,9 +405,10 @@ end subroutine physconst_init
     ! Last major species in namelist dry_air_species is derived from the other major species
     ! (since sum of dry mixing ratios for major species of dry air add must add to one)
     !
-    dof1 = 5._r8
-    dof2 = 7._r8
-    dof3 = 3._r8
+    dof1 = 3._r8   ! monatomic ideal gas  cv=dof1/2 * R;   cp=(1+dof1/2) * R; dof=3 translational
+    dof2 = 5._r8   ! diatomic ideal gas   cv=dof2/2 * R;   cp=(1+dof2/2) * R; dof=3 tranlational + 2 rotational
+    dof3 = 6._r8   ! polyatomic ideal gas cv=dof3/2 * R;   cp=(1+dof3/2) * R; dof=3 tranlational + 3 rotational
+    !
     if (dry_air_species_num>0) then
       !
       ! last major species in dry_air_species is derived from the others and constants associated with it
@@ -422,8 +423,8 @@ end subroutine physconst_init
           mw = 2.0_r8*cnst_mw(ix)
           icnst = dry_air_species_num
           thermodynamic_active_species_idx(icnst) = 1!note - this is not used since this tracer value is derived
-          thermodynamic_active_species_cp (icnst) = 0.5_r8*shr_const_rgas*dof2/mw !N2
-          thermodynamic_active_species_cv (icnst) = 0.5_r8*shr_const_rgas*dof1/mw !N2
+          thermodynamic_active_species_cp (icnst) = 0.5_r8*shr_const_rgas*(2._r8+dof2)/mw !N2
+          thermodynamic_active_species_cv (icnst) = 0.5_r8*shr_const_rgas*dof2/mw !N2
           thermodynamic_active_species_R  (icnst) = shr_const_rgas/mw
           thermodynamic_active_species_mwi(icnst) = 1.0_r8/mw
           thermodynamic_active_species_kv(icnst)  = 3.42_r8
@@ -466,8 +467,8 @@ end subroutine physconst_init
         else
           mw = cnst_mw(ix)
           thermodynamic_active_species_idx(icnst) = ix
-          thermodynamic_active_species_cp (icnst) = 0.5_r8*shr_const_rgas*dof1/mw
-          thermodynamic_active_species_cv (icnst) = 0.5_r8*shr_const_rgas*dof3/mw
+          thermodynamic_active_species_cp (icnst) = 0.5_r8*shr_const_rgas*(2._r8+dof1)/mw
+          thermodynamic_active_species_cv (icnst) = 0.5_r8*shr_const_rgas*dof1/mw
           thermodynamic_active_species_R  (icnst) = shr_const_rgas/mw
           thermodynamic_active_species_mwi(icnst) = 1.0_r8/mw
           thermodynamic_active_species_kv(icnst)  = 3.9_r8
@@ -485,8 +486,8 @@ end subroutine physconst_init
         else
           mw = cnst_mw(ix)
           thermodynamic_active_species_idx(icnst) = ix
-          thermodynamic_active_species_cp (icnst) = 0.5_r8*shr_const_rgas*dof2/mw
-          thermodynamic_active_species_cv (icnst) = 0.5_r8*shr_const_rgas*dof1/mw
+          thermodynamic_active_species_cp (icnst) = 0.5_r8*shr_const_rgas*(2._r8+dof2)/mw
+          thermodynamic_active_species_cv (icnst) = 0.5_r8*shr_const_rgas*dof2/mw
           thermodynamic_active_species_R  (icnst) = shr_const_rgas/mw
           thermodynamic_active_species_mwi(icnst) = 1.0_r8/mw
           thermodynamic_active_species_kv(icnst)  = 4.03_r8
@@ -504,8 +505,8 @@ end subroutine physconst_init
         else
           mw = cnst_mw(ix)
           thermodynamic_active_species_idx(icnst) = ix
-          thermodynamic_active_species_cp (icnst) = 0.5_r8*shr_const_rgas*dof1/mw
-          thermodynamic_active_species_cv (icnst) = 0.5_r8*shr_const_rgas*dof3/mw
+          thermodynamic_active_species_cp (icnst) = 0.5_r8*shr_const_rgas*(2._r8+dof1)/mw
+          thermodynamic_active_species_cv (icnst) = 0.5_r8*shr_const_rgas*dof1/mw
           thermodynamic_active_species_R  (icnst) = shr_const_rgas/mw
           thermodynamic_active_species_mwi(icnst) = 1.0_r8/mw
           thermodynamic_active_species_kv(icnst)  = 0.0_r8
@@ -557,9 +558,10 @@ end subroutine physconst_init
           write(iulog, *) subname//' moist air component not found: ', water_species_in_air(i)
           call endrun(subname // ':: moist air component not found')         
         else
+          mw = cnst_mw(ix)
           thermodynamic_active_species_idx(icnst) = ix
           thermodynamic_active_species_cp (icnst) = cpwv
-          thermodynamic_active_species_cv (icnst) = 3.0_r8*rh2o
+          thermodynamic_active_species_cv (icnst) = = 0.5_r8*shr_const_rgas*dof3/mw
           thermodynamic_active_species_R  (icnst) = rh2o
           icnst = icnst+1
         end if

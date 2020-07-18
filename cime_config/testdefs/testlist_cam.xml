@@ -778,15 +778,6 @@
       <machine name="cheyenne" compiler="pgi" category="fv3_cam"/>
     </machines>
   </test>
-  <test compset="QPC4" grid="C48_C48_mg17" name="ERP_Ln9" testmods="cam/outfrq9s">
-    <machines>
-      <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
-    </machines>
-    <options>
-      <option name="wallclock">00:10:00</option>
-    </options>
-  </test>
-
 <!--              @@@@@@@@@@@@@@@@@@@@@@                 -->
 <!--             WACCM COMPSETS                 -->
 <!--              @@@@@@@@@@@@@@@@@@@@@@                 -->
