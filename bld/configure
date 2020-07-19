@@ -121,9 +121,10 @@ OPTIONS
                           test_tracers, test_tracers2].
                         Default: none.
      -chem <name>       Build CAM with specified prognostic chemistry package
-                        [ trop_mam3 | trop_mam4 | trop_mam7 | trop_mozart | trop_strat_mam4_vbs | trop_strat_mam4_vbsext |
-                          waccm_ma | waccm_mad | waccm_mad_mam4 | waccm_ma_mam4 |
-                          waccm_ma_sulfur | waccm_sc | waccm_sc_mam4 | waccm_tsmlt_mam4 |
+                        [ trop_mam3 | trop_mam4 | trop_mam7 | trop_mozart |
+                          trop_strat_mam4_ts2 | trop_strat_mam4_vbs | trop_strat_mam4_vbsext | 
+                          waccm_ma | waccm_mad | waccm_mad_mam4 | waccm_ma_mam4 | 
+                          waccm_ma_sulfur | waccm_sc | waccm_sc_mam4 | waccm_tsmlt_mam4 | 
                           terminator | none ].
                         Default: trop_mam4 for cam6 and trop_mam3 for cam5.
      -[no]clubb_sgs     Switch on [off] CLUBB_SGS.  Default: on for cam6, otherwise off.
@@ -160,7 +161,7 @@ OPTIONS
                         Currently available: DST,SSLT,SO4,GHG,OC,BC,CARBON16
      -psubcols <n>      Maximum number of sub-columns in a run - set to 1 if not using sub-columns (default)
      -rad <name>        Specify the radiation package [rrtmg | camrt]
-     -silhs             Switch on SILHS.
+     -silhs             Switch on SILHS. 
      -spcam_clubb_sgs   Turn on the SPCAM version of CLUBB
      -spcam_nx <n>      SPCAM x-grid. - defaults to 4 (note the CRM requires spcam_nx to be greater than or equal to 4)
      -spcam_ny <n>      SPCAM y-grid. - defaults to 1
@@ -969,7 +970,7 @@ if (defined $opts{'silhs'}) {
     $silhs = $opts{'silhs'};
 }
 
-# SILHS only works with CLUBB_SGS
+# SILHS only works with CLUBB_SGS 
 if ($silhs and not ($clubb_sgs )) {
     die <<"EOF";
 **    ERROR: SILHS is turned on, but CLUBB_SGS is not
@@ -1969,7 +1970,7 @@ if ($cfg_ref->get('analytic_ic')) {
 
 #WACCM-X extended thermosphere/ionosphere model
 if ($waccmx) {
-    $cfg_cppdefs .= ' -DWACCMX_PHYS';
+    $cfg_cppdefs .= ' -DWACCMX_PHYS'; 
     if (($dyn_pkg ne 'fv') and ($ionos ne 'none'))  {
         die "ERROR:  Ionosphere is only available for FV dycore \n";
     }
@@ -2811,6 +2812,7 @@ sub write_filepath
 
     if ($simple_phys) {
       print $fh "$camsrcdir/src/physics/simple\n";
+      print $fh "$camsrcdir/src/atmos_phys/kessler\n";
     }
 
     if ($carma ne 'none') {
@@ -2866,6 +2868,7 @@ sub write_filepath
        print $fh "$camsrcdir/src/physics/silhs\n";
     }
 
+    print $fh "$camsrcdir/src/physics/pumas\n";
 
     # Superparameterization
     if ($phys_pkg eq 'spcam_m2005' or $phys_pkg eq 'spcam_sam1mom') {
@@ -2915,12 +2918,11 @@ sub write_filepath
     if ($dyn eq 'eul') {
         print $fh "$camsrcdir/src/advection/slt\n";
     }
-    if ($cpl eq 'nuopc') {
-	print $fh "$cam_root/cime/src/drivers/nuopc/nuopc_cap_share/\n";
-    }
+
     print $fh "$camsrcdir/src/cpl/$cpl\n";
     print $fh "$camsrcdir/src/control\n";
     print $fh "$camsrcdir/src/utils\n";
+    print $fh "$camsrcdir/src/atmos_phys/utilities\n";
 
     if ($cam_build) {
 
@@ -2934,46 +2936,46 @@ sub write_filepath
             print $fh "$cam_root/cime/src/share/esmf_wrf_timemgr\n";
         }
 
-        # Sequential Driver
+       # Sequential Driver
         print $fh "$cam_root/cime/src/drivers/mct/main\n";
         print $fh "$cam_root/cime/src/drivers/mct/shr\n";
 
-	# Ocean package.
-	if ($ocn eq 'dom') {
-	    print $fh "$camsrcdir/src/utils/cam_dom\n";
-	}
-	elsif ($ocn eq 'docn' or $ocn eq 'som') {
-	    print $fh "$cam_root/cime/src/components/data_comps/docn\n";
-	    print $fh "$cam_root/cime/src/components/data_comps/docn/mct\n";
-	}
-	elsif ($ocn eq 'aquaplanet') {
-	    print $fh "$camsrcdir/src/utils/cam_aqua\n";
-	    print $fh "$camsrcdir/src/utils/cam_aqua/cpl\n";
-	}
-	elsif ($ocn eq 'socn') {
-	    print $fh "$cam_root/cime/src/components/stub_comps/socn/mct\n";
-	}
+        # Ocean package.
+        if ($ocn eq 'dom') {
+            print $fh "$camsrcdir/src/utils/cam_dom\n";
+        }
+        elsif ($ocn eq 'docn' or $ocn eq 'som') {
+            print $fh "$cam_root/cime/src/components/data_comps_mct/docn\n";
+            print $fh "$cam_root/cime/src/components/data_comps_mct/docn/src\n";
+        }
+        elsif ($ocn eq 'aquaplanet') {
+            print $fh "$camsrcdir/src/utils/cam_aqua\n";
+            print $fh "$camsrcdir/src/utils/cam_aqua/cpl\n";
+        }
+        elsif ($ocn eq 'socn') {
+            print $fh "$cam_root/cime/src/components/stub_comps_mct/socn/src\n";
+        }
 
         # Land package
-        print $fh "$cam_root/cime/src/components/stub_comps/slnd/mct\n";
+        print $fh "$cam_root/cime/src/components/stub_comps_mct/slnd/src\n";
 
         # Sea ice package
-        print $fh "$cam_root/cime/src/components/stub_comps/sice/mct\n";
+        print $fh "$cam_root/cime/src/components/stub_comps_mct/sice/src\n";
 
         # Land ice package
-        print $fh "$cam_root/cime/src/components/stub_comps/sglc/mct\n";
+        print $fh "$cam_root/cime/src/components/stub_comps_mct/sglc/src\n";
 
         # include stub ESP component
-        print $fh "$cam_root/cime/src/components/stub_comps/sesp/mct\n";
+        print $fh "$cam_root/cime/src/components/stub_comps_mct/sesp/src\n";
 
         # Runoff package
-        print $fh "$cam_root/cime/src/components/stub_comps/srof/mct\n";
+        print $fh "$cam_root/cime/src/components/stub_comps_mct/srof/src\n";
 
         # Wave package
-        print $fh "$cam_root/cime/src/components/stub_comps/swav/mct\n";
+        print $fh "$cam_root/cime/src/components/stub_comps_mct/swav/src\n";
 
         # IAC package
-        print $fh "$cam_root/cime/src/components/stub_comps/siac/mct\n";
+        print $fh "$cam_root/cime/src/components/stub_comps_mct/siac/src\n";
 
         # Share utilities
         print $fh "$cam_root/cime/src/share/util\n";

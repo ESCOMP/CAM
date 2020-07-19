@@ -196,7 +196,7 @@ contains
   !
   ! ================================
 
-  subroutine print_cfl(elem,hybrid,nets,nete,dtnu,ptop,&
+  subroutine print_cfl(elem,hybrid,nets,nete,dtnu,ptop,pmid,&
        dt_remap_actual,dt_tracer_fvm_actual,dt_tracer_se_actual,&
        dt_dyn_actual,dt_dyn_visco_actual,dt_dyn_del2_actual,dt_tracer_visco_actual,dt_phys)
     !
@@ -207,27 +207,28 @@ contains
     !
     use hybrid_mod,     only: hybrid_t, PrintHybrid
     use element_mod,    only: element_t
-    use dimensions_mod, only: np,ne,nelem,nelemd,nc,nhe,qsize,ntrac,nu_scale_top,nlev,large_Courant_incr
-    use dimensions_mod, only: max_nu_scale_del4
+    use dimensions_mod, only: np,ne,nelem,nelemd,nc,nhe,qsize,ntrac,nlev,large_Courant_incr
+    use dimensions_mod, only: nu_scale_top,nu_div_lev,nu_lev
+
     use quadrature_mod, only: gausslobatto, quadrature_t
     
     use reduction_mod,  only: ParallelMin,ParallelMax
     use physconst,      only: ra, rearth, pi
-    use control_mod,    only: nu, nu_q, nu_div, nu_top, fine_ne, rk_stage_user, max_hypervis_courant
-    use control_mod,    only: tstep_type, hypervis_power, hypervis_scaling, del2_physics_tendencies
+    use control_mod,    only: nu, nu_div, nu_q, nu_p, nu_s, nu_top, fine_ne, rk_stage_user, max_hypervis_courant
+    use control_mod,    only: tstep_type, hypervis_power, hypervis_scaling
     use cam_abortutils, only: endrun
     use parallel_mod,   only: global_shared_buf, global_shared_sum
     use edge_mod,       only: initedgebuffer, FreeEdgeBuffer, edgeVpack, edgeVunpack
     use bndry_mod,      only: bndry_exchange
     use time_mod,       only: tstep
     use mesh_mod,       only: MeshUseMeshFile
-    use control_mod,    only: nu, nu_div, nu_p, nu_q, nu_s
-    use dimensions_mod, only: ksponge_end
-    
+    use dimensions_mod, only: ksponge_end, kmvis_ref, kmcnd_ref,rho_ref
+    use physconst,      only: cpair
+  
     type(element_t)      , intent(inout) :: elem(:)
     integer              , intent(in) :: nets,nete
     type (hybrid_t)      , intent(in) :: hybrid
-    real (kind=r8), intent(in) :: dtnu, ptop
+    real (kind=r8), intent(in) :: dtnu, ptop, pmid(nlev)
     !
     ! actual time-steps
     !
@@ -245,6 +246,7 @@ contains
     real (kind=r8) :: x, y, noreast, nw, se, sw
     real (kind=r8), dimension(np,np,nets:nete) :: zeta
     real (kind=r8) :: lambda_max, lambda_vis, min_gw, lambda,umax, ugw
+    real (kind=r8) :: press,scale1,scale2,scale3, max_laplace
     integer :: ie,corner, i, j, rowind, colind, k
     type (quadrature_t)    :: gp
     character(LEN=256) :: rk_str
@@ -545,28 +547,37 @@ contains
     deallocate(gp%points)
     deallocate(gp%weights)
 
+    call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu_p  ,1.0_r8 ,'_p  ')
+    call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu    ,0.5_r8,'    ') 
     if (ptop>100.0_r8) then
       !
       ! CAM setting
       !
-     call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu_p  ,1.0_r8 ,'_p  ')
-     call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu    ,0.25_r8,'    ')
-     call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu_div,2.5_r8 ,'_div')
-     del2_physics_tendencies=.false.
+      call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu_div,2.5_r8 ,'_div')     
+      nu_div_lev(:)     = nu_div
+      nu_lev(:)         = nu
     else
       !
       ! WACCM setting
       !
-      call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu_p  ,1.0_r8 ,'_p  ') 
-      call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu    ,0.5_r8,'    ')
-      call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu_div,5.0_r8 ,'_div')
-      del2_physics_tendencies=.false.
+      call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu_div,2.5_r8 ,'_div')
+      if (hybrid%masterthread) write(iulog,*) ": sponge layer viscosity scaling factor"
+      do k=1,nlev
+        press = pmid(k)
+        
+        scale1 = 0.5_r8*(1.0_r8+tanh(2.0_r8*log(100.0_r8/press)))
+        nu_div_lev(k)     = (1.0_r8-scale1)*nu_div+scale1*2.0_r8*nu_div
+        nu_div_lev(k)     = nu_div
+        nu_lev(k)         = (1.0_r8-scale1)*nu    +scale1*nu_p
+        nu_lev(k)         = nu
+        if (hybrid%masterthread) write(iulog,*) "nu_lev=",k,nu_lev(k)
+        if (hybrid%masterthread) write(iulog,*) "nu_div_lev=",k,nu_div_lev(k)
+      end do
     end if
-    if (hybrid%masterthread) write(iulog,*) 'del2_physics_tendencies= ',del2_physics_tendencies
 
     if (nu_q<0) nu_q = nu_p ! necessary for consistency
-    if (nu_s<0) nu_s = nu   ! temperature damping is always equal to nu
-    
+    if (nu_s<0) nu_s = nu_p ! temperature damping is always equal to nu_p
+
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !
     ! time-step information
@@ -625,11 +636,13 @@ contains
     else
       dt_max_tracer_fvm = -1.0_r8
     end if
-    dt_max_hypervis        = s_hypervis/(MAX(nu_div,nu)*normDinv_hypervis)
+    dt_max_hypervis        = s_hypervis/(MAX(MAXVAL(nu_div_lev(:)),MAXVAL(nu_lev(:)))*normDinv_hypervis)
     dt_max_hypervis_tracer = s_hypervis/(nu_q*normDinv_hypervis)
-    dt_max_laplacian_top   = 1.0_r8/(nu_top*((ra*max_normDinv)**2)*lambda_vis)
+
+    max_laplace = MAX(MAXVAL(nu_scale_top(:))*nu_top,MAXVAL(kmvis_ref(:)/rho_ref(:)))
+    max_laplace = MAX(max_laplace,MAXVAL(kmcnd_ref(:)/(cpair*rho_ref(:))))
+    dt_max_laplacian_top   = 1.0_r8/(max_laplace*((ra*max_normDinv)**2)*lambda_vis)
     
-    max_nu_scale_del4=max(0.9_r8*dt_max_hypervis/dt_dyn_visco_actual,1.0_r8)
     if (hybrid%masterthread) then        
       write(iulog,'(a,f10.2,a)') ' '
       write(iulog,'(a,f10.2,a)') 'Estimates for maximum stable and actual time-steps for different aspects of algorithm:'
@@ -656,18 +669,16 @@ contains
         if (dt_tracer_fvm_actual>dt_max_tracer_fvm) write(iulog,*) 'WARNING: dt_tracer_fvm theortically unstable'
       end if
       write(iulog,'(a,f10.2)') '* dt_remap (vertical remap dt) ',dt_remap_actual
-      
-      do k=1,nlev
-        if (nu_scale_top(k)>0.15_r8) then
-          if(nu_top>0) then
-            write(iulog,'(a,i2,a,f10.2,a,f10.2,a)') '* dt level',k,'    (del2 sponge           ; u,v,T,dM) < ',&
-                 dt_max_laplacian_top/nu_scale_top(k),'s',dt_dyn_del2_actual,'s'
-            if (dt_dyn_del2_actual>dt_max_laplacian_top/nu_scale_top(k)) &
-                 write(iulog,*) 'WARNING: theoretically unstable in sponge; increase se_hypervis_subcycle_sponge'
-          end if
-        end if
+      do k=1,ksponge_end
+        max_laplace = MAX(nu_scale_top(k)*nu_top,kmvis_ref(k)/rho_ref(k))
+        max_laplace = MAX(max_laplace,kmcnd_ref(k)/(cpair*rho_ref(k)))
+        dt_max_laplacian_top   = 1.0_r8/(max_laplace*((ra*max_normDinv)**2)*lambda_vis)
+
+        write(iulog,'(a,f10.2,a,f10.2,a)') '* dt    (del2 sponge           ; u,v,T,dM) < ',&
+             dt_max_laplacian_top,'s',dt_dyn_del2_actual,'s'
+        if (dt_dyn_del2_actual>dt_max_laplacian_top) &
+             write(iulog,*) 'WARNING: theoretically unstable in sponge; increase se_hypervis_subcycle_sponge'
       end do
-      
       write(iulog,*) ' '
       if (hypervis_power /= 0) then
         write(iulog,'(a,3e11.4)')'Scalar hyperviscosity (dynamics): ave,min,max = ', &

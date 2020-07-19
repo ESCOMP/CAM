@@ -233,7 +233,7 @@ export CAM_TASKS=$CAM_TASKS
 
 source /glade/u/apps/ch/opt/lmod/7.5.3/lmod/lmod/init/sh
 
-module load intel/19.0.2
+module load intel/19.0.5
 module load mkl
 module list
 
@@ -290,7 +290,7 @@ MPI_LAUNCH_TIMEOUT=40
 
 source /glade/u/apps/ch/opt/lmod/7.5.3/lmod/lmod/init/sh
 
-module load intel/19.0.2
+module load intel/19.0.5
 module load mkl
 module list
 
@@ -545,7 +545,7 @@ if [ "\$CAM_FC" = "INTEL" ]; then
     input_file="tests_pretag_izumi_nag"
     export CCSM_MACH="izumi_intel"
 elif [ "\$CAM_FC" = "NAG" ]; then
-    module load compiler/nag/6.2
+    module load compiler/nag/6.2-8.1.0
 
     export CFG_STRING="-cc mpicc -fc mpif90 -fc_type nag "
     export INC_NETCDF=\${NETCDF_PATH}/include
@@ -553,7 +553,7 @@ elif [ "\$CAM_FC" = "NAG" ]; then
     input_file="tests_pretag_izumi_nag"
     export CCSM_MACH="izumi_nag"
 else
-    module load compiler/pgi/18.10
+    module load compiler/pgi/20.1
     export CFG_STRING=" -cc mpicc -fc_type pgi -fc mpif90 -cppdefs -DNO_MPI2 -cppdefs -DNO_MPIMOD "
     export INC_NETCDF=\${NETCDF_PATH}/include
     export LIB_NETCDF=\${NETCDF_PATH}/lib
@@ -562,7 +562,7 @@ else
 fi
 export MAKE_CMD="gmake --output-sync -j $gmake_j"
 export MACH_WORKSPACE="$mach_workspace"
-export CPRNC_EXE=/fs/cgd/csm/tools/bin/cprnc
+export CPRNC_EXE=/fs/cgd/csm/tools/cime/tools/cprnc/cprnc
 export ADDREALKIND_EXE=/fs/cgd/csm/tools/addrealkind/addrealkind
 dataroot="/fs/cgd/csm"
 echo_arg="-e"

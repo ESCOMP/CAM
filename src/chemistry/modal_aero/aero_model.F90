@@ -116,6 +116,7 @@ contains
     use namelist_utils,  only: find_group_name
     use units,           only: getunit, freeunit
     use mpishorthand
+    use modal_aero_convproc,   only: ma_convproc_readnl 
 
     character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
@@ -162,6 +163,8 @@ contains
     wetdep_list = aer_wetdep_list
     drydep_list = aer_drydep_list
 
+    call ma_convproc_readnl(nlfile)
+    
   end subroutine aero_model_readnl
 
   !=============================================================================
@@ -968,7 +971,7 @@ contains
     use modal_aero_data
     use modal_aero_calcsize,   only: modal_aero_calcsize_sub
     use modal_aero_wateruptake,only: modal_aero_wateruptake_dr
-    use modal_aero_convproc,   only: deepconv_wetdep_history, ma_convproc_intr
+    use modal_aero_convproc,   only: deepconv_wetdep_history, ma_convproc_intr, convproc_do_evaprain_atonce
 
     ! args
 
@@ -1063,8 +1066,12 @@ contains
 
     type(wetdep_inputs_t) :: dep_inputs
 
+    real(r8) :: dcondt_resusp3d(2*pcnst,pcols, pver)
+
     lchnk = state%lchnk
     ncol  = state%ncol
+
+    dcondt_resusp3d(:,:,:) = 0._r8
 
     call physics_ptend_init(ptend, state%psetcols, 'aero_model_wetdep', lq=wetdep_lq)
     
@@ -1303,7 +1310,8 @@ contains
                      f_act_conv=f_act_conv, &
                      icscavt=icscavt, isscavt=isscavt, bcscavt=bcscavt, bsscavt=bsscavt, &
                      convproc_do_aer=convproc_do_aer, rcscavt=rcscavt, rsscavt=rsscavt,  &
-                     sol_facti_in=sol_facti, sol_factic_in=sol_factic )
+                     sol_facti_in=sol_facti, sol_factic_in=sol_factic, &
+                     convproc_do_evaprain_atonce_in=convproc_do_evaprain_atonce )
 
                 do_hygro_sum_del = .false.
                 if ( lspec > 0 ) do_hygro_sum_del = .true. 
@@ -1518,7 +1526,7 @@ contains
                    else
                       fldcw => qqcw_get_field(pbuf, mm,lchnk)
                    endif
-                   
+
                    call wetdepa_v2(state%pmid, state%q(:,:,1), state%pdel, &
                         dep_inputs%cldt, dep_inputs%cldcu, dep_inputs%cmfdqr, &
                         dep_inputs%evapc, dep_inputs%conicw, dep_inputs%prain, dep_inputs%qme, &
@@ -1529,7 +1537,9 @@ contains
                         is_strat_cloudborne=.true.,  &
                         icscavt=icscavt, isscavt=isscavt, bcscavt=bcscavt, bsscavt=bsscavt, &
                         convproc_do_aer=convproc_do_aer, rcscavt=rcscavt, rsscavt=rsscavt,  &
-                        sol_facti_in=sol_facti, sol_factic_in=sol_factic )
+                        sol_facti_in=sol_facti, sol_factic_in=sol_factic, &
+                        convproc_do_evaprain_atonce_in=convproc_do_evaprain_atonce, &
+                        bergso_in=dep_inputs%bergso )
 
                    if(convproc_do_aer) then
                       ! save resuspension of cloudborne species
@@ -1603,7 +1613,36 @@ contains
     if (convproc_do_aer) then
        call t_startf('ma_convproc')
        call ma_convproc_intr( state, ptend, pbuf, dt,                &
-               nsrflx_mzaer2cnvpr, qsrflx_mzaer2cnvpr, aerdepwetis)
+            nsrflx_mzaer2cnvpr, qsrflx_mzaer2cnvpr, aerdepwetis, &
+            dcondt_resusp3d)
+       
+       if (convproc_do_evaprain_atonce) then
+          do m = 1, ntot_amode ! main loop over aerosol modes
+             do lphase = strt_loop,end_loop, stride_loop 
+                ! loop over interstitial (1) and cloud-borne (2) forms
+                do lspec = 0, nspec_amode(m)+1 ! loop over number + chem constituents + water
+                   if (lspec == 0) then ! number
+                      if (lphase == 1) then
+                         mm = numptr_amode(m)
+                      else
+                         mm = numptrcw_amode(m)
+                      endif
+                   else if (lspec <= nspec_amode(m)) then ! non-water mass
+                      if (lphase == 1) then
+                         mm = lmassptr_amode(lspec,m)
+                      else
+                         mm = lmassptrcw_amode(lspec,m)
+                      endif
+                   endif
+                   if (lphase == 2) then
+                      fldcw => qqcw_get_field(pbuf, mm,lchnk)
+                      fldcw(:ncol,:) = fldcw(:ncol,:) + dcondt_resusp3d(mm,:ncol,:)*dt
+                   end if
+                end do ! loop over number + chem constituents + water
+             end do  ! lphase
+          end do   ! m aerosol modes
+       end if
+
        call t_stopf('ma_convproc')
     endif
 
@@ -2164,7 +2203,7 @@ contains
                scavratenum, scavratevol, lunerr )
 
           nnfit = nnfit + 1
-          if (nnfit .gt. nnfit_maxd) then
+          if (nnfit > nnfit_maxd) then
              write(lunerr,9110)
              call endrun()
           end if
@@ -2407,14 +2446,14 @@ contains
 
              dumdgratio = dgn_awet(i,k,m)/dgnum_amode(m)
 
-             if ((dumdgratio .ge. 0.99_r8) .and. (dumdgratio .le. 1.01_r8)) then
+             if ((dumdgratio >= 0.99_r8) .and. (dumdgratio <= 1.01_r8)) then
                 scavimpvol = scavimptblvol(0,m)
                 scavimpnum = scavimptblnum(0,m)
              else
                 xgrow = log( dumdgratio ) / dlndg_nimptblgrow
                 jgrow = int( xgrow )
-                if (xgrow .lt. 0._r8) jgrow = jgrow - 1
-                if (jgrow .lt. nimptblgrow_mind) then
+                if (xgrow < 0._r8) jgrow = jgrow - 1
+                if (jgrow < nimptblgrow_mind) then
                    jgrow = nimptblgrow_mind
                    xgrow = jgrow
                 else
@@ -2508,7 +2547,7 @@ contains
    rhi = .250_r8
    dr = 0.005_r8
    nr = 1 + nint( (rhi-rlo)/dr )
-   if (nr .gt. nrainsvmax) then
+   if (nr > nrainsvmax) then
       write(lunerr,9110)
       call endrun()
    end if
@@ -2532,7 +2571,7 @@ contains
    xhi = xg3 + max( 4._r8*sx, 2._r8*dx )
 
    na = 1 + nint( (xhi-xlo)/dx )
-   if (na .gt. naerosvmax) then
+   if (na > naerosvmax) then
       write(lunerr,9120)
       call endrun()
    end if
@@ -2567,13 +2606,13 @@ contains
       xnumrainsv(i) = exp( -r/2.7e-2_r8 )
 
       d = 2._r8*r
-      if (d .le. 0.007_r8) then
+      if (d <= 0.007_r8) then
          vfallstp = 2.88e5_r8 * d**2._r8
-      else if (d .le. 0.025_r8) then
+      else if (d <= 0.025_r8) then
          vfallstp = 2.8008e4_r8 * d**1.528_r8
-      else if (d .le. 0.1_r8) then
+      else if (d <= 0.1_r8) then
          vfallstp = 4104.9_r8 * d**1.008_r8
-      else if (d .le. 0.25_r8) then
+      else if (d <= 0.25_r8) then
          vfallstp = 1812.1_r8 * d**0.638_r8
       else
          vfallstp = 1069.8_r8 * d**0.235_r8
@@ -2664,7 +2703,7 @@ contains
          dum = log( 1._r8 + reynolds )
          sstar = (1.2_r8 + dum/12._r8) / (1._r8 + dum)
          eimpact = 0._r8
-         if (stokes .gt. sstar) then
+         if (stokes > sstar) then
 	    dum = stokes - sstar
 	    eimpact = (dum/(dum+0.6666667_r8)) ** 1.5_r8
          end if

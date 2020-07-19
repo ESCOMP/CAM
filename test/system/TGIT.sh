@@ -5,11 +5,12 @@
 # and no other git files or directories.
 
 # Return codes in use:
-# 1: Not a git repository.
-# 2: Missing ".git" directory.
-# 3: Missing ".gitignore" file.
-# 4: More than two ".git*" files.
-# 5: Error from running an external command
+# 1: Not a git repository
+# 2: Missing ".git" directory
+# 3: Missing ".gitignore" file
+# 4: Missing ".github" directory
+# 5: More than three ".git*" files or directories
+# 6: Error from running an external command
 
 # Utility to check return code.
 # Give it the code and an error message, and it will print stuff and exit.
@@ -17,7 +18,7 @@ check_code () {
     if [ "$1" -ne 0 ]; then
         echo "Error: return code from command was $1"
         echo "$2"
-        exit 5
+        exit 6
     fi
 }
 
@@ -58,7 +59,7 @@ EOF
         rc=2
     fi
 
-    # Check for missing ".gitignore" file.
+    # Check for ".gitignore" file:
     if [ ! -f "${cam_top_dir}/.gitignore" ]; then
         cat <<EOF
 The ".gitignore" file is missing from the CAM git repo.  Was this repo cloned, copied, or
@@ -67,16 +68,26 @@ EOF
         rc=3
     fi   
 
-    # Check if there are more ".git*" files or directories than just ".git" or ".gitignore".
+    # Check for ".github" directory:
+    if [ ! -d "${cam_top_dir}/.github" ]; then
+        cat <<EOF
+The ".github" directory is missing from the CAM git repo.  Was this repo cloned, copied, or
+modified incorrectly?  If so then copy the .github directory from a standard CAM git repo.
+EOF
+        rc=4
+    fi
+
+    # Check if there are more ".git*" files or directories than just ".git", ".gitignore",
+    # and ".github":
     git_file_num=$(find "${cam_top_dir}" -maxdepth 1 -name '.git*' | wc -l)
 
     check_code "$?" "Problem running 'find' command for multi-git file check."
 
-    if [ "${git_file_num}" -gt 2 ]; then
+    if [ "${git_file_num}" -gt 3 ]; then
         cat <<EOF
-More than two ".git*" files or sub-directories present in this CAM git repo.
+More than three ".git*" files or sub-directories present in this CAM git repo.
 EOF
-        rc=4
+        rc=5
     fi
 
 fi # git-repo check

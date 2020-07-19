@@ -58,7 +58,8 @@
       real(r8), public, protected, allocatable :: dgnum_amode(:)
       real(r8), public, protected, allocatable :: dgnumlo_amode(:)
       real(r8), public, protected, allocatable :: dgnumhi_amode(:)
-
+      integer,  public, protected, allocatable :: mode_size_order(:)
+      
       !   input sigmag_amode
       real(r8), public, protected, allocatable :: sigmag_amode(:)
 
@@ -150,11 +151,9 @@
 
     character(len=6) :: xname_numptr, xname_numptrcw
     character(len=1) :: modechr
-    integer :: m, l, iptr,i, n, tot_spec, idx
+    integer :: m, l, iptr,i, idx
     character(len=3) :: trnum       ! used to hold mode number (as characters)
 
-    character(len=20) :: dumStr1, specNameMode
-    character(len=1000) :: msg
     character(len=32) :: spec_name, mode_type
     character(len=1) :: modestr
 
@@ -176,6 +175,7 @@
        mcalcwater_amode(:) = 0
     endif
     allocate(dgnum_amode(ntot_amode))
+    allocate(mode_size_order(ntot_amode))
     allocate(dgnumlo_amode(ntot_amode))
     allocate(dgnumhi_amode(ntot_amode))
     allocate(sigmag_amode(ntot_amode))
@@ -259,6 +259,7 @@
          lptr2_bc_a_amode(ntot_amode,nbc),   lptr2_bc_cw_amode(ntot_amode,nbc), &
          lptr2_soa_g_amode(nsoa) &
          )
+    lmassptr_amode = -999999
     lptr2_soa_g_amode = -999999
 
     allocate( specrefndxsw(nswbands,nspec_max,ntot_amode ) )
@@ -407,21 +408,15 @@
        !--------------------------------------------------------------
        ! ... local variables
        !--------------------------------------------------------------
-       integer :: l, m, i, lchnk
-       integer :: m_idx, s_idx, ndx
+       integer :: l, m, i, lchnk, tmp
 
-       character(len=3) :: trnum       ! used to hold mode number (as characters)
        integer :: qArrIndex
-       integer  :: numaerosols     ! number of bulk aerosols in climate list
-       character(len=20) :: bulkname
        complex(r8), pointer  :: refindex_aer_sw(:), &
             refindex_aer_lw(:)
        real(r8), pointer :: qqcw(:,:)
        real(r8), parameter :: huge_r8 = huge(1._r8)
        character(len=*), parameter :: routine='modal_aero_initialize'
        character(len=32) :: spec_type
-       character(len=32) :: spec_name
-       character(len=1) :: modestr
        integer :: soa_ndx
 
        !-----------------------------------------------------------------------
@@ -432,6 +427,8 @@
              sigmag=sigmag_amode(m), dgnum=dgnum_amode(m), dgnumlo=dgnumlo_amode(m), &
              dgnumhi=dgnumhi_amode(m), rhcrystal=rhcrystal_amode(m), rhdeliques=rhdeliques_amode(m))
 
+          mode_size_order(m) = m
+                       
           !   compute frequently used parameters: ln(sigmag),
           !   volume-to-number and volume-to-surface conversions, ...
           alnsg_amode(m) = log( sigmag_amode(m) )
@@ -448,6 +445,17 @@
           alnv2nhi_amode(m) = log( voltonumbhi_amode(m) )
 
        end do
+
+       do i = 1, ntot_amode-1 ! order from largest to smallest
+          do m = 2, ntot_amode
+             if (dgnum_amode(mode_size_order(m-1))<dgnum_amode(mode_size_order(m))) then
+                tmp = mode_size_order(m-1)
+                mode_size_order(m-1)= mode_size_order(m)
+                mode_size_order(m) = tmp
+             endif
+          enddo
+       enddo
+       
        lptr2_soa_g_amode(:) = -1
        soa_ndx = 0
        do i = 1, pcnst
@@ -847,7 +855,7 @@
        implicit none
 
        !   local variables
-       integer :: i, l, l2, lmassa, lmassc, m
+       integer :: i, l, lmassa, lmassc, m
        character(len=1000) :: msg
        character*8 :: dumname
        character*3 :: tmpch3
@@ -1111,8 +1119,6 @@
           m, laptr, lcptr, txtdum )
        !
        !   does some output for initaermodes_setspecptrs
-
-       use constituents, only: pcnst, cnst_name
 
        implicit none
 
