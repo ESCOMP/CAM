@@ -17,7 +17,7 @@ use dyn_grid,        only: ptimelevels
 
 use prognostics,     only: n3, ps, u3, v3, t3, q3, phis, pdeld, dpsm, dpsl, div, vort
 
-use cam_control_mod, only: initial_run, ideal_phys, moist_physics, adiabatic
+use cam_control_mod, only: initial_run, moist_physics, adiabatic, simple_phys
 use phys_control,    only: phys_getopts
 use constituents,    only: pcnst, cnst_name, cnst_longname, sflxnam, tendnam, &
                            fixcnam, tottnam, hadvnam, vadvnam, cnst_get_ind,  &
@@ -1082,14 +1082,12 @@ subroutine global_int()
       zgsint_tmp = zgsint_tmp*.5_r8/gravit
       qmassf_tmp = qmass1_tmp + qmass2_tmp
 
-      if (analytic_ic_active()) then
-         tmass0 = tmassf_tmp
+      if (simple_phys) then
+         tmass0 = tmassf_tmp - qmassf_tmp
       else
          ! Globally avgd sfc. partial pressure of dry air (i.e. global dry mass):
          tmass0 = 98222._r8/gravit
          if (.not. associated(fh_topo)) tmass0 = (101325._r8-245._r8)/gravit
-         if (adiabatic)                 tmass0 =  tmassf_tmp
-         if (ideal_phys )               tmass0 =  100000._r8/gravit
       end if
 
       if (masterproc) then
@@ -1100,16 +1098,12 @@ subroutine global_int()
          write(iulog,*) '  Globally averaged geopotential height (m)   = ', zgsint_tmp
       end if
 
-      if (analytic_ic_active()) then
+      if (simple_phys) then
          fixmas = 1._r8
       else
          ! Compute and apply an initial mass fix factor which preserves horizontal
          ! gradients of ln(ps).
-         if (.not. moist_physics) then
-            fixmas = tmass0/tmassf_tmp
-         else
-            fixmas = (tmass0 + qmass1_tmp)/(tmassf_tmp - qmass2_tmp)
-         end if
+         fixmas = (tmass0 + qmass1_tmp)/(tmassf_tmp - qmass2_tmp)
          ps_tmp = ps_tmp*fixmas
       end if
 

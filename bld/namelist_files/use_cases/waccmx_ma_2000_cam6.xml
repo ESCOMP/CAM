@@ -16,6 +16,7 @@
 <!-- QBO settings -->
 <qbo_use_forcing >.true.</qbo_use_forcing>
 <qbo_use_forcing hgrid="0.9x1.25">.false.</qbo_use_forcing>
+<qbo_use_forcing dyn="se"        >.false.</qbo_use_forcing>
 <qbo_cyclic>.false.</qbo_cyclic>
 <qbo_forcing_file>atm/waccm/qbo/qbocoefficients_c151023.nc</qbo_forcing_file>
 
