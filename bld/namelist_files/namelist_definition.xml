@@ -3904,11 +3904,20 @@ Default: set by build-namelist
 </entry>
 
 <entry id="cam_chempkg" type="char*32" category="build"
-       group="phys_ctl_nl" valid_values="trop_mam3,trop_mam4,trop_mam7,trop_mozart,trop_strat_mam4_vbs,trop_strat_mam4_vbsext,
+       group="phys_ctl_nl" valid_values="geoschem,trop_mam3,trop_mam4,trop_mam7,trop_mozart,trop_strat_mam4_vbs,trop_strat_mam4_vbsext,
                                          waccm_ma,waccm_mad_mam4,waccm_ma_mam4,waccm_ma_sulfur,waccm_sc,waccm_sc_mam4,waccm_tsmlt_mam4,
                                          terminator,none" >
 Name of the CAM chemistry package.  N.B. this variable may not be set by
 the user.  It is set by build-namelist via information in the configure
+cache file to be consistent with how CAM was built.
+Default: set by build-namelist
+</entry>
+
+<entry id="cam_physics_mesh" type="char*256" input_pathname="abs"
+       category="build" group="phys_ctl_nl" valid_values="" >
+Full pathname to CAM physics grid ESMF mesh file.
+N.B. this variable may not be set by the user.
+It is set by build-namelist via information in the configure
 cache file to be consistent with how CAM was built.
 Default: set by build-namelist
 </entry>
@@ -3998,6 +4007,14 @@ Default: NONE.
        group="ionosphere_nl" valid_values="" >
 Full pathname of AMIE inputs for southern hemisphere.
 Default: NONE.
+</entry>
+
+<!-- HEMCO -->
+<entry id="hemco_config_file" type="char*256" input_pathname="abs" category="hemco"
+       group="hemco_nl" valid_values="" >
+Full pathname of dataset for coefficient data used in Weimer05
+high latitude electric potential model.
+Default: set by build-namelist.
 </entry>
 
 <!-- Reference Pressures -->

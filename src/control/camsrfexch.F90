@@ -120,6 +120,9 @@ module camsrfexch
      real(r8) :: re(pcols)               ! atm/ocn saved version of re
      real(r8) :: ssq(pcols)              ! atm/ocn saved version of ssq
      real(r8), pointer, dimension(:,:) :: depvel ! deposition velocities
+     real(r8), pointer, dimension(:,:) :: lwtgcell ! landunit areas
+     real(r8), pointer, dimension(:,:) :: pwtgcell ! patch areas
+     real(r8), pointer, dimension(:,:) :: lai      ! leaf area indices
      real(r8), pointer, dimension(:,:) :: dstflx ! dust fluxes
      real(r8), pointer, dimension(:,:) :: meganflx ! MEGAN fluxes
      real(r8), pointer, dimension(:,:) :: fireflx ! wild fire emissions
@@ -146,7 +149,7 @@ CONTAINS
 ! !INTERFACE
 !
   subroutine hub2atm_alloc( cam_in )
-    use seq_drydep_mod,  only: lnd_drydep, n_drydep
+    use seq_drydep_mod,  only: lnd_drydep, n_drydep, NLUse, NPatch
     use cam_cpl_indices, only: index_x2a_Sl_ram1, index_x2a_Sl_fv, index_x2a_Sl_soilw, index_x2a_Fall_flxdst1
     use cam_cpl_indices, only: index_x2a_Fall_flxvoc
     use shr_megan_mod,   only: shr_megan_mechcomps_n
@@ -177,6 +180,9 @@ CONTAINS
        nullify(cam_in(c)%fv)
        nullify(cam_in(c)%soilw)
        nullify(cam_in(c)%depvel)
+       nullify(cam_in(c)%lwtgcell)
+       nullify(cam_in(c)%pwtgcell)
+       nullify(cam_in(c)%lai)
        nullify(cam_in(c)%dstflx)
        nullify(cam_in(c)%meganflx)
        nullify(cam_in(c)%fireflx)
@@ -210,6 +216,12 @@ CONTAINS
        do c = begchunk,endchunk 
           allocate (cam_in(c)%depvel(pcols,n_drydep), stat=ierror)
           if ( ierror /= 0 ) call endrun('HUB2ATM_ALLOC error: allocation error depvel')
+          allocate (cam_in(c)%lwtgcell(pcols,NLUse), stat=ierror)
+          if ( ierror /= 0 ) call endrun('HUB2ATM_ALLOC error: allocation error lwtgcell')
+          allocate (cam_in(c)%pwtgcell(pcols,NPatch), stat=ierror)
+          if ( ierror /= 0 ) call endrun('HUB2ATM_ALLOC error: allocation error pwtgcell')
+          allocate (cam_in(c)%lai(pcols,NPatch), stat=ierror)
+          if ( ierror /= 0 ) call endrun('HUB2ATM_ALLOC error: allocation error lai')
        end do
     endif
 
@@ -265,6 +277,11 @@ CONTAINS
        cam_in(c)%ssq      (:) = 0._r8
        if (lnd_drydep .and. n_drydep>0) then
           cam_in(c)%depvel (:,:) = 0._r8
+       endif
+       if (lnd_drydep) then
+          cam_in(c)%lwtgcell (:,:) = 0._r8
+          cam_in(c)%pwtgcell (:,:) = 0._r8
+          cam_in(c)%lai      (:,:) = 0._r8
        endif
        if ( index_x2a_Fall_flxfire>0 .and. shr_fire_emis_mechcomps_n>0 ) then
           cam_in(c)%fireflx(:,:) = 0._r8
@@ -410,6 +427,18 @@ CONTAINS
           if(associated(cam_in(c)%depvel)) then
              deallocate(cam_in(c)%depvel)
              nullify(cam_in(c)%depvel)
+          end if
+          if(associated(cam_in(c)%lwtgcell)) then
+             deallocate(cam_in(c)%lwtgcell)
+             nullify(cam_in(c)%lwtgcell)
+          end if
+          if(associated(cam_in(c)%pwtgcell)) then
+             deallocate(cam_in(c)%pwtgcell)
+             nullify(cam_in(c)%pwtgcell)
+          end if
+          if(associated(cam_in(c)%lai)) then
+             deallocate(cam_in(c)%lai)
+             nullify(cam_in(c)%lai)
           end if
           
        enddo

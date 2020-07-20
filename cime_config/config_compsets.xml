@@ -382,6 +382,33 @@
     <lname>HIST_CAM40%WXIED%SDYN_CLM40%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV</lname>
   </compset>
 
+  <!-- GEOS-Chem Test Compsets (MSL - 1/2018 | TMMF - 11/2019) -->
+
+  <compset>
+      <alias>GEOSCHEM</alias>
+      <lname>2000_CAM40%GC_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+      <alias>GEOSCHEMTEST</alias>
+      <lname>2000_CAM%GCHS_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+      <alias>FGC</alias>
+      <lname>2000_CAM40%GC_CLM40%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+      <alias>FGC_CLM45</alias>
+      <lname>2000_CAM40%GC_CLM45%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+      <alias>FGC_CLM50</alias>
+      <lname>2000_CAM40%GC_CLM50%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV</lname>
+  </compset>
+
   <!-- ENTRIES -->
 
   <entries>

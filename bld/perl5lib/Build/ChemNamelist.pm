@@ -65,13 +65,33 @@ sub set_dep_lists
     }
     if ($print_lvl>=2) {print "Chemistry species : @species_list \n" ;}
 
+    if (!defined $nl->get_value('gas_wetdep_list')) {
     $gas_wetdep_list = get_gas_wetdep_list( $cfgdir, $print_lvl, @species_list );
+    } else {
+        $gas_wetdep_list = $nl->get_value('gas_wetdep_list');
+        $gas_wetdep_list = filter_dep_list( $gas_wetdep_list, $print_lvl, @species_list );
+    }
 
+    if (!defined $nl->get_value('aer_wetdep_list')) {
     $aer_wetdep_list = get_aer_wetdep_list( $cfgdir, $print_lvl, @species_list );
+    } else {
+        $aer_wetdep_list = $nl->get_value('aer_wetdep_list');
+        $aer_wetdep_list = filter_dep_list( $aer_wetdep_list, $print_lvl, @species_list );
+    }
 
+    if (!defined $nl->get_value('drydep_list')) {
     $gas_drydep_list = get_gas_drydep_list( $cfgdir, $print_lvl, @species_list );
+    } else {
+        $gas_drydep_list = $nl->get_value('drydep_list');
+        $gas_drydep_list = filter_dep_list( $gas_drydep_list, $print_lvl, @species_list );
+    }
 
+    if (!defined $nl->get_value('aer_drydep_list')) {
     $aer_drydep_list = get_aer_drydep_list( $cfgdir, $print_lvl, @species_list );
+    } else {
+        $aer_drydep_list = $nl->get_value('aer_drydep_list');
+        $aer_drydep_list = filter_dep_list( $aer_drydep_list, $print_lvl, @species_list );
+    }
 
     # set solubility factors for aerosols
     if (length($aer_wetdep_list)>2){ 
@@ -274,6 +294,32 @@ sub get_dep_list
     if ( length($list)<1 ) {$list = quote_string(' ') ;}
 
     return ($list);
+}
+
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+sub filter_dep_list
+{
+    my ( $input_list, $print_lvl, @species_list ) = @_;
+
+    my @master_list = split( ('\s+|\s*,+\s*'), $input_list);
+
+    my $list = '';
+    my $first = 1; my $pre = "";
+    foreach my $name (sort @species_list) {
+	foreach my $item (@master_list) {
+        $item =~ s/['"]//g; #"'
+	    if ($name eq $item) { 
+		$list .= $pre .  quote_string($name) ;
+                if ($first) { $pre = ","; $first = 0; }
+	    }
+	}
+    }
+
+    if ( length($list)<1 ) {$list = quote_string(' ') ;}
+
+    return ($list);
+
 }
 
 #-------------------------------------------------------------------------------
