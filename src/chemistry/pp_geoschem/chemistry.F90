@@ -3,7 +3,7 @@
 !================================================================================================
 
 module chemistry
-  use shr_kind_mod,        only: r8 => shr_kind_r8
+  use shr_kind_mod,        only: r8 => shr_kind_r8, shr_kind_cl
   use physics_types,       only: physics_state, physics_ptend, physics_ptend_init
   use ppgrid,              only: begchunk, endchunk, pcols
   use ppgrid,              only: pver, pverp
@@ -35,7 +35,7 @@ module chemistry
   !-----------------------------------------------------------------
   USE PRECISION_MOD,       ONLY : fp, f4     ! Flexible precision
 
-  use Chem_Mods,           only : nSlvd, slvd_Lst, slvd_ref_MMR
+  use chem_mods,           only : nSlvd, slvd_Lst, slvd_ref_MMR
 
   ! Exit routine in CAM
   use cam_abortutils,      only : endrun
@@ -46,16 +46,21 @@ module chemistry
   use chem_mods,           only : tracerLongNames
   use chem_mods,           only : adv_Mass
   use chem_mods,           only : mwRatio
-  use chem_mods,           only : ref_mmr
+  use chem_mods,           only : ref_MMR
   use chem_mods,           only : nSlsMax
   use chem_mods,           only : nSls
   use chem_mods,           only : slsNames
   use chem_mods,           only : slsLongNames
   use chem_mods,           only : sls_ref_MMR
   use chem_mods,           only : slsmwRatio
+  use chem_mods,           only : nAerMax
+  use chem_mods,           only : nAer
+  use chem_mods,           only : aerNames
+  use chem_mods,           only : aerAdvMass
   use chem_mods,           only : map2GC
   use chem_mods,           only : map2GC_Sls
   use chem_mods,           only : map2Idx
+  use chem_mods,           only : map2MAM4
 
   IMPLICIT NONE
   PRIVATE
@@ -125,12 +130,24 @@ module chemistry
 #define LANDTYPE_HEMCO    0
 #define LANDTYPE_CLM      1
 
-#if ( OCNDDVEL_MOZART )
   ! Filenames to compute dry deposition velocities similarly to MOZART
-  CHARACTER(LEN=255)              :: MOZART_depvel_lnd_file = 'depvel_lnd_file'
-  CHARACTER(LEN=255)              :: MOZART_clim_soilw_file = 'clim_soilw_file'
-  CHARACTER(LEN=255)              :: MOZART_season_wes_file = 'season_wes_file'
-#endif
+  character(len=shr_kind_cl)  :: clim_soilw_file = 'clim_soilw_file'
+  character(len=shr_kind_cl)  :: depvel_file     = ''
+  character(len=shr_kind_cl)  :: depvel_lnd_file = 'depvel_lnd_file'
+  character(len=shr_kind_cl)  :: season_wes_file = 'season_wes_file'
+
+  character(len=shr_kind_cl) :: srf_emis_specifier(pcnst) = ''
+  character(len=shr_kind_cl) :: ext_frc_specifier(pcnst) = ''
+
+  character(len=24)  :: srf_emis_type = 'CYCLICAL' ! 'CYCLICAL' | 'SERIAL' |  'INTERP_MISSING_MONTHS'
+  integer            :: srf_emis_cycle_yr  = 0
+  integer            :: srf_emis_fixed_ymd = 0
+  integer            :: srf_emis_fixed_tod = 0
+
+  character(len=24)  :: ext_frc_type = 'CYCLICAL' ! 'CYCLICAL' | 'SERIAL' |  'INTERP_MISSING_MONTHS'
+  integer            :: ext_frc_cycle_yr  = 0
+  integer            :: ext_frc_fixed_ymd = 0
+  integer            :: ext_frc_fixed_tod = 0
 
 !================================================================================================
 contains
@@ -164,6 +181,12 @@ contains
     use Species_Mod,         only : Species
 
     use mo_sim_dat,          only : set_sim_dat
+#if defined( MODAL_AERO_4MODE )
+    use aero_model,          only : aero_model_register
+    use modal_aero_data,     only : nspec_max
+    use modal_aero_data,     only : ntot_amode, nspec_amode
+    use modal_aero_data,     only : xname_massptr
+#endif
 
     !-----------------------------------------------------------------------
     !
@@ -171,26 +194,26 @@ contains
     !
     !-----------------------------------------------------------------------
     ! Need to generate a temporary species database
-    Type(ChmState)         :: SC
-    Type(GrdState)         :: SG
-    Type(OptInput)         :: IO
-    TYPE(Species), POINTER :: ThisSpc
+    Type(ChmState)                 :: SC
+    Type(GrdState)                 :: SG
+    Type(OptInput)                 :: IO
+    TYPE(Species), POINTER         :: ThisSpc
 
-    INTEGER                :: I, N, M
-    REAL(r8)               :: cptmp
-    REAL(r8)               :: mwtmp
-    REAL(r8)               :: qmin
-    REAL(r8)               :: ref_VMR
-    CHARACTER(LEN=128)     :: mixtype
-    CHARACTER(LEN=128)     :: molectype
-    CHARACTER(LEN=128)     :: lng_Name
-    CHARACTER(LEN=64)      :: cnstName
-    LOGICAL                :: camout
-    LOGICAL                :: ic_from_cam2
-    LOGICAL                :: has_fixed_ubc
-    LOGICAL                :: has_fixed_ubflx
+    INTEGER                        :: I, N, M, L
+    REAL(r8)                       :: cptmp
+    REAL(r8)                       :: MWTmp
+    REAL(r8)                       :: qmin
+    REAL(r8)                       :: ref_VMR
+    CHARACTER(LEN=128)             :: mixtype
+    CHARACTER(LEN=128)             :: molectype
+    CHARACTER(LEN=128)             :: lngName
+    CHARACTER(LEN=64)              :: cnstName
+    LOGICAL                        :: camout
+    LOGICAL                        :: ic_from_cam2
+    LOGICAL                        :: has_fixed_ubc
+    LOGICAL                        :: has_fixed_ubflx
 
-    INTEGER                :: RC
+    INTEGER                        :: RC, IERR
 
     ! SDE 2018-05-02: This seems to get called before anything else
     ! that includes CHEM_INIT
@@ -199,12 +222,12 @@ contains
     ! set_sim_dat which is in pp_[mechanism]/mo_sim_dat.F90. That sets a lot of
     ! data in other places, notably in "chem_mods"
 
-    IF (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_REGISTER'
+    IF ( MasterProc ) Write(iulog,'(a)') 'GCCALL CHEM_REGISTER'
 
     ! hplin 2020-05-16: Call set_sim_dat to populate chemistry constituent information
     ! from mo_sim_dat.F90 in other places. This is needed for HEMCO_CESM.
-    call set_sim_dat()
-    if(masterproc) write(iulog,*) 'GCCALL after set_sim_dat'
+    CALL Set_sim_dat()
+    IF ( MasterProc ) Write(iulog,*) 'GCCALL after set_sim_dat'
 
     ! Generate fake state_chm
     IO%Max_BPCH_Diag       = 1000
@@ -266,7 +289,8 @@ contains
         CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
-    ! At the moment, we force nadv_chem=200 in the setup file
+
+    ! At the moment, we force chem_nadv=220 in the setup file
     ! Default
     map2GC = -1
     ref_MMR(:) = 0.0e+0_r8
@@ -274,22 +298,73 @@ contains
     tracerLongNames = ''
 
     DO I = 1, nTracersMax
-       IF (I.LE.nTracers) THEN
-           N           = Ind_(tracerNames(I))
+       IF ( I .LE. nTracers ) THEN
+           cnstName    = TRIM(tracerNames(I))
+           N           = Ind_(cnstName)
            ThisSpc     => SC%SpcData(N)%Info
-           lng_Name    = TRIM(ThisSpc%FullName)
+           lngName     = TRIM(ThisSpc%FullName)
            MWTmp       = REAL(ThisSpc%MW_g,r8)
            ref_VMR     = REAL(ThisSpc%BackgroundVV,r8)
            adv_Mass(I) = MWTmp
            ref_MMR(I)  = ref_VMR / (MWDry / MWTmp)
+           IF ( ThisSpc%Is_Gas == .FALSE. ) THEN
+               Write(cnstName, "(a,a)") 'GC_AER_', TRIM(tracerNames(I))
+               ! Aerosols that inherited from MAM do not need to be defined as a
+               ! constituent
+               ! For instance,
+               ! - SOAGX is inherited from SOAG[0-4],
+               !
+               ! List of GEOS-Chem aerosols:
+               ! DMS
+               ! SO4
+               ! SO4s
+               ! MSA
+               ! NH4
+               ! NIT
+               ! NITs
+               ! BCPI
+               ! OCPI
+               ! BCPO
+               ! OCPO
+               ! DST[1-4]
+               ! SALA
+               ! SALC
+               ! TSOA[0-3]
+               ! ASOAN
+               ! ASOA[1-3]
+               ! SOAS
+               ! SOAIE
+               ! SOAME
+               ! SOAGX
+               ! SOAMG
+               ! LVOCOA
+               ! ISN1OA
+               ! IONITA
+               ! MONITA
+               ! INDIOL
+               ! BrSALA
+               ! BrSALC
+               ! ISALA
+               ! ISALC
+               ! AERI
+               ! pFe
+           ENDIF
+       ELSEIF ( I .LE. (nTracers + nAer)) THEN
+           ! Add MAM4 aerosols
+           cnstName    = TRIM(aerNames(I - nTracers))
+           lngName     = cnstName
+           MWTmp       = aerAdvMass(I - nTracers)
+           adv_Mass(I) = MWTmp
+           ref_MMR(I)  = 1.0e-38_r8
        ELSE
-           lng_Name    = TRIM(tracerNames(I))
+           cnstName    = TRIM(tracerNames(I))
+           lngName     = cnstName
            MWTmp       = 1000.0e+0_r8 * (0.001e+0_r8)
            adv_Mass(I) = MWTmp
            ref_MMR(I)  = 1.0e-38_r8
        ENDIF
        MWRatio(I) = MWDry/MWTmp
-       tracerLongNames(I) = TRIM(lng_Name)
+       tracerLongNames(I) = TRIM(lngName)
 
        ! dummy value for specific heat of constant pressure (Cp)
        cptmp = 666._r8
@@ -309,7 +384,6 @@ contains
        has_fixed_ubflx = .false.
        ! NOTE: In MOZART, this only gets called for tracers
        ! This is the call to add a "constituent"
-       cnstName = TRIM(tracerNames(I))
        ! Special handlings
        IF ( cnstName == 'ACET' ) THEN
            cnstName = 'CH3COCH3'
@@ -342,6 +416,7 @@ contains
        ELSEIF ( cnstName == 'HCHO' ) THEN
            cnstName = 'CH2O'
        ENDIF
+       If ( MasterProc ) Write(iulog,*) " Species = ", TRIM(cnstName)
        ! GEOS-Chem lumped species are not on restart file.
        ! Bromine, chlorine, iodine and halons species are missing
        ! from CESM restart file.
@@ -353,7 +428,7 @@ contains
                       cam_outfld=camout, molectype=molectype, &
                       fixed_ubc=has_fixed_ubc,                &
                       fixed_ubflx=has_fixed_ubflx,            &
-                      longname=TRIM(lng_Name) )
+                      longname=TRIM(lngName)                 )
 
        ! Add to GC mapping. When starting a timestep, we will want to update the
        ! concentration of State_Chm(x)%Species(1,iCol,iLev,m) with data from
@@ -378,8 +453,8 @@ contains
             ThisSpc         => SC%SpcData(N)%Info
             MWTmp           = REAL(ThisSpc%MW_g,r8)
             ref_VMR         = REAL(ThisSpc%BackgroundVV,r8)
-            lng_Name        = TRIM(ThisSpc%FullName)
-            slsLongNames(I) = lng_Name
+            lngName         = TRIM(ThisSpc%FullName)
+            slsLongNames(I) = lngName
             sls_ref_MMR(I)  = ref_VMR / (MWDry / MWTmp)
             SlsMWRatio(I)   = MWDry / MWTmp
             map2GC_Sls(I)   = N
@@ -392,6 +467,109 @@ contains
     CALL Register_Short_Lived_Species()
     ! More information:
     ! http://www.cesm.ucar.edu/models/atm-cam/docs/phys-interface/node5.html
+
+#if defined( MODAL_AERO_4MODE )
+    ! add fields to pbuf needed by aerosol models
+    CALL aero_model_register()
+
+    ! Mode                   | \sigma_g | Dry diameter (micrometers)
+    ! -----------------------|----------|--------------------------
+    ! a2 - Aitken mode       |   1.6    | 0.015 - 0.053
+    ! a1 - Accumulation mode |   1.8    | 0.058 - 0.27
+    ! a3 - Coarse mode       |   1.8    | 0.80  - 3.65
+    ! a4 - Primary carbon    |   1.6    | 0.039 - 0.13
+    ! -----------------------|----------|--------------------------
+    ! Ref: Liu, Xiaohong, et al. "Toward a minimal representation of aerosols in
+    ! climate models: Description and evaluation in the Community Atmosphere
+    ! Model CAM5." Geoscientific Model Development 5.3 (2012): 709.
+
+    ALLOCATE(map2MAM4(nspec_max,ntot_amode), STAT=IERR)
+    IF ( IERR .NE. 0 ) CALL ENDRUN('Failed to allocate map2MAM4')
+
+    ! Initialize indices
+    map2MAM4(:,:) = -1
+
+    DO M = 1, ntot_amode
+       DO L = 1, nspec_amode(M)
+          SELECT CASE ( to_upper(xname_massptr(L,M)(:3)) )
+             CASE ( 'BC_' )
+                map2MAM4(L,M) = Ind_('BCPI')
+             CASE ( 'DST' )
+                SELECT CASE ( to_upper(xname_massptr(L,M)(5:6)) )
+                   ! DST1 - Dust aerosol, Reff = 0.7 micrometers
+                   ! DST2 - Dust aerosol, Reff = 1.4 micrometers
+                   ! DST3 - Dust aerosol, Reff = 2.4 micrometers
+                   ! DST4 - Dust aerosol, Reff = 4.5 micrometers
+                   CASE ( 'A1' )
+                       map2MAM4(L,M) = Ind_('DST1')
+                   CASE ( 'A2' )
+                       map2MAM4(L,M) = Ind_('DST1')
+                   CASE ( 'A3' )
+                       map2MAM4(L,M) = Ind_('DST4')
+                END SELECT
+             CASE ( 'SOA' )
+                SELECT CASE ( to_upper(xname_massptr(L,M)(4:4)) )
+                   CASE ( '1' )
+                      SELECT CASE ( to_upper(xname_massptr(L,M)(6:7)) )
+                         CASE ( 'A1' )
+                            map2MAM4(L,M) = -1 !TMMF, Fill in
+                         CASE ( 'A2' )
+                            map2MAM4(L,M) = -1 !TMMF, Fill in
+                      END SELECT
+                   CASE ( '2' )
+                      SELECT CASE ( to_upper(xname_massptr(L,M)(6:7)) )
+                         CASE ( 'A1' )
+                            map2MAM4(L,M) = -1 !TMMF, Fill in
+                         CASE ( 'A2' )
+                            map2MAM4(L,M) = -1 !TMMF, Fill in
+                      END SELECT
+                   CASE ( '3' )
+                      SELECT CASE ( to_upper(xname_massptr(L,M)(6:7)) )
+                         CASE ( 'A1' )
+                            map2MAM4(L,M) = -1 !TMMF, Fill in
+                         CASE ( 'A2' )
+                            map2MAM4(L,M) = -1 !TMMF, Fill in
+                      END SELECT
+                   CASE ( '4' )
+                      SELECT CASE ( to_upper(xname_massptr(L,M)(6:7)) )
+                         CASE ( 'A1' )
+                            map2MAM4(L,M) = -1 !TMMF, Fill in
+                         CASE ( 'A2' )
+                            map2MAM4(L,M) = -1 !TMMF, Fill in
+                      END SELECT
+                   CASE ( '5' )
+                      SELECT CASE ( to_upper(xname_massptr(L,M)(6:7)) )
+                         CASE ( 'A1' )
+                            map2MAM4(L,M) = -1 !TMMF, Fill in
+                         CASE ( 'A2' )
+                            map2MAM4(L,M) = -1 !TMMF, Fill in
+                      END SELECT
+                END SELECT
+             CASE ( 'SO4' )
+                map2MAM4(L,M) = Ind_('SO4')
+             CASE ( 'NCL' )
+                SELECT CASE ( to_upper(xname_massptr(L,M)(5:6)) )
+                   ! SALA - Fine (0.01-0.05 micros) sea salt aerosol
+                   ! SALC - Coarse (0.5-8 micros) sea salt aerosol
+                   CASE ( 'A1' )
+                      map2MAM4(L,M) = Ind_('SALA')
+                   CASE ( 'A2' )
+                      map2MAM4(L,M) = Ind_('SALA')
+                   CASE ( 'A3' )
+                      map2MAM4(L,M) = Ind_('SALC')
+                END SELECT
+             CASE ( 'POM' )
+                SELECT CASE ( to_upper(xname_massptr(L,M)(5:6)) )
+                   CASE ( 'A1' )
+                      map2MAM4(L,M) = -1 !TMMF, Fill in
+                   CASE ( 'A4' )
+                      map2MAM4(L,M) = -1 !TMMF, Fill in
+                END SELECT
+          END SELECT
+       ENDDO
+    ENDDO
+
+#endif
 
     ! Clean up
     Call Cleanup_State_Chm ( .False., SC, RC )
@@ -407,6 +585,11 @@ contains
 
     use cam_abortutils, only : endrun
     use units,          only : getunit, freeunit
+    use namelist_utils, only : find_group_name
+#if defined( MODAL_AERO_4MODE )
+    use aero_model,     only : aero_model_readnl
+    use dust_model,     only : dust_readnl
+#endif
     use mpishorthand
     use gckpp_Model,    only : nSpec, Spc_Names
     use mo_chem_utls,   only : get_spc_ndx
@@ -422,11 +605,18 @@ contains
     LOGICAL                      :: menuFound
     LOGICAL                      :: validSLS
 
-#if ( OCNDDVEL_MOZART )
-    namelist /chem_inparm/ MOZART_depvel_lnd_file, &
-                           MOZART_clim_soilw_file, &
-                           MOZART_season_wes_file
-#endif
+    ! The following files are required to compute land maps, required to perform
+    ! aerosol dry deposition
+    namelist /chem_inparm/ clim_soilw_file,    &
+                           depvel_file,        &
+                           depvel_lnd_file,    &
+                           ext_frc_cycle_yr,   &
+                           ext_frc_specifier,  &
+                           ext_frc_type,       &
+                           season_wes_file,    &
+                           srf_emis_cycle_yr,  &
+                           srf_emis_specifier, &
+                           srf_emis_type
 
     nIgnored = 0
 
@@ -440,7 +630,7 @@ contains
 
 
 #if ( ALLDDVEL_GEOSCHEM + OCNDDVEL_GEOSCHEM + OCNDDVEL_MOZART != 1 )
-    IF (MasterProc) THEN
+    IF ( MasterProc ) THEN
         Write(iulog,'(/,a)') REPEAT( "=", 79 )
         Write(iulog,'(a)') " Preprocessor flags are not set correctly in chemistry.F90"
         Write(iulog,'(a)') " The user needs to decide how to compute dry deposition velocities"
@@ -468,7 +658,7 @@ contains
     ENDIF
 #endif
 #if ( ALLDDVEL_GEOSCHEM && ( LANDTYPE_HEMCO + LANDTYPE_CLM != 1 ) )
-    IF (MasterProc) THEN
+    IF ( MasterProc ) THEN
         Write(iulog,'(/,a)') REPEAT( "=", 79 )
         Write(iulog,'(a)') REPEAT( "=", 79 )
         Write(iulog,'(a)') " Preprocessor flags are not set correctly in chemistry.F90"
@@ -481,7 +671,47 @@ contains
     ALLOCATE(drySpc_ndx(nddvels), STAT=IERR)
     IF ( IERR .NE. 0 ) CALL ENDRUN('Failed to allocate drySpc_ndx')
 
-    IF (MasterProc) THEN
+#if defined( MODAL_AERO_4MODE )
+    !==============================================================
+    ! Get names and molar weights of aerosols in MAM4
+    !==============================================================
+
+    nAer = 33
+
+    aerNames(:nAer) = (/ 'bc_a1          ','bc_a4          ','dst_a1         ', &
+                         'dst_a2         ','dst_a3         ','ncl_a1         ', &
+                         'ncl_a2         ','ncl_a3         ','num_a1         ', &
+                         'num_a2         ','num_a3         ','num_a4         ', &
+                         'pom_a1         ','pom_a4         ','so4_a1         ', &
+                         'so4_a2         ','so4_a3         ','soa1_a1        ', &
+                         'soa1_a2        ','soa2_a1        ','soa2_a2        ', &
+                         'soa3_a1        ','soa3_a2        ','soa4_a1        ', &
+                         'soa4_a2        ','soa5_a1        ','soa5_a2        ', &
+                         'H2SO4          ','SOAG0          ','SOAG1          ', &
+                         'SOAG2          ','SOAG3          ','SOAG4          ' /)
+
+    aerAdvMass(:nAer) = (/ 12.011000_r8,    12.011000_r8,    135.064039_r8,  &
+                           135.064039_r8,   135.064039_r8,   58.442468_r8,   &
+                           58.442468_r8,    58.442468_r8,    1.007400_r8,    &
+                           1.007400_r8,     1.007400_r8,     1.007400_r8,    &
+                           12.011000_r8,    12.011000_r8,    115.107340_r8,  &
+                           115.107340_r8,   115.107340_r8,   250.445000_r8,  &
+                           250.445000_r8,   250.445000_r8,   250.445000_r8,  &
+                           250.445000_r8,   250.445000_r8,   250.445000_r8,  &
+                           250.445000_r8,   250.445000_r8,   250.445000_r8,  &
+                           98.078400_r8,    250.445000_r8,   250.445000_r8,  &
+                           250.445000_r8,   250.445000_r8,   250.445000_r8  /)
+
+    CALL aero_model_readnl(nlfile)
+    CALL dust_readnl(nlfile)
+#endif
+
+    DO I = (nAer+1), nAerMax
+        aerNames(I)   = 'EMPTY_AER      '
+        aerAdvMass(I) = -1.00_r8
+    ENDDO
+
+    IF ( MasterProc ) THEN
 
         Write(iulog,'(/,a)') REPEAT( '=', 50 )
         Write(iulog,'(a)') REPEAT( '=', 50 )
@@ -495,13 +725,13 @@ contains
 
         Write(iulog,'(/,/, a)') 'Now defining GEOS-Chem tracers and dry deposition mapping...'
 
-        UNITN = GETUNIT()
+        unitn = getunit()
 
         !==============================================================
         ! Opening input.geos and go to ADVECTED SPECIES MENU
         !==============================================================
 
-        OPEN( UNITN, FILE=TRIM(inputGeosPath), STATUS='OLD', IOSTAT=IERR )
+        OPEN( unitn, FILE=TRIM(inputGeosPath), STATUS='OLD', IOSTAT=IERR )
         IF (IERR .NE. 0) THEN
             CALL ENDRUN('chem_readnl: ERROR opening input.geos')
         ENDIF
@@ -509,7 +739,7 @@ contains
         ! Go to ADVECTED SPECIES MENU
         menuFound = .False.
         DO WHILE ( .NOT. menuFound )
-            READ( UNITN, '(a)', IOSTAT=IERR ) line
+            READ( unitn, '(a)', IOSTAT=IERR ) line
             IF ( IERR .NE. 0 ) THEN
                 CALL ENDRUN('chem_readnl: ERROR finding advected species menu')
             ELSEIF ( INDEX(line, 'ADVECTED SPECIES MENU') > 0 ) THEN
@@ -523,7 +753,7 @@ contains
 
         DO
             ! Read line
-            READ(UNITN,'(26x,a)', IOSTAT=IERR) line
+            READ(unitn,'(26x,a)', IOSTAT=IERR) line
 
             IF ( INDEX( TRIM(line), '---' ) > 0 ) EXIT
 
@@ -532,8 +762,8 @@ contains
 
         ENDDO
 
-        CLOSE(UNITN)
-        CALL FREEUNIT(UNITN)
+        CLOSE(unitn)
+        CALL freeunit(unitn)
 
         ! Assign remaining tracers dummy names
         DO I = (nTracers+1), nTracersMax
@@ -595,19 +825,38 @@ contains
         Write(iulog,'( a)') '+ List of advected species: '
         Write(iulog,100) 'ID', 'Tracer', 'Dry deposition (T/F)'
         DO N = 1, nTracers
-            WRITE(iulog,110) N, TRIM(tracerNames(N)), any(drySpc_ndx .eq. N)
+            Write(iulog,120) N, TRIM(tracerNames(N)), ANY(drySpc_ndx .eq. N)
         ENDDO
-
+        IF ( nAer > 0 ) THEN
+            Write(iulog,'(/, a)') '+ List of aerosols: '
+            Write(iulog,110) 'ID', 'MAM4 Aerosol'
+            DO N = 1, nAer
+                Write(iulog,130) N, TRIM(aerNames(N))
+            ENDDO
+        ENDIF
         Write(iulog,'(/, a)') '+ List of short-lived species: '
         DO N = 1, nSls
-            WRITE(iulog,120) N, TRIM(slsNames(N))
+            Write(iulog,130) N, TRIM(slsNames(N))
         ENDDO
 
   100   FORMAT( 1x, A3, 3x, A10, 1x, A25 )
-  110   FORMAT( 1x, I3, 3x, A10, 1x, L15 )
-  120   FORMAT( 1x, I3, 3x, A10 )
+  110   FORMAT( 1x, A3, 3x, A15 )
+  120   FORMAT( 1x, I3, 3x, A10, 1x, L15 )
+  130   FORMAT( 1x, I3, 3x, A10 )
 
         !==============================================================
+
+        unitn = getunit()
+        OPEN( unitn, FILE=TRIM(nlfile), STATUS='old' )
+        CALL find_group_name(unitn, 'chem_inparm', STATUS=IERR)
+        IF (IERR == 0) THEN
+           READ(unitn, chem_inparm, IOSTAT=IERR)
+           IF (IERR /= 0) THEN
+              CALL endrun('chem_readnl: ERROR reading namelist')
+           ENDIF
+        ENDIF
+        CLOSE(unitn)
+        CALL freeunit(unitn)
 
     ENDIF
 
@@ -616,23 +865,17 @@ contains
     !==================================================================
 
 #if defined( SPMD )
-    CALL MPIBCAST(nTracers,               1,                               MPIINT,  0, MPICOM )
-    CALL MPIBCAST(tracerNames,            LEN(tracerNames(1))*nTracersMax, MPICHAR, 0, MPICOM )
-    CALL MPIBCAST(nSls,                   1,                               MPIINT,  0, MPICOM )
-    CALL MPIBCAST(slsNames,               LEN(slsNames(1))*nSlsMax,        MPICHAR, 0, MPICOM )
-    CALL MPIBCAST(drySpc_ndx,             nddvels,                         MPIINT,  0, MPICOM )
+    CALL MPIBCAST( nTracers,    1,                               MPIINT,  0, MPICOM )
+    CALL MPIBCAST( tracerNames, LEN(tracerNames(1))*nTracersMax, MPICHAR, 0, MPICOM )
+    CALL MPIBCAST( nSls,        1,                               MPIINT,  0, MPICOM )
+    CALL MPIBCAST( slsNames,    LEN(slsNames(1))*nSlsMax,        MPICHAR, 0, MPICOM )
+    CALL MPIBCAST( drySpc_ndx,  nddvels,                         MPIINT,  0, MPICOM )
 
-#if ( OCNDDVEL_MOZART )
-    !==============================================================
-    ! The following lines should only be called if we compute
-    ! velocities over the ocean and ice in a MOZART-like way.
-    ! Thibaud M. Fritz - 26 Feb 2020
-    !==============================================================
-
-    CALL MPIBCAST(MOZART_depvel_lnd_file, LEN(MOZART_depvel_lnd_file),     MPICHAR, 0, MPICOM)
-    CALL MPIBCAST(MOZART_clim_soilw_file, LEN(MOZART_clim_soilw_file),     MPICHAR, 0, MPICOM)
-    CALL MPIBCAST(MOZART_season_wes_file, LEN(MOZART_season_wes_file),     MPICHAR, 0, MPICOM)
-#endif
+    ! The following files are required to compute land maps, required to perform
+    ! aerosol dry deposition
+    CALL MPIBCAST(depvel_lnd_file, LEN(depvel_lnd_file), MPICHAR, 0, MPICOM)
+    CALL MPIBCAST(clim_soilw_file, LEN(clim_soilw_file), MPICHAR, 0, MPICOM)
+    CALL MPIBCAST(season_wes_file, LEN(season_wes_file), MPICHAR, 0, MPICOM)
 
 #endif
 
@@ -696,12 +939,27 @@ contains
     !          (and declare history variables)
     !
     !-----------------------------------------------------------------------
-    use physics_buffer, only: physics_buffer_desc, pbuf_get_index
-    use cam_history,    only: addfld, add_default, horiz_only
-    use chem_mods,      only: map2GC_dryDep, drySpc_ndx
+    use physics_buffer, only : physics_buffer_desc, pbuf_get_index
+    use cam_history,    only : addfld, add_default, horiz_only
+    use chem_mods,      only : map2GC_dryDep, drySpc_ndx
 
     use mpishorthand
     use cam_abortutils, only : endrun
+
+    use Phys_Grid,      only : get_Area_All_p
+    use hycoef,         only : ps0, hyai, hybi
+
+    use seq_drydep_mod, only : drydep_method, DD_XLND
+#if ( OCNDDVEL_MOZART )
+    use mo_drydep,      only : drydep_inti
+#endif
+
+#if defined( MODAL_AERO_4MODE )
+    use aero_model,     only : aero_model_init
+    use mo_drydep,      only : drydep_inti_landuse
+    use modal_aero_data,only : ntot_amode, nspec_amode
+    use modal_aero_data,only : xname_massptr
+#endif
 
     use Input_Opt_Mod
     use State_Chm_Mod
@@ -712,22 +970,13 @@ contains
     use GC_Grid_Mod,    only : SetGridFromCtrEdges
 
     ! Use GEOS-Chem versions of physical constants
-    use PhysConstants,  only : PI, PI_180
-    use PhysConstants,  only : Re
-
-    use Phys_Grid,      only : get_Area_All_p
-    use hycoef,         only : ps0, hyai, hybi
+    use PhysConstants,  only : PI, PI_180, Re
 
     use Time_Mod,      only : Accept_External_Date_Time
     !use Time_Mod,      only : Set_Begin_Time,   Set_End_Time
     !use Time_Mod,      only : Set_Current_Time, Set_DiagB
     !use Transfer_Mod,  only : Init_Transfer
     use Linoz_Mod,     only : Linoz_Read
-
-#if ( OCNDDVEL_MOZART )
-    use seq_drydep_mod, only: drydep_method, DD_XLND
-    use mo_drydep,      only: drydep_inti
-#endif
 
     use CMN_Size_Mod
 
@@ -746,7 +995,6 @@ contains
     use Olson_Landmap_Mod
 #endif
     use Mixing_Mod
-
     use PBL_Mix_Mod,   only : Init_PBL_Mix
 
     use GC_Emissions_Mod, only : GC_Emissions_Init
@@ -767,7 +1015,7 @@ contains
     INTEGER               :: iX, jY
     INTEGER               :: I, J, L, N
     INTEGER               :: RC
-    INTEGER               :: NLINOZ
+    INTEGER               :: nLinoz
 
     ! Logicals
     LOGICAL               :: am_I_Root, rootChunk
@@ -1094,7 +1342,7 @@ contains
                CALL Error_Stop( ErrMsg, ThisLoc )
             ENDIF
             ! Copy the data to a temporary array
-            linozData = REAL(Input_Opt%LINOZ_TPARM,r8)
+            linozData = REAL(Input_Opt%LINOZ_TPARM, r8)
         ENDIF
 #if defined( SPMD )
         CALL MPIBCAST( linozData, nLinoz, MPIR8, 0, MPICOM )
@@ -1291,9 +1539,9 @@ contains
         !==============================================================
 
         IF ( drydep_method == DD_XLND ) THEN
-           CALL drydep_inti( MOZART_depvel_lnd_file, &
-                           MOZART_clim_soilw_file, &
-                           MOZART_season_wes_file )
+           CALL drydep_inti( depvel_lnd_file, &
+                             clim_soilw_file, &
+                             season_wes_file )
         ELSE
             Write(iulog,'(a,a)') ' drydep_method is set to: ', TRIM(drydep_method)
             CALL ENDRUN('drydep_method must be DD_XLND to compute dry deposition' // &
@@ -1302,6 +1550,21 @@ contains
 #endif
 
     ENDIF
+
+#if defined( MODAL_AERO_4MODE )
+    ! Initialize aerosols
+    CALL aero_model_init( pbuf2d )
+
+    ! Initialize land maps for aerosol dry deposition
+    IF ( drydep_method == DD_XLND ) THEN
+        CALL drydep_inti_landuse( depvel_lnd_file, &
+                                  clim_soilw_file )
+    ELSE
+        Write(iulog,'(a,a)') ' drydep_method is set to: ', TRIM(drydep_method)
+        CALL ENDRUN('drydep_method must be DD_XLND to compute land maps for aerosol' // &
+                ' dry deposition!')
+    ENDIF
+#endif
 
     !=================================================================
     ! Call setup routines for wet deposition
@@ -1654,8 +1917,8 @@ contains
     NDX_LSFLXSNW = Pbuf_Get_Index('LS_FLXSNW')
 
     ! Get cloud water indices
-    CALL Cnst_Get_Ind('CLDLIQ', ixCldLiq)
-    CALL Cnst_Get_Ind('CLDICE', ixCldIce)
+    CALL cnst_get_ind('CLDLIQ', ixCldLiq)
+    CALL cnst_get_ind('CLDICE', ixCldIce)
 
     ! Can add history output here too with the "addfld" & "add_default" routines
     ! Note that constituents are already output by default
@@ -1667,6 +1930,7 @@ contains
             CALL Add_Default ( TRIM(SpcName), 1, ' ')
         ENDIF
     ENDDO
+
     DO I =1, nSls
         SpcName = TRIM(slsNames(I))
         CALL AddFld( TRIM(SpcName), (/ 'lev' /), 'A', 'mol/mol', TRIM(slsLongNames(I))//' concentration')
@@ -1678,376 +1942,6 @@ contains
 
     !CALL AddFld ( 'BCPI', (/'lev'/), 'A', 'mole/mole', trim('BCPI')//' mixing ratio' )
     !CALL Add_Default ( 'BCPI',   1, ' ')
-
-#if defined( CLM40 )
-    SpcName = 'lu_soil'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'lu_landice'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'lu_deeplake'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'lu_shallowlake'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'lu_wetland'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'lu_urban'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'lu_icemec'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'lu_crop'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-#elif defined( CLM45 ) || defined( CLM50 )
-    SpcName = 'lu_soil'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'lu_crop'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'lu_landice'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'lu_deeplake'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'lu_wetland'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'lu_urban'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-#endif
-    SpcName = 'p_notveg'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_needle_eg_temp'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_needle_eg_bor'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_needle_dd_bor'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_broad_eg_trop'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_broad_eg_temp'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_broad_dd_trop'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_broad_dd_temp'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_broad_dd_bor'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_broad_eg_sh'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_broad_dd_temp_sh'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_broad_dd_bor_sh'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_c3_arctic_grass'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_c3_narctic_grass'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_c4_grass'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_c3_crop'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_c3_irrigated'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-#if defined( CLM40 )
-    SpcName = 'p_c3_corn'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_spring_cereal'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_winter_cereal'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_soybean'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-#elif defined( CLM45 ) || defined( CLM50 )
-    SpcName = 'p_temp_corn'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_temp_corn'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_spring_wheat'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_spring_wheat'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_winter_wheat'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_winter_wheat'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_temp_soybean'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_temp_soybean'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_barley'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_barley'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_winter_barley'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_winter_barley'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_rye'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_rye'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_winter_rye'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_winter_rye'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_cassava'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_cassava'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_citrus'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_citrus'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_cocoa'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_cocoa'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_coffee'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_coffee'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_cotton'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_cotton'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_datepalm'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_datepalm'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_foddergrass'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_foddergrass'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_grapes'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_grapes'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_groundnuts'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_groundnuts'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_millet'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_millet'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_oilpalm'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_oilpalm'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_potatoes'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_potatoes'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_pulses'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_pulses'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_rapeseed'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_rapessed'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_rice'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_rice'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_sorghum'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_sorghum'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_sugarbeet'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_sugarbeet'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_sugarcane'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_sugarcane'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_sunflower'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_sunflower'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_miscanthus'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_miscanthus'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_switchgrass'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_switchgrass'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_trop_corn'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_trop_corn'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_trop_soybean'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_trop_soybean'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-#endif
-    SpcName = 'pla_notveg'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_needle_eg_temp'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_needle_eg_bor'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_needle_dd_bor'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_broad_eg_trop'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_broad_eg_temp'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_broad_dd_trop'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_broad_dd_temp'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_broad_dd_bor'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_broad_eg_sh'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_broad_dd_temp_sh'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_broad_dd_bor_sh'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_c3_arctic_grass'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_c3_narctic_grass'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_c4_grass'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_c3_crop'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_c3_irrigated'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-#if defined( CLM40 )
-    SpcName = 'pla_c3_corn'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_spring_cereal'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_winter_cereal'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_soybean'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-#elif defined( CLM45 ) || defined( CLM50 )
-    SpcName = 'pla_temp_corn'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_temp_corn'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_spring_wheat'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_spring_wheat'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_winter_wheat'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_winter_wheat'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_temp_soybean'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_temp_soybean'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_barley'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_barley'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_winter_barley'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_winter_barley'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_rye'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_rye'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_winter_rye'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_winter_rye'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_cassava'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_cassava'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_citrus'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_citrus'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_cocoa'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_cocoa'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_coffee'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_coffee'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_cotton'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_cotton'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_datepalm'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_datepalm'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_foddergrass'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_foddergrass'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_grapes'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_grapes'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_groundnuts'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_groundnuts'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_millet'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_millet'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_oilpalm'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_oilpalm'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_potatoes'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_potatoes'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_pulses'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_pulses'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_rapeseed'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_rapessed'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_rice'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_rice'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_sorghum'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_sorghum'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_sugarbeet'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_sugarbeet'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_sugarcane'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_sugarcane'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_sunflower'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_sunflower'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_miscanthus'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_miscanthus'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_switchgrass'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_switchgrass'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_trop_corn'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_trop_corn'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_trop_soybean'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_trop_soybean'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-#endif
 
     IF (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_INIT'
 
@@ -2111,6 +2005,11 @@ contains
     use phys_grid,           only: get_ncols_p, get_rlat_all_p, get_rlon_all_p
 
     use chem_mods,           only: drySpc_ndx, map2GC_dryDep
+#if defined( MODAL_AERO_4MODE )
+    use modal_aero_data,     only : ntot_amode, nspec_amode
+    use modal_aero_data,     only : lmassptr_amode
+#endif
+
 #if   ( LANDTYPE_CLM )
     use Olson_Landmap_Mod,   only: Compute_Olson_Landmap
     use Modis_LAI_Mod,       only: Compute_XLAI
@@ -2152,11 +2051,13 @@ contains
     use PhysConstants,       only: Re
     use Phys_Grid,           only: get_area_all_p, get_lat_all_p, get_lon_all_p
 
-    use Short_Lived_Species, only : Get_Short_Lived_Species
-    use Short_Lived_Species, only : Set_Short_Lived_Species
+    use short_lived_species, only : get_short_lived_species
+    use short_lived_species, only : set_short_lived_species
 
     ! Use GEOS-Chem versions of physical constants
     use PhysConstants,       only: PI, PI_180, g0
+
+    use rad_constituents,    only: rad_cnst_get_info
 
     REAL(r8),            INTENT(IN)    :: dT          ! Time step
     TYPE(physics_state), INTENT(IN)    :: State       ! Physics State variables
@@ -2171,12 +2072,11 @@ contains
     REAL(r8) :: MMR_End(PCOLS,PVER,nSls+nTracers)
     REAL(r8) :: MMR_TEnd(PCOLS,PVER,nSls+nTracers)
 
-
-    ! Mapping (?)
+    ! Logical to apply tendencies to mixing ratios
     LOGICAL :: lq(pcnst)
 
     ! Indexing
-    INTEGER :: I, J, K, L, N, M
+    INTEGER :: I, J, K, L, N, M, P
     INTEGER :: nX, nY, nZ
 
     INTEGER :: LCHNK, NCOL
@@ -2267,6 +2167,11 @@ contains
     LOGICAL            :: rootChunk
     INTEGER            :: RC
 
+    INTEGER :: nmodes
+    character(len=32) :: spec_name
+    character(len=32) :: spec_type
+    character(len=32) :: mode_type
+    integer :: nspec
     ! LCHNK: which chunk we have on this process
     LCHNK = State%LCHNK
     ! NCOL: number of atmospheric columns on this chunk
@@ -2343,6 +2248,7 @@ contains
 
     lq(:) = .FALSE.
 
+    ! Map and flip gaseous species
     MMR_Beg = 0.0e+0_r8
     DO N = 1, pcnst
         M = map2GC(N)
@@ -2361,9 +2267,9 @@ contains
 
     ! Retrieve previous value of species data
     SlsData(:,:,:) = 0.0e+0_r8
-    CALL Get_Short_Lived_Species( SlsData, LCHNK, nY, Pbuf )
+    CALL get_short_lived_species( SlsData, LCHNK, nY, pbuf )
 
-    ! Remap and flip them
+    ! Map and flip gaseous short-lived species
     DO N = 1, nSls
         M = map2GC_Sls(N)
         IF (M > 0) THEN
@@ -2375,6 +2281,25 @@ contains
         ENDIF
     ENDDO
 
+#if defined( MODAL_AERO_4MODE )
+    ! Map and flip aerosols
+    DO M = 1, ntot_amode
+       DO L = 1, nspec_amode(M)
+          P = map2MAM4(L,M)
+          N = lmassptr_amode(L,M)
+          ! Multiple MAM4 bins are mapped to same GEOS-Chem species
+          IF ( P > 0 ) THEN
+             DO J = 1, nY
+                DO K = 1, nZ
+                    State_Chm(LCHNK)%Species(1,J,K,P) = State_Chm(LCHNK)%Species(1,J,K,P) &
+                                                      + REAL(State%q(J,nZ+1-K,N),fp)
+                ENDDO
+             ENDDO
+          ENDIF
+       ENDDO
+    ENDDO
+#endif
+
     ! Initialize tendency array
     CALL Physics_ptend_init(ptend, State%psetcols, 'chemistry', lq=lq)
 
@@ -2383,16 +2308,16 @@ contains
     CALL Zenith( Calday, Rlats, Rlons, CSZA, nY )
 
     ! Get all required data from physics buffer
-    TIM_NDX = Pbuf_Old_Tim_Idx()
-    CALL Pbuf_Get_Field( Pbuf, NDX_PBLH,     PblH   )
-    CALL Pbuf_Get_Field( Pbuf, NDX_FSDS,     Fsds   )
-    CALL Pbuf_Get_Field( Pbuf, NDX_CLDTOP,   cldTop )
-    CALL Pbuf_Get_Field( Pbuf, NDX_CLDFRC,   cldFrc,   START=(/1,1,TIM_NDX/), KOUNT=(/NCOL,PVER,1/) )
-    CALL Pbuf_Get_Field( Pbuf, NDX_NEVAPR,   NEvapr,   START=(/1,1/),         KOUNT=(/NCOL,PVER/))
-    CALL Pbuf_Get_Field( Pbuf, NDX_PRAIN,    PRain,    START=(/1,1/),         KOUNT=(/NCOL,PVER/))
-    CALL Pbuf_Get_Field( Pbuf, NDX_RPRDTOT,  RprdTot,  START=(/1,1/),         KOUNT=(/NCOL,PVER/))
-    CALL Pbuf_Get_Field( Pbuf, NDX_LSFLXPRC, LsFlxPrc, START=(/1,1/),         KOUNT=(/NCOL,PVERP/))
-    CALL Pbuf_Get_Field( Pbuf, NDX_LSFLXSNW, LsFlxSnw, START=(/1,1/),         KOUNT=(/NCOL,PVERP/))
+    TIM_NDX = pbuf_old_tim_idx()
+    CALL pbuf_get_field( pbuf, NDX_PBLH,     PblH   )
+    CALL pbuf_get_field( pbuf, NDX_FSDS,     Fsds   )
+    CALL pbuf_get_field( pbuf, NDX_CLDTOP,   cldTop )
+    CALL pbuf_get_field( pbuf, NDX_CLDFRC,   cldFrc,   START=(/1,1,TIM_NDX/), KOUNT=(/NCOL,PVER,1/) )
+    CALL pbuf_get_field( pbuf, NDX_NEVAPR,   NEvapr,   START=(/1,1/),         KOUNT=(/NCOL,PVER/))
+    CALL pbuf_get_field( pbuf, NDX_PRAIN,    PRain,    START=(/1,1/),         KOUNT=(/NCOL,PVER/))
+    CALL pbuf_get_field( pbuf, NDX_RPRDTOT,  RprdTot,  START=(/1,1/),         KOUNT=(/NCOL,PVER/))
+    CALL pbuf_get_field( pbuf, NDX_LSFLXPRC, LsFlxPrc, START=(/1,1/),         KOUNT=(/NCOL,PVERP/))
+    CALL pbuf_get_field( pbuf, NDX_LSFLXSNW, LsFlxSnw, START=(/1,1/),         KOUNT=(/NCOL,PVERP/))
 
     ! Get VMR and MMR of H2O
     H2OVMR = 0.0e0_fp
@@ -2799,8 +2724,8 @@ contains
             ! Description: Cloud ice/water mixing ratio
             ! Unit       : kg/kg dry air
             ! Dimensions : nX, nY, nZ
-            State_Met(LCHNK)%QI       (1,J,L) = State%Q(J,nZ+1-L,ixCldIce) ! kg ice / kg dry air
-            State_Met(LCHNK)%QL       (1,J,L) = State%Q(J,nZ+1-L,ixCldLiq) ! kg water / kg dry air
+            State_Met(LCHNK)%QI       (1,J,L) = MAX(1.0e-05_fp, State%Q(J,nZ+1-L,ixCldIce)) ! kg ice / kg dry air
+            State_Met(LCHNK)%QL       (1,J,L) = MAX(1.0e-05_fp, State%Q(J,nZ+1-L,ixCldLiq)) ! kg water / kg dry air
 
             ! Field      : RH
             ! Description: Relative humidity
@@ -3226,7 +3151,7 @@ contains
     !    and then scale them with the ocean fraction (OCNDDVEL_GEOSCHEM)
     !
     ! A third option would be to let GEOS-Chem compute dry deposition
-    ! velocity (ALLDDVEL_GEOSCHEM), thus overwriting the input from CLM 
+    ! velocity (ALLDDVEL_GEOSCHEM), thus overwriting the input from CLM
     !
     ! drydep_method must be set to DD_XLND.
     !
@@ -3591,7 +3516,7 @@ contains
             ENDDO
         ENDIF
     ENDDO
-    CALL Set_Short_Lived_Species( SlsData, LCHNK, nY, Pbuf )
+    CALL set_short_lived_species( SlsData, LCHNK, nY, pbuf )
 
     ! Write diagnostic output
     DO N = 1, pcnst
@@ -3609,376 +3534,6 @@ contains
         ENDIF
     ENDDO
 
-#if defined( CLM40 )
-    SpcName = 'lu_soil'
-    CALL OutFld( TRIM(SpcName), cam_in%lwtgcell(:,1), nY, LCHNK )
-    SpcName = 'lu_landice'
-    CALL OutFld( TRIM(SpcName), cam_in%lwtgcell(:,2), nY, LCHNK )
-    SpcName = 'lu_deeplake'
-    CALL OutFld( TRIM(SpcName), cam_in%lwtgcell(:,3), nY, LCHNK )
-    SpcName = 'lu_shallowlake'
-    CALL OutFld( TRIM(SpcName), cam_in%lwtgcell(:,4), nY, LCHNK )
-    SpcName = 'lu_wetland'
-    CALL OutFld( TRIM(SpcName), cam_in%lwtgcell(:,5), nY, LCHNK )
-    SpcName = 'lu_urban'
-    CALL OutFld( TRIM(SpcName), cam_in%lwtgcell(:,6), nY, LCHNK )
-    SpcName = 'lu_icemec'
-    CALL OutFld( TRIM(SpcName), cam_in%lwtgcell(:,7), nY, LCHNK )
-    SpcName = 'lu_crop'
-    CALL OutFld( TRIM(SpcName), cam_in%lwtgcell(:,8), nY, LCHNK )
-#elif defined( CLM45 ) || defined( CLM50 )
-    SpcName = 'lu_soil'
-    CALL OutFld( TRIM(SpcName), cam_in%lwtgcell(:,1), nY, LCHNK )
-    SpcName = 'lu_crop'
-    CALL OutFld( TRIM(SpcName), cam_in%lwtgcell(:,2), nY, LCHNK )
-    SpcName = 'lu_landice'
-    CALL OutFld( TRIM(SpcName), cam_in%lwtgcell(:,4), nY, LCHNK )
-    SpcName = 'lu_deeplake'
-    CALL OutFld( TRIM(SpcName), cam_in%lwtgcell(:,5), nY, LCHNK )
-    SpcName = 'lu_wetland'
-    CALL OutFld( TRIM(SpcName), cam_in%lwtgcell(:,6), nY, LCHNK )
-    SpcName = 'lu_urban'
-    CALL OutFld( TRIM(SpcName), cam_in%lwtgcell(:,7) &
-                              + cam_in%lwtgcell(:,8) &
-                              + cam_in%lwtgcell(:,9), nY, LCHNK )
-#endif
-    SpcName = 'p_notveg'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,1), nY, LCHNK )
-    SpcName = 'p_needle_eg_temp'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,2), nY, LCHNK )
-    SpcName = 'p_needle_eg_bor'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,3), nY, LCHNK )
-    SpcName = 'p_needle_dd_bor'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,4), nY, LCHNK )
-    SpcName = 'p_broad_eg_trop'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,5), nY, LCHNK )
-    SpcName = 'p_broad_eg_temp'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,6), nY, LCHNK )
-    SpcName = 'p_broad_dd_trop'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,7), nY, LCHNK )
-    SpcName = 'p_broad_dd_temp'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,8), nY, LCHNK )
-    SpcName = 'p_broad_dd_bor'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,9), nY, LCHNK )
-    SpcName = 'p_broad_eg_sh'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,10), nY, LCHNK )
-    SpcName = 'p_broad_dd_temp_sh'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,11), nY, LCHNK )
-    SpcName = 'p_broad_dd_bor_sh'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,12), nY, LCHNK )
-    SpcName = 'p_c3_arctic_grass'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,13), nY, LCHNK )
-    SpcName = 'p_c3_narctic_grass'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,14), nY, LCHNK )
-    SpcName = 'p_c4_grass'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,15), nY, LCHNK )
-    SpcName = 'p_c3_crop'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,16), nY, LCHNK )
-    SpcName = 'p_c3_irrigated'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,17), nY, LCHNK )
-#if defined( CLM40 )
-    SpcName = 'p_c3_corn'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,18), nY, LCHNK )
-    SpcName = 'p_spring_cereal'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,19), nY, LCHNK )
-    SpcName = 'p_winter_cereal'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,20), nY, LCHNK )
-    SpcName = 'p_soybean'
-#elif defined( CLM45 ) || defined( CLM50 )
-    SpcName = 'p_temp_corn'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,18), nY, LCHNK )
-    SpcName = 'p_irr_temp_corn'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,19), nY, LCHNK )
-    SpcName = 'p_spring_wheat'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,20), nY, LCHNK )
-    SpcName = 'p_irr_spring_wheat'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,21), nY, LCHNK )
-    SpcName = 'p_winter_wheat'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,22), nY, LCHNK )
-    SpcName = 'p_irr_winter_wheat'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,23), nY, LCHNK )
-    SpcName = 'p_temp_soybean'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,24), nY, LCHNK )
-    SpcName = 'p_irr_temp_soybean'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,25), nY, LCHNK )
-    SpcName = 'p_barley'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,26), nY, LCHNK )
-    SpcName = 'p_irr_barley'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,27), nY, LCHNK )
-    SpcName = 'p_winter_barley'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,28), nY, LCHNK )
-    SpcName = 'p_irr_winter_barley'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,29), nY, LCHNK )
-    SpcName = 'p_rye'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,30), nY, LCHNK )
-    SpcName = 'p_irr_rye'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,31), nY, LCHNK )
-    SpcName = 'p_winter_rye'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,32), nY, LCHNK )
-    SpcName = 'p_irr_winter_rye'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,33), nY, LCHNK )
-    SpcName = 'p_cassava'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,34), nY, LCHNK )
-    SpcName = 'p_irr_cassava'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,35), nY, LCHNK )
-    SpcName = 'p_citrus'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,36), nY, LCHNK )
-    SpcName = 'p_irr_citrus'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,37), nY, LCHNK )
-    SpcName = 'p_cocoa'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,38), nY, LCHNK )
-    SpcName = 'p_irr_cocoa'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,39), nY, LCHNK )
-    SpcName = 'p_coffee'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,40), nY, LCHNK )
-    SpcName = 'p_irr_coffee'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,41), nY, LCHNK )
-    SpcName = 'p_cotton'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,42), nY, LCHNK )
-    SpcName = 'p_irr_cotton'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,43), nY, LCHNK )
-    SpcName = 'p_datepalm'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,44), nY, LCHNK )
-    SpcName = 'p_irr_datepalm'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,45), nY, LCHNK )
-    SpcName = 'p_foddergrass'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,46), nY, LCHNK )
-    SpcName = 'p_irr_foddergrass'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,47), nY, LCHNK )
-    SpcName = 'p_grapes'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,48), nY, LCHNK )
-    SpcName = 'p_irr_grapes'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,49), nY, LCHNK )
-    SpcName = 'p_groundnuts'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,50), nY, LCHNK )
-    SpcName = 'p_irr_groundnuts'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,51), nY, LCHNK )
-    SpcName = 'p_millet'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,52), nY, LCHNK )
-    SpcName = 'p_irr_millet'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,53), nY, LCHNK )
-    SpcName = 'p_oilpalm'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,54), nY, LCHNK )
-    SpcName = 'p_irr_oilpalm'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,55), nY, LCHNK )
-    SpcName = 'p_potatoes'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,56), nY, LCHNK )
-    SpcName = 'p_irr_potatoes'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,57), nY, LCHNK )
-    SpcName = 'p_pulses'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,58), nY, LCHNK )
-    SpcName = 'p_irr_pulses'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,59), nY, LCHNK )
-    SpcName = 'p_rapeseed'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,60), nY, LCHNK )
-    SpcName = 'p_irr_rapessed'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,61), nY, LCHNK )
-    SpcName = 'p_rice'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,62), nY, LCHNK )
-    SpcName = 'p_irr_rice'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,63), nY, LCHNK )
-    SpcName = 'p_sorghum'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,64), nY, LCHNK )
-    SpcName = 'p_irr_sorghum'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,65), nY, LCHNK )
-    SpcName = 'p_sugarbeet'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,66), nY, LCHNK )
-    SpcName = 'p_irr_sugarbeet'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,67), nY, LCHNK )
-    SpcName = 'p_sugarcane'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,68), nY, LCHNK )
-    SpcName = 'p_irr_sugarcane'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,69), nY, LCHNK )
-    SpcName = 'p_sunflower'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,70), nY, LCHNK )
-    SpcName = 'p_irr_sunflower'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,71), nY, LCHNK )
-    SpcName = 'p_miscanthus'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,72), nY, LCHNK )
-    SpcName = 'p_irr_miscanthus'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,73), nY, LCHNK )
-    SpcName = 'p_switchgrass'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,74), nY, LCHNK )
-    SpcName = 'p_irr_switchgrass'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,75), nY, LCHNK )
-    SpcName = 'p_trop_corn'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,76), nY, LCHNK )
-    SpcName = 'p_irr_trop_corn'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,77), nY, LCHNK )
-    SpcName = 'p_trop_soybean'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,78), nY, LCHNK )
-    SpcName = 'p_irr_trop_soybean'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,79), nY, LCHNK )
-#endif
-    SpcName = 'pla_notveg'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,1), nY, LCHNK )
-    SpcName = 'pla_needle_eg_temp'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,2), nY, LCHNK )
-    SpcName = 'pla_needle_eg_bor'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,3), nY, LCHNK )
-    SpcName = 'pla_needle_dd_bor'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,4), nY, LCHNK )
-    SpcName = 'pla_broad_eg_trop'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,5), nY, LCHNK )
-    SpcName = 'pla_broad_eg_temp'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,6), nY, LCHNK )
-    SpcName = 'pla_broad_dd_trop'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,7), nY, LCHNK )
-    SpcName = 'pla_broad_dd_temp'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,8), nY, LCHNK )
-    SpcName = 'pla_broad_dd_bor'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,9), nY, LCHNK )
-    SpcName = 'pla_broad_eg_sh'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,10), nY, LCHNK )
-    SpcName = 'pla_broad_dd_temp_sh'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,11), nY, LCHNK )
-    SpcName = 'pla_broad_dd_bor_sh'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,12), nY, LCHNK )
-    SpcName = 'pla_c3_arctic_grass'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,13), nY, LCHNK )
-    SpcName = 'pla_c3_narctic_grass'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,14), nY, LCHNK )
-    SpcName = 'pla_c4_grass'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,15), nY, LCHNK )
-    SpcName = 'pla_c3_crop'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,16), nY, LCHNK )
-    SpcName = 'pla_c3_irrigated'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,17), nY, LCHNK )
-#if defined( CLM40 )
-    SpcName = 'pla_c3_corn'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,18), nY, LCHNK )
-    SpcName = 'pla_spring_cereal'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,19), nY, LCHNK )
-    SpcName = 'pla_winter_cereal'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,20), nY, LCHNK )
-    SpcName = 'pla_soybean'
-#elif defined( CLM45 ) || defined( CLM50 )
-    SpcName = 'pla_temp_corn'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,18), nY, LCHNK )
-    SpcName = 'pla_irr_temp_corn'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,19), nY, LCHNK )
-    SpcName = 'pla_spring_wheat'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,20), nY, LCHNK )
-    SpcName = 'pla_irr_spring_wheat'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,21), nY, LCHNK )
-    SpcName = 'pla_winter_wheat'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,22), nY, LCHNK )
-    SpcName = 'pla_irr_winter_wheat'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,23), nY, LCHNK )
-    SpcName = 'pla_temp_soybean'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,24), nY, LCHNK )
-    SpcName = 'pla_irr_temp_soybean'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,25), nY, LCHNK )
-    SpcName = 'pla_barley'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,26), nY, LCHNK )
-    SpcName = 'pla_irr_barley'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,27), nY, LCHNK )
-    SpcName = 'pla_winter_barley'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,28), nY, LCHNK )
-    SpcName = 'pla_irr_winter_barley'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,29), nY, LCHNK )
-    SpcName = 'pla_rye'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,30), nY, LCHNK )
-    SpcName = 'pla_irr_rye'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,31), nY, LCHNK )
-    SpcName = 'pla_winter_rye'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,32), nY, LCHNK )
-    SpcName = 'pla_irr_winter_rye'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,33), nY, LCHNK )
-    SpcName = 'pla_cassava'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,34), nY, LCHNK )
-    SpcName = 'pla_irr_cassava'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,35), nY, LCHNK )
-    SpcName = 'pla_citrus'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,36), nY, LCHNK )
-    SpcName = 'pla_irr_citrus'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,37), nY, LCHNK )
-    SpcName = 'pla_cocoa'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,38), nY, LCHNK )
-    SpcName = 'pla_irr_cocoa'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,39), nY, LCHNK )
-    SpcName = 'pla_coffee'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,40), nY, LCHNK )
-    SpcName = 'pla_irr_coffee'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,41), nY, LCHNK )
-    SpcName = 'pla_cotton'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,42), nY, LCHNK )
-    SpcName = 'pla_irr_cotton'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,43), nY, LCHNK )
-    SpcName = 'pla_datepalm'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,44), nY, LCHNK )
-    SpcName = 'pla_irr_datepalm'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,45), nY, LCHNK )
-    SpcName = 'pla_foddergrass'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,46), nY, LCHNK )
-    SpcName = 'pla_irr_foddergrass'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,47), nY, LCHNK )
-    SpcName = 'pla_grapes'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,48), nY, LCHNK )
-    SpcName = 'pla_irr_grapes'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,49), nY, LCHNK )
-    SpcName = 'pla_groundnuts'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,50), nY, LCHNK )
-    SpcName = 'pla_irr_groundnuts'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,51), nY, LCHNK )
-    SpcName = 'pla_millet'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,52), nY, LCHNK )
-    SpcName = 'pla_irr_millet'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,53), nY, LCHNK )
-    SpcName = 'pla_oilpalm'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,54), nY, LCHNK )
-    SpcName = 'pla_irr_oilpalm'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,55), nY, LCHNK )
-    SpcName = 'pla_potatoes'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,56), nY, LCHNK )
-    SpcName = 'pla_irr_potatoes'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,57), nY, LCHNK )
-    SpcName = 'pla_pulses'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,58), nY, LCHNK )
-    SpcName = 'pla_irr_pulses'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,59), nY, LCHNK )
-    SpcName = 'pla_rapeseed'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,60), nY, LCHNK )
-    SpcName = 'pla_irr_rapessed'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,61), nY, LCHNK )
-    SpcName = 'pla_rice'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,62), nY, LCHNK )
-    SpcName = 'pla_irr_rice'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,63), nY, LCHNK )
-    SpcName = 'pla_sorghum'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,64), nY, LCHNK )
-    SpcName = 'pla_irr_sorghum'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,65), nY, LCHNK )
-    SpcName = 'pla_sugarbeet'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,66), nY, LCHNK )
-    SpcName = 'pla_irr_sugarbeet'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,67), nY, LCHNK )
-    SpcName = 'pla_sugarcane'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,68), nY, LCHNK )
-    SpcName = 'pla_irr_sugarcane'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,69), nY, LCHNK )
-    SpcName = 'pla_sunflower'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,70), nY, LCHNK )
-    SpcName = 'pla_irr_sunflower'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,71), nY, LCHNK )
-    SpcName = 'pla_miscanthus'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,72), nY, LCHNK )
-    SpcName = 'pla_irr_miscanthus'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,73), nY, LCHNK )
-    SpcName = 'pla_switchgrass'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,74), nY, LCHNK )
-    SpcName = 'pla_irr_switchgrass'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,75), nY, LCHNK )
-    SpcName = 'pla_trop_corn'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,76), nY, LCHNK )
-    SpcName = 'pla_irr_trop_corn'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,77), nY, LCHNK )
-    SpcName = 'pla_trop_soybean'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,78), nY, LCHNK )
-    SpcName = 'pla_irr_trop_soybean'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,79), nY, LCHNK )
-#endif
-
     DO N = 1, nSls
         SpcName = slsNames(n)
         VMR = 0.0e+0_r8
@@ -3995,7 +3550,7 @@ contains
 
     ! NOTE: Re-flip all the arrays vertically or suffer the consequences
     ! ptend%q dimensions: [column, ?, species]
-    Ptend%Q(:,:,:) = 0.0e+0_r8
+    ptend%q(:,:,:) = 0.0e+0_r8
     MMR_End = 0.0e+0_r8
     DO N = 1, pcnst
         M = map2GC(N)
@@ -4171,6 +3726,7 @@ contains
 
     IF (ALLOCATED(slvd_Lst    ))  DEALLOCATE(slvd_Lst)
     IF (ALLOCATED(slvd_ref_MMR))  DEALLOCATE(slvd_ref_MMR)
+
 
     RETURN
 
