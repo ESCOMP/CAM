@@ -153,15 +153,14 @@ module chemistry
 contains
 !================================================================================================
 
-  LOGICAL function chem_is (NAME)
+  LOGICAL function chem_is (name)
 
-    CHARACTER(LEN=*), INTENT(IN) :: NAME
+    CHARACTER(LEN=*), INTENT(IN) :: name
 
     chem_is = .false.
-    IF (NAME == 'geoschem' ) THEN
+    IF ( to_upper(name) == 'GEOSCHEM' ) THEN
        chem_is = .true.
     ENDIF
-    IF (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_IS'
 
   end function chem_is
 
@@ -254,7 +253,7 @@ contains
     IO%LPRT                = .False.
     IO%N_Advect            = nTracers
     DO I = 1, nTracers
-        IO%AdvectSpc_Name(I) = TRIM(tracerNames(I))
+       IO%AdvectSpc_Name(I) = TRIM(tracerNames(I))
     ENDDO
     IO%SalA_rEdge_um(1)    = 0.01e+0_fp
     IO%SalA_rEdge_um(2)    = 0.50e+0_fp
@@ -435,8 +434,8 @@ contains
        ! constituent n
        M = Ind_(TRIM(tracerNames(I)))
        IF ( M > 0 ) THEN
-           map2GC(N)  = M
-           map2Idx(N) = I
+          map2GC(N)  = M
+          map2Idx(N) = I
        ENDIF
        ! Nullify pointer
        ThisSpc => NULL()
@@ -448,18 +447,18 @@ contains
     SlsMWRatio(:)  = -1.0e+0_r8
     slsLongNames = ''
     DO I = 1, nSls
-        N = Ind_(slsNames(I))
-        IF ( N .GT. 0 ) THEN
-            ThisSpc         => SC%SpcData(N)%Info
-            MWTmp           = REAL(ThisSpc%MW_g,r8)
-            ref_VMR         = REAL(ThisSpc%BackgroundVV,r8)
-            lngName         = TRIM(ThisSpc%FullName)
-            slsLongNames(I) = lngName
-            sls_ref_MMR(I)  = ref_VMR / (MWDry / MWTmp)
-            SlsMWRatio(I)   = MWDry / MWTmp
-            map2GC_Sls(I)   = N
-            ThisSpc         => NULL()
-        ENDIF
+       N = Ind_(slsNames(I))
+       IF ( N .GT. 0 ) THEN
+          ThisSpc         => SC%SpcData(N)%Info
+          MWTmp           = REAL(ThisSpc%MW_g,r8)
+          ref_VMR         = REAL(ThisSpc%BackgroundVV,r8)
+          lngName         = TRIM(ThisSpc%FullName)
+          slsLongNames(I) = lngName
+          sls_ref_MMR(I)  = ref_VMR / (MWDry / MWTmp)
+          SlsMWRatio(I)   = MWDry / MWTmp
+          map2GC_Sls(I)   = N
+          ThisSpc         => NULL()
+       ENDIF
     ENDDO
 
     ! Pass information to "short_lived_species" module
@@ -707,156 +706,156 @@ contains
 #endif
 
     DO I = (nAer+1), nAerMax
-        aerNames(I)   = 'EMPTY_AER      '
-        aerAdvMass(I) = -1.00_r8
+       aerNames(I)   = 'EMPTY_AER      '
+       aerAdvMass(I) = -1.00_r8
     ENDDO
 
     IF ( MasterProc ) THEN
 
-        Write(iulog,'(/,a)') REPEAT( '=', 50 )
-        Write(iulog,'(a)') REPEAT( '=', 50 )
-        Write(iulog,'(a)') 'This is the GEOS-CHEM / CESM interface'
-        Write(iulog,'(a)') REPEAT( '=', 50 )
-        Write(iulog,'(a)') ' + Routines written by Thibaud M. Fritz'
-        Write(iulog,'(a)') ' + Laboratory for Aviation and the Environment,'
-        Write(iulog,'(a)') ' + Department of Aeronautics and Astronautics,'
-        Write(iulog,'(a)') ' + Massachusetts Institute of Technology'
-        Write(iulog,'(a)') REPEAT( '=', 50 )
+       Write(iulog,'(/,a)') REPEAT( '=', 50 )
+       Write(iulog,'(a)') REPEAT( '=', 50 )
+       Write(iulog,'(a)') 'This is the GEOS-CHEM / CESM interface'
+       Write(iulog,'(a)') REPEAT( '=', 50 )
+       Write(iulog,'(a)') ' + Routines written by Thibaud M. Fritz'
+       Write(iulog,'(a)') ' + Laboratory for Aviation and the Environment,'
+       Write(iulog,'(a)') ' + Department of Aeronautics and Astronautics,'
+       Write(iulog,'(a)') ' + Massachusetts Institute of Technology'
+       Write(iulog,'(a)') REPEAT( '=', 50 )
 
-        Write(iulog,'(/,/, a)') 'Now defining GEOS-Chem tracers and dry deposition mapping...'
+       Write(iulog,'(/,/, a)') 'Now defining GEOS-Chem tracers and dry deposition mapping...'
 
-        unitn = getunit()
+       unitn = getunit()
 
-        !==============================================================
-        ! Opening input.geos and go to ADVECTED SPECIES MENU
-        !==============================================================
+       !==============================================================
+       ! Opening input.geos and go to ADVECTED SPECIES MENU
+       !==============================================================
 
-        OPEN( unitn, FILE=TRIM(inputGeosPath), STATUS='OLD', IOSTAT=IERR )
-        IF (IERR .NE. 0) THEN
-            CALL ENDRUN('chem_readnl: ERROR opening input.geos')
-        ENDIF
+       OPEN( unitn, FILE=TRIM(inputGeosPath), STATUS='OLD', IOSTAT=IERR )
+       IF (IERR .NE. 0) THEN
+          CALL ENDRUN('chem_readnl: ERROR opening input.geos')
+       ENDIF
 
-        ! Go to ADVECTED SPECIES MENU
-        menuFound = .False.
-        DO WHILE ( .NOT. menuFound )
-            READ( unitn, '(a)', IOSTAT=IERR ) line
-            IF ( IERR .NE. 0 ) THEN
-                CALL ENDRUN('chem_readnl: ERROR finding advected species menu')
-            ELSEIF ( INDEX(line, 'ADVECTED SPECIES MENU') > 0 ) THEN
-                menuFound = .True.
-            ENDIF
-        ENDDO
+       ! Go to ADVECTED SPECIES MENU
+       menuFound = .False.
+       DO WHILE ( .NOT. menuFound )
+          READ( unitn, '(a)', IOSTAT=IERR ) line
+          IF ( IERR .NE. 0 ) THEN
+              CALL ENDRUN('chem_readnl: ERROR finding advected species menu')
+          ELSEIF ( INDEX(line, 'ADVECTED SPECIES MENU') > 0 ) THEN
+              menuFound = .True.
+          ENDIF
+       ENDDO
 
-        !==============================================================
-        ! Read list of GEOS-Chem tracers
-        !==============================================================
+       !==============================================================
+       ! Read list of GEOS-Chem tracers
+       !==============================================================
 
-        DO
-            ! Read line
-            READ(unitn,'(26x,a)', IOSTAT=IERR) line
+       DO
+          ! Read line
+          READ(unitn,'(26x,a)', IOSTAT=IERR) line
 
-            IF ( INDEX( TRIM(line), '---' ) > 0 ) EXIT
+          IF ( INDEX( TRIM(line), '---' ) > 0 ) EXIT
 
-            nTracers = nTracers + 1
-            tracerNames(nTracers) = TRIM(line)
+          nTracers = nTracers + 1
+          tracerNames(nTracers) = TRIM(line)
 
-        ENDDO
+       ENDDO
 
-        CLOSE(unitn)
-        CALL freeunit(unitn)
+       CLOSE(unitn)
+       CALL freeunit(unitn)
 
-        ! Assign remaining tracers dummy names
-        DO I = (nTracers+1), nTracersMax
-            WRITE(tracerNames(I),'(a,I0.4)') 'GCTRC_', I
-        ENDDO
+       ! Assign remaining tracers dummy names
+       DO I = (nTracers+1), nTracersMax
+          WRITE(tracerNames(I),'(a,I0.4)') 'GCTRC_', I
+       ENDDO
 
-        !==============================================================
-        ! Now go through the KPP mechanism and add any species not
-        ! implemented by the tracer list in input.geos
-        !==============================================================
+       !==============================================================
+       ! Now go through the KPP mechanism and add any species not
+       ! implemented by the tracer list in input.geos
+       !==============================================================
 
-        IF ( nSpec > nSlsMax ) THEN
-            CALL ENDRUN('chem_readnl: too many species - increase nSlsmax')
-        ENDIF
+       IF ( nSpec > nSlsMax ) THEN
+          CALL ENDRUN('chem_readnl: too many species - increase nSlsmax')
+       ENDIF
 
-        nSls = 0
-        DO I = 1, nSpec
-            ! Get the name of the species from KPP
-            line = ADJUSTL(TRIM(Spc_Names(I)))
-            ! Only add this
-            validSLS = ( .NOT. ANY(TRIM(line) .EQ. tracerNames) )
-            IF (validSLS) THEN
-                ! Genuine new short-lived species
-                nSls = nSls + 1
-                slsNames(nSls) = TRIM(line)
-            ENDIF
-        ENDDO
+       nSls = 0
+       DO I = 1, nSpec
+          ! Get the name of the species from KPP
+          line = ADJUSTL(TRIM(Spc_Names(I)))
+          ! Only add this
+          validSLS = ( .NOT. ANY(TRIM(line) .EQ. tracerNames) )
+          IF (validSLS) THEN
+             ! Genuine new short-lived species
+             nSls = nSls + 1
+             slsNames(nSls) = TRIM(line)
+          ENDIF
+       ENDDO
 
-        !==============================================================
-        ! Get mapping between dry deposition species and species set
-        !==============================================================
+       !==============================================================
+       ! Get mapping between dry deposition species and species set
+       !==============================================================
 
-        DO N = 1, nddvels
+       DO N = 1, nddvels
 
-           ! The species names need to be convert to upper case as,
-           ! for instance, BR2 != Br2
-           drySpc_ndx(N) = get_spc_ndx( to_upper(drydep_list(N)) )
+          ! The species names need to be convert to upper case as,
+          ! for instance, BR2 != Br2
+          drySpc_ndx(N) = get_spc_ndx( to_upper(drydep_list(N)) )
 
-           IF ( drySpc_ndx(N) < 0 ) THEN
-              Write(iulog,'(a,a)') ' ## Ignoring dry deposition of ', &
-                                   TRIM(drydep_list(N))
-              nIgnored = nIgnored + 1
-           ENDIF
-        ENDDO
+          IF ( drySpc_ndx(N) < 0 ) THEN
+             Write(iulog,'(a,a)') ' ## Ignoring dry deposition of ', &
+                                  TRIM(drydep_list(N))
+             nIgnored = nIgnored + 1
+          ENDIF
+       ENDDO
 
-        IF ( nIgnored > 0 ) THEN
-            Write(iulog,'(a,a)') ' The species listed above have dry', &
-              ' deposition turned off for one of the following reasons:'
-            Write(iulog,'(a)') '  - They are not present in the GEOS-Chem tracer list.'
-            Write(iulog,'(a)') '  - They have a synonym (e.g. CH2O and HCHO).'
-        ENDIF
+       IF ( nIgnored > 0 ) THEN
+          Write(iulog,'(a,a)') ' The species listed above have dry', &
+            ' deposition turned off for one of the following reasons:'
+          Write(iulog,'(a)') '  - They are not present in the GEOS-Chem tracer list.'
+          Write(iulog,'(a)') '  - They have a synonym (e.g. CH2O and HCHO).'
+       ENDIF
 
-        !==============================================================
-        ! Print summary
-        !==============================================================
+       !==============================================================
+       ! Print summary
+       !==============================================================
 
-        Write(iulog,'(/, a)') '### Summary of GEOS-Chem species: '
-        Write(iulog,'( a)') REPEAT( '-', 50 )
-        Write(iulog,'( a)') '+ List of advected species: '
-        Write(iulog,100) 'ID', 'Tracer', 'Dry deposition (T/F)'
-        DO N = 1, nTracers
-            Write(iulog,120) N, TRIM(tracerNames(N)), ANY(drySpc_ndx .eq. N)
-        ENDDO
-        IF ( nAer > 0 ) THEN
-            Write(iulog,'(/, a)') '+ List of aerosols: '
-            Write(iulog,110) 'ID', 'MAM4 Aerosol'
-            DO N = 1, nAer
-                Write(iulog,130) N, TRIM(aerNames(N))
-            ENDDO
-        ENDIF
-        Write(iulog,'(/, a)') '+ List of short-lived species: '
-        DO N = 1, nSls
-            Write(iulog,130) N, TRIM(slsNames(N))
-        ENDDO
+       Write(iulog,'(/, a)') '### Summary of GEOS-Chem species: '
+       Write(iulog,'( a)') REPEAT( '-', 50 )
+       Write(iulog,'( a)') '+ List of advected species: '
+       Write(iulog,100) 'ID', 'Tracer', 'Dry deposition (T/F)'
+       DO N = 1, nTracers
+          Write(iulog,120) N, TRIM(tracerNames(N)), ANY(drySpc_ndx .eq. N)
+       ENDDO
+       IF ( nAer > 0 ) THEN
+          Write(iulog,'(/, a)') '+ List of aerosols: '
+          Write(iulog,110) 'ID', 'MAM4 Aerosol'
+          DO N = 1, nAer
+             Write(iulog,130) N, TRIM(aerNames(N))
+          ENDDO
+       ENDIF
+       Write(iulog,'(/, a)') '+ List of short-lived species: '
+       DO N = 1, nSls
+          Write(iulog,130) N, TRIM(slsNames(N))
+       ENDDO
 
-  100   FORMAT( 1x, A3, 3x, A10, 1x, A25 )
-  110   FORMAT( 1x, A3, 3x, A15 )
-  120   FORMAT( 1x, I3, 3x, A10, 1x, L15 )
-  130   FORMAT( 1x, I3, 3x, A10 )
+  100  FORMAT( 1x, A3, 3x, A10, 1x, A25 )
+  110  FORMAT( 1x, A3, 3x, A15 )
+  120  FORMAT( 1x, I3, 3x, A10, 1x, L15 )
+  130  FORMAT( 1x, I3, 3x, A10 )
 
-        !==============================================================
+       !==============================================================
 
-        unitn = getunit()
-        OPEN( unitn, FILE=TRIM(nlfile), STATUS='old' )
-        CALL find_group_name(unitn, 'chem_inparm', STATUS=IERR)
-        IF (IERR == 0) THEN
-           READ(unitn, chem_inparm, IOSTAT=IERR)
-           IF (IERR /= 0) THEN
-              CALL endrun('chem_readnl: ERROR reading namelist')
-           ENDIF
-        ENDIF
-        CLOSE(unitn)
-        CALL freeunit(unitn)
+       unitn = getunit()
+       OPEN( unitn, FILE=TRIM(nlfile), STATUS='old' )
+       CALL find_group_name(unitn, 'chem_inparm', STATUS=IERR)
+       IF (IERR == 0) THEN
+          READ(unitn, chem_inparm, IOSTAT=IERR)
+          IF (IERR /= 0) THEN
+             CALL endrun('chem_readnl: ERROR reading namelist')
+          ENDIF
+       ENDIF
+       CLOSE(unitn)
+       CALL freeunit(unitn)
 
     ENDIF
 
@@ -886,7 +885,7 @@ contains
     ALLOCATE(slvd_ref_MMR(nSlvd), STAT=IERR)
     IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating slvd_ref_MMR')
     DO I = 1, nSls
-        slvd_Lst(I) = TRIM(slsNames(I))
+       slvd_Lst(I) = TRIM(slsNames(I))
     ENDDO
 
   end subroutine chem_readnl
@@ -1090,51 +1089,51 @@ contains
     Input_Opt%LUCX      = .True.
 
     IF ( RC /= GC_SUCCESS ) THEN
-        ErrMsg = 'Error encountered within call to "Set_Input_Opt"!'
-        CALL Error_Stop( ErrMsg, ThisLoc )
+       ErrMsg = 'Error encountered within call to "Set_Input_Opt"!'
+       CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
     DO I = BEGCHUNK, ENDCHUNK
 
-        ! Only treat the first chunk as the "root"
-        am_I_Root = ((I.EQ.BEGCHUNK) .and. MasterProc)
+       ! Only treat the first chunk as the "root"
+       am_I_Root = ((I.EQ.BEGCHUNK) .and. MasterProc)
 
-        ! Initialize fields of the Grid State object
-        CALL Init_State_Grid( am_I_Root  = am_I_Root,      &
-                              State_Grid = State_Grid(I),  &
-                              RC         = RC         )
+       ! Initialize fields of the Grid State object
+       CALL Init_State_Grid( am_I_Root  = am_I_Root,      &
+                             State_Grid = State_Grid(I),  &
+                             RC         = RC         )
 
-        IF ( RC /= GC_SUCCESS ) THEN
-            ErrMsg = 'Error encountered within call to "Init_State_Grid"!'
-            CALL Error_Stop( ErrMsg, ThisLoc )
-        ENDIF
+       IF ( RC /= GC_SUCCESS ) THEN
+           ErrMsg = 'Error encountered within call to "Init_State_Grid"!'
+           CALL Error_Stop( ErrMsg, ThisLoc )
+       ENDIF
 
-        State_Grid(I)%NX = nX
-        State_Grid(I)%NY = nY
-        State_Grid(I)%NZ = nZ
+       State_Grid(I)%NX = nX
+       State_Grid(I)%NY = nY
+       State_Grid(I)%NZ = nZ
 
-        ! Initialize GEOS-Chem horizontal grid structure
-        CALL GC_Init_Grid( am_I_Root  = am_I_Root,      &
-                           Input_Opt  = Input_Opt,      &
-                           State_Grid = State_Grid(I),  &
-                           RC         = RC          )
+       ! Initialize GEOS-Chem horizontal grid structure
+       CALL GC_Init_Grid( am_I_Root  = am_I_Root,      &
+                          Input_Opt  = Input_Opt,      &
+                          State_Grid = State_Grid(I),  &
+                          RC         = RC          )
 
-        IF ( RC /= GC_SUCCESS ) THEN
-            ErrMsg = 'Error encountered within call to "GC_Init_Grid"!'
-            CALL Error_Stop( ErrMsg, ThisLoc )
-        ENDIF
+       IF ( RC /= GC_SUCCESS ) THEN
+           ErrMsg = 'Error encountered within call to "GC_Init_Grid"!'
+           CALL Error_Stop( ErrMsg, ThisLoc )
+       ENDIF
 
-        ! Define more variables for State_Grid
-        ! TMMF, might need tweaking
-        State_Grid(I)%MaxTropLev  = MIN(40, nZ)
-        State_Grid(I)%MaxStratLev = MIN(59, nZ)
+       ! Define more variables for State_Grid
+       ! TMMF, might need tweaking
+       State_Grid(I)%MaxTropLev  = MIN(40, nZ)
+       State_Grid(I)%MaxStratLev = MIN(59, nZ)
 
-        ! Set maximum number of levels in the chemistry grid
-        IF ( Input_Opt%LUCX ) THEN
-           State_Grid(I)%MaxChemLev  = State_Grid(I)%MaxStratLev
-        ELSE
-           State_Grid(I)%MaxChemLev  = State_Grid(I)%MaxTropLev
-        ENDIF
+       ! Set maximum number of levels in the chemistry grid
+       IF ( Input_Opt%LUCX ) THEN
+          State_Grid(I)%MaxChemLev  = State_Grid(I)%MaxStratLev
+       ELSE
+          State_Grid(I)%MaxChemLev  = State_Grid(I)%MaxTropLev
+       ENDIF
 
     ENDDO
 
@@ -1202,11 +1201,11 @@ contains
     ! Now READ_ADVECTED_SPECIES_MENU
     Input_Opt%N_Advect               = nTracers
     IF (Input_Opt%N_Advect.GT.Input_Opt%Max_AdvectSpc) THEN
-        CALL ENDRUN('Number of tracers exceeds max count')
+       CALL ENDRUN('Number of tracers exceeds max count')
     ENDIF
     ! Assign tracer names
     DO J = 1, Input_Opt%N_Advect
-        Input_Opt%AdvectSpc_Name(J) = TRIM(tracerNames(J))
+       Input_Opt%AdvectSpc_Name(J) = TRIM(tracerNames(J))
     ENDDO
     ! No tagged species
     Input_Opt%LSplit = .False.
@@ -1322,35 +1321,35 @@ contains
     ! broadcast to all other CPUs, and finally duplicate the data into every
     ! copy of Input_Opt
     IF ( Input_Opt%LLinoz ) THEN
-        ! Allocate array for broadcast
-        nLinoz = Input_Opt%Linoz_NLevels * &
-                 Input_Opt%Linoz_NLat    * &
-                 Input_Opt%Linoz_NMonths * &
-                 Input_Opt%Linoz_NFields
-        ALLOCATE( linozData( Input_Opt%Linoz_NLevels,     &
-                             Input_Opt%Linoz_NLat,        &
-                             Input_Opt%Linoz_NMonths,     &
-                             Input_Opt%Linoz_NFields  ), STAT=IERR)
-        IF (IERR.NE.0) CALL ENDRUN('Failure while allocating linozData')
-        linozData = 0.0e+0_r8
+       ! Allocate array for broadcast
+       nLinoz = Input_Opt%Linoz_NLevels * &
+                Input_Opt%Linoz_NLat    * &
+                Input_Opt%Linoz_NMonths * &
+                Input_Opt%Linoz_NFields
+       ALLOCATE( linozData( Input_Opt%Linoz_NLevels,     &
+                            Input_Opt%Linoz_NLat,        &
+                            Input_Opt%Linoz_NMonths,     &
+                            Input_Opt%Linoz_NFields  ), STAT=IERR)
+       IF (IERR.NE.0) CALL ENDRUN('Failure while allocating linozData')
+       linozData = 0.0e+0_r8
 
-        IF ( MasterProc ) THEN
-            ! Read data in to Input_Opt%Linoz_TParm
-            CALL Linoz_Read( MasterProc, Input_Opt, RC )
-            IF ( RC /= GC_SUCCESS ) THEN
-               ErrMsg = 'Error encountered in "Linoz_Read"!'
-               CALL Error_Stop( ErrMsg, ThisLoc )
-            ENDIF
-            ! Copy the data to a temporary array
-            linozData = REAL(Input_Opt%LINOZ_TPARM, r8)
-        ENDIF
+       IF ( MasterProc ) THEN
+          ! Read data in to Input_Opt%Linoz_TParm
+          CALL Linoz_Read( MasterProc, Input_Opt, RC )
+          IF ( RC /= GC_SUCCESS ) THEN
+             ErrMsg = 'Error encountered in "Linoz_Read"!'
+             CALL Error_Stop( ErrMsg, ThisLoc )
+          ENDIF
+          ! Copy the data to a temporary array
+          linozData = REAL(Input_Opt%LINOZ_TPARM, r8)
+       ENDIF
 #if defined( SPMD )
-        CALL MPIBCAST( linozData, nLinoz, MPIR8, 0, MPICOM )
+       CALL MPIBCAST( linozData, nLinoz, MPIR8, 0, MPICOM )
 #endif
-        IF ( .NOT. MasterProc ) THEN
-            Input_Opt%LINOZ_TPARM = REAL(linozData,fp)
-        ENDIF
-        DEALLOCATE(linozData)
+       IF ( .NOT. MasterProc ) THEN
+          Input_Opt%LINOZ_TPARM = REAL(linozData,fp)
+       ENDIF
+       DEALLOCATE(linozData)
     ENDIF
 
 
@@ -1372,46 +1371,46 @@ contains
     ! TODO: This needs more refinement. For now, this generates identical
     ! State_Grid for all chunks
     DO L = BEGCHUNK, ENDCHUNK
-        lonMidArr = 0.0e+0_f4
-        latMidArr = 0.0e+0_f4
-        dLonFix   = 360.0e+0_fp / REAL(nX,fp)
-        dLatFix   = 180.0e+0_fp / REAL(nY,fp)
-        DO I = 1, nX
-            ! Center of box, assuming dateline edge
-            lonVal = -180.0e+0_fp + (REAL(I-1,fp)*dLonFix)
-            DO J = 1, nY
-                ! Center of box, assuming regular cells
-                latVal = -90.0e+0_fp + (REAL(J-1,fp)*dLatFix)
-                lonMidArr(I,J)  = REAL((lonVal + (0.5e+0_fp * dLonFix)) * PI_180, f4)
-                latMidArr(I,J)  = REAL((latVal + (0.5e+0_fp * dLatFix)) * PI_180, f4)
+       lonMidArr = 0.0e+0_f4
+       latMidArr = 0.0e+0_f4
+       dLonFix   = 360.0e+0_fp / REAL(nX,fp)
+       dLatFix   = 180.0e+0_fp / REAL(nY,fp)
+       DO I = 1, nX
+          ! Center of box, assuming dateline edge
+          lonVal = -180.0e+0_fp + (REAL(I-1,fp)*dLonFix)
+          DO J = 1, nY
+             ! Center of box, assuming regular cells
+             latVal = -90.0e+0_fp + (REAL(J-1,fp)*dLatFix)
+             lonMidArr(I,J)  = REAL((lonVal + (0.5e+0_fp * dLonFix)) * PI_180, f4)
+             latMidArr(I,J)  = REAL((latVal + (0.5e+0_fp * dLatFix)) * PI_180, f4)
 
-                ! Edges of box, assuming regular cells
-                lonEdgeArr(I,J) = REAL(lonVal * PI_180, f4)
-                latEdgeArr(I,J) = REAL(latVal * PI_180, f4)
-            ENDDO
-            ! Edges of box, assuming regular cells
-            lonEdgeArr(I,nY+1)  = REAL((lonVal + dLonFix) * PI_180, f4)
-            latEdgeArr(I,nY+1)  = REAL((latVal + dLatFix) * PI_180, f4)
-        ENDDO
-        DO J = 1, nY+1
-            ! Edges of box, assuming regular cells
-            latVal = -90.0e+0_fp + (REAL(J-1,fp)*dLatFix)
-            lonEdgeArr(nX+1,J)  = REAL((lonVal + dLonFix) * PI_180, f4)
-            latEdgeArr(nX+1,J)  = REAL((latVal) * PI_180, f4)
-        ENDDO
+             ! Edges of box, assuming regular cells
+             lonEdgeArr(I,J) = REAL(lonVal * PI_180, f4)
+             latEdgeArr(I,J) = REAL(latVal * PI_180, f4)
+          ENDDO
+          ! Edges of box, assuming regular cells
+          lonEdgeArr(I,nY+1)  = REAL((lonVal + dLonFix) * PI_180, f4)
+          latEdgeArr(I,nY+1)  = REAL((latVal + dLatFix) * PI_180, f4)
+       ENDDO
+       DO J = 1, nY+1
+          ! Edges of box, assuming regular cells
+          latVal = -90.0e+0_fp + (REAL(J-1,fp)*dLatFix)
+          lonEdgeArr(nX+1,J)  = REAL((lonVal + dLonFix) * PI_180, f4)
+          latEdgeArr(nX+1,J)  = REAL((latVal) * PI_180, f4)
+       ENDDO
 
-        CALL SetGridFromCtrEdges( am_I_Root  = MasterProc,    &
-                                  State_Grid = State_Grid(L), &
-                                  lonCtr     = lonMidArr,     &
-                                  latCtr     = latMidArr,     &
-                                  lonEdge    = lonEdgeArr,    &
-                                  latEdge    = latEdgeArr,    &
-                                  RC         = RC         )
+       CALL SetGridFromCtrEdges( am_I_Root  = MasterProc,    &
+                                 State_Grid = State_Grid(L), &
+                                 lonCtr     = lonMidArr,     &
+                                 latCtr     = latMidArr,     &
+                                 lonEdge    = lonEdgeArr,    &
+                                 latEdge    = latEdgeArr,    &
+                                 RC         = RC         )
 
-        IF ( RC /= GC_SUCCESS ) THEN
-           ErrMsg = 'Error encountered in "SetGridFromCtrEdges"!'
-           CALL Error_Stop( ErrMsg, ThisLoc )
-        ENDIF
+       IF ( RC /= GC_SUCCESS ) THEN
+          ErrMsg = 'Error encountered in "SetGridFromCtrEdges"!'
+          CALL Error_Stop( ErrMsg, ThisLoc )
+       ENDIF
 
     ENDDO
     DEALLOCATE(lonMidArr)
@@ -1462,91 +1461,91 @@ contains
     !IF ( prtDebug ) CALL Print_DiagList( am_I_Root, Diag_List, RC )
 
     DO I = BEGCHUNK, ENDCHUNK
-        am_I_Root = (MasterProc .AND. (I == BEGCHUNK))
+       am_I_Root = (MasterProc .AND. (I == BEGCHUNK))
 
-        CALL GC_Init_StateObj( am_I_Root  = am_I_Root,     &  ! Root CPU (Y/N)?
-     &                         Diag_List  = Diag_List,     &  ! Diagnostic list obj
-     &                         Input_Opt  = Input_Opt,     &  ! Input Options
-     &                         State_Chm  = State_Chm(I),  &  ! Chemistry State
-     &                         State_Diag = State_Diag(I), &  ! Diagnostics State
-     &                         State_Grid = State_Grid(I), &  ! Grid State
-     &                         State_Met  = State_Met(I),  &  ! Meteorology State
-     &                         RC         = RC            )   ! Success or failure
+       CALL GC_Init_StateObj( am_I_Root  = am_I_Root,     &  ! Root CPU (Y/N)?
+     &                        Diag_List  = Diag_List,     &  ! Diagnostic list obj
+     &                        Input_Opt  = Input_Opt,     &  ! Input Options
+     &                        State_Chm  = State_Chm(I),  &  ! Chemistry State
+     &                        State_Diag = State_Diag(I), &  ! Diagnostics State
+     &                        State_Grid = State_Grid(I), &  ! Grid State
+     &                        State_Met  = State_Met(I),  &  ! Meteorology State
+     &                        RC         = RC            )   ! Success or failure
 
-        ! Trap potential errors
-        IF ( RC /= GC_SUCCESS ) THEN
-            ErrMsg = 'Error encountered in "GC_Init_StateObj"!'
-            CALL Error_Stop( ErrMsg, ThisLoc )
-        ENDIF
+       ! Trap potential errors
+       IF ( RC /= GC_SUCCESS ) THEN
+          ErrMsg = 'Error encountered in "GC_Init_StateObj"!'
+          CALL Error_Stop( ErrMsg, ThisLoc )
+       ENDIF
 
-        ! Start with v/v dry (CAM standard)
-        State_Chm(I)%Spc_Units = 'v/v dry'
+       ! Start with v/v dry (CAM standard)
+       State_Chm(I)%Spc_Units = 'v/v dry'
 
     ENDDO
 
     ! Now replicate GC_Init_Extra
     IF ( Input_Opt%LDryD ) THEN
 
-        ! Setup for dry deposition
-        CALL Init_Drydep( am_I_Root  = MasterProc,           &
-     &                    Input_Opt  = Input_Opt,            &
-     &                    State_Chm  = State_Chm(BEGCHUNK),  &
-     &                    State_Diag = State_Diag(BEGCHUNK), &
-     &                    State_Grid = State_Grid(BEGCHUNK), &
-     &                    RC         = RC                   )
+       ! Setup for dry deposition
+       CALL Init_Drydep( am_I_Root  = MasterProc,           &
+     &                   Input_Opt  = Input_Opt,            &
+     &                   State_Chm  = State_Chm(BEGCHUNK),  &
+     &                   State_Diag = State_Diag(BEGCHUNK), &
+     &                   State_Grid = State_Grid(BEGCHUNK), &
+     &                   RC         = RC                   )
 
-        IF ( RC /= GC_SUCCESS ) THEN
-            ErrMsg = 'Error encountered in "Init_Drydep"!'
-            CALL Error_Stop( ErrMsg, ThisLoc )
-        ENDIF
+       IF ( RC /= GC_SUCCESS ) THEN
+          ErrMsg = 'Error encountered in "Init_Drydep"!'
+          CALL Error_Stop( ErrMsg, ThisLoc )
+       ENDIF
 
-        !==============================================================
-        ! Get mapping between CESM dry deposited species and the
-        ! indices of State_Chm%DryDepVel. This needs to be done after
-        ! Init_Drydep
-        ! Thibaud M. Fritz - 04 Mar 2020
-        !==============================================================
+       !==============================================================
+       ! Get mapping between CESM dry deposited species and the
+       ! indices of State_Chm%DryDepVel. This needs to be done after
+       ! Init_Drydep
+       ! Thibaud M. Fritz - 04 Mar 2020
+       !==============================================================
 
-        ALLOCATE(map2GC_dryDep(nddvels), STAT=IERR)
-        IF ( IERR .NE. 0 ) CALL ENDRUN('Failed to allocate map2GC_dryDep')
+       ALLOCATE(map2GC_dryDep(nddvels), STAT=IERR)
+       IF ( IERR .NE. 0 ) CALL ENDRUN('Failed to allocate map2GC_dryDep')
 
-        DO N = 1, nddvels
+       DO N = 1, nddvels
 
-            ! Initialize index to -1
-            map2GC_dryDep(N) = -1
+          ! Initialize index to -1
+          map2GC_dryDep(N) = -1
 
-            IF ( drySpc_ndx(N) > 0 ) THEN
+          IF ( drySpc_ndx(N) > 0 ) THEN
 
-                ! Convert to upper case
-                SpcName = to_upper(drydep_list(N))
+             ! Convert to upper case
+             SpcName = to_upper(drydep_list(N))
 
-                DO I = 1, State_Chm(BEGCHUNK)%nDryDep
-                    IF ( TRIM( SpcName ) == TRIM( to_upper(depName(I)) ) ) THEN
-                        map2GC_dryDep(N) = nDVZind(I)
-                        EXIT
-                    ENDIF
-                ENDDO
+             DO I = 1, State_Chm(BEGCHUNK)%nDryDep
+                IF ( TRIM( SpcName ) == TRIM( to_upper(depName(I)) ) ) THEN
+                    map2GC_dryDep(N) = nDVZind(I)
+                   EXIT
+                ENDIF
+             ENDDO
 
-            ENDIF
+          ENDIF
 
-        ENDDO
+       ENDDO
 
 #if ( OCNDDVEL_MOZART )
-        !==============================================================
-        ! The following line should only be called if we compute
-        ! velocities over the ocean and ice in a MOZART-like way.
-        ! Thibaud M. Fritz - 26 Feb 2020
-        !==============================================================
+       !==============================================================
+       ! The following line should only be called if we compute
+       ! velocities over the ocean and ice in a MOZART-like way.
+       ! Thibaud M. Fritz - 26 Feb 2020
+       !==============================================================
 
-        IF ( drydep_method == DD_XLND ) THEN
-           CALL drydep_inti( depvel_lnd_file, &
-                             clim_soilw_file, &
-                             season_wes_file )
-        ELSE
-            Write(iulog,'(a,a)') ' drydep_method is set to: ', TRIM(drydep_method)
-            CALL ENDRUN('drydep_method must be DD_XLND to compute dry deposition' // &
-                ' velocities similarly to MOZART over ocean and ice!')
-        ENDIF
+       IF ( drydep_method == DD_XLND ) THEN
+          CALL drydep_inti( depvel_lnd_file, &
+                            clim_soilw_file, &
+                            season_wes_file )
+       ELSE
+          Write(iulog,'(a,a)') ' drydep_method is set to: ', TRIM(drydep_method)
+          CALL ENDRUN('drydep_method must be DD_XLND to compute dry deposition' // &
+              ' velocities similarly to MOZART over ocean and ice!')
+       ENDIF
 #endif
 
     ENDIF
@@ -1557,12 +1556,12 @@ contains
 
     ! Initialize land maps for aerosol dry deposition
     IF ( drydep_method == DD_XLND ) THEN
-        CALL drydep_inti_landuse( depvel_lnd_file, &
-                                  clim_soilw_file )
+       CALL drydep_inti_landuse( depvel_lnd_file, &
+                                 clim_soilw_file )
     ELSE
-        Write(iulog,'(a,a)') ' drydep_method is set to: ', TRIM(drydep_method)
-        CALL ENDRUN('drydep_method must be DD_XLND to compute land maps for aerosol' // &
-                ' dry deposition!')
+       Write(iulog,'(a,a)') ' drydep_method is set to: ', TRIM(drydep_method)
+       CALL ENDRUN('drydep_method must be DD_XLND to compute land maps for aerosol' // &
+               ' dry deposition!')
     ENDIF
 #endif
 
@@ -1580,17 +1579,17 @@ contains
     IF ( Input_Opt%LConv .OR. &
          Input_Opt%LWetD .OR. &
          Input_Opt%LChem ) THEN
-        CALL Init_WetScav( am_I_Root  = MasterProc,           &
-     &                     Input_Opt  = Input_Opt,            &
-     &                     State_Chm  = State_Chm(BEGCHUNK),  &
-     &                     State_Diag = State_Diag(BEGCHUNK), &
-     &                     State_Grid = State_Grid(BEGCHUNK), &
-     &                     RC         = RC                   )
+       CALL Init_WetScav( am_I_Root  = MasterProc,           &
+     &                    Input_Opt  = Input_Opt,            &
+     &                    State_Chm  = State_Chm(BEGCHUNK),  &
+     &                    State_Diag = State_Diag(BEGCHUNK), &
+     &                    State_Grid = State_Grid(BEGCHUNK), &
+     &                    RC         = RC                   )
 
-        IF ( RC /= GC_SUCCESS ) THEN
-            ErrMsg = 'Error encountered in "Init_WetScav"!'
-            CALL Error_Stop( ErrMsg, ThisLoc )
-        ENDIF
+       IF ( RC /= GC_SUCCESS ) THEN
+          ErrMsg = 'Error encountered in "Init_WetScav"!'
+          CALL Error_Stop( ErrMsg, ThisLoc )
+       ENDIF
     ENDIF
 
     !-----------------------------------------------------------------
@@ -1619,98 +1618,98 @@ contains
     !&                   RC         = RC                   )
     !
     !IF (RC /= GC_SUCCESS) THEN
-    !    ErrMsg = 'Error encountered in "Init_Get_NDep"!'
-    !    CALL Error_Stop( ErrMsg, ThisLoc )
+    !   ErrMsg = 'Error encountered in "Init_Get_NDep"!'
+    !   CALL Error_Stop( ErrMsg, ThisLoc )
     !ENDIF
 
     !-----------------------------------------------------------------
     ! Initialize "carbon_mod.F"
     !-----------------------------------------------------------------
     IF ( Input_Opt%LCarb ) THEN
-        CALL Init_Carbon( am_I_Root = MasterProc,            &
-     &                    Input_Opt = Input_Opt,             &
-     &                    State_Chm = State_Chm(BEGCHUNK),   &
-     &                    State_Diag = State_Diag(BEGCHUNK), &
-     &                    State_Grid = State_Grid(BEGCHUNK), &
-     &                    RC         = RC                   )
+       CALL Init_Carbon( am_I_Root = MasterProc,            &
+     &                   Input_Opt = Input_Opt,             &
+     &                   State_Chm = State_Chm(BEGCHUNK),   &
+     &                   State_Diag = State_Diag(BEGCHUNK), &
+     &                   State_Grid = State_Grid(BEGCHUNK), &
+     &                   RC         = RC                   )
 
-        IF ( RC /= GC_SUCCESS ) THEN
-            ErrMsg = 'Error encountered in "Init_Carbon"!'
-            CALL Error_Stop( ErrMsg, ThisLoc )
-        ENDIF
+       IF ( RC /= GC_SUCCESS ) THEN
+          ErrMsg = 'Error encountered in "Init_Carbon"!'
+          CALL Error_Stop( ErrMsg, ThisLoc )
+       ENDIF
     ENDIF
 
     IF ( Input_Opt%LDust ) THEN
-        CALL Init_Dust( am_I_Root  = MasterProc,           &
-     &                  Input_Opt  = Input_Opt,            &
-     &                  State_Chm  = State_Chm(BEGCHUNK),  &
-     &                  State_Diag = State_Diag(BEGCHUNK), &
-     &                  State_Grid = State_Grid(BEGCHUNK), &
-     &                  RC         = RC                    )
+       CALL Init_Dust( am_I_Root  = MasterProc,           &
+     &                 Input_Opt  = Input_Opt,            &
+     &                 State_Chm  = State_Chm(BEGCHUNK),  &
+     &                 State_Diag = State_Diag(BEGCHUNK), &
+     &                 State_Grid = State_Grid(BEGCHUNK), &
+     &                 RC         = RC                    )
 
-        IF ( RC /= GC_SUCCESS ) THEN
-            ErrMsg = 'Error encountered in "Init_Dust"!'
-            CALL Error_Stop( ErrMsg, ThisLoc )
-        ENDIF
+       IF ( RC /= GC_SUCCESS ) THEN
+          ErrMsg = 'Error encountered in "Init_Dust"!'
+          CALL Error_Stop( ErrMsg, ThisLoc )
+       ENDIF
     ENDIF
 
     IF ( Input_Opt%LSSalt ) THEN
-        CALL Init_Seasalt( am_I_Root  = MasterProc,           &
-     &                     Input_Opt  = Input_Opt,            &
-     &                     State_Chm  = State_Chm(BEGCHUNK),  &
-     &                     State_Diag = State_Diag(BEGCHUNK), &
-     &                     State_Grid = State_Grid(BEGCHUNK), &
-     &                     RC         = RC                    )
+       CALL Init_Seasalt( am_I_Root  = MasterProc,           &
+     &                    Input_Opt  = Input_Opt,            &
+     &                    State_Chm  = State_Chm(BEGCHUNK),  &
+     &                    State_Diag = State_Diag(BEGCHUNK), &
+     &                    State_Grid = State_Grid(BEGCHUNK), &
+     &                    RC         = RC                    )
 
-        IF ( RC /= GC_SUCCESS ) THEN
-            ErrMsg = 'Error encountered in "Init_Seasalt"!'
-            CALL Error_Stop( ErrMsg, ThisLoc )
-        ENDIF
+       IF ( RC /= GC_SUCCESS ) THEN
+          ErrMsg = 'Error encountered in "Init_Seasalt"!'
+          CALL Error_Stop( ErrMsg, ThisLoc )
+       ENDIF
     ENDIF
 
     IF ( Input_Opt%LSulf ) THEN
-        CALL Init_Sulfate( am_I_Root  = MasterProc,           &
-     &                     Input_Opt  = Input_Opt,            &
-     &                     State_Chm  = State_Chm(BEGCHUNK),  &
-     &                     State_Diag = State_Diag(BEGCHUNK), &
-     &                     State_Grid = State_Grid(BEGCHUNK), &
-     &                     RC         = RC                    )
+       CALL Init_Sulfate( am_I_Root  = MasterProc,           &
+     &                    Input_Opt  = Input_Opt,            &
+     &                    State_Chm  = State_Chm(BEGCHUNK),  &
+     &                    State_Diag = State_Diag(BEGCHUNK), &
+     &                    State_Grid = State_Grid(BEGCHUNK), &
+     &                    RC         = RC                    )
 
-        IF ( RC /= GC_SUCCESS ) THEN
-            ErrMsg = 'Error encountered in "Init_Sulfate"!'
-            CALL Error_Stop( ErrMsg, ThisLoc )
-        ENDIF
+       IF ( RC /= GC_SUCCESS ) THEN
+          ErrMsg = 'Error encountered in "Init_Sulfate"!'
+          CALL Error_Stop( ErrMsg, ThisLoc )
+       ENDIF
     ENDIF
 
     IF ( Input_Opt%LSulf .OR. &
          Input_Opt%LCarb .OR. &
          Input_Opt%LDust .OR. &
          Input_Opt%LSSalt ) THEN
-        CALL Init_Aerosol( am_I_Root  = MasterProc,           &
-     &                     Input_Opt  = Input_Opt,            &
-     &                     State_Chm  = State_Chm(BEGCHUNK),  &
-     &                     State_Diag = State_Diag(BEGCHUNK), &
-     &                     State_Grid = State_Grid(BEGCHUNK), &
-     &                     RC         = RC                    )
+       CALL Init_Aerosol( am_I_Root  = MasterProc,           &
+     &                    Input_Opt  = Input_Opt,            &
+     &                    State_Chm  = State_Chm(BEGCHUNK),  &
+     &                    State_Diag = State_Diag(BEGCHUNK), &
+     &                    State_Grid = State_Grid(BEGCHUNK), &
+     &                    RC         = RC                    )
 
-        IF ( RC /= GC_SUCCESS ) THEN
-            ErrMsg = 'Error encountered in "Init_Aerosol"!'
-            CALL Error_Stop( ErrMsg, ThisLoc )
-        ENDIF
+       IF ( RC /= GC_SUCCESS ) THEN
+          ErrMsg = 'Error encountered in "Init_Aerosol"!'
+          CALL Error_Stop( ErrMsg, ThisLoc )
+       ENDIF
     ENDIF
 
     IF ( Input_Opt%LChem ) THEN
-        CALL Init_Toms( am_I_Root  = MasterProc,           &
-         &              Input_Opt  = Input_Opt,            &
-         &              State_Chm  = State_Chm(BEGCHUNK),  &
-         &              State_Diag = State_Diag(BEGCHUNK), &
-         &              State_Grid = State_Grid(BEGCHUNK), &
-         &              RC         = RC                    )
+       CALL Init_Toms( am_I_Root  = MasterProc,           &
+        &              Input_Opt  = Input_Opt,            &
+        &              State_Chm  = State_Chm(BEGCHUNK),  &
+        &              State_Diag = State_Diag(BEGCHUNK), &
+        &              State_Grid = State_Grid(BEGCHUNK), &
+        &              RC         = RC                    )
 
-        IF ( RC /= GC_SUCCESS ) THEN
-            ErrMsg = 'Error encountered in "Init_TOMS"!'
-            CALL Error_Stop( ErrMsg, ThisLoc )
-        ENDIF
+       IF ( RC /= GC_SUCCESS ) THEN
+          ErrMsg = 'Error encountered in "Init_TOMS"!'
+          CALL Error_Stop( ErrMsg, ThisLoc )
+       ENDIF
     ENDIF
 
     ! This is a bare subroutine - no module
@@ -1721,8 +1720,8 @@ contains
      &               RC                    )
 
     IF ( RC /= GC_SUCCESS ) THEN
-        ErrMsg = 'Error encountered in "Init_NDXX_Setup"!'
-        CALL Error_Stop( ErrMsg, ThisLoc )
+       ErrMsg = 'Error encountered in "Init_NDXX_Setup"!'
+       CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
     CALL Init_PBL_Mix( am_I_Root  = MasterProc,           &
@@ -1730,31 +1729,30 @@ contains
                        RC         = RC                   )
 
     IF ( RC /= GC_SUCCESS ) THEN
-        ErrMsg = 'Error encountered in "Init_PBL_Mix"!'
-        CALL Error_Stop( ErrMsg, ThisLoc )
+       ErrMsg = 'Error encountered in "Init_PBL_Mix"!'
+       CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
     ! Set grid-cell area
     DO I = BEGCHUNK, ENDCHUNK
-        ALLOCATE(Col_Area(NCOL(I)), STAT=IERR)
-        IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating Col_Area')
+       ALLOCATE(Col_Area(NCOL(I)), STAT=IERR)
+       IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating Col_Area')
 
-        CALL Get_Area_All_p(I, NCOL(I), Col_Area)
+       CALL Get_Area_All_p(I, NCOL(I), Col_Area)
 
-        ! Set default value (in case of chunks with fewer columns)
-        State_Grid(I)%Area_M2 = 1.0e+10_fp
-        DO iX = 1, nX
-            DO jY = 1, NCOL(I)
-                State_Grid(I)%Area_M2(iX,jY) = REAL(Col_Area(jY) * Re**2,fp)
-            ENDDO
-        ENDDO
+       ! Set default value (in case of chunks with fewer columns)
+       State_Grid(I)%Area_M2 = 1.0e+10_fp
+       DO iX = 1, nX
+       DO jY = 1, NCOL(I)
+          State_Grid(I)%Area_M2(iX,jY) = REAL(Col_Area(jY) * Re**2,fp)
+       ENDDO
+       ENDDO
 
-        DEALLOCATE(Col_Area)
+       DEALLOCATE(Col_Area)
 
-        ! Copy to State_Met(I)%Area_M2
-        State_Met(I)%Area_M2 = State_Grid(I)%Area_M2
+       ! Copy to State_Met(I)%Area_M2
+       State_Met(I)%Area_M2 = State_Grid(I)%Area_M2
     ENDDO
-
 
     ! Initialize (mostly unused) diagnostic arrays
     ! WARNING: This routine likely calls on modules which are currently
@@ -1770,7 +1768,7 @@ contains
 
     Ap_CAM_Flip = 0.0e+0_fp
     Bp_CAM_Flip = 0.0e+0_fp
-    DO I = 1, (nZ+1)
+    DO I = 1, nZ+1
         Ap_CAM_Flip(I) = hyai(nZ+2-I) * ps0 * 0.01e+0_r8
         Bp_CAM_Flip(I) = hybi(nZ+2-I)
     ENDDO
@@ -1799,12 +1797,12 @@ contains
 
     ! Print vertical coordinates
     IF ( MasterProc ) THEN
-        WRITE( 6, '(a)'   ) REPEAT( '=', 79 )
-        WRITE( 6, '(a,/)' ) 'V E R T I C A L   G R I D   S E T U P'
-        WRITE( 6, '( ''Ap '', /, 6(f11.6,1x) )' ) Ap_CAM_Flip(1:State_Grid(BEGCHUNK)%NZ+1)
-        WRITE( 6, '(a)'   )
-        WRITE( 6, '( ''Bp '', /, 6(f11.6,1x) )' ) Bp_CAM_Flip(1:State_Grid(BEGCHUNK)%NZ+1)
-        WRITE( 6, '(a)'   ) REPEAT( '=', 79 )
+       WRITE( 6, '(a)'   ) REPEAT( '=', 79 )
+       WRITE( 6, '(a,/)' ) 'V E R T I C A L   G R I D   S E T U P'
+       WRITE( 6, '( ''Ap '', /, 6(f11.6,1x) )' ) Ap_CAM_Flip(1:State_Grid(BEGCHUNK)%NZ+1)
+       WRITE( 6, '(a)'   )
+       WRITE( 6, '( ''Bp '', /, 6(f11.6,1x) )' ) Bp_CAM_Flip(1:State_Grid(BEGCHUNK)%NZ+1)
+       WRITE( 6, '(a)'   ) REPEAT( '=', 79 )
     ENDIF
 
     ! Trapping errors
@@ -1876,26 +1874,26 @@ contains
     IF ( Input_Opt%Its_A_FullChem_Sim .OR. &
          Input_Opt%Its_An_Aerosol_Sim ) THEN
         ! This also initializes Fast-JX
-        CALL Init_Chemistry( am_I_Root  = MasterProc,           &
-     &                       Input_Opt  = Input_Opt,            &
-     &                       State_Chm  = State_Chm(BEGCHUNK),  &
-     &                       State_Diag = State_Diag(BEGCHUNK), &
-     &                       State_Grid = State_Grid(BEGCHUNK), &
-     &                       RC         = RC                    )
+       CALL Init_Chemistry( am_I_Root  = MasterProc,           &
+     &                      Input_Opt  = Input_Opt,            &
+     &                      State_Chm  = State_Chm(BEGCHUNK),  &
+     &                      State_Diag = State_Diag(BEGCHUNK), &
+     &                      State_Grid = State_Grid(BEGCHUNK), &
+     &                      RC         = RC                    )
 
-        IF ( RC /= GC_SUCCESS ) THEN
-            ErrMsg = 'Error encountered in "Init_Chemistry"!'
-            CALL Error_Stop( ErrMsg, ThisLoc )
-        ENDIF
+       IF ( RC /= GC_SUCCESS ) THEN
+          ErrMsg = 'Error encountered in "Init_Chemistry"!'
+          CALL Error_Stop( ErrMsg, ThisLoc )
+       ENDIF
     ENDIF
 
     IF ( Input_Opt%LChem .AND. &
          Input_Opt%LUCX ) THEN
-        CALL Init_UCX( am_I_Root  = MasterProc,           &
-     &                 Input_Opt  = Input_Opt,            &
-     &                 State_Chm  = State_Chm(BEGCHUNK),  &
-     &                 State_Diag = State_Diag(BEGCHUNK), &
-     &                 State_Grid = State_Grid(BEGCHUNK) )
+       CALL Init_UCX( am_I_Root  = MasterProc,           &
+     &                Input_Opt  = Input_Opt,            &
+     &                State_Chm  = State_Chm(BEGCHUNK),  &
+     &                State_Diag = State_Diag(BEGCHUNK), &
+     &                State_Grid = State_Grid(BEGCHUNK) )
     ENDIF
 
     ! Get the index of H2O
@@ -1924,17 +1922,17 @@ contains
     ! Note that constituents are already output by default
     ! Add all species as output fields if desired
     DO I = 1, nTracers
-        SpcName = TRIM(tracerNames(I))
-        CALL AddFld( TRIM(SpcName), (/ 'lev' /), 'A', 'mol/mol', TRIM(tracerLongNames(I))//' concentration')
-        IF (TRIM(SpcName) == 'O3') THEN
-            CALL Add_Default ( TRIM(SpcName), 1, ' ')
-        ENDIF
+       SpcName = TRIM(tracerNames(I))
+       CALL AddFld( TRIM(SpcName), (/ 'lev' /), 'A', 'mol/mol', TRIM(tracerLongNames(I))//' concentration')
+       IF (TRIM(SpcName) == 'O3') THEN
+          CALL Add_Default ( TRIM(SpcName), 1, ' ')
+       ENDIF
     ENDDO
 
     DO I =1, nSls
-        SpcName = TRIM(slsNames(I))
-        CALL AddFld( TRIM(SpcName), (/ 'lev' /), 'A', 'mol/mol', TRIM(slsLongNames(I))//' concentration')
-        !CALL Add_Default(TRIM(SpcName), 1, '')
+       SpcName = TRIM(slsNames(I))
+       CALL AddFld( TRIM(SpcName), (/ 'lev' /), 'A', 'mol/mol', TRIM(slsLongNames(I))//' concentration')
+       !CALL Add_Default(TRIM(SpcName), 1, '')
     ENDDO
 
     ! Initialize emissions interface (this will eventually handle HEMCO)
@@ -2208,10 +2206,10 @@ contains
     lonMidArr = 0.0e+0_f4
     latMidArr = 0.0e+0_f4
     DO I = 1, nX
-        DO J = 1, nY
-            lonMidArr(I,J) = REAL(Rlons(J), f4)
-            latMidArr(I,J) = REAL(Rlats(J), f4)
-        ENDDO
+    DO J = 1, nY
+       lonMidArr(I,J) = REAL(Rlons(J), f4)
+       latMidArr(I,J) = REAL(Rlats(J), f4)
+    ENDDO
     ENDDO
 
     ! Update the grid
@@ -2222,8 +2220,8 @@ contains
                          RC         = RC )
 
     IF ( RC /= GC_SUCCESS ) THEN
-        ErrMsg = 'Error encountered within call to "SetGridFromCtr"!'
-        CALL Error_Stop( ErrMsg, ThisLoc )
+       ErrMsg = 'Error encountered within call to "SetGridFromCtr"!'
+       CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
     ! Set area
@@ -2236,7 +2234,7 @@ contains
     ! Note       : Set default value (in case of chunks with fewer columns)
     State_Grid(LCHNK)%Area_M2 = 1.0e+10_fp
     DO J = 1, nY
-        State_Grid(LCHNK)%Area_M2(1,J) = REAL(Col_Area(J) * Re**2,fp)
+       State_Grid(LCHNK)%Area_M2(1,J) = REAL(Col_Area(J) * Re**2,fp)
     ENDDO
     State_Met(LCHNK)%Area_M2 = State_Grid(LCHNK)%Area_M2
 
@@ -2251,18 +2249,16 @@ contains
     ! Map and flip gaseous species
     MMR_Beg = 0.0e+0_r8
     DO N = 1, pcnst
-        M = map2GC(N)
-        IF (M > 0) THEN
-            I = 1
-            DO J = 1, nY
-                DO K = 1, nZ
-                    ! CURRENTLY KG/KG DRY
-                    MMR_Beg(J,K,M) = State%q(J,nZ+1-K,N)
-                    State_Chm(LCHNK)%Species(1,J,K,M) = REAL(MMR_Beg(J,K,M),fp)
-                ENDDO
-            ENDDO
-            lq(N) = .TRUE.
-        ENDIF
+       M = map2GC(N)
+       IF (M > 0) THEN
+          DO J = 1, nY
+          DO K = 1, nZ
+             MMR_Beg(J,K,M) = State%q(J,nZ+1-K,N)
+             State_Chm(LCHNK)%Species(1,J,K,M) = REAL(MMR_Beg(J,K,M),fp)
+          ENDDO
+          ENDDO
+          lq(N) = .TRUE.
+       ENDIF
     ENDDO
 
     ! Retrieve previous value of species data
@@ -2271,14 +2267,14 @@ contains
 
     ! Map and flip gaseous short-lived species
     DO N = 1, nSls
-        M = map2GC_Sls(N)
-        IF (M > 0) THEN
-            DO J = 1, nY
-                DO K = 1, nZ
-                    State_Chm(LCHNK)%Species(1,J,K,M) = REAL(SlsData(J,nZ+1-K,N),fp)
-                ENDDO
-            ENDDO
-        ENDIF
+       M = map2GC_Sls(N)
+       IF (M > 0) THEN
+          DO J = 1, nY
+          DO K = 1, nZ
+             State_Chm(LCHNK)%Species(1,J,K,M) = REAL(SlsData(J,nZ+1-K,N),fp)
+          ENDDO
+          ENDDO
+       ENDIF
     ENDDO
 
 #if defined( MODAL_AERO_4MODE )
@@ -2290,10 +2286,11 @@ contains
           ! Multiple MAM4 bins are mapped to same GEOS-Chem species
           IF ( P > 0 ) THEN
              DO J = 1, nY
-                DO K = 1, nZ
-                    State_Chm(LCHNK)%Species(1,J,K,P) = State_Chm(LCHNK)%Species(1,J,K,P) &
-                                                      + REAL(State%q(J,nZ+1-K,N),fp)
-                ENDDO
+             DO K = 1, nZ
+                MMR_Beg(J,K,M) = State%q(J,nZ+1-K,N) 
+                State_Chm(LCHNK)%Species(1,J,K,P) = State_Chm(LCHNK)%Species(1,J,K,P) &
+                                                  + REAL(State%q(J,nZ+1-K,N),fp)
+             ENDDO
              ENDDO
           ENDIF
        ENDDO
@@ -2324,32 +2321,32 @@ contains
     qH2O   = 0.0e0_fp
     ! Note MWDRY = 28.966 g/mol
     DO J = 1, nY
-        DO L = 1, nZ
-            qH2O(J,L) = REAL(State_Chm(LCHNK)%Species(1,J,L,iH2O),r8)
-            H2OVMR(J,L) = qH2O(J,L) * MWDry / 18.016e+0_fp
-        ENDDO
+    DO L = 1, nZ
+       qH2O(J,L) = REAL(State_Chm(LCHNK)%Species(1,J,L,iH2O),r8)
+       H2OVMR(J,L) = qH2O(J,L) * MWDry / 18.016e+0_fp
+    ENDDO
     ENDDO
 
     ! Calculate RH (range 0-1, note still level 1 = TOA)
     relHum(:,:) = 0.0e+0_r8
     CALL QSat(State%T(:nY,:), State%Pmid(:nY,:), SatV, SatQ)
     DO J = 1, nY
-        DO L = 1, nZ
-            relHum(J,L) = 0.622e+0_r8 * H2OVMR(J,L) / SatQ(J,L)
-            relHum(J,L) = MAX( 0.0e+0_r8, MIN( 1.0e+0_r8, relHum(J,L) ) )
-        ENDDO
+    DO L = 1, nZ
+       relHum(J,L) = 0.622e+0_r8 * H2OVMR(J,L) / SatQ(J,L)
+       relHum(J,L) = MAX( 0.0e+0_r8, MIN( 1.0e+0_r8, relHum(J,L) ) )
+    ENDDO
     ENDDO
 
     Z0 = 0.0e+0_r8
     DO J = 1, nY
-        Z0(J) = cam_in%landFrac(J) * zlnd  &
-              + cam_in%iceFrac(J)  * zsice &
-              + cam_in%ocnFrac(J)  * zocn
-        IF (( cam_in%snowhLand(J) > 0.01_r8 ) .OR. &
-            ( cam_in%snowhIce(J)  > 0.01_r8 )) THEN
-            ! Land is covered in snow
-            Z0(J) = zslnd
-        ENDIF
+       Z0(J) = cam_in%landFrac(J) * zlnd  &
+             + cam_in%iceFrac(J)  * zsice &
+             + cam_in%ocnFrac(J)  * zocn
+       IF (( cam_in%snowhLand(J) > 0.01_r8 ) .OR. &
+           ( cam_in%snowhIce(J)  > 0.01_r8 )) THEN
+          ! Land is covered in snow
+          Z0(J) = zslnd
+       ENDIF
     ENDDO
 
     ! Estimate cloud liquid water content and OD
@@ -2359,55 +2356,55 @@ contains
     ! Note: all using CAM vertical convention (1 = TOA)
     ! Calculation is based on that done for MOZART
     DO J = 1, nY
-        DO L = nZ, 1, -1
-            ! Convert water mixing ratio [kg/kg] to water content [g/m^3]
-            IF ( ( State%Q(J,L,ixCldLiq) + State%Q(J,L,ixCldIce) ) * &
-                 State%PMid(J,L) / (State%T(J,L) * 287.0e+00_r8) * 1.0e+03_r8 <= 0.01_r8 .AND. &
-                 cldFrc(J,L) /= 0.0e+00_r8 ) THEN
-               cld(J,L) = 0.0e+00_r8
-            ELSE
-               cld(J,L) = cldFrc(J,L)
-            ENDIF
-        ENDDO
+    DO L = nZ, 1, -1
+       ! Convert water mixing ratio [kg/kg] to water content [g/m^3]
+       IF ( ( State%Q(J,L,ixCldLiq) + State%Q(J,L,ixCldIce) ) * &
+            State%PMid(J,L) / (State%T(J,L) * 287.0e+00_r8) * 1.0e+03_r8 <= 0.01_r8 .AND. &
+            cldFrc(J,L) /= 0.0e+00_r8 ) THEN
+          cld(J,L) = 0.0e+00_r8
+       ELSE
+          cld(J,L) = cldFrc(J,L)
+       ENDIF
+    ENDDO
     ENDDO
 
     DO J = 1, nY
-        IF ( COUNT( cld(J,:nZ) > cldMin ) > 0 ) THEN
-            DO L = nZ, 1, -1
-                ! =================================================================
-                ! ===========   Compute cloud optical depth based on   ============
-                ! ===========     Liao et al. JGR, 104, 23697, 1999    ============
-                ! =================================================================
-                !
-                ! Tau = 3/2 * LWC * dZ / ( \rho_w * r_e )
-                ! dZ  = - dP / ( \rho_air * g )
-                ! since Pint is ascending, we can neglect the minus sign
-                !
-                ! Tau = 3/2 * LWC * dP / ( \rho_air * r_e * \rho_w * g )
-                ! LWC / \rho_air = Q
-                !
-                ! Tau    = 3/2 * Q * dP / ( r_e * rho_w * g )
-                ! Tau(K) = 3/2 * Q(K) * (Pint(K+1) - Pint(K)) / (re * rho_w * g )
-                ! Tau(K) = Q(K) * (Pint(K+1) - Pint(K)) * Cnst
-                !
-                ! Unit check:                    |
-                ! Q    : [kg H2O/kg air]         |
-                ! Pint : [Pa]=[kg air/m/s^2]     |
-                ! re   : [m]                     |   = 1.0e-5
-                ! rho_w: [kg H2O/m^3]            |   = 1.0e+3
-                ! g    : [m/s^2]                 |   = 9.81
-                !
-                TauClw(J,L) = State%Q(J,L,ixCldLiq)               &
-                            * (State%Pint(J,L+1)-State%Pint(J,L)) &
-                            * cnst
-                TauClw(J,L) = MAX(TauClw(J,L), 0.0e+00_r8)
-                TauCli(J,L) = State%Q(J,L,ixCldIce)               &
-                            * (State%Pint(J,L+1)-State%Pint(J,L)) &
-                            * cnst
-                TauCli(J,L) = MAX(TauCli(J,L), 0.0e+00_r8)
+       IF ( COUNT( cld(J,:nZ) > cldMin ) > 0 ) THEN
+          DO L = nZ, 1, -1
+             ! =================================================================
+             ! ===========   Compute cloud optical depth based on   ============
+             ! ===========     Liao et al. JGR, 104, 23697, 1999    ============
+             ! =================================================================
+             !
+             ! Tau = 3/2 * LWC * dZ / ( \rho_w * r_e )
+             ! dZ  = - dP / ( \rho_air * g )
+             ! since Pint is ascending, we can neglect the minus sign
+             !
+             ! Tau = 3/2 * LWC * dP / ( \rho_air * r_e * \rho_w * g )
+             ! LWC / \rho_air = Q
+             !
+             ! Tau    = 3/2 * Q * dP / ( r_e * rho_w * g )
+             ! Tau(K) = 3/2 * Q(K) * (Pint(K+1) - Pint(K)) / (re * rho_w * g )
+             ! Tau(K) = Q(K) * (Pint(K+1) - Pint(K)) * Cnst
+             !
+             ! Unit check:                    |
+             ! Q    : [kg H2O/kg air]         |
+             ! Pint : [Pa]=[kg air/m/s^2]     |
+             ! re   : [m]                     |   = 1.0e-5
+             ! rho_w: [kg H2O/m^3]            |   = 1.0e+3
+             ! g    : [m/s^2]                 |   = 9.81
+             !
+             TauClw(J,L) = State%Q(J,L,ixCldLiq)               &
+                         * (State%Pint(J,L+1)-State%Pint(J,L)) &
+                         * cnst
+             TauClw(J,L) = MAX(TauClw(J,L), 0.0e+00_r8)
+             TauCli(J,L) = State%Q(J,L,ixCldIce)               &
+                         * (State%Pint(J,L+1)-State%Pint(J,L)) &
+                         * cnst
+             TauCli(J,L) = MAX(TauCli(J,L), 0.0e+00_r8)
 
-            ENDDO
-        ENDIF
+          ENDDO
+       ENDIF
     ENDDO
 
     ! Retrieve tropopause level
@@ -2416,21 +2413,21 @@ contains
     ! Back out the pressure
     Trop_P = 1000.0e+0_r8
     DO J = 1, nY
-        Trop_P(J) = State%PMid(J,Trop_Lev(J)) * 0.01e+0_r8
+       Trop_P(J) = State%PMid(J,Trop_Lev(J)) * 0.01e+0_r8
     ENDDO
 
     ! Calculate snow depth
     snowDepth = 0.0e+0_r8
     DO J = 1, nY
-        Sd_Ice  = MAX(0.0e+0_r8,cam_in%snowhIce(J))
-        Sd_Lnd  = MAX(0.0e+0_r8,cam_in%snowhLand(J))
-        Frc_Ice = MAX(0.0e+0_r8,cam_in%iceFrac(J))
-        IF (Frc_Ice > 0.0e+0_r8) THEN
-            Sd_Avg = (Sd_Lnd*(1.0e+0_r8 - Frc_Ice)) + (Sd_Ice * Frc_Ice)
-        ELSE
-            Sd_Avg = Sd_Lnd
-        ENDIF
-        snowDepth(J) = Sd_Avg
+       Sd_Ice  = MAX(0.0e+0_r8,cam_in%snowhIce(J))
+       Sd_Lnd  = MAX(0.0e+0_r8,cam_in%snowhLand(J))
+       Frc_Ice = MAX(0.0e+0_r8,cam_in%iceFrac(J))
+       IF (Frc_Ice > 0.0e+0_r8) THEN
+          Sd_Avg = (Sd_Lnd*(1.0e+0_r8 - Frc_Ice)) + (Sd_Ice * Frc_Ice)
+       ELSE
+          Sd_Avg = Sd_Lnd
+       ENDIF
+       snowDepth(J) = Sd_Avg
     ENDDO
 
     ! Field      : ALBD
@@ -2446,7 +2443,7 @@ contains
     ! Note       : Estimate column cloud fraction as the maximum cloud
     !              fraction in the column (pessimistic assumption)
     DO J = 1, nY
-        State_Met(LCHNK)%CLDFRC(1,J) = MAXVAL(cldFrc(J,:))
+       State_Met(LCHNK)%CLDFRC(1,J) = MAXVAL(cldFrc(J,:))
     ENDDO
 
     ! Field      : EFLUX, HFLUX
@@ -2612,9 +2609,9 @@ contains
     ! Note       : We here combine the land friction velocity (fv) with
     !              the ocean friction velocity (ustar)
     DO J = 1, nY
-        State_Met(LCHNK)%USTAR     (1,J) =                       &
-             cam_in%fv(J)    * ( cam_in%landFrac(J))             &
-           + cam_in%uStar(J) * ( 1.0e+0_fp - cam_in%landFrac(J))
+       State_Met(LCHNK)%USTAR     (1,J) =                       &
+            cam_in%fv(J)    * ( cam_in%landFrac(J))             &
+          + cam_in%uStar(J) * ( 1.0e+0_fp - cam_in%landFrac(J))
     ENDDO
 
     ! Field      : Z0
@@ -2624,156 +2621,155 @@ contains
     State_Met(LCHNK)%Z0        (1,:) = Z0(:)
 
     DO J = 1, nY
-        iMaxLoc = MAXLOC( (/ State_Met(LCHNK)%FRLAND(1,J)   + &
-                             State_Met(LCHNK)%FRLANDIC(1,J) + &
-                             State_Met(LCHNK)%FRLAKE(1,J),    &
-                             State_Met(LCHNK)%FRSEAICE(1,J),  &
-                             State_Met(LCHNK)%FROCEAN(1,J)  - &
-                             State_Met(LCHNK)%FRSEAICE(1,J) /) )
-        IF ( iMaxLoc(1) == 3 ) iMaxLoc(1) = 0
-        ! reset ocean to 0
+       iMaxLoc = MAXLOC( (/ State_Met(LCHNK)%FRLAND(1,J)   + &
+                            State_Met(LCHNK)%FRLANDIC(1,J) + &
+                            State_Met(LCHNK)%FRLAKE(1,J),    &
+                            State_Met(LCHNK)%FRSEAICE(1,J),  &
+                            State_Met(LCHNK)%FROCEAN(1,J)  - &
+                            State_Met(LCHNK)%FRSEAICE(1,J) /) )
+       IF ( iMaxLoc(1) == 3 ) iMaxLoc(1) = 0
+       ! reset ocean to 0
 
-        ! Field      : LWI
-        ! Description: Land/water indices
-        ! Unit       : -
-        ! Dimensions : nX, nY
-        State_Met(LCHNK)%LWI(1,J) = FLOAT( iMaxLoc(1) )
+       ! Field      : LWI
+       ! Description: Land/water indices
+       ! Unit       : -
+       ! Dimensions : nX, nY
+       State_Met(LCHNK)%LWI(1,J) = FLOAT( iMaxLoc(1) )
     ENDDO
 
     ! Three-dimensional fields on level edges
     DO J = 1, nY
-        DO L = 1, nZ+1
-            ! Field      : PEDGE
-            ! Description: Wet air pressure at (vertical) level edges
-            ! Unit       : hPa
-            ! Dimensions : nX, nY, nZ+1
-            State_Met(LCHNK)%PEDGE   (1,J,L) = State%Pint(J,nZ+2-L)*0.01e+0_fp
+    DO L = 1, nZ+1
+       ! Field      : PEDGE
+       ! Description: Wet air pressure at (vertical) level edges
+       ! Unit       : hPa
+       ! Dimensions : nX, nY, nZ+1
+       State_Met(LCHNK)%PEDGE   (1,J,L) = State%Pint(J,nZ+2-L)*0.01e+0_fp
 
-            ! Field      : CMFMC
-            ! Description: Upward moist convective mass flux
-            ! Unit       : kg/m^2/s
-            ! Dimensions : nX, nY, nZ+1
-            State_Met(LCHNK)%CMFMC   (1,J,L) = 0.0e+0_fp
+       ! Field      : CMFMC
+       ! Description: Upward moist convective mass flux
+       ! Unit       : kg/m^2/s
+       ! Dimensions : nX, nY, nZ+1
+       State_Met(LCHNK)%CMFMC   (1,J,L) = 0.0e+0_fp
 
-            ! Field      : PFICU, PFLCU
-            ! Description: Downward flux of ice/liquid precipitation (convective)
-            ! Unit       : kg/m^2/s
-            ! Dimensions : nX, nY, nZ+1
-            State_Met(LCHNK)%PFICU   (1,J,L) = 0.0e+0_fp
-            State_Met(LCHNK)%PFLCU   (1,J,L) = 0.0e+0_fp
+       ! Field      : PFICU, PFLCU
+       ! Description: Downward flux of ice/liquid precipitation (convective)
+       ! Unit       : kg/m^2/s
+       ! Dimensions : nX, nY, nZ+1
+       State_Met(LCHNK)%PFICU   (1,J,L) = 0.0e+0_fp
+       State_Met(LCHNK)%PFLCU   (1,J,L) = 0.0e+0_fp
 
-            ! Field      : PFILSAN, PFLLSAN
-            ! Description: Downward flux of ice/liquid precipitation (Large-scale & anvil)
-            ! Unit       : kg/m^2/s
-            ! Dimensions : nX, nY, nZ+1
-            State_Met(LCHNK)%PFILSAN (1,J,L) = LsFlxSnw(j,nZ+2-L) ! kg/m2/s
-            State_Met(LCHNK)%PFLLSAN (1,J,L) = MAX(0.0e+0_fp,LsFlxPrc(J,nZ+2-L) - LsFlxSnw(J,nZ+2-L)) ! kg/m2/s
-        ENDDO
+       ! Field      : PFILSAN, PFLLSAN
+       ! Description: Downward flux of ice/liquid precipitation (Large-scale & anvil)
+       ! Unit       : kg/m^2/s
+       ! Dimensions : nX, nY, nZ+1
+       State_Met(LCHNK)%PFILSAN (1,J,L) = LsFlxSnw(j,nZ+2-L) ! kg/m2/s
+       State_Met(LCHNK)%PFLLSAN (1,J,L) = MAX(0.0e+0_fp,LsFlxPrc(J,nZ+2-L) - LsFlxSnw(J,nZ+2-L)) ! kg/m2/s
+    ENDDO
     ENDDO
 
     DO J = 1, nY
-        ! Field      : U, V
-        ! Description: Max cloud top height
-        ! Unit       : level
-        ! Dimensions : nX, nY
-        State_Met(LCHNK)%cldTops(1,J) = nZ + 1 - NINT(cldTop(J))
+       ! Field      : U, V
+       ! Description: Max cloud top height
+       ! Unit       : level
+       ! Dimensions : nX, nY
+       State_Met(LCHNK)%cldTops(1,J) = nZ + 1 - NINT(cldTop(J))
     ENDDO
 
     ! Three-dimensional fields on level centers
     DO J = 1, nY
-        DO L = 1, nZ
+    DO L = 1, nZ
+       ! Field      : U, V
+       ! Description: E/W and N/S component of wind
+       ! Unit       : m/s
+       ! Dimensions : nX, nY, nZ
+       State_Met(LCHNK)%U        (1,J,L) = State%U(J,nZ+1-L)
+       State_Met(LCHNK)%V        (1,J,L) = State%V(J,nZ+1-L)
 
-            ! Field      : U, V
-            ! Description: E/W and N/S component of wind
-            ! Unit       : m/s
-            ! Dimensions : nX, nY, nZ
-            State_Met(LCHNK)%U        (1,J,L) = State%U(J,nZ+1-L)
-            State_Met(LCHNK)%V        (1,J,L) = State%V(J,nZ+1-L)
+       ! Field      : OMEGA
+       ! Description: Updraft velocity
+       ! Unit       : Pa/s
+       ! Dimensions : nX, nY, nZ
+       !State_Met(LCHNK)%OMEGA    (1,J,L) = State%Omega(J,nZ+1-L)
 
-            ! Field      : OMEGA
-            ! Description: Updraft velocity
-            ! Unit       : Pa/s
-            ! Dimensions : nX, nY, nZ
-            !State_Met(LCHNK)%OMEGA    (1,J,L) = State%Omega(J,nZ+1-L)
+       ! Field      : CLDF
+       ! Description: 3-D cloud fraction
+       ! Unit       : -
+       ! Dimensions : nX, nY, nZ
+       State_Met(LCHNK)%CLDF     (1,J,L) = cldFrc(j,nZ+1-l)
 
-            ! Field      : CLDF
-            ! Description: 3-D cloud fraction
-            ! Unit       : -
-            ! Dimensions : nX, nY, nZ
-            State_Met(LCHNK)%CLDF     (1,J,L) = cldFrc(j,nZ+1-l)
+       ! Field      : DTRAIN
+       ! Description: Detrainment flux
+       ! Unit       : kg/m^2/s
+       ! Dimensions : nX, nY, nZ
+       State_Met(LCHNK)%DTRAIN   (1,J,L) = 0.0e+0_fp ! Used in convection
 
-            ! Field      : DTRAIN
-            ! Description: Detrainment flux
-            ! Unit       : kg/m^2/s
-            ! Dimensions : nX, nY, nZ
-            State_Met(LCHNK)%DTRAIN   (1,J,L) = 0.0e+0_fp ! Used in convection
+       ! Field      : DQRCU
+       ! Description: Convective precipitation production rate
+       ! Unit       : kg/kg dry air/s
+       ! Dimensions : nX, nY, nZ
+       State_Met(LCHNK)%DQRCU    (1,J,L) = 0.0e+0_fp ! Used in convection
 
-            ! Field      : DQRCU
-            ! Description: Convective precipitation production rate
-            ! Unit       : kg/kg dry air/s
-            ! Dimensions : nX, nY, nZ
-            State_Met(LCHNK)%DQRCU    (1,J,L) = 0.0e+0_fp ! Used in convection
+       ! Field      : DQRLSAN
+       ! Description: Large-scale precipitation production rate
+       ! Unit       : kg/kg dry air/s
+       ! Dimensions : nX, nY, nZ
+       State_Met(LCHNK)%DQRLSAN  (1,J,L) = PRain(J,nZ+1-L) ! kg/kg/s
 
-            ! Field      : DQRLSAN
-            ! Description: Large-scale precipitation production rate
-            ! Unit       : kg/kg dry air/s
-            ! Dimensions : nX, nY, nZ
-            State_Met(LCHNK)%DQRLSAN  (1,J,L) = PRain(J,nZ+1-L) ! kg/kg/s
+       ! Field      : QI, QL
+       ! Description: Cloud ice/water mixing ratio
+       ! Unit       : kg/kg dry air
+       ! Dimensions : nX, nY, nZ
+       State_Met(LCHNK)%QI       (1,J,L) = MAX(1.0e-05_fp, State%Q(J,nZ+1-L,ixCldIce)) ! kg ice / kg dry air
+       State_Met(LCHNK)%QL       (1,J,L) = MAX(1.0e-05_fp, State%Q(J,nZ+1-L,ixCldLiq)) ! kg water / kg dry air
 
-            ! Field      : QI, QL
-            ! Description: Cloud ice/water mixing ratio
-            ! Unit       : kg/kg dry air
-            ! Dimensions : nX, nY, nZ
-            State_Met(LCHNK)%QI       (1,J,L) = MAX(1.0e-05_fp, State%Q(J,nZ+1-L,ixCldIce)) ! kg ice / kg dry air
-            State_Met(LCHNK)%QL       (1,J,L) = MAX(1.0e-05_fp, State%Q(J,nZ+1-L,ixCldLiq)) ! kg water / kg dry air
+       ! Field      : RH
+       ! Description: Relative humidity
+       ! Unit       : %
+       ! Dimensions : nX, nY, nZ
+       State_Met(LCHNK)%RH       (1,J,L) = RelHum(J,nZ+1-L)  * 100.0e+0_fp
 
-            ! Field      : RH
-            ! Description: Relative humidity
-            ! Unit       : %
-            ! Dimensions : nX, nY, nZ
-            State_Met(LCHNK)%RH       (1,J,L) = RelHum(J,nZ+1-L)  * 100.0e+0_fp
+       ! Field      : TAUCLI, TAUCLW
+       ! Description: Optical depth of ice/H2O clouds
+       ! Unit       : -
+       ! Dimensions : nX, nY, nZ
+       State_Met(LCHNK)%TAUCLI   (1,J,L) = TauCli(J,nZ+1-L)
+       State_Met(LCHNK)%TAUCLW   (1,J,L) = TauClw(J,nZ+1-L)
 
-            ! Field      : TAUCLI, TAUCLW
-            ! Description: Optical depth of ice/H2O clouds
-            ! Unit       : -
-            ! Dimensions : nX, nY, nZ
-            State_Met(LCHNK)%TAUCLI   (1,J,L) = TauCli(J,nZ+1-L)
-            State_Met(LCHNK)%TAUCLW   (1,J,L) = TauClw(J,nZ+1-L)
+       ! Field      : REEVAPCN
+       ! Description: Evaporation of convective precipitation
+       !              (w/r/t dry air)
+       ! Unit       : kg
+       ! Dimensions : nX, nY, nZ
+       State_Met(LCHNK)%REEVAPCN (1,J,L) = 0.0e+0_fp
 
-            ! Field      : REEVAPCN
-            ! Description: Evaporation of convective precipitation
-            !              (w/r/t dry air)
-            ! Unit       : kg
-            ! Dimensions : nX, nY, nZ
-            State_Met(LCHNK)%REEVAPCN (1,J,L) = 0.0e+0_fp
+       ! Field      : REEVAPLS
+       ! Description: Evaporation of large-scale + anvil precipitation
+       !              (w/r/t dry air)
+       ! Unit       : kg
+       ! Dimensions : nX, nY, nZ
+       State_Met(LCHNK)%REEVAPLS (1,J,L) = NEvapr(J,nZ+1-L) ! kg/kg/s
 
-            ! Field      : REEVAPLS
-            ! Description: Evaporation of large-scale + anvil precipitation
-            !              (w/r/t dry air)
-            ! Unit       : kg
-            ! Dimensions : nX, nY, nZ
-            State_Met(LCHNK)%REEVAPLS (1,J,L) = NEvapr(J,nZ+1-L) ! kg/kg/s
+       ! Field      : SPHU1, SPHU2
+       ! Description: Specific humidity at current and next timestep
+       ! Unit       : g H2O/ kg air
+       ! Dimensions : nX, nY, nZ
+       ! Note       : Since we are using online meteorology, we do not have
+       !              access to the data at the next time step
+       !              Compute tendency in g H2O/kg air/s (tmmf, 1/13/20) ?
+       State_Met(LCHNK)%SPHU1    (1,J,L) = qH2O(J,nZ+1-L)    * 1.0e+3_fp    ! g/kg
+       State_Met(LCHNK)%SPHU2    (1,J,L) = qH2O(J,nZ+1-L)    * 1.0e+3_fp    ! g/kg
 
-            ! Field      : SPHU1, SPHU2
-            ! Description: Specific humidity at current and next timestep
-            ! Unit       : g H2O/ kg air
-            ! Dimensions : nX, nY, nZ
-            ! Note       : Since we are using online meteorology, we do not have
-            !              access to the data at the next time step
-            !              Compute tendency in g H2O/kg air/s (tmmf, 1/13/20) ?
-            State_Met(LCHNK)%SPHU1    (1,J,L) = qH2O(J,nZ+1-L)    * 1.0e+3_fp    ! g/kg
-            State_Met(LCHNK)%SPHU2    (1,J,L) = qH2O(J,nZ+1-L)    * 1.0e+3_fp    ! g/kg
-
-            ! Field      : TMPU1, TMPU2
-            ! Description: Temperature at current and next timestep
-            ! Unit       : K
-            ! Dimensions : nX, nY, nZ
-            ! Note       : Since we are using online meteorology, we do not have
-            !              access to the data at the next time step
-            !              Compute tendency in K/s (tmmf, 1/13/20) ?
-            State_Met(LCHNK)%TMPU1    (1,J,L) = State%T(J,nZ+1-L)
-            State_Met(LCHNK)%TMPU2    (1,J,L) = State%T(J,nZ+1-L)
-        ENDDO
+       ! Field      : TMPU1, TMPU2
+       ! Description: Temperature at current and next timestep
+       ! Unit       : K
+       ! Dimensions : nX, nY, nZ
+       ! Note       : Since we are using online meteorology, we do not have
+       !              access to the data at the next time step
+       !              Compute tendency in K/s (tmmf, 1/13/20) ?
+       State_Met(LCHNK)%TMPU1    (1,J,L) = State%T(J,nZ+1-L)
+       State_Met(LCHNK)%TMPU2    (1,J,L) = State%T(J,nZ+1-L)
+    ENDDO
     ENDDO
 
     ! Field      : T
@@ -2832,30 +2828,30 @@ contains
     currMn  = 0
     currHr  = 0
     DO WHILE (currTOD > 3600)
-        currTOD = currTOD - 3600
-        currHr  = currHr + 1
+       currTOD = currTOD - 3600
+       currHr  = currHr + 1
     ENDDO
     DO WHILE (currTOD > 60)
-        currTOD = currTOD - 60
-        currMn  = currMn + 1
+       currTOD = currTOD - 60
+       currMn  = currMn + 1
     ENDDO
     currSc  = currTOD
     currHMS = (currHr*1000) + (currMn*100) + (currSc)
 
     IF ( firstDay ) THEN
-        newDay   = .True.
-        newMonth = .True.
-        firstDay = .False.
+       newDay   = .True.
+       newMonth = .True.
+       firstDay = .False.
     ELSE IF ( currHMS < dT ) THEN
-        newDay = .True.
-        IF ( currDy == 1 ) THEN
-            newMonth = .True.
-        ELSE
-            newMonth = .False.
-        ENDIF
+       newDay = .True.
+       IF ( currDy == 1 ) THEN
+           newMonth = .True.
+       ELSE
+           newMonth = .False.
+       ENDIF
     ELSE
-        newDay   = .False.
-        newMonth = .False.
+       newDay   = .False.
+       newMonth = .False.
     ENDIF
 
     ! Pass time values obtained from the ESMF environment to GEOS-Chem
@@ -3507,45 +3503,45 @@ contains
     ! Store unadvected species data
     SlsData = 0.0e+0_r8
     DO N = 1, nSls
-        M = map2GC_Sls(N)
-        IF ( M > 0 ) THEN
-            DO J = 1, nY
-                DO K = 1, nZ
-                    SlsData(J,nZ+1-K,N) = REAL(State_Chm(LCHNK)%Species(1,J,K,M),r8)
-                ENDDO
-            ENDDO
-        ENDIF
+       M = map2GC_Sls(N)
+       IF ( M > 0 ) THEN
+          DO J = 1, nY
+          DO K = 1, nZ
+             SlsData(J,nZ+1-K,N) = REAL(State_Chm(LCHNK)%Species(1,J,K,M),r8)
+          ENDDO
+          ENDDO
+       ENDIF
     ENDDO
     CALL set_short_lived_species( SlsData, LCHNK, nY, pbuf )
 
     ! Write diagnostic output
     DO N = 1, pcnst
-        M = map2GC(N)
-        I = map2Idx(N)
-        IF ( M > 0 ) THEN
-            SpcName = tracerNames(I)
-            VMR     = 0.0e+0_r8
-            DO J = 1, nY
-                DO K = 1, nZ
-                    VMR(J,nZ+1-K) = REAL(State_Chm(LCHNK)%Species(1,J,K,M),r8) * MWRatio(I)
-                ENDDO
-            ENDDO
-            CALL OutFld( TRIM(SpcName), VMR(:nY,:), nY, LCHNK )
-        ENDIF
+       M = map2GC(N)
+       I = map2Idx(N)
+       IF ( M > 0 ) THEN
+          SpcName = tracerNames(I)
+          VMR     = 0.0e+0_r8
+          DO J = 1, nY
+          DO K = 1, nZ
+             VMR(J,nZ+1-K) = REAL(State_Chm(LCHNK)%Species(1,J,K,M),r8) * MWRatio(I)
+          ENDDO
+          ENDDO
+          CALL OutFld( TRIM(SpcName), VMR(:nY,:), nY, LCHNK )
+       ENDIF
     ENDDO
 
     DO N = 1, nSls
-        SpcName = slsNames(n)
-        VMR = 0.0e+0_r8
-        M = map2GC_Sls(n)
-        IF ( M > 0 ) THEN
-            DO J = 1, nY
-                DO K = 1, nZ
-                    VMR(J,nZ+1-K) = REAL(State_Chm(LCHNK)%Species(1,J,K,M),r8) * SLSMWratio(N)
-                ENDDO
-            ENDDO
-            CALL OutFld( TRIM(SpcName), VMR(:nY,:), nY, LCHNK )
-        ENDIF
+       SpcName = slsNames(n)
+       VMR = 0.0e+0_r8
+       M = map2GC_Sls(n)
+       IF ( M > 0 ) THEN
+          DO J = 1, nY
+          DO K = 1, nZ
+             VMR(J,nZ+1-K) = REAL(State_Chm(LCHNK)%Species(1,J,K,M),r8) * SLSMWratio(N)
+          ENDDO
+          ENDDO
+          CALL OutFld( TRIM(SpcName), VMR(:nY,:), nY, LCHNK )
+       ENDIF
     ENDDO
 
     ! NOTE: Re-flip all the arrays vertically or suffer the consequences
@@ -3553,25 +3549,23 @@ contains
     ptend%q(:,:,:) = 0.0e+0_r8
     MMR_End = 0.0e+0_r8
     DO N = 1, pcnst
-        M = map2GC(N)
-        IF (M > 0) THEN
-            I = 1
-            DO J = 1, nY
-                DO K = 1, nZ
-                    ! CURRENTLY KG/KG
-                    MMR_End (J,K,M) = REAL(State_Chm(LCHNK)%Species(1,J,K,M),r8)
-                    MMR_TEnd(J,K,M) = MMR_End(J,K,M) - MMR_Beg(J,K,M)
-                    ptend%q(J,nZ+1-K,N) = (MMR_End(J,K,M)-MMR_Beg(J,K,M))/dT
-                ENDDO
-            ENDDO
-        ENDIF
+       M = map2GC(N)
+       IF (M > 0) THEN
+          DO J = 1, nY
+          DO K = 1, nZ
+             MMR_End (J,K,M) = REAL(State_Chm(LCHNK)%Species(1,J,K,M),r8)
+             MMR_TEnd(J,K,M) = MMR_End(J,K,M) - MMR_Beg(J,K,M)
+             ptend%q(J,nZ+1-K,N) = (MMR_End(J,K,M)-MMR_Beg(J,K,M))/dT
+          ENDDO
+          ENDDO
+       ENDIF
     ENDDO
 
     IF (PRESENT(fh2o)) THEN
-        fh2o(:nY) = 0.0e+0_r8
-        !DO K = 1, nZ
-        !   fh2o(:nY) = fh2o(:nY) + Ptend%Q(:nY,K,iH2O)*State%Pdel(:nY,K)/Gravit
-        !ENDDO
+       fh2o(:nY) = 0.0e+0_r8
+       !DO K = 1, nZ
+       !   fh2o(:nY) = fh2o(:nY) + Ptend%Q(:nY,K,iH2O)*State%Pdel(:nY,K)/Gravit
+       !ENDDO
     ENDIF
 
     IF (rootChunk) WRITE(iulog,'(a)') ' GEOS-Chem chemistry step completed'
@@ -3599,17 +3593,17 @@ contains
     ! Retrieve a "background value" for this from the database
     Min_MMR = 1.0e-38_r8
     DO I = 1, nTracers
-        IF (TRIM(tracerNames(I)).eq.TRIM(name)) THEN
-            Min_MMR = ref_MMR(i)
-            EXIT
-        ENDIF
+       IF (TRIM(tracerNames(I)).eq.TRIM(name)) THEN
+          Min_MMR = ref_MMR(i)
+          EXIT
+       ENDIF
     ENDDO
 
     DO ILEV = 1, NLEV
-        WHERE(mask)
-            ! Set to the minimum mixing ratio
-            q(:,ILEV) = Min_MMR
-        END WHERE
+       WHERE(mask)
+          ! Set to the minimum mixing ratio
+          q(:,ILEV) = Min_MMR
+       END WHERE
     ENDDO
 
   end subroutine chem_init_cnst
@@ -3709,12 +3703,12 @@ contains
 
     ! Loop over each chunk and cleanup the variables
     DO I = BEGCHUNK, ENDCHUNK
-        am_I_Root = ((I.eq.BEGCHUNK) .and. MasterProc)
+       am_I_Root = ((I.eq.BEGCHUNK) .and. MasterProc)
 
-        CALL Cleanup_State_Chm ( am_I_Root, State_Chm(I),  RC )
-        CALL Cleanup_State_Diag( am_I_Root, State_Diag(I), RC )
-        CALL Cleanup_State_Grid( am_I_Root, State_Grid(I), RC )
-        CALL Cleanup_State_Met ( am_I_Root, State_Met(I),  RC )
+       CALL Cleanup_State_Chm ( am_I_Root, State_Chm(I),  RC )
+       CALL Cleanup_State_Diag( am_I_Root, State_Diag(I), RC )
+       CALL Cleanup_State_Grid( am_I_Root, State_Grid(I), RC )
+       CALL Cleanup_State_Met ( am_I_Root, State_Met(I),  RC )
     ENDDO
     CALL Cleanup_Error
 
@@ -3814,18 +3808,18 @@ contains
     !TMMF
     ! Test: emit 1e-10 kg/m2/s of NO in a square around Europe
     DO M = 1, PCNST
-        N = map2GC(M)
-        IF ((N>0).and.(N==iNO)) THEN
-            SFlx(:,N) = 0.0e+0_r8
-            DO I = 1, NCOL
-                Dlat = Rlats(i) / REAL(PI_180,r8)
-                Dlon = Rlons(i) / REAL(PI_180,r8)
-                IF ((Dlat > 50.0e+0_r8).and.(Dlat < 60.0e+0_r8).and.(Dlon > -15.0e+0_r8).and.(Dlon < 5.0e+0_r8)) THEN
-                    SFlx(I,N) = SFlx(I,N) + 1.0e-10_r8
-                ENDIF
-            ENDDO
-            cam_in%CFlx(:NCOL,M) = cam_in%CFlx(:NCOL,M) + SFlx(:NCOL,N)
-        ENDIF
+       N = map2GC(M)
+       IF ((N>0).and.(N==iNO)) THEN
+          SFlx(:,N) = 0.0e+0_r8
+          DO I = 1, NCOL
+             Dlat = Rlats(i) / REAL(PI_180,r8)
+             Dlon = Rlons(i) / REAL(PI_180,r8)
+             IF ((Dlat > 50.0e+0_r8).and.(Dlat < 60.0e+0_r8).and.(Dlon > -15.0e+0_r8).and.(Dlon < 5.0e+0_r8)) THEN
+                SFlx(I,N) = SFlx(I,N) + 1.0e-10_r8
+             ENDIF
+          ENDDO
+          cam_in%CFlx(:NCOL,M) = cam_in%CFlx(:NCOL,M) + SFlx(:NCOL,N)
+       ENDIF
     ENDDO
 
   end subroutine chem_emissions
