@@ -180,6 +180,8 @@ contains
     use Species_Mod,         only : Species
 
     use mo_sim_dat,          only : set_sim_dat
+    use mo_chem_utls,        only : get_spc_ndx
+    use chem_mods,           only : drySpc_ndx
 #if defined( MODAL_AERO_4MODE )
     use aero_model,          only : aero_model_register
     use modal_aero_data,     only : nspec_max
@@ -199,6 +201,7 @@ contains
     TYPE(Species), POINTER         :: ThisSpc
 
     INTEGER                        :: I, N, M, L
+    INTEGER                        :: nIgnored
     REAL(r8)                       :: cptmp
     REAL(r8)                       :: MWTmp
     REAL(r8)                       :: qmin
@@ -467,6 +470,32 @@ contains
     ! More information:
     ! http://www.cesm.ucar.edu/models/atm-cam/docs/phys-interface/node5.html
 
+    !==============================================================
+    ! Get mapping between dry deposition species and species set
+    !==============================================================
+
+    nIgnored = 0
+
+    DO N = 1, nddvels
+
+       ! The species names need to be convert to upper case as,
+       ! for instance, BR2 != Br2
+       drySpc_ndx(N) = get_spc_ndx( to_upper(drydep_list(N)) )
+
+       IF ( MasterProc .AND. ( drySpc_ndx(N) < 0 ) ) THEN
+          Write(iulog,'(a,a)') ' ## Ignoring dry deposition of ', &
+                               TRIM(drydep_list(N))
+          nIgnored = nIgnored + 1
+       ENDIF
+    ENDDO
+
+    IF ( MasterProc .AND. ( nIgnored > 0 ) ) THEN
+       Write(iulog,'(a,a)') ' The species listed above have dry', &
+         ' deposition turned off for one of the following reasons:'
+       Write(iulog,'(a)') '  - They are not present in the GEOS-Chem tracer list.'
+       Write(iulog,'(a)') '  - They have a synonym (e.g. CH2O and HCHO).'
+    ENDIF
+
 #if defined( MODAL_AERO_4MODE )
     ! add fields to pbuf needed by aerosol models
     CALL aero_model_register()
@@ -570,6 +599,37 @@ contains
 
 #endif
 
+    !==============================================================
+    ! Print summary
+    !==============================================================
+
+    IF ( MasterProc ) THEN
+       Write(iulog,'(/, a)') '### Summary of GEOS-Chem species: '
+       Write(iulog,'( a)') REPEAT( '-', 50 )
+       Write(iulog,'( a)') '+ List of advected species: '
+       Write(iulog,100) 'ID', 'Tracer', ''!'Dry deposition (T/F)'
+       DO N = 1, nTracers
+          Write(iulog,120) N, TRIM(tracerNames(N))!, ANY(drySpc_ndx .eq. N)
+       ENDDO
+       IF ( nAer > 0 ) THEN
+          Write(iulog,'(/, a)') '+ List of aerosols: '
+          Write(iulog,110) 'ID', 'MAM4 Aerosol'
+          DO N = 1, nAer
+             Write(iulog,130) N, TRIM(aerNames(N))
+          ENDDO
+       ENDIF
+       Write(iulog,'(/, a)') '+ List of short-lived species: '
+       DO N = 1, nSls
+          Write(iulog,130) N, TRIM(slsNames(N))
+       ENDDO
+    ENDIF
+
+100 FORMAT( 1x, A3, 3x, A10, 1x, A25 )
+110 FORMAT( 1x, A3, 3x, A15 )
+!120 FORMAT( 1x, I3, 3x, A10, 1x, L15 )
+120 FORMAT( 1x, I3, 3x, A10 )
+130 FORMAT( 1x, I3, 3x, A10 )
+
     ! Clean up
     Call Cleanup_State_Chm ( .False., SC, RC )
     Call Cleanup_State_Grid( .False., SG, RC )
@@ -591,14 +651,13 @@ contains
 #endif
     use mpishorthand
     use gckpp_Model,    only : nSpec, Spc_Names
-    use mo_chem_utls,   only : get_spc_ndx
     use chem_mods,      only : drySpc_ndx
 
     ! args
     CHARACTER(LEN=*), INTENT(IN) :: nlfile  ! filepath for file containing namelist input
 
     ! Local variables
-    INTEGER                      :: I, N, nIgnored
+    INTEGER                      :: I, N
     INTEGER                      :: UNITN, IERR
     CHARACTER(LEN=500)           :: line
     LOGICAL                      :: menuFound
@@ -616,8 +675,6 @@ contains
                            srf_emis_cycle_yr,  &
                            srf_emis_specifier, &
                            srf_emis_type
-
-    nIgnored = 0
 
     ! Set paths
     ! MIT path
@@ -792,58 +849,6 @@ contains
        ENDDO
 
        !==============================================================
-       ! Get mapping between dry deposition species and species set
-       !==============================================================
-
-       DO N = 1, nddvels
-
-          ! The species names need to be convert to upper case as,
-          ! for instance, BR2 != Br2
-          drySpc_ndx(N) = get_spc_ndx( to_upper(drydep_list(N)) )
-
-          IF ( drySpc_ndx(N) < 0 ) THEN
-             Write(iulog,'(a,a)') ' ## Ignoring dry deposition of ', &
-                                  TRIM(drydep_list(N))
-             nIgnored = nIgnored + 1
-          ENDIF
-       ENDDO
-
-       IF ( nIgnored > 0 ) THEN
-          Write(iulog,'(a,a)') ' The species listed above have dry', &
-            ' deposition turned off for one of the following reasons:'
-          Write(iulog,'(a)') '  - They are not present in the GEOS-Chem tracer list.'
-          Write(iulog,'(a)') '  - They have a synonym (e.g. CH2O and HCHO).'
-       ENDIF
-
-       !==============================================================
-       ! Print summary
-       !==============================================================
-
-       Write(iulog,'(/, a)') '### Summary of GEOS-Chem species: '
-       Write(iulog,'( a)') REPEAT( '-', 50 )
-       Write(iulog,'( a)') '+ List of advected species: '
-       Write(iulog,100) 'ID', 'Tracer', 'Dry deposition (T/F)'
-       DO N = 1, nTracers
-          Write(iulog,120) N, TRIM(tracerNames(N)), ANY(drySpc_ndx .eq. N)
-       ENDDO
-       IF ( nAer > 0 ) THEN
-          Write(iulog,'(/, a)') '+ List of aerosols: '
-          Write(iulog,110) 'ID', 'MAM4 Aerosol'
-          DO N = 1, nAer
-             Write(iulog,130) N, TRIM(aerNames(N))
-          ENDDO
-       ENDIF
-       Write(iulog,'(/, a)') '+ List of short-lived species: '
-       DO N = 1, nSls
-          Write(iulog,130) N, TRIM(slsNames(N))
-       ENDDO
-
-  100  FORMAT( 1x, A3, 3x, A10, 1x, A25 )
-  110  FORMAT( 1x, A3, 3x, A15 )
-  120  FORMAT( 1x, I3, 3x, A10, 1x, L15 )
-  130  FORMAT( 1x, I3, 3x, A10 )
-
-       !==============================================================
 
        unitn = getunit()
        OPEN( unitn, FILE=TRIM(nlfile), STATUS='old' )
@@ -868,7 +873,6 @@ contains
     CALL MPIBCAST( tracerNames, LEN(tracerNames(1))*nTracersMax, MPICHAR, 0, MPICOM )
     CALL MPIBCAST( nSls,        1,                               MPIINT,  0, MPICOM )
     CALL MPIBCAST( slsNames,    LEN(slsNames(1))*nSlsMax,        MPICHAR, 0, MPICOM )
-    CALL MPIBCAST( drySpc_ndx,  nddvels,                         MPIINT,  0, MPICOM )
 
     ! The following files are required to compute land maps, required to perform
     ! aerosol dry deposition
@@ -1526,6 +1530,16 @@ contains
                 ENDIF
              ENDDO
 
+             ! Print out debug information
+             IF ( N == 1 ) Write(iulog,*) " ++ GEOS-Chem Dry deposition ++ "
+             IF ( map2GC_dryDep(N) > 0 ) THEN
+                 Write(iulog,*) " CESM species: ", TRIM(drydep_list(N)), &
+                   ' is matched with ', depName(map2GC_dryDep(N)) 
+             ELSE
+                 Write(iulog,*) " CESM species: ", TRIM(drydep_list(N)), &
+                   ' has no match'
+             ENDIF
+
           ENDIF
 
        ENDDO
@@ -1829,31 +1843,31 @@ contains
     !ENDIF
     !
 
-#if   ( ALLDDVEL_GEOSCHEM && LANDTYPE_HEMCO )
-    ! Populate the State_Met%LandTypeFrac field with data from HEMCO
-    CALL Init_LandTypeFrac( am_I_Root = MasterProc,           &
-                            Input_Opt = Input_Opt,            &
-                            State_Met = State_Met(BEGCHUNK),  &
-                            RC        = RC                   )
-
-    IF ( RC /= GC_SUCCESS ) THEN
-       ErrMsg = 'Error encountered in "Init_LandTypeFrac"!'
-       CALL Error_Stop( ErrMsg, ThisLoc )
-    ENDIF
-
-    ! Compute the Olson landmap fields of State_Met
-    ! (e.g. State_Met%IREG, State_Met%ILAND, etc.)
-    CALL Compute_Olson_Landmap( am_I_Root  = MasterProc,           &
-                                Input_Opt  = Input_Opt,            &
-                                State_Grid = State_Grid(BEGCHUNK), &
-                                State_Met  = State_Met(BEGCHUNK),  &
-                                RC         = RC                   )
-
-    IF ( RC /= GC_SUCCESS ) THEN
-       ErrMsg = 'Error encountered in "Compute_Olson_Landmap"!'
-       CALL Error_Stop( ErrMsg, ThisLoc )
-    ENDIF
-#endif
+!#if   ( ALLDDVEL_GEOSCHEM && LANDTYPE_HEMCO )
+!    ! Populate the State_Met%LandTypeFrac field with data from HEMCO
+!    CALL Init_LandTypeFrac( am_I_Root = MasterProc,           &
+!                            Input_Opt = Input_Opt,            &
+!                            State_Met = State_Met(BEGCHUNK),  &
+!                            RC        = RC                   )
+!
+!    IF ( RC /= GC_SUCCESS ) THEN
+!       ErrMsg = 'Error encountered in "Init_LandTypeFrac"!'
+!       CALL Error_Stop( ErrMsg, ThisLoc )
+!    ENDIF
+!
+!    ! Compute the Olson landmap fields of State_Met
+!    ! (e.g. State_Met%IREG, State_Met%ILAND, etc.)
+!    CALL Compute_Olson_Landmap( am_I_Root  = MasterProc,           &
+!                                Input_Opt  = Input_Opt,            &
+!                                State_Grid = State_Grid(BEGCHUNK), &
+!                                State_Met  = State_Met(BEGCHUNK),  &
+!                                RC         = RC                   )
+!
+!    IF ( RC /= GC_SUCCESS ) THEN
+!       ErrMsg = 'Error encountered in "Compute_Olson_Landmap"!'
+!       CALL Error_Stop( ErrMsg, ThisLoc )
+!    ENDIF
+!#endif
 
     ! Initialize PBL quantities but do not do mixing
     ! Add option for non-local PBL (Lin, 03/31/09)
@@ -1997,6 +2011,7 @@ contains
   subroutine chem_timestep_tend( State, ptend, cam_in, cam_out, dT, pbuf,  fh2o )
 
     use physics_buffer,      only: physics_buffer_desc, pbuf_get_field, pbuf_old_tim_idx
+    use physics_buffer,      only: pbuf_get_index
     use cam_history,         only: outfld
     use camsrfexch,          only: cam_in_t, cam_out_t
 
@@ -2008,16 +2023,15 @@ contains
     use modal_aero_data,     only : lmassptr_amode
 #endif
 
-#if   ( LANDTYPE_CLM )
     use Olson_Landmap_Mod,   only: Compute_Olson_Landmap
     use Modis_LAI_Mod,       only: Compute_XLAI
-#endif
+    use CMN_Size_Mod,        only: NSURFTYPE
 #if   ( ALLDDVEL_GEOSCHEM || OCNDDVEL_GEOSCHEM )
     use Drydep_Mod,          only: Do_Drydep
 #elif ( OCNDDVEL_MOZART )
     use mo_drydep,           only: drydep_update, drydep_fromlnd
 #endif
-    use Drydep_Mod,          only: DEPNAME !TMMF, this is just needed for debug
+    use Drydep_Mod,          only: DEPNAME
     use Drydep_Mod,          only: Update_DryDepSav
     use Mixing_Mod
 
@@ -2165,11 +2179,12 @@ contains
     LOGICAL            :: rootChunk
     INTEGER            :: RC
 
-    INTEGER :: nmodes
-    character(len=32) :: spec_name
-    character(len=32) :: spec_type
-    character(len=32) :: mode_type
-    integer :: nspec
+#if ( LANDTYPE_HEMCO )
+    INTEGER            :: tmpIdx
+    character(len=255) :: name
+    real(r8), pointer  :: pbuf_ik(:,:)     ! Pointer to pbuf data  (/pcols,pver/)
+#endif
+
     ! LCHNK: which chunk we have on this process
     LCHNK = State%LCHNK
     ! NCOL: number of atmospheric columns on this chunk
@@ -2467,6 +2482,40 @@ contains
                        nY,             &
                        State_Met(LCHNK) )
 #endif
+#elif ( LANDTYPE_HEMCO )
+    DO N = 1, NSURFTYPE
+       Write(name, '(a,i2.2)') 'HCO_LANDTYPE', N-1
+       If ( MasterProc ) Write(iulog,*) " Getting ", TRIM(name)
+
+       tmpIdx = pbuf_get_index(name, rc)
+       IF( tmpIdx < 0 ) THEN
+          ! there is an error here and the field was not found
+          Write(iulog,*) " Did not find field ", TRIM(name), " in HEMCO!"
+       ELSE
+          CALL pbuf_get_field(pbuf, tmpIdx, pbuf_ik)
+          DO J = 1, nY
+             State_Met(LCHNK)%LandTypeFrac(1,J,N) = pbuf_ik(J,nZ)
+             ! 2-D data is stored in the 1st level of a
+             ! 3-D array due to laziness
+          ENDDO
+       ENDIF
+
+       Write(name, '(a,i2.2)') 'HCO_XLAI', N-1
+       If ( MasterProc ) Write(iulog,*) " Getting ", TRIM(name)
+
+       tmpIdx = pbuf_get_index(name, rc)
+       IF( tmpIdx < 0 ) THEN
+          ! there is an error here and the field was not found
+          Write(iulog,*) " Did not find field ", TRIM(name), " in HEMCO!"
+       ELSE
+          CALL pbuf_get_field(pbuf, tmpIdx, pbuf_ik)
+          DO J = 1, nY
+             State_Met(LCHNK)%XLAI_NATIVE(1,J,N) = pbuf_ik(J,nZ)
+             ! 2-D data is stored in the 1st level of a
+             ! 3-D array due to laziness
+          ENDDO
+       ENDIF
+    ENDDO
 #endif
 
     ! Field      : FRCLND, FRLAND, FROCEAN, FRSEAICE, FRLAKE, FRLANDIC
@@ -3171,7 +3220,6 @@ contains
     !==================================================================
 
     IF ( Input_Opt%LDryD ) THEN
-#if   ( LANDTYPE_CLM )
        ! Compute the Olson landmap fields of State_Met
        ! (e.g. State_Met%IREG, State_Met%ILAND, etc.)
        CALL Compute_Olson_Landmap( am_I_Root  = rootChunk,         &
@@ -3199,7 +3247,6 @@ contains
           ErrMsg = 'Error encountered in "Compute_Xlai"!'
           CALL Error_Stop( ErrMsg, ThisLoc )
        ENDIF
-#endif
 
 #if   ( ALLDDVEL_GEOSCHEM || OCNDDVEL_GEOSCHEM )
 
