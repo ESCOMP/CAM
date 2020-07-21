@@ -3600,7 +3600,7 @@ contains
     MMR_End = 0.0e+0_r8
     DO N = 1, pcnst
        M = map2GC(N)
-       IF (M > 0) THEN
+       IF ( M > 0 ) THEN
           DO J = 1, nY
           DO K = 1, nZ
              MMR_End (J,K,M) = REAL(State_Chm(LCHNK)%Species(1,J,K,M),r8)
@@ -3862,22 +3862,22 @@ contains
     IF (FIRST) THEN
     ENDIF
 
-    !TMMF
-    ! Test: emit 1e-10 kg/m2/s of NO in a square around Europe
-    DO M = 1, PCNST
-       N = map2GC(M)
-       IF ((N>0).and.(N==iNO)) THEN
-          SFlx(:,N) = 0.0e+0_r8
-          DO I = 1, NCOL
-             Dlat = Rlats(i) / REAL(PI_180,r8)
-             Dlon = Rlons(i) / REAL(PI_180,r8)
-             IF ((Dlat > 50.0e+0_r8).and.(Dlat < 60.0e+0_r8).and.(Dlon > -15.0e+0_r8).and.(Dlon < 5.0e+0_r8)) THEN
-                SFlx(I,N) = SFlx(I,N) + 1.0e-10_r8
-             ENDIF
-          ENDDO
-          cam_in%CFlx(:NCOL,M) = cam_in%CFlx(:NCOL,M) + SFlx(:NCOL,N)
-       ENDIF
-    ENDDO
+    !!TMMF
+    !! Test: emit 1e-10 kg/m2/s of NO in a square around Europe
+    !DO M = 1, PCNST
+    !   N = map2GC(M)
+    !   IF ((N>0).and.(N==iNO)) THEN
+    !      SFlx(:,N) = 0.0e+0_r8
+    !      DO I = 1, NCOL
+    !         Dlat = Rlats(i) / REAL(PI_180,r8)
+    !         Dlon = Rlons(i) / REAL(PI_180,r8)
+    !         IF ((Dlat > 50.0e+0_r8).and.(Dlat < 60.0e+0_r8).and.(Dlon > -15.0e+0_r8).and.(Dlon < 5.0e+0_r8)) THEN
+    !            SFlx(I,N) = SFlx(I,N) + 1.0e-10_r8
+    !         ENDIF
+    !      ENDDO
+    !      cam_in%CFlx(:NCOL,M) = cam_in%CFlx(:NCOL,M) + SFlx(:NCOL,N)
+    !   ENDIF
+    !ENDDO
 
   end subroutine chem_emissions
 
