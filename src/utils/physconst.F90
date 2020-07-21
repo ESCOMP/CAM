@@ -1455,12 +1455,13 @@ end subroutine physconst_init
      if (dry_air_species_num==0) then
        thermal_energy(:,:,:) = thermodynamic_active_species_cp(0)*dp_dry(:,:,:)
      else
-       thermal_energy(:,:,:) = 0.0_r8
+       call get_cp_dry(i0,i1,j0,j1,k0,k1,k0,k1,ntrac,tracer_mass,idx_local,thermal_energy,fact=1.0_r8/dp_dry(:,:,:))
+       thermal_energy(:,:,:) = thermal_energy(:,:,:)*dp_dry(:,:,:)
      end if
      !
      ! tracer is in units of m*dp ("mass"), where m is dry mixing ratio and dry pressure level thickness
      !         
-     do nq=1,thermodynamic_active_species_num
+     do nq=dry_air_species_num+1,thermodynamic_active_species_num
        itrac = idx_local(nq)
        thermal_energy(:,:,:) = thermal_energy(:,:,:)+thermodynamic_active_species_cp(nq)*tracer_mass(:,:,:,itrac)
      end do
