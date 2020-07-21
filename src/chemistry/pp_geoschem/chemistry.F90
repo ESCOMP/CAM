@@ -1531,13 +1531,15 @@ contains
              ENDDO
 
              ! Print out debug information
-             IF ( N == 1 ) Write(iulog,*) " ++ GEOS-Chem Dry deposition ++ "
-             IF ( map2GC_dryDep(N) > 0 ) THEN
-                 Write(iulog,*) " CESM species: ", TRIM(drydep_list(N)), &
-                   ' is matched with ', depName(map2GC_dryDep(N)) 
-             ELSE
-                 Write(iulog,*) " CESM species: ", TRIM(drydep_list(N)), &
-                   ' has no match'
+             IF ( masterProc ) THEN
+                IF ( N == 1 ) Write(iulog,*) " ++ GEOS-Chem Dry deposition ++ "
+                IF ( map2GC_dryDep(N) > 0 ) THEN
+                    Write(iulog,*) " CESM species: ", TRIM(drydep_list(N)), &
+                      ' is matched with ', depName(map2GC_dryDep(N)) 
+                ELSE
+                    Write(iulog,*) " CESM species: ", TRIM(drydep_list(N)), &
+                      ' has no match'
+                ENDIF
              ENDIF
 
           ENDIF
@@ -2293,6 +2295,7 @@ contains
     ENDDO
 
 #if defined( MODAL_AERO_4MODE )
+    ! TMMF - This needs more indices to MMR_Beg and MMR_End
     ! Map and flip aerosols
     DO M = 1, ntot_amode
        DO L = 1, nspec_amode(M)
@@ -2302,9 +2305,9 @@ contains
           IF ( P > 0 ) THEN
              DO J = 1, nY
              DO K = 1, nZ
-                MMR_Beg(J,K,M) = State%q(J,nZ+1-K,N) 
+                !MMR_Beg(J,K,M) = State%q(J,nZ+1-K,N) 
                 State_Chm(LCHNK)%Species(1,J,K,P) = State_Chm(LCHNK)%Species(1,J,K,P) &
-                                                  + REAL(State%q(J,nZ+1-K,N),fp)
+                                                  + REAL(state%q(J,nZ+1-K,N),fp)
              ENDDO
              ENDDO
           ENDIF
@@ -3607,6 +3610,13 @@ contains
           ENDDO
        ENDIF
     ENDDO
+
+    ! Debug statements
+    ! Ozone tendencies
+    IF ( rootChunk ) THEN
+       Write(iulog,*) " MMR_Beg = ", MMR_Beg(1,:,2)
+       Write(iulog,*) " MMR_End = ", MMR_End(1,:,2)
+    ENDIF
 
     IF (PRESENT(fh2o)) THEN
        fh2o(:nY) = 0.0e+0_r8
