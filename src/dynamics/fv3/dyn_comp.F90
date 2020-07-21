@@ -42,7 +42,7 @@ module dyn_comp
     use cam_abortutils,  only: endrun
     use cam_logfile,     only: iulog
     use constants_mod,   only: cp_air, kappa, rvgas, rdgas
-    use constituents,    only: pcnst, cnst_name, cnst_longname, tottnam, cnst_get_ind
+    use constituents,    only: pcnst, cnst_name, cnst_longname, tottnam
     use dimensions_mod,  only: npx, npy, nlev, &
                                cnst_name_ffsl,cnst_longname_ffsl, &
                                fv3_lcp_moist,fv3_lcv_moist,qsize_tracer_idx_cam2dyn,fv3_scale_ttend
@@ -846,10 +846,12 @@ end subroutine dyn_final
 !=============================================================================================
 
 subroutine read_inidat(dyn_in)
+
+  use cam_control_mod,       only: simple_phys
   use inic_analytic,         only: analytic_ic_active, analytic_ic_set_ic
   use dyn_tests_utils,       only: vc_moist_pressure,vc_dry_pressure
   use dimensions_mod,        only: nlev
-  use constituents,          only: pcnst
+  use constituents,          only: pcnst, cnst_is_a_water_species
   use physconst,             only: thermodynamic_active_species_num, dry_air_species_num, thermodynamic_active_species_idx_dycore
   use pio,                   only: file_desc_t, pio_seterrorhandling, pio_bcast_error
   use ppgrid,                only: pver
@@ -1181,6 +1183,32 @@ subroutine read_inidat(dyn_in)
   deallocate(lonvals_rad)
   deallocate(glob_ind)
 
+  ! If analytic ICs are being used, we allow constituents in an initial
+  ! file to overwrite mixing ratios set by the default constituent initialization
+  ! except for the water species.
+
+  call pio_seterrorhandling(fh_ini, pio_bcast_error, err_handling)
+  allocate(var3d(is:ie,js:je,nlev))
+  do m_cnst = 1, pcnst
+     m_cnst_ffsl=qsize_tracer_idx_cam2dyn(m_cnst)
+
+     if (analytic_ic_active() .and. cnst_is_a_water_species(cnst_name(m_cnst))) cycle
+
+     found = .false.
+
+     if(cnst_read_iv(m_cnst)) then
+        found = dyn_field_exists(fh_ini, trim(cnst_name(m_cnst)),            &
+             required=.false.)
+     end if
+
+     if(found) then
+        call read_dyn_var(trim(cnst_name(m_cnst)), fh_ini, 'ncol_d', var3d)
+        atm(mytile)%q(is:ie,js:je,1:nlev,m_cnst_ffsl) =  var3d(is:ie,js:je,1:nlev)
+     end if
+  end do
+  deallocate(var3d)
+  ! Put the error handling back the way it was
+  call pio_seterrorhandling(fh_ini, err_handling)
 
   ! If a topo file is specified use it.  This will overwrite the PHIS set by the
   ! analytic IC option.
@@ -1290,7 +1318,7 @@ subroutine read_inidat(dyn_in)
   !
   initial_global_ave_dry_ps = 98288.0_r8
   if (.not. associated(fh_topo)) initial_global_ave_dry_ps = 101325._r8-245._r8
-  if (analytic_ic_active()     ) initial_global_ave_dry_ps = 0                  !do not scale psdry
+  if ( simple_phys ) initial_global_ave_dry_ps = 0                  !do not scale psdry
   call set_dry_mass(Atm, initial_global_ave_dry_ps)
 
 
