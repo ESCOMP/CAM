@@ -115,11 +115,11 @@
       <value compset="_CAM50">-phys cam5</value>
       <value compset="_CAM60">-phys cam6</value>
 
-      <!-- Modifiers for CAM runs -->
-      <value compset="_(CAM50|CAM60)%(CCTS|CFIRE)">-chem trop_strat_mam4_vbs</value>
+      <!-- Modifiers for CAM runs (%.* includes SCAM runs) -->
+      <value compset="_(CAM50|CAM60)%.*(CCTS|CFIRE)">-chem trop_strat_mam4_vbs</value>
       <value compset="CAM60%CVBSX">-chem trop_strat_mam4_vbsext</value>
       <value compset="_CAM50%CLB">-clubb_sgs</value>
-      <value compset="_(CAM40|CAM50|CAM60)%SCAM">-dyn eul -scam</value>
+      <value compset="_(CAM40|CAM50|CAM60).*%SCAM">-dyn eul -scam</value>
       <value compset="CAM%SPCAMS">-rad camrt -chem none -spcam_nx 32 -spcam_ny 1 -spcam_dx 4000 -spcam_dt 20 -phys spcam_sam1mom </value>
       <value compset="CAM%SPCAMCLBS">-rad camrt -chem none -spcam_nx 32 -spcam_ny 1 -spcam_dx 4000 -spcam_dt 20 -phys spcam_sam1mom -spcam_clubb_sgs </value>
       <value compset="CAM%SPCAMM">-rad rrtmg -chem trop_mam3 -spcam_nx 32 -spcam_ny 1 -spcam_dx 4000 -spcam_dt 20 -phys spcam_m2005 </value>
@@ -196,7 +196,7 @@
       <value compset="2000_CAM60%WCTS"   >waccm_tsmlt_2000_cam6</value>
       <value compset="2000_CAM60%WCCM"   >waccm_ma_2000_cam6</value>
       <value compset="2000_CAM60%WCSC"   >waccm_sc_2000_cam6</value>
-      <value compset="2000_CAM60%CCTS"   >2000_trop_strat_vbs_cam6</value>
+      <value compset="2000_CAM60%.*CCTS"  >2000_trop_strat_vbs_cam6</value>
       <value compset="2000_CAM60%WXIE"   >waccmx_ma_2000_cam6</value>
 
       <value compset="2000_CAM40_SLND_SICE_DOCN%SOMAQP">aquaplanet_cam4</value>
@@ -208,7 +208,7 @@
       <value compset="2000_CAM60_SLND_SICE_DOCN%AQPCONST" >aquaplanet_rce_cam6</value>
 
       <value compset="2010_CAM60"        >2010_cam6</value>
-      <value compset="2010_CAM60%CCTS"   >2010_trop_strat_vbs_cam6</value>
+      <value compset="2010_CAM60%.*CCTS"  >2010_trop_strat_vbs_cam6</value>
       <value compset="2010_CAM60%WCTS"   >waccm_tsmlt_2010_cam6</value>
       <value compset="2010_CAM60%WCSC"   >waccm_sc_2010_cam6</value>
 
@@ -225,7 +225,7 @@
       <value compset="HIST_CAM60%WCCM"   >waccm_ma_hist_cam6</value>
       <value compset="HIST_CAM60%WCMD"   >waccm_ma_hist_cam6</value>
       <value compset="HIST_CAM40%WCMD"   >waccm_ma_hist_cam4</value>
-      <value compset="HIST_CAM60%CCTS"   >hist_trop_strat_vbs_cam6</value>
+      <value compset="HIST_CAM60%.*CCTS"  >hist_trop_strat_vbs_cam6</value>
       <value compset="HIST_CAM60%CVBSX"  >hist_trop_strat_vbsext_cam6</value>
       <value compset="HIST_CAM60%CFIRE"  >hist_trop_strat_vbsfire_cam6</value>
       <value compset="HIST_CAM60%WXIE"   >waccmx_ma_hist_cam6</value>
@@ -251,7 +251,7 @@
       <value compset="_CAM60%WCCM%SDYN"   >sd_waccm_ma_cam6</value>
       <value compset="_CAM60%WCMD%SDYN"   >sd_waccm_ma_cam6</value>
       <value compset="_CAM40%WCMD%SDYN"   >sd_waccm_ma_cam4</value>
-      <value compset="_CAM60%CCTS%SDYN"   >sd_trop_strat_vbs_cam6</value>
+      <value compset="_CAM60%.*CCTS%SDYN"  >sd_trop_strat_vbs_cam6</value>
       <value compset="_CAM60%SDYN_CLM50"  >sd_cam6</value>
 
       <value compset="2000_CAM%DABIP04"  >dabi_p2004</value>
@@ -260,7 +260,7 @@
       <value compset="CAM%KESSLER"       >dctest_baro_kessler</value>
 
       <!-- SCAM defaults to ARM97, all other IOPs are in usermods_dirs -->
-      <value compset="CAM[456]0%SCAM"    >scam_arm97</value>
+      <!--       <value compset="CAM[456]0%SCAM"    >scam_arm97</value> -->
     </values>
     <group>run_component_cam</group>
     <file>env_run.xml</file>
@@ -313,7 +313,7 @@
     <values match="last">
     <value compset="DOCN%AQP">$COMP_ROOT_DIR_ATM/cime_config/usermods_dirs/aquap</value>
     <value compset="DOCN%SOMAQP">$COMP_ROOT_DIR_ATM/cime_config/usermods_dirs/aquap</value>
-    <value compset="CAM[456]0%SCAM" >$COMP_ROOT_DIR_ATM/cime_config/usermods_dirs/scam_mandatory</value>
+    <value compset="CAM[456]0%.*SCAM" >$COMP_ROOT_DIR_ATM/cime_config/usermods_dirs/scam_mandatory</value>
     </values>
     <group>run_component_cam</group>
     <file>env_case.xml</file>

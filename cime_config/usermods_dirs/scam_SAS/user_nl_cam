@@ -1,3 +1,4 @@
+use_gw_front            = .false.
 scmlon=$PTS_LON
 scmlat=$PTS_LAT
 iopfile="$DIN_LOC_ROOT/atm/cam/scam/iop/SAS_ideal_4scam.nc"
@@ -6,6 +7,7 @@ mfilt=30
 nhtfrq=1
 co2vmr=368.9e-6
 scm_use_obs_uv = .true.
+scm_backfill_iop_w_init = .true.
 scm_relaxation         = .true.
 scm_relax_fincl =  'bc_a1', 'bc_a4', 'dst_a1', 'dst_a2', 'dst_a3', 'ncl_a1', 'ncl_a2',
                    'ncl_a3', 'num_a1', 'num_a2', 'num_a3',
