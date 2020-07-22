@@ -5,14 +5,11 @@
 module chemistry
   use shr_kind_mod,        only: r8 => shr_kind_r8, shr_kind_cl
   use physics_types,       only: physics_state, physics_ptend, physics_ptend_init
+  use physics_buffer,      only: physics_buffer_desc
   use ppgrid,              only: begchunk, endchunk, pcols
   use ppgrid,              only: pver, pverp
   use constituents,        only: pcnst, cnst_add, cnst_get_ind
-  !use mo_gas_phase_chemdr, only: map2chm
-  !use mo_constants,        only: pi
   use shr_const_mod,       only: molw_dryair=>SHR_CONST_MWDAIR
-  !use chem_mods,           only : gas_pcnst, adv_mass
-  !use mo_sim_dat, only: set_sim_dat
   use seq_drydep_mod,      only : nddvels => n_drydep, drydep_list
   use spmd_utils,          only : MasterProc, myCPU=>Iam, nCPUs=>npes
   use cam_logfile,         only : iulog
@@ -99,6 +96,8 @@ module chemistry
   TYPE(GrdState),ALLOCATABLE :: State_Grid(:) ! Grid State object
   TYPE(MetState),ALLOCATABLE :: State_Met(:)  ! Meteorology State object
   TYPE(DgnList )             :: Diag_List     ! Diagnostics list object
+
+  type(physics_buffer_desc), pointer :: hco_pbuf2d(:,:)  ! ptr to 2d pbuf
 
   ! Indices of critical species
   INTEGER                    :: iH2O, iO3, iCH4, iCO, iNO
@@ -1956,6 +1955,10 @@ contains
 
     !CALL AddFld ( 'BCPI', (/'lev'/), 'A', 'mole/mole', trim('BCPI')//' mixing ratio' )
     !CALL Add_Default ( 'BCPI',   1, ' ')
+
+    hco_pbuf2d => pbuf2d
+
+    If ( MasterProc ) Write(iulog,*) "hco_pbuf2d now points to pbuf2d"
 
     IF (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_INIT'
 
@@ -3830,7 +3833,12 @@ contains
 !================================================================================
   subroutine chem_emissions( state, cam_in )
     use camsrfexch,       only: cam_in_t
+    use physics_buffer, only : pbuf_get_chunk, pbuf_get_field, pbuf_get_index
+    use ppgrid,         only : pver ! for vertical
 
+    use constituents,      only: cnst_name
+    use mo_chem_utls,        only : get_spc_ndx
+    use chem_mods, only : tracerNames, nTracers
     use PhysConstants,    only: PI, PI_180
 
     ! Arguments:
@@ -3838,16 +3846,16 @@ contains
     TYPE(physics_state),    INTENT(IN)    :: state   ! Physics state variables
     TYPE(cam_in_t),         INTENT(INOUT) :: cam_in  ! import state
 
-    REAL(r8) :: Rlats(State%NCOL)
-    REAL(r8) :: Rlons(State%NCOL)
-    REAL(r8) :: Dlat, Dlon
-    REAL(r8) :: SFlx(State%NCOL,nTracers)
-
     INTEGER :: M, N, I
     INTEGER :: LCHNK, NCOL
     LOGICAL :: rootChunk
 
-    LOGICAL, SAVE :: FIRST = .TRUE.
+    REAL(r8) :: sflx(State%NCOL,nTracers)
+    type(physics_buffer_desc), pointer :: pbuf_chnk(:) ! slice of pbuf in chnk
+    real(r8), pointer     :: pbuf_ik(:,:)          ! ptr to pbuf data (/pcols,pver/)
+    integer               :: tmpIdx                ! pbuf field id
+    character(len=255)    :: fldname_ns            ! field name HCO_NH3
+    integer               :: RC                    ! return code
 
     ! LCHNK: which chunk we have on this process
     LCHNK = State%LCHNK
@@ -3855,29 +3863,44 @@ contains
     NCOL  = State%NCOL
     rootChunk = ( MasterProc.and.(LCHNK.EQ.BEGCHUNK) )
 
-    SFlx(:,:) = 0.0e+0_r8
-    Rlats(1:ncol) = State%Lat(1:NCOL)
-    Rlons(1:ncol) = State%Lon(1:NCOL)
+    sflx(:,:) = 0.0e+0_r8
 
-    IF (FIRST) THEN
-    ENDIF
+    DO N = 1, nTracers
 
-    !!TMMF
-    !! Test: emit 1e-10 kg/m2/s of NO in a square around Europe
-    !DO M = 1, PCNST
-    !   N = map2GC(M)
-    !   IF ((N>0).and.(N==iNO)) THEN
-    !      SFlx(:,N) = 0.0e+0_r8
-    !      DO I = 1, NCOL
-    !         Dlat = Rlats(i) / REAL(PI_180,r8)
-    !         Dlon = Rlons(i) / REAL(PI_180,r8)
-    !         IF ((Dlat > 50.0e+0_r8).and.(Dlat < 60.0e+0_r8).and.(Dlon > -15.0e+0_r8).and.(Dlon < 5.0e+0_r8)) THEN
-    !            SFlx(I,N) = SFlx(I,N) + 1.0e-10_r8
-    !         ENDIF
-    !      ENDDO
-    !      cam_in%CFlx(:NCOL,M) = cam_in%CFlx(:NCOL,M) + SFlx(:NCOL,N)
-    !   ENDIF
-    !ENDDO
+       fldname_ns = 'HCO_' // TRIM(tracerNames(N))
+       tmpIdx = pbuf_get_index(fldname_ns, RC)
+       IF ( tmpIdx < 0 ) THEN
+          IF ( rootChunk ) Write(iulog,*) "chem_emissions hemco: Field not found ", TRIM(fldname_ns)
+       ELSE
+          ! This is already in chunk, retrieve it
+          pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
+          CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_ik)
+
+          IF ( .NOT. ASSOCIATED(pbuf_ik) ) THEN ! Sanity check
+             CALL ENDRUN("chem_emissions: FATAL - tmpIdx > 0 but pbuf_ik not associated")
+          ENDIF
+
+          ! For each column retrieve data from pbuf_ik(I,K)
+          sflx(1:ncol,N) = pbuf_ik(1:ncol,pver) ! Only surface emissions for now,
+
+          !TMMF, Replace this in chem_init
+          M = -1
+          DO I = 1, nTracers
+             IF( TRIM( to_upper( TRIM(tracerNames(N)) ) ) == TRIM( to_upper( cnst_name(I)) ) ) THEN
+                M = I
+                EXIT
+             ENDIF
+          ENDDO
+
+          IF ( M <= 0 ) CYCLE
+
+          If ( rootChunk .And. (MAXVAL(sflx(1:ncol,N)) > 0.0e+0_fp) ) &
+             Write(iulog,*) "chem_emissions: debug added emiss for ", &
+             TRIM(cnst_name(M)), MAXVAL(sflx(1:ncol,N)), " from ", TRIM(fldname_ns)
+
+          cam_in%cflx(1:ncol,M) = cam_in%cflx(1:ncol,M) + sflx(1:ncol,N)
+       ENDIF
+    ENDDO
 
   end subroutine chem_emissions
 
