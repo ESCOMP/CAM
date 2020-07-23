@@ -73,8 +73,8 @@ module ic_baroclinic
 
 contains
 
-  subroutine bc_wav_set_ic(vcoord,latvals, lonvals, U, V, T, PS, PHIS, &
-       Q, Z, m_cnst, mask, verbose)
+  subroutine bc_wav_set_ic(vcoord,latvals, lonvals, zint, U, V, T, PS, PHIS, &
+       Q, m_cnst, mask, verbose)
     use dyn_tests_utils,     only: vc_moist_pressure, vc_dry_pressure, vc_height
     use constituents,        only: cnst_name
     use const_init,          only: cnst_init_default
@@ -87,20 +87,20 @@ contains
     !-----------------------------------------------------------------------
 
     ! Dummy arguments
-    integer, intent(in)               :: vcoord
+    integer,            intent(in)    :: vcoord     ! vertical coordinate type
     real(r8),           intent(in)    :: latvals(:) ! lat in degrees (ncol)
     real(r8),           intent(in)    :: lonvals(:) ! lon in degrees (ncol)
-                                                    ! z_k for vccord 1)
+    real(r8), optional, intent(in)    :: zint(:,:)  ! interface height (ncol,ilev), ordered top to bottom
     real(r8), optional, intent(inout) :: U(:,:)     ! zonal velocity
     real(r8), optional, intent(inout) :: V(:,:)     ! meridional velocity
     real(r8), optional, intent(inout) :: T(:,:)     ! temperature
     real(r8), optional, intent(inout) :: PS(:)      ! surface pressure
     real(r8), optional, intent(out)   :: PHIS(:)    ! surface geopotential
     real(r8), optional, intent(inout) :: Q(:,:,:)   ! tracer (ncol, lev, m)
-    real(r8), optional, intent(inout) :: Z(:,:)     ! height (ncol, lev)
     integer,  optional, intent(in)    :: m_cnst(:)  ! tracer indices (reqd. if Q)
     logical,  optional, intent(in)    :: mask(:)    ! only init where .true.
     logical,  optional, intent(in)    :: verbose    ! for internal use
+
     ! Local variables
     logical, allocatable              :: mask_use(:)
     logical                           :: verbose_use
@@ -116,7 +116,7 @@ contains
     logical                           :: lU, lV, lT, lQ, l3d_vars
     logical                           :: cnst1_is_moisture
     real(r8), allocatable             :: pdry_half(:), pwet_half(:),zdry_half(:),zk(:)
-    real(r8), allocatable             :: zlocal(:,:)! height of full level p for test tracer initialization
+    real(r8), allocatable             :: zlocal(:,:) ! layer midpoint heights for test tracer initialization
 
     if ((vcoord == vc_moist_pressure) .or. (vcoord == vc_dry_pressure)) then
       !
@@ -127,11 +127,16 @@ contains
         call endrun(subname//' ERROR: For iterate_z_given_pressure to work ptop must be less than 100hPa')
       end if
       ztop      = iterate_z_given_pressure(ptop,.false.,ptop,0.0_r8,-1000._r8) !Find height of top pressure surface
+
     else if (vcoord == vc_height) then
-      !
-      ! height-based vertical coordinate
-      !
-      call endrun(subname//' ERROR: z-based vertical coordinate not coded yet')
+       !
+       ! height-based vertical coordinate
+       !
+       if (present(zint)) then
+          ztop = zint(1,1)
+       else
+          call endrun(subname//' ERROR: z-based vertical coordinate requires using optional arg zint')
+       end if
     else
       call endrun(subname//' ERROR: vcoord value out of range')
     end if
