@@ -37,7 +37,7 @@ subroutine tfilt_massfixrun (ztodt,         lat,    u3m1,   u3,     &
 !
 !-----------------------------------------------------------------------
    use shr_kind_mod,    only: r8 => shr_kind_r8
-   use cam_control_mod, only: ideal_phys
+   use cam_control_mod, only: ideal_phys, tj2016_phys
    use cam_history,     only: outfld
    use eul_control_mod, only: fixmas,eps
    use pmgrid,          only: plon, plev, plevp, plat
@@ -242,7 +242,7 @@ subroutine tfilt_massfixrun (ztodt,         lat,    u3m1,   u3,     &
 !
 ! Add temperature correction for energy conservation
 !
-   if (ideal_phys) then
+   if (ideal_phys .or. tj2016_phys) then
       engycorr(:,:) = 0._r8
    else
 !$OMP PARALLEL DO PRIVATE (K, I)
