@@ -233,7 +233,7 @@ export CAM_TASKS=$CAM_TASKS
 
 source /glade/u/apps/ch/opt/lmod/7.5.3/lmod/lmod/init/sh
 
-module load intel/19.0.2
+module load intel/19.0.5
 module load mkl
 module list
 
@@ -290,7 +290,7 @@ MPI_LAUNCH_TIMEOUT=40
 
 source /glade/u/apps/ch/opt/lmod/7.5.3/lmod/lmod/init/sh
 
-module load intel/19.0.2
+module load intel/19.0.5
 module load mkl
 module list
 

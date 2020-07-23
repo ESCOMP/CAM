@@ -8,6 +8,7 @@ src/physics/clubb
 src/physics/cosp2/src
 src/physics/silhs
 src/physics/pumas
+src/atmos_phys
 
 # Ignore compiled python
 buildnmlc

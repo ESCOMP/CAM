@@ -109,13 +109,13 @@ CONTAINS
   !  to prevent repeated allocation/initialization
   !
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    use physconst,      only: cappa
+    use physconst,      only: cappa, dry_air_species_num,thermodynamic_active_species_num
+    use physconst,      only: thermodynamic_active_species_idx_dycore    
     use derivative_mod, only: gradient_sphere, ugradv_sphere
     use edge_mod,       only: edgevpack, edgevunpack
     use bndry_mod,      only: bndry_exchange
     use dyn_grid,       only: hvcoord
     use dimensions_mod, only: fv_nphys,ntrac
-    use dimensions_mod, only: qsize_condensate_loading_idx_gll,qsize_condensate_loading
     use fvm_mapping,    only: dyn2phys_vector,dyn2phys
     
     type(hybrid_t),     intent(in)            :: hybrid
@@ -144,8 +144,8 @@ CONTAINS
       do k=1,nlev
         ! moist pressure at mid points
         sum_water(:,:) = 1.0_r8
-        do nq=1,qsize_condensate_loading
-          m_cnst = qsize_condensate_loading_idx_gll(nq)
+        do nq=dry_air_species_num+1,thermodynamic_active_species_num
+          m_cnst = thermodynamic_active_species_idx_dycore(nq)
           !
           ! make sure Q is updated
           !

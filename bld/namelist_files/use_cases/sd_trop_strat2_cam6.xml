@@ -1,0 +1,209 @@
+<?xml version="1.0"?>
+
+<namelist_defaults>
+
+<ncdata dyn="fv"  hgrid="0.9x1.25">atm/cam/inic/fv/f.e20.FCSD.f09_f09_mg17.cesm2.1-exp002.001.cam.i.2005-01-01-00000_c180801.nc</ncdata>
+
+<met_rlx_time>50.</met_rlx_time>
+<met_fix_mass>.true.</met_fix_mass>
+
+<met_data_file dyn="fv"  hgrid="0.9x1.25">2005/MERRA2_0.9x1.25_20050101.nc</met_data_file>
+<met_data_path dyn="fv"  hgrid="0.9x1.25">atm/cam/met/MERRA2/0.9x1.25</met_data_path>
+<met_filenames_list dyn="fv"  hgrid="0.9x1.25">atm/cam/met/MERRA2/0.9x1.25/filenames_1975-2017_c190125.txt</met_filenames_list>
+
+<!-- Solar data from NRL -->
+<solar_irrad_data_file>atm/cam/solar/SolarForcingNRLSSI2_daily_s18820101_e20171231_c191122.nc</solar_irrad_data_file>
+<solar_data_type>SERIAL</solar_data_type>
+
+<!-- WACCM GW Settings -->
+<use_gw_front>.true.</use_gw_front>
+<use_gw_convect_dp>.true.</use_gw_convect_dp>
+<tau_0_ubc>.false.</tau_0_ubc>
+<gw_qbo_hdepth_scaling>0.25D0</gw_qbo_hdepth_scaling>
+
+<!-- LBC, UBC Files -->
+<flbc_type>SERIAL</flbc_type>
+<flbc_file>atm/waccm/lb/LBC_1750-2014_CMIP6_0p5degLat_c170126.nc</flbc_file>
+
+<!-- emissions -->
+
+<ext_frc_type>INTERP_MISSING_MONTHS</ext_frc_type>
+
+<srf_emis_type>INTERP_MISSING_MONTHS</srf_emis_type>
+
+<ndep_list>'noy', 'nhx'</ndep_list>
+
+<!-- History Files -->
+
+<mfilt>           1,   1 </mfilt>
+<nhtfrq>          0,   0 </nhtfrq>
+<avgflag_pertape>'A','A' </avgflag_pertape>
+
+<history_amwg>.true.</history_amwg>
+<history_aerosol>.false.</history_aerosol>
+<history_carma>.false.</history_carma>
+<history_chemistry>.false.</history_chemistry>
+<history_chemspecies_srf>.false.</history_chemspecies_srf>
+<history_clubb>.false.</history_clubb>
+<history_waccm>.false.</history_waccm>
+<history_cesm_forcing>.false.</history_cesm_forcing>
+<history_scwaccm_forcing>.false.</history_scwaccm_forcing>
+
+<!-- Monthly --> 
+<fincl1>
+         'CFC11STAR', 'AODDUST', 'AODDUST2', 'T', 'U', 'V', 'O3', 'OH',
+         'NO3', 'HO2', 'LNO_COL_PROD', 'NO2_CLXF', 'SFNO', 'SFNH3', 'BRO', 'CH3CL',
+         'CLO', 'CO2', 'HCL', 'HO2', 'HOCL', 'H2O', 'PHIS', 'Z3',
+         'BENZENE', 'C2H2', 'C2H4', 'C2H6', 'C3H8', 'CCL4', 'CFC11', 'CFC113',
+         'CFC12', 'CH2O', 'CH3BR', 'CH3CCL3', 'CH3CHO', 'CH3CL', 'CH3CN', 'CH3COCH3',
+         'CH3OH', 'CH4', 'CO', 'H2O2', 'HCFC22', 'HCN', 'HNO3', 'ISOP',
+         'N2O', 'O3', 'PAN', 'SO2', 'TOLUENE', 'OH', 'ALKNIT',
+         'ALKOOH', 'BCARY', 'BENZENE', 'BENZOOH', 'BEPOMUC', 'BIGALD1', 'BIGALD2',
+         'BIGALD3', 'BIGALD4', 'BIGALK', 'BIGENE', 'BR', 'BRCL', 'BRO', 'BRONO2',
+         'BRY', 'BZALD', 'BZOOH', 'C2H2', 'C2H4', 'C2H5OH', 'C2H5OOH', 'C2H6',
+         'C3H6', 'C3H7OOH', 'C3H8', 'C6H5OOH', 'CCL4', 'CF2CLBR', 'CF3BR', 'CFC11',
+         'CFC113', 'CFC114', 'CFC115', 'CFC12', 'CH2BR2', 'CH2O', 'CH3BR', 'CH3CCL3',
+         'CH3CHO', 'CH3CL', 'CH3CN', 'CH3COCH3', 'CH3COCHO', 'CH3COOH', 'CH3COOOH', 'CH3OH',
+         'CH3OOH', 'CH4', 'CHBR3', 'CL', 'CL2', 'CL2O2', 'CLO', 'CLONO2',
+         'CLY', 'CO', 'CO2', 'COF2', 'COFCL', 'CRESOL', 'DMS', 'EOOH',
+         'F', 'GLYALD', 'GLYOXAL', 'H', 'H2', 'H2402', 'H2O2', 'H2SO4',
+         'HBR', 'HCFC141B', 'HCFC142B', 'HCFC22', 'HCL', 'HCN', 'HCOOH', 'HF',
+         'HNO3', 'HO2NO2', 'HOBR', 'HOCL', 'HONITR', 'HYAC', 'HYDRALD',
+         'IEPOX', 'ISOP', 'ISOPNO3', 'ISOPOOH', 'IVOC',
+         'MACR', 'MACROOH', 'MEK', 'MEKOOH', 'MPAN', 'MVK', 'N',
+         'N2O', 'N2O5', 'NC4CHO', 'NH3', 'NH4', 'NO', 'NO2',
+         'NO3', 'NOA', 'O', 'OCLO', 'OCS', 'ONITR', 'PAN',
+         'PBZNIT', 'PHENO', 'PHENOL', 'PHENOOH', 'POOH', 'ROOH', 'S', 'SF6',
+         'SO', 'SO2', 'SO3', 'SOAG0', 'SOAG1', 'SOAG2', 'SOAG3', 'SOAG4',
+         'SVOC', 'TEPOMUC', 'TERP2AOOH', 'TERPOOH', 'TOLOOH',
+         'TOLUENE', 'XYLENES', 'XYLENOOH', 'XYLOL', 'XYLOLOOH', 'NHDEP', 'NDEP',
+         'ACBZO2', 'ALKO2', 'BENZO2', 'BZOO', 'C2H5O2', 'C3H7O2', 'C6H5O2', 'CH3CO3',
+         'CH3O2', 'DICARBO2', 'ENEO2', 'EO', 'EO2', 'HO2', 'HOCH2OO',
+         'MACRO2', 'MALO2', 'MCO3', 'MDIALO2', 'MEKO2', 'O1D',
+         'OH', 'PHENO2', 'PO2', 'RO2', 'TOLO2',
+         'XYLENO2', 'XYLOLO2', 'H2O', 'SAD_ICE', 'SAD_LNAT', 'SAD_SULFC', 'SAD_TROP', 'SAD_AERO',
+         'REFF_AERO', 'PDELDRY', 'RAD_ICE', 'RAD_LNAT', 'RAD_SULFC', 'H2SO4M_C', 'HNO3_GAS', 'HNO3_STS',
+         'HNO3_NAT', 'VEL_NAT2', 'NITROP_PD', 'NOX', 'NOY', 'CLOX', 'CLOY', 'BROX',
+         'BROY', 'TCLY', 'TOTH', 'MASS', 'TBRY', 'HCL_GAS', 'wet_deposition_NHx_as_N', 'wet_deposition_NOy_as_N',
+         'HCL_GAS', 'dgnumwet1', 'dgnumwet2', 'dgnumwet3', 'ABSORB', 'AODVISdn', 'AODdnMODE1', 'AODVISstdn',
+         'AODNIRstdn', 'AODUVstdn', 'AODdnMODE2', 'AODdnMODE3', 'AODdnDUST1', 'AODdnDUST2', 'AODdnDUST3', 'AODVISstdn',
+         'AODUVstdn', 'AODNIRstdn', 'AODNIRstdn', 'AODVISdn', 'AODUVdn', 'EXTINCTdn', 'EXTxASYMdn', 'EXTINCTNIRdn',
+         'EXTINCTUVdn', 'WD_ALKNIT', 'WD_ALKOOH', 'WD_BENZOOH', 'WD_BRONO2', 'WD_BZOOH', 'WD_C2H5OH', 'WD_C2H5OOH',
+         'WD_C3H7OOH', 'WD_C6H5OOH', 'WD_CH2O', 'WD_CH3CHO', 'WD_CH3CN', 'WD_CH3COCHO', 'WD_CH3COOH', 'WD_CH3COOOH',
+         'WD_CH3COCH3', 'WD_CH3OH', 'WD_CH3OOH', 'WD_CLONO2', 'WD_COF2', 'WD_COFCL', 'WD_EOOH', 'WD_GLYALD',
+         'WD_H2O2', 'WD_H2SO4', 'WD_HBR', 'WD_HCL', 'WD_HCN', 'WD_HCOOH', 'WD_HF', 'WD_HNO3',
+         'WD_HO2NO2', 'WD_HOBR', 'WD_HOCL', 'WD_HONITR', 'WD_HYAC', 'WD_HYDRALD', 'WD_IEPOX',
+         'WD_ISOPOOH', 'WD_IVOC', 'WD_MACR', 'WD_MACROOH',
+         'WD_MEKOOH', 'WD_MVK', 'WD_NC4CHO', 'WD_NDEP', 'WD_NH3', 'WD_NH4', 'WD_NHDEP',
+         'WD_NOA', 'WD_ONITR', 'WD_PHENOOH', 'WD_POOH', 'WD_ROOH', 'WD_SO2', 'WD_SOAG0',
+         'WD_SOAG1', 'WD_SOAG2', 'WD_SOAG3', 'WD_SOAG4', 'WD_SVOC', 'WD_TERP2AOOH', 'WD_TERPOOH',
+         'WD_TOLOOH', 'WD_XYLENOOH', 'WD_XYLOLOOH', 'DF_ALKNIT', 'DF_ALKOOH',
+         'DF_BENZOOH', 'DF_BZOOH', 'DF_C2H5OH', 'DF_C2H5OOH', 'DF_C3H7OOH', 'DF_C6H5OOH', 'DF_CH2O', 'DF_CH3CHO',
+         'DF_CH3CN', 'DF_CH3COCH3', 'DF_CH3COCHO', 'DF_CH3COOH', 'DF_CH3COOOH', 'DF_CH3OH', 'DF_CH3OOH', 'DF_CO',
+         'DF_EOOH', 'DF_GLYALD', 'DF_H2O2', 'DF_H2SO4', 'DF_HCN', 'DF_HCOOH', 'DF_HNO3', 'DF_HO2NO2',
+         'DF_HONITR', 'DF_HYAC', 'DF_HYDRALD', 'DF_IEPOX',
+         'DF_ISOPOOH', 'DF_IVOC', 'DF_MACROOH', 'DF_MEKOOH', 'DF_MPAN', 'DF_NC4CHO',
+         'dry_deposition_NHx_as_N', 'DF_NH3', 'DF_NH4', 'DF_NO', 'DF_NO2', 'DF_NOA', 'DF_O3',
+         'DF_ONITR', 'DF_PAN', 'DF_PHENOOH', 'DF_POOH', 'DF_ROOH', 'DF_SO2', 'DF_SOAG0', 'DF_SOAG1',
+         'DF_SOAG2', 'DF_SOAG3', 'DF_SOAG4', 'DF_SVOC', 'DF_TERP2AOOH', 'DF_TERPOOH',
+         'DF_TOLOOH', 'DF_XYLENOOH', 'DF_XYLOLOOH', 'dry_deposition_NOy_as_N', 'SO2_CLXF', 'SO2_XFRC',
+         'SVOC_CLXF', 'CO_CLXF', 'NO2_CLXF', 'LNO_PROD', 'LNO_COL_PROD', 'SFISOP', 'SFBCARY',
+         'SFCH3OH', 'SFC2H5OH', 'SFCH3CHO', 'SFMEK', 'SFHCN', 'SFCH3CN', 'SFCH2O', 'SFC2H6',
+         'SFC3H8', 'SFC2H4', 'SFC3H6', 'SFCH3COCH3', 'SFBIGALK', 'SFBIGENE', 'SFBENZENE', 'SFTOLUENE',
+         'SFXYLENES', 'SFCO', 'SFNO', 'SFC2H2', 'SFHCOOH', 'SFCH3COOH', 'SFCH3COCH3', 'SFDMS',
+         'SFMEK', 'SFSO2', 'SFNH3', 'SFIVOC', 'SFSVOC', 'MEG_ISOP', 'MEG_BCARY',
+         'MEG_CH3OH', 'MEG_C2H5OH', 'MEG_CH2O', 'MEG_CH3CHO', 'MEG_CH3COOH', 'MEG_CH3COCH3', 'MEG_HCOOH', 'MEG_HCN',
+         'MEG_CO', 'MEG_C2H6', 'MEG_C2H4', 'MEG_C3H8', 'MEG_C3H6', 'MEG_BIGALK', 'MEG_BIGENE', 'MEG_TOLUENE',
+         'Dso4_a1CHM', 'Dso4_a2CHM', 'Dso4_a3CHM', 'DO3CHM', 'DCOCHM', 'DHNO3CHM', 'DH2O2CHM', 'CH4_CHML',
+         'CO_CHMP', 'CO_CHML', 'CH3CCL3_CHML', 'CO2_CHML', 'AQ_SO2', 'GS_SO2', 'SO2_CHML', 'SO2_CHMP',
+         'SO2_CLXF', 'SOAG0_CHMP', 'SOAG1_CHMP', 'SOAG2_CHMP', 'SOAG3_CHMP', 'SOAG4_CHMP', 'IVOC_CHMP', 'SVOC_CHML',
+         'MASS', 'ABSORB', 'WD_H2SO4', 'WD_IVOC', 'WD_SO2', 'WD_SOAG0', 'WD_SOAG1', 'WD_SOAG2',
+         'WD_SOAG3', 'WD_SOAG4', 'WD_SVOC', 'DF_CO', 'DF_IVOC', 'DF_O3', 'DF_SO2', 'DF_SOAG0',
+         'DF_SOAG1', 'DF_SOAG2', 'DF_SOAG3', 'DF_SOAG4', 'DF_SVOC', 'SO2_CLXF', 'SVOC_CLXF', 'SFISOP',
+         'SFCH3OH', 'SFCH3COCH3', 'SFCO', 'SFIVOC', 'SFSVOC', 'DO3CHM', 'DCOCHM',
+         'O3_CHMP', 'O3_CHML', 'CH4_CHML', 'CO_CHMP', 'CO_CHML', 'CH3CCL3_CHML', 'SO2_CHML', 'SO2_CHMP',
+         'SO2_CLXF', 'SOAG0_CHMP', 'SOAG1_CHMP', 'SOAG2_CHMP', 'SOAG3_CHMP', 'SOAG4_CHMP', 'O3_Prod', 'O3_Loss',
+         'OddOx_Ox_Loss', 'OddOx_HOx_Loss', 'OddOx_NOx_Loss', 'OddOx_CLOxBROx_Loss', 'OddOx_Loss_Tot', 'OddOx_Prod_Tot', 'O3_Prod', 'O3_Loss',
+         'r_HO2_O3', 'r_OH_O3', 'r_OH_O', 'r_O1D_H2O', 'r_het1', 'r_het2', 'r_het3', 'r_het4',
+         'r_het5', 'r_het6', 'jo3_a', 'jno2', 'jpan', 'jh2o2', 'jcl2o2', 'bc_a1',
+         'bc_a4', 'dst_a1', 'dst_a2', 'dst_a3', 'ncl_a1', 'ncl_a1', 'ncl_a2', 'ncl_a3',
+         'pom_a1', 'pom_a4', 'so4_a1', 'so4_a2', 'so4_a3', 'soa1_a1', 'soa2_a1', 'soa3_a1',
+         'soa4_a1', 'soa5_a1', 'soa1_a2', 'soa2_a2', 'soa3_a2', 'soa4_a2', 'soa5_a2', 'bc_c1',
+         'bc_c4', 'dst_c1', 'dst_c2', 'dst_c3', 'ncl_c1', 'ncl_c1', 'ncl_c2', 'ncl_c3',
+         'pom_c1', 'pom_c4', 'so4_c1', 'so4_c2', 'so4_c3', 'soa1_c1', 'soa2_c1', 'soa3_c1',
+         'soa4_c1', 'soa5_c1', 'soa1_c2', 'soa2_c2', 'soa3_c2', 'soa4_c2', 'soa5_c2', 'bc_a1SFWET',
+         'num_a1', 'num_a2', 'num_a3', 'num_a4', 'num_c1', 'num_c2', 'num_c3', 'num_c4',
+         'bc_a1SFWET', 'bc_a4SFWET', 'dst_a1SFWET', 'dst_a2SFWET', 'dst_a3SFWET', 'ncl_a1SFWET', 'ncl_a2SFWET', 'ncl_a3SFWET',
+         'pom_a1SFWET', 'pom_a4SFWET', 'so4_a1SFWET', 'so4_a2SFWET', 'so4_a3SFWET', 'soa1_a1SFWET', 'soa1_a2SFWET', 'soa2_a1SFWET',
+         'soa2_a2SFWET', 'soa3_a1SFWET', 'soa3_a2SFWET', 'soa4_a1SFWET', 'soa4_a2SFWET', 'soa5_a1SFWET', 'soa5_a2SFWET', 'bc_c1SFWET',
+         'bc_c4SFWET', 'dst_c1SFWET', 'dst_c2SFWET', 'dst_c3SFWET', 'ncl_c1SFWET', 'ncl_c2SFWET', 'ncl_c3SFWET', 'pom_c1SFWET',
+         'pom_c4SFWET', 'so4_c1SFWET', 'so4_c2SFWET', 'so4_c3SFWET', 'soa1_c1SFWET', 'soa1_c2SFWET', 'soa2_c1SFWET', 'soa2_c2SFWET',
+         'soa3_c1SFWET', 'soa3_c2SFWET', 'soa4_c1SFWET', 'soa4_c2SFWET', 'soa5_c1SFWET', 'soa5_c2SFWET', 'bc_a1DDF', 'bc_a4DDF',
+         'dst_a1DDF', 'dst_a2DDF', 'dst_a3DDF', 'ncl_a1DDF', 'ncl_a2DDF', 'ncl_a3DDF', 'pom_a1DDF', 'pom_a4DDF',
+         'so4_a1DDF', 'so4_a2DDF', 'so4_a3DDF', 'soa1_a1DDF', 'soa1_a2DDF', 'soa2_a1DDF', 'soa2_a2DDF', 'soa3_a1DDF',
+         'soa3_a2DDF', 'soa4_a1DDF', 'soa4_a2DDF', 'soa5_a1DDF', 'soa5_a2DDF', 'bc_c1DDF', 'bc_c4DDF', 'dst_c1DDF',
+         'dst_c2DDF', 'dst_c3DDF', 'ncl_c1DDF', 'ncl_c2DDF', 'ncl_c3DDF', 'pom_c1DDF', 'pom_c4DDF', 'so4_c1DDF',
+         'so4_c2DDF', 'so4_c3DDF', 'soa1_c1DDF', 'soa1_c2DDF', 'soa2_c1DDF', 'soa2_c2DDF', 'soa3_c1DDF', 'soa3_c2DDF',
+         'soa4_c1DDF', 'soa4_c2DDF', 'soa5_c1DDF', 'soa5_c2DDF', 'num_a1DDF', 'num_a2DDF', 'num_a3DDF', 'num_a4DDF',
+         'num_c1DDF', 'num_c2DDF', 'num_c3DDF', 'num_c4DDF', 'bc_a4_CLXF', 'pom_a4_CLXF', 'so4_a1_CLXF', 'so4_a2_CLXF',
+         'num_a1_CLXF', 'num_a2_CLXF', 'SFbc_a4', 'SFpom_a4', 'SFso4_a1', 'SFso4_a2', 'SFnum_a1', 'SFnum_a2',
+         'SFnum_a3', 'so4_a1_sfgaex1', 'so4_a2_sfgaex1', 'so4_a3_sfgaex1', 'soa1_a1_sfgaex1', 'soa1_a2_sfgaex1', 'soa2_a1_sfgaex1', 'soa2_a2_sfgaex1',
+         'soa3_a1_sfgaex1', 'soa3_a2_sfgaex1', 'soa4_a1_sfgaex1', 'soa4_a2_sfgaex1', 'soa5_a1_sfgaex1', 'soa5_a2_sfgaex1', 'so4_a2_sfnnuc1', 'so4_c1AQH2SO4',
+         'so4_c2AQH2SO4', 'so4_c3AQH2SO4', 'so4_c1AQSO4', 'so4_c2AQSO4', 'so4_c3AQSO4', 'SFdst_a1', 'SFdst_a2', 'SFdst_a3',
+         'SFncl_a1', 'SFncl_a2', 'SFncl_a3', 'soa1_a1_CHML', 'soa2_a1_CHML', 'soa3_a1_CHML', 'soa4_a1_CHML', 'soa5_a1_CHML',
+         'soa1_a2_CHML', 'soa2_a2_CHML', 'soa3_a2_CHML', 'soa4_a2_CHML', 'soa5_a2_CHML', 'so4_a1_CHMP', 'so4_a2_CHMP', 'so4_a3_CHMP',
+         'r_jsoa1_a1', 'r_jsoa2_a1', 'r_jsoa3_a1', 'r_jsoa4_a1', 'r_jsoa5_a1', 'r_jsoa1_a2', 'r_jsoa2_a2', 'r_jsoa3_a2',
+         'r_jsoa4_a2', 'r_jsoa5_a2', 'r_GLYOXAL_aer', 'H2SO4_sfnnuc1', 'num_a2_sfnnuc1', 'TMOCS', 'TMSO2', 'TMDMS',
+         'TMso4_a1', 'TMso4_a2', 'TMso4_a3', 'BURDENDUSTdn', 'BURDENPOMdn', 'BURDENSO4dn', 'BURDENSOAdn', 'BURDENSEASALTdn',
+         'BURDENBCdn', 'PM25',
+         'MEG_XYLENES','MEG_BZALD','MEG_MEK',
+         'DF_BCARY', 'DF_BENZENE', 'DF_BEPOMUC', 'DF_BIGALD1', 'DF_BIGALD2', 'DF_BIGALD3',
+         'DF_BIGALD4', 'DF_BIGALK', 'DF_BIGENE', 'DF_BZALD', 'DF_C2H2', 'DF_C2H4', 'DF_C2H6', 'DF_C3H6',
+         'DF_C3H8', 'DF_CRESOL', 'DF_DMS', 'DF_GLYOXAL', 'DF_ISOP', 'DF_MACR', 'DF_MEK',
+         'DF_MVK', 'DF_N2O5', 'DF_PBZNIT', 'DF_PHENOL', 'DF_TEPOMUC', 'DF_TOLUENE', 'DF_XYLENES', 'DF_XYLOL',
+         'WD_BCARY', 'WD_BENZENE', 'WD_BEPOMUC', 'WD_BIGALD1', 'WD_BIGALD2', 'WD_BIGALD3', 'WD_BIGALD4', 
+         'WD_BIGALK', 'WD_BIGENE', 'WD_BZALD',
+         'WD_C2H2', 'WD_C2H4', 'WD_C2H6', 'WD_C3H6', 'WD_C3H8', 'WD_CO', 'WD_CRESOL', 'WD_DMS', 'WD_GLYOXAL', 'WD_ISOP', 
+         'WD_MEK', 'WD_MPAN',
+         'WD_N2O5', 'WD_NO', 'WD_NO2', 'WD_PAN', 'WD_PBZNIT', 'WD_PHENOL', 'WD_TEPOMUC','WD_TOLUENE', 'WD_XYLENES', 'WD_XYLOL'
+</fincl1>
+<fincl2>
+       'MEG_APIN','MEG_BPIN','MEG_LIMON','MEG_MYRC',
+       'ISOPFDN', 'ISOPFNP', 'ISOPN3B', 'ISOPN2B', 'ISOPN1D', 'ISOPN4D', 
+       'ISOPNBNO3', 'ISOPNOOHB', 'ISOPNOOHD', 'INHEB','INHED',
+       'HPALD1','HPALD4','ISOPHFP',
+       'MVKN', 'MACRN', 'HMHP', 'NO3CH2CHO', 'HYPERACET', 'HCOCH2OOH', 
+       'DHPMPAL', 'MVKOOH', 'ISOPOH',
+       'HPALDB1C','HPALDB4C','ICHE','ISOPFDNC','ISOPFNC',
+       'TERPNT', 'TERPNS','TERPNT1', 'TERPNS1', 'TERPNPT', 'TERPNPS', 'TERPNPT1', 
+       'TERPNPS1', 'TERPFDN', 'SQTN', 'TERPHFN',
+       'TERP1OOH', 'TERPDHDP', 'TERPF2', 'TERPF1', 'TERPA', 'TERPA2', 'TERPK', 'TERPAPAN', 
+       'TERPACID', 'TERPA2PAN',
+       'TERPACID2','TERPACID3','TERPA3PAN','TERPOOHL','TERPA3',
+       'APIN','BPIN','LIMON','MYRC',
+       'DF_ISOPFDN', 'DF_ISOPFNP', 'DF_ISOPN3B', 'DF_ISOPN2B', 'DF_ISOPN1D', 'DF_ISOPN4D', 'DF_ISOPNBNO3', 'DF_ISOPNOOHB', 'DF_ISOPNOOHD',
+       'DF_INHEB','DF_INHED', 
+       'DF_HPALD1','DF_HPALD4','DF_ISOPHFP','DF_MVKN', 'DF_MACRN', 'DF_HMHP' 'DF_NO3CH2CHO',
+       'DF_HYPERACET', 'DF_HCOCH2OOH', 'DF_DHPMPAL', 'DF_MVKOOH', 'DF_ISOPOH',
+       'DF_HPALDB1C','DF_HPALDB4C','DF_ICHE','DF_ISOPFDNC','DF_ISOPFNC',
+       'DF_TERPNT', 'DF_TERPNS','DF_TERPNT1', 'DF_TERPNS1', 'DF_TERPNPT', 'DF_TERPNPS', 
+       'DF_TERPNPT1', 'DF_TERPNPS1', 'DF_TERPFDN', 'DF_SQTN', 'DF_TERPHFN',
+       'DF_TERP1OOH', 'DF_TERPDHDP', 'DF_TERPF2', 'DF_TERPF1', 'DF_TERPA', 
+       'DF_TERPA2', 'DF_TERPK', 'DF_TERPAPAN', 'DF_TERPACID', 'DF_TERPA2PAN', 
+       'DF_TERPACID2','DF_TERPACID3','DF_TERPA3PAN','DF_TERPOOHL','DF_TERPA3',
+       'DF_APIN','DF_BPIN','DF_LIMON','DF_MYRC',
+       'WD_ISOPFDN', 'WD_ISOPFNP', 'WD_ISOPN3B', 'WD_ISOPN2B', 'WD_ISOPN1D', 'WD_ISOPN4D', 
+       'WD_ISOPNBNO3', 'WD_ISOPNOOHB', 'WD_ISOPNOOHD',
+       'WD_INHEB','WD_INHED', 
+       'WD_HPALD1','WD_HPALD4','WD_ISOPHFP','WD_MVKN', 'WD_MACRN', 'WD_HMHP' 'WD_NO3CH2CHO',
+       'WD_HYPERACET', 'WD_HCOCH2OOH', 'WD_DHPMPAL', 'WD_MVKOOH', 'WD_ISOPOH',
+       'WD_HPALDB1C','WD_HPALDB4C','WD_ICHE','WD_ISOPFDNC','WD_ISOPFNC',
+       'WD_TERPNT', 'WD_TERPNS','WD_TERPNT1', 'WD_TERPNS1', 'WD_TERPNPT', 'WD_TERPNPS', 
+       'WD_TERPNPT1', 'WD_TERPNPS1', 'WD_TERPFDN', 'WD_SQTN', 'WD_TERPHFN',
+       'WD_TERP1OOH', 'WD_TERPDHDP', 'WD_TERPF2', 'WD_TERPF1', 'WD_TERPA', 
+       'WD_TERPA2', 'WD_TERPK', 'WD_TERPAPAN','WD_TERPACID','WD_TERPA2PAN',
+       'WD_TERPACID2','WD_TERPACID3','WD_TERPA3PAN','WD_TERPOOHL','WD_TERPA3',
+       'WD_APIN','WD_BPIN','WD_LIMON','WD_MYRC'
+</fincl2>
+
+</namelist_defaults>
