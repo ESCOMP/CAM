@@ -3894,11 +3894,11 @@ contains
 
           IF ( M <= 0 ) CYCLE
 
-          If ( rootChunk .And. (MAXVAL(sflx(1:ncol,N)) > 0.0e+0_fp) ) &
+          cam_in%cflx(1:ncol,M) = sflx(1:ncol,N)
+          If ( MAXVAL(sflx(1:ncol,N)) > 0.0e+0_fp ) &
              Write(iulog,*) "chem_emissions: debug added emiss for ", &
-             TRIM(cnst_name(M)), MAXVAL(sflx(1:ncol,N)), " from ", TRIM(fldname_ns)
-
-          cam_in%cflx(1:ncol,M) = cam_in%cflx(1:ncol,M) + sflx(1:ncol,N)
+             TRIM(cnst_name(M)), MAXVAL(sflx(1:ncol,N)), " from ", TRIM(fldname_ns), &
+             ". Total emission flux is: ", MAXVAL(cam_in%cflx(1:ncol,M))
        ENDIF
     ENDDO
 
