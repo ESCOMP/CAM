@@ -23,8 +23,9 @@ module vertremap_mod
   use perf_mod,               only: t_startf, t_stopf ! _EXTERNAL
   use parallel_mod,           only: parallel_t
   use cam_abortutils,         only: endrun
-  use control_mod,            only: vert_remap_q_alg
 
+  implicit none
+  
   public remap1                  ! remap any field, splines, monotone
   public remap1_nofilter         ! remap any field, splines, no filter
 ! todo: tweak interface to match remap1 above, rename remap1_ppm:
@@ -34,39 +35,137 @@ module vertremap_mod
 
 !=======================================================================================================!
 
-subroutine remap1(Qdp,nx,qstart,qstop,qsize,dp1,dp2,hybrid)
-  ! remap 1 field
-  ! input:  Qdp   field to be remapped (NOTE: MASS, not MIXING RATIO)
-  !         dp1   layer thickness (source)
-  !         dp2   layer thickness (target)
-  !
-  ! output: remaped Qdp, conserving mass, monotone on Q=Qdp/dp
-  !
-  use hybrid_mod, only : hybrid_t, get_loop_ranges, config_thread_region
-  use thread_mod, only : tracer_num_threads
-  implicit none
-  integer, intent(in) :: nx,qstart,qstop,qsize
-  real (kind=r8), intent(inout) :: Qdp(nx,nx,nlev,qsize)
-  real (kind=r8), intent(in) :: dp1(nx,nx,nlev),dp2(nx,nx,nlev)
-  type (hybrid_t), optional :: hybrid
-  ! ========================
-  ! Local Variables
-  ! ========================
+    subroutine remap1(Qdp,nx,qstart,qstop,qsize,dp1,dp2,ptop,identifier,Qdp_mass,kord)
+      use fv_mapz,      only: map1_ppm
+      ! remap 1 field
+      ! input:  Qdp   field to be remapped (NOTE: MASS, not MIXING RATIO)
+      !         dp1   layer thickness (source)
+      !         dp2   layer thickness (target)
+      !
+      ! output: remaped Qdp, conserving mass, monotone on Q=Qdp/dp
+      !
+      integer, intent(in) :: nx,qstart,qstop,qsize
+      real (kind=r8), intent(inout) :: Qdp(nx,nx,nlev,qsize)
+      real (kind=r8), intent(in) :: dp1(nx,nx,nlev),dp2(nx,nx,nlev)
+      integer, intent(in) :: identifier  !0: tracers, 1: T, -1: u,v
+      real (kind=r8), intent(in) :: ptop
+      logical, intent(in) :: Qdp_mass
+      integer, intent(in) :: kord(qsize)
+      ! ========================
+      ! Local Variables
+      ! ========================
+      real (kind=r8) :: pe1(nx,nlev+1),pe2(nx,nlev+1),inv_dp(nx,nx,nlev),dp2_local(nx,nlev)
+      real (kind=r8) :: tmp(nx,nlev), gz(nx)
+      integer        :: i,j,k,itrac
+      logical        :: logp
+      integer        :: kord_local(qsize)
 
-  type (hybrid_t) :: hybridnew
-  real (kind=r8), dimension(nlev+1)    :: rhs,lower_diag,diag,upper_diag,q_diag,zgam,z1c,z2c,zv
-  real (kind=r8), dimension(nlev)      :: h,Qcol,dy,za0,za1,za2,zarg,zhdp
-  real (kind=r8)  :: f_xm,level1,level2,level4,level5, &
-       peaks_min,peaks_max,tmp_cal,xm,xm_d,zv1,zv2, &
-       zero = 0._r8,one = 1._r8,tiny = 1.e-12_r8,qmax = 1.e50_r8
-  integer :: zkr(nlev+1),filter_code(nlev),peaks,im1,im2,im3,ip1,ip2, &
-       lt1,lt2,lt3,t1,t2,t3,t4,tm,tp,i,ilev,j,jk,k,q
-  integer :: qbeg, qend
-  logical :: abort=.false.
+      kord_local = kord
 
-  call remap_Q_ppm(qdp,nx,qstart,qstop,qsize,dp1,dp2)
-
-end subroutine remap1
+      if (any(kord(:) >= 0)) then
+        if (.not.qdp_mass) then
+          do itrac=1,qsize
+            if (kord(itrac) >= 0) then            
+              Qdp(:,:,:,itrac) = Qdp(:,:,:,itrac)*dp1(:,:,:)
+            end if
+          end do
+        end if        
+        call remap_Q_ppm(qdp,nx,qstart,qstop,qsize,dp1,dp2,kord)
+        if (.not.qdp_mass) then
+          do itrac=1,qsize
+            if (kord(itrac) >= 0) then            
+              Qdp(:,:,:,itrac) = Qdp(:,:,:,itrac)/dp2(:,:,:)
+            end if
+          end do
+        end if        
+      endif
+      if (any(kord(:)<0)) then
+        !
+        ! check if remapping over p or log(p)
+        !
+        ! can not mix and match here (all kord's must >-20 or <=-20)
+        !
+        if (any(kord(:)>-20)) then
+          kord_local = abs(kord)
+          logp    = .false.
+        else
+          kord_local = abs(kord/10)         
+          if (identifier==1) then
+            logp    = .true.
+          else
+            logp    = .false.            
+          end if
+        end if
+        !
+        ! modified FV3 vertical remapping
+        !        
+        if (qdp_mass) then
+          inv_dp = 1.0_r8/dp1
+          do itrac=1,qsize
+            if (kord(itrac)<0) then            
+              Qdp(:,:,:,itrac) = Qdp(:,:,:,itrac)*inv_dp(:,:,:)
+            end if
+          end do
+        end if
+        if (logp) then
+          do j=1,nx
+            pe1(:,1) = ptop
+            pe2(:,1) = ptop
+            do k=1,nlev
+              do i=1,nx
+                pe1(i,k+1) = pe1(i,k)+dp1(i,j,k)
+                pe2(i,k+1) = pe2(i,k)+dp2(i,j,k)
+              end do
+            end do
+            pe1(:,nlev+1) = pe2(:,nlev+1)
+            do k=1,nlev+1
+              do i=1,nx
+                pe1(i,k) = log(pe1(i,k))
+                pe2(i,k) = log(pe2(i,k))
+              end do
+            end do
+            
+            do itrac=1,qsize
+              if (kord(itrac)<0) then
+                call map1_ppm( nlev, pe1(:,:),   Qdp(:,:,:,itrac),   gz,   &
+                     nlev, pe2(:,:),    Qdp(:,:,:,itrac),               &
+                     1, nx, j, 1, nx, 1, nx, identifier, kord_local(itrac))
+              end if
+            end do
+            !      call mapn_tracer(qsize, nlev, pe1, pe2, Qdp, dp2_local, kord, j,     &
+            !           1, nx, 1, nx, 1, nx, 0.0_r8, fill)
+          end do
+        else
+          do j=1,nx
+            pe1(:,1) = ptop
+            pe2(:,1) = ptop
+            do k=1,nlev
+              do i=1,nx
+                pe1(i,k+1) = pe1(i,k)+dp1(i,j,k)
+                pe2(i,k+1) = pe2(i,k)+dp2(i,j,k)
+              end do
+            end do
+            pe1(:,nlev+1) = pe2(:,nlev+1)
+            do itrac=1,qsize
+              if (kord(itrac)<0) then
+                call map1_ppm( nlev, pe1(:,:),   Qdp(:,:,:,itrac),   gz,   &!phl
+                     nlev, pe2(:,:),    Qdp(:,:,:,itrac),               &
+                     1, nx, j, 1, nx, 1, nx, identifier, kord_local(itrac))
+              end if
+            end do
+            !      call mapn_tracer(qsize, nlev, pe1, pe2, Qdp, dp2_local, kord, j,     &
+            !           1, nx, 1, nx, 1, nx, 0.0_r8, fill)
+          end do
+        end if
+        if (qdp_mass) then
+          do itrac=1,qsize
+            if (kord(itrac)<0) then
+              Qdp(:,:,:,itrac) = Qdp(:,:,:,itrac)*dp2(:,:,:)
+            end if
+          end do
+        end if
+      end if
+    end subroutine remap1
 
 subroutine remap1_nofilter(Qdp,nx,qsize,dp1,dp2)
   ! remap 1 field
@@ -115,7 +214,7 @@ subroutine remap1_nofilter(Qdp,nx,qsize,dp1,dp2)
           zv(k+1) = zv(k)+Qcol(k)
         enddo
 
-        if (ABS(z2c(nlev+1)-z1c(nlev+1)).GE.0.000001_r8) then
+        if (ABS(z2c(nlev+1)-z1c(nlev+1)) >= 0.000001_r8) then
           write(6,*) 'SURFACE PRESSURE IMPLIED BY ADVECTION SCHEME'
           write(6,*) 'NOT CORRESPONDING TO SURFACE PRESSURE IN    '
           write(6,*) 'DATA FOR MODEL LEVELS'
@@ -135,7 +234,7 @@ subroutine remap1_nofilter(Qdp,nx,qsize,dp1,dp2)
         zkr(nlev+1) = nlev
         kloop: do k = 2,nlev
           do jk = ilev,nlev+1
-            if (z1c(jk).ge.z2c(k)) then
+            if (z1c(jk) >= z2c(k)) then
               ilev      = jk
               zkr(k)   = jk-1
               cycle kloop
@@ -214,10 +313,9 @@ end subroutine remap1_nofilter
 
 !=============================================================================!
 
-
 !This uses the exact same model and reference grids and data as remap_Q, but it interpolates
 !using PPM instead of splines.
-subroutine remap_Q_ppm(Qdp,nx,qstart,qstop,qsize,dp1,dp2)
+subroutine remap_Q_ppm(Qdp,nx,qstart,qstop,qsize,dp1,dp2,kord)
   ! remap 1 field
   ! input:  Qdp   field to be remapped (NOTE: MASS, not MIXING RATIO)
   !         dp1   layer thickness (source)
@@ -225,12 +323,11 @@ subroutine remap_Q_ppm(Qdp,nx,qstart,qstop,qsize,dp1,dp2)
   !
   ! output: remaped Qdp, conserving mass
   !
-  use control_mod, only : vert_remap_q_alg
-
   implicit none
   integer,intent(in) :: nx,qstart,qstop,qsize
   real (kind=r8), intent(inout) :: Qdp(nx,nx,nlev,qsize)
   real (kind=r8), intent(in) :: dp1(nx,nx,nlev),dp2(nx,nx,nlev)
+  integer       , intent(in) :: kord(qsize)
   ! Local Variables
   integer, parameter :: gs = 2                              !Number of cells to place in the ghost region
   real(kind=r8), dimension(       nlev+2 ) :: pio    !Pressure at interfaces for old grid
@@ -242,7 +339,7 @@ subroutine remap_Q_ppm(Qdp,nx,qstart,qstop,qsize,dp1,dp2)
   real(kind=r8), dimension(3,     nlev   ) :: coefs  !PPM coefficients within each cell
   real(kind=r8), dimension(       nlev   ) :: z1, z2
   real(kind=r8) :: ppmdx(10,0:nlev+1)  !grid spacings
-  real(kind=r8) :: massn1, massn2
+  real(kind=r8) :: massn1, massn2, ext(2)
   integer :: i, j, k, q, kk, kid(nlev)
 
   do j = 1 , nx
@@ -304,11 +401,12 @@ subroutine remap_Q_ppm(Qdp,nx,qstart,qstop,qsize,dp1,dp2)
 
       !This turned out a big optimization, remembering that only parts of the PPM algorithm depends on the data, namely the
       !limiting. So anything that depends only on the grid is pre-computed outside the tracer loop.
-      ppmdx(:,:) = compute_ppm_grids( dpo )
+      ppmdx(:,:) = compute_ppm_grids( dpo)
 
       !From here, we loop over tracers for only those portions which depend on tracer data, which includes PPM limiting and
       !mass accumulation
       do q = qstart, qstop
+        if (kord(q) >= 0) then
         !Accumulate the old mass up to old grid cell interface locations to simplify integration
         !during remapping. Also, divide out the grid spacing so we're working with actual tracer
         !values and can conserve mass. The option for ifndef ZEROHORZ I believe is there to ensure
@@ -320,10 +418,13 @@ subroutine remap_Q_ppm(Qdp,nx,qstart,qstop,qsize,dp1,dp2)
           masso(k+1) = masso(k) + ao(k) !Accumulate the old mass. This will simplify the remapping
           ao(k) = ao(k) / dpo(k)        !Divide out the old grid spacing because we want the tracer mixing ratio, not mass.
         enddo
-        !Fill in ghost values. Ignored if vert_remap_q_alg == 2
-        if (vert_remap_q_alg == 10) then
+        !Fill in ghost values. Ignored if kord == 2
+        if (kord(q) == 10) then
+          ext(1) = minval(ao(1:nlev))
+          ext(2) = maxval(ao(1:nlev))
+          call linextrap(dpo(2), dpo(1), dpo(0), dpo(-1), ao(2), ao(1), ao(0), ao(-1), ext(1), ext(2))
           call linextrap(dpo(nlev-1), dpo(nlev), dpo(nlev+1), dpo(nlev+2), &
-               ao(nlev-1), ao(nlev), ao(nlev+1), ao(nlev+2))
+               ao(nlev-1), ao(nlev), ao(nlev+1), ao(nlev+2), ext(1), ext(2))
         else
           do k = 1 , gs
             ao(1   -k) = ao(       k)
@@ -331,7 +432,7 @@ subroutine remap_Q_ppm(Qdp,nx,qstart,qstop,qsize,dp1,dp2)
           enddo
         end if
         !Compute monotonic and conservative PPM reconstruction over every cell
-        coefs(:,:) = compute_ppm( ao , ppmdx )
+        coefs(:,:) = compute_ppm( ao , ppmdx, kord(q) )
         !Compute tracer values on the new grid by integrating from the old cell bottom to the new
         !cell interface to form a new grid mass accumulation. Taking the difference between
         !accumulation at successive interfaces gives the mass inside each cell. Since Qdp is
@@ -343,6 +444,7 @@ subroutine remap_Q_ppm(Qdp,nx,qstart,qstop,qsize,dp1,dp2)
           Qdp(i,j,k,q) = massn2 - massn1
           massn1 = massn2
         enddo
+        end if
       enddo
     enddo
   enddo
@@ -375,46 +477,22 @@ subroutine binary_search(pio, pivot, k)
 end subroutine binary_search
 !=======================================================================================================!
 
-
-!THis compute grid-based coefficients from Collela & Woodward 1984.
+!This compute grid-based coefficients from Collela & Woodward 1984.
 function compute_ppm_grids( dx )   result(rslt)
-  use control_mod,    only: vert_remap_q_alg
-
   implicit none
   real(kind=r8), intent(in) :: dx(-1:nlev+2)  !grid spacings
   real(kind=r8)             :: rslt(10,0:nlev+1)  !grid spacings
   integer :: j
-  integer :: indB, indE
 
   !Calculate grid-based coefficients for stage 1 of compute_ppm
-  if (vert_remap_q_alg == 2) then
-    indB = 2
-    indE = nlev-1
-  elseif (vert_remap_q_alg == 10) then
-    indB = 0
-    indE = nlev+1 
-  else
-    indB = 2
-    indE = nlev+1
-  endif
-  do j = indB , indE
+  do j = 0 , nlev+1
     rslt( 1,j) = dx(j) / ( dx(j-1) + dx(j) + dx(j+1) )
     rslt( 2,j) = ( 2._r8*dx(j-1) + dx(j) ) / ( dx(j+1) + dx(j) )
     rslt( 3,j) = ( dx(j) + 2._r8*dx(j+1) ) / ( dx(j-1) + dx(j) )
   enddo
 
   !Caculate grid-based coefficients for stage 2 of compute_ppm
-  if (vert_remap_q_alg == 2) then
-    indB = 2
-    indE = nlev-2
-  elseif (vert_remap_q_alg == 10) then
-    indB = 0
-    indE = nlev   
-  else
-    indB = 2
-    indE = nlev
-  endif
-  do j = indB , indE
+  do j = 0 , nlev
     rslt( 4,j) = dx(j) / ( dx(j) + dx(j+1) )
     rslt( 5,j) = 1._r8 / sum( dx(j-1:j+2) )
     rslt( 6,j) = ( 2._r8 * dx(j+1) * dx(j) ) / ( dx(j) + dx(j+1 ) )
@@ -425,72 +503,42 @@ function compute_ppm_grids( dx )   result(rslt)
   enddo
 end function compute_ppm_grids
 
+
 !=======================================================================================================!
 
 
 
 !This computes a limited parabolic interpolant using a net 5-cell stencil, but the stages of computation are broken up into 3 stages
-function compute_ppm( a , dx )    result(coefs)
-  use control_mod, only: vert_remap_q_alg
-  use dimensions_mod, only: ksponge_end
+function compute_ppm( a , dx , kord)    result(coefs)
   implicit none
   real(kind=r8), intent(in) :: a    (    -1:nlev+2)  !Cell-mean values
   real(kind=r8), intent(in) :: dx   (10,  0:nlev+1)  !grid spacings
+  integer,       intent(in) :: kord
   real(kind=r8) ::             coefs(0:2,   nlev  )  !PPM coefficients (for parabola)
   real(kind=r8) :: ai (0:nlev  )                     !fourth-order accurate, then limited interface values
   real(kind=r8) :: dma(0:nlev+1)                     !An expression from Collela's '84 publication
   real(kind=r8) :: da                                !Ditto
   ! Hold expressions based on the grid (which are cumbersome).
   real(kind=r8) :: al, ar                            !Left and right interface values for cell-local limiting
-  integer :: j,k
+  integer :: j
   integer :: indB, indE
 
   ! Stage 1: Compute dma for each cell, allowing a 1-cell ghost stencil below and above the domain
-  if (vert_remap_q_alg == 2) then
-    indB = 2
-    indE = nlev-1        
-  elseif (vert_remap_q_alg == 10) then
-    indB = 0
-    indE = nlev+1 
-  else
-    indB = 2
-    indE = nlev+1
-  endif
-  do j = indB , indE
+  do j = 0 , nlev+1
     da = dx(1,j) * ( dx(2,j) * ( a(j+1) - a(j) ) + dx(3,j) * ( a(j) - a(j-1) ) )
-    dma(j) = minval( (/ abs(da) , 2._r8 * abs( a(j) - a(j-1) ) , 2._r8 * abs( a(j+1) - a(j) ) /) ) * sign(1._R8,da)
+    dma(j) = minval( (/ abs(da) , 2._r8 * abs( a(j) - a(j-1) ) , 2._r8 * abs( a(j+1) - a(j) ) /) ) * sign(1._r8,da)
     if ( ( a(j+1) - a(j) ) * ( a(j) - a(j-1) ) <= 0._r8 ) dma(j) = 0._r8
   enddo
 
   ! Stage 2: Compute ai for each cell interface in the physical domain (dimension nlev+1)
-  if (vert_remap_q_alg == 2) then
-    indB = 2
-    indE = nlev-2
-  elseif (vert_remap_q_alg == 10) then
-    indB = 0
-    indE = nlev  
-  else
-    indB = 2
-    indE = nlev
-  endif
-  do j = indB , indE
+  do j = 0 , nlev
     ai(j) = a(j) + dx(4,j) * ( a(j+1) - a(j) ) + dx(5,j) * ( dx(6,j) * ( dx(7,j) - dx(8,j) ) &
          * ( a(j+1) - a(j) ) - dx(9,j) * dma(j+1) + dx(10,j) * dma(j) )
   enddo
 
   ! Stage 3: Compute limited PPM interpolant over each cell in the physical domain
   ! (dimension nlev) using ai on either side and ao within the cell.
-  if (vert_remap_q_alg == 2) then
-    indB = 3
-    indE = nlev-2
-  elseif (vert_remap_q_alg == 10) then
-    indB = 1
-    indE = nlev 
-  else
-    indB = 3
-    indE = nlev
-  endif
-  do j = indB , indE
+  do j = 1 , nlev
     al = ai(j-1)
     ar = ai(j  )
     if ( (ar - a(j)) * (a(j) - al) <= 0._r8 ) then
@@ -502,26 +550,18 @@ function compute_ppm( a , dx )    result(coefs)
     !Computed these coefficients from the edge values and cell mean in Maple. Assumes normalized coordinates: xi=(x-x0)/dx
     coefs(0,j) = 1.5_r8 * a(j) - ( al + ar ) / 4._r8
     coefs(1,j) = ar - al
-    coefs(2,j) = -6._r8 * a(j) + 3._r8 * ( al + ar )
+    coefs(2,j) = 3._r8 * (-2._r8 * a(j) + ( al + ar ))
   enddo
 
-  !If we're not using a mirrored boundary condition, then make the two cells bordering the top and bottom
-  !material boundaries piecewise constant. Zeroing out the first and second moments, and setting the zeroth
-  !moment to the cell mean is sufficient to maintain conservation.
-
-  if (vert_remap_q_alg <10) then
-    do k=1,ksponge_end
-      coefs(0,k)   = a(k)  !reduce to PCoM in sponge layers
-      coefs(1:2,k) = 0._r8 !reduce to PCoM in sponge layers
-    end do
-  end if
-  if (vert_remap_q_alg == 2) then
-    coefs(0  ,1:2        ) = a(1:2)
-    coefs(1:2,1:2        ) = 0.0_r8
-    coefs(0  ,nlev-1:nlev) = a(nlev-1:nlev)
-    coefs(1:2,nlev-1:nlev) = 0.0_r8
+  !If kord == 2, use piecewise constant in the boundaries, and don't use ghost cells.
+  if (kord == 2) then
+    coefs(0,1:2) = a(1:2)
+    coefs(1:2,1:2) = 0._r8
+    coefs(0,nlev-1:nlev) = a(nlev-1:nlev)
+    coefs(1:2,nlev-1:nlev) = 0._r8
   endif
 end function compute_ppm
+
 
 !=======================================================================================================!
 
@@ -539,8 +579,8 @@ end function integrate_parabola
 
 
 !=============================================================================================!
-  subroutine linextrap(dx1,dx2,dx3,dx4,y1,y2,y3,y4)
-    real(kind=r8), intent(in) :: dx1,dx2,dx3,dx4,y1,y2
+  subroutine linextrap(dx1,dx2,dx3,dx4,y1,y2,y3,y4,lo,hi)
+    real(kind=r8), intent(in) :: dx1,dx2,dx3,dx4,y1,y2,lo,hi
     real(kind=r8), intent(out) :: y3,y4
 
     real(kind=r8), parameter :: half = 0.5_r8
@@ -551,14 +591,13 @@ end function integrate_parabola
     x2 = x1 + half*(dx1 + dx2)
     x3 = x2 + half*(dx2 + dx3)
     x4 = x3 + half*(dx3 + dx4)
-
     a  = (x3-x1)/(x2-x1)
-    y3 = (1-a)*y1 + a*y2
+    y3 = (1.0_r8-a)*y1 + a*y2
     a  = (x4-x1)/(x2-x1)
-    y4 = (1-a)*y1 + a*y2    
-  end subroutine linextrap
-
-
+    y4 = (1.0_r8-a)*y1 + a*y2
+    y3 = max(lo, min(hi, y3))
+    y4 = max(lo, min(hi, y4))
+  end subroutine linextrap 
 end module vertremap_mod
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

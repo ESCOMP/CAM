@@ -50,6 +50,7 @@ subroutine stepon_init(dyn_in, dyn_out )
    call addfld('U_gll'     ,(/ 'lev' /), 'I', 'm/s ','U wind on gll grid',gridname='GLL')
    call addfld('V_gll'     ,(/ 'lev' /), 'I', 'm/s ','V wind on gll grid',gridname='GLL')
    call addfld('T_gll'     ,(/ 'lev' /), 'I', 'K '  ,'T on gll grid'     ,gridname='GLL')
+   call addfld('dp_ref_gll' ,(/ 'lev' /), 'I', '  '  ,'dp dry / dp_ref on gll grid'     ,gridname='GLL')
    call addfld('PSDRY_gll' ,horiz_only , 'I', 'Pa ' ,'psdry on gll grid' ,gridname='GLL')
    call addfld('PS_gll'    ,horiz_only , 'I', 'Pa ' ,'ps on gll grid'    ,gridname='GLL')
    call addfld('PHIS_gll'  ,horiz_only , 'I', 'Pa ' ,'PHIS on gll grid'  ,gridname='GLL')
@@ -208,14 +209,14 @@ subroutine diag_dynvar_ic(elem, fvm)
    use hybrid_mod,             only: config_thread_region, get_loop_ranges
    use hybrid_mod,             only: hybrid_t
    use dimensions_mod,         only: np, npsq, nc, nhc, fv_nphys, qsize, ntrac, nlev
-   use dimensions_mod,         only: qsize_condensate_loading, qsize_condensate_loading_idx_gll
-   use dimensions_mod,         only: qsize_condensate_loading_idx
    use dimensions_mod,         only: cnst_name_gll
    use constituents,           only: cnst_name
    use element_mod,            only: element_t
    use fvm_control_volume_mod, only: fvm_struct
    use fvm_mapping,            only: fvm2dyn
-
+   use physconst,              only: get_sum_species, get_ps,thermodynamic_active_species_idx
+   use physconst,              only: thermodynamic_active_species_idx_dycore,get_dp_ref
+   use hycoef,                 only: hyai, hybi, ps0
    ! arguments
    type(element_t) , intent(in)    :: elem(1:nelemd)
    type(fvm_struct), intent(inout) :: fvm(:)
@@ -229,8 +230,9 @@ subroutine diag_dynvar_ic(elem, fvm)
    integer               :: nets, nete
    real(r8), allocatable :: ftmp(:,:,:)
    real(r8), allocatable :: fld_fvm(:,:,:,:,:), fld_gll(:,:,:,:,:)
+   real(r8), allocatable :: fld_2d(:,:)
    logical,  allocatable :: llimiter(:)
-   real(r8)              :: qtmp(np,np,nlev)
+   real(r8)              :: qtmp(np,np,nlev), dp_ref(np,np,nlev), ps_ref(np,np)
    real(r8), allocatable :: factor_array(:,:,:)
    !----------------------------------------------------------------------------
 
@@ -295,6 +297,18 @@ subroutine diag_dynvar_ic(elem, fvm)
       end do
    end if
 
+   if (hist_fld_active('dp_ref_gll')) then
+     do ie = 1, nelemd       
+       call get_dp_ref(hyai,hybi,ps0,1,np,1,np,1,nlev,elem(ie)%state%phis(:,:),dp_ref(:,:,:),ps_ref(:,:))
+         do j = 1, np
+            do i = 1, np
+               ftmp(i+(j-1)*np,:,1) = elem(ie)%state%dp3d(i,j,:,tl_f)/dp_ref(i,j,:)
+            end do
+         end do
+         call outfld('dp_ref_gll', ftmp(:,:,1), npsq, ie)
+      end do
+   end if
+
    if (hist_fld_active('PSDRY_gll')) then
       do ie = 1, nelemd
          do j = 1, np
@@ -307,19 +321,18 @@ subroutine diag_dynvar_ic(elem, fvm)
    end if
 
    if (hist_fld_active('PS_gll')) then
-      do ie = 1, nelemd
+     allocate(fld_2d(np,np))
+     do ie = 1, nelemd
+       call get_ps(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,tl_Qdp),&
+            thermodynamic_active_species_idx_dycore,elem(ie)%state%dp3d(:,:,:,tl_f),fld_2d,hyai(1)*ps0)
          do j = 1, np
             do i = 1, np
-               ftmp(i+(j-1)*np,1,1) = elem(ie)%state%psdry(i,j)
-               do nq = 1, qsize_condensate_loading
-                  m_cnst = qsize_condensate_loading_idx_gll(nq)
-                  ftmp(i+(j-1)*np,1,1) = ftmp(i+(j-1)*np,1,1) + &
-                     SUM(elem(ie)%state%Qdp(i,j,:,m_cnst,tl_Qdp))
-               end do
+              ftmp(i+(j-1)*np,1,1) = fld_2d(i,j)
             end do
          end do
          call outfld('PS_gll', ftmp(:,1,1), npsq, ie)
-      end do
+       end do
+       deallocate(fld_2d)
    end if
 
    if (hist_fld_active('PHIS_gll')) then
@@ -329,21 +342,18 @@ subroutine diag_dynvar_ic(elem, fvm)
    end if
 
    if (write_inithist()) then
-
-      do ie = 1, nelemd
-         do j = 1, np
-            do i = 1, np
-               ftmp(i+(j-1)*np,1,1) = elem(ie)%state%psdry(i,j)
-               do nq = 1, qsize_condensate_loading
-                  m_cnst = qsize_condensate_loading_idx_gll(nq)
-                  ftmp(i+(j-1)*np,1,1) = ftmp(i+(j-1)*np,1,1) + &
-                     SUM(elem(ie)%state%Qdp(i,j,:,m_cnst,tl_Qdp))
-               end do
-            end do
+     allocate(fld_2d(np,np))     
+     do ie = 1, nelemd
+       call get_ps(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,tl_Qdp),&
+            thermodynamic_active_species_idx_dycore,elem(ie)%state%dp3d(:,:,:,tl_f),fld_2d,hyai(1)*ps0)       
+       do j = 1, np
+         do i = 1, np
+           ftmp(i+(j-1)*np,1,1) = fld_2d(i,j)
          end do
-         call outfld('PS&IC', ftmp(:,1,1), npsq, ie)
-      end do
-
+       end do
+       call outfld('PS&IC', ftmp(:,1,1), npsq, ie)       
+     end do
+     deallocate(fld_2d)
       if (fv_nphys < 1) allocate(factor_array(np,np,nlev))
 
       do ie = 1, nelemd
@@ -352,12 +362,8 @@ subroutine diag_dynvar_ic(elem, fvm)
          call outfld('V&IC', RESHAPE(elem(ie)%state%v(:,:,2,:,tl_f), (/npsq,nlev/)), npsq, ie)
 
          if (fv_nphys < 1) then
-            factor_array(:,:,:) = 1.0_r8
-            do k = 1, qsize_condensate_loading
-               m_cnst = qsize_condensate_loading_idx(k)
-               factor_array(:,:,:) = factor_array(:,:,:) + &
-                    elem(ie)%state%Qdp(:,:,:,m_cnst,tl_qdp)/elem(ie)%state%dp3d(:,:,:,tl_f)
-            end do
+            call get_sum_species(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,tl_qdp), &
+               thermodynamic_active_species_idx_dycore, factor_array,dp_dry=elem(ie)%state%dp3d(:,:,:,tl_f))
             factor_array(:,:,:) = 1.0_r8/factor_array(:,:,:)
             do m_cnst = 1, qsize
                if (cnst_type(m_cnst) == 'wet') then
@@ -385,19 +391,15 @@ subroutine diag_dynvar_ic(elem, fvm)
          allocate(factor_array(nc,nc,nlev))
          llimiter = .true.
          do ie = nets, nete
-            factor_array(:,:,:) = 1.0_r8
-            do k = 1, qsize_condensate_loading
-               m_cnst = qsize_condensate_loading_idx(k)
-               factor_array(:,:,:) = factor_array(:,:,:) + fvm(ie)%c(1:nc,1:nc,:,m_cnst)
-            end do
-            factor_array(:,:,:) = 1.0_r8/factor_array(:,:,:)
-            do m_cnst = 1, ntrac
-               if (cnst_type(m_cnst) == 'wet') then
-                  fld_fvm(1:nc,1:nc,:,m_cnst,ie) = fvm(ie)%c(1:nc,1:nc,:,m_cnst)*factor_array(:,:,:)
-               else
-                  fld_fvm(1:nc,1:nc,:,m_cnst,ie) = fvm(ie)%c(1:nc,1:nc,:,m_cnst)
-               end if
-            end do
+           call get_sum_species(1,nc,1,nc,1,nlev,ntrac,fvm(ie)%c(1:nc,1:nc,:,:),thermodynamic_active_species_idx,factor_array)
+           factor_array(:,:,:) = 1.0_r8/factor_array(:,:,:)
+           do m_cnst = 1, ntrac
+             if (cnst_type(m_cnst) == 'wet') then
+               fld_fvm(1:nc,1:nc,:,m_cnst,ie) = fvm(ie)%c(1:nc,1:nc,:,m_cnst)*factor_array(:,:,:)
+             else
+               fld_fvm(1:nc,1:nc,:,m_cnst,ie) = fvm(ie)%c(1:nc,1:nc,:,m_cnst)
+             end if
+           end do
          end do
 
          call fvm2dyn(fld_fvm, fld_gll, hybrid, nets, nete, nlev, ntrac, fvm(nets:nete), llimiter)

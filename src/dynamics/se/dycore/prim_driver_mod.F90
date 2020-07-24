@@ -3,6 +3,7 @@
 module prim_driver_mod
   use shr_kind_mod,           only: r8=>shr_kind_r8
   use cam_logfile,            only: iulog
+  use cam_abortutils,         only: endrun
   use dimensions_mod,         only: np, nlev, nelem, nelemd, GlobalUniqueCols, qsize, nc,nhc
   use hybrid_mod,             only: hybrid_t, config_thread_region, PrintHybrid
   use derivative_mod,         only: derivative_t
@@ -26,7 +27,6 @@ contains
   subroutine prim_init2(elem, fvm, hybrid, nets, nete, tl, hvcoord)
     use dimensions_mod,         only: irecons_tracer, fvm_supercycling
     use dimensions_mod,         only: fv_nphys, ntrac, nc
-    use cam_abortutils,         only: endrun
     use parallel_mod,           only: syncmp
     use time_mod,               only: timelevel_t, tstep, phys_tscale, nsplit, TimeLevel_Qdp
     use time_mod,               only: nsplit_baseline,rsplit_baseline
@@ -59,7 +59,7 @@ contains
 !   variables used to calculate CFL
     real (kind=r8) :: dtnu            ! timestep*viscosity parameter
     real (kind=r8) :: dt_dyn_vis      ! viscosity timestep used in dynamics
-    real (kind=r8) :: dt_dyn_del2_sponge 
+    real (kind=r8) :: dt_dyn_del2_sponge, dt_remap 
     real (kind=r8) :: dt_tracer_vis      ! viscosity timestep used in tracers
 
     real (kind=r8) :: dp
@@ -84,7 +84,7 @@ contains
     dt_dyn_vis = tstep
     dt_dyn_del2_sponge = tstep
     dt_tracer_vis=tstep*qsplit
-
+    dt_remap=dt_tracer_vis*rsplit
     ! compute most restrictive condition:
     ! note: dtnu ignores subcycling
     dtnu=max(dt_dyn_vis*max(nu,nu_div), dt_tracer_vis*nu_q)
@@ -118,7 +118,9 @@ contains
 
     ! CAM has set tstep based on dtime before calling prim_init2(),
     ! so only now does HOMME learn the timstep.  print them out:
-    call print_cfl(elem,hybrid,nets,nete,dtnu,hvcoord%hyai(1)*hvcoord%ps0,&
+    call print_cfl(elem,hybrid,nets,nete,dtnu,&
+         !p top and p mid levels
+         hvcoord%hyai(1)*hvcoord%ps0,(hvcoord%hyam(:)+hvcoord%hybm(:))*hvcoord%ps0,&
          !dt_remap,dt_tracer_fvm,dt_tracer_se
          tstep*qsplit*rsplit,tstep*qsplit*fvm_supercycling,tstep*qsplit,&
          !dt_dyn,dt_dyn_visco,dt_tracer_visco, dt_phys
@@ -135,7 +137,7 @@ contains
 
      n0=tl%n0
      call TimeLevel_Qdp( tl, qsplit, n0_qdp)
-     call compute_omega(hybrid,n0,n0_qdp,elem,deriv,nets,nete,tstep,hvcoord)
+     call compute_omega(hybrid,n0,n0_qdp,elem,deriv,nets,nete,dt_remap,hvcoord)
 
      if (hybrid%masterthread) write(iulog,*) "initial state:"
      call prim_printstate(elem, tl, hybrid,nets,nete, fvm)
@@ -180,9 +182,8 @@ contains
 !
     use hybvcoord_mod, only : hvcoord_t
     use time_mod,               only: TimeLevel_t, timelevel_update, timelevel_qdp, nsplit
-    use control_mod,            only: statefreq,disable_diagnostics,qsplit, rsplit, variable_nsplit
-    use control_mod,            only: del2_physics_tendencies
-    use prim_advance_mod,       only: applycamforcing, del2_sponge_uvt_tendencies
+    use control_mod,            only: statefreq,qsplit, rsplit, variable_nsplit
+    use prim_advance_mod,       only: applycamforcing
     use prim_advance_mod,       only: calc_tot_energy_dynamics,compute_omega
     use prim_state_mod,         only: prim_printstate, adjust_nsplit
     use prim_advection_mod,     only: vertical_remap, deriv
@@ -225,7 +226,6 @@ contains
         compute_diagnostics=.true.
       endif
     end if
-    if(disable_diagnostics) compute_diagnostics=.false.
     !
     ! initialize variables for computing vertical Courant number
     !
@@ -245,9 +245,6 @@ contains
 
     call TimeLevel_Qdp( tl, qsplit, n0_qdp)
 
-    if (del2_physics_tendencies) &
-         call del2_sponge_uvt_tendencies(elem,hybrid,deriv,nets,nete,dt_phys)
-    
     call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%n0,n0_qdp,'dAF')
     call ApplyCAMForcing(elem,fvm,tl%n0,n0_qdp,dt_remap,dt_phys,nets,nete,nsubstep)
     call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%n0,n0_qdp,'dBD')    
@@ -277,10 +274,8 @@ contains
       end do
     end if
     call t_startf('vertical_remap')
-    call vertical_remap(hybrid,elem,fvm,hvcoord,dt_remap,tl%np1,np1_qdp,nets,nete)
+    call vertical_remap(hybrid,elem,fvm,hvcoord,tl%np1,np1_qdp,nets,nete)
     call t_stopf('vertical_remap')
-
-
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! time step is complete.
@@ -288,7 +283,7 @@ contains
     call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%np1,np1_qdp,'dAR')
 
     if (nsubstep==nsplit) then
-      call compute_omega(hybrid,tl%np1,np1_qdp,elem,deriv,nets,nete,dt,hvcoord)      
+      call compute_omega(hybrid,tl%np1,np1_qdp,elem,deriv,nets,nete,dt_remap,hvcoord)           
     end if
 
     ! now we have:
@@ -377,7 +372,6 @@ contains
     use hybvcoord_mod,          only: hvcoord_t
     use time_mod,               only: TimeLevel_t, timelevel_update
     use control_mod,            only: statefreq, qsplit, nu_p
-    use control_mod,            only: TRACERTRANSPORT_CONSISTENT_SE_FVM, tracer_transport_type
     use thread_mod,             only: omp_get_thread_num
     use prim_advance_mod,       only: prim_advance_exp
     use prim_advection_mod,     only: prim_advec_tracers_remap, prim_advec_tracers_fvm, deriv
@@ -473,10 +467,12 @@ contains
         do j=1,nc
           x = SUM(tempflux(i,j,:))
           if (ABS(tempmass(i,j)).lt.1e-11_r8 .and. 1e-11_r8.lt.ABS(x)) then
-            print *,__FILE__,__LINE__,"**********",ie,k,i,j,tempmass(i,j),x
+            write(iulog,*) __FILE__,__LINE__,"**CSLAM mass-flux ERROR***",ie,k,i,j,tempmass(i,j),x
+            call endrun('**CSLAM mass-flux ERROR***')
           elseif (1e-5_r8.lt.ABS((tempmass(i,j)-x)/tempmass(i,j))) then
-            print *,__FILE__,__LINE__,"**********",ie,k,i,j,tempmass(i,j),x,&
+            write(iulog,*) __FILE__,__LINE__,"**CSLAM mass-flux ERROR**",ie,k,i,j,tempmass(i,j),x,&
                    ABS((tempmass(i,j)-x)/tempmass(i,j))
+            call endrun('**CSLAM mass-flux ERROR**')
           endif
         end do
         end do
@@ -529,7 +525,7 @@ contains
     !
     ! only run fvm transport every fvm_supercycling rstep
     !
-    if (tracer_transport_type == TRACERTRANSPORT_CONSISTENT_SE_FVM.and.ntrac>0) then
+    if (ntrac>0) then
       !
       ! FVM transport
       !
@@ -568,10 +564,8 @@ contains
         !
         call Prim_Advec_Tracers_fvm(elem,fvm,hvcoord,hybrid,&
              dt_q,tl,nets,nete,ghostBufQnhcJet_h,ghostBufQ1_h, ghostBufFluxJet_h,kmin_jet,kmax_jet)
-      end if
-        
+      end if       
 
-      
 #ifdef waccm_debug
       do ie=nets,nete
         call outfld('CSLAM_gamma', RESHAPE(fvm(ie)%CSLAM_gamma(:,:,:,1), &

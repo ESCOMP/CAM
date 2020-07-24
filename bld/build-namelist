@@ -533,7 +533,9 @@ add_default($nl, 'cime_model', 'val'=>'cesm');
 # CESM driver defaults
 add_default($nl, 'coldair_outbreak_mod', 'val'=>'.true.');
 add_default($nl, 'flux_max_iteration', 'val'=>'5');
-
+# Composition of air
+add_default($nl, 'dry_air_species');
+add_default($nl, 'water_species_in_air');
 # Spectral Element dycore
 my $dyn = $cfg->get('dyn');
 if ($dyn =~ /se/) {add_default($nl, 'vect_map', 'val'=>'cart3d');}
@@ -1909,6 +1911,14 @@ if (defined $nl->get_value('prescribed_aero_file')) {
 my $megan_emis = defined $nl->get_value('megan_specifier');
 if ( $megan_emis ) { add_default($nl, 'megan_factors_file'); }
 
+# Aerosol convective processes
+if ($chem =~ /trop_strat/) {
+    add_default($nl, 'convproc_do_aer', 'val'=>'.true.');
+    add_default($nl, 'convproc_do_evaprain_atonce', 'val'=>'.true.');
+    add_default($nl, 'convproc_pom_spechygro', 'val'=>'0.2D0');
+    add_default($nl, 'convproc_wup_max', 'val'=>'4.0D0');
+}
+
 # Tropospheric full chemistry options
 if (($chem =~ /trop_mozart/ or $chem =~ /trop_strat/ or $chem =~ /waccm_tsmlt/) and ($phys !~ /cam6/)) {
 
@@ -2332,7 +2342,6 @@ if ($chem =~ /_mam4/ and $phys =~ /cam6/) {
                     'ISOP_bb_srf_file' => 'ISOP',
                     'MEK_an_srf_file' => 'MEK',
                     'MEK_bb_srf_file' => 'MEK',
-                    'MTERP_bb_srf_file' => 'MTERP',
                     'NH3_an_srf_file' => 'NH3',
                     'NH3_bb_srf_file' => 'NH3',
                     'NH3_ot_srf_file' => 'NH3',
@@ -2341,6 +2350,25 @@ if ($chem =~ /_mam4/ and $phys =~ /cam6/) {
                     'XYLENES_an_srf_file' => 'XYLENES',
                     'XYLENES_bb_srf_file' => 'XYLENES',
                     'E90_srf_file' => 'E90' );
+        if ($chem =~ /trop_strat_mam4_ts2/) {
+            %species = (%species,
+                    'MTERP_bb_srf_file' => 'APIN') ;
+        } else {
+            %species = (%species,
+                    'MTERP_bb_srf_file' => 'MTERP' );
+        }
+        if ($cfg->get('hgrid') =~ /ne0np4CONUS.ne30x8/) {
+            %species = (%species,
+                    'BIGALD_bb_srf_file' => 'BIGALD',
+                    'CH3COCHO_bb_srf_file' => 'CH3COCHO',
+                    'CRESOL_bb_srf_file' => 'CRESOL',
+                    'HYAC_bb_srf_file' => 'HYAC',
+                    'ISOP_an_srf_file' => 'ISOP',
+                    'MACR_bb_srf_file' => 'MACR',
+                    'MVK_bb_srf_file' => 'MVK',
+                    'MTERP_an_srf_file' => 'MTERP',
+                    'NO2_bb_srf_file' => 'NO2' );
+        }
         if ($chem =~ /_vbsext/) {
             %species = (%species,
                     'IVOC_an_srf_file' => 'IVOCff',
@@ -2441,7 +2469,7 @@ if ($chem =~ /_mam4/ and $phys =~ /cam6/) {
     }
 
     # MEGAN emissions
-    if ($chem =~ /trop_strat/ or $chem =~ /_tsmlt/) {
+    if ($chem =~ /trop_strat_mam4_vbsext/ or $chem =~ /waccm_tsmlt/) {
         my $val = "'ISOP = isoprene',"
                 . "'MTERP = pinene_a + carene_3 + thujene_a + 2met_styrene + cymene_p + cymene_o + terpinolene + bornene "
                 . "+ fenchene_a + ocimene_al + pinene_b + sabinene + camphene + limonene + phellandrene_a + terpinene_g "
@@ -2463,6 +2491,83 @@ if ($chem =~ /_mam4/ and $phys =~ /cam6/) {
                 . "'BIGALK = pentane + hexane + heptane + tricyclene',"
                 . "'BIGENE = butene',"
                 . "'TOLUENE = toluene'";
+        add_default($nl, 'megan_specifier', 'val'=>$val);
+        add_default($nl, 'megan_factors_file');
+        add_default($nl, 'megan_mapped_emisfctrs', 'val'=>'.false.');
+    } 
+    if ($chem =~ /trop_strat_mam4_vbs/ ) {
+        my $val = "'ISOP = isoprene',"
+                . "'MTERP = carene_3 + pinene_a + thujene_a + bornene + terpineol_4 + terpineol_a + terpinyl_ACT_a "
+                . "+ myrtenal + sabinene + pinene_b + camphene + fenchene_a + limonene + phellandrene_a + terpinene_a "
+                . "+ terpinene_g + terpinolene + phellandrene_b + linalool + ionone_b + geranyl_acetone + neryl_acetone "
+                . "+ jasmone + verbenene + ipsenol + myrcene + ocimene_t_b + ocimene_al + ocimene_c_b + 2met_nonatriene',"
+                . "'BCARY = farnescene_a + caryophyllene_b + acoradiene + aromadendrene + bergamotene_a + bergamotene_b "
+                . "+ bisabolene_a + bisabolene_b + bourbonene_b + cadinene_d + cadinene_g + cedrene_a + copaene_a "
+                . "+ cubebene_a + cubebene_b + elemene_b + farnescene_b + germacrene_B + germacrene_D + gurjunene_b "
+                . "+ humulene_a + humulene_g + isolongifolene + longifolene + longipinene + muurolene_a + muurolene_g "
+                . "+ selinene_b + selinene_d + nerolidol_c + nerolidol_t',"
+                . "'BIGALK = tricyclene + camphor + fenchone + thujone_a + thujone_b + cineole_1_8 + borneol + bornyl_ACT "
+                . "+ cedrol + decanal + heptanal + heptane + hexane + nonanal + octanal + octanol + oxopentanal + pentane "
+                . "+ hexanal + hexanol_1 + pentanal + heptanone',"
+                . "'BIGENE = 2met_styrene + estragole + piperitone + linalool_OXD_c + linalool_OXD_t + dodecene_1 "
+                . "+ met_heptenone + nonenal + octenol_1e3ol + tetradecene_1 + butene + diallyl_2s + met_propenyl_2s "
+                . "+ met_jasmonate + hexenal_c3 + hexenal_t2 + hexenol_c3 + hexenyl_ACT_c3',"
+                . "'TOLUENE = toluene + met_benzoate + phenyl_CCO + met_salicylate + indole + anisole + benzyl-acetate "
+                . "+ benzyl-alcohol + Napthalene',"
+                . "'XYLENES = cymene_p + cymene_o + homosalate + meta-cymenene',"
+                . "'CH3OH = methanol',"
+                . "'CH3COCH3 = acetone',"
+                . "'CH3CHO = acetaldehyde',"
+                . "'C2H5OH = ethanol',"
+                . "'HCOOH = formic_acid',"
+                . "'CH2O = formaldehyde',"
+                . "'CH3COOH = acetic_acid',"
+                . "'BZALD = benzaldehyde',"
+                . "'MEK = butanone_2',"
+                . "'CO = carbon_monoxide',"
+                . "'C2H6 = ethane',"
+                . "'C2H4 = ethene',"
+                . "'HCN = hydrogen_cyanide',"
+                . "'C3H8 = propane',"
+                . "'C3H6 = propene'";
+        add_default($nl, 'megan_specifier', 'val'=>$val);
+        add_default($nl, 'megan_factors_file');
+        add_default($nl, 'megan_mapped_emisfctrs', 'val'=>'.false.');
+    }
+    if ($chem =~ /trop_strat_mam4_ts2/ ) {
+        my $val = "'ISOP = isoprene',"
+                . "'APIN = pinene_a + myrtenal',"
+                . "'BPIN = carene_3 + thujene_a + bornene + fenchene_a + pinene_b + sabinene + camphene + terpineol_4 + terpineol_a + terpinyl_ACT_a',"
+                . "'LIMON = terpinolene + limonene + phellandrene_a + terpinene_g + terpinene_a + phellandrene_b + linalool + ionone_b "
+                . "+ geranyl_acetone + neryl_acetone + jasmone + verbenene + ipsenol',"
+                . "'MYRC = ocimene_al + myrcene + ocimene_t_b + ocimene_c_b + 2met_nonatriene',"
+                . "'BCARY = farnescene_a + caryophyllene_b + acoradiene + aromadendrene + bergamotene_a + bergamotene_b + bisabolene_a "
+                . "+ bisabolene_b + bourbonene_b + cadinene_d + cadinene_g + cedrene_a + copaene_a + cubebene_a + cubebene_b + elemene_b "
+                . "+ farnescene_b + germacrene_B + germacrene_D + gurjunene_b + humulene_a + humulene_g + isolongifolene + longifolene "
+                . "+ longipinene + muurolene_a + muurolene_g + selinene_b + selinene_d + nerolidol_c + nerolidol_t',"
+                . "'BIGALK = tricyclene + camphor + fenchone + thujone_a + thujone_b + cineole_1_8 + borneol + bornyl_ACT + cedrol "
+                . "+ decanal + heptanal + heptane + hexane + nonanal + octanal + octanol + oxopentanal + pentane + hexanal "
+                . "+ hexanol_1 + pentanal + heptanone',"
+                . "'BIGENE = 2met_styrene + estragole + piperitone + linalool_OXD_c + linalool_OXD_t + dodecene_1 + met_heptenone "
+                . "+ nonenal + octenol_1e3ol + tetradecene_1 + butene + diallyl_2s + met_propenyl_2s + met_jasmonate + hexenal_c3 "
+                . "+ hexenal_t2 + hexenol_c3 + hexenyl_ACT_c3',"
+                . "'TOLUENE = toluene + met_benzoate + phenyl_CCO + met_salicylate + indole + anisole + benzyl-acetate + benzyl-alcohol + Napthalene',"
+                . "'XYLENES = cymene_p + cymene_o + homosalate + meta-cymenene',"
+                . "'CH3OH = methanol',"
+                . "'CH3COCH3 = acetone',"
+                . "'CH3CHO = acetaldehyde',"
+                . "'C2H5OH = ethanol',"
+                . "'HCOOH = formic_acid',"
+                . "'CH2O = formaldehyde',"
+                . "'CH3COOH = acetic_acid',"
+                . "'BZALD = benzaldehyde',"
+                . "'MEK = butanone_2',"
+                . "'CO = carbon_monoxide',"
+                . "'C2H6 = ethane',"
+                . "'C2H4 = ethene',"
+                . "'HCN = hydrogen_cyanide',"
+                . "'C3H8 = propane',"
+                . "'C3H6 = propene'";
         add_default($nl, 'megan_specifier', 'val'=>$val);
         add_default($nl, 'megan_factors_file');
         add_default($nl, 'megan_mapped_emisfctrs', 'val'=>'.false.');
@@ -3548,7 +3653,6 @@ if ($dyn =~ /se/) {
                   se_nu_div
                   se_nu_p
                   se_nu_top
-                  se_qsize_condensate_loading
                   se_qsplit
                   se_rsplit
                   se_statediag_numtrac
@@ -3556,16 +3660,18 @@ if ($dyn =~ /se/) {
                   se_tracer_num_threads
                   se_tstep_type
                   se_vert_num_threads
-                  se_vert_remap_q_alg
+                  se_vert_remap_T
+                  se_vert_remap_uvTq_alg
+                  se_vert_remap_tracer_alg
 		  se_fvm_supercycling
 		  se_fvm_supercycling_jet
 		  se_kmin_jet
 		  se_kmax_jet
-		  se_variable_nsplit
 		  se_phys_dyn_cp
 		  se_raytau0
 		  se_raykrange
 		  se_rayk0
+                  se_molecular_diff
         );
 
     my %opts;

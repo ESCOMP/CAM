@@ -43,11 +43,10 @@ use cam_abortutils,   only: endrun
 
 use parallel_mod,     only: par
 use thread_mod,       only: horz_num_threads
-use control_mod,      only: qsplit, rsplit, nu_top
 use dimensions_mod,   only: np, npsq, ne, nlev, qsize, nelemd, nc, ntrac
 use dof_mod,          only: UniquePoints
 use element_mod,      only: element_t
-use time_mod,         only: tstep, TimeLevel_Qdp, nsplit
+use time_mod,         only: tstep, TimeLevel_Qdp
 
 use edge_mod,         only: initEdgeBuffer, edgeVpack, edgeVunpack, FreeEdgeBuffer
 use edgetype_mod,     only: EdgeBuffer_t
@@ -70,7 +69,6 @@ type(var_desc_t)              :: psdry_desc, udesc, vdesc, tdesc
 type(var_desc_t), allocatable :: qdesc_dp(:)
 type(var_desc_t)              :: dp_fvm_desc
 type(var_desc_t), pointer     :: c_fvm_desc(:)
-type(var_desc_t)              :: nsplit_desc, rsplit_desc, nu_top_desc
 
 integer, private :: nelem_tot = -1 ! Correct total number of elements
 
@@ -117,11 +115,6 @@ subroutine init_restart_dynamics(file, dyn_out)
    call init_nelem_tot()
    call init_restart_hycoef(file, vdimids)
    nlev_dimid = vdimids(1)
-
-   ! control variables that may be adjusted at run time
-   ierr = pio_def_var(File, 'nsplit', pio_int,    nsplit_desc)
-   ierr = pio_def_var(File, 'rsplit', pio_int,    rsplit_desc)
-   ierr = pio_def_var(File, 'nu_top', pio_double, nu_top_desc)
 
    call pio_seterrorhandling(File, pio_bcast_error, err_handling)
 
@@ -179,7 +172,7 @@ end subroutine init_restart_dynamics
 !=========================================================================================
 
 subroutine write_restart_dynamics(File, dyn_out)
-
+  use control_mod,      only: qsplit
    type(file_desc_t), intent(inout) :: File
    type(dyn_export_t), intent(in)   :: dyn_out
 
@@ -209,11 +202,6 @@ subroutine write_restart_dynamics(File, dyn_out)
    !----------------------------------------------------------------------------
 
    call write_restart_hycoef(File)
-
-   ! control variables that may be adjusted at run time
-   ierr = pio_put_var(File, nsplit_desc, nsplit)
-   ierr = pio_put_var(File, rsplit_desc, rsplit)
-   ierr = pio_put_var(File, nu_top_desc, nu_top)
 
    tl = timelevel%n0
    call TimeLevel_Qdp(timelevel, qsplit, tlQdp)
@@ -517,7 +505,7 @@ end subroutine write_restart_dynamics
 !=========================================================================================
 
 subroutine read_restart_dynamics(File, dyn_in, dyn_out)
-
+  use control_mod,      only: qsplit
    ! arguments
    type(File_desc_t), intent(inout) :: File
    type(dyn_import_t), intent(out)  :: dyn_in
@@ -583,30 +571,6 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
       write(iulog,*) 'Restart file nlev does not match model. nlev (file, namelist):', &
                      fnlev, nlev
       call endrun(sub//': Restart file nlev does not match model.')
-   end if
-
-   ! control variables that may be adjusted at run time.  Do not require these to
-   ! allow backwards compatibility with older restart files
-   ierr = pio_inq_varid(File, 'nsplit', nsplit_desc)
-   if (ierr == PIO_NOERR) then
-      ierr = pio_get_var(File, nsplit_desc, nsplit)
-      if (ierr /= PIO_NOERR) then
-         call endrun(sub//': reading nsplit.')
-      end if
-   end if
-   ierr = pio_inq_varid(File, 'rsplit', rsplit_desc)
-   if (ierr == PIO_NOERR) then
-      ierr = pio_get_var(File, rsplit_desc, rsplit)
-      if (ierr /= PIO_NOERR) then
-         call endrun(sub//': reading rsplit.')
-      end if
-   end if
-   ierr = pio_inq_varid(File, 'nu_top', nu_top_desc)
-   if (ierr == PIO_NOERR) then
-      ierr = pio_get_var(File, nu_top_desc, nu_top)
-      if (ierr /= PIO_NOERR) then
-         call endrun(sub//': reading nu_top.')
-      end if
    end if
 
    ! variable descriptors of required dynamics fields
