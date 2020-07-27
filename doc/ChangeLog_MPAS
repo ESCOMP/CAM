@@ -1,0 +1,3814 @@
+===============================================================
+
+Tag name: mpas062_cam6_2_037
+Originator(s): eaton
+Date: Mon 27 Jul 2020 03:19:26 PM MDT
+One-line Summary: fix tracer initialization
+
+Purpose of changes:
+
+. The tracer initialization was only implemented in the analytic IC
+  configuration.  Add code so that tracers are initialized when using an
+  initial file.  Implement the same logic as used by the SE and FV versions
+  of read_inidat:
+  - If using analytic ICs then that code is responsible for initializing
+    the water species.  Responsibility for the non-water species is passed
+    to the default constituent initialization (which is handled by the
+    module which added the constituent).
+    . For non-water species only, if the constituent is in the initial
+      file, then overwrite the default initialization with the values from
+      the initial file.
+  - If not using analytic ICs then the species are all read from the
+    initial file if they are present, otherwise the default constituent
+    initialization is called.
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/dyn_comp.F90
+. read_inidat
+  - add loop over constituents to read from an initial file or set the
+    default values.  logic depends on whether analytic ICs are being used.
+
+Testing:
+
+Run kessler, terminator chem, 6 test tracers, and initialize with 
+mpasa480_L26_v6.1_bwave.nc.  6 steps.  Verify that all tracers are
+initialized, and using ncview can see that they are being advected.
+
+===============================================================
+===============================================================
+
+Tag name: mpas061_cam6_2_037
+Originator(s): eaton
+Date: Thu 23 Jul 2020 05:55:03 PM MDT
+One-line Summary: merge to cam6_2_037
+
+Purpose of changes:
+
+. needed mods in cam6_2_037 for the general initialization of tracers
+
+. broke the ChangeLog entries for the MPAS branch into a separate file,
+  ChangeLog_MPAS
+
+Testing: none
+
+===============================================================
+===============================================================
+
+Tag name: mpas061_cam6_2_036
+Originator(s): eaton
+Date: Thu 16 Jul 2020 06:05:33 PM MDT
+One-line Summary: merge from cam6_2_001 up to cam6_2_036
+
+Purpose of changes:
+
+merge from cam6_2_001 up to cam6_2_036
+
+merge the mpas branch of cime from cime5.8.12 to cime5.8.26
+
+List all existing files that have been modified, and describe the changes:
+
+bld/configure
+. set_horiz_grid
+  - modify the logic so that in horiz_grid.xml file is only read for EUL
+    and FV dycores.  MPAS doesn't require setting any grid parameters.
+
+bld/config_files/horiz_grid.xml
+. remove the MPAS grids
+
+Testing:
+
+Kessler with terminator chemistry and HS analytic ICs completes a 6
+timestep run.
+
+===============================================================
+===============================================================
+
+Tag name: mpas061_cam6_2_001
+Originator(s): eaton
+Date: Fri 12 Jun 2020 10:45:27 AM MDT
+One-line Summary: merge mgduda:runtime_constituents
+
+Purpose of changes:
+
+merge mgduda:runtime_constituents
+
+Testing:
+
+I ran a couple of smoke tests just to see where we are functionally.
+
+We still need to work on procedure for producing initial files, and on the
+analytic IC code for the height based coordinate.  I just used the HS
+analytic ICs (height independent) to run tests.
+
+cam6 aquaplanet using HS analytic ICs fails during the chemistry
+initialization at the point of trying to read a missing drydep_srf_file.
+The log output indicates that the tracers were all initialized and the
+index mappings look correct.
+
+Kessler with terminator chemistry and HS analytic ICs completes a 6
+timestep run.  I haven't yet looked at output.
+
+===============================================================
+===============================================================
+
+Tag name:
+Originator(s): duda
+Date: Thu Jun  4 01:35:31 UTC 2020
+One-line Summary: Map between constituent indices in CAM physics and MPAS-A dycore
+
+Purpose of changes:
+
+. Through the use of the index mapping arrays mpas_from_cam_cnst and
+  cam_from_mpas_cnst, map constituents between CAM's constituent arrays and
+  the MPAS-A dycore's scalars array in d_p_coupling, p_d_coupling, and
+  read_inidat. Also, properly convert from theta to theta_m in read_inidat.
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/dp_coupling.F90
+. Use cam_from_mpas_cnst to select correct MPAS-A scalars in d_p_couping
+. Use mpas_from_cam_cnst to select correct CAM tracers in p_d_couping
+
+src/dynamics/mpas/dyn_comp.F90
+. Move the call to mpas_constants_compute_derived before the call to read_inidat
+  in dyn_init, since the code in read_inidat requires the MPAS derived constant
+  rvord
+. Use the mpas_from_cam_cnst array to correctly set initial scalars for MPAS-A
+  dycore in read_inidat
+. Correctly use moisture when computing theta_m in read_inidat
+
+Testing:
+
+A Held-Suarez simulation with the MPAS 480-km mesh builds and runs successfully,
+producing bit-identical results to the code before this commit.
+
+===============================================================
+===============================================================
+
+Tag name:
+Originator(s): duda
+Date: Thu Jun  4 00:46:09 UTC 2020
+One-line Summary: Print tabular summary of constituent mapping to log file
+
+Purpose of changes:
+
+. Print a table of the mapping between constituents in CAM and MPAS-A to the log file.
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/driver/cam_mpas_subdriver.F90
+. Add code to print summary of the mpas_from_cam_cnst and cam_from_mpas_cnst mapping
+  arrays to the log file.
+
+Testing:
+
+With an FKESSLER compset, the following (abbreviated) table is printed to CAM's log file:
+
+   i MPAS constituent mpas_from_cam_cnst(i)       i CAM constituent  cam_from_mpas_cnst(i)
+ ------------------------------------------     ------------------------------------------
+   1              qv*                  1          1                Q                  1
+   2          CLDLIQ*                  2          2           CLDLIQ                  2
+   3          CLDICE*                  3          3           CLDICE                  3
+   4          RAINQM*                  6          4           NUMLIQ                  6
+   5          SNOWQM*                  7          5           NUMICE                  7
+   6          NUMLIQ                   4          6           RAINQM                  4
+   7          NUMICE                   5          7           SNOWQM                  5
+   8          NUMRAI                   8          8           NUMRAI                  8
+   9          NUMSNO                   9          9           NUMSNO                  9
+  10            H2O2                  10         10             H2O2                 10
+  11           H2SO4                  11         11            H2SO4                 11
+  12             SO2                  12         12              SO2                 12
+  13             DMS                  13         13              DMS                 13
+  14            SOAG                  14         14             SOAG                 14
+ ...             ...                 ...        ...              ...                ...
+  30          num_a3                  30         30           num_a3                 30
+  31          pom_a4                  31         31           pom_a4                 31
+  32           bc_a4                  32         32            bc_a4                 32
+  33          num_a4                  33         33           num_a4                 33
+ ------------------------------------------     ------------------------------------------
+ * = constituent used as a moisture species in MPAS-A dycore
+
+===============================================================
+===============================================================
+
+Tag name:
+Originator(s): duda
+Date: Wed May 27 00:15:45 UTC 2020
+One-line Summary: Enable runtime allocation and assignment of scalar constituents
+
+Purpose of changes:
+
+. Enable scalar constituents to be allocated and assigned at runtime in CAM-MPAS.
+
+List all existing files that have been modified, and describe the changes:
+
+Externals_CAM.cfg
+. Update to the v6.1-cam.019 MPAS tag to allow the MPAS-A dycore to defer allocation
+  and assignment of scalar constituents until after Registry-defined fields have
+  been allocated.
+
+src/dynamics/mpas/driver/cam_mpas_subdriver.F90
+. Add a new argument, num_scalars, to cam_mpas_init_phase3 to tell MPAS-A how many
+  scalar constituents to allocate.
+. Add a new routine, cam_mpas_define_scalars, which may be called to allow
+  the MPAS-A dycore to identify moisture species from among CAM's constituents
+  and assign those to a contiguous range of indices in MPAS's scalars array. This
+  new routine also produces maps between CAM constituent indices and MPAS-A
+  constituent indices.
+
+src/dynamics/mpas/dyn_comp.F90
+. Add mpas_from_cam_cnst to dynamics import state to map from CAM's scalar indices
+  to those in the MPAS-A dycore.
+. Add cam_from_mpas_cnst to dynamics export state to map from MPAS's scalar indices
+  to those in CAM physics.
+. At the beginning of dyn_init, call cam_mpas_define_scalars.
+
+src/dynamics/mpas/dyn_grid.F90
+. In the call to cam_mpas_init_phase3, pass MAX(PCNST,1) as the actual argument
+  for num_scalars. MPAS-A always requires at least one scalar, which is assumed
+  to be water vapor mixing ratio.
+
+Testing:
+
+A Held-Suarez simulation with the MPAS 480-km mesh builds and runs successfully,
+producing bit-identical results to the code before this commit.
+
+===============================================================
+===============================================================
+
+Tag name: mpas060_cam6_2_001
+Originator(s): eaton
+Date: Fri 15 May 2020 05:31:02 PM MDT
+One-line Summary: merge mgduda:consistent_constants
+
+Purpose of changes:
+
+. merge branch mgduda:consistent_constants
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/dp_coupling.F90
+. d_p_coupling
+  - need to get Rv_over_Rd directly from mpas_constants rather than compute
+    locally 
+
+Testing:
+
+Since MPAS is now getting it's constants from CAM, I did a test setting the
+CAM physics constants via the namelist to use the MPAS values.  Set:
+
+gravit=9.80616D0
+omega=7.29212D-5
+rearth=6371229.0D0
+cpair=1004.5D0
+mwdry=28.97027035191638D0
+mwh2o=18.01227814341421D0
+
+I had to do some calculations to figure out how to set the available CAM
+variables to try and reproduce the MPAS constants.
+
+Then do 6 step HS test using the initial file
+mpasa480_L26_v6.1_bwave-const_rdzw.nc and compare with MPAS-A standalone
+results as before.  The diffs are:
+
+comparing fields in: MPAS-A/restart.0000-01-01_00.30.00.nc
+  max abs diff u:  2.5519750934677177e-07
+  max abs diff w:  3.9805500475637023e-08
+  max abs diff rho:  1.7260593399015534e-08
+  max abs diff theta:  4.906522860892437e-06
+  max abs diff qv:  0.0
+  max abs diff uReconstructZonal:  1.5138407505332907e-07
+  max abs diff uReconstructMeridional:  1.436357846306465e-07
+comparing fields in: MPAS-A/restart.0000-01-01_01.00.00.nc
+  max abs diff u:  6.533757428428544e-07
+  max abs diff w:  4.285527794331383e-08
+  max abs diff rho:  3.450631536061621e-08
+  max abs diff theta:  9.79487253971456e-06
+  max abs diff qv:  0.0
+  max abs diff uReconstructZonal:  4.178431751711287e-07
+  max abs diff uReconstructMeridional:  4.1561675663439983e-07
+comparing fields in: MPAS-A/restart.0000-01-01_01.30.00.nc
+  max abs diff u:  1.231126379508396e-06
+  max abs diff w:  4.455178137063691e-08
+  max abs diff rho:  5.1758395791523526e-08
+  max abs diff theta:  1.4665103265087964e-05
+  max abs diff qv:  0.0
+  max abs diff uReconstructZonal:  7.603767215869084e-07
+  max abs diff uReconstructMeridional:  8.028173558091711e-07
+comparing fields in: MPAS-A/restart.0000-01-01_02.00.00.nc
+  max abs diff u:  1.9245992373129184e-06
+  max abs diff w:  4.32706223590755e-08
+  max abs diff rho:  6.902066140845875e-08
+  max abs diff theta:  1.9517267617175094e-05
+  max abs diff qv:  0.0
+  max abs diff uReconstructZonal:  1.1117728959675333e-06
+  max abs diff uReconstructMeridional:  1.3301189177028494e-06
+comparing fields in: MPAS-A/restart.0000-01-01_02.30.00.nc
+  max abs diff u:  2.696894467746347e-06
+  max abs diff w:  4.6243502756226906e-08
+  max abs diff rho:  8.628058889570411e-08
+  max abs diff theta:  2.4351426134217036e-05
+  max abs diff qv:  0.0
+  max abs diff uReconstructZonal:  1.4695302468226146e-06
+  max abs diff uReconstructMeridional:  1.9325930454561213e-06
+comparing fields in: MPAS-A/restart.0000-01-01_03.00.00.nc
+  max abs diff u:  3.524804290222505e-06
+  max abs diff w:  5.020802315873138e-08
+  max abs diff rho:  1.0353557566844529e-07
+  max abs diff theta:  2.916766811722482e-05
+  max abs diff qv:  0.0
+  max abs diff uReconstructZonal:  1.8415099525270762e-06
+  max abs diff uReconstructMeridional:  2.517392152068254e-06
+
+This is roughly single precision level roundoff diffs.  Good enough.
+
+===============================================================
+===============================================================
+
+Tag name: mpas059_cam6_2_001
+Originator(s): eaton
+Date: Thu 14 May 2020 03:40:47 PM MDT
+One-line Summary: merge mgduda:t_calc
+
+Testing:
+
+Verified that 6 step HS test using the initial file
+mpasa480_L26_v6.1_bwave-const_rdzw.nc gives roundoff level diffs in
+comparison with standalone MPAS run (CAM optimization not matched to MPAS
+run).
+
+comparing fields in: MPAS-A/restart.0000-01-01_00.30.00.nc
+  max abs diff u:  9.237055564881302e-14
+  max abs diff w:  8.674484741622024e-15
+  max abs diff rho:  4.440892098500626e-16
+  max abs diff theta:  4.547473508864641e-13
+  max abs diff qv:  0.0
+  max abs diff uReconstructZonal:  6.394884621840902e-14
+  max abs diff uReconstructMeridional:  1.8214596497756474e-14
+comparing fields in: MPAS-A/restart.0000-01-01_01.00.00.nc
+  max abs diff u:  1.3855583347321954e-13
+  max abs diff w:  1.1736488517155585e-14
+  max abs diff rho:  4.440892098500626e-16
+  max abs diff theta:  4.547473508864641e-13
+  max abs diff qv:  0.0
+  max abs diff uReconstructZonal:  1.1368683772161603e-13
+  max abs diff uReconstructMeridional:  3.365363543395006e-14
+comparing fields in: MPAS-A/restart.0000-01-01_01.30.00.nc
+  max abs diff u:  1.6342482922482304e-13
+  max abs diff w:  1.040183564282593e-14
+  max abs diff rho:  4.440892098500626e-16
+  max abs diff theta:  6.821210263296962e-13
+  max abs diff qv:  0.0
+  max abs diff uReconstructZonal:  1.3500311979441904e-13
+  max abs diff uReconstructMeridional:  3.5485503424581566e-14
+comparing fields in: MPAS-A/restart.0000-01-01_02.00.00.nc
+  max abs diff u:  1.7408297026122455e-13
+  max abs diff w:  1.3813603039203315e-14
+  max abs diff rho:  4.440892098500626e-16
+  max abs diff theta:  6.821210263296962e-13
+  max abs diff qv:  0.0
+  max abs diff uReconstructZonal:  1.4566126083082054e-13
+  max abs diff uReconstructMeridional:  4.6764675465382766e-14
+comparing fields in: MPAS-A/restart.0000-01-01_02.30.00.nc
+  max abs diff u:  2.2026824808563106e-13
+  max abs diff w:  1.2480901728784133e-14
+  max abs diff rho:  4.440892098500626e-16
+  max abs diff theta:  6.821210263296962e-13
+  max abs diff qv:  0.0
+  max abs diff uReconstructZonal:  1.7408297026122455e-13
+  max abs diff uReconstructMeridional:  6.558642517973112e-14
+comparing fields in: MPAS-A/restart.0000-01-01_03.00.00.nc
+  max abs diff u:  2.3803181647963356e-13
+  max abs diff w:  1.4207602108684547e-14
+  max abs diff rho:  4.440892098500626e-16
+  max abs diff theta:  6.821210263296962e-13
+  max abs diff qv:  0.0
+  max abs diff uReconstructZonal:  1.7053025658242404e-13
+  max abs diff uReconstructMeridional:  8.498757253505573e-14
+
+===============================================================
+===============================================================
+
+Tag name:
+Originator(s): duda
+Date: Tue May 12 22:49:02 UTC 2020
+One-line Summary: Use consistent values for constants in MPAS-A dycore
+
+Purpose of changes:
+
+. The MPAS dycore can now use the same values for physical constants as the rest
+  of CAM by obtaining these values directly from CAM's physconst module. The use
+  of spatially varying constants (e.g., cpairv) is still not supported, as this
+  will require more extensive modifications to the MPAS-A dycore.
+
+List all existing files that have been modified, and describe the changes:
+
+Externals.cfg
+. Update to the mpas.009-cime5.8.12 CIME tag, which allows the MPAS dycore to
+  find physconst in its module include path
+
+Externals_CAM.cfg
+. Update to the v6.1-cam.018 MPAS tag to allow MPAS's mpas_constants module to
+  set constants based on CAM's physconst module
+
+src/dynamics/mpas/dp_coupling.F90
+. Obtain physical constants from MPAS's mpas_constants module
+
+src/dynamics/mpas/dyn_comp.F90
+. Obtain physical constants from MPAS's mpas_constants module, and call
+  the mpas_constants_compute_derived routine at the end of dyn_init to allow
+  MPAS to derive some physical constants from others that are obtained from
+  physconst
+
+src/dynamics/mpas/driver/cam_mpas_subdriver.F90
+. Rather than using R_v and R_d from mpas_constants and computing their ratio,
+  use Rv_over_Rd
+
+Testing:
+
+A Held-Suarez simulation with the MPAS 480-km mesh builds and runs successfully,
+and print statements reveal that the MPAS-A dycore is using values for physical
+constants that are consistent with those in CAM's physconst module.
+
+===============================================================
+===============================================================
+
+Tag name:
+Originator(s): duda
+Date: Mon May  4 21:45:14 UTC 2020
+One-line Summary: Compute temperature from theta and exner in d_p_coupling
+
+Purpose of changes:
+
+. In order to compute the temperature field provided to the physics in a way
+  that is consistent with the computation of this field in stand-alone MPAS-A,
+  temperature is now computed directly in d_p_coupling from theta_m, qv, and
+  exner, which are all available in the dynamics export state, and
+  the computation of temperature in derived_phys has been removed. 
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/dp_coupling.F90
+. Compute temperature directly in d_p_coupling
+. Remove the computation of temperature in derived_phys
+
+Testing:
+
+Compared with a Held-Suarez simulation on the 480-km MPAS mesh using stand-
+alone MPAS-A, bit-identical results can now be achieved with CAM-MPAS.
+
+===============================================================
+===============================================================
+
+Tag name: mpas058_cam6_2_001
+Originator(s): eaton
+Date: Wed 29 Apr 2020 09:41:07 AM MDT
+One-line Summary: add vertex grid object; add vorticity and divergence to output
+
+Purpose of changes:
+
+. merge mgduda:mpas_diag_fields
+
+. mods to allow output of vorticity and divergence diagnostic fields (not
+  output by default).
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/dyn_grid.F90
+. define_cam_grids
+  - add grid object for vertex nodes
+
+src/dynamics/mpas/stepon.F90
+. addfld/outfld calls for vorticity and divergence
+
+Testing:
+
+Ran 6 step adiabatic test using the initial file
+mpasa480_L26_v6.1_bwave-const_rdzw.nc.  Add vorticity and divergence to the
+comparison with standalone MPAS run.  Those diffs are:
+comparing fields in: MPAS-A/history.0000-01-01_00.00.00.nc
+  max abs diff vorticity:  0.0
+  max abs diff divergence:  0.0
+comparing fields in: MPAS-A/history.0000-01-01_00.30.00.nc
+  max abs diff vorticity:  1.8804131429045468e-19
+  max abs diff divergence:  2.554466080461758e-19
+comparing fields in: MPAS-A/history.0000-01-01_01.00.00.nc
+  max abs diff vorticity:  2.964615315390051e-19
+  max abs diff divergence:  3.550854759118633e-19
+comparing fields in: MPAS-A/history.0000-01-01_01.30.00.nc
+  max abs diff vorticity:  4.0234064994579266e-19
+  max abs diff divergence:  3.890147702775634e-19
+comparing fields in: MPAS-A/history.0000-01-01_02.00.00.nc
+  max abs diff vorticity:  5.47183283926278e-19
+  max abs diff divergence:  3.639131474090292e-19
+comparing fields in: MPAS-A/history.0000-01-01_02.30.00.nc
+  max abs diff vorticity:  5.996993266560446e-19
+  max abs diff divergence:  4.080581223397592e-19
+comparing fields in: MPAS-A/history.0000-01-01_03.00.00.nc
+  max abs diff vorticity:  9.723938234479368e-19
+  max abs diff divergence:  4.2632227026493004e-19
+
+===============================================================
+===============================================================
+
+Tag name:
+Originator(s): duda
+Date: Tue Apr 28 21:30:38 UTC 2020
+One-line Summary: Add vorticity and divergence, compute diagnostics in cam_mpas_run
+
+Purpose of changes:
+
+. The dyn_export_t now contains relative vorticity at vertices and horizontal
+  velocity divergence at cells. All diagnostic fields (except for pmiddry and
+  pintdry) in the dyn_export_t type are computed by the MPAS-A dycore before
+  the cam_mpas_run routine returns.
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/driver/cam_mpas_subdriver.F90
+. Compute rho and theta at the end of the cam_mpas_run routine
+
+src/dynamics/mpas/dyn_comp.F90
+. Add vorticity and divergence to the dynamics export state
+. Remove the computation of rho and theta from dyn_run
+
+Testing:
+
+No change to results compared with the previous code. A dry baroclinic wave
+simulation with the GNU compilers on a Linux desktop runs successfully.
+
+===============================================================
+===============================================================
+
+Tag name: mpas057_cam6_2_001
+Originator(s): eaton
+Date: Mon 27 Apr 2020 11:46:48 AM MDT
+One-line Summary: fix time level pointers in dyn_in/dyn_out; fix rho.
+
+Purpose of changes:
+
+. Revert initialization of dyn_in/dyn_out pointers for fields with
+  timeLevel pool index so that dyn_in=>timeLevel=1, dyn_out=>timeLevel=2.
+  The pointers are now swapped after the call to d_p_coupling in
+  stepon_run1, and only for nstep>0.
+
+. Add calculation of rho after return from cam_mpas_run since it's not done
+  in the dycore.
+
+List all existing files that have been modified, and describe the changes:
+
+bld/namelist_files/namelist_defaults_cam.xml
+. modify defaults for mpas_len_disp to get correct value for mpasa480 grid.
+
+src/dynamics/mpas/dyn_comp.F90
+. make swap_time_level_ptrs public
+. dyn_init
+  - revert to initializing dyn_in to timeLevel=1 and dyn_out to timeLevel=2
+. dyn_run
+  - remove swapping time level pointers after call to cam_mpas_run.  moved
+    to stepon.
+  - add calculation of rho from rho_zz
+. shift_time_levels
+  - move this routine to stepon.
+
+src/dynamics/mpas/stepon.F90
+. stepon_run1
+  - add call to shift_time_levels after call to d_p_coupling.  The updated
+    dynamics state is written to output, and redistributed to physics state
+    before swapping the time level pointers.
+. shift_time_levels
+  - copied from dyn_comp
+
+Testing:
+
+Ran 6 step adiabatic test using the initial file
+mpasa480_L26_v6.1_bwave-const_rdzw.nc.  The comparison of CAM against a
+standalone MPAS run is:
+comparing fields in: MPAS-A/history.0000-01-01_00.00.00.nc
+  max abs diff u:  0.0
+  max abs diff w:  0.0
+  max abs diff rho:  0.0
+  max abs diff theta:  0.0
+  max abs diff qv:  0.0
+  max abs diff uReconstructZonal:  7.105427357601002e-15
+  max abs diff uReconstructMeridional:  1.7909927216958575e-15
+comparing fields in: MPAS-A/history.0000-01-01_00.30.00.nc
+  max abs diff u:  5.3290705182007514e-14
+  max abs diff w:  5.6983472370504724e-15
+  max abs diff rho:  4.440892098500626e-16
+  max abs diff theta:  4.547473508864641e-13
+  max abs diff qv:  0.0
+  max abs diff uReconstructZonal:  4.263256414560601e-14
+  max abs diff uReconstructMeridional:  1.4804130143986072e-14
+comparing fields in: MPAS-A/history.0000-01-01_01.00.00.nc
+  max abs diff u:  7.460698725481052e-14
+  max abs diff w:  6.680833458064944e-15
+  max abs diff rho:  4.440892098500626e-16
+  max abs diff theta:  4.547473508864641e-13
+  max abs diff qv:  0.0
+  max abs diff uReconstructZonal:  6.750155989720952e-14
+  max abs diff uReconstructMeridional:  2.3044066654875905e-14
+comparing fields in: MPAS-A/history.0000-01-01_01.30.00.nc
+  max abs diff u:  1.1723955140041653e-13
+  max abs diff w:  7.548473022860047e-15
+  max abs diff rho:  4.440892098500626e-16
+  max abs diff theta:  6.821210263296962e-13
+  max abs diff qv:  0.0
+  max abs diff uReconstructZonal:  9.947598300641403e-14
+  max abs diff uReconstructMeridional:  4.10851908050347e-14
+comparing fields in: MPAS-A/history.0000-01-01_02.00.00.nc
+  max abs diff u:  1.3500311979441904e-13
+  max abs diff w:  7.583126834798115e-15
+  max abs diff rho:  4.440892098500626e-16
+  max abs diff theta:  6.821210263296962e-13
+  max abs diff qv:  0.0
+  max abs diff uReconstructZonal:  1.1368683772161603e-13
+  max abs diff uReconstructMeridional:  3.7317371415213074e-14
+comparing fields in: MPAS-A/history.0000-01-01_02.30.00.nc
+  max abs diff u:  1.4210854715202004e-13
+  max abs diff w:  7.2593976186211e-15
+  max abs diff rho:  4.440892098500626e-16
+  max abs diff theta:  6.821210263296962e-13
+  max abs diff qv:  0.0
+  max abs diff uReconstructZonal:  1.0658141036401503e-13
+  max abs diff uReconstructMeridional:  5.062616992290714e-14
+comparing fields in: MPAS-A/history.0000-01-01_03.00.00.nc
+  max abs diff u:  1.8474111129762605e-13
+  max abs diff w:  1.0666164132477896e-14
+  max abs diff rho:  4.440892098500626e-16
+  max abs diff theta:  6.821210263296962e-13
+  max abs diff qv:  0.0
+  max abs diff uReconstructZonal:  1.6342482922482304e-13
+  max abs diff uReconstructMeridional:  6.190881141066029e-14
+
+These are roundoff level differences which are to be expected since no
+effort was made to match the compiler optimization between the two runs.
+
+===============================================================
+===============================================================
+
+Tag name: mpas056_cam6_2_001
+Originator(s): eaton
+Date: Wed 22 Apr 2020 03:18:59 PM MDT
+One-line Summary: zero adiabatic tend; fix time levels
+
+Purpose of changes:
+
+. merge branch mgduda:r8_constants
+
+. CAM's adiabatic mode allows an energy conservation checker to 'fix'
+  non-conservation (of the CAM physics definition of energy) by applying a
+  temperature tendency to the dycore.  Disable this for MPAS.
+
+. Add physics forcings to CAM history output.
+
+. Fix initialization of dyn_in/dyn_out pointers for fields with timeLevel
+  pool index.
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/dyn_comp.F90
+. dyn_init
+  - init dyn_in to timeLevel=2 and dyn_out to timeLevel=1
+  - fix copy of dyn_in%uperp to dyn_out%uperp (was using nCellsSolve
+    instead of nEdgesSolve)
+
+src/dynamics/mpas/stepon.F90
+. stepon_init
+  - addfld calls for physics tendencies
+. stepon_run2
+  - call new routine for writing physics tendencies
+. write_forcings
+  - new routine with outfld calls for physics tendencies
+
+src/physics/simple/physpkg.F90
+. tphysbc
+  - don't apply energy fixer for adiabatic physics with MPAS dycore.
+
+Testing:
+
+Ran 6 step adiabatic test using the initial file
+mpasa480_L26_v6.1_bwave-const_rdzw.nc.  The comparison of CAM against a
+standalone MPAS run is:
+comparing fields in: MPAS-A/history.0000-01-01_00.00.00.nc
+  max abs diff u:  0.0
+  max abs diff w:  0.0
+  max abs diff rho:  0.0
+  max abs diff theta:  0.0
+  max abs diff qv:  0.0
+  max abs diff uReconstructZonal:  7.105427357601002e-15
+  max abs diff uReconstructMeridional:  1.7909927216958575e-15
+comparing fields in: MPAS-A/history.0000-01-01_00.30.00.nc
+  max abs diff u:  7.688072400924284e-11
+  max abs diff w:  4.5275835015260064e-12
+  max abs diff rho:  0.000688228833242599
+  max abs diff theta:  1.1880274541908875e-11
+  max abs diff qv:  0.0
+  max abs diff uReconstructZonal:  7.922551503725117e-11
+  max abs diff uReconstructMeridional:  1.9466525613687224e-11
+comparing fields in: MPAS-A/history.0000-01-01_01.00.00.nc
+  max abs diff u:  5.267963842925383e-11
+  max abs diff w:  1.9491674916357997e-12
+  max abs diff rho:  0.0004633088966798926
+  max abs diff theta:  1.830358087318018e-11
+  max abs diff qv:  0.0
+  max abs diff uReconstructZonal:  3.796429837166215e-11
+  max abs diff uReconstructMeridional:  2.0262173883178747e-11
+comparing fields in: MPAS-A/history.0000-01-01_01.30.00.nc
+  max abs diff u:  2.3300472662413085e-11
+  max abs diff w:  1.0471165221796058e-12
+  max abs diff rho:  0.00040914591740448536
+  max abs diff theta:  1.5802470443304628e-11
+  max abs diff qv:  0.0
+  max abs diff uReconstructZonal:  1.546140993013978e-11
+  max abs diff uReconstructMeridional:  1.3931036879633041e-11
+comparing fields in: MPAS-A/history.0000-01-01_02.00.00.nc
+  max abs diff u:  1.710276364974561e-11
+  max abs diff w:  1.6684686943678473e-13
+  max abs diff rho:  0.00039985421664323617
+  max abs diff theta:  1.4779288903810084e-11
+  max abs diff qv:  0.0
+  max abs diff uReconstructZonal:  1.0736300737335114e-11
+  max abs diff uReconstructMeridional:  1.2036316388019941e-11
+comparing fields in: MPAS-A/history.0000-01-01_02.30.00.nc
+  max abs diff u:  1.4585666008315457e-11
+  max abs diff w:  1.5392255612450834e-13
+  max abs diff rho:  0.00032083135472604773
+  max abs diff theta:  1.807620719773695e-11
+  max abs diff qv:  0.0
+  max abs diff uReconstructZonal:  1.0345502232667059e-11
+  max abs diff uReconstructMeridional:  1.1028886137687266e-11
+comparing fields in: MPAS-A/history.0000-01-01_03.00.00.nc
+  max abs diff u:  1.4434675676966435e-11
+  max abs diff w:  1.2511469453784646e-13
+  max abs diff rho:  0.0003410828306400493
+  max abs diff theta:  1.7394086171407253e-11
+  max abs diff qv:  0.0
+  max abs diff uReconstructZonal:  1.0590639476504293e-11
+  max abs diff uReconstructMeridional:  9.328392225338433e-12
+
+These are roundoff level differences (except for rho) which are to be
+expected since no effort was made to match the compiler optimization
+between the two runs.  The rho field is not being updated correctly.
+
+===============================================================
+===============================================================
+
+Tag name:
+Originator(s): duda
+Date: Tue Apr 21 00:27:58 UTC 2020
+One-line Summary: Update MPAS externals to v6.1-cam.017 to fix constant values
+
+Purpose of changes:
+
+. The mpas_constants module in MPAS previously initialized constants with
+  a non-default kind type parameter with literal values with no explicit kind
+  type parameter. This caused differences in the values of constants between
+  CAM-MPAS, where no compiler flags to promote the default real kind are used,
+  and stand-alone MPAS, where the default real kind is typically modified with
+  compiler flags.
+
+List all existing files that have been modified, and describe the changes:
+
+Externals_CAM.cfg
+. Update all MPAS externals to the v6.1-cam.017 tag
+
+Testing:
+
+It is now possible to get bit-identical results for an adiabatic baroclinic
+wave simulation between stand-alone MPAS-A and CAM-MPAS using the GNU compilers
+and the mpasa480_L26_v6.1_bwave-const_rdzw.nc initial conditions file.
+
+Steps to obtain bit-identical results:
+
+./create_newcase --case /sysdisk1/duda/bwave_bitwise \
+                 --compset FADIAB --res mpasa480_mpasa480 \
+                 --pecount 12x1 --run-unsupported \
+                 --input-dir /sysdisk1/duda/cesm/inputdata
+
+./xmlchange CAM_CONFIG_OPTS="-phys adiabatic -nlev 26"
+
+In user_nl_cam:
+
+ncdata = '/sysdisk1/duda/cesm/inputdata/atm/cam/inic/mpas/mpasa480_L26_v6.1_bwave-const_rdzw.nc'
+mpas_len_disp = 480000.0
+
+In src/dynamics/mpas/dp_coupling.F90:
+
+There appears to be a non-zero temperature tendency from the physics, so it is
+necessary to zero-out the rtheta_tend array around line 709.
+
+
+===============================================================
+===============================================================
+
+Tag name:
+Originator(s): duda
+Date: Tue Apr 21 00:00:34 UTC 2020
+One-line Summary: Update cam_mpas_debug_stream to handle different time levels
+
+Purpose of changes:
+
+. The cam_mpas_debug_stream routine previously saved the first time level for
+  fields with multiple time levels to its output file. With the changes in this
+  commit, an optional argument, timeLevel, may be used to specify which time
+  level to write. This is helpful when debugging parts of the model that modify
+  different time levels of prognostic fields.
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/driver/cam_mpas_subdriver.F90
+. cam_mpas_debug_stream
+  - Add an optional argument timeLevel, which defaults to 1
+  - Add additional clobber arguments to MPAS_createStream to better ensure
+    that any existing output files are overwritten
+
+Testing:
+
+No change to test results, since this commit only updates a routine that is
+use primarily for debugging.
+
+Adiabatic test using the initial file mpasa480_L26_v6.1_bwave-const_rdzw.nc
+gives results that are much closer to those of stand-alone MPAS-A, though
+the differences in model fields still seem to be larger than would be expected
+from accumulated round-off after a single time step.
+
+===============================================================
+===============================================================
+
+Tag name: mpas055_cam6_2_001
+Originator(s): eaton
+Date: Mon 20 Apr 2020 11:00:49 AM MDT
+One-line Summary: merge branch mgduda:coriolis_fix
+
+Testing:
+
+Ran adiabatic test using the initial file mpasa480_L26_v6.1_bwave-const_rdzw.nc.
+
+I agree that the differences are much larger than round-off.
+
+The thing that stands out is that the differences in 'rho' between this run
+and the standalone MPAS-A run have not changed since the first time I ran
+this test.  Something is wrong there.
+
+===============================================================
+===============================================================
+
+Tag name:
+Originator(s): duda
+Date: Fri Apr 17 23:27:22 UTC 2020
+One-line Summary: Read Coriolis parameter in cam_mpas_read_static
+
+Purpose of changes:
+
+. The Coriolis parameter field on vertices and edges is now read from
+  the MPAS mesh file in the cam_mpas_read_static routine.
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/driver/cam_mpas_subdriver.F90
+. cam_mpas_read_static
+  - Read the fEdge and fVertex fields from the MPAS mesh file, and update
+    the halos for these two fields.
+  - The time record to read from the static file has been changed from 0
+    to 1, as the MPAS streams module generally uses 1-based indices; however,
+    this change should have no effect when reading time-invariant fields.
+
+Testing:
+
+Adiabatic test using the initial file mpasa480_L26_v6.1_bwave-const_rdzw.nc
+gives results that are much closer to those of stand-alone MPAS-A, though
+the differences in model fields still seem to be larger than would be expected
+from accumulated round-off after a single time step.
+
+===============================================================
+===============================================================
+
+Tag name:
+Originator(s): duda
+Date: Fri Apr 17 20:50:19 UTC 2020
+One-line Summary: Add routine cam_mpas_debug_stream to cam_mpas_subdriver module
+
+Purpose of changes:
+
+. To aid in identifying differences between stand-alone MPAS-A and CAM-MPAS,
+  the new routine cam_mpas_debug_stream may be used to write all fields
+  managed by the MPAS infrastrucuture to a netCDF file, the name of which
+  is specified in the call to the routine.
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/driver/cam_mpas_subdriver.F90
+. cam_mpas_debug_stream
+  - This new routine writes all fields managed by the MPAS infrastructure
+    to a file.
+
+Testing:
+
+Adiabatic test using the initial file mpasa480_L26_v6.1_bwave-const_rdzw.nc
+for 6 timesteps.
+
+===============================================================
+===============================================================
+
+Tag name: mpas054_cam6_2_001
+Originator(s): eaton
+Date: Wed 15 Apr 2020 07:44:54 PM MDT
+One-line Summary: update pointers for prognostic fields w/ time levels
+
+Purpose of changes:
+
+. When MPAS takes a time step, it shifts the time indices for the
+  prognostic variables in the state pool.  CAM needs a similar update for
+  the pointers in the dyn_in/dyn_out objects.
+. Add uReconstructZonal and uReconstructMeridional to CAM history output.
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/dyn_comp.F90
+. dyn_init
+  - add logic to decide whether the dyn_in/dyn_out pointers to state
+    variables with a time index in the MPAS pool should be swapped.
+. dyn_run
+  - move the timestep checking to dyn_init
+  - add call to shift_time_levels
+. shift_time_levels
+  - swap the pointers in the dyn_in and dyn_out objects for the prognostic
+    components that have two time levels in the MPAS pool structures.
+
+src/dynamics/mpas/stepon.F90
+. add optional output for uReconstructZonal and uReconstructMeridional
+
+Testing:
+
+Adiabatic test using the initial file mpasa480_L26_v6.1_bwave-const_rdzw.nc
+for 6 timesteps.  Add mpas prognostic fields to history output for
+comparison with results from MPAS standalone.
+
+===============================================================
+===============================================================
+
+Tag name: mpas053_cam6_2_001
+Originator(s): eaton
+Date: Tue 14 Apr 2020 05:04:13 PM MDT
+One-line Summary: add output for dycore prognostic state
+
+Purpose of changes:
+
+. Add output for the dycore prognostic state.
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/dyn_comp.F90
+. remove the debug output - moved to stepon for output of mpas prognostic
+  state 
+
+src/dynamics/mpas/stepon.F90
+. stepon_init
+  - remove old addfld calls for physics forcings and initial fields
+. stepon_run1
+  - add call to diag_dynvar_ic - this is also where the SE dycore outputs
+    diagnostic fields
+. diag_dynvar_ic
+  - new private routine makes outfld calls for dycore diagnostics.
+
+Testing:
+
+Adiabatic test using the initial file mpasa480_L26_v6.1_bwave-const_rdzw.nc
+for 6 timesteps.  Add mpas prognostic fields to history output for
+comparison with results from MPAS standalone.
+
+===============================================================
+===============================================================
+
+Tag name: mpas052_cam6_2_001
+Originator(s): eaton
+Date: Mon 13 Apr 2020 01:49:45 PM MDT
+One-line Summary: fix for grid attribute "area"
+
+Purpose of changes:
+
+. Testing without writing any fields on the mpas_cell or mpas_edge grids
+  failed.  The reason is that the area attribute attached to the mpas_cell
+  grid is using the dimension nCells.  But if that grid is not written to
+  the history file (due to no fields that use the grid being written) then
+  the nCells dimension is not written.  The physics grid was copying the
+  area attribute and when the physics grid was being written, trying to
+  write the area attribute failed because the dimension nCells was missing.
+  To work around this the definition of area has been removed from the
+  mpas_cell grid.  Now the physics grid creates its own version using the
+  'ncol' dimension.
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/dyn_grid.F90
+. define_cam_grids
+  - remove call to cam_grid_attribute_register for cell areas
+. physgrid_copy_attributes_d
+  - return a zero length grid_attribute_names so the physics grid doesn't
+    try to copy the area attribute from the mpas_cell grid.  Instead it
+    will create its own version.
+
+Testing:
+
+Adiabatic test using the initial file mpasa480_L26_v6.1_bwave-const_rdzw.nc
+for 1 timestep.  No fields on dynamics grid output.
+
+===============================================================
+===============================================================
+
+Tag name: mpas051_cam6_2_001
+Originator(s): eaton
+Date: Mon 13 Apr 2020 10:57:54 AM MDT
+One-line Summary: mods to enable CAM to read an MPAS initial file
+
+Purpose of changes:
+
+. In order to work around built-in assumptions in the ncdio.F90 code for
+  reading data from initial files, change the dimension and variable names
+  in the CAM grid objects to match the names used by MPAS in its initial
+  files.  The dimension and variable names used for the physics grid remain
+  ncol/lat/lon which should help to minimize any post-processing
+  difficulties that this change might cause since most history output is
+  done on the physics grid.
+
+List all existing files that have been modified, and describe the changes:
+
+bld/namelist_files/namelist_defaults_cam.xml
+. add initial file for dry baroclinic wave test
+. set use_topo_file=.false. for mpas.  This is sufficient for simple
+  physics since the PHIS field is either analytic or read from the MPAS
+  initial file.  Will need to revisit for physics that requires the SGH and
+  other topography related fields.
+
+src/control/ncdio_atm.F90
+. infld_real_2d_3d
+  - add the optional dimnames arg to the call to cam_pio_check_var so the
+    dimension names used in the file are returned.
+  - modify check that number of columns in file matches number in grid
+    object to allow the column dimension to be second.  This is the case
+    for MPAS initial files.
+  - modify the test that dimension three is 'time' to be case insensitive.
+    The MPAS initial files use 'Time'.
+  - add the optional file_dnames arg to the call to cam_grid_get_decomp
+
+src/dynamics/mpas/dp_coupling.F90
+. remove some unused variables
+
+src/dynamics/mpas/dyn_comp.F90
+. dyn_init
+  - move set_base_state call to the analytic IC branch in read_inidat.
+  - copy ux,uy to dyn_out rather than uperp
+. read_inidat
+  - read u, w, qv, theta, rho, theta_base, rho_base from initial file
+  - Move the code that transforms u to ux,uy into the file reading part of
+    the conditional branch.
+    It's not needed in the analytic_ic branch since ux,uy are set explicitly
+    there. 
+
+src/dynamics/mpas/dyn_grid.F90
+. fix reference pressure log output to be in units of hPa.
+. define_cam_grids
+  - change name of cell centered lat/lon dimension and variables to
+    nCells/latCell/lonCell to match the MPAS initial file.
+  - change name of edge lat/lon dimension and variables to
+    nEdges/latEdge/lonEdge to match the MPAS initial file.
+
+src/utils/cam_map_utils.F90
+. cam_filemap_mapVal
+  - fix array assignment that gnu bounds checker complains about
+
+Testing:
+
+Adiabatic tests using the initial files for the dry baroclinic wave run for
+9 timesteps.  Tested both mpasa480_L26_v6.1_bwave.nc and
+mpasa480_L26_v6.1_bwave-const_rdzw.nc.
+
+===============================================================
+===============================================================
+
+Tag name: mpas050_cam6_2_001
+Originator(s): eaton
+Date: Mon 13 Apr 2020 10:17:07 AM MDT
+One-line Summary: merge branch mgduda:physics_tendencies
+
+Testing:
+
+HS test calling dycore with physics forcing runs successfully on the mpasa480
+mesh for 1 timestep.
+
+===============================================================
+===============================================================
+
+Tag name: 
+Originator(s): duda
+Date: Thu Apr  9 21:47:14 UTC 2020
+One-line Summary: Compute coupled physics tendencies for use by MPAS-A dycore
+
+Purpose of changes:
+
+. Compute coupled physics tendencies for use by the MPAS-A dycore
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/dyn_comp.F90
+. Add Exner function to dycore import and export state, as this is used to
+  compute the tend_rtheta_physics field
+. dyn_run
+  - Diagnose potential temperature after dynamics integration for use in
+    d_p_coupling
+
+src/dynamics/mpas/dp_coupling.F90
+. p_d_coupling
+  - u_tend and v_tend now point to scratch arrays so that their halos can be
+    updated, allowing for correct projection to edge-normal winds
+  - compute qv_tend to enable computation of rtheta tendency
+. derived_tend
+  - compute tend_ru_physics and tend_rtheta_physics; nothing to do for
+   tend_rho_physics
+
+Testing:
+
+HS test calling dycore with physics forcing runs successfully on the mpasa480
+mesh for five simulated days using gnu/debug.
+
+===============================================================
+===============================================================
+
+Tag name: 
+Originator(s): duda
+Date: Thu Apr  9 21:29:46 UTC 2020
+One-line Summary: Update to MPAS-A v6.1-cam.016 tag
+
+Purpose of changes:
+
+. The v6.1-cam.016 tag contains modifications in the MPAS-A dycore code
+  that will be used to compute and apply physics tendencies in the dycore.
+
+List all existing files that have been modified, and describe the changes:
+
+Externals_CAM.cfg
+. Update to the MPAS-A v6.1-cam.016 tag, which adds scratch fields for cell-
+  centered U and V tendencies and avoids zeroing out of physics tendencies in
+  the dycore when MPAS_CAM_DYCORE is defined at build time.
+
+src/dynamics/mpas/Makefile
+. Define the preprocessing macro MPAS_CAM_DYCORE when building MPAS-A source
+  files.
+
+Testing:
+
+HS test calling dycore but set physics forcing to zero runs successfully
+using gnu/debug.
+
+===============================================================
+===============================================================
+
+Tag name: mpas049_cam6_2_001
+Originator(s): eaton
+Date: Tue 07 Apr 2020 03:24:10 PM MDT
+One-line Summary: merge branch mgduda:reconstruct_initial_winds
+
+Testing:
+
+HS test calling dycore but set physics forcing to zero runs successfully
+using gnu/debug.
+
+===============================================================
+===============================================================
+
+Tag name: 
+Originator(s): duda
+Date: Thu Apr  2 22:21:52 UTC 2020
+One-line Summary: Reconstruct cell-centered winds at the end of read_inidat
+
+Purpose of changes:
+
+. At the end of the read_inidat routine, regardless of whether uperp was read
+  from a file, or whether ux and uy were supplied by analytic ICs and projected
+  to uperp, the uperp field is used to reconstruct cell-centered winds ux and uy.
+
+List all existing files that have been modified, and describe the changes:
+
+dyn_grid.F90
+. setup_time_invariant
+  - Call the mpas_rbf_interp_initialize and mpas_init_reconstruct routines to set
+    up fields needed for the reconstruction of cell-centered winds. As noted in
+    a code comment, this same pair of subroutine calls happens a second time
+    later in the initialization of the MPAS-A dycore
+    (in dyn_init -> cam_mpas_init_phase4 -> atm_mpas_init_block), but the vector
+    reconstruction setup is needed before read_inidat is called.
+
+dyn_comp.F90
+. read_inidat
+  - Call mpas_reconstruct to compute ux and uy given uperp.
+
+Testing:
+
+HS test calling dycore but set physics forcing to zero runs successfully
+using gnu/debug.
+
+===============================================================
+===============================================================
+
+Tag name: mpas048_cam6_2_001
+Originator(s): eaton
+Date: Tue Mar 24 15:37:19 MDT 2020
+One-line Summary: Update mpas_dt defaults
+
+Purpose of changes:
+
+. The new code to check that mpas_dt evenly divides CAM's dtime didn't work
+  with the previous default values of mpas_dt=720 and dtime=1800.  Leave
+  the dtime value at 1800, but update the mpas_dt values to 1800 for
+  mpasa480 and 600 for mpasa120.  This will need to be revisited as we move
+  forward with actual simulations.
+
+List all existing files that have been modified, and describe the changes:
+
+bld/namelist_files/namelist_defaults_cam.xml
+. update mpas_dt defaults
+
+Testing:
+
+HS test calling dycore but set physics forcing to zero runs successfully
+using gnu/debug.
+
+===============================================================
+===============================================================
+
+Tag name: 
+Originator(s): duda
+Date: Fri Mar 13 22:52:03 UTC 2020
+One-line Summary: Check that dycore time step evenly divides CAM time step
+
+Purpose of changes:
+
+. The dyn_run routine previously hard-wired the CAM time step as 1800 seconds,
+  and did not check that the specified dycore time step evenly divided this
+  value. Now, the CAM timestep is retrieved in every call to dyn_run via a call
+  to get_step_size() from the time_manager module, the dycore time step is
+  retrieved from an MPAS pool, the ratio of these two is verified to be
+  an integer, and the dycore integration time is set to the CAM time step.
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/dyn_comp.F90
+. dyn_run
+  - Query CAM time step, MPAS-A dycore timestep, and verify that the latter
+    evenly divides the former before calling the dycore.
+
+Testing:
+
+HS test calling dycore but set physics forcing to zero runs successfully
+using gnu/debug.
+
+===============================================================
+===============================================================
+
+Tag name: mpas047_cam6_2_001
+Originator(s): eaton
+Date: 
+One-line Summary: merge branch mgduda:config_do_DAcycling_segfault
+
+Testing:
+
+HS test calling dycore but set physics forcing to zero runs successfully
+using gnu/debug v9.2.1.
+
+===============================================================
+===============================================================
+
+Tag name: 
+Originator(s): duda
+Date: Wed Mar 11 20:44:56 UTC 2020
+One-line Summary: Fix segfault at line 376 of mpas_atm_core.F
+
+Purpose of changes:
+
+. Depending on compiler (and perhaps the compile or run environment), the code
+  in tag mpas045_cam6_2_001 would fail with a segfault at line 376 of
+  mpas_atm_core.F:
+
+  374 !$OMP PARALLEL DO
+  375       do thread=1,nThreads
+  376          if (.not. config_do_restart .or. (config_do_restart .and. config_do_DAcycling)) then
+  377             call atm_init_coupled_diagnostics(state, 1, diag, mesh, block % configs, &
+  378                                               cellThreadStart(thread), cellThreadEnd(thread), &
+
+  The source of the failure was the use of an unassociated pointer to
+  config_do_DAcycling, which was a consequence of the fact that this option
+  was not expected to be used by CAM-MPAS and was therefore not defined in
+  the "configs" pool.
+
+  The fix to this issue is to define the config_do_DAcycling option in the configs
+  pool with a value of .false.
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/dyn_comp.F90
+. dyn_readnl
+  - add config_do_DAcycling to the configs pool with a value of .false.
+
+Testing:
+
+HS test calling dycore but set physics forcing to zero runs successfully
+using gnu/debug, even with the machine configuration under which a segfault
+was previously generated (see notes in the ChangeLog for the mpas045_cam6_2_001
+tag).
+
+===============================================================
+===============================================================
+
+Tag name: mpas046_cam6_2_001
+Originator(s): eaton
+Date: Tue 10 Mar 2020 01:36:52 PM MDT
+One-line Summary: mods to dp_coupling
+
+Purpose of changes:
+
+. Update p_d_coupling to redistribute the CAM physics tendencies and
+  updated constituents to MPAS block.  Then call new derived_tend routine
+  to compute the tendencies needed by the dycore.  Currently they are just
+  set to zero.
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/dp_coupling.F90
+. p_d_coupling
+  - add code to redistribute the physics tendencies and updated tracers
+    from chunks to blocks
+  - call derived_tend to convert physics tendencies to what the dycore
+    needs. 
+. derived_tend
+  - new routine to take CAM physics tendencies and convert to forcings
+    needed by MPAS dycore.
+
+Testing:
+
+HS test calling dycore but set physics forcing to zero runs successfully
+using gnu/debug.  I ran this out for 10 days.
+
+===============================================================
+===============================================================
+
+Tag name: mpas045_cam6_2_001
+Originator(s): eaton
+Date: Mon 09 Mar 2020 04:14:38 PM MDT
+One-line Summary: merge branch mgduda:base_state_and_dyn_run
+
+Testing:
+
+HS test with dycore runs successfully using gnu/debug.
+
+***N.B.*** Note that this test is failing with gnu v9.2.1 compilers.  The
+   error is:
+
+Program received signal SIGSEGV: Segmentation fault - invalid memory reference.
+Backtrace for this error:
+...
+#3  0x1f1a0b1 in __atm_core_MOD_atm_mpas_init_block
+	at /project/cseg/eaton/mpas045_cam6_2_001/src/dynamics/mpas/core_atmosphere/mpas_atm_core.F:376
+#4  0x1d602ed in __cam_mpas_subdriver_MOD_cam_mpas_init_phase4
+	at /project/cseg/eaton/mpas045_cam6_2_001/src/dynamics/mpas/driver/cam_mpas_subdriver.F90:488
+#5  0x8273e7 in __dyn_comp_MOD_dyn_init
+	at /project/cseg/eaton/mpas045_cam6_2_001/src/dynamics/mpas/dyn_comp.F90:423
+
+Earlier versions of the compiler are not producing this error.  I've
+reverted to using the v8.2.0 compilers on the izumi cluster.
+
+===============================================================
+===============================================================
+
+Tag name: 
+Originator(s): duda
+Date: Sat Feb 29 23:25:35 UTC 2020
+One-line Summary: Add calls to cam_mpas_init_phase4, cam_mpas_run, and cam_mpas_finalize
+
+Purpose of changes:
+
+. The dyn_init, dyn_run, and dyn_final methods in dyn_comp now call the MPAS-A
+  dycore's init, run, and finalize methods (named, respectively,
+  cam_mpas_init_phase4, cam_mpas_run, and cam_mpas_finalize), which are defined
+  in the cam_mpas_subdriver module.
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/dyn_comp.F90
+. The dyn_init routine now calls cam_mpas_init_phase4, the dyn_run routine now
+  calls cam_mpas_run, and the dyn_final routine now calls cam_mpas_finalize.
+. Ultimately, the dyn_run method should contain code to compute the length
+  of time over which the dynamics should integrate the dynamical state. For now,
+  it is assumed that the physics timestep is 1800 seconds, and that this number
+  is evenly divided by the value provided for the dynamics timestep in the mpas_dt
+  namelist option.
+
+src/dynamics/mpas/driver/cam_mpas_subdriver.F90
+. Implement the cam_mpas_init_phase4, cam_mpas_run, and cam_mpas_finalize routines.
+
+Testing:
+
+HS test with no-op dycore runs successfully using gnu/debug.
+
+===============================================================
+===============================================================
+
+Tag name: 
+Originator(s): duda
+Date: Sat Feb 29 00:07:27 UTC 2020
+One-line Summary: Update halos for initial dynamics import fields
+
+Purpose of changes:
+
+. The MPAS-A dycore expects most fields to have their halos filled out before
+  the first call to the dycore run method. Accordingly, calls to update the halos
+  for various fields in the dynamics import state have been added.
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/dyn_comp.F90
+. In the read_inidat routine, update the halos for w, u, scalars, theta_m, theta,
+  rho_zz, and rho after these fields have been computed over all owned elements
+. In set_base_state, update the halos for rho_base and theta_base
+
+Testing:
+
+HS test with no-op dycore runs successfully using gnu/debug.
+
+===============================================================
+===============================================================
+
+Tag name: 
+Originator(s): duda
+Date: Fri Feb 28 23:21:04 UTC 2020
+One-line Summary: Initialize base-state fields for MPAS-A dycore
+
+Purpose of changes:
+
+. Add two new fields to the dynamics import state: the base-state dry air
+  density and the base-state potential temperature. These two new fields
+  are initialized in a call to a new routine, set_base_state, after the
+  call to read_inidat.
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/dyn_comp.F90
+. Add 'rho_base' and 'theta_base' to the dynamics import state, and initialize
+  these fields with a call to a new routine, set_base_state.
+. Set the uperp, w, theta_m, rho_zz, and tracers fields in the dynamics import
+  state to point to time level 1 in the MPAS-A state pool, and set these fields
+  to point to time level 2 in the dynamics export state.
+
+Testing:
+
+HS test with no-op dycore runs successfully using gnu/debug.
+
+===============================================================
+===============================================================
+
+Tag name: mpas044_cam6_2_001
+Originator(s): eaton
+Date: Fri 28 Feb 2020 04:18:01 PM MST
+One-line Summary: mods to dp_coupling
+
+Purpose of changes:
+
+. Update d_p_coupling to set a subset of phys_state fields from dyn_out.
+  Then finish setting phys_state fields by computing fields derived from
+  the dyn_out state.
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/dyn_grid.F90
+. change grid dimensions to be private.  They are shared via the dynamics
+  import/export objects.
+
+src/dynamics/mpas/dp_coupling.F90
+. d_p_coupling
+  - set dry pressure data in phys_state
+  - set theta_m instead of t in phys_state
+  - don't set Z information in phys_state
+. derived_phys
+  - derive the moist pressure profiles and assorted variables derived from
+    both the dry and moist pressure profiles.
+  - convert theta_m to temperature
+  - convert dry to wet mixing ratios for wet constituents
+  - compute Z using geopotential_t
+  - compute dry static energy
+  - initialize energy integrals
+
+Testing:
+
+HS test with no-op dycore runs successfully using gnu/debug.
+
+===============================================================
+===============================================================
+
+Tag name: mpas043_cam6_2_001
+Originator(s): duda
+Date: Tue Feb 25 00:40:01 UTC 2020
+One-line Summary: Enable correct re-compilation of MPAS-A dycore source files
+
+Purpose of changes:
+
+. Previously, MPAS-A dycore source files were not reliably recompiled after
+being modified due to mistakes in multiple Makefiles (at the CIME and dycore
+levels). This commit corrects several Makefiles so that changes to MPAS-A
+dycore source files correctly trigger recompilation of those files.
+
+List all existing files that have been modified, and describe the changes:
+
+Externals.cfg
+. Update the CIME tag to mpas.008-cime5.8.12 from https://github.com/mgduda/cime .
+  The updated tag includes changes to a Makefile to ensure that the recipe for
+  building the MPAS-A dycore library is always run.
+
+bld/Makefile.in
+. Update the rule for producing the MPAS-A dycore library to use a PHONY target
+  as was done in the updated CIME Makefile in the mpas.008-cime5.8.12 tag.
+
+src/dynamics/mpas/Makefile
+. Replace "old-fashioned" suffix rules (according to 
+  https://www.gnu.org/software/make/manual/html_node/Suffix-Rules.html) with
+  more modern pattern rules. Also, add a pattern rule to cancel the built-in
+  implicit rule for compiling Modula-2 files to avoid having 'make' try to
+  compile Fortran .mod files into .o files using the Modula-2 compiler (m2c).
+
+Testing:
+
+HS test with no-op dycore runs successfully using gnu/debug. Changing various
+source files -- including those in MPAS external directories -- correctly
+triggers a recompilation of the modified source files.
+
+===============================================================
+===============================================================
+
+Tag name: mpas042_cam6_2_001
+Originator(s): eaton
+Date: Mon 24 Feb 2020 04:57:47 PM MST
+One-line Summary: set dyn_in from analytic IC code
+
+Purpose of changes:
+
+. Initialize the dyn_in object using data from the analytic IC code.  Made
+  assumption of dry atm and used Hypsometric eqn to derive pressure
+  profiles used to compute potential temperature and dry air densities.
+
+. Finish the initialization of dyn_out object by copying fields from
+  dyn_in.  This is necessary because dyn_out is used to set the physics
+  state object, which is used to run the physics package as part of CAM's
+  initialization before the dycore takes a timestep.
+
+. some cleanup.
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/dyn_comp.F90
+. remove access of dimension sizes from dyn_grid.  These are now in the
+  import and export objects.
+
+. dyn_init
+  - refactor initialization of dyn_out to make it more obvious when it
+    contains the same values, or points to the same memory as dyn_in
+  - finish initialization of dyn_out by copying from dyn_in
+
+. read_inidat
+  - remove initialization of ru_tend, rtheta_tend, rho_tend
+  - remove access to topo file (phis comes from bottom interface of zint)
+  - Use analytic_ic_set_ic to set ux, uy, tracers, t, ps
+  - assume dry atm for now and use hypsometric eqn to compute pressure
+    profiles, then derive density and potential temperature.  
+
+src/dynamics/mpas/stepon.F90
+. stepon_init
+  - remove code that copies from dyn_in to dyn_out.
+
+Testing:
+
+HS test with no-op dycore runs successfully using gnu/debug.
+
+===============================================================
+===============================================================
+
+Tag name: mpas041_cam6_2_001
+Originator(s): eaton
+Date: Wed 19 Feb 2020 02:59:03 PM MST
+One-line Summary: merge branch mgduda:dry_hydrostatic_pressure
+
+Testing:
+
+HS test with no-op dycore runs successfully using gnu/debug.
+
+===============================================================
+===============================================================
+
+Tag name: -
+Originator(s): duda
+Date: Wed Feb 19 00:01:45 UTC 2020
+One-line Summary: Implement computation of dry hydrostatic pressure for dycore export state
+
+Purpose of changes:
+
+. This commit modifies which pressure fields (if any) are stored in the dycore
+  import and export states, and it adds a new routine for computing dry
+  hydrostatic pressure from the MPAS export state. Now, there are no longer any
+  pressure fields in dynamics import state, and dynamics export state contains
+  pmiddry and pintdry, which are computed at the beginning of d_p_couping by
+  a new routine dry_hydrostatic_pressure.
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/dyn_comp.F90
+. Add nVertLevels to dynamics import and export states, to be used when computing
+  dry hydrostatic pressure fields
+. Add n{Cells,Edges,Vertices}Solve dimensions to dynamics import and export states
+. Remove pmid from dynamics import state
+. Swap pmid for pmiddry and pintdry in dynamics export state; these are not part
+  of any MPAS pool, but are allocatable components of the export state type
+. In read_inidat, do not compute pmid since it is no longer part of the dynamics
+  import state
+
+src/dynamics/mpas/dp_coupling.F90
+. Add new routine, dry_hydrostatic_pressure
+. In d_p_coupling, call dry_hydrostatic_pressure to compute dry hydrostatic
+  pressure at layer midpoints and interfaces
+
+Testing:
+
+HS test with no-op dycore runs successfully using gnu/debug.
+
+===============================================================
+===============================================================
+
+Tag name: mpas040_cam6_2_001
+Originator(s): eaton
+Date: Wed 22 Jan 2020 01:37:14 PM MST
+One-line Summary: merge branch mgduda:cell_to_edge_winds
+
+Testing:
+
+HS test with no-op dycore runs successfully using gnu/debug.
+
+===============================================================
+===============================================================
+
+Tag name: -
+Originator(s): duda
+Date: Fri Jan 17 18:59:21 UTC 2020
+One-line Summary: Add new routine cam_mpas_cell_to_edge_winds to cam_mpas_subdriver
+
+Purpose of changes:
+
+. This commit adds a new routine to the cam_mpas_subdriver module to be used in
+  setting up initial conditions for horizontal velocity and in transforming horizontal
+  velocity tendencies from physics to dynamics. The routine projects cell-centered
+  wind vectors onto the unit normal vectors at edges. In support of the use of this
+  routine, several new variables have been added to the dynamics import and export
+  states.
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/driver/cam_mpas_subdriver.F90
+. Add new routine cam_mpas_cell_to_edge_winds
+
+src/dynamics/mpas/dyn_comp.F90
+. Add nCells, nEdges, nVertices to dynamics import and export states
+. Add cellsOnEdge to the dynamics import state
+. Read_inidat now uses cam_mpas_update_halo and cam_mpas_cell_to_edge_winds
+  to convert initial ux and uy winds to uperp
+
+Testing:
+
+HS test with no-op dycore runs successfully using gnu/debug.
+
+===============================================================
+===============================================================
+
+Tag name: -
+Originator(s): duda
+Date: Fri Jan 17 02:36:15 UTC 2020
+One-line Summary: Add new routine cam_mpas_update_halo to cam_mpas_subdriver module
+
+Purpose of changes:
+
+. For any future development that requires the halo elements of MPAS dycore fields
+  to be updated, this commit adds new code callable from CAM dycore interface
+  routines to update the halo for specified MPAS fields.
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/driver/cam_mpas_subdriver.F90
+. Implement new routine, cam_mpas_update_halo, to update the halo elements
+  for any field defined in the MPAS Registry.xml file
+
+Testing:
+
+HS test with no-op dycore runs successfully using gnu/debug.
+
+===============================================================
+===============================================================
+
+Tag name: -
+Originator(s): duda
+Date: Thu Jan 16 22:01:37 UTC 2020
+One-line Summary: Set up unit vectors needed for projecting cell-centered winds to edges
+
+Purpose of changes:
+
+. In preparation for future code to project cell-centered wind vectors to
+  cell edges, compute the local north and east unit vectors at cell centers
+  and the unit normal vector at cell edges.
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/driver/cam_mpas_subdriver.F90
+. Implement new routine, cam_mpas_compute_unit_vectors, to compute east, north,
+  and edgeNormalVectors
+
+src/dynamics/mpas/dyn_grid.F90
+. In setup_time_invariant, add call to cam_mpas_compute_unit_vectors
+
+src/dynamics/mpas/dyn_comp.F90
+. Add east, north, and normal unit vectors to the dynamics import state
+
+Testing:
+
+HS test with no-op dycore runs successfully using gnu/debug.
+
+===============================================================
+===============================================================
+
+Tag name: -
+Originator(s): duda
+Date: Thu Jan 16 21:52:08 UTC 2020
+One-line Summary: Convert MPAS indexing arrays from global to local index space
+
+Purpose of changes:
+
+. The mesh indexing fields read by the cam_mpas_read_static routine reference
+  global indices in the MPAS mesh file, but when fields are partitioned across
+  MPI ranks, what is needed are local indices. The cam_mpas_read_static routine
+  now invokes code from the MPAS infrastructure to convert global indices to
+  local indices in the cellsOnCell, edgesOnCell, cellsOnEdge, etc. arrays.
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/driver/cam_mpas_subdriver.F90
+. In cam_mpas_read_static, add call to postread_reindex to convert indices
+  from global index space to block-local index space
+
+Testing:
+
+HS test with no-op dycore runs successfully using gnu/debug.
+
+===============================================================
+===============================================================
+
+Tag name: mpas039_cam6_2_001
+Originator(s): eaton
+Date: Wed 22 Jan 2020 09:49:45 AM MST
+One-line Summary: add grid object for edge nodes; use rdzw to compute zw
+
+Purpose of changes:
+
+. dyn_grid
+  - modify some variable names to clarify which arrays are global
+  - remove ref_height_read and instead compute zw from rdzw in mesh pool.
+
+Describe any changes made to build system:
+
+Describe any changes made to the namelist:
+List all files eliminated:
+
+List all files added and what they do:
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/dyn_grid.F90
+. change some variable names to make it more obvious which sizes and arrays
+  are for the global grid
+. remove ref_height_read since can compute zw from the rdzw mesh pool field
+  set up by setup_time_invariant.
+. some cleanup  
+
+Testing:
+
+HS test with no-op dycore runs successfully using gnu/debug.
+
+===============================================================
+===============================================================
+
+Tag name: mpas038_cam6_2_001
+Originator(s): duda
+Date: Thu Jan 16 00:40:30 UTC 2020
+One-line Summary: Update MPAS externals to the v6.1-cam.015 tag
+
+Purpose of changes:
+
+. Update the MPAS externals to a new tag, v6.1-cam.015, which will permit
+  changes in subsequent commits to make use of a routine in the mpas_stream_mananger
+  module that was previously private.
+
+List all existing files that have been modified, and describe the changes:
+
+Externals_CAM.cfg
+. Update MPAS externals to the v6.1-cam.015 tag, which makes public
+  the postread_reindex routine in the mpas_stream_manager module
+
+Testing:
+
+HS test with no-op dycore runs successfully using gnu/debug.
+
+===============================================================
+===============================================================
+
+Tag name: mpas037_cam6_2_001
+Originator(s): duda
+Date: Mon Jan 13 18:42:56 MST 2020
+One-line Summary: Add more time-invariant fields to MPAS-A dynamics state
+
+Purpose of changes:
+
+. The MPAS-A dycore import and export states now contain additional time-invariant
+  fields -- zz, fzm, fzp, and index_qv. These additional fields are used in
+  the dynamics-physics coupling to derive physics state from fields that are part
+  of the dycore prognostic state, for example, computing rho directly from rho_zz
+  and zz, and to correctly interpolate from layer midpoints to layer interfaces.
+
+List all existing files that have been modified, and describe the changes:
+
+dyn_comp.F90
+. Add zz to the dynamics export state.
+. Add fzm, fzp to the dynamics import and export states. These may be used to
+  interpolate from layer midpoints to layer interfaces.
+. Add index_qv to the dynamics import and export state. The value of index_qv
+  identifies the tracer that contains the water vapor mixing ratio field.
+
+dp_coupling.F90
+. Use rho_zz and zz rather than rho. Since rho_zz is the variable prognosed by
+  the dycore, this avoid the need to separately compute rho before the call
+  to d_p_coupling.
+. Use theta_m and qv in the computation of temperature rather than theta.
+. Use correct interpolation weights to get interface pressure from layer midpoint
+  pressures.
+. Use index_qv to find qv in tracers, rather than assuming that qv is always
+  the first index.
+
+Testing:
+
+HS test with no-op dycore runs successfully using gnu/debug.
+
+===============================================================
+===============================================================
+
+Tag name: -
+Originator(s): duda
+Date: Sat Jan 11 00:39:55 UTC 2020
+One-line Summary: Add 'zz' the MPAS-A dynamics import state
+
+Purpose of changes:
+
+. The zz field is needed in the computation of the MPAS-A dycore prognostic
+  state, and accordingly, this field has been added to the dynamics import state.
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/dyn_comp.F90
+. Add 'zz' to the dynamics import state
+. With 'zz' in the dynamics import state, we no longer need to use pools
+  to access zz in read_inidat
+. The read_inidat routine now only sets solve elements (cells or edges).
+  In general, it is probably best to avoid whole-array operations for
+  the MPAS-A dynamics state (e.g., rho_zz(:,:) = rho(:,:) / zz(:,:)), since
+  MPAS allocates "garbage elements" at the end of arrays, and these elements
+  are not guaranteed to contain any particular value.
+
+Testing:
+
+HS test with no-op dycore runs successfully using gnu/debug.
+
+===============================================================
+===============================================================
+
+Tag name: -
+Originator(s): duda
+Date: Fri Jan 10 23:59:52 UTC 2020
+One-line Summary: Update halos for all time-invariant MPAS-A fields at init
+
+Purpose of changes:
+
+. The cam_mpas_read_static routine reads all time-invariant fields needed by
+  the MPAS-A dycore, but it did not update the halos for horizontally
+  decomposed fields. Now, the halos are updated for all time-invariant fields
+  in the cam_mpas_read_static routine.
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/driver/cam_mpas_subdriver.F90
+. Add calls to MPAS_dmpar_exch_halo_field for all horizontally decomposed
+  fields.
+
+Testing:
+
+HS test with no-op dycore runs successfully using gnu/debug.
+
+===============================================================
+===============================================================
+
+Tag name: mpas036_cam6_2_001
+Originator(s): duda
+Date: Thu Jan  9 21:16:28 UTC 2020
+One-line Summary: Read all time-invariant fields for MPAS-A in dyn_grid_init
+
+Purpose of changes:
+
+. The setup of all time-invariant fields -- including the vertical coordinate
+  surfaces, vertical coordinate metrics, and vertical interpolation weights --
+  now happens in the dyn_grid_init routine.
+
+. Because the vertical coordinate surfaces in MPAS-A are a function of
+  the terrain, and the vertical coordinate surfaces are read from the initial
+  file, there is no longer a need to read a separate terrain field, and so
+  the read_phis routine has been deleted.
+
+. Also, the reading of horizontal grid coordinates has been combined with
+  the reading of other time-invariant fields, and so the cam_mpas_read_geometry
+  routine has also been deleted.
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/dyn_comp.F90
+. Delete the call to read_phis, and delete the read_phis routine itself.
+
+src/dynamics/mpas/dyn_grid.F90
+. Add a new routine, setup_time_invariant, to be called where
+  the cam_mpas_read_geometry routine was previously called.
+  The setup_time_invariant routine calls a new routine, cam_mpas_read_static,
+  to read time-invariant fields.
+
+src/dynamics/mpas/driver/cam_mpas_subdriver.F90
+. Delete the cam_mpas_read_geometry routine, and add a new routine,
+  cam_mpas_read_static.
+
+Testing:
+
+HS test with no-op dycore runs successfully using gnu/debug.
+
+===============================================================
+===============================================================
+
+Tag name: mpas035_cam6_2_001
+Originator(s): eaton
+Date: Thu 26 Dec 2019 10:13:27 AM MST
+One-line Summary: fixes to grid object
+
+Purpose of changes:
+
+. Checks have been done to verify that fields written to history output
+  from both dynamics and physics decompositions have correct data.  This
+  testing found problems with how the grid object was defined and with how
+  the cell areas were set.
+
+. misc cleanup
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/dp_coupling.F90
+. derived_phys
+  - remove code intented to convert wet mmr to dry.  MPAS advects dry
+    constituents so this code is not needed.
+
+src/dynamics/mpas/dyn_comp.F90
+. some use associations moved to module scope since can be used in multiple
+  routines for debug/testing output.
+
+src/dynamics/mpas/dyn_comp.F90
+. define_cam_grids
+  - remove the src_in argument from call to cam_grid_register.  This option
+    is not implemented to allow the src arrays to have only a single grid
+    dimension.  Instead we let the grid code think there are two src
+    dimensions and just hardcode the second dimension to be 1 via setting
+    grid_map(2,:)=1.
+  - The memory for the cell areas must be persistent.  The grid attribute
+    object just points to this memory.
+  - Note that the cell areas written to CAM history output are normalized
+    to the unit sphere; so they sum to 4*pi.
+
+Testing:
+
+HS test with no-op dycore runs successfully using gnu/debug.
+
+===============================================================
+===============================================================
+
+Tag name: mpas034_cam6_2_001
+Originator(s): duda
+Date: Thursday, 19 December 2019
+One-line Summary: Redefine CAM-MPAS dynamics import/export states to match dycore prognostic vars
+
+Purpose of changes:
+
+  The CAM-MPAS dynamics import and export states were previously defined in terms
+  of variables that were not directly prognosed by the MPAS-Atmosphere dycore.
+
+  This commit updates the MPAS-Atmosphere externals to tag v6.1-cam.014, which
+  removes the old pools for import/export state in the MPAS Registry and
+  which defines new fields to hold the total tendencies from physics for dycore-
+  prognosed variables.
+
+  To match the new definitions of the 'dyn_import_t' and 'dyn_export_t' types,
+  the d_p_coupling routine has been modified to use the new members of
+  dyn_export_t, but only in the case that local_dp_map is .false..
+  The p_d_coupling routine has not yet been updated to the new 'dyn_import_t'
+  members.
+
+  The code that had been added in d_p_coupling to set a fake dycore state has
+  been moved to the read_inidat routine.
+
+  Lastly, there are still aspects of the use of the new dycore import and export
+  states that need to be corrected. At present, the vertical coordinate metric
+  d(zeta)/dz (in the array zz) is not valid, so the 'rho_zz' field cannot be
+  computed correctly in cases where there is terrain in the model simulation,
+  and the interpolation weight fields 'fzm' and 'fzp', used to interpolate from
+  layer midpoints to layer interfaces, do not contain valid values.
+
+List all existing files that have been modified, and describe the changes:
+
+Externals_CAM.cfg
+. Update to the v6.1-cam.014 tag for the mpas_core, mpas_external, mpas_framework,
+  mpas_operators, and mpas_tools externals in order to access new physics
+  tendency fields in the MPAS-Atmosphere Registry file.
+
+src/dynamics/mpas/dp_coupling.F90
+. Update d_p_coupling for the case when local_dp_map is false to make use
+  of the new dynamics export state, and remove testing code to initialize
+  the dynamics state.
+. Other code has been excluded from compilation by preprocessing directives,
+  either because it has not been tested (e.g., when local_dp_map is true),
+  or because it does not use the new dynamics state and therefore does not
+  even compile.
+
+src/dynamics/mpas/dyn_comp.F90
+. Redefine the dyn_import_t and dyn_export_t types to reflect fields that are
+  actually prognosed by the MPAS-Atmosphere dycore.
+. Move temporary code for setting initial dycore state to the read_inidat
+  routine (from the d_p_coupling routine, where it that code previously
+  resided).
+
+src/dynamics/mpas/stepon.F90
+. In the stepon_init routine, transfer the dycore state set in read_inidat
+  from dyn_in to dyn_out, so that it will be accessible in the first call
+  to d_p_coupling.
+
+Testing:
+
+Held-Suarez tests with the 60-km MPAS meshes run to completion with no errors
+with the Intel compilers on Cheyenne, though the results are meaningless, since
+the correct initial state is not yet being set and the dycore is still a no-op.
+
+===============================================================
+===============================================================
+
+Tag name: mpas033_cam6_2_001
+Originator(s): duda
+Date: Thursday, 5 December 2019
+One-line Summary: Add MPAS-A 60, 30, 15, and 15-3 km meshes
+
+Purpose of changes:
+
+  This commit updates the CIME tag to mpas.007-cime5.8.12 and adds the MPAS-A
+  60, 30, 15, and 15-3 km meshes.
+
+  Additionally, all MPAS externals have been udpated to the v6.1-cam.013 tag.
+  Previously, only the 'mpas_core' external had been updated to this tag, while
+  other MPAS externals were still pulling from the v6.1-cam.012 tag.
+
+List all existing files that have been modified, and describe the changes:
+
+Externals_CAM.cfg
+. Update to the v6.1-cam.013 tag for the mpas_external, mpas_framework,
+  mpas_operators, and mpas_tools externals.
+
+Externals.cfg
+. Update the cime external to the mpas.007-cime5.8.12 tag.
+
+Testing:
+
+Held-Suarez tests with the 60-km, 30-km, 15-km, and 15-3-km MPAS meshes run
+to completion with no errors with the Intel compilers on Cheyenne.
+
+===============================================================
+===============================================================
+
+Tag name: mpas032_cam6_2_001
+Originator(s): duda
+Date: Friday, 8 November 2019
+One-line Summary: Memory for dycore import and export state is now from MPAS pools
+
+Purpose of changes:
+
+  Previously, the memory for fields in the dynamics import and export state was
+  locally allocated by CAM. Now, the members of the import and export state point
+  to arrays that are allocated and managed in pools by MPAS-Atmosphere.
+
+  The changes to CAM-MPAS are supported by a new MPAS tag, v6.1-cam.013, that
+  defines new pools (dyn_in and dyn_out) in the MPAS-Atmosphere Registry file.
+
+List all existing files that have been modified, and describe the changes:
+
+Externals_CAM.cfg
+. Update to the v6.1-cam.013 tag for the 'core_atmosphere' external to obtain 
+  code with new 'dyn_in' and 'dyn_out' pools in the MPAS-Atmosphere 
+  Registry.xml file.
+
+src/dynamics/mpas/dyn_comp.F90
+. In dyn_init( ), rather than allocating components of the dynamics import and
+  export state, set these components to point to memory in MPAS-Atmosphere pools.
+
+src/dynamics/mpas/dp_coupling.F90
+. In d_p_coupling and p_d_coupling, transpose the array index order between
+  (nVertLevels,nCells) and (ncol,pver) order when copying data to and from
+  physics chunks.
+
+Testing:
+
+A Held-Suarez test with the 480-km MPAS mesh still runs to completion with
+no errors with the GNU compilers on a Linux machine.
+
+===============================================================
+===============================================================
+
+Tag name: mpas031_cam6_2_001
+Originator(s): duda
+Date: Tuesday, 5 November 2019
+One-line Summary: Provide simple dynamics export state to test d_p_coupling
+
+Purpose of changes:
+
+  Towards the goal of letting the dynamics import and export states point
+  directly to memory that is "owned" by the MPAS-Atmosphere dycore, this
+  commit simply allocates the dynamics import and export states in dyn_init
+  and sets the export state to a resting standard atmosphere in the d_p_coupling
+  routine.
+
+  Changes to the d_p_coupling routine were necessary to support non-local
+  d-p maps, and with these changes, a CAM-MPAS simulation now takes time steps
+  without crashing. Each time step simply provides the physics with the same
+  simple dynamics export state.
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/dp_coupling.F90
+. in d_p_coupling, set dynamics export state fields to reasonable values based
+  on a resting standard atmosphere
+. update code to rearrange blocks into chunks for non-local d-p mappings
+  (i.e., local_dp_map = .false.) so that pmiddry, zm, pintdry, and zi are
+  rearranged
+
+src/dynamics/mpas/dyn_grid.F90
+. Define module variables nCellsSolve, nEdgesSolve, nVerticesSolve, and
+  nVertLevelsSolve so that they can be used in, e.g., dyn_comp
+
+src/dynamics/mpas/dyn_comp.F90
+. in dyn_init, allocate dynamics import and export states (to be eventually
+  replaced with pointers to MPAS memory)
+. in dyn_final, deallocate dynamics import and export states
+
+Testing:
+
+A Held-Suarez test with the 480-km MPAS mesh now runs to completion with
+no errors with the GNU compilers on a Linux machine.
+
+===============================================================
+===============================================================
+
+Tag name: mpas030_cam6_2_001
+Originator(s): eaton
+Date: Mon 21 Oct 2019 02:38:45 PM MDT
+One-line Summary: Move to CAM's git repo
+
+Purpose of changes:
+
+. move the MPAS branch to the CAM git repo.  Currently in my fork
+  https://github.com/brian-eaton/CAM on branch mpas_cam6_2_001.
+
+. Moving to cam6_2_001 required an updated cime tag.  This was also created
+  in my fork https://github.com/brian-eaton/cime on branch mpas_cime.
+
+. Make changes required by the new directory stucture which eliminates the
+  "components/cam" part of the pathnames for CAM source files.
+
+List all existing files that have been modified, and describe the changes:
+
+.gitignore
+. add the MPAS external directories
+
+Externals.cfg
+. update cime external to tag mpas.006-cime5.8.12 in
+  https://github.com/brian-eaton/cime 
+
+Externals_CAM.cfg
+. add externals for the 5 MPAS directories
+
+bld/configure
+. update MPAS_SRC_ROOT to $cam_root/src/dynamics/mpas.  Note that the
+  "components/cam" part of the pathname is removed.
+
+Testing:
+
+Ran both cesm and standalone test.  Failing in dp_coupling.
+
+===============================================================
+===============================================================
+
+Tag name: mpas030_cam6_1_029
+Originator(s): eaton
+Date: Fri 18 Oct 2019 11:58:48 AM MDT
+One-line Summary: more fixes for cell centers grid object
+
+Purpose of changes:
+
+. add fixes so that the cell centers grid object doesn't encounter internal
+  indexing error when calling cam_filemap_get_filemap.  Still need further
+  checking to verify that the grid object is correct.
+
+List all existing files that have been modified, and describe the changes:
+
+components/cam/bld/Makefile.in
+. add "-fcheck=bounds" to debug arguments for GNU fortran compiler.
+
+components/cam/src/dynamics/mpas/dyn_grid.F90
+. define_cam_grids
+  - need to explicitly set the optional src_in argument to
+    cam_grid_register call.  The default for unstructured grid output
+    assumes the source arrays have 2 dimensions.  I'm currently assuming
+    that they only have 1 dimension, i.e., a column dimension.
+  - change the deallocate(grid_map) statement to a nullify statement.  The
+    grid object is pointing to the memory allocated on the grid_map
+    pointer, so that memory must not be removed.
+
+components/cam/src/dynamics/mpas/dyn_comp.F90
+. dyn_init
+  - uncomment call to initialize phis.  Code to initialize phis array is
+    not complete, but the call to get the mapping array now works.
+
+components/cam/src/utils/cam_map_utils.F90
+. cam_filemap_get_array_bounds
+  - treat case this%src(i)==0 and set dims(i,:)=0.  This data is used to
+    set the variable fieldbounds in subroutine cam_grid_get_gcid, despite
+    comment suggesting otherwise.
+
+Testing:
+
+Ran HS on mpasa480 with gnu/debug.  Fails with message:
+
+At line 116 of file /project/cseg/eaton/mpas030_cam6_1_029/components/cam/src/dynamics/mpas/dp_coupling.F90
+Fortran runtime error: Index '33' of dimension 2 of array 'omega' outside of expected range (0:0)
+
+===============================================================
+===============================================================
+
+Tag name: mpas029_cam6_1_029
+Originator(s): eaton
+Date: Wed 25 Sep 2019 09:47:53 AM MDT
+One-line Summary: fixes in cell centers grid object
+
+Purpose of changes:
+
+. fix wrong assumptions about size of local grid coordinate arrays
+
+. change commenting style to reflect CAM code.  We don't use the MPAS
+  preprocessor to autogenerate documentation, so the MPAS specific
+  formatting is not useful here
+
+List all existing files that have been modified, and describe the changes:
+
+components/cam/src/dynamics/mpas/dyn_grid.F90
+. dyn_grid_init
+  - add code to define vertical coordinate objects
+  - add some formatted log output for the vertical reference coordinates
+. define_cam_grids
+  - fix wrong assumptions about size of local coordinate arrays in the mpas
+    pool
+
+components/cam/src/dynamics/mpas/dyn_comp.F90
+. dyn_init
+  - move definition of vertical coordinate to dyn_grid_init
+  - add placeholder call to initialize phis
+. dyn_final
+  - remove deallocation of local dynamics fields -- this will be the
+    responsibility of MPAS
+. read_phis
+  - placeholder for new routine taken from SE code.  remove SE specific
+    data. 
+
+Testing:
+
+Ran HS on mpasa480 with gnu/debug.  Still seg faulting in d_p_coupling
+for me.
+
+===============================================================
+===============================================================
+
+Tag name: mpas028_cam6_1_029
+Originator(s): duda
+Date: 24 September 2019
+One-line Summary: Add support for MPAS-Atmosphere 480-km quasi-uniform mesh
+
+Purpose of changes:
+
+A new CIME tag, mpas.006-cime5.8.7, defines an MPAS-Atmosphere 480-km
+quasi-uniform mesh; this commit (1) updates to the mpas.006-cime5.8.7 CIME
+tag, and (2) adds changes in horiz_grid.xml and namelist_defaults_cam.xml
+to select the appropriate mesh file and mesh decomposition file prefix
+for the 480-km mesh.
+
+List all existing files that have been modified, and describe the changes:
+
+Externals.cfg
+. update to the mpas.006-cime5.8.7 CIME tag
+
+components/cam/bld/config_files/horiz_grid.xml
+. define "mpasa480" horiz_grid
+
+components/cam/bld/namelist_files/namelist_defaults_cam.xml
+. define default ncdata and mpas_block_decomp_file_prefix values for
+  the mpasa480 grid
+
+Testing:
+
+Ran HS on mpasa480 with gnu/debug; the code fails in the same place as with
+the mpasa120 grid.
+
+===============================================================
+===============================================================
+
+Tag name: mpas027_cam6_1_029
+Originator(s): eaton
+Date: Thu 19 Sep 2019 02:16:03 PM MDT
+One-line Summary: refactor creation of cell centers grid object
+
+Purpose of changes:
+
+. Implement the creation of the cell centers grid object in
+  define_cam_grids by making use of the mpas_pool_routines.
+
+. remove a lot a unused code in dyn_grid
+
+. attempt to make all module data in dyn_grid private so only access is via
+  methods.  This was only parially successful.  Some global arrays are
+  being accessed directly by dp_coupling and the easiest path for now was
+  to let them remain public.
+
+List all existing files that have been modified, and describe the changes:
+
+components/cam/bld/namelist_files/namelist_defaults_cam.xml
+. update name of partition file prefix
+
+components/cam/src/dynamics/mpas/dyn_grid.F90
+. remove target attributes of col_indices_in_block, num_col_per_block,
+  global_blockid, local_col_index
+. dyn_grid_init
+  - remove code that creates distributed coord and mapping arrays in gcol,
+    llon, llat, larea.  Not needed since this info can be supplied to the
+    grid object creation directly from the MPAS data structures.
+    
+. physgrid_copy_attributes_d
+  - remove nCells attribute since not doing anything useful.  This is the
+    value of the ncol dimension in CAM output streams.
+
+. define_cam_grids
+  - make use of mpas_pool_routines to access the distributed grid data
+
+
+components/cam/src/dynamics/mpas/dp_coupling.F90
+components/cam/src/dynamics/mpas/dyn_comp.F90
+components/cam/src/dynamics/mpas/restart_dynamics.F90
+. remove references to dyn_grid that need to be updated with the latest
+  code. 
+
+Testing:
+
+Ran HS on mpasa120 with gnu/debug.  Currently seg faults in d_p_coupling,
+but that's because dyn_init is called but not doing anything.  That code
+needs to be implemented next.
+
+===============================================================
+===============================================================
+
+Tag name: mpas026_cam6_1_029
+Originator(s): duda
+Date: 18 September 2019
+One-line Summary: Progress towards building MPAS-A dynamics grid
+
+Purpose of changes:
+
+. This commit introduces new code to provide global dycore mesh information
+  to CAM's physics grid initialization.
+
+List all existing files that have been modified, and describe the changes:
+
+components/cam/src/dynamics/mpas/dyn_grid.F90
+. Global arrays gcol, llon, llat, and llarea are now filled-in in dyn_grid_init,
+  and define_cam_grids is called before dyn_grid_init returns.
+. Minor corrections and clean-up have been made to the get_block_bounds_d,
+  get_block_gcol_d, get_block_lvl_cnt_d, get_gcol_block_cnt_d, and
+  get_block_owner_d routines.
+. The get_horiz_grid_d routine now fills in its output arguments with global
+  dycore mesh information.
+
+components/cam/src/dynamics/mpas/driver/cam_mpas_subdriver.F90
+. Three new routines to return global mesh information have been added:
+  cam_mpas_get_global_dims
+  cam_mpas_get_global_coords
+  cam_mpas_get_global_blocks
+
+Testing:
+
+Code has been compiled and run with the GNU compilers on a Linux desktop.
+The now code fails with the following stack trace, presumably because the dycore
+does not actually provide initial conditions for any fields yet:
+
+#1  0x104FBA1 in __shr_abort_mod_MOD_shr_abort_backtrace at shr_abort_mod.F90:104
+#2  0x104FCD9 in __shr_abort_mod_MOD_shr_abort_abort at shr_abort_mod.F90:61
+#3  0x1135713 in __shr_reprosum_mod_MOD_shr_reprosum_calc at shr_reprosum_mod.F90:480
+#4  0x894EEC in __gmean_mod_MOD_gmean_fixed_repro at gmean_mod.F90:300
+#5  0x895CE8 in __gmean_mod_MOD_gmean_arr at gmean_mod.F90:80
+#6  0x84AF51 in __check_energy_MOD_check_energy_gmean at check_energy.F90:546
+#7  0x66A125 in __physpkg_MOD_phys_run1 at physpkg.F90:292 (discriminator 6)
+#8  0x5155A8 in __cam_comp_MOD_cam_run1 at cam_comp.F90:255 (discriminator 14)
+#9  0x50BDF8 in __atm_comp_mct_MOD_atm_init_mct at atm_comp_mct.F90:344
+#10  0x42B7A2 in __component_mod_MOD_component_init_cc at component_mod.F90:248
+#11  0x4204AB in __cime_comp_mod_MOD_cime_init at cime_comp_mod.F90:2190
+#12  0x4269E1 in MAIN__ at cime_driver.F90:122
+
+===============================================================
+===============================================================
+
+Tag name: -
+Originator(s): duda
+Date: 27 August 2019
+One-line Summary: Read distributed latitude, longitude, and area for MPAS cells
+
+Purpose of changes:
+
+. In order to fully implement dycore interface routines like get_horiz_grid_d,
+  the MPAS cell latitude, cell longitude, and cell area fields must be read
+  from the initial file. This commit adds a new routine, cam_mpas_read_geometry,
+  for this purpose. The cam_mpas_read_geometry routine is called from dyn_grid_init.
+
+List all existing files that have been modified, and describe the changes:
+
+components/cam/src/dynamics/mpas/dyn_grid.F90
+. Add call to cam_mpas_read_geometry in dyn_grid_init.
+
+components/cam/src/dynamics/mpas/driver/cam_mpas_subdriver.F90
+. Add new routine, cam_mpas_read_geometry, which reads the distributed latCell,
+  lonCell, and areaCell fields from the initial file into the MPAS mesh pool.
+
+Testing:
+
+Run HS test and verify the reference heights are being correctly read
+from the zw field. The point of failure is still the expected one
+in get_horiz_grid_d:
+
+ ERROR: dyn_grid::get_horiz_grid_d:: incorrect number of cells
+
+===============================================================
+===============================================================
+
+Tag name: mpas025_cam6_1_029
+Originator(s): duda
+Date: 27 August 2019
+One-line Summary: Update to v6.1-cam.012 tag from MPAS-Model repository
+
+Purpose of changes:
+
+. The v6.1-cam.012 tag in the MPAS-Model repository includes changes to permit
+  streams to be created from an existing PIO file descriptor, and these changes
+  will be needed for future work on CAM-MPAS. 
+
+Testing:
+
+Run HS test and verify the reference heights are being correctly read
+from the zw field. The point of failure is still the expected one
+in get_horiz_grid_d:
+
+ ERROR: dyn_grid::get_horiz_grid_d:: incorrect number of cells
+
+===============================================================
+===============================================================
+
+Tag name: mpas024_cam6_1_029
+Originator(s): duda
+Date: 26 August 2019
+One-line Summary: use 'zw' rather than 'zgrid' for reference heights
+
+Purpose of changes:
+
+. Prior to this tag, the 'zgrid' field was used from MPAS mesh files to
+  obtain vertical reference heights. In general, the 'zgrid' field is a 3-d
+  field that provides the vertical layer interface heights for all columns.
+  For the purposes of computing a reference pressure profile, the ref_height_read
+  routine now reads the 'zw' field, rather than the first column of the 'zgrid'
+  field.
+
+List all existing files that have been modified, and describe the changes:
+
+components/cam/src/dynamics/mpas/dyn_grid.F90
+. ref_height_read now reads the 1-d zw field rather than the first column
+  of the 3-d zgrid field
+. the module variable zgrid has been replaced with zw
+
+Testing:
+
+Run HS test and verify the reference heights are being correctly read
+from the zw field. The point of failure is still the expected one
+in get_horiz_grid_d:
+
+ ERROR: dyn_grid::get_horiz_grid_d:: incorrect number of cells
+
+===============================================================
+===============================================================
+
+Tag name: mpas023_cam6_1_029
+Originator(s): eaton
+Date: Fri 23 Aug 2019 05:04:50 PM MDT
+One-line Summary: add reference pressures in dyn_grid_init
+
+Purpose of changes:
+
+. update default initial file for mpasa120 to a version that contains both
+  the horizontal and vertical grids.  Note that this is a 32 level vertical
+  grid.  The default number of vertical levels for the Held Suarez test
+  we've been using is 30.  Since CAM sets the number of levels at build
+  time, the argument '-nlev 32' will need to be supplied to CAM's configure
+  in order to successfully run with the new grid file.
+
+. read reference heights from initial file and convert to reference
+  pressures using barometric formulas for U.S. Standard Atmosphere.
+
+List all existing files that have been modified, and describe the changes:
+
+components/cam/bld/namelist_files/namelist_defaults_cam.xml
+. update the default initial file for mpasa120 to mpasa120_L32_v6.1.grid.nc
+
+components/cam/src/dynamics/mpas/dyn_grid.F90
+. add reference height array as module data
+. remove access to cam_mpas_init_phase4 since this will be called from
+  dyn_init after initial fields are set
+. add subroutine ref_height_read to read heights from initial file
+. add call to std_atm_pres to convert heights to pressure
+. enable call to ref_pres_init
+
+components/cam/src/physics/cam/ref_pres.F90
+. add subroutine std_atm_pres to convert heights to pressure
+
+Testing:
+
+Run HS test and verify the height to pressure conversions.  Point of
+failure is expected one in get_horiz_grid_d:
+
+ ERROR: dyn_grid::get_horiz_grid_d:: incorrect number of cells
+
+===============================================================
+===============================================================
+
+Tag name: mpas022_cam6_1_029
+Originator(s): duda
+Date: 15 August 2019
+One-line Summary: Split out reading of ICs and comment-out parts of dycore interface
+
+Purpose of changes:
+
+In order to move the CAM-MPAS implementation closer to the point where focus
+can shift to the implementation of dycore interface routines get_horiz_grid_dim_d,
+get_horiz_grid_d, get_block_bounds_d, etc., two significant changes have been
+made:
+
+(1) The call to an MPAS-Atmosphere routine (core_init) that expected ICs to
+    have been read has been split into a separate routine and commented-out.
+(2) The value of nCells has been hardwired and code in dyn_grid that was not
+    expected to work at present has been commented-out.
+
+List all files modified:
+
+src/dynamics/mpas/driver/cam_mpas_subdriver.F90
+. The cam_mpas_init_phase3 routine previously included a call to core_init
+  (which is a pointer to the atm_core_init routine). The core_init routine
+  attempts to finish set-up of the MPAS-Atmosphere core after initial conditions
+  are read. Since initial conditions are not available at the time of the call
+  to cam_mpas_init_phase3, the call to core_init has been moved to a new
+  routine, cam_mpas_init_phase4, the call to which can be relocated later.
+
+src/dynamics/mpas/dyn_grid.F90
+. In the dyn_grid_init routine, code that would not be expected to work
+  correctly at present has been commented out in order to allow this routine
+  to return without error.
+. In the get_horiz_grid_dim_d routine, the value of nCells has been
+  temporarily hardwired to 40962 simply to ensure that the grid dimension
+  is a well-defined (if incorrect) value until this routine can be more
+  fully implemented using actual mesh information.
+. In the get_horiz_grid_d routine, code that would not be expected to work
+  correctly at present has been commented out.
+
+Testing:
+
+On a generic Linux machine with the GNU compilers, CESM compiles. If the initial
+file contains vertical grid information, CESM will execute to the point where
+the get_horiz_grid_d routine fails with the error
+
+ ERROR: dyn_grid::get_horiz_grid_d:: incorrect number of cell
+
+===============================================================
+===============================================================
+
+Tag name: mpas021_cam6_1_029
+Originator(s): duda
+Date: 15 August 2019
+One-line Summary: Don't copy unused MPAS streams files to run directory
+
+Purpose of changes:
+
+The MPAS streams files are no longer needed in the run directory, and
+code in buildnml to copy these files has been removed.
+
+List all files modified:
+
+components/cam/cime_config/buildnml
+. There were previously lines of code in the buildnml script to copy
+  MPAS-Atmosphere streams files to the run directory. However, as of tag
+  mpas019_cam6_1_016, the MPAS stream manager is not used, and consequently,
+  these streams files are not needed in the run directory.
+
+Testing:
+
+On a generic Linux machine with the GNU compilers, CESM compiles.
+
+===============================================================
+===============================================================
+
+Tag name: mpas020_cam6_1_029
+Originator(s): eaton
+Date: 12 August 2019
+One-line Summary: Update CAM branch to cam6_1_029
+
+Purpose of changes:
+
+. Update to latest CAM tag which uses cime5.8.7 which has fixes
+  that allow me to run CESM scripts on my desktop.
+
+. Add mods to build-namelist that allow the partition file
+  template to be specified with an absolute filepath:
+
+. Add defaults so that the mpas partition and grid files will be found in
+  the standard location.
+
+
+List all files modified:
+
+components/cam/bld/build-namelist
+. add code to check whether user has specified
+  mpas_block_decomp_file_prefix, and if not then set the default value as
+  an absolute filepath.
+
+components/cam/bld/namelist_files/namelist_defaults_cam.xml
+. add default for mpas_block_decomp_file_prefix
+. add default for ncdata
+
+Checked FHS94 compset w/ gnu.  The initial file is now read in the mpas
+bootstrap process.  Current failure is:
+
+Program received signal SIGSEGV: Segmentation fault - invalid memory reference.
+Backtrace for this error:
+#0  0x14944ea0ecb1 in ???
+#1  0x14944ea0de75 in ???
+#2  0x14944e691eff in ???
+#3  0x40c994 in esmf_clockgetcurrtime
+	at /project/cseg/eaton/mpas_cam6_1_029_bra/cime/src/share/esmf_wrf_timemgr/ESMF_ClockMod.F90:518
+#4  0x40cd86 in __esmf_clockmod_MOD_esmf_clockget
+	at /project/cseg/eaton/mpas_cam6_1_029_bra/cime/src/share/esmf_wrf_timemgr/ESMF_ClockMod.F90:358
+#5  0xfed5b9 in __mpas_timekeeping_MOD_mpas_get_clock_time
+	at /project/cseg/eaton/mpas_cam6_1_029_bra/components/cam/src/dynamics/mpas/framework/mpas_timekeeping.F:457
+
+===============================================================
+===============================================================
+
+Tag name: mpas019_cam6_1_016
+Originator(s): duda
+Date: 9 August 2019
+One-line Summary: Update cam_mpas_init_phase{2,3} to not use MPAS streams
+
+Purpose of changes:
+
+The cam_mpas_init_phase2 and cam_mpas_init_phase3 routines previously used
+the MPAS-Atmosphere's streams.atmosphere file to determine the name of the file
+with mesh information. Now, these routines use an externally supplied PIO
+file descriptor for "boostrapping" of the MPAS infrastructure.
+
+A consequence of these changes is that the MPAS stream manager is not set up
+and therefore cannot be used by MPAS-Atmosphere's atm_core_init routine to
+read initial conditions.
+
+List all files modified:
+
+. driver/cam_mpas_subdriver.F90
+  All code in cam_mpas_init_phase2 and cam_mpas_init_phase3 that made use of the MPAS
+  stream manager has been removed via pre-processing directives, and an externally
+  supplied PIO file descriptor is used for MPAS infrastructure boostrapping.
+
+Testing:
+
+On a generic Linux machine with the GNU compilers, CESM compiles and runs to
+the call to atm_core_init, which still makes calls to the MPAS stream manager.
+
+===============================================================
+===============================================================
+
+Tag name: -
+Originator(s): duda
+Date: 9 August 2019
+One-line Summary: Update MPAS tag to v6.1-cam.011
+
+Purpose of changes:
+
+The MPAS v6.1-cam.011 tag introduces two changes to MPAS infrastructure to allow
+mpas_bootstrap_framework_phase2 to use an externally provided PIO file_desc_t.
+
+List all files modified:
+
+. SVN_EXTERNAL_DIRECTORIES
+
+Testing:
+
+The changes to MPAS infrastructure have been tested without an externally
+supplied PIO file_desc_t in a stand-alone configuration, and they have been
+tested with an externally supplied file_desc_t within CESM.
+
+===============================================================
+===============================================================
+
+Tag name: -
+Originator(s): duda
+Date: 31 July 2019
+One-line Summary: Add inactive code to allow MPAS bootstrapping to use an external PIO file_desc_t
+
+Purpose of changes:
+
+By commenting/un-commenting one line of code in cam_mpas_subdriver.F90 (around L.323),
+it is now possible to have the MPAS infrastructure's first phase of bootstrapping use
+an external PIO file_desc_t, which corresponds to CAM's initial file handle obtained
+from initial_file_get_id().
+
+List all files modified:
+
+. src/dynamics/mpas/driver/cam_mpas_subdriver.F90
+  The cam_mpas_init_phase3 routine can now (after commenting/uncommenting a call to
+  mpas_bootstrap_framework_phase1) use the PIO file_desc_t that is provided as
+  its first argument.
+
+. src/dynamics/mpas/dyn_grid.F90
+  The call to set fh_ini using initial_file_get_id() has been moved above the call
+  to cam_mpas_init_phase3, and the resulting fh_ini is now passed as the first
+  argument to cam_mpas_init_phase3.
+
+Testing:
+
+Although at present the file associated with fh_ini has not been set to an actual
+MPAS initial conditions file, the use of an externally provided PIO file_desc_t
+was tested on Cheyenne. The file is correctly used by MPAS's infrastructure, but
+since this file does not contain MPAS mesh fields, the run ultimately fails.
+
+===============================================================
+===============================================================
+
+Tag name: -
+Originator(s): duda
+Date: 31 July 2019
+One-line Summary: Update MPAS tag to v6.1-cam.009
+
+Purpose of changes:
+
+The MPAS v6.1-cam.009 tag introduces changes to MPAS infrastructure to allow
+mpas_bootstrap_framework_phase1 to use an externally provided PIO file_desc_t.
+
+As yet, this capability is not used in CAM-MPAS. This commit simply updates
+the MPAS infrastructure.
+
+List all files modified:
+
+. SVN_EXTERNAL_DIRECTORIES
+
+Testing:
+
+The changes to MPAS infrastructure have been tested without an externally
+supplied PIO file_desc_t in a stand-alone configuration, and they have been
+tested with an externally supplied file_desc_t within CESM.
+
+===============================================================
+===============================================================
+
+Tag name: mpas018_cam6_1_016
+Originator(s): duda
+Date: 12 July 2019
+One-line Summary: use CAM's timemgr_get_calendar_cf() to set MPAS calendar
+
+Purpose of changes:
+
+Rather than hard-wiring the calendar used by the MPAS infrastructure, obtain
+CAM's simulation calendar type via the timemgr_get_calendar_cf function, and
+translate that calendar type to one that is understood by the MPAS infrastructure.
+
+List all files modified:
+
+. driver/cam_mpas_subdriver.F90
+  A new argument to cam_mpas_init_phase2, cam_calendar, is used to specify the calendar
+  type used by CAM, and the value of this argument is translated into a calendar type
+  that is understoody by MPAS's infrastructure before being passed to mpas_framework_init_phase2.
+
+. dyn_comp.F90
+  The calendar used by CAM is passed to cam_mpas_init_phase2 as the result of a call
+  to timemgr_get_calendar_cf.
+
+Testing:
+
+On a generic Linux machine with the GNU compilers, CESM compiles and runs to
+the same point as before the changes in this commit. However, it has been verified
+through temporary print statements that MPAS is correctly accepting the calendar
+that it is given, and when the calendar type is unsupported by MPAS, the code
+halts with an error message.
+
+===============================================================
+===============================================================
+
+Tag name: mpas017_cam6_1_016
+Originator(s): eaton
+Date: Fri 05 Jul 2019 04:31:07 PM MDT
+One-line Summary: use time_manager to set MPAS start, stop, duration values
+
+Purpose of changes:
+
+. set the MPAS config_start_time, config_stop_time, and config_run_duration
+  variables using CAM's time_manager methods and formatting utilities from
+  cam_history_support. 
+
+List all files modified:
+
+components/cam/src/control/cam_history_support.F90
+. add nday2str method to turn integer days into a left justified string.
+
+components/cam/src/dynamics/mpas/dyn_comp.F90
+. dyn_readnl
+  - get start and stop times, and run duration from time_manager.  Use
+    utilities in cam_history_support to convert to formatted strings.
+
+components/cam/src/utils/time_manager.F90
+. add get_stop_date
+. add get_run_duration
+
+Testing: on desktop w/ gnu
+
+Did Held-Suarez test in standalone mode to verify that new code is
+running.  I don't get an echo of these values in the log file, so I think
+that they're being set correctly, but not 100% sure.
+
+The run is still failing at the point of trying to read mesh fields.
+
+===============================================================
+
+Tag name: mpas016_cam6_1_016
+Originator(s): duda
+Date: 10 July 2019
+One-line Summary: Update to MPAS-Atmosphere v6.1-cam.008 tag to enable minimal dycore build
+
+Purpose of changes:
+
+The MPAS-Atmosphere dycore previously had references to physics-related dimensions
+and namelist options needed by stand-alone MPAS-Atmosphere. The v6.1-cam.008 tag
+includes changes to eliminate these physics-related variables when MPAS-Atmosphere
+is built in a dynamics-only configuration, as is done in CAM-MPAS.
+
+The following are no longer present in the atm_in file:
+ * input_soil_temperature_lag
+ * num_soil_layers
+ * months
+ * noznlev
+ * naerlev
+ * camdim1
+
+
+List all files modified:
+
+M       SVN_EXTERNAL_DIRECTORIES
+M       bld/build-namelist
+M       bld/namelist_files/namelist_defaults_cam.xml
+M       bld/namelist_files/namelist_definition.xml
+M       doc/ChangeLog
+M       src/dynamics/mpas/dyn_comp.F90
+
+
+Testing:
+
+On a generic Linux machine with the GNU compilers, CESM compiles and runs to
+the same point as before the changes in this commit.
+
+===============================================================
+===============================================================
+
+Tag name: -
+Originator(s): duda
+Date: 10 July 2019
+One-line Summary: Close namelist unit in cam_mpas_namelist_read after reading last group
+
+Purpose of changes:
+
+The Python script to generate the cam_mpas_namelist_read() routine did not include
+a line of code to close the namelist unit after reading the last namelist group
+and before calling freeunit() on the unit. The cam_mpas_namelist_read() routine
+included in dyn_comp.F90 did include the close statement, but the change to
+the build_cam_namelists.py to add this close statement was apparently not committed.
+
+List all files modified:
+
+M       src/dynamics/mpas/scripts/build_cam_namelists.py
+
+
+Testing:
+
+When re-generating the cam_mpas_namelist_read() routine without the changes in this
+commit, the model would stop with the following error (when using the GNU compilers):
+
+ At line 76 of file /sysdisk1/duda/mpas_cam6_1_016/components/cam/src/physics/cam/qneg_module.F90 (unit = 95)
+ Fortran runtime error: File already opened in another unit
+
+After the changes in this commit, re-generating the cam_mpas_namelist_read() routine
+allows the model to execute past the previous point of failure.
+
+===============================================================
+===============================================================
+
+Tag name: mpas015_cam6_1_016
+Originator(s): eaton
+Date: Fri 05 Jul 2019 04:31:07 PM MDT
+One-line Summary: call streams_gen from build-namelist
+
+Purpose of changes:
+
+. generate MPAS stream files
+
+List all files modified:
+
+components/cam/bld/build-namelist
+. add call to streams_gen
+
+components/cam/cime_config/buildnml
+. add code to copy the MPAS stream files from Buildconf/camconf/ to the run
+  directory. 
+
+components/cam/src/dynamics/mpas/dyn_comp.F90
+. cam_mpas_namelist_read
+  - add missing close statement when done reading atm_in.
+
+Testing: on izumi w/ gnu
+
+FHS94 compset:
+
+build is successful and the 4 new streams files are created in
+Buildconf/camconf/ and copied to the run directory.
+
+The run fails with the following log output:
+
+ Found mesh stream with filename template x1.40962.init.nc
+ Using default io_type for mesh stream
+  ** Attempting to bootstrap MPAS framework using stream: input
+CRITICAL ERROR: Could not open input file 'x1.40962.init.nc' to read mesh fields
+
+This is expected.  I think we planned to add an absolute pathname for this file.
+
+To Do: the atm_in file is copied to the CaseDocs directory.  Should do this
+for the stream files as well.
+
+===============================================================
+===============================================================
+
+Tag name: -
+Originator(s): duda
+Date: 2 July 2019
+One-line Summary: Compile program to generate MPAS-A "streams" files as part of dycore build
+
+Purpose of changes:
+
+The MPAS-Atmosphere dycore requires as input "streams" files (specifically,
+streams.atmosphere and stream_list.atmosphere.* files) in the run directory.
+This commit updates the MPAS-A main dycore Makefile to include rules for building
+the "streams_gen" program. This commit *does not* include changes to actually run
+the streams_gen program and to place the resulting streams files in the appropriate
+run directory.
+
+The streams_gen program should be run with the following arguments:
+
+  streams_gen Registry_processed.xml streams.atmosphere stream_list.atmosphere. listed
+
+where the Registry_processed.xml file is found in the bld/atm/obj/mpas directory.
+The streams_gen program should produce the following files, which need to eventually
+be copied to the run directory:
+
+ * streams.atmosphere
+ * stream_list.atmosphere.surface
+ * stream_list.atmosphere.output
+ * stream_list.atmosphere.diagnostics
+
+List all files modified:
+
+M       src/dynamics/mpas/Makefile
+
+
+Testing:
+
+CESM builds on a generic Linux desktop with the GNU compilers, and the streams_gen
+program is now present in the bld/atm/obj/mpas directory. All source code needed
+to produce the streams_gen program was alreay available in the MPAS-A dycore's
+tools directory.
+
+===============================================================
+===============================================================
+
+Tag name: mpas014_cam6_1_016
+Originator(s): duda
+Date: 17 May 2019
+One-line Summary: Enable MPAS-A to get all the way through its "bootstrapping" procedure
+
+Purpose of changes:
+
+Additional code has been added to the cam_mpas_subdriver module to implement the full
+MPAS "bootstrapping" procedure, which builds dycore blocks with halos and reads mesh
+information. The end result is that CAM-MPAS is now prepared to make use of the MPAS
+blocks to provide mesh information in CAM's dyn_grid module.
+
+In support of the new "bootstrapping" code, several namelist options have been added.
+These options exist in stand-alone MPAS, but it was assumed until now that these could
+be omitted in CAM-MPAS. However, some of these were in fact needed to finish the block
+decomposition process and the derived dimension process in MPAS.
+
+The MPAS-A external has been updated to the v6.1-cam.007 tag.
+
+List all files modified:
+
+M       SVN_EXTERNAL_DIRECTORIES
+M       bld/build-namelist
+M       bld/namelist_files/namelist_defaults_cam.xml
+M       bld/namelist_files/namelist_definition.xml
+M       src/dynamics/mpas/Makefile
+M       src/dynamics/mpas/driver/cam_mpas_subdriver.F90
+M       src/dynamics/mpas/dyn_comp.F90
+
+
+Testing:
+
+CAM successfully build on Cheyenne with the Intel compilers. The resulting executable
+runs up to the point of printing an example namelist value from MPAS in the test code
+in the dyn_grid_init routine.
+
+===============================================================
+===============================================================
+
+Tag name: mpas013_cam6_1_016
+Originator(s): duda
+Date: 14 May 2019
+One-line Summary: Refactor dyn_readnl and dyn_grid_init to use new cam_mpas_subdriver module
+
+Purpose of changes:
+
+Much of the code from stand-alone MPAS's mpas_subdriver module was reused directly in
+the dyn_readnl and dyn_grid_init routines, and this commit moves this MPAS-specific code
+into a new module, cam_mpas_subdriver, that resides in a new dynamics/mpas/driver directory.
+
+List all files modified:
+
+M       src/dynamics/mpas/dyn_comp.F90
+M       src/dynamics/mpas/dyn_grid.F90
+A       src/dynamics/mpas/driver/cam_mpas_subdriver.F90
+
+
+Testing:
+
+CAM successfully build on Cheyenne with the Intel compilers.
+
+===============================================================
+===============================================================
+
+Tag name: -
+Originator(s): duda
+Date: 9 May 2019
+One-line Summary: Initialize MPAS-A infrastructure up to the point of reading streams file
+
+Purpose of changes:
+
+This commit adds temporary code in dyn_readnl to set MPAS-A namelist options
+that do not come from the atm_in namelist file (e.g., simulation start date,
+simulation time step, whether the run is a restart run), and it adds code
+to complete the initialization of the MPAS framework. Additionally, code is
+added to the dyn_grid_init routine to read the MPAS stream definition file
+and to print out a namelist option to verify that MPAS-A can retrieve namelist
+options.
+
+At present, new code is simply added to the dyn_readnl and dyn_grid_init
+routines, but in a future commit, much of this code should be migrated to
+separate functions to hide the details of the MPAS initialization process
+from CAM's dycore interface layer.
+
+Lastly, MPAS_DEBUG_WRITE calls write messages from MPI rank zero to aid in
+tracing the calls to dycore interface routines.
+
+List all files modified:
+
+M       src/dynamics/mpas/dyn_comp.F90
+M       src/dynamics/mpas/dyn_grid.F90
+
+Testing:
+
+CAM successfully build on Cheyenne with the Intel compilers.
+
+===============================================================
+===============================================================
+
+Tag name: -
+Originator(s): duda
+Date: 9 May 2019
+One-line Summary: Update MPAS-A externals to enable use of CAM's log unit numbers
+
+Purpose of changes:
+
+This commit updates the MPAS-A dycore externals to the 'v6.1-cam.006' tag
+to bring in changes that allow MPAS's native logging module to write to
+Fortran unit numbers supplied by CAM.
+
+List all files modified:
+
+M       cam/SVN_EXTERNAL_DIRECTORIES
+M       cam/ (property change)
+
+Testing:
+
+CAM successfully build on Cheyenne with the Intel compilers.
+
+===============================================================
+===============================================================
+
+Tag name: -
+Originator(s): duda
+Date: 8 May 2019
+One-line Summary: Add bcast error checking in MPAS dycore namelist reading code
+
+Purpose of changes:
+
+There are now checks after every call to MPI_Bcast in the routine for reading
+MPAS-A dycore namelists to verify that each namelist option was correctly
+broadcast to all MPI ranks.
+
+This commit also wraps character namelist options with trim() before they are
+echoed to the CAM log file.
+
+List all files modified:
+
+M       src/dynamics/mpas/dyn_comp.F90
+M       src/dynamics/mpas/scripts/build_cam_namelists.py
+
+Testing:
+
+CAM successfully build on Cheyenne with the Intel compilers.
+
+===============================================================
+===============================================================
+
+Tag name: -
+Originator(s): duda
+Date: 8 May 2019
+One-line Summary: Update MPAS-A externals to fix bad PIO namelist accesses
+
+Purpose of changes:
+
+This commit updates the MPAS-A dycore externals to the 'v6.1-cam.005' tag
+to bring in fixes for bad accesses of the non-existent PIO namelist options
+config_pio_stride and config_pio_num_iotasks.
+
+List all files modified:
+
+M       cam/SVN_EXTERNAL_DIRECTORIES
+M       cam/ (property change)
+
+Testing:
+
+CAM successfully build on Cheyenne with the Intel compilers.
+
+===============================================================
+===============================================================
+
+Tag name: -
+Originator(s): duda
+Date: 19 April 2019
+One-line Summary: Add "ezxml" object file to MPAS-A dycore library
+
+Purpose of changes:
+
+The MPAS-A dycore library needs to include the object file for the "ezxml"
+library that MPAS uses for parsing XML streams definition files.
+
+List all files modified:
+
+M       src/dynamics/mpas/Makefile
+
+Testing:
+
+CAM successfully build on Cheyenne with the Intel compilers.
+
+===============================================================
+===============================================================
+
+Tag name: mpas012_cam6_1_016
+Originator(s): duda
+Date: 14 April 2019
+One-line Summary: Set up basic MPAS infrastructure and read MPAS-A dycore namelists
+
+Purpose of changes:
+
+In order to allow the namelist options for the MPAS-A dycore to be stored in MPAS's
+native "pool" data structures, initialize basic MPAS infrastructure in the dyn_readnl
+routine before calling cam_mpas_namelist_read. The infrastructure set up requires
+instances of three derived types (core_type, dm_info, and domain_type), which have
+been added as public module variables in the dyn_grid module.
+
+List all files modified:
+
+M       src/dynamics/mpas/dyn_comp.F90
+M       src/dynamics/mpas/dyn_grid.F90
+
+
+Testing:
+
+CAM successfully build on Cheyenne with the Intel compilers.
+
+===============================================================
+===============================================================
+
+Tag name: -
+Originator(s): duda
+Date: 14 April 2019
+One-line Summary: Rewind namelist file unit before calling find_group_name
+
+Purpose of changes:
+
+In case namelist groups are read in a different order from the order they
+appear in the input file, rewind the namelist file unit before calling
+CAM's find_group_name routine in cam_mpas_namelist_read.
+
+List all files modified:
+
+M       src/dynamics/mpas/dyn_comp.F90
+M       src/dynamics/mpas/scripts/build_cam_namelists.py
+
+Testing:
+
+CAM successfully build on Cheyenne with the Intel compilers.
+
+===============================================================
+===============================================================
+
+Tag name: -
+Originator(s): duda
+Date: 14 April 2019
+One-line Summary: Modify cam_mpas_namelist_read to use CAM's native utilities
+
+Purpose of changes:
+
+The cam_mpas_namelist_read function now uses CAM's native utilities for determining
+the MPI task to be used for opening and reading namelist files, and MPI_Bcast calls
+are used for broadcasting return error codes and namelist values.
+
+List all files modified:
+
+M       src/dynamics/mpas/dyn_comp.F90
+M       src/dynamics/mpas/scripts/build_cam_namelists.py
+
+Testing:
+
+CAM successfully build on Cheyenne with the Intel compilers.
+
+===============================================================
+===============================================================
+
+Tag name: -
+Originator(s): duda
+Date: 14 April 2019
+One-line Summary: Change cam_mpas_namelist_read from a subroutine to a function
+
+Purpose of changes:
+
+The cam_mpas_namelist_read routine has been changed from a subroutine to a function
+that takes as input the name of the file containing the dycore namelist and returns
+a zero status if the reading of all namelist groups was successful, and a non-zero
+value otherwise
+
+List all files modified:
+
+M       src/dynamics/mpas/dyn_comp.F90
+M       src/dynamics/mpas/scripts/build_cam_namelists.py
+
+Testing:
+
+CAM successfully build on Cheyenne with the Intel compilers.
+
+===============================================================
+===============================================================
+
+Tag name: mpas011_cam6_1_016
+Originator(s): eaton
+Date: Mon Mar 25 13:38:54 MDT 2019
+One-line Summary: Update standalone Makefile
+
+Purpose of changes:
+
+. allow CAM standalone mode
+
+List all files modified:
+
+components/cam/bld/Makefile.in
+. add MPAS_LIBDIR to the mod_path macro in the Linux section
+
+Testing:
+
+CAM successfully built on desktop Linux w/ GNU compilers.
+
+===============================================================
+===============================================================
+
+Tag name: -
+Originator(s): duda
+Date: 21 March 2019
+One-line Summary: Add missing mpas_atm_iau.o file to list of MPAS-A dycore objects
+
+Purpose of changes:
+
+The mpas_atm_iau.o object file was missing from the list of MPAS-A dycore object
+files in the MPAS Makefile. It should be included in the MPAS-A dycore library,
+as it contains routines referenced by the dycore.
+
+List all files modified:
+
+M       cam/src/dynamics/mpas/Makefile
+
+Testing:
+
+CAM successfully build on Cheyenne with the Intel compilers.
+
+===============================================================
+===============================================================
+
+Tag name: mpas010_cam6_1_016
+Originator(s): duda
+Date: 20 March 2019
+One-line Summary: Add MPAS namelist-reading code and script to generate that code
+
+Purpose of changes:
+
+The dyn_comp module now includes a routine, cam_mpas_namelist_read, that may be used
+to read MPAS-Atmosphere namelists from the atm_in file. A new Python script,
+build_cam_namelists.py, may be used to generate the cam_maps_namelist_read code
+from MPAS-Atmosphere's Registry.xml file
+
+List all files modified:
+
+M       cam/src/dynamics/mpas/dyn_comp.F90
+
+List all added files:
+
+A       cam/src/dynamics/mpas/scripts/build_cam_namelists.py
+
+Testing:
+
+CAM successfully build on Cheyenne with the Intel compilers.
+
+===============================================================
+===============================================================
+
+Tag name: -
+Originator(s): duda
+Date: 20 March 2019
+One-line Summary: Update MPAS tag to v6.1-cam.004
+
+Purpose of changes:
+
+Updating the MPAS external to the v6.1-cam.004 tag brings in a new
+MPAS-Atmosphere Registry.xml file, which can be used to auto-generate
+code for reading the MPAS-Atmosphere namelists from CAM's atm_in file.
+
+List all files modified:
+
+M       cam/SVN_EXTERNAL_DIRECTORIES
+M       cam/ (property change)
+
+===============================================================
+===============================================================
+
+Tag name: -
+Originator(s): duda
+Date: 20 March 2019
+One-line Summary: Add MPAS-A dycore namelist options
+
+Purpose of changes:
+
+This commit adds the MPAS-A namelist options needed by the dycore to CAM.
+As yet there is no code in dyn_readnl to actually read these namelist options
+from CAM's atm_in file, but the changes here do allow the case.build command
+to properly add MPAS-A options to the atm_in file.
+
+List all files modified:
+
+M       cam/bld/build-namelist
+M       cam/bld/namelist_files/namelist_defaults_cam.xml
+M       cam/bld/namelist_files/namelist_definition.xml
+
+===============================================================
+===============================================================
+
+Tag name: mpas009_cam6_1_016
+Originator(s): eaton
+Date: Tue Mar 12 11:06:23 MDT 2019
+One-line Summary: update to cam6_1_016
+
+Purpose of changes:
+
+. This update was needed to be able to use cime5.7.9 which has updates to
+  run compsets on cheyenne out of the box.
+
+Just checked that build still worked with gnu.
+
+===============================================================
+===============================================================
+
+Tag name: mpas009_cam6_1_001
+Originator(s): eaton
+Date: Fri Mar  1 14:06:02 MST 2019
+One-line Summary: update mpas external
+
+Purpose of changes:
+
+The atmosphere/cam branch was updated to use NF90_* symbols in mpas_io.F.
+
+List all files modified:
+
+components/cam/SVN_EXTERNAL_DIRECTORIES
+. update mpas to use v6.1-cam.003
+
+No testing.
+
+===============================================================
+===============================================================
+
+Tag name: -
+Originator(s): duda
+Date: 27 February 2019
+One-line Summary: Add documentation and debugging print statements
+
+Purpose of changes:
+
+In preparation for implementation of the MPAS dycore modules, documentation
+blocks have been added at the top of each routine with a best-guess at
+the purpose of each routine, and cpp macros have been added to make it easier
+to trace execution through the different interface routines.
+
+List all files modified:
+
+ * cam/src/dynamics/mpas/dp_coupling.F90
+ * cam/src/dynamics/mpas/dycore.F90
+ * cam/src/dynamics/mpas/dyn_comp.F90
+ * cam/src/dynamics/mpas/dyn_grid.F90
+ * cam/src/dynamics/mpas/interp_mod.F90
+ * cam/src/dynamics/mpas/pmgrid.F90
+ * cam/src/dynamics/mpas/restart_dynamics.F90
+ * cam/src/dynamics/mpas/spmd_dyn.F90
+ * cam/src/dynamics/mpas/stepon.F90
+
+Testing:
+
+Compilation on Cheyenne with the Intel compilers is successful, and
+the resulting cesm.exe runs up to the calls to get_horiz_grid_dim_d,
+get_horiz_grid_d, and get_block_bounds_d before failing.
+
+===============================================================
+===============================================================
+
+Tag name: mpas008_cam6_1_001
+Originator(s): eaton
+Date: Fri Feb 15 13:21:43 MST 2019
+One-line Summary: fixes for MPAS build; cleanup of CAM's dycore interface
+                  code for MPAS
+
+Purpose of changes:
+
+. Fix MPAS build:
+  - explicitly pass CC and FC to the MPAS Makefile
+  - add missing dependencies for parallel build
+  - mods for building with PIO1
+
+  * Note that MPAS code doesn't build with NAG.  First problem encountered
+    was due to wrong ordering of declaration statements.
+
+. Enabled standalone builds with MPAS.
+
+. First pass through CAM's MPAS interface routines to clean out dead code
+  and make them consistent with how SE is implemented.
+
+List all files eliminated:
+components/cam/src/dynamics/mpas/initcom.F90
+components/cam/src/dynamics/mpas/trunc.F90
+. old interface routines no longer needed.
+
+List all existing files that have been modified, and describe the changes:
+Externals.cfg
+. update cime to mpas.004-cime5.7.5
+
+cime/scripts/Tools/Makefile
+. add code to define USE_PIO2 when CESM is built with PIO2
+. explicitly pass CC and FC to MPAS Makefile
+
+components/cam/bld/Makefile.in
+. add rule to build MPAS as a separate library
+. set FREEFLAGS for intel
+
+components/cam/bld/configure
+. enable standalone build of MPAS
+. modify MPAS Makefile generation to only add MPAS_SRC_ROOT
+
+components/cam/bld/namelist_files/namelist_defaults_cam.xml
+. add default dtime for mpas (for standalone only)
+. remove dummy ncdata file for mpas.  Instead we want it to pick up the
+  vertical coordinates only file for running with the analytic_ic option.
+
+components/cam/src/dynamics/mpas/Makefile
+. move CPPFLAGS to this file
+. allow USE_PIO2 macro to be appended to CPPFLAGS
+. add missing dependencies needed for parallel builds
+
+components/cam/src/dynamics/mpas/core_atmosphere/physics/physics_wrf/module_sf_bem.F
+. fixes for building with PIO1
+
+components/cam/src/dynamics/mpas/dp_coupling.F90
+components/cam/src/dynamics/mpas/dycore.F90
+components/cam/src/dynamics/mpas/dyn_comp.F90
+components/cam/src/dynamics/mpas/dyn_grid.F90
+components/cam/src/dynamics/mpas/framework/mpas_io.F
+components/cam/src/dynamics/mpas/interp_mod.F90
+components/cam/src/dynamics/mpas/pmgrid.F90
+components/cam/src/dynamics/mpas/restart_dynamics.F90
+components/cam/src/dynamics/mpas/spmd_dyn.F90
+components/cam/src/dynamics/mpas/stepon.F90
+. made first pass through these files to clean up dead code and make
+  interfaces consistent with how SE is implemented.
+
+Testing:
+
+Have done successful builds with intel on cheyenne, pgi on izumi, and gnu
+on my desktop.
+
+During runtime the code fails when trying to initialize the reference
+pressures since this info needs to be obtained from the MPAS grid
+initialization.
+
+===============================================================
+===============================================================
+
+Tag name: mpas007_cam6_1_001
+Originator(s): duda
+Date: 7 February 2019
+One-line Summary: Enable MPAS to compile as a library and link with cesm.exe 
+
+Purpose of changes:
+
+Modifying the CAM configure script to set the path to the MPAS dynamics
+code and to set several preprocessor directives, the MPAS dycore is now
+able to build into a library, which can successfully link with cesm.exe.
+
+The MPAS Makefile previously attempted to build MPAS's version of the ESMF
+time-keeping library, and all build targets for MPAS's ESMF have been
+removed to avoid duplicate symbol errors while linking cesm.exe.
+
+List all files modified:
+
+ * components/cam/bld/configure
+ * components/cam/src/dynamics/mpas/Makefile
+
+===============================================================
+===============================================================
+
+Tag name: - 
+Originator(s): duda
+Date: 7 February 2019
+One-line Summary: Add Makefile to be used for building libmpas.a
+
+Purpose of changes:
+
+Add a Makefile to be used for building libmpas.a, and copy this
+Makefile to the CESM build directory from CAM's configure script.
+
+At present, the Makefile is not invoked by CIME's build system with
+the variables needed to correctly build an MPAS dycore library.
+We'll eventually need to invoke make with this Makefile using something
+like:
+
+make CC=mpicc FC=mpif90 FFLAGS="-FR" \
+     CPPFLAGS="-D_MPI -DUSE_PIO2 -DMPAS_NATIVE_TIMERS -DMPAS_GIT_VERSION=unknown -DMPAS_NAMELIST_SUFFIX=atmosphere" \
+     FCINCLUDES="-I${PIO}/include" \
+     MPAS_ROOT=/path/to/components/cam/src/dynamics/mpas
+
+List all files modified:
+
+ * bld/configure
+
+List all added files:
+
+ * src/dynamics/mpas/Makefile
+
+===============================================================
+===============================================================
+
+Tag name: - 
+Originator(s): duda
+Date: 7 February 2019
+One-line Summary: Update MPAS external code to v6.1-cam.002 tag
+
+Purpose of changes:
+
+Update the MPAS externals to point to the MPAS v6.1-cam.002 tag, which
+contains changes needed to build MPAS as a library from within CAM.
+
+List all files modified:
+
+ * SVN_EXTERNAL_DIRECTORIES
+
+===============================================================
+===============================================================
+
+Tag name: mpas005_cam6_1_001
+Originator(s): duda
+Date: 4 January 2019
+One-line Summary: Comment-out dycore interface code to allow CAM-MPAS to build
+
+Purpose of changes:
+
+At present, the placeholder code in the CAM dycore interface modules contained
+references to MPAS modules (e.g., mpas_cam_interface) that don't currently exist.
+In order to allow the CAM-MPAS code to compile with no errors, code in the dycore
+interface modules has been simply commented-out for now.
+
+List all files modified:
+
+ * src/dynamics/mpas/dp_coupling.F90
+ * src/dynamics/mpas/dyn_comp.F90
+ * src/dynamics/mpas/dyn_grid.F90
+ * src/dynamics/mpas/restart_dynamics.F90
+
+===============================================================
+===============================================================
+
+Tag name: mpas004_cam6_1_001
+Originator(s): duda
+Date: 28 December 2018
+One-line Summary: Commit aftermath of 'svn propset' to get correct MPAS dycore externals
+
+Purpose of changes:
+
+Ensure that the correct 'core_atmosphere' external is obtained by committing the 'cam'
+directory after running
+
+   svn propset svn:externals -F SVN_EXTERNAL_DIRECTORIES .
+
+from that directory.
+
+List all files modified:
+
+ * components/cam
+
+===============================================================
+===============================================================
+
+Tag name: mpas003_cam6_1_001
+Originator(s): duda
+Date: 28 December 2018
+One-line Summary: Update CAM's build files to enable progress on CAM-MPAS build
+
+Purpose of changes:
+
+Enable further progress on basic compilation of CAM-MPAS for FHS94 compset with
+the mpasa120 mesh. The build currently fails due to non-existent modules referenced
+in the components/cam/src/dynamics/mpas/dyn_grid.F90 placeholder code added several
+commits back. However, the current state of the code should allow us to focus on
+MPAS code now.
+
+List all files modified:
+
+ * components/cam/bld/config_files/definition.xml
+ * components/cam/bld/config_files/horiz_grid.xml
+ * components/cam/bld/configure
+ * components/cam/bld/namelist_files/namelist_defaults_cam.xml
+ * components/cam/cime_config/config_component.xml
+
+===============================================================
+===============================================================
+
+Tag name: - 
+Originator(s): duda
+Date: 28 December 2018
+One-line Summary: Set CIME external to point to 'mpas.001-cime5.7.5' tag
+
+Purpose of changes:
+
+Change the cime external to point to the 'mpas.001-cime5.7.5' tag in
+https://github.com/mgduda/cime.git, since this tag adds definitions of
+the 'mpasa120_mpasa120' resolution to CIME's config_grids.xml.
+
+List all files modified:
+
+ * Externals.cfg
+
+===============================================================
+===============================================================
+
+Tag name: - 
+Originator(s): duda
+Date: 28 December 2018
+One-line Summary: Fix incorrect SVN EXTERNAL for MPAS's core_atmosphere directory
+
+Purpose of changes:
+
+MPAS's 'core_atmosphere' directory should have been pulled into a directory
+named cam/src/dynamics/mpas/core_atmosphere, while the previous version of
+the SVN_EXTERNAL_DIRECTORIES file incorrectly pulled this code into
+cam/src/dynamics/mpas/framework.
+
+List all files modified:
+
+ * SVN_EXTERNAL_DIRECTORIES
+
+===============================================================
+===============================================================
+
+Tag name: - 
+Originator(s): duda
+Date: 4 December 2018
+One-line Summary: Add placeholder dycore interface modules from CAM-MPAS v4
+
+Purpose of changes:
+
+To provide placeholders for the eventual dycore interface modules to be
+developed for MPAS v6.x, add the interface modules that were used in
+the CAM-MPAS code based on MPAS v4.x.
+
+List all files added:
+
+ * dynamics/mpas/dp_coupling.F90
+ * dynamics/mpas/dycore.F90
+ * dynamics/mpas/dyn_comp.F90
+ * dynamics/mpas/dyn_grid.F90
+ * dynamics/mpas/initcom.F90
+ * dynamics/mpas/interp_mod.F90
+ * dynamics/mpas/pmgrid.F90
+ * dynamics/mpas/restart_dynamics.F90
+ * dynamics/mpas/spmd_dyn.F90
+ * dynamics/mpas/stepon.F90
+ * dynamics/mpas/trunc.F90
+
+===============================================================
+===============================================================
+
+Tag name: mpas002_cam6_1_001
+Originator(s): duda
+Date: 30 November 2018
+One-line Summary: Obtain MPAS code from GitHub via an svn external
+
+Purpose of changes:
+
+The MPAS directories needed to (in principle) build the MPAS-Atmosphere dycore
+are now obtained as svn externals from https://github.com/mgduda/MPAS-Model/ .
+At present, the following directories are pulled in from the MPAS GitHub repo:
+ * core_atmosphere
+ * external
+ * framework
+ * operators
+ * tools
+
+===============================================================
+===============================================================
+
+Tag name: mpas001_cam6_1_001
+Originator(s): duda
+Date: 16 November 2018
+One-line Summary: Set cime external to point to https://github.com/mgduda/cime
+
+Purpose of changes:
+
+. Switch the cime external in Externals.cfg to
+  point to https://github.com/mgduda/cime .
+
+===============================================================

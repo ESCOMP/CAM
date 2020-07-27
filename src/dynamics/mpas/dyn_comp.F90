@@ -9,7 +9,8 @@ use spmd_utils,         only: iam, masterproc, mpicom, npes
 use physconst,          only: pi, gravit, rair, cpair
 
 use pmgrid,             only: plev, plevp
-use constituents,       only: pcnst, cnst_name
+use constituents,       only: pcnst, cnst_name, cnst_is_a_water_species, cnst_read_iv
+use const_init,         only: cnst_init_default
 
 use cam_control_mod,    only: initial_run
 use cam_initfiles,      only: initial_file_get_id, topo_file_get_id
@@ -81,7 +82,7 @@ type dyn_import_t
    !
    ! Index map between MPAS tracers and CAM constituents
    !
-   integer, dimension(:), pointer :: mpas_from_cam_cnst => null()
+   integer, dimension(:), pointer :: mpas_from_cam_cnst => null() ! indices into CAM constituent array
 
    !
    ! Base state variables
@@ -172,7 +173,7 @@ type dyn_export_t
    !
    ! Index map between MPAS tracers and CAM constituents
    !
-   integer, dimension(:), pointer :: cam_from_mpas_cnst => null()
+   integer, dimension(:), pointer :: cam_from_mpas_cnst => null() ! indices into MPAS tracers array
 
    !
    ! Invariant -- the vertical coordinate in MPAS-A is a height coordinate
@@ -684,6 +685,9 @@ subroutine read_inidat(dyn_in)
    real(r8), pointer :: uReconstructY(:,:)
    real(r8), pointer :: uReconstructZ(:,:)
 
+   integer :: mpas_idx, cam_idx
+   character(len=16) :: trac_name
+   
    character(len=*), parameter :: subname = 'dyn_comp:read_inidat'
    !--------------------------------------------------------------------------------------
 
@@ -774,7 +778,7 @@ subroutine read_inidat(dyn_in)
          m_ind(m) = m
       end do
       call analytic_ic_set_ic(vcoord, latvals, lonvals, glob_ind, m_cnst=m_ind, Q=cam4d)
-      do m = 1, pcnst
+      do m = 1, pcnst  ! index into MPAS tracers array
          do k = 1, plev
             kk = plev - k + 1
             do i = 1, nCellsSolve
@@ -820,7 +824,6 @@ subroutine read_inidat(dyn_in)
          end do
       end do
 
-      theta_m(:,1:nCellsSolve) = theta(:,1:nCellsSolve) * (1.0_r8 + Rv_over_Rd * tracers(ixqv,:,1:nCellsSolve))
       rho_zz(:,1:nCellsSolve) = rho(:,1:nCellsSolve) / zz(:,1:nCellsSolve)
 
       ! Set theta_base and rho_base
@@ -873,15 +876,7 @@ subroutine read_inidat(dyn_in)
       end if
       deallocate( mpas3d )
 
-      ! read qv
       allocate( mpas3d(plev,nCellsSolve,1) )
-      call infld('qv', fh_ini, 'lev', 'nCells', 1, plev, 1, nCellsSolve, 1, 1, &
-                 mpas3d, readvar, gridname='mpas_cell')
-      if (readvar) then
-         tracers(ixqv,:,1:nCellsSolve) = mpas3d(:,:nCellsSolve,1)
-      else
-         call endrun(subname//': failed to read qv from initial file')
-      end if
 
       ! read theta
       call infld('theta', fh_ini, 'lev', 'nCells', 1, plev, 1, nCellsSolve, 1, 1, &
@@ -891,8 +886,6 @@ subroutine read_inidat(dyn_in)
       else
          call endrun(subname//': failed to read theta from initial file')
       end if
-
-      theta_m(:,1:nCellsSolve) = theta(:,1:nCellsSolve) * (1.0_r8 + Rv_over_Rd * tracers(ixqv,:,1:nCellsSolve))
 
       ! read rho
       call infld('rho', fh_ini, 'lev', 'nCells', 1, plev, 1, nCellsSolve, 1, 1, &
@@ -927,6 +920,56 @@ subroutine read_inidat(dyn_in)
 
    end if
 
+   ! Finish initialization of tracer fields.
+   !
+   ! If analytic ICs are being used, we allow constituents in an initial
+   ! file to overwrite mixing ratios set by the default constituent initialization
+   ! except for the water species.
+
+   allocate( mpas3d(plev,nCellsSolve,1) )
+
+   do mpas_idx = 1, pcnst
+
+      ! The names of the species in the MPAS initial file may be different from the
+      ! names in the CAM constituent module.  Also the species order in the MPAS
+      ! tracers array may be different from the order in the CAM constituent array.
+
+      cam_idx = mpas_from_cam_cnst(mpas_idx)
+
+      if (analytic_ic_active() .and. cnst_is_a_water_species(cnst_name(cam_idx))) cycle
+
+      ! The name translation is hardcoded here temporarily...
+      trac_name = cnst_name(cam_idx)
+      if (mpas_idx == 1) trac_name = 'qv'
+
+      
+      readvar = .false.
+      if (cnst_read_iv(cam_idx)) then
+
+         ! read constituent from the initial file if present
+         call infld(trac_name, fh_ini, 'lev', 'nCells', 1, plev, 1, nCellsSolve, 1, 1, &
+                    mpas3d, readvar, gridname='mpas_cell')
+         if (readvar) then
+            tracers(mpas_idx,:,1:nCellsSolve) = mpas3d(:,:nCellsSolve,1)
+         end if
+      end if
+      if (.not. readvar .and. .not. analytic_ic_active()) then
+         ! default constituent initialization (this was already done if analytic ICs are active)
+         call cnst_init_default(cam_idx, latvals, lonvals, cam3d)
+         do k = 1, plev
+            kk = plev - k + 1
+            do i = 1, nCellsSolve
+               tracers(mpas_idx,kk,i) = cam3d(i,k,1)
+            end do
+         end do
+
+      end if
+   end do
+
+   deallocate( mpas3d )
+
+   theta_m(:,1:nCellsSolve) = theta(:,1:nCellsSolve) * (1.0_r8 + Rv_over_Rd * tracers(ixqv,:,1:nCellsSolve))
+
    ! Update halos for initial state fields
    ! halo for 'u' updated in both branches of conditional above
    call cam_mpas_update_halo('w')
@@ -937,6 +980,8 @@ subroutine read_inidat(dyn_in)
    call cam_mpas_update_halo('rho')
    call cam_mpas_update_halo('rho_base')
    call cam_mpas_update_halo('theta_base')
+
+   deallocate(cam2d, cam3d, cam4d, t, pintdry, pmiddry, pmid)
 
 end subroutine read_inidat
 

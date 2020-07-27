@@ -25,6 +25,7 @@ public :: &
    cnst_chk_dim,        &! check that number of constituents added equals dimensions (pcnst)
    cnst_cam_outfld,     &! Returns true if default CAM output was specified in the cnst_add calls.
    cnst_set_spec_class, &! Sets the type of species class
+   cnst_is_a_water_species,&! Returns true for constituents identified as water species
    cnst_set_convtran2    ! Override for convtran2 values set by the cnst_add routine
 
 ! Public data
@@ -527,6 +528,26 @@ function cnst_cam_outfld(m)
    end if
 
 end function cnst_cam_outfld
+
+!==============================================================================
+
+pure logical function cnst_is_a_water_species(name)
+
+   ! test whether the input name matches the name of a water species
+
+   character(len=*), intent(in) :: name  
+   !-------------------------------------------------------------------------
+
+   cnst_is_a_water_species = .false.
+
+   if (name == 'Q'      .or. &
+       name == 'CLDLIQ' .or. &
+       name == 'CLDICE' .or. &
+       name == 'RAINQM' .or. &
+       name == 'SNOWQM' .or. &
+       name == 'GRAUQM'      ) cnst_is_a_water_species = .true.
+      
+end function cnst_is_a_water_species
 
 !==============================================================================
 
