@@ -10,7 +10,7 @@ use physconst,          only: pi, gravit, rair, cpair
 
 use pmgrid,             only: plev, plevp
 use constituents,       only: pcnst, cnst_name, cnst_is_a_water_species, cnst_read_iv
-use const_init,         only: const_init_default
+use const_init,         only: cnst_init_default
 
 use cam_control_mod,    only: initial_run
 use cam_initfiles,      only: initial_file_get_id, topo_file_get_id
@@ -685,7 +685,7 @@ subroutine read_inidat(dyn_in)
    real(r8), pointer :: uReconstructY(:,:)
    real(r8), pointer :: uReconstructZ(:,:)
 
-   integer :: mpas_idx
+   integer :: mpas_idx, cam_idx
    character(len=16) :: trac_name
    
    character(len=*), parameter :: subname = 'dyn_comp:read_inidat'

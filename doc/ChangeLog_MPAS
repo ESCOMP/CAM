@@ -1,5 +1,43 @@
 ===============================================================
 
+Tag name: mpas062_cam6_2_037
+Originator(s): eaton
+Date: Mon 27 Jul 2020 03:19:26 PM MDT
+One-line Summary: fix tracer initialization
+
+Purpose of changes:
+
+. The tracer initialization was only implemented in the analytic IC
+  configuration.  Add code so that tracers are initialized when using an
+  initial file.  Implement the same logic as used by the SE and FV versions
+  of read_inidat:
+  - If using analytic ICs then that code is responsible for initializing
+    the water species.  Responsibility for the non-water species is passed
+    to the default constituent initialization (which is handled by the
+    module which added the constituent).
+    . For non-water species only, if the constituent is in the initial
+      file, then overwrite the default initialization with the values from
+      the initial file.
+  - If not using analytic ICs then the species are all read from the
+    initial file if they are present, otherwise the default constituent
+    initialization is called.
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/dyn_comp.F90
+. read_inidat
+  - add loop over constituents to read from an initial file or set the
+    default values.  logic depends on whether analytic ICs are being used.
+
+Testing:
+
+Run kessler, terminator chem, 6 test tracers, and initialize with 
+mpasa480_L26_v6.1_bwave.nc.  6 steps.  Verify that all tracers are
+initialized, and using ncview can see that they are being advected.
+
+===============================================================
+===============================================================
+
 Tag name: mpas061_cam6_2_037
 Originator(s): eaton
 Date: Thu 23 Jul 2020 05:55:03 PM MDT
@@ -13,6 +51,35 @@ Purpose of changes:
   ChangeLog_MPAS
 
 Testing: none
+
+===============================================================
+===============================================================
+
+Tag name: mpas061_cam6_2_036
+Originator(s): eaton
+Date: Thu 16 Jul 2020 06:05:33 PM MDT
+One-line Summary: merge from cam6_2_001 up to cam6_2_036
+
+Purpose of changes:
+
+merge from cam6_2_001 up to cam6_2_036
+
+merge the mpas branch of cime from cime5.8.12 to cime5.8.26
+
+List all existing files that have been modified, and describe the changes:
+
+bld/configure
+. set_horiz_grid
+  - modify the logic so that in horiz_grid.xml file is only read for EUL
+    and FV dycores.  MPAS doesn't require setting any grid parameters.
+
+bld/config_files/horiz_grid.xml
+. remove the MPAS grids
+
+Testing:
+
+Kessler with terminator chemistry and HS analytic ICs completes a 6
+timestep run.
 
 ===============================================================
 ===============================================================
