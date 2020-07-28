@@ -37,7 +37,7 @@ module inic_analytic
 CONTAINS
 !==============================================================================
 
-  subroutine dyn_set_inic_col(vcoord, latvals, lonvals, glob_ind, U, V, T,    &
+  subroutine dyn_set_inic_col(vcoord, latvals, lonvals, glob_ind, zint, U, V, T, &
        PS, PHIS_IN, PHIS_OUT, Q, m_cnst, mask, verbose)
     use cam_initfiles,        only: pertlim
 #ifdef ANALYTIC_IC
@@ -58,6 +58,7 @@ CONTAINS
     real(r8),           intent(in)    :: latvals(:)  ! lat in degrees (ncol)
     real(r8),           intent(in)    :: lonvals(:)  ! lon in degrees (ncol)
     integer,            intent(in)    :: glob_ind(:) ! global column index
+    real(r8), optional, intent(in)    :: zint(:,:)   ! height at layer interfaces
     real(r8), optional, intent(inout) :: U(:,:)      ! zonal velocity
     real(r8), optional, intent(inout) :: V(:,:)      ! meridional velocity
     real(r8), optional, intent(inout) :: T(:,:)      ! temperature
@@ -162,7 +163,7 @@ CONTAINS
            Q=Q, m_cnst=m_cnst, mask=mask_use, verbose=verbose_use)
 
     case('moist_baroclinic_wave_dcmip2016', 'dry_baroclinic_wave_dcmip2016')
-      call bc_wav_set_ic(vcoord, latvals, lonvals, U=U, V=V, T=T, PS=PS,      &
+      call bc_wav_set_ic(vcoord, latvals, lonvals, zint=zint, U=U, V=V, T=T, PS=PS,      &
            PHIS=PHIS_OUT, Q=Q, m_cnst=m_cnst, mask=mask_use, verbose=verbose_use)
 
     case('dry_baroclinic_wave_jw2006')
@@ -214,7 +215,7 @@ CONTAINS
 
   end subroutine dyn_set_inic_col
 
-  subroutine dyn_set_inic_cblock(vcoord,latvals, lonvals, glob_ind, U, V, T,  &
+  subroutine dyn_set_inic_cblock(vcoord,latvals, lonvals, glob_ind, zint, U, V, T,  &
        PS, PHIS_IN, PHIS_OUT, Q, m_cnst, mask)
     !-----------------------------------------------------------------------
     !
@@ -227,6 +228,7 @@ CONTAINS
     real(r8),           intent(in)    :: latvals(:)  ! lat in degrees (ncol)
     real(r8),           intent(in)    :: lonvals(:)  ! lon in degrees (ncol)
     integer,            intent(in)    :: glob_ind(:) ! global column index
+    real(r8), optional, intent(in)    :: zint(:,:,:) ! heights at layer interfaces (m)
     real(r8), optional, intent(inout) :: U(:,:,:)    ! zonal velocity
     real(r8), optional, intent(inout) :: V(:,:,:)    ! meridional velocity
     real(r8), optional, intent(inout) :: T(:,:,:)    ! temperature
@@ -292,67 +294,141 @@ CONTAINS
             call endrun(subname//': incorrect mask size')
           end if
           if (present(U)) then
-            call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
-                 glob_ind(bbeg:bend), U=U(:,:,i), mask=mask(bbeg:bend), verbose=verbose)
+             if (present(zint)) then
+                call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), zint=zint(:,:,i), U=U(:,:,i), mask=mask(bbeg:bend), verbose=verbose)
+             else
+                call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), U=U(:,:,i), mask=mask(bbeg:bend), verbose=verbose)
+             end if
           end if
           if (present(V)) then
-            call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
-                 glob_ind(bbeg:bend), V=V(:,:,i), mask=mask(bbeg:bend), verbose=verbose)
+             if (present(zint)) then
+                call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), zint=zint(:,:,i), V=V(:,:,i), mask=mask(bbeg:bend), verbose=verbose)
+             else
+                call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), V=V(:,:,i), mask=mask(bbeg:bend), verbose=verbose)
+             end if
           end if
           if (present(PS).and.present(PHIS_IN).and.present(T)) then          
-            call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
-                 glob_ind(bbeg:bend), PS=PS(:,i), PHIS_IN=PHIS_IN(:,i), T=T(:,:,i),    &
-                 mask=mask(bbeg:bend), verbose=verbose)
+             if (present(zint)) then
+                call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), zint=zint(:,:,i), PS=PS(:,i), PHIS_IN=PHIS_IN(:,i), T=T(:,:,i),    &
+                   mask=mask(bbeg:bend), verbose=verbose)
+             else
+                call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), PS=PS(:,i), PHIS_IN=PHIS_IN(:,i), T=T(:,:,i),    &
+                   mask=mask(bbeg:bend), verbose=verbose)
+             end if
           else
             if (present(T)) then
-              call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
-                   glob_ind(bbeg:bend), T=T(:,:,i), mask=mask(bbeg:bend), verbose=verbose)
+               if (present(zint)) then
+                  call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                     glob_ind(bbeg:bend), zint=zint(:,:,i), T=T(:,:,i), mask=mask(bbeg:bend), verbose=verbose)
+               else
+                  call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                     glob_ind(bbeg:bend), T=T(:,:,i), mask=mask(bbeg:bend), verbose=verbose)
+               end if
             end if            
             if (present(PHIS_OUT)) then
-              call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
-                   glob_ind(bbeg:bend), PHIS_OUT=PHIS_OUT(:,i), mask=mask(bbeg:bend), verbose=verbose)
+               if (present(zint)) then
+                  call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                     glob_ind(bbeg:bend), zint=zint(:,:,i), PHIS_OUT=PHIS_OUT(:,i), mask=mask(bbeg:bend), verbose=verbose)
+               else
+                  call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                     glob_ind(bbeg:bend), PHIS_OUT=PHIS_OUT(:,i), mask=mask(bbeg:bend), verbose=verbose)
+               end if
             end if
             if (present(PS)) then
-              call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
-                   glob_ind(bbeg:bend), PS=PS(:,i), mask=mask(bbeg:bend), verbose=verbose)
+               if (present(zint)) then
+                  call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                     glob_ind(bbeg:bend), zint=zint(:,:,i), PS=PS(:,i), mask=mask(bbeg:bend), verbose=verbose)
+               else
+                  call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                     glob_ind(bbeg:bend), PS=PS(:,i), mask=mask(bbeg:bend), verbose=verbose)
+               end if
             end if
           end if
           if (present(Q)) then
-            call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
-                 glob_ind(bbeg:bend), Q=Q(:,:,i,:), m_cnst=m_cnst,            &
-                 mask=mask(bbeg:bend), verbose=verbose)
+             if (present(zint)) then
+                call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), zint=zint(:,:,i), Q=Q(:,:,i,:), m_cnst=m_cnst,            &
+                   mask=mask(bbeg:bend), verbose=verbose)
+             else
+                call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), Q=Q(:,:,i,:), m_cnst=m_cnst,            &
+                   mask=mask(bbeg:bend), verbose=verbose)
+             end if
           end if
         else
           if (present(U)) then
-            call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
-                 glob_ind(bbeg:bend), U=U(:,:,i), verbose=verbose)
+             if (present(zint)) then
+                call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), zint=zint(:,:,i), U=U(:,:,i), verbose=verbose)
+             else
+                call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), U=U(:,:,i), verbose=verbose)
+             end if
           end if
           if (present(V)) then
-            call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
-                 glob_ind(bbeg:bend), V=V(:,:,i), verbose=verbose)
+             if (present(zint)) then
+                call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), zint=zint(:,:,i), V=V(:,:,i), verbose=verbose)
+             else
+                call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), V=V(:,:,i), verbose=verbose)
+             end if
           end if
           if (present(PS).and.present(PHIS_IN).and.present(T)) then
-              call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+             if (present(zint)) then
+                call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), zint=zint(:,:,i), PHIS_IN=PHIS_IN(:,i),PS=PS(:,i),T=T(:,:,i),      &
+                   verbose=verbose)
+             else
+                call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
                    glob_ind(bbeg:bend), PHIS_IN=PHIS_IN(:,i),PS=PS(:,i),T=T(:,:,i),      &
-                   verbose=verbose)            
+                   verbose=verbose)
+             end if
           else
             if (present(T)) then              
-              call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
-                   glob_ind(bbeg:bend), T=T(:,:,i), verbose=verbose)
+               if (present(zint)) then
+                  call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                     glob_ind(bbeg:bend), zint=zint(:,:,i), T=T(:,:,i), verbose=verbose)
+               else
+                  call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                     glob_ind(bbeg:bend), T=T(:,:,i), verbose=verbose)
+               end if
             end if
             if (present(PS)) then
-              call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
-                   glob_ind(bbeg:bend), PS=PS(:,i), verbose=verbose)
+               if (present(zint)) then
+                  call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                     glob_ind(bbeg:bend), zint=zint(:,:,i), PS=PS(:,i), verbose=verbose)
+               else
+                  call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                     glob_ind(bbeg:bend), PS=PS(:,i), verbose=verbose)
+               end if
             end if
             if (present(PHIS_OUT)) then
-            call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
-                 glob_ind(bbeg:bend), PHIS_OUT=PHIS_OUT(:,i), verbose=verbose)
+               if (present(zint)) then
+                  call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                     glob_ind(bbeg:bend), zint=zint(:,:,i), PHIS_OUT=PHIS_OUT(:,i), verbose=verbose)
+               else
+                  call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                     glob_ind(bbeg:bend), PHIS_OUT=PHIS_OUT(:,i), verbose=verbose)
+               end if
           end if
         end if
           if (present(Q)) then
-            call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
-                 glob_ind(bbeg:bend), Q=Q(:,:,i,:), m_cnst=m_cnst,            &
-                 verbose=verbose)
+             if (present(zint)) then
+                call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), zint=zint(:,:,i), Q=Q(:,:,i,:), m_cnst=m_cnst,            &
+                   verbose=verbose)
+             else
+                call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), Q=Q(:,:,i,:), m_cnst=m_cnst,            &
+                   verbose=verbose)
+             end if
           end if
         end if
         verbose = .false.
@@ -373,67 +449,141 @@ CONTAINS
             call endrun(subname//': incorrect mask size')
           end if
           if (present(U)) then
-            call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
-                 glob_ind(bbeg:bend), U=U(:,i,:), mask=mask(bbeg:bend), verbose=verbose)
+             if (present(zint)) then
+                call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), zint=zint(:,i,:), U=U(:,i,:), mask=mask(bbeg:bend), verbose=verbose)
+             else
+                call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), U=U(:,i,:), mask=mask(bbeg:bend), verbose=verbose)
+             end if
           end if
           if (present(V)) then
-            call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
-                 glob_ind(bbeg:bend), V=V(:,i,:), mask=mask(bbeg:bend), verbose=verbose)
+             if (present(zint)) then
+                call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), zint=zint(:,i,:), V=V(:,i,:), mask=mask(bbeg:bend), verbose=verbose)
+             else
+                call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), V=V(:,i,:), mask=mask(bbeg:bend), verbose=verbose)
+             end if
           end if
           if (present(PS).and.present(PHIS_IN).and.present(T)) then
-              call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+             if (present(zint)) then
+                call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), zint=zint(:,i,:), PHIS_IN=PHIS_IN(:,i),PS=PS(:,i),T=T(:,i,:),      &
+                   mask=mask(bbeg:bend), verbose=verbose)            
+             else
+                call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
                    glob_ind(bbeg:bend), PHIS_IN=PHIS_IN(:,i),PS=PS(:,i),T=T(:,i,:),      &
                    mask=mask(bbeg:bend), verbose=verbose)            
+             end if
           else
             if (present(T)) then
-              call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
-                   glob_ind(bbeg:bend), T=T(:,i,:), mask=mask(bbeg:bend), verbose=verbose)
+               if (present(zint)) then
+                  call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                     glob_ind(bbeg:bend), zint=zint(:,i,:), T=T(:,i,:), mask=mask(bbeg:bend), verbose=verbose)
+               else
+                  call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                     glob_ind(bbeg:bend), T=T(:,i,:), mask=mask(bbeg:bend), verbose=verbose)
+               end if
             end if
             if (present(PS)) then
-              call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
-                   glob_ind(bbeg:bend), PS=PS(:,i), mask=mask(bbeg:bend), verbose=verbose)
+               if (present(zint)) then
+                  call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                     glob_ind(bbeg:bend), zint=zint(:,i,:), PS=PS(:,i), mask=mask(bbeg:bend), verbose=verbose)
+               else
+                  call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                     glob_ind(bbeg:bend), PS=PS(:,i), mask=mask(bbeg:bend), verbose=verbose)
+               end if
             end if
             if (present(PHIS_OUT)) then
-              call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
-                   glob_ind(bbeg:bend), PHIS_OUT=PHIS_OUT(:,i), mask=mask(bbeg:bend), verbose=verbose)
+               if (present(zint)) then
+                  call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                     glob_ind(bbeg:bend), zint=zint(:,i,:), PHIS_OUT=PHIS_OUT(:,i), mask=mask(bbeg:bend), verbose=verbose)
+               else
+                  call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                     glob_ind(bbeg:bend), PHIS_OUT=PHIS_OUT(:,i), mask=mask(bbeg:bend), verbose=verbose)
+               end if
             end if
           end if
           if (present(Q)) then
-            call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
-                 glob_ind(bbeg:bend), Q=Q(:,i,:,:), m_cnst=m_cnst,            &
-                 mask=mask(bbeg:bend), verbose=verbose)
+             if (present(zint)) then
+                call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), zint=zint(:,i,:), Q=Q(:,i,:,:), m_cnst=m_cnst,            &
+                   mask=mask(bbeg:bend), verbose=verbose)
+             else
+                call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), Q=Q(:,i,:,:), m_cnst=m_cnst,            &
+                   mask=mask(bbeg:bend), verbose=verbose)
+             end if
           end if
         else
           if (present(U)) then
-            call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
-                 glob_ind(bbeg:bend), U=U(:,i,:), verbose=verbose)
+             if (present(zint)) then
+                call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), zint=zint(:,i,:), U=U(:,i,:), verbose=verbose)
+             else
+                call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), U=U(:,i,:), verbose=verbose)
+             end if
           end if
           if (present(V)) then
-            call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
-                 glob_ind(bbeg:bend), V=V(:,i,:), verbose=verbose)
+             if (present(zint)) then
+                call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), zint=zint(:,i,:), V=V(:,i,:), verbose=verbose)
+             else
+                call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), V=V(:,i,:), verbose=verbose)
+             end if
           end if
           if (present(PS).and.present(PHIS_IN).and.present(T)) then
-              call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+             if (present(zint)) then
+                call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), zint=zint(:,i,:), PHIS_IN=PHIS_IN(:,i),PS=PS(:,i),T=T(:,i,:),      &
+                   verbose=verbose)
+             else
+                call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
                    glob_ind(bbeg:bend), PHIS_IN=PHIS_IN(:,i),PS=PS(:,i),T=T(:,i,:),      &
-                   verbose=verbose)            
+                   verbose=verbose)
+             end if
           else
             if (present(T)) then
-              call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
-                   glob_ind(bbeg:bend), T=T(:,i,:), verbose=verbose)
+               if (present(zint)) then
+                  call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                     glob_ind(bbeg:bend), zint=zint(:,i,:), T=T(:,i,:), verbose=verbose)
+               else
+                  call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                     glob_ind(bbeg:bend), T=T(:,i,:), verbose=verbose)
+               end if
             end if
             if (present(PS)) then
-              call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
-                   glob_ind(bbeg:bend), PS=PS(:,i), verbose=verbose)
+               if (present(zint)) then
+                  call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                     glob_ind(bbeg:bend), zint=zint(:,i,:), PS=PS(:,i), verbose=verbose)
+               else
+                  call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                     glob_ind(bbeg:bend), PS=PS(:,i), verbose=verbose)
+               end if
             end if
             if (present(PHIS_OUT)) then
-              call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
-                   glob_ind(bbeg:bend), PHIS_OUT=PHIS_OUT(:,i), verbose=verbose)
+               if (present(zint)) then
+                  call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                     glob_ind(bbeg:bend), zint=zint(:,i,:), PHIS_OUT=PHIS_OUT(:,i), verbose=verbose)
+               else
+                  call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                     glob_ind(bbeg:bend), PHIS_OUT=PHIS_OUT(:,i), verbose=verbose)
+               end if
             end if
           end if
           if (present(Q)) then
-            call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
-                 glob_ind(bbeg:bend), Q=Q(:,i,:,:), m_cnst=m_cnst,            &
-                 verbose=verbose)
+             if (present(zint)) then
+                call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), zint=zint(:,i,:), Q=Q(:,i,:,:), m_cnst=m_cnst,            &
+                   verbose=verbose)
+             else
+                call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), Q=Q(:,i,:,:), m_cnst=m_cnst,            &
+                   verbose=verbose)
+             end if
           end if
         end if
         verbose = .false.
@@ -454,33 +604,68 @@ CONTAINS
           bend = bbeg + size1 - 1
           lat_use = latvals(i)
           if (present(U)) then
-            call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
-                 U=U(:,i,:), verbose=verbose)
+             if (present(zint)) then
+                call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
+                   zint=zint(:,i,:), U=U(:,i,:), verbose=verbose)
+             else
+                call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
+                   U=U(:,i,:), verbose=verbose)
+             end if
           end if
           if (present(V)) then
-            call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
-                 V=V(:,i,:), verbose=verbose)
+             if (present(zint)) then
+                call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
+                   zint=zint(:,i,:), V=V(:,i,:), verbose=verbose)
+             else
+                call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
+                   V=V(:,i,:), verbose=verbose)
+             end if
           end if
           if (present(PS).and.present(PHIS_IN).and.present(T)) then
-              call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
+             if (present(zint)) then
+                call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
+                   zint=zint(:,i,:), PS=PS(:,i),T=T(:,i,:),PHIS_IN=PHIS_IN(:,i), verbose=verbose)            
+             else
+                call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
                    PS=PS(:,i),T=T(:,i,:),PHIS_IN=PHIS_IN(:,i), verbose=verbose)            
+             end if
           else
             if (present(T)) then
-              call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
-                   T=T(:,i,:), verbose=verbose)
+               if (present(zint)) then
+                  call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
+                     zint=zint(:,i,:), T=T(:,i,:), verbose=verbose)
+               else
+                  call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
+                     T=T(:,i,:), verbose=verbose)
+               end if
             end if
             if (present(PS)) then
-              call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
-                   PS=PS(:,i), verbose=verbose)
+               if (present(zint)) then
+                  call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
+                     zint=zint(:,i,:), PS=PS(:,i), verbose=verbose)
+               else
+                  call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
+                     PS=PS(:,i), verbose=verbose)
+               end if
             end if
             if (present(PHIS_OUT)) then
-              call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
-                   PHIS_OUT=PHIS_OUT(:,i), verbose=verbose)
+               if (present(zint)) then
+                  call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
+                     zint=zint(:,i,:), PHIS_OUT=PHIS_OUT(:,i), verbose=verbose)
+               else
+                  call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
+                     PHIS_OUT=PHIS_OUT(:,i), verbose=verbose)
+               end if
             end if
           end if
           if (present(Q)) then
-            call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
-                 Q=Q(:,i,:,:), m_cnst=m_cnst, verbose=verbose)
+             if (present(zint)) then
+                call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
+                   zint=zint(:,i,:), Q=Q(:,i,:,:), m_cnst=m_cnst, verbose=verbose)
+             else
+                call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
+                   Q=Q(:,i,:,:), m_cnst=m_cnst, verbose=verbose)
+             end if
           end if
           verbose = .false.
         end do
@@ -502,33 +687,68 @@ CONTAINS
           bend = bbeg + size1 - 1
           lat_use = latvals(i)
           if (present(U)) then
-            call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
-                 U=U(:,:,i), verbose=verbose)
+             if (present(zint)) then
+                call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
+                   zint=zint(:,:,i), U=U(:,:,i), verbose=verbose)
+             else
+                call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
+                   U=U(:,:,i), verbose=verbose)
+             end if
           end if
           if (present(V)) then
-            call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
-                 V=V(:,:,i), verbose=verbose)
+             if (present(zint)) then
+                call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
+                   zint=zint(:,:,i), V=V(:,:,i), verbose=verbose)
+             else
+                call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
+                   V=V(:,:,i), verbose=verbose)
+             end if
           end if
           if (present(PS).and.present(PHIS_IN).and.present(T)) then
-            call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
-                 T=T(:,:,i),PS=PS(:,i), PHIS_IN=PHIS_IN(:,i), verbose=verbose)          
+             if (present(zint)) then
+                call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
+                   zint=zint(:,:,i), T=T(:,:,i),PS=PS(:,i), PHIS_IN=PHIS_IN(:,i), verbose=verbose)          
+             else
+                call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
+                   T=T(:,:,i),PS=PS(:,i), PHIS_IN=PHIS_IN(:,i), verbose=verbose)          
+             end if
           else
             if (present(T)) then
-              call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
-                   T=T(:,:,i), verbose=verbose)
+               if (present(zint)) then
+                  call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
+                     zint=zint(:,:,i), T=T(:,:,i), verbose=verbose)
+               else
+                  call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
+                     T=T(:,:,i), verbose=verbose)
+               end if
             end if          
             if (present(PS)) then
-              call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
-                   PS=PS(:,i), verbose=verbose)          
+               if (present(zint)) then
+                  call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
+                     zint=zint(:,:,i), PS=PS(:,i), verbose=verbose)          
+               else
+                  call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
+                     PS=PS(:,i), verbose=verbose)          
+               end if
             end if
             if (present(PHIS_OUT)) then
-              call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
-                   PHIS_OUT=PHIS_OUT(:,i), verbose=verbose)
+               if (present(zint)) then
+                  call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
+                     zint=zint(:,:,i), PHIS_OUT=PHIS_OUT(:,i), verbose=verbose)
+               else
+                  call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
+                     PHIS_OUT=PHIS_OUT(:,i), verbose=verbose)
+               end if
             end if
           end if
           if (present(Q)) then
-            call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
-                 Q=Q(:,:,i,:), m_cnst=m_cnst, verbose=verbose)
+             if (present(zint)) then
+                call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
+                   zint=zint(:,:,i), Q=Q(:,:,i,:), m_cnst=m_cnst, verbose=verbose)
+             else
+                call dyn_set_inic_col(vcoord,lat_use, lonvals, glob_ind(bbeg:bend), &
+                   Q=Q(:,:,i,:), m_cnst=m_cnst, verbose=verbose)
+             end if
           end if
           verbose = .false.
         end do

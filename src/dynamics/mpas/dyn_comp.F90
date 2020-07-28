@@ -666,7 +666,7 @@ subroutine read_inidat(dyn_in)
 
    integer,  allocatable :: m_ind(:)
    real(r8), allocatable :: &
-      cam2d(:,:), cam3d(:,:,:), cam4d(:,:,:,:) ! temp arrays using CAM data order
+      cam2d(:,:), cam3d(:,:,:), cam4d(:,:,:,:), zi(:,:,:) ! temp arrays using CAM data order
 
    ! temp arrays using MPAS data order
    real(r8), allocatable :: t(:,:)       ! temperature
@@ -733,13 +733,21 @@ subroutine read_inidat(dyn_in)
    ! Set ICs.  Either from analytic expressions or read from file.
 
    allocate( &
+      ! temporary arrays using CAM indexing
       cam2d(nCellsSolve,1),            &
       cam3d(nCellsSolve,plev,1),       &
       cam4d(nCellsSolve,plev,1,pcnst), &
+      zi(nCellsSolve,plevp,1),         &
+      ! temporary arrays using MPAS indexing
       t(plev,nCellsSolve),             &
       pintdry(plevp,nCellsSolve),      &
       pmiddry(plev,nCellsSolve),       &
-      pmid(plev,nCellsSolve) )
+      pmid(plev,nCellsSolve)           )
+
+   do k = 1, plevp
+      kk = plevp - k + 1
+      zi(:,kk,1) = zint(k,:nCellsSolve)
+   end do
 
    if (analytic_ic_active()) then
 
@@ -747,7 +755,7 @@ subroutine read_inidat(dyn_in)
 
       ! U, V cell center velocity components
 
-      call analytic_ic_set_ic(vcoord, latvals, lonvals, glob_ind, U=cam3d)
+      call analytic_ic_set_ic(vcoord, latvals, lonvals, glob_ind, zint=zi, U=cam3d)
       do k = 1, plev
          kk = plev - k + 1
          do i = 1, nCellsSolve
@@ -755,7 +763,7 @@ subroutine read_inidat(dyn_in)
          end do
       end do
 
-      call analytic_ic_set_ic(vcoord, latvals, lonvals, glob_ind, V=cam3d)
+      call analytic_ic_set_ic(vcoord, latvals, lonvals, glob_ind, zint=zi, V=cam3d)
       do k = 1, plev
          kk = plev - k + 1
          do i = 1, nCellsSolve
@@ -777,7 +785,7 @@ subroutine read_inidat(dyn_in)
       do m = 1, pcnst
          m_ind(m) = m
       end do
-      call analytic_ic_set_ic(vcoord, latvals, lonvals, glob_ind, m_cnst=m_ind, Q=cam4d)
+      call analytic_ic_set_ic(vcoord, latvals, lonvals, glob_ind, zint=zi, m_cnst=m_ind, Q=cam4d)
       do m = 1, pcnst  ! index into MPAS tracers array
          do k = 1, plev
             kk = plev - k + 1
@@ -790,7 +798,7 @@ subroutine read_inidat(dyn_in)
 
       ! Temperature
 
-      call analytic_ic_set_ic(vcoord, latvals, lonvals, glob_ind, T=cam3d)
+      call analytic_ic_set_ic(vcoord, latvals, lonvals, glob_ind, zint=zi, T=cam3d)
       do k = 1, plev
          kk = plev - k + 1
          do i = 1, nCellsSolve
@@ -800,7 +808,7 @@ subroutine read_inidat(dyn_in)
 
       ! Pressures are needed to convert temperature to potential temperature.
 
-      call analytic_ic_set_ic(vcoord, latvals, lonvals, glob_ind, PS=cam2d)
+      call analytic_ic_set_ic(vcoord, latvals, lonvals, glob_ind, zint=zi, PS=cam2d)
       do i = 1, nCellsSolve
          pintdry(1,i) = cam2d(i,1)
       end do

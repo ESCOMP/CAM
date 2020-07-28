@@ -1,5 +1,61 @@
 ===============================================================
 
+Tag name: 
+Originator(s): eaton
+Date: 
+One-line Summary: add height coordinate to analytic IC interfaces
+
+Purpose of changes:
+
+. Add height as an optional argument to the top level interfaces of the
+  analytic IC code.
+
+. Add height as an optional argument to the ic_baroclinic code which
+  implements analytic types moist_baroclinic_wave_dcmip2016 and
+  dry_baroclinic_wave_dcmip2016.
+  
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/dyn_comp.F90
+. read_inidat
+  - add temp array to reorder dyn_in%zint
+  - pass height to analytic_ic_set_ic
+
+src/dynamics/tests/inic_analytic.F90
+. dyn_set_inic_cblock
+  - add optional arg zint and pass it on through all calls to
+    dyn_set_inic_col.  Since only a 'block' subsection is passed, a
+    conditional is needed to check whether the optional arg is present.
+. dyn_set_inic_col
+  - add optional arg zint.
+  - pass to bc_wav_set_ic.
+
+src/dynamics/tests/initial_conditions/ic_baroclinic.F90
+. bc_wav_set_ic
+  - add vc_height option to the vcoord conditionals
+
+src/physics/cam/const_init.F90
+. cnst_init_default_col
+  - passing optional arg 'z' to tracers_init_cnst doesn't need to be inside
+    a conditional.
+
+src/physics/cam/tracers.F90
+. tracers_init_cnst
+  - passing the optional arg 'z' to test_func_set doesn't need to be inside
+    a conditional.
+
+Testing:
+
+Run kessler, terminator chem, 6 test tracers, and initialize with analytic
+IC type moist_baroclinic_wave_dcmip2016 (use case is dctest_baro_kessler).
+6 steps.  Verify that all tracers are initialized, and using ncview can see
+that they are being advected.  Furthermore the test tracers TT_CCOSB,
+TT_COSB, and TT_ICOSB now have dependence on height.
+
+===============================================================
+===============================================================
+
 Tag name: mpas062_cam6_2_037
 Originator(s): eaton
 Date: Mon 27 Jul 2020 03:19:26 PM MDT

@@ -171,7 +171,7 @@ contains
     !*******************************
     !
     if (present(PS)) then
-      if (vcoord == vc_moist_pressure) then
+      if (vcoord == vc_moist_pressure .or. vcoord == vc_height) then
         where(mask_use)
           PS = psurf_moist
         end where
@@ -249,21 +249,20 @@ contains
             psurface = psurf_moist-wvp
           end if
 
-          do k=1,nlev
-            ! compute pressure levels
-            pk = hyam(k)*ps0 + hybm(k)*psurface
-            ! find height of pressure surface
-            zk(k) = iterate_z_given_pressure(pk,(vcoord == vc_dry_pressure),ptop,latvals(i),ztop)
-          end do
+          if (vcoord == vc_moist_pressure .or. vcoord == vc_dry_pressure) then
+             do k=1,nlev
+                ! compute pressure levels
+                pk = hyam(k)*ps0 + hybm(k)*psurface
+                ! find height of pressure surface
+                zk(k) = iterate_z_given_pressure(pk,(vcoord == vc_dry_pressure),ptop,latvals(i),ztop)
+             end do
+          else if (vcoord == vc_height) then
+             zk = 0.5_r8*(zint(i,1:nlev) + zint(i,2:nlev+1))
+          end if
 
           if (lq) then
-            if (present(Z)) then
-              zlocal(i,1:nlev) = Z(i,1:nlev)
-            else
-              zlocal(i,1:nlev) = zk(:)
-            end if
+             zlocal(i,:) = zk(:)
           end if
-          
 
           do k=1,nlev
             !
@@ -275,7 +274,8 @@ contains
             !
             ! temperature and moisture for moist vertical coordinates
             !
-            if ((lq.or.lt).and.(vcoord == vc_moist_pressure)) then
+            if ( (lq .or. lt) .and. &
+                 (vcoord==vc_moist_pressure .or. vcoord==vc_height) ) then
               if (analytic_ic_is_moist()) then
                 pk = moist_pressure_given_z(zk(k),latvals(i))
                 qk = qv_given_moist_pressure(pk,latvals(i))
@@ -335,9 +335,10 @@ contains
     end if
 
     if (lq) then
-      ncnst = size(m_cnst, 1)
-      if ((vcoord == vc_moist_pressure) .or. (vcoord == vc_dry_pressure)) then
-        do m = 1, ncnst
+
+       ncnst = size(m_cnst, 1)
+
+       do m = 1, ncnst
 
           ! water vapor already done above
           if (m_cnst(m) == 1) cycle
@@ -346,9 +347,7 @@ contains
                mask=mask_use, verbose=verbose_use, notfound=.false.,&
                z=zlocal)               
           
-        end do
-
-      end if ! vcoord
+       end do
     end if   ! lq
 
     deallocate(mask_use)
