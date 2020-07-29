@@ -36,7 +36,7 @@
       ! cls_rxt_cnt(:,1) = (/     37,    61,     0,    30 /)
       ! cls_rxt_cnt(:,4) = (/     23,   174,   326,   191 /)
 
-      solsym(:273) = (/ 'CH2I2          ','CH2ICL         ','CH2IBR         ', &
+      solsym(:306) = (/ 'CH2I2          ','CH2ICL         ','CH2IBR         ', &
                         'NITs           ','NIT            ','AERI           ', &
                         'CO2            ','INDIOL         ','ISALA          ', &
                         'ISALC          ','ISN1OA         ','ISN1OG         ', &
@@ -126,7 +126,21 @@
                         'TSOA3          ','TSOA0          ','ASOG1          ', &
                         'ASOG2          ','ASOG3          ','ASOAN          ', &
                         'ASOA1          ','ASOA2          ','ASOA3          ', &
-                        'SOAP           ','SOAS           ','PFE            ' /)
+                        'SOAP           ','SOAS           ','PFE            ', &
+                        'bc_a1          ','bc_a4          ','dst_a1         ', &
+                        'dst_a2         ','dst_a3         ','ncl_a1         ', &
+                        'ncl_a2         ','ncl_a3         ','num_a1         ', &
+                        'num_a2         ','num_a3         ','num_a4         ', &
+                        'pom_a1         ','pom_a4         ','so4_a1         ', &
+                        'so4_a2         ','so4_a3         ','soa1_a1        ', &
+                        'soa1_a2        ','soa2_a1        ','soa2_a2        ', &
+                        'soa3_a1        ','soa3_a2        ','soa4_a1        ', &
+                        'soa4_a2        ','soa5_a1        ','soa5_a2        ', &
+                        'H2SO4          ','SOAG0          ','SOAG1          ', &
+                        'SOAG2          ','SOAG3          ','SOAG4          ' /)
+
+      inv_lst(:  6) = (/ 'M               ', 'N2              ', 'O2              ', &
+                         'H2              ', 'MOH             ', 'RCOOH           ' /)
 
       ! adv_mass(:221) = (/   133.141340_r8,   104.142600_r8,    28.010400_r8,    12.011000_r8,    12.011000_r8, &
       !                       204.342600_r8,    78.110400_r8,   160.122200_r8,   126.108600_r8,    98.098200_r8, &
