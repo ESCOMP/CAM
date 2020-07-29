@@ -116,7 +116,7 @@ contains
     logical                           :: lU, lV, lT, lQ, l3d_vars
     logical                           :: cnst1_is_moisture
     real(r8), allocatable             :: pdry_half(:), pwet_half(:),zdry_half(:),zk(:)
-    real(r8), allocatable             :: zlocal(:,:) ! layer midpoint heights for test tracer initialization
+    real(r8), allocatable             :: zmid(:,:) ! layer midpoint heights for test tracer initialization
 
     if ((vcoord == vc_moist_pressure) .or. (vcoord == vc_dry_pressure)) then
       !
@@ -227,7 +227,7 @@ contains
          nlev = size(Q, 2)
          ! check whether first constituent in Q is water vapor.
          cnst1_is_moisture = m_cnst(1) == 1
-         allocate(zlocal(size(Q, 1),nlev))         
+         allocate(zmid(size(Q, 1),nlev))         
       end if
 
       allocate(zk(nlev))
@@ -261,7 +261,7 @@ contains
           end if
 
           if (lq) then
-             zlocal(i,:) = zk(:)
+             zmid(i,:) = zk(:)
           end if
 
           do k=1,nlev
@@ -345,7 +345,7 @@ contains
 
           call cnst_init_default(m_cnst(m), latvals, lonvals, Q(:,:,m),&
                mask=mask_use, verbose=verbose_use, notfound=.false.,&
-               z=zlocal)               
+               z=zmid)               
           
        end do
     end if   ! lq

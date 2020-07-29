@@ -1,8 +1,8 @@
 ===============================================================
 
-Tag name: 
+Tag name: mpas063_cam6_2_037
 Originator(s): eaton
-Date: 
+Date: Wed 29 Jul 2020 09:55:30 AM MDT
 One-line Summary: add height coordinate to analytic IC interfaces
 
 Purpose of changes:
@@ -14,6 +14,8 @@ Purpose of changes:
   implements analytic types moist_baroclinic_wave_dcmip2016 and
   dry_baroclinic_wave_dcmip2016.
   
+. Add height as an optional argument to the ic_us_standard_atm code which
+  implements the analytic type us_standard_atmosphere.
 
 List all existing files that have been modified, and describe the changes:
 
@@ -29,11 +31,15 @@ src/dynamics/tests/inic_analytic.F90
     conditional is needed to check whether the optional arg is present.
 . dyn_set_inic_col
   - add optional arg zint.
-  - pass to bc_wav_set_ic.
+  - pass zint to bc_wav_set_ic and us_std_atm_set_ic
 
 src/dynamics/tests/initial_conditions/ic_baroclinic.F90
 . bc_wav_set_ic
   - add vc_height option to the vcoord conditionals
+
+src/dynamics/tests/initial_conditions/ic_us_standard_atm.F90
+. us_std_atm_set_ic
+  - add optional intent(in) arg for interface heights
 
 src/physics/cam/const_init.F90
 . cnst_init_default_col
@@ -52,6 +58,11 @@ IC type moist_baroclinic_wave_dcmip2016 (use case is dctest_baro_kessler).
 6 steps.  Verify that all tracers are initialized, and using ncview can see
 that they are being advected.  Furthermore the test tracers TT_CCOSB,
 TT_COSB, and TT_ICOSB now have dependence on height.
+
+Run the same kessler test but initialize with analytic IC type
+us_standard_atmosphere.  Verified that tracers were properly initialized.
+The velocities are initialized to zero and the kessler physics doesn't
+update them, so the tracers don't move in this simulation.
 
 ===============================================================
 ===============================================================

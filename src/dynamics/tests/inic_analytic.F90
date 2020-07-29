@@ -163,7 +163,7 @@ CONTAINS
            Q=Q, m_cnst=m_cnst, mask=mask_use, verbose=verbose_use)
 
     case('moist_baroclinic_wave_dcmip2016', 'dry_baroclinic_wave_dcmip2016')
-      call bc_wav_set_ic(vcoord, latvals, lonvals, zint=zint, U=U, V=V, T=T, PS=PS,      &
+      call bc_wav_set_ic(vcoord, latvals, lonvals, zint=zint, U=U, V=V, T=T, PS=PS, &
            PHIS=PHIS_OUT, Q=Q, m_cnst=m_cnst, mask=mask_use, verbose=verbose_use)
 
     case('dry_baroclinic_wave_jw2006')
@@ -171,7 +171,7 @@ CONTAINS
            PHIS=PHIS_OUT, Q=Q, m_cnst=m_cnst, mask=mask_use, verbose=verbose_use)
 
     case('us_standard_atmosphere')
-      call us_std_atm_set_ic(latvals, lonvals, U=U, V=V, T=T, PS=PS, PHIS=PHIS_IN,     &
+      call us_std_atm_set_ic(latvals, lonvals, zint=zint, U=U, V=V, T=T, PS=PS, PHIS=PHIS_IN, &
            Q=Q, m_cnst=m_cnst, mask=mask_use, verbose=verbose_use)      
 
     case default
