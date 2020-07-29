@@ -37,6 +37,10 @@ module mo_drydep
      module procedure dvel_inti_fromlnd
   end interface
 
+  interface drydep_inti_landuse
+     module procedure dvel_inti_xactive_landuse
+  end interface
+
   interface drydep
      !module procedure drydep_table
      module procedure drydep_xactive
@@ -45,6 +49,7 @@ module mo_drydep
 
   private
   public :: drydep_inti, drydep, set_soilw, chk_soilw, has_drydep
+  public :: drydep_inti_landuse
   public :: drydep_update
   public :: drydep_fromlnd
   public :: n_land_type, fraction_landuse, drydep_srf_file
@@ -2042,6 +2047,192 @@ contains
     deallocate( lat_lai, wk_lai, clat, index_season_lai_j)
 
   end subroutine dvel_inti_xactive
+
+  subroutine dvel_inti_xactive_landuse( depvel_lnd_file, clim_soilw_file )
+    !-------------------------------------------------------------------------------------
+    ! 	... intialize interactive drydep
+    !-------------------------------------------------------------------------------------
+    use dycore,        only : dycore_is
+    use mo_constants,  only : r2d
+    use chem_mods,     only : adv_mass
+    use mo_chem_utls,  only : get_spc_ndx ! Replaced, TMMF
+    use seq_drydep_mod,only : drydep_method, DD_XATM, DD_XLND
+    use phys_control,  only : phys_getopts
+
+    implicit none
+
+    !-------------------------------------------------------------------------------------
+    ! 	... dummy arguments
+    !-------------------------------------------------------------------------------------
+    character(len=*), intent(in) :: depvel_lnd_file, clim_soilw_file
+
+    !-------------------------------------------------------------------------------------
+    ! 	... local variables
+    !-------------------------------------------------------------------------------------
+    integer :: i, j, ii, jj, jl, ju
+    integer :: nlon_veg, nlat_veg, npft_veg
+    integer :: nlat_lai, npft_lai, pos_min, imin
+    integer :: dimid
+    integer :: m, n, l, id
+    integer :: length1, astat
+    integer :: k, num_max, k_max
+    integer :: num_seas(5)
+    integer :: plon, plat
+    integer :: ierr, ndx
+
+    real(r8)              :: spc_mass
+    real(r8)              :: diff_min, target_lat
+    real(r8), allocatable :: vegetation_map(:,:,:)
+    real(r8), pointer     :: soilw_map(:,:,:)
+    real(r8), allocatable :: work(:,:)
+    real(r8), allocatable :: landmask(:,:)
+    real(r8), allocatable :: urban(:,:)
+    real(r8), allocatable :: lake(:,:)
+    real(r8), allocatable :: wetland(:,:)
+    real(r8), allocatable :: lon_veg(:)
+    real(r8), allocatable :: lon_veg_edge(:)
+    real(r8), allocatable :: lat_veg(:)
+    real(r8), allocatable :: lat_veg_edge(:)
+    character(len=32) :: test_name
+    character(len=4) :: tag_name
+    type(file_desc_t) :: piofile
+    type(var_desc_t) :: vid
+    logical :: do_soilw
+
+    character(len=shr_kind_cl) :: locfn
+    logical :: prog_modal_aero
+
+    ! determine if modal aerosols are active so that fraction_landuse array is initialized for modal aerosal dry dep
+    call phys_getopts(prog_modal_aero_out=prog_modal_aero)
+
+    call dvel_inti_fromlnd()
+
+    !---------------------------------------------------------------------------
+    ! 	... allocate module variables
+    !---------------------------------------------------------------------------
+    if (drydep_method == DD_XLND .and. (.not.prog_modal_aero)) then
+       return
+    endif
+
+    do_soilw = .not. dyn_soilw
+    allocate( fraction_landuse(pcols,n_land_type, begchunk:endchunk),stat=astat )
+    if( astat /= 0 ) then
+       write(iulog,*) 'dvel_inti: failed to allocate fraction_landuse; error = ',astat
+       call endrun
+    end if
+    if(do_soilw) then
+       allocate(soilw_3d(pcols,12,begchunk:endchunk),stat=astat)
+       if( astat /= 0 ) then
+          write(iulog,*) 'dvel_inti: failed to allocate soilw_3d error = ',astat
+          call endrun
+       end if
+    end if
+
+    plon = get_dyn_grid_parm('plon')
+    plat = get_dyn_grid_parm('plat')
+    if(dycore_is('UNSTRUCTURED') ) then
+       call get_landuse_and_soilw_from_file(do_soilw)
+    else
+       !---------------------------------------------------------------------------
+       ! 	... read landuse map
+       !---------------------------------------------------------------------------
+       call getfil (depvel_lnd_file, locfn, 0)
+       call cam_pio_openfile (piofile, trim(locfn), PIO_NOWRITE)
+       !---------------------------------------------------------------------------
+       ! 	... get the dimensions
+       !---------------------------------------------------------------------------
+       ierr = pio_inq_dimid( piofile, 'lon', dimid )
+       ierr = pio_inq_dimlen( piofile, dimid, nlon_veg )
+       ierr = pio_inq_dimid( piofile, 'lat', dimid )
+       ierr = pio_inq_dimlen( piofile, dimid, nlat_veg )
+       ierr = pio_inq_dimid( piofile, 'pft', dimid )
+       ierr = pio_inq_dimlen( piofile, dimid, npft_veg )
+       !---------------------------------------------------------------------------
+       ! 	... allocate arrays
+       !---------------------------------------------------------------------------
+       allocate( vegetation_map(nlon_veg,nlat_veg,npft_veg), work(nlon_veg,nlat_veg), stat=astat )
+       if( astat /= 0 ) then
+          write(iulog,*) 'dvel_inti: failed to allocate vegation_map; error = ',astat
+          call endrun
+       end if
+       allocate( urban(nlon_veg,nlat_veg), lake(nlon_veg,nlat_veg), &
+            landmask(nlon_veg,nlat_veg), wetland(nlon_veg,nlat_veg), stat=astat )
+       if( astat /= 0 ) then
+          write(iulog,*) 'dvel_inti: failed to allocate vegation_map; error = ',astat
+          call endrun
+       end if
+       allocate( lon_veg(nlon_veg), lat_veg(nlat_veg), &
+            lon_veg_edge(nlon_veg+1), lat_veg_edge(nlat_veg+1), stat=astat )
+       if( astat /= 0 ) then
+          write(iulog,*) 'dvel_inti: failed to allocate vegation lon, lat arrays; error = ',astat
+          call endrun
+       end if
+       !---------------------------------------------------------------------------
+       ! 	... read the vegetation map and landmask
+       !---------------------------------------------------------------------------
+       ierr = pio_inq_varid( piofile, 'PCT_PFT', vid )
+       ierr = pio_get_var( piofile, vid, vegetation_map )
+
+       ierr = pio_inq_varid( piofile, 'LANDMASK', vid )
+       ierr = pio_get_var( piofile, vid, landmask )
+
+       ierr = pio_inq_varid( piofile, 'PCT_URBAN', vid )
+       ierr = pio_get_var( piofile, vid, urban )
+
+       ierr = pio_inq_varid( piofile, 'PCT_LAKE', vid )
+       ierr = pio_get_var( piofile, vid, lake )
+
+       ierr = pio_inq_varid( piofile, 'PCT_WETLAND', vid )
+       ierr = pio_get_var( piofile, vid, wetland )
+
+       call cam_pio_closefile( piofile )
+
+       !---------------------------------------------------------------------------
+       ! scale vegetation, urban, lake, and wetland to fraction
+       !---------------------------------------------------------------------------
+       vegetation_map(:,:,:) = .01_r8 * vegetation_map(:,:,:)
+       wetland(:,:)          = .01_r8 * wetland(:,:)
+       lake(:,:)             = .01_r8 * lake(:,:)
+       urban(:,:)            = .01_r8 * urban(:,:)
+#ifdef DEBUG
+       if(masterproc) then
+          write(iulog,*) 'minmax vegetation_map ',minval(vegetation_map),maxval(vegetation_map)
+          write(iulog,*) 'minmax wetland        ',minval(wetland),maxval(wetland)
+          write(iulog,*) 'minmax landmask       ',minval(landmask),maxval(landmask)
+       end if
+#endif
+       !---------------------------------------------------------------------------
+       ! 	... define lat-lon of vegetation map (1x1)
+       !---------------------------------------------------------------------------
+       lat_veg(:)      = (/ (-89.5_r8 + (i-1),i=1,nlat_veg  ) /)
+       lon_veg(:)      = (/ (  0.5_r8 + (i-1),i=1,nlon_veg  ) /)
+       lat_veg_edge(:) = (/ (-90.0_r8 + (i-1),i=1,nlat_veg+1) /)
+       lon_veg_edge(:) = (/ (  0.0_r8 + (i-1),i=1,nlon_veg+1) /)
+       !---------------------------------------------------------------------------
+       ! 	... read soilw table if necessary
+       !---------------------------------------------------------------------------
+
+       if( do_soilw ) then
+          call soilw_inti( clim_soilw_file, nlon_veg, nlat_veg, soilw_map )
+       end if
+
+       !---------------------------------------------------------------------------
+       ! 	... regrid to model grid
+       !---------------------------------------------------------------------------
+
+       call interp_map( plon, plat, nlon_veg, nlat_veg, npft_veg, lat_veg, lat_veg_edge, &
+            lon_veg, lon_veg_edge, landmask, urban, lake, &
+            wetland, vegetation_map, soilw_map, do_soilw )
+
+       deallocate( vegetation_map, work, stat=astat )
+       deallocate( lon_veg, lat_veg, lon_veg_edge, lat_veg_edge, stat=astat )
+       deallocate( landmask, urban, lake, wetland, stat=astat )
+       if( do_soilw ) then
+          deallocate( soilw_map, stat=astat )
+       end if
+    endif  ! Unstructured grid
+
+  end subroutine dvel_inti_xactive_landuse
 
   !-------------------------------------------------------------------------------------
   subroutine get_landuse_and_soilw_from_file(do_soilw)

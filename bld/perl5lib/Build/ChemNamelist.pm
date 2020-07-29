@@ -66,31 +66,35 @@ sub set_dep_lists
     if ($print_lvl>=2) {print "Chemistry species : @species_list \n" ;}
 
     if (!defined $nl->get_value('gas_wetdep_list')) {
-    $gas_wetdep_list = get_gas_wetdep_list( $cfgdir, $print_lvl, @species_list );
+        $gas_wetdep_list = get_gas_wetdep_list( $cfgdir, $print_lvl, @species_list );
     } else {
         $gas_wetdep_list = $nl->get_value('gas_wetdep_list');
         $gas_wetdep_list = filter_dep_list( $gas_wetdep_list, $print_lvl, @species_list );
+        if ($print_lvl>=2) {print " gas wet dep list : $gas_wetdep_list  \n" ;}
     }
 
     if (!defined $nl->get_value('aer_wetdep_list')) {
-    $aer_wetdep_list = get_aer_wetdep_list( $cfgdir, $print_lvl, @species_list );
+        $aer_wetdep_list = get_aer_wetdep_list( $cfgdir, $print_lvl, @species_list );
     } else {
         $aer_wetdep_list = $nl->get_value('aer_wetdep_list');
         $aer_wetdep_list = filter_dep_list( $aer_wetdep_list, $print_lvl, @species_list );
+        if ($print_lvl>=2) {print " aer wet dep list : $aer_wetdep_list  \n" ;}
     }
 
     if (!defined $nl->get_value('drydep_list')) {
-    $gas_drydep_list = get_gas_drydep_list( $cfgdir, $print_lvl, @species_list );
+        $gas_drydep_list = get_gas_drydep_list( $cfgdir, $print_lvl, @species_list );
     } else {
         $gas_drydep_list = $nl->get_value('drydep_list');
         $gas_drydep_list = filter_dep_list( $gas_drydep_list, $print_lvl, @species_list );
+        if ($print_lvl>=2) {print " dry dep list : $gas_drydep_list  \n" ;}
     }
 
     if (!defined $nl->get_value('aer_drydep_list')) {
-    $aer_drydep_list = get_aer_drydep_list( $cfgdir, $print_lvl, @species_list );
+        $aer_drydep_list = get_aer_drydep_list( $cfgdir, $print_lvl, @species_list );
     } else {
         $aer_drydep_list = $nl->get_value('aer_drydep_list');
         $aer_drydep_list = filter_dep_list( $aer_drydep_list, $print_lvl, @species_list );
+        if ($print_lvl>=2) {print " aer dry dep list : $aer_drydep_list  \n" ;}
     }
 
     # set solubility factors for aerosols
