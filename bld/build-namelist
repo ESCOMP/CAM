@@ -665,7 +665,7 @@ my $rad_prog_bcarb = (($prog_species =~ "BC"   or $aero_chem) and !($chem_rad_pa
 my $rad_prog_sulf  = (($prog_species =~ "SO4"  or $aero_chem) and !($chem_rad_passive));
 my $rad_prog_dust  = (($prog_species =~ "DST"  or $aero_chem) and !($chem_rad_passive));
 my $rad_prog_sslt  = (($prog_species =~ "SSLT" or $aero_chem) and !($chem_rad_passive));
-my $rad_prog_ozone = (($chem =~ "mozart" or $chem =~ "waccm_ma" or $chem =~ "tsmlt" or $chem =~ "trop_strat") and !($chem_rad_passive));
+my $rad_prog_ozone = (($chem =~ "mozart" or $chem =~ "waccm_ma" or $chem =~ "tsmlt" or $chem =~ "trop_strat" or $chem =~ /geoschem/) and !($chem_rad_passive));
 
 # Check for eruptive volcano emissions.  These will be radiatively active by default, but
 # only if using BAM and the camrt radiation package
@@ -707,6 +707,11 @@ if ( ($chem ne 'none') or ( $prog_species ) ){
       add_default($nl, 'gas_wetdep_method' );
       add_default($nl, 'gas_wetdep_list', 'val'=>$gas_wetdep_list );
     }
+
+    if ($chem =~ /geoschem/) {
+      $prescribe_aerosols = $FALSE;
+    }
+
     if (length($aer_wetdep_list)>2){
         # determine if prescribed aerosols are not needed ...
         if ($aer_wetdep_list =~ /so4/i &&
@@ -740,6 +745,10 @@ if ( ($chem ne 'none') or ( $prog_species ) ){
     if (length($aer_drydep_list)>2){
         add_default($nl, 'aer_drydep_list', 'val'=>$aer_drydep_list );
     }
+    $nl->set_variable_value('aerosol_nl', 'aer_drydep_list', $aer_drydep_list);
+    $nl->set_variable_value('aerosol_nl', 'aer_wetdep_list', $aer_wetdep_list);
+    $nl->set_variable_value('drydep_inparm', 'drydep_list', $gas_drydep_list);
+    $nl->set_variable_value('wetdep_inparm', 'gas_wetdep_list', $gas_wetdep_list);
 }
 if ($chem) {
     # Dry Deposition -- The responsibility for dry deposition is shared between CAM and CLM.
@@ -981,7 +990,7 @@ my $radval = "'A:Q:H2O'";
 if (($chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/) and !$chem_rad_passive) {
     $radval .= ",'A:O2:O2','A:CO2:CO2'";
 }
-elsif ($chem =~ /trop_strat/ and !$chem_rad_passive) {
+elsif (($chem =~ /trop_strat/ or $chem =~ /geoschem/) and !$chem_rad_passive) {
     $radval .= ",'N:O2:O2','A:CO2:CO2'";
 }
 elsif ($co2_cycle and !$co2_cycle_rad_passive) {
@@ -2070,7 +2079,38 @@ if (($chem =~ /geoschem/ or $chem =~ /trop_mozart/ or $chem =~ /trop_strat/ or $
     }
 }
 
-if ($chem =~ /geoschem/ or $chem =~ /trop_mozart/ or $chem =~ /trop_strat/ or $chem =~ /waccm_tsmlt/) {
+if ($chem =~ /geoschem/) {
+
+    my $val;
+
+    # Species with fixed lower boundary
+    $val = "'CH4','OCS','N2O','CO2','CFC11','CFC12'";
+
+    if ($chem_has_ocs) {
+        $val .= ",'OCS'";
+    }
+    if (chem_has_species($cfg, 'SF6')) {
+        $val .= ",'SF6'";
+    }
+    add_default($nl, 'flbc_list', 'val'=>$val);
+    unless (defined $nl->get_value('flbc_type')) {
+        add_default($nl, 'flbc_type',  'val'=>'CYCLICAL');
+        add_default($nl, 'flbc_cycle_yr',  'val'=>'2000');
+    }
+
+    my @files;
+    # Datasets
+    #@files = ( 'soil_erod_file', 'flbc_file',
+    #           'xs_coef_file','xs_short_file',
+    #           'xs_long_file', 'rsf_file',
+    #           'exo_coldens_file', 'sulf_file' );
+    @files = ( 'soil_erod_file', 'flbc_file' );
+    foreach my $file (@files) {
+        add_default($nl, $file);
+    }
+}
+
+if ($chem =~ /trop_mozart/ or $chem =~ /trop_strat/ or $chem =~ /waccm_tsmlt/) {
 
     my $val;
 
@@ -2085,8 +2125,6 @@ if ($chem =~ /geoschem/ or $chem =~ /trop_mozart/ or $chem =~ /trop_strat/ or $c
     if ($chem =~ /_tsmlt_mam/ or $chem =~ /trop_strat/) {
       $val = "'CCL4','CF2CLBR','CF3BR','CFC11','CFC113','CFC12','CH3BR','CH3CCL3','CH3CL','CH4','CO2'"
             .",'H2','HCFC22','N2O','CFC114','CFC115','HCFC141B','HCFC142B','CH2BR2','CHBR3','H2402'";
-    } elsif ($chem =~ /geoschem/) {
-      $val = "'CH4','OCS','N2O','CO2','CFC11','CFC12'";
     } else {
       $val = "'CH4','H2','N2O','CO2','CFC11','CFC12'";
     }
@@ -2367,7 +2405,7 @@ if ($chem =~ /_mam4/ and $phys =~ /cam6/) {
                 'num_a2_cv_ext_file' => 'num_a2',
         );
 
-    # air craft emissions
+    # aircraft emissions
     if ($chem !~ /trop_mam/ and $chem !~ /waccm_sc/) {
         %species = (%species,
                     'bc_a4_ar_ext_file'  => 'bc_a4',
@@ -2422,7 +2460,7 @@ if ($chem =~ /_mam4/ and $phys =~ /cam6/) {
     }
 
     # MEGAN emissions
-    if ($chem =~ /trop_strat/ or $chem =~ /_tsmlt/) {
+    if ($chem =~ /trop_strat/ or $chem =~ /_tsmlt/ or $chem =~ /geoschem/) {
         my $val = "'ISOP = isoprene',"
                 . "'MTERP = pinene_a + carene_3 + thujene_a + 2met_styrene + cymene_p + cymene_o + terpinolene + bornene "
                 . "+ fenchene_a + ocimene_al + pinene_b + sabinene + camphene + limonene + phellandrene_a + terpinene_g "
@@ -2863,7 +2901,7 @@ if (!$simple_phys) {
 }
 
 # tropopause level used in gas-phase / aerosol processes
-if (($chem ne 'none') and ($chem ne 'terminator')) {
+if (($chem ne 'none') and ($chem ne 'terminator') and !($chem =~ /geoschem/)) {
     add_default($nl, 'chem_use_chemtrop');
 }
 

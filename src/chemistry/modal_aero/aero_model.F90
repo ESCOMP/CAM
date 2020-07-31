@@ -179,13 +179,13 @@ contains
 
     use mo_chem_utls,    only: get_inv_ndx
     use cam_history,     only: addfld, add_default, horiz_only
-    use mo_chem_utls,    only: get_rxt_ndx, get_spc_ndx
+    use mo_chem_utls,    only: get_spc_ndx
     use modal_aero_data, only: cnst_name_cw
     use modal_aero_data, only: modal_aero_data_init
     use rad_constituents,only: rad_cnst_get_info
     use dust_model,      only: dust_init, dust_names, dust_active, dust_nbin, dust_nnum
     use seasalt_model,   only: seasalt_init, seasalt_names, seasalt_active,seasalt_nbin
-    use drydep_mod,      only: inidrydep
+    use aer_drydep_mod,  only: inidrydep
     use wetdep,          only: wetdep_init
     
     use modal_aero_calcsize,   only: modal_aero_calcsize_init
@@ -388,7 +388,7 @@ contains
     call pbuf_set_field(pbuf2d, rate1_cw2pr_st_idx, 0.0_r8)
 
     do m = 1,ndrydep
-       
+
        ! units 
        if (drydep_list(m)(1:3) == 'num') then
           unit_basename = ' 1'
@@ -418,7 +418,7 @@ contains
     enddo
 
     do m = 1,nwetdep
-       
+
        ! units 
        if (wetdep_list(m)(1:3) == 'num') then
           unit_basename = ' 1'
@@ -666,7 +666,7 @@ contains
   subroutine aero_model_drydep  ( state, pbuf, obklen, ustar, cam_in, dt, cam_out, ptend )
 
     use dust_sediment_mod, only: dust_sediment_tend
-    use drydep_mod,        only: d3ddflux, calcram
+    use aer_drydep_mod,    only: d3ddflux, calcram
     use modal_aero_data,   only: qqcw_get_field
     use modal_aero_data,   only: cnst_name_cw
     use modal_aero_data,   only: alnsg_amode

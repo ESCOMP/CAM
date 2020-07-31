@@ -7,7 +7,7 @@
       implicit none
       save
 
-      INTEGER, PARAMETER :: nTracersMax = 200    ! Must be equal to nadv_chem
+      INTEGER, PARAMETER :: nTracersMax = 250    ! Must be equal to nadv_chem
       INTEGER            :: nTracers
       CHARACTER(LEN=255) :: tracerNames(nTracersMax)
       CHARACTER(LEN=255) :: tracerLongNames(nTracersMax)
@@ -15,17 +15,37 @@
       REAL(r8)           :: MWRatio(nTracersMax)
       REAL(r8)           :: ref_MMR(nTracersMax)
 
+      ! Index of first constituent
+      INTEGER              :: iFirstCnst
+
       ! Short-lived species (i.e. not advected)
-      INTEGER, PARAMETER :: nSlsMax = 500        ! UNadvected species only
-      INTEGER            :: nSls    
-      CHARACTER(LEN=255) :: slsNames(nSlsMax)
-      CHARACTER(LEN=255) :: slsLongnames(nSlsMax)
-      REAL(r8)           :: sls_Ref_MMR(nSlsMax)
-      REAL(r8)           :: slsMWRatio(nSlsMax)
+      INTEGER, PARAMETER   :: nSlsMax = 500        ! UNadvected species only
+      INTEGER              :: nSls    
+      CHARACTER(LEN=255)   :: slsNames(nSlsMax)
+      CHARACTER(LEN=255)   :: slsLongnames(nSlsMax)
+      REAL(r8)             :: sls_Ref_MMR(nSlsMax)
 
       ! Mapping between constituents and GEOS-Chem tracers
       INTEGER              :: map2GC(pcnst)
+      INTEGER              :: map2GCinv(nTracersMax)
       INTEGER              :: map2GC_Sls(nSlsMax)
+
+      ! Mapping constituent onto chemical species (as listed in solsym)
+      INTEGER              :: mapCnst(pcnst)
+
+      ! Aerosols
+      INTEGER, PARAMETER   :: nAerMax = 35
+      INTEGER              :: nAer
+      CHARACTER(LEN=16)    :: aerNames(nAerMax)
+      REAL(r8)             :: aerAdvMass(nAerMax)
+
+      !-----------------------------
+      ! Aerosol index mapping
+      !-----------------------------
+      ! map2MAM4 maps aerNames onto the GEOS-Chem Species array such
+      ! that
+      ! State_Chm%Species(1,:,:,map2MAM4(:,:)) = state%q(:,:,MAM4_Indices)
+      INTEGER, ALLOCATABLE :: map2MAM4(:,:)
 
       !-----------------------------
       ! Dry deposition index mapping
@@ -39,20 +59,16 @@
       ! State_Chm%DryDepVel(1,:,map2GC_dryDep(:)) = cam_in%depVel(:,:)
       INTEGER, ALLOCATABLE :: map2GC_dryDep(:)
 
-
-      ! Mapping from constituents to raw index
-      INTEGER              :: map2Idx(pcnst)
-
       INTEGER, PARAMETER :: phtcnt = 40, & ! number of photolysis reactions
                             rxntot = 212, & ! number of total reactions
                             gascnt = 172, & ! number of gas phase reactions
                             nabscol = 2, & ! number of absorbing column densities
-                            gas_pcnst = 103, & ! number of "gas phase" species
-                            nfs = 4, & ! number of "fixed" species
+                            gas_pcnst = 318, & ! number of "gas phase" species
+                            nfs = 6, & ! number of "fixed" species
                             relcnt = 0, & ! number of relationship species
                             grpcnt = 0, & ! number of group members
                             nzcnt = 824, & ! number of non-zero matrix entries
-                            extcnt = 4, & ! number of species with external forcing
+                            extcnt = 0, & ! number of species with external forcing
                             clscnt1 = 8, & ! number of species in explicit class
                             clscnt2 = 0, & ! number of species in hov class
                             clscnt3 = 0, & ! number of species in ebi class
@@ -69,7 +85,7 @@
       integer :: clsmap(gas_pcnst,5) = 0
       integer :: permute(gas_pcnst,5) = 0
       integer :: diag_map(clscnt4) = 0
-      !real(r8) :: adv_mass(gas_pcnst) = 0._r8
+      real(r8) :: adv_mass(gas_pcnst) = 0._r8
       real(r8) :: crb_mass(gas_pcnst) = 0._r8
       real(r8) :: fix_mass(max(1,nfs))
       real(r8), allocatable :: cph_enthalpy(:)
@@ -88,4 +104,8 @@
       integer :: nslvd
       character(len=255), allocatable :: slvd_lst(:)
       real(r8), allocatable :: slvd_ref_mmr(:)
+
+      ! Mapping between chemical species and GEOS-Chem species/other tracers
+      INTEGER              :: map2chm(gas_pcnst)
+
       end module chem_mods

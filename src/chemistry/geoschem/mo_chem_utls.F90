@@ -2,8 +2,12 @@
 module mo_chem_utls
 
   private
-  public :: get_spc_ndx, get_het_ndx, get_extfrc_ndx, get_rxt_ndx, get_inv_ndx
+  public :: get_spc_ndx
+  public :: get_inv_ndx
+  public :: get_extfrc_ndx
+  public :: get_rxt_ndx
   public :: utls_chem_is
+  !, get_het_ndx
 
   save
 
@@ -16,6 +20,7 @@ contains
 
     use chem_mods,     only : gas_pcnst
     use mo_tracname,   only : tracnam => solsym
+    use string_utils,  only : to_upper
 
     implicit none
 
@@ -30,8 +35,8 @@ contains
     integer :: m
 
     get_spc_ndx = -1
-    do m = 1,gas_pcnst
-       if( trim( spc_name ) == trim( tracnam(m) ) ) then
+    do m = 1, gas_pcnst
+       if( trim( to_upper( spc_name ) ) == trim( to_upper( tracnam(m) ) ) ) then
           get_spc_ndx = m
           exit
        end if
@@ -68,38 +73,50 @@ contains
 
   end function get_inv_ndx
 
-  integer function get_het_ndx( het_name )
-    !-----------------------------------------------------------------------
-    !     ... return overall het process index associated with spc_name
-    !-----------------------------------------------------------------------
+  logical function utls_chem_is (name) result(chem_is)
+    use string_utils, only : to_lower
 
-    use gas_wetdep_opts,only : gas_wetdep_method, gas_wetdep_list, gas_wetdep_cnt
+    character(len=*), intent(in) :: name
+    chem_is = .false.
+    if (( to_lower(name) == 'geoschem'  ) .or. &
+        ( to_lower(name) == 'geos-chem' )) then
+       chem_is = .true.
+    endif
 
-    implicit none
-
-    !-----------------------------------------------------------------------
-    !     ... dummy arguments
-    !-----------------------------------------------------------------------
-    character(len=*), intent(in) :: het_name
-
-    !-----------------------------------------------------------------------
-    !     ... local variables
-    !-----------------------------------------------------------------------
-    integer :: m
-
-    get_het_ndx=-1
-
-    do m=1,gas_wetdep_cnt
-
-       if( trim( het_name ) == trim( gas_wetdep_list(m) ) ) then
-          get_het_ndx = get_spc_ndx( gas_wetdep_list(m) )
-          return
-       endif
-  
-    enddo
-
-  end function get_het_ndx
-
+  end function utls_chem_is
+!
+!  integer function get_het_ndx( het_name )
+!    !-----------------------------------------------------------------------
+!    !     ... return overall het process index associated with spc_name
+!    !-----------------------------------------------------------------------
+!
+!    use gas_wetdep_opts,only : gas_wetdep_method, gas_wetdep_list, gas_wetdep_cnt
+!
+!    implicit none
+!
+!    !-----------------------------------------------------------------------
+!    !     ... dummy arguments
+!    !-----------------------------------------------------------------------
+!    character(len=*), intent(in) :: het_name
+!
+!    !-----------------------------------------------------------------------
+!    !     ... local variables
+!    !-----------------------------------------------------------------------
+!    integer :: m
+!
+!    get_het_ndx=-1
+!
+!    do m=1,gas_wetdep_cnt
+!
+!       if( trim( het_name ) == trim( gas_wetdep_list(m) ) ) then
+!          get_het_ndx = get_spc_ndx( gas_wetdep_list(m) )
+!          return
+!       endif
+!  
+!    enddo
+!
+!  end function get_het_ndx
+!
   integer function get_extfrc_ndx( frc_name )
     !-----------------------------------------------------------------------
     !     ... return overall external frcing index associated with spc_name
@@ -159,16 +176,5 @@ contains
     end do
 
   end function get_rxt_ndx
-
-  logical function utls_chem_is (name) result(chem_is)
-    use string_utils, only : to_lower
-
-    character(len=*), intent(in) :: name
-    chem_is = .false.
-    if ( to_lower(name) == 'mozart' ) then
-       chem_is = .true.
-    endif
-
-  end function utls_chem_is
 
 end module mo_chem_utls
