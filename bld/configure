@@ -1438,7 +1438,7 @@ if ($chem_pkg =~ '_mam3') {
 if ($chem_pkg =~ 'geoschem') {
     $chem_cppdefs .= ' -DEXTERNAL_GRID -DEXTERNAL_FORCING -DLINUX_IFORT -DUSE_REAL8 -DMODEL_ -DMODEL_CESM';
     # TMMF - Temporary fix
-    $chem_nadv = 200;
+    $chem_nadv = 250;
     if (defined $opts{'clm_vers'}) {
         if ($opts{'clm_vers'} =~ 'CLM4.0') {
             $chem_cppdefs .= ' -DCLM40'
