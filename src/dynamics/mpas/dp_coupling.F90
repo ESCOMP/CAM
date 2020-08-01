@@ -1,5 +1,3 @@
-#define MPAS_DEBUG_WRITE(print_task, x) if (iam == (print_task)) write(iulog,*) 'MPAS_DEBUG '//subname//' ', (x)
-
 module dp_coupling
 
 !-------------------------------------------------------------------------------
@@ -15,8 +13,8 @@ use physconst,      only: gravit, cpairv, cappa, rairv, rh2o, zvir
 use spmd_dyn,       only: local_dp_map, block_buf_nrecs, chunk_buf_nrecs
 use spmd_utils,     only: mpicom, iam, masterproc
 
-use dyn_grid,       only: max_col_per_block=>maxNCells, get_block_gcol_cnt_d, &
-                          col_indices_in_block, global_to_local_cell=>local_col_index
+use dyn_grid,       only: max_col_per_block=>maxNCells, &
+                          global_to_local_cell=>local_col_index
 
 use dyn_comp,       only: dyn_export_t, dyn_import_t
 
@@ -40,8 +38,6 @@ public :: &
    d_p_coupling, &
    p_d_coupling
 
-
-integer, parameter :: nblocks_per_pe = 1
 
 real(r8), parameter :: pref = 1.e5_r8 ! reference pressure (Pa)
 
@@ -84,7 +80,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
 
 
    integer :: lchnk, icol, k, kk      ! indices over chunks, columns, layers
-   integer :: ncols, ig, nblk, nb, m, i
+   integer :: i, m, ncols, blockid
 
    integer :: pgcols(pcols)
    integer :: tsize                           ! amount of data per grid point passed to physics
@@ -95,8 +91,6 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
 
    character(len=*), parameter :: subname = 'd_p_coupling'
    !----------------------------------------------------------------------------
-
-   MPAS_DEBUG_WRITE(1, 'begin '//subname)
 
    nCellsSolve = dyn_out % nCellsSolve
    index_qv    = dyn_out % index_qv
@@ -167,35 +161,28 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
       allocate(cbuffer(tsize*chunk_buf_nrecs))    ! chunk buffer
       cbuffer = 0.0_r8
 
-      !$omp parallel do private (nb, nblk, ncols, icol, ig, i, k, m, bpter)
-      do nb = 1, nblocks_per_pe
-         nblk = iam * nblocks_per_pe + nb   ! global block index
-         ncols = get_block_gcol_cnt_d(nblk) ! number of columns in this block
+      blockid = iam + 1   ! global block index
+      call block_to_chunk_send_pters(blockid, max_col_per_block, pverp, tsize, bpter)
 
-         call block_to_chunk_send_pters(nblk, max_col_per_block, pverp, tsize, bpter)
+      do i = 1, nCellsSolve                           ! column index in block
 
-         do icol = 1, ncols                        ! column index in physics chunk
-            ig = col_indices_in_block(icol,nblk)   ! global column index
-            i = global_to_local_cell(ig)           ! column index in dynamics block
+         bbuffer(bpter(i,0))   = pintdry(1,i)         ! psdry
+         bbuffer(bpter(i,0)+1) = zint(1,i) * gravit   ! phis
 
-            bbuffer(bpter(icol,0))   = pintdry(1,i)         ! psdry
-            bbuffer(bpter(icol,0)+1) = zint(1,i) * gravit   ! phis
-
-            do k = 1, pver
-               bbuffer(bpter(icol,k))   = theta_m(k,i) / (1.0_r8 + &
-                                          Rv_over_Rd * tracers(index_qv,k,i)) * exner(k,i)
-               bbuffer(bpter(icol,k)+1) = ux(k,i)
-               bbuffer(bpter(icol,k)+2) = uy(k,i)
-               bbuffer(bpter(icol,k)+3) = -rho_zz(k,i) * zz(k,i) * gravit * 0.5_r8 * (w(k,i) + w(k+1,i))   ! omega
-               bbuffer(bpter(icol,k)+4) = pmiddry(k,i)
-               do m=1,pcnst
-                  bbuffer(bpter(icol,k)+4+m) = tracers(cam_from_mpas_cnst(m),k,i)
-               end do
+         do k = 1, pver
+            bbuffer(bpter(i,k))   = theta_m(k,i) / (1.0_r8 + &
+                                       Rv_over_Rd * tracers(index_qv,k,i)) * exner(k,i)
+            bbuffer(bpter(i,k)+1) = ux(k,i)
+            bbuffer(bpter(i,k)+2) = uy(k,i)
+            bbuffer(bpter(i,k)+3) = -rho_zz(k,i) * zz(k,i) * gravit * 0.5_r8 * (w(k,i) + w(k+1,i))   ! omega
+            bbuffer(bpter(i,k)+4) = pmiddry(k,i)
+            do m=1,pcnst
+               bbuffer(bpter(i,k)+4+m) = tracers(cam_from_mpas_cnst(m),k,i)
             end do
+         end do
 
-            do k = 1, pverp
-               bbuffer(bpter(icol,k-1)+5+pcnst) = pintdry(k,i)
-            end do
+         do k = 1, pverp
+            bbuffer(bpter(i,k-1)+5+pcnst) = pintdry(k,i)
          end do
       end do
 
@@ -269,7 +256,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
 
    ! Local variables
    integer :: lchnk, icol, k, kk      ! indices over chunks, columns, layers
-   integer :: i, ig, m, nb, nblk, ncols
+   integer :: i, m, ncols, blockid
 
    real(r8) :: factor
    real(r8) :: dt_phys
@@ -302,8 +289,6 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
 
    character(len=*), parameter :: subname = 'dp_coupling::p_d_coupling'
    !----------------------------------------------------------------------------
-
-   MPAS_DEBUG_WRITE(1, 'begin '//subname)
 
    nCellsSolve = dyn_in % nCellsSolve
    nCells      = dyn_in % nCells
@@ -409,33 +394,27 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
       call transpose_chunk_to_block(tsize, cbuffer, bbuffer)
       call t_stopf  ('chunk_to_block')
 
-      !$omp parallel do private (nb, nblk, ncols, icol, ig, i, k, kk, m, bpter)
-      do nb = 1, nblocks_per_pe
-         nblk = iam * nblocks_per_pe + nb   !  global block index
-         ncols = get_block_gcol_cnt_d(nblk) !  number of columns in this block
+      blockid = iam + 1   !  global block index
+   
+      call chunk_to_block_recv_pters(blockid, max_col_per_block, pverp, tsize, bpter)
 
-         call chunk_to_block_recv_pters(nblk, max_col_per_block, pverp, tsize, bpter)
+      do i = 1, nCellsSolve                       ! index in dynamics block
 
-         do icol = 1, ncols                       ! column index in physics chunk
-            ig = col_indices_in_block(icol,nblk)  ! global column index
-            i = global_to_local_cell(ig)          ! column index in dynamics block
+         ! flip vertical index here
+         do k = 1, pver                        ! vertical index in physics chunk
+            kk = pver - k + 1                  ! vertical index in dynamics block
 
-            ! flip vertical index here
-            do k = 1, pver                        ! vertical index in physics chunk
-               kk = pver - k + 1                  ! vertical index in dynamics block
+            t_tend(kk,i) = bbuffer(bpter(i,k))
+            u_tend(kk,i) = bbuffer(bpter(i,k)+1)
+            v_tend(kk,i) = bbuffer(bpter(i,k)+2)
 
-               t_tend(kk,i) = bbuffer(bpter(icol,k))
-               u_tend(kk,i) = bbuffer(bpter(icol,k)+1)
-               v_tend(kk,i) = bbuffer(bpter(icol,k)+2)
-
-               do m = 1, pcnst
-                  if (m == index_qv) then
-                     qv_tend(kk,i) = (bbuffer(bpter(icol,k)+2+mpas_from_cam_cnst(m)) - tracers(index_qv,kk,i)) / dt_phys
-                  end if
-                  tracers(m,kk,i) = bbuffer(bpter(icol,k)+2+mpas_from_cam_cnst(m))
-               end do
-
+            do m = 1, pcnst
+               if (m == index_qv) then
+                  qv_tend(kk,i) = (bbuffer(bpter(i,k)+2+mpas_from_cam_cnst(m)) - tracers(index_qv,kk,i)) / dt_phys
+               end if
+               tracers(m,kk,i) = bbuffer(bpter(i,k)+2+mpas_from_cam_cnst(m))
             end do
+
          end do
       end do
 
@@ -480,8 +459,6 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
 
    character(len=*), parameter :: subname = 'dp_coupling::derived_phys'
    !----------------------------------------------------------------------------
-
-   MPAS_DEBUG_WRITE(1, 'begin '//subname)
 
    !$omp parallel do private (lchnk, ncol, k, factor)
    do lchnk = begchunk,endchunk
@@ -635,8 +612,6 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, qv_tend, dy
 
    character(len=*), parameter :: subname = 'dp_coupling:derived_tend'
    !----------------------------------------------------------------------------
-
-   MPAS_DEBUG_WRITE(1, 'begin '//subname)
 
    nEdges = dyn_in % nEdges
    ru_tend     => dyn_in % ru_tend

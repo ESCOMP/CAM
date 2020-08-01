@@ -6,16 +6,18 @@ module dyn_grid
 !
 ! Define MPAS computational grids on the dynamics decomposition.
 !
-!
 ! Module responsibilities:
 !
 ! . Provide the physics/dynamics coupler (in module phys_grid) with data for the
-!   physics grid on the dynamics decomposition.
+!   physics grid (cell centers) on the dynamics decomposition.
 !
 ! . Create CAM grid objects that are used by the I/O functionality to read
 !   data from an unstructured grid format to the dynamics data structures, and
 !   to write from the dynamics data structures to unstructured grid format.  The
 !   global column ordering for the unstructured grid is determined by the dycore.
+!
+! The MPAS grid is decomposed into "blocks" which contain the cells that are solved
+! plus a set of halo cells.  The dycore assigns one block per task.
 !
 !-------------------------------------------------------------------------------
 
@@ -57,8 +59,8 @@ public :: &
    maxNCells,   &
    dyn_grid_init, &
    get_block_bounds_d, &
-   get_block_gcol_d, &
    get_block_gcol_cnt_d, &
+   get_block_gcol_d, &
    get_block_lvl_cnt_d, &
    get_block_levels_d, &
    get_block_owner_d, &
@@ -78,12 +80,12 @@ real(r8) :: zw(plevp), zw_mid(plev)
 integer ::      &
    maxNCells,   &    ! maximum number of cells for any task
    maxEdges,    &    ! maximum number of edges per cell
-   nVertLevels       ! number of vertical layers (yes, layers and not layer interfaces...)
+   nVertLevels       ! number of vertical layers (midpoints)
 
 integer, pointer :: &
-   nCellsSolve,     &
-   nEdgesSolve,     &
-   nVerticesSolve,  &
+   nCellsSolve,     & ! number of cells that a task solves
+   nEdgesSolve,     & ! number of edges (velocity) that a task solves
+   nVerticesSolve,  & ! number of vertices (vorticity) that a task solves
    nVertLevelsSolve
 
 real(r8), parameter :: rad2deg=180.0_r8/pi ! convert radians to degrees
@@ -112,8 +114,8 @@ subroutine dyn_grid_init()
 
    ! Initialize grids on the dynamics decomposition and create associated
    ! grid objects for use by I/O utilities.  The current physics/dynamics
-   ! coupling code requires constructing global fields for the grid used
-   ! by the physics parameterizations.
+   ! coupling code requires constructing global fields for the cell center
+   ! grid which is used by the physics parameterizations.
 
    use ref_pres,            only: std_atm_pres, ref_pres_init
    use time_manager,        only: get_step_size
@@ -134,15 +136,12 @@ subroutine dyn_grid_init()
    character(len=*), parameter :: subname = 'dyn_grid::dyn_grid_init'
    !----------------------------------------------------------------------------
 
-   MPAS_DEBUG_WRITE(0, 'begin '//subname)
-
-
    ! Get filehandle for initial file
    fh_ini => initial_file_get_id()
 
-   ! MPAS-A always requires at least one scalar (qv), so the call to cam_mpas_init_phase3
-   ! ensures this with max(pcnst,1) for the num_scalars argument
-   call cam_mpas_init_phase3(fh_ini, max(pcnst,1), endrun)
+   ! MPAS-A always requires at least one scalar (qv).  CAM has the same requirement
+   ! and it is enforced by the configure script which sets the cpp macrop PCNST.
+   call cam_mpas_init_phase3(fh_ini, pcnst, endrun)
 
    ! Read or compute all time-invariant fields for the MPAS-A dycore
    ! Time-invariant fields are stored in the MPAS mesh pool.  This call
@@ -157,9 +156,9 @@ subroutine dyn_grid_init()
    call ref_pres_init(pref_edge, pref_mid, num_pr_lev)
 
    ! Vertical coordinates for output streams
-   call add_vert_coord('lev', plev,                                         &
+   call add_vert_coord('lev', plev,                       &
          'zeta level at vertical midpoints', 'm', zw_mid)
-   call add_vert_coord('ilev', plevp,                                       &
+   call add_vert_coord('ilev', plevp,                     &
          'zeta level at vertical interfaces', 'm', zw)
 
    if (masterproc) then
@@ -187,8 +186,9 @@ subroutine dyn_grid_init()
    allocate(local_col_index(nCells_g))
    call cam_mpas_get_global_blocks(num_col_per_block, col_indices_in_block, global_blockID, local_col_index)
    
-   ! Define the dynamics and physics grids on the dynamics decompostion.
-   ! Physics grid on the physics decomposition is defined in phys_grid_init.
+   ! Define the dynamics grids on the dynamics decompostion.  The cell
+   ! centered grid is used by the physics parameterizations.  The physics
+   ! decomposition of the cell centered grid is defined in phys_grid_init.
    call define_cam_grids()
    
 9830 format(1x, i3, f15.4, 9x, f15.4)
@@ -196,75 +196,50 @@ subroutine dyn_grid_init()
 
 end subroutine dyn_grid_init
 
+!=========================================================================================
 
-!-----------------------------------------------------------------------
-!  routine get_block_bounds_d
-!
-!> \brief Return first and last indices used in global block ordering
-!> \details
-!>  Return first and last indices used in global block ordering.
-!>
-!>  Are these the blocks owned by the calling MPI task, or all blocks
-!>  across all MPI tasks?
-!>
-!>  Is this a 1-based ordering? Why would the first block ever not be 1?
-!
-!-----------------------------------------------------------------------
-subroutine get_block_bounds_d( block_first, block_last )
+subroutine get_block_bounds_d(block_first, block_last)
+
+   ! Return first and last indices used in global block ordering.
+   ! The indexing is 1-based.
 
    integer, intent(out) :: block_first  ! first global index used for blocks
    integer, intent(out) :: block_last   ! last global index used for blocks
 
    character(len=*), parameter :: subname = 'dyn_grid::get_block_bounds_d'
+   !----------------------------------------------------------------------------
 
-
-!   MPAS_DEBUG_WRITE(0, 'begin '//subname)
+   ! MPAS assigns 1 block per task.
 
    block_first = 1
    block_last = npes
 
 end subroutine get_block_bounds_d
 
+!=========================================================================================
 
-!-----------------------------------------------------------------------
-!  routine get_block_gcol_cnt_d
-!
-!> \brief Return number of dynamics columns in a block
-!> \details
-!>  Returns the number of dynamics columns in the block with the specified
-!>  global block ID.
-!>
-!>  Will the blockid values be only among those block IDs owned by the calling
-!>  MPI task, or can the blockid be the ID of a block owned by any MPI task?
-!
-!-----------------------------------------------------------------------
-integer function get_block_gcol_cnt_d( blockid )
+integer function get_block_gcol_cnt_d(blockid)
+
+   ! Return the number of dynamics columns in the block with the specified
+   ! global block ID.  The blockid can be for a block owned by any MPI
+   ! task.
 
    integer, intent(in) :: blockid
 
    character(len=*), parameter :: subname = 'dyn_grid::get_block_gcol_cnt_d'
-
-
-!   MPAS_DEBUG_WRITE(0, 'begin '//subname)
+   !----------------------------------------------------------------------------
 
    get_block_gcol_cnt_d = num_col_per_block(blockid)
 
 end function get_block_gcol_cnt_d
 
+!=========================================================================================
 
-!-----------------------------------------------------------------------
-!  routine get_block_gcol_d
-!
-!> \brief Return list of dynamics column indices in a block
-!> \details
-!>  Return list of global dynamics column indices in the block with
-!>  the specified global block ID.
-!>
-!>  Will the blockid values be among only those block IDs owned by the calling
-!>  MPI task, or can the blockid be the ID of a block owned by any MPI task?
-!
-!-----------------------------------------------------------------------
 subroutine get_block_gcol_d(blockid, asize, cdex)
+
+   ! Return list of global dynamics column indices in the block with the
+   ! specified global block ID.  The blockid can be for a block owned by
+   ! any MPI task.
 
    integer, intent(in) :: blockid      ! global block id
    integer, intent(in) :: asize        ! array size
@@ -274,9 +249,7 @@ subroutine get_block_gcol_d(blockid, asize, cdex)
    integer :: icol
 
    character(len=*), parameter :: subname = 'dyn_grid::get_block_gcol_d'
-
-
-!   MPAS_DEBUG_WRITE(0, 'begin '//subname)
+   !----------------------------------------------------------------------------
 
    do icol = 1, num_col_per_block(blockid)
       cdex(icol) = col_indices_in_block(icol, blockid)
@@ -376,27 +349,25 @@ integer function get_gcol_block_cnt_d(gcol)
    character(len=*), parameter :: subname = 'dyn_grid::get_gcol_block_cnt_d'
    !----------------------------------------------------------------------------
 
-   ! For MPAS, the physics grid is the cell center grid.  Each column is contained in
-   ! one cell, and hence in one block.
+   ! Each global column is solved in just one block.  The blocks where that column may
+   ! be in a halo cell are not counted.
    get_gcol_block_cnt_d = 1
 
 end function get_gcol_block_cnt_d
 
 !=========================================================================================
 
-subroutine get_gcol_block_d(gcol, cnt, blockid, bcid, localblockid)
+subroutine get_gcol_block_d(gcol, cnt, blockid, bcid)
 
    ! Return global block index and local column index for a global column index.
-   !
-   ! Can this routine be called for global columns that are not owned by
-   ! the calling task?
+   ! This routine can be called for global columns that are not owned by
+   ! the calling task.
 
    integer, intent(in) :: gcol     ! global column index
    integer, intent(in) :: cnt      ! size of blockid and bcid arrays
 
    integer, intent(out) :: blockid(cnt) ! block index
    integer, intent(out) :: bcid(cnt)    ! column index within block
-   integer, intent(out), optional :: localblockid(cnt)
 
    integer :: j
 
@@ -417,25 +388,17 @@ subroutine get_gcol_block_d(gcol, cnt, blockid, bcid, localblockid)
 
 end subroutine get_gcol_block_d
 
+!=========================================================================================
 
-!-----------------------------------------------------------------------
-!  routine get_block_owner_d
-!
-!> \brief Return ID of task that owns a block
-!> \details
-!>  Returns the ID of the task that owns the indicated global block.
-!>
-!>  Should we assume that task IDs are 0-based (as in MPI)?
-!
-!-----------------------------------------------------------------------
 integer function get_block_owner_d(blockid)
+
+   ! Return the ID of the task that owns the indicated global block.
+   ! Assume that task IDs are 0-based as in MPI.
 
    integer, intent(in) :: blockid  ! global block id
 
    character(len=*), parameter :: subname = 'dyn_grid::get_block_owner_d'
-
-
-!   MPAS_DEBUG_WRITE(0, 'begin '//subname)
+   !----------------------------------------------------------------------------
 
    get_block_owner_d = (blockid - 1)
 
