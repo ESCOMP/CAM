@@ -2404,6 +2404,11 @@ contains
     ! Dimensions : nX, nY
     State_Met(LCHNK)%Z0        (1,:) = Z0(:)
 
+    ! TMMF, Fill in Salinity and surface iodide from HEMCO
+    ! Option to get surface salinity from POP?
+    State_Met(LCHNK)%SALINITY(1,:) = 0.0e+0_fp
+    State_Met(LCHNK)%IODIDE(1,:)   = 0.0e+0_fp
+
     DO J = 1, nY
         iMaxLoc = MAXLOC( (/ State_Met(LCHNK)%FRLAND(1,J)   + &
                              State_Met(LCHNK)%FRLANDIC(1,J) + &
