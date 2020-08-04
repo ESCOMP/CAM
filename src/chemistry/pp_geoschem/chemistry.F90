@@ -5,6 +5,7 @@
 module chemistry
   use shr_kind_mod,        only: r8 => shr_kind_r8
   use physics_types,       only: physics_state, physics_ptend, physics_ptend_init
+  use physics_buffer,      only: physics_buffer_desc
   use ppgrid,              only: begchunk, endchunk, pcols
   use ppgrid,              only: pver, pverp
   use constituents,        only: pcnst, cnst_add, cnst_get_ind
@@ -97,6 +98,8 @@ module chemistry
   TYPE(GrdState),ALLOCATABLE :: State_Grid(:) ! Grid State object
   TYPE(MetState),ALLOCATABLE :: State_Met(:)  ! Meteorology State object
   TYPE(DgnList )             :: Diag_List     ! Diagnostics list object
+
+  type(physics_buffer_desc), pointer :: hco_pbuf2d(:,:)  ! ptr to 2d pbuf
 
   ! Indices of critical species
   INTEGER                    :: iH2O, iO3, iCH4, iCO, iNO
@@ -1755,6 +1758,8 @@ contains
     CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
 #endif
 
+    hco_pbuf2d => pbuf2d
+
     IF (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_INIT'
 
   end subroutine chem_init
@@ -1811,6 +1816,7 @@ contains
   subroutine chem_timestep_tend( State, ptend, cam_in, cam_out, dT, pbuf,  fh2o )
 
     use physics_buffer,      only: physics_buffer_desc, pbuf_get_field, pbuf_old_tim_idx
+    use physics_buffer,      only : pbuf_get_chunk, pbuf_get_index
     use cam_history,         only: outfld
     use camsrfexch,          only: cam_in_t, cam_out_t
 
@@ -1966,6 +1972,11 @@ contains
     LOGICAL            :: firstDay = .True.
     LOGICAL            :: newDay   = .False.
     LOGICAL            :: newMonth = .False.
+
+    TYPE(physics_buffer_desc), POINTER :: pbuf_chnk(:) ! slice of pbuf in chnk
+    REAL(r8), POINTER     :: pbuf_ik(:,:)          ! ptr to pbuf data (/pcols,pver/)
+    INTEGER               :: tmpIdx                ! pbuf field id
+    CHARACTER(LEN=255)    :: fldname_ns            ! field name
 
     INTEGER            :: TIM_NDX
 
@@ -2404,27 +2415,36 @@ contains
     ! Dimensions : nX, nY
     State_Met(LCHNK)%Z0        (1,:) = Z0(:)
 
-    ! TMMF, Fill in Salinity and surface iodide from HEMCO
-    ! Option to get surface salinity from POP?
-    State_Met(LCHNK)%SALINITY(1,:) = 0.0e+0_fp
-    State_Met(LCHNK)%IODIDE(1,:)   = 0.0e+0_fp
+    ! Field      : IODIDE
+    ! Description: Surface iodide concentration
+    ! Unit       : nM
+    ! Dimensions : nX, nY
+    fldname_ns = 'HCO_surf_iodide'
+    tmpIdx = pbuf_get_index(fldname_ns, RC)
+    IF ( tmpIdx < 0 ) THEN
+       IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(fldname_ns)
+       State_Met(LCHNK)%IODIDE(1,:)   = 0.0e+0_fp
+    ELSE
+       pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
+       CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_ik)
+       State_Met(LCHNK)%IODIDE(1,:) = pbuf_ik(:,nZ)
+    ENDIF
 
-    DO J = 1, nY
-        iMaxLoc = MAXLOC( (/ State_Met(LCHNK)%FRLAND(1,J)   + &
-                             State_Met(LCHNK)%FRLANDIC(1,J) + &
-                             State_Met(LCHNK)%FRLAKE(1,J),    &
-                             State_Met(LCHNK)%FRSEAICE(1,J),  &
-                             State_Met(LCHNK)%FROCEAN(1,J)  - &
-                             State_Met(LCHNK)%FRSEAICE(1,J) /) )
-        IF ( iMaxLoc(1) == 3 ) iMaxLoc(1) = 0
-        ! reset ocean to 0
-
-        ! Field      : LWI
-        ! Description: Land/water indices
-        ! Unit       : -
-        ! Dimensions : nX, nY
-        State_Met(LCHNK)%LWI(1,J) = FLOAT( iMaxLoc(1) )
-    ENDDO
+    ! Field      : SALINITY
+    ! Description: Ocean salinity
+    ! Unit       : PSU
+    ! Dimensions : nX, nY
+    ! Note       : Possibly get ocean salinity from POP?
+    fldname_ns = 'HCO_surf_salinity'
+    tmpIdx = pbuf_get_index(fldname_ns, RC)
+    IF ( tmpIdx < 0 ) THEN
+       IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(fldname_ns)
+       State_Met(LCHNK)%SALINITY(1,:) = 0.0e+0_fp
+    ELSE
+       pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
+       CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_ik)
+       State_Met(LCHNK)%SALINITY(1,:) = pbuf_ik(:,nZ)
+    ENDIF
 
     ! Three-dimensional fields on level edges
     DO J = 1, nY
@@ -2736,6 +2756,49 @@ contains
        ErrMsg = 'Failed to calculate air properties!'
        CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
+
+    ! Do this after AirQnt, such that we overwrite GEOS-Chem isLand, isWater and
+    ! isIce, which are based on albedo. Rather, we use CLM landFranc, ocnFrac
+    ! and iceFrac. We also compute isSnow
+    DO J = 1, nY
+        iMaxLoc = MAXLOC( (/ State_Met(LCHNK)%FRLAND(1,J)   + &
+                             State_Met(LCHNK)%FRLANDIC(1,J) + &
+                             State_Met(LCHNK)%FRLAKE(1,J),    &
+                             State_Met(LCHNK)%FRSEAICE(1,J),  &
+                             State_Met(LCHNK)%FROCEAN(1,J)  - &
+                             State_Met(LCHNK)%FRSEAICE(1,J) /) )
+        IF ( iMaxLoc(1) == 3 ) iMaxLoc(1) = 0
+        ! reset ocean to 0
+
+        ! Field      : LWI
+        ! Description: Land/water indices
+        ! Unit       : -
+        ! Dimensions : nX, nY
+        State_Met(LCHNK)%LWI(1,J) = FLOAT( iMaxLoc(1) )
+
+        IF ( iMaxLoc(1) == 0 ) THEN
+           State_Met(LCHNK)%isLand(1,J)  = .False.
+           State_Met(LCHNK)%isWater(1,J) = .True.
+           State_Met(LCHNK)%isIce(1,J)   = .False.
+        ELSEIF ( iMaxLoc(1) == 1 ) THEN
+           State_Met(LCHNK)%isLand(1,J)  = .True.
+           State_Met(LCHNK)%isWater(1,J) = .False.
+           State_Met(LCHNK)%isIce(1,J)   = .False.
+        ELSEIF ( iMaxLoc(1) == 2 ) THEN
+           State_Met(LCHNK)%isLand(1,J)  = .False.
+           State_Met(LCHNK)%isWater(1,J) = .False.
+           State_Met(LCHNK)%isIce(1,J)   = .True.
+        ELSE
+           Write(iulog,*) " iMaxLoc gets value: ", iMaxLoc
+           ErrMsg = 'Failed to figure out land/water'
+           CALL Error_Stop( ErrMsg, ThisLoc )
+        ENDIF
+
+        State_Met(LCHNK)%isSnow(1,J) = ( State_Met(LCHNK)%FRSEAICE(1,J) > 0.0e+0_fp &
+                                    .or. State_Met(LCHNK)%SNODP(1,J) > 0.01 )
+
+    ENDDO
+
 
     ! Initialize strat chem if not already done. This has to be done here because
     ! it needs to have non-zero values in State_Chm%AD, which only happens after
@@ -3231,7 +3294,10 @@ contains
                                       TO3             = State_Met(LCHNK)%TO3,      &
                                       RC              = RC )
 
-            ! TMMF, Add error check
+            IF ( RC /= GC_SUCCESS ) THEN
+               ErrMsg = 'Error encountered in "Compute_Overhead_O3"!'
+               CALL Error_Stop( ErrMsg, ThisLoc )
+            ENDIF
         ENDIF
     ENDIF
 
