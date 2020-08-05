@@ -84,6 +84,9 @@ module chemistry
   ! Location of valid input.geos
   CHARACTER(LEN=500) :: inputGeosPath
 
+  ! Location of valid species_database.yml
+  CHARACTER(LEN=500) :: speciesDBPath
+
   ! Location of chemistry input (for now)
   CHARACTER(LEN=500) :: chemInputsDir
 
@@ -157,7 +160,8 @@ contains
     CHARACTER(LEN=*), INTENT(IN) :: name
 
     chem_is = .false.
-    IF ( to_upper(name) == 'GEOSCHEM' ) THEN
+    IF (( to_upper(name) == 'GEOSCHEM'  ) .OR. &
+        ( to_upper(name) == 'GEOS-CHEM' )) THEN
        chem_is = .true.
     ENDIF
 
@@ -228,20 +232,19 @@ contains
     ! hplin 2020-05-16: Call set_sim_dat to populate chemistry constituent information
     ! from mo_sim_dat.F90 in other places. This is needed for HEMCO_CESM.
     CALL Set_sim_dat()
-    IF ( MasterProc ) Write(iulog,*) 'GCCALL after set_sim_dat'
 
     ! Generate fake state_chm
     IO%Max_BPCH_Diag       = 1000
     IO%Max_AdvectSpc       = 500
     IO%Max_Families        = 250
 
-    IO%RootCPU             = .False.
+    ! Prevent Reporting
+    IO%amIRoot             = .False.
+    IO%thisCpu             = MyCPU
 
-    CALL Set_Input_Opt( am_I_Root = .False., &
-                        Input_Opt = IO,      &
+    CALL Set_Input_Opt( am_I_Root = MasterProc, &
+                        Input_Opt = IO,         &
                         RC        = RC       )
-
-    if(masterproc) write(iulog,*) 'GCCALL after Set_Input_Opt'
 
     IF ( RC /= GC_SUCCESS ) THEN
         ErrMsg = 'Could not generate reference input options object!'
@@ -257,42 +260,36 @@ contains
     DO I = 1, nTracers
        IO%AdvectSpc_Name(I) = TRIM(tracerNames(I))
     ENDDO
-    IO%SalA_rEdge_um(1)    = 0.01e+0_fp
-    IO%SalA_rEdge_um(2)    = 0.50e+0_fp
-    IO%SalC_rEdge_um(1)    = 0.50e+0_fp
-    IO%SalC_rEdge_um(2)    = 8.00e+0_fp
+    IO%SALA_rEdge_um(1)    = 0.01E+0_FP
+    IO%SALA_rEdge_um(2)    = 0.50E+0_FP
+    IO%SALC_rEdge_um(1)    = 0.50E+0_FP
+    IO%SALC_rEdge_um(2)    = 8.00E+0_FP
 
-    ! Prevent reporting
-    IO%rootCPU             = .False.
-    IO%myCPU               = myCPU
+    IO%SpcDatabaseFile     = TRIM(speciesDBPath)
 
-    CALL Init_State_Grid( am_I_Root  = .False., &
-                          State_Grid = SG     , &
-                          RC         = RC      )
+    CALL Init_State_Grid( Input_Opt  = IO,  &
+                          State_Grid = SG,  &
+                          RC         = RC  )
 
     IF ( RC /= GC_SUCCESS ) THEN
-        ErrMsg = 'Error encountered within call to "Init_State_Grid"!'
-        CALL Error_Stop( ErrMsg, ThisLoc )
+       ErrMsg = 'Error encountered within call to "Init_State_Grid"!'
+       CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
     SG%NX = 1
     SG%NY = 1
     SG%NZ = 1
 
-    CALL Init_State_Chm( am_I_Root  = .False., &
-                         Input_Opt  = IO,      &
-                         State_Chm  = SC,      &
-                         State_Grid = SG,      &
-                         RC         = RC      )
+    CALL Init_State_Chm( Input_Opt  = IO,  &
+                         State_Chm  = SC,  &
+                         State_Grid = SG,  &
+                         RC         = RC  )
 
     IF ( RC /= GC_SUCCESS ) THEN
         ErrMsg = 'Error encountered within call to "Init_State_Chm"!'
         CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
-
-    ! At the moment, we force chem_nadv=220 in the setup file
-    ! Default
     map2GC = -1
     ref_MMR(:) = 0.0e+0_r8
     MWRatio(:) = 1.0e+0_r8
@@ -309,7 +306,8 @@ contains
            adv_Mass(I) = MWTmp
            ref_MMR(I)  = ref_VMR / (MWDry / MWTmp)
            IF ( ThisSpc%Is_Gas == .FALSE. ) THEN
-               Write(cnstName, "(a,a)") 'GC_AER_', TRIM(tracerNames(I))
+               Write(cnstName, "(a,a)") 'GC_AER_', &
+               to_upper(TRIM(tracerNames(I)))
                ! Aerosols that inherited from MAM do not need to be defined as a
                ! constituent
                ! For instance,
@@ -349,6 +347,7 @@ contains
                ! ISALC
                ! AERI
                ! pFe
+               ! TMMF, Update this
            ENDIF
        ELSEIF ( I .LE. (nTracers + nAer)) THEN
            ! Add MAM4 aerosols
@@ -630,16 +629,13 @@ contains
 130 FORMAT( 1x, I3, 3x, A10 )
 
     ! Clean up
-    Call Cleanup_State_Chm ( .False., SC, RC )
-    Call Cleanup_State_Grid( .False., SG, RC )
-    Call Cleanup_Input_Opt ( .False., IO, RC )
+    Call Cleanup_State_Chm ( SC, RC )
+    Call Cleanup_State_Grid( SG, RC )
+    Call Cleanup_Input_Opt ( IO, RC )
 
   end subroutine chem_register
 
   subroutine chem_readnl(nlfile)
-    ! This is the FIRST routine to get called - so it should read in
-    ! GEOS-Chem options from input.geos without actually doing any
-    ! initialization
 
     use cam_abortutils, only : endrun
     use units,          only : getunit, freeunit
@@ -675,12 +671,8 @@ contains
                            srf_emis_specifier, &
                            srf_emis_type
 
-    ! Set paths
-    ! MIT path
-    !inputGeosPath='/home/fritzt/input.geos.template'
-    !chemInputsDir='/net/d06/data/GCdata/ExtData/CHEM_INPUTS/'
-    ! Cheyenne path
     inputGeosPath='/glade/u/home/fritzt/input.geos.template'
+    speciesDBPath='/glade/u/home/fritzt/species_database.yml'
     chemInputsDir='/glade/p/univ/umit0034/ExtData/CHEM_INPUTS/'
 
 
@@ -899,6 +891,7 @@ contains
     !-----------------------------------------------------------------------
     logical :: chem_is_active
     !-----------------------------------------------------------------------
+
     chem_is_active = .true.
 
   end function chem_is_active
@@ -982,22 +975,15 @@ contains
 
     use CMN_Size_Mod
 
-    use Drydep_Mod,    only : Init_Drydep, DepName, nDVZind
-    use Carbon_Mod,    only : Init_Carbon
-    use Dust_Mod,      only : Init_Dust
-    use Seasalt_Mod,   only : Init_Seasalt
-    use Sulfate_Mod,   only : Init_Sulfate
-    use Aerosol_Mod,   only : Init_Aerosol
-    use WetScav_Mod,   only : Init_WetScav
-    use TOMS_Mod,      only : Init_TOMS
-    use Pressure_Mod,  only : Init_Pressure, Accept_External_ApBp
+    use Drydep_Mod,    only : Depname, Ndvzind
+    use Pressure_Mod,  only : Accept_External_ApBp
     use Chemistry_Mod, only : Init_Chemistry
-    use UCX_Mod,       only : Init_UCX
+    use Ucx_Mod,       only : Init_Ucx
+    use Input_mod,     only : Validate_Directories
 #if   ( ALLDDVEL_GEOSCHEM && LANDTYPE_HEMCO )
     use Olson_Landmap_Mod
 #endif
     use Mixing_Mod
-    use PBL_Mix_Mod,   only : Init_PBL_Mix
 
     use GC_Emissions_Mod, only : GC_Emissions_Init
 
@@ -1020,7 +1006,6 @@ contains
     INTEGER               :: nLinoz
 
     ! Logicals
-    LOGICAL               :: am_I_Root, rootChunk
     LOGICAL               :: prtDebug
 
     ! Strings
@@ -1096,19 +1081,22 @@ contains
        CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
+    CALL Validate_Directories( Input_Opt, RC )
+    IF ( RC /= GC_SUCCESS ) THEN
+       ErrMsg = 'Error encountered in "Validation_Directories"!'
+       CALL Error_Stop( ErrMsg, ThisLoc )
+    ENDIF
+
     DO I = BEGCHUNK, ENDCHUNK
 
-       ! Only treat the first chunk as the "root"
-       am_I_Root = ((I.EQ.BEGCHUNK) .and. MasterProc)
-
        ! Initialize fields of the Grid State object
-       CALL Init_State_Grid( am_I_Root  = am_I_Root,      &
+       CALL Init_State_Grid( Input_Opt  = Input_Opt,      &
                              State_Grid = State_Grid(I),  &
-                             RC         = RC         )
+                             RC         = RC             )
 
        IF ( RC /= GC_SUCCESS ) THEN
-           ErrMsg = 'Error encountered within call to "Init_State_Grid"!'
-           CALL Error_Stop( ErrMsg, ThisLoc )
+          ErrMsg = 'Error encountered within call to "Init_State_Grid"!'
+          CALL Error_Stop( ErrMsg, ThisLoc )
        ENDIF
 
        State_Grid(I)%NX = nX
@@ -1116,14 +1104,13 @@ contains
        State_Grid(I)%NZ = nZ
 
        ! Initialize GEOS-Chem horizontal grid structure
-       CALL GC_Init_Grid( am_I_Root  = am_I_Root,      &
-                          Input_Opt  = Input_Opt,      &
+       CALL GC_Init_Grid( Input_Opt  = Input_Opt,      &
                           State_Grid = State_Grid(I),  &
                           RC         = RC          )
 
        IF ( RC /= GC_SUCCESS ) THEN
-           ErrMsg = 'Error encountered within call to "GC_Init_Grid"!'
-           CALL Error_Stop( ErrMsg, ThisLoc )
+          ErrMsg = 'Error encountered within call to "GC_Init_Grid"!'
+          CALL Error_Stop( ErrMsg, ThisLoc )
        ENDIF
 
        ! Define more variables for State_Grid
@@ -1133,9 +1120,9 @@ contains
 
        ! Set maximum number of levels in the chemistry grid
        IF ( Input_Opt%LUCX ) THEN
-          State_Grid(I)%MaxChemLev  = State_Grid(I)%MaxStratLev
+          State_Grid(I)%MaxChemLev = State_Grid(I)%MaxStratLev
        ELSE
-          State_Grid(I)%MaxChemLev  = State_Grid(I)%MaxTropLev
+          State_Grid(I)%MaxChemLev = State_Grid(I)%MaxTropLev
        ENDIF
 
     ENDDO
@@ -1148,8 +1135,7 @@ contains
     ! Call the routine GC_Allocate_All (located in module file
     ! GeosCore/gc_environment_mod.F90) to allocate all lat/lon
     ! allocatable arrays used by GEOS-Chem.
-    CALL GC_Allocate_All ( am_I_Root      = MasterProc,           &
-                           Input_Opt      = Input_Opt,            &
+    CALL GC_Allocate_All ( Input_Opt      = Input_Opt,            &
                            State_Grid     = State_Grid(BEGCHUNK), &
                            value_I_Lo     = 1,                    &
                            value_J_Lo     = 1,                    &
@@ -1163,19 +1149,19 @@ contains
                            value_LM_WORLD = nZ,                   &
                            value_LLSTRAT  = 59,                   & !TMMF
                            RC             = RC        )
+
     IF ( RC /= GC_SUCCESS ) THEN
        ErrMsg = 'Error encountered in "GC_Allocate_All"!'
        CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
-    Input_Opt%myCPU    = myCPU
-    Input_Opt%rootCPU  = MasterProc
+    Input_Opt%thisCPU  = myCPU
+    Input_Opt%amIRoot  = MasterProc
 
     ! TODO: Mimic GEOS-Chem's reading of input options
     !IF (MasterProc) THEN
-    !   CALL Read_Input_File( am_I_Root   = .True., &
-    !                         Input_Opt   = Input_Opt(BEGCHUNK), &
-    !                         srcFile     = inputGeosPath,      &
+    !   CALL Read_Input_File( Input_Opt   = Input_Opt,     &
+    !                         srcFile     = inputGeosPath, &
     !                         RC          = RC )
     !ENDIF
     !CALL <broadcast data to other CPUs>
@@ -1183,6 +1169,8 @@ contains
     ! For now just hard-code it
     ! First setup directories
     Input_Opt%Chem_Inputs_Dir      = TRIM(chemInputsDir)
+
+    Input_Opt%SpcDatabaseFile      = TRIM(speciesDBPath)
 
     ! Simulation menu
     Input_Opt%NYMDb                = 20000101
@@ -1222,7 +1210,7 @@ contains
 
     ! Now READ_PHOTOLYSIS_MENU
     Input_Opt%FAST_JX_DIR            ='/glade/p/univ/umit0034/ExtData/' // &
-     'CHEM_INPUTS/FAST_JX/v2019-06/'
+     'CHEM_INPUTS/FAST_JX/v2020-02/'
 
     ! Now READ_CONVECTION_MENU
     ! For now, TMMF
@@ -1233,32 +1221,21 @@ contains
     ! Now READ_EMISSIONS_MENU
     Input_Opt%LEmis                  = .False.
     Input_Opt%HCOConfigFile          = 'HEMCO_Config.rc'
-    Input_Opt%LFix_PBL_Bro           = .False.
 
     ! Set surface VMRs - turn this off so that CAM can handle it
     Input_Opt%LCH4Emis               = .False.
     Input_Opt%LCH4SBC                = .False.
-    Input_Opt%LOCSEmis               = .False.
-    Input_Opt%LCFCEmis               = .False.
-    Input_Opt%LClEmis                = .False.
-    Input_Opt%LBrEmis                = .False.
-    Input_Opt%LN2OEmis               = .False.
-    Input_Opt%LBasicEmis             = .False.
 
     ! Set initial conditions
     Input_Opt%LSetH2O                = .True.
-
-    ! CFC control
-    Input_Opt%CFCYear                = 0
 
     ! Now READ_AEROSOL_MENU
     Input_Opt%LSulf               = .True.
     Input_Opt%LMetalcatSO2        = .True.
     Input_Opt%LCarb               = .True.
     Input_Opt%LBrC                = .False.
-    Input_Opt%LSOA                = .True.
+    Input_Opt%LSOA                = .False.
     Input_Opt%LSVPOA              = .False.
-    Input_Opt%LOMOC               = .False.
     Input_Opt%LDust               = .True.
     Input_Opt%LDstUp              = .False.
     Input_Opt%LSSalt              = .True.
@@ -1338,7 +1315,7 @@ contains
 
        IF ( MasterProc ) THEN
           ! Read data in to Input_Opt%Linoz_TParm
-          CALL Linoz_Read( MasterProc, Input_Opt, RC )
+          CALL Linoz_Read( Input_Opt, RC )
           IF ( RC /= GC_SUCCESS ) THEN
              ErrMsg = 'Error encountered in "Linoz_Read"!'
              CALL Error_Stop( ErrMsg, ThisLoc )
@@ -1354,7 +1331,6 @@ contains
        ENDIF
        DEALLOCATE(linozData)
     ENDIF
-
 
     ! Note: The following calculations do not setup the gridcell areas.
     !       In any case, we will need to be constantly updating this grid
@@ -1402,13 +1378,13 @@ contains
           latEdgeArr(nX+1,J)  = REAL((latVal) * PI_180, f4)
        ENDDO
 
-       CALL SetGridFromCtrEdges( am_I_Root  = MasterProc,    &
+       CALL SetGridFromCtrEdges( Input_Opt  = Input_Opt,     &
                                  State_Grid = State_Grid(L), &
                                  lonCtr     = lonMidArr,     &
                                  latCtr     = latMidArr,     &
                                  lonEdge    = lonEdgeArr,    &
                                  latEdge    = latEdgeArr,    &
-                                 RC         = RC         )
+                                 RC         = RC            )
 
        IF ( RC /= GC_SUCCESS ) THEN
           ErrMsg = 'Error encountered in "SetGridFromCtrEdges"!'
@@ -1421,16 +1397,15 @@ contains
     DEALLOCATE(lonEdgeArr)
     DEALLOCATE(latEdgeArr)
 
-
     ! Set the times held by "time_mod"
-    CALL Accept_External_Date_Time( am_I_Root   = MasterProc,      &
-                                    value_NYMDb = Input_Opt%NYMDb, &
+    CALL Accept_External_Date_Time( value_NYMDb = Input_Opt%NYMDb, &
                                     value_NHMSb = Input_Opt%NHMSb, &
                                     value_NYMDe = Input_Opt%NYMDe, &
                                     value_NHMSe = Input_Opt%NHMSe, &
                                     value_NYMD  = Input_Opt%NYMDb, &
                                     value_NHMS  = Input_Opt%NHMSb, &
                                     RC          = RC                )
+
     IF ( RC /= GC_SUCCESS ) THEN
        ErrMsg = 'Error encountered in "Accept_External_Date_Time"!'
        CALL Error_Stop( ErrMsg, ThisLoc )
@@ -1440,7 +1415,7 @@ contains
     CALL GC_Update_Timesteps(300.0E+0_r8)
 
     ! Initialize error module
-    CALL Init_Error( MasterProc, Input_Opt, RC )
+    CALL Init_Error( Input_Opt, RC )
     IF ( RC /= GC_SUCCESS ) THEN
        ErrMsg = 'Error encountered in "Init_Error"!'
        CALL Error_Stop( ErrMsg, ThisLoc )
@@ -1461,19 +1436,18 @@ contains
     !ENDIF
 
     !!### Print diagnostic list if needed for debugging
-    !IF ( prtDebug ) CALL Print_DiagList( am_I_Root, Diag_List, RC )
+    !IF ( prtDebug ) CALL Print_DiagList( Diag_List, RC )
 
     DO I = BEGCHUNK, ENDCHUNK
-       am_I_Root = (MasterProc .AND. (I == BEGCHUNK))
+       Input_Opt%amIRoot = (MasterProc .AND. (I == BEGCHUNK))
 
-       CALL GC_Init_StateObj( am_I_Root  = am_I_Root,     &  ! Root CPU (Y/N)?
-     &                        Diag_List  = Diag_List,     &  ! Diagnostic list obj
-     &                        Input_Opt  = Input_Opt,     &  ! Input Options
-     &                        State_Chm  = State_Chm(I),  &  ! Chemistry State
-     &                        State_Diag = State_Diag(I), &  ! Diagnostics State
-     &                        State_Grid = State_Grid(I), &  ! Grid State
-     &                        State_Met  = State_Met(I),  &  ! Meteorology State
-     &                        RC         = RC            )   ! Success or failure
+       CALL GC_Init_StateObj( Diag_List  = Diag_List,     &  ! Diagnostic list obj
+                              Input_Opt  = Input_Opt,     &  ! Input Options
+                              State_Chm  = State_Chm(I),  &  ! Chemistry State
+                              State_Diag = State_Diag(I), &  ! Diagnostics State
+                              State_Grid = State_Grid(I), &  ! Grid State
+                              State_Met  = State_Met(I),  &  ! Meteorology State
+                              RC         = RC            )   ! Success or failure
 
        ! Trap potential errors
        IF ( RC /= GC_SUCCESS ) THEN
@@ -1485,22 +1459,22 @@ contains
        State_Chm(I)%Spc_Units = 'v/v dry'
 
     ENDDO
+    Input_Opt%amIRoot = MasterProc
 
-    ! Now replicate GC_Init_Extra
+    CALL GC_Init_Extra( Diag_List  = Diag_List,            &  ! Diagnostic list obj
+    &                   Input_Opt  = Input_Opt,            &  ! Input Options
+    &                   State_Chm  = State_Chm(BEGCHUNK),  &  ! Chemistry State
+    &                   State_Diag = State_Diag(BEGCHUNK), &  ! Diagnostics State
+    &                   State_Grid = State_Grid(BEGCHUNK), &  ! Grid State
+    &                   RC         = RC                   )   ! Success or failure
+
+    ! Trap potential errors
+    IF ( RC /= GC_SUCCESS ) THEN
+        ErrMsg = 'Error encountered in "GC_Init_Extra"!'
+        CALL Error_Stop( ErrMsg, ThisLoc )
+    ENDIF
+
     IF ( Input_Opt%LDryD ) THEN
-
-       ! Setup for dry deposition
-       CALL Init_Drydep( am_I_Root  = MasterProc,           &
-     &                   Input_Opt  = Input_Opt,            &
-     &                   State_Chm  = State_Chm(BEGCHUNK),  &
-     &                   State_Diag = State_Diag(BEGCHUNK), &
-     &                   State_Grid = State_Grid(BEGCHUNK), &
-     &                   RC         = RC                   )
-
-       IF ( RC /= GC_SUCCESS ) THEN
-          ErrMsg = 'Error encountered in "Init_Drydep"!'
-          CALL Error_Stop( ErrMsg, ThisLoc )
-       ENDIF
 
        !==============================================================
        ! Get mapping between CESM dry deposited species and the
@@ -1580,174 +1554,6 @@ contains
     ENDIF
 #endif
 
-    !=================================================================
-    ! Call setup routines for wet deposition
-    !
-    ! We need to initialize the wetdep module if either wet
-    ! deposition or convection is turned on, so that we can do the
-    ! large-scale and convective scavenging.  Also initialize the
-    ! wetdep module if both wetdep and convection are turned off,
-    ! but chemistry is turned on.  The INIT_WETSCAV routine will also
-    ! allocate the H2O2s and SO2s arrays that are referenced in the
-    ! convection code. (bmy, 9/23/15)
-    !=================================================================
-    IF ( Input_Opt%LConv .OR. &
-         Input_Opt%LWetD .OR. &
-         Input_Opt%LChem ) THEN
-       CALL Init_WetScav( am_I_Root  = MasterProc,           &
-     &                    Input_Opt  = Input_Opt,            &
-     &                    State_Chm  = State_Chm(BEGCHUNK),  &
-     &                    State_Diag = State_Diag(BEGCHUNK), &
-     &                    State_Grid = State_Grid(BEGCHUNK), &
-     &                    RC         = RC                   )
-
-       IF ( RC /= GC_SUCCESS ) THEN
-          ErrMsg = 'Error encountered in "Init_WetScav"!'
-          CALL Error_Stop( ErrMsg, ThisLoc )
-       ENDIF
-    ENDIF
-
-    !-----------------------------------------------------------------
-    ! Call SET_VDIFF_VALUES so that we can pass several values from
-    ! Input_Opt to the vdiff_mod.F90.  This replaces the functionality
-    ! of logical_mod.F and tracer_mod.F..  This has to be called
-    ! after the input.geos file has been read from disk.
-    !-----------------------------------------------------------------
-    !CALL Set_VDiff_Values( am_I_Root = MasterProc,           &
-    !&                       Input_Opt = Input_Opt,           &
-    !&                       State_Chm = State_Chm(BEGCHUNK), &
-    !&                       RC        = RC )
-
-    !&IF (RC /= GC_SUCCESS) THEN
-    !    ErrMsg = 'Error encountered in "Set_VDiff_Values"!'
-    !    CALL Error_Stop( ErrMsg, ThisLoc )
-    !ENDIF
-
-    !-----------------------------------------------------------------
-    ! Initialize the GET_NDEP_MOD for soil NOx deposition (bmy, 6/17/16)
-    !-----------------------------------------------------------------
-    !CALL Init_Get_NDep( am_I_Root  = MasterProc,           &
-    !&                   Input_Opt  = Input_Opt,            &
-    !&                   State_Chm  = State_Chm(BEGCHUNK),  &
-    !&                   State_Diag = State_Diag(BEGCHUNK), &
-    !&                   RC         = RC                   )
-    !
-    !IF (RC /= GC_SUCCESS) THEN
-    !   ErrMsg = 'Error encountered in "Init_Get_NDep"!'
-    !   CALL Error_Stop( ErrMsg, ThisLoc )
-    !ENDIF
-
-    !-----------------------------------------------------------------
-    ! Initialize "carbon_mod.F"
-    !-----------------------------------------------------------------
-    IF ( Input_Opt%LCarb ) THEN
-       CALL Init_Carbon( am_I_Root = MasterProc,            &
-     &                   Input_Opt = Input_Opt,             &
-     &                   State_Chm = State_Chm(BEGCHUNK),   &
-     &                   State_Diag = State_Diag(BEGCHUNK), &
-     &                   State_Grid = State_Grid(BEGCHUNK), &
-     &                   RC         = RC                   )
-
-       IF ( RC /= GC_SUCCESS ) THEN
-          ErrMsg = 'Error encountered in "Init_Carbon"!'
-          CALL Error_Stop( ErrMsg, ThisLoc )
-       ENDIF
-    ENDIF
-
-    IF ( Input_Opt%LDust ) THEN
-       CALL Init_Dust( am_I_Root  = MasterProc,           &
-     &                 Input_Opt  = Input_Opt,            &
-     &                 State_Chm  = State_Chm(BEGCHUNK),  &
-     &                 State_Diag = State_Diag(BEGCHUNK), &
-     &                 State_Grid = State_Grid(BEGCHUNK), &
-     &                 RC         = RC                    )
-
-       IF ( RC /= GC_SUCCESS ) THEN
-          ErrMsg = 'Error encountered in "Init_Dust"!'
-          CALL Error_Stop( ErrMsg, ThisLoc )
-       ENDIF
-    ENDIF
-
-    IF ( Input_Opt%LSSalt ) THEN
-       CALL Init_Seasalt( am_I_Root  = MasterProc,           &
-     &                    Input_Opt  = Input_Opt,            &
-     &                    State_Chm  = State_Chm(BEGCHUNK),  &
-     &                    State_Diag = State_Diag(BEGCHUNK), &
-     &                    State_Grid = State_Grid(BEGCHUNK), &
-     &                    RC         = RC                    )
-
-       IF ( RC /= GC_SUCCESS ) THEN
-          ErrMsg = 'Error encountered in "Init_Seasalt"!'
-          CALL Error_Stop( ErrMsg, ThisLoc )
-       ENDIF
-    ENDIF
-
-    IF ( Input_Opt%LSulf ) THEN
-       CALL Init_Sulfate( am_I_Root  = MasterProc,           &
-     &                    Input_Opt  = Input_Opt,            &
-     &                    State_Chm  = State_Chm(BEGCHUNK),  &
-     &                    State_Diag = State_Diag(BEGCHUNK), &
-     &                    State_Grid = State_Grid(BEGCHUNK), &
-     &                    RC         = RC                    )
-
-       IF ( RC /= GC_SUCCESS ) THEN
-          ErrMsg = 'Error encountered in "Init_Sulfate"!'
-          CALL Error_Stop( ErrMsg, ThisLoc )
-       ENDIF
-    ENDIF
-
-    IF ( Input_Opt%LSulf .OR. &
-         Input_Opt%LCarb .OR. &
-         Input_Opt%LDust .OR. &
-         Input_Opt%LSSalt ) THEN
-       CALL Init_Aerosol( am_I_Root  = MasterProc,           &
-     &                    Input_Opt  = Input_Opt,            &
-     &                    State_Chm  = State_Chm(BEGCHUNK),  &
-     &                    State_Diag = State_Diag(BEGCHUNK), &
-     &                    State_Grid = State_Grid(BEGCHUNK), &
-     &                    RC         = RC                    )
-
-       IF ( RC /= GC_SUCCESS ) THEN
-          ErrMsg = 'Error encountered in "Init_Aerosol"!'
-          CALL Error_Stop( ErrMsg, ThisLoc )
-       ENDIF
-    ENDIF
-
-    IF ( Input_Opt%LChem ) THEN
-       CALL Init_Toms( am_I_Root  = MasterProc,           &
-        &              Input_Opt  = Input_Opt,            &
-        &              State_Chm  = State_Chm(BEGCHUNK),  &
-        &              State_Diag = State_Diag(BEGCHUNK), &
-        &              State_Grid = State_Grid(BEGCHUNK), &
-        &              RC         = RC                    )
-
-       IF ( RC /= GC_SUCCESS ) THEN
-          ErrMsg = 'Error encountered in "Init_TOMS"!'
-          CALL Error_Stop( ErrMsg, ThisLoc )
-       ENDIF
-    ENDIF
-
-    ! This is a bare subroutine - no module
-    CALL NDXX_Setup( MasterProc,           &
-     &               Input_Opt,            &
-     &               State_Chm(BEGCHUNK),  &
-     &               State_Grid(BEGCHUNK), &
-     &               RC                    )
-
-    IF ( RC /= GC_SUCCESS ) THEN
-       ErrMsg = 'Error encountered in "Init_NDXX_Setup"!'
-       CALL Error_Stop( ErrMsg, ThisLoc )
-    ENDIF
-
-    CALL Init_PBL_Mix( am_I_Root  = MasterProc,           &
-                       State_Grid = State_Grid(BEGCHUNK), &
-                       RC         = RC                   )
-
-    IF ( RC /= GC_SUCCESS ) THEN
-       ErrMsg = 'Error encountered in "Init_PBL_Mix"!'
-       CALL Error_Stop( ErrMsg, ThisLoc )
-    ENDIF
-
     ! Set grid-cell area
     DO I = BEGCHUNK, ENDCHUNK
        ALLOCATE(Col_Area(NCOL(I)), STAT=IERR)
@@ -1784,28 +1590,14 @@ contains
     Ap_CAM_Flip = 0.0e+0_fp
     Bp_CAM_Flip = 0.0e+0_fp
     DO I = 1, nZ+1
-        Ap_CAM_Flip(I) = hyai(nZ+2-I) * ps0 * 0.01e+0_r8
-        Bp_CAM_Flip(I) = hybi(nZ+2-I)
+       Ap_CAM_Flip(I) = hyai(nZ+2-I) * ps0 * 0.01e+0_r8
+       Bp_CAM_Flip(I) = hybi(nZ+2-I)
     ENDDO
-
-    !-----------------------------------------------------------------
-    ! Initialize the hybrid pressure module.  Define Ap and Bp.
-    !-----------------------------------------------------------------
-    CALL Init_Pressure( am_I_Root  = MasterProc,           &  ! Root CPU (Y/N)?
-                        State_Grid = State_Grid(BEGCHUNK), &  ! Grid State
-                        RC         = RC                   )   ! Success or failure
-
-    ! Trapping errors
-    IF ( RC /= GC_SUCCESS ) THEN
-       ErrMsg = 'Error encountered in "Init_Pressure"!'
-       CALL Error_Stop( ErrMsg, ThisLoc )
-    ENDIF
 
     !-----------------------------------------------------------------
     ! Pass external Ap and Bp to GEOS-Chem's Pressure_Mod
     !-----------------------------------------------------------------
-    CALL Accept_External_ApBp( am_I_Root  = MasterProc,           &  ! Root CPU (Y/N)?
-                               State_Grid = State_Grid(BEGCHUNK), &  ! Grid State
+    CALL Accept_External_ApBp( State_Grid = State_Grid(BEGCHUNK), &  ! Grid State
                                ApIn       = Ap_CAM_Flip,          &  ! "A" term for hybrid grid
                                BpIn       = Bp_CAM_Flip,          &  ! "B" term for hybrid grid
                                RC         = RC                   )   ! Success or failure
@@ -1828,73 +1620,14 @@ contains
 
     DEALLOCATE(Ap_CAM_Flip,Bp_CAM_Flip)
 
-    !! Initialize HEMCO?
-    !CALL Emissions_Init ( am_I_Root  = MasterProc, &
-    !                      Input_Opt  = Input_Opt,  &
-    !                      State_Met  = State_Met,  &
-    !                      State_Chm  = State_Chm,  &
-    !                      State_Grid = State_Grid, &
-    !                      State_Met  = State_Met,  &
-    !                      RC         = RC,         &
-    !                      HcoConfig  = HcoConfig  )
-    !
-    !IF ( RC /= GC_SUCCESS ) THEN
-    !    ErrMsg = 'Error encountered in "Emissions_Init"!'
-    !    CALL Error_Stop( ErrMsg, ThisLoc )
-    !ENDIF
-    !
-
-!#if   ( ALLDDVEL_GEOSCHEM && LANDTYPE_HEMCO )
-!    ! Populate the State_Met%LandTypeFrac field with data from HEMCO
-!    CALL Init_LandTypeFrac( am_I_Root = MasterProc,           &
-!                            Input_Opt = Input_Opt,            &
-!                            State_Met = State_Met(BEGCHUNK),  &
-!                            RC        = RC                   )
-!
-!    IF ( RC /= GC_SUCCESS ) THEN
-!       ErrMsg = 'Error encountered in "Init_LandTypeFrac"!'
-!       CALL Error_Stop( ErrMsg, ThisLoc )
-!    ENDIF
-!
-!    ! Compute the Olson landmap fields of State_Met
-!    ! (e.g. State_Met%IREG, State_Met%ILAND, etc.)
-!    CALL Compute_Olson_Landmap( am_I_Root  = MasterProc,           &
-!                                Input_Opt  = Input_Opt,            &
-!                                State_Grid = State_Grid(BEGCHUNK), &
-!                                State_Met  = State_Met(BEGCHUNK),  &
-!                                RC         = RC                   )
-!
-!    IF ( RC /= GC_SUCCESS ) THEN
-!       ErrMsg = 'Error encountered in "Compute_Olson_Landmap"!'
-!       CALL Error_Stop( ErrMsg, ThisLoc )
-!    ENDIF
-!#endif
-
-    ! Initialize PBL quantities but do not do mixing
-    ! Add option for non-local PBL (Lin, 03/31/09)
-    CALL Init_Mixing ( am_I_Root  = MasterProc,           &
-                       Input_Opt  = Input_Opt,            &
-                       State_Chm  = State_Chm(BEGCHUNK),  &
-                       State_Diag = State_Diag(BEGCHUNK), &
-                       State_Grid = State_Grid(BEGCHUNK), &
-                       State_Met  = State_Met(BEGCHUNK),  &
-                       RC         = RC                   )
-
-    ! Trap potential errors
-    IF ( RC /= GC_SUCCESS ) THEN
-       ErrMsg = 'Error encountered in Init_Mixing!'
-       CALL Error_Stop( ErrMsg, ThisLoc )
-    ENDIF
-
     IF ( Input_Opt%Its_A_FullChem_Sim .OR. &
          Input_Opt%Its_An_Aerosol_Sim ) THEN
-        ! This also initializes Fast-JX
-       CALL Init_Chemistry( am_I_Root  = MasterProc,           &
-     &                      Input_Opt  = Input_Opt,            &
-     &                      State_Chm  = State_Chm(BEGCHUNK),  &
-     &                      State_Diag = State_Diag(BEGCHUNK), &
-     &                      State_Grid = State_Grid(BEGCHUNK), &
-     &                      RC         = RC                    )
+       ! This also initializes Fast-JX
+       CALL Init_Chemistry( Input_Opt  = Input_Opt,            &
+                            State_Chm  = State_Chm(BEGCHUNK),  &
+                            State_Diag = State_Diag(BEGCHUNK), &
+                            State_Grid = State_Grid(BEGCHUNK), &
+                            RC         = RC                    )
 
        IF ( RC /= GC_SUCCESS ) THEN
           ErrMsg = 'Error encountered in "Init_Chemistry"!'
@@ -1904,11 +1637,10 @@ contains
 
     IF ( Input_Opt%LChem .AND. &
          Input_Opt%LUCX ) THEN
-       CALL Init_UCX( am_I_Root  = MasterProc,           &
-     &                Input_Opt  = Input_Opt,            &
-     &                State_Chm  = State_Chm(BEGCHUNK),  &
-     &                State_Diag = State_Diag(BEGCHUNK), &
-     &                State_Grid = State_Grid(BEGCHUNK) )
+       CALL Init_UCX( Input_Opt  = Input_Opt,            &
+                      State_Chm  = State_Chm(BEGCHUNK),  &
+                      State_Diag = State_Diag(BEGCHUNK), &
+                      State_Grid = State_Grid(BEGCHUNK) )
     ENDIF
 
     ! Get the index of H2O
@@ -1960,6 +1692,8 @@ contains
 
     If ( MasterProc ) Write(iulog,*) "hco_pbuf2d now points to pbuf2d"
 
+    hco_pbuf2d => pbuf2d
+
     IF (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_INIT'
 
   end subroutine chem_init
@@ -1998,14 +1732,14 @@ contains
     IF (DT_MIN .NE. DT_MIN_LAST) THEN
         IF (MasterProc) WRITE(iulog,'(a,F7.1,a)') ' --> GC: updating dt to ', DT, ' seconds'
 
-        CALL Set_Timesteps( MasterProc,            &
-                            CHEMISTRY  =  DT_MIN,  &
-                            EMISSION   =  DT_MIN,  &
-                            DYNAMICS   =  DT_MIN,  &
-                            UNIT_CONV  =  DT_MIN,  &
-                            CONVECTION =  DT_MIN,  &
-                            DIAGNOS    =  DT_MIN,  &
-                            RADIATION  =  DT_MIN    )
+        CALL Set_Timesteps( Input_Opt  =  Input_Opt, &
+                            CHEMISTRY  =  DT_MIN,    &
+                            EMISSION   =  DT_MIN,    &
+                            DYNAMICS   =  DT_MIN,    &
+                            UNIT_CONV  =  DT_MIN,    &
+                            CONVECTION =  DT_MIN,    &
+                            DIAGNOS    =  DT_MIN,    &
+                            RADIATION  =  DT_MIN      )
         DT_MIN_LAST = DT_MIN
      ENDIF
 
@@ -2016,7 +1750,7 @@ contains
   subroutine chem_timestep_tend( State, ptend, cam_in, cam_out, dT, pbuf,  fh2o )
 
     use physics_buffer,      only: physics_buffer_desc, pbuf_get_field, pbuf_old_tim_idx
-    use physics_buffer,      only: pbuf_get_index
+    use physics_buffer,      only : pbuf_get_chunk, pbuf_get_index
     use cam_history,         only: outfld
     use camsrfexch,          only: cam_in_t, cam_out_t
 
@@ -2040,8 +1774,8 @@ contains
     use Drydep_Mod,          only: Update_DryDepSav
     use Mixing_Mod
 
-    use Dao_Mod,             only: Set_Dry_Surface_Pressure
-    use Dao_Mod,             only: AirQnt
+    use Calc_Met_Mod,        only: Set_Dry_Surface_Pressure
+    use Calc_Met_Mod,        only: AirQnt
     use GC_Grid_Mod,         only: SetGridFromCtr
     use Pressure_Mod,        only: Set_Floating_Pressures
     use Pressure_Mod,        only: Accept_External_Pedge
@@ -2178,6 +1912,11 @@ contains
     LOGICAL            :: newDay   = .False.
     LOGICAL            :: newMonth = .False.
 
+    TYPE(physics_buffer_desc), POINTER :: pbuf_chnk(:) ! slice of pbuf in chnk
+    REAL(r8), POINTER     :: pbuf_ik(:,:)          ! ptr to pbuf data (/pcols,pver/)
+    INTEGER               :: tmpIdx                ! pbuf field id
+    CHARACTER(LEN=255)    :: fldname_ns            ! field name
+
     INTEGER            :: TIM_NDX
 
     INTEGER, SAVE      :: iStep = 0
@@ -2233,7 +1972,7 @@ contains
     ENDDO
 
     ! Update the grid
-    Call SetGridFromCtr( am_I_Root  = rootChunk,         &
+    CALL SetGridFromCtr( Input_Opt  = Input_Opt,         &
                          State_Grid = State_Grid(LCHNK), &
                          lonCtr     = lonMidArr,         &
                          latCtr     = latMidArr,         &
@@ -2494,9 +2233,9 @@ contains
        If ( MasterProc ) Write(iulog,*) " Getting ", TRIM(name)
 
        tmpIdx = pbuf_get_index(name, rc)
-       IF( tmpIdx < 0 ) THEN
+       IF ( tmpIdx < 0 ) THEN
           ! there is an error here and the field was not found
-          Write(iulog,*) " Did not find field ", TRIM(name), " in HEMCO!"
+          IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(name)
        ELSE
           CALL pbuf_get_field(pbuf, tmpIdx, pbuf_ik)
           DO J = 1, nY
@@ -2510,9 +2249,9 @@ contains
        If ( MasterProc ) Write(iulog,*) " Getting ", TRIM(name)
 
        tmpIdx = pbuf_get_index(name, rc)
-       IF( tmpIdx < 0 ) THEN
+       IF ( tmpIdx < 0 ) THEN
           ! there is an error here and the field was not found
-          Write(iulog,*) " Did not find field ", TRIM(name), " in HEMCO!"
+          IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(name)
        ELSE
           CALL pbuf_get_field(pbuf, tmpIdx, pbuf_ik)
           DO J = 1, nY
@@ -2675,22 +2414,36 @@ contains
     ! Dimensions : nX, nY
     State_Met(LCHNK)%Z0        (1,:) = Z0(:)
 
-    DO J = 1, nY
-       iMaxLoc = MAXLOC( (/ State_Met(LCHNK)%FRLAND(1,J)   + &
-                            State_Met(LCHNK)%FRLANDIC(1,J) + &
-                            State_Met(LCHNK)%FRLAKE(1,J),    &
-                            State_Met(LCHNK)%FRSEAICE(1,J),  &
-                            State_Met(LCHNK)%FROCEAN(1,J)  - &
-                            State_Met(LCHNK)%FRSEAICE(1,J) /) )
-       IF ( iMaxLoc(1) == 3 ) iMaxLoc(1) = 0
-       ! reset ocean to 0
+    ! Field      : IODIDE
+    ! Description: Surface iodide concentration
+    ! Unit       : nM
+    ! Dimensions : nX, nY
+    fldname_ns = 'HCO_surf_iodide'
+    tmpIdx = pbuf_get_index(fldname_ns, RC)
+    IF ( tmpIdx < 0 ) THEN
+       IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(fldname_ns)
+       State_Met(LCHNK)%IODIDE(1,:)   = 0.0e+0_fp
+    ELSE
+       pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
+       CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_ik)
+       State_Met(LCHNK)%IODIDE(1,:) = pbuf_ik(:,nZ)
+    ENDIF
 
-       ! Field      : LWI
-       ! Description: Land/water indices
-       ! Unit       : -
-       ! Dimensions : nX, nY
-       State_Met(LCHNK)%LWI(1,J) = FLOAT( iMaxLoc(1) )
-    ENDDO
+    ! Field      : SALINITY
+    ! Description: Ocean salinity
+    ! Unit       : PSU
+    ! Dimensions : nX, nY
+    ! Note       : Possibly get ocean salinity from POP?
+    fldname_ns = 'HCO_surf_salinity'
+    tmpIdx = pbuf_get_index(fldname_ns, RC)
+    IF ( tmpIdx < 0 ) THEN
+       IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(fldname_ns)
+       State_Met(LCHNK)%SALINITY(1,:) = 0.0e+0_fp
+    ELSE
+       pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
+       CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_ik)
+       State_Met(LCHNK)%SALINITY(1,:) = pbuf_ik(:,nZ)
+    ENDIF
 
     ! Three-dimensional fields on level edges
     DO J = 1, nY
@@ -2882,11 +2635,11 @@ contains
     currSc  = 0
     currMn  = 0
     currHr  = 0
-    DO WHILE (currTOD > 3600)
+    DO WHILE (currTOD >= 3600)
        currTOD = currTOD - 3600
        currHr  = currHr + 1
     ENDDO
-    DO WHILE (currTOD > 60)
+    DO WHILE (currTOD >= 60)
        currTOD = currTOD - 60
        currMn  = currMn + 1
     ENDDO
@@ -2900,9 +2653,9 @@ contains
     ELSE IF ( currHMS < dT ) THEN
        newDay = .True.
        IF ( currDy == 1 ) THEN
-           newMonth = .True.
+          newMonth = .True.
        ELSE
-           newMonth = .False.
+          newMonth = .False.
        ENDIF
     ELSE
        newDay   = .False.
@@ -2910,8 +2663,7 @@ contains
     ENDIF
 
     ! Pass time values obtained from the ESMF environment to GEOS-Chem
-    CALL Accept_External_Date_Time( am_I_Root      = rootChunk,          &
-                                    value_NYMD     = currYMD,            &
+    CALL Accept_External_Date_Time( value_NYMD     = currYMD,            &
                                     value_NHMS     = currHMS,            &
                                     value_YEAR     = currYr,             &
                                     value_MONTH    = currMo,             &
@@ -2928,8 +2680,7 @@ contains
        CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
-    CALL Accept_External_PEdge( am_I_Root = rootChunk,        &
-                                State_Met = State_Met(LCHNK), &
+    CALL Accept_External_PEdge( State_Met = State_Met(LCHNK), &
                                 RC        = RC               )
 
     IF ( RC /= GC_SUCCESS ) THEN
@@ -2960,8 +2711,7 @@ contains
     State_Met(LCHNK)%PSC2_WET = State_Met(LCHNK)%PS1_WET
     State_Met(LCHNK)%PSC2_DRY = State_Met(LCHNK)%PS1_DRY
 
-    CALL Set_Floating_Pressures( am_I_Root  = rootChunk,         &
-                                 State_Grid = State_Grid(LCHNK), &
+    CALL Set_Floating_Pressures( State_Grid = State_Grid(LCHNK), &
                                  State_Met  = State_Met(LCHNK),  &
                                  RC         = RC                )
 
@@ -2993,8 +2743,7 @@ contains
     !  (13) AIRVOL    : Volume of grid box                         [m^3]
     !  (14) MOISTMW   : Molecular weight of moist air in box     [g/mol]
     !  ====================================================================
-    CALL AirQnt( am_I_Root           = rootChunk,         &
-                 Input_Opt           = Input_Opt,         &
+    CALL AirQnt( Input_Opt           = Input_Opt,         &
                  State_Chm           = State_Chm(LCHNK),  &
                  State_Grid          = State_Grid(LCHNK), &
                  State_Met           = State_Met(LCHNK),  &
@@ -3006,13 +2755,55 @@ contains
        CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
+    ! Do this after AirQnt, such that we overwrite GEOS-Chem isLand, isWater and
+    ! isIce, which are based on albedo. Rather, we use CLM landFranc, ocnFrac
+    ! and iceFrac. We also compute isSnow
+    DO J = 1, nY
+        iMaxLoc = MAXLOC( (/ State_Met(LCHNK)%FRLAND(1,J)   + &
+                             State_Met(LCHNK)%FRLANDIC(1,J) + &
+                             State_Met(LCHNK)%FRLAKE(1,J),    &
+                             State_Met(LCHNK)%FRSEAICE(1,J),  &
+                             State_Met(LCHNK)%FROCEAN(1,J)  - &
+                             State_Met(LCHNK)%FRSEAICE(1,J) /) )
+        IF ( iMaxLoc(1) == 3 ) iMaxLoc(1) = 0
+        ! reset ocean to 0
+
+        ! Field      : LWI
+        ! Description: Land/water indices
+        ! Unit       : -
+        ! Dimensions : nX, nY
+        State_Met(LCHNK)%LWI(1,J) = FLOAT( iMaxLoc(1) )
+
+        IF ( iMaxLoc(1) == 0 ) THEN
+           State_Met(LCHNK)%isLand(1,J)  = .False.
+           State_Met(LCHNK)%isWater(1,J) = .True.
+           State_Met(LCHNK)%isIce(1,J)   = .False.
+        ELSEIF ( iMaxLoc(1) == 1 ) THEN
+           State_Met(LCHNK)%isLand(1,J)  = .True.
+           State_Met(LCHNK)%isWater(1,J) = .False.
+           State_Met(LCHNK)%isIce(1,J)   = .False.
+        ELSEIF ( iMaxLoc(1) == 2 ) THEN
+           State_Met(LCHNK)%isLand(1,J)  = .False.
+           State_Met(LCHNK)%isWater(1,J) = .False.
+           State_Met(LCHNK)%isIce(1,J)   = .True.
+        ELSE
+           Write(iulog,*) " iMaxLoc gets value: ", iMaxLoc
+           ErrMsg = 'Failed to figure out land/water'
+           CALL Error_Stop( ErrMsg, ThisLoc )
+        ENDIF
+
+        State_Met(LCHNK)%isSnow(1,J) = ( State_Met(LCHNK)%FRSEAICE(1,J) > 0.0e+0_fp &
+                                    .or. State_Met(LCHNK)%SNODP(1,J) > 0.01 )
+
+    ENDDO
+
+
     ! Initialize strat chem if not already done. This has to be done here because
     ! it needs to have non-zero values in State_Chm%AD, which only happens after
     ! the first call to AirQnt
     !IF ( (.not.SCHEM_READY) .and. Input_Opt%LSCHEM ) THEN
     IF ( (.not.SCHEM_READY) .and. .True. ) THEN !TMMF
-        CALL Init_Strat_Chem( am_I_Root  = rootChunk,         &
-                              Input_Opt  = Input_Opt,         &
+        CALL Init_Strat_Chem( Input_Opt  = Input_Opt,         &
                               State_Chm  = State_Chm(LCHNK),  &
                               State_Met  = State_Met(LCHNK),  &
                               State_Grid = State_Grid(LCHNK), &
@@ -3024,32 +2815,6 @@ contains
         ENDIF
         SCHEM_READY = .True.
     ENDIF
-
-    !==============================================================
-    !       ***** R U N   H E M C O   P H A S E   1 *****
-    !
-    !    Phase 1 updates the HEMCO clock and the content of the
-    !    HEMCO data list. This should be done before writing the
-    !    diagnostics organized in the HEMCO diagnostics structure,
-    !    and before using any of the HEMCO data list fields.
-    !    (ckeller, 4/1/15)
-    !==============================================================
-    ! Run HEMCO Phase 1
-    !CALL Emissions_Run ( am_I_Root  = MasterProc,        &
-    !                     Input_Opt  = Input_Opt,         &
-    !                     State_Chm  = State_Chm(LCHNK),  &
-    !                     State_Diag = State_Diag(LCHNK), &
-    !                     State_Grid = State_Grid(LCHNK), &
-    !                     State_Met  = State_Met(LCHNK),  &
-    !                     EmisTime   = EmisTime,          &
-    !                     Phase      = 1,                 &
-    !                     RC         = RC         )
-    !
-    !! Trap potential errors
-    !IF ( RC /= GC_SUCCESS ) THEN
-    !   ErrMsg = 'Error encountered in "Emissions_Run"!'
-    !   CALL Error_Stop( ErrMsg, ThisLoc )
-    !ENDIF
 
     !----------------------------------------------------------
     ! %%% GET SOME NON-EMISSIONS DATA FIELDS VIA HEMCO %%%
@@ -3071,8 +2836,7 @@ contains
     !
     !      ! Copy UV Albedo data (for photolysis) into the
     !      ! State_Met%UVALBEDO field. (bmy, 3/20/15)
-    !      CALL Get_UvAlbedo( am_I_Root = MasterProc,       &
-    !                         Input_Opt = Input_Opt,        &
+    !      CALL Get_UvAlbedo( Input_Opt = Input_Opt,        &
     !                         State_Met = State_Met(LCHNK), &
     !                         RC        = RC               )
     !
@@ -3085,8 +2849,7 @@ contains
     !      IF ( Input_Opt%USE_TOMS_O3 ) THEN
     !         ! Get TOMS overhead O3 columns for photolysis from
     !         ! the HEMCO data structure (bmy, 3/20/15)
-    !         CALL Read_TOMS( am_I_Root = MasterProc, &
-    !                         Input_Opt = Input_Opt,  &
+    !         CALL Read_TOMS( Input_Opt = Input_Opt,  &
     !                         RC        = RC         )
     !
     !         ! Trap potential errors
@@ -3101,8 +2864,7 @@ contains
     !   ! Read data required for Hg2 gas-particle partitioning
     !   ! (H Amos, 25 Oct 2011)
     !   IF ( ITS_A_MERCURY_SIM ) THEN
-    !      CALL Read_Hg2_Partitioning( am_I_Root  = MasterProc,        &
-    !                                  Input_Opt  = Input_Opt,         &
+    !      CALL Read_Hg2_Partitioning( Input_Opt  = Input_Opt,         &
     !                                  State_Grid = State_Grid(LCHNK), &
     !                                  State_Met  = State_Met(LCHNK),  &
     !                                  MONTH      = 1,                 & !TMMF
@@ -3122,8 +2884,7 @@ contains
     !IF ( ITS_A_FULLCHEM_SIM .and. id_CH4 > 0 ) THEN
     !
     !   ! Set CH4 concentrations
-    !   CALL SET_CH4( am_I_Root  = MasterProc,        &
-    !                 Input_Opt  = Input_Opt,         &
+    !   CALL SET_CH4( Input_Opt  = Input_Opt,         &
     !                 State_Chm  = State_Chm(LCHNK),  &
     !                 State_Diag = State_Diag(LCHNK), &
     !                 State_Grid = State_Grid(LCHNK), &
@@ -3139,8 +2900,7 @@ contains
 
     ! Eventually initialize/reset wetdep
     IF ( Input_Opt%LConv .OR. Input_Opt%LChem .OR. Input_Opt%LWetD ) THEN
-        CALL Setup_WetScav( am_I_Root  = rootChunk,         &
-                            Input_Opt  = Input_Opt,         &
+        CALL Setup_WetScav( Input_Opt  = Input_Opt,         &
                             State_Chm  = State_Chm(LCHNK),  &
                             State_Grid = State_Grid(LCHNK), &
                             State_Met  = State_Met(LCHNK),  &
@@ -3169,7 +2929,7 @@ contains
     !  (7)  F_UNDER_PBLTOP: Fraction of grid box underneath the PBL top [-]
     !  (8)  PBL_MAX_L  : Model level where PBL top occurs           [-]
     !  ====================================================================
-    CALL Compute_PBL_Height( am_I_Root  = rootChunk,         &
+    CALL Compute_PBL_Height( Input_Opt  = Input_Opt,         &
                              State_Grid = State_Grid(LCHNK), &
                              State_Met  = State_Met(LCHNK),  &
                              RC         = RC )
@@ -3228,8 +2988,7 @@ contains
     IF ( Input_Opt%LDryD ) THEN
        ! Compute the Olson landmap fields of State_Met
        ! (e.g. State_Met%IREG, State_Met%ILAND, etc.)
-       CALL Compute_Olson_Landmap( am_I_Root  = rootChunk,         &
-                                   Input_Opt  = Input_Opt,         &
+       CALL Compute_Olson_Landmap( Input_Opt  = Input_Opt,         &
                                    State_Grid = State_Grid(LCHNK), &
                                    State_Met  = State_Met(LCHNK),  &
                                    RC         = RC                )
@@ -3242,8 +3001,7 @@ contains
 
        ! Compute State_Met%XLAI (for drydep) and State_Met%MODISLAI,
        ! which is the average LAI per grid box (for soil NOx emissions)
-       CALL Compute_Xlai( am_I_Root  = rootChunk,         &
-                          Input_Opt  = Input_Opt,         &
+       CALL Compute_Xlai( Input_Opt  = Input_Opt,         &
                           State_Grid = State_Grid(LCHNK), &
                           State_Met  = State_Met(LCHNK),  &
                           RC         = RC                )
@@ -3257,8 +3015,7 @@ contains
 #if   ( ALLDDVEL_GEOSCHEM || OCNDDVEL_GEOSCHEM )
 
        ! Compute drydep velocities and update State_Chm%DryDepVel
-       CALL Do_Drydep( am_I_Root  = rootChunk,         &
-                       Input_Opt  = Input_Opt,         &
+       CALL Do_Drydep( Input_Opt  = Input_Opt,         &
                        State_Chm  = State_Chm(LCHNK),  &
                        State_Diag = State_Diag(LCHNK), &
                        State_Grid = State_Grid(LCHNK), &
@@ -3302,20 +3059,20 @@ contains
           !ENDIF
 
           IF ( map2GC_dryDep(N) > 0 ) THEN
-              ! State_Chm%DryDepVel is in m/s
-              State_Chm(LCHNK)%DryDepVel(1,:nY,map2GC_dryDep(N)) = &
-                 ! This first bit corresponds to the dry deposition
-                 ! velocities over land as computed from CLM and
-                 ! converted to m/s. This is scaled by the fraction
-                 ! of land.
-                   cam_in%depVel(:nY,N) * 1.0e-02_fp &
-                    * MAX(0._fp, 1.0_fp - State_Met(LCHNK)%FROCEAN(1,:nY)) &
-                 ! This second bit corresponds to the dry deposition
-                 ! velocities over ocean and sea ice as computed from
-                 ! GEOS-Chem. This is scaled by the fraction of ocean
-                 ! and sea ice.
-                 + State_Chm(LCHNK)%DryDepVel(1,:nY,map2GC_dryDep(N)) &
-                   * State_Met(LCHNK)%FROCEAN(1,:nY)
+             ! State_Chm%DryDepVel is in m/s
+             State_Chm(LCHNK)%DryDepVel(1,:nY,map2GC_dryDep(N)) = &
+                ! This first bit corresponds to the dry deposition
+                ! velocities over land as computed from CLM and
+                ! converted to m/s. This is scaled by the fraction
+                ! of land.
+                  cam_in%depVel(:nY,N) * 1.0e-02_fp &
+                   * MAX(0._fp, 1.0_fp - State_Met(LCHNK)%FROCEAN(1,:nY)) &
+                ! This second bit corresponds to the dry deposition
+                ! velocities over ocean and sea ice as computed from
+                ! GEOS-Chem. This is scaled by the fraction of ocean
+                ! and sea ice.
+                + State_Chm(LCHNK)%DryDepVel(1,:nY,map2GC_dryDep(N)) &
+                  * State_Met(LCHNK)%FROCEAN(1,:nY)
           ENDIF
        ENDDO
 
@@ -3399,8 +3156,7 @@ contains
        CALL ENDRUN('Incorrect definitions for dry deposition velocities')
 #endif
 
-       CALL Update_DryDepSav( am_I_Root  = rootChunk,         &
-                              Input_Opt  = Input_Opt,         &
+       CALL Update_DryDepSav( Input_Opt  = Input_Opt,         &
                               State_Chm  = State_Chm(LCHNK),  &
                               State_Diag = State_Diag(LCHNK), &
                               State_Grid = State_Grid(LCHNK), &
@@ -3408,37 +3164,6 @@ contains
                               RC         = RC                )
 
     ENDIF
-
-    !!===========================================================
-    !!             ***** E M I S S I O N S *****
-    !!
-    !! NOTE: For a complete description of how emissions from
-    !! HEMCO are added into GEOS-Chem (and how they are mixed
-    !! into the boundary layer), please see the wiki page:
-    !!
-    !! http://wiki-geos-chem.org/Distributing_emissions_in_the_PBL
-    !!===========================================================
-    !
-    !! EMISSIONS_RUN will call HEMCO run phase 2. HEMCO run phase
-    !! only calculates emissions. All data has been read to disk
-    !! in phase 1 at the beginning of the time step.
-    !! (ckeller, 4/1/15)
-    !CALL Emissions_Run( am_I_Root   = rootChunk,         &
-    !                    Input_Opt   = Input_Opt,         &
-    !                    State_Chm   = State_Chmk(LCHNK), &
-    !                    State_Diag  = State_Diag(LCHNK), &
-    !                    State_Grid  = State_Grid(LCHNK), &
-    !                    State_Met   = State_Met(LCHNK),  &
-    !                    TimeForEmis = TimeForEmis,       &
-    !                    Phase       = 2,                 &
-    !                    RC          = RC                )
-    !
-    !! Trap potential errors
-    !IF ( RC /= GC_SUCCESS ) THEN
-    !   ErrMsg =
-    !     'Error encountered in "Emissions_Run"! after drydep!'
-    !   CALL Error_Stop( ErrMsg, ThisLoc )
-    !ENDIF
 
     !===========================================================
     !      ***** M I X E D   L A Y E R   M I X I N G *****
@@ -3459,8 +3184,7 @@ contains
     !
     ! This requires HEMCO. For now comment out.
     ! Thibaud M. Fritz - 05/07/20
-    !CALL Do_Mixing( am_I_Root  = rootChunk,         &
-    !                Input_Opt  = Input_Opt,         &
+    !CALL Do_Mixing( Input_Opt  = Input_Opt,         &
     !                State_Chm  = State_Chm(LCHNK),  &
     !                State_Diag = State_Diag(LCHNK), &
     !                State_Grid = State_Grid(LCHNK), &
@@ -3481,8 +3205,7 @@ contains
     !   ! Call the appropriate convection routine
     !   ! NOTE: Tracer concentration units are converted locally
     !   ! to [kg/kg total air] for convection (ewl, 9/18/15)
-    !   CALL Do_Convection( am_I_Root  = rootChunk,         &
-    !                       Input_Opt  = Input_Opt,         &
+    !   CALL Do_Convection( Input_Opt  = Input_Opt,         &
     !                       State_Chm  = State_Chm(LCHNK),  &
     !                       State_Diag = State_Diag(LCHNK), &
     !                       State_Grid = State_Grid(LCHNK), &
@@ -3503,17 +3226,23 @@ contains
     IF ( Input_Opt%Its_A_FullChem_Sim .OR. &
          Input_Opt%Its_An_Aerosol_Sim ) THEN
 
-        IF ( Input_Opt%LChem ) THEN
-            CALL Compute_Overhead_O3( am_I_Root       = rootChunk,                 &
-                                      State_Grid      = State_Grid(LCHNK),         &
-                                      DAY             = currDy,                    &
-                                      USE_O3_FROM_MET = Input_Opt%Use_O3_From_Met, &
-                                      TO3             = State_Met(LCHNK)%TO3      )
-        ENDIF
+       IF ( Input_Opt%LChem ) THEN
+          CALL Compute_Overhead_O3( Input_Opt       = Input_Opt,                 &
+                                    State_Grid      = State_Grid(LCHNK),         &
+                                    State_Chm       = State_Chm(LCHNK),          &
+                                    DAY             = currDy,                    &
+                                    USE_O3_FROM_MET = Input_Opt%Use_O3_From_Met, &
+                                    TO3             = State_Met(LCHNK)%TO3,      &
+                                    RC              = RC                        )
+
+          IF ( RC /= GC_SUCCESS ) THEN
+             ErrMsg = 'Error encountered in "Compute_Overhead_O3"!'
+             CALL Error_Stop( ErrMsg, ThisLoc )
+          ENDIF
+       ENDIF
     ENDIF
 
-    CALL Do_Chemistry( am_I_Root  = rootChunk,         &
-                       Input_Opt  = Input_Opt,         &
+    CALL Do_Chemistry( Input_Opt  = Input_Opt,         &
                        State_Chm  = State_Chm(LCHNK),  &
                        State_Diag = State_Diag(LCHNK), &
                        State_Grid = State_Grid(LCHNK), &
@@ -3534,8 +3263,7 @@ contains
         ! NOTE: Tracer concentration units are converted locally
         ! to [kg/m2] in wet deposition to enable calculations
         ! along the column (ewl, 9/18/15)
-        CALL Do_WetDep( am_I_Root  = rootChunk,         &
-                        Input_Opt  = Input_Opt,         &
+        CALL Do_WetDep( Input_Opt  = Input_Opt,         &
                         State_Chm  = State_Chm(LCHNK),  &
                         State_Diag = State_Diag(LCHNK), &
                         State_Grid = State_Grid(LCHNK), &
@@ -3628,7 +3356,7 @@ contains
        !ENDDO
     ENDIF
 
-    IF (rootChunk) WRITE(iulog,'(a)') ' GEOS-Chem chemistry step completed'
+    IF (rootChunk) WRITE(iulog,*) ' GEOS-Chem Chemistry step ', iStep, ' completed'
 
   end subroutine chem_timestep_tend
 
@@ -3644,25 +3372,23 @@ contains
     ! Will need a simple mapping structure as well as the CAM tracer registration
     ! routines.
 
-    INTEGER  :: ILEV, NLEV, I
+    INTEGER  :: iLev, NLEV, I
     REAL(r8) :: QTemp, Min_MMR
-
-    IF (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_INIT_CNST'
 
     NLEV = SIZE(q, 2)
     ! Retrieve a "background value" for this from the database
     Min_MMR = 1.0e-38_r8
     DO I = 1, nTracers
        IF (TRIM(tracerNames(I)).eq.TRIM(name)) THEN
-          Min_MMR = ref_MMR(i)
+          Min_MMR = ref_MMR(I)
           EXIT
        ENDIF
     ENDDO
 
-    DO ILEV = 1, NLEV
+    DO iLev = 1, NLEV
        WHERE(mask)
           ! Set to the minimum mixing ratio
-          q(:,ILEV) = Min_MMR
+          q(:,iLev) = Min_MMR
        END WHERE
     ENDDO
 
@@ -3681,94 +3407,80 @@ contains
     use FlexChem_Mod,   only : Cleanup_FlexChem
     use UCX_Mod,        only : Cleanup_UCX
     use Drydep_Mod,     only : Cleanup_Drydep
-    use WetScav_Mod,    only : Cleanup_Wetscav
     use Carbon_Mod,     only : Cleanup_Carbon
     use Dust_Mod,       only : Cleanup_Dust
     use Seasalt_Mod,    only : Cleanup_Seasalt
     use Aerosol_Mod,    only : Cleanup_Aerosol
-    use TOMS_Mod,       only : Cleanup_Toms
     use Sulfate_Mod,    only : Cleanup_Sulfate
     use Pressure_Mod,   only : Cleanup_Pressure
     use Strat_Chem_Mod, only : Cleanup_Strat_Chem
-    use PBL_Mix_Mod,    only : Cleanup_PBL_Mix
 
     use CMN_Size_Mod,   only : Cleanup_CMN_Size
-    use CMN_O3_Mod,     only : Cleanup_CMN_O3
     use CMN_FJX_Mod,    only : Cleanup_CMN_FJX
 
+#ifdef BPCH_DIAG
+    use CMN_O3_Mod,     only : Cleanup_CMN_O3
     ! Special: cleans up after NDXX_Setup
     use Diag_Mod,       only : Cleanup_Diag
+#endif
 
     use GC_Emissions_Mod, only: GC_Emissions_Final
 
     INTEGER :: I, RC
-    LOGICAL :: am_I_Root
 
     ! Finalize GEOS-Chem
     IF (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_FINAL'
 
-    CALL Cleanup_UCX( MasterProc )
+    CALL Cleanup_UCX
     CALL Cleanup_Aerosol
     CALL Cleanup_Carbon
     CALL Cleanup_Drydep
     CALL Cleanup_Dust
-    CALL Cleanup_FlexChem( am_I_Root, RC )
+    CALL Cleanup_FlexChem( RC )
     IF ( RC /= GC_SUCCESS ) THEN
        ErrMsg = 'Error encountered in "Cleanup_FlexChem"!'
        CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
-    CALL Cleanup_PBL_Mix
     CALL Cleanup_Pressure
     CALL Cleanup_Seasalt
     CALL Cleanup_Sulfate
     CALL Cleanup_Strat_Chem
-    CALL Cleanup_Toms( MasterProc, RC )
-    IF ( RC /= GC_SUCCESS ) THEN
-       ErrMsg = 'Error encountered in "Cleanup_Toms"!'
-       CALL Error_Stop( ErrMsg, ThisLoc )
-    ENDIF
-
-    CALL Cleanup_WetScav( MasterProc, RC)
-    IF ( RC /= GC_SUCCESS ) THEN
-       ErrMsg = 'Error encountered in "Cleanup_WetScav"!'
-       CALL Error_Stop( ErrMsg, ThisLoc )
-    ENDIF
 
     CALL GC_Emissions_Final
 
-    ! Call extra cleanup routines, from modules in Headers/
-    CALL Cleanup_CMN_O3( MasterProc, RC )
-    IF ( RC /= GC_SUCCESS ) THEN
-       ErrMsg = 'Error encountered in "Cleanup_CMN_O3"!'
-       CALL Error_Stop( ErrMsg, ThisLoc )
-    ENDIF
-
-    CALL Cleanup_CMN_SIZE( MasterProc, RC )
+    CALL Cleanup_CMN_SIZE( RC )
     IF ( RC /= GC_SUCCESS ) THEN
        ErrMsg = 'Error encountered in "Cleanup_CMN_SIZE"!'
        CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
-    CALL Cleanup_CMN_FJX( MasterProc, RC )
+    CALL Cleanup_CMN_FJX( RC )
     IF ( RC /= GC_SUCCESS ) THEN
        ErrMsg = 'Error encountered in "Cleanup_CMN_FJX"!'
        CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
+#ifdef BPCH_DIAG
     CALL Cleanup_Diag
 
+    ! Call extra cleanup routines, from modules in Headers/
+    CALL Cleanup_CMN_O3( RC )
+    IF ( RC /= GC_SUCCESS ) THEN
+       ErrMsg = 'Error encountered in "Cleanup_CMN_O3"!'
+       CALL Error_Stop( ErrMsg, ThisLoc )
+    ENDIF
+#endif
+
     ! Cleanup Input_Opt
-    CALL Cleanup_Input_Opt( MasterProc, Input_Opt, RC )
+    CALL Cleanup_Input_Opt( Input_Opt, RC )
 
     ! Loop over each chunk and cleanup the variables
     DO I = BEGCHUNK, ENDCHUNK
-       am_I_Root = ((I.eq.BEGCHUNK) .and. MasterProc)
-
-       CALL Cleanup_State_Chm ( am_I_Root, State_Chm(I),  RC )
-       CALL Cleanup_State_Diag( am_I_Root, State_Diag(I), RC )
-       CALL Cleanup_State_Grid( am_I_Root, State_Grid(I), RC )
-       CALL Cleanup_State_Met ( am_I_Root, State_Met(I),  RC )
+       CALL Cleanup_State_Chm ( State_Chm(I),  RC )
+       CALL Cleanup_State_Diag( State_Diag(I), RC )
+       CALL Cleanup_State_Grid( State_Grid(I), RC )
+       CALL Cleanup_State_Met ( State_Met(I),  RC )
     ENDDO
     CALL Cleanup_Error
 
@@ -3780,7 +3492,6 @@ contains
 
     IF (ALLOCATED(slvd_Lst    ))  DEALLOCATE(slvd_Lst)
     IF (ALLOCATED(slvd_ref_MMR))  DEALLOCATE(slvd_ref_MMR)
-
 
     RETURN
 
@@ -3895,10 +3606,12 @@ contains
           IF ( M <= 0 ) CYCLE
 
           cam_in%cflx(1:ncol,M) = sflx(1:ncol,N)
-          If ( MAXVAL(sflx(1:ncol,N)) > 0.0e+0_fp ) &
+          IF ( rootChunk .and. ( MAXVAL(sflx(1:ncol,N)) > 0.0e+0_fp ) ) THEN
              Write(iulog,*) "chem_emissions: debug added emiss for ", &
-             TRIM(cnst_name(M)), MAXVAL(sflx(1:ncol,N)), " from ", TRIM(fldname_ns), &
-             ". Total emission flux is: ", MAXVAL(cam_in%cflx(1:ncol,M))
+                TRIM(cnst_name(M)), MAXVAL(sflx(1:ncol,N)), " from ", TRIM(fldname_ns)
+             Write(iulog,*) "chem_emissions: Total emission flux for ", &
+                TRIM(cnst_name(M)), " is: ", MAXVAL(cam_in%cflx(1:ncol,M))
+          ENDIF
        ENDIF
     ENDDO
 

@@ -747,6 +747,8 @@ if ( ($chem ne 'none') or ( $prog_species ) ){
     }
     $nl->set_variable_value('aerosol_nl', 'aer_drydep_list', $aer_drydep_list);
     $nl->set_variable_value('aerosol_nl', 'aer_wetdep_list', $aer_wetdep_list);
+    $nl->set_variable_value('drydep_inparm', 'drydep_list', $gas_drydep_list);
+    $nl->set_variable_value('wetdep_inparm', 'gas_wetdep_list', $gas_wetdep_list);
 }
 if ($chem) {
     # Dry Deposition -- The responsibility for dry deposition is shared between CAM and CLM.

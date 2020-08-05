@@ -90,14 +90,17 @@ module aero_model
   ! Namelist variables
   character(len=16) :: wetdep_list(pcnst) = ' '
   character(len=16) :: drydep_list(pcnst) = ' '
+  logical, allocatable :: isGEOSChem_WetDep(:), isGEOSChem_DryDep(:)
   real(r8)          :: sol_facti_cloud_borne   = 1._r8
   real(r8)          :: sol_factb_interstitial  = 0.1_r8
   real(r8)          :: sol_factic_interstitial = 0.4_r8
   real(r8)          :: seasalt_emis_scale 
 
-  integer :: ndrydep = 0
+  integer :: ndrydep    = 0
+  integer :: ndrydepAll = 0
   integer,allocatable :: drydep_indices(:)
-  integer :: nwetdep = 0
+  integer :: nwetdep    = 0
+  integer :: nwetdepAll = 0
   integer,allocatable :: wetdep_indices(:)
   logical :: drydep_lq(pcnst)
   logical :: wetdep_lq(pcnst)
@@ -196,6 +199,8 @@ contains
     use modal_aero_rename,     only: modal_aero_rename_init
     use modal_aero_convproc,   only: ma_convproc_init  
 
+    use chemistry,             only: chem_is
+
     ! args
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
@@ -218,7 +223,10 @@ contains
     character(len=32) :: spec_name
     character(len=32) :: spec_type
     character(len=32) :: mode_type
+
     integer :: nspec
+
+    character(len=32)    :: GCName
 
     dgnum_idx       = pbuf_get_index('DGNUM')
     dgnumwet_idx    = pbuf_get_index('DGNUMWET')
@@ -268,10 +276,17 @@ contains
 
     count_species: do m = 1,pcnst
        if ( len_trim(wetdep_list(m)) /= 0 ) then
-          nwetdep = nwetdep+1
+          ! This allows us to exclude GEOS-Chem aerosols, such that
+          ! GEOS-Chem handles its own aerosols
+          ! Note: GEOS-Chem aerosols are stored as 'GC_AER_' + wetdep_list
+          call cnst_get_ind ( wetdep_list(m), id, abort=.false. )
+          if ( id > 0 ) nwetdep = nwetdep+1
+          nwetdepAll = nwetdepAll + 1
        endif
        if ( len_trim(drydep_list(m)) /= 0 ) then
-          ndrydep = ndrydep+1
+          call cnst_get_ind ( drydep_list(m), id, abort=.false. )
+          if ( id > 0 ) ndrydep = ndrydep+1
+          ndrydepAll = ndrydepAll + 1
        endif
     enddo count_species
     
@@ -280,28 +295,55 @@ contains
     if (ndrydep>0) &
          allocate(drydep_indices(ndrydep))
 
-    do m = 1,ndrydep
+    if (nwetdepAll>0) &
+         allocate(isGEOSChem_WetDep(nwetdepAll))
+    if (ndrydepAll>0) &
+         allocate(isGEOSChem_dryDep(ndrydepAll))
+
+    isGEOSChem_DryDep(:) = .False.
+    isGEOSChem_WetDep(:) = .False.
+
+    n = 1
+    do m = 1, ndrydepAll
        call cnst_get_ind ( drydep_list(m), id, abort=.false. )
        if (id>0) then
-          drydep_indices(m) = id
-       else
+          drydep_indices(n) = id
+          n = n+1
+       elseif ( chem_is('GEOSCHEM') ) then
+          ! Let GEOS-Chem handle its own aerosols
+          write(GCName,'(a,a)') 'GC_AER_', drydep_list(m)
+          call cnst_get_ind ( GCName, id, abort=.false. )
+          if ( id > 0 ) isGEOSChem_DryDep(m) = .True.
+       endif
+
+       if ( id <= 0 ) then
           call endrun(subrname//': invalid drydep species: '//trim(drydep_list(m)) )
        endif
 
-       if (masterproc) then
+       if (masterproc .and. (.not. isGEOSChem_DryDep(m))) then
           write(iulog,*) subrname//': '//drydep_list(m)//' will have drydep applied'
        endif
     enddo
-    do m = 1,nwetdep
+
+    n = 1
+    do m = 1, nwetdepAll
        call cnst_get_ind ( wetdep_list(m), id, abort=.false. )
        if (id>0) then
-          wetdep_indices(m) = id
-       else
+          wetdep_indices(n) = id
+          n = n+1
+       elseif ( chem_is('GEOSCHEM') ) then
+          ! Let GEOS-Chem handle its own aerosols
+          write(GCName,'(a,a)') 'GC_AER_', wetdep_list(m)
+          call cnst_get_ind ( GCName, id, abort=.false. )
+          if ( id > 0 ) isGEOSChem_WetDep(m) = .True.
+       endif
+
+       if ( id <= 0 ) then
           call endrun(subrname//': invalid wetdep species: '//trim(wetdep_list(m)) )
        endif
 
-       if (masterproc) then
-          write(iulog,*) subrname//': '//wetdep_list(m)//' will have wet removal'
+       if (masterproc .and. (.not. isGEOSChem_WetDep(m))) then
+          write(iulog,*) subrname//': '//wetdep_list(m)//' will have wetdep applied'
        endif
     enddo
 
@@ -387,8 +429,10 @@ contains
     rate1_cw2pr_st_idx  = pbuf_get_index('RATE1_CW2PR_ST') 
     call pbuf_set_field(pbuf2d, rate1_cw2pr_st_idx, 0.0_r8)
 
-    do m = 1,ndrydep
-       
+    do m = 1,ndrydepAll
+
+       if ( isGEOSChem_DryDep(m) ) cycle
+
        ! units 
        if (drydep_list(m)(1:3) == 'num') then
           unit_basename = ' 1'
@@ -417,7 +461,9 @@ contains
 
     enddo
 
-    do m = 1,nwetdep
+    do m = 1,nwetdepAll
+
+       if ( isGEOSChem_WetDep(m) ) cycle
        
        ! units 
        if (wetdep_list(m)(1:3) == 'num') then
