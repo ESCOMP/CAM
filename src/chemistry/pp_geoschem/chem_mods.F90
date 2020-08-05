@@ -7,25 +7,42 @@
       implicit none
       save
 
-      INTEGER, PARAMETER :: nTracersMax = 250    ! Must be equal to nadv_chem
-      INTEGER            :: nTracers
-      CHARACTER(LEN=255) :: tracerNames(nTracersMax)
-      CHARACTER(LEN=255) :: tracerLongNames(nTracersMax)
-      REAL(r8)           :: adv_Mass(nTracersMax)
-      REAL(r8)           :: MWRatio(nTracersMax)
-      REAL(r8)           :: ref_MMR(nTracersMax)
+      INTEGER, PARAMETER   :: nTracersMax = 280    ! Must be equal to chem_nadv
+      INTEGER              :: nTracers
+      CHARACTER(LEN=255)   :: tracerNames(nTracersMax)
+      CHARACTER(LEN=255)   :: tracerLongNames(nTracersMax)
+      REAL(r8)             :: adv_Mass(nTracersMax)
+      REAL(r8)             :: MWRatio(nTracersMax)
+      REAL(r8)             :: ref_MMR(nTracersMax)
 
       ! Short-lived species (i.e. not advected)
-      INTEGER, PARAMETER :: nSlsMax = 500        ! UNadvected species only
-      INTEGER            :: nSls    
-      CHARACTER(LEN=255) :: slsNames(nSlsMax)
-      CHARACTER(LEN=255) :: slsLongnames(nSlsMax)
-      REAL(r8)           :: sls_Ref_MMR(nSlsMax)
-      REAL(r8)           :: slsMWRatio(nSlsMax)
+      INTEGER, PARAMETER   :: nSlsMax = 500        ! UNadvected species only
+      INTEGER              :: nSls    
+      CHARACTER(LEN=255)   :: slsNames(nSlsMax)
+      CHARACTER(LEN=255)   :: slsLongnames(nSlsMax)
+      REAL(r8)             :: sls_Ref_MMR(nSlsMax)
+      REAL(r8)             :: slsMWRatio(nSlsMax)
 
       ! Mapping between constituents and GEOS-Chem tracers
       INTEGER              :: map2GC(pcnst)
       INTEGER              :: map2GC_Sls(nSlsMax)
+
+      ! Mapping from constituents to raw index
+      INTEGER              :: map2Idx(pcnst)
+
+      ! Aerosols
+      INTEGER, PARAMETER   :: nAerMax = 35
+      INTEGER              :: nAer
+      CHARACTER(LEN=16)    :: aerNames(nAerMax)
+      REAL(r8)             :: aerAdvMass(nAerMax)
+
+      !-----------------------------
+      ! Aerosol index mapping
+      !-----------------------------
+      ! map2MAM4 maps aerNames onto the GEOS-Chem Species array such
+      ! that
+      ! State_Chm%Species(1,:,:,map2MAM4(:,:)) = state%q(:,:,MAM4_Indices)
+      INTEGER, ALLOCATABLE :: map2MAM4(:,:)
 
       !-----------------------------
       ! Dry deposition index mapping
@@ -39,16 +56,12 @@
       ! State_Chm%DryDepVel(1,:,map2GC_dryDep(:)) = cam_in%depVel(:,:)
       INTEGER, ALLOCATABLE :: map2GC_dryDep(:)
 
-
-      ! Mapping from constituents to raw index
-      INTEGER              :: map2Idx(pcnst)
-
       INTEGER, PARAMETER :: phtcnt = 40, & ! number of photolysis reactions
                             rxntot = 212, & ! number of total reactions
                             gascnt = 172, & ! number of gas phase reactions
                             nabscol = 2, & ! number of absorbing column densities
                             gas_pcnst = 103, & ! number of "gas phase" species
-                            nfs = 4, & ! number of "fixed" species
+                            nfs = 6, & ! number of "fixed" species
                             relcnt = 0, & ! number of relationship species
                             grpcnt = 0, & ! number of group members
                             nzcnt = 824, & ! number of non-zero matrix entries

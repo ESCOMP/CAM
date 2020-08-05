@@ -5,49 +5,42 @@
 
 <co2vmr>367.0e-6</co2vmr>
 
-<ncdata hgrid="1.9x2.5">atm/cam/inic/fv/cami-chem_1990-01-01_1.9x2.5_L26_c080114.nc</ncdata>
+<ncdata hgrid="0.9x1.25">atm/cam/inic/fv/f.e20.FWAMIP.f09_f09.134.1975.009.cam.i.2010-01-01_32L_c170403.nc</ncdata>
 
-<!-->&gt;&amp;gt; Solar constant from Lean (via Caspar Ammann) &amp;lt;/!&lt;/!</!-->
+<!-- Solar constant from Lean (via Caspar Ammann) -->
 <solar_data_file>atm/cam/solar/spectral_irradiance_Lean_1610-2009_ann_c100405.nc</solar_data_file>
 <solar_data_ymd>20000101</solar_data_ymd>
 <solar_data_type>FIXED</solar_data_type>
 
-<!-->&gt;&amp;gt; Prescribed BAM data is from Jean-Francois Lamarque &amp;lt;/!&lt;/!</!-->
-<prescribed_aero_datapath>atm/cam/chem/trop_mozart_aero/aero</prescribed_aero_datapath>
-<prescribed_aero_file>aero_1.9x2.5_L26_1850-2005_c091112.nc</prescribed_aero_file>
-<prescribed_aero_type>CYCLICAL</prescribed_aero_type>
-<prescribed_aero_cycle_yr>2000</prescribed_aero_cycle_yr>
-
-<!-->&gt;&amp;gt; aerosol deposition &amp;lt;/!&lt;/!</!-->
+<!-- aerosol deposition -->
 <aerodep_flx_datapath>atm/cam/chem/trop_mozart_aero/aero</aerodep_flx_datapath>
 <aerodep_flx_file>aerosoldep_monthly_2000_mean_1.9x2.5_c090421.nc</aerodep_flx_file>
 <aerodep_flx_type>CYCLICAL</aerodep_flx_type>
 <aerodep_flx_cycle_yr>2000</aerodep_flx_cycle_yr>
 
-<!-->&gt;&amp;gt; Prescribed ozone data is from Jean-Francois Lamarque &amp;lt;/!&lt;/!</!-->
+<!-- Prescribed ozone data is from Jean-Francois Lamarque -->
 <prescribed_ozone_datapath> atm/cam/ozone                         </prescribed_ozone_datapath>
 <prescribed_ozone_file>     ozone_1.9x2.5_L26_1850-2005_c090803.nc</prescribed_ozone_file>
 <prescribed_ozone_name>     O3                                    </prescribed_ozone_name>
 <prescribed_ozone_type>     CYCLICAL                              </prescribed_ozone_type>
 <prescribed_ozone_cycle_yr> 2000                                  </prescribed_ozone_cycle_yr>
 
-<chem_rad_passive>.true.</chem_rad_passive>
 <drydep_method>'xactive_lnd'</drydep_method>
 
-<!-->&gt;&amp;gt; sim_year used for CLM datasets &amp;lt;/!&lt;/!</!-->
+<!-- sim_year used for CLM datasets -->
 <sim_year>2000</sim_year>
 
-<!-->&gt;&amp;gt; fixed lower boundary data  &amp;lt;/!&lt;/!</!-->
+<!-- fixed lower boundary data  -->
 <flbc_cycle_yr>2000</flbc_cycle_yr>
 <flbc_file>atm/waccm/lb/LBC_1765-2500_1.9x2.5_CMIP5_RCP45_za_c120204.nc</flbc_file>
 <flbc_type>CYCLICAL</flbc_type>
 
-<!-->&gt;&amp;gt; emissions timing  &amp;lt;/!&lt;/!</!-->
+<!-- emissions timing  -->
 
-<!-->&gt;&amp;gt; &amp;amp;lt;ext_frc_type&amp;amp;gt;'SERIAL'&amp;amp;lt;/ext_frc_type&amp;amp;gt; &amp;lt;/!&lt;/!</!-->
+<!-- <ext_frc_type>'SERIAL'</ext_frc_type> -->
 <srf_emis_type>'CYCLICAL'</srf_emis_type>
 <srf_emis_cycle_yr>2000</srf_emis_cycle_yr>
-<!-->&gt;&amp;gt; History Files &amp;lt;/!&lt;/!</!-->
+<!-- History Files -->
 
 <mfilt>            1, 24 </mfilt>
 <nhtfrq>           0, -1 </nhtfrq>
@@ -66,7 +59,7 @@
 </drydep_list>
 
 <aer_drydep_list>
-  'AERI','ASOA1','ASOA2','ASOA3','ASOAN','BCPI','BCPO','BE10','BE10STRAT','BE7','BE7STRAT','BRSALA','BRSALC','DST1','DST2','DST3','DST4','DSTAL1','DSTAL2','DSTAL3','DSTAL4','HGP','HGP_ANT','HGP_ARC','HGP_ATL','HGP_BB','HGP_CAM','HGP_CAN','HGP_EAF','HGP_EAS','HGP_EEU','HGP_EUR','HGP_GEO','HGP_JPN','HGP_MDE','HGP_NAF','HGP_NAT','HGP_NPA','HGP_OCE','HGP_OCN','HGP_SAF','HGP_SAM','HGP_SAS','HGP_SAT','HGP_SEA','HGP_SO','HGP_SOV','HGP_STR','HGP_USA','HGP_WAF','INDIOL','IONITA','ISALA','ISALC','LVOCOA','MONITA','MOPI','MOPO','MSA','NH4','NIT','NITD1','NITD2','NITD3','NITD4','NITS','OCPI','OCPO','OPOA1','OPOA2','PB210','PB210STRAT','PFE','POA1','POA2','POPPBCPI_BAP','POPPBCPI_PHE','POPPBCPI_PYR','POPPBCPO_BAP','POPPBCPO_PHE','POPPBCPO_PYR','POPPOCPI_BAP','POPPOCPI_PHE','POPPOCPI_PYR','POPPOCPO_BAP','POPPOCPO_PHE','POPPOCPO_PYR','SALA','SALAAL','SALACL','SALC','SALCAL','SALCCL','SO4','SO4D1','SO4D2','SO4D3','SO4D4','SO4S','SOAGX','SOAIE','SOAS','TSOA0','TSOA1','TSOA2','TSOA3',
+  'dst_a1','so4_a1','nh4_a1','pom_a1','pomff1_a1','pombb1_a1','soa_a1','bc_a1','ncl_a1','num_a1','so4_a2','nh4_a2','soa_a2','ncl_a2','dst_a2','num_a2','dst_a3','ncl_a3','so4_a3','pom_a3','bc_a3','num_a3','ncl_a4','so4_a4','pom_a4','pomff1_a4','pombb1_a4','bc_a4','nh4_a4','num_a4','dst_a5','so4_a5','nh4_a5','num_a5','ncl_a6','so4_a6','nh4_a6','num_a6','dst_a7','so4_a7','nh4_a7','num_a7','soa1_a1','soa1_a2','soa2_a1','soa2_a2','soa3_a1','soa3_a2','soa4_a1','soa4_a2','soa5_a1','soa5_a2','soaff1_a1','soaff2_a1','soaff3_a1','soaff4_a1','soaff5_a1','soabb1_a1','soabb2_a1','soabb3_a1','soabb4_a1','soabb5_a1','soabg1_a1','soabg2_a1','soabg3_a1','soabg4_a1','soabg5_a1','soaff1_a2','soaff2_a2','soaff3_a2','soaff4_a2','soaff5_a2','soabb1_a2','soabb2_a2','soabb3_a2','soabb4_a2','soabb5_a2','soabg1_a2','soabg2_a2','soabg3_a2','soabg4_a2','soabg5_a2','AERI','ASOA1','ASOA2','ASOA3','ASOAN','BCPI','BCPO','BE10','BE10STRAT','BE7','BE7STRAT','BRSALA','BRSALC','DST1','DST2','DST3','DST4','DSTAL1','DSTAL2','DSTAL3','DSTAL4','HGP','HGP_ANT','HGP_ARC','HGP_ATL','HGP_BB','HGP_CAM','HGP_CAN','HGP_EAF','HGP_EAS','HGP_EEU','HGP_EUR','HGP_GEO','HGP_JPN','HGP_MDE','HGP_NAF','HGP_NAT','HGP_NPA','HGP_OCE','HGP_OCN','HGP_SAF','HGP_SAM','HGP_SAS','HGP_SAT','HGP_SEA','HGP_SO','HGP_SOV','HGP_STR','HGP_USA','HGP_WAF','INDIOL','IONITA','ISALA','ISALC','LVOCOA','MONITA','MOPI','MOPO','MSA','NH4','NIT','NITD1','NITD2','NITD3','NITD4','NITS','OCPI','OCPO','OPOA1','OPOA2','PB210','PB210STRAT','PFE','POA1','POA2','POPPBCPI_BAP','POPPBCPI_PHE','POPPBCPI_PYR','POPPBCPO_BAP','POPPBCPO_PHE','POPPBCPO_PYR','POPPOCPI_BAP','POPPOCPI_PHE','POPPOCPI_PYR','POPPOCPO_BAP','POPPOCPO_PHE','POPPOCPO_PYR','SALA','SALAAL','SALACL','SALC','SALCAL','SALCCL','SO4','SO4D1','SO4D2','SO4D3','SO4D4','SO4S','SOAGX','SOAIE','SOAS','TSOA0','TSOA1','TSOA2','TSOA3',
 </aer_drydep_list>
 
 <gas_wetdep_list>
@@ -74,7 +67,7 @@
 </gas_wetdep_list>
 
 <aer_wetdep_list>
-  'AERI','ASOA1','ASOA2','ASOA3','ASOAN','BCPI','BCPO','BE10','BE10STRAT','BE7','BE7STRAT','BRSALA','BRSALC','DST1','DST2','DST3','DST4','DSTAL1','DSTAL2','DSTAL3','DSTAL4','HGP','HGP_ANT','HGP_ARC','HGP_ATL','HGP_BB','HGP_CAM','HGP_CAN','HGP_EAF','HGP_EAS','HGP_EEU','HGP_EUR','HGP_GEO','HGP_JPN','HGP_MDE','HGP_NAF','HGP_NAT','HGP_NPA','HGP_OCE','HGP_OCN','HGP_SAF','HGP_SAM','HGP_SAS','HGP_SAT','HGP_SEA','HGP_SO','HGP_SOV','HGP_STR','HGP_USA','HGP_WAF','INDIOL','IONITA','ISALA','ISALC','LVOCOA','MONITA','MOPI','MOPO','MSA','NH4','NIT','NITD1','NITD2','NITD3','NITD4','NITS','OCPI','OCPO','OPOA1','OPOA2','PB210','PB210STRAT','PFE','POA1','POA2','POPPBCPI_BAP','POPPBCPI_PHE','POPPBCPI_PYR','POPPBCPO_BAP','POPPBCPO_PHE','POPPBCPO_PYR','POPPOCPI_BAP','POPPOCPI_PHE','POPPOCPI_PYR','POPPOCPO_BAP','POPPOCPO_PHE','POPPOCPO_PYR','SALA','SALAAL','SALACL','SALC','SALCAL','SALCCL','SO4','SO4D1','SO4D2','SO4D3','SO4D4','SO4S','SOAGX','SOAIE','SOAS','TSOA0','TSOA1','TSOA2','TSOA3',
+  'dst_a1','so4_a1','nh4_a1','pom_a1','pomff1_a1','pombb1_a1','soa_a1','bc_a1','ncl_a1','num_a1','so4_a2','nh4_a2','soa_a2','ncl_a2','dst_a2','num_a2','dst_a3','ncl_a3','so4_a3','pom_a3','bc_a3','num_a3','ncl_a4','so4_a4','pom_a4','pomff1_a4','pombb1_a4','bc_a4','nh4_a4','num_a4','dst_a5','so4_a5','nh4_a5','num_a5','ncl_a6','so4_a6','nh4_a6','num_a6','dst_a7','so4_a7','nh4_a7','num_a7','soa1_a1','soa1_a2','soa2_a1','soa2_a2','soa3_a1','soa3_a2','soa4_a1','soa4_a2','soa5_a1','soa5_a2','soaff1_a1','soaff2_a1','soaff3_a1','soaff4_a1','soaff5_a1','soabb1_a1','soabb2_a1','soabb3_a1','soabb4_a1','soabb5_a1','soabg1_a1','soabg2_a1','soabg3_a1','soabg4_a1','soabg5_a1','soaff1_a2','soaff2_a2','soaff3_a2','soaff4_a2','soaff5_a2','soabb1_a2','soabb2_a2','soabb3_a2','soabb4_a2','soabb5_a2','soabg1_a2','soabg2_a2','soabg3_a2','soabg4_a2','soabg5_a2','AERI','ASOA1','ASOA2','ASOA3','ASOAN','BCPI','BCPO','BE10','BE10STRAT','BE7','BE7STRAT','BRSALA','BRSALC','DST1','DST2','DST3','DST4','DSTAL1','DSTAL2','DSTAL3','DSTAL4','HGP','HGP_ANT','HGP_ARC','HGP_ATL','HGP_BB','HGP_CAM','HGP_CAN','HGP_EAF','HGP_EAS','HGP_EEU','HGP_EUR','HGP_GEO','HGP_JPN','HGP_MDE','HGP_NAF','HGP_NAT','HGP_NPA','HGP_OCE','HGP_OCN','HGP_SAF','HGP_SAM','HGP_SAS','HGP_SAT','HGP_SEA','HGP_SO','HGP_SOV','HGP_STR','HGP_USA','HGP_WAF','INDIOL','IONITA','ISALA','ISALC','LVOCOA','MONITA','MOPI','MOPO','MSA','NH4','NIT','NITD1','NITD2','NITD3','NITD4','NITS','OCPI','OCPO','OPOA1','OPOA2','PB210','PB210STRAT','PFE','POA1','POA2','POPPBCPI_BAP','POPPBCPI_PHE','POPPBCPI_PYR','POPPBCPO_BAP','POPPBCPO_PHE','POPPBCPO_PYR','POPPOCPI_BAP','POPPOCPI_PHE','POPPOCPI_PYR','POPPOCPO_BAP','POPPOCPO_PHE','POPPOCPO_PYR','SALA','SALAAL','SALACL','SALC','SALCAL','SALCCL','SO4','SO4D1','SO4D2','SO4D3','SO4D4','SO4S','SOAGX','SOAIE','SOAS','TSOA0','TSOA1','TSOA2','TSOA3',
 </aer_wetdep_list>
 
 </namelist_defaults>

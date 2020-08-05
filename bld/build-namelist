@@ -707,6 +707,11 @@ if ( ($chem ne 'none') or ( $prog_species ) ){
       add_default($nl, 'gas_wetdep_method' );
       add_default($nl, 'gas_wetdep_list', 'val'=>$gas_wetdep_list );
     }
+
+    if ($chem =~ /geoschem/) {
+      $prescribe_aerosols = $FALSE;
+    }
+
     if (length($aer_wetdep_list)>2){
         # determine if prescribed aerosols are not needed ...
         if ($aer_wetdep_list =~ /so4/i &&
@@ -2082,7 +2087,38 @@ if (($chem =~ /geoschem/ or $chem =~ /trop_mozart/ or $chem =~ /trop_strat/ or $
     }
 }
 
-if ($chem =~ /geoschem/ or $chem =~ /trop_mozart/ or $chem =~ /trop_strat/ or $chem =~ /waccm_tsmlt/) {
+if ($chem =~ /geoschem/) {
+
+    my $val;
+
+    # Species with fixed lower boundary
+    $val = "'CH4','OCS','N2O','CO2','CFC11','CFC12'";
+
+    if ($chem_has_ocs) {
+        $val .= ",'OCS'";
+    }
+    if (chem_has_species($cfg, 'SF6')) {
+        $val .= ",'SF6'";
+    }
+    add_default($nl, 'flbc_list', 'val'=>$val);
+    unless (defined $nl->get_value('flbc_type')) {
+        add_default($nl, 'flbc_type',  'val'=>'CYCLICAL');
+        add_default($nl, 'flbc_cycle_yr',  'val'=>'2000');
+    }
+
+    my @files;
+    # Datasets
+    #@files = ( 'soil_erod_file', 'flbc_file',
+    #           'xs_coef_file','xs_short_file',
+    #           'xs_long_file', 'rsf_file',
+    #           'exo_coldens_file', 'sulf_file' );
+    @files = ( 'soil_erod_file', 'flbc_file' );
+    foreach my $file (@files) {
+        add_default($nl, $file);
+    }
+}
+
+if ($chem =~ /trop_mozart/ or $chem =~ /trop_strat/ or $chem =~ /waccm_tsmlt/) {
 
     my $val;
 
@@ -2097,8 +2133,6 @@ if ($chem =~ /geoschem/ or $chem =~ /trop_mozart/ or $chem =~ /trop_strat/ or $c
     if ($chem =~ /_tsmlt_mam/ or $chem =~ /trop_strat/) {
       $val = "'CCL4','CF2CLBR','CF3BR','CFC11','CFC113','CFC12','CH3BR','CH3CCL3','CH3CL','CH4','CO2'"
             .",'H2','HCFC22','N2O','CFC114','CFC115','HCFC141B','HCFC142B','CH2BR2','CHBR3','H2402'";
-    } elsif ($chem =~ /geoschem/) {
-      $val = "'CH4','OCS','N2O','CO2','CFC11','CFC12'";
     } else {
       $val = "'CH4','H2','N2O','CO2','CFC11','CFC12'";
     }
@@ -2875,7 +2909,7 @@ if (!$simple_phys) {
 }
 
 # tropopause level used in gas-phase / aerosol processes
-if (($chem ne 'none') and ($chem ne 'terminator')) {
+if (($chem ne 'none') and ($chem ne 'terminator') and !($chem =~ /geoschem/)) {
     add_default($nl, 'chem_use_chemtrop');
 }
 

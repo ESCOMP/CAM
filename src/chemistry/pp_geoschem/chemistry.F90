@@ -3,17 +3,13 @@
 !================================================================================================
 
 module chemistry
-  use shr_kind_mod,        only: r8 => shr_kind_r8
+  use shr_kind_mod,        only: r8 => shr_kind_r8, shr_kind_cl
   use physics_types,       only: physics_state, physics_ptend, physics_ptend_init
   use physics_buffer,      only: physics_buffer_desc
   use ppgrid,              only: begchunk, endchunk, pcols
   use ppgrid,              only: pver, pverp
   use constituents,        only: pcnst, cnst_add, cnst_get_ind
-  !use mo_gas_phase_chemdr, only: map2chm
-  !use mo_constants,        only: pi
   use shr_const_mod,       only: molw_dryair=>SHR_CONST_MWDAIR
-  !use chem_mods,           only : gas_pcnst, adv_mass
-  !use mo_sim_dat, only: set_sim_dat
   use seq_drydep_mod,      only : nddvels => n_drydep, drydep_list
   use spmd_utils,          only : MasterProc, myCPU=>Iam, nCPUs=>npes
   use cam_logfile,         only : iulog
@@ -36,7 +32,7 @@ module chemistry
   !-----------------------------------------------------------------
   USE PRECISION_MOD,       ONLY : fp, f4     ! Flexible precision
 
-  use Chem_Mods,           only : nSlvd, slvd_Lst, slvd_ref_MMR
+  use chem_mods,           only : nSlvd, slvd_Lst, slvd_ref_MMR
 
   ! Exit routine in CAM
   use cam_abortutils,      only : endrun
@@ -54,9 +50,14 @@ module chemistry
   use chem_mods,           only : slsLongNames
   use chem_mods,           only : sls_ref_MMR
   use chem_mods,           only : slsmwRatio
+  use chem_mods,           only : nAerMax
+  use chem_mods,           only : nAer
+  use chem_mods,           only : aerNames
+  use chem_mods,           only : aerAdvMass
   use chem_mods,           only : map2GC
   use chem_mods,           only : map2GC_Sls
   use chem_mods,           only : map2Idx
+  use chem_mods,           only : map2MAM4
 
   IMPLICIT NONE
   PRIVATE
@@ -131,12 +132,24 @@ module chemistry
 #define LANDTYPE_HEMCO    0
 #define LANDTYPE_CLM      1
 
-#if ( OCNDDVEL_MOZART )
   ! Filenames to compute dry deposition velocities similarly to MOZART
-  CHARACTER(LEN=255)              :: MOZART_depvel_lnd_file = 'depvel_lnd_file'
-  CHARACTER(LEN=255)              :: MOZART_clim_soilw_file = 'clim_soilw_file'
-  CHARACTER(LEN=255)              :: MOZART_season_wes_file = 'season_wes_file'
-#endif
+  character(len=shr_kind_cl)  :: clim_soilw_file = 'clim_soilw_file'
+  character(len=shr_kind_cl)  :: depvel_file     = ''
+  character(len=shr_kind_cl)  :: depvel_lnd_file = 'depvel_lnd_file'
+  character(len=shr_kind_cl)  :: season_wes_file = 'season_wes_file'
+
+  character(len=shr_kind_cl) :: srf_emis_specifier(pcnst) = ''
+  character(len=shr_kind_cl) :: ext_frc_specifier(pcnst) = ''
+
+  character(len=24)  :: srf_emis_type = 'CYCLICAL' ! 'CYCLICAL' | 'SERIAL' |  'INTERP_MISSING_MONTHS'
+  integer            :: srf_emis_cycle_yr  = 0
+  integer            :: srf_emis_fixed_ymd = 0
+  integer            :: srf_emis_fixed_tod = 0
+
+  character(len=24)  :: ext_frc_type = 'CYCLICAL' ! 'CYCLICAL' | 'SERIAL' |  'INTERP_MISSING_MONTHS'
+  integer            :: ext_frc_cycle_yr  = 0
+  integer            :: ext_frc_fixed_ymd = 0
+  integer            :: ext_frc_fixed_tod = 0
 
 !================================================================================================
 contains
@@ -147,7 +160,8 @@ contains
     CHARACTER(LEN=*), INTENT(IN) :: name
 
     chem_is = .false.
-    IF ( to_upper(name) == 'GEOSCHEM' ) THEN
+    IF (( to_upper(name) == 'GEOSCHEM'  ) .OR. &
+        ( to_upper(name) == 'GEOS-CHEM' )) THEN
        chem_is = .true.
     ENDIF
 
@@ -169,6 +183,14 @@ contains
     use Species_Mod,         only : Species
 
     use mo_sim_dat,          only : set_sim_dat
+    use mo_chem_utls,        only : get_spc_ndx
+    use chem_mods,           only : drySpc_ndx
+#if defined( MODAL_AERO_4MODE )
+    use aero_model,          only : aero_model_register
+    use modal_aero_data,     only : nspec_max
+    use modal_aero_data,     only : ntot_amode, nspec_amode
+    use modal_aero_data,     only : xname_massptr
+#endif
 
     !-----------------------------------------------------------------------
     !
@@ -176,32 +198,40 @@ contains
     !
     !-----------------------------------------------------------------------
     ! Need to generate a temporary species database
-    Type(ChmState)         :: SC
-    Type(GrdState)         :: SG
-    Type(OptInput)         :: IO
-    TYPE(Species), POINTER :: ThisSpc
+    Type(ChmState)                 :: SC
+    Type(GrdState)                 :: SG
+    Type(OptInput)                 :: IO
+    TYPE(Species), POINTER         :: ThisSpc
 
-    INTEGER                :: I, N, M
-    REAL(r8)               :: cptmp
+    INTEGER                        :: I, N, M, L
+    INTEGER                        :: nIgnored
+    REAL(r8)                       :: cptmp
     REAL(r8)                       :: MWTmp
-    REAL(r8)               :: qmin
-    REAL(r8)               :: ref_VMR
-    CHARACTER(LEN=128)     :: mixtype
-    CHARACTER(LEN=128)     :: molectype
-    CHARACTER(LEN=128)     :: lngName
-    CHARACTER(LEN=64)      :: cnstName
-    LOGICAL                :: camout
-    LOGICAL                :: ic_from_cam2
-    LOGICAL                :: has_fixed_ubc
-    LOGICAL                :: has_fixed_ubflx
+    REAL(r8)                       :: qmin
+    REAL(r8)                       :: ref_VMR
+    CHARACTER(LEN=128)             :: mixtype
+    CHARACTER(LEN=128)             :: molectype
+    CHARACTER(LEN=128)             :: lngName
+    CHARACTER(LEN=64)              :: cnstName
+    LOGICAL                        :: camout
+    LOGICAL                        :: ic_from_cam2
+    LOGICAL                        :: has_fixed_ubc
+    LOGICAL                        :: has_fixed_ubflx
 
-    INTEGER                :: RC
+    INTEGER                        :: RC, IERR
+
+    ! SDE 2018-05-02: This seems to get called before anything else
+    ! that includes CHEM_INIT
+    ! At this point, mozart calls SET_SIM_DAT, which is specified by each
+    ! mechanism separately (ie mozart/chemistry.F90 calls the subroutine
+    ! set_sim_dat which is in pp_[mechanism]/mo_sim_dat.F90. That sets a lot of
+    ! data in other places, notably in "chem_mods"
 
     IF ( MasterProc ) Write(iulog,'(a)') 'GCCALL CHEM_REGISTER'
 
     ! hplin 2020-05-16: Call set_sim_dat to populate chemistry constituent information
     ! from mo_sim_dat.F90 in other places. This is needed for HEMCO_CESM.
-    CALL set_sim_dat()
+    CALL Set_sim_dat()
 
     ! Generate fake state_chm
     IO%Max_BPCH_Diag       = 1000
@@ -275,6 +305,57 @@ contains
            ref_VMR     = REAL(ThisSpc%BackgroundVV,r8)
            adv_Mass(I) = MWTmp
            ref_MMR(I)  = ref_VMR / (MWDry / MWTmp)
+           IF ( ThisSpc%Is_Gas == .FALSE. ) THEN
+               Write(cnstName, "(a,a)") 'GC_AER_', &
+               to_upper(TRIM(tracerNames(I)))
+               ! Aerosols that inherited from MAM do not need to be defined as a
+               ! constituent
+               ! For instance,
+               ! - SOAGX is inherited from SOAG[0-4],
+               !
+               ! List of GEOS-Chem aerosols:
+               ! DMS
+               ! SO4
+               ! SO4s
+               ! MSA
+               ! NH4
+               ! NIT
+               ! NITs
+               ! BCPI
+               ! OCPI
+               ! BCPO
+               ! OCPO
+               ! DST[1-4]
+               ! SALA
+               ! SALC
+               ! TSOA[0-3]
+               ! ASOAN
+               ! ASOA[1-3]
+               ! SOAS
+               ! SOAIE
+               ! SOAME
+               ! SOAGX
+               ! SOAMG
+               ! LVOCOA
+               ! ISN1OA
+               ! IONITA
+               ! MONITA
+               ! INDIOL
+               ! BrSALA
+               ! BrSALC
+               ! ISALA
+               ! ISALC
+               ! AERI
+               ! pFe
+               ! TMMF, Update this
+           ENDIF
+       ELSEIF ( I .LE. (nTracers + nAer)) THEN
+           ! Add MAM4 aerosols
+           cnstName    = TRIM(aerNames(I - nTracers))
+           lngName     = cnstName
+           MWTmp       = aerAdvMass(I - nTracers)
+           adv_Mass(I) = MWTmp
+           ref_MMR(I)  = 1.0e-38_r8
        ELSE
            cnstName    = TRIM(tracerNames(I))
            lngName     = cnstName
@@ -303,6 +384,45 @@ contains
        has_fixed_ubflx = .false.
        ! NOTE: In MOZART, this only gets called for tracers
        ! This is the call to add a "constituent"
+       ! Special handlings
+       IF ( cnstName == 'ACET' ) THEN
+           cnstName = 'CH3COCH3'
+       ELSEIF ( cnstName == 'ALD2' ) THEN
+           cnstName = 'CH3CHO'
+       ELSEIF ( cnstName == 'PRPE' ) THEN
+           cnstName = 'C3H6'
+       ELSEIF ( cnstName == 'HNO4' ) THEN
+           cnstName = 'HO2NO2'
+       ELSEIF ( cnstName == 'HNO2' ) THEN
+           cnstName = 'HONO'
+       ELSEIF ( cnstName == 'MP'   ) THEN
+           cnstName = 'CH3OOH'
+       ELSEIF ( cnstName == 'HAC'  ) THEN
+           cnstName = 'HYAC'
+       ELSEIF ( cnstName == 'GLYC' ) THEN
+           cnstName = 'GLYALD'
+       ELSEIF ( cnstName == 'MAP' ) THEN
+           cnstName = 'CH3COOOH'
+       ELSEIF ( cnstName == 'EOH' ) THEN
+           cnstName = 'C2H5OH'
+       ELSEIF ( cnstName == 'MGLY' ) THEN
+           cnstName = 'CH3COCHO'
+       ELSEIF ( cnstName == 'GLYX' ) THEN
+           cnstName = 'GLYOXAL'
+       ELSEIF ( cnstName == 'ACTA' ) THEN
+           cnstName = 'CH3COOH'
+       ELSEIF ( cnstName == 'TOLU' ) THEN
+           cnstName = 'TOLUENE'
+       ELSEIF ( cnstName == 'HCHO' ) THEN
+           cnstName = 'CH2O'
+       ENDIF
+       If ( MasterProc ) Write(iulog,*) " Species = ", TRIM(cnstName)
+       ! GEOS-Chem lumped species are not on restart file.
+       ! Bromine, chlorine, iodine and halons species are missing
+       ! from CESM restart file.
+       ! These species will just be uniformily set to some low
+       ! concentration.
+       ! TMMF - 05/19/2020
        CALL cnst_add( cnstName, adv_Mass(I), cptmp, qmin, N,  &
                       readiv=ic_from_cam2, mixtype=mixtype,   &
                       cam_outfld=camout, molectype=molectype, &
@@ -329,7 +449,7 @@ contains
     slsLongNames = ''
     DO I = 1, nSls
        N = Ind_(slsNames(I))
-        IF ( N .GT. 0 ) THEN
+       IF ( N .GT. 0 ) THEN
           ThisSpc         => SC%SpcData(N)%Info
           MWTmp           = REAL(ThisSpc%MW_g,r8)
           ref_VMR         = REAL(ThisSpc%BackgroundVV,r8)
@@ -339,7 +459,7 @@ contains
           SlsMWRatio(I)   = MWDry / MWTmp
           map2GC_Sls(I)   = N
           ThisSpc         => NULL()
-        ENDIF
+       ENDIF
     ENDDO
 
     ! Pass information to "short_lived_species" module
@@ -347,6 +467,166 @@ contains
     CALL Register_Short_Lived_Species()
     ! More information:
     ! http://www.cesm.ucar.edu/models/atm-cam/docs/phys-interface/node5.html
+
+    !==============================================================
+    ! Get mapping between dry deposition species and species set
+    !==============================================================
+
+    nIgnored = 0
+
+    DO N = 1, nddvels
+
+       ! The species names need to be convert to upper case as,
+       ! for instance, BR2 != Br2
+       drySpc_ndx(N) = get_spc_ndx( to_upper(drydep_list(N)) )
+
+       IF ( MasterProc .AND. ( drySpc_ndx(N) < 0 ) ) THEN
+          Write(iulog,'(a,a)') ' ## Ignoring dry deposition of ', &
+                               TRIM(drydep_list(N))
+          nIgnored = nIgnored + 1
+       ENDIF
+    ENDDO
+
+    IF ( MasterProc .AND. ( nIgnored > 0 ) ) THEN
+       Write(iulog,'(a,a)') ' The species listed above have dry', &
+         ' deposition turned off for one of the following reasons:'
+       Write(iulog,'(a)') '  - They are not present in the GEOS-Chem tracer list.'
+       Write(iulog,'(a)') '  - They have a synonym (e.g. CH2O and HCHO).'
+    ENDIF
+
+#if defined( MODAL_AERO_4MODE )
+    ! add fields to pbuf needed by aerosol models
+    CALL aero_model_register()
+
+    ! Mode                   | \sigma_g | Dry diameter (micrometers)
+    ! -----------------------|----------|--------------------------
+    ! a2 - Aitken mode       |   1.6    | 0.015 - 0.053
+    ! a1 - Accumulation mode |   1.8    | 0.058 - 0.27
+    ! a3 - Coarse mode       |   1.8    | 0.80  - 3.65
+    ! a4 - Primary carbon    |   1.6    | 0.039 - 0.13
+    ! -----------------------|----------|--------------------------
+    ! Ref: Liu, Xiaohong, et al. "Toward a minimal representation of aerosols in
+    ! climate models: Description and evaluation in the Community Atmosphere
+    ! Model CAM5." Geoscientific Model Development 5.3 (2012): 709.
+
+    ALLOCATE(map2MAM4(nspec_max,ntot_amode), STAT=IERR)
+    IF ( IERR .NE. 0 ) CALL ENDRUN('Failed to allocate map2MAM4')
+
+    ! Initialize indices
+    map2MAM4(:,:) = -1
+
+    DO M = 1, ntot_amode
+       DO L = 1, nspec_amode(M)
+          SELECT CASE ( to_upper(xname_massptr(L,M)(:3)) )
+             CASE ( 'BC_' )
+                map2MAM4(L,M) = Ind_('BCPI')
+             CASE ( 'DST' )
+                SELECT CASE ( to_upper(xname_massptr(L,M)(5:6)) )
+                   ! DST1 - Dust aerosol, Reff = 0.7 micrometers
+                   ! DST2 - Dust aerosol, Reff = 1.4 micrometers
+                   ! DST3 - Dust aerosol, Reff = 2.4 micrometers
+                   ! DST4 - Dust aerosol, Reff = 4.5 micrometers
+                   CASE ( 'A1' )
+                       map2MAM4(L,M) = Ind_('DST1')
+                   CASE ( 'A2' )
+                       map2MAM4(L,M) = Ind_('DST1')
+                   CASE ( 'A3' )
+                       map2MAM4(L,M) = Ind_('DST4')
+                END SELECT
+             CASE ( 'SOA' )
+                SELECT CASE ( to_upper(xname_massptr(L,M)(4:4)) )
+                   CASE ( '1' )
+                      SELECT CASE ( to_upper(xname_massptr(L,M)(6:7)) )
+                         CASE ( 'A1' )
+                            map2MAM4(L,M) = -1 !TMMF, Fill in
+                         CASE ( 'A2' )
+                            map2MAM4(L,M) = -1 !TMMF, Fill in
+                      END SELECT
+                   CASE ( '2' )
+                      SELECT CASE ( to_upper(xname_massptr(L,M)(6:7)) )
+                         CASE ( 'A1' )
+                            map2MAM4(L,M) = -1 !TMMF, Fill in
+                         CASE ( 'A2' )
+                            map2MAM4(L,M) = -1 !TMMF, Fill in
+                      END SELECT
+                   CASE ( '3' )
+                      SELECT CASE ( to_upper(xname_massptr(L,M)(6:7)) )
+                         CASE ( 'A1' )
+                            map2MAM4(L,M) = -1 !TMMF, Fill in
+                         CASE ( 'A2' )
+                            map2MAM4(L,M) = -1 !TMMF, Fill in
+                      END SELECT
+                   CASE ( '4' )
+                      SELECT CASE ( to_upper(xname_massptr(L,M)(6:7)) )
+                         CASE ( 'A1' )
+                            map2MAM4(L,M) = -1 !TMMF, Fill in
+                         CASE ( 'A2' )
+                            map2MAM4(L,M) = -1 !TMMF, Fill in
+                      END SELECT
+                   CASE ( '5' )
+                      SELECT CASE ( to_upper(xname_massptr(L,M)(6:7)) )
+                         CASE ( 'A1' )
+                            map2MAM4(L,M) = -1 !TMMF, Fill in
+                         CASE ( 'A2' )
+                            map2MAM4(L,M) = -1 !TMMF, Fill in
+                      END SELECT
+                END SELECT
+             CASE ( 'SO4' )
+                map2MAM4(L,M) = Ind_('SO4')
+             CASE ( 'NCL' )
+                SELECT CASE ( to_upper(xname_massptr(L,M)(5:6)) )
+                   ! SALA - Fine (0.01-0.05 micros) sea salt aerosol
+                   ! SALC - Coarse (0.5-8 micros) sea salt aerosol
+                   CASE ( 'A1' )
+                      map2MAM4(L,M) = Ind_('SALA')
+                   CASE ( 'A2' )
+                      map2MAM4(L,M) = Ind_('SALA')
+                   CASE ( 'A3' )
+                      map2MAM4(L,M) = Ind_('SALC')
+                END SELECT
+             CASE ( 'POM' )
+                SELECT CASE ( to_upper(xname_massptr(L,M)(5:6)) )
+                   CASE ( 'A1' )
+                      map2MAM4(L,M) = -1 !TMMF, Fill in
+                   CASE ( 'A4' )
+                      map2MAM4(L,M) = -1 !TMMF, Fill in
+                END SELECT
+          END SELECT
+       ENDDO
+    ENDDO
+
+#endif
+
+    !==============================================================
+    ! Print summary
+    !==============================================================
+
+    IF ( MasterProc ) THEN
+       Write(iulog,'(/, a)') '### Summary of GEOS-Chem species: '
+       Write(iulog,'( a)') REPEAT( '-', 50 )
+       Write(iulog,'( a)') '+ List of advected species: '
+       Write(iulog,100) 'ID', 'Tracer', ''!'Dry deposition (T/F)'
+       DO N = 1, nTracers
+          Write(iulog,120) N, TRIM(tracerNames(N))!, ANY(drySpc_ndx .eq. N)
+       ENDDO
+       IF ( nAer > 0 ) THEN
+          Write(iulog,'(/, a)') '+ List of aerosols: '
+          Write(iulog,110) 'ID', 'MAM4 Aerosol'
+          DO N = 1, nAer
+             Write(iulog,130) N, TRIM(aerNames(N))
+          ENDDO
+       ENDIF
+       Write(iulog,'(/, a)') '+ List of short-lived species: '
+       DO N = 1, nSls
+          Write(iulog,130) N, TRIM(slsNames(N))
+       ENDDO
+    ENDIF
+
+100 FORMAT( 1x, A3, 3x, A10, 1x, A25 )
+110 FORMAT( 1x, A3, 3x, A15 )
+!120 FORMAT( 1x, I3, 3x, A10, 1x, L15 )
+120 FORMAT( 1x, I3, 3x, A10 )
+130 FORMAT( 1x, I3, 3x, A10 )
 
     ! Clean up
     Call Cleanup_State_Chm ( SC, RC )
@@ -359,28 +639,37 @@ contains
 
     use cam_abortutils, only : endrun
     use units,          only : getunit, freeunit
+    use namelist_utils, only : find_group_name
+#if defined( MODAL_AERO_4MODE )
+    use aero_model,     only : aero_model_readnl
+    use dust_model,     only : dust_readnl
+#endif
     use mpishorthand
     use gckpp_Model,    only : nSpec, Spc_Names
-    use mo_chem_utls,   only : get_spc_ndx
     use chem_mods,      only : drySpc_ndx
 
     ! args
     CHARACTER(LEN=*), INTENT(IN) :: nlfile  ! filepath for file containing namelist input
 
     ! Local variables
-    INTEGER                      :: I, N, nIgnored
+    INTEGER                      :: I, N
     INTEGER                      :: UNITN, IERR
     CHARACTER(LEN=500)           :: line
     LOGICAL                      :: menuFound
     LOGICAL                      :: validSLS
 
-#IF ( OCNDDVEL_MOZART )
-    NAMELIST /CHEM_INPARM/ MOZART_DEPVEL_LND_FILE, &
-                           MOZART_CLIM_SOILW_FILE, &
-                           MOZART_SEASON_WES_FILE
-#ENDIF
-
-    nIgnored = 0
+    ! The following files are required to compute land maps, required to perform
+    ! aerosol dry deposition
+    namelist /chem_inparm/ clim_soilw_file,    &
+                           depvel_file,        &
+                           depvel_lnd_file,    &
+                           ext_frc_cycle_yr,   &
+                           ext_frc_specifier,  &
+                           ext_frc_type,       &
+                           season_wes_file,    &
+                           srf_emis_cycle_yr,  &
+                           srf_emis_specifier, &
+                           srf_emis_type
 
     inputGeosPath='/glade/u/home/fritzt/input.geos.template'
     speciesDBPath='/glade/u/home/fritzt/species_database.yml'
@@ -429,6 +718,46 @@ contains
     ALLOCATE(drySpc_ndx(nddvels), STAT=IERR)
     IF ( IERR .NE. 0 ) CALL ENDRUN('Failed to allocate drySpc_ndx')
 
+#if defined( MODAL_AERO_4MODE )
+    !==============================================================
+    ! Get names and molar weights of aerosols in MAM4
+    !==============================================================
+
+    nAer = 33
+
+    aerNames(:nAer) = (/ 'bc_a1          ','bc_a4          ','dst_a1         ', &
+                         'dst_a2         ','dst_a3         ','ncl_a1         ', &
+                         'ncl_a2         ','ncl_a3         ','num_a1         ', &
+                         'num_a2         ','num_a3         ','num_a4         ', &
+                         'pom_a1         ','pom_a4         ','so4_a1         ', &
+                         'so4_a2         ','so4_a3         ','soa1_a1        ', &
+                         'soa1_a2        ','soa2_a1        ','soa2_a2        ', &
+                         'soa3_a1        ','soa3_a2        ','soa4_a1        ', &
+                         'soa4_a2        ','soa5_a1        ','soa5_a2        ', &
+                         'H2SO4          ','SOAG0          ','SOAG1          ', &
+                         'SOAG2          ','SOAG3          ','SOAG4          ' /)
+
+    aerAdvMass(:nAer) = (/ 12.011000_r8,    12.011000_r8,    135.064039_r8,  &
+                           135.064039_r8,   135.064039_r8,   58.442468_r8,   &
+                           58.442468_r8,    58.442468_r8,    1.007400_r8,    &
+                           1.007400_r8,     1.007400_r8,     1.007400_r8,    &
+                           12.011000_r8,    12.011000_r8,    115.107340_r8,  &
+                           115.107340_r8,   115.107340_r8,   250.445000_r8,  &
+                           250.445000_r8,   250.445000_r8,   250.445000_r8,  &
+                           250.445000_r8,   250.445000_r8,   250.445000_r8,  &
+                           250.445000_r8,   250.445000_r8,   250.445000_r8,  &
+                           98.078400_r8,    250.445000_r8,   250.445000_r8,  &
+                           250.445000_r8,   250.445000_r8,   250.445000_r8  /)
+
+    CALL aero_model_readnl(nlfile)
+    CALL dust_readnl(nlfile)
+#endif
+
+    DO I = (nAer+1), nAerMax
+       aerNames(I)   = 'EMPTY_AER      '
+       aerAdvMass(I) = -1.00_r8
+    ENDDO
+
     IF ( MasterProc ) THEN
 
        Write(iulog,'(/,a)') REPEAT( '=', 50 )
@@ -445,9 +774,9 @@ contains
 
        unitn = getunit()
 
-        !==============================================================
+       !==============================================================
        ! Opening input.geos and go to ADVECTED SPECIES MENU
-        !==============================================================
+       !==============================================================
 
        OPEN( unitn, FILE=TRIM(inputGeosPath), STATUS='OLD', IOSTAT=IERR )
        IF (IERR .NE. 0) THEN
@@ -458,18 +787,18 @@ contains
        menuFound = .False.
        DO WHILE ( .NOT. menuFound )
           READ( unitn, '(a)', IOSTAT=IERR ) line
-            IF ( IERR .NE. 0 ) THEN
+          IF ( IERR .NE. 0 ) THEN
               CALL ENDRUN('chem_readnl: ERROR finding advected species menu')
           ELSEIF ( INDEX(line, 'ADVECTED SPECIES MENU') > 0 ) THEN
               menuFound = .True.
-            ENDIF
-        ENDDO
+          ENDIF
+       ENDDO
 
-        !==============================================================
+       !==============================================================
        ! Read list of GEOS-Chem tracers
-        !==============================================================
+       !==============================================================
 
-        DO
+       DO
           ! Read line
           READ(unitn,'(26x,a)', IOSTAT=IERR) line
 
@@ -478,7 +807,7 @@ contains
           nTracers = nTracers + 1
           tracerNames(nTracers) = TRIM(line)
 
-        ENDDO
+       ENDDO
 
        CLOSE(unitn)
        CALL freeunit(unitn)
@@ -486,16 +815,16 @@ contains
        ! Assign remaining tracers dummy names
        DO I = (nTracers+1), nTracersMax
           WRITE(tracerNames(I),'(a,I0.4)') 'GCTRC_', I
-        ENDDO
+       ENDDO
 
-        !==============================================================
+       !==============================================================
        ! Now go through the KPP mechanism and add any species not
        ! implemented by the tracer list in input.geos
-        !==============================================================
+       !==============================================================
 
        IF ( nSpec > nSlsMax ) THEN
           CALL ENDRUN('chem_readnl: too many species - increase nSlsmax')
-        ENDIF
+       ENDIF
 
        nSls = 0
        DO I = 1, nSpec
@@ -507,56 +836,22 @@ contains
              ! Genuine new short-lived species
              nSls = nSls + 1
              slsNames(nSls) = TRIM(line)
-            ENDIF
-        ENDDO
+          ENDIF
+       ENDDO
 
-        !==============================================================
-        ! GET MAPPING BETWEEN DRY DEPOSITION SPECIES AND SPECIES SET
-        !==============================================================
+       !==============================================================
 
-        DO N = 1, NDDVELS
-
-           ! THE SPECIES NAMES NEED TO BE CONVERT TO UPPER CASE AS,
-           ! FOR INSTANCE, BR2 != BR2
-           DRYSPC_NDX(N) = GET_SPC_NDX( TO_UPPER(DRYDEP_LIST(N)) )
-
-           IF ( DRYSPC_NDX(N) < 0 ) THEN
-              WRITE(IULOG,'(A,A)') ' ## IGNORING DRY DEPOSITION OF ', &
-                                   TRIM(DRYDEP_LIST(N))
-              nIgnored = nIgnored + 1
-           ENDIF
-        ENDDO
-
-        IF ( nIgnored > 0 ) THEN
-           Write(iulog,'(a,a)') ' The species listed above have dry', &
-             ' deposition turned off for one of the following reasons:'
-           Write(iulog,'(a)') '  - They are not present in the GEOS-Chem tracer list.'
-           Write(iulog,'(a)') '  - They have a synonym (e.g. CH2O and HCHO).'
-        ENDIF
-
-        !==============================================================
-        ! Print summary
-        !==============================================================
-
-        IF ( MasterProc ) THEN
-           Write(iulog,'(/, a)') '### Summary of GEOS-Chem species: '
-           Write(iulog,'( a)') REPEAT( '-', 50 )
-           Write(iulog,'( a)') '+ List of advected species: '
-           Write(iulog,100) 'ID', 'Tracer', 'Dry deposition (T/F)'
-           DO N = 1, nTracers
-              Write(iulog,110) N, TRIM(tracerNames(N)), ANY(drySpc_ndx .eq. N)
-           ENDDO
-           Write(iulog,'(/, a)') '+ List of short-lived species: '
-           DO N = 1, nSls
-              Write(iulog,120) N, TRIM(slsNames(N))
-           ENDDO
-        ENDIF
-
-  100   FORMAT( 1X, A3, 3X, A10, 1X, A25 )
-  110   FORMAT( 1X, I3, 3X, A10, 1X, L15 )
-  120   FORMAT( 1X, I3, 3X, A10 )
-
-        !==============================================================
+       unitn = getunit()
+       OPEN( unitn, FILE=TRIM(nlfile), STATUS='old' )
+       CALL find_group_name(unitn, 'chem_inparm', STATUS=IERR)
+       IF (IERR == 0) THEN
+          READ(unitn, chem_inparm, IOSTAT=IERR)
+          IF (IERR /= 0) THEN
+             CALL endrun('chem_readnl: ERROR reading namelist')
+          ENDIF
+       ENDIF
+       CLOSE(unitn)
+       CALL freeunit(unitn)
 
     ENDIF
 
@@ -569,30 +864,23 @@ contains
     CALL MPIBCAST( tracerNames, LEN(tracerNames(1))*nTracersMax, MPICHAR, 0, MPICOM )
     CALL MPIBCAST( nSls,        1,                               MPIINT,  0, MPICOM )
     CALL MPIBCAST( slsNames,    LEN(slsNames(1))*nSlsMax,        MPICHAR, 0, MPICOM )
-    CALL MPIBCAST( drySpc_ndx,  nddvels,                         MPIINT,  0, MPICOM )
 
-#IF ( OCNDDVEL_MOZART )
-    !==============================================================
-    ! THE FOLLOWING LINES SHOULD ONLY BE CALLED IF WE COMPUTE
-    ! VELOCITIES OVER THE OCEAN AND ICE IN A MOZART-LIKE WAY.
-    ! THIBAUD M. FRITZ - 26 FEB 2020
-    !==============================================================
+    ! The following files are required to compute land maps, required to perform
+    ! aerosol dry deposition
+    CALL MPIBCAST(depvel_lnd_file, LEN(depvel_lnd_file), MPICHAR, 0, MPICOM)
+    CALL MPIBCAST(clim_soilw_file, LEN(clim_soilw_file), MPICHAR, 0, MPICOM)
+    CALL MPIBCAST(season_wes_file, LEN(season_wes_file), MPICHAR, 0, MPICOM)
 
-    CALL MPIBCAST(MOZART_DEPVEL_LND_FILE, LEN(MOZART_DEPVEL_LND_FILE),     MPICHAR, 0, MPICOM)
-    CALL MPIBCAST(MOZART_CLIM_SOILW_FILE, LEN(MOZART_CLIM_SOILW_FILE),     MPICHAR, 0, MPICOM)
-    CALL MPIBCAST(MOZART_SEASON_WES_FILE, LEN(MOZART_SEASON_WES_FILE),     MPICHAR, 0, MPICOM)
-#ENDIF
+#endif
 
-#ENDIF
-
-    ! UPDATE "SHORT_LIVED_SPECIES" ARRAYS - WILL EVENTUALLY UNIFY THESE
-    NSLVD = NSLS
-    ALLOCATE(SLVD_LST(NSLVD), STAT=IERR)
-    IF ( IERR .NE. 0 ) CALL ENDRUN('FAILURE WHILE ALLOCATING SLVD_LST')
-    ALLOCATE(SLVD_REF_MMR(NSLVD), STAT=IERR)
-    IF ( IERR .NE. 0 ) CALL ENDRUN('FAILURE WHILE ALLOCATING SLVD_REF_MMR')
-    DO I = 1, NSLS
-        SLVD_LST(I) = TRIM(SLSNAMES(I))
+    ! Update "short_lived_species" arrays - will eventually unify these
+    nSlvd = nSls
+    ALLOCATE(slvd_Lst(nSlvd), STAT=IERR)
+    IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating slvd_Lst')
+    ALLOCATE(slvd_ref_MMR(nSlvd), STAT=IERR)
+    IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating slvd_ref_MMR')
+    DO I = 1, nSls
+       slvd_Lst(I) = TRIM(slsNames(I))
     ENDDO
 
   end subroutine chem_readnl
@@ -603,6 +891,7 @@ contains
     !-----------------------------------------------------------------------
     logical :: chem_is_active
     !-----------------------------------------------------------------------
+
     chem_is_active = .true.
 
   end function chem_is_active
@@ -652,6 +941,21 @@ contains
     use mpishorthand
     use cam_abortutils, only : endrun
 
+    use Phys_Grid,      only : get_Area_All_p
+    use hycoef,         only : ps0, hyai, hybi
+
+    use seq_drydep_mod, only : drydep_method, DD_XLND
+#if ( OCNDDVEL_MOZART )
+    use mo_drydep,      only : drydep_inti
+#endif
+
+#if defined( MODAL_AERO_4MODE )
+    use aero_model,     only : aero_model_init
+    use mo_drydep,      only : drydep_inti_landuse
+    use modal_aero_data,only : ntot_amode, nspec_amode
+    use modal_aero_data,only : xname_massptr
+#endif
+
     use Input_Opt_Mod
     use State_Chm_Mod
     use State_Grid_Mod
@@ -661,22 +965,13 @@ contains
     use GC_Grid_Mod,    only : SetGridFromCtrEdges
 
     ! Use GEOS-Chem versions of physical constants
-    use PhysConstants,  only : PI, PI_180
-    use PhysConstants,  only : Re
-
-    use Phys_Grid,      only : get_Area_All_p
-    use hycoef,         only : ps0, hyai, hybi
+    use PhysConstants,  only : PI, PI_180, Re
 
     use Time_Mod,      only : Accept_External_Date_Time
     !use Time_Mod,      only : Set_Begin_Time,   Set_End_Time
     !use Time_Mod,      only : Set_Current_Time, Set_DiagB
     !use Transfer_Mod,  only : Init_Transfer
     use Linoz_Mod,     only : Linoz_Read
-
-#if ( OCNDDVEL_MOZART )
-    use seq_drydep_mod, only: drydep_method, dd_xlnd
-    use mo_drydep,      only: drydep_inti
-#endif
 
     use CMN_Size_Mod
 
@@ -688,6 +983,7 @@ contains
 #if   ( ALLDDVEL_GEOSCHEM && LANDTYPE_HEMCO )
     use Olson_Landmap_Mod
 #endif
+    use Mixing_Mod
 
     use GC_Emissions_Mod, only : GC_Emissions_Init
 
@@ -781,8 +1077,8 @@ contains
     Input_Opt%LUCX      = .True.
 
     IF ( RC /= GC_SUCCESS ) THEN
-        ErrMsg = 'Error encountered within call to "Set_Input_Opt"!'
-        CALL Error_Stop( ErrMsg, ThisLoc )
+       ErrMsg = 'Error encountered within call to "Set_Input_Opt"!'
+       CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
     CALL Validate_Directories( Input_Opt, RC )
@@ -793,41 +1089,41 @@ contains
 
     DO I = BEGCHUNK, ENDCHUNK
 
-        ! Initialize fields of the Grid State object
-        CALL Init_State_Grid( Input_Opt  = Input_Opt,      &
-                              State_Grid = State_Grid(I),  &
-                              RC         = RC             )
+       ! Initialize fields of the Grid State object
+       CALL Init_State_Grid( Input_Opt  = Input_Opt,      &
+                             State_Grid = State_Grid(I),  &
+                             RC         = RC             )
 
-        IF ( RC /= GC_SUCCESS ) THEN
-            ErrMsg = 'Error encountered within call to "Init_State_Grid"!'
-            CALL Error_Stop( ErrMsg, ThisLoc )
-        ENDIF
+       IF ( RC /= GC_SUCCESS ) THEN
+          ErrMsg = 'Error encountered within call to "Init_State_Grid"!'
+          CALL Error_Stop( ErrMsg, ThisLoc )
+       ENDIF
 
-        State_Grid(I)%NX = nX
-        State_Grid(I)%NY = nY
-        State_Grid(I)%NZ = nZ
+       State_Grid(I)%NX = nX
+       State_Grid(I)%NY = nY
+       State_Grid(I)%NZ = nZ
 
-        ! Initialize GEOS-Chem horizontal grid structure
-        CALL GC_Init_Grid( Input_Opt  = Input_Opt,      &
-                           State_Grid = State_Grid(I),  &
-                           RC         = RC          )
+       ! Initialize GEOS-Chem horizontal grid structure
+       CALL GC_Init_Grid( Input_Opt  = Input_Opt,      &
+                          State_Grid = State_Grid(I),  &
+                          RC         = RC          )
 
-        IF ( RC /= GC_SUCCESS ) THEN
-            ErrMsg = 'Error encountered within call to "GC_Init_Grid"!'
-            CALL Error_Stop( ErrMsg, ThisLoc )
-        ENDIF
+       IF ( RC /= GC_SUCCESS ) THEN
+          ErrMsg = 'Error encountered within call to "GC_Init_Grid"!'
+          CALL Error_Stop( ErrMsg, ThisLoc )
+       ENDIF
 
-        ! Define more variables for State_Grid
-        ! TMMF, might need tweaking
-        State_Grid(I)%MaxTropLev  = MIN(40, nZ)
-        State_Grid(I)%MaxStratLev = MIN(59, nZ)
+       ! Define more variables for State_Grid
+       ! TMMF, might need tweaking
+       State_Grid(I)%MaxTropLev  = MIN(40, nZ)
+       State_Grid(I)%MaxStratLev = MIN(59, nZ)
 
-        ! Set maximum number of levels in the chemistry grid
-        IF ( Input_Opt%LUCX ) THEN
-           State_Grid(I)%MaxChemLev  = State_Grid(I)%MaxStratLev
-        ELSE
-           State_Grid(I)%MaxChemLev  = State_Grid(I)%MaxTropLev
-        ENDIF
+       ! Set maximum number of levels in the chemistry grid
+       IF ( Input_Opt%LUCX ) THEN
+          State_Grid(I)%MaxChemLev = State_Grid(I)%MaxStratLev
+       ELSE
+          State_Grid(I)%MaxChemLev = State_Grid(I)%MaxTropLev
+       ENDIF
 
     ENDDO
 
@@ -896,11 +1192,11 @@ contains
     ! Now READ_ADVECTED_SPECIES_MENU
     Input_Opt%N_Advect               = nTracers
     IF (Input_Opt%N_Advect.GT.Input_Opt%Max_AdvectSpc) THEN
-        CALL ENDRUN('Number of tracers exceeds max count')
+       CALL ENDRUN('Number of tracers exceeds max count')
     ENDIF
     ! Assign tracer names
     DO J = 1, Input_Opt%N_Advect
-        Input_Opt%AdvectSpc_Name(J) = TRIM(tracerNames(J))
+       Input_Opt%AdvectSpc_Name(J) = TRIM(tracerNames(J))
     ENDDO
     ! No tagged species
     Input_Opt%LSplit = .False.
@@ -1005,37 +1301,36 @@ contains
     ! broadcast to all other CPUs, and finally duplicate the data into every
     ! copy of Input_Opt
     IF ( Input_Opt%LLinoz ) THEN
-        ! Allocate array for broadcast
-        nLinoz = Input_Opt%Linoz_NLevels * &
-                 Input_Opt%Linoz_NLat    * &
-                 Input_Opt%Linoz_NMonths * &
-                 Input_Opt%Linoz_NFields
-        ALLOCATE( linozData( Input_Opt%Linoz_NLevels,     &
-                             Input_Opt%Linoz_NLat,        &
-                             Input_Opt%Linoz_NMonths,     &
-                             Input_Opt%Linoz_NFields  ), STAT=IERR)
-        IF (IERR.NE.0) CALL ENDRUN('Failure while allocating linozData')
-        linozData = 0.0e+0_r8
+       ! Allocate array for broadcast
+       nLinoz = Input_Opt%Linoz_NLevels * &
+                Input_Opt%Linoz_NLat    * &
+                Input_Opt%Linoz_NMonths * &
+                Input_Opt%Linoz_NFields
+       ALLOCATE( linozData( Input_Opt%Linoz_NLevels,     &
+                            Input_Opt%Linoz_NLat,        &
+                            Input_Opt%Linoz_NMonths,     &
+                            Input_Opt%Linoz_NFields  ), STAT=IERR)
+       IF (IERR.NE.0) CALL ENDRUN('Failure while allocating linozData')
+       linozData = 0.0e+0_r8
 
-        IF ( MasterProc ) THEN
-            ! Read data in to Input_Opt%Linoz_TParm
-            CALL Linoz_Read( Input_Opt, RC )
-            IF ( RC /= GC_SUCCESS ) THEN
-               ErrMsg = 'Error encountered in "Linoz_Read"!'
-               CALL Error_Stop( ErrMsg, ThisLoc )
-            ENDIF
-            ! Copy the data to a temporary array
-            linozData = REAL(Input_Opt%LINOZ_TPARM,r8)
-        ENDIF
+       IF ( MasterProc ) THEN
+          ! Read data in to Input_Opt%Linoz_TParm
+          CALL Linoz_Read( Input_Opt, RC )
+          IF ( RC /= GC_SUCCESS ) THEN
+             ErrMsg = 'Error encountered in "Linoz_Read"!'
+             CALL Error_Stop( ErrMsg, ThisLoc )
+          ENDIF
+          ! Copy the data to a temporary array
+          linozData = REAL(Input_Opt%LINOZ_TPARM, r8)
+       ENDIF
 #if defined( SPMD )
-        CALL MPIBCAST( linozData, nLinoz, MPIR8, 0, MPICOM )
+       CALL MPIBCAST( linozData, nLinoz, MPIR8, 0, MPICOM )
 #endif
-        IF ( .NOT. MasterProc ) THEN
-            Input_Opt%LINOZ_TPARM = REAL(linozData,fp)
-        ENDIF
-        DEALLOCATE(linozData)
+       IF ( .NOT. MasterProc ) THEN
+          Input_Opt%LINOZ_TPARM = REAL(linozData,fp)
+       ENDIF
+       DEALLOCATE(linozData)
     ENDIF
-
 
     ! Note: The following calculations do not setup the gridcell areas.
     !       In any case, we will need to be constantly updating this grid
@@ -1055,53 +1350,52 @@ contains
     ! TODO: This needs more refinement. For now, this generates identical
     ! State_Grid for all chunks
     DO L = BEGCHUNK, ENDCHUNK
-        lonMidArr = 0.0e+0_f4
-        latMidArr = 0.0e+0_f4
-        dLonFix   = 360.0e+0_fp / REAL(nX,fp)
-        dLatFix   = 180.0e+0_fp / REAL(nY,fp)
-        DO I = 1, nX
-            ! Center of box, assuming dateline edge
-            lonVal = -180.0e+0_fp + (REAL(I-1,fp)*dLonFix)
-            DO J = 1, nY
-                ! Center of box, assuming regular cells
-                latVal = -90.0e+0_fp + (REAL(J-1,fp)*dLatFix)
-                lonMidArr(I,J)  = REAL((lonVal + (0.5e+0_fp * dLonFix)) * PI_180, f4)
-                latMidArr(I,J)  = REAL((latVal + (0.5e+0_fp * dLatFix)) * PI_180, f4)
+       lonMidArr = 0.0e+0_f4
+       latMidArr = 0.0e+0_f4
+       dLonFix   = 360.0e+0_fp / REAL(nX,fp)
+       dLatFix   = 180.0e+0_fp / REAL(nY,fp)
+       DO I = 1, nX
+          ! Center of box, assuming dateline edge
+          lonVal = -180.0e+0_fp + (REAL(I-1,fp)*dLonFix)
+          DO J = 1, nY
+             ! Center of box, assuming regular cells
+             latVal = -90.0e+0_fp + (REAL(J-1,fp)*dLatFix)
+             lonMidArr(I,J)  = REAL((lonVal + (0.5e+0_fp * dLonFix)) * PI_180, f4)
+             latMidArr(I,J)  = REAL((latVal + (0.5e+0_fp * dLatFix)) * PI_180, f4)
 
-                ! Edges of box, assuming regular cells
-                lonEdgeArr(I,J) = REAL(lonVal * PI_180, f4)
-                latEdgeArr(I,J) = REAL(latVal * PI_180, f4)
-            ENDDO
-            ! Edges of box, assuming regular cells
-            lonEdgeArr(I,nY+1)  = REAL((lonVal + dLonFix) * PI_180, f4)
-            latEdgeArr(I,nY+1)  = REAL((latVal + dLatFix) * PI_180, f4)
-        ENDDO
-        DO J = 1, nY+1
-            ! Edges of box, assuming regular cells
-            latVal = -90.0e+0_fp + (REAL(J-1,fp)*dLatFix)
-            lonEdgeArr(nX+1,J)  = REAL((lonVal + dLonFix) * PI_180, f4)
-            latEdgeArr(nX+1,J)  = REAL((latVal) * PI_180, f4)
-        ENDDO
+             ! Edges of box, assuming regular cells
+             lonEdgeArr(I,J) = REAL(lonVal * PI_180, f4)
+             latEdgeArr(I,J) = REAL(latVal * PI_180, f4)
+          ENDDO
+          ! Edges of box, assuming regular cells
+          lonEdgeArr(I,nY+1)  = REAL((lonVal + dLonFix) * PI_180, f4)
+          latEdgeArr(I,nY+1)  = REAL((latVal + dLatFix) * PI_180, f4)
+       ENDDO
+       DO J = 1, nY+1
+          ! Edges of box, assuming regular cells
+          latVal = -90.0e+0_fp + (REAL(J-1,fp)*dLatFix)
+          lonEdgeArr(nX+1,J)  = REAL((lonVal + dLonFix) * PI_180, f4)
+          latEdgeArr(nX+1,J)  = REAL((latVal) * PI_180, f4)
+       ENDDO
 
-        CALL SetGridFromCtrEdges( Input_Opt  = Input_Opt,     &
-                                  State_Grid = State_Grid(L), &
-                                  lonCtr     = lonMidArr,     &
-                                  latCtr     = latMidArr,     &
-                                  lonEdge    = lonEdgeArr,    &
-                                  latEdge    = latEdgeArr,    &
-                                  RC         = RC         )
+       CALL SetGridFromCtrEdges( Input_Opt  = Input_Opt,     &
+                                 State_Grid = State_Grid(L), &
+                                 lonCtr     = lonMidArr,     &
+                                 latCtr     = latMidArr,     &
+                                 lonEdge    = lonEdgeArr,    &
+                                 latEdge    = latEdgeArr,    &
+                                 RC         = RC            )
 
-        IF ( RC /= GC_SUCCESS ) THEN
-           ErrMsg = 'Error encountered in "SetGridFromCtrEdges"!'
-           CALL Error_Stop( ErrMsg, ThisLoc )
-        ENDIF
+       IF ( RC /= GC_SUCCESS ) THEN
+          ErrMsg = 'Error encountered in "SetGridFromCtrEdges"!'
+          CALL Error_Stop( ErrMsg, ThisLoc )
+       ENDIF
 
     ENDDO
     DEALLOCATE(lonMidArr)
     DEALLOCATE(latMidArr)
     DEALLOCATE(lonEdgeArr)
     DEALLOCATE(latEdgeArr)
-
 
     ! Set the times held by "time_mod"
     CALL Accept_External_Date_Time( value_NYMDb = Input_Opt%NYMDb, &
@@ -1111,6 +1405,7 @@ contains
                                     value_NYMD  = Input_Opt%NYMDb, &
                                     value_NHMS  = Input_Opt%NHMSb, &
                                     RC          = RC                )
+
     IF ( RC /= GC_SUCCESS ) THEN
        ErrMsg = 'Error encountered in "Accept_External_Date_Time"!'
        CALL Error_Stop( ErrMsg, ThisLoc )
@@ -1144,24 +1439,24 @@ contains
     !IF ( prtDebug ) CALL Print_DiagList( Diag_List, RC )
 
     DO I = BEGCHUNK, ENDCHUNK
-        Input_Opt%amIRoot = (MasterProc .AND. (I == BEGCHUNK))
+       Input_Opt%amIRoot = (MasterProc .AND. (I == BEGCHUNK))
 
-        CALL GC_Init_StateObj( Diag_List  = Diag_List,     &  ! Diagnostic list obj
-     &                         Input_Opt  = Input_Opt,     &  ! Input Options
-     &                         State_Chm  = State_Chm(I),  &  ! Chemistry State
-     &                         State_Diag = State_Diag(I), &  ! Diagnostics State
-     &                         State_Grid = State_Grid(I), &  ! Grid State
-     &                         State_Met  = State_Met(I),  &  ! Meteorology State
-     &                         RC         = RC            )   ! Success or failure
+       CALL GC_Init_StateObj( Diag_List  = Diag_List,     &  ! Diagnostic list obj
+                              Input_Opt  = Input_Opt,     &  ! Input Options
+                              State_Chm  = State_Chm(I),  &  ! Chemistry State
+                              State_Diag = State_Diag(I), &  ! Diagnostics State
+                              State_Grid = State_Grid(I), &  ! Grid State
+                              State_Met  = State_Met(I),  &  ! Meteorology State
+                              RC         = RC            )   ! Success or failure
 
-        ! Trap potential errors
-        IF ( RC /= GC_SUCCESS ) THEN
-            ErrMsg = 'Error encountered in "GC_Init_StateObj"!'
-            CALL Error_Stop( ErrMsg, ThisLoc )
-        ENDIF
+       ! Trap potential errors
+       IF ( RC /= GC_SUCCESS ) THEN
+          ErrMsg = 'Error encountered in "GC_Init_StateObj"!'
+          CALL Error_Stop( ErrMsg, ThisLoc )
+       ENDIF
 
-        ! Start with v/v dry (CAM standard)
-        State_Chm(I)%Spc_Units = 'v/v dry'
+       ! Start with v/v dry (CAM standard)
+       State_Chm(I)%Spc_Units = 'v/v dry'
 
     ENDDO
     Input_Opt%amIRoot = MasterProc
@@ -1181,75 +1476,103 @@ contains
 
     IF ( Input_Opt%LDryD ) THEN
 
-        !==============================================================
-        ! Get mapping between CESM dry deposited species and the
-        ! indices of State_Chm%DryDepVel. This needs to be done after
-        ! Init_Drydep
-        ! Thibaud M. Fritz - 04 Mar 2020
-        !==============================================================
+       !==============================================================
+       ! Get mapping between CESM dry deposited species and the
+       ! indices of State_Chm%DryDepVel. This needs to be done after
+       ! Init_Drydep
+       ! Thibaud M. Fritz - 04 Mar 2020
+       !==============================================================
 
-        ALLOCATE(map2GC_dryDep(nddvels), STAT=IERR)
-        IF ( IERR .NE. 0 ) CALL ENDRUN('Failed to allocate map2GC_dryDep')
+       ALLOCATE(map2GC_dryDep(nddvels), STAT=IERR)
+       IF ( IERR .NE. 0 ) CALL ENDRUN('Failed to allocate map2GC_dryDep')
 
-        DO N = 1, nddvels
+       DO N = 1, nddvels
 
-            ! Initialize index to -1
-            map2GC_dryDep(N) = -1
+          ! Initialize index to -1
+          map2GC_dryDep(N) = -1
 
-            IF ( drySpc_ndx(N) > 0 ) THEN
+          IF ( drySpc_ndx(N) > 0 ) THEN
 
-                ! Convert to upper case
-                SpcName = to_upper(drydep_list(N))
+             ! Convert to upper case
+             SpcName = to_upper(drydep_list(N))
 
-                DO I = 1, State_Chm(BEGCHUNK)%nDryDep
-                    IF ( TRIM( SpcName ) == TRIM( to_upper(depName(I)) ) ) THEN
-                        map2GC_dryDep(N) = nDVZind(I)
-                        EXIT
-                    ENDIF
-                ENDDO
+             DO I = 1, State_Chm(BEGCHUNK)%nDryDep
+                IF ( TRIM( SpcName ) == TRIM( to_upper(depName(I)) ) ) THEN
+                    map2GC_dryDep(N) = nDVZind(I)
+                   EXIT
+                ENDIF
+             ENDDO
 
-            ENDIF
+             ! Print out debug information
+             IF ( masterProc ) THEN
+                IF ( N == 1 ) Write(iulog,*) " ++ GEOS-Chem Dry deposition ++ "
+                IF ( map2GC_dryDep(N) > 0 ) THEN
+                    Write(iulog,*) " CESM species: ", TRIM(drydep_list(N)), &
+                      ' is matched with ', depName(map2GC_dryDep(N)) 
+                ELSE
+                    Write(iulog,*) " CESM species: ", TRIM(drydep_list(N)), &
+                      ' has no match'
+                ENDIF
+             ENDIF
 
-        ENDDO
+          ENDIF
+
+       ENDDO
 
 #if ( OCNDDVEL_MOZART )
-        !==============================================================
-        ! The following line should only be called if we compute
-        ! velocities over the ocean and ice in a MOZART-like way.
-        ! Thibaud M. Fritz - 26 Feb 2020
-        !==============================================================
+       !==============================================================
+       ! The following line should only be called if we compute
+       ! velocities over the ocean and ice in a MOZART-like way.
+       ! Thibaud M. Fritz - 26 Feb 2020
+       !==============================================================
 
-        IF ( drydep_method == DD_XLND ) THEN
-           CALL drydep_inti( MOZART_depvel_lnd_file, &
-                           MOZART_clim_soilw_file, &
-                           MOZART_season_wes_file )
-        ELSE
-            Write(iulog,'(a,a)') ' drydep_method is set to: ', TRIM(drydep_method)
-            CALL ENDRUN('drydep_method must be DD_XLND to compute dry deposition' // &
-                ' velocities similarly to MOZART over ocean and ice!')
-        ENDIF
+       IF ( drydep_method == DD_XLND ) THEN
+          CALL drydep_inti( depvel_lnd_file, &
+                            clim_soilw_file, &
+                            season_wes_file )
+       ELSE
+          Write(iulog,'(a,a)') ' drydep_method is set to: ', TRIM(drydep_method)
+          CALL ENDRUN('drydep_method must be DD_XLND to compute dry deposition' // &
+              ' velocities similarly to MOZART over ocean and ice!')
+       ENDIF
 #endif
+
     ENDIF
+
+#if defined( MODAL_AERO_4MODE )
+    ! Initialize aerosols
+    CALL aero_model_init( pbuf2d )
+
+    ! Initialize land maps for aerosol dry deposition
+    IF ( drydep_method == DD_XLND ) THEN
+       CALL drydep_inti_landuse( depvel_lnd_file, &
+                                 clim_soilw_file )
+    ELSE
+       Write(iulog,'(a,a)') ' drydep_method is set to: ', TRIM(drydep_method)
+       CALL ENDRUN('drydep_method must be DD_XLND to compute land maps for aerosol' // &
+               ' dry deposition!')
+    ENDIF
+#endif
 
     ! Set grid-cell area
     DO I = BEGCHUNK, ENDCHUNK
-        ALLOCATE(Col_Area(NCOL(I)), STAT=IERR)
-        IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating Col_Area')
+       ALLOCATE(Col_Area(NCOL(I)), STAT=IERR)
+       IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating Col_Area')
 
-        CALL Get_Area_All_p(I, NCOL(I), Col_Area)
+       CALL Get_Area_All_p(I, NCOL(I), Col_Area)
 
-        ! Set default value (in case of chunks with fewer columns)
-        State_Grid(I)%Area_M2 = 1.0e+10_fp
-        DO iX = 1, nX
-            DO jY = 1, NCOL(I)
-                State_Grid(I)%Area_M2(iX,jY) = REAL(Col_Area(jY) * Re**2,fp)
-            ENDDO
-        ENDDO
+       ! Set default value (in case of chunks with fewer columns)
+       State_Grid(I)%Area_M2 = 1.0e+10_fp
+       DO iX = 1, nX
+       DO jY = 1, NCOL(I)
+          State_Grid(I)%Area_M2(iX,jY) = REAL(Col_Area(jY) * Re**2,fp)
+       ENDDO
+       ENDDO
 
-        DEALLOCATE(Col_Area)
+       DEALLOCATE(Col_Area)
 
-        ! Copy to State_Met(I)%Area_M2
-        State_Met(I)%Area_M2 = State_Grid(I)%Area_M2
+       ! Copy to State_Met(I)%Area_M2
+       State_Met(I)%Area_M2 = State_Grid(I)%Area_M2
     ENDDO
 
     ! Initialize (mostly unused) diagnostic arrays
@@ -1266,9 +1589,9 @@ contains
 
     Ap_CAM_Flip = 0.0e+0_fp
     Bp_CAM_Flip = 0.0e+0_fp
-    DO I = 1, (nZ+1)
-        Ap_CAM_Flip(I) = hyai(nZ+2-I) * ps0 * 0.01e+0_r8
-        Bp_CAM_Flip(I) = hybi(nZ+2-I)
+    DO I = 1, nZ+1
+       Ap_CAM_Flip(I) = hyai(nZ+2-I) * ps0 * 0.01e+0_r8
+       Bp_CAM_Flip(I) = hybi(nZ+2-I)
     ENDDO
 
     !-----------------------------------------------------------------
@@ -1281,12 +1604,12 @@ contains
 
     ! Print vertical coordinates
     IF ( MasterProc ) THEN
-        WRITE( 6, '(a)'   ) REPEAT( '=', 79 )
-        WRITE( 6, '(a,/)' ) 'V E R T I C A L   G R I D   S E T U P'
-        WRITE( 6, '( ''Ap '', /, 6(f11.6,1x) )' ) Ap_CAM_Flip(1:State_Grid(BEGCHUNK)%NZ+1)
-        WRITE( 6, '(a)'   )
-        WRITE( 6, '( ''Bp '', /, 6(f11.6,1x) )' ) Bp_CAM_Flip(1:State_Grid(BEGCHUNK)%NZ+1)
-        WRITE( 6, '(a)'   ) REPEAT( '=', 79 )
+       WRITE( 6, '(a)'   ) REPEAT( '=', 79 )
+       WRITE( 6, '(a,/)' ) 'V E R T I C A L   G R I D   S E T U P'
+       WRITE( 6, '( ''Ap '', /, 6(f11.6,1x) )' ) Ap_CAM_Flip(1:State_Grid(BEGCHUNK)%NZ+1)
+       WRITE( 6, '(a)'   )
+       WRITE( 6, '( ''Bp '', /, 6(f11.6,1x) )' ) Bp_CAM_Flip(1:State_Grid(BEGCHUNK)%NZ+1)
+       WRITE( 6, '(a)'   ) REPEAT( '=', 79 )
     ENDIF
 
     ! Trapping errors
@@ -1297,51 +1620,27 @@ contains
 
     DEALLOCATE(Ap_CAM_Flip,Bp_CAM_Flip)
 
-#if   ( ALLDDVEL_GEOSCHEM && LANDTYPE_HEMCO )
-    ! Populate the State_Met%LandTypeFrac field with data from HEMCO
-    CALL Init_LandTypeFrac( Input_Opt = Input_Opt,            &
-                            State_Met = State_Met(BEGCHUNK),  &
-                            RC        = RC                   )
-
-    IF ( RC /= GC_SUCCESS ) THEN
-       ErrMsg = 'Error encountered in "Init_LandTypeFrac"!'
-       CALL Error_Stop( ErrMsg, ThisLoc )
-    ENDIF
-
-    ! Compute the Olson landmap fields of State_Met
-    ! (e.g. State_Met%IREG, State_Met%ILAND, etc.)
-    CALL Compute_Olson_Landmap( Input_Opt  = Input_Opt,            &
-                                State_Grid = State_Grid(BEGCHUNK), &
-                                State_Met  = State_Met(BEGCHUNK),  &
-                                RC         = RC                   )
-
-    IF ( RC /= GC_SUCCESS ) THEN
-       ErrMsg = 'Error encountered in "Compute_Olson_Landmap"!'
-       CALL Error_Stop( ErrMsg, ThisLoc )
-    ENDIF
-#endif
-
     IF ( Input_Opt%Its_A_FullChem_Sim .OR. &
          Input_Opt%Its_An_Aerosol_Sim ) THEN
-        ! This also initializes Fast-JX
-        CALL Init_Chemistry( Input_Opt  = Input_Opt,            &
-     &                       State_Chm  = State_Chm(BEGCHUNK),  &
-     &                       State_Diag = State_Diag(BEGCHUNK), &
-     &                       State_Grid = State_Grid(BEGCHUNK), &
-     &                       RC         = RC                    )
+       ! This also initializes Fast-JX
+       CALL Init_Chemistry( Input_Opt  = Input_Opt,            &
+                            State_Chm  = State_Chm(BEGCHUNK),  &
+                            State_Diag = State_Diag(BEGCHUNK), &
+                            State_Grid = State_Grid(BEGCHUNK), &
+                            RC         = RC                    )
 
-        IF ( RC /= GC_SUCCESS ) THEN
-            ErrMsg = 'Error encountered in "Init_Chemistry"!'
-            CALL Error_Stop( ErrMsg, ThisLoc )
-        ENDIF
+       IF ( RC /= GC_SUCCESS ) THEN
+          ErrMsg = 'Error encountered in "Init_Chemistry"!'
+          CALL Error_Stop( ErrMsg, ThisLoc )
+       ENDIF
     ENDIF
 
     IF ( Input_Opt%LChem .AND. &
          Input_Opt%LUCX ) THEN
-        CALL Init_UCX( Input_Opt  = Input_Opt,            &
-     &                 State_Chm  = State_Chm(BEGCHUNK),  &
-     &                 State_Diag = State_Diag(BEGCHUNK), &
-     &                 State_Grid = State_Grid(BEGCHUNK) )
+       CALL Init_UCX( Input_Opt  = Input_Opt,            &
+                      State_Chm  = State_Chm(BEGCHUNK),  &
+                      State_Diag = State_Diag(BEGCHUNK), &
+                      State_Grid = State_Grid(BEGCHUNK) )
     ENDIF
 
     ! Get the index of H2O
@@ -1363,23 +1662,24 @@ contains
     NDX_LSFLXSNW = Pbuf_Get_Index('LS_FLXSNW')
 
     ! Get cloud water indices
-    CALL Cnst_Get_Ind('CLDLIQ', ixCldLiq)
-    CALL Cnst_Get_Ind('CLDICE', ixCldIce)
+    CALL cnst_get_ind('CLDLIQ', ixCldLiq)
+    CALL cnst_get_ind('CLDICE', ixCldIce)
 
     ! Can add history output here too with the "addfld" & "add_default" routines
     ! Note that constituents are already output by default
     ! Add all species as output fields if desired
     DO I = 1, nTracers
-        SpcName = TRIM(tracerNames(I))
-        CALL AddFld( TRIM(SpcName), (/ 'lev' /), 'A', 'mol/mol', TRIM(tracerLongNames(I))//' concentration')
-        IF (TRIM(SpcName) == 'O3') THEN
-            CALL Add_Default ( TRIM(SpcName), 1, ' ')
-        ENDIF
+       SpcName = TRIM(tracerNames(I))
+       CALL AddFld( TRIM(SpcName), (/ 'lev' /), 'A', 'mol/mol', TRIM(tracerLongNames(I))//' concentration')
+       IF (TRIM(SpcName) == 'O3') THEN
+          CALL Add_Default ( TRIM(SpcName), 1, ' ')
+       ENDIF
     ENDDO
+
     DO I =1, nSls
-        SpcName = TRIM(slsNames(I))
-        CALL AddFld( TRIM(SpcName), (/ 'lev' /), 'A', 'mol/mol', TRIM(slsLongNames(I))//' concentration')
-        !CALL Add_Default(TRIM(SpcName), 1, '')
+       SpcName = TRIM(slsNames(I))
+       CALL AddFld( TRIM(SpcName), (/ 'lev' /), 'A', 'mol/mol', TRIM(slsLongNames(I))//' concentration')
+       !CALL Add_Default(TRIM(SpcName), 1, '')
     ENDDO
 
     ! Initialize emissions interface (this will eventually handle HEMCO)
@@ -1388,375 +1688,9 @@ contains
     !CALL AddFld ( 'BCPI', (/'lev'/), 'A', 'mole/mole', trim('BCPI')//' mixing ratio' )
     !CALL Add_Default ( 'BCPI',   1, ' ')
 
-#if defined( CLM40 )
-    SpcName = 'lu_soil'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'lu_landice'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'lu_deeplake'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'lu_shallowlake'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'lu_wetland'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'lu_urban'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'lu_icemec'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'lu_crop'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-#elif defined( CLM45 ) || defined( CLM50 )
-    SpcName = 'lu_soil'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'lu_crop'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'lu_landice'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'lu_deeplake'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'lu_wetland'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'lu_urban'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-#endif
-    SpcName = 'p_notveg'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_needle_eg_temp'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_needle_eg_bor'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_needle_dd_bor'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_broad_eg_trop'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_broad_eg_temp'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_broad_dd_trop'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_broad_dd_temp'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_broad_dd_bor'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_broad_eg_sh'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_broad_dd_temp_sh'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_broad_dd_bor_sh'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_c3_arctic_grass'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_c3_narctic_grass'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_c4_grass'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_c3_crop'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_c3_irrigated'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-#if defined( CLM40 )
-    SpcName = 'p_c3_corn'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_spring_cereal'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_winter_cereal'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_soybean'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-#elif defined( CLM45 ) || defined( CLM50 )
-    SpcName = 'p_temp_corn'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_temp_corn'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_spring_wheat'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_spring_wheat'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_winter_wheat'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_winter_wheat'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_temp_soybean'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_temp_soybean'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_barley'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_barley'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_winter_barley'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_winter_barley'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_rye'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_rye'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_winter_rye'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_winter_rye'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_cassava'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_cassava'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_citrus'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_citrus'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_cocoa'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_cocoa'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_coffee'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_coffee'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_cotton'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_cotton'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_datepalm'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_datepalm'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_foddergrass'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_foddergrass'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_grapes'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_grapes'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_groundnuts'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_groundnuts'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_millet'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_millet'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_oilpalm'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_oilpalm'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_potatoes'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_potatoes'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_pulses'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_pulses'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_rapeseed'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_rapessed'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_rice'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_rice'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_sorghum'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_sorghum'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_sugarbeet'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_sugarbeet'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_sugarcane'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_sugarcane'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_sunflower'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_sunflower'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_miscanthus'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_miscanthus'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_switchgrass'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_switchgrass'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_trop_corn'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_trop_corn'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_trop_soybean'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'p_irr_trop_soybean'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-#endif
-    SpcName = 'pla_notveg'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_needle_eg_temp'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_needle_eg_bor'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_needle_dd_bor'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_broad_eg_trop'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_broad_eg_temp'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_broad_dd_trop'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_broad_dd_temp'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_broad_dd_bor'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_broad_eg_sh'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_broad_dd_temp_sh'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_broad_dd_bor_sh'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_c3_arctic_grass'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_c3_narctic_grass'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_c4_grass'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_c3_crop'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_c3_irrigated'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-#if defined( CLM40 )
-    SpcName = 'pla_c3_corn'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_spring_cereal'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_winter_cereal'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_soybean'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-#elif defined( CLM45 ) || defined( CLM50 )
-    SpcName = 'pla_temp_corn'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_temp_corn'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_spring_wheat'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_spring_wheat'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_winter_wheat'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_winter_wheat'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_temp_soybean'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_temp_soybean'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_barley'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_barley'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_winter_barley'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_winter_barley'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_rye'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_rye'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_winter_rye'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_winter_rye'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_cassava'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_cassava'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_citrus'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_citrus'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_cocoa'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_cocoa'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_coffee'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_coffee'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_cotton'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_cotton'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_datepalm'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_datepalm'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_foddergrass'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_foddergrass'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_grapes'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_grapes'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_groundnuts'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_groundnuts'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_millet'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_millet'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_oilpalm'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_oilpalm'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_potatoes'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_potatoes'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_pulses'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_pulses'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_rapeseed'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_rapessed'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_rice'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_rice'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_sorghum'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_sorghum'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_sugarbeet'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_sugarbeet'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_sugarcane'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_sugarcane'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_sunflower'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_sunflower'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_miscanthus'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_miscanthus'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_switchgrass'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_switchgrass'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_trop_corn'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_trop_corn'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_trop_soybean'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-    SpcName = 'pla_irr_trop_soybean'
-    CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'fraction', TRIM(SpcName)//' surface area')
-#endif
+    hco_pbuf2d => pbuf2d
+
+    If ( MasterProc ) Write(iulog,*) "hco_pbuf2d now points to pbuf2d"
 
     hco_pbuf2d => pbuf2d
 
@@ -1823,16 +1757,20 @@ contains
     use phys_grid,           only: get_ncols_p, get_rlat_all_p, get_rlon_all_p
 
     use chem_mods,           only: drySpc_ndx, map2GC_dryDep
-#if   ( LANDTYPE_CLM )
+#if defined( MODAL_AERO_4MODE )
+    use modal_aero_data,     only : ntot_amode, nspec_amode
+    use modal_aero_data,     only : lmassptr_amode
+#endif
+
     use Olson_Landmap_Mod,   only: Compute_Olson_Landmap
     use Modis_LAI_Mod,       only: Compute_XLAI
-#endif
+    use CMN_Size_Mod,        only: NSURFTYPE
 #if   ( ALLDDVEL_GEOSCHEM || OCNDDVEL_GEOSCHEM )
     use Drydep_Mod,          only: Do_Drydep
 #elif ( OCNDDVEL_MOZART )
     use mo_drydep,           only: drydep_update, drydep_fromlnd
 #endif
-    use Drydep_Mod,          only: DEPNAME !TMMF, this is just needed for debug
+    use Drydep_Mod,          only: DEPNAME
     use Drydep_Mod,          only: Update_DryDepSav
     use Mixing_Mod
 
@@ -1864,11 +1802,13 @@ contains
     use PhysConstants,       only: Re
     use Phys_Grid,           only: get_area_all_p, get_lat_all_p, get_lon_all_p
 
-    use Short_Lived_Species, only : Get_Short_Lived_Species
-    use Short_Lived_Species, only : Set_Short_Lived_Species
+    use short_lived_species, only : get_short_lived_species
+    use short_lived_species, only : set_short_lived_species
 
     ! Use GEOS-Chem versions of physical constants
     use PhysConstants,       only: PI, PI_180, g0
+
+    use rad_constituents,    only: rad_cnst_get_info
 
     REAL(r8),            INTENT(IN)    :: dT          ! Time step
     TYPE(physics_state), INTENT(IN)    :: State       ! Physics State variables
@@ -1883,12 +1823,11 @@ contains
     REAL(r8) :: MMR_End(PCOLS,PVER,nSls+nTracers)
     REAL(r8) :: MMR_TEnd(PCOLS,PVER,nSls+nTracers)
 
-
-    ! Mapping (?)
+    ! Logical to apply tendencies to mixing ratios
     LOGICAL :: lq(pcnst)
 
     ! Indexing
-    INTEGER :: I, J, K, L, N, M
+    INTEGER :: I, J, K, L, N, M, P
     INTEGER :: nX, nY, nZ
 
     INTEGER :: LCHNK, NCOL
@@ -1984,6 +1923,12 @@ contains
     LOGICAL            :: rootChunk
     INTEGER            :: RC
 
+#if ( LANDTYPE_HEMCO )
+    INTEGER            :: tmpIdx
+    character(len=255) :: name
+    real(r8), pointer  :: pbuf_ik(:,:)     ! Pointer to pbuf data  (/pcols,pver/)
+#endif
+
     ! LCHNK: which chunk we have on this process
     LCHNK = State%LCHNK
     ! NCOL: number of atmospheric columns on this chunk
@@ -2020,10 +1965,10 @@ contains
     lonMidArr = 0.0e+0_f4
     latMidArr = 0.0e+0_f4
     DO I = 1, nX
-        DO J = 1, nY
-            lonMidArr(I,J) = REAL(Rlons(J), f4)
-            latMidArr(I,J) = REAL(Rlats(J), f4)
-        ENDDO
+    DO J = 1, nY
+       lonMidArr(I,J) = REAL(Rlons(J), f4)
+       latMidArr(I,J) = REAL(Rlats(J), f4)
+    ENDDO
     ENDDO
 
     ! Update the grid
@@ -2034,8 +1979,8 @@ contains
                          RC         = RC )
 
     IF ( RC /= GC_SUCCESS ) THEN
-        ErrMsg = 'Error encountered within call to "SetGridFromCtr"!'
-        CALL Error_Stop( ErrMsg, ThisLoc )
+       ErrMsg = 'Error encountered within call to "SetGridFromCtr"!'
+       CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
     ! Set area
@@ -2048,7 +1993,7 @@ contains
     ! Note       : Set default value (in case of chunks with fewer columns)
     State_Grid(LCHNK)%Area_M2 = 1.0e+10_fp
     DO J = 1, nY
-        State_Grid(LCHNK)%Area_M2(1,J) = REAL(Col_Area(J) * Re**2,fp)
+       State_Grid(LCHNK)%Area_M2(1,J) = REAL(Col_Area(J) * Re**2,fp)
     ENDDO
     State_Met(LCHNK)%Area_M2 = State_Grid(LCHNK)%Area_M2
 
@@ -2060,37 +2005,57 @@ contains
 
     lq(:) = .FALSE.
 
+    ! Map and flip gaseous species
     MMR_Beg = 0.0e+0_r8
     DO N = 1, pcnst
-        M = map2GC(N)
-        IF (M > 0) THEN
-            I = 1
-            DO J = 1, nY
-                DO K = 1, nZ
-                    ! CURRENTLY KG/KG DRY
-                    MMR_Beg(J,K,M) = State%q(J,nZ+1-K,N)
-                    State_Chm(LCHNK)%Species(1,J,K,M) = REAL(MMR_Beg(J,K,M),fp)
-                ENDDO
-            ENDDO
-            lq(N) = .TRUE.
-        ENDIF
+       M = map2GC(N)
+       IF (M > 0) THEN
+          DO J = 1, nY
+          DO K = 1, nZ
+             MMR_Beg(J,K,M) = State%q(J,nZ+1-K,N)
+             State_Chm(LCHNK)%Species(1,J,K,M) = REAL(MMR_Beg(J,K,M),fp)
+          ENDDO
+          ENDDO
+          lq(N) = .TRUE.
+       ENDIF
     ENDDO
 
     ! Retrieve previous value of species data
     SlsData(:,:,:) = 0.0e+0_r8
-    CALL Get_Short_Lived_Species( SlsData, LCHNK, nY, Pbuf )
+    CALL get_short_lived_species( SlsData, LCHNK, nY, pbuf )
 
-    ! Remap and flip them
+    ! Map and flip gaseous short-lived species
     DO N = 1, nSls
-        M = map2GC_Sls(N)
-        IF (M > 0) THEN
-            DO J = 1, nY
-                DO K = 1, nZ
-                    State_Chm(LCHNK)%Species(1,J,K,M) = REAL(SlsData(J,nZ+1-K,N),fp)
-                ENDDO
-            ENDDO
-        ENDIF
+       M = map2GC_Sls(N)
+       IF (M > 0) THEN
+          DO J = 1, nY
+          DO K = 1, nZ
+             State_Chm(LCHNK)%Species(1,J,K,M) = REAL(SlsData(J,nZ+1-K,N),fp)
+          ENDDO
+          ENDDO
+       ENDIF
     ENDDO
+
+#if defined( MODAL_AERO_4MODE )
+    ! TMMF - This needs more indices to MMR_Beg and MMR_End
+    ! Map and flip aerosols
+    DO M = 1, ntot_amode
+       DO L = 1, nspec_amode(M)
+          P = map2MAM4(L,M)
+          N = lmassptr_amode(L,M)
+          ! Multiple MAM4 bins are mapped to same GEOS-Chem species
+          IF ( P > 0 ) THEN
+             DO J = 1, nY
+             DO K = 1, nZ
+                !MMR_Beg(J,K,M) = State%q(J,nZ+1-K,N) 
+                State_Chm(LCHNK)%Species(1,J,K,P) = State_Chm(LCHNK)%Species(1,J,K,P) &
+                                                  + REAL(state%q(J,nZ+1-K,N),fp)
+             ENDDO
+             ENDDO
+          ENDIF
+       ENDDO
+    ENDDO
+#endif
 
     ! Initialize tendency array
     CALL Physics_ptend_init(ptend, State%psetcols, 'chemistry', lq=lq)
@@ -2100,48 +2065,48 @@ contains
     CALL Zenith( Calday, Rlats, Rlons, CSZA, nY )
 
     ! Get all required data from physics buffer
-    TIM_NDX = Pbuf_Old_Tim_Idx()
-    CALL Pbuf_Get_Field( Pbuf, NDX_PBLH,     PblH   )
-    CALL Pbuf_Get_Field( Pbuf, NDX_FSDS,     Fsds   )
-    CALL Pbuf_Get_Field( Pbuf, NDX_CLDTOP,   cldTop )
-    CALL Pbuf_Get_Field( Pbuf, NDX_CLDFRC,   cldFrc,   START=(/1,1,TIM_NDX/), KOUNT=(/NCOL,PVER,1/) )
-    CALL Pbuf_Get_Field( Pbuf, NDX_NEVAPR,   NEvapr,   START=(/1,1/),         KOUNT=(/NCOL,PVER/))
-    CALL Pbuf_Get_Field( Pbuf, NDX_PRAIN,    PRain,    START=(/1,1/),         KOUNT=(/NCOL,PVER/))
-    CALL Pbuf_Get_Field( Pbuf, NDX_RPRDTOT,  RprdTot,  START=(/1,1/),         KOUNT=(/NCOL,PVER/))
-    CALL Pbuf_Get_Field( Pbuf, NDX_LSFLXPRC, LsFlxPrc, START=(/1,1/),         KOUNT=(/NCOL,PVERP/))
-    CALL Pbuf_Get_Field( Pbuf, NDX_LSFLXSNW, LsFlxSnw, START=(/1,1/),         KOUNT=(/NCOL,PVERP/))
+    TIM_NDX = pbuf_old_tim_idx()
+    CALL pbuf_get_field( pbuf, NDX_PBLH,     PblH   )
+    CALL pbuf_get_field( pbuf, NDX_FSDS,     Fsds   )
+    CALL pbuf_get_field( pbuf, NDX_CLDTOP,   cldTop )
+    CALL pbuf_get_field( pbuf, NDX_CLDFRC,   cldFrc,   START=(/1,1,TIM_NDX/), KOUNT=(/NCOL,PVER,1/) )
+    CALL pbuf_get_field( pbuf, NDX_NEVAPR,   NEvapr,   START=(/1,1/),         KOUNT=(/NCOL,PVER/))
+    CALL pbuf_get_field( pbuf, NDX_PRAIN,    PRain,    START=(/1,1/),         KOUNT=(/NCOL,PVER/))
+    CALL pbuf_get_field( pbuf, NDX_RPRDTOT,  RprdTot,  START=(/1,1/),         KOUNT=(/NCOL,PVER/))
+    CALL pbuf_get_field( pbuf, NDX_LSFLXPRC, LsFlxPrc, START=(/1,1/),         KOUNT=(/NCOL,PVERP/))
+    CALL pbuf_get_field( pbuf, NDX_LSFLXSNW, LsFlxSnw, START=(/1,1/),         KOUNT=(/NCOL,PVERP/))
 
     ! Get VMR and MMR of H2O
     H2OVMR = 0.0e0_fp
     qH2O   = 0.0e0_fp
     ! Note MWDRY = 28.966 g/mol
     DO J = 1, nY
-        DO L = 1, nZ
-            qH2O(J,L) = REAL(State_Chm(LCHNK)%Species(1,J,L,iH2O),r8)
-            H2OVMR(J,L) = qH2O(J,L) * MWDry / 18.016e+0_fp
-        ENDDO
+    DO L = 1, nZ
+       qH2O(J,L) = REAL(State_Chm(LCHNK)%Species(1,J,L,iH2O),r8)
+       H2OVMR(J,L) = qH2O(J,L) * MWDry / 18.016e+0_fp
+    ENDDO
     ENDDO
 
     ! Calculate RH (range 0-1, note still level 1 = TOA)
     relHum(:,:) = 0.0e+0_r8
     CALL QSat(State%T(:nY,:), State%Pmid(:nY,:), SatV, SatQ)
     DO J = 1, nY
-        DO L = 1, nZ
-            relHum(J,L) = 0.622e+0_r8 * H2OVMR(J,L) / SatQ(J,L)
-            relHum(J,L) = MAX( 0.0e+0_r8, MIN( 1.0e+0_r8, relHum(J,L) ) )
-        ENDDO
+    DO L = 1, nZ
+       relHum(J,L) = 0.622e+0_r8 * H2OVMR(J,L) / SatQ(J,L)
+       relHum(J,L) = MAX( 0.0e+0_r8, MIN( 1.0e+0_r8, relHum(J,L) ) )
+    ENDDO
     ENDDO
 
     Z0 = 0.0e+0_r8
     DO J = 1, nY
-        Z0(J) = cam_in%landFrac(J) * zlnd  &
-              + cam_in%iceFrac(J)  * zsice &
-              + cam_in%ocnFrac(J)  * zocn
-        IF (( cam_in%snowhLand(J) > 0.01_r8 ) .OR. &
-            ( cam_in%snowhIce(J)  > 0.01_r8 )) THEN
-            ! Land is covered in snow
-            Z0(J) = zslnd
-        ENDIF
+       Z0(J) = cam_in%landFrac(J) * zlnd  &
+             + cam_in%iceFrac(J)  * zsice &
+             + cam_in%ocnFrac(J)  * zocn
+       IF (( cam_in%snowhLand(J) > 0.01_r8 ) .OR. &
+           ( cam_in%snowhIce(J)  > 0.01_r8 )) THEN
+          ! Land is covered in snow
+          Z0(J) = zslnd
+       ENDIF
     ENDDO
 
     ! Estimate cloud liquid water content and OD
@@ -2151,55 +2116,55 @@ contains
     ! Note: all using CAM vertical convention (1 = TOA)
     ! Calculation is based on that done for MOZART
     DO J = 1, nY
-        DO L = nZ, 1, -1
-            ! Convert water mixing ratio [kg/kg] to water content [g/m^3]
-            IF ( ( State%Q(J,L,ixCldLiq) + State%Q(J,L,ixCldIce) ) * &
-                 State%PMid(J,L) / (State%T(J,L) * 287.0e+00_r8) * 1.0e+03_r8 <= 0.01_r8 .AND. &
-                 cldFrc(J,L) /= 0.0e+00_r8 ) THEN
-               cld(J,L) = 0.0e+00_r8
-            ELSE
-               cld(J,L) = cldFrc(J,L)
-            ENDIF
-        ENDDO
+    DO L = nZ, 1, -1
+       ! Convert water mixing ratio [kg/kg] to water content [g/m^3]
+       IF ( ( State%Q(J,L,ixCldLiq) + State%Q(J,L,ixCldIce) ) * &
+            State%PMid(J,L) / (State%T(J,L) * 287.0e+00_r8) * 1.0e+03_r8 <= 0.01_r8 .AND. &
+            cldFrc(J,L) /= 0.0e+00_r8 ) THEN
+          cld(J,L) = 0.0e+00_r8
+       ELSE
+          cld(J,L) = cldFrc(J,L)
+       ENDIF
+    ENDDO
     ENDDO
 
     DO J = 1, nY
-        IF ( COUNT( cld(J,:nZ) > cldMin ) > 0 ) THEN
-            DO L = nZ, 1, -1
-                ! =================================================================
-                ! ===========   Compute cloud optical depth based on   ============
-                ! ===========     Liao et al. JGR, 104, 23697, 1999    ============
-                ! =================================================================
-                !
-                ! Tau = 3/2 * LWC * dZ / ( \rho_w * r_e )
-                ! dZ  = - dP / ( \rho_air * g )
-                ! since Pint is ascending, we can neglect the minus sign
-                !
-                ! Tau = 3/2 * LWC * dP / ( \rho_air * r_e * \rho_w * g )
-                ! LWC / \rho_air = Q
-                !
-                ! Tau    = 3/2 * Q * dP / ( r_e * rho_w * g )
-                ! Tau(K) = 3/2 * Q(K) * (Pint(K+1) - Pint(K)) / (re * rho_w * g )
-                ! Tau(K) = Q(K) * (Pint(K+1) - Pint(K)) * Cnst
-                !
-                ! Unit check:                    |
-                ! Q    : [kg H2O/kg air]         |
-                ! Pint : [Pa]=[kg air/m/s^2]     |
-                ! re   : [m]                     |   = 1.0e-5
-                ! rho_w: [kg H2O/m^3]            |   = 1.0e+3
-                ! g    : [m/s^2]                 |   = 9.81
-                !
-                TauClw(J,L) = State%Q(J,L,ixCldLiq)               &
-                            * (State%Pint(J,L+1)-State%Pint(J,L)) &
-                            * cnst
-                TauClw(J,L) = MAX(TauClw(J,L), 0.0e+00_r8)
-                TauCli(J,L) = State%Q(J,L,ixCldIce)               &
-                            * (State%Pint(J,L+1)-State%Pint(J,L)) &
-                            * cnst
-                TauCli(J,L) = MAX(TauCli(J,L), 0.0e+00_r8)
+       IF ( COUNT( cld(J,:nZ) > cldMin ) > 0 ) THEN
+          DO L = nZ, 1, -1
+             ! =================================================================
+             ! ===========   Compute cloud optical depth based on   ============
+             ! ===========     Liao et al. JGR, 104, 23697, 1999    ============
+             ! =================================================================
+             !
+             ! Tau = 3/2 * LWC * dZ / ( \rho_w * r_e )
+             ! dZ  = - dP / ( \rho_air * g )
+             ! since Pint is ascending, we can neglect the minus sign
+             !
+             ! Tau = 3/2 * LWC * dP / ( \rho_air * r_e * \rho_w * g )
+             ! LWC / \rho_air = Q
+             !
+             ! Tau    = 3/2 * Q * dP / ( r_e * rho_w * g )
+             ! Tau(K) = 3/2 * Q(K) * (Pint(K+1) - Pint(K)) / (re * rho_w * g )
+             ! Tau(K) = Q(K) * (Pint(K+1) - Pint(K)) * Cnst
+             !
+             ! Unit check:                    |
+             ! Q    : [kg H2O/kg air]         |
+             ! Pint : [Pa]=[kg air/m/s^2]     |
+             ! re   : [m]                     |   = 1.0e-5
+             ! rho_w: [kg H2O/m^3]            |   = 1.0e+3
+             ! g    : [m/s^2]                 |   = 9.81
+             !
+             TauClw(J,L) = State%Q(J,L,ixCldLiq)               &
+                         * (State%Pint(J,L+1)-State%Pint(J,L)) &
+                         * cnst
+             TauClw(J,L) = MAX(TauClw(J,L), 0.0e+00_r8)
+             TauCli(J,L) = State%Q(J,L,ixCldIce)               &
+                         * (State%Pint(J,L+1)-State%Pint(J,L)) &
+                         * cnst
+             TauCli(J,L) = MAX(TauCli(J,L), 0.0e+00_r8)
 
-            ENDDO
-        ENDIF
+          ENDDO
+       ENDIF
     ENDDO
 
     ! Retrieve tropopause level
@@ -2208,21 +2173,21 @@ contains
     ! Back out the pressure
     Trop_P = 1000.0e+0_r8
     DO J = 1, nY
-        Trop_P(J) = State%PMid(J,Trop_Lev(J)) * 0.01e+0_r8
+       Trop_P(J) = State%PMid(J,Trop_Lev(J)) * 0.01e+0_r8
     ENDDO
 
     ! Calculate snow depth
     snowDepth = 0.0e+0_r8
     DO J = 1, nY
-        Sd_Ice  = MAX(0.0e+0_r8,cam_in%snowhIce(J))
-        Sd_Lnd  = MAX(0.0e+0_r8,cam_in%snowhLand(J))
-        Frc_Ice = MAX(0.0e+0_r8,cam_in%iceFrac(J))
-        IF (Frc_Ice > 0.0e+0_r8) THEN
-            Sd_Avg = (Sd_Lnd*(1.0e+0_r8 - Frc_Ice)) + (Sd_Ice * Frc_Ice)
-        ELSE
-            Sd_Avg = Sd_Lnd
-        ENDIF
-        snowDepth(J) = Sd_Avg
+       Sd_Ice  = MAX(0.0e+0_r8,cam_in%snowhIce(J))
+       Sd_Lnd  = MAX(0.0e+0_r8,cam_in%snowhLand(J))
+       Frc_Ice = MAX(0.0e+0_r8,cam_in%iceFrac(J))
+       IF (Frc_Ice > 0.0e+0_r8) THEN
+          Sd_Avg = (Sd_Lnd*(1.0e+0_r8 - Frc_Ice)) + (Sd_Ice * Frc_Ice)
+       ELSE
+          Sd_Avg = Sd_Lnd
+       ENDIF
+       snowDepth(J) = Sd_Avg
     ENDDO
 
     ! Field      : ALBD
@@ -2238,7 +2203,7 @@ contains
     ! Note       : Estimate column cloud fraction as the maximum cloud
     !              fraction in the column (pessimistic assumption)
     DO J = 1, nY
-        State_Met(LCHNK)%CLDFRC(1,J) = MAXVAL(cldFrc(J,:))
+       State_Met(LCHNK)%CLDFRC(1,J) = MAXVAL(cldFrc(J,:))
     ENDDO
 
     ! Field      : EFLUX, HFLUX
@@ -2262,6 +2227,40 @@ contains
                        nY,             &
                        State_Met(LCHNK) )
 #endif
+#elif ( LANDTYPE_HEMCO )
+    DO N = 1, NSURFTYPE
+       Write(name, '(a,i2.2)') 'HCO_LANDTYPE', N-1
+       If ( MasterProc ) Write(iulog,*) " Getting ", TRIM(name)
+
+       tmpIdx = pbuf_get_index(name, rc)
+       IF ( tmpIdx < 0 ) THEN
+          ! there is an error here and the field was not found
+          IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(name)
+       ELSE
+          CALL pbuf_get_field(pbuf, tmpIdx, pbuf_ik)
+          DO J = 1, nY
+             State_Met(LCHNK)%LandTypeFrac(1,J,N) = pbuf_ik(J,nZ)
+             ! 2-D data is stored in the 1st level of a
+             ! 3-D array due to laziness
+          ENDDO
+       ENDIF
+
+       Write(name, '(a,i2.2)') 'HCO_XLAI', N-1
+       If ( MasterProc ) Write(iulog,*) " Getting ", TRIM(name)
+
+       tmpIdx = pbuf_get_index(name, rc)
+       IF ( tmpIdx < 0 ) THEN
+          ! there is an error here and the field was not found
+          IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(name)
+       ELSE
+          CALL pbuf_get_field(pbuf, tmpIdx, pbuf_ik)
+          DO J = 1, nY
+             State_Met(LCHNK)%XLAI_NATIVE(1,J,N) = pbuf_ik(J,nZ)
+             ! 2-D data is stored in the 1st level of a
+             ! 3-D array due to laziness
+          ENDDO
+       ENDIF
+    ENDDO
 #endif
 
     ! Field      : FRCLND, FRLAND, FROCEAN, FRSEAICE, FRLAKE, FRLANDIC
@@ -2404,9 +2403,9 @@ contains
     ! Note       : We here combine the land friction velocity (fv) with
     !              the ocean friction velocity (ustar)
     DO J = 1, nY
-        State_Met(LCHNK)%USTAR     (1,J) =                       &
-             cam_in%fv(J)    * ( cam_in%landFrac(J))             &
-           + cam_in%uStar(J) * ( 1.0e+0_fp - cam_in%landFrac(J))
+       State_Met(LCHNK)%USTAR     (1,J) =                       &
+            cam_in%fv(J)    * ( cam_in%landFrac(J))             &
+          + cam_in%uStar(J) * ( 1.0e+0_fp - cam_in%landFrac(J))
     ENDDO
 
     ! Field      : Z0
@@ -2448,138 +2447,137 @@ contains
 
     ! Three-dimensional fields on level edges
     DO J = 1, nY
-        DO L = 1, nZ+1
-            ! Field      : PEDGE
-            ! Description: Wet air pressure at (vertical) level edges
-            ! Unit       : hPa
-            ! Dimensions : nX, nY, nZ+1
-            State_Met(LCHNK)%PEDGE   (1,J,L) = State%Pint(J,nZ+2-L)*0.01e+0_fp
+    DO L = 1, nZ+1
+       ! Field      : PEDGE
+       ! Description: Wet air pressure at (vertical) level edges
+       ! Unit       : hPa
+       ! Dimensions : nX, nY, nZ+1
+       State_Met(LCHNK)%PEDGE   (1,J,L) = State%Pint(J,nZ+2-L)*0.01e+0_fp
 
-            ! Field      : CMFMC
-            ! Description: Upward moist convective mass flux
-            ! Unit       : kg/m^2/s
-            ! Dimensions : nX, nY, nZ+1
-            State_Met(LCHNK)%CMFMC   (1,J,L) = 0.0e+0_fp
+       ! Field      : CMFMC
+       ! Description: Upward moist convective mass flux
+       ! Unit       : kg/m^2/s
+       ! Dimensions : nX, nY, nZ+1
+       State_Met(LCHNK)%CMFMC   (1,J,L) = 0.0e+0_fp
 
-            ! Field      : PFICU, PFLCU
-            ! Description: Downward flux of ice/liquid precipitation (convective)
-            ! Unit       : kg/m^2/s
-            ! Dimensions : nX, nY, nZ+1
-            State_Met(LCHNK)%PFICU   (1,J,L) = 0.0e+0_fp
-            State_Met(LCHNK)%PFLCU   (1,J,L) = 0.0e+0_fp
+       ! Field      : PFICU, PFLCU
+       ! Description: Downward flux of ice/liquid precipitation (convective)
+       ! Unit       : kg/m^2/s
+       ! Dimensions : nX, nY, nZ+1
+       State_Met(LCHNK)%PFICU   (1,J,L) = 0.0e+0_fp
+       State_Met(LCHNK)%PFLCU   (1,J,L) = 0.0e+0_fp
 
-            ! Field      : PFILSAN, PFLLSAN
-            ! Description: Downward flux of ice/liquid precipitation (Large-scale & anvil)
-            ! Unit       : kg/m^2/s
-            ! Dimensions : nX, nY, nZ+1
-            State_Met(LCHNK)%PFILSAN (1,J,L) = LsFlxSnw(j,nZ+2-L) ! kg/m2/s
-            State_Met(LCHNK)%PFLLSAN (1,J,L) = MAX(0.0e+0_fp,LsFlxPrc(J,nZ+2-L) - LsFlxSnw(J,nZ+2-L)) ! kg/m2/s
-        ENDDO
+       ! Field      : PFILSAN, PFLLSAN
+       ! Description: Downward flux of ice/liquid precipitation (Large-scale & anvil)
+       ! Unit       : kg/m^2/s
+       ! Dimensions : nX, nY, nZ+1
+       State_Met(LCHNK)%PFILSAN (1,J,L) = LsFlxSnw(j,nZ+2-L) ! kg/m2/s
+       State_Met(LCHNK)%PFLLSAN (1,J,L) = MAX(0.0e+0_fp,LsFlxPrc(J,nZ+2-L) - LsFlxSnw(J,nZ+2-L)) ! kg/m2/s
+    ENDDO
     ENDDO
 
     DO J = 1, nY
-        ! Field      : U, V
-        ! Description: Max cloud top height
-        ! Unit       : level
-        ! Dimensions : nX, nY
-        State_Met(LCHNK)%cldTops(1,J) = nZ + 1 - NINT(cldTop(J))
+       ! Field      : U, V
+       ! Description: Max cloud top height
+       ! Unit       : level
+       ! Dimensions : nX, nY
+       State_Met(LCHNK)%cldTops(1,J) = nZ + 1 - NINT(cldTop(J))
     ENDDO
 
     ! Three-dimensional fields on level centers
     DO J = 1, nY
-        DO L = 1, nZ
+    DO L = 1, nZ
+       ! Field      : U, V
+       ! Description: E/W and N/S component of wind
+       ! Unit       : m/s
+       ! Dimensions : nX, nY, nZ
+       State_Met(LCHNK)%U        (1,J,L) = State%U(J,nZ+1-L)
+       State_Met(LCHNK)%V        (1,J,L) = State%V(J,nZ+1-L)
 
-            ! Field      : U, V
-            ! Description: E/W and N/S component of wind
-            ! Unit       : m/s
-            ! Dimensions : nX, nY, nZ
-            State_Met(LCHNK)%U        (1,J,L) = State%U(J,nZ+1-L)
-            State_Met(LCHNK)%V        (1,J,L) = State%V(J,nZ+1-L)
+       ! Field      : OMEGA
+       ! Description: Updraft velocity
+       ! Unit       : Pa/s
+       ! Dimensions : nX, nY, nZ
+       !State_Met(LCHNK)%OMEGA    (1,J,L) = State%Omega(J,nZ+1-L)
 
-            ! Field      : OMEGA
-            ! Description: Updraft velocity
-            ! Unit       : Pa/s
-            ! Dimensions : nX, nY, nZ
-            !State_Met(LCHNK)%OMEGA    (1,J,L) = State%Omega(J,nZ+1-L)
+       ! Field      : CLDF
+       ! Description: 3-D cloud fraction
+       ! Unit       : -
+       ! Dimensions : nX, nY, nZ
+       State_Met(LCHNK)%CLDF     (1,J,L) = cldFrc(j,nZ+1-l)
 
-            ! Field      : CLDF
-            ! Description: 3-D cloud fraction
-            ! Unit       : -
-            ! Dimensions : nX, nY, nZ
-            State_Met(LCHNK)%CLDF     (1,J,L) = cldFrc(j,nZ+1-l)
+       ! Field      : DTRAIN
+       ! Description: Detrainment flux
+       ! Unit       : kg/m^2/s
+       ! Dimensions : nX, nY, nZ
+       State_Met(LCHNK)%DTRAIN   (1,J,L) = 0.0e+0_fp ! Used in convection
 
-            ! Field      : DTRAIN
-            ! Description: Detrainment flux
-            ! Unit       : kg/m^2/s
-            ! Dimensions : nX, nY, nZ
-            State_Met(LCHNK)%DTRAIN   (1,J,L) = 0.0e+0_fp ! Used in convection
+       ! Field      : DQRCU
+       ! Description: Convective precipitation production rate
+       ! Unit       : kg/kg dry air/s
+       ! Dimensions : nX, nY, nZ
+       State_Met(LCHNK)%DQRCU    (1,J,L) = 0.0e+0_fp ! Used in convection
 
-            ! Field      : DQRCU
-            ! Description: Convective precipitation production rate
-            ! Unit       : kg/kg dry air/s
-            ! Dimensions : nX, nY, nZ
-            State_Met(LCHNK)%DQRCU    (1,J,L) = 0.0e+0_fp ! Used in convection
+       ! Field      : DQRLSAN
+       ! Description: Large-scale precipitation production rate
+       ! Unit       : kg/kg dry air/s
+       ! Dimensions : nX, nY, nZ
+       State_Met(LCHNK)%DQRLSAN  (1,J,L) = PRain(J,nZ+1-L) ! kg/kg/s
 
-            ! Field      : DQRLSAN
-            ! Description: Large-scale precipitation production rate
-            ! Unit       : kg/kg dry air/s
-            ! Dimensions : nX, nY, nZ
-            State_Met(LCHNK)%DQRLSAN  (1,J,L) = PRain(J,nZ+1-L) ! kg/kg/s
+       ! Field      : QI, QL
+       ! Description: Cloud ice/water mixing ratio
+       ! Unit       : kg/kg dry air
+       ! Dimensions : nX, nY, nZ
+       State_Met(LCHNK)%QI       (1,J,L) = MAX(1.0e-05_fp, State%Q(J,nZ+1-L,ixCldIce)) ! kg ice / kg dry air
+       State_Met(LCHNK)%QL       (1,J,L) = MAX(1.0e-05_fp, State%Q(J,nZ+1-L,ixCldLiq)) ! kg water / kg dry air
 
-            ! Field      : QI, QL
-            ! Description: Cloud ice/water mixing ratio
-            ! Unit       : kg/kg dry air
-            ! Dimensions : nX, nY, nZ
-            State_Met(LCHNK)%QI       (1,J,L) = State%Q(J,nZ+1-L,ixCldIce) ! kg ice / kg dry air
-            State_Met(LCHNK)%QL       (1,J,L) = State%Q(J,nZ+1-L,ixCldLiq) ! kg water / kg dry air
+       ! Field      : RH
+       ! Description: Relative humidity
+       ! Unit       : %
+       ! Dimensions : nX, nY, nZ
+       State_Met(LCHNK)%RH       (1,J,L) = RelHum(J,nZ+1-L)  * 100.0e+0_fp
 
-            ! Field      : RH
-            ! Description: Relative humidity
-            ! Unit       : %
-            ! Dimensions : nX, nY, nZ
-            State_Met(LCHNK)%RH       (1,J,L) = RelHum(J,nZ+1-L)  * 100.0e+0_fp
+       ! Field      : TAUCLI, TAUCLW
+       ! Description: Optical depth of ice/H2O clouds
+       ! Unit       : -
+       ! Dimensions : nX, nY, nZ
+       State_Met(LCHNK)%TAUCLI   (1,J,L) = TauCli(J,nZ+1-L)
+       State_Met(LCHNK)%TAUCLW   (1,J,L) = TauClw(J,nZ+1-L)
 
-            ! Field      : TAUCLI, TAUCLW
-            ! Description: Optical depth of ice/H2O clouds
-            ! Unit       : -
-            ! Dimensions : nX, nY, nZ
-            State_Met(LCHNK)%TAUCLI   (1,J,L) = TauCli(J,nZ+1-L)
-            State_Met(LCHNK)%TAUCLW   (1,J,L) = TauClw(J,nZ+1-L)
+       ! Field      : REEVAPCN
+       ! Description: Evaporation of convective precipitation
+       !              (w/r/t dry air)
+       ! Unit       : kg
+       ! Dimensions : nX, nY, nZ
+       State_Met(LCHNK)%REEVAPCN (1,J,L) = 0.0e+0_fp
 
-            ! Field      : REEVAPCN
-            ! Description: Evaporation of convective precipitation
-            !              (w/r/t dry air)
-            ! Unit       : kg
-            ! Dimensions : nX, nY, nZ
-            State_Met(LCHNK)%REEVAPCN (1,J,L) = 0.0e+0_fp
+       ! Field      : REEVAPLS
+       ! Description: Evaporation of large-scale + anvil precipitation
+       !              (w/r/t dry air)
+       ! Unit       : kg
+       ! Dimensions : nX, nY, nZ
+       State_Met(LCHNK)%REEVAPLS (1,J,L) = NEvapr(J,nZ+1-L) ! kg/kg/s
 
-            ! Field      : REEVAPLS
-            ! Description: Evaporation of large-scale + anvil precipitation
-            !              (w/r/t dry air)
-            ! Unit       : kg
-            ! Dimensions : nX, nY, nZ
-            State_Met(LCHNK)%REEVAPLS (1,J,L) = NEvapr(J,nZ+1-L) ! kg/kg/s
+       ! Field      : SPHU1, SPHU2
+       ! Description: Specific humidity at current and next timestep
+       ! Unit       : g H2O/ kg air
+       ! Dimensions : nX, nY, nZ
+       ! Note       : Since we are using online meteorology, we do not have
+       !              access to the data at the next time step
+       !              Compute tendency in g H2O/kg air/s (tmmf, 1/13/20) ?
+       State_Met(LCHNK)%SPHU1    (1,J,L) = qH2O(J,nZ+1-L)    * 1.0e+3_fp    ! g/kg
+       State_Met(LCHNK)%SPHU2    (1,J,L) = qH2O(J,nZ+1-L)    * 1.0e+3_fp    ! g/kg
 
-            ! Field      : SPHU1, SPHU2
-            ! Description: Specific humidity at current and next timestep
-            ! Unit       : g H2O/ kg air
-            ! Dimensions : nX, nY, nZ
-            ! Note       : Since we are using online meteorology, we do not have
-            !              access to the data at the next time step
-            !              Compute tendency in g H2O/kg air/s (tmmf, 1/13/20) ?
-            State_Met(LCHNK)%SPHU1    (1,J,L) = qH2O(J,nZ+1-L)    * 1.0e+3_fp    ! g/kg
-            State_Met(LCHNK)%SPHU2    (1,J,L) = qH2O(J,nZ+1-L)    * 1.0e+3_fp    ! g/kg
-
-            ! Field      : TMPU1, TMPU2
-            ! Description: Temperature at current and next timestep
-            ! Unit       : K
-            ! Dimensions : nX, nY, nZ
-            ! Note       : Since we are using online meteorology, we do not have
-            !              access to the data at the next time step
-            !              Compute tendency in K/s (tmmf, 1/13/20) ?
-            State_Met(LCHNK)%TMPU1    (1,J,L) = State%T(J,nZ+1-L)
-            State_Met(LCHNK)%TMPU2    (1,J,L) = State%T(J,nZ+1-L)
-        ENDDO
+       ! Field      : TMPU1, TMPU2
+       ! Description: Temperature at current and next timestep
+       ! Unit       : K
+       ! Dimensions : nX, nY, nZ
+       ! Note       : Since we are using online meteorology, we do not have
+       !              access to the data at the next time step
+       !              Compute tendency in K/s (tmmf, 1/13/20) ?
+       State_Met(LCHNK)%TMPU1    (1,J,L) = State%T(J,nZ+1-L)
+       State_Met(LCHNK)%TMPU2    (1,J,L) = State%T(J,nZ+1-L)
+    ENDDO
     ENDDO
 
     ! Field      : T
@@ -2637,31 +2635,31 @@ contains
     currSc  = 0
     currMn  = 0
     currHr  = 0
-    DO WHILE (currTOD > 3600)
-        currTOD = currTOD - 3600
-        currHr  = currHr + 1
+    DO WHILE (currTOD >= 3600)
+       currTOD = currTOD - 3600
+       currHr  = currHr + 1
     ENDDO
-    DO WHILE (currTOD > 60)
-        currTOD = currTOD - 60
-        currMn  = currMn + 1
+    DO WHILE (currTOD >= 60)
+       currTOD = currTOD - 60
+       currMn  = currMn + 1
     ENDDO
     currSc  = currTOD
     currHMS = (currHr*1000) + (currMn*100) + (currSc)
 
     IF ( firstDay ) THEN
-        newDay   = .True.
-        newMonth = .True.
-        firstDay = .False.
+       newDay   = .True.
+       newMonth = .True.
+       firstDay = .False.
     ELSE IF ( currHMS < dT ) THEN
-        newDay = .True.
-        IF ( currDy == 1 ) THEN
-            newMonth = .True.
-        ELSE
-            newMonth = .False.
-        ENDIF
+       newDay = .True.
+       IF ( currDy == 1 ) THEN
+          newMonth = .True.
+       ELSE
+          newMonth = .False.
+       ENDIF
     ELSE
-        newDay   = .False.
-        newMonth = .False.
+       newDay   = .False.
+       newMonth = .False.
     ENDIF
 
     ! Pass time values obtained from the ESMF environment to GEOS-Chem
@@ -2818,31 +2816,6 @@ contains
         SCHEM_READY = .True.
     ENDIF
 
-    !==============================================================
-    !       ***** R U N   H E M C O   P H A S E   1 *****
-    !
-    !    Phase 1 updates the HEMCO clock and the content of the
-    !    HEMCO data list. This should be done before writing the
-    !    diagnostics organized in the HEMCO diagnostics structure,
-    !    and before using any of the HEMCO data list fields.
-    !    (ckeller, 4/1/15)
-    !==============================================================
-    ! Run HEMCO Phase 1
-    !CALL Emissions_Run ( Input_Opt  = Input_Opt,         &
-    !                     State_Chm  = State_Chm(LCHNK),  &
-    !                     State_Diag = State_Diag(LCHNK), &
-    !                     State_Grid = State_Grid(LCHNK), &
-    !                     State_Met  = State_Met(LCHNK),  &
-    !                     EmisTime   = EmisTime,          &
-    !                     Phase      = 1,                 &
-    !                     RC         = RC         )
-    !
-    !! Trap potential errors
-    !IF ( RC /= GC_SUCCESS ) THEN
-    !   ErrMsg = 'Error encountered in "Emissions_Run"!'
-    !   CALL Error_Stop( ErrMsg, ThisLoc )
-    !ENDIF
-
     !----------------------------------------------------------
     ! %%% GET SOME NON-EMISSIONS DATA FIELDS VIA HEMCO %%%
     !
@@ -2989,7 +2962,7 @@ contains
     !    and then scale them with the ocean fraction (OCNDDVEL_GEOSCHEM)
     !
     ! A third option would be to let GEOS-Chem compute dry deposition
-    ! velocity (ALLDDVEL_GEOSCHEM), thus overwriting the input from CLM 
+    ! velocity (ALLDDVEL_GEOSCHEM), thus overwriting the input from CLM
     !
     ! drydep_method must be set to DD_XLND.
     !
@@ -3013,7 +2986,6 @@ contains
     !==================================================================
 
     IF ( Input_Opt%LDryD ) THEN
-#if   ( LANDTYPE_CLM )
        ! Compute the Olson landmap fields of State_Met
        ! (e.g. State_Met%IREG, State_Met%ILAND, etc.)
        CALL Compute_Olson_Landmap( Input_Opt  = Input_Opt,         &
@@ -3039,7 +3011,6 @@ contains
           ErrMsg = 'Error encountered in "Compute_Xlai"!'
           CALL Error_Stop( ErrMsg, ThisLoc )
        ENDIF
-#endif
 
 #if   ( ALLDDVEL_GEOSCHEM || OCNDDVEL_GEOSCHEM )
 
@@ -3088,20 +3059,20 @@ contains
           !ENDIF
 
           IF ( map2GC_dryDep(N) > 0 ) THEN
-              ! State_Chm%DryDepVel is in m/s
-              State_Chm(LCHNK)%DryDepVel(1,:nY,map2GC_dryDep(N)) = &
-                 ! This first bit corresponds to the dry deposition
-                 ! velocities over land as computed from CLM and
-                 ! converted to m/s. This is scaled by the fraction
-                 ! of land.
-                   cam_in%depVel(:nY,N) * 1.0e-02_fp &
-                    * MAX(0._fp, 1.0_fp - State_Met(LCHNK)%FROCEAN(1,:nY)) &
-                 ! This second bit corresponds to the dry deposition
-                 ! velocities over ocean and sea ice as computed from
-                 ! GEOS-Chem. This is scaled by the fraction of ocean
-                 ! and sea ice.
-                 + State_Chm(LCHNK)%DryDepVel(1,:nY,map2GC_dryDep(N)) &
-                   * State_Met(LCHNK)%FROCEAN(1,:nY)
+             ! State_Chm%DryDepVel is in m/s
+             State_Chm(LCHNK)%DryDepVel(1,:nY,map2GC_dryDep(N)) = &
+                ! This first bit corresponds to the dry deposition
+                ! velocities over land as computed from CLM and
+                ! converted to m/s. This is scaled by the fraction
+                ! of land.
+                  cam_in%depVel(:nY,N) * 1.0e-02_fp &
+                   * MAX(0._fp, 1.0_fp - State_Met(LCHNK)%FROCEAN(1,:nY)) &
+                ! This second bit corresponds to the dry deposition
+                ! velocities over ocean and sea ice as computed from
+                ! GEOS-Chem. This is scaled by the fraction of ocean
+                ! and sea ice.
+                + State_Chm(LCHNK)%DryDepVel(1,:nY,map2GC_dryDep(N)) &
+                  * State_Met(LCHNK)%FROCEAN(1,:nY)
           ENDIF
        ENDDO
 
@@ -3194,36 +3165,6 @@ contains
 
     ENDIF
 
-    !!===========================================================
-    !!             ***** E M I S S I O N S *****
-    !!
-    !! NOTE: For a complete description of how emissions from
-    !! HEMCO are added into GEOS-Chem (and how they are mixed
-    !! into the boundary layer), please see the wiki page:
-    !!
-    !! http://wiki-geos-chem.org/Distributing_emissions_in_the_PBL
-    !!===========================================================
-    !
-    !! EMISSIONS_RUN will call HEMCO run phase 2. HEMCO run phase
-    !! only calculates emissions. All data has been read to disk
-    !! in phase 1 at the beginning of the time step.
-    !! (ckeller, 4/1/15)
-    !CALL Emissions_Run( Input_Opt   = Input_Opt,         &
-    !                    State_Chm   = State_Chmk(LCHNK), &
-    !                    State_Diag  = State_Diag(LCHNK), &
-    !                    State_Grid  = State_Grid(LCHNK), &
-    !                    State_Met   = State_Met(LCHNK),  &
-    !                    TimeForEmis = TimeForEmis,       &
-    !                    Phase       = 2,                 &
-    !                    RC          = RC                )
-    !
-    !! Trap potential errors
-    !IF ( RC /= GC_SUCCESS ) THEN
-    !   ErrMsg =
-    !     'Error encountered in "Emissions_Run"! after drydep!'
-    !   CALL Error_Stop( ErrMsg, ThisLoc )
-    !ENDIF
-
     !===========================================================
     !      ***** M I X E D   L A Y E R   M I X I N G *****
     !===========================================================
@@ -3285,20 +3226,20 @@ contains
     IF ( Input_Opt%Its_A_FullChem_Sim .OR. &
          Input_Opt%Its_An_Aerosol_Sim ) THEN
 
-        IF ( Input_Opt%LChem ) THEN
-            CALL Compute_Overhead_O3( Input_Opt       = Input_Opt,                 &
-                                      State_Grid      = State_Grid(LCHNK),         &
-                                      State_Chm       = State_Chm(LCHNK),          &
-                                      DAY             = currDy,                    &
-                                      USE_O3_FROM_MET = Input_Opt%Use_O3_From_Met, &
-                                      TO3             = State_Met(LCHNK)%TO3,      &
-                                      RC              = RC )
+       IF ( Input_Opt%LChem ) THEN
+          CALL Compute_Overhead_O3( Input_Opt       = Input_Opt,                 &
+                                    State_Grid      = State_Grid(LCHNK),         &
+                                    State_Chm       = State_Chm(LCHNK),          &
+                                    DAY             = currDy,                    &
+                                    USE_O3_FROM_MET = Input_Opt%Use_O3_From_Met, &
+                                    TO3             = State_Met(LCHNK)%TO3,      &
+                                    RC              = RC                        )
 
-            IF ( RC /= GC_SUCCESS ) THEN
-               ErrMsg = 'Error encountered in "Compute_Overhead_O3"!'
-               CALL Error_Stop( ErrMsg, ThisLoc )
-            ENDIF
-        ENDIF
+          IF ( RC /= GC_SUCCESS ) THEN
+             ErrMsg = 'Error encountered in "Compute_Overhead_O3"!'
+             CALL Error_Stop( ErrMsg, ThisLoc )
+          ENDIF
+       ENDIF
     ENDIF
 
     CALL Do_Chemistry( Input_Opt  = Input_Opt,         &
@@ -3343,444 +3284,79 @@ contains
     ! Store unadvected species data
     SlsData = 0.0e+0_r8
     DO N = 1, nSls
-        M = map2GC_Sls(N)
-        IF ( M > 0 ) THEN
-            DO J = 1, nY
-                DO K = 1, nZ
-                    SlsData(J,nZ+1-K,N) = REAL(State_Chm(LCHNK)%Species(1,J,K,M),r8)
-                ENDDO
-            ENDDO
-        ENDIF
+       M = map2GC_Sls(N)
+       IF ( M > 0 ) THEN
+          DO J = 1, nY
+          DO K = 1, nZ
+             SlsData(J,nZ+1-K,N) = REAL(State_Chm(LCHNK)%Species(1,J,K,M),r8)
+          ENDDO
+          ENDDO
+       ENDIF
     ENDDO
-    CALL Set_Short_Lived_Species( SlsData, LCHNK, nY, Pbuf )
+    CALL set_short_lived_species( SlsData, LCHNK, nY, pbuf )
 
     ! Write diagnostic output
     DO N = 1, pcnst
-        M = map2GC(N)
-        I = map2Idx(N)
-        IF ( M > 0 ) THEN
-            SpcName = tracerNames(I)
-            VMR     = 0.0e+0_r8
-            DO J = 1, nY
-                DO K = 1, nZ
-                    VMR(J,nZ+1-K) = REAL(State_Chm(LCHNK)%Species(1,J,K,M),r8) * MWRatio(I)
-                ENDDO
-            ENDDO
-            CALL OutFld( TRIM(SpcName), VMR(:nY,:), nY, LCHNK )
-        ENDIF
+       M = map2GC(N)
+       I = map2Idx(N)
+       IF ( M > 0 ) THEN
+          SpcName = tracerNames(I)
+          VMR     = 0.0e+0_r8
+          DO J = 1, nY
+          DO K = 1, nZ
+             VMR(J,nZ+1-K) = REAL(State_Chm(LCHNK)%Species(1,J,K,M),r8) * MWRatio(I)
+          ENDDO
+          ENDDO
+          CALL OutFld( TRIM(SpcName), VMR(:nY,:), nY, LCHNK )
+       ENDIF
     ENDDO
 
-#if defined( CLM40 )
-    SpcName = 'lu_soil'
-    CALL OutFld( TRIM(SpcName), cam_in%lwtgcell(:,1), nY, LCHNK )
-    SpcName = 'lu_landice'
-    CALL OutFld( TRIM(SpcName), cam_in%lwtgcell(:,2), nY, LCHNK )
-    SpcName = 'lu_deeplake'
-    CALL OutFld( TRIM(SpcName), cam_in%lwtgcell(:,3), nY, LCHNK )
-    SpcName = 'lu_shallowlake'
-    CALL OutFld( TRIM(SpcName), cam_in%lwtgcell(:,4), nY, LCHNK )
-    SpcName = 'lu_wetland'
-    CALL OutFld( TRIM(SpcName), cam_in%lwtgcell(:,5), nY, LCHNK )
-    SpcName = 'lu_urban'
-    CALL OutFld( TRIM(SpcName), cam_in%lwtgcell(:,6), nY, LCHNK )
-    SpcName = 'lu_icemec'
-    CALL OutFld( TRIM(SpcName), cam_in%lwtgcell(:,7), nY, LCHNK )
-    SpcName = 'lu_crop'
-    CALL OutFld( TRIM(SpcName), cam_in%lwtgcell(:,8), nY, LCHNK )
-#elif defined( CLM45 ) || defined( CLM50 )
-    SpcName = 'lu_soil'
-    CALL OutFld( TRIM(SpcName), cam_in%lwtgcell(:,1), nY, LCHNK )
-    SpcName = 'lu_crop'
-    CALL OutFld( TRIM(SpcName), cam_in%lwtgcell(:,2), nY, LCHNK )
-    SpcName = 'lu_landice'
-    CALL OutFld( TRIM(SpcName), cam_in%lwtgcell(:,4), nY, LCHNK )
-    SpcName = 'lu_deeplake'
-    CALL OutFld( TRIM(SpcName), cam_in%lwtgcell(:,5), nY, LCHNK )
-    SpcName = 'lu_wetland'
-    CALL OutFld( TRIM(SpcName), cam_in%lwtgcell(:,6), nY, LCHNK )
-    SpcName = 'lu_urban'
-    CALL OutFld( TRIM(SpcName), cam_in%lwtgcell(:,7) &
-                              + cam_in%lwtgcell(:,8) &
-                              + cam_in%lwtgcell(:,9), nY, LCHNK )
-#endif
-    SpcName = 'p_notveg'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,1), nY, LCHNK )
-    SpcName = 'p_needle_eg_temp'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,2), nY, LCHNK )
-    SpcName = 'p_needle_eg_bor'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,3), nY, LCHNK )
-    SpcName = 'p_needle_dd_bor'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,4), nY, LCHNK )
-    SpcName = 'p_broad_eg_trop'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,5), nY, LCHNK )
-    SpcName = 'p_broad_eg_temp'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,6), nY, LCHNK )
-    SpcName = 'p_broad_dd_trop'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,7), nY, LCHNK )
-    SpcName = 'p_broad_dd_temp'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,8), nY, LCHNK )
-    SpcName = 'p_broad_dd_bor'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,9), nY, LCHNK )
-    SpcName = 'p_broad_eg_sh'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,10), nY, LCHNK )
-    SpcName = 'p_broad_dd_temp_sh'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,11), nY, LCHNK )
-    SpcName = 'p_broad_dd_bor_sh'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,12), nY, LCHNK )
-    SpcName = 'p_c3_arctic_grass'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,13), nY, LCHNK )
-    SpcName = 'p_c3_narctic_grass'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,14), nY, LCHNK )
-    SpcName = 'p_c4_grass'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,15), nY, LCHNK )
-    SpcName = 'p_c3_crop'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,16), nY, LCHNK )
-    SpcName = 'p_c3_irrigated'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,17), nY, LCHNK )
-#if defined( CLM40 )
-    SpcName = 'p_c3_corn'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,18), nY, LCHNK )
-    SpcName = 'p_spring_cereal'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,19), nY, LCHNK )
-    SpcName = 'p_winter_cereal'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,20), nY, LCHNK )
-    SpcName = 'p_soybean'
-#elif defined( CLM45 ) || defined( CLM50 )
-    SpcName = 'p_temp_corn'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,18), nY, LCHNK )
-    SpcName = 'p_irr_temp_corn'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,19), nY, LCHNK )
-    SpcName = 'p_spring_wheat'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,20), nY, LCHNK )
-    SpcName = 'p_irr_spring_wheat'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,21), nY, LCHNK )
-    SpcName = 'p_winter_wheat'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,22), nY, LCHNK )
-    SpcName = 'p_irr_winter_wheat'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,23), nY, LCHNK )
-    SpcName = 'p_temp_soybean'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,24), nY, LCHNK )
-    SpcName = 'p_irr_temp_soybean'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,25), nY, LCHNK )
-    SpcName = 'p_barley'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,26), nY, LCHNK )
-    SpcName = 'p_irr_barley'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,27), nY, LCHNK )
-    SpcName = 'p_winter_barley'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,28), nY, LCHNK )
-    SpcName = 'p_irr_winter_barley'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,29), nY, LCHNK )
-    SpcName = 'p_rye'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,30), nY, LCHNK )
-    SpcName = 'p_irr_rye'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,31), nY, LCHNK )
-    SpcName = 'p_winter_rye'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,32), nY, LCHNK )
-    SpcName = 'p_irr_winter_rye'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,33), nY, LCHNK )
-    SpcName = 'p_cassava'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,34), nY, LCHNK )
-    SpcName = 'p_irr_cassava'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,35), nY, LCHNK )
-    SpcName = 'p_citrus'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,36), nY, LCHNK )
-    SpcName = 'p_irr_citrus'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,37), nY, LCHNK )
-    SpcName = 'p_cocoa'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,38), nY, LCHNK )
-    SpcName = 'p_irr_cocoa'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,39), nY, LCHNK )
-    SpcName = 'p_coffee'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,40), nY, LCHNK )
-    SpcName = 'p_irr_coffee'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,41), nY, LCHNK )
-    SpcName = 'p_cotton'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,42), nY, LCHNK )
-    SpcName = 'p_irr_cotton'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,43), nY, LCHNK )
-    SpcName = 'p_datepalm'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,44), nY, LCHNK )
-    SpcName = 'p_irr_datepalm'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,45), nY, LCHNK )
-    SpcName = 'p_foddergrass'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,46), nY, LCHNK )
-    SpcName = 'p_irr_foddergrass'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,47), nY, LCHNK )
-    SpcName = 'p_grapes'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,48), nY, LCHNK )
-    SpcName = 'p_irr_grapes'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,49), nY, LCHNK )
-    SpcName = 'p_groundnuts'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,50), nY, LCHNK )
-    SpcName = 'p_irr_groundnuts'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,51), nY, LCHNK )
-    SpcName = 'p_millet'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,52), nY, LCHNK )
-    SpcName = 'p_irr_millet'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,53), nY, LCHNK )
-    SpcName = 'p_oilpalm'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,54), nY, LCHNK )
-    SpcName = 'p_irr_oilpalm'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,55), nY, LCHNK )
-    SpcName = 'p_potatoes'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,56), nY, LCHNK )
-    SpcName = 'p_irr_potatoes'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,57), nY, LCHNK )
-    SpcName = 'p_pulses'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,58), nY, LCHNK )
-    SpcName = 'p_irr_pulses'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,59), nY, LCHNK )
-    SpcName = 'p_rapeseed'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,60), nY, LCHNK )
-    SpcName = 'p_irr_rapessed'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,61), nY, LCHNK )
-    SpcName = 'p_rice'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,62), nY, LCHNK )
-    SpcName = 'p_irr_rice'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,63), nY, LCHNK )
-    SpcName = 'p_sorghum'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,64), nY, LCHNK )
-    SpcName = 'p_irr_sorghum'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,65), nY, LCHNK )
-    SpcName = 'p_sugarbeet'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,66), nY, LCHNK )
-    SpcName = 'p_irr_sugarbeet'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,67), nY, LCHNK )
-    SpcName = 'p_sugarcane'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,68), nY, LCHNK )
-    SpcName = 'p_irr_sugarcane'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,69), nY, LCHNK )
-    SpcName = 'p_sunflower'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,70), nY, LCHNK )
-    SpcName = 'p_irr_sunflower'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,71), nY, LCHNK )
-    SpcName = 'p_miscanthus'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,72), nY, LCHNK )
-    SpcName = 'p_irr_miscanthus'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,73), nY, LCHNK )
-    SpcName = 'p_switchgrass'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,74), nY, LCHNK )
-    SpcName = 'p_irr_switchgrass'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,75), nY, LCHNK )
-    SpcName = 'p_trop_corn'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,76), nY, LCHNK )
-    SpcName = 'p_irr_trop_corn'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,77), nY, LCHNK )
-    SpcName = 'p_trop_soybean'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,78), nY, LCHNK )
-    SpcName = 'p_irr_trop_soybean'
-    CALL OutFld( TRIM(SpcName), cam_in%pwtgcell(:,79), nY, LCHNK )
-#endif
-    SpcName = 'pla_notveg'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,1), nY, LCHNK )
-    SpcName = 'pla_needle_eg_temp'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,2), nY, LCHNK )
-    SpcName = 'pla_needle_eg_bor'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,3), nY, LCHNK )
-    SpcName = 'pla_needle_dd_bor'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,4), nY, LCHNK )
-    SpcName = 'pla_broad_eg_trop'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,5), nY, LCHNK )
-    SpcName = 'pla_broad_eg_temp'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,6), nY, LCHNK )
-    SpcName = 'pla_broad_dd_trop'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,7), nY, LCHNK )
-    SpcName = 'pla_broad_dd_temp'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,8), nY, LCHNK )
-    SpcName = 'pla_broad_dd_bor'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,9), nY, LCHNK )
-    SpcName = 'pla_broad_eg_sh'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,10), nY, LCHNK )
-    SpcName = 'pla_broad_dd_temp_sh'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,11), nY, LCHNK )
-    SpcName = 'pla_broad_dd_bor_sh'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,12), nY, LCHNK )
-    SpcName = 'pla_c3_arctic_grass'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,13), nY, LCHNK )
-    SpcName = 'pla_c3_narctic_grass'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,14), nY, LCHNK )
-    SpcName = 'pla_c4_grass'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,15), nY, LCHNK )
-    SpcName = 'pla_c3_crop'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,16), nY, LCHNK )
-    SpcName = 'pla_c3_irrigated'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,17), nY, LCHNK )
-#if defined( CLM40 )
-    SpcName = 'pla_c3_corn'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,18), nY, LCHNK )
-    SpcName = 'pla_spring_cereal'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,19), nY, LCHNK )
-    SpcName = 'pla_winter_cereal'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,20), nY, LCHNK )
-    SpcName = 'pla_soybean'
-#elif defined( CLM45 ) || defined( CLM50 )
-    SpcName = 'pla_temp_corn'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,18), nY, LCHNK )
-    SpcName = 'pla_irr_temp_corn'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,19), nY, LCHNK )
-    SpcName = 'pla_spring_wheat'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,20), nY, LCHNK )
-    SpcName = 'pla_irr_spring_wheat'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,21), nY, LCHNK )
-    SpcName = 'pla_winter_wheat'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,22), nY, LCHNK )
-    SpcName = 'pla_irr_winter_wheat'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,23), nY, LCHNK )
-    SpcName = 'pla_temp_soybean'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,24), nY, LCHNK )
-    SpcName = 'pla_irr_temp_soybean'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,25), nY, LCHNK )
-    SpcName = 'pla_barley'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,26), nY, LCHNK )
-    SpcName = 'pla_irr_barley'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,27), nY, LCHNK )
-    SpcName = 'pla_winter_barley'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,28), nY, LCHNK )
-    SpcName = 'pla_irr_winter_barley'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,29), nY, LCHNK )
-    SpcName = 'pla_rye'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,30), nY, LCHNK )
-    SpcName = 'pla_irr_rye'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,31), nY, LCHNK )
-    SpcName = 'pla_winter_rye'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,32), nY, LCHNK )
-    SpcName = 'pla_irr_winter_rye'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,33), nY, LCHNK )
-    SpcName = 'pla_cassava'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,34), nY, LCHNK )
-    SpcName = 'pla_irr_cassava'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,35), nY, LCHNK )
-    SpcName = 'pla_citrus'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,36), nY, LCHNK )
-    SpcName = 'pla_irr_citrus'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,37), nY, LCHNK )
-    SpcName = 'pla_cocoa'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,38), nY, LCHNK )
-    SpcName = 'pla_irr_cocoa'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,39), nY, LCHNK )
-    SpcName = 'pla_coffee'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,40), nY, LCHNK )
-    SpcName = 'pla_irr_coffee'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,41), nY, LCHNK )
-    SpcName = 'pla_cotton'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,42), nY, LCHNK )
-    SpcName = 'pla_irr_cotton'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,43), nY, LCHNK )
-    SpcName = 'pla_datepalm'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,44), nY, LCHNK )
-    SpcName = 'pla_irr_datepalm'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,45), nY, LCHNK )
-    SpcName = 'pla_foddergrass'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,46), nY, LCHNK )
-    SpcName = 'pla_irr_foddergrass'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,47), nY, LCHNK )
-    SpcName = 'pla_grapes'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,48), nY, LCHNK )
-    SpcName = 'pla_irr_grapes'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,49), nY, LCHNK )
-    SpcName = 'pla_groundnuts'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,50), nY, LCHNK )
-    SpcName = 'pla_irr_groundnuts'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,51), nY, LCHNK )
-    SpcName = 'pla_millet'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,52), nY, LCHNK )
-    SpcName = 'pla_irr_millet'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,53), nY, LCHNK )
-    SpcName = 'pla_oilpalm'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,54), nY, LCHNK )
-    SpcName = 'pla_irr_oilpalm'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,55), nY, LCHNK )
-    SpcName = 'pla_potatoes'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,56), nY, LCHNK )
-    SpcName = 'pla_irr_potatoes'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,57), nY, LCHNK )
-    SpcName = 'pla_pulses'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,58), nY, LCHNK )
-    SpcName = 'pla_irr_pulses'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,59), nY, LCHNK )
-    SpcName = 'pla_rapeseed'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,60), nY, LCHNK )
-    SpcName = 'pla_irr_rapessed'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,61), nY, LCHNK )
-    SpcName = 'pla_rice'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,62), nY, LCHNK )
-    SpcName = 'pla_irr_rice'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,63), nY, LCHNK )
-    SpcName = 'pla_sorghum'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,64), nY, LCHNK )
-    SpcName = 'pla_irr_sorghum'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,65), nY, LCHNK )
-    SpcName = 'pla_sugarbeet'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,66), nY, LCHNK )
-    SpcName = 'pla_irr_sugarbeet'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,67), nY, LCHNK )
-    SpcName = 'pla_sugarcane'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,68), nY, LCHNK )
-    SpcName = 'pla_irr_sugarcane'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,69), nY, LCHNK )
-    SpcName = 'pla_sunflower'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,70), nY, LCHNK )
-    SpcName = 'pla_irr_sunflower'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,71), nY, LCHNK )
-    SpcName = 'pla_miscanthus'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,72), nY, LCHNK )
-    SpcName = 'pla_irr_miscanthus'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,73), nY, LCHNK )
-    SpcName = 'pla_switchgrass'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,74), nY, LCHNK )
-    SpcName = 'pla_irr_switchgrass'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,75), nY, LCHNK )
-    SpcName = 'pla_trop_corn'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,76), nY, LCHNK )
-    SpcName = 'pla_irr_trop_corn'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,77), nY, LCHNK )
-    SpcName = 'pla_trop_soybean'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,78), nY, LCHNK )
-    SpcName = 'pla_irr_trop_soybean'
-    CALL OutFld( TRIM(SpcName), cam_in%lai(:,79), nY, LCHNK )
-#endif
-
     DO N = 1, nSls
-        SpcName = slsNames(n)
-        VMR = 0.0e+0_r8
-        M = map2GC_Sls(n)
-        IF ( M > 0 ) THEN
-            DO J = 1, nY
-                DO K = 1, nZ
-                    VMR(J,nZ+1-K) = REAL(State_Chm(LCHNK)%Species(1,J,K,M),r8) * SLSMWratio(N)
-                ENDDO
-            ENDDO
-            CALL OutFld( TRIM(SpcName), VMR(:nY,:), nY, LCHNK )
-        ENDIF
+       SpcName = slsNames(n)
+       VMR = 0.0e+0_r8
+       M = map2GC_Sls(n)
+       IF ( M > 0 ) THEN
+          DO J = 1, nY
+          DO K = 1, nZ
+             VMR(J,nZ+1-K) = REAL(State_Chm(LCHNK)%Species(1,J,K,M),r8) * SLSMWratio(N)
+          ENDDO
+          ENDDO
+          CALL OutFld( TRIM(SpcName), VMR(:nY,:), nY, LCHNK )
+       ENDIF
     ENDDO
 
     ! NOTE: Re-flip all the arrays vertically or suffer the consequences
     ! ptend%q dimensions: [column, ?, species]
-    Ptend%Q(:,:,:) = 0.0e+0_r8
+    ptend%q(:,:,:) = 0.0e+0_r8
     MMR_End = 0.0e+0_r8
     DO N = 1, pcnst
-        M = map2GC(N)
-        IF (M > 0) THEN
-            I = 1
-            DO J = 1, nY
-                DO K = 1, nZ
-                    ! CURRENTLY KG/KG
-                    MMR_End (J,K,M) = REAL(State_Chm(LCHNK)%Species(1,J,K,M),r8)
-                    MMR_TEnd(J,K,M) = MMR_End(J,K,M) - MMR_Beg(J,K,M)
-                    ptend%q(J,nZ+1-K,N) = (MMR_End(J,K,M)-MMR_Beg(J,K,M))/dT
-                ENDDO
-            ENDDO
-        ENDIF
+       M = map2GC(N)
+       IF ( M > 0 ) THEN
+          DO J = 1, nY
+          DO K = 1, nZ
+             MMR_End (J,K,M) = REAL(State_Chm(LCHNK)%Species(1,J,K,M),r8)
+             MMR_TEnd(J,K,M) = MMR_End(J,K,M) - MMR_Beg(J,K,M)
+             ptend%q(J,nZ+1-K,N) = (MMR_End(J,K,M)-MMR_Beg(J,K,M))/dT
+          ENDDO
+          ENDDO
+       ENDIF
     ENDDO
 
-    IF (PRESENT(fh2o)) THEN
-        fh2o(:nY) = 0.0e+0_r8
-        !DO K = 1, nZ
-        !   fh2o(:nY) = fh2o(:nY) + Ptend%Q(:nY,K,iH2O)*State%Pdel(:nY,K)/Gravit
-        !ENDDO
+    ! Debug statements
+    ! Ozone tendencies
+    IF ( rootChunk ) THEN
+       Write(iulog,*) " MMR_Beg = ", MMR_Beg(1,:,2)
+       Write(iulog,*) " MMR_End = ", MMR_End(1,:,2)
     ENDIF
 
-    IF (rootChunk) WRITE(iulog,'(a)') ' GEOS-Chem chemistry step completed'
+    IF (PRESENT(fh2o)) THEN
+       fh2o(:nY) = 0.0e+0_r8
+       !DO K = 1, nZ
+       !   fh2o(:nY) = fh2o(:nY) + Ptend%Q(:nY,K,iH2O)*State%Pdel(:nY,K)/Gravit
+       !ENDDO
+    ENDIF
+
+    IF (rootChunk) WRITE(iulog,*) ' GEOS-Chem Chemistry step ', iStep, ' completed'
 
   end subroutine chem_timestep_tend
 
@@ -3796,24 +3372,24 @@ contains
     ! Will need a simple mapping structure as well as the CAM tracer registration
     ! routines.
 
-    INTEGER  :: ILEV, NLEV, I
+    INTEGER  :: iLev, NLEV, I
     REAL(r8) :: QTemp, Min_MMR
 
-    NLEV = SIZE(Q, 2)
+    NLEV = SIZE(q, 2)
     ! Retrieve a "background value" for this from the database
     Min_MMR = 1.0e-38_r8
     DO I = 1, nTracers
-        IF (TRIM(tracerNames(I)).eq.TRIM(name)) THEN
-            Min_MMR = ref_MMR(i)
-            EXIT
-        ENDIF
+       IF (TRIM(tracerNames(I)).eq.TRIM(name)) THEN
+          Min_MMR = ref_MMR(I)
+          EXIT
+       ENDIF
     ENDDO
 
-    DO ILEV = 1, NLEV
-        WHERE(MASK)
-            ! Set to the minimum mixing ratio
-            Q(:,ILEV) = Min_MMR
-        END WHERE
+    DO iLev = 1, NLEV
+       WHERE(mask)
+          ! Set to the minimum mixing ratio
+          q(:,iLev) = Min_MMR
+       END WHERE
     ENDDO
 
   end subroutine chem_init_cnst
@@ -3901,10 +3477,10 @@ contains
 
     ! Loop over each chunk and cleanup the variables
     DO I = BEGCHUNK, ENDCHUNK
-        CALL Cleanup_State_Chm ( State_Chm(I),  RC )
-        CALL Cleanup_State_Diag( State_Diag(I), RC )
-        CALL Cleanup_State_Grid( State_Grid(I), RC )
-        CALL Cleanup_State_Met ( State_Met(I),  RC )
+       CALL Cleanup_State_Chm ( State_Chm(I),  RC )
+       CALL Cleanup_State_Diag( State_Diag(I), RC )
+       CALL Cleanup_State_Grid( State_Grid(I), RC )
+       CALL Cleanup_State_Met ( State_Met(I),  RC )
     ENDDO
     CALL Cleanup_Error
 
@@ -3968,7 +3544,12 @@ contains
 !================================================================================
   subroutine chem_emissions( state, cam_in )
     use camsrfexch,       only: cam_in_t
+    use physics_buffer, only : pbuf_get_chunk, pbuf_get_field, pbuf_get_index
+    use ppgrid,         only : pver ! for vertical
 
+    use constituents,      only: cnst_name
+    use mo_chem_utls,        only : get_spc_ndx
+    use chem_mods, only : tracerNames, nTracers
     use PhysConstants,    only: PI, PI_180
 
     ! Arguments:
@@ -3976,16 +3557,16 @@ contains
     TYPE(physics_state),    INTENT(IN)    :: state   ! Physics state variables
     TYPE(cam_in_t),         INTENT(INOUT) :: cam_in  ! import state
 
-    REAL(r8) :: Rlats(State%NCOL)
-    REAL(r8) :: Rlons(State%NCOL)
-    REAL(r8) :: Dlat, Dlon
-    REAL(r8) :: SFlx(State%NCOL,nTracers)
-
     INTEGER :: M, N, I
     INTEGER :: LCHNK, NCOL
     LOGICAL :: rootChunk
 
-    LOGICAL, SAVE :: FIRST = .TRUE.
+    REAL(r8) :: sflx(State%NCOL,nTracers)
+    type(physics_buffer_desc), pointer :: pbuf_chnk(:) ! slice of pbuf in chnk
+    real(r8), pointer     :: pbuf_ik(:,:)          ! ptr to pbuf data (/pcols,pver/)
+    integer               :: tmpIdx                ! pbuf field id
+    character(len=255)    :: fldname_ns            ! field name HCO_NH3
+    integer               :: RC                    ! return code
 
     ! LCHNK: which chunk we have on this process
     LCHNK = State%LCHNK
@@ -3993,28 +3574,45 @@ contains
     NCOL  = State%NCOL
     rootChunk = ( MasterProc.and.(LCHNK.EQ.BEGCHUNK) )
 
-    SFlx(:,:) = 0.0e+0_r8
-    Rlats(1:ncol) = State%Lat(1:NCOL)
-    Rlons(1:ncol) = State%Lon(1:NCOL)
+    sflx(:,:) = 0.0e+0_r8
 
-    IF (FIRST) THEN
-    ENDIF
+    DO N = 1, nTracers
 
-    !TMMF
-    ! Test: emit 1e-10 kg/m2/s of NO in a square around Europe
-    DO M = 1, PCNST
-        N = map2GC(M)
-        IF ((N>0).and.(N==iNO)) THEN
-            SFlx(:,N) = 0.0e+0_r8
-            DO I = 1, NCOL
-                Dlat = Rlats(i) / REAL(PI_180,r8)
-                Dlon = Rlons(i) / REAL(PI_180,r8)
-                IF ((Dlat > 50.0e+0_r8).and.(Dlat < 60.0e+0_r8).and.(Dlon > -15.0e+0_r8).and.(Dlon < 5.0e+0_r8)) THEN
-                    SFlx(I,N) = SFlx(I,N) + 1.0e-10_r8
-                ENDIF
-            ENDDO
-            cam_in%CFlx(:NCOL,M) = cam_in%CFlx(:NCOL,M) + SFlx(:NCOL,N)
-        ENDIF
+       fldname_ns = 'HCO_' // TRIM(tracerNames(N))
+       tmpIdx = pbuf_get_index(fldname_ns, RC)
+       IF ( tmpIdx < 0 ) THEN
+          IF ( rootChunk ) Write(iulog,*) "chem_emissions hemco: Field not found ", TRIM(fldname_ns)
+       ELSE
+          ! This is already in chunk, retrieve it
+          pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
+          CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_ik)
+
+          IF ( .NOT. ASSOCIATED(pbuf_ik) ) THEN ! Sanity check
+             CALL ENDRUN("chem_emissions: FATAL - tmpIdx > 0 but pbuf_ik not associated")
+          ENDIF
+
+          ! For each column retrieve data from pbuf_ik(I,K)
+          sflx(1:ncol,N) = pbuf_ik(1:ncol,pver) ! Only surface emissions for now,
+
+          !TMMF, Replace this in chem_init
+          M = -1
+          DO I = 1, nTracers
+             IF( TRIM( to_upper( TRIM(tracerNames(N)) ) ) == TRIM( to_upper( cnst_name(I)) ) ) THEN
+                M = I
+                EXIT
+             ENDIF
+          ENDDO
+
+          IF ( M <= 0 ) CYCLE
+
+          cam_in%cflx(1:ncol,M) = sflx(1:ncol,N)
+          IF ( rootChunk .and. ( MAXVAL(sflx(1:ncol,N)) > 0.0e+0_fp ) ) THEN
+             Write(iulog,*) "chem_emissions: debug added emiss for ", &
+                TRIM(cnst_name(M)), MAXVAL(sflx(1:ncol,N)), " from ", TRIM(fldname_ns)
+             Write(iulog,*) "chem_emissions: Total emission flux for ", &
+                TRIM(cnst_name(M)), " is: ", MAXVAL(cam_in%cflx(1:ncol,M))
+          ENDIF
+       ENDIF
     ENDDO
 
   end subroutine chem_emissions

@@ -2,7 +2,9 @@
 module mo_chem_utls
 
   private
-  public :: get_spc_ndx!, get_het_ndx, get_extfrc_ndx, get_rxt_ndx, get_inv_ndx
+  public :: get_spc_ndx
+  public :: get_inv_ndx
+  !, get_het_ndx, get_extfrc_ndx, get_rxt_ndx
 
   save
 
@@ -13,7 +15,8 @@ contains
     !     ... return overall species index associated with spc_name
     !-----------------------------------------------------------------------
 
-    use chem_mods,     only : nTracers, tracnam => tracerNames
+    !use chem_mods,     only : nTracers
+    use mo_tracname,   only : tracnam => solsym
     use string_utils,  only : to_upper
 
     implicit none
@@ -29,8 +32,8 @@ contains
     integer :: m
 
     get_spc_ndx = -1
-    do m = 1, nTracers
-       if( trim( spc_name ) == trim( to_upper( tracnam(m) ) ) ) then
+    do m = 1, 306
+       if( trim( to_upper( spc_name ) ) == trim( to_upper( tracnam(m) ) ) ) then
           get_spc_ndx = m
           exit
        end if
@@ -38,34 +41,34 @@ contains
 
   end function get_spc_ndx
 
-!  integer function get_inv_ndx( invariant )
-!    !-----------------------------------------------------------------------
-!    !     ... return overall external frcing index associated with spc_name
-!    !-----------------------------------------------------------------------
-!
-!    use chem_mods,  only : nfs, inv_lst
-!
-!    implicit none
-!
-!    !-----------------------------------------------------------------------
-!    !     ... dummy arguments
-!    !-----------------------------------------------------------------------
-!    character(len=*), intent(in) :: invariant
-!
-!    !-----------------------------------------------------------------------
-!    !     ... local variables
-!    !-----------------------------------------------------------------------
-!    integer :: m
-!
-!    get_inv_ndx = -1
-!    do m = 1,nfs
-!       if( trim( invariant ) == trim( inv_lst(m) ) ) then
-!          get_inv_ndx = m
-!          exit
-!       end if
-!    end do
-!
-!  end function get_inv_ndx
+  integer function get_inv_ndx( invariant )
+    !-----------------------------------------------------------------------
+    !     ... return overall external frcing index associated with spc_name
+    !-----------------------------------------------------------------------
+
+    use chem_mods,  only : nfs, inv_lst
+
+    implicit none
+
+    !-----------------------------------------------------------------------
+    !     ... dummy arguments
+    !-----------------------------------------------------------------------
+    character(len=*), intent(in) :: invariant
+
+    !-----------------------------------------------------------------------
+    !     ... local variables
+    !-----------------------------------------------------------------------
+    integer :: m
+
+    get_inv_ndx = -1
+    do m = 1,nfs
+       if( trim( invariant ) == trim( inv_lst(m) ) ) then
+          get_inv_ndx = m
+          exit
+       end if
+    end do
+
+  end function get_inv_ndx
 !
 !  integer function get_het_ndx( het_name )
 !    !-----------------------------------------------------------------------
