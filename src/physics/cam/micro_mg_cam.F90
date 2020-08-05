@@ -148,7 +148,7 @@ real(r8) :: micro_mg_ngnst = 0.0005e6_r8 ! constant graupel/hail num concentrati
 logical, public ::   micro_mg_do_graupel
 logical, public ::   micro_mg_do_hail
 
-!++ag switches for IFS like behavior
+! switches for IFS like behavior
 logical  ::  micro_mg_evap_sed_off = .false.  ! Turn off evaporation/sublimation based on cloud fraction for sedimenting condensate
 logical  ::  micro_mg_icenuc_rh_off  = .false.
 logical  ::  micro_mg_icenuc_use_meyers = .false.
@@ -312,15 +312,11 @@ subroutine micro_mg_cam_readnl(nlfile)
        micro_mg_berg_eff_factor, micro_do_sb_physics, micro_mg_adjust_cpt, &
        micro_mg_do_hail, micro_mg_do_graupel,micro_mg_ngcons, micro_mg_ngnst,&
        micro_mg_nccons, micro_mg_nicons, micro_mg_ncnst, micro_mg_ninst,&
-!++ag
        micro_mg_nrcons, micro_mg_nscons, micro_mg_nrnst, micro_mg_nsnst,&
-!--ag       
        micro_do_massless_droplet_destroyer,&
-!++ag
        micro_mg_evap_sed_off, micro_mg_icenuc_rh_off, micro_mg_icenuc_use_meyers, &
        micro_mg_evap_scl_ifs, micro_mg_evap_rhthrsh_ifs, &
        micro_mg_rainfreeze_ifs, micro_mg_ifs_sed, micro_mg_rain_fall_corr
-!--ag
 
 
   !-----------------------------------------------------------------------------
@@ -511,7 +507,6 @@ subroutine micro_mg_cam_readnl(nlfile)
      write(iulog,*) '  micro_mg_do_hail            = ', micro_mg_do_hail
      write(iulog,*) '  micro_mg_do_graupel         = ', micro_mg_do_graupel
      write(iulog,*) '  micro_do_massless_droplet_destroyer = ', micro_do_massless_droplet_destroyer
-!++ag
      write(iulog,*) '  micro_mg_nrcons             = ', micro_mg_nrcons
      write(iulog,*) '  micro_mg_nscons             = ', micro_mg_nscons
      write(iulog,*) '  micro_mg_nrnst              = ', micro_mg_nrnst
@@ -524,7 +519,6 @@ subroutine micro_mg_cam_readnl(nlfile)
      write(iulog,*) '  micro_mg_rainfreeze_ifs     = ', micro_mg_rainfreeze_ifs
      write(iulog,*) '  micro_mg_ifs_sed            = ', micro_mg_ifs_sed
      write(iulog,*) '  micro_mg_rain_fall_corr     = ', micro_mg_rain_fall_corr
-!--ag
   end if
 
 contains
@@ -904,16 +898,12 @@ subroutine micro_mg_cam_init(pbuf2d)
            microp_uniform, do_cldice, use_hetfrz_classnuc, &
            micro_mg_precip_frac_method, micro_mg_berg_eff_factor, &
            allow_sed_supersat, micro_do_sb_physics, &
-!++ag
            micro_mg_evap_sed_off, micro_mg_icenuc_rh_off, micro_mg_icenuc_use_meyers, &
            micro_mg_evap_scl_ifs, micro_mg_evap_rhthrsh_ifs, &
            micro_mg_rainfreeze_ifs,  micro_mg_ifs_sed, micro_mg_rain_fall_corr,&
-!--ag
            micro_mg_nccons, micro_mg_nicons, micro_mg_ncnst, &
            micro_mg_ninst, micro_mg_ngcons, micro_mg_ngnst, &
-!++ag
            micro_mg_nrcons,  micro_mg_nrnst, micro_mg_nscons, micro_mg_nsnst, errstring)
-!--ag
    end select
 
    call handle_errmsg(errstring, subname="micro_mg_init")
@@ -1523,11 +1513,9 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8), target :: qireso(state%psetcols,pver)
    real(r8), target :: mnuccro(state%psetcols,pver)
    real(r8), target :: mnuccrio(state%psetcols,pver)
-   !++ag
    real(r8), target :: mnudepo(state%psetcols,pver)
    real(r8), target :: meltstot(state%psetcols,pver)
    real(r8), target :: meltgtot(state%psetcols,pver)
-   !--ag
    real(r8), target :: pracso (state%psetcols,pver)
    real(r8), target :: meltsdt(state%psetcols,pver)
    real(r8), target :: frzrdt (state%psetcols,pver)
@@ -1683,11 +1671,9 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8), target :: packed_qires(mgncol,nlev)
    real(r8), target :: packed_mnuccr(mgncol,nlev)
    real(r8), target :: packed_mnuccri(mgncol,nlev)
-   !++ag
    real(r8), target :: packed_mnudeptot(mgncol,nlev)
    real(r8), target :: packed_meltgtot(mgncol,nlev)
    real(r8), target :: packed_meltstot(mgncol,nlev)
-   !--ag
    real(r8), target :: packed_pracs(mgncol,nlev)
    real(r8), target :: packed_meltsdt(mgncol,nlev)
    real(r8), target :: packed_frzrdt(mgncol,nlev)
