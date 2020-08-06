@@ -2416,7 +2416,7 @@ contains
     ! Description: Surface iodide concentration
     ! Unit       : nM
     ! Dimensions : nX, nY
-    fldname_ns = 'HCO_surf_iodide'
+    fldname_ns = 'HCO_iodide'
     tmpIdx = pbuf_get_index(fldname_ns, RC)
     IF ( tmpIdx < 0 ) THEN
        IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(fldname_ns)
@@ -2432,7 +2432,7 @@ contains
     ! Unit       : PSU
     ! Dimensions : nX, nY
     ! Note       : Possibly get ocean salinity from POP?
-    fldname_ns = 'HCO_surf_salinity'
+    fldname_ns = 'HCO_salinity'
     tmpIdx = pbuf_get_index(fldname_ns, RC)
     IF ( tmpIdx < 0 ) THEN
        IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(fldname_ns)
