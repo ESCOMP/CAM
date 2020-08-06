@@ -129,8 +129,8 @@ module chemistry
 #define OCNDDVEL_MOZART   0
 
 ! The following flags are only used if ALLDDVEL_GEOSCHEM is on
-#define LANDTYPE_HEMCO    0
-#define LANDTYPE_CLM      1
+#define LANDTYPE_HEMCO    1
+#define LANDTYPE_CLM      0
 
   ! Filenames to compute dry deposition velocities similarly to MOZART
   character(len=shr_kind_cl)  :: clim_soilw_file = 'clim_soilw_file'
@@ -1668,16 +1668,24 @@ contains
     ! Add all species as output fields if desired
     DO I = 1, nTracers
        SpcName = TRIM(tracerNames(I))
-       CALL AddFld( TRIM(SpcName), (/ 'lev' /), 'A', 'mol/mol', TRIM(tracerLongNames(I))//' concentration')
+       CALL AddFld( TRIM(SpcName), (/ 'lev' /), 'A', 'mol/mol', &
+          TRIM(tracerLongNames(I))//' concentration')
        IF (TRIM(SpcName) == 'O3') THEN
           CALL Add_Default ( TRIM(SpcName), 1, ' ')
        ENDIF
     ENDDO
 
-    DO I =1, nSls
+    DO I = 1, nSls
        SpcName = TRIM(slsNames(I))
-       CALL AddFld( TRIM(SpcName), (/ 'lev' /), 'A', 'mol/mol', TRIM(slsLongNames(I))//' concentration')
+       CALL AddFld( TRIM(SpcName), (/ 'lev' /), 'A', 'mol/mol', &
+          TRIM(slsLongNames(I))//' concentration')
        !CALL Add_Default(TRIM(SpcName), 1, '')
+    ENDDO
+
+    DO I = 1, State_Chm(BEGCHUNK)%nDryDep
+       SpcName = 'DDVel_'//TRIM(depName(I))
+       CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'm/s', &
+         TRIM(SpcName)//' dry deposition velocity')
     ENDDO
 
     ! Initialize emissions interface (this will eventually handle HEMCO)
@@ -1920,12 +1928,6 @@ contains
     INTEGER, SAVE      :: iStep = 0
     LOGICAL            :: rootChunk
     INTEGER            :: RC
-
-#if ( LANDTYPE_HEMCO )
-    INTEGER            :: tmpIdx
-    character(len=255) :: name
-    real(r8), pointer  :: pbuf_ik(:,:)     ! Pointer to pbuf data  (/pcols,pver/)
-#endif
 
     ! LCHNK: which chunk we have on this process
     LCHNK = State%LCHNK
@@ -2227,13 +2229,11 @@ contains
 #endif
 #elif ( LANDTYPE_HEMCO )
     DO N = 1, NSURFTYPE
-       Write(name, '(a,i2.2)') 'HCO_LANDTYPE', N-1
-       If ( MasterProc ) Write(iulog,*) " Getting ", TRIM(name)
-
-       tmpIdx = pbuf_get_index(name, rc)
+       Write(fldname_ns, '(a,i2.2)') 'HCO_LANDTYPE', N-1
+       tmpIdx = pbuf_get_index(fldname_ns, rc)
        IF ( tmpIdx < 0 ) THEN
           ! there is an error here and the field was not found
-          IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(name)
+          IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(fldname_ns)
        ELSE
           CALL pbuf_get_field(pbuf, tmpIdx, pbuf_ik)
           DO J = 1, nY
@@ -2243,13 +2243,11 @@ contains
           ENDDO
        ENDIF
 
-       Write(name, '(a,i2.2)') 'HCO_XLAI', N-1
-       If ( MasterProc ) Write(iulog,*) " Getting ", TRIM(name)
-
-       tmpIdx = pbuf_get_index(name, rc)
+       Write(fldname_ns, '(a,i2.2)') 'HCO_XLAI', N-1
+       tmpIdx = pbuf_get_index(fldname_ns, rc)
        IF ( tmpIdx < 0 ) THEN
           ! there is an error here and the field was not found
-          IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(name)
+          IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(fldname_ns)
        ELSE
           CALL pbuf_get_field(pbuf, tmpIdx, pbuf_ik)
           DO J = 1, nY
@@ -3321,6 +3319,11 @@ contains
           ENDDO
           CALL OutFld( TRIM(SpcName), VMR(:nY,:), nY, LCHNK )
        ENDIF
+    ENDDO
+
+    DO N = 1, State_Chm(BEGCHUNK)%nDryDep
+       SpcName = 'DDVel_'//TRIM(depName(N))
+       CALL OutFld( TRIM(SpcName), State_Chm(LCHNK)%DryDepVel(1,:nY,N), nY, LCHNK )
     ENDDO
 
     ! NOTE: Re-flip all the arrays vertically or suffer the consequences
