@@ -155,15 +155,13 @@ module chemistry
 contains
 !================================================================================================
 
-  LOGICAL function chem_is (name)
+  logical function chem_is (name)
 
-    CHARACTER(LEN=*), INTENT(IN) :: name
+    use mo_chem_utls, only : utls_chem_is
 
-    chem_is = .false.
-    IF (( to_upper(name) == 'GEOSCHEM'  ) .OR. &
-        ( to_upper(name) == 'GEOS-CHEM' )) THEN
-       chem_is = .true.
-    ENDIF
+    character(len=*), intent(in) :: name
+
+    chem_is = utls_chem_is(name)
 
   end function chem_is
 
@@ -3607,9 +3605,9 @@ contains
 
           cam_in%cflx(1:ncol,M) = sflx(1:ncol,N)
           IF ( rootChunk .and. ( MAXVAL(sflx(1:ncol,N)) > 0.0e+0_fp ) ) THEN
-             Write(iulog,*) "chem_emissions: debug added emiss for ", &
+             Write(iulog,'(a,a,E16.4,a,a)') "chem_emissions: debug added emiss for ", &
                 TRIM(cnst_name(M)), MAXVAL(sflx(1:ncol,N)), " from ", TRIM(fldname_ns)
-             Write(iulog,*) "chem_emissions: Total emission flux for ", &
+             Write(iulog,'(a,a,a,E16.4)') "chem_emissions: Total emission flux for ", &
                 TRIM(cnst_name(M)), " is: ", MAXVAL(cam_in%cflx(1:ncol,M))
           ENDIF
        ENDIF

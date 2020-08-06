@@ -4,6 +4,7 @@ module mo_chem_utls
   private
   public :: get_spc_ndx
   public :: get_inv_ndx
+  public :: utls_chem_is
   !, get_het_ndx, get_extfrc_ndx, get_rxt_ndx
 
   save
@@ -69,6 +70,18 @@ contains
     end do
 
   end function get_inv_ndx
+
+  logical function utls_chem_is (name) result(chem_is)
+    use string_utils, only : to_lower
+
+    character(len=*), intent(in) :: name
+    chem_is = .false.
+    if (( to_lower(name) == 'geoschem'  ) .or. &
+        ( to_lower(name) == 'geos-chem' )) then
+       chem_is = .true.
+    endif
+
+  end function utls_chem_is
 !
 !  integer function get_het_ndx( het_name )
 !    !-----------------------------------------------------------------------
