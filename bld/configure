@@ -136,7 +136,7 @@ OPTIONS
      -cppdefs <string>  A string of user specified CPP defines.  Appended to
                         Makefile defaults.  E.g. -cppdefs '-DVAR1 -DVAR2'
      -cpl               Coupling framework [mct | nuopc].  Default: mct.
-     -dyn <name>        Dynamical core option: [eul | fv | se].  Default: fv.
+     -dyn <name>        Dynamical core option: [eul | fv | se | fv3].  Default: fv.
      -edit_chem_mech    Invokes CAMCHEM_EDITOR to allow the user to edit the chemistry mechanism file
      -hgrid <name>      Specify horizontal grid.  Use nlatxnlon for spectral grids;
                         dlatxdlon for fv grids (dlat and dlon are the grid cell size
@@ -215,6 +215,7 @@ OPTIONS
      -debug             Switch to turn on building CAM with debugging compiler options.
      -cosp_libdir <dir> Directory containing COSP library.
      -esmf_libdir <dir> Directory containing ESMF library and esmf.mk file.
+     -fv3core_libdir <dir>  Directory containing FV3 library.
      -fc <name>         User specified Fortran compiler.  Overrides Makefile default.
      -fc_type <name>    Type of Fortran compiler [pgi | intel | gnu | pathscale
                         | ibm | nag].  This argument is used in conjunction
@@ -322,6 +323,7 @@ GetOptions(
     "fc_type=s"                 => \$opts{'fc_type'},
     "fflags=s"                  => \$opts{'fflags'},
     "fopt=s"                    => \$opts{'fopt'},
+    "fv3core_libdir=s"          => \$opts{'fv3core_libdir'},
     "gmake=s"                   => \$opts{'gmake'},
     "h|help"                    => \$opts{'help'},
     "hgrid=s"                   => \$opts{'hgrid'},
@@ -724,6 +726,10 @@ if (defined $opts{'dyn'}) {
 }
 my $dyn_pkg = $cfg_ref->get('dyn');
 
+if ($dyn_pkg eq 'fv3' and $spmd eq 'OFF') {
+    die "configure: FATAL: the fv3 dycore requires at least 6 tasks SPMD must not be switched off.$eol";
+}
+
 if ($print>=2) { print "Dynamics package: $dyn_pkg$eol"; }
 
 $cfg_ref->set('analytic_ic', (defined $opts{'analytic_ic'}) ? $opts{'analytic_ic'} : 0);
@@ -777,10 +783,10 @@ $waccm_phys = $cfg_ref->get('waccm_phys');
 if ($print>=2) { print "WACCM physics: $waccm_phys$eol"; }
 
 
-# WACCM physics only runs with FV or SE dycores
-if ( ($waccm_phys) and ($dyn_pkg ne 'fv') and ($dyn_pkg ne 'se') ) {
+# WACCM physics only runs with FV, SE and FV3 dycores
+if ( ($waccm_phys) and ($dyn_pkg ne 'fv') and ($dyn_pkg ne 'se') and ($dyn_pkg ne 'fv3') ) {
     die <<"EOF";
-** ERROR: WACCM physics only runs with FV or Spectral Element as the dycore.
+** ERROR: WACCM physics only runs with FV, Spectral Element and FV3 as the dycore.
 EOF
 }
 
@@ -1935,6 +1941,11 @@ if ($dyn_pkg eq 'se') {
     }
 }
 
+# FV3 preprocessor symbols to use FMS decomposition functionality and more accurate FV3 thermodynamics.
+if ($dyn_pkg eq 'fv3') {
+    $cfg_cppdefs .= " -Duse_libMPI -Duse_netCDF -DUSE_COND -DMOIST_CAPPA";
+}
+
 # Resolution parameters for vertical grid, number of constituents, chunk size
 my $nlev = $cfg_ref->get('nlev');
 my $nadv = $cfg_ref->get('nadv');
@@ -2364,10 +2375,42 @@ if ($cosp) {
     }
 
     # Create the COSP Makefile from a template and copy it into the cosp bld directory
-    write_cosp_makefile("$cfgdir/../src/physics/cosp2/Makefile.in", "$cosp_libdir/Makefile");
     if ($print) { print "creating $cosp_libdir/Makefile\n"; }
+    write_cosp_makefile("$cfgdir/../src/physics/cosp2/Makefile.in", "$cosp_libdir/Makefile");
 }
 
+#-----------------------------------------------------------------------------------------------
+# FV3CORE library.
+if ($dyn_pkg eq 'fv3') {
+    # Set the directory used to build fv3core.  Add location and library name
+    # to the user specified load flags.
+    my $fv3core_libdir = '';
+    if (defined $opts{'fv3core_libdir'}) {
+      $fv3core_libdir = $opts{'fv3core_libdir'};
+    } else
+    {
+	$fv3core_libdir = "$cam_bld/atmos_cubed_sphere";
+    }
+
+    $cfg_ref->set('fv3core_libdir', "$fv3core_libdir");
+
+    my $ldflags = $cfg_ref->get('ldflags');
+    $ldflags .= " -L$fv3core_libdir -lfv3core ";
+    $cfg_ref->set('ldflags', $ldflags);
+
+    # create the build directory for fv3core
+    unless (-d $fv3core_libdir or mkdirp($fv3core_libdir)) {
+        die "** Could not create the fv3core build directory: $fv3core_libdir\n";
+    }
+
+    # Write the filepath file.
+    if ($print) { print "creating $fv3core_libdir/Filepath\n"; }
+    write_fv3core_filepath("$fv3core_libdir/Filepath", $cfg_ref);
+
+    # Create the FV3CORE Makefile from a template and copy it into the fv3core bld directory
+    if ($print) { print "creating $fv3core_libdir/Makefile\n"; }
+    write_fv3_makefile("$cam_dir/src/dynamics/fv3/Makefile.in.fv3",  "$fv3core_libdir/Makefile");
+}
 
 #-----------------------------------------------------------------------------------------------
 # MCT library.
@@ -2673,30 +2716,30 @@ my $fp_filename      = 'Filepath';             # name of output filepath file
 my $cpp_filename     = 'CESM_cppdefs';         # name of output file for cam's cppdefs in cesm
 
 # Write the filepath file.
-write_filepath("$cam_bld/$fp_filename", $cfg_ref);
 if ($print) { print "creating $cam_bld/$fp_filename\n"; }
+write_filepath("$cam_bld/$fp_filename", $cfg_ref);
 
 if (($ccsm_seq)) {
 
     # Write the file for cam's cppdefs needed in ccsm.
-    write_cppdefs("$cam_bld/$cpp_filename", $make_cppdefs);
     if ($print) { print "creating $cam_bld/$cpp_filename\n"; }
+    write_cppdefs("$cam_bld/$cpp_filename", $make_cppdefs);
 
 } else {
 
     # Write the Makefile.
-    write_makefile("$cfgdir/Makefile.in", "$cam_bld/Makefile", $cfg_ref, $make_cppdefs);
     if ($print) { print "creating $cam_bld/Makefile\n"; }
+    write_makefile("$cfgdir/Makefile.in", "$cam_bld/Makefile", $cfg_ref, $make_cppdefs);
 
     # Write the config.h file for PIO and MCT
-    write_config_h("$cam_bld/config.h");
     if ($print) { print "creating $cam_bld/config.h\n"; }
+    write_config_h("$cam_bld/config.h");
 
 }
 
 # Write the configuration cache file.
-$cfg_ref->write_file($config_cache_file, $commandline);
 if ($print) { print "creating $config_cache_file\n"; }
+$cfg_ref->write_file($config_cache_file, $commandline);
 
 #-----------------------------------------------------------------------------------------------
 # Finished unless testing requested ############################################################
@@ -2757,7 +2800,24 @@ exit;
 #-----------------------------------------------------------------------------------------------
 # REALLY FINISHED ##############################################################################
 #-----------------------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
+sub write_fv3core_filepath
+{
+    my ($file, $cfg_ref) = @_;
+    my  $fh = new IO::File;
+
+    $fh->open(">$file") or die "** can't open filepath file: $file\n";
+    my $camsrcdir   = $cfg_ref->get('cam_dir');
+    my $CASEROOT = "$ENV{'CASEROOT'}";
+    print $fh "$CASEROOT/SourceMods/src.cam\n";
+    print $fh "$camsrcdir/src/dynamics/fv3/microphys\n";
+    print $fh "$camsrcdir/src/dynamics/fv3/atmos_cubed_sphere/model\n";
+    print $fh "$camsrcdir/src/dynamics/fv3/atmos_cubed_sphere/tools\n";
+
+    $fh->close;
+}
+#-------------------------------------------------------------------------------
 sub write_filepath
 {
     my ($file, $cfg_ref) = @_;
@@ -3046,6 +3106,7 @@ sub write_makefile
     my $fopt         = $cfg_ref->get('fopt');
     my $ldflags      = $cfg_ref->get('ldflags');
     my $cosp_libdir  = $cfg_ref->get('cosp_libdir');
+    my $fv3core_libdir  = $cfg_ref->get('fv3core_libdir');
     my $mct_libdir   = $cfg_ref->get('mct_libdir');
     my $pio_build_dir   = $cfg_ref->get('pio_build_dir');
     my $pio_install_dir = $cfg_ref->get('pio_install_dir');
@@ -3097,6 +3158,7 @@ USER_FFLAGS     := $fflags
 F_OPTIMIZATION_OVERRIDE := $fopt
 USER_LDFLAGS    := $ldflags
 COSP_LIBDIR     := $cosp_libdir
+FV3CORE_LIBDIR  := $fv3core_libdir
 MCT_LIBDIR      := $mct_libdir
 PIO_BUILD_DIR   := $pio_build_dir
 PIO_INSTALL_DIR := $pio_install_dir
@@ -3137,6 +3199,33 @@ CS_PATH      := $cam_dir/src/physics/cosp2/src/simulator/actsim
 MISR_PATH    := $cam_dir/src/physics/cosp2/src/simulator/MISR_simulator
 MODIS_PATH   := $cam_dir/src/physics/cosp2/src/simulator/MODIS_simulator
 PARASOL_PATH := $cam_dir/src/physics/cosp2/src/simulator/parasol
+
+EOF
+
+    # Copy the "template" makefile to the new makefile.
+    $fh_in->open("<$file_in") or die "** can't open file: $file_in\n";
+    while (<$fh_in>) {
+        print $fh_out $_;
+    }
+
+    $fh_out->close;
+    $fh_in->close;
+}
+
+
+#-------------------------------------------------------------------------------
+sub write_fv3_makefile
+{
+
+    my ($file_in, $file_out) = @_;
+    my  $fh_in = new IO::File;
+    my  $fh_out = new IO::File;
+
+    $fh_out->open(">$file_out") or die "** can't open file: $file_out\n";
+
+    print $fh_out  <<"EOF";
+
+CAM_BLD      := $cam_bld
 
 EOF
 
@@ -3207,6 +3296,11 @@ sub set_horiz_grid
 
         $hgrid =~ s/\.pg\d+//;   # strip the '.pgN' extension
         $cfg_ref->set('hgrid', $hgrid);
+    } 
+    elsif ( $dyn_pkg eq 'fv3') {
+        # For FV3 dycore parse the parameters out of the grid specifier string.
+        $hgrid =~ m/C(\d+)/;
+        $cfg_ref->set('hgrid', $hgrid);
     }
     else {
 
@@ -3261,9 +3355,6 @@ sub set_horiz_grid
         elsif ( $dyn_pkg eq 'fv' ) {
             $cfg_ref->set('nlat', $a{'nlat'});
             $cfg_ref->set('nlon', $a{'nlon'});
-        }
-        elsif ( $dyn_pkg eq 'fvcubed' ) {
-            $cfg_ref->set('csnp', $a{'csnp'});
         }
         else {
             die "set_horiz_grid: unrecognized dycore: $dyn_pkg\n";

@@ -144,6 +144,7 @@ integer,               protected, public :: thermodynamic_active_species_num
 integer,  allocatable, protected, public :: thermodynamic_active_species_idx(:)
 integer,  allocatable,            public :: thermodynamic_active_species_idx_dycore(:)    
 real(r8), allocatable, protected, public :: thermodynamic_active_species_cp(:)
+real(r8), allocatable, protected, public :: thermodynamic_active_species_cv(:)
 real(r8), allocatable, protected, public :: thermodynamic_active_species_R(:)
 real(r8), allocatable, protected, public :: thermodynamic_active_species_mwi(:)!inverse molecular weights dry air
 real(r8), allocatable, protected, public :: thermodynamic_active_species_kv(:) !molecular diffusion
@@ -366,7 +367,8 @@ end subroutine physconst_init
     use spmd_utils,      only: masterproc
     use cam_logfile,     only: iulog
     character(len=*), parameter :: subname = 'composition_init'
-    real(r8) :: mw, dof1, dof2
+    real(r8) :: mw, dof1, dof2, dof3
+
     integer  :: icnst,ix,i
 
     ! standard dry air (constant composition)
@@ -382,6 +384,7 @@ end subroutine physconst_init
     allocate(thermodynamic_active_species_idx(i))
     allocate(thermodynamic_active_species_idx_dycore(i))
     allocate(thermodynamic_active_species_cp(0:i))
+    allocate(thermodynamic_active_species_cv(0:i))
     allocate(thermodynamic_active_species_R(0:i))
     
     i = dry_air_species_num
@@ -391,6 +394,7 @@ end subroutine physconst_init
     thermodynamic_active_species_idx        = -999
     thermodynamic_active_species_idx_dycore = -999
     thermodynamic_active_species_cp         = 0.0_r8
+    thermodynamic_active_species_cv         = 0.0_r8
     thermodynamic_active_species_R          = 0.0_r8
     thermodynamic_active_species_mwi        = 0.0_r8
     thermodynamic_active_species_kv         = 0.0_r8
@@ -401,8 +405,10 @@ end subroutine physconst_init
     ! Last major species in namelist dry_air_species is derived from the other major species
     ! (since sum of dry mixing ratios for major species of dry air add must add to one)
     !
-    dof1 = 5._r8
-    dof2 = 7._r8
+    dof1 = 3._r8   ! monatomic ideal gas  cv=dof1/2 * R;   cp=(1+dof1/2) * R; dof=3 translational
+    dof2 = 5._r8   ! diatomic ideal gas   cv=dof2/2 * R;   cp=(1+dof2/2) * R; dof=3 tranlational + 2 rotational
+    dof3 = 6._r8   ! polyatomic ideal gas cv=dof3/2 * R;   cp=(1+dof3/2) * R; dof=3 tranlational + 3 rotational
+    !
     if (dry_air_species_num>0) then
       !
       ! last major species in dry_air_species is derived from the others and constants associated with it
@@ -417,7 +423,8 @@ end subroutine physconst_init
           mw = 2.0_r8*cnst_mw(ix)
           icnst = dry_air_species_num
           thermodynamic_active_species_idx(icnst) = 1!note - this is not used since this tracer value is derived
-          thermodynamic_active_species_cp (icnst) = 0.5_r8*shr_const_rgas*dof2/mw !N2
+          thermodynamic_active_species_cp (icnst) = 0.5_r8*shr_const_rgas*(2._r8+dof2)/mw !N2
+          thermodynamic_active_species_cv (icnst) = 0.5_r8*shr_const_rgas*dof2/mw !N2
           thermodynamic_active_species_R  (icnst) = shr_const_rgas/mw
           thermodynamic_active_species_mwi(icnst) = 1.0_r8/mw
           thermodynamic_active_species_kv(icnst)  = 3.42_r8
@@ -436,6 +443,7 @@ end subroutine physconst_init
       !
       icnst = 0
       thermodynamic_active_species_cp (icnst) = cpair
+      thermodynamic_active_species_cv (icnst) = cpair - rair
       thermodynamic_active_species_R  (icnst) = rair
     end if
     !
@@ -459,7 +467,8 @@ end subroutine physconst_init
         else
           mw = cnst_mw(ix)
           thermodynamic_active_species_idx(icnst) = ix
-          thermodynamic_active_species_cp (icnst) = 0.5_r8*shr_const_rgas*dof1/mw
+          thermodynamic_active_species_cp (icnst) = 0.5_r8*shr_const_rgas*(2._r8+dof1)/mw
+          thermodynamic_active_species_cv (icnst) = 0.5_r8*shr_const_rgas*dof1/mw
           thermodynamic_active_species_R  (icnst) = shr_const_rgas/mw
           thermodynamic_active_species_mwi(icnst) = 1.0_r8/mw
           thermodynamic_active_species_kv(icnst)  = 3.9_r8
@@ -477,7 +486,8 @@ end subroutine physconst_init
         else
           mw = cnst_mw(ix)
           thermodynamic_active_species_idx(icnst) = ix
-          thermodynamic_active_species_cp (icnst) = 0.5_r8*shr_const_rgas*dof2/mw
+          thermodynamic_active_species_cp (icnst) = 0.5_r8*shr_const_rgas*(2._r8+dof2)/mw
+          thermodynamic_active_species_cv (icnst) = 0.5_r8*shr_const_rgas*dof2/mw
           thermodynamic_active_species_R  (icnst) = shr_const_rgas/mw
           thermodynamic_active_species_mwi(icnst) = 1.0_r8/mw
           thermodynamic_active_species_kv(icnst)  = 4.03_r8
@@ -495,7 +505,8 @@ end subroutine physconst_init
         else
           mw = cnst_mw(ix)
           thermodynamic_active_species_idx(icnst) = ix
-          thermodynamic_active_species_cp (icnst) = 0.5_r8*shr_const_rgas*dof1/mw
+          thermodynamic_active_species_cp (icnst) = 0.5_r8*shr_const_rgas*(2._r8+dof1)/mw
+          thermodynamic_active_species_cv (icnst) = 0.5_r8*shr_const_rgas*dof1/mw
           thermodynamic_active_species_R  (icnst) = shr_const_rgas/mw
           thermodynamic_active_species_mwi(icnst) = 1.0_r8/mw
           thermodynamic_active_species_kv(icnst)  = 0.0_r8
@@ -514,7 +525,8 @@ end subroutine physconst_init
         write(iulog, *) "Dry air composition ",TRIM(dry_air_species(i)),&
              icnst-1,thermodynamic_active_species_idx(icnst-1),&
              thermodynamic_active_species_mwi(icnst-1),&
-             thermodynamic_active_species_cp(icnst-1)
+             thermodynamic_active_species_cp(icnst-1),&
+             thermodynamic_active_species_cv(icnst-1)
       end if
     end do
     i = dry_air_species_num
@@ -523,7 +535,8 @@ end subroutine physconst_init
         write(iulog, *) "Dry air composition ",TRIM(dry_air_species(i)),&
              icnst,thermodynamic_active_species_idx(icnst),&
              thermodynamic_active_species_mwi(icnst),&
-             thermodynamic_active_species_cp(icnst)
+             thermodynamic_active_species_cp(icnst),&
+             thermodynamic_active_species_cv(icnst)
       end if
     end if
     !
@@ -545,8 +558,10 @@ end subroutine physconst_init
           write(iulog, *) subname//' moist air component not found: ', water_species_in_air(i)
           call endrun(subname // ':: moist air component not found')         
         else
+          mw = cnst_mw(ix)
           thermodynamic_active_species_idx(icnst) = ix
           thermodynamic_active_species_cp (icnst) = cpwv
+          thermodynamic_active_species_cv (icnst) = 0.5_r8*shr_const_rgas*dof3/mw
           thermodynamic_active_species_R  (icnst) = rh2o
           icnst = icnst+1
         end if
@@ -561,6 +576,7 @@ end subroutine physconst_init
         else
           thermodynamic_active_species_idx(icnst) = ix
           thermodynamic_active_species_cp (icnst) = cpliq
+          thermodynamic_active_species_cv (icnst) = cpliq
           icnst = icnst+1
         end if
         !
@@ -574,6 +590,7 @@ end subroutine physconst_init
         else
           thermodynamic_active_species_idx(icnst) = ix
           thermodynamic_active_species_cp (icnst) = cpice
+          thermodynamic_active_species_cv (icnst) = cpice
           icnst = icnst+1
         end if
         !
@@ -587,6 +604,7 @@ end subroutine physconst_init
         else
           thermodynamic_active_species_idx(icnst) = ix
           thermodynamic_active_species_cp (icnst) = cpliq
+          thermodynamic_active_species_cv (icnst) = cpliq
           icnst = icnst+1
         end if
         !
@@ -600,6 +618,7 @@ end subroutine physconst_init
         else
           thermodynamic_active_species_idx(icnst) = ix
           thermodynamic_active_species_cp (icnst) = cpice
+          thermodynamic_active_species_cv (icnst) = cpice
           icnst = icnst+1
         end if
         !
@@ -614,6 +633,7 @@ end subroutine physconst_init
           mw = cnst_mw(ix)
           thermodynamic_active_species_idx(icnst) = ix
           thermodynamic_active_species_cp (icnst) = cpice
+          thermodynamic_active_species_cv (icnst) = cpice
           icnst = icnst+1
         end if
         !
@@ -629,7 +649,8 @@ end subroutine physconst_init
       if (masterproc) then
         write(iulog, *) "Thermodynamic active species ",TRIM(water_species_in_air(i)),&
              icnst-1,thermodynamic_active_species_idx(icnst-1),&
-             thermodynamic_active_species_cp(icnst-1)
+             thermodynamic_active_species_cp(icnst-1),&
+             thermodynamic_active_species_cv(icnst-1)
       end if
     end do
     
