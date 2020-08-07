@@ -297,7 +297,6 @@ CONTAINS
         do lchnk=begchunk,endchunk
           ncols=get_ncols_p(lchnk)
           call get_gcol_all_p(lchnk,pcols,pgcols)
-          if (fv_nphys>0) ncols = fv_nphys*fv_nphys
           do icol=1,ncols
             call get_gcol_block_d(pgcols(icol),1,idmb1,idmb2,idmb3)
             ie = idmb3(1)
@@ -557,7 +556,6 @@ CONTAINS
         do lchnk=begchunk,endchunk
           ncols=get_ncols_p(lchnk)
           call get_gcol_all_p(lchnk,pcols,pgcols)
-          if (fv_nphys>0) ncols = fv_nphys*fv_nphys
           do icol=1,ncols
             call get_gcol_block_d(pgcols(icol),1,idmb1,idmb2,idmb3)
             ie = idmb3(1)
