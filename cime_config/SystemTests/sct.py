@@ -13,13 +13,8 @@ only have round off differences.
 from CIME.SystemTests.system_tests_compare_two import SystemTestsCompareTwo
 from CIME.XML.standard_module_setup import *
 from CIME.SystemTests.test_utils.user_nl_utils import append_to_user_nl_files
-from CIME.XML.machines import Machines
 from CIME.test_status import *
-from CIME.utils import run_cmd, append_testlog
-
-import sys
-
-
+from CIME.utils import append_testlog
 
 
 logger = logging.getLogger(__name__)

@@ -31,7 +31,7 @@ help () {
   echo "${hprefix} [ --cam ] (Run CAM regression tests, default is not to run CAM regression tests."
   echo "${hprefix} [ --rerun-cesm <test_id> ] (rerun the cesm tests with the --use-existing-flag)"
   echo "${hprefix} [ --namelists-only ] (Only perform namelist actions for tests.  Incompatible with --rerun-cesm.)"
-  echo "${hprefix} [ --batch  Allow cime tests to run in parallel."
+  echo "${hprefix} [ --batch ] (Allow cime tests to run in parallel.)"
   echo ""
   echo "${hprefix} **pass environment variables by preceding above commands with:"
   echo "${hprefix}   'env var1=setting var2=setting '"
