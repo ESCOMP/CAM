@@ -224,7 +224,7 @@ case $hostname in
 
     # Check for CESM baseline directory
     if [ -n "{$BL_TESTDIR}" ] && [ ! -d "${BL_TESTDIR}" ]; then
-        echo "CESM_BASELINE ${BL_TESTDIR} not found .  Check BL_TESTDIR for correct tag name."
+        echo "CESM_BASELINE ${BL_TESTDIR} not found.  Check BL_TESTDIR for correct tag name."
         exit
     fi 
 
@@ -386,7 +386,7 @@ EOF
 
     # Check for CESM baseline directory
     if  [ -n "{$BL_TESTDIR}" ] && [ ! -d "${BL_TESTDIR}" ]; then
-        echo "CESM_BASELINE ${BL_TESTDIR} not found .  Check BL_TESTDIR for correct tag name."
+        echo "CESM_BASELINE ${BL_TESTDIR} not found.  Check BL_TESTDIR for correct tag name."
         exit
     fi 
 
@@ -527,7 +527,7 @@ submit_script_cime="${submit_script}"
 
     # Check for CESM baseline directory
     if  [ -n "{$BL_TESTDIR}" ] && [ ! -d "${BL_TESTDIR}" ]; then
-        echo "CESM_BASELINE ${BL_TESTDIR} not found .  Check BL_TESTDIR for correct tag name."
+        echo "CESM_BASELINE ${BL_TESTDIR} not found.  Check BL_TESTDIR for correct tag name."
         exit
     fi 
 
@@ -662,7 +662,7 @@ fi
 
     # Check for CESM baseline directory
     if  [ -n "{$BL_TESTDIR}" ] && [ ! -d "${BL_TESTDIR}" ]; then
-        echo "CESM_BASELINE ${BL_TESTDIR} not found .  Check BL_TESTDIR for correct tag name."
+        echo "CESM_BASELINE ${BL_TESTDIR} not found.  Check BL_TESTDIR for correct tag name."
         exit
     fi 
 
