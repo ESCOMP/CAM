@@ -417,7 +417,9 @@ integer, optional, intent(in) :: timelevel
       if ( have_tsair ) then
          if (masterproc) write(iulog,*) sub//':Using Tsair'
          tground = tsair     ! use surface value from T field
+         have_Tg = .true.
       else
+         have_Tg = .true.
          if (masterproc) write(iulog,*) sub//':Using T at lowest level from IOP dataset'
          tground = tobs(plev)
       endif

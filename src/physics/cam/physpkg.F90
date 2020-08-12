@@ -1724,7 +1724,7 @@ contains
     !
     ! FV: convert dry-type mixing ratios to moist here because physics_dme_adjust
     !     assumes moist. This is done in p_d_coupling for other dynamics. Bundy, Feb 2004.
-    if ( dycore_is('LR')) call set_dry_to_wet(state)    ! Physics had dry, dynamics wants moist
+    if ( dycore_is('LR').or. dycore_is('FV3')) call set_dry_to_wet(state)    ! Physics had dry, dynamics wants moist
 
     ! Scale dry mass and energy (does nothing if dycore is EUL or SLD)
     call cnst_get_ind('CLDLIQ', ixcldliq)
@@ -1734,8 +1734,8 @@ contains
     tmp_cldliq(:ncol,:pver) = state%q(:ncol,:pver,ixcldliq)
     tmp_cldice(:ncol,:pver) = state%q(:ncol,:pver,ixcldice)
 
-    ! For not 'FV', physics_dme_adjust is called for energy diagnostic purposes only.  So, save off tracers
-    if (.not.dycore_is('FV').and.&
+    ! For not ('FV'|'FV3'), physics_dme_adjust is called for energy diagnostic purposes only.  So, save off tracers
+    if (.not.(dycore_is('FV').or.dycore_is('FV3')).and.&
          (hist_fld_active('SE_pAM').or.hist_fld_active('KE_pAM').or.hist_fld_active('WV_pAM').or.&
          hist_fld_active('WL_pAM').or.hist_fld_active('WI_pAM'))) then
       tmp_trac(:ncol,:pver,:pcnst) = state%q(:ncol,:pver,:pcnst)
@@ -1766,7 +1766,7 @@ contains
       state%ps(:ncol)             = tmp_ps(:ncol)
     end if
 
-    if (dycore_is('LR')) then
+    if (dycore_is('LR') .or. dycore_is('FV3')) then
 
       if (trim(cam_take_snapshot_before) == "physics_dme_adjust") then
          call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
@@ -1796,7 +1796,10 @@ contains
     if (aqua_planet) then
        labort = .false.
        do i=1,ncol
-          if (cam_in%ocnfrac(i) /= 1._r8) labort = .true.
+          if (cam_in%ocnfrac(i) /= 1._r8) then
+             labort = .true.
+             if (masterproc) write(iulog,*) 'oceanfrac(',i,')=',cam_in%ocnfrac(i)
+          end if
        end do
        if (labort) then
           call endrun ('TPHYSAC error: in aquaplanet mode, but grid contains non-ocean point')
@@ -2058,7 +2061,7 @@ contains
     call t_startf('energy_fixer')
 
     call calc_te_and_aam_budgets(state, 'pBF')
-    if (dycore_is('LR') .or. dycore_is('SE'))  then
+    if (dycore_is('LR') .or. dycore_is('FV3') .or. dycore_is('SE'))  then
        call check_energy_fix(state, ptend, nstep, flx_heat)
        call physics_update(state, ptend, ztodt, tend)
        call check_energy_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)
