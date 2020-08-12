@@ -376,7 +376,7 @@
     </options>
   </test>
 <!--              301                         -->
-  <test compset="QPC5" grid="f10_f10_mg37" name="PLB_D_Ln9" testmods="cam/lb1">
+  <test compset="QPC5" grid="f10_f10_mg37" name="PLB_D_Ln9" testmods="cam/ttrac_loadbal1">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -386,7 +386,7 @@
     </options>
   </test>
 <!--              303                         -->
-  <test compset="QPC5" grid="f10_f10_mg37" name="PLB_D_Ln9" testmods="cam/lb3">
+  <test compset="QPC5" grid="f10_f10_mg37" name="PLB_D_Ln9" testmods="cam/ttrac_loadbal3">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -396,7 +396,7 @@
     </options>
   </test>
 <!--              304                         -->
-  <test compset="QPC5" grid="f10_f10_mg37" name="PLB_D_Ln9" testmods="cam/lb0">
+  <test compset="QPC5" grid="f10_f10_mg37" name="PLB_D_Ln9" testmods="cam/ttrac_loadbal0">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -676,7 +676,7 @@
     </options>
   </test>
 <!--              701                        -->
-  <test compset="QPC5" grid="ne5_ne5_mg37" name="PLB_D_Ln9" testmods="cam/lb0">
+  <test compset="QPC5" grid="ne5_ne5_mg37" name="PLB_D_Ln9" testmods="cam/ttrac_loadbal0">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -686,7 +686,7 @@
     </options>
   </test>
 <!--              702                        -->
-  <test compset="QPC5" grid="ne5_ne5_mg37" name="PLB_D_Ln9" testmods="cam/lb1">
+  <test compset="QPC5" grid="ne5_ne5_mg37" name="PLB_D_Ln9" testmods="cam/ttrac_loadbal1">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -696,7 +696,7 @@
     </options>
   </test>
 <!--              703                        -->
-  <test compset="QPC5" grid="ne5_ne5_mg37" name="PLB_D_Ln9" testmods="cam/lb3">
+  <test compset="QPC5" grid="ne5_ne5_mg37" name="PLB_D_Ln9" testmods="cam/ttrac_loadbal3">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -706,7 +706,7 @@
     </options>
   </test>
 <!--              711 teq                       -->
-  <test compset="QPC5" grid="ne5pg3_ne5pg3_mg37" name="PLB_D_Ln9" testmods="cam/lb0">
+  <test compset="QPC5" grid="ne5pg3_ne5pg3_mg37" name="PLB_D_Ln9" testmods="cam/ttrac_loadbal0">
     <machines>
       <machine name="izumi" compiler="pgi" category="aux_cam"/>
     </machines>
@@ -716,7 +716,7 @@
     </options>
   </test>
 <!--              712 teq                       -->
-  <test compset="QPC5" grid="ne5pg3_ne5pg3_mg37" name="PLB_D_Ln9" testmods="cam/lb1">
+  <test compset="QPC5" grid="ne5pg3_ne5pg3_mg37" name="PLB_D_Ln9" testmods="cam/ttrac_loadbal1">
     <machines>
       <machine name="izumi" compiler="pgi" category="aux_cam"/>
     </machines>
@@ -726,7 +726,7 @@
     </options>
   </test>
 <!--              713 teq                       -->
-  <test compset="QPC5" grid="ne5pg3_ne5pg3_mg37" name="PLB_D_Ln9" testmods="cam/lb3">
+  <test compset="QPC5" grid="ne5pg3_ne5pg3_mg37" name="PLB_D_Ln9" testmods="cam/ttrac_loadbal3">
     <machines>
       <machine name="izumi" compiler="pgi" category="aux_cam"/>
     </machines>
