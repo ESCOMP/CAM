@@ -3006,7 +3006,7 @@ subroutine read_inidat(dyn_in)
 
     readvar   = .false.
     fieldname = cnst_name(m)
-    if (cnst_read_iv(m)) then
+    if (cnst_read_iv(m) .and. dyn_field_exists(fh_ini, trim(cnst_name(m)), required=.false.)) then
       call infld(fieldname, fh_ini, 'lon', 'lat', 'lev', ifirstxy, ilastxy, jfirstxy, jlastxy, &
            1, km, dyn_in%tracer(:,:,:,m), readvar, gridname='fv_centers')
     end if
