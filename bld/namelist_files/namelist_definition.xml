@@ -2521,7 +2521,6 @@ dense precipitating ice as hail. mg3 only.
 Default: .false.
 </entry>
 
-
 <entry id="micro_mg_num_steps" type="integer" category="microphys"
        group="micro_mg_nl" valid_values="" >
 Number of substeps over MG microphysics.
@@ -2601,7 +2600,79 @@ Default: 0.1e6 m-3
 <entry id="micro_mg_ngnst" type="real" category="microphys"
        group="micro_mg_nl" valid_values="" >
 In-cloud graupel number concentration when micro_mg_nicons=.true.
-Default: 0.1e6 m-3
+Default: 0.0005e6 m-3
+</entry>
+
+<entry id="micro_mg_nrcons" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+Set .true. to hold cloud rain number constant.
+Default: .false.
+</entry>
+
+<entry id="micro_mg_nrnst" type="real" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+In-cloud rain number concentration when micro_mg_nicons=.true.
+Default: 0.2e6 m-3
+</entry>
+
+<entry id="micro_mg_nscons" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+Set .true. to hold cloud snow number constant.
+Default: .false.
+</entry>
+
+<entry id="micro_mg_nsnst" type="real" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+In-cloud snow number concentration when micro_mg_nicons=.true.
+Default: 0.005e6 m-3
+</entry>
+
+<entry id="micro_mg_evap_sed_off" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+Switch off evaporation of sedimenting condensate
+Default: .false.
+</entry>
+
+<entry id="micro_mg_icenuc_rh_off" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+Remove RH threshold from ice nucelation calculation
+Default: .false.
+</entry>
+
+<entry id="micro_mg_icenuc_use_meyers" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+Hard code Meyers 1992 Temp dependent ice nucleation in microphysics
+Default: .false.
+</entry>
+
+<entry id="micro_mg_evap_scl_ifs" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+Apply 0.3 scaling factor to evaporation of precipitation
+Default: .false.
+</entry>
+
+<entry id="micro_mg_evap_rhthrsh_ifs" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+Do not evaporate precipitation until RH<90%
+Default: .false.
+</entry>
+
+<entry id="micro_mg_rainfreeze_ifs" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+Freeze rain at 0C
+Default: .false.
+</entry>
+
+<entry id="micro_mg_ifs_sed" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+Fixed sedimentation fall speeds for snow, ice and no sedimentation of liquid
+Default: .false.
+</entry>
+
+<entry id="micro_mg_rain_fall_corr" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+Ensure non-zero rain fallspeed if rain above in column (from M2005 in WRFv3.3)
+Default: .false.
 </entry>
 
 <!-- Aerosol microphysics -->

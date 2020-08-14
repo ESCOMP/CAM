@@ -134,8 +134,8 @@ integer :: ncnst = 4       ! Number of constituents
 logical :: micro_mg_nccons = .false. ! set .true. to specify constant cloud droplet number
 logical :: micro_mg_nicons = .false. ! set .true. to specify constant cloud ice number
 logical :: micro_mg_ngcons = .false. ! set .true. to specify constant graupel/hail number
-logical  :: micro_mg_nrcons = .false. ! ngcons = .true. to specify constant rain number
-logical  :: micro_mg_nscons = .false. ! ngcons = .true. to specify constant snow number
+logical :: micro_mg_nrcons = .false. ! set .true. to specify constant rain number
+logical :: micro_mg_nscons = .false. ! set .true. to specify constant snow number
       
 ! parameters for specified ice and droplet number concentration
 ! note: these are local in-cloud values, not grid-mean
@@ -149,14 +149,14 @@ logical, public ::   micro_mg_do_graupel
 logical, public ::   micro_mg_do_hail
 
 ! switches for IFS like behavior
-logical  ::  micro_mg_evap_sed_off = .false.  ! Turn off evaporation/sublimation based on cloud fraction for sedimenting condensate
-logical  ::  micro_mg_icenuc_rh_off  = .false.
-logical  ::  micro_mg_icenuc_use_meyers = .false.
-logical  ::  micro_mg_evap_scl_ifs = .false.
-logical  ::  micro_mg_evap_rhthrsh_ifs = .false.
-logical  ::  micro_mg_rainfreeze_ifs = .false.
-logical  ::  micro_mg_ifs_sed = .false. 
-logical  ::  micro_mg_rain_fall_corr = .false.
+logical  ::  micro_mg_evap_sed_off = .false.      ! Turn off evaporation/sublimation based on cloud fraction for sedimenting condensate
+logical  ::  micro_mg_icenuc_rh_off  = .false.    ! Remove RH conditional from ice nucleation
+logical  ::  micro_mg_icenuc_use_meyers = .false. ! Meyers Ice Nucleation
+logical  ::  micro_mg_evap_scl_ifs = .false.      ! Scale evaporation as IFS does
+logical  ::  micro_mg_evap_rhthrsh_ifs = .false.  ! Evap RH threhold following ifs
+logical  ::  micro_mg_rainfreeze_ifs = .false.    ! Rain freezing at 0C following ifs
+logical  ::  micro_mg_ifs_sed = .false.           ! Snow sedimentation = 1 m/s following ifs
+logical  ::  micro_mg_rain_fall_corr = .false.    ! Rain fall speed following ifs 
 
 character(len=10), parameter :: &      ! Constituent names
    cnst_names(10) = (/'CLDLIQ', 'CLDICE','NUMLIQ','NUMICE', &
