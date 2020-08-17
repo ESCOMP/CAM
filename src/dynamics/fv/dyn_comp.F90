@@ -3372,7 +3372,7 @@ logical function dyn_field_exists(fh, fieldname, required)
    end if
 
    ! Set PIO to return error codes when reading data from IC file.
-   call pio_seterrorhandling(fh, pio_bcast_error, pio_errtype)
+   call pio_seterrorhandling(fh, pio_bcast_error, oldmethod=pio_errtype)
 
    ret = PIO_inq_varid(fh, trim(fieldname), varid)
    found = (ret == PIO_NOERR)
