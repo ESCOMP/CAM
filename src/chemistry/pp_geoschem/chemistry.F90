@@ -24,6 +24,7 @@ module chemistry
   USE State_Diag_Mod,      ONLY : DgnState   ! Derived type for Diagnostics State object
   USE State_Grid_Mod,      ONLY : GrdState   ! Derived type for Grid State object
   USE State_Met_Mod,       ONLY : MetState   ! Derived type for Meteorology State object
+  USE Species_Mod,         ONLY : Species    ! Derived type for Species object
   USE ErrCode_Mod                            ! Error codes for success or failure
   USE Error_Mod                              ! For error checking
 
@@ -178,7 +179,6 @@ contains
     use State_Chm_Mod,       only : Init_State_Chm, Cleanup_State_Chm
     use State_Chm_Mod,       only : Ind_
     use Input_Opt_Mod,       only : Set_Input_Opt,  Cleanup_Input_Opt
-    use Species_Mod,         only : Species
 
     use mo_sim_dat,          only : set_sim_dat
     use mo_chem_utls,        only : get_spc_ndx
@@ -768,7 +768,7 @@ contains
        Write(iulog,'(a)') ' + Massachusetts Institute of Technology'
        Write(iulog,'(a)') REPEAT( '=', 50 )
 
-       Write(iulog,'(/,/, a)') 'Now defining GEOS-Chem tracers and dry deposition mapping...'
+       Write(iulog,'(/,a,/)') 'Now defining GEOS-Chem tracers and dry deposition mapping...'
 
        unitn = getunit()
 
@@ -982,6 +982,7 @@ contains
     use Olson_Landmap_Mod
 #endif
     use Mixing_Mod
+    use Vdiff_Mod
 
     use GC_Emissions_Mod, only : GC_Emissions_Init
 
@@ -995,32 +996,35 @@ contains
     !----------------------------
 
     ! Integers
-    INTEGER               :: LCHNK(BEGCHUNK:ENDCHUNK), NCOL(BEGCHUNK:ENDCHUNK)
-    INTEGER               :: IWAIT, IERR
-    INTEGER               :: nX, nY, nZ
-    INTEGER               :: iX, jY
-    INTEGER               :: I, J, L, N
-    INTEGER               :: RC
-    INTEGER               :: nLinoz
+    INTEGER                :: LCHNK(BEGCHUNK:ENDCHUNK), NCOL(BEGCHUNK:ENDCHUNK)
+    INTEGER                :: IWAIT, IERR
+    INTEGER                :: nX, nY, nZ
+    INTEGER                :: iX, jY
+    INTEGER                :: I, J, L, N
+    INTEGER                :: RC
+    INTEGER                :: nLinoz
 
     ! Logicals
-    LOGICAL               :: prtDebug
+    LOGICAL                :: prtDebug
 
     ! Strings
-    CHARACTER(LEN=255)    :: historyConfigFile
-    CHARACTER(LEN=255)    :: SpcName
+    CHARACTER(LEN=255)     :: historyConfigFile
+    CHARACTER(LEN=255)     :: SpcName
+
+    ! Objects
+    TYPE(Species), POINTER :: SpcInfo
 
     ! Grid setup
-    REAL(fp)              :: lonVal,  latVal
-    REAL(fp)              :: dLonFix, dLatFix
-    REAL(f4), ALLOCATABLE :: lonMidArr(:,:),  latMidArr(:,:)
-    REAL(f4), ALLOCATABLE :: lonEdgeArr(:,:), latEdgeArr(:,:)
-    REAL(r8), ALLOCATABLE :: linozData(:,:,:,:)
+    REAL(fp)               :: lonVal,  latVal
+    REAL(fp)               :: dLonFix, dLatFix
+    REAL(f4), ALLOCATABLE  :: lonMidArr(:,:),  latMidArr(:,:)
+    REAL(f4), ALLOCATABLE  :: lonEdgeArr(:,:), latEdgeArr(:,:)
+    REAL(r8), ALLOCATABLE  :: linozData(:,:,:,:)
 
-    REAL(r8), ALLOCATABLE :: Col_Area(:)
-    REAL(fp), ALLOCATABLE :: Ap_CAM_Flip(:), Bp_CAM_Flip(:)
+    REAL(r8), ALLOCATABLE  :: Col_Area(:)
+    REAL(fp), ALLOCATABLE  :: Ap_CAM_Flip(:), Bp_CAM_Flip(:)
 
-    REAL(r8), POINTER     :: SlsPtr(:,:,:)
+    REAL(r8),      POINTER :: SlsPtr(:,:,:)
 
 
     ! Assume a successful return until otherwise
@@ -1029,6 +1033,9 @@ contains
     ! For error trapping
     ErrMsg                  = ''
     ThisLoc                 = ' -> at GEOS-Chem (in chemistry/pp_geoschem/chemistry.F90)'
+
+    ! Initialize pointers
+    SpcInfo   => NULL()
 
     ! LCHNK: which chunks we have on this process
     LCHNK = PHYS_STATE%LCHNK
@@ -1618,6 +1625,18 @@ contains
 
     DEALLOCATE(Ap_CAM_Flip,Bp_CAM_Flip)
 
+    ! Once the initial met fields have been read in, we need to find
+    ! the maximum PBL level for the non-local mixing algorithm.
+    CALL Max_PblHt_For_Vdiff( Input_Opt  = Input_Opt,            &
+                              State_Grid = State_Grid(BEGCHUNK), &
+                              State_Met  = State_Met(BEGCHUNK),  &
+                              RC         = RC                   )
+
+    IF ( RC /= GC_SUCCESS ) THEN
+       ErrMsg = 'Error encountered in "Max_PblHt_for_Vdiff"!'
+       CALL Error_Stop( ErrMsg, ThisLoc )
+    ENDIF
+
     IF ( Input_Opt%Its_A_FullChem_Sim .OR. &
          Input_Opt%Its_An_Aerosol_Sim ) THEN
        ! This also initializes Fast-JX
@@ -1687,6 +1706,22 @@ contains
        CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'm/s', &
          TRIM(SpcName)//' dry deposition velocity')
     ENDDO
+
+    DO I = 1, State_Chm(BEGCHUNK)%nAdvect
+       ! Get the species ID from the advected species ID
+       L = State_Chm(BEGCHUNK)%Map_Advect(I)
+
+       ! Get info about this species from the species database
+       SpcInfo => State_Chm(BEGCHUNK)%SpcData(L)%Info
+       SpcName = 'SurfFlux_'//TRIM(SpcInfo%Name)
+
+       CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'kg/m2/s', &
+          TRIM(SpcName)//' dry deposition flux')
+
+       ! Free pointer
+       SpcInfo => NULL()
+    ENDDO
+
 
     ! Initialize emissions interface (this will eventually handle HEMCO)
     CALL GC_Emissions_Init
@@ -1794,6 +1829,7 @@ contains
     use PBL_Mix_Mod,         only: Compute_PBL_Height
 
     use Tropopause,          only: Tropopause_findChemTrop, Tropopause_Find
+    use HCO_Utilities_GC_Mod  ! Utility routines for GC-HEMCO interface
 
     ! For calculating SZA
     use Orbit,               only: zenith
@@ -1908,6 +1944,9 @@ contains
     ! For archiving
     CHARACTER(LEN=255) :: SpcName
     REAL(r8)           :: VMR(State%NCOL,PVER)
+
+    ! Objects
+    TYPE(Species), POINTER :: SpcInfo
 
     REAL(r8)           :: SlsData(State%NCOL, PVER, nSls)
 
@@ -2965,7 +3004,7 @@ contains
     ! The following options are currently supported:
     ! - ALLDDVEL_GEOSCHEM
     ! - OCNDDVEL_GEOSCHEM
-    ! - OCNDDVEL_MOZART
+    ! !!!! - OCNDDVEL_MOZART, needs investigation
     !
     ! The ALLDDVEL_GEOSCHEM coupled with LANDTYPE_CLM requires that CLM
     ! passes land type information (land type and leaf area index).
@@ -3152,6 +3191,9 @@ contains
        CALL ENDRUN('Incorrect definitions for dry deposition velocities')
 #endif
 
+       !TMMF, Here set dry deposition velocities to zero if MAM performs its
+       !own deposition...
+
        CALL Update_DryDepSav( Input_Opt  = Input_Opt,         &
                               State_Chm  = State_Chm(LCHNK),  &
                               State_Diag = State_Diag(LCHNK), &
@@ -3165,6 +3207,24 @@ contains
     !      ***** M I X E D   L A Y E R   M I X I N G *****
     !===========================================================
 
+    ! Updates from Bob Yantosca, 06/2020
+    ! Compute the surface flux for the non-local mixing,
+    ! (which means getting emissions & drydep from HEMCO)
+    ! and store it in State_Chm%Surface_Flux
+    IF ( Input_Opt%LTURB .and. Input_Opt%LNLPBL ) THEN 
+       CALL Compute_Sflx_For_Vdiff( Input_Opt  = Input_Opt,         &
+                                    State_Chm  = State_Chm(LCHNK),  &
+                                    State_Diag = State_Diag(LCHNK), &
+                                    State_Grid = State_Grid(LCHNK), &
+                                    State_Met  = State_Met(LCHNK),  &
+                                    RC         = RC                )
+
+       IF ( RC /= GC_SUCCESS ) THEN
+          ErrMsg = 'Error encountered in "Compute_Sflx_for_Vdiff"!'
+          CALL Error_Stop( errMsg, thisLoc )
+       ENDIF
+    ENDIF
+
     ! Note: mixing routine expects tracers in v/v
     ! DO_MIXING applies the tracer tendencies (dry deposition,
     ! emission rates) to the tracer arrays and performs PBL
@@ -3177,26 +3237,23 @@ contains
     ! NOTE: Tracer concentration units are converted locally
     ! to [v/v dry air] for mixing. Eventually mixing should
     ! be updated to use [kg/kg total air] (ewl, 9/18/15)
-    !
-    ! This requires HEMCO. For now comment out.
-    ! Thibaud M. Fritz - 05/07/20
-    !CALL Do_Mixing( Input_Opt  = Input_Opt,         &
-    !                State_Chm  = State_Chm(LCHNK),  &
-    !                State_Diag = State_Diag(LCHNK), &
-    !                State_Grid = State_Grid(LCHNK), &
-    !                State_Met  = State_Met(LCHNK),  &
-    !                RC         = RC                )
-    !
-    !! Trap potential errors
-    !IF ( RC /= GC_SUCCESS ) THEN
-    !   ErrMsg = 'Error encountered in "Do_Mixing"!'
-    !   CALL Error_Stop( ErrMsg, ThisLoc )
-    !ENDIF
+    CALL Do_Mixing( Input_Opt  = Input_Opt,         &
+                    State_Chm  = State_Chm(LCHNK),  &
+                    State_Diag = State_Diag(LCHNK), &
+                    State_Grid = State_Grid(LCHNK), &
+                    State_Met  = State_Met(LCHNK),  &
+                    RC         = RC                )
+    
+    ! Trap potential errors
+    IF ( RC /= GC_SUCCESS ) THEN
+       ErrMsg = 'Error encountered in "Do_Mixing"!'
+       CALL Error_Stop( ErrMsg, ThisLoc )
+    ENDIF
 
     !!===========================================================
     !!        ***** C L O U D   C O N V E C T I O N *****
     !!===========================================================
-    !IF ( LCONV ) THEN
+    !IF ( Input_Opt%LConv ) THEN
     !
     !   ! Call the appropriate convection routine
     !   ! NOTE: Tracer concentration units are converted locally
@@ -3324,6 +3381,20 @@ contains
     DO N = 1, State_Chm(BEGCHUNK)%nDryDep
        SpcName = 'DDVel_'//TRIM(depName(N))
        CALL OutFld( TRIM(SpcName), State_Chm(LCHNK)%DryDepVel(1,:nY,N), nY, LCHNK )
+    ENDDO
+
+    DO N = 1, State_Chm(BEGCHUNK)%nAdvect
+       ! Get the species ID from the advected species ID
+       L = State_Chm(BEGCHUNK)%Map_Advect(N)
+
+       ! Get info about this species from the species database
+       SpcInfo => State_Chm(BEGCHUNK)%SpcData(L)%Info
+       SpcName = 'SurfFlux_'//TRIM(SpcInfo%Name)
+
+       CALL OutFld( TRIM(SpcName), -State_Chm(LCHNK)%SurfaceFlux(1,:nY,N), nY, LCHNK )
+
+       ! Free pointer
+       SpcInfo => NULL()
     ENDDO
 
     ! NOTE: Re-flip all the arrays vertically or suffer the consequences
