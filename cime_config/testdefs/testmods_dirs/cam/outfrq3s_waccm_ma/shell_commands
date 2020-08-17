@@ -1,0 +1,5 @@
+./xmlchange ROF_NCPL=\$ATM_NCPL
+./xmlchange GLC_NCPL=\$ATM_NCPL
+./xmlchange CAM_CONFIG_OPTS="-phys cam4 -aquaplanet -chem waccm_ma -waccmx -ionosphere none"
+./xmlchange CAM_NML_USE_CASE="waccmx_ma_2000_cam4"
+./xmlchange RUN_STARTDATE="19950101"

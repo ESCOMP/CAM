@@ -1,0 +1,6 @@
+orb_iyear = 1990
+orb_iyear_align = 1990
+orb_eccen = 1.e36
+orb_obliq = 1.e36
+orb_mvelp = 1.e36
+orb_mode = "fixed_year"
