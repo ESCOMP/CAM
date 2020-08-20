@@ -170,8 +170,8 @@ CONTAINS
            PHIS=PHIS_OUT, Q=Q, m_cnst=m_cnst, mask=mask_use, verbose=verbose_use)
 
     case('us_standard_atmosphere')
-      call us_std_atm_set_ic(latvals, lonvals, U=U, V=V, T=T, PS=PS, PHIS=PHIS_IN,     &
-           Q=Q, m_cnst=m_cnst, mask=mask_use, verbose=verbose_use)      
+      call us_std_atm_set_ic(latvals, lonvals, U=U, V=V, T=T, PS=PS, PHIS_IN=PHIS_IN, &
+           PHIS_OUT=PHIS_OUT, Q=Q, m_cnst=m_cnst, mask=mask_use, verbose=verbose_use)
 
     case default
       call endrun(subname//': Unknown analytic_ic_type, "'//trim(analytic_ic_type)//'"')

@@ -45,7 +45,8 @@ use spmd_utils,         only: masterproc, iam
 use physconst,          only: pi
 
 use pmgrid,             only: plon, plat
-use constituents,       only: pcnst, cnst_name, cnst_read_iv, qmin, cnst_type
+use constituents,       only: pcnst, cnst_name, cnst_read_iv, qmin, cnst_type, &
+                              cnst_is_a_water_species
 
 use time_manager,       only: get_step_size
 
@@ -2857,7 +2858,6 @@ subroutine read_inidat(dyn_in)
   integer                         :: latid
   integer                         :: mlon ! longitude dimension length from dataset
   integer                         :: mlat            ! latitude dimension length from dataset
-  integer                         :: cnst_start
   real(r8), parameter             :: deg2rad = pi/180._r8
 
   character(len=*), parameter     :: sub='read_inidat'
@@ -2975,16 +2975,14 @@ subroutine read_inidat(dyn_in)
   !
   ! If analytic ICs are being used, we allow constituents in an initial
   ! file to overwrite mixing ratios set by the default constituent initialization
-  ! except for water vapor.
-  cnst_start = 1
-  if (analytic_ic_active()) cnst_start = 2
-
+  ! except for the water species.
+  !
   ! If using analytic ICs the initial file only needs the horizonal grid
   ! dimension checked in the case that the file contains constituent mixing
   ! ratios.
   if (analytic_ic_active()) then
-     do m = cnst_start, pcnst
-        if (cnst_read_iv(m)) then
+     do m = 1, pcnst
+        if (cnst_read_iv(m) .and. .not. cnst_is_a_water_species(cnst_name(m))) then
            if (dyn_field_exists(fh_ini, trim(cnst_name(m)), required=.false.)) then
               ierr = pio_inq_dimid(fh_ini, 'lon' , lonid)
               ierr = pio_inq_dimid(fh_ini, 'lat' , latid)
@@ -3002,10 +3000,13 @@ subroutine read_inidat(dyn_in)
      end do
   end if
 
-  do m = cnst_start, pcnst
+  do m = 1, pcnst
+
+    if (analytic_ic_active() .and. cnst_is_a_water_species(cnst_name(m))) cycle
+
     readvar   = .false.
     fieldname = cnst_name(m)
-    if (cnst_read_iv(m)) then
+    if (cnst_read_iv(m) .and. dyn_field_exists(fh_ini, trim(cnst_name(m)), required=.false.)) then
       call infld(fieldname, fh_ini, 'lon', 'lat', 'lev', ifirstxy, ilastxy, jfirstxy, jlastxy, &
            1, km, dyn_in%tracer(:,:,:,m), readvar, gridname='fv_centers')
     end if
@@ -3351,7 +3352,7 @@ logical function dyn_field_exists(fh, fieldname, required)
    use pio,            only: var_desc_t, PIO_inq_varid
    use pio,            only: PIO_NOERR
 
-   type(file_desc_t), intent(in) :: fh
+   type(file_desc_t), intent(inout) :: fh ! needs to be inout because of pio_seterrorhandling
    character(len=*),  intent(in) :: fieldname
    logical, optional, intent(in) :: required
 
@@ -3359,6 +3360,7 @@ logical function dyn_field_exists(fh, fieldname, required)
    logical                  :: found
    logical                  :: field_required
    integer                  :: ret
+   integer                  :: pio_errtype
    type(var_desc_t)         :: varid
    character(len=128)       :: errormsg
    !--------------------------------------------------------------------------
@@ -3368,6 +3370,9 @@ logical function dyn_field_exists(fh, fieldname, required)
    else
       field_required = .true.
    end if
+
+   ! Set PIO to return error codes when reading data from IC file.
+   call pio_seterrorhandling(fh, pio_bcast_error, oldmethod=pio_errtype)
 
    ret = PIO_inq_varid(fh, trim(fieldname), varid)
    found = (ret == PIO_NOERR)
@@ -3379,6 +3384,9 @@ logical function dyn_field_exists(fh, fieldname, required)
    end if
 
    dyn_field_exists = found
+
+   ! Put the error handling back the way it was
+   call pio_seterrorhandling(fh, pio_errtype)
 
 end function dyn_field_exists
 

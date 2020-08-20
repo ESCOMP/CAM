@@ -21,7 +21,7 @@ CONTAINS
   subroutine prim_printstate(elem, tl,hybrid,nets,nete, fvm, omega_cn)
     use dimensions_mod,         only: ntrac
     use constituents,           only: cnst_name
-    use physconst,              only: thermodynamic_active_species_idx_dycore
+    use physconst,              only: thermodynamic_active_species_idx_dycore, dry_air_species_num
     use physconst,              only: thermodynamic_active_species_num,thermodynamic_active_species_idx
     use cam_control_mod,        only: initial_run
     use time_mod,               only: tstep
@@ -63,7 +63,7 @@ CONTAINS
     if (ntrac>0) then
       do ie=nets,nete
         moist_ps_fvm(:,:,ie)=SUM(fvm(ie)%dp_fvm(1:nc,1:nc,:),DIM=3)
-        do q=1,thermodynamic_active_species_num
+        do q=dry_air_species_num+1,thermodynamic_active_species_num
           m_cnst = thermodynamic_active_species_idx(q)
           do k=1,nlev
             moist_ps_fvm(:,:,ie) = moist_ps_fvm(:,:,ie)+&
@@ -74,7 +74,7 @@ CONTAINS
     end if
     do ie=nets,nete
       moist_ps(:,:,ie)=elem(ie)%state%psdry(:,:)
-      do q=1,thermodynamic_active_species_num
+      do q=dry_air_species_num+1,thermodynamic_active_species_num
         m_cnst = thermodynamic_active_species_idx_dycore(q)
         do k=1,nlev
           moist_ps(:,:,ie) = moist_ps(:,:,ie)+&

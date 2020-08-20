@@ -1,0 +1,4 @@
+./xmlchange ROF_NCPL=\$ATM_NCPL
+./xmlchange GLC_NCPL=\$ATM_NCPL
+./xmlchange RUN_STARTDATE="2000-09-14"
+./xmlchange START_TOD="82800"

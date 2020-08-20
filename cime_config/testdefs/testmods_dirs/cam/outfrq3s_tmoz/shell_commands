@@ -1,0 +1,5 @@
+./xmlchange ROF_NCPL=\$ATM_NCPL
+./xmlchange GLC_NCPL=\$ATM_NCPL
+./xmlchange -append CAM_CONFIG_OPTS="-chem trop_mozart"
+./xmlchange CAM_NML_USE_CASE="2000_cam4_trop_chem"
+./xmlchange RUN_STARTDATE="19950101"
