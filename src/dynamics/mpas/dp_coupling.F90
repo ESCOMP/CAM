@@ -13,9 +13,7 @@ use physconst,      only: gravit, cpairv, cappa, rairv, rh2o, zvir
 use spmd_dyn,       only: local_dp_map, block_buf_nrecs, chunk_buf_nrecs
 use spmd_utils,     only: mpicom, iam, masterproc
 
-use dyn_grid,       only: max_col_per_block=>maxNCells, &
-                          global_to_local_cell=>local_col_index
-
+use dyn_grid,       only: get_gcol_block_d
 use dyn_comp,       only: dyn_export_t, dyn_import_t
 
 use physics_types,  only: physics_state, physics_tend
@@ -81,11 +79,12 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
 
    integer :: lchnk, icol, k, kk      ! indices over chunks, columns, layers
    integer :: i, m, ncols, blockid
+   integer :: blk(1), bcid(1)
 
    integer :: pgcols(pcols)
-   integer :: tsize                           ! amount of data per grid point passed to physics
-   integer :: bpter(max_col_per_block,0:pver) ! offsets into block buffer for packing data
-   integer :: cpter(pcols,0:pver)             ! offsets into chunk buffer for unpacking data
+   integer :: tsize                    ! amount of data per grid point passed to physics
+   integer, allocatable :: bpter(:,:)  ! offsets into block buffer for packing data
+   integer, allocatable :: cpter(:,:)  ! offsets into chunk buffer for unpacking data
 
    real(r8), allocatable, dimension(:) :: bbuffer, cbuffer ! transpose buffers
 
@@ -116,14 +115,15 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
 
    if (local_dp_map) then
 
-      !$omp parallel do private (lchnk, ncols, icol, i, k, kk, m, pgcols)
+      !$omp parallel do private (lchnk, ncols, icol, i, k, kk, m, pgcols, blk, bcid)
       do lchnk = begchunk, endchunk
 
          ncols = get_ncols_p(lchnk)                         ! number of columns in this chunk
          call get_gcol_all_p(lchnk, pcols, pgcols)          ! global column indices in chunk
 
-         do icol = 1, ncols                                 ! column index in physics chunk
-            i = global_to_local_cell(pgcols(icol))          ! column index in dynamics block
+         do icol = 1, ncols                                   ! column index in physics chunk
+            call get_gcol_block_d(pgcols(icol), 1, blk, bcid) ! column index in dynamics block
+            i = bcid(1)
 
             phys_state(lchnk)%psdry(icol) = pintdry(1,i)
             phys_state(lchnk)%phis(icol) = zint(1,i) * gravit
@@ -161,8 +161,11 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
       allocate(cbuffer(tsize*chunk_buf_nrecs))    ! chunk buffer
       cbuffer = 0.0_r8
 
+      allocate( bpter(nCellsSolve,0:pver) )
+      allocate( cpter(pcols,0:pver) )
+
       blockid = iam + 1   ! global block index
-      call block_to_chunk_send_pters(blockid, max_col_per_block, pverp, tsize, bpter)
+      call block_to_chunk_send_pters(blockid, nCellsSolve, pverp, tsize, bpter)
 
       do i = 1, nCellsSolve                           ! column index in block
 
@@ -222,8 +225,8 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
          end do
       end do
 
-      deallocate( bbuffer )
-      deallocate( cbuffer )
+      deallocate( bbuffer, bpter )
+      deallocate( cbuffer, cpter )
 
    end if
    call t_stopf('dpcopy')
@@ -257,6 +260,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
    ! Local variables
    integer :: lchnk, icol, k, kk      ! indices over chunks, columns, layers
    integer :: i, m, ncols, blockid
+   integer :: blk(1), bcid(1)
 
    real(r8) :: factor
    real(r8) :: dt_phys
@@ -278,9 +282,9 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
 
 
    integer :: pgcols(pcols)
-   integer :: tsize                           ! amount of data per grid point passed to dynamics
-   integer :: cpter(pcols,0:pver)             ! offsets into chunk buffer for packing data
-   integer :: bpter(max_col_per_block,0:pver) ! offsets into block buffer for unpacking data
+   integer :: tsize                    ! amount of data per grid point passed to dynamics
+   integer, allocatable :: bpter(:,:)  ! offsets into block buffer for unpacking data
+   integer, allocatable :: cpter(:,:)  ! offsets into chunk buffer for packing data
 
    real(r8), allocatable, dimension(:) :: bbuffer, cbuffer ! transpose buffers
 
@@ -318,15 +322,16 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
    call t_startf('pd_copy')
    if (local_dp_map) then
 
-      !$omp parallel do private (lchnk, ncols, icol, i, k, m, pgcols)
+      !$omp parallel do private (lchnk, ncols, icol, i, k, kk, m, pgcols, blk, bcid)
       do lchnk = begchunk, endchunk
 
          ncols = get_ncols_p(lchnk)                     ! number of columns in this chunk
          call get_gcol_all_p(lchnk, pcols, pgcols)      ! global column indices
 
-         do icol = 1, ncols                             ! column index in physics chunk
-            i = global_to_local_cell(pgcols(icol))      ! column index in dynamics block
-
+         do icol = 1, ncols                                   ! column index in physics chunk
+            call get_gcol_block_d(pgcols(icol), 1, blk, bcid) ! column index in dynamics block
+            i = bcid(1)
+            
             do k = 1, pver                              ! vertical index in physics chunk
                kk = pver - k + 1                        ! vertical index in dynamics block
 
@@ -362,6 +367,9 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
       allocate( cbuffer(tsize*chunk_buf_nrecs) )
       cbuffer = 0.0_r8
 
+      allocate( bpter(nCellsSolve,0:pver) )
+      allocate( cpter(pcols,0:pver) )
+
       !$omp parallel do private (lchnk, ncols, icol, k, m, cpter)
       do lchnk = begchunk, endchunk
          ncols = get_ncols_p(lchnk)
@@ -396,7 +404,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
 
       blockid = iam + 1   !  global block index
    
-      call chunk_to_block_recv_pters(blockid, max_col_per_block, pverp, tsize, bpter)
+      call chunk_to_block_recv_pters(blockid, nCellsSolve, pverp, tsize, bpter)
 
       do i = 1, nCellsSolve                       ! index in dynamics block
 
@@ -418,8 +426,8 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
          end do
       end do
 
-      deallocate( bbuffer )
-      deallocate( cbuffer )
+      deallocate( bbuffer, bpter )
+      deallocate( cbuffer, cpter )
 
    end if
    call t_stopf('pd_copy')

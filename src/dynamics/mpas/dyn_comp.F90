@@ -1,5 +1,3 @@
-#define MPAS_DEBUG_WRITE(print_task, x) if (iam == (print_task)) write(iulog,*) 'MPAS_DEBUG '//subname//' ', (x)
-
 module dyn_comp
 
 ! CAM component interfaces to the MPAS Dynamical Core
@@ -55,6 +53,11 @@ public :: &
    dyn_run,      &
    dyn_final,    &
    swap_time_level_ptrs
+
+! Note that the fields in the import and export states are pointers into the MPAS dycore internal
+! data structures.  These fields have the order of the vertical and horizontal dimensions swapped
+! relative to the CAM convention, as well as having the vertical indices ordered from bottom to top
+! of atm.
 
 type dyn_import_t
    !
@@ -209,7 +212,8 @@ real(r8), parameter :: rad2deg = 180.0_r8 / pi
 real(r8), parameter :: deg2rad = pi / 180.0_r8
 
 ! The global cell indices are used to seed the RNG which is used to apply
-! random perturbations to the initial temperature field.
+! random perturbations to the initial temperature field.  These global indices
+! are just those for the local dynamics block.
 integer, allocatable :: glob_ind(:)
 
 type (MPAS_TimeInterval_type) :: integrationLength ! set to CAM's dynamics/physics coupling interval
@@ -244,9 +248,6 @@ subroutine dyn_readnl(NLFileName)
 
    character(len=*), parameter :: subname = 'dyn_comp::dyn_readnl'
    !----------------------------------------------------------------------------
-
-
-   MPAS_DEBUG_WRITE(0, 'begin '//subname)
 
    logUnits(1) = iulog
    logUnits(2) = getunit()
@@ -330,29 +331,19 @@ subroutine dyn_init(dyn_in, dyn_out)
    integer, pointer :: nVerticesSolve
    integer, pointer :: index_qv
 
-   integer, pointer :: indexToCellID(:) ! global indices of cell centers
+   integer, pointer :: indexToCellID(:) ! global indices of cell centers of local block
 
    real(r8) :: dtime
    real(r8), pointer :: mpas_dt
    real(r8) :: dt_ratio
    character(len=128) :: errmsg
 
-   !
-   ! The cnst_moist_names array should list every constituent name in CAM
-   ! that represents a moisture species
-   !
-   character(len=*), dimension(6), parameter :: cnst_moist_names = [character(len=8) :: &
-                                                                    'Q', 'CLDLIQ', 'CLDICE', 'RAINQM', 'SNOWQM', 'GRAUQM']
-
    character(len=*), parameter :: subname = 'dyn_comp::dyn_init'
    !----------------------------------------------------------------------------
 
-   MPAS_DEBUG_WRITE(0, 'begin '//subname)
-
-   if (cam_mpas_define_scalars(domain_ptr % blocklist, cnst_name, cnst_moist_names, &
-                               dyn_in % mpas_from_cam_cnst, dyn_out % cam_from_mpas_cnst) /= 0) then
-      write(errmsg, '(a)') 'Set-up of constituents for MPAS-A dycore failed.'
-      call endrun(subname//': '//trim(errmsg))
+   if (cam_mpas_define_scalars(domain_ptr % blocklist, dyn_in % mpas_from_cam_cnst, &
+                               dyn_out % cam_from_mpas_cnst) /= 0) then
+      call endrun(subname//': Set-up of constituents for MPAS-A dycore failed.')
    end if
 
    call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'mesh',  mesh_pool)
@@ -523,8 +514,6 @@ subroutine dyn_run(dyn_in, dyn_out)
    character(len=*), parameter :: subname = 'dyn_comp::dyn_run'
    !----------------------------------------------------------------------------
 
-   MPAS_DEBUG_WRITE(0, 'begin '//subname)
-
    ! Call the MPAS-A dycore
    call cam_mpas_run(integrationLength)
 
@@ -691,8 +680,6 @@ subroutine read_inidat(dyn_in)
    character(len=*), parameter :: subname = 'dyn_comp:read_inidat'
    !--------------------------------------------------------------------------------------
 
-   MPAS_DEBUG_WRITE(0, 'begin '//subname)
-
    fh_ini  => initial_file_get_id()
 
    nCellsSolve = dyn_in % nCellsSolve
@@ -846,7 +833,7 @@ subroutine read_inidat(dyn_in)
       if (readvar) then
          uperp(:,:nEdgesSolve) = mpas3d(:,:nEdgesSolve,1)
       else
-         call endrun(subname//': failed to read u from initial file')
+         call endrun(subname//': failed to read u (uperp) from initial file')
       end if
       deallocate( mpas3d )
 

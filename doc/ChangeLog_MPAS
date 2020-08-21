@@ -1,5 +1,55 @@
 ===============================================================
 
+Tag name: mpas064_cam6_2_037
+Originator(s): eaton
+Date: Fri 21 Aug 2020 05:46:29 PM MDT
+One-line Summary: more interface cleanup
+
+Purpose of changes:
+
+General cleanup and some refactoring of access to grid data in
+dp_coupling. 
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/dp_coupling.F90
+. remove access to dyn_grid module data maxNCells.  Can dynamically
+  allocate bpter to correct size.
+. use accessor routine get_gcol_block_d instead of dyn_grid module data
+  local_col_index 
+
+src/dynamics/mpas/driver/cam_mpas_subdriver.F90
+. cam_mpas_define_scalars
+  - remove dummy args cnst_names and cnst_moist_names
+  - use CAM constituents module to provide constituent names and a function
+    the identifies the water species.  refactor code to make use of this
+    array and function.
+
+src/dynamics/mpas/dyn_comp.F90
+. remove debug code and improve comments
+. dyn_init
+  - remove array cnst_moist_names
+  - remove actual args cnst_name and cnst_moist_names from
+    cam_mpas_define_scalars 
+
+src/dynamics/mpas/dyn_grid.F90
+. remove public attribute of maxNCells, col_indices_in_block,
+  local_col_index
+. remove debug code and improve comments
+
+Testing:
+
+Test configuration: mpasa480L32, held_suarez, terminator chem, analytic IC
+type us_standard_atmosphere, 6 test tracers.  I verified that the results
+were BFB identical to the previous commit and that all phys_loadbalance
+options are giving identical results.
+
+With the same configuration as above except using mpasa120L32 I verified
+that the results are identical for task counts 36, 72, 144, and 288.
+
+===============================================================
+===============================================================
+
 Tag name: 
 Originator(s): eaton
 Date: Mon 10 Aug 2020 01:50:59 PM MDT
