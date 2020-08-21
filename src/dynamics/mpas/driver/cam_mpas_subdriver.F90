@@ -532,7 +532,7 @@ contains
     !> \details
     !>  Given an array of constituent names, which must have size equal to the number
     !>  of scalars that were set in the call to cam_mpas_init_phase3, and given
-    !>  an array of names of scalars that are moisture species, this routine defines
+    !>  a function to identify which scalars are moisture species, this routine defines
     !>  scalar constituents for the MPAS-A dycore.
     !>  Because the MPAS-A dycore expects all moisture constituents to appear in
     !>  a contiguous range of constituent indices, this routine may in general need
@@ -542,8 +542,7 @@ contains
     !>  
     !
     !-----------------------------------------------------------------------
-    function cam_mpas_define_scalars(block, cnst_names, cnst_moist_names, &
-                                     mpas_from_cam_cnst, cam_from_mpas_cnst) result(ierr)
+    function cam_mpas_define_scalars(block, mpas_from_cam_cnst, cam_from_mpas_cnst) result(ierr)
 
        use mpas_derived_types, only : block_type
 
@@ -554,11 +553,11 @@ contains
        use mpas_log, only : mpas_log_write
        use mpas_derived_types, only : MPAS_LOG_ERR
 
+       use constituents, only: cnst_name, cnst_is_a_water_species
+
        implicit none
 
        type (block_type), pointer :: block
-       character(len=*), dimension(:), intent(in) :: cnst_names
-       character(len=*), dimension(:), intent(in) :: cnst_moist_names
        integer, dimension(:), pointer :: mpas_from_cam_cnst, cam_from_mpas_cnst
        integer :: ierr
 
@@ -607,10 +606,10 @@ contains
        ! If at runtime there are more than num_scalars in the array of constituent names provided by CAM,
        ! something has gone wrong
        !
-       if (size(cnst_names) > num_scalars) then
+       if (size(cnst_name) > num_scalars) then
           call mpas_log_write('The number of constituent names is larger than the num_scalars dimension', &
                               messageType=MPAS_LOG_ERR)
-          call mpas_log_write('size(cnst_names) = $i, num_scalars = $i', intArgs=[size(cnst_names), num_scalars], &
+          call mpas_log_write('size(cnst_name) = $i, num_scalars = $i', intArgs=[size(cnst_name), num_scalars], &
                               messageType=MPAS_LOG_ERR)
           ierr = 1
           return
@@ -620,8 +619,8 @@ contains
        ! In CAM, the first scalar (if there are any) is always Q (specific humidity); if this is not
        ! the case, something has gone wrong
        !
-       if (size(cnst_names) > 0) then
-          if (trim(cnst_names(1)) /= 'Q') then
+       if (size(cnst_name) > 0) then
+          if (trim(cnst_name(1)) /= 'Q') then
              call mpas_log_write('The first constituent is not Q', messageType=MPAS_LOG_ERR)
              ierr = 1
              return
@@ -634,34 +633,31 @@ contains
        allocate(mpas_from_cam_cnst(num_scalars))
        mpas_from_cam_cnst(:) = 0
        num_moist = 0
-       do i = 1, size(cnst_names)
-          do j = 1, size(cnst_moist_names)
-             if (trim(cnst_names(i)) == trim(cnst_moist_names(j))) then
+       do i = 1, size(cnst_name)
+          if (cnst_is_a_water_species(cnst_name(i))) then
                 num_moist = num_moist + 1
                 mpas_from_cam_cnst(num_moist) = i
-                exit
-             end if
-          end do
+          end if
        end do
 
        !
        ! If CAM has no scalars, let the only scalar in MPAS be 'qv' (a moisture species)
        !
-       if (num_scalars == 1 .and. size(cnst_names) == 0) then
+       if (num_scalars == 1 .and. size(cnst_name) == 0) then
           num_moist = 1
        end if
 
        !
-       ! Assign non-moisture constituents to mpas_from_cam_cnst(num_moist+1:size(cnst_names))
+       ! Assign non-moisture constituents to mpas_from_cam_cnst(num_moist+1:size(cnst_name))
        !
        idx_passive = num_moist + 1
-       do i = 1, size(cnst_names)
-          do j = 1, size(cnst_names)
+       do i = 1, size(cnst_name)
+          do j = 1, size(cnst_name)
              if (mpas_from_cam_cnst(j) == i) exit
           end do
 
           ! If CAM constituent i is not already mapped as a moist constituent
-          if (j > size(cnst_names)) then
+          if (j > size(cnst_name)) then
              mpas_from_cam_cnst(idx_passive) = i
              idx_passive = idx_passive + 1
           end if
@@ -673,7 +669,7 @@ contains
        allocate(cam_from_mpas_cnst(num_scalars))
        cam_from_mpas_cnst(:) = 0
 
-       do i = 1, size(cnst_names)
+       do i = 1, size(cnst_name)
           cam_from_mpas_cnst(mpas_from_cam_cnst(i)) = i
        end do
 
@@ -695,8 +691,8 @@ contains
           call mpas_add_att(scalarsField % attLists(1) % attList, 'units', 'kg kg^{-1}')
           call mpas_add_att(scalarsField % attLists(1) % attList, 'long_name', 'Water vapor mixing ratio')
 
-          do j = 2, size(cnst_names)
-             scalarsField % constituentNames(j) = trim(cnst_names(mpas_from_cam_cnst(j)))
+          do j = 2, size(cnst_name)
+             scalarsField % constituentNames(j) = trim(cnst_name(mpas_from_cam_cnst(j)))
           end do
 
        end do
@@ -710,7 +706,7 @@ contains
        call mpas_log_write('')
        call mpas_log_write('  i MPAS constituent mpas_from_cam_cnst(i)       i CAM constituent  cam_from_mpas_cnst(i)')
        call mpas_log_write('------------------------------------------     ------------------------------------------')
-       do i = 1, min(num_scalars, size(cnst_names))
+       do i = 1, min(num_scalars, size(cnst_name))
           if (i <= num_moist) then
              moisture_char = '*'
           else
@@ -718,7 +714,7 @@ contains
           end if
           write(tempstr, '(i3,1x,a16,1x,i18,8x,i3,1x,a16,1x,i18)') i, trim(scalarsField % constituentNames(i))//moisture_char, &
                                                                    mpas_from_cam_cnst(i), &
-                                                                   i, trim(cnst_names(i)), &
+                                                                   i, trim(cnst_name(i)), &
                                                                    cam_from_mpas_cnst(i)
           call mpas_log_write(trim(tempstr))
        end do
@@ -758,8 +754,8 @@ contains
           call mpas_add_att(scalarsField % attLists(1) % attList, 'units', 'kg m^{-3} s^{-1}')
           call mpas_add_att(scalarsField % attLists(1) % attList, 'long_name', 'Tendency of water vapor mixing ratio')
 
-          do j = 2, size(cnst_names)
-             scalarsField % constituentNames(j) = trim(cnst_names(mpas_from_cam_cnst(j)))
+          do j = 2, size(cnst_name)
+             scalarsField % constituentNames(j) = trim(cnst_name(mpas_from_cam_cnst(j)))
           end do
        end do
 

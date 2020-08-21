@@ -1,5 +1,3 @@
-#define MPAS_DEBUG_WRITE(print_task, x) if (iam == (print_task)) write(iulog,*) 'MPAS_DEBUG '//subname//' ', (x)
-
 module dyn_grid
 
 !-------------------------------------------------------------------------------
@@ -48,7 +46,9 @@ implicit none
 private
 save
 
-integer, parameter :: dyn_decomp    = 101 ! cell center grid
+integer, parameter :: dyn_decomp    = 101 ! cell center grid (this parameter is public to provide a dycore
+                                          ! independent way to to identify the physics grid on the dynamics
+                                          ! decomposition)
 integer, parameter :: edge_decomp   = 102 ! edge node grid
 integer, parameter :: vertex_decomp = 103 ! vertex node grid
 integer, parameter :: ptimelevels = 2
@@ -56,7 +56,6 @@ integer, parameter :: ptimelevels = 2
 public :: &
    dyn_decomp, &
    ptimelevels, &
-   maxNCells,   &
    dyn_grid_init, &
    get_block_bounds_d, &
    get_block_gcol_cnt_d, &
@@ -78,7 +77,7 @@ public :: &
 real(r8) :: zw(plevp), zw_mid(plev)
 
 integer ::      &
-   maxNCells,   &    ! maximum number of cells for any task
+   maxNCells,   &    ! maximum number of cells for any task (nCellsSolve <= maxNCells)
    maxEdges,    &    ! maximum number of edges per cell
    nVertLevels       ! number of vertical layers (midpoints)
 
@@ -97,14 +96,14 @@ integer ::      &
    nEdges_g,    &    ! global number of edges
    nVertices_g       ! global number of vertices
 
-integer, public, allocatable :: col_indices_in_block(:,:)  !  global column indices (used in dp_coupling)
-integer,         allocatable :: num_col_per_block(:)
-integer,         allocatable :: global_blockid(:)
-integer, public, allocatable :: local_col_index(:)  !  local to block
+integer, allocatable :: col_indices_in_block(:,:)  ! global column indices in each block
+integer, allocatable :: num_col_per_block(:)       ! number of columns in each block
+integer, allocatable :: global_blockid(:)          ! block id for each global column
+integer, allocatable :: local_col_index(:)         ! local column index (in block) for each global column
 
-real(r8), dimension(:), pointer :: lonCell_g        ! global cell longitudes
-real(r8), dimension(:), pointer :: latCell_g        ! global cell latitudes
-real(r8), dimension(:), pointer :: areaCell_g       ! global cell areas
+real(r8), dimension(:), pointer :: lonCell_g       ! global cell longitudes
+real(r8), dimension(:), pointer :: latCell_g       ! global cell latitudes
+real(r8), dimension(:), pointer :: areaCell_g      ! global cell areas
 
 !=========================================================================================
 contains
@@ -260,68 +259,43 @@ subroutine get_block_gcol_d(blockid, asize, cdex)
 
 end subroutine get_block_gcol_d
    
+!=========================================================================================
    
-!-----------------------------------------------------------------------
-!  routine get_block_lvl_cnt_d
-!
-!> \brief Return number of levels in a column
-!> \details
-!>  Returns the number of levels in the specified column of the specified block.
-!>  If column includes surface fields, then it is defined to also
-!>  include level 0.
-!>
-!>  Will the blockid values be among only those block IDs owned by the calling
-!>  MPI task, or can the blockid be the ID of a block owned by any MPI task?
-!>
-!>  Is bcid a global column ID, or a column ID in the local index space of
-!>  the block?
-!
-!-----------------------------------------------------------------------
 integer function get_block_lvl_cnt_d(blockid, bcid)
+
+   ! Returns the number of levels in the specified column of the specified block.
+   ! If column includes surface fields, then it is defined to also
+   ! include level 0.
 
    integer, intent(in) :: blockid  ! global block id
    integer, intent(in) :: bcid     ! column index within block
 
    character(len=*), parameter :: subname = 'dyn_grid::get_block_lvl_cnt_d'
+   !----------------------------------------------------------------------------
 
-
-!   MPAS_DEBUG_WRITE(0, 'begin '//subname)
-
-   ! At present, all blocks have the same number of levels
+   ! All blocks have the same number of levels.
    get_block_lvl_cnt_d = plevp
 
 end function get_block_lvl_cnt_d
 
+!=========================================================================================
 
-!-----------------------------------------------------------------------
-!  routine get_block_levels_d
-!
-!> \brief Return level indices in a column
-!> \details
-!>  Returns the level indices in the column of the specified global block.
-!>
-!>  Will the blockid values be among only those block IDs owned by the calling
-!>  MPI task, or can the blockid be the ID of a block owned by any MPI task?
-!>
-!>  Is bcid a global column ID, or a column ID in the local index space of
-!>  the block?
-!
-!-----------------------------------------------------------------------
 subroutine get_block_levels_d(blockid, bcid, lvlsiz, levels)
 
+   ! Returns the level indices in the column of the specified global block.
+   ! For MPAS decomposition all columns in a block contain complete vertical grid.
+
    integer, intent(in) :: blockid  ! global block id
-   integer, intent(in) :: bcid    ! column index within block
+   integer, intent(in) :: bcid     ! column index within block
    integer, intent(in) :: lvlsiz   ! dimension of levels array
 
-   integer, intent(out) :: levels(lvlsiz) ! levels indices for block
+   integer, intent(out) :: levels(lvlsiz) ! level indices for block
 
    integer :: k
    character(len=128) :: errmsg
 
    character(len=*), parameter :: subname = 'dyn_grid::get_block_levels_d'
-
-
-!   MPAS_DEBUG_WRITE(0, 'begin '//subname)
+   !----------------------------------------------------------------------------
 
    if ( lvlsiz < plev + 1 ) then
       write(errmsg,*) ': levels array not large enough (', lvlsiz,' < ',plev + 1,')'
@@ -378,6 +352,7 @@ subroutine get_gcol_block_d(gcol, cnt, blockid, bcid)
       call endrun( subname // ':: arrays not large enough' )
    end if
 
+   ! Each global column is solved in just one block.
    blockid(1) = global_blockid(gcol)
    bcid(1) = local_col_index(gcol)
 
@@ -400,34 +375,24 @@ integer function get_block_owner_d(blockid)
    character(len=*), parameter :: subname = 'dyn_grid::get_block_owner_d'
    !----------------------------------------------------------------------------
 
+   ! MPAS assigns one block per task.
    get_block_owner_d = (blockid - 1)
 
 end function get_block_owner_d
 
+!=========================================================================================
 
-!-----------------------------------------------------------------------
-!  routine get_horiz_grid_dim_d
-!
-!> \brief Return declared horizontal dimensions of computational grid
-!> \details
-!>  Return declared horizontal dimensions of computational grid.
-!>  For non-lon/lat grids, declare grid to be one-dimensional,
-!>  i.e., (ncols x 1).
-!>
-!>  Is this the global dimension, or the task-local dimension?
-!>  I.e., is the number of cells the total number of cells in the mesh
-!>  or just the number of cells in blocks owned by this MPI task?
-!
-!-----------------------------------------------------------------------
 subroutine get_horiz_grid_dim_d(hdim1_d, hdim2_d)
+
+   ! Return declared horizontal dimensions of global grid.
+   ! For non-lon/lat grids, declare grid to be one-dimensional,
+   ! i.e., (ngcols,1) where ngcols is total number of columns in grid.
 
    integer, intent(out) :: hdim1_d             ! first horizontal dimension
    integer, intent(out), optional :: hdim2_d   ! second horizontal dimension
 
    character(len=*), parameter :: subname = 'dyn_grid::get_horiz_grid_dim_d'
-
-
-!   MPAS_DEBUG_WRITE(0, 'begin '//subname)
+   !----------------------------------------------------------------------------
 
    hdim1_d = nCells_g
 
@@ -435,38 +400,26 @@ subroutine get_horiz_grid_dim_d(hdim1_d, hdim2_d)
 
 end subroutine get_horiz_grid_dim_d
 
+!=========================================================================================
 
-!-----------------------------------------------------------------------
-!  routine get_horiz_grid_d
-!
-!> \brief Returns lat, lon, area, and interp weight for a global column
-!> \details
-!>  Return latitude and longitude (in radians), column surface
-!>  area (in radians squared) and surface integration weights
-!>  for global column indices that will be passed to/from physics.
-!>
-!>  Can this routine be passed global column IDs for columns that are not
-!>  owned by the calling MPI task?
-!>
-!>  What do the interpolation weights represent, or how are they used?
-!
-!-----------------------------------------------------------------------
 subroutine get_horiz_grid_d(nxy, clat_d_out, clon_d_out, area_d_out, &
        wght_d_out, lat_d_out, lon_d_out)
 
+   ! Return global arrays of latitude and longitude (in radians), column
+   ! surface area (in radians squared) and surface integration weights for
+   ! columns in physics grid (cell centers)
+
    integer, intent(in) :: nxy                     ! array sizes
 
-   real(r8), intent(out), optional :: clat_d_out(:) ! column latitudes
-   real(r8), intent(out), optional :: clon_d_out(:) ! column longitudes
-   real(r8), intent(out), target, optional :: area_d_out(:)
-   real(r8), intent(out), target, optional :: wght_d_out(:) !  weight
-   real(r8), intent(out), optional :: lat_d_out(:)  ! column degree latitudes
-   real(r8), intent(out), optional :: lon_d_out(:)  ! column degree longitudes
+   real(r8), intent(out), optional :: clat_d_out(:) ! column latitudes (radians)
+   real(r8), intent(out), optional :: clon_d_out(:) ! column longitudes (radians)
+   real(r8), intent(out), target, optional :: area_d_out(:) ! sum to 4*pi (radians^2)
+   real(r8), intent(out), target, optional :: wght_d_out(:) ! normalized to sum to 4*pi
+   real(r8), intent(out), optional :: lat_d_out(:)  ! column latitudes (degrees)
+   real(r8), intent(out), optional :: lon_d_out(:)  ! column longitudes (degrees)
 
    character(len=*), parameter :: subname = 'dyn_grid::get_horiz_grid_d'
-
-
-!   MPAS_DEBUG_WRITE(0, 'begin '//subname)
+   !----------------------------------------------------------------------------
 
    if ( nxy /= nCells_g ) then
       call endrun( subname // ':: incorrect number of cells' )
@@ -511,6 +464,7 @@ subroutine physgrid_copy_attributes_d(gridname, grid_attribute_names)
    character(len=max_hcoordname_len), pointer, intent(out) :: grid_attribute_names(:)
 
    character(len=*), parameter :: subname = 'dyn_grid::physgrid_copy_attributes_d'
+   !----------------------------------------------------------------------------
 
 
    ! Do not let the physics grid copy the mpas_cell "area" attribute because
@@ -522,90 +476,61 @@ end subroutine physgrid_copy_attributes_d
 
 !=========================================================================================
 
-!-----------------------------------------------------------------------
-!  routine get_dyn_grid_parm_real1d
-!
-!> \brief Not used for unstructured grids
-!> \details
-!>  This routine is not used for unstructured grids, but still needed as a
-!>  dummy interface to satisfy references from mo_synoz.F90 and phys_gmean.F90
-!>
-!>  If this routine is unused but called, do we need to ensure, e.g., that
-!>  rval is nullified before returning?
-!
-!-----------------------------------------------------------------------
 function get_dyn_grid_parm_real1d(name) result(rval)
+
+   ! This routine is not used for unstructured grids, but still needed as a
+   ! dummy interface to satisfy references (for linking executable) from mo_synoz.F90
+   ! and phys_gmean.F90.
 
    character(len=*), intent(in) :: name
    real(r8), pointer :: rval(:)
 
    character(len=*), parameter :: subname = 'dyn_grid::get_dyn_grid_parm_real1d'
+   !----------------------------------------------------------------------------
 
-
-!   MPAS_DEBUG_WRITE(0, 'begin '//subname)
-
-!   if(name.eq.'w') then
-!      call endrun('get_dyn_grid_parm_real1d: w not defined')
-!   else if(name.eq.'clat') then
-!      call endrun('get_dyn_grid_parm_real1d: clat not supported, use get_horiz_grid_d')
-!   else if(name.eq.'latdeg') then
-!      call endrun('get_dyn_grid_parm_real1d: latdeg not defined')
-!   else
-!      nullify(rval)
-!   end if
+   if (name .eq. 'w') then
+      call endrun('get_dyn_grid_parm_real1d: w not defined')
+   else if( name .eq. 'clat') then
+      call endrun('get_dyn_grid_parm_real1d: clat not supported, use get_horiz_grid_d')
+   else if( name .eq. 'latdeg') then
+      call endrun('get_dyn_grid_parm_real1d: latdeg not defined')
+   else
+      nullify(rval)
+   end if
 
 end function get_dyn_grid_parm_real1d
 
+!=========================================================================================
 
-!-----------------------------------------------------------------------
-!  routine get_dyn_grid_parm
-!
-!> \brief Deprecated
-!> \details
-!>  This function is in the process of being deprecated, but is still needed
-!>  as a dummy interface to satisfy external references from some chemistry routines.
-!> 
-!>  Until this routine is deleted, what values must be returned?
-!
-!-----------------------------------------------------------------------
 integer function get_dyn_grid_parm(name) result(ival)
+
+   ! This function is in the process of being deprecated, but is still needed
+   ! as a dummy interface to satisfy external references from some chemistry routines.
 
    character(len=*), intent(in) :: name
 
    character(len=*), parameter :: subname = 'dyn_grid::get_dyn_grid_parm'
+   !----------------------------------------------------------------------------
 
-
-!   MPAS_DEBUG_WRITE(0, 'begin '//subname)
-
-!   if (name == 'plat') then
-!      ival = 1
-!   else if (name == 'plon') then
-!      ival = nCells_g
-!   else if(name == 'plev') then
-!      ival = plev
-!   else	
-!      ival = -1
-!   end if
+   if (name == 'plat') then
+      ival = 1
+   else if (name == 'plon') then
+      ival = nCells_g
+   else if(name == 'plev') then
+      ival = plev
+   else	
+      ival = -1
+   end if
 
 end function get_dyn_grid_parm
 
+!=========================================================================================
 
-!-----------------------------------------------------------------------
-!  routine dyn_grid_get_colndx
-!
-!> \brief Not sure?
-!> \details
-!>  The purpose of this routine is unclear. Does it essentially just call
-!>  get_gcol_block_d and get_block_owner_d for an array of global columns?
-!>
-!>  As with get_gcol_block_d, can this routine be called for global columns
-!>  that are not owned by the calling task?
-!>
-!>  When is this routine needed? Previous implementations suggested that it may
-!>  never be called for MPAS.
-!
-!-----------------------------------------------------------------------
 subroutine dyn_grid_get_colndx(igcol, ncols, owners, col, lbk )
+
+   ! For each global column index return the owning task.  If the column is owned
+   ! by this task, then also return the local block number and column index in that
+   ! block.
 
    integer, intent(in)  :: ncols
    integer, intent(in)  :: igcol(ncols)
@@ -614,29 +539,25 @@ subroutine dyn_grid_get_colndx(igcol, ncols, owners, col, lbk )
    integer, intent(out) :: lbk(ncols)
 
    integer  :: i
-   integer :: blockid(1), bcid(1), lclblockid(1)
+   integer :: blockid(1), bcid(1)
 
    character(len=*), parameter :: subname = 'dyn_grid::dyn_grid_get_colndx'
+   !----------------------------------------------------------------------------
 
-
-!   MPAS_DEBUG_WRITE(0, 'begin '//subname)
-
-!     do i = 1,ncols
-!  
-!       call  get_gcol_block_d( igcol(i), 1, blockid, bcid, lclblockid )
-!       owners(i) = get_block_owner_d(blockid(1))
-!  
-!       if ( iam==owners(i) ) then
-!          lbk(i) = lclblockid(1)
-!          col(i) = bcid(1)
-!       else
-!          lbk(i) = -1
-!          col(i) = -1
-!       end if
-!  
-!    end do
-
-   call endrun('dyn_grid_get_colndx not supported for mpas dycore')
+   do i = 1,ncols
+      
+      call  get_gcol_block_d(igcol(i), 1, blockid, bcid)
+      owners(i) = get_block_owner_d(blockid(1))
+  
+      if ( iam==owners(i) ) then
+         lbk(i) = 1         ! only 1 block per task
+         col(i) = bcid(1)
+      else
+         lbk(i) = -1
+         col(i) = -1
+      end if
+  
+   end do
 
 end subroutine dyn_grid_get_colndx
 
@@ -672,10 +593,7 @@ end subroutine dyn_grid_get_elem_coords
 subroutine setup_time_invariant(fh_ini)
 
    ! Initialize all time-invariant fields needed by the MPAS-Atmosphere dycore,
-   ! either by reading these fields from CAM's initial file or by computing them
-   ! At present, all time-invariant fields are read from the file descriptor fh_ini,
-   ! but in future, some of these fields could be computed
-   ! here based on other fields that were read
+   ! by reading these fields from the initial file.
 
    use mpas_rbf_interpolation, only : mpas_rbf_interp_initialize
    use mpas_vector_reconstruction, only : mpas_init_reconstruct
@@ -721,7 +639,8 @@ subroutine setup_time_invariant(fh_ini)
    call mpas_init_reconstruct(meshPool)
 
    ! Compute the zeta coordinate at layer interfaces and midpoints.  Store
-   ! in arrays using CAM vertical index order for use in CAM coordinate objects.
+   ! in arrays using CAM vertical index order (top to bottom of atm) for use
+   ! in CAM coordinate objects.
    call mpas_pool_get_array(meshPool, 'rdzw', rdzw)
 
    allocate(dzw(plev))
@@ -741,8 +660,15 @@ end subroutine setup_time_invariant
 
 subroutine define_cam_grids()
 
-   ! Defines the dynamics and physics grids on the dynamics decompostion.
-   ! The physics grid on the physics decomposition is defined in phys_grid_init.
+   ! Define the dynamics grids on the dynamics decompostion.  The 'physics'
+   ! grid contains the same nodes as the dynamics cell center grid, but is
+   ! on the physics decomposition and is defined in phys_grid_init.
+   !
+   ! Note that the cell center grid defined here uses 'nCells' rather than
+   ! 'ncol' as the dimension name.  This is because the initial file is
+   ! the same one as used by the standalone MPAS-A model.  That file uses
+   ! the dimension and coordinate names as defined below for the cell
+   ! center, edge, and vertex grids.
 
    use cam_grid_support, only: horiz_coord_t, horiz_coord_create, iMap
    use cam_grid_support, only: cam_grid_register, cam_grid_attribute_register
@@ -773,8 +699,6 @@ subroutine define_cam_grids()
    character(len=*), parameter :: subname = 'dyn_grid::define_cam_grids'
    !----------------------------------------------------------------------------
 
-   MPAS_DEBUG_WRITE(0, 'begin '//subname)
- 
    call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'mesh', meshPool)
 
    !-------------------------------------------------------------!
@@ -851,9 +775,9 @@ subroutine define_cam_grids()
    nullify(lat_coord)
    nullify(lon_coord)
 
-   !-----------------------------------------------------------!
+   !-------------------------------------------------------------!
    ! Construct coordinate and grid objects for vertex node grid. !
-   !-----------------------------------------------------------!
+   !-------------------------------------------------------------!
 
    call mpas_pool_get_array(meshPool, 'indexToVertexID', indexToVertexID)
    call mpas_pool_get_array(meshPool, 'latVertex', latVertex)
