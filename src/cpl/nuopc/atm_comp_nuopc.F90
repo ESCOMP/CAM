@@ -48,6 +48,7 @@ module atm_comp_nuopc
   use pio                 , only : pio_closefile, pio_inq_varid, pio_put_att, pio_enddef
   use pio                 , only : pio_read_darray, pio_write_darray, pio_def_var, pio_inq_varid
   use pio                 , only : pio_noerr, pio_bcast_error, pio_internal_error, pio_seterrorhandling
+  use pio                 , only : pio_def_var, pio_put_var, PIO_INT
 !$use omp_lib             , only : omp_set_num_threads
 
   implicit none
@@ -160,7 +161,6 @@ contains
   end subroutine SetServices
 
   !===============================================================================
-
   subroutine InitializeP0(gcomp, importState, exportState, clock, rc)
     type(ESMF_GridComp)   :: gcomp
     type(ESMF_State)      :: importState, exportState
@@ -177,7 +177,6 @@ contains
   end subroutine InitializeP0
 
   !===============================================================================
-
   subroutine InitializeAdvertise(gcomp, importState, exportState, clock, rc)
 
     ! intput/output variables
@@ -292,9 +291,10 @@ contains
   end subroutine InitializeAdvertise
 
   !===============================================================================
-
   subroutine InitializeRealize(gcomp, importState, exportState, clock, rc)
+
     use ESMF, only : ESMF_VMGet
+
     ! input/output variables
     type(ESMF_GridComp)  :: gcomp
     type(ESMF_State)     :: importState
@@ -609,108 +609,100 @@ contains
          cam_out=cam_out, &
          cam_in=cam_in)
 
-    !--------------------------------
-    ! generate the mesh
-    !--------------------------------
-
-    lsize = 0
-    do c = begchunk, endchunk
-       do i = 1, get_ncols_p(c)
-          lsize = lsize + 1
-       end do
-    end do
-    allocate(dof(lsize))
-    n = 0
-    do c = begchunk, endchunk
-       do i = 1, get_ncols_p(c)
-          n = n+1
-          dof(n) = get_gcol_p(c,i)
-       end do
-    end do
-
-    ! create distGrid from global index array
-    DistGrid = ESMF_DistGridCreate(arbSeqIndexList=dof, rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
-    ! read in the mesh
-    call NUOPC_CompAttributeGet(gcomp, name='mesh_atm', value=cvalue, rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
-    EMeshTemp = ESMF_MeshCreate(filename=trim(cvalue), fileformat=ESMF_FILEFORMAT_ESMFMESH, rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    if (masterproc) then
-       write(iulog,*)'mesh file for cam domain is ',trim(cvalue)
-    end if
-
-    ! recreate the mesh using the above distGrid
-    EMesh = ESMF_MeshCreate(EMeshTemp, elementDistgrid=Distgrid, rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
-    ! obtain mesh lats and lons
-    call ESMF_MeshGet(Emesh, spatialDim=spatialDim, numOwnedElements=numOwnedElements, rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    if (numOwnedElements /= lsize) then
-       write(tempc1,'(i10)') numOwnedElements
-       write(tempc2,'(i10)') lsize
-       call ESMF_LogWrite(trim(subname)//": ERROR numOwnedElements "// trim(tempc1) // &
-            " not equal to local size "// trim(tempc2), ESMF_LOGMSG_INFO, rc=rc)
-       rc = ESMF_FAILURE
-       return
-    end if
-    allocate(ownedElemCoords(spatialDim*numOwnedElements))
-    allocate(lonMesh(lsize), latMesh(lsize))
-    call ESMF_MeshGet(Emesh, ownedElemCoords=ownedElemCoords)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    do n = 1,lsize
-       lonMesh(n) = ownedElemCoords(2*n-1)
-       latMesh(n) = ownedElemCoords(2*n)
-    end do
-
-    ! obtain internally generated cam lats and lons
-    allocate(lon(lsize)); lon(:) = 0._r8
-    allocate(lat(lsize)); lat(:) = 0._r8
-    n=0
-    do c = begchunk, endchunk
-       ncols = get_ncols_p(c)
-       ! latitudes and longitudes returned in radians
-       call get_rlat_all_p(c, ncols, lats)
-       call get_rlon_all_p(c, ncols, lons)
-       do i=1,ncols
-          n = n+1
-          lat(n) = lats(i)*radtodeg
-          lon(n) = lons(i)*radtodeg
-       end do
-    end do
-
-    ! error check differences between internally generated lons and those read in
-    do n = 1,lsize
-       if (abs(lonMesh(n) - lon(n)) > 1.e-12_r8) then
-          write(6,100)n,lon(n),lonMesh(n), abs(lonMesh(n)-lon(n))
-100       format('ERROR: CAM n, lonmesh(n), lon(n), diff_lon = ',i6,2(f21.13,3x),d21.5)
-       end if
-       if (abs(latMesh(n) - lat(n)) > 1.e-12_r8) then
-          write(6,100)n,lat(n),latMesh(n), abs(latMesh(n)-lat(n))
-101       format('ERROR: CAM n, latmesh(n), lat(n), diff_lat = ',i6,2(f21.13,3x),d21.5)
-       end if
-    end do
-
-    ! deallocate memory
-    deallocate(ownedElemCoords)
-    deallocate(lon, lonMesh)
-    deallocate(lat, latMesh)
-
-    !--------------------------------
-    ! realize the actively coupled fields
-    !--------------------------------
-
-    call realize_fields(gcomp,  Emesh, flds_scalar_name, flds_scalar_num, rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
-    !--------------------------------
-    ! Create cam export array and set the state scalars
-    !--------------------------------
-
     if (mediator_present) then
+
+       ! generate the dof
+       lsize = 0
+       do c = begchunk, endchunk
+          do i = 1, get_ncols_p(c)
+             lsize = lsize + 1
+          end do
+       end do
+       allocate(dof(lsize))
+       n = 0
+       do c = begchunk, endchunk
+          do i = 1, get_ncols_p(c)
+             n = n+1
+             dof(n) = get_gcol_p(c,i)
+          end do
+       end do
+
+       ! create distGrid from global index array
+       DistGrid = ESMF_DistGridCreate(arbSeqIndexList=dof, rc=rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+       ! read in the mesh
+       call NUOPC_CompAttributeGet(gcomp, name='mesh_atm', value=cvalue, rc=rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+       EMeshTemp = ESMF_MeshCreate(filename=trim(cvalue), fileformat=ESMF_FILEFORMAT_ESMFMESH, rc=rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+       if (masterproc) then
+          write(iulog,*)'mesh file for cam domain is ',trim(cvalue)
+       end if
+
+       ! recreate the mesh using the above distGrid
+       EMesh = ESMF_MeshCreate(EMeshTemp, elementDistgrid=Distgrid, rc=rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+       ! obtain mesh lats and lons
+       call ESMF_MeshGet(Emesh, spatialDim=spatialDim, numOwnedElements=numOwnedElements, rc=rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+       if (numOwnedElements /= lsize) then
+          write(tempc1,'(i10)') numOwnedElements
+          write(tempc2,'(i10)') lsize
+          call ESMF_LogWrite(trim(subname)//": ERROR numOwnedElements "// trim(tempc1) // &
+               " not equal to local size "// trim(tempc2), ESMF_LOGMSG_INFO, rc=rc)
+          rc = ESMF_FAILURE
+          return
+       end if
+       allocate(ownedElemCoords(spatialDim*numOwnedElements))
+       allocate(lonMesh(lsize), latMesh(lsize))
+       call ESMF_MeshGet(Emesh, ownedElemCoords=ownedElemCoords)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+       do n = 1,lsize
+          lonMesh(n) = ownedElemCoords(2*n-1)
+          latMesh(n) = ownedElemCoords(2*n)
+       end do
+
+       ! obtain internally generated cam lats and lons
+       allocate(lon(lsize)); lon(:) = 0._r8
+       allocate(lat(lsize)); lat(:) = 0._r8
+       n=0
+       do c = begchunk, endchunk
+          ncols = get_ncols_p(c)
+          ! latitudes and longitudes returned in radians
+          call get_rlat_all_p(c, ncols, lats)
+          call get_rlon_all_p(c, ncols, lons)
+          do i=1,ncols
+             n = n+1
+             lat(n) = lats(i)*radtodeg
+             lon(n) = lons(i)*radtodeg
+          end do
+       end do
+
+       ! error check differences between internally generated lons and those read in
+       do n = 1,lsize
+          if (abs(lonMesh(n) - lon(n)) > 1.e-12_r8) then
+             write(6,100)n,lon(n),lonMesh(n), abs(lonMesh(n)-lon(n))
+100          format('ERROR: CAM n, lonmesh(n), lon(n), diff_lon = ',i6,2(f21.13,3x),d21.5)
+          end if
+          if (abs(latMesh(n) - lat(n)) > 1.e-12_r8) then
+             write(6,100)n,lat(n),latMesh(n), abs(latMesh(n)-lat(n))
+101          format('ERROR: CAM n, latmesh(n), lat(n), diff_lat = ',i6,2(f21.13,3x),d21.5)
+          end if
+       end do
+
+       ! deallocate memory
+       deallocate(ownedElemCoords)
+       deallocate(lon, lonMesh)
+       deallocate(lat, latMesh)
+
+       ! realize the actively coupled fields
+       call realize_fields(gcomp,  Emesh, flds_scalar_name, flds_scalar_num, rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+       ! Create cam export array and set the state scalars
        call export_fields( gcomp, cam_out, rc=rc  )
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
@@ -727,7 +719,8 @@ contains
           call State_diagnose(exportState,subname//':ES',rc=rc)
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
        endif
-    end if
+
+    end if ! end of mediator_present if-block
 
     call shr_file_setLogUnit (shrlogunit)
 
@@ -747,7 +740,6 @@ contains
   end subroutine InitializeRealize
 
   !===============================================================================
-
   subroutine DataInitialize(gcomp, rc)
     type(ESMF_GridComp)  :: gcomp
     integer, intent(out) :: rc
@@ -805,12 +797,12 @@ contains
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
     endif
 
+    !---------------------------------------------------------------
     if (mediator_present) then
+    !---------------------------------------------------------------
 
-       !--------------------------------
        ! Determine if all the import state has been initialized
        ! And if not initialized, then return
-       !--------------------------------
 
        call ESMF_StateGet(importState, itemCount=fieldCount, rc=rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
@@ -836,9 +828,7 @@ contains
        end do
        deallocate(fieldNameList)
 
-       !--------------------------------
-       ! Import state has not been initialized - RETURN
-       !--------------------------------
+       ! *** Import state has not been initialized - RETURN ****
 
        if (.not. importDone) then
           ! Simply return if the import has not been initialized
@@ -848,27 +838,19 @@ contains
           RETURN
        end if
 
-       !--------------------------------
-       ! Import state has been initialized - continue with tphysbc
-       !--------------------------------
+       ! *** Import state has been initialized - continue with tphysbc ***
 
        call ESMF_LogWrite("CAM - Initialize-Data-Dependency doing tphysbc", ESMF_LOGMSG_INFO, rc=rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-       !--------------------------------
        ! get the current step number and coupling interval
-       !--------------------------------
-
        call ESMF_ClockGet( clock, TimeStep=timeStep, advanceCount=stepno, rc=rc )
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
        call ESMF_TimeIntervalGet( timeStep, s=atm_cpl_dt, rc=rc )
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-       !--------------------------------
        ! For initial run, unpack the import state, run cam radiation/clouds and return
        ! For restart run, read the import state from the restart and run radiation/clouds and return
-       !--------------------------------
 
        ! Note - cam_run1 is called only for the purposes of finishing the
        ! flux averaged calculation to compute cam-out
@@ -908,18 +890,13 @@ contains
             flds_scalar_name, flds_scalar_num, rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-       !--------------------------------
        ! diagnostics
-       !--------------------------------
-
        if (dbug_flag > 1) then
           call State_diagnose(exportState,subname//':ES',rc=rc)
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
        endif
 
-       !--------------------------------
        ! CAM data is now fully initialized
-       !--------------------------------
 
        call ESMF_StateGet(exportState, itemCount=fieldCount, rc=rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
@@ -946,7 +923,9 @@ contains
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
        end if
 
+    !---------------------------------------------------------------
     else  ! mediator is not present
+    !---------------------------------------------------------------
 
        call cam_run1 ( cam_in, cam_out )
 
@@ -955,10 +934,7 @@ contains
 
     end if
 
-    !--------------------------------
     ! End redirection of share output to cam log
-    !--------------------------------
-
     call shr_file_setLogUnit (shrlogunit)
 
 #if (defined _MEMTRACE)
@@ -975,9 +951,10 @@ contains
   end subroutine DataInitialize
 
   !===============================================================================
-
   subroutine ModelAdvance(gcomp, rc)
+
     use ESMF, only : ESMF_GridCompGet, esmf_vmget, esmf_vm
+
     ! Run CAM
 
     ! Input/output variables
@@ -1202,14 +1179,21 @@ contains
           end if
        endif
 
-       !--------------------------------
        ! Write merged surface data restart file if appropriate
-       !--------------------------------
        if (rstwr) then
           call cam_write_srfrest( gcomp, &
                yr_spec=yr_sync, mon_spec=mon_sync, day_spec=day_sync, sec_spec=tod_sync, rc=rc)
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
        end if
+
+    else
+
+       ! if there is no mediator, then write the clock info to a driver restart file
+       if (rstwr) then
+          call cam_write_clockrest( clock, yr_sync, mon_sync, day_sync, tod_sync, rc=rc)
+          if (ChkErr(rc,__LINE__,u_FILE_u)) return
+       end if
+
     end if
 
     ! Check for consistency of internal cam clock with master sync clock
@@ -1370,7 +1354,6 @@ contains
   end subroutine ModelSetRunClock
 
   !===============================================================================
-
   subroutine ModelFinalize(gcomp, rc)
     type(ESMF_GridComp)  :: gcomp
     integer, intent(out) :: rc
@@ -1402,7 +1385,6 @@ contains
   end subroutine ModelFinalize
 
   !===============================================================================
-
   subroutine cam_orbital_init(gcomp, logunit, mastertask, rc)
 
     !----------------------------------------------------------
@@ -1502,7 +1484,6 @@ contains
   end subroutine cam_orbital_init
 
   !===============================================================================
-
   subroutine cam_orbital_update(clock, logunit,  mastertask, eccen, obliqr, lambm0, mvelpp, rc)
 
     !----------------------------------------------------------
@@ -1552,7 +1533,6 @@ contains
   end subroutine cam_orbital_update
 
   !===============================================================================
-
   subroutine cam_read_srfrest( gcomp, clock, rc )
 
     ! input/output variables
@@ -1574,7 +1554,6 @@ contains
     real(r8), pointer                  :: fldptr(:)
     real(r8), pointer                  :: tmpptr(:)
     real(r8), pointer                  :: fldptr2d(:,:)
-    logical                            :: exists
     type(ESMF_Time)                    :: currTime      ! time at previous interval
     integer                            :: yr_spec       ! Current year
     integer                            :: mon_spec      ! Current month
@@ -1586,7 +1565,7 @@ contains
     integer                            :: ungriddedUBound(1) ! currently the size must equal 1 for rank 2 fieldds
     integer                            :: gridToFieldMap(1)  ! currently the size must equal 1 for rank 2 fieldds
     integer                            :: lsize
-    character(len=2)                   :: cvalue
+    character(len=8)                   :: cvalue
     integer                            :: nloop
     character(len=4)                   :: prefix
     !-----------------------------------------------------------------------
@@ -1688,7 +1667,7 @@ contains
 
              allocate(tmpptr(lsize))
              do n = 1,ungriddedUBound(1)
-                cvalue = convert_int_to_string(n)
+                write(cvalue,'(i0)') n
                 varname = trim(prefix)//trim(fieldnameList(nf))//trim(cvalue)
                 rcode = pio_inq_varid(File,trim(varname) ,varid)
 
@@ -1725,7 +1704,6 @@ contains
   end subroutine cam_read_srfrest
 
   !===========================================================================================
-
   subroutine cam_write_srfrest( gcomp, yr_spec, mon_spec, day_spec, sec_spec, rc )
 
     ! Arguments
@@ -1751,7 +1729,7 @@ contains
     real(r8), pointer                  :: fldptr2d(:,:)
     character(len=PIO_MAX_NAME)        :: varname
     character(len=256)                 :: fname_srf_cam      ! surface restart filename
-    character(len=2)                   :: cvalue
+    character(len=8)                   :: cvalue
     integer                            :: nloop
     character(len=4)                   :: prefix
     integer                            :: ungriddedUBound(1) ! currently the size must equal 1 for rank 2 fieldds
@@ -1835,7 +1813,7 @@ contains
 
              ! Output for each ungriddedUbound index
              do n = 1,ungriddedUBound(1)
-                cvalue = convert_int_to_string(n)
+                write(cvalue,'(i0)') n
                 varname = trim(prefix)//trim(fieldNameList(nf))//trim(cvalue)
                 rcode = pio_def_var(File,trim(varname), PIO_DOUBLE, dimid, varid)
                 rcode = pio_put_att(File, varid, "_fillvalue", fillvalue)
@@ -1906,7 +1884,7 @@ contains
              if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
              do n = 1,ungriddedUBound(1)
-                cvalue = convert_int_to_string(n)
+                write(cvalue,'(i0)') n
                 varname = trim(prefix)//trim(fieldNameList(nf))//trim(cvalue)
                 rcode = pio_inq_varid(File, trim(varname), varid)
                 if (gridToFieldMap(1) == 1) then
@@ -1932,20 +1910,84 @@ contains
   end subroutine cam_write_srfrest
 
   !===============================================================================
-  function convert_int_to_string(number) result(output_string)
-    ! Returns a string corresponding to a given integer
+  subroutine cam_write_clockrest( clock, yr_spec, mon_spec, day_spec, sec_spec, rc )
 
-    ! input/output variables
-    integer, intent(in) :: number
-    character(2)        :: output_string  ! function result
-    !
-    ! local variables
-    character(len=16) :: format_string
+    ! When there is no mediator, the driver needs to have restart information to start up
+    ! This routine writes this out and the driver reads it back in on a restart run
+
+    ! Arguments
+    type(ESMF_Clock) , intent(in)  :: clock
+    integer          , intent(in)  :: yr_spec  ! Simulation year
+    integer          , intent(in)  :: mon_spec ! Simulation month
+    integer          , intent(in)  :: day_spec ! Simulation day
+    integer          , intent(in)  :: sec_spec ! Seconds into current simulation day
+    integer          , intent(out) :: rc       ! error code
+
+    ! Local variables
+    type(ESMF_Time)   :: startTime
+    type(ESMF_Time)   :: currTime
+    type(ESMF_Time)   :: nextTime
+    integer           :: unitn
+    type(file_desc_t) :: File
+    integer           :: start_ymd
+    integer           :: start_tod
+    integer           :: curr_ymd
+    integer           :: curr_tod
+    integer           :: yy,mm,dd  ! Temporaries for time query
+    type(var_desc_t)  :: varid_start_ymd
+    type(var_desc_t)  :: varid_start_tod
+    type(var_desc_t)  :: varid_curr_ymd
+    type(var_desc_t)  :: varid_curr_tod
+    integer           :: rcode
+    character(ESMF_MAXSTR)  :: restart_pfile
+    character(ESMF_MAXSTR)  :: restart_file
     !-----------------------------------------------------------------------
 
-    write(format_string,'(a,i0,a,i0,a)') '(i', 2, '.', 2, ')'
-    write(output_string,trim(format_string)) number
+    rc = ESMF_SUCCESS
 
-  end function convert_int_to_string
+    ! Get properties from clock
+    call ESMF_ClockGet( clock, startTime=startTime, currTime=currTime, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    call ESMF_ClockGetNextTime(clock, nextTime=nextTime, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    call ESMF_TimeGet( startTime, yy=yy, mm=mm, dd=dd, s=start_tod, rc=rc )
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    call shr_cal_ymd2date(yy,mm,dd,start_ymd)
+
+    call ESMF_TimeGet( nextTime, yy=yy, mm=mm, dd=dd, s=curr_tod, rc=rc )
+   !call ESMF_TimeGet( currTime, yy=yy, mm=mm, dd=dd, s=curr_tod, rc=rc )
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    call shr_cal_ymd2date(yy,mm,dd,curr_ymd)
+
+    ! Open clock info restart dataset
+    restart_file = interpret_filename_spec( '%c.cpl.r.%y-%m-%d-%s.nc', &
+         yr_spec=yr_spec, mon_spec=mon_spec, day_spec=day_spec, sec_spec= sec_spec )
+
+    if (masterproc == 0) then
+       write(iulog,*) " In this configuration, there is no mediator"
+       write(iulog,*) " Normally, the mediator restart file provides the restart time info"
+       write(iulog,*) " In this case, CAM will create the rpointer.cpl and cpl restart file"
+       write(iulog,*) " containing this information"
+       write(iulog,*) " writing rpointer file for driver clock info, rpointer.cpl"
+       write(iulog,*) " writing restart clock info for driver= "//trim(restart_file)
+       open(newunit=unitn, file='rpointer.cpl', form='FORMATTED')
+       write(unitn,'(a)') trim(restart_file)
+       close(unitn)
+    endif
+
+    call cam_pio_createfile(File, trim(restart_file), 0)
+    rcode = pio_def_var(File, 'start_ymd', PIO_INT, varid_start_ymd)
+    rcode = pio_def_var(File, 'start_tod', PIO_INT, varid_start_tod)
+    rcode = pio_def_var(File, 'curr_ymd' , PIO_INT, varid_curr_ymd)
+    rcode = pio_def_var(File, 'curr_tod' , PIO_INT, varid_curr_tod)
+    rcode = pio_enddef(File)
+    rcode = pio_put_var(File, varid_start_ymd, start_ymd)
+    rcode = pio_put_var(File, varid_start_tod, start_tod)
+    rcode = pio_put_var(File, varid_curr_ymd, curr_ymd)
+    rcode = pio_put_var(File, varid_curr_tod, curr_tod)
+    call cam_pio_closefile(File)
+
+  end subroutine cam_write_clockrest
 
 end module atm_comp_nuopc

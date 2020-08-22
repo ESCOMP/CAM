@@ -2844,6 +2844,7 @@ sub write_filepath
     my $ocn           = $cfg_ref->get('ocn');
     my $offline_drv   = $cfg_ref->get('offline_drv');
     my $inic_val      = $cfg_ref->get('analytic_ic');
+    my $cpl           = $cfg_ref->get('cpl');
 
     # Root directory
     my $camsrcdir = $cfg_ref->get('cam_dir');
@@ -2979,6 +2980,9 @@ sub write_filepath
         print $fh "$camsrcdir/src/advection/slt\n";
     }
 
+    if ($cpl eq 'nuopc') {
+	print $fh "$cam_root/cime/src/drivers/nuopc/nuopc_cap_share/\n";
+    }
     print $fh "$camsrcdir/src/cpl/$cpl\n";
     print $fh "$camsrcdir/src/control\n";
     print $fh "$camsrcdir/src/utils\n";
