@@ -16,7 +16,7 @@ contains
     !     ... return overall species index associated with spc_name
     !-----------------------------------------------------------------------
 
-    !use chem_mods,     only : nTracers
+    use chem_mods,     only : gas_pcnst
     use mo_tracname,   only : tracnam => solsym
     use string_utils,  only : to_upper
 
@@ -33,7 +33,7 @@ contains
     integer :: m
 
     get_spc_ndx = -1
-    do m = 1, 306
+    do m = 1, gas_pcnst
        if( trim( to_upper( spc_name ) ) == trim( to_upper( tracnam(m) ) ) ) then
           get_spc_ndx = m
           exit
