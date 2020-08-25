@@ -1,0 +1,6 @@
+./xmlchange ROF_NCPL=\$ATM_NCPL
+./xmlchange GLC_NCPL=\$ATM_NCPL
+./xmlchange RUN_STARTDATE="1967-12-31"
+./xmlchange START_TOD=82800
+./xmlchange CAM_CONFIG_OPTS="-nadv_tt 5 -cppdefs -DTRACER_CHECK" --append
+./xmlchange CAM_NML_USE_CASE=UNSET

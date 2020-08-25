@@ -30,8 +30,8 @@ public :: us_std_atm_set_ic
 CONTAINS
 !=========================================================================================
 
-subroutine us_std_atm_set_ic(latvals, lonvals, zint, U, V, T, PS, PHIS,           &
-       Q, m_cnst, mask, verbose)
+subroutine us_std_atm_set_ic(latvals, lonvals, zint, U, V, T, PS, PHIS_IN, &
+       PHIS_OUT, Q, m_cnst, mask, verbose)
     
    !----------------------------------------------------------------------------
    !
@@ -48,7 +48,8 @@ subroutine us_std_atm_set_ic(latvals, lonvals, zint, U, V, T, PS, PHIS,         
    real(r8), optional, intent(inout) :: V(:,:)     ! meridional velocity
    real(r8), optional, intent(inout) :: T(:,:)     ! temperature
    real(r8), optional, intent(inout) :: PS(:)      ! surface pressure
-   real(r8), optional, intent(in)    :: PHIS(:)    ! surface geopotential
+   real(r8), optional, intent(in)    :: PHIS_IN(:) ! surface geopotential
+   real(r8), optional, intent(out)   :: PHIS_OUT(:)! surface geopotential
    real(r8), optional, intent(inout) :: Q(:,:,:)   ! tracer (ncol, lev, m)
    integer,  optional, intent(in)    :: m_cnst(:)  ! tracer indices (reqd. if Q)
    logical,  optional, intent(in)    :: mask(:)    ! Only init where .true.
@@ -83,6 +84,13 @@ subroutine us_std_atm_set_ic(latvals, lonvals, zint, U, V, T, PS, PHIS,         
       verbose_use = .true.
    end if
 
+   if (present(PHIS_OUT)) then
+      PHIS_OUT = 0.0_r8
+      if (masterproc .and. verbose_use) then
+         write(iulog,*) '          PHIS initialized by '//subname
+      end if
+   end if
+
    nlev = -1
    if (present(U)) then
       nlev = size(U, 2)
@@ -112,12 +120,12 @@ subroutine us_std_atm_set_ic(latvals, lonvals, zint, U, V, T, PS, PHIS,         
       nlev = size(T, 2)
       allocate(pmid(nlev), zmid(nlev))
 
-      if (present(PHIS)) then
+      if (present(PHIS_IN)) then
 
          do i = 1, ncol
             if (mask_use(i)) then
                ! get surface pressure
-               call std_atm_pres(PHIS(i:i)/gravit, psurf)
+               call std_atm_pres(PHIS_IN(i:i)/gravit, psurf)
                ! get pressure levels
                do k = 1, nlev
                   pmid(k) = hyam(k)*ps0 + hybm(k)*psurf(1)
@@ -152,11 +160,11 @@ subroutine us_std_atm_set_ic(latvals, lonvals, zint, U, V, T, PS, PHIS,         
 
    if (present(PS)) then
 
-      if (present(PHIS)) then
+      if (present(PHIS_IN)) then
       
          do i = 1, ncol
             if (mask_use(i)) then
-               call std_atm_pres(PHIS(i:i)/gravit, PS(i:i))
+               call std_atm_pres(PHIS_IN(i:i)/gravit, PS(i:i))
             end if
          end do
 

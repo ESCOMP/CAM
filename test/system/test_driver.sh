@@ -1,4 +1,4 @@
-#!/bin/sh -f
+#!/bin/sh
 #
 # test_driver.sh:  driver for the testing of CAM with standalone scripts
 #
@@ -24,11 +24,14 @@ help () {
   echo "${hprefix} [ -h ] (displays this help message)"
   echo "${hprefix} [ -i ] (interactive usage)"
   echo "${hprefix} [ -j ] (number of jobs for gmake)"
-  echo "${hprefix} [ --archive-cime <directory> ] (directory for archiving baselines of cime tests)"
+  echo "${hprefix} [ --baseline-dir <directory> ] (directory for saving baselines of cime tests)"
+  echo "${hprefix} [ --no-baseline] (baselines of cime tests are not saved)"
   echo "${hprefix} [ --cesm <test_name(s)> ] (default aux_cam)"
   echo "${hprefix} [ --no-cesm ] (do not run any CESM test or test suite)"
-  echo "${hprefix} [ --no-cam ] (do not run CAM regression tests"
+  echo "${hprefix} [ --cam ] (Run CAM regression tests, default is not to run CAM regression tests."
   echo "${hprefix} [ --rerun-cesm <test_id> ] (rerun the cesm tests with the --use-existing-flag)"
+  echo "${hprefix} [ --namelists-only ] (Only perform namelist actions for tests.  Incompatible with --rerun-cesm.)"
+  echo "${hprefix} [ --batch ] (Allow cime tests to run in parallel.)"
   echo ""
   echo "${hprefix} **pass environment variables by preceding above commands with:"
   echo "${hprefix}   'env var1=setting var2=setting '"
@@ -76,8 +79,10 @@ cesm_test_suite="aux_cam"
 force=false
 gmake_j=0
 interactive=false
-run_cam_regression=true
+run_cam_regression=false
 use_existing=''
+namelists_only=false
+batch=false
 
 # Initialize variables which may not be set
 submit_script=''
@@ -87,13 +92,16 @@ submit_script_cime=''
 while [ "${1:0:1}" == "-" ]; do
     case $1 in
 
-        --archive-cime )
+        --baseline-dir )
             if [ $# -lt 2 ]; then
                 perr "${1} requires a directory name)"
             fi
-            archive_dir="${2}"
+            baseline_dir="${2}"
             shift
             ;;
+
+        --no-baseline ) no_baseline=false
+             ;;
 
         -b ) export CAM_BASEBACK="YES"
              ;;
@@ -133,8 +141,8 @@ while [ "${1:0:1}" == "-" ]; do
 	-j ) shift; gmake_j=$1
              ;;
 
-        --no-cam )
-            run_cam_regression=false
+        --cam )
+            run_cam_regression=true
             ;;
 
         --no-cesm )
@@ -147,6 +155,22 @@ while [ "${1:0:1}" == "-" ]; do
             fi
             use_existing="${2}"
             shift
+            if $namelists_only ; then
+              echo "test_driver.sh: FATAL ERROR: --rerun-cesm and --namelists-only were set"
+              exit 1
+            fi
+            ;;
+
+        --namelists-only )
+            namelists_only=true
+            if [ "${use_existing}" != "" ]; then
+              echo "test_driver.sh: FATAL ERROR: --namelists-only and --rerun-cesm were set"
+              exit 1
+            fi
+            ;;
+
+        --batch )
+            batch=true
             ;;
 
     esac
@@ -197,6 +221,13 @@ case $hostname in
     CAM_RESTART_THREADS=1
 
     mach_workspace="/glade/scratch"
+
+    # Check for CESM baseline directory
+    if [ -n "{$BL_TESTDIR}" ] && [ ! -d "${BL_TESTDIR}" ]; then
+        echo "CESM_BASELINE ${BL_TESTDIR} not found.  Check BL_TESTDIR for correct tag name."
+        exit
+    fi 
+
 
 ##vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv writing to batch script vvvvvvvvvvvvvvvvvvv
 
@@ -353,6 +384,12 @@ EOF
 
     mach_workspace="/scratch/cluster"
 
+    # Check for CESM baseline directory
+    if  [ -n "{$BL_TESTDIR}" ] && [ ! -d "${BL_TESTDIR}" ]; then
+        echo "CESM_BASELINE ${BL_TESTDIR} not found.  Check BL_TESTDIR for correct tag name."
+        exit
+    fi 
+
 ##vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv writing to batch script vvvvvvvvvvvvvvvvvvv
 cat > ${submit_script} << EOF
 #!/bin/sh
@@ -461,7 +498,7 @@ submit_script_cime="${submit_script}"
 
     ##izumi
     izu* | i[[:digit:]]* )
-    submit_script="`pwd -P`/test_driver_izumi${cur_time}.sh"
+    submit_script="`pwd -P`/test_driver_izumi_${cur_time}.sh"
     submit_script_cime="`pwd -P`/test_driver_izumi_cime_${cur_time}.sh"
     export PATH=/cluster/torque/bin:${PATH}
 
@@ -487,6 +524,13 @@ submit_script_cime="${submit_script}"
     fi
 
     mach_workspace="/scratch/cluster"
+
+    # Check for CESM baseline directory
+    if  [ -n "{$BL_TESTDIR}" ] && [ ! -d "${BL_TESTDIR}" ]; then
+        echo "CESM_BASELINE ${BL_TESTDIR} not found.  Check BL_TESTDIR for correct tag name."
+        exit
+    fi 
+
 
 ##vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv writing to batch script vvvvvvvvvvvvvvvvvvv
 cat > ${submit_script} << EOF
@@ -590,7 +634,9 @@ EOF
 
 # To lower number of nodes required for regression testing on izumi,
 # run CIME test suites sequentially after standalone regression tests
-submit_script_cime="${submit_script}"
+if $run_cam_regression; then
+   submit_script_cime="${submit_script}"
+fi
 ##^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ writing to batch script ^^^^^^^^^^^^^^^^^^^
     ;;
 
@@ -613,6 +659,12 @@ submit_script_cime="${submit_script}"
     fi
 
     mach_workspace="/scratch/cluster"
+
+    # Check for CESM baseline directory
+    if  [ -n "{$BL_TESTDIR}" ] && [ ! -d "${BL_TESTDIR}" ]; then
+        echo "CESM_BASELINE ${BL_TESTDIR} not found.  Check BL_TESTDIR for correct tag name."
+        exit
+    fi 
 
 ##vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv writing to batch script vvvvvvvvvvvvvvvvvvv
 
@@ -997,15 +1049,12 @@ if [ -n "${CAM_FC}" ]; then
 fi
 
 if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
-  if [ "${hostname:0:6}" != "hobart" ]; then
-    module load python
-  fi
   if [ "${hostname:0:5}" != "izumi" ]; then
     module load python
   fi
 
   for cesm_test in ${cesm_test_suite}; do
-    testargs="--xml-category ${cesm_test} --xml-machine ${cesm_test_mach}"
+    testargs="--xml-category ${cesm_test} --xml-machine ${cesm_test_mach} --retry 2"
 
     if [ -n "${use_existing}" ]; then
       test_id="${use_existing}"
@@ -1055,7 +1104,19 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
     else
       testargs="${testargs} --xml-compiler intel"
     fi
-    testargs="${testargs} --queue ${CAM_BATCHQ} --test-root ${cesm_testdir} --output-root ${cesm_testdir}"
+    case $hostname in
+        # cheyenne
+        chey* | r* )
+          testargs="${testargs} --queue ${CAM_BATCHQ} --test-root ${cesm_testdir} --output-root ${cesm_testdir}"
+          ;;
+        *)
+          if  $batch; then
+            testargs="${testargs} --queue ${CAM_BATCHQ} --test-root ${cesm_testdir} --output-root ${cesm_testdir}"
+          else
+            testargs="${testargs} --test-root ${cesm_testdir} --output-root ${cesm_testdir}"
+            testargs="${testargs} --no-batch"
+          fi
+    esac
     if [ -n "${CAM_ACCOUNT}" ]; then
       testargs="${testargs} --project ${CAM_ACCOUNT}"
     fi
@@ -1064,11 +1125,50 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
       testargs="${testargs} --compare ${BL_TESTDIR} "
     fi
     if [ -n "${use_existing}" ]; then
-      testargs="${testargs} --use-existing"
+      testargs="${testargs} --use-existing -o "
     fi
-    if [ -n "${archive_dir}" ]; then
-      testargs="${testargs} --generate ${archive_dir}"
+    if  $namelists_only ; then
+      testargs="${testargs} --namelists-only "
     fi
+    #  Check for a change in BL_TESTDIR                                                                   #
+    if [ -n "${BL_TESTDIR}" ] && [ "${use_existing}" != "" ]; then
+        #Check if BL_TESTDIR changed
+        cmd="query_testlists --xml-category $cesm_test --xml-machine  ${cesm_test_mach}"
+        if [ -n "${CAM_FC}" ]; then
+            cmd="${cmd} --xml-compiler ${CAM_FC,,}"
+        else
+            cmd="${cmd} --xml-compiler intel"
+        fi
+        cmd="`pwd -P`/../../cime/scripts/"$cmd
+        cime_testlist=`$cmd`
+        for i in $(echo $cime_testlist | tr " " "\n")
+        do
+          if [[ $i =~ ${cesm_test_mach} ]]; then
+            orig_baseline=`cd $cesm_testdir/$i*$test_id && ./xmlquery BASELINE_NAME_CMP --value`
+            if [ $orig_baseline != ${BL_TESTDIR} ]; then
+              echo "Changing BL_TESTDIR for $i."
+                `cd $cesm_testdir/$i*$test_id && ./xmlchange BASELINE_NAME_CMP=$BL_TESTDIR`
+              if [[ $i == ERI* ]]; then #Need to do special stuff to get ERI to rerun with new baseline.
+                `cd $cesm_testdir/$i*$test_id && sed -i '/RUN/c\FAIL '$i' RUN' TestStatus`
+                result=`cd $cesm_testdir/$i*$test_id && pwd && ./.case.test --reset -s`
+              else
+                `cd $cesm_testdir/$i*$test_id && sed -i '/RUN/c\PEND '$i' RUN' TestStatus`
+              fi
+            else
+              echo "Checking for changed BL_TESTDIR for $i."
+            fi
+          fi
+        done
+    fi
+
+    if [ "$no_baseline" != false ]; then
+       if [ -n "${baseline_dir}" ]; then
+         testargs="${testargs} --generate ${baseline_dir}"
+       else
+        testargs="${testargs} --generate ${cesm_testdir}/baselines"
+      fi
+    fi
+
 
     echo ""
     echo "CESM test results will be in: ${cesm_testdir}" | tee ${logfile}

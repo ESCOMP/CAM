@@ -1,0 +1,14 @@
+mfilt=1,1,1,1,1,1
+ndens=2,2,2,2,2,2
+nhtfrq=3,3,3,3,3,3
+inithist='ENDOFRUN'
+history_amwg=.true.
+history_aerosol=.true.
+history_aero_optics=.true.
+history_eddy=.true.
+history_budget=.true.
+history_waccm=.true.
+history_waccmx=.true.
+history_chemistry=.true.
+history_carma=.true.
+history_clubb=.true.
