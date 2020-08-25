@@ -1,5 +1,25 @@
 ===============================================================
 
+Tag name: mpas064_cam6_2_043
+Originator(s): eaton
+Date: Tue 25 Aug 2020 05:29:15 PM MDT
+One-line Summary: update to cam6_2_043
+
+Purpose of changes:
+
+. Update to cam6_2_043.
+
+. Update the mpas cime branch to cime5.8.28.
+
+Testing:
+
+Test configuration: mpasa480L32, held_suarez, terminator chem, analytic IC
+type us_standard_atmosphere, 6 test tracers.  Verified that the results
+were BFB identical to mpas063_cam6_2_037.
+
+===============================================================
+===============================================================
+
 Tag name: mpas064_cam6_2_037
 Originator(s): eaton
 Date: Fri 21 Aug 2020 05:46:29 PM MDT
