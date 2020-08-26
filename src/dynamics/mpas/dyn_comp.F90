@@ -996,6 +996,7 @@ subroutine set_base_state(dyn_in)
 
    integer :: iCell, klev
    real(r8), dimension(:,:), pointer :: zint
+   real(r8), dimension(:,:), pointer :: zz
    real(r8), dimension(:,:), pointer :: rho_base
    real(r8), dimension(:,:), pointer :: theta_base
    real(r8) :: zmid
@@ -1003,15 +1004,16 @@ subroutine set_base_state(dyn_in)
    !--------------------------------------------------------------------------------------
 
    zint       => dyn_in % zint
+   zz         => dyn_in % zz
    rho_base   => dyn_in % rho_base
    theta_base => dyn_in % theta_base
 
    do iCell = 1, dyn_in % nCellsSolve
       do klev = 1, dyn_in % nVertLevels
          zmid = 0.5_r8 * (zint(klev,iCell) + zint(klev+1,iCell))   ! Layer midpoint geometric height
-         pres = p0 * exp(-gravity * zmid / Rgas / t0b)
+         pres = p0 * exp(-gravity * zmid / (Rgas * t0b))
          theta_base(klev,iCell) = t0b / (pres / p0)**(Rgas/cp)
-         rho_base(klev,iCell) = pres / Rgas / t0b
+         rho_base(klev,iCell) = pres / ( Rgas * t0b * zz(klev,iCell))
       end do
    end do
 

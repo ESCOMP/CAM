@@ -1,5 +1,63 @@
 ===============================================================
 
+Tag name: mpas065_cam6_2_043
+Originator(s): eaton
+Date: Wed 26 Aug 2020 02:44:18 PM MDT
+One-line Summary: merge mgduda:fix_base_state_rho
+
+Purpose of changes:
+
+. merged changes from Michael's branch by hand.
+
+Testing:
+
+Test configuration: mpasa480L26, kessler, analytic IC type
+moist_baroclinic_wave_dcmip2016, 6 test tracers, IC file
+mpasa480_L26_v6.1_bwave-const_rdzw.nc.  Verified that this test which was
+failing in mpas064_cam6_2_43 now runs.
+
+Interestingly a test with this same configuration, but using the IC file
+mpasa480_L26_v6.1_bwave.nc which has a more "cam-like" vertical profile was
+running with the bug.  That test now gives different results with the bug
+fix in place.
+
+===============================================================
+===============================================================
+
+Tag name: -
+Originator(s): duda
+Date: Wed Aug 26 19:05:40 UTC 2020
+One-line Summary: divide rho_base by zz to correct analytic ICs
+
+Purpose of changes:
+
+Fixes an issue in which analytic ICs resulted in NaNs in the first dynamics
+time step with the MPAS-Atmosphere dycore.
+
+Describe any changes made to build system: none
+
+Describe any changes made to the namelist: none
+
+List any changes to the defaults for the boundary datasets: none
+
+Describe any substantial timing or memory changes: none
+
+Code reviewed by:
+
+List all files eliminated: none
+
+List all files added and what they do: none
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/dyn_comp.F90
+. In the set_base_state routine, rho_base must be divided by zz.
+
+Summarize any changes to answers: NaNs with analytic ICs are now avoided.
+
+===============================================================
+===============================================================
+
 Tag name: mpas064_cam6_2_043
 Originator(s): eaton
 Date: Tue 25 Aug 2020 05:29:15 PM MDT
