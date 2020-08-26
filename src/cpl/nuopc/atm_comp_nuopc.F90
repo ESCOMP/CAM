@@ -1964,7 +1964,7 @@ contains
     restart_file = interpret_filename_spec( '%c.cpl.r.%y-%m-%d-%s.nc', &
          yr_spec=yr_spec, mon_spec=mon_spec, day_spec=day_spec, sec_spec= sec_spec )
 
-    if (masterproc == 0) then
+    if (masterproc) then
        write(iulog,*) " In this configuration, there is no mediator"
        write(iulog,*) " Normally, the mediator restart file provides the restart time info"
        write(iulog,*) " In this case, CAM will create the rpointer.cpl and cpl restart file"
