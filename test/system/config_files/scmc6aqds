@@ -1,9 +1,0 @@
--nospmd -nosmp
--scam
--dyn eul
--hgrid 64x128 
--phys cam6
--noclubb_sgs
--aquaplanet
--debug
--s

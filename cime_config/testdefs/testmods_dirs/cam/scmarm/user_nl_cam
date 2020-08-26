@@ -1,5 +1,3 @@
-scmlat=36.6 
-scmlon=262.5
 mfilt=1500
 nhtfrq   = 1
 history_budget=.true.

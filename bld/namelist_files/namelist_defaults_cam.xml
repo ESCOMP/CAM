@@ -2491,7 +2491,7 @@
 <fv3_dddmp                                                                  > 0.0D0     </fv3_dddmp>
 <fv3_delt_max                                                               > 0.0D0     </fv3_delt_max>
 <fv3_dnats                                                                  > 0         </fv3_dnats>
-<fv3_do_sat_adj                                                             > .false.   </fv3_do_sat_adj>  
+<fv3_do_sat_adj                                                             > .false.   </fv3_do_sat_adj>
 <fv3_do_vort_damp      dyn="fv3nh"                                          > .true.    </fv3_do_vort_damp>
 <fv3_do_vort_damp      dyn="fv3"                                            > .false.   </fv3_do_vort_damp>
 <fv3_dwind_2d                                                               > .false.   </fv3_dwind_2d>
@@ -2671,44 +2671,6 @@
 <se_horz_num_threads> 0 </se_horz_num_threads>
 <se_tracer_num_threads> 0 </se_tracer_num_threads>
 <se_vert_num_threads> 0 </se_vert_num_threads>
-
-<!-- ================================================================== -->
-<!-- Defaults for driver namelist seq_infodata_inparm                   -->
-<!-- ================================================================== -->
-
-<!-- Case name -->
-<case_name>camrun</case_name>
-
-<!-- Run-type of simulation -->
-<start_type>startup</start_type>
-
-<!-- ================================================================== -->
-<!-- Defaults for driver namelist seq_flux_mct_inparm                   -->
-<!-- ================================================================== -->
-
-<seq_flux_mct_albdif>0.06</seq_flux_mct_albdif>
-<seq_flux_mct_albdir>0.07</seq_flux_mct_albdir>
-<seq_flux_atmocn_minwind>0.5</seq_flux_atmocn_minwind>
-
-<!-- ================================================================== -->
-<!-- Defaults for driver namelist seq_timemgr_inparm                    -->
-<!-- ================================================================== -->
-
-<!-- Length of run -->
-<stop_option>ndays</stop_option>
-<stop_n>1</stop_n>
-
-<!-- Length of time for restarts -->
-<restart_option>'monthly'</restart_option>
-
-<!-- Starting date.  The value of start_ymd is used to match the ic_ymd    -->
-<!-- attribute of the ncdata files -->
-<start_ymd>101</start_ymd>
-
-<!-- Orbit -->
-<orb_iyear >1990</orb_iyear>
-
-<cpl_seq_option >'CESM1_MOD_TIGHT'</cpl_seq_option>
 
 <!-- ================================================================== -->
 <!-- Chemistry Rates Diagnostics                                        -->

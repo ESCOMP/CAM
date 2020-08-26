@@ -1246,13 +1246,13 @@
   <!--  Test of finite volume CAM-SE grid with CSLAM tracer advection -->
   <test compset="FKESSLER" grid="ne5pg3_ne5pg3_mg37" name="ERS_Ln27" testmods="cam/outfrq9s" supported="false">
     <machines>
-      <machine name="hobart" compiler="nag" category="aux_cam"/>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
   </test>
   <!--  DART -->
   <test compset="FHS94" grid="f45_f45_mg37" name="DAE" testmods="cam/dae">
     <machines>
-      <machine name="hobart" compiler="nag" category="aux_cam"/>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
     <options>
       <option name="wallclock"> 00:20:00 </option>
@@ -1543,7 +1543,7 @@
     <options>
       <option name="wallclock">00:30:00</option>
     </options>
-  </test>    
+  </test>
   <test compset="FW1850" grid="f09_f09_mg17" name="SMS_Ld1" testmods="cam/outfrq1d">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>

@@ -257,6 +257,7 @@ CONTAINS
             initial_run_in=initial_run, &
             restart_run_in=restart_run, &
             branch_run_in=branch_run, &
+            post_assim_in=dart_mode, &
             calendar=calendar, &
             brnch_retain_casename=brnch_retain_casename, &
             aqua_planet=aqua_planet, &
