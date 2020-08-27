@@ -1644,7 +1644,7 @@
     </mach>
   </grid>
 
-  <grid name="a%ne0np4.CONUS" >
+  <grid name="a%ne0np4CONUS" >
     <mach name="any" >
       <pes pesize="any" compset="any">
         <comment>none</comment>
