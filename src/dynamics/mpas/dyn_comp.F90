@@ -311,8 +311,8 @@ subroutine dyn_init(dyn_in, dyn_out)
    use mpas_constants,     only : mpas_constants_compute_derived
 
    ! arguments:
-   type(dyn_import_t), intent(out)  :: dyn_in
-   type(dyn_export_t), intent(out)  :: dyn_out
+   type(dyn_import_t), intent(inout)  :: dyn_in
+   type(dyn_export_t), intent(inout)  :: dyn_out
 
    ! Local variables:
    integer :: ierr
@@ -341,9 +341,11 @@ subroutine dyn_init(dyn_in, dyn_out)
    character(len=*), parameter :: subname = 'dyn_comp::dyn_init'
    !----------------------------------------------------------------------------
 
-   if (cam_mpas_define_scalars(domain_ptr % blocklist, dyn_in % mpas_from_cam_cnst, &
-                               dyn_out % cam_from_mpas_cnst) /= 0) then
-      call endrun(subname//': Set-up of constituents for MPAS-A dycore failed.')
+   if (initial_run) then
+      if (cam_mpas_define_scalars(domain_ptr % blocklist, dyn_in % mpas_from_cam_cnst, &
+                                  dyn_out % cam_from_mpas_cnst) /= 0) then
+         call endrun(subname//': Set-up of constituents for MPAS-A dycore failed.')
+      end if
    end if
 
    call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'mesh',  mesh_pool)
@@ -453,16 +455,16 @@ subroutine dyn_init(dyn_in, dyn_out)
       call read_inidat(dyn_in)
       call clean_iodesc_list()
 
-      ! Initialize dyn_out from dyn_in since it is needed to run the physics package
-      ! as part of the CAM initialization before a dycore step is taken.  This is only
-      ! needed for the fields that have 2 time levels in the MPAS state_pool.
-      dyn_out % uperp(:,:nEdgesSolve)     = dyn_in % uperp(:,:nEdgesSolve)
-      dyn_out % w(:,:nCellsSolve)         = dyn_in % w(:,:nCellsSolve)
-      dyn_out % theta_m(:,:nCellsSolve)   = dyn_in % theta_m(:,:nCellsSolve)
-      dyn_out % rho_zz(:,:nCellsSolve)    = dyn_in % rho_zz(:,:nCellsSolve)
-      dyn_out % tracers(:,:,:nCellsSolve) = dyn_in % tracers(:,:,:nCellsSolve)
-
    end if
+
+   ! Initialize dyn_out from dyn_in since it is needed to run the physics package
+   ! as part of the CAM initialization before a dycore step is taken.  This is only
+   ! needed for the fields that have 2 time levels in the MPAS state_pool.
+   dyn_out % uperp(:,:nEdgesSolve)     = dyn_in % uperp(:,:nEdgesSolve)
+   dyn_out % w(:,:nCellsSolve)         = dyn_in % w(:,:nCellsSolve)
+   dyn_out % theta_m(:,:nCellsSolve)   = dyn_in % theta_m(:,:nCellsSolve)
+   dyn_out % rho_zz(:,:nCellsSolve)    = dyn_in % rho_zz(:,:nCellsSolve)
+   dyn_out % tracers(:,:,:nCellsSolve) = dyn_in % tracers(:,:,:nCellsSolve)
 
    call cam_mpas_init_phase4(endrun)
 

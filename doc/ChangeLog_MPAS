@@ -1,5 +1,69 @@
 ===============================================================
 
+Tag name: -
+Originator(s): duda
+Date: Thu Aug 27 02:05:46 UTC 2020
+One-line Summary: Progress towards restart capability for MPAS-A dycore
+
+Purpose of changes:
+
+Implement changes to enable the MPAS-Atmosphere dycore to write its restart
+state to CAM's restart file, and to read its restart state from CAM's restart
+file. As of this commit, restarts are not bit-for-bit: there are differences
+that seem to be first arising in the Q field on the first timestep after
+a restart, but further investigation is needed.
+
+Describe any changes made to build system: none
+
+Describe any changes made to the namelist: none
+
+List any changes to the defaults for the boundary datasets: none
+
+Describe any substantial timing or memory changes: none
+
+Code reviewed by:
+
+List all files eliminated: none
+
+List all files added and what they do: none
+
+List all existing files that have been modified, and describe the changes:
+
+Externals_CAM.cfg
+. Update to v6.1-cam.020 MPAS tag to obtain several MPAS infrastructure changes
+  needed to support writing to and reading from CAM restart files.
+
+src/dynamics/mpas/driver/cam_mpas_subdriver.F90
+. Define three new functions -- cam_mpas_setup_restart, cam_mpas_read_restart,
+  and cam_mpas_write_restart -- for defining MPAS-Atmosphere dimensions and
+  fields in CAM restart files, and for reading and writing fields.
+. Prefix scalar tendency names with 'tend_' so that if these tendencies are
+  written to a file, their names won't conflict with those of the scalars
+  themselves.
+
+src/dynamics/mpas/dyn_comp.F90
+. In dyn_init, dyn_in and dyn_out should be intent(inout) rather than
+  intent(out) to ensure the contents of these arguments isn't clobbered upon
+  entry to the routine.
+. cam_mpas_define_scalars is only called in dyn_init for initial runs; restart
+  runs call this routine earlier in read_restart_dynamics.
+. dyn_out fields are initialized from dyn_in fields regardless of whether
+  the run is an initial run -- initialization is needed even for restart runs.
+
+src/dynamics/mpas/restart_dynamics.F90
+. init_restart_dynamics builds an MPAS stream from the provided PIO file
+  descriptor, adding definitions of MPAS-Atmosphere dimensions and fields.
+. write_restart_dynamics calls cam_mpas_write_restart to write to the stream
+  previously set up in init_restart_dynamics.
+. read_restart_dynamics defines the set of scalars to be read as part of
+  the restart state before calling cam_mpas_setup_restart and
+  cam_mpas_read_restart.
+
+Summarize any changes to answers: none
+
+===============================================================
+===============================================================
+
 Tag name: mpas065_cam6_2_043
 Originator(s): eaton
 Date: Wed 26 Aug 2020 02:44:18 PM MDT

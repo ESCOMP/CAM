@@ -26,6 +26,8 @@ use cam_logfile,    only: iulog
 use shr_sys_mod,    only: shr_sys_flush
 use perf_mod
 
+use mpas_derived_types, only : MPAS_Stream_type
+
 !    use mpas_cam_interface, only : MPAS_init_restart
 !    use mpas_cam_interface, only : MPAS_write_restart
 
@@ -44,6 +46,9 @@ integer :: ncol_dimid, nlev_dimid, nlevp_dimid
 real(r8), parameter ::  SECONDS_IN_DAY          =  86400_r8
 logical, save :: initialized=.false.
 
+! The restart_stream is set up in init_restart_dynamics and used later in write_restart_dynamics
+type (MPAS_Stream_type) :: restart_stream
+
 
 !=========================================================================================
 contains
@@ -60,7 +65,11 @@ contains
 !-----------------------------------------------------------------------
 subroutine init_restart_dynamics(file, dyn_out)
 
-   type(file_desc_t) :: File
+   use cam_mpas_subdriver, only : cam_mpas_setup_restart
+   use mpas_derived_types, only : MPAS_IO_WRITE
+   use cam_abortutils,     only : endrun
+
+   type(file_desc_t), target :: File
    type(dyn_export_t), intent(in)  :: dyn_out
 
    integer :: ncols
@@ -70,21 +79,9 @@ subroutine init_restart_dynamics(file, dyn_out)
    character(len=*), parameter :: subname = 'restart_dynamics::init_restart_dynamics'
 
 
-   MPAS_DEBUG_WRITE(1, 'begin '//subname)
+   MPAS_DEBUG_WRITE(0, 'begin '//subname)
 
-   call get_horiz_grid_dim_d(ncols)
-   ierr = PIO_Def_Dim(File, 'ncol', ncols, ncol_dimid)
-
-
-   !ierr = PIO_Def_Dim(File, 'nlev', nlev, nlev_dimid)
-   !ierr = PIO_Def_Dim(File, 'nlevp', nlevp, nlevp_dimid)
-
-   !ierr = PIO_Def_Dim(File, 'time', PIO_UNLIMITED,time_dimid)
-   !ierr = PIO_Def_Var(File,'time', pio_double, (/time_dimid/), timedesc)
-
-   ierr = PIO_Def_Var(File,'time', pio_double, timedesc)
-
-!    call MPAS_init_restart(File)
+   call cam_mpas_setup_restart(file, restart_stream, MPAS_IO_WRITE, endrun)
 
 end subroutine init_restart_dynamics
 
@@ -98,6 +95,9 @@ end subroutine init_restart_dynamics
 !
 !-----------------------------------------------------------------------
 subroutine write_restart_dynamics(File, dyn_out)
+
+   use cam_mpas_subdriver, only : cam_mpas_write_restart
+   use cam_abortutils,     only : endrun
 
    ! ARGUMENTS
    type(File_desc_t), intent(inout) :: File     ! Unit number
@@ -113,9 +113,9 @@ subroutine write_restart_dynamics(File, dyn_out)
    character(len=*), parameter :: subname = 'restart_dynamics::write_restart_dynamics'
 
 
-   MPAS_DEBUG_WRITE(1, 'begin '//subname)
+   MPAS_DEBUG_WRITE(0, 'begin '//subname)
 
-!    call MPAS_write_restart(File)
+   call cam_mpas_write_restart(restart_stream, endrun)
 
 end subroutine write_restart_dynamics
 
@@ -129,6 +129,11 @@ end subroutine write_restart_dynamics
 !
 !-----------------------------------------------------------------------
 subroutine read_restart_dynamics(File, dyn_in, dyn_out)
+
+   use cam_mpas_subdriver, only : domain_ptr, cam_mpas_setup_restart, cam_mpas_read_restart, &
+                                  cam_mpas_define_scalars
+   use mpas_derived_types, only : MPAS_IO_READ
+   use cam_abortutils,     only : endrun
 
    ! ARGUMENTS
    type(File_desc_t),  intent(inout) :: File
@@ -144,14 +149,22 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
    character(len=*), parameter :: subname = 'restart_dynamics::read_restart_dynamics'
 
 
-   MPAS_DEBUG_WRITE(1, 'begin '//subname)
+   MPAS_DEBUG_WRITE(0, 'begin '//subname)
 
+   !
+   ! Before setting up the restart stream, names for each scalar constitutent must be defined
+   !
+   if (cam_mpas_define_scalars(domain_ptr % blocklist, dyn_in % mpas_from_cam_cnst, &
+                               dyn_out % cam_from_mpas_cnst) /= 0) then
+      call endrun(subname//': Set-up of constituents for MPAS-A dycore failed.')
+   end if
 
-   !MGD IO -- call MPAS_read_restart(File)
+   call cam_mpas_setup_restart(file, restart_stream, MPAS_IO_READ, endrun)
+   call cam_mpas_read_restart(restart_stream, endrun)
 
-    ! Initialize the dynamics
-    call dyn_init(dyn_in, dyn_out)
+   ! Initialize the dynamics
+   call dyn_init(dyn_in, dyn_out)
 
-  end subroutine read_restart_dynamics
+end subroutine read_restart_dynamics
 
 end module restart_dynamics

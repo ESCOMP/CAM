@@ -22,6 +22,9 @@ module cam_mpas_subdriver
               cam_mpas_get_global_coords, &
               cam_mpas_get_global_blocks, &
               cam_mpas_read_static, &
+              cam_mpas_setup_restart, &
+              cam_mpas_read_restart, &
+              cam_mpas_write_restart, &
               cam_mpas_compute_unit_vectors, &
               cam_mpas_update_halo, &
               cam_mpas_cell_to_edge_winds, &
@@ -235,7 +238,7 @@ contains
 
        implicit none
 
-       type (file_desc_t), pointer :: fh_ini
+       type (file_desc_t), intent(inout) :: fh_ini
        integer, intent(in) :: num_scalars
        procedure(halt_model) :: endrun
 
@@ -750,12 +753,12 @@ contains
           end if
 
           if (i == 1) call mpas_pool_add_dimension(tendPool, 'index_qv', 1)
-          scalarsField % constituentNames(1) = 'qv'
+          scalarsField % constituentNames(1) = 'tend_qv'
           call mpas_add_att(scalarsField % attLists(1) % attList, 'units', 'kg m^{-3} s^{-1}')
           call mpas_add_att(scalarsField % attLists(1) % attList, 'long_name', 'Tendency of water vapor mixing ratio')
 
           do j = 2, size(cnst_name)
-             scalarsField % constituentNames(j) = trim(cnst_name(mpas_from_cam_cnst(j)))
+             scalarsField % constituentNames(j) = 'tend_'//trim(cnst_name(mpas_from_cam_cnst(j)))
           end do
        end do
 
@@ -1298,6 +1301,573 @@ contains
        call MPAS_pool_destroy_pool(reindexPool)
 
     end subroutine cam_mpas_read_static
+
+
+    !-----------------------------------------------------------------------
+    !  routine cam_mpas_setup_restart
+    !
+    !> \brief  Set up a restart stream, but do not read or write the stream
+    !> \author Michael Duda
+    !> \date   21 July 2020
+    !> \details
+    !>  This routine prepares an MPAS stream with fields needed to restart
+    !>  the MPAS-A dynamics. The stream will read or write from an existing
+    !>  PIO file descriptor, and whether the stream is set up for reading
+    !>  or writing depends on the direction argument, which must be set to
+    !>  either MPAS_IO_READ or MPAS_IO_WRITE.
+    !>
+    !>  This routine does not actually read or write the stream. A subsequent
+    !>  call to either cam_mpas_read_restart or cam_mpas_write_restart must
+    !>  be made to do this.
+    !
+    !-----------------------------------------------------------------------
+    subroutine cam_mpas_setup_restart(fh_rst, restart_stream, direction, endrun)
+
+       use pio, only : file_desc_t
+
+       use mpas_io_streams, only : MPAS_createStream, MPAS_streamAddField, MPAS_writeStreamAtt
+       use mpas_derived_types, only : MPAS_IO_NETCDF, MPAS_Stream_type, MPAS_pool_type, &
+                                      field0DReal, field1DReal, field2DReal, field3DReal, &
+                                      field1DInteger, field2DInteger, field0DChar, &
+                                      MPAS_IO_WRITE
+       use mpas_pool_routines, only : MPAS_pool_get_field
+
+       implicit none
+
+       type (file_desc_t), intent(inout) :: fh_rst
+       type (MPAS_Stream_type), intent(inout) :: restart_stream
+       integer, intent(in) :: direction
+       procedure(halt_model) :: endrun
+
+       integer :: ierr
+       type (MPAS_pool_type), pointer :: allFields
+       type (field1DReal), pointer :: latCell, lonCell, xCell, yCell, zCell
+       type (field1DReal), pointer :: latEdge, lonEdge, xEdge, yEdge, zEdge
+       type (field1DReal), pointer :: latVertex, lonVertex, xVertex, yVertex, zVertex
+       type (field1DInteger), pointer :: indexToCellID, indexToEdgeID, indexToVertexID
+       type (field1DReal), pointer :: fEdge, fVertex
+       type (field1DReal), pointer :: areaCell, areaTriangle, dcEdge, dvEdge, angleEdge
+       type (field2DReal), pointer :: kiteAreasOnVertex, weightsOnEdge
+       type (field1DReal), pointer :: meshDensity
+       type (field1DInteger), pointer :: nEdgesOnCell, nEdgesOnEdge
+       type (field2DInteger), pointer :: cellsOnEdge, edgesOnCell, edgesOnEdge, cellsOnCell, verticesOnCell, &
+                                         verticesOnEdge, edgesOnVertex, cellsOnVertex
+       type (field0DReal), pointer :: cf1, cf2, cf3
+       type (field1DReal), pointer :: rdzw, dzu, rdzu, fzm, fzp
+       type (field2DReal), pointer :: zgrid, zxu, zz
+       type (field3DReal), pointer :: zb, zb3, deriv_two, cellTangentPlane, coeffs_reconstruct
+
+       type (field2DReal), pointer :: edgeNormalVectors, localVerticalUnitVectors, defc_a, defc_b
+
+       type (field0DChar), pointer :: initial_time
+       type (field0DChar), pointer :: xtime
+       type (field2DReal), pointer :: u
+       type (field2DReal), pointer :: w
+       type (field2DReal), pointer :: rho_zz
+       type (field2DReal), pointer :: theta_m
+       type (field3DReal), pointer :: scalars
+
+       type (field1DReal), pointer :: meshScalingDel2
+       type (field1DReal), pointer :: meshScalingDel4
+       type (field2DReal), pointer :: dss
+       type (field2DReal), pointer :: east
+       type (field2DReal), pointer :: north
+       type (field2DReal), pointer :: pressure_p
+       type (field2DReal), pointer :: rho
+       type (field2DReal), pointer :: theta
+       type (field2DReal), pointer :: relhum
+       type (field2DReal), pointer :: uReconstructZonal
+       type (field2DReal), pointer :: uReconstructMeridional
+       type (field2DReal), pointer :: circulation
+       type (field2DReal), pointer :: exner
+       type (field2DReal), pointer :: exner_base
+       type (field2DReal), pointer :: rtheta_base
+       type (field2DReal), pointer :: pressure_base
+       type (field2DReal), pointer :: rho_base
+       type (field2DReal), pointer :: theta_base
+       type (field2DReal), pointer :: ru
+       type (field2DReal), pointer :: ru_p
+       type (field2DReal), pointer :: rw
+       type (field2DReal), pointer :: rw_p
+       type (field2DReal), pointer :: rtheta_p
+       type (field2DReal), pointer :: rho_p
+       type (field1DReal), pointer :: surface_pressure
+       type (field2DReal), pointer :: t_init
+
+       type (field1DReal), pointer :: u_init
+       type (field1DReal), pointer :: qv_init
+
+       type (field2DReal), pointer :: tend_ru_physics
+       type (field2DReal), pointer :: tend_rtheta_physics
+       type (field2DReal), pointer :: tend_rho_physics
+
+
+       call MPAS_createStream(restart_stream, domain_ptr % ioContext, 'not_used', MPAS_IO_NETCDF, &
+                              direction, pio_file_desc=fh_rst, ierr=ierr)
+
+       allFields => domain_ptr % blocklist % allFields
+
+       call mpas_pool_get_field(allFields, 'latCell', latCell)
+       call mpas_pool_get_field(allFields, 'lonCell', lonCell)
+       call mpas_pool_get_field(allFields, 'xCell', xCell)
+       call mpas_pool_get_field(allFields, 'yCell', yCell)
+       call mpas_pool_get_field(allFields, 'zCell', zCell)
+
+       call mpas_pool_get_field(allFields, 'latEdge', latEdge)
+       call mpas_pool_get_field(allFields, 'lonEdge', lonEdge)
+       call mpas_pool_get_field(allFields, 'xEdge', xEdge)
+       call mpas_pool_get_field(allFields, 'yEdge', yEdge)
+       call mpas_pool_get_field(allFields, 'zEdge', zEdge)
+
+       call mpas_pool_get_field(allFields, 'latVertex', latVertex)
+       call mpas_pool_get_field(allFields, 'lonVertex', lonVertex)
+       call mpas_pool_get_field(allFields, 'xVertex', xVertex)
+       call mpas_pool_get_field(allFields, 'yVertex', yVertex)
+       call mpas_pool_get_field(allFields, 'zVertex', zVertex)
+
+       call mpas_pool_get_field(allFields, 'indexToCellID', indexToCellID)
+       call mpas_pool_get_field(allFields, 'indexToEdgeID', indexToEdgeID)
+       call mpas_pool_get_field(allFields, 'indexToVertexID', indexToVertexID)
+
+       call mpas_pool_get_field(allFields, 'fEdge', fEdge)
+       call mpas_pool_get_field(allFields, 'fVertex', fVertex)
+
+       call mpas_pool_get_field(allFields, 'areaCell', areaCell)
+       call mpas_pool_get_field(allFields, 'areaTriangle', areaTriangle)
+       call mpas_pool_get_field(allFields, 'dcEdge', dcEdge)
+       call mpas_pool_get_field(allFields, 'dvEdge', dvEdge)
+       call mpas_pool_get_field(allFields, 'angleEdge', angleEdge)
+       call mpas_pool_get_field(allFields, 'kiteAreasOnVertex', kiteAreasOnVertex)
+       call mpas_pool_get_field(allFields, 'weightsOnEdge', weightsOnEdge)
+
+       call mpas_pool_get_field(allFields, 'meshDensity', meshDensity)
+
+       call mpas_pool_get_field(allFields, 'nEdgesOnCell', nEdgesOnCell)
+       call mpas_pool_get_field(allFields, 'nEdgesOnEdge', nEdgesOnEdge)
+
+       call mpas_pool_get_field(allFields, 'cellsOnEdge', cellsOnEdge)
+       call mpas_pool_get_field(allFields, 'edgesOnCell', edgesOnCell)
+       call mpas_pool_get_field(allFields, 'edgesOnEdge', edgesOnEdge)
+       call mpas_pool_get_field(allFields, 'cellsOnCell', cellsOnCell)
+       call mpas_pool_get_field(allFields, 'verticesOnCell', verticesOnCell)
+       call mpas_pool_get_field(allFields, 'verticesOnEdge', verticesOnEdge)
+       call mpas_pool_get_field(allFields, 'edgesOnVertex', edgesOnVertex)
+       call mpas_pool_get_field(allFields, 'cellsOnVertex', cellsOnVertex)
+
+       call mpas_pool_get_field(allFields, 'cf1', cf1)
+       call mpas_pool_get_field(allFields, 'cf2', cf2)
+       call mpas_pool_get_field(allFields, 'cf3', cf3)
+
+       call mpas_pool_get_field(allFields, 'rdzw', rdzw)
+       call mpas_pool_get_field(allFields, 'dzu', dzu)
+       call mpas_pool_get_field(allFields, 'rdzu', rdzu)
+       call mpas_pool_get_field(allFields, 'fzm', fzm)
+       call mpas_pool_get_field(allFields, 'fzp', fzp)
+
+       call mpas_pool_get_field(allFields, 'zgrid', zgrid)
+       call mpas_pool_get_field(allFields, 'zxu', zxu)
+       call mpas_pool_get_field(allFields, 'zz', zz)
+       call mpas_pool_get_field(allFields, 'zb', zb)
+       call mpas_pool_get_field(allFields, 'zb3', zb3)
+
+       call mpas_pool_get_field(allFields, 'deriv_two', deriv_two)
+       call mpas_pool_get_field(allFields, 'cellTangentPlane', cellTangentPlane)
+       call mpas_pool_get_field(allFields, 'coeffs_reconstruct', coeffs_reconstruct)
+
+       call mpas_pool_get_field(allFields, 'edgeNormalVectors', edgeNormalVectors)
+       call mpas_pool_get_field(allFields, 'localVerticalUnitVectors', localVerticalUnitVectors)
+       call mpas_pool_get_field(allFields, 'defc_a', defc_a)
+       call mpas_pool_get_field(allFields, 'defc_b', defc_b)
+
+       call mpas_pool_get_field(allFields, 'initial_time', initial_time, timeLevel=1)
+       call mpas_pool_get_field(allFields, 'xtime', xtime, timeLevel=1)
+       call mpas_pool_get_field(allFields, 'u', u, timeLevel=1)
+       call mpas_pool_get_field(allFields, 'w', w, timeLevel=1)
+       call mpas_pool_get_field(allFields, 'rho_zz', rho_zz, timeLevel=1)
+       call mpas_pool_get_field(allFields, 'theta_m', theta_m, timeLevel=1)
+       call mpas_pool_get_field(allFields, 'scalars', scalars, timeLevel=1)
+
+       call mpas_pool_get_field(allFields, 'meshScalingDel2', meshScalingDel2)
+       call mpas_pool_get_field(allFields, 'meshScalingDel4', meshScalingDel4)
+       call mpas_pool_get_field(allFields, 'dss', dss)
+       call mpas_pool_get_field(allFields, 'east', east)
+       call mpas_pool_get_field(allFields, 'north', north)
+       call mpas_pool_get_field(allFields, 'pressure_p', pressure_p)
+       call mpas_pool_get_field(allFields, 'rho', rho)
+       call mpas_pool_get_field(allFields, 'theta', theta)
+       call mpas_pool_get_field(allFields, 'relhum', relhum)
+       call mpas_pool_get_field(allFields, 'uReconstructZonal', uReconstructZonal)
+       call mpas_pool_get_field(allFields, 'uReconstructMeridional', uReconstructMeridional)
+       call mpas_pool_get_field(allFields, 'circulation', circulation)
+       call mpas_pool_get_field(allFields, 'exner', exner)
+       call mpas_pool_get_field(allFields, 'exner_base', exner_base)
+       call mpas_pool_get_field(allFields, 'rtheta_base', rtheta_base)
+       call mpas_pool_get_field(allFields, 'pressure_base', pressure_base)
+       call mpas_pool_get_field(allFields, 'rho_base', rho_base)
+       call mpas_pool_get_field(allFields, 'theta_base', theta_base)
+       call mpas_pool_get_field(allFields, 'ru', ru)
+       call mpas_pool_get_field(allFields, 'ru_p', ru_p)
+       call mpas_pool_get_field(allFields, 'rw', rw)
+       call mpas_pool_get_field(allFields, 'rw_p', rw_p)
+       call mpas_pool_get_field(allFields, 'rtheta_p', rtheta_p)
+       call mpas_pool_get_field(allFields, 'rho_p', rho_p)
+       call mpas_pool_get_field(allFields, 'surface_pressure', surface_pressure)
+       call mpas_pool_get_field(allFields, 't_init', t_init)
+
+       call mpas_pool_get_field(allFields, 'u_init', u_init)
+       call mpas_pool_get_field(allFields, 'qv_init', qv_init)
+
+       call mpas_pool_get_field(allFields, 'tend_ru_physics', tend_ru_physics)
+       call mpas_pool_get_field(allFields, 'tend_rtheta_physics', tend_rtheta_physics)
+       call mpas_pool_get_field(allFields, 'tend_rho_physics', tend_rho_physics)
+
+       call MPAS_streamAddField(restart_stream, latCell, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, lonCell, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, xCell, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, yCell, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, zCell, ierr=ierr)
+
+       call MPAS_streamAddField(restart_stream, latEdge, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, lonEdge, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, xEdge, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, yEdge, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, zEdge, ierr=ierr)
+
+       call MPAS_streamAddField(restart_stream, latVertex, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, lonVertex, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, xVertex, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, yVertex, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, zVertex, ierr=ierr)
+
+       call MPAS_streamAddField(restart_stream, indexToCellID, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, indexToEdgeID, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, indexToVertexID, ierr=ierr)
+
+       call MPAS_streamAddField(restart_stream, fEdge, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, fVertex, ierr=ierr)
+
+       call MPAS_streamAddField(restart_stream, areaCell, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, areaTriangle, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, dcEdge, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, dvEdge, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, angleEdge, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, kiteAreasOnVertex, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, weightsOnEdge, ierr=ierr)
+
+       call MPAS_streamAddField(restart_stream, meshDensity, ierr=ierr)
+
+       call MPAS_streamAddField(restart_stream, nEdgesOnCell, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, nEdgesOnEdge, ierr=ierr)
+
+       call MPAS_streamAddField(restart_stream, cellsOnEdge, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, edgesOnCell, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, edgesOnEdge, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, cellsOnCell, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, verticesOnCell, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, verticesOnEdge, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, edgesOnVertex, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, cellsOnVertex, ierr=ierr)
+
+       call MPAS_streamAddField(restart_stream, cf1, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, cf2, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, cf3, ierr=ierr)
+
+       call MPAS_streamAddField(restart_stream, rdzw, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, dzu, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, rdzu, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, fzm, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, fzp, ierr=ierr)
+
+       call MPAS_streamAddField(restart_stream, zgrid, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, zxu, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, zz, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, zb, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, zb3, ierr=ierr)
+
+       call MPAS_streamAddField(restart_stream, deriv_two, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, cellTangentPlane, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, coeffs_reconstruct, ierr=ierr)
+
+       call MPAS_streamAddField(restart_stream, edgeNormalVectors, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, localVerticalUnitVectors, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, defc_a, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, defc_b, ierr=ierr)
+
+       call MPAS_streamAddField(restart_stream, initial_time, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, xtime, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, u, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, w, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, rho_zz, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, theta_m, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, scalars, ierr=ierr)
+
+       call MPAS_streamAddField(restart_stream, meshScalingDel2, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, meshScalingDel4, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, dss, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, east, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, north, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, pressure_p, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, rho, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, theta, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, relhum, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, uReconstructZonal, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, uReconstructMeridional, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, circulation, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, exner, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, exner_base, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, rtheta_base, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, pressure_base, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, rho_base, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, theta_base, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, ru, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, ru_p, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, rw, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, rw_p, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, rtheta_p, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, rho_p, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, surface_pressure, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, t_init, ierr=ierr)
+
+       call MPAS_streamAddField(restart_stream, u_init, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, qv_init, ierr=ierr)
+
+       call MPAS_streamAddField(restart_stream, tend_ru_physics, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, tend_rtheta_physics, ierr=ierr)
+       call MPAS_streamAddField(restart_stream, tend_rho_physics, ierr=ierr)
+
+       if (direction == MPAS_IO_WRITE) then
+          !
+          ! Add global attributes to the stream
+          !
+          if (domain_ptr % on_a_sphere) then
+             call MPAS_writeStreamAtt(restart_stream, 'on_a_sphere', 'YES')
+          else
+             call MPAS_writeStreamAtt(restart_stream, 'on_a_sphere', 'NO')
+          end if
+          call MPAS_writeStreamAtt(restart_stream, 'sphere_radius', domain_ptr % sphere_radius)
+          if (domain_ptr % is_periodic) then
+             call MPAS_writeStreamAtt(restart_stream, 'is_periodic', 'YES')
+          else
+             call MPAS_writeStreamAtt(restart_stream, 'is_periodic', 'NO')
+          end if
+          call MPAS_writeStreamAtt(restart_stream, 'x_period', domain_ptr % x_period)
+          call MPAS_writeStreamAtt(restart_stream, 'y_period', domain_ptr % y_period)
+          call MPAS_writeStreamAtt(restart_stream, 'parent_id', domain_ptr %  parent_id)
+          call MPAS_writeStreamAtt(restart_stream, 'mesh_spec', domain_ptr % mesh_spec)
+       end if
+
+    end subroutine cam_mpas_setup_restart
+
+
+    !-----------------------------------------------------------------------
+    !  routine cam_mpas_read_restart
+    !
+    !> \brief  Reads a restart stream that was previously set up
+    !> \author Michael Duda
+    !> \date   22 July 2020
+    !> \details
+    !>  From a restart stream previously set up with a call to
+    !>  cam_mpas_setup_restart, read the stream, update halos for all fields
+    !>  that were read, and re-index mesh indexing fields (cellsOnCell,
+    !>  edgesOnCell, etc.) from global to local index space.
+    !
+    !-----------------------------------------------------------------------
+    subroutine cam_mpas_read_restart(restart_stream, endrun)
+
+       use pio, only : file_desc_t
+
+       use mpas_io_streams, only : MPAS_readStream, MPAS_closeStream
+       use mpas_derived_types, only : MPAS_Stream_type, MPAS_pool_type
+       use mpas_pool_routines, only : MPAS_pool_create_pool, MPAS_pool_destroy_pool, MPAS_pool_add_config
+       use mpas_stream_manager, only : postread_reindex
+
+       implicit none
+
+       type (MPAS_Stream_type), intent(inout) :: restart_stream
+       procedure(halt_model) :: endrun
+
+       integer :: ierr
+       type (MPAS_pool_type), pointer :: reindexPool
+
+       call MPAS_readStream(restart_stream, 1, ierr=ierr)
+
+       call MPAS_closeStream(restart_stream, ierr=ierr)
+
+       !
+       ! Perform halo updates for all decomposed fields (i.e., fields with
+       ! an outermost dimension of nCells, nVertices, or nEdges)
+       !
+       call cam_mpas_update_halo('latCell')
+       call cam_mpas_update_halo('lonCell')
+       call cam_mpas_update_halo('xCell')
+       call cam_mpas_update_halo('yCell')
+       call cam_mpas_update_halo('zCell')
+
+       call cam_mpas_update_halo('latEdge')
+       call cam_mpas_update_halo('lonEdge')
+       call cam_mpas_update_halo('xEdge')
+       call cam_mpas_update_halo('yEdge')
+       call cam_mpas_update_halo('zEdge')
+
+       call cam_mpas_update_halo('latVertex')
+       call cam_mpas_update_halo('lonVertex')
+       call cam_mpas_update_halo('xVertex')
+       call cam_mpas_update_halo('yVertex')
+       call cam_mpas_update_halo('zVertex')
+
+       call cam_mpas_update_halo('indexToCellID')
+       call cam_mpas_update_halo('indexToEdgeID')
+       call cam_mpas_update_halo('indexToVertexID')
+
+       call cam_mpas_update_halo('fEdge')
+       call cam_mpas_update_halo('fVertex')
+
+       call cam_mpas_update_halo('areaCell')
+       call cam_mpas_update_halo('areaTriangle')
+       call cam_mpas_update_halo('dcEdge')
+       call cam_mpas_update_halo('dvEdge')
+       call cam_mpas_update_halo('angleEdge')
+       call cam_mpas_update_halo('kiteAreasOnVertex')
+       call cam_mpas_update_halo('weightsOnEdge')
+
+       call cam_mpas_update_halo('meshDensity')
+
+       call cam_mpas_update_halo('nEdgesOnCell')
+       call cam_mpas_update_halo('nEdgesOnEdge')
+
+       call cam_mpas_update_halo('cellsOnEdge')
+       call cam_mpas_update_halo('edgesOnCell')
+       call cam_mpas_update_halo('edgesOnEdge')
+       call cam_mpas_update_halo('cellsOnCell')
+       call cam_mpas_update_halo('verticesOnCell')
+       call cam_mpas_update_halo('verticesOnEdge')
+       call cam_mpas_update_halo('edgesOnVertex')
+       call cam_mpas_update_halo('cellsOnVertex')
+
+       call cam_mpas_update_halo('zgrid')
+       call cam_mpas_update_halo('zxu')
+       call cam_mpas_update_halo('zz')
+       call cam_mpas_update_halo('zb')
+       call cam_mpas_update_halo('zb3')
+
+       call cam_mpas_update_halo('deriv_two')
+       call cam_mpas_update_halo('cellTangentPlane')
+       call cam_mpas_update_halo('coeffs_reconstruct')
+
+       call cam_mpas_update_halo('edgeNormalVectors')
+       call cam_mpas_update_halo('localVerticalUnitVectors')
+       call cam_mpas_update_halo('defc_a')
+       call cam_mpas_update_halo('defc_b')
+
+       call cam_mpas_update_halo('u')
+       call cam_mpas_update_halo('w')
+       call cam_mpas_update_halo('rho_zz')
+       call cam_mpas_update_halo('theta_m')
+       call cam_mpas_update_halo('scalars')
+
+       call cam_mpas_update_halo('meshScalingDel2')
+       call cam_mpas_update_halo('meshScalingDel4')
+       call cam_mpas_update_halo('dss')
+       call cam_mpas_update_halo('east')
+       call cam_mpas_update_halo('north')
+       call cam_mpas_update_halo('pressure_p')
+       call cam_mpas_update_halo('rho')
+       call cam_mpas_update_halo('theta')
+       call cam_mpas_update_halo('relhum')
+       call cam_mpas_update_halo('uReconstructZonal')
+       call cam_mpas_update_halo('uReconstructMeridional')
+       call cam_mpas_update_halo('circulation')
+       call cam_mpas_update_halo('exner')
+       call cam_mpas_update_halo('exner_base')
+       call cam_mpas_update_halo('rtheta_base')
+       call cam_mpas_update_halo('pressure_base')
+       call cam_mpas_update_halo('rho_base')
+       call cam_mpas_update_halo('theta_base')
+       call cam_mpas_update_halo('ru')
+       call cam_mpas_update_halo('ru_p')
+       call cam_mpas_update_halo('rw')
+       call cam_mpas_update_halo('rw_p')
+       call cam_mpas_update_halo('rtheta_p')
+       call cam_mpas_update_halo('rho_p')
+       call cam_mpas_update_halo('surface_pressure')
+       call cam_mpas_update_halo('t_init')
+
+       call cam_mpas_update_halo('tend_ru_physics')
+       call cam_mpas_update_halo('tend_rtheta_physics')
+       call cam_mpas_update_halo('tend_rho_physics')
+
+       !
+       ! Re-index from global index space to local index space
+       !
+       call MPAS_pool_create_pool(reindexPool)
+
+       call MPAS_pool_add_config(reindexPool, 'cellsOnEdge', 1)
+       call MPAS_pool_add_config(reindexPool, 'edgesOnCell', 1)
+       call MPAS_pool_add_config(reindexPool, 'edgesOnEdge', 1)
+       call MPAS_pool_add_config(reindexPool, 'cellsOnCell', 1)
+       call MPAS_pool_add_config(reindexPool, 'verticesOnCell', 1)
+       call MPAS_pool_add_config(reindexPool, 'verticesOnEdge', 1)
+       call MPAS_pool_add_config(reindexPool, 'edgesOnVertex', 1)
+       call MPAS_pool_add_config(reindexPool, 'cellsOnVertex', 1)
+
+       call postread_reindex(domain_ptr % blocklist % allFields, reindexPool)
+
+    end subroutine cam_mpas_read_restart
+
+
+    !-----------------------------------------------------------------------
+    !  routine cam_mpas_write_restart
+    !
+    !> \brief  Writes a restart stream that was previously set up
+    !> \author Michael Duda
+    !> \date   22 July 2020
+    !> \details
+    !>  From a restart stream previously set up with a call to
+    !>  cam_mpas_setup_restart, re-index mesh indexing fields (cellsOnCell,
+    !>  edgesOnCell, etc.) from local to global index space, and write
+    !>  the stream.
+    !
+    !-----------------------------------------------------------------------
+    subroutine cam_mpas_write_restart(restart_stream, endrun)
+
+       use pio, only : file_desc_t
+
+       use mpas_io_streams, only : MPAS_writeStream, MPAS_closeStream
+       use mpas_derived_types, only : MPAS_Stream_type, MPAS_pool_type
+       use mpas_pool_routines, only : MPAS_pool_create_pool, MPAS_pool_destroy_pool, MPAS_pool_add_config
+       use mpas_stream_manager, only : prewrite_reindex, postwrite_reindex
+
+       implicit none
+
+       type (MPAS_Stream_type), intent(inout) :: restart_stream
+       procedure(halt_model) :: endrun
+
+       integer :: ierr
+       type (MPAS_pool_type), pointer :: reindexPool
+
+       !
+       ! Re-index from local index space to global index space
+       !
+       call MPAS_pool_create_pool(reindexPool)
+
+       call MPAS_pool_add_config(reindexPool, 'cellsOnEdge', 1)
+       call MPAS_pool_add_config(reindexPool, 'edgesOnCell', 1)
+       call MPAS_pool_add_config(reindexPool, 'edgesOnEdge', 1)
+       call MPAS_pool_add_config(reindexPool, 'cellsOnCell', 1)
+       call MPAS_pool_add_config(reindexPool, 'verticesOnCell', 1)
+       call MPAS_pool_add_config(reindexPool, 'verticesOnEdge', 1)
+       call MPAS_pool_add_config(reindexPool, 'edgesOnVertex', 1)
+       call MPAS_pool_add_config(reindexPool, 'cellsOnVertex', 1)
+
+       call prewrite_reindex(domain_ptr % blocklist % allFields, reindexPool)
+
+       call MPAS_writeStream(restart_stream, 1, ierr=ierr)
+
+       call postwrite_reindex(domain_ptr % blocklist % allFields, reindexPool)
+
+       call MPAS_closeStream(restart_stream, ierr=ierr)
+
+    end subroutine cam_mpas_write_restart
 
 
     !-----------------------------------------------------------------------
