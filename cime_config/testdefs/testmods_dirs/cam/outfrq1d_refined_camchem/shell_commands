@@ -1,2 +1,2 @@
 ./xmlchange RUN_STARTDATE=2013-10-01
-./xmlchange NTASKS=-8
+./xmlchange NTASKS=-16
