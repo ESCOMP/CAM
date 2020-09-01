@@ -2398,14 +2398,8 @@
 <!-- default namelist for SCAM mode -->
 <ncdata             hgrid="64x128"    nlev="30"   scam="1"  >atm/cam/inic/gaus/cami_0000-09-01_64x128_L30_c031210.nc</ncdata>
 <iopfile dyn="eul"                                scam="1"  >atm/cam/scam/iop/ARM97_4scam.nc</iopfile>
-<scmlat                                           scam="1"  >   36.6     </scmlat>
-<scmlon                                           scam="1"  >   262.5    </scmlon>
-<start_ymd                                        scam="1"  >   19970618 </start_ymd>
-<start_tod                                        scam="1"  >   84585    </start_tod>
-<stop_n                                           scam="1"  >   2088     </stop_n>
 <mfilt                                            scam="1"  >   1500     </mfilt>
 <nhtfrq                                           scam="1"  >   9        </nhtfrq>
-<stop_option                                      scam="1"  >   nsteps    </stop_option>
 <scm_use_obs_uv                                   scam="1"  >   .true.   </scm_use_obs_uv>
 <scm_zadv_q                                       scam="1"  >   slt      </scm_zadv_q>
 
