@@ -1283,7 +1283,7 @@ contains
   subroutine read_2d_trc( fid, vid, loc_arr, strt, cnt, file, order )
     use interpolate_data,  only : lininterp_init, lininterp, interp_type, lininterp_finish
 
-    use phys_grid,    only : pcols, begchunk, endchunk, get_ncols_p, get_rlat_all_p, get_rlon_all_p, get_lon_all_p, get_lat_all_p 
+    use phys_grid,    only : pcols, begchunk, endchunk, get_ncols_p, get_rlat_all_p, get_rlon_all_p
     use mo_constants, only : pi
     use dycore,       only: dycore_is		
     use polar_avg,    only: polar_average
@@ -1352,19 +1352,20 @@ contains
 
        if(file%weight_by_lat) then
 
-          call t_startf('xy_interp')
+          call endrun('tracer_data::read_2d_trc: weight_by_lat feature disabled')
 
-          do c = begchunk,endchunk
-             ncols = get_ncols_p(c)
-             call get_lon_all_p(c,ncols,lons)
-             call get_lat_all_p(c,ncols,lats)
-
-             call xy_interp(file%nlon,file%nlat,1,plon,plat,pcols,ncols, &
-                  file%weight_x,file%weight_y,wrk2d_in,loc_arr(:,c-begchunk+1), &
-                  lons,lats,file%count_x,file%count_y,file%index_x,file%index_y)
-          enddo
-
-          call t_stopf('xy_interp')
+!!$          call t_startf('xy_interp')
+!!$
+!!$          do c = begchunk,endchunk
+!!$             ncols = get_ncols_p(c)
+!!$             call get_lon_all_p(c,ncols,lons)
+!!$             call get_lat_all_p(c,ncols,lats)
+!!$
+!!$             call xy_interp(file%nlon,file%nlat,1,plon,plat,pcols,ncols, &
+!!$                  file%weight_x,file%weight_y,wrk2d_in,loc_arr(:,c-begchunk+1), &
+!!$                  lons,lats,file%count_x,file%count_y,file%index_x,file%index_y)
+!!$          enddo
+!!$          call t_stopf('xy_interp')
 
        else
           do c=begchunk,endchunk
@@ -1524,8 +1525,7 @@ contains
   
   subroutine read_3d_trc( fid, vid, loc_arr, strt, cnt, file, order)
     use interpolate_data, only : lininterp_init, lininterp, interp_type, lininterp_finish
-    use phys_grid,        only : pcols, begchunk, endchunk, get_ncols_p, get_rlat_all_p, get_rlon_all_p, get_lon_all_p,&
-                                 get_lat_all_p 
+    use phys_grid,        only : pcols, begchunk, endchunk, get_ncols_p, get_rlat_all_p, get_rlon_all_p
     use mo_constants,     only : pi
     use dycore,           only : dycore_is		
     use polar_avg,        only : polar_average
@@ -1578,18 +1578,18 @@ contains
 
    if(file%weight_by_lat) then
 
-     call t_startf('xy_interp')
-
-     do c = begchunk,endchunk
-        ncols = get_ncols_p(c)
-        call get_lon_all_p(c,ncols,lons)
-        call get_lat_all_p(c,ncols,lats)
-
-        call xy_interp(file%nlon,file%nlat,file%nlev,plon,plat,pcols,ncols,file%weight_x,file%weight_y,wrk3d_in, &
-             loc_arr(:,:,c-begchunk+1), lons,lats,file%count_x,file%count_y,file%index_x,file%index_y) 
-     enddo
-
-     call t_stopf('xy_interp')
+     call endrun('tracer_data::read_3d_trc weight_by_lat feature disabled')
+!!$     call t_startf('xy_interp')
+!!$
+!!$     do c = begchunk,endchunk
+!!$        ncols = get_ncols_p(c)
+!!$        call get_lon_all_p(c,ncols,lons)
+!!$        call get_lat_all_p(c,ncols,lats)
+!!$
+!!$        call xy_interp(file%nlon,file%nlat,file%nlev,plon,plat,pcols,ncols,file%weight_x,file%weight_y,wrk3d_in, &
+!!$             loc_arr(:,:,c-begchunk+1), lons,lats,file%count_x,file%count_y,file%index_x,file%index_y) 
+!!$     enddo
+!!$     call t_stopf('xy_interp')
 
    else
     do c=begchunk,endchunk

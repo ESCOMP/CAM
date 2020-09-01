@@ -136,7 +136,7 @@ contains
     
     use physics_buffer,   only : pbuf_get_index, physics_buffer_desc, pbuf_get_field, pbuf_get_chunk
     use physconst,        only : rga
-    use phys_grid,        only : get_rlat_all_p, get_lat_all_p, get_lon_all_p, get_wght_all_p
+    use phys_grid,        only : get_rlat_all_p, get_wght_all_p
     use cam_history,      only : outfld
     use camsrfexch,       only : cam_in_t
     use shr_reprosum_mod, only : shr_reprosum_calc
@@ -246,7 +246,7 @@ contains
        call pbuf_get_field(pbuf_get_chunk(pbuf2d,lchnk), cldtop_ndx, cldtop )
        call pbuf_get_field(pbuf_get_chunk(pbuf2d,lchnk), cldbot_ndx, cldbot )
        zsurf(:ncol) = state(c)%phis(:ncol)*rga
-       call get_rlat_all_p( c, ncol, rlats(1,c) )
+       call get_rlat_all_p(c, ncol, rlats(1,c) )
        call get_wght_all_p(c, ncol, wght)
 
        do k = 1,pver

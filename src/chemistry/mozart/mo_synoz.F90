@@ -12,7 +12,7 @@ module mo_synoz
 
   save 
 
-  real(r8), allocatable :: po3(:,:,:)
+  real(r8), protected, allocatable :: po3(:,:,:)
 
   private
   public :: synoz_inti
@@ -29,7 +29,6 @@ contains
     use dyn_grid,         only : get_dyn_grid_parm
     use ppgrid,           only : pcols, begchunk, endchunk, pver, pverp
     use ref_pres,         only : pref_mid, pref_edge
-    use phys_grid,        only : scatter_field_to_chunk
     use chem_mods,        only : adv_mass
     use mo_chem_utls,     only : get_spc_ndx
     use spmd_utils,       only : masterproc
@@ -79,6 +78,8 @@ contains
        call endrun
     end if
 
+    po3(:,:,:) = -huge(r8)
+    
     plon = get_dyn_grid_parm('plon')
     plat = get_dyn_grid_parm('plat')
     plev = get_dyn_grid_parm('plev')
@@ -179,6 +180,7 @@ contains
        !-----------------------------------------------------------------------
        synoz_ndx = get_spc_ndx('SYNOZ')
        has_synoz : if( synoz_ndx > 0 ) then
+          call endrun('synoz_inti: SYNOZ emissions are disabled')
           !-----------------------------------------------------------------------
           ! 	... compute total mass (in kg) over the domain for which
           !           the ozone source will be defined
@@ -216,11 +218,6 @@ contains
        deallocate(sf)
 
     endif Masterproc_only
-
-    !-----------------------------------------------------------------------
-    ! 	... scatter to mpi tasks
-    !-----------------------------------------------------------------------
-    call scatter_field_to_chunk(1, plev, 1, plon, wk, po3)
 
     !-----------------------------------------------------------------------
     ! 	... deallocate memory

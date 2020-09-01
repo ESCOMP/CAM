@@ -24,6 +24,8 @@ module mo_drydep
   use seq_drydep_mod,   only : nddvels =>  n_drydep, drydep_list, mapping
   use physconst,        only : karman
 
+  use infnan,                only : nan, assignment(=)
+
   implicit none
 
   save
@@ -31,7 +33,6 @@ module mo_drydep
   interface drydep_inti
      module procedure dvel_inti_table
      module procedure dvel_inti_xactive
-     module procedure dvel_inti_fromlnd
   end interface
 
   interface drydep
@@ -138,7 +139,7 @@ module mo_drydep
 
   logical, parameter :: dyn_soilw = .false.
 
-  real(r8), allocatable  :: fraction_landuse(:,:,:)
+  real(r8), protected, allocatable  :: fraction_landuse(:,:,:)
   real(r8), allocatable, dimension(:,:,:) :: dep_ra ! [s/m] aerodynamic resistance
   real(r8), allocatable, dimension(:,:,:) :: dep_rb ! [s/m] resistance across sublayer
   integer, parameter :: n_land_type = 11
@@ -1809,12 +1810,14 @@ contains
        write(iulog,*) 'dvel_inti: failed to allocate fraction_landuse; error = ',astat
        call endrun
     end if
+    fraction_landuse = nan
     if(do_soilw) then
        allocate(soilw_3d(pcols,12,begchunk:endchunk),stat=astat)
        if( astat /= 0 ) then
           write(iulog,*) 'dvel_inti: failed to allocate soilw_3d error = ',astat
           call endrun
        end if
+       soilw_3d = nan
     end if
 
     plon = get_dyn_grid_parm('plon')
@@ -1824,7 +1827,7 @@ contains
        write(iulog,*) 'dvel_inti: failed to allocate index_season_lai_j; error = ',astat
        call endrun
     end if
-    if(dycore_is('UNSTRUCTURED') ) then
+    if( .true. ) then
        call get_landuse_and_soilw_from_file(do_soilw)
        allocate( index_season_lai(plon,12),stat=astat )
        if( astat /= 0 ) then
@@ -2057,23 +2060,20 @@ contains
        call infld('fraction_landuse', piofile, 'ncol','class',1,pcols,1,n_land_type, begchunk,endchunk, &
             fraction_landuse, readvar, gridname='physgrid')
        if (.not. readvar) then
-          write(iulog,*)'**************************************'
-          write(iulog,*)'get_landuse_and_soilw_from_file: INFO:'
-          write(iulog,*)' fraction_landuse not read from file: '
-          write(iulog,*)' ', trim(locfn)
-          write(iulog,*)' setting all values to zero'
-          write(iulog,*)'**************************************'
-          fraction_landuse = 0._r8
+          call endrun('get_landuse_and_soilw_from_file: fraction_landuse not found in file '//trim(drydep_srf_file))
        end if
 
        if(do_soilw) then
           call infld('soilw', piofile, 'ncol','month',1,pcols,1,12, begchunk,endchunk, &
                soilw_3d, readvar, gridname='physgrid')
+          if (.not. readvar) then
+             call endrun('get_landuse_and_soilw_from_file: soilw not found in file '//trim(drydep_srf_file))
+          end if
        end if
 
        call cam_pio_closefile(piofile)
     else
-       call endrun('Unstructured grids require drydep_srf_file ')
+       call endrun('All grids require drydep_srf_file ')
     end if
 
 
@@ -2089,7 +2089,7 @@ contains
     use shr_scam_mod  , only: shr_scam_getCloseLatLon  ! Standardized system subroutines
     use cam_initfiles, only: initial_file_get_id
     use dycore, only : dycore_is
-    use phys_grid, only : scatter_field_to_chunk
+    
     implicit none
 
     !-------------------------------------------------------------------------------------
@@ -2313,10 +2313,6 @@ contains
           !-------------------------------------------------------------------------------------
           ! 	... map to Wesely land classification
           !-------------------------------------------------------------------------------------
-
-
-
-
           tmp_frac_lu(i, 1, j) =     fraction(20)
           tmp_frac_lu(i, 2, j) = sum(fraction(16:17))
           tmp_frac_lu(i, 3, j) = sum(fraction(13:15))
@@ -2337,11 +2333,7 @@ contains
           end if
        end do lon_loop
     end do lat_loop
-    !-------------------------------------------------------------------------------------
-    ! 	... reshape according to lat-lon blocks
-    !-------------------------------------------------------------------------------------
-    call scatter_field_to_chunk(1,n_land_type,1,plon,tmp_frac_lu,fraction_landuse)
-    if(do_soilw) call scatter_field_to_chunk(1,12,1,plon,tmp_soilw_3d,soilw_3d)
+
     !-------------------------------------------------------------------------------------
     ! 	... make sure there are no out of range values
     !-------------------------------------------------------------------------------------
@@ -3265,9 +3257,6 @@ contains
     real(r8), intent(inout) :: soilw(pcols)
     integer,  intent(in)    :: lchnk           ! chunk indice
     real(r8), intent(in)    :: calday
-
-
-    integer :: i, ilon,ilat
 
     call chk_soilw( calday )
 

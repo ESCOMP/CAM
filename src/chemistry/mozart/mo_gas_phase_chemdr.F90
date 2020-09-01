@@ -278,7 +278,7 @@ contains
     use mo_fstrat,         only : set_fstrat_vals, set_fstrat_h2o
     use noy_ubc,           only : noy_ubc_set
     use mo_flbc,           only : flbc_set
-    use phys_grid,         only : get_rlat_all_p, get_rlon_all_p, get_lat_all_p, get_lon_all_p
+    use phys_grid,         only : get_rlat_all_p, get_rlon_all_p
     use mo_mean_mass,      only : set_mean_mass
     use cam_history,       only : outfld
     use wv_saturation,     only : qsat
@@ -491,8 +491,10 @@ contains
     !-----------------------------------------------------------------------      
     !        ... Get chunck latitudes and longitudes
     !-----------------------------------------------------------------------      
-    call get_lat_all_p( lchnk, ncol, latndx )
-    call get_lon_all_p( lchnk, ncol, lonndx )
+!!$    call get_lat_all_p( lchnk, ncol, latndx )
+!!$    call get_lon_all_p( lchnk, ncol, lonndx )
+    latndx(:) = -huge(1)
+    lonndx(:) = -huge(1)
     call get_rlat_all_p( lchnk, ncol, rlats )
     call get_rlon_all_p( lchnk, ncol, rlons )
     tim_ndx = pbuf_old_tim_idx()
@@ -1101,7 +1103,7 @@ contains
             snowhland, fsds, depvel, sflx, mmr, &
             tvs, soilw, relhum(:,pver:pver), ncol, lonndx, latndx, lchnk )
     else if ( drydep_method == DD_XATM ) then
-       table_soilw = has_drydep( 'H2' ) .or. has_drydep( 'CO' )
+       table_soilw = has_drydep( 'H2' ) .or. has_drydep( 'C' )
        if( .not. dyn_soilw .and. table_soilw ) then
           call set_soilw( soilw, lchnk, calday )
        end if
