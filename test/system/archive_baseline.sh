@@ -32,7 +32,7 @@ BASELINE ARCHIVED LOCATION
 
 	hobart, izumi:     /fs/cgd/csm/models/atm/cam/pretag_bl/TAGNAME_pgi
 	                   /fs/cgd/csm/models/atm/cam/pretag_bl/TAGNAME_nag
-        cheyenne:  /glade/p/cesm/amwg/cam_baselines/TAGNAME
+        cheyenne:  /glade/p/cesm/amwg/cesm_baselines/TAGNAME
 
 
 

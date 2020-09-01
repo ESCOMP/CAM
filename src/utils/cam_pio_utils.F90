@@ -455,7 +455,8 @@ contains
   end subroutine cam_pio_check_var
 
   subroutine init_pio_subsystem()
-    use shr_pio_mod,   only: shr_pio_getiosys, shr_pio_getiotype
+    use shr_pio_mod,  only: shr_pio_getiosys, shr_pio_getiotype
+    use shr_pio_mod,  only: shr_pio_getioformat
     use cam_instance, only: atm_id
 
     pio_subsystem => shr_pio_getiosys(atm_id)
