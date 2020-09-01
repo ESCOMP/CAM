@@ -2,6 +2,46 @@
 
 Tag name: -
 Originator(s): duda
+Date: Tue Sep  1 00:47:09 UTC 2020
+One-line Summary: Update to the v6.1-cam.021 MPAS tag to fix restart attribute errors
+
+Purpose of changes:
+
+Update to the v6.1-cam.021 MPAS tag to obtain a fix for runtime errors
+encountered when writing attributes to restart files. An example of
+the error this update fixes is
+
+   Opened file m480L32hsdm_rst5+4.cam.r.0000-01-01-09000.nc to write      196608
+    NetCDF: Name contains illegal characters
+    pio_support::pio_die:: myrank=          -1 : ERROR: pionfatt_mod.F90:         170 : NetCDF: Name contains illegal characters
+
+Describe any changes made to build system: none
+
+Describe any changes made to the namelist: none
+
+List any changes to the defaults for the boundary datasets: none
+
+Describe any substantial timing or memory changes: none
+
+Code reviewed by:
+
+List all files eliminated: none
+
+List all files added and what they do: none
+
+List all existing files that have been modified, and describe the changes:
+
+Externals_CAM.cfg
+. Update to v6.1-cam.021 MPAS tag to obtain a fix for runtime errors encountered
+  when writing attributes to restart files.
+
+Summarize any changes to answers: none
+
+===============================================================
+===============================================================
+
+Tag name: -
+Originator(s): duda
 Date: Thu Aug 27 02:05:46 UTC 2020
 One-line Summary: Progress towards restart capability for MPAS-A dycore
 
