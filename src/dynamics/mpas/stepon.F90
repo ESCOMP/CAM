@@ -21,7 +21,7 @@ use camsrfexch,     only: cam_out_t
 
 use cam_history,    only: addfld, outfld, hist_fld_active
 
-use time_manager,   only: get_step_size, get_nstep
+use time_manager,   only: get_step_size, get_nstep, is_first_step, is_first_restart_step
 use perf_mod,       only: t_startf, t_stopf, t_barrierf
 use cam_abortutils, only: endrun
 use cam_logfile,    only: iulog
@@ -122,7 +122,13 @@ subroutine stepon_run1(dtime_out, phys_state, phys_tend, &
    ! Update pointers for prognostic fields if necessary.  Note that this shift
    ! should not take place the first time stepon_run1 is called which is during
    ! the CAM initialization sequence before the dycore is called.
-   if (nstep > 0 .and. swap_time_level_ptrs) call shift_time_levels(dyn_in, dyn_out)
+   if (.not. is_first_step() .and. &
+       .not. is_first_restart_step() .and. &
+       swap_time_level_ptrs) then
+
+      call shift_time_levels(dyn_in, dyn_out)
+
+   end if
 
 end subroutine stepon_run1
 

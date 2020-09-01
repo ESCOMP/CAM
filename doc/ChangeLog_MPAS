@@ -2,6 +2,47 @@
 
 Tag name: -
 Originator(s): duda
+Date: Tue Sep  1 02:51:41 UTC 2020
+One-line Summary: Obtain bit-identical restarts - skip time level shift on first restart step
+
+Purpose of changes:
+
+Obtain bit-identical restarts by skipping the call to shift_time_levels on
+the first time step after a restart in stepon_run1.
+
+Describe any changes made to build system: none
+
+Describe any changes made to the namelist: none
+
+List any changes to the defaults for the boundary datasets: none
+
+Describe any substantial timing or memory changes: none
+
+Code reviewed by:
+
+List all files eliminated: none
+
+List all files added and what they do: none
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/stepon.F90
+. In addition to other conditions, the shift_time_levels routine is only called
+  in stepon_run1 if is_first_restart_step returns .FALSE. This additional
+  condition is necessary, since the dycore has not yet been called before
+  the first call to stepon_run1 after a restart, and so the time levels pointed
+  to by dyn_in and dyn_out have not been swapped by the dycore.
+
+  Note that one of the previous conditions for calling shift_time_levels,
+  "nstep > 0", has been replaced by ".not. is_first_step()".
+
+Summarize any changes to answers: CAM-MPAS now gives bit-identical restarts.
+
+===============================================================
+===============================================================
+
+Tag name: -
+Originator(s): duda
 Date: Tue Sep  1 00:47:09 UTC 2020
 One-line Summary: Update to the v6.1-cam.021 MPAS tag to fix restart attribute errors
 
