@@ -223,7 +223,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="QSC6" grid="ne30_ne30_mg17" name="ERP_Ln9" testmods="cam/outfrq9s">
+  <test compset="QPC6" grid="ne30_ne30_mg17" name="ERP_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prebeta"/>
     </machines>
