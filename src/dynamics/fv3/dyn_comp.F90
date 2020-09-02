@@ -234,6 +234,10 @@ subroutine dyn_readnl(nlfilename)
      call endrun('dyn_readnl: ERROR: fv3_npes must be > 0')
   end if
 
+  ! Non-hydrostatic runs not currently supported
+  if (.not.fv3_hydrostatic) &
+       call endrun('dyn_readnl: ERROR FV3 Non-hydrostatic option is not supported, set namelist fv3_hydrostatic = .true.')
+
   !
   ! write fv3 dycore namelist options to log
   !
