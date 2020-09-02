@@ -1,9 +1,0 @@
--spmd -smp
--dyn fv
--hgrid 1.9x2.5
--phys cam6
--aquaplanet
--chem waccm_sc_mam4
--age_of_air_trcs
--debug
--s

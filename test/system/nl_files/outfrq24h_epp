@@ -1,9 +1,0 @@
-&camexp
- start_ymd = 20031231
- start_tod = 0
- mfilt=1,1,1,1,1,1
- ndens=1,1,1,1,1,1
- nhtfrq=-24,-24,-24,-24,-24,-24
- fincl2 = 'EPP_ionpairs','N2D_EPP','N4S_EPP','OH_EPP','QSUM','ALONM','ALATM'
- epp_all_filepath = '$CSMDATA/atm/cam/solar/solarforcing_ref_day_3.1_EPP_c160505.nc'
- /

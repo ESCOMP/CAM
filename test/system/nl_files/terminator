@@ -1,7 +1,0 @@
-&camexp
- mfilt=1,1,1,1,1,1
- ndens=1,1,1,1,1,1
- nhtfrq=3,3,3,3,3,3
- fincl2='U:I','V:I','T:I','TTEND_TOT:I','CL:I','CL2:I'
- /
-

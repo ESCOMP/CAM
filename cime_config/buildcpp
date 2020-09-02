@@ -64,11 +64,6 @@ def buildcpp(case):
     if atm_grid == 'T341':
         atm_grid = '512x1024'
 
-    # This special case for backwards compatibility.  The CESM config_grids.xml file
-    # has specifiers that CAM's configure script recognizes for all other SE grids.
-    if atm_grid == 'ne30pg3':
-        atm_grid = 'ne30np4.pg3'
-
     # Need to relax this error tolerance for the SE variable resolution grids
     if atm_grid[0:3] == 'ne0':
         case.set_value("EPS_AAREA", "1.0e-04")
@@ -78,9 +73,16 @@ def buildcpp(case):
         case.set_value("EPS_AAREA", "1.0e-04")
         case.set_value("EPS_AGRID", "1.0e-05")
 
+    # The vector mapping (in the mediator) needs to be 'cart3d' for SE
+    # NB: This is currently the default, is it working by conincidence for
+    #     other unstructured dycores?
+    match = re.match(r'ne[0-9]', atm_grid)
+    if match:
+        case.set_value('VECT_MAP', 'cart3d')
+
     # if need to build - then construct configure command
-    config_opts = ["-s", "-fc_type", compiler, "-ccsm_seq",
-                   "-dyn", cam_dycore, "-hgrid", atm_grid, "-cpl", comp_interface,
+    config_opts = ["-s", "-fc_type", compiler, "-dyn", cam_dycore,
+                   "-hgrid", atm_grid, "-cpl", comp_interface,
                    "-usr_src", os.path.join(caseroot, "SourceMods", "src.cam")]
 
     if nlev:

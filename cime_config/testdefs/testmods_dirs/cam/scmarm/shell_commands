@@ -6,3 +6,5 @@
 ./xmlchange MPILIB=mpi-serial
 ./xmlchange REST_OPTION=never
 ./xmlchange CAM_NML_USE_CASE=UNSET
+./xmlchange PTS_LAT=36.6
+./xmlchange PTS_LON=262.5

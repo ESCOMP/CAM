@@ -1,7 +1,0 @@
--spmd -nosmp
--dyn fv
--hgrid 10x15
--phys cam6
--aquaplanet
--debug
--s
