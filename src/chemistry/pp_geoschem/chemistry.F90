@@ -2504,6 +2504,21 @@ contains
     State_Met(LCHNK)%SUNCOS    (1,:) = CSZA(:)
     State_Met(LCHNK)%SUNCOSmid (1,:) = CSZAmid(:)
 
+    ! Field      : UVALBEDO
+    ! Description: UV surface albedo
+    ! Unit       : -
+    ! Dimensions : nX, nY
+    fldname_ns = 'HCO_uvalbedo'
+    tmpIdx = pbuf_get_index(fldname_ns, RC)
+    IF ( tmpIdx < 0 ) THEN
+       IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(fldname_ns)
+       State_Met(LCHNK)%UVALBEDO(1,:) = 0.0e+0_fp
+    ELSE
+       pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
+       CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_ik)
+       State_Met(LCHNK)%UVALBEDO(1,:) = pbuf_ik(:,nZ)
+    ENDIF
+
     ! Field      : U10M, V10M
     ! Description: E/W and N/S wind speed @ 10m height
     ! Unit       : m/s
@@ -2937,18 +2952,6 @@ contains
     !   ! The following only apply when photolysis is used,
     !   ! that is for fullchem or aerosol simulations.
     !   IF ( ITS_A_FULLCHEM_SIM  .or. ITS_AN_AEROSOL_SIM ) THEN
-    !
-    !      ! Copy UV Albedo data (for photolysis) into the
-    !      ! State_Met%UVALBEDO field. (bmy, 3/20/15)
-    !      CALL Get_UvAlbedo( Input_Opt = Input_Opt,        &
-    !                         State_Met = State_Met(LCHNK), &
-    !                         RC        = RC               )
-    !
-    !      ! Trap potential errors
-    !      IF ( RC /= GC_SUCCESS ) THEN
-    !         ErrMsg = 'Error encountered in "Get_UvAlbedo"!'
-    !         CALL Error_Stop( ErrMsg, ThisLoc )
-    !      ENDIF
     !
     !      IF ( Input_Opt%USE_TOMS_O3 ) THEN
     !         ! Get TOMS overhead O3 columns for photolysis from
