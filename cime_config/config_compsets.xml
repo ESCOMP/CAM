@@ -642,25 +642,25 @@
 
     <entry id="RUN_TYPE">
        <values match="first">
-	<value compset="HIST_CAM60%CCTS1" grid="a%ne0np4CONUS">hybrid</value>
+	<value compset="HIST_CAM60%CCTS1(_CLM|%NUDG)" grid="a%ne0np4CONUS">hybrid</value>
       </values>
     </entry>
 
     <entry id="RUN_REFCASE">
       <values match="first">
-	<value compset="HIST_CAM60%CCTS1" grid="a%ne0np4CONUS">f.e22.FCnudged.ne0CONUSne30x8_ne0CONUSne30x8_mt12.cesm2_2_alpha06b.001</value>
+	<value compset="HIST_CAM60%CCTS1(_CLM|%NUDG)" grid="a%ne0np4CONUS">f.e22.FCnudged.ne0CONUSne30x8_ne0CONUSne30x8_mt12.cesm2_2_alpha06b.001</value>
       </values>
     </entry>
 
     <entry id="RUN_REFDATE">
       <values match="first">
-	<value compset="HIST_CAM60%CCTS1" grid="a%ne0np4CONUS">2013-01-01</value>
+	<value compset="HIST_CAM60%CCTS1(_CLM|%NUDG)" grid="a%ne0np4CONUS">2013-01-01</value>
       </values>
     </entry>
 
     <entry id="CLM_NAMELIST_OPTS">
       <values match="first">
-	<value compset="HIST_CAM60%CCTS1" grid="a%ne0np4CONUS">use_init_interp=.true.</value>
+	<value compset="HIST_CAM60%CCTS1(_CLM|%NUDG)" grid="a%ne0np4CONUS">use_init_interp=.true.</value>
       </values>
     </entry>
 
