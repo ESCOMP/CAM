@@ -40,7 +40,6 @@ def buildnml(case, caseroot, compname):
     DEBUG               = case.get_value("DEBUG")
     NINST_ATM           = case.get_value("NINST_ATM")
     NTASKS              = case.get_value("NTASKS_PER_INST_ATM")
-    DOCN_MODE           = case.get_value("DOCN_MODE")
     RUN_TYPE            = case.get_value("RUN_TYPE")
     RUN_STARTDATE       = case.get_value("RUN_STARTDATE")
     RUN_REFCASE         = case.get_value("RUN_REFCASE")
