@@ -102,7 +102,7 @@ if [ -n "${CAM_ROOT}" ]; then
 else
   # The user did not specify CAM_ROOT, find it relative to this script
   test_dir="$( dirname $0 )"
-  export CAM_ROOT="$(dirname $(dirname ${test_dir} ) )"
+  export CAM_ROOT="$( dirname $( dirname $( cd ${test_dir}; pwd -P ) ) )"
 fi
 # Now, find CIME_ROOT, first try a CAM standalone checkout
 if [ -d "${CAM_ROOT}/cime/scripts" ]; then
