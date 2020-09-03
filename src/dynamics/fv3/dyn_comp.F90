@@ -223,6 +223,7 @@ subroutine dyn_readnl(nlfilename)
   ! Broadcast namelist values to all PEs
   call MPI_bcast(fv3_npes, 1, mpi_integer, masterprocid, mpicom, ierr)
   call MPI_bcast(fv3_scale_ttend, 1, mpi_logical, masterprocid, mpicom, ierr)
+  call MPI_bcast(fv3_hydrostatic, 1, mpi_logical, masterprocid, mpicom, ierr)
   call MPI_bcast(fv3_lcv_moist, 1, mpi_logical, masterprocid, mpicom, ierr)
   call MPI_bcast(fv3_lcp_moist, 1, mpi_logical, masterprocid, mpicom, ierr)
 
