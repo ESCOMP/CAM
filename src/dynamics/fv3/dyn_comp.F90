@@ -223,6 +223,7 @@ subroutine dyn_readnl(nlfilename)
   ! Broadcast namelist values to all PEs
   call MPI_bcast(fv3_npes, 1, mpi_integer, masterprocid, mpicom, ierr)
   call MPI_bcast(fv3_scale_ttend, 1, mpi_logical, masterprocid, mpicom, ierr)
+  call MPI_bcast(fv3_hydrostatic, 1, mpi_logical, masterprocid, mpicom, ierr)
   call MPI_bcast(fv3_lcv_moist, 1, mpi_logical, masterprocid, mpicom, ierr)
   call MPI_bcast(fv3_lcp_moist, 1, mpi_logical, masterprocid, mpicom, ierr)
 
@@ -233,6 +234,10 @@ subroutine dyn_readnl(nlfilename)
   if (fv3_npes <= 0) then
      call endrun('dyn_readnl: ERROR: fv3_npes must be > 0')
   end if
+
+  ! Non-hydrostatic runs not currently supported
+  if (.not.fv3_hydrostatic) &
+       call endrun('dyn_readnl: ERROR FV3 Non-hydrostatic option is not supported, set namelist fv3_hydrostatic = .true.')
 
   !
   ! write fv3 dycore namelist options to log
