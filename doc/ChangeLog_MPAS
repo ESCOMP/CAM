@@ -1,5 +1,23 @@
 ===============================================================
 
+Tag name: mpas066_cam6_2_043
+Originator(s): eaton
+Date: Thu 03 Sep 2020 05:26:58 PM MDT
+One-line Summary: merge mgduda:restart_capability
+
+Purpose of changes:
+
+. merge changes to implement restart capability
+
+Testing:
+
+Confirmed the restarts are BFB with Kessler and Held Suarez tests.
+
+Also confirmed that the restart files can be used as initial files.
+
+===============================================================
+===============================================================
+
 Tag name: -
 Originator(s): duda
 Date: Tue Sep  1 02:51:41 UTC 2020
