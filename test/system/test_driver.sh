@@ -81,29 +81,25 @@ namelists_only=false
 batch=false
 
 # Understand where we are and where the CAM root and CIME reside
-if [ -n "${CAM_ROOT}" ]; then
-   # The user specified a CAM_ROOT, make sure it exists and that this
-   # script was called from its test directory.
-   if [ -d "${CAM_ROOT}" ]; then
-     test_dir="${CAM_ROOT}/test/system"
-     if [ -f "${test_dir}/test_driver.sh" ]; then
-       # Check against this script.
-       script_dir="$( cd $( dirname $0 ); pwd -P )"
-       script_file="${script_dir}/test_driver.sh"
-       if [ "${test_dir}/test_driver.sh" != "${script_file}" ]; then
-         perr "CAM_ROOT test dir is ${test_dir} but script is ${script_file}"
-       fi # Else, everything is fine
-     else
-       perr "No test_driver.sh found in ${test_dir}"
-     fi
-   else
-     perr "CAM_ROOT, '${CAM_ROOT}', does not exist"
-   fi
+script_dir="$( cd $( dirname $0 ); pwd -P )"
+CAM_ROOT="${CAM_ROOT:-$(dirname $(dirname ${script_dir} ) )}"
+# Make sure CAM_ROOT, exists and that this
+# script was called from its test directory.
+if [ -d "${CAM_ROOT}" ]; then
+  test_dir="${CAM_ROOT}/test/system"
+  if [ -f "${test_dir}/test_driver.sh" ]; then
+    # Check against this script.
+    script_file="${script_dir}/test_driver.sh"
+    if [ "${test_dir}/test_driver.sh" != "${script_file}" ]; then
+      perr "CAM_ROOT test dir is ${test_dir} but script is ${script_file}"
+    fi # Else, everything is fine
+  else
+    perr "No test_driver.sh found in ${test_dir}"
+  fi
 else
-  # The user did not specify CAM_ROOT, find it relative to this script
-  test_dir="$( dirname $0 )"
-  export CAM_ROOT="$( dirname $( dirname $( cd ${test_dir}; pwd -P ) ) )"
+  perr "CAM_ROOT, '${CAM_ROOT}', does not exist"
 fi
+export CAM_ROOT
 # Now, find CIME_ROOT, first try a CAM standalone checkout
 if [ -d "${CAM_ROOT}/cime/scripts" ]; then
   export CIME_ROOT="${CAM_ROOT}/cime"

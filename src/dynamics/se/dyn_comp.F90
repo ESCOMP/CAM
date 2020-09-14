@@ -302,6 +302,10 @@ subroutine dyn_readnl(NLFileName)
    call MPI_bcast(se_raytau0, 1, mpi_real8, masterprocid, mpicom, ierr)
    call MPI_bcast(se_molecular_diff, 1, mpi_real8, masterprocid, mpicom, ierr)
 
+   if (se_molecular_diff > 0.0_r8) then
+      call endrun('dyn_readnl: se_molecular_diff must be zero for CESM2.2.0')
+   end if
+
    if (se_npes <= 0) then
       call endrun('dyn_readnl: ERROR: se_npes must be > 0')
    end if
