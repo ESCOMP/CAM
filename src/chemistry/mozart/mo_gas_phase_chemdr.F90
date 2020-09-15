@@ -1103,7 +1103,7 @@ contains
             snowhland, fsds, depvel, sflx, mmr, &
             tvs, soilw, relhum(:,pver:pver), ncol, lonndx, latndx, lchnk )
     else if ( drydep_method == DD_XATM ) then
-       table_soilw = has_drydep( 'H2' ) .or. has_drydep( 'C' )
+       table_soilw = has_drydep( 'H2' ) .or. has_drydep( 'CO' )
        if( .not. dyn_soilw .and. table_soilw ) then
           call set_soilw( soilw, lchnk, calday )
        end if

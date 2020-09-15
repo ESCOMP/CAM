@@ -1827,7 +1827,7 @@ contains
        write(iulog,*) 'dvel_inti: failed to allocate index_season_lai_j; error = ',astat
        call endrun
     end if
-    if( .true. ) then
+    if(dycore_is('UNSTRUCTURED') ) then
        call get_landuse_and_soilw_from_file(do_soilw)
        allocate( index_season_lai(plon,12),stat=astat )
        if( astat /= 0 ) then
@@ -2073,7 +2073,7 @@ contains
 
        call cam_pio_closefile(piofile)
     else
-       call endrun('All grids require drydep_srf_file ')
+       call endrun('Unstructured grids require drydep_srf_file ')
     end if
 
 
@@ -2089,13 +2089,15 @@ contains
     use shr_scam_mod  , only: shr_scam_getCloseLatLon  ! Standardized system subroutines
     use cam_initfiles, only: initial_file_get_id
     use dycore, only : dycore_is
-    
+
+    use phys_grid,     only : get_rlat_all_p, get_rlon_all_p, get_ncols_p
+
     implicit none
 
     !-------------------------------------------------------------------------------------
     ! 	... dummy arguments
     !-------------------------------------------------------------------------------------
-    integer, intent(in)      ::  plon, plat, nlon_veg, nlat_veg, npft_veg
+    integer, intent(in)          :: plon, plat, nlon_veg, nlat_veg, npft_veg
     real(r8), pointer            :: soilw_map(:,:,:)
     real(r8), intent(in)         :: landmask(nlon_veg,nlat_veg)
     real(r8), intent(in)         :: urban(nlon_veg,nlat_veg)
@@ -2133,22 +2135,23 @@ contains
     real(r8),    dimension(-veg_ext:nlon_veg+veg_ext) :: lon_veg_edge_ext
     integer, dimension(-veg_ext:nlon_veg+veg_ext) :: mapping_ext
 
-    real(r8), allocatable :: lam(:), phi(:), garea(:)
+    real(r8), allocatable :: lam(:), phi(:)
 
     logical, parameter :: has_npole = .true.
     integer :: ploniop,platiop
     real(r8) :: tmp_frac_lu(plon,n_land_type,plat), tmp_soilw_3d(plon,12,plat)
 
-    if(dycore_is('UNSTRUCTURED') ) then
-       ! For unstructured grids plon is the 1d horizontal grid size and plat=1
-       allocate(lam(plon), phi(plon))
-       call get_horiz_grid_d(plon, clat_d_out=phi)
-    else
-       allocate(lam(plon), phi(plat))
-       call get_horiz_grid_d(plat, clat_d_out=phi)
-    endif
-    call get_horiz_grid_d(plon, clon_d_out=lam)
+    real(r8):: rlats(pcols), rlons(pcols)
+    integer :: lchnk, ncol, icol
+    logical :: found
 
+    if(dycore_is('UNSTRUCTURED') ) then
+       call endrun('mo_drydep::interp_map called for UNSTRUCTURED grid')
+    endif
+
+    allocate(lam(plon), phi(plat))
+    call get_horiz_grid_d(plat, clat_d_out=phi)
+    call get_horiz_grid_d(plon, clon_d_out=lam)
 
     jl = 1
     ju = plon
@@ -2333,12 +2336,34 @@ contains
           end if
        end do lon_loop
     end do lat_loop
+    
+    do lchnk = begchunk, endchunk
+       ncol = get_ncols_p(lchnk)
+       do icol= 1,ncol
+          call get_rlat_all_p(lchnk, ncol, rlats(:ncol)) ! OK
+          call get_rlon_all_p(lchnk, ncol, rlons(:ncol)) ! OK
 
-    !-------------------------------------------------------------------------------------
-    ! 	... make sure there are no out of range values
-    !-------------------------------------------------------------------------------------
-    where (fraction_landuse < 0._r8) fraction_landuse = 0._r8
-    where (fraction_landuse > 1._r8) fraction_landuse = 1._r8
+          found=.false.
+          find_col: do j = 1,plat
+             do i = 1,plon
+                if (rlats(icol)==phi(j) .and. rlons(icol)==lam(i)) then
+                   found=.true.
+                   exit find_col
+                endif
+             enddo
+          enddo find_col
+
+          if (.not.found) call endrun('mo_drydep::interp_map not able find coordinate')
+          fraction_landuse(icol,1:n_land_type,lchnk) =  tmp_frac_lu(i,1:n_land_type,j)
+          if (do_soilw) soilw_3d(icol,1:12,lchnk) = tmp_soilw_3d(i,1:12,j)
+       end do
+
+       !-------------------------------------------------------------------------------------
+       ! 	... make sure there are no out of range values
+       !-------------------------------------------------------------------------------------
+       where (fraction_landuse(:ncol,:n_land_type,lchnk) < 0._r8) fraction_landuse(:ncol,:n_land_type,lchnk) = 0._r8
+       where (fraction_landuse(:ncol,:n_land_type,lchnk) > 1._r8) fraction_landuse(:ncol,:n_land_type,lchnk) = 1._r8
+    end do
 
   end subroutine interp_map
   
