@@ -273,8 +273,8 @@ contains
     use mo_setext,         only : setext
     use fire_emissions,    only : fire_emissions_vrt
     use mo_sethet,         only : sethet
-    use mo_drydep,         only : drydep, set_soilw
-    use seq_drydep_mod,    only : DD_XLND, DD_XATM, DD_TABL, drydep_method
+    use mo_drydep,         only : drydep
+    use seq_drydep_mod,    only : DD_XLND, drydep_method
     use mo_fstrat,         only : set_fstrat_vals, set_fstrat_h2o
     use noy_ubc,           only : noy_ubc_set
     use mo_flbc,           only : flbc_set
@@ -283,7 +283,6 @@ contains
     use cam_history,       only : outfld
     use wv_saturation,     only : qsat
     use constituents,      only : cnst_mw
-    use mo_drydep,         only : has_drydep
     use time_manager,      only : get_ref_date
     use mo_ghg_chem,       only : ghg_chem_set_rates, ghg_chem_set_flbc
     use mo_sad,            only : sad_strat_calc
@@ -377,8 +376,6 @@ contains
     integer      ::  tim_ndx
     real(r8)     ::  delt_inverse
     real(r8)     ::  esfact
-    integer      ::  latndx(pcols)                         ! chunk lat indicies
-    integer      ::  lonndx(pcols)                         ! chunk lon indicies
     real(r8)     ::  invariants(ncol,pver,nfs)
     real(r8)     ::  col_dens(ncol,pver,max(1,nabscol))    ! column densities (molecules/cm^2)
     real(r8)     ::  col_delta(ncol,0:pver,max(1,nabscol)) ! layer column densities (molecules/cm^2)
@@ -491,10 +488,6 @@ contains
     !-----------------------------------------------------------------------      
     !        ... Get chunck latitudes and longitudes
     !-----------------------------------------------------------------------      
-!!$    call get_lat_all_p( lchnk, ncol, latndx )
-!!$    call get_lon_all_p( lchnk, ncol, lonndx )
-    latndx(:) = -huge(1)
-    lonndx(:) = -huge(1)
     call get_rlat_all_p( lchnk, ncol, rlats )
     call get_rlon_all_p( lchnk, ncol, rlons )
     tim_ndx = pbuf_old_tim_idx()
@@ -1097,24 +1090,10 @@ contains
     prect(:ncol) = precc(:ncol) + precl(:ncol)
 
     if ( drydep_method == DD_XLND ) then
-       soilw = -99
        call drydep( ocnfrac, icefrac, ncdate, ts, ps,  &
             wind_speed, qh2o(:,pver), tfld(:,pver), pmid(:,pver), prect, &
             snowhland, fsds, depvel, sflx, mmr, &
-            tvs, soilw, relhum(:,pver:pver), ncol, lonndx, latndx, lchnk )
-    else if ( drydep_method == DD_XATM ) then
-       table_soilw = has_drydep( 'H2' ) .or. has_drydep( 'CO' )
-       if( .not. dyn_soilw .and. table_soilw ) then
-          call set_soilw( soilw, lchnk, calday )
-       end if
-       call drydep( ncdate, ts, ps,  &
-            wind_speed, qh2o(:,pver), tfld(:,pver), pmid(:,pver), prect, &
-            snowhland, fsds, depvel, sflx, mmr, &
-            tvs, soilw, relhum(:,pver:pver), ncol, lonndx, latndx, lchnk )
-    else if ( drydep_method == DD_TABL ) then
-       call drydep( calday, ts, zen_angle, &
-            depvel, sflx, mmr, pmid(:,pver), &
-            tvs, ncol, icefrac, ocnfrac, lchnk )
+            tvs, relhum(:,pver:pver), ncol, lchnk )
     endif
 
     drydepflx(:,:) = 0._r8

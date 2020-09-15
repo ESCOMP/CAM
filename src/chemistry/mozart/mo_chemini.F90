@@ -55,7 +55,7 @@ contains
     use mo_photo,          only : photo_inti
     use mo_lightning,      only : lightning_inti
     use mo_drydep,         only : drydep_inti
-    use seq_drydep_mod,    only : DD_XLND, DD_XATM, drydep_method
+    use seq_drydep_mod,    only : DD_XLND, drydep_method
     use mo_imp_sol,        only : imp_slv_inti
     use mo_exp_sol,        only : exp_sol_inti
     use spmd_utils,        only : iam
@@ -184,10 +184,8 @@ contains
     !-----------------------------------------------------------------------
     !	... initialize the dry deposition module
     !-----------------------------------------------------------------------
-    if ( drydep_method == DD_XATM .or. drydep_method == DD_XLND ) then
+    if ( drydep_method == DD_XLND ) then
        call drydep_inti(depvel_lnd_file, clim_soilw_file, season_wes_file )
-    else
-       call drydep_inti( depvel_file )
     endif
 
     if (masterproc) write(iulog,*) 'chemini: after drydep_inti on node ',iam
