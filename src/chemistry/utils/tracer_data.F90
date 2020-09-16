@@ -1354,18 +1354,19 @@ contains
 
           call endrun('tracer_data::read_2d_trc: weight_by_lat feature disabled')
 
-!!$          call t_startf('xy_interp')
-!!$
-!!$          do c = begchunk,endchunk
-!!$             ncols = get_ncols_p(c)
-!!$             call get_lon_all_p(c,ncols,lons)
-!!$             call get_lat_all_p(c,ncols,lats)
-!!$
-!!$             call xy_interp(file%nlon,file%nlat,1,plon,plat,pcols,ncols, &
-!!$                  file%weight_x,file%weight_y,wrk2d_in,loc_arr(:,c-begchunk+1), &
-!!$                  lons,lats,file%count_x,file%count_y,file%index_x,file%index_y)
-!!$          enddo
-!!$          call t_stopf('xy_interp')
+          call t_startf('xy_interp')
+
+          do c = begchunk,endchunk
+             ncols = get_ncols_p(c)
+             ! Needs to be replaced with new interfaces to get global indices on the columns
+             ! call get_lon_all_p(c,ncols,lons)
+             ! call get_lat_all_p(c,ncols,lats)
+
+             call xy_interp(file%nlon,file%nlat,1,plon,plat,pcols,ncols, &
+                  file%weight_x,file%weight_y,wrk2d_in,loc_arr(:,c-begchunk+1), &
+                  lons,lats,file%count_x,file%count_y,file%index_x,file%index_y)
+          enddo
+          call t_stopf('xy_interp')
 
        else
           do c=begchunk,endchunk
@@ -1579,17 +1580,18 @@ contains
    if(file%weight_by_lat) then
 
      call endrun('tracer_data::read_3d_trc weight_by_lat feature disabled')
-!!$     call t_startf('xy_interp')
-!!$
-!!$     do c = begchunk,endchunk
-!!$        ncols = get_ncols_p(c)
-!!$        call get_lon_all_p(c,ncols,lons)
-!!$        call get_lat_all_p(c,ncols,lats)
-!!$
-!!$        call xy_interp(file%nlon,file%nlat,file%nlev,plon,plat,pcols,ncols,file%weight_x,file%weight_y,wrk3d_in, &
-!!$             loc_arr(:,:,c-begchunk+1), lons,lats,file%count_x,file%count_y,file%index_x,file%index_y) 
-!!$     enddo
-!!$     call t_stopf('xy_interp')
+     call t_startf('xy_interp')
+
+     do c = begchunk,endchunk
+        ncols = get_ncols_p(c)
+        ! Needs to be replaced with new interfaces to get global indices on the columns
+        ! call get_lon_all_p(c,ncols,lons)
+        ! call get_lat_all_p(c,ncols,lats)
+
+        call xy_interp(file%nlon,file%nlat,file%nlev,plon,plat,pcols,ncols,file%weight_x,file%weight_y,wrk3d_in, &
+             loc_arr(:,:,c-begchunk+1), lons,lats,file%count_x,file%count_y,file%index_x,file%index_y) 
+     enddo
+     call t_stopf('xy_interp')
 
    else
     do c=begchunk,endchunk
