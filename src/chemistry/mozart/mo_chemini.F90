@@ -17,10 +17,7 @@ contains
        , photon_file &
        , electron_file &
        , airpl_emis_file &
-       , depvel_file &
        , depvel_lnd_file &
-       , clim_soilw_file &
-       , season_wes_file &
        , xs_coef_file &
        , xs_short_file &
        , xs_long_file &
@@ -92,10 +89,7 @@ contains
     character(len=*), intent(in) :: electron_file
 
     character(len=*), intent(in) :: airpl_emis_file
-    character(len=*), intent(in) :: depvel_file
     character(len=*), intent(in) :: depvel_lnd_file
-    character(len=*), intent(in) :: clim_soilw_file
-    character(len=*), intent(in) :: season_wes_file
     character(len=*), intent(in) :: xs_coef_file
     character(len=*), intent(in) :: xs_short_file
     character(len=*), intent(in) :: xs_long_file
@@ -185,7 +179,7 @@ contains
     !	... initialize the dry deposition module
     !-----------------------------------------------------------------------
     if ( drydep_method == DD_XLND ) then
-       call drydep_inti(depvel_lnd_file, clim_soilw_file, season_wes_file )
+       call drydep_inti(depvel_lnd_file)
     endif
 
     if (masterproc) write(iulog,*) 'chemini: after drydep_inti on node ',iam

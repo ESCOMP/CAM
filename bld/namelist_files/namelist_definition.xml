@@ -5458,31 +5458,9 @@ Full pathname of boundary dataset for airplane emissions.
 Default: set by build-namelist.
 </entry>
 
-<entry id="clim_soilw_file" type="char*256" input_pathname="abs" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-Full pathname of dataset containing soil moisture fraction information used in 'xactive_atm'
-method of calculating dry deposition of chemical tracers.
-Default: set by build-namelist.
-</entry>
-
-<entry id="depvel_file" type="char*256" input_pathname="abs" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-Full pathname of dataset which contains the prescribed deposition velocities used
-in the 'table' method of calculating dry deposition  of chemical tracers.
-Default: set by build-namelist.
-</entry>
-
 <entry id="depvel_lnd_file" type="char*256" input_pathname="abs" category="cam_chem"
        group="chem_inparm" valid_values="" >
-Full pathname of dataset which contains land vegitation information used in 'xactive_atm'
-method of calculating dry deposition of chemical tracers.
-Default: set by build-namelist.
-</entry>
-
-<entry id="season_wes_file" type="char*256" input_pathname="abs" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-Full pathname of dataset which contains season information used in 'xactive_atm'
-method of calculating dry deposition of chemical tracers.
+Full pathname of dataset which contains land vegitation information used in modal aerosol deposition.
 Default: set by build-namelist.
 </entry>
 
@@ -6690,12 +6668,10 @@ Default: set by build-namelist.
 </entry>
 
 <entry id="drydep_method" type="char*16" category="dry_deposition"
-       group="drydep_inparm" valid_values="xactive_atm,xactive_lnd,table" >
+       group="drydep_inparm" valid_values="xactive_lnd" >
 Dry deposition method used.  This specifies the method used to calculate dry
 deposition velocities of gas-phase chemical species.  The available methods
 are:
- 'table'       - prescribed method in CAM
- 'xactive_atm' - interactive method in CAM
  'xactive_lnd' - interactive method in CLM
 Default: set by build-namelist
 </entry>

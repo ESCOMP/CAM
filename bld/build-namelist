@@ -583,10 +583,7 @@ if ( ($chem ne 'none') or ( $prog_species ) ){
     }
     if (length($gas_drydep_list)>2){
         add_default($nl, 'drydep_list', 'val'=>$gas_drydep_list );
-        add_default($nl, 'depvel_file' );
         add_default($nl, 'depvel_lnd_file' );
-        add_default($nl, 'clim_soilw_file' );
-        add_default($nl, 'season_wes_file' );
     }
     if (length($aer_drydep_list)>2){
         add_default($nl, 'aer_drydep_list', 'val'=>$aer_drydep_list );
@@ -2586,7 +2583,7 @@ if ($chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/) {
     my @files = ('flbc_file', 'efield_lflux_file', 'efield_hflux_file',
                  'photon_file', 'electron_file', 'igrf_geomag_coefs_file',
                  'euvac_file', 'solar_parms_data_file',
-                 'depvel_lnd_file', 'clim_soilw_file', 'season_wes_file',
+                 'depvel_lnd_file',
                  'xs_coef_file', 'xs_short_file','xs_long_file', 'rsf_file',
                  'soil_erod_file' );
 

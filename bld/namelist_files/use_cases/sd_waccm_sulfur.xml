@@ -22,10 +22,6 @@
 <!--Species IC -->
 <ncdata dyn="fv"  hgrid="1.9x2.5" >atm/waccm/ic/f40.2008-2011.2deg.wcm.sd.carma.sulf.002.cam2.i.2010-01-01-00000.nc</ncdata>
 
-<!-- Deposition Velocities -->
-<drydep_method>'xactive_atm'</drydep_method>
-
-
 <!-- Emissions DEFAULTS OKAY for: airpl_emis_file,ch2o_emis_file,co_emis_file,nox_emis_file-->
 
 <!-- LBC, UBC Files -->

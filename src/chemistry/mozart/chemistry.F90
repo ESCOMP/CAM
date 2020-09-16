@@ -81,10 +81,7 @@ module chemistry
 
   ! dry dep
   
-  character(len=shr_kind_cl) :: depvel_file = 'depvel_file'
   character(len=shr_kind_cl) :: depvel_lnd_file = 'depvel_lnd_file'
-  character(len=shr_kind_cl) :: clim_soilw_file = 'clim_soilw_file'
-  character(len=shr_kind_cl) :: season_wes_file = 'season_wes_file'
 
   ! emis
 
@@ -409,11 +406,11 @@ end function chem_is
 
     namelist /chem_inparm/ chem_freq, airpl_emis_file, &
          euvac_file, photon_file, electron_file, &
-         depvel_file, xs_coef_file, xs_short_file, &
+         xs_coef_file, xs_short_file, &
          exo_coldens_file, tuv_xsect_file, o2_xsect_file, &
          xs_long_file, rsf_file, &
          lght_no_prd_factor, xactive_prates, &
-         depvel_lnd_file, clim_soilw_file, season_wes_file, drydep_srf_file, &
+         depvel_lnd_file, drydep_srf_file, &
          srf_emis_type, srf_emis_cycle_yr, srf_emis_fixed_ymd, srf_emis_fixed_tod, srf_emis_specifier,  &
          fstrat_file, fstrat_list, &
          ext_frc_specifier, ext_frc_type, ext_frc_cycle_yr, ext_frc_fixed_ymd, ext_frc_fixed_tod
@@ -546,9 +543,6 @@ end function chem_is
     ! dry dep
 
     call mpibcast (depvel_lnd_file,   len(depvel_lnd_file),            mpichar, 0, mpicom)
-    call mpibcast (depvel_file,       len(depvel_file),                mpichar, 0, mpicom)
-    call mpibcast (clim_soilw_file,   len(clim_soilw_file),            mpichar, 0, mpicom)
-    call mpibcast (season_wes_file,   len(season_wes_file),            mpichar, 0, mpicom)
     call mpibcast (drydep_srf_file,   len(drydep_srf_file),            mpichar, 0, mpicom)
 
     ! emis
@@ -888,10 +882,7 @@ end function chem_is_active
        , photon_file &
        , electron_file &
        , airpl_emis_file &
-       , depvel_file &
        , depvel_lnd_file &
-       , clim_soilw_file &
-       , season_wes_file &
        , xs_coef_file &
        , xs_short_file &
        , xs_long_file &
