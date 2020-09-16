@@ -144,8 +144,6 @@
       integer      ::  kbot_hrates
       real(r8)     ::  esfact
       real(r8)     ::  sza                                           ! solar zenith angle (degrees)
-!!$      integer      ::  latndx(pcols)                                 ! chunk lat indicies
-!!$      integer      ::  lonndx(pcols)                                 ! chunk lon indicies
       real(r8)     ::  invariants(ncol,pver,nfs)
       real(r8)     ::  col_dens(ncol,pver,max(1,nabscol))            ! column densities (molecules/cm^2)
       real(r8)     ::  col_delta(ncol,0:pver,max(1,nabscol))         ! layer column densities (molecules/cm^2)

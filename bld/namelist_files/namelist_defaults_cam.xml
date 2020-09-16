@@ -1675,9 +1675,6 @@
 
 <!-- Boundary data for Tropopheric Chemistry -->
 <fstrat_file    >atm/cam/chem/trop_mozart/ub/ubvals_b40.20th.track1_1996-2005_c110315.nc</fstrat_file>
-<linoz_data_path>atm/cam/chem/trop_mozart/ub</linoz_data_path>
-<linoz_data_file>linoz2004_2006jpl_c081216.nc</linoz_data_file>
-<chlorine_loading_file>atm/cam/chem/trop_mozart/ub/EESC_1850-2100_c090603.nc</chlorine_loading_file>
 
 <!-- Fossil fuel carbon aerosol surface emissions-->
   <!-- standard 4 species carbon -->

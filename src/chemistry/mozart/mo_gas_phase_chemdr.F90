@@ -21,7 +21,7 @@ module mo_gas_phase_chemdr
 
   integer :: map2chm(pcnst) = 0           ! index map to/from chemistry/constituents list
 
-  integer :: synoz_ndx, so4_ndx, h2o_ndx, o2_ndx, o_ndx, hno3_ndx, hcl_ndx, dst_ndx, cldice_ndx, snow_ndx
+  integer :: so4_ndx, h2o_ndx, o2_ndx, o_ndx, hno3_ndx, hcl_ndx, dst_ndx, cldice_ndx, snow_ndx
   integer :: o3_ndx, o3s_ndx
   integer :: het1_ndx
   integer :: ndx_cldfr, ndx_cmfdqr, ndx_nevapr, ndx_cldtop, ndx_prain
@@ -124,7 +124,6 @@ contains
     hno3_ndx = get_spc_ndx('HNO3')
     hcl_ndx  = get_spc_ndx('HCL')
     dst_ndx = get_spc_ndx( dust_names(1) )
-    synoz_ndx = get_extfrc_ndx( 'SYNOZ' )
     call cnst_get_ind( 'CLDICE', cldice_ndx )
     call cnst_get_ind( 'SNOWQM', snow_ndx, abort=.false. )
 
@@ -263,7 +262,6 @@ contains
     use mo_setrxt,         only : setrxt
     use mo_adjrxt,         only : adjrxt
     use mo_phtadj,         only : phtadj
-    use llnl_O1D_to_2OH_adj,only : O1D_to_2OH_adj
     use mo_usrrxt,         only : usrrxt
     use mo_setinv,         only : setinv
     use mo_negtrc,         only : negtrc
@@ -299,11 +297,6 @@ contains
     use rate_diags,        only : rate_diags_calc, rate_diags_o3s_loss
     use mo_mass_xforms,    only : mmr2vmr, vmr2mmr, h2o_to_vmr, mmr2vmri
     use orbit,             only : zenith
-!
-! LINOZ
-!
-    use lin_strat_chem,    only : do_lin_strat_chem, lin_strat_chem_solve
-    use linoz_data,        only : has_linoz_data
 !
 ! for aqueous chemistry and aerosol growth
 !
@@ -848,7 +841,6 @@ contains
     !-----------------------------------------------------------------------      
     !     	... Adjust the photodissociation rates
     !-----------------------------------------------------------------------  
-    call O1D_to_2OH_adj( reaction_rates, invariants, invariants(:,:,indexm), ncol, tfld )
     call phtadj( reaction_rates, invariants, invariants(:,:,indexm), ncol,pver )
 
     !-----------------------------------------------------------------------
@@ -867,7 +859,7 @@ contains
     call fire_emissions_vrt( ncol, lchnk, zint, fire_sflx, fire_ztop, extfrc )
 
     do m = 1,extcnt
-       if( m /= synoz_ndx .and. m /= aoa_nh_ext_ndx ) then
+       if( m /= aoa_nh_ext_ndx ) then
           do k = 1,pver
              extfrc(:ncol,k,m) = extfrc(:ncol,k,m) / invariants(:ncol,k,indexm)
           end do
@@ -899,11 +891,7 @@ contains
        enddo
     end if
 
-    if ( has_linoz_data ) then
-       ltrop_sol(:ncol) = troplev(:ncol)
-    else
-       ltrop_sol(:ncol) = 0 ! apply solver to all levels
-    endif
+    ltrop_sol(:ncol) = 0 ! apply solver to all levels
 
     ! save h2so4 before gas phase chem (for later new particle nucleation)
     if (ndx_h2so4 > 0) then
@@ -1018,13 +1006,6 @@ contains
        call outfld( 'QDSETT', wrk(:,:), ncol, lchnk )
 
     endif
-
-!
-! LINOZ
-!
-    if ( do_lin_strat_chem ) then
-       call lin_strat_chem_solve( ncol, lchnk, vmr(:,:,o3_ndx), col_dens(:,:,1), tfld, zen_angle, pmid, delt, rlats, troplev )
-    end if
 
     !-----------------------------------------------------------------------      
     !         ... Check for negative values and reset to zero

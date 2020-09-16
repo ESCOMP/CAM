@@ -104,12 +104,6 @@ module chemistry
   character(len=shr_kind_cl) :: fstrat_file = 'fstrat_file'
   character(len=16)  :: fstrat_list(pcnst)  = ''
 
-! for linoz
-  character(len=shr_kind_cl) :: chlorine_loading_file = ''
-  character(len=8)   :: chlorine_loading_type = 'SERIAL' ! "FIXED" or "SERIAL"
-  integer            :: chlorine_loading_fixed_ymd = 0         ! YYYYMMDD for "FIXED" type
-  integer            :: chlorine_loading_fixed_tod = 0         ! seconds of day for "FIXED" type
-
 !---------------------------------------------------------------------------------
 ! dummy values for specific heats at constant pressure
 !---------------------------------------------------------------------------------
@@ -341,7 +335,6 @@ end function chem_is
     use units,           only: getunit, freeunit
     use mpishorthand
 
-    use linoz_data,       only: linoz_data_defaultopts,  linoz_data_setopts
     use tracer_cnst,      only: tracer_cnst_defaultopts, tracer_cnst_setopts
     use tracer_srcs,      only: tracer_srcs_defaultopts, tracer_srcs_setopts
     use aero_model,       only: aero_model_readnl
@@ -360,16 +353,6 @@ end function chem_is
 
     ! local vars
     integer :: unitn, ierr
-
-    ! linoz data
-    character(len=shr_kind_cl) :: linoz_data_file               ! prescribed data file
-    character(len=shr_kind_cl) :: linoz_data_filelist           ! list of prescribed data files (series of files)
-    character(len=shr_kind_cl) :: linoz_data_path               ! absolute path of prescribed data files 
-    character(len=24)  :: linoz_data_type               ! 'INTERP_MISSING_MONTHS' | 'CYCLICAL' | 'SERIAL' (default)
-    logical            :: linoz_data_rmfile             ! remove data file from local disk (default .false.)
-    integer            :: linoz_data_cycle_yr
-    integer            :: linoz_data_fixed_ymd
-    integer            :: linoz_data_fixed_tod
 
     ! trop_mozart prescribed constituent concentratons
     character(len=shr_kind_cl) :: tracer_cnst_file              ! prescribed data file
@@ -421,15 +404,6 @@ end function chem_is
 
     namelist /chem_inparm/ bndtvg, h2orates, ghg_chem
 
-    ! linoz inputs
-
-    namelist /chem_inparm/ &
-         linoz_data_file, linoz_data_filelist, linoz_data_path, &
-         linoz_data_type, &
-         linoz_data_rmfile, linoz_data_cycle_yr, linoz_data_fixed_ymd, linoz_data_fixed_tod
-    namelist /chem_inparm/ &
-         chlorine_loading_file, chlorine_loading_type, chlorine_loading_fixed_ymd, chlorine_loading_fixed_tod
-
     ! prescribed chem tracers
 
     namelist /chem_inparm/ &
@@ -449,15 +423,6 @@ end function chem_is
 
     ! get the default settings
 
-    call linoz_data_defaultopts( &
-         linoz_data_file_out      = linoz_data_file,      &
-         linoz_data_filelist_out  = linoz_data_filelist,  &
-         linoz_data_path_out      = linoz_data_path,      &
-         linoz_data_type_out      = linoz_data_type,      &
-         linoz_data_rmfile_out    = linoz_data_rmfile,    &
-         linoz_data_cycle_yr_out  = linoz_data_cycle_yr,  &
-         linoz_data_fixed_ymd_out = linoz_data_fixed_ymd, &
-         linoz_data_fixed_tod_out = linoz_data_fixed_tod  ) 
     call tracer_cnst_defaultopts( &
          tracer_cnst_file_out      = tracer_cnst_file,      &
          tracer_cnst_filelist_out  = tracer_cnst_filelist,  &
@@ -576,22 +541,6 @@ end function chem_is
     call mpibcast (t_pert_ubc,    1,                  mpir8,   0, mpicom)
     call mpibcast (no_xfac_ubc,   1,                  mpir8,   0, mpicom)
 
-    ! linoz data
-
-    call mpibcast (linoz_data_file,      len(linoz_data_file),                  mpichar, 0, mpicom)
-    call mpibcast (linoz_data_filelist,  len(linoz_data_filelist),              mpichar, 0, mpicom)
-    call mpibcast (linoz_data_path,      len(linoz_data_path),              mpichar, 0, mpicom)
-    call mpibcast (linoz_data_type,      len(linoz_data_type),                  mpichar, 0, mpicom)
-    call mpibcast (linoz_data_rmfile,    1,                                     mpilog, 0,  mpicom)
-    call mpibcast (linoz_data_cycle_yr,       1,                                     mpiint, 0,  mpicom)
-    call mpibcast (linoz_data_fixed_ymd,       1,                                     mpiint, 0,  mpicom)
-    call mpibcast (linoz_data_fixed_tod,       1,                                     mpiint, 0,  mpicom)
-
-    call mpibcast (chlorine_loading_file,len(chlorine_loading_file), mpichar, 0, mpicom)
-    call mpibcast (chlorine_loading_type,len(chlorine_loading_type), mpichar, 0, mpicom)
-    call mpibcast (chlorine_loading_fixed_ymd, 1,                    mpiint,  0, mpicom)
-    call mpibcast (chlorine_loading_fixed_tod, 1,                    mpiint,  0, mpicom)
-
     ! prescribed chemical tracers
 
     call mpibcast (tracer_cnst_specifier, len(tracer_cnst_specifier(1))*MAXTRCRS, mpichar, 0, mpicom)
@@ -620,15 +569,6 @@ end function chem_is
 
     ! set the options
 
-   call linoz_data_setopts( &
-        linoz_data_file_in      = linoz_data_file,      &
-        linoz_data_filelist_in  = linoz_data_filelist,  &
-        linoz_data_path_in      = linoz_data_path,      &
-        linoz_data_type_in      = linoz_data_type,      &
-        linoz_data_rmfile_in    = linoz_data_rmfile,    &
-        linoz_data_cycle_yr_in  = linoz_data_cycle_yr,  &
-        linoz_data_fixed_ymd_in = linoz_data_fixed_ymd, &
-        linoz_data_fixed_tod_in = linoz_data_fixed_tod )
    call tracer_cnst_setopts( &
         tracer_cnst_file_in      = tracer_cnst_file,      &
         tracer_cnst_filelist_in  = tracer_cnst_filelist,  &
@@ -751,9 +691,6 @@ end function chem_is_active
     use mo_chemini,          only : chemini
     use mo_ghg_chem,         only : ghg_chem_init
     use mo_tracname,         only : solsym
-    use llnl_O1D_to_2OH_adj, only : O1D_to_2OH_adj_init
-    use lin_strat_chem,      only : lin_strat_chem_inti
-    use chlorine_loading_data, only : chlorine_loading_init
     use cfc11star,             only : init_cfc11star
     use phys_control,          only : phys_getopts
     use chem_mods,             only : adv_mass
@@ -910,14 +847,6 @@ end function chem_is_active
      if ( ghg_chem ) then
         call ghg_chem_init(phys_state, bndtvg, h2orates)
      endif
-     
-     call O1D_to_2OH_adj_init()
-
-     call lin_strat_chem_inti(phys_state)
-     call chlorine_loading_init( chlorine_loading_file, &
-                                 type = chlorine_loading_type, &
-                                 ymd = chlorine_loading_fixed_ymd, &
-                                 tod = chlorine_loading_fixed_tod )
 
      call init_cfc11star(pbuf2d)
      
@@ -1140,8 +1069,6 @@ end function chem_is_active
 
     use mo_aurora,         only : aurora_timestep_init
     use mo_photo,          only : photo_timestep_init
-    use linoz_data,        only : linoz_data_adv
-    use chlorine_loading_data, only : chlorine_loading_advance
     use noy_ubc,           only : noy_ubc_advance
 
     use cfc11star,         only : update_cfc11star
@@ -1203,12 +1130,6 @@ end function chem_is_active
     ! Set fixed offline tracer sources
     !-----------------------------------------------------------------------
     call tracer_srcs_adv(pbuf2d, phys_state)
-
-    !-----------------------------------------------------------------------
-    ! Advance the linoz data
-    !-----------------------------------------------------------------------
-    call linoz_data_adv(pbuf2d, phys_state)
-    call chlorine_loading_advance()
 
     if ( ghg_chem ) then
        call ghg_chem_timestep_init(phys_state)
@@ -1455,7 +1376,6 @@ end function chem_is_active
     use pio, only : file_desc_t
     use tracer_cnst,      only: init_tracer_cnst_restart
     use tracer_srcs,      only: init_tracer_srcs_restart
-    use linoz_data, only : init_linoz_data_restart
     implicit none
     type(file_desc_t),intent(inout) :: File     ! pio File pointer
 
@@ -1464,14 +1384,12 @@ end function chem_is_active
     !
     call init_tracer_cnst_restart(File)
     call init_tracer_srcs_restart(File)
-    call init_linoz_data_restart(File)
   end subroutine chem_init_restart
 !-------------------------------------------------------------------
 !-------------------------------------------------------------------
   subroutine chem_write_restart( File )
     use tracer_cnst, only: write_tracer_cnst_restart
     use tracer_srcs, only: write_tracer_srcs_restart
-    use linoz_data,  only: write_linoz_data_restart
     use pio, only : file_desc_t
     implicit none
     type(file_desc_t) :: File
@@ -1481,7 +1399,6 @@ end function chem_is_active
     !
     call write_tracer_cnst_restart(File)
     call write_tracer_srcs_restart(File)
-    call write_linoz_data_restart(File)
   end subroutine chem_write_restart
 
 !-------------------------------------------------------------------
@@ -1489,7 +1406,6 @@ end function chem_is_active
   subroutine chem_read_restart( File )
     use tracer_cnst, only: read_tracer_cnst_restart
     use tracer_srcs, only: read_tracer_srcs_restart
-    use linoz_data,  only: read_linoz_data_restart
 
     use pio, only : file_desc_t
     implicit none
@@ -1500,7 +1416,6 @@ end function chem_is_active
     !
     call read_tracer_cnst_restart(File)
     call read_tracer_srcs_restart(File)
-    call read_linoz_data_restart(File)
   end subroutine chem_read_restart
 
 end module chemistry

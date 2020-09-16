@@ -66,7 +66,6 @@ contains
     
     use tracer_cnst,       only : tracer_cnst_init
     use tracer_srcs,       only : tracer_srcs_init
-    use mo_synoz,          only : synoz_inti
     use mo_chem_utls,      only : get_spc_ndx
     use mo_airglow,        only : init_airglow
     use mo_mean_mass,      only : init_mean_mass
@@ -209,14 +208,6 @@ contains
          exo_coldens_file, tuv_xsect_file, o2_xsect_file, xactive_prates )
 
     if (masterproc) write(iulog,*) 'chemini: after photo_inti on node ',iam
-
-    !-----------------------------------------------------------------------
-    !       ... initialize the stratospheric ozone source
-    !-----------------------------------------------------------------------
-    if( get_spc_ndx( 'SYNOZ' ) > 0 ) then
-       call synoz_inti( )
-       ! over ride the ozone constituent used for radiation feedbacks
-    end if
 
     !-----------------------------------------------------------------------
     !	... initialize ion production
