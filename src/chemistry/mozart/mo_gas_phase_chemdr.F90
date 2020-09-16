@@ -61,8 +61,6 @@ contains
     use rate_diags,        only : rate_diags_init
     use cam_abortutils,    only : endrun
 
-    implicit none
-
     character(len=3) :: string
     integer          :: n, m, err, ii
     logical :: history_cesm_forcing
@@ -312,8 +310,6 @@ contains
     use aero_model,        only : aero_model_gasaerexch
 
     use aero_model,        only : aero_model_strat_surfarea
-
-    implicit none
 
     !-----------------------------------------------------------------------
     !        ... Dummy arguments
@@ -1090,10 +1086,10 @@ contains
     prect(:ncol) = precc(:ncol) + precl(:ncol)
 
     if ( drydep_method == DD_XLND ) then
-       call drydep( ocnfrac, icefrac, ncdate, ts, ps,  &
+       call drydep( ocnfrac, icefrac, ts, ps,  &
             wind_speed, qh2o(:,pver), tfld(:,pver), pmid(:,pver), prect, &
             snowhland, fsds, depvel, sflx, mmr, &
-            tvs, relhum(:,pver:pver), ncol, lchnk )
+            tvs, ncol, lchnk )
     endif
 
     drydepflx(:,:) = 0._r8

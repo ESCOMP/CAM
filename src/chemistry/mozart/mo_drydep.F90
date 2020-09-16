@@ -6,8 +6,8 @@ module mo_drydep
 
   use shr_kind_mod,     only : r8 => shr_kind_r8, shr_kind_cl
   use chem_mods,        only : gas_pcnst
-  use pmgrid,           only : plev, plevp
-  use spmd_utils,       only : masterproc, iam
+  use pmgrid,           only : plev
+  use spmd_utils,       only : masterproc
   use ppgrid,           only : pcols, begchunk, endchunk
   use mo_tracname,      only : solsym
   use cam_abortutils,   only : endrun
@@ -41,74 +41,17 @@ module mo_drydep
   public :: drydep_update
   public :: n_land_type, fraction_landuse, drydep_srf_file
 
-  real(r8)              :: dels
-  real(r8), allocatable :: days(:)          ! day of year for soilw
-  real(r8), allocatable :: dvel(:,:,:,:)    ! depvel array interpolated to model grid
-  real(r8), allocatable :: dvel_interp(:,:,:) ! depvel array interpolated to grid and time
-  integer :: last, next                     ! day indicies
-  integer :: ndays                          ! # of days in soilw file
-  integer :: map(gas_pcnst)                 ! indices for drydep species
-  integer :: nspecies                       ! number of depvel species in input file
+  integer :: pan_ndx, mpan_ndx, o3_ndx, ch4_ndx, co_ndx, h2_ndx, ch3cooh_ndx
+  integer :: sogm_ndx, sogi_ndx, sogt_ndx, sogb_ndx, sogx_ndx
 
-  integer :: pan_ndx, mpan_ndx, no2_ndx, hno3_ndx, o3_ndx, &
-             h2o2_ndx, onit_ndx, onitr_ndx, ch4_ndx, ch2o_ndx, &
-             ch3ooh_ndx, pooh_ndx, ch3coooh_ndx, c2h5ooh_ndx, eooh_ndx, &
-             c3h7ooh_ndx, rooh_ndx, ch3cocho_ndx, co_ndx, ch3coch3_ndx, &
-             no_ndx, ho2no2_ndx, glyald_ndx, hyac_ndx, ch3oh_ndx, c2h5oh_ndx, &
-             hydrald_ndx, h2_ndx, Pb_ndx, o3s_ndx, o3inert_ndx, macrooh_ndx, &
-             xooh_ndx, ch3cho_ndx, isopooh_ndx
-  integer :: alkooh_ndx, mekooh_ndx, tolooh_ndx, terpooh_ndx, ch3cooh_ndx
-  integer :: soa_ndx, so4_ndx, cb1_ndx, cb2_ndx, oc1_ndx, oc2_ndx, nh3_ndx, nh4no3_ndx, &
-             sa1_ndx, sa2_ndx, sa3_ndx, sa4_ndx, nh4_ndx
-  integer :: soam_ndx, soai_ndx, soat_ndx, soab_ndx, soax_ndx, &
-             sogm_ndx, sogi_ndx, sogt_ndx, sogb_ndx, sogx_ndx
+  integer :: so2_ndx, ch3cn_ndx, hcn_ndx, hcooh_ndx
 
-  logical :: alkooh_dd, mekooh_dd, tolooh_dd, terpooh_dd, ch3cooh_dd
-  logical :: soa_dd, so4_dd, cb1_dd, cb2_dd, oc1_dd, oc2_dd, nh3_dd, nh4no3_dd, &
-             sa1_dd, sa2_dd, sa3_dd, sa4_dd, nh4_dd
-  logical :: soam_dd, soai_dd, soat_dd, soab_dd, soax_dd, &
-             sogm_dd, sogi_dd, sogt_dd, sogb_dd, sogx_dd
-
-  logical :: pan_dd, mpan_dd, no2_dd, hno3_dd, o3_dd, isopooh_dd, ch4_dd,&
-             h2o2_dd, onit_dd, onitr_dd, ch2o_dd, macrooh_dd, xooh_dd, &
-             ch3ooh_dd, pooh_dd, ch3coooh_dd, c2h5ooh_dd, eooh_dd, ch3cho_dd, c2h5oh_dd, &
-             c3h7ooh_dd, rooh_dd, ch3cocho_dd, co_dd, ch3coch3_dd, &
-             glyald_dd, hyac_dd, ch3oh_dd, hydrald_dd, h2_dd, Pb_dd, o3s_dd, o3inert_dd
-
-  integer :: so2_ndx
-  integer :: ch3cn_ndx, hcn_ndx, hcooh_ndx
-  logical :: ch3cn_dd,  hcn_dd, hcooh_dd
-
-  integer :: o3a_ndx,xpan_ndx,xmpan_ndx,xno2_ndx,xhno3_ndx,xonit_ndx,xonitr_ndx,xno_ndx,xho2no2_ndx,xnh4no3_ndx
-  logical :: o3a_dd, xpan_dd, xmpan_dd, xno2_dd, xhno3_dd, xonit_dd, xonitr_dd, xno_dd, xho2no2_dd, xnh4no3_dd
-
-!lke-TS1
-  integer :: phenooh_ndx, benzooh_ndx, c6h5ooh_ndx, bzooh_ndx, xylolooh_ndx, xylenooh_ndx 
-  integer :: terp2ooh_ndx, terprod1_ndx, terprod2_ndx, hmprop_ndx, mboooh_ndx, hpald_ndx, iepox_ndx
-  integer :: noa_ndx, alknit_ndx, isopnita_ndx, isopnitb_ndx, honitr_ndx, isopnooh_ndx
-  integer :: nc4cho_ndx, nc4ch2oh_ndx, terpnit_ndx, nterpooh_ndx
-  logical :: phenooh_dd, benzooh_dd, c6h5ooh_dd, bzooh_dd, xylolooh_dd, xylenooh_dd
-  logical :: terp2ooh_dd, terprod1_dd, terprod2_dd, hmprop_dd, mboooh_dd, hpald_dd, iepox_dd
-  logical :: noa_dd, alknit_dd, isopnita_dd, isopnitb_dd, honitr_dd, isopnooh_dd
-  logical :: nc4cho_dd, nc4ch2oh_dd, terpnit_dd, nterpooh_dd
+  integer :: o3a_ndx,xpan_ndx,xmpan_ndx
 
   integer :: cohc_ndx=-1, come_ndx=-1
   integer, parameter :: NTAGS = 50
   integer :: cotag_ndx(NTAGS)
   integer :: tag_cnt
-
-  integer :: &
-       o3_tab_ndx = -1, &
-       h2o2_tab_ndx = -1, &
-       ch3ooh_tab_ndx = -1, &
-       co_tab_ndx = -1, &
-       ch3cho_tab_ndx = -1
-  logical :: &
-       o3_in_tab = .false., &
-       h2o2_in_tab = .false., &
-       ch3ooh_in_tab = .false., &
-       co_in_tab = .false., &
-       ch3cho_in_tab = .false.
 
   real(r8), parameter    :: small_value = 1.e-36_r8
   real(r8), parameter    :: large_value = 1.e36_r8
@@ -153,12 +96,8 @@ contains
   subroutine dvel_inti_fromlnd 
     use mo_chem_utls,         only : get_spc_ndx
     use cam_abortutils,       only : endrun
-    use chem_mods,            only : adv_mass
-    use seq_drydep_mod,       only : dfoxd
 
-    implicit none
-
-    integer :: ispc, l
+    integer :: ispc
 
     allocate(spc_ndx(nddvels))
     allocate( lnd(begchunk:endchunk) )
@@ -196,10 +135,10 @@ contains
 
   !-------------------------------------------------------------------------------------
   !-------------------------------------------------------------------------------------
-  subroutine drydep_fromlnd( ocnfrac, icefrac, ncdate, sfc_temp, pressure_sfc,  &
+  subroutine drydep_fromlnd( ocnfrac, icefrac, sfc_temp, pressure_sfc,  &
                              wind_speed, spec_hum, air_temp, pressure_10m, rain, &
                              snow, solar_flux, dvelocity, dflx, mmr, &
-                             tv, rh, ncol, lchnk )
+                             tv, ncol, lchnk )
                           
     !-------------------------------------------------------------------------------------
     ! combines the deposition velocities provided by the land model with deposition 
@@ -213,34 +152,27 @@ contains
     use metdata, only: get_met_fields
 #endif
 
-    implicit none
-
     !-------------------------------------------------------------------------------------
     ! 	... dummy arguments
     !-------------------------------------------------------------------------------------
 
-    real(r8), intent(in)    :: icefrac(pcols)            
-    real(r8), intent(in)    :: ocnfrac(pcols)            
-
-    integer, intent(in)   :: ncol
-    integer, intent(in)   :: ncdate                   ! present date (yyyymmdd)
+    real(r8), intent(in)      :: icefrac(pcols)            
+    real(r8), intent(in)      :: ocnfrac(pcols)            
+    integer,  intent(in)      :: ncol
+    integer,  intent(in)      :: lchnk                    ! chunk number
     real(r8), intent(in)      :: sfc_temp(pcols)          ! surface temperature (K)
     real(r8), intent(in)      :: pressure_sfc(pcols)      ! surface pressure (Pa)
     real(r8), intent(in)      :: wind_speed(pcols)        ! 10 meter wind speed (m/s)
     real(r8), intent(in)      :: spec_hum(pcols)          ! specific humidity (kg/kg)
-    real(r8), intent(in)      :: rh(ncol,1)               ! relative humidity
     real(r8), intent(in)      :: air_temp(pcols)          ! surface air temperature (K)
     real(r8), intent(in)      :: pressure_10m(pcols)      ! 10 meter pressure (Pa)
     real(r8), intent(in)      :: rain(pcols)              
     real(r8), intent(in)      :: snow(pcols)              ! snow height (m)
-
     real(r8), intent(in)      :: solar_flux(pcols)        ! direct shortwave radiation at surface (W/m^2)
     real(r8), intent(in)      :: tv(pcols)                ! potential temperature
     real(r8), intent(in)      :: mmr(pcols,plev,gas_pcnst)    ! constituent concentration (kg/kg)
     real(r8), intent(out)     :: dvelocity(ncol,gas_pcnst)    ! deposition velocity (cm/s)
     real(r8), intent(inout)   :: dflx(pcols,gas_pcnst)        ! deposition flux (/cm^2/s)
-
-    integer, intent(in)     ::   lchnk                   ! chunk number
 
     !-------------------------------------------------------------------------------------
     ! 	... local variables
@@ -277,10 +209,10 @@ contains
     !       land type 7 is used for ocean
     !       land type 8 is used for sea ice
     !-------------------------------------------------------------------------------------
-    call drydep_xactive( ncdate, sfc_temp, pressure_sfc,  &
+    call drydep_xactive( sfc_temp, pressure_sfc,  &
                          wind_speed, spec_hum, air_temp, pressure_10m, rain, &
                          snow, solar_flux, ocnice_dvel, ocnice_dflx, mmr, &
-                         tv, rh, ncol, lchnk, &
+                         tv, ncol, lchnk, &
 #if (defined OFFLINE_DYN)
                          ocnfrc=met_ocnfrac,icefrc=met_icefrac, beglandtype=7, endlandtype=8 )
 #else
@@ -357,13 +289,9 @@ contains
     ! 	... intialize interactive drydep
     !-------------------------------------------------------------------------------------
     use dycore,        only : dycore_is
-    use mo_constants,  only : r2d
-    use chem_mods,     only : adv_mass
     use mo_chem_utls,  only : get_spc_ndx
-    use seq_drydep_mod,only : drydep_method, DD_XATM, DD_XLND
+    use seq_drydep_mod,only : drydep_method, DD_XLND
     use phys_control,  only : phys_getopts
-
-    implicit none
 
     !-------------------------------------------------------------------------------------
     ! 	... dummy arguments
@@ -373,19 +301,14 @@ contains
     !-------------------------------------------------------------------------------------
     ! 	... local variables
     !-------------------------------------------------------------------------------------
-    integer :: i, j, ii, jj, jl, ju
+    integer :: i
     integer :: nlon_veg, nlat_veg, npft_veg
-    integer :: nlat_lai, npft_lai, pos_min, imin
     integer :: dimid
-    integer :: m, n, l, id
-    integer :: length1, astat
-    integer :: k, num_max, k_max
-    integer :: num_seas(5)
+    integer :: m
+    integer :: astat
     integer :: plon, plat
     integer :: ierr, ndx
 
-    real(r8)              :: spc_mass
-    real(r8)              :: diff_min, target_lat
     real(r8), allocatable :: vegetation_map(:,:,:)
     real(r8), allocatable :: work(:,:)
     real(r8), allocatable :: landmask(:,:)
@@ -396,8 +319,7 @@ contains
     real(r8), allocatable :: lon_veg_edge(:)
     real(r8), allocatable :: lat_veg(:)
     real(r8), allocatable :: lat_veg_edge(:)
-    real(r8), allocatable :: lat_lai(:)
-    real(r8), allocatable :: clat(:)
+
     character(len=32) :: test_name
     character(len=4) :: tag_name
     type(file_desc_t) :: piofile
@@ -431,7 +353,6 @@ contains
     ch4_ndx      = get_spc_ndx( 'CH4' )
     h2_ndx       = get_spc_ndx( 'H2' )
     co_ndx       = get_spc_ndx( 'CO' )
-    Pb_ndx       = get_spc_ndx( 'Pb' )
     pan_ndx      = get_spc_ndx( 'PAN' )
     mpan_ndx     = get_spc_ndx( 'MPAN' )
     o3_ndx       = get_spc_ndx( 'OX' )
@@ -439,115 +360,17 @@ contains
        o3_ndx  = get_spc_ndx( 'O3' )
     end if
     so2_ndx     = get_spc_ndx( 'SO2' )
-    alkooh_ndx  = get_spc_ndx( 'ALKOOH')
-    mekooh_ndx  = get_spc_ndx( 'MEKOOH')
-    tolooh_ndx  = get_spc_ndx( 'TOLOOH')
-    terpooh_ndx = get_spc_ndx( 'TERPOOH')
     ch3cooh_ndx = get_spc_ndx( 'CH3COOH')
-    soa_ndx     = get_spc_ndx( 'SOA' )
-    so4_ndx     = get_spc_ndx( 'SO4' )
-    cb1_ndx     = get_spc_ndx( 'CB1' )
-    cb2_ndx     = get_spc_ndx( 'CB2' )
-    oc1_ndx     = get_spc_ndx( 'OC1' )
-    oc2_ndx     = get_spc_ndx( 'OC2' )
-    nh3_ndx     = get_spc_ndx( 'NH3' )
-    nh4no3_ndx  = get_spc_ndx( 'NH4NO3' )
-    sa1_ndx     = get_spc_ndx( 'SA1' )
-    sa2_ndx     = get_spc_ndx( 'SA2' )
-    sa3_ndx     = get_spc_ndx( 'SA3' )
-    sa4_ndx     = get_spc_ndx( 'SA4' )
-    nh4_ndx     = get_spc_ndx( 'NH4' )
-    alkooh_dd  = has_drydep( 'ALKOOH')
-    mekooh_dd  = has_drydep( 'MEKOOH')
-    tolooh_dd  = has_drydep( 'TOLOOH')
-    terpooh_dd = has_drydep( 'TERPOOH')
-    ch3cooh_dd = has_drydep( 'CH3COOH')
-    soa_dd     = has_drydep( 'SOA' )
-    so4_dd     = has_drydep( 'SO4' )
-    cb1_dd     = has_drydep( 'CB1' )
-    cb2_dd     = has_drydep( 'CB2' )
-    oc1_dd     = has_drydep( 'OC1' )
-    oc2_dd     = has_drydep( 'OC2' )
-    nh3_dd     = has_drydep( 'NH3' )
-    nh4no3_dd  = has_drydep( 'NH4NO3' )
-    sa1_dd     = has_drydep( 'SA1' ) 
-    sa2_dd     = has_drydep( 'SA2' )
-    sa3_dd     = has_drydep( 'SA3' ) 
-    sa4_dd     = has_drydep( 'SA4' )
-    nh4_dd     = has_drydep( 'NH4' ) 
-!
-    soam_ndx   = get_spc_ndx( 'SOAM' )
-    soai_ndx   = get_spc_ndx( 'SOAI' )
-    soat_ndx   = get_spc_ndx( 'SOAT' )
-    soab_ndx   = get_spc_ndx( 'SOAB' )
-    soax_ndx   = get_spc_ndx( 'SOAX' )
+
     sogm_ndx   = get_spc_ndx( 'SOGM' )
     sogi_ndx   = get_spc_ndx( 'SOGI' )
     sogt_ndx   = get_spc_ndx( 'SOGT' )
     sogb_ndx   = get_spc_ndx( 'SOGB' )
     sogx_ndx   = get_spc_ndx( 'SOGX' )
-    soam_dd    = has_drydep ( 'SOAM' )
-    soai_dd    = has_drydep ( 'SOAI' )
-    soat_dd    = has_drydep ( 'SOAT' )
-    soab_dd    = has_drydep ( 'SOAB' )
-    soax_dd    = has_drydep ( 'SOAX' )
-    sogm_dd    = has_drydep ( 'SOGM' )
-    sogi_dd    = has_drydep ( 'SOGI' )
-    sogt_dd    = has_drydep ( 'SOGT' )
-    sogb_dd    = has_drydep ( 'SOGB' )
-    sogx_dd    = has_drydep ( 'SOGX' )
-!
+
     hcn_ndx     = get_spc_ndx( 'HCN')
     ch3cn_ndx   = get_spc_ndx( 'CH3CN')
 
-!lke-TS1
-    phenooh_ndx  = get_spc_ndx( 'PHENOOH')
-    benzooh_ndx  = get_spc_ndx( 'BENZOOH')
-    c6h5ooh_ndx  = get_spc_ndx( 'C6H5OOH')
-    bzooh_ndx    = get_spc_ndx( 'BZOOH')
-    xylolooh_ndx = get_spc_ndx( 'XYLOLOOH')
-    xylenooh_ndx = get_spc_ndx( 'XYLENOOH')
-    terp2ooh_ndx = get_spc_ndx( 'TERP2OOH')
-    terprod1_ndx = get_spc_ndx( 'TERPROD1')
-    terprod2_ndx = get_spc_ndx( 'TERPROD2')
-    hmprop_ndx   = get_spc_ndx( 'HMPROP')
-    mboooh_ndx   = get_spc_ndx( 'MBOOOH')
-    hpald_ndx    = get_spc_ndx( 'HPALD')
-    iepox_ndx    = get_spc_ndx( 'IEPOX')
-    noa_ndx      = get_spc_ndx( 'NOA')
-    alknit_ndx   = get_spc_ndx( 'ALKNIT')
-    isopnita_ndx = get_spc_ndx( 'ISOPNITA')
-    isopnitb_ndx = get_spc_ndx( 'ISOPNITB')
-    honitr_ndx   = get_spc_ndx( 'HONITR')
-    isopnooh_ndx = get_spc_ndx( 'ISOPNOOH')
-    nc4cho_ndx   = get_spc_ndx( 'NC4CHO')
-    nc4ch2oh_ndx = get_spc_ndx( 'NC4CH2OH')
-    terpnit_ndx  = get_spc_ndx( 'TERPNIT')
-    nterpooh_ndx = get_spc_ndx( 'NTERPOOH')
-    phenooh_dd   = has_drydep( 'PHENOOH')
-    benzooh_dd   = has_drydep( 'BENZOOH')
-    c6h5ooh_dd   = has_drydep( 'C6H5OOH')
-    bzooh_dd     = has_drydep( 'BZOOH')
-    xylolooh_dd  = has_drydep( 'XYLOLOOH')
-    xylenooh_dd  = has_drydep( 'XYLENOOH')
-    terp2ooh_dd  = has_drydep( 'TERP2OOH')
-    terprod1_dd  = has_drydep( 'TERPROD1')
-    terprod2_dd  = has_drydep( 'TERPROD2')
-    hmprop_dd    = has_drydep( 'HMPROP')
-    mboooh_dd    = has_drydep( 'MBOOOH')
-    hpald_dd     = has_drydep( 'HPALD')
-    iepox_dd     = has_drydep( 'IEPOX')
-    noa_dd       = has_drydep( 'NOA')
-    alknit_dd    = has_drydep( 'ALKNIT')
-    isopnita_dd  = has_drydep( 'ISOPNITA')
-    isopnitb_dd  = has_drydep( 'ISOPNITB')
-    honitr_dd    = has_drydep( 'HONITR')
-    isopnooh_dd  = has_drydep( 'ISOPNOOH')
-    nc4cho_dd    = has_drydep( 'NC4CHO')
-    nc4ch2oh_dd  = has_drydep( 'NC4CH2OH')
-    terpnit_dd   = has_drydep( 'TERPNIT')
-    nterpooh_dd  = has_drydep( 'NTERPOOH')
-!
     cohc_ndx     = get_spc_ndx( 'COhc' )
     come_ndx     = get_spc_ndx( 'COme' )
 
@@ -561,8 +384,6 @@ contains
           cotag_ndx(tag_cnt) = ndx
        endif
     enddo
-
-    o3s_ndx      = get_spc_ndx( 'O3S' )
 
     do i=1,nddvels
        if ( mapping(i) > 0 ) then
@@ -752,15 +573,12 @@ contains
     use shr_scam_mod  , only: shr_scam_getCloseLatLon  ! Standardized system subroutines
     use cam_initfiles, only: initial_file_get_id
     use dycore, only : dycore_is
-
     use phys_grid,     only : get_rlat_all_p, get_rlon_all_p, get_ncols_p
-
-    implicit none
 
     !-------------------------------------------------------------------------------------
     ! 	... dummy arguments
     !-------------------------------------------------------------------------------------
-    integer, intent(in)          :: plon, plat, nlon_veg, nlat_veg, npft_veg
+    integer,  intent(in)         :: plon, plat, nlon_veg, nlat_veg, npft_veg
     real(r8), intent(in)         :: landmask(nlon_veg,nlat_veg)
     real(r8), intent(in)         :: urban(nlon_veg,nlat_veg)
     real(r8), intent(in)         :: lake(nlon_veg,nlat_veg)
@@ -779,13 +597,13 @@ contains
 
     integer, parameter           :: veg_ext = 20
     type(file_desc_t), pointer   :: piofile
-    integer                      :: i, j, ii, jj, jl, ju, i_ndx, n
+    integer                      :: i, j, ii, jj, i_ndx, n
     integer, dimension(plon+1)   :: ind_lon
     integer, dimension(plat+1)  :: ind_lat
     real(r8)                         :: total_land
     real(r8), dimension(plon+1)      :: lon_edge
     real(r8), dimension(plat+1)     :: lat_edge
-    real(r8)                         :: lat1, lat2, lon1, lon2
+    real(r8)                         :: lat1, lon1
     real(r8)                         :: x1, x2, y1, y2, dx, dy
     real(r8)                         :: area, total_area
     real(r8), dimension(npft_veg+3)  :: fraction
@@ -809,9 +627,6 @@ contains
     allocate(lam(plon), phi(plat))
     call get_horiz_grid_d(plat, clat_d_out=phi)
     call get_horiz_grid_d(plon, clon_d_out=lam)
-
-    jl = 1
-    ju = plon
 
     if (single_column) then
        if (scm_cambfb_mode) then
@@ -1008,10 +823,10 @@ contains
   
   !-------------------------------------------------------------------------------------
   !-------------------------------------------------------------------------------------
-  subroutine drydep_xactive( ncdate, sfc_temp, pressure_sfc,  &
+  subroutine drydep_xactive( sfc_temp, pressure_sfc,  &
                              wind_speed, spec_hum, air_temp, pressure_10m, rain, &
                              snow, solar_flux, dvel, dflx, mmr, &
-                             tv, rh, ncol, lchnk, &
+                             tv, ncol, lchnk, &
                              ocnfrc, icefrc, beglandtype, endlandtype )
     !-------------------------------------------------------------------------------------
     !   code based on wesely (atmospheric environment, 1989, vol 23, p. 1293-1304) for
@@ -1032,23 +847,19 @@ contains
     ! modified by JFL to be used in MOZART-2 (October 2002)
     !-------------------------------------------------------------------------------------
 
-    use seq_drydep_mod, only: z0, rgso, rgss, h2_a, h2_b, h2_c, ri, rclo, rcls, rlu, rac
+    use seq_drydep_mod, only: z0, rgso, rgss, ri, rclo, rcls, rlu, rac
     use seq_drydep_mod, only: seq_drydep_setHCoeff, foxd, drat
     use physconst,      only: tmelt
     use seq_drydep_mod, only: drydep_method,  DD_XLND
-
-    implicit none
 
     !-------------------------------------------------------------------------------------
     ! 	... dummy arguments
     !-------------------------------------------------------------------------------------
     integer, intent(in)   :: ncol
-    integer, intent(in)   :: ncdate                   ! present date (yyyymmdd)
     real(r8), intent(in)      :: sfc_temp(pcols)          ! surface temperature (K)
     real(r8), intent(in)      :: pressure_sfc(pcols)      ! surface pressure (Pa)
     real(r8), intent(in)      :: wind_speed(pcols)        ! 10 meter wind speed (m/s)
     real(r8), intent(in)      :: spec_hum(pcols)          ! specific humidity (kg/kg)
-    real(r8), intent(in)      :: rh(ncol,1)               ! relative humidity
     real(r8), intent(in)      :: air_temp(pcols)          ! surface air temperature (K)
     real(r8), intent(in)      :: pressure_10m(pcols)      ! 10 meter pressure (Pa)
     real(r8), intent(in)      :: rain(pcols)              
@@ -1076,7 +887,6 @@ contains
 
     integer :: i, ispec, lt, m
     integer :: sndx
-    integer :: month
 
     real(r8) :: slope = 0._r8
     real(r8) :: z0water ! revised z0 over water
@@ -1140,11 +950,7 @@ contains
     real(r8), dimension(ncol,n_land_type,gas_pcnst) :: rlux  ! vegetative resistance (upper canopy)
     real(r8), dimension(ncol,n_land_type) :: rlux_o3  ! vegetative resistance (upper canopy)
     real(r8), dimension(ncol,n_land_type,gas_pcnst) :: rgsx  ! ground resistance
-    real(r8) :: pmid(ncol,1)                             ! for seasalt aerosols
-    real(r8) :: tfld(ncol,1)                             ! for seasalt aerosols
-    real(r8) :: fact, vds
-    real(r8) :: rc                                    ! combined surface resistance
-    real(r8) :: dv_soil_h2, fact_h2        ! h2 dvel wrking variables
+    real(r8) :: vds
     logical  :: fr_lnduse(ncol,n_land_type)           ! wrking array
     real(r8) :: dewm                                  ! multiplier for rs when dew occurs
 
@@ -1193,15 +999,6 @@ contains
        dep_rb (:,lt,lchnk)   = 0._r8
        rds(:,lt)   = 0._r8
     end do
-
-    !-------------------------------------------------------------------------------------
-    ! 	... set month
-    !-------------------------------------------------------------------------------------
-    month = mod( ncdate,10000 )/100
-
-    !-------------------------------------------------------------------------------------
-    ! define which season (relative to Northern hemisphere climate)
-    !-------------------------------------------------------------------------------------
 
     !-------------------------------------------------------------------------------------
     ! define season index based on fixed LAI
@@ -1439,13 +1236,6 @@ contains
                    ! special case for H2 and CO;; CH4 is set ot a fraction of dv(H2)
                    !-------------------------------------------------------------------------------------
                    if( ispec == h2_ndx .or. ispec == co_ndx .or. ispec == ch4_ndx ) then
-                      if( ispec == co_ndx ) then
-                         fact_h2 = 1.0_r8
-                      elseif ( ispec == h2_ndx ) then
-                         fact_h2 = 0.5_r8
-                      elseif ( ispec == ch4_ndx ) then
-                         fact_h2 = 50.0_r8
-                      end if
                       !-------------------------------------------------------------------------------------
                       ! no deposition on snow, ice, desert, and water
                       !-------------------------------------------------------------------------------------
@@ -1741,8 +1531,6 @@ contains
   !-------------------------------------------------------------------------------------
   !-------------------------------------------------------------------------------------
   function has_drydep( name )
-
-    implicit none
 
     character(len=*), intent(in) :: name
 
