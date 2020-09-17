@@ -147,6 +147,9 @@ module tracer_data
 
   integer :: plon, plat
 
+  integer,allocatable :: lon_global_grid_ndx(:,:)
+  integer,allocatable :: lat_global_grid_ndx(:,:)
+
 contains
 
 !--------------------------------------------------------------------------
@@ -155,7 +158,9 @@ contains
                            rmv_file, data_cycle_yr, data_fixed_ymd, data_fixed_tod, data_type )
 
     use mo_constants,    only : d2r
-    use dyn_grid,        only : get_dyn_grid_parm
+    use dyn_grid,        only : get_dyn_grid_parm, get_horiz_grid_d
+    use phys_grid,       only : get_rlat_all_p, get_rlon_all_p, get_ncols_p
+    use dycore,          only : dycore_is
     use horizontal_interpolate, only : xy_interp_init
 #if ( defined SPMD )
     use mpishorthand,    only: mpicom, mpir8, mpiint
@@ -188,6 +193,10 @@ contains
     integer :: nvardims, vardimids(4)
 
     character(len=256) :: data_units
+    real(r8), allocatable :: lam(:), phi(:)
+    real(r8):: rlats(pcols), rlons(pcols)
+    integer :: lchnk, ncol, icol, i,j
+    logical :: found
 
     call specify_fields( specifier, flds )
 
@@ -567,9 +576,45 @@ contains
 
 ! if weighting by latitude, compute weighting for horizontal interpolation
     if( file%weight_by_lat ) then
+        if(dycore_is('UNSTRUCTURED') ) then
+          call endrun('trcdata_init: weighting by latitude not implemented for unstructured grids')
+        endif
+
 ! get dimensions of CAM resolution
         plon = get_dyn_grid_parm('plon')
         plat = get_dyn_grid_parm('plat')
+
+        allocate(lam(plon), phi(plat))
+        call get_horiz_grid_d(plat, clat_d_out=phi)
+        call get_horiz_grid_d(plon, clon_d_out=lam)
+
+        allocate(lon_global_grid_ndx(pcols,begchunk:endchunk))
+        allocate(lat_global_grid_ndx(pcols,begchunk:endchunk))
+        lon_global_grid_ndx=-huge(1)
+        lat_global_grid_ndx=-huge(1)
+
+        do lchnk = begchunk, endchunk
+           ncol = get_ncols_p(lchnk)
+           do icol= 1,ncol
+              call get_rlat_all_p(lchnk, ncol, rlats(:ncol))
+              call get_rlon_all_p(lchnk, ncol, rlons(:ncol))
+              found=.false.
+              find_col: do j = 1,plat
+                 do i = 1,plon
+                    if (rlats(icol)==phi(j) .and. rlons(icol)==lam(i)) then
+                       found=.true.
+                       exit find_col
+                    endif
+                 enddo
+              enddo find_col
+
+              if (.not.found) call endrun('trcdata_init: not able find physics column coordinate')
+              lon_global_grid_ndx(icol,lchnk) = i
+              lat_global_grid_ndx(icol,lchnk) = j
+           end do
+        enddo
+        
+        deallocate(phi,lam)
         
 ! weight_x & weight_y are weighting function for x & y interpolation
         allocate(file%weight_x(plon,file%nlon))
@@ -1352,20 +1397,18 @@ contains
 
        if(file%weight_by_lat) then
 
-          call endrun('tracer_data::read_2d_trc: weight_by_lat feature disabled')
-
           call t_startf('xy_interp')
 
           do c = begchunk,endchunk
              ncols = get_ncols_p(c)
-             ! Needs to be replaced with new interfaces to get global indices on the columns
-             ! call get_lon_all_p(c,ncols,lons)
-             ! call get_lat_all_p(c,ncols,lats)
+             lons(:ncols) = lon_global_grid_ndx(:ncols,c)
+             lats(:ncols) = lat_global_grid_ndx(:ncols,c)
 
              call xy_interp(file%nlon,file%nlat,1,plon,plat,pcols,ncols, &
                   file%weight_x,file%weight_y,wrk2d_in,loc_arr(:,c-begchunk+1), &
                   lons,lats,file%count_x,file%count_y,file%index_x,file%index_y)
           enddo
+
           call t_stopf('xy_interp')
 
        else
@@ -1579,18 +1622,17 @@ contains
 
    if(file%weight_by_lat) then
 
-     call endrun('tracer_data::read_3d_trc weight_by_lat feature disabled')
      call t_startf('xy_interp')
 
      do c = begchunk,endchunk
         ncols = get_ncols_p(c)
-        ! Needs to be replaced with new interfaces to get global indices on the columns
-        ! call get_lon_all_p(c,ncols,lons)
-        ! call get_lat_all_p(c,ncols,lats)
+        lons(:ncols) = lon_global_grid_ndx(:ncols,c)
+        lats(:ncols) = lat_global_grid_ndx(:ncols,c)
 
         call xy_interp(file%nlon,file%nlat,file%nlev,plon,plat,pcols,ncols,file%weight_x,file%weight_y,wrk3d_in, &
              loc_arr(:,:,c-begchunk+1), lons,lats,file%count_x,file%count_y,file%index_x,file%index_y) 
      enddo
+
      call t_stopf('xy_interp')
 
    else
