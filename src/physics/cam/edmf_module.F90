@@ -156,7 +156,8 @@ module edmf_module
                                     wstarmin = 1.e-3_r8, &
                                     pblhmin  = 100._r8
 
-     logical :: do_condensation = .true.
+     ! to condensate or to not condensate
+     logical :: do_condensation = .false.
 
      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
      !!!!!!!!!!!!!!!!!!!!!! BEGIN CODE !!!!!!!!!!!!!!!!!!!!!!!
@@ -517,6 +518,10 @@ module edmf_module
   end subroutine poisson
 
   subroutine set_seed_from_state(state)
+  !**********************************************************************
+  ! Set a unique (but reproduceble) seed using state
+  ! Coded by Adam Herrington
+  !**********************************************************************
 
        real(r8),intent(in)  :: state
        integer, allocatable :: seed(:)
@@ -541,6 +546,7 @@ module edmf_module
   !**********************************************************************
   ! Discrete random poisson from Knuth 
   ! The Art of Computer Programming, v3, 137-138
+  ! Coded by Adam Herrington
   !**********************************************************************
 
        real(r8), intent(in) :: lambda
