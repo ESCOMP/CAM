@@ -21,9 +21,7 @@ module clubb_intr
   use ppgrid,        only: pver, pverp, pcols, begchunk, endchunk
   use phys_control,  only: phys_getopts
   use physconst,     only: rairv, cpairv, cpair, gravit, latvap, latice, zvir, rh2o, karman, &
-!+++ARH
                            mwh2o, mwdry
-!---ARH
 
   use spmd_utils,    only: masterproc 
   use constituents,  only: pcnst, cnst_add
@@ -149,9 +147,7 @@ module clubb_intr
   logical  :: clubb_l_vert_avg_closure = .false.
   logical  :: clubb_l_diag_Lscale_from_tau = .false.
   logical  :: clubb_l_damp_wp2_using_em = .false.
-!+++ARH
   logical  :: do_clubb_mf = .false.
-!---ARH
 
 !  Constant parameters
   logical, parameter, private :: &
@@ -536,9 +532,7 @@ end subroutine clubb_init_cnst
                                clubb_l_trapezoidal_rule_zt, clubb_l_trapezoidal_rule_zm, &
                                clubb_l_call_pdf_closure_twice, clubb_l_use_cloud_cover, &
                                clubb_l_diag_Lscale_from_tau, clubb_l_damp_wp2_using_em, &
-!+++ARH
                                do_clubb_mf
-!---ARH
 
     !----- Begin Code -----
 
@@ -709,10 +703,8 @@ end subroutine clubb_init_cnst
     call mpi_bcast(clubb_l_damp_wp2_using_em,         1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_damp_wp2_using_em")
 
-!+++ARH
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf")
     call mpi_bcast(do_clubb_mf, 1, mpi_logical,   mstrid, mpicom, ierr)
-!---ARH
 
     !  Overwrite defaults if they are true
     if (clubb_history) l_stats = .true.
@@ -1189,7 +1181,6 @@ end subroutine clubb_init_cnst
     call addfld ('QSATFAC',          (/ 'lev' /),  'A', '-', 'Subgrid cloud water saturation scaling factor')
     call addfld ('KVH_CLUBB',        (/ 'ilev' /), 'A', 'm2/s', 'CLUBB vertical diffusivity of heat/moisture on interface levels')
 
-!+++ARH
     ! ---------------------------------------------------------------------------- !
     ! Below are for detailed analysis of EDMF Scheme                               !
     ! ---------------------------------------------------------------------------- !
@@ -1214,7 +1205,6 @@ end subroutine clubb_init_cnst
     call addfld ( 'edmf_S_AWV'    , (/ 'ilev' /), 'A', 'm2/s2'   , 'Sum of a_i*w_i*v_i (EDMF)' )
     call addfld ( 'edmf_thlflx'   , (/ 'ilev' /), 'A', 'W/m2'    , 'thl flux by edmf (EDMF)' )
     call addfld ( 'edmf_qtflx'    , (/ 'ilev' /), 'A', 'W/m2'    , 'qt flux by edmf (EDMF)' )
-!---ARH
  
     !  Initialize statistics, below are dummy variables
     dum1 = 300._r8
@@ -1309,7 +1299,6 @@ end subroutine clubb_init_cnst
        call add_default('SL',               1, ' ')
        call add_default('QT',               1, ' ')
        call add_default('CONCLD',           1, ' ')
-!+++ARH
        call add_default('THETAL',           1, ' ')
 
        if (do_clubb_mf) then
@@ -1335,7 +1324,6 @@ end subroutine clubb_init_cnst
          call add_default( 'edmf_thlflx'   , 1, ' ')
          call add_default( 'edmf_qtflx'    , 1, ' ')
        end if
-!---ARH
 
     end if
 
@@ -1481,9 +1469,7 @@ end subroutine clubb_init_cnst
    use cam_history,               only: outfld
 
    use macrop_driver,             only: liquid_macro_tend
-!+++ARH
    use edmf_module,               only: integrate_mf
-!---ARH
 
 #endif
 
@@ -1787,7 +1773,6 @@ end subroutine clubb_init_cnst
    logical                           :: lqice(pcnst)
    logical                           :: apply_to_surface
 
-!+++ARH
    ! MF outputs to outfld
    real(r8), dimension(pcols,pverp)     :: mf_dry_a_output,   mf_moist_a_output,   &
                                            mf_dry_w_output,   mf_moist_w_output,   &
@@ -1821,7 +1806,6 @@ end subroutine clubb_init_cnst
    integer                              :: nup,        nz
    real(r8)                             :: ep,                       &
                                            ep1,        ep2
-!---ARH
 
    real(r8) :: temp2d(pcols,pver), temp2dp(pcols,pverp)  ! temporary array for holding scaled outputs
 
@@ -2163,7 +2147,6 @@ end subroutine clubb_init_cnst
 
    call tropopause_findChemTrop(state, troplev)
 
-!+++ARH
    ! Initialize EDMF outputs
    mf_dry_a_output(:,:)     = 0._r8
    mf_moist_a_output(:,:)   = 0._r8
@@ -2188,7 +2171,6 @@ end subroutine clubb_init_cnst
    s_awv_output(:,:)        = 0._r8
    mf_thlflx_output(:,:)    = 0._r8
    mf_qtflx_output(:,:)     = 0._r8
-!---ARH
 
    !  Loop over all columns in lchnk to advance CLUBB core
    do i=1,ncol   ! loop over columns
@@ -2491,7 +2473,6 @@ end subroutine clubb_init_cnst
             call stats_begin_timestep_api(t, stats_nsamp, stats_nout)
          endif
 
-!+++ARH
          !#######################################################################
          !###################### CALL MF DIAGNOSTIC PLUMES ######################
          !#######################################################################
@@ -2564,7 +2545,6 @@ end subroutine clubb_init_cnst
            mf_thlflx(:)    = 0._r8
            mf_qtflx(:)     = 0._r8
          end if
-!---ARH
 
          !  Advance CLUBB CORE one timestep in the future
          call advance_clubb_core_api &
@@ -2725,7 +2705,6 @@ end subroutine clubb_init_cnst
             edsclr_out(pverp-k+1,ixind) = edsclr_in(k,ixind)
          enddo
 
-!+++ARH
          mf_dry_a_output(i,pverp-k+1)     = mf_dry_a(k)
          mf_moist_a_output(i,pverp-k+1)   = mf_moist_a(k)
          mf_dry_w_output(i,pverp-k+1)     = mf_dry_w(k)
@@ -2751,7 +2730,6 @@ end subroutine clubb_init_cnst
          s_awv_output(i,pverp-k+1)        = s_awv(k)
          mf_thlflx_output(i,pverp-k+1)    = mf_thlflx(k)
          mf_qtflx_output(i,pverp-k+1)     = mf_qtflx(k)
-!---ARH
 
 
       enddo
@@ -3232,12 +3210,9 @@ end subroutine clubb_init_cnst
          rtpthlp_output(i,k) = rtpthlp(i,k)-(apply_const*rtpthlp_const)                !  rtpthlp output
          wp3_output(i,k)     = wp3(i,k) - (apply_const*wp3_const)                      !  wp3 output
          tke(i,k)            = 0.5_r8*(up2(i,k)+vp2(i,k)+wp2(i,k))                     !  turbulent kinetic energy
-!+++ARH
          ! MKW convert edmf flx variables to W/m2
-         ! ARH units for outfld need to be changed to W/m2
          mf_thlflx_output(i,k) = mf_thlflx_output(i,k)*rho(i,k)*cpair
          mf_qtflx_output(i,k)  = mf_qtflx_output(i,k)*rho(i,k)*latvap
-!---ARH
       enddo
    enddo
    
@@ -3467,7 +3442,6 @@ end subroutine clubb_init_cnst
    call outfld( 'CLUBB_GRID_SIZE',  grid_dx,                 pcols, lchnk )
    call outfld( 'QSATFAC',          qsatfac,                 pcols, lchnk)
 
-!+++ARH
    ! --------------------------------------------------------------- !
    ! Writing state variables after EDMF scheme for detailed analysis !
    ! --------------------------------------------------------------- !
@@ -3492,7 +3466,6 @@ end subroutine clubb_init_cnst
    call outfld( 'edmf_S_AWV'    , s_awv_output,              pcols, lchnk )
    call outfld( 'edmf_thlflx'   , mf_thlflx_output,          pcols, lchnk )
    call outfld( 'edmf_qtflx'    , mf_qtflx_output,           pcols, lchnk )
-!---ARH
 
    !  Output CLUBB history here
    if (l_stats) then 

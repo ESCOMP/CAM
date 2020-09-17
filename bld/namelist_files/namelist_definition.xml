@@ -3618,7 +3618,7 @@ energy.
 Default: true
 </entry>
 
-<!-- for CLUBB+MF (ARH) -->
+<!-- for CLUBB+MF -->
 <entry id="do_clubb_mf" type="logical" category="conv"
        group="clubb_params_nl" valid_values="" >
 If TRUE run CLUBB-MF
