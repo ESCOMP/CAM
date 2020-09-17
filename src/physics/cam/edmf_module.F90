@@ -1,5 +1,16 @@
 module edmf_module
 
+! =============================================================================== !
+! Mass-flux module for use with CLUBB                                             !
+! Together (CLUBB+MF) they comprise a eddy-diffusivity mass-flux approach (EDMF)  !
+!                                                                                 !
+! Provides rtm and thl tendencies due to mass flux ensemble,                      !
+! which are fed into the mixed explicit/implicit clubb solver as explicit terms   !
+!                                                                                 !
+! ---------------------------------Authors----------------------------------------!
+! Adam Herrington
+! =============================================================================== !
+
   use shr_kind_mod,  only: r8=>shr_kind_r8
   use spmd_utils,    only: masterproc
   use cam_logfile,   only: iulog
@@ -8,12 +19,65 @@ module edmf_module
   private
   save
 
-  public :: integrate_mf
+  public :: integrate_mf, &
+            clubb_mf_readnl
+
+  real(r8) :: clubb_mf_L0   = 0._r8
+  real(r8) :: clubb_mf_ent0 = 0._r8
+  real(r8) :: clubb_mf_wa   = 0._r8
+  real(r8) :: clubb_mf_wb   = 0._r8
 
   contains
 
   ! =============================================================================== !
-  !  Eddy-diffusivity mass-flux routine                                             !
+  !                                                                                 !
+  ! =============================================================================== !
+
+  subroutine clubb_mf_readnl(nlfile)
+
+    use namelist_utils,  only: find_group_name
+    use units,           only: getunit, freeunit
+    use cam_abortutils,  only: endrun
+    use clubb_api_module, only: l_stats, l_output_rad_files
+    use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_logical, mpi_real8
+
+    character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
+
+    character(len=*), parameter :: sub = 'clubb_mf_readnl'
+
+    integer :: iunit, read_status, ierr
+
+    namelist /clubb_mf_nl/ clubb_mf_L0, clubb_mf_ent0, clubb_mf_wa, clubb_mf_wb
+
+    if (masterproc) then
+      iunit = getunit()
+      open( iunit, file=trim(nlfile), status='old' )
+
+      call find_group_name(iunit, 'clubb_mf_nl', status=read_status)
+      if (read_status == 0) then
+         read(unit=iunit, nml=clubb_mf_nl, iostat=read_status)
+         if (read_status /= 0) then
+            call endrun('clubb_mf_readnl:  error reading namelist')
+         end if
+      end if
+
+      close(unit=iunit)
+      call freeunit(iunit)
+    end if
+
+    call mpi_bcast(clubb_mf_L0, 1, mpi_real8,   mstrid, mpicom, ierr) 
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_L0")
+    call mpi_bcast(clubb_mf_ent0, 1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_ent0")
+    call mpi_bcast(clubb_mf_wa, 1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_wa")
+    call mpi_bcast(clubb_mf_wb, 1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_wb")
+
+  end subroutine clubb_mf_readnl
+
+  ! =============================================================================== !
+  !  Mass-flux routine                                                              !
   ! =============================================================================== !
 
   subroutine integrate_mf( nz,      dzt,     p,       exner,   nup,                 & ! input
@@ -33,7 +97,6 @@ module edmf_module
 
   ! Original author: Marcin Kurowski, JPL
   ! Modified heavily by Mikael Witte, UCLA/JPL for implementation in CESM2/E3SM
-  ! Additional Modifications by Adam Herrington, NCAR
 
   !
   ! Variables needed for solver
@@ -92,12 +155,6 @@ module edmf_module
      real(r8),parameter          :: &
                                     wstarmin = 1.e-3_r8, &
                                     pblhmin  = 100._r8
-     ! todo namelist vars
-     real(r8),parameter          :: &
-                                    mf_L0 = 50._r8, &
-                                    mf_ent0  = 0.22_r8,  &
-                                    mf_wa = 1.0_r8, &
-                                    mf_wb = 1.5_r8
 
      logical :: do_condensation = .true.
 
@@ -161,7 +218,7 @@ module edmf_module
        ! get dz/L0
        do i=1,nup
          do k=2,nz
-           entf(k,i) = dzt(k) / mf_L0
+           entf(k,i) = dzt(k) / clubb_mf_L0
          enddo
        enddo
 
@@ -171,7 +228,7 @@ module edmf_module
        ! entrainent: Ent=Ent0/dz*P(dz/L0)
        do i=1,nup
          do k=2,nz
-           ent(k,i) = real( enti(k,i))*mf_ent0/dzt(k) ! MKW TODO: also input invrs_dzt? only used here.
+           ent(k,i) = real( enti(k,i))*clubb_mf_ent0/dzt(k) ! MKW TODO: also input invrs_dzt? only used here.
          enddo
        enddo
 
@@ -237,12 +294,12 @@ module edmf_module
 
            ! Wn^2
            ! to avoid singularities w equation has to be computed diferently if wp==0
-           wp = mf_wb*ent(k,i)
+           wp = clubb_mf_wb*ent(k,i)
            if (wp==0._r8) then
-             wn2 = upw(k-1,i)**2._r8+2._r8*mf_wa*b*dzt(k-1)
+             wn2 = upw(k-1,i)**2._r8+2._r8*clubb_mf_wa*b*dzt(k-1)
            else
              entw = exp(-2._r8*wp*dzt(k-1))
-             wn2 = entw*upw(k-1,i)**2._r8+mf_wa*b/(mf_wb*ent(k,i))*(1._r8-entw)
+             wn2 = entw*upw(k-1,i)**2._r8+clubb_mf_wa*b/(clubb_mf_wb*ent(k,i))*(1._r8-entw)
            end if
 
            if (wn2>0._r8) then

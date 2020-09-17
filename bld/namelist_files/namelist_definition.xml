@@ -3618,6 +3618,37 @@ energy.
 Default: true
 </entry>
 
+<!-- for CLUBB+MF (ARH) -->
+<entry id="do_clubb_mf" type="logical" category="conv"
+       group="clubb_params_nl" valid_values="" >
+If TRUE run CLUBB-MF
+Default: FALSE
+</entry>
+
+<entry id="clubb_mf_L0" type="real" category="conv"
+       group="clubb_mf_nl" valid_values="" >
+Real: Entrainment length scale
+Default: 50.0
+</entry>
+
+<entry id="clubb_mf_ent0" type="real" category="conv"
+       group="clubb_mf_nl" valid_values="" >
+Real: Entrainment factor
+Default: 0.22
+</entry>
+
+<entry id="clubb_mf_wa" type="real" category="conv"
+       group="clubb_mf_nl" valid_values="" >
+Real: vertical velocity factor a
+Default: 1.0
+</entry>
+
+<entry id="clubb_mf_wb" type="real" category="conv"
+       group="clubb_mf_nl" valid_values="" >
+Real: vertical velocity factor b
+Default: 1.5
+</entry>
+
 <!-- CARMA Sectional Microphysics -->
 
 <entry id="carma_model" type="char*32" category="carma"

@@ -149,6 +149,9 @@ module clubb_intr
   logical  :: clubb_l_vert_avg_closure = .false.
   logical  :: clubb_l_diag_Lscale_from_tau = .false.
   logical  :: clubb_l_damp_wp2_using_em = .false.
+!+++ARH
+  logical  :: do_clubb_mf = .false.
+!---ARH
 
 !  Constant parameters
   logical, parameter, private :: &
@@ -273,10 +276,6 @@ module clubb_intr
   type(pdf_parameter), target, allocatable :: pdf_params_zm_chnk(:,:) ! PDF parameters on momentum levs. [units vary]
   type(implicit_coefs_terms), target, allocatable :: pdf_implicit_coefs_terms_chnk(:,:) ! PDF impl. coefs. & expl. terms      [units vary]
 #endif
-
-!+++ARH
-  logical :: do_clubb_mf = .true.
-!---ARH
 
   contains
   
@@ -536,7 +535,10 @@ end subroutine clubb_init_cnst
                                clubb_l_min_xp2_from_corr_wx, clubb_l_upwind_xpyp_ta, clubb_l_vert_avg_closure, &
                                clubb_l_trapezoidal_rule_zt, clubb_l_trapezoidal_rule_zm, &
                                clubb_l_call_pdf_closure_twice, clubb_l_use_cloud_cover, &
-                               clubb_l_diag_Lscale_from_tau, clubb_l_damp_wp2_using_em
+                               clubb_l_diag_Lscale_from_tau, clubb_l_damp_wp2_using_em, &
+!+++ARH
+                               do_clubb_mf
+!---ARH
 
     !----- Begin Code -----
 
@@ -706,6 +708,11 @@ end subroutine clubb_init_cnst
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_diag_Lscale_from_tau")
     call mpi_bcast(clubb_l_damp_wp2_using_em,         1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_damp_wp2_using_em")
+
+!+++ARH
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf")
+    call mpi_bcast(do_clubb_mf, 1, mpi_logical,   mstrid, mpicom, ierr)
+!---ARH
 
     !  Overwrite defaults if they are true
     if (clubb_history) l_stats = .true.
