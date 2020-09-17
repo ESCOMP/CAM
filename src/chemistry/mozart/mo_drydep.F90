@@ -552,7 +552,13 @@ contains
        call infld('fraction_landuse', piofile, 'ncol','class',1,pcols,1,n_land_type, begchunk,endchunk, &
             fraction_landuse, readvar, gridname='physgrid')
        if (.not. readvar) then
-          call endrun('get_landuse_and_soilw_from_file: fraction_landuse not found in file '//trim(drydep_srf_file))
+          write(iulog,*)'**************************************'
+          write(iulog,*)'get_landuse_and_soilw_from_file: INFO:'
+          write(iulog,*)' fraction_landuse not read from file: '
+          write(iulog,*)' ', trim(locfn)
+          write(iulog,*)' setting all values to zero'
+          write(iulog,*)'**************************************'
+          fraction_landuse = 0._r8
        end if
 
        call cam_pio_closefile(piofile)
