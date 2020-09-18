@@ -182,7 +182,7 @@ endif
 # Rules to build MCT library. 
 # SRCDIR is passed via the commandline because of a bug in the MCT configure.
 $(MCT_LIBDIR)/mct/libmct.a: 
-	$(MAKE) -C $(MCT_LIBDIR) SRCDIR=$(ROOTDIR)/cime/src/externals/mct
+	$(MAKE) -C $(MCT_LIBDIR) SRCDIR=$(ROOTDIR)/cime/src/externals/mct FCFLAGS=$(FC_FLAGS_MCT)
 shr_kind_mod.o: $(MCT_LIBDIR)/mct/libmct.a
 perf_utils.o: $(MCT_LIBDIR)/mct/libmct.a
 RtmSpmd.o: $(MCT_LIBDIR)/mct/libmct.a
@@ -364,6 +364,8 @@ endif
 ifeq ($(UNAMES),Linux)
 
 CPPDEF += -DLINUX
+
+FC_FLAGS_MCT :=
 
 ifeq ($(SMP),TRUE)
   # THREADED_PTHREADS and THREADED_OMP are used by the timing library
@@ -551,8 +553,11 @@ ifeq ($(FC_TYPE),gnu)
 
   CPPDEF        += -DNO_R16 -DCPRGNU $(NO_CONTIGUOUS_FLAG)
   CFLAGS        += -std=gnu99
-  FC_FLAGS      := -fno-range-check -fcray-pointer
+  # GCC-10.2 requires the options -fallow-argument-mismatch -fallow-invalid-boz to allow some
+  # MCT and CAM files to compile.  Fixing the code would be better, but until then...
+  FC_FLAGS      := -fno-range-check -fcray-pointer -fallow-argument-mismatch -fallow-invalid-boz
   FC_FLAGS_NOOPT:= $(FC_FLAGS) -O0
+  FC_FLAGS_MCT  := '-fallow-argument-mismatch -O'
   FREEFLAGS     := -ffree-form -ffree-line-length-none
   FIXEDFLAGS    := -ffixed-form -ffixed-line-length-132
   LDFLAGS       := 
