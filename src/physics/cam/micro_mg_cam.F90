@@ -139,11 +139,11 @@ logical :: micro_mg_nscons = .false. ! set .true. to specify constant snow numbe
       
 ! parameters for specified ice and droplet number concentration
 ! note: these are local in-cloud values, not grid-mean
-real(r8) :: micro_mg_ncnst = 50.e6_r8 ! constant droplet num concentration (m-3)
-real(r8) :: micro_mg_ninst = 0.05e6_r8  ! constant ice num concentration (m-3)
+real(r8) :: micro_mg_ncnst = 50.e6_r8 ! constant liquid droplet num concentration (m-3)
+real(r8) :: micro_mg_ninst = 0.05e6_r8  ! ice num concentration when nicons=.true. (m-3)
 real(r8) :: micro_mg_nrnst = 0.2e6_r8     ! rain  num concentration when nrcons=.true. (m-3)
-real(r8) :: micro_mg_nsnst = 0.005e6_r8 ! ice num concentration when nicons=.true. (m-3)
-real(r8) :: micro_mg_ngnst = 0.0005e6_r8 ! constant graupel/hail num concentration (m-3)
+real(r8) :: micro_mg_nsnst = 0.005e6_r8 ! snow num concentration when nscons=.true. (m-3)
+real(r8) :: micro_mg_ngnst = 0.0005e6_r8 ! graupel/hail num concentration when ngcons=.true. (m-3)
 
 logical, public ::   micro_mg_do_graupel
 logical, public ::   micro_mg_do_hail
@@ -156,7 +156,7 @@ logical  ::  micro_mg_evap_scl_ifs = .false.      ! Scale evaporation as IFS doe
 logical  ::  micro_mg_evap_rhthrsh_ifs = .false.  ! Evap RH threhold following ifs
 logical  ::  micro_mg_rainfreeze_ifs = .false.    ! Rain freezing at 0C following ifs
 logical  ::  micro_mg_ifs_sed = .false.           ! Snow sedimentation = 1 m/s following ifs
-logical  ::  micro_mg_rain_fall_corr = .false.    ! Rain fall speed following ifs 
+logical  ::  micro_mg_precip_fall_corr = .false.    ! Rain fall speed following ifs 
 
 character(len=10), parameter :: &      ! Constituent names
    cnst_names(10) = (/'CLDLIQ', 'CLDICE','NUMLIQ','NUMICE', &
@@ -316,7 +316,7 @@ subroutine micro_mg_cam_readnl(nlfile)
        micro_do_massless_droplet_destroyer,&
        micro_mg_evap_sed_off, micro_mg_icenuc_rh_off, micro_mg_icenuc_use_meyers, &
        micro_mg_evap_scl_ifs, micro_mg_evap_rhthrsh_ifs, &
-       micro_mg_rainfreeze_ifs, micro_mg_ifs_sed, micro_mg_rain_fall_corr
+       micro_mg_rainfreeze_ifs, micro_mg_ifs_sed, micro_mg_precip_fall_corr
 
 
   !-----------------------------------------------------------------------------
@@ -481,8 +481,8 @@ subroutine micro_mg_cam_readnl(nlfile)
   call mpi_bcast(micro_mg_ifs_sed, 1, mpi_logical, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: micro_mg_ifs_sed")
   
-  call mpi_bcast(micro_mg_rain_fall_corr, 1, mpi_logical, mstrid, mpicom, ierr)
-  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: micro_mg_rain_fall_corr")
+  call mpi_bcast(micro_mg_precip_fall_corr, 1, mpi_logical, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: micro_mg_precip_fall_corr")
   
   if (masterproc) then
 
@@ -518,7 +518,7 @@ subroutine micro_mg_cam_readnl(nlfile)
      write(iulog,*) '  micro_mg_evap_rhthrsh_ifs   = ', micro_mg_evap_rhthrsh_ifs
      write(iulog,*) '  micro_mg_rainfreeze_ifs     = ', micro_mg_rainfreeze_ifs
      write(iulog,*) '  micro_mg_ifs_sed            = ', micro_mg_ifs_sed
-     write(iulog,*) '  micro_mg_rain_fall_corr     = ', micro_mg_rain_fall_corr
+     write(iulog,*) '  micro_mg_precip_fall_corr     = ', micro_mg_precip_fall_corr
   end if
 
 contains
@@ -900,7 +900,7 @@ subroutine micro_mg_cam_init(pbuf2d)
            allow_sed_supersat, micro_do_sb_physics, &
            micro_mg_evap_sed_off, micro_mg_icenuc_rh_off, micro_mg_icenuc_use_meyers, &
            micro_mg_evap_scl_ifs, micro_mg_evap_rhthrsh_ifs, &
-           micro_mg_rainfreeze_ifs,  micro_mg_ifs_sed, micro_mg_rain_fall_corr,&
+           micro_mg_rainfreeze_ifs,  micro_mg_ifs_sed, micro_mg_precip_fall_corr,&
            micro_mg_nccons, micro_mg_nicons, micro_mg_ncnst, &
            micro_mg_ninst, micro_mg_ngcons, micro_mg_ngnst, &
            micro_mg_nrcons,  micro_mg_nrnst, micro_mg_nscons, micro_mg_nsnst, errstring)
