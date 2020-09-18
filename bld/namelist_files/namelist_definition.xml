@@ -2611,7 +2611,7 @@ Default: .false.
 
 <entry id="micro_mg_nrnst" type="real" category="microphys"
        group="micro_mg_nl" valid_values="" >
-In-cloud rain number concentration when micro_mg_nicons=.true.
+In-cloud rain number concentration when micro_mg_nrcons=.true.
 Default: 0.2e6 m-3
 </entry>
 
@@ -2623,19 +2623,19 @@ Default: .false.
 
 <entry id="micro_mg_nsnst" type="real" category="microphys"
        group="micro_mg_nl" valid_values="" >
-In-cloud snow number concentration when micro_mg_nicons=.true.
+In-cloud snow number concentration when micro_mg_nscons=.true.
 Default: 0.005e6 m-3
 </entry>
 
 <entry id="micro_mg_evap_sed_off" type="logical" category="microphys"
        group="micro_mg_nl" valid_values="" >
-Switch off evaporation of sedimenting condensate
+If .true., sedimenting condensate does not evaporate
 Default: .false.
 </entry>
 
 <entry id="micro_mg_icenuc_rh_off" type="logical" category="microphys"
        group="micro_mg_nl" valid_values="" >
-Remove RH threshold from ice nucelation calculation
+If .true., remove RH threshold from ice nucelation calculation
 Default: .false.
 </entry>
 
@@ -2665,13 +2665,13 @@ Default: .false.
 
 <entry id="micro_mg_ifs_sed" type="logical" category="microphys"
        group="micro_mg_nl" valid_values="" >
-Fixed sedimentation fall speeds for snow, ice and no sedimentation of liquid
+If .false., use the default sedimentation fall speed calculation from MG2 for all species. If .true., use constant sedimentation fall speeds for snow and ice, and no sedimentation of liquid, to be consistant with how species descend in the IFS model.
 Default: .false.
 </entry>
 
-<entry id="micro_mg_rain_fall_corr" type="logical" category="microphys"
+<entry id="micro_mg_precip_fall_corr" type="logical" category="microphys"
        group="micro_mg_nl" valid_values="" >
-Ensure non-zero rain fallspeed if rain above in column (from M2005 in WRFv3.3)
+If .true., ensure non-zero precipitation fallspeed (rain,snow and graupel) if precipitation exists above in column (from M2005 in WRFv3.3)
 Default: .false.
 </entry>
 
