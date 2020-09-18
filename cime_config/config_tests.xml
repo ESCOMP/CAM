@@ -1,0 +1,73 @@
+<?xml version="1.0"?>
+
+<!--
+
+The following CAM-specific system tests are defined here:
+
+PBL   CAM pyhsics load balance test
+SCT   CAM sub column test
+TMC   CAM mass conservation test
+
+
+-->
+
+<config_test>
+
+
+  <test NAME="PLB">
+    <DESC>CAM test: Verify that changing pyhsics load balancing doesn't change answers</DESC>
+    <INFO_DBUG>1</INFO_DBUG>
+    <DOUT_S>FALSE</DOUT_S>
+    <CONTINUE_RUN>FALSE</CONTINUE_RUN>
+    <STOP_OPTION>nsteps</STOP_OPTION>
+    <STOP_N>9</STOP_N>
+    <HIST_OPTION>$STOP_OPTION</HIST_OPTION>
+    <HIST_N>$STOP_N</HIST_N>
+  </test>
+
+  <test NAME="SUB">
+    <DESC>CAM test: Verify that adding sub columns doesn't change answers</DESC>
+    <INFO_DBUG>1</INFO_DBUG>
+    <DOUT_S>FALSE</DOUT_S>
+    <CONTINUE_RUN>FALSE</CONTINUE_RUN>
+    <STOP_OPTION>nsteps</STOP_OPTION>
+    <STOP_N>9</STOP_N>
+    <HIST_OPTION>$STOP_OPTION</HIST_OPTION>
+    <HIST_N>$STOP_N</HIST_N>
+  </test>
+
+  <test NAME="TMC">
+    <DESC>CAM test: Verify mass conservation</DESC>
+    <INFO_DBUG>1</INFO_DBUG>
+    <DOUT_S>FALSE</DOUT_S>
+    <CONTINUE_RUN>FALSE</CONTINUE_RUN>
+    <STOP_OPTION>nsteps</STOP_OPTION>
+    <STOP_N>9</STOP_N>
+  </test>
+
+  <test NAME="ERC">
+    <DESC>exact restart from startup for CAM, default 6 days + 5 days</DESC>
+    <INFO_DBUG>1</INFO_DBUG>
+    <STOP_OPTION>ndays</STOP_OPTION>
+    <STOP_N>11</STOP_N>
+    <REST_N>$STOP_N / 2 + 1</REST_N>
+    <REST_OPTION>$STOP_OPTION</REST_OPTION>
+    <HIST_N>$STOP_N</HIST_N>
+    <HIST_OPTION>$STOP_OPTION</HIST_OPTION>
+    <DOUT_S>FALSE</DOUT_S>
+    <CONTINUE_RUN>FALSE</CONTINUE_RUN>
+  </test>
+
+  <test NAME="SCT">
+    <DESC>CAM test: Verify single column is working</DESC>
+    <INFO_DBUG>1</INFO_DBUG>
+    <DOUT_S>FALSE</DOUT_S>
+    <CONTINUE_RUN>FALSE</CONTINUE_RUN>
+    <STOP_OPTION>nsteps</STOP_OPTION>
+    <STOP_N>7</STOP_N>
+    <HIST_OPTION>$STOP_OPTION</HIST_OPTION>
+    <HIST_N>$STOP_N</HIST_N>
+  </test>
+
+
+</config_test>

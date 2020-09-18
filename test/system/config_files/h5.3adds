@@ -1,6 +1,0 @@
--nospmd -nosmp
--dyn se
--hgrid ne5np4.pg3
--phys adiabatic
--debug
--s

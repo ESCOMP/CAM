@@ -1,8 +1,0 @@
--spmd -nosmp
--dyn eul
--hgrid 64x128
--phys cam4
--aquaplanet
--camiop
--debug
--s

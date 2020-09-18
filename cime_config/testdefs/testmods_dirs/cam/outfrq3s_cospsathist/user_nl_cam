@@ -1,0 +1,13 @@
+ ndens=1,1,1,1,1,1
+ nhtfrq=3,3,3,3,-2,3
+ mfilt=1,1,1,1,1,1
+ sathist_track_infile='$DIN_LOC_ROOT/atm/cam/sat/satellite_profilelist_20020125_20101030_c110204_noleap.nc'
+ sathist_fincl = 'Q','T','PS','U','V','FV'
+ fincl3 = 'Q','T','PS','FV','UWzm:I'
+ fincl4 = 'Q','T','PS','FV','UWzm:I'
+ fincl5 = 'Q','T','U','V','PS','FV','UWzm','AEROD_v','TOT_CLD_VISTAU'
+ lcltod_start = 0,0, 7200,82800,0
+ lcltod_stop  = 0,0,10800,7200,0
+ avgflag_pertape = 'I',' ','L','L','S'
+ do_circulation_diags=.true.
+ fexcl1='CFAD_DBZE94_CS','CLDTOT_CALCS','CLD_CAL_NOTCS'

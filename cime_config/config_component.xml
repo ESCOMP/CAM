@@ -9,9 +9,10 @@
     ===============
    -->
     <desc atm="CAM60[%1PCT][%4xCO2][%CCTS1]][%CCTS2][%CFIRE][%CVBSX][%NUDG][%PORT][%RCO2][%SCAM][%SDYN][%WCCM][%WCMD][%WCSC][%WCTS][%WXIE][%WXIED]">CAM cam6 physics:</desc>
-    <desc atm="CAM50[%CCTS1][%CLB][%PORT][%RCO2][%SCAM][%SDYN][%WCSC][%WCTS]">CAM cam5 physics:</desc>
-    <desc atm="CAM40[%PORT][%RCO2][%SCAM][%SDYN][%TMOZ][%WXIE][%WXIED][%WCMD]">CAM cam4 physics:</desc>
-    <desc atm="CAM[%ADIAB][%DABIP04][%TJ16][%HS94][%KESSLER][%RCO2][%SPCAMS][%SPCAMCLBS][%SPCAMM][%SPCAMCLBM]">CAM simplified and non-versioned physics :</desc>
+    <desc atm="CAM50[%CCTS1][%CLB][%PORT][%RCO2][%SCAM][%SDYN][%WCSC][%WCTS]"                                                                      >CAM cam5 physics:</desc>
+    <desc atm="CAM40[%PORT][%RCO2][%SCAM][%SDYN][%TMOZ][%WX][%WXIE][%WXIED][%WCMD]"                                                                >CAM cam4 physics:</desc>
+    <desc atm="CAM30"                                                                                                                              >CAM cam3 physics:</desc>
+    <desc atm="CAM[%ADIAB][%DABIP04][%TJ16][%HS94][%KESSLER][%RCO2][%SPCAMS][%SPCAMCLBS][%SPCAMM][%SPCAMCLBM]"                                     >CAM simplified and non-versioned physics :</desc>
 
   <!--
     ===============
@@ -97,11 +98,12 @@
 
   <entry id="CAM_DYCORE">
     <type>char</type>
-    <valid_values>eul,fv,se</valid_values>
+    <valid_values>eul,fv,fv3,se</valid_values>
     <default_value>fv</default_value>
     <values match="last">
       <value grid="a%T[1-9]" >eul</value>
       <value grid="a%ne[0-9]">se</value>
+      <value grid="a%C[0-9]" >fv3</value>
     </values>
     <group>build_component_cam</group>
     <file>env_build.xml</file>
@@ -113,6 +115,7 @@
     <valid_values></valid_values>
     <default_value></default_value>
     <values match="last" modifier='additive'>
+      <value compset="_CAM30">-phys cam3</value>
       <value compset="_CAM40">-phys cam4</value>
       <value compset="_CAM50">-phys cam5</value>
       <value compset="_CAM60">-phys cam6</value>
@@ -154,12 +157,11 @@
       <value compset="_CAM\d0%WX.*%SDYN">-nlev 145</value>
 
       <!-- Simple models -->
-      <value compset="_CAM%HS94" grid="(%ne[0-9])|(%[0-9.]+x)">-analytic_ic</value>
       <value compset="_CAM%ADIAB">-phys adiabatic</value>
       <value compset="_CAM%DABIP04">-phys adiabatic</value>
       <value compset="_CAM%TJ16">-phys tj2016 -analytic_ic</value>
-      <value compset="_CAM%HS94">-phys held_suarez</value>
-      <value compset="_CAM%KESSLER">-phys kessler -chem terminator -analytic_ic</value>
+      <value compset="_CAM%HS94">-phys held_suarez -analytic_ic</value>
+      <value compset="_CAM%KESSLER">-phys kessler -chem terminator -analytic_ic -nadv_tt=6</value>
 
       <!-- Aquaplanet -->
       <value compset="_DOCN%SOMAQP">-aquaplanet</value>
@@ -203,6 +205,7 @@
       <value compset="2000_CAM60%.*CCTS1"  >2000_trop_strat_vbs_cam6</value>
       <value compset="2000_CAM60%WXIE"   >waccmx_ma_2000_cam6</value>
 
+      <value compset="2000_CAM30_SLND_SICE_DOCN%AQP"   >aquaplanet_cam3</value>
       <value compset="2000_CAM40_SLND_SICE_DOCN%SOMAQP">aquaplanet_cam4</value>
       <value compset="2000_CAM40_SLND_SICE_DOCN%AQP"   >aquaplanet_cam4</value>
       <value compset="2000_CAM50_SLND_SICE_DOCN%SOMAQP">aquaplanet_cam5</value>
@@ -210,6 +213,7 @@
       <value compset="2000_CAM60_SLND_SICE_DOCN%SOMAQP">aquaplanet_cam6</value>
       <value compset="2000_CAM60_SLND_SICE_DOCN%AQP"   >aquaplanet_cam6</value>
       <value compset="2000_CAM60_SLND_SICE_DOCN%AQPCONST" >aquaplanet_rce_cam6</value>
+      <value compset="2000_CAM60%WCCM_SLND_SICE_DOCN%AQP"   >aquaplanet_waccm_ma_2000_cam6</value>
 
       <value compset="2010_CAM60"        >2010_cam6</value>
       <value compset="2010_CAM60%.*CCTS1"  >2010_trop_strat_vbs_cam6</value>
@@ -303,6 +307,8 @@
       <value compset="_CAM60%WCTS%1PCT"> flbc_file='$DIN_LOC_ROOT/atm/waccm/lb/LBC_CMIP6_1pctCO2ramp_y1-165_0p5degLat_c180930.nc'</value>
       <value compset="_CAM60%WCTS%1PCT"> nlte_limit_co2=.true.</value>
       <value compset="_BGC%BDRD"> co2_cycle_rad_passive=.true. </value>
+      <!-- rearth provided by FMS for FV3 and must remain fixed to that value to maintain consistency between phys/dyn. -->
+      <value grid="a%C[0-9]"> rearth = 6.37122D6 </value>
     </values>
     <group>run_component_cam</group>
     <file>env_run.xml</file>

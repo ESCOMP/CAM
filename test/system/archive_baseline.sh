@@ -7,7 +7,7 @@ if [ $# -ne 1 ]; then
     exit 1
 fi
 
-if [ $1 == "-help" ]; then
+if [ $1 == "-help" ] || [ $1 == "--help" ]; then
 cat << EOF1
 NAME
 
@@ -24,7 +24,6 @@ SYNOPSIS
 ENVIROMENT VARIABLES
 
 	CESM_TESTDIR - Directory that contains the CESM finished results you wish to archive.
-	CAM_TESTDIR - Directory that contains the CAM finished results you wish to archive.
 	CAM_FC      - Compiler used, only used on hobart and izumi (PGI,NAG), where the compiler
                       name is appended to the archive directory.
 
@@ -33,7 +32,7 @@ BASELINE ARCHIVED LOCATION
 
 	hobart, izumi:     /fs/cgd/csm/models/atm/cam/pretag_bl/TAGNAME_pgi
 	                   /fs/cgd/csm/models/atm/cam/pretag_bl/TAGNAME_nag
-        cheyenne:  /glade/p/cesm/amwg/cam_baselines/TAGNAME
+        cheyenne:  /glade/p/cesm/amwg/cesm_baselines/TAGNAME
 
 
 
@@ -70,13 +69,6 @@ WARNING
 EOF1
 exit
 fi
-
-if [ -z "$CAM_TESTDIR" ]; then
-  echo "ERROR: please set CAM_TESTDIR"
-  echo
-  exit 1
-fi
-
 
 hostname=`hostname`
 case $hostname in
@@ -122,63 +114,19 @@ fi
 if [ -n "$CESM_TESTDIR" ]; then
 
     echo " "
-    echo "Making baselinedir 1"
-    mkdir $baselinedir
+    mkdir -p $baselinedir
     root_baselinedir=`dirname $baselinedir`
     echo "CESM Archiving to $root_baselinedir/$cam_tag"
-    ../../cime/scripts/Tools/bless_test_results -p -t '' -c '' -r $CESM_TESTDIR --baseline-root $root_baselinedir -b $cam_tag -f -s
+    if [ -d $CESM_TESTDIR/baselines ]; then
+      echo "Using cp to archive baselines."
+      cp -r $CESM_TESTDIR/baselines/. $root_baselinedir/$cam_tag
+    else
+      echo "Using bless_test_results to archive baselines."
+      ../../cime/scripts/Tools/bless_test_results -p -t '' -c '' -r $CESM_TESTDIR --baseline-root $root_baselinedir -b $cam_tag -f -s
+    fi
 
     echo " "
 fi
-
-echo
-echo "Archiving to ${baselinedir}"
-echo
-
-if [ ! -d $baselinedir ]; then
-     echo "Making baselinedir 2"
-     mkdir $baselinedir
-fi
-
-if [ ! -d ${baselinedir} ]; then
-   echo "ERROR: Failed to make ${baselinedir}"
-   exit 1
-fi
-
-echo "Archiving the following directories."
-test_list=""
-while read input_line; do
-    test_list="${input_line} "
-  for test_id in ${test_list}; do
-      master_line=`grep $test_id input_tests_master`
-       str1=${master_line%% *}
-       temp=${master_line#$str1 }
-       str2=${temp%% *}
-
-       temp=${temp#$str2 }
-       str3=${temp%% *}
-       temp=${temp#$str3 }
-       str4=${temp%% *}
-       temp=${temp#$str4 }
-       str5=${temp%% *}
-
-       temp=${str2%%.*}
-       scr1=${temp#"TBL"}
-       scr1=${temp#"TBL"}
-
-
-
-       if grep -c TBL ${str2} > /dev/null; then
-         case="TSM${scr1}.$str3.$str4.$str5"
-         ls -ld ${CAM_TESTDIR}/${case}
-         cp -rp ${CAM_TESTDIR}/${case} ${baselinedir}/${case}
-         chmod -R a+r ${baselinedir}
-         chmod -R g+w ${baselinedir}
-       fi
-
-  done
-
-done < ${test_file_list}
 
 case $hostname in
 

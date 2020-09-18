@@ -1,7 +1,0 @@
--nosmp -spmd
--dyn se
--dyn_test
--hgrid ne16np4
--phys ideal
--debug
--s

@@ -956,6 +956,7 @@ contains
     f_out%name = f_in%name                           ! field name
     f_out%long_name = f_in%long_name                 ! long name
     f_out%units = f_in%units                         ! units
+    f_out%mixing_ratio = f_in%mixing_ratio           ! mixing_ratio
     f_out%sampling_seq =  f_in%sampling_seq          ! sampling sequence - if not every timestep, how often field is sampled
     f_out%cell_methods = f_in%cell_methods
 
@@ -1996,18 +1997,18 @@ contains
   ! Otherwise the name returned is blank
 
      integer, intent(in) :: size
-  
+
      integer :: i
-     
+
      hist_dimension_name = ''
-     
+
      do i=1, registeredmdims
         if(size == hist_coords(i)%dimsize) then
            hist_dimension_name = hist_coords(i)%name
            exit
         end if
-     end do    
-     
+     end do
+
   end function hist_dimension_name
 
   !#######################################################################
