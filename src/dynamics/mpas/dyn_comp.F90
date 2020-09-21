@@ -629,6 +629,7 @@ subroutine read_inidat(dyn_in)
    integer :: i, k, kk, m
 
    type(file_desc_t), pointer :: fh_ini
+   type(file_desc_t), pointer :: fh_topo
 
    real(r8), allocatable :: latvals(:)
    real(r8), allocatable :: lonvals(:)
@@ -658,6 +659,7 @@ subroutine read_inidat(dyn_in)
    integer,  allocatable :: m_ind(:)
    real(r8), allocatable :: &
       cam2d(:,:), cam3d(:,:,:), cam4d(:,:,:,:), zi(:,:,:) ! temp arrays using CAM data order
+   real(r8), allocatable :: zsurf(:)
 
    ! temp arrays using MPAS data order
    real(r8), allocatable :: t(:,:)       ! temperature
@@ -683,6 +685,7 @@ subroutine read_inidat(dyn_in)
    !--------------------------------------------------------------------------------------
 
    fh_ini  => initial_file_get_id()
+   fh_topo => topo_file_get_id()
 
    nCellsSolve = dyn_in % nCellsSolve
    nEdgesSolve = dyn_in % nEdgesSolve
@@ -737,6 +740,24 @@ subroutine read_inidat(dyn_in)
       kk = plevp - k + 1
       zi(:,kk,1) = zint(k,:nCellsSolve)
    end do
+
+   ! If using a topo file check that PHIS is consistent with the surface z coordinate.
+   if (associated(fh_topo)) then    
+
+      allocate(zsurf(nCellsSolve))
+
+      call get_zsurf_from_phis(fh_topo, zsurf)
+
+      do i = 1, nCellsSolve
+         if (abs(zi(i,plevp,1) - zsurf(i)) > 0.001_r8) then
+            write(iulog,*) subname//': ERROR: zi= ', zi(i,plevp,1), ' zsurf= ', zsurf(i)
+            call endrun(subname//': ERROR: PHIS not consistent with surface z coordinate')
+         end if
+      end do
+
+      deallocate(zsurf)
+
+   end if
 
    if (analytic_ic_active()) then
 
