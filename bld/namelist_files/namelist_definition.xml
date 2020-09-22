@@ -5460,7 +5460,7 @@ Default: set by build-namelist.
 
 <entry id="depvel_lnd_file" type="char*256" input_pathname="abs" category="cam_chem"
        group="chem_inparm" valid_values="" >
-Full pathname of dataset which contains land vegitation information used in modal aerosol deposition.
+Full pathname of dataset which contains land vegetation information used in modal aerosol deposition.
 Default: set by build-namelist.
 </entry>
 

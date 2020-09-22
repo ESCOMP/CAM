@@ -800,9 +800,9 @@ contains
     
     do lchnk = begchunk, endchunk
        ncol = get_ncols_p(lchnk)
+       call get_rlat_all_p(lchnk, ncol, rlats(:ncol))
+       call get_rlon_all_p(lchnk, ncol, rlons(:ncol))
        do icol= 1,ncol
-          call get_rlat_all_p(lchnk, ncol, rlats(:ncol))
-          call get_rlon_all_p(lchnk, ncol, rlons(:ncol))
           found=.false.
           find_col: do j = 1,plat
              do i = 1,plon
