@@ -22,7 +22,6 @@ module mo_fstrat
   save
 
   real(r8), parameter :: taurelax = 864000._r8        ! 10 days
-  integer  :: gndx = 0
   integer  :: table_nox_ndx = -1
   integer  :: table_h2o_ndx = -1
   integer  :: table_ox_ndx  = -1
@@ -64,15 +63,11 @@ contains
     use time_manager,  only : get_calday
     use ioFileMod,     only : getfil
     use spmd_utils,    only : masterproc
-#ifdef SPMD
-    use mpishorthand,  only : mpicom,mpiint,mpir8
-#endif
-    use mo_tracname,  only : solsym
-    use chem_mods,    only : gas_pcnst
-    use mo_chem_utls, only : get_spc_ndx, get_inv_ndx
-    use constituents, only : pcnst
+    use mo_tracname,   only : solsym
+    use chem_mods,     only : gas_pcnst
+    use mo_chem_utls,  only : get_spc_ndx, get_inv_ndx
+    use constituents,  only : pcnst
     use interpolate_data, only : interp_type, lininterp_init, lininterp
-    implicit none
 
     character(len=*), intent(in) :: fstrat_file
     character(len=*), intent(in) :: fstrat_list(:)
@@ -428,14 +423,12 @@ contains
     integer  ::  kl(ncol,zlower)
     integer  ::  ku(ncol,zlower)
     real(r8) ::  vmrrelax
-    real(r8) ::  fac_relax
     real(r8) ::  pinterp
     real(r8) ::  nox_ubc, xno, xno2, rno
     real(r8) ::  dels
     real(r8) ::  delp(ncol,zlower)
     real(r8) ::  pint_vals(2)
     real(r8), allocatable :: table_ox(:)
-    logical  ::  found_trop
 
     if (.not. any(has_fstrat(:))) return
 
@@ -694,9 +687,6 @@ contains
     !	... set the h2o upper boundary values
     !--------------------------------------------------------------------
 
-
-    implicit none
-
     !--------------------------------------------------------------------
     !	... dummy args
     !--------------------------------------------------------------------
@@ -718,12 +708,10 @@ contains
     integer  ::  kl(ncol,zlower)
     integer  ::  ku(ncol,zlower)
     real(r8) ::  vmrrelax
-    real(r8) ::  fac_relax
     real(r8) ::  pinterp
     real(r8) ::  dels
     real(r8) ::  delp(ncol,zlower)
     real(r8) ::  pint_vals(2)
-    logical  ::  found_trop
 
     h2o_overwrite : if( h2o_ndx > 0 .and. table_h2o_ndx > 0 ) then
        !--------------------------------------------------------
@@ -849,8 +837,6 @@ contains
     !	... rebin src to trg
     !---------------------------------------------------------------
 
-    implicit none
-
     !---------------------------------------------------------------
     !	... dummy arguments
     !---------------------------------------------------------------
@@ -864,7 +850,7 @@ contains
     !---------------------------------------------------------------
     !	... local variables
     !---------------------------------------------------------------
-    integer  :: i, l
+    integer  :: i
     integer  :: si, si1
     integer  :: sil, siu
     real(r8) :: y

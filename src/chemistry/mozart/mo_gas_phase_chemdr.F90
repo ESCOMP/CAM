@@ -278,7 +278,6 @@ contains
     use cam_history,       only : outfld
     use wv_saturation,     only : qsat
     use constituents,      only : cnst_mw
-    use time_manager,      only : get_ref_date
     use mo_ghg_chem,       only : ghg_chem_set_rates, ghg_chem_set_flbc
     use mo_sad,            only : sad_strat_calc
     use charge_neutrality, only : charge_balance
@@ -405,11 +404,7 @@ contains
     real(r8)                  ::  reff_strat(pcols,pver)  ! stratospheric aerosol effective radius (cm)
 
     real(r8) :: tvs(pcols)
-    integer  :: ncdate,yr,mon,day,sec
     real(r8) :: wind_speed(pcols)        ! surface wind speed (m/s)
-    logical, parameter :: dyn_soilw = .false.
-    logical  :: table_soilw
-    real(r8) :: soilw(pcols)
     real(r8) :: prect(pcols)
     real(r8) :: sflx(pcols,gas_pcnst)
     real(r8) :: wetdepflx_diag(pcols,gas_pcnst)
@@ -1060,8 +1055,6 @@ contains
     tvs(:ncol) = tfld(:ncol,pver) * (1._r8 + qh2o(:ncol,pver))
 
     sflx(:,:) = 0._r8
-    call get_ref_date(yr, mon, day, sec)
-    ncdate = yr*10000 + mon*100 + day
     wind_speed(:ncol) = sqrt( ufld(:ncol,pver)*ufld(:ncol,pver) + vfld(:ncol,pver)*vfld(:ncol,pver) )
     prect(:ncol) = precc(:ncol) + precl(:ncol)
 

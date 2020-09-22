@@ -20,7 +20,7 @@ module chemistry
   use gcr_ionization,   only : gcr_ionization_readnl, gcr_ionization_init, gcr_ionization_adv
   use epp_ionization,   only : epp_ionization_readnl, epp_ionization_adv
   use mo_apex,          only : mo_apex_readnl
-  use ref_pres,         only : do_molec_diff, ptop_ref
+  use ref_pres,         only : ptop_ref
   use phys_control,     only : waccmx_is   ! WACCM-X switch query function
 
   implicit none
@@ -1176,7 +1176,7 @@ end function chem_is_active
     use mo_gas_phase_chemdr, only : gas_phase_chemdr
     use camsrfexch,          only : cam_in_t, cam_out_t     
     use perf_mod,            only : t_startf, t_stopf
-    use tropopause,          only : tropopause_findChemTrop, TROP_ALG_HYBSTOB, TROP_ALG_CLIMATE, tropopause_find
+    use tropopause,          only : tropopause_findChemTrop, tropopause_find
     use mo_drydep,           only : drydep_update
     use mo_neu_wetdep,       only : neu_wetdep_tend
     use aerodep_flx,         only : aerodep_flx_prescribed

@@ -19,7 +19,6 @@ module mo_lightning
 
   save
 
-  real(r8) :: csrf
   real(r8) :: factor = 0.1_r8              ! user-controlled scaling factor to achieve arbitrary no prod.
   real(r8) :: geo_factor                   ! grid cell area factor
   real(r8) :: vdist(16,3)                  ! vertical distribution of lightning
@@ -36,11 +35,9 @@ contains
     !       ... initialize the lightning module
     !----------------------------------------------------------------------
     use mo_constants,  only : pi
-    use ioFileMod,     only : getfil
     use mo_chem_utls,  only : get_spc_ndx
 
     use cam_history,   only : addfld, add_default, horiz_only
-    use dyn_grid,      only : get_dyn_grid_parm
     use phys_control,  only : phys_getopts
 
     implicit none
@@ -54,17 +51,6 @@ contains
     !	... local variables
     !----------------------------------------------------------------------
     integer  :: astat
-    integer  :: ncid
-    integer  :: dimid
-    integer  :: vid
-    integer  :: gndx
-    integer  :: jl, ju
-    integer  :: nlat, nlon
-    integer  :: plon, plat
-    real(r8), allocatable :: lats(:)
-    real(r8), allocatable :: lons(:)
-    real(r8), allocatable :: landmask(:,:)
-    character(len=256) :: locfn
     logical :: history_cesm_forcing
 
     call phys_getopts( history_cesm_forcing_out = history_cesm_forcing )
@@ -160,8 +146,6 @@ contains
     integer :: i, c
     integer :: cldtind             ! level index for cloud top
     integer :: cldbind             ! level index for cloud base > 273k
-    integer :: surf_type
-    integer :: file                ! file index
     integer :: k, kk, zlow_ind, zhigh_ind, itype
     real(r8) :: glob_flashfreq     ! global flash frequency [s-1]
     real(r8) :: glob_noprod        ! global rate of no production [as tgn/yr]
@@ -201,7 +185,6 @@ contains
     real(r8), parameter  :: km2cm = 1.e5_r8
     real(r8), parameter  :: lat25 = 25._r8*d2r      ! 25 degrees latitude in radians
     integer  :: cldtop_ndx, cldbot_ndx
-    integer  :: istat
     real(r8) :: flash_freq_land, flash_freq_ocn
 
     if (.not.has_no_lightning_prod) return
