@@ -121,13 +121,11 @@ contains
   subroutine drydep_update( state, cam_in )
     use physics_types,   only : physics_state
     use camsrfexch,      only : cam_in_t     
-    use seq_drydep_mod,  only : drydep_method, DD_XLND
 
     type(physics_state), intent(in) :: state           ! Physics state variables
     type(cam_in_t),  intent(in) :: cam_in 
 
     if (nddvels<1) return
-    if (drydep_method /= DD_XLND) return
 
     lnd(state%lchnk)%dvel => cam_in%depvel
 
@@ -290,7 +288,6 @@ contains
     !-------------------------------------------------------------------------------------
     use dycore,        only : dycore_is
     use mo_chem_utls,  only : get_spc_ndx
-    use seq_drydep_mod,only : drydep_method, DD_XLND
     use phys_control,  only : phys_getopts
 
     !-------------------------------------------------------------------------------------
@@ -412,7 +409,7 @@ contains
        call endrun
     end if
 
-    if (drydep_method == DD_XLND .and. (.not.prog_modal_aero)) then
+    if (.not.prog_modal_aero) then
        return
     endif
 
@@ -528,10 +525,6 @@ contains
        deallocate( lon_veg, lat_veg, lon_veg_edge, lat_veg_edge, stat=astat )
        deallocate( landmask, urban, lake, wetland, stat=astat )
     endif  ! Unstructured grid
-
-    if (drydep_method == DD_XLND) then
-       return
-    endif
 
   end subroutine dvel_inti_xactive
 
@@ -856,7 +849,6 @@ contains
     use seq_drydep_mod, only: z0, rgso, rgss, ri, rclo, rcls, rlu, rac
     use seq_drydep_mod, only: seq_drydep_setHCoeff, foxd, drat
     use physconst,      only: tmelt
-    use seq_drydep_mod, only: drydep_method,  DD_XLND
 
     !-------------------------------------------------------------------------------------
     ! 	... dummy arguments
@@ -1007,13 +999,9 @@ contains
     end do
 
     !-------------------------------------------------------------------------------------
-    ! define season index based on fixed LAI
+    ! season index only for ocn and sea ice
     !-------------------------------------------------------------------------------------
-    if ( drydep_method == DD_XLND ) then
-       index_season = 4
-    else
-       call endrun('drydep_xactive: xactive only for ocn and sea ice')
-    endif
+    index_season = 4 
     !-------------------------------------------------------------------------------------
     ! special case for snow covered terrain
     !-------------------------------------------------------------------------------------
@@ -1085,15 +1073,8 @@ contains
     !-------------------------------------------------------------------------------------
     ! 	... form working arrays
     !-------------------------------------------------------------------------------------
-    do lt = 1,n_land_type
-       do i=1,ncol
-          if ( drydep_method == DD_XLND ) then
-             lcl_frc_landuse(i,lt) = 0._r8
-          else
-             lcl_frc_landuse(i,lt) = fraction_landuse(i,lt,lchnk)
-          endif
-       enddo
-    end do
+    lcl_frc_landuse(:,:) = 0._r8
+
     if ( present(ocnfrc) .and. present(icefrc) ) then
        do i=1,ncol
           ! land type 7 is used for ocean
@@ -1443,13 +1424,9 @@ contains
              !  ... special case for carbon aerosols
              !-------------------------------------------------------------------------------------
              case( 'CB1', 'CB2', 'OC1', 'OC2', 'SOAM', 'SOAI', 'SOAT', 'SOAB','SOAX' )
-                if ( drydep_method == DD_XLND ) then
-                   where( fr_lnduse(:ncol,lt) )
-                      wrk(:ncol) = wrk(:ncol) + lnd_frc(:ncol) * 0.10e-2_r8
-                   endwhere
-                else
-                   wrk(:ncol) = 0.10e-2_r8
-                endif
+                where( fr_lnduse(:ncol,lt) )
+                   wrk(:ncol) = wrk(:ncol) + lnd_frc(:ncol) * 0.10e-2_r8
+                endwhere
 
              !-------------------------------------------------------------------------------------
              ! deposition over ocean for HCN, CH3CN

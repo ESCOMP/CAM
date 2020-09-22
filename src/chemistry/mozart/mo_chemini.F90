@@ -80,8 +80,7 @@ contains
     use clybry_fam,        only : clybry_fam_init
     use mo_neu_wetdep,     only : neu_wetdep_init 
     use physics_buffer,    only : physics_buffer_desc
-
-    implicit none
+    use cam_abortutils,    only : endrun
 
     character(len=*), intent(in) :: euvac_file
     character(len=*), intent(in) :: photon_file
@@ -179,6 +178,8 @@ contains
     !-----------------------------------------------------------------------
     if ( drydep_method == DD_XLND ) then
        call drydep_inti(depvel_lnd_file)
+    else
+       call endrun('chemini: drydep_method must equal DD_XLND')
     endif
 
     if (masterproc) write(iulog,*) 'chemini: after drydep_inti on node ',iam

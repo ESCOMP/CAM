@@ -270,7 +270,6 @@ contains
     use fire_emissions,    only : fire_emissions_vrt
     use mo_sethet,         only : sethet
     use mo_drydep,         only : drydep
-    use seq_drydep_mod,    only : DD_XLND, drydep_method
     use mo_fstrat,         only : set_fstrat_vals, set_fstrat_h2o
     use noy_ubc,           only : noy_ubc_set
     use mo_flbc,           only : flbc_set
@@ -1066,12 +1065,10 @@ contains
     wind_speed(:ncol) = sqrt( ufld(:ncol,pver)*ufld(:ncol,pver) + vfld(:ncol,pver)*vfld(:ncol,pver) )
     prect(:ncol) = precc(:ncol) + precl(:ncol)
 
-    if ( drydep_method == DD_XLND ) then
-       call drydep( ocnfrac, icefrac, ts, ps,  &
-            wind_speed, qh2o(:,pver), tfld(:,pver), pmid(:,pver), prect, &
-            snowhland, fsds, depvel, sflx, mmr, &
-            tvs, ncol, lchnk )
-    endif
+    call drydep( ocnfrac, icefrac, ts, ps,  &
+                 wind_speed, qh2o(:,pver), tfld(:,pver), pmid(:,pver), prect, &
+                 snowhland, fsds, depvel, sflx, mmr, &
+                 tvs, ncol, lchnk )
 
     drydepflx(:,:) = 0._r8
     wetdepflx_diag(:,:) = 0._r8
