@@ -746,7 +746,7 @@ subroutine read_inidat(dyn_in)
 
       allocate(zsurf(nCellsSolve))
 
-      call get_zsurf_from_phis(fh_topo, zsurf)
+      call get_zsurf_from_topo(fh_topo, zsurf)
 
       do i = 1, nCellsSolve
          if (abs(zi(i,plevp,1) - zsurf(i)) > 0.001_r8) then
@@ -1002,6 +1002,39 @@ subroutine read_inidat(dyn_in)
    deallocate(cam2d, cam3d, cam4d, t, pintdry, pmiddry, pmid)
 
 end subroutine read_inidat
+
+!========================================================================================
+
+subroutine get_zsurf_from_topo(fh_topo, zsurf)
+
+   ! Read PHIS from the topo file and convert it to a surface height field.
+
+   ! Arguments
+   type(file_desc_t), pointer :: fh_topo
+   
+   real(r8), intent(out) :: zsurf(:)
+
+   ! Local variables
+   integer :: zsurf_len
+   real(r8), allocatable :: phis(:,:)
+   logical :: readvar
+
+   character(len=*), parameter :: subname = 'dyn_comp:get_zsurf_from_topo'
+   !--------------------------------------------------------------------------------------
+
+   zsurf_len = size(zsurf)
+   allocate(phis(zsurf_len,1))
+
+   ! read theta
+   call infld('PHIS', fh_topo, 'ncol', 1, zsurf_len, 1, 1, &
+                 phis, readvar, gridname='cam_cell')
+   if (readvar) then
+      zsurf = phis(:,1) / gravit
+   else
+      call endrun(subname//': failed to read PHIS from topo file')
+   end if
+
+end subroutine get_zsurf_from_topo
 
 !========================================================================================
 

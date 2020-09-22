@@ -1,5 +1,37 @@
 ===============================================================
 
+Tag name: 
+Originator(s): eaton
+Date: Mon 21 Sep 2020 06:09:47 PM MDT
+One-line Summary: Mods to read PHIS from topo file
+
+Purpose of changes:
+
+. Add code to read PHIS from the topo file.  Also added the code to do the
+  consistency check between surface heights from PHIS and the surface z
+  coordinate from the initial file.
+
+List all existing files that have been modified, and describe the changes:
+
+src/dynamics/mpas/dyn_comp.F90
+. add subroutine get_zsurf_from_topo to read PHIS from the topo file and
+  convert to surface height.
+. add code to compare surface height against the surface values of the
+  height coordinate.
+
+src/dynamics/mpas/dyn_grid.F90
+. add grid 'cam_cell' to read the phis field
+
+Testing:
+
+Ran a held_suarez test which read the topo file and fails when it compares
+the surface heights against the surface z coordinate.  This is the expected
+behavior since we don't yet have an initial file with PHIS incorporated into
+the z coordinate.
+
+===============================================================
+===============================================================
+
 Tag name: mpas066_cam6_2_043
 Originator(s): eaton
 Date: Thu 03 Sep 2020 05:26:58 PM MDT

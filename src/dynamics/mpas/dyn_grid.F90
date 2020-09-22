@@ -49,6 +49,8 @@ save
 integer, parameter :: dyn_decomp    = 101 ! cell center grid (this parameter is public to provide a dycore
                                           ! independent way to to identify the physics grid on the dynamics
                                           ! decomposition)
+integer, parameter :: cam_cell_decomp = 104 ! same grid decomp as dyn_decomp, but the grid definition
+                                            ! uses ncol, lat, lon
 integer, parameter :: edge_decomp   = 102 ! edge node grid
 integer, parameter :: vertex_decomp = 103 ! vertex node grid
 integer, parameter :: ptimelevels = 2
@@ -664,11 +666,17 @@ subroutine define_cam_grids()
    ! grid contains the same nodes as the dynamics cell center grid, but is
    ! on the physics decomposition and is defined in phys_grid_init.
    !
-   ! Note that the cell center grid defined here uses 'nCells' rather than
-   ! 'ncol' as the dimension name.  This is because the initial file is
-   ! the same one as used by the standalone MPAS-A model.  That file uses
-   ! the dimension and coordinate names as defined below for the cell
-   ! center, edge, and vertex grids.
+   ! Note that there are two versions of cell center grid defined here.
+   ! The 'mpas_cell' grid uses 'nCells' rather than 'ncol' as the dimension
+   ! name and 'latCell', 'lonCell' rather than 'lat' and 'lon' as the
+   ! coordinate names.  This allows us to read the same initial file that
+   ! is used by the standalone MPAS-A model.  The second cell center grid
+   ! is called 'cam_cell' and uses the standard CAM names: ncol, lat, and
+   ! lon.  This grid allows us to read the PHIS field from the CAM topo
+   ! file.  There is just a single version of the grids to read data on the
+   ! cell edge and vertex locations.  These are used to read data from the
+   ! initial file and to write data from the dynamics decomposition to the
+   ! CAM history file.
 
    use cam_grid_support, only: horiz_coord_t, horiz_coord_create, iMap
    use cam_grid_support, only: cam_grid_register, cam_grid_attribute_register
@@ -726,8 +734,16 @@ subroutine define_cam_grids()
       grid_map(3, i) = gidx(i)
    end do
 
-   ! cell center grid
+   ! cell center grid for I/O using MPAS names
    call cam_grid_register('mpas_cell', dyn_decomp, lat_coord, lon_coord,     &
+          grid_map, block_indexed=.false., unstruct=.true.)
+
+   ! create new coordinates and grid using CAM names
+   lat_coord => horiz_coord_create('lat', 'ncol', nCells_g, 'latitude',      &
+          'degrees_north', 1, nCellsSolve, latCell(1:nCellsSolve)*rad2deg, map=gidx)
+   lon_coord => horiz_coord_create('lon', 'ncol', nCells_g, 'longitude',     &
+          'degrees_east', 1, nCellsSolve, lonCell(1:nCellsSolve)*rad2deg, map=gidx)
+   call cam_grid_register('cam_cell', cam_cell_decomp, lat_coord, lon_coord, &
           grid_map, block_indexed=.false., unstruct=.true.)
 
    ! gidx can be deallocated.  Values are copied into the coordinate and attribute objects.
@@ -737,7 +753,7 @@ subroutine define_cam_grids()
    ! to it.  Pointer can be disassociated.
    nullify(grid_map) ! Map belongs to grid now
 
-   ! pointers to coordinate object can be nullified.  Memory is now pointed to by the
+   ! pointers to coordinate objects can be nullified.  Memory is now pointed to by the
    ! grid object.
    nullify(lat_coord)
    nullify(lon_coord)
