@@ -6583,15 +6583,6 @@ List of species that undergo dry deposition.
 Default: set by build-namelist.
 </entry>
 
-<entry id="drydep_method" type="char*16" category="dry_deposition"
-       group="drydep_inparm" valid_values="xactive_lnd" >
-Dry deposition method used.  This specifies the method used to calculate dry
-deposition velocities of gas-phase chemical species.  The available methods
-are:
- 'xactive_lnd' - interactive method in CLM
-Default: set by build-namelist
-</entry>
-
 <entry id="rxn_rate_sums" type="char*256(200)" category="cam_chem"
        group="rxn_rate_diags_nl" valid_values="" >
 Give the user the ability to specify rate families (or groupings) diagnostics based

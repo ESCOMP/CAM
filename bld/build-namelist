@@ -590,11 +590,6 @@ if ( ($chem ne 'none') or ( $prog_species ) ){
     }
 }
 if ($chem) {
-    # Dry Deposition -- The responsibility for dry deposition is shared between CAM and CLM.
-    # The namelist is read by a driver module, seq_drydep_mod, and the information is shared
-    # between CAM and CLM by use association of that module.
-    add_default($nl, 'drydep_method');
-
     # drydep_srf_file is only needed for prognostic MAM when the grid is unstructured.
     # structured grids can do interpolation on the fly.
     if ($chem =~ /_mam/ and ($dyn =~ /se/ or $dyn =~ /fv3/)) {
