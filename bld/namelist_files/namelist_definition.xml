@@ -2647,25 +2647,28 @@ Default: .false.
 
 <entry id="micro_mg_evap_scl_ifs" type="logical" category="microphys"
        group="micro_mg_nl" valid_values="" >
-Apply 0.3 scaling factor to evaporation of precipitation
+Apply 0.3 scaling factor to evaporation of precipitation as done in the 
+IFS model (https://www.ecmwf.int/en/forecasts/documentation-and-support)
 Default: .false.
 </entry>
 
 <entry id="micro_mg_evap_rhthrsh_ifs" type="logical" category="microphys"
        group="micro_mg_nl" valid_values="" >
-Do not evaporate precipitation until RH<90%
+Do not evaporate precipitation until RH<90% as done in the                                                        
+IFS model (https://www.ecmwf.int/en/forecasts/documentation-and-support)
 Default: .false.
 </entry>
 
 <entry id="micro_mg_rainfreeze_ifs" type="logical" category="microphys"
        group="micro_mg_nl" valid_values="" >
-Freeze rain at 0C
+Freeze rain at 0C as done in the                                                        
+IFS model (https://www.ecmwf.int/en/forecasts/documentation-and-support)
 Default: .false.
 </entry>
 
 <entry id="micro_mg_ifs_sed" type="logical" category="microphys"
        group="micro_mg_nl" valid_values="" >
-If .false., use the default sedimentation fall speed calculation from MG2 for all species. If .true., use constant sedimentation fall speeds for snow and ice, and no sedimentation of liquid, to be consistant with how species descend in the IFS model.
+If .false., use the default sedimentation fall speed calculation from MG2 for all species. If .true., use constant sedimentation fall speeds for snow and ice, and no sedimentation of liquid, to be consistant with how species descend in the IFS model (https://www.ecmwf.int/en/forecasts/documentation-and-support)
 Default: .false.
 </entry>
 

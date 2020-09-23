@@ -153,10 +153,10 @@ logical  ::  micro_mg_evap_sed_off = .false.      ! Turn off evaporation/sublima
 logical  ::  micro_mg_icenuc_rh_off  = .false.    ! Remove RH conditional from ice nucleation
 logical  ::  micro_mg_icenuc_use_meyers = .false. ! Meyers Ice Nucleation
 logical  ::  micro_mg_evap_scl_ifs = .false.      ! Scale evaporation as IFS does
-logical  ::  micro_mg_evap_rhthrsh_ifs = .false.  ! Evap RH threhold following ifs
-logical  ::  micro_mg_rainfreeze_ifs = .false.    ! Rain freezing at 0C following ifs
-logical  ::  micro_mg_ifs_sed = .false.           ! Snow sedimentation = 1 m/s following ifs
-logical  ::  micro_mg_precip_fall_corr = .false.    ! Rain fall speed following ifs 
+logical  ::  micro_mg_evap_rhthrsh_ifs = .false.  ! Evap RH threhold following IFS
+logical  ::  micro_mg_rainfreeze_ifs = .false.    ! Rain freezing at 0C following IFS
+logical  ::  micro_mg_ifs_sed = .false.           ! Snow sedimentation = 1 m/s following IFS
+logical  ::  micro_mg_precip_fall_corr = .false.    ! Precip fall speed following IFS 
 
 character(len=10), parameter :: &      ! Constituent names
    cnst_names(10) = (/'CLDLIQ', 'CLDICE','NUMLIQ','NUMICE', &
