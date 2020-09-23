@@ -771,7 +771,7 @@ subroutine radiation_tend( &
    integer  :: troplev(pcols)
    real(r8) :: p_trop(pcols)
 
-   type(rrtmg_state_t), pointer :: r_state ! contains the atm concentrations in layers needed for RRTMG
+   type(rrtmg_state_t) :: r_state ! contains the atm concentrations in layers needed for RRTMG
 
    ! cloud radiative parameters are "in cloud" not "in cell"
    real(r8) :: ice_tau    (nswbands,pcols,pver) ! ice extinction optical depth
@@ -921,7 +921,7 @@ subroutine radiation_tend( &
    if (dosw .or. dolw) then
 
       ! construct an RRTMG state object
-      r_state => rrtmg_state_create( state, cam_in )
+      r_state = rrtmg_state_create( state, cam_in )
 
       call t_startf('cldoptics')
 
