@@ -1,7 +1,0 @@
--spmd -nosmp
--dyn se
--hgrid ne5np4.pg3
--phys adiabatic
--analytic_ic
--debug
--s

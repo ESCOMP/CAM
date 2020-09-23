@@ -1,16 +1,13 @@
 name: Pushed commit workflow
 
-on:
-  #For some reason GitHub does not allow secrets
-  #when a PR from a fork is closed.  Thus instead
-  #the workflow must activate whenever a commit
-  #is pushed to the repo.  Theoretically this should
-  #behave the same way as if triggered from a pull
-  #request, just as long as no user ever pushes
-  #directly to the repo.
-  push:
-    branches:
-      - cam_development
+#For some reason GitHub does not allow secrets
+#when a PR from a fork is closed.  Thus instead
+#the workflow must activate whenever a commit
+#is pushed to the repo.  Theoretically this should
+#behave the same way as if triggered from a pull
+#request, just as long as no user ever pushes
+#directly to the repo.
+on: push
 
 jobs:
   #This job is designed to close any issues or pull requests specified

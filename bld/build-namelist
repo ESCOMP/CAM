@@ -3,43 +3,31 @@
 #
 # build-namelist
 #
-# This script builds the namelists for the standalone CAM configuration of CCSM4.
-# Eventually the system's build will be reworked so that individual components are responsible
-# for building their own namelists.
+# This script builds the namelists for the standalone CAM configuration of
+# CESM.
 #
-# build-namelist is designed to be used in conjuction with configure.  By default configure
-# produces a config_cache.xml file that contains all information needed at build time to procduce
-# a CAM executable.  build-namelist reads this file to obtain information it needs to provide
-# default values that are consistent with the CAM executable.  For example, the grid resolution
-# is obtained from the cache file and used to determine appropriate defaults for boundary datasets
+# build-namelist is designed to be used in conjuction with configure.
+# By default configure produces a config_cache.xml file that contains all
+# information needed at build time to procduce a CAM executable.
+# build-namelist reads this file to obtain information it needs to provide
+# default values that are consistent with the CAM executable.
+# For example, the grid resolution is obtained from the cache file and
+# used to determine appropriate defaults for boundary datasets
 # that are resolution dependent.
 #
-# The simplest use of build-namelist is to execute it from the build directory where configure
-# was run.  By default it will use the config_cache.xml file that was written by configure to
-# determine the build time properties of the executable, and will write the files that contain
-# the output namelists in that same directory.  But if multiple runs are to made using the
-# same executable, successive invocations of build-namelist will overwrite previously generated
-# namelist files.  So generally the best strategy is to invoke build-namelist from the run
-# directory and use the -config option to provide the filepath of the config_cache.xml file.
+# build-namelist is called from <root>/cime_config/buildnml
+# buildnml is called by preview_namelists or before a job is run (directly
+# or from case.submit)
+# By default it will use the config_cache.xml file that was written by
+# configure to determine the build time properties of the executable,
+# and will write the files that contain the output namelists in that
+# same directory.  But if multiple runs are to made using the
+# same executable, successive invocations of build-namelist will overwrite
+# previously generated namelist files.
 #
-#
-# Date        Contributor      Modification
-# -------------------------------------------------------------------------------------------
-# 2007-12-31  Brian Eaton      Original version
-# 2008-02-02  B. Eaton         Restore -test functionality.
-# 2008-07-01  Sean Santos      Added -inputdata functionality.
-# 2008-07-09  B. Eaton         Provide default values for rad_climate variable which
-#                              specifies the radiatively active constituents.
-# 2008-08-26  B. Eaton         Add the driver namelist group ccsm_pes to specify the
-#                              task/thread layout for all components.
-# 2008-11-14  B. Eaton         Extend use_case functionality.
-# 2009-09-02  B. Eaton         Allow namelist definition, defaults, and use case files
-#                              to come from the user source mod directories.
-#--------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 
 use strict;
-#use warnings;
-#use diagnostics;
 
 use Cwd;
 use English;
@@ -51,7 +39,7 @@ use FindBin qw($Bin);
 use lib "$Bin/perl5lib";
 use Build::ChemNamelist qw(set_dep_lists set_aero_modes_info chem_has_species);
 use List::Util qw[min max];
-#-----------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 
 sub usage {
     die <<EOF;
@@ -76,11 +64,12 @@ OPTIONS
                            file specified.
      -namelist "namelist"  Specify namelist settings directly on the commandline by supplying
                            a string containing FORTRAN namelist syntax, e.g.,
-                              -namelist "&camexp stop_option='ndays' stop_n=10 /"
+                            -namelist "&camexp nhtfrq=0,-24,-6 inithist='ENDOFRUN' /"
      -ntasks <n>           Specify the number of MPI tasks being used by the run.  This is used
                            to set a default decomposition for the FV dycore only (npr_yz).
      -runtype "type"       Type of simulation (startup, continue, or branch)
      -silent [-s]          Turns on silent mode - only fatal messages issued.
+     -start_ymd "ymd"      Start YMD from the case RUN_STARTDATE
      -test                 Enable checking that input datasets exist on local filesystem.
      -use_case             Specify a use case.  Default: present day climatology
      -verbose [or -v]      Turn on verbose echoing of informational messages.
@@ -90,7 +79,7 @@ Note: The precedence for setting the values of namelist variables is (highest to
       1. namelist values set by specific command-line options, i.e., -case,
          -runtype
       2. values set on the command-line using the -namelist option,
-      3. values read from the file specified by -infile,
+      3. values read from the file specified by -infile (from user_nl_cam)
       4. values specified by the -use_case option,
       5. values from the namelist defaults file.
 EOF
@@ -152,6 +141,7 @@ GetOptions(
     "ntasks=s"                  => \$opts{'ntasks'},
     "runtype=s"                 => \$opts{'runtype'},
     "s|silent"                  => \$opts{'silent'},
+    "start_ymd=s"               => \$opts{'start_ymd'},
     "test"                      => \$opts{'test'},
     "uc|use_case=s"             => \$opts{'use_case'},
     "v|verbose"                 => \$opts{'verbose'},
@@ -450,96 +440,15 @@ if (defined $use_case_file) {
 
 # Add default values for required namelist variables that have not been previously set.
 # This is done either by using the namelist default object, or directly with inline logic.
-
-# Are we building namelists for the CESM scripts or for standalone CAM  scripts.  If
-# CESM then only produce namelists for the CAM component.  If CAM standalone then produce
-# output for the required non-cam components as well.
-
-my $ccsm_build = $cfg->get('ccsm_seq');
-my $cam_build  = $ccsm_build ? 0 : 1;
 if ($print>=2) {
-    if ($ccsm_build) {
-        print "Writing namelist files for cesm scripts$eol";
-    }
-    elsif ($cam_build) {
-        print "Writing namelist files for cam standalone scripts$eol";
-    }
+    print "Writing namelist files for cesm scripts$eol";
 }
 
-# Start with the driver component.  These settings are communicated by the driver to
-# all subcomponents.
-
-####################################
-# namelist group: cime_driver_inst #
-####################################
-
-add_default($nl, 'ninst_driver', 'val'=>'1');
-
-######################################
-# namelist group: seq_cplflds_inparm #
-######################################
-add_default($nl, 'flds_co2_dmsa',  'val'=>'.false.');
-add_default($nl, 'flds_co2a',      'val'=>'.true.');
-add_default($nl, 'flds_co2b',      'val'=>'.false.');
-add_default($nl, 'flds_co2c',      'val'=>'.false.');
-add_default($nl, 'cplflds_custom', 'val'=>'');
-
-############################
-# namelist group: cime_pes #
-############################
-
-# By default the driver sets all components to use all tasks.  This is the
-# appropriate default for the standalone CAM configuration.
-
-# By default the driver sets all components to use 1 thread.  This should be
-# reset either to user specified values, or by default use the OMP_NUM_THREADS
-# environment variable to set the thread count for each component.
-
-# Is this an smp build?
-my $smp = $cfg->get('smp');
-if ($smp) {
-
-    # If user has set the specific variables for component threads on the commandline
-    # those values will be used.  If not, the highest precedence will be given the the
-    # value of the environment variable OMP_NUM_THREADS.  That is because the number of
-    # threads specified on the configure commandline is used to determine an appropriate
-    # decomposition for the CICE model, but that decomposition may be valid for a range
-    # of ntask/nthread settings.
-
-    # Check for OMP_NUM_THREADS
-    my $nthreads;
-    if (defined $ENV{'OMP_NUM_THREADS'}) {
-        $nthreads = $ENV{'OMP_NUM_THREADS'};
-    }
-
-    if ($nthreads) {
-        add_default($nl, 'atm_nthreads', 'val'=>$nthreads);
-        add_default($nl, 'cpl_nthreads', 'val'=>$nthreads);
-        add_default($nl, 'ocn_nthreads', 'val'=>$nthreads);
-    }
-}
-
-#######################################
-# namelist group: seq_infodata_inparm #
-#######################################
-# Case name
-add_default($nl, 'case_name');
-
-# Run type
-add_default($nl, 'start_type');
-
-# CIME model version
-add_default($nl, 'cime_model', 'val'=>'cesm');
-
-# CESM driver defaults
-add_default($nl, 'coldair_outbreak_mod', 'val'=>'.true.');
-add_default($nl, 'flux_max_iteration', 'val'=>'5');
 # Composition of air
 add_default($nl, 'dry_air_species');
 add_default($nl, 'water_species_in_air');
 # Spectral Element dycore
 my $dyn = $cfg->get('dyn');
-if ($dyn =~ /se/) {add_default($nl, 'vect_map', 'val'=>'cart3d');}
 
 # Physics package checks done here since aqua_planet setting is in
 # the seq_infodata_inparm group
@@ -552,18 +461,8 @@ my $phys = $cfg->get('phys');
 # Aqua planet
 
 my $aqua_mode = $cfg->get('aquaplanet');
-my $nl_aqua_flag = $nl->get_value('aqua_planet');
-
-# Consistency check between configuration and namelist variables used for aquaplanet.
-if ($aqua_mode and defined $nl_aqua_flag  and ($nl_aqua_flag  =~ m/$FALSE/io)) {
-   die "$ProgName - ERROR: Configured CAM for aquaplanet but aqua_planet set to FALSE in the namelist. \n";
-}
-if (!($aqua_mode) and defined $nl_aqua_flag  and ($nl_aqua_flag  =~ m/$TRUE/io)) {
-   die "$ProgName - ERROR: CAM not configured for aquaplanet but aqua_planet set to TRUE in the namelist. \n";
-}
 
 if ($aqua_mode) {
-    add_default($nl, 'aqua_planet', 'val'=>'.true.');
     ++$phys_mode_flags;
 }
 
@@ -586,65 +485,14 @@ if ($phys_mode_flags > 1) {
 my $simple_phys = 0;
 if ($adia_mode or $ideal_mode) { $simple_phys = 1; }
 
-# Note that the prescribed SSTs
-# used by aqua-planet mode are implemented in the cam_aqua component.)
-
 # Single column mode
 my $scam = $cfg->get('scam');
-if ($scam) {
-    add_default($nl, 'single_column', 'val'=>'.true.');
-    add_default($nl, 'scmlat');
-    add_default($nl, 'scmlon');
-}
-
-######################################
-# namelist group: seq_timemgr_inparm #
-######################################
-
-# Length of simulation
-add_default($nl, 'stop_option');
-unless (defined $nl->get_value('stop_ymd')) { add_default($nl, 'stop_n'); }
-
-# Restart interval
-add_default($nl, 'restart_option');
-
-# Start date
-# The following check should be done for CAM standalone builds only.
-if ($cam_build) {
-    # When the user specifies ncdata there is no default for start_ymd since there is
-    # no way to determine the corresponding date of the ncdata file.  So only add
-    # a default for start_ymd if the user has not specified ncdata.
-    if (defined $nl->get_value('ncdata')) {
-        unless (defined $nl->get_value('start_ymd')) {
-            die "$ProgName - ERROR: It is not allowed to set ncdata without also setting start_ymd. \n";
-        }
-    }
-    else {
-        add_default($nl, 'start_ymd');
-    }
-}
-
-# Orbit (if not coupled)
-# If orbital parameters have not been specified then check for orbit year.
-# If orbit year has not been specified, then set a default value.
-if ($cam_build) {
-    if (not defined $nl->get_value('orb_obliq') or
-        not defined $nl->get_value('orb_eccen') or
-        not defined $nl->get_value('orb_mvelp')     ) {
-        if (not defined $nl->get_value('orb_iyear')) {
-            add_default($nl, 'orb_iyear');
-        }
-    }
-}
-
-add_default($nl, 'cpl_seq_option');
 
 # Coupling interval
 # The default is for CAM to couple to the surface components every CAM timestep.
 # So start by making sure CAM's dtime is set.
 add_default($nl, 'dtime');
 my $dtime = $nl->get_value('dtime');
-add_default($nl, 'atm_cpl_dt', 'val'=>$dtime);
 
 #-----------------------------------------------------------------------------------------------
 # Add defaults for the CAM component
@@ -768,7 +616,12 @@ my %atts = ();
 # The initial date is an attribute in the defaults file which should be matched unless
 # the user explicitly requests to ignore the initial date via the -ignore_ic_date option,
 # or just ignore the year of the initial date via the -ignore_ic_year option.
-my $ic_date = $nl->get_value('start_ymd');
+my $ic_date;
+if (defined $opts{'start_ymd'}) {
+    $ic_date = $opts{'start_ymd'};
+} else {
+    die "$ProgName - ERROR: -start_ymd is required"
+}
 if ($opts{'ignore_ic_date'}) {
     # Don't set any attribute for date matching.  By putting this option first it
     # will take precedence in the case that the user has set both -ignore_ic_date
@@ -2495,7 +2348,7 @@ if ($chem =~ /_mam4/ and $phys =~ /cam6/) {
         add_default($nl, 'megan_specifier', 'val'=>$val);
         add_default($nl, 'megan_factors_file');
         add_default($nl, 'megan_mapped_emisfctrs', 'val'=>'.false.');
-    } 
+    }
     if ($chem =~ /trop_strat_mam4_vbs/ ) {
         my $val = "'ISOP = isoprene',"
                 . "'MTERP = carene_3 + pinene_a + thujene_a + bornene + terpineol_4 + terpineol_a + terpinyl_ACT_a "
@@ -3647,15 +3500,15 @@ if ( $dyn eq 'fv3') {
     if (! defined $opts{'fv3_ncnst'}) {
         add_default($nl, 'fv3_ncnst', 'val'=>$cfg->get('nadv'));
     }
-    
-    # If the user hasn't specified a decomposition via the fv3 namelist 
+
+    # If the user hasn't specified a decomposition via the fv3 namelist
     # parameter layout then use -ntasks to determine the decomposition.
     my $layout = $nl->get_value('fv3_layout');
     if (defined $opts{'ntasks'} and ! defined $layout ) {
 	$layout = fv3_decomp_set();
 	add_default($nl, 'fv3_layout', 'val'=>$layout);
     }
-    
+
 }
 
 # EUL dycore
@@ -3944,215 +3797,6 @@ if ($phys eq 'spcam_sam1mom' or $phys eq 'spcam_m2005') {
 }
 
 #-----------------------------------------------------------------------------------------------
-# Add defaults for the ocean component.
-
-# Which ocean model?
-my $ocn_comp = $cfg->get('ocn');
-
-# The aquaplanet namelist is written only for standalone runs.  The 'aquaplanet' component
-# is implemented by CAM.  The cesm scripts use the 'docn' component to implement aquaplanet
-# functionality.
-my $aqua_planet_sst;
-if ($aqua_mode) {
-    add_default($nl, 'aqua_planet_sst', 'val'=>'1');
-    $aqua_planet_sst = $nl->get_value('aqua_planet_sst');
-}
-
-# The following variables are set by namelist variables in the special camexp namelist
-# group.  They are used to ensure consistency between the setting of namelist variables
-# in the ocean and sea ice components.
-my $bndtvs = '';
-my $bndtvs_domain = '';
-my $focndomain = '';
-
-# Namelist settings for CAMDOM or DOCN
-if ($cam_build and  ($ocn_comp =~ /docn|dom|som/)) {
-
-    # bndtvs
-    add_default($nl, 'bndtvs', 'sim_year'=>$sim_year);
-    $bndtvs = $nl->get_value('bndtvs');
-
-    # bndtvs_domain
-    if ($dyn =~ /se/){
-       add_default($nl, 'bndtvs_domain', 'sim_year'=>$sim_year);
-       $bndtvs_domain = $nl->get_value('bndtvs_domain');
-    }
-
-    # focndomain
-    # For CAM in standalone mode, CAM determines the focndomain file to use, and then specifies
-    # that file to DOM or DOCN.
-    add_default($nl, 'focndomain');
-    $focndomain = $nl->get_value('focndomain');
-
-    ##############################
-    # namelist group: dom_inparm #
-    ##############################
-    if ($ocn_comp eq 'dom') {
-        $nl->set_variable_value('dom_inparm', 'bndtvs',     $bndtvs);
-        $nl->set_variable_value('dom_inparm', 'focndomain', $focndomain);
-    }
-
-}
-
-# Create docn namelists and stream txt file
-
-if ($cam_build and  ($ocn_comp =~ /docn|som/)) {
-
-    my  $fh = new IO::File;
-
-    my $stream_year_first = $nl->get_value('stream_year_first');
-    unless (defined $stream_year_first) { $stream_year_first = 0; }
-    my $stream_year_last = $nl->get_value('stream_year_last');
-    unless (defined $stream_year_last) { $stream_year_last = 0; }
-
-    my $temp = $focndomain;
-    $temp  =~ s/['"]//g;   #"'
-    my $focndomain_file = basename($temp);
-    my $focndomain_path = dirname($temp);
-
-    $temp = $bndtvs;
-    $temp  =~ s/['"]//g;   #"'
-    my $sstdata_file = basename($temp);
-    my $sstdata_path = dirname($temp);
-
-    my $fsstdomain_file=$focndomain_file;
-    my $fsstdomain_path=$focndomain_path;
-    if ($ocn_comp eq 'som') {
-        $fsstdomain_file=$sstdata_file;
-        $fsstdomain_path=$sstdata_path;
-    }
-
-    if ($dyn =~ /se/){
-      $temp = $bndtvs_domain;
-      $temp  =~ s/['"]//g;   #"'
-      $fsstdomain_file = basename($temp);
-      $fsstdomain_path = dirname($temp);
-    }
-
-    # add docn variables
-    # ------------------
-
-    add_default($nl, 'decomp', 'val'=>'1d');
-    if ($ocn_comp eq 'som') {
-        add_default($nl, 'force_prognostic_true', 'val'=>'.false.');
-    }
-
-    my $datamode = 'SSTDATA';
-    if ($aqua_mode) { $datamode = "SST_AQUAP$aqua_planet_sst";}
-    if ($ocn_comp eq 'som') { $datamode = 'SOM';}
-    add_default($nl, 'dataMode', 'val'=>$datamode);
-
-    add_default($nl, 'domainFile', 'val'=>$focndomain);
-
-    my $ocn_str = 'null';
-    if (!$aqua_mode) {
-        $ocn_str = "docn.stream.txt $stream_year_first $stream_year_first $stream_year_last" ;
-    }
-    add_default($nl, 'streams',    'val'=> $ocn_str);
-
-    if ($ocn_comp eq 'docn') {
-        add_default($nl, 'vectors',    'val'=>'null');
-    }
-    elsif ($ocn_comp eq 'som') {
-        add_default($nl, 'fillalgo',    'val'=>'nn');
-        add_default($nl, 'fillmask',    'val'=>'nomask');
-        add_default($nl, 'mapalgo',     'val'=>'bilinear');
-        add_default($nl, 'mapmask',     'val'=>'dstmask');
-        add_default($nl, 'taxmode',     'val'=>'cycle');
-        add_default($nl, 'tintalgo',    'val'=>'linear');
-    }
-
-    # Create docn.stream.txt
-    # ----------------------
-    if (!$aqua_mode) {
-        my $outfile = "$opts{'dir'}/docn.stream.txt";
-        $fh->open(">$outfile") or die "** can't open file: $outfile\n";
-
-        my $datasource = 'DATASET';
-        if ($ocn_comp eq 'som') { $datasource = 'GENERIC';}
-
-
-        print $fh  <<"EOF";
-<streamstemplate>
-<stream>
-      <dataSource>
-         $datasource
-      </dataSource>
-      <domainInfo>
-         <variableNames>
-            time    time
-            xc      lon
-            yc      lat
-            area    area
-            mask    mask
-         </variableNames>
-         <filePath>
-            $fsstdomain_path
-         </filePath>
-         <fileNames>
-            $fsstdomain_file
-         </fileNames>
-      </domainInfo>
-EOF
-        if ($ocn_comp eq 'docn') {
-            print $fh  <<"EOF";
-      <fieldInfo>
-         <variableNames>
-            SST_cpl    t
-         </variableNames>
-         <filePath>
-            $sstdata_path
-         </filePath>
-         <fileNames>
-            $sstdata_file
-         </fileNames>
-      </fieldInfo>
-</stream>
-</streamstemplate>
-EOF
-        }
-        elsif ($ocn_comp eq 'som') {
-            print $fh  <<"EOF";
-      <fieldInfo>
-         <variableNames>
-            T     t
-            S     s
-            U     u
-            V     v
-            dhdx  dhdx
-            dhdy  dhdy
-            hblt  h
-            qdp   qbot
-         </variableNames>
-         <filePath>
-            $sstdata_path
-         </filePath>
-         <fileNames>
-            $sstdata_file
-         </fileNames>
-         <offset>
-            0
-         </offset>
-      </fieldInfo>
-</stream>
-</streamstemplate>
-EOF
-        }
-
-        $fh->close;
-        if ($print>=1) { print "Writing DOCN stream file to $outfile $eol"; }
-
-    } # if (!$aqua_mode)
-
-}
-
- if ($cam_build) {
-     add_default($nl, 'seq_flux_mct_albdif');
-     add_default($nl, 'seq_flux_mct_albdir');
-     add_default($nl, 'seq_flux_atmocn_minwind');
- }
-
-#-----------------------------------------------------------------------------------------------
 # Rename component logfiles.
 #
 # This requires special handling because the logfiles are coordinated using
@@ -4205,45 +3849,14 @@ my $outfile;
 my %nl_group = ();
 foreach my $name (@nl_groups) { $nl_group{$name} = ''; }
 
-# Write fixed sets of namelist groups for the components other than CAM.
-# Remove the group names from %nl_group as they are written.
-
-# Driver
-@comp_groups = qw(cime_driver_inst seq_cplflds_inparm seq_cplflds_userspec cime_pes
-    seq_infodata_inparm seq_timemgr_inparm prof_inparm papi_inparm pio_default_inparm esmf_inparm seq_flux_mct_inparm);
-
-$outfile = "$opts{'dir'}/drv_in";
-if ($cam_build) {
-    $nl->write($outfile, 'groups'=>\@comp_groups);
-    if ($print>=1) { print "Writing driver namelist to $outfile $eol"; }
-}
-delete @nl_group{@comp_groups};
-
 # Dry deposition and MEGAN VOC emis namelists
 @comp_groups = qw(drydep_inparm megan_emis_nl fire_emis_nl carma_inparm ndep_inparm);
 $outfile = "$opts{'dir'}/drv_flds_in";
 $nl->write($outfile, 'groups'=>\@comp_groups);
-if ($print>=1) { print "CAM writing dry deposition namelist to drv_flds_in $eol"; }
+if ($print>=1) {
+    print "CAM writing dry deposition namelist to drv_flds_in $eol";
+}
 delete @nl_group{@comp_groups};
-
-# Ocean component (dom, docn, or aquaplanet)
-if ($ocn_comp eq 'dom') {
-    @comp_groups = qw(dom_inparm);
-    $outfile = "$opts{'dir'}/ocn_in";
-}
-elsif ($ocn_comp eq 'docn' or $ocn_comp eq 'som') {
-    @comp_groups = qw(docn_nml shr_strdata_nml);
-    $outfile = "$opts{'dir'}/docn_in";
-}
-elsif ($ocn_comp eq 'aquaplanet') {
-    @comp_groups = qw(aquap_nl);
-    $outfile = "$opts{'dir'}/aquap_in";
-}
-if (@comp_groups) {
-    $nl->write($outfile, 'groups'=>\@comp_groups);
-    delete @nl_group{@comp_groups};
-    if ($print>=1) { print "Writing ocean component namelist to $outfile $eol"; }
-}
 
 # CAM
 #
@@ -4581,7 +4194,7 @@ sub fv3_decomp_set{
     }
 
   NZ: for ($nx = 1; $nx <= int $xpts/4; ++$nx) {
-      
+
       # test that $nx divides $xpts evenly
       if ($xpts%$nx == 0) {
 	  $ny = int $tasks/$nx/6;
@@ -4609,9 +4222,9 @@ sub fv3_decomp_set{
         die "$ProgName - ERROR: fv3_decomp_set failed to find a decomposition.\n" .
             "  layout needs to be set by the user.";
     }
-    
+
     return "$layoutx,$layouty";
-    
+
 }
 
 #-----------------------------------------------------------------------------------------------
@@ -5173,7 +4786,6 @@ sub validate_use_case {
             or die "$ProgName - ERROR: invalid value of $opt ($old) specified in $source\n".
                    "expected one of: @expect\n";
     }
-
 }
 
 #-------------------------------------------------------------------------------

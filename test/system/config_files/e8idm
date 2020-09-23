@@ -1,6 +1,0 @@
--spmd -nosmp
--dyn eul
--hgrid 8x16
--phys held_suarez
--debug
--s
