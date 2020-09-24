@@ -66,6 +66,8 @@ module check_energy
 
   integer  :: teout_idx  = 0       ! teout index in physics buffer
   integer  :: dtcore_idx = 0       ! dtcore index in physics buffer
+  integer  :: ducore_idx = 0       ! dtcore index in physics buffer
+  integer  :: dvcore_idx = 0       ! dtcore index in physics buffer
 
   type check_tracers_data
      real(r8) :: tracer(pcols,pcnst)       ! initial vertically integrated total (kinetic + static) energy
@@ -137,9 +139,13 @@ end subroutine check_energy_readnl
 
     call pbuf_add_field('TEOUT', 'global',dtype_r8 , (/pcols,dyn_time_lvls/),      teout_idx)
     call pbuf_add_field('DTCORE','global',dtype_r8,  (/pcols,pver,dyn_time_lvls/),dtcore_idx)
+    call pbuf_add_field('UTEND_CORE','global',dtype_r8,  (/pcols,pver,dyn_time_lvls/),ducore_idx)
+    call pbuf_add_field('VTEND_CORE','global',dtype_r8,  (/pcols,pver,dyn_time_lvls/),dvcore_idx)
     if(is_subcol_on()) then
       call pbuf_register_subcol('TEOUT', 'phys_register', teout_idx)
       call pbuf_register_subcol('DTCORE', 'phys_register', dtcore_idx)
+      call pbuf_register_subcol('UTEND_CORE', 'phys_register', ducore_idx)
+      call pbuf_register_subcol('VTEND_CORE', 'phys_register', dvcore_idx)
     end if
 
   end subroutine check_energy_register
@@ -173,7 +179,7 @@ end subroutine check_energy_get_integrals
 ! Initialize the energy conservation module
 !
 !-----------------------------------------------------------------------
-    use cam_history,       only: addfld, add_default, horiz_only
+    use cam_history,       only: addfld, add_default, horiz_only, register_vector_field
     use phys_control,      only: phys_getopts
 
     implicit none
@@ -193,12 +199,19 @@ end subroutine check_energy_get_integrals
     call addfld('TEFIX',  horiz_only,  'A', 'J/m2', 'Total energy after fixer')
     call addfld('EFIX',   horiz_only,  'A', 'W/m2', 'Effective sensible heat flux due to energy fixer')
     call addfld('DTCORE', (/ 'lev' /), 'A', 'K/s' , 'T tendency due to dynamical core')
+    call addfld('UTEND_CORE', (/ 'lev' /), 'A', 'm/s2' , 'U tendency due to dynamical core')
+    call addfld('VTEND_CORE', (/ 'lev' /), 'A', 'm/s2' , 'V tendency due to dynamical core')
+    call register_vector_field('UTEND_CORE','VTEND_CORE')
 
     if ( history_budget ) then
        call add_default ('DTCORE', history_budget_histfile_num, ' ')
+       call add_default ('UTEND_CORE', history_budget_histfile_num, ' ')
+       call add_default ('VTEND_CORE', history_budget_histfile_num, ' ')
     end if
     if ( history_waccm ) then
        call add_default ('DTCORE', 1, ' ')
+       call add_default ('UTEND_CORE', 1, ' ')
+       call add_default ('VTEND_CORE', 1, ' ')
     end if
 
   end subroutine check_energy_init

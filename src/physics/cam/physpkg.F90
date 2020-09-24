@@ -1286,7 +1286,7 @@ contains
     use perf_mod
     use flux_avg,           only: flux_avg_run
     use unicon_cam,         only: unicon_cam_org_diags
-    use cam_history,        only: hist_fld_active
+    use cam_history,        only: hist_fld_active, outfld
     use qneg_module,        only: qneg4
     use co2_cycle,          only: co2_cycle_set_ptend
     use nudging,            only: Nudge_Model,Nudge_ON,nudging_timestep_tend
@@ -1345,6 +1345,8 @@ contains
     real(r8), pointer, dimension(:,:) :: cldliqini
     real(r8), pointer, dimension(:,:) :: cldiceini
     real(r8), pointer, dimension(:,:) :: dtcore
+    real(r8), pointer, dimension(:,:) :: ducore
+    real(r8), pointer, dimension(:,:) :: dvcore
     real(r8), pointer, dimension(:,:) :: ast     ! relative humidity cloud fraction
 
     !-----------------------------------------------------------------------
@@ -1369,6 +1371,10 @@ contains
 
     ifld = pbuf_get_index('DTCORE')
     call pbuf_get_field(pbuf, ifld, dtcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+    ifld = pbuf_get_index('UTEND_CORE')
+    call pbuf_get_field(pbuf, ifld, ducore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+    ifld = pbuf_get_index('VTEND_CORE')
+    call pbuf_get_field(pbuf, ifld, dvcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
 
     call pbuf_get_field(pbuf, qini_idx, qini)
     call pbuf_get_field(pbuf, cldliqini_idx, cldliqini)
@@ -1521,6 +1527,10 @@ contains
          (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
        call cam_snapshot_ptend_outfld(ptend, lchnk)
     end if
+    if ( ptend%lu .and. ptend%lv ) then
+      call outfld( 'UTEND_VDIFF', ptend%u, pcols, lchnk)
+      call outfld( 'VTEND_VDIFF', ptend%v, pcols, lchnk)
+    end if
     call physics_update(state, ptend, ztodt, tend)
 
     if (trim(cam_take_snapshot_after) == "vertical_diffusion_section") then
@@ -1535,6 +1545,10 @@ contains
     !===================================================
     call t_startf('rayleigh_friction')
     call rayleigh_friction_tend( ztodt, state, ptend)
+    if ( ptend%lu .and. ptend%lv ) then
+      call outfld( 'UTEND_RAYLEIGH', ptend%u, pcols, lchnk)
+      call outfld( 'VTEND_RAYLEIGH', ptend%v, pcols, lchnk)
+    end if
     call physics_update(state, ptend, ztodt, tend)
     call t_stopf('rayleigh_friction')
 
@@ -1607,6 +1621,10 @@ contains
          (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
        call cam_snapshot_ptend_outfld(ptend, lchnk)
     end if
+    if ( ptend%lu .and. ptend%lv ) then
+      call outfld( 'UTEND_GWDTOT', ptend%u, pcols, lchnk)
+      call outfld( 'VTEND_GWDTOT', ptend%v, pcols, lchnk)
+    end if
     call physics_update(state, ptend, ztodt, tend)
 
     if (trim(cam_take_snapshot_after) == "gw_tend") then
@@ -1631,6 +1649,10 @@ contains
          (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
        call cam_snapshot_ptend_outfld(ptend, lchnk)
     end if
+    if ( ptend%lu .and. ptend%lv ) then
+      call outfld( 'UTEND_QBORLX', ptend%u, pcols, lchnk)
+      call outfld( 'VTEND_QBORLX', ptend%v, pcols, lchnk)
+    end if
     call physics_update(state, ptend, ztodt, tend)
 
     if (trim(cam_take_snapshot_after) == "qbo_relax") then
@@ -1643,6 +1665,10 @@ contains
 
     ! Lunar tides
     call lunar_tides_tend( state, ptend )
+    if ( ptend%lu .and. ptend%lv ) then
+      call outfld( 'UTEND_LUNART', ptend%u, pcols, lchnk)
+      call outfld( 'VTEND_LUNART', ptend%v, pcols, lchnk)
+    end if
     call physics_update(state, ptend, ztodt, tend)
     ! Check energy integrals
     call check_energy_chng(state, tend, "lunar_tides", nstep, ztodt, zero, zero, zero, zero)
@@ -1671,6 +1697,10 @@ contains
          (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
        call cam_snapshot_ptend_outfld(ptend, lchnk)
     end if
+    if ( ptend%lu .and. ptend%lv ) then
+      call outfld( 'UTEND_IONDRG', ptend%u, pcols, lchnk)
+      call outfld( 'VTEND_IONDRG', ptend%v, pcols, lchnk)
+    end if
     call physics_update(state, ptend, ztodt, tend)
 
     if (trim(cam_take_snapshot_after) == "iondrag_calc_section") then
@@ -1696,6 +1726,10 @@ contains
     !----------------------------------
     if((Nudge_Model).and.(Nudge_ON)) then
       call nudging_timestep_tend(state,ptend)
+      if ( ptend%lu .and. ptend%lv ) then
+        call outfld( 'UTEND_NDG', ptend%u, pcols, lchnk)
+        call outfld( 'VTEND_NDG', ptend%v, pcols, lchnk)
+      end if
       call physics_update(state,ptend,ztodt,tend)
       call check_energy_chng(state, tend, "nudging", nstep, ztodt, zero, zero, zero, zero)
     endif
@@ -1789,6 +1823,8 @@ contains
     ! store T in buffer for use in computing dynamics T-tendency in next timestep
     do k = 1,pver
        dtcore(:ncol,k) = state%t(:ncol,k)
+       ducore(:ncol,k) = state%u(:ncol,k)
+       dvcore(:ncol,k) = state%v(:ncol,k)
     end do
 
     !-------------- Energy budget checks ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1907,6 +1943,7 @@ contains
     !
 
     type(physics_ptend)   :: ptend            ! indivdual parameterization tendencies
+    type(physics_ptend)   :: ptend_macp_all   ! sum of macrophysics tendencies (e.g. CLUBB) over substeps
     type(physics_state)   :: state_sc         ! state for sub-columns
     type(physics_ptend)   :: ptend_sc         ! ptend for sub-columns
     type(physics_ptend)   :: ptend_aero       ! ptend for microp_aero
@@ -1946,6 +1983,8 @@ contains
     real(r8), pointer, dimension(:,:) :: cldliqini
     real(r8), pointer, dimension(:,:) :: cldiceini
     real(r8), pointer, dimension(:,:) :: dtcore
+    real(r8), pointer, dimension(:,:) :: ducore
+    real(r8), pointer, dimension(:,:) :: dvcore
 
     real(r8), pointer, dimension(:,:,:) :: fracis  ! fraction of transported species that are insoluble
 
@@ -2020,6 +2059,10 @@ contains
 
     ifld   =  pbuf_get_index('DTCORE')
     call pbuf_get_field(pbuf, ifld, dtcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+    ifld   =  pbuf_get_index('UTEND_CORE')
+    call pbuf_get_field(pbuf, ifld, ducore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+    ifld   =  pbuf_get_index('VTEND_CORE')
+    call pbuf_get_field(pbuf, ifld, dvcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
 
     ifld    = pbuf_get_index('FRACIS')
     call pbuf_get_field(pbuf, ifld, fracis, start=(/1,1,1/), kount=(/pcols, pver, pcnst/)  )
@@ -2085,7 +2128,11 @@ contains
     ! T tendency due to dynamics
     if( nstep > dyn_time_lvls-1 ) then
        dtcore(:ncol,:pver) = (state%t(:ncol,:pver) - dtcore(:ncol,:pver))/ztodt
+       ducore(:ncol,:pver) = (state%u(:ncol,:pver) - ducore(:ncol,:pver))/ztodt
+       dvcore(:ncol,:pver) = (state%v(:ncol,:pver) - dvcore(:ncol,:pver))/ztodt
        call outfld( 'DTCORE', dtcore, pcols, lchnk )
+       call outfld( 'UTEND_CORE', ducore, pcols, lchnk )
+       call outfld( 'VTEND_CORE', dvcore, pcols, lchnk )
     end if
 
     call t_stopf('energy_fixer')
@@ -2137,6 +2184,11 @@ contains
     if ( (trim(cam_take_snapshot_after) == "convect_deep_tend") .and. &
          (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
             call cam_snapshot_ptend_outfld(ptend, lchnk)
+    end if
+    
+    if ( ptend%lu .and. ptend%lv ) then
+      call outfld( 'UTEND_DCONV', ptend%u, pcols, lchnk)
+      call outfld( 'VTEND_DCONV', ptend%v, pcols, lchnk)
     end if
     call physics_update(state, ptend, ztodt, tend)
 
@@ -2194,6 +2246,10 @@ contains
     if ( (trim(cam_take_snapshot_after) == "convect_shallow_tend") .and. &
          (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
             call cam_snapshot_ptend_outfld(ptend, lchnk)
+    end if
+    if ( ptend%lu .and. ptend%lv ) then
+      call outfld( 'UTEND_SHCONV', ptend%u, pcols, lchnk)
+      call outfld( 'VTEND_SHCONV', ptend%v, pcols, lchnk)
     end if
     call physics_update(state, ptend, ztodt, tend)
 
@@ -2273,6 +2329,10 @@ contains
        prec_pcw_macmic = 0._r8
        snow_pcw_macmic = 0._r8
 
+       ! initialize ptend structures where macro and microphysics tendencies are
+       ! accumulated over macmic substeps
+       call physics_ptend_init(ptend_macp_all,state%psetcols,'macrophysics',ls=.false.,lu=.true.,lv=.true.)
+
        do macmic_it = 1, cld_macmic_num_steps
 
           !===================================================
@@ -2312,6 +2372,7 @@ contains
                   (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
                 call cam_snapshot_ptend_outfld(ptend, lchnk)
              end if
+             call physics_ptend_sum(ptend,ptend_macp_all,ncol)
              call physics_update(state, ptend, ztodt, tend)
 
              if (trim(cam_take_snapshot_after) == "macrop_driver_tend") then
@@ -2357,6 +2418,7 @@ contains
                   (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
                 call cam_snapshot_ptend_outfld(ptend, lchnk)
              end if
+             call physics_ptend_sum(ptend,ptend_macp_all,ncol)
              call physics_update(state, ptend, ztodt, tend)
 
              if (trim(cam_take_snapshot_after) == "clubb_tend_cam") then
@@ -2504,6 +2566,10 @@ contains
           snow_pcw_macmic(:ncol) = snow_pcw_macmic(:ncol) + snow_pcw(:ncol)
 
        end do ! end substepping over macrophysics/microphysics
+
+       call outfld( 'UTEND_MACROP', ptend_macp_all%u, pcols, lchnk)
+       call outfld( 'VTEND_MACROP', ptend_macp_all%v, pcols, lchnk)
+       call physics_ptend_dealloc(ptend_macp_all)
 
        prec_sed(:ncol) = prec_sed_macmic(:ncol)/cld_macmic_num_steps
        snow_sed(:ncol) = snow_sed_macmic(:ncol)/cld_macmic_num_steps
