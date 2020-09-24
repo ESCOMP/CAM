@@ -1787,7 +1787,7 @@ end subroutine clubb_init_cnst
                                            s_awu_output,      s_awv_output,        &
                                            mf_thlflx_output,  mf_qtflx_output
    ! MF Plume
-   real(r8), dimension(pverp+1-top_lev) :: mf_dry_a,   mf_moist_a,   &
+   real(r8), dimension(pverp)           :: mf_dry_a,   mf_moist_a,   &
                                            mf_dry_w,   mf_moist_w,   &
                                            mf_dry_qt,  mf_moist_qt,  &
                                            mf_dry_thl, mf_moist_thl, &
@@ -1800,9 +1800,12 @@ end subroutine clubb_init_cnst
                                            s_awu,      s_awv,        &
                                            mf_thlflx,  mf_qtflx
    ! MF local vars
-   real(r8), dimension(pverp+1-top_lev) :: rtm_zm_in,  thlm_zm_in,   &
-                                           thvm_in,                  &
-                                           dzt,        invrs_dzt
+   real(r8), dimension(pverp)           :: rtm_zm_in,  thlm_zm_in,   & ! momentum grid
+                                           thvm_in,                  & ! thermodyanmic grid
+                                           dzt,        invrs_dzt,    & ! thermodynamic grid
+                                           kappa_zt,                 & ! thermodynamic grid
+                                           kappa_zm,   p_in_Pa_zm,   & ! momentum grid
+                                                       invrs_exner_zm  ! momentum grid
    integer                              :: nup,        nz
    real(r8)                             :: ep,                       &
                                            ep1,        ep2
@@ -2389,7 +2392,7 @@ end subroutine clubb_init_cnst
          rcm_inout(k)  = rcm(i,pverp-k+1)
          cloud_frac_inout(k) = cloud_frac(i,pverp-k+1)
          sclrpthvp_inout(k,:) = 0._r8
- 
+
          if (k .ne. 1) then
             pre_in(k)    = prer_evap(i,pverp-k+1)
          endif
@@ -2417,8 +2420,20 @@ end subroutine clubb_init_cnst
          thlphmp_zt(k,:)     = 0._r8
  
       enddo
-     
       pre_in(1) = pre_in(2)
+
+!+++ARH
+      do k=1,pver
+        kappa_zt(k+1) = (rairv(i,pver-k+1,lchnk)/cpairv(i,pver-k+1,lchnk))
+      enddo
+      kappa_zt(1) = kappa_zt(2)
+
+      kappa_zm = zt2zm_api(kappa_zt) 
+      do k=1,pverp
+        p_in_Pa_zm(k) = state1%pint(i,pverp-k+1)
+        invrs_exner_zm(k) = 1._r8/((p_in_Pa_zm(k)/p0_clubb)**(kappa_zm(k)))
+      enddo
+!---ARH     
      
       if (clubb_do_adv) then
         if (macmic_it  ==  1) then
@@ -2495,21 +2510,21 @@ end subroutine clubb_init_cnst
            thvm_in = thlm_in + ep1 * thv_ds_zt * rtm_in &
                        + ( latvap/(cpair*exner) - ep2 * thv_ds_zt ) * rcm_inout
 
-           call integrate_mf( nz,        dzt,         p_in_Pa,    exner,      nup,     & ! input
-                              um_in,     vm_in,       thlm_in,    thlm_zm_in, thvm_in, & ! input
-                              rtm_in,    rtm_zm_in,   wpthlp_sfc, wprtp_sfc,  pblh(i), & ! input
-                              mf_dry_a,  mf_moist_a,                                   & ! output - plume diagnostics
-                              mf_dry_w,  mf_moist_w,                                   & ! output - plume diagnostics
-                              mf_dry_qt, mf_moist_qt,                                  & ! output - plume diagnostics
-                              mf_dry_thl,mf_moist_thl,                                 & ! output - plume diagnostics
-                              mf_dry_u,  mf_moist_u,                                   & ! output - plume diagnostics
-                              mf_dry_v,  mf_moist_v,                                   & ! output - plume diagnostics
-                                         mf_moist_qc,                                  & ! output - plume diagnostics
-                              s_ae,      s_aw,                                         & ! output - plume diagnostics
-                              s_awthl,   s_awqt,                                       & ! output - plume diagnostics
-                              s_awql,    s_awqi,                                       & ! output - plume diagnostics
-                              s_awu,     s_awv,                                        & ! output - plume diagnostics
-                              mf_thlflx, mf_qtflx )                                      ! output - variables needed for solver
+           call integrate_mf( nz,        nup,         dzt,        p_in_Pa_zm, invrs_exner_zm, & ! input
+                              um_in,     vm_in,       thlm_in,    thlm_zm_in, thvm_in,        & ! input
+                              rtm_in,    rtm_zm_in,   wpthlp_sfc, wprtp_sfc,  pblh(i),        & ! input
+                              mf_dry_a,  mf_moist_a,                                          & ! output - plume diagnostics
+                              mf_dry_w,  mf_moist_w,                                          & ! output - plume diagnostics
+                              mf_dry_qt, mf_moist_qt,                                         & ! output - plume diagnostics
+                              mf_dry_thl,mf_moist_thl,                                        & ! output - plume diagnostics
+                              mf_dry_u,  mf_moist_u,                                          & ! output - plume diagnostics
+                              mf_dry_v,  mf_moist_v,                                          & ! output - plume diagnostics
+                                         mf_moist_qc,                                         & ! output - plume diagnostics
+                              s_ae,      s_aw,                                                & ! output - plume diagnostics
+                              s_awthl,   s_awqt,                                              & ! output - plume diagnostics
+                              s_awql,    s_awqi,                                              & ! output - plume diagnostics
+                              s_awu,     s_awv,                                               & ! output - plume diagnostics
+                              mf_thlflx, mf_qtflx )                                             ! output - variables needed for solver
 
            ! pass MF turbulent advection term as CLUBB explicit forcing term
            do k=2,nz
