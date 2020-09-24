@@ -85,12 +85,6 @@
   </compset>
 
   <compset>
-    <alias>FCSCAM</alias>
-    <lname>2000_CAM60%SCAM%CCTS_CLM50%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
-    <science_support grid="T42_T42"/>
-  </compset>
-
-  <compset>
     <alias>FHS94</alias>
     <lname>2000_CAM%HS94_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>
     <science_support grid="T42z30_T42_mg17"/>
