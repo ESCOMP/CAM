@@ -354,7 +354,6 @@ subroutine scam_readnl(nlfile,single_column_in,scmlat_in,scmlon_in)
               exit
            end if
         end do
-        print *
      end if
 
   end if
