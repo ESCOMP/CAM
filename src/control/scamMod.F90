@@ -1,4 +1,23 @@
 module scamMod
+  !----------------------------------------------------------------------
+  !
+  ! This module provides control variables and namelist functionality
+  ! for SCAM.
+  !
+  ! As with global CAM, SCAM is initialized with state information
+  ! from the initial and boundary files. For each succeeding timestep
+  ! SCAM calculates the physics tendencies and combines these with
+  ! the advective tendencies provided by the IOP file to produce
+  ! a forcast. Generally, the control variables in this module
+  ! determine what data and parameterizations will be used to make
+  ! the forecast. For instance, many of the control variables in
+  ! this module provide flexibility to affect the forecast by overriding
+  ! parameterization prognosed tendencies with observed tendencies
+  ! of a particular field program recorded on the IOP file.
+  !
+  ! Public functions/subroutines:
+  !   scam_readnl
+  !-----------------------------------------------------------------------
 
 use shr_kind_mod,   only: r8 => shr_kind_r8
 use pmgrid,         only: plon, plat, plev, plevp
@@ -27,8 +46,6 @@ integer, parameter :: max_path_len = 128
 
 logical, public ::  single_column         ! Using IOP file or not
 logical, public ::  use_iop               ! Using IOP file or not
-logical, public ::  use_analysis
-logical, public ::  use_saveinit
 logical, public ::  use_pert_init         ! perturb initial values
 logical, public ::  use_pert_frc          ! perturb forcing 
 logical, public ::  switch(num_switches)  ! Logical flag settings from GUI
@@ -164,11 +181,11 @@ logical, public ::  have_asdir             = .false. ! dataset contains asdir
 logical, public ::  have_asdif             = .false. ! dataset contains asdif
 logical, public ::  use_camiop             = .false. ! use cam generated forcing 
 logical, public ::  use_3dfrc              = .false. ! use 3d forcing
-logical, public ::  use_userdata           = .false. 
 logical, public ::  isrestart              = .false. ! If this is a restart step or not
   
 ! SCAM namelist defaults
 
+logical, public ::  scm_backfill_iop_w_init = .false. ! Backfill missing IOP data from initial file
 logical, public ::  scm_relaxation         = .false. ! Use relaxation
 logical, public ::  scm_crm_mode           = .false. ! Use column radiation mode
 logical, public ::  scm_cambfb_mode        = .false. ! Use extra CAM IOP fields to assure bit for bit match with CAM run
@@ -220,14 +237,11 @@ subroutine scam_readnl(nlfile,single_column_in,scmlat_in,scmlon_in)
 
   ! Local variables
   character(len=*), parameter :: sub = 'scam_readnl'
-  integer :: unitn, ierr
+  integer :: unitn, ierr, i
   integer  :: ncid
-  integer  :: latdimid, londimid
-  integer  :: latsiz, lonsiz
-  integer  :: latid, lonid
   integer  :: iatt
-  integer  :: ret
   integer  :: latidx, lonidx
+  logical  :: adv
   real(r8) :: ioplat,ioplon
 
 ! this list should include any variable that you might want to include in the namelist
@@ -236,7 +250,7 @@ subroutine scam_readnl(nlfile,single_column_in,scmlat_in,scmlon_in)
        scm_cambfb_mode,scm_crm_mode,scm_zadv_uv,scm_zadv_T,scm_zadv_q,&
        scm_use_obs_T, scm_use_obs_uv, scm_use_obs_qv, &
        scm_relax_linear, scm_relax_tau_top_sec, &
-       scm_relax_tau_bot_sec, scm_force_latlon, scm_relax_fincl
+       scm_relax_tau_bot_sec, scm_force_latlon, scm_relax_fincl, scm_backfill_iop_w_init
 
   single_column=single_column_in
 
@@ -303,6 +317,45 @@ subroutine scam_readnl(nlfile,single_column_in,scmlat_in,scmlon_in)
         scmlon = ioplon
      end if
      
+     if (masterproc) then
+        write (iulog,*) 'Single Column Model Options: '
+        write (iulog,*) '============================='
+        write (iulog,*) '  iopfile                     = ',trim(iopfile)
+        write (iulog,*) '  scm_backfill_iop_w_init     = ',scm_backfill_iop_w_init
+        write (iulog,*) '  scm_cambfb_mode             = ',scm_cambfb_mode
+        write (iulog,*) '  scm_crm_mode                = ',scm_crm_mode
+        write (iulog,*) '  scm_force_latlon            = ',scm_force_latlon
+        write (iulog,*) '  scm_iop_Tg                  = ',scm_iop_Tg
+        write (iulog,*) '  scm_iop_lhflxshflxTg        = ',scm_iop_lhflxshflxTg
+        write (iulog,*) '  scm_relaxation              = ',scm_relaxation
+        write (iulog,*) '  scm_relax_bot_p             = ',scm_relax_bot_p
+        write (iulog,*) '  scm_relax_linear            = ',scm_relax_linear
+        write (iulog,*) '  scm_relax_tau_bot_sec       = ',scm_relax_tau_bot_sec
+        write (iulog,*) '  scm_relax_tau_sec           = ',scm_relax_tau_sec
+        write (iulog,*) '  scm_relax_tau_top_sec       = ',scm_relax_tau_top_sec
+        write (iulog,*) '  scm_relax_top_p             = ',scm_relax_top_p
+        write (iulog,*) '  scm_use_obs_T               = ',scm_use_obs_T
+        write (iulog,*) '  scm_use_obs_qv              = ',scm_use_obs_qv
+        write (iulog,*) '  scm_use_obs_uv              = ',scm_use_obs_uv
+        write (iulog,*) '  scm_zadv_T                  = ',trim(scm_zadv_T)
+        write (iulog,*) '  scm_zadv_q                  = ',trim(scm_zadv_q)
+        write (iulog,*) '  scm_zadv_uv                 = ',trim(scm_zadv_uv)
+        write (iulog,*) '  scm_relax_finc: '
+        ! output scm_relax_fincl character array
+        do i=1,pcnst
+           if (scm_relax_fincl(i) .ne. '') then
+              adv = mod(i,4)==0
+              if (adv) then
+                 write (iulog, "(A18)") "'"//trim(scm_relax_fincl(i))//"',"
+              else
+                 write (iulog, "(A18)", ADVANCE="NO") "'"//trim(scm_relax_fincl(i))//"',"
+              end if
+           else
+              exit
+           end if
+        end do
+     end if
+
   end if
      
 end subroutine scam_readnl

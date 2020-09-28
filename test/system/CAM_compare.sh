@@ -31,6 +31,8 @@ elif grep -c "the two files seem to be DIFFERENT" cprnc.out > /dev/null; then
 	{ print "$1 " }}' cprnc.out`
     echo $result
     exit 3
+elif grep -c "the two files DIFFER only in their field lists" cprnc.out > /dev/null; then
+    echo "CAM_compare.sh: files are b4b"
 else
     echo "CAM_compare.sh: unable to determine whether files are identical"
     exit 4
