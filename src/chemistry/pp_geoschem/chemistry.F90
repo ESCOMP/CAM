@@ -106,9 +106,9 @@ module chemistry
   type(physics_buffer_desc), pointer :: hco_pbuf2d(:,:)  ! ptr to 2d pbuf
 
   ! Indices of critical species
-  INTEGER                    :: iH2O, iO3, iCH4, iCO, iNO
+  INTEGER                    :: iH2O, iO3, iCH4, iCO, iNO, iOH
   INTEGER                    :: iO, iH, iO2, iPSO4
-  REAL(r8)                   :: MWPSO4
+  REAL(r8)                   :: MWOH, MWPSO4
 
   ! Indices in the physics buffer
   INTEGER                    :: NDX_PBLH      ! PBL height [m]
@@ -129,9 +129,15 @@ module chemistry
   ! Index of 1st constituent
   INTEGER :: iFirstCnst = -1
 
+  ! Number of diagnosed photolytic reactions
+  INTEGER :: nPhotol
+
   ! Strings
-  CHARACTER(LEN=255)              :: ThisLoc
-  CHARACTER(LEN=255)              :: ErrMsg
+  CHARACTER(LEN=255)         :: ThisLoc
+  CHARACTER(LEN=255)         :: ErrMsg
+
+  REAL(r8)                   :: OH_Total
+  REAL(r8)                   :: Air_Total
 
 #define ALLDDVEL_GEOSCHEM 1
 #define OCNDDVEL_GEOSCHEM 0
@@ -915,65 +921,66 @@ contains
     !          (and declare history variables)
     !
     !-----------------------------------------------------------------------
-    use physics_buffer,  only : physics_buffer_desc, pbuf_get_index
-    use cam_history,     only : addfld, add_default, horiz_only
-    use chem_mods,       only : map2GC_dryDep, drySpc_ndx
+    use physics_buffer,   only : physics_buffer_desc, pbuf_get_index
+    use cam_history,      only : addfld, add_default, horiz_only
+    use chem_mods,        only : map2GC_dryDep, drySpc_ndx
 
+#ifdef SPMD
     use mpishorthand
-    use cam_abortutils,  only : endrun
-
-    use Phys_Grid,       only : get_Area_All_p
-    use hycoef,          only : ps0, hyai, hybi, hyam
-
-    use seq_drydep_mod,  only : drydep_method, DD_XLND
-#if ( OCNDDVEL_MOZART )
-    use mo_drydep,       only : drydep_inti
 #endif
-    use gas_wetdep_opts, only : gas_wetdep_method
-    use mo_neu_wetdep,   only : neu_wetdep_init
+    use cam_abortutils,   only : endrun
+
+    use Phys_Grid,        only : get_Area_All_p
+    use hycoef,           only : ps0, hyai, hybi, hyam
+
+    use seq_drydep_mod,   only : drydep_method, DD_XLND
+#if ( OCNDDVEL_MOZART )
+    use mo_drydep,        only : drydep_inti
+#endif
+    use gas_wetdep_opts,  only : gas_wetdep_method
+    use mo_neu_wetdep,    only : neu_wetdep_init
 
 #if defined( MODAL_AERO_4MODE )
-    use aero_model,      only : aero_model_init
-    use mo_setsox,       only : sox_inti
-    use mo_drydep,       only : drydep_inti_landuse
-    use modal_aero_data, only : ntot_amode, nspec_amode
-    use modal_aero_data, only : xname_massptr
+    use aero_model,       only : aero_model_init
+    use mo_setsox,        only : sox_inti
+    use mo_drydep,        only : drydep_inti_landuse
+    use modal_aero_data,  only : ntot_amode, nspec_amode
+    use modal_aero_data,  only : xname_massptr
 #endif
 
     use Input_Opt_Mod
     use State_Chm_Mod
     use State_Grid_Mod
     use State_Met_Mod
-    use DiagList_Mod,       only : Init_DiagList, Print_DiagList
+    use DiagList_Mod,      only : Init_DiagList, Print_DiagList
     use GC_Environment_Mod
-    use GC_Grid_Mod,        only : SetGridFromCtrEdges
+    use GC_Grid_Mod,       only : SetGridFromCtrEdges
+    use State_Diag_Mod,    only : get_TagInfo
 
     ! Use GEOS-Chem versions of physical constants
-    use PhysConstants,  only : PI, PI_180, Re
+    use PhysConstants,     only : PI, PI_180, Re
 
-    use Time_Mod,      only : Accept_External_Date_Time
-    !use Time_Mod,      only : Set_Begin_Time,   Set_End_Time
-    !use Time_Mod,      only : Set_Current_Time, Set_DiagB
-    !use Transfer_Mod,  only : Init_Transfer
-    use Linoz_Mod,     only : Linoz_Read
+    use Time_Mod,          only : Accept_External_Date_Time
+    use Linoz_Mod,         only : Linoz_Read
 
     use CMN_Size_Mod
 
-    use Drydep_Mod,    only : depName, Ndvzind
-    use Pressure_Mod,  only : Accept_External_ApBp
-    use Chemistry_Mod, only : Init_Chemistry
-    use Ucx_Mod,       only : Init_Ucx
-    use Input_mod,     only : Validate_Directories
+    use Drydep_Mod,        only : depName, Ndvzind
+    use Pressure_Mod,      only : Accept_External_ApBp
+    use Chemistry_Mod,     only : Init_Chemistry
+    use Ucx_Mod,           only : Init_Ucx
+    use Input_mod,         only : Validate_Directories
 #if   ( ALLDDVEL_GEOSCHEM && LANDTYPE_HEMCO )
     use Olson_Landmap_Mod
 #endif
     use Mixing_Mod
     use Vdiff_Mod
+    use CMN_FJX_MOD,       only : JVN_
 
-    use mo_setinv,        only : setinv_inti
-    use mo_mean_mass,     only : init_mean_mass
+    use mo_setinv,         only : setinv_inti
+    use mo_mean_mass,      only : init_mean_mass
 
-    use GC_Emissions_Mod, only : GC_Emissions_Init
+    use GC_Emissions_Mod,  only : GC_Emissions_Init
 
     TYPE(physics_state), INTENT(IN):: phys_state(BEGCHUNK:ENDCHUNK)
     TYPE(physics_buffer_desc), POINTER :: pbuf2d(:,:)
@@ -990,16 +997,18 @@ contains
     INTEGER                :: nX, nY, nZ
     INTEGER                :: iX, jY
     INTEGER                :: nStrat
-    INTEGER                :: I, J, L, N
+    INTEGER                :: I, J, L, N, M
     INTEGER                :: RC
     INTEGER                :: nLinoz
 
     ! Logicals
     LOGICAL                :: prtDebug
+    LOGICAL                :: Found
 
     ! Strings
     CHARACTER(LEN=255)     :: historyConfigFile
     CHARACTER(LEN=255)     :: SpcName
+    CHARACTER(LEN=255)     :: tagName
 
     ! Objects
     TYPE(Species), POINTER :: SpcInfo
@@ -1015,7 +1024,6 @@ contains
     REAL(fp), ALLOCATABLE  :: Ap_CAM_Flip(:), Bp_CAM_Flip(:)
 
     !REAL(r8),      POINTER :: SlsPtr(:,:,:)
-
 
     ! Assume a successful return until otherwise
     RC                      = GC_SUCCESS
@@ -1435,6 +1443,7 @@ contains
     historyConfigFile = 'HISTORY.rc' ! InputOpt not yet initialized
     !TMMF need to pass input.geos path
     !CALL Init_DiagList( MasterProc, historyConfigFile, Diag_List, RC )
+
     !IF ( RC /= GC_SUCCESS ) THEN
     !   ErrMsg = 'Error encountered in "Init_DiagList"!'
     !   CALL Error_Stop( ErrMsg, ThisLoc )
@@ -1675,6 +1684,7 @@ contains
 
     ! Get some indices
     iH2O  = Ind_('H2O')
+    iOH   = Ind_('OH')
     iO3   = Ind_('O3')
     iCH4  = Ind_('CH4')
     iCO   = Ind_('CO')
@@ -1683,6 +1693,13 @@ contains
     iO    = Ind_('O')
     iH    = Ind_('H')
     iO2   = Ind_('O2')
+
+    ! This is used to compute gas-phase H2SO4 production
+    SpcInfo => State_Chm(BEGCHUNK)%SpcData(iOH)%Info
+    MWOH = REAL(SpcInfo%MW_g,r8)
+    ! Free pointer
+    SpcInfo => NULL()
+
     ! This is used to compute gas-phase H2SO4 production
     iPSO4 = Ind_('PSO4')
     SpcInfo => State_Chm(BEGCHUNK)%SpcData(iPSO4)%Info
@@ -1760,6 +1777,40 @@ contains
        ENDDO
     ENDIF
 
+    CALL get_TagInfo( Input_Opt = Input_Opt,           &
+                      tagID     = 'PHO',               &
+                      State_Chm = State_Chm(BEGCHUNK), &
+                      Found     = Found,               &
+                      RC        = RC,                  &
+                      nTags     = nPhotol             )
+
+    ! Trap potential errors
+    IF ( RC /= GC_SUCCESS ) THEN
+       ErrMsg = 'Abnormal exit from routine "Get_TagInfo", could not '  // &
+             ' get nTags!'
+       CALL Error_Stop( ErrMsg, ThisLoc )
+    ENDIF
+
+    DO M = 1, nPhotol
+       CALL get_TagInfo( Input_Opt = Input_Opt,           &
+                         tagID     = 'PHO',               &
+                         State_Chm = State_Chm(BEGCHUNK), &
+                         Found     = Found,               &
+                         RC        = RC,                  &
+                         N         = M,                   &
+                         tagName   = tagName             )
+
+       ! Trap potential errors
+       IF ( RC /= GC_SUCCESS ) THEN
+          ErrMsg = 'Abnormal exit from routine "Get_TagInfo"!'
+          CALL Error_Stop( ErrMsg, ThisLoc )
+       ENDIF
+
+       SpcName = 'Jval_' // TRIM( tagName )
+       CALL Addfld( TRIM(SpcName), (/ 'lev' /), 'I', '1/s', &
+          TRIM(tagName) // ' photolysis rate' )
+    ENDDO
+
     ! Initialize emissions interface (this will eventually handle HEMCO)
     CALL GC_Emissions_Init
 
@@ -1831,6 +1882,10 @@ contains
     use camsrfexch,          only : cam_in_t, cam_out_t
     use mo_tracname,         only : solsym
 
+#ifdef SPMD
+    use mpishorthand
+#endif
+
     use phys_grid,           only : get_ncols_p, get_rlat_all_p, get_rlon_all_p
 
     use chem_mods,           only : drySpc_ndx, map2GC_dryDep
@@ -1870,6 +1925,8 @@ contains
     use CMN_Size_Mod,        only : PTop
     use PBL_Mix_Mod,         only : Compute_PBL_Height
     use UCX_Mod,             only : Set_H2O_Trac
+    use CMN_FJX_MOD,         only : ZPJ, JVN_, GC_Photo_ID
+    use State_Diag_Mod,      only : get_TagInfo
 
     use Tropopause,          only : Tropopause_findChemTrop, Tropopause_Find
     use HCO_Utilities_GC_Mod  ! Utility routines for GC-HEMCO interface
@@ -1894,7 +1951,7 @@ contains
     use aero_model,          only : aero_model_gasaerexch
 
     ! Use GEOS-Chem versions of physical constants
-    use PhysConstants,       only : PI, PI_180, g0
+    use PhysConstants,       only : PI, PI_180, g0, AVO
 
     use rad_constituents,    only : rad_cnst_get_info
 
@@ -1936,6 +1993,7 @@ contains
     REAL(r8), POINTER :: LsFlxSnw(:,:)                ! Large-scale downward precip. flux at interface (snow only) [kg/m2/s]
     REAL(r8), POINTER :: cmfdqr(:,:)                  ! Total convective precip. prod. (rain + snow) [kg/kg/s]
 
+    REAL(r8)          :: tmpMass
     REAL(r8)          :: cldW   (state%NCOL,PVER)     ! Cloud water (kg/kg)
     REAL(r8)          :: nCldWtr(state%NCOL,PVER)     ! Droplet number concentration (#/kg)
 
@@ -1944,7 +2002,7 @@ contains
     REAL(r8)          :: satQ   (state%NCOL,PVER)     ! Work arrays
     REAL(r8)          :: qH2O   (state%NCOL,PVER)     ! Specific humidity [kg/kg]
     REAL(r8)          :: h2ovmr (state%NCOL,PVER)     ! H2O volume mixing ratio
-    REAL(r8)          :: mBar   (state%NCOL,PVER)     ! Meant wet atmospheric mass [amu]
+    REAL(r8)          :: mBar   (state%NCOL,PVER)     ! Mean wet atmospheric mass [amu]
     REAL(r8)          :: invariants(state%NCOL,PVER,nfs)
     REAL(r8)          :: reaction_rates(1,1,1)        ! Reaction rates (unused)
     ! For aerosol formation
@@ -1966,14 +2024,18 @@ contains
     REAL(r8)          :: MOZART_depFlx(state%NCOL, nTracersMax)
 #endif
     ! For GEOS-Chem diagnostics
-    REAL(r8)          :: mmr1(state%NCOL,PVER,gas_pcnst)
-    REAL(r8)          :: wk_out(state%NCOL)
-    LOGICAL           :: isWD
+    REAL(r8)              :: mmr1(state%NCOL,PVER,gas_pcnst)
+    REAL(r8)              :: wk_out(state%NCOL)
+    LOGICAL               :: isWD
+    REAL(r8)              :: outTmp(state%NCOL,PVER)
+    REAL(r8)              :: JoutTmp(state%NCOL,PVER,nPhotol)
+    LOGICAL               :: Found
+    CHARACTER(LEN=255)    :: tagName
 
-    REAL(r8), PARAMETER :: zlnd  = 0.01_r8   ! Roughness length for soil [m]
-    REAL(r8), PARAMETER :: zslnd = 0.0024_r8 ! Roughness length for snow [m]
-    REAL(r8), PARAMETER :: zsice = 0.0400_r8 ! Roughness length for sea ice [m]
-    REAL(r8), PARAMETER :: zocn  = 0.0001_r8 ! Roughness length for oean [m]
+    REAL(r8), PARAMETER   :: zlnd  = 0.01_r8   ! Roughness length for soil [m]
+    REAL(r8), PARAMETER   :: zslnd = 0.0024_r8 ! Roughness length for snow [m]
+    REAL(r8), PARAMETER   :: zsice = 0.0400_r8 ! Roughness length for sea ice [m]
+    REAL(r8), PARAMETER   :: zocn  = 0.0001_r8 ! Roughness length for oean [m]
 
     ! Because of strat chem
     LOGICAL, SAVE :: SCHEM_READY = .FALSE.
@@ -2008,9 +2070,6 @@ contains
     INTEGER                :: SpcId
     TYPE(Species), POINTER :: SpcInfo
 
-    ! For archiving
-    REAL(r8)               :: VMR(state%NCOL,PVER)
-
     REAL(r8)           :: SlsData(state%NCOL, PVER, nSls)
 
     INTEGER            :: currYr, currMo, currDy, currTOD
@@ -2030,6 +2089,7 @@ contains
     INTEGER, SAVE      :: iStep = 0
     LOGICAL            :: rootChunk
     INTEGER            :: RC
+
 
     ! Initialize pointers
     SpcInfo  => NULL()
@@ -3439,6 +3499,7 @@ contains
        ENDIF
     ENDIF
 
+    ZPJ = 0.0e+0_r8
     CALL Do_Chemistry( Input_Opt  = Input_Opt,         &
                        State_Chm  = State_Chm(LCHNK),  &
                        State_Diag = State_Diag(LCHNK), &
@@ -3570,7 +3631,6 @@ contains
        ENDIF
     ENDIF
 
-
     !==============================================================
     ! ***** M A M   G A S - A E R O S O L   E X C H A N G E *****
     !==============================================================
@@ -3630,7 +3690,6 @@ contains
                                 vmr               = vmr1,                   &
                                 pbuf              = pbuf )
 
-
     ! Make sure State_Chm(LCHNK) is back in kg/kg dry!
     ! Reset H2O MMR to the initial value (no chemistry tendency in H2O just yet)
     State_Chm(LCHNK)%Species(1,:,:,iH2O) = MMR_Beg(:,:,iH2O)
@@ -3649,36 +3708,60 @@ contains
     ENDDO
     CALL set_short_lived_species( SlsData, LCHNK, nY, pbuf )
 
+#if defined( SPMD )
+    ! We here compute a mass-weighted OH average [molec OH/cm3] * [molec air]
+    ! Species is in kg/kg dry. Convert to molec/box
+    ! kg/kg air * kg air/m3 * molec/mole / (kg/mole) * m3/cm3 = molec/cm3
+    tmpMass       = 0.0e+00_r8
+    CALL MPISum ( SUM(State_Chm(LCHNK)%Species(1,:nY,:nZ,iOH) * &
+                  State_Met(LCHNK)%AIRDEN(1,:nY,:nZ)          * &
+                  State_Met(LCHNK)%AIRNUMDEN(1,:nY,:nZ)       * &
+                  State_Met(LCHNK)%AIRVOL(1,:nY,:nZ))         * &
+                  AVO / MWOH * 1.0e+03_r8,                      &
+                  tmpMass, 1, MPIR8, 0, MPICOM )
+    ! This is in [molec OH/cm3] * [molec air]
+    OH_Total      = OH_Total + tmpMass
+
+    ! molec/cm3 * m3/box * cm3/m3 = molec/box
+    tmpMass       = 0.0e+00_r8
+    CALL MPISum ( SUM(State_Met(LCHNK)%AIRNUMDEN(1,:nY,:nZ)       * &
+                  State_Met(LCHNK)%AIRVOL(1,:nY,:nZ) * 1.0e+06_r8), &
+                  tmpMass, 1, MPIR8, 0, MPICOM )
+    ! This is in [molec air]
+    Air_Total     = Air_Total + tmpMass
+#endif
+
     ! Write diagnostic output
     DO N = 1, pcnst
        M = map2GC(N)
        I = map2Idx(N)
        IF ( M > 0 ) THEN
           SpcName = tracerNames(I)
-          VMR     = 0.0e+0_r8
+          outTmp  = 0.0e+0_r8
           DO J = 1, nY
           DO K = 1, nZ
-             VMR(J,nZ+1-K) = REAL(State_Chm(LCHNK)%Species(1,J,K,M),r8) * MWRatio(I)
+             outTmp(J,nZ+1-K) = REAL(State_Chm(LCHNK)%Species(1,J,K,M),r8) * MWRatio(I)
           ENDDO
           ENDDO
-          CALL OutFld( TRIM(SpcName), VMR(:nY,:), nY, LCHNK )
+          CALL OutFld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
        ENDIF
     ENDDO
 
     DO N = 1, nSls
        SpcName = slsNames(N)
-       VMR = 0.0e+0_r8
+       outTmp  = 0.0e+0_r8
        M = map2GC_Sls(N)
        IF ( M > 0 ) THEN
           DO J = 1, nY
           DO K = 1, nZ
-             VMR(J,nZ+1-K) = REAL(State_Chm(LCHNK)%Species(1,J,K,M),r8) * SLSMWratio(N)
+             outTmp(J,nZ+1-K) = REAL(State_Chm(LCHNK)%Species(1,J,K,M),r8) * SLSMWratio(N)
           ENDDO
           ENDDO
-          CALL OutFld( TRIM(SpcName), VMR(:nY,:), nY, LCHNK )
+          CALL OutFld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
        ENDIF
     ENDDO
 
+    ! Dry deposition velocity and surface flux
     IF ( Input_Opt%LDryD ) THEN
        DO N = 1, State_Chm(BEGCHUNK)%nDryDep
           SpcName = 'DepVel_'//TRIM(depName(N))
@@ -3701,6 +3784,38 @@ contains
           SpcInfo => NULL()
        ENDDO
     ENDIF
+
+    ! Photolysis rates
+    JoutTmp = 0.0e+00_r8
+    DO N = 1, JVN_
+       M = GC_Photo_ID(N)
+       IF ( M > 0 ) THEN
+          DO J = 1, nY
+          DO K = 1, nZ
+             JoutTmp(J,nZ+1-K,M) = JoutTmp(J,nZ+1-K,M) + REAL(ZPJ(K,N,1,J),r8)
+          ENDDO
+          ENDDO
+       ENDIF
+    ENDDO
+
+    DO M = 1, nPhotol
+       CALL get_TagInfo( Input_Opt = Input_Opt,        &
+                         tagID     = 'PHO',            &
+                         State_Chm = State_Chm(LCHNK), &
+                         Found     = Found,            &
+                         RC        = RC,               &
+                         N         = M,                &
+                         tagName   = tagName          )
+
+       ! Trap potential errors
+       IF ( RC /= GC_SUCCESS ) THEN
+          ErrMsg = 'Abnormal exit from routine "Get_TagInfo"!'
+          CALL Error_Stop( ErrMsg, ThisLoc )
+       ENDIF
+
+       SpcName = 'Jval_' // TRIM( tagName )
+       CALL OutFld( TRIM(SpcName), JoutTmp(:nY,:,M), nY, LCHNK )
+    ENDDO
 
     ! NOTE: Re-flip all the arrays vertically or suffer the consequences
     ! ptend%q dimensions: [column, ?, species]
@@ -3814,10 +3929,21 @@ contains
 
     use GC_Emissions_Mod, only: GC_Emissions_Final
 
-    INTEGER :: I, RC
+    ! Local variables
+    INTEGER  :: I, RC
+
+    REAL(r8) :: OHCONC
+
+    OHCONC = OH_Total / Air_Total / 1.0e+05_r8
+
+    IF ( MasterProc ) THEN
+       WRITE(iulog,'(/,a)') REPEAT( '=', 79 )
+       WRITE(iulog,*      ) 'Mass-Weighted OH Concentration'
+       WRITE(iulog,*      ) 'Mean OH = ', OHCONC, ' [1e5 molec/cm3]'
+       WRITE(iulog,'(  a)') REPEAT( '=', 79 )
+    ENDIF
 
     ! Finalize GEOS-Chem
-    IF (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_FINAL'
 
     CALL Cleanup_UCX
     CALL Cleanup_Aerosol
