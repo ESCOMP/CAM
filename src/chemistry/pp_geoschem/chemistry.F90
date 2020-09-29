@@ -105,10 +105,12 @@ module chemistry
 
   type(physics_buffer_desc), pointer :: hco_pbuf2d(:,:)  ! ptr to 2d pbuf
 
-  ! Indices of critical species
+  ! Indices of critical species in GEOS-Chem
   INTEGER                    :: iH2O, iO3, iCH4, iCO, iNO, iOH
   INTEGER                    :: iO, iH, iO2, iPSO4
   REAL(r8)                   :: MWOH, MWPSO4
+  ! Indices of critical species in the constituent list
+  INTEGER                    :: cQ, cH2O
 
   ! Indices in the physics buffer
   INTEGER                    :: NDX_PBLH      ! PBL height [m]
@@ -475,10 +477,13 @@ contains
           ! Most likely, these will be MAM aerosols
           ! We store the index as the opposite to not confuse with GEOS-Chem
           ! indices.
-          CALL cnst_get_ind(TRIM(solsym(N)), I, abort=.true.)
+          CALL cnst_get_ind(TRIM(solsym(N)), I, abort=.True.)
           map2chm(N) = -I
        ENDIF
     ENDDO
+    ! Get constituent index of specific humidity
+    CALL cnst_get_ind('Q',   cQ,   abort=.True.)
+    CALL cnst_get_ind('H2O', cH2O, abort=.True.)
 
     !==============================================================
     ! Get mapping between dry deposition species and species set
@@ -1742,7 +1747,7 @@ contains
        SpcName = TRIM(slsNames(I))
        CALL AddFld( TRIM(SpcName), (/ 'lev' /), 'A', 'mol/mol', &
           TRIM(slsLongNames(I))//' concentration')
-       !CALL Add_Default(TRIM(SpcName), 1, '')
+       !CALL Add_Default(TRIM(SpcName), 1, ' ')
     ENDDO
 
     DO I = 1, State_Chm(BEGCHUNK)%nDryDep
@@ -1878,7 +1883,7 @@ contains
 
     use physics_buffer,      only : physics_buffer_desc, pbuf_get_field, pbuf_old_tim_idx
     use physics_buffer,      only : pbuf_get_chunk, pbuf_get_index
-    use cam_history,         only : outfld
+    use cam_history,         only : outfld, hist_fld_active
     use camsrfexch,          only : cam_in_t, cam_out_t
     use mo_tracname,         only : solsym
 
@@ -2179,7 +2184,7 @@ contains
     ! Initialize ALL State_Chm species data to zero, not just tracers
     State_Chm(LCHNK)%Species = 0.0e+0_fp
 
-    lq(:) = .FALSE.
+    lq(:) = .False.
 
     ! Map and flip gaseous species
     MMR_Beg = 0.0e+0_r8
@@ -2192,8 +2197,16 @@ contains
              State_Chm(LCHNK)%Species(1,J,K,M) = REAL(MMR_Beg(J,K,M),fp)
           ENDDO
           ENDDO
-          lq(N) = .TRUE.
+          lq(N) = .True.
        ENDIF
+    ENDDO
+
+    ! We need to let CAM know that 'H2O' and 'Q' are identical
+    DO J = 1, nY
+    DO K = 1, nZ
+       MMR_Beg(J,K,iH2O) = state%q(J,nZ+1-K,cQ)
+       State_Chm(LCHNK)%Species(1,J,K,iH2O) = REAL(MMR_Beg(J,K,iH2O),fp)
+    ENDDO
     ENDDO
 
     ! Retrieve previous value of species data
@@ -2290,7 +2303,9 @@ contains
     ! Note MWDry = 28.966 g/mol
     DO J = 1, nY
     DO L = 1, nZ
-       qH2O(J,L) = REAL(State_Chm(LCHNK)%Species(1,J,nZ+1-L,iH2O),r8)
+       qH2O(J,L) = REAL(state%q(J,L,cQ),r8)
+       ! Set GEOS-Chem's H2O mixing ratio to CAM's specific humidity 'q'
+       State_Chm(LCHNK)%Species(1,J,nZ+1-L,iH2O) = qH2O(J,L)
        h2ovmr(J,L) = qH2O(J,L) * MWDry / 18.016e+0_fp
     ENDDO
     ENDDO
@@ -3558,7 +3573,7 @@ contains
           ! wetdep is applied
 
           ! Do wet deposition
-          ! NOTE: Tracer concentration units are converted locally
+          ! Tracer concentration units are converted locally
           ! to [kg/m2] in wet deposition to enable calculations
           ! along the column (ewl, 9/18/15)
           CALL Do_WetDep( Input_Opt  = Input_Opt,         &
@@ -3691,6 +3706,12 @@ contains
                                 pbuf              = pbuf )
 
     ! Make sure State_Chm(LCHNK) is back in kg/kg dry!
+    IF ( TRIM(State_Chm(LCHNK)%Spc_Units) /= 'kg/ kg dry' ) THEN
+       Write(iulog,*) 'Current  unit = ', TRIM(State_Chm(LCHNK)%Spc_Units)
+       Write(iulog,*) 'Expected unit = kg/ kg dry'
+       CALL ENDRUN('Incorrect unit in GEOS-Chem State_Chm%Species')
+    ENDIF
+
     ! Reset H2O MMR to the initial value (no chemistry tendency in H2O just yet)
     State_Chm(LCHNK)%Species(1,:,:,iH2O) = MMR_Beg(:,:,iH2O)
 
@@ -3790,14 +3811,34 @@ contains
     DO N = 1, JVN_
        M = GC_Photo_ID(N)
        IF ( M > 0 ) THEN
-          DO J = 1, nY
-          DO K = 1, nZ
-             JoutTmp(J,nZ+1-K,M) = JoutTmp(J,nZ+1-K,M) + REAL(ZPJ(K,N,1,J),r8)
-          ENDDO
-          ENDDO
+          CALL get_TagInfo( Input_Opt = Input_Opt,        &
+                            tagID     = 'PHO',            &
+                            State_Chm = State_Chm(LCHNK), &
+                            Found     = Found,            &
+                            RC        = RC,               &
+                            N         = M,                &
+                            tagName   = tagName          )
+
+          ! Trap potential errors
+          IF ( RC /= GC_SUCCESS ) THEN
+             ErrMsg = 'Abnormal exit from routine "Get_TagInfo"!'
+             CALL Error_Stop( ErrMsg, ThisLoc )
+          ENDIF
+
+          SpcName = 'Jval_' // TRIM( tagName )
+
+          IF ( hist_fld_active( TRIM(SpcName) ) ) THEN
+             DO J = 1, nY
+             DO K = 1, nZ
+                JoutTmp(J,nZ+1-K,M) = JoutTmp(J,nZ+1-K,M) + REAL(ZPJ(K,N,1,J),r8)
+             ENDDO
+             ENDDO
+          ENDIF
        ENDIF
     ENDDO
 
+    ! We need to save out JRates outside of the previous loop as different "N"
+    ! can contribute to the same "M".
     DO M = 1, nPhotol
        CALL get_TagInfo( Input_Opt = Input_Opt,        &
                          tagID     = 'PHO',            &
@@ -3817,8 +3858,7 @@ contains
        CALL OutFld( TRIM(SpcName), JoutTmp(:nY,:,M), nY, LCHNK )
     ENDDO
 
-    ! NOTE: Re-flip all the arrays vertically or suffer the consequences
-    ! ptend%q dimensions: [column, ?, species]
+    ! Re-flip all the arrays vertically
     ptend%q(:,:,:) = 0.0e+0_r8
     MMR_End = 0.0e+0_r8
     DO N = 1, pcnst
@@ -3833,6 +3873,8 @@ contains
           ENDDO
        ENDIF
     ENDDO
+    ! Apply GEOS-Chem's H2O mixing ratio tendency to CAM's specific humidity
+    ptend%q(:,:,cQ) = ptend%q(:,:,cH2O)
 
     ! Debug statements
     ! Ozone tendencies
