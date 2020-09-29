@@ -106,6 +106,10 @@ module edmf_module
   ! due to a subsurface thermodynamic layer. To avoid confusion, below the variables  !  
   ! are grouped by the grid they are on.                                              !
   !                                                                                   !
+  ! *note that state on the lowest thermo level is equal to state on the lowest       !
+  ! momentum level due to state_zt(1) = state_zt(2), and lowest momentum level        !
+  ! is a weighted combination of the lowest two thermodynamic levels.                 !
+  !                                                                                   !
   ! ---------------------------------Authors----------------------------------------  !
   ! Marcin Kurowski, JPL                                                              !
   ! Modified heavily by Mikael Witte, UCLA/JPL for implementation in CESM2/E3SM       !
@@ -173,7 +177,7 @@ module edmf_module
      !
      ! parameters defining initial conditions for updrafts
      real(r8),parameter          :: pwmin = 1.5_r8,           &
-                                    pwmax = 3._r8
+                                    pwmax = 3._r8,            &
      !
      ! min values to avoid singularities
      real(r8),parameter          :: wstarmin = 1.e-3_r8,      &
@@ -182,9 +186,8 @@ module edmf_module
      ! to condensate or not to condensate
      logical                     :: do_condensation = .true.
      !
-     ! to debug flag
+     ! debug flag
      logical                     :: debug = .false.
-
 
      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
      !!!!!!!!!!!!!!!!!!!!!! BEGIN CODE !!!!!!!!!!!!!!!!!!!!!!!
@@ -238,7 +241,7 @@ module edmf_module
      pblh = max(pblh,pblhmin)
      wthv = wthl+zvir*thv(1)*wqt
 
-     ! if surface buoyancy is positive then do mass-flux, otherwise not
+     ! if surface buoyancy is positive then do mass-flux
      if ( wthv > 0._r8 ) then
 
        ! get entrainment coefficient, dz/L0
