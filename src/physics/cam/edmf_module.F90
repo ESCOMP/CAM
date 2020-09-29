@@ -179,8 +179,12 @@ module edmf_module
      real(r8),parameter          :: wstarmin = 1.e-3_r8,      &
                                     pblhmin  = 100._r8
      !
-     ! to condensate or to not condensate
+     ! to condensate or not to condensate
      logical                     :: do_condensation = .true.
+     !
+     ! to debug flag
+     logical                     :: debug = .false.
+
 
      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
      !!!!!!!!!!!!!!!!!!!!!! BEGIN CODE !!!!!!!!!!!!!!!!!!!!!!!
@@ -247,7 +251,7 @@ module edmf_module
        ! get poisson, P(dz/L0)
        call poisson( nz, nup, entf, enti, thl(nz))
 
-       ! get entrainent, ent=ent0/dz*P(dz/L0)
+       ! get entrainment, ent=ent0/dz*P(dz/L0)
        do i=1,nup
          do k=2,nz
            ent(k,i) = real( enti(k,i))*clubb_mf_ent0/dzt(k)
@@ -255,7 +259,7 @@ module edmf_module
        enddo
 
        ! get surface conditions
-       wstar  = max( wstarmin, (gravit/thv(1)*wthv*pblh)**(1./3.) ) ! MKW NOTE: is it better to use kts instead of index 1 for surface?
+       wstar  = max( wstarmin, (gravit/thv(1)*wthv*pblh)**(1./3.) )
        qstar  = wqt / wstar
        thstar = wthl / wstar
 
@@ -308,13 +312,13 @@ module edmf_module
 
            B=gravit*(0.5_r8*(thvn+upthv(k-1,i))/thv(k)-1.)
 
-           !if (i.eq.1) then
-           !  if ( masterproc ) then
-           !    write(iulog,*) "k, p(k), iexh(k) ", k, p_zm(k), iexner_zm(k)
-           !  end if
-           !end if
+           if (debug) then
+             if ( masterproc ) then
+               write(iulog,*) "B(k,i), k, i ", B, k, i
+             end if
+           end if
 
-           ! get wn^2, to avoid singularities w equation has to be computed diferently if wp==0
+           ! get wn^2, to avoid singularities w equation has to be computed differently if wp==0
            wp = clubb_mf_wb*ent(k,i)
            if (wp==0._r8) then
              wn2 = upw(k-1,i)**2._r8+2._r8*clubb_mf_wa*B*dzt(k)
@@ -419,12 +423,10 @@ module edmf_module
          enddo
        enddo
 
-       do k=2,nz
+       do k=1,nz
          thlflx(k)= awthl(k) - aw(k)*thl_zm(k)
          qtflx(k)= awqt(k) - aw(k)*qt_zm(k)
        enddo
-       thlflx(1) = 0._r8
-       qtflx(1) = 0._r8
 
      end if  ! ( wthv > 0.0 )
 
@@ -534,7 +536,7 @@ module edmf_module
   subroutine set_seed_from_state(state)
   !**********************************************************************
   ! Set a unique (but reproduceble) seed using state
-  ! Coded by Adam Herrington
+  ! By Adam Herrington
   !**********************************************************************
 
        real(r8),intent(in)  :: state
@@ -559,8 +561,8 @@ module edmf_module
   subroutine knuth(lambda,kout)
   !**********************************************************************
   ! Discrete random poisson from Knuth 
-  ! The Art of Computer Programming, v3, 137-138
-  ! Coded by Adam Herrington
+  ! The Art of Computer Programming, v2, 137-138
+  ! By Adam Herrington
   !**********************************************************************
 
        real(r8), intent(in) :: lambda

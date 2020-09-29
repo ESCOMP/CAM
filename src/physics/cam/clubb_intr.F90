@@ -2422,7 +2422,7 @@ end subroutine clubb_init_cnst
       enddo
       pre_in(1) = pre_in(2)
 
-!+++ARH
+      ! pressure,exner on momentum grid needed for mass flux calc.
       do k=1,pver
         kappa_zt(k+1) = (rairv(i,pver-k+1,lchnk)/cpairv(i,pver-k+1,lchnk))
       enddo
@@ -2433,7 +2433,6 @@ end subroutine clubb_init_cnst
         p_in_Pa_zm(k) = state1%pint(i,pverp-k+1)
         invrs_exner_zm(k) = 1._r8/((p_in_Pa_zm(k)/p0_clubb)**(kappa_zm(k)))
       enddo
-!---ARH     
      
       if (clubb_do_adv) then
         if (macmic_it  ==  1) then
@@ -2512,6 +2511,7 @@ end subroutine clubb_init_cnst
 
            call integrate_mf( nz,        nup,         dzt,        p_in_Pa_zm, invrs_exner_zm, & ! input
                               um_in,     vm_in,       thlm_in,    thlm_zm_in, thvm_in,        & ! input
+                              !um_in,     vm_in,       thlm_in,    thlm_zm_in, thv_ds_zt,      & ! input
                               rtm_in,    rtm_zm_in,   wpthlp_sfc, wprtp_sfc,  pblh(i),        & ! input
                               mf_dry_a,  mf_moist_a,                                          & ! output - plume diagnostics
                               mf_dry_w,  mf_moist_w,                                          & ! output - plume diagnostics
@@ -2527,13 +2527,14 @@ end subroutine clubb_init_cnst
                               mf_thlflx, mf_qtflx )                                             ! output - variables needed for solver
 
            ! pass MF turbulent advection term as CLUBB explicit forcing term
+           rtm_forcing(1) = 0._r8
+           thlm_forcing(1)= 0._r8
            do k=2,nz
              rtm_forcing(k)  = rtm_forcing(k) - invrs_rho_ds_zt(k) * invrs_dzt(k) * &
-                              (rho_ds_zm(k) * (s_awqt(k) - s_aw(k)*rtm_zm_in(k)) - &
-                               rho_ds_zm(k-1) * (s_awqt(k-1) - s_aw(k-1)*rtm_zm_in(k-1)))
+                              ((rho_ds_zm(k) * mf_qtflx(k)) - (rho_ds_zm(k-1) * mf_qtflx(k-1)))
+
              thlm_forcing(k) = thlm_forcing(k) - invrs_rho_ds_zt(k) * invrs_dzt(k) * &
-                              (rho_ds_zm(k) * (s_awthl(k) - s_aw(k)*thlm_zm_in(k)) - &
-                               rho_ds_zm(k-1) * (s_awthl(k-1) - s_aw(k-1)*thlm_zm_in(k-1)))
+                              ((rho_ds_zm(k) * mf_thlflx(k)) - (rho_ds_zm(k-1) * mf_thlflx(k-1)))
            end do
          else
            mf_dry_a(:)     = 0._r8
