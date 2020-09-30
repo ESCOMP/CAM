@@ -327,11 +327,6 @@ contains
           ref_MMR(I)  = ref_VMR / (MWDry / MWTmp)
           IF ( ThisSpc%Is_Gas == .FALSE. ) THEN
              Write(cnstName, "(a,a)") 'GC_AER_', to_upper(TRIM(trueName))
-             ! Aerosols that inherited from MAM do not need to be defined as a
-             ! constituent
-             ! For instance,
-             ! - SOAGX is inherited from SOAG[0-4]
-             ! - BCPI is inherited from bc_a1
           ENDIF
        ELSEIF ( I .LE. (nTracers + nAer)) THEN
           ! Add MAM4 aerosols
