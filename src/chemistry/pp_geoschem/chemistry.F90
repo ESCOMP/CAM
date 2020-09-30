@@ -328,7 +328,7 @@ contains
           IF ( ThisSpc%Is_Gas == .FALSE. ) THEN
              Write(cnstName, "(a,a)") 'GC_AER_', to_upper(TRIM(trueName))
           ENDIF
-       ELSEIF ( I .LE. (nTracers + nAer)) THEN
+       ELSEIF ( I .LE. (nTracers + nAer) ) THEN
           ! Add MAM4 aerosols
           cnstName    = TRIM(aerNames(I - nTracers))
           lngName     = cnstName
@@ -3701,7 +3701,7 @@ contains
                                 pbuf              = pbuf )
 
     ! Make sure State_Chm(LCHNK) is back in kg/kg dry!
-    IF ( TRIM(State_Chm(LCHNK)%Spc_Units) /= 'kg/ kg dry' ) THEN
+    IF ( TRIM(State_Chm(LCHNK)%Spc_Units) /= 'kg/kg dry' ) THEN
        Write(iulog,*) 'Current  unit = ', TRIM(State_Chm(LCHNK)%Spc_Units)
        Write(iulog,*) 'Expected unit = kg/ kg dry'
        CALL ENDRUN('Incorrect unit in GEOS-Chem State_Chm%Species')
