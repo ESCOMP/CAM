@@ -373,12 +373,12 @@ contains
        ! would save cnst_name rather than load_name.
 
        ! Special handlings
-       IF ( cnstName == 'HNO4' ) THEN
-           cnstName = 'HO2NO2'
-       ELSEIF ( cnstName == 'HNO2' ) THEN
-           cnstName = 'HONO'
-       ELSEIF ( cnstName == 'HCHO' ) THEN
+       IF ( cnstName == 'HCHO' ) THEN
            cnstName = 'CH2O'
+       !ELSEIF ( cnstName == 'HNO4' ) THEN
+       !    cnstName = 'HO2NO2'
+       !ELSEIF ( cnstName == 'HNO2' ) THEN
+       !    cnstName = 'HONO'
        !ELSEIF ( cnstName == 'ACET' ) THEN
        !    cnstName = 'CH3COCH3'
        !ELSEIF ( cnstName == 'ALD2' ) THEN
