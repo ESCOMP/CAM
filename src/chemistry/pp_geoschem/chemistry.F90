@@ -2754,7 +2754,7 @@ contains
        ! Description: Updraft velocity
        ! Unit       : Pa/s
        ! Dimensions : nX, nY, nZ
-       !State_Met(LCHNK)%OMEGA    (1,J,L) = state%Omega(J,nZ+1-L)
+       State_Met(LCHNK)%OMEGA    (1,J,L) = state%Omega(J,nZ+1-L)
 
        ! Field      : CLDF
        ! Description: 3-D cloud fraction
