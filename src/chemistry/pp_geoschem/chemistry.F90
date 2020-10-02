@@ -1299,15 +1299,22 @@ contains
     Input_Opt%Use_TOMS_O3            = .False.
     Input_Opt%Gamma_HO2              = 0.2e+0_fp
 
+    Input_Opt%LPRT                   = .False.
+
+    !==================================================================
     ! CESM-specific input flags
+    !==================================================================
+
     ! onlineAlbedo    -> True  (use CLM albedo)
     !                 -> False (read monthly-mean albedo from HEMCO)
     Input_Opt%onlineAlbedo           = .True.
+
     ! onlineLandTypes -> True  (use CLM landtypes)
     !                 -> False (read landtypes from HEMCO)
     Input_Opt%onlineLandTypes        = .True. !TMMF
 
-    Input_Opt%LPRT                   = .False.
+    ! applyQtend: apply tendencies of water vapor to specific humidity
+    Input_Opt%applyQtend             = .True.
 
     ! Read in data for Linoz. All CPUs allocate one array to hold the data. Only
     ! the root CPU reads in the data; then we copy it out to a temporary array,
@@ -1768,11 +1775,14 @@ contains
 
     IF ( gas_wetdep_method == 'GEOS-CHEM' ) THEN
        DO N = 1, gas_pcnst
-          CALL Addfld( 'DTWR_'//TRIM(solsym(N)), (/ 'lev' /), 'A', 'kg/kg/s', &
+          SpcName = 'DTWR_'//TRIM(solsym(N))
+          CALL Addfld( TRIM(SpcName), (/ 'lev' /), 'A', 'kg/kg/s', &
              'wet removal tendency' )
-          CALL Addfld( 'WD_'//TRIM(solsym(N)), horiz_only, 'A', 'kg/m2/s', &
+          SpcName = 'WD_'//TRIM(solsym(N))
+          CALL Addfld( TRIM(SpcName), horiz_only, 'A', 'kg/m2/s', &
              'vertical integrated wet deposition flux' )
-          CALL Addfld( 'WDRATE_'//TRIM(solsym(N)), (/ 'lev' /), 'A', 'kg/s', &
+          SpcName = 'WDRATE_'//TRIM(solsym(N))
+          CALL Addfld( TRIM(SpcName), (/ 'lev' /), 'A', 'kg/s', &
              'wet removal rate' )
        ENDDO
     ENDIF
@@ -1807,7 +1817,7 @@ contains
        ENDIF
 
        SpcName = 'Jval_' // TRIM( tagName )
-       CALL Addfld( TRIM(SpcName), (/ 'lev' /), 'I', '1/s', &
+       CALL Addfld( TRIM(SpcName), (/ 'lev' /), 'A', '1/s', &
           TRIM(tagName) // ' photolysis rate' )
     ENDDO
 
@@ -3868,8 +3878,11 @@ contains
           ENDDO
        ENDIF
     ENDDO
-    ! Apply GEOS-Chem's H2O mixing ratio tendency to CAM's specific humidity
-    ptend%q(:,:,cQ) = ptend%q(:,:,cH2O)
+
+    IF ( Input_Opt%applyQtend ) THEN
+       ! Apply GEOS-Chem's H2O mixing ratio tendency to CAM's specific humidity
+       ptend%q(:,:,cQ) = ptend%q(:,:,cH2O)
+    ENDIF
 
     ! Debug statements
     ! Ozone tendencies
