@@ -882,7 +882,7 @@ contains
     real(r8), parameter :: losscinCoef8 = 0.14e-14_r8
     real(r8), parameter :: losscinCoef9 = 4.4e-14_r8
     
-    real(r8), parameter :: FeDCoef1 = -5.0E+7_r8
+    real(r8), parameter :: FeDCoef1 = -9.0E+7_r8
     real(r8), parameter :: FeDCoef2 = 4.0E+7_r8
 
     real(r8), parameter :: losscACoef1 = 5.71E-8_r8
@@ -1156,13 +1156,15 @@ contains
         !----------------------------------------------------------------------------------
         !  Calculate upper boundary heat flux 
         !----------------------------------------------------------------------------------
-        if (ABS(dlatm(iCol)) < 40.0_r8) FeDB = 0.5_r8 * &
-                                        (1._r8 + SIN(pi * (ABS(dlatm(iCol)) - 20.0_r8) /40.0_r8))
+        if (ABS(dlatm(iCol)) < 10.0_r8) then
+           FeDB = 0._r8
+        else if (ABS(dlatm(iCol)) >= 10.0_r8 .and. ABS(dlatm(iCol)) < 40.0_r8) then
+           FeDB = 0.5_r8 * (1._r8 + SIN(pi * (ABS(dlatm(iCol)) - 15.0_r8) /30.0_r8))
+        else
+           FeDB = 1._r8
+        end if
 
-        if (ABS(dlatm(iCol)) >= 40.0_r8) FeDB = 1._r8
-
-
-        FeD = FeDCoef1 * f107 * FeDB - FeDCoef2 * f107
+        FeD = FeDCoef1 * f107 * FeDB
         FeN = .5_r8 * FeD
         !---------------------------------------------------
         !  Set upper boundary condition for right hand side
