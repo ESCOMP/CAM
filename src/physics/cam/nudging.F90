@@ -196,7 +196,6 @@ module nudging
   !------------------
   use shr_kind_mod,   only:r8=>SHR_KIND_R8,cs=>SHR_KIND_CS,cl=>SHR_KIND_CL
   use time_manager,   only:timemgr_time_ge,timemgr_time_inc,get_curr_date,get_step_size
-  use phys_grid   ,   only:scatter_field_to_chunk
   use cam_abortutils, only:endrun
   use spmd_utils  ,   only:masterproc
   use cam_logfile ,   only:iulog
@@ -1391,8 +1390,12 @@ contains
    !                 U,V,T,Q, and PS values and then distribute
    !                 the values to all of the chunks.
    !===============================================================
-   use ppgrid ,only: pver,begchunk
-   use netcdf
+   use ppgrid          ,only: pcols,pver,begchunk,endchunk
+   use cam_pio_utils   ,only: cam_pio_openfile
+   use pio             ,only: PIO_BCAST_ERROR,PIO_INTERNAL_ERROR
+   use pio             ,only: pio_closefile,pio_seterrorhandling,file_desc_t
+   use ncdio_atm       ,only: infld
+   use cam_grid_support,only: cam_grid_id,cam_grid_get_dim_names
 
    ! Arguments
    !-------------
@@ -1400,14 +1403,15 @@ contains
 
    ! Local values
    !-------------
-   integer lev
-   integer ncol,plev,istat
-   integer ncid,varid
-   real(r8) Xanal(Nudge_ncol,Nudge_nlev)
-   real(r8) PSanal(Nudge_ncol)
-   real(r8) Lat_anal(Nudge_ncol)
-   real(r8) Lon_anal(Nudge_ncol)
-   integer  nn,Nindex
+   type(file_desc_t):: fileID
+   integer          :: nn,Nindex
+   logical          :: VARflag
+   integer          :: grid_id
+   character(len=8) :: dim1name,dim2name
+
+
+   real(r8),allocatable:: Tmp3D(:,:,:)
+   real(r8),allocatable:: Tmp2D(:,:)
 
    ! Rotate Nudge_ObsInd() indices, then check the existence of the analyses 
    ! file; broadcast the updated indices and file status to all the other MPI nodes. 
@@ -1429,154 +1433,57 @@ contains
 #endif
    if(.not.Nudge_File_Present(Nudge_ObsInd(1))) return
 
-   ! masterporc does all of the work here
-   !-----------------------------------------
-   if(masterproc) then
-   
-     ! Open the given file
-     !-----------------------
-     istat=nf90_open(trim(anal_file),NF90_NOWRITE,ncid)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*)'NF90_OPEN: failed for file ',trim(anal_file)
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_SE')
-     endif
+   ! Open the file and get the fileID.
+   !-------------------------------------
+   call cam_pio_openfile(fileID,trim(anal_file),0)
+   call pio_seterrorhandling(fileID,PIO_BCAST_ERROR   )
+   call pio_seterrorhandling(fileID,PIO_INTERNAL_ERROR)
+   if(masterproc) write(iulog,*)'PIO_OPEN: file=',trim(anal_file)
 
-     ! Read in Dimensions
-     !--------------------
-     istat=nf90_inq_dimid(ncid,'ncol',varid)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_SE')
-     endif
-     istat=nf90_inquire_dimension(ncid,varid,len=ncol)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_SE')
-     endif
+   grid_id = cam_grid_id('physgrid')
+   call cam_grid_get_dim_names(grid_id,dim1name,dim2name)
+!   if(masterproc) write(iulog,*)'PIO: DIM1NAME=',dim1name,' DIM2NAME=',dim2name
 
-     istat=nf90_inq_dimid(ncid,'lev',varid)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_SE')
-     endif
-     istat=nf90_inquire_dimension(ncid,varid,len=plev)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_SE')
-     endif
+   allocate(Tmp3D(pcols,pver,begchunk:endchunk))
+   allocate(Tmp2D(pcols,begchunk:endchunk))
 
-     istat=nf90_inq_varid(ncid,'lon',varid)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_SE')
-     endif
-     istat=nf90_get_var(ncid,varid,Lon_anal)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_SE')
-     endif
+   ! Read in, U,V,T,Q, and PS  
+   !----------------------------------
+   call infld('U',fileID,dim1name,'lev',dim2name,     &
+              1,pcols,1,pver,begchunk,endchunk,Tmp3D, &
+              VARflag,gridname='physgrid',timelevel=1 )
+   Nobs_U(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
+!   if(masterproc) write(iulog,*)'PIO: INFLD U done'
 
-     istat=nf90_inq_varid(ncid,'lat',varid)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_SE')
-     endif
-     istat=nf90_get_var(ncid,varid,Lat_anal)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_SE')
-     endif
+   call infld('V',fileID,dim1name,'lev',dim2name,     &
+              1,pcols,1,pver,begchunk,endchunk,Tmp3D, &
+              VARflag,gridname='physgrid',timelevel=1 )
+   Nobs_V(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
+!   if(masterproc) write(iulog,*)'PIO: INFLD V done'
 
-     if((Nudge_ncol.ne.ncol).or.(plev.ne.pver)) then
-      write(iulog,*) 'ERROR: nudging_update_analyses_se: ncol=',ncol,' Nudge_ncol=',Nudge_ncol
-      write(iulog,*) 'ERROR: nudging_update_analyses_se: plev=',plev,' pver=',pver
-      call endrun('nudging_update_analyses_se: analyses dimension mismatch')
-     endif
+   call infld('T',fileID,dim1name,'lev',dim2name,     &
+              1,pcols,1,pver,begchunk,endchunk,Tmp3D, &
+              VARflag,gridname='physgrid',timelevel=1 )
+   Nobs_T(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
+!   if(masterproc) write(iulog,*)'PIO: INFLD T done'
 
-     ! Read in and scatter data arrays
-     !----------------------------------
-     istat=nf90_inq_varid(ncid,'U',varid)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_SE')
-     endif
-     istat=nf90_get_var(ncid,varid,Xanal)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_SE')
-     endif
-   endif ! (masterproc) then
-   call scatter_field_to_chunk(1,Nudge_nlev,1,Nudge_ncol,Xanal,    &
-                               Nobs_U(1,1,begchunk,Nudge_ObsInd(1)))
+   call infld('Q',fileID,dim1name,'lev',dim2name,     &
+              1,pcols,1,pver,begchunk,endchunk,Tmp3D, &
+              VARflag,gridname='physgrid',timelevel=1 )
+   Nobs_Q(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
+!   if(masterproc) write(iulog,*)'PIO: INFLD Q done'
 
-   if(masterproc) then
-     istat=nf90_inq_varid(ncid,'V',varid)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_SE')
-     endif
-     istat=nf90_get_var(ncid,varid,Xanal)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_SE')
-     endif
-   endif ! (masterproc) then
-   call scatter_field_to_chunk(1,Nudge_nlev,1,Nudge_ncol,Xanal,    &
-                               Nobs_V(1,1,begchunk,Nudge_ObsInd(1)))
+   call infld('PS',fileID,dim1name,dim2name,          &
+              1,pcols,begchunk,endchunk,Tmp2D,        &
+              VARflag,gridname='physgrid',timelevel=1 )
+   Nobs_PS(:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp2D(:,begchunk:endchunk)
+!   if(masterproc) write(iulog,*)'PIO: INFLD PS done'
 
-   if(masterproc) then
-     istat=nf90_inq_varid(ncid,'T',varid)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_SE')
-     endif
-     istat=nf90_get_var(ncid,varid,Xanal)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_SE')
-     endif
-   endif ! (masterproc) then
-   call scatter_field_to_chunk(1,Nudge_nlev,1,Nudge_ncol,Xanal,    &
-                               Nobs_T(1,1,begchunk,Nudge_ObsInd(1)))
-
-   if(masterproc) then
-     istat=nf90_inq_varid(ncid,'Q',varid)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_SE')
-     endif
-     istat=nf90_get_var(ncid,varid,Xanal)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_SE')
-     endif
-   endif ! (masterproc) then
-   call scatter_field_to_chunk(1,Nudge_nlev,1,Nudge_ncol,Xanal,    &
-                               Nobs_Q(1,1,begchunk,Nudge_ObsInd(1)))
-
-   if(masterproc) then
-    istat=nf90_inq_varid(ncid,'PS',varid)
-    if(istat.ne.NF90_NOERR) then
-      write(iulog,*) nf90_strerror(istat)
-      call endrun ('UPDATE_ANALYSES_SE')
-    endif
-    istat=nf90_get_var(ncid,varid,PSanal)
-    if(istat.ne.NF90_NOERR) then
-      write(iulog,*) nf90_strerror(istat)
-      call endrun ('UPDATE_ANALYSES_SE')
-    endif
-
-     ! Close the analyses file
-     !-----------------------
-     istat=nf90_close(ncid)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_SE')
-     endif
-   endif ! (masterproc) then
-   call scatter_field_to_chunk(1,1,1,Nudge_ncol,PSanal,           &
-                               Nobs_PS(1,begchunk,Nudge_ObsInd(1)))
+   ! Close the analyses file
+   !-----------------------
+   deallocate(Tmp3D)
+   deallocate(Tmp2D)
+   call pio_closefile(fileID)
 
    ! End Routine
    !------------
@@ -1593,8 +1500,12 @@ contains
    !                 U,V,T,Q, and PS values and then distribute
    !                 the values to all of the chunks.
    !===============================================================
-   use ppgrid ,only: pver,begchunk
-   use netcdf
+   use ppgrid          ,only: pcols,pver,begchunk,endchunk
+   use cam_pio_utils   ,only: cam_pio_openfile
+   use pio             ,only: PIO_BCAST_ERROR,PIO_INTERNAL_ERROR
+   use pio             ,only: pio_closefile,pio_seterrorhandling,file_desc_t
+   use ncdio_atm       ,only: infld
+   use cam_grid_support,only: cam_grid_id,cam_grid_get_dim_names
 
    ! Arguments
    !-------------
@@ -1602,259 +1513,14 @@ contains
 
    ! Local values
    !-------------
-   integer lev
-   integer nlon,nlat,plev,istat
-   integer ncid,varid
-   integer ilat,ilon,ilev
-   real(r8) Xanal(Nudge_nlon,Nudge_nlat,Nudge_nlev)
-   real(r8) PSanal(Nudge_nlon,Nudge_nlat)
-   real(r8) Lat_anal(Nudge_nlat)
-   real(r8) Lon_anal(Nudge_nlon)
-   real(r8) Xtrans(Nudge_nlon,Nudge_nlev,Nudge_nlat)
-   integer  nn,Nindex
+   type(file_desc_t):: fileID
+   integer          :: nn,Nindex
+   logical          :: VARflag
+   integer          :: grid_id
+   character(len=8) :: dim1name,dim2name
 
-   ! Rotate Nudge_ObsInd() indices, then check the existence of the analyses 
-   ! file; broadcast the updated indices and file status to all the other MPI nodes. 
-   ! If the file is not there, then just return.
-   !------------------------------------------------------------------------
-   if(masterproc) then
-     Nindex=Nudge_ObsInd(Nudge_NumObs)
-     do nn=Nudge_NumObs,2,-1
-       Nudge_ObsInd(nn)=Nudge_ObsInd(nn-1)
-     end do
-     Nudge_ObsInd(1)=Nindex
-     inquire(FILE=trim(anal_file),EXIST=Nudge_File_Present(Nudge_ObsInd(1)))
-   endif
-#ifdef SPMD
-   call mpibcast(Nudge_File_Present, Nudge_NumObs, mpilog, 0, mpicom)
-   call mpibcast(Nudge_ObsInd      , Nudge_NumObs, mpiint, 0, mpicom)
-#endif
-   if(.not.Nudge_File_Present(Nudge_ObsInd(1))) return
-
-   ! masterporc does all of the work here
-   !-----------------------------------------
-   if(masterproc) then
-   
-     ! Open the given file
-     !-----------------------
-     istat=nf90_open(trim(anal_file),NF90_NOWRITE,ncid)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*)'NF90_OPEN: failed for file ',trim(anal_file)
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_EUL')
-     endif
-
-     ! Read in Dimensions
-     !--------------------
-     istat=nf90_inq_dimid(ncid,'lon',varid)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_EUL')
-     endif
-     istat=nf90_inquire_dimension(ncid,varid,len=nlon)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_EUL')
-     endif
-
-     istat=nf90_inq_dimid(ncid,'lat',varid)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_EUL')
-     endif
-     istat=nf90_inquire_dimension(ncid,varid,len=nlat)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_EUL')
-     endif
-
-     istat=nf90_inq_dimid(ncid,'lev',varid)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_EUL')
-     endif
-     istat=nf90_inquire_dimension(ncid,varid,len=plev)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_EUL')
-     endif
-
-     istat=nf90_inq_varid(ncid,'lon',varid)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_EUL')
-     endif
-     istat=nf90_get_var(ncid,varid,Lon_anal)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_EUL')
-     endif
-
-     istat=nf90_inq_varid(ncid,'lat',varid)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_EUL')
-     endif
-     istat=nf90_get_var(ncid,varid,Lat_anal)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_EUL')
-     endif
-
-     if((Nudge_nlon.ne.nlon).or.(Nudge_nlat.ne.nlat).or.(plev.ne.pver)) then
-      write(iulog,*) 'ERROR: nudging_update_analyses_eul: nlon=',nlon,' Nudge_nlon=',Nudge_nlon
-      write(iulog,*) 'ERROR: nudging_update_analyses_eul: nlat=',nlat,' Nudge_nlat=',Nudge_nlat
-      write(iulog,*) 'ERROR: nudging_update_analyses_eul: plev=',plev,' pver=',pver
-      call endrun('nudging_update_analyses_eul: analyses dimension mismatch')
-     endif
-
-     ! Read in, transpose lat/lev indices, 
-     ! and scatter data arrays
-     !----------------------------------
-     istat=nf90_inq_varid(ncid,'U',varid)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_EUL')
-     endif
-     istat=nf90_get_var(ncid,varid,Xanal)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_EUL')
-     endif
-     do ilat=1,nlat
-     do ilev=1,plev
-     do ilon=1,nlon
-       Xtrans(ilon,ilev,ilat)=Xanal(ilon,ilat,ilev)
-     end do
-     end do
-     end do
-   endif ! (masterproc) then
-   call scatter_field_to_chunk(1,Nudge_nlev,1,Nudge_nlon,Xtrans,   &
-                               Nobs_U(1,1,begchunk,Nudge_ObsInd(1)))
-
-   if(masterproc) then
-     istat=nf90_inq_varid(ncid,'V',varid)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_EUL')
-     endif
-     istat=nf90_get_var(ncid,varid,Xanal)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_EUL')
-     endif
-     do ilat=1,nlat
-     do ilev=1,plev
-     do ilon=1,nlon
-       Xtrans(ilon,ilev,ilat)=Xanal(ilon,ilat,ilev)
-     end do
-     end do
-     end do
-   endif ! (masterproc) then
-   call scatter_field_to_chunk(1,Nudge_nlev,1,Nudge_nlon,Xtrans,   &
-                               Nobs_V(1,1,begchunk,Nudge_ObsInd(1)))
-
-   if(masterproc) then
-     istat=nf90_inq_varid(ncid,'T',varid)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_EUL')
-     endif
-     istat=nf90_get_var(ncid,varid,Xanal)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_EUL')
-     endif
-     do ilat=1,nlat
-     do ilev=1,plev
-     do ilon=1,nlon
-       Xtrans(ilon,ilev,ilat)=Xanal(ilon,ilat,ilev)
-     end do
-     end do
-     end do
-   endif ! (masterproc) then
-   call scatter_field_to_chunk(1,Nudge_nlev,1,Nudge_nlon,Xtrans,   &
-                               Nobs_T(1,1,begchunk,Nudge_ObsInd(1)))
-
-   if(masterproc) then
-     istat=nf90_inq_varid(ncid,'Q',varid)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_EUL')
-     endif
-     istat=nf90_get_var(ncid,varid,Xanal)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_EUL')
-     endif
-     do ilat=1,nlat
-     do ilev=1,plev
-     do ilon=1,nlon
-       Xtrans(ilon,ilev,ilat)=Xanal(ilon,ilat,ilev)
-     end do
-     end do
-     end do
-   endif ! (masterproc) then
-   call scatter_field_to_chunk(1,Nudge_nlev,1,Nudge_nlon,Xtrans,   &
-                               Nobs_Q(1,1,begchunk,Nudge_ObsInd(1)))
-
-   if(masterproc) then
-    istat=nf90_inq_varid(ncid,'PS',varid)
-    if(istat.ne.NF90_NOERR) then
-      write(iulog,*) nf90_strerror(istat)
-      call endrun ('UPDATE_ANALYSES_SE')
-    endif
-    istat=nf90_get_var(ncid,varid,PSanal)
-    if(istat.ne.NF90_NOERR) then
-      write(iulog,*) nf90_strerror(istat)
-      call endrun ('UPDATE_ANALYSES_SE')
-    endif
-
-     ! Close the analyses file
-     !-----------------------
-     istat=nf90_close(ncid)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_EUL')
-     endif
-   endif ! (masterproc) then
-   call scatter_field_to_chunk(1,1,1,Nudge_nlon,PSanal,           &
-                               Nobs_PS(1,begchunk,Nudge_ObsInd(1)))
-
-   ! End Routine
-   !------------
-   return
-  end subroutine ! nudging_update_analyses_eul
-  !================================================================
-
-
-  !================================================================
-  subroutine nudging_update_analyses_fv(anal_file)
-   ! 
-   ! NUDGING_UPDATE_ANALYSES_FV: 
-   !                 Open the given analyses data file, read in 
-   !                 U,V,T,Q, and PS values and then distribute
-   !                 the values to all of the chunks.
-   !===============================================================
-   use ppgrid ,only: pver,begchunk
-   use netcdf
-
-   ! Arguments
-   !-------------
-   character(len=*),intent(in):: anal_file
-
-   ! Local values
-   !-------------
-   integer lev
-   integer nlon,nlat,plev,istat
-   integer ncid,varid
-   integer ilat,ilon,ilev
-   real(r8) Xanal(Nudge_nlon,Nudge_nlat,Nudge_nlev)
-   real(r8) PSanal(Nudge_nlon,Nudge_nlat)
-   real(r8) Lat_anal(Nudge_nlat)
-   real(r8) Lon_anal(Nudge_nlon)
-   real(r8) Xtrans(Nudge_nlon,Nudge_nlev,Nudge_nlat)
-   integer  nn,Nindex
+   real(r8),allocatable:: Tmp3D(:,:,:)
+   real(r8),allocatable:: Tmp2D(:,:)
 
    ! Rotate Nudge_ObsInd() indices, then check the existence of the analyses 
    ! file; broadcast the updated indices and file status to all the other MPI nodes. 
@@ -1876,195 +1542,166 @@ contains
 #endif
    if(.not.Nudge_File_Present(Nudge_ObsInd(1))) return
 
-   ! masterporc does all of the work here
-   !-----------------------------------------
+   ! Open the file and get the fileID.
+   !-------------------------------------
+   call cam_pio_openfile(fileID,trim(anal_file),0)
+   call pio_seterrorhandling(fileID,PIO_BCAST_ERROR   )
+   call pio_seterrorhandling(fileID,PIO_INTERNAL_ERROR)
+   if(masterproc) write(iulog,*)'PIO_OPEN: file=',trim(anal_file)
+
+   grid_id = cam_grid_id('physgrid')
+   call cam_grid_get_dim_names(grid_id,dim1name,dim2name)
+!   if(masterproc) write(iulog,*)'PIO: DIM1NAME=',dim1name,' DIM2NAME=',dim2name
+
+   allocate(Tmp3D(pcols,pver,begchunk:endchunk))
+   allocate(Tmp2D(pcols,begchunk:endchunk))
+
+   ! Read in, U,V,T,Q, and PS  
+   !----------------------------------
+   call infld('U',fileID,dim1name,'lev',dim2name,     &
+              1,pcols,1,pver,begchunk,endchunk,Tmp3D, &
+              VARflag,gridname='physgrid',timelevel=1 )
+   Nobs_U(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
+!   if(masterproc) write(iulog,*)'PIO: INFLD U done'
+
+   call infld('V',fileID,dim1name,'lev',dim2name,     &
+              1,pcols,1,pver,begchunk,endchunk,Tmp3D, &
+              VARflag,gridname='physgrid',timelevel=1 )
+   Nobs_V(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
+!   if(masterproc) write(iulog,*)'PIO: INFLD V done'
+
+   call infld('T',fileID,dim1name,'lev',dim2name,     &
+              1,pcols,1,pver,begchunk,endchunk,Tmp3D, &
+              VARflag,gridname='physgrid',timelevel=1 )
+   Nobs_T(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
+!   if(masterproc) write(iulog,*)'PIO: INFLD T done'
+
+   call infld('Q',fileID,dim1name,'lev',dim2name,     &
+              1,pcols,1,pver,begchunk,endchunk,Tmp3D, &
+              VARflag,gridname='physgrid',timelevel=1 )
+   Nobs_Q(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
+!   if(masterproc) write(iulog,*)'PIO: INFLD Q done'
+
+   call infld('PS',fileID,dim1name,dim2name,          &
+              1,pcols,begchunk,endchunk,Tmp2D,        &
+              VARflag,gridname='physgrid',timelevel=1 )
+   Nobs_PS(:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp2D(:,begchunk:endchunk)
+!   if(masterproc) write(iulog,*)'PIO: INFLD PS done'
+
+   ! Close the analyses file
+   !-----------------------
+   deallocate(Tmp3D)
+   deallocate(Tmp2D)
+   call pio_closefile(fileID)
+
+   ! End Routine
+   !------------
+   return
+  end subroutine ! nudging_update_analyses_eul
+  !================================================================
+
+
+  !================================================================
+  subroutine nudging_update_analyses_fv(anal_file)
+   ! 
+   ! NUDGING_UPDATE_ANALYSES_FV: 
+   !                 Open the given analyses data file, read in 
+   !                 U,V,T,Q, and PS values and then distribute
+   !                 the values to all of the chunks.
+   !===============================================================
+   use ppgrid          ,only: pcols,pver,begchunk,endchunk
+   use cam_pio_utils   ,only: cam_pio_openfile
+   use pio             ,only: PIO_BCAST_ERROR,PIO_INTERNAL_ERROR
+   use pio             ,only: pio_closefile,pio_seterrorhandling,file_desc_t
+   use ncdio_atm       ,only: infld
+   use cam_grid_support,only: cam_grid_id,cam_grid_get_dim_names
+
+   ! Arguments
+   !-------------
+   character(len=*),intent(in):: anal_file
+
+   ! Local values
+   !-------------
+   type(file_desc_t):: fileID
+   integer          :: nn,Nindex
+   logical          :: VARflag
+   integer          :: grid_id
+   character(len=8) :: dim1name,dim2name
+
+   real(r8),allocatable:: Tmp3D(:,:,:)
+   real(r8),allocatable:: Tmp2D(:,:)
+
+   ! Rotate Nudge_ObsInd() indices, then check the existence of the analyses 
+   ! file; broadcast the updated indices and file status to all the other MPI nodes. 
+   ! If the file is not there, then just return.
+   !------------------------------------------------------------------------
    if(masterproc) then
-   
-     ! Open the given file
-     !-----------------------
-     istat=nf90_open(trim(anal_file),NF90_NOWRITE,ncid)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*)'NF90_OPEN: failed for file ',trim(anal_file)
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_FV')
-     endif
-
-     ! Read in Dimensions
-     !--------------------
-     istat=nf90_inq_dimid(ncid,'lon',varid)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_FV')
-     endif
-     istat=nf90_inquire_dimension(ncid,varid,len=nlon)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_FV')
-     endif
-
-     istat=nf90_inq_dimid(ncid,'lat',varid)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_FV')
-     endif
-     istat=nf90_inquire_dimension(ncid,varid,len=nlat)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_FV')
-     endif
-
-     istat=nf90_inq_dimid(ncid,'lev',varid)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_FV')
-     endif
-     istat=nf90_inquire_dimension(ncid,varid,len=plev)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_FV')
-     endif
-
-     istat=nf90_inq_varid(ncid,'lon',varid)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_FV')
-     endif
-     istat=nf90_get_var(ncid,varid,Lon_anal)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_FV')
-     endif
-
-     istat=nf90_inq_varid(ncid,'lat',varid)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_FV')
-     endif
-     istat=nf90_get_var(ncid,varid,Lat_anal)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_FV')
-     endif
-
-     if((Nudge_nlon.ne.nlon).or.(Nudge_nlat.ne.nlat).or.(plev.ne.pver)) then
-      write(iulog,*) 'ERROR: nudging_update_analyses_fv: nlon=',nlon,' Nudge_nlon=',Nudge_nlon
-      write(iulog,*) 'ERROR: nudging_update_analyses_fv: nlat=',nlat,' Nudge_nlat=',Nudge_nlat
-      write(iulog,*) 'ERROR: nudging_update_analyses_fv: plev=',plev,' pver=',pver
-      call endrun('nudging_update_analyses_fv: analyses dimension mismatch')
-     endif
-
-     ! Read in, transpose lat/lev indices, 
-     ! and scatter data arrays
-     !----------------------------------
-     istat=nf90_inq_varid(ncid,'U',varid)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_FV')
-     endif
-     istat=nf90_get_var(ncid,varid,Xanal)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_FV')
-     endif
-     do ilat=1,nlat
-     do ilev=1,plev
-     do ilon=1,nlon
-       Xtrans(ilon,ilev,ilat)=Xanal(ilon,ilat,ilev)
+     Nindex=Nudge_ObsInd(Nudge_NumObs)
+     do nn=Nudge_NumObs,2,-1
+       Nudge_ObsInd(nn)=Nudge_ObsInd(nn-1)
      end do
-     end do
-     end do
-   endif ! (masterproc) then
-   call scatter_field_to_chunk(1,Nudge_nlev,1,Nudge_nlon,Xtrans,   &
-                               Nobs_U(1,1,begchunk,Nudge_ObsInd(1)))
+     Nudge_ObsInd(1)=Nindex
+     inquire(FILE=trim(anal_file),EXIST=Nudge_File_Present(Nudge_ObsInd(1)))
+     write(iulog,*)'NUDGING: Nudge_ObsInd=',Nudge_ObsInd
+     write(iulog,*)'NUDGING: Nudge_File_Present=',Nudge_File_Present
+   endif
+#ifdef SPMD
+   call mpibcast(Nudge_File_Present, Nudge_NumObs, mpilog, 0, mpicom)
+   call mpibcast(Nudge_ObsInd      , Nudge_NumObs, mpiint, 0, mpicom)
+#endif
+   if(.not.Nudge_File_Present(Nudge_ObsInd(1))) return
 
-   if(masterproc) then
-     istat=nf90_inq_varid(ncid,'V',varid)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_FV')
-     endif
-     istat=nf90_get_var(ncid,varid,Xanal)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_FV')
-     endif
-     do ilat=1,nlat
-     do ilev=1,plev
-     do ilon=1,nlon
-       Xtrans(ilon,ilev,ilat)=Xanal(ilon,ilat,ilev)
-     end do
-     end do
-     end do
-   endif ! (masterproc) then
-   call scatter_field_to_chunk(1,Nudge_nlev,1,Nudge_nlon,Xtrans,   &
-                               Nobs_V(1,1,begchunk,Nudge_ObsInd(1)))
+   ! Open the file and get the fileID.
+   !-------------------------------------
+   call cam_pio_openfile(fileID,trim(anal_file),0)
+   call pio_seterrorhandling(fileID,PIO_BCAST_ERROR   )
+   call pio_seterrorhandling(fileID,PIO_INTERNAL_ERROR)
+   if(masterproc) write(iulog,*)'PIO_OPEN: file=',trim(anal_file)
 
-   if(masterproc) then
-     istat=nf90_inq_varid(ncid,'T',varid)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_FV')
-     endif
-     istat=nf90_get_var(ncid,varid,Xanal)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_FV')
-     endif
-     do ilat=1,nlat
-     do ilev=1,plev
-     do ilon=1,nlon
-       Xtrans(ilon,ilev,ilat)=Xanal(ilon,ilat,ilev)
-     end do
-     end do
-     end do
-   endif ! (masterproc) then
-   call scatter_field_to_chunk(1,Nudge_nlev,1,Nudge_nlon,Xtrans,   &
-                               Nobs_T(1,1,begchunk,Nudge_ObsInd(1)))
+   grid_id = cam_grid_id('physgrid')
+   call cam_grid_get_dim_names(grid_id,dim1name,dim2name)
+!   if(masterproc) write(iulog,*)'PIO: DIM1NAME=',dim1name,' DIM2NAME=',dim2name
 
-   if(masterproc) then
-     istat=nf90_inq_varid(ncid,'Q',varid)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_FV')
-     endif
-     istat=nf90_get_var(ncid,varid,Xanal)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_FV')
-     endif
-     do ilat=1,nlat
-     do ilev=1,plev
-     do ilon=1,nlon
-       Xtrans(ilon,ilev,ilat)=Xanal(ilon,ilat,ilev)
-     end do
-     end do
-     end do
-   endif ! (masterproc) then
-   call scatter_field_to_chunk(1,Nudge_nlev,1,Nudge_nlon,Xtrans,   &
-                               Nobs_Q(1,1,begchunk,Nudge_ObsInd(1)))
+   allocate(Tmp3D(pcols,pver,begchunk:endchunk))
+   allocate(Tmp2D(pcols,begchunk:endchunk))
 
-   if(masterproc) then
-    istat=nf90_inq_varid(ncid,'PS',varid)
-    if(istat.ne.NF90_NOERR) then
-      write(iulog,*) nf90_strerror(istat)
-      call endrun ('UPDATE_ANALYSES_SE')
-    endif
-    istat=nf90_get_var(ncid,varid,PSanal)
-    if(istat.ne.NF90_NOERR) then
-      write(iulog,*) nf90_strerror(istat)
-      call endrun ('UPDATE_ANALYSES_SE')
-    endif
+   ! Read in, U,V,T,Q, and PS  
+   !----------------------------------
+   call infld('U',fileID,dim1name,'lev',dim2name,     &
+              1,pcols,1,pver,begchunk,endchunk,Tmp3D, &
+              VARflag,gridname='physgrid',timelevel=1 )
+   Nobs_U(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
+!   if(masterproc) write(iulog,*)'PIO: INFLD U done'
 
-     ! Close the analyses file
-     !-----------------------
-     istat=nf90_close(ncid)
-     if(istat.ne.NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
-       call endrun ('UPDATE_ANALYSES_EUL')
-     endif
-   endif ! (masterproc) then
-   call scatter_field_to_chunk(1,1,1,Nudge_nlon,PSanal,           &
-                               Nobs_PS(1,begchunk,Nudge_ObsInd(1)))
+   call infld('V',fileID,dim1name,'lev',dim2name,     &
+              1,pcols,1,pver,begchunk,endchunk,Tmp3D, &
+              VARflag,gridname='physgrid',timelevel=1 )
+   Nobs_V(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
+!   if(masterproc) write(iulog,*)'PIO: INFLD V done'
+
+   call infld('T',fileID,dim1name,'lev',dim2name,     &
+              1,pcols,1,pver,begchunk,endchunk,Tmp3D, &
+              VARflag,gridname='physgrid',timelevel=1 )
+   Nobs_T(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
+!   if(masterproc) write(iulog,*)'PIO: INFLD T done'
+
+   call infld('Q',fileID,dim1name,'lev',dim2name,     &
+              1,pcols,1,pver,begchunk,endchunk,Tmp3D, &
+              VARflag,gridname='physgrid',timelevel=1 )
+   Nobs_Q(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
+!   if(masterproc) write(iulog,*)'PIO: INFLD Q done'
+
+   call infld('PS',fileID,dim1name,dim2name,          &
+              1,pcols,begchunk,endchunk,Tmp2D,        &
+              VARflag,gridname='physgrid',timelevel=1 )
+   Nobs_PS(:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp2D(:,begchunk:endchunk)
+!   if(masterproc) write(iulog,*)'PIO: INFLD PS done'
+
+   ! Close the analyses file
+   !-----------------------
+   deallocate(Tmp3D)
+   deallocate(Tmp2D)
+   call pio_closefile(fileID)
 
    ! End Routine
    !------------
