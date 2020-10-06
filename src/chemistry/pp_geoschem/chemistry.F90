@@ -108,7 +108,7 @@ module chemistry
   ! Indices of critical species in GEOS-Chem
   INTEGER                    :: iH2O, iO3, iCH4, iCO, iNO, iOH
   INTEGER                    :: iO, iH, iO2, iPSO4
-  REAL(r8)                   :: MWOH, MWPSO4
+  REAL(r8)                   :: MWOH, MWPSO4, MWO3
   ! Indices of critical species in the constituent list
   INTEGER                    :: cQ, cH2O
 
@@ -1703,16 +1703,23 @@ contains
 
     ! This is used to compute gas-phase H2SO4 production
     SpcInfo => State_Chm(BEGCHUNK)%SpcData(iOH)%Info
-    MWOH = REAL(SpcInfo%MW_g,r8)
+    MWOH    = REAL(SpcInfo%MW_g,r8)
     ! Free pointer
     SpcInfo => NULL()
 
     ! This is used to compute gas-phase H2SO4 production
-    iPSO4 = Ind_('PSO4')
+    iPSO4   = Ind_('PSO4')
     SpcInfo => State_Chm(BEGCHUNK)%SpcData(iPSO4)%Info
-    MWPSO4 = REAL(SpcInfo%MW_g,r8)
+    MWPSO4  = REAL(SpcInfo%MW_g,r8)
     ! Free pointer
     SpcInfo => NULL()
+
+    ! This is used to compute overhead ozone column
+    SpcInfo => State_Chm(BEGCHUNK)%SpcData(iO3)%Info
+    MWO3    = REAL(SpcInfo%MW_g,r8)
+    ! Free pointer
+    SpcInfo => NULL()
+
 
     ! Get indices for physical fields in physics buffer
     NDX_PBLH     = pbuf_get_index('pblh'     )
@@ -1992,6 +1999,8 @@ contains
         CSZAmid,                       &              ! Cosine of solar zenith angle at the mid timestep
         Zsurf,                         &              ! Surface height
         Rlats, Rlons                                  ! Chunk latitudes and longitudes (radians)
+
+    REAL(fp)          :: O3col(state%NCOL)            ! Overhead O3 column (DU)
 
     REAL(r8), POINTER :: PblH(:)                      ! PBL height on each chunk [m]
     REAL(r8), POINTER :: cldTop(:)                    ! Cloud top height [?]
@@ -2597,12 +2606,6 @@ contains
     ! Dimensions : nX, nY
     State_Met(LCHNK)%SWGDN     (1,:) = fsds(:)
 
-    ! Field      : TO3
-    ! Description: Total overhead ozone column
-    ! Unit       : DU
-    ! Dimensions : nX, nY
-    State_Met(LCHNK)%TO3       (1,:) = 300.0e+0_fp ! TMMF
-
     ! Field      : SNODP, SNOMAS
     ! Description: Snow depth, snow mass
     ! Unit       : m, kg/m^2
@@ -3049,6 +3052,23 @@ contains
 
     ENDDO
 
+    ! Do this after AirQnt in order to use AIRDEN and BXHEIGHT
+    DO J = 1, nY
+       O3col(J) = 0.0e+0_fp
+       DO L = 1, nZ
+          O3col(J) = O3col(J) &
+                   + State_Chm(LCHNK)%Species(1,J,L,iO3) &
+                      * State_Met(LCHNK)%AIRDEN(1,J,L)   &
+                      * State_Met(LCHNK)%BXHEIGHT(1,J,L)
+       ENDDO
+       O3col(J) = O3col(J) * ( AVO / MWO3 ) / 1e+1_fp / 2.69e+16_fp
+    ENDDO
+
+    ! Field      : TO3
+    ! Description: Total overhead ozone column
+    ! Unit       : DU
+    ! Dimensions : nX, nY
+    State_Met(LCHNK)%TO3       (1,:) = O3col(:)
 
     ! Initialize strat chem if not already done. This has to be done here because
     ! it needs to have non-zero values in State_Chm%AD, which only happens after
