@@ -4249,9 +4249,10 @@ sub check_input_files {
     # Treat special cases...
 
     # These namelist variables are arrays of strings.
-    my @vars = qw(aircraft_specifier ext_frc_specifier srf_emis_specifier mode_defs
-                  rad_climate rad_diag_1 rad_diag_2 rad_diag_3 rad_diag_4 rad_diag_5
-                  rad_diag_6 rad_diag_7 rad_diag_8 rad_diag_9 rad_diag_10);
+    my @vars = qw(aircraft_specifier ext_frc_specifier
+                  rad_climate rad_diag_1 rad_diag_2 rad_diag_3 rad_diag_4
+                  rad_diag_5 rad_diag_6 rad_diag_7 rad_diag_8 rad_diag_9
+                  rad_diag_10 srf_emis_specifier mode_defs);
 
     foreach my $var (@vars) {
 
@@ -4274,7 +4275,7 @@ sub check_input_files {
                 # Extract name and filename
                 if ($spec =~ m/\s*(\w+)      # name of species preceded by optional whitespace
                                \s*->\s*      # -> separator surrounded by optional whitespace
-                               (\S+)         # filename (all characters up to optional whitespace)
+                               (.+)          # filename and possible coefficient(all characters up to optional whitespace)
                               /xo) {
                     my $name = $1;
                     my $file = $2;

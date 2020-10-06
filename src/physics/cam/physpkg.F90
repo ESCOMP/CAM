@@ -1116,7 +1116,10 @@ contains
     ! If exit condition just return
     !
 
-    if(single_column.and.scm_crm_mode) return
+    if(single_column.and.scm_crm_mode) then
+       call diag_deallocate()
+       return
+    end if
     !-----------------------------------------------------------------------
     ! if using IOP values for surface fluxes overwrite here after surface components run
     !-----------------------------------------------------------------------
