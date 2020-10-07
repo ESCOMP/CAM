@@ -19,7 +19,7 @@ use cam_grid_support,   only: cam_grid_id, cam_grid_get_gcid, &
                               max_hcoordname_len
 use cam_map_utils,      only: iMap
 
-use inic_analytic,      only: analytic_ic_active, analytic_ic_set_ic
+use inic_analytic,      only: analytic_ic_active, dyn_set_inic_col
 use dyn_tests_utils,    only: vcoord=>vc_height
 
 use cam_history,        only: addfld, add_default, horiz_only, register_vector_field, &
@@ -658,7 +658,7 @@ subroutine read_inidat(dyn_in)
 
    integer,  allocatable :: m_ind(:)
    real(r8), allocatable :: &
-      cam2d(:,:), cam3d(:,:,:), cam4d(:,:,:,:), zi(:,:,:) ! temp arrays using CAM data order
+      cam2d(:), cam3d(:,:), cam4d(:,:,:), zi(:,:) ! temp arrays using CAM data order
    real(r8), allocatable :: zsurf(:)
 
    ! temp arrays using MPAS data order
@@ -726,10 +726,10 @@ subroutine read_inidat(dyn_in)
 
    allocate( &
       ! temporary arrays using CAM indexing
-      cam2d(nCellsSolve,1),            &
-      cam3d(nCellsSolve,plev,1),       &
-      cam4d(nCellsSolve,plev,1,pcnst), &
-      zi(nCellsSolve,plevp,1),         &
+      cam2d(nCellsSolve),              &
+      cam3d(nCellsSolve,plev),         &
+      cam4d(nCellsSolve,plev,pcnst),   &
+      zi(nCellsSolve,plevp),           &
       ! temporary arrays using MPAS indexing
       t(plev,nCellsSolve),             &
       pintdry(plevp,nCellsSolve),      &
@@ -738,7 +738,7 @@ subroutine read_inidat(dyn_in)
 
    do k = 1, plevp
       kk = plevp - k + 1
-      zi(:,kk,1) = zint(k,:nCellsSolve)
+      zi(:,kk) = zint(k,:nCellsSolve)
    end do
 
    ! If using a topo file check that PHIS is consistent with the surface z coordinate.
@@ -749,8 +749,8 @@ subroutine read_inidat(dyn_in)
       call get_zsurf_from_topo(fh_topo, zsurf)
 
       do i = 1, nCellsSolve
-         if (abs(zi(i,plevp,1) - zsurf(i)) > 0.001_r8) then
-            write(iulog,*) subname//': ERROR: zi= ', zi(i,plevp,1), ' zsurf= ', zsurf(i)
+         if (abs(zi(i,plevp) - zsurf(i)) > 0.001_r8) then
+            write(iulog,*) subname//': ERROR: zi= ', zi(i,plevp), ' zsurf= ', zsurf(i)
             call endrun(subname//': ERROR: PHIS not consistent with surface z coordinate')
          end if
       end do
@@ -765,19 +765,19 @@ subroutine read_inidat(dyn_in)
 
       ! U, V cell center velocity components
 
-      call analytic_ic_set_ic(vcoord, latvals, lonvals, glob_ind, zint=zi, U=cam3d)
+      call dyn_set_inic_col(vcoord, latvals, lonvals, glob_ind, zint=zi, U=cam3d)
       do k = 1, plev
          kk = plev - k + 1
          do i = 1, nCellsSolve
-            ux(kk,i) = cam3d(i,k,1)
+            ux(kk,i) = cam3d(i,k)
          end do
       end do
 
-      call analytic_ic_set_ic(vcoord, latvals, lonvals, glob_ind, zint=zi, V=cam3d)
+      call dyn_set_inic_col(vcoord, latvals, lonvals, glob_ind, zint=zi, V=cam3d)
       do k = 1, plev
          kk = plev - k + 1
          do i = 1, nCellsSolve
-            uy(kk,i) = cam3d(i,k,1)
+            uy(kk,i) = cam3d(i,k)
          end do
       end do
 
@@ -795,12 +795,12 @@ subroutine read_inidat(dyn_in)
       do m = 1, pcnst
          m_ind(m) = m
       end do
-      call analytic_ic_set_ic(vcoord, latvals, lonvals, glob_ind, zint=zi, m_cnst=m_ind, Q=cam4d)
+      call dyn_set_inic_col(vcoord, latvals, lonvals, glob_ind, zint=zi, m_cnst=m_ind, Q=cam4d)
       do m = 1, pcnst  ! index into MPAS tracers array
          do k = 1, plev
             kk = plev - k + 1
             do i = 1, nCellsSolve
-               tracers(m,kk,i) = cam4d(i,k,1,mpas_from_cam_cnst(m))
+               tracers(m,kk,i) = cam4d(i,k,mpas_from_cam_cnst(m))
             end do
          end do
       end do
@@ -808,19 +808,19 @@ subroutine read_inidat(dyn_in)
 
       ! Temperature
 
-      call analytic_ic_set_ic(vcoord, latvals, lonvals, glob_ind, zint=zi, T=cam3d)
+      call dyn_set_inic_col(vcoord, latvals, lonvals, glob_ind, zint=zi, T=cam3d)
       do k = 1, plev
          kk = plev - k + 1
          do i = 1, nCellsSolve
-            t(kk,i) = cam3d(i,k,1)
+            t(kk,i) = cam3d(i,k)
          end do
       end do
 
       ! Pressures are needed to convert temperature to potential temperature.
 
-      call analytic_ic_set_ic(vcoord, latvals, lonvals, glob_ind, zint=zi, PS=cam2d)
+      call dyn_set_inic_col(vcoord, latvals, lonvals, glob_ind, zint=zi, PS=cam2d)
       do i = 1, nCellsSolve
-         pintdry(1,i) = cam2d(i,1)
+         pintdry(1,i) = cam2d(i)
       end do
       
       ! Use Hypsometric eqn to set pressure profiles
@@ -977,7 +977,7 @@ subroutine read_inidat(dyn_in)
          do k = 1, plev
             kk = plev - k + 1
             do i = 1, nCellsSolve
-               tracers(mpas_idx,kk,i) = cam3d(i,k,1)
+               tracers(mpas_idx,kk,i) = cam3d(i,k)
             end do
          end do
 
@@ -999,7 +999,7 @@ subroutine read_inidat(dyn_in)
    call cam_mpas_update_halo('rho_base')
    call cam_mpas_update_halo('theta_base')
 
-   deallocate(cam2d, cam3d, cam4d, t, pintdry, pmiddry, pmid)
+   deallocate(cam2d, cam3d, cam4d, zi, t, pintdry, pmiddry, pmid)
 
 end subroutine read_inidat
 
