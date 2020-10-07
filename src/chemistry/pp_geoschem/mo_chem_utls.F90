@@ -4,8 +4,9 @@ module mo_chem_utls
   private
   public :: get_spc_ndx
   public :: get_inv_ndx
+  public :: get_extfrc_ndx
   public :: utls_chem_is
-  !, get_het_ndx, get_extfrc_ndx, get_rxt_ndx
+  !, get_het_ndx, get_rxt_ndx
 
   save
 
@@ -115,36 +116,36 @@ contains
 !
 !  end function get_het_ndx
 !
-!  integer function get_extfrc_ndx( frc_name )
-!    !-----------------------------------------------------------------------
-!    !     ... return overall external frcing index associated with spc_name
-!    !-----------------------------------------------------------------------
-!
-!    use chem_mods,  only : extcnt, extfrc_lst
-!
-!    implicit none
-!
-!    !-----------------------------------------------------------------------
-!    !     ... dummy arguments
-!    !-----------------------------------------------------------------------
-!    character(len=*), intent(in) :: frc_name
-!
-!    !-----------------------------------------------------------------------
-!    !     ... local variables
-!    !-----------------------------------------------------------------------
-!    integer :: m
-!
-!    get_extfrc_ndx = -1
-!    if( extcnt > 0 ) then
-!       do m = 1,max(1,extcnt)
-!          if( trim( frc_name ) == trim( extfrc_lst(m) ) ) then
-!             get_extfrc_ndx = m
-!             exit
-!          end if
-!       end do
-!    end if
-!
-!  end function get_extfrc_ndx
+  integer function get_extfrc_ndx( frc_name )
+    !-----------------------------------------------------------------------
+    !     ... return overall external frcing index associated with spc_name
+    !-----------------------------------------------------------------------
+
+    use chem_mods,  only : extcnt, extfrc_lst
+
+    implicit none
+
+    !-----------------------------------------------------------------------
+    !     ... dummy arguments
+    !-----------------------------------------------------------------------
+    character(len=*), intent(in) :: frc_name
+
+    !-----------------------------------------------------------------------
+    !     ... local variables
+    !-----------------------------------------------------------------------
+    integer :: m
+
+    get_extfrc_ndx = -1
+    if( extcnt > 0 ) then
+       do m = 1,max(1,extcnt)
+          if( trim( frc_name ) == trim( extfrc_lst(m) ) ) then
+             get_extfrc_ndx = m
+             exit
+          end if
+       end do
+    end if
+
+  end function get_extfrc_ndx
 !
 !  integer function get_rxt_ndx( rxt_tag )
 !    !-----------------------------------------------------------------------

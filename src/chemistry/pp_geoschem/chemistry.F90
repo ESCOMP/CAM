@@ -647,12 +647,16 @@ contains
     namelist /chem_inparm/ clim_soilw_file,    &
                            depvel_file,        &
                            depvel_lnd_file,    &
-                           ext_frc_cycle_yr,   &
                            ext_frc_specifier,  &
                            ext_frc_type,       &
+                           ext_frc_cycle_yr,   &
+                           ext_frc_fixed_ymd,  &
+                           ext_frc_fixed_tod,  &
                            season_wes_file,    &
-                           srf_emis_cycle_yr,  &
                            srf_emis_specifier, &
+                           srf_emis_cycle_yr,  &
+                           srf_emis_fixed_ymd, &
+                           srf_emis_fixed_tod, &
                            srf_emis_type
 
     inputGeosPath='/glade/u/home/fritzt/input.geos.template'
@@ -857,6 +861,19 @@ contains
     CALL MPIBCAST(clim_soilw_file, LEN(clim_soilw_file), MPICHAR, 0, MPICOM)
     CALL MPIBCAST(season_wes_file, LEN(season_wes_file), MPICHAR, 0, MPICOM)
 
+    CALL MPIBCAST (depvel_file,        LEN(depvel_file),                 MPICHAR, 0, MPICOM)
+    CALL MPIBCAST (srf_emis_specifier, LEN(srf_emis_specifier(1))*pcnst, MPICHAR, 0, MPICOM)
+    CALL MPIBCAST (srf_emis_type,      LEN(srf_emis_type),               MPICHAR, 0, MPICOM)
+    CALL MPIBCAST (srf_emis_cycle_yr,  1,                                MPIINT,  0, MPICOM)
+    CALL MPIBCAST (srf_emis_fixed_ymd, 1,                                MPIINT,  0, MPICOM)
+    CALL MPIBCAST (srf_emis_fixed_tod, 1,                                MPIINT,  0, MPICOM)
+    CALL MPIBCAST (srf_emis_specifier, LEN(srf_emis_specifier(1))*pcnst, MPICHAR, 0, MPICOM)
+    CALL MPIBCAST (ext_frc_type,       LEN(ext_frc_type),                MPICHAR, 0, MPICOM)
+    CALL MPIBCAST (ext_frc_cycle_yr,   1,                                MPIINT,  0, MPICOM)
+    CALL MPIBCAST (ext_frc_fixed_ymd,  1,                                MPIINT,  0, MPICOM)
+    CALL MPIBCAST (ext_frc_fixed_tod,  1,                                MPIINT,  0, MPICOM)
+
+
 #endif
 
     ! Update "short_lived_species" arrays - will eventually unify these
@@ -979,6 +996,8 @@ contains
 
     use mo_setinv,         only : setinv_inti
     use mo_mean_mass,      only : init_mean_mass
+    use tracer_cnst,       only : tracer_cnst_init
+    use tracer_srcs,       only : tracer_srcs_init
 
     use GC_Emissions_Mod,  only : GC_Emissions_Init
 
@@ -1739,6 +1758,12 @@ contains
 
     CALL init_mean_mass()
     CALL setinv_inti()
+
+    !-----------------------------------------------------------------------
+    !     ... initialize tracer modules
+    !-----------------------------------------------------------------------
+    CALL tracer_cnst_init()
+    CALL tracer_srcs_init()
 
     ! Can add history output here too with the "addfld" & "add_default" routines
     ! Note that constituents are already output by default
@@ -4082,47 +4107,60 @@ contains
   end subroutine chem_final
 !===============================================================================
   subroutine chem_init_restart(File)
+    use tracer_cnst,      only: init_tracer_cnst_restart
+    use tracer_srcs,      only: init_tracer_srcs_restart
     use pio, only : file_desc_t
+
+    IMPLICIT NONE
+
     TYPE(file_desc_t) :: File
 
     IF (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_INIT_RESTART'
 
-    RETURN
+    !
+    ! data for offline tracers
+    !
+    call init_tracer_cnst_restart(File)
+    call init_tracer_srcs_restart(File)
+    !call init_linoz_data_restart(File)
 
   end subroutine chem_init_restart
 !===============================================================================
   subroutine chem_write_restart( File )
-    !use tracer_cnst, only: write_tracer_cnst_restart
-    !use tracer_srcs, only: write_tracer_srcs_restart
+    use tracer_cnst, only: write_tracer_cnst_restart
+    use tracer_srcs, only: write_tracer_srcs_restart
     !use linoz_data,  only: write_linoz_data_restart
     use pio, only : file_desc_t
+
     IMPLICIT NONE
+
     TYPE(file_desc_t) :: File
 
-    IF (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_WRITE_RESTART'
+    IF ( MasterProc ) WRITE(iulog,'(a)') 'GCCALL CHEM_WRITE_RESTART'
     !
     ! data for offline tracers
     !
-    !call write_tracer_cnst_restart(File)
-    !call write_tracer_srcs_restart(File)
+    call write_tracer_cnst_restart(File)
+    call write_tracer_srcs_restart(File)
     !call write_linoz_data_restart(File)
   end subroutine chem_write_restart
 !===============================================================================
   subroutine chem_read_restart( File )
-    !use tracer_cnst, only: read_tracer_cnst_restart
-    !use tracer_srcs, only: read_tracer_srcs_restart
+    use tracer_cnst, only: read_tracer_cnst_restart
+    use tracer_srcs, only: read_tracer_srcs_restart
     !use linoz_data,  only: read_linoz_data_restart
-
     use pio, only : file_desc_t
+
     IMPLICIT NONE
+
     TYPE(file_desc_t) :: File
 
-    if (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_READ_RESTART'
+    IF ( MasterProc ) WRITE(iulog,'(a)') 'GCCALL CHEM_READ_RESTART'
     !
     ! data for offline tracers
     !
-    !call read_tracer_cnst_restart(File)
-    !call read_tracer_srcs_restart(File)
+    call read_tracer_cnst_restart(File)
+    call read_tracer_srcs_restart(File)
     !call read_linoz_data_restart(File)
   end subroutine chem_read_restart
 !================================================================================
