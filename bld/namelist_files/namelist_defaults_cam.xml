@@ -304,7 +304,6 @@
 <use_topo_file aquaplanet="1"     > .false. </use_topo_file>
 <use_topo_file phys="held_suarez" > .false. </use_topo_file>
 <use_topo_file analytic_ic="1"    > .false. </use_topo_file>
-<use_topo_file dyn="mpas"         > .false. </use_topo_file>
 
 <!-- Mesh files for refined SE grids -->
 <se_mesh_file> none </se_mesh_file>

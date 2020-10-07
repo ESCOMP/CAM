@@ -36,9 +36,6 @@ public :: &
    d_p_coupling, &
    p_d_coupling
 
-
-real(r8), parameter :: pref = 1.e5_r8 ! reference pressure (Pa)
-
 !=========================================================================================
 contains
 !=========================================================================================
@@ -458,10 +455,13 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
    type(physics_buffer_desc), pointer       :: pbuf2d(:,:)
 
    ! Local variables
+
    integer :: k, lchnk, m, ncol
 
    real(r8) :: factor(pcols,pver)
    real(r8) :: zvirv(pcols,pver)
+
+   real(r8), parameter :: pref = 1.e5_r8 ! reference pressure (Pa)
 
    type(physics_buffer_desc), pointer :: pbuf_chnk(:)
 

@@ -11,11 +11,8 @@ module ref_pres
 ! 
 !--------------------------------------------------------------------------
 
-use shr_kind_mod,   only: r8=>shr_kind_r8
-use ppgrid,         only: pver, pverp
-
-use cam_logfile,    only: iulog
-use cam_abortutils, only: endrun
+use shr_kind_mod, only: r8=>shr_kind_r8
+use ppgrid,       only: pver, pverp
 
 implicit none
 public
@@ -171,66 +168,6 @@ pure function press_lim_idx(p, top) result(k_lim)
   end if
 
 end function press_lim_idx
-
-!====================================================================================
-
-subroutine std_atm_pres(height, pstd)
-
-   ! Use barometric formula for U.S. Standard Atmosphere to convert heights to pressures.
-   ! This formula is valid up to 86 km.
-   ! https://en.wikipedia.org/wiki/Barometric_formula
-
-   ! arguments
-   real(r8), intent(in)  :: height(:) ! height above sea level in meters
-   real(r8), intent(out) :: pstd(:)   ! std pressure in Pa
-
-   ! local vars
-   integer, parameter  :: nreg = 7  ! number of regions
-   real(r8), parameter :: hb(nreg) = & ! height a bottom of layer (m)
-      (/0.0_r8, 1.1e4_r8, 2.0e4_r8, 3.2e4_r8, 4.7e4_r8, 5.1e4_r8, 7.1e4_r8/)
-   real(r8), parameter :: pb(nreg) = & ! standard pressure (Pa)
-      (/101325._r8, 22632.1_r8, 5474.89_r8, 868.02_r8, 110.91_r8, 66.94_r8, 3.96_r8/)
-   real(r8), parameter :: tb(nreg) = & ! standard temperature (K)
-      (/288.15_r8, 216.65_r8, 216.65_r8, 228.65_r8, 270.65_r8, 270.65_r8, 214.65_r8/)
-   real(r8), parameter :: lb(nreg) = & ! temperature lapse rate (K/m)
-      (/-0.0065_r8, 0.0_r8, 0.001_r8, 0.0028_r8, 0.0_r8, -0.0028_r8, -0.002_r8/)
-   real(r8), parameter :: rg = 8.3144598_r8 ! universal gas constant (J/mol/K)
-   real(r8), parameter :: g0 = 9.80665_r8   ! gravitational acceleration (m/s^2)
-   real(r8), parameter :: mw = 0.0289644_r8 ! molar mass of dry air (kg/mol)
-   real(r8), parameter :: c1 = g0*mw/rg
-
-   integer :: i, ii, k, nlev
-   logical :: found_region
-   character(len=*), parameter :: routine = 'ref_pres::std_atm_pres'
-   !---------------------------------------------------------------------------
-
-   nlev = size(height)
-   do k = 1, nlev
-
-      ! find region containing height
-      found_region = .false.
-      find_region: do i = nreg, 1, -1
-         if (height(k) >= hb(i)) then
-            ii = i
-            found_region = .true.
-            exit find_region
-         end if
-      end do find_region
-
-      if (.not. found_region) then
-         write(iulog,*) routine, ': illegal height: ', height(k)
-         call endrun(routine// ': illegal height < 0. ')
-      end if
-
-      if (lb(ii) /= 0._r8) then
-         pstd(k) = pb(ii) * ( tb(ii) / (tb(ii) + lb(ii)*(height(k) - hb(ii)) ) )**(c1/lb(ii))
-      else
-         pstd(k) = pb(ii) * exp( -c1*(height(k) - hb(ii))/tb(ii) )
-      end if
-
-   end do
-
-end subroutine std_atm_pres
 
 !====================================================================================
 

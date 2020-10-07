@@ -118,7 +118,8 @@ subroutine dyn_grid_init()
    ! coupling code requires constructing global fields for the cell center
    ! grid which is used by the physics parameterizations.
 
-   use ref_pres,            only: std_atm_pres, ref_pres_init
+   use ref_pres,            only: ref_pres_init
+   use std_atm_profile,     only: std_atm_pres
    use time_manager,        only: get_step_size
 
    use cam_initfiles,       only: initial_file_get_id
