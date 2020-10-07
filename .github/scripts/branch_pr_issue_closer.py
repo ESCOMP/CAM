@@ -470,10 +470,10 @@ def _main_prog():
             print("Issue #{} has been closed.".format(issue_num))
         else:
             #Extract card id from id dictionary:
-            try:
+            if issue_num in proj_issue_card_ids:
                 card_id = proj_issue_card_ids[issue_num]
-            except KeyError:
-                #If there is a key error, then it means the issue
+            else:
+                #If issue isn't in dictionary, then it means the issue
                 #number was never found in the "To do" column, which
                 #likely means the user either referenced the wrong
                 #issue number, or the issue was never assigned to the
