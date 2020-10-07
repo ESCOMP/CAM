@@ -842,7 +842,6 @@ contains
       if (.not.has_ts) then
          if (masterproc) then
             write(iulog,*) 'get_ocn_ice_frcs: TS is not in the met dataset and cannot set ocnfrc and icefrc'
-            write(iulog,*) ' try setting drydep_method to xactive_atm or table'
             call endrun('get_ocn_ice_frcs: TS is not in the met dataset')
          endif
       endif

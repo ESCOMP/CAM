@@ -1632,9 +1632,6 @@
 <gas_wetdep_method  phys="spcam_sam1mom" >MOZ</gas_wetdep_method>
 <gas_wetdep_method  phys="spcam_m2005"   >OFF</gas_wetdep_method>
 
-<!-- dry deposition method for gas-phase species -->
-<drydep_method>xactive_lnd</drydep_method>
-
 <!-- Dry Dep surface data file needed by prognostic MAM on unstructured grid only. -->
 <drydep_srf_file hgrid="ne5np4"          >atm/cam/chem/trop_mam/atmsrf_ne5np4_110920.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne16np4"         >atm/cam/chem/trop_mam/atmsrf_ne16np4_110920.nc</drydep_srf_file>
@@ -1657,11 +1654,8 @@
 <drydep_srf_file hgrid="C384">atm/cam/chem/trop_mam/atmsrf_C384_c200625.nc</drydep_srf_file>
 
 <!-- depvel data -->
-<depvel_file    >atm/cam/chem/trop_mozart/dvel/depvel_monthly.nc</depvel_file>
 <depvel_lnd_file>atm/cam/chem/trop_mozart/dvel/regrid_vegetation.nc</depvel_lnd_file>
 <depvel_lnd_file   aquaplanet="1" >atm/cam/chem/trop_mozart/dvel/regrid_vegetation_all_zero_aquaplanet_1deg_regularGrid_c20170421.nc</depvel_lnd_file>
-<clim_soilw_file>atm/cam/chem/trop_mozart/dvel/clim_soilw.nc</clim_soilw_file>
-<season_wes_file>atm/cam/chem/trop_mozart/dvel/season_wes.nc</season_wes_file>
 
 <!-- photolysis inputs -->
 <xs_coef_file>atm/waccm/phot/effxstex.txt</xs_coef_file>
@@ -1678,9 +1672,6 @@
 
 <!-- Boundary data for Tropopheric Chemistry -->
 <fstrat_file    >atm/cam/chem/trop_mozart/ub/ubvals_b40.20th.track1_1996-2005_c110315.nc</fstrat_file>
-<linoz_data_path>atm/cam/chem/trop_mozart/ub</linoz_data_path>
-<linoz_data_file>linoz2004_2006jpl_c081216.nc</linoz_data_file>
-<chlorine_loading_file>atm/cam/chem/trop_mozart/ub/EESC_1850-2100_c090603.nc</chlorine_loading_file>
 
 <!-- Fossil fuel carbon aerosol surface emissions-->
   <!-- standard 4 species carbon -->
