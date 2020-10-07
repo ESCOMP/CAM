@@ -20,6 +20,7 @@ module edmf_module
   real(r8) :: clubb_mf_ent0 = 0._r8
   real(r8) :: clubb_mf_wa   = 0._r8
   real(r8) :: clubb_mf_wb   = 0._r8
+  integer  :: clubb_mf_nup  = 0
 
   contains
 
@@ -32,8 +33,8 @@ module edmf_module
     use namelist_utils,  only: find_group_name
     use units,           only: getunit, freeunit
     use cam_abortutils,  only: endrun
-    use clubb_api_module, only: l_stats, l_output_rad_files
-    use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_logical, mpi_real8
+    use clubb_api_module,only: l_stats, l_output_rad_files
+    use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_logical, mpi_real8, mpi_integer
 
     character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
@@ -41,7 +42,7 @@ module edmf_module
 
     integer :: iunit, read_status, ierr
 
-    namelist /clubb_mf_nl/ clubb_mf_L0, clubb_mf_ent0, clubb_mf_wa, clubb_mf_wb
+    namelist /clubb_mf_nl/ clubb_mf_L0, clubb_mf_ent0, clubb_mf_wa, clubb_mf_wb, clubb_mf_nup
 
     if (masterproc) then
       iunit = getunit()
@@ -61,18 +62,22 @@ module edmf_module
 
     call mpi_bcast(clubb_mf_L0, 1, mpi_real8,   mstrid, mpicom, ierr) 
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_L0")
-    call mpi_bcast(clubb_mf_ent0, 1, mpi_real8,   mstrid, mpicom, ierr)
+    call mpi_bcast(clubb_mf_ent0, 1, mpi_real8, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_ent0")
     call mpi_bcast(clubb_mf_wa, 1, mpi_real8,   mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_wa")
     call mpi_bcast(clubb_mf_wb, 1, mpi_real8,   mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_wb")
+    call mpi_bcast(clubb_mf_nup, 1, mpi_integer,mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_nup")
 
   end subroutine clubb_mf_readnl
 
-  subroutine integrate_mf( nz,      nup,     dzt,     p_zm,      iexner_zm,         & ! input
-                           u,       v,       thl,     thl_zm,    thv,               & ! input
-                           qt,      qt_zm,   wthl,    wqt,       pblh,              & ! input
+  subroutine integrate_mf( nz,      dzt,     zm,      p_zm,      iexner_zm,         & ! input
+                                                      p_zt,      iexner_zt,         & ! input
+                           u,       v,       thl,     qt,        thv,               & ! input
+                                             thl_zm,  qt_zm,                        & ! input
+                                             wthl,    wqt,       pblh,              & ! input
                            dry_a,   moist_a,                                        & ! output - plume diagnostics
                            dry_w,   moist_w,                                        & ! output - plume diagnostics
                            dry_qt,  moist_qt,                                       & ! output - plume diagnostics
@@ -120,11 +125,15 @@ module edmf_module
 
      real(r8), dimension(nz), intent(in) :: u,      v,            & ! thermodynamic grid
                                             thl,    thv,          & ! thermodynamic grid
-                                            qt,     dzt,          & ! thermodynamic grid
-                                            p_zm,   iexner_zm,    & ! momentum grid
-                                            thl_zm, qt_zm           ! momentum grid
+                                            qt,                   & ! thermodynamic grid
+                                            dzt,                  & ! thermodynamic grid
+                                            p_zt,   iexner_zt,    & ! thermodynamic grid
+                                            thl_zm,               & ! momentum grid
+                                            qt_zm,                & ! momentum grid
+                                            zm,                   & ! momentum grid
+                                            p_zm,   iexner_zm       ! momentum grid
 
-     integer,  intent(in)                :: nz,nup
+     integer,  intent(in)                :: nz
      real(r8), intent(in)                :: wthl,wqt
      real(r8), intent(inout)             :: pblh
 
@@ -145,49 +154,66 @@ module edmf_module
      ! INTERNAL VARIABLES
      !
      ! sums over all plumes
-     real(r8), dimension(nz)     :: moist_th, dry_th,         & ! momentum grid
-                                    awqv,     awth              ! momentum grid
+     real(r8), dimension(nz)              :: moist_th, dry_th,         & ! momentum grid
+                                             awqv,     awth              ! momentum grid
      !
      ! updraft properties
-     real(r8), dimension(nz,nup) :: upw,      upa,            & ! momentum grid
-                                    upqt,     upqc,           & ! momentum grid
-                                    upqv,     upql,           & ! momentum grid
-                                              upqi,           & ! momentum grid
-                                    upth,     upthv,          & ! momentum grid
-                                              upthl,          & ! momentum grid
-                                    upu,      upv               ! momentum grid 
+     real(r8), dimension(nz,clubb_mf_nup) :: upw,      upa,            & ! momentum grid
+                                             upqt,     upqc,           & ! momentum grid
+                                             upqv,     upqs,           & ! momentum grid
+                                             upql,     upqi,           & ! momentum grid
+                                             upth,     upthv,          & ! momentum grid
+                                                       upthl,          & ! momentum grid
+                                             upu,      upv               ! momentum grid 
      !
      ! entrainment profiles
-     real(r8), dimension(nz,nup) :: ent,      entf              ! thermodynamic grid
-     integer,  dimension(nz,nup) :: enti                        ! thermodynamic grid
+     real(r8), dimension(nz,clubb_mf_nup) :: ent,      entf              ! thermodynamic grid
+     integer,  dimension(nz,clubb_mf_nup) :: enti                        ! thermodynamic grid
      ! 
      ! other variables
-     integer                     :: k,i,ih
-     real(r8)                    :: wthv,                     &
-                                    wstar,  qstar,   thstar,  & 
-                                    sigmaw, sigmaqt, sigmath, &
-                                            wmin,    wmax,    & 
-                                    wlv,    wtv,     wp,      & 
-                                    B,                        & ! thermodynamic grid
-                                    entexp, entexpu, entw,    & ! thermodynamic grid
-                                    thln,   thvn,    thn,     & ! momentum grid
-                                    qtn,                      & ! momentum grid
-                                    qcn,    qln,     qin,     & ! momentum grid
-                                    un,     vn,      wn2        ! momentum grid
+     integer                              :: k,i,ih
+     real(r8), dimension(clubb_mf_nup)    :: zcb
+     real(r8)                             :: zcb_unset,                &
+                                             wthv,                     &
+                                             wstar,  qstar,   thlstar, & 
+                                             sigmaw, sigmaqt, sigmathl,&
+                                                     wmin,    wmax,    & 
+                                             wlv,    wtv,     wp,      & 
+                                             B,                        & ! thermodynamic grid
+                                             entexp, entexpu, entw,    & ! thermodynamic grid
+                                             thln,   thvn,    thn,     & ! momentum grid
+                                             qtn,    qsn,              & ! momentum grid
+                                             qcn,    qln,     qin,     & ! momentum grid
+                                             un,     vn,      wn2,     & ! momentum grid
+                                             lmixn,                    & ! momentum grid
+                                             supqt,  supthl              ! thermodynamic grid
      !
      ! parameters defining initial conditions for updrafts
-     real(r8),parameter          :: pwmin = 1.5_r8,           &
-                                    pwmax = 3._r8,            &
+     real(r8),parameter                   :: pwmin = 1.5_r8,           &
+                                             pwmax = 3._r8
+
+     !
+     ! alpha, z-scores after Suselj etal 2019
+     real(r8),parameter                   :: alphw   = 0.572_r8,       &
+                                             alphqt  = 2.890_r8,       &     
+                                             alphthl = 2.890_r8
+     !
+     ! w' covariance after Suselj etal 2019
+     real(r8),parameter                   :: cwqt  = 0.32_r8,          &
+                                             cwthl = 0.58_r8
      !
      ! min values to avoid singularities
-     real(r8),parameter          :: wstarmin = 1.e-3_r8,      &
-                                    pblhmin  = 100._r8
+     real(r8),parameter                   :: wstarmin = 1.e-3_r8,      &
+                                             pblhmin  = 100._r8
      !
      ! to condensate or not to condensate
-     logical                     :: do_condensation = .true.
+     logical                              :: do_condensation = .true.
      !
-     ! debug flag
-     logical                     :: debug = .false.
+     ! to precip or not to precip
+     logical                              :: do_precip = .false.
+     !
+     ! to debug flag
+     logical                              :: debug = .false.
 
      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
      !!!!!!!!!!!!!!!!!!!!!! BEGIN CODE !!!!!!!!!!!!!!!!!!!!!!!
@@ -238,6 +264,10 @@ module edmf_module
      upqi  = 0._r8
      upqv  = 0._r8
 
+     ! unique identifier
+     zcb_unset = 9999999._r8
+     zcb       = zcb_unset
+
      pblh = max(pblh,pblhmin)
      wthv = wthl+zvir*thv(1)*wqt
 
@@ -245,38 +275,42 @@ module edmf_module
      if ( wthv > 0._r8 ) then
 
        ! get entrainment coefficient, dz/L0
-       do i=1,nup
+       do i=1,clubb_mf_nup
          do k=2,nz
            entf(k,i) = dzt(k) / clubb_mf_L0
          enddo
        enddo
 
        ! get poisson, P(dz/L0)
-       call poisson( nz, nup, entf, enti, thl(nz))
+       if (debug) then
+         enti(:,:) = 4
+       else
+         call poisson( nz, clubb_mf_nup, entf, enti, thl(nz))
+       end if
 
        ! get entrainment, ent=ent0/dz*P(dz/L0)
-       do i=1,nup
+       do i=1,clubb_mf_nup
          do k=2,nz
            ent(k,i) = real( enti(k,i))*clubb_mf_ent0/dzt(k)
          enddo
        enddo
 
        ! get surface conditions
-       wstar  = max( wstarmin, (gravit/thv(1)*wthv*pblh)**(1./3.) )
-       qstar  = wqt / wstar
-       thstar = wthl / wstar
+       wstar   = max( wstarmin, (gravit/thv(1)*wthv*pblh)**(1./3.) )
+       qstar   = wqt / wstar
+       thlstar = wthl / wstar
 
-       sigmaw  = 0.572_r8 * wstar      / 1._r8
-       sigmaqt = 2.890_r8 * abs(qstar) / 1._r8
-       sigmath = 2.890_r8 * abs(thstar)/ 1._r8
+       sigmaw   = alphw * wstar
+       sigmaqt  = alphqt * abs(qstar)
+       sigmathl = alphthl * abs(thlstar)
 
        wmin = sigmaw * pwmin
        wmax = sigmaw * pwmax
 
-       do i=1,nup
+       do i=1,clubb_mf_nup
 
-         wlv = wmin + (wmax-wmin) / (real(nup)) * (real(i)-1.)
-         wtv = wmin + (wmax-wmin) / (real(nup)) * real(i)
+         wlv = wmin + (wmax-wmin) / (real(clubb_mf_nup)) * (real(i)-1.)
+         wtv = wmin + (wmax-wmin) / (real(clubb_mf_nup)) * real(i)
 
          upw(1,i) = 0.5_r8 * (wlv+wtv)
          upa(1,i) = 0.5_r8 * erf( wtv/(sqrt(2.)*sigmaw) ) &
@@ -285,64 +319,91 @@ module edmf_module
          upu(1,i) = u(1)
          upv(1,i) = v(1)
 
-         upqc(1,i)  = 0._r8
-         upqt(1,i)  = qt(1)  + 0.32_r8 * upw(1,i) * sigmaqt/sigmaw
-         upthv(1,i) = thv(1) + 0.58_r8 * upw(1,i) * sigmath/sigmaw
-         upthl(1,i) = upthv(1,i) / (1._r8+zvir*upqt(1,i))
-         upth(1,i)  = upthl(1,i)
-         upqv(1,i)  = upqt(1,i)
+         upqt(1,i)  = qt(1)  + cwqt * upw(1,i) * sigmaqt/sigmaw
+         upthl(1,i) = thl(1) + cwthl * upw(1,i) * sigmathl/sigmaw
+
+         ! get cloud, lowest momentum level 
+         if (do_condensation) then
+           call condensation_mf(upqt(1,i), upthl(1,i), p_zm(1), iexner_zm(1), &
+                                thvn, qcn, thn, qln, qin, qsn, lmixn)
+           upthv(1,i) = thvn
+           upqc(1,i)  = qcn
+           upql(1,i)  = qln
+           upqi(1,i)  = qin
+           upqs(1,i)  = qsn
+           if (qcn.gt.0._r8) zcb(i) = zm(1)
+         else
+           ! assume no cldliq
+           upqc(1,i)  = 0._r8
+           upthv(1,i) = upthl(1,i)*(1._r8+zvir*upqt(1,i))
+           ! assume sigmathl = sigmath
+           !!upthv(1,i) = thv(1) + 0.58_r8 * upw(1,i) * sigmathl/sigmaw
+         end if
 
        enddo
 
        ! get updraft properties
-       do i=1,nup
-         do k=2,nz
+       do i=1,clubb_mf_nup
+         do k=1,nz-1
 
-           entexp  = exp(-ent(k,i)*dzt(k))
-           entexpu = exp(-ent(k,i)*dzt(k)/3._r8)
+           ! get microphysics, autoconversion
+           if (do_precip .and. upqc(k,i).gt.0._r8) then
+             call precip_mf(upqs(k,i),upqt(k,i),upw(k,i),dzt(k+1),zm(k+1)-zcb(i),supqt)
+
+             supthl = -1._r8*lmixn*supqt*iexner_zt(k+1)/cpair
+           else
+             supqt  = 0._r8
+             supthl = 0._r8
+           end if
+
+           ! integrate updraft
+           entexp  = exp(-ent(k+1,i)*dzt(k+1))
+           entexpu = exp(-ent(k+1,i)*dzt(k+1)/3._r8)
            
-           qtn  = qt(k) *(1.-entexp ) + upqt (k-1,i)*entexp
-           thln = thl(k)*(1.-entexp ) + upthl(k-1,i)*entexp
-           un   = u(k)  *(1.-entexpu) + upu  (k-1,i)*entexpu
-           vn   = v(k)  *(1.-entexpu) + upv  (k-1,i)*entexpu
+           qtn  = qt(k+1) *(1.-entexp ) + upqt (k,i)*entexp + supqt
+           thln = thl(k+1)*(1.-entexp ) + upthl(k,i)*entexp + supthl
+           un   = u(k+1)  *(1.-entexpu) + upu  (k,i)*entexpu
+           vn   = v(k+1)  *(1.-entexpu) + upv  (k,i)*entexpu
 
+           ! get cloud, momentum levels
            if (do_condensation) then
-             call condensation_mf(qtn, thln, p_zm(k), iexner_zm(k), &
-                                  thvn, qcn, thn, qln, qin)
+             call condensation_mf(qtn, thln, p_zm(k+1), iexner_zm(k+1), &
+                                  thvn, qcn, thn, qln, qin, qsn, lmixn)
+             if (zcb(i).eq.zcb_unset .and. qcn.gt.0._r8) zcb(i) = zm(k+1)
            else
              thvn = thln*(1._r8+zvir*qtn)
            end if
 
-           B=gravit*(0.5_r8*(thvn+upthv(k-1,i))/thv(k)-1.)
-
+           ! get buoyancy
+           B=gravit*(0.5_r8*(thvn + upthv(k,i))/thv(k+1)-1.)
            if (debug) then
              if ( masterproc ) then
                write(iulog,*) "B(k,i), k, i ", B, k, i
              end if
            end if
 
-           ! get wn^2, to avoid singularities w equation has to be computed differently if wp==0
-           wp = clubb_mf_wb*ent(k,i)
+           ! get wn^2
+           wp = clubb_mf_wb*ent(k+1,i)
            if (wp==0._r8) then
-             wn2 = upw(k-1,i)**2._r8+2._r8*clubb_mf_wa*B*dzt(k)
+             wn2 = upw(k,i)**2._r8+2._r8*clubb_mf_wa*B*dzt(k+1)
            else
-             entw = exp(-2._r8*wp*dzt(k))
-             wn2 = entw*upw(k-1,i)**2._r8+clubb_mf_wa*B/(clubb_mf_wb*ent(k,i))*(1._r8-entw)
+             entw = exp(-2._r8*wp*dzt(k+1))
+             wn2 = entw*upw(k,i)**2._r8+clubb_mf_wa*B/(clubb_mf_wb*ent(k+1,i))*(1._r8-entw)
            end if
 
            if (wn2>0._r8) then
-             upw(k,i)   = sqrt(wn2)
-             upthv(k,i) = thvn
-             upthl(k,i) = thln
-             upqt(k,i)  = qtn
-             upqc(k,i)  = qcn
-             upu(k,i)   = un
-             upv(k,i)   = vn
-             upa(k,i)   = upa(k-1,i)
-             upth(k,i)  = thn
-             upql(k,i)  = qln
-             upqi(k,i)  = qin
-             upqv(k,i)  = qtn - qcn
+             upw(k+1,i)   = sqrt(wn2)
+             upthv(k+1,i) = thvn
+             upthl(k+1,i) = thln
+             upqt(k+1,i)  = qtn
+             upqc(k+1,i)  = qcn
+             upqs(k+1,i)  = qsn
+             upu(k+1,i)   = un
+             upv(k+1,i)   = vn
+             upa(k+1,i)   = upa(k,i)
+             upql(k+1,i)  = qln
+             upqi(k+1,i)  = qin
+             upqv(k+1,i)  = qtn - qcn
            else
              exit
            end if
@@ -354,13 +415,12 @@ module edmf_module
        do k=1,nz
 
          ! first sum over all i-updrafts
-         do i=1,nup
+         do i=1,clubb_mf_nup
            if (upqc(k,i)>0._r8) then
              moist_a(k)   = moist_a(k)   + upa(k,i)
              moist_w(k)   = moist_w(k)   + upa(k,i)*upw(k,i)
              moist_qt(k)  = moist_qt(k)  + upa(k,i)*upqt(k,i)
              moist_thl(k) = moist_thl(k) + upa(k,i)*upthl(k,i)
-             moist_th(k)  = moist_th(k)  + upa(k,i)*upth(k,i)
              moist_u(k)   = moist_u(k)   + upa(k,i)*upu(k,i)
              moist_v(k)   = moist_v(k)   + upa(k,i)*upv(k,i)
              moist_qc(k)  = moist_qc(k)  + upa(k,i)*upqc(k,i)
@@ -369,7 +429,6 @@ module edmf_module
              dry_w(k)     = dry_w(k)     + upa(k,i)*upw(k,i)
              dry_qt(k)    = dry_qt(k)    + upa(k,i)*upqt(k,i)
              dry_thl(k)   = dry_thl(k)   + upa(k,i)*upthl(k,i)
-             dry_th(k)    = dry_th(k)    + upa(k,i)*upth(k,i)
              dry_u(k)     = dry_u(k)     + upa(k,i)*upu(k,i)
              dry_v(k)     = dry_v(k)     + upa(k,i)*upv(k,i)
            endif
@@ -379,14 +438,12 @@ module edmf_module
            dry_w(k)   = dry_w(k)   / dry_a(k)
            dry_qt(k)  = dry_qt(k)  / dry_a(k)
            dry_thl(k) = dry_thl(k) / dry_a(k)
-           dry_th(k)  = dry_th(k)  / dry_a(k)
            dry_u(k)   = dry_u(k)   / dry_a(k)
            dry_v(k)   = dry_v(k)   / dry_a(k)
          else
            dry_w(k)   = 0._r8
            dry_qt(k)  = 0._r8
            dry_thl(k) = 0._r8
-           dry_th(k)  = 0._r8
            dry_u(k)   = 0._r8
            dry_v(k)   = 0._r8
          endif
@@ -395,7 +452,6 @@ module edmf_module
            moist_w(k)   = moist_w(k)   / moist_a(k)
            moist_qt(k)  = moist_qt(k)  / moist_a(k)
            moist_thl(k) = moist_thl(k) / moist_a(k)
-           moist_th(k)  = moist_th(k)  / moist_a(k)
            moist_u(k)   = moist_u(k)   / moist_a(k)
            moist_v(k)   = moist_v(k)   / moist_a(k)
            moist_qc(k)  = moist_qc(k)  / moist_a(k)
@@ -403,7 +459,6 @@ module edmf_module
            moist_w(k)   = 0._r8
            moist_qt(k)  = 0._r8
            moist_thl(k) = 0._r8
-           moist_th(k)  = 0._r8
            moist_u(k)   = 0._r8
            moist_v(k)   = 0._r8
            moist_qc(k)  = 0._r8
@@ -412,13 +467,12 @@ module edmf_module
        enddo
 
        do k=1,nz
-         do i=1,nup
+         do i=1,clubb_mf_nup
            ae  (k) = ae  (k) - upa(k,i)
            aw  (k) = aw  (k) + upa(k,i)*upw(k,i)
            awu (k) = awu (k) + upa(k,i)*upw(k,i)*upu(k,i)
            awv (k) = awv (k) + upa(k,i)*upw(k,i)*upv(k,i)
            awthl(k)= awthl(k)+ upa(k,i)*upw(k,i)*upthl(k,i) 
-           awth(k) = awth(k) + upa(k,i)*upw(k,i)*upth(k,i) 
            awqt(k) = awqt(k) + upa(k,i)*upw(k,i)*upqt(k,i)
            awqv(k) = awqv(k) + upa(k,i)*upw(k,i)*upqv(k,i)
            awql(k) = awql(k) + upa(k,i)*upw(k,i)*upql(k,i)
@@ -435,7 +489,7 @@ module edmf_module
 
   end subroutine integrate_mf
 
-  subroutine condensation_mf( qt, thl, p, iex, thv, qc, th, ql, qi)
+  subroutine condensation_mf( qt, thl, p, iex, thv, qc, th, ql, qi, qs, lmix )
   ! =============================================================================== !
   ! zero or one condensation for edmf: calculates thv and qc                        !
   ! =============================================================================== !
@@ -443,11 +497,11 @@ module edmf_module
      use wv_saturation,      only : qsat
 
      real(r8),intent(in) :: qt,thl,p,iex
-     real(r8),intent(out):: thv,qc,th,ql,qi
+     real(r8),intent(out):: thv,qc,th,ql,qi,qs,lmix
 
      !local variables
      integer  :: niter,i
-     real(r8) :: diff,t,qs,qcold,es,wf
+     real(r8) :: diff,t,qstmp,qcold,es,wf
 
      ! max number of iterations
      niter=50
@@ -469,19 +523,19 @@ module edmf_module
        t = thl/iex+get_alhl(wf)/cpair*qc   !as in (4)
 
        ! qsat, p is in pascal (check!)
-       call qsat(t,p,es,qs)
+       call qsat(t,p,es,qstmp)
        qcold = qc
-       qc = max(0.5_r8*qc+0.5_r8*(qt-qs),0._r8)
+       qc = max(0.5_r8*qc+0.5_r8*(qt-qstmp),0._r8)
        if (abs(qc-qcold)<diff) exit
      enddo
 
      wf = get_watf(t)
      t = thl/iex+get_alhl(wf)/cpair*qc
 
-
      call qsat(t,p,es,qs)
      qc = max(qt-qs,0._r8)
      thv = (thl+get_alhl(wf)/cpair*iex*qc)*(1._r8+zvir*(qt-qc)-qc)
+     lmix = get_alhl(wf)
      th = t*iex
      qi = qc*(1._r8-wf)
      ql = qc*wf
@@ -517,6 +571,40 @@ module edmf_module
      end function get_alhl
 
   end subroutine condensation_mf
+
+  subroutine precip_mf(qs,qt,w,dz,dzcld,Supqt)
+  !**********************************************************************
+  ! Precipitation microphysics
+  ! By Adam Herrington, after Kay Suselj
+  !**********************************************************************
+
+       real(r8),intent(in)  :: qs,qt,w,dz,dzcld
+       real(r8),intent(out) :: Supqt
+       ! 
+       ! local vars
+       real(r8) :: tauwgt, tau,       & ! time-scale vars
+                   qstar                ! excess cloud liquid                   
+
+       real(r8) :: tau0  = 15._r8,    & ! base time-scale
+                   zmin  = 300._r8,   & ! small cloud thick
+                   zmax  = 3000._r8,  & ! large cloud thick
+                   qcmin = 0.00125_r8   ! supersat threshold 
+
+       qstar = qs+qcmin
+       
+       if (qt.gt.qstar) then
+         ! get precip efficiency
+         tauwgt = (dzcld-zmin)/(zmax-zmin)
+         tauwgt = min(max(tauwgt,0._r8),1._r8)
+         tau    = tauwgt/tau0
+ 
+         ! get source for updraft
+         Supqt = (qstar-qt)*(1._r8 - exp(-1._r8*tau/w))
+       else
+         Supqt = 0._r8
+       end if
+
+  end subroutine precip_mf
 
   subroutine poisson(nz,nup,lambda,poi,state)
 

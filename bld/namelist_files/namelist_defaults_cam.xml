@@ -1856,6 +1856,7 @@
 <clubb_mf_ent0                     > 0.22    </clubb_mf_ent0>
 <clubb_mf_wa                       > 1.0     </clubb_mf_wa>
 <clubb_mf_wb                       > 1.5     </clubb_mf_wb>
+<clubb_mf_nup                      > 10      </clubb_mf_nup>
 
 <!-- Microphysics scheme -->
 <micro_mg_do_hail                       > .false. </micro_mg_do_hail>

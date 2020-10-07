@@ -3621,32 +3621,39 @@ Default: true
 <!-- for CLUBB+MF -->
 <entry id="do_clubb_mf" type="logical" category="conv"
        group="clubb_params_nl" valid_values="" >
-If TRUE run CLUBB-MF
+If TRUE add ensemble mass fluxes to CLUBB's higher-order equation set. 
+Together with CLUBB, this constitutes an eddy-diffusivity mass-flux approach. 
 Default: FALSE
 </entry>
 
 <entry id="clubb_mf_L0" type="real" category="conv"
        group="clubb_mf_nl" valid_values="" >
-Real: Entrainment length scale
+Real: Entrainment length scale for individual plumes
 Default: 50.0
 </entry>
 
 <entry id="clubb_mf_ent0" type="real" category="conv"
        group="clubb_mf_nl" valid_values="" >
-Real: Entrainment factor
+Real: Entrainment efficiency for individual plumes
 Default: 0.22
 </entry>
 
 <entry id="clubb_mf_wa" type="real" category="conv"
        group="clubb_mf_nl" valid_values="" >
-Real: vertical velocity factor a
+Real: vertical velocity factor a for individual plumes
 Default: 1.0
 </entry>
 
 <entry id="clubb_mf_wb" type="real" category="conv"
        group="clubb_mf_nl" valid_values="" >
-Real: vertical velocity factor b
+Real: vertical velocity factor b for individual plumes
 Default: 1.5
+</entry>
+
+<entry id="clubb_mf_nup" type="integer" category="conv"
+       group="clubb_mf_nl" valid_values="" >
+Real: number of plumes in mass flux ensemble
+Default: 10
 </entry>
 
 <!-- CARMA Sectional Microphysics -->

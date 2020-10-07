@@ -3055,6 +3055,7 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_mf_ent0');
    add_default($nl, 'clubb_mf_wa');
    add_default($nl, 'clubb_mf_wb');
+   add_default($nl, 'clubb_mf_nup');
 }
 
 # Tuning for wet scavenging of modal aerosols
