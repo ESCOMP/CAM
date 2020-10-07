@@ -376,6 +376,9 @@ def _main_prog():
     #Initalize issue id to project card id dictionary:
     proj_issue_card_ids = dict()
 
+    #Initialize list for issues that have already been closed:
+    already_closed_issues = list()
+
     #Loop over all repo projects:
     for project in projects:
 
@@ -389,7 +392,7 @@ def _main_prog():
                 #If so, then extract cards:
                 cards = column.get_cards()
 
-               #Loop over cards:
+                #Loop over cards:
                 for card in cards:
                     #Extract card content:
                     card_content = card.get_content()
@@ -416,9 +419,29 @@ def _main_prog():
 
             #Otherwise, check if column name matches "closed issues" column:
             elif column.name == "closed issues" and project.name == proj_mod_name:
-                #If so, then save column id:
-                #column_id = column.id
+                #Save column id:
                 column_target_id = column.id
+
+                #Extract cards:
+                closed_cards = column.get_cards()
+
+                #Loop over cards:
+                for closed_card in closed_cards:
+                    #Extract card content:
+                    closed_card_content = closed_card.get_content()
+
+                    #Check if card issue number matches any of the "close" issue numbers from the PR:
+                    if closed_card_content is not None and closed_card_content.number in close_issues:
+                        #If issue number matches, then it likely means the same
+                        #commit message or issue number reference was used in multiple
+                        #pushes to the same repo (e.g., for a PR and then a tag). Thus
+                        #the issue should be marked as "already closed":
+                        already_closed_issues.append(closed_card_content.number)
+
+    #Remove all issues from issue dictionary that are "already closed":
+    for already_closed_issue_num in already_closed_issues:
+        if already_closed_issue_num in proj_issues_count:
+            proj_issues_count.pop(already_closed_issue_num)
 
     #If no project cards are found that match the issue, then exit script:
     if not proj_issues_count:
@@ -447,7 +470,20 @@ def _main_prog():
             print("Issue #{} has been closed.".format(issue_num))
         else:
             #Extract card id from id dictionary:
-            card_id = proj_issue_card_ids[issue_num]
+            if issue_num in proj_issue_card_ids:
+                card_id = proj_issue_card_ids[issue_num]
+            else:
+                #If issue isn't in dictionary, then it means the issue
+                #number was never found in the "To do" column, which
+                #likely means the user either referenced the wrong
+                #issue number, or the issue was never assigned to the
+                #project.  Warn user and then exit with a non-zero
+                #error so that the Action fails:
+                endmsg = 'Issue #{} was not found in the "To Do" Column of the "{}" project.\n' \
+                         'Either the wrong issue number was referenced, or the issue was never ' \
+                         'attached to the project.'.format(issue_num, proj_mod_name)
+                print(endmsg)
+                sys.exit(1)
 
             #Then move the card on the relevant project page to the "closed issues" column:
             project_card_move(token.strip(), column_target_id, card_id)
