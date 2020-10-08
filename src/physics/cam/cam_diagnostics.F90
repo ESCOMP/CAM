@@ -204,7 +204,7 @@ contains
     call register_vector_field('UAP','VAP')
 
     call addfld (apcnst(1), (/ 'lev' /), 'A','kg/kg',         trim(cnst_longname(1))//' (after physics)')
-    if ( dycore_is('LR') .or. dycore_is('SE') ) then
+    if ( dycore_is('LR') .or. dycore_is('SE')  .or. dycore_is('FV3') ) then
       call addfld ('TFIX',    horiz_only,  'A', 'K/s',        'T fixer (T equivalent of Energy correction)')
     end if
     call addfld ('TTEND_TOT', (/ 'lev' /), 'A', 'K/s',        'Total temperature tendency')
@@ -339,7 +339,7 @@ contains
       call add_default ('UAP     '  , history_budget_histfile_num, ' ')
       call add_default ('VAP     '  , history_budget_histfile_num, ' ')  
       call add_default (apcnst(1)   , history_budget_histfile_num, ' ')
-      if ( dycore_is('LR') .or. dycore_is('SE') ) then
+      if ( dycore_is('LR') .or. dycore_is('SE') .or. dycore_is('FV3')  ) then
         call add_default ('TFIX    '    , history_budget_histfile_num, ' ')
       end if
     end if
@@ -526,7 +526,7 @@ contains
     if (ixcldice > 0) then
       call addfld (ptendnam(ixcldice),(/ 'lev' /), 'A', 'kg/kg/s',trim(cnst_name(ixcldice))//' total physics tendency ')
     end if
-    if ( dycore_is('LR') )then
+    if ( dycore_is('LR') .or. dycore_is('FV3')  )then
       call addfld (dmetendnam(       1),(/ 'lev' /), 'A','kg/kg/s', &
            trim(cnst_name(       1))//' dme adjustment tendency (FV) ')
       if (ixcldliq > 0) then
@@ -620,7 +620,7 @@ contains
       if (ixcldice > 0) then
         call add_default (ptendnam(ixcldice), history_budget_histfile_num, ' ')
       end if
-      if ( dycore_is('LR') )then
+      if ( dycore_is('LR') .or. dycore_is('FV3')  )then
         call add_default(dmetendnam(1)       , history_budget_histfile_num, ' ')
         if (ixcldliq > 0) then
            call add_default(dmetendnam(ixcldliq), history_budget_histfile_num, ' ')
@@ -2034,7 +2034,7 @@ contains
     ! Total physics tendency for Temperature
     ! (remove global fixer tendency from total for FV and SE dycores)
 
-    if (dycore_is('LR') .or. dycore_is('SE')) then
+    if (dycore_is('LR') .or. dycore_is('SE') .or. dycore_is('FV3') ) then
       call check_energy_get_integrals( heat_glob_out=heat_glob )
       ftem2(:ncol)  = heat_glob/cpair
       call outfld('TFIX', ftem2, pcols, lchnk   )
@@ -2114,7 +2114,7 @@ contains
 
     ! Tendency for dry mass adjustment of q (FV only)
 
-    if (dycore_is('LR')) then
+    if (dycore_is('LR') .or. dycore_is('FV3') ) then
       tmp_q     (:ncol,:pver) = (state%q(:ncol,:pver,       1) - tmp_q     (:ncol,:pver))*rtdt
       if (ixcldliq > 0) then
         tmp_cldliq(:ncol,:pver) = (state%q(:ncol,:pver,ixcldliq) - tmp_cldliq(:ncol,:pver))*rtdt

@@ -1,0 +1,4 @@
+NDENS    = 1,1
+MFILT    = 1,10
+nhtfrq   = 0,1
+inithist_all = .true.

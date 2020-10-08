@@ -363,7 +363,7 @@ Default: FALSE
 <!-- Coupler between Physics and Dynamics -->
 
 <entry id="phys_alltoall" type="integer"  category="perf_dp_coup"
-       group="phys_grid_nl" valid_values="0,1,2,11,12,13">
+       group="phys_grid_nl" valid_values="-1,0,1,2,11,12,13">
 Dynamics/physics transpose method for nonlocal load-balance.
 0: use mpi_alltoallv.
 1: use point-to-point MPI-1 two-sided implementation.
@@ -795,7 +795,7 @@ Default: 0
 </entry>
 
 <entry id="modc_hs_tracer" type="logical"  category="dyn_fv"
-       group="spmd_fv_inparm" valid_values="0,1,2" >
+       group="spmd_fv_inparm" valid_values="" >
 True for mod_comm irregular communication handshaking for multiple tracers
 Default: .true.
 </entry>
@@ -2521,7 +2521,6 @@ dense precipitating ice as hail. mg3 only.
 Default: .false.
 </entry>
 
-
 <entry id="micro_mg_num_steps" type="integer" category="microphys"
        group="micro_mg_nl" valid_values="" >
 Number of substeps over MG microphysics.
@@ -2601,7 +2600,82 @@ Default: 0.1e6 m-3
 <entry id="micro_mg_ngnst" type="real" category="microphys"
        group="micro_mg_nl" valid_values="" >
 In-cloud graupel number concentration when micro_mg_nicons=.true.
-Default: 0.1e6 m-3
+Default: 0.0005e6 m-3
+</entry>
+
+<entry id="micro_mg_nrcons" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+Set .true. to hold cloud rain number constant.
+Default: .false.
+</entry>
+
+<entry id="micro_mg_nrnst" type="real" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+In-cloud rain number concentration when micro_mg_nrcons=.true.
+Default: 0.2e6 m-3
+</entry>
+
+<entry id="micro_mg_nscons" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+Set .true. to hold cloud snow number constant.
+Default: .false.
+</entry>
+
+<entry id="micro_mg_nsnst" type="real" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+In-cloud snow number concentration when micro_mg_nscons=.true.
+Default: 0.005e6 m-3
+</entry>
+
+<entry id="micro_mg_evap_sed_off" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+If .true., sedimenting condensate does not evaporate
+Default: .false.
+</entry>
+
+<entry id="micro_mg_icenuc_rh_off" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+If .true., remove RH threshold from ice nucelation calculation
+Default: .false.
+</entry>
+
+<entry id="micro_mg_icenuc_use_meyers" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+Hard code Meyers 1992 Temp dependent ice nucleation in microphysics
+Default: .false.
+</entry>
+
+<entry id="micro_mg_evap_scl_ifs" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+Apply 0.3 scaling factor to evaporation of precipitation as done in the 
+IFS model (https://www.ecmwf.int/en/forecasts/documentation-and-support)
+Default: .false.
+</entry>
+
+<entry id="micro_mg_evap_rhthrsh_ifs" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+Do not evaporate precipitation until RH<90% as done in the                                                        
+IFS model (https://www.ecmwf.int/en/forecasts/documentation-and-support)
+Default: .false.
+</entry>
+
+<entry id="micro_mg_rainfreeze_ifs" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+Freeze rain at 0C as done in the                                                        
+IFS model (https://www.ecmwf.int/en/forecasts/documentation-and-support)
+Default: .false.
+</entry>
+
+<entry id="micro_mg_ifs_sed" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+If .false., use the default sedimentation fall speed calculation from MG2 for all species. If .true., use constant sedimentation fall speeds for snow and ice, and no sedimentation of liquid, to be consistant with how species descend in the IFS model (https://www.ecmwf.int/en/forecasts/documentation-and-support)
+Default: .false.
+</entry>
+
+<entry id="micro_mg_precip_fall_corr" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+If .true., ensure non-zero precipitation fallspeed (rain,snow and graupel) if precipitation exists above in column (from M2005 in WRFv3.3)
+Default: .false.
 </entry>
 
 <!-- Aerosol microphysics -->
@@ -3102,7 +3176,7 @@ Default: 'ZM' unless using 'UNICON', 'SPCAM' or 'pbl=none'
 </entry>
 
 <entry id="microp_scheme" type="char*16" category="conv"
-       group="phys_ctl_nl" valid_values="RK,MG,SPCAM_m2005,SPCAM_sam1mom" >
+       group="phys_ctl_nl" valid_values="NONE,RK,MG,SPCAM_m2005,SPCAM_sam1mom" >
 Type of microphysics scheme employed.  'RK' for Rasch and Kristjansson
 (1998); 'MG' for Morrison and Gettelman (2008), Gettelman et al (2010)
 two moment scheme for CAM5 and CAM6
@@ -3112,7 +3186,7 @@ Default: set by build-namelist (depends on value set in configure).
 </entry>
 
 <entry id="macrop_scheme" type="char*16" category="conv"
-       group="phys_ctl_nl" valid_values="park,RK,CLUBB_SGS" >
+       group="phys_ctl_nl" valid_values="none,park,RK,CLUBB_SGS" >
 Type of macrophysics scheme employed.  'park' for Park
 (1998); 'RK' for Rasch and Kristjansson (1998); 'CLUBB_SGS' clubb.
 Default: set by build-namelist
@@ -4435,7 +4509,7 @@ from the rain as the rain evaporates. If TRUE the aerosols are released only whe
 evaporates and the mass of given aerosol components is released back in the most coarse mode for
 such component. For example, dust, sea salt and sulfate aerosols released by the rain evaporation are
 redistributed to coarse mode aerosol mass.  Also, released POM, SOA and BC mass are redistributed into
-accumulated mode aerosol mass. 
+accumulated mode aerosol mass.
 Default: .false.
 </entry>
 
@@ -4555,6 +4629,16 @@ Default: .false.
        group="phys_ctl_nl" valid_values="" >
 True when model is configured to use an offline driver.
 Default: Set by build-namelist.
+</entry>
+
+<entry id="atm_dep_flux" type="logical" category="fluxes"
+       group="phys_ctl_nl" valid_values="" >
+If FALSE then CAM will set the deposition fluxes to zero before sending
+them to the coupler.  A side effect of setting the
+variable {{ hilight }}chem_rad_passive{{ closehilight }} to TRUE is that this variable
+will be set to FALSE (the deposition fluxes must be set to zero in order
+for the chemistry not to impact the climate).
+Default: TRUE
 </entry>
 
 <entry id="cam_snapshot_before_num" type="integer"  category="diagnostics"
@@ -5374,31 +5458,9 @@ Full pathname of boundary dataset for airplane emissions.
 Default: set by build-namelist.
 </entry>
 
-<entry id="clim_soilw_file" type="char*256" input_pathname="abs" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-Full pathname of dataset containing soil moisture fraction information used in 'xactive_atm'
-method of calculating dry deposition of chemical tracers.
-Default: set by build-namelist.
-</entry>
-
-<entry id="depvel_file" type="char*256" input_pathname="abs" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-Full pathname of dataset which contains the prescribed deposition velocities used
-in the 'table' method of calculating dry deposition  of chemical tracers.
-Default: set by build-namelist.
-</entry>
-
 <entry id="depvel_lnd_file" type="char*256" input_pathname="abs" category="cam_chem"
        group="chem_inparm" valid_values="" >
-Full pathname of dataset which contains land vegitation information used in 'xactive_atm'
-method of calculating dry deposition of chemical tracers.
-Default: set by build-namelist.
-</entry>
-
-<entry id="season_wes_file" type="char*256" input_pathname="abs" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-Full pathname of dataset which contains season information used in 'xactive_atm'
-method of calculating dry deposition of chemical tracers.
+Full pathname of dataset which contains land vegetation information used in modal aerosol deposition.
 Default: set by build-namelist.
 </entry>
 
@@ -6361,90 +6423,6 @@ Frequency in time steps at which the chemical equations are solved.
 Default: 1
 </entry>
 
-<entry id="chlorine_loading_file" type="char*256" input_pathname="abs" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-Filename of dataset for linoz cholirine loading.
-Default: none.
-</entry>
-<entry id="chlorine_loading_type" type="char*8" category="cam_chem"
-       group="chem_inparm" valid_values="SERIAL,FIXED" >
-Type of time interpolation type for data in  {{ hilight }}chlorine_loading_file{{ closehilight }}
-Default: 'SERIAL'
-</entry>
-<entry id="chlorine_loading_fixed_tod" type="integer" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-The time of day (seconds) corresponding to {{ hilight }}chlorine_loading_fixed_ymd{{ closehilight }}
-at which the chlorine loading data is fixed
-if {{ hilight }}chlorine_loading_type{{ closehilight }} is 'FIXED'.
-Default: 0 seconds
-</entry>
-<entry id="chlorine_loading_fixed_ymd" type="integer" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-The date at which the chlorine loading data is fixed
-if {{ hilight }}chlorine_loading_type{{ closehilight }} is 'FIXED'.
-Format: YYYYMMDD
-Default: 0
-</entry>
-
-
-<entry id="linoz_data_path" type="char*256" input_pathname="abs" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-Full pathname of the directory that contains the files specified in
-{{ hilight }}linoz_data_filelist{{ closehilight }}.
-Default: none.
-</entry>
-
-<entry id="linoz_data_file" type="char*256" input_pathname="rel:linoz_data_path" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-Filename of dataset for LINOZ data.
-Default: none.
-</entry>
-
-<entry id="linoz_data_filelist" type="char*256" input_pathname="rel:linoz_data_datapath" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-Filename of file that contains a sequence of filenames of the linoz data.
-The filenames in this file are relative to the directory specified
-by {{ hilight }}linoz_data_datapath{{ closehilight }}.
-Default: set by build-namelist.
-</entry>
-
-<entry id="linoz_data_type" type="char*24" category="cam_chem"
-       group="chem_inparm" valid_values="CYCLICAL,SERIAL,INTERP_MISSING_MONTHS,FIXED" >
-Type of time interpolation for data in linoz_data files.
-Can be set to 'CYCLICAL', 'SERIAL', 'INTERP_MISSING_MONTHS', or 'FIXED'.
-Default: 'SERIAL'
-</entry>
-
-<entry id="linoz_data_rmfile" type="logical" category="cam_chem"
-       group="chem_inparm" valid_values="TRUE,FALSE" >
-Remove the file containing LINOZ data from local disk when no longer needed.
-Default: FALSE
-</entry>
-
-<entry id="linoz_data_cycle_yr" type="integer" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-The  cycle year of the LINOZ data
-if {{ hilight }}linoz_data_type{{ closehilight }} is 'CYCLICAL'.
-Format: YYYY
-Default: 0
-</entry>
-
-<entry id="linoz_data_fixed_ymd" type="integer" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-The date at which the LINOZ data  is fixed
-if {{ hilight }}linoz_data_type{{ closehilight }} is 'FIXED'.
-Format: YYYYMMDD
-Default: 0
-</entry>
-
-<entry id="linoz_data_fixed_tod" type="integer" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-The time of day (seconds) corresponding to {{ hilight }}linoz_data_fixed_ymd{{ closehilight }}
-at which the LINOZ data is fixed
-if {{ hilight }}linoz_data_type{{ closehilight }} is 'FIXED'.
-Default: 0 seconds
-</entry>
-
 <entry id="tracer_cnst_datapath" type="char*256" input_pathname="abs" category="cam_chem"
        group="chem_inparm" valid_values="" >
 Full pathname of the directory that contains the files specified in
@@ -6605,18 +6583,6 @@ List of species that undergo dry deposition.
 Default: set by build-namelist.
 </entry>
 
-<entry id="drydep_method" type="char*16" category="dry_deposition"
-       group="drydep_inparm" valid_values="xactive_atm,xactive_lnd,table" >
-Dry deposition method used.  This specifies the method used to calculate dry
-deposition velocities of gas-phase chemical species.  The available methods
-are:
- 'table'       - prescribed method in CAM
- 'xactive_atm' - interactive method in CAM
- 'xactive_lnd' - interactive method in CLM
-Default: set by build-namelist
-</entry>
-
-
 <entry id="rxn_rate_sums" type="char*256(200)" category="cam_chem"
        group="rxn_rate_diags_nl" valid_values="" >
 Give the user the ability to specify rate families (or groupings) diagnostics based
@@ -6699,9 +6665,9 @@ Default: none
 Specifies a list of chemical species and corresponding seawater concentration files.
 Each tracer species seawater concentration is read from its own file as directed by the
 namelist variable {{ hilight }}csw_specifier{{ closehilight }}.  The
-{{ hilight }}csw_specifier{{ closehilight }} variable tells the model which species have seawater 
+{{ hilight }}csw_specifier{{ closehilight }} variable tells the model which species have seawater
 concentration and the file path for the corresponding species.  Each file path may be
-proceeded by a scaling factor.  
+proceeded by a scaling factor.
 Example:
 
 csw_specifier = 'DMS      -> /path/Csw_DMS_HiResML_f09f09_1990_2019_20190616a.nc',
@@ -6717,7 +6683,7 @@ Default: none
        group="ocean_emis_nl" valid_values="CYCLICAL,SERIAL,INTERP_MISSING_MONTHS,FIXED" >
 Type of time interpolation of seawater concentration datasets specified.
 Can be set to 'CYCLICAL', 'SERIAL', 'INTERP_MISSING_MONTHS', or 'FIXED'.
-by {{ hilight }}csw_specifier{{ closehilight }}. 
+by {{ hilight }}csw_specifier{{ closehilight }}.
 Default: 'CYCLICAL'
 </entry>
 
@@ -7260,7 +7226,7 @@ PPM_bc_PCoM: PPM vertical remap without mirroring at the boundaries
 PPM_bc_linear_extrapolation: PPM with linear extrapolation in ghost cells (code from A. Bradley, DOE)
 
 The following options use the FV3 vertical remapping algorithm.
-     
+
 FV3_PPM: Monotone PPM
 FV3_CS: Monotonic cubic spline with 2*delta_z oscillations removed
 FV3_CS_2dz_filter: Selectively monotonic cubic spline, where local extrema are retained,
@@ -7281,7 +7247,7 @@ PPM_bc_PCoM: PPM vertical remap without mirroring at the boundaries
 PPM_bc_linear_extrapolation: PPM with linear extrapolation in ghost cells (code from A. Bradley, DOE)
 
 The following options use the FV3 vertical remapping algorithm.
-     
+
 FV3_PPM: Monotone PPM
 FV3_CS: Monotonic cubic spline with 2*delta_z oscillations removed
 FV3_non_monotone_CS_2dz_filter: Non-monotonic (linear) cubic spline with 2*delta_z oscillations removed;
@@ -7400,124 +7366,6 @@ us_standard_atmosphere: static atmospheric state (u,v)=0, standard lapse rate fo
 Default: 'none'
 </entry>
 
-<!-- PIO  -->
-
-<entry id="pio_stride" type="integer" category="pio"
-       group="pio_default_inparm" valid_values="" >
-Default: 4
-</entry>
-
-<entry id="pio_root" type="integer" category="pio"
-       group="pio_default_inparm" valid_values="" >
-Default: 1
-</entry>
-
-<entry id="pio_numiotasks" type="integer" category="pio"
-       group="pio_default_inparm" valid_values="" >
-Default: -1
-</entry>
-
-<entry id="pio_typename" type="char*80" category="pio"
-       group="pio_default_inparm" valid_values="netcdf,pnetcdf,netcdf4p,netcdf4c" >
-Default: "netcdf"
-</entry>
-
-<entry id="pio_async_interface" type="logical" category="pio"
-       group="pio_default_inparm" valid_values="" >
-Default: .false.
-</entry>
-
-<entry id="pio_debug_level" type="integer" category="pio"
-       group="pio_default_inparm" valid_values="" >
-Default: 0
-</entry>
-
-<entry id="pio_blocksize" type="integer" category="pio"
-       group="pio_default_inparm" valid_values="" >
-Default: -1
-</entry>
-
-<entry id="pio_buffer_size_limit" type="integer" category="pio"
-       group="pio_default_inparm" valid_values="" >
-Default: 0
-</entry>
-
-<entry id="pio_rearranger" type="integer" category="pio"
-       group="pio_default_inparm" valid_values="1,2" >
-pio_rearranger = 1 for box rearranger
-               = 2 for subset rearranger
-Default: box rearranger used by pio1, subset is default for pio2.
-</entry>
-
-<!-- DOCN -->
-
-<entry id="restfilm" type="char*256" input_pathname="abs" category="restart"
-       group="docn_nml" valid_values="" >
-Full pathname of docn restart file.
-Default: set by build-namelist.
-</entry>
-
-<entry id="decomp" type="char*24" category="ocn"
-       group="docn_nml" valid_values="" >
-Full pathname of docn restart file.
-Default: set by build-namelist.
-</entry>
-
-<entry id="force_prognostic_true" type="logical" category="ocn"
-       group="docn_nml" valid_values="" >
-Default: set by build-namelist.
-</entry>
-
-<entry id="dataMode" type="char*256" category="ocn"
-       group="shr_strdata_nml" valid_values="" >
-Default: set by build-namelist.
-</entry>
-
-<entry id="domainFile" type="char*256" category="ocn"
-       group="shr_strdata_nml" valid_values="" >
-Default: set by build-namelist.
-</entry>
-
-<entry id="fillalgo" type="char*32" category="ocn"
-       group="shr_strdata_nml" valid_values="" >
-Default: set by build-namelist.
-</entry>
-
-<entry id="fillmask" type="char*32" category="ocn"
-       group="shr_strdata_nml" valid_values="" >
-Default: set by build-namelist.
-</entry>
-
-<entry id="mapalgo" type="char*32" category="ocn"
-       group="shr_strdata_nml" valid_values="" >
-Default: set by build-namelist.
-</entry>
-
-<entry id="mapmask" type="char*32" category="ocn"
-       group="shr_strdata_nml" valid_values="" >
-Default: set by build-namelist.
-</entry>
-
-<entry id="streams" type="char*256" category="ocn"
-       group="shr_strdata_nml" valid_values="" >
-Default: set by build-namelist.
-</entry>
-
-<entry id="taxmode" type="char*32" category="ocn"
-       group="shr_strdata_nml" valid_values="" >
-Default: set by build-namelist.
-</entry>
-
-<entry id="tintalgo" type="char*32" category="ocn"
-       group="shr_strdata_nml" valid_values="" >
-Default: set by build-namelist.
-</entry>
-
-<entry id="vectors" type="char*256" category="ocn"
-       group="shr_strdata_nml" valid_values="" >
-Default: set by build-namelist.
-</entry>
-
 <!-- Specify ocean data and domain files in a component independent way. -->
 <!-- build-namelist associates this information with the component       -->
 <!-- dependend variables.                                                -->
@@ -7540,41 +7388,6 @@ Default: set by build-namelist.
 Full pathname of grid file for time-variant sea-surface temperature and sea-ice
 concentration boundary dataset.
 Default: set by build-namelist.
-</entry>
-
-<!-- CICE: These variables are passed through to the CICE build-namelist.   -->
-<!--       They are provided here for convenience in setting up AMIP runs.  -->
-
-<entry id="stream_year_first" type="integer" category="ice"
-       group="camexp" valid_values="" >
-The first year of the multi-year SST dataset which is read by CICE for
-the prescribed ice fraction.  This needs to be set for AMIP simulations.
-Default: 0
-</entry>
-
-<entry id="stream_year_last" type="integer" category="ice"
-       group="camexp" valid_values="" >
-The last year of the multi-year SST dataset which is read by CICE for
-the prescribed ice fraction.  This needs to be set for AMIP simulations.
-Default: 0
-</entry>
-
-<!-- DOM (CAM version) -->
-
-<entry id="dom_branch_file" type="char*256" category="restart"
-       group="dom_inparm" valid_values="">
-Full pathname of master restart file from which to branch. Setting is
-Required for branch run.
-Default: none
-</entry>
-
-<entry id="sstcyc" type="logical" category="ocn"
-       group="dom_inparm" valid_values="" >
-Flag for yearly cycling of SST data. If set to FALSE, a multi-year dataset
-is assumed, otherwise a single-year dataset is assumed, and SSTs will be
-cycled over the first 12 values in the file.  This variable is only recognized
-by the old CAM DOM component.
-Default: TRUE
 </entry>
 
 <!-- ========================================================================================  -->
@@ -7638,622 +7451,6 @@ Default: ""
 Absolute pathname of directory that the file specified by {{ hilight }}rof_logfile{{ closehilight }}
 will be written to.
 Default: "."
-</entry>
-
-
-<!-- ========================================================================================  -->
-<!-- CIME Driver -->
-
-<entry id="ninst_driver" type="integer"  category="driver"
-       group="cime_driver_inst" valid_values="1" >
-Default: 1
-</entry>
-
-<!-- coupler fields -->
-
-<entry id="flds_co2a" type="logical"  category="driver"
-       group="seq_cplflds_inparm" valid_values="" >
-Default: FALSE
-</entry>
-<entry id="flds_co2b" type="logical"  category="driver"
-       group="seq_cplflds_inparm" valid_values="" >
-Default: FALSE
-</entry>
-<entry id="flds_co2c" type="logical"  category="driver"
-       group="seq_cplflds_inparm" valid_values="" >
-Default: FALSE
-</entry>
-<entry id="flds_co2_dmsa" type="logical"  category="driver"
-       group="seq_cplflds_inparm" valid_values="" >
-Default: FALSE
-</entry>
-<entry id="cplflds_custom" type="char*80"  category="driver"
-       group="seq_cplflds_userspec" valid_values="" >
-Default:
-</entry>
-
-<!-- Task/Thread layouts -->
-
-<entry id="atm_pestride" type="integer"  category="driver"
-       group="cime_pes" valid_values="" >
-Stride used in selecting the processes in the atm communicator group.
-Default: 1
-</entry>
-
-<entry id="atm_rootpe" type="integer"  category="driver"
-       group="cime_pes" valid_values="" >
-Root process of the atm communicator group.
-Default: 0
-</entry>
-
-<entry id="atm_ntasks" type="integer"  category="driver"
-       group="cime_pes" valid_values="" >
-Number of atm tasks.
-Default: total number of tasks assigned to job.
-</entry>
-
-<entry id="atm_nthreads" type="integer"  category="driver"
-       group="cime_pes" valid_values="" >
-Number of threads in each atm task.
-Default: 1
-</entry>
-
-
-<entry id="ocn_pestride" type="integer"  category="driver"
-       group="cime_pes" valid_values="" >
-Stride used in selecting the processes in the ocn communicator group.
-Default: 1
-</entry>
-
-<entry id="ocn_rootpe" type="integer"  category="driver"
-       group="cime_pes" valid_values="" >
-Root process of the ocn communicator group.
-Default: 0
-</entry>
-
-<entry id="ocn_ntasks" type="integer"  category="driver"
-       group="cime_pes" valid_values="" >
-Number of ocn tasks.
-Default: total number of tasks assigned to job.
-</entry>
-
-<entry id="ocn_nthreads" type="integer"  category="driver"
-       group="cime_pes" valid_values="" >
-Number of threads in each ocn task.
-Default: 1
-</entry>
-
-<entry id="cpl_pestride" type="integer"  category="driver"
-       group="cime_pes" valid_values="" >
-Stride used in selecting the processes in the cpl communicator group.
-Default: 1
-</entry>
-
-<entry id="cpl_rootpe" type="integer"  category="driver"
-       group="cime_pes" valid_values="" >
-Root process of the cpl communicator group.
-Default: 0
-</entry>
-
-<entry id="cpl_ntasks" type="integer"  category="driver"
-       group="cime_pes" valid_values="" >
-Number of cpl tasks.
-Default: total number of tasks assigned to job.
-</entry>
-
-<entry id="cpl_nthreads" type="integer"  category="driver"
-       group="cime_pes" valid_values="" >
-Number of threads in each cpl task.
-Default: 1
-</entry>
-
-<!-- Control info -->
-
-<entry id="aqua_planet" type="logical"  category="driver"
-       group="seq_infodata_inparm" valid_values="" >
-If true, run model in "aqua planet" mode. Only one of
-{{ hilight }}atm_adiabatic{{ closehilight }}, {{ hilight }}atm_ideal_phys{{ closehilight }}, or
-{{ hilight }}aqua_planet{{ closehilight }} can be true.
-Default: FALSE
-</entry>
-
-<entry id="aqua_planet_sst" type="integer"  category="driver"
-       group="aquap_nl" valid_values="1,2,3,4,5,6,7,8,9,10,11" value="1" >
-Set the sst to a particular analytic solution.
-Default: 1
-</entry>
-
-<entry id="atm_dep_flux" type="logical" category="driver"
-       group="phys_ctl_nl" valid_values="" >
-If FALSE then CAM will set the deposition fluxes to zero before sending
-them to the coupler.  A side effect of setting the
-variable {{ hilight }}chem_rad_passive{{ closehilight }} to TRUE is that this variable
-will be set to FALSE (the deposition fluxes must be set to zero in order
-for the chemistry not to impact the climate).
-Default: TRUE
-</entry>
-
-<entry id="bfbflag" type="logical"  category="driver"
-       group="seq_infodata_inparm" valid_values="" >
-bit for bit flag
-Default: FALSE
-</entry>
-
-<entry id="brnch_retain_casename" type="logical"  category="driver"
-       group="seq_infodata_inparm" valid_values="" >
-If TRUE, use the pre-existing case name for a branch run.
-Default: FALSE
-</entry>
-
-<entry id="budget_ann" type="integer" category="driver"
-       group="seq_infodata_inparm" valid_values="" >
-annual budget level
-Default: 1
-</entry>
-
-<entry id="budget_daily" type="integer" category="driver"
-       group="seq_infodata_inparm" valid_values="" >
-daily budget level
-Default: 0
-</entry>
-
-<entry id="budget_inst" type="integer" category="driver"
-       group="seq_infodata_inparm" valid_values="" >
-instantaneous budget level
-Default: 0
-</entry>
-
-<entry id="budget_ltann" type="integer" category="driver"
-       group="seq_infodata_inparm" valid_values="" >
-long term budget level written at end of year
-Default: 1
-</entry>
-
-<entry id="budget_ltend" type="integer" category="driver"
-       group="seq_infodata_inparm" valid_values="" >
-long term budget level written at end of run
-Default: 0
-</entry>
-
-<entry id="budget_month" type="integer" category="driver"
-       group="seq_infodata_inparm" valid_values="" >
-monthly budget level
-Default: 1
-</entry>
-
-<entry id="case_desc" type="char*256"  category="driver"
-       group="seq_infodata_inparm" valid_values="" >
-Case title.
-Default: none.
-</entry>
-
-<entry id="cime_model" type="char*4"  category="driver"
-       group="seq_infodata_inparm" valid_values="cesm, acme" >
-cime model version.
-Default: cesm.
-</entry>
-
-<entry id="coldair_outbreak_mod" type="logical"  category="driver"
-       group="seq_infodata_inparm" valid_values="" >
-Enable cold air outbreak modification based on Mahrt and Sun, MWR, 1995.
-Default: TRUE
-</entry>
-
-<entry id="case_name" type="char*80"  category="driver"
-       group="seq_infodata_inparm" valid_values="" >
-Case identifier.  The value of {{ hilight }}case_name{{ closehilight }} is used in the
-default filenames of both the history and restart files (see
-the {{ hilight }}hfilename_spec{{ closehilight }} namelist option).  The "%c" string in
-the {{ hilight }}hfilename_spec{{ closehilight }} templates are expanded using the
-value of {{ hilight }}case_name{{ closehilight }} when history filenames are created.
-Default: set by build-namelist.
-</entry>
-
-<entry id="cpl_cdf64" type="logical"  category="driver"
-       group="seq_infodata_inparm" valid_values="" >
-Use netcdf 64 bit offset, large file support.
-Default: FALSE
-</entry>
-
-<entry id="do_budgets" type="logical" category="driver"
-       group="seq_infodata_inparm" valid_values="" >
-T =&gt; do heat/water budget diagnostics
-Default: FALSE
-</entry>
-
-<entry id="drv_threading" type="logical" category="driver"
-       group="seq_infodata_inparm" valid_values="" >
-T =&gt; enable run time setting of thread count for each component
-Default: FALSE
-</entry>
-
-<entry id="flux_albav" type="logical" category="driver"
-       group="seq_infodata_inparm" valid_values="" >
-T =&gt; no diurnal cycle in ocn albedos.
-Default: FALSE
-</entry>
-
-<entry id="flux_convergence" type="real" category="driver"
-       group="seq_infodata_inparm" valid_values="" >
-Default: 0.01
-</entry>
-
-<entry id="flux_epbal" type="char*256" category="driver"
-       group="seq_infodata_inparm" valid_values="" >
-Selects E,P,R adjustment technique.
-Default: 'off'
-</entry>
-
-<entry id="flux_max_iteration" type="integer" category="driver"
-       group="seq_infodata_inparm" valid_values="" >
-Default: 5
-</entry>
-
-<entry id="hostname" type="char*80"  category="driver"
-       group="seq_infodata_inparm" valid_values="" >
-Current machine.
-Default: 'unknown'
-</entry>
-
-<entry id="info_debug" type="integer" category="driver"
-       group="seq_infodata_inparm" valid_values="" >
-Debug flag.
-Default: 1
-</entry>
-
-<entry id="logfilepostfix" type="char*80" category="driver"
-       group="seq_infodata_inparm" valid_values="" >
-Postfix for output log files.
-Default: '.log'
-</entry>
-
-<entry id="model_version" type="char*256"  category="driver"
-       group="seq_infodata_inparm" valid_values="" >
-Model version.
-Default: 'unknown'
-</entry>
-
-<entry id="cpl_seq_option" type="char"  category="driver"
-       group="seq_infodata_inparm" valid_values="" >
-Coupler sequence option - CESM1_MOD_TIGHT is identical to old ocean_tight_coupling.
-Default: 'CESM1_MOD_TIGHT'
-</entry>
-
-<entry id="orb_eccen" type="real"  category="driver"
-       group="seq_infodata_inparm" valid_values="" >
-Earth's eccentricity of orbit. (unitless: typically 0. to 0.1). Setting is
-Required if {{ hilight }}orb_iyear{{ closehilight }} not set.  Not used when running
-as part of CCSM.
-Default: none
-</entry>
-
-<entry id="orb_mode" type="char*256"  category="driver"
-       group="seq_infodata_inparm" valid_values="fixed_year,variable_year,fixed_parameters" >
-Mode to specify how orbital parameters are to be set.
-Not used when running as part of CCSM.
-Default: fixed_year
-</entry>
-
-<entry id="orb_iyear" type="integer"  category="driver"
-       group="seq_infodata_inparm" valid_values="" >
-Year (AD) used to compute earth's orbital parameters. If not set, then use
-the values from
-the {{ hilight }}orb_eccen{{ closehilight }}, {{ hilight }}orb_mvelp{{ closehilight }},
-and {{ hilight }}orb_obliq{{ closehilight }} namelist parameters.  If only
-{{ hilight }}orb_iyear{{ closehilight }} is set, orbital parameters will be computed
-automatically (based on Berger, 1977).  If one
-of {{ hilight }}orb_eccen{{ closehilight }}, {{ hilight }}orb_mvelp{{ closehilight }}, or
-{{ hilight }}orb_obliq{{ closehilight }} is set, all three must be set.  If all four of
-the above are set by the user, {{ hilight }}orb_iyear{{ closehilight }} takes
-precedence.  Setting is Required
-unless {{ hilight }}orb_eccen{{ closehilight }}, {{ hilight }}orb_mvelp{{ closehilight }},
-and {{ hilight }}orb_obliq{{ closehilight }} are set.  Not used when running as part of
-CCSM.
-Default: 1990.
-</entry>
-
-<entry id="orb_mvelp" type="real"  category="driver"
-       group="seq_infodata_inparm" valid_values="" >
-Earth's moving vernal equinox at perihelion (degrees: 0. to 360.0).
-Setting is Required if {{ hilight }}orb_iyear{{ closehilight }} not set.  Not used
-when running as part of CCSM.
-Default: none
-</entry>
-
-<entry id="orb_obliq" type="real"  category="driver"
-       group="seq_infodata_inparm" valid_values="" >
-Earth's orbital  angle of obliquity  (degrees: -90. to +90., typically 22. to 26.).
-Setting is Required if {{ hilight }}orb_iyear{{ closehilight }} not set.  Not used
-when running as part of CCSM.
-Default: none
-</entry>
-
-<entry id="outpathroot" type="char*256" category="driver"
-       group="seq_infodata_inparm" valid_values="" >
-Root output files
-Default: './'
-</entry>
-
-<entry id="perpetual" type="logical"  category="time_mgr"
-       group="seq_infodata_inparm" valid_values="" >
-Set to TRUE to specify that the run will use a perpetual calendar, i.e., a
-diurnal cycle will be present for the fixed calendar day specified
-by {{ hilight }}perpetual_ymd{{ closehilight }}.
-Default: FALSE
-</entry>
-
-<entry id="perpetual_ymd" type="integer"  category="time_mgr"
-       group="seq_infodata_inparm" valid_values="" >
-Perpetual date encoded in an integer as (year*1000 + month*100 + day).
-If {{ hilight }}aqua_planet{{ closehilight }} = .true. then perpetual_ymd is ignored
-and the perpetual date is set to 321.
-Default: none.
-</entry>
-
-<entry id="restart_file" type="char*256" category="driver"
-       group="seq_infodata_inparm" valid_values="" >
-Restart filename.
-Default: none
-</entry>
-
-<entry id="restart_file_override" type="char*256" category="driver"
-       group="seq_infodata_inparm" valid_values="" >
-List of namelist variables that may be overridden on a restart run.
-Default: none
-</entry>
-
-<entry id="restart_pfile" type="char*256" category="driver"
-       group="seq_infodata_inparm" valid_values="" >
-Restart pointer filename.
-Default: 'rpointer.drv'
-</entry>
-
-<entry id="samegrid" type="logical" category="driver"
-       group="seq_infodata_inparm" valid_values="">
-are ocean and ice grids same lat/lon/size
-Default: TRUE
-</entry>
-
-<entry id="scmlat" type="real" category="scam"
-       group="seq_infodata_inparm" valid_values="">
-Latitude value of single column.
-Default: none.
-</entry>
-
-<entry id="scmlon" type="real" category="scam"
-       group="seq_infodata_inparm" valid_values="">
-Longitude value of single column.
-Default: none.
-</entry>
-
-<entry id="single_column" type="logical" category="scam"
-       group="seq_infodata_inparm" valid_values="">
-Set to TRUE to turn on single column mode.
-Default: FALSE
-</entry>
-
-<entry id="start_type" type="char*8"  category="driver"
-       group="seq_infodata_inparm" valid_values="startup,continue,branch" >
-Run type.  'startup' is an initial run.  'continue' is a restart run.
-'branch' is a restart run in which properties of the output history files
-may be changed.
-Default: 'startup'
-</entry>
-
-<entry id="username" type="char*80"  category="driver"
-       group="seq_infodata_inparm" valid_values="" >
-Current user.
-Default: 'unknown'
-</entry>
-
-<entry id="vect_map" type="char*8"  category="driver"
-       group="seq_infodata_inparm" valid_values="none,cart3d,cart3d_diag,cart3d_uvw,cart3d_uvw_diag" >
-Invoke vector mapping option
-Default: 'cart3d'
-</entry>
-
-<entry id="seq_flux_mct_albdif" type="real"  category="driver"
-       group="seq_flux_mct_inparm" valid_values="" >
-Surface albedo for direct radiation.
-Default: none.
-</entry>
-
-<entry id="seq_flux_mct_albdir" type="real"  category="driver"
-       group="seq_flux_mct_inparm" valid_values="" >
-Surface albedo for diffuse radiation.
-Default: none.
-</entry>
-
-<entry id="seq_flux_atmocn_minwind" type="real"  category="driver"
-       group="seq_flux_mct_inparm" valid_values="" >
-Minimum wind speed for atmOcn flux calculations.
-Default: none.
-</entry>
-
-<!-- Reproducible Distributed Sum Calculation -->
-
-<entry id="reprosum_use_ddpdd" type="logical"  category="reprosum"
-       group="seq_infodata_inparm" valid_values="">
-Flag to indicate whether to use the double-double distributed sum algorithm
-rather than the (almost) infinite precision reproducible distributed sum algorithm.
-Default: FALSE
-</entry>
-
-<entry id="reprosum_recompute" type="logical"  category="reprosum"
-       group="seq_infodata_inparm" valid_values="">
-Flag to indicate whether a distributed sum that violates the difference
-tolerance specified by reprosum_diffmax should be recomputed using
-a floating point-based (but nonscalable) reproducible algorithm.
-Default: FALSE
-</entry>
-
-<entry id="reprosum_diffmax" type="real"  category="reprosum"
-       group="seq_infodata_inparm" valid_values="">
-Relative difference between repro and nonrepro algorithms that will
-generate a warning. This will also force a recompute using a nonscalable
-algorithm if reprosum_recompute is true. If less than zero, then
-the difference will not be evaluated (and the nonrepro algorithm will not
-be computed).
-Default: -1.0
-</entry>
-
-<!-- Time Manager -->
-
-<entry id="atm_cpl_dt" type="integer"  category="time_mgr"
-       group="seq_timemgr_inparm" valid_values="" >
-Coupling interval between the atmosphere and other system components.  This
-is how frequently information can be communicated between the atmosphere
-and the surface models.
-Default: set by build-namelist.
-</entry>
-
-<entry id="calendar" type="char*80"  category="time_mgr"
-       group="seq_timemgr_inparm" valid_values="NO_LEAP,GREGORIAN" >
-Calendar type "NO_LEAP" for consistent 365-days per year or "GREGORIAN" to
-include leap-years. Note that if "GREGORIAN" is selected
-leap-years will be used in the time manager, but the calculation of the
-earth's orbit still assumes 365 day years.  Valid values are "NO_LEAP" or
-"GREGORIAN".
-Default: "NO_LEAP"
-</entry>
-
-<entry id="end_restart" type="logical"  category="time_mgr"
-       group="seq_timemgr_inparm" valid_values="" >
-Write restart at end of run.
-Default: TRUE
-</entry>
-
-<entry id="ice_cpl_dt" type="integer"  category="time_mgr"
-       group="seq_timemgr_inparm" valid_values="" >
-Default: set by build-namelist.
-</entry>
-
-<entry id="ice_cpl_offset" type="integer"  category="time_mgr"
-       group="seq_timemgr_inparm" valid_values="" >
-Default:
-</entry>
-
-<entry id="lnd_cpl_dt" type="integer"  category="time_mgr"
-       group="seq_timemgr_inparm" valid_values="" >
-Default: set by build-namelist.
-</entry>
-
-<entry id="lnd_cpl_offset" type="integer"  category="time_mgr"
-       group="seq_timemgr_inparm" valid_values="" >
-Default:
-</entry>
-
-<entry id="ocn_cpl_dt" type="integer"  category="time_mgr"
-       group="seq_timemgr_inparm" valid_values="" >
-Default: set by build-namelist.
-</entry>
-
-<entry id="ocn_cpl_offset" type="integer"  category="time_mgr"
-       group="seq_timemgr_inparm" valid_values="" >
-Default:
-</entry>
-
-<entry id="rof_cpl_dt" type="integer"  category="time_mgr"
-       group="seq_timemgr_inparm" valid_values="" >
-Default: set by build-namelist.
-</entry>
-
-<entry id="rof_cpl_offset" type="integer"  category="time_mgr"
-       group="seq_timemgr_inparm" valid_values="" >
-Default:
-</entry>
-
-<entry id="ref_tod" type="integer"  category="time_mgr"
-       group="seq_timemgr_inparm" valid_values="" >
-Reference time-of-day expressed as seconds past midnight.  Used in
-conjuction with {{ hilight }}ref_ymd{{ closehilight }} to set the reference time.
-Default: set to {{ hilight }}start_tod{{ closehilight }}.
-</entry>
-
-<entry id="ref_ymd" type="integer"  category="time_mgr"
-       group="seq_timemgr_inparm" valid_values="" >
-Reference date encoded in an integer as (year*1000 + month*100 + day).
-Used in
-conjuction with {{ hilight }}ref_tod{{ closehilight }} to set the reference time which
-is used to define a time coordinate for the output history files.  The
-convention for the unit string of a time coordinate is of the form
-"time-unit since reference-time", for example, "days since 1990-01-01
-00:00:00".  The reference-time part of this string is specified by the
-{{ hilight }}ref_ymd{{ closehilight }} and {{ hilight }}ref_tod{{ closehilight }} variables.
-
-Default: set to {{ hilight }}start_ymd{{ closehilight }}.
-</entry>
-
-<entry id="restart_n" type="integer"  category="time_mgr"
-       group="seq_timemgr_inparm" valid_values="" >
-Set the restart interval as a number of elapsed time units which are specified
-by {{ hilight }}restart_option{{ closehilight }}.
-Default: 1
-</entry>
-
-<entry id="restart_option" type="char*8"  category="time_mgr"
-       group="seq_timemgr_inparm" valid_values="none,nsteps,ndays,nmonths,nyears,monthly,yearly,end" >
-Set the interval between writing restart files
-using one of the options 'nsteps',
-'ndays', 'nmonths', or 'nyears', in conjuction
-with {{ hilight }}stop_n{{ closehilight }} to set the number of time units.
-A convenience option allows specifying that restart files be written at the
-end of each month or at the end of each year by using the options
-'monthly' or 'yearly' respectively.  It is also possible to request that no
-restart files be written via the option 'none', or that restart files be
-written only at the end of the run via the option 'end'.
-Default: 'monthly'
-</entry>
-
-<entry id="start_tod" type="integer"  category="time_mgr"
-       group="seq_timemgr_inparm" valid_values="" >
-Start time-of-day expressed as seconds past midnight.  Used in
-conjuction with {{ hilight }}start_ymd{{ closehilight }} to set the start time.
-Default: 0.
-</entry>
-
-<entry id="start_ymd" type="integer"  category="time_mgr"
-       group="seq_timemgr_inparm" valid_values="" >
-Start date encoded in an integer as (year*1000 + month*100 + day).
-Used in
-conjuction with {{ hilight }}start_tod{{ closehilight }} to set the start date of
-the simulation.
-Default: set by build-namelist.
-</entry>
-
-<entry id="stop_n" type="integer"  category="time_mgr"
-       group="seq_timemgr_inparm" valid_values="" >
-Set the length of run as a number of elapsed time units which are specified
-by {{ hilight }}stop_option{{ closehilight }}.
-Default: 1
-</entry>
-
-<entry id="stop_option" type="char*8"  category="time_mgr"
-       group="seq_timemgr_inparm" valid_values="nsteps,nhours,ndays,nmonths,nyears,date" >
-Set the length of run as an elapsed time using one of the options 'nsteps',
-'ndays', 'nmonths', or 'nyears', in conjuction
-with {{ hilight }}stop_n{{ closehilight }} to set the number of elapsed time units.
-Alternatively, set the final simulation time in absolute terms by using the
-option 'date' in conjuction with {{ hilight }}stop_ymd{{ closehilight }},
-and {{ hilight }}stop_tod{{ closehilight }} to specify a date and time of day at which
-the simulation should stop.
-Default: 'ndays'
-</entry>
-
-<entry id="stop_tod" type="integer"  category="time_mgr"
-       group="seq_timemgr_inparm" valid_values="" >
-Stop time-of-day expressed as seconds past midnight.  Used in
-conjuction with {{ hilight }}stop_ymd{{ closehilight }} to set the stop time.
-Default: 0.
-</entry>
-
-<entry id="stop_ymd" type="integer"  category="time_mgr"
-       group="seq_timemgr_inparm" valid_values="" >
-Stop date encoded in an integer as (year*1000 + month*100 + day).
-Used in
-conjuction with {{ hilight }}stop_tod{{ closehilight }} to set the stop date of
-the simulation.
-Default: none.
 </entry>
 
 <entry id="sim_year" type="char*9" category="cam"
@@ -8332,6 +7529,663 @@ Default: none
        group="offline_driver_nl" valid_values="" >
 List of filepaths for dataset for offline unit driver.
 Default: none
+</entry>
+
+<!-- for fv3 dynamical core -->
+
+<entry id="fv3_clock_grain" type="char*256" category="dyn_fv3"
+       group="fms_nml" valid_values="" >
+The level of clock granularity used for performance timing sections
+of code. Possible values in order of increasing detail are:
+NONE, COMPONENT, SUBCOMPONENT, MODULE_DRIVER, MODULE, ROUTINE,
+LOOP, and INFRA.
+Default: none
+</entry>
+
+<entry id="fv3_domains_stack_size" type="integer" category="dyn_fv3"
+       group="fms_nml" valid_values="" >
+Integer: The size in words of the MPP_DOMAINS user stack. If
+fv3_domains_stack_size &gt; 0, the following MPP_DOMAINS routine is called:
+call mpp_domains_set_stack_size (fv3_domains_stack_size). If
+fv3_domains_stack_size = 0 then the size set by
+mpp_domains_mod is used.
+Default: 6000000
+</entry>
+
+<entry id="fv3_stack_size" type="integer" category="dyn_fv3"
+       group="fms_nml" valid_values="" >
+Integer: The size in words of the MPP user stack. If fv3_stack_size &gt; 0, the following
+MPP routine is called: call mpp_set_stack_size (fv3_stack_size). If fv3_stack_size = 0
+then the defaults set by mpp_mod is used.
+Default: 6000000
+</entry>
+
+<entry id="fv3_print_memory_usage" type="logical" category="dyn_fv3"
+       group="fms_nml" valid_values="" >
+Logical: If set to .TRUE., memory usage statistics will be printed at various
+points in the code. It is used to study memory usage, e.g to detect
+memory leaks.
+Default: FALSE
+</entry>
+
+<entry id="fv3_adjust_dry_mass" type="logical" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Logical: whether to adjust the global dry-air mass to
+the value set by fv3_adjust_dry_mass. This is only done in an initialization
+step, particularly when using an initial condition from an external
+dataset, interpolated from another resolution (either horizontal or
+vertical), or when changing the topography, so that the global mass
+of the atmosphere matches some estimate of observed value. It is
+recommended to only set this to True when initializing the model.
+Default: FALSE
+</entry>
+
+<entry id="fv3_beta" type="real" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Real: Parameter specifying fraction of time-off-centering for
+backwards evaluation of the pressure gradient force. The default value
+of 0.0 indicates a fully backwards evaluation of the pressure gradient
+force using the updated (time n+1) dynamical fields. A value of 0.5
+will equally weight the PGF determined at times n and n+1, but may not
+be stable; values larger than 0.45 are not recommended. A value of 0.4
+is recommended for most hydrostatic simulations, which allows an
+improved representation of inertia-gravity waves in the tropics. In
+non-hydrostatic simulations using the semi-implicit solver (a_imp &gt; 0.5)
+the values of a_imp and fv3_beta should add to 1, so that the
+time-centering is consistent between the PGF and the nonhydrostatic
+solver. Proper range is 0 to 0.45.
+Default: 0.
+</entry>
+
+<entry id="fv3_consv_am" type="logical" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Logical: whether to enable Angular momentum fixer.
+Default: FALSE
+</entry>
+
+<entry id="fv3_consv_te" type="integer" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Real: fraction of total energy lost during the adiabatic integration
+between calls of the physics, to be added back globally as heat;
+essentially the strength of the energy fixer in the physics. Note that
+this is a global energy fixer and cannot add back energy locally.
+The default algorithm increments the potential temperature so the
+pressure gradients are unchanged. Proper range is 0
+to 1. 1 will restore the energy completely to its original value before
+entering the physics; a value of 0.7 roughly causes the energy fixer
+to compensate for the amount of energy changed by the physics in
+GFDL HiRAM or AM3.
+Default: 0
+</entry>
+
+<entry id="fv3_dddmp" type="real" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Real: Dimensionless coefficient for the second-order Smagorinsky type
+divergence damping. 0.0 is the default but 0.2 (the Smagorinsky
+constant) is recommended if ICs are noisy
+Default: 0.0
+</entry>
+
+<entry id="fv3_delt_max" type="real" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Real: maximum allowed magnitude of the dissipative heating
+rate, K/s; larger magnitudes are clipped to this amount. This can
+help avoid instability that can occur due to strong heating when d_con &gt; 0.
+A value of 0.008 (a rate equivalent to about 800K per day) is sufficient
+to stabilize the model at 3 km resolution.
+Default: 0.0
+</entry>
+
+<entry id="fv3_dnats" type="integer" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Integer: The number of tracers which are not to be advected by
+the dynamical core, but still passed into the dynamical core; the last
+dnats+pnats tracers in field_table are not advected.
+Default: 0
+</entry>
+
+<entry id="fv3_do_sat_adj" type="logical" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Logical: If true activate Fast Saturation Adjustment Module. It adjusts
+cloud water evaporation (cloud water change to water vapor), cloud water freezing
+(cloud water change to cloud ice), and cloud ice deposition
+(water vapor change to cloud ice).
+Default: FALSE
+</entry>
+
+<entry id="fv3_do_vort_damp" type="logical" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Logical: whether to apply flux damping (of strength governed by fv3_vtdm4)
+to the fluxes of vorticity, air mass, and nonhydrostatic vertical
+velocity (there is no dynamically correct way to
+add explicit diffusion to the tracer fluxes). The form is the same
+as is used for the divergence damping, including the same order
+(from fv3_nord) damping, unless fv3_nord = 0, in which case this damping
+is fourth-order, or if fv3_nord = 3, in which case this damping is
+sixth-order (instead of eighth-order). We recommend enabling this
+damping when the linear or non-monotonic horizontal advection
+schemes are enabled, but is unnecessary and not recommended
+when using monotonic advection.
+Default: FALSE
+</entry>
+
+<entry id="fv3_dwind_2d" type="logical" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Logical: whether to use a simpler and faster algorithm for interpolating the A-grid (cell-centered) wind tendencies computed from
+the physics to the D-grid. Typically, the A-grid wind tendencies are
+first converted in 3D cartesian coordinates and then interpolated
+before converting back to 2D local coordinates. When this option
+enabled, a much simpler but less accurate 2D interpolation is used.
+Default: FALSE
+</entry>
+
+<entry id="fv3_d_con" type="real" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Real: Fraction of kinetic energy lost to net damping (divergence
+and vorticity) to be converted to heat. Acts as a dissipative heating
+mechanism in the dynamical core. Proper range is 0
+to 1. Note that this is a local, physically correct, energy fixer.
+Default: 0
+</entry>
+
+<entry id="fv3_d_ext" type="real" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Real: coefficient for external (barotropic) mode damping.
+Proper range is 0 to 0.02. A value of 0.01 or 0.02 may help
+improve the models maximum stable time step in low-resolution
+(2-degree or poorer) simulations; otherwise a value of 0 is recommended.
+Default: 0
+</entry>
+
+<entry id="fv3_d2_bg" type="real" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Real: coefficient for background second-order divergence damping.
+This option remains active even if fv3_nord is nonzero.
+Proper range is 0 to 0.02.
+Default: 0.0
+</entry>
+
+<entry id="fv3_d2_bg_k1" type="real" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Real: strength of second-order diffusion in the top sponge
+layer. This value, and fv3_d2_bg_k2, will be changed
+appropriately in the model (depending on the height of model top),
+so the actual damping may be very reduced. See atmos_cubed_sphere/model/dyn_core
+for details. Recommended range is 0. to 0.2. Note that since diffusion is
+converted to heat if fv3_d_con &gt; 0 larger amounts of spongelayer diffusion may be less stable.
+Default: 0.15
+</entry>
+
+<entry id="fv3_d2_bg_k2" type="real" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Real: strength of second-order diffusion in the second sponge
+layer from the model top. This value should be
+lower than fv3_d2_bg_k1.
+Default: 0.02
+</entry>
+
+<entry id="fv3_d4_bg" type="real" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Real: Dimensionless coefficient for background higher-order
+divergence damping. If no second-order divergence
+damping is used, then values between 0.1 and 0.16 are recommended.
+Requires fv3_nord &gt; 0. Note that the scaling for fv3_d4_bg differs from that
+of fv3_d2_bg; fv3_nord ge 1 and fv3_d4_bg = 0.16 will be less diffusive than
+fv3_nord = 0 and fv3_d2_bg = 0.02.
+Default: 0.15
+</entry>
+
+<entry id="fv3_fill" type="logical" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Logical: Fills in negative tracer values by taking positive tracers from
+the cells above and below. This option is useful when the physical
+parameterizations produced negatives.
+Default: TRUE
+</entry>
+
+<entry id="fv3_fv_debug" type="logical"  category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+true for debug print
+Default: FALSE
+</entry>
+
+<entry id="fv3_fv_diag" type="logical"  category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+true to print diagnostics
+Default: FALSE
+</entry>
+
+<entry id="fv3_lcp_moist" type="logical" category="dyn_fv3"
+       group="dyn_fv3_inparm" valid_values="" >
+If TRUE the continuous equations the dynamical core is based on will conserve a
+comprehensive moist total energy based on cp for dry air and all condensates.
+If FALSE the continuous equations the dynamical core is based on will conserve
+a total energy based on cp for dry air only (same total energy as CAM physics uses).
+For more details see Lauritzen et al., (2018;DOI:10.1029/2017MS001257)
+Default: TRUE
+</entry>
+
+<entry id="fv3_lcv_moist" type="logical" category="dyn_fv3"
+       group="dyn_fv3_inparm" valid_values="" >
+If TRUE the continuous equations the dynamical core is based on will conserve a
+comprehensive moist total energy based on cv for dry air and all condensates.
+If FALSE the continuous equations the dynamical core is based on will conserve
+a total energy based on cp for dry air only (same total energy as CAM physics uses).
+For more details see Lauritzen et al., (2018;DOI:10.1029/2017MS001257)
+Default: FALSE
+</entry>
+
+<entry id="fv3_fv_sg_adj" type="integer" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Integer: timescale (in seconds) at which to remove two-delta-z
+instability when the local (between two adjacent levels) Richardson
+number is less than 1. This is achieved by local mixing, which conserves
+mass, momentum, and total energy. Values of 0 or smaller
+disable this feature. If fv3_n_sponge &lt; 0 then the mixing is applied
+only to the top fv3_n_sponge layers of the domain. Proper range is 0 to 3600.
+Default: 0
+</entry>
+
+<entry id="fv3_grid_type" type="integer" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Integer: which type of grid to use. If 0, the equidistant gnomonic
+cubed-sphere will be used. If 4, a doubly-periodic f-plane cartesian
+grid will be used. If -1, the grid is read from INPUT/grid_spec.nc.
+Other FV3 grid type values (2, 3, 5, 6, and 7) are not supported
+and will likely not run.
+Default: 0
+</entry>
+
+<entry id="fv3_hord_dp" type="integer" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Integer: horizontal advection scheme for mass. A positivity
+constraint may be warranted for fv3_hord_dp but not strictly necessary.
+
+Hord horizontal advection method
+================================
+5     Unlimited fifth-order scheme with 2 delta x filter; fastest and
+      least diffusive
+6     Intermediate-strength monotonicity constraint. Gives best
+      ACC but weaker TCs
+7     #6 with a positive-definite constraint
+8     Lin 2004 monotone PPM constraint; overall best for tracers?
+9     Hunyh constraint: more expensive but less diffusive than #8
+10    9, with a 2 delta x filter, and the Huynh constraint applied only if a
+      certain condition is met; otherwise unlimited
+-5    #5 with a positive-definite constraint
+-10   #10 with a positive-definite constraint
+Default: -10 (hydrostatic) or -5 (non-hydrostatic)
+</entry>
+
+<entry id="fv3_hord_mt" type="integer" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Integer: horizontal advection scheme for momentum fluxes. A
+complete list of kord options is given in the table below.
+10 is the default for hydrostatic simulations, using a
+limited form of the monotonicity constraint
+of Huynh, which is less diffusive than other constraints.
+5 is the default for non-hydrostatic simulations which uses the
+completely unlimited (linear or non-monotone) PPM scheme.
+If no monotonicity constraint is applied, enabling
+the flux damping (fv3_do_vort_damp = .true.) is highly recommended
+to control grid-scale noise. It is also recommended that fv3_hord_mt,
+fv3_hord_vt, fv3_hord_tm, and fv3_hord_dp use the same value, to ensure consistent
+transport of all dynamical fields, unless a positivity constraint
+on mass advection (fv3_hord_dp) is desired.
+
+Hord horizontal advection method
+================================
+5     Unlimited fifth-order scheme with 2 delta x filter; fastest and
+      least diffusive
+6     Intermediate-strength monotonicity constraint. Gives best
+      ACC but weaker TCs
+7     #6 with a positive-definite constraint
+8     Lin 2004 monotone PPM constraint; overall best for tracers?
+9     Hunyh constraint: more expensive but less diffusive than #8
+10    9, with a 2 delta x filter, and the Huynh constraint applied only if a
+      certain condition is met; otherwise unlimited
+-5    #5 with a positive-definite constraint
+-10   #10 with a positive-definite constraint
+Default: 10 (hydrostatic) or 5 (non-hydrostatic)
+
+</entry>
+
+<entry id="fv3_hord_tm" type="integer" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Integer: horizontal advection scheme for potential temperature
+and layer thickness in nonhydrostatic simulations.
+10 is the default for hydrostatic simulations, using a
+limited form of the monotonicity constraint
+of Huynh, which is less diffusive than other constraints.
+5 is the default for non-hydrostatic simulations which uses the
+completely unlimited (linear or non-monotone) PPM scheme.
+
+Hord horizontal advection method
+================================
+5     Unlimited fifth-order scheme with 2 delta x filter; fastest and
+      least diffusive
+6     Intermediate-strength monotonicity constraint. Gives best
+      ACC but weaker TCs
+7     #6 with a positive-definite constraint
+8     Lin 2004 monotone PPM constraint; overall best for tracers?
+9     Hunyh constraint: more expensive but less diffusive than #8
+10    9, with a 2 delta x filter, and the Huynh constraint applied only if a
+      certain condition is met; otherwise unlimited
+-5    #5 with a positive-definite constraint
+-10   #10 with a positive-definite constraint
+Default: 10 (hydrostatic) or 5 (non-hydrostatic)
+</entry>
+
+<entry id="fv3_hord_tr" type="integer" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Integer: horizontal advection scheme for tracers. 8 by default.
+This value can differ from the other hord options since tracers are
+sub-cycled and require positive-definite
+advection to control the appearance of non-physical negative masses.
+8 (fastest) or 10 (least diffusive) are typically recommended.
+
+Hord horizontal advection method
+================================
+5     Unlimited fifth-order scheme with 2 delta x filter; fastest and
+      least diffusive
+6     Intermediate-strength monotonicity constraint. Gives best
+      ACC but weaker TCs
+7     #6 with a positive-definite constraint
+8     Lin 2004 monotone PPM constraint; overall best for tracers?
+9     Hunyh constraint: more expensive but less diffusive than #8
+10    9, with a 2 delta x filter, and the Huynh constraint applied only if a
+      certain condition is met; otherwise unlimited
+-5    #5 with a positive-definite constraint
+-10   #10 with a positive-definite constraint
+Default:8
+</entry>
+
+<entry id="fv3_hord_vt" type="integer" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Integer: horizontal advection scheme for absolute vorticity and
+for vertical velocity in nonhydrostatic simulations.
+10 is the default for hydrostatic simulations, using a
+limited form of the monotonicity constraint
+of Huynh, which is less diffusive than other constraints.
+5 is the default for non-hydrostatic simulations which uses the
+completely unlimited (linear or non-monotone) PPM scheme.
+
+Hord horizontal advection method
+================================
+5     Unlimited fifth-order scheme with 2 delta x filter; fastest and
+      least diffusive
+6     Intermediate-strength monotonicity constraint. Gives best
+      ACC but weaker TCs
+7     #6 with a positive-definite constraint
+8     Lin 2004 monotone PPM constraint; overall best for tracers?
+9     Hunyh constraint: more expensive but less diffusive than #8
+10    9, with a 2 delta x filter, and the Huynh constraint applied only if a
+      certain condition is met; otherwise unlimited
+-5    #5 with a positive-definite constraint
+-10   #10 with a positive-definite constraint
+Default: 10 (hydrostatic) or 5 (non-hydrostatic)
+</entry>
+
+<entry id="fv3_hydrostatic" type="logical" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Logical: whether to use the hydrostatic or nonhydrostatic
+solver.
+Default: TRUE
+</entry>
+
+<entry id="fv3_ke_bg" type="real" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Real: background KE production (m^2/s^3) over a small step
+Use this to conserve total energy if fv3_consv_te=0
+Default: 0
+</entry>
+
+<entry id="fv3_kord_mt" type="integer" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Integer: vertical remapping scheme for the winds.
+9 is recommended as the safest option, although 10, and 11 can also
+be useful.
+
+kord table
+==========
+4    Monotone PPM
+6    Vanilla PPM
+7    PPM with Hyunh monotonicity constraint(more expensive but less diffusive)
+9    Monotonic Cubic Spline
+10   Selectively (local extrema retained) monotonic Cubic Spline with 2 delta z
+     oscillations removed
+11   Non-monotonic cubic spline with 2 delta z oscillations removed
+Default: 9
+
+</entry>
+
+<entry id="fv3_kord_tm" type="integer" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Integer: vertical remapping scheme for temperature. If positive (not
+recommended), then vertical remapping is performed on
+total energy instead of temperature (see remap_t below).
+kord table
+==========
+4    Monotone PPM
+6    Vanilla PPM
+7    PPM with Hyunh monotonicity constraint(more expensive but less diffusive)
+9    Monotonic Cubic Spline
+10   Selectively (local extrema retained) monotonic Cubic Spline with 2 delta z
+     oscillations removed
+11   Non-monotonic cubic spline with 2 delta z oscillations removed
+-9   Monotonic Cubic Spline with a positive-definite constraint
+Default: -9
+</entry>
+
+<entry id="fv3_kord_tr" type="integer" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Integer: vertical remapping scheme for tracers.
+9 or 11 recommended.  It is recommended that the value
+of fv3_kord_tr should match fv3_kord_tm.
+
+kord table
+==========
+4    Monotone PPM
+6    Vanilla PPM
+7    PPM with Hyunh monotonicity constraint(more expensive but less diffusive)
+9    Monotonic Cubic Spline
+10   Selectively (local extrema retained) monotonic Cubic Spline with 2 delta z
+     oscillations removed
+11   Non-monotonic cubic spline with 2 delta z oscillations removed
+Default: 9
+</entry>
+
+<entry id="fv3_kord_wz" type="integer" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Integer: vertical remapping scheme for vertical velocity in
+nonhydrostatic simulations. It is recommended that the value
+of fv3_kord_wz should match fv3_kord_mt.
+
+kord table
+==========
+4    Monotone PPM
+6    Vanilla PPM
+7    PPM with Hyunh monotonicity constraint(more expensive but less diffusive)
+9    Monotonic Cubic Spline
+10   Selectively (local extrema retained) monotonic Cubic Spline with 2 delta z
+     oscillations removed
+11   Non-monotonic cubic spline with 2 delta z oscillations removed
+Default: 9
+</entry>
+
+<entry id="fv3_k_split" type="integer" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Integer: number of vertical remappings per dt_atmos (physics
+time step).
+Default: 2
+</entry>
+
+<entry id="fv3_layout" type="integer(2)" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Integer(2): Processor layout on each tile. The number of PEs
+assigned to a domain must equal fv3_layout(1)*fv3_layout(2)*ntiles. Must be
+set.
+Default: none
+</entry>
+
+<entry id="fv3_make_nh" type="logical" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Logical: Whether to re-initialize the nonhydrostatic state, by
+re-computing dz from hydrostatic balance and setting w to 0.
+Default: FALSE
+</entry>
+
+<entry id="fv3_na_init" type="integer" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Integer: Number of forward-backward dynamics steps used to
+initialize adiabatic solver. Not recommended if not
+cold-starting the model.
+Default: 0
+</entry>
+
+<entry id="fv3_ncnst" type="integer" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Integer: Number of tracer species advected by fv_tracer in the dynamical core.
+Typically this is set automatically by reading in values from field_table,
+but fv3_ncnst can be set to a smaller value so only the first ncnst tracers
+listed in field_table are not advected.
+Default: none
+</entry>
+
+<entry id="fv3_nord" type="integer" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Integer: order of divergence damping: 0 for second-order; 1 for
+fourth-order; 2 for sixth-order; 3 for eighth-order.
+Sixth-order may yield a better solution for low resolutions (one degree or
+coarser) by virtue of it being more scale-selective and will not damp
+moderately-well-resolved disturbances as much as does lower-order
+damping.
+Default: 3
+</entry>
+
+<entry id="fv3_no_dycore" type="logical" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Logical: disables execution of the dynamical core, only running
+the initialization, diagnostic, and I/O routines, and any physics
+that may be enabled.
+Default: FALSE
+</entry>
+
+<entry id="fv3_npx" type="integer" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Integer: Number of grid corners in the x-direction on one tile of the
+domain; so one more than the number of grid cells across a tile. On
+the cubed sphere this is one more than the number of cells across a
+cube face. Must be set.
+Default: none
+</entry>
+
+<entry id="fv3_npy" type="integer" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Integer: Number of grid corners in the y-direction on one tile of the
+domain. This value should be identical to fv3_npx on a cubed-sphere
+grid; doubly periodic or nested grids do not have this restriction.
+Must be set.
+Default: none
+</entry>
+
+<entry id="fv3_npz" type="integer" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+z Integer: Number of vertical levels. Each choice of fv3_npz comes with a
+pre-defined set of hybrid sigma-pressure levels and model top (see
+fv_eta.F90). Must be set.
+Default: none
+</entry>
+
+<entry id="fv3_ntiles" type="integer" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Integer: Number of tiles on the domain. For the cubed sphere, this
+should be 6, one tile for each face of the cubed sphere; normally for
+most other domains (including nested grids) this should be set to 1.
+Must be set.
+Default: 6
+</entry>
+
+<entry id="fv3_nwat" type="integer" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Integer: Number of water species to be included in condensate and
+water vapor loading. The masses of the first nwat tracer species
+will be added to the dry air mass, so that p is the mass of dry air,
+water vapor, and the included condensate species. The value used
+depends on the microphysics in the physics package you are using.
+This value is set by namelist defaults.
+Default: None
+</entry>
+
+<entry id="fv3_n_split" type="integer" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Integer: number of small dynamics (acoustic) time steps between
+vertical remapping. A setting of 0 allows the model to choose a value
+by examining the resolution, dt_atmos, and fv3_k_split.
+Default: 6
+</entry>
+
+<entry id="fv3_n_sponge" type="integer" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Integer: controls the number of layers at the upper boundary
+on which the 2 delta x filter is applied.
+Default: 0
+</entry>
+
+<entry id="fv3_print_freq" type="integer" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Integer: number of hours between print out of max/min and
+air/tracer mass diagnostics to standard output. 0
+never prints out any output; set to -1 to see output after every
+dt_atmos. Computing these diagnostics requires some computational overhead.
+Default: 0
+</entry>
+
+<entry id="fv3_range_warn" type="logical" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Logical: checks whether the values of the prognostic variables
+are within a reasonable range at the end of a dynamics time
+step, and prints a warning if not. Adds computational overhead,
+so we only recommend using this when debugging.
+Default: FALSE
+</entry>
+
+<entry id="fv3_rf_cutoff" type="real" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Real: pressure below which no Rayleigh damping is applied if
+tau &gt; 0.
+Default: 750
+</entry>
+
+<entry id="fv3_tau" type="real" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Real: time scale (in days) for Rayleigh friction applied to horizontal
+and vertical winds; lost kinetic energy is converted to heat, except
+on nested grids. 0.0 disables damping. Larger values yield less damping.
+For models with tops at 1 mb or lower
+values between 10 and 30 are useful for preventing overly-strong
+polar night jets; for higher-top hydrostatic models values between
+5 and 15 should be considered; and for non-hydrostatic models
+values of 10 or less should be considered, with smaller values for
+higher-resolution.
+Default: 10
+</entry>
+
+<entry id="fv3_vtdm4" type="real" category="dyn_fv3"
+       group="fv_core_nml" valid_values="" >
+Real: coefficient for background other-variable damping. The
+value of fv3_vtdm4 should be less than that of fv3_d4_bg. A good first guess
+for fv3_vtdm4 is about one-third the value of fv3_d4_bg.
+Requires fv3_do_vort_damp to be .true. Disabled for values less than
+1.e-3. Other-variable damping should not be used if a monotonic
+horizontal advection scheme is used.
+Default: 0.0
+</entry>
+
+<entry id="fv3_scale_ttend" type="logical" category="dyn_fv3"
+       group="dyn_fv3_inparm" valid_values="" >
+If TRUE perform temp tendency scaling before send to fv3 dynamics
+Default: FALSE
 </entry>
 
 </namelist_definition>

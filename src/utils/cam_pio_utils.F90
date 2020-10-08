@@ -40,7 +40,8 @@ module cam_pio_utils
   public :: cam_pio_dump_field
 
   integer            :: pio_iotype
-  integer            :: pio_rearranger 
+  integer            :: pio_rearranger
+  integer            :: pio_ioformat
 
   ! This variable should be private ?
   type(iosystem_desc_t), pointer, public :: pio_subsystem => null()
@@ -309,7 +310,7 @@ contains
       write(errormsg, '(a,i6,2a)') '(PIO:', ierr, ') ', trim(errorstr)
       call endrun(errormsg)
     end if
-    
+
   end subroutine cam_pio_handle_error
 
   !-----------------------------------------------------------------------
@@ -454,16 +455,19 @@ contains
   end subroutine cam_pio_check_var
 
   subroutine init_pio_subsystem()
-    use shr_pio_mod,   only: shr_pio_getiosys, shr_pio_getiotype
+    use shr_pio_mod,  only: shr_pio_getiosys, shr_pio_getiotype
+    use shr_pio_mod,  only: shr_pio_getioformat
     use cam_instance, only: atm_id
 
     pio_subsystem => shr_pio_getiosys(atm_id)
     pio_iotype =  shr_pio_getiotype(atm_id)
+    pio_ioformat = shr_pio_getioformat(atm_id)
 
     if (masterproc) then
        write(iulog,*)' '
        write(iulog,*)'Initialize PIO subsystem:'
        write(iulog,*)'  iotype  = ', pio_iotype
+       write(iulog,*)'  ioformat  = ', pio_ioformat
     end if
 
   end subroutine init_pio_subsystem
@@ -477,7 +481,7 @@ contains
   !                        field array are not in map order
   !                     file_dist_in is used if the dimensions of the
   !                        field on file are not in map order
-  !                     
+  !
   subroutine cam_pio_get_decomp(iodesc, ldims, fdims, dtype, map,             &
        field_dist_in, file_dist_in, permute)
     use pio,            only: pio_offset_kind
@@ -639,7 +643,7 @@ contains
       iodesc_p => curr
     end if
 !    if(masterproc) write(iulog,*) 'Using decomp: ',curr%tag
-    
+
   end subroutine find_iodesc
 
 
@@ -783,7 +787,7 @@ contains
     integer, optional, intent(in)    :: start(2)
     integer, optional, intent(in)    :: kount(2)
     logical, optional, intent(out)   :: found
-    
+
     ! Local variables
     character(len=*), parameter      :: subname = 'cam_pio_get_var_2d_r8'
     character(len=PIO_MAX_NAME)      :: tmpname
@@ -800,7 +804,7 @@ contains
          (present(kount) .and. (.not. present(start)))) then
       call endrun(trim(subname)//': start and kount must both be present')
     end if
-      
+
     call cam_pio_find_var(File, trim(varname), varid, exists)
     if (present(found)) then
       found = exists
@@ -851,7 +855,7 @@ contains
     integer, optional, intent(in)    :: start(2)
     integer, optional, intent(in)    :: kount(2)
     logical, optional, intent(out)   :: found
-    
+
     ! Local variables
     character(len=*), parameter      :: subname = 'cam_pio_get_var_2d_r8_perm'
     type(var_desc_t)                 :: varid   ! Var descriptor
@@ -927,7 +931,7 @@ contains
     integer, optional, intent(in)    :: start(3)
     integer, optional, intent(in)    :: kount(3)
     logical, optional, intent(out)   :: found
-    
+
     ! Local variables
     character(len=*), parameter      :: subname = 'cam_pio_get_var_3d_r8'
     character(len=PIO_MAX_NAME)      :: tmpname
@@ -997,7 +1001,7 @@ contains
     integer, optional, intent(in)    :: start(3)
     integer, optional, intent(in)    :: kount(3)
     logical, optional, intent(out)   :: found
-    
+
     ! Local variables
     character(len=*), parameter      :: subname = 'cam_pio_get_var_3d_r8_perm'
     type(var_desc_t)                 :: varid   ! Var descriptor
@@ -1078,7 +1082,7 @@ contains
       nullify(this%iodesc)
       this => this%next
       nullify(iodesc_list_top%next)
-       
+
       ! All the other list items were allocated, blow them away
       do while(associated(this))
         call pio_freedecomp(pio_subsystem, this%iodesc)
@@ -1091,8 +1095,7 @@ contains
   end subroutine clean_iodesc_list
 
   subroutine cam_pio_createfile(file, fname, mode_in)
-    use pio, only : pio_createfile, file_desc_t, pio_noerr, pio_clobber,      &
-         pio_64bit_offset, pio_iotask_rank
+    use pio, only : pio_createfile, file_desc_t, pio_noerr, pio_clobber, pio_iotask_rank
     use cam_abortutils, only : endrun
 
     ! Dummy arguments
@@ -1103,8 +1106,8 @@ contains
     ! Local variables
     integer                                   :: ierr
     integer                                   :: mode
-    
-    mode = ior(PIO_CLOBBER, PIO_64BIT_OFFSET)
+
+    mode = ior(PIO_CLOBBER, pio_ioformat)
     if (present(mode_in)) then
       mode = ior(mode, mode_in)
     end if
@@ -1178,8 +1181,8 @@ contains
   subroutine find_dump_filename(fieldname, filename)
 
     ! Dummy arguments
-    character(len=*),   intent(in)        :: fieldname 
-    character(len=*),   intent(inout)     :: filename 
+    character(len=*),   intent(in)        :: fieldname
+    character(len=*),   intent(inout)     :: filename
 
     ! Local variable
     integer                               :: fnum
@@ -1201,7 +1204,7 @@ contains
     use spmd_utils,     only: iam, npes, mpi_max, mpi_integer, mpicom
 
     ! Dummy arguments
-    character(len=*),   intent(in)        :: fieldname 
+    character(len=*),   intent(in)        :: fieldname
     integer,            intent(in)        :: dim1b
     integer,            intent(in)        :: dim1e
     integer,            intent(in)        :: dim2b
@@ -1313,7 +1316,7 @@ contains
     use spmd_utils,     only: iam, npes, mpi_max, mpi_integer, mpicom
 
     ! Dummy arguments
-    character(len=*),   intent(in)        :: fieldname 
+    character(len=*),   intent(in)        :: fieldname
     integer,            intent(in)        :: dim1b
     integer,            intent(in)        :: dim1e
     integer,            intent(in)        :: dim2b
@@ -1433,7 +1436,7 @@ contains
     use spmd_utils,     only: iam, npes, mpi_max, mpi_integer, mpicom
 
     ! Dummy arguments
-    character(len=*),   intent(in)        :: fieldname 
+    character(len=*),   intent(in)        :: fieldname
     integer,            intent(in)        :: dim1b
     integer,            intent(in)        :: dim1e
     integer,            intent(in)        :: dim2b
@@ -1563,7 +1566,7 @@ contains
     use spmd_utils,     only: iam, npes, mpi_max, mpi_integer, mpicom
 
     ! Dummy arguments
-    character(len=*),   intent(in)        :: fieldname 
+    character(len=*),   intent(in)        :: fieldname
     integer,            intent(in)        :: dimbs(:)
     integer,            intent(in)        :: dimes(:)
     real(r8), target,   intent(in)        :: field(:,:,:,:,:,:)

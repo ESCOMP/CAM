@@ -1,6 +1,0 @@
--spmd -smp
--dyn fv
--hgrid 4x5
--phys adiabatic
--debug
--s

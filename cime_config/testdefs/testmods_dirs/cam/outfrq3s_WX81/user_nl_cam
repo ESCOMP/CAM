@@ -1,0 +1,6 @@
+mfilt=1,1,1,1,1,1
+ndens=1,1,1,1,1,1
+nhtfrq=3,3,3,3,3,3
+inithist='ENDOFRUN'
+ncdata='$DIN_LOC_ROOT/atm/waccm/ic/WAX3548T08CO_2003top_f2000.waccm_0017bottom_L81_c110906.nc'
+pbuf_global_allocate=.false.
