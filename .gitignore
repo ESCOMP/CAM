@@ -32,4 +32,6 @@ cime-tests.o*
 aux_cam_*.log
 test_driver_*.sh
 cam_test_summaries
+
+# Ignore python bytecode files
 *.pyc

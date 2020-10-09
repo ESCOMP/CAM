@@ -2521,7 +2521,6 @@ dense precipitating ice as hail. mg3 only.
 Default: .false.
 </entry>
 
-
 <entry id="micro_mg_num_steps" type="integer" category="microphys"
        group="micro_mg_nl" valid_values="" >
 Number of substeps over MG microphysics.
@@ -2601,7 +2600,82 @@ Default: 0.1e6 m-3
 <entry id="micro_mg_ngnst" type="real" category="microphys"
        group="micro_mg_nl" valid_values="" >
 In-cloud graupel number concentration when micro_mg_nicons=.true.
-Default: 0.1e6 m-3
+Default: 0.0005e6 m-3
+</entry>
+
+<entry id="micro_mg_nrcons" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+Set .true. to hold cloud rain number constant.
+Default: .false.
+</entry>
+
+<entry id="micro_mg_nrnst" type="real" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+In-cloud rain number concentration when micro_mg_nrcons=.true.
+Default: 0.2e6 m-3
+</entry>
+
+<entry id="micro_mg_nscons" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+Set .true. to hold cloud snow number constant.
+Default: .false.
+</entry>
+
+<entry id="micro_mg_nsnst" type="real" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+In-cloud snow number concentration when micro_mg_nscons=.true.
+Default: 0.005e6 m-3
+</entry>
+
+<entry id="micro_mg_evap_sed_off" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+If .true., sedimenting condensate does not evaporate
+Default: .false.
+</entry>
+
+<entry id="micro_mg_icenuc_rh_off" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+If .true., remove RH threshold from ice nucelation calculation
+Default: .false.
+</entry>
+
+<entry id="micro_mg_icenuc_use_meyers" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+Hard code Meyers 1992 Temp dependent ice nucleation in microphysics
+Default: .false.
+</entry>
+
+<entry id="micro_mg_evap_scl_ifs" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+Apply 0.3 scaling factor to evaporation of precipitation as done in the 
+IFS model (https://www.ecmwf.int/en/forecasts/documentation-and-support)
+Default: .false.
+</entry>
+
+<entry id="micro_mg_evap_rhthrsh_ifs" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+Do not evaporate precipitation until RH<90% as done in the                                                        
+IFS model (https://www.ecmwf.int/en/forecasts/documentation-and-support)
+Default: .false.
+</entry>
+
+<entry id="micro_mg_rainfreeze_ifs" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+Freeze rain at 0C as done in the                                                        
+IFS model (https://www.ecmwf.int/en/forecasts/documentation-and-support)
+Default: .false.
+</entry>
+
+<entry id="micro_mg_ifs_sed" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+If .false., use the default sedimentation fall speed calculation from MG2 for all species. If .true., use constant sedimentation fall speeds for snow and ice, and no sedimentation of liquid, to be consistant with how species descend in the IFS model (https://www.ecmwf.int/en/forecasts/documentation-and-support)
+Default: .false.
+</entry>
+
+<entry id="micro_mg_precip_fall_corr" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+If .true., ensure non-zero precipitation fallspeed (rain,snow and graupel) if precipitation exists above in column (from M2005 in WRFv3.3)
+Default: .false.
 </entry>
 
 <!-- Aerosol microphysics -->
@@ -5384,31 +5458,9 @@ Full pathname of boundary dataset for airplane emissions.
 Default: set by build-namelist.
 </entry>
 
-<entry id="clim_soilw_file" type="char*256" input_pathname="abs" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-Full pathname of dataset containing soil moisture fraction information used in 'xactive_atm'
-method of calculating dry deposition of chemical tracers.
-Default: set by build-namelist.
-</entry>
-
-<entry id="depvel_file" type="char*256" input_pathname="abs" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-Full pathname of dataset which contains the prescribed deposition velocities used
-in the 'table' method of calculating dry deposition  of chemical tracers.
-Default: set by build-namelist.
-</entry>
-
 <entry id="depvel_lnd_file" type="char*256" input_pathname="abs" category="cam_chem"
        group="chem_inparm" valid_values="" >
-Full pathname of dataset which contains land vegitation information used in 'xactive_atm'
-method of calculating dry deposition of chemical tracers.
-Default: set by build-namelist.
-</entry>
-
-<entry id="season_wes_file" type="char*256" input_pathname="abs" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-Full pathname of dataset which contains season information used in 'xactive_atm'
-method of calculating dry deposition of chemical tracers.
+Full pathname of dataset which contains land vegetation information used in modal aerosol deposition.
 Default: set by build-namelist.
 </entry>
 
@@ -6371,90 +6423,6 @@ Frequency in time steps at which the chemical equations are solved.
 Default: 1
 </entry>
 
-<entry id="chlorine_loading_file" type="char*256" input_pathname="abs" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-Filename of dataset for linoz cholirine loading.
-Default: none.
-</entry>
-<entry id="chlorine_loading_type" type="char*8" category="cam_chem"
-       group="chem_inparm" valid_values="SERIAL,FIXED" >
-Type of time interpolation type for data in  {{ hilight }}chlorine_loading_file{{ closehilight }}
-Default: 'SERIAL'
-</entry>
-<entry id="chlorine_loading_fixed_tod" type="integer" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-The time of day (seconds) corresponding to {{ hilight }}chlorine_loading_fixed_ymd{{ closehilight }}
-at which the chlorine loading data is fixed
-if {{ hilight }}chlorine_loading_type{{ closehilight }} is 'FIXED'.
-Default: 0 seconds
-</entry>
-<entry id="chlorine_loading_fixed_ymd" type="integer" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-The date at which the chlorine loading data is fixed
-if {{ hilight }}chlorine_loading_type{{ closehilight }} is 'FIXED'.
-Format: YYYYMMDD
-Default: 0
-</entry>
-
-
-<entry id="linoz_data_path" type="char*256" input_pathname="abs" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-Full pathname of the directory that contains the files specified in
-{{ hilight }}linoz_data_filelist{{ closehilight }}.
-Default: none.
-</entry>
-
-<entry id="linoz_data_file" type="char*256" input_pathname="rel:linoz_data_path" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-Filename of dataset for LINOZ data.
-Default: none.
-</entry>
-
-<entry id="linoz_data_filelist" type="char*256" input_pathname="rel:linoz_data_datapath" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-Filename of file that contains a sequence of filenames of the linoz data.
-The filenames in this file are relative to the directory specified
-by {{ hilight }}linoz_data_datapath{{ closehilight }}.
-Default: set by build-namelist.
-</entry>
-
-<entry id="linoz_data_type" type="char*24" category="cam_chem"
-       group="chem_inparm" valid_values="CYCLICAL,SERIAL,INTERP_MISSING_MONTHS,FIXED" >
-Type of time interpolation for data in linoz_data files.
-Can be set to 'CYCLICAL', 'SERIAL', 'INTERP_MISSING_MONTHS', or 'FIXED'.
-Default: 'SERIAL'
-</entry>
-
-<entry id="linoz_data_rmfile" type="logical" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-Remove the file containing LINOZ data from local disk when no longer needed.
-Default: FALSE
-</entry>
-
-<entry id="linoz_data_cycle_yr" type="integer" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-The  cycle year of the LINOZ data
-if {{ hilight }}linoz_data_type{{ closehilight }} is 'CYCLICAL'.
-Format: YYYY
-Default: 0
-</entry>
-
-<entry id="linoz_data_fixed_ymd" type="integer" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-The date at which the LINOZ data  is fixed
-if {{ hilight }}linoz_data_type{{ closehilight }} is 'FIXED'.
-Format: YYYYMMDD
-Default: 0
-</entry>
-
-<entry id="linoz_data_fixed_tod" type="integer" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-The time of day (seconds) corresponding to {{ hilight }}linoz_data_fixed_ymd{{ closehilight }}
-at which the LINOZ data is fixed
-if {{ hilight }}linoz_data_type{{ closehilight }} is 'FIXED'.
-Default: 0 seconds
-</entry>
-
 <entry id="tracer_cnst_datapath" type="char*256" input_pathname="abs" category="cam_chem"
        group="chem_inparm" valid_values="" >
 Full pathname of the directory that contains the files specified in
@@ -6613,17 +6581,6 @@ Default: set by build-namelist.
        group="drydep_inparm" valid_values="" >
 List of species that undergo dry deposition.
 Default: set by build-namelist.
-</entry>
-
-<entry id="drydep_method" type="char*16" category="dry_deposition"
-       group="drydep_inparm" valid_values="xactive_atm,xactive_lnd,table" >
-Dry deposition method used.  This specifies the method used to calculate dry
-deposition velocities of gas-phase chemical species.  The available methods
-are:
- 'table'       - prescribed method in CAM
- 'xactive_atm' - interactive method in CAM
- 'xactive_lnd' - interactive method in CLM
-Default: set by build-namelist
 </entry>
 
 <entry id="rxn_rate_sums" type="char*256(200)" category="cam_chem"
