@@ -5,10 +5,10 @@
 <start_ymd>19790101</start_ymd>
 
 <!-- Solar data from NRL -->
-<solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-22991231_c171031.nc</solar_irrad_data_file>
+<solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-23000102_c20200615.nc</solar_irrad_data_file>
 
 <!-- Kp and F10.7 -->
-<solar_parms_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-22991231_c171031.nc</solar_parms_data_file>
+<solar_parms_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-23000102_c20200615.nc</solar_parms_data_file>
 
 <!--Species IC -->
 <ncdata dyn="fv"  hgrid="0.9x1.25">cesm2_init/b.e21.BWsc1850.test.002/0014-01-01/b.e21.BWsc1850.test.002.cam.i.0014-01-01-00000.nc</ncdata>

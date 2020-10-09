@@ -3,7 +3,7 @@
 
   <ncdata hgrid="1.9x2.5" nlev="32">cesm2_init/b.e20.B1850.f19_g17.release_cesm2_1_0.020/0301-01-01/b.e20.B1850.f19_g17.release_cesm2_1_0.020.cam.i.0301-01-01-00000.nc</ncdata>
 
-  <solar_irrad_data_file    >   'atm/cam/solar/SolarForcingCMIP6_18491230-22991231_c171031.nc'</solar_irrad_data_file>
+  <solar_irrad_data_file    >   'atm/cam/solar/SolarForcingCMIP6_18491230-23000102_c20200615.nc'</solar_irrad_data_file>
 
   <tracer_cnst_datapath     >   'atm/cam/tracer_cnst'                                        </tracer_cnst_datapath>
   <tracer_cnst_file         >   'tracer_cnst_halons_3D_L70_1849-2015_CMIP6ensAvg_c180927.nc' </tracer_cnst_file>
