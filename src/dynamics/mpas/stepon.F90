@@ -1,12 +1,9 @@
-#define MPAS_DEBUG_WRITE(print_task, x) if (iam == (print_task)) write(iulog,*) 'MPAS_DEBUG '//subname//' ', (x)
-
 module stepon
 
 use shr_kind_mod,   only: r8 => shr_kind_r8
-use spmd_utils,     only: iam, masterproc, mpicom
+use spmd_utils,     only: mpicom
 
 use pmgrid,         only: plev, plevp
-use constituents,   only: pcnst, cnst_name, cnst_longname
 
 use ppgrid,         only: begchunk, endchunk
 use physics_types,  only: physics_state, physics_tend
@@ -22,9 +19,8 @@ use camsrfexch,     only: cam_out_t
 use cam_history,    only: addfld, outfld, hist_fld_active
 
 use time_manager,   only: get_step_size, get_nstep, is_first_step, is_first_restart_step
+
 use perf_mod,       only: t_startf, t_stopf, t_barrierf
-use cam_abortutils, only: endrun
-use cam_logfile,    only: iulog
  
 implicit none
 private
@@ -37,28 +33,18 @@ public :: &
    stepon_run3, &
    stepon_final
 
-
 !=========================================================================================
 contains
 !=========================================================================================
 
 subroutine stepon_init(dyn_in, dyn_out)
 
-   use cam_history,    only: addfld, add_default, horiz_only
-   use cam_history,    only: register_vector_field
-
+   ! arguments
    type (dyn_import_t), intent(inout) :: dyn_in  ! Dynamics import container
    type (dyn_export_t), intent(inout) :: dyn_out ! Dynamics export container
-
-   integer :: m
-
-   character(len=*), parameter :: subname = 'stepon::stepon_init'
    !----------------------------------------------------------------------------
 
-
-   MPAS_DEBUG_WRITE(1, 'begin '//subname)
-
-   ! dycore state variables on Spherical Centroidal Voronoi grid
+   ! dycore state variables on MPAS grids
    call addfld ('u',     (/ 'lev' /),  'A', 'm/s', 'normal velocity at edges', gridname='mpas_edge')
    call addfld ('w',     (/ 'ilev' /), 'A', 'm/s', 'vertical velocity', gridname='mpas_cell')
    call addfld ('theta', (/ 'lev' /),  'A', 'K',   'potential temperature', gridname='mpas_cell')
@@ -73,7 +59,7 @@ subroutine stepon_init(dyn_in, dyn_out)
    call addfld ('vorticity', (/ 'lev' /), 'A', '1/s', &
                 'Relative vorticity at vertices', gridname='mpas_vertex')
 
-   ! physics forcings on dycore grids
+   ! physics forcings on MPAS grids
    call addfld ('ru_tend',     (/ 'lev' /),  'A', 'kg/m^2/s', &
                 'physics tendency of normal horizontal momentum', gridname='mpas_edge')
    call addfld ('rtheta_tend', (/ 'lev' /),  'A', 'kg K/m^3/s', &
@@ -88,6 +74,7 @@ end subroutine stepon_init
 subroutine stepon_run1(dtime_out, phys_state, phys_tend, &
                        pbuf2d, dyn_in, dyn_out)
 
+   ! arguments
    real(r8),            intent(out)    :: dtime_out   ! Time-step
    type(physics_state), intent(inout)  :: phys_state(begchunk:endchunk)
    type(physics_tend),  intent(inout)  :: phys_tend(begchunk:endchunk)
@@ -97,20 +84,15 @@ subroutine stepon_run1(dtime_out, phys_state, phys_tend, &
 
    ! local variables
    integer :: nstep
-
-   character(len=*), parameter :: subname = 'stepon::stepon_run1'
    !----------------------------------------------------------------------------
-
-
-   MPAS_DEBUG_WRITE(1, 'begin '//subname)
 
    nstep     = get_nstep()
    dtime_out = get_step_size()
 
    ! This call writes the inputs to the physics package on the dynamics
    ! grids.  It will output the initial fields the first time it is called
-   ! since dyn_in is copied to dyn_out for the initialization sequence.  On
-   ! subsequent calls dyn_out will contain the dycore output.
+   ! since dyn_in is copied to dyn_out for use by the initialization
+   ! sequence.  On subsequent calls dyn_out will contain the dycore output.
    call write_dynvar(dyn_out)
    
    call t_barrierf('sync_d_p_coupling', mpicom)
@@ -121,7 +103,8 @@ subroutine stepon_run1(dtime_out, phys_state, phys_tend, &
    
    ! Update pointers for prognostic fields if necessary.  Note that this shift
    ! should not take place the first time stepon_run1 is called which is during
-   ! the CAM initialization sequence before the dycore is called.
+   ! the CAM initialization sequence before the dycore is called.  Nor should it
+   ! occur for the first step of a restart run.
    if (.not. is_first_step() .and. &
        .not. is_first_restart_step() .and. &
        swap_time_level_ptrs) then
@@ -136,24 +119,20 @@ end subroutine stepon_run1
 
 subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out)
 
+   ! arguments
    type(physics_state), intent(inout) :: phys_state(begchunk:endchunk)
    type(physics_tend),  intent(inout) :: phys_tend(begchunk:endchunk)
    type (dyn_import_t), intent(inout) :: dyn_in
    type (dyn_export_t), intent(inout) :: dyn_out
-
-   character(len=*), parameter :: subname = 'stepon::stepon_run2'
    !----------------------------------------------------------------------------
 
-
-   MPAS_DEBUG_WRITE(1, 'begin '//subname)
- 
    call t_barrierf('sync_p_d_coupling', mpicom)
    call t_startf('p_d_coupling')
    ! copy from phys structures -> dynamics structures
    call p_d_coupling(phys_state, phys_tend, dyn_in)
    call t_stopf('p_d_coupling')
 
-   ! write physics forcings input to dycore
+   ! write physics forcings which are input to dycore
    call write_forcings(dyn_in)
 
 end subroutine stepon_run2
@@ -164,16 +143,11 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
 
    ! arguments
    real(r8),            intent(in)    :: dtime
-   type(cam_out_t),     intent(inout) :: cam_out(:) ! Output from CAM to surface
+   type(cam_out_t),     intent(inout) :: cam_out(:) ! CAM export to surface models
    type(physics_state), intent(inout) :: phys_state(begchunk:endchunk)
    type (dyn_import_t), intent(inout) :: dyn_in
    type (dyn_export_t), intent(inout) :: dyn_out
-
-   character(len=*), parameter :: subname = 'stepon::stepon_run3'
    !----------------------------------------------------------------------------
-
-
-   MPAS_DEBUG_WRITE(1, 'begin '//subname)
 
    call t_barrierf('sync_dyn_run', mpicom)
    call t_startf('dyn_run')
@@ -186,10 +160,9 @@ end subroutine stepon_run3
 
 subroutine stepon_final(dyn_in, dyn_out)
 
+   ! arguments
    type(dyn_import_t), intent(inout) :: dyn_in
    type(dyn_export_t), intent(inout) :: dyn_out
-
-   character(len=*), parameter :: subname = 'stepon::stepon_final'
    !----------------------------------------------------------------------------
 
    call dyn_final(dyn_in, dyn_out)
@@ -202,6 +175,8 @@ end subroutine stepon_final
 
 subroutine write_dynvar(dyn_out)
 
+   ! Output from the internal MPAS data structures to CAM history files.
+
    ! agruments
    type(dyn_export_t), intent(in) :: dyn_out
 
@@ -210,10 +185,7 @@ subroutine write_dynvar(dyn_out)
    integer :: nCellsSolve, nEdgesSolve, nVerticesSolve
    integer :: qv_idx
    real(r8), allocatable :: arr2d(:,:)
-
-   character(len=*), parameter :: subname = 'stepon::write_dynvar'
    !----------------------------------------------------------------------------
-
 
    nCellsSolve    = dyn_out%nCellsSolve
    nEdgesSolve    = dyn_out%nEdgesSolve
@@ -326,6 +298,8 @@ end subroutine write_dynvar
 
 subroutine write_forcings(dyn_in)
 
+   ! Output from the internal MPAS data structures to CAM history files.
+
    ! agruments
    type(dyn_import_t), intent(in) :: dyn_in
 
@@ -334,7 +308,6 @@ subroutine write_forcings(dyn_in)
    integer :: nCellsSolve, nEdgesSolve
    real(r8), allocatable :: arr2d(:,:)
 
-   character(len=*), parameter :: subname = 'stepon::write_forcings'
    !----------------------------------------------------------------------------
 
 
