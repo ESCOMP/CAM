@@ -24,13 +24,13 @@ use dyn_tests_utils,    only: vcoord=>vc_height
 
 use cam_history,        only: addfld, add_default, horiz_only, register_vector_field, &
                               outfld, hist_fld_active
-use cam_history_support, only: date2yyyymmdd, sec2hms, nday2str, &
-                               max_fieldname_len
-use cam_pio_utils,      only: clean_iodesc_list
+use cam_history_support, only: max_fieldname_len
+use string_utils,       only: date2yyyymmdd, sec2hms, int2str
 
 use ncdio_atm,          only: infld
 use pio,                only: file_desc_t, pio_seterrorhandling, PIO_BCAST_ERROR, &
                               pio_inq_dimid, pio_inq_dimlen, PIO_NOERR
+use cam_pio_utils,      only: clean_iodesc_list
 
 use time_manager,       only: get_start_date, get_stop_date, get_run_duration, &
                               timemgr_get_calendar_cf, get_step_size
@@ -270,7 +270,7 @@ subroutine dyn_readnl(NLFileName)
    call mpas_pool_add_config(domain_ptr % configs, 'config_stop_time', date2yyyymmdd(ndate)//'_'//sec2hms(tod))
 
    call get_run_duration(nday, nsec)
-   call mpas_pool_add_config(domain_ptr % configs, 'config_run_duration', trim(nday2str(nday))//'_'//sec2hms(nsec))
+   call mpas_pool_add_config(domain_ptr % configs, 'config_run_duration', trim(int2str(nday))//'_'//sec2hms(nsec))
 
    ! Although the following namelist options are not expected to be used by CAM-MPAS, the MPAS-A dycore
    ! references these options, and they therefore must be defined in the configs pool
