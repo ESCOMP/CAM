@@ -223,7 +223,7 @@ incs: $(REGISTRY_FILE)
 #
 # Dycore
 #
-dycore: $(DYN_OBJS) $(DIGNOSTICS) $(DIAG_OBJS) $(INTERFACE_OBJS)
+dycore: $(DYN_OBJS) $(DIAGNOSTICS) $(DIAG_OBJS) $(INTERFACE_OBJS)
 
 mpas_atm_time_integration.o: mpas_atm_iau.o mpas_atm_dimensions.o
 

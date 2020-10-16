@@ -1048,7 +1048,7 @@ subroutine set_base_state(dyn_in)
    type(dyn_import_t), intent(inout) :: dyn_in
 
    ! Local variables
-   real(r8), parameter :: t0b = 250.0      ! Temperature [K]
+   real(r8), parameter :: t0b = 250.0_r8      ! Temperature [K]
 
    integer :: iCell, klev
    real(r8), dimension(:,:), pointer :: zint

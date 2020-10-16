@@ -725,10 +725,7 @@ subroutine get_run_duration(nday, nsec)
    type(ESMF_TimeInterval) :: diff
    !----------------------------------------------------------------------------
 
-   call ESMF_ClockGet(tm_clock, startTime=start_time, rc=rc)
-   call chkrc(rc, sub//': error return from ESMF_ClockGet')
-
-   call ESMF_ClockGet(tm_clock, stopTime=stop_time, rc=rc)
+   call ESMF_ClockGet(tm_clock, startTime=start_time, stopTime=stop_time, rc=rc)
    call chkrc(rc, sub//': error return from ESMF_ClockGet')
 
    diff = stop_time - start_time

@@ -2069,18 +2069,18 @@ contains
           cell1 = cellsOnEdge(1,iEdge)
           cell2 = cellsOnEdge(2,iEdge)
 
-          uNormal(:,iEdge) =  uZonal(:,cell1) * 0.5 * (edgeNormalVectors(1,iEdge) * east(1,cell1)   &
-                                                    +  edgeNormalVectors(2,iEdge) * east(2,cell1)   &
-                                                    +  edgeNormalVectors(3,iEdge) * east(3,cell1))  &
-                            + uMerid(:,cell1) * 0.5 * (edgeNormalVectors(1,iEdge) * north(1,cell1)   &
-                                                    +  edgeNormalVectors(2,iEdge) * north(2,cell1)   &
-                                                    +  edgeNormalVectors(3,iEdge) * north(3,cell1))  &
-                            + uZonal(:,cell2) * 0.5 * (edgeNormalVectors(1,iEdge) * east(1,cell2)   &
-                                                    +  edgeNormalVectors(2,iEdge) * east(2,cell2)   &
-                                                    +  edgeNormalVectors(3,iEdge) * east(3,cell2))  &
-                            + uMerid(:,cell2) * 0.5 * (edgeNormalVectors(1,iEdge) * north(1,cell2)   &
-                                                    +  edgeNormalVectors(2,iEdge) * north(2,cell2)   &
-                                                    +  edgeNormalVectors(3,iEdge) * north(3,cell2))
+          uNormal(:,iEdge) =  uZonal(:,cell1)*0.5_RKIND*(edgeNormalVectors(1,iEdge)*east(1,cell1)   &
+                                                       + edgeNormalVectors(2,iEdge)*east(2,cell1)   &
+                                                       + edgeNormalVectors(3,iEdge)*east(3,cell1))  &
+                            + uMerid(:,cell1)*0.5_RKIND*(edgeNormalVectors(1,iEdge)*north(1,cell1)  &
+                                                       + edgeNormalVectors(2,iEdge)*north(2,cell1)  &
+                                                       + edgeNormalVectors(3,iEdge)*north(3,cell1)) &
+                            + uZonal(:,cell2)*0.5_RKIND*(edgeNormalVectors(1,iEdge)*east(1,cell2)   &
+                                                       + edgeNormalVectors(2,iEdge)*east(2,cell2)   &
+                                                       + edgeNormalVectors(3,iEdge)*east(3,cell2))  &
+                            + uMerid(:,cell2)*0.5_RKIND*(edgeNormalVectors(1,iEdge)*north(1,cell2)  &
+                                                       + edgeNormalVectors(2,iEdge)*north(2,cell2)  &
+                                                       + edgeNormalVectors(3,iEdge)*north(3,cell2))
        end do
 
     end subroutine cam_mpas_cell_to_edge_winds
