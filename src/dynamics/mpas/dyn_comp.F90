@@ -255,10 +255,7 @@ subroutine dyn_readnl(NLFileName)
    call cam_mpas_init_phase1(mpicom, endrun, logUnits)
 
    ! read namelist
-   ierr = cam_mpas_namelist_read(NLFileName, domain_ptr % configs)
-   if ( ierr /= 0 ) then
-      call endrun(subname//': FATAL: Namelist setup failed for MPAS-A dycore')
-   end if
+   call cam_mpas_namelist_read(NLFileName, domain_ptr % configs)
 
    ! Set config_start_date, etc. (these will not appear in the dycore namelist)
    call get_start_date(yr, mon, day, tod)
@@ -1077,36 +1074,29 @@ end subroutine set_base_state
 
 !========================================================================================
 
-function cam_mpas_namelist_read(namelistFilename, configPool) result(ierr)
+subroutine cam_mpas_namelist_read(namelistFilename, configPool)
 
    ! Read MPAS-A dycore namelists and add the namelists to the MPAS configPool.
    !
    ! Only the CAM masterproc actually opens and reads from the specified file. Upon return,
    ! if no errors were encountered, all MPI ranks have valid namelists in their configPool.
-   !
-   ! A value of zero is returned if no errors were encountered, and a non-zero value is returned
-   ! if any errors were encountered in reading the namelist file.
 
-   use units, only : getunit, freeunit
-   use spmd_utils, only : mpicom, masterproc, masterprocid, &
-                          mpi_integer, mpi_real8,  mpi_logical, mpi_character, mpi_success
-   use cam_logfile, only : iulog
-   use namelist_utils, only : find_group_name
+   use spmd_utils,         only: mpicom, masterproc, masterprocid, &
+                                 mpi_integer, mpi_real8,  mpi_logical, mpi_character, mpi_success
+   use namelist_utils,     only: find_group_name
 
-   use mpas_derived_types, only : mpas_pool_type
-   use mpas_kind_types, only : StrKIND
-   use mpas_pool_routines, only : mpas_pool_add_config
+   use mpas_derived_types, only: mpas_pool_type
+   use mpas_kind_types,    only: StrKIND
+   use mpas_pool_routines, only: mpas_pool_add_config
 
    ! Arguments
    character(len=*), intent(in) :: namelistFilename
    type (mpas_pool_type), intent(inout) :: configPool
 
-   ! Return value
-   integer :: ierr
-
    ! Local variables
    integer :: unitNumber
 
+   integer :: ierr, ierr2
    integer :: mpi_ierr
 
    character (len=StrKIND) :: mpas_time_integration = 'SRK3'
@@ -1207,272 +1197,63 @@ function cam_mpas_namelist_read(namelistFilename, configPool) result(ierr)
            mpas_print_global_minmax_vel, &
            mpas_print_detailed_minmax_vel, &
            mpas_print_global_minmax_sca
+
+   character(len=*), parameter :: subname = 'dyn_comp::cam_mpas_namelist_read'
    !----------------------------------------------------------------------------
 
    if (masterproc) then
       write(iulog,*) 'Reading MPAS-A dycore namelist from ', trim(namelistFilename)
-      unitNumber = getunit()
-      open(unit=unitNumber, file=trim(namelistFilename), status='old', form='formatted')
+      open(newunit=unitNumber, file=trim(namelistFilename), status='old', form='formatted')
    end if
 
-   !
    ! Read namelist group &nhyd_model
-   !
    if (masterproc) then
       rewind(unitNumber)
       call find_group_name(unitNumber, 'nhyd_model', status=ierr)
       if (ierr == 0) then
-         read(unitNumber, nhyd_model, iostat=ierr)
+         read(unitNumber, nhyd_model, iostat=ierr2)
+         if (ierr2 /= 0) then
+            call endrun(subname // ':: Failed to read namelist group &nhyd_model')
+         end if
       else
-         close(unit=unitNumber)
-         call freeunit(unitNumber)
+         call endrun(subname // ':: Failed to find namelist group &nhyd_model')
       end if
    end if
-   call mpi_bcast(ierr, 1, mpi_integer, masterprocid, mpicom, mpi_ierr)
-   if (ierr /= 0) then
-      if (masterproc) then
-         write(iulog,*) 'Failed to read namelist group &nhyd_model'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_time_integration, StrKIND, mpi_character, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_time_integration'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_time_integration_order, 1, mpi_integer, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_time_integration_order'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_dt, 1, mpi_real8, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_dt'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_split_dynamics_transport, 1, mpi_logical, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_split_dynamics_transport'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_number_of_sub_steps, 1, mpi_integer, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_number_of_sub_steps'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_dynamics_split_steps, 1, mpi_integer, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_dynamics_split_steps'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_h_mom_eddy_visc2, 1, mpi_real8, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_h_mom_eddy_visc2'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_h_mom_eddy_visc4, 1, mpi_real8, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_h_mom_eddy_visc4'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_v_mom_eddy_visc2, 1, mpi_real8, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_v_mom_eddy_visc2'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_h_theta_eddy_visc2, 1, mpi_real8, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_h_theta_eddy_visc2'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_h_theta_eddy_visc4, 1, mpi_real8, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_h_theta_eddy_visc4'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_v_theta_eddy_visc2, 1, mpi_real8, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_v_theta_eddy_visc2'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_horiz_mixing, StrKIND, mpi_character, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_horiz_mixing'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_len_disp, 1, mpi_real8, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_len_disp'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_visc4_2dsmag, 1, mpi_real8, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_visc4_2dsmag'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_del4u_div_factor, 1, mpi_real8, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_del4u_div_factor'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_w_adv_order, 1, mpi_integer, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_w_adv_order'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_theta_adv_order, 1, mpi_integer, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_theta_adv_order'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_scalar_adv_order, 1, mpi_integer, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_scalar_adv_order'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_u_vadv_order, 1, mpi_integer, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_u_vadv_order'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_w_vadv_order, 1, mpi_integer, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_w_vadv_order'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_theta_vadv_order, 1, mpi_integer, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_theta_vadv_order'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_scalar_vadv_order, 1, mpi_integer, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_scalar_vadv_order'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_scalar_advection, 1, mpi_logical, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_scalar_advection'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_positive_definite, 1, mpi_logical, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_positive_definite'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_monotonic, 1, mpi_logical, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_monotonic'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_coef_3rd_order, 1, mpi_real8, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_coef_3rd_order'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_smagorinsky_coef, 1, mpi_real8, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_smagorinsky_coef'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_mix_full, 1, mpi_logical, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_mix_full'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_epssm, 1, mpi_real8, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_epssm'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_smdiv, 1, mpi_real8, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_smdiv'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_apvm_upwinding, 1, mpi_real8, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_apvm_upwinding'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_h_ScaleWithMesh, 1, mpi_logical, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_h_ScaleWithMesh'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_num_halos, 1, mpi_integer, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_num_halos'
-      end if
-      return
-   end if
+
+   call mpi_bcast(mpas_time_integration,       StrKIND, mpi_character, masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_time_integration_order,       1, mpi_integer,   masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_dt,                           1, mpi_real8,     masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_split_dynamics_transport,     1, mpi_logical,   masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_number_of_sub_steps,          1, mpi_integer,   masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_dynamics_split_steps,         1, mpi_integer,   masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_h_mom_eddy_visc2,             1, mpi_real8,     masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_h_mom_eddy_visc4,             1, mpi_real8,     masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_v_mom_eddy_visc2,             1, mpi_real8,     masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_h_theta_eddy_visc2,           1, mpi_real8,     masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_h_theta_eddy_visc4,           1, mpi_real8,     masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_v_theta_eddy_visc2,           1, mpi_real8,     masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_horiz_mixing,           StrKIND, mpi_character, masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_len_disp,                     1, mpi_real8,     masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_visc4_2dsmag,                 1, mpi_real8,     masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_del4u_div_factor,             1, mpi_real8,     masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_w_adv_order,                  1, mpi_integer,   masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_theta_adv_order,              1, mpi_integer,   masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_scalar_adv_order,             1, mpi_integer,   masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_u_vadv_order,                 1, mpi_integer,   masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_w_vadv_order,                 1, mpi_integer,   masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_theta_vadv_order,             1, mpi_integer,   masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_scalar_vadv_order,            1, mpi_integer,   masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_scalar_advection,             1, mpi_logical,   masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_positive_definite,            1, mpi_logical,   masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_monotonic,                    1, mpi_logical,   masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_coef_3rd_order,               1, mpi_real8,     masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_smagorinsky_coef,             1, mpi_real8,     masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_mix_full,                     1, mpi_logical,   masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_epssm,                        1, mpi_real8,     masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_smdiv,                        1, mpi_real8,     masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_apvm_upwinding,               1, mpi_real8,     masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_h_ScaleWithMesh,              1, mpi_logical,   masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_num_halos,                    1, mpi_integer,   masterprocid, mpicom, mpi_ierr)
 
    call mpas_pool_add_config(configPool, 'config_time_integration', mpas_time_integration)
    call mpas_pool_add_config(configPool, 'config_time_integration_order', mpas_time_integration_order)
@@ -1509,171 +1290,88 @@ function cam_mpas_namelist_read(namelistFilename, configPool) result(ierr)
    call mpas_pool_add_config(configPool, 'config_h_ScaleWithMesh', mpas_h_ScaleWithMesh)
    call mpas_pool_add_config(configPool, 'config_num_halos', mpas_num_halos)
 
-   !
    ! Read namelist group &damping
-   !
    if (masterproc) then
       rewind(unitNumber)
       call find_group_name(unitNumber, 'damping', status=ierr)
       if (ierr == 0) then
-         read(unitNumber, damping, iostat=ierr)
+         read(unitNumber, damping, iostat=ierr2)
+         if (ierr2 /= 0) then
+            call endrun(subname // ':: Failed to read namelist group &damping')
+         end if
       else
-         close(unit=unitNumber)
-         call freeunit(unitNumber)
+         call endrun(subname // ':: Failed to find namelist group &damping')
       end if
    end if
-   call mpi_bcast(ierr, 1, mpi_integer, masterprocid, mpicom, mpi_ierr)
-   if (ierr /= 0) then
-      if (masterproc) then
-         write(iulog,*) 'Failed to read namelist group &damping'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_zd, 1, mpi_real8, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_zd'
-      end if
-      return
-   end if
+
+   call mpi_bcast(mpas_zd,    1, mpi_real8, masterprocid, mpicom, mpi_ierr)
    call mpi_bcast(mpas_xnutr, 1, mpi_real8, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_xnutr'
-      end if
-      return
-   end if
 
    call mpas_pool_add_config(configPool, 'config_zd', mpas_zd)
    call mpas_pool_add_config(configPool, 'config_xnutr', mpas_xnutr)
 
-   !
    ! Read namelist group &decomposition
-   !
    if (masterproc) then
       rewind(unitNumber)
       call find_group_name(unitNumber, 'decomposition', status=ierr)
       if (ierr == 0) then
-         read(unitNumber, decomposition, iostat=ierr)
+         read(unitNumber, decomposition, iostat=ierr2)
+         if (ierr2 /= 0) then
+            call endrun(subname // ':: Failed to read namelist group &decomposition')
+         end if
       else
-         close(unit=unitNumber)
-         call freeunit(unitNumber)
+         call endrun(subname // ':: Failed to find namelist group &decomposition')
       end if
    end if
-   call mpi_bcast(ierr, 1, mpi_integer, masterprocid, mpicom, mpi_ierr)
-   if (ierr /= 0) then
-      if (masterproc) then
-         write(iulog,*) 'Failed to read namelist group &decomposition'
-      end if
-      return
-   end if
+
    call mpi_bcast(mpas_block_decomp_file_prefix, StrKIND, mpi_character, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_block_decomp_file_prefix'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_number_of_blocks, 1, mpi_integer, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_number_of_blocks'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_explicit_proc_decomp, 1, mpi_logical, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_explicit_proc_decomp'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_proc_decomp_file_prefix, StrKIND, mpi_character, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_proc_decomp_file_prefix'
-      end if
-      return
-   end if
+   call mpi_bcast(mpas_number_of_blocks,               1, mpi_integer,   masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_explicit_proc_decomp,           1, mpi_logical,   masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_proc_decomp_file_prefix,  StrKIND, mpi_character, masterprocid, mpicom, mpi_ierr)
 
    call mpas_pool_add_config(configPool, 'config_block_decomp_file_prefix', mpas_block_decomp_file_prefix)
    call mpas_pool_add_config(configPool, 'config_number_of_blocks', mpas_number_of_blocks)
    call mpas_pool_add_config(configPool, 'config_explicit_proc_decomp', mpas_explicit_proc_decomp)
    call mpas_pool_add_config(configPool, 'config_proc_decomp_file_prefix', mpas_proc_decomp_file_prefix)
 
-   !
    ! Read namelist group &restart
-   !
    if (masterproc) then
       rewind(unitNumber)
       call find_group_name(unitNumber, 'restart', status=ierr)
       if (ierr == 0) then
-         read(unitNumber, restart, iostat=ierr)
+         read(unitNumber, restart, iostat=ierr2)
+         if (ierr2 /= 0) then
+            call endrun(subname // ':: Failed to read namelist group &restart')
+         end if
       else
-         close(unit=unitNumber)
-         call freeunit(unitNumber)
+         call endrun(subname // ':: Failed to find namelist group &restart')
       end if
    end if
-   call mpi_bcast(ierr, 1, mpi_integer, masterprocid, mpicom, mpi_ierr)
-   if (ierr /= 0) then
-      if (masterproc) then
-         write(iulog,*) 'Failed to read namelist group &restart'
-      end if
-      return
-   end if
+
    call mpi_bcast(mpas_do_restart, 1, mpi_logical, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_do_restart'
-      end if
-      return
-   end if
 
    ! Set mpas_do_restart based on information from the driver code.
    if (.not. initial_run) mpas_do_restart = .true.
+
    call mpas_pool_add_config(configPool, 'config_do_restart', mpas_do_restart)
 
-   !
    ! Read namelist group &printout
-   !
    if (masterproc) then
       rewind(unitNumber)
       call find_group_name(unitNumber, 'printout', status=ierr)
       if (ierr == 0) then
-         read(unitNumber, printout, iostat=ierr)
+         read(unitNumber, printout, iostat=ierr2)
+         if (ierr2 /= 0) then
+            call endrun(subname // ':: Failed to read namelist group &printout')
+         end if
       else
-         close(unit=unitNumber)
-         call freeunit(unitNumber)
+         call endrun(subname // ':: Failed to find namelist group &printout')
       end if
    end if
-   call mpi_bcast(ierr, 1, mpi_integer, masterprocid, mpicom, mpi_ierr)
-   if (ierr /= 0) then
-      if (masterproc) then
-         write(iulog,*) 'Failed to read namelist group &printout'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_print_global_minmax_vel, 1, mpi_logical, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_print_global_minmax_vel'
-      end if
-      return
-   end if
+
+   call mpi_bcast(mpas_print_global_minmax_vel,   1, mpi_logical, masterprocid, mpicom, mpi_ierr)
    call mpi_bcast(mpas_print_detailed_minmax_vel, 1, mpi_logical, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_print_detailed_minmax_vel'
-      end if
-      return
-   end if
-   call mpi_bcast(mpas_print_global_minmax_sca, 1, mpi_logical, masterprocid, mpicom, mpi_ierr)
-   if (mpi_ierr /= mpi_success) then
-      if (masterproc) then
-         write(iulog,*) 'MPI_Bcast failed for namelist option mpas_print_global_minmax_sca'
-      end if
-      return
-   end if
+   call mpi_bcast(mpas_print_global_minmax_sca,   1, mpi_logical, masterprocid, mpicom, mpi_ierr)
 
    call mpas_pool_add_config(configPool, 'config_print_global_minmax_vel', mpas_print_global_minmax_vel)
    call mpas_pool_add_config(configPool, 'config_print_detailed_minmax_vel', mpas_print_detailed_minmax_vel)
@@ -1681,7 +1379,6 @@ function cam_mpas_namelist_read(namelistFilename, configPool) result(ierr)
 
    if (masterproc) then
       close(unit=unitNumber)
-      call freeunit(unitNumber)
    end if
 
    if (masterproc) then
@@ -1732,6 +1429,6 @@ function cam_mpas_namelist_read(namelistFilename, configPool) result(ierr)
       write(iulog,*) '   mpas_print_global_minmax_sca = ', mpas_print_global_minmax_sca
    end if
 
-end function cam_mpas_namelist_read
+end subroutine cam_mpas_namelist_read
 
 end module dyn_comp
