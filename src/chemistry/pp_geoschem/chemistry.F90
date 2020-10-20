@@ -61,6 +61,7 @@ module chemistry
   use chem_mods,           only : map2MAM4
 
   use mo_tracname,         only : solsym
+  use constituents,        only : cnst_name
 
   IMPLICIT NONE
   PRIVATE
@@ -103,7 +104,7 @@ module chemistry
   TYPE(MetState),ALLOCATABLE :: State_Met(:)    ! Meteorology State object
   TYPE(DgnList )             :: Diag_List       ! Diagnostics list object
 
-  type(physics_buffer_desc), pointer :: hco_pbuf2d(:,:)  ! ptr to 2d pbuf
+  type(physics_buffer_desc), pointer :: hco_pbuf2d(:,:)    ! Pointer to 2D pbuf
 
   ! Indices of critical species in GEOS-Chem
   INTEGER                    :: iH2O, iO3, iCH4, iCO, iNO, iOH
@@ -973,7 +974,6 @@ contains
 #if   ( ALLDDVEL_GEOSCHEM && LANDTYPE_HEMCO )
     use Olson_Landmap_Mod
 #endif
-    use Mixing_Mod
     use Vdiff_Mod
     use CMN_FJX_MOD,       only : JVN_
 
@@ -1780,6 +1780,13 @@ contains
        SpcInfo => NULL()
     ENDDO
 
+    ! Surface fluxes (emissions - drydep)
+    DO I = 1, pcnst
+       SpcName = 'SurfFlux_'//TRIM(cnst_name(I))
+       CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'kg/m2/s', &
+          TRIM(SpcName)//' surface flux')
+    ENDDO
+
     IF ( gas_wetdep_method == 'GEOS-CHEM' ) THEN
        DO N = 1, gas_pcnst
           SpcName = 'DTWR_'//TRIM(solsym(N))
@@ -1828,7 +1835,7 @@ contains
           TRIM(tagName) // ' photolysis rate' )
     ENDDO
 
-    ! Initialize emissions interface (this will eventually handle HEMCO)
+    ! Initialize emissions interface
     CALL GC_Emissions_Init
 
     !CALL AddFld ( 'BCPI', (/'lev'/), 'A', 'mole/mole', trim('BCPI')//' mixing ratio' )
@@ -1897,7 +1904,6 @@ contains
     use physics_buffer,      only : pbuf_get_chunk, pbuf_get_index
     use cam_history,         only : outfld, hist_fld_active
     use camsrfexch,          only : cam_in_t, cam_out_t
-    use mo_tracname,         only : solsym
 
 #ifdef SPMD
     use mpishorthand
@@ -1927,7 +1933,6 @@ contains
 #endif
     use Drydep_Mod,          only : DEPNAME
     use Drydep_Mod,          only : Update_DryDepSav
-    use Mixing_Mod
 
     use Calc_Met_Mod,        only : Set_Dry_Surface_Pressure
     use Calc_Met_Mod,        only : AirQnt
@@ -1944,6 +1949,9 @@ contains
     use UCX_Mod,             only : Set_H2O_Trac
     use CMN_FJX_MOD,         only : ZPJ, JVN_, GC_Photo_ID
     use State_Diag_Mod,      only : get_TagInfo
+    use Unitconv_Mod,        only : Convert_Spc_Units
+
+    use GC_Emissions_Mod,    only : GC_Emissions_Calc
 
     use Tropopause,          only : Tropopause_findChemTrop, Tropopause_Find
     use HCO_Utilities_GC_Mod  ! Utility routines for GC-HEMCO interface
@@ -1989,8 +1997,8 @@ contains
     LOGICAL :: lq(pcnst)
 
     ! Indexing
-    INTEGER :: I, J, K, L, N, M, P
-    INTEGER :: nX, nY, nZ
+    INTEGER :: N, M, P, SM, ND
+    INTEGER :: I, J, L, nX, nY, nZ
 
     INTEGER :: LCHNK, NCOL
 
@@ -2024,11 +2032,16 @@ contains
     REAL(r8)          :: mBar   (state%NCOL,PVER)     ! Mean wet atmospheric mass [amu]
     REAL(r8)          :: invariants(state%NCOL,PVER,nfs)
     REAL(r8)          :: reaction_rates(1,1,1)        ! Reaction rates (unused)
+
     ! For aerosol formation
     REAL(r8)          :: del_h2so4_gasprod(state%NCOL,PVER)
     REAL(r8)          :: vmr0(state%NCOL,PVER,gas_pcnst)
     REAL(r8)          :: vmr1(state%NCOL,PVER,gas_pcnst)
     REAL(r8)          :: wetdepflx(pcols,pcnst)       ! Wet deposition fluxes (kg/m2/s)
+
+    ! For emissions
+    REAL(r8)          :: eflx(pcols,pver,pcnst)       ! 3-D emissions in kg/m2/s
+
 #if ( OCNDDVEL_MOZART )
     REAL(r8)          :: windSpeed(state%NCOL)        ! Wind speed at ground level [m/s]
     REAL(r8)          :: potT(state%NCOL)             ! Potential temperature [K]
@@ -2088,6 +2101,8 @@ contains
     CHARACTER(LEN=255)     :: SpcName
     INTEGER                :: SpcId
     TYPE(Species), POINTER :: SpcInfo
+
+    CHARACTER(LEN=63)      :: OrigUnit
 
     REAL(r8)           :: SlsData(state%NCOL, PVER, nSls)
 
@@ -2206,9 +2221,9 @@ contains
        M = map2GC(N)
        IF ( M > 0 ) THEN
           DO J = 1, nY
-          DO K = 1, nZ
-             MMR_Beg(J,K,M) = state%q(J,nZ+1-K,N)
-             State_Chm(LCHNK)%Species(1,J,K,M) = REAL(MMR_Beg(J,K,M),fp)
+          DO L = 1, nZ
+             MMR_Beg(J,L,M) = state%q(J,nZ+1-L,N)
+             State_Chm(LCHNK)%Species(1,J,L,M) = REAL(MMR_Beg(J,L,M),fp)
           ENDDO
           ENDDO
           lq(N) = .True.
@@ -2217,9 +2232,9 @@ contains
 
     ! We need to let CAM know that 'H2O' and 'Q' are identical
     DO J = 1, nY
-    DO K = 1, nZ
-       MMR_Beg(J,K,iH2O) = state%q(J,nZ+1-K,cQ)
-       State_Chm(LCHNK)%Species(1,J,K,iH2O) = REAL(MMR_Beg(J,K,iH2O),fp)
+    DO L = 1, nZ
+       MMR_Beg(J,L,iH2O) = state%q(J,nZ+1-L,cQ)
+       State_Chm(LCHNK)%Species(1,J,L,iH2O) = REAL(MMR_Beg(J,L,iH2O),fp)
     ENDDO
     ENDDO
 
@@ -2241,8 +2256,8 @@ contains
        M = map2GC_Sls(N)
        IF ( M > 0 ) THEN
           DO J = 1, nY
-          DO K = 1, nZ
-             State_Chm(LCHNK)%Species(1,J,K,M) = REAL(SlsData(J,nZ+1-K,N),fp)
+          DO L = 1, nZ
+             State_Chm(LCHNK)%Species(1,J,L,M) = REAL(SlsData(J,nZ+1-L,N),fp)
           ENDDO
           ENDDO
        ENDIF
@@ -2253,15 +2268,15 @@ contains
        M = map2chm(N)
        IF ( M > 0 ) THEN
           DO J = 1, nY
-          DO K = 1, nZ
-             vmr0(J,K,N) = State_Chm(LCHNK)%Species(1,J,nZ+1-K,M) * &
+          DO L = 1, nZ
+             vmr0(J,L,N) = State_Chm(LCHNK)%Species(1,J,nZ+1-L,M) * &
                 MWDry / adv_mass(N)
           ENDDO
           ENDDO
        ELSEIF ( M < 0 ) THEN
           DO J = 1, nY
-          DO K = 1, nZ
-             vmr0(J,K,N) = state%q(J,K,-M) * &
+          DO L = 1, nZ
+             vmr0(J,L,N) = state%q(J,L,-M) * &
                 MWDry / adv_mass(N)
           ENDDO
           ENDDO
@@ -2271,17 +2286,17 @@ contains
 #if defined( MODAL_AERO_4MODE )
     ! Map and flip aerosols
     DO M = 1, ntot_amode
-       DO L = 1, nspec_amode(M)
+       DO SM = 1, nspec_amode(M)
           ! TMMF - Here we will have to store the bin to bulk mass ratio
           ! TMMF - Should there be a ratio of molar weights involved?
-          P = map2MAM4(L,M)
-          N = lmassptr_amode(L,M)
+          P = map2MAM4(SM,M)
+          N = lmassptr_amode(SM,M)
           ! Multiple MAM4 bins are mapped to same GEOS-Chem species
           IF ( P > 0 ) THEN
              DO J = 1, nY
-             DO K = 1, nZ
-                State_Chm(LCHNK)%Species(1,J,K,P) = State_Chm(LCHNK)%Species(1,J,K,P) &
-                                                  + REAL(state%q(J,nZ+1-K,N),fp)
+             DO L = 1, nZ
+                State_Chm(LCHNK)%Species(1,J,L,P) = State_Chm(LCHNK)%Species(1,J,L,P) &
+                                                  + REAL(state%q(J,nZ+1-L,N),fp)
              ENDDO
              ENDDO
           ENDIF
@@ -2389,8 +2404,8 @@ contains
              ! LWC / \rho_air = Q
              !
              ! Tau    = 3/2 * Q * dP / ( r_e * rho_w * g )
-             ! Tau(K) = 3/2 * Q(K) * (Pint(K+1) - Pint(K)) / (re * rho_w * g )
-             ! Tau(K) = Q(K) * (Pint(K+1) - Pint(K)) * Cnst
+             ! Tau(L) = 3/2 * Q(L) * (Pint(L+1) - Pint(L)) / (re * rho_w * g )
+             ! Tau(L) = Q(L) * (Pint(L+1) - Pint(L)) * Cnst
              !
              ! Unit check:                    |
              ! Q    : [kg H2O/kg air]         |
@@ -3462,6 +3477,10 @@ contains
     ! Compute the surface flux for the non-local mixing,
     ! (which means getting emissions & drydep from HEMCO)
     ! and store it in State_Chm%Surface_Flux
+    ! 
+    ! For CESM-GC, Surface_Flux will be equal to the opposite of the
+    ! dry deposition flux since emissions are loaded externally
+    ! ( SurfaceFlux = eflx - dflx = - dflx )
     IF ( Input_Opt%LTURB .and. Input_Opt%LNLPBL ) THEN
        CALL Compute_Sflx_For_Vdiff( Input_Opt  = Input_Opt,         &
                                     State_Chm  = State_Chm(LCHNK),  &
@@ -3476,28 +3495,64 @@ contains
        ENDIF
     ENDIF
 
-    ! Note: mixing routine expects tracers in v/v
-    ! DO_MIXING applies the tracer tendencies (dry deposition,
-    ! emission rates) to the tracer arrays and performs PBL
-    ! mixing.
-    ! In the non-local PBL scheme, dry deposition and emission
-    ! fluxes below the PBL are handled within the PBL mixing
-    ! routine. Otherwise, tracer concentrations are first updated
-    ! and the full-mixing is then applied.
-    ! (ckeller, 3/5/15)
-    ! NOTE: Tracer concentration units are converted locally
-    ! to [v/v dry air] for mixing. Eventually mixing should
-    ! be updated to use [kg/kg total air] (ewl, 9/18/15)
-    CALL Do_Mixing( Input_Opt  = Input_Opt,         &
-                    State_Chm  = State_Chm(LCHNK),  &
-                    State_Diag = State_Diag(LCHNK), &
-                    State_Grid = State_Grid(LCHNK), &
-                    State_Met  = State_Met(LCHNK),  &
-                    RC         = RC                )
+    CALL GC_Emissions_Calc( state, hco_pbuf2d, eflx )
 
-    ! Trap potential errors
+    ! Add near-surface emissions to surface flux BC
+    cam_in%cflx(1:nY,:) = cam_in%cflx(1:nY,:) + eflx(1:nY,nZ,:)
+    eflx(1:nY,nZ,:)     = 0.0e+00_r8
+
+    DO ND = 1, State_Chm(BEGCHUNK)%nDryDep
+       ! Get the species ID from the drydep ID
+       N = State_Chm(BEGCHUNK)%Map_DryDep(ND)
+       IF ( N <= 0 ) CYCLE
+
+       M = map2GCinv(N)
+       IF ( M <= 0 ) CYCLE
+
+       ! Add dry deposition flux (stored as SurfaceFlux = -dflx)
+       cam_in%cflx(1:nY,M) = cam_in%cflx(1:nY,M) &
+                           + State_Chm(LCHNK)%SurfaceFlux(1,1:nY,N)
+
+    ENDDO
+
+    ! Add non-surface emissions
+    ! Use units of kg/m2 as State_Chm%Species to add emissions fluxes
+    CALL Convert_Spc_Units( Input_Opt  = Input_Opt,         &
+                            State_Chm  = State_Chm(LCHNK),  &
+                            State_Grid = State_Grid(LCHNK), &
+                            State_Met  = State_Met(LCHNK),  &
+                            OutUnit    = 'kg/m2',           &
+                            RC         = RC,                &
+                            OrigUnit   = OrigUnit          )
+
     IF ( RC /= GC_SUCCESS ) THEN
-       ErrMsg = 'Error encountered in "Do_Mixing"!'
+       ErrMsg = 'Error encountered in "Convert_Spc_Units"!'
+       CALL Error_Stop( ErrMsg, ThisLoc )
+    ENDIF
+
+    DO N = 1, pcnst
+       M = map2GC(N)
+       IF ( M < 0 ) CYCLE
+
+       DO J = 1, nY
+       DO L = 1, nZ
+          State_Chm(LCHNK)%Species(1,J,L,M) = State_Chm(LCHNK)%Species(1,J,L,M) &
+                                            + eflx(J,nZ+1-L,N) * dT
+       ENDDO
+       ENDDO
+    ENDDO
+
+    ! Convert back to original unit
+    CALL Convert_Spc_Units( Input_Opt  = Input_Opt,         &
+                            State_Chm  = State_Chm(LCHNK),  &
+                            State_Grid = State_Grid(LCHNK), &
+                            State_Met  = State_Met(LCHNK),  &
+                            OutUnit    = OrigUnit,          &
+                            RC         = RC                )
+
+    ! Convert State_Chm%Species back to original units
+    IF ( RC /= GC_SUCCESS ) THEN
+       ErrMsg = 'Error encountered in "Convert_Spc_Units"!'
        CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
@@ -3563,14 +3618,14 @@ contains
           M = map2chm(N)
           IF ( M > 0 ) THEN
              DO J = 1, nY
-             DO K = 1, nZ
-                mmr1(J,K,N) = State_Chm(LCHNK)%Species(1,J,nZ+1-K,M)
+             DO L = 1, nZ
+                mmr1(J,L,N) = State_Chm(LCHNK)%Species(1,J,nZ+1-L,M)
              ENDDO
              ENDDO
           ELSEIF ( M < 0 ) THEN
              DO J = 1, nY
-             DO K = 1, nZ
-                mmr1(J,K,N) = state%q(J,K,-M)
+             DO L = 1, nZ
+                mmr1(J,L,N) = state%q(J,L,-M)
              ENDDO
              ENDDO
           ENDIF
@@ -3622,14 +3677,14 @@ contains
           M = map2chm(N)
           IF ( M > 0 ) THEN
              DO J = 1, nY
-             DO K = 1, nZ
-                mmr1(J,K,N) = State_Chm(LCHNK)%Species(1,J,nZ+1-K,M) - mmr1(J,K,N)
+             DO L = 1, nZ
+                mmr1(J,L,N) = State_Chm(LCHNK)%Species(1,J,nZ+1-L,M) - mmr1(J,L,N)
              ENDDO
              ENDDO
           ELSEIF ( M < 0 ) THEN
              DO J = 1, nY
-             DO K = 1, nZ
-                mmr1(J,K,N) = state%q(J,K,-M) - mmr1(J,K,N)
+             DO L = 1, nZ
+                mmr1(J,L,N) = state%q(J,L,-M) - mmr1(J,L,N)
              ENDDO
              ENDDO
           ENDIF
@@ -3652,10 +3707,10 @@ contains
              CALL Outfld( 'DTWR_'//TRIM(solsym(N)), mmr1(1:nY,:nZ,N)/dT, nY, LCHNK )
 
              wk_out = 0._r8
-             DO K = 1, nZ
+             DO L = 1, nZ
                 wk_out(1:nY) = wk_out(1:nY) &
-                             + mmr1(1:nY,k,N)/dT                    * &
-                                 State_Met(LCHNK)%AD(1,1:nY,nZ+1-k) / &
+                             + mmr1(1:nY,L,N)/dT                    * &
+                                 State_Met(LCHNK)%AD(1,1:nY,nZ+1-L) / &
                                  State_Met(LCHNK)%Area_M2(1,1:nY)
              ENDDO
              CALL Outfld( 'WD_'//TRIM(solsym(N)), wk_out(1:nY), nY, LCHNK )
@@ -3680,15 +3735,15 @@ contains
        M = map2chm(N)
        IF ( M > 0 ) THEN
           DO J = 1, nY
-          DO K = 1, nZ
-             vmr1(J,K,N) = State_Chm(LCHNK)%Species(1,J,nZ+1-K,M) * &
+          DO L = 1, nZ
+             vmr1(J,L,N) = State_Chm(LCHNK)%Species(1,J,nZ+1-L,M) * &
                 MWDry / adv_mass(N)
           ENDDO
           ENDDO
        ELSEIF ( M < 0 ) THEN
           DO J = 1, nY
-          DO K = 1, nZ
-             vmr1(J,K,N) = state%q(J,K,-M) * &
+          DO L = 1, nZ
+             vmr1(J,L,N) = state%q(J,L,-M) * &
                 MWDry / adv_mass(N)
           ENDDO
           ENDDO
@@ -3700,10 +3755,10 @@ contains
     IF ( ( iPSO4 > 0 ) .and. ( MWPSO4 > 0.0e+00_fp ) ) THEN
        If ( rootChunk ) Write(iulog,*) " MAXVAL(PSO4) = ", &
           MAXVAL(State_Chm(LCHNK)%Species(1,:nY,:nZ,iPSO4))
-       DO K = 1, nZ
+       DO L = 1, nZ
           ! Convert from kg/kg to mol/mol
-          del_h2so4_gasprod(:nY,K) = &
-          State_Chm(LCHNK)%Species(1,:nY,nZ+1-K,iPSO4) * MWDry / MWPSO4
+          del_h2so4_gasprod(:nY,L) = &
+          State_Chm(LCHNK)%Species(1,:nY,nZ+1-L,iPSO4) * MWDry / MWPSO4
        ENDDO
     ENDIF
 
@@ -3746,8 +3801,8 @@ contains
        M = map2GC_Sls(N)
        IF ( M > 0 ) THEN
           DO J = 1, nY
-          DO K = 1, nZ
-             SlsData(J,nZ+1-K,N) = REAL(State_Chm(LCHNK)%Species(1,J,K,M),r8)
+          DO L = 1, nZ
+             SlsData(J,nZ+1-L,N) = REAL(State_Chm(LCHNK)%Species(1,J,L,M),r8)
           ENDDO
           ENDDO
        ENDIF
@@ -3785,8 +3840,8 @@ contains
           SpcName = tracerNames(I)
           outTmp  = 0.0e+0_r8
           DO J = 1, nY
-          DO K = 1, nZ
-             outTmp(J,nZ+1-K) = REAL(State_Chm(LCHNK)%Species(1,J,K,M),r8) * MWRatio(I)
+          DO L = 1, nZ
+             outTmp(J,nZ+1-L) = REAL(State_Chm(LCHNK)%Species(1,J,L,M),r8) * MWRatio(I)
           ENDDO
           ENDDO
           CALL OutFld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
@@ -3799,8 +3854,8 @@ contains
        M = map2GC_Sls(N)
        IF ( M > 0 ) THEN
           DO J = 1, nY
-          DO K = 1, nZ
-             outTmp(J,nZ+1-K) = REAL(State_Chm(LCHNK)%Species(1,J,K,M),r8) * SLSMWratio(N)
+          DO L = 1, nZ
+             outTmp(J,nZ+1-L) = REAL(State_Chm(LCHNK)%Species(1,J,L,M),r8) * SLSMWratio(N)
           ENDDO
           ENDDO
           CALL OutFld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
@@ -3831,6 +3886,12 @@ contains
        ENDDO
     ENDIF
 
+    ! Surface fluxes (emissions - drydep)
+    DO N = 1, pcnst
+       SpcName = 'SurfFlux_'//TRIM(cnst_name(N))
+       CALL OutFld( TRIM(SpcName), cam_in%cflx(:nY,N), nY, LCHNK )
+    ENDDO
+
     ! Photolysis rates
     JoutTmp = 0.0e+00_r8
     DO N = 1, JVN_
@@ -3854,8 +3915,8 @@ contains
 
           IF ( hist_fld_active( TRIM(SpcName) ) ) THEN
              DO J = 1, nY
-             DO K = 1, nZ
-                JoutTmp(J,nZ+1-K,M) = JoutTmp(J,nZ+1-K,M) + REAL(ZPJ(K,N,1,J),r8)
+             DO L = 1, nZ
+                JoutTmp(J,nZ+1-L,M) = JoutTmp(J,nZ+1-L,M) + REAL(ZPJ(L,N,1,J),r8)
              ENDDO
              ENDDO
           ENDIF
@@ -3890,10 +3951,10 @@ contains
        M = map2GC(N)
        IF ( M > 0 ) THEN
           DO J = 1, nY
-          DO K = 1, nZ
-             MMR_End (J,K,M) = REAL(State_Chm(LCHNK)%Species(1,J,K,M),r8)
-             MMR_TEnd(J,K,M) = MMR_End(J,K,M) - MMR_Beg(J,K,M)
-             ptend%q(J,nZ+1-K,N) = (MMR_End(J,K,M)-MMR_Beg(J,K,M))/dT
+          DO L = 1, nZ
+             MMR_End (J,L,M) = REAL(State_Chm(LCHNK)%Species(1,J,L,M),r8)
+             MMR_TEnd(J,L,M) = MMR_End(J,L,M) - MMR_Beg(J,L,M)
+             ptend%q(J,nZ+1-L,N) = (MMR_End(J,L,M)-MMR_Beg(J,L,M))/dT
           ENDDO
           ENDDO
        ENDIF
@@ -3901,6 +3962,7 @@ contains
 
     IF ( Input_Opt%applyQtend ) THEN
        ! Apply GEOS-Chem's H2O mixing ratio tendency to CAM's specific humidity
+       ! TMMF, this might need to set lq(cQ) = lq(cH2O) ( = .True. )
        ptend%q(:,:,cQ) = ptend%q(:,:,cH2O)
     ENDIF
 
@@ -3913,8 +3975,8 @@ contains
 
     IF (PRESENT(fh2o)) THEN
        fh2o(:nY) = 0.0e+0_r8
-       !DO K = 1, nZ
-       !   fh2o(:nY) = fh2o(:nY) + ptend%q(:nY,K,iH2O)*state%pdel(:nY,K)/Gravit
+       !DO L = 1, nZ
+       !   fh2o(:nY) = fh2o(:nY) + ptend%q(:nY,L,iH2O)*state%pdel(:nY,L)/Gravit
        !ENDDO
     ENDIF
 
@@ -4129,33 +4191,15 @@ contains
   subroutine chem_emissions( state, cam_in )
 
     use camsrfexch,       only: cam_in_t
-    use physics_buffer,   only : pbuf_get_chunk, pbuf_get_field, pbuf_get_index
-    use ppgrid,           only : pver ! for vertical
-
-    use constituents,     only: cnst_name
-    use mo_chem_utls,     only : get_spc_ndx
-    use chem_mods,        only : tracerNames, nTracers
-    use PhysConstants,    only: PI, PI_180
 
     ! Arguments:
 
     TYPE(physics_state),    INTENT(IN)    :: state   ! Physics state variables
     TYPE(cam_in_t),         INTENT(INOUT) :: cam_in  ! import state
 
-    INTEGER :: M, N, I
+    INTEGER :: M, N
     INTEGER :: LCHNK, NCOL
     LOGICAL :: rootChunk
-
-    REAL(r8) :: sflx(state%NCOL,nTracers)
-    type(physics_buffer_desc), pointer :: pbuf_chnk(:) ! slice of pbuf in chnk
-    real(r8), pointer     :: pbuf_ik(:,:)          ! ptr to pbuf data (/pcols,pver/)
-    integer               :: tmpIdx                ! pbuf field id
-    character(len=255)    :: fldname_ns            ! field name HCO_NH3
-    integer               :: RC                    ! return code
-
-    ! Initialize pointers
-    pbuf_chnk => NULL()
-    pbuf_ik   => NULL()
 
     ! LCHNK: which chunk we have on this process
     LCHNK = state%LCHNK
@@ -4163,42 +4207,10 @@ contains
     NCOL  = state%NCOL
     rootChunk = ( MasterProc.and.(LCHNK.EQ.BEGCHUNK) )
 
-    sflx(:,:) = 0.0e+0_r8
-
-    DO N = 1, nTracers
-
-       fldname_ns = 'HCO_' // TRIM(tracerNames(N))
-       tmpIdx = pbuf_get_index(fldname_ns, RC)
-       IF ( tmpIdx < 0 ) THEN
-          IF ( rootChunk ) Write(iulog,*) "chem_emissions hemco: Field not found ", TRIM(fldname_ns)
-       ELSE
-          ! This is already in chunk, retrieve it
-          pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
-          CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_ik)
-
-          IF ( .NOT. ASSOCIATED(pbuf_ik) ) THEN ! Sanity check
-             CALL ENDRUN("chem_emissions: FATAL - tmpIdx > 0 but pbuf_ik not associated")
-          ENDIF
-
-          ! For each column retrieve data from pbuf_ik(I,K)
-          sflx(1:ncol,N) = pbuf_ik(1:ncol,pver) ! Only surface emissions for now,
-
-          ! Reset pointers
-          pbuf_ik   => NULL()
-          pbuf_chnk => NULL()
-
-          M = map2GCinv(N)
-
-          IF ( M <= 0 ) CYCLE
-
-          cam_in%cflx(1:ncol,M) = sflx(1:ncol,N)
-          IF ( rootChunk .and. ( MAXVAL(sflx(1:ncol,N)) > 0.0e+0_fp ) ) THEN
-             Write(iulog,'(a,a,E16.4,a,a)') "chem_emissions: debug added emiss for ", &
-                TRIM(cnst_name(M)), MAXVAL(sflx(1:ncol,N)), " from ", TRIM(fldname_ns)
-             Write(iulog,'(a,a,a,E16.4)') "chem_emissions: Total emission flux for ", &
-                TRIM(cnst_name(M)), " is: ", MAXVAL(cam_in%cflx(1:ncol,M))
-          ENDIF
-       ENDIF
+    ! Reset surface fluxes
+    DO M = 2, pcnst
+       N = map2chm(M)
+       IF ( N > 0 ) cam_in%cflx(1:NCOL,N) = 0.0e+0_r8
     ENDDO
 
   end subroutine chem_emissions
