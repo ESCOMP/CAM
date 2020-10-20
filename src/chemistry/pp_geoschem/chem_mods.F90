@@ -7,11 +7,10 @@
       implicit none
       save
 
-      INTEGER, PARAMETER   :: nTracersMax = 280    ! Must be equal to chem_nadv
+      INTEGER, PARAMETER   :: nTracersMax = 240    ! Must be equal to chem_nadv
       INTEGER              :: nTracers
       CHARACTER(LEN=255)   :: tracerNames(nTracersMax)
       CHARACTER(LEN=255)   :: tracerLongNames(nTracersMax)
-      REAL(r8)             :: adv_Mass(nTracersMax)
       REAL(r8)             :: MWRatio(nTracersMax)
       REAL(r8)             :: ref_MMR(nTracersMax)
 
@@ -25,6 +24,7 @@
 
       ! Mapping between constituents and GEOS-Chem tracers
       INTEGER              :: map2GC(pcnst)
+      INTEGER              :: map2GCinv(nTracersMax)
       INTEGER              :: map2GC_Sls(nSlsMax)
 
       ! Mapping from constituents to raw index
@@ -60,12 +60,12 @@
                             rxntot = 212, & ! number of total reactions
                             gascnt = 172, & ! number of gas phase reactions
                             nabscol = 2, & ! number of absorbing column densities
-                            gas_pcnst = 103, & ! number of "gas phase" species
+                            gas_pcnst = 317, & ! number of "gas phase" species
                             nfs = 6, & ! number of "fixed" species
                             relcnt = 0, & ! number of relationship species
                             grpcnt = 0, & ! number of group members
                             nzcnt = 824, & ! number of non-zero matrix entries
-                            extcnt = 4, & ! number of species with external forcing
+                            extcnt = 0, & ! number of species with external forcing
                             clscnt1 = 8, & ! number of species in explicit class
                             clscnt2 = 0, & ! number of species in hov class
                             clscnt3 = 0, & ! number of species in ebi class
@@ -82,7 +82,7 @@
       integer :: clsmap(gas_pcnst,5) = 0
       integer :: permute(gas_pcnst,5) = 0
       integer :: diag_map(clscnt4) = 0
-      !real(r8) :: adv_mass(gas_pcnst) = 0._r8
+      real(r8) :: adv_mass(gas_pcnst) = 0._r8
       real(r8) :: crb_mass(gas_pcnst) = 0._r8
       real(r8) :: fix_mass(max(1,nfs))
       real(r8), allocatable :: cph_enthalpy(:)
@@ -101,4 +101,8 @@
       integer :: nslvd
       character(len=255), allocatable :: slvd_lst(:)
       real(r8), allocatable :: slvd_ref_mmr(:)
+
+      ! Mapping between constituents and solsym
+      INTEGER              :: map2chm(gas_pcnst)
+
       end module chem_mods

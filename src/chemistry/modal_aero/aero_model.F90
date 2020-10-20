@@ -199,7 +199,7 @@ contains
     use modal_aero_rename,     only: modal_aero_rename_init
     use modal_aero_convproc,   only: ma_convproc_init  
 
-    use chemistry,             only: chem_is
+    use mo_chem_utls,          only: utls_chem_is
 
     ! args
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
@@ -309,7 +309,7 @@ contains
        if (id>0) then
           drydep_indices(n) = id
           n = n+1
-       elseif ( chem_is('GEOSCHEM') ) then
+       elseif ( utls_chem_is('GEOS-Chem') ) then
           ! Let GEOS-Chem handle its own aerosols
           write(GCName,'(a,a)') 'GC_AER_', drydep_list(m)
           call cnst_get_ind ( GCName, id, abort=.false. )
@@ -331,7 +331,7 @@ contains
        if (id>0) then
           wetdep_indices(n) = id
           n = n+1
-       elseif ( chem_is('GEOSCHEM') ) then
+       elseif ( utls_chem_is('GEOS-Chem') ) then
           ! Let GEOS-Chem handle its own aerosols
           write(GCName,'(a,a)') 'GC_AER_', wetdep_list(m)
           call cnst_get_ind ( GCName, id, abort=.false. )

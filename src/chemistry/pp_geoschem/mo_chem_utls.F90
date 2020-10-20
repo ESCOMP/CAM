@@ -4,7 +4,9 @@ module mo_chem_utls
   private
   public :: get_spc_ndx
   public :: get_inv_ndx
-  !, get_het_ndx, get_extfrc_ndx, get_rxt_ndx
+  public :: get_extfrc_ndx
+  public :: utls_chem_is
+  !, get_het_ndx, get_rxt_ndx
 
   save
 
@@ -15,7 +17,7 @@ contains
     !     ... return overall species index associated with spc_name
     !-----------------------------------------------------------------------
 
-    !use chem_mods,     only : nTracers
+    use chem_mods,     only : gas_pcnst
     use mo_tracname,   only : tracnam => solsym
     use string_utils,  only : to_upper
 
@@ -32,7 +34,7 @@ contains
     integer :: m
 
     get_spc_ndx = -1
-    do m = 1, 306
+    do m = 1, gas_pcnst
        if( trim( to_upper( spc_name ) ) == trim( to_upper( tracnam(m) ) ) ) then
           get_spc_ndx = m
           exit
@@ -69,6 +71,18 @@ contains
     end do
 
   end function get_inv_ndx
+
+  logical function utls_chem_is (name) result(chem_is)
+    use string_utils, only : to_lower
+
+    character(len=*), intent(in) :: name
+    chem_is = .false.
+    if (( to_lower(name) == 'geoschem'  ) .or. &
+        ( to_lower(name) == 'geos-chem' )) then
+       chem_is = .true.
+    endif
+
+  end function utls_chem_is
 !
 !  integer function get_het_ndx( het_name )
 !    !-----------------------------------------------------------------------
@@ -102,36 +116,36 @@ contains
 !
 !  end function get_het_ndx
 !
-!  integer function get_extfrc_ndx( frc_name )
-!    !-----------------------------------------------------------------------
-!    !     ... return overall external frcing index associated with spc_name
-!    !-----------------------------------------------------------------------
-!
-!    use chem_mods,  only : extcnt, extfrc_lst
-!
-!    implicit none
-!
-!    !-----------------------------------------------------------------------
-!    !     ... dummy arguments
-!    !-----------------------------------------------------------------------
-!    character(len=*), intent(in) :: frc_name
-!
-!    !-----------------------------------------------------------------------
-!    !     ... local variables
-!    !-----------------------------------------------------------------------
-!    integer :: m
-!
-!    get_extfrc_ndx = -1
-!    if( extcnt > 0 ) then
-!       do m = 1,max(1,extcnt)
-!          if( trim( frc_name ) == trim( extfrc_lst(m) ) ) then
-!             get_extfrc_ndx = m
-!             exit
-!          end if
-!       end do
-!    end if
-!
-!  end function get_extfrc_ndx
+  integer function get_extfrc_ndx( frc_name )
+    !-----------------------------------------------------------------------
+    !     ... return overall external frcing index associated with spc_name
+    !-----------------------------------------------------------------------
+
+    use chem_mods,  only : extcnt, extfrc_lst
+
+    implicit none
+
+    !-----------------------------------------------------------------------
+    !     ... dummy arguments
+    !-----------------------------------------------------------------------
+    character(len=*), intent(in) :: frc_name
+
+    !-----------------------------------------------------------------------
+    !     ... local variables
+    !-----------------------------------------------------------------------
+    integer :: m
+
+    get_extfrc_ndx = -1
+    if( extcnt > 0 ) then
+       do m = 1,max(1,extcnt)
+          if( trim( frc_name ) == trim( extfrc_lst(m) ) ) then
+             get_extfrc_ndx = m
+             exit
+          end if
+       end do
+    end if
+
+  end function get_extfrc_ndx
 !
 !  integer function get_rxt_ndx( rxt_tag )
 !    !-----------------------------------------------------------------------
