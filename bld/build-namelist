@@ -3689,18 +3689,7 @@ if ($dyn =~ /mpas/) {
     add_default($nl, 'mpas_print_global_minmax_vel');
     add_default($nl, 'mpas_print_detailed_minmax_vel');
     add_default($nl, 'mpas_print_global_minmax_sca');
-
-    # if user has not set mpas_block_decomp_file_prefix, then get the default value which
-    # will be a relative pathname, and prepend the $inputdata_rootdir
-    my $decomp_prefix = $nl->get_value('mpas_block_decomp_file_prefix');
-    if (!defined $decomp_prefix) {
-        add_default($nl, 'mpas_block_decomp_file_prefix');
-        $decomp_prefix = $nl->get_value('mpas_block_decomp_file_prefix');
-        $decomp_prefix =~ s/['"]//g;                          # strip the quotes
-        $decomp_prefix = "$inputdata_rootdir/$decomp_prefix"; # prepend the inputdata directory
-        # set the value in the namelist
-        $nl->set_variable_value('decomposition', 'mpas_block_decomp_file_prefix', quote_string($decomp_prefix));
-    }
+    add_default($nl, 'mpas_block_decomp_file_prefix');
 
     # invoke MPAS utility to generate streams files
     my $mpas_libdir = $cfg->get('mpas_libdir');
@@ -4264,6 +4253,14 @@ sub check_input_files {
 
                 if ($input_pathname_type eq 'abs') {
                     if ($inputdata_rootdir) {
+
+                        # Special cases:
+                        # The file referenced by mpas_block_decomp_file_prefix needs to have the
+                        # task count appended before being added to the inputdata file.
+                        if ($var eq 'mpas_block_decomp_file_prefix') {
+                            $pathname = "$pathname$opts{'ntasks'}";
+                        }
+                        
                         print $fh "$var = $pathname\n";
                     }
                     else {

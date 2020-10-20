@@ -1076,32 +1076,20 @@ subroutine set_base_state(dyn_in)
 end subroutine set_base_state
 
 !========================================================================================
-!-----------------------------------------------------------------------
-!  routine cam_mpas_namelist_read
-!
-!> \brief Reads MPAS-A dycore namelists and adds the namelists to the MPAS configPool
-!> \details
-!>  Given the name of a file containing namelists and an MPAS pool, reads the dycore
-!>  namelists from that file and adds the namelist options to the pool.
-!
-!>  Only the CAM masterproc actually opens and reads from the specified file. Upon return,
-!>  if no errors were encountered, all MPI ranks have valid namelists in their configPool.
-!
-!>  A value of zero is returned if no errors were encountered, and a non-zero value is returned
-!>  if any errors were encountered in reading the namelist file.
-!
-!   WARNING: This routine was auto-generated based on the MPAS-Atmosphere Registry.xml file
-!
-!            Rather than editing this function directly, edit core_atmosphere/Registry.xml
-!            and re-run the build_cam_namelist.py script to regenerate this function.
-!
-!-----------------------------------------------------------------------
+
 function cam_mpas_namelist_read(namelistFilename, configPool) result(ierr)
+
+   ! Read MPAS-A dycore namelists and add the namelists to the MPAS configPool.
+   !
+   ! Only the CAM masterproc actually opens and reads from the specified file. Upon return,
+   ! if no errors were encountered, all MPI ranks have valid namelists in their configPool.
+   !
+   ! A value of zero is returned if no errors were encountered, and a non-zero value is returned
+   ! if any errors were encountered in reading the namelist file.
 
    use units, only : getunit, freeunit
    use spmd_utils, only : mpicom, masterproc, masterprocid, &
                           mpi_integer, mpi_real8,  mpi_logical, mpi_character, mpi_success
-   use shr_kind_mod, only : shr_kind_r8
    use cam_logfile, only : iulog
    use namelist_utils, only : find_group_name
 
@@ -1109,33 +1097,34 @@ function cam_mpas_namelist_read(namelistFilename, configPool) result(ierr)
    use mpas_kind_types, only : StrKIND
    use mpas_pool_routines, only : mpas_pool_add_config
 
-   implicit none
-
+   ! Arguments
    character(len=*), intent(in) :: namelistFilename
    type (mpas_pool_type), intent(inout) :: configPool
 
-   integer :: ierr   ! Return value
+   ! Return value
+   integer :: ierr
 
+   ! Local variables
    integer :: unitNumber
 
    integer :: mpi_ierr
 
    character (len=StrKIND) :: mpas_time_integration = 'SRK3'
    integer                 :: mpas_time_integration_order = 2
-   real (kind=shr_kind_r8) :: mpas_dt = 720.0
+   real(r8)                :: mpas_dt = 720.0_r8
    logical                 :: mpas_split_dynamics_transport = .true.
    integer                 :: mpas_number_of_sub_steps = 2
    integer                 :: mpas_dynamics_split_steps = 3
-   real (kind=shr_kind_r8) :: mpas_h_mom_eddy_visc2 = 0.0
-   real (kind=shr_kind_r8) :: mpas_h_mom_eddy_visc4 = 0.0
-   real (kind=shr_kind_r8) :: mpas_v_mom_eddy_visc2 = 0.0
-   real (kind=shr_kind_r8) :: mpas_h_theta_eddy_visc2 = 0.0
-   real (kind=shr_kind_r8) :: mpas_h_theta_eddy_visc4 = 0.0
-   real (kind=shr_kind_r8) :: mpas_v_theta_eddy_visc2 = 0.0
+   real(r8)                :: mpas_h_mom_eddy_visc2 = 0.0_r8
+   real(r8)                :: mpas_h_mom_eddy_visc4 = 0.0_r8
+   real(r8)                :: mpas_v_mom_eddy_visc2 = 0.0_r8
+   real(r8)                :: mpas_h_theta_eddy_visc2 = 0.0_r8
+   real(r8)                :: mpas_h_theta_eddy_visc4 = 0.0_r8
+   real(r8)                :: mpas_v_theta_eddy_visc2 = 0.0_r8
    character (len=StrKIND) :: mpas_horiz_mixing = '2d_smagorinsky'
-   real (kind=shr_kind_r8) :: mpas_len_disp = 120000.0
-   real (kind=shr_kind_r8) :: mpas_visc4_2dsmag = 0.05
-   real (kind=shr_kind_r8) :: mpas_del4u_div_factor = 10.0
+   real(r8)                :: mpas_len_disp = 120000.0_r8
+   real(r8)                :: mpas_visc4_2dsmag = 0.05_r8
+   real(r8)                :: mpas_del4u_div_factor = 10.0_r8
    integer                 :: mpas_w_adv_order = 3
    integer                 :: mpas_theta_adv_order = 3
    integer                 :: mpas_scalar_adv_order = 3
@@ -1146,16 +1135,16 @@ function cam_mpas_namelist_read(namelistFilename, configPool) result(ierr)
    logical                 :: mpas_scalar_advection = .true.
    logical                 :: mpas_positive_definite = .false.
    logical                 :: mpas_monotonic = .true.
-   real (kind=shr_kind_r8) :: mpas_coef_3rd_order = 0.25
-   real (kind=shr_kind_r8) :: mpas_smagorinsky_coef = 0.125
+   real(r8)                :: mpas_coef_3rd_order = 0.25_r8
+   real(r8)                :: mpas_smagorinsky_coef = 0.125_r8
    logical                 :: mpas_mix_full = .true.
-   real (kind=shr_kind_r8) :: mpas_epssm = 0.1
-   real (kind=shr_kind_r8) :: mpas_smdiv = 0.1
-   real (kind=shr_kind_r8) :: mpas_apvm_upwinding = 0.5
+   real(r8)                :: mpas_epssm = 0.1_r8
+   real(r8)                :: mpas_smdiv = 0.1_r8
+   real(r8)                :: mpas_apvm_upwinding = 0.5_r8
    logical                 :: mpas_h_ScaleWithMesh = .true.
    integer                 :: mpas_num_halos = 2
-   real (kind=shr_kind_r8) :: mpas_zd = 22000.0
-   real (kind=shr_kind_r8) :: mpas_xnutr = 0.2
+   real(r8)                :: mpas_zd = 22000.0_r8
+   real(r8)                :: mpas_xnutr = 0.2_r8
    character (len=StrKIND) :: mpas_block_decomp_file_prefix = 'x1.40962.graph.info.part.'
    integer                 :: mpas_number_of_blocks = 0
    logical                 :: mpas_explicit_proc_decomp = .false.
@@ -1218,6 +1207,7 @@ function cam_mpas_namelist_read(namelistFilename, configPool) result(ierr)
            mpas_print_global_minmax_vel, &
            mpas_print_detailed_minmax_vel, &
            mpas_print_global_minmax_sca
+   !----------------------------------------------------------------------------
 
    if (masterproc) then
       write(iulog,*) 'Reading MPAS-A dycore namelist from ', trim(namelistFilename)
@@ -1639,6 +1629,8 @@ function cam_mpas_namelist_read(namelistFilename, configPool) result(ierr)
       return
    end if
 
+   ! Set mpas_do_restart based on information from the driver code.
+   if (.not. initial_run) mpas_do_restart = .true.
    call mpas_pool_add_config(configPool, 'config_do_restart', mpas_do_restart)
 
    !
