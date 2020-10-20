@@ -916,13 +916,12 @@ contains
     CHARACTER(LEN=*), INTENT(IN) :: name   ! constituent name
     LOGICAL :: chem_implements_cnst        ! return value
 
-    INTEGER :: I
+    INTEGER :: M
 
     chem_implements_cnst = .false.
 
-    DO I = 1, nTracers
-       ! TMMF, will need to replace tracerNames by actual constituent names
-       IF (TRIM(tracerNames(I)) .eq. TRIM(name)) THEN
+    DO M = 1, gas_pcnst
+       IF (TRIM(solsym(M)) .eq. TRIM(name)) THEN
           chem_implements_cnst = .true.
           EXIT
        ENDIF
@@ -4027,20 +4026,20 @@ contains
     REAL(r8),         INTENT(IN)  :: latvals(:) ! lat in degrees (NCOL)
     REAL(r8),         INTENT(IN)  :: lonvals(:) ! lon in degrees (NCOL)
     LOGICAL,          INTENT(IN)  :: mask(:)    ! Only initialize where .true.
-    REAL(r8),         INTENT(OUT) :: q(:,:)     ! kg tracer/kg dry air (NCOL, PVER
+    REAL(r8),         INTENT(OUT) :: q(:,:)     ! kg tracer/kg dry air (NCOL, PVER)
     ! Used to initialize tracer fields if desired.
     ! Will need a simple mapping structure as well as the CAM tracer registration
     ! routines.
 
-    INTEGER  :: iLev, NLEV, I
+    INTEGER  :: iLev, NLEV, M
     REAL(r8) :: QTemp, Min_MMR
 
     NLEV = SIZE(q, 2)
     ! Retrieve a "background value" for this from the database
     Min_MMR = 1.0e-38_r8
-    DO I = 1, nTracers
-       IF (TRIM(tracerNames(I)).eq.TRIM(name)) THEN
-          Min_MMR = ref_MMR(I)
+    DO M = 1, gas_pcnst
+       IF (TRIM(solsym(M)).eq.TRIM(name)) THEN
+          Min_MMR = ref_MMR(M)
           EXIT
        ENDIF
     ENDDO
