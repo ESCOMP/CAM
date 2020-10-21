@@ -65,7 +65,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    use radiation_data,      only: rad_data_readnl
    use modal_aer_opt,       only: modal_aer_opt_readnl
    use clubb_intr,          only: clubb_readnl
-   use edmf_module,         only: clubb_mf_readnl
+   !use edmf_module,         only: clubb_mf_readnl
    use chemistry,           only: chem_readnl
    use prescribed_volcaero, only: prescribed_volcaero_readnl
    use prescribed_strataero,only: prescribed_strataero_readnl
@@ -140,7 +140,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    call microp_driver_readnl(nlfilename)
    call microp_aero_readnl(nlfilename)
    call clubb_readnl(nlfilename)
-   call clubb_mf_readnl(nlfilename)
+   !call clubb_mf_readnl(nlfilename)
    call subcol_readnl(nlfilename)
    call cldfrc_readnl(nlfilename)
    call cldfrc2m_readnl(nlfilename)

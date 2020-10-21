@@ -1852,10 +1852,9 @@
 
 <!-- CLUBB+MF options -->
 <do_clubb_mf                       > .false. </do_clubb_mf>
+<do_clubb_mf_diag                  > .false. </do_clubb_mf_diag>
 <clubb_mf_L0                       > 50.0    </clubb_mf_L0>
 <clubb_mf_ent0                     > 0.22    </clubb_mf_ent0>
-<clubb_mf_wa                       > 1.0     </clubb_mf_wa>
-<clubb_mf_wb                       > 1.5     </clubb_mf_wb>
 <clubb_mf_nup                      > 10      </clubb_mf_nup>
 
 <!-- Microphysics scheme -->

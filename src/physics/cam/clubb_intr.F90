@@ -20,8 +20,7 @@ module clubb_intr
   use shr_kind_mod,  only: r8=>shr_kind_r8                                                                  
   use ppgrid,        only: pver, pverp, pcols, begchunk, endchunk
   use phys_control,  only: phys_getopts
-  use physconst,     only: rairv, cpairv, cpair, gravit, latvap, latice, zvir, rh2o, karman, &
-                           mwh2o, mwdry
+  use physconst,     only: rairv, cpairv, cpair, gravit, latvap, latice, zvir, rh2o, karman
 
   use spmd_utils,    only: masterproc 
   use constituents,  only: pcnst, cnst_add
@@ -148,6 +147,7 @@ module clubb_intr
   logical  :: clubb_l_diag_Lscale_from_tau = .false.
   logical  :: clubb_l_damp_wp2_using_em = .false.
   logical  :: do_clubb_mf = .false.
+  logical  :: do_clubb_mf_diag = .false.
 
 !  Constant parameters
   logical, parameter, private :: &
@@ -499,6 +499,7 @@ end subroutine clubb_init_cnst
     use cam_abortutils,  only: endrun
     use clubb_api_module, only: l_stats, l_output_rad_files
     use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_logical, mpi_real8
+    use edmf_module,     only: clubb_mf_readnl
 #endif
 
     character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
@@ -532,7 +533,7 @@ end subroutine clubb_init_cnst
                                clubb_l_trapezoidal_rule_zt, clubb_l_trapezoidal_rule_zm, &
                                clubb_l_call_pdf_closure_twice, clubb_l_use_cloud_cover, &
                                clubb_l_diag_Lscale_from_tau, clubb_l_damp_wp2_using_em, &
-                               do_clubb_mf
+                               do_clubb_mf, do_clubb_mf_diag
 
     !----- Begin Code -----
 
@@ -546,6 +547,9 @@ end subroutine clubb_init_cnst
 
     clubb_l_lscale_plume_centered = .false. ! Initialize to false!
     clubb_l_use_ice_latent        = .false. ! Initialize to false!
+
+    !  Call CLUBB+MF namelist
+    call clubb_mf_readnl(nlfile)
 
     !  Read namelist to determine if CLUBB history should be called
     if (masterproc) then
@@ -702,8 +706,11 @@ end subroutine clubb_init_cnst
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_diag_Lscale_from_tau")
     call mpi_bcast(clubb_l_damp_wp2_using_em,         1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_damp_wp2_using_em")
-    call mpi_bcast(do_clubb_mf, 1, mpi_logical,   mstrid, mpicom, ierr)
+
+    call mpi_bcast(do_clubb_mf,      1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf")
+    call mpi_bcast(do_clubb_mf_diag, 1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_diag")
 
     !  Overwrite defaults if they are true
     if (clubb_history) l_stats = .true.
@@ -1197,14 +1204,14 @@ end subroutine clubb_init_cnst
       call addfld ( 'edmf_DRY_V'    , (/ 'ilev' /), 'A', 'm/s'     , 'Dry updraft meridional velocity (EDMF)' )
       call addfld ( 'edmf_MOIST_V'  , (/ 'ilev' /), 'A', 'm/s'     , 'Moist updraft meridional velocity (EDMF)' )
       call addfld ( 'edmf_MOIST_QC' , (/ 'ilev' /), 'A', 'kg/kg'   , 'Moist updraft condensate mixing ratio (EDMF)' )
-      call addfld ( 'edmf_S_AE'     , (/ 'ilev' /), 'A', 'fraction', 'a_e (EDMF)' )
+      call addfld ( 'edmf_S_AE'     , (/ 'ilev' /), 'A', 'fraction', '1 minus sum of a_i*w_i (EDMF)' )
       call addfld ( 'edmf_S_AW'     , (/ 'ilev' /), 'A', 'm/s'     , 'Sum of a_i*w_i (EDMF)' )
       call addfld ( 'edmf_S_AWTHL'  , (/ 'ilev' /), 'A', 'K m/s'   , 'Sum of a_i*w_i*thl_i (EDMF)' )
       call addfld ( 'edmf_S_AWQT'   , (/ 'ilev' /), 'A', 'kgm/kgs' , 'Sum of a_i*w_i*q_ti (EDMF)' )
       call addfld ( 'edmf_S_AWU'    , (/ 'ilev' /), 'A', 'm2/s2'   , 'Sum of a_i*w_i*u_i (EDMF)' )
       call addfld ( 'edmf_S_AWV'    , (/ 'ilev' /), 'A', 'm2/s2'   , 'Sum of a_i*w_i*v_i (EDMF)' )
-      call addfld ( 'edmf_thlflx'   , (/ 'ilev' /), 'A', 'W/m2'    , 'thl flux by edmf (EDMF)' )
-      call addfld ( 'edmf_qtflx'    , (/ 'ilev' /), 'A', 'W/m2'    , 'qt flux by edmf (EDMF)' )
+      call addfld ( 'edmf_thlflx'   , (/ 'ilev' /), 'A', 'W/m2'    , 'thl flux (EDMF)' )
+      call addfld ( 'edmf_qtflx'    , (/ 'ilev' /), 'A', 'W/m2'    , 'qt flux (EDMF)' )
     end if 
 
     !  Initialize statistics, below are dummy variables
@@ -1300,9 +1307,8 @@ end subroutine clubb_init_cnst
        call add_default('SL',               1, ' ')
        call add_default('QT',               1, ' ')
        call add_default('CONCLD',           1, ' ')
-       call add_default('THETAL',           1, ' ')
 
-       if (do_clubb_mf) then
+       if (do_clubb_mf_diag) then
          call add_default( 'edmf_DRY_A'    , 1, ' ')
          call add_default( 'edmf_MOIST_A'  , 1, ' ')
          call add_default( 'edmf_DRY_W'    , 1, ' ')
@@ -1802,15 +1808,12 @@ end subroutine clubb_init_cnst
                                            mf_thlflx,  mf_qtflx
    ! MF local vars
    real(r8), dimension(pverp)           :: rtm_zm_in,  thlm_zm_in,    & ! momentum grid
-                                           thvm_in,                   & ! thermodyanmic grid
                                            dzt,        invrs_dzt,     & ! thermodynamic grid
                                                        invrs_exner_zt,& ! thermodynamic grid
                                            kappa_zt,   qc_zt,         & ! thermodynamic grid
                                            kappa_zm,   p_in_Pa_zm,    & ! momentum grid
                                                        invrs_exner_zm   ! momentum grid
    integer                              :: nz
-   real(r8)                             :: ep,                        &
-                                           ep1,        ep2
 
    real(r8) :: temp2d(pcols,pver), temp2dp(pcols,pverp)  ! temporary array for holding scaled outputs
 
@@ -2508,15 +2511,8 @@ end subroutine clubb_init_cnst
            rtm_zm_in  = zt2zm_api( rtm_in )
            thlm_zm_in = zt2zm_api( thlm_in )
 
-           ep  = mwh2o/mwdry
-           ep1 = (1.0-ep)/ep
-           ep2 = 1.0/ep
-           thvm_in = thlm_in + ep1 * thv_ds_zt * rtm_in &
-                       + ( latvap/(cpair*exner) - ep2 * thv_ds_zt ) * rcm_inout
-
            call integrate_mf( nz,        dzt,         zi_g,       p_in_Pa_zm, invrs_exner_zm, & ! input
                                                                   p_in_Pa,    invrs_exner_zt, & ! input
-                              !um_in,     vm_in,       thlm_in,    rtm_in,     thvm_in,        & ! input
                               um_in,     vm_in,       thlm_in,    rtm_in,     thv_ds_zt,      & ! input
                                                       thlm_zm_in, rtm_zm_in,                  & ! input
                                                       wpthlp_sfc, wprtp_sfc,  pblh(i),        & ! input

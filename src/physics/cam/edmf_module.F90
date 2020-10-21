@@ -18,8 +18,6 @@ module edmf_module
 
   real(r8) :: clubb_mf_L0   = 0._r8
   real(r8) :: clubb_mf_ent0 = 0._r8
-  real(r8) :: clubb_mf_wa   = 0._r8
-  real(r8) :: clubb_mf_wb   = 0._r8
   integer  :: clubb_mf_nup  = 0
 
   contains
@@ -31,10 +29,8 @@ module edmf_module
   ! =============================================================================== !
 
     use namelist_utils,  only: find_group_name
-    use units,           only: getunit, freeunit
     use cam_abortutils,  only: endrun
-    use clubb_api_module,only: l_stats, l_output_rad_files
-    use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_logical, mpi_real8, mpi_integer
+    use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_real8, mpi_integer
 
     character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
@@ -42,33 +38,25 @@ module edmf_module
 
     integer :: iunit, read_status, ierr
 
-    namelist /clubb_mf_nl/ clubb_mf_L0, clubb_mf_ent0, clubb_mf_wa, clubb_mf_wb, clubb_mf_nup
+    namelist /clubb_mf_nl/ clubb_mf_L0, clubb_mf_ent0, clubb_mf_nup
 
     if (masterproc) then
-      iunit = getunit()
-      open( iunit, file=trim(nlfile), status='old' )
-
+      open( newunit=iunit, file=trim(nlfile), status='old' )
       call find_group_name(iunit, 'clubb_mf_nl', status=read_status)
       if (read_status == 0) then
-         read(unit=iunit, nml=clubb_mf_nl, iostat=read_status)
-         if (read_status /= 0) then
-            call endrun('clubb_mf_readnl:  error reading namelist')
+         read(iunit, clubb_mf_nl, iostat=ierr)
+         if (ierr /= 0) then
+            call endrun('clubb_mf_readnl: ERROR reading namelist')
          end if
       end if
-
-      close(unit=iunit)
-      call freeunit(iunit)
+      close(iunit)
     end if
 
-    call mpi_bcast(clubb_mf_L0, 1, mpi_real8,   mstrid, mpicom, ierr) 
+    call mpi_bcast(clubb_mf_L0,   1, mpi_real8,   mstrid, mpicom, ierr) 
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_L0")
-    call mpi_bcast(clubb_mf_ent0, 1, mpi_real8, mstrid, mpicom, ierr)
+    call mpi_bcast(clubb_mf_ent0, 1, mpi_real8,   mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_ent0")
-    call mpi_bcast(clubb_mf_wa, 1, mpi_real8,   mstrid, mpicom, ierr)
-    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_wa")
-    call mpi_bcast(clubb_mf_wb, 1, mpi_real8,   mstrid, mpicom, ierr)
-    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_wb")
-    call mpi_bcast(clubb_mf_nup, 1, mpi_integer,mstrid, mpicom, ierr)
+    call mpi_bcast(clubb_mf_nup,  1, mpi_integer, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_nup")
 
   end subroutine clubb_mf_readnl
@@ -175,8 +163,8 @@ module edmf_module
      real(r8), dimension(clubb_mf_nup)    :: zcb
      real(r8)                             :: zcb_unset,                &
                                              wthv,                     &
-                                             wstar,  qstar,   thlstar, & 
-                                             sigmaw, sigmaqt, sigmathl,&
+                                             wstar,  qstar,   thvstar, & 
+                                             sigmaw, sigmaqt, sigmathv,&
                                                      wmin,    wmax,    & 
                                              wlv,    wtv,     wp,      & 
                                              B,                        & ! thermodynamic grid
@@ -196,11 +184,15 @@ module edmf_module
      ! alpha, z-scores after Suselj etal 2019
      real(r8),parameter                   :: alphw   = 0.572_r8,       &
                                              alphqt  = 2.890_r8,       &     
-                                             alphthl = 2.890_r8
+                                             alphthv = 2.890_r8
      !
      ! w' covariance after Suselj etal 2019
      real(r8),parameter                   :: cwqt  = 0.32_r8,          &
-                                             cwthl = 0.58_r8
+                                             cwthv = 0.58_r8
+     !
+     ! virtual mass coefficients for w-eqn after Suselj etal 2019
+     real(r8),parameter                   :: wa = 1.0_r8,              &
+                                             wb = 1.5_r8
      !
      ! min values to avoid singularities
      real(r8),parameter                   :: wstarmin = 1.e-3_r8,      &
@@ -283,7 +275,7 @@ module edmf_module
 
        ! get poisson, P(dz/L0)
        if (debug) then
-         enti(:,:) = 4
+         enti(:,:) = 1
        else
          call poisson( nz, clubb_mf_nup, entf, enti, thl(nz))
        end if
@@ -298,11 +290,11 @@ module edmf_module
        ! get surface conditions
        wstar   = max( wstarmin, (gravit/thv(1)*wthv*pblh)**(1./3.) )
        qstar   = wqt / wstar
-       thlstar = wthl / wstar
+       thvstar = wthv / wstar
 
        sigmaw   = alphw * wstar
        sigmaqt  = alphqt * abs(qstar)
-       sigmathl = alphthl * abs(thlstar)
+       sigmathv = alphthv * abs(thvstar)
 
        wmin = sigmaw * pwmin
        wmax = sigmaw * pwmax
@@ -320,7 +312,8 @@ module edmf_module
          upv(1,i) = v(1)
 
          upqt(1,i)  = qt(1)  + cwqt * upw(1,i) * sigmaqt/sigmaw
-         upthl(1,i) = thl(1) + cwthl * upw(1,i) * sigmathl/sigmaw
+         upthv(1,i) = thv(1) + cwthv * upw(1,i) * sigmathv/sigmaw
+         upthl(1,i) = upthv(1,i) / (1._r8+zvir*upqt(1,i))
 
          ! get cloud, lowest momentum level 
          if (do_condensation) then
@@ -335,9 +328,6 @@ module edmf_module
          else
            ! assume no cldliq
            upqc(1,i)  = 0._r8
-           upthv(1,i) = upthl(1,i)*(1._r8+zvir*upqt(1,i))
-           ! assume sigmathl = sigmath
-           !!upthv(1,i) = thv(1) + 0.58_r8 * upw(1,i) * sigmathl/sigmaw
          end if
 
        enddo
@@ -383,12 +373,12 @@ module edmf_module
            end if
 
            ! get wn^2
-           wp = clubb_mf_wb*ent(k+1,i)
+           wp = wb*ent(k+1,i)
            if (wp==0._r8) then
-             wn2 = upw(k,i)**2._r8+2._r8*clubb_mf_wa*B*dzt(k+1)
+             wn2 = upw(k,i)**2._r8+2._r8*wa*B*dzt(k+1)
            else
              entw = exp(-2._r8*wp*dzt(k+1))
-             wn2 = entw*upw(k,i)**2._r8+clubb_mf_wa*B/(clubb_mf_wb*ent(k+1,i))*(1._r8-entw)
+             wn2 = entw*upw(k,i)**2._r8+wa*B/(wb*ent(k+1,i))*(1._r8-entw)
            end if
 
            if (wn2>0._r8) then
@@ -411,7 +401,6 @@ module edmf_module
        enddo
 
        ! writing updraft properties for output
-       ! all variables, except Areas are now multipled by the area
        do k=1,nz
 
          ! first sum over all i-updrafts
