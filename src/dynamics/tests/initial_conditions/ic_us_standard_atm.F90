@@ -67,6 +67,11 @@ subroutine us_std_atm_set_ic(latvals, lonvals, zint, U, V, T, PS, PHIS_IN, &
    real(r8), allocatable             :: pmid(:), zmid(:), zmid2d(:,:)
    !----------------------------------------------------------------------------
 
+   ! check input consistency
+   if (present(zint) .and. present(PHIS_IN)) then
+      call endrun(subname//': Only one of the args zint and PHIS_IN can be present')
+   end if
+
    ncol = size(latvals, 1)
    allocate(mask_use(ncol))
    if (present(mask)) then
