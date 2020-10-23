@@ -3,11 +3,11 @@ ifdef PIODEF
   CPPFLAGS += $(PIODEF)
 endif
 
-REGISTRY_FILE := $(MPAS_SRC_ROOT)/core_atmosphere/Registry.xml
+REGISTRY_FILE := $(MPAS_SRC_ROOT)/dycore/src/core_atmosphere/Registry.xml
 
-VPATH := $(MPAS_SRC_ROOT)/core_atmosphere/diagnostics:$(MPAS_SRC_ROOT)/core_atmosphere/dynamics:
-VPATH += $(MPAS_SRC_ROOT)/core_atmosphere:$(MPAS_SRC_ROOT)/tools/registry:$(MPAS_SRC_ROOT)/tools/input_gen:
-VPATH += $(MPAS_SRC_ROOT)/operators:$(MPAS_SRC_ROOT)/framework:$(MPAS_SRC_ROOT)/external/ezxml:
+VPATH := $(MPAS_SRC_ROOT)/dycore/src/core_atmosphere/diagnostics:$(MPAS_SRC_ROOT)/dycore/src/core_atmosphere/dynamics:
+VPATH += $(MPAS_SRC_ROOT)/dycore/src/core_atmosphere:$(MPAS_SRC_ROOT)/dycore/src/tools/registry:$(MPAS_SRC_ROOT)/dycore/src/tools/input_gen:
+VPATH += $(MPAS_SRC_ROOT)/dycore/src/operators:$(MPAS_SRC_ROOT)/dycore/src/framework:$(MPAS_SRC_ROOT)/dycore/src/external/ezxml:
 VPATH += $(MPAS_SRC_ROOT)/driver
 
 INTERFACE_OBJS = \
@@ -217,7 +217,7 @@ streams_gen: $(STREAMS_GEN_OBJS) ezxml.o
 # Include files manufactured by the registry code generator
 #
 incs: $(REGISTRY_FILE)
-	( cpp -P -traditional $(CPPFLAGS) -I$(MPAS_SRC_ROOT)/core_atmosphere/diagnostics $(REGISTRY_FILE) > Registry_processed.xml )
+	( cpp -P -traditional $(CPPFLAGS) -I$(MPAS_SRC_ROOT)/dycore/src/core_atmosphere/diagnostics $(REGISTRY_FILE) > Registry_processed.xml )
 	( ./registry Registry_processed.xml )
 
 #
@@ -256,7 +256,7 @@ clean:
 %.o : %.mod
 
 %.o : %.c
-	$(CC) -c $(CFLAGS) -DUNDERSCORE $(CPPFLAGS) $(CPPINCLUDES) -I$(MPAS_SRC_ROOT)/external/ezxml $<
+	$(CC) -c $(CFLAGS) -DUNDERSCORE $(CPPFLAGS) $(CPPINCLUDES) -I$(MPAS_SRC_ROOT)/dycore/src/external/ezxml $<
 
 %.o : %.F
 	$(FC) -c $(CPPFLAGS) $(FFLAGS) $(CPPINCLUDES) $(FCINCLUDES) $<
