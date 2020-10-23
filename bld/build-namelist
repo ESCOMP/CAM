@@ -592,7 +592,7 @@ if ( ($chem ne 'none') or ( $prog_species ) ){
 if ($chem) {
     # drydep_srf_file is only needed for prognostic MAM when the grid is unstructured.
     # structured grids can do interpolation on the fly.
-    if ($chem =~ /_mam/ and ($dyn =~ /se/ or $dyn =~ /fv3/)) {
+    if ($chem =~ /_mam/ and ($dyn =~ /se|fv3|mpas/)) {
         add_default($nl, 'drydep_srf_file');
     }
 }
@@ -3689,7 +3689,12 @@ if ($dyn =~ /mpas/) {
     add_default($nl, 'mpas_print_global_minmax_vel');
     add_default($nl, 'mpas_print_detailed_minmax_vel');
     add_default($nl, 'mpas_print_global_minmax_sca');
-    add_default($nl, 'mpas_block_decomp_file_prefix');
+
+    # mpas_block_decomp_file_prefix should only be set when more than one task is used.
+    # Otherwise the file is not used and should not be added to the input dataset file.
+    if ($opts{'ntasks'} > 1) {
+        add_default($nl, 'mpas_block_decomp_file_prefix');
+    }
 
     # invoke MPAS utility to generate streams files
     my $mpas_libdir = $cfg->get('mpas_libdir');

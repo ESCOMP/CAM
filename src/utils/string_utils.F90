@@ -334,16 +334,6 @@ character(len=8) function sec2hms (seconds)
    minutes = (seconds - hours*3600) / 60
    secs    = (seconds - hours*3600 - minutes*60)
 
-   if (minutes < 0 .or. minutes > 60) then
-      write(iulog,*)'SEC2HMS: bad minutes = ',minutes
-      call endrun ('SEC2HMS: bad minutes ')
-   end if
-
-   if (secs < 0 .or. secs > 60) then
-      write(iulog,*)'SEC2HMS: bad secs = ',secs
-      call endrun ('SEC2HMS: bad secs ')
-   end if
-
    write(sec2hms,80) hours, minutes, secs
 80 format(i2.2,':',i2.2,':',i2.2)
 

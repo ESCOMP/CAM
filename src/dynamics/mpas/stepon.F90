@@ -89,10 +89,12 @@ subroutine stepon_run1(dtime_out, phys_state, phys_tend, &
    nstep     = get_nstep()
    dtime_out = get_step_size()
 
-   ! This call writes the inputs to the physics package on the dynamics
-   ! grids.  It will output the initial fields the first time it is called
-   ! since dyn_in is copied to dyn_out for use by the initialization
-   ! sequence.  On subsequent calls dyn_out will contain the dycore output.
+   ! This call writes the dycore output (on the dynamics grids) to the
+   ! history file.  Note that when nstep=0, these fields will be the result
+   ! of the dynamics initialization (done in dyn_init) since the dycore
+   ! does not run and dyn_in is simply copied to dyn_out for use in the cam
+   ! initialization sequence.  On subsequent calls dyn_out will contain the
+   ! dycore output.
    call write_dynvar(dyn_out)
    
    call t_barrierf('sync_d_p_coupling', mpicom)

@@ -696,9 +696,9 @@ if ($print>=2) { print "WACCM physics: $waccm_phys$eol"; }
 
 
 # WACCM physics only runs with FV, SE and FV3 dycores
-if ( ($waccm_phys) and ($dyn_pkg ne 'fv') and ($dyn_pkg ne 'se') and ($dyn_pkg ne 'fv3') ) {
+if ( ($waccm_phys) and ($dyn_pkg eq 'eul') ) {
     die <<"EOF";
-** ERROR: WACCM physics only runs with FV, Spectral Element and FV3 as the dycore.
+** ERROR: WACCM physics does not run with the Eulerian spectral dycore.
 EOF
 }
 

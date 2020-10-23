@@ -7568,7 +7568,7 @@ Default: 2
 
 <entry id="mpas_zd" type="real" category="mpas"
        group="damping" valid_values="">
-Height above MSL to begin w-damping profile in MPAS dycore.
+Height in meters above MSL to begin w-damping profile in MPAS dycore.
 Default: 22000.0
 </entry>
 
