@@ -28,11 +28,7 @@ use physconst,         only: pi, rearth
 use cam_logfile,       only: iulog
 use cam_abortutils,    only: endrun
 
-use pio,               only: file_desc_t, var_desc_t, &
-                             pio_inq_dimid, pio_inq_dimlen, pio_inq_varid, &
-                             pio_double, pio_def_dim, pio_def_var, &
-                             pio_put_var, pio_get_var, &
-                             pio_seterrorhandling, PIO_BCAST_ERROR, PIO_NOERR
+use pio,               only: file_desc_t
 
 use cam_mpas_subdriver, only: domain_ptr, cam_mpas_init_phase3, cam_mpas_get_global_dims, &
                               cam_mpas_get_global_coords, cam_mpas_get_global_blocks,     &
@@ -47,7 +43,7 @@ private
 save
 
 integer, parameter :: dyn_decomp    = 101 ! cell center grid (this parameter is public to provide a dycore
-                                          ! independent way to to identify the physics grid on the dynamics
+                                          ! independent way to identify the physics grid on the dynamics
                                           ! decomposition)
 integer, parameter :: cam_cell_decomp = 104 ! same grid decomp as dyn_decomp, but the grid definition
                                             ! uses ncol, lat, lon
@@ -171,6 +167,9 @@ subroutine dyn_grid_init()
          write(iulog,9840)    zw_mid(k), pref_mid(k)/100._r8
       end do
       write(iulog,9830) plevp, zw(plevp), pref_edge(plevp)/100._r8
+
+9830  format(1x, i3, f15.4, 9x, f15.4)
+9840  format(1x, 3x, 12x, f15.4, 9x, f15.4)
    end if
 
    ! Query global grid dimensions from MPAS
@@ -193,9 +192,6 @@ subroutine dyn_grid_init()
    ! decomposition of the cell centered grid is defined in phys_grid_init.
    call define_cam_grids()
    
-9830 format(1x, i3, f15.4, 9x, f15.4)
-9840 format(1x, 3x, 12x, f15.4, 9x, f15.4)
-
 end subroutine dyn_grid_init
 
 !=========================================================================================
@@ -207,8 +203,6 @@ subroutine get_block_bounds_d(block_first, block_last)
 
    integer, intent(out) :: block_first  ! first global index used for blocks
    integer, intent(out) :: block_last   ! last global index used for blocks
-
-   character(len=*), parameter :: subname = 'dyn_grid::get_block_bounds_d'
    !----------------------------------------------------------------------------
 
    ! MPAS assigns 1 block per task.
@@ -227,8 +221,6 @@ integer function get_block_gcol_cnt_d(blockid)
    ! task.
 
    integer, intent(in) :: blockid
-
-   character(len=*), parameter :: subname = 'dyn_grid::get_block_gcol_cnt_d'
    !----------------------------------------------------------------------------
 
    get_block_gcol_cnt_d = num_col_per_block(blockid)
@@ -253,6 +245,12 @@ subroutine get_block_gcol_d(blockid, asize, cdex)
    character(len=*), parameter :: subname = 'dyn_grid::get_block_gcol_d'
    !----------------------------------------------------------------------------
 
+   if (asize < num_col_per_block(blockid)) then
+      write(iulog,*) subname//': array size too small: asize, num_col_per_block=', &
+         asize, num_col_per_block(blockid)
+      call endrun(subname//': array size too small')
+   end if
+
    do icol = 1, num_col_per_block(blockid)
       cdex(icol) = col_indices_in_block(icol, blockid)
    end do
@@ -272,8 +270,6 @@ integer function get_block_lvl_cnt_d(blockid, bcid)
 
    integer, intent(in) :: blockid  ! global block id
    integer, intent(in) :: bcid     ! column index within block
-
-   character(len=*), parameter :: subname = 'dyn_grid::get_block_lvl_cnt_d'
    !----------------------------------------------------------------------------
 
    ! All blocks have the same number of levels.
@@ -322,8 +318,6 @@ integer function get_gcol_block_cnt_d(gcol)
    ! with the specified global column index.
 
    integer, intent(in) :: gcol     ! global column index
-
-   character(len=*), parameter :: subname = 'dyn_grid::get_gcol_block_cnt_d'
    !----------------------------------------------------------------------------
 
    ! Each global column is solved in just one block.  The blocks where that column may
@@ -352,7 +346,8 @@ subroutine get_gcol_block_d(gcol, cnt, blockid, bcid)
    !----------------------------------------------------------------------------
 
    if ( cnt < 1 ) then
-      call endrun( subname // ':: arrays not large enough' )
+      write(iulog,*) subname//': arrays not large enough: cnt= ', cnt
+      call endrun( subname // ': arrays not large enough' )
    end if
 
    ! Each global column is solved in just one block.
@@ -374,8 +369,6 @@ integer function get_block_owner_d(blockid)
    ! Assume that task IDs are 0-based as in MPI.
 
    integer, intent(in) :: blockid  ! global block id
-
-   character(len=*), parameter :: subname = 'dyn_grid::get_block_owner_d'
    !----------------------------------------------------------------------------
 
    ! MPAS assigns one block per task.
@@ -393,8 +386,6 @@ subroutine get_horiz_grid_dim_d(hdim1_d, hdim2_d)
 
    integer, intent(out) :: hdim1_d             ! first horizontal dimension
    integer, intent(out), optional :: hdim2_d   ! second horizontal dimension
-
-   character(len=*), parameter :: subname = 'dyn_grid::get_horiz_grid_dim_d'
    !----------------------------------------------------------------------------
 
    hdim1_d = nCells_g
@@ -425,7 +416,9 @@ subroutine get_horiz_grid_d(nxy, clat_d_out, clon_d_out, area_d_out, &
    !----------------------------------------------------------------------------
 
    if ( nxy /= nCells_g ) then
-      call endrun( subname // ':: incorrect number of cells' )
+      write(iulog,*) subname//': incorrect number of cells: nxy, nCells_g= ', &
+         nxy, nCells_g
+      call endrun(subname//': incorrect number of cells')
    end if
 
    if ( present( clat_d_out ) ) then
@@ -437,11 +430,11 @@ subroutine get_horiz_grid_d(nxy, clat_d_out, clon_d_out, area_d_out, &
    end if
 
    if ( present( area_d_out ) ) then
-      area_d_out(:) = areaCell_g(:) / (6371229.0_r8**2.0_r8)
+      area_d_out(:) = areaCell_g(:) / (rearth**2)
    end if
 
    if ( present( wght_d_out ) ) then
-      wght_d_out(:) = areaCell_g(:) / (6371229.0_r8**2.0_r8)
+      wght_d_out(:) = areaCell_g(:) / (rearth**2)
    end if
 
    if ( present( lat_d_out ) ) then
@@ -465,8 +458,6 @@ subroutine physgrid_copy_attributes_d(gridname, grid_attribute_names)
 
    character(len=max_hcoordname_len),          intent(out) :: gridname
    character(len=max_hcoordname_len), pointer, intent(out) :: grid_attribute_names(:)
-
-   character(len=*), parameter :: subname = 'dyn_grid::physgrid_copy_attributes_d'
    !----------------------------------------------------------------------------
 
 
@@ -492,11 +483,11 @@ function get_dyn_grid_parm_real1d(name) result(rval)
    !----------------------------------------------------------------------------
 
    if (name .eq. 'w') then
-      call endrun('get_dyn_grid_parm_real1d: w not defined')
+      call endrun(subname//': w not defined')
    else if( name .eq. 'clat') then
-      call endrun('get_dyn_grid_parm_real1d: clat not supported, use get_horiz_grid_d')
+      call endrun(subname//': clat not supported, use get_horiz_grid_d')
    else if( name .eq. 'latdeg') then
-      call endrun('get_dyn_grid_parm_real1d: latdeg not defined')
+      call endrun(subname//': latdeg not defined')
    else
       nullify(rval)
    end if
@@ -511,8 +502,6 @@ integer function get_dyn_grid_parm(name) result(ival)
    ! as a dummy interface to satisfy external references from some chemistry routines.
 
    character(len=*), intent(in) :: name
-
-   character(len=*), parameter :: subname = 'dyn_grid::get_dyn_grid_parm'
    !----------------------------------------------------------------------------
 
    if (name == 'plat') then
@@ -543,8 +532,6 @@ subroutine dyn_grid_get_colndx(igcol, ncols, owners, col, lbk )
 
    integer  :: i
    integer :: blockid(1), bcid(1)
-
-   character(len=*), parameter :: subname = 'dyn_grid::dyn_grid_get_colndx'
    !----------------------------------------------------------------------------
 
    do i = 1,ncols
@@ -585,7 +572,7 @@ subroutine dyn_grid_get_elem_coords(ie, rlon, rlat, cdex )
    ! to also assume that the field is on the physics grid since there is no argument
    ! passed to specify which dynamics grid the coordinates are for.
    
-   call endrun('dyn_grid_get_elem_coords: not implemented for the MPAS grids')
+   call endrun(subname//': not implemented for the MPAS grids')
 
 end subroutine dyn_grid_get_elem_coords
 
@@ -630,9 +617,9 @@ subroutine setup_time_invariant(fh_ini)
 
    ! check that number of vertical layers matches MPAS grid data
    if (plev /= nVertLevelsSolve) then
-      write(iulog,*) routine//': ERROR: number levels in IC file does not match plev: file, plev=', &
+      write(iulog,*) routine//': ERROR: number of levels in IC file does not match plev: file, plev=', &
                      nVertLevelsSolve, plev
-      call endrun(routine//': ERROR: number levels in IC file does not match plev.')
+      call endrun(routine//': ERROR: number of levels in IC file does not match plev.')
    end if
 
    ! Initialize fields needed for reconstruction of cell-centered winds from edge-normal winds
@@ -704,8 +691,6 @@ subroutine define_cam_grids()
    integer,  dimension(:), pointer :: indexToVertexID ! global indices of vertex nodes
    real(r8), dimension(:), pointer :: latVertex ! vertex node latitude (radians)
    real(r8), dimension(:), pointer :: lonVertex ! vertex node longitude (radians)
-
-   character(len=*), parameter :: subname = 'dyn_grid::define_cam_grids'
    !----------------------------------------------------------------------------
 
    call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'mesh', meshPool)

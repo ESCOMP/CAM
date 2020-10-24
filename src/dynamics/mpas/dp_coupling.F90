@@ -503,7 +503,7 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
 
       do k = 1, pver
          ! To be consistent with total energy formula in physic's check_energy module only
-         ! include water vapor in in moist pdel.  
+         ! include water vapor in moist pdel.  
          factor(:ncol,k) = 1._r8 + phys_state(lchnk)%q(:ncol,k,1)
          phys_state(lchnk)%pdel(:ncol,k)  = phys_state(lchnk)%pdeldry(:ncol,k)*factor(:ncol,k)
          phys_state(lchnk)%rpdel(:ncol,k) = 1._r8 / phys_state(lchnk)%pdel(:ncol,k)
@@ -556,18 +556,8 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
 
       ! Compute initial dry static energy, include surface geopotential
       do k = 1, pver
-#if FIX_TOTE
-         ! general formula:  E = CV_air T + phis + gravit*zi )
-         ! hydrostatic case: integrate zi term by parts, use CP=CV+R to get:
-         ! E = CP_air T + phis   (Holton Section 8.3)
-         ! to use this, update geopotential.F90, and other not-yet-found physics routines:
-         ! (check boundary layer code, others which have gravit and zi() or zm()
-         phys_state(lchnk)%s(:ncol,k) = cpairv(:ncol,k,lchnk)*phys_state(lchnk)%t(:ncol,k) &
-            + phys_state(lchnk)%phis(:ncol)
-#else
          phys_state(lchnk)%s(:ncol,k) = cpairv(:ncol,k,lchnk)*phys_state(lchnk)%t(:ncol,k) &
             + gravit*phys_state(lchnk)%zm(:ncol,k) + phys_state(lchnk)%phis(:ncol)
-#endif
       end do
 
       ! Compute energy and water integrals of input state

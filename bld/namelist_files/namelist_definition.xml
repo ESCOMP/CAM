@@ -7560,12 +7560,6 @@ in MPAS dycore.
 Default: TRUE
 </entry>
 
-<entry id="mpas_num_halos" type="integer" category="mpas"
-       group="nhyd_model" valid_values="">
-Number of halo layers for fields in MPAS dycore.
-Default: 2
-</entry>
-
 <entry id="mpas_zd" type="real" category="mpas"
        group="damping" valid_values="">
 Height in meters above MSL to begin w-damping profile in MPAS dycore.
@@ -7584,24 +7578,6 @@ Prefix of the MPAS graph decomposition file, to be suffixed with the MPI
 task count.  The prefix includes the full pathname of the directory
 containing the file.
 Default: Set by build-namelist.
-</entry>
-
-<entry id="mpas_number_of_blocks" type="integer" category="mpas"
-       group="decomposition" valid_values="">
-Number of blocks to assign to each MPI task in MPAS dycore.
-Default: 0
-</entry>
-
-<entry id="mpas_explicit_proc_decomp" type="logical" category="mpas"
-       group="decomposition" valid_values="">
-Whether to use an explicit mapping of blocks to MPI tasks in MPAS dycore.
-Default: FALSE
-</entry>
-
-<entry id="mpas_proc_decomp_file_prefix" type="char*512" category="mpas"
-       group="decomposition" valid_values="">
-Prefix of MPAS block mapping file.
-Default: graph.info.part.
 </entry>
 
 <entry id="mpas_do_restart" type="logical" category="mpas"

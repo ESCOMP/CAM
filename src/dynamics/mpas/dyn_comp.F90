@@ -1132,13 +1132,9 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
    real(r8)                :: mpas_smdiv = 0.1_r8
    real(r8)                :: mpas_apvm_upwinding = 0.5_r8
    logical                 :: mpas_h_ScaleWithMesh = .true.
-   integer                 :: mpas_num_halos = 2
    real(r8)                :: mpas_zd = 22000.0_r8
    real(r8)                :: mpas_xnutr = 0.2_r8
    character (len=StrKIND) :: mpas_block_decomp_file_prefix = 'x1.40962.graph.info.part.'
-   integer                 :: mpas_number_of_blocks = 0
-   logical                 :: mpas_explicit_proc_decomp = .false.
-   character (len=StrKIND) :: mpas_proc_decomp_file_prefix = 'graph.info.part.'
    logical                 :: mpas_do_restart = .false.
    logical                 :: mpas_print_global_minmax_vel = .true.
    logical                 :: mpas_print_detailed_minmax_vel = .false.
@@ -1177,18 +1173,14 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
            mpas_epssm, &
            mpas_smdiv, &
            mpas_apvm_upwinding, &
-           mpas_h_ScaleWithMesh, &
-           mpas_num_halos
+           mpas_h_ScaleWithMesh
 
    namelist /damping/ &
            mpas_zd, &
            mpas_xnutr
 
    namelist /decomposition/ &
-           mpas_block_decomp_file_prefix, &
-           mpas_number_of_blocks, &
-           mpas_explicit_proc_decomp, &
-           mpas_proc_decomp_file_prefix
+           mpas_block_decomp_file_prefix
 
    namelist /restart/ &
            mpas_do_restart
@@ -1253,7 +1245,6 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
    call mpi_bcast(mpas_smdiv,                        1, mpi_real8,     masterprocid, mpicom, mpi_ierr)
    call mpi_bcast(mpas_apvm_upwinding,               1, mpi_real8,     masterprocid, mpicom, mpi_ierr)
    call mpi_bcast(mpas_h_ScaleWithMesh,              1, mpi_logical,   masterprocid, mpicom, mpi_ierr)
-   call mpi_bcast(mpas_num_halos,                    1, mpi_integer,   masterprocid, mpicom, mpi_ierr)
 
    call mpas_pool_add_config(configPool, 'config_time_integration', mpas_time_integration)
    call mpas_pool_add_config(configPool, 'config_time_integration_order', mpas_time_integration_order)
@@ -1288,7 +1279,6 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
    call mpas_pool_add_config(configPool, 'config_smdiv', mpas_smdiv)
    call mpas_pool_add_config(configPool, 'config_apvm_upwinding', mpas_apvm_upwinding)
    call mpas_pool_add_config(configPool, 'config_h_ScaleWithMesh', mpas_h_ScaleWithMesh)
-   call mpas_pool_add_config(configPool, 'config_num_halos', mpas_num_halos)
 
    ! Read namelist group &damping
    if (masterproc) then
@@ -1325,14 +1315,8 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
    end if
 
    call mpi_bcast(mpas_block_decomp_file_prefix, StrKIND, mpi_character, masterprocid, mpicom, mpi_ierr)
-   call mpi_bcast(mpas_number_of_blocks,               1, mpi_integer,   masterprocid, mpicom, mpi_ierr)
-   call mpi_bcast(mpas_explicit_proc_decomp,           1, mpi_logical,   masterprocid, mpicom, mpi_ierr)
-   call mpi_bcast(mpas_proc_decomp_file_prefix,  StrKIND, mpi_character, masterprocid, mpicom, mpi_ierr)
 
    call mpas_pool_add_config(configPool, 'config_block_decomp_file_prefix', mpas_block_decomp_file_prefix)
-   call mpas_pool_add_config(configPool, 'config_number_of_blocks', mpas_number_of_blocks)
-   call mpas_pool_add_config(configPool, 'config_explicit_proc_decomp', mpas_explicit_proc_decomp)
-   call mpas_pool_add_config(configPool, 'config_proc_decomp_file_prefix', mpas_proc_decomp_file_prefix)
 
    ! Read namelist group &restart
    if (masterproc) then
@@ -1416,13 +1400,9 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
       write(iulog,*) '   mpas_smdiv = ', mpas_smdiv
       write(iulog,*) '   mpas_apvm_upwinding = ', mpas_apvm_upwinding
       write(iulog,*) '   mpas_h_ScaleWithMesh = ', mpas_h_ScaleWithMesh
-      write(iulog,*) '   mpas_num_halos = ', mpas_num_halos
       write(iulog,*) '   mpas_zd = ', mpas_zd
       write(iulog,*) '   mpas_xnutr = ', mpas_xnutr
       write(iulog,*) '   mpas_block_decomp_file_prefix = ', trim(mpas_block_decomp_file_prefix)
-      write(iulog,*) '   mpas_number_of_blocks = ', mpas_number_of_blocks
-      write(iulog,*) '   mpas_explicit_proc_decomp = ', mpas_explicit_proc_decomp
-      write(iulog,*) '   mpas_proc_decomp_file_prefix = ', trim(mpas_proc_decomp_file_prefix)
       write(iulog,*) '   mpas_do_restart = ', mpas_do_restart
       write(iulog,*) '   mpas_print_global_minmax_vel = ', mpas_print_global_minmax_vel
       write(iulog,*) '   mpas_print_detailed_minmax_vel = ', mpas_print_detailed_minmax_vel

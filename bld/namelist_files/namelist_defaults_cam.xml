@@ -2715,7 +2715,6 @@
 <mpas_smdiv                   > 0.1 </mpas_smdiv>
 <mpas_apvm_upwinding          > 0.5 </mpas_apvm_upwinding>
 <mpas_h_ScaleWithMesh         > .true. </mpas_h_ScaleWithMesh>
-<mpas_num_halos               > 2 </mpas_num_halos>
 <mpas_zd                      > 22000.0 </mpas_zd>
 <mpas_xnutr                   > 0.2 </mpas_xnutr>
 
@@ -2727,9 +2726,6 @@
 <mpas_block_decomp_file_prefix hgrid="mpasa12">atm/cam/inic/mpas/mpasa12.graph.info.part.</mpas_block_decomp_file_prefix>
 <mpas_block_decomp_file_prefix hgrid="mpasa15-3">atm/cam/inic/mpas/mpasa15-3.graph.info.part.</mpas_block_decomp_file_prefix>
 
-<mpas_number_of_blocks         > 0 </mpas_number_of_blocks>
-<mpas_explicit_proc_decomp     > .false. </mpas_explicit_proc_decomp>
-<mpas_proc_decomp_file_prefix  > graph.info.part. </mpas_proc_decomp_file_prefix>
 <mpas_do_restart               > .false. </mpas_do_restart>
 <mpas_print_global_minmax_vel  > .true. </mpas_print_global_minmax_vel>
 <mpas_print_detailed_minmax_vel> .false. </mpas_print_detailed_minmax_vel>
