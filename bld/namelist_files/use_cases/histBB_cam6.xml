@@ -1,0 +1,91 @@
+<?xml version="1.0"?>
+
+<namelist_defaults>
+
+
+<!-- Emissions  -->
+<ext_frc_specifier>
+
+         'H2O    -> $INPUTDATA_ROOT/atm/cam/chem/emis/elev/H2OemissionCH4oxidationx2_3D_L70_1849-2015_CMIP6ensAvg_c180927.nc',
+         'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_num_so4_a1_anthro-ene_vertical_1750-2015_0.9x1.25_c20170616.nc',
+         'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_num_a1_so4_contvolcano_vertical_850-5000_0.9x1.25_c20170724.nc',
+         'num_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_num_a2_so4_contvolcano_vertical_850-5000_0.9x1.25_c20170724.nc',
+         'SO2    -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_SO2_contvolcano_vertical_850-5000_0.9x1.25_c20170724.nc',
+         'so4_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_so4_a1_anthro-ene_vertical_1750-2015_0.9x1.25_c20170616.nc',
+         'so4_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_so4_a1_contvolcano_vertical_850-5000_0.9x1.25_c20170724.nc',
+         'so4_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_so4_a2_contvolcano_vertical_850-5000_0.9x1.25_c20170724.nc'
+</ext_frc_specifier>
+
+<srf_emis_specifier>
+         'bc_a4    -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_bc_a4_anthro_surface_1750-2015_0.9x1.25_c20170608.nc',
+         'bc_a4    -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp370-BB_smoothed/emissions-cmip6-ScenarioMIP_IAMC-AIM-ssp370-1-1_smoothed_bc_a4_bb_surface_mol_175001-210101_0.9x1.25_c20201016.nc',
+         'DMS      -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp370-BB_smoothed/emissions-cmip6-ScenarioMIP_IAMC-AIM-ssp370-1-1_smoothed_DMS_bb_surface_mol_175001-210101_0.9x1.25_c20201016.nc',
+         'DMS      -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_DMS_other_surface_1750-2015_0.9x1.25_c20170322.nc',
+         'num_a1   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp370-BB_smoothed/emissions-cmip6-ScenarioMIP_IAMC-AIM-ssp370-1-1_smoothed_num_so4_a1_bb_surface_mol_175001-210101_0.9x1.25_c20201016.nc',
+         'num_a1   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp370/emissions-cmip6-ScenarioMIP_IAMC-AIM-ssp370-1-1_num_so4_a1_anthro-ag-ship_surface_mol_175001-210101_0.9x1.25_c20200924.nc',
+         'num_a2   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp370/emissions-cmip6-ScenarioMIP_IAMC-AIM-ssp370-1-1_num_so4_a2_anthro-res_surface_mol_175001-210101_0.9x1.25_c20200924.nc',
+         'num_a4   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp370-BB_smoothed/emissions-cmip6-ScenarioMIP_IAMC-AIM-ssp370-1-1_smoothed_num_bc_a4_bb_surface_mol_175001-210101_0.9x1.25_c20201016.nc',
+         'num_a4   -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_num_bc_a4_anthro_surface_1750-2015_0.9x1.25_c20170608.nc',
+         'num_a4   -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_num_pom_a4_anthro_surface_1750-2015_0.9x1.25_c20170608.nc',
+         'num_a4   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp370-BB_smoothed/emissions-cmip6-ScenarioMIP_IAMC-AIM-ssp370-1-1_smoothed_num_pom_a4_bb_surface_mol_175001-210101_0.9x1.25_c20201016.nc',
+         'pom_a4   -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_pom_a4_anthro_surface_1750-2015_0.9x1.25_c20170608.nc',
+         'pom_a4   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp370-BB_smoothed/emissions-cmip6-ScenarioMIP_IAMC-AIM-ssp370-1-1_smoothed_pom_a4_bb_surface_mol_175001-210101_0.9x1.25_c20201016.nc',
+         'SO2      -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp370/emissions-cmip6-ScenarioMIP_IAMC-AIM-ssp370-1-1_SO2_anthro-ag-ship-res_surface_mol_175001-210101_0.9x1.25_c20200924.nc',
+         'SO2      -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_SO2_anthro-ene_surface_1750-2015_0.9x1.25_c20170616.nc',
+         'SO2      -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp370-BB_smoothed/emissions-cmip6-ScenarioMIP_IAMC-AIM-ssp370-1-1_smoothed_SO2_bb_surface_mol_175001-210101_0.9x1.25_c20201016.nc',
+         'so4_a1   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp370/emissions-cmip6-ScenarioMIP_IAMC-AIM-ssp370-1-1_so4_a1_anthro-ag-ship_surface_mol_175001-210101_0.9x1.25_c20200924.nc',
+         'so4_a1   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp370-BB_smoothed/emissions-cmip6-ScenarioMIP_IAMC-AIM-ssp370-1-1_smoothed_so4_a1_bb_surface_mol_175001-210101_0.9x1.25_c20201016.nc',
+         'so4_a2   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp370/emissions-cmip6-ScenarioMIP_IAMC-AIM-ssp370-1-1_so4_a2_anthro-res_surface_mol_175001-210101_0.9x1.25_c20200924.nc',
+         'SOAG     -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_SOAGx1.5_anthro_surface_1750-2015_0.9x1.25_c20170608.nc',
+         'SOAG     -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp370-BB_smoothed/emissions-cmip6-ScenarioMIP_IAMC-AIM-ssp370-1-1_smoothed_SOAGx1.5_bb_surface_mol_175001-210101_0.9x1.25_c20201016.nc',
+         'SOAG     -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_SOAGx1.5_biogenic_surface_1750-2015_0.9x1.25_c20170322.nc'
+</srf_emis_specifier>
+
+  <srf_emis_type            >    INTERP_MISSING_MONTHS  </srf_emis_type>
+  <ext_frc_type             >    INTERP_MISSING_MONTHS  </ext_frc_type>
+
+<!-- Solar data -->
+  <solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-22991231_c171031.nc</solar_irrad_data_file>
+
+<!-- Tracer/ozone/strataero data -->
+  <tracer_cnst_datapath     >   'atm/cam/tracer_cnst'                                        </tracer_cnst_datapath>
+  <tracer_cnst_file         >   'tracer_cnst_halons_3D_L70_1849-2015_CMIP6ensAvg_c180927.nc' </tracer_cnst_file>
+  <tracer_cnst_specifier    >   'O3','OH','NO3','HO2'                                        </tracer_cnst_specifier>
+  <tracer_cnst_type         >   'INTERP_MISSING_MONTHS'                                      </tracer_cnst_type>
+  <tracer_cnst_filelist     >   ''                                                           </tracer_cnst_filelist>
+
+  <prescribed_ozone_datapath>   'atm/cam/ozone_strataero'                                                    </prescribed_ozone_datapath>
+  <prescribed_ozone_file    >   'ozone_strataero_WACCM_L70_zm5day_18500101-20150103_CMIP6ensAvg_c180923.nc'  </prescribed_ozone_file>
+  <prescribed_ozone_name    >   'O3'                                                                         </prescribed_ozone_name>
+  <prescribed_ozone_type    >   'SERIAL'                                                                     </prescribed_ozone_type>
+
+  <prescribed_strataero_type    >     'SERIAL'                                                                     </prescribed_strataero_type>
+  <prescribed_strataero_datapath>     'atm/cam/ozone_strataero'                                                    </prescribed_strataero_datapath>
+  <prescribed_strataero_file>         'ozone_strataero_WACCM_L70_zm5day_18500101-20150103_CMIP6ensAvg_c180923.nc'  </prescribed_strataero_file> 
+  <prescribed_strataero_use_chemtrop> .true.                                                                       </prescribed_strataero_use_chemtrop>
+
+  <!-- co2 cycle settings -->
+  <co2_readflux_fuel>                      .true.       </co2_readflux_fuel>
+  <co2flux_fuel_file    hgrid="0.9x1.25">  atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_0.9x1.25_c20181011.nc</co2flux_fuel_file>
+  <co2flux_fuel_file    hgrid="1.9x2.5">   atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_1.9x2.5_c20181011.nc</co2flux_fuel_file>
+  <co2_readflux_aircraft>                  .true.       </co2_readflux_aircraft>
+
+<aircraft_type>           SERIAL            </aircraft_type>
+<aircraft_datapath>       atm/cam/ggas      </aircraft_datapath>
+<aircraft_specifier hgrid="0.9x1.25">  ac_CO2 -> ac_CO2_filelist_175001-201512_fv_0.9x1.25_c20181011.txt 						     </aircraft_specifier>
+<aircraft_co2_file  hgrid="0.9x1.25">         atm/cam/ggas/emissions-cmip6_CO2_anthro_ac_175001-201512_fv_0.9x1.25_c20181011.nc 			     </aircraft_co2_file>
+<aircraft_specifier hgrid="1.9x2.5">   ac_CO2 -> ac_CO2_filelist_175001-201512_fv_1.9x2.5_c20181011.txt 				                     </aircraft_specifier>
+<aircraft_co2_file  hgrid="1.9x2.5">          atm/cam/ggas/emissions-cmip6_CO2_anthro_ac_175001-201512_fv_1.9x2.5_c20181011.nc 			             </aircraft_co2_file>
+
+
+ <!-- LBC file -->
+  <scenario_ghg> 'CHEM_LBC_FILE'                                                         </scenario_ghg>
+  <flbc_file>    atm/waccm/lb/LBC_1750-2015_CMIP6_GlobAnnAvg_c180926.nc                  </flbc_file>
+  <flbc_type>    'SERIAL'                                                                </flbc_type>
+  <flbc_list>    'CO2','CH4','N2O','CFC11eq','CFC12'                                     </flbc_list>
+
+  <!-- sim_year used for CO2 cycle namelist settings -->
+  <sim_year>1850-2000</sim_year>
+
+
+</namelist_defaults>

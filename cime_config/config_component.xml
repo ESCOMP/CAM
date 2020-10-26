@@ -8,7 +8,7 @@
       CAM
     ===============
    -->
-    <desc atm="CAM60[%1PCT][%4xCO2][%CCTS][%CFIRE][%CVBSX][%PORT][%RCO2][%SCAM][%SDYN][%WCCM][%WCMD][%WCSC][%WCTS]">CAM cam6 physics:</desc>
+    <desc atm="CAM60[%SMBB][%1PCT][%4xCO2][%CCTS][%CFIRE][%CVBSX][%PORT][%RCO2][%SCAM][%SDYN][%WCCM][%WCMD][%WCSC][%WCTS]">CAM cam6 physics:</desc>
     <desc atm="CAM50[%CCTS][%CLB][%PORT][%RCO2][%SCAM][%SDYN][%WCSC][%WCTS]"              >CAM cam5 physics:</desc>
     <desc atm="CAM40[%PORT][%RCO2][%SCAM][%SDYN][%TMOZ][%WXIE][%WXIED][%WCMD]"                   >CAM cam4 physics:</desc>
     <desc atm="CAM[%ADIAB][%DABIP04][%TJ16][%HS94][%KESSLER][%RCO2][%SPCAMS][%SPCAMCLBS][%SPCAMM][%SPCAMCLBM]">CAM simplified and non-versioned physics :</desc>
@@ -18,6 +18,7 @@
      CAM and WACCM Options
     ===============
    -->
+    <desc option="SMBB"         >smoothed biomass burning at end of historical period (smoothed observations) (CESM2-LE 50 member set with BHISTsmbb compset) :</desc>
     <desc option="4xCO2"        >abrupt quadrupling of CO2 with other forcings maintained at 1850 piControl levels (CMIP6 DECK abrupt4xCO2 experiment) :</desc>
     <desc option="1PCT"         >ramped CO2 increasing by 1% per year with other forcings maintained at 1850 piControl levels (CMIP6 DECK 1pctCO2 experiment) :</desc>
 
@@ -218,6 +219,7 @@
       <value compset="HIST_CAM40%WXIE"   >1950-2010_ccmi_refc1_waccmx_ma</value>
       <value compset="HIST_CAM50"        >1850-2005_cam5</value>
       <value compset="HIST_CAM60"        >hist_cam6</value>
+      <value compset="HIST_CAM60%SMBB"   >histBB_cam6</value>
       <value compset="HIST_CAM60%WCTS"   >waccm_tsmlt_hist_cam6</value>
       <value compset="HIST_CAM60%WCSC"   >waccm_sc_hist_cam6</value>
       <value compset="HIST_CAM60%WCCM"   >waccm_ma_hist_cam6</value>
