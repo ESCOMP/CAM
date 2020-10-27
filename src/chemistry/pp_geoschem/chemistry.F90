@@ -19,12 +19,14 @@ module chemistry
   ! Basic GEOS-Chem modules
   !--------------------------------------------------------------------
   USE DiagList_Mod,        ONLY : DgnList       ! Derived type for diagnostics list
+  USE TaggedDiagList_Mod,  ONLY : TaggedDgnList ! Derived type for tagged diagnostics list
   USE Input_Opt_Mod,       ONLY : OptInput      ! Derived type for Input Options
   USE State_Chm_Mod,       ONLY : ChmState      ! Derived type for Chemistry State object
   USE State_Diag_Mod,      ONLY : DgnState      ! Derived type for Diagnostics State object
   USE State_Grid_Mod,      ONLY : GrdState      ! Derived type for Grid State object
   USE State_Met_Mod,       ONLY : MetState      ! Derived type for Meteorology State object
   USE Species_Mod,         ONLY : Species       ! Derived type for Species object
+  USE GC_Environment_Mod                        ! Runtime GEOS-Chem environment
   USE ErrCode_Mod                               ! Error codes for success or failure
   USE Error_Mod                                 ! For error checking
 
@@ -103,6 +105,7 @@ module chemistry
   TYPE(GrdState),ALLOCATABLE :: State_Grid(:)   ! Grid State object
   TYPE(MetState),ALLOCATABLE :: State_Met(:)    ! Meteorology State object
   TYPE(DgnList )             :: Diag_List       ! Diagnostics list object
+  TYPE(TaggedDgnList )       :: TaggedDiag_List ! Tagged diagnostics list object
 
   type(physics_buffer_desc), pointer :: hco_pbuf2d(:,:)    ! Pointer to 2D pbuf
 
@@ -196,6 +199,7 @@ contains
     use State_Chm_Mod,       only : Init_State_Chm, Cleanup_State_Chm
     use State_Chm_Mod,       only : Ind_
     use Input_Opt_Mod,       only : Set_Input_Opt,  Cleanup_Input_Opt
+    use CMN_SIZE_Mod,        only : Init_CMN_SIZE
 
     use mo_sim_dat,          only : set_sim_dat
     use mo_chem_utls,        only : get_spc_ndx
@@ -299,6 +303,23 @@ contains
     SG%NY = 1
     SG%NZ = 1
 
+    CALL GC_Init_Grid( Input_Opt  = IO,  &
+                       State_Grid = SG,  &
+                       RC         = RC  )
+
+    IF ( RC /= GC_SUCCESS ) THEN
+        ErrMsg = 'Error in GC_Init_Grid"!'
+        CALL Error_Stop( ErrMsg, ThisLoc )
+    ENDIF
+
+    CALL Init_CMN_SIZE( Input_Opt = IO,  &
+                        RC        = RC  )
+
+    IF ( RC /= GC_SUCCESS ) THEN
+        ErrMsg = 'Error encountered within call to "Init_CMN_SIZE"!'
+        CALL Error_Stop( ErrMsg, ThisLoc )
+    ENDIF
+
     CALL Init_State_Chm( Input_Opt  = IO,  &
                          State_Chm  = SC,  &
                          State_Grid = SG,  &
@@ -326,7 +347,7 @@ contains
           MWTmp       = REAL(ThisSpc%MW_g,r8)
           ref_VMR     = REAL(ThisSpc%BackgroundVV,r8)
           ref_MMR(I)  = ref_VMR / (MWDry / MWTmp)
-          IF ( ThisSpc%Is_Gas == .FALSE. ) THEN
+          IF ( ThisSpc%Is_Gas .eqv. .False. ) THEN
              Write(cnstName, "(a,a)") 'GC_AER_', to_upper(TRIM(trueName))
           ENDIF
        ELSEIF ( I .LE. (nTracers + nAer) ) THEN
@@ -970,7 +991,7 @@ contains
     use State_Grid_Mod
     use State_Met_Mod
     use DiagList_Mod,      only : Init_DiagList, Print_DiagList
-    use GC_Environment_Mod
+    use TaggedDiagList_Mod,only : Init_TaggedDiagList, Print_TaggedDiagList
     use GC_Grid_Mod,       only : SetGridFromCtrEdges
     use State_Diag_Mod,    only : get_TagInfo
 
@@ -991,7 +1012,6 @@ contains
     use Olson_Landmap_Mod
 #endif
     use Vdiff_Mod
-    use CMN_FJX_MOD,       only : JVN_
 
     use mo_setinv,         only : setinv_inti
     use mo_mean_mass,      only : init_mean_mass
@@ -1278,8 +1298,8 @@ contains
     Input_Opt%BCAE_1                 = 1.5e+0_fp
     Input_Opt%BCAE_2                 = 1.0e+0_fp
     Input_Opt%hvAerNIT               = .False.
-    Input_Opt%hvAerNIT_JNIT          = .False.
-    Input_Opt%hvAerNIT_JNITs         = .False.
+    Input_Opt%hvAerNIT_JNIT          = 0.0e+00_fp
+    Input_Opt%hvAerNIT_JNITs         = 0.0e+00_fp
     Input_Opt%JNITChanA              = 66.667e+0_fp
     Input_Opt%JNITChanB              = 33.333e+0_fp
 
@@ -1462,29 +1482,35 @@ contains
     ! Set a flag to denote if we should print ND70 debug output
     prtDebug            = ( Input_Opt%LPRT .and. MasterProc )
 
-    ! Debug output
-    IF ( prtDebug ) CALL Debug_Msg( '### MAIN: a READ_INPUT_FILE' )
+    historyConfigFile = 'HISTORY.rc'
+    ! This requires input.geos and HISTORY.rc to be in the run directory
+    ! This is the current way chosen to diagnose photolysis rates!
+    CALL Init_DiagList( MasterProc, historyConfigFile, Diag_List, RC )
 
-    historyConfigFile = 'HISTORY.rc' ! InputOpt not yet initialized
-    !TMMF need to pass input.geos path
-    !CALL Init_DiagList( MasterProc, historyConfigFile, Diag_List, RC )
+    IF ( RC /= GC_SUCCESS ) THEN
+       ErrMsg = 'Error encountered in "Init_DiagList"!'
+       CALL Error_Stop( ErrMsg, ThisLoc )
+    ENDIF
 
-    !IF ( RC /= GC_SUCCESS ) THEN
-    !   ErrMsg = 'Error encountered in "Init_DiagList"!'
-    !   CALL Error_Stop( ErrMsg, ThisLoc )
-    !ENDIF
+    ! Initialize the TaggedDiag_List (list of wildcards/tags per diagnostic)
+    CALL Init_TaggedDiagList( Input_Opt%amIroot, Diag_List,  &
+                              TaggedDiag_List,   RC         )
 
-    !!### Print diagnostic list if needed for debugging
-    !IF ( prtDebug ) CALL Print_DiagList( Diag_List, RC )
+    IF ( RC /= GC_SUCCESS ) THEN
+       ErrMsg = 'Error encountered in "Init_TaggedDiagList"!'
+       CALL Error_Stop( ErrMsg, ThisLoc )
+    ENDIF
+
+    IF ( prtDebug ) THEN
+       CALL Print_DiagList( Input_Opt%amIRoot, Diag_List, RC )
+       CALL Print_TaggedDiagList( Input_Opt%amIRoot, TaggedDiag_List, RC )
+    ENDIF
 
     DO I = BEGCHUNK, ENDCHUNK
        Input_Opt%amIRoot = (MasterProc .AND. (I == BEGCHUNK))
 
-       IF ( prtDebug ) THEN
-          CALL Print_DiagList( Input_Opt%amIRoot, Diag_List, RC )
-       ENDIF
-
        CALL GC_Init_StateObj( Diag_List       = Diag_List,       & ! Diagnostic list obj
+                              TaggedDiag_List = TaggedDiag_List, & ! TaggedDiag list obj
                               Input_Opt       = Input_Opt,       & ! Input Options
                               State_Chm       = State_Chm(I),    & ! Chemistry State
                               State_Diag      = State_Diag(I),   & ! Diagnostics State
@@ -1783,26 +1809,28 @@ contains
        !CALL Add_Default(TRIM(SpcName), 1, ' ')
     ENDDO
 
-    DO I = 1, State_Chm(BEGCHUNK)%nDryDep
-       SpcName = 'DepVel_'//TRIM(depName(I))
-       CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'm/s', &
-         TRIM(SpcName)//' dry deposition velocity')
-    ENDDO
+    IF ( Input_Opt%LDryD ) THEN
+       DO I = 1, State_Chm(BEGCHUNK)%nDryDep
+          SpcName = 'DepVel_'//TRIM(depName(I))
+          CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'm/s', &
+            TRIM(SpcName)//' dry deposition velocity')
+       ENDDO
 
-    DO I = 1, State_Chm(BEGCHUNK)%nAdvect
-       ! Get the species ID from the advected species ID
-       L = State_Chm(BEGCHUNK)%Map_Advect(I)
+       DO I = 1, State_Chm(BEGCHUNK)%nAdvect
+          ! Get the species ID from the advected species ID
+          L = State_Chm(BEGCHUNK)%Map_Advect(I)
 
-       ! Get info about this species from the species database
-       SpcInfo => State_Chm(BEGCHUNK)%SpcData(L)%Info
-       SpcName = 'DepFlux_'//TRIM(SpcInfo%Name)
+          ! Get info about this species from the species database
+          SpcInfo => State_Chm(BEGCHUNK)%SpcData(L)%Info
+          SpcName = 'DepFlux_'//TRIM(SpcInfo%Name)
 
-       CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'kg/m2/s', &
-          TRIM(SpcName)//' dry deposition flux')
+          CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'kg/m2/s', &
+             TRIM(SpcName)//' dry deposition flux')
 
-       ! Free pointer
-       SpcInfo => NULL()
-    ENDDO
+          ! Free pointer
+          SpcInfo => NULL()
+       ENDDO
+    ENDIF
 
     ! Surface fluxes (emissions - drydep)
     DO I = 1, pcnst
@@ -1858,12 +1886,16 @@ contains
        CALL Addfld( TRIM(SpcName), (/ 'lev' /), 'A', '1/s', &
           TRIM(tagName) // ' photolysis rate' )
     ENDDO
+    ! Add Jval_O3O1D and Jval_O3O3P
+    SpcName = 'Jval_O3O1D'
+    CALL Addfld( TRIM(SpcName), (/ 'lev' /), 'A', '1/s', &
+       TRIM(tagName) // ' photolysis rate' )
+    SpcName = 'Jval_O3O3P'
+    CALL Addfld( TRIM(SpcName), (/ 'lev' /), 'A', '1/s', &
+       TRIM(tagName) // ' photolysis rate' )
 
     ! Initialize emissions interface
     CALL GC_Emissions_Init
-
-    !CALL AddFld ( 'BCPI', (/'lev'/), 'A', 'mole/mole', trim('BCPI')//' mixing ratio' )
-    !CALL Add_Default ( 'BCPI',   1, ' ')
 
     hco_pbuf2d => pbuf2d
 
@@ -1955,8 +1987,8 @@ contains
 #elif ( OCNDDVEL_MOZART )
     use mo_drydep,           only : drydep_update, drydep_fromlnd
 #endif
-    use Drydep_Mod,          only : DEPNAME
-    use Drydep_Mod,          only : Update_DryDepSav
+    use Drydep_Mod,          only : DEPNAME, NDVZIND
+    use Drydep_Mod,          only : Update_DryDepFreq
 
     use Calc_Met_Mod,        only : Set_Dry_Surface_Pressure
     use Calc_Met_Mod,        only : AirQnt
@@ -1971,7 +2003,7 @@ contains
     use CMN_Size_Mod,        only : PTop
     use PBL_Mix_Mod,         only : Compute_PBL_Height
     use UCX_Mod,             only : Set_H2O_Trac
-    use CMN_FJX_MOD,         only : ZPJ, JVN_, GC_Photo_ID
+    use CMN_FJX_MOD,         only : ZPJ
     use State_Diag_Mod,      only : get_TagInfo
     use Unitconv_Mod,        only : Convert_Spc_Units
 
@@ -1996,8 +2028,10 @@ contains
     use short_lived_species, only : get_short_lived_species
     use short_lived_species, only : set_short_lived_species
 
+#if defined( MODAL_AERO )
     ! Aqueous chemistry and aerosol growth
     use aero_model,          only : aero_model_gasaerexch
+#endif
 
     ! Use GEOS-Chem versions of physical constants
     use PhysConstants,       only : PI, PI_180, g0, AVO
@@ -2084,7 +2118,6 @@ contains
     REAL(r8)              :: wk_out(state%NCOL)
     LOGICAL               :: isWD
     REAL(r8)              :: outTmp(state%NCOL,PVER)
-    REAL(r8)              :: JoutTmp(state%NCOL,PVER,nPhotol)
     LOGICAL               :: Found
     CHARACTER(LEN=255)    :: tagName
 
@@ -2716,11 +2749,11 @@ contains
     tmpIdx = pbuf_get_index(fldname_ns, RC)
     IF ( tmpIdx < 0 ) THEN
        IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(fldname_ns)
-       State_Met(LCHNK)%IODIDE(1,:)   = 0.0e+0_fp
+       State_Chm(LCHNK)%IODIDE(1,:)   = 0.0e+0_fp
     ELSE
        pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
        CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_ik)
-       State_Met(LCHNK)%IODIDE(1,:) = pbuf_ik(:,nZ)
+       State_Chm(LCHNK)%IODIDE(1,:) = pbuf_ik(:,nZ)
        pbuf_chnk => NULL()
        pbuf_ik   => NULL()
     ENDIF
@@ -2734,11 +2767,11 @@ contains
     tmpIdx = pbuf_get_index(fldname_ns, RC)
     IF ( tmpIdx < 0 ) THEN
        IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(fldname_ns)
-       State_Met(LCHNK)%SALINITY(1,:) = 0.0e+0_fp
+       State_Chm(LCHNK)%SALINITY(1,:) = 0.0e+0_fp
     ELSE
        pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
        CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_ik)
-       State_Met(LCHNK)%SALINITY(1,:) = pbuf_ik(:,nZ)
+       State_Chm(LCHNK)%SALINITY(1,:) = pbuf_ik(:,nZ)
        pbuf_chnk => NULL()
        pbuf_ik   => NULL()
     ENDIF
@@ -3484,12 +3517,12 @@ contains
        !TMMF, Here set dry deposition velocities to zero if MAM performs its
        !own deposition...
 
-       CALL Update_DryDepSav( Input_Opt  = Input_Opt,         &
-                              State_Chm  = State_Chm(LCHNK),  &
-                              State_Diag = State_Diag(LCHNK), &
-                              State_Grid = State_Grid(LCHNK), &
-                              State_Met  = State_Met(LCHNK),  &
-                              RC         = RC                )
+       CALL Update_DryDepFreq( Input_Opt  = Input_Opt,         &
+                               State_Chm  = State_Chm(LCHNK),  &
+                               State_Diag = State_Diag(LCHNK), &
+                               State_Grid = State_Grid(LCHNK), &
+                               State_Met  = State_Met(LCHNK),  &
+                               RC         = RC                )
 
     ENDIF
 
@@ -3754,6 +3787,7 @@ contains
     ! ***** M A M   G A S - A E R O S O L   E X C H A N G E *****
     !==============================================================
 
+#if defined( MODAL_AERO )
     DO N = 1, gas_pcnst
        ! See definition of map2chm
        M = map2chm(N)
@@ -3808,6 +3842,7 @@ contains
                                 vmr0              = vmr0,                   &
                                 vmr               = vmr1,                   &
                                 pbuf              = pbuf )
+#endif
 
     ! Make sure State_Chm(LCHNK) is back in kg/kg dry!
     IF ( TRIM(State_Chm(LCHNK)%Spc_Units) /= 'kg/kg dry' ) THEN
@@ -3889,8 +3924,9 @@ contains
     ! Dry deposition velocity and surface flux
     IF ( Input_Opt%LDryD ) THEN
        DO N = 1, State_Chm(BEGCHUNK)%nDryDep
+          ND = NDVZIND(N)
           SpcName = 'DepVel_'//TRIM(depName(N))
-          CALL OutFld( TRIM(SpcName), State_Chm(LCHNK)%DryDepVel(1,:nY,N), nY, LCHNK )
+          CALL OutFld( TRIM(SpcName), State_Chm(LCHNK)%DryDepVel(1,:nY,ND), nY, LCHNK )
        ENDDO
 
        DO N = 1, State_Chm(BEGCHUNK)%nAdvect
@@ -3902,7 +3938,7 @@ contains
           SpcName = 'DepFlux_'//TRIM(SpcInfo%Name)
 
           ! SurfaceFlux is Emissions - Drydep, but Emissions = 0, as it is applied
-          ! in chem_emissions.
+          ! externally
           CALL OutFld( TRIM(SpcName), -State_Chm(LCHNK)%SurfaceFlux(1,:nY,N), nY, LCHNK )
 
           ! Free pointer
@@ -3917,10 +3953,8 @@ contains
     ENDDO
 
     ! Photolysis rates
-    JoutTmp = 0.0e+00_r8
-    DO N = 1, JVN_
-       M = GC_Photo_ID(N)
-       IF ( M > 0 ) THEN
+    IF ( ASSOCIATED(State_Diag(LCHNK)%Jval) ) THEN
+       DO M = 1, nPhotol
           CALL get_TagInfo( Input_Opt = Input_Opt,        &
                             tagID     = 'PHO',            &
                             State_Chm = State_Chm(LCHNK), &
@@ -3936,37 +3970,32 @@ contains
           ENDIF
 
           SpcName = 'Jval_' // TRIM( tagName )
-
-          IF ( hist_fld_active( TRIM(SpcName) ) ) THEN
-             DO J = 1, nY
-             DO L = 1, nZ
-                JoutTmp(J,nZ+1-L,M) = JoutTmp(J,nZ+1-L,M) + REAL(ZPJ(L,N,1,J),r8)
-             ENDDO
-             ENDDO
-          ENDIF
-       ENDIF
-    ENDDO
-
-    ! We need to save out JRates outside of the previous loop as different "N"
-    ! can contribute to the same "M".
-    DO M = 1, nPhotol
-       CALL get_TagInfo( Input_Opt = Input_Opt,        &
-                         tagID     = 'PHO',            &
-                         State_Chm = State_Chm(LCHNK), &
-                         Found     = Found,            &
-                         RC        = RC,               &
-                         N         = M,                &
-                         tagName   = tagName          )
-
-       ! Trap potential errors
-       IF ( RC /= GC_SUCCESS ) THEN
-          ErrMsg = 'Abnormal exit from routine "Get_TagInfo"!'
-          CALL Error_Stop( ErrMsg, ThisLoc )
-       ENDIF
-
-       SpcName = 'Jval_' // TRIM( tagName )
-       CALL OutFld( TRIM(SpcName), JoutTmp(:nY,:,M), nY, LCHNK )
-    ENDDO
+          DO J = 1, nY
+          DO L = 1, nZ
+             outTmp(J,nZ+1-L) = REAL(State_Diag(LCHNK)%Jval(1,J,L,M),r8)
+          ENDDO
+          ENDDO
+          CALL OutFld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
+       ENDDO
+    ENDIF
+    IF ( ASSOCIATED(State_Diag(LCHNK)%JvalO3O1D) ) THEN
+       SpcName = 'Jval_O3O1D'
+       DO J = 1, nY
+       DO L = 1, nZ
+          outTmp(J,nZ+1-L) = REAL(State_Diag(LCHNK)%JvalO3O1D(1,J,L),r8)
+       ENDDO
+       ENDDO
+       CALL OutFld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
+    ENDIF
+    IF ( ASSOCIATED(State_Diag(LCHNK)%JvalO3O3P) ) THEN
+       SpcName = 'Jval_O3O3P'
+       DO J = 1, nY
+       DO L = 1, nZ
+          outTmp(J,nZ+1-L) = REAL(State_Diag(LCHNK)%JvalO3O3P(1,J,L),r8)
+       ENDDO
+       ENDDO
+       CALL OutFld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
+    ENDIF
 
     ! Re-flip all the arrays vertically
     ptend%q(:,:,:) = 0.0e+0_r8
