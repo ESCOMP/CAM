@@ -486,8 +486,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
             end do
           end do
         end do
-       call thermodynamic_consistency( &
-            phys_state(lchnk), phys_tend(lchnk), ncols, pver)
+       call thermodynamic_consistency(phys_state(lchnk), phys_tend(lchnk), ncols, pver, lchnk)
    end do
 
 
@@ -604,7 +603,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
    end if
    call t_stopf('pd_copy')
 
-   
+
    if (iam < par%nprocs) then
 
       if (fv_nphys > 0) then
@@ -738,7 +737,7 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
    ! Finally compute energy and water column integrals of the physics input state.
 
    use constituents,  only: qmin
-   use physconst,     only: cpair, gravit, zvir, cappa, rairv, physconst_update
+   use physconst,     only: cpair, cpairv, gravit, zvir, cappa, rairv, physconst_update
    use shr_const_mod, only: shr_const_rwv
    use phys_control,  only: waccmx_is
    use geopotential,  only: geopotential_t
@@ -910,7 +909,8 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
       ! Fill local zvirv variable; calculated for WACCM-X.
       !-----------------------------------------------------------------------------
       if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
-        call physconst_update(phys_state(lchnk)%q, phys_state(lchnk)%t, lchnk, ncol)
+        call physconst_update(phys_state(lchnk)%q, phys_state(lchnk)%t, lchnk, ncol,&
+             to_moist_factor=phys_state(lchnk)%pdeldry(:ncol,:)/phys_state(lchnk)%pdel(:ncol,:) )
         zvirv(:,:) = shr_const_rwv / rairv(:,:,lchnk) -1._r8
       else
         zvirv(:,:) = zvir
@@ -934,8 +934,8 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
             phys_state(lchnk)%s(i,k) = cpair*phys_state(lchnk)%t(i,k) &
                + phys_state(lchnk)%phis(i)
 #else
-            phys_state(lchnk)%s(i,k) = cpair*phys_state(lchnk)%t(i,k) &
-               + gravit*phys_state(lchnk)%zm(i,k) + phys_state(lchnk)%phis(i)
+            phys_state(lchnk)%s(i,k) = cpairv(i,k,lchnk)*phys_state(lchnk)%t(i,k) &
+                                     + gravit*phys_state(lchnk)%zm(i,k) + phys_state(lchnk)%phis(i)
 #endif
          end do
       end do
@@ -955,7 +955,7 @@ end subroutine derived_phys_dry
 
 !=========================================================================================
 
-subroutine thermodynamic_consistency(phys_state, phys_tend, ncols, pver)
+subroutine thermodynamic_consistency(phys_state, phys_tend, ncols, pver, lchnk)
   !
    ! Adjust the physics temperature tendency for thermal energy consistency with the
    ! dynamics.
@@ -964,12 +964,12 @@ subroutine thermodynamic_consistency(phys_state, phys_tend, ncols, pver)
    use dimensions_mod,    only: lcp_moist
    use physconst,         only: get_cp
    use control_mod,       only: phys_dyn_cp
-   use physconst,         only: cpair
+   use physconst,         only: cpairv
 
    type(physics_state), intent(in)    :: phys_state
-   type(physics_tend ), intent(inout) :: phys_tend  
-   integer,  intent(in)               :: ncols, pver
-  
+   type(physics_tend ), intent(inout) :: phys_tend
+   integer,             intent(in)    :: ncols, pver, lchnk
+
    real(r8):: inv_cp(ncols,pver)
    !----------------------------------------------------------------------------
 
@@ -979,11 +979,11 @@ subroutine thermodynamic_consistency(phys_state, phys_tend, ncols, pver)
      ! matches SE (not taking into account dme adjust)
      !
      ! note that if lcp_moist=.false. then there is thermal energy increment
-     ! consistency (not taking into account dme adjust) 
+     ! consistency (not taking into account dme adjust)
      !
      call get_cp(1,ncols,1,pver,1,1,pcnst,phys_state%q(1:ncols,1:pver,:),.true.,inv_cp)
-     phys_tend%dtdt(1:ncols,1:pver) = phys_tend%dtdt(1:ncols,1:pver)*cpair*inv_cp
-   end if 
+     phys_tend%dtdt(1:ncols,1:pver) = phys_tend%dtdt(1:ncols,1:pver)*cpairv(1:ncols,1:pver,lchnk)*inv_cp
+   end if
 end subroutine thermodynamic_consistency
 
 !=========================================================================================

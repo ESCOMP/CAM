@@ -31,9 +31,9 @@
 <fixed_geomag_year>2000</fixed_geomag_year>
 
 <!-- QBO settings --> 
-<qbo_cyclic>.true.</qbo_cyclic>
-<qbo_forcing_file>atm/waccm/qbo/qbocyclic28months.nc</qbo_forcing_file>
-<qbo_use_forcing>.true.</qbo_use_forcing>
+<qbo_cyclic dyn="fv" hgrid="1.9x2.5">.true.</qbo_cyclic>
+<qbo_forcing_file dyn="fv" hgrid="1.9x2.5">atm/waccm/qbo/qbocyclic28months.nc</qbo_forcing_file>
+<qbo_use_forcing dyn="fv" hgrid="1.9x2.5">.true.</qbo_use_forcing>
 
 <!-- Lower Boundary Conditions -->
 <flbc_file>atm/waccm/lb/LBC_1765-2100_1.9x2.5_CCMI_RCP60_za_c130313.nc </flbc_file>
@@ -147,11 +147,11 @@
 	 'OMEGA_24_COS', 'OMEGA_24_SIN', 'OMEGA_12_COS', 'OMEGA_12_SIN', 'OMEGA_08_COS', 'OMEGA_08_SIN'
 </fincl5>
 <!-- Average every day --> 
-<fincl7>  
+<fincl7 dyn="fv">  
          'MSKtem', 'PS', 'PSL', 'VTHzm', 'UVzm', 'UWzm', 'Uzm', 'Vzm', 'THzm','Wzm', 'PHIS' 
 </fincl7>
 
-<fv_div24del2flag>42</fv_div24del2flag>
+<fv_div24del2flag dyn="fv">42</fv_div24del2flag>
 
 <rxn_rate_sums>
   'SolIonRate_Tot = jeuv_1 + jeuv_2 + jeuv_3 + jeuv_4 + jeuv_5 + jeuv_6 + jeuv_7 + jeuv_8 + jeuv_9 + jeuv_10 + jeuv_11 + jeuv_14 + jeuv_15 + jeuv_16 +',

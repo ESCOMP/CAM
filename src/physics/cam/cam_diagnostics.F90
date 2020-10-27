@@ -413,6 +413,9 @@ contains
     call addfld ('MO_pAM',   horiz_only, 'A', 'kg*m2/s*rad2',&
          'Total column mass axial angular momentum after dry mass correction')
 
+    call addfld( 'CPAIRV', (/ 'lev' /), 'I', 'J/K/kg', 'specific heat cap air' )
+    call addfld( 'RAIRV', (/ 'lev' /), 'I', 'J/K/kg', 'specific heat cap air' )
+
   end subroutine diag_init_dry
 
   subroutine diag_init_moist(pbuf2d)
@@ -906,6 +909,8 @@ contains
     use co2_cycle,          only: c_i, co2_transport
 
     use tidal_diag,         only: tidal_diag_write
+    use physconst,          only: cpairv,rairv
+
     !-----------------------------------------------------------------------
     !
     ! Arguments
@@ -951,6 +956,9 @@ contains
 #if (defined BFB_CAM_SCAM_IOP )
     call outfld('phis    ',state%phis,    pcols,   lchnk     )
 #endif
+
+    call outfld( 'CPAIRV', cpairv(:ncol,:,lchnk), ncol, lchnk )
+    call outfld( 'RAIRV', rairv(:ncol,:,lchnk), ncol, lchnk )
 
     do m = 1, pcnst
       if (cnst_cam_outfld(m)) then

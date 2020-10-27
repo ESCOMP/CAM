@@ -4,19 +4,19 @@ module mo_apex
 ! Purpose:
 !
 !   Calculate apex coordinates and magnetic field magnitudes
-!   at global geographic grid for year of current model run. 
+!   at global geographic grid for year of current model run.
 !
-! Method: 
+! Method:
 !
 !   The magnetic field parameters output by this module are time and height
-!     independent. They are chunked for waccm physics, i.e., allocated as 
+!     independent. They are chunked for waccm physics, i.e., allocated as
 !     (pcols,begchunk:endchunk)
 !   Interface sub apexmag is called once per run from sub inti.
 !     Sub apexmag may be called for years 1900 through 2005.
 !   This module is dependent on routines in apex_subs.F (modified IGRF model).
 !   Apex_subs has several authors, but has been modified and maintained
 !     in recent years by Roy Barnes (bozo@ucar.edu).
-!   Subs apxmka and apxmall are called with the current lat x lon grid 
+!   Subs apxmka and apxmall are called with the current lat x lon grid
 !     resolution.
 !
 ! Author: Ben Foster, foster@ucar.edu (Nov, 2003)
@@ -122,7 +122,7 @@ subroutine mo_apex_init1()
    real(r8), allocatable :: gridlons(:)
    real(r8) :: gridalts(ngalts)                   ! altitudes passed to apxmka
 
-   integer :: ngcols, hdim1_d, hdim2_d
+   integer :: hdim1_d, hdim2_d
    integer :: yr, mon, day, sec
 
    ! read the IGRF coefs from file
@@ -156,30 +156,22 @@ subroutine mo_apex_init1()
 ! (Note apex_mka expects longitudes in -180 -> +180)
 !-------------------------------------------------------------------------------
    call get_horiz_grid_dim_d(hdim1_d,hdim2_d)
-   ngcols = hdim1_d*hdim2_d
-   if (     ngcols < 1000 ) then ! 10-degrees
-      nglats = 19
-      nglons = 37
-   elseif ( ngcols < 10000 ) then ! 5-degrees
-      nglats = 37
-      nglons = 73
-   elseif ( ngcols < 20000 ) then ! 2-degree
-      nglats = 91
-      nglons = 181
-   elseif ( ngcols < 100000 ) then ! 1-degree
-      nglats = 181
-      nglons = 361
-   else                            ! half-degee
-      nglats = 361
-      nglons = 721
+
+   if (hdim2_d>1) then
+      nglons = hdim1_d+1
+      nglats = hdim2_d
+   else
+      ! for phys columns on unstructured grid
+      nglats = int(sqrt(real(hdim1_d,kind=r8)))
+      nglons = 2*nglats
    endif
 
    allocate ( gridlats(nglats), gridlons(nglons) )
    do i = 1,nglons
-      gridlons(i) = -180._r8 + dble(i-1)*360._r8/(nglons-1)
+      gridlons(i) = -180._r8 + real(i-1,kind=r8)*360._r8/(nglons-1)
    enddo
    do j = 1,nglats
-      gridlats(j) = -90._r8 + dble(j-1)*180._r8/(nglats-1)
+      gridlats(j) = -90._r8 + real(j-1,kind=r8)*180._r8/(nglats-1)
    enddo
 
    call apex_mka( geomag_year, gridlats, gridlons, gridalts, &
@@ -205,7 +197,7 @@ end subroutine mo_apex_init1
 !======================================================================
 subroutine mo_apex_init(phys_state)
 !-------------------------------------------------------------------------------
-! Driver for apex code to calculate apex magnetic coordinates at 
+! Driver for apex code to calculate apex magnetic coordinates at
 !   current geographic spatial resolution for given year. This calls
 !   routines in apex_subs.F.
 !
@@ -311,7 +303,7 @@ subroutine mo_apex_init(phys_state)
    maglon0 = -alon*dtr ! (radians) geograghic latitude where the geomagnetic latitude is zero
                        ! where longitude ranges from -180E to 180E
 
-   call apex_dypol( colatp, elonp, rdum )       ! get geomagnetic dipole north pole 
+   call apex_dypol( colatp, elonp, rdum )       ! get geomagnetic dipole north pole
 
    if (masterproc) then
       write(iulog, "('mo_apex_init: colatp,elonp ', 2f12.6)") colatp, elonp

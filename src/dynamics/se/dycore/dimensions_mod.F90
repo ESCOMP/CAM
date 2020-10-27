@@ -9,7 +9,7 @@ module dimensions_mod
   implicit none
   private
 
-! set MAX number of tracers.  actual number of tracers is a run time argument  
+! set MAX number of tracers.  actual number of tracers is a run time argument
 #ifdef FVM_TRACERS
   integer, parameter         :: qsize_d =10 ! SE tracers (currently SE supports 10 condensate loading tracers)
 #else
@@ -37,8 +37,8 @@ module dimensions_mod
   ! .false.: force dycore to use cpd (cp dry) instead of moist cp
   ! .true. : use moist cp in dycore
   !
-  logical           , public :: lcp_moist = .true. 
- 
+  logical           , public :: lcp_moist = .true.
+
   integer, parameter, public :: np = NP
   integer, parameter, public :: nc = 3       !cslam resolution
   integer           , public :: fv_nphys !physics-grid resolution - the "MAX" is so that the code compiles with NC=0
@@ -48,8 +48,8 @@ module dimensions_mod
   !
   ! hyperviscosity is applied on approximate pressure levels
   ! Similar to CAM-EUL; see CAM5 scietific documentation (Note TN-486), equation (3.09), page 58.
-  ! 
-  logical,            public :: hypervis_dynamic_ref_state = .false.  
+  !
+  logical,            public :: hypervis_dynamic_ref_state = .false.
   ! fvm dimensions:
   logical, public :: lprint!for debugging
   integer, parameter, public :: ngpc=3          !number of Gausspoints for the fvm integral approximation   !phl change from 4
@@ -67,41 +67,42 @@ module dimensions_mod
   logical, public            :: large_Courant_incr
 
   integer, public :: kmin_jet,kmax_jet !min and max level index for the jet
-  integer, public :: fvm_supercycling    
+  integer, public :: fvm_supercycling
   integer, public :: fvm_supercycling_jet
 
   integer, allocatable, public :: kord_tr(:), kord_tr_cslam(:)
-  
+
   real(r8), public :: nu_scale_top(PLEV)! scaling of del2 viscosity in sopnge layer (initialized in dyn_comp)
-  real(r8), public :: nu_lev(PLEV)    
+  real(r8), public :: nu_lev(PLEV)
+  real(r8), public :: nu_s_lev(PLEV)
   real(r8), public :: otau(PLEV)
   integer,  public :: ksponge_end       ! sponge is active k=1,ksponge_end
   real(r8), public :: nu_div_lev(PLEV) = 1.0_r8 ! scaling of viscosity in sponge layer
                                                       ! (set in prim_state; if applicable)
-  real(r8), public :: kmvis_ref(PLEV)        !reference profiles for molecular diffusion 
-  real(r8), public :: kmcnd_ref(PLEV)        !reference profiles for molecular diffusion  
+  real(r8), public :: kmvis_ref(PLEV)        !reference profiles for molecular diffusion
+  real(r8), public :: kmcnd_ref(PLEV)        !reference profiles for molecular diffusion
   real(r8), public :: rho_ref(PLEV)          !reference profiles for rho
   real(r8), public :: km_sponge_factor(PLEV) !scaling for molecular diffusion (when used as sponge)
-  real(r8), public :: kmvisi_ref(PLEV+1)        !reference profiles for molecular diffusion 
-  real(r8), public :: kmcndi_ref(PLEV+1)        !reference profiles for molecular diffusion  
+  real(r8), public :: kmvisi_ref(PLEV+1)        !reference profiles for molecular diffusion
+  real(r8), public :: kmcndi_ref(PLEV+1)        !reference profiles for molecular diffusion
   real(r8), public :: rhoi_ref(PLEV+1)          !reference profiles for rho
 
 
-  integer,  public :: nhc_phys 
-  integer,  public :: nhe_phys 
-  integer,  public :: nhr_phys 
-  integer,  public :: ns_phys  
+  integer,  public :: nhc_phys
+  integer,  public :: nhe_phys
+  integer,  public :: nhr_phys
+  integer,  public :: ns_phys
 
-  integer, public :: npdg = 0  ! dg degree for hybrid cg/dg element  0=disabled 
+  integer, public :: npdg = 0  ! dg degree for hybrid cg/dg element  0=disabled
 
   integer, parameter, public :: npsq = np*np
   integer, parameter, public :: nlev=PLEV
   integer, parameter, public :: nlevp=nlev+1
 
 
-!  params for a mesh 
+!  params for a mesh
 !  integer, public, parameter :: max_elements_attached_to_node = 7
-!  integer, public, parameter :: s_nv = 2*max_elements_attached_to_node 
+!  integer, public, parameter :: s_nv = 2*max_elements_attached_to_node
 
   !default for non-refined mesh (note that these are *not* parameters now)
   integer, public  :: max_elements_attached_to_node = 4
@@ -127,7 +128,7 @@ contains
 
     ! new "params"
     max_elements_attached_to_node = 7  ! variable resolution
-    s_nv = 2*max_elements_attached_to_node 
+    s_nv = 2*max_elements_attached_to_node
 
     !recalculate these
     max_corner_elem               = max_elements_attached_to_node-3
@@ -138,4 +139,3 @@ contains
 
 
 end module dimensions_mod
-

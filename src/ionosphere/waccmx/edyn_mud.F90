@@ -10,7 +10,7 @@
 !
 !     set grid size params
 !
-      integer,parameter :: iixp = 5 , jjyq = 3, iiex = 5, jjey = 5
+      integer,parameter :: iixp = 5 , jjyq = 3, iiex = EDYN_NLEV, jjey = EDYN_NLEV
       integer,parameter :: nnx=iixp*2**(iiex-1)+1, nny=jjyq*2**(jjey-1)+1
 !
 !     estimate work space for point relaxation (see mud2cr.d)
@@ -73,7 +73,12 @@
       mgopt(1) = 2
       mgopt(2) = 2
       mgopt(3) = 1
-      mgopt(4) = 3
+      if (EDYN_NLEV==5) then
+         mgopt(4) = 3
+      else
+         !  1 deg, changed to mgopt(4) = 1 per Astrid's suggestion
+         mgopt(4) = 1
+      end if
 !
 !     set for one cycle
 !
@@ -100,7 +105,13 @@
 !
 !     set error control flag
 !
-      tolmax = 0.01_r8
+      if (EDYN_NLEV>6) then
+         tolmax = 0.05_r8 ! EDYN_NLEV == 7 | 8
+      else if (EDYN_NLEV>5) then
+         tolmax = 0.03_r8 ! EDYN_NLEV == 6
+      else
+         tolmax = 0.01_r8 ! EDYN_NLEV == 5
+      end if
 !
 !     set right hand side in rhs
 !     initialize phi to zero
@@ -675,7 +686,7 @@
         call endrun('dismd2cr in mud')
       ENDIF
       if (isolve >= 0) then
-        call ceee(cee(nc(6-klevel)),nx,ny,cf)
+        call ceee(cee(nc(EDYN_NLEV+1-klevel)),nx,ny,cf)
       endif
 !
 !     set coefficient for specified boundaries

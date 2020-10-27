@@ -10,7 +10,7 @@
 !
 !     set grid size params
 !
-      integer,parameter :: iixp = 80 , jjyq = 48,iiex = 1, jjey = 1
+      integer,parameter :: iixp = EDYN_NLON , jjyq = (EDYN_NLAT-1)/2,iiex = 1, jjey = 1
       integer,parameter :: nnx=iixp*2**(iiex-1)+1, nny=jjyq*2**(jjey-1)+1
 !
 !     estimate work space for point relaxation (see muh2cr.d)
@@ -74,7 +74,12 @@
       mgopt(1) = 2
       mgopt(2) = 2
       mgopt(3) = 2
-      mgopt(4) = 3
+      if (EDYN_NLAT<=97) then
+         mgopt(4) = 3
+      else
+         !  1 deg, changed to mgopt(4) = 1 per Astrid's suggestion
+         mgopt(4) = 1
+      end if
 !
 !     set for one cycle
 !
@@ -101,7 +106,13 @@
 !
 !     set error control flag
 !
-      tolmax = 0.01_r8
+      if (EDYN_NLEV>6) then
+         tolmax = 0.05_r8
+      else if (EDYN_NLEV>5) then
+         tolmax = 0.03_r8
+      else
+         tolmax = 0.01_r8
+      end if
 !
 !     set right hand side in rhs
 !     initialize phi to zero

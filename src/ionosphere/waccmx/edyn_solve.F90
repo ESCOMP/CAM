@@ -38,16 +38,42 @@ module edyn_solve
     nmlat3=(nmlat2+1)/2,  &
     nmlon4=(nmlon3+1)/2,  &
     nmlat4=(nmlat3+1)/2
+#if ( EDYN_NLEV > 5 )
+  integer,parameter ::    &
+    nmlon5=(nmlon4+1)/2,  &
+    nmlat5=(nmlat4+1)/2
+#endif
+#if ( EDYN_NLEV > 6 )
+  integer,parameter ::    &
+    nmlon6=(nmlon5+1)/2,  &
+    nmlat6=(nmlat5+1)/2
+#endif
+#if ( EDYN_NLEV > 7 )
+  integer,parameter ::    &
+    nmlon7=(nmlon6+1)/2,  &
+    nmlat7=(nmlat6+1)/2
+#endif
 !
 ! Unmodified coefficients for using modified mudpack:
   real(r8),dimension(nmlon0,nmlat0,9) :: cofum
 !
 ! Space needed for descretized coefficients of of dynamo pde at all
-!   5 levels of resolution:
+!   EDYN_NLEV levels of resolution:
 !
   integer,parameter :: &
+#if ( EDYN_NLEV == 5 )
     ncee=10*nmlon0*nmlat0+9*(nmlon1*nmlat1+nmlon2*nmlat2+nmlon3* &
       nmlat3+nmlon4*nmlat4)
+#elif ( EDYN_NLEV == 6 )
+    ncee=10*nmlon0*nmlat0+9*(nmlon1*nmlat1+nmlon2*nmlat2+nmlon3* &
+      nmlat3+nmlon4*nmlat4+nmlon5*nmlat5)
+#elif ( EDYN_NLEV == 7 )
+    ncee=10*nmlon0*nmlat0+9*(nmlon1*nmlat1+nmlon2*nmlat2+nmlon3* &
+      nmlat3+nmlon4*nmlat4+nmlon5*nmlat5+nmlon6*nmlat6)
+#elif ( EDYN_NLEV == 8 )
+    ncee=10*nmlon0*nmlat0+9*(nmlon1*nmlat1+nmlon2*nmlat2+nmlon3* &
+      nmlat3+nmlon4*nmlat4+nmlon5*nmlat5+nmlon6*nmlat6+nmlon7*nmlat7)
+#endif
 !
 ! Coefficients are stored in 1-d array cee(ncee)
 ! cee transmits descretized dynamo PDE coefficients to the multi-grid
@@ -67,6 +93,18 @@ module edyn_solve
     nc2=nc1+9 *nmlon1*nmlat1, &
     nc3=nc2+9 *nmlon2*nmlat2, &
     nc4=nc3+9 *nmlon3*nmlat3
+#if ( EDYN_NLEV > 5 )
+  integer,parameter ::        &
+    nc5=nc4+9 *nmlon4*nmlat4
+#endif
+#if ( EDYN_NLEV > 6 )
+  integer,parameter ::        &
+    nc6=nc5+9 *nmlon5*nmlat5
+#endif
+#if ( EDYN_NLEV > 7 )
+  integer,parameter ::        &
+    nc7=nc6+9 *nmlon6*nmlat6
+#endif
 !
 ! nc(1:6) are pointers to beginning of coefficient blocks at each of
 !   5 levels of resolution:
@@ -76,7 +114,7 @@ module edyn_solve
 ! nc(6) = ncee, the dimension of the entire cee array, containing
 !   coefficients for all 5 levels of resolution.
 !
-  integer :: nc(6)
+  integer :: nc(EDYN_NLEV+1)
 
   real(r8) ::             &
     c0(nmlon0,nmlat0,10), &
@@ -84,12 +122,36 @@ module edyn_solve
     c2(nmlon2,nmlat2,9),  &
     c3(nmlon3,nmlat3,9),  &
     c4(nmlon4,nmlat4,9)
+#if ( EDYN_NLEV > 5 )
+  real(r8) ::             &
+    c5(nmlon5,nmlat5,9)
+#endif
+#if ( EDYN_NLEV > 6 )
+  real(r8) ::             &
+    c6(nmlon6,nmlat6,9)
+#endif
+#if ( EDYN_NLEV > 7 )
+  real(r8) ::             &
+    c7(nmlon7,nmlat7,9)
+#endif
   equivalence             &
     (cee,c0),             &
     (cee(nc1),c1),        &
     (cee(nc2),c2),        &
     (cee(nc3),c3),        &
     (cee(nc4),c4)
+#if ( EDYN_NLEV > 5 )
+  equivalence             &
+    (cee(nc5),c5)
+#endif
+#if ( EDYN_NLEV > 6 )
+  equivalence             &
+    (cee(nc6),c6)
+#endif
+#if ( EDYN_NLEV > 7 )
+  equivalence             &
+    (cee(nc7),c7)
+#endif
 !
 ! phihm is high-latitude potential, obtained from the Heelis model
 ! (heelis.F90):
@@ -128,7 +190,16 @@ module edyn_solve
     nc(3) = nc2
     nc(4) = nc3
     nc(5) = nc4
-    nc(6) = ncee
+#if ( EDYN_NLEV > 5 )
+    nc(6) = nc5
+#endif   
+#if ( EDYN_NLEV > 6 )
+    nc(7) = nc6
+#endif
+#if ( EDYN_NLEV > 7 )
+    nc(8) = nc7
+#endif
+    nc(EDYN_NLEV+1) = ncee
 
     do j=1,nmlat0
       cs(j) = cos(pi_dyn/2._r8-(nmlat0-j)*dlatm)
@@ -219,6 +290,15 @@ module edyn_solve
     call edges(c2,nmlon2,nmlat2)
     call edges(c3,nmlon3,nmlat3)
     call edges(c4,nmlon4,nmlat4)
+#if ( EDYN_NLEV > 5 )
+    call edges(c5,nmlon5,nmlat5)
+#endif
+#if ( EDYN_NLEV > 6 )
+    call edges(c6,nmlon6,nmlat6)
+#endif
+#if ( EDYN_NLEV > 7 )
+    call edges(c7,nmlon7,nmlat7)
+#endif
     call edges(cofum,nmlon0,nmlat0)
 !
 ! Divide stencils by cos(lam_0) (not rhs):
@@ -227,6 +307,15 @@ module edyn_solve
     call divide(c2,nmlon2,nmlat2,nmlon0,nmlat0,cs,1)
     call divide(c3,nmlon3,nmlat3,nmlon0,nmlat0,cs,1)
     call divide(c4,nmlon4,nmlat4,nmlon0,nmlat0,cs,1)
+#if ( EDYN_NLEV > 5 )
+    call divide(c5,nmlon5,nmlat5,nmlon0,nmlat0,cs,1)
+#endif
+#if ( EDYN_NLEV > 6 )
+    call divide(c6,nmlon6,nmlat6,nmlon0,nmlat0,cs,1)
+#endif
+#if ( EDYN_NLEV > 7 )
+    call divide(c7,nmlon7,nmlat7,nmlon0,nmlat0,cs,1)
+#endif
     call divide(cofum,nmlon0,nmlat0,nmlon0,nmlat0,cs,0)
 !
 ! Set value of solution to 1. at pole:
@@ -248,13 +337,13 @@ module edyn_solve
     ncc = 1
     nmaglon = nmlon0
     nmaglat = nmlat0
-    do n=1,5
+    do n=1,EDYN_NLEV ! resolution levels
       call stenmd(nmaglon,nmaglat,cee(ncc),phihm(1,nmlat0),pfrac)
       ncc = ncc+9*nmaglon*nmaglat
       if (n==1) ncc = ncc+nmaglon*nmaglat ! rhs is in 10th slot
       nmaglon = (nmaglon+1)/2
       nmaglat = (nmaglat+1)/2
-    enddo ! n=1,5
+    enddo
 
   end subroutine stencils
 !-----------------------------------------------------------------------
@@ -276,11 +365,11 @@ module edyn_solve
     nlon = nlon0
     nlat = nlat0
     n = 0
-    do m=1,5 ! 5 resolution levels
+    do m=1,EDYN_NLEV ! resolution levels
       n = n+nlon*nlat
       nlon = (nlon+1)/2
       nlat = (nlat+1)/2
-    enddo ! m=1,5 (5 resolution levels)
+    enddo
     n = 9*n+nlon0*nlat0
 !
 ! Clear cee:
@@ -308,7 +397,7 @@ module edyn_solve
 !
 ! Local:
     integer :: nc,nlon,nlat,n
-    real(r8) :: wkarray(-15:nmlon0+16,nmlat0)
+    real(r8) :: wkarray(-EDYN_NGRID+1:nmlon0+EDYN_NGRID,nmlat0)
 !
 ! Perform half-way interpolation and extend zigm in wkarray:
 !
@@ -329,7 +418,7 @@ module edyn_solve
     nlon = (nlon+1)/2
     nlat = (nlat+1)/2
 !
-    do n=2,5
+    do n=2,EDYN_NLEV
       call cnm(nlon0,nlat0,nlon,nlat,cee(nc),ncoef,wkarray)
       nc = nc+9*nlon*nlat
       if (n==1) nc = nc+nlon*nlat
@@ -346,7 +435,7 @@ module edyn_solve
 ! Args:
     integer,intent(in)   :: nmlon0,nmlat0
     real(r8),intent(in)  :: coeff(nmlon0,nmlat0),sym
-    real(r8),intent(out) :: wkarray(-15:nmlon0+16,nmlat0)
+    real(r8),intent(out) :: wkarray(-EDYN_NGRID+1:nmlon0+EDYN_NGRID,nmlat0)
 !
 ! Local:
     integer :: i,j,jj
@@ -359,13 +448,13 @@ module edyn_solve
       enddo ! i=1,nmlon0
     enddo ! j=1,nmlat0
 !
-! Extend over 32 grid spaces to allow for a total of 5 grid levels:
-    do i=1,16
+! Extend over 2*EDYN_NGRID grid spaces to allow for a total of EDYN_NLEV grid levels:
+    do i=1,EDYN_NGRID
       do j=1,nmlat0
         wkarray(1-i,j) = wkarray(nmlon0-i,j)
         wkarray(nmlon0+i,j) = wkarray(1+i,j)
       enddo ! j=1,nmlat0
-    enddo ! i=1,16
+    enddo ! i=1,EDYN_NGRID
   end subroutine htrpex
 !-----------------------------------------------------------------------
   subroutine cnm(nlon0,nlat0,nlon,nlat,c,ncoef,wkarray)
@@ -377,7 +466,7 @@ module edyn_solve
     integer,intent(in) :: &
       nlon0,nlat0,        & ! finest grid dimensions
       nlon,nlat             ! output grid dimensions
-    real(r8),intent(in) :: wkarray(-15:nmlon0+16,nmlat0)
+    real(r8),intent(in) :: wkarray(-EDYN_NGRID+1:nmlon0+EDYN_NGRID,nmlat0)
 !
 ! ncoef: integer id of coefficient:
 ! ncoef = 1 for zigm11
@@ -517,7 +606,7 @@ module edyn_solve
     integer,intent(in) :: &
       nlon0,nlat0,        & ! finest grid dimensions
       nlon,nlat             ! output grid dimensions
-    real(r8),intent(in) :: wkarray(-15:nmlon0+16,nmlat0) 
+    real(r8),intent(in) :: wkarray(-EDYN_NGRID+1:nmlon0+EDYN_NGRID,nmlat0) 
     real(r8),dimension(nmlon0,nmlat0,9),intent(inout) :: cofum
 ! 
 ! ncoef: integer id of coefficient:

@@ -3,7 +3,7 @@
       use shr_kind_mod ,only: r8 => shr_kind_r8
       use cam_abortutils   ,only: endrun
       use edyn_solve   ,only: cee
-      use cam_logfile  ,only: iulog
+!     use cam_logfile  ,only: iulog
 
       implicit none
 
@@ -13,7 +13,7 @@
 !     set grid size params
 !
       integer iixp,jjyq,iiex,jjey,nnx,nny,llwork
-      parameter (iixp = 5 , jjyq = 3, iiex = 5, jjey = 5 )
+      parameter (iixp = 5 , jjyq = 3, iiex = EDYN_NLEV, jjey = EDYN_NLEV )
       parameter (nnx=iixp*2**(iiex-1)+1, nny=jjyq*2**(jjey-1)+1)
 !
 !     estimate work space for point relaxation (see mud2cr.d)

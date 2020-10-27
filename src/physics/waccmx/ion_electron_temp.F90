@@ -10,12 +10,13 @@ module ion_electron_temp
 !---------------------------------------------------------------------------------
   use shr_kind_mod,   only : r8 => shr_kind_r8            ! Real kind to declare variables
   use ppgrid,         only : pcols, pver, pverp           ! Dimensions and chunk bounds
+  use ppgrid,         only : begchunk, endchunk
   use cam_history,    only : outfld, hist_fld_active, write_inithist ! Routine to output fields to history files
   use cam_history,    only : horiz_only, addfld, add_default ! Routines and variables for adding fields to history output
   use physics_types,  only : physics_state, &             ! Structures containing physics state variables
                              physics_ptend, &             ! Structures containing physics tendency variables
                              physics_ptend_init           ! Routine to initialize physics tendency variables
-  use physics_buffer, only : pbuf_add_field, &            ! 
+  use physics_buffer, only : pbuf_add_field, pbuf_get_chunk, &
                              pbuf_get_index,dtype_r8, &   !
                              physics_buffer_desc, &       !
                              pbuf_get_field, &            ! Needed to access physics buffer
@@ -44,6 +45,7 @@ module ion_electron_temp
   ! PUBLIC: interfaces 
   !------------------------
   public :: ion_electron_temp_init     ! Initialization
+  public :: ion_electron_temp_timestep_init
   public :: ion_electron_temp_register ! Registration of ionosphere variables in pbuf physics buffer
   public :: ion_electron_temp_inidat   ! Get fields from initial condition file into physics buffer
   public :: ion_electron_temp_tend     ! Calculate tendencies for extended model ionosphere
@@ -59,12 +61,12 @@ module ion_electron_temp
 
   real(r8), parameter :: rads2Degs   = 180._r8/pi ! radians to degrees
 
-
 ! private data
   real(r8) :: rMassOp ! O+ molecular weight kg/kmol
 
   logical :: steady_state_ion_elec_temp = .true.
-
+  logical :: initialized_TiTe = .false.
+  
   integer :: index_te=-1, index_ti=-1  ! Indices to find ion and electron temperature in pbuf
 
 contains
@@ -189,6 +191,28 @@ contains
   end subroutine ion_electron_temp_init
 
 !==============================================================================     
+  subroutine ion_electron_temp_timestep_init(phys_state,pbuf2d)
+    use time_manager,only : is_first_step
+
+    type(physics_state), intent(in) :: phys_state(begchunk:endchunk)
+    type(physics_buffer_desc), pointer :: pbuf2d(:,:)
+
+    integer :: ncol
+    integer :: lchnk
+    type(physics_buffer_desc), pointer :: phys_buffer_chunk(:)
+
+    if (is_first_step() .and. .not.initialized_TiTe) then
+       do lchnk=begchunk,endchunk
+          ncol=phys_state(lchnk)%ncol
+          phys_buffer_chunk => pbuf_get_chunk(pbuf2d,lchnk)
+          call pbuf_set_field(phys_buffer_chunk,index_te,phys_state(lchnk)%t(:ncol,:),start=(/1,1/), kount=(/ncol,pver/))
+          call pbuf_set_field(phys_buffer_chunk,index_ti,phys_state(lchnk)%t(:ncol,:),start=(/1,1/), kount=(/ncol,pver/))
+       end do
+       initialized_TiTe=.true.
+    endif
+  end subroutine ion_electron_temp_timestep_init
+  
+!==============================================================================     
 
   subroutine ion_electron_temp_register
 
@@ -226,9 +250,9 @@ contains
     use cam_grid_support, only : cam_grid_check, cam_grid_id
     use cam_grid_support, only : cam_grid_get_dim_names
     use cam_abortutils,   only : endrun
-    use physics_buffer,   only : pbuf_set_field
     use ncdio_atm,        only : infld
     use ppgrid,           only : pcols, pver, begchunk, endchunk
+    use infnan,   only: nan, assignment(=)
 
     type(file_desc_t), intent(inout)   :: ncid_ini    ! Initial condition file id
     type(physics_buffer_desc), pointer :: pbuf2d(:,:) ! Physics buffer
@@ -240,7 +264,9 @@ contains
     real(r8),pointer :: tI(:,:,:)   ! Ion temperature pointer
     integer          :: ierr
     character(len=*), parameter :: subname='ION_ELECTRON_TEMP_INIDAT'
- 
+    real(r8) :: nanval
+
+    nanval=nan
     found = .false.
 
     grid_id = cam_grid_id('physgrid')
@@ -263,9 +289,15 @@ contains
           call infld( 'T',ncid_ini,dim1name, 'lev', dim2name, 1, pcols, 1, pver, begchunk, endchunk, &
                tE, found, gridname='physgrid')
        endif
+       if (found) then
+          call pbuf_set_field(pbuf2d, index_te, tE)
+       else
+          if (masterproc) write(iulog,*) 'ion_electron_temp_inidat: Not able to read temperature from IC file.' &
+                                       //' Set TElec to NaN' 
+          call pbuf_set_field(pbuf2d, index_te, nanval)
+       endif
 
-       call pbuf_set_field(pbuf2d, index_te, tE)
-
+       initialized_TiTe = found
        deallocate(tE)
     endif
 
@@ -283,9 +315,15 @@ contains
           call infld( 'T',ncid_ini,dim1name, 'lev', dim2name, 1, pcols, 1, pver, begchunk, endchunk, &
                tI, found, gridname='physgrid')
        endif
+       if (found) then
+          call pbuf_set_field(pbuf2d, index_ti, tI)
+       else
+          if (masterproc) write(iulog,*) 'ion_electron_temp_inidat: Not able to read temperature from IC file.' &
+                                       //' Set TIon to NaN' 
+          call pbuf_set_field(pbuf2d, index_ti, nanval)
+       endif
 
-       call pbuf_set_field(pbuf2d, index_ti, tI)
-
+       initialized_TiTe = initialized_TiTe .and. found
        deallocate(tI)
     endif
 
