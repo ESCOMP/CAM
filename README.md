@@ -19,12 +19,12 @@ cd CAM
 ```
 ### To run CAM compatible with the CESM2.2 release:
 ```
-git checkout cam_cesm2_2_rel_03
+git checkout cam_cesm2_2_rel_02
 ./manage_externals/checkout_externals
 ```
 ### To run CAM compatible with the CESM2.1 release:
 ```
-git checkout cam_cesm2_1_rel_48
+git checkout cam_cesm2_1_rel_41
 ./manage_externals/checkout_externals
 ```
 ### To view the release branches in Github, go to the "Branch:master" pulldown menu and select the appropriate branch.
