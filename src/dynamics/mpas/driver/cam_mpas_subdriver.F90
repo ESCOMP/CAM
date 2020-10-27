@@ -13,6 +13,8 @@ module cam_mpas_subdriver
 
     use mpas_derived_types, only : core_type, dm_info, domain_type, MPAS_Clock_type
 
+    implicit none
+
     public :: cam_mpas_init_phase1, &
               cam_mpas_init_phase2, &
               cam_mpas_init_phase3, &
@@ -72,8 +74,6 @@ contains
        use mpas_framework, only : mpas_framework_init_phase1
        use atm_core_interface, only : atm_setup_core, atm_setup_domain
        use mpas_pool_routines, only : mpas_pool_add_config
-
-       implicit none
 
        ! Dummy argument
        integer, intent(in) :: mpicom
@@ -140,8 +140,6 @@ contains
        use pio_types, only : iosystem_desc_t
 
        use mpas_framework, only : mpas_framework_init_phase2
-
-       implicit none
 
        type (iosystem_desc_t), pointer :: pio_subsystem
        procedure(halt_model) :: endrun
@@ -227,8 +225,6 @@ contains
        use mpas_bootstrapping, only : mpas_bootstrap_framework_phase1, mpas_bootstrap_framework_phase2
        use mpas_pool_routines, only : mpas_pool_add_config
 
-       implicit none
-
        type (file_desc_t), intent(inout) :: fh_ini
        integer, intent(in) :: num_scalars
        procedure(halt_model) :: endrun
@@ -304,8 +300,6 @@ contains
                                       mpas_pool_get_field, mpas_pool_get_array, mpas_pool_initialize_time_levels
        use atm_core, only : atm_mpas_init_block, core_clock => clock
        use mpas_dmpar, only : mpas_dmpar_exch_halo_field
-
-       implicit none
 
        procedure(halt_model) :: endrun
 
@@ -435,8 +429,6 @@ contains
        use mpas_derived_types, only : MPAS_LOG_ERR
 
        use constituents, only: cnst_name, cnst_is_a_water_species
-
-       implicit none
 
        type (block_type), pointer :: block
        integer, dimension(:), pointer :: mpas_from_cam_cnst, cam_from_mpas_cnst
@@ -663,8 +655,6 @@ contains
        use mpas_derived_types, only : mpas_pool_type
        use mpas_dmpar, only : mpas_dmpar_sum_int, mpas_dmpar_max_int
 
-       implicit none
-
        integer, intent(out) :: nCellsGlobal
        integer, intent(out) :: nEdgesGlobal
        integer, intent(out) :: nVerticesGlobal
@@ -721,8 +711,6 @@ contains
        use mpas_derived_types, only : mpas_pool_type
        use mpas_kind_types, only : RKIND
        use mpas_dmpar, only : mpas_dmpar_sum_int, mpas_dmpar_max_int, mpas_dmpar_max_real_array
-
-       implicit none
 
        real (kind=RKIND), dimension(:), intent(out) :: latCellGlobal
        real (kind=RKIND), dimension(:), intent(out) :: lonCellGlobal
@@ -815,8 +803,6 @@ contains
        use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_dimension, mpas_pool_get_array
        use mpas_derived_types, only : mpas_pool_type
        use mpas_dmpar, only : mpas_dmpar_max_int_array
-
-       implicit none
 
        integer, dimension(:), intent(out) :: nCellsPerBlock
        integer, dimension(:,:), intent(out) :: indexToCellIDBlock
@@ -911,8 +897,6 @@ contains
                                       MPAS_pool_add_config
        use mpas_dmpar, only : MPAS_dmpar_exch_halo_field
        use mpas_stream_manager, only : postread_reindex
-
-       implicit none
 
        type (file_desc_t), pointer :: fh_ini
        procedure(halt_model) :: endrun
@@ -1209,8 +1193,6 @@ contains
                                       field1DInteger, field2DInteger, field0DChar, &
                                       MPAS_IO_WRITE
        use mpas_pool_routines, only : MPAS_pool_get_field
-
-       implicit none
 
        type (file_desc_t), intent(inout) :: fh_rst
        type (MPAS_Stream_type), intent(inout) :: restart_stream
@@ -1559,8 +1541,6 @@ contains
        use mpas_pool_routines, only : MPAS_pool_create_pool, MPAS_pool_destroy_pool, MPAS_pool_add_config
        use mpas_stream_manager, only : postread_reindex
 
-       implicit none
-
        type (MPAS_Stream_type), intent(inout) :: restart_stream
        procedure(halt_model) :: endrun
 
@@ -1715,8 +1695,6 @@ contains
        use mpas_pool_routines, only : MPAS_pool_create_pool, MPAS_pool_destroy_pool, MPAS_pool_add_config
        use mpas_stream_manager, only : prewrite_reindex, postwrite_reindex
 
-       implicit none
-
        type (MPAS_Stream_type), intent(inout) :: restart_stream
        procedure(halt_model) :: endrun
 
@@ -1770,8 +1748,6 @@ contains
        use mpas_derived_types, only : mpas_pool_type
        use mpas_kind_types, only : RKIND
        use mpas_vector_operations, only : mpas_initialize_vectors
-
-       implicit none
 
        type (mpas_pool_type), pointer :: meshPool
        real(kind=RKIND), dimension(:), pointer :: latCell, lonCell
@@ -1827,8 +1803,6 @@ contains
                                       mpas_pool_field_info_type, MPAS_POOL_REAL, MPAS_POOL_INTEGER
        use mpas_pool_routines, only : MPAS_pool_get_field_info, MPAS_pool_get_field
        use mpas_dmpar, only : MPAS_dmpar_exch_halo_field
-
-       implicit none
 
        character(len=*), intent(in) :: fieldName
 
@@ -1932,8 +1906,6 @@ contains
 
        use mpas_kind_types, only : RKIND
 
-       implicit none
-
        integer, intent(in) :: nEdges
        real(kind=RKIND), dimension(:,:), intent(in) :: uZonal, uMerid
        real(kind=RKIND), dimension(:,:), intent(in) :: east, north, edgeNormalVectors
@@ -1989,8 +1961,6 @@ contains
                                     operator(.lt.), operator(+)
        use mpas_timer, only : mpas_timer_start, mpas_timer_stop
        use mpas_constants, only : Rv_over_Rd => rvord
-
-       implicit none
 
        integer :: ierr
 
@@ -2077,8 +2047,6 @@ contains
        use mpas_timekeeping, only : mpas_destroy_clock
        use mpas_atm_threading, only : mpas_atm_threading_finalize
 
-       implicit none
-
        integer :: ierr
 
        call mpas_destroy_clock(clock, ierr)
@@ -2099,8 +2067,6 @@ contains
 
        use mpas_derived_types, only : MPAS_Pool_iterator_type, MPAS_POOL_FIELD, MPAS_POOL_REAL, MPAS_POOL_INTEGER
        use mpas_pool_routines, only : mpas_pool_begin_iteration, mpas_pool_get_next_member, mpas_pool_get_config
-
-       implicit none
 
        type (domain_type), intent(inout) :: domain
        character(len=*), intent(in) :: filename
