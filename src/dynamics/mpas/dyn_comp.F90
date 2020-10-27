@@ -57,7 +57,9 @@ public :: &
 ! Note that the fields in the import and export states are pointers into the MPAS dycore internal
 ! data structures.  These fields have the order of the vertical and horizontal dimensions swapped
 ! relative to the CAM convention, as well as having the vertical indices ordered from bottom to top
-! of atm.
+! of atm.  An exception is that the export state contains two fields, pmiddry and pintdry, not managed
+! by the MPAS infrastructure.  These fields are only used by the physics package and are computed
+! in the dp_coupling module.
 
 type dyn_import_t
    !
@@ -1190,6 +1192,13 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
            mpas_print_detailed_minmax_vel, &
            mpas_print_global_minmax_sca
 
+   ! These configuration parameters must be set in the MPAS configPool, but can't
+   ! be changed in CAM.
+   integer                :: config_num_halos = 2
+   integer                :: config_number_of_blocks = 0
+   logical                :: config_explicit_proc_decomp = .false.
+   character(len=StrKIND) :: config_proc_decomp_file_prefix = 'graph.info.part'
+
    character(len=*), parameter :: subname = 'dyn_comp::cam_mpas_namelist_read'
    !----------------------------------------------------------------------------
 
@@ -1364,6 +1373,13 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
    if (masterproc) then
       close(unit=unitNumber)
    end if
+
+   ! Set some configuration parameters that cannot be changed by CAM.
+   call mpas_pool_add_config(configPool, 'config_num_halos', config_num_halos)
+   call mpas_pool_add_config(configPool, 'config_number_of_blocks', config_number_of_blocks)
+   call mpas_pool_add_config(configPool, 'config_explicit_proc_decomp', config_explicit_proc_decomp)
+   call mpas_pool_add_config(configPool, 'config_proc_decomp_file_prefix', config_proc_decomp_file_prefix)
+
 
    if (masterproc) then
       write(iulog,*) 'MPAS-A dycore configuration:'

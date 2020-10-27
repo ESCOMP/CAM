@@ -78,7 +78,7 @@ OPTIONS
      -cppdefs <string>  A string of user specified CPP defines.  Appended to
                         Makefile defaults.  E.g. -cppdefs '-DVAR1 -DVAR2'
      -cpl               Coupling framework [mct | nuopc].  Default: mct.
-     -dyn <name>        Dynamical core option: [eul | fv | se | fv3].  Default: fv.
+     -dyn <name>        Dynamical core option: [eul | fv | se | fv3 | mpas].  Default: fv.
      -edit_chem_mech    Invokes CAMCHEM_EDITOR to allow the user to edit the chemistry mechanism file
      -hgrid <name>      Specify horizontal grid.  Use nlatxnlon for spectral grids;
                         dlatxdlon for fv grids (dlat and dlon are the grid cell size

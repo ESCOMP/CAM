@@ -347,15 +347,10 @@ character(len=10) function int2str(n)
 
    ! arguments
    integer, intent(in) :: n
+   !----------------------------------------------------------------------------
 
-   ! local variables
-   character(len=10) :: str
-
-   write(str,80) n
-80 format(i10)
+   write(int2str,'(i0)') n
      
-   int2str = adjustl(str)
-
 end function int2str
 
 !=========================================================================================

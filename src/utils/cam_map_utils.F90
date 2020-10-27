@@ -558,6 +558,7 @@ contains
     if (associated(this%map)) then
       if (present(dest_in)) then
         ndest = size(dest_in)
+        d = 0
         d(:ndest) = dest_in(:ndest)
       else
         d = this%dest

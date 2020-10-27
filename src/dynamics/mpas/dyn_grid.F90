@@ -23,7 +23,7 @@ use shr_kind_mod,      only: r8 => shr_kind_r8
 use spmd_utils,        only: iam, masterproc, mpicom, npes
 
 use pmgrid,            only: plev, plevp
-use physconst,         only: pi, rearth
+use physconst,         only: pi
 
 use cam_logfile,       only: iulog
 use cam_abortutils,    only: endrun
@@ -411,6 +411,11 @@ subroutine get_horiz_grid_d(nxy, clat_d_out, clon_d_out, area_d_out, &
    real(r8), intent(out), target, optional :: wght_d_out(:) ! normalized to sum to 4*pi
    real(r8), intent(out), optional :: lat_d_out(:)  ! column latitudes (degrees)
    real(r8), intent(out), optional :: lon_d_out(:)  ! column longitudes (degrees)
+
+   ! Earth radius (m) used by MPAS grid generating code.  This value needs to be used
+   ! rather than the CESM share constant in order that the normalized values sum to 4*pi
+   ! to within the tight tolerance used in the physgrid code.
+   real(r8), parameter :: rearth = 6371229.0_r8
 
    character(len=*), parameter :: subname = 'dyn_grid::get_horiz_grid_d'
    !----------------------------------------------------------------------------

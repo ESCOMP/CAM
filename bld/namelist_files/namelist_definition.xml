@@ -7355,13 +7355,13 @@ Default: Set by build-namelist.
 <!-- MPAS dycore -->
 
 <entry id="mpas_time_integration" type="char*512" category="mpas"
-       group="nhyd_model" valid_values="">
+       group="nhyd_model" valid_values="SRK3">
 Time integration scheme in MPAS dycore.
 Default: SRK3
 </entry>
 
 <entry id="mpas_time_integration_order" type="integer" category="mpas"
-       group="nhyd_model" valid_values="">
+       group="nhyd_model" valid_values="2,3">
 Order for RK time integration in MPAS dycore.
 Default: 2
 </entry>
@@ -7428,7 +7428,7 @@ Default: 0.0
 </entry>
 
 <entry id="mpas_horiz_mixing" type="char*512" category="mpas"
-       group="nhyd_model" valid_values="">
+       group="nhyd_model" valid_values="2d_fixed,2d_smagorinsky">
 Formulation of horizontal mixing in MPAS dycore.
 Default: 2d_smagorinsky
 </entry>
@@ -7455,43 +7455,43 @@ Default: 10.0
 </entry>
 
 <entry id="mpas_w_adv_order" type="integer" category="mpas"
-       group="nhyd_model" valid_values="">
+       group="nhyd_model" valid_values="2,3,4">
 Horizontal advection order for w in MPAS dycore.
 Default: 3
 </entry>
 
 <entry id="mpas_theta_adv_order" type="integer" category="mpas"
-       group="nhyd_model" valid_values="">
+       group="nhyd_model" valid_values="2,3,4">
 Horizontal advection order for theta in MPAS dycore.
 Default: 3
 </entry>
 
 <entry id="mpas_scalar_adv_order" type="integer" category="mpas"
-       group="nhyd_model" valid_values="">
+       group="nhyd_model" valid_values="2,3,4">
 Horizontal advection order for scalars in MPAS dycore.
 Default: 3
 </entry>
 
 <entry id="mpas_u_vadv_order" type="integer" category="mpas"
-       group="nhyd_model" valid_values="">
+       group="nhyd_model" valid_values="2,3,4">
 Vertical advection order for normal velocities (u) in MPAS dycore
 Default: 3
 </entry>
 
 <entry id="mpas_w_vadv_order" type="integer" category="mpas"
-       group="nhyd_model" valid_values="">
+       group="nhyd_model" valid_values="2,3,4">
 Vertical advection order for w in MPAS dycore.
 Default: 3
 </entry>
 
 <entry id="mpas_theta_vadv_order" type="integer" category="mpas"
-       group="nhyd_model" valid_values="">
+       group="nhyd_model" valid_values="2,3,4">
 Vertical advection order for theta in MPAS dycore.
 Default: 3
 </entry>
 
 <entry id="mpas_scalar_vadv_order" type="integer" category="mpas"
-       group="nhyd_model" valid_values="">
+       group="nhyd_model" valid_values="2,3,4">
 Vertical advection order for scalars in MPAS dycore.
 Default: 3
 </entry>
