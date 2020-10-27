@@ -190,15 +190,6 @@ contains
           call endrun(subname//': FATAL: Clock setup failed for core '//trim(domain_ptr % core % coreName))
        end if
 
-#ifdef MPAS_USE_STREAMS
-       call mpas_log_write('Reading streams configuration from file '//trim(domain_ptr % streams_filename))
-       inquire(file=trim(domain_ptr % streams_filename), exist=streamsExists)
-
-       if ( .not. streamsExists ) then
-          call endrun(subname//': FATAL: Streams file '//trim(domain_ptr % streams_filename)//' does not exist.')
-       end if
-#endif
-
        ! At this point, we should be ready to set up decompositions, build halos, allocate blocks, etc. in dyn_grid_init
 
     end subroutine cam_mpas_init_phase2
@@ -267,85 +258,10 @@ contains
        integer :: blockID
        character(len=StrKIND) :: timeStamp
 
-       interface
-          subroutine xml_stream_parser(xmlname, mgr_p, comm, ierr) bind(c)
-             use iso_c_binding, only : c_char, c_ptr, c_int
-             character(kind=c_char), dimension(*), intent(in) :: xmlname
-             type (c_ptr), intent(inout) :: mgr_p
-             integer(kind=c_int), intent(inout) :: comm
-             integer(kind=c_int), intent(out) :: ierr
-          end subroutine xml_stream_parser
-
-          subroutine xml_stream_get_attributes(xmlname, streamname, comm, filename, ref_time, filename_interval, io_type, ierr) bind(c)
-             use iso_c_binding, only : c_char, c_int
-             character(kind=c_char), dimension(*), intent(in) :: xmlname
-             character(kind=c_char), dimension(*), intent(in) :: streamname
-             integer(kind=c_int), intent(inout) :: comm
-             character(kind=c_char), dimension(*), intent(out) :: filename
-             character(kind=c_char), dimension(*), intent(out) :: ref_time
-             character(kind=c_char), dimension(*), intent(out) :: filename_interval
-             character(kind=c_char), dimension(*), intent(out) :: io_type
-             integer(kind=c_int), intent(out) :: ierr
-          end subroutine xml_stream_get_attributes
-       end interface
-
        character(len=*), parameter :: subname = 'cam_mpas_subdriver::cam_mpas_init_phase3'
 
-   
-#ifdef MPAS_USE_STREAMS
-       !
-       ! Using information from the namelist, a graph.info file, and a file containing
-       !    mesh fields, build halos and allocate blocks in the domain
-       !
-       ierr = domain_ptr % core % get_mesh_stream(domain_ptr % configs, mesh_stream)
-       if ( ierr /= 0 ) then
-          call endrun('Failed to find mesh stream for core '//trim(domain_ptr % core % coreName))
-       end if
 
-       call mpas_f_to_c_string(domain_ptr % streams_filename, c_filename)
-       call mpas_f_to_c_string(mesh_stream, c_mesh_stream)
-       c_comm = domain_ptr % dminfo % comm
-       call xml_stream_get_attributes(c_filename, c_mesh_stream, c_comm, &
-                                      c_mesh_filename_temp, c_ref_time_temp, &
-                                      c_filename_interval_temp, c_iotype, c_ierr)
-       if (c_ierr /= 0) then
-          call endrun('stream xml get attribute failed: '//trim(domain_ptr % streams_filename))
-       end if
-       call mpas_c_to_f_string(c_mesh_filename_temp, mesh_filename_temp)
-       call mpas_c_to_f_string(c_ref_time_temp, ref_time_temp)
-       call mpas_c_to_f_string(c_filename_interval_temp, filename_interval_temp)
-       call mpas_c_to_f_string(c_iotype, iotype)
-
-       if (trim(iotype) == 'pnetcdf') then
-          mesh_iotype = MPAS_IO_PNETCDF
-       else if (trim(iotype) == 'pnetcdf,cdf5') then
-          mesh_iotype = MPAS_IO_PNETCDF5
-       else if (trim(iotype) == 'netcdf') then
-          mesh_iotype = MPAS_IO_NETCDF
-       else if (trim(iotype) == 'netcdf4') then
-          mesh_iotype = MPAS_IO_NETCDF4
-       else
-          mesh_iotype = MPAS_IO_PNETCDF
-       end if
-
-       start_time = mpas_get_clock_time(domain_ptr % clock, MPAS_START_TIME, ierr)
-       if ( trim(ref_time_temp) == 'initial_time' ) then
-           call mpas_get_time(start_time, dateTimeString=ref_time_temp, ierr=ierr)
-       end if
-
-       blockID = -1
-       if ( trim(filename_interval_temp) == 'none' ) then
-           call mpas_expand_string(ref_time_temp, blockID, mesh_filename_temp, mesh_filename)
-       else
-           call mpas_set_time(ref_time, dateTimeString=ref_time_temp, ierr=ierr)
-           call mpas_set_timeInterval(filename_interval, timeString=filename_interval_temp, ierr=ierr)
-           call mpas_build_stream_filename(ref_time, start_time, filename_interval, mesh_filename_temp, blockID, mesh_filename, ierr)
-       end if
-
-       call mpas_log_write(' ** Attempting to bootstrap MPAS framework using stream: ' // trim(mesh_stream))
-#else
        mesh_filename = 'external mesh file'
-#endif
 
        !
        ! Adding a config named 'cam_pcnst' with the number of constituents will indicate to
@@ -354,50 +270,12 @@ contains
        !
        call mpas_pool_add_config(domain_ptr % configs, 'cam_pcnst', num_scalars)
 
-! Use the call below if we intend to bootstrap from an input stream; also define MPAS_USE_STREAMS
-!       call mpas_bootstrap_framework_phase1(domain_ptr, mesh_filename, mesh_iotype)
-
-! Use the call below if we intend to supply the bootstrapping process with an external PIO file_desc_t, fh_ini
        mesh_iotype = MPAS_IO_NETCDF  ! Not actually used
        call mpas_bootstrap_framework_phase1(domain_ptr, mesh_filename, mesh_iotype, pio_file_desc=fh_ini)
-
-#ifdef MPAS_USE_STREAMS
-       !
-       ! Set up run-time streams
-       !
-       call MPAS_stream_mgr_init(domain_ptr % streamManager, domain_ptr % ioContext, domain_ptr % clock, &
-                                 domain_ptr % blocklist % allFields, domain_ptr % packages, domain_ptr % blocklist % allStructs)
-
-       call add_stream_attributes(domain_ptr)
-
-       ierr = domain_ptr % core % setup_immutable_streams(domain_ptr % streamManager)
-       if ( ierr /= 0 ) then
-          call endrun('Immutable streams setup failed for core '//trim(domain_ptr % core % coreName))
-       end if
-
-       mgr_p = c_loc(domain_ptr % streamManager)
-       call xml_stream_parser(c_filename, mgr_p, c_comm, c_ierr)
-       if (c_ierr /= 0) then
-          call endrun('xml stream parser failed: '//trim(domain_ptr % streams_filename))
-       end if
-
-       !
-       ! Validate streams after set-up
-       !
-       call mpas_log_write(' ** Validating streams')
-       call MPAS_stream_mgr_validate_streams(domain_ptr % streamManager, ierr = ierr)
-       if ( ierr /= MPAS_STREAM_MGR_NOERR ) then
-          call endrun('ERROR: Validation of streams failed for core ' // trim(domain_ptr % core % coreName))
-       end if
-#endif
 
        !
        ! Finalize the setup of blocks and fields
        !
-! Use the call below if we intend to bootstrap from an input stream; also define MPAS_USE_STREAMS
-!       call mpas_bootstrap_framework_phase2(domain_ptr)
-
-! Use the call below if we intend to supply the bootstrapping process with an external PIO file_desc_t, fh_ini
        call mpas_bootstrap_framework_phase2(domain_ptr, pio_file_desc=fh_ini)
 
     end subroutine cam_mpas_init_phase3
@@ -2208,99 +2086,6 @@ contains
        call mpas_atm_threading_finalize(domain_ptr % blocklist)
 
     end subroutine cam_mpas_finalize
-
-
-    !-----------------------------------------------------------------------
-    !  routine add_stream_attributes
-    !
-    !> \brief  Adds default attributes to all MPAS streams
-    !> \author Michael Duda
-    !> \date   14 May 2019
-    !> \details
-    !>  ...
-    !
-    !-----------------------------------------------------------------------
-    subroutine add_stream_attributes(domain)
-
-       use mpas_stream_manager, only : MPAS_stream_mgr_add_att
-       use mpas_derived_types, only : MPAS_Pool_iterator_type
-       use mpas_derived_types, only : MPAS_POOL_CONFIG, MPAS_POOL_REAL, MPAS_POOL_INTEGER, MPAS_POOL_CHARACTER, MPAS_POOL_LOGICAL
-       use mpas_kind_types, only : RKIND, StrKIND
-       use mpas_pool_routines, only : mpas_pool_begin_iteration, mpas_pool_get_next_member, mpas_pool_get_config
-
-       implicit none
-
-       type (domain_type), intent(inout) :: domain
-
-       type (MPAS_Pool_iterator_type) :: itr
-       integer, pointer :: intAtt
-       logical, pointer :: logAtt
-       character (len=StrKIND), pointer :: charAtt
-       real (kind=RKIND), pointer :: realAtt
-       character (len=StrKIND) :: histAtt
-
-       integer :: local_ierr
-
-
-       if (domain % dminfo % nProcs < 10) then
-           write(histAtt, '(A,I1,A,A,A)') 'mpirun -n ', domain % dminfo % nProcs, ' ./', trim(domain % core % coreName), '_model'
-       else if (domain % dminfo % nProcs < 100) then
-           write(histAtt, '(A,I2,A,A,A)') 'mpirun -n ', domain % dminfo % nProcs, ' ./', trim(domain % core % coreName), '_model'
-       else if (domain % dminfo % nProcs < 1000) then
-           write(histAtt, '(A,I3,A,A,A)') 'mpirun -n ', domain % dminfo % nProcs, ' ./', trim(domain % core % coreName), '_model'
-       else if (domain % dminfo % nProcs < 10000) then
-           write(histAtt, '(A,I4,A,A,A)') 'mpirun -n ', domain % dminfo % nProcs, ' ./', trim(domain % core % coreName), '_model'
-       else if (domain % dminfo % nProcs < 100000) then
-           write(histAtt, '(A,I5,A,A,A)') 'mpirun -n ', domain % dminfo % nProcs, ' ./', trim(domain % core % coreName), '_model'
-       else
-           write(histAtt, '(A,I6,A,A,A)') 'mpirun -n ', domain % dminfo % nProcs, ' ./', trim(domain % core % coreName), '_model'
-       end if
-
-       call MPAS_stream_mgr_add_att(domain % streamManager, 'model_name', domain % core % modelName)
-       call MPAS_stream_mgr_add_att(domain % streamManager, 'core_name', domain % core % coreName)
-       call MPAS_stream_mgr_add_att(domain % streamManager, 'source', domain % core % source)
-       call MPAS_stream_mgr_add_att(domain % streamManager, 'Conventions', domain % core % Conventions)
-       call MPAS_stream_mgr_add_att(domain % streamManager, 'git_version', domain % core % git_version)
-
-       call MPAS_stream_mgr_add_att(domain % streamManager, 'on_a_sphere', domain % on_a_sphere)
-       call MPAS_stream_mgr_add_att(domain % streamManager, 'sphere_radius', domain % sphere_radius)
-       call MPAS_stream_mgr_add_att(domain % streamManager, 'is_periodic', domain % is_periodic)
-       call MPAS_stream_mgr_add_att(domain % streamManager, 'x_period', domain % x_period)
-       call MPAS_stream_mgr_add_att(domain % streamManager, 'y_period', domain % y_period)
-       ! DWJ 10/01/2014: Eventually add the real history attribute, for now (due to length restrictions)
-       ! add a shortened version.
-!      call MPAS_stream_mgr_add_att(domain % streamManager, 'history', domain % history)
-       call MPAS_stream_mgr_add_att(domain % streamManager, 'history', histAtt)
-       call MPAS_stream_mgr_add_att(domain % streamManager, 'parent_id', domain %  parent_id)
-       call MPAS_stream_mgr_add_att(domain % streamManager, 'mesh_spec', domain % mesh_spec)
-
-       call mpas_pool_begin_iteration(domain % configs)
-       do while (mpas_pool_get_next_member(domain % configs, itr))
-
-          if ( itr % memberType == MPAS_POOL_CONFIG) then
-
-             if ( itr % dataType == MPAS_POOL_REAL ) then
-                call mpas_pool_get_config(domain % configs, itr % memberName, realAtt)
-                call MPAS_stream_mgr_add_att(domain % streamManager, itr % memberName, realAtt, ierr=local_ierr)
-             else if ( itr % dataType == MPAS_POOL_INTEGER ) then
-                call mpas_pool_get_config(domain % configs, itr % memberName, intAtt)
-                call MPAS_stream_mgr_add_att(domain % streamManager, itr % memberName, intAtt, ierr=local_ierr)
-             else if ( itr % dataType == MPAS_POOL_CHARACTER ) then
-                call mpas_pool_get_config(domain % configs, itr % memberName, charAtt)
-                call MPAS_stream_mgr_add_att(domain % streamManager, itr % memberName, charAtt, ierr=local_ierr)
-             else if ( itr % dataType == MPAS_POOL_LOGICAL ) then
-                call mpas_pool_get_config(domain % configs, itr % memberName, logAtt)
-                if (logAtt) then
-                   call MPAS_stream_mgr_add_att(domain % streamManager, itr % memberName, 'YES', ierr=local_ierr)
-                else
-                   call MPAS_stream_mgr_add_att(domain % streamManager, itr % memberName, 'NO', ierr=local_ierr)
-                end if
-             end if
-
-           end if
-       end do
-
-    end subroutine add_stream_attributes
 
 
     subroutine cam_mpas_debug_stream(domain, filename, timeLevel)
