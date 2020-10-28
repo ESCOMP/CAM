@@ -229,6 +229,13 @@ contains
 
     INTEGER                        :: RC, IERR
 
+    ! Assume a successful return until otherwise
+    RC                      = GC_SUCCESS
+
+    ! For error trapping
+    ErrMsg                  = ''
+    ThisLoc                 = ' -> at GEOS-Chem (in chemistry/pp_geoschem/chemistry.F90)'
+
     ! Initialize pointer
     ThisSpc => NULL()
 
