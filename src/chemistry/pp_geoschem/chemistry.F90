@@ -2280,6 +2280,47 @@ contains
     ! Initialize tendency array
     CALL Physics_ptend_init(ptend, state%psetcols, 'chemistry', lq=lq)
 
+    ! Determine current date and time
+    CALL Get_Curr_Date( yr  = currYr,  &
+                        mon = currMo,  &
+                        day = currDy,  &
+                        tod = currTOD )
+
+    ! For now, force year to be 2000
+    currYr  = 2000
+    currYMD = (currYr*1000) + (currMo*100) + (currDy)
+    ! Deal with subdaily
+    currUTC = REAL(currTOD,f4)/3600.0e+0_f4
+    currSc  = 0
+    currMn  = 0
+    currHr  = 0
+    DO WHILE (currTOD >= 3600)
+       currTOD = currTOD - 3600
+       currHr  = currHr + 1
+    ENDDO
+    DO WHILE (currTOD >= 60)
+       currTOD = currTOD - 60
+       currMn  = currMn + 1
+    ENDDO
+    currSc  = currTOD
+    currHMS = (currHr*1000) + (currMn*100) + (currSc)
+
+    IF ( firstDay ) THEN
+       newDay   = .True.
+       newMonth = .True.
+       firstDay = .False.
+    ELSE IF ( currHMS < dT ) THEN
+       newDay = .True.
+       IF ( currDy == 1 ) THEN
+          newMonth = .True.
+       ELSE
+          newMonth = .False.
+       ENDIF
+    ELSE
+       newDay   = .False.
+       newMonth = .False.
+    ENDIF
+
     ! Calculate COS(SZA)
     Calday = Get_Curr_Calday( INT(dT/2) )
     CALL Zenith( Calday, Rlats, Rlons, CSZAmid, nY )
@@ -2692,6 +2733,33 @@ contains
        pbuf_ik   => NULL()
     ENDIF
 
+    ! Field      : OMOC
+    ! Description: OM/OC ratio
+    ! Unit       : -
+    ! Dimensions : nX, nY
+    IF      ( currMo == 12 .or. currMo == 1  .or. currMo == 2  ) THEN
+       fldname_ns = 'HCO_OMOC_DJF'
+    ELSE IF ( currMo == 3  .or. currMo == 4  .or. currMo == 5  ) THEN
+       fldname_ns = 'HCO_OMOC_MAM'
+    ELSE IF ( currMo == 6  .or. currMo == 7  .or. currMo == 8  ) THEN
+       fldname_ns = 'HCO_OMOC_JJA'
+    ELSE IF ( currMo == 9  .or. currMo == 10 .or. currMo == 11 ) THEN
+       fldname_ns = 'HCO_OMOC_SON'
+    ENDIF
+    tmpIdx = pbuf_get_index(fldname_ns, rc)
+    IF ( tmpIdx < 0 ) THEN
+       ! there is an error here and the field was not found
+       IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(fldname_ns)
+    ELSE
+       CALL pbuf_get_field(pbuf, tmpIdx, pbuf_ik)
+       DO J = 1, nY
+          State_Chm(LCHNK)%OMOC(1,J) = pbuf_ik(J,nZ)
+          ! 2-D data is stored in the 1st level of a
+          ! 3-D array due to laziness
+       ENDDO
+       pbuf_ik   => NULL()
+    ENDIF
+
     ! Three-dimensional fields on level edges
     DO J = 1, nY
     DO L = 1, nZ+1
@@ -2850,47 +2918,6 @@ contains
     ! Unit       : -
     ! Dimensions : nX, nY, nZ
     State_Met(LCHNK)%OPTD =  State_Met(LCHNK)%TAUCLI + State_Met(LCHNK)%TAUCLW
-
-    ! Determine current date and time
-    CALL Get_Curr_Date( yr  = currYr,  &
-                        mon = currMo,  &
-                        day = currDy,  &
-                        tod = currTOD )
-
-    ! For now, force year to be 2000
-    currYr  = 2000
-    currYMD = (currYr*1000) + (currMo*100) + (currDy)
-    ! Deal with subdaily
-    currUTC = REAL(currTOD,f4)/3600.0e+0_f4
-    currSc  = 0
-    currMn  = 0
-    currHr  = 0
-    DO WHILE (currTOD >= 3600)
-       currTOD = currTOD - 3600
-       currHr  = currHr + 1
-    ENDDO
-    DO WHILE (currTOD >= 60)
-       currTOD = currTOD - 60
-       currMn  = currMn + 1
-    ENDDO
-    currSc  = currTOD
-    currHMS = (currHr*1000) + (currMn*100) + (currSc)
-
-    IF ( firstDay ) THEN
-       newDay   = .True.
-       newMonth = .True.
-       firstDay = .False.
-    ELSE IF ( currHMS < dT ) THEN
-       newDay = .True.
-       IF ( currDy == 1 ) THEN
-          newMonth = .True.
-       ELSE
-          newMonth = .False.
-       ENDIF
-    ELSE
-       newDay   = .False.
-       newMonth = .False.
-    ENDIF
 
     ! Pass time values obtained from the ESMF environment to GEOS-Chem
     CALL Accept_External_Date_Time( value_NYMD     = currYMD,            &
@@ -3341,10 +3368,6 @@ contains
              ENDIF
           ENDDO
        ENDIF
-
-
-       !TMMF, Here set dry deposition velocities to zero if MAM performs its
-       !own deposition...
 
        CALL Update_DryDepFreq( Input_Opt  = Input_Opt,         &
                                State_Chm  = State_Chm(LCHNK),  &
