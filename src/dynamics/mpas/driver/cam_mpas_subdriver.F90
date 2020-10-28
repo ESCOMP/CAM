@@ -136,7 +136,6 @@ contains
 
        use mpas_log, only : mpas_log_write
        use mpas_kind_types, only : ShortStrKIND
-       use mpas_derived_types, only : MPAS_LOG_ERR
        use pio_types, only : iosystem_desc_t
 
        use mpas_framework, only : mpas_framework_init_phase2
@@ -209,7 +208,6 @@ contains
     subroutine cam_mpas_init_phase3(fh_ini, num_scalars, endrun)
 
        use mpas_log, only : mpas_log_write
-       use mpas_derived_types, only : MPAS_LOG_ERR
        use pio, only : file_desc_t
        use iso_c_binding, only : c_int, c_char, c_ptr, c_loc
 
@@ -430,9 +428,13 @@ contains
 
        use constituents, only: cnst_name, cnst_is_a_water_species
 
+       ! Arguments
        type (block_type), pointer :: block
        integer, dimension(:), pointer :: mpas_from_cam_cnst, cam_from_mpas_cnst
        integer :: ierr
+
+       ! Local variables
+       character(len=*), parameter :: subname = 'cam_mpas_subdriver::cam_mpas_define_scalars'
 
        integer :: i, j, timeLevs
        integer, pointer :: num_scalars
@@ -447,7 +449,6 @@ contains
 
        ierr = 0
 
-
        !
        ! Define scalars
        !
@@ -455,7 +456,7 @@ contains
        call mpas_pool_get_subpool(block % structs, 'state', statePool)
 
        if (.not. associated(statePool)) then
-          call mpas_log_write('The ''state'' pool was not found by cam_mpas_define_scalars', &
+          call mpas_log_write(trim(subname)//': ERROR: The ''state'' pool was not found.', &
                               messageType=MPAS_LOG_ERR)
           ierr = 1
           return
@@ -469,7 +470,7 @@ contains
        ! if this dimension does not exist, something has gone wrong
        !
        if (.not. associated(num_scalars)) then
-          call mpas_log_write('The num_scalars dimension does not exist in the ''state'' pool', &
+          call mpas_log_write(trim(subname)//': ERROR: The ''num_scalars'' dimension does not exist in the ''state'' pool.', &
                               messageType=MPAS_LOG_ERR)
           ierr = 1
           return
@@ -480,7 +481,7 @@ contains
        ! something has gone wrong
        !
        if (size(cnst_name) > num_scalars) then
-          call mpas_log_write('The number of constituent names is larger than the num_scalars dimension', &
+          call mpas_log_write(trim(subname)//': ERROR: The number of constituent names is larger than the num_scalars dimension', &
                               messageType=MPAS_LOG_ERR)
           call mpas_log_write('size(cnst_name) = $i, num_scalars = $i', intArgs=[size(cnst_name), num_scalars], &
                               messageType=MPAS_LOG_ERR)
@@ -494,7 +495,7 @@ contains
        !
        if (size(cnst_name) > 0) then
           if (trim(cnst_name(1)) /= 'Q') then
-             call mpas_log_write('The first constituent is not Q', messageType=MPAS_LOG_ERR)
+             call mpas_log_write(trim(subname)//': ERROR: The first constituent is not Q', messageType=MPAS_LOG_ERR)
              ierr = 1
              return
           end if
@@ -550,7 +551,7 @@ contains
           call mpas_pool_get_field(statePool, 'scalars', scalarsField, timeLevel=i)
 
           if (.not. associated(scalarsField)) then
-             call mpas_log_write('The ''scalars'' field was not found in the ''state'' pool', &
+             call mpas_log_write(trim(subname)//': ERROR: The ''scalars'' field was not found in the ''state'' pool', &
                                  messageType=MPAS_LOG_ERR)
              ierr = 1
              return
@@ -600,7 +601,7 @@ contains
        call mpas_pool_get_subpool(block % structs, 'tend', tendPool)
 
        if (.not. associated(tendPool)) then
-          call mpas_log_write('The ''tend'' pool was not found by cam_mpas_define_scalars', &
+          call mpas_log_write(trim(subname)//': ERROR: The ''tend'' pool was not found.', &
                               messageType=MPAS_LOG_ERR)
           ierr = 1
           return
@@ -613,7 +614,7 @@ contains
           call mpas_pool_get_field(tendPool, 'scalars_tend', scalarsField, timeLevel=i)
 
           if (.not. associated(scalarsField)) then
-             call mpas_log_write('The ''scalars_tend'' field was not found in the ''tend'' pool', &
+             call mpas_log_write(trim(subname)//': ERROR: The ''scalars_tend'' field was not found in the ''tend'' pool', &
                                  messageType=MPAS_LOG_ERR)
              ierr = 1
              return
