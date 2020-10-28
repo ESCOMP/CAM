@@ -223,7 +223,7 @@ subroutine wv_sat_init
   end if
 
   do i = 1, plenest
-    estbl(i) = svp_trans(tmin + real(i-1,r8))
+     estbl(i) = svp_trans(tmin + real(i-1,r8))
   end do
 
   if (masterproc) then
@@ -259,41 +259,41 @@ end subroutine wv_sat_final
 !---------------------------------------------------------------------
 
 ! Compute saturation vapor pressure over water
-elemental function svp_water(t) result(es)
+function svp_water(t) result(es)
 
   use wv_sat_methods, only: &
        wv_sat_svp_water
 
-  real(r8), intent(in) :: t ! Temperature (K)
-  real(r8) :: es            ! SVP (Pa)
+  real(r8), intent(in)  :: t  ! Temperature (K)
+  real(r8)              :: es ! SVP (Pa)
 
-  es = wv_sat_svp_water(T)
+  es = wv_sat_svp_water(t)
 
 end function svp_water
 
 ! Compute saturation vapor pressure over ice
-elemental function svp_ice(t) result(es)
+function svp_ice(t) result(es)
 
   use wv_sat_methods, only: &
        wv_sat_svp_ice
 
-  real(r8), intent(in) :: t ! Temperature (K)
-  real(r8) :: es            ! SVP (Pa)
+  real(r8), intent(in)  :: t  ! Temperature (K)
+  real(r8)              :: es ! SVP (Pa)
 
-  es = wv_sat_svp_ice(T)
+  es = wv_sat_svp_ice(t)
 
 end function svp_ice
 
 ! Compute saturation vapor pressure with an ice-water transition
-elemental function svp_trans(t) result(es)
+function svp_trans(t) result(es)
 
   use wv_sat_methods, only: &
        wv_sat_svp_trans
 
-  real(r8), intent(in) :: t ! Temperature (K)
-  real(r8) :: es            ! SVP (Pa)
+  real(r8), intent(in)  :: t   ! Temperature (K)
+  real(r8)              :: es  ! SVP (Pa)
 
-  es = wv_sat_svp_trans(T)
+  es = wv_sat_svp_trans(t)
 
 end function svp_trans
 
@@ -455,7 +455,7 @@ end subroutine deriv_outputs
 ! QSAT (SPECIFIC HUMIDITY) PROCEDURES
 !---------------------------------------------------------------------
 
-elemental subroutine qsat(t, p, es, qs, gam, dqsdt, enthalpy)
+subroutine qsat(t, p, es, qs, gam, dqsdt, enthalpy)
   !------------------------------------------------------------------!
   ! Purpose:                                                         !
   !   Look up and return saturation vapor pressure from precomputed  !
@@ -502,7 +502,7 @@ elemental subroutine qsat(t, p, es, qs, gam, dqsdt, enthalpy)
 
 end subroutine qsat
 
-elemental subroutine qsat_water(t, p, es, qs, gam, dqsdt, enthalpy)
+subroutine qsat_water(t, p, es, qs, gam, dqsdt, enthalpy)
   !------------------------------------------------------------------!
   ! Purpose:                                                         !
   !   Calculate SVP over water at a given temperature, and then      !
@@ -545,7 +545,7 @@ elemental subroutine qsat_water(t, p, es, qs, gam, dqsdt, enthalpy)
 
 end subroutine qsat_water
 
-elemental subroutine qsat_ice(t, p, es, qs, gam, dqsdt, enthalpy)
+subroutine qsat_ice(t, p, es, qs, gam, dqsdt, enthalpy)
   !------------------------------------------------------------------!
   ! Purpose:                                                         !
   !   Calculate SVP over ice at a given temperature, and then        !
@@ -623,10 +623,9 @@ subroutine findsp_vc(q, t, p, use_ice, tsp, qsp)
 
   n = size(q)
 
-  call findsp(q, t, p, use_ice, tsp, qsp, status)
-
   ! Currently, only 2 and 8 seem to be treated as fatal errors.
   do i = 1,n
+     call findsp(q(i), t(i), p(i), use_ice, tsp(i), qsp(i), status(i))
      if (status(i) == 2) then
         write(iulog,*) ' findsp not converging at i = ', i
         write(iulog,*) ' t, q, p ', t(i), q(i), p(i)
@@ -642,7 +641,7 @@ subroutine findsp_vc(q, t, p, use_ice, tsp, qsp)
 
 end subroutine findsp_vc
 
-elemental subroutine findsp (q, t, p, use_ice, tsp, qsp, status)
+subroutine findsp (q, t, p, use_ice, tsp, qsp, status)
 !----------------------------------------------------------------------- 
 ! 
 ! Purpose: 

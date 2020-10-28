@@ -1128,7 +1128,7 @@ end subroutine macrop_driver_tend
 ! this issue is investigated in CLUBB, this routine will enfornce a 
 ! maximum RHliq of 1 everywhere in the atmosphere. Any excess water will
 ! be converted into cloud drops.
-elemental subroutine liquid_macro_tend(npccn,t,p,qv,qc,nc,xxlv,deltat,stend,qvtend,qctend,nctend)
+subroutine liquid_macro_tend(npccn,t,p,qv,qc,nc,xxlv,deltat,stend,qvtend,qctend,nctend)
 
   use wv_sat_methods, only: wv_sat_qsat_ice, wv_sat_qsat_water
   use micro_mg_utils, only: rhow

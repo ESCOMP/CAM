@@ -1007,10 +1007,9 @@ subroutine aist_vector(qv_in, T_in, p_in, qi_in, ni_in, landfrac_in, snowh_in, a
      esat_in(:)  = 0._r8
      qsat_in(:)  = 0._r8
 
-     call qsat_water(T_in(1:ncol), p_in(1:ncol), &
-          esat_in(1:ncol), qsat_in(1:ncol))
-     
      do i = 1, ncol
+     
+     call qsat_water(T_in(i), p_in(i), esat_in(i), qsat_in(i))
 
      landfrac = landfrac_in(i)     
      snowh = snowh_in(i)   

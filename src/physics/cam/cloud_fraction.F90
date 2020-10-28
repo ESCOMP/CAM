@@ -409,14 +409,19 @@ subroutine cldfrc(lchnk   ,ncol    , pbuf,  &
     ! Evaluate potential temperature and relative humidity
     ! If not computing ice cloud fraction then hybrid RH, if MG then water RH
     if ( cldfrc_ice ) then
-       call qsat_water(temp(1:ncol,top_lev:pver), pmid(1:ncol,top_lev:pver), &
-            esl(1:ncol,top_lev:pver), qs(1:ncol,top_lev:pver))
-
-       esi(1:ncol,top_lev:pver) = svp_ice(temp(1:ncol,top_lev:pver))
+       do k = top_lev,pver
+          do i = 1,ncol
+             call qsat_water(temp(i,k), pmid(i,k), esl(i,k), qs(i,k))
+             esi(i,k) = svp_ice(temp(i,k))
+          end do
+       end do
     else
-       call qsat(temp(1:ncol,top_lev:pver), pmid(1:ncol,top_lev:pver), &
-            es(1:ncol,top_lev:pver), qs(1:ncol,top_lev:pver))
-    endif
+       do k = top_lev,pver
+          do i = 1,ncol
+             call qsat(temp(i,k), pmid(i,k), es(i,k), qs(i,k))
+          end do
+       end do
+    end if
 
     cloud    = 0._r8
     icecldf  = 0._r8

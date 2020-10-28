@@ -812,8 +812,9 @@
    do k = top_lev, pver
       call findsp_vc(qv_05(:ncol,k), T_05(:ncol,k), p(:ncol,k), .false., &
                      Twb_aw(:ncol), qvwb_aw(:ncol,k))
-      call qsat_water(T_05(1:ncol,k), p(1:ncol,k), &
-                      esat_a(1:ncol), qsat_a(1:ncol,k))
+      do i = 1, ncol
+         call qsat_water(T_05(i,k), p(i,k), esat_a(i), qsat_a(i,k))
+      end do
    enddo
 
    do iter = 1, niter
@@ -839,10 +840,9 @@
       bb(:,:)         = 0._r8
 
       do k = top_lev, pver
-
-      call qsat_water(T(1:ncol,k), p(1:ncol,k), &
-                      esat_b(1:ncol), qsat_b(1:ncol), dqsdt=dqsdT_b(1:ncol))
-
+         do i = 1, ncol
+            call qsat_water(T(i,k), p(i,k), esat_b(i), qsat_b(i), dqsdt=dqsdT_b(i))
+         end do
       if( iter .eq. 1 ) then
           a_cu(:ncol,k) = a_cud(:ncol,k)
       else
@@ -1326,9 +1326,8 @@ subroutine rhcrit_calc( &
       ! Compute the drop of critical RH by the variability induced by PBL turbulence
 
       do k = top_lev, pver
-         call qsat_ice(T0(1:ncol,k), p(1:ncol,k), esat_tmp(1:ncol), qsat_tmp(1:ncol))
-
          do i = 1, ncol
+            call qsat_ice(T0(i,k), p(i,k), esat_tmp(i), qsat_tmp(i))
             sig_tmp = 0.5_r8 * ( qti_flx(i,k)   / sqrt(max(qsmall,tke(i,k))) + & 
                                  qti_flx(i,k+1) / sqrt(max(qsmall,tke(i,k+1))) )
             d_rhmin_ice_PBL(i,k) = c_aniso*sig_tmp/max(qsmall,qsat_tmp(i)) 
@@ -1378,9 +1377,8 @@ subroutine rhcrit_calc( &
       ! Compute the drop of critical RH by the variability induced by PBL turbulence
 
       do k = top_lev, pver
-         call qsat_water(T0(1:ncol,k), p(1:ncol,k), esat_tmp(1:ncol), qsat_tmp(1:ncol))
-
          do i = 1, ncol
+            call qsat_water(T0(i,k), p(i,k), esat_tmp(i), qsat_tmp(i))
             sig_tmp = 0.5_r8 * ( qtl_flx(i,k)   / sqrt(max(qsmall,tke(i,k))) + & 
                                  qtl_flx(i,k+1) / sqrt(max(qsmall,tke(i,k+1))) )
             d_rhmin_liq_PBL(i,k) = c_aniso*sig_tmp/max(qsmall,qsat_tmp(i)) 
@@ -1529,8 +1527,9 @@ end subroutine rhcrit_calc
    ! Main Computation ! 
    ! ---------------- !
 
-   call qsat_water(T0_in(1:ncol), p_in(1:ncol), &
-        esat_in(1:ncol), qsat_in(1:ncol))
+   do i = 1, ncol
+      call qsat_water(T0_in(i), p_in(i), esat_in(i), qsat_in(i))
+   end do
    U0_in(:ncol) = qv0_in(:ncol)/qsat_in(:ncol)
    if( CAMstfrac ) then
        call astG_RHU(U0_in(:),p_in(:),qv0_in(:),landfrac(:),snowh(:),al0_st_nc_in(:),G0_nc_in(:),ncol,&

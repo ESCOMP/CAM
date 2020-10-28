@@ -60,17 +60,19 @@ public wv_sat_valid_idx
 public wv_sat_set_default
 public wv_sat_reset_default
 
-public wv_sat_svp_water, wv_sat_svp_water_vect
-public wv_sat_svp_ice, wv_sat_svp_ice_vect
+public wv_sat_qsat_water, wv_sat_qsat_water_vect
+public wv_sat_qsat_ice, wv_sat_qsat_ice_vect
+
 public wv_sat_svp_trans
 
 ! pressure -> humidity conversion
 public wv_sat_svp_to_qsat, wv_sat_svp_to_qsat_vect
 
 ! Combined qsat operations
-public wv_sat_qsat_water, wv_sat_qsat_water_vect
-public wv_sat_qsat_ice, wv_sat_qsat_ice_vect
 public wv_sat_qsat_trans
+
+public wv_sat_svp_water, wv_sat_svp_water_vect
+public wv_sat_svp_ice, wv_sat_svp_ice_vect
 
 contains
 
@@ -177,11 +179,11 @@ end subroutine wv_sat_reset_default
 
 ! Get saturation specific humidity given pressure and SVP.
 ! Specific humidity is limited to range 0-1.
-elemental function wv_sat_svp_to_qsat(es, p) result(qs)
+function wv_sat_svp_to_qsat(es, p) result(qs)
 
   real(r8), intent(in) :: es  ! SVP
   real(r8), intent(in) :: p   ! Current pressure.
-  real(r8) :: qs
+  real(r8)             :: qs
 
   ! If pressure is less than SVP, set qs to maximum of 1.
   if ( (p - es) <= 0._r8 ) then
@@ -208,11 +210,11 @@ subroutine  wv_sat_svp_to_qsat_vect(es, p, qs, vlen)
      else
         qs(i) = epsilo*es(i) / (p(i) - omeps*es(i))
      end if
-  enddo
+  end do
 
 end subroutine wv_sat_svp_to_qsat_vect
 
-elemental subroutine wv_sat_qsat_water(t, p, es, qs, idx)
+subroutine wv_sat_qsat_water(t, p, es, qs, idx)
   !------------------------------------------------------------------!
   ! Purpose:                                                         !
   !   Calculate SVP over water at a given temperature, and then      !
@@ -264,7 +266,7 @@ subroutine wv_sat_qsat_water_vect(t, p, es, qs, vlen, idx)
 
 end subroutine wv_sat_qsat_water_vect
 
-elemental subroutine wv_sat_qsat_ice(t, p, es, qs, idx)
+subroutine wv_sat_qsat_ice(t, p, es, qs, idx)
   !------------------------------------------------------------------!
   ! Purpose:                                                         !
   !   Calculate SVP over ice at a given temperature, and then        !
@@ -316,7 +318,7 @@ subroutine wv_sat_qsat_ice_vect(t, p, es, qs, vlen, idx)
 
 end subroutine wv_sat_qsat_ice_vect
 
-elemental subroutine wv_sat_qsat_trans(t, p, es, qs, idx)
+subroutine wv_sat_qsat_trans(t, p, es, qs, idx)
   !------------------------------------------------------------------!
   ! Purpose:                                                         !
   !   Calculate SVP over ice at a given temperature, and then        !
@@ -345,10 +347,10 @@ end subroutine wv_sat_qsat_trans
 ! SVP INTERFACE FUNCTIONS
 !---------------------------------------------------------------------
 
-elemental function wv_sat_svp_water(t, idx) result(es)
+function wv_sat_svp_water(t, idx) result(es)
   real(r8), intent(in) :: t
   integer,  intent(in), optional :: idx
-  real(r8) :: es
+  real(r8)             :: es
 
   integer :: use_idx
 
@@ -398,10 +400,10 @@ subroutine  wv_sat_svp_water_vect(t, es, vlen, idx)
 
 end subroutine wv_sat_svp_water_vect
 
-elemental function wv_sat_svp_ice(t, idx) result(es)
-  real(r8), intent(in) :: t
+function wv_sat_svp_ice(t, idx) result(es)
+  real(r8), intent(in)  :: t
   integer,  intent(in), optional :: idx
-  real(r8) :: es
+  real(r8)              :: es
 
   integer :: use_idx
 
@@ -452,11 +454,10 @@ subroutine wv_sat_svp_ice_vect(t, es, vlen, idx)
 
 end subroutine wv_sat_svp_ice_vect
 
-elemental function wv_sat_svp_trans(t, idx) result (es)
+function wv_sat_svp_trans(t, idx) result(es)
 
   real(r8), intent(in) :: t
   integer,  intent(in), optional :: idx
-
   real(r8) :: es
 
   real(r8) :: esice      ! Saturation vapor pressure over ice

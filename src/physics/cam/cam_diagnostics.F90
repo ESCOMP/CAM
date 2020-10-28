@@ -1313,8 +1313,11 @@ contains
           call pbuf_get_field(pbuf, relhum_idx, ftem_ptr)
           ftem(:ncol,:) = ftem_ptr(:ncol,:)
        else
-          call qsat(state%t(:ncol,:), state%pmid(:ncol,:), &
-                    tem2(:ncol,:), ftem(:ncol,:))
+          do k = 1, pver
+             do i = 1, ncol
+                call qsat(state%t(i,k), state%pmid(i,k), tem2(i,k), ftem(i,k))
+             end do
+          end do
           ftem(:ncol,:) = state%q(:ncol,:,1)/ftem(:ncol,:)*100._r8
        end if
        call outfld ('RELHUM  ',ftem    ,pcols   ,lchnk     )
@@ -1323,8 +1326,11 @@ contains
     if (hist_fld_active('RHW') .or. hist_fld_active('RHI') .or. hist_fld_active('RHCFMIP') ) then
 
       ! RH w.r.t liquid (water)
-      call qsat_water (state%t(:ncol,:), state%pmid(:ncol,:), &
-           esl(:ncol,:), ftem(:ncol,:))
+      do k = 1, pver
+         do i = 1, ncol
+            call qsat_water (state%t(i,k), state%pmid(i,k), esl(i,k), ftem(i,k))
+         end do
+      end do
       ftem(:ncol,:) = state%q(:ncol,:,1)/ftem(:ncol,:)*100._r8
       call outfld ('RHW  ',ftem    ,pcols   ,lchnk     )
 
@@ -1766,8 +1772,9 @@ contains
       call outfld('U10',      cam_in%u10,       pcols, lchnk)
       !
       ! Calculate and output reference height RH (RHREFHT)
-
-      call qsat(cam_in%tref(:ncol), state%ps(:ncol), tem2(:ncol), ftem(:ncol))
+      do i = 1, ncol
+         call qsat(cam_in%tref(i), state%ps(i), tem2(i), ftem(i))
+      end do
       ftem(:ncol) = cam_in%qref(:ncol)/ftem(:ncol)*100._r8
 
 

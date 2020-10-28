@@ -440,9 +440,9 @@ subroutine pcond (lchnk   ,ncol    ,troplev ,dlat    , &
       call findsp_vc(qn(:ncol,k), tn(:ncol,k), p(:ncol,k), .true., &
            tsp(:ncol,k), qsp(:ncol,k))
 
-      call qsat(t(:ncol,k), p(:ncol,k), &
-           es(:ncol), qs(:ncol), gam=gamma(:ncol))
       do i = 1,ncol
+         call qsat(t(i,k), p(i,k), es(i), qs(i), gam=gamma(i))
+!
          relhum(i) = q(i,k)/qs(i)
 !
          cldm(i) = max(cldn(i,k),mincld)

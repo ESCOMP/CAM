@@ -740,7 +740,11 @@ contains
     !-----------------------------------------------------------------
     !	... compute the relative humidity
     !-----------------------------------------------------------------
-    call qsat(tfld(:ncol,:), pmid(:ncol,:), satv, satq)
+    do k = 1, pver
+       do i = 1, ncol
+          call qsat(tfld(i,k), pmid(i,k), satv(i,k), satq(i,k))
+       end do
+    end do
 
     do k = 1,pver
        relhum(:,k) = .622_r8 * h2ovmr(:,k) / satq(:,k)

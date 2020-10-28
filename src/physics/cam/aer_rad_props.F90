@@ -132,7 +132,7 @@ subroutine aer_rad_props_sw(list_idx, state, pbuf,  nnite, idxnite, &
 
    integer :: ncol
    integer :: lchnk
-   integer :: k       ! index
+   integer :: i, k       ! index
    integer :: troplev(pcols)
 
    ! optical props for each aerosol
@@ -201,8 +201,11 @@ subroutine aer_rad_props_sw(list_idx, state, pbuf,  nnite, idxnite, &
    tau_w_f(1:ncol,:,:) = 0._r8
 
    ! calculate relative humidity for table lookup into rh grid
-   call qsat(state%t(1:ncol,1:pver), state%pmid(1:ncol,1:pver), &
-        es(1:ncol,1:pver), qs(1:ncol,1:pver))
+   do k = 1, pver
+      do i = 1, ncol
+         call qsat(state%t(i,k), state%pmid(i,k), es(i,k), qs(i,k))
+      end do
+   end do
    rh(1:ncol,1:pver) = state%q(1:ncol,1:pver,1) / qs(1:ncol,1:pver)
 
    rhtrunc(1:ncol,1:pver) = min(rh(1:ncol,1:pver),1._r8)
@@ -382,8 +385,11 @@ subroutine aer_rad_props_lw(list_idx, state, pbuf,  odap_aer)
       end do
 
       ! calculate relative humidity for table lookup into rh grid
-      call qsat(state%t(1:ncol,1:pver), state%pmid(1:ncol,1:pver), &
-           es(1:ncol,1:pver), qs(1:ncol,1:pver))
+      do k = 1, pver
+         do i = 1, ncol
+            call qsat(state%t(i,k), state%pmid(i,k), es(i,k), qs(i,k))
+         end do
+      end do
       rh(1:ncol,1:pver) = state%q(1:ncol,1:pver,1) / qs(1:ncol,1:pver)
 
       rhtrunc(1:ncol,1:pver) = min(rh(1:ncol,1:pver),1._r8)

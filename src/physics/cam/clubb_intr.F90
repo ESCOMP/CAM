@@ -1893,11 +1893,14 @@ end subroutine clubb_init_cnst
      qitend(:ncol,:)=0._r8
      initend(:ncol,:)=0._r8
 
-     call ice_macro_tend(naai(:ncol,top_lev:pver),state1%t(:ncol,top_lev:pver), &
-        state1%pmid(:ncol,top_lev:pver),state1%q(:ncol,top_lev:pver,1),state1%q(:ncol,top_lev:pver,ixcldice),&
-        state1%q(:ncol,top_lev:pver,ixnumice),latsub,hdtime,&
-        stend(:ncol,top_lev:pver),qvtend(:ncol,top_lev:pver),qitend(:ncol,top_lev:pver),&
-        initend(:ncol,top_lev:pver))
+     do k = top_lev, pver
+        do i = 1, ncol
+           call ice_macro_tend(naai(i,k),state1%t(i,k),state1%pmid(i,k),      &
+                               state1%q(i,k,1),state1%q(i,k,ixcldice),        &
+                               state1%q(i,k,ixnumice),latsub,hdtime,          &
+                               stend(i,k),qvtend(i,k),qitend(i,k),initend(i,k))
+        end do
+     end do
 
     ! update local copy of state with the tendencies
      ptend_loc%q(:ncol,top_lev:pver,1)=qvtend(:ncol,top_lev:pver)
@@ -2796,12 +2799,15 @@ end subroutine clubb_init_cnst
       qctend(:ncol,:)=0._r8
       inctend(:ncol,:)=0._r8
  
-      call liquid_macro_tend(npccn(:ncol,top_lev:pver),state1%t(:ncol,top_lev:pver), &
-         state1%pmid(:ncol,top_lev:pver),state1%q(:ncol,top_lev:pver,ixq),state1%q(:ncol,top_lev:pver,ixcldliq),&
-         state1%q(:ncol,top_lev:pver,ixnumliq),latvap,hdtime,&
-         stend(:ncol,top_lev:pver),qvtend(:ncol,top_lev:pver),qctend(:ncol,top_lev:pver),&
-         inctend(:ncol,top_lev:pver))
- 
+      do k = top_lev, pver
+         do i = 1, ncol
+            call liquid_macro_tend(npccn(i,k),state1%t(i,k), state1%pmid(i,k),    &
+                                   state1%q(i,k,ixq),state1%q(i,k,ixcldliq),      &
+                                   state1%q(i,k,ixnumliq),latvap,hdtime,          &
+                                   stend(i,k),qvtend(i,k),qctend(i,k),inctend(i,k))
+         end do
+      end do
+
       ! update local copy of state with the tendencies
       ptend_loc%q(:ncol,top_lev:pver,ixq)=qvtend(:ncol,top_lev:pver)
       ptend_loc%q(:ncol,top_lev:pver,ixcldliq)=qctend(:ncol,top_lev:pver)
@@ -3269,7 +3275,7 @@ end subroutine clubb_init_cnst
 
 ! Saturation adjustment for ice
 ! Add ice mass if supersaturated
-elemental subroutine ice_macro_tend(naai,t,p,qv,qi,ni,xxls,deltat,stend,qvtend,qitend,nitend) 
+subroutine ice_macro_tend(naai,t,p,qv,qi,ni,xxls,deltat,stend,qvtend,qitend,nitend) 
 
   use wv_sat_methods, only: wv_sat_qsat_ice
 
