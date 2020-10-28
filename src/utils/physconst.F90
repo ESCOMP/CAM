@@ -699,7 +699,7 @@ end subroutine physconst_init
     call get_molecular_diff_coef(1,ncol,1,1,pver,pver,t(:ncol,:),1,sponge_factor,kmvis(:ncol,:,lchnk), &
        kmcnd(:ncol,:,lchnk), pcnst, tracer=mmr(:ncol,:,:), fact=to_moist_fact(:ncol,:),                &
        active_species_idx_dycore=thermodynamic_active_species_idx)
-    cappav(:ncol,:,lchnk) = rairv(:ncol,:,lchnk)/cpairv(:ncol,:,lchnk)
+
   end subroutine physconst_update
   !
   !****************************************************************************************************************
@@ -861,7 +861,7 @@ end subroutine physconst_init
        pint_local(:,:,k) = dp(:,:,k-1)+pint_local(:,:,k-1)
      end do
 
-     if (dycore_is('LR')) then
+     if (dycore_is ('LR').or.dycore_is ('SE')) then
        do k=k0,k1
          pmid(:,:,k) = dp(:,:,k)/(log(pint_local(:,:,k+1))-log(pint_local(:,:,k)))
        end do
@@ -1016,7 +1016,7 @@ end subroutine physconst_init
      ! integrate hydrostatic eqn
      !
      gzh = phis
-     if (dycore_is('LR')) then
+     if (dycore_is ('LR').or.dycore_is ('SE')) then
        do k=nlev,1,-1
          Rdry_tv(:,:) = R_dry(:,:,k)*T_v(:,:,k)
          gz(:,:,k) = gzh(:,:)+Rdry_tv(:,:)*(1.0_r8-pint(:,:,k)/pmid_local(:,:,k))
