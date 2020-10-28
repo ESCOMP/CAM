@@ -135,9 +135,6 @@ module chemistry
   ! Index of 1st constituent
   INTEGER :: iFirstCnst = -1
 
-  ! Number of diagnosed photolytic reactions
-  INTEGER :: nPhotol
-
   ! Strings
   CHARACTER(LEN=255)         :: ThisLoc
   CHARACTER(LEN=255)         :: ErrMsg
@@ -912,7 +909,6 @@ contains
     !
     !-----------------------------------------------------------------------
     use physics_buffer,   only : physics_buffer_desc, pbuf_get_index
-    use cam_history,      only : addfld, add_default, horiz_only
     use chem_mods,        only : map2GC_dryDep, drySpc_ndx
 
 #ifdef SPMD
@@ -942,7 +938,6 @@ contains
     use DiagList_Mod,      only : Init_DiagList, Print_DiagList
     use TaggedDiagList_Mod,only : Init_TaggedDiagList, Print_TaggedDiagList
     use GC_Grid_Mod,       only : SetGridFromCtrEdges
-    use State_Diag_Mod,    only : get_TagInfo
 
     ! Use GEOS-Chem versions of physical constants
     use PhysConstants,     only : PI, PI_180, Re
@@ -965,7 +960,8 @@ contains
     use tracer_cnst,       only : tracer_cnst_init
     use tracer_srcs,       only : tracer_srcs_init
 
-    use GC_Emissions_Mod,  only : GC_Emissions_Init
+    use CESMGC_Emissions_Mod,  only : CESMGC_Emissions_Init
+    use CESMGC_Diag_Mod,       only : CESMGC_Diag_Init
 
     TYPE(physics_state), INTENT(IN):: phys_state(BEGCHUNK:ENDCHUNK)
     TYPE(physics_buffer_desc), POINTER :: pbuf2d(:,:)
@@ -993,7 +989,6 @@ contains
     ! Strings
     CHARACTER(LEN=255)     :: historyConfigFile
     CHARACTER(LEN=255)     :: SpcName
-    CHARACTER(LEN=255)     :: tagName
 
     ! Objects
     TYPE(Species), POINTER :: SpcInfo
@@ -1723,112 +1718,12 @@ contains
     CALL tracer_cnst_init()
     CALL tracer_srcs_init()
 
-    ! Can add history output here too with the "addfld" & "add_default" routines
-    ! Note that constituents are already output by default
-    ! Add all species as output fields if desired
-    DO I = 1, nTracers
-       SpcName = TRIM(tracerNames(I))
-       CALL AddFld( TRIM(SpcName), (/ 'lev' /), 'A', 'mol/mol', &
-          TRIM(tracerLongNames(I))//' concentration')
-       IF (TRIM(SpcName) == 'O3') THEN
-          CALL Add_Default ( TRIM(SpcName), 1, ' ')
-       ENDIF
-    ENDDO
-
-    DO I = 1, nSls
-       SpcName = TRIM(slsNames(I))
-       CALL AddFld( TRIM(SpcName), (/ 'lev' /), 'A', 'mol/mol', &
-          TRIM(slsLongNames(I))//' concentration')
-       !CALL Add_Default(TRIM(SpcName), 1, ' ')
-    ENDDO
-
-    IF ( Input_Opt%LDryD ) THEN
-       DO I = 1, State_Chm(BEGCHUNK)%nDryDep
-          SpcName = 'DepVel_'//TRIM(depName(I))
-          CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'm/s', &
-            TRIM(SpcName)//' dry deposition velocity')
-       ENDDO
-
-       DO I = 1, State_Chm(BEGCHUNK)%nAdvect
-          ! Get the species ID from the advected species ID
-          L = State_Chm(BEGCHUNK)%Map_Advect(I)
-
-          ! Get info about this species from the species database
-          SpcInfo => State_Chm(BEGCHUNK)%SpcData(L)%Info
-          SpcName = 'DepFlux_'//TRIM(SpcInfo%Name)
-
-          CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'kg/m2/s', &
-             TRIM(SpcName)//' dry deposition flux')
-
-          ! Free pointer
-          SpcInfo => NULL()
-       ENDDO
-    ENDIF
-
-    ! Surface fluxes (emissions - drydep)
-    DO I = 1, pcnst
-       SpcName = 'SurfFlux_'//TRIM(cnst_name(I))
-       CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'kg/m2/s', &
-          TRIM(SpcName)//' surface flux')
-    ENDDO
-
-    IF ( gas_wetdep_method == 'GEOS-CHEM' ) THEN
-       DO N = 1, gas_pcnst
-          SpcName = 'DTWR_'//TRIM(solsym(N))
-          CALL Addfld( TRIM(SpcName), (/ 'lev' /), 'A', 'kg/kg/s', &
-             'wet removal tendency' )
-          SpcName = 'WD_'//TRIM(solsym(N))
-          CALL Addfld( TRIM(SpcName), horiz_only, 'A', 'kg/m2/s', &
-             'vertical integrated wet deposition flux' )
-          SpcName = 'WDRATE_'//TRIM(solsym(N))
-          CALL Addfld( TRIM(SpcName), (/ 'lev' /), 'A', 'kg/s', &
-             'wet removal rate' )
-       ENDDO
-    ENDIF
-
-    CALL get_TagInfo( Input_Opt = Input_Opt,           &
-                      tagID     = 'PHO',               &
-                      State_Chm = State_Chm(BEGCHUNK), &
-                      Found     = Found,               &
-                      RC        = RC,                  &
-                      nTags     = nPhotol             )
-
-    ! Trap potential errors
-    IF ( RC /= GC_SUCCESS ) THEN
-       ErrMsg = 'Abnormal exit from routine "Get_TagInfo", could not '  // &
-             ' get nTags!'
-       CALL Error_Stop( ErrMsg, ThisLoc )
-    ENDIF
-
-    DO M = 1, nPhotol
-       CALL get_TagInfo( Input_Opt = Input_Opt,           &
-                         tagID     = 'PHO',               &
-                         State_Chm = State_Chm(BEGCHUNK), &
-                         Found     = Found,               &
-                         RC        = RC,                  &
-                         N         = M,                   &
-                         tagName   = tagName             )
-
-       ! Trap potential errors
-       IF ( RC /= GC_SUCCESS ) THEN
-          ErrMsg = 'Abnormal exit from routine "Get_TagInfo"!'
-          CALL Error_Stop( ErrMsg, ThisLoc )
-       ENDIF
-
-       SpcName = 'Jval_' // TRIM( tagName )
-       CALL Addfld( TRIM(SpcName), (/ 'lev' /), 'A', '1/s', &
-          TRIM(tagName) // ' photolysis rate' )
-    ENDDO
-    ! Add Jval_O3O1D and Jval_O3O3P
-    SpcName = 'Jval_O3O1D'
-    CALL Addfld( TRIM(SpcName), (/ 'lev' /), 'A', '1/s', &
-       TRIM(tagName) // ' photolysis rate' )
-    SpcName = 'Jval_O3O3P'
-    CALL Addfld( TRIM(SpcName), (/ 'lev' /), 'A', '1/s', &
-       TRIM(tagName) // ' photolysis rate' )
+    ! Initialize diagnostics interface
+    CALL CESMGC_Diag_Init( Input_Opt = Input_Opt,         &
+                           State_Chm = State_Chm(BEGCHUNK) )
 
     ! Initialize emissions interface
-    CALL GC_Emissions_Init
+    CALL CESMGC_Emissions_Init
 
     hco_pbuf2d => pbuf2d
 
@@ -1936,7 +1831,8 @@ contains
     use State_Diag_Mod,      only : get_TagInfo
     use Unitconv_Mod,        only : Convert_Spc_Units
 
-    use GC_Emissions_Mod,    only : GC_Emissions_Calc
+    use CESMGC_Emissions_Mod,  only : CESMGC_Emissions_Calc
+    use CESMGC_Diag_Mod,       only : CESMGC_Diag_Calc
 
     use Tropopause,          only : Tropopause_findChemTrop, Tropopause_Find
     use HCO_Utilities_GC_Mod  ! Utility routines for GC-HEMCO interface
@@ -2033,7 +1929,6 @@ contains
     REAL(r8)              :: mmr1(state%NCOL,PVER,gas_pcnst)
     REAL(r8)              :: wk_out(state%NCOL)
     LOGICAL               :: isWD
-    REAL(r8)              :: outTmp(state%NCOL,PVER)
     LOGICAL               :: Found
     CHARACTER(LEN=255)    :: tagName
 
@@ -3404,7 +3299,7 @@ contains
        ENDIF
     ENDIF
 
-    CALL GC_Emissions_Calc( state, hco_pbuf2d, eflx )
+    CALL CESMGC_Emissions_Calc( state, hco_pbuf2d, eflx )
 
     ! Add near-surface emissions to surface flux BC
     cam_in%cflx(1:nY,:) = cam_in%cflx(1:nY,:) + eflx(1:nY,nZ,:)
@@ -3743,111 +3638,13 @@ contains
     Air_Total     = Air_Total + tmpMass
 #endif
 
-    ! Write diagnostic output
-    DO N = 1, pcnst
-       M = map2GC(N)
-       I = map2Idx(N)
-       IF ( M > 0 ) THEN
-          SpcName = tracerNames(I)
-          outTmp  = 0.0e+0_r8
-          DO J = 1, nY
-          DO L = 1, nZ
-             outTmp(J,nZ+1-L) = REAL(State_Chm(LCHNK)%Species(1,J,L,M),r8) * MWRatio(I)
-          ENDDO
-          ENDDO
-          CALL OutFld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
-       ENDIF
-    ENDDO
-
-    DO N = 1, nSls
-       SpcName = slsNames(N)
-       outTmp  = 0.0e+0_r8
-       M = map2GC_Sls(N)
-       IF ( M > 0 ) THEN
-          DO J = 1, nY
-          DO L = 1, nZ
-             outTmp(J,nZ+1-L) = REAL(State_Chm(LCHNK)%Species(1,J,L,M),r8) * SLSMWratio(N)
-          ENDDO
-          ENDDO
-          CALL OutFld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
-       ENDIF
-    ENDDO
-
-    ! Dry deposition velocity and surface flux
-    IF ( Input_Opt%LDryD ) THEN
-       DO N = 1, State_Chm(BEGCHUNK)%nDryDep
-          ND = NDVZIND(N)
-          SpcName = 'DepVel_'//TRIM(depName(N))
-          CALL OutFld( TRIM(SpcName), State_Chm(LCHNK)%DryDepVel(1,:nY,ND), nY, LCHNK )
-       ENDDO
-
-       DO N = 1, State_Chm(BEGCHUNK)%nAdvect
-          ! Get the species ID from the advected species ID
-          L = State_Chm(BEGCHUNK)%Map_Advect(N)
-
-          ! Get info about this species from the species database
-          SpcInfo => State_Chm(BEGCHUNK)%SpcData(L)%Info
-          SpcName = 'DepFlux_'//TRIM(SpcInfo%Name)
-
-          ! SurfaceFlux is Emissions - Drydep, but Emissions = 0, as it is applied
-          ! externally
-          CALL OutFld( TRIM(SpcName), -State_Chm(LCHNK)%SurfaceFlux(1,:nY,N), nY, LCHNK )
-
-          ! Free pointer
-          SpcInfo => NULL()
-       ENDDO
-    ENDIF
-
-    ! Surface fluxes (emissions - drydep)
-    DO N = 1, pcnst
-       SpcName = 'SurfFlux_'//TRIM(cnst_name(N))
-       CALL OutFld( TRIM(SpcName), cam_in%cflx(:nY,N), nY, LCHNK )
-    ENDDO
-
-    ! Photolysis rates
-    IF ( ASSOCIATED(State_Diag(LCHNK)%Jval) ) THEN
-       DO M = 1, nPhotol
-          CALL get_TagInfo( Input_Opt = Input_Opt,        &
-                            tagID     = 'PHO',            &
-                            State_Chm = State_Chm(LCHNK), &
-                            Found     = Found,            &
-                            RC        = RC,               &
-                            N         = M,                &
-                            tagName   = tagName          )
-
-          ! Trap potential errors
-          IF ( RC /= GC_SUCCESS ) THEN
-             ErrMsg = 'Abnormal exit from routine "Get_TagInfo"!'
-             CALL Error_Stop( ErrMsg, ThisLoc )
-          ENDIF
-
-          SpcName = 'Jval_' // TRIM( tagName )
-          DO J = 1, nY
-          DO L = 1, nZ
-             outTmp(J,nZ+1-L) = REAL(State_Diag(LCHNK)%Jval(1,J,L,M),r8)
-          ENDDO
-          ENDDO
-          CALL OutFld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
-       ENDDO
-    ENDIF
-    IF ( ASSOCIATED(State_Diag(LCHNK)%JvalO3O1D) ) THEN
-       SpcName = 'Jval_O3O1D'
-       DO J = 1, nY
-       DO L = 1, nZ
-          outTmp(J,nZ+1-L) = REAL(State_Diag(LCHNK)%JvalO3O1D(1,J,L),r8)
-       ENDDO
-       ENDDO
-       CALL OutFld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
-    ENDIF
-    IF ( ASSOCIATED(State_Diag(LCHNK)%JvalO3O3P) ) THEN
-       SpcName = 'Jval_O3O3P'
-       DO J = 1, nY
-       DO L = 1, nZ
-          outTmp(J,nZ+1-L) = REAL(State_Diag(LCHNK)%JvalO3O3P(1,J,L),r8)
-       ENDDO
-       ENDDO
-       CALL OutFld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
-    ENDIF
+    CALL CESMGC_Diag_Calc( Input_Opt  = Input_Opt, &
+                           State_Chm  = State_Chm(LCHNK),  &
+                           State_Diag = State_Diag(LCHNK), &
+                           State_Grid = State_Grid(LCHNK), &
+                           State_Met  = State_Met(LCHNK),  &
+                           cam_in     = cam_in,            &
+                           LCHNK      = LCHNK             )
 
     ! Re-flip all the arrays vertically
     ptend%q(:,:,:) = 0.0e+0_r8
@@ -3964,7 +3761,7 @@ contains
     use Diag_Mod,       only : Cleanup_Diag
 #endif
 
-    use GC_Emissions_Mod, only: GC_Emissions_Final
+    use CESMGC_Emissions_Mod, only: CESMGC_Emissions_Final
 
     ! Local variables
     INTEGER  :: I, RC
@@ -3998,7 +3795,7 @@ contains
     CALL Cleanup_Sulfate
     CALL Cleanup_Strat_Chem
 
-    CALL GC_Emissions_Final
+    CALL CESMGC_Emissions_Final
 
     CALL Cleanup_CMN_SIZE( RC )
     IF ( RC /= GC_SUCCESS ) THEN
