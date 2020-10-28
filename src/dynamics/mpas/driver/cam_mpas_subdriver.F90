@@ -525,14 +525,11 @@ contains
        !
        idx_passive = num_moist + 1
        do i = 1, size(cnst_name)
-          do j = 1, size(cnst_name)
-             if (mpas_from_cam_cnst(j) == i) exit
-          end do
 
           ! If CAM constituent i is not already mapped as a moist constituent
-          if (j > size(cnst_name)) then
-             mpas_from_cam_cnst(idx_passive) = i
-             idx_passive = idx_passive + 1
+          if (.not. cnst_is_a_water_species(cnst_name(i))) then
+                mpas_from_cam_cnst(idx_passive) = i
+                idx_passive = idx_passive + 1
           end if
        end do
 
