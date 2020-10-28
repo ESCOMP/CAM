@@ -477,11 +477,11 @@ contains
        end if
 
        !
-       ! If at runtime there are more than num_scalars in the array of constituent names provided by CAM,
+       ! If at runtime there are not num_scalars names in the array of constituent names provided by CAM,
        ! something has gone wrong
        !
-       if (size(cnst_name) > num_scalars) then
-          call mpas_log_write(trim(subname)//': ERROR: The number of constituent names is larger than the num_scalars dimension', &
+       if (size(cnst_name) /= num_scalars) then
+          call mpas_log_write(trim(subname)//': ERROR: The number of constituent names is not equal to the num_scalars dimension', &
                               messageType=MPAS_LOG_ERR)
           call mpas_log_write('size(cnst_name) = $i, num_scalars = $i', intArgs=[size(cnst_name), num_scalars], &
                               messageType=MPAS_LOG_ERR)
