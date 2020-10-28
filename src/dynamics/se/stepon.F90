@@ -41,12 +41,12 @@ subroutine stepon_init(dyn_in, dyn_out )
    integer :: m, m_cnst
    !----------------------------------------------------------------------------
    ! These fields on dynamics grid are output before the call to d_p_coupling.
-!!$   do m_cnst = 1, qsize
-!!$     call addfld(trim(cnst_name_gll(m_cnst))//'_gll',  (/ 'lev' /), 'I', 'kg/kg',   &
-!!$          trim(cnst_longname_gll(m_cnst)), gridname='GLL')
-!!$     call addfld(trim(cnst_name_gll(m_cnst))//'dp_gll',  (/ 'lev' /), 'I', 'kg/kg',   &
-!!$          trim(cnst_longname_gll(m_cnst))//'*dp', gridname='GLL')
-!!$   end do
+   do m_cnst = 1, qsize
+     call addfld(trim(cnst_name_gll(m_cnst))//'_gll',  (/ 'lev' /), 'I', 'kg/kg',   &
+          trim(cnst_longname_gll(m_cnst)), gridname='GLL')
+     call addfld(trim(cnst_name_gll(m_cnst))//'dp_gll',  (/ 'lev' /), 'I', 'kg/kg',   &
+          trim(cnst_longname_gll(m_cnst))//'*dp', gridname='GLL')
+   end do
    call addfld('U_gll'     ,(/ 'lev' /), 'I', 'm/s ','U wind on gll grid',gridname='GLL')
    call addfld('V_gll'     ,(/ 'lev' /), 'I', 'm/s ','V wind on gll grid',gridname='GLL')
    call addfld('T_gll'     ,(/ 'lev' /), 'I', 'K '  ,'T on gll grid'     ,gridname='GLL')
@@ -158,7 +158,7 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
    use advect_tend,    only: compute_adv_tends_xyz
    use dyn_grid,       only: TimeLevel
    use time_mod,       only: TimeLevel_Qdp
-   use control_mod,    only: qsplit
+   use control_mod,    only: qsplit   
    ! arguments
    real(r8),            intent(in)    :: dtime   ! Time-step
    type(cam_out_t),     intent(inout) :: cam_out(:) ! Output from CAM to surface
@@ -168,23 +168,23 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
 
    integer :: tl_f, tl_fQdp
    !--------------------------------------------------------------------------------------
-
+   
    call t_startf('comp_adv_tends1')
-   tl_f = TimeLevel%n0
-   call TimeLevel_Qdp(TimeLevel, qsplit, tl_fQdp)
+   tl_f = TimeLevel%n0 
+   call TimeLevel_Qdp(TimeLevel, qsplit, tl_fQdp)   
    call compute_adv_tends_xyz(dyn_in%elem,dyn_in%fvm,1,nelemd,tl_fQdp,tl_f)
    call t_stopf('comp_adv_tends1')
-
+   
    call t_barrierf('sync_dyn_run', mpicom)
    call t_startf('dyn_run')
    call dyn_run(dyn_out)
    call t_stopf('dyn_run')
 
    call t_startf('comp_adv_tends2')
-   tl_f = TimeLevel%n0
-   call TimeLevel_Qdp(TimeLevel, qsplit, tl_fQdp)
+   tl_f = TimeLevel%n0 
+   call TimeLevel_Qdp(TimeLevel, qsplit, tl_fQdp)   
    call compute_adv_tends_xyz(dyn_in%elem,dyn_in%fvm,1,nelemd,tl_fQdp,tl_f)
-   call t_stopf('comp_adv_tends2')
+   call t_stopf('comp_adv_tends2')   
 
 end subroutine stepon_run3
 
@@ -242,36 +242,36 @@ subroutine diag_dynvar_ic(elem, fvm)
    allocate(ftmp(npsq,nlev,2))
 
    ! Output tracer fields for analysis of advection schemes
-!!$   do m_cnst = 1, qsize
-!!$     tfname = trim(cnst_name_gll(m_cnst))//'_gll'
-!!$     if (hist_fld_active(tfname)) then
-!!$       do ie = 1, nelemd
-!!$         qtmp(:,:,:) =  elem(ie)%state%Qdp(:,:,:,m_cnst,tl_qdp)/&
-!!$              elem(ie)%state%dp3d(:,:,:,tl_f)
-!!$         do j = 1, np
-!!$           do i = 1, np
-!!$             ftmp(i+(j-1)*np,:,1) = elem(ie)%state%Qdp(i,j,:,m_cnst,tl_qdp)/&
-!!$                  elem(ie)%state%dp3d(i,j,:,tl_f)
-!!$           end do
-!!$         end do
-!!$         call outfld(tfname, ftmp(:,:,1), npsq, ie)
-!!$       end do
-!!$     end if
-!!$   end do
-!!$
-!!$   do m_cnst = 1, qsize
-!!$     tfname = trim(cnst_name_gll(m_cnst))//'dp_gll'
-!!$     if (hist_fld_active(tfname)) then
-!!$       do ie = 1, nelemd
-!!$         do j = 1, np
-!!$           do i = 1, np
-!!$             ftmp(i+(j-1)*np,:,1) = elem(ie)%state%Qdp(i,j,:,m_cnst,tl_qdp)
-!!$           end do
-!!$         end do
-!!$         call outfld(tfname, ftmp(:,:,1), npsq, ie)
-!!$       end do
-!!$     end if
-!!$    end do
+   do m_cnst = 1, qsize
+     tfname = trim(cnst_name_gll(m_cnst))//'_gll'
+     if (hist_fld_active(tfname)) then
+       do ie = 1, nelemd
+         qtmp(:,:,:) =  elem(ie)%state%Qdp(:,:,:,m_cnst,tl_qdp)/&
+              elem(ie)%state%dp3d(:,:,:,tl_f)
+         do j = 1, np
+           do i = 1, np
+             ftmp(i+(j-1)*np,:,1) = elem(ie)%state%Qdp(i,j,:,m_cnst,tl_qdp)/&
+                  elem(ie)%state%dp3d(i,j,:,tl_f)
+           end do
+         end do
+         call outfld(tfname, ftmp(:,:,1), npsq, ie)
+       end do
+     end if
+   end do
+
+   do m_cnst = 1, qsize
+     tfname = trim(cnst_name_gll(m_cnst))//'dp_gll'
+     if (hist_fld_active(tfname)) then
+       do ie = 1, nelemd
+         do j = 1, np
+           do i = 1, np
+             ftmp(i+(j-1)*np,:,1) = elem(ie)%state%Qdp(i,j,:,m_cnst,tl_qdp)
+           end do
+         end do
+         call outfld(tfname, ftmp(:,:,1), npsq, ie)
+       end do
+     end if
+    end do
 
    if (hist_fld_active('U_gll') .or. hist_fld_active('V_gll')) then
       do ie = 1, nelemd
@@ -298,7 +298,7 @@ subroutine diag_dynvar_ic(elem, fvm)
    end if
 
    if (hist_fld_active('dp_ref_gll')) then
-     do ie = 1, nelemd
+     do ie = 1, nelemd       
        call get_dp_ref(hyai,hybi,ps0,1,np,1,np,1,nlev,elem(ie)%state%phis(:,:),dp_ref(:,:,:),ps_ref(:,:))
          do j = 1, np
             do i = 1, np
@@ -342,16 +342,16 @@ subroutine diag_dynvar_ic(elem, fvm)
    end if
 
    if (write_inithist()) then
-     allocate(fld_2d(np,np))
+     allocate(fld_2d(np,np))     
      do ie = 1, nelemd
        call get_ps(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,tl_Qdp),&
-            thermodynamic_active_species_idx_dycore,elem(ie)%state%dp3d(:,:,:,tl_f),fld_2d,hyai(1)*ps0)
+            thermodynamic_active_species_idx_dycore,elem(ie)%state%dp3d(:,:,:,tl_f),fld_2d,hyai(1)*ps0)       
        do j = 1, np
          do i = 1, np
            ftmp(i+(j-1)*np,1,1) = fld_2d(i,j)
          end do
        end do
-       call outfld('PS&IC', ftmp(:,1,1), npsq, ie)
+       call outfld('PS&IC', ftmp(:,1,1), npsq, ie)       
      end do
      deallocate(fld_2d)
       if (fv_nphys < 1) allocate(factor_array(np,np,nlev))

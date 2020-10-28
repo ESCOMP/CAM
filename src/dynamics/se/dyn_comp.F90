@@ -872,10 +872,10 @@ subroutine dyn_init(dyn_in, dyn_out)
       call addfld ('PSDRY_fvm',horiz_only, 'I','Pa','CSLAM dry surface pressure'    , gridname='FVM')
    end if
 
-!!$   do m_cnst = 1, qsize
-!!$     call addfld ('F'//trim(cnst_name_gll(m_cnst))//'_gll',  (/ 'lev' /), 'I', 'kg/kg/s',   &
-!!$          trim(cnst_longname(m_cnst))//' mixing ratio forcing term (q_new-q_old) on GLL grid', gridname='GLL')
-!!$   end do
+   do m_cnst = 1, qsize
+     call addfld ('F'//trim(cnst_name_gll(m_cnst))//'_gll',  (/ 'lev' /), 'I', 'kg/kg/s',   &
+          trim(cnst_longname(m_cnst))//' mixing ratio forcing term (q_new-q_old) on GLL grid', gridname='GLL')
+   end do
 
    ! Energy diagnostics and axial angular momentum diagnostics
    call addfld ('ABS_dPSdt',  horiz_only, 'A', 'Pa/s', 'Absolute surface pressure tendency',gridname='GLL')
@@ -1020,15 +1020,15 @@ subroutine dyn_run(dyn_state)
          call outfld('FT', ftmp(:,:,3), npsq, ie)
       end do
    end if
-!!$
-!!$   do m = 1, qsize
-!!$     if (hist_fld_active('F'//trim(cnst_name_gll(m))//'_gll')) then
-!!$       do ie = nets, nete
-!!$         call outfld('F'//trim(cnst_name_gll(m))//'_gll',&
-!!$              RESHAPE(dyn_state%elem(ie)%derived%FQ(:,:,:,m), (/np*np,nlev/)), npsq, ie)
-!!$       end do
-!!$     end if
-!!$   end do
+
+   do m = 1, qsize
+     if (hist_fld_active('F'//trim(cnst_name_gll(m))//'_gll')) then
+       do ie = nets, nete
+         call outfld('F'//trim(cnst_name_gll(m))//'_gll',&
+              RESHAPE(dyn_state%elem(ie)%derived%FQ(:,:,:,m), (/np*np,nlev/)), npsq, ie)
+       end do
+     end if
+   end do
 
 
 

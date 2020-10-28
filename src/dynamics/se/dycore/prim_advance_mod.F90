@@ -451,7 +451,7 @@ contains
     use dimensions_mod, only: np, nlev, nc, ntrac, npsq, qsize
     use dimensions_mod, only: hypervis_dynamic_ref_state,ksponge_end
     use dimensions_mod, only: nu_scale_top,nu_lev,kmvis_ref,kmcnd_ref,rho_ref,km_sponge_factor
-    use dimensions_mod, only: kmvisi_ref,kmcndi_ref,rhoi_ref,nu_s_lev
+    use dimensions_mod, only: kmvisi_ref,kmcndi_ref,rhoi_ref
     use control_mod,    only: nu, nu_s, hypervis_subcycle,hypervis_subcycle_sponge, nu_p, nu_top
     use control_mod,    only: molecular_diff
     use hybrid_mod,     only: hybrid_t!, get_loop_ranges
@@ -590,7 +590,7 @@ contains
           !DIR_VECTOR_ALIGNED
           do j=1,np
             do i=1,np
-              ttens(i,j,k,ie)   = -nu_s_lev(k)*ttens(i,j,k,ie)
+              ttens(i,j,k,ie)   = -nu_s*ttens(i,j,k,ie)
               dptens(i,j,k,ie)  = -nu_p*dptens(i,j,k,ie)
               vtens(i,j,1,k,ie) = -nu_lev(k)*vtens(i,j,1,k,ie)
               vtens(i,j,2,k,ie) = -nu_lev(k)*vtens(i,j,2,k,ie)
@@ -734,8 +734,7 @@ contains
               heating = 0.5_r8*(v1new*v1new+v2new*v2new-(v1*v1+v2*v2))
 
               elem(ie)%state%T(i,j,k,nt)=elem(ie)%state%T(i,j,k,nt) &
-                   -heating*inv_cp_full(i,j,k,ie)*nu/nu_lev(k)
-              !the nu/nu_lev(k) scaling is to not have sponge frictional heating
+                   -heating*inv_cp_full(i,j,k,ie)
             enddo
           enddo
         enddo
@@ -1044,16 +1043,16 @@ contains
               elem(ie)%state%T(i,j,k,nt)=elem(ie)%state%T(i,j,k,nt) &
                    +ttens(i,j,k,ie)
 
-!xxx              v1new=elem(ie)%state%v(i,j,1,k,nt)
-!xxx              v2new=elem(ie)%state%v(i,j,2,k,nt)
-!xxx              v1   =elem(ie)%state%v(i,j,1,k,nt)- vtens(i,j,1,k,ie)
-!xxx              v2   =elem(ie)%state%v(i,j,2,k,nt)- vtens(i,j,2,k,ie)
+              v1new=elem(ie)%state%v(i,j,1,k,nt)
+              v2new=elem(ie)%state%v(i,j,2,k,nt)
+              v1   =elem(ie)%state%v(i,j,1,k,nt)- vtens(i,j,1,k,ie)
+              v2   =elem(ie)%state%v(i,j,2,k,nt)- vtens(i,j,2,k,ie)
               !
               ! frictional heating
               !
-!xxx              heating = 0.5_r8*(v1new*v1new+v2new*v2new-(v1*v1+v2*v2))
-!xxx              elem(ie)%state%T(i,j,k,nt)=elem(ie)%state%T(i,j,k,nt) &
-!xxx                   -heating*inv_cp_full(i,j,k,ie)
+              heating = 0.5_r8*(v1new*v1new+v2new*v2new-(v1*v1+v2*v2))
+              elem(ie)%state%T(i,j,k,nt)=elem(ie)%state%T(i,j,k,nt) &
+                   -heating*inv_cp_full(i,j,k,ie)
             enddo
           enddo
         enddo
