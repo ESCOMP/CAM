@@ -642,8 +642,8 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, qv_tend, dy
    !
    ! Update halos for u_tend and v_tend
    !
-   call cam_mpas_update_halo('tend_uzonal')   ! dyn_in % u_tend
-   call cam_mpas_update_halo('tend_umerid')   ! dyn_in % v_tend
+   call cam_mpas_update_halo('tend_uzonal', endrun)   ! dyn_in % u_tend
+   call cam_mpas_update_halo('tend_umerid', endrun)   ! dyn_in % v_tend
 
    !
    ! Project u and v tendencies to edge normal tendency
@@ -654,7 +654,7 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, qv_tend, dy
    !
    ! Update halo for edge normal tendency
    !
-   call cam_mpas_update_halo('tend_ru_physics')
+   call cam_mpas_update_halo('tend_ru_physics', endrun)
 
 
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
@@ -680,7 +680,7 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, qv_tend, dy
    !
    ! Update halo for rtheta_m tendency
    !
-   call cam_mpas_update_halo('tend_rtheta_physics')
+   call cam_mpas_update_halo('tend_rtheta_physics', endrun)
 
 
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 

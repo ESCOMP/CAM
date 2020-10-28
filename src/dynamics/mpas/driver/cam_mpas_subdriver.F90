@@ -13,6 +13,8 @@ module cam_mpas_subdriver
 
     use mpas_derived_types, only : core_type, dm_info, domain_type, MPAS_Clock_type
 
+    implicit none
+
     public :: cam_mpas_init_phase1, &
               cam_mpas_init_phase2, &
               cam_mpas_init_phase3, &
@@ -72,8 +74,6 @@ contains
        use mpas_framework, only : mpas_framework_init_phase1
        use atm_core_interface, only : atm_setup_core, atm_setup_domain
        use mpas_pool_routines, only : mpas_pool_add_config
-
-       implicit none
 
        ! Dummy argument
        integer, intent(in) :: mpicom
@@ -136,12 +136,9 @@ contains
 
        use mpas_log, only : mpas_log_write
        use mpas_kind_types, only : ShortStrKIND
-       use mpas_derived_types, only : MPAS_LOG_ERR
        use pio_types, only : iosystem_desc_t
 
        use mpas_framework, only : mpas_framework_init_phase2
-
-       implicit none
 
        type (iosystem_desc_t), pointer :: pio_subsystem
        procedure(halt_model) :: endrun
@@ -190,15 +187,6 @@ contains
           call endrun(subname//': FATAL: Clock setup failed for core '//trim(domain_ptr % core % coreName))
        end if
 
-#ifdef MPAS_USE_STREAMS
-       call mpas_log_write('Reading streams configuration from file '//trim(domain_ptr % streams_filename))
-       inquire(file=trim(domain_ptr % streams_filename), exist=streamsExists)
-
-       if ( .not. streamsExists ) then
-          call endrun(subname//': FATAL: Streams file '//trim(domain_ptr % streams_filename)//' does not exist.')
-       end if
-#endif
-
        ! At this point, we should be ready to set up decompositions, build halos, allocate blocks, etc. in dyn_grid_init
 
     end subroutine cam_mpas_init_phase2
@@ -220,7 +208,6 @@ contains
     subroutine cam_mpas_init_phase3(fh_ini, num_scalars, endrun)
 
        use mpas_log, only : mpas_log_write
-       use mpas_derived_types, only : MPAS_LOG_ERR
        use pio, only : file_desc_t
        use iso_c_binding, only : c_int, c_char, c_ptr, c_loc
 
@@ -235,8 +222,6 @@ contains
        use mpas_c_interfacing, only : mpas_c_to_f_string, mpas_f_to_c_string
        use mpas_bootstrapping, only : mpas_bootstrap_framework_phase1, mpas_bootstrap_framework_phase2
        use mpas_pool_routines, only : mpas_pool_add_config
-
-       implicit none
 
        type (file_desc_t), intent(inout) :: fh_ini
        integer, intent(in) :: num_scalars
@@ -267,85 +252,10 @@ contains
        integer :: blockID
        character(len=StrKIND) :: timeStamp
 
-       interface
-          subroutine xml_stream_parser(xmlname, mgr_p, comm, ierr) bind(c)
-             use iso_c_binding, only : c_char, c_ptr, c_int
-             character(kind=c_char), dimension(*), intent(in) :: xmlname
-             type (c_ptr), intent(inout) :: mgr_p
-             integer(kind=c_int), intent(inout) :: comm
-             integer(kind=c_int), intent(out) :: ierr
-          end subroutine xml_stream_parser
-
-          subroutine xml_stream_get_attributes(xmlname, streamname, comm, filename, ref_time, filename_interval, io_type, ierr) bind(c)
-             use iso_c_binding, only : c_char, c_int
-             character(kind=c_char), dimension(*), intent(in) :: xmlname
-             character(kind=c_char), dimension(*), intent(in) :: streamname
-             integer(kind=c_int), intent(inout) :: comm
-             character(kind=c_char), dimension(*), intent(out) :: filename
-             character(kind=c_char), dimension(*), intent(out) :: ref_time
-             character(kind=c_char), dimension(*), intent(out) :: filename_interval
-             character(kind=c_char), dimension(*), intent(out) :: io_type
-             integer(kind=c_int), intent(out) :: ierr
-          end subroutine xml_stream_get_attributes
-       end interface
-
        character(len=*), parameter :: subname = 'cam_mpas_subdriver::cam_mpas_init_phase3'
 
-   
-#ifdef MPAS_USE_STREAMS
-       !
-       ! Using information from the namelist, a graph.info file, and a file containing
-       !    mesh fields, build halos and allocate blocks in the domain
-       !
-       ierr = domain_ptr % core % get_mesh_stream(domain_ptr % configs, mesh_stream)
-       if ( ierr /= 0 ) then
-          call endrun('Failed to find mesh stream for core '//trim(domain_ptr % core % coreName))
-       end if
 
-       call mpas_f_to_c_string(domain_ptr % streams_filename, c_filename)
-       call mpas_f_to_c_string(mesh_stream, c_mesh_stream)
-       c_comm = domain_ptr % dminfo % comm
-       call xml_stream_get_attributes(c_filename, c_mesh_stream, c_comm, &
-                                      c_mesh_filename_temp, c_ref_time_temp, &
-                                      c_filename_interval_temp, c_iotype, c_ierr)
-       if (c_ierr /= 0) then
-          call endrun('stream xml get attribute failed: '//trim(domain_ptr % streams_filename))
-       end if
-       call mpas_c_to_f_string(c_mesh_filename_temp, mesh_filename_temp)
-       call mpas_c_to_f_string(c_ref_time_temp, ref_time_temp)
-       call mpas_c_to_f_string(c_filename_interval_temp, filename_interval_temp)
-       call mpas_c_to_f_string(c_iotype, iotype)
-
-       if (trim(iotype) == 'pnetcdf') then
-          mesh_iotype = MPAS_IO_PNETCDF
-       else if (trim(iotype) == 'pnetcdf,cdf5') then
-          mesh_iotype = MPAS_IO_PNETCDF5
-       else if (trim(iotype) == 'netcdf') then
-          mesh_iotype = MPAS_IO_NETCDF
-       else if (trim(iotype) == 'netcdf4') then
-          mesh_iotype = MPAS_IO_NETCDF4
-       else
-          mesh_iotype = MPAS_IO_PNETCDF
-       end if
-
-       start_time = mpas_get_clock_time(domain_ptr % clock, MPAS_START_TIME, ierr)
-       if ( trim(ref_time_temp) == 'initial_time' ) then
-           call mpas_get_time(start_time, dateTimeString=ref_time_temp, ierr=ierr)
-       end if
-
-       blockID = -1
-       if ( trim(filename_interval_temp) == 'none' ) then
-           call mpas_expand_string(ref_time_temp, blockID, mesh_filename_temp, mesh_filename)
-       else
-           call mpas_set_time(ref_time, dateTimeString=ref_time_temp, ierr=ierr)
-           call mpas_set_timeInterval(filename_interval, timeString=filename_interval_temp, ierr=ierr)
-           call mpas_build_stream_filename(ref_time, start_time, filename_interval, mesh_filename_temp, blockID, mesh_filename, ierr)
-       end if
-
-       call mpas_log_write(' ** Attempting to bootstrap MPAS framework using stream: ' // trim(mesh_stream))
-#else
        mesh_filename = 'external mesh file'
-#endif
 
        !
        ! Adding a config named 'cam_pcnst' with the number of constituents will indicate to
@@ -354,50 +264,12 @@ contains
        !
        call mpas_pool_add_config(domain_ptr % configs, 'cam_pcnst', num_scalars)
 
-! Use the call below if we intend to bootstrap from an input stream; also define MPAS_USE_STREAMS
-!       call mpas_bootstrap_framework_phase1(domain_ptr, mesh_filename, mesh_iotype)
-
-! Use the call below if we intend to supply the bootstrapping process with an external PIO file_desc_t, fh_ini
        mesh_iotype = MPAS_IO_NETCDF  ! Not actually used
        call mpas_bootstrap_framework_phase1(domain_ptr, mesh_filename, mesh_iotype, pio_file_desc=fh_ini)
-
-#ifdef MPAS_USE_STREAMS
-       !
-       ! Set up run-time streams
-       !
-       call MPAS_stream_mgr_init(domain_ptr % streamManager, domain_ptr % ioContext, domain_ptr % clock, &
-                                 domain_ptr % blocklist % allFields, domain_ptr % packages, domain_ptr % blocklist % allStructs)
-
-       call add_stream_attributes(domain_ptr)
-
-       ierr = domain_ptr % core % setup_immutable_streams(domain_ptr % streamManager)
-       if ( ierr /= 0 ) then
-          call endrun('Immutable streams setup failed for core '//trim(domain_ptr % core % coreName))
-       end if
-
-       mgr_p = c_loc(domain_ptr % streamManager)
-       call xml_stream_parser(c_filename, mgr_p, c_comm, c_ierr)
-       if (c_ierr /= 0) then
-          call endrun('xml stream parser failed: '//trim(domain_ptr % streams_filename))
-       end if
-
-       !
-       ! Validate streams after set-up
-       !
-       call mpas_log_write(' ** Validating streams')
-       call MPAS_stream_mgr_validate_streams(domain_ptr % streamManager, ierr = ierr)
-       if ( ierr /= MPAS_STREAM_MGR_NOERR ) then
-          call endrun('ERROR: Validation of streams failed for core ' // trim(domain_ptr % core % coreName))
-       end if
-#endif
 
        !
        ! Finalize the setup of blocks and fields
        !
-! Use the call below if we intend to bootstrap from an input stream; also define MPAS_USE_STREAMS
-!       call mpas_bootstrap_framework_phase2(domain_ptr)
-
-! Use the call below if we intend to supply the bootstrapping process with an external PIO file_desc_t, fh_ini
        call mpas_bootstrap_framework_phase2(domain_ptr, pio_file_desc=fh_ini)
 
     end subroutine cam_mpas_init_phase3
@@ -426,8 +298,6 @@ contains
                                       mpas_pool_get_field, mpas_pool_get_array, mpas_pool_initialize_time_levels
        use atm_core, only : atm_mpas_init_block, core_clock => clock
        use mpas_dmpar, only : mpas_dmpar_exch_halo_field
-
-       implicit none
 
        procedure(halt_model) :: endrun
 
@@ -558,11 +428,13 @@ contains
 
        use constituents, only: cnst_name, cnst_is_a_water_species
 
-       implicit none
-
+       ! Arguments
        type (block_type), pointer :: block
        integer, dimension(:), pointer :: mpas_from_cam_cnst, cam_from_mpas_cnst
        integer :: ierr
+
+       ! Local variables
+       character(len=*), parameter :: subname = 'cam_mpas_subdriver::cam_mpas_define_scalars'
 
        integer :: i, j, timeLevs
        integer, pointer :: num_scalars
@@ -577,7 +449,6 @@ contains
 
        ierr = 0
 
-
        !
        ! Define scalars
        !
@@ -585,7 +456,7 @@ contains
        call mpas_pool_get_subpool(block % structs, 'state', statePool)
 
        if (.not. associated(statePool)) then
-          call mpas_log_write('The ''state'' pool was not found by cam_mpas_define_scalars', &
+          call mpas_log_write(trim(subname)//': ERROR: The ''state'' pool was not found.', &
                               messageType=MPAS_LOG_ERR)
           ierr = 1
           return
@@ -599,18 +470,18 @@ contains
        ! if this dimension does not exist, something has gone wrong
        !
        if (.not. associated(num_scalars)) then
-          call mpas_log_write('The num_scalars dimension does not exist in the ''state'' pool', &
+          call mpas_log_write(trim(subname)//': ERROR: The ''num_scalars'' dimension does not exist in the ''state'' pool.', &
                               messageType=MPAS_LOG_ERR)
           ierr = 1
           return
        end if
 
        !
-       ! If at runtime there are more than num_scalars in the array of constituent names provided by CAM,
+       ! If at runtime there are not num_scalars names in the array of constituent names provided by CAM,
        ! something has gone wrong
        !
-       if (size(cnst_name) > num_scalars) then
-          call mpas_log_write('The number of constituent names is larger than the num_scalars dimension', &
+       if (size(cnst_name) /= num_scalars) then
+          call mpas_log_write(trim(subname)//': ERROR: The number of constituent names is not equal to the num_scalars dimension', &
                               messageType=MPAS_LOG_ERR)
           call mpas_log_write('size(cnst_name) = $i, num_scalars = $i', intArgs=[size(cnst_name), num_scalars], &
                               messageType=MPAS_LOG_ERR)
@@ -624,7 +495,7 @@ contains
        !
        if (size(cnst_name) > 0) then
           if (trim(cnst_name(1)) /= 'Q') then
-             call mpas_log_write('The first constituent is not Q', messageType=MPAS_LOG_ERR)
+             call mpas_log_write(trim(subname)//': ERROR: The first constituent is not Q', messageType=MPAS_LOG_ERR)
              ierr = 1
              return
           end if
@@ -655,14 +526,11 @@ contains
        !
        idx_passive = num_moist + 1
        do i = 1, size(cnst_name)
-          do j = 1, size(cnst_name)
-             if (mpas_from_cam_cnst(j) == i) exit
-          end do
 
           ! If CAM constituent i is not already mapped as a moist constituent
-          if (j > size(cnst_name)) then
-             mpas_from_cam_cnst(idx_passive) = i
-             idx_passive = idx_passive + 1
+          if (.not. cnst_is_a_water_species(cnst_name(i))) then
+                mpas_from_cam_cnst(idx_passive) = i
+                idx_passive = idx_passive + 1
           end if
        end do
 
@@ -683,7 +551,7 @@ contains
           call mpas_pool_get_field(statePool, 'scalars', scalarsField, timeLevel=i)
 
           if (.not. associated(scalarsField)) then
-             call mpas_log_write('The ''scalars'' field was not found in the ''state'' pool', &
+             call mpas_log_write(trim(subname)//': ERROR: The ''scalars'' field was not found in the ''state'' pool', &
                                  messageType=MPAS_LOG_ERR)
              ierr = 1
              return
@@ -733,7 +601,7 @@ contains
        call mpas_pool_get_subpool(block % structs, 'tend', tendPool)
 
        if (.not. associated(tendPool)) then
-          call mpas_log_write('The ''tend'' pool was not found by cam_mpas_define_scalars', &
+          call mpas_log_write(trim(subname)//': ERROR: The ''tend'' pool was not found.', &
                               messageType=MPAS_LOG_ERR)
           ierr = 1
           return
@@ -746,7 +614,7 @@ contains
           call mpas_pool_get_field(tendPool, 'scalars_tend', scalarsField, timeLevel=i)
 
           if (.not. associated(scalarsField)) then
-             call mpas_log_write('The ''scalars_tend'' field was not found in the ''tend'' pool', &
+             call mpas_log_write(trim(subname)//': ERROR: The ''scalars_tend'' field was not found in the ''tend'' pool', &
                                  messageType=MPAS_LOG_ERR)
              ierr = 1
              return
@@ -784,8 +652,6 @@ contains
        use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_dimension
        use mpas_derived_types, only : mpas_pool_type
        use mpas_dmpar, only : mpas_dmpar_sum_int, mpas_dmpar_max_int
-
-       implicit none
 
        integer, intent(out) :: nCellsGlobal
        integer, intent(out) :: nEdgesGlobal
@@ -843,8 +709,6 @@ contains
        use mpas_derived_types, only : mpas_pool_type
        use mpas_kind_types, only : RKIND
        use mpas_dmpar, only : mpas_dmpar_sum_int, mpas_dmpar_max_int, mpas_dmpar_max_real_array
-
-       implicit none
 
        real (kind=RKIND), dimension(:), intent(out) :: latCellGlobal
        real (kind=RKIND), dimension(:), intent(out) :: lonCellGlobal
@@ -937,8 +801,6 @@ contains
        use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_dimension, mpas_pool_get_array
        use mpas_derived_types, only : mpas_pool_type
        use mpas_dmpar, only : mpas_dmpar_max_int_array
-
-       implicit none
 
        integer, dimension(:), intent(out) :: nCellsPerBlock
        integer, dimension(:,:), intent(out) :: indexToCellIDBlock
@@ -1033,8 +895,6 @@ contains
                                       MPAS_pool_add_config
        use mpas_dmpar, only : MPAS_dmpar_exch_halo_field
        use mpas_stream_manager, only : postread_reindex
-
-       implicit none
 
        type (file_desc_t), pointer :: fh_ini
        procedure(halt_model) :: endrun
@@ -1331,8 +1191,6 @@ contains
                                       field1DInteger, field2DInteger, field0DChar, &
                                       MPAS_IO_WRITE
        use mpas_pool_routines, only : MPAS_pool_get_field
-
-       implicit none
 
        type (file_desc_t), intent(inout) :: fh_rst
        type (MPAS_Stream_type), intent(inout) :: restart_stream
@@ -1681,8 +1539,6 @@ contains
        use mpas_pool_routines, only : MPAS_pool_create_pool, MPAS_pool_destroy_pool, MPAS_pool_add_config
        use mpas_stream_manager, only : postread_reindex
 
-       implicit none
-
        type (MPAS_Stream_type), intent(inout) :: restart_stream
        procedure(halt_model) :: endrun
 
@@ -1697,104 +1553,104 @@ contains
        ! Perform halo updates for all decomposed fields (i.e., fields with
        ! an outermost dimension of nCells, nVertices, or nEdges)
        !
-       call cam_mpas_update_halo('latCell')
-       call cam_mpas_update_halo('lonCell')
-       call cam_mpas_update_halo('xCell')
-       call cam_mpas_update_halo('yCell')
-       call cam_mpas_update_halo('zCell')
+       call cam_mpas_update_halo('latCell', endrun)
+       call cam_mpas_update_halo('lonCell', endrun)
+       call cam_mpas_update_halo('xCell', endrun)
+       call cam_mpas_update_halo('yCell', endrun)
+       call cam_mpas_update_halo('zCell', endrun)
 
-       call cam_mpas_update_halo('latEdge')
-       call cam_mpas_update_halo('lonEdge')
-       call cam_mpas_update_halo('xEdge')
-       call cam_mpas_update_halo('yEdge')
-       call cam_mpas_update_halo('zEdge')
+       call cam_mpas_update_halo('latEdge', endrun)
+       call cam_mpas_update_halo('lonEdge', endrun)
+       call cam_mpas_update_halo('xEdge', endrun)
+       call cam_mpas_update_halo('yEdge', endrun)
+       call cam_mpas_update_halo('zEdge', endrun)
 
-       call cam_mpas_update_halo('latVertex')
-       call cam_mpas_update_halo('lonVertex')
-       call cam_mpas_update_halo('xVertex')
-       call cam_mpas_update_halo('yVertex')
-       call cam_mpas_update_halo('zVertex')
+       call cam_mpas_update_halo('latVertex', endrun)
+       call cam_mpas_update_halo('lonVertex', endrun)
+       call cam_mpas_update_halo('xVertex', endrun)
+       call cam_mpas_update_halo('yVertex', endrun)
+       call cam_mpas_update_halo('zVertex', endrun)
 
-       call cam_mpas_update_halo('indexToCellID')
-       call cam_mpas_update_halo('indexToEdgeID')
-       call cam_mpas_update_halo('indexToVertexID')
+       call cam_mpas_update_halo('indexToCellID', endrun)
+       call cam_mpas_update_halo('indexToEdgeID', endrun)
+       call cam_mpas_update_halo('indexToVertexID', endrun)
 
-       call cam_mpas_update_halo('fEdge')
-       call cam_mpas_update_halo('fVertex')
+       call cam_mpas_update_halo('fEdge', endrun)
+       call cam_mpas_update_halo('fVertex', endrun)
 
-       call cam_mpas_update_halo('areaCell')
-       call cam_mpas_update_halo('areaTriangle')
-       call cam_mpas_update_halo('dcEdge')
-       call cam_mpas_update_halo('dvEdge')
-       call cam_mpas_update_halo('angleEdge')
-       call cam_mpas_update_halo('kiteAreasOnVertex')
-       call cam_mpas_update_halo('weightsOnEdge')
+       call cam_mpas_update_halo('areaCell', endrun)
+       call cam_mpas_update_halo('areaTriangle', endrun)
+       call cam_mpas_update_halo('dcEdge', endrun)
+       call cam_mpas_update_halo('dvEdge', endrun)
+       call cam_mpas_update_halo('angleEdge', endrun)
+       call cam_mpas_update_halo('kiteAreasOnVertex', endrun)
+       call cam_mpas_update_halo('weightsOnEdge', endrun)
 
-       call cam_mpas_update_halo('meshDensity')
+       call cam_mpas_update_halo('meshDensity', endrun)
 
-       call cam_mpas_update_halo('nEdgesOnCell')
-       call cam_mpas_update_halo('nEdgesOnEdge')
+       call cam_mpas_update_halo('nEdgesOnCell', endrun)
+       call cam_mpas_update_halo('nEdgesOnEdge', endrun)
 
-       call cam_mpas_update_halo('cellsOnEdge')
-       call cam_mpas_update_halo('edgesOnCell')
-       call cam_mpas_update_halo('edgesOnEdge')
-       call cam_mpas_update_halo('cellsOnCell')
-       call cam_mpas_update_halo('verticesOnCell')
-       call cam_mpas_update_halo('verticesOnEdge')
-       call cam_mpas_update_halo('edgesOnVertex')
-       call cam_mpas_update_halo('cellsOnVertex')
+       call cam_mpas_update_halo('cellsOnEdge', endrun)
+       call cam_mpas_update_halo('edgesOnCell', endrun)
+       call cam_mpas_update_halo('edgesOnEdge', endrun)
+       call cam_mpas_update_halo('cellsOnCell', endrun)
+       call cam_mpas_update_halo('verticesOnCell', endrun)
+       call cam_mpas_update_halo('verticesOnEdge', endrun)
+       call cam_mpas_update_halo('edgesOnVertex', endrun)
+       call cam_mpas_update_halo('cellsOnVertex', endrun)
 
-       call cam_mpas_update_halo('zgrid')
-       call cam_mpas_update_halo('zxu')
-       call cam_mpas_update_halo('zz')
-       call cam_mpas_update_halo('zb')
-       call cam_mpas_update_halo('zb3')
+       call cam_mpas_update_halo('zgrid', endrun)
+       call cam_mpas_update_halo('zxu', endrun)
+       call cam_mpas_update_halo('zz', endrun)
+       call cam_mpas_update_halo('zb', endrun)
+       call cam_mpas_update_halo('zb3', endrun)
 
-       call cam_mpas_update_halo('deriv_two')
-       call cam_mpas_update_halo('cellTangentPlane')
-       call cam_mpas_update_halo('coeffs_reconstruct')
+       call cam_mpas_update_halo('deriv_two', endrun)
+       call cam_mpas_update_halo('cellTangentPlane', endrun)
+       call cam_mpas_update_halo('coeffs_reconstruct', endrun)
 
-       call cam_mpas_update_halo('edgeNormalVectors')
-       call cam_mpas_update_halo('localVerticalUnitVectors')
-       call cam_mpas_update_halo('defc_a')
-       call cam_mpas_update_halo('defc_b')
+       call cam_mpas_update_halo('edgeNormalVectors', endrun)
+       call cam_mpas_update_halo('localVerticalUnitVectors', endrun)
+       call cam_mpas_update_halo('defc_a', endrun)
+       call cam_mpas_update_halo('defc_b', endrun)
 
-       call cam_mpas_update_halo('u')
-       call cam_mpas_update_halo('w')
-       call cam_mpas_update_halo('rho_zz')
-       call cam_mpas_update_halo('theta_m')
-       call cam_mpas_update_halo('scalars')
+       call cam_mpas_update_halo('u', endrun)
+       call cam_mpas_update_halo('w', endrun)
+       call cam_mpas_update_halo('rho_zz', endrun)
+       call cam_mpas_update_halo('theta_m', endrun)
+       call cam_mpas_update_halo('scalars', endrun)
 
-       call cam_mpas_update_halo('meshScalingDel2')
-       call cam_mpas_update_halo('meshScalingDel4')
-       call cam_mpas_update_halo('dss')
-       call cam_mpas_update_halo('east')
-       call cam_mpas_update_halo('north')
-       call cam_mpas_update_halo('pressure_p')
-       call cam_mpas_update_halo('rho')
-       call cam_mpas_update_halo('theta')
-       call cam_mpas_update_halo('relhum')
-       call cam_mpas_update_halo('uReconstructZonal')
-       call cam_mpas_update_halo('uReconstructMeridional')
-       call cam_mpas_update_halo('circulation')
-       call cam_mpas_update_halo('exner')
-       call cam_mpas_update_halo('exner_base')
-       call cam_mpas_update_halo('rtheta_base')
-       call cam_mpas_update_halo('pressure_base')
-       call cam_mpas_update_halo('rho_base')
-       call cam_mpas_update_halo('theta_base')
-       call cam_mpas_update_halo('ru')
-       call cam_mpas_update_halo('ru_p')
-       call cam_mpas_update_halo('rw')
-       call cam_mpas_update_halo('rw_p')
-       call cam_mpas_update_halo('rtheta_p')
-       call cam_mpas_update_halo('rho_p')
-       call cam_mpas_update_halo('surface_pressure')
-       call cam_mpas_update_halo('t_init')
+       call cam_mpas_update_halo('meshScalingDel2', endrun)
+       call cam_mpas_update_halo('meshScalingDel4', endrun)
+       call cam_mpas_update_halo('dss', endrun)
+       call cam_mpas_update_halo('east', endrun)
+       call cam_mpas_update_halo('north', endrun)
+       call cam_mpas_update_halo('pressure_p', endrun)
+       call cam_mpas_update_halo('rho', endrun)
+       call cam_mpas_update_halo('theta', endrun)
+       call cam_mpas_update_halo('relhum', endrun)
+       call cam_mpas_update_halo('uReconstructZonal', endrun)
+       call cam_mpas_update_halo('uReconstructMeridional', endrun)
+       call cam_mpas_update_halo('circulation', endrun)
+       call cam_mpas_update_halo('exner', endrun)
+       call cam_mpas_update_halo('exner_base', endrun)
+       call cam_mpas_update_halo('rtheta_base', endrun)
+       call cam_mpas_update_halo('pressure_base', endrun)
+       call cam_mpas_update_halo('rho_base', endrun)
+       call cam_mpas_update_halo('theta_base', endrun)
+       call cam_mpas_update_halo('ru', endrun)
+       call cam_mpas_update_halo('ru_p', endrun)
+       call cam_mpas_update_halo('rw', endrun)
+       call cam_mpas_update_halo('rw_p', endrun)
+       call cam_mpas_update_halo('rtheta_p', endrun)
+       call cam_mpas_update_halo('rho_p', endrun)
+       call cam_mpas_update_halo('surface_pressure', endrun)
+       call cam_mpas_update_halo('t_init', endrun)
 
-       call cam_mpas_update_halo('tend_ru_physics')
-       call cam_mpas_update_halo('tend_rtheta_physics')
-       call cam_mpas_update_halo('tend_rho_physics')
+       call cam_mpas_update_halo('tend_ru_physics', endrun)
+       call cam_mpas_update_halo('tend_rtheta_physics', endrun)
+       call cam_mpas_update_halo('tend_rho_physics', endrun)
 
        !
        ! Re-index from global index space to local index space
@@ -1836,8 +1692,6 @@ contains
        use mpas_derived_types, only : MPAS_Stream_type, MPAS_pool_type
        use mpas_pool_routines, only : MPAS_pool_create_pool, MPAS_pool_destroy_pool, MPAS_pool_add_config
        use mpas_stream_manager, only : prewrite_reindex, postwrite_reindex
-
-       implicit none
 
        type (MPAS_Stream_type), intent(inout) :: restart_stream
        procedure(halt_model) :: endrun
@@ -1893,8 +1747,6 @@ contains
        use mpas_kind_types, only : RKIND
        use mpas_vector_operations, only : mpas_initialize_vectors
 
-       implicit none
-
        type (mpas_pool_type), pointer :: meshPool
        real(kind=RKIND), dimension(:), pointer :: latCell, lonCell
        real(kind=RKIND), dimension(:,:), pointer :: east, north
@@ -1942,17 +1794,23 @@ contains
     !>  this routine updates the halo for that field.
     !
     !-----------------------------------------------------------------------
-    subroutine cam_mpas_update_halo(fieldName)
+    subroutine cam_mpas_update_halo(fieldName, endrun)
 
        use mpas_derived_types, only : field1DReal, field2DReal, field3DReal, field4DReal, field5DReal, &
                                       field1DInteger, field2DInteger, field3DInteger, &
                                       mpas_pool_field_info_type, MPAS_POOL_REAL, MPAS_POOL_INTEGER
        use mpas_pool_routines, only : MPAS_pool_get_field_info, MPAS_pool_get_field
        use mpas_dmpar, only : MPAS_dmpar_exch_halo_field
+       use mpas_kind_types, only : StrKIND
 
-       implicit none
-
+       ! Arguments
        character(len=*), intent(in) :: fieldName
+       procedure(halt_model) :: endrun
+
+       ! Local variables
+       character(len=*), parameter :: subname = 'cam_mpas_subdriver::cam_mpas_update_halo'
+
+       character(len=StrKIND) :: errString
 
        type (mpas_pool_field_info_type) :: fieldInfo
        type (field1DReal), pointer :: field_real1d
@@ -1999,7 +1857,9 @@ contains
                    call MPAS_dmpar_exch_halo_field(field_real5d)
                end if
            else
-               ! Error...
+               write(errString, '(a,i0,a)') subname//': FATAL: Unhandled dimensionality ', &
+                                            fieldInfo % nDims, ' for real-valued field'
+               call endrun(trim(errString))
            end if
        else if (fieldInfo % fieldType == MPAS_POOL_INTEGER) then
            if (fieldInfo % nDims == 1) then
@@ -2021,10 +1881,13 @@ contains
                    call MPAS_dmpar_exch_halo_field(field_int3d)
                end if
            else
-               ! Error...
+               write(errString, '(a,i0,a)') subname//': FATAL: Unhandled dimensionality ', &
+                                            fieldInfo % nDims, ' for integer-valued field'
+               call endrun(trim(errString))
            end if
        else
-           ! Error...
+           write(errString, '(a,i0,a)') subname//': FATAL: Unhandled field type ', fieldInfo % fieldType
+           call endrun(trim(errString))
        end if
 
     end subroutine cam_mpas_update_halo
@@ -2053,8 +1916,6 @@ contains
                                            cellsOnEdge, uNormal)
 
        use mpas_kind_types, only : RKIND
-
-       implicit none
 
        integer, intent(in) :: nEdges
        real(kind=RKIND), dimension(:,:), intent(in) :: uZonal, uMerid
@@ -2111,8 +1972,6 @@ contains
                                     operator(.lt.), operator(+)
        use mpas_timer, only : mpas_timer_start, mpas_timer_stop
        use mpas_constants, only : Rv_over_Rd => rvord
-
-       implicit none
 
        integer :: ierr
 
@@ -2199,8 +2058,6 @@ contains
        use mpas_timekeeping, only : mpas_destroy_clock
        use mpas_atm_threading, only : mpas_atm_threading_finalize
 
-       implicit none
-
        integer :: ierr
 
        call mpas_destroy_clock(clock, ierr)
@@ -2208,99 +2065,6 @@ contains
        call mpas_atm_threading_finalize(domain_ptr % blocklist)
 
     end subroutine cam_mpas_finalize
-
-
-    !-----------------------------------------------------------------------
-    !  routine add_stream_attributes
-    !
-    !> \brief  Adds default attributes to all MPAS streams
-    !> \author Michael Duda
-    !> \date   14 May 2019
-    !> \details
-    !>  ...
-    !
-    !-----------------------------------------------------------------------
-    subroutine add_stream_attributes(domain)
-
-       use mpas_stream_manager, only : MPAS_stream_mgr_add_att
-       use mpas_derived_types, only : MPAS_Pool_iterator_type
-       use mpas_derived_types, only : MPAS_POOL_CONFIG, MPAS_POOL_REAL, MPAS_POOL_INTEGER, MPAS_POOL_CHARACTER, MPAS_POOL_LOGICAL
-       use mpas_kind_types, only : RKIND, StrKIND
-       use mpas_pool_routines, only : mpas_pool_begin_iteration, mpas_pool_get_next_member, mpas_pool_get_config
-
-       implicit none
-
-       type (domain_type), intent(inout) :: domain
-
-       type (MPAS_Pool_iterator_type) :: itr
-       integer, pointer :: intAtt
-       logical, pointer :: logAtt
-       character (len=StrKIND), pointer :: charAtt
-       real (kind=RKIND), pointer :: realAtt
-       character (len=StrKIND) :: histAtt
-
-       integer :: local_ierr
-
-
-       if (domain % dminfo % nProcs < 10) then
-           write(histAtt, '(A,I1,A,A,A)') 'mpirun -n ', domain % dminfo % nProcs, ' ./', trim(domain % core % coreName), '_model'
-       else if (domain % dminfo % nProcs < 100) then
-           write(histAtt, '(A,I2,A,A,A)') 'mpirun -n ', domain % dminfo % nProcs, ' ./', trim(domain % core % coreName), '_model'
-       else if (domain % dminfo % nProcs < 1000) then
-           write(histAtt, '(A,I3,A,A,A)') 'mpirun -n ', domain % dminfo % nProcs, ' ./', trim(domain % core % coreName), '_model'
-       else if (domain % dminfo % nProcs < 10000) then
-           write(histAtt, '(A,I4,A,A,A)') 'mpirun -n ', domain % dminfo % nProcs, ' ./', trim(domain % core % coreName), '_model'
-       else if (domain % dminfo % nProcs < 100000) then
-           write(histAtt, '(A,I5,A,A,A)') 'mpirun -n ', domain % dminfo % nProcs, ' ./', trim(domain % core % coreName), '_model'
-       else
-           write(histAtt, '(A,I6,A,A,A)') 'mpirun -n ', domain % dminfo % nProcs, ' ./', trim(domain % core % coreName), '_model'
-       end if
-
-       call MPAS_stream_mgr_add_att(domain % streamManager, 'model_name', domain % core % modelName)
-       call MPAS_stream_mgr_add_att(domain % streamManager, 'core_name', domain % core % coreName)
-       call MPAS_stream_mgr_add_att(domain % streamManager, 'source', domain % core % source)
-       call MPAS_stream_mgr_add_att(domain % streamManager, 'Conventions', domain % core % Conventions)
-       call MPAS_stream_mgr_add_att(domain % streamManager, 'git_version', domain % core % git_version)
-
-       call MPAS_stream_mgr_add_att(domain % streamManager, 'on_a_sphere', domain % on_a_sphere)
-       call MPAS_stream_mgr_add_att(domain % streamManager, 'sphere_radius', domain % sphere_radius)
-       call MPAS_stream_mgr_add_att(domain % streamManager, 'is_periodic', domain % is_periodic)
-       call MPAS_stream_mgr_add_att(domain % streamManager, 'x_period', domain % x_period)
-       call MPAS_stream_mgr_add_att(domain % streamManager, 'y_period', domain % y_period)
-       ! DWJ 10/01/2014: Eventually add the real history attribute, for now (due to length restrictions)
-       ! add a shortened version.
-!      call MPAS_stream_mgr_add_att(domain % streamManager, 'history', domain % history)
-       call MPAS_stream_mgr_add_att(domain % streamManager, 'history', histAtt)
-       call MPAS_stream_mgr_add_att(domain % streamManager, 'parent_id', domain %  parent_id)
-       call MPAS_stream_mgr_add_att(domain % streamManager, 'mesh_spec', domain % mesh_spec)
-
-       call mpas_pool_begin_iteration(domain % configs)
-       do while (mpas_pool_get_next_member(domain % configs, itr))
-
-          if ( itr % memberType == MPAS_POOL_CONFIG) then
-
-             if ( itr % dataType == MPAS_POOL_REAL ) then
-                call mpas_pool_get_config(domain % configs, itr % memberName, realAtt)
-                call MPAS_stream_mgr_add_att(domain % streamManager, itr % memberName, realAtt, ierr=local_ierr)
-             else if ( itr % dataType == MPAS_POOL_INTEGER ) then
-                call mpas_pool_get_config(domain % configs, itr % memberName, intAtt)
-                call MPAS_stream_mgr_add_att(domain % streamManager, itr % memberName, intAtt, ierr=local_ierr)
-             else if ( itr % dataType == MPAS_POOL_CHARACTER ) then
-                call mpas_pool_get_config(domain % configs, itr % memberName, charAtt)
-                call MPAS_stream_mgr_add_att(domain % streamManager, itr % memberName, charAtt, ierr=local_ierr)
-             else if ( itr % dataType == MPAS_POOL_LOGICAL ) then
-                call mpas_pool_get_config(domain % configs, itr % memberName, logAtt)
-                if (logAtt) then
-                   call MPAS_stream_mgr_add_att(domain % streamManager, itr % memberName, 'YES', ierr=local_ierr)
-                else
-                   call MPAS_stream_mgr_add_att(domain % streamManager, itr % memberName, 'NO', ierr=local_ierr)
-                end if
-             end if
-
-           end if
-       end do
-
-    end subroutine add_stream_attributes
 
 
     subroutine cam_mpas_debug_stream(domain, filename, timeLevel)
@@ -2314,8 +2078,6 @@ contains
 
        use mpas_derived_types, only : MPAS_Pool_iterator_type, MPAS_POOL_FIELD, MPAS_POOL_REAL, MPAS_POOL_INTEGER
        use mpas_pool_routines, only : mpas_pool_begin_iteration, mpas_pool_get_next_member, mpas_pool_get_config
-
-       implicit none
 
        type (domain_type), intent(inout) :: domain
        character(len=*), intent(in) :: filename
