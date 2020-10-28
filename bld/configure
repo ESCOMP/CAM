@@ -195,7 +195,7 @@ OPTIONS
                         perl \$OSNAME variable.
      -usr_src <dir1>[,<dir2>[,<dir3>[...]]]
                         Directories containing user source code.
-     -offline_drv <name> Specify offline unit driver [ aur | rad | wxie | stub ]
+     -offline_drv <name> Specify offline unit driver [ aur | rad | stub ]
 
 EOF
 }
@@ -1873,13 +1873,10 @@ if ($cfg_ref->get('analytic_ic')) {
 #WACCM-X extended thermosphere/ionosphere model
 if ($waccmx) {
     $cfg_cppdefs .= ' -DWACCMX_PHYS';
-    if ($ionos =~ /wxi/) {
-        $cfg_cppdefs .= ' -DWACCMX_IONOS';
+    if ($ionos =~ /wxie/) {
         my $mgrid;
         if (defined $opts{'mgrid'}) {
             $mgrid = $opts{'mgrid'};
-#        } elsif ($hgrid == '0.47x0.63') {
-#            $mgrid = '193x160';
         } else {
             $mgrid = '97x80';
         }
@@ -1902,9 +1899,7 @@ if ($waccmx) {
         $cfg_ref->set('mgrid',$mgrid);
 
         $cfg_cppdefs .= " -DEDYN_NLAT=$nmlat -DEDYN_NLON=$nmlon -DEDYN_NLEV=$nmlev -DEDYN_NGRID=$ngrid";
-    }
-    if ($ionos =~ /wxie/) {
-        $cfg_cppdefs .= ' -DWACCMX_EDYN_ESMF';
+        $cfg_cppdefs .= ' -DWACCMX_IONOS -DWACCMX_EDYN_ESMF';
     }
 }
 

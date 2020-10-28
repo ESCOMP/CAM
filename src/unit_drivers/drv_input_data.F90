@@ -259,7 +259,7 @@ contains
 
     allocate( data (pcols, nlev,  begchunk:endchunk) )
 
-    data = drv_input_data_read( indata, infld_name, lev_name, nlev, recno, abort=.true. )
+    data = drv_input_data_read( indata, infld_name, lev_name, nlev, recno )
     do c=begchunk,endchunk
        chunk_ptrs(c)%array(:,:) = data(:,:,c)
     enddo
@@ -283,7 +283,7 @@ contains
 
     allocate( data (pcols,  begchunk:endchunk) )
 
-    data = drv_input_data_read( indata, infld_name, recno, abort=.true. )
+    data = drv_input_data_read( indata, infld_name, recno )
     do c=begchunk,endchunk
        chunk_ptrs(c)%array(:) = data(:,c)
     enddo
@@ -307,7 +307,7 @@ contains
 
     allocate( data (pcols,  begchunk:endchunk) )
 
-    data = drv_input_data_read(indata,  infld_name, recno, abort=.true. )
+    data = drv_input_data_read(indata,  infld_name, recno )
     do c=begchunk,endchunk
        chunk_ptrs(c)%array(:) = int(data(:,c))
     enddo
