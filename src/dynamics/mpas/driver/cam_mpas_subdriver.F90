@@ -1555,104 +1555,104 @@ contains
        ! Perform halo updates for all decomposed fields (i.e., fields with
        ! an outermost dimension of nCells, nVertices, or nEdges)
        !
-       call cam_mpas_update_halo('latCell')
-       call cam_mpas_update_halo('lonCell')
-       call cam_mpas_update_halo('xCell')
-       call cam_mpas_update_halo('yCell')
-       call cam_mpas_update_halo('zCell')
+       call cam_mpas_update_halo('latCell', endrun)
+       call cam_mpas_update_halo('lonCell', endrun)
+       call cam_mpas_update_halo('xCell', endrun)
+       call cam_mpas_update_halo('yCell', endrun)
+       call cam_mpas_update_halo('zCell', endrun)
 
-       call cam_mpas_update_halo('latEdge')
-       call cam_mpas_update_halo('lonEdge')
-       call cam_mpas_update_halo('xEdge')
-       call cam_mpas_update_halo('yEdge')
-       call cam_mpas_update_halo('zEdge')
+       call cam_mpas_update_halo('latEdge', endrun)
+       call cam_mpas_update_halo('lonEdge', endrun)
+       call cam_mpas_update_halo('xEdge', endrun)
+       call cam_mpas_update_halo('yEdge', endrun)
+       call cam_mpas_update_halo('zEdge', endrun)
 
-       call cam_mpas_update_halo('latVertex')
-       call cam_mpas_update_halo('lonVertex')
-       call cam_mpas_update_halo('xVertex')
-       call cam_mpas_update_halo('yVertex')
-       call cam_mpas_update_halo('zVertex')
+       call cam_mpas_update_halo('latVertex', endrun)
+       call cam_mpas_update_halo('lonVertex', endrun)
+       call cam_mpas_update_halo('xVertex', endrun)
+       call cam_mpas_update_halo('yVertex', endrun)
+       call cam_mpas_update_halo('zVertex', endrun)
 
-       call cam_mpas_update_halo('indexToCellID')
-       call cam_mpas_update_halo('indexToEdgeID')
-       call cam_mpas_update_halo('indexToVertexID')
+       call cam_mpas_update_halo('indexToCellID', endrun)
+       call cam_mpas_update_halo('indexToEdgeID', endrun)
+       call cam_mpas_update_halo('indexToVertexID', endrun)
 
-       call cam_mpas_update_halo('fEdge')
-       call cam_mpas_update_halo('fVertex')
+       call cam_mpas_update_halo('fEdge', endrun)
+       call cam_mpas_update_halo('fVertex', endrun)
 
-       call cam_mpas_update_halo('areaCell')
-       call cam_mpas_update_halo('areaTriangle')
-       call cam_mpas_update_halo('dcEdge')
-       call cam_mpas_update_halo('dvEdge')
-       call cam_mpas_update_halo('angleEdge')
-       call cam_mpas_update_halo('kiteAreasOnVertex')
-       call cam_mpas_update_halo('weightsOnEdge')
+       call cam_mpas_update_halo('areaCell', endrun)
+       call cam_mpas_update_halo('areaTriangle', endrun)
+       call cam_mpas_update_halo('dcEdge', endrun)
+       call cam_mpas_update_halo('dvEdge', endrun)
+       call cam_mpas_update_halo('angleEdge', endrun)
+       call cam_mpas_update_halo('kiteAreasOnVertex', endrun)
+       call cam_mpas_update_halo('weightsOnEdge', endrun)
 
-       call cam_mpas_update_halo('meshDensity')
+       call cam_mpas_update_halo('meshDensity', endrun)
 
-       call cam_mpas_update_halo('nEdgesOnCell')
-       call cam_mpas_update_halo('nEdgesOnEdge')
+       call cam_mpas_update_halo('nEdgesOnCell', endrun)
+       call cam_mpas_update_halo('nEdgesOnEdge', endrun)
 
-       call cam_mpas_update_halo('cellsOnEdge')
-       call cam_mpas_update_halo('edgesOnCell')
-       call cam_mpas_update_halo('edgesOnEdge')
-       call cam_mpas_update_halo('cellsOnCell')
-       call cam_mpas_update_halo('verticesOnCell')
-       call cam_mpas_update_halo('verticesOnEdge')
-       call cam_mpas_update_halo('edgesOnVertex')
-       call cam_mpas_update_halo('cellsOnVertex')
+       call cam_mpas_update_halo('cellsOnEdge', endrun)
+       call cam_mpas_update_halo('edgesOnCell', endrun)
+       call cam_mpas_update_halo('edgesOnEdge', endrun)
+       call cam_mpas_update_halo('cellsOnCell', endrun)
+       call cam_mpas_update_halo('verticesOnCell', endrun)
+       call cam_mpas_update_halo('verticesOnEdge', endrun)
+       call cam_mpas_update_halo('edgesOnVertex', endrun)
+       call cam_mpas_update_halo('cellsOnVertex', endrun)
 
-       call cam_mpas_update_halo('zgrid')
-       call cam_mpas_update_halo('zxu')
-       call cam_mpas_update_halo('zz')
-       call cam_mpas_update_halo('zb')
-       call cam_mpas_update_halo('zb3')
+       call cam_mpas_update_halo('zgrid', endrun)
+       call cam_mpas_update_halo('zxu', endrun)
+       call cam_mpas_update_halo('zz', endrun)
+       call cam_mpas_update_halo('zb', endrun)
+       call cam_mpas_update_halo('zb3', endrun)
 
-       call cam_mpas_update_halo('deriv_two')
-       call cam_mpas_update_halo('cellTangentPlane')
-       call cam_mpas_update_halo('coeffs_reconstruct')
+       call cam_mpas_update_halo('deriv_two', endrun)
+       call cam_mpas_update_halo('cellTangentPlane', endrun)
+       call cam_mpas_update_halo('coeffs_reconstruct', endrun)
 
-       call cam_mpas_update_halo('edgeNormalVectors')
-       call cam_mpas_update_halo('localVerticalUnitVectors')
-       call cam_mpas_update_halo('defc_a')
-       call cam_mpas_update_halo('defc_b')
+       call cam_mpas_update_halo('edgeNormalVectors', endrun)
+       call cam_mpas_update_halo('localVerticalUnitVectors', endrun)
+       call cam_mpas_update_halo('defc_a', endrun)
+       call cam_mpas_update_halo('defc_b', endrun)
 
-       call cam_mpas_update_halo('u')
-       call cam_mpas_update_halo('w')
-       call cam_mpas_update_halo('rho_zz')
-       call cam_mpas_update_halo('theta_m')
-       call cam_mpas_update_halo('scalars')
+       call cam_mpas_update_halo('u', endrun)
+       call cam_mpas_update_halo('w', endrun)
+       call cam_mpas_update_halo('rho_zz', endrun)
+       call cam_mpas_update_halo('theta_m', endrun)
+       call cam_mpas_update_halo('scalars', endrun)
 
-       call cam_mpas_update_halo('meshScalingDel2')
-       call cam_mpas_update_halo('meshScalingDel4')
-       call cam_mpas_update_halo('dss')
-       call cam_mpas_update_halo('east')
-       call cam_mpas_update_halo('north')
-       call cam_mpas_update_halo('pressure_p')
-       call cam_mpas_update_halo('rho')
-       call cam_mpas_update_halo('theta')
-       call cam_mpas_update_halo('relhum')
-       call cam_mpas_update_halo('uReconstructZonal')
-       call cam_mpas_update_halo('uReconstructMeridional')
-       call cam_mpas_update_halo('circulation')
-       call cam_mpas_update_halo('exner')
-       call cam_mpas_update_halo('exner_base')
-       call cam_mpas_update_halo('rtheta_base')
-       call cam_mpas_update_halo('pressure_base')
-       call cam_mpas_update_halo('rho_base')
-       call cam_mpas_update_halo('theta_base')
-       call cam_mpas_update_halo('ru')
-       call cam_mpas_update_halo('ru_p')
-       call cam_mpas_update_halo('rw')
-       call cam_mpas_update_halo('rw_p')
-       call cam_mpas_update_halo('rtheta_p')
-       call cam_mpas_update_halo('rho_p')
-       call cam_mpas_update_halo('surface_pressure')
-       call cam_mpas_update_halo('t_init')
+       call cam_mpas_update_halo('meshScalingDel2', endrun)
+       call cam_mpas_update_halo('meshScalingDel4', endrun)
+       call cam_mpas_update_halo('dss', endrun)
+       call cam_mpas_update_halo('east', endrun)
+       call cam_mpas_update_halo('north', endrun)
+       call cam_mpas_update_halo('pressure_p', endrun)
+       call cam_mpas_update_halo('rho', endrun)
+       call cam_mpas_update_halo('theta', endrun)
+       call cam_mpas_update_halo('relhum', endrun)
+       call cam_mpas_update_halo('uReconstructZonal', endrun)
+       call cam_mpas_update_halo('uReconstructMeridional', endrun)
+       call cam_mpas_update_halo('circulation', endrun)
+       call cam_mpas_update_halo('exner', endrun)
+       call cam_mpas_update_halo('exner_base', endrun)
+       call cam_mpas_update_halo('rtheta_base', endrun)
+       call cam_mpas_update_halo('pressure_base', endrun)
+       call cam_mpas_update_halo('rho_base', endrun)
+       call cam_mpas_update_halo('theta_base', endrun)
+       call cam_mpas_update_halo('ru', endrun)
+       call cam_mpas_update_halo('ru_p', endrun)
+       call cam_mpas_update_halo('rw', endrun)
+       call cam_mpas_update_halo('rw_p', endrun)
+       call cam_mpas_update_halo('rtheta_p', endrun)
+       call cam_mpas_update_halo('rho_p', endrun)
+       call cam_mpas_update_halo('surface_pressure', endrun)
+       call cam_mpas_update_halo('t_init', endrun)
 
-       call cam_mpas_update_halo('tend_ru_physics')
-       call cam_mpas_update_halo('tend_rtheta_physics')
-       call cam_mpas_update_halo('tend_rho_physics')
+       call cam_mpas_update_halo('tend_ru_physics', endrun)
+       call cam_mpas_update_halo('tend_rtheta_physics', endrun)
+       call cam_mpas_update_halo('tend_rho_physics', endrun)
 
        !
        ! Re-index from global index space to local index space
@@ -1796,15 +1796,23 @@ contains
     !>  this routine updates the halo for that field.
     !
     !-----------------------------------------------------------------------
-    subroutine cam_mpas_update_halo(fieldName)
+    subroutine cam_mpas_update_halo(fieldName, endrun)
 
        use mpas_derived_types, only : field1DReal, field2DReal, field3DReal, field4DReal, field5DReal, &
                                       field1DInteger, field2DInteger, field3DInteger, &
                                       mpas_pool_field_info_type, MPAS_POOL_REAL, MPAS_POOL_INTEGER
        use mpas_pool_routines, only : MPAS_pool_get_field_info, MPAS_pool_get_field
        use mpas_dmpar, only : MPAS_dmpar_exch_halo_field
+       use mpas_kind_types, only : StrKIND
 
+       ! Arguments
        character(len=*), intent(in) :: fieldName
+       procedure(halt_model) :: endrun
+
+       ! Local variables
+       character(len=*), parameter :: subname = 'cam_mpas_subdriver::cam_mpas_update_halo'
+
+       character(len=StrKIND) :: errString
 
        type (mpas_pool_field_info_type) :: fieldInfo
        type (field1DReal), pointer :: field_real1d
@@ -1851,7 +1859,9 @@ contains
                    call MPAS_dmpar_exch_halo_field(field_real5d)
                end if
            else
-               ! Error...
+               write(errString, '(a,i0,a)') subname//': FATAL: Unhandled dimensionality ', &
+                                            fieldInfo % nDims, ' for real-valued field'
+               call endrun(trim(errString))
            end if
        else if (fieldInfo % fieldType == MPAS_POOL_INTEGER) then
            if (fieldInfo % nDims == 1) then
@@ -1873,10 +1883,13 @@ contains
                    call MPAS_dmpar_exch_halo_field(field_int3d)
                end if
            else
-               ! Error...
+               write(errString, '(a,i0,a)') subname//': FATAL: Unhandled dimensionality ', &
+                                            fieldInfo % nDims, ' for integer-valued field'
+               call endrun(trim(errString))
            end if
        else
-           ! Error...
+           write(errString, '(a,i0,a)') subname//': FATAL: Unhandled field type ', fieldInfo % fieldType
+           call endrun(trim(errString))
        end if
 
     end subroutine cam_mpas_update_halo

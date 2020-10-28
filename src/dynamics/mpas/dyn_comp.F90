@@ -781,12 +781,12 @@ subroutine read_inidat(dyn_in)
       end do
 
       ! Compute uperp by projecting ux and uy from cell centers to edges
-      call cam_mpas_update_halo('uReconstructZonal')       ! ux => uReconstructZonal
-      call cam_mpas_update_halo('uReconstructMeridional')  ! uy => uReconstructMeridional
+      call cam_mpas_update_halo('uReconstructZonal', endrun)       ! ux => uReconstructZonal
+      call cam_mpas_update_halo('uReconstructMeridional', endrun)  ! uy => uReconstructMeridional
       call cam_mpas_cell_to_edge_winds(dyn_in % nEdges, ux, uy, dyn_in % east, dyn_in % north, &
                                        dyn_in % normal, dyn_in % cellsOnEdge, uperp)
 
-      call cam_mpas_update_halo('u')         ! u is the name of uperp in the MPAS state pool
+      call cam_mpas_update_halo('u', endrun)         ! u is the name of uperp in the MPAS state pool
 
       ! Constituents
 
@@ -859,7 +859,7 @@ subroutine read_inidat(dyn_in)
       end if
       deallocate( mpas3d )
 
-      call cam_mpas_update_halo('u')         ! u is the name of uperp in the MPAS state pool
+      call cam_mpas_update_halo('u', endrun)         ! u is the name of uperp in the MPAS state pool
 
       ! Reconstruct ux and uy from uperp.
       ! This is only needed because during CAM's initialization the physics package
@@ -989,14 +989,14 @@ subroutine read_inidat(dyn_in)
 
    ! Update halos for initial state fields
    ! halo for 'u' updated in both branches of conditional above
-   call cam_mpas_update_halo('w')
-   call cam_mpas_update_halo('scalars')   ! scalars is the name of tracers in the MPAS state pool
-   call cam_mpas_update_halo('theta_m')
-   call cam_mpas_update_halo('theta')
-   call cam_mpas_update_halo('rho_zz')
-   call cam_mpas_update_halo('rho')
-   call cam_mpas_update_halo('rho_base')
-   call cam_mpas_update_halo('theta_base')
+   call cam_mpas_update_halo('w', endrun)
+   call cam_mpas_update_halo('scalars', endrun)   ! scalars is the name of tracers in the MPAS state pool
+   call cam_mpas_update_halo('theta_m', endrun)
+   call cam_mpas_update_halo('theta', endrun)
+   call cam_mpas_update_halo('rho_zz', endrun)
+   call cam_mpas_update_halo('rho', endrun)
+   call cam_mpas_update_halo('rho_base', endrun)
+   call cam_mpas_update_halo('theta_base', endrun)
 
    deallocate(cam2d, cam3d, cam4d, zi, t, pintdry, pmiddry, pmid)
 
