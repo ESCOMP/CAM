@@ -2835,7 +2835,7 @@ sub write_filepath
             print $fh "$chem_src_dir/geoschem_src/GeosUtil\n";
             print $fh "$chem_src_dir/geoschem_src/Headers\n";
             print $fh "$chem_src_dir/geoschem_src/ISORROPIA\n";
-            print $fh "$chem_src_dir/geoschem_src/KPP/Standard\n";
+            print $fh "$chem_src_dir/geoschem_src/KPP/fullchem\n";
             if ($chem =~ /_mam/) {
                 print $fh "$camsrcdir/src/chemistry/modal_aero\n";
                 print $fh "$camsrcdir/src/chemistry/aerosol\n";
