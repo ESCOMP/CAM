@@ -28,7 +28,7 @@ use physconst,         only: pi
 use cam_logfile,       only: iulog
 use cam_abortutils,    only: endrun
 
-use pio,               only: file_desc_t
+use pio,               only: file_desc_t, pio_global, pio_get_att
 
 use cam_mpas_subdriver, only: domain_ptr, cam_mpas_init_phase3, cam_mpas_get_global_dims, &
                               cam_mpas_get_global_coords, cam_mpas_get_global_blocks,     &
@@ -87,6 +87,10 @@ integer, pointer :: &
 
 real(r8), parameter :: rad2deg=180.0_r8/pi ! convert radians to degrees
 
+! sphere_radius is a global attribute in the MPAS initial file.  It is needed to
+! normalize the cell areas to a unit sphere.
+real(r8) :: sphere_radius
+
 ! global grid data
 
 integer ::      &
@@ -126,7 +130,7 @@ subroutine dyn_grid_init()
 
    type(file_desc_t), pointer :: fh_ini
 
-   integer  :: k
+   integer  :: k, ierr
    integer  :: num_pr_lev       ! number of top levels using pure pressure representation
    real(r8) :: pref_edge(plevp) ! reference pressure at layer edges (Pa)
    real(r8) :: pref_mid(plev)   ! reference pressure at layer midpoints (Pa)
@@ -145,6 +149,9 @@ subroutine dyn_grid_init()
    ! Time-invariant fields are stored in the MPAS mesh pool.  This call
    ! also sets the module data zw and zw_mid.
    call setup_time_invariant(fh_ini)
+
+   ! Read the global sphere_radius attribute.  This is needed to normalize the cell areas.
+   ierr = pio_get_att(fh_ini, pio_global, 'sphere_radius', sphere_radius)
 
    ! Compute reference pressures from reference heights.
    call std_atm_pres(zw, pref_edge)
@@ -412,11 +419,6 @@ subroutine get_horiz_grid_d(nxy, clat_d_out, clon_d_out, area_d_out, &
    real(r8), intent(out), optional :: lat_d_out(:)  ! column latitudes (degrees)
    real(r8), intent(out), optional :: lon_d_out(:)  ! column longitudes (degrees)
 
-   ! Earth radius (m) used by MPAS grid generating code.  This value needs to be used
-   ! rather than the CESM share constant in order that the normalized values sum to 4*pi
-   ! to within the tight tolerance used in the physgrid code.
-   real(r8), parameter :: rearth = 6371229.0_r8
-
    character(len=*), parameter :: subname = 'dyn_grid::get_horiz_grid_d'
    !----------------------------------------------------------------------------
 
@@ -435,11 +437,11 @@ subroutine get_horiz_grid_d(nxy, clat_d_out, clon_d_out, area_d_out, &
    end if
 
    if ( present( area_d_out ) ) then
-      area_d_out(:) = areaCell_g(:) / (rearth**2)
+      area_d_out(:) = areaCell_g(:) / (sphere_radius**2)
    end if
 
    if ( present( wght_d_out ) ) then
-      wght_d_out(:) = areaCell_g(:) / (rearth**2)
+      wght_d_out(:) = areaCell_g(:) / (sphere_radius**2)
    end if
 
    if ( present( lat_d_out ) ) then
