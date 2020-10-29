@@ -2643,7 +2643,7 @@
 <se_rayk0     waccm_phys="1"     >  2    </se_rayk0>
 
 <se_molecular_diff               >  0.0 </se_molecular_diff>
-<se_molecular_diff waccm_phys="1">100.0 </se_molecular_diff>
+<se_molecular_diff waccm_phys="1" waccmx="0">100.0 </se_molecular_diff>
 
 <se_qsplit > 1 </se_qsplit>
 
@@ -2657,7 +2657,7 @@
 <se_nsplit hgrid="ne16np4" >  1 </se_nsplit>
 
 <se_nsplit hgrid="ne5np4"   waccm_phys="1"            >  3  </se_nsplit>
-<se_nsplit hgrid="ne16np4"  waccm_phys="1" waccnx="1" >  5  </se_nsplit>
+<se_nsplit hgrid="ne16np4"  waccm_phys="1" waccmx="1" >  5  </se_nsplit>
 <se_nsplit hgrid="ne16np4"  waccm_phys="1"            >  3  </se_nsplit>
 <se_nsplit hgrid="ne30np4"  waccm_phys="1"            >  5  </se_nsplit>
 <se_nsplit hgrid="ne30np4"  waccm_phys="1"  nlev="110">  4  </se_nsplit>
