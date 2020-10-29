@@ -1726,8 +1726,9 @@ contains
     CALL tracer_srcs_init()
 
     ! Initialize diagnostics interface
-    CALL CESMGC_Diag_Init( Input_Opt = Input_Opt,         &
-                           State_Chm = State_Chm(BEGCHUNK) )
+    CALL CESMGC_Diag_Init( Input_Opt = Input_Opt,           &
+                           State_Chm = State_Chm(BEGCHUNK), &
+                           State_Met = State_Met(BEGCHUNK) )
 
     ! Initialize emissions interface
     CALL CESMGC_Emissions_Init
@@ -2721,7 +2722,7 @@ contains
        ! Description: 3-D cloud fraction
        ! Unit       : -
        ! Dimensions : nX, nY, nZ
-       State_Met(LCHNK)%CLDF     (1,J,L) = cldFrc(j,nZ+1-l)
+       State_Met(LCHNK)%CLDF     (1,J,L) = cldFrc(J,nZ+1-L)
 
        ! Field      : DTRAIN
        ! Description: Detrainment flux

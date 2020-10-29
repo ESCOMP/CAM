@@ -54,14 +54,16 @@ CONTAINS
 !\\
 ! !INTERFACE:
 !
-  SUBROUTINE CESMGC_Diag_Init( Input_Opt, State_Chm )
+  SUBROUTINE CESMGC_Diag_Init( Input_Opt, State_Chm, State_Met )
 !
 ! !USES:
 !
   USE Input_Opt_Mod,       ONLY : OptInput
   USE State_Chm_Mod,       ONLY : ChmState
+  USE State_Met_Mod,       ONLY : MetState
   USE State_Diag_Mod,      ONLY : get_TagInfo
   USE Species_Mod,         ONLY : Species
+  USE Registry_Mod,        ONLY : MetaRegItem, RegItem
   USE CHEM_MODS,           ONLY : nTracers, nSls
   USE CHEM_MODS,           ONLY : tracerNames, tracerLongNames
   USE CHEM_MODS,           ONLY : slsNames, slsLongNames
@@ -76,6 +78,7 @@ CONTAINS
 !
     TYPE(OptInput), INTENT(IN)    :: Input_Opt   ! Input options
     TYPE(ChmState), INTENT(IN)    :: State_Chm   ! Chemistry State object
+    TYPE(MetState), INTENT(IN)    :: State_Met   ! Meteorology State object
 !
 ! !REVISION HISTORY:
 !  20 Oct 2020 - T. M. Fritz   - Initial version
@@ -97,14 +100,18 @@ CONTAINS
     CHARACTER(LEN=255)     :: ErrMsg
 
     ! Objects
-    TYPE(Species), POINTER :: SpcInfo
+    TYPE(Species),     POINTER :: SpcInfo
+    TYPE(MetaRegItem), POINTER :: Current
+    TYPE(RegItem    ), POINTER :: Item
 
     !=================================================================
     ! CESMGC_Diag_Init begins here!
     !=================================================================
 
     ! Initialize pointers
-    SpcInfo   => NULL()
+    SpcInfo => NULL()
+    Current => NULL()
+    Item    => NULL()
 
     ! Assume a successful return until otherwise
     RC                      = GC_SUCCESS
@@ -213,6 +220,44 @@ CONTAINS
     CALL Addfld( TRIM(SpcName), (/ 'lev' /), 'A', '1/s', &
        TRIM(tagName) // ' photolysis rate' )
 
+    ! ==========================================
+    ! Now add fields corresponding to State_Met
+    ! ==========================================
+
+    ! Copied from Headers/registry_mod.F90
+    ! Point to the head node of the Registry
+    Current => State_Met%Registry
+
+    ! As long as the current node isn't NULL
+    DO WHILE( ASSOCIATED( Current ) )
+
+       ! Get the REGISTRY ITEM belonging to this node of the Registry
+       Item => Current%Item
+
+       ! Only print on the root CPU
+       IF ( ASSOCIATED( Item ) ) THEN
+
+          IF ( TRIM(Item%DimNames) == 'xy' ) THEN
+             CALL Addfld( TRIM( Item%FullName ), horiz_only, 'A', &
+                TRIM( Item%Units ), TRIM( Item%Description ) )
+          ELSE
+             CALL Addfld( TRIM( Item%FullName ), (/ 'lev' /), 'A', &
+                TRIM( Item%Units ), TRIM( Item%Description ) )
+          ENDIF
+          CALL Add_Default( TRIM(Item%FullName), 4, ' ')
+
+       ENDIF
+
+       ! Point to next node of the Registry
+       Current => Current%Next
+
+    ENDDO
+
+    !=======================================================================
+    ! Cleanup and quit
+    !=======================================================================
+    Current => NULL()
+    Item    => NULL()
 
   END SUBROUTINE CESMGC_Diag_Init
 !EOC
@@ -239,6 +284,10 @@ CONTAINS
   USE State_Diag_Mod,      ONLY : get_TagInfo
   USE State_Grid_Mod,      ONLY : GrdState
   USE Species_Mod,         ONLY : Species
+  USE Registry_Mod,        ONLY : MetaRegItem, RegItem
+  USE Registry_Mod,        ONLY : Registry_Lookup
+  USE Registry_Params_Mod
+  USE PRECISION_MOD
   USE MO_TRACNAME,         ONLY : solsym
   USE CAM_HISTORY,         ONLY : outfld
   USE CONSTITUENTS,        ONLY : pcnst, cnst_name
@@ -250,6 +299,8 @@ CONTAINS
   USE CHEM_MODS,           ONLY : map2GC, map2Idx, map2GC_Sls
   USE DRYDEP_MOD,          ONLY : depName, Ndvzind
   USE CAMSRFEXCH,          ONLY : cam_in_t
+  USE PPGRID,              ONLY : begchunk
+  USE SPMD_UTILS,          ONLY : MasterProc
 !
 ! !INPUT PARAMETERS:
 !
@@ -270,11 +321,17 @@ CONTAINS
     ! Integers
     INTEGER                :: I, J, L, M, N, ND
     INTEGER                :: RC
+    INTEGER                :: Source_KindVal    ! KIND value of data
+    INTEGER                :: Output_KindVal    ! KIND value for output
+    INTEGER                :: Rank              ! Size of data
 
     INTEGER                :: nY, nZ
 
     ! Logicals
     LOGICAL                :: Found
+    LOGICAL                :: rootChunk
+    LOGICAL                :: OnLevelEdges      ! Is the data defined
+                                                !  on level edges (T/F)
 
     ! Strings
     CHARACTER(LEN=255)     :: ThisLoc
@@ -284,9 +341,16 @@ CONTAINS
 
     ! Arrays
     REAL(r8)               :: outTmp(State_Grid%nY,State_Grid%nZ)
+    ! Floating-point data pointers (8-byte precision)
+    REAL(f8),   POINTER    :: Ptr0d_8           ! 0D 8-byte data
+    REAL(f8),   POINTER    :: Ptr1d_8(:    )    ! 1D 8-byte data
+    REAL(f8),   POINTER    :: Ptr2d_8(:,:  )    ! 2D 8-byte data
+    REAL(f8),   POINTER    :: Ptr3d_8(:,:,:)    ! 3D 8-byte data
 
     ! Objects
-    TYPE(Species), POINTER :: SpcInfo
+    TYPE(Species),     POINTER :: SpcInfo
+    TYPE(MetaRegItem), POINTER :: Current
+    TYPE(RegItem    ), POINTER :: Item
 
     !=================================================================
     ! CESMGC_Diag_Calc begins here!
@@ -296,11 +360,16 @@ CONTAINS
     nZ = State_Grid%nZ
 
     ! Initialize pointers
-    SpcInfo   => NULL()
+    SpcInfo => NULL()
+    Current => NULL()
+    Item    => NULL()
 
     ! For error trapping
     ErrMsg                  = ''
     ThisLoc                 = ' -> at CESMGC_Diag_Calc (in chemistry/pp_geoschem/cesmgc_diag_mod.F90)'
+
+    ! Define rootChunk
+    rootChunk = ( MasterProc.and.(LCHNK==BEGCHUNK) )
 
     ! Write diagnostic output
     DO N = 1, pcnst
@@ -407,6 +476,77 @@ CONTAINS
        ENDDO
        CALL OutFld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
     ENDIF
+
+    ! ===============================================
+    ! Now diagnose fields corresponding to State_Met
+    ! ===============================================
+
+    ! Copied from Headers/registry_mod.F90
+    ! Point to the head node of the Registry
+    Current => State_Met%Registry
+
+    Source_KindVal = KINDVAL_F8
+    Output_KindVal = KINDVAL_F8
+
+    ! As long as the current node isn't NULL
+    DO WHILE( ASSOCIATED( Current ) )
+
+       ! Get the REGISTRY ITEM belonging to this node of the Registry
+       Item => Current%Item
+
+       ! Only print on the root CPU
+       IF ( ASSOCIATED( Item ) ) THEN
+
+          CALL Registry_Lookup( am_I_Root      = Input_Opt%amIRoot,   &
+                                Registry       = State_Met%Registry,  &
+                                RegDict        = State_Met%RegDict,   &
+                                State          = State_Met%State,     &
+                                Variable       = Item%FullName,       &
+                                Source_KindVal = Source_KindVal,      &
+                                Output_KindVal = Output_KindVal,      &
+                                Rank           = Rank,                &
+                                OnLevelEdges   = OnLevelEdges,        &
+                                Ptr0d_8        = Ptr0d_8,             &
+                                Ptr1d_8        = Ptr1d_8,             &
+                                Ptr2d_8        = Ptr2d_8,             &
+                                Ptr3d_8        = Ptr3d_8,             &
+                                RC             = RC                  )
+
+          IF ( Source_KindVal /= KINDVAL_I4 ) THEN
+             IF ( Rank == 2 ) THEN
+                outTmp(:,nZ) = REAL(Ptr2d_8(1,:),r8)
+                CALL Outfld( TRIM( Item%FullName ), outTmp(:,nZ), nY, LCHNK )
+             ELSEIF ( Rank == 3 ) THEN
+                ! For now, treat variables defined on level edges by ignoring top
+                ! most layer
+                DO J = 1, nY
+                DO L = 1, nZ
+                   outTmp(J,nZ+1-L) = REAL(Ptr3d_8(1,J,L),r8)
+                ENDDO
+                ENDDO
+                CALL Outfld( TRIM( Item%FullName ), outTmp, nY, LCHNK )
+             ELSE
+                IF ( rootChunk ) Write(iulog,*) " Item ", TRIM(Item%FullName), &
+                   " is of rank ", Rank, " and will not be diagnosed!"
+             ENDIF
+          ENDIF
+
+       ENDIF
+
+       ! Point to next node of the Registry
+       Current => Current%Next
+
+    ENDDO
+
+    !=======================================================================
+    ! Cleanup and quit
+    !=======================================================================
+    Current => NULL()
+    Item    => NULL()
+    Ptr0d_8 => NULL()
+    Ptr1d_8 => NULL()
+    Ptr2d_8 => NULL()
+    Ptr3d_8 => NULL()
 
   END SUBROUTINE CESMGC_Diag_Calc
 !EOC
