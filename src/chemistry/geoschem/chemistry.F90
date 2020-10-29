@@ -234,7 +234,7 @@ contains
 
     ! For error trapping
     ErrMsg                  = ''
-    ThisLoc                 = ' -> at GEOS-Chem (in chemistry/pp_geoschem/chemistry.F90)'
+    ThisLoc                 = ' -> at GEOS-Chem (in chemistry/geoschem/chemistry.F90)'
 
     ! Initialize pointer
     ThisSpc => NULL()
@@ -1017,7 +1017,7 @@ contains
 
     ! For error trapping
     ErrMsg                  = ''
-    ThisLoc                 = ' -> at GEOS-Chem (in chemistry/pp_geoschem/chemistry.F90)'
+    ThisLoc                 = ' -> at GEOS-Chem (in chemistry/geoschem/chemistry.F90)'
 
     ! Initialize pointers
     SpcInfo   => NULL()

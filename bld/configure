@@ -1393,7 +1393,7 @@ my $chem_src_dir = '';
 
 if (!$prog_species) {
   if ($chem_pkg =~ 'geoschem') {
-    $chem_src_dir = "$cam_dir/src/chemistry/pp_geoschem";
+    $chem_src_dir = "$cam_dir/src/chemistry/geoschem";
   } else {
     $chem_src_dir = "$cam_dir/src/chemistry/pp_$chem_pkg";
   }

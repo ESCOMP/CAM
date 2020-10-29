@@ -366,7 +366,7 @@ CONTAINS
 
     ! For error trapping
     ErrMsg                  = ''
-    ThisLoc                 = ' -> at CESMGC_Diag_Calc (in chemistry/pp_geoschem/cesmgc_diag_mod.F90)'
+    ThisLoc                 = ' -> at CESMGC_Diag_Calc (in chemistry/geoschem/cesmgc_diag_mod.F90)'
 
     ! Define rootChunk
     rootChunk = ( MasterProc.and.(LCHNK==BEGCHUNK) )
