@@ -247,14 +247,12 @@ subroutine dyn_readnl(NLFileName)
    integer :: yr, mon, day, tod, ndate, nday, nsec
    character(len=10) :: date_str
    character(len=8)  :: tod_str
-
-   character(len=*), parameter :: subname = 'dyn_comp::dyn_readnl'
    !----------------------------------------------------------------------------
 
    logUnits(1) = iulog
    logUnits(2) = getunit()
 
-   call cam_mpas_init_phase1(mpicom, endrun, logUnits)
+   call cam_mpas_init_phase1(mpicom, endrun, logUnits, r8)
 
    ! read namelist
    call cam_mpas_namelist_read(NLFileName, domain_ptr % configs)
@@ -290,8 +288,6 @@ subroutine dyn_register()
 
    use physics_buffer,  only: pbuf_add_field, dtype_r8
    use ppgrid,          only: pcols, pver
-
-   character(len=*), parameter :: subname = 'dyn_comp::dyn_register'
    !----------------------------------------------------------------------------
 
 
@@ -509,10 +505,6 @@ subroutine dyn_run(dyn_in, dyn_out)
 
    type (dyn_import_t), intent(inout)  :: dyn_in
    type (dyn_export_t), intent(inout)  :: dyn_out
-
-   ! local variables
-
-   character(len=*), parameter :: subname = 'dyn_comp::dyn_run'
    !----------------------------------------------------------------------------
 
    ! Call the MPAS-A dycore
@@ -531,8 +523,6 @@ subroutine dyn_final(dyn_in, dyn_out)
 
    type (dyn_import_t), intent(inout)  :: dyn_in
    type (dyn_export_t), intent(inout)  :: dyn_out
-
-   character(len=*), parameter :: subname = 'dyn_comp::dyn_final'
    !----------------------------------------------------------------------------
 
    !
@@ -930,7 +920,7 @@ subroutine read_inidat(dyn_in)
       if (readvar) then
          rho_base(:,1:nCellsSolve) = mpas3d(:,:nCellsSolve,1)
       else
-         call endrun(subname//': failed to read theta_base from initial file')
+         call endrun(subname//': failed to read rho_base from initial file')
       end if
 
       deallocate( mpas3d )

@@ -68,17 +68,19 @@ contains
     !>  including, the point where namelists are read.
     !
     !-----------------------------------------------------------------------
-    subroutine cam_mpas_init_phase1(mpicom, endrun, logUnits)
+    subroutine cam_mpas_init_phase1(mpicom, endrun, logUnits, realkind)
 
        use mpas_domain_routines, only : mpas_allocate_domain
        use mpas_framework, only : mpas_framework_init_phase1
        use atm_core_interface, only : atm_setup_core, atm_setup_domain
        use mpas_pool_routines, only : mpas_pool_add_config
+       use mpas_kind_types, only : RKIND
 
        ! Dummy argument
        integer, intent(in) :: mpicom
        procedure(halt_model) :: endrun
        integer, dimension(2), intent(in) :: logUnits
+       integer, intent(in) :: realkind
 
        ! Local variables
        integer :: ierr
@@ -115,6 +117,12 @@ contains
        ierr = domain_ptr % core % setup_log(domain_ptr % logInfo, domain_ptr, unitNumbers=logUnits)
        if ( ierr /= 0 ) then
           call endrun(subname//': FATAL: Log setup failed for MPAS-A dycore')
+       end if
+
+       ! CAM does not yet allow running the dycore at a different precision than
+       ! the physics package.  Check that the real kinds are the same.
+       if (realkind /= RKIND) then
+          call endrun(subname//': FATAL: CAM and MPAS real kinds do not match')
        end if
 
     end subroutine cam_mpas_init_phase1
