@@ -107,7 +107,7 @@ contains
 
       ! Local variables
       integer :: unitn, ierr
-      integer :: ionos_dynamo_grid(2), oplus_grid(2)
+      integer :: oplus_grid(2)
       integer :: total_pes
       character(len=*), parameter :: subname = 'ionosphere_readnl'
 
@@ -116,7 +116,7 @@ contains
       namelist /ionosphere_nl/ ionos_epotential_model, ionos_epotential_amie, ionos_epotential_ltr, wei05_coefs_file
       namelist /ionosphere_nl/ amienh_files, amiesh_files, wei05_coefs_file, ltr_files
       namelist /ionosphere_nl/ epot_crit_colats
-      namelist /ionosphere_nl/ ionos_dynamo_grid, ionos_npes
+      namelist /ionosphere_nl/ ionos_npes
       namelist /ionosphere_nl/ oplus_grid
 
       oplus_grid = 0
@@ -210,7 +210,7 @@ contains
       use ltr_module,      only: init_ltr
       use wei05sc,         only: weimer05_init
       use phys_control,    only: phys_getopts
-      
+
       ! local variables:
       integer :: sIndx
       character(len=*), parameter :: subname = 'ionosphere_init'
