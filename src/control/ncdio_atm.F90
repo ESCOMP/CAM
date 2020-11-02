@@ -11,7 +11,7 @@ module ncdio_atm
   ! !USES:
 
   use pio, only: pio_offset_kind, file_desc_t, var_desc_t, pio_double,        &
-       pio_inq_dimid, pio_max_var_dims, io_desc_t, pio_setframe
+       pio_inq_dimid, pio_max_var_dims, io_desc_t, pio_setframe, pio_inq_var_fill
   use shr_kind_mod,   only: r8 => shr_kind_r8
   use shr_sys_mod,    only: shr_sys_flush      ! Standardized system subroutines
   use shr_scam_mod,   only: shr_scam_getCloseLatLon  ! Standardized system subroutines
@@ -55,7 +55,7 @@ contains
   !
   ! !INTERFACE:
   subroutine infld_real_1d_2d(varname, ncid, dimname1,                        &
-       dim1b, dim1e, dim2b, dim2e, field, readvar, gridname, timelevel)
+       dim1b, dim1e, dim2b, dim2e, field, readvar, gridname, timelevel, fillvalue)
     !
     ! !DESCRIPTION:
     ! Netcdf I/O of initial real field from netCDF file
@@ -84,6 +84,7 @@ contains
     logical,           intent(out)    :: readvar  ! true => variable is on initial dataset
     character(len=*), optional, intent(in) :: gridname ! Name of variable's grid
     integer, optional, intent(in)     :: timelevel
+    real(r8), optional, intent(out)   :: fillvalue
     !
     !EOP
     !
@@ -93,7 +94,7 @@ contains
     integer                   :: i, j      ! indices
     integer                   :: ierr      ! error status
     type(var_desc_t)          :: varid     ! variable id
-
+    integer                   :: no_fill
     integer                   :: arraydimsize(2) ! field dimension lengths
 
     integer                   :: ndims ! number of dimensions
@@ -219,8 +220,13 @@ contains
         call cam_grid_get_decomp(grid_id, arraydimsize, dimlens(1:ndims),    &
              pio_double, iodesc)
         call pio_read_darray(ncid, varid, iodesc, field, ierr)
-      end if
+        if(present(fillvalue)) then
+           ierr = pio_inq_var_fill(ncid, varid, no_fill, fillvalue)
+        endif
+     end if
 
+
+      
       if (masterproc) write(iulog,*) subname//': read field '//trim(varname)
 
     end if  ! end of readvar_tmp
@@ -238,7 +244,7 @@ contains
   !
   ! !INTERFACE:
   subroutine infld_real_2d_2d(varname, ncid, dimname1, dimname2,              &
-       dim1b, dim1e, dim2b, dim2e, field, readvar, gridname, timelevel)
+       dim1b, dim1e, dim2b, dim2e, field, readvar, gridname, timelevel, fillvalue)
     !
     ! !DESCRIPTION:
     ! Netcdf I/O of initial real field from netCDF file
@@ -267,6 +273,7 @@ contains
     logical,           intent(out)    :: readvar  ! true => variable is on initial dataset
     character(len=*), optional, intent(in) :: gridname ! Name of variable's grid
     integer, optional, intent(in)     :: timelevel
+    real(r8), optional, intent(out)   :: fillvalue
     !
     !EOP
     !
@@ -297,6 +304,7 @@ contains
     logical                   :: readvar_tmp ! if true, variable is on tape
     character(len=*), parameter :: subname='INFLD_REAL_2D_2D' ! subroutine name
     character(len=PIO_MAX_NAME) :: field_dnames(2)
+    integer                   :: no_fill
 
     ! For SCAM
     real(r8)                  :: closelat, closelon
@@ -441,11 +449,15 @@ contains
           call cam_grid_get_decomp(grid_id, arraydimsize, dimlens(1:2),      &
                pio_double, iodesc, field_dnames=field_dnames)
           call pio_read_darray(ncid, varid, iodesc, field, ierr)
-        end if
+          if(present(fillvalue)) then
+             ierr = pio_inq_var_fill(ncid, varid, no_fill, fillvalue)
+          endif
+       end if
 
         if (masterproc) write(iulog,*) subname//': read field '//trim(varname)
 
       end if  ! end of readvar_tmp
+
 
       readvar = readvar_tmp
 
@@ -462,7 +474,7 @@ contains
   ! !INTERFACE:
   subroutine infld_real_2d_3d(varname, ncid, dimname1, dimname2,              &
        dim1b, dim1e, dim2b, dim2e, dim3b, dim3e,                              &
-       field, readvar, gridname, timelevel)
+       field, readvar, gridname, timelevel, fillvalue)
     !
     ! !DESCRIPTION:
     ! Netcdf I/O of initial real field from netCDF file
@@ -494,6 +506,7 @@ contains
     logical,           intent(out)    :: readvar  ! true => variable is on initial dataset
     character(len=*), optional, intent(in) :: gridname ! Name of variable's grid
     integer, optional, intent(in)     :: timelevel
+    real(r8), optional, intent(out)   :: fillvalue
     !
     !EOP
     !
@@ -529,6 +542,7 @@ contains
     ! For SCAM
     real(r8)                  :: closelat, closelon
     integer                   :: lonidx, latidx
+    integer                   :: no_fill
 
     nullify(iodesc)
 
@@ -642,6 +656,9 @@ contains
         call cam_grid_get_decomp(grid_id, arraydimsize, dimlens(1:2),        &
              pio_double, iodesc, field_dnames=field_dnames)
         call pio_read_darray(ncid, varid, iodesc, field, ierr)
+        if(present(fillvalue)) then
+           ierr = pio_inq_var_fill(ncid, varid, no_fill, fillvalue)
+        endif
       end if
 
       if (masterproc) write(iulog,*) subname//': read field '//trim(varname)
@@ -662,7 +679,7 @@ contains
   ! !INTERFACE:
   subroutine infld_real_3d_3d(varname, ncid, dimname1, dimname2, dimname3,    &
        dim1b, dim1e, dim2b, dim2e, dim3b, dim3e,                              &
-       field, readvar, gridname, timelevel)
+       field, readvar, gridname, timelevel, fillvalue)
     !
     ! !DESCRIPTION:
     ! Netcdf I/O of initial real field from netCDF file
@@ -694,6 +711,7 @@ contains
     logical,           intent(out)    :: readvar  ! true => variable is on initial dataset
     character(len=*), optional, intent(in) :: gridname ! Name of variable's grid
     integer, optional, intent(in)     :: timelevel
+    real(r8), optional, intent(out)   :: fillvalue
     !
     !EOP
     !
@@ -726,6 +744,7 @@ contains
     character(len=128)        :: errormsg
     character(len=PIO_MAX_NAME) :: field_dnames(3)
     character(len=PIO_MAX_NAME) :: file_dnames(4)
+    integer                   :: no_fill
 
     ! For SCAM
     real(r8)                  :: closelat, closelon
@@ -889,11 +908,15 @@ contains
           call cam_grid_get_decomp(grid_id, arraydimsize, dimlens(1:pdims),  &
                pio_double, iodesc, field_dnames=field_dnames, file_dnames=file_dnames(1:3))
           call pio_read_darray(ncid, varid, iodesc, field, ierr)
-        end if ! end of single column
+          if(present(fillvalue)) then
+             ierr = pio_inq_var_fill(ncid, varid, no_fill, fillvalue)
+          endif
+       end if ! end of single column
 
         if (masterproc) write(iulog,*) subname//': read field '//trim(varname)
 
       end if  ! end of readvar_tmp
+
 
       readvar = readvar_tmp
 
