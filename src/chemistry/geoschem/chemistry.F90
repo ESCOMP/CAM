@@ -63,7 +63,6 @@ module chemistry
   use chem_mods,           only : map2MAM4
 
   use mo_tracname,         only : solsym
-  use constituents,        only : cnst_name
 
   IMPLICIT NONE
   PRIVATE
@@ -2160,6 +2159,14 @@ contains
     ENDDO
 
 #if defined( MODAL_AERO_4MODE )
+    ! First reset State_Chm%Species to zero for aerosols
+    DO M = 1, ntot_amode
+       DO SM = 1, nspec_amode(M)
+          P = map2MAM4(SM,M)
+          State_Chm(LCHNK)%Species(1,:,:,P) = 0.0e+00_fp
+       ENDDO
+    ENDDO
+
     ! Map and flip aerosols
     DO M = 1, ntot_amode
        DO SM = 1, nspec_amode(M)
@@ -2746,8 +2753,8 @@ contains
        ! Description: Cloud ice/water mixing ratio
        ! Unit       : kg/kg dry air
        ! Dimensions : nX, nY, nZ
-       State_Met(LCHNK)%QI       (1,J,L) = MAX(1.0e-05_fp, state%q(J,nZ+1-L,ixCldIce)) ! kg ice / kg dry air
-       State_Met(LCHNK)%QL       (1,J,L) = MAX(1.0e-05_fp, state%q(J,nZ+1-L,ixCldLiq)) ! kg water / kg dry air
+       State_Met(LCHNK)%QI       (1,J,L) = MAX(1.0e-10_fp, state%q(J,nZ+1-L,ixCldIce)) ! kg ice / kg dry air
+       State_Met(LCHNK)%QL       (1,J,L) = MAX(1.0e-10_fp, state%q(J,nZ+1-L,ixCldLiq)) ! kg water / kg dry air
 
        ! Field      : RH
        ! Description: Relative humidity
@@ -3646,7 +3653,7 @@ contains
     Air_Total     = Air_Total + tmpMass
 #endif
 
-    CALL CESMGC_Diag_Calc( Input_Opt  = Input_Opt, &
+    CALL CESMGC_Diag_Calc( Input_Opt  = Input_Opt,         &
                            State_Chm  = State_Chm(LCHNK),  &
                            State_Diag = State_Diag(LCHNK), &
                            State_Grid = State_Grid(LCHNK), &
