@@ -11,7 +11,10 @@ module ncdio_atm
   ! !USES:
 
   use pio, only: pio_offset_kind, file_desc_t, var_desc_t, pio_double,        &
-       pio_inq_dimid, pio_max_var_dims, io_desc_t, pio_setframe, pio_inq_var_fill
+       pio_inq_dimid, pio_max_var_dims, io_desc_t, pio_setframe
+#ifdef PIO2
+  use pio, only: pio_inq_var_fill
+#endif
   use shr_kind_mod,   only: r8 => shr_kind_r8
   use shr_sys_mod,    only: shr_sys_flush      ! Standardized system subroutines
   use shr_scam_mod,   only: shr_scam_getCloseLatLon  ! Standardized system subroutines
@@ -221,7 +224,11 @@ contains
              pio_double, iodesc)
         call pio_read_darray(ncid, varid, iodesc, field, ierr)
         if(present(fillvalue)) then
+#ifdef PIO2
            ierr = pio_inq_var_fill(ncid, varid, no_fill, fillvalue)
+#else
+           fillvalue = 0.0_R8
+#endif
         endif
      end if
 
@@ -450,7 +457,11 @@ contains
                pio_double, iodesc, field_dnames=field_dnames)
           call pio_read_darray(ncid, varid, iodesc, field, ierr)
           if(present(fillvalue)) then
+#ifdef PIO2
              ierr = pio_inq_var_fill(ncid, varid, no_fill, fillvalue)
+#else
+             fillvalue = 0.0_R8
+#endif
           endif
        end if
 
@@ -657,7 +668,11 @@ contains
              pio_double, iodesc, field_dnames=field_dnames)
         call pio_read_darray(ncid, varid, iodesc, field, ierr)
         if(present(fillvalue)) then
+#ifdef PIO2
            ierr = pio_inq_var_fill(ncid, varid, no_fill, fillvalue)
+#else
+           fillvalue = 0.0_R8
+#endif
         endif
       end if
 
@@ -909,7 +924,11 @@ contains
                pio_double, iodesc, field_dnames=field_dnames, file_dnames=file_dnames(1:3))
           call pio_read_darray(ncid, varid, iodesc, field, ierr)
           if(present(fillvalue)) then
+#ifdef PIO2
              ierr = pio_inq_var_fill(ncid, varid, no_fill, fillvalue)
+#else
+             fillvalue = 0.0_R8
+#endif
           endif
        end if ! end of single column
 
