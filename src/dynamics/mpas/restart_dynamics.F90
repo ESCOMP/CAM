@@ -66,11 +66,13 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
 
    ! local variables
    character(len=*), parameter :: subname = 'restart_dynamics::read_restart_dynamics'
+   integer :: ierr
    !----------------------------------------------------------------------------
 
    ! Before setting up the restart stream, names for each scalar constitutent must be defined
-   if (cam_mpas_define_scalars(domain_ptr % blocklist, dyn_in % mpas_from_cam_cnst, &
-                               dyn_out % cam_from_mpas_cnst) /= 0) then
+   call cam_mpas_define_scalars(domain_ptr % blocklist, dyn_in % mpas_from_cam_cnst, &
+                                dyn_out % cam_from_mpas_cnst, ierr)
+   if (ierr /= 0) then
       call endrun(subname//': Set-up of constituents for MPAS-A dycore failed.')
    end if
 

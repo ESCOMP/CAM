@@ -423,7 +423,7 @@ contains
     !>  
     !
     !-----------------------------------------------------------------------
-    function cam_mpas_define_scalars(block, mpas_from_cam_cnst, cam_from_mpas_cnst) result(ierr)
+    subroutine cam_mpas_define_scalars(block, mpas_from_cam_cnst, cam_from_mpas_cnst, ierr)
 
        use mpas_derived_types, only : block_type
 
@@ -439,7 +439,7 @@ contains
        ! Arguments
        type (block_type), pointer :: block
        integer, dimension(:), pointer :: mpas_from_cam_cnst, cam_from_mpas_cnst
-       integer :: ierr
+       integer, intent(out) :: ierr
 
        ! Local variables
        character(len=*), parameter :: subname = 'cam_mpas_subdriver::cam_mpas_define_scalars'
@@ -641,7 +641,7 @@ contains
        call mpas_pool_add_dimension(tendPool, 'moist_start', 1)
        call mpas_pool_add_dimension(tendPool, 'moist_end', num_moist)
 
-    end function cam_mpas_define_scalars
+    end subroutine cam_mpas_define_scalars
 
 
     !-----------------------------------------------------------------------
