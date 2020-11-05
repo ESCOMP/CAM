@@ -3659,6 +3659,7 @@ contains
                            State_Grid = State_Grid(LCHNK), &
                            State_Met  = State_Met(LCHNK),  &
                            cam_in     = cam_in,            &
+                           state      = state,             &
                            LCHNK      = LCHNK             )
 
     ! Re-flip all the arrays vertically

@@ -73,12 +73,16 @@ CONTAINS
   USE CAM_HISTORY,         ONLY : addfld, add_default, horiz_only
   USE GAS_WETDEP_OPTS,     ONLY : gas_wetdep_method
   USE DRYDEP_MOD,          ONLY : depName
+#if defined( MODAL_AERO_4MODE )
+  USE MODAL_AERO_DATA,     ONLY : ntot_amode, nspec_amode
+  USE MODAL_AERO_DATA,     ONLY : xname_massptr
+#endif
 !
 ! !INPUT PARAMETERS:
 !
-    TYPE(OptInput), INTENT(IN)    :: Input_Opt   ! Input options
-    TYPE(ChmState), INTENT(IN)    :: State_Chm   ! Chemistry State object
-    TYPE(MetState), INTENT(IN)    :: State_Met   ! Meteorology State object
+    TYPE(OptInput),    INTENT(IN) :: Input_Opt   ! Input options
+    TYPE(ChmState),    INTENT(IN) :: State_Chm   ! Chemistry State object
+    TYPE(MetState),    INTENT(IN) :: State_Met   ! Meteorology State object
 !
 ! !REVISION HISTORY:
 !  20 Oct 2020 - T. M. Fritz   - Initial version
@@ -87,7 +91,7 @@ CONTAINS
 !BOC
 !
     ! Integer
-    INTEGER                :: I, L, M, N
+    INTEGER                :: I, L, M, N, SM
     INTEGER                :: RC
 
     ! Logical
@@ -122,16 +126,24 @@ CONTAINS
     DO I = 1, nTracers
        SpcName = TRIM(tracerNames(I))
        CALL AddFld( TRIM(SpcName), (/ 'lev' /), 'A', 'mol/mol', &
-          TRIM(tracerLongNames(I))//' concentration')
+          TRIM(tracerLongNames(I))//' volume mixing ratio')
        IF (TRIM(SpcName) == 'O3') THEN
-          CALL Add_Default ( TRIM(SpcName), 1, ' ')
+          CALL Add_Default ( TRIM(SpcName), 2, ' ')
        ENDIF
+    ENDDO
+
+    DO M = 1, ntot_amode
+       DO SM = 1, nspec_amode(M)
+          SpcName = TRIM(xname_massptr(SM,M))
+          CALL AddFld( TRIM(SpcName), (/ 'lev' /), 'A', 'kg/kg', &
+             TRIM(SpcName//' mass mixing ratio') )
+       ENDDO
     ENDDO
 
     DO I = 1, nSls
        SpcName = TRIM(slsNames(I))
        CALL AddFld( TRIM(SpcName), (/ 'lev' /), 'A', 'mol/mol', &
-          TRIM(slsLongNames(I))//' concentration')
+          TRIM(slsLongNames(I))//' volume mixing ratio')
        !CALL Add_Default(TRIM(SpcName), 1, ' ')
     ENDDO
 
@@ -237,14 +249,17 @@ CONTAINS
        ! Only print on the root CPU
        IF ( ASSOCIATED( Item ) ) THEN
 
-          IF ( TRIM(Item%DimNames) == 'xy' ) THEN
-             CALL Addfld( TRIM( Item%FullName ), horiz_only, 'A', &
-                TRIM( Item%Units ), TRIM( Item%Description ) )
-          ELSE
-             CALL Addfld( TRIM( Item%FullName ), (/ 'lev' /), 'A', &
-                TRIM( Item%Units ), TRIM( Item%Description ) )
+          IF (( TRIM(Item%FullName(1:8)) /= 'MET_XLAI' ) .AND. &
+              ( TRIM(Item%FullName(1:8)) /= 'MET_IUSE' ) .AND. &
+              ( TRIM(Item%FullName(1:9)) /= 'MET_ILAND' )) THEN
+             IF ( TRIM(Item%DimNames) == 'xy' ) THEN
+                CALL Addfld( TRIM( Item%FullName ), horiz_only, 'A', &
+                   TRIM( Item%Units ), TRIM( Item%Description ) )
+             ELSE
+                CALL Addfld( TRIM( Item%FullName ), (/ 'lev' /), 'A', &
+                   TRIM( Item%Units ), TRIM( Item%Description ) )
+             ENDIF
           ENDIF
-          CALL Add_Default( TRIM(Item%FullName), 4, ' ')
 
        ENDIF
 
@@ -273,7 +288,8 @@ CONTAINS
 ! !INTERFACE:
 !
   SUBROUTINE CESMGC_Diag_Calc( Input_Opt,  State_Chm, State_Diag, &
-                               State_Grid, State_Met, cam_in,    LCHNK )
+                               State_Grid, State_Met, cam_in, state, &
+                               LCHNK )
 !
 ! !USES:
 !
@@ -299,18 +315,25 @@ CONTAINS
   USE CHEM_MODS,           ONLY : map2GC, map2Idx, map2GC_Sls
   USE DRYDEP_MOD,          ONLY : depName, Ndvzind
   USE CAMSRFEXCH,          ONLY : cam_in_t
+  USE PHYSICS_TYPES,       ONLY : physics_state
   USE PPGRID,              ONLY : begchunk
   USE SPMD_UTILS,          ONLY : MasterProc
+#if defined( MODAL_AERO_4MODE )
+  USE MODAL_AERO_DATA,     ONLY : lmassptr_amode
+  USE MODAL_AERO_DATA,     ONLY : ntot_amode, nspec_amode
+  USE MODAL_AERO_DATA,     ONLY : xname_massptr
+#endif
 !
 ! !INPUT PARAMETERS:
 !
-    TYPE(OptInput), INTENT(IN)    :: Input_Opt   ! Input options
-    TYPE(ChmState), INTENT(IN)    :: State_Chm   ! Chemistry State object
-    TYPE(DgnState), INTENT(IN)    :: State_Diag  ! Diag State object
-    TYPE(GrdState), INTENT(IN)    :: State_Grid  ! Grid State object
-    TYPE(MetState), INTENT(IN)    :: State_Met   ! Meteorology State object
-    TYPE(cam_in_t), INTENT(IN)    :: cam_in      ! import state
-    INTEGER,        INTENT(IN)    :: LCHNK       ! Chunk number
+    TYPE(OptInput),      INTENT(IN)    :: Input_Opt   ! Input options
+    TYPE(ChmState),      INTENT(IN)    :: State_Chm   ! Chemistry State object
+    TYPE(DgnState),      INTENT(IN)    :: State_Diag  ! Diag State object
+    TYPE(GrdState),      INTENT(IN)    :: State_Grid  ! Grid State object
+    TYPE(MetState),      INTENT(IN)    :: State_Met   ! Meteorology State object
+    TYPE(cam_in_t),      INTENT(IN)    :: cam_in      ! import state
+    TYPE(physics_state), INTENT(IN)    :: state       ! Physics state variables
+    INTEGER,             INTENT(IN)    :: LCHNK       ! Chunk number
 !
 ! !REVISION HISTORY:
 !  20 Oct 2020 - T. M. Fritz   - Initial version
@@ -319,7 +342,7 @@ CONTAINS
 !BOC
 !
     ! Integers
-    INTEGER                :: I, J, L, M, N, ND
+    INTEGER                :: I, J, L, M, N, ND, SM
     INTEGER                :: RC
     INTEGER                :: Source_KindVal    ! KIND value of data
     INTEGER                :: Output_KindVal    ! KIND value for output
@@ -385,6 +408,14 @@ CONTAINS
           ENDDO
           CALL OutFld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
        ENDIF
+    ENDDO
+
+    DO M = 1, ntot_amode
+       DO SM = 1, nspec_amode(M)
+          SpcName = TRIM(xname_massptr(SM,M))
+          N = lmassptr_amode(SM,M)
+          CALL OutFld( TRIM(SpcName), state%q(:nY,:,N), nY, LCHNK )
+       ENDDO
     ENDDO
 
     DO N = 1, nSls
@@ -497,37 +528,41 @@ CONTAINS
        ! Only print on the root CPU
        IF ( ASSOCIATED( Item ) ) THEN
 
-          CALL Registry_Lookup( am_I_Root      = Input_Opt%amIRoot,   &
-                                Registry       = State_Met%Registry,  &
-                                RegDict        = State_Met%RegDict,   &
-                                State          = State_Met%State,     &
-                                Variable       = Item%FullName,       &
-                                Source_KindVal = Source_KindVal,      &
-                                Output_KindVal = Output_KindVal,      &
-                                Rank           = Rank,                &
-                                OnLevelEdges   = OnLevelEdges,        &
-                                Ptr0d_8        = Ptr0d_8,             &
-                                Ptr1d_8        = Ptr1d_8,             &
-                                Ptr2d_8        = Ptr2d_8,             &
-                                Ptr3d_8        = Ptr3d_8,             &
-                                RC             = RC                  )
+          IF (( TRIM(Item%FullName(1:8)) /= 'MET_XLAI' ) .AND. &
+              ( TRIM(Item%FullName(1:8)) /= 'MET_IUSE' ) .AND. &
+              ( TRIM(Item%FullName(1:9)) /= 'MET_ILAND' )) THEN
+             CALL Registry_Lookup( am_I_Root      = Input_Opt%amIRoot,   &
+                                   Registry       = State_Met%Registry,  &
+                                   RegDict        = State_Met%RegDict,   &
+                                   State          = State_Met%State,     &
+                                   Variable       = Item%FullName,       &
+                                   Source_KindVal = Source_KindVal,      &
+                                   Output_KindVal = Output_KindVal,      &
+                                   Rank           = Rank,                &
+                                   OnLevelEdges   = OnLevelEdges,        &
+                                   Ptr0d_8        = Ptr0d_8,             &
+                                   Ptr1d_8        = Ptr1d_8,             &
+                                   Ptr2d_8        = Ptr2d_8,             &
+                                   Ptr3d_8        = Ptr3d_8,             &
+                                   RC             = RC                  )
 
-          IF ( Source_KindVal /= KINDVAL_I4 ) THEN
-             IF ( Rank == 2 ) THEN
-                outTmp(:,nZ) = REAL(Ptr2d_8(1,:),r8)
-                CALL Outfld( TRIM( Item%FullName ), outTmp(:,nZ), nY, LCHNK )
-             ELSEIF ( Rank == 3 ) THEN
-                ! For now, treat variables defined on level edges by ignoring top
-                ! most layer
-                DO J = 1, nY
-                DO L = 1, nZ
-                   outTmp(J,nZ+1-L) = REAL(Ptr3d_8(1,J,L),r8)
-                ENDDO
-                ENDDO
-                CALL Outfld( TRIM( Item%FullName ), outTmp, nY, LCHNK )
-             ELSE
-                IF ( rootChunk ) Write(iulog,*) " Item ", TRIM(Item%FullName), &
-                   " is of rank ", Rank, " and will not be diagnosed!"
+             IF ( Source_KindVal /= KINDVAL_I4 ) THEN
+                IF ( Rank == 2 ) THEN
+                   outTmp(:,nZ) = REAL(Ptr2d_8(1,:),r8)
+                   CALL Outfld( TRIM( Item%FullName ), outTmp(:,nZ), nY, LCHNK )
+                ELSEIF ( Rank == 3 ) THEN
+                   ! For now, treat variables defined on level edges by ignoring top
+                   ! most layer
+                   DO J = 1, nY
+                   DO L = 1, nZ
+                      outTmp(J,nZ+1-L) = REAL(Ptr3d_8(1,J,L),r8)
+                   ENDDO
+                   ENDDO
+                   CALL Outfld( TRIM( Item%FullName ), outTmp, nY, LCHNK )
+                ELSE
+                   IF ( rootChunk ) Write(iulog,*) " Item ", TRIM(Item%FullName), &
+                      " is of rank ", Rank, " and will not be diagnosed!"
+                ENDIF
              ENDIF
           ENDIF
 
