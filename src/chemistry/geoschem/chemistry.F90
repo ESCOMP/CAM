@@ -3,13 +3,14 @@
 !================================================================================================
 
 module chemistry
-  use shr_kind_mod,        only: r8 => shr_kind_r8, shr_kind_cl
-  use physics_types,       only: physics_state, physics_ptend, physics_ptend_init
-  use physics_buffer,      only: physics_buffer_desc
-  use ppgrid,              only: begchunk, endchunk, pcols
-  use ppgrid,              only: pver, pverp
-  use constituents,        only: pcnst, cnst_add, cnst_get_ind
-  use shr_const_mod,       only: molw_dryair=>SHR_CONST_MWDAIR
+  use shr_kind_mod,        only : r8 => shr_kind_r8, shr_kind_cl
+  use physics_types,       only : physics_state, physics_ptend, physics_ptend_init
+  use physics_buffer,      only : physics_buffer_desc
+  use ppgrid,              only : begchunk, endchunk, pcols
+  use ppgrid,              only : pver, pverp
+  use constituents,        only : pcnst, cnst_add, cnst_get_ind
+  use shr_const_mod,       only : molw_dryair=>SHR_CONST_MWDAIR
+  use shr_megan_mod,       only : shr_megan_mechcomps, shr_megan_mechcomps_n 
   use seq_drydep_mod,      only : nddvels => n_drydep, drydep_list
   use spmd_utils,          only : MasterProc, myCPU=>Iam, nCPUs=>npes
   use cam_logfile,         only : iulog
@@ -162,6 +163,11 @@ module chemistry
   integer            :: ext_frc_cycle_yr  = 0
   integer            :: ext_frc_fixed_ymd = 0
   integer            :: ext_frc_fixed_tod = 0
+
+  ! for MEGAN emissions
+  integer, allocatable :: megan_indices_map(:) 
+  real(r8),allocatable :: megan_wght_factors(:)
+
 
 !================================================================================================
 contains
@@ -919,11 +925,14 @@ contains
     !-----------------------------------------------------------------------
     use physics_buffer,   only : physics_buffer_desc, pbuf_get_index
     use chem_mods,        only : map2GC_dryDep, drySpc_ndx
+    use cam_history,      only : addfld, add_default, horiz_only
 
 #ifdef SPMD
     use mpishorthand
 #endif
     use cam_abortutils,   only : endrun
+    use infnan,           only : nan, assignment(=)
+    use mo_chem_utls,     only : get_spc_ndx
 
     use Phys_Grid,        only : get_Area_All_p
     use hycoef,           only : ps0, hyai, hybi, hyam
@@ -988,7 +997,7 @@ contains
     INTEGER                :: nX, nY, nZ
     INTEGER                :: iX, jY
     INTEGER                :: nStrat
-    INTEGER                :: I, J, L, N, M
+    INTEGER                :: I, J, L, N, M, II
     INTEGER                :: RC
     INTEGER                :: nLinoz
 
@@ -1717,7 +1726,7 @@ contains
     ! Get cloud water indices
     CALL cnst_get_ind( 'CLDLIQ', ixCldLiq)
     CALL cnst_get_ind( 'CLDICE', ixCldIce)
-    CALL cnst_get_ind( 'NUMLIQ', ixNDrop, abort=.false.  )
+    CALL cnst_get_ind( 'NUMLIQ', ixNDrop, abort=.False.  )
 
     CALL init_mean_mass()
     CALL setinv_inti()
@@ -1731,7 +1740,35 @@ contains
     !-----------------------------------------------------------------------
     !	... initialize the lightning module
     !-----------------------------------------------------------------------
-    call lightning_inti(lght_no_prd_factor)
+    CALL lightning_inti(lght_no_prd_factor)
+
+    ! MEGAN emissions initialize
+    IF ( shr_megan_mechcomps_n > 0 ) THEN
+
+       ALLOCATE( megan_indices_map(shr_megan_mechcomps_n), STAT=IERR )
+       IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating megan_indices_map')
+       ALLOCATE( megan_wght_factors(shr_megan_mechcomps_n), STAT=IERR )
+       IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating megan_wght_factors')
+       megan_wght_factors(:) = NaN
+
+       DO N = 1, shr_megan_mechcomps_n
+          CALL cnst_get_ind (shr_megan_mechcomps(N)%name,  megan_indices_map(N), abort=.False.)
+          II = get_spc_ndx(shr_megan_mechcomps(N)%name)
+          IF ( II > 0 ) THEN
+             megan_wght_factors(N) = adv_mass(II)*1.e-3_r8 ! kg/moles (to convert moles/m2/sec to kg/m2/sec)
+          ELSE
+             CALL ENDRUN( 'chem_init: MEGAN compound not in chemistry mechanism : ' &
+                          //TRIM(shr_megan_mechcomps(N)%name))
+          ENDIF
+
+          ! MEGAN  history fields
+          CALL addfld( 'MEG_'//TRIM(shr_megan_mechcomps(N)%name), horiz_only, 'A', 'kg/m2/sec', &
+               TRIM(shr_megan_mechcomps(N)%name)//' MEGAN emissions flux')
+          !if (history_chemistry) then
+             CALL add_default('MEG_'//trim(shr_megan_mechcomps(N)%name), 1, ' ')
+          !endif
+       ENDDO
+    ENDIF
 
     ! Initialize diagnostics interface
     CALL CESMGC_Diag_Init( Input_Opt = Input_Opt,           &
@@ -1853,6 +1890,9 @@ contains
     use Tropopause,          only : Tropopause_findChemTrop, Tropopause_Find
     use HCO_Utilities_GC_Mod  ! Utility routines for GC-HEMCO interface
 
+    ! Data from CLM
+    use cam_cpl_indices,     only : index_x2a_Fall_flxvoc
+
     ! For calculating SZA
     use Orbit,               only : zenith
     use Time_Manager,        only : Get_Curr_Calday, Get_Curr_Date
@@ -1940,6 +1980,8 @@ contains
 
     ! For emissions
     REAL(r8)          :: eflx(pcols,pver,pcnst)       ! 3-D emissions in kg/m2/s
+    ! For MEGAN emissions
+    REAL(r8)          :: megflx(pcols)
 
     ! For GEOS-Chem diagnostics
     REAL(r8)              :: mmr1(state%NCOL,PVER,gas_pcnst)
@@ -3332,6 +3374,20 @@ contains
     cam_in%cflx(1:nY,:) = cam_in%cflx(1:nY,:) + eflx(1:nY,nZ,:)
     eflx(1:nY,nZ,:)     = 0.0e+00_r8
 
+    ! MEGAN emissions ...
+    IF ( index_x2a_Fall_flxvoc > 0 .AND. shr_megan_mechcomps_n > 0 ) THEN
+       ! set MEGAN fluxes 
+       DO N = 1, shr_megan_mechcomps_n
+          DO I = 1, nY
+             megflx(I) = -cam_in%meganflx(I,N) * megan_wght_factors(N)
+             cam_in%cflx(I,megan_indices_map(N)) = cam_in%cflx(I,megan_indices_map(N)) + megflx(I)
+          enddO
+          ! output MEGAN emis fluxes to history
+          CALL Outfld('MEG_'//TRIM(shr_megan_mechcomps(N)%name), megflx(:nY), nY, LCHNK)
+       ENDDO
+    ENDIF
+
+    ! Add dry deposition flux (stored as SurfaceFlux = -dflx)
     DO ND = 1, State_Chm(BEGCHUNK)%nDryDep
        ! Get the species ID from the drydep ID
        N = State_Chm(BEGCHUNK)%Map_DryDep(ND)
@@ -3340,7 +3396,6 @@ contains
        M = map2GCinv(N)
        IF ( M <= 0 ) CYCLE
 
-       ! Add dry deposition flux (stored as SurfaceFlux = -dflx)
        cam_in%cflx(1:nY,M) = cam_in%cflx(1:nY,M) &
                            + State_Chm(LCHNK)%SurfaceFlux(1,1:nY,N)
 

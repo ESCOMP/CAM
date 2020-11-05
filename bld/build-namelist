@@ -2413,7 +2413,7 @@ if ($chem =~ /_mam4/ and $phys =~ /cam6/) {
                 'num_a2_cv_ext_file' => 'num_a2',
         );
 
-    # air craft emissions
+    # aircraft emissions
     if ($chem !~ /trop_mam/ and $chem !~ /waccm_sc/) {
         %species = (%species,
                     'bc_a4_ar_ext_file'  => 'bc_a4',
@@ -2468,7 +2468,7 @@ if ($chem =~ /_mam4/ and $phys =~ /cam6/) {
     }
 
     # MEGAN emissions
-    if ($chem =~ /trop_strat/ or $chem =~ /_tsmlt/) {
+    if ($chem =~ /trop_strat/ or $chem =~ /_tsmlt/ or $chem =~ /geoschem/) {
         my $val = "'ISOP = isoprene',"
                 . "'MTERP = pinene_a + carene_3 + thujene_a + 2met_styrene + cymene_p + cymene_o + terpinolene + bornene "
                 . "+ fenchene_a + ocimene_al + pinene_b + sabinene + camphene + limonene + phellandrene_a + terpinene_g "
