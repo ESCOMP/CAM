@@ -26,9 +26,11 @@ MODULE CESMGC_Emissions_Mod
 !
 ! !PUBLIC MEMBER FUNCTIONS:
 !
-  PUBLIC :: CESMGC_Emissions_Init
-  PUBLIC :: CESMGC_Emissions_Calc
-  PUBLIC :: CESMGC_Emissions_Final
+  PUBLIC  :: CESMGC_Emissions_Init
+  PUBLIC  :: CESMGC_Emissions_Calc
+  PUBLIC  :: CESMGC_Emissions_Final
+
+  INTEGER :: iNO
 !
 ! !REVISION HISTORY:
 !  07 Oct 2020 - T. M. Fritz   - Initial version
@@ -52,6 +54,10 @@ CONTAINS
 !
   SUBROUTINE CESMGC_Emissions_Init
 !
+! !USES:
+!
+    USE CONSTITUENTS,        ONLY : cnst_get_ind
+!
 ! !INPUT PARAMETERS:
 !
 !
@@ -65,6 +71,8 @@ CONTAINS
     ! CESMGC_Emissions_Init begins here!
     !=================================================================
 
+    ! Get constituent index for NO
+    CALL cnst_get_ind('NO', iNO, abort=.True.)
 
   END SUBROUTINE CESMGC_Emissions_Init
 !EOC
@@ -80,24 +88,26 @@ CONTAINS
 !\\
 ! !INTERFACE:
 !
-  SUBROUTINE CESMGC_Emissions_Calc( state, hco_pbuf2d, eflx )
+  SUBROUTINE CESMGC_Emissions_Calc( state, hco_pbuf2d, State_Met, eflx )
 !
 ! !USES:
 !
-    USE CONSTITUENTS,    ONLY : cnst_name, pcnst
-    USE CHEM_MODS,       ONLY : tracerNames, nTracers, map2GCinv
-    USE CAM_ABORTUTILS,  ONLY : endrun
-    USE PHYSICS_TYPES,   ONLY : physics_state
-    USE PHYSICS_BUFFER,  ONLY : pbuf_get_index, pbuf_get_chunk
-    USE PHYSICS_BUFFER,  ONLY : physics_buffer_desc, pbuf_get_field
-    USE PPGRID,          ONLY : pcols, pver, begchunk
+    USE State_Met_Mod,       ONLY : MetState
+    USE CONSTITUENTS,        ONLY : cnst_name, cnst_get_ind, cnst_mw, pcnst
+    USE CHEM_MODS,           ONLY : tracerNames, nTracers, map2GCinv
+    USE CAM_ABORTUTILS,      ONLY : endrun
+    USE PHYSICS_TYPES,       ONLY : physics_state
+    USE PHYSICS_BUFFER,      ONLY : pbuf_get_index, pbuf_get_chunk
+    USE PHYSICS_BUFFER,      ONLY : physics_buffer_desc, pbuf_get_field
+    USE PPGRID,              ONLY : pcols, pver, begchunk
+    USE MO_LIGHTNING,        ONLY : prod_NO
+    uSE PHYSCONSTANTS,       ONLY : AVO
 !
 ! !INPUT PARAMETERS:
 !
-    ! Physics state variables
-    TYPE(physics_state),                INTENT(IN)  :: state
-    ! Pointer to 2-D pbuf
-    TYPE(physics_buffer_desc), POINTER, INTENT(IN)  :: hco_pbuf2d(:,:)
+    TYPE(physics_state),                INTENT(IN)  :: state           ! Physics state variables
+    TYPE(physics_buffer_desc), POINTER, INTENT(IN)  :: hco_pbuf2d(:,:) ! Pointer to 2-D pbuf
+    TYPE(MetState),                     INTENT(IN)  :: State_Met       ! Meteorology State object
 !
 ! !OUTPUT PARAMETERS:
 !
@@ -113,8 +123,8 @@ CONTAINS
 ! !LOCAL VARIABLES:
 !
     ! Integers
-    INTEGER       :: LCHNK, NCOL
-    INTEGER       :: M, N, I
+    INTEGER       :: LCHNK, nY, nZ
+    INTEGER       :: M, N, J, L
     INTEGER       :: RC                    ! return code
     INTEGER       :: tmpIdx                ! pbuf field id
 
@@ -127,6 +137,7 @@ CONTAINS
 
     ! Real
     REAL(r8),                  POINTER :: pbuf_ik(:,:) ! pointer to pbuf data (/pcols,pver/)
+    REAL(r8)                           :: SCALFAC      ! Multiplying factor
 
     ! Strings
     CHARACTER(LEN=255)                 :: fldname_ns   ! field name HCO_*
@@ -141,8 +152,9 @@ CONTAINS
 
     ! LCHNK: which chunk we have on this process
     LCHNK = state%LCHNK
-    ! NCOL: number of atmospheric columns on this chunk
-    NCOL  = state%NCOL
+    ! nY: number of atmospheric columns on this chunk
+    nY    = state%NCOL
+    nZ    = PVER
     rootChunk = ( MasterProc .AND. ( LCHNK.EQ.BEGCHUNK ) )
 
     ! Initialize emission flux
@@ -169,7 +181,7 @@ CONTAINS
 
           IF ( M <= 0 ) CYCLE
 
-          eflx(1:ncol,:,M) = pbuf_ik(1:ncol,:)
+          eflx(1:nY,:,M) = pbuf_ik(1:nY,:)
 
           ! Reset pointers
           pbuf_ik   => NULL()
@@ -181,13 +193,31 @@ CONTAINS
                 MINLOC(eflx(:,:,M))
           ENDIF
 
-          IF ( rootChunk .and. ( MAXVAL(eflx(1:ncol,:,M)) > 0.0e+0_r8 ) ) THEN
+          IF ( rootChunk .and. ( MAXVAL(eflx(1:nY,:,M)) > 0.0e+0_r8 ) ) THEN
              Write(iulog,'(a,a,a,a)') "CESMGC_Emissions_Calc: HEMCO flux ", &
                 TRIM(fldname_ns), " added to ", TRIM(cnst_name(M))
              Write(iulog,'(a,a,E16.4)') "CESMGC_Emissions_Calc: Maximum flux ", &
-                TRIM(fldname_ns), MAXVAL(eflx(1:ncol,:,M))
+                TRIM(fldname_ns), MAXVAL(eflx(1:nY,:,M))
           ENDIF
        ENDIF
+    ENDDO
+
+    ! Now add lightning emissions computed from lighning_no_prod
+    M = iNO
+
+    ! prod_NO is in atom N cm^-3 s^-1 <=> molec cm^-3 s^-1
+    ! We need to convert this to kg NO/m2/s
+    ! Multiply by AVO * MWNO * BXHEIGHT * 1.0E+06 
+    !           = molec/mole * kg NO/mole * m * cm^3/m^3
+    ! cnst_mw(M) is in g/mole
+    SCALFAC = AVO * cnst_mw(M) * 1.0E-03 * 1.0E+06
+    DO J = 1, nY
+    DO L = 1, nZ
+       eflx(J,L,M) = eflx(J,L,M)                      &
+                   + prod_NO(J,L,LCHNK)               &
+                     * State_Met%BXHEIGHT(1,J,nZ+1-L) &
+                     * SCALFAC
+    ENDDO
     ENDDO
 
     IF ( FIRST ) FIRST = .False.

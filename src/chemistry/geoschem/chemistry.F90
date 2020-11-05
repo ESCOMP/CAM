@@ -134,6 +134,9 @@ module chemistry
   ! Index of 1st constituent
   INTEGER :: iFirstCnst = -1
 
+  ! lightning
+  REAL(r8)                   :: lght_no_prd_factor = 1._r8
+
   ! Strings
   CHARACTER(LEN=255)         :: ThisLoc
   CHARACTER(LEN=255)         :: ErrMsg
@@ -663,6 +666,7 @@ contains
     ! aerosol dry deposition
     namelist /chem_inparm/ clim_soilw_file,    &
                            depvel_file,        &
+                           lght_no_prd_factor, &
                            depvel_lnd_file,    &
                            ext_frc_specifier,  &
                            ext_frc_type,       &
@@ -838,6 +842,7 @@ contains
     CALL MPIBCAST(clim_soilw_file, LEN(clim_soilw_file), MPICHAR, 0, MPICOM)
     CALL MPIBCAST(season_wes_file, LEN(season_wes_file), MPICHAR, 0, MPICOM)
 
+    CALL MPIBCAST (lght_no_prd_factor, 1,                                MPIR8,   0, MPICOM)
     CALL MPIBCAST (depvel_file,        LEN(depvel_file),                 MPICHAR, 0, MPICOM)
     CALL MPIBCAST (srf_emis_specifier, LEN(srf_emis_specifier(1))*pcnst, MPICHAR, 0, MPICOM)
     CALL MPIBCAST (srf_emis_type,      LEN(srf_emis_type),               MPICHAR, 0, MPICOM)
@@ -849,8 +854,6 @@ contains
     CALL MPIBCAST (ext_frc_cycle_yr,   1,                                MPIINT,  0, MPICOM)
     CALL MPIBCAST (ext_frc_fixed_ymd,  1,                                MPIINT,  0, MPICOM)
     CALL MPIBCAST (ext_frc_fixed_tod,  1,                                MPIINT,  0, MPICOM)
-
-
 #endif
 
     ! Update "short_lived_species" arrays - will eventually unify these
@@ -965,6 +968,7 @@ contains
     use mo_mean_mass,      only : init_mean_mass
     use tracer_cnst,       only : tracer_cnst_init
     use tracer_srcs,       only : tracer_srcs_init
+    use mo_lightning,      only : lightning_inti
 
     use CESMGC_Emissions_Mod,  only : CESMGC_Emissions_Init
     use CESMGC_Diag_Mod,       only : CESMGC_Diag_Init
@@ -1723,6 +1727,11 @@ contains
     !-----------------------------------------------------------------------
     CALL tracer_cnst_init()
     CALL tracer_srcs_init()
+
+    !-----------------------------------------------------------------------
+    !	... initialize the lightning module
+    !-----------------------------------------------------------------------
+    call lightning_inti(lght_no_prd_factor)
 
     ! Initialize diagnostics interface
     CALL CESMGC_Diag_Init( Input_Opt = Input_Opt,           &
@@ -3314,7 +3323,10 @@ contains
        ENDIF
     ENDIF
 
-    CALL CESMGC_Emissions_Calc( state, hco_pbuf2d, eflx )
+    CALL CESMGC_Emissions_Calc( state      = state,            &
+                                hco_pbuf2d = hco_pbuf2d,       &
+                                State_Met  = State_Met(LCHNK), &
+                                eflx       = eflx             )
 
     ! Add near-surface emissions to surface flux BC
     cam_in%cflx(1:nY,:) = cam_in%cflx(1:nY,:) + eflx(1:nY,nZ,:)
