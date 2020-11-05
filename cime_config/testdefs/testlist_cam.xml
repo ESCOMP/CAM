@@ -174,6 +174,16 @@
     <options>
       <option name="wallclock">00:10:00</option>
     </options>
+<!--  Replace f10_f10_mg37 with CAM-SE-CSLAM grid when ready -->
+  </test>
+  <test compset="QPC6" grid="f10_f10_mg37" name="ERP_Ln9" testmods="cam/outfrq9s_clubbmf">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+      <machine name="izumi" compiler="nag" category="aux_clubbmf"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
   </test>
   <test compset="QPRCEMIP" grid="ne30_ne30_mg17" name="ERP_Ln9" testmods="cam/outfrq9s">
     <machines>

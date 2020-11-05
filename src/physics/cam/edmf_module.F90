@@ -111,6 +111,7 @@ module edmf_module
 
      use physconst,          only: rair, cpair, gravit, latvap, latice, zvir
 
+     integer,  intent(in)                :: nz
      real(r8), dimension(nz), intent(in) :: u,      v,            & ! thermodynamic grid
                                             thl,    thv,          & ! thermodynamic grid
                                             qt,                   & ! thermodynamic grid
@@ -121,7 +122,6 @@ module edmf_module
                                             zm,                   & ! momentum grid
                                             p_zm,   iexner_zm       ! momentum grid
 
-     integer,  intent(in)                :: nz
      real(r8), intent(in)                :: wthl,wqt
      real(r8), intent(inout)             :: pblh
 
