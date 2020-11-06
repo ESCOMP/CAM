@@ -10,7 +10,6 @@ module chemistry
   use ppgrid,              only : pver, pverp
   use constituents,        only : pcnst, cnst_add, cnst_get_ind
   use shr_const_mod,       only : molw_dryair=>SHR_CONST_MWDAIR
-  use shr_megan_mod,       only : shr_megan_mechcomps, shr_megan_mechcomps_n 
   use seq_drydep_mod,      only : nddvels => n_drydep, drydep_list
   use spmd_utils,          only : MasterProc, myCPU=>Iam, nCPUs=>npes
   use cam_logfile,         only : iulog
@@ -163,10 +162,6 @@ module chemistry
   integer            :: ext_frc_cycle_yr  = 0
   integer            :: ext_frc_fixed_ymd = 0
   integer            :: ext_frc_fixed_tod = 0
-
-  ! for MEGAN emissions
-  integer, allocatable :: megan_indices_map(:) 
-  real(r8),allocatable :: megan_wght_factors(:)
 
 
 !================================================================================================
@@ -931,7 +926,6 @@ contains
     use mpishorthand
 #endif
     use cam_abortutils,   only : endrun
-    use infnan,           only : nan, assignment(=)
     use mo_chem_utls,     only : get_spc_ndx
 
     use Phys_Grid,        only : get_Area_All_p
@@ -977,7 +971,6 @@ contains
     use mo_mean_mass,      only : init_mean_mass
     use tracer_cnst,       only : tracer_cnst_init
     use tracer_srcs,       only : tracer_srcs_init
-    use mo_lightning,      only : lightning_inti
 
     use CESMGC_Emissions_Mod,  only : CESMGC_Emissions_Init
     use CESMGC_Diag_Mod,       only : CESMGC_Diag_Init
@@ -995,9 +988,8 @@ contains
     INTEGER                :: LCHNK(BEGCHUNK:ENDCHUNK), NCOL(BEGCHUNK:ENDCHUNK)
     INTEGER                :: IWAIT, IERR
     INTEGER                :: nX, nY, nZ
-    INTEGER                :: iX, jY
     INTEGER                :: nStrat
-    INTEGER                :: I, J, L, N, M, II
+    INTEGER                :: I, J, L, N, M
     INTEGER                :: RC
     INTEGER                :: nLinoz
 
@@ -1035,9 +1027,9 @@ contains
     SpcInfo   => NULL()
 
     ! LCHNK: which chunks we have on this process
-    LCHNK = PHYS_STATE%LCHNK
+    LCHNK = phys_state%LCHNK
     ! NCOL: number of atmospheric columns for each chunk
-    NCOL  = PHYS_STATE%NCOL
+    NCOL  = phys_state%NCOL
 
     write(iulog,'(2(a,x,I6,x))') 'chem_init called on PE ', myCPU, ' of ', nCPUs
 
@@ -1352,7 +1344,7 @@ contains
        IF ( .NOT. MasterProc ) THEN
           Input_Opt%LINOZ_TPARM = REAL(linozData,fp)
        ENDIF
-       DEALLOCATE(linozData)
+       IF ( ALLOCATED( linozData ) ) DEALLOCATE(linozData)
     ENDIF
 
     ! Note: The following calculations do not setup the gridcell areas.
@@ -1415,10 +1407,10 @@ contains
        ENDIF
 
     ENDDO
-    DEALLOCATE(lonMidArr)
-    DEALLOCATE(latMidArr)
-    DEALLOCATE(lonEdgeArr)
-    DEALLOCATE(latEdgeArr)
+    IF ( ALLOCATED( lonMidArr  ) ) DEALLOCATE( lonMidArr  )
+    IF ( ALLOCATED( latMidArr  ) ) DEALLOCATE( latMidArr  )
+    IF ( ALLOCATED( lonEdgeArr ) ) DEALLOCATE( lonEdgeArr )
+    IF ( ALLOCATED( latEdgeArr ) ) DEALLOCATE( latEdgeArr )
 
     ! Set the times held by "time_mod"
     CALL Accept_External_Date_Time( value_NYMDb = Input_Opt%NYMDb, &
@@ -1579,24 +1571,24 @@ contains
     ENDIF
 
     ! Set grid-cell area
-    DO I = BEGCHUNK, ENDCHUNK
-       ALLOCATE(Col_Area(NCOL(I)), STAT=IERR)
+    DO N = BEGCHUNK, ENDCHUNK
+       ALLOCATE(Col_Area(NCOL(N)), STAT=IERR)
        IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating Col_Area')
 
-       CALL Get_Area_All_p(I, NCOL(I), Col_Area)
+       CALL Get_Area_All_p(N, NCOL(N), Col_Area)
 
        ! Set default value (in case of chunks with fewer columns)
-       State_Grid(I)%Area_M2 = 1.0e+10_fp
-       DO iX = 1, nX
-       DO jY = 1, NCOL(I)
-          State_Grid(I)%Area_M2(iX,jY) = REAL(Col_Area(jY) * Re**2,fp)
+       State_Grid(N)%Area_M2 = 1.0e+10_fp
+       DO I = 1, nX
+       DO J = 1, NCOL(N)
+          State_Grid(N)%Area_M2(I,J) = REAL(Col_Area(J) * Re**2,fp)
        ENDDO
        ENDDO
 
-       DEALLOCATE(Col_Area)
+       IF ( ALLOCATED( Col_Area ) ) DEALLOCATE(Col_Area)
 
        ! Copy to State_Met(I)%Area_M2
-       State_Met(I)%Area_M2 = State_Grid(I)%Area_M2
+       State_Met(N)%Area_M2 = State_Grid(N)%Area_M2
     ENDDO
 
     ! Initialize (mostly unused) diagnostic arrays
@@ -1642,8 +1634,8 @@ contains
        CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
-    DEALLOCATE(Ap_CAM_Flip)
-    DEALLOCATE(Bp_CAM_Flip)
+    IF ( ALLOCATED( Ap_CAM_Flip ) ) DEALLOCATE( Ap_CAM_Flip )
+    IF ( ALLOCATED( Bp_CAM_Flip ) ) DEALLOCATE( Bp_CAM_Flip )
 
     ! Once the initial met fields have been read in, we need to find
     ! the maximum PBL level for the non-local mixing algorithm.
@@ -1737,46 +1729,13 @@ contains
     CALL tracer_cnst_init()
     CALL tracer_srcs_init()
 
-    !-----------------------------------------------------------------------
-    !	... initialize the lightning module
-    !-----------------------------------------------------------------------
-    CALL lightning_inti(lght_no_prd_factor)
-
-    ! MEGAN emissions initialize
-    IF ( shr_megan_mechcomps_n > 0 ) THEN
-
-       ALLOCATE( megan_indices_map(shr_megan_mechcomps_n), STAT=IERR )
-       IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating megan_indices_map')
-       ALLOCATE( megan_wght_factors(shr_megan_mechcomps_n), STAT=IERR )
-       IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating megan_wght_factors')
-       megan_wght_factors(:) = NaN
-
-       DO N = 1, shr_megan_mechcomps_n
-          CALL cnst_get_ind (shr_megan_mechcomps(N)%name,  megan_indices_map(N), abort=.False.)
-          II = get_spc_ndx(shr_megan_mechcomps(N)%name)
-          IF ( II > 0 ) THEN
-             megan_wght_factors(N) = adv_mass(II)*1.e-3_r8 ! kg/moles (to convert moles/m2/sec to kg/m2/sec)
-          ELSE
-             CALL ENDRUN( 'chem_init: MEGAN compound not in chemistry mechanism : ' &
-                          //TRIM(shr_megan_mechcomps(N)%name))
-          ENDIF
-
-          ! MEGAN  history fields
-          CALL addfld( 'MEG_'//TRIM(shr_megan_mechcomps(N)%name), horiz_only, 'A', 'kg/m2/sec', &
-               TRIM(shr_megan_mechcomps(N)%name)//' MEGAN emissions flux')
-          !if (history_chemistry) then
-             CALL add_default('MEG_'//trim(shr_megan_mechcomps(N)%name), 1, ' ')
-          !endif
-       ENDDO
-    ENDIF
-
     ! Initialize diagnostics interface
     CALL CESMGC_Diag_Init( Input_Opt = Input_Opt,           &
                            State_Chm = State_Chm(BEGCHUNK), &
                            State_Met = State_Met(BEGCHUNK) )
 
     ! Initialize emissions interface
-    CALL CESMGC_Emissions_Init
+    CALL CESMGC_Emissions_Init( lght_no_prd_factor = lght_no_prd_factor )
 
     hco_pbuf2d => pbuf2d
 
@@ -1850,7 +1809,6 @@ contains
 
     use chem_mods,           only : drySpc_ndx, map2GC_dryDep
     use chem_mods,           only : nfs, indexm, gas_pcnst
-    use mo_chem_utls,        only : get_spc_ndx
     use mo_mean_mass,        only : set_mean_mass
     use mo_setinv,           only : setinv
     use mo_neu_wetdep,       only : neu_wetdep_tend
@@ -1890,20 +1848,14 @@ contains
     use Tropopause,          only : Tropopause_findChemTrop, Tropopause_Find
     use HCO_Utilities_GC_Mod  ! Utility routines for GC-HEMCO interface
 
-    ! Data from CLM
-    use cam_cpl_indices,     only : index_x2a_Fall_flxvoc
-
     ! For calculating SZA
     use Orbit,               only : zenith
     use Time_Manager,        only : Get_Curr_Calday, Get_Curr_Date
 
     ! Calculating relative humidity
     use WV_Saturation,       only : QSat
-    use PhysConst,           only : MWDry
 
     ! Grid area
-    use PhysConst,           only : Gravit
-    use PhysConstants,       only : Re
     use Phys_Grid,           only : get_area_all_p, get_lat_all_p, get_lon_all_p
 
     use short_lived_species, only : get_short_lived_species
@@ -1914,10 +1866,12 @@ contains
     use aero_model,          only : aero_model_gasaerexch
 #endif
 
-    ! Use GEOS-Chem versions of physical constants
-    use PhysConstants,       only : PI, PI_180, g0, AVO
-
     use rad_constituents,    only : rad_cnst_get_info
+
+    ! GEOS-Chem version of physical constants
+    use PhysConstants,       only : PI, PI_180, g0, AVO, Re
+    ! CAM version of physical constants
+    use PhysConst,           only : MWDry, Gravit
 
     REAL(r8),            INTENT(IN)    :: dT          ! Time step
     TYPE(physics_state), INTENT(IN)    :: state       ! Physics State variables
@@ -1944,7 +1898,6 @@ contains
     REAL(r8), DIMENSION(state%NCOL) :: &
         CSZA,                          &              ! Cosine of solar zenith angle
         CSZAmid,                       &              ! Cosine of solar zenith angle at the mid timestep
-        Zsurf,                         &              ! Surface height
         Rlats, Rlons                                  ! Chunk latitudes and longitudes (radians)
 
     REAL(fp)          :: O3col(state%NCOL)            ! Overhead O3 column (DU)
@@ -1980,8 +1933,6 @@ contains
 
     ! For emissions
     REAL(r8)          :: eflx(pcols,pver,pcnst)       ! 3-D emissions in kg/m2/s
-    ! For MEGAN emissions
-    REAL(r8)          :: megflx(pcols)
 
     ! For GEOS-Chem diagnostics
     REAL(r8)              :: mmr1(state%NCOL,PVER,gas_pcnst)
@@ -3365,29 +3316,22 @@ contains
        ENDIF
     ENDIF
 
+    !-----------------------------------------------------------------------
+    ! Get emissions from HEMCO + Lightning + Fire
+    ! Add surface emissions to cam_in
+    !-----------------------------------------------------------------------
+
     CALL CESMGC_Emissions_Calc( state      = state,            &
                                 hco_pbuf2d = hco_pbuf2d,       &
                                 State_Met  = State_Met(LCHNK), &
+                                cam_in     = cam_in,           &
                                 eflx       = eflx             )
 
-    ! Add near-surface emissions to surface flux BC
-    cam_in%cflx(1:nY,:) = cam_in%cflx(1:nY,:) + eflx(1:nY,nZ,:)
-    eflx(1:nY,nZ,:)     = 0.0e+00_r8
+    !-----------------------------------------------------------------------
+    ! Add dry deposition flux 
+    ! (stored as SurfaceFlux = -dflx)
+    !-----------------------------------------------------------------------
 
-    ! MEGAN emissions ...
-    IF ( index_x2a_Fall_flxvoc > 0 .AND. shr_megan_mechcomps_n > 0 ) THEN
-       ! set MEGAN fluxes 
-       DO N = 1, shr_megan_mechcomps_n
-          DO I = 1, nY
-             megflx(I) = -cam_in%meganflx(I,N) * megan_wght_factors(N)
-             cam_in%cflx(I,megan_indices_map(N)) = cam_in%cflx(I,megan_indices_map(N)) + megflx(I)
-          enddO
-          ! output MEGAN emis fluxes to history
-          CALL Outfld('MEG_'//TRIM(shr_megan_mechcomps(N)%name), megflx(:nY), nY, LCHNK)
-       ENDDO
-    ENDIF
-
-    ! Add dry deposition flux (stored as SurfaceFlux = -dflx)
     DO ND = 1, State_Chm(BEGCHUNK)%nDryDep
        ! Get the species ID from the drydep ID
        N = State_Chm(BEGCHUNK)%Map_DryDep(ND)
@@ -3398,10 +3342,12 @@ contains
 
        cam_in%cflx(1:nY,M) = cam_in%cflx(1:nY,M) &
                            + State_Chm(LCHNK)%SurfaceFlux(1,1:nY,N)
-
     ENDDO
 
+    !-----------------------------------------------------------------------
     ! Add non-surface emissions
+    !-----------------------------------------------------------------------
+
     ! Use units of kg/m2 as State_Chm%Species to add emissions fluxes
     CALL Convert_Spc_Units( Input_Opt  = Input_Opt,         &
                             State_Chm  = State_Chm(LCHNK),  &
@@ -3916,13 +3862,13 @@ contains
     CALL Cleanup_Error
 
     ! Finally deallocate state variables
-    IF (ALLOCATED(State_Chm))     DEALLOCATE(State_Chm)
-    IF (ALLOCATED(State_Diag))    DEALLOCATE(State_Diag)
-    IF (ALLOCATED(State_Grid))    DEALLOCATE(State_Grid)
-    IF (ALLOCATED(State_Met))     DEALLOCATE(State_Met)
+    IF ( ALLOCATED( State_Chm  ) )    DEALLOCATE( State_Chm  )
+    IF ( ALLOCATED( State_Diag ) )    DEALLOCATE( State_Diag )
+    IF ( ALLOCATED( State_Grid ) )    DEALLOCATE( State_Grid )
+    IF ( ALLOCATED( State_Met ) )     DEALLOCATE( State_Met )
 
-    IF (ALLOCATED(slvd_Lst    ))  DEALLOCATE(slvd_Lst)
-    IF (ALLOCATED(slvd_ref_MMR))  DEALLOCATE(slvd_ref_MMR)
+    IF ( ALLOCATED( slvd_Lst     ) )  DEALLOCATE( slvd_Lst     )
+    IF ( ALLOCATED( slvd_ref_MMR ) )  DEALLOCATE( slvd_ref_MMR )
 
     RETURN
 
@@ -3988,7 +3934,7 @@ contains
 !================================================================================
   subroutine chem_emissions( state, cam_in )
 
-    use camsrfexch,       only: cam_in_t
+    use camsrfexch,          only : cam_in_t
 
     ! Arguments:
 
@@ -3996,19 +3942,23 @@ contains
     TYPE(cam_in_t),         INTENT(INOUT) :: cam_in  ! import state
 
     INTEGER :: M, N
-    INTEGER :: LCHNK, NCOL
+    INTEGER :: LCHNK, nY
     LOGICAL :: rootChunk
+
 
     ! LCHNK: which chunk we have on this process
     LCHNK = state%LCHNK
     ! NCOL: number of atmospheric columns on this chunk
-    NCOL  = state%NCOL
+    nY    = state%NCOL
     rootChunk = ( MasterProc.and.(LCHNK.EQ.BEGCHUNK) )
 
+    !-----------------------------------------------------------------------
     ! Reset surface fluxes
+    !-----------------------------------------------------------------------
+
     DO M = 2, pcnst
        N = map2chm(M)
-       IF ( N > 0 ) cam_in%cflx(1:NCOL,N) = 0.0e+0_r8
+       IF ( N > 0 ) cam_in%cflx(1:nY,N) = 0.0e+0_r8
     ENDDO
 
   end subroutine chem_emissions

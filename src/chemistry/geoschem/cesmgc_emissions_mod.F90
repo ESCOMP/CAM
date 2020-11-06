@@ -17,6 +17,8 @@ MODULE CESMGC_Emissions_Mod
 !
   USE SHR_KIND_MOD,        ONLY : r8 => shr_kind_r8
   USE SPMD_UTILS,          ONLY : MasterProc
+  USE CAM_ABORTUTILS,      ONLY : endrun
+  USE SHR_MEGAN_MOD,       ONLY : shr_megan_mechcomps, shr_megan_mechcomps_n 
   USE CAM_LOGFILE,         ONLY : iulog
 
   IMPLICIT NONE
@@ -31,6 +33,11 @@ MODULE CESMGC_Emissions_Mod
   PUBLIC  :: CESMGC_Emissions_Final
 
   INTEGER :: iNO
+
+  ! MEGAN Emissions
+  INTEGER,  ALLOCATABLE :: megan_indices_map(:) 
+  REAL(r8), ALLOCATABLE :: megan_wght_factors(:)
+
 !
 ! !REVISION HISTORY:
 !  07 Oct 2020 - T. M. Fritz   - Initial version
@@ -52,14 +59,22 @@ CONTAINS
 !\\
 ! !INTERFACE:
 !
-  SUBROUTINE CESMGC_Emissions_Init
+  SUBROUTINE CESMGC_Emissions_Init( lght_no_prd_factor )
 !
 ! !USES:
 !
+    USE PHYSICS_TYPES,       ONLY : physics_state
     USE CONSTITUENTS,        ONLY : cnst_get_ind
+    USE MO_CHEM_UTLS,        ONLY : get_spc_ndx
+    USE CAM_HISTORY,         ONLY : addfld, add_default, horiz_only
+    USE MO_LIGHTNING,        ONLY : lightning_inti
+    USE FIRE_EMISSIONS,      ONLY : fire_emissions_init
+    USE CHEM_MODS,           ONLY : adv_mass
+    USE INFNAN,              ONLY : NaN, assignment(=)
 !
 ! !INPUT PARAMETERS:
 !
+    REAL(r8),                INTENT(IN   ) :: lght_no_prd_factor ! Lightning scaling factor
 !
 ! !REVISION HISTORY:
 !  07 Oct 2020 - T. M. Fritz   - Initial version
@@ -67,12 +82,107 @@ CONTAINS
 !------------------------------------------------------------------------------
 !BOC
 !
+    ! Integers
+    INTEGER                :: IERR
+    INTEGER                :: N, II
+
+    ! Strings
+    CHARACTER(LEN=255)     :: SpcName
+    CHARACTER(LEN=255)     :: Description
+
+    ! Real
+    REAL(r8)               :: MW
+
     !=================================================================
     ! CESMGC_Emissions_Init begins here!
     !=================================================================
 
     ! Get constituent index for NO
     CALL cnst_get_ind('NO', iNO, abort=.True.)
+
+    !-----------------------------------------------------------------------
+    !	... initialize the lightning module
+    !-----------------------------------------------------------------------
+    CALL lightning_inti(lght_no_prd_factor)
+
+    !-----------------------------------------------------------------------
+    ! ... MEGAN emissions
+    !-----------------------------------------------------------------------
+    IF ( shr_megan_mechcomps_n > 0 ) THEN
+
+       ALLOCATE( megan_indices_map(shr_megan_mechcomps_n), STAT=IERR )
+       IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating megan_indices_map')
+       ALLOCATE( megan_wght_factors(shr_megan_mechcomps_n), STAT=IERR )
+       IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating megan_wght_factors')
+       megan_wght_factors(:) = NaN
+
+       DO N = 1, shr_megan_mechcomps_n
+          SpcName = TRIM(shr_megan_mechcomps(N)%name)
+          ! Special handlings for GEOS-Chem species
+          IF ( TRIM(SpcName) == 'MTERP' ) THEN
+             SpcName = 'MTPA'
+          ELSEIF ( TRIM(SpcName) == 'BCARY' ) THEN
+             SpcName = 'None'
+             MW      = 204.342600_r8 ! Taken from pp_trop_strat_mam4_vbs
+          ELSEIF ( TRIM(SpcName) == 'CH3OH' ) THEN
+             SpcName = 'MOH'
+          ELSEIF ( TRIM(SpcName) == 'C2H5OH' ) THEN
+             SpcName = 'EOH'
+          ELSEIF ( TRIM(SpcName) == 'CH3CHO' ) THEN
+             SpcName = 'ALD2'
+          ELSEIF ( TRIM(SpcName) == 'CH3COOH' ) THEN
+             SpcName = 'ACTA'
+          ELSEIF ( TRIM(SpcName) == 'CH3COCH3' ) THEN
+             SpcName = 'ACET'
+          ELSEIF ( TRIM(SpcName) == 'HCN' ) THEN
+             SpcName = 'None'
+             MW      = 27.025140_r8 ! Taken from pp_trop_strat_mam4_vbs
+          ELSEIF ( TRIM(SpcName) == 'C2H4' ) THEN
+             SpcName = 'None'
+             MW      = 28.051600_r8 ! Taken from pp_trop_strat_mam4_vbs
+          ELSEIF ( TRIM(SpcName) == 'C3H6' ) THEN
+             SpcName = 'PRPE'
+          ELSEIF ( TRIM(SpcName) == 'BIGALK' ) THEN
+             ! BIGALK = Pentane + Hexane + Heptane + Tricyclene
+             SpcName = 'ALK4'
+          ELSEIF ( TRIM(SpcName) == 'BIGENE' ) THEN
+             ! BIGENE = butene (C4H8)
+             SpcName = 'PRPE' ! Lumped >= C3 alkenes
+          ELSEIF ( TRIM(SpcName) == 'TOLUENE' ) THEN
+             SpcName = 'TOLU'
+          ENDIF
+
+          CALL cnst_get_ind (SpcName, megan_indices_map(N), abort=.False.)
+          II = get_spc_ndx(SpcName)
+          IF ( II > 0 ) THEN
+             SpcName = TRIM(shr_megan_mechcomps(N)%name)
+             megan_wght_factors(N) = adv_mass(II)*1.e-3_r8 ! kg/moles (to convert moles/m2/sec to kg/m2/sec)
+             Description = TRIM(SpcName)//' MEGAN emissions flux (released as '//TRIM(SpcName)//' in GEOS-Chem)'
+          ELSEIF ( TRIM(SpcName) == 'None' ) THEN
+             SpcName = TRIM(shr_megan_mechcomps(N)%name)
+             megan_wght_factors(N) = MW*1.e-3_r8 ! kg/moles
+             IF ( MasterProc ) Write(iulog,*) " MEGAN ", TRIM(SpcName), &
+                " emissions will be ignored as no species match in GEOS-Chem."
+             Description = TRIM(SpcName)//' MEGAN emissions flux (not released in GEOS-Chem)'
+          ELSE
+             SpcName = TRIM(shr_megan_mechcomps(N)%name)
+             CALL ENDRUN( 'chem_init: MEGAN compound not in chemistry mechanism : '//TRIM(SpcName))
+          ENDIF
+
+          ! MEGAN  history fields
+          CALL addfld( 'MEG_'//TRIM(SpcName), horiz_only, 'A', 'kg/m2/s', &
+               Description )
+
+          !if (history_chemistry) then
+          CALL add_default('MEG_'//TRIM(SpcName), 1, ' ')
+          !endif
+       ENDDO
+    ENDIF
+
+    !-----------------------------------------------------------------------
+    ! ... Fire emissions
+    !-----------------------------------------------------------------------
+    CALL fire_emissions_init()
 
   END SUBROUTINE CESMGC_Emissions_Init
 !EOC
@@ -88,31 +198,48 @@ CONTAINS
 !\\
 ! !INTERFACE:
 !
-  SUBROUTINE CESMGC_Emissions_Calc( state, hco_pbuf2d, State_Met, eflx )
+  SUBROUTINE CESMGC_Emissions_Calc( state, hco_pbuf2d, State_Met, cam_in, eflx )
 !
 ! !USES:
 !
     USE State_Met_Mod,       ONLY : MetState
+    USE CAMSRFEXCH,          ONLY : cam_in_t
     USE CONSTITUENTS,        ONLY : cnst_name, cnst_get_ind, cnst_mw, pcnst
     USE CHEM_MODS,           ONLY : tracerNames, nTracers, map2GCinv
-    USE CAM_ABORTUTILS,      ONLY : endrun
     USE PHYSICS_TYPES,       ONLY : physics_state
     USE PHYSICS_BUFFER,      ONLY : pbuf_get_index, pbuf_get_chunk
     USE PHYSICS_BUFFER,      ONLY : physics_buffer_desc, pbuf_get_field
     USE PPGRID,              ONLY : pcols, pver, begchunk
+    USE CAM_HISTORY,         ONLY : outfld
+
+    ! Data from CLM
+    USE CAM_CPL_INDICES,     ONLY : index_x2a_Fall_flxvoc
+
+    ! Lightning emissions
     USE MO_LIGHTNING,        ONLY : prod_NO
-    uSE PHYSCONSTANTS,       ONLY : AVO
+
+    ! Fire emissions
+    USE FIRE_EMISSIONS,      ONLY : fire_emissions_srf
+    USE FIRE_EMISSIONS,      ONLY : fire_emissions_vrt
+
+    ! Aerosol emissions
+    USE AERO_MODEL,          ONLY : aero_model_emissions
+
+    ! GEOS-Chem version of physical constants
+    USE PHYSCONSTANTS,       ONLY : AVO
+    ! CAM version of physical constants
+    USE PHYSCONST,           ONLY : rga
 !
 ! !INPUT PARAMETERS:
 !
-    TYPE(physics_state),                INTENT(IN)  :: state           ! Physics state variables
-    TYPE(physics_buffer_desc), POINTER, INTENT(IN)  :: hco_pbuf2d(:,:) ! Pointer to 2-D pbuf
-    TYPE(MetState),                     INTENT(IN)  :: State_Met       ! Meteorology State object
+    TYPE(physics_state),                INTENT(IN   ) :: state           ! Physics state variables
+    TYPE(physics_buffer_desc), POINTER, INTENT(IN   ) :: hco_pbuf2d(:,:) ! Pointer to 2-D pbuf
+    TYPE(MetState),                     INTENT(IN   ) :: State_Met       ! Meteorology State object
 !
 ! !OUTPUT PARAMETERS:
 !
-     ! 3-D emissions in kg/m2/s
-     REAL(r8),                          INTENT(OUT) :: eflx(pcols,pver,pcnst)
+     TYPE(cam_in_t),                    INTENT(INOUT) :: cam_in                 ! import state
+     REAL(r8),                          INTENT(  OUT) :: eflx(pcols,pver,pcnst) ! 3-D emissions in kg/m2/s
 !
 ! !REVISION HISTORY:
 !  07 Oct 2020 - T. M. Fritz   - Initial version
@@ -123,24 +250,29 @@ CONTAINS
 ! !LOCAL VARIABLES:
 !
     ! Integers
-    INTEGER       :: LCHNK, nY, nZ
-    INTEGER       :: M, N, J, L
-    INTEGER       :: RC                    ! return code
-    INTEGER       :: tmpIdx                ! pbuf field id
+    INTEGER                                :: LCHNK
+    INTEGER                                :: nY, nZ
+    INTEGER                                :: I, M, N, J, L
+    INTEGER                                :: RC           ! return code
+    INTEGER                                :: tmpIdx       ! pbuf field id
 
     ! Logical
-    LOGICAL       :: rootChunk
-    LOGICAL, SAVE :: FIRST = .True.
+    LOGICAL                                :: rootChunk
+    LOGICAL, SAVE                          :: FIRST = .True.
 
     ! Objects
-    TYPE(physics_buffer_desc), POINTER :: pbuf_chnk(:) ! slice of pbuf in current chunk
+    TYPE(physics_buffer_desc), POINTER     :: pbuf_chnk(:) ! slice of pbuf in current chunk
 
     ! Real
-    REAL(r8),                  POINTER :: pbuf_ik(:,:) ! pointer to pbuf data (/pcols,pver/)
-    REAL(r8)                           :: SCALFAC      ! Multiplying factor
+    REAL(r8),                      POINTER :: pbuf_ik(:,:)  ! pointer to pbuf data (/pcols,pver/)
+    REAL(r8), DIMENSION(state%NCOL,PVER+1) :: zint          ! Interface geopotential in km
+    REAL(r8), DIMENSION(state%NCOL)        :: zsurf         ! Surface height
+    REAL(r8)                               :: SCALFAC       ! Multiplying factor
+    REAL(r8)                               :: megflx(pcols) ! For MEGAN emissions
+    REAL(r8), PARAMETER                    :: m2km  = 1.e-3_r8
 
     ! Strings
-    CHARACTER(LEN=255)                 :: fldname_ns   ! field name HCO_*
+    CHARACTER(LEN=255)                     :: fldname_ns   ! field name HCO_*
 
     !=================================================================
     ! CESMGC_Emissions_Calc begins here!
@@ -202,15 +334,17 @@ CONTAINS
        ENDIF
     ENDDO
 
-    ! Now add lightning emissions computed from lighning_no_prod
+    !-----------------------------------------------------------------------
+    ! Lightning NO emissions
+    !-----------------------------------------------------------------------
     M = iNO
 
     ! prod_NO is in atom N cm^-3 s^-1 <=> molec cm^-3 s^-1
     ! We need to convert this to kg NO/m2/s
-    ! Multiply by AVO * MWNO * BXHEIGHT * 1.0E+06 
-    !           = molec/mole * kg NO/mole * m * cm^3/m^3
+    ! Multiply by MWNO * BXHEIGHT * 1.0E+06 / AVO
+    !           = mole/molec * kg NO/mole * m * cm^3/m^3
     ! cnst_mw(M) is in g/mole
-    SCALFAC = AVO * cnst_mw(M) * 1.0E-03 * 1.0E+06
+    SCALFAC = cnst_mw(M) * 1.0E-03 * 1.0E+06 / AVO
     DO J = 1, nY
     DO L = 1, nZ
        eflx(J,L,M) = eflx(J,L,M)                      &
@@ -219,6 +353,62 @@ CONTAINS
                      * SCALFAC
     ENDDO
     ENDDO
+
+    !-----------------------------------------------------------------------
+    ! Aerosol emissions (dust + seasalt) ...
+    !-----------------------------------------------------------------------
+    call aero_model_emissions( state, cam_in )
+
+    !-----------------------------------------------------------------------
+    ! MEGAN emissions ...
+    !-----------------------------------------------------------------------
+
+    IF ( index_x2a_Fall_flxvoc > 0 .AND. shr_megan_mechcomps_n > 0 ) THEN
+       ! set MEGAN fluxes 
+       DO N = 1, shr_megan_mechcomps_n
+          DO I = 1, nY
+             megflx(I) = -cam_in%meganflx(I,N) * megan_wght_factors(N)
+          ENDDO
+          IF ( ( megan_indices_map(N) > 0 ) .AND. ( megan_wght_factors(N) > 0.0e+00_r8 ) ) THEN
+             DO I = 1, nY
+                cam_in%cflx(I,megan_indices_map(N)) = cam_in%cflx(I,megan_indices_map(N)) &
+                                                    + megflx(I)
+             ENDDO
+          ENDIF
+          ! output MEGAN emis fluxes to history
+          CALL Outfld('MEG_'//TRIM(shr_megan_mechcomps(N)%name), megflx(:nY), nY, LCHNK)
+       ENDDO
+    ENDIF
+
+    !-----------------------------------------------------------------------
+    ! Fire surface emissions if not elevated forcing
+    !-----------------------------------------------------------------------
+
+    CALL fire_emissions_srf( LCHNK, nY, cam_in%fireflx, cam_in%cflx )
+
+    !-----------------------------------------------------------------------
+    ! Apply CLM emissions (for elevated forcing)
+    !-----------------------------------------------------------------------
+
+    ! Compute geopotential height in km (needed for vertical distribution of
+    ! fire emissions
+    zsurf(:nY) = rga * state%phis(:nY)
+    DO L = 1, nZ
+       zint(:nY,L) = m2km * ( state%zi(:nY,L) + zsurf(:nY) )
+    ENDDO
+    L = nZ+1
+    zint(:nY,L) = m2km * ( state%zi(:nY,L) + zsurf(:nY) )
+
+    ! Distributed fire emissions if elevated forcing
+    ! extfrc is in molec/cm3/s
+    ! TMMF - vertical distributino of fire emissions is not implemented yet
+    !CALL fire_emissions_vrt( nY, LCHNK, zint, cam_in%fireflx, cam_in%fireztop, extfrc )
+
+    !-----------------------------------------------------------------------
+    ! Add near-surface emissions to surface flux boundary condition
+    !-----------------------------------------------------------------------
+    cam_in%cflx(1:nY,:) = cam_in%cflx(1:nY,:) + eflx(1:nY,nZ,:)
+    eflx(1:nY,nZ,:)     = 0.0e+00_r8
 
     IF ( FIRST ) FIRST = .False.
 
@@ -245,8 +435,12 @@ CONTAINS
     !=================================================================
     ! CESMGC_Emissions_Final begins here!
     !=================================================================
+
+    IF ( ALLOCATED( megan_indices_map  ) ) DEALLOCATE( megan_indices_map )
+    IF ( ALLOCATED( megan_wght_factors ) ) DEALLOCATE( megan_wght_factors )
+
+  END SUBROUTINE CESMGC_Emissions_Final
 !EOC
 !------------------------------------------------------------------------------
-  END SUBROUTINE CESMGC_Emissions_Final
 !EOC
   END MODULE CESMGC_Emissions_Mod
