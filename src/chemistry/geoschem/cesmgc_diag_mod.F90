@@ -185,9 +185,6 @@ CONTAINS
           SpcName = 'WD_'//TRIM(solsym(N))
           CALL Addfld( TRIM(SpcName), horiz_only, 'A', 'kg/m2/s', &
              'vertical integrated wet deposition flux' )
-          SpcName = 'WDRATE_'//TRIM(solsym(N))
-          CALL Addfld( TRIM(SpcName), (/ 'lev' /), 'A', 'kg/s', &
-             'wet removal rate' )
        ENDDO
     ENDIF
 

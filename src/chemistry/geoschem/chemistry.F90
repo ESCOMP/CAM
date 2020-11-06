@@ -3547,10 +3547,6 @@ contains
              ENDDO
              CALL Outfld( 'WD_'//TRIM(solsym(N)), wk_out(1:nY), nY, LCHNK )
 
-             CALL Outfld( 'WDRATE_'//TRIM(solsym(N)),                            &
-                      mmr1(1:nY,:nZ,N)/dT * State_Met(LCHNK)%AD(1,1:nY,nZ:1:-1), &
-                      nY, LCHNK )
-
              ! GEOS-Chem does not currently store HEFF, but calculates it
              ! internally. Some potential work around would be to add a
              ! SpcInfo%Heff variable.
