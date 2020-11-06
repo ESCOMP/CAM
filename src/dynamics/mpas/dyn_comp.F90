@@ -337,8 +337,9 @@ subroutine dyn_init(dyn_in, dyn_out)
    !----------------------------------------------------------------------------
 
    if (initial_run) then
-      if (cam_mpas_define_scalars(domain_ptr % blocklist, dyn_in % mpas_from_cam_cnst, &
-                                  dyn_out % cam_from_mpas_cnst) /= 0) then
+      call cam_mpas_define_scalars(domain_ptr % blocklist, dyn_in % mpas_from_cam_cnst, &
+                                   dyn_out % cam_from_mpas_cnst, ierr)
+      if (ierr /= 0) then
          call endrun(subname//': Set-up of constituents for MPAS-A dycore failed.')
       end if
    end if

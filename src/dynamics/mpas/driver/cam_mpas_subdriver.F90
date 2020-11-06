@@ -423,7 +423,7 @@ contains
     !>  
     !
     !-----------------------------------------------------------------------
-    function cam_mpas_define_scalars(block, mpas_from_cam_cnst, cam_from_mpas_cnst) result(ierr)
+    subroutine cam_mpas_define_scalars(block, mpas_from_cam_cnst, cam_from_mpas_cnst, ierr)
 
        use mpas_derived_types, only : block_type
 
@@ -439,7 +439,7 @@ contains
        ! Arguments
        type (block_type), pointer :: block
        integer, dimension(:), pointer :: mpas_from_cam_cnst, cam_from_mpas_cnst
-       integer :: ierr
+       integer, intent(out) :: ierr
 
        ! Local variables
        character(len=*), parameter :: subname = 'cam_mpas_subdriver::cam_mpas_define_scalars'
@@ -641,7 +641,7 @@ contains
        call mpas_pool_add_dimension(tendPool, 'moist_start', 1)
        call mpas_pool_add_dimension(tendPool, 'moist_end', num_moist)
 
-    end function cam_mpas_define_scalars
+    end subroutine cam_mpas_define_scalars
 
 
     !-----------------------------------------------------------------------
@@ -869,7 +869,7 @@ contains
        !
        indexToCellIDBlock(:,:) = 0
        do iCell = 1, size(localCellIDBlock) ! nCellsGlobal
-          owningBlock = indexToBlockID(iCell) + 0            ! 1-based block indices?
+          owningBlock = indexToBlockID(iCell)
           localCellID = localCellIDBlock(iCell)
           indexToCellIDBlock(localCellID, owningBlock) = iCell
        end do
@@ -896,18 +896,27 @@ contains
 
        use pio, only : file_desc_t
 
+       use mpas_kind_types, only : StrKIND
        use mpas_io_streams, only : MPAS_createStream, MPAS_closeStream, MPAS_streamAddField, MPAS_readStream
        use mpas_derived_types, only : MPAS_IO_READ, MPAS_IO_NETCDF, MPAS_Stream_type, MPAS_pool_type, &
-                                      field0DReal, field1DReal, field2DReal, field3DReal, field1DInteger, field2DInteger
+                                      field0DReal, field1DReal, field2DReal, field3DReal, field1DInteger, field2DInteger, &
+                                      MPAS_STREAM_NOERR
        use mpas_pool_routines, only : MPAS_pool_get_subpool, MPAS_pool_get_field, MPAS_pool_create_pool, MPAS_pool_destroy_pool, &
                                       MPAS_pool_add_config
        use mpas_dmpar, only : MPAS_dmpar_exch_halo_field
        use mpas_stream_manager, only : postread_reindex
 
+       ! Arguments
        type (file_desc_t), pointer :: fh_ini
        procedure(halt_model) :: endrun
 
+       ! Local variables
+       character(len=*), parameter :: subname = 'cam_mpas_subdriver::cam_mpas_read_static'
+
+       character(len=StrKIND) :: errString
+
        integer :: ierr
+       integer :: ierr_total
        type (MPAS_pool_type), pointer :: meshPool
        type (MPAS_pool_type), pointer :: reindexPool
        type (field1DReal), pointer :: latCell, lonCell, xCell, yCell, zCell
@@ -933,6 +942,9 @@ contains
 
        call MPAS_createStream(mesh_stream, domain_ptr % ioContext, 'not_used', MPAS_IO_NETCDF, MPAS_IO_READ, &
                               pio_file_desc=fh_ini, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) then
+           call endrun(subname//': FATAL: Failed to create static input stream.')
+       end if
 
        call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'mesh', meshPool)
 
@@ -1008,81 +1020,152 @@ contains
        call mpas_pool_get_field(meshPool, 'defc_a', defc_a)
        call mpas_pool_get_field(meshPool, 'defc_b', defc_b)
 
+       ierr_total = 0
+
        call MPAS_streamAddField(mesh_stream, latCell, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, lonCell, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, xCell, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, yCell, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, zCell, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
 
        call MPAS_streamAddField(mesh_stream, latEdge, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, lonEdge, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, xEdge, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, yEdge, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, zEdge, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
 
        call MPAS_streamAddField(mesh_stream, latVertex, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, lonVertex, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, xVertex, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, yVertex, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, zVertex, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
 
        call MPAS_streamAddField(mesh_stream, indexToCellID, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, indexToEdgeID, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, indexToVertexID, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
 
        call MPAS_streamAddField(mesh_stream, fEdge, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, fVertex, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
 
        call MPAS_streamAddField(mesh_stream, areaCell, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, areaTriangle, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, dcEdge, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, dvEdge, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, angleEdge, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, kiteAreasOnVertex, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, weightsOnEdge, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
 
        call MPAS_streamAddField(mesh_stream, meshDensity, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
 
        call MPAS_streamAddField(mesh_stream, nEdgesOnCell, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, nEdgesOnEdge, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
 
        call MPAS_streamAddField(mesh_stream, cellsOnEdge, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, edgesOnCell, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, edgesOnEdge, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, cellsOnCell, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, verticesOnCell, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, verticesOnEdge, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, edgesOnVertex, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, cellsOnVertex, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
 
        call MPAS_streamAddField(mesh_stream, cf1, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, cf2, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, cf3, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
 
        call MPAS_streamAddField(mesh_stream, rdzw, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, dzu, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, rdzu, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, fzm, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, fzp, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
 
        call MPAS_streamAddField(mesh_stream, zgrid, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, zxu, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, zz, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, zb, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, zb3, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
 
        call MPAS_streamAddField(mesh_stream, deriv_two, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, cellTangentPlane, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, coeffs_reconstruct, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
 
        call MPAS_streamAddField(mesh_stream, edgeNormalVectors, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, localVerticalUnitVectors, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, defc_a, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, defc_b, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
+
+       if (ierr_total > 0) then
+           write(errString, '(a,i0,a)') subname//': FATAL: Failed to add ', ierr_total, ' fields to static input stream.'
+           call endrun(trim(errString))
+       end if
 
        call MPAS_readStream(mesh_stream, 1, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) then
+           call endrun(subname//': FATAL: Failed to read static input stream.')
+       end if
 
        call MPAS_closeStream(mesh_stream, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) then
+           call endrun(subname//': FATAL: Failed to close static input stream.')
+       end if
 
        !
        ! Perform halo updates for all decomposed fields (i.e., fields with
@@ -1193,19 +1276,27 @@ contains
 
        use pio, only : file_desc_t
 
+       use mpas_kind_types, only : StrKIND
        use mpas_io_streams, only : MPAS_createStream, MPAS_streamAddField, MPAS_writeStreamAtt
        use mpas_derived_types, only : MPAS_IO_NETCDF, MPAS_Stream_type, MPAS_pool_type, &
                                       field0DReal, field1DReal, field2DReal, field3DReal, &
                                       field1DInteger, field2DInteger, field0DChar, &
-                                      MPAS_IO_WRITE
+                                      MPAS_IO_WRITE, MPAS_STREAM_NOERR
        use mpas_pool_routines, only : MPAS_pool_get_field
 
+       ! Arguments
        type (file_desc_t), intent(inout) :: fh_rst
        type (MPAS_Stream_type), intent(inout) :: restart_stream
        integer, intent(in) :: direction
        procedure(halt_model) :: endrun
 
+       ! Local variables
+       character(len=*), parameter :: subname = 'cam_mpas_subdriver::cam_mpas_setup_restart'
+
+       character(len=StrKIND) :: errString
+
        integer :: ierr
+       integer :: ierr_total
        type (MPAS_pool_type), pointer :: allFields
        type (field1DReal), pointer :: latCell, lonCell, xCell, yCell, zCell
        type (field1DReal), pointer :: latEdge, lonEdge, xEdge, yEdge, zEdge
@@ -1270,6 +1361,9 @@ contains
 
        call MPAS_createStream(restart_stream, domain_ptr % ioContext, 'not_used', MPAS_IO_NETCDF, &
                               direction, pio_file_desc=fh_rst, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) then
+           call endrun(subname//': FATAL: Failed to create restart stream.')
+       end if
 
        allFields => domain_ptr % blocklist % allFields
 
@@ -1387,119 +1481,222 @@ contains
        call mpas_pool_get_field(allFields, 'tend_rtheta_physics', tend_rtheta_physics)
        call mpas_pool_get_field(allFields, 'tend_rho_physics', tend_rho_physics)
 
+       ierr_total = 0
+
        call MPAS_streamAddField(restart_stream, latCell, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, lonCell, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, xCell, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, yCell, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, zCell, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
 
        call MPAS_streamAddField(restart_stream, latEdge, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, lonEdge, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, xEdge, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, yEdge, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, zEdge, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
 
        call MPAS_streamAddField(restart_stream, latVertex, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, lonVertex, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, xVertex, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, yVertex, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, zVertex, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
 
        call MPAS_streamAddField(restart_stream, indexToCellID, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, indexToEdgeID, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, indexToVertexID, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
 
        call MPAS_streamAddField(restart_stream, fEdge, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, fVertex, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
 
        call MPAS_streamAddField(restart_stream, areaCell, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, areaTriangle, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, dcEdge, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, dvEdge, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, angleEdge, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, kiteAreasOnVertex, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, weightsOnEdge, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
 
        call MPAS_streamAddField(restart_stream, meshDensity, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
 
        call MPAS_streamAddField(restart_stream, nEdgesOnCell, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, nEdgesOnEdge, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
 
        call MPAS_streamAddField(restart_stream, cellsOnEdge, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, edgesOnCell, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, edgesOnEdge, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, cellsOnCell, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, verticesOnCell, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, verticesOnEdge, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, edgesOnVertex, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, cellsOnVertex, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
 
        call MPAS_streamAddField(restart_stream, cf1, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, cf2, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, cf3, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
 
        call MPAS_streamAddField(restart_stream, rdzw, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, dzu, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, rdzu, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, fzm, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, fzp, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
 
        call MPAS_streamAddField(restart_stream, zgrid, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, zxu, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, zz, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, zb, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, zb3, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
 
        call MPAS_streamAddField(restart_stream, deriv_two, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, cellTangentPlane, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, coeffs_reconstruct, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
 
        call MPAS_streamAddField(restart_stream, edgeNormalVectors, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, localVerticalUnitVectors, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, defc_a, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, defc_b, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
 
        call MPAS_streamAddField(restart_stream, initial_time, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, xtime, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, u, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, w, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, rho_zz, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, theta_m, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, scalars, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
 
        call MPAS_streamAddField(restart_stream, meshScalingDel2, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, meshScalingDel4, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, dss, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, east, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, north, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, pressure_p, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, rho, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, theta, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, relhum, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, uReconstructZonal, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, uReconstructMeridional, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, circulation, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, exner, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, exner_base, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, rtheta_base, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, pressure_base, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, rho_base, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, theta_base, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, ru, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, ru_p, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, rw, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, rw_p, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, rtheta_p, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, rho_p, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, surface_pressure, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, t_init, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
 
        call MPAS_streamAddField(restart_stream, u_init, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, qv_init, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
 
        call MPAS_streamAddField(restart_stream, tend_ru_physics, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, tend_rtheta_physics, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, tend_rho_physics, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
+
+       if (ierr_total > 0) then
+           write(errString, '(a,i0,a)') subname//': FATAL: Failed to add ', ierr_total, ' fields to restart stream.'
+           call endrun(trim(errString))
+       end if
 
        if (direction == MPAS_IO_WRITE) then
           !
@@ -1543,19 +1740,29 @@ contains
        use pio, only : file_desc_t
 
        use mpas_io_streams, only : MPAS_readStream, MPAS_closeStream
-       use mpas_derived_types, only : MPAS_Stream_type, MPAS_pool_type
+       use mpas_derived_types, only : MPAS_Stream_type, MPAS_pool_type, MPAS_STREAM_NOERR
        use mpas_pool_routines, only : MPAS_pool_create_pool, MPAS_pool_destroy_pool, MPAS_pool_add_config
        use mpas_stream_manager, only : postread_reindex
 
+       ! Arguments
        type (MPAS_Stream_type), intent(inout) :: restart_stream
        procedure(halt_model) :: endrun
+
+       ! Local variables
+       character(len=*), parameter :: subname = 'cam_mpas_subdriver::cam_mpas_read_restart'
 
        integer :: ierr
        type (MPAS_pool_type), pointer :: reindexPool
 
        call MPAS_readStream(restart_stream, 1, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) then
+           call endrun(subname//': FATAL: Failed to read restart stream.')
+       end if
 
        call MPAS_closeStream(restart_stream, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) then
+           call endrun(subname//': FATAL: Failed to close restart stream.')
+       end if
 
        !
        ! Perform halo updates for all decomposed fields (i.e., fields with
@@ -1676,6 +1883,8 @@ contains
 
        call postread_reindex(domain_ptr % blocklist % allFields, reindexPool)
 
+       call MPAS_pool_destroy_pool(reindexPool)
+
     end subroutine cam_mpas_read_restart
 
 
@@ -1697,12 +1906,16 @@ contains
        use pio, only : file_desc_t
 
        use mpas_io_streams, only : MPAS_writeStream, MPAS_closeStream
-       use mpas_derived_types, only : MPAS_Stream_type, MPAS_pool_type
+       use mpas_derived_types, only : MPAS_Stream_type, MPAS_pool_type, MPAS_STREAM_NOERR
        use mpas_pool_routines, only : MPAS_pool_create_pool, MPAS_pool_destroy_pool, MPAS_pool_add_config
        use mpas_stream_manager, only : prewrite_reindex, postwrite_reindex
 
+       ! Arguments
        type (MPAS_Stream_type), intent(inout) :: restart_stream
        procedure(halt_model) :: endrun
+
+       ! Local variables
+       character(len=*), parameter :: subname = 'cam_mpas_subdriver::cam_mpas_write_restart'
 
        integer :: ierr
        type (MPAS_pool_type), pointer :: reindexPool
@@ -1724,10 +1937,18 @@ contains
        call prewrite_reindex(domain_ptr % blocklist % allFields, reindexPool)
 
        call MPAS_writeStream(restart_stream, 1, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) then
+           call endrun(subname//': FATAL: Failed to write restart stream.')
+       end if
 
        call postwrite_reindex(domain_ptr % blocklist % allFields, reindexPool)
 
+       call MPAS_pool_destroy_pool(reindexPool)
+
        call MPAS_closeStream(restart_stream, ierr=ierr)
+       if (ierr /= MPAS_STREAM_NOERR) then
+           call endrun(subname//': FATAL: Failed to close restart stream.')
+       end if
 
     end subroutine cam_mpas_write_restart
 
@@ -1981,9 +2202,11 @@ contains
        use mpas_timer, only : mpas_timer_start, mpas_timer_stop
        use mpas_constants, only : Rv_over_Rd => rvord
 
-       integer :: ierr
+       ! Arguments
+       type (MPAS_TimeInterval_type), intent(in) :: integrationLength
 
-       type (MPAS_TimeInterval_type) :: integrationLength
+       ! Local variables
+       integer :: ierr
 
        real (kind=RKIND), pointer :: dt
        type (MPAS_Time_Type) :: currTime
