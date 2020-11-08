@@ -588,7 +588,7 @@ module edmf_module
          tau    = tauwgt/tau0
  
          ! get source for updraft
-         Supqt = (qstar-qt)*(1._r8 - exp(-1._r8*tau/w))
+         Supqt = (qstar-qt)*(1._r8 - exp(-1._r8*tau*dz/w))
        else
          Supqt = 0._r8
        end if
