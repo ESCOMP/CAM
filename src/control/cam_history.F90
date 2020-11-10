@@ -4760,11 +4760,21 @@ end subroutine print_active_fldlst
           end if
         else if (nadims == 2) then
           ! Special case for 2D field (no levels) due to hbuf structure
-          call cam_grid_write_dist_array(tape(t)%File, fdecomp,               &
-               adims(1:nadims), fdims(1:frank), tape(t)%hlist(f)%hbuf(:,1,:), varid)
+           if(tape(t)%hlist(f)%hwrt_prec == 4) Then
+              call cam_grid_write_dist_array(tape(t)%File, fdecomp,               &
+                   adims(1:nadims), fdims(1:frank), real(tape(t)%hlist(f)%hbuf(:,1,:), kind=r4), varid)
+           else
+              call cam_grid_write_dist_array(tape(t)%File, fdecomp,               &
+                   adims(1:nadims), fdims(1:frank), tape(t)%hlist(f)%hbuf(:,1,:), varid)
+           endif
         else
-          call cam_grid_write_dist_array(tape(t)%File, fdecomp, adims,        &
-               fdims(1:frank), tape(t)%hlist(f)%hbuf, varid)
+           if(tape(t)%hlist(f)%hwrt_prec == 4) Then
+              call cam_grid_write_dist_array(tape(t)%File, fdecomp, adims,        &
+                   fdims(1:frank), real(tape(t)%hlist(f)%hbuf, kind=r4), varid)
+           else
+              call cam_grid_write_dist_array(tape(t)%File, fdecomp, adims,        &
+                   fdims(1:frank), tape(t)%hlist(f)%hbuf, varid)
+           endif
         end if
       end if
     end do
