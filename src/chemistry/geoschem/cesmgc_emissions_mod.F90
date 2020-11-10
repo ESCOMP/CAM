@@ -211,6 +211,7 @@ CONTAINS
     USE PHYSICS_BUFFER,      ONLY : physics_buffer_desc, pbuf_get_field
     USE PPGRID,              ONLY : pcols, pver, begchunk
     USE CAM_HISTORY,         ONLY : outfld
+    USE STRING_UTILS,        ONLY : to_upper
 
     ! Data from CLM
     USE CAM_CPL_INDICES,     ONLY : index_x2a_Fall_flxvoc
@@ -294,11 +295,12 @@ CONTAINS
 
     DO N = 1, nTracers
 
-       fldname_ns = 'HCO_' // TRIM(tracerNames(N))
+       ! to_upper is required because pFe /= PFE
+       fldname_ns = 'HCO_' // to_upper(TRIM(tracerNames(N)))
        tmpIdx = pbuf_get_index(fldname_ns, RC)
 
        IF ( tmpIdx < 0 ) THEN
-          IF ( rootChunk ) Write(iulog,*) "CESMGC_Emissions_Calc: Field not found ", &
+          IF ( rootChunk ) Write(iulog,'(a,a)') "CESMGC_Emissions_Calc: Field not found ", &
              TRIM(fldname_ns)
        ELSE
           ! This is already in chunk, retrieve it
