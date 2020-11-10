@@ -937,7 +937,7 @@
 
   <test compset="FHS94" grid="mpasa480z32_mpasa480" name="ERC_D_Ln9" testmods="cam/outfrq3s_usecase">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="cheyenne" compiler="intel" category="prealpha"/>
     </machines>
     <options>
       <option name="wallclock">00:30:00</option>
