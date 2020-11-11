@@ -8,8 +8,8 @@ module tracer_data
 !----------------------------------------------------------------------- 
 
   use perf_mod,         only : t_startf, t_stopf
-  use shr_kind_mod,     only : r8 => shr_kind_r8,r4 => shr_kind_r4, shr_kind_cl, SHR_KIND_CS
-  use time_manager,     only : get_curr_date, get_step_size, get_curr_calday
+  use shr_kind_mod,     only : r8 => shr_kind_r8, shr_kind_cl
+  use time_manager,     only : get_curr_date, get_step_size
   use spmd_utils,       only : masterproc
   use ppgrid,           only : pcols, pver, pverp, begchunk, endchunk
   use cam_abortutils,   only : endrun
@@ -19,7 +19,6 @@ module tracer_data
   use time_manager,     only : set_time_float_from_date, set_date_from_time_float
   use pio,              only : file_desc_t, var_desc_t, &
                                pio_seterrorhandling, pio_internal_error, pio_bcast_error, &
-                               pio_setdebuglevel, &
                                pio_char, pio_noerr, &
                                pio_inq_dimid, pio_inq_varid, &
                                pio_def_dim, pio_def_var, &
@@ -111,11 +110,18 @@ module tracer_data
      real(r8), pointer, dimension(:,:) :: weight_x => null(), weight_y => null()
      integer, pointer, dimension(:) :: count_x => null(), count_y => null()
      integer, pointer, dimension(:,:) :: index_x => null(), index_y => null()
+
+     real(r8), pointer, dimension(:,:) :: weight0_x=>null(), weight0_y=>null()
+     integer, pointer, dimension(:) :: count0_x=>null(), count0_y=>null()
+     integer, pointer, dimension(:,:) :: index0_x=>null(), index0_y=>null()
+     logical :: dist = .false.
+     
      real(r8)                        :: p0
      type(var_desc_t) :: ps_id
      logical,  allocatable, dimension(:) :: in_pbuf
      logical :: has_ps = .false.
      logical :: zonal_ave = .false.
+     logical :: unstructured = .false.
      logical :: alt_data = .false.   
      logical :: geop_alt = .false.
      logical :: cyclical = .false.
@@ -156,8 +162,7 @@ contains
 
     use mo_constants,    only : d2r
     use dyn_grid,        only : get_dyn_grid_parm
-    use string_utils,    only : to_upper
-    use horizontal_interpolate, only : xy_interp_init
+    use horizontal_interpolate, only : xy_interp_init, xy_interp0_init
 #if ( defined SPMD )
     use mpishorthand,    only: mpicom, mpir8, mpiint
 #endif
@@ -208,8 +213,6 @@ contains
     file%cyclical = .false.  
     file%cyclical_list = .false.  
 
-! does not work when compiled with pathf90
-!    select case ( to_upper(data_type) )
     select case ( data_type )
     case( 'FIXED' )
        file%fixed = .true.
@@ -282,10 +285,13 @@ contains
     endif
 
     call pio_seterrorhandling(File%curr_fileid, PIO_BCAST_ERROR)
-    ierr = pio_inq_dimid( file%curr_fileid, 'lon', idx )
+    ierr = pio_inq_dimid( file%curr_fileid, 'ncol', idx )
+    file%unstructured = (ierr==PIO_NOERR)
+    if (.not.file%unstructured) then
+       ierr = pio_inq_dimid( file%curr_fileid, 'lon', idx )
+       file%zonal_ave = (ierr/=PIO_NOERR)
+    endif
     call pio_seterrorhandling(File%curr_fileid, PIO_INTERNAL_ERROR)
-
-    file%zonal_ave = (ierr/=PIO_NOERR)
 
     plon = get_dyn_grid_parm('plon')
     plat = get_dyn_grid_parm('plat')
@@ -296,23 +302,26 @@ contains
 
     else
 
-       call get_dimension( file%curr_fileid, 'lon', file%nlon, dimid=old_dimid, data=file%lons )
+       if (.not. file%unstructured ) then
+          call get_dimension( file%curr_fileid, 'lon', file%nlon, dimid=old_dimid, data=file%lons )
 
-       file%lons =  file%lons * d2r
-
-       lon_dimid = old_dimid
-
+          file%lons =  file%lons * d2r
+      
+          lon_dimid = old_dimid
+       end if
     endif
 
     ierr = pio_inq_dimid( file%curr_fileid, 'time', old_dimid)
 
-    ! Hack to work with weird netCDF and old gcc or NAG bug.
-    tim_dimid = old_dimid
+    if (.not. file%unstructured ) then
+       ! Hack to work with weird netCDF and old gcc or NAG bug.
+       tim_dimid = old_dimid
 
-    call get_dimension( file%curr_fileid, 'lat', file%nlat, dimid=old_dimid, data=file%lats )
-    file%lats =  file%lats * d2r
+       call get_dimension( file%curr_fileid, 'lat', file%nlat, dimid=old_dimid, data=file%lats )
+       file%lats =  file%lats * d2r
 
-    lat_dimid = old_dimid
+       lat_dimid = old_dimid
+    endif
 
     allocate( file%ps(file%nlon,file%nlat), stat=astat )
     if( astat /= 0 ) then
@@ -328,7 +337,7 @@ contains
 
     call pio_seterrorhandling(File%curr_fileid, PIO_INTERNAL_ERROR)
 
-    if ( file%has_ps) then
+    if ( file%has_ps .and. .not.file%unstructured ) then
        if ( file%zonal_ave ) then
           ierr = pio_inq_vardimid (file%curr_fileid, file%ps_id, dimids(1:2))
           do did = 1,2
@@ -524,7 +533,7 @@ contains
                 flds(f)%order(did) = ZA_TIMDIM
              endif
           enddo
-       else if ( flds(f)%srf_fld ) then
+       else if ( flds(f)%srf_fld .and. .not.file%unstructured ) then
           ierr = pio_inq_vardimid (file%curr_fileid, flds(f)%var_id, dimids(1:3))
           do did = 1,3
              if      ( dimids(did) == lon_dimid ) then
@@ -538,7 +547,7 @@ contains
                 flds(f)%order(did) = PS_TIMDIM
              endif
           enddo
-       else
+       else if (.not. file%unstructured ) then
           ierr = pio_inq_vardimid (file%curr_fileid, flds(f)%var_id, dimids)
           do did = 1,4
              if      ( dimids(did) == lon_dimid ) then
@@ -581,7 +590,20 @@ contains
         file%count_y(:) = 0
         file%index_x(:,:) = 0
         file%index_y(:,:) = 0
-
+        
+        allocate(file%weight0_x(plon,file%nlon))
+        allocate(file%weight0_y(plat,file%nlat))
+        allocate(file%count0_x(plon))
+        allocate(file%count0_y(plat))
+        allocate(file%index0_x(plon,file%nlon))
+        allocate(file%index0_y(plat,file%nlat))
+        file%weight0_x(:,:) = 0.0_r8
+        file%weight0_y(:,:) = 0.0_r8
+        file%count0_x(:) = 0
+        file%count0_y(:) = 0
+        file%index0_x(:,:) = 0
+        file%index0_y(:,:) = 0
+        
         if(masterproc) then
 ! compute weighting 
             call xy_interp_init(file%nlon,file%nlat,file%lons,file%lats,plon,plat,file%weight_x,file%weight_y)
@@ -605,6 +627,28 @@ contains
                   endif
                enddo
             enddo
+
+            call xy_interp0_init(file%nlon,file%nlat,file%lons,file%lats,plon,plat,file%weight0_x,file%weight0_y)
+
+            do i2=1,plon
+               file%count0_x(i2) = 0
+               do i1=1,file%nlon
+                  if(file%weight0_x(i2,i1).gt.0.0_r8 ) then
+                     file%count0_x(i2) = file%count0_x(i2) + 1
+                     file%index0_x(i2,file%count0_x(i2)) = i1
+                  endif
+               enddo
+            enddo
+
+            do j2=1,plat
+               file%count0_y(j2) = 0
+               do j1=1,file%nlat
+                  if(file%weight0_y(j2,j1).gt.0.0_r8 ) then
+                     file%count0_y(j2) = file%count0_y(j2) + 1
+                     file%index0_y(j2,file%count0_y(j2)) = j1
+                  endif
+               enddo
+            enddo
         endif
 
 #if ( defined SPMD)
@@ -614,6 +658,12 @@ contains
         call mpibcast(file%count_y, plat, mpiint , 0, mpicom)
         call mpibcast(file%index_x, plon*file%nlon, mpiint , 0, mpicom)
         call mpibcast(file%index_y, plat*file%nlat, mpiint , 0, mpicom)
+        call mpibcast(file%weight0_x, plon*file%nlon, mpir8 , 0, mpicom)
+        call mpibcast(file%weight0_y, plat*file%nlat, mpir8 , 0, mpicom)
+        call mpibcast(file%count0_x, plon, mpiint , 0, mpicom)
+        call mpibcast(file%count0_y, plat, mpiint , 0, mpicom)
+        call mpibcast(file%index0_x, plon*file%nlon, mpiint , 0, mpicom)
+        call mpibcast(file%index0_y, plat*file%nlat, mpiint , 0, mpicom)
 #endif
     endif
 
@@ -624,7 +674,6 @@ contains
 !-----------------------------------------------------------------------
   subroutine advance_trcdata( flds, file, state, pbuf2d )
     use physics_types,only : physics_state
-    use physics_buffer, only : physics_buffer_desc
 
     implicit none
 
@@ -677,7 +726,6 @@ contains
 !-------------------------------------------------------------------
   subroutine get_fld_data( flds, field_name, data, ncol, lchnk, pbuf )
 
-    use physics_buffer, only : physics_buffer_desc, pbuf_get_field
 
     implicit none
 
@@ -848,10 +896,8 @@ contains
     !-----------------------------------------------------------------------
     !	... local variables
     !-----------------------------------------------------------------------
-    integer :: pos, pos1, istat
+    integer :: pos, istat
     character(len=shr_kind_cl) :: fn_new, line, filepath
-    character(len=6)   :: seconds
-    character(len=5)   :: num
     integer :: ios,unitnumber
     logical :: abort_run
  
@@ -1220,40 +1266,58 @@ contains
              call read_za_trc( fids(i), flds(f)%var_id, flds(f)%input(i)%data, strt3, cnt3, file, &
                   (/ flds(f)%order(ZA_LATDIM),flds(f)%order(ZA_LEVDIM) /) )
           else if ( flds(f)%srf_fld ) then
-             cnt3( flds(f)%coords(LONDIM)) = file%nlon
-             cnt3( flds(f)%coords(LATDIM)) = file%nlat
-             cnt3( flds(f)%coords(PS_TIMDIM)) = 1
-             strt3(flds(f)%coords(PS_TIMDIM)) = recnos(i)
-             call read_2d_trc( fids(i), flds(f)%var_id, flds(f)%input(i)%data(:,1,:), strt3, cnt3, file, &
-                 (/ flds(f)%order(LONDIM),flds(f)%order(LATDIM) /) )
+             if ( file%unstructured ) then
+                ! read data directly onto the unstructureed phys grid -- assumes input data is on same grid as phys
+                call read_physgrid_2d( fids(i), flds(f)%fldnam,  recnos(i), flds(f)%input(i)%data(:,1,:) )
+             else   
+                cnt3( flds(f)%coords(LONDIM)) = file%nlon
+                cnt3( flds(f)%coords(LATDIM)) = file%nlat
+                cnt3( flds(f)%coords(PS_TIMDIM)) = 1
+                strt3(flds(f)%coords(PS_TIMDIM)) = recnos(i)
+                call read_2d_trc( fids(i), flds(f)%var_id, flds(f)%input(i)%data(:,1,:), strt3, cnt3, file, &
+                     (/ flds(f)%order(LONDIM),flds(f)%order(LATDIM) /) )
+             endif
           else
-             cnt4(flds(f)%coords(LONDIM)) = file%nlon
-             cnt4(flds(f)%coords(LATDIM)) = file%nlat
-             cnt4(flds(f)%coords(LEVDIM)) = file%nlev
-             cnt4(flds(f)%coords(TIMDIM)) = 1
-             strt4(flds(f)%coords(TIMDIM)) = recnos(i)
-             call read_3d_trc( fids(i), flds(f)%var_id, flds(f)%input(i)%data, strt4, cnt4, file, &
-                  (/ flds(f)%order(LONDIM),flds(f)%order(LATDIM),flds(f)%order(LEVDIM) /))
+             if ( file%unstructured ) then
+                ! read data directly onto the unstructureed phys grid -- assumes input data is on same grid as phys
+                if ( file%alt_data ) then
+                   call read_physgrid_3d( fids(i), flds(f)%fldnam, 'altitude', file%nlev, recnos(i), flds(f)%input(i)%data(:,:,:) )
+                else
+                   call read_physgrid_3d( fids(i), flds(f)%fldnam, 'lev', file%nlev, recnos(i), flds(f)%input(i)%data(:,:,:) )
+                end if
+             else   
+                cnt4(flds(f)%coords(LONDIM)) = file%nlon
+                cnt4(flds(f)%coords(LATDIM)) = file%nlat
+                cnt4(flds(f)%coords(LEVDIM)) = file%nlev
+                cnt4(flds(f)%coords(TIMDIM)) = 1
+                strt4(flds(f)%coords(TIMDIM)) = recnos(i)
+                call read_3d_trc( fids(i), flds(f)%var_id, flds(f)%input(i)%data, strt4, cnt4, file, &
+                     (/ flds(f)%order(LONDIM),flds(f)%order(LATDIM),flds(f)%order(LEVDIM) /))
+             endif
 
           endif
 
        enddo
 
        if ( file%has_ps ) then
-          cnt3 = 1
-          strt3 = 1
-          if (.not. file%zonal_ave) then
-             cnt3(file%ps_coords(LONDIM)) = file%nlon
-          end if
-          cnt3(file%ps_coords(LATDIM)) = file%nlat
-          cnt3(file%ps_coords(PS_TIMDIM)) = 1
-          strt3(file%ps_coords(PS_TIMDIM)) = recnos(i)
-          if (file%zonal_ave) then
-             call read_2d_trc( fids(i), file%ps_id, file%ps_in(i)%data, strt3(1:2), cnt3(1:2), file, &
-                  (/ 1, 2 /) )
+          if ( file%unstructured ) then
+             call read_physgrid_2d( fids(i), 'PS',  recnos(i), file%ps_in(i)%data )
           else
-             call read_2d_trc( fids(i), file%ps_id, file%ps_in(i)%data, strt3, cnt3, file, &
-                  (/ file%ps_order(LONDIM),file%ps_order(LATDIM) /) )
+             cnt3 = 1
+             strt3 = 1
+             if (.not. file%zonal_ave) then
+                cnt3(file%ps_coords(LONDIM)) = file%nlon
+             end if
+             cnt3(file%ps_coords(LATDIM)) = file%nlat
+             cnt3(file%ps_coords(PS_TIMDIM)) = 1
+             strt3(file%ps_coords(PS_TIMDIM)) = recnos(i)
+             if (file%zonal_ave) then
+                call read_2d_trc( fids(i), file%ps_id, file%ps_in(i)%data, strt3(1:2), cnt3(1:2), file, &
+                     (/ 1, 2 /) )
+             else
+                call read_2d_trc( fids(i), file%ps_id, file%ps_in(i)%data, strt3, cnt3, file, &
+                     (/ file%ps_order(LONDIM),file%ps_order(LATDIM) /) )
+             end if
           end if
        endif
 
@@ -1262,7 +1326,6 @@ contains
   end subroutine read_next_trcdata
 
 !------------------------------------------------------------------------
-
 
   subroutine read_2d_trc( fid, vid, loc_arr, strt, cnt, file, order )
     use interpolate_data,  only : lininterp_init, lininterp, interp_type, lininterp_finish
@@ -1280,11 +1343,11 @@ contains
     real(r8),intent(out)  :: loc_arr(:,:)
     type (trfile), intent(in) :: file
 
-    real(r8) :: to_lats(pcols), to_lons(pcols), wrk(pcols)
+    real(r8) :: to_lats(pcols), to_lons(pcols)
     real(r8), allocatable, target :: wrk2d(:,:)
     real(r8), pointer :: wrk2d_in(:,:)
 
-    integer :: tsize, c, i, ierr, ncols
+    integer :: c, ierr, ncols
     real(r8), parameter :: zero=0_r8, twopi=2_r8*pi
     type(interp_type) :: lon_wgts, lat_wgts    
     integer :: lons(pcols), lats(pcols)
@@ -1380,10 +1443,7 @@ contains
 
   subroutine read_za_trc( fid, vid, loc_arr, strt, cnt, file, order )
     use interpolate_data, only : lininterp_init, lininterp, interp_type, lininterp_finish
-    use phys_grid,        only : pcols, begchunk, endchunk, get_ncols_p, get_rlat_all_p, get_rlon_all_p	
-    use mo_constants,     only : pi
-!    use dycore,           only : dycore_is		
-    use polar_avg,        only : polar_average
+    use phys_grid,        only : pcols, begchunk, endchunk, get_ncols_p, get_rlat_all_p
 
     implicit none
     type(file_desc_t), intent(in) :: fid
@@ -1394,7 +1454,7 @@ contains
     type (trfile),     intent(in) :: file
 
     type(interp_type) :: lat_wgts
-    real(r8) :: to_lats(pcols), to_lons(pcols), wrk(pcols)
+    real(r8) :: to_lats(pcols), wrk(pcols)
     real(r8), allocatable, target :: wrk2d(:,:)
     real(r8), pointer :: wrk2d_in(:,:)
     integer :: c, k, ierr, ncols
@@ -1440,11 +1500,75 @@ contains
     else
        deallocate(wrk2d_in)
     end if
-!    if(dycore_is('LR')) call polar_average(loc_arr)
   end subroutine read_za_trc
 
 !------------------------------------------------------------------------
+! this assumes the input data is gridded to match the physics grid
+  subroutine read_physgrid_2d(ncid, varname, recno, data )
 
+    use ncdio_atm,        only: infld
+    use cam_grid_support, only: cam_grid_check, cam_grid_id, cam_grid_get_dim_names
+
+    type(file_desc_t) :: ncid
+    character(len=*), intent(in) :: varname
+    integer, intent(in) :: recno
+    real(r8), intent(out) :: data(1:pcols,begchunk:endchunk)
+
+    logical :: found
+    character(len=8) :: dim1name, dim2name
+    integer :: grid_id  ! grid ID for data mapping
+
+    grid_id = cam_grid_id('physgrid')
+    if (.not. cam_grid_check(grid_id)) then
+      call endrun('tracer_data::read_physgrid_2d: Internal error, no "physgrid" grid')
+    end if
+    call cam_grid_get_dim_names(grid_id, dim1name, dim2name)
+
+    call infld( varname, ncid, dim1name, dim2name, 1, pcols, begchunk, endchunk, &
+                data, found, gridname='physgrid', timelevel=recno )
+
+    if(.not. found) then
+       call endrun('tracer_data::read_physgrid_2d: Could not find '//trim(varname)//' field in input datafile')
+    end if
+
+  end subroutine read_physgrid_2d
+  
+!------------------------------------------------------------------------
+!------------------------------------------------------------------------
+! this assumes the input data is gridded to match the physics grid
+  subroutine read_physgrid_3d(ncid, varname, vrt_coord_name, nlevs, recno, data )
+
+    use ncdio_atm,        only: infld
+    use cam_grid_support, only: cam_grid_check, cam_grid_id, cam_grid_get_dim_names
+
+    type(file_desc_t) :: ncid
+    character(len=*), intent(in) :: varname
+    character(len=*), intent(in) :: vrt_coord_name
+    integer, intent(in) :: nlevs
+    integer, intent(in) :: recno
+    real(r8), intent(out) :: data(1:pcols,1:nlevs,begchunk:endchunk)
+
+    logical :: found
+    character(len=8) :: dim1name, dim2name
+    integer :: grid_id  ! grid ID for data mapping
+
+    grid_id = cam_grid_id('physgrid')
+    if (.not. cam_grid_check(grid_id)) then
+      call endrun('tracer_data::read_physgrid_3d: Internal error, no "physgrid" grid')
+    end if
+    call cam_grid_get_dim_names(grid_id, dim1name, dim2name)
+
+    call infld( varname, ncid, dim1name, vrt_coord_name, dim2name, 1, pcols, 1, nlevs, begchunk, endchunk, &
+                data, found, gridname='physgrid', timelevel=recno )
+
+    if(.not. found) then
+       call endrun('tracer_data::read_physgrid_3d: Could not find '//trim(varname)//' field in input datafile')
+    end if
+
+  end subroutine read_physgrid_3d
+  
+  !------------------------------------------------------------------------
+  
   subroutine read_3d_trc( fid, vid, loc_arr, strt, cnt, file, order)
     use interpolate_data, only : lininterp_init, lininterp, interp_type, lininterp_finish
     use phys_grid,        only : pcols, begchunk, endchunk, get_ncols_p, get_rlat_all_p, get_rlon_all_p, get_lon_all_p,&
@@ -1463,11 +1587,10 @@ contains
     
     type (trfile), intent(in) :: file
 
-    integer :: i,j,k, astat, c, ncols
+    integer :: astat, c, ncols
     integer :: lons(pcols), lats(pcols)
 
-    integer                     :: jlim(2), jl, ju, ierr
-    integer                     :: gndx
+    integer :: ierr
 
     real(r8), allocatable, target :: wrk3d(:,:,:)
     real(r8), pointer :: wrk3d_in(:,:,:)
@@ -1498,14 +1621,21 @@ contains
        wrk3d_in => wrk3d
     end if
 
-    j=1
-
 ! If weighting by latitude, then perform horizontal interpolation by using weight_x, weight_y
 
    if(file%weight_by_lat) then
 
      call t_startf('xy_interp')
+     if( file%dist ) then
+      do c = begchunk,endchunk
+        ncols = get_ncols_p(c)
+        call get_lon_all_p(c,ncols,lons)
+        call get_lat_all_p(c,ncols,lats)
 
+        call xy_interp(file%nlon,file%nlat,file%nlev,plon,plat,pcols,ncols,file%weight0_x,file%weight0_y,wrk3d_in,loc_arr(:,:,c-begchunk+1),  &
+                            lons,lats,file%count0_x,file%count0_y,file%index0_x,file%index0_y) 
+     enddo
+     else
      do c = begchunk,endchunk
         ncols = get_ncols_p(c)
         call get_lon_all_p(c,ncols,lons)
@@ -1514,7 +1644,7 @@ contains
         call xy_interp(file%nlon,file%nlat,file%nlev,plon,plat,pcols,ncols,file%weight_x,file%weight_y,wrk3d_in, &
              loc_arr(:,:,c-begchunk+1), lons,lats,file%count_x,file%count_y,file%index_x,file%index_y) 
      enddo
-
+     endif
      call t_stopf('xy_interp')
 
    else
@@ -1553,7 +1683,6 @@ contains
     use mo_util,      only : rebin
     use physics_types,only : physics_state
     use physconst,    only : cday, rga
-    use physics_buffer, only : physics_buffer_desc, pbuf_get_field
 
     implicit none
 
@@ -1717,9 +1846,15 @@ contains
                 if ( file%top_bndry ) then
                    call vert_interp_ub(ncol, file%nlev, file%levs,  datain(:ncol,:), data_out(:ncol,:) )
                 else if(file%conserve_column) then
+                 if( file%dist ) then
+                   call vert_rebin(ncol,file%nlev,pver,state(c)%pint, &
+                                       datain,data_out(:,:), &
+                                       file%p0,ps,file%hyai,file%hybi)
+                 else
                    call vert_interp_mixrat(ncol,file%nlev,pver,state(c)%pint, &
                         datain, data_out(:,:), &
                         file%p0,ps,file%hyai,file%hybi)
+                 endif  
                 else
                    call vert_interp(ncol, file%nlev, pin, state(c)%pmid, datain, data_out(:,:) )
                 endif
@@ -1794,7 +1929,7 @@ contains
     integer, intent(out) :: cyc_ndx_end
     integer, intent(in)  :: cyc_yr
 
-    integer, allocatable , dimension(:) :: dates, datesecs
+    integer, allocatable , dimension(:) :: dates
     integer :: timesize, i, astat, year, ierr
     type(var_desc_T) :: dateid
     call get_dimension( fileid, 'time', timesize )
@@ -1849,7 +1984,7 @@ contains
     integer, optional, intent(in) :: cyc_yr
 
     character(len=shr_kind_cl) :: filen, filepath
-    integer :: year, month, day, dsize, i, timesize
+    integer :: year, month, day, i, timesize
     integer :: dateid,secid
     integer, allocatable , dimension(:) :: dates, datesecs
     integer :: astat, ierr
@@ -2068,7 +2203,7 @@ contains
     type(file_desc_t), intent(inout) :: piofile
     type(trfile), intent(inout) :: tr_file
 
-    integer :: ioerr, slen   ! error status
+    integer :: ioerr   ! error status
     if(associated(tr_file%currfnameid)) then
        ioerr = pio_put_var(pioFile, tr_file%currfnameid, tr_file%curr_filename)
        deallocate(tr_file%currfnameid)
@@ -2135,7 +2270,7 @@ contains
     !---------------------------------------------------------------
     !   ... local variables
     !---------------------------------------------------------------
-    integer  :: i, j, n
+    integer  :: i, j
     integer  :: sil
     real(r8) :: tl, y
     real(r8) :: bot, top
@@ -2271,7 +2406,88 @@ contains
     
     enddo
 
-   end subroutine vert_interp_mixrat
+  end subroutine vert_interp_mixrat
+!------------------------------------------------------------------------------
+   subroutine vert_rebin( ncol, nsrc, ntrg, trg_x, src, trg, p0, ps, hyai, hybi)
+  
+    implicit none
+
+    integer, intent(in)   :: ncol 
+    integer, intent(in)   :: nsrc                  ! dimension source array
+    integer, intent(in)   :: ntrg                  ! dimension target array
+    real(r8)              :: src_x(nsrc+1)         ! source coordinates
+    real(r8), intent(in)      :: trg_x(pcols,ntrg+1)         ! target coordinates
+    real(r8), intent(in)      :: src(pcols,nsrc)             ! source array
+    real(r8), intent(out)     :: trg(pcols,ntrg)             ! target array
+
+    real(r8) :: ps(pcols), p0, hyai(nsrc+1), hybi(nsrc+1)
+    !---------------------------------------------------------------
+    !   ... local variables
+    !---------------------------------------------------------------
+    integer  :: i, j, n
+    integer  :: sil
+    real(r8)     :: tl, y
+    real(r8)     :: bot, top
+
+    do n = 1,ncol
+   
+    do i=1,nsrc+1
+     src_x(i) = p0*hyai(i)+ps(n)*hybi(i)
+    enddo
+
+    do i = 1, ntrg
+       tl = trg_x(n,i+1)
+       if( (tl.gt.src_x(1)).and.(trg_x(n,i).lt.src_x(nsrc+1)) ) then
+          do sil = 1,nsrc
+             if( (tl-src_x(sil))*(tl-src_x(sil+1)).le.0.0_r8 ) then
+                exit
+             end if
+          end do
+
+          if( tl.gt.src_x(nsrc+1)) sil = nsrc
+
+          y = 0.0_r8
+          bot = min(tl,src_x(nsrc+1))   
+          top = trg_x(n,i)
+          do j = sil,1,-1
+           if( top.lt.src_x(j) ) then
+             y = y+(bot-src_x(j))*src(n,j)/(src_x(j+1)-src_x(j))
+            bot = src_x(j)
+           else
+            y = y+(bot-top)*src(n,j)/(src_x(j+1)-src_x(j))
+            exit
+           endif
+          enddo
+          trg(n,i) = y
+       else
+        trg(n,i) = 0.0_r8
+       end if
+    end do
+
+    if( trg_x(n,ntrg+1).lt.src_x(nsrc+1) ) then
+     top = trg_x(n,ntrg+1)
+     bot = src_x(nsrc+1)
+     y = 0.0_r8
+     do j=nsrc,1,-1
+      if( top.lt.src_x(j) ) then
+       y = y+(bot-src_x(j))*src(n,j)/(src_x(j+1)-src_x(j))
+       bot = src_x(j)
+      else
+       y = y+(bot-top)*src(n,j)/(src_x(j+1)-src_x(j))
+       exit
+      endif
+     enddo
+     trg(n,ntrg) = trg(n,ntrg)+y
+    endif
+
+! turn mass into mixing ratio 
+!    do i=1,ntrg
+!     trg(n,i) = trg(n,i)/(trg_x(n,i+1)-trg_x(n,i))
+!    enddo
+    
+    enddo
+
+   end subroutine vert_rebin    
 !------------------------------------------------------------------------------
   subroutine vert_interp( ncol, levsiz, pin, pmid, datain, dataout )
     !-------------------------------------------------------------------------- 

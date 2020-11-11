@@ -1695,6 +1695,7 @@ contains
     use subcol_utils,    only: subcol_ptend_copy, is_subcol_on
     use qneg_module,     only: qneg3
 
+    use ssatcontrail,       only: ssatcontrail_d0
     ! Arguments
 
     real(r8), intent(in) :: ztodt                          ! 2 delta t (model time increment)
@@ -2031,6 +2032,9 @@ contains
        snow_sed_macmic = 0._r8
        prec_pcw_macmic = 0._r8
        snow_pcw_macmic = 0._r8
+    
+       call ssatcontrail_d0(state, pbuf, ztodt, ptend, tend)
+       call physics_update(state, ptend, ztodt, tend)
 
        do macmic_it = 1, cld_macmic_num_steps
 
