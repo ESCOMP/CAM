@@ -15,7 +15,6 @@ module cam_grid_support
   public iMap
 
   integer, parameter, public :: max_hcoordname_len   = 16
-  real(r8), parameter :: grid_fill_value = -900.0_r8
   !---------------------------------------------------------------------------
   !
   !  horiz_coord_t: Information for horizontal dimension attributes
@@ -580,8 +579,6 @@ contains
       allocate(this%vardesc)
       call cam_pio_def_var(File, trim(this%name), pio_double,                 &
            (/ dimid /), this%vardesc, existOK=.false.)
-      ierr= pio_put_att(File, this%vardesc, '_FillValue', grid_fill_value)
-      call cam_pio_handle_error(ierr, 'Error writing "_FillValue" attr in write_horiz_coord_attr')
       ! long_name
       ierr=pio_put_att(File, this%vardesc, 'long_name', trim(this%long_name))
       call cam_pio_handle_error(ierr, 'Error writing "long_name" attr in write_horiz_coord_attr')
@@ -601,8 +598,6 @@ contains
         ierr=pio_put_att(File, this%bndsvdesc, 'long_name', trim(this%name)//' bounds')
         call cam_pio_handle_error(ierr, 'Error writing bounds "long_name" attr in write_horiz_coord_attr')
         ! fill value
-        ierr= pio_put_att(File, this%vardesc, '_FillValue', grid_fill_value)
-        call cam_pio_handle_error(ierr, 'Error writing "_FillValue" attr in write_horiz_coord_attr')
         ! units
         ierr=pio_put_att(File, this%bndsvdesc, 'units', trim(this%units))
         call cam_pio_handle_error(ierr, 'Error writing bounds "units" attr in write_horiz_coord_attr')
@@ -666,23 +661,21 @@ contains
         call this%get_coord_len(fdims(1))
         allocate(iodesc)
         call cam_pio_get_decomp(iodesc, ldims, fdims, PIO_DOUBLE, this%map)
-        call pio_write_darray(File, this%vardesc, iodesc, this%values, ierr, fillval=grid_fill_value)
+        call pio_write_darray(File, this%vardesc, iodesc, this%values, ierr)
         nullify(iodesc) ! CAM PIO system takes over memory management of iodesc
 #else
         !!XXgoldyXX: HACK to get around circular dependencies. Fix this!!
         piosys => shr_pio_getiosys(atm_id)
         call pio_initdecomp(piosys, pio_double, (/this%dimsize/), this%map,   &
              iodesc)
-        call pio_write_darray(File, this%vardesc, iodesc, this%values,        &
-             ierr, fillval=grid_fill_value)
+        call pio_write_darray(File, this%vardesc, iodesc, this%values, ierr)
         call pio_syncfile(File)
         call pio_freedecomp(File, iodesc)
         ! Take care of bounds if they exist
         if (associated(this%bnds) .and. associated(this%bndsvdesc)) then
           call pio_initdecomp(piosys, pio_double, (/2, this%dimsize/),        &
                this%map, iodesc)
-          call pio_write_darray(File, this%bndsvdesc, iodesc, this%bnds,      &
-               ierr, fillval=grid_fill_value)
+          call pio_write_darray(File, this%bndsvdesc, iodesc, this%bnds, ierr)
           call pio_syncfile(File)
           call pio_freedecomp(File, iodesc)
         end if
@@ -2146,8 +2139,6 @@ contains
         allocate(attr%vardesc)
         call cam_pio_def_var(File, trim(attr%name), pio_int, attr%vardesc,    &
              existOK=.false.)
-        ierr= pio_put_att(File, attr%vardesc, '_FillValue', int(grid_fill_value))
-        call cam_pio_handle_error(ierr, 'Error writing "_FillValue" attr in write_cam_grid_attr_0d_int') 
         ierr=pio_put_att(File, attr%vardesc, 'long_name', trim(attr%long_name))
         call cam_pio_handle_error(ierr, 'Error writing "long_name" attr in write_cam_grid_attr_0d_int')
       else
@@ -2239,8 +2230,6 @@ contains
       allocate(attr%vardesc)
       call cam_pio_def_var(File, trim(attr%name), pio_int, (/dimid/),         &
            attr%vardesc, existOK=.false.)
-      ierr= pio_put_att(File, attr%vardesc, '_FillValue', int(grid_fill_value))
-      call cam_pio_handle_error(ierr, 'Error writing "_FillValue" attr in write_cam_grid_attr_1d_int') 
       ierr = pio_put_att(File, attr%vardesc, 'long_name', trim(attr%long_name))
       call cam_pio_handle_error(ierr, 'Error writing "long_name" attr in write_cam_grid_attr_1d_int')
     end if
@@ -2285,9 +2274,6 @@ contains
       allocate(attr%vardesc)
       call cam_pio_def_var(File, trim(attr%name), pio_double, (/dimid/),      &
            attr%vardesc, existOK=.false.)
-      ! fill value
-      ierr =  pio_put_att(File, attr%vardesc, '_FillValue', grid_fill_value)
-      call cam_pio_handle_error(ierr, 'Error writing "_FillValue" attr in write_cam_grid_attr_1d_r8')
       ! long_name
       ierr = pio_put_att(File, attr%vardesc, 'long_name', trim(attr%long_name))
       call cam_pio_handle_error(ierr, 'Error writing "long_name" attr in write_cam_grid_attr_1d_r8')
@@ -2481,7 +2467,7 @@ contains
         ! This is a distributed variable, use pio_write_darray
         allocate(iodesc)
         call cam_pio_newdecomp(iodesc, (/attr%dimsize/), attr%map, pio_int)
-        call pio_write_darray(File, attr%vardesc, iodesc, attr%values, ierr, fillval=int(grid_fill_value))
+        call pio_write_darray(File, attr%vardesc, iodesc, attr%values, ierr)
         call pio_freedecomp(File, iodesc)
         deallocate(iodesc)
         nullify(iodesc)
@@ -2519,7 +2505,7 @@ contains
         ! This is a distributed variable, use pio_write_darray
         allocate(iodesc)
         call cam_pio_newdecomp(iodesc, (/attr%dimsize/), attr%map, pio_double)
-        call pio_write_darray(File, attr%vardesc, iodesc, attr%values, ierr, fillval=grid_fill_value)
+        call pio_write_darray(File, attr%vardesc, iodesc, attr%values, ierr)
         call pio_freedecomp(File, iodesc)
         deallocate(iodesc)
         nullify(iodesc)
@@ -3228,7 +3214,7 @@ contains
     integer                                  :: ierr
 
     call cam_pio_get_decomp(iodesc, adims, fdims, PIO_INT, this%map)
-    call pio_write_darray(File, varid, iodesc, hbuf, ierr, fillval=int(grid_fill_value))
+    call pio_write_darray(File, varid, iodesc, hbuf, ierr)
     call cam_pio_handle_error(ierr, 'cam_grid_write_darray_2d_int: Error writing variable')
   end subroutine cam_grid_write_darray_2d_int
 
@@ -3255,7 +3241,7 @@ contains
     integer                                  :: ierr
 
     call cam_pio_get_decomp(iodesc, adims, fdims, PIO_INT, this%map)
-    call pio_write_darray(File, varid, iodesc, hbuf, ierr, fillval=int(grid_fill_value))
+    call pio_write_darray(File, varid, iodesc, hbuf, ierr)
     call cam_pio_handle_error(ierr, 'cam_grid_write_darray_3d_int: Error writing variable')
   end subroutine cam_grid_write_darray_3d_int
 
@@ -3282,7 +3268,7 @@ contains
     integer                                  :: ierr
 
     call cam_pio_get_decomp(iodesc, adims, fdims, PIO_DOUBLE, this%map)
-    call pio_write_darray(File, varid, iodesc, hbuf, ierr, fillval=grid_fill_value)
+    call pio_write_darray(File, varid, iodesc, hbuf, ierr)
     call cam_pio_handle_error(ierr, 'cam_grid_write_darray_2d_double: Error writing variable')
   end subroutine cam_grid_write_darray_2d_double
 
@@ -3309,7 +3295,7 @@ contains
     integer                                  :: ierr
 
     call cam_pio_get_decomp(iodesc, adims, fdims, PIO_DOUBLE, this%map)
-    call pio_write_darray(File, varid, iodesc, hbuf, ierr, fillval=grid_fill_value)
+    call pio_write_darray(File, varid, iodesc, hbuf, ierr)
     call cam_pio_handle_error(ierr, 'cam_grid_write_darray_3d_double: Error writing variable')
 
   end subroutine cam_grid_write_darray_3d_double
@@ -3337,7 +3323,7 @@ contains
     integer                                  :: ierr
 
     call cam_pio_get_decomp(iodesc, adims, fdims, PIO_REAL, this%map)
-    call pio_write_darray(File, varid, iodesc, hbuf, ierr, fillval=real(grid_fill_value))
+    call pio_write_darray(File, varid, iodesc, hbuf, ierr)
     call cam_pio_handle_error(ierr, 'cam_grid_write_darray_2d_real: Error writing variable')
   end subroutine cam_grid_write_darray_2d_real
 
@@ -3365,7 +3351,7 @@ contains
 
     nullify(iodesc)
     call cam_pio_get_decomp(iodesc, adims, fdims, PIO_REAL, this%map)
-    call pio_write_darray(File, varid, iodesc, hbuf, ierr, fillval=real(grid_fill_value))
+    call pio_write_darray(File, varid, iodesc, hbuf, ierr)
     call cam_pio_handle_error(ierr, 'cam_grid_write_darray_3d_real: Error writing variable')
   end subroutine cam_grid_write_darray_3d_real
 
@@ -3987,7 +3973,7 @@ contains
       end if
     end if
     vdesc => header_info%get_lon_varid()
-    call pio_write_darray(File, vdesc, iodesc, coord, ierr, fillval=grid_fill_value)
+    call pio_write_darray(File, vdesc, iodesc, coord, ierr)
     call cam_pio_handle_error(ierr, 'cam_grid_patch_write_vals: Error writing longitude')
     if (.not. associated(this%lonmap)) then
       deallocate(map)
@@ -4020,7 +4006,7 @@ contains
       end if
     end if
     vdesc => header_info%get_lat_varid()
-    call pio_write_darray(File, vdesc, iodesc, coord, ierr, fillval=grid_fill_value)
+    call pio_write_darray(File, vdesc, iodesc, coord, ierr)
     call cam_pio_handle_error(ierr, 'cam_grid_patch_write_vals: Error writing latitude')
     if (.not. associated(this%latmap)) then
       deallocate(map)
