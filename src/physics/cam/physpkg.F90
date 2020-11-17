@@ -1889,6 +1889,7 @@ contains
     use micro_mg_cam,    only: massless_droplet_destroyer
     use cam_snapshot,    only: cam_snapshot_all_outfld_tphysbc
     use cam_snapshot,    only: cam_snapshot_ptend_outfld
+    use ssatcontrail,       only: ssatcontrail_d0
 
     ! Arguments
 
@@ -2272,6 +2273,9 @@ contains
        snow_sed_macmic = 0._r8
        prec_pcw_macmic = 0._r8
        snow_pcw_macmic = 0._r8
+
+       call ssatcontrail_d0(state, pbuf, ztodt, ptend, tend)
+       call physics_update(state, ptend, ztodt, tend)
 
        do macmic_it = 1, cld_macmic_num_steps
 

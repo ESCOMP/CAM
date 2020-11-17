@@ -110,6 +110,12 @@ module tracer_data
      real(r8), pointer, dimension(:,:) :: weight_x => null(), weight_y => null()
      integer, pointer, dimension(:) :: count_x => null(), count_y => null()
      integer, pointer, dimension(:,:) :: index_x => null(), index_y => null()
+
+     real(r8), pointer, dimension(:,:) :: weight0_x=>null(), weight0_y=>null()
+     integer, pointer, dimension(:) :: count0_x=>null(), count0_y=>null()
+     integer, pointer, dimension(:,:) :: index0_x=>null(), index0_y=>null()
+     logical :: dist = .false.
+     
      real(r8)                        :: p0
      type(var_desc_t) :: ps_id
      logical,  allocatable, dimension(:) :: in_pbuf
@@ -161,7 +167,7 @@ contains
     use dyn_grid,        only : get_dyn_grid_parm, get_horiz_grid_d
     use phys_grid,       only : get_rlat_all_p, get_rlon_all_p, get_ncols_p
     use dycore,          only : dycore_is
-    use horizontal_interpolate, only : xy_interp_init
+    use horizontal_interpolate, only : xy_interp_init, xy_interp0_init
 #if ( defined SPMD )
     use mpishorthand,    only: mpicom, mpir8, mpiint
 #endif
@@ -588,8 +594,8 @@ contains
         call get_horiz_grid_d(plat, clat_d_out=phi)
         call get_horiz_grid_d(plon, clon_d_out=lam)
 
-        allocate(lon_global_grid_ndx(pcols,begchunk:endchunk))
-        allocate(lat_global_grid_ndx(pcols,begchunk:endchunk))
+        if(.not.allocated(lon_global_grid_ndx)) allocate(lon_global_grid_ndx(pcols,begchunk:endchunk))
+        if(.not.allocated(lat_global_grid_ndx)) allocate(lat_global_grid_ndx(pcols,begchunk:endchunk))
         lon_global_grid_ndx=-huge(1)
         lat_global_grid_ndx=-huge(1)
 
@@ -630,6 +636,19 @@ contains
         file%index_x(:,:) = 0
         file%index_y(:,:) = 0
 
+        allocate(file%weight0_x(plon,file%nlon))
+        allocate(file%weight0_y(plat,file%nlat))
+        allocate(file%count0_x(plon))
+        allocate(file%count0_y(plat))
+        allocate(file%index0_x(plon,file%nlon))
+        allocate(file%index0_y(plat,file%nlat))
+        file%weight0_x(:,:) = 0.0_r8
+        file%weight0_y(:,:) = 0.0_r8
+        file%count0_x(:) = 0
+        file%count0_y(:) = 0
+        file%index0_x(:,:) = 0
+        file%index0_y(:,:) = 0
+
         if(masterproc) then
 ! compute weighting 
             call xy_interp_init(file%nlon,file%nlat,file%lons,file%lats,plon,plat,file%weight_x,file%weight_y)
@@ -653,6 +672,28 @@ contains
                   endif
                enddo
             enddo
+
+            call xy_interp0_init(file%nlon,file%nlat,file%lons,file%lats,plon,plat,file%weight0_x,file%weight0_y)
+
+            do i2=1,plon
+               file%count0_x(i2) = 0
+               do i1=1,file%nlon
+                  if(file%weight0_x(i2,i1).gt.0.0_r8 ) then
+                     file%count0_x(i2) = file%count0_x(i2) + 1
+                     file%index0_x(i2,file%count0_x(i2)) = i1
+                  endif
+               enddo
+            enddo
+
+            do j2=1,plat
+               file%count0_y(j2) = 0
+               do j1=1,file%nlat
+                  if(file%weight0_y(j2,j1).gt.0.0_r8 ) then
+                     file%count0_y(j2) = file%count0_y(j2) + 1
+                     file%index0_y(j2,file%count0_y(j2)) = j1
+                  endif
+               enddo
+            enddo
         endif
 
 #if ( defined SPMD)
@@ -662,6 +703,12 @@ contains
         call mpibcast(file%count_y, plat, mpiint , 0, mpicom)
         call mpibcast(file%index_x, plon*file%nlon, mpiint , 0, mpicom)
         call mpibcast(file%index_y, plat*file%nlat, mpiint , 0, mpicom)
+        call mpibcast(file%weight0_x, plon*file%nlon, mpir8 , 0, mpicom)
+        call mpibcast(file%weight0_y, plat*file%nlat, mpir8 , 0, mpicom)
+        call mpibcast(file%count0_x, plon, mpiint , 0, mpicom)
+        call mpibcast(file%count0_y, plat, mpiint , 0, mpicom)
+        call mpibcast(file%index0_x, plon*file%nlon, mpiint , 0, mpicom)
+        call mpibcast(file%index0_y, plat*file%nlat, mpiint , 0, mpicom)
 #endif
     endif
 
@@ -1623,16 +1670,25 @@ contains
    if(file%weight_by_lat) then
 
      call t_startf('xy_interp')
+     if( file%dist ) then
+      do c = begchunk,endchunk
+        ncols = get_ncols_p(c)
+        lons(:ncols) = lon_global_grid_ndx(:ncols,c)
+        lats(:ncols) = lat_global_grid_ndx(:ncols,c)
 
-     do c = begchunk,endchunk
+        call xy_interp(file%nlon,file%nlat,file%nlev,plon,plat,pcols,ncols,file%weight0_x,file%weight0_y,wrk3d_in,loc_arr(:,:,c-begchunk+1),  &
+                            lons,lats,file%count0_x,file%count0_y,file%index0_x,file%index0_y) 
+      enddo
+     else
+      do c = begchunk,endchunk
         ncols = get_ncols_p(c)
         lons(:ncols) = lon_global_grid_ndx(:ncols,c)
         lats(:ncols) = lat_global_grid_ndx(:ncols,c)
 
         call xy_interp(file%nlon,file%nlat,file%nlev,plon,plat,pcols,ncols,file%weight_x,file%weight_y,wrk3d_in, &
              loc_arr(:,:,c-begchunk+1), lons,lats,file%count_x,file%count_y,file%index_x,file%index_y) 
-     enddo
-
+      enddo
+     endif
      call t_stopf('xy_interp')
 
    else
@@ -1834,9 +1890,15 @@ contains
                 if ( file%top_bndry ) then
                    call vert_interp_ub(ncol, file%nlev, file%levs,  datain(:ncol,:), data_out(:ncol,:) )
                 else if(file%conserve_column) then
+                 if( file%dist ) then
+                   call vert_rebin(ncol,file%nlev,pver,state(c)%pint, &
+                                       datain,data_out(:,:), &
+                                       file%p0,ps,file%hyai,file%hybi)
+                 else
                    call vert_interp_mixrat(ncol,file%nlev,pver,state(c)%pint, &
                         datain, data_out(:,:), &
                         file%p0,ps,file%hyai,file%hybi)
+                 endif
                 else
                    call vert_interp(ncol, file%nlev, pin, state(c)%pmid, datain, data_out(:,:) )
                 endif
@@ -2389,6 +2451,87 @@ contains
     enddo
 
    end subroutine vert_interp_mixrat
+!------------------------------------------------------------------------------
+   subroutine vert_rebin( ncol, nsrc, ntrg, trg_x, src, trg, p0, ps, hyai, hybi)
+  
+    implicit none
+
+    integer, intent(in)   :: ncol 
+    integer, intent(in)   :: nsrc                  ! dimension source array
+    integer, intent(in)   :: ntrg                  ! dimension target array
+    real(r8)              :: src_x(nsrc+1)         ! source coordinates
+    real(r8), intent(in)      :: trg_x(pcols,ntrg+1)         ! target coordinates
+    real(r8), intent(in)      :: src(pcols,nsrc)             ! source array
+    real(r8), intent(out)     :: trg(pcols,ntrg)             ! target array
+
+    real(r8) :: ps(pcols), p0, hyai(nsrc+1), hybi(nsrc+1)
+    !---------------------------------------------------------------
+    !   ... local variables
+    !---------------------------------------------------------------
+    integer  :: i, j, n
+    integer  :: sil
+    real(r8)     :: tl, y
+    real(r8)     :: bot, top
+
+    do n = 1,ncol
+   
+    do i=1,nsrc+1
+     src_x(i) = p0*hyai(i)+ps(n)*hybi(i)
+    enddo
+
+    do i = 1, ntrg
+       tl = trg_x(n,i+1)
+       if( (tl.gt.src_x(1)).and.(trg_x(n,i).lt.src_x(nsrc+1)) ) then
+          do sil = 1,nsrc
+             if( (tl-src_x(sil))*(tl-src_x(sil+1)).le.0.0_r8 ) then
+                exit
+             end if
+          end do
+
+          if( tl.gt.src_x(nsrc+1)) sil = nsrc
+
+          y = 0.0_r8
+          bot = min(tl,src_x(nsrc+1))   
+          top = trg_x(n,i)
+          do j = sil,1,-1
+           if( top.lt.src_x(j) ) then
+             y = y+(bot-src_x(j))*src(n,j)/(src_x(j+1)-src_x(j))
+            bot = src_x(j)
+           else
+            y = y+(bot-top)*src(n,j)/(src_x(j+1)-src_x(j))
+            exit
+           endif
+          enddo
+          trg(n,i) = y
+       else
+        trg(n,i) = 0.0_r8
+       end if
+    end do
+
+    if( trg_x(n,ntrg+1).lt.src_x(nsrc+1) ) then
+     top = trg_x(n,ntrg+1)
+     bot = src_x(nsrc+1)
+     y = 0.0_r8
+     do j=nsrc,1,-1
+      if( top.lt.src_x(j) ) then
+       y = y+(bot-src_x(j))*src(n,j)/(src_x(j+1)-src_x(j))
+       bot = src_x(j)
+      else
+       y = y+(bot-top)*src(n,j)/(src_x(j+1)-src_x(j))
+       exit
+      endif
+     enddo
+     trg(n,ntrg) = trg(n,ntrg)+y
+    endif
+
+! turn mass into mixing ratio 
+!    do i=1,ntrg
+!     trg(n,i) = trg(n,i)/(trg_x(n,i+1)-trg_x(n,i))
+!    enddo
+    
+    enddo
+
+   end subroutine vert_rebin    
 !------------------------------------------------------------------------------
   subroutine vert_interp( ncol, levsiz, pin, pmid, datain, dataout )
     !-------------------------------------------------------------------------- 
