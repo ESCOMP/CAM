@@ -3003,6 +3003,10 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_C2thl');
    add_default($nl, 'clubb_C2rtthl');
    add_default($nl, 'clubb_C4');
+   add_default($nl, 'clubb_c6rt');
+   add_default($nl, 'clubb_c6rtb');
+   add_default($nl, 'clubb_c6rtc');
+   add_default($nl, 'clubb_c6thlc');
    add_default($nl, 'clubb_C7');
    add_default($nl, 'clubb_C7b');
    add_default($nl, 'clubb_C8');
@@ -3021,6 +3025,10 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_skw_max_mag');
    add_default($nl, 'clubb_up2_vp2_factor');
    add_default($nl, 'clubb_C_wp2_splat');
+   add_default($nl, 'clubb_wpxp_L_thresh');
+   add_default($nl, 'clubb_detliq_rad');
+   add_default($nl, 'clubb_detice_rad');
+   add_default($nl, 'clubb_detphase_lowtemp');
 
    add_default($nl, 'clubb_l_brunt_vaisala_freq_moist');
    add_default($nl, 'clubb_l_call_pdf_closure_twice');
@@ -3131,6 +3139,9 @@ if (!$simple_phys) {
     add_default($nl, 'zmconv_org');
     add_default($nl, 'zmconv_microp');
     add_default($nl, 'zmconv_num_cin');
+    add_default($nl, 'zmconv_dmpdz');
+    add_default($nl, 'zmconv_tiedke_add');
+    add_default($nl, 'zmconv_capelmt');
 }
 
 # moist convection rainwater coefficients
