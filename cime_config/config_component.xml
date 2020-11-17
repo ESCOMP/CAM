@@ -18,7 +18,7 @@
      CAM and WACCM Options
     ===============
    -->
-    <desc option="SMBB"         >smoothed biomass burning at end of historical period (smoothed observations) (CESM2-LE 50 member set with BHISTsmbb compset) :</desc>
+    <desc option="SMBB"         >smoothed biomass burning at end of the historical period (smoothed observations); smoothing also affects first years of the SSP period (2015-2019) :</desc>
     <desc option="4xCO2"        >abrupt quadrupling of CO2 with other forcings maintained at 1850 piControl levels (CMIP6 DECK abrupt4xCO2 experiment) :</desc>
     <desc option="1PCT"         >ramped CO2 increasing by 1% per year with other forcings maintained at 1850 piControl levels (CMIP6 DECK 1pctCO2 experiment) :</desc>
 
@@ -235,6 +235,7 @@
       <value compset="SSP245_CAM60"      >ssp245_cam6</value>
       <value compset="SSP370_CAM60"      >ssp370_cam6</value>
       <value compset="SSP585_CAM60"      >ssp585_cam6</value>
+      <value compset="SSP370_CAM60%SMBB" >ssp370BB_cam6</value>
       <value compset="SSP126_CAM60%WCTS" >waccm_tsmlt_ssp126_cam6</value>
       <value compset="SSP245_CAM60%WCTS" >waccm_tsmlt_ssp245_cam6</value>
       <value compset="SSP370_CAM60%WCTS" >waccm_tsmlt_ssp370_cam6</value>
