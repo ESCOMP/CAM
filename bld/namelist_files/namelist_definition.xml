@@ -3634,13 +3634,15 @@ Default: FALSE
 
 <entry id="clubb_mf_L0" type="real" category="conv"
        group="clubb_mf_nl" valid_values="" >
-Real: Entrainment length scale in meters for individual plumes
+Entrainment length scale in meters for individual plumes. Not used if
+do_clubb_mf=FALSE.
 Default: 50.0
 </entry>
 
 <entry id="clubb_mf_ent0" type="real" category="conv"
        group="clubb_mf_nl" valid_values="" >
-Real: Entrainment efficiency for individual plumes
+Entrainment efficiency for individual plumes. Not used if
+do_clubb_mf=FALSE.
 Default: 0.22
 </entry>
 

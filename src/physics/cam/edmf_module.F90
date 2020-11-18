@@ -288,7 +288,7 @@ module edmf_module
        enddo
 
        ! get surface conditions
-       wstar   = max( wstarmin, (gravit/thv(1)*wthv*pblh)**(1./3.) )
+       wstar   = max( wstarmin, (gravit/thv(1)*wthv*pblh)**(1._r8/3._r8) )
        qstar   = wqt / wstar
        thvstar = wthv / wstar
 
@@ -301,7 +301,7 @@ module edmf_module
 
        do i=1,clubb_mf_nup
 
-         wlv = wmin + (wmax-wmin) / (real(clubb_mf_nup)) * (real(i)-1.)
+         wlv = wmin + (wmax-wmin) / (real(clubb_mf_nup)) * (real(i)-1._r8)
          wtv = wmin + (wmax-wmin) / (real(clubb_mf_nup)) * real(i)
 
          upw(1,i) = 0.5_r8 * (wlv+wtv)
@@ -482,7 +482,7 @@ module edmf_module
   ! =============================================================================== !
   ! zero or one condensation for edmf: calculates thv and qc                        !
   ! =============================================================================== !
-     use physconst,          only: cpair, zvir
+     use physconst,          only: cpair, zvir, h2otrip
      use wv_saturation,      only : qsat
 
      real(r8),intent(in) :: qt,thl,p,iex
@@ -537,7 +537,7 @@ module edmf_module
                               tmax=-10._r8, &
                               tmin=-40._r8
 
-       tc=t-273.16_r8
+       tc=t-h2otrip
 
        if (tc>tmax) then
          get_watf=1._r8
@@ -571,13 +571,13 @@ module edmf_module
        real(r8),intent(out) :: Supqt
        ! 
        ! local vars
-       real(r8) :: tauwgt, tau,       & ! time-scale vars
-                   qstar                ! excess cloud liquid                   
+       real(r8)            :: tauwgt, tau,       & ! time-scale vars
+                              qstar                ! excess cloud liquid                   
 
-       real(r8) :: tau0  = 15._r8,    & ! base time-scale
-                   zmin  = 300._r8,   & ! small cloud thick
-                   zmax  = 3000._r8,  & ! large cloud thick
-                   qcmin = 0.00125_r8   ! supersat threshold 
+       real(r8),parameter  :: tau0  = 15._r8,    & ! base time-scale
+                              zmin  = 300._r8,   & ! small cloud thick
+                              zmax  = 3000._r8,  & ! large cloud thick
+                              qcmin = 0.00125_r8   ! supersat threshold 
 
        qstar = qs+qcmin
        

@@ -1813,7 +1813,6 @@ end subroutine clubb_init_cnst
                                            kappa_zt,   qc_zt,         & ! thermodynamic grid
                                            kappa_zm,   p_in_Pa_zm,    & ! momentum grid
                                                        invrs_exner_zm   ! momentum grid
-   integer                              :: nz
 
    real(r8) :: temp2d(pcols,pver), temp2dp(pcols,pverp)  ! temporary array for holding scaled outputs
 
@@ -2428,20 +2427,22 @@ end subroutine clubb_init_cnst
       pre_in(1) = pre_in(2)
 
       ! pressure,exner on momentum grid needed for mass flux calc.
-      do k=1,pver
-        kappa_zt(k+1) = (rairv(i,pver-k+1,lchnk)/cpairv(i,pver-k+1,lchnk))
-        qc_zt(k+1) = state1%q(i,pver-k+1,ixcldliq)
-        invrs_exner_zt(k+1) = inv_exner_clubb(i,pver-k+1)
-      enddo
-      kappa_zt(1) = kappa_zt(2)
-      qc_zt(1) = qc_zt(2)
-      invrs_exner_zt(1) = invrs_exner_zt(2)
+      if (do_clubb_mf) then
+        do k=1,pver
+          kappa_zt(k+1) = (rairv(i,pver-k+1,lchnk)/cpairv(i,pver-k+1,lchnk))
+          qc_zt(k+1) = state1%q(i,pver-k+1,ixcldliq)
+          invrs_exner_zt(k+1) = inv_exner_clubb(i,pver-k+1)
+        enddo
+        kappa_zt(1) = kappa_zt(2)
+        qc_zt(1) = qc_zt(2)
+        invrs_exner_zt(1) = invrs_exner_zt(2)
  
-      kappa_zm = zt2zm_api(kappa_zt) 
-      do k=1,pverp
-        p_in_Pa_zm(k) = state1%pint(i,pverp-k+1)
-        invrs_exner_zm(k) = 1._r8/((p_in_Pa_zm(k)/p0_clubb)**(kappa_zm(k)))
-      enddo
+        kappa_zm = zt2zm_api(kappa_zt) 
+        do k=1,pverp
+          p_in_Pa_zm(k) = state1%pint(i,pverp-k+1)
+          invrs_exner_zm(k) = 1._r8/((p_in_Pa_zm(k)/p0_clubb)**(kappa_zm(k)))
+        enddo
+      end if
      
       if (clubb_do_adv) then
         if (macmic_it  ==  1) then
@@ -2501,8 +2502,7 @@ end subroutine clubb_init_cnst
          !#######################################################################
          if (do_clubb_mf) then
 
-           nz  = pverp+1-top_lev
-           do k=2,nz
+           do k=2,pverp
              dzt(k) = zi_g(k) - zi_g(k-1)
            enddo
            dzt(1) = dzt(2)
@@ -2511,7 +2511,7 @@ end subroutine clubb_init_cnst
            rtm_zm_in  = zt2zm_api( rtm_in )
            thlm_zm_in = zt2zm_api( thlm_in )
 
-           call integrate_mf( nz,        dzt,         zi_g,       p_in_Pa_zm, invrs_exner_zm, & ! input
+           call integrate_mf( pverp,     dzt,         zi_g,       p_in_Pa_zm, invrs_exner_zm, & ! input
                                                                   p_in_Pa,    invrs_exner_zt, & ! input
                               um_in,     vm_in,       thlm_in,    rtm_in,     thv_ds_zt,      & ! input
                                                       thlm_zm_in, rtm_zm_in,                  & ! input
@@ -2532,7 +2532,7 @@ end subroutine clubb_init_cnst
            ! pass MF turbulent advection term as CLUBB explicit forcing term
            rtm_forcing(1) = 0._r8
            thlm_forcing(1)= 0._r8
-           do k=2,nz
+           do k=2,pverp
              rtm_forcing(k)  = rtm_forcing(k) - invrs_rho_ds_zt(k) * invrs_dzt(k) * &
                               ((rho_ds_zm(k) * mf_qtflx(k)) - (rho_ds_zm(k-1) * mf_qtflx(k-1)))
            

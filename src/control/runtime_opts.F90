@@ -65,7 +65,6 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    use radiation_data,      only: rad_data_readnl
    use modal_aer_opt,       only: modal_aer_opt_readnl
    use clubb_intr,          only: clubb_readnl
-   !use edmf_module,         only: clubb_mf_readnl
    use chemistry,           only: chem_readnl
    use prescribed_volcaero, only: prescribed_volcaero_readnl
    use prescribed_strataero,only: prescribed_strataero_readnl
