@@ -328,6 +328,7 @@ contains
        integer :: ierr
        character(len=StrKIND) :: startTimeStamp
 
+       character(len=*), parameter :: subname = 'cam_mpas_subdriver::cam_mpas_init_phase4'
 
        !
        ! Setup threading
@@ -369,6 +370,9 @@ contains
        ! Set startTimeStamp based on the start time of the simulation clock
        !
        startTime = mpas_get_clock_time(clock, MPAS_START_TIME, ierr)
+       if ( ierr /= 0 ) then
+          call endrun(subname//': failed to get MPAS_START_TIME')
+       end if
        call mpas_get_time(startTime, dateTimeString=startTimeStamp) 
 
 

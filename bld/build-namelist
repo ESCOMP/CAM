@@ -3695,7 +3695,8 @@ if ($dyn =~ /mpas/) {
     # invoke MPAS utility to generate streams files
     my $mpas_libdir = $cfg->get('mpas_libdir');
 
-    # Check that the executable file streams_gen is present.  This allows build-namelist
+    # Check that the executable file streams_gen is present.  streams_gen is built
+    # at the same time as the MPAS library.  This allows build-namelist
     # to be called before the MPAS library is built (via CESM scripts).
     if ( -x "$mpas_libdir/streams_gen") {
 

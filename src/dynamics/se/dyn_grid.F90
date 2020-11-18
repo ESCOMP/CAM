@@ -911,19 +911,21 @@ subroutine get_hdim_name(fh_ini, ini_grid_hdim_name)
    ! Set PIO to return error flags.
    call pio_seterrorhandling(fh_ini, PIO_BCAST_ERROR, pio_errtype)
 
-   ierr = pio_inq_dimid(fh_ini, 'ncol', ncol_did)
+   ! Check for ncol_d first just in case the initial file also contains fields on
+   ! the physics grid.
+   ierr = pio_inq_dimid(fh_ini, 'ncol_d', ncol_did)
    if (ierr == PIO_NOERR) then
 
-      ini_grid_hdim_name = 'ncol'
+      ini_grid_hdim_name = 'ncol_d'
 
    else
 
-      ! if 'ncol' not in file, check for 'ncol_d'
-      ierr = pio_inq_dimid(fh_ini, 'ncol_d', ncol_did)
+      ! if 'ncol_d' not in file, check for 'ncol'
+      ierr = pio_inq_dimid(fh_ini, 'ncol', ncol_did)
 
       if (ierr == PIO_NOERR) then
 
-         ini_grid_hdim_name = 'ncol_d'
+         ini_grid_hdim_name = 'ncol'
 
       else
 
