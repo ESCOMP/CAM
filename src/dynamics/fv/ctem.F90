@@ -12,7 +12,7 @@ module ctem
 
   implicit none
   private
-  
+
   public :: ctem_readnl
   public :: ctem_init
   public :: ctem_diags
@@ -58,7 +58,7 @@ contains
 !-------------------------------------------------------------
     real(r8), parameter :: hscale = 7000._r8          ! pressure scale height
     real(r8), parameter :: navp   = 1.e35_r8
-    
+
     real(r8) :: pinterp
     real(r8) :: w(grid%ifirstxy:grid%ilastxy,plev,grid%jfirstxy:grid%jlastxy)          ! vertical velocity
     real(r8) :: th(grid%ifirstxy:grid%ilastxy,plev,grid%jfirstxy:grid%jlastxy)         ! pot. temperature
@@ -72,7 +72,7 @@ contains
     real(r8) :: vi(grid%ifirstxy:grid%ilastxy,plevp)         ! interpolated meridional velocity
     real(r8) :: wi(grid%ifirstxy:grid%ilastxy,plevp)         ! interpolated vertical velocity
     real(r8) :: thi(grid%ifirstxy:grid%ilastxy,plevp)        ! interpolated pot. temperature
-    
+
     real(r8) :: um(plevp)                                    ! zonal mean zonal velocity
     real(r8) :: vm(plevp)                                    ! zonal mean meridional velocity
     real(r8) :: wm(plevp)                                    ! zonal mean vertical velocity
@@ -89,13 +89,13 @@ contains
     real(r8) :: uwp(grid%ifirstxy:grid%ilastxy,plevp)        ! zonal deviation of pot. temperature
 
     real(r8) :: rdiv(plevp)
-    
+
     integer  :: ip_gm1g(plon,grid%jfirstxy:grid%jlastxy)     ! contains level index-1 where blocked points begin
     integer  :: zm_cnt(plevp)                                ! counter
     integer  :: i,j,k
     integer  :: nlons
 
-    logical  :: has_zm(plevp,grid%jfirstxy:grid%jlastxy)                   ! .true. the (z,y) point is a valid zonal mean 
+    logical  :: has_zm(plevp,grid%jfirstxy:grid%jlastxy)                   ! .true. the (z,y) point is a valid zonal mean
     integer  :: ip_gm1(grid%ifirstxy:grid%ilastxy,grid%jfirstxy:grid%jlastxy) ! contains level index-1 where blocked points begin
 
     real(r8) :: vth(plevp,grid%jfirstxy:grid%jlastxy)                ! VTH flux
@@ -108,8 +108,8 @@ contains
     real(r8) :: w2d(plevp,grid%jfirstxy:grid%jlastxy)                ! zonally averaged W
     real(r8) :: thig(grid%ifirstxy:grid%ilastxy,plevp,grid%jfirstxy:grid%jlastxy) ! interpolated pot. temperature
 
-    real(r8) :: tmp2(grid%ifirstxy:grid%ilastxy)  
-    real(r8) :: tmp3(grid%ifirstxy:grid%ilastxy,plevp)  
+    real(r8) :: tmp2(grid%ifirstxy:grid%ilastxy)
+    real(r8) :: tmp3(grid%ifirstxy:grid%ilastxy,plevp)
 
     integer :: beglat, endlat                          ! begin,end latitude indicies
     integer :: beglon, endlon                          ! begin,end longitude indicies
@@ -132,7 +132,7 @@ lat_loop1 : &
 !-------------------------------------------------------------
 ! Convert virtual temperature to temperature and calculate potential temperature
 !-------------------------------------------------------------
-             th(i,k,j) = pt(i,j,k) / (1._r8 + zvir*h2o(i,j,k)) 
+             th(i,k,j) = pt(i,j,k) / (1._r8 + zvir*h2o(i,j,k))
              th(i,k,j) = th(i,k,j) * pexf
 !-------------------------------------------------------------
 ! Calculate vertical velocity
@@ -141,7 +141,7 @@ lat_loop1 : &
           end do
        end do
 !-------------------------------------------------------------
-! Keep track of where the bottom is in each column 
+! Keep track of where the bottom is in each column
 ! (i.e., largest index for which P(k) <= PS)
 !-------------------------------------------------------------
        ip_gm1(:,j) = plevp
@@ -157,7 +157,7 @@ lat_loop1 : &
 
     nlons = endlon - beglon + 1
 
-#ifdef SPMD    
+#ifdef SPMD
     if( grid%twod_decomp == 1 ) then
        if (grid%iam .lt. grid%npes_xy) then
           call pargatherint( grid%commxy_x, 0, ip_gm1, grid%strip2dx, ip_gm1g )
@@ -182,7 +182,7 @@ lat_loop1 : &
        end do
        write(iulog,*) '===================================================='
 #else
-#ifdef SPMD    
+#ifdef SPMD
     if( grid%myidxy_x == 0 ) then
 #endif
 #endif
@@ -197,7 +197,7 @@ lat_loop2 : &
              has_zm(k,j) = zm_cnt(k) >= zm_limit
           end do
        end do lat_loop2
-#ifdef SPMD    
+#ifdef SPMD
     end if
     if( grid%twod_decomp == 1 ) then
        call mpibcast( has_zm, plevp*(endlat-beglat+1), mpilog, 0, grid%commxy_x )
@@ -443,7 +443,7 @@ lat_loop3 : &
           tmp3(grid%ifirstxy,k) = uv(k,j)
        enddo
        call outfld( 'UVzm', tmp3(grid%ifirstxy,:), 1, j )
- 
+
        do k = 1,plevp
           tmp3(grid%ifirstxy,k) = uw(k,j)
        enddo
@@ -515,7 +515,7 @@ lat_loop3 : &
     end if
 
 !-------------------------------------------------------------
-! Find level where hybrid levels become purely pressure 
+! Find level where hybrid levels become purely pressure
 !-------------------------------------------------------------
     ip_b = -1
     do k = 1,plev
@@ -539,7 +539,7 @@ lat_loop3 : &
 
     call addfld ('TH',   (/ 'ilev' /),'A','K',  'Potential Temperature', gridname='fv_centers' )
     call addfld ('MSKtem',horiz_only, 'A','1',  'TEM mask', gridname='fv_centers' )
-    
+
 !-------------------------------------------------------------
 ! primary tapes: 3D fields
 !-------------------------------------------------------------
@@ -576,14 +576,14 @@ subroutine ctem_readnl(nlfile)
    use spmd_utils,         only: mpicom, mstrid=>masterprocid, mpi_logical
 
    character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
-   
+
    ! Local variables
    integer :: unitn, ierr
    character(len=*), parameter :: subname = 'ctem_readnl'
 
    namelist /circ_diag_nl/ do_circulation_diags
    !-----------------------------------------------------------------------------
-    
+
    if (masterproc) then
       unitn = getunit()
       open( unitn, file=trim(nlfile), status='old' )

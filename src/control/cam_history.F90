@@ -102,6 +102,10 @@ module cam_history
     integer :: ndims
     integer :: dims(4)
     character(len=fieldname_lenp2) :: name
+    logical :: fillset = .false.
+    integer :: ifill
+    real(r4) :: rfill
+    real(r8) :: dfill
   end type rvar_id
   type rdim_id
     integer :: len
@@ -1044,6 +1048,8 @@ CONTAINS
     restartvars(rvindex)%ndims = 2
     restartvars(rvindex)%dims(1) = maxnflds_dim_ind
     restartvars(rvindex)%dims(2) = ptapes_dim_ind
+    restartvars(rvindex)%fillset = .true.
+    restartvars(rvindex)%ifill = 0
 
     rvindex = rvindex + 1
     restartvars(rvindex)%name = 'numlev'
@@ -1051,6 +1057,8 @@ CONTAINS
     restartvars(rvindex)%ndims = 2
     restartvars(rvindex)%dims(1) = maxnflds_dim_ind
     restartvars(rvindex)%dims(2) = ptapes_dim_ind
+    restartvars(rvindex)%fillset = .true.
+    restartvars(rvindex)%ifill = 0
 
     rvindex = rvindex + 1
     restartvars(rvindex)%name = 'hrestpath'
@@ -1065,6 +1073,8 @@ CONTAINS
     restartvars(rvindex)%ndims = 2
     restartvars(rvindex)%dims(1) = maxnflds_dim_ind
     restartvars(rvindex)%dims(2) = ptapes_dim_ind
+    restartvars(rvindex)%fillset = .true.
+    restartvars(rvindex)%ifill = 0
 
     rvindex = rvindex + 1
     restartvars(rvindex)%name = 'avgflag'
@@ -1130,6 +1140,9 @@ CONTAINS
     restartvars(rvindex)%ndims = 2
     restartvars(rvindex)%dims(1) = maxnflds_dim_ind
     restartvars(rvindex)%dims(2) = ptapes_dim_ind
+    restartvars(rvindex)%fillset = .true.
+    restartvars(rvindex)%dfill = 0.0
+
 
     rvindex = rvindex + 1
     restartvars(rvindex)%name = 'mdims'
@@ -1189,6 +1202,8 @@ CONTAINS
     restartvars(rvindex)%ndims = 2
     restartvars(rvindex)%dims(1) = maxnflds_dim_ind
     restartvars(rvindex)%dims(2) = ptapes_dim_ind
+    restartvars(rvindex)%fillset = .true.
+    restartvars(rvindex)%ifill = 0
 
     rvindex = rvindex + 1
     restartvars(rvindex)%name = 'zonal_complement'
@@ -1196,6 +1211,8 @@ CONTAINS
     restartvars(rvindex)%ndims = 2
     restartvars(rvindex)%dims(1) = maxnflds_dim_ind
     restartvars(rvindex)%dims(2) = ptapes_dim_ind
+    restartvars(rvindex)%fillset = .true.
+    restartvars(rvindex)%ifill = 0
 
   end subroutine restart_vars_setnames
 
@@ -1276,7 +1293,16 @@ CONTAINS
         allocate(restartvars(i)%vdesc)
         ierr = pio_def_var(File, restartvars(i)%name, restartvars(i)%type, dimids(1:ndims), restartvars(i)%vdesc)
         call cam_pio_handle_error(ierr, 'INIT_RESTART_HISTORY: Error defining '//trim(restartvars(i)%name))
-
+        if(restartvars(i)%fillset) then
+           if(restartvars(i)%type == PIO_INT) then
+              ierr = pio_put_att(File, restartvars(i)%vdesc, "_FillValue", restartvars(i)%ifill)
+           elseif(restartvars(i)%type == PIO_REAL) then
+              ierr = pio_put_att(File, restartvars(i)%vdesc, "_FillValue", restartvars(i)%rfill)
+           elseif(restartvars(i)%type == PIO_DOUBLE) then
+              ierr = pio_put_att(File, restartvars(i)%vdesc, "_FillValue", restartvars(i)%dfill)
+           endif
+           call cam_pio_handle_error(ierr, 'INIT_RESTART_HISTORY: Error setting fill'//trim(restartvars(i)%name))
+        endif
       end do
     end if
   end subroutine init_restart_history
@@ -1306,7 +1332,6 @@ CONTAINS
   subroutine write_restart_history ( File, &
        yr_spec, mon_spec, day_spec, sec_spec )
     use cam_history_support, only: hist_coord_name, registeredmdims
-
     implicit none
     !--------------------------------------------------------------------------------------------------
     !
