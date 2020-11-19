@@ -925,18 +925,8 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
       ! Compute initial dry static energy, include surface geopotential
       do k = 1, pver
          do i = 1, ncol
-#if FIX_TOTE
-            ! general formula:  E = CV_air T + phis + gravit*zi )
-            ! hydrostatic case: integrate zi term by parts, use CP=CV+R to get:
-            ! E = CP_air T + phis   (Holton Section 8.3)
-            ! to use this, update geopotential.F90, and other not-yet-found physics routines:
-            ! (check boundary layer code, others which have gravit and zi() or zm()
-            phys_state(lchnk)%s(i,k) = cpair*phys_state(lchnk)%t(i,k) &
-               + phys_state(lchnk)%phis(i)
-#else
             phys_state(lchnk)%s(i,k) = cpair*phys_state(lchnk)%t(i,k) &
                + gravit*phys_state(lchnk)%zm(i,k) + phys_state(lchnk)%phis(i)
-#endif
          end do
       end do
 

@@ -926,6 +926,24 @@
     </options>
   </test>
 
+  <test compset="FKESSLER" grid="mpasa120z32_mpasa120" name="ERC_D_Ln9" testmods="cam/outfrq3s_usecase">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
+
+  <test compset="FHS94" grid="mpasa480z32_mpasa480" name="ERC_D_Ln9" testmods="cam/outfrq3s_usecase">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="prealpha"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
+
 <!--              CAM Simple Models                       -->
 
   <test compset="FDABIP04" grid="T42z30_T42_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">

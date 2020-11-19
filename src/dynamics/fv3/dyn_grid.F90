@@ -46,13 +46,16 @@ module dyn_grid
     private
     save
 
-    ! The FV3 dynamics grids
+    ! The FV3 dynamics grids and initial file ncol grid
     integer, parameter :: dyn_decomp   = 101
     integer, parameter :: dyn_decomp_ew = 102
     integer, parameter :: dyn_decomp_ns = 103
     integer, parameter :: dyn_decomp_hist   = 104
     integer, parameter :: dyn_decomp_hist_ew = 105
     integer, parameter :: dyn_decomp_hist_ns = 106
+    integer, parameter :: ini_decomp   = 107
+
+    character(len=3), protected :: ini_grid_name = 'INI'
 
     integer, parameter :: ptimelevels = 2  ! number of time levels in the dycore
 
@@ -68,6 +71,7 @@ module dyn_grid
 
 public ::             &
    dyn_decomp,        &
+   ini_grid_name,     &
    p_split,           &
    grids_on_this_pe,  &
    ptimelevels
@@ -777,12 +781,30 @@ subroutine define_cam_grids(Atm)
   ! output local and global uniq points
   uniqpts_glob=(npx-1)*(npy-1)*6
 
+  ! with FV3 if the initial file uses the horizontal dimension 'ncol' rather than
+  ! 'ncol_d' then we need a grid object with the names ncol,lat,lon to read it.
+  ! Create that grid object here.
+
+  lat_coord => horiz_coord_create('lat', 'ncol', uniqpts_glob, 'latitude',      &
+       'degrees_north', 1, size(pelat_deg), pelat_deg, map=pemap)
+  lon_coord => horiz_coord_create('lon', 'ncol', uniqpts_glob, 'longitude',     &
+       'degrees_east', 1, size(pelon_deg), pelon_deg, map=pemap)
+
+  ! register physics cell-center/A-grid
+  call cam_grid_register(ini_grid_name, ini_decomp, lat_coord, lon_coord,          &
+       grid_map, block_indexed=.false., unstruct=.true.)
+  call cam_grid_attribute_register(ini_grid_name, 'cell', '', 1)
+  call cam_grid_attribute_register(ini_grid_name, 'area', 'cam cell center areas', &
+         'ncol', area_ffsl, map=pemap)
+  nullify(lat_coord)
+  nullify(lon_coord)
+
+  ! create and register dynamic A-grid, src_in(/1,2/) allows ilev,jlev,nlev ordering for restart IO
   lat_coord => horiz_coord_create('lat_d', 'ncol_d', uniqpts_glob, 'latitude',      &
        'degrees_north', 1, size(pelat_deg), pelat_deg, map=pemap)
   lon_coord => horiz_coord_create('lon_d', 'ncol_d', uniqpts_glob, 'longitude',     &
        'degrees_east', 1, size(pelon_deg), pelon_deg, map=pemap)
 
-  ! register dynamic A-grid, src_in(/1,2/) allows ilev,jlev,nlev ordering for restart IO
   call cam_grid_register('FFSL', dyn_decomp, lat_coord, lon_coord,          &
        grid_map, block_indexed=.false., unstruct=.true.,src_in=(/1,2/))
   call cam_grid_attribute_register('FFSL', 'cell', '', 1)

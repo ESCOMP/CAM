@@ -26,8 +26,8 @@ Switch specifies whether CAM is being built by the CCSM sequential scripts.  0 =
 <entry id="cpl" valid_values="mct,nuopc" value="mct" >
 Coupling framework: mct or nuopc.  Default: mct.
 </entry>
-<entry id="dyn" valid_values="eul,fv,fv3,se" value="">
-Dynamics package: eul, fv, fv3, or se.
+<entry id="dyn" valid_values="eul,fv,fv3,se,mpas" value="">
+Dynamics package: eul, fv, fv3, se, or mpas.
 </entry>
 <entry id="waccm_phys" valid_values="0,1" value="0">
 Switch to turn on waccm physics: 0 => no, 1 => yes.
@@ -291,6 +291,9 @@ Directory containing COSP library.
 </entry>
 <entry id="fv3core_libdir" value="">
 Directory containing FV3CORE library.
+</entry>
+<entry id="mpas_libdir" value="">
+Directory containing MPAS library.
 </entry>
 <entry id="target_os" value="">
 OS for which CAM is being built.  The default value is the name contained

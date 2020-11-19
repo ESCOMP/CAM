@@ -11,11 +11,14 @@ module string_utils
 ! Public interface methods
 
    public ::&
-      to_upper, &   ! Convert character string to upper case
-      to_lower, &   ! Convert character string to lower case
-      INCSTR,   &   ! increments a string
-      GLC,      &   ! Position of last significant character in string
-      strlist_get_ind ! find string in a list of strings and return its index
+      to_upper,        & ! Convert character string to upper case
+      to_lower,        & ! Convert character string to lower case
+      INCSTR,          & ! increments a string
+      GLC,             & ! Position of last significant character in string
+      strlist_get_ind, & ! find string in a list of strings and return its index
+      date2yyyymmdd,   & ! convert encoded date integer to "yyyy-mm-dd" format
+      sec2hms,         & ! convert integer seconds past midnight to "hh:mm:ss" format
+      int2str            ! convert integer to left justified string
 
 contains
 
@@ -280,6 +283,75 @@ subroutine strlist_get_ind(strlist, str, ind, abort)
    ind = -1
 
 end subroutine strlist_get_ind
+
+!=========================================================================================
+
+character(len=10) function date2yyyymmdd (date)
+
+   ! Input arguments
+
+   integer, intent(in) :: date
+
+   ! Local workspace
+
+   integer :: year    ! year of yyyy-mm-dd
+   integer :: month   ! month of yyyy-mm-dd
+   integer :: day     ! day of yyyy-mm-dd
+
+   if (date < 0) then
+      call endrun ('DATE2YYYYMMDD: negative date not allowed')
+   end if
+
+   year  = date / 10000
+   month = (date - year*10000) / 100
+   day   = date - year*10000 - month*100
+
+   write(date2yyyymmdd,80) year, month, day
+80 format(i4.4,'-',i2.2,'-',i2.2)
+
+end function date2yyyymmdd
+
+!=========================================================================================
+
+character(len=8) function sec2hms (seconds)
+
+   ! Input arguments
+
+   integer, intent(in) :: seconds
+
+   ! Local workspace
+
+   integer :: hours     ! hours of hh:mm:ss
+   integer :: minutes   ! minutes of hh:mm:ss
+   integer :: secs      ! seconds of hh:mm:ss
+
+   if (seconds < 0 .or. seconds > 86400) then
+      write(iulog,*)'SEC2HMS: bad input seconds:', seconds
+      call endrun ('SEC2HMS: bad input seconds:')
+   end if
+
+   hours   = seconds / 3600
+   minutes = (seconds - hours*3600) / 60
+   secs    = (seconds - hours*3600 - minutes*60)
+
+   write(sec2hms,80) hours, minutes, secs
+80 format(i2.2,':',i2.2,':',i2.2)
+
+end function sec2hms
+
+!=========================================================================================
+
+character(len=10) function int2str(n)
+
+   ! return default integer as a left justified string
+
+   ! arguments
+   integer, intent(in) :: n
+   !----------------------------------------------------------------------------
+
+   write(int2str,'(i0)') n
+     
+end function int2str
 
 !=========================================================================================
 
