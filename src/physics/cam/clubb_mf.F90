@@ -1,4 +1,4 @@
-module edmf_module
+module clubb_mf
 
 ! =============================================================================== !
 ! Mass-flux module for use with CLUBB                                             !
@@ -678,4 +678,4 @@ module edmf_module
 
   end subroutine knuth
 
-end module edmf_module
+end module clubb_mf

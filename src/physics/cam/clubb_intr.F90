@@ -30,7 +30,7 @@ module clubb_intr
 #ifdef CLUBB_SGS
   use clubb_api_module, only: pdf_parameter, implicit_coefs_terms
   use clubb_api_module, only: clubb_config_flags_type
-  use edmf_module,      only: do_clubb_mf, do_clubb_mf_diag
+  use clubb_mf,         only: do_clubb_mf, do_clubb_mf_diag
 #endif
 
   implicit none
@@ -498,7 +498,7 @@ end subroutine clubb_init_cnst
     use cam_abortutils,  only: endrun
     use clubb_api_module, only: l_stats, l_output_rad_files
     use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_logical, mpi_real8
-    use edmf_module,     only: clubb_mf_readnl
+    use clubb_mf,        only: clubb_mf_readnl
 #endif
 
     character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
@@ -1469,7 +1469,7 @@ end subroutine clubb_init_cnst
    use cam_history,               only: outfld
 
    use macrop_driver,             only: liquid_macro_tend
-   use edmf_module,               only: integrate_mf
+   use clubb_mf,                  only: integrate_mf
 
 #endif
 
