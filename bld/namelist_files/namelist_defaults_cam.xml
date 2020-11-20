@@ -1637,7 +1637,7 @@
 
 <!-- Dry Dep surface data file needed by prognostic MAM on unstructured grid only. -->
 <drydep_srf_file hgrid="ne5np4"          >atm/cam/chem/trop_mam/atmsrf_ne5np4_110920.nc</drydep_srf_file>
-<drydep_srf_file hgrid="ne5np4"   npg="3">/glade/work/aherring/grids/uniform-res/ne5np4.pg3/atmsrf/atmsrf_ne5pg3_201105.nc</drydep_srf_file>
+<drydep_srf_file hgrid="ne5np4"   npg="3">atm/cam/chem/trop_mam/atmsrf_ne5pg3_201105.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne16np4"         >atm/cam/chem/trop_mam/atmsrf_ne16np4_110920.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne30np4"         >atm/cam/chem/trop_mam/atmsrf_ne30np4_110920.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne30np4"  npg="2">atm/cam/chem/trop_mam/atmsrf_ne30np4.pg2_200108.nc</drydep_srf_file>

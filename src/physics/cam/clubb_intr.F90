@@ -30,6 +30,7 @@ module clubb_intr
 #ifdef CLUBB_SGS
   use clubb_api_module, only: pdf_parameter, implicit_coefs_terms
   use clubb_api_module, only: clubb_config_flags_type
+  use edmf_module,      only: do_clubb_mf, do_clubb_mf_diag
 #endif
 
   implicit none
@@ -146,8 +147,6 @@ module clubb_intr
   logical  :: clubb_l_vert_avg_closure = .false.
   logical  :: clubb_l_diag_Lscale_from_tau = .false.
   logical  :: clubb_l_damp_wp2_using_em = .false.
-  logical  :: do_clubb_mf = .false.
-  logical  :: do_clubb_mf_diag = .false.
 
 !  Constant parameters
   logical, parameter, private :: &
@@ -532,8 +531,7 @@ end subroutine clubb_init_cnst
                                clubb_l_min_xp2_from_corr_wx, clubb_l_upwind_xpyp_ta, clubb_l_vert_avg_closure, &
                                clubb_l_trapezoidal_rule_zt, clubb_l_trapezoidal_rule_zm, &
                                clubb_l_call_pdf_closure_twice, clubb_l_use_cloud_cover, &
-                               clubb_l_diag_Lscale_from_tau, clubb_l_damp_wp2_using_em, &
-                               do_clubb_mf, do_clubb_mf_diag
+                               clubb_l_diag_Lscale_from_tau, clubb_l_damp_wp2_using_em
 
     !----- Begin Code -----
 
@@ -706,11 +704,6 @@ end subroutine clubb_init_cnst
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_diag_Lscale_from_tau")
     call mpi_bcast(clubb_l_damp_wp2_using_em,         1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_damp_wp2_using_em")
-
-    call mpi_bcast(do_clubb_mf,      1, mpi_logical, mstrid, mpicom, ierr)
-    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf")
-    call mpi_bcast(do_clubb_mf_diag, 1, mpi_logical, mstrid, mpicom, ierr)
-    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_diag")
 
     !  Overwrite defaults if they are true
     if (clubb_history) l_stats = .true.

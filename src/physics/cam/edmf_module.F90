@@ -14,11 +14,15 @@ module edmf_module
   save
 
   public :: integrate_mf, &
-            clubb_mf_readnl
+            clubb_mf_readnl, &
+            do_clubb_mf, &
+            do_clubb_mf_diag
 
   real(r8) :: clubb_mf_L0   = 0._r8
   real(r8) :: clubb_mf_ent0 = 0._r8
   integer  :: clubb_mf_nup  = 0
+  logical, protected :: do_clubb_mf = .false.
+  logical, protected :: do_clubb_mf_diag = .false.
 
   contains
 
@@ -30,7 +34,7 @@ module edmf_module
 
     use namelist_utils,  only: find_group_name
     use cam_abortutils,  only: endrun
-    use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_real8, mpi_integer
+    use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_real8, mpi_integer, mpi_logical
 
     character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
@@ -38,7 +42,8 @@ module edmf_module
 
     integer :: iunit, read_status, ierr
 
-    namelist /clubb_mf_nl/ clubb_mf_L0, clubb_mf_ent0, clubb_mf_nup
+
+    namelist /clubb_mf_nl/ clubb_mf_L0, clubb_mf_ent0, clubb_mf_nup, do_clubb_mf, do_clubb_mf_diag
 
     if (masterproc) then
       open( newunit=iunit, file=trim(nlfile), status='old' )
@@ -58,6 +63,15 @@ module edmf_module
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_ent0")
     call mpi_bcast(clubb_mf_nup,  1, mpi_integer, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_nup")
+    call mpi_bcast(do_clubb_mf,      1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf")
+    call mpi_bcast(do_clubb_mf_diag, 1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_diag")
+
+    if ((.not. do_clubb_mf) .and. do_clubb_mf_diag ) then
+       call endrun('clubb_mf_readnl: Error - cannot turn on do_clubb_mf_diag without also turning on do_clubb_mf')
+    end if
+    
 
   end subroutine clubb_mf_readnl
 
@@ -301,8 +315,8 @@ module edmf_module
 
        do i=1,clubb_mf_nup
 
-         wlv = wmin + (wmax-wmin) / (real(clubb_mf_nup)) * (real(i)-1._r8)
-         wtv = wmin + (wmax-wmin) / (real(clubb_mf_nup)) * real(i)
+         wlv = wmin + (wmax-wmin) / (real(clubb_mf_nup,r8)) * (real(i-1, r8))
+         wtv = wmin + (wmax-wmin) / (real(clubb_mf_nup,r8)) * real(i,r8)
 
          upw(1,i) = 0.5_r8 * (wlv+wtv)
          upa(1,i) = 0.5_r8 * erf( wtv/(sqrt(2.)*sigmaw) ) &
@@ -324,7 +338,7 @@ module edmf_module
            upql(1,i)  = qln
            upqi(1,i)  = qin
            upqs(1,i)  = qsn
-           if (qcn.gt.0._r8) zcb(i) = zm(1)
+           if (qcn > 0._r8) zcb(i) = zm(1)
          else
            ! assume no cldliq
            upqc(1,i)  = 0._r8
@@ -337,7 +351,7 @@ module edmf_module
          do k=1,nz-1
 
            ! get microphysics, autoconversion
-           if (do_precip .and. upqc(k,i).gt.0._r8) then
+           if (do_precip .and. upqc(k,i) > 0._r8) then
              call precip_mf(upqs(k,i),upqt(k,i),upw(k,i),dzt(k+1),zm(k+1)-zcb(i),supqt)
 
              supthl = -1._r8*lmixn*supqt*iexner_zt(k+1)/cpair
@@ -359,7 +373,7 @@ module edmf_module
            if (do_condensation) then
              call condensation_mf(qtn, thln, p_zm(k+1), iexner_zm(k+1), &
                                   thvn, qcn, thn, qln, qin, qsn, lmixn)
-             if (zcb(i).eq.zcb_unset .and. qcn.gt.0._r8) zcb(i) = zm(k+1)
+             if (zcb(i).eq.zcb_unset .and. qcn > 0._r8) zcb(i) = zm(k+1)
            else
              thvn = thln*(1._r8+zvir*qtn)
            end if
@@ -581,7 +595,7 @@ module edmf_module
 
        qstar = qs+qcmin
        
-       if (qt.gt.qstar) then
+       if (qt > qstar) then
          ! get precip efficiency
          tauwgt = (dzcld-zmin)/(zmax-zmin)
          tauwgt = min(max(tauwgt,0._r8),1._r8)
@@ -655,7 +669,7 @@ module edmf_module
        k = 0
        explam = exp(-1._r8*lambda)
        puni = 1._r8
-       do while (puni.gt.explam)
+       do while (puni > explam)
          k = k + 1
          call random_number(tmpuni)
          puni = puni*tmpuni

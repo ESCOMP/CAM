@@ -3620,16 +3620,16 @@ Default: true
 
 <!-- for CLUBB+MF -->
 <entry id="do_clubb_mf" type="logical" category="conv"
-       group="clubb_params_nl" valid_values="" >
-If TRUE add ensemble mass fluxes to CLUBB's higher-order equation set. 
+       group="clubb_mf_nl" valid_values="" >
+If .true. add ensemble mass fluxes to CLUBB's higher-order equation set. 
 Together with CLUBB, this constitutes an eddy-diffusivity mass-flux approach. 
-Default: FALSE
+Default: .false.
 </entry>
 
 <entry id="do_clubb_mf_diag" type="logical" category="conv"
-       group="clubb_params_nl" valid_values="" >
-If TRUE add detailed budget terms to output by default.
-Default: FALSE
+       group="clubb_mf_nl" valid_values="" >
+If .true. add detailed budget terms to output by default.  Note that do_clubb_mf must also be set to .true.
+Default: .false.
 </entry>
 
 <entry id="clubb_mf_L0" type="real" category="conv"
