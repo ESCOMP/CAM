@@ -554,14 +554,7 @@ contains
     integer(kind=PIO_OFFSET_KIND),     intent(in)  :: dof(:)
     integer,                           intent(in)  :: dtype
 
-    if(pio_iotype == pio_iotype_pnetcdf) then
-       pio_rearranger = PIO_REARR_SUBSET
-    else
-       pio_rearranger = PIO_REARR_BOX
-    endif
-
-    call pio_initdecomp(pio_subsystem, dtype, dims, dof, iodesc,              &
-         rearr=pio_rearranger)
+    call pio_initdecomp(pio_subsystem, dtype, dims, dof, iodesc)
 
   end subroutine cam_pio_newdecomp
 
