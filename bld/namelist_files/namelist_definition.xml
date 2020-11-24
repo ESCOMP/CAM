@@ -2150,8 +2150,7 @@ Default: 2,2,2,2,2,2,2,2,2,2
 
 Array of write frequencies for each history file series.
 If {{ hilight }}nhtfrq(1){{ closehilight }} = 0, the file will be a monthly average.
-Only the first file series may be a monthly average.  If
-{{ hilight }}nhtfrq(i){{ closehilight }} &gt; 0, frequency is specified as number of
+If {{ hilight }}nhtfrq(i){{ closehilight }} &gt; 0, frequency is specified as number of
 timesteps.  If {{ hilight }}nhtfrq(i){{ closehilight }} &lt; 0, frequency is specified
 as number of hours.
 

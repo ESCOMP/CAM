@@ -460,12 +460,14 @@ contains
        ! Beta and optical thickness (liquid/ice)
        ! ##############################################################################
        ! Ice
-       betatot_ice(1:npoints,icol,1:nlev) = betatot_ice(1:npoints,icol,1:nlev)+ &
+       betatot_ice(1:npoints,icol,1:nlev) = betatot_ice(1:npoints,icol,1:nlev)+&
             kp_part(1:npoints,1:nlev,INDX_LSICE)*alpha_part(1:npoints,1:nlev,INDX_LSICE)+ &
-            kp_part(1:npoints,1:nlev,INDX_CVICE)*alpha_part(1:npoints,1:nlev,INDX_CVICE)
-       tautot_ice(1:npoints,icol,1:nlev) = tautot_ice(1:npoints,icol,1:nlev)  + &
+            kp_part(1:npoints,1:nlev,INDX_CVICE)*alpha_part(1:npoints,1:nlev,INDX_CVICE)+ &
+            kp_part(1:npoints,1:nlev,INDX_LSSNOW)*alpha_part(1:npoints,1:nlev,INDX_LSSNOW)
+       tautot_ice(1:npoints,icol,1:nlev) = tautot_ice(1:npoints,icol,1:nlev) + &
             tau_part(1:npoints,1:nlev,INDX_LSICE) + &
-            tau_part(1:npoints,1:nlev,INDX_CVICE)
+            tau_part(1:npoints,1:nlev,INDX_CVICE) + &
+            tau_part(1:npoints,1:nlev,INDX_LSSNOW)
           
        ! Liquid
        betatot_liq(1:npoints,icol,1:nlev) = betatot_liq(1:npoints,icol,1:nlev)+ &
