@@ -2895,6 +2895,8 @@ if ($cfg->get('microphys') =~ /^mg/) {
 if (!$simple_phys) {
     if ($chem =~ /_mam/) {
         add_default($nl, 'use_hetfrz_classnuc');
+    } else {
+        add_default($nl, 'use_hetfrz_classnuc', 'val'=>'.false.');
     }
     add_default($nl, 'use_preexisting_ice');
     if ($chem =~ /_mam7/) {
