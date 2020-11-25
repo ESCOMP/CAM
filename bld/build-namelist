@@ -2893,7 +2893,11 @@ if ($cfg->get('microphys') =~ /^mg/) {
 
 # Ice nucleation options
 if (!$simple_phys) {
-    add_default($nl, 'use_hetfrz_classnuc');
+    if ($chem =~ /_mam/) {
+        add_default($nl, 'use_hetfrz_classnuc');
+    } else {
+        add_default($nl, 'use_hetfrz_classnuc', 'val'=>'.false.');
+    }
     add_default($nl, 'use_preexisting_ice');
     if ($chem =~ /_mam7/) {
         if ($nl->get_value('use_preexisting_ice') =~ m/$TRUE/io) {

@@ -785,6 +785,15 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
+  <test compset="QPC6" grid="f10_f10_mg37" name="SMS_D_Ln9" testmods="cam/outfrq3s_ba">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="comment" >cam6 physics with prescribed bulk aerosols</option>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
 <!--              003                        -->
   <test compset="QPSCAMC5" grid="T42_T42_mg17" name="SMS_D_Ln7" testmods="cam/scmarm">
     <machines>
