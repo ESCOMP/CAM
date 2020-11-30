@@ -46,7 +46,7 @@ module dyn_comp
     use dimensions_mod,  only: npx, npy, nlev, &
                                cnst_name_ffsl,cnst_longname_ffsl, &
                                fv3_lcp_moist,fv3_lcv_moist,qsize_tracer_idx_cam2dyn,fv3_scale_ttend
-    use dyn_grid,        only: mytile
+    use dyn_grid,        only: mytile, ini_grid_name
     use field_manager_mod, only: MODEL_ATMOS
     use fms_io_mod,      only: set_domain, nullify_domain
     use fv_arrays_mod,   only: fv_atmos_type, fv_grid_bounds_type
@@ -1078,7 +1078,7 @@ subroutine read_inidat(dyn_in)
 
      ! T
      if (dyn_field_exists(fh_ini, 'T')) then
-        call read_dyn_var('T', fh_ini, 'ncol_d', var3d)
+        call read_dyn_var('T', fh_ini, 'ncol', var3d)
         atm(mytile)%pt(is:ie,js:je,1:nlev)=var3d(is:ie,js:je,1:nlev)
      else
          call endrun(trim(subname)//': T not found')
@@ -1110,14 +1110,14 @@ subroutine read_inidat(dyn_in)
 
      ! V
      if (dyn_field_exists(fh_ini, 'V')) then
-        call read_dyn_var('V', fh_ini, 'ncol_d', var3d)
+        call read_dyn_var('V', fh_ini, 'ncol', var3d)
         atm(mytile)%va(is:ie,js:je,1:nlev)=var3d(is:ie,js:je,1:nlev)
      else
          call endrun(trim(subname)//': V not found')
      end if
 
      if (dyn_field_exists(fh_ini, 'U')) then
-        call read_dyn_var('U', fh_ini, 'ncol_d', var3d)
+        call read_dyn_var('U', fh_ini, 'ncol', var3d)
         atm(mytile)%ua(is:ie,js:je,1:nlev)   =var3d(is:ie,js:je,1:nlev)
      else
          call endrun(trim(subname)//': U not found')
@@ -1125,7 +1125,7 @@ subroutine read_inidat(dyn_in)
 
      m_cnst=1
      if (dyn_field_exists(fh_ini, 'Q')) then
-        call read_dyn_var('Q', fh_ini, 'ncol_d', var3d)
+        call read_dyn_var('Q', fh_ini, 'ncol', var3d)
         atm(mytile)%q(is:ie,js:je,1:nlev,m_cnst) = var3d(is:ie,js:je,1:nlev)
      else
          call endrun(trim(subname)//': Q not found')
@@ -1145,7 +1145,7 @@ subroutine read_inidat(dyn_in)
         end if
 
         if(found) then
-           call read_dyn_var(trim(cnst_name(m_cnst)), fh_ini, 'ncol_d', var3d)
+           call read_dyn_var(trim(cnst_name(m_cnst)), fh_ini, 'ncol', var3d)
            atm(mytile)%q(is:ie,js:je,1:nlev,m_cnst_ffsl) =  var3d(is:ie,js:je,1:nlev)
         else
            dbuf3=0._r8
@@ -1202,7 +1202,7 @@ subroutine read_inidat(dyn_in)
      end if
 
      if(found) then
-        call read_dyn_var(trim(cnst_name(m_cnst)), fh_ini, 'ncol_d', var3d)
+        call read_dyn_var(trim(cnst_name(m_cnst)), fh_ini, 'ncol', var3d)
         atm(mytile)%q(is:ie,js:je,1:nlev,m_cnst_ffsl) =  var3d(is:ie,js:je,1:nlev)
      end if
   end do
@@ -1835,13 +1835,13 @@ end function dyn_field_exists
 
     buffer = 0.0_r8
     call infld(trim(fieldname), fh, dimname, 1, ldof_size, 1, 1, buffer,    &
-         found, gridname='FFSL')
+         found, gridname=ini_grid_name)
     if(.not. found) then
       call endrun('READ_DYN_FIELD_2D: Could not find '//trim(fieldname)//' field on input datafile')
     end if
 
     ! This code allows use of compiler option to set uninitialized values
-    ! to NaN.  In that case infld can return NaNs where the element FFSL points
+    ! to NaN.  In that case infld can return NaNs where the element ini_grid_name points
     ! are not "unique columns"
     where (isnan(buffer)) buffer = 0.0_r8
 
@@ -1865,13 +1865,13 @@ end function dyn_field_exists
 
     buffer = 0.0_r8
     call infld(fieldname, fh,dimname, 'lev', 1, ldof_size, 1, pver,     &
-               1, 1, buffer, found, gridname='FFSL')
+               1, 1, buffer, found, gridname=ini_grid_name)
     if(.not. found) then
       call endrun('READ_DYN_FIELD_3D: Could not find '//trim(fieldname)//' field on input datafile')
     end if
 
     ! This code allows use of compiler option to set uninitialized values
-    ! to NaN.  In that case infld can return NaNs where the element FFSL points
+    ! to NaN.  In that case infld can return NaNs where the element ini_grid_name points
     ! are not "unique columns"
     where (isnan(buffer)) buffer = 0.0_r8
 

@@ -61,6 +61,10 @@ save
 integer, parameter :: dyn_decomp = 101 ! The SE dynamics grid
 integer, parameter :: fvm_decomp = 102 ! The FVM (CSLAM) grid
 integer, parameter :: physgrid_d = 103 ! physics grid on dynamics decomp
+integer, parameter :: ini_decomp = 104 ! alternate dynamics grid for reading initial file
+
+character(len=3), protected :: ini_grid_name
+
 integer, parameter :: ptimelevels = 2
 
 type (TimeLevel_t)         :: TimeLevel     ! main time level struct (used by tracers)
@@ -68,13 +72,14 @@ type (hvcoord_t)           :: hvcoord
 type(element_t),   pointer :: elem(:) => null()  ! local GLL elements for this task
 type(fvm_struct),  pointer :: fvm(:) => null()   ! local FVM elements for this task
 
-public ::       &
-   dyn_decomp,  &
-   ptimelevels, &
-   TimeLevel,   &
-   hvcoord,     &
-   elem,        &
-   fvm,         &
+public ::         &
+   dyn_decomp,    &
+   ini_grid_name, &
+   ptimelevels,   &
+   TimeLevel,     &
+   hvcoord,       &
+   elem,          &
+   fvm,           &
    edgebuf
 
 public :: &
@@ -110,6 +115,9 @@ type block_global_data
    integer :: LocalID         ! local index of element in a task
    integer :: Owner           ! task id of element owner
 end type block_global_data
+
+! Name of horizontal grid dimension in initial file.
+character(len=6) :: ini_grid_hdim_name = ' '
 
 ! Only need this global data for the GLL grid if it is also the physics grid.
 type(block_global_data), allocatable :: gblocks(:)
@@ -230,6 +238,9 @@ subroutine dyn_grid_init()
 
    ! initial SE (subcycled) nstep
    TimeLevel%nstep0 = 0
+
+   ! determine whether initial file uses 'ncol' or 'ncol_d'
+   call get_hdim_name(fh_ini, ini_grid_hdim_name)
 
    ! Define the dynamics and physics grids on the dynamics decompostion.
    ! Physics grid on the physics decomposition is defined in phys_grid_init.
@@ -879,6 +890,57 @@ end subroutine dyn_grid_get_elem_coords
 ! Private routines.
 !=========================================================================================
 
+subroutine get_hdim_name(fh_ini, ini_grid_hdim_name)
+
+   ! Determine whether the initial file uses 'ncol' or 'ncol_d' as the horizontal
+   ! dimension in the unstructured grid.  It is also possible when using analytic
+   ! initial conditions that the initial file only contains vertical coordinates.
+   ! Return 'none' if that is the case.
+
+   ! arguments
+   type(file_desc_t),   pointer  :: fh_ini
+   character(len=6), intent(out) :: ini_grid_hdim_name ! horizontal dimension name
+
+   ! local variables
+   integer  :: ierr, pio_errtype
+   integer  :: ncol_did
+
+   character(len=*), parameter :: sub = 'get_hdim_name'
+   !----------------------------------------------------------------------------
+
+   ! Set PIO to return error flags.
+   call pio_seterrorhandling(fh_ini, PIO_BCAST_ERROR, pio_errtype)
+
+   ! Check for ncol_d first just in case the initial file also contains fields on
+   ! the physics grid.
+   ierr = pio_inq_dimid(fh_ini, 'ncol_d', ncol_did)
+   if (ierr == PIO_NOERR) then
+
+      ini_grid_hdim_name = 'ncol_d'
+
+   else
+
+      ! if 'ncol_d' not in file, check for 'ncol'
+      ierr = pio_inq_dimid(fh_ini, 'ncol', ncol_did)
+
+      if (ierr == PIO_NOERR) then
+
+         ini_grid_hdim_name = 'ncol'
+
+      else
+
+         ini_grid_hdim_name = 'none'
+
+      end if
+   end if
+
+   ! Return PIO to previous error handling.
+   call pio_seterrorhandling(fh_ini, pio_errtype)
+
+end subroutine get_hdim_name
+
+!=========================================================================================
+
 subroutine define_cam_grids()
 
    ! Create grid objects on the dynamics decomposition for grids used by
@@ -1002,6 +1064,25 @@ subroutine define_cam_grids()
          trim(ncolname), pearea, map=pemap)
    call cam_grid_attribute_register('GLL', 'np', '', np)
    call cam_grid_attribute_register('GLL', 'ne', '', ne)
+
+   ! With CSLAM if the initial file uses the horizontal dimension 'ncol' rather than
+   ! 'ncol_d' then we need a grid object with the names ncol,lat,lon to read it.
+   ! Create that grid object here if it's needed.
+   if (fv_nphys > 0 .and. ini_grid_hdim_name == 'ncol') then
+
+      lat_coord => horiz_coord_create('lat', 'ncol', ngcols_d,  &
+         'latitude', 'degrees_north', 1, size(pelat_deg), pelat_deg, map=pemap)
+      lon_coord => horiz_coord_create('lon', 'ncol', ngcols_d,  &
+         'longitude', 'degrees_east', 1, size(pelon_deg), pelon_deg, map=pemap)
+
+      call cam_grid_register('INI', ini_decomp, lat_coord, lon_coord,           &
+         grid_map, block_indexed=.false., unstruct=.true.)
+
+      ini_grid_name = 'INI'
+   else
+      ! The dyn_decomp grid can be used to read the initial file.
+      ini_grid_name = 'GLL'
+   end if
 
    ! Coordinate values and maps are copied into the coordinate and attribute objects.
    ! Locally allocated storage is no longer needed.

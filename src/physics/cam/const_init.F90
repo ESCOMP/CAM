@@ -130,11 +130,7 @@ CONTAINS
         write(iulog,*) '          ', trim(name), ' initialized by "rk_stratiform_init_cnst"'
       end if
     else if (tracers_implements_cnst(trim(name))) then
-      if (present(z)) then
-        call tracers_init_cnst(trim(name), latvals, lonvals, mask_use, q,z=z)
-      else
-        call tracers_init_cnst(trim(name), latvals, lonvals, mask_use, q)
-      end if
+      call tracers_init_cnst(trim(name), latvals, lonvals, mask_use, q, z=z)
       if(masterproc .and. verbose_use) then
         write(iulog,*) '          ', trim(name), ' initialized by "tracers_init_cnst"'
       end if
