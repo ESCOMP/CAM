@@ -1,7 +1,7 @@
 # Do not change options below
 # these are necessary for scam runs.
 #========================================
-
+#
 # SCAM works in SPMD mode with a single task, but the default is to run serially.
 ./xmlchange MPILIB=mpi-serial
 
@@ -9,4 +9,7 @@
 ./xmlchange REST_OPTION=never
 
 # Note that clm cannot use initial conditions with SCAM -so will only use specified phenology
+# Only change if CLM_FORCE_COLDSTART exists.
+if [ `./xmlquery --value CLM_FORCE_COLDSTART |& grep -c 'ERROR'` -eq 0  ]; then
 ./xmlchange CLM_FORCE_COLDSTART='on'
+fi

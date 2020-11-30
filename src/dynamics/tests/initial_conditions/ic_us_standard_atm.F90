@@ -30,8 +30,8 @@ public :: us_std_atm_set_ic
 CONTAINS
 !=========================================================================================
 
-subroutine us_std_atm_set_ic(latvals, lonvals, U, V, T, PS, PHIS,           &
-       Q, m_cnst, mask, verbose)
+subroutine us_std_atm_set_ic(latvals, lonvals, zint, U, V, T, PS, PHIS_IN, &
+       PHIS_OUT, Q, m_cnst, mask, verbose)
     
    !----------------------------------------------------------------------------
    !
@@ -43,11 +43,13 @@ subroutine us_std_atm_set_ic(latvals, lonvals, U, V, T, PS, PHIS,           &
    ! Arguments
    real(r8),           intent(in)    :: latvals(:) ! lat in degrees (ncol)
    real(r8),           intent(in)    :: lonvals(:) ! lon in degrees (ncol)
+   real(r8), optional, intent(in)    :: zint(:,:)  ! height at layer interfaces
    real(r8), optional, intent(inout) :: U(:,:)     ! zonal velocity
    real(r8), optional, intent(inout) :: V(:,:)     ! meridional velocity
    real(r8), optional, intent(inout) :: T(:,:)     ! temperature
    real(r8), optional, intent(inout) :: PS(:)      ! surface pressure
-   real(r8), optional, intent(in)    :: PHIS(:)    ! surface geopotential
+   real(r8), optional, intent(in)    :: PHIS_IN(:) ! surface geopotential
+   real(r8), optional, intent(out)   :: PHIS_OUT(:)! surface geopotential
    real(r8), optional, intent(inout) :: Q(:,:,:)   ! tracer (ncol, lev, m)
    integer,  optional, intent(in)    :: m_cnst(:)  ! tracer indices (reqd. if Q)
    logical,  optional, intent(in)    :: mask(:)    ! Only init where .true.
@@ -58,12 +60,17 @@ subroutine us_std_atm_set_ic(latvals, lonvals, U, V, T, PS, PHIS,           &
    logical                           :: verbose_use
    integer                           :: i, k, m
    integer                           :: ncol
-   integer                           :: nlev
+   integer                           :: nlev, nlevp
    integer                           :: ncnst
    character(len=*), parameter       :: subname = 'us_std_atm_set_ic'
    real(r8)                          :: psurf(1)
-   real(r8), allocatable             :: pmid(:), zmid(:)
+   real(r8), allocatable             :: pmid(:), zmid(:), zmid2d(:,:)
    !----------------------------------------------------------------------------
+
+   ! check input consistency
+   if (present(zint) .and. present(PHIS_IN)) then
+      call endrun(subname//': Only one of the args zint and PHIS_IN can be present')
+   end if
 
    ncol = size(latvals, 1)
    allocate(mask_use(ncol))
@@ -80,6 +87,13 @@ subroutine us_std_atm_set_ic(latvals, lonvals, U, V, T, PS, PHIS,           &
       verbose_use = verbose
    else
       verbose_use = .true.
+   end if
+
+   if (present(PHIS_OUT)) then
+      PHIS_OUT = 0.0_r8
+      if (masterproc .and. verbose_use) then
+         write(iulog,*) '          PHIS initialized by '//subname
+      end if
    end if
 
    nlev = -1
@@ -108,25 +122,40 @@ subroutine us_std_atm_set_ic(latvals, lonvals, U, V, T, PS, PHIS,           &
    end if
 
    if (present(T)) then
-      if (.not.present(PHIS)) then
-         call endrun(subname//': PHIS must be specified to initiallize T')
-      end if
       nlev = size(T, 2)
       allocate(pmid(nlev), zmid(nlev))
-      do i = 1, ncol
-         if (mask_use(i)) then
-            ! get surface pressure
-            call std_atm_pres(PHIS(i:i)/gravit, psurf)
-            ! get pressure levels
-            do k = 1, nlev
-               pmid(k) = hyam(k)*ps0 + hybm(k)*psurf(1)
-            end do
-            ! get height of pressure level            
-            call std_atm_height(pmid, zmid)
-            ! given height get temperature
-            call std_atm_temp(zmid, T(i,:))
-         end if
-      end do
+
+      if (present(PHIS_IN)) then
+
+         do i = 1, ncol
+            if (mask_use(i)) then
+               ! get surface pressure
+               call std_atm_pres(PHIS_IN(i:i)/gravit, psurf)
+               ! get pressure levels
+               do k = 1, nlev
+                  pmid(k) = hyam(k)*ps0 + hybm(k)*psurf(1)
+               end do
+               ! get height of pressure level            
+               call std_atm_height(pmid, zmid)
+               ! given height get temperature
+               call std_atm_temp(zmid, T(i,:))
+            end if
+         end do
+
+      else if (present(zint)) then
+
+         do i = 1, ncol
+            if (mask_use(i)) then
+               zmid = 0.5_r8*(zint(i,1:nlev) + zint(i,2:nlev+1))
+               ! given height get temperature
+               call std_atm_temp(zmid, T(i,:))
+            end if
+         end do
+
+      else
+         call endrun(subname//': either PHIS or zint must be specified to initiallize T')
+      end if
+
       deallocate(pmid, zmid)
 
       if(masterproc .and. verbose_use) then
@@ -135,22 +164,42 @@ subroutine us_std_atm_set_ic(latvals, lonvals, U, V, T, PS, PHIS,           &
    end if
 
    if (present(PS)) then
-      if (.not.present(PHIS)) then
-         call endrun(subname//': PHIS must be specified to initiallize PS')
+
+      if (present(PHIS_IN)) then
+      
+         do i = 1, ncol
+            if (mask_use(i)) then
+               call std_atm_pres(PHIS_IN(i:i)/gravit, PS(i:i))
+            end if
+         end do
+
+      else if (present(zint)) then
+
+         nlevp = size(zint, 2)
+
+         do i = 1, ncol
+            if (mask_use(i)) then
+               call std_atm_pres(zint(i:i,nlevp), PS(i:i))
+            end if
+         end do
+
+      else
+         call endrun(subname//': either PHIS or zint must be specified to initiallize PS')
       end if
       
-      do i = 1, ncol
-         if (mask_use(i)) then
-            call std_atm_pres(PHIS(i:i)/gravit, PS(i:i))
-         end if
-      end do
       if(masterproc .and. verbose_use) then
          write(iulog,*) '          PS initialized by "',subname,'"'
       end if
    end if
 
    if (present(Q)) then
+
       nlev = size(Q, 2)
+      if (present(zint)) then
+         allocate(zmid2d(ncol,nlev))
+         zmid2d = 0.5_r8*(zint(:,1:nlev) + zint(:,2:nlev+1))
+      end if
+
       ncnst = size(m_cnst, 1)
       do m = 1, ncnst
          if (m_cnst(m) == 1) then
@@ -164,10 +213,18 @@ subroutine us_std_atm_set_ic(latvals, lonvals, U, V, T, PS, PHIS,           &
                write(iulog,*) '          ', trim(cnst_name(m_cnst(m))), ' initialized by '//subname
             end if
          else
-            call cnst_init_default(m_cnst(m), latvals, lonvals, Q(:,:,m_cnst(m)),&
-               mask=mask_use, verbose=verbose_use, notfound=.false.)
+            if (present(zint)) then
+               call cnst_init_default(m_cnst(m), latvals, lonvals, Q(:,:,m_cnst(m)),&
+                  mask=mask_use, verbose=verbose_use, notfound=.false., z=zmid2d)
+            else
+               call cnst_init_default(m_cnst(m), latvals, lonvals, Q(:,:,m_cnst(m)),&
+                  mask=mask_use, verbose=verbose_use, notfound=.false.)
+            end if
          end if
       end do
+
+      if (allocated(zmid2d)) deallocate(zmid2d)
+
    end if
 
    deallocate(mask_use)

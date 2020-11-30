@@ -55,15 +55,15 @@ real(r8) :: dtime_phys         ! Time step for physics tendencies.  Set by call 
 contains
 !-----------------------------------------------------------------------
 
-subroutine cam_init( &
-   caseid, ctitle, model_doi_url, &
-   initial_run_in, restart_run_in, branch_run_in, &
-   calendar, brnch_retain_casename, aqua_planet, &
-   single_column, scmlat, scmlon,               &
-   eccen, obliqr, lambm0, mvelpp,               &
-   perpetual_run, perpetual_ymd, &
-   dtime, start_ymd, start_tod, ref_ymd, ref_tod, &
-   stop_ymd, stop_tod, curr_ymd, curr_tod, &
+subroutine cam_init(                                             &
+   caseid, ctitle, model_doi_url,                                &
+   initial_run_in, restart_run_in, branch_run_in, post_assim_in, &
+   calendar, brnch_retain_casename, aqua_planet,                 &
+   single_column, scmlat, scmlon,                                &
+   eccen, obliqr, lambm0, mvelpp,                                &
+   perpetual_run, perpetual_ymd,                                 &
+   dtime, start_ymd, start_tod, ref_ymd, ref_tod,                &
+   stop_ymd, stop_tod, curr_ymd, curr_tod,                       &
    cam_out, cam_in)
 
    !-----------------------------------------------------------------------
@@ -88,7 +88,7 @@ subroutine cam_init( &
    use cam_pio_utils,    only: init_pio_subsystem
    use cam_instance,     only: inst_suffix
    use cam_snapshot,     only: cam_snapshot_deactivate
-
+   use physconst,        only: composition_init
 #if (defined BFB_CAM_SCAM_IOP)
    use history_defaults, only: initialize_iop_history
 #endif
@@ -101,6 +101,7 @@ subroutine cam_init( &
    logical,           intent(in) :: initial_run_in        ! true => inital run
    logical,           intent(in) :: restart_run_in        ! true => restart run
    logical,           intent(in) :: branch_run_in         ! true => branch run
+   logical,           intent(in) :: post_assim_in         ! true => resume mode
    character(len=cs), intent(in) :: calendar              ! Calendar type
    logical,           intent(in) :: brnch_retain_casename ! Flag to allow a branch to use the same
                                                           ! caseid as the run being branched from.
@@ -138,13 +139,14 @@ subroutine cam_init( &
    call init_pio_subsystem()
 
    ! Initializations using data passed from coupler.
-   call cam_ctrl_init( &
-      caseid_in=caseid, &
-      ctitle_in=ctitle, &
+   call cam_ctrl_init(               &
+      caseid_in=caseid,              &
+      ctitle_in=ctitle,              &
       initial_run_in=initial_run_in, &
       restart_run_in=restart_run_in, &
-      branch_run_in=branch_run_in, &
-      aqua_planet_in=aqua_planet, &
+      branch_run_in=branch_run_in,   &
+      post_assim_in=post_assim_in,   &
+      aqua_planet_in=aqua_planet,    &
       brnch_retain_casename_in=brnch_retain_casename)
 
    call cam_ctrl_set_orbit(eccen, obliqr, lambm0, mvelpp)
@@ -174,6 +176,7 @@ subroutine cam_init( &
    ! are set in dyn_init
    call chem_surfvals_init()
 
+   call composition_init()
    ! initialize ionosphere
    call ionosphere_init()
 

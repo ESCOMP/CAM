@@ -45,12 +45,12 @@ module cam_history
    use cam_logfile,         only: iulog
    use cam_history_support, only: max_fieldname_len, fieldname_suffix_len,    &
                                   max_chars, ptapes, fieldname_len,           &
-                                  max_string_len, date2yyyymmdd, pflds,       &
-                                  fieldname_lenp2, sec2hms,                   &
+                                  max_string_len, pflds, fieldname_lenp2,     &
                                   field_info, active_entry, hentry,           &
                                   horiz_only, write_hist_coord_attrs,         &
                                   write_hist_coord_vars, interp_info_t,       &
                                   lookup_hist_coord_indices, get_hist_coord_index
+   use string_utils,        only: date2yyyymmdd, sec2hms
    use sat_hist,            only: is_satfile
    use solar_parms_data,    only: solar_parms_on, kp=>solar_parms_kp, ap=>solar_parms_ap
    use solar_parms_data,    only: f107=>solar_parms_f107, f107a=>solar_parms_f107a, f107p=>solar_parms_f107p

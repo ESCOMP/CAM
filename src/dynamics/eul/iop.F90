@@ -19,7 +19,7 @@ module iop
   use phys_control,     only: phys_getopts
   use pmgrid,           only: beglat,endlat,plon,plev,plevp
   use prognostics,      only: n3,t3,q3,u3,v3,ps
-  use scamMod,          only: use_camiop, ioptimeidx, have_ps, use_userdata, have_tsair, &
+  use scamMod,          only: use_camiop, ioptimeidx, have_ps, scm_backfill_iop_w_init, have_tsair, &
                               tobs, have_t, tground, have_tg, qobs, have_q, have_cld,    &
                               have_clwp, divq, have_divq, vertdivq, have_vertdivq, divq3d, &
                               have_divq3d, dqfxcam, have_numliq, have_cldliq, have_cldice, &
@@ -27,8 +27,8 @@ module iop
                               have_vertdivt, divt3d, have_divt3d, have_divu3d,  have_divv3d, &
                               have_ptend, ptend, wfld, uobs, have_u, uobs, vobs, have_v, &
                               vobs, have_prec, have_q1, have_q2, have_lhflx, have_shflx, &
-                              use_3dfrc, betacam, fixmascam, alphacam, ioptimeidx,doiopupdate, &
-                              use_userdata, cldiceobs,  cldliqobs, cldobs, clwpobs, divu, &
+                              use_3dfrc, betacam, fixmascam, alphacam, doiopupdate, &
+                              cldiceobs,  cldliqobs, cldobs, clwpobs, divu, &
                               divu3d, divv, divv3d, iopfile, lhflxobs, numiceobs, numliqobs, &
                               precobs, q1obs, scmlat, scmlon, shflxobs, tsair, have_omega, wfldh,qinitobs
   use shr_kind_mod,     only: r8 => shr_kind_r8, max_chars=>shr_kind_cl
@@ -325,7 +325,7 @@ integer, optional, intent(in) :: timelevel
    if ( status .ne. nf90_noerr ) then
       have_ps = .false.
       if (masterproc) write(iulog,*) sub//':Could not find variable Ps'
-      if ( .not. use_userdata ) then
+      if ( .not. scm_backfill_iop_w_init ) then
          status = NF90_CLOSE( ncid )
          return
       else
@@ -398,7 +398,7 @@ integer, optional, intent(in) :: timelevel
    if ( status .ne. nf90_noerr ) then
       have_t = .false.
       if (masterproc) write(iulog,*) sub//':Could not find variable T'
-      if ( .not. use_userdata ) then
+      if ( .not. scm_backfill_iop_w_init ) then
          status = NF90_CLOSE( ncid )
          return
       else
@@ -417,7 +417,9 @@ integer, optional, intent(in) :: timelevel
       if ( have_tsair ) then
          if (masterproc) write(iulog,*) sub//':Using Tsair'
          tground = tsair     ! use surface value from T field
+         have_Tg = .true.
       else
+         have_Tg = .true.
          if (masterproc) write(iulog,*) sub//':Using T at lowest level from IOP dataset'
          tground = tobs(plev)
       endif
@@ -447,7 +449,7 @@ integer, optional, intent(in) :: timelevel
    if ( status .ne. nf90_noerr ) then
       have_q = .false.
       if (masterproc) write(iulog,*) sub//':Could not find variable q'
-      if ( .not. use_userdata ) then
+      if ( .not. scm_backfill_iop_w_init ) then
          status = nf90_close( ncid )
          return
       else
@@ -794,7 +796,7 @@ integer, optional, intent(in) :: timelevel
    if ( status .ne. nf90_noerr ) then
       have_omega = .false.
       if (masterproc) write(iulog,*) sub//':Could not find variable omega'
-      if ( .not. use_userdata ) then
+      if ( .not. scm_backfill_iop_w_init ) then
          status = nf90_close( ncid )
          return
       else
@@ -1134,7 +1136,7 @@ subroutine setiopupdate
 !
    if ( ncdate > last_date .or. (ncdate == last_date &
       .and. ncsec > last_sec))  then
-      if ( .not. use_userdata ) then
+      if ( .not. scm_backfill_iop_w_init ) then
          call endrun(sub//':ERROR - setiopupdate.c:Reached the end of the time varient dataset')
       else
          doiopupdate = .false.              

@@ -65,7 +65,7 @@ contains
 !
 !---------------------------Local variables-----------------------------------------
 !
-    logical  :: fvdyn                   ! finite volume dynamics
+    logical  :: calc1                   ! switch for calculation method
     integer  :: i,k                     ! Lon, level, level indices
     real(r8) :: hkk(ncol)               ! diagonal element of hydrostatic matrix
     real(r8) :: hkl(ncol)               ! off-diagonal element
@@ -76,8 +76,8 @@ contains
 !----------------------------------------------------------------------------------
     rog(:ncol,:) = rair(:ncol,:) / gravit
 
-! Set dynamics flag
-    fvdyn = dycore_is ('LR')
+! set calculation method based on dycore type
+    calc1 = dycore_is ('LR').or.dycore_is ('SE').or. dycore_is('FV3')
 
 ! The surface height is zero by definition.
     do i = 1,ncol
@@ -89,7 +89,7 @@ contains
     do k = pver, 1, -1
 
 ! First set hydrostatic elements consistent with dynamics
-       if (fvdyn) then
+       if (calc1) then
           do i = 1,ncol
              hkl(i) = piln(i,k+1) - piln(i,k)
              hkk(i) = 1._r8 - pint(i,k) * hkl(i) * rpdel(i,k)
@@ -172,7 +172,7 @@ use ppgrid, only : pcols
 
 ! Set dynamics flag
 
-    fvdyn = dycore_is ('LR')
+    fvdyn = (dycore_is('LR') .or. dycore_is('FV3'))
 
 ! The surface height is zero by definition.
 

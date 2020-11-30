@@ -17,6 +17,7 @@ module inic_analytic
 
   public :: analytic_ic_active ! forwarded from init_analytic_utils
   public :: analytic_ic_set_ic ! Set analytic initial conditions
+  public :: dyn_set_inic_col
 
   interface analytic_ic_set_ic
     module procedure dyn_set_inic_cblock
@@ -37,7 +38,7 @@ module inic_analytic
 CONTAINS
 !==============================================================================
 
-  subroutine dyn_set_inic_col(vcoord, latvals, lonvals, glob_ind, U, V, T,    &
+  subroutine dyn_set_inic_col(vcoord, latvals, lonvals, glob_ind, zint, U, V, T, &
        PS, PHIS_IN, PHIS_OUT, Q, m_cnst, mask, verbose)
     use cam_initfiles,        only: pertlim
 #ifdef ANALYTIC_IC
@@ -58,6 +59,7 @@ CONTAINS
     real(r8),           intent(in)    :: latvals(:)  ! lat in degrees (ncol)
     real(r8),           intent(in)    :: lonvals(:)  ! lon in degrees (ncol)
     integer,            intent(in)    :: glob_ind(:) ! global column index
+    real(r8), optional, intent(in)    :: zint(:,:)   ! height at layer interfaces
     real(r8), optional, intent(inout) :: U(:,:)      ! zonal velocity
     real(r8), optional, intent(inout) :: V(:,:)      ! meridional velocity
     real(r8), optional, intent(inout) :: T(:,:)      ! temperature
@@ -162,7 +164,7 @@ CONTAINS
            Q=Q, m_cnst=m_cnst, mask=mask_use, verbose=verbose_use)
 
     case('moist_baroclinic_wave_dcmip2016', 'dry_baroclinic_wave_dcmip2016')
-      call bc_wav_set_ic(vcoord, latvals, lonvals, U=U, V=V, T=T, PS=PS,      &
+      call bc_wav_set_ic(vcoord, latvals, lonvals, zint=zint, U=U, V=V, T=T, PS=PS, &
            PHIS=PHIS_OUT, Q=Q, m_cnst=m_cnst, mask=mask_use, verbose=verbose_use)
 
     case('dry_baroclinic_wave_jw2006')
@@ -170,8 +172,8 @@ CONTAINS
            PHIS=PHIS_OUT, Q=Q, m_cnst=m_cnst, mask=mask_use, verbose=verbose_use)
 
     case('us_standard_atmosphere')
-      call us_std_atm_set_ic(latvals, lonvals, U=U, V=V, T=T, PS=PS, PHIS=PHIS_IN,     &
-           Q=Q, m_cnst=m_cnst, mask=mask_use, verbose=verbose_use)      
+      call us_std_atm_set_ic(latvals, lonvals, zint=zint, U=U, V=V, T=T, PS=PS, PHIS_IN=PHIS_IN, &
+           PHIS_OUT=PHIS_OUT, Q=Q, m_cnst=m_cnst, mask=mask_use, verbose=verbose_use)
 
     case default
       call endrun(subname//': Unknown analytic_ic_type, "'//trim(analytic_ic_type)//'"')
@@ -334,7 +336,7 @@ CONTAINS
           if (present(PS).and.present(PHIS_IN).and.present(T)) then
               call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
                    glob_ind(bbeg:bend), PHIS_IN=PHIS_IN(:,i),PS=PS(:,i),T=T(:,:,i),      &
-                   verbose=verbose)            
+                   verbose=verbose)
           else
             if (present(T)) then              
               call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
@@ -345,10 +347,10 @@ CONTAINS
                    glob_ind(bbeg:bend), PS=PS(:,i), verbose=verbose)
             end if
             if (present(PHIS_OUT)) then
-            call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
-                 glob_ind(bbeg:bend), PHIS_OUT=PHIS_OUT(:,i), verbose=verbose)
+              call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
+                   glob_ind(bbeg:bend), PHIS_OUT=PHIS_OUT(:,i), verbose=verbose)
+            end if
           end if
-        end if
           if (present(Q)) then
             call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
                  glob_ind(bbeg:bend), Q=Q(:,:,i,:), m_cnst=m_cnst,            &
@@ -415,7 +417,7 @@ CONTAINS
           if (present(PS).and.present(PHIS_IN).and.present(T)) then
               call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &
                    glob_ind(bbeg:bend), PHIS_IN=PHIS_IN(:,i),PS=PS(:,i),T=T(:,i,:),      &
-                   verbose=verbose)            
+                   verbose=verbose)
           else
             if (present(T)) then
               call dyn_set_inic_col(vcoord,latvals(bbeg:bend), lonvals(bbeg:bend), &

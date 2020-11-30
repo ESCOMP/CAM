@@ -23,7 +23,7 @@ CONTAINS
 !==============================================================================
 
   subroutine cnst_init_default_col(m_cnst, latvals, lonvals, q, mask,         &
-       verbose, notfound)
+       verbose, notfound, z)
     use constituents,  only: cnst_name, cnst_read_iv
     use aoa_tracers,   only: aoa_tracers_implements_cnst,   aoa_tracers_init_cnst
     use carma_intr,    only: carma_implements_cnst,         carma_init_cnst
@@ -50,7 +50,7 @@ CONTAINS
     logical, optional, intent(in)  :: mask(:)    ! Only initialize where .true.
     logical, optional, intent(in)  :: verbose    ! For internal use
     logical, optional, intent(in)  :: notfound   ! Turn off initial dataset warn
-
+    real(r8),optional, intent(in)  :: z(:,:)     ! height of full pressure level
     ! Local variables
     logical, allocatable           :: mask_use(:)
     character(len=max_chars)       :: name
@@ -130,7 +130,7 @@ CONTAINS
         write(iulog,*) '          ', trim(name), ' initialized by "rk_stratiform_init_cnst"'
       end if
     else if (tracers_implements_cnst(trim(name))) then
-      call tracers_init_cnst(trim(name), latvals, lonvals, mask_use, q)
+      call tracers_init_cnst(trim(name), latvals, lonvals, mask_use, q, z=z)
       if(masterproc .and. verbose_use) then
         write(iulog,*) '          ', trim(name), ' initialized by "tracers_init_cnst"'
       end if

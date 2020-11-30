@@ -24,7 +24,7 @@ module fvm_mapping
   private
 
   public :: phys2dyn_forcings_fvm, dyn2phys, dyn2phys_vector, dyn2phys_all_vars,dyn2fvm_mass_vars
-  public :: phys2dyn,fvm2dyn
+  public :: phys2dyn,fvm2dyn,dyn2fvm
   save
   integer                                            :: save_max_overlap
   real(kind=r8), allocatable, dimension(:,:,:,:,:)   :: save_air_mass_overlap
@@ -41,9 +41,9 @@ contains
   subroutine phys2dyn_forcings_fvm(elem, fvm, hybrid,nets,nete,no_cslam, tl_f, tl_qdp)
     use dimensions_mod,         only: np, nc,nlev
     use dimensions_mod,         only: fv_nphys, nhc_phys,ntrac,nhc,ksponge_end, nu_scale_top
-    use dimensions_mod,         only: qsize_condensate_loading, qsize_condensate_loading_idx
     use hybrid_mod,             only: hybrid_t
     use cam_abortutils,         only: endrun
+    use physconst,              only: thermodynamic_active_species_num, thermodynamic_active_species_idx
     type (element_t), intent(inout):: elem(:)
     type(fvm_struct), intent(inout):: fvm(:)
     
@@ -53,7 +53,7 @@ contains
 
     integer                                             :: ie,i,j,k,m_cnst,nq
     real (kind=r8), dimension(:,:,:,:,:)  , allocatable :: fld_phys, fld_gll, fld_fvm
-    real (kind=r8), dimension(np,np,nlev,qsize_condensate_loading,nets:nete) :: qgll
+    real (kind=r8), allocatable, dimension(:,:,:,:,:)   :: qgll
     real (kind=r8)  :: element_ave
     !
     ! for tensor product Lagrange interpolation
@@ -61,8 +61,10 @@ contains
     integer              :: nflds
     logical, allocatable :: llimiter(:)
 
+    allocate(qgll(np,np,nlev,thermodynamic_active_species_num,nets:nete))
+    
     do ie=nets,nete         
-      do nq=1,qsize_condensate_loading
+      do nq=1,thermodynamic_active_species_num
         qgll(:,:,:,nq,ie) = elem(ie)%state%Qdp(:,:,:,nq,tl_qdp)/elem(ie)%state%dp3d(:,:,:,tl_f)
       end do
     end do
@@ -130,15 +132,15 @@ contains
        !
        ! overwrite SE Q with cslam Q
        !
-       nflds = qsize_condensate_loading
+       nflds = thermodynamic_active_species_num
        allocate(fld_gll(np,np,nlev,nflds,nets:nete))
        allocate(fld_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,nlev,nflds,nets:nete))
        do ie=nets,nete
          !
          ! compute cslam updated Q value         
-         do m_cnst=1,qsize_condensate_loading
-           fld_fvm(1:nc,1:nc,:,m_cnst,ie) = fvm(ie)%c(1:nc,1:nc,:,qsize_condensate_loading_idx(m_cnst))+&
-                fvm(ie)%fc(1:nc,1:nc,:,qsize_condensate_loading_idx(m_cnst))/fvm(ie)%dp_fvm(1:nc,1:nc,:)
+         do m_cnst=1,thermodynamic_active_species_num
+           fld_fvm(1:nc,1:nc,:,m_cnst,ie) = fvm(ie)%c(1:nc,1:nc,:,thermodynamic_active_species_idx(m_cnst))+&
+                fvm(ie)%fc(1:nc,1:nc,:,thermodynamic_active_species_idx(m_cnst))/fvm(ie)%dp_fvm(1:nc,1:nc,:)
          enddo
        end do
        call t_startf('p2d-pg2:fvm2dyn')
@@ -151,7 +153,7 @@ contains
        ! convert fld_gll to increment (q_new-q_old)
        ! 
        do ie=nets,nete         
-         do m_cnst=1,qsize_condensate_loading
+         do m_cnst=1,thermodynamic_active_species_num
            elem(ie)%derived%fq(:,:,:,m_cnst)   =&
                 fld_gll(:,:,:,m_cnst,ie)-qgll(:,:,:,m_cnst,ie)
          end do
@@ -169,7 +171,8 @@ contains
        !
        !*****************************************************************************************
        !
-       nflds = 3+qsize_condensate_loading
+       ! nflds is ft, fu, fv, + thermo species
+       nflds = 3+thermodynamic_active_species_num
        allocate(fld_phys(1-nhc_phys:fv_nphys+nhc_phys,1-nhc_phys:fv_nphys+nhc_phys,nlev,nflds,nets:nete))
        allocate(fld_gll(np,np,nlev,nflds,nets:nete))
        allocate(llimiter(nflds))
@@ -184,29 +187,13 @@ contains
          !
          ! compute cslam mixing ratio with physics update
          !
-         do m_cnst=1,qsize_condensate_loading
+         do m_cnst=1,thermodynamic_active_species_num
            do k=1,nlev
              fld_phys(1:fv_nphys,1:fv_nphys,k,m_cnst+3,ie) = &
-                  fvm(ie)%c(1:fv_nphys,1:fv_nphys,k,qsize_condensate_loading_idx(m_cnst))+&
-                  fvm(ie)%fc_phys(1:fv_nphys,1:fv_nphys,k,qsize_condensate_loading_idx(m_cnst))
+                  fvm(ie)%c(1:fv_nphys,1:fv_nphys,k,thermodynamic_active_species_idx(m_cnst))+&
+                  fvm(ie)%fc_phys(1:fv_nphys,1:fv_nphys,k,thermodynamic_active_species_idx(m_cnst))
            end do
          end do
-         !
-         ! adhoc extra smoothing in sponge for fu,fv,ft
-         !
-!         do m_cnst=1,3
-!            do k=1,ksponge_end
-!               if (nu_scale_top(k).ge.1.0_r8) then !only in top 3 levels (WACCM and CAM)
-!                  element_ave = 0.0_r8
-!                  do j=1,fv_nphys
-!                     do i=1,fv_nphys
-!                        element_ave = element_ave+fld_phys(i,j,k,m_cnst,ie)
-!                     end do
-!                  end do
-!                  fld_phys(1:fv_nphys,1:fv_nphys,k,m_cnst,ie) = element_ave/(dble(fv_nphys*fv_nphys))
-!               end if
-!            end do
-!         end do
       end do
          !
        ! do mapping
@@ -218,7 +205,7 @@ contains
          elem(ie)%derived%fM(:,:,2,:) = fld_gll(:,:,:,3,ie)
        end do
        do ie=nets,nete
-         do m_cnst=1,qsize_condensate_loading
+         do m_cnst=1,thermodynamic_active_species_num
            !
            ! convert fq so that it will effectively overwrite SE q with CSLAM q
            !
@@ -230,7 +217,7 @@ contains
          end do
        end do
      end if
-     deallocate(fld_phys,llimiter,fld_gll)
+     deallocate(fld_phys,llimiter,fld_gll,qgll)
   end subroutine phys2dyn_forcings_fvm
 
   subroutine fvm2dyn(fld_fvm,fld_gll,hybrid,nets,nete,numlev,num_flds,fvm,llimiter)
@@ -414,7 +401,8 @@ contains
              inv_darea_dp_fvm,q_gll(:,:,k,m_cnst))
       end do
     end do
-  end subroutine dyn2fvm_mass_vars
+  end subroutine dyn2fvm_mass_vars  
+  
   !
   ! this subroutine assumes that the fvm halo has already been filled
   ! (if nc/=fv_nphys)

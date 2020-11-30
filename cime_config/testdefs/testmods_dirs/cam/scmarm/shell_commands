@@ -1,0 +1,10 @@
+./xmlchange -append CAM_CONFIG_OPTS="-scam"
+./xmlchange ROF_NCPL=\$ATM_NCPL
+./xmlchange GLC_NCPL=\$ATM_NCPL
+./xmlchange EPS_AAREA=9.0e-4
+./xmlchange EPS_AGRID=9.0e-5
+./xmlchange MPILIB=mpi-serial
+./xmlchange REST_OPTION=never
+./xmlchange CAM_NML_USE_CASE=UNSET
+./xmlchange PTS_LAT=36.6
+./xmlchange PTS_LON=262.5

@@ -21,8 +21,8 @@ CONTAINS
   subroutine prim_printstate(elem, tl,hybrid,nets,nete, fvm, omega_cn)
     use dimensions_mod,         only: ntrac
     use constituents,           only: cnst_name
-    use dimensions_mod,         only: qsize_condensate_loading,qsize_condensate_loading_idx_gll
-    use dimensions_mod,         only: qsize_condensate_loading_idx
+    use physconst,              only: thermodynamic_active_species_idx_dycore, dry_air_species_num
+    use physconst,              only: thermodynamic_active_species_num,thermodynamic_active_species_idx
     use cam_control_mod,        only: initial_run
     use time_mod,               only: tstep
     use control_mod,            only: rsplit, qsplit
@@ -63,8 +63,8 @@ CONTAINS
     if (ntrac>0) then
       do ie=nets,nete
         moist_ps_fvm(:,:,ie)=SUM(fvm(ie)%dp_fvm(1:nc,1:nc,:),DIM=3)
-        do q=1,qsize_condensate_loading
-          m_cnst = qsize_condensate_loading_idx(q)
+        do q=dry_air_species_num+1,thermodynamic_active_species_num
+          m_cnst = thermodynamic_active_species_idx(q)
           do k=1,nlev
             moist_ps_fvm(:,:,ie) = moist_ps_fvm(:,:,ie)+&
                  fvm(ie)%dp_fvm(1:nc,1:nc,k)*fvm(ie)%c(1:nc,1:nc,k,m_cnst)
@@ -74,8 +74,8 @@ CONTAINS
     end if
     do ie=nets,nete
       moist_ps(:,:,ie)=elem(ie)%state%psdry(:,:)
-      do q=1,qsize_condensate_loading
-        m_cnst = qsize_condensate_loading_idx_gll(q)
+      do q=dry_air_species_num+1,thermodynamic_active_species_num
+        m_cnst = thermodynamic_active_species_idx_dycore(q)
         do k=1,nlev
           moist_ps(:,:,ie) = moist_ps(:,:,ie)+&
                elem(ie)%state%Qdp(:,:,k,m_cnst,n0_qdp)
@@ -343,7 +343,7 @@ CONTAINS
 #endif
 
   subroutine adjust_nsplit(elem, tl,hybrid,nets,nete, fvm, omega_cn)
-    use dimensions_mod,         only: nu_div_scale_top,ksponge_end
+    use dimensions_mod,         only: ksponge_end
     use dimensions_mod,         only: fvm_supercycling, fvm_supercycling_jet
     use time_mod,               only: tstep
     use control_mod,            only: rsplit, qsplit
@@ -393,14 +393,7 @@ CONTAINS
        nsplit=2*nsplit_baseline
        fvm_supercycling     = rsplit
        fvm_supercycling_jet = rsplit
-       nu_top=2.0_r8*nu_top
-       
-!       nu_div_scale_top(1:ksponge_end  ) = 2.0_r8
-!       nu_div_scale_top(ksponge_end  +1) = 2.00_r8
-!       nu_div_scale_top(ksponge_end  +2) = 1.75_r8
-!       nu_div_scale_top(ksponge_end  +3) = 1.5_r8
-!       nu_div_scale_top(ksponge_end  +4) = 1.25_r8
-
+       nu_top=2.0_r8*nu_top       
       !
       ! write diagnostics to log file
       !

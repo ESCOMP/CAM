@@ -1,0 +1,43 @@
+mfilt=1,1,1,1,1,1
+ndens=1,1,1,1,1,1
+nhtfrq=3,3,3,3,3,3
+
+mode_defs=
+'mam3_mode1:accum:=', 'A:num_a1:N:num_c1:num_mr:+',
+ 'A:so4_a1:N:so4_c1:sulfate:$DIN_LOC_ROOT/atm/cam/physprops/sulfate_rrtmg_c080918.nc:+',
+ 'A:pom_a1:N:pom_c1:p-organic:$DIN_LOC_ROOT/atm/cam/physprops/ocpho_rrtmg_c101112.nc:+',
+ 'A:soa_a1:N:soa_c1:s-organic:$DIN_LOC_ROOT/atm/cam/physprops/ocphi_rrtmg_c100508.nc:+', 
+ 'A:bc_a1:N:bc_c1:black-c:$DIN_LOC_ROOT/atm/cam/physprops/bcpho_rrtmg_c100508.nc:+',
+ 'A:dst_a1:N:dst_c1:dust:$DIN_LOC_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_c141106.nc:+',
+ 'A:ncl_a1:N:ncl_c1:seasalt:$DIN_LOC_ROOT/atm/cam/physprops/ssam_rrtmg_c100508.nc',
+'mam3_mode2:aitken:=', 'A:num_a2:N:num_c2:num_mr:+',
+ 'A:so4_a2:N:so4_c2:sulfate:$DIN_LOC_ROOT/atm/cam/physprops/sulfate_rrtmg_c080918.nc:+',
+ 'A:soa_a2:N:soa_c2:s-organic:$DIN_LOC_ROOT/atm/cam/physprops/ocphi_rrtmg_c100508.nc:+',
+ 'A:ncl_a2:N:ncl_c2:seasalt:$DIN_LOC_ROOT/atm/cam/physprops/ssam_rrtmg_c100508.nc',
+'mam3_mode3:coarse:=', 'A:num_a3:N:num_c3:num_mr:+',
+ 'A:dst_a3:N:dst_c3:dust:$DIN_LOC_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_c141106.nc:+',
+ 'A:ncl_a3:N:ncl_c3:seasalt:$DIN_LOC_ROOT/atm/cam/physprops/ssam_rrtmg_c100508.nc:+',
+ 'A:so4_a3:N:so4_c3:sulfate:$DIN_LOC_ROOT/atm/cam/physprops/sulfate_rrtmg_c080918.nc',
+'mam3_m1_noso4:accum:=', 'A:num_a1:N:num_c1:num_mr:+',
+ 'A:pom_a1:N:pom_c1:p-organic:$DIN_LOC_ROOT/atm/cam/physprops/ocpho_rrtmg_c101112.nc:+',
+ 'A:soa_a1:N:soa_c1:s-organic:$DIN_LOC_ROOT/atm/cam/physprops/ocphi_rrtmg_c100508.nc:+', 
+ 'A:bc_a1:N:bc_c1:black-c:$DIN_LOC_ROOT/atm/cam/physprops/bcpho_rrtmg_c100508.nc:+',
+ 'A:dst_a1:N:dst_c1:dust:$DIN_LOC_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_c141106.nc:+',
+ 'A:ncl_a1:N:ncl_c1:seasalt:$DIN_LOC_ROOT/atm/cam/physprops/ssam_rrtmg_c100508.nc',
+'mam3_m2_noso4:aitken:=', 'A:num_a2:N:num_c2:num_mr:+',
+ 'A:soa_a2:N:soa_c2:s-organic:$DIN_LOC_ROOT/atm/cam/physprops/ocphi_rrtmg_c100508.nc:+',
+ 'A:ncl_a2:N:ncl_c2:seasalt:$DIN_LOC_ROOT/atm/cam/physprops/ssam_rrtmg_c100508.nc',
+'mam3_m3_noso4:coarse:=', 'A:num_a3:N:num_c3:num_mr:+',
+ 'A:dst_a3:N:dst_c3:dust:$DIN_LOC_ROOT/atm/cam/physprops/dust_aeronet_rrtmg_c141106.nc:+',
+ 'A:ncl_a3:N:ncl_c3:seasalt:$DIN_LOC_ROOT/atm/cam/physprops/ssam_rrtmg_c100508.nc'
+rad_climate=
+ 'A:Q:H2O', 'N:O2:O2', 'N:CO2:CO2', 'N:ozone:O3', 'N:N2O:N2O', 'N:CH4:CH4', 'N:CFC11:CFC11', 'N:CFC12:CFC12',
+ 'M:mam3_mode1:$DIN_LOC_ROOT/atm/cam/physprops/mam4_mode1_rrtmg_aeronetdust_c141106.nc',
+ 'M:mam3_mode2:$DIN_LOC_ROOT/atm/cam/physprops/mam4_mode2_rrtmg_aitkendust_c141106.nc',
+ 'M:mam3_mode3:$DIN_LOC_ROOT/atm/cam/physprops/mam4_mode3_rrtmg_aeronetdust_c141106.nc'
+rad_diag_1=
+ 'A:Q:H2O', 'N:O2:O2', 'N:CO2:CO2', 'N:ozone:O3', 'N:N2O:N2O', 'N:CH4:CH4', 'N:CFC11:CFC11', 'N:CFC12:CFC12',
+ 'M:mam3_m1_noso4:$DIN_LOC_ROOT/atm/cam/physprops/mam4_mode1_rrtmg_aeronetdust_c141106.nc',
+ 'M:mam3_m2_noso4:$DIN_LOC_ROOT/atm/cam/physprops/mam4_mode2_rrtmg_aitkendust_c141106.nc',
+ 'M:mam3_m3_noso4:$DIN_LOC_ROOT/atm/cam/physprops/mam4_mode3_rrtmg_aeronetdust_c141106.nc'
+

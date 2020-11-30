@@ -73,7 +73,7 @@ module ic_baroclinic
 
 contains
 
-  subroutine bc_wav_set_ic(vcoord,latvals, lonvals, U, V, T, PS, PHIS, &
+  subroutine bc_wav_set_ic(vcoord,latvals, lonvals, zint, U, V, T, PS, PHIS, &
        Q, m_cnst, mask, verbose)
     use dyn_tests_utils,     only: vc_moist_pressure, vc_dry_pressure, vc_height
     use constituents,        only: cnst_name
@@ -87,10 +87,10 @@ contains
     !-----------------------------------------------------------------------
 
     ! Dummy arguments
-    integer, intent(in)               :: vcoord
+    integer,            intent(in)    :: vcoord     ! vertical coordinate type
     real(r8),           intent(in)    :: latvals(:) ! lat in degrees (ncol)
     real(r8),           intent(in)    :: lonvals(:) ! lon in degrees (ncol)
-                                                    ! z_k for vccord 1)
+    real(r8), optional, intent(in)    :: zint(:,:)  ! interface height (ncol,ilev), ordered top to bottom
     real(r8), optional, intent(inout) :: U(:,:)     ! zonal velocity
     real(r8), optional, intent(inout) :: V(:,:)     ! meridional velocity
     real(r8), optional, intent(inout) :: T(:,:)     ! temperature
@@ -100,6 +100,7 @@ contains
     integer,  optional, intent(in)    :: m_cnst(:)  ! tracer indices (reqd. if Q)
     logical,  optional, intent(in)    :: mask(:)    ! only init where .true.
     logical,  optional, intent(in)    :: verbose    ! for internal use
+
     ! Local variables
     logical, allocatable              :: mask_use(:)
     logical                           :: verbose_use
@@ -115,6 +116,7 @@ contains
     logical                           :: lU, lV, lT, lQ, l3d_vars
     logical                           :: cnst1_is_moisture
     real(r8), allocatable             :: pdry_half(:), pwet_half(:),zdry_half(:),zk(:)
+    real(r8), allocatable             :: zmid(:,:) ! layer midpoint heights for test tracer initialization
 
     if ((vcoord == vc_moist_pressure) .or. (vcoord == vc_dry_pressure)) then
       !
@@ -125,11 +127,16 @@ contains
         call endrun(subname//' ERROR: For iterate_z_given_pressure to work ptop must be less than 100hPa')
       end if
       ztop      = iterate_z_given_pressure(ptop,.false.,ptop,0.0_r8,-1000._r8) !Find height of top pressure surface
+
     else if (vcoord == vc_height) then
-      !
-      ! height-based vertical coordinate
-      !
-      call endrun(subname//' ERROR: z-based vertical coordinate not coded yet')
+       !
+       ! height-based vertical coordinate
+       !
+       if (present(zint)) then
+          ztop = zint(1,1)
+       else
+          call endrun(subname//' ERROR: z-based vertical coordinate requires using optional arg zint')
+       end if
     else
       call endrun(subname//' ERROR: vcoord value out of range')
     end if
@@ -164,7 +171,7 @@ contains
     !*******************************
     !
     if (present(PS)) then
-      if (vcoord == vc_moist_pressure) then
+      if (vcoord == vc_moist_pressure .or. vcoord == vc_height) then
         where(mask_use)
           PS = psurf_moist
         end where
@@ -209,7 +216,7 @@ contains
     lv = present(V)
     lT = present(T)
     lq = present(Q)
-    l3d_vars = lu .or. lv .or. lt .or.lq
+    l3d_vars = lu .or. lv .or. lt .or. lq
     nlev = -1
     if (l3d_vars) then
       if (lu) nlev = size(U, 2)
@@ -220,9 +227,10 @@ contains
          nlev = size(Q, 2)
          ! check whether first constituent in Q is water vapor.
          cnst1_is_moisture = m_cnst(1) == 1
+         allocate(zmid(size(Q, 1),nlev))         
       end if
 
-      allocate(zk(nlev+1))
+      allocate(zk(nlev))
       if ((lq.or.lt) .and. (vcoord == vc_dry_pressure)) then
         allocate(pdry_half(nlev+1))
         allocate(pwet_half(nlev+1))
@@ -241,12 +249,21 @@ contains
             psurface = psurf_moist-wvp
           end if
 
-          do k=1,nlev
-            ! compute pressure levels
-            pk = hyam(k)*ps0 + hybm(k)*psurface
-            ! find height of pressure surface
-            zk(k) = iterate_z_given_pressure(pk,(vcoord == vc_dry_pressure),ptop,latvals(i),ztop)
-          end do
+          if (vcoord == vc_moist_pressure .or. vcoord == vc_dry_pressure) then
+             do k=1,nlev
+                ! compute pressure levels
+                pk = hyam(k)*ps0 + hybm(k)*psurface
+                ! find height of pressure surface
+                zk(k) = iterate_z_given_pressure(pk,(vcoord == vc_dry_pressure),ptop,latvals(i),ztop)
+             end do
+          else if (vcoord == vc_height) then
+             zk = 0.5_r8*(zint(i,1:nlev) + zint(i,2:nlev+1))
+          end if
+
+          if (lq) then
+             zmid(i,:) = zk(:)
+          end if
+
           do k=1,nlev
             !
             ! wind components
@@ -257,7 +274,8 @@ contains
             !
             ! temperature and moisture for moist vertical coordinates
             !
-            if ((lq.or.lt).and.(vcoord == vc_moist_pressure)) then
+            if ( (lq .or. lt) .and. &
+                 (vcoord==vc_moist_pressure .or. vcoord==vc_height) ) then
               if (analytic_ic_is_moist()) then
                 pk = moist_pressure_given_z(zk(k),latvals(i))
                 qk = qv_given_moist_pressure(pk,latvals(i))
@@ -317,30 +335,19 @@ contains
     end if
 
     if (lq) then
-      ncnst = size(m_cnst, 1)
-      if ((vcoord == vc_moist_pressure) .or. (vcoord == vc_dry_pressure)) then
-        do m = 1, ncnst
+
+       ncnst = size(m_cnst, 1)
+
+       do m = 1, ncnst
 
           ! water vapor already done above
           if (m_cnst(m) == 1) cycle
 
           call cnst_init_default(m_cnst(m), latvals, lonvals, Q(:,:,m),&
-               mask=mask_use, verbose=verbose_use, notfound=.false.)
-#if 0
-          do k = 1, nlev
-            do i=1,ncol
-              if (mask_use(i)) then
-                Q(i,k,m) = test_func(latvals(i),lonvals(i), k, m)
-              end if
-            end do
-          end do
-          if(masterproc .and. verbose_use) then
-            write(iulog,*) '          ', trim(cnst_name(m_cnst(m))), ' initialized by "',subname,'"'
-          end if
-#endif
-        end do
-
-      end if ! vcoord
+               mask=mask_use, verbose=verbose_use, notfound=.false.,&
+               z=zmid)               
+          
+       end do
     end if   ! lq
 
     deallocate(mask_use)
@@ -397,7 +404,7 @@ contains
        p1 = p2
     END DO
     if (ix==1001) then
-      write(*,*) "p,p1,z1",p,p1,z1
+      write(iulog,*) "p,p1,z1",p,p1,z1
       call endrun('iteration did not converge in iterate_z_given_pressure')
     end if
     iterate_z_given_pressure = z2

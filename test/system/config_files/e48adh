@@ -1,6 +1,0 @@
--smp -spmd
--dyn eul
--hgrid 48x96
--phys adiabatic
--debug
--s

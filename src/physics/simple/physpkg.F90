@@ -540,7 +540,7 @@ contains
     !     physics_dme_adjust assumes moist. This is done in p_d_coupling for
     !     other dynamics. Bundy, Feb 2004.
     !
-    if (moist_physics .and.dycore_is('LR')) then
+    if (moist_physics .and. (dycore_is('LR') .or. dycore_is('FV3'))) then
       call set_dry_to_wet(state)    ! Physics had dry, dynamics wants moist
     end if
 
@@ -560,9 +560,9 @@ contains
         tmp_cldice(:ncol,:pver) = 0.0_r8
       end if
 
-      ! For not 'FV', physics_dme_adjust is called for energy diagnostic purposes only.
+      ! For not 'FV'|'FV3', physics_dme_adjust is called for energy diagnostic purposes only.
       ! So, save off tracers
-      if (.not.dycore_is('FV') .and. &
+      if (.not.(dycore_is('FV').or.dycore_is('FV3')) .and. &
            (hist_fld_active('SE_pAM').or.hist_fld_active('KE_pAM').or.hist_fld_active('WV_pAM').or.&
            hist_fld_active('WL_pAM').or.hist_fld_active('WI_pAM'))) then
         tmp_trac(:ncol,:pver,:pcnst) = state%q(:ncol,:pver,:pcnst)
@@ -591,7 +591,7 @@ contains
         state%ps(:ncol)             = tmp_ps(:ncol)
       end if
 
-      if (dycore_is('LR')) then
+      if (dycore_is('LR') .or. dycore_is('FV3')) then
         call physics_dme_adjust(state, tend, qini, ztodt)
         call calc_te_and_aam_budgets(state, 'pAM')
       end if
@@ -739,7 +739,7 @@ contains
 
     call t_startf('energy_fixer')
 
-    if (adiabatic .and. (.not. dycore_is('EUL'))) then
+    if (adiabatic .and. (.not. dycore_is('EUL')) .and. (.not. dycore_is('MPAS'))) then
       call check_energy_fix(state, ptend, nstep, flx_heat)
       call physics_update(state, ptend, ztodt, tend)
       call check_energy_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)

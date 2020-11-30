@@ -1,8 +1,0 @@
--spmd -nosmp
--dyn eul
--hgrid 48x96
--phys cam4
--debug
--pergro
--ocn aquaplanet
--s
