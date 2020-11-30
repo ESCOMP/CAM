@@ -295,9 +295,15 @@ CONTAINS
 
     DO N = 1, nTracers
 
-       ! to_upper is required because pFe /= PFE
-       fldname_ns = 'HCO_' // to_upper(TRIM(tracerNames(N)))
+       fldname_ns = 'HCO_' // TRIM(tracerNames(N))
        tmpIdx = pbuf_get_index(fldname_ns, RC)
+
+       IF ( tmpIdx < 0 ) THEN
+          ! If previous field name was not found, try with capitalized version
+          ! to_upper is required because pFe /= PFE
+          fldname_ns = 'HCO_' // to_upper(TRIM(tracerNames(N)))
+          tmpIdx = pbuf_get_index(fldname_ns, RC)
+       ENDIF
 
        IF ( tmpIdx < 0 ) THEN
           IF ( rootChunk ) Write(iulog,'(a,a)') "CESMGC_Emissions_Calc: Field not found ", &
