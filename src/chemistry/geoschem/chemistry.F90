@@ -249,8 +249,6 @@ contains
     ! set_sim_dat which is in pp_[mechanism]/mo_sim_dat.F90. That sets a lot of
     ! data in other places, notably in "chem_mods"
 
-    IF ( MasterProc ) Write(iulog,'(a)') 'GCCALL CHEM_REGISTER'
-
     ! hplin 2020-05-16: Call set_sim_dat to populate chemistry constituent information
     ! from mo_sim_dat.F90 in other places. This is needed for HEMCO_CESM.
     CALL Set_sim_dat()
@@ -963,6 +961,8 @@ contains
     use Pressure_Mod,      only : Accept_External_ApBp
     use Chemistry_Mod,     only : Init_Chemistry
     use Ucx_Mod,           only : Init_Ucx
+    use Strat_chem_Mod,    only : Init_Strat_Chem
+    use isorropiaII_Mod,   only : Init_IsorropiaII
     use Input_mod,         only : Validate_Directories
     use Olson_Landmap_Mod
     use Vdiff_Mod
@@ -1010,6 +1010,9 @@ contains
     REAL(f4), ALLOCATABLE  :: lonMidArr(:,:),  latMidArr(:,:)
     REAL(f4), ALLOCATABLE  :: lonEdgeArr(:,:), latEdgeArr(:,:)
     REAL(r8), ALLOCATABLE  :: linozData(:,:,:,:)
+
+    ! Grid with largest number of columns
+    TYPE(GrdState)         :: maxGrid   ! Grid State object
 
     REAL(r8), ALLOCATABLE  :: Col_Area(:)
     REAL(fp), ALLOCATABLE  :: Ap_CAM_Flip(:), Bp_CAM_Flip(:)
@@ -1087,6 +1090,47 @@ contains
        nStrat = nStrat-1
     ENDDO
 
+
+    ! Initialize grid with largest number of columns
+    ! This is required as State_Grid(LCHNK) can have different
+    ! number of columns, but GEOS-Chem arrays are defined based
+    ! on State_Grid(BEGCHUNK).
+    ! To go around this, we define all of GEOS-Chem arrays with
+    ! size PCOLS x PVER, which is the largest possible number of
+    ! grid cells. 
+    CALL Init_State_Grid( Input_Opt  = Input_Opt, &
+                          State_Grid = maxGrid,   &
+                          RC         = RC        )
+
+    IF ( RC /= GC_SUCCESS ) THEN
+       ErrMsg = 'Error encountered within call to "Init_State_Grid"!'
+       CALL Error_Stop( ErrMsg, ThisLoc )
+    ENDIF
+
+    maxGrid%NX = nX
+    maxGrid%NY = nY
+    maxGrid%NZ = nZ
+
+    ! Initialize GEOS-Chem horizontal grid structure
+    CALL GC_Init_Grid( Input_Opt  = Input_Opt, &
+                       State_Grid = maxGrid,   &
+                       RC         = RC        )
+
+    IF ( RC /= GC_SUCCESS ) THEN
+       ErrMsg = 'Error encountered within call to "GC_Init_Grid"!'
+       CALL Error_Stop( ErrMsg, ThisLoc )
+    ENDIF
+
+    ! Define more variables for maxGrid
+    maxGrid%MaxTropLev  = nZ
+    maxGrid%MaxStratLev = nStrat
+    IF ( Input_Opt%LUCX ) THEN
+       maxGrid%MaxChemLev = maxGrid%MaxStratLev
+    ELSE
+       maxGrid%MaxChemLev = maxGrid%MaxTropLev
+    ENDIF
+
+
     DO I = BEGCHUNK, ENDCHUNK
 
        ! Initialize fields of the Grid State object
@@ -1100,7 +1144,7 @@ contains
        ENDIF
 
        State_Grid(I)%NX = nX
-       State_Grid(I)%NY = nY
+       State_Grid(I)%NY = NCOL(I)
        State_Grid(I)%NZ = nZ
 
        ! Initialize GEOS-Chem horizontal grid structure
@@ -1134,9 +1178,9 @@ contains
     ! Call the routine GC_Allocate_All (located in module file
     ! GeosCore/gc_environment_mod.F90) to allocate all lat/lon
     ! allocatable arrays used by GEOS-Chem.
-    CALL GC_Allocate_All ( Input_Opt      = Input_Opt,            &
-                           State_Grid     = State_Grid(BEGCHUNK), &
-                           RC             = RC                   )
+    CALL GC_Allocate_All ( Input_Opt      = Input_Opt, &
+                           State_Grid     = maxGrid,   &
+                           RC             = RC        )
 
     IF ( RC /= GC_SUCCESS ) THEN
        ErrMsg = 'Error encountered in "GC_Allocate_All"!'
@@ -1350,13 +1394,13 @@ contains
     ! Note: The following calculations do not setup the gridcell areas.
     !       In any case, we will need to be constantly updating this grid
     !       to compensate for the "multiple chunks per processor" element
-    ALLOCATE(lonMidArr(nX,nY), STAT=IERR)
+    ALLOCATE(lonMidArr(maxGrid%nX,maxGrid%nY), STAT=IERR)
     IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating lonMidArr')
-    ALLOCATE(lonEdgeArr(nX+1,nY+1), STAT=IERR)
+    ALLOCATE(lonEdgeArr(maxGrid%nX+1,maxGrid%nY+1), STAT=IERR)
     IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating lonEdgeArr')
-    ALLOCATE(latMidArr(nX,nY), STAT=IERR)
+    ALLOCATE(latMidArr(maxGrid%nX,maxGrid%nY), STAT=IERR)
     IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating latMidArr')
-    ALLOCATE(latEdgeArr(nX+1,nY+1), STAT=IERR)
+    ALLOCATE(latEdgeArr(maxGrid%nX+1,maxGrid%nY+1), STAT=IERR)
     IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating latEdgeArr')
 
     ! We could try and get the data from CAM.. but the goal is to make this GC
@@ -1368,11 +1412,11 @@ contains
        lonMidArr = 0.0e+0_f4
        latMidArr = 0.0e+0_f4
        dLonFix   = 360.0e+0_fp / REAL(nX,fp)
-       dLatFix   = 180.0e+0_fp / REAL(nY,fp)
+       dLatFix   = 180.0e+0_fp / REAL(NCOL(L),fp)
        DO I = 1, nX
           ! Center of box, assuming dateline edge
           lonVal = -180.0e+0_fp + (REAL(I-1,fp)*dLonFix)
-          DO J = 1, nY
+          DO J = 1, NCOL(L)
              ! Center of box, assuming regular cells
              latVal = -90.0e+0_fp + (REAL(J-1,fp)*dLatFix)
              lonMidArr(I,J)  = REAL((lonVal + (0.5e+0_fp * dLonFix)) * PI_180, f4)
@@ -1383,10 +1427,10 @@ contains
              latEdgeArr(I,J) = REAL(latVal * PI_180, f4)
           ENDDO
           ! Edges of box, assuming regular cells
-          lonEdgeArr(I,nY+1)  = REAL((lonVal + dLonFix) * PI_180, f4)
-          latEdgeArr(I,nY+1)  = REAL((latVal + dLatFix) * PI_180, f4)
+          lonEdgeArr(I,NCOL(L)+1)  = REAL((lonVal + dLonFix) * PI_180, f4)
+          latEdgeArr(I,NCOL(L)+1)  = REAL((latVal + dLatFix) * PI_180, f4)
        ENDDO
-       DO J = 1, nY+1
+       DO J = 1, NCOL(L)+1
           ! Edges of box, assuming regular cells
           latVal = -90.0e+0_fp + (REAL(J-1,fp)*dLatFix)
           lonEdgeArr(nX+1,J)  = REAL((lonVal + dLonFix) * PI_180, f4)
@@ -1471,7 +1515,7 @@ contains
                               Input_Opt       = Input_Opt,       & ! Input Options
                               State_Chm       = State_Chm(I),    & ! Chemistry State
                               State_Diag      = State_Diag(I),   & ! Diagnostics State
-                              State_Grid      = State_Grid(I),   & ! Grid State
+                              State_Grid      = maxGrid,         & ! Grid State
                               State_Met       = State_Met(I),    & ! Meteorology State
                               RC              = RC              )  ! Success or failure
 
@@ -1491,7 +1535,7 @@ contains
     &                   Input_Opt  = Input_Opt,            &  ! Input Options
     &                   State_Chm  = State_Chm(BEGCHUNK),  &  ! Chemistry State
     &                   State_Diag = State_Diag(BEGCHUNK), &  ! Diagnostics State
-    &                   State_Grid = State_Grid(BEGCHUNK), &  ! Grid State
+    &                   State_Grid = maxGrid,              &  ! Grid State
     &                   RC         = RC                   )   ! Success or failure
 
     ! Trap potential errors
@@ -1572,23 +1616,21 @@ contains
 
     ! Set grid-cell area
     DO N = BEGCHUNK, ENDCHUNK
-       ALLOCATE(Col_Area(NCOL(N)), STAT=IERR)
+       ALLOCATE(Col_Area(State_Grid(N)%nY), STAT=IERR)
        IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating Col_Area')
 
-       CALL Get_Area_All_p(N, NCOL(N), Col_Area)
+       CALL Get_Area_All_p(N, State_Grid(N)%nY, Col_Area)
 
        ! Set default value (in case of chunks with fewer columns)
        State_Grid(N)%Area_M2 = 1.0e+10_fp
-       DO I = 1, nX
-       DO J = 1, NCOL(N)
+       DO I = 1, State_Grid(N)%nX
+       DO J = 1, State_Grid(N)%nY
           State_Grid(N)%Area_M2(I,J) = REAL(Col_Area(J) * Re**2,fp)
+          State_Met(N)%Area_M2(I,J)  = State_Grid(N)%Area_M2(I,J)
        ENDDO
        ENDDO
 
        IF ( ALLOCATED( Col_Area ) ) DEALLOCATE(Col_Area)
-
-       ! Copy to State_Met(I)%Area_M2
-       State_Met(N)%Area_M2 = State_Grid(N)%Area_M2
     ENDDO
 
     ! Initialize (mostly unused) diagnostic arrays
@@ -1613,18 +1655,18 @@ contains
     !-----------------------------------------------------------------
     ! Pass external Ap and Bp to GEOS-Chem's Pressure_Mod
     !-----------------------------------------------------------------
-    CALL Accept_External_ApBp( State_Grid = State_Grid(BEGCHUNK), &  ! Grid State
-                               ApIn       = Ap_CAM_Flip,          &  ! "A" term for hybrid grid
-                               BpIn       = Bp_CAM_Flip,          &  ! "B" term for hybrid grid
-                               RC         = RC                   )   ! Success or failure
+    CALL Accept_External_ApBp( State_Grid = maxGrid,     &  ! Grid State
+                               ApIn       = Ap_CAM_Flip, &  ! "A" term for hybrid grid
+                               BpIn       = Bp_CAM_Flip, &  ! "B" term for hybrid grid
+                               RC         = RC          )   ! Success or failure
 
     ! Print vertical coordinates
     IF ( MasterProc ) THEN
        WRITE( 6, '(a)'   ) REPEAT( '=', 79 )
        WRITE( 6, '(a,/)' ) 'V E R T I C A L   G R I D   S E T U P'
-       WRITE( 6, '( ''Ap '', /, 6(f11.6,1x) )' ) Ap_CAM_Flip(1:State_Grid(BEGCHUNK)%NZ+1)
+       WRITE( 6, '( ''Ap '', /, 6(f11.6,1x) )' ) Ap_CAM_Flip(1:maxGrid%nZ+1)
        WRITE( 6, '(a)'   )
-       WRITE( 6, '( ''Bp '', /, 6(f11.6,1x) )' ) Bp_CAM_Flip(1:State_Grid(BEGCHUNK)%NZ+1)
+       WRITE( 6, '( ''Bp '', /, 6(f11.6,1x) )' ) Bp_CAM_Flip(1:maxGrid%nZ+1)
        WRITE( 6, '(a)'   ) REPEAT( '=', 79 )
     ENDIF
 
@@ -1669,7 +1711,24 @@ contains
        CALL Init_UCX( Input_Opt  = Input_Opt,            &
                       State_Chm  = State_Chm(BEGCHUNK),  &
                       State_Diag = State_Diag(BEGCHUNK), &
-                      State_Grid = State_Grid(BEGCHUNK) )
+                      State_Grid = maxGrid              )
+    ENDIF
+
+    IF ( Input_Opt%LSCHEM ) THEN
+        CALL Init_Strat_Chem( Input_Opt  = Input_Opt,           &
+                              State_Chm  = State_Chm(BEGCHUNK), &
+                              State_Met  = State_Met(BEGCHUNK), &
+                              State_Grid = maxGrid,             &
+                              RC         = RC                  )
+
+        IF ( RC /= GC_SUCCESS ) THEN
+           ErrMsg = 'Error encountered in "Init_Strat_Chem"!'
+           CALL Error_Stop( ErrMsg, ThisLoc )
+        ENDIF
+    ENDIF
+
+    IF ( Input_Opt%LSSalt ) THEN
+       CALL INIT_ISORROPIAII( State_Grid = maxGrid )
     ENDIF
 
     ! Get some indices
@@ -1741,7 +1800,8 @@ contains
 
     If ( MasterProc ) Write(iulog,*) "hco_pbuf2d now points to pbuf2d"
 
-    IF (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_INIT'
+    ! Cleanup
+    Call Cleanup_State_Grid( maxGrid, RC )
 
   end subroutine chem_init
 
@@ -1831,7 +1891,6 @@ contains
     use Pressure_Mod,        only : Set_Floating_Pressures
     use Pressure_Mod,        only : Accept_External_Pedge
     use Time_Mod,            only : Accept_External_Date_Time
-    use Strat_chem_Mod,      only : Init_Strat_Chem
     use Toms_Mod,            only : Compute_Overhead_O3
     use Chemistry_Mod,       only : Do_Chemistry
     use Wetscav_Mod,         only : Setup_Wetscav, Do_WetDep
@@ -1946,9 +2005,6 @@ contains
     REAL(r8), PARAMETER   :: zsice = 0.0400_r8 ! Roughness length for sea ice [m]
     REAL(r8), PARAMETER   :: zocn  = 0.0001_r8 ! Roughness length for oean [m]
 
-    ! Because of strat chem
-    LOGICAL, SAVE :: SCHEM_READY = .FALSE.
-
     REAL(f4)      :: lonMidArr(1,PCOLS), latMidArr(1,PCOLS)
     INTEGER       :: iMaxLoc(1)
 
@@ -1981,7 +2037,7 @@ contains
 
     CHARACTER(LEN=63)      :: OrigUnit
 
-    REAL(r8)           :: SlsData(state%NCOL, PVER, nSls)
+    REAL(r8)           :: SlsData(PCOLS, PVER, nSls)
 
     INTEGER            :: currYr, currMo, currDy, currTOD
     INTEGER            :: currYMD, currHMS, currHr, currMn, currSc
@@ -2030,7 +2086,6 @@ contains
     ! Need to update the timesteps throughout the code
     CALL GC_Update_Timesteps(dT)
 
-
     ! For safety's sake
     PTop = state%pint(1,1)*0.01e+0_fp
 
@@ -2078,11 +2133,12 @@ contains
     ! Unit       : -
     ! Dimensions : nX, nY
     ! Note       : Set default value (in case of chunks with fewer columns)
-    State_Grid(LCHNK)%Area_M2 = 1.0e+10_fp
+    State_Grid(LCHNK)%Area_M2 = -1.0e+10_fp
+    State_Met(LCHNK)%Area_M2  = -1.0e+10_fp
     DO J = 1, nY
        State_Grid(LCHNK)%Area_M2(1,J) = REAL(Col_Area(J) * Re**2,fp)
+       State_Met(LCHNK)%Area_M2(1,J)  = State_Grid(LCHNK)%Area_M2(1,J)
     ENDDO
-    State_Met(LCHNK)%Area_M2 = State_Grid(LCHNK)%Area_M2
 
     ! 2. Copy tracers into State_Chm
     ! Data was received in kg/kg dry
@@ -2165,7 +2221,7 @@ contains
     DO M = 1, ntot_amode
        DO SM = 1, nspec_amode(M)
           P = map2MAM4(SM,M)
-          State_Chm(LCHNK)%Species(1,:,:,P) = 0.0e+00_fp
+          State_Chm(LCHNK)%Species(1,:nY,:nZ,P) = 0.0e+00_fp
        ENDDO
     ENDDO
 
@@ -2268,8 +2324,8 @@ contains
     !-----------------------------------------------------------------------
     !        ... Set the "invariants"
     !-----------------------------------------------------------------------
-    CALL Setinv( invariants, state%t(:nY,:), h2ovmr, vmr0, &
-                 state%pmid(:nY,:), NCOL, LCHNK, pbuf )
+    CALL Setinv( invariants, state%t(:,:), h2ovmr, vmr0, &
+                 state%pmid(:,:), nY, LCHNK, pbuf )
 
     ! Calculate RH (range 0-1, note still level 1 = TOA)
     relHum(:,:) = 0.0e+0_r8
@@ -2378,7 +2434,7 @@ contains
     ! Description: Visible surface albedo
     ! Unit       : -
     ! Dimensions : nX, nY
-    State_Met(LCHNK)%ALBD      (1,:) = cam_in%Asdir(:)
+    State_Met(LCHNK)%ALBD      (1,:nY) = cam_in%asdir(:nY)
 
     ! Field      : CLDFRC
     ! Description: Column cloud fraction
@@ -2394,8 +2450,8 @@ contains
     ! Description: Latent heat flux, sensible heat flux
     ! Unit       : W/m^2
     ! Dimensions : nX, nY
-    State_Met(LCHNK)%EFLUX     (1,:) = cam_in%Lhf(:)
-    State_Met(LCHNK)%HFLUX     (1,:) = cam_in%Shf(:)
+    State_Met(LCHNK)%EFLUX     (1,:nY) = cam_in%Lhf(:nY)
+    State_Met(LCHNK)%HFLUX     (1,:nY) = cam_in%Shf(:nY)
 
     ! Field      : LandTypeFrac
     ! Description: Olson fraction per type
@@ -2404,8 +2460,8 @@ contains
     ! Note       : Index 1 is water
     IF ( Input_Opt%onlineLandTypes ) THEN
        ! Fill in water
-       State_Met(LCHNK)%LandTypeFrac(1,:, 1) = cam_in%ocnFrac(:)     &
-                                             + cam_in%iceFrac(:)
+       State_Met(LCHNK)%LandTypeFrac(1,:nY,1) = cam_in%ocnFrac(:nY)     &
+                                              + cam_in%iceFrac(:nY)
        IF ( .NOT. Input_Opt%ddVel_CLM ) THEN
           CALL getLandTypes( cam_in,         &
                              nY,             &
@@ -2455,53 +2511,53 @@ contains
     !              Fraction of snow
     ! Unit       : -
     ! Dimensions : nX, nY
-    State_Met(LCHNK)%FRCLND    (1,:) = 1.e+0_fp - &
-                    State_Met(LCHNK)%LandTypeFrac(1,:,1) ! Olson Land Fraction
-    State_Met(LCHNK)%FRLAND    (1,:) = cam_in%landFrac(:)
-    State_Met(LCHNK)%FROCEAN   (1,:) = cam_in%ocnFrac(:) + cam_in%iceFrac(:)
-    State_Met(LCHNK)%FRSEAICE  (1,:) = cam_in%iceFrac(:)
+    State_Met(LCHNK)%FRCLND    (1,:ny) = 1.e+0_fp - &
+                    State_Met(LCHNK)%LandTypeFrac(1,:nY,1) ! Olson Land Fraction
+    State_Met(LCHNK)%FRLAND    (1,:nY) = cam_in%landFrac(:nY)
+    State_Met(LCHNK)%FROCEAN   (1,:nY) = cam_in%ocnFrac(:nY) + cam_in%iceFrac(:nY)
+    State_Met(LCHNK)%FRSEAICE  (1,:nY) = cam_in%iceFrac(:nY)
     IF ( Input_Opt%onlineLandTypes ) THEN
-       State_Met(LCHNK)%FRLAKE    (1,:) = cam_in%lwtgcell(:,3) + &
+       State_Met(LCHNK)%FRLAKE    (1,:nY) = cam_in%lwtgcell(:,3) + &
                                           cam_in%lwtgcell(:,4)
-       State_Met(LCHNK)%FRLANDIC  (1,:) = cam_in%lwtgcell(:,2)
-       State_Met(LCHNK)%FRSNO     (1,:) = 0.0e+0_fp
+       State_Met(LCHNK)%FRLANDIC  (1,:nY) = cam_in%lwtgcell(:,2)
+       State_Met(LCHNK)%FRSNO     (1,:nY) = 0.0e+0_fp
     ELSE
-       State_Met(LCHNK)%FRLAKE    (1,:) = 0.0e+0_fp
-       State_Met(LCHNK)%FRLANDIC  (1,:) = 0.0e+0_fp
-       State_Met(LCHNK)%FRSNO     (1,:) = 0.0e+0_fp
+       State_Met(LCHNK)%FRLAKE    (1,:nY) = 0.0e+0_fp
+       State_Met(LCHNK)%FRLANDIC  (1,:nY) = 0.0e+0_fp
+       State_Met(LCHNK)%FRSNO     (1,:nY) = 0.0e+0_fp
     ENDIF
 
     ! Field      : GWETROOT, GWETTOP
     ! Description: Root and top soil moisture
     ! Unit       : -
     ! Dimensions : nX, nY
-    State_Met(LCHNK)%GWETROOT  (1,:) = 0.0e+0_fp
-    State_Met(LCHNK)%GWETTOP   (1,:) = 0.0e+0_fp
+    State_Met(LCHNK)%GWETROOT  (1,:nY) = 0.0e+0_fp
+    State_Met(LCHNK)%GWETTOP   (1,:nY) = 0.0e+0_fp
 
     ! Field      : LAI
     ! Description: Leaf area index
     ! Unit       : m^2/m^2
     ! Dimensions : nX, nY
-    State_Met(LCHNK)%LAI       (1,:) = 0.0e+0_fp
+    State_Met(LCHNK)%LAI       (1,:nY) = 0.0e+0_fp
 
     ! Field      : PARDR, PARDF
     ! Description: Direct and diffuse photosynthetically active radiation
     ! Unit       : W/m^2
     ! Dimensions : nX, nY
-    State_Met(LCHNK)%PARDR     (1,:) = 0.0e+0_fp
-    State_Met(LCHNK)%PARDF     (1,:) = 0.0e+0_fp
+    State_Met(LCHNK)%PARDR     (1,:nY) = 0.0e+0_fp
+    State_Met(LCHNK)%PARDF     (1,:nY) = 0.0e+0_fp
 
     ! Field      : PBLH
     ! Description: PBL height
     ! Unit       : m
     ! Dimensions : nX, nY
-    State_Met(LCHNK)%PBLH      (1,:) = PblH(:nY)
+    State_Met(LCHNK)%PBLH      (1,:nY) = PblH(:nY)
 
     ! Field      : PHIS
     ! Description: Surface geopotential height
     ! Unit       : m
     ! Dimensions : nX, nY
-    State_Met(LCHNK)%PHIS      (1,:) = state%Phis(:)
+    State_Met(LCHNK)%PHIS      (1,:nY) = state%Phis(:nY)
 
     ! Field      : PRECANV, PRECCON, PRECLSC, PRECTOT
     ! Description: Anvil precipitation @ ground
@@ -2510,42 +2566,42 @@ contains
     !              Total precipitation @ ground
     ! Unit       : kg/m^2/s
     ! Dimensions : nX, nY
-    State_Met(LCHNK)%PRECANV   (1,:) = 0.0e+0_fp
-    State_Met(LCHNK)%PRECCON   (1,:) = cam_out%Precc(:)
-    State_Met(LCHNK)%PRECLSC   (1,:) = cam_out%Precl(:)
-    State_Met(LCHNK)%PRECTOT   (1,:) = cam_out%Precc(:) + cam_out%Precl(:)
+    State_Met(LCHNK)%PRECANV   (1,:nY) = 0.0e+0_fp
+    State_Met(LCHNK)%PRECCON   (1,:nY) = cam_out%Precc(:nY)
+    State_Met(LCHNK)%PRECLSC   (1,:nY) = cam_out%Precl(:nY)
+    State_Met(LCHNK)%PRECTOT   (1,:nY) = cam_out%Precc(:nY) + cam_out%Precl(:nY)
 
     ! Field      : TROPP
     ! Description: Tropopause pressure
     ! Unit       : hPa
     ! Dimensions : nX, nY
-    State_Met(LCHNK)%TROPP     (1,:) = Trop_P(:)
+    State_Met(LCHNK)%TROPP     (1,:nY) = Trop_P(:nY)
 
     ! Field      : PS1_WET, PS2_WET
     ! Description: Wet surface pressure at start and end of timestep
     ! Unit       : hPa
     ! Dimensions : nX, nY
-    State_Met(LCHNK)%PS1_WET   (1,:) = state%ps(:)*0.01e+0_fp
-    State_Met(LCHNK)%PS2_WET   (1,:) = state%ps(:)*0.01e+0_fp
+    State_Met(LCHNK)%PS1_WET   (1,:nY) = state%ps(:nY)*0.01e+0_fp
+    State_Met(LCHNK)%PS2_WET   (1,:nY) = state%ps(:nY)*0.01e+0_fp
 
     ! Field      : SLP
     ! Description: Sea level pressure
     ! Unit       : hPa
     ! Dimensions : nX, nY
-    State_Met(LCHNK)%SLP       (1,:) = state%ps(:)*0.01e+0_fp
+    State_Met(LCHNK)%SLP       (1,:nY) = state%ps(:nY)*0.01e+0_fp
 
     ! Field      : TS, TSKIN
     ! Description: Surface temperature, surface skin temperature
     ! Unit       : K
     ! Dimensions : nX, nY
-    State_Met(LCHNK)%TS        (1,:) = cam_in%TS(:)
-    State_Met(LCHNK)%TSKIN     (1,:) = cam_in%TS(:)
+    State_Met(LCHNK)%TS        (1,:nY) = cam_in%TS(:nY)
+    State_Met(LCHNK)%TSKIN     (1,:nY) = cam_in%TS(:nY)
 
     ! Field      : SWGDN
     ! Description: Incident radiation @ ground
     ! Unit       : W/m^2
     ! Dimensions : nX, nY
-    State_Met(LCHNK)%SWGDN     (1,:) = fsds(:)
+    State_Met(LCHNK)%SWGDN     (1,:nY) = fsds(:nY)
 
     ! Field      : SNODP, SNOMAS
     ! Description: Snow depth, snow mass
@@ -2553,33 +2609,33 @@ contains
     ! Dimensions : nX, nY
     ! Note       : Conversion from m to kg/m^2
     !              \rho_{ice} = 916.7 kg/m^3
-    State_Met(LCHNK)%SNODP     (1,:) = snowDepth(:)
-    State_Met(LCHNK)%SNOMAS    (1,:) = snowDepth(:) * 916.7e+0_r8
+    State_Met(LCHNK)%SNODP     (1,:nY) = snowDepth(:nY)
+    State_Met(LCHNK)%SNOMAS    (1,:nY) = snowDepth(:nY) * 916.7e+0_r8
 
     ! Field      : SUNCOS, SUNCOSmid
     ! Description: COS(solar zenith angle) at current time and midpoint
     !              of chemistry timestep
     ! Unit       : -
     ! Dimensions : nX, nY
-    State_Met(LCHNK)%SUNCOS    (1,:) = CSZA(:)
-    State_Met(LCHNK)%SUNCOSmid (1,:) = CSZAmid(:)
+    State_Met(LCHNK)%SUNCOS    (1,:nY) = CSZA(:nY)
+    State_Met(LCHNK)%SUNCOSmid (1,:nY) = CSZAmid(:nY)
 
     ! Field      : UVALBEDO
     ! Description: UV surface albedo
     ! Unit       : -
     ! Dimensions : nX, nY
     IF ( Input_Opt%onlineAlbedo ) THEN
-       State_Met(LCHNK)%UVALBEDO(1,:) = cam_in%asdir(:)
+       State_Met(LCHNK)%UVALBEDO(1,:nY) = cam_in%asdir(:nY)
     ELSE
        fldname_ns = 'HCO_UV_ALBEDO'
        tmpIdx = pbuf_get_index(fldname_ns, RC)
        IF ( tmpIdx < 0 ) THEN
           IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(fldname_ns)
-          State_Met(LCHNK)%UVALBEDO(1,:) = 0.0e+0_fp
+          State_Met(LCHNK)%UVALBEDO(1,:nY) = 0.0e+0_fp
        ELSE
           pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
           CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_ik)
-          State_Met(LCHNK)%UVALBEDO(1,:) = pbuf_ik(:,nZ)
+          State_Met(LCHNK)%UVALBEDO(1,:nY) = pbuf_ik(:nY,nZ)
           pbuf_chnk => NULL()
           pbuf_ik   => NULL()
        ENDIF
@@ -2589,8 +2645,8 @@ contains
     ! Description: E/W and N/S wind speed @ 10m height
     ! Unit       : m/s
     ! Dimensions : nX, nY
-    State_Met(LCHNK)%U10M      (1,:) = state%U(:,nZ)
-    State_Met(LCHNK)%V10M      (1,:) = state%V(:,nZ)
+    State_Met(LCHNK)%U10M      (1,:nY) = state%U(:nY,nZ)
+    State_Met(LCHNK)%V10M      (1,:nY) = state%V(:nY,nZ)
 
     ! Field      : USTAR
     ! Description: Friction velocity
@@ -2608,7 +2664,7 @@ contains
     ! Description: Surface roughness length
     ! Unit       : m
     ! Dimensions : nX, nY
-    State_Met(LCHNK)%Z0        (1,:) = Z0(:)
+    State_Met(LCHNK)%Z0        (1,:nY) = Z0(:nY)
 
     ! Field      : IODIDE
     ! Description: Surface iodide concentration
@@ -2618,11 +2674,11 @@ contains
     tmpIdx = pbuf_get_index(fldname_ns, RC)
     IF ( tmpIdx < 0 ) THEN
        IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(fldname_ns)
-       State_Chm(LCHNK)%IODIDE(1,:)   = 0.0e+0_fp
+       State_Chm(LCHNK)%IODIDE(1,:nY)   = 0.0e+0_fp
     ELSE
        pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
        CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_ik)
-       State_Chm(LCHNK)%IODIDE(1,:) = pbuf_ik(:,nZ)
+       State_Chm(LCHNK)%IODIDE(1,:nY) = pbuf_ik(:nY,nZ)
        pbuf_chnk => NULL()
        pbuf_ik   => NULL()
     ENDIF
@@ -2636,11 +2692,11 @@ contains
     tmpIdx = pbuf_get_index(fldname_ns, RC)
     IF ( tmpIdx < 0 ) THEN
        IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(fldname_ns)
-       State_Chm(LCHNK)%SALINITY(1,:) = 0.0e+0_fp
+       State_Chm(LCHNK)%SALINITY(1,:nY) = 0.0e+0_fp
     ELSE
        pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
        CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_ik)
-       State_Chm(LCHNK)%SALINITY(1,:) = pbuf_ik(:,nZ)
+       State_Chm(LCHNK)%SALINITY(1,:nY) = pbuf_ik(:nY,nZ)
        pbuf_chnk => NULL()
        pbuf_ik   => NULL()
     ENDIF
@@ -2698,7 +2754,7 @@ contains
        ! Description: Downward flux of ice/liquid precipitation (Large-scale & anvil)
        ! Unit       : kg/m^2/s
        ! Dimensions : nX, nY, nZ+1
-       State_Met(LCHNK)%PFILSAN (1,J,L) = LsFlxSnw(j,nZ+2-L) ! kg/m2/s
+       State_Met(LCHNK)%PFILSAN (1,J,L) = LsFlxSnw(J,nZ+2-L) ! kg/m2/s
        State_Met(LCHNK)%PFLLSAN (1,J,L) = MAX(0.0e+0_fp,LsFlxPrc(J,nZ+2-L) - LsFlxSnw(J,nZ+2-L)) ! kg/m2/s
     ENDDO
     ENDDO
@@ -2806,6 +2862,8 @@ contains
        State_Met(LCHNK)%TMPU2    (1,J,L) = state%t(J,nZ+1-L)
     ENDDO
     ENDDO
+    !TMMF, FIX ME
+    State_Met(LCHNK)%DQRLSAN  (1,:nY,nZ) = 0.0e+00_fp
 
     ! Field      : T
     ! Description: Temperature at current time
@@ -2849,8 +2907,9 @@ contains
        CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
-    CALL Accept_External_PEdge( State_Met = State_Met(LCHNK), &
-                                RC        = RC               )
+    CALL Accept_External_PEdge( State_Met  = State_Met(LCHNK),  &
+                                State_Grid = State_Grid(LCHNK), &
+                                RC         = RC                )
 
     IF ( RC /= GC_SUCCESS ) THEN
        ErrMsg = 'Failed to update pressure edges!'
@@ -2866,8 +2925,8 @@ contains
     !              2. As we are using online meteorology, we do not
     !                 have access to the fields at the next time step
     !                 Compute Pa/s tendency? (tmmf, 1/13/20)
-    State_Met(LCHNK)%PS1_DRY (1,:) = state%PSDry(:) * 0.01e+0_fp
-    State_Met(LCHNK)%PS2_DRY (1,:) = state%PSDry(:) * 0.01e+0_fp
+    State_Met(LCHNK)%PS1_DRY (1,:nY) = state%PSDry(:nY) * 0.01e+0_fp
+    State_Met(LCHNK)%PS2_DRY (1,:nY) = state%PSDry(:nY) * 0.01e+0_fp
 
     ! Field      : PSC2_WET, PSC2_DRY
     ! Description: Interpolated wet and dry surface pressure at the
@@ -2937,6 +2996,32 @@ contains
        CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
+    ! SDE 05/28/13: Set H2O to State_Chm tracer if relevant and,
+    ! if LUCX=T and LSETH2O=F and LACTIVEH2O=T, update specific humidity
+    ! in the stratosphere
+    !
+    ! NOTE: Specific humidity may change in SET_H2O_TRAC and
+    ! therefore this routine may call AIRQNT again to update
+    ! air quantities and tracer concentrations (ewl, 10/28/15)
+    IF ( Input_Opt%Its_A_Fullchem_Sim .and. iH2O > 0 ) THEN
+       CALL Set_H2O_Trac( SETSTRAT   = ( ( .not. Input_Opt%LUCX )  &
+                                         .or. Input_Opt%LSETH2O ), &
+                          Input_Opt  = Input_Opt,                  &
+                          State_Chm  = State_Chm(LCHNK),           &
+                          State_Grid = State_Grid(LCHNK),          &
+                          State_Met  = State_Met(LCHNK),           &
+                          RC         = RC                         )
+
+       ! Trap potential errors
+       IF ( RC /= GC_SUCCESS ) THEN
+          ErrMsg = 'Error encountered in "Set_H2O_Trac" #1!'
+          CALL Error_Stop( ErrMsg, ThisLoc )
+       ENDIF
+
+       ! Only force strat once if using UCX
+       IF (Input_Opt%LSETH2O) Input_Opt%LSETH2O = .FALSE.
+    ENDIF
+
     ! Do this after AirQnt, such that we overwrite GEOS-Chem isLand, isWater and
     ! isIce, which are based on albedo. Rather, we use CLM landFranc, ocnFrac
     ! and iceFrac. We also compute isSnow
@@ -2995,51 +3080,7 @@ contains
     ! Description: Total overhead ozone column
     ! Unit       : DU
     ! Dimensions : nX, nY
-    State_Met(LCHNK)%TO3       (1,:) = O3col(:)
-
-    ! Initialize strat chem if not already done. This has to be done here because
-    ! it needs to have non-zero values in State_Chm%AD, which only happens after
-    ! the first call to AirQnt
-    !IF ( (.not.SCHEM_READY) .and. Input_Opt%LSCHEM ) THEN
-    IF ( (.not.SCHEM_READY) .and. .True. ) THEN !TMMF
-        CALL Init_Strat_Chem( Input_Opt  = Input_Opt,         &
-                              State_Chm  = State_Chm(LCHNK),  &
-                              State_Met  = State_Met(LCHNK),  &
-                              State_Grid = State_Grid(LCHNK), &
-                              RC         = RC                )
-
-        IF ( RC /= GC_SUCCESS ) THEN
-           ErrMsg = 'Error encountered in "Init_Strat_Chem"!'
-           CALL Error_Stop( ErrMsg, ThisLoc )
-        ENDIF
-        SCHEM_READY = .True.
-    ENDIF
-
-    ! SDE 05/28/13: Set H2O to State_Chm tracer if relevant and,
-    ! if LUCX=T and LSETH2O=F and LACTIVEH2O=T, update specific humidity
-    ! in the stratosphere
-    !
-    ! NOTE: Specific humidity may change in SET_H2O_TRAC and
-    ! therefore this routine may call AIRQNT again to update
-    ! air quantities and tracer concentrations (ewl, 10/28/15)
-    IF ( Input_Opt%Its_A_Fullchem_Sim .and. iH2O > 0 ) THEN
-       CALL Set_H2O_Trac( SETSTRAT   = ( ( .not. Input_Opt%LUCX )  &
-                                         .or. Input_Opt%LSETH2O ), &
-                          Input_Opt  = Input_Opt,                  &
-                          State_Chm  = State_Chm(LCHNK),           &
-                          State_Grid = State_Grid(LCHNK),          &
-                          State_Met  = State_Met(LCHNK),           &
-                          RC         = RC                         )
-
-       ! Trap potential errors
-       IF ( RC /= GC_SUCCESS ) THEN
-          ErrMsg = 'Error encountered in "Set_H2O_Trac" #1!'
-          CALL Error_Stop( ErrMsg, ThisLoc )
-       ENDIF
-
-       ! Only force strat once if using UCX
-       IF (Input_Opt%LSETH2O) Input_Opt%LSETH2O = .FALSE.
-    ENDIF
+    State_Met(LCHNK)%TO3       (1,:nY) = O3col(:nY)
 
     !----------------------------------------------------------
     ! %%% GET SOME NON-EMISSIONS DATA FIELDS VIA HEMCO %%%
@@ -3585,7 +3626,7 @@ contains
        If ( rootChunk ) Write(iulog,*) " MAXVAL(PSO4) = ", &
           MAXVAL(State_Chm(LCHNK)%Species(1,:nY,:nZ,iPSO4))
        DO L = 1, nZ
-          ! Convert from kg/kg to mol/mol
+          ! Convert from kg SO4/kg to mol/mol
           del_h2so4_gasprod(:nY,L) = &
           State_Chm(LCHNK)%Species(1,:nY,nZ+1-L,iPSO4) * MWDry / MWPSO4
        ENDDO
@@ -3594,16 +3635,16 @@ contains
     call aero_model_gasaerexch( loffset           = iFirstCnst - 1,         &
                                 ncol              = NCOL,                   &
                                 lchnk             = LCHNK,                  &
-                                troplev           = Trop_Lev(:nY),          &
+                                troplev           = Trop_Lev(:),            &
                                 delt              = dT,                     &
                                 reaction_rates    = reaction_rates,         &
-                                tfld              = state%t(:nY,:),         &
-                                pmid              = state%pmid(:nY,:),      &
-                                pdel              = state%pdel(:nY,:),      &
+                                tfld              = state%t(:,:),           &
+                                pmid              = state%pmid(:,:),        &
+                                pdel              = state%pdel(:,:),        &
                                 mbar              = mBar,                   &
-                                relhum            = relHum(:nY,:),          &
-                                zm                = state%zm(:nY,:),        &
-                                qh2o              = qH2O(:nY,:),            &
+                                relhum            = relHum(:,:),            &
+                                zm                = state%zm(:,:),          &
+                                qh2o              = qH2O(:,:),              &
                                 cwat              = cldW,                   &
                                 cldfr             = cldFrc,                 &
                                 cldnum            = nCldWtr,                &
