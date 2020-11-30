@@ -322,6 +322,11 @@ EOF
 
     ##izumi
     izu* | i[[:digit:]]* )
+    
+    # Run git and r8 tests
+    export ADDREALKIND_EXE=/fs/cgd/csm/tools/addrealkind/addrealkind;  ./TR8.sh
+    ./TGIT.sh
+
     submit_script_cime="`pwd -P`/test_driver_izumi_cime_${cur_time}.sh"
     export PATH=/cluster/torque/bin:${PATH}
 

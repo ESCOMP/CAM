@@ -327,8 +327,8 @@ module clubb_mf
          wtv = wmin + (wmax-wmin) / (real(clubb_mf_nup,r8)) * real(i,r8)
 
          upw(1,i) = 0.5_r8 * (wlv+wtv)
-         upa(1,i) = 0.5_r8 * erf( wtv/(sqrt(2.)*sigmaw) ) &
-                    - 0.5_r8 * erf( wlv/(sqrt(2.)*sigmaw) )
+         upa(1,i) = 0.5_r8 * erf( wtv/(sqrt(2._r8)*sigmaw) ) &
+                    - 0.5_r8 * erf( wlv/(sqrt(2._r8)*sigmaw) )
 
          upu(1,i) = u(1)
          upv(1,i) = v(1)
@@ -372,10 +372,10 @@ module clubb_mf
            entexp  = exp(-ent(k+1,i)*dzt(k+1))
            entexpu = exp(-ent(k+1,i)*dzt(k+1)/3._r8)
            
-           qtn  = qt(k+1) *(1.-entexp ) + upqt (k,i)*entexp + supqt
-           thln = thl(k+1)*(1.-entexp ) + upthl(k,i)*entexp + supthl
-           un   = u(k+1)  *(1.-entexpu) + upu  (k,i)*entexpu
-           vn   = v(k+1)  *(1.-entexpu) + upv  (k,i)*entexpu
+           qtn  = qt(k+1) *(1._r8-entexp ) + upqt (k,i)*entexp + supqt
+           thln = thl(k+1)*(1._r8-entexp ) + upthl(k,i)*entexp + supthl
+           un   = u(k+1)  *(1._r8-entexpu) + upu  (k,i)*entexpu
+           vn   = v(k+1)  *(1._r8-entexpu) + upv  (k,i)*entexpu
 
            ! get cloud, momentum levels
            if (do_condensation) then
@@ -387,7 +387,7 @@ module clubb_mf
            end if
 
            ! get buoyancy
-           B=gravit*(0.5_r8*(thvn + upthv(k,i))/thv(k+1)-1.)
+           B=gravit*(0.5_r8*(thvn + upthv(k,i))/thv(k+1)-1._r8)
            !if (debug) then
            !  if ( masterproc ) then
            !    write(iulog,*) "B(k,i), k, i ", B, k, i
