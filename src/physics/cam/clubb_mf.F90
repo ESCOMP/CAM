@@ -218,8 +218,9 @@ module clubb_mf
      ! to precip or not to precip
      logical                              :: do_precip = .false.
      !
-     ! to debug flag
-     logical                              :: debug = .false.
+     ! to debug flag (overides stochastic entrainment)
+     logical                              :: debug  = .false.
+     real(r8),parameter                   :: fixent = 0.004_r8
 
      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
      !!!!!!!!!!!!!!!!!!!!!! BEGIN CODE !!!!!!!!!!!!!!!!!!!!!!!
@@ -252,6 +253,10 @@ module clubb_mf
      thlflx    = 0._r8
      qtflx     = 0._r8
 
+     ent       = 0._r8
+     entf      = 0._r8
+     enti      = 0
+
      ! this is the environmental area - by default 1.
      ae = 1._r8
 
@@ -264,11 +269,11 @@ module clubb_mf
      upu   = 0._r8
      upv   = 0._r8
      upqc  = 0._r8
-     ent   = 0._r8
      upth  = 0._r8
      upql  = 0._r8
      upqi  = 0._r8
      upqv  = 0._r8
+     upqs  = 0._r8
 
      ! unique identifier
      zcb_unset = 9999999._r8
@@ -280,26 +285,29 @@ module clubb_mf
      ! if surface buoyancy is positive then do mass-flux
      if ( wthv > 0._r8 ) then
 
-       ! get entrainment coefficient, dz/L0
-       do i=1,clubb_mf_nup
-         do k=2,nz
-           entf(k,i) = dzt(k) / clubb_mf_L0
-         enddo
-       enddo
-
-       ! get poisson, P(dz/L0)
        if (debug) then
-         enti(:,:) = 1
+         ! overide stochastic entrainment with fixent
+         ent(:,:) = fixent
        else
-         call poisson( nz, clubb_mf_nup, entf, enti, thl(nz))
-       end if
 
-       ! get entrainment, ent=ent0/dz*P(dz/L0)
-       do i=1,clubb_mf_nup
-         do k=2,nz
-           ent(k,i) = real( enti(k,i))*clubb_mf_ent0/dzt(k)
+         ! get entrainment coefficient, dz/L0
+         do i=1,clubb_mf_nup
+           do k=1,nz
+             entf(k,i) = dzt(k) / clubb_mf_L0
+           enddo
          enddo
-       enddo
+
+         ! get poisson, P(dz/L0)
+         call poisson( nz, clubb_mf_nup, entf, enti, u(2:5))
+
+         ! get entrainment, ent=ent0/dz*P(dz/L0)
+         do i=1,clubb_mf_nup
+           do k=1,nz
+             ent(k,i) = real( enti(k,i))*clubb_mf_ent0/dzt(k)
+           enddo
+         enddo
+
+       end if
 
        ! get surface conditions
        wstar   = max( wstarmin, (gravit/thv(1)*wthv*pblh)**(1._r8/3._r8) )
@@ -380,11 +388,11 @@ module clubb_mf
 
            ! get buoyancy
            B=gravit*(0.5_r8*(thvn + upthv(k,i))/thv(k+1)-1.)
-           if (debug) then
-             if ( masterproc ) then
-               write(iulog,*) "B(k,i), k, i ", B, k, i
-             end if
-           end if
+           !if (debug) then
+           !  if ( masterproc ) then
+           !    write(iulog,*) "B(k,i), k, i ", B, k, i
+           !  end if
+           !end if
 
            ! get wn^2
            wp = wb*ent(k+1,i)
@@ -610,69 +618,62 @@ module clubb_mf
   end subroutine precip_mf
 
   subroutine poisson(nz,nup,lambda,poi,state)
+  !**********************************************************************
+  ! Set a unique (but reproduceble) seed for the kiss RNG
+  ! Call Poisson deviate
+  ! By Adam Herrington
+  !**********************************************************************
+   use shr_RandNum_mod, only: ShrKissRandGen
 
-       integer, intent(in)                     :: nz,nup
-       real(r8), intent(in)                    :: state
-       real(r8), dimension(nz,nup), intent(in) :: lambda
-       integer, dimension(nz,nup), intent(out) :: poi
-       integer                                 :: i,j
+       integer,                     intent(in)  :: nz,nup
+       real(r8), dimension(4),      intent(in)  :: state
+       real(r8), dimension(nz,nup), intent(in)  :: lambda
+       integer,  dimension(nz,nup), intent(out) :: poi
+       integer,  dimension(1,4)                 :: tmpseed
+       integer                                  :: i,j
+       type(ShrKissRandGen)                     :: kiss_gen
 
-       call set_seed_from_state(state)
+       ! Compute seed
+       tmpseed(1,1) = int((state(1) - int(state(1))) * 1000000000._r8)
+       tmpseed(1,2) = int((state(2) - int(state(2))) * 1000000000._r8)
+       tmpseed(1,3) = int((state(3) - int(state(3))) * 1000000000._r8)
+       tmpseed(1,4) = int((state(4) - int(state(4))) * 1000000000._r8)
+
+       ! Set seed
+       kiss_gen = ShrKissRandGen(tmpseed)
 
        do i=1,nz
          do j=1,nup
-           call knuth(lambda(i,j),poi(i,j))
+           call knuth(kiss_gen,lambda(i,j),poi(i,j))
          enddo
        enddo
 
   end subroutine poisson
 
-  subroutine set_seed_from_state(state)
-  !**********************************************************************
-  ! Set a unique (but reproduceble) seed using state
-  ! By Adam Herrington
-  !**********************************************************************
-
-       real(r8),intent(in)  :: state
-       integer, allocatable :: seed(:)
-       integer               :: i,n,tmpseed
-
-       call random_seed(size = n)
-
-       if (allocated(seed)) deallocate(seed)
-       allocate(seed(n))
-
-       tmpseed = int((state - int(state)) * 1000000000._r8)
-       do i=1,n
-         seed(i) = tmpseed
-       end do
-
-       call random_seed(put=seed)
-       deallocate(seed)
-
-  end subroutine set_seed_from_state
-
-  subroutine knuth(lambda,kout)
+  subroutine knuth(kiss_gen,lambda,kout)
   !**********************************************************************
   ! Discrete random poisson from Knuth 
   ! The Art of Computer Programming, v2, 137-138
   ! By Adam Herrington
   !**********************************************************************
+   use shr_RandNum_mod, only: ShrKissRandGen
 
-       real(r8), intent(in) :: lambda
-       integer, intent(out) :: kout
+       type(ShrKissRandGen), intent(inout) :: kiss_gen
+       real(r8),             intent(in)    :: lambda
+       integer,              intent(out)   :: kout
 
-       !Local variables
-       real(r8) :: puni, tmpuni, explam
-       integer  :: k
+       ! Local variables
+       real(r8), dimension(1,1) :: tmpuni
+       real(r8)                 :: puni, explam
+       integer                  :: k
 
        k = 0
        explam = exp(-1._r8*lambda)
        puni = 1._r8
        do while (puni > explam)
          k = k + 1
-         call random_number(tmpuni)
-         puni = puni*tmpuni
+         call kiss_gen%random(tmpuni)
+         puni = puni*tmpuni(1,1)
        end do
        kout = k - 1
 
