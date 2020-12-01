@@ -2862,7 +2862,10 @@ contains
        State_Met(LCHNK)%TMPU2    (1,J,L) = state%t(J,nZ+1-L)
     ENDDO
     ENDDO
-    !TMMF, FIX ME
+    ! Note: Setting DQRLSAN to zero in the top layer prevents upcoming NaNs
+    ! in the GEOS-Chem wet deposition routines. Given the altitude, it should
+    ! be zero anyway, this is just to prevent any numerical artifacts from
+    ! creeping in.
     State_Met(LCHNK)%DQRLSAN  (1,:nY,nZ) = 0.0e+00_fp
 
     ! Field      : T
