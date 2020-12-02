@@ -388,11 +388,11 @@ module clubb_mf
 
            ! get buoyancy
            B=gravit*(0.5_r8*(thvn + upthv(k,i))/thv(k+1)-1._r8)
-           !if (debug) then
-           !  if ( masterproc ) then
-           !    write(iulog,*) "B(k,i), k, i ", B, k, i
-           !  end if
-           !end if
+           if (debug) then
+             if ( masterproc ) then
+               write(iulog,*) "B(k,i), k, i ", B, k, i
+             end if
+           end if
 
            ! get wn^2
            wp = wb*ent(k+1,i)
