@@ -1928,7 +1928,7 @@ contains
     use rad_constituents,    only : rad_cnst_get_info
 
     ! GEOS-Chem version of physical constants
-    use PhysConstants,       only : PI, PI_180, g0, AVO, Re
+    use PhysConstants,       only : PI, PI_180, g0, AVO, Re, g0_100
     ! CAM version of physical constants
     use PhysConst,           only : MWDry, Gravit
 
@@ -2247,6 +2247,9 @@ contains
 
     ! Initialize tendency array
     CALL Physics_ptend_init(ptend, state%psetcols, 'chemistry', lq=lq)
+
+    ! Reset chemical tendencies
+    ptend%q(:,:,:) = 0.0e+0_r8
 
     ! Determine current date and time
     CALL Get_Curr_Date( yr  = currYr,  &
@@ -3408,14 +3411,26 @@ contains
 
     DO N = 1, pcnst
        M = map2GC(N)
-       IF ( M < 0 ) CYCLE
 
-       DO J = 1, nY
-       DO L = 1, nZ
-          State_Chm(LCHNK)%Species(1,J,L,M) = State_Chm(LCHNK)%Species(1,J,L,M) &
-                                            + eflx(J,nZ+1-L,N) * dT
-       ENDDO
-       ENDDO
+       IF ( M > 0 ) THEN
+          ! Add to GEOS-Chem species
+          DO J = 1, nY
+          DO L = 1, nZ
+             State_Chm(LCHNK)%Species(1,J,L,M) = State_Chm(LCHNK)%Species(1,J,L,M) &
+                                               + eflx(J,nZ+1-L,N) * dT
+          ENDDO
+          ENDDO
+       ELSE
+          ! Add to constituent (mostly for MAM4 aerosols)
+          ! Convert from kg/m2/s to kg/kg/s
+          DO J = 1, nY
+          DO L = 1, nZ
+             ptend%q(J,nZ+1-L,N) = ptend%q(J,nZ+1-L,N) &
+                                 + eflx(J,nZ+1-L,N)    &
+                                   / ( g0_100 * State_Met(LCHNK)%DELP_DRY(1,J,L) )
+          ENDDO
+          ENDDO
+       ENDIF
     ENDDO
 
     ! Convert back to original unit
@@ -3715,17 +3730,19 @@ contains
                            state      = state,             &
                            LCHNK      = LCHNK             )
 
-    ! Re-flip all the arrays vertically
-    ptend%q(:,:,:) = 0.0e+0_r8
     MMR_End = 0.0e+0_r8
     DO N = 1, pcnst
        M = map2GC(N)
        IF ( M > 0 ) THEN
+          ! Add change in mass mixing ratio to tendencies.
+          ! For NEU wet deposition, the wet removal rates are added to
+          ! ptend.
           DO J = 1, nY
           DO L = 1, nZ
              MMR_End (J,L,M) = REAL(State_Chm(LCHNK)%Species(1,J,L,M),r8)
              MMR_TEnd(J,L,M) = MMR_End(J,L,M) - MMR_Beg(J,L,M)
-             ptend%q(J,nZ+1-L,N) = (MMR_End(J,L,M)-MMR_Beg(J,L,M))/dT
+             ptend%q(J,nZ+1-L,N) = ptend%q(J,nZ+1-L,N) &
+                                 + (MMR_End(J,L,M)-MMR_Beg(J,L,M))/dT
           ENDDO
           ENDDO
        ENDIF

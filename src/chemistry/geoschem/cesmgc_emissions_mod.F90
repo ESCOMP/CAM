@@ -32,7 +32,32 @@ MODULE CESMGC_Emissions_Mod
   PUBLIC  :: CESMGC_Emissions_Calc
   PUBLIC  :: CESMGC_Emissions_Final
 
+  ! Constituent number for NO
   INTEGER :: iNO
+
+  ! Aerosol constituent number
+  INTEGER :: iBC1
+  INTEGER :: iBC4
+  INTEGER :: iH2SO4
+  INTEGER :: iSOA11
+  INTEGER :: iSOA12
+  INTEGER :: iSOA21
+  INTEGER :: iSOA22
+  INTEGER :: iSOA31
+  INTEGER :: iSOA32
+  INTEGER :: iSOA41
+  INTEGER :: iSOA42
+  INTEGER :: iSOA51
+  INTEGER :: iSOA52
+  INTEGER :: iPOM1
+  INTEGER :: iPOM4
+
+  INTEGER :: iBCPI
+  INTEGER :: iBCPO
+  INTEGER :: iOCPI
+  INTEGER :: iOCPO
+  INTEGER :: iSO4
+  INTEGER :: iSOAS
 
   ! MEGAN Emissions
   INTEGER,  ALLOCATABLE :: megan_indices_map(:) 
@@ -99,6 +124,32 @@ CONTAINS
 
     ! Get constituent index for NO
     CALL cnst_get_ind('NO', iNO, abort=.True.)
+
+#if defined( MODAL_AERO_4MODE )
+    ! Get constituent index for aerosols
+    CALL cnst_get_ind('bc_a1',       iBC1,   abort=.True.)
+    CALL cnst_get_ind('bc_a4',       iBC4,   abort=.True.)
+    CALL cnst_get_ind('soa1_a1',     iSOA11, abort=.True.)
+    CALL cnst_get_ind('soa1_a2',     iSOA12, abort=.True.)
+    CALL cnst_get_ind('soa2_a1',     iSOA21, abort=.True.)
+    CALL cnst_get_ind('soa2_a2',     iSOA22, abort=.True.)
+    CALL cnst_get_ind('soa3_a1',     iSOA31, abort=.True.)
+    CALL cnst_get_ind('soa3_a2',     iSOA32, abort=.True.)
+    CALL cnst_get_ind('soa4_a1',     iSOA41, abort=.True.)
+    CALL cnst_get_ind('soa4_a2',     iSOA42, abort=.True.)
+    CALL cnst_get_ind('soa5_a1',     iSOA51, abort=.True.)
+    CALL cnst_get_ind('soa5_a2',     iSOA52, abort=.True.)
+    CALL cnst_get_ind('H2SO4',       iH2SO4, abort=.True.)
+    CALL cnst_get_ind('pom_a1',      iPOM1,  abort=.True.)
+    CALL cnst_get_ind('pom_a4',      iPOM4,  abort=.True.)
+
+    CALL cnst_get_ind('GC_AER_BCPI', iBCPI,  abort=.True.)
+    CALL cnst_get_ind('GC_AER_BCPO', iBCPO,  abort=.True.)
+    CALL cnst_get_ind('GC_AER_SOAS', iSOAS,  abort=.True.)
+    CALL cnst_get_ind('GC_AER_SO4',  iSO4,   abort=.True.)
+    CALL cnst_get_ind('GC_AER_OCPI', iOCPI,  abort=.True.)
+    CALL cnst_get_ind('GC_AER_OCPO', iOCPO,  abort=.True.)
+#endif
 
     !-----------------------------------------------------------------------
     !	... initialize the lightning module
@@ -170,11 +221,11 @@ CONTAINS
           ENDIF
 
           ! MEGAN  history fields
-          CALL addfld( 'MEG_'//TRIM(SpcName), horiz_only, 'A', 'kg/m2/s', &
+          CALL Addfld( 'MEG_'//TRIM(SpcName), horiz_only, 'A', 'kg/m2/s', &
                Description )
 
           !if (history_chemistry) then
-          CALL add_default('MEG_'//TRIM(SpcName), 1, ' ')
+          CALL Add_default('MEG_'//TRIM(SpcName), 1, ' ')
           !endif
        ENDDO
     ENDIF
@@ -259,7 +310,6 @@ CONTAINS
 
     ! Logical
     LOGICAL                                :: rootChunk
-    LOGICAL, SAVE                          :: FIRST = .True.
 
     ! Objects
     TYPE(physics_buffer_desc), POINTER     :: pbuf_chnk(:) ! slice of pbuf in current chunk
@@ -306,7 +356,7 @@ CONTAINS
        ENDIF
 
        IF ( tmpIdx < 0 ) THEN
-          IF ( rootChunk ) Write(iulog,'(a,a)') "CESMGC_Emissions_Calc: Field not found ", &
+          IF ( rootChunk ) Write(iulog,'(a,a)') " CESMGC_Emissions_Calc: Field not found ", &
              TRIM(fldname_ns)
        ELSE
           ! This is already in chunk, retrieve it
@@ -328,15 +378,15 @@ CONTAINS
           pbuf_chnk => NULL()
 
           IF ( MINVAL(eflx(:,:,M)) < 0.0e+00_r8 ) THEN
-             Write(iulog,*) "CESMGC_Emissions_Calc: HEMCO emission flux is negative for ", &
+             Write(iulog,*) " CESMGC_Emissions_Calc: HEMCO emission flux is negative for ", &
                 TRIM(cnst_name(M)), " with value ", MINVAL(eflx(:,:,M)), " at ", &
                 MINLOC(eflx(:,:,M))
           ENDIF
 
           IF ( rootChunk .and. ( MAXVAL(eflx(1:nY,:,M)) > 0.0e+0_r8 ) ) THEN
-             Write(iulog,'(a,a,a,a)') "CESMGC_Emissions_Calc: HEMCO flux ", &
+             Write(iulog,'(a,a,a,a)') " CESMGC_Emissions_Calc: HEMCO flux ", &
                 TRIM(fldname_ns), " added to ", TRIM(cnst_name(M))
-             Write(iulog,'(a,a,E16.4)') "CESMGC_Emissions_Calc: Maximum flux ", &
+             Write(iulog,'(a,a,E16.4)') " CESMGC_Emissions_Calc: Maximum flux ", &
                 TRIM(fldname_ns), MAXVAL(eflx(1:nY,:,M))
           ENDIF
        ENDIF
@@ -362,10 +412,46 @@ CONTAINS
     ENDDO
     ENDDO
 
+#if defined( MODAL_AERO_4MODE )
     !-----------------------------------------------------------------------
     ! Aerosol emissions (dust + seasalt) ...
     !-----------------------------------------------------------------------
     call aero_model_emissions( state, cam_in )
+
+    ! Since GEOS-Chem DST* aerosols are inherited from MAM's DST, we do not
+    ! need to feed MAM dust emissions into the GEOS-Chem DST* constituents
+    ! Same thing applies for sea salt.
+
+    ! However, emissions of other aerosols (black carbon, organic carbon,
+    ! secondary organic aerosols and SO4), as read by HEMCO, need to be fed
+    ! to MAM's aerosol emission flux
+    eflx(:nY,:nZ,iBC1)   = eflx(:nY,:nZ,iBCPI)
+    eflx(:nY,:nZ,iBCPI)  = 0.0e+00_r8
+    eflx(:nY,:nZ,iBC4)   = eflx(:nY,:nZ,iBCPO)
+    eflx(:nY,:nZ,iBCPO)  = 0.0e+00_r8
+
+    eflx(:nY,:nZ,iH2SO4) = eflx(:nY,:nZ,iSO4)
+    eflx(:nY,:nZ,iSO4)   = 0.0e+00_r8
+
+    ! For SOA emission, split evently GEOS-Chem SOAS emission into each 
+    ! VBS bin.
+    eflx(:nY,:nZ,iSOA11) = eflx(:nY,:nZ,iSOAS) / 10.0e+00_r8
+    eflx(:nY,:nZ,iSOA12) = eflx(:nY,:nZ,iSOAS) / 10.0e+00_r8
+    eflx(:nY,:nZ,iSOA21) = eflx(:nY,:nZ,iSOAS) / 10.0e+00_r8
+    eflx(:nY,:nZ,iSOA22) = eflx(:nY,:nZ,iSOAS) / 10.0e+00_r8
+    eflx(:nY,:nZ,iSOA31) = eflx(:nY,:nZ,iSOAS) / 10.0e+00_r8
+    eflx(:nY,:nZ,iSOA32) = eflx(:nY,:nZ,iSOAS) / 10.0e+00_r8
+    eflx(:nY,:nZ,iSOA41) = eflx(:nY,:nZ,iSOAS) / 10.0e+00_r8
+    eflx(:nY,:nZ,iSOA42) = eflx(:nY,:nZ,iSOAS) / 10.0e+00_r8
+    eflx(:nY,:nZ,iSOA51) = eflx(:nY,:nZ,iSOAS) / 10.0e+00_r8
+    eflx(:nY,:nZ,iSOA52) = eflx(:nY,:nZ,iSOAS) / 10.0e+00_r8
+    eflx(:nY,:nZ,iSO4S)  = 0.0e+00_r8
+
+    eflx(:nY,:nZ,iPOM1)  = eflx(:nY,:nZ,iOCPI)
+    eflx(:nY,:nZ,iOCPI)  = 0.0e+00_r8
+    eflx(:nY,:nZ,iPOM4)  = eflx(:nY,:nZ,iOCPO)
+    eflx(:nY,:nZ,iOCPO)  = 0.0e+00_r8
+#endif
 
     !-----------------------------------------------------------------------
     ! MEGAN emissions ...
@@ -417,8 +503,6 @@ CONTAINS
     !-----------------------------------------------------------------------
     cam_in%cflx(1:nY,:) = cam_in%cflx(1:nY,:) + eflx(1:nY,nZ,:)
     eflx(1:nY,nZ,:)     = 0.0e+00_r8
-
-    IF ( FIRST ) FIRST = .False.
 
   END SUBROUTINE CESMGC_Emissions_Calc
 !EOC
