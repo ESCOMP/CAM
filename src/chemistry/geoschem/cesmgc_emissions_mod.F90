@@ -445,7 +445,7 @@ CONTAINS
     eflx(:nY,:nZ,iSOA42) = eflx(:nY,:nZ,iSOAS) / 10.0e+00_r8
     eflx(:nY,:nZ,iSOA51) = eflx(:nY,:nZ,iSOAS) / 10.0e+00_r8
     eflx(:nY,:nZ,iSOA52) = eflx(:nY,:nZ,iSOAS) / 10.0e+00_r8
-    eflx(:nY,:nZ,iSO4S)  = 0.0e+00_r8
+    eflx(:nY,:nZ,iSOAS)  = 0.0e+00_r8
 
     eflx(:nY,:nZ,iPOM1)  = eflx(:nY,:nZ,iOCPI)
     eflx(:nY,:nZ,iOCPI)  = 0.0e+00_r8
