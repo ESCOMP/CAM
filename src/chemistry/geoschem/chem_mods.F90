@@ -14,6 +14,9 @@
       REAL(r8)             :: MWRatio(nTracersMax)
       REAL(r8)             :: ref_MMR(nTracersMax)
 
+      ! Index of first constituent
+      INTEGER              :: iFirstCnst
+
       ! Short-lived species (i.e. not advected)
       INTEGER, PARAMETER   :: nSlsMax = 500        ! UNadvected species only
       INTEGER              :: nSls    

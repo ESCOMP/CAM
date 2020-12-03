@@ -47,6 +47,7 @@ module chemistry
   use chem_mods,           only : adv_mass
   use chem_mods,           only : mwRatio
   use chem_mods,           only : ref_MMR
+  use chem_mods,           only : iFirstCnst
   use chem_mods,           only : nSlsMax
   use chem_mods,           only : nSls
   use chem_mods,           only : slsNames, slsLongNames
@@ -127,12 +128,9 @@ module chemistry
   INTEGER                    :: NDX_CMFDQR    ! Convective total precip. production rate [kg/kg/s]
 
   ! Get constituent indices
-  INTEGER :: ixCldLiq  ! Cloud liquid water
-  INTEGER :: ixCldIce  ! Cloud ice
-  INTEGER :: ixNDrop   ! Cloud droplet number index
-
-  ! Index of 1st constituent
-  INTEGER :: iFirstCnst = -1
+  INTEGER                    :: ixCldLiq  ! Cloud liquid water
+  INTEGER                    :: ixCldIce  ! Cloud ice
+  INTEGER                    :: ixNDrop   ! Cloud droplet number index
 
   ! lightning
   REAL(r8)                   :: lght_no_prd_factor = 1._r8
@@ -145,23 +143,23 @@ module chemistry
   REAL(r8)                   :: Air_Total
 
   ! Filenames to compute dry deposition velocities similarly to MOZART
-  character(len=shr_kind_cl)  :: clim_soilw_file = 'clim_soilw_file'
-  character(len=shr_kind_cl)  :: depvel_file     = ''
-  character(len=shr_kind_cl)  :: depvel_lnd_file = 'depvel_lnd_file'
-  character(len=shr_kind_cl)  :: season_wes_file = 'season_wes_file'
+  character(len=shr_kind_cl) :: clim_soilw_file = 'clim_soilw_file'
+  character(len=shr_kind_cl) :: depvel_file     = ''
+  character(len=shr_kind_cl) :: depvel_lnd_file = 'depvel_lnd_file'
+  character(len=shr_kind_cl) :: season_wes_file = 'season_wes_file'
 
   character(len=shr_kind_cl) :: srf_emis_specifier(pcnst) = ''
   character(len=shr_kind_cl) :: ext_frc_specifier(pcnst) = ''
 
-  character(len=24)  :: srf_emis_type = 'CYCLICAL' ! 'CYCLICAL' | 'SERIAL' |  'INTERP_MISSING_MONTHS'
-  integer            :: srf_emis_cycle_yr  = 0
-  integer            :: srf_emis_fixed_ymd = 0
-  integer            :: srf_emis_fixed_tod = 0
+  character(len=24)          :: srf_emis_type = 'CYCLICAL' ! 'CYCLICAL' | 'SERIAL' |  'INTERP_MISSING_MONTHS'
+  integer                    :: srf_emis_cycle_yr  = 0
+  integer                    :: srf_emis_fixed_ymd = 0
+  integer                    :: srf_emis_fixed_tod = 0
 
-  character(len=24)  :: ext_frc_type = 'CYCLICAL' ! 'CYCLICAL' | 'SERIAL' |  'INTERP_MISSING_MONTHS'
-  integer            :: ext_frc_cycle_yr  = 0
-  integer            :: ext_frc_fixed_ymd = 0
-  integer            :: ext_frc_fixed_tod = 0
+  character(len=24)          :: ext_frc_type = 'CYCLICAL' ! 'CYCLICAL' | 'SERIAL' |  'INTERP_MISSING_MONTHS'
+  integer                    :: ext_frc_cycle_yr  = 0
+  integer                    :: ext_frc_fixed_ymd = 0
+  integer                    :: ext_frc_fixed_tod = 0
 
 
 !================================================================================================
@@ -327,6 +325,7 @@ contains
         CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
+    iFirstCnst = -1
     map2GC     = -1
     map2GCinv  = -1
     map2chm    = -1
@@ -1353,7 +1352,7 @@ contains
     Input_Opt%ddVel_CLM              = .False.
 
     ! applyQtend: apply tendencies of water vapor to specific humidity
-    Input_Opt%applyQtend             = .True.
+    Input_Opt%applyQtend             = .False.
 
     ! Read in data for Linoz. All CPUs allocate one array to hold the data. Only
     ! the root CPU reads in the data; then we copy it out to a temporary array,
@@ -1761,7 +1760,6 @@ contains
     MWO3    = REAL(SpcInfo%MW_g,r8)
     ! Free pointer
     SpcInfo => NULL()
-
 
     ! Get indices for physical fields in physics buffer
     NDX_PBLH     = pbuf_get_index('pblh'     )
@@ -2221,7 +2219,7 @@ contains
     DO M = 1, ntot_amode
        DO SM = 1, nspec_amode(M)
           P = map2MAM4(SM,M)
-          State_Chm(LCHNK)%Species(1,:nY,:nZ,P) = 0.0e+00_fp
+          IF ( P > 0 ) State_Chm(LCHNK)%Species(1,:nY,:nZ,P) = 0.0e+00_fp
        ENDDO
     ENDDO
 
@@ -2244,6 +2242,10 @@ contains
        ENDDO
     ENDDO
 #endif
+
+    ! If H2O tendencies are propagated to specific humidity, then make sure
+    ! that Q actually applies tendencies
+    IF ( Input_Opt%applyQtend ) lq(cQ) = .True.
 
     ! Initialize tendency array
     CALL Physics_ptend_init(ptend, state%psetcols, 'chemistry', lq=lq)
@@ -3750,7 +3752,7 @@ contains
 
     IF ( Input_Opt%applyQtend ) THEN
        ! Apply GEOS-Chem's H2O mixing ratio tendency to CAM's specific humidity
-       ! TMMF, this might need to set lq(cQ) = lq(cH2O) ( = .True. )
+       ! This requires to set lq(cQ) = lq(cH2O) ( = .True. )
        ptend%q(:,:,cQ) = ptend%q(:,:,cH2O)
     ENDIF
 
@@ -4013,9 +4015,10 @@ contains
     ! Reset surface fluxes
     !-----------------------------------------------------------------------
 
-    DO M = 2, pcnst
-       N = map2chm(M)
-       IF ( N > 0 ) cam_in%cflx(1:nY,N) = 0.0e+0_r8
+    DO M = iFirstCnst, pcnst
+       !N = map2chm(M)
+       !IF ( N > 0 ) cam_in%cflx(1:nY,N) = 0.0e+0_r8
+       cam_in%cflx(1:nY,M) = 0.0e+0_r8
     ENDDO
 
   end subroutine chem_emissions

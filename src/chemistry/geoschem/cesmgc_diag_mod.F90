@@ -68,6 +68,7 @@ CONTAINS
   USE CHEM_MODS,           ONLY : tracerNames, tracerLongNames
   USE CHEM_MODS,           ONLY : slsNames, slsLongNames
   USE CHEM_MODS,           ONLY : gas_pcnst
+  USE CHEM_MODS,           ONLY : iFirstCnst
   USE MO_TRACNAME,         ONLY : solsym
   USE CONSTITUENTS,        ONLY : pcnst, cnst_name
   USE CAM_HISTORY,         ONLY : addfld, add_default, horiz_only
@@ -171,7 +172,7 @@ CONTAINS
     ENDIF
 
     ! Surface fluxes (emissions - drydep)
-    DO I = 1, pcnst
+    DO I = iFirstCnst, pcnst
        SpcName = 'SurfFlux_'//TRIM(cnst_name(I))
        CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'kg/m2/s', &
           TRIM(SpcName)//' surface flux')
@@ -310,6 +311,7 @@ CONTAINS
   USE CHEM_MODS,           ONLY : slsNames
   USE CHEM_MODS,           ONLY : nSls
   USE CHEM_MODS,           ONLY : map2GC, map2Idx, map2GC_Sls
+  USE CHEM_MODS,           ONLY : iFirstCnst
   USE DRYDEP_MOD,          ONLY : depName, Ndvzind
   USE CAMSRFEXCH,          ONLY : cam_in_t
   USE PHYSICS_TYPES,       ONLY : physics_state
@@ -392,7 +394,7 @@ CONTAINS
     rootChunk = ( MasterProc.and.(LCHNK==BEGCHUNK) )
 
     ! Write diagnostic output
-    DO N = 1, pcnst
+    DO N = iFirstCnst, pcnst
        M = map2GC(N)
        I = map2Idx(N)
        IF ( M > 0 ) THEN
@@ -455,7 +457,7 @@ CONTAINS
     ENDIF
 
     ! Surface fluxes (emissions - drydep)
-    DO N = 1, pcnst
+    DO N = iFirstCnst, pcnst
        SpcName = 'SurfFlux_'//TRIM(cnst_name(N))
        CALL OutFld( TRIM(SpcName), cam_in%cflx(:nY,N), nY, LCHNK )
     ENDDO
