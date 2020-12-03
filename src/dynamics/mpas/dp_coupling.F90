@@ -740,8 +740,8 @@ subroutine dry_hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, thet
    !
    ! TODO: Should temperature here be virtual temperature?
    !
-   ptop_int(:) = 2.0 * ptop_mid(:) &
-                 / (1.0 + exp( (zgrid(nVertLevels+1,:) - zgrid(nVertLevels,:)) * gravity / rgas / ttop_mid(:)))
+   ptop_int(:) = 2.0_r8 * ptop_mid(:) &
+                 / (1.0_r8 + exp( (zgrid(nVertLevels+1,:) - zgrid(nVertLevels,:)) * gravity / rgas / ttop_mid(:)))
 
 
    !
@@ -759,7 +759,7 @@ subroutine dry_hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, thet
       pintdry(nVertLevels+1,iCell) = ptop_int(iCell)
       do k = nVertLevels, 1, -1
          pintdry(k,iCell) = pintdry(k+1,iCell) + gravity * zz(k,iCell) * rho_zz(k,iCell) * dz(k)
-         pmiddry(k,iCell) = 0.5 * (pintdry(k+1,iCell) + pintdry(k,iCell))
+         pmiddry(k,iCell) = 0.5_r8 * (pintdry(k+1,iCell) + pintdry(k,iCell))
       end do
    end do
 
