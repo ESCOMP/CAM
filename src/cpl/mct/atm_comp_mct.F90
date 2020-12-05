@@ -31,8 +31,9 @@ module atm_comp_mct
   use cam_instance     , only: cam_instance_init, inst_suffix, inst_index
   use cam_control_mod  , only: cam_ctrl_set_orbit
   use radiation        , only: radiation_nextsw_cday
-  use phys_grid        , only: get_ncols_p, ngcols, get_gcol_p, get_rlat_all_p, &
-	                       get_rlon_all_p, get_area_all_p
+  use phys_grid        , only: ngcols_phys => ngcols
+  use phys_grid        , only: get_ncols_p, get_gcol_p, get_area_all_p
+  use phys_grid        , only: get_rlat_all_p, get_rlon_all_p
   use ppgrid           , only: pcols, begchunk, endchunk
   use dyn_grid         , only: get_horiz_grid_dim_d
   use camsrfexch       , only: cam_out_t, cam_in_t
@@ -48,6 +49,7 @@ module atm_comp_mct
 
   implicit none
   private
+  save
 
 !--------------------------------------------------------------------------
 ! Public interfaces
@@ -81,9 +83,11 @@ module atm_comp_mct
 
   logical :: dart_mode = .false.
 
-!================================================================================
+  integer :: pgcols ! XXgoldyXX: Weak scaling test, should go away
+
+!==============================================================================
 CONTAINS
-!================================================================================
+!==============================================================================
 
   subroutine atm_init_mct( EClock, cdata_a, x2a_a, a2x_a, NLFilename )
 
@@ -281,6 +285,15 @@ CONTAINS
             curr_tod=curr_tod, &
             cam_out=cam_out, &
             cam_in=cam_in)
+
+       call get_horiz_grid_dim_d(hdim1_d, hdim2_d)
+       ! Adjust number of columns depending on type of physics grid
+       !!XXG: Weak scaling work around (remove once move to WS is complete)
+       pgcols = ngcols_phys
+       if (pgcols < 0) then
+          pgcols = hdim1_d * hdim2_d
+       end if
+
        !
        ! Initialize MCT gsMap, domain and attribute vectors (and dof)
        !
@@ -309,8 +322,8 @@ CONTAINS
        ! Set flag to specify that an extra albedo calculation is to be done (i.e. specify active)
        !
        call seq_infodata_PutData(infodata, atm_prognostic=.true.)
-       call get_horiz_grid_dim_d(hdim1_d, hdim2_d)
        call seq_infodata_PutData(infodata, atm_nx=hdim1_d, atm_ny=hdim2_d)
+
 
        ! Set flag to indicate that CAM will provide carbon and dust deposition fluxes.
        ! This is now hardcoded to .true. since the ability of CICE to read these
@@ -640,7 +653,7 @@ CONTAINS
     end do
 
     nlcols = get_nlcols_p()
-    call mct_gsMap_init( gsMap_atm, gindex, mpicom_atm, ATMID, nlcols, ngcols)
+    call mct_gsMap_init( gsMap_atm, gindex, mpicom_atm, ATMID, nlcols, pgcols)
 
     deallocate(gindex)
 
@@ -794,7 +807,7 @@ CONTAINS
     call getfil(pname_srf_cam, fname_srf_cam)
 
     call cam_pio_openfile(File, fname_srf_cam, 0)
-    call pio_initdecomp(pio_subsystem, pio_double, (/ngcols/), dof, iodesc)
+    call pio_initdecomp(pio_subsystem, pio_double, (/pgcols/), dof, iodesc)
     allocate(tmp(size(dof)))
 
     nf_x2a = mct_aVect_nRattr(x2a_a)
@@ -869,12 +882,12 @@ CONTAINS
          yr_spec=yr_spec, mon_spec=mon_spec, day_spec=day_spec, sec_spec= sec_spec )
 
     call cam_pio_createfile(File, fname_srf_cam, 0)
-    call pio_initdecomp(pio_subsystem, pio_double, (/ngcols/), dof, iodesc)
+    call pio_initdecomp(pio_subsystem, pio_double, (/pgcols/), dof, iodesc)
 
     nf_x2a = mct_aVect_nRattr(x2a_a)
     allocate(varid_x2a(nf_x2a))
 
-    rcode = pio_def_dim(File,'x2a_nx',ngcols,dimid(1))
+    rcode = pio_def_dim(File,'x2a_nx',pgcols,dimid(1))
     do k = 1,nf_x2a
        call mct_aVect_getRList(mstring,k,x2a_a)
        itemc = mct_string_toChar(mstring)
@@ -886,7 +899,7 @@ CONTAINS
     nf_a2x = mct_aVect_nRattr(a2x_a)
     allocate(varid_a2x(nf_a2x))
 
-    rcode = pio_def_dim(File,'a2x_nx',ngcols,dimid(1))
+    rcode = pio_def_dim(File,'a2x_nx',pgcols,dimid(1))
     do k = 1,nf_a2x
        call mct_aVect_getRList(mstring,k,a2x_a)
        itemc = mct_string_toChar(mstring)

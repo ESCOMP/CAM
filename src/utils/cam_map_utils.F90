@@ -357,7 +357,7 @@ contains
       this%dest(2) = 2
     end if
     ! We may have holes in the 'block' decomposition which is specified by
-    ! having src(2) < 0. 
+    ! having src(2) < 0.
     ! NB: This is currently a special purpose hack in that it is purely
     !     convention that the last dimension specifies the block index and
     !     that those blocks may not be filled.
@@ -678,6 +678,9 @@ contains
     integer                       :: tind, tlen     ! Temporarys
     integer                       :: i1, i2, i3, i4, i5, i6, i7
     integer                       :: i(7)
+    character(len=256)            :: errmsg
+    character(len=32)             :: errfmt
+    character(len=*), parameter   :: subname = 'cam_filemap_get_filemap: '
 
     ! This shouldn't happen but, who knows what evil lurks in the hearts of SEs
     if (associated(filemap)) then
@@ -703,7 +706,7 @@ contains
     if (present(src_in)) then
       mapcnt = size(src_in)  ! Just used until end of loop below
       if (mapcnt > max_srcs) then
-        call endrun('cam_filemap_get_filemap: src_in too large')
+        call endrun(subname//'src_in too large')
       end if
     end if
     do j = 1, max_srcs
@@ -737,7 +740,15 @@ contains
     !   it is still an error if the map has more elements than the array
     mapSize = this%num_elem()
     if (mapPos < this%num_mapped()) then
-      call endrun('cam_filemap_get_filemap: Map size too large for array dims')
+       if (mapcnt > 1) then
+          write(errfmt, '(a,i0,2a)') "(a,i0,a,", mapcnt, '(i0,", "),")")'
+       else
+          write(errfmt, '(a,i0,2a)') '(a,i0,a,i0,")")'
+       end if
+       write(errmsg, errfmt) 'Map size (',                 &
+            this%num_mapped(), ') too large for array dims (',                &
+            srclens(mapind(1:mapcnt))
+      call endrun(subname//trim(errmsg))
     end if
 
     ! dsize is a global offset for each dimension
@@ -751,7 +762,7 @@ contains
     allocate(src_ind(srccnt))
     if (present(permutation_in)) then
       if (size(permutation_in) /= size(src_ind)) then
-        call endrun('cam_filemap_get_filemap: permutation_in must have same rank as fieldlens')
+        call endrun(subname//'permutation_in must have same rank as fieldlens')
       end if
       src_ind = permutation_in
     else
@@ -767,26 +778,26 @@ contains
             do while (ANY(dest_in == fmind))
               fmind = fmind + 1
               if (fmind > size(dsize)) then
-                call endrun('cam_filemap_get_filemap: permutation calculation dest_in error')
+                call endrun(subname//'permutation calculation dest_in error')
               end if
             end do
           else
             do while (ANY(this%dest == fmind))
               fmind = fmind + 1
               if (fmind > size(dsize)) then
-                call endrun('cam_filemap_get_filemap: permutation calculation dest error')
+                call endrun(subname//'permutation calculation dest error')
               end if
             end do
           end if
           if (fmind > size(dsize)) then
-            call endrun('cam_filemap_get_filemap: permutation calculation error')
+            call endrun(subname//'permutation calculation error')
           end if
           src_ind(j) = fmind
           fmind = fmind + 1
         end if
       end do
     end if
-       
+
     ! Step through the map and fill in local positions for each entry
     fmind = 1
     do i7 = 1, srclens(7)
@@ -817,14 +828,17 @@ contains
                     end if
                   end do
                   if (tind > mapSize) then
-                    call endrun('cam_filemap_get_filemap: internal error, tind')
+                    write(errmsg, '(2(a,i0),a,12x,5(i0,", "),")")')           &
+                         'internal error, tind (', tind, ') > mapSize (',     &
+                         mapSize, '), srclens = (', srclens(1:5)
+                    call endrun(subname//trim(errmsg))
                   end if
                   mapPos = this%map_val(tind, dsize, dest_in)
                   if ((mapPos > 0) .and. ((pos + mapPos) > fileSize)) then
-                    call endrun('cam_filemap_get_filemap: internal error, pos')
+                    call endrun(subname//'internal error, pos')
                   end if
                   if ((pos + mapPos) < 0) then
-                    call endrun('cam_filemap_get_filemap: internal error, mpos')
+                    call endrun(subname//'internal error, mpos')
                   end if
                   if (mapPos > 0) then
                     filemap(fmind) = pos + mapPos
@@ -841,7 +855,7 @@ contains
       end do
     end do
     if ((fmind - 1) /= size(filemap)) then
-      call endrun('cam_filemap_get_filemap: internal error, fmind')
+      call endrun(subname//'internal error, fmind')
     end if
     deallocate(dsize)
   end subroutine cam_filemap_get_filemap
@@ -1147,7 +1161,7 @@ contains
       deallocate(indices)
       nullify(indices)
     end if
-    ! Get a global index sort of lat and lon maps 
+    ! Get a global index sort of lat and lon maps
     !! Compress latmap
     if (associated(latmap)) then
       ! Allocate indices

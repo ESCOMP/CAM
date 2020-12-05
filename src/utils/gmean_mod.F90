@@ -35,6 +35,7 @@ module gmean_mod
   save
 
   public :: gmean ! compute global mean of 2D fields on physics decomposition
+  public :: test_gmean ! test accuracy of gmean
 
   interface gmean
      module procedure gmean_arr
@@ -76,6 +77,7 @@ CONTAINS
     !
     !-----------------------------------------------------------------------
     !
+    call t_startf('gmean_arr')
     call t_startf ('gmean_fixed_repro')
     call gmean_fixed_repro(arr, arr_gmean, rel_diff, nflds)
     call t_stopf ('gmean_fixed_repro')
@@ -95,6 +97,7 @@ CONTAINS
           enddo
        endif
     endif
+    call t_stopf('gmean_arr')
 
     return
   end subroutine gmean_arr
@@ -306,5 +309,62 @@ CONTAINS
       return
 
    end subroutine gmean_fixed_repro
+
+   subroutine test_gmean(max_diff)
+      ! Test gmean on some different field patterns
+      use physconst,      only: pi
+      use spmd_utils,     only: iam, masterproc
+      use cam_abortutils, only: endrun
+      use cam_logfile,    only: iulog
+      use phys_grid,      only: get_ncols_p, get_gcol_p, get_area_p, ngcols_p
+
+      ! Dummy argument
+      real(r8), optional, intent(in) :: max_diff
+      ! Local variables
+      integer                     :: lchnk,ncols, icol, gcol, findex
+      real(r8)                    :: test_arr(pcols, begchunk:endchunk, 3)
+      real(r8)                    :: test_mean(3)
+      real(r8)                    :: expect(3)
+      real(r8)                    :: diff, area
+      real(r8)                    :: max_diff_use
+      real(r8),         parameter :: fact2 = 0.01_r8
+      real(r8),         parameter :: pi4 = 4.0_r8 * pi
+      real(r8),         parameter :: max_diff_def = 1.0e-14_r8
+      character(len=256)          :: errmsg
+      character(len=*), parameter :: subname = 'test_gmean: '
+
+      if (present(max_diff)) then
+         max_diff_use = max_diff
+      else
+         max_diff_use = max_diff_def
+      end if
+      test_arr = 0.0_r8
+      do lchnk = begchunk, endchunk
+         ncols = get_ncols_p(lchnk)
+         do icol = 1, ncols
+            gcol = get_gcol_p(lchnk, icol)
+            test_arr(icol,lchnk,1) = 1.0_r8
+            area = get_area_p(lchnk, icol)
+            test_arr(icol,lchnk,2) = real(gcol, r8) * pi4 / area
+            test_arr(icol,lchnk,3) = test_arr(icol,lchnk,2) * fact2
+         end do
+      end do
+      test_mean(:) = (/ -1.0_r8, -2.71828_r8, -3.14159_r8 /)
+      expect(1) = 1.0_r8
+      expect(2) = real((ngcols_p + 1) * ngcols_p / 2, r8)
+      expect(3) = expect(2) * fact2
+      call gmean(test_arr, test_mean, 3)
+      do findex = 1, 3
+         diff = abs(test_mean(findex) - expect(findex)) / expect(findex)
+         if (diff > max_diff_use) then
+            write(errmsg, '(i0,a,i0,2(a,e20.13e2))') iam, ': test_mean(',     &
+                 findex, ') FAIL: ', test_mean(findex), ' /= ', expect(findex)
+            call endrun(subname//trim(errmsg))
+         end if
+      end do
+      if (masterproc) then
+         write(iulog, *) subname, test_mean(:)
+      end if
+   end subroutine test_gmean
 
 end module gmean_mod

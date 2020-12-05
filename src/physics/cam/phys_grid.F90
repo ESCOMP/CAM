@@ -446,15 +446,17 @@ end subroutine phys_grid_readnl
     ! Author: John Drake and Patrick Worley
     !
     !-----------------------------------------------------------------------
-    use pmgrid, only: plev
-    use dycore, only: dycore_is
-    use dyn_grid, only: get_block_bounds_d, &
-         get_block_gcol_d, get_block_gcol_cnt_d, &
-         get_block_levels_d, get_block_lvl_cnt_d, &
-         get_block_owner_d, &
-         get_gcol_block_d, get_gcol_block_cnt_d, &
+    use mpi,              only: MPI_REAL8, MPI_MAX
+    use shr_mem_mod,      only: shr_mem_getusage
+    use pmgrid,           only: plev
+    use dycore,           only: dycore_is
+    use dyn_grid,         only: get_block_bounds_d, &
+         get_block_gcol_d, get_block_gcol_cnt_d,    &
+         get_block_levels_d, get_block_lvl_cnt_d,   &
+         get_block_owner_d,                         &
+         get_gcol_block_d, get_gcol_block_cnt_d,    &
          get_horiz_grid_dim_d, get_horiz_grid_d, physgrid_copy_attributes_d
-    use spmd_utils, only: pair, ceil2
+    use spmd_utils,       only: pair, ceil2, masterprocid, mpicom
     use cam_grid_support, only: cam_grid_register, cam_grid_attribute_register
     use cam_grid_support, only: iMap, max_hcoordname_len
     use cam_grid_support, only: horiz_coord_t, horiz_coord_create
@@ -525,6 +527,8 @@ end subroutine phys_grid_readnl
     character(len=max_hcoordname_len)   :: copy_gridname
     logical                             :: unstructured
     real(r8)                            :: lonmin, latmin
+    real(r8)                            :: mem_hw_beg, mem_hw_end
+    real(r8)                            :: mem_beg, mem_end
 
     nullify(area_d)
     nullify(lonvals)
@@ -533,7 +537,8 @@ end subroutine phys_grid_readnl
     nullify(lat_coord)
     nullify(lon_coord)
 
-    call t_adj_detailf(-2)
+    call shr_mem_getusage(mem_hw_beg, mem_beg)
+
     call t_startf("phys_grid_init")
 
     !-----------------------------------------------------------------------
@@ -553,7 +558,6 @@ end subroutine phys_grid_readnl
     call get_horiz_grid_d(ngcols, clat_d_out=clat_d, clon_d_out=clon_d, lat_d_out=lat_d, lon_d_out=lon_d)
     latmin = minval(lat_d)
     lonmin = minval(lon_d)
-!!XXgoldyXX: To do: replace collection above with local physics points
 
     ! count number of "real" column indices
     ngcols_p = 0
@@ -1216,7 +1220,22 @@ end subroutine phys_grid_readnl
     physgrid_set = .true.   ! Set flag indicating physics grid is now set
     !
     call t_stopf("phys_grid_init")
-    call t_adj_detailf(+2)
+
+    call shr_mem_getusage(mem_hw_end, mem_end)
+    clat_p_tmp = mem_end - mem_beg
+    call MPI_reduce(clat_p_tmp, mem_end, 1, MPI_REAL8, MPI_MAX, masterprocid, &
+         mpicom, curp)
+    if (masterproc) then
+       write(iulog, *) 'phys_grid_init: Increase in memory usage = ',         &
+            mem_end, ' (MB)'
+    end if
+    clat_p_tmp = mem_hw_end - mem_hw_beg
+    call MPI_reduce(clat_p_tmp, mem_hw_end, 1, MPI_REAL8, MPI_MAX,            &
+         masterprocid, mpicom, curp)
+    if (masterproc) then
+       write(iulog, *) 'phys_grid_init: Increase in memory highwater = ',     &
+            mem_end, ' (MB)'
+    end if
     return
   end subroutine phys_grid_init
 

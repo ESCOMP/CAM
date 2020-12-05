@@ -138,6 +138,7 @@ OPTIONS
      -silent [or -s]    Turns on silent mode - only fatal messages issued.
      -verbose [or -v]   Turn on verbose echoing of settings made by configure.
      -version           Echo the CVS tag name used to check out this CAM distribution.
+     -weak_scale_fix    Temporary switch to use the new physics grid with weak scaling fix.
 
   Options for surface components used in standalone CAM mode:
 
@@ -166,7 +167,7 @@ OPTIONS
                         by the wrapper script.  Default: pgi
      -fflags <string>   A string of user specified Fortran compiler flags.  Appended to
                         Makefile defaults.  See -fopt to override optimization flags.
-     -fopt <string>     A string of user specified Fortran compiler optimization flags.
+n     -fopt <string>     A string of user specified Fortran compiler optimization flags.
                         Overrides Makefile defaults.
      -gmake <name>      Name of the GNU make program on your system.  Supply the absolute
                         pathname if the program is not in your path (or fix your path).
@@ -315,6 +316,7 @@ GetOptions(
     "version"                   => \$opts{'version'},
     "waccm_phys"                => \$opts{'waccm_phys'},
     "waccmx"                    => \$opts{'waccmx'},
+    "weak_scale_fix"            => \$opts{'weak_scale_fix'},
     "zmconv_org"                => \$opts{'zmconv_org'},
 )  or usage();
 
@@ -1230,6 +1232,20 @@ set_horiz_grid("$cfgdir/$horiz_grid_file", $cfg_ref);
 if ($print>=2) { print "Horizontal grid specifier: $hgrid$eol"; }
 
 #-----------------------------------------------------------------------------------------------
+# Use Weak Scaling fix for physics grid?
+my $weak_scale_fix_opt = (defined $opts{'weak_scale_fix'}) ? 1 : 0;
+$cfg_ref->set('weak_scale_fix', $weak_scale_fix_opt);
+my $weak_scale_fix = 'OFF';
+if ($dyn_pkg eq 'se') {
+    # Force weak scaling on for SE dycore
+    $weak_scale_fix = 'ON';
+} elsif ($weak_scale_fix_opt) {
+    $weak_scale_fix = 'ON';
+}
+
+if ($print>=2) { print "weak_scale_fix: $weak_scale_fix$eol"; }
+
+#-----------------------------------------------------------------------------------------------
 # Maximum number of columns in a chunk.
 if (defined $opts{'pcols'}) {
     $cfg_ref->set('pcols', $opts{'pcols'});
@@ -2088,7 +2104,7 @@ sub write_filepath
     if ($usr_src  =~ /\S+/) {
         my @dirs = split ',', $usr_src;
         while ( my $dir = shift @dirs ) {
-            print $fh "$dir\n";
+            print $fh "$dir xx\n";
         }
     }
 
@@ -2103,6 +2119,12 @@ sub write_filepath
     if ($simple_phys) {
       print $fh "$camsrcdir/src/physics/simple\n";
       print $fh "$camsrcdir/src/atmos_phys/kessler\n";
+    }
+
+    # Weak scaling fix. This has to come before physics/cam and before dycores
+    # It also has to come before utils (which is already near the end).
+    if ($weak_scale_fix eq 'ON') {
+      print $fh "$camsrcdir/src/physics/weak_scaling\n";
     }
 
     if ($carma ne 'none') {

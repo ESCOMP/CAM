@@ -76,6 +76,8 @@ subroutine cam_init(                                             &
    use cam_initfiles,    only: cam_initfiles_open
    use dyn_grid,         only: dyn_grid_init
    use phys_grid,        only: phys_grid_init
+   use gmean_mod,        only: gmean_init
+   use constituents,     only: pcnst
    use physpkg,          only: phys_register, phys_init
    use chem_surfvals,    only: chem_surfvals_init
    use dyn_comp,         only: dyn_init
@@ -92,6 +94,7 @@ subroutine cam_init(                                             &
 #if (defined BFB_CAM_SCAM_IOP)
    use history_defaults, only: initialize_iop_history
 #endif
+
 
    ! Arguments
    character(len=cl), intent(in) :: caseid                ! case ID
@@ -167,6 +170,9 @@ subroutine cam_init(                                             &
 
    ! Initialize physics grid decomposition
    call phys_grid_init()
+
+   ! Initialize the gmean module (must be after phys_grid_init)
+   call gmean_init(pcnst) !!XXgoldyXX: Is that a good value to use?
 
    ! Register advected tracers and physics buffer fields
    call phys_register ()

@@ -36,7 +36,7 @@ integer,           parameter :: unset_int = huge(1)
 
 ! Namelist variables:
 character(len=16) :: cam_physpkg          = unset_str  ! CAM physics package
-character(len=32) :: cam_chempkg          = unset_str  ! CAM chemistry package 
+character(len=32) :: cam_chempkg          = unset_str  ! CAM chemistry package
 character(len=16) :: waccmx_opt           = unset_str  ! WACCMX run option [ionosphere | neutral | off
 character(len=16) :: deep_scheme          = unset_str  ! deep convection package
 character(len=16) :: shallow_scheme       = unset_str  ! shallow convection package
@@ -106,9 +106,12 @@ character(len=32) :: cam_take_snapshot_after = ''   ! Physics routine to take a 
 integer           :: cam_snapshot_before_num = -1   ! output history file number for CAM "before" snapshot
 integer           :: cam_snapshot_after_num = -1    ! output history file number for CAM "after" snapshot
 
-!======================================================================= 
+! Use reproducible summation method?
+logical           :: cam_repro_sum = .false.
+
+!=======================================================================
 contains
-!======================================================================= 
+!=======================================================================
 
 subroutine phys_ctl_readnl(nlfile)
 
@@ -133,7 +136,7 @@ subroutine phys_ctl_readnl(nlfile)
       do_clubb_sgs, state_debug_checks, use_hetfrz_classnuc, use_gw_oro, use_gw_front, &
       use_gw_front_igw, use_gw_convect_dp, use_gw_convect_sh, cld_macmic_num_steps, &
       offline_driver, convproc_do_aer, cam_snapshot_before_num, cam_snapshot_after_num, &
-      cam_take_snapshot_before, cam_take_snapshot_after
+      cam_take_snapshot_before, cam_take_snapshot_after, cam_repro_sum
    !-----------------------------------------------------------------------------
 
    if (masterproc) then
@@ -195,6 +198,7 @@ subroutine phys_ctl_readnl(nlfile)
    call mpi_bcast(cam_snapshot_after_num,      1,                     mpi_integer,   masterprocid, mpicom, ierr)
    call mpi_bcast(cam_take_snapshot_before,    len(cam_take_snapshot_before), mpi_character, masterprocid, mpicom, ierr)
    call mpi_bcast(cam_take_snapshot_after,     len(cam_take_snapshot_after),  mpi_character, masterprocid, mpicom, ierr)
+   call mpi_bcast(cam_repro_sum,               1,                     mpi_logical,   masterprocid, mpicom, ierr)
 
    use_spcam       = (     cam_physpkg_is('spcam_sam1mom') &
                       .or. cam_physpkg_is('spcam_m2005'))
@@ -219,7 +223,7 @@ subroutine phys_ctl_readnl(nlfile)
       write(iulog,*)'UW PBL is not compatible with RK microphysics.  Quiting'
       call endrun('PBL and Microphysics schemes incompatible')
    endif
-   
+
    ! Add a check to make sure CLUBB and MG are used together
    if ( do_clubb_sgs .and. ( microp_scheme .ne. 'MG') .and. .not. use_spcam) then
       write(iulog,*)'CLUBB is only compatible with MG microphysics.  Quiting'
@@ -233,7 +237,7 @@ subroutine phys_ctl_readnl(nlfile)
          call endrun('CLUBB and eddy, macrop or shallow schemes incompatible')
       endif
    endif
-      
+
    ! Macro/micro co-substepping support.
    if (cld_macmic_num_steps > 1) then
       if (microp_scheme /= "MG" .or. (macrop_scheme /= "park" .and. macrop_scheme /= "CLUBB_SGS")) then
@@ -245,6 +249,14 @@ subroutine phys_ctl_readnl(nlfile)
    ! prog_modal_aero determines whether prognostic modal aerosols are present in the run.
    prog_modal_aero = index(cam_chempkg,'_mam')>0
 
+   if (masterproc) then
+      if (cam_repro_sum) then
+         write(iulog, *) subname, ': Using reproducible global summation'
+      else
+         write(iulog, *) subname, ': Not using reproducible global summation'
+      end if
+   end if
+
 end subroutine phys_ctl_readnl
 
 !===============================================================================
@@ -254,7 +266,7 @@ logical function cam_physpkg_is(name)
    ! query for the name of the physics package
 
    character(len=*) :: name
-   
+
    cam_physpkg_is = (trim(name) == trim(cam_physpkg))
 end function cam_physpkg_is
 
@@ -265,7 +277,7 @@ logical function cam_chempkg_is(name)
    ! query for the name of the chemics package
 
    character(len=*) :: name
-   
+
    cam_chempkg_is = (trim(name) == trim(cam_chempkg))
 end function cam_chempkg_is
 
@@ -276,7 +288,7 @@ logical function waccmx_is(name)
    ! query for the name of the waccmx run option
 
    character(len=*) :: name
-   
+
    waccmx_is = (trim(name) == trim(waccmx_opt))
 end function waccmx_is
 
@@ -292,7 +304,8 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
                         cam_chempkg_out, prog_modal_aero_out, macrop_scheme_out, &
                         do_clubb_sgs_out, use_spcam_out, state_debug_checks_out, cld_macmic_num_steps_out, &
                         offline_driver_out, convproc_do_aer_out, cam_snapshot_before_num_out, cam_snapshot_after_num_out,&
-                        cam_take_snapshot_before_out, cam_take_snapshot_after_out)
+                        cam_take_snapshot_before_out, cam_take_snapshot_after_out, &
+                        cam_repro_sum_out)
 !-----------------------------------------------------------------------
 ! Purpose: Return runtime settings
 !          deep_scheme_out   : deep convection scheme
@@ -339,6 +352,7 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
    integer,           intent(out), optional :: cam_snapshot_after_num_out
    character(len=32), intent(out), optional :: cam_take_snapshot_before_out
    character(len=32), intent(out), optional :: cam_take_snapshot_after_out
+   logical,           intent(out), optional :: cam_repro_sum_out
 
    if ( present(deep_scheme_out         ) ) deep_scheme_out          = deep_scheme
    if ( present(shallow_scheme_out      ) ) shallow_scheme_out       = shallow_scheme
@@ -377,6 +391,7 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
    if ( present(cam_snapshot_after_num_out  ) ) cam_snapshot_after_num_out  = cam_snapshot_after_num
    if ( present(cam_take_snapshot_before_out) ) cam_take_snapshot_before_out = cam_take_snapshot_before
    if ( present(cam_take_snapshot_after_out ) ) cam_take_snapshot_after_out  = cam_take_snapshot_after
+   if ( present(cam_repro_sum_out       ) ) cam_repro_sum_out = cam_repro_sum
 
 end subroutine phys_getopts
 

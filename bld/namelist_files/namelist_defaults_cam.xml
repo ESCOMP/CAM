@@ -2445,6 +2445,9 @@
 <phys_loadbalance dyn="eul"> 3 </phys_loadbalance>
 <phys_loadbalance dyn="fv3"> 2 </phys_loadbalance>
 
+<!-- physics global data -->
+<phys_global_max_fields>-1</phys_global_max_fields>
+
 <!-- Control output to history file(s) -->
 <history_amwg>                 .true.   </history_amwg>
 <history_vdiag>                .false.  </history_vdiag>
@@ -2461,9 +2464,11 @@
 <history_clubb>                .true.   </history_clubb>
 <history_dust>                 .false.  </history_dust>
 
-
 <cam_snapshot_before_num>  -1 </cam_snapshot_before_num>
 <cam_snapshot_after_num>   -1 </cam_snapshot_after_num>
+
+<!-- Use reproducible sum -->
+<cam_repro_sum> .false. </cam_repro_sum>
 
 <!-- ================================================================== -->
 <!-- Defaults for composition of air                                    -->

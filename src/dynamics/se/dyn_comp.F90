@@ -2057,11 +2057,12 @@ subroutine check_file_layout(file, elem, dyn_cols, file_desc, dyn_ok, dimname)
       indx = 1
       do j = 1, np
          do i = 1, np
-            if ((abs(dbuf2(indx,ie)) > 1.e-12_r8) .and. &
-               (abs((elem(ie)%spherep(i,j)%lat*rad2deg - dbuf2(indx,ie))/dbuf2(indx,ie)) > 1.0e-10_r8)) then
-               write(6, *) 'XXG ',iam,') ',ie,i,j,elem(ie)%spherep(i,j)%lat,dbuf2(indx,ie)*deg2rad
-               call shr_sys_flush(6)
-               found = .false.
+            if (abs(dbuf2(indx,ie)) > 1.e-12_r8) then
+               if (abs((elem(ie)%spherep(i,j)%lat*rad2deg - dbuf2(indx,ie))/dbuf2(indx,ie)) > 1.0e-10_r8) then
+!                  write(6, *) 'XXG ',iam,') ',ie,i,j,elem(ie)%spherep(i,j)%lat,dbuf2(indx,ie)*deg2rad
+!                  call shr_sys_flush(6)
+                  found = .false.
+               end if
             end if
             indx = indx + 1
          end do
@@ -2082,11 +2083,12 @@ subroutine check_file_layout(file, elem, dyn_cols, file_desc, dyn_ok, dimname)
       indx = 1
       do j = 1, np
          do i = 1, np
-            if ((abs(dbuf2(indx,ie)) > 1.e-12_r8) .and. &
-               (abs((elem(ie)%spherep(i,j)%lon*rad2deg - dbuf2(indx,ie))/dbuf2(indx,ie)) > 1.0e-10_r8)) then
-               write(6, *) 'XXG ',iam,') ',ie,i,j,elem(ie)%spherep(i,j)%lon,dbuf2(indx,ie)*deg2rad
-               call shr_sys_flush(6)
-               found = .false.
+            if (abs(dbuf2(indx,ie)) > 1.e-12_r8) then
+               if (abs((elem(ie)%spherep(i,j)%lon*rad2deg - dbuf2(indx,ie))/dbuf2(indx,ie)) > 1.0e-10_r8) then
+!                  write(6, *) 'XXG ',iam,') ',ie,i,j,elem(ie)%spherep(i,j)%lon,dbuf2(indx,ie)*deg2rad
+!                  call shr_sys_flush(6)
+                  found = .false.
+               end if
             end if
             indx = indx + 1
          end do

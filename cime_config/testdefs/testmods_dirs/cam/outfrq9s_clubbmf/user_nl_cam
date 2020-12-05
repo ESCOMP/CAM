@@ -5,3 +5,4 @@ inithist='ENDOFRUN'
 do_clubb_mf=.true.
 do_clubb_mf_diag=.true.
 deep_scheme='off'
+cam_repro_sum=.true.
