@@ -440,8 +440,9 @@ subroutine pcond (lchnk   ,ncol    ,troplev ,dlat    , &
       call findsp_vc(qn(:ncol,k), tn(:ncol,k), p(:ncol,k), .true., &
            tsp(:ncol,k), qsp(:ncol,k))
 
+      call qsat(t(1:ncol,k), p(1:ncol,k), es(1:ncol), qs(1:ncol), ncol, gam=gamma(1:ncol))
+
       do i = 1,ncol
-         call qsat(t(i,k), p(i,k), es(i), qs(i), gam=gamma(i))
 !
          relhum(i) = q(i,k)/qs(i)
 !
@@ -777,6 +778,7 @@ subroutine pcond (lchnk   ,ncol    ,troplev ,dlat    , &
 ! residual of over-saturation because theoretically, cme
 ! should have taken care of all of large scale condensation.
 ! 
+
 
        do i = 1,ncol
           qtmp = qn(i,k)-(cme(i,k)-evapprec(i,k))*deltat

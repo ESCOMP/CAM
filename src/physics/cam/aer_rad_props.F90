@@ -202,9 +202,7 @@ subroutine aer_rad_props_sw(list_idx, state, pbuf,  nnite, idxnite, &
 
    ! calculate relative humidity for table lookup into rh grid
    do k = 1, pver
-      do i = 1, ncol
-         call qsat(state%t(i,k), state%pmid(i,k), es(i,k), qs(i,k))
-      end do
+      call qsat(state%t(1:ncol,k), state%pmid(1:ncol,k), es(1:ncol,k), qs(1:ncol,k), ncol)
    end do
    rh(1:ncol,1:pver) = state%q(1:ncol,1:pver,1) / qs(1:ncol,1:pver)
 
@@ -386,9 +384,7 @@ subroutine aer_rad_props_lw(list_idx, state, pbuf,  odap_aer)
 
       ! calculate relative humidity for table lookup into rh grid
       do k = 1, pver
-         do i = 1, ncol
-            call qsat(state%t(i,k), state%pmid(i,k), es(i,k), qs(i,k))
-         end do
+         call qsat(state%t(1:ncol,k), state%pmid(1:ncol,k), es(1:ncol,k), qs(1:ncol,k), ncol)
       end do
       rh(1:ncol,1:pver) = state%q(1:ncol,1:pver,1) / qs(1:ncol,1:pver)
 

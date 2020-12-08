@@ -1052,9 +1052,7 @@ subroutine vertical_diffusion_tend( &
      slv_prePBL(:ncol,:pver) = sl_prePBL(:ncol,:pver) * ( 1._r8 + zvir*qt_prePBL(:ncol,:pver) )
 
      do k = 1, pver
-        do i = 1, ncol
-           call qsat(state%t(i,k), state%pmid(i,k), tem2(i,k), ftem(i,k))
-        end do
+        call qsat(state%t(1:ncol,k), state%pmid(1:ncol,k), tem2(1:ncol,k), ftem(1:ncol,k), ncol)
      end do
      ftem_prePBL(:ncol,:) = state%q(:ncol,:,1)/ftem(:ncol,:)*100._r8
 
@@ -1347,9 +1345,7 @@ subroutine vertical_diffusion_tend( &
      v_aft_PBL(:ncol,:pver)   =  state%v(:ncol,:pver)          + ptend%v(:ncol,:pver)            * ztodt
 
      do k = 1, pver
-        do i = 1, ncol
-           call qsat(t_aftPBL(i,k), state%pmid(i,k), tem2(i,k), ftem(i,k))
-        end do
+        call qsat(t_aftPBL(1:ncol,k), state%pmid(1:ncol,k), tem2(1:ncol,k), ftem(1:ncol,k), ncol)
      end do
      ftem_aftPBL(:ncol,:pver) = qv_aft_PBL(:ncol,:pver) / ftem(:ncol,:pver) * 100._r8
 

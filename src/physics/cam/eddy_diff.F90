@@ -503,8 +503,8 @@
     ! Note that 'ntop_turb = 1', 'nbot_turb = pver'
 
     do k = ntop_turb, nbot_turb
+       call qsat( t(1:ncol,k), pmid(1:ncol,k), es(1:ncol,k), qs(1:ncol,k), ncol, gam=gam(1:ncol,k))
        do i = 1, ncol
-          call qsat( t(i,k), pmid(i,k), es(i,k), qs(i,k), gam=gam(i,k))
           qt(i,k)  = qv(i,k) + ql(i,k) + qi(i,k) 
           sl(i,k)  = cpair * t(i,k) + g * z(i,k) - latvap * ql(i,k) - latsub * qi(i,k)
           slv(i,k) = sl(i,k) * ( 1._r8 + zvir * qt(i,k) )

@@ -1314,9 +1314,7 @@ contains
           ftem(:ncol,:) = ftem_ptr(:ncol,:)
        else
           do k = 1, pver
-             do i = 1, ncol
-                call qsat(state%t(i,k), state%pmid(i,k), tem2(i,k), ftem(i,k))
-             end do
+             call qsat(state%t(1:ncol,k), state%pmid(1:ncol,k), tem2(1:ncol,k), ftem(1:ncol,k), ncol)
           end do
           ftem(:ncol,:) = state%q(:ncol,:,1)/ftem(:ncol,:)*100._r8
        end if
@@ -1327,9 +1325,7 @@ contains
 
       ! RH w.r.t liquid (water)
       do k = 1, pver
-         do i = 1, ncol
-            call qsat_water (state%t(i,k), state%pmid(i,k), esl(i,k), ftem(i,k))
-         end do
+         call qsat_water (state%t(1:ncol,k), state%pmid(1:ncol,k), esl(1:ncol,k), ftem(1:ncol,k), ncol)
       end do
       ftem(:ncol,:) = state%q(:ncol,:,1)/ftem(:ncol,:)*100._r8
       call outfld ('RHW  ',ftem    ,pcols   ,lchnk     )
@@ -1772,9 +1768,7 @@ contains
       call outfld('U10',      cam_in%u10,       pcols, lchnk)
       !
       ! Calculate and output reference height RH (RHREFHT)
-      do i = 1, ncol
-         call qsat(cam_in%tref(i), state%ps(i), tem2(i), ftem(i))
-      end do
+      call qsat(cam_in%tref(1:ncol), state%ps(1:ncol), tem2(1:ncol), ftem(1:ncol), ncol)
       ftem(:ncol) = cam_in%qref(:ncol)/ftem(:ncol)*100._r8
 
 

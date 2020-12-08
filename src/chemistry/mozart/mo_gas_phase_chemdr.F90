@@ -741,9 +741,7 @@ contains
     !	... compute the relative humidity
     !-----------------------------------------------------------------
     do k = 1, pver
-       do i = 1, ncol
-          call qsat(tfld(i,k), pmid(i,k), satv(i,k), satq(i,k))
-       end do
+       call qsat(tfld(1:ncol,k), pmid(1:ncol,k), satv(1:ncol,k), satq(1:ncol,k), ncol)
     end do
 
     do k = 1,pver

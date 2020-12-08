@@ -610,11 +610,10 @@ subroutine nucleate_ice_cam_calc( &
    endif
 
    do k = top_lev, pver
+      ! Get humidity and saturation vapor pressures
+      call qsat_water(t(1:ncol,k), pmid(1:ncol,k), es(1:ncol), qs(1:ncol), ncol, gam=gammas(1:ncol))
 
       do i = 1, ncol
-
-         ! Get humidity and saturation vapor pressures
-         call qsat_water(t(i,k), pmid(i,k), es(i), qs(i), gam=gammas(i))
 
          relhum(i,k) = qn(i,k)/qs(i)
 

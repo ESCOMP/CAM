@@ -238,9 +238,7 @@ module modal_aero_newnuc
 
 !   compute qv_sat = saturation specific humidity
         do k = 1, pver
-           do i = 1, ncol
-	      call qsat(t(i,k), pmid(i,k), ev_sat(i,k), qv_sat(i,k))
-           end do
+	   call qsat(t(1:ncol,k), pmid(1:ncol,k), ev_sat(1:ncol,k), qv_sat(1:ncol,k), ncol)
         end do
 
 !

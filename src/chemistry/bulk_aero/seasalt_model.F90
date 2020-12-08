@@ -109,9 +109,7 @@ module seasalt_model
     !-----------------------------------------------------------------------
 
     do k = 1, pver
-       do i = 1, ncol
-          call qsat(temp(i,k),pmid(i,k),es(i,k),qs(i,k))
-       end do
+       call qsat(temp(1:ncol,k),pmid(1:ncol,k),es(1:ncol,k),qs(1:ncol,k),ncol)
     end do
     RH(:ncol,:)=q(:ncol,:)/qs(:ncol,:)
     RH(:ncol,:)=max(0.01_r8,min(0.99_r8,RH(:ncol,:)))

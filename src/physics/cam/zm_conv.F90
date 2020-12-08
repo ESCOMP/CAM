@@ -1482,9 +1482,7 @@ subroutine zm_conv_evap(ncol,lchnk, &
 
 ! determine saturation vapor pressure
     do k = 1,pver
-       do i = 1,ncol
-          call qsat(t(i,k), pmid(i,k), es(i,k), qs(i,k))
-       end do
+       call qsat(t(1:ncol,k), pmid(1:ncol,k), es(1:ncol,k), qs(1:ncol,k), ncol)
     end do
 ! determine ice fraction in rain production (use cloud water parameterization fraction at present)
     call cldfrc_fice(ncol, t, fice, fsnow_conv)
