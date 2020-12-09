@@ -72,7 +72,9 @@ public :: &
    physgrid_copy_attributes_d
 
 ! vertical reference heights (m) in CAM top to bottom order.
-real(r8) :: zw(plevp), zw_mid(plev)
+! These arrays are targets of the real_values pointers in the hist_coords
+! objects in the cam_history_support module.
+real(r8), target :: zw(plevp), zw_mid(plev)
 
 integer ::      &
    maxNCells,   &    ! maximum number of cells for any task (nCellsSolve <= maxNCells)

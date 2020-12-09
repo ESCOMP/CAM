@@ -51,8 +51,7 @@ public :: &
    dyn_register, &
    dyn_init,     &
    dyn_run,      &
-   dyn_final,    &
-   swap_time_level_ptrs
+   dyn_final
 
 ! Note that the fields in the import and export states are pointers into the MPAS dycore internal
 ! data structures.  These fields have the order of the vertical and horizontal dimensions swapped
@@ -219,7 +218,6 @@ real(r8), parameter :: deg2rad = pi / 180.0_r8
 integer, allocatable :: glob_ind(:)
 
 type (MPAS_TimeInterval_type) :: integrationLength ! set to CAM's dynamics/physics coupling interval
-logical :: swap_time_level_ptrs
 
 !=========================================================================================
 contains
@@ -372,6 +370,9 @@ subroutine dyn_init(dyn_in, dyn_out)
    call mpas_pool_get_dimension(mesh_pool, 'nVerticesSolve', nVerticesSolve)
    dyn_in % nVerticesSolve = nVerticesSolve
 
+   ! In MPAS timeLevel=1 is the current state.  So the fields input to the dycore should
+   ! be in timeLevel=1.
+
    call mpas_pool_get_array(state_pool, 'u',                      dyn_in % uperp,   timeLevel=1)
    call mpas_pool_get_array(state_pool, 'w',                      dyn_in % w,       timeLevel=1)
    call mpas_pool_get_array(state_pool, 'theta_m',                dyn_in % theta_m, timeLevel=1)
@@ -414,15 +415,19 @@ subroutine dyn_init(dyn_in, dyn_out)
    dyn_out % nCellsSolve    = dyn_in % nCellsSolve
    dyn_out % nEdgesSolve    = dyn_in % nEdgesSolve
    dyn_out % nVerticesSolve = dyn_in % nVerticesSolve
+   dyn_out % index_qv       = dyn_in % index_qv
 
-   call mpas_pool_get_array(state_pool, 'u',                      dyn_out % uperp,   timeLevel=2)
-   call mpas_pool_get_array(state_pool, 'w',                      dyn_out % w,       timeLevel=2)
-   call mpas_pool_get_array(state_pool, 'theta_m',                dyn_out % theta_m, timeLevel=2)
-   call mpas_pool_get_array(state_pool, 'rho_zz',                 dyn_out % rho_zz,  timeLevel=2)
-   call mpas_pool_get_array(state_pool, 'scalars',                dyn_out % tracers, timeLevel=2)
+   ! MPAS swaps pointers internally so that after a dycore timestep, the updated state is
+   ! in timeLevel=1.  Thus we want dyn_out to also point to timeLevel=1.  Can just copy
+   ! the pointers from dyn_in.
+
+   dyn_out % uperp   => dyn_in % uperp   
+   dyn_out % w       => dyn_in % w       
+   dyn_out % theta_m => dyn_in % theta_m 
+   dyn_out % rho_zz  => dyn_in % rho_zz  
+   dyn_out % tracers => dyn_in % tracers 
    
-   dyn_out % index_qv = dyn_in % index_qv
-
+   ! These components don't have a time level index.
    dyn_out % zint  => dyn_in % zint
    dyn_out % zz    => dyn_in % zz
    dyn_out % fzm   => dyn_in % fzm
@@ -453,15 +458,6 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    end if
 
-   ! Initialize dyn_out from dyn_in since it is needed to run the physics package
-   ! as part of the CAM initialization before a dycore step is taken.  This is only
-   ! needed for the fields that have 2 time levels in the MPAS state_pool.
-   dyn_out % uperp(:,:nEdgesSolve)     = dyn_in % uperp(:,:nEdgesSolve)
-   dyn_out % w(:,:nCellsSolve)         = dyn_in % w(:,:nCellsSolve)
-   dyn_out % theta_m(:,:nCellsSolve)   = dyn_in % theta_m(:,:nCellsSolve)
-   dyn_out % rho_zz(:,:nCellsSolve)    = dyn_in % rho_zz(:,:nCellsSolve)
-   dyn_out % tracers(:,:,:nCellsSolve) = dyn_in % tracers(:,:,:nCellsSolve)
-
    call cam_mpas_init_phase4(endrun)
 
    ! Check that CAM's timestep, i.e., the dynamics/physics coupling interval, is an integer multiple
@@ -487,12 +483,6 @@ subroutine dyn_init(dyn_in, dyn_out)
    ! Set the interval over which the dycore should integrate during each call to dyn_run.
    call MPAS_set_timeInterval(integrationLength, S=nint(dtime), S_n=0, S_d=1)
 
-   ! MPAS updates the time level index in its state pool each dycore time step (mpas_dt).  If
-   ! the CAM timestep is an odd multiple of mpas_dt, then the pointers in the dyn_in/dyn_out
-   ! objects need a corresponding update.  Set the following logical variable to indicate
-   ! whether the pointer update is needed.
-   swap_time_level_ptrs = mod( nint(dt_ratio), 2) == 1
-
 end subroutine dyn_init
 
 !=========================================================================================
@@ -500,16 +490,36 @@ end subroutine dyn_init
 subroutine dyn_run(dyn_in, dyn_out)
 
    use cam_mpas_subdriver, only : cam_mpas_run
+   use cam_mpas_subdriver, only : domain_ptr
+   use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_array
+   use mpas_derived_types, only : mpas_pool_type
 
    ! Advances the dynamics state provided in dyn_in by one physics
    ! timestep to produce dynamics state held in dyn_out.
 
    type (dyn_import_t), intent(inout)  :: dyn_in
    type (dyn_export_t), intent(inout)  :: dyn_out
+
+   ! Local variables
+   type(mpas_pool_type), pointer :: state_pool
+
    !----------------------------------------------------------------------------
 
    ! Call the MPAS-A dycore
    call cam_mpas_run(integrationLength)
+
+   ! Update the dyn_in/dyn_out pointers to the current state of the prognostic fields.
+   call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'state', state_pool)
+   call mpas_pool_get_array(state_pool, 'u',       dyn_in % uperp,   timeLevel=1)
+   call mpas_pool_get_array(state_pool, 'w',       dyn_in % w,       timeLevel=1)
+   call mpas_pool_get_array(state_pool, 'theta_m', dyn_in % theta_m, timeLevel=1)
+   call mpas_pool_get_array(state_pool, 'rho_zz',  dyn_in % rho_zz,  timeLevel=1)
+   call mpas_pool_get_array(state_pool, 'scalars', dyn_in % tracers, timeLevel=1)
+   dyn_out % uperp   => dyn_in % uperp   
+   dyn_out % w       => dyn_in % w       
+   dyn_out % theta_m => dyn_in % theta_m 
+   dyn_out % rho_zz  => dyn_in % rho_zz  
+   dyn_out % tracers => dyn_in % tracers 
 
 end subroutine dyn_run
 
@@ -610,6 +620,9 @@ subroutine read_inidat(dyn_in)
    use mpas_derived_types, only : mpas_pool_type
    use mpas_vector_reconstruction, only : mpas_reconstruct
    use mpas_constants, only : Rv_over_Rd => rvord
+   use mpas_constants, only : rgas
+   use mpas_constants, only : p0
+   use mpas_constants, only : gravity
 
    ! arguments
    type(dyn_import_t), target, intent(inout) :: dyn_in
@@ -657,6 +670,8 @@ subroutine read_inidat(dyn_in)
    real(r8), allocatable :: pmiddry(:,:) ! dry midpoint pressures
    real(r8), allocatable :: pmid(:,:)    ! midpoint pressures
    real(r8), allocatable :: mpas3d(:,:,:)
+
+   real(r8), allocatable :: qv(:), tm(:)
 
    real(r8) :: dz, h
    logical  :: readvar
@@ -813,24 +828,40 @@ subroutine read_inidat(dyn_in)
          pintdry(1,i) = cam2d(i)
       end do
       
-      ! Use Hypsometric eqn to set pressure profiles
-      do i = 1, nCellsSolve
-         do k = 2, plevp
-            dz = zint(k,i) - zint(k-1,i)
-            h = rair * t(k-1,i) / gravit
-            pintdry(k,i) = pintdry(k-1,i)*exp(-dz/h)
-            pmiddry(k-1,i) = 0.5_r8*(pintdry(k-1,i) + pintdry(k,i))
-            ! for now assume dry atm
-            pmid(k-1,i) = pmiddry(k-1,i)
-         end do
-      end do
+      allocate(qv(plev))
+      allocate(tm(plev))
 
       do i = 1, nCellsSolve
          do k = 1, plev
-            theta(k,i) = t(k,i) * (1.0e5_r8 / pmid(k,i))**(rair/cpair)
-            rho(k,i) = pmid(k,i) / (rair * t(k,i))
+            ! convert specific humidity to mixing ratio relative to dry air
+            tracers(1,k,i) = tracers(1,k,i)/(1.0_r8 - tracers(1,k,i))
+            qv(k) = tracers(1,k,i)
+            ! convert temperature to tm (we are using dry air density and Rd in state eqn)
+            tm(k) = t(k,i)*(1.0_r8+(Rv_over_Rd)*qv(k))
          end do
+
+         ! integrate up from surface to first mid level.  This is full mid-level pressure (i.e. accounts for vapor).
+         ! we are assuming that pintdry(1,i) is the full surface pressure here.
+         pmid(1,i) = pintdry(1,i)/(1.0_r8+0.5_r8*(zint(2,i)-zint(1,i))*(1.0_r8+qv(1))*gravity/(rgas*tm(1)))
+
+         ! integrate up the column
+         do k=2,plev
+            !  this is full mid-level pressure (i.e. accounts for vapor)
+            pmid(k,i) = pmid(k-1,i)*(1.0_r8-0.5_r8*(zint(k  ,i)-zint(k-1,i))*gravity*(1.0_r8+qv(k-1))/(rgas*tm(k-1)))/ &
+                                    (1.0_r8+0.5_r8*(zint(k+1,i)-zint(k  ,i))*gravity*(1.0_r8+qv(k  ))/(rgas*tm(k  )))
+         end do
+
+         do k=1,plev
+            ! Note: this is theta and not theta_m
+            theta(k,i) = tm(k) * ((p0/pmid(k,i))**(rair/cpair))/(1.0_r8+(Rv_over_Rd)*qv(k))
+            ! Dry air density
+            rho(k,i) = pmid(k,i) / (rgas * tm(k))
+         end do
+
       end do
+
+      deallocate(qv)
+      deallocate(tm)
 
       rho_zz(:,1:nCellsSolve) = rho(:,1:nCellsSolve) / zz(:,1:nCellsSolve)
 
@@ -1047,6 +1078,8 @@ subroutine set_base_state(dyn_in)
    real(r8), dimension(:,:), pointer :: theta_base
    real(r8) :: zmid
    real(r8) :: pres
+   real(r8) :: pres_kp1
+   logical, parameter :: discrete_hydrostatic_base = .true.
    !--------------------------------------------------------------------------------------
 
    zint       => dyn_in % zint
@@ -1054,14 +1087,44 @@ subroutine set_base_state(dyn_in)
    rho_base   => dyn_in % rho_base
    theta_base => dyn_in % theta_base
 
-   do iCell = 1, dyn_in % nCellsSolve
-      do klev = 1, dyn_in % nVertLevels
-         zmid = 0.5_r8 * (zint(klev,iCell) + zint(klev+1,iCell))   ! Layer midpoint geometric height
-         pres = p0 * exp(-gravity * zmid / (Rgas * t0b))
+   ! reference state with discrete MPAS hydrostatic balance                                                 
+
+   if (discrete_hydrostatic_base) then
+
+      do iCell = 1, dyn_in % nCellsSolve
+
+         klev = dyn_in % nVertLevels
+         ! reference pressure at the model top
+         pres_kp1 = p0*exp(-gravity*zint(klev+1,iCell)/(Rgas*t0b))
+
+         ! integrate down to first mid level, set referfence state
+         pres = pres_kp1/(1.0-0.5*(zint(klev+1,iCell) - zint(klev,iCell))*gravity/(Rgas*t0b))
          theta_base(klev,iCell) = t0b / (pres / p0)**(Rgas/cp)
          rho_base(klev,iCell) = pres / ( Rgas * t0b * zz(klev,iCell))
+         pres_kp1 = pres
+
+         ! integrate down the column
+         do klev = dyn_in % nVertLevels-1, 1, -1
+            pres = pres_kp1*(1.0+0.5*(zint(klev+2,iCell)-zint(klev+1,iCell))*gravity/(rgas*t0b))/  &
+                            (1.0-0.5*(zint(klev+1,iCell)-zint(klev  ,iCell))*gravity/(rgas*t0b))
+            theta_base(klev,iCell) = t0b / (pres / p0)**(Rgas/cp)
+            rho_base(klev,iCell) = pres / ( Rgas * t0b * zz(klev,iCell))
+            pres_kp1 = pres
+         end do
       end do
-   end do
+
+   else
+
+      do iCell = 1, dyn_in % nCellsSolve
+         do klev = 1, dyn_in % nVertLevels
+            zmid = 0.5_r8 * (zint(klev,iCell) + zint(klev+1,iCell))   ! Layer midpoint geometric height
+            pres = p0 * exp(-gravity * zmid / (Rgas * t0b))
+            theta_base(klev,iCell) = t0b / (pres / p0)**(Rgas/cp)
+            rho_base(klev,iCell) = pres / ( Rgas * t0b * zz(klev,iCell))
+         end do
+      end do
+
+   end if
 
 end subroutine set_base_state
 
@@ -1309,8 +1372,7 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
          if (ierr2 /= 0) then
             call endrun(subname // ':: Failed to read namelist group &decomposition')
          end if
-      else
-         call endrun(subname // ':: Failed to find namelist group &decomposition')
+      ! no else clause needed.  &decomposition is not present for single task runs.
       end if
    end if
 
