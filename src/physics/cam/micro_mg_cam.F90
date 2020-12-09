@@ -1389,7 +1389,7 @@ end subroutine micro_mg_cam_tend
 
 subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nlev)
 
-   use micro_mg_utils, only: size_dist_param_basic_vect, size_dist_param_liq_vect, &
+   use micro_mg_utils, only: size_dist_param_basic, size_dist_param_liq, &
         mg_liq_props, mg_ice_props, avg_diameter, rhoi, rhosn, rhow, rhows, &
         mg_graupel_props, rhog, &
         qsmall, mincld
@@ -3087,9 +3087,9 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
 
    ncic_grid = 1.e8_r8
 
-   call size_dist_param_liq_vect(mg_liq_props, icwmrst_grid(:ngrdcol,top_lev:), &
+   call size_dist_param_liq(mg_liq_props, icwmrst_grid(:ngrdcol,top_lev:), &
         ncic_grid(:ngrdcol,top_lev:), rho_grid(:ngrdcol,top_lev:), &
-        mu_grid(:ngrdcol,top_lev:), lambdac_grid(:ngrdcol,top_lev:), ngrdcol*(nlev-top_lev+1))
+        mu_grid(:ngrdcol,top_lev:), lambdac_grid(:ngrdcol,top_lev:), ngrdcol, (nlev-top_lev+1))
 
    where (icwmrst_grid(:ngrdcol,top_lev:) > qsmall)
       rel_fn_grid(:ngrdcol,top_lev:) = &
@@ -3107,9 +3107,9 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    ncic_grid(:ngrdcol,top_lev:) = nc_grid(:ngrdcol,top_lev:) / &
         max(mincld,liqcldf_grid(:ngrdcol,top_lev:))
 
-   call size_dist_param_liq_vect(mg_liq_props, icwmrst_grid(:ngrdcol,top_lev:), &
+   call size_dist_param_liq(mg_liq_props, icwmrst_grid(:ngrdcol,top_lev:), &
         ncic_grid(:ngrdcol,top_lev:), rho_grid(:ngrdcol,top_lev:), &
-        mu_grid(:ngrdcol,top_lev:), lambdac_grid(:ngrdcol,top_lev:), ngrdcol*(nlev-top_lev+1))
+        mu_grid(:ngrdcol,top_lev:), lambdac_grid(:ngrdcol,top_lev:), ngrdcol, (nlev-top_lev+1))
 
    where (icwmrst_grid(:ngrdcol,top_lev:) >= qsmall)
       rel_grid(:ngrdcol,top_lev:) = &
@@ -3205,8 +3205,8 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    niic_grid(:ngrdcol,top_lev:) = ni_grid(:ngrdcol,top_lev:) / &
         max(mincld,icecldf_grid(:ngrdcol,top_lev:))
 
-   call size_dist_param_basic_vect(mg_ice_props, icimrst_grid(:ngrdcol,top_lev:), &
-        niic_grid(:ngrdcol,top_lev:), rei_grid(:ngrdcol,top_lev:), ngrdcol*(nlev-top_lev+1))
+   call size_dist_param_basic(mg_ice_props, icimrst_grid(:ngrdcol,top_lev:), &
+        niic_grid(:ngrdcol,top_lev:), rei_grid(:ngrdcol,top_lev:), ngrdcol, (nlev-top_lev+1))
 
    where (icimrst_grid(:ngrdcol,top_lev:) >= qsmall)
       rei_grid(:ngrdcol,top_lev:) = 1.5_r8/rei_grid(:ngrdcol,top_lev:) &
