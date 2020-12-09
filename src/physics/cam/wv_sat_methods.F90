@@ -63,7 +63,7 @@ public wv_sat_reset_default
 public wv_sat_qsat_water, wv_sat_qsat_water_vect
 public wv_sat_qsat_ice, wv_sat_qsat_ice_vect
 
-public wv_sat_svp_trans
+public wv_sat_svp_trans, wv_sat_svp_trans_vect
 
 ! pressure -> humidity conversion
 public wv_sat_svp_to_qsat, wv_sat_svp_to_qsat_vect
@@ -489,6 +489,44 @@ function wv_sat_svp_trans(t, idx) result(es)
   end if
 
 end function wv_sat_svp_trans
+
+subroutine wv_sat_svp_trans_vect(t, es, vlen, idx)
+
+  integer,  intent(in)  :: vlen
+  real(r8), intent(in)  :: t(vlen)
+  integer,  intent(in), optional :: idx
+  real(r8), intent(out) :: es(vlen)
+
+  real(r8) :: esice(vlen)      ! Saturation vapor pressure over ice
+  real(r8) :: weight           ! Intermediate scratch variable for es transition
+  integer  :: i
+
+!
+! Water
+!
+  call wv_sat_svp_water_vect(t,es,vlen,idx)
+  do i = 1, vlen
+     if (t(i) < (tmelt - ttrice)) then
+        es(i) = 0.0_r8
+     end if
+  end do
+!
+! Ice
+!
+  call wv_sat_svp_ice_vect(t,esice,vlen,idx)
+  do i = 1, vlen
+     if (t(i) < tmelt) then
+        if ( (tmelt - t(i)) > ttrice ) then
+           weight = 1.0_r8
+        else
+           weight = (tmelt - t(i))/ttrice
+        end if
+   
+        es(i) = weight*esice(i) + (1.0_r8 - weight)*es(i)
+     end if
+  end do
+
+end subroutine wv_sat_svp_trans_vect
 
 !---------------------------------------------------------------------
 ! SVP METHODS

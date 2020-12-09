@@ -17,7 +17,7 @@ use constituents,    only: pcnst, cnst_name, cnst_longname, cnst_cam_outfld
 use constituents,    only: ptendnam, dmetendnam, apcnst, bpcnst, cnst_get_ind
 use dycore,          only: dycore_is
 use phys_control,    only: phys_getopts
-use wv_saturation,   only: qsat, qsat_water, svp_ice
+use wv_saturation,   only: qsat, qsat_water, svp_ice_vect
 use time_manager,    only: is_first_step
 
 use scamMod,         only: single_column, wfld
@@ -1331,9 +1331,9 @@ contains
       call outfld ('RHW  ',ftem    ,pcols   ,lchnk     )
 
       ! Convert to RHI (ice)
+      call svp_ice_vect(state%t(1:ncol,1:pver), esi(1:ncol,1:pver), ncol*pver)
       do i=1,ncol
         do k=1,pver
-          esi(i,k)=svp_ice(state%t(i,k))
           ftem1(i,k)=ftem(i,k)*esl(i,k)/esi(i,k)
         end do
       end do

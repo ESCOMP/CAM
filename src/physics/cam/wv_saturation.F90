@@ -47,8 +47,8 @@ public wv_sat_init
 public wv_sat_final
 
 ! Saturation vapor pressure calculations
-public svp_water
-public svp_ice
+public svp_water, svp_water_vect
+public svp_ice, svp_ice_vect
   
 ! Mixed phase (water + ice) saturation vapor pressure table lookup
 public estblf
@@ -284,6 +284,20 @@ function svp_water(t) result(es)
 
 end function svp_water
 
+! Compute saturation vapor pressure over water
+subroutine svp_water_vect(t, es, vlen)
+
+  use wv_sat_methods, only: &
+       wv_sat_svp_water_vect
+
+  integer,  intent(in)  :: vlen
+  real(r8), intent(in)  :: t(vlen)  ! Temperature (K)
+  real(r8), intent(out) :: es(vlen) ! SVP (Pa)
+
+  call wv_sat_svp_water_vect(t, es, vlen)
+
+end subroutine svp_water_vect
+
 ! Compute saturation vapor pressure over ice
 function svp_ice(t) result(es)
 
@@ -297,6 +311,20 @@ function svp_ice(t) result(es)
 
 end function svp_ice
 
+! Compute saturation vapor pressure over ice
+subroutine svp_ice_vect(t, es, vlen)
+
+  use wv_sat_methods, only: &
+       wv_sat_svp_ice_vect
+
+  integer,  intent(in)  :: vlen
+  real(r8), intent(in)  :: t(vlen)  ! Temperature (K)
+  real(r8), intent(out) :: es(vlen) ! SVP (Pa)
+
+  call wv_sat_svp_ice_vect(t, es, vlen)
+
+end subroutine svp_ice_vect
+
 ! Compute saturation vapor pressure with an ice-water transition
 function svp_trans(t) result(es)
 
@@ -309,6 +337,20 @@ function svp_trans(t) result(es)
   es = wv_sat_svp_trans(t)
 
 end function svp_trans
+
+! Compute saturation vapor pressure with an ice-water transition
+subroutine svp_trans_vect(t, es, vlen)
+
+  use wv_sat_methods, only: &
+       wv_sat_svp_trans_vect
+
+  integer,  intent(in)  :: vlen
+  real(r8), intent(in)  :: t(vlen)   ! Temperature (K)
+  real(r8), intent(out) :: es(vlen)  ! SVP (Pa)
+
+  call wv_sat_svp_trans_vect(t, es, vlen)
+
+end subroutine svp_trans_vect
 
 !---------------------------------------------------------------------
 ! UTILITIES

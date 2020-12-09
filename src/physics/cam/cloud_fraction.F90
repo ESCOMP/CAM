@@ -264,7 +264,7 @@ subroutine cldfrc(lchnk   ,ncol    , pbuf,  &
     !-----------------------------------------------------------------------
     use cam_history,   only: outfld
     use physconst,     only: cappa, gravit, rair, tmelt
-    use wv_saturation, only: qsat, qsat_water, svp_ice
+    use wv_saturation, only: qsat, qsat_water, svp_ice_vect
     use phys_grid,     only: get_rlat_all_p, get_rlon_all_p
 
    
@@ -411,9 +411,7 @@ subroutine cldfrc(lchnk   ,ncol    , pbuf,  &
     if ( cldfrc_ice ) then
        do k = top_lev,pver
           call qsat_water(temp(1:ncol,k), pmid(1:ncol,k), esl(1:ncol,k), qs(1:ncol,k), ncol)
-          do i = 1, ncol
-             esi(i,k) = svp_ice(temp(i,k))
-          end do
+          call svp_ice_vect(temp(1:ncol,k), esi(1:ncol,k), ncol)
        end do
     else
        do k = top_lev,pver
