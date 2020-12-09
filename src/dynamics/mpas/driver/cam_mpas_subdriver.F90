@@ -1997,7 +1997,7 @@ contains
 
           east(1,iCell) = -sin(lonCell(iCell))
           east(2,iCell) =  cos(lonCell(iCell))
-          east(3,iCell) =  0.0
+          east(3,iCell) =  0.0_RKIND
 
           ! Normalize
           east(1:3,iCell) = east(1:3,iCell) / sqrt(sum(east(1:3,iCell) * east(1:3,iCell)))

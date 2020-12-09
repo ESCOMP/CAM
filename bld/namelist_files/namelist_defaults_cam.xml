@@ -1853,6 +1853,13 @@
 <clubb_l_diag_Lscale_from_tau           silhs="1" > .false. </clubb_l_diag_Lscale_from_tau>
 <clubb_l_damp_wp2_using_em              silhs="1" > .true.  </clubb_l_damp_wp2_using_em>
 
+<!-- CLUBB+MF options -->
+<do_clubb_mf                       > .false. </do_clubb_mf>
+<do_clubb_mf_diag                  > .false. </do_clubb_mf_diag>
+<clubb_mf_L0                       > 50.0    </clubb_mf_L0>
+<clubb_mf_ent0                     > 0.22    </clubb_mf_ent0>
+<clubb_mf_nup                      > 10      </clubb_mf_nup>
+
 <!-- Microphysics scheme -->
 <micro_mg_do_hail                       > .false. </micro_mg_do_hail>
 <micro_mg_do_graupel                    > .false. </micro_mg_do_graupel>
