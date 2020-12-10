@@ -1313,9 +1313,7 @@ contains
           call pbuf_get_field(pbuf, relhum_idx, ftem_ptr)
           ftem(:ncol,:) = ftem_ptr(:ncol,:)
        else
-          do k = 1, pver
-             call qsat(state%t(1:ncol,k), state%pmid(1:ncol,k), tem2(1:ncol,k), ftem(1:ncol,k), ncol)
-          end do
+          call qsat(state%t(1:ncol,1:pver), state%pmid(1:ncol,1:pver), tem2(1:ncol,1:pver), ftem(1:ncol,1:pver), ncol, pver)
           ftem(:ncol,:) = state%q(:ncol,:,1)/ftem(:ncol,:)*100._r8
        end if
        call outfld ('RELHUM  ',ftem    ,pcols   ,lchnk     )
@@ -1324,9 +1322,7 @@ contains
     if (hist_fld_active('RHW') .or. hist_fld_active('RHI') .or. hist_fld_active('RHCFMIP') ) then
 
       ! RH w.r.t liquid (water)
-      do k = 1, pver
-         call qsat_water (state%t(1:ncol,k), state%pmid(1:ncol,k), esl(1:ncol,k), ftem(1:ncol,k), ncol)
-      end do
+      call qsat_water (state%t(1:ncol,1:pver), state%pmid(1:ncol,1:pver), esl(1:ncol,1:pver), ftem(1:ncol,1:pver), ncol, pver)
       ftem(:ncol,:) = state%q(:ncol,:,1)/ftem(:ncol,:)*100._r8
       call outfld ('RHW  ',ftem    ,pcols   ,lchnk     )
 

@@ -60,16 +60,19 @@ public svp_to_qsat
 interface qsat
   module procedure qsat_line
   module procedure qsat_vect
+  module procedure qsat_2D
 end interface
 public qsat           ! Mixed phase
 interface qsat_water
   module procedure qsat_water_line
   module procedure qsat_water_vect
+  module procedure qsat_water_2D
 end interface
 public qsat_water     ! SVP over water only
 interface qsat_ice
   module procedure qsat_ice_line
   module procedure qsat_ice_vect
+  module procedure qsat_ice_2D
 end interface
 public qsat_ice       ! SVP over ice only
 
@@ -781,6 +784,61 @@ subroutine qsat_vect(t, p, es, qs, vlen, gam, dqsdt, enthalpy)
 
 end subroutine qsat_vect
 
+subroutine qsat_2D(t, p, es, qs, dim1, dim2, gam, dqsdt, enthalpy)
+  !------------------------------------------------------------------!
+  ! Purpose:                                                         !
+  !   Look up and return saturation vapor pressure from precomputed  !
+  !   table, then calculate and return saturation specific humidity. !
+  !   Optionally return various temperature derivatives or enthalpy  !
+  !   at saturation.                                                 !
+  !------------------------------------------------------------------!
+
+  ! Inputs
+  integer,                        intent(in) :: dim1, dim2
+  real(r8), dimension(dim1,dim2), intent(in) :: t    ! Temperature
+  real(r8), dimension(dim1,dim2), intent(in) :: p    ! Pressure
+  ! Outputs
+  real(r8), dimension(dim1,dim2), intent(out) :: es  ! Saturation vapor pressure
+  real(r8), dimension(dim1,dim2), intent(out) :: qs  ! Saturation specific humidity
+
+  real(r8), dimension(dim1,dim2), intent(out), optional :: gam    ! (l/cpair)*(d(qs)/dt)
+  real(r8), dimension(dim1,dim2), intent(out), optional :: dqsdt  ! (d(qs)/dt)
+  real(r8), dimension(dim1,dim2), intent(out), optional :: enthalpy ! cpair*t + hltalt*q
+
+  ! Local variables
+  real(r8), dimension(dim1,dim2) :: hltalt       ! Modified latent heat for T derivatives
+  real(r8), dimension(dim1,dim2) :: tterm        ! Account for d(es)/dT in transition region
+  integer                        :: i, k, vlen
+
+  vlen = dim1 * dim2
+
+  call estblf_vect(t, es, vlen)
+
+  call svp_to_qsat_vect(es, p, qs, vlen)
+
+  ! Ensures returned es is consistent with limiters on qs.
+  do i = 1, dim1
+     do k = 1, dim2
+        es(i,k) = min(es(i,k), p(i,k))
+     end do
+  end do
+
+  ! Calculate optional arguments.
+  if (present(gam) .or. present(dqsdt) .or. present(enthalpy)) then
+
+     ! "generalized" analytic expression for t derivative of es
+     ! accurate to within 1 percent for 173.16 < t < 373.16
+     call calc_hltalt_vect(t, hltalt, vlen, tterm)
+
+     if (present(enthalpy)) call tq_enthalpy_vect(t, qs, hltalt, enthalpy, vlen)
+
+     call deriv_outputs_vect(t, p, es, qs, hltalt, tterm, vlen, &
+          gam=gam, dqsdt=dqsdt)
+
+  end if
+
+end subroutine qsat_2D
+
 subroutine qsat_water_line(t, p, es, qs, gam, dqsdt, enthalpy)
   !------------------------------------------------------------------!
   ! Purpose:                                                         !
@@ -874,6 +932,60 @@ subroutine qsat_water_vect(t, p, es, qs, vlen, gam, dqsdt, enthalpy)
 
 end subroutine qsat_water_vect
 
+subroutine qsat_water_2D(t, p, es, qs, dim1, dim2, gam, dqsdt, enthalpy)
+  !------------------------------------------------------------------!
+  ! Purpose:                                                         !
+  !   Calculate SVP over water at a given temperature, and then      !
+  !   calculate and return saturation specific humidity.             !
+  !   Optionally return various temperature derivatives or enthalpy  !
+  !   at saturation.                                                 !
+  !------------------------------------------------------------------!
+
+  use wv_sat_methods, only: wv_sat_qsat_water_vect
+
+  ! Inputs
+  integer,                        intent(in) :: dim1, dim2
+  real(r8), dimension(dim1,dim2), intent(in) :: t    ! Temperature
+  real(r8), dimension(dim1,dim2), intent(in) :: p    ! Pressure
+  ! Outputs
+  real(r8), dimension(dim1,dim2), intent(out) :: es  ! Saturation vapor pressure
+  real(r8), dimension(dim1,dim2), intent(out) :: qs  ! Saturation specific humidity
+
+  real(r8), dimension(dim1,dim2), intent(out), optional :: gam    ! (l/cpair)*(d(qs)/dt)
+  real(r8), dimension(dim1,dim2), intent(out), optional :: dqsdt  ! (d(qs)/dt)
+  real(r8), dimension(dim1,dim2), intent(out), optional :: enthalpy ! cpair*t + hltalt*q
+
+  ! Local variables
+  real(r8), dimension(dim1,dim2) :: hltalt       ! Modified latent heat for T derivatives
+  real(r8), dimension(dim1,dim2) :: tterm
+  integer                        :: i, k, vlen
+
+  vlen = dim1 * dim2
+
+  do i = 1, dim1
+     do k = 1, dim2
+        tterm(i,k) = 0._r8
+     end do
+  end do
+
+  call wv_sat_qsat_water_vect(t, p, es, qs, vlen)
+
+  if (present(gam) .or. present(dqsdt) .or. present(enthalpy)) then
+
+     ! "generalized" analytic expression for t derivative of es
+     ! accurate to within 1 percent for 173.16 < t < 373.16
+     call no_ip_hltalt_vect(t, hltalt, vlen)
+
+     if (present(enthalpy)) call tq_enthalpy_vect(t, qs, hltalt, enthalpy, vlen)
+
+     ! For pure water/ice transition term is 0.
+     call deriv_outputs_vect(t, p, es, qs, hltalt, tterm, vlen, &
+          gam=gam, dqsdt=dqsdt)
+
+  end if
+
+end subroutine qsat_water_2D
+
 subroutine qsat_ice_line(t, p, es, qs, gam, dqsdt, enthalpy)
   !------------------------------------------------------------------!
   ! Purpose:                                                         !
@@ -966,6 +1078,63 @@ subroutine qsat_ice_vect(t, p, es, qs, vlen, gam, dqsdt, enthalpy)
   end if
 
 end subroutine qsat_ice_vect
+
+subroutine qsat_ice_2D(t, p, es, qs, dim1, dim2, gam, dqsdt, enthalpy)
+  !------------------------------------------------------------------!
+  ! Purpose:                                                         !
+  !   Calculate SVP over ice at a given temperature, and then        !
+  !   calculate and return saturation specific humidity.             !
+  !   Optionally return various temperature derivatives or enthalpy  !
+  !   at saturation.                                                 !
+  !------------------------------------------------------------------!
+
+  use wv_sat_methods, only: wv_sat_qsat_ice_vect
+
+  ! Inputs
+  integer,                        intent(in) :: dim1, dim2
+  real(r8), dimension(dim1,dim2), intent(in) :: t    ! Temperature
+  real(r8), dimension(dim1,dim2), intent(in) :: p    ! Pressure
+  ! Outputs
+  real(r8), dimension(dim1,dim2), intent(out) :: es  ! Saturation vapor pressure
+  real(r8), dimension(dim1,dim2), intent(out) :: qs  ! Saturation specific humidity
+
+  real(r8), dimension(dim1,dim2), intent(out), optional :: gam    ! (l/cpair)*(d(qs)/dt)
+  real(r8), dimension(dim1,dim2), intent(out), optional :: dqsdt  ! (d(qs)/dt)
+  real(r8), dimension(dim1,dim2), intent(out), optional :: enthalpy ! cpair*t + hltalt*q
+
+  ! Local variables
+  real(r8), dimension(dim1,dim2) :: hltalt       ! Modified latent heat for T derivatives
+  real(r8), dimension(dim1,dim2) :: tterm
+  integer                        :: i, k, vlen
+
+  vlen = dim1 * dim2
+
+  do i = 1, dim1
+     do k = 1, dim2
+        tterm(i,k) = 0._r8
+     end do
+  end do
+
+  call wv_sat_qsat_ice_vect(t, p, es, qs, vlen)
+
+  if (present(gam) .or. present(dqsdt) .or. present(enthalpy)) then
+
+     do i = 1, dim1
+        do k = 1, dim2
+           ! For pure ice, just add latent heats.
+           hltalt(i,k) = latvap + latice
+        end do
+     end do
+
+     if (present(enthalpy)) call tq_enthalpy_vect(t, qs, hltalt, enthalpy, vlen)
+
+     ! For pure water/ice transition term is 0.
+     call deriv_outputs_vect(t, p, es, qs, hltalt, tterm, vlen, &
+          gam=gam, dqsdt=dqsdt)
+
+  end if
+
+end subroutine qsat_ice_2D
 
 !---------------------------------------------------------------------
 ! FINDSP (WET BULB TEMPERATURE) PROCEDURES

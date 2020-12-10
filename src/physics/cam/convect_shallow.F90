@@ -779,9 +779,7 @@
    slv_preCu(:ncol,:pver) = sl_preCu(:ncol,:pver) * ( 1._r8 + zvir * qt_preCu(:ncol,:pver) )
 
    t_preCu(:ncol,:)       = state1%t(:ncol,:pver)
-   do k = 1, pver
-      call qsat(state1%t(1:ncol,k), state1%pmid(1:ncol,k), tem2(1:ncol,k), ftem(1:ncol,k), ncol)
-   end do
+   call qsat(state1%t(1:ncol,1:pver), state1%pmid(1:ncol,1:pver), tem2(1:ncol,1:pver), ftem(1:ncol,1:pver), ncol, pver)
    ftem_preCu(:ncol,:)    = state1%q(:ncol,:,1) / ftem(:ncol,:) * 100._r8
 
    call outfld( 'qt_pre_Cu      ', qt_preCu               , pcols, lchnk )
@@ -811,9 +809,7 @@
                                               + state1%q(:ncol,:pver,ixcldice)
    slv(:ncol,:pver) = sl(:ncol,:pver) * ( 1._r8 + zvir * qt(:ncol,:pver) )
 
-   do k = 1, pver
-      call qsat(state1%t(1:ncol,k), state1%pmid(1:ncol,k), tem2(1:ncol,k), ftem(1:ncol,k), ncol)
-   end do
+   call qsat(state1%t(1:ncol,1:pver), state1%pmid(1:ncol,1:pver), tem2(1:ncol,1:pver), ftem(1:ncol,1:pver), ncol, pver)
    ftem(:ncol,:)    = state1%q(:ncol,:,1) / ftem(:ncol,:) * 100._r8
 
    call outfld( 'qt_aft_Cu      ', qt                     , pcols, lchnk )

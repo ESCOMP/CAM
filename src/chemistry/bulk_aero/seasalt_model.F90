@@ -108,9 +108,7 @@ module seasalt_model
 
     !-----------------------------------------------------------------------
 
-    do k = 1, pver
-       call qsat(temp(1:ncol,k),pmid(1:ncol,k),es(1:ncol,k),qs(1:ncol,k),ncol)
-    end do
+    call qsat(temp(1:ncol,1:pver),pmid(1:ncol,1:pver),es(1:ncol,1:pver),qs(1:ncol,1:pver),ncol,pver)
     RH(:ncol,:)=q(:ncol,:)/qs(:ncol,:)
     RH(:ncol,:)=max(0.01_r8,min(0.99_r8,RH(:ncol,:)))
     ! set stokes correction to 1.0 for now not a bad assumption for our size range)

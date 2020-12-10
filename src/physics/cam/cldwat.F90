@@ -314,20 +314,20 @@ subroutine pcond (lchnk   ,ncol    ,troplev ,dlat    , &
    real(r8) cwn(pcols)           ! cwat mixing ratio at end
    real(r8) denom                ! work variable
    real(r8) dqsdt                ! change in sat spec. hum. wrt temperature
-   real(r8) es(pcols)            ! sat. vapor pressure
+   real(r8) es(pcols,pver)       ! sat. vapor pressure
    real(r8) fracw(pcols,pver)    ! relative importance of collection of liquid by rain
    real(r8) fsaci(pcols,pver)    ! relative importance of collection of ice by snow
    real(r8) fsacw(pcols,pver)    ! relative importance of collection of liquid by snow
    real(r8) fsaut(pcols,pver)    ! relative importance of ice auto conversion
    real(r8) fwaut(pcols,pver)    ! relative importance of warm cloud autoconversion
-   real(r8) gamma(pcols)         ! d qs / dT
+   real(r8) gamma(pcols,pver)    ! d qs / dT
    real(r8) icwc(pcols)          ! in-cloud water content (kg/kg)
    real(r8) mincld               ! a small cloud fraction to avoid / zero
    real(r8),parameter ::omsm=0.99999_r8                 ! a number just less than unity (for rounding)
    real(r8) prprov(pcols)        ! provisional value of precip at btm of layer
    real(r8) prtmp                ! work variable
    real(r8) q(pcols,pver)        ! mixing ratio before time step ignoring condensate
-   real(r8) qs(pcols)            ! spec. hum. of water vapor
+   real(r8) qs(pcols,pver)       ! spec. hum. of water vapor
    real(r8) qsn, esn             ! work variable
    real(r8) qsp(pcols,pver)      ! sat pt mixing ratio
    real(r8) qtl(pcols)           ! tendency which would saturate the grid box in deltat
@@ -430,6 +430,10 @@ subroutine pcond (lchnk   ,ncol    ,troplev ,dlat    , &
    pracwo(:ncol,:) = 0._r8
    psacwo(:ncol,:) = 0._r8
    psacio(:ncol,:) = 0._r8
+
+   call qsat(t(1:ncol,top_lev:pver), p(1:ncol,top_lev:pver), es(1:ncol,top_lev:pver), & 
+             qs(1:ncol,top_lev:pver), ncol, pver-top_lev+1, gam=gamma(1:ncol,top_lev:pver))
+
 !
 ! find the wet bulb temp and saturation value
 ! for the provisional t and q without condensation
@@ -440,11 +444,9 @@ subroutine pcond (lchnk   ,ncol    ,troplev ,dlat    , &
       call findsp_vc(qn(:ncol,k), tn(:ncol,k), p(:ncol,k), .true., &
            tsp(:ncol,k), qsp(:ncol,k))
 
-      call qsat(t(1:ncol,k), p(1:ncol,k), es(1:ncol), qs(1:ncol), ncol, gam=gamma(1:ncol))
-
       do i = 1,ncol
 !
-         relhum(i) = q(i,k)/qs(i)
+         relhum(i) = q(i,k)/qs(i,k)
 !
          cldm(i) = max(cldn(i,k),mincld)
 !
@@ -454,9 +456,9 @@ subroutine pcond (lchnk   ,ncol    ,troplev ,dlat    , &
 
 ! define the coefficients for C - E calculation
 
-         calpha(i) = 1.0_r8/qs(i)
-         cbeta (i) = q(i,k)/qs(i)**2*gamma(i)*cpohl
-         cbetah(i) = 1.0_r8/qs(i)*gamma(i)*cpohl
+         calpha(i) = 1.0_r8/qs(i,k)
+         cbeta (i) = q(i,k)/qs(i,k)**2*gamma(i,k)*cpohl
+         cbetah(i) = 1.0_r8/qs(i,k)*gamma(i,k)*cpohl
          cgamma(i) = calpha(i)+latvap*cbeta(i)/cpair
          cgamah(i) = calpha(i)+latvap*cbetah(i)/cpair
          rcgama(i) = cgamma(i)/cgamah(i)
@@ -602,7 +604,7 @@ subroutine pcond (lchnk   ,ncol    ,troplev ,dlat    , &
 ! as a safe limit, condensation should not reduce grid mean rh below rhu00
 ! 
            if(cme(i,k) > 0.0_r8 .and. relhum(i) > rhu_adj(i,k) )  &
-              cme(i,k) = min(cme(i,k), (qn(i,k)-qs(i)*rhu_adj(i,k))/deltat)
+              cme(i,k) = min(cme(i,k), (qn(i,k)-qs(i,k)*rhu_adj(i,k))/deltat)
 !
 ! initial guess for cwm (mean cloud water over time step) if 1st iteration
 !

@@ -230,8 +230,8 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
    real(r8) :: rh(pcols,pver)        ! relative humidity (0-1)
    real(r8) :: dmean, qh2so4_equilib, wtpct_mode, sulden_mode
 
-   real(r8) :: es(pcols)             ! saturation vapor pressure
-   real(r8) :: qs(pcols)             ! saturation specific humidity
+   real(r8) :: es(pcols,pver)        ! saturation vapor pressure
+   real(r8) :: qs(pcols,pver)        ! saturation specific humidity
 
    real(r8) :: pm25(pcols,pver)      ! PM2.5 diagnostics     
    real(r8) :: rhoair(pcols,pver) 
@@ -392,11 +392,11 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
    itim_old    =  pbuf_old_tim_idx()
    call pbuf_get_field(pbuf, cld_idx, cldn, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
 
+   call qsat_water(t(1:ncol,top_lev:pver), pmid(1:ncol,top_lev:pver), es(1:ncol,top_lev:pver), qs(1:ncol,top_lev:pver), ncol, pver-top_lev+1)
    do k = top_lev, pver
-      call qsat_water(t(1:ncol,k), pmid(1:ncol,k), es(1:ncol), qs(1:ncol), ncol)
       do i = 1, ncol
-         if (qs(i) > h2ommr(i,k)) then
-            rh(i,k) = h2ommr(i,k)/qs(i)
+         if (qs(i,k) > h2ommr(i,k)) then
+            rh(i,k) = h2ommr(i,k)/qs(i,k)
          else
             rh(i,k) = 0.98_r8
          endif
