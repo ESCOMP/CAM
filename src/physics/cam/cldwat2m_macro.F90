@@ -434,9 +434,9 @@
    real(r8) Twb_aw(pcols)                             ! Wet-bulb temperature [K]
    real(r8) qvwb_aw(pcols,pver)                       ! Wet-bulb water vapor specific humidity [kg/kg]
 
-   real(r8) esat_b(pcols,pver) 
-   real(r8) qsat_b(pcols,pver)                                 
-   real(r8) dqsdT_b(pcols,pver)                                 
+   real(r8) esat_b(pcols) 
+   real(r8) qsat_b(pcols)                                 
+   real(r8) dqsdT_b(pcols)                                 
 
    logical  land
    real(r8) tmp
@@ -837,16 +837,15 @@
       aa(:,:)         = 0._r8
       bb(:,:)         = 0._r8
 
-      call qsat_water(T(1:ncol,top_lev:pver), p(1:ncol,top_lev:pver), esat_b(1:ncol,top_lev:pver), &
-                      qsat_b(1:ncol,top_lev:pver), ncol, pver-top_lev+1, dqsdt=dqsdT_b(1:ncol,top_lev:pver))
       do k = top_lev, pver
+         call qsat_water(T(1:ncol,k), p(1:ncol,k), esat_b(1:ncol), qsat_b(1:ncol), ncol, dqsdt=dqsdT_b(1:ncol))
       if( iter .eq. 1 ) then
           a_cu(:ncol,k) = a_cud(:ncol,k)
       else
           a_cu(:ncol,k) = a_cu0(:ncol,k)
       endif
       do i = 1, ncol
-         U(i,k)    =  qv(i,k)/qsat_b(i,k)
+         U(i,k)    =  qv(i,k)/qsat_b(i)
          U_nc(i,k) =  U(i,k)
       enddo
       if( CAMstfrac ) then
@@ -869,9 +868,9 @@
          ! Compute basic thermodynamic coefficients for computing Q !
          ! -------------------------------------------------------- !
 
-         alpha  =  1._r8/qsat_b(i,k)
-         beta   =  dqsdT_b(i,k)*(qv(i,k)/qsat_b(i,k)**2)
-         betast =  alpha*dqsdT_b(i,k) 
+         alpha  =  1._r8/qsat_b(i)
+         beta   =  dqsdT_b(i)*(qv(i,k)/qsat_b(i)**2)
+         betast =  alpha*dqsdT_b(i) 
          gammal =  alpha + (latvap/cpair)*beta
          gammai =  alpha + ((latvap+latice)/cpair)*beta
          gammaQ =  alpha + (latvap/cpair)*beta
@@ -1288,8 +1287,8 @@ subroutine rhcrit_calc( &
 
    integer :: i, k
 
-   real(r8) :: esat_tmp(pcols,pver)          ! Dummy for saturation vapor pressure calc.
-   real(r8) :: qsat_tmp(pcols,pver)          ! Saturation water vapor specific humidity [kg/kg]
+   real(r8) :: esat_tmp(pcols)          ! Dummy for saturation vapor pressure calc.
+   real(r8) :: qsat_tmp(pcols)          ! Saturation water vapor specific humidity [kg/kg]
    real(r8) :: sig_tmp
    !---------------------------------------------------------------------------------------------------
 
@@ -1321,13 +1320,12 @@ subroutine rhcrit_calc( &
    if (i_rhmini == 2) then
 
       ! Compute the drop of critical RH by the variability induced by PBL turbulence
-      call qsat_ice(T0(1:ncol,top_lev:pver), p(1:ncol,top_lev:pver), esat_tmp(1:ncol,top_lev:pver), &
-                    qsat_tmp(1:ncol,top_lev:pver), ncol, pver-top_lev+1)
       do k = top_lev, pver
+         call qsat_ice(T0(1:ncol,k), p(1:ncol,k), esat_tmp(1:ncol), qsat_tmp(1:ncol), ncol)
          do i = 1, ncol
             sig_tmp = 0.5_r8 * ( qti_flx(i,k)   / sqrt(max(qsmall,tke(i,k))) + & 
                                  qti_flx(i,k+1) / sqrt(max(qsmall,tke(i,k+1))) )
-            d_rhmin_ice_PBL(i,k) = c_aniso*sig_tmp/max(qsmall,qsat_tmp(i,k)) 
+            d_rhmin_ice_PBL(i,k) = c_aniso*sig_tmp/max(qsmall,qsat_tmp(i)) 
             d_rhmin_ice_PBL(i,k) = max(0._r8,min(0.5_r8,d_rhmin_ice_PBL(i,k)))
 
             rhmini_arr(i,k) = 1._r8 - d_rhmin_ice_PBL(i,k) - d_rhmin_ice_det(i,k)
@@ -1372,14 +1370,12 @@ subroutine rhcrit_calc( &
    if (i_rhminl == 2) then
 
       ! Compute the drop of critical RH by the variability induced by PBL turbulence
-      call qsat_water(T0(1:ncol,top_lev:pver), p(1:ncol,top_lev:pver), esat_tmp(1:ncol,top_lev:pver), &
-                      qsat_tmp(1:ncol,top_lev:pver), ncol, pver-top_lev+1)
-
       do k = top_lev, pver
+         call qsat_water(T0(1:ncol,k), p(1:ncol,k), esat_tmp(1:ncol), qsat_tmp(1:ncol), ncol)
          do i = 1, ncol
             sig_tmp = 0.5_r8 * ( qtl_flx(i,k)   / sqrt(max(qsmall,tke(i,k))) + & 
                                  qtl_flx(i,k+1) / sqrt(max(qsmall,tke(i,k+1))) )
-            d_rhmin_liq_PBL(i,k) = c_aniso*sig_tmp/max(qsmall,qsat_tmp(i,k)) 
+            d_rhmin_liq_PBL(i,k) = c_aniso*sig_tmp/max(qsmall,qsat_tmp(i)) 
             d_rhmin_liq_PBL(i,k) = max(0._r8,min(0.5_r8,d_rhmin_liq_PBL(i,k)))
 
             rhminl_arr(i,k) = 1._r8 - d_rhmin_liq_PBL(i,k) - d_rhmin_liq_det(i,k)

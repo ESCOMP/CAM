@@ -438,9 +438,9 @@ subroutine nucleate_ice_cam_calc( &
    real(r8), allocatable :: naer2(:,:,:)    ! bulk aerosol number concentration (1/m3)
    real(r8), allocatable :: maerosol(:,:,:) ! bulk aerosol mass conc (kg/m3)
 
-   real(r8) :: qs(pcols,pver)       ! liquid-ice weighted sat mixing rat (kg/kg)
-   real(r8) :: es(pcols,pver)       ! liquid-ice weighted sat vapor press (pa)
-   real(r8) :: gammas(pcols,pver)   ! parameter for cond/evap of cloud water
+   real(r8) :: qs(pcols)            ! liquid-ice weighted sat mixing rat (kg/kg)
+   real(r8) :: es(pcols)            ! liquid-ice weighted sat vapor press (pa)
+   real(r8) :: gammas(pcols)        ! parameter for cond/evap of cloud water
    integer  :: troplev(pcols)       ! tropopause level
 
    real(r8) :: relhum(pcols,pver)  ! relative humidity
@@ -609,14 +609,13 @@ subroutine nucleate_ice_cam_calc( &
       INFreIN(:,:)  = 0.0_r8
    endif
 
-   ! Get humidity and saturation vapor pressures
-   call qsat_water(t(1:ncol,top_lev:pver), pmid(1:ncol,top_lev:pver), es(1:ncol,top_lev:pver), &
-                   qs(1:ncol,top_lev:pver), ncol, pver-top_lev+1, gam=gammas(1:ncol,top_lev:pver))
-
    do k = top_lev, pver
+      ! Get humidity and saturation vapor pressures
+      call qsat_water(t(1:ncol,k), pmid(1:ncol,k), es(1:ncol), qs(1:ncol), ncol, gam=gammas(1:ncol))
+
       do i = 1, ncol
 
-         relhum(i,k) = qn(i,k)/qs(i,k)
+         relhum(i,k) = qn(i,k)/qs(i)
 
          ! get cloud fraction, check for minimum
          icldm(i,k) = max(icecldf(i,k), mincld)

@@ -829,9 +829,6 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
      end do
   end do
 
-  call svp_water_vect(t(1:il2g,1:pver), es(1:il2g,1:pver), il2g*pver)     ! over water in mixed clouds
-  call svp_ice_vect(t(1:il2g,1:pver), esi(1:il2g,1:pver), il2g*pver)      ! over ice
-
   ! skip microphysical calculations if no cloud water
   do i=1,il2g
      if (ltrue(i).eq.0) then
@@ -950,6 +947,9 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
 
            fhmrm (i,k) = 0._r8
         end do
+
+        call svp_water_vect(t(i,msg+2:pver), es(i,msg+2:pver), pver-msg+1)     ! over water in mixed clouds
+        call svp_ice_vect(t(i,msg+2:pver), esi(i,msg+2:pver), pver-msg+1)      ! over ice
 
         do k = pver,msg+2,-1
   
