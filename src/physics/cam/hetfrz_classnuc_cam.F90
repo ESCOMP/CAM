@@ -774,8 +774,8 @@ subroutine hetfrz_classnuc_cam_calc( &
    nidep_dst(:,:) = 0._r8
 
    do k = top_lev, pver
-      call svp_water_vect(t(1:ncol), esl(1:ncol), ncol)
-      call svp_ice_vect(t(1:ncol), esi(1:ncol), ncol)
+      call svp_water_vect(t(1:ncol,k), esl(1:ncol), ncol)
+      call svp_ice_vect(t(1:ncol,k), esi(1:ncol), ncol)
       do i = 1, ncol
 
          if (t(i,k) > 235.15_r8 .and. t(i,k) < 269.15_r8) then
