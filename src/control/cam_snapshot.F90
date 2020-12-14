@@ -1771,7 +1771,11 @@ subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname)
 !          pbufname,                 'unset',        &
 !          pbufname,                 'unset',        &
 !          pbuf_names(i),            'unset',        &
-!          rad_name1,                'unset',        & !          rad_name2,                'unset',        & !          rad_name3,                'unset',        & !          rad_name,                 'unset',        & !          sad_name,                 'cm2/cm3',      &
+!          rad_name1,                'unset',        & 
+!          rad_name2,                'unset',        & 
+!          rad_name3,                'unset',        & 
+!          rad_name,                 'unset',        & 
+!          sad_name,                 'cm2/cm3',      &
 !          volcaero_name,            'kg/kg',        &
 !          volcrad_name,             'm',            &
 !          xname_massptrcw(l,        'unset',        &
