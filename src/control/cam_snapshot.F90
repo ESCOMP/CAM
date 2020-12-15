@@ -790,6 +790,9 @@ subroutine cam_tphysbc_snapshot_init(cam_snapshot_before_num, cam_snapshot_after
    !--------------------------------------------------------
 
    call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+     'flx',        'tphysbc_flx_heat',         'unset',              horiz_only)
+
+   call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'cmfmc',        'tphysbc_cmfmc',         'unset',              'lev')
 
    call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
