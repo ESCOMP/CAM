@@ -19,7 +19,7 @@
 <srf_emis_specifier>
          'bc_a4    -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp245/emissions-cmip6-ScenarioMIP_IAMC-MESSAGE-GLOBIOM-ssp245-1-1_bc_a4_anthro_surface_mol_175001-210101_0.9x1.25_c20190222.nc',
          'bc_a4    -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp245-BB_smoothed/emissions-cmip6-ScenarioMIP_IAMC-MESSAGE-GLOBIOM-ssp245-1-1_smoothed_bc_a4_bb_surface_mol_175001-210101_0.9x1.25_c20201203.nc',
-         'DMS      -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp245-BB_smoothed/emissions-cmip6-ScenarioMIP_IAMC-MESSAGE-GLOBIOM-ssp245-1-1_smoothed_DMS_bb_surface_mol_175001-210101_0.9x1.25_c20201203.nc
+         'DMS      -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp245-BB_smoothed/emissions-cmip6-ScenarioMIP_IAMC-MESSAGE-GLOBIOM-ssp245-1-1_smoothed_DMS_bb_surface_mol_175001-210101_0.9x1.25_c20201203.nc',
          'DMS      -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp245/emissions-cmip6-SSP_DMS_other_surface_mol_175001-210101_0.9x1.25_c20190222.nc',
          'num_a1   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp245-BB_smoothed/emissions-cmip6-ScenarioMIP_IAMC-MESSAGE-GLOBIOM-ssp245-1-1_smoothed_num_so4_a1_bb_surface_mol_175001-210101_0.9x1.25_c20201203.nc',
          'num_a1   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp245/emissions-cmip6-ScenarioMIP_IAMC-MESSAGE-GLOBIOM-ssp245-1-1_num_so4_a1_anthro-ag-ship_surface_mol_175001-210101_0.9x1.25_c20190222.nc',
