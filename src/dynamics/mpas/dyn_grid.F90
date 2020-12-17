@@ -37,6 +37,7 @@ use cam_mpas_subdriver, only: domain_ptr, cam_mpas_init_phase3, cam_mpas_get_glo
 use mpas_pool_routines, only: mpas_pool_get_subpool, mpas_pool_get_dimension, mpas_pool_get_array
 use mpas_derived_types, only: mpas_pool_type
 
+use physics_column_type, only : physics_column_t
 
 implicit none
 private
@@ -55,6 +56,7 @@ public :: &
    dyn_decomp, &
    ptimelevels, &
    dyn_grid_init, &
+   get_dyn_grid_info, &
    get_block_bounds_d, &
    get_block_gcol_cnt_d, &
    get_block_gcol_d, &
@@ -106,6 +108,9 @@ integer, allocatable :: local_col_index(:)         ! local column index (in bloc
 real(r8), dimension(:), pointer :: lonCell_g       ! global cell longitudes
 real(r8), dimension(:), pointer :: latCell_g       ! global cell latitudes
 real(r8), dimension(:), pointer :: areaCell_g      ! global cell areas
+
+! Local, module copy of dyn_columns (allocated in get_dyn_grid_info)
+type(physics_column_t), pointer :: local_dyn_columns(:) => NULL()
 
 !=========================================================================================
 contains
@@ -200,6 +205,26 @@ subroutine dyn_grid_init()
    call define_cam_grids()
    
 end subroutine dyn_grid_init
+
+!=========================================================================================
+
+subroutine get_dyn_grid_info(hdim1_d, hdim2_d, pver, index_top_layer, index_bottom_layer, unstructured, dyn_columns)
+   !------------------------------------------------------------
+   !
+   ! get_dyn_grid_info returns physics grid column information
+   !
+   !------------------------------------------------------------
+
+   ! Input variables
+   integer, intent(out) :: hdim1_d ! Longitudes or grid size
+   integer, intent(out) :: hdim2_d ! Latitudes or 1
+   integer, intent(out) :: pver
+   integer, intent(out) :: index_top_layer
+   integer, intent(out) :: index_bottom_layer
+   logical, intent(out) :: unstructured
+   type (physics_column_t), allocatable, intent(out):: dyn_columns(:)
+
+end subroutine get_dyn_grid_info
 
 !=========================================================================================
 
