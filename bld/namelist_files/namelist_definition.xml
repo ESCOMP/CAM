@@ -405,19 +405,6 @@ Physics grid decomposition options.
 Default: 0 for unstructured grid dycores, 1 for lat/lon grid dycores
 </entry>
 
-<entry id="phys_global_max_fields" type="integer"  category="perf"
-       group="phys_grid_nl" valid_values="" >
-  phys_global_max_fields is used to limit the amount of memory required
-    by a single task due to global operations (e.g. global mean).
-    The value is the maximum number of double-precision fields on a task
-    for global calculations.
-  For a single field, this is the maxiumum number of columns collected
-    onto a single task at one time.
-  A value of -1 signifies no limit, the system will choose a layout
-  which attempts to balance memory and performance.
-  Default: -1
-</entry>
-
 <!-- Diagnostics -->
 
 <entry id="diag_cnst_conv_tend" type="char*8"  category="diagnostics"
@@ -2660,21 +2647,21 @@ Default: .false.
 
 <entry id="micro_mg_evap_scl_ifs" type="logical" category="microphys"
        group="micro_mg_nl" valid_values="" >
-Apply 0.3 scaling factor to evaporation of precipitation as done in the 
+Apply 0.3 scaling factor to evaporation of precipitation as done in the
 IFS model (https://www.ecmwf.int/en/forecasts/documentation-and-support)
 Default: .false.
 </entry>
 
 <entry id="micro_mg_evap_rhthrsh_ifs" type="logical" category="microphys"
        group="micro_mg_nl" valid_values="" >
-Do not evaporate precipitation until RH<90% as done in the                                                        
+Do not evaporate precipitation until RH<90% as done in the
 IFS model (https://www.ecmwf.int/en/forecasts/documentation-and-support)
 Default: .false.
 </entry>
 
 <entry id="micro_mg_rainfreeze_ifs" type="logical" category="microphys"
        group="micro_mg_nl" valid_values="" >
-Freeze rain at 0C as done in the                                                        
+Freeze rain at 0C as done in the
 IFS model (https://www.ecmwf.int/en/forecasts/documentation-and-support)
 Default: .false.
 </entry>
@@ -3708,8 +3695,8 @@ Default: true
 <!-- for CLUBB+MF -->
 <entry id="do_clubb_mf" type="logical" category="conv"
        group="clubb_mf_nl" valid_values="" >
-If .true. add ensemble mass fluxes to CLUBB's higher-order equation set. 
-Together with CLUBB, this constitutes an eddy-diffusivity mass-flux approach. 
+If .true. add ensemble mass fluxes to CLUBB's higher-order equation set.
+Together with CLUBB, this constitutes an eddy-diffusivity mass-flux approach.
 Default: .false.
 </entry>
 
@@ -4714,12 +4701,6 @@ Name of parameterization to take snapshot after running
 user_set is used when a user inserts a call to cam_snapshot_all_outfld
   using cam_snapshot_after_num as the first argument.
 Default: Unused
-</entry>
-
-<entry id="cam_repro_sum" type="logical" category="perf"
-       group="phys_ctl_nl" valid_values="" >
-True when model will use a reproducible algorithm for global summations.
-Default: .false.
 </entry>
 
 <!-- Radiation -->

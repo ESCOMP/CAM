@@ -1,12 +1,11 @@
 module interp_mod
-  use cam_logfile,         only: iulog
   use shr_kind_mod,        only: r8 => shr_kind_r8
   use dimensions_mod,      only: nelemd, np, ne
   use interpolate_mod,     only: interpdata_t
   use interpolate_mod,     only: interp_lat => lat, interp_lon => lon
   use interpolate_mod,     only: interp_gweight => gweight
   use dyn_grid,            only: elem,fvm
-  use spmd_utils,          only: masterproc, iam
+  use spmd_utils,          only: iam
   use cam_history_support, only: fillvalue
   use hybrid_mod,          only: hybrid_t, config_thread_region
   use cam_abortutils,      only: endrun
@@ -53,7 +52,6 @@ CONTAINS
     use interpolate_mod,     only: get_interp_parameter, set_interp_parameter
     use interpolate_mod,     only: get_interp_gweight, setup_latlon_interp
     use parallel_mod,        only: par
-    use thread_mod,          only: omp_get_thread_num
 
     ! Dummy arguments
     logical,             intent(inout) :: interp_ok
@@ -62,7 +60,7 @@ CONTAINS
     type(interp_info_t), intent(inout) :: interp_info(:)
 
     ! Local variables
-    integer                            :: ithr, i, j
+    integer                            :: i
     real(r8),            pointer       :: w(:)
     integer(iMap),       pointer       :: grid_map(:,:)
     type(horiz_coord_t), pointer       :: lat_coord
@@ -77,8 +75,6 @@ CONTAINS
 
     if (interp_ok) then
       hybrid = config_thread_region(par,'serial')
-!      ithr = omp_get_thread_num()
-!      hybrid = hybrid_create(par,ithr,1)
 
       if(any(interp_output)) then
         allocate(interpdata_set(mtapes))
@@ -198,9 +194,9 @@ CONTAINS
     use interpolate_mod,  only: interpolate_scalar
     use cam_instance,     only: atm_id
     use spmd_dyn,         only: local_dp_map
-    use ppgrid,           only: begchunk, pcols, pver
+    use ppgrid,           only: begchunk
     use phys_grid,        only: get_dyn_col_p, columns_on_task, get_chunk_info_p
-    use dimensions_mod,   only: npsq, fv_nphys, nc, nhc, nhc_phys
+    use dimensions_mod,   only: fv_nphys, nc, nhc, nhc_phys
     use dof_mod,          only: PutUniquePoints
     use interpolate_mod,  only: get_interp_parameter
     use shr_pio_mod,      only: shr_pio_getiosys
@@ -211,7 +207,6 @@ CONTAINS
     use thread_mod,       only: horz_num_threads
     use cam_grid_support, only: cam_grid_id
     use hybrid_mod,       only: hybrid_t, config_thread_region, get_loop_ranges
-    use fvm_mapping,      only: fvm2dyn, phys2dyn
     use fvm_mod,          only: fill_halo_and_extend_panel
 
     type(file_desc_t), intent(inout) :: File
@@ -227,7 +222,7 @@ CONTAINS
     type (EdgeBuffer_t)            :: edgebuf              ! edge buffer
 
 
-    integer              :: lchnk, i, j, col_index, icol, ncols, ierr
+    integer              :: lchnk, i, col_index, icol, ncols, ierr
     integer              :: nets, nete
     integer              :: phys_decomp, fvm_decomp, gll_decomp
 
@@ -405,9 +400,9 @@ CONTAINS
     use cam_instance,     only: atm_id
     use interpolate_mod,  only: interpolate_scalar, vec_latlon_to_contra,get_interp_parameter
     use spmd_dyn,         only: local_dp_map
-    use ppgrid,           only: begchunk, pcols, pver
+    use ppgrid,           only: begchunk
     use phys_grid,        only: get_dyn_col_p, columns_on_task, get_chunk_info_p
-    use dimensions_mod,   only: npsq, fv_nphys,nc,nhc,nhc_phys
+    use dimensions_mod,   only: fv_nphys,nc,nhc,nhc_phys
     use dof_mod,          only: PutUniquePoints
     use shr_pio_mod,      only: shr_pio_getiosys
     use edge_mod,         only: edgevpack, edgevunpack, initedgebuffer, freeedgebuffer
@@ -431,7 +426,7 @@ CONTAINS
     type(iosystem_desc_t), pointer :: pio_subsystem
     type (EdgeBuffer_t)            :: edgebuf              ! edge buffer
 
-    integer              :: lchnk, i, j, col_index, icol, ncols, ierr
+    integer              :: lchnk, i, col_index, icol, ncols, ierr
     integer              :: nets, nete
 
     real(r8), allocatable :: dest(:,:,:,:,:)
@@ -507,7 +502,6 @@ CONTAINS
             fld_dyn(blk_ind(1), 2, k, ie) = fldv(icol, k, lchnk-begchunk+1)
          end do
       end do
-    deallocate(fld_dyn)
       if (fv_nphys > 0) then
         do ie = 1, nelemd
           fld_tmp(1:nsize,1:nsize,:,:,ie) = RESHAPE(fld_dyn(:,:,:,ie),(/nsize,nsize,2,numlev/))
@@ -530,6 +524,7 @@ CONTAINS
         call freeEdgeBuffer(edgebuf)
         usefillvalues = any(fld_tmp==fillvalue)
       end if
+      deallocate(fld_dyn)
     else
       !
       ! not physics decomposition

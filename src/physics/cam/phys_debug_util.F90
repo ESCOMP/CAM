@@ -26,7 +26,7 @@ implicit none
 private
 save
 
-real(r8), parameter :: uninit_r8 = huge(1._r8)
+real(r8), parameter :: uninitr8 = huge(1._r8)
 
 ! Public methods
 public phys_debug_readnl  ! read namelist input
@@ -34,8 +34,8 @@ public phys_debug_init    ! initialize the method to a chunk and column
 public phys_debug_col     ! return local column index in debug chunk
 
 ! Namelist variables
-real(r8) :: phys_debug_lat = uninit_r8 ! latitude of requested debug column location in degrees
-real(r8) :: phys_debug_lon = uninit_r8 ! longitude of requested debug column location in degrees
+real(r8) :: phys_debug_lat = uninitr8 ! latitude of requested debug column location in degrees
+real(r8) :: phys_debug_lon = uninitr8 ! longitude of requested debug column location in degrees
 
 
 integer :: debchunk = -999            ! local index of the chuck we will debug
@@ -73,7 +73,7 @@ subroutine phys_debug_readnl(nlfile)
       close(unitn)
       call freeunit(unitn)
       ! Check inputs
-      if (phys_debug_lat /= uninit_r8) then
+      if (phys_debug_lat /= uninitr8) then
          if (abs(phys_debug_lat) > 90.0_r8) then
             write(iulog, *) subname, ': phys_debug_lat out of range [-90., 90.]'
             call endrun(subname//': phys_debug_lat out of range [-90., 90.]')
@@ -81,7 +81,7 @@ subroutine phys_debug_readnl(nlfile)
       else
          write(iulog, *) subname, ': phys_debug_lat = ', phys_debug_lat
       end if
-      if (phys_debug_lon /= uninit_r8) then
+      if (phys_debug_lon /= uninitr8) then
          if ((phys_debug_lon < 0.0_r8) .or. (phys_debug_lon > 360.0_r8)) then
             write(iulog, *) subname, ': phys_debug_lon out of range [0., 360.]'
             call endrun(subname//': phys_debug_lon out of range [0., 360.]')
@@ -99,7 +99,7 @@ subroutine phys_debug_readnl(nlfile)
 
 end subroutine phys_debug_readnl
 
-!================================================================================
+!==============================================================================
 
 subroutine phys_debug_init()
    use mpi,       only: mpi_real8, mpi_integer, mpi_min, mpi_max
@@ -118,10 +118,12 @@ subroutine phys_debug_init()
    real(r8), parameter :: deg2rad = pi / 180.0_r8
    real(r8), parameter :: maxtol = 0.99999_r8 ! max cos value
    real(r8), parameter :: maxlat = pi * maxtol / 2.0_r8
-   !-----------------------------------------------------------------------------
+   !---------------------------------------------------------------------------
 
    ! If no debug column specified then do nothing
-   if (phys_debug_lat == uninit_r8 .or. phys_debug_lon == uninit_r8) return
+   if ((phys_debug_lat == uninitr8) .or. (phys_debug_lon == uninitr8)) then
+      return
+   end if
 
    ! User has specified a column location for debugging.  Find the closest
    ! column in the physics grid.
@@ -137,23 +139,25 @@ subroutine phys_debug_init()
       do icol = 1, ncol
          lat = get_rlat_p(lchunk, icol)
          lon = get_rlon_p(lchunk, icol)
-          if ( (abs(lat - latmin) <= maxangle) .and.                          &
-               (abs(lon - lonmin) <= maxangle)) then
+         if ( (abs(lat - latmin) <= maxangle) .and.                           &
+              (abs(lon - lonmin) <= maxangle)) then
             ! maxangle could be pi but why waste all those trig functions?
             if ((lat == latmin) .and. (lon == lonmin)) then
-              dist = 0.0_r8
+               dist = 0.0_r8
             else
-              temp1 = (sin(latmin) * sin(lat)) +                              &
-                   (cos(latmin) * cos(lat) * cos(lon - lonmin))
-              if (temp1 > maxtol) then
-                ! Use haversine formula
-                temp1 = sin(latmin - lat)
-                temp2 = sin((lonmin - lon) / 2.0_r8)
-                dist = 2.0_r8 * asin((temp1*temp1) + (cos(latmin)*cos(lat)*temp2*temp2))
-              else
-                dist = acos(temp1)
-              end if
-           end if
+               temp1 = (sin(latmin) * sin(lat)) +                             &
+                    (cos(latmin) * cos(lat) * cos(lon - lonmin))
+               if (temp1 > maxtol) then
+                  ! Use haversine formula
+                  temp1 = sin((latmin - lat) / 2.0_r8)
+                  temp2 = sin((lonmin - lon) / 2.0_r8)
+                  dist = (temp1 * temp1) +                                    &
+                       (cos(latmin)* cos(lat) * temp2 * temp2)
+                  dist = 2.0_r8 * asin(sqrt(dist))
+               else
+                  dist = acos(temp1)
+               end if
+            end if
             if ( (dist < mindist) .or.                                        &
                  ((dist == mindist) .and.                                     &
                  (abs(lon - lonmin) < abs(deblon - lonmin)))) then
@@ -162,6 +166,9 @@ subroutine phys_debug_init()
                mindist = dist
                deblon = lon
                deblat = lat
+               if (dist == 0.0_r8) then
+                  exit
+               end if
             end if
          end if
       end do

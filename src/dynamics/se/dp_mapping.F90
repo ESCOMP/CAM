@@ -84,12 +84,10 @@ contains
   subroutine dp_reorder(before, after)
     use cam_abortutils, only: endrun
     use dimensions_mod, only: nelem
-    !XXgoldyXX
     use cam_logfile,    only: iulog
     use spmd_utils,     only: masterproc
     use shr_sys_mod,    only: shr_sys_flush
-    !XXgoldyXX
-    implicit none
+
     real(r8), dimension(fv_nphys*fv_nphys,*), intent(in)  :: before
     real(r8), dimension(fv_nphys*fv_nphys,*), intent(out) :: after
     integer :: ie
@@ -193,8 +191,6 @@ contains
     ! Local variables
     integer           :: i, ie, ierror, j, status, ivtx
     integer           :: grid_corners_id, grid_rank_id, grid_size_id
-    character(len=256) :: errormsg
-    character(len=shr_kind_cl) :: filename
     integer           :: ncid
     integer           :: grid_dims_id, grid_area_id, grid_center_lat_id
     integer           :: grid_center_lon_id, grid_corner_lat_id
@@ -202,6 +198,8 @@ contains
     integer           :: gridsize
     integer           :: IOrootID
     logical           :: IOroot
+    character(len=SHR_KIND_CL) :: errormsg
+    character(len=SHR_KIND_CL) :: filename
     integer,allocatable,dimension(:) :: displs,recvcount
 
     real(r8), dimension(fv_nphys, fv_nphys, nelemd, 4, 2)  :: corners

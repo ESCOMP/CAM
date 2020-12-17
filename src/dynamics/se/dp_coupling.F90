@@ -8,8 +8,8 @@ use shr_kind_mod,   only: r8=>shr_kind_r8
 use ppgrid,         only: begchunk, endchunk, pcols, pver, pverp
 use constituents,   only: pcnst, cnst_type
 
-use spmd_dyn,       only: local_dp_map, block_buf_nrecs, chunk_buf_nrecs
-use spmd_utils,     only: mpicom, iam
+use spmd_dyn,       only: local_dp_map
+use spmd_utils,     only: iam
 use dyn_grid,       only: TimeLevel, edgebuf
 use dyn_comp,       only: dyn_export_t, dyn_import_t
 
@@ -20,18 +20,16 @@ use physics_buffer, only: physics_buffer_desc, pbuf_get_chunk, pbuf_get_field
 
 use dp_mapping,     only: nphys_pts
 
-use cam_logfile,    only: iulog
-use perf_mod,       only: t_startf, t_stopf, t_barrierf
+use perf_mod,       only: t_startf, t_stopf
 use cam_abortutils, only: endrun
 
 use parallel_mod,   only: par
 use thread_mod,     only: horz_num_threads, max_num_threads
 use hybrid_mod,     only: config_thread_region, get_loop_ranges, hybrid_t
-use dimensions_mod, only: np, npsq, nelemd, nlev, nc, qsize, ntrac, fv_nphys
+use dimensions_mod, only: np, nelemd, nlev, qsize, ntrac, fv_nphys
 
 use dof_mod,        only: UniquePoints, PutUniquePoints
 use element_mod,    only: element_t
-use fvm_control_volume_mod, only: fvm_struct
 
 implicit none
 private
@@ -90,18 +88,13 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
    real (kind=r8),  pointer     :: pbuf_frontgf(:,:)
    real (kind=r8),  pointer     :: pbuf_frontga(:,:)
 
-   integer                      :: ncols,i,j,ierr,k,iv
-   integer                      :: col_ind, blk_ind(1), m, m_cnst
-   integer                      :: tsize               ! amount of data per grid point passed to physics
-   integer,         allocatable :: bpter(:,:)          ! offsets into block buffer for packing data
-   integer                      :: cpter(pcols,0:pver) ! offsets into chunk buffer for unpacking data
+   integer                      :: ncols, ierr
+   integer                      :: col_ind, blk_ind(1), m
    integer                      :: nphys
 
-   real (kind=r8),  allocatable :: bbuffer(:), cbuffer(:) ! transpose buffers
    real (kind=r8),  allocatable :: qgll(:,:,:,:)
    real (kind=r8)               :: inv_dp3d(np,np,nlev)
    integer                      :: tl_f, tl_qdp_np0, tl_qdp_np1
-   logical                      :: lmono
 
    type(physics_buffer_desc), pointer :: pbuf_chnk(:)
    !----------------------------------------------------------------------------
@@ -326,17 +319,17 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
    type(hybrid_t)                                                   :: hybrid
 
    ! LOCAL VARIABLES
-   integer                      :: ic , ncols             ! index
-   type(element_t), pointer     :: elem(:)                ! pointer to dyn_in element array
-   integer                      :: ie                     ! index for elements
-   integer                      :: col_ind                ! index over columns
-   integer                      :: blk_ind(1)             ! element offset
-   integer                      :: lchnk, icol, ilyr      ! indices for chunk, column, layer
+   integer                      :: ncols             ! index
+   type(element_t), pointer     :: elem(:)           ! pointer to dyn_in element array
+   integer                      :: ie                ! index for elements
+   integer                      :: col_ind           ! index over columns
+   integer                      :: blk_ind(1)        ! element offset
+   integer                      :: lchnk, icol, ilyr ! indices for chunk, column, layer
 
-   real (kind=r8),  allocatable :: dp_phys(:,:,:)         ! temp array to hold dp on physics grid
-   real (kind=r8),  allocatable :: T_tmp(:,:,:)           ! temp array to hold T
-   real (kind=r8),  allocatable :: dq_tmp(:,:,:,:)        ! temp array to hold q
-   real (kind=r8),  allocatable :: uv_tmp(:,:,:,:)        ! temp array to hold uv
+   real (kind=r8),  allocatable :: dp_phys(:,:,:)    ! temp array to hold dp on physics grid
+   real (kind=r8),  allocatable :: T_tmp(:,:,:)      ! temp array to hold T
+   real (kind=r8),  allocatable :: dq_tmp(:,:,:,:)   ! temp array to hold q
+   real (kind=r8),  allocatable :: uv_tmp(:,:,:,:)   ! temp array to hold uv
    integer                      :: m, i, j, k
 
    real (kind=r8)               :: factor
@@ -549,11 +542,9 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
    use shr_const_mod, only: shr_const_rwv
    use phys_control,  only: waccmx_is
    use geopotential,  only: geopotential_t
-   use physics_types, only: set_state_pdry, set_wet_to_dry
    use check_energy,  only: check_energy_timestep_init
-   use hycoef,        only: hyai, hybi, ps0
+   use hycoef,        only: hyai, ps0
    use shr_vmath_mod, only: shr_vmath_log
-   use gmean_mod,     only: gmean
    use qneg_module,   only: qneg3
    use dyn_comp,      only: ixo, ixo2, ixh, ixh2
 
@@ -564,14 +555,7 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
 
    ! local variables
    integer :: lchnk
-   real(r8) :: qbot                 ! bottom level q before change
-   real(r8) :: qbotm1               ! bottom-1 level q before change
-   real(r8) :: dqreq                ! q change at pver-1 required to remove q<qmin at pver
-   real(r8) :: qmavl                ! available q at level pver-1
 
-   real(r8) :: ke(pcols,begchunk:endchunk)
-   real(r8) :: se(pcols,begchunk:endchunk)
-   real(r8) :: ke_glob(1),se_glob(1)
    real(r8) :: zvirv(pcols,pver)    ! Local zvir array pointer
    real(r8) :: factor_array(pcols,nlev)
 
@@ -759,9 +743,8 @@ subroutine thermodynamic_consistency(phys_state, phys_tend, ncols, pver)
    ! Note: mixing ratios are assumed to be dry.
    !
    use dimensions_mod,    only: lcp_moist
-   use physconst,         only: get_cp
+   use physconst,         only: get_cp, cpair
    use control_mod,       only: phys_dyn_cp
-   use physconst,         only: cpair
 
    type(physics_state), intent(in)    :: phys_state
    type(physics_tend ), intent(inout) :: phys_tend

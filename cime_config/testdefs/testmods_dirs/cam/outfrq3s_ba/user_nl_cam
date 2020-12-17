@@ -3,4 +3,3 @@ ndens=1,1,1,1,1,1
 nhtfrq=3,3,3,3,3,3
 inithist='ENDOFRUN'
 pbuf_global_allocate=.false.
-cam_repro_sum=.true.

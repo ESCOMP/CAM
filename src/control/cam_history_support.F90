@@ -9,7 +9,7 @@ module cam_history_support
 !!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-  use shr_kind_mod,     only: r8=>shr_kind_r8, shr_kind_cl
+  use shr_kind_mod,     only: r8=>shr_kind_r8, shr_kind_cl, shr_kind_cxx
   use shr_sys_mod,      only: shr_sys_flush
   use pio,              only: var_desc_t, file_desc_t
   use cam_abortutils,   only: endrun
@@ -23,7 +23,7 @@ module cam_history_support
   private
   save
 
-  integer, parameter, public :: max_string_len = 256   ! Length of strings
+  integer, parameter, public :: max_string_len = shr_kind_cxx
   integer, parameter, public :: max_chars = shr_kind_cl         ! max chars for char variables
   integer, parameter, public :: fieldname_len = 24   ! max chars for field name
   integer, parameter, public :: fieldname_suffix_len =  3 ! length of field name suffix ("&IC")

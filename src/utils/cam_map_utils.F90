@@ -1,20 +1,12 @@
 module cam_map_utils
   use pio,                 only: iMap=>PIO_OFFSET_KIND
   use cam_abortutils,      only: endrun
-  use cam_logfile,         only: iulog
-!!XXgoldyXX: v
-use spmd_utils, only: npes, iam, mpicom, masterproc
-use shr_sys_mod, only: shr_sys_flush
-!!XXgoldyXX: ^
 
   implicit none
   private
 
   public iMap
 
-!!XXgoldyXX: v
-logical, public, save :: goldy_debug = .false.
-!!XXgoldyXX: ^
   integer, private, save      :: unique_map_index = 0
   integer, private, parameter :: max_srcs         = 2
   integer, private, parameter :: max_dests        = 2
@@ -655,6 +647,7 @@ contains
   !---------------------------------------------------------------------------
   subroutine cam_filemap_get_filemap(this, fieldlens, filelens, filemap,      &
        src_in, dest_in, permutation_in)
+    use shr_kind_mod, only: SHR_KIND_CL
 
     ! Dummy arguments
     class(cam_filemap_t)                      :: this
@@ -674,11 +667,10 @@ contains
     integer                       :: fmind, j
     integer(iMap)                 :: mapSize, mapPos, pos, fileSize
     integer                       :: mapcnt         ! Dimension count
-    integer                       :: locsize        ! Total local # elements
     integer                       :: tind, tlen     ! Temporarys
     integer                       :: i1, i2, i3, i4, i5, i6, i7
     integer                       :: i(7)
-    character(len=256)            :: errmsg
+    character(len=SHR_KIND_CL)    :: errmsg
     character(len=32)             :: errfmt
     character(len=*), parameter   :: subname = 'cam_filemap_get_filemap: '
 
@@ -1108,7 +1100,7 @@ contains
     logical,        optional, intent(in)     :: dups_ok_in ! Dup coords OK
 
     ! Local variables
-    integer                                  :: i, j
+    integer                                  :: i
     integer                                  :: ierr
     integer(iMap), pointer                   :: data(:) => NULL()
     integer,       pointer                   :: indices(:) => NULL()

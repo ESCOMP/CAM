@@ -3,4 +3,3 @@ ndens=1,1,1,1,1,1
 nhtfrq=3,3,3,3,3,3
 inithist='ENDOFRUN'
 phys_loadbalance=3
-cam_repro_sum=.true.

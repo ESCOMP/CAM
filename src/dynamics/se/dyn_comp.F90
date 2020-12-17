@@ -2058,9 +2058,14 @@ subroutine check_file_layout(file, elem, dyn_cols, file_desc, dyn_ok, dimname)
       do j = 1, np
          do i = 1, np
             if (abs(dbuf2(indx,ie)) > 1.e-12_r8) then
-               if (abs((elem(ie)%spherep(i,j)%lat*rad2deg - dbuf2(indx,ie))/dbuf2(indx,ie)) > 1.0e-10_r8) then
-!                  write(6, *) 'XXG ',iam,') ',ie,i,j,elem(ie)%spherep(i,j)%lat,dbuf2(indx,ie)*deg2rad
-!                  call shr_sys_flush(6)
+               if (abs((elem(ie)%spherep(i,j)%lat*rad2deg - dbuf2(indx,ie)) / &
+                    dbuf2(indx,ie)) > 1.0e-10_r8) then
+                  write(iulog, '(2a,4(i0,a),f11.5,a,f11.5)')                  &
+                       "ncdata file latitudes not in correct column order",   &
+                       ' on task ', iam, ': elem(', ie, ')%spherep(', i,      &
+                       ', ', j, ')%lat = ', elem(ie)%spherep(i,j)%lat,        &
+                       ' /= ', dbuf2(indx, ie)*deg2rad
+                  call shr_sys_flush(iulog)
                   found = .false.
                end if
             end if
@@ -2084,9 +2089,14 @@ subroutine check_file_layout(file, elem, dyn_cols, file_desc, dyn_ok, dimname)
       do j = 1, np
          do i = 1, np
             if (abs(dbuf2(indx,ie)) > 1.e-12_r8) then
-               if (abs((elem(ie)%spherep(i,j)%lon*rad2deg - dbuf2(indx,ie))/dbuf2(indx,ie)) > 1.0e-10_r8) then
-!                  write(6, *) 'XXG ',iam,') ',ie,i,j,elem(ie)%spherep(i,j)%lon,dbuf2(indx,ie)*deg2rad
-!                  call shr_sys_flush(6)
+               if (abs((elem(ie)%spherep(i,j)%lon*rad2deg - dbuf2(indx,ie)) / &
+                    dbuf2(indx,ie)) > 1.0e-10_r8) then
+                  write(iulog, '(2a,4(i0,a),f11.5,a,f11.5)')                  &
+                       "ncdata file longitudes not in correct column order",  &
+                       ' on task ', iam, ': elem(', ie, ')%spherep(', i,      &
+                       ', ', j, ')%lon = ', elem(ie)%spherep(i,j)%lon,        &
+                       ' /= ', dbuf2(indx, ie)*deg2rad
+                  call shr_sys_flush(iulog)
                   found = .false.
                end if
             end if

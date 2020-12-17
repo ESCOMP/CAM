@@ -4,4 +4,3 @@ nhtfrq=3,3,3,3,3,3
 inithist='ENDOFRUN'
 analytic_ic_type='moist_baroclinic_wave_dcmip2016'
 pbuf_global_allocate=.false.
-cam_repro_sum=.true.

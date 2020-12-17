@@ -2,13 +2,13 @@ module atm_comp_mct
 
   use pio              , only: file_desc_t, io_desc_t, var_desc_t, pio_double, pio_def_dim, &
                                pio_put_att, pio_enddef, pio_initdecomp, pio_read_darray, pio_freedecomp, &
-                               pio_closefile, pio_write_darray, pio_def_var, pio_inq_varid, &
+                               pio_write_darray, pio_def_var, pio_inq_varid, &
 	                       pio_noerr, pio_bcast_error, pio_internal_error, pio_seterrorhandling
   use mct_mod
   use seq_cdata_mod
   use esmf
 
-  use seq_comm_mct      , only: seq_comm_inst, seq_comm_name, seq_comm_suffix, num_inst_atm
+  use seq_comm_mct      , only: seq_comm_inst, seq_comm_name, seq_comm_suffix
   use shr_flds_mod      , only: shr_flds_dom_coord, shr_flds_dom_other
   use seq_flds_mod      , only: seq_flds_x2a_fields, seq_flds_a2x_fields
   use seq_infodata_mod
@@ -28,17 +28,16 @@ module atm_comp_mct
   use cam_cpl_indices
   use atm_import_export
   use cam_comp,          only: cam_init, cam_run1, cam_run2, cam_run3, cam_run4, cam_final
-  use cam_instance     , only: cam_instance_init, inst_suffix, inst_index
+  use cam_instance     , only: cam_instance_init
   use cam_control_mod  , only: cam_ctrl_set_orbit
   use radiation        , only: radiation_nextsw_cday
-  use phys_grid        , only: ngcols_phys => ngcols
+  use phys_grid        , only: pgcols => num_global_phys_cols
   use phys_grid        , only: get_ncols_p, get_gcol_p, get_area_all_p
   use phys_grid        , only: get_rlat_all_p, get_rlon_all_p
+  use phys_grid        , only: get_grid_dims
   use ppgrid           , only: pcols, begchunk, endchunk
-  use dyn_grid         , only: get_horiz_grid_dim_d
   use camsrfexch       , only: cam_out_t, cam_in_t
   use cam_initfiles    , only: cam_initfiles_get_caseid, cam_initfiles_get_restdir
-  use cam_abortutils   , only: endrun
   use filenames        , only: interpret_filename_spec
   use spmd_utils       , only: spmdinit, masterproc, iam
   use time_manager     , only: get_curr_calday, advance_timestep, get_curr_date, get_nstep, &
@@ -49,7 +48,6 @@ module atm_comp_mct
 
   implicit none
   private
-  save
 
 !--------------------------------------------------------------------------
 ! Public interfaces
@@ -82,8 +80,6 @@ module atm_comp_mct
   type(seq_infodata_type), pointer :: infodata
 
   logical :: dart_mode = .false.
-
-  integer :: pgcols ! XXgoldyXX: Weak scaling test, should go away
 
 !==============================================================================
 CONTAINS
@@ -286,14 +282,6 @@ CONTAINS
             cam_out=cam_out, &
             cam_in=cam_in)
 
-       call get_horiz_grid_dim_d(hdim1_d, hdim2_d)
-       ! Adjust number of columns depending on type of physics grid
-       !!XXG: Weak scaling work around (remove once move to WS is complete)
-       pgcols = ngcols_phys
-       if (pgcols < 0) then
-          pgcols = hdim1_d * hdim2_d
-       end if
-
        !
        ! Initialize MCT gsMap, domain and attribute vectors (and dof)
        !
@@ -322,8 +310,8 @@ CONTAINS
        ! Set flag to specify that an extra albedo calculation is to be done (i.e. specify active)
        !
        call seq_infodata_PutData(infodata, atm_prognostic=.true.)
+       call get_grid_dims(hdim1_d, hdim2_d)
        call seq_infodata_PutData(infodata, atm_nx=hdim1_d, atm_ny=hdim2_d)
-
 
        ! Set flag to indicate that CAM will provide carbon and dust deposition fluxes.
        ! This is now hardcoded to .true. since the ability of CICE to read these
@@ -624,7 +612,6 @@ CONTAINS
     !
     integer, allocatable :: gindex(:)
     integer :: i, n, c, ncols, sizebuf, nlcols
-    integer :: ier            ! error status
     !-------------------------------------------------------------------
 
     ! Build the atmosphere grid numbering for MCT

@@ -33,7 +33,7 @@ ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/src/physics/waccm
 rc=`expr $? + $rc`
 ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/src/physics/waccmx
 rc=`expr $? + $rc`
-ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/src/physics/weak_scaling
+ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/src/infrastructure
 rc=`expr $? + $rc`
 
 fi

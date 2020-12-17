@@ -61,8 +61,10 @@ module spmd_utils
              mpi_packed, mpi_tag_ub, mpi_info_null,                          &
              mpi_comm_null, mpi_group_null, mpi_undefined,                   &
              mpi_status_size, mpi_success, mpi_status_ignore,                &
-             mpi_max, mpi_min, mpi_sum, mpi_band, mpi_address_kind,          &
-             mpir8
+             mpi_max, mpi_min, mpi_sum, mpi_band, mpir8
+#if ( defined SPMD )
+   public :: mpi_address_kind
+#endif
 
 !-----------------------------------------------------------------------
 ! Public interfaces ----------------------------------------------------
@@ -139,10 +141,10 @@ module spmd_utils
    integer, public              :: npes
    integer, public              :: nsmps
    integer, allocatable, public :: proc_smp_map(:)
-   integer, parameter           :: DEFAULT_MASTERPROC=0
-                                      ! the value of iam which is assigned
-                                      ! the masterproc duties
-   type(spmd_col_trans), public, protected :: spmd_col_trans_mpi_type
+   ! DEFAULT_MASTERPROC is the value of iam which is assigned masterproc duties
+   integer, parameter           :: DEFAULT_MASTERPROC = 0
+   ! spmd_col_trans_mpi_type is a handle to be used for column reordering
+   integer, public, protected   :: spmd_col_trans_mpi_type
 
 !-----------------------------------------------------------------------
 ! Private data ---------------------------------------------------------
@@ -365,21 +367,6 @@ contains
     deallocate(proc_name)
     deallocate(proc_names)
 
-#else
-    !
-    ! spmd is not defined
-    !
-    mpicom = mpicom_atm
-    iam = 0
-    masterprocid = 0
-    masterproc = .true.
-    npes = 1
-    nsmps = 1
-    allocate ( proc_smp_map(0:0) )
-    proc_smp_map(:) = -1
-
-#endif
-
      ! Create a type for transferring column information
      allocate(lengths(6))
      lengths(:) = 1
@@ -408,6 +395,21 @@ contains
           extent, spmd_col_trans_mpi_type, ierr)
     call MPI_type_commit(spmd_col_trans_mpi_type, ierr)
     deallocate(lengths)
+
+#else
+    !
+    ! spmd is not defined
+    !
+    mpicom = mpicom_atm
+    iam = 0
+    masterprocid = 0
+    masterproc = .true.
+    npes = 1
+    nsmps = 1
+    allocate ( proc_smp_map(0:0) )
+    proc_smp_map(:) = -1
+
+#endif
 
   end subroutine spmdinit
 

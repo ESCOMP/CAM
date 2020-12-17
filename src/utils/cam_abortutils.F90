@@ -1,13 +1,14 @@
 module cam_abortutils
 
-  use shr_sys_mod, only: endrun => shr_sys_abort
+   use shr_kind_mod, only: SHR_KIND_CL
+   use shr_sys_mod,  only: endrun => shr_sys_abort
 
-  implicit none
-  private
-  save
+   implicit none
+   private
+   save
 
-  public :: endrun
-  public :: handle_allocate_error
+   public :: endrun
+   public :: handle_allocate_error
 
 CONTAINS
 
@@ -18,7 +19,7 @@ CONTAINS
       character(len=*), intent(in) :: subname
       character(len=*), intent(in) :: fieldname
       ! Local variable
-      character(len=256)           :: errmsg
+      character(len=SHR_KIND_CL)   :: errmsg
 
       if (retval /= 0) then
          write(errmsg, '(4a,i0)') trim(subname), ' error allocating ',        &

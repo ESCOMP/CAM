@@ -1,5 +1,25 @@
 module phys_grid
 
+!------------------------------------------------------------------------------
+!
+! The phys_grid module represents the CAM physics decomposition.
+!
+!  phys_grid_init receives the physics column info (area, weight, centers)
+!                 from the dycore.
+!                 The routine then creates the physics decomposition which
+!                 is the arrangement of columns across the atmosphere model's
+!                 MPI tasks as well as the arrangement into groups to
+!                 facilitate efficient threading.
+!                 The routine then creates a grid object to allow for data
+!                 to be read into and written from this decomposition.
+! The phys_grid module also provides interfaces for retrieving information
+! about the decomposition
+!
+! Note: This current implementation does not perform load balancing,
+!       physics columns ae always on the same task as the corresponding
+!       column received from the dycore.
+!
+!------------------------------------------------------------------------------
    use shr_kind_mod,        only: r8 => shr_kind_r8
    use ppgrid,              only: begchunk, endchunk
    use physics_column_type, only: physics_column_t
@@ -9,17 +29,9 @@ module phys_grid
    private
    save
 
-!!XXgoldyXX: v MUST BE DELETED FOR WEAK SCALING
+!!XXgoldyXX: v This needs to be removed to complete the weak scaling transition.
    public :: SCATTER_FIELD_TO_CHUNK
-   public :: GET_LAT_ALL_P
-   public :: GET_LON_ALL_P
-   public :: GET_LAT_P
-   public :: GET_LON_P
-   integer, public, protected :: ngcols_p = -HUGE(1)
-!!XXgoldyXX: ^ MUST BE DELETED FOR WEAK SCALING
-!!XXgoldyXX: v SHOULD BE DELETED ONCE WEAK SCALING IS COMPLETE
-   integer, public, protected :: ngcols = -HUGE(1)
-!!XXgoldyXX: ^ SHOULD BE DELETED ONCE WEAK SCALING IS COMPLETE
+!!XXgoldyXX: ^ This needs to be removed to complete the weak scaling transition.
 
    ! Physics grid management
    public :: phys_grid_init     ! initialize the physics grid
@@ -27,13 +39,16 @@ module phys_grid
    public :: phys_grid_initialized
    ! Local task interfaces
    public :: get_nlcols_p       ! Number of local columns
-   public :: get_dlat_p         ! latitude of a physics column in degrees
-   public :: get_dlon_p         ! longitude of a physics column in degrees
+   public :: get_area_p         ! area of a physics column in radians squared
+   public :: get_wght_p         ! weight of a physics column in radians squared
    public :: get_rlat_p         ! latitude of a physics column in radians
    public :: get_rlon_p         ! longitude of a physics column in radians
-   public :: get_area_p         ! area of a physics column in radians squared
    public :: get_rlat_all_p     ! latitudes of physics cols in chunk (radians)
    public :: get_rlon_all_p     ! longitudes of physics cols in chunk (radians)
+   public :: get_lat_p          ! latitude of a physics column in degrees
+   public :: get_lon_p          ! longitude of a physics column in degrees
+   public :: get_lat_all_p      ! latitudes of physics cols in chunk (degrees)
+   public :: get_lon_all_p      ! longitudes of physics cols in chunk (degrees)
    public :: get_area_all_p     ! areas of physics cols in chunk
    public :: get_wght_all_p     ! weights of physics cols in chunk
    public :: get_ncols_p        ! number of columns in a chunk
@@ -45,20 +60,9 @@ module phys_grid
    ! Physics-dynamics coupling
    public :: phys_decomp_to_dyn ! Transfer physics data to dynamics decomp
    public :: dyn_decomp_to_phys ! Transfer dynamics data to physics decomp
-   ! Support for global sums
-   public :: init_col_assem_p   ! Setup communication patterns
-   public :: weighted_sum_p     ! Compute a weighted sum of a field
-   public :: weighted_field_p   ! Create a flat, weighted version of a field
 
    ! The identifier for the physics grid
    integer, parameter, public          :: phys_decomp = 100
-
-   ! Dycore name and properties
-   character(len=8), protected, public :: dycore_name = ''
-
-   ! Max number of double-precision fields on a task for global calculations
-   ! A value of -1 signifies no limit.
-   integer,     protected, public :: phys_global_max_fields = -1
 
    !! PUBLIC TYPES
 
@@ -78,11 +82,13 @@ module phys_grid
    integer                             :: hdim1_d, hdim2_d
 
    ! Physics decomposition information
-   type(physics_column_t), pointer     :: phys_columns(:) => NULL()
+   type(physics_column_t), allocatable :: phys_columns(:)
 
    type(chunk), private, pointer :: chunks(:) => NULL() ! (begchunk:endchunk)
 
    logical                       :: phys_grid_set = .false.
+
+   logical                       :: calc_memory_increase = .false.
 
    interface get_dyn_col_p
       module procedure :: get_dyn_col_p_chunk
@@ -92,11 +98,19 @@ module phys_grid
    ! Private interfaces
    private :: chunk_info_to_index_p
 
-   ! These variables are last to provide a limited table to search
+!!XXgoldyXX: v temporary interface to allow old code to compile
+   interface get_lat_all_p
+      module procedure :: get_lat_all_p_r8 ! The new version
+      module procedure :: get_lat_all_p_int ! calls endun
+   end interface get_lat_all_p
 
-   !> \section arg_table_physics_grid  Argument Table
-   !! \htmlinclude arg_table_physics_grid.html
-   !!
+   interface get_lon_all_p
+      module procedure :: get_lon_all_p_r8 ! The new version
+      module procedure :: get_lon_all_p_int ! calls endun
+   end interface get_lon_all_p
+!!XXgoldyXX: ^ temporary interface to allow old code to compile
+
+
    integer,          protected, public :: pver = 0
    integer,          protected, public :: pverp = 0
    integer,          protected, public :: num_global_phys_cols = 0
@@ -130,7 +144,7 @@ CONTAINS
       integer :: phys_chnk_per_thd = -HUGE(1)
 
       namelist /phys_grid_nl/ phys_alltoall, phys_loadbalance,                &
-           phys_twin_algorithm, phys_chnk_per_thd, phys_global_max_fields
+           phys_twin_algorithm, phys_chnk_per_thd
       !------------------------------------------------------------------------
 
       ! Read namelist
@@ -150,13 +164,10 @@ CONTAINS
       call mpi_bcast(phys_loadbalance, 1, mpi_integer, mstrid, mpicom, ierr)
       call mpi_bcast(phys_twin_algorithm, 1, mpi_integer, mstrid, mpicom, ierr)
       call mpi_bcast(phys_chnk_per_thd, 1, mpi_integer, mstrid, mpicom, ierr)
-      call mpi_bcast(phys_global_max_fields, 1, mpi_integer, mstrid,          &
-           mpicom, ierr)
 
       if (masterproc) then
          write(iulog,*) 'PHYS_GRID options:'
          write(iulog,*) '  Using PCOLS         =', pcols
-         write(iulog,*) '  Max global fields   =', phys_global_max_fields
          write(iulog,*) '  phys_loadbalance    = (not used)'
          write(iulog,*) '  phys_twin_algorithm = (not used)'
          write(iulog,*) '  phys_alltoall       = (not used)'
@@ -168,12 +179,11 @@ CONTAINS
    !========================================================================
 
    subroutine phys_grid_init()
-!      use mpi,              only: MPI_reduce ! XXgoldyXX: Should this work?
       use mpi,              only: MPI_INTEGER, MPI_REAL8, MPI_MIN, MPI_MAX
       use shr_mem_mod,      only: shr_mem_getusage
       use cam_abortutils,   only: endrun
       use cam_logfile,      only: iulog
-      use spmd_utils,       only: npes, mpicom, masterprocid, masterproc
+      use spmd_utils,       only: npes, mpicom, masterprocid, masterproc, iam
       use ppgrid,           only: pcols
       use dyn_grid,         only: get_dyn_grid_info, physgrid_copy_attributes_d
       use cam_grid_support, only: cam_grid_register, cam_grid_attribute_register
@@ -183,11 +193,10 @@ CONTAINS
 
       ! Local variables
       integer                             :: index
-      integer                             :: col_index, last_col, phys_col
+      integer                             :: col_index, phys_col
       integer                             :: ichnk, icol, ncol, gcol
       integer                             :: num_chunks
-      integer                             :: first_dyn_column, last_dyn_column
-      type(physics_column_t), pointer     :: dyn_columns(:) ! Dyn decomp
+      type(physics_column_t), allocatable :: dyn_columns(:) ! Dyn decomp
       ! Maps and values for physics grid
       real(r8),               pointer     :: lonvals(:)
       real(r8),               pointer     :: latvals(:)
@@ -204,8 +213,8 @@ CONTAINS
       integer                             :: ierr ! For MPI
       character(len=hclen),   pointer     :: copy_attributes(:)
       character(len=hclen)                :: copy_gridname
+      character(len=*),       parameter   :: subname = 'phys_grid_init: '
 
-      nullify(dyn_columns)
       nullify(lonvals)
       nullify(latvals)
       nullify(grid_map)
@@ -214,24 +223,19 @@ CONTAINS
       nullify(area_d)
       nullify(copy_attributes)
 
-      call shr_mem_getusage(mem_hw_beg, mem_beg)
+      if (calc_memory_increase) then
+         call shr_mem_getusage(mem_hw_beg, mem_beg)
+      end if
 
       call t_adj_detailf(-2)
       call t_startf("phys_grid_init")
 
       ! Gather info from the dycore
-      call get_dyn_grid_info(hdim1_d, hdim2_d, pver, dycore_name,             &
-           index_top_layer, index_bottom_layer, dyn_columns)
-      !!XXgoldyXX: Should this be a global sum over SIZE(dyn_columns)?
-      !!XXgoldyXX: Currently, hdim1_d * hdim2_d works, even for SE physgrid
+      call get_dyn_grid_info(hdim1_d, hdim2_d, pver, index_top_layer,         &
+           index_bottom_layer, unstructured, dyn_columns)
+      ! hdim1_d * hdim2_d is the total number of columns
       num_global_phys_cols = hdim1_d * hdim2_d
-!!XXgoldyXX: v MUST BE DELETED FOR WEAK SCALING
-      ngcols_p = num_global_phys_cols
-!!XXgoldyXX: ^ MUST BE DELETED FOR WEAK SCALING
       pverp = pver + 1
-      first_dyn_column = LBOUND(dyn_columns, 1)
-      last_dyn_column = UBOUND(dyn_columns, 1)
-      unstructured = hdim2_d <= 1
       !!XXgoldyXX: Can we enforce interface numbering separate from dycore?
       !!XXgoldyXX: This will work for both CAM and WRF/MPAS physics
       !!XXgoldyXX: This only has a 50% chance of working on a single level model
@@ -245,12 +249,12 @@ CONTAINS
 
       ! Set up the physics decomposition
       columns_on_task = size(dyn_columns)
-      phys_columns => dyn_columns
+      if (allocated(phys_columns)) then
+         deallocate(phys_columns)
+      end if
+      allocate(phys_columns(columns_on_task))
       if (columns_on_task > 0) then
-         col_index = last_dyn_column - first_dyn_column + 1
-         if (columns_on_task /= col_index) then
-            call endrun('phys_grid_init: num columns mismatch!')
-         end if
+         col_index = columns_on_task
          num_chunks = col_index / pcols
          if ((num_chunks * pcols) < col_index) then
             num_chunks = num_chunks + 1
@@ -259,32 +263,28 @@ CONTAINS
          endchunk = begchunk + num_chunks - 1
       else
          ! We do not support tasks with no physics columns
-         call endrun('phys_grid_init: No columns on task, use fewer tasks')
+         call endrun(subname//'No columns on task, use fewer tasks')
       end if
       allocate(chunks(begchunk:endchunk))
-      col_index = first_dyn_column - 1
+      col_index = 0
       ! Simple chunk assignment
       do index = begchunk, endchunk
-         chunks(index)%ncols = MIN(pcols, (last_dyn_column - col_index))
-         last_col = col_index + chunks(index)%ncols
+         chunks(index)%ncols = MIN(pcols, (columns_on_task - col_index))
          chunks(index)%chunk_index = index
          allocate(chunks(index)%phys_cols(chunks(index)%ncols))
          do phys_col = 1, chunks(index)%ncols
-            if (col_index >= last_col) then
-               call endrun('phys_grid_init (internal): out of columns in chunk')
-            else
-               col_index = col_index + 1
-            end if
+            col_index = col_index + 1
+            ! Copy information supplied by the dycore
+            phys_columns(col_index) = dyn_columns(col_index)
+            ! Fill in physics decomp info
+            phys_columns(col_index)%phys_task = iam
             phys_columns(col_index)%local_phys_chunk = index
             phys_columns(col_index)%phys_chunk_index = phys_col
             chunks(index)%phys_cols(phys_col) = col_index
          end do
       end do
 
-      ! Now that we are done settine up the physics decomposition, clean up
-      ! Do not deallocate dyn_columns, the dycore will use this information
-      !    in dp_coupling
-      nullify(dyn_columns)
+      deallocate(dyn_columns)
 
       ! Add physics-package grid to set of CAM grids
       ! physgrid always uses 'lat' and 'lon' as coordinate names; If dynamics
@@ -402,19 +402,23 @@ CONTAINS
               copy_attributes(index))
       end do
 
-      if ((.not. cam_grid_attr_exists('physgrid', 'area')) .and.              &
-           unstructured) then
-         ! Physgrid always needs an area attribute. If we did not inherit one
-         !   from the dycore (i.e., physics and dynamics are on different
-         !   grids), create that attribute here (Note, a separate physics
-         !   grid is only supported for unstructured grids).
-         allocate(area_d(size(grid_map, 2)))
-         do col_index = 1, columns_on_task
-            area_d(col_index) = phys_columns(col_index)%area
-         end do
-         call cam_grid_attribute_register('physgrid', 'area',                 &
-              'physics column areas', 'ncol', area_d, map=grid_map(3,:))
-         nullify(area_d) ! Belongs to attribute now
+      if (.not. cam_grid_attr_exists('physgrid', 'area')) then
+         ! Physgrid always needs an area attribute.
+         if (unstructured) then
+            ! If we did not inherit one from the dycore (i.e., physics and
+            ! dynamics are on different grids), create that attribute here
+            ! (Note, a separate physics grid is only supported for
+            !  unstructured grids).
+            allocate(area_d(size(grid_map, 2)))
+            do col_index = 1, columns_on_task
+               area_d(col_index) = phys_columns(col_index)%area
+            end do
+            call cam_grid_attribute_register('physgrid', 'area',              &
+                 'physics column areas', 'ncol', area_d, map=grid_map(3,:))
+            nullify(area_d) ! Belongs to attribute now
+         else
+            call endrun(subname//"No 'area' attribute from dycore")
+         end if
       end if
       ! Cleanup pointers (they belong to the grid now)
       nullify(grid_map)
@@ -434,20 +438,22 @@ CONTAINS
       call t_stopf("phys_grid_init")
       call t_adj_detailf(+2)
 
-      call shr_mem_getusage(mem_hw_end, mem_end)
-      temp = mem_end - mem_beg
-      call MPI_reduce(temp, mem_end, 1, MPI_REAL8, MPI_MAX, masterprocid,     &
-           mpicom, ierr)
-      if (masterproc) then
-         write(iulog, *) 'phys_grid_init: Increase in memory usage = ',       &
-              mem_end, ' (MB)'
-      end if
-      temp = mem_hw_end - mem_hw_beg
-      call MPI_reduce(temp, mem_hw_end, 1, MPI_REAL8, MPI_MAX, masterprocid,  &
-           mpicom, ierr)
-      if (masterproc) then
-         write(iulog, *) 'phys_grid_init: Increase in memory highwater = ',   &
-              mem_end, ' (MB)'
+      if (calc_memory_increase) then
+         call shr_mem_getusage(mem_hw_end, mem_end)
+         temp = mem_end - mem_beg
+         call MPI_reduce(temp, mem_end, 1, MPI_REAL8, MPI_MAX, masterprocid,  &
+              mpicom, ierr)
+         if (masterproc) then
+            write(iulog, *) 'phys_grid_init: Increase in memory usage = ',    &
+                 mem_end, ' (MB)'
+         end if
+         temp = mem_hw_end - mem_hw_beg
+         call MPI_reduce(temp, mem_hw_end, 1, MPI_REAL8, MPI_MAX,             &
+              masterprocid, mpicom, ierr)
+         if (masterproc) then
+            write(iulog, *) subname, 'Increase in memory highwater = ',       &
+                 mem_end, ' (MB)'
+         end if
       end if
 
    end subroutine phys_grid_init
@@ -513,58 +519,6 @@ CONTAINS
 
    !========================================================================
 
-   real(r8) function get_dlat_p(index)
-      use cam_logfile,    only: iulog
-      use cam_abortutils, only: endrun
-      ! latitude of a physics column in degrees
-
-      ! Dummy argument
-      integer, intent(in) :: index
-      ! Local variables
-      character(len=128)          :: errmsg
-      character(len=*), parameter :: subname = 'get_dlat_p'
-
-      if (.not. phys_grid_initialized()) then
-         call endrun(subname//': physics grid not initialized')
-      else if ((index < 1) .or. (index > columns_on_task)) then
-         write(errmsg, '(a,2(a,i0))') subname, ': index (', index,            &
-              ') out of range (1 to ', columns_on_task
-         write(iulog, *) errmsg
-         call endrun(errmsg)
-      else
-         get_dlat_p = phys_columns(index)%lat_deg
-      end if
-
-   end function get_dlat_p
-
-   !========================================================================
-
-   real(r8) function get_dlon_p(index)
-      use cam_logfile,    only: iulog
-      use cam_abortutils, only: endrun
-      ! longitude of a physics column in degrees
-
-      ! Dummy argument
-      integer, intent(in) :: index
-      ! Local variables
-      character(len=128)          :: errmsg
-      character(len=*), parameter :: subname = 'get_dlon_p'
-
-      if (.not. phys_grid_initialized()) then
-         call endrun(subname//': physics grid not initialized')
-      else if ((index < 1) .or. (index > columns_on_task)) then
-         write(errmsg, '(a,2(a,i0))') subname, ': index (', index,            &
-              ') out of range (1 to ', columns_on_task
-         write(iulog, *) errmsg
-         call endrun(errmsg)
-      else
-         get_dlon_p = phys_columns(index)%lon_deg
-      end if
-
-   end function get_dlon_p
-
-   !========================================================================
-
    real(r8) function get_rlat_p(lcid, col)
       !-----------------------------------------------------------------------
       !
@@ -611,7 +565,7 @@ CONTAINS
       use cam_abortutils, only: endrun
       !-----------------------------------------------------------------------
       !
-      ! getrlat_all_p: Return all latitudes (in radians) for chunk, <lcid>
+      ! get_rlat_all_p: Return all latitudes (in radians) for chunk, <lcid>
       !
       !-----------------------------------------------------------------------
       ! Dummy Arguments
@@ -641,7 +595,7 @@ CONTAINS
       use cam_abortutils, only: endrun
       !-----------------------------------------------------------------------
       !
-      ! Return all longitudes (in radians) for chunk, <lcid>
+      ! get_rlon_all_p:: Return all longitudes (in radians) for chunk, <lcid>
       !
       !-----------------------------------------------------------------------
       ! Dummy Arguments
@@ -664,6 +618,108 @@ CONTAINS
       end do
 
    end subroutine get_rlon_all_p
+
+   !========================================================================
+
+   real(r8) function get_lat_p(lcid, col)
+      !-----------------------------------------------------------------------
+      !
+      ! get_lat_p: latitude of a physics column in degrees
+      !
+      !-----------------------------------------------------------------------
+
+      ! Dummy argument
+      integer, intent(in) :: lcid
+      integer, intent(in) :: col
+      ! Local variables
+      integer                     :: index
+      character(len=*), parameter :: subname = 'get_lat_p'
+
+      index = chunk_info_to_index_p(lcid, col, subname_in=subname)
+      get_lat_p = phys_columns(index)%lat_deg
+
+   end function get_lat_p
+
+   !========================================================================
+
+   real(r8) function get_lon_p(lcid, col)
+      !-----------------------------------------------------------------------
+      !
+      ! get_lon_p: longitude of a physics column in degrees
+      !
+      !-----------------------------------------------------------------------
+
+      ! Dummy argument
+      integer, intent(in) :: lcid
+      integer, intent(in) :: col
+      ! Local variables
+      integer                     :: index
+      character(len=*), parameter :: subname = 'get_lon_p'
+
+      index = chunk_info_to_index_p(lcid, col, subname_in=subname)
+      get_lon_p = phys_columns(index)%lon_deg
+
+   end function get_lon_p
+
+   !========================================================================
+
+   subroutine get_lat_all_p_r8(lcid, latdim, lats)
+      use cam_abortutils, only: endrun
+      !-----------------------------------------------------------------------
+      !
+      ! get_lat_all_p: Return all latitudes (in degrees) for chunk, <lcid>
+      !
+      !-----------------------------------------------------------------------
+      ! Dummy Arguments
+      integer,  intent(in)  :: lcid         ! local chunk id
+      integer,  intent(in)  :: latdim       ! declared size of output array
+      real(r8), intent(out) :: lats(latdim) ! array of latitudes
+
+      ! Local variables
+      integer                     :: index ! loop index
+      integer                     :: phys_ind
+      character(len=*), parameter :: subname = 'get_lat_all_p: '
+
+      !-----------------------------------------------------------------------
+      if ((lcid < begchunk) .or. (lcid > endchunk)) then
+         call endrun(subname//'chunk index out of range')
+      end if
+      do index = 1, MIN(get_ncols_p(lcid), latdim)
+         phys_ind = chunks(lcid)%phys_cols(index)
+         lats(index) = phys_columns(phys_ind)%lat_deg
+      end do
+
+   end subroutine get_lat_all_p_r8
+
+   !========================================================================
+
+   subroutine get_lon_all_p_r8(lcid, londim, lons)
+      use cam_abortutils, only: endrun
+      !-----------------------------------------------------------------------
+      !
+      ! get_lon_all_p:: Return all longitudes (in degrees) for chunk, <lcid>
+      !
+      !-----------------------------------------------------------------------
+      ! Dummy Arguments
+      integer,  intent(in)  :: lcid          ! local chunk id
+      integer,  intent(in)  :: londim        ! declared size of output array
+      real(r8), intent(out) :: lons(londim)  ! array of longitudes
+
+      ! Local variables
+      integer                     :: index ! loop index
+      integer                     :: phys_ind
+      character(len=*), parameter :: subname = 'get_lon_all_p: '
+
+      !-----------------------------------------------------------------------
+      if ((lcid < begchunk) .or. (lcid > endchunk)) then
+         call endrun(subname//'chunk index out of range')
+      end if
+      do index = 1, MIN(get_ncols_p(lcid), londim)
+         phys_ind = chunks(lcid)%phys_cols(index)
+         lons(index) = phys_columns(phys_ind)%lon_deg
+      end do
+
+   end subroutine get_lon_all_p_r8
 
    !========================================================================
 
@@ -759,9 +815,24 @@ CONTAINS
 
    !========================================================================
 
+   real(r8) function get_wght_p(lcid, col)
+      ! weight of a physics column in radians squared
+
+      ! Dummy arguments
+      integer, intent(in) :: lcid ! Chunk number
+      integer, intent(in) :: col  ! <lcid> column
+      ! Local variables
+      integer                     :: index
+      character(len=*), parameter :: subname = 'get_wght_p'
+
+      index = chunk_info_to_index_p(lcid, col, subname_in=subname)
+      get_wght_p = phys_columns(index)%weight
+
+   end function get_wght_p
+
+   !========================================================================
+
    integer function get_gcol_p(lcid, col)
-      use cam_logfile,    only: iulog
-      use cam_abortutils, only: endrun
       ! global column index of a physics column
 
       ! Dummy arguments
@@ -769,32 +840,16 @@ CONTAINS
       integer, intent(in)  :: col           ! column index
       ! Local variables
       integer                     :: index
-      character(len=128)          :: errmsg
       character(len=*), parameter :: subname = 'get_gcol_p: '
 
-      if (.not. phys_grid_initialized()) then
-         call endrun(subname//'physics grid not initialized')
-      else if ((lcid < begchunk) .or. (lcid > endchunk)) then
-         write(errmsg, '(a,3(a,i0))') subname, 'lcid (', lcid,                &
-              ') out of range (', begchunk, ' to ', endchunk
-         write(iulog, *) trim(errmsg)
-         call endrun(trim(errmsg))
-      else if ((col < 1) .or. (col > get_ncols_p(lcid))) then
-         write(errmsg, '(a,2(a,i0))') subname, 'col (', col,                  &
-              ') out of range (1 to ', get_ncols_p(lcid)
-         write(iulog, *) trim(errmsg)
-         call endrun(trim(errmsg))
-      else
-         index = chunks(lcid)%phys_cols(col)
-         get_gcol_p = phys_columns(index)%global_col_num
-      end if
+      index = chunk_info_to_index_p(lcid, col, subname_in=subname)
+      get_gcol_p = phys_columns(index)%global_col_num
 
    end function get_gcol_p
 
    !========================================================================
 
-   subroutine get_dyn_col_p_chunk(lcid, col, blk_num, blk_ind)
-      use cam_logfile,    only: iulog
+   subroutine get_dyn_col_p_chunk(lcid, col, blk_num, blk_ind, caller)
       use cam_abortutils, only: endrun
       ! Return the dynamics local block number and block offset(s) for
       ! the physics column indicated by <lcid> (chunk) and <col> (column).
@@ -804,6 +859,7 @@ CONTAINS
       integer, intent(in)  :: col           ! Column index
       integer, intent(out) :: blk_num       ! Local dynamics block index
       integer, intent(out) :: blk_ind(:)    ! Local dynamics block offset(s)
+      character(len=*), optional, intent(in) :: caller ! Calling routine
       ! Local variables
       integer                     :: index
       integer                     :: off_size
@@ -812,7 +868,11 @@ CONTAINS
       index = chunk_info_to_index_p(lcid, col)
       off_size = SIZE(phys_columns(index)%dyn_block_index, 1)
       if (SIZE(blk_ind, 1) < off_size) then
-         call endrun(subname//'blk_ind too small')
+         if (present(caller)) then
+            call endrun(trim(caller)//': blk_ind too small')
+         else
+            call endrun(subname//'blk_ind too small')
+         end if
       end if
       blk_num = phys_columns(index)%local_dyn_block
       blk_ind(1:off_size) = phys_columns(index)%dyn_block_index(1:off_size)
@@ -949,6 +1009,7 @@ CONTAINS
 
    !========================================================================
 
+   ! Note: This routine is a stub for future load-balancing
    subroutine phys_decomp_to_dyn()
       !-----------------------------------------------------------------------
       !
@@ -959,6 +1020,7 @@ CONTAINS
 
    !========================================================================
 
+   ! Note: This routine is a stub for future load-balancing
    subroutine dyn_decomp_to_phys()
       !-----------------------------------------------------------------------
       !
@@ -970,296 +1032,8 @@ CONTAINS
 
    !========================================================================
 
-   subroutine init_col_assem_p(column_reorder, max_blck_size)
-      use cam_abortutils, only: endrun, handle_allocate_error
-      use spmd_utils,     only: masterproc, column_redist_t, iam, mpicom
-      use cam_logfile,    only: iulog
-      !-----------------------------------------------------------------------
-      !
-      ! init_col_assem_p: Initialize data needed to perform global sums
-      !
-      ! In order to perform BFB reproducible global sums, large blocks of
-      ! global column space need to be assembled on a subset of tasks.
-      ! This routine provides the information on transfer of information from
-      ! the local physics decomposition to this blocked space.
-      !
-      ! Inputs: Starting global column number of each 'receiving task'
-      !         maximum number of columns on any receiving task
-      ! Return information needed to facilitate run-time rearrrangement:
-      !        An array (size # of blocks) with the number of local columns
-      !           destined for each block
-      !        An array (size # of local columns), with the global index of
-      !          each local column, collected by block index.
-      !          This array can be used to step through the columns in each
-      !          block in global index order.
-      !        An array which specifies the mapping between the physics decomp
-      !           column order and the 'blocked' order for communication.
-      !
-      !-----------------------------------------------------------------------
-      ! Dummy arguments
-      type(column_redist_t), intent(inout) :: column_reorder
-      integer,               intent(in)    :: max_blck_size
-      ! Local variables
-      integer                       :: num_recv_tasks
-      integer                       :: col_ind      ! Local column index
-      integer                       :: rtask_ind    ! Destination task index
-      integer                       :: block_ind    ! temp index for ordering
-      integer                       :: tot_ind      ! running column index
-      integer                       :: gcol         ! Global col #
-      integer                       :: num_rounds   ! # separate field blocks
-      integer                       :: total_cols   ! Cols on task * rounds
-      integer                       :: col_beg      ! First gcol on task
-      integer                       :: col_end      ! Last gcol on task
-      integer                       :: ierr
-      integer,          allocatable :: block_num(:) ! Block # of local col
-      integer,          allocatable :: next_free_index(:)
-      character(len=128)            :: errmsg
-      character(len=*), parameter   :: subname = 'init_col_assem_p: '
-
-      ! Checks and initialization
-      if (.not. associated(column_reorder%col_starts)) then
-         call endrun(subname//'col_starts NOT allocated')
-      end if
-      if (associated(column_reorder%task_sizes)) then
-         ! This should not happen but at least we can prevent a memory leak
-         if (masterproc) then
-            write(iulog, *) subname, 'WARNING, task_sizes allocated'
-         end if
-         deallocate(column_reorder%task_sizes)
-      end if
-      nullify(column_reorder%task_sizes)
-      if (associated(column_reorder%task_indices)) then
-         ! This should not happen but at least we can prevent a memory leak
-         if (masterproc) then
-            write(iulog, *) subname, 'WARNING, task_indices allocated'
-         end if
-         deallocate(column_reorder%task_indices)
-      end if
-      nullify(column_reorder%task_indices)
-      if (associated(column_reorder%send_reorder)) then
-         ! This should not happen but at least we can prevent a memory leak
-         if (masterproc) then
-            write(iulog, *) subname, 'WARNING, send_reorder allocated'
-         end if
-         deallocate(column_reorder%send_reorder)
-      end if
-      nullify(column_reorder%send_reorder)
-      ! num_recv_tasks is the total number of receiving_tasks
-      num_recv_tasks = SIZE(column_reorder%col_starts, 1)
-      ! num_rounds is the number of groups of partial-sum tasks
-      !     Each round handles a different field or set of fields,
-      !     however, the collection pattern repeats for each round.
-      num_rounds = column_reorder%num_rounds
-      total_cols = columns_on_task
-      allocate(column_reorder%task_sizes(0:num_recv_tasks-1), stat=ierr)
-      call handle_allocate_error(ierr, subname, '%task_sizes')
-      column_reorder%task_sizes = 0
-      allocate(column_reorder%task_indices(1:total_cols), stat=ierr)
-      call handle_allocate_error(ierr, subname, '%task_indices')
-      column_reorder%task_indices = -1
-      allocate(column_reorder%send_reorder(1:total_cols), stat=ierr)
-      call handle_allocate_error(ierr, subname, '%send_reorder')
-      column_reorder%send_reorder = -1
-      allocate(block_num(total_cols), stat=ierr)
-      call handle_allocate_error(ierr, subname, 'block_num')
-      block_num = -1
-      ! This algorithm only works if the col_starts begin at 1
-      if (column_reorder%col_starts(0) /= 1) then
-         write(errmsg, '(i0,a,i0,a)') iam,                                    &
-              'Internal Error, column_reorder%col_starts(0) is ',             &
-              column_reorder%col_starts(0), ', should be one'
-         call endrun(subname//trim(errmsg))
-      end if
-      tot_ind = 0
-      do col_ind = 1, columns_on_task
-         gcol = phys_columns(col_ind)%global_col_num
-         do rtask_ind = 0, num_recv_tasks - 1
-            col_beg = column_reorder%col_starts(rtask_ind)
-            if ((rtask_ind > 0) .and. (col_beg == 1)) then
-               ! We only want to go through one round, quit when we hit round 2
-               exit
-            end if
-            col_end = col_beg + max_blck_size
-            if ((col_beg <= gcol) .and. (col_end > gcol)) then
-               column_reorder%task_sizes(rtask_ind) =                         &
-                    column_reorder%task_sizes(rtask_ind) + 1
-               tot_ind = tot_ind + 1
-               block_num(tot_ind) = rtask_ind
-            end if
-         end do
-      end do
-      ! Make sure we found a place for every column
-      if (tot_ind /= total_cols) then
-         write(errmsg, '(2(a,i0))') 'tot_ind = ', tot_ind, ', should be ',    &
-              total_cols
-         call endrun(subname//trim(errmsg))
-      end if
-      if (SUM(column_reorder%task_sizes) > total_cols) then
-         write(errmsg, '(i0,a,i0,a)') iam, ') Internal Error, ',              &
-              (SUM(column_reorder%task_sizes) - total_cols),                  &
-              ' extra columns assigned'
-         call endrun(subname//trim(errmsg))
-      else if (SUM(column_reorder%task_sizes) < total_cols) then
-         write(errmsg, '(i0,a,i0,a)') iam, ') Internal Error, ',              &
-              (total_cols - SUM(column_reorder%task_sizes)),                  &
-              ' columns NOT assigned'
-         call endrun(subname//trim(errmsg))
-      end if ! No else, things match so far
-      ! Next, fill out the task indices and send_reorder arrays
-      ! next_free_index holds the next available slot for each block
-      ! These variables are used to stage data at run time
-      allocate(next_free_index(0:num_recv_tasks-1), stat=ierr)
-      call handle_allocate_error(ierr, subname, 'next_free_index')
-      next_free_index(0) = 1
-      do rtask_ind = 1, num_recv_tasks - 1
-         col_ind = column_reorder%task_sizes(rtask_ind - 1)
-         next_free_index(rtask_ind) = next_free_index(rtask_ind - 1) + col_ind
-      end do
-      do tot_ind = 1, total_cols
-!!XXgoldyXX: Clean this up if we keep total_cols == columns_on_task
-         col_ind = MOD((tot_ind - 1), columns_on_task) + 1
-         gcol = phys_columns(col_ind)%global_col_num
-         block_ind = next_free_index(block_num(tot_ind))
-         if (column_reorder%task_indices(tot_ind) /= -1) then
-            write(errmsg, '(2(a,i0))') 'Internal Error, task_indices(',       &
-                 tot_ind, ') already assigned to ',                           &
-                 column_reorder%task_indices(tot_ind)
-            call endrun(subname//trim(errmsg))
-         end if
-         column_reorder%task_indices(tot_ind) = gcol
-         if (column_reorder%send_reorder(tot_ind) /= -1) then
-            write(errmsg, '(2(a,i0))') 'Internal Error, send_reorder(',       &
-                 tot_ind, ') already assigned to ',                           &
-                 column_reorder%send_reorder(tot_ind)
-            call endrun(subname//trim(errmsg))
-         end if
-         column_reorder%send_reorder(tot_ind) = block_ind
-         next_free_index(block_num(tot_ind)) = block_ind + 1
-      end do
-      ! Check on send reorder
-      if (ANY(column_reorder%send_reorder <= 0)) then
-         write(errmsg, '(a,i0,a)') 'Internal Error, send_reorder mismatch, ', &
-              COUNT(column_reorder%send_reorder <= 0), ' columns'
-         call endrun(subname//trim(errmsg))
-      end if
-      ! Check task indices
-      if (ANY(column_reorder%task_indices <= 0)) then
-         write(errmsg, '(a,i0,a)') 'Internal Error, ',                        &
-              COUNT(column_reorder%task_indices <= 0),                        &
-              ' unassigned task_indices columns'
-         call endrun(subname//trim(errmsg))
-      end if
-      ! Cleanup
-      deallocate(block_num)
-      deallocate(next_free_index)
-   end subroutine init_col_assem_p
-
-   !========================================================================
-
-   subroutine weighted_sum_p(src_field, weighted_sum)
-      use ppgrid, only: pcols, begchunk, endchunk
-      !-----------------------------------------------------------------------
-      !
-      ! weighted_sum_p: Compute the weighted sum of <src_field>
-      !
-      !-----------------------------------------------------------------------
-      ! Dummy arguments
-      real(r8), intent(in)    :: src_field(pcols, begchunk:endchunk)
-      real(r8), intent(out)   :: weighted_sum
-      ! Local variables
-      integer                 :: col_ind, ncol, phys_col
-      integer                 :: lchnk
-      real(r8)                :: weight
-
-      weighted_sum = 0.0_r8
-      do lchnk = begchunk, endchunk
-         ncol = get_ncols_p(lchnk)
-         do col_ind = 1, ncol
-            phys_col = chunks(lchnk)%phys_cols(col_ind)
-            weight = phys_columns(phys_col)%weight
-            weighted_sum = weighted_sum + (src_field(col_ind, lchnk) * weight)
-         end do
-      end do
-   end subroutine weighted_sum_p
-
-   !========================================================================
-
-   subroutine weighted_field_p(src_field, weighted_field, reorder, flds_first)
-      use cam_abortutils, only: endrun, handle_allocate_error
-      use ppgrid,         only: begchunk, endchunk
-      !-----------------------------------------------------------------------
-      !
-      ! weighted_field_p: Create a flat, weighted version of <src_field>
-      !                   <src_field> is (pcols, begchunk:endchunk, nflds)
-      !                   <src_field> may number chunks beginning at 1
-      !                   If <flds_first> == .true. :
-      !                               weighted_field is (nflds, ncols)
-      !                   If <flds_first> == .false. :
-      !                               weighted_field is (ncols, nflds)
-      !                   <ncols> is of 1:columns_on_task
-      !                   <nflds> is the number of fields in <src_field>
-      !                   By default, <flds_first> is .true.
-      !
-      !-----------------------------------------------------------------------
-      ! Dummy arguments
-      real(r8),           intent(in)    :: src_field(:,:,:)
-      real(r8),           intent(inout) :: weighted_field(:,:)
-      integer,  optional, intent(in)    :: reorder(:)
-      logical,  optional, intent(in)    :: flds_first
-      ! Local variables
-      integer                     :: col_ind, ncol, pcol_ind, phys_col
-      integer                     :: src_lbound, src_ubound, src_index
-      integer                     :: num_fields
-      integer                     :: lchnk
-      integer                     :: fld
-      integer                     :: ierr
-      real(r8)                    :: src
-      real(r8)                    :: weight
-      logical                     :: flds_first_use
-      character(len=*), parameter :: subname = 'weighted_field_p: '
-
-      if (present(flds_first)) then
-         flds_first_use = flds_first
-      else
-         flds_first_use = .true.
-      end if
-      num_fields = SIZE(src_field, 3)
-      src_lbound = LBOUND(src_field, 2)
-      src_ubound = UBOUND(src_field, 2)
-      if ((src_ubound - src_lbound) /= (endchunk - begchunk)) then
-         call endrun(subname//'Incorrect chunk size for <src_field>')
-      end if
-      weighted_field(:,:) = 0.0_r8
-      if (num_fields > 0) then
-         pcol_ind = 0
-         do lchnk = begchunk, endchunk
-            ncol = get_ncols_p(lchnk)
-            src_index = (lchnk - begchunk) + src_lbound
-            do col_ind = 1, ncol
-               pcol_ind = pcol_ind + 1
-               if (present(reorder)) then
-                  phys_col = reorder(pcol_ind)
-               else
-                  phys_col = pcol_ind
-               end if
-               weight = phys_columns(phys_col)%weight
-               do fld = 1, num_fields
-                  src = src_field(col_ind, src_index, fld)
-                  if (flds_first_use) then
-                     weighted_field(fld, phys_col) =  src * weight
-                  else
-                     weighted_field(phys_col, fld) =  src * weight
-                  end if
-               end do
-            end do
-         end do
-      end if
-   end subroutine weighted_field_p
-
    subroutine dump_grid_map(grid_map)
       use spmd_utils,       only: iam, npes, mpicom
-      use cam_abortutils,   only: endrun
-      use cam_logfile,      only: iulog
       use cam_grid_support, only: iMap
 
       integer(iMap), pointer :: grid_map(:,:)
@@ -1303,7 +1077,7 @@ CONTAINS
 
 !=============================================================================
 !==
-!!!!!! DUMMY INTERFACE TO TEST WEAK SCALING FIX, THIS SHOULD GO AWAY
+!!!!!! DUMMY INTERFACEs TO TEST WEAK SCALING INFRASTRUCTURE, SHOULD GO AWAY
 !==
 !=============================================================================
 
@@ -1327,71 +1101,41 @@ CONTAINS
       call endrun('scatter_field_to_chunk: NOT SUPPORTED WITH WEAK SCALING')
    end subroutine scatter_field_to_chunk
 
-   subroutine get_lat_all_p(lcid, latdim, lats)
-      use cam_abortutils, only: endrun
-      !------------------------------Arguments--------------------------------
-      integer, intent(in)  :: lcid          ! local chunk id
-      integer, intent(in)  :: latdim        ! declared size of output array
+   !========================================================================
 
-      integer, intent(out) :: lats(latdim)  ! array of global latitude indices
+   subroutine get_lat_all_p_int(lcid, latdim, lats)
+      use cam_abortutils, only: endrun
       !-----------------------------------------------------------------------
       !
-      ! Purpose: DUMMY FOR WEAK SCALING TESTS
+      ! get_lat_all_p: Return all latitudes (in degrees) for chunk, <lcid>
       !
-      !------------------------------Arguments--------------------------------
-      call endrun('get_lat_all_p: NOT SUPPORTED WITH WEAK SCALING')
-   end subroutine get_lat_all_p
-
-   subroutine get_lon_all_p(lcid, londim, lons)
-      use cam_abortutils, only: endrun
-      !------------------------------Arguments--------------------------------
-      integer, intent(in)  :: lcid
-      integer, intent(in)  :: londim
-
-      integer, intent(out) :: lons(londim)
       !-----------------------------------------------------------------------
-      !
-      ! Purpose: DUMMY FOR WEAK SCALING TESTS
-      !
-      !------------------------------Arguments--------------------------------
-      call endrun('get_lon_all_p: NOT SUPPORTED WITH WEAK SCALING')
-   end subroutine get_lon_all_p
+      ! Dummy Arguments
+      integer,  intent(in)  :: lcid         ! local chunk id
+      integer,  intent(in)  :: latdim       ! declared size of output array
+      integer, intent(out) :: lats(latdim) ! array of latitudes
+
+      call endrun('get_lat_all_p: deprecated interface')
+
+   end subroutine get_lat_all_p_int
 
    !========================================================================
 
-   integer function get_lat_p(lcid, col)
+   subroutine get_lon_all_p_int(lcid, londim, lons)
       use cam_abortutils, only: endrun
       !-----------------------------------------------------------------------
       !
-      ! Purpose: DUMMY FOR WEAK SCALING TESTS
+      ! get_lon_all_p:: Return all longitudes (in degrees) for chunk, <lcid>
       !
-      !------------------------------Arguments--------------------------------
-
-      !------------------------------Arguments--------------------------------
-      integer, intent(in)  :: lcid          ! local chunk id
-      integer, intent(in)  :: col           ! column index
-
-      call endrun('get_lat_p: NOT SUPPORTED WITH WEAK SCALING')
-
-   end function get_lat_p
-
-   !========================================================================
-
-   integer function get_lon_p(lcid, col)
-      use cam_abortutils, only: endrun
       !-----------------------------------------------------------------------
-      !
-      ! Purpose: DUMMY FOR WEAK SCALING TESTS
-      !
-      !------------------------------Arguments--------------------------------
+      ! Dummy Arguments
+      integer,  intent(in)  :: lcid          ! local chunk id
+      integer,  intent(in)  :: londim        ! declared size of output array
+      integer, intent(out) :: lons(londim)  ! array of longitudes
 
-      !------------------------------Arguments--------------------------------
-      integer, intent(in)  :: lcid          ! local chunk id
-      integer, intent(in)  :: col           ! column index
+      call endrun('get_lon_all_p: deprecated interface')
 
-      call endrun('get_lon_p: NOT SUPPORTED WITH WEAK SCALING')
-
-   end function get_lon_p
+   end subroutine get_lon_all_p_int
 
    !========================================================================
 

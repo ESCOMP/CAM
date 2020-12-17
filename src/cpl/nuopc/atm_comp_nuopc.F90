@@ -35,8 +35,10 @@ module atm_comp_nuopc
   use ioFileMod
   use perf_mod            , only : t_startf, t_stopf
   use ppgrid              , only : pcols, begchunk, endchunk
-  use phys_grid           , only : get_ncols_p, get_gcol_p, get_rlon_all_p, get_rlat_all_p, ngcols
-  use dyn_grid            , only : get_horiz_grid_dim_d
+  use phys_grid           , only : get_ncols_p, get_gcol_p
+  use phys_grid           , only : get_rlon_all_p, get_rlat_all_p
+  use phys_grid           , only : ngcols => num_global_phys_cols
+  use phys_grid           , only : get_grid_dims
   use cam_control_mod     , only : cam_ctrl_set_orbit
   use cam_pio_utils       , only : cam_pio_createfile, cam_pio_openfile, cam_pio_closefile, pio_subsystem
   use cam_initfiles       , only : cam_initfiles_get_caseid, cam_initfiles_get_restdir
@@ -700,7 +702,7 @@ contains
     call export_fields( gcomp, cam_out, rc=rc  )
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    call get_horiz_grid_dim_d(hdim1_d, hdim2_d)
+    call get_grid_dims(hdim1_d, hdim2_d)
     call State_SetScalar(dble(hdim1_d), flds_scalar_index_nx, exportState, &
          flds_scalar_name, flds_scalar_num, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
@@ -1405,7 +1407,7 @@ contains
     ! input/output variables
     type(ESMF_GridComp) , intent(in)    :: gcomp
     integer             , intent(in)    :: logunit
-    logical             , intent(in)    :: mastertask 
+    logical             , intent(in)    :: mastertask
     integer             , intent(out)   :: rc              ! output error
 
     ! local variables
@@ -1499,12 +1501,12 @@ contains
   subroutine cam_orbital_update(clock, logunit,  mastertask, eccen, obliqr, lambm0, mvelpp, rc)
 
     !----------------------------------------------------------
-    ! Update orbital settings 
+    ! Update orbital settings
     !----------------------------------------------------------
 
     ! input/output variables
     type(ESMF_Clock) , intent(in)    :: clock
-    integer          , intent(in)    :: logunit 
+    integer          , intent(in)    :: logunit
     logical          , intent(in)    :: mastertask
     real(R8)         , intent(inout) :: eccen  ! orbital eccentricity
     real(R8)         , intent(inout) :: obliqr ! Earths obliquity in rad
@@ -1514,7 +1516,7 @@ contains
 
     ! local variables
     type(ESMF_Time)   :: CurrTime ! current time
-    integer           :: year     ! model year at current time 
+    integer           :: year     ! model year at current time
     integer           :: orb_year ! orbital year for current orbital computation
     character(len=CL) :: msgstr   ! temporary
     character(len=*) , parameter :: subname = "(cam_orbital_update)"
@@ -1527,7 +1529,7 @@ contains
        if (chkerr(rc,__LINE__,u_FILE_u)) return
        orb_year = orb_iyear + (year - orb_iyear_align)
     else
-       orb_year = orb_iyear 
+       orb_year = orb_iyear
     end if
 
     eccen = orb_eccen
