@@ -109,7 +109,7 @@ end subroutine cam_snapshot_init
 subroutine cam_snapshot_all_outfld_tphysbc(file_num, state, tend, cam_in, cam_out, pbuf, flx_heat, cmfmc, cmfcme, &
         pflx, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
 
-use time_manager,   only: is_first_step
+use time_manager,   only: is_first_step, is_first_restart_step
 
 !--------------------------------------------------------
 ! This subroutine does the outfld calls for ALL state, tend and pbuf fields for routines in tphysbc.
@@ -140,7 +140,7 @@ use time_manager,   only: is_first_step
    integer :: lchnk
 
    ! Return if the first timestep as not all fields may be filled in and this will cause a core dump
-   if (is_first_step()) return
+   if (is_first_step().or. is_first_restart_step()) return
 
    ! Return if not turned on 
    if (cam_snapshot_before_num <= 0 .and. cam_snapshot_after_num <= 0) return ! No snapshot files are being requested
