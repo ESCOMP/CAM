@@ -18,6 +18,7 @@ use dyn_comp,       only: dyn_export_t, dyn_import_t
 
 use physics_types,  only: physics_state, physics_tend
 use phys_grid,      only: get_dyn_col_p, get_chunk_info_p, get_ncols_p, get_gcol_all_p
+use phys_grid,      only: columns_on_task
 
 use physics_buffer, only: physics_buffer_desc, pbuf_get_chunk, pbuf_get_field
 
@@ -71,9 +72,10 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    real(r8), pointer :: tracers(:,:,:)
 
 
-   integer :: lchnk, icol, k, kk      ! indices over chunks, columns, layers
+   integer :: lchnk, icol, icol_p, k, kk      ! indices over chunks, columns, physics columns and layers
    integer :: i, m, ncols, blockid
-   integer :: blk(1), bcid(1)
+   integer :: block_index
+   integer, dimension(:), pointer :: block_offset
 
    integer :: pgcols(pcols)
    integer :: tsize                    ! amount of data per grid point passed to physics
@@ -84,150 +86,71 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
 
    character(len=*), parameter :: subname = 'd_p_coupling'
    !----------------------------------------------------------------------------
+   nCellsSolve = dyn_out % nCellsSolve
+   index_qv    = dyn_out % index_qv
+   cam_from_mpas_cnst => dyn_out % cam_from_mpas_cnst
 
-!   nCellsSolve = dyn_out % nCellsSolve
-!   index_qv    = dyn_out % index_qv
-!   cam_from_mpas_cnst => dyn_out % cam_from_mpas_cnst
-!
-!   pmiddry  => dyn_out % pmiddry
-!   pintdry  => dyn_out % pintdry
-!   zint     => dyn_out % zint
-!   zz       => dyn_out % zz
-!   rho_zz   => dyn_out % rho_zz
-!   ux       => dyn_out % ux
-!   uy       => dyn_out % uy
-!   w        => dyn_out % w
-!   theta_m  => dyn_out % theta_m
-!   exner    => dyn_out % exner
-!   tracers  => dyn_out % tracers
-!
-!   ! diagnose pintdry, pmiddry
-!   call dry_hydrostatic_pressure( &
-!      nCellsSolve, plev, zz, zint, rho_zz, theta_m, pmiddry, pintdry)
-!
-!   call t_startf('dpcopy')
-!
-!   if (local_dp_map) then
-!
-!      !$omp parallel do private (lchnk, ncols, icol, i, k, kk, m, pgcols, blk, bcid)
-!      do lchnk = begchunk, endchunk
-!
-!         ncols = get_ncols_p(lchnk)                         ! number of columns in this chunk
-!         call get_gcol_all_p(lchnk, pcols, pgcols)          ! global column indices in chunk
-!
-!         do icol = 1, ncols                                   ! column index in physics chunk
-!            call get_gcol_block_d(pgcols(icol), 1, blk, bcid) ! column index in dynamics block
-!            i = bcid(1)
-!
-!            phys_state(lchnk)%psdry(icol) = pintdry(1,i)
-!            phys_state(lchnk)%phis(icol) = zint(1,i) * gravit
-!
-!            do k = 1, pver                                  ! vertical index in physics chunk
-!               kk = pver - k + 1                            ! vertical index in dynamics block
-!
-!               phys_state(lchnk)%t(icol,k)       = theta_m(kk,i) / (1.0_r8 + &
-!                                                   Rv_over_Rd * tracers(index_qv,kk,i)) * exner(kk,i)
-!               phys_state(lchnk)%u(icol,k)       = ux(kk,i)
-!               phys_state(lchnk)%v(icol,k)       = uy(kk,i)
-!               phys_state(lchnk)%omega(icol,k)   = -rho_zz(kk,i)*zz(kk,i)*gravit*0.5_r8*(w(kk,i)+w(kk+1,i))   ! omega
-!               phys_state(lchnk)%pmiddry(icol,k) = pmiddry(kk,i)
-!            end do
-!
-!            do k = 1, pverp
-!               kk = pverp - k + 1
-!               phys_state(lchnk)%pintdry(icol,k) = pintdry(kk,i)
-!            end do
-!
-!            do m = 1, pcnst
-!               do k = 1, pver
-!                  kk = pver - k + 1
-!                  phys_state(lchnk)%q(icol,k,m) = tracers(cam_from_mpas_cnst(m),kk,i)
-!               end do
-!            end do
-!         end do
-!      end do
-!
-!   else  ! .not. local_dp_map
-!
-!      tsize = 6 + pcnst
-!      allocate(bbuffer(tsize*block_buf_nrecs))    ! block buffer
-!      bbuffer = 0.0_r8
-!      allocate(cbuffer(tsize*chunk_buf_nrecs))    ! chunk buffer
-!      cbuffer = 0.0_r8
-!
-!      allocate( bpter(nCellsSolve,0:pver) )
-!      allocate( cpter(pcols,0:pver) )
-!
-!      blockid = iam + 1   ! global block index
-!      call block_to_chunk_send_pters(blockid, nCellsSolve, pverp, tsize, bpter)
-!
-!      do i = 1, nCellsSolve                           ! column index in block
-!
-!         bbuffer(bpter(i,0))   = pintdry(1,i)         ! psdry
-!         bbuffer(bpter(i,0)+1) = zint(1,i) * gravit   ! phis
-!
-!         do k = 1, pver
-!            bbuffer(bpter(i,k))   = theta_m(k,i) / (1.0_r8 + &
-!                                       Rv_over_Rd * tracers(index_qv,k,i)) * exner(k,i)
-!            bbuffer(bpter(i,k)+1) = ux(k,i)
-!            bbuffer(bpter(i,k)+2) = uy(k,i)
-!            bbuffer(bpter(i,k)+3) = -rho_zz(k,i) * zz(k,i) * gravit * 0.5_r8 * (w(k,i) + w(k+1,i))   ! omega
-!            bbuffer(bpter(i,k)+4) = pmiddry(k,i)
-!            do m=1,pcnst
-!               bbuffer(bpter(i,k)+4+m) = tracers(cam_from_mpas_cnst(m),k,i)
-!            end do
-!         end do
-!
-!         do k = 1, pverp
-!            bbuffer(bpter(i,k-1)+5+pcnst) = pintdry(k,i)
-!         end do
-!      end do
-!
-!      call t_barrierf ('sync_blk_to_chk', mpicom)
-!      call t_startf ('block_to_chunk')
-!      call transpose_block_to_chunk(tsize, bbuffer, cbuffer)
-!      call t_stopf  ('block_to_chunk')
-!
-!      !$omp parallel do private (lchnk, ncols, icol, k, kk, m, cpter)
-!      do lchnk = begchunk, endchunk
-!         ncols = phys_state(lchnk)%ncol
-!
-!         call block_to_chunk_recv_pters(lchnk, pcols, pverp, tsize, cpter)
-!
-!         do icol = 1, ncols
-!
-!            phys_state(lchnk)%psdry(icol)    = cbuffer(cpter(icol,0))
-!            phys_state(lchnk)%phis(icol)     = cbuffer(cpter(icol,0)+1)
-!
-!            ! do the vertical reorder here when assigning to phys_state
-!            do k = 1, pver
-!               kk = pver - k + 1
-!               phys_state(lchnk)%t      (icol,kk)  = cbuffer(cpter(icol,k))
-!               phys_state(lchnk)%u      (icol,kk)  = cbuffer(cpter(icol,k)+1)
-!               phys_state(lchnk)%v      (icol,kk)  = cbuffer(cpter(icol,k)+2)
-!               phys_state(lchnk)%omega  (icol,kk)  = cbuffer(cpter(icol,k)+3)
-!               phys_state(lchnk)%pmiddry(icol,kk)  = cbuffer(cpter(icol,k)+4)
-!               do m = 1, pcnst
-!                  phys_state(lchnk)%q  (icol,kk,m) = cbuffer(cpter(icol,k)+4+m)
-!               end do
-!            end do
-!
-!            do k = 0, pver
-!               kk = pverp - k
-!               phys_state(lchnk)%pintdry(icol,kk) = cbuffer(cpter(icol,k)+5+pcnst)
-!            end do
-!         end do
-!      end do
-!
-!      deallocate( bbuffer, bpter )
-!      deallocate( cbuffer, cpter )
-!
-!   end if
-!   call t_stopf('dpcopy')
-!
-!   call t_startf('derived_phys')
-!   call derived_phys(phys_state, phys_tend, pbuf2d)
-!   call t_stopf('derived_phys')
+   pmiddry  => dyn_out % pmiddry
+   pintdry  => dyn_out % pintdry
+   zint     => dyn_out % zint
+   zz       => dyn_out % zz
+   rho_zz   => dyn_out % rho_zz
+   ux       => dyn_out % ux
+   uy       => dyn_out % uy
+   w        => dyn_out % w
+   theta_m  => dyn_out % theta_m
+   exner    => dyn_out % exner
+   tracers  => dyn_out % tracers
+
+   ! diagnose pintdry, pmiddry
+   call dry_hydrostatic_pressure( &
+      nCellsSolve, plev, zz, zint, rho_zz, theta_m, pmiddry, pintdry)
+
+   call t_startf('dpcopy')
+
+   ! Todo: Is this the correct way to get the number of columns on task? Or should
+   ! we use nCellsSolve?
+   ncols = columns_on_task
+
+   allocate(block_offset(0))
+
+   do icol = 1, ncols
+      call get_dyn_col_p(icol, block_index, block_offset) ! Get the dynamic column (block_index)
+      call get_chunk_info_p(icol, lchnk, icol_p)          ! Get the matching physics column (icol_p)
+      i = block_index
+
+      phys_state(lchnk)%psdry(icol_p) = pintdry(1,i)
+      phys_state(lchnk)%phis(icol_p) = zint(1,i) * gravit
+
+      do k = 1, pver                                  ! vertical index in physics chunk
+         kk = pver - k + 1                            ! vertical index in dynamics block
+
+         phys_state(lchnk)%t(icol_p,k)       = theta_m(kk,i) / (1.0_r8 + &
+                                             Rv_over_Rd * tracers(index_qv,kk,i)) * exner(kk,i)
+         phys_state(lchnk)%u(icol_p,k)       = ux(kk,i)
+         phys_state(lchnk)%v(icol_p,k)       = uy(kk,i)
+         phys_state(lchnk)%omega(icol_p,k)   = -rho_zz(kk,i)*zz(kk,i)*gravit*0.5_r8*(w(kk,i)+w(kk+1,i))   ! omega
+         phys_state(lchnk)%pmiddry(icol_p,k) = pmiddry(kk,i)
+      end do
+
+      do k = 1, pverp
+         kk = pverp - k + 1
+         phys_state(lchnk)%pintdry(icol_p,k) = pintdry(kk,i)
+      end do
+
+      do m = 1, pcnst
+         do k = 1, pver
+            kk = pver - k + 1
+            phys_state(lchnk)%q(icol_p,k,m) = tracers(cam_from_mpas_cnst(m),kk,i)
+         end do
+      end do
+   end do
+
+   call t_stopf('dpcopy')
+
+   call t_startf('derived_phys')
+   call derived_phys(phys_state, phys_tend, pbuf2d)
+   call t_stopf('derived_phys')
 
 end subroutine d_p_coupling
 
