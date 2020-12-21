@@ -11,6 +11,7 @@ module atm_import_export
   use shr_sys_mod     , only : shr_sys_abort
   use nuopc_shr_methods , only : chkerr
   use cam_logfile     , only : iulog
+  use spmd_utils      , only : masterproc
   use srf_field_check , only : set_active_Sl_ram1
   use srf_field_check , only : set_active_Sl_fv
   use srf_field_check , only : set_active_Sl_soilw
@@ -51,7 +52,6 @@ module atm_import_export
   integer                :: megan_nflds      ! number of MEGAN voc fields from lnd-> atm
   integer                :: emis_nflds       ! number of fire emission fields from lnd-> atm
   integer, public        :: ndep_nflds       ! number  of nitrogen deposition fields from atm->lnd/ocn
-  integer                :: dbug_flag = 0    ! ESMF log output
   integer, parameter     :: debug_import = 0 ! internal debug level
   integer, parameter     :: debug_export = 0 ! internal debug level
   character(*),parameter :: F01 = "('(cam_import_export) ',a,i8,2x,i8,2x,d21.14)"
@@ -65,7 +65,6 @@ contains
 
   subroutine advertise_fields(gcomp, flds_scalar_name, rc)
 
-    use spmd_utils        , only : masterproc
     use seq_drydep_mod    , only : seq_drydep_readnl
     use shr_megan_mod     , only : shr_megan_readnl
     use shr_fire_emis_mod , only : shr_fire_emis_readnl
@@ -93,7 +92,6 @@ contains
     !-------------------------------------------------------------------------------
 
     rc = ESMF_SUCCESS
-    call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO)
 
     call NUOPC_ModelGet(gcomp, importState=importState, exportState=exportState, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
@@ -105,25 +103,25 @@ contains
     call NUOPC_CompAttributeGet(gcomp, name='flds_co2a', value=cvalue, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     read(cvalue,*) flds_co2a
-    call ESMF_LogWrite(trim(subname)//'flds_co2a = '// trim(cvalue), ESMF_LOGMSG_INFO)
+    if (masterproc) write(iulog,'(a)') trim(subname)//'flds_co2a = '// trim(cvalue)
 
     call NUOPC_CompAttributeGet(gcomp, name='flds_co2b', value=cvalue, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     read(cvalue,*) flds_co2b
-    call ESMF_LogWrite(trim(subname)//'flds_co2b = '// trim(cvalue), ESMF_LOGMSG_INFO)
+    if (masterproc) write(iulog,'(a)') trim(subname)//'flds_co2b = '// trim(cvalue)
 
     call NUOPC_CompAttributeGet(gcomp, name='flds_co2c', value=cvalue, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     read(cvalue,*) flds_co2c
-    call ESMF_LogWrite(trim(subname)//'flds_co2c = '// trim(cvalue), ESMF_LOGMSG_INFO)
+    if (masterproc) write(iulog,'(a)') trim(subname)//'flds_co2c = '// trim(cvalue)
 
     !--------------------------------
     ! Export fields
     !--------------------------------
 
-    call ESMF_LogWrite(trim(subname)//' export fields', ESMF_LOGMSG_INFO)
-    call fldlist_add(fldsFrAtm_num, fldsFrAtm, trim(flds_scalar_name))
+    if (masterproc) write(iulog,'(a)') trim(subname)//'export_fields '
 
+    call fldlist_add(fldsFrAtm_num, fldsFrAtm, trim(flds_scalar_name))
     call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Sa_topo'       )
     call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Sa_z'          )
     call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Sa_u'          )
@@ -178,7 +176,7 @@ contains
     end if
 
     ! Now advertise above export fields
-    call ESMF_LogWrite(trim(subname)//' advertise export fields ', ESMF_LOGMSG_INFO)
+    if (masterproc) write(iulog,*) trim(subname)//' advertise export fields'
     do n = 1,fldsFrAtm_num
        call NUOPC_Advertise(exportState, standardName=fldsFrAtm(n)%stdname, &
             TransferOfferGeomObject='will provide', rc=rc)
@@ -189,10 +187,9 @@ contains
     ! Import fields
     !-----------------
 
-    call ESMF_LogWrite(trim(subname)//' Import Fields', ESMF_LOGMSG_INFO)
+    if (masterproc) write(iulog,'(a)') trim(subname)//' import fields '
 
     call fldlist_add(fldsToAtm_num, fldsToAtm, trim(flds_scalar_name))
-
     call fldlist_add(fldsToAtm_num, fldsToAtm, 'Sx_anidr'  )
     call fldlist_add(fldsToAtm_num, fldsToAtm, 'Sx_avsdf'  )
     call fldlist_add(fldsToAtm_num, fldsToAtm, 'Sx_anidf'  )
@@ -232,14 +229,12 @@ contains
        call set_active_Faoo_fco2_ocn(.true.)
     end if
 
-    call ESMF_LogWrite(trim(subname)//' here1', ESMF_LOGMSG_INFO)
     ! dry deposition velocities from land - ALSO initialize drydep here
     call seq_drydep_readnl("drv_flds_in", drydep_nflds)
     if (drydep_nflds > 0) then
        call fldlist_add(fldsToAtm_num, fldsToAtm, 'Sl_ddvel', ungridded_lbound=1, ungridded_ubound=drydep_nflds)
     end if
 
-    call ESMF_LogWrite(trim(subname)//' here2', ESMF_LOGMSG_INFO)
     ! MEGAN VOC emissions fluxes from land
     call shr_megan_readnl('drv_flds_in', megan_nflds)
     if (megan_nflds > 0) then
@@ -247,7 +242,6 @@ contains
        call set_active_Fall_flxvoc(.true.)
     end if
 
-    call ESMF_LogWrite(trim(subname)//' here3', ESMF_LOGMSG_INFO)
     ! fire emissions fluxes from land
     call shr_fire_emis_readnl('drv_flds_in', emis_nflds)
     if (emis_nflds > 0) then
@@ -256,15 +250,12 @@ contains
        call set_active_Fall_flxfire(.true.)
     end if
 
-    call ESMF_LogWrite(trim(subname)//' here4', ESMF_LOGMSG_INFO)
     ! CARMA volumetric soil water from land
     call shr_carma_readnl('drv_flds_in', carma_fields)
     if (carma_fields /= ' ') then
        call fldlist_add(fldsToAtm_num, fldsToAtm, 'Sl_soilw') ! optional for carma
        call set_active_Sl_soilw(.true.) ! check for carma
     end if
-
-    call ESMF_LogWrite(trim(subname)//' here5', ESMF_LOGMSG_INFO)
 
     ! ------------------------------------------
     ! Now advertise above import fields
@@ -275,8 +266,6 @@ contains
             TransferOfferGeomObject='will provide', rc=rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
     enddo
-
-    call ESMF_LogWrite(trim(subname)//' done', ESMF_LOGMSG_INFO)
 
   end subroutine advertise_fields
 
@@ -337,7 +326,6 @@ contains
     ! copy from field pointer to chunk array data structure
     ! -----------------------------------------------------
 
-    use spmd_utils        , only : masterproc
     use camsrfexch        , only : cam_in_t
     use phys_grid         , only : get_ncols_p
     use ppgrid            , only : begchunk, endchunk
@@ -391,7 +379,6 @@ contains
     !---------------------------------------------------------------------------
 
     rc = ESMF_SUCCESS
-    if (dbug_flag > 10) call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO)
 
     ! Get import state
     call NUOPC_ModelGet(gcomp, importState=importState, rc=rc)
@@ -778,8 +765,6 @@ contains
        end do
     end if
 
-    if (dbug_flag > 10) call ESMF_LogWrite(subname//' done', ESMF_LOGMSG_INFO)
-
   end subroutine import_fields
 
   !===============================================================================
@@ -1099,8 +1084,9 @@ contains
        stdname = fldList(n)%stdname
        if (NUOPC_IsConnected(state, fieldName=stdname)) then
           if (stdname == trim(flds_scalar_name)) then
-             call ESMF_LogWrite(trim(subname)//trim(tag)//" Field = "//trim(stdname)//" is connected on root pe", &
-                  ESMF_LOGMSG_INFO)
+             if (masterproc) then
+                write(iulog,'(a)') trim(subname)//trim(tag)//" field = "//trim(stdname)//" is connected on root pe"
+             end if
              ! Create the scalar field
              call SetScalarField(field, flds_scalar_name, flds_scalar_num, rc=rc)
              if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
@@ -1112,14 +1098,16 @@ contains
                      ungriddedUbound=(/fldlist(n)%ungridded_ubound/), &
                      gridToFieldMap=(/2/), rc=rc)
                 if (ChkErr(rc,__LINE__,u_FILE_u)) return
-                write(msg,*) trim(subname)// trim(tag)//" Field = "//trim(stdname)// " is connected using mesh ", &
-                     "with lbound ", fldlist(n)%ungridded_lbound,' and with ubound ',fldlist(n)%ungridded_ubound
-                call ESMF_LogWrite(msg, ESMF_LOGMSG_INFO)
+                if (masterproc) then
+                   write(iulog,'(a)') trim(subname)// trim(tag)//" Field = "//trim(stdname)// " is connected using mesh ", &
+                        "with lbound ", fldlist(n)%ungridded_lbound,' and with ubound ',fldlist(n)%ungridded_ubound
+                end if
              else
                 field = ESMF_FieldCreate(mesh, ESMF_TYPEKIND_R8, name=stdname, meshloc=ESMF_MESHLOC_ELEMENT, rc=rc)
                 if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
-                write(msg,*) trim(subname)// trim(tag)//" Field = "//trim(stdname)// " is connected using mesh "
-                call ESMF_LogWrite(msg, ESMF_LOGMSG_INFO)
+                if (masterproc) then
+                   write(iulog,'(a)') trim(subname)// trim(tag)//" Field = "//trim(stdname)// " is connected using mesh "
+                end if
              end if
           endif
 
@@ -1128,8 +1116,9 @@ contains
           if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
        else
           if (stdname /= trim(flds_scalar_name)) then
-             call ESMF_LogWrite(subname // trim(tag) // " Field = "// trim(stdname) // " is not connected.", &
-                  ESMF_LOGMSG_INFO)
+             if (masterproc) then
+                write(iulog,'(a)')trim(subname)//trim(tag)//" Field = "//trim(stdname)//" is not connected"
+             end if
              call ESMF_StateRemove(state, (/stdname/), rc=rc)
              if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
           end if
@@ -1207,14 +1196,9 @@ contains
 
     rc = ESMF_SUCCESS
 
-    if (dbug_flag > 10) then
-      call ESMF_LogWrite(trim(subname)//": called", ESMF_LOGMSG_INFO)
-    endif
-
     ! Determine if field with name fldname exists in state
     call ESMF_StateGet(state, trim(fldname), itemFlag, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
     if (present(exists)) then
        ! if field exists then create output array - else do nothing
        if (itemflag == ESMF_STATEITEM_NOTFOUND) then
@@ -1231,27 +1215,13 @@ contains
 
     call ESMF_StateGet(State, itemName=trim(fldname), field=lfield, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
     call ESMF_FieldGet(lfield, status=status, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
     if (status /= ESMF_FIELDSTATUS_COMPLETE) then
        call ESMF_LogWrite(trim(subname)//": ERROR data not allocated ", ESMF_LOGMSG_INFO, rc=rc)
        rc = ESMF_FAILURE
        return
     else
-       call ESMF_FieldGet(lfield, mesh=lmesh, rc=rc)
-       if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
-       call ESMF_MeshGet(lmesh, numOwnedNodes=nnodes, numOwnedElements=nelements, rc=rc)
-       if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
-       if (nnodes == 0 .and. nelements == 0) then
-          call ESMF_LogWrite(trim(subname)//": no local nodes or elements ", ESMF_LOGMSG_INFO)
-          rc = ESMF_FAILURE
-          return
-       end if
-
        if (present(fldptr)) then
           call ESMF_FieldGet(lfield, farrayPtr=fldptr, rc=rc)
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
@@ -1260,10 +1230,6 @@ contains
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
        end if
     endif  ! status
-
-    if (dbug_flag > 10) then
-      call ESMF_LogWrite(trim(subname)//": done", ESMF_LOGMSG_INFO)
-    endif
 
   end subroutine state_getfldptr
 
