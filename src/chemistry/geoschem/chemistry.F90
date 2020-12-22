@@ -9,6 +9,7 @@ module chemistry
   use ppgrid,              only : begchunk, endchunk, pcols
   use ppgrid,              only : pver, pverp
   use constituents,        only : pcnst, cnst_add, cnst_get_ind
+  use constituents,        only : cnst_name
   use shr_const_mod,       only : molw_dryair=>SHR_CONST_MWDAIR
   use seq_drydep_mod,      only : nddvels => n_drydep, drydep_list
   use spmd_utils,          only : MasterProc, myCPU=>Iam, nCPUs=>npes
@@ -915,67 +916,66 @@ contains
     !          (and declare history variables)
     !
     !-----------------------------------------------------------------------
-    use physics_buffer,   only : physics_buffer_desc, pbuf_get_index
-    use chem_mods,        only : map2GC_dryDep, drySpc_ndx
-    use cam_history,      only : addfld, add_default, horiz_only
+    use physics_buffer,        only : physics_buffer_desc, pbuf_get_index
+    use chem_mods,             only : map2GC_dryDep, drySpc_ndx
 
 #ifdef SPMD
     use mpishorthand
 #endif
-    use cam_abortutils,   only : endrun
-    use mo_chem_utls,     only : get_spc_ndx
+    use cam_abortutils,        only : endrun
+    use mo_chem_utls,          only : get_spc_ndx
 
-    use Phys_Grid,        only : get_Area_All_p
-    use hycoef,           only : ps0, hyai, hybi, hyam
+    use Phys_Grid,             only : get_Area_All_p
+    use hycoef,                only : ps0, hyai, hybi, hyam
 
-    use seq_drydep_mod,   only : drydep_method, DD_XLND
-    use gas_wetdep_opts,  only : gas_wetdep_method
-    use mo_neu_wetdep,    only : neu_wetdep_init
+    use seq_drydep_mod,        only : drydep_method, DD_XLND
+    use gas_wetdep_opts,       only : gas_wetdep_method
+    use mo_neu_wetdep,         only : neu_wetdep_init
 
 #if defined( MODAL_AERO_4MODE )
-    use aero_model,       only : aero_model_init
-    use mo_setsox,        only : sox_inti
-    use mo_drydep,        only : drydep_inti_landuse
-    use modal_aero_data,  only : ntot_amode, nspec_amode
-    use modal_aero_data,  only : xname_massptr
+    use aero_model,            only : aero_model_init
+    use mo_setsox,             only : sox_inti
+    use mo_drydep,             only : drydep_inti_landuse
+    use modal_aero_data,       only : ntot_amode, nspec_amode
+    use modal_aero_data,       only : xname_massptr
 #endif
 
     use Input_Opt_Mod
     use State_Chm_Mod
     use State_Grid_Mod
     use State_Met_Mod
-    use DiagList_Mod,      only : Init_DiagList, Print_DiagList
-    use TaggedDiagList_Mod,only : Init_TaggedDiagList, Print_TaggedDiagList
-    use GC_Grid_Mod,       only : SetGridFromCtrEdges
+    use DiagList_Mod,          only : Init_DiagList, Print_DiagList
+    use TaggedDiagList_Mod,    only : Init_TaggedDiagList, Print_TaggedDiagList
+    use GC_Grid_Mod,           only : SetGridFromCtrEdges
 
     ! Use GEOS-Chem versions of physical constants
-    use PhysConstants,     only : PI, PI_180, Re
+    use PhysConstants,         only : PI, PI_180, Re
 
-    use Time_Mod,          only : Accept_External_Date_Time
-    use Linoz_Mod,         only : Linoz_Read
+    use Time_Mod,              only : Accept_External_Date_Time
+    use Linoz_Mod,             only : Linoz_Read
 
     use CMN_Size_Mod
 
-    use Drydep_Mod,        only : depName, Ndvzind
-    use Pressure_Mod,      only : Accept_External_ApBp
-    use Chemistry_Mod,     only : Init_Chemistry
-    use Ucx_Mod,           only : Init_Ucx
-    use Strat_chem_Mod,    only : Init_Strat_Chem
-    use isorropiaII_Mod,   only : Init_IsorropiaII
-    use Input_mod,         only : Validate_Directories
+    use Drydep_Mod,            only : depName, Ndvzind
+    use Pressure_Mod,          only : Accept_External_ApBp
+    use Chemistry_Mod,         only : Init_Chemistry
+    use Ucx_Mod,               only : Init_Ucx
+    use Strat_chem_Mod,        only : Init_Strat_Chem
+    use isorropiaII_Mod,       only : Init_IsorropiaII
+    use Input_mod,             only : Validate_Directories
     use Olson_Landmap_Mod
     use Vdiff_Mod
 
-    use mo_setinv,         only : setinv_inti
-    use mo_mean_mass,      only : init_mean_mass
-    use tracer_cnst,       only : tracer_cnst_init
-    use tracer_srcs,       only : tracer_srcs_init
+    use mo_setinv,             only : setinv_inti
+    use mo_mean_mass,          only : init_mean_mass
+    use tracer_cnst,           only : tracer_cnst_init
+    use tracer_srcs,           only : tracer_srcs_init
 
     use CESMGC_Emissions_Mod,  only : CESMGC_Emissions_Init
     use CESMGC_Diag_Mod,       only : CESMGC_Diag_Init
 
-    TYPE(physics_state), INTENT(IN):: phys_state(BEGCHUNK:ENDCHUNK)
-    TYPE(physics_buffer_desc), POINTER :: pbuf2d(:,:)
+    TYPE(physics_state),                INTENT(IN   ) :: phys_state(BEGCHUNK:ENDCHUNK)
+    TYPE(physics_buffer_desc), POINTER, INTENT(INOUT) :: pbuf2d(:,:)
 
     ! Local variables
 
@@ -1941,7 +1941,6 @@ contains
     ! Initial MMR for all species
     REAL(r8) :: MMR_Beg(PCOLS,PVER,nSls+nTracers)
     REAL(r8) :: MMR_End(PCOLS,PVER,nSls+nTracers)
-    REAL(r8) :: MMR_TEnd(PCOLS,PVER,nSls+nTracers)
 
     ! Logical to apply tendencies to mixing ratios
     LOGICAL :: lq(pcnst)
@@ -2148,6 +2147,7 @@ contains
 
     ! Map and flip gaseous species
     MMR_Beg = 0.0e+0_r8
+    MMR_End = 0.0e+0_r8
     DO N = 1, pcnst
        M = map2GC(N)
        IF ( M > 0 ) THEN
@@ -2634,7 +2634,7 @@ contains
     ELSE
        fldname_ns = 'HCO_UV_ALBEDO'
        tmpIdx = pbuf_get_index(fldname_ns, RC)
-       IF ( tmpIdx < 0 ) THEN
+       IF ( tmpIdx < 0 .or. ( iStep == 1 ) ) THEN
           IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(fldname_ns)
           State_Met(LCHNK)%UVALBEDO(1,:nY) = 0.0e+0_fp
        ELSE
@@ -2677,7 +2677,7 @@ contains
     ! Dimensions : nX, nY
     fldname_ns = 'HCO_iodide'
     tmpIdx = pbuf_get_index(fldname_ns, RC)
-    IF ( tmpIdx < 0 ) THEN
+    IF ( tmpIdx < 0 .or. ( iStep == 1 ) ) THEN
        IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(fldname_ns)
        State_Chm(LCHNK)%IODIDE(1,:nY)   = 0.0e+0_fp
     ELSE
@@ -2695,7 +2695,7 @@ contains
     ! Note       : Possibly get ocean salinity from POP?
     fldname_ns = 'HCO_salinity'
     tmpIdx = pbuf_get_index(fldname_ns, RC)
-    IF ( tmpIdx < 0 ) THEN
+    IF ( tmpIdx < 0 .or. ( iStep == 1 ) ) THEN
        IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(fldname_ns)
        State_Chm(LCHNK)%SALINITY(1,:nY) = 0.0e+0_fp
     ELSE
@@ -2842,7 +2842,7 @@ contains
        ! Field      : REEVAPLS
        ! Description: Evaporation of large-scale + anvil precipitation
        !              (w/r/t dry air)
-       ! Unit       : kg
+       ! Unit       : kg/kg/s
        ! Dimensions : nX, nY, nZ
        State_Met(LCHNK)%REEVAPLS (1,J,L) = NEvapr(J,nZ+1-L) ! kg/kg/s
 
@@ -3374,7 +3374,8 @@ contains
                                 hco_pbuf2d = hco_pbuf2d,       &
                                 State_Met  = State_Met(LCHNK), &
                                 cam_in     = cam_in,           &
-                                eflx       = eflx             )
+                                eflx       = eflx,             &
+                                iStep      = iStep            )
 
     !-----------------------------------------------------------------------
     ! Add dry deposition flux 
@@ -3413,7 +3414,6 @@ contains
 
     DO N = 1, pcnst
        M = map2GC(N)
-
        IF ( M > 0 ) THEN
           ! Add to GEOS-Chem species
           DO J = 1, nY
@@ -3732,7 +3732,6 @@ contains
                            state      = state,             &
                            LCHNK      = LCHNK             )
 
-    MMR_End = 0.0e+0_r8
     DO N = 1, pcnst
        M = map2GC(N)
        IF ( M > 0 ) THEN
@@ -3742,7 +3741,6 @@ contains
           DO J = 1, nY
           DO L = 1, nZ
              MMR_End (J,L,M) = REAL(State_Chm(LCHNK)%Species(1,J,L,M),r8)
-             MMR_TEnd(J,L,M) = MMR_End(J,L,M) - MMR_Beg(J,L,M)
              ptend%q(J,nZ+1-L,N) = ptend%q(J,nZ+1-L,N) &
                                  + (MMR_End(J,L,M)-MMR_Beg(J,L,M))/dT
           ENDDO

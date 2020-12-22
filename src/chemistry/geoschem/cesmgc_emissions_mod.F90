@@ -249,7 +249,7 @@ CONTAINS
 !\\
 ! !INTERFACE:
 !
-  SUBROUTINE CESMGC_Emissions_Calc( state, hco_pbuf2d, State_Met, cam_in, eflx )
+  SUBROUTINE CESMGC_Emissions_Calc( state, hco_pbuf2d, State_Met, cam_in, eflx, iStep )
 !
 ! !USES:
 !
@@ -287,6 +287,7 @@ CONTAINS
     TYPE(physics_state),                INTENT(IN   ) :: state           ! Physics state variables
     TYPE(physics_buffer_desc), POINTER, INTENT(IN   ) :: hco_pbuf2d(:,:) ! Pointer to 2-D pbuf
     TYPE(MetState),                     INTENT(IN   ) :: State_Met       ! Meteorology State object
+    INTEGER,                            INTENT(IN   ) :: iStep
 !
 ! !OUTPUT PARAMETERS:
 !
@@ -355,7 +356,7 @@ CONTAINS
           tmpIdx = pbuf_get_index(fldname_ns, RC)
        ENDIF
 
-       IF ( tmpIdx < 0 ) THEN
+       IF ( tmpIdx < 0 .OR. ( iStep == 1 ) ) THEN
           IF ( rootChunk ) Write(iulog,'(a,a)') " CESMGC_Emissions_Calc: Field not found ", &
              TRIM(fldname_ns)
        ELSE
