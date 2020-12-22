@@ -17,6 +17,7 @@ MODULE CESMGC_Diag_Mod
 !
   USE SHR_KIND_MOD,        ONLY : r8 => shr_kind_r8
   USE SPMD_UTILS,          ONLY : MasterProc
+  USE PPGRID,              ONLY : begchunk
   USE CAM_LOGFILE,         ONLY : iulog
   USE Error_Mod                                 ! For error checking
   USE ErrCode_Mod                               ! Error codes for success or failure
@@ -69,6 +70,7 @@ CONTAINS
   USE CHEM_MODS,           ONLY : slsNames, slsLongNames
   USE CHEM_MODS,           ONLY : gas_pcnst
   USE CHEM_MODS,           ONLY : iFirstCnst
+  USE CHEM_MODS,           ONLY : map2chm
   USE MO_TRACNAME,         ONLY : solsym
   USE CONSTITUENTS,        ONLY : pcnst, cnst_name
   USE CAM_HISTORY,         ONLY : addfld, add_default, horiz_only
@@ -97,6 +99,7 @@ CONTAINS
 
     ! Logical
     LOGICAL                :: Found
+    LOGICAL                :: isWD
 
     ! Strings
     CHARACTER(LEN=255)     :: SpcName
@@ -180,6 +183,18 @@ CONTAINS
 
     IF ( gas_wetdep_method == 'GEOS-CHEM' ) THEN
        DO N = 1, gas_pcnst
+          M = map2chm(N)
+          isWD = .False.
+          IF ( M > 0 ) THEN
+             SpcInfo => State_Chm%SpcData(M)%Info
+             isWD = SpcInfo%Is_WetDep
+
+             ! Free pointer
+             SpcInfo => NULL()
+          ENDIF
+
+          IF ( .NOT. isWD ) CYCLE
+
           SpcName = 'DTWR_'//TRIM(solsym(N))
           CALL Addfld( TRIM(SpcName), (/ 'lev' /), 'A', 'kg/kg/s', &
              'wet removal tendency' )
@@ -315,7 +330,6 @@ CONTAINS
   USE DRYDEP_MOD,          ONLY : depName, Ndvzind
   USE CAMSRFEXCH,          ONLY : cam_in_t
   USE PHYSICS_TYPES,       ONLY : physics_state
-  USE PPGRID,              ONLY : begchunk
   USE SPMD_UTILS,          ONLY : MasterProc
 #if defined( MODAL_AERO_4MODE )
   USE MODAL_AERO_DATA,     ONLY : lmassptr_amode
