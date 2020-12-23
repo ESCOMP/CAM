@@ -3269,9 +3269,19 @@ if ($waccm_phys or
     add_default($nl, 'use_gw_front'     , 'val'=>'.true.');
     add_default($nl, 'use_gw_convect_dp', 'val'=>'.true.');
     my $hdepth_scaling = '0.25D0' ;
+    my $qbo_forcing = '.false.';
+    if ($dyn eq 'fv') {
+	my $nlon = $cfg->get('nlon');
+	my $nlat = $cfg->get('nlat');
+        # turn on QBO nudging only for coarse FV grids
+        if ($nlat <= 96 and $nlon <= 144) {
+	    $qbo_forcing = '.true.';
+        }
+    }
+    add_default($nl, 'qbo_use_forcing','val'=>$qbo_forcing);
     if ($nl->get_value('qbo_use_forcing') =~ /$TRUE/io) {
        $hdepth_scaling = '1.D0' ;
-       add_default($nl, 'qbo_cyclic','val'=>'.true.');
+       add_default($nl, 'qbo_cyclic','val'=>'.false.');
        add_default($nl, 'qbo_forcing_file');
     }
     add_default($nl, 'gw_qbo_hdepth_scaling', 'val'=>$hdepth_scaling);
@@ -4271,7 +4281,7 @@ sub check_input_files {
                         if ($var eq 'mpas_block_decomp_file_prefix') {
                             $pathname = "$pathname$opts{'ntasks'}";
                         }
-                        
+
                         print $fh "$var = $pathname\n";
                     }
                     else {

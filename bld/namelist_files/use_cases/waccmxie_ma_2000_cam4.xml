@@ -33,7 +33,6 @@
 <!-- QBO settings --> 
 <qbo_cyclic>.true.</qbo_cyclic>
 <qbo_forcing_file>atm/waccm/qbo/qbocyclic28months.nc</qbo_forcing_file>
-<qbo_use_forcing>.true.</qbo_use_forcing>
 
 <!-- Lower Boundary Conditions -->
 <flbc_file>atm/waccm/lb/LBC_1765-2100_1.9x2.5_CCMI_RCP60_za_c130313.nc </flbc_file>
