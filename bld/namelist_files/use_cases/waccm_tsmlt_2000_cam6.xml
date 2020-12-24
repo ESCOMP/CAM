@@ -37,6 +37,10 @@
 <tgcm_ubc_file>atm/waccm/ub/tgcm_ubc.2000.c100203.nc</tgcm_ubc_file>
 <tgcm_ubc_data_type>CYCLICAL</tgcm_ubc_data_type>
 
+<!-- QBO settings -->
+<qbo_cyclic>.true.</qbo_cyclic>
+<qbo_forcing_file>atm/waccm/qbo/qbocyclic28months.nc</qbo_forcing_file>
+
 <!-- emissions -->
 
 <ext_frc_type>CYCLICAL</ext_frc_type>
