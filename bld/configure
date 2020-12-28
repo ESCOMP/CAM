@@ -1802,6 +1802,7 @@ if ($camiop eq 'ON') { $cfg_cppdefs .= " -DBFB_CAM_SCAM_IOP"; }
 # Resolution parameters for rectangular lat/lon grids
 my $nlon = $cfg_ref->get('nlon');
 my $nlat = $cfg_ref->get('nlat');
+my $csne = $cfg_ref->get('csne');
 $cfg_cppdefs .= " -DPLON=$nlon -DPLAT=$nlat";
 
 # Parameters for multiple instances
@@ -1877,8 +1878,14 @@ if ($waccmx) {
         my $mgrid;
         if (defined $opts{'mgrid'}) {
             $mgrid = $opts{'mgrid'};
+        } elsif ($nlat > 600 or $csne > 100) {
+            $mgrid = '769x640'; # ~0.25-deg magnetic lat
+        } elsif ($nlat > 300 or $csne > 50) {
+            $mgrid = '385x320'; # ~0.5-deg magnetic lat
+        } elsif ($nlat > 150 or $csne > 20) {
+            $mgrid = '193x160'; # ~1-deg magnetic lat
         } else {
-            $mgrid = '97x80';
+            $mgrid = '97x80'; # default to ~2-deg magnetic lat
         }
 
         my ($nmlat, $nmlon) = split /x/, $mgrid;

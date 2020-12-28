@@ -2776,11 +2776,6 @@ if ($waccmx) {
   if ($ionos ne 'none') {
     add_default($nl, 'cam_physics_mesh');
     add_default($nl, 'oplus_grid');
-    # For now, ionos_dynamo_npes and oplus_npes must be the same due to
-    # limitations in edyn_mpi
-    if ($nl->get_value('ionos_dynamo_npes') ne $nl->get_value('oplus_npes')) {
-      die 'ionos_dynamo_npes and oplus_npes must have same value'
-    }
   }
   add_default($nl,'dadadj_niter');
   add_default($nl,'ionos_epotential_model');
