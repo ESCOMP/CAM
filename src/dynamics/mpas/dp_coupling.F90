@@ -86,6 +86,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
 
    character(len=*), parameter :: subname = 'd_p_coupling'
    !----------------------------------------------------------------------------
+
    nCellsSolve = dyn_out % nCellsSolve
    index_qv    = dyn_out % index_qv
    cam_from_mpas_cnst => dyn_out % cam_from_mpas_cnst
@@ -108,9 +109,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
 
    call t_startf('dpcopy')
 
-   ! Todo: Is this the correct way to get the number of columns on task? Or should
-   ! we use nCellsSolve?
-   ncols = columns_on_task
+   ncols = columns_on_task! TODO: Correct way to get number of columns on task?
 
    allocate(block_offset(0))
 
@@ -175,9 +174,10 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
    type(dyn_import_t),  intent(inout) :: dyn_in
 
    ! Local variables
-   integer :: lchnk, icol, k, kk      ! indices over chunks, columns, layers
+   integer :: lchnk, icol, icol_p, k, kk      ! indices over chunks, columns, layers
    integer :: i, m, ncols, blockid
-   integer :: blk(1), bcid(1)
+   integer :: block_index
+   integer, dimension(:), pointer :: block_offset
 
    real(r8) :: factor
    real(r8) :: dt_phys
@@ -211,150 +211,77 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
    character(len=*), parameter :: subname = 'dp_coupling::p_d_coupling'
    !----------------------------------------------------------------------------
 
-!   nCellsSolve = dyn_in % nCellsSolve
-!   nCells      = dyn_in % nCells
-!   index_qv    = dyn_in % index_qv
-!   mpas_from_cam_cnst => dyn_in % mpas_from_cam_cnst
-!
-!   tracers => dyn_in % tracers
-!
-!   allocate( t_tend(pver,nCellsSolve) )
-!   allocate( qv_tend(pver,nCellsSolve) )
-!
-!   nullify(tend_physics)
-!   call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'tend_physics', tend_physics)
-!
-!   nullify(tend_uzonal)
-!   nullify(tend_umerid)
-!   call mpas_pool_get_field(tend_physics, 'tend_uzonal', tend_uzonal)
-!   call mpas_pool_get_field(tend_physics, 'tend_umerid', tend_umerid)
-!   call mpas_allocate_scratch_field(tend_uzonal)
-!   call mpas_allocate_scratch_field(tend_umerid)
-!   call mpas_pool_get_array(tend_physics, 'tend_uzonal', u_tend)
-!   call mpas_pool_get_array(tend_physics, 'tend_umerid', v_tend)
-!
-!   ! Physics coupling interval, used to compute tendency of qv
-!   dt_phys = get_step_size()
-!
-!   call t_startf('pd_copy')
-!   if (local_dp_map) then
-!
-!      !$omp parallel do private (lchnk, ncols, icol, i, k, kk, m, pgcols, blk, bcid)
-!      do lchnk = begchunk, endchunk
-!
-!         ncols = get_ncols_p(lchnk)                     ! number of columns in this chunk
-!         call get_gcol_all_p(lchnk, pcols, pgcols)      ! global column indices
-!
-!         do icol = 1, ncols                                   ! column index in physics chunk
-!            call get_gcol_block_d(pgcols(icol), 1, blk, bcid) ! column index in dynamics block
-!            i = bcid(1)
-!
-!            do k = 1, pver                              ! vertical index in physics chunk
-!               kk = pver - k + 1                        ! vertical index in dynamics block
-!
-!               t_tend(kk,i) = phys_tend(lchnk)%dtdt(icol,k)
-!               u_tend(kk,i) = phys_tend(lchnk)%dudt(icol,k)
-!               v_tend(kk,i) = phys_tend(lchnk)%dvdt(icol,k)
-!
-!               ! convert wet mixing ratios to dry
-!               factor = phys_state(lchnk)%pdel(icol,k)/phys_state(lchnk)%pdeldry(icol,k)
-!               do m = 1, pcnst
-!                  if (cnst_type(mpas_from_cam_cnst(m)) == 'wet') then
-!                     if (m == index_qv) then
-!                        qv_tend(kk,i) = (phys_state(lchnk)%q(icol,k,mpas_from_cam_cnst(m))*factor - tracers(index_qv,kk,i)) / dt_phys
-!                     end if
-!                     tracers(m,kk,i) = phys_state(lchnk)%q(icol,k,mpas_from_cam_cnst(m))*factor
-!                  else
-!                     if (m == index_qv) then
-!                        qv_tend(kk,i) = (phys_state(lchnk)%q(icol,k,mpas_from_cam_cnst(m)) - tracers(index_qv,kk,i)) / dt_phys
-!                     end if
-!                     tracers(m,kk,i) = phys_state(lchnk)%q(icol,k,mpas_from_cam_cnst(m))
-!                  end if
-!               end do
-!
-!            end do
-!         end do
-!      end do
-!
-!   else
-!
-!      tsize = 3 + pcnst
-!      allocate( bbuffer(tsize*block_buf_nrecs) )
-!      bbuffer = 0.0_r8
-!      allocate( cbuffer(tsize*chunk_buf_nrecs) )
-!      cbuffer = 0.0_r8
-!
-!      allocate( bpter(nCellsSolve,0:pver) )
-!      allocate( cpter(pcols,0:pver) )
-!
-!      !$omp parallel do private (lchnk, ncols, icol, k, m, cpter)
-!      do lchnk = begchunk, endchunk
-!         ncols = get_ncols_p(lchnk)
-!
-!         call chunk_to_block_send_pters(lchnk, pcols, pverp, tsize, cpter)
-!
-!         do icol = 1, ncols
-!
-!            do k = 1, pver
-!               cbuffer(cpter(icol,k))   = phys_tend(lchnk)%dtdt(icol,k)
-!               cbuffer(cpter(icol,k)+1) = phys_tend(lchnk)%dudt(icol,k)
-!               cbuffer(cpter(icol,k)+2) = phys_tend(lchnk)%dvdt(icol,k)
-!
-!               ! convert wet mixing ratios to dry
-!               factor = phys_state(lchnk)%pdel(icol,k)/phys_state(lchnk)%pdeldry(icol,k)
-!               do m = 1, pcnst
-!                  if (cnst_type(m) == 'wet') then
-!                     cbuffer(cpter(icol,k)+2+m) = phys_state(lchnk)%q(icol,k,m)*factor
-!                  else
-!                     cbuffer(cpter(icol,k)+2+m) = phys_state(lchnk)%q(icol,k,m)
-!                  end if
-!               end do
-!
-!            end do
-!         end do
-!      end do
-!
-!      call t_barrierf('sync_chk_to_blk', mpicom)
-!      call t_startf ('chunk_to_block')
-!      call transpose_chunk_to_block(tsize, cbuffer, bbuffer)
-!      call t_stopf  ('chunk_to_block')
-!
-!      blockid = iam + 1   !  global block index
-!
-!      call chunk_to_block_recv_pters(blockid, nCellsSolve, pverp, tsize, bpter)
-!
-!      do i = 1, nCellsSolve                       ! index in dynamics block
-!
-!         ! flip vertical index here
-!         do k = 1, pver                        ! vertical index in physics chunk
-!            kk = pver - k + 1                  ! vertical index in dynamics block
-!
-!            t_tend(kk,i) = bbuffer(bpter(i,k))
-!            u_tend(kk,i) = bbuffer(bpter(i,k)+1)
-!            v_tend(kk,i) = bbuffer(bpter(i,k)+2)
-!
-!            do m = 1, pcnst
-!               if (m == index_qv) then
-!                  qv_tend(kk,i) = (bbuffer(bpter(i,k)+2+mpas_from_cam_cnst(m)) - tracers(index_qv,kk,i)) / dt_phys
-!               end if
-!               tracers(m,kk,i) = bbuffer(bpter(i,k)+2+mpas_from_cam_cnst(m))
-!            end do
-!
-!         end do
-!      end do
-!
-!      deallocate( bbuffer, bpter )
-!      deallocate( cbuffer, cpter )
-!
-!   end if
-!   call t_stopf('pd_copy')
-!
-!   call t_startf('derived_tend')
-!   call derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, qv_tend, dyn_in)
-!   call t_stopf('derived_tend')
-!
-!   call mpas_deallocate_scratch_field(tend_uzonal)
-!   call mpas_deallocate_scratch_field(tend_umerid)
+   nCellsSolve = dyn_in % nCellsSolve
+   nCells      = dyn_in % nCells
+   index_qv    = dyn_in % index_qv
+   mpas_from_cam_cnst => dyn_in % mpas_from_cam_cnst
+
+   tracers => dyn_in % tracers
+
+   allocate( t_tend(pver,nCellsSolve) )
+   allocate( qv_tend(pver,nCellsSolve) )
+
+   nullify(tend_physics)
+   call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'tend_physics', tend_physics)
+
+   nullify(tend_uzonal)
+   nullify(tend_umerid)
+   call mpas_pool_get_field(tend_physics, 'tend_uzonal', tend_uzonal)
+   call mpas_pool_get_field(tend_physics, 'tend_umerid', tend_umerid)
+   call mpas_allocate_scratch_field(tend_uzonal)
+   call mpas_allocate_scratch_field(tend_umerid)
+   call mpas_pool_get_array(tend_physics, 'tend_uzonal', u_tend)
+   call mpas_pool_get_array(tend_physics, 'tend_umerid', v_tend)
+
+   ! Physics coupling interval, used to compute tendency of qv
+   dt_phys = get_step_size()
+
+   call t_startf('pd_copy')
+
+   ncols = columns_on_task ! should this be nCellsSolve?
+
+   allocate(block_offset(0))
+
+   do icol = 1, ncols                                   ! column index in physics chunk
+      ! Get dynamics block
+      call get_chunk_info_p(icol, lchnk, icol_p)          ! Get the matching physics column (icol_p)
+      call get_dyn_col_p(icol, block_index, block_offset) ! Get the dynamic column (block_index)
+      i = block_index
+
+      do k = 1, pver                              ! vertical index in physics chunk
+         kk = pver - k + 1                        ! vertical index in dynamics block
+
+         t_tend(kk,i) = phys_tend(lchnk)%dtdt(icol_p,k)
+         u_tend(kk,i) = phys_tend(lchnk)%dudt(icol_p,k)
+         v_tend(kk,i) = phys_tend(lchnk)%dvdt(icol_p,k)
+
+         ! convert wet mixing ratios to dry
+         factor = phys_state(lchnk)%pdel(icol_p,k)/phys_state(lchnk)%pdeldry(icol_p,k)
+         do m = 1, pcnst
+            if (cnst_type(mpas_from_cam_cnst(m)) == 'wet') then
+               if (m == index_qv) then
+                  qv_tend(kk,i) = (phys_state(lchnk)%q(icol_p,k,mpas_from_cam_cnst(m))*factor - tracers(index_qv,kk,i)) / dt_phys
+               end if
+               tracers(m,kk,i) = phys_state(lchnk)%q(icol_p,k,mpas_from_cam_cnst(m))*factor
+            else
+               if (m == index_qv) then
+                  qv_tend(kk,i) = (phys_state(lchnk)%q(icol_p,k,mpas_from_cam_cnst(m)) - tracers(index_qv,kk,i)) / dt_phys
+               end if
+               tracers(m,kk,i) = phys_state(lchnk)%q(icol_p,k,mpas_from_cam_cnst(m))
+            end if
+         end do
+
+      end do
+   end do
+
+   call t_stopf('pd_copy')
+
+   call t_startf('derived_tend')
+   call derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, qv_tend, dyn_in)
+   call t_stopf('derived_tend')
+
+   call mpas_deallocate_scratch_field(tend_uzonal)
+   call mpas_deallocate_scratch_field(tend_umerid)
 
 end subroutine p_d_coupling
 
