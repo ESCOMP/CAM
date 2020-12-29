@@ -47,33 +47,6 @@ module edyn_geogrid
   integer, public, protected :: & ! model dependent (set by subs read_tgcm, read_waccm)
     jspole,  & ! latitude index to geographic south pole
     jnpole     ! latitude index to geographic north pole
-!
-! lev_sequence is a string indicating ordering of the vertical
-! coordinates lev and ilev, and of the field arrays along the
-! vertical dimension. lev_sequence can have 1 of 2 values:
-!
-!  'bottom2top' means lev(1) is the bottom boundary, lev(nlev) is the top boundary
-!  'top2bottom' means lev(1) is the top boundary, lev(nlev) is the bottom boundary
-!
-! For example, TIMEGCM history files are bottom2top, whereas
-! WACCM files are top2bottom. The edynamo code assumes bottom2top,
-! so WACCM input fields are reversed to be bottom2top for the edynamo
-! calculations, then reversed back to the native WACCM sequence
-! (top2bottom) before writing to the edynamo output file.
-!
-!  character(len=10) :: lev_sequence
-!
-! lon_sequence is a string indicating ordering of the longitude
-! coordinate lon, and of the field arrays along this dimension.
-! lon_sequece can have 1 of 2 values:
-!
-!   '-180to180' means lon(1) is -180 deg west longitude, lon(nlon) is +180 east
-!   'zeroto360' means lon(1) is 0 deg west longitude, lon(nlon) is 360 deg east
-!
-! Note that TIMEGCM convention is '-180to180' and WACCM convention is 'zeroto360'
-! (this is treating similarly to lev_sequence above)
-!
-!  character(len=9) :: lon_sequence
 
   ! set_geogrid sets up a distributed finite-volume lat/lon grid
   public :: set_geogrid

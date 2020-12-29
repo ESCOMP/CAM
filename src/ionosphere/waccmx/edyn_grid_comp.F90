@@ -1,3 +1,7 @@
+!-------------------------------------------------------------------------------
+! This treats the physics mesh as a ESMF gridded component and localizes ESMF
+! regridding operations to allow for multiple instances of CAM.
+!-------------------------------------------------------------------------------
 module edyn_grid_comp
    use shr_kind_mod,   only: r8 => shr_kind_r8
    use ESMF,           only: ESMF_KIND_I4, ESMF_Mesh, ESMF_DistGrid
@@ -101,6 +105,8 @@ CONTAINS
       character(len=80)       :: tempc1,tempc2
       character(len=300)      :: errstr
 
+      real(r8), parameter :: abstol =  1.e-6_r8
+
       ! Find the physics grid file
       call phys_getopts(physics_grid_out=grid_file)
       ! Compute the local decomp
@@ -169,13 +175,14 @@ CONTAINS
       errstr = ''
       ! error check differences between internally generated lons and those read in
       do n = 1,total_cols
-         if (abs(lonMesh(n) - lon(n)) > 0.000001_r8) then
-            if ( (abs(lonMesh(n)-lon(n)) > 360.000001_r8) .or. (abs(lonMesh(n)-lon(n)) < 359.99999_r8) ) then
+         if (abs(lonMesh(n) - lon(n)) > abstol) then
+            if ( (abs(lonMesh(n)-lon(n)) > 360._r8+abstol) .or. (abs(lonMesh(n)-lon(n)) < 360._r8-abstol) ) then
                write(errstr,100) n,lon(n),lonMesh(n), abs(lonMesh(n)-lon(n))
                write(*,*) trim(errstr)
             endif
          end if
-         if (abs(latMesh(n) - lat(n)) > 0.000001_r8) then ! 1.e-12_r8
+         if (abs(latMesh(n) - lat(n)) > abstol) then
+            ! poles in the 4x5 SCRIP file seem to be off by 1 degree
             if (.not.( (abs(lat(n))>88.0_r8) .and. (abs(latMesh(n))>88.0_r8) )) then
                write(errstr,101) n,lat(n),latMesh(n), abs(latMesh(n)-lat(n))
                write(*,*) trim(errstr)
@@ -316,16 +323,12 @@ CONTAINS
       call mpi_comm_rank(mpi_comm, iam, rc)
       ! Collect all the PETS for each instance for phys grid
       allocate(petlist(npes))
-      call mpi_allgather(localPet, 1, MPI_INTEGER, petlist, 1, &
-           MPI_INTEGER, mpi_comm, rc)
+      call mpi_allgather(localPet, 1, MPI_INTEGER, petlist, 1, MPI_INTEGER, mpi_comm, rc)
       ! Now, we should be able to create a gridded component
-      phys_comp = ESMF_GridCompCreate(name=trim(inst_name), petList=petlist,  &
-           rc=rc)
-      call edyn_esmf_chkerr(subname, 'ESMF_GridCompCreate '//trim(inst_name), &
-           rc)
+      phys_comp = ESMF_GridCompCreate(name=trim(inst_name), petList=petlist, rc=rc)
+      call edyn_esmf_chkerr(subname, 'ESMF_GridCompCreate '//trim(inst_name), rc)
       call ESMF_GridCompSetServices(phys_comp, edyn_gcomp_SetServices, rc=rc)
-      call edyn_esmf_chkerr(subname,                                          &
-           'ESMF_GridCompSetServices '//trim(inst_name), rc)
+      call edyn_esmf_chkerr(subname, 'ESMF_GridCompSetServices '//trim(inst_name), rc)
       ! Initialize the required component arguments
       call ESMF_GridCompInitialize(phys_comp, rc=rc)
       call edyn_esmf_chkerr(subname, 'ESMF_GridCompInitialize', rc)
