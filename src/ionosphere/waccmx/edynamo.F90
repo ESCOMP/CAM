@@ -9,7 +9,6 @@ module edynamo
   use cam_logfile,     only: iulog
   use cam_abortutils,  only: endrun
   use spmd_utils,      only: masterproc
-#ifdef WACCMX_EDYN_ESMF
   use edyn_params,     only: finit                    ! initialization value
   use edyn_maggrid,    only: nmlon, nmlonp1, nmlat, nmlath, nmlev
   use edyn_mpi,        only: mlon0, mlon1, omlon1, mytid, mlat0, mlat1
@@ -18,13 +17,11 @@ module edynamo
   use time_manager,    only: get_nstep                ! for debug
   use cam_history,     only: outfld, hist_fld_active
   use savefield_waccm, only: savefld_waccm
-#endif
 
   implicit none
   save
   private
 
-#ifdef WACCMX_EDYN_ESMF
   integer :: nstep
 !
 ! 2d coefficients and RHS terms for PDE on magnetic subdomains
@@ -106,7 +103,6 @@ module edynamo
 
   public :: alloc_edyn, ed1, ed2, ed1_glb, ed2_glb
   public :: zigm11, zigmc, zigm2, zigm22, rim1, rim2
-#endif
   public :: dynamo
 
 contains
@@ -154,7 +150,6 @@ contains
 
     logical,intent(in) :: do_integrals
 
-#ifdef WACCMX_EDYN_ESMF
     if (debug) then
        nstep = get_nstep()
        write(iulog,"(a,i5,a,l1)") 'Enter dynamo: nstep=', nstep,             &
@@ -267,12 +262,9 @@ contains
     if (debug) then
        write(iulog,"('edynamo debug: after ionvel')")
     end if
-#else
-    call endrun('ERROR: To use edynamo must build with cppdef WACCMX_EDYN_ESMF')
-#endif
+
   end subroutine dynamo
 !-----------------------------------------------------------------------
-#ifdef WACCMX_EDYN_ESMF
   subroutine dynamo_set_data( zpot_mag_in, ped_mag, hall_mag, adotv1_mag, adotv2_mag )
 !
 !
@@ -603,7 +595,7 @@ contains
 !
           zigm11(i,j) = zigm11(i,j) + sig1*rtramrm(i,k)
           zigm22(i,j) = zigm22(i,j) + sig1*rtramrm(i,k)*htfunc2(i,k)
-          
+
 !
 ! zigmc: int (sigma_p*d_1*d_2/D) ds
 ! zigm2: int (sigma_h) ds
@@ -1908,7 +1900,6 @@ contains
     endif
 
   end subroutine ionvel
-#endif
 
 !-----------------------------------------------------------------------
 end module edynamo

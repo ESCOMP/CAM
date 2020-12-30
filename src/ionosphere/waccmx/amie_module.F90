@@ -8,7 +8,6 @@ module amie_module
   use cam_logfile,    only: iulog
   use spmd_utils,     only: masterproc
   use edyn_maggrid,   only: nmlat, nmlonp1
-#ifdef WACCMX_EDYN_ESMF
   use edyn_maggrid,   only: ylonm     ! magnetic latitudes (nmlat) (radians)
   use edyn_maggrid,   only: ylatm     ! magnetic longtitudes (nmlonp1) (radians)
   use cam_pio_utils,  only: cam_pio_openfile, cam_pio_closefile
@@ -17,15 +16,12 @@ module amie_module
   use pio,            only: file_desc_t, pio_noerr, pio_nowrite, pio_get_var
   use utils_mod,      only: check_ncerr, check_alloc, boxcar_ave
   use edyn_mpi,       only: ntask, mytid
-#else
-  use cam_abortutils, only: endrun
-#endif
+
   implicit none
 
   private
   public :: init_amie
   public :: getamie
-#ifdef WACCMX_EDYN_ESMF
 
   ! Define parameters for AMIE input data file:
   integer, parameter ::  &
@@ -69,7 +65,6 @@ module amie_module
   character(len=256), allocatable :: amienh_files(:)
   character(len=256), allocatable :: amiesh_files(:)
   integer :: num_files, file_ndx
-#endif
 
 contains
   !-----------------------------------------------------------------------
@@ -78,7 +73,6 @@ contains
     character(len=*),intent(in) :: amienh_list(:)
     character(len=*),intent(in) :: amiesh_list(:)
 
-#ifdef WACCMX_EDYN_ESMF
     integer :: n, nfiles
 
     nfiles = min( size(amienh_list), size(amiesh_list) )
@@ -92,17 +86,14 @@ contains
           num_files = num_files + 1
        end if
     end do count_files
-       
+
     allocate(amienh_files(num_files), amiesh_files(num_files))
     amienh_files(:num_files) = amienh_list(:num_files)
     amiesh_files(:num_files) = amiesh_list(:num_files)
     file_ndx = 1
     call open_files()
-#else
-    call endrun('Cannot use AMIE without electro-dynamo active.')
-#endif
+
   end subroutine init_amie
-#ifdef WACCMX_EDYN_ESMF
 
   !-----------------------------------------------------------------------
   subroutine rdamie_nh(amienh)
@@ -436,7 +427,7 @@ contains
     real(r8),intent(out) :: ekv_3d(:,:,:)
     real(r8),intent(out) :: efx_3d(:,:,:)
 
-    
+
     integer :: istat
     integer :: idv_pot, idv_ekv, idv_efx
     character(len=*), parameter :: subname = 'update_3d_fields'
@@ -463,7 +454,7 @@ contains
     call check_ncerr(istat, subname, 'AMIE efx')
 
   end subroutine update_3d_fields
-#endif
+
   !-----------------------------------------------------------------------
   subroutine getamie(iyear, imo, iday, iutsec, sunlon, iprint,  &
                      iamie, phihm, amie_efxm, amie_kevm, crad)
@@ -490,8 +481,7 @@ contains
     real(r8), intent(out)   :: amie_efxm(nmlonp1,nmlat) ! on geomag grid
     real(r8), intent(out)   :: amie_kevm(nmlonp1,nmlat) ! on geomag grid
     real(r8), intent(out)   :: crad(2)
-#ifdef WACCMX_EDYN_ESMF
-    !     
+    !
     !
     !     Local:
     real(r8)                    :: potm(lonp1,jmxm)
@@ -628,7 +618,7 @@ contains
     kount = (/lonp1,latp1,2/)
 
     call update_3d_fields( ncid_sh, offset, kount, amie_pot_sh,amie_ekv_sh,amie_efx_sh )
-    if (iboxcar == 0) then       
+    if (iboxcar == 0) then
        pot_sh_amie(:,:) = (f1*amie_pot_sh(:,:,2) + &
             f2*amie_pot_sh(:,:,1))
        ekv_sh_amie(:,:) = (f1*amie_ekv_sh(:,:,2) + &
@@ -890,12 +880,9 @@ contains
           !     |    minval(amie_efx),maxval(amie_kev),minval(amie_kev)
        end if
     end if active_task
-#else
-    call endrun('Cannot use AMIE without electro-dynamo active.')
-#endif
+
   end subroutine getamie
-  
-#ifdef WACCMX_EDYN_ESMF
+
   !-----------------------------------------------------------------------
   subroutine close_files
 
@@ -908,7 +895,7 @@ contains
     call cam_pio_closefile(ncid_nh)
     call cam_pio_closefile(ncid_sh)
 
-    
+
   end subroutine close_files
   !-----------------------------------------------------------------------
   subroutine open_files()
@@ -917,6 +904,5 @@ contains
     call rdamie_sh(amiesh_files(file_ndx))
 
   end subroutine open_files
-#endif
 
 end module amie_module

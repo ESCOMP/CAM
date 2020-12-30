@@ -1,25 +1,20 @@
 module utils_mod
   use shr_kind_mod   ,only: r8 => shr_kind_r8
   use cam_logfile    ,only: iulog
-  use cam_abortutils, only: endrun
-#ifdef WACCMX_EDYN_ESMF
+  use cam_abortutils ,only: endrun
   use esmf           ,only: ESMF_FIELD
   use edyn_mpi       ,only: mlon0,mlon1,mlat0,mlat1, lon0,lon1,lat0,lat1
   use edyn_params    ,only: finit
-#endif
 
   implicit none
   private
 
-#ifdef WACCMX_EDYN_ESMF
-
   public :: boxcar_ave
   public :: check_ncerr
   public :: check_alloc
-#endif
 
 contains
-#ifdef WACCMX_EDYN_ESMF
+
   !-----------------------------------------------------------------------
   subroutine boxcar_ave(x,y,lon,lat,mtime,itime,ibox)
     !
@@ -33,7 +28,7 @@ contains
     integer,  intent(in)  :: ibox
     real(r8), intent(in)  :: x(lon,lat,mtime)
     real(r8), intent(out) :: y(lon,lat)
-    
+
     ! Local:
     integer :: i, iset, iset1
     !
@@ -145,7 +140,5 @@ contains
        call endrun(trim(errmsg))
     end if
   end subroutine check_ncerr
-
-#endif
 
 end module utils_mod

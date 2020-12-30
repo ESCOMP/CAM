@@ -9,7 +9,6 @@ module ltr_module
   use cam_logfile,    only: iulog
   use spmd_utils,     only: masterproc
   use edyn_maggrid,   only: nmlat, nmlonp1
-#ifdef WACCMX_EDYN_ESMF
   use edyn_maggrid,   only: ylonm     ! magnetic latitudes (nmlat) (radians)
   use edyn_maggrid,   only: ylatm     ! magnetic longtitudes (nmlonp1) (radians)
   use cam_pio_utils,  only: cam_pio_openfile, cam_pio_closefile
@@ -18,15 +17,12 @@ module ltr_module
   use pio,            only: file_desc_t, pio_noerr, pio_nowrite, pio_get_var
   use utils_mod,      only: check_ncerr, check_alloc
   use edyn_mpi,       only: ntask, mytid
-#else
-  use cam_abortutils, only: endrun
-#endif
+
   implicit none
 
   private
   public :: init_ltr
   public :: getltr
-#ifdef WACCMX_EDYN_ESMF
 
   ! Define parameters for LTR input data file:
   integer, parameter ::  &
@@ -55,15 +51,14 @@ module ltr_module
 
   character(len=256), allocatable :: ltr_files(:)
   integer :: num_files, file_ndx
-#endif
 
 contains
+
   !-----------------------------------------------------------------------
   subroutine init_ltr(ltr_list)
 
     character(len=*),intent(in) :: ltr_list(:)
 
-#ifdef WACCMX_EDYN_ESMF
     integer :: n, nfiles
 
     nfiles = size(ltr_list)
@@ -77,20 +72,18 @@ contains
           num_files = num_files + 1
        end if
     end do count_files
-       
+
     allocate(ltr_files(num_files))
     ltr_files(:num_files) = ltr_list(:num_files)
     file_ndx = 1
     call open_files()
-#else
-    call endrun('Cannot use LTR without electro-dynamo active.')
-#endif
+
   end subroutine init_ltr
-#ifdef WACCMX_EDYN_ESMF
+
   !-----------------------------------------------------------------------
   subroutine rdltr(ltrfile)
     !
-    ! Read LTR data 
+    ! Read LTR data
     !     gl - 9/30/2018
     !
     character(len=*), intent(in) :: ltrfile
@@ -228,7 +221,7 @@ contains
             lonp1=lonp1, latp1=latp1, ntimes=ntimes)
     end if
   end subroutine rdltr
-  
+
   !-----------------------------------------------------------------------
   subroutine update_3d_fields( ncid, offset, kount, pot_3d,ekv_3d,efx_3d )
 
@@ -239,7 +232,7 @@ contains
     real(r8),intent(out) :: ekv_3d(:,:,:)
     real(r8),intent(out) :: efx_3d(:,:,:)
 
-    
+
     integer :: istat
     integer :: idv_pot,idv_ekv, idv_efx
     character(len=*), parameter :: subname = 'update_3d_fields'
@@ -266,7 +259,7 @@ contains
     call check_ncerr(istat, subname, 'LTR efx')
 
   end subroutine update_3d_fields
-#endif
+
   !-----------------------------------------------------------------------
   subroutine getltr(iyear, imo, iday, iutsec, sunlon, iprint,  &
                      iltr, phihm, ltr_efxm, ltr_kevm)
@@ -291,8 +284,7 @@ contains
     real(r8), intent(out)   :: phihm(nmlonp1,nmlat)
     real(r8), intent(out)   :: ltr_efxm(nmlonp1,nmlat) ! on geomag grid
     real(r8), intent(out)   :: ltr_kevm(nmlonp1,nmlat) ! on geomag grid
-#ifdef WACCMX_EDYN_ESMF
-    !     
+    !
     !
     !     Local:
     real(r8)                    :: potm(lonp1,jmxm)
@@ -546,21 +538,17 @@ contains
        end if
 
     end if active_task
-#else
-    call endrun('Cannot use LTR without electro-dynamo active.')
-#endif
 
   end subroutine getltr
   !-------------------------------------------------------------------
 
-#ifdef WACCMX_EDYN_ESMF
   subroutine close_files
 
     deallocate( year,month,day )
     deallocate( ltr_hpi, ltr_pcp, ltr_ut )
 
     call cam_pio_closefile(ncid)
-    
+
   end subroutine close_files
   !-----------------------------------------------------------------------
   subroutine open_files()
@@ -568,6 +556,5 @@ contains
     call rdltr(ltr_files(file_ndx))
 
   end subroutine open_files
-#endif
 
 end module ltr_module

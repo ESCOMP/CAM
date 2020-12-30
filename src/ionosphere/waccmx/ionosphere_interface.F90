@@ -1009,11 +1009,9 @@ contains
    !---------------------------------------------------------------------------
    subroutine ionosphere_final
 
-#ifdef WACCMX_EDYN_ESMF
       use edyn_esmf, only: edyn_esmf_final
 
       call edyn_esmf_final()
-#endif
 
       if (allocated(opmmrtm1_phys)) then
          deallocate(opmmrtm1_phys)

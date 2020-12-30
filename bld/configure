@@ -1906,7 +1906,7 @@ if ($waccmx) {
         $cfg_ref->set('mgrid',$mgrid);
 
         $cfg_cppdefs .= " -DEDYN_NLAT=$nmlat -DEDYN_NLON=$nmlon -DEDYN_NLEV=$nmlev -DEDYN_NGRID=$ngrid";
-        $cfg_cppdefs .= ' -DWACCMX_IONOS -DWACCMX_EDYN_ESMF';
+        $cfg_cppdefs .= ' -DWACCMX_IONOS';
     }
 }
 

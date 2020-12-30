@@ -4,7 +4,6 @@ module edyn_esmf
    use cam_abortutils, only: endrun
    use infnan,         only: nan, assignment(=)
 
-#ifdef WACCMX_EDYN_ESMF
    use ESMF,           only: ESMF_Grid, ESMF_Mesh, ESMF_Field, ESMF_RouteHandle
    use ESMF,           only: ESMF_SUCCESS
    use ESMF,           only: ESMF_KIND_R8, ESMF_KIND_I4
@@ -32,16 +31,12 @@ module edyn_esmf
    use edyn_geogrid,   only: nlon, nlev, glon, glat
    use edyn_maggrid,   only: gmlat, gmlon
    use spmd_utils,     only: masterproc
-#endif
 
    implicit none
    save
    private
 
    public :: edyn_esmf_update
-
-#ifdef WACCMX_EDYN_ESMF
-
    public :: edyn_esmf_final       ! Clean up any edyn usage of ESMF
 
    public :: edyn_esmf_regrid_phys2geo
@@ -96,14 +91,12 @@ module edyn_esmf
         routehandle_geo2mag_2d     ! for 2d geo to mag
 
    logical, parameter :: debug = .false.
-#endif
 
    integer, allocatable :: petmap(:,:,:)
    logical :: initialized=.false.
 
 contains
 
-#ifdef WACCMX_EDYN_ESMF
    subroutine edyn_esmf_chkerr(subname, routine, rc)
 
       character(len=*), intent(in) :: subname
@@ -128,7 +121,7 @@ contains
 
      call edyn_esmf_destroy_mag_objs()
      call edyn_esmf_destroy_nonmag_objs()
-     
+
    end subroutine edyn_esmf_final
 
    !-----------------------------------------------------------------------
@@ -194,7 +187,6 @@ contains
      call edyn_esmf_chkerr(subname, 'ESMF_MeshDestroy phys_mesh', rc)
 
    end subroutine edyn_esmf_destroy_nonmag_objs
-#endif
 
    !-----------------------------------------------------------------------
    !-----------------------------------------------------------------------
@@ -202,7 +194,6 @@ contains
       use getapex, only: get_apex, magfield, alonm
       use mo_apex, only: geomag_year_updated
 
-#ifdef WACCMX_EDYN_ESMF
       ! Create ESMF grids for physics, geographic (ion transport), and
       ! magnetic grids, and create ESMF fields as necessary on each grid.
       ! Define the 2d coordinates for each grid, and save an ESMF
@@ -220,14 +211,11 @@ contains
       real(ESMF_KIND_R8),    pointer :: factorList(:)
       integer                        :: smm_srctermproc,  smm_pipelinedep
 
-#endif
       character(len=*), parameter :: subname = 'edyn_esmf_update'
 
       if (.not.geomag_year_updated .and. initialized) then
          return
       end if
-
-#ifdef WACCMX_EDYN_ESMF
 
       if (mytid<ntask) then
          !
@@ -453,11 +441,9 @@ contains
       call edyn_esmf_chkerr(subname, 'ESMF_FieldRegridStore for 3D mag2geo', rc)
 
       initialized=.true.
-#endif
-      
+
    end subroutine edyn_esmf_update
 
-#ifdef WACCMX_EDYN_ESMF
    !-----------------------------------------------------------------------
    subroutine create_mag_grid(grid_out, srcdes)
       !
@@ -474,7 +460,7 @@ contains
       integer                     :: nmlons_task(ntaski) ! number of lons per task
       integer                     :: nmlats_task(ntaskj) ! number of lats per task
       character(len=*), parameter :: subname = 'create_mag_grid'
-         
+
       !
       ! We are creating either a source grid or a destination grid:
       !
@@ -1153,10 +1139,10 @@ contains
               termorderflag=ESMF_TERMORDER_SRCSEQ, rc=rc)
          call edyn_esmf_chkerr(subname, 'ESMF_FieldRegrid mag2phys 2D', rc)
       else
-!!$         call ESMF_FieldRegrid(srcfield, dstfield, routehandle_mag2phys, &
-!!$              termorderflag=ESMF_TERMORDER_SRCSEQ, rc=rc)
-!!$         call edyn_esmf_chkerr(subname, 'ESMF_FieldRegrid mag2phys 3D', rc)
-         call endrun('edyn_esmf_regrid_mag2phys: no 3D routehandle')
+       !  call ESMF_FieldRegrid(srcfield, dstfield, routehandle_mag2phys, &
+       !       termorderflag=ESMF_TERMORDER_SRCSEQ, rc=rc)
+       !  call edyn_esmf_chkerr(subname, 'ESMF_FieldRegrid mag2phys 3D', rc)
+         call endrun(subname//': routehandle_mag2phys not implemented')
       end if
    end subroutine edyn_esmf_regrid_mag2phys
    !-----------------------------------------------------------------------
@@ -1171,13 +1157,10 @@ contains
       character(len=*), parameter :: subname = 'edyn_esmf_regrid_phys2geo'
       !
       if (ndim == 2) then
-         !
-         ! Do sparse matrix multiply for 2d phys2mag.
-         !
-!!$         call ESMF_FieldRegrid( srcfield, dstfield, routehandle_phys2geo_2d,         &
-!!$              termorderflag=ESMF_TERMORDER_SRCSEQ, rc=rc)
-!!$         call edyn_esmf_chkerr(subname, 'ESMF_FieldRegrid phys2geo 2D', rc)
-         call endrun('edyn_esmf_regrid_phys2geo: 2D not working')
+       !  call ESMF_FieldRegrid( srcfield, dstfield, routehandle_phys2geo_2d,         &
+       !       termorderflag=ESMF_TERMORDER_SRCSEQ, rc=rc)
+       !  call edyn_esmf_chkerr(subname, 'ESMF_FieldRegrid phys2geo 2D', rc)
+         call endrun(subname//': routehandle_phys2geo_2d not implemented')
       else ! 3d phys2geo
          !
          ! Do sparse matrix multiply for 3d phys2geo.
@@ -1199,10 +1182,10 @@ contains
       character(len=*), parameter :: subname = 'edyn_esmf_regrid_geo2phys'
       !
       if (ndim == 2) then
-!!$         call ESMF_FieldRegrid(srcfield, dstfield, routehandle_geo2phys_2d,      &
-!!$           termorderflag=ESMF_TERMORDER_SRCSEQ, rc=rc)
-!!$         call edyn_esmf_chkerr(subname, 'ESMF_FieldRegrid geo2phys 2D', rc)
-         call endrun('edyn_esmf_regrid_geo2phys: 2D not working')
+       !  call ESMF_FieldRegrid(srcfield, dstfield, routehandle_geo2phys_2d,      &
+       !    termorderflag=ESMF_TERMORDER_SRCSEQ, rc=rc)
+       !  call edyn_esmf_chkerr(subname, 'ESMF_FieldRegrid geo2phys 2D', rc)
+         call endrun(subname//': routehandle_geo2phys_2d not implemented')
       else
          call ESMF_FieldRegrid( srcfield, dstfield, routehandle_geo2phys,        &
               termorderflag=ESMF_TERMORDER_SRCSEQ, rc=rc)
@@ -1249,16 +1232,10 @@ contains
      character(len=*), parameter :: subname = 'edyn_esmf_regrid_mag2geo'
      !
      if (ndim == 2) then
-#if 0
-        !
-        ! Do sparse matrix multiply for 2d geo2mag.
-        !
-        call ESMF_FieldRegrid(srcfield, dstfield, routehandle_mag2geo_2d,       &
-             termorderflag=ESMF_TERMORDER_SRCSEQ, rc=rc)
-        call edyn_esmf_chkerr(subname, 'ESMF_FieldRegrid geo2mag 2D', rc)
-#else
-        call endrun(subname//' need routehandle_mag2geo_2d ')
-#endif
+      !  call ESMF_FieldRegrid(srcfield, dstfield, routehandle_mag2geo_2d,       &
+      !       termorderflag=ESMF_TERMORDER_SRCSEQ, rc=rc)
+      !  call edyn_esmf_chkerr(subname, 'ESMF_FieldRegrid geo2mag 2D', rc)
+        call endrun(subname//': routehandle_mag2geo_2d not implemented')
      else ! 3d geo2mag
         !
         ! Do sparse matrix multiply for 3d geo2mag.
@@ -1289,7 +1266,7 @@ contains
       if (.not. allocated(petmap)) then
          allocate(petmap(ntaski,ntaskj,1))
       endif
-      
+
       petcnt = 0
       do j = 1,ntaskj
          do i = 1,ntaski
@@ -1300,5 +1277,4 @@ contains
 
    end subroutine edyn_esmf_update_phys_mesh
 
-#endif
 end module edyn_esmf

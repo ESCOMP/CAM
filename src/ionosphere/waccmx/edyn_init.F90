@@ -15,20 +15,17 @@ module edyn_init
 contains
 !-----------------------------------------------------------------------
   subroutine edynamo_init(mpicomm)
-    
+
       !
       ! One-time initialization, called from ionosphere_init
       ! before dyn_init and phys_init
       !
       use edyn_maggrid, only: set_maggrid, gmlat, nmlonp1, nmlat, nmlath, nmlev
-
       use edyn_mpi,     only: mp_exchange_tasks
       use edyn_mpi,     only: mp_distribute_mag
-#ifdef WACCMX_EDYN_ESMF
       use edynamo,      only: alloc_edyn
       use edyn_grid_comp, only: edyn_grid_comp_init
-#endif
-!
+      !
       ! Args:
       integer, intent(in) :: mpicomm
 
@@ -43,10 +40,8 @@ contains
       call register_grids()
       call mp_exchange_tasks(mpicomm, 0, gmlat) ! single arg is iprint
 
-#ifdef WACCMX_EDYN_ESMF
       call alloc_edyn()      ! allocate dynamo arrays
       call edyn_grid_comp_init(mpicomm)
-#endif
 
       call add_fields()      ! add fields to WACCM history master list
 
@@ -266,7 +261,7 @@ contains
       integer                      :: i, j, ind
 
       character(len=300) :: dbgstr
-      
+
       if (mytid>=ntask) then
 
          if (mlon0/=1) then
