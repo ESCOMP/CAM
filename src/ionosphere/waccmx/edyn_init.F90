@@ -114,10 +114,10 @@ contains
       call addfld ('EZ'     ,(/ 'lev' /), 'I', 'V/m'  ,'EZ: Vertical component of Electric Field',&
            gridname='geo_grid')
 
-      call addfld ('BMOD', horiz_only, 'I', 'gauss','magnitude of magnetic field'  ,gridname='fv_centers')
-      call addfld ('XB',   horiz_only, 'I', 'gauss','northward component of magnetic field'  ,gridname='fv_centers')
-      call addfld ('YB',   horiz_only, 'I', 'gauss','eastward component of magnetic field'  ,gridname='fv_centers')
-      call addfld ('ZB',   horiz_only, 'I', 'gauss','downward component of magnetic field'  ,gridname='fv_centers')
+      call addfld ('BMOD', horiz_only, 'I', 'gauss','magnitude of magnetic field',gridname='geo_grid')
+      call addfld ('XB',   horiz_only, 'I', 'gauss','northward component of magnetic field',gridname='geo_grid')
+      call addfld ('YB',   horiz_only, 'I', 'gauss','eastward component of magnetic field',gridname='geo_grid')
+      call addfld ('ZB',   horiz_only, 'I', 'gauss','downward component of magnetic field',gridname='geo_grid')
 
       ! rjac: scaled derivatives of geomagnetic coords wrt geographic coordinates.
       call addfld ('RJAC11',(/'lev'/), 'I', '1','cos(thetas)/cos(theta)*d(lamdas)/d(lamda)'  ,gridname='geo_grid')
