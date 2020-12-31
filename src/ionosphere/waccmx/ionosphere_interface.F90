@@ -1,6 +1,6 @@
 module ionosphere_interface
 
-   use shr_kind_mod,        only: r8 => shr_kind_r8
+   use shr_kind_mod,        only: r8 => shr_kind_r8, cl=>shr_kind_cl
    use cam_abortutils,      only: endrun
    use ppgrid,              only: pcols, pver
    use phys_grid,           only: begchunk, endchunk, get_ncols_p
@@ -76,10 +76,10 @@ module ionosphere_interface
    logical  :: oplus_enforce_floor = .true.     ! switch to apply Stan's  floor
 
    integer, parameter :: max_num_files = 20
-   character(len=256) :: wei05_coefs_file = 'NONE' !'wei05sc.nc'
-   character(len=256) :: amienh_files(max_num_files) = 'NONE'
-   character(len=256) :: amiesh_files(max_num_files) = 'NONE'
-   character(len=256) :: ltr_files(max_num_files) = 'NONE'
+   character(len=cl) :: wei05_coefs_file = 'NONE' !'wei05sc.nc'
+   character(len=cl) :: amienh_files(max_num_files) = 'NONE'
+   character(len=cl) :: amiesh_files(max_num_files) = 'NONE'
+   character(len=cl) :: ltr_files(max_num_files) = 'NONE'
 
 
    character(len=16) :: ionos_epotential_model = 'none'
@@ -458,6 +458,7 @@ contains
       ! Gridded component call
       use edyn_grid_comp, only: edyn_grid_comp_run2
       use shr_assert_mod, only: shr_assert_in_domain
+      use shr_const_mod,  only: SHR_CONST_REARTH ! meters
 
       ! - pull some fields from pbuf and dyn_in
       ! - invoke ionosphere/electro-dynamics coupling
@@ -523,9 +524,7 @@ contains
       real(r8)          :: r8tmp
       real(r8), pointer :: tempm(:,:) => null() ! Temp midpoint field for outfld
       real(r8), pointer :: tempi(:,:) => null() ! Temp interface field for outfld
-      !!XXgoldyXX: v Why is this re different than the one in edyn_params?
-      real(r8) :: re = 6.370e6_r8                      ! earth radius (m)
-      !!XXgoldyXX: ^ Why is this re different than the one in edyn_params?
+      real(r8), parameter :: rearth_inv = 1._r8/SHR_CONST_REARTH ! /meters
       real(r8), parameter :: n2min = 1.e-6_r8  ! lower limit of N2 mixing ratios
 
       character(len=*), parameter :: subname = 'ionosphere_run2'
@@ -655,7 +654,7 @@ contains
                   !------------------------------------------------------------
                   if (hist_fld_active('Z3GM')) then
                      r8tmp = phys_state(lchnk)%zm(i, k)
-                     tempm(i, k) = r8tmp * (1._r8 + (r8tmp / re))
+                     tempm(i, k) = r8tmp * (1._r8 + (r8tmp * rearth_inv))
                   end if
                   ! physics state fields on interfaces (but only to pver)
                   zi_blck(k, j)    = phys_state(lchnk)%zi(i, k) + phis(i)/gravit
@@ -664,7 +663,7 @@ contains
                   !------------------------------------------------------------
                   ! Note: zht is pver instead of pverp because dynamo does not
                   !       use bottom interface
-                  hi_blck(k, j) = zi_blck(k, j) * (1._r8 + (zi_blck(k, j) / re))
+                  hi_blck(k, j) = zi_blck(k, j) * (1._r8 + (zi_blck(k, j) * rearth_inv))
                   if (hist_fld_active('Z3GMI')) then
                      tempi(i, k) = hi_blck(k, j)
                   end if

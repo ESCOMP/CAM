@@ -13,7 +13,7 @@ module phys_control
 use spmd_utils,     only: masterproc
 use cam_logfile,    only: iulog
 use cam_abortutils, only: endrun
-use shr_kind_mod,   only: r8 => shr_kind_r8
+use shr_kind_mod,   only: r8 => shr_kind_r8, cl=>shr_kind_cl
 
 implicit none
 private
@@ -44,7 +44,7 @@ character(len=16) :: eddy_scheme          = unset_str  ! vertical diffusion pack
 character(len=16) :: microp_scheme        = unset_str  ! microphysics package
 character(len=16) :: macrop_scheme        = unset_str  ! macrophysics package
 character(len=16) :: radiation_scheme     = unset_str  ! radiation package
-character(len=256) :: cam_physics_mesh    = unset_str  ! SCRIP file for phys
+character(len=cl) :: cam_physics_mesh     = unset_str  ! SCRIP file for phys
 integer           :: srf_flux_avg         = unset_int  ! 1 => smooth surface fluxes, 0 otherwise
 
 logical           :: use_subcol_microp    = .false.    ! if .true. then use sub-columns in microphysics
@@ -341,7 +341,7 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
    integer,           intent(out), optional :: cam_snapshot_after_num_out
    character(len=32), intent(out), optional :: cam_take_snapshot_before_out
    character(len=32), intent(out), optional :: cam_take_snapshot_after_out
-   character(len=256),intent(out), optional :: physics_grid_out
+   character(len=cl), intent(out), optional :: physics_grid_out
 
    if ( present(deep_scheme_out         ) ) deep_scheme_out          = deep_scheme
    if ( present(shallow_scheme_out      ) ) shallow_scheme_out       = shallow_scheme

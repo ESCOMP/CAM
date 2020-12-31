@@ -4,7 +4,7 @@ module amie_module
   !   and energy flux).
   !
 
-  use shr_kind_mod,   only: r8 => shr_kind_r8
+  use shr_kind_mod,   only: r8 => shr_kind_r8, cl => shr_kind_cl
   use cam_logfile,    only: iulog
   use spmd_utils,     only: masterproc
   use edyn_maggrid,   only: nmlat, nmlonp1
@@ -62,11 +62,12 @@ module amie_module
   type(file_desc_t) :: ncid_nh
   type(file_desc_t) :: ncid_sh
 
-  character(len=256), allocatable :: amienh_files(:)
-  character(len=256), allocatable :: amiesh_files(:)
+  character(len=cl), allocatable :: amienh_files(:)
+  character(len=cl), allocatable :: amiesh_files(:)
   integer :: num_files, file_ndx
 
 contains
+
   !-----------------------------------------------------------------------
   subroutine init_amie(amienh_list,amiesh_list)
 
@@ -128,11 +129,11 @@ contains
     istat = pio_inq_dimid(ncid_nh, 'lat', id_lat)
     istat = pio_inquire_dimension(ncid_nh, id_lat, len=latp1)
     call check_ncerr(istat, subname, 'AMIE latitude dimension')
-    !     write(iulog, "('lonp1=', i3, ' latp1=', i3)") lonp1, latp1
     !
     ! Get time dimension:
     istat = pio_inquire(ncid_nh, unlimiteddimid=id_time)
     istat = pio_inquire_dimension(ncid_nh, id_time, len=ntimes)
+    call check_ncerr(istat, subname, 'AMIE time dimension')
     !
     ! Search for requested AMIE output fields
     istat = pio_inquire(ncid_nh, ndims, nvars, ngatts, idunlim)
@@ -146,7 +147,7 @@ contains
     call check_ncerr(istat, subname, 'AMIE year id')
     istat = pio_get_var(ncid_nh, idv_year, year)
     call check_ncerr(istat, subname, 'AMIE year')
-    !     write(iulog, *)'rdamie_nh: year=', year(1:10)
+
     if (.not. allocated(month)) then
        allocate(month(ntimes), stat=ier)
        call check_alloc(ier, subname, 'month', ntimes=ntimes)
@@ -163,7 +164,7 @@ contains
     call check_ncerr(istat, subname, 'AMIE day id')
     istat = pio_get_var(ncid_nh, idv_day, day)
     call check_ncerr(istat, subname, 'AMIE day')
-    !     write(iulog, *)'rdamie_nh: day=', day(1:10)
+
     if (.not. allocated(jday)) then
        allocate(jday(ntimes), stat=ier)
        call check_alloc(ier, subname, 'jday', ntimes=ntimes)
@@ -262,8 +263,10 @@ contains
     !
     ! Read AMIE data for the southern hemisphere from amiesh
     !
+
+    ! Dummy argument
     character(len=*), intent(in) :: amiesh
-    ! Local:
+    ! Local variables:
     integer                      :: istat, ntimes, ndims, nvars, ngatts, ier
     integer                      :: idunlim
     integer                      :: id_lon, id_lat, id_time
@@ -288,11 +291,11 @@ contains
     istat = pio_inq_dimid(ncid_sh, 'lat', id_lat)
     istat = pio_inquire_dimension(ncid_sh, id_lat, len=latp1)
     call check_ncerr(istat, subname, 'AMIE latitude dimension')
-    !     write(iulog, "('lonp1=', i3, ' latp1=', i3)") lonp1, latp1
     !
     ! Get time dimension:
     istat = pio_inquire(ncid_sh, unlimiteddimid=id_time)
     istat = pio_inquire_dimension(ncid_sh, id_time, len=ntimes)
+    call check_ncerr(istat, subname, 'AMIE time dimension')
     !
     ! Search for requested AMIE output fields
     istat = pio_inquire(ncid_sh, ndims, nvars, ngatts, idunlim)
@@ -306,7 +309,7 @@ contains
     call check_ncerr(istat, subname, 'AMIE year id')
     istat = pio_get_var(ncid_sh, idv_year, year)
     call check_ncerr(istat, subname, 'AMIE year')
-    !     write(iulog,*)'rdamie_sh: year=', year(1:10)
+
     if (.not. allocated(month)) then
        allocate(month(ntimes), stat=ier)
        call check_alloc(ier, subname, 'month', ntimes=ntimes)
@@ -323,7 +326,7 @@ contains
     call check_ncerr(istat, subname, 'AMIE day id')
     istat = pio_get_var(ncid_sh, idv_day, day)
     call check_ncerr(istat, subname, 'AMIE day')
-    !     write(iulog,*)'rdamie_sh: day=', day(1:10)
+
     if (.not. allocated(jday)) then
        allocate(jday(ntimes), stat=ier)
        call check_alloc(ier, subname, 'jday', ntimes=ntimes)
@@ -504,14 +507,12 @@ contains
     pi = 4._r8 * atan(1._r8)
     dtr = pi / 180._r8          ! degrees to radians
     rtd = 180._r8 / pi          ! radians to degrees
-    !
 
     phihm = fillvalue
     amie_efxm = fillvalue
     amie_kevm = fillvalue
     crad = fillvalue
 
-    !
     if (iprint > 0 .and. masterproc) then
        write(iulog,"(/,72('-'))")
        write(iulog,"(a,':')") subname
@@ -576,8 +577,7 @@ contains
     do i=1,nn
        if (amie_sh_ut(i) < model_ut+(iday-day(i))*24._r8) iset = i
     end do
-    !     write(iulog,"('getamie: AMIE SH Data nn,iset,day1,day2=',4i5)")
-    !     |    nn,iset,jday(1),jday(nn)
+
     if (iset == 0) iset = 1
     if (iset == nn) iset = nn-1
     iset1 = iset + 1
@@ -594,19 +594,11 @@ contains
        f1 = 1._r8
        f2 = 0._r8
     else
-       !     f1 = (amie_sh_ut(iset1) - model_ut)/denoma
-       !     f2 = (model_ut - amie_sh_ut(iset))/denoma
        f1 = (amie_sh_ut(iset1) - (model_ut+(iday- &
             day(iset1))*24._r8))/denoma
        f2 = (model_ut+(iday-day(iset1))*24._r8 - &
             amie_sh_ut(iset))/denoma
     end if
-!     write(iulog,"('getamie: AMIE SH Data n,iset,modeltime,f1,f2 =',
-!     |    4i5,2f5.2)")n,iset,iday,day(iset1),f1,f2
-!     write(iulog,"('getamie: AMIE SH Data model_day,model_ut,amie_day,',
-!     |    'amie_ut,f1,f2,iset,iset1 =',i4,f7.1,i4,f7.1,2f5.2,2i3)")
-!     |    iday,model_ut,day(iset),amie_sh_ut(iset),f1,f2,
-!     |    iset,iset1
     cusplat_sh_amie = (f1*amie_cusplat_sh(iset1) + &
          f2*amie_cusplat_sh(iset))
     cuspmlt_sh_amie = (f1*amie_cuspmlt_sh(iset1) + &
@@ -665,18 +657,11 @@ contains
        f1 = 1._r8
        f2 = 0._r8
     else
-       !     f1 = (amie_nh_ut(iset1) - model_ut)/denoma
-       !     f2 = (model_ut - amie_nh_ut(iset))/denoma
        f1 = (amie_nh_ut(iset1) - (model_ut+(iday- &
             day(iset1))*24._r8))/denoma
        f2 = (model_ut+(iday-day(iset1))*24._r8 - &
             amie_nh_ut(iset))/denoma
     end if
-!     write(iulog,"('getamie: AMIE NH Data model_day,model_ut,amie_day,',
-!     |    'amie_ut,f1,f2,iset,iset1 =',i4,f7.1,i4,f7.1,2f5.2,2i3)")
-!     |    iday,model_ut,day(iset),amie_nh_ut(iset),f1,f2,
-!     |    iset,iset1
-!
     cusplat_nh_amie = (f1*amie_cusplat_nh(iset1) + &
          f2*amie_cusplat_nh(iset))
     cuspmlt_nh_amie = (f1*amie_cuspmlt_nh(iset1) + &
@@ -696,8 +681,6 @@ contains
             f2*amie_ekv_nh(:,:,1))
        efx_nh_amie(:,:) = (f1*amie_efx_nh(:,:,2) + &
             f2*amie_efx_nh(:,:,1))
-       !     write(iulog,"('ekv_nh_amie min, max = ',2e12.4)")
-       !     |       minval(ekv_nh_amie),maxval(ekv_nh_amie)
     else
        call boxcar_ave(amie_pot_nh,pot_nh_amie,lonp1,latp1, &
             nn,iset,iboxcar)
@@ -713,10 +696,6 @@ contains
     !     influence of the high-lat potential versus the low-lat dynamo potential
     !     Define this latitude to be between 70 and 77.5 degrees
     !
-    !     if (cusplat_sh_amie > 65.0) then
-    !     cusplat_sh_amie = 65.0
-    !     cuspmlt_sh_amie = 11.
-    !     endif
     if (cusplat_sh_amie > 75.0_r8) then
        cusplat_sh_amie = 75.0_r8
        cuspmlt_sh_amie = 11._r8
@@ -819,7 +798,7 @@ contains
        !     distored magnetic grids in radian - from consdyn.h
        !     Convert from apex magnetic grid to distorted magnetic grid
        !
-       !     Allocate workspace for regrid routine rgrd2.f:
+       !     Allocate workspace for regrid routine rgrd_mod:
        lw = nmlonp1+nmlat+2*nmlonp1
        if (.not. allocated(w)) then
           allocate(w(lw), stat=ier)
@@ -843,9 +822,7 @@ contains
        if (alonm(lonp1) < ylonm(nmlonp1)) then
           alonm(lonp1) = ylonm(nmlonp1)
        end if
-       !     write(iulog,"('  AMIE: ylatm =',/,(6e12.4))") ylatm
-       !     write(iulog,"('  AMIE: ylonm =',/,(6e12.4))") ylonm
-       !     write(iulog,"('  AMIE: potm(1,:) =',/,(6e12.4))") potm(1,:)
+
        !     ylatm from -pi/2 to pi/2, and ylonm from -pi to pi
        call rgrd2(lonp1, jmxm, alonm, alatm, potm, nmlonp1, nmlat,  &
             ylonm, ylatm, phihm, intpol, w, lw, iw, liw, ier)
@@ -858,15 +835,7 @@ contains
           write(iulog, *) subname, ': Max, min amie_efxm = ', &
                maxval(amie_efxm), minval(amie_efxm)
        end if
-       !     ****
-       !     ****     INSERT PERIODIC POINTS
-       !     ****
-       !     DO j = 1,nlat
-       !     ekvg(nlonp1,j) = ekvg(1,j)
-       !     efxg(nlonp1,j) = efxg(1,j)
-       !     potg(nlonp1,j) = potg(1,j)
-       !     ENDDO
-       !
+
        if (iprint > 0 .and. masterproc) then
           write(iulog, "(a,': AMIE data interpolated to date and time')") subname
           write(iulog,"(a,': iyear,imo,iday,iutsec = ',3i6,i10)") subname,       &
@@ -875,9 +844,6 @@ contains
                subname, ': AMIE iset f1,f2,year,mon,day,ut = ', iset,            &
                f1, f2, year(iset), month(iset), day(iset), amie_nh_ut(iset)
           write(iulog,*) subname, ': max,min phihm= ', maxval(phihm), minval(phihm)
-          !     write(iulog,*)'getamie: max,min phihm,amie_efx,amie_kev = ',
-          !     |    maxval(phihm),minval(tiepot),maxval(amie_efx),
-          !     |    minval(amie_efx),maxval(amie_kev),minval(amie_kev)
        end if
     end if active_task
 

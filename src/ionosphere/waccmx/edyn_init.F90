@@ -10,7 +10,7 @@ module edyn_init
    implicit none
 
    private
-   public :: edynamo_init, lonshift_global
+   public :: edynamo_init
 
 contains
 !-----------------------------------------------------------------------
@@ -46,54 +46,8 @@ contains
       call add_fields()      ! add fields to WACCM history master list
 
    end subroutine edynamo_init
-!-----------------------------------------------------------------------
-   subroutine lonshift_global(f,nlon,lonseq,iscoord)
-!
-! Shift longitude vector f(nlon) forward 180 degrees according to input
-! string lonseq. Input f can be either arbitrary field values or
-! the coordinate array itself. Shift f in the 'lonseq' manner, as follows:
-!
-! If lonseq='-180to180', then shift from 0->360 to -180->+180
-! If lonseq='zeroto360', then shift from -180->+180 to 0->360
-!
-! WARNING: This routine works with WACCM-X history files, where nlon=144, 72, or 80
-!          It has not been tested with other models or resolutions.
-!          (e.g., there is no test for center point, its assumed to be nlon/2)
-!
-! Args:
-      integer,intent(in) :: nlon
-      real(r8),intent(inout) :: f(nlon)
-      character(len=*),intent(in) :: lonseq
-      logical,intent(in) :: iscoord ! if true, f is a coordinate, otherwise it is data
-!
-! Local:
-      character(len=80) :: msg
-      integer :: ihalf,i
 
-      if (lonseq /= '-180to180'.and.lonseq /= 'zeroto360') then
-         write(msg,"('shift_lon: bad lonseq=',a,' must be either ''-180to180'' or ''zeroto360''')") &
-              lonseq
-         call endrun
-      endif
-
-      ihalf = nlon/2
-      if (lonseq == '-180to180') then ! shift to -180 -> +180
-         f = cshift(f,ihalf)           ! cshift is circular shift intrinsic
-         if (iscoord) then
-            do i=1,ihalf
-               f(i) = f(i)-360._r8
-            enddo
-         endif
-      else                           ! shift to 0 -> 360
-         f = cshift(f,ihalf)          ! cshift is circular shift intrinsic
-         if (iscoord) then
-            do i=ihalf+1,nlon
-               f(i) = f(i)+360._r8
-            enddo
-         endif
-      endif
-   end subroutine lonshift_global
-!-----------------------------------------------------------------------
+   !-----------------------------------------------------------------------
    subroutine add_fields
       use cam_history,  only: addfld, horiz_only, add_default
       use phys_control, only: phys_getopts !Method used to get flag for waccmx ionosphere output variables
@@ -160,71 +114,20 @@ contains
       call addfld ('EZ'     ,(/ 'lev' /), 'I', 'V/m'  ,'EZ: Vertical component of Electric Field',&
            gridname='geo_grid')
 
-      call addfld ('BMOD'       , horiz_only, 'I', '  ',' '  ,gridname='geo_grid')
-      call addfld ('XB'       ,   horiz_only, 'I', '  ',' '  ,gridname='geo_grid')
-      call addfld ('YB'       ,   horiz_only, 'I', '  ',' '  ,gridname='geo_grid')
-      call addfld ('ZB'       ,   horiz_only, 'I', '  ',' '  ,gridname='geo_grid')
+      call addfld ('BMOD', horiz_only, 'I', 'gauss','magnitude of magnetic field'  ,gridname='fv_centers')
+      call addfld ('XB',   horiz_only, 'I', 'gauss','northward component of magnetic field'  ,gridname='fv_centers')
+      call addfld ('YB',   horiz_only, 'I', 'gauss','eastward component of magnetic field'  ,gridname='fv_centers')
+      call addfld ('ZB',   horiz_only, 'I', 'gauss','downward component of magnetic field'  ,gridname='fv_centers')
 
-      call addfld ('RJAC11'       ,(/'lev'/), 'I', '  ',' '  ,gridname='geo_grid')
-      call addfld ('RJAC12'       ,(/'lev'/), 'I', '  ',' '  ,gridname='geo_grid')
-      call addfld ('RJAC21'       ,(/'lev'/), 'I', '  ',' '  ,gridname='geo_grid')
-      call addfld ('RJAC22'       ,(/'lev'/), 'I', '  ',' '  ,gridname='geo_grid')
+      ! rjac: scaled derivatives of geomagnetic coords wrt geographic coordinates.
+      call addfld ('RJAC11',(/'lev'/), 'I', '1','cos(thetas)/cos(theta)*d(lamdas)/d(lamda)'  ,gridname='geo_grid')
+      call addfld ('RJAC12',(/'lev'/), 'I', '1','cos(thetas)*d(lamdas)/d(theta)'  ,gridname='geo_grid')
+      call addfld ('RJAC21',(/'lev'/), 'I', '1','1./cos(theta)*d(thetas)/d(lamda)'  ,gridname='geo_grid')
+      call addfld ('RJAC22',(/'lev'/), 'I', '1','d(thetas)/d(theta)'  ,gridname='geo_grid')
 
-      call addfld ('OPLUS',   (/ 'lev' /), 'I', 'cm^3','O+ (oplus_xport output)',    gridname='geo_grid')
-      call addfld ('OPtm1i',   (/ 'lev' /), 'I', 'cm^3','O+ (oplus_xport output)',    gridname='geo_grid')
-      call addfld ('OPtm1o',   (/ 'lev' /), 'I', 'cm^3','O+ (oplus_xport output)',    gridname='geo_grid')
-
-      call addfld ('TN_phys',(/ 'lev' /), 'I', 'deg K   ','T'   , gridname='physgrid')
-      call addfld ('TN_geo', (/ 'lev' /), 'I', 'deg K   ','T'   , gridname='geo_grid')
-
-      call addfld ('Te_phys',(/ 'lev' /), 'I', 'deg K   ','T'   , gridname='physgrid')
-      call addfld ('Te_geo', (/ 'lev' /), 'I', 'deg K   ','T'   , gridname='geo_grid')
-
-      call addfld ('Ti_phys',(/ 'lev' /), 'I', 'deg K   ','T'   , gridname='physgrid')
-      call addfld ('Ti_geo', (/ 'lev' /), 'I', 'deg K   ','T'   , gridname='geo_grid')
-
-      call addfld ('ZPOT_phys',(/ 'lev' /), 'I', 'cm','T'   , gridname='physgrid')
-      call addfld ('ZPOT_geo', (/ 'lev' /), 'I', 'cm','T'   , gridname='geo_grid')
-
-      call addfld ('U_phys',(/ 'lev' /), 'I', ' ',' '   , gridname='physgrid')
-      call addfld ('U_geo', (/ 'lev' /), 'I', ' ',' '   , gridname='geo_grid')
-
-      call addfld ('V_phys',(/ 'lev' /), 'I', ' ',' '   , gridname='physgrid')
-      call addfld ('V_geo', (/ 'lev' /), 'I', ' ',' '   , gridname='geo_grid')
-
-      call addfld ('W_phys',(/ 'lev' /), 'I', ' ',' '   , gridname='physgrid')
-      call addfld ('W_geo', (/ 'lev' /), 'I', ' ',' '   , gridname='geo_grid')
-
-      call addfld ('Ui_phys',(/ 'lev' /), 'I', ' ',' '   , gridname='physgrid')
-      call addfld ('Ui_geo',(/ 'lev' /), 'I', ' ',' '   , gridname='geo_grid')
-
-      call addfld ('Vi_phys',(/ 'lev' /), 'I', ' ',' '   , gridname='physgrid')
-      call addfld ('Vi_geo', (/ 'lev' /), 'I', ' ',' '   , gridname='geo_grid')
-
-      call addfld ('Wi_phys',(/ 'lev' /), 'I', ' ',' '   , gridname='physgrid')
-      call addfld ('Wi_geo', (/ 'lev' /), 'I', ' ',' '   , gridname='geo_grid')
-
-      call addfld ('OMEGA_phys',(/ 'lev' /), 'I', ' ',' '   , gridname='physgrid')
-      call addfld ('OMEGA_geo', (/ 'lev' /), 'I', ' ',' '   , gridname='geo_grid')
-
-      call addfld ('O2_phys',(/ 'lev' /), 'I', ' ',' '   , gridname='physgrid')
-      call addfld ('O2_geo', (/ 'lev' /), 'I', ' ',' '   , gridname='geo_grid')
-
-      call addfld ('N2_phys',(/ 'lev' /), 'I', ' ',' '   , gridname='physgrid')
-      call addfld ('N2_geo', (/ 'lev' /), 'I', ' ',' '   , gridname='geo_grid')
-
-      call addfld ('O_phys',(/ 'lev' /), 'I', ' ',' '   , gridname='physgrid')
-      call addfld ('O_geo', (/ 'lev' /), 'I', ' ',' '   , gridname='geo_grid')
-
-      call addfld ('Op_phys',(/ 'lev' /), 'I', ' ',' '   , gridname='physgrid')
-      call addfld ('Op_geo', (/ 'lev' /), 'I', ' ',' '   , gridname='geo_grid')
-      call addfld ('Op_geo2', (/ 'lev' /), 'I', ' ',' '   , gridname='geo_grid')
-
-      call addfld ('Optm1_phys',(/ 'lev' /), 'I', 'cm-3',' '   , gridname='physgrid')
-      call addfld ('Optm1_geo', (/ 'lev' /), 'I', 'cm-3',' '   , gridname='geo_grid')
-
-      call addfld ('MBAR_phys',(/ 'lev' /), 'I', ' ',' '   , gridname='physgrid')
-      call addfld ('MBAR_geo', (/ 'lev' /), 'I', ' ',' '   , gridname='geo_grid')
+      call addfld ('OPLUS', (/ 'lev' /), 'I', 'cm^3','O+ (oplus_xport output)',    gridname='geo_grid')
+      call addfld ('OPtm1i',(/ 'lev' /), 'I', 'cm^3','O+ (oplus_xport output)',    gridname='geo_grid')
+      call addfld ('OPtm1o',(/ 'lev' /), 'I', 'cm^3','O+ (oplus_xport output)',    gridname='geo_grid')
 
       call addfld ('PED_phys',(/ 'lev' /), 'I', 'S/m','Pedersen Conductivity'  , gridname='physgrid')
       call addfld ('HAL_phys',(/ 'lev' /), 'I', 'S/m','Hall Conductivity'   , gridname='physgrid')
@@ -235,8 +138,8 @@ contains
       call phys_getopts(history_waccmx_out=history_waccmx)
 
       if (history_waccmx) then
-         call add_default ('EDYN_ZIGM11_PED'         , 1, ' ')
-         call add_default ('EDYN_ZIGM2_HAL'          , 1, ' ')
+         call add_default ('EDYN_ZIGM11_PED', 1, ' ')
+         call add_default ('EDYN_ZIGM2_HAL' , 1, ' ')
       end if
 
    end subroutine add_fields

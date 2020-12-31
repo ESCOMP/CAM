@@ -178,12 +178,15 @@ CONTAINS
          if (abs(lonMesh(n) - lon(n)) > abstol) then
             if ( (abs(lonMesh(n)-lon(n)) > 360._r8+abstol) .or. (abs(lonMesh(n)-lon(n)) < 360._r8-abstol) ) then
                write(errstr,100) n,lon(n),lonMesh(n), abs(lonMesh(n)-lon(n))
-               write(iulog,*) trim(errstr)
+               write(*,*) trim(errstr)
             endif
          end if
          if (abs(latMesh(n) - lat(n)) > abstol) then
-            write(errstr,101) n,lat(n),latMesh(n), abs(latMesh(n)-lat(n))
-            write(iulog,*) trim(errstr)
+            ! poles in the 4x5 SCRIP file seem to be off by 1 degree
+            if (.not.( (abs(lat(n))>88.0_r8) .and. (abs(latMesh(n))>88.0_r8) )) then
+               write(errstr,101) n,lat(n),latMesh(n), abs(latMesh(n)-lat(n))
+               write(*,*) trim(errstr)
+            endif
          end if
       end do
 

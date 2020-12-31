@@ -61,7 +61,6 @@ contains
     call addfld ('DPIE_OM   ',(/ 'lev' /), 'I', 's-1     ','DPIE_OM'   , gridname='physgrid')
     call addfld ('DPIE_ZHT  ',(/ 'lev' /), 'I', 'cm      ','DPIE_ZHT (geometric height,simple)', gridname='physgrid')
     call addfld ('DPIE_ZGI  ',(/ 'lev' /), 'I', 'cm      ','DPIE_ZGI (geopotential height on interfaces)', gridname='physgrid')
-    call addfld ('DPIE_BARM ',(/ 'lev' /), 'I', '        ','DPIE_BARM' , gridname='physgrid')
     call addfld ('DPIE_O2   ',(/ 'lev' /), 'I', 'mmr     ','DPIE_O2'   , gridname='physgrid')
     call addfld ('DPIE_O    ',(/ 'lev' /), 'I', 'mmr     ','DPIE_O'    , gridname='physgrid')
     call addfld ('DPIE_N2   ',(/ 'lev' /), 'I', 'mmr     ','DPIE_N2'   , gridname='physgrid')
@@ -175,8 +174,8 @@ contains
     ltr_inputs=.false.
     if (present(amie_in)) amie_inputs=amie_in
     if (present(ltr_in))   ltr_inputs= ltr_in
-    
-    prescribed_inputs: if (amie_inputs .or. ltr_inputs) then 
+
+    prescribed_inputs: if (amie_inputs .or. ltr_inputs) then
 
        if (.not. (present(kev_phys).and.present(efx_phys)) ) then
           call endrun('d_pie_epotent: kev_phys and efx_phys must be present')
@@ -244,11 +243,8 @@ contains
        rmassO2p, rmassNOp, rmassN2p, rmassOp, cols, cole, plev )
      !
      ! Call dynamo to calculate electric potential and electric field
-     ! Note: dynamo calculates ion drifts. (!!XXgoldyXX: Do we want this?)
+     ! Note: dynamo calculates ion drifts.
      ! Then call oplus_xport to transport O+, which is passed back to physics.
-     !
-     ! This routine is called from ionosphere_run2 (ionosphere_interface.F90)
-     !   when nstep > 0.
      !
      use edyn_geogrid,  only: nlev
      use shr_const_mod, only: grav => shr_const_g ! gravitational accel. (m/s^2)
@@ -285,7 +281,7 @@ contains
      real(r8), intent(in)    :: sigma_hall(plev, cols:cole) ! Hall conductivity
      real(r8), intent(in)    :: te(plev, cols:cole)         ! electron temperature
      real(r8), intent(in)    :: ti(plev, cols:cole)         ! ion temperature
-     real(r8), intent(in)    :: mbar(plev, cols:cole)       ! mean molecular weight
+     real(r8), intent(in)    :: mbar(plev, cols:cole)       ! mean molecular weight kg/kmole
      real(r8), intent(in)    :: n2mmr(plev, cols:cole)      ! N2 mass mixing ratio (for oplus)
      real(r8), intent(in)    :: o2mmr(plev, cols:cole)      ! O2 mass mixing ratio (for oplus)
      real(r8), intent(in)    :: o1mmr(plev, cols:cole)      ! O mass mixing ratio (for oplus)
@@ -297,10 +293,10 @@ contains
      real(r8), intent(inout) :: ui(plev, cols:cole)         ! zonal ion drift (edynamo or empirical)
      real(r8), intent(inout) :: vi(plev, cols:cole)         ! meridional ion drift (edynamo or empirical)
      real(r8), intent(inout) :: wi(plev, cols:cole)         ! vertical ion drift (edynamo or empirical)
-     real(r8), intent(in)    :: rmassO2p                                 ! O2+ molecular weight kg/kmol
-     real(r8), intent(in)    :: rmassNOp                                 ! NO+ molecular weight kg/kmol
-     real(r8), intent(in)    :: rmassN2p                                 ! N2+ molecular weight kg/kmol
-     real(r8), intent(in)    :: rmassOp                                  ! O+ molecular weight kg/kmol
+     real(r8), intent(in)    :: rmassO2p                    ! O2+ molecular weight kg/kmol
+     real(r8), intent(in)    :: rmassNOp                    ! NO+ molecular weight kg/kmol
+     real(r8), intent(in)    :: rmassN2p                    ! N2+ molecular weight kg/kmol
+     real(r8), intent(in)    :: rmassOp                     ! O+ molecular weight kg/kmol
      !
      ! Local:
      !
@@ -414,7 +410,7 @@ contains
 
      !---------------------------------------------------------------
      ! Calculate vertical neutral wind velocity wn(i,j,k).
-     ! (omega (Pa/s), tn (K), and mbar (??) are inputs, grav is m/s^2)
+     ! (omega (Pa/s), tn (K), and mbar (kg/kmole) are inputs, grav is m/s^2)
      !---------------------------------------------------------------
      call calc_wn(tn, omega, pmid, mbar, grav, wn, cols, cole, nlev)
 
@@ -444,9 +440,8 @@ contains
      call outfld_phys('DPIE_WN',wn* 100._r8)
      call outfld_phys('DPIE_ZHT',zht* 100._r8)
      call outfld_phys('DPIE_ZGI',zgi* 100._r8)
-     call outfld_phys('DPIE_BARM',mbar)
      call outfld_phys('DPIE_MBAR',mbar)
-     
+
      call outfld_phys('DPIE_N2',n2mmr)
      call outfld_phys('DPIE_O2',o2mmr)
      call outfld_phys('DPIE_O',o1mmr)
@@ -456,7 +451,7 @@ contains
 
      call outfld_phys('DPIE_TE',te)
      call outfld_phys('DPIE_TI',ti)
-     
+
      call outfld_phys('DPIE_O2P',o2p)
      call outfld_phys('DPIE_NOP',nop)
      call outfld_phys('DPIE_N2P',n2p)
@@ -510,30 +505,11 @@ contains
      end if
 
      call outfld_phys('DPIE_OPMMR', opmmr)
-
-     call outfld_phys('ZPOT_phys', zgi)
-     call outfld_phys('TN_phys', tn)
-     call outfld_phys('Te_phys', te)
-     call outfld_phys('Ti_phys', ti)
-     call outfld_phys('U_phys', u)
-     call outfld_phys('V_phys', v)
-     call outfld_phys('W_phys', wn)
-     call outfld_phys('Ui_phys', ui)
-     call outfld_phys('Vi_phys', vi)
-     call outfld_phys('Wi_phys', wi)
-     call outfld_phys('OMEGA_phys',omega )
-     call outfld_phys('O2_phys',o2mmr )
-     call outfld_phys('N2_phys',n2mmr )
-     call outfld_phys('O_phys',o1mmr )
-     call outfld_phys('Op_phys',op )
-     call outfld_phys('Optm1_phys',optm1 )
-     call outfld_phys('MBAR_phys',mbar )
-
      call outfld_phys('PED_phys', sigma_ped )
      call outfld_phys('HAL_phys', sigma_hall )
 
      if (ionos_edyn_active .or. ionos_oplus_xport) then
-        
+
         call regrid_phys2geo_3d( zgi,zpot_geo, plev, cols, cole )
         call regrid_phys2geo_3d( u, un_geo, plev, cols, cole )
         call regrid_phys2geo_3d( v, vn_geo, plev, cols, cole )
@@ -541,14 +517,6 @@ contains
         call regrid_phys2geo_3d( ui, ui_geo, plev, cols, cole )
         call regrid_phys2geo_3d( vi, vi_geo, plev, cols, cole )
         call regrid_phys2geo_3d( wi, wi_geo, plev, cols, cole )
-
-        call outfld_geo('ZPOT_geo',zpot_geo)
-        call outfld_geo('U_geo',un_geo)
-        call outfld_geo('V_geo',vn_geo)
-        call outfld_geo('W_geo',wn_geo)
-        call outfld_geo('Ui_geo',ui_geo)
-        call outfld_geo('Vi_geo',vi_geo)
-        call outfld_geo('Wi_geo',wi_geo)
 
         do k = 1, nlev
            kk = nlev-k+1
@@ -566,7 +534,7 @@ contains
         end do
 
      end if
-     
+
     !
     !
     ! Call electrodynamo (edynamo.F90)
@@ -660,7 +628,7 @@ contains
                'dpie_coupling before subcycling oplus_xport: nstep = ',      &
                nstep, ' nspltop = ', nspltop
        end if
-       
+
        call regrid_phys2geo_3d( tn, tn_geo, plev, cols, cole )
        call regrid_phys2geo_3d( te, te_geo, plev, cols, cole )
        call regrid_phys2geo_3d( ti, ti_geo, plev, cols, cole )
@@ -672,18 +640,6 @@ contains
        call regrid_phys2geo_3d( optm1, optm1_geo, plev, cols, cole )
        call regrid_phys2geo_3d( pmid, pmid_geo, plev, cols, cole )
        call regrid_phys2geo_3d( mbar, mbar_geo, plev, cols, cole )
-
-       call outfld_geo('TN_geo',tn_geo)
-       call outfld_geo('Te_geo',te_geo)
-       call outfld_geo('Ti_geo',ti_geo)
-
-       call outfld_geo('OMEGA_geo',omega_geo)
-       call outfld_geo('O2_geo',o2_geo)
-       call outfld_geo('N2_geo',n2_geo)
-       call outfld_geo('O_geo',o_geo)
-       call outfld_geo('Op_geo',op_geo)
-       call outfld_geo('Optm1_geo',optm1_geo)
-       call outfld_geo('MBAR_geo',mbar_geo)
 
        call t_startf('dpie_halo')
        if (mytid<ntask) then
@@ -778,7 +734,6 @@ contains
              end do
           end do
 
-          call outfld_geo('Op_geo2',op_geo)
        endif
 
        call regrid_geo2phys_3d( op_geo, opmmr, plev, cols, cole )
@@ -793,7 +748,7 @@ contains
     call outfld_phys('WACCM_VI',vi)
     call outfld_phys('WACCM_WI',wi)
     call outfld_phys('WACCM_OP',opmmr)
-    
+
     call t_stopf('d_pie_coupling')
 
   end subroutine d_pie_coupling
@@ -967,7 +922,7 @@ contains
     use phys_grid,only: begchunk, endchunk, get_ncols_p
 
     character(len=*), intent(in) :: fldname
-    real(r8), intent(in) :: array(:) 
+    real(r8), intent(in) :: array(:)
 
     integer :: i,j, lchnk,ncol
     real(r8) :: tmparr(pcols)
@@ -991,7 +946,7 @@ contains
     use phys_grid,only: begchunk, endchunk, get_ncols_p
 
     character(len=*), intent(in) :: fldname
-    real(r8), intent(in) :: array(:,:) 
+    real(r8), intent(in) :: array(:,:)
 
     integer :: i,j,k, lchnk,ncol
     real(r8) :: tmparr(pcols, pver)

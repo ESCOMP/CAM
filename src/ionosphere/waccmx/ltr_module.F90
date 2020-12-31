@@ -2,10 +2,9 @@ module ltr_module
   !
   ! Module used to read data from the LFM/LTR outputs (POT,mean energy,
   !   and energy flux).
-  !     gl - 9/30/2018
   !
 
-  use shr_kind_mod,   only: r8 => shr_kind_r8
+  use shr_kind_mod,   only: r8 => shr_kind_r8, cl => shr_kind_cl
   use cam_logfile,    only: iulog
   use spmd_utils,     only: masterproc
   use edyn_maggrid,   only: nmlat, nmlonp1
@@ -49,7 +48,7 @@ module ltr_module
   !
   type(file_desc_t) :: ncid
 
-  character(len=256), allocatable :: ltr_files(:)
+  character(len=cl), allocatable :: ltr_files(:)
   integer :: num_files, file_ndx
 
 contains
@@ -84,7 +83,6 @@ contains
   subroutine rdltr(ltrfile)
     !
     ! Read LTR data
-    !     gl - 9/30/2018
     !
     character(len=*), intent(in) :: ltrfile
     ! Local:
@@ -113,11 +111,11 @@ contains
     istat = pio_inq_dimid(ncid, 'lat', id_lat)
     istat = pio_inquire_dimension(ncid, id_lat, len=latp1)
     call check_ncerr(istat, subname, 'LTR latitude dimension')
-    !write(iulog,"('lonp1=',i4,' latp1=',i4)") lonp1, latp1
     !
     ! Get time dimension:
     istat = pio_inquire(ncid, unlimiteddimid=id_time)
     istat = pio_inquire_dimension(ncid, id_time, len=ntimes)
+    call check_ncerr(istat, subname, 'LTR time dimension')
     !
     ! Search for requested LTR output fields
     istat = pio_inquire(ncid,ndims,nvars,ngatts,idunlim)
@@ -131,7 +129,7 @@ contains
     call check_ncerr(istat, subname, 'LTR year id')
     istat = pio_get_var(ncid, idv_year, year)
     call check_ncerr(istat, subname, 'LTR year')
-    !     write(iulog,*)'rdltr: year=', year(1:10)
+
     if (.not. allocated(month)) then
        allocate(month(ntimes), stat=ier)
        call check_alloc(ier, subname, 'month', ntimes=ntimes)
@@ -148,7 +146,7 @@ contains
     call check_ncerr(istat, subname, 'LTR day id')
     istat = pio_get_var(ncid, idv_day, day)
     call check_ncerr(istat, subname, 'LTR day')
-    !     write(iulog,*)'rdltr: day=', day(1:10)
+
     if (.not. allocated(jday)) then
        allocate(jday(ntimes), stat=ier)
        call check_alloc(ier, subname, 'jday', ntimes=ntimes)
@@ -269,7 +267,6 @@ contains
     !    Read LTR outputs from ltr_ncfile file, returning electric potential,
     !    auroral mean energy and energy flux at current date and time,
     !    and the data is linearly interpolated to the model time
-    !    gl - 9/30/2018
     !
     !
     !    Args:
@@ -306,13 +303,11 @@ contains
     pi = 4._r8 * atan(1._r8)
     dtr = pi / 180._r8          ! degrees to radians
     rtd = 180._r8 / pi          ! radians to degrees
-    !
 
     phihm = fillvalue
     ltr_efxm = fillvalue
     ltr_kevm = fillvalue
 
-    !
     if (iprint > 0 .and. masterproc) then
        write(iulog,"(/,72('-'))")
        write(iulog,"(a,':')") subname
@@ -344,7 +339,6 @@ contains
           return
        endif
 
-      !if (idate>edate) then
        if (idate*24._r8+model_ut>edate*24._r8+ltr_ut(nn)) then
           if (masterproc) then
              write(iulog, "(a,': Model date beyond the LTR last Data:',3I5)")  &
@@ -376,19 +370,18 @@ contains
     hpi_ltr = 0._r8
     pcp_ltr = 0._r8
 
-    !     write(iulog,"('getltr: Interpolate LTR Data nn=',i3)")nn
     iset = 0
     iset1 = nn
     do i=1,nn
        if (ltr_ut(i) <= model_ut+(iday-day(i))*24._r8) iset = i
     end do
+
     if (iset == 0) iset = 1
     if (iset == nn) iset = nn-1
     iset1 = iset + 1
 
-    !denoma = ltr_ut(iset1) - ltr_ut(iset)
     denoma = ltr_ut(iset1)+day(iset1)*24._r8 - (ltr_ut(iset)+day(iset)*24._r8)
-    !if (denoma > 1._r8) then
+
     if (denoma > 0.1_r8) then
        write(iulog, "('getltr: Finding a gap in the LTR Data set:',  &
             'modelday, ltrday =',2I5)") iday,day(n)
@@ -408,7 +401,7 @@ contains
          write(iulog,"('getltr: LTR Data model_day,model_ut,ltr_day,', &
          'ltr_ut,denoma,f1,f2,iset,iset1 =',i2,f7.3,i3,f7.3,3f5.2,2i6)") &
          iday,model_ut,day(iset),ltr_ut(iset),denoma,f1,f2,iset,iset1
-    !
+
     hpi_ltr = (f1*ltr_hpi(iset1) + f2*ltr_hpi(iset))
     pcp_ltr = (f1*ltr_pcp(iset1) + f2*ltr_pcp(iset))
 
@@ -449,7 +442,6 @@ contains
           end do
 
        end do
-       !write(iulog,*)'getltr: max,min potm= ', maxval(potm),minval(potm)
 
        !     Set up coeffs to go between EPOTM(IMXMP,JMNH) and TIEPOT(IMAXM,JMAXMH)
 
@@ -483,7 +475,7 @@ contains
        !     distored magnetic grids in radian - from consdyn.h
        !     Convert from apex magnetic grid to distorted magnetic grid
        !
-       !     Allocate workspace for regrid routine rgrd2.f:
+       !     Allocate workspace for regrid routine rgrd_mod:
        lw = nmlonp1+nmlat+2*nmlonp1
        if (.not. allocated(w)) then
           allocate(w(lw), stat=ier)
@@ -507,9 +499,7 @@ contains
        if (alonm(lonp1) < ylonm(nmlonp1)) then
           alonm(lonp1) = ylonm(nmlonp1)
        end if
-       !     write(iulog,"('  LTR: ylatm =',/,(6e12.4))") ylatm
-       !     write(iulog,"('  LTR: ylonm =',/,(6e12.4))") ylonm
-       !     write(iulog,"('  LTR: potm(1,:) =',/,(6e12.4))") potm(1,:)
+
        !     ylatm from -pi/2 to pi/2, and ylonm from -pi to pi
        call rgrd2(lonp1, jmxm, alonm, alatm, potm, nmlonp1, nmlat,  &
             ylonm, ylatm, phihm, intpol, w, lw, iw, liw, ier)
@@ -523,7 +513,6 @@ contains
                maxval(ltr_efxm), minval(ltr_efxm)
        end if
 
-       !
        if (iprint > 0 .and. masterproc) then
           write(iulog, "('getltr: LTR data interpolated to date and time')")
           write(iulog,"('getltr: iyear,imo,iday,iutsec = ',3i6,i10)")  &
@@ -532,9 +521,6 @@ contains
                i6,2F9.5,3I6,f10.4)")  &
                iset,f1,f2,year(iset),month(iset),day(iset),ltr_ut(iset)
           write(iulog,*)'getltr: max,min phihm= ', maxval(phihm),minval(phihm)
-          !     write(iulog,*)'getltr: max,min phihm,ltr_efx,ltr_kev = ',
-          !     |    maxval(phihm),minval(tiepot),maxval(ltr_efx),
-          !     |    minval(ltr_efx),maxval(ltr_kev),minval(ltr_kev)
        end if
 
     end if active_task

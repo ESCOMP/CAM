@@ -3,7 +3,7 @@ module edyn_params
    ! Constants for edynamo.
    !
    use shr_kind_mod,  only: r8 => shr_kind_r8            ! 8-byte reals
-   use shr_const_mod, only: rearth_km => SHR_CONST_REARTH
+   use shr_const_mod, only: rearth_m => SHR_CONST_REARTH ! meters
    use physconst,     only: pi
 
    implicit none
@@ -16,7 +16,7 @@ module edyn_params
 
    real(r8), parameter ::           &
         finit = 0._r8,              & ! initialization value
-        Rearth = rearth_km*100._r8, & ! earth radius (cm)
+        Rearth = rearth_m*100._r8,  & ! earth radius (cm)
         h0 = 9.7e6_r8,              & ! minimum height (cm)
         r0 = Rearth + h0,           & ! min height from earth center
         hs = 1.3e7_r8,              & ! apex reference altitude (cm) (XXgoldyXX:modified?)

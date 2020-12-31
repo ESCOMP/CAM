@@ -1,8 +1,5 @@
 module adotv_mod
   use shr_kind_mod,only: r8 => shr_kind_r8 ! 8-byte reals
-  use getapex     ,only: & ! (nlonp1,0:nlatp1)
-      zb,                & ! downward component of magnetic field
-      bmod                 ! magnitude of magnetic field (gauss?)
 
   implicit none
 
@@ -18,7 +15,7 @@ contains
      use edyn_geogrid, only: jspole, jnpole
      use getapex,      only: &
           zb,                & ! downward component of magnetic field
-          bmod,              & ! magnitude of magnetic field (gauss?)
+          bmod,              & ! magnitude of magnetic field (gauss)
           dvec,              & ! (nlonp1,nlat,3,2)
           dddarr,            & ! (nlonp1,nlat)
           be3arr,            & ! (nlonp1,nlat)

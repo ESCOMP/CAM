@@ -1,5 +1,5 @@
 module utils_mod
-  use shr_kind_mod   ,only: r8 => shr_kind_r8
+  use shr_kind_mod   ,only: r8 => shr_kind_r8, cl=>shr_kind_cl
   use cam_logfile    ,only: iulog
   use cam_abortutils ,only: endrun
   use esmf           ,only: ESMF_FIELD
@@ -39,9 +39,6 @@ contains
        iset1 = mtime
        iset = iset1 - ibox
     end if
-    !     write(iulog,"('boxcar_ave: mtime,itime,ibox',3i5)")
-    !    |  mtime,itime,ibox
-    !
     y(:,:) = 0._r8
     do i=iset,iset1
        y(:,:) = y(:,:) + x(:,:,i)
@@ -49,35 +46,6 @@ contains
     if (ibox > 0) y(:,:) = y(:,:)/ibox
     !
   end subroutine boxcar_ave
-  !-----------------------------------------------------------------------
-  subroutine mag2geo(am,ag,im,jm,dim,djm,lg,lm,nlong,nlatg)
-    !
-    ! Args:
-    integer,  intent(in)  :: lg
-    integer,  intent(in)  :: lm
-    real(r8), intent(in)  :: am(lm,*)
-    real(r8), intent(out) :: ag(lg,*)
-    integer,  intent(in)  :: im(lg,*)
-    integer,  intent(in)  :: jm(lg,*)
-    real(r8), intent(in)  :: dim(lg,*)
-    real(r8), intent(in)  :: djm(lg,*)
-    integer,  intent(in)  :: nlong
-    integer,  intent(in)  :: nlatg
-    !
-    ! Local:
-    integer :: ig,jg
-    !
-    do jg=1,nlatg
-       do ig=1,nlong
-          ag(ig,jg) =  &
-               am(im(ig,jg)  ,jm(ig,jg))  *(1._r8-dim(ig,jg))*(1._r8-djm(ig,jg))+  &
-               am(im(ig,jg)+1,jm(ig,jg))  *    dim(ig,jg) *(1._r8-djm(ig,jg))+  &
-               am(im(ig,jg)  ,jm(ig,jg)+1)*(1._r8-dim(ig,jg))*djm(ig,jg)+  &
-               am(im(ig,jg)+1,jm(ig,jg)+1)*    dim(ig,jg) *djm(ig,jg)
-       end do ! ig=1,nlong
-    end do ! jg=1,nlatg
-  end subroutine mag2geo
-  !-----------------------------------------------------------------------
 
   !-----------------------------------------------------------------------
   subroutine check_alloc(ierror, subname, varname, lonp1, latp1, ntimes, lw)
@@ -90,7 +58,7 @@ contains
     integer, optional, intent(in) :: ntimes
     integer, optional, intent(in) :: lw
     ! Local variable
-    character(len=256) :: errmsg
+    character(len=cl) :: errmsg
 
     if (ierror /= 0) then
        write(errmsg, '(">>> ",a,": error allocating ",a)')                   &
@@ -126,7 +94,7 @@ contains
     character(len=*), intent(in) :: msg
     !
     ! Local variable
-    character(len=256) :: errmsg
+    character(len=cl) :: errmsg
     !
     if (istat /= pio_noerr) then
        write(iulog,"(/72('-'))")
