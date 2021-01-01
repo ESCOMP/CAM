@@ -306,7 +306,7 @@ CONTAINS
       latmin = 1000.0_r8 ! Out of latitude range
       index = 0
       do ichnk = begchunk, endchunk
-         ncol = get_ncols_p(ichnk)
+         ncol = chunks(ichnk)%ncols ! Too soon to call get_ncols_p
          do icol = 1, pcols
             index = index + 1
             if (icol <= ncol) then
@@ -582,7 +582,7 @@ CONTAINS
       if ((lcid < begchunk) .or. (lcid > endchunk)) then
          call endrun(subname//'chunk index out of range')
       end if
-      do index = 1, MIN(get_ncols_p(lcid), rlatdim)
+      do index = 1, MIN(get_ncols_p(lcid, subname_in=subname), rlatdim)
          phys_ind = chunks(lcid)%phys_cols(index)
          rlats(index) = phys_columns(phys_ind)%lat_rad
       end do
@@ -612,7 +612,7 @@ CONTAINS
       if ((lcid < begchunk) .or. (lcid > endchunk)) then
          call endrun(subname//'chunk index out of range')
       end if
-      do index = 1, MIN(get_ncols_p(lcid), rlondim)
+      do index = 1, MIN(get_ncols_p(lcid, subname_in=subname), rlondim)
          phys_ind = chunks(lcid)%phys_cols(index)
          rlons(index) = phys_columns(phys_ind)%lon_rad
       end do
@@ -684,7 +684,7 @@ CONTAINS
       if ((lcid < begchunk) .or. (lcid > endchunk)) then
          call endrun(subname//'chunk index out of range')
       end if
-      do index = 1, MIN(get_ncols_p(lcid), latdim)
+      do index = 1, MIN(get_ncols_p(lcid, subname_in=subname), latdim)
          phys_ind = chunks(lcid)%phys_cols(index)
          lats(index) = phys_columns(phys_ind)%lat_deg
       end do
@@ -714,7 +714,7 @@ CONTAINS
       if ((lcid < begchunk) .or. (lcid > endchunk)) then
          call endrun(subname//'chunk index out of range')
       end if
-      do index = 1, MIN(get_ncols_p(lcid), londim)
+      do index = 1, MIN(get_ncols_p(lcid, subname_in=subname), londim)
          phys_ind = chunks(lcid)%phys_cols(index)
          lons(index) = phys_columns(phys_ind)%lon_deg
       end do
@@ -744,7 +744,7 @@ CONTAINS
       if ((lcid < begchunk) .or. (lcid > endchunk)) then
          call endrun(subname//'chunk index out of range')
       end if
-      do index = 1, MIN(get_ncols_p(lcid), areadim)
+      do index = 1, MIN(get_ncols_p(lcid, subname_in=subname), areadim)
          phys_ind = chunks(lcid)%phys_cols(index)
          areas(index) = phys_columns(phys_ind)%area
       end do
@@ -774,7 +774,7 @@ CONTAINS
       if ((lcid < begchunk) .or. (lcid > endchunk)) then
          call endrun(subname//'chunk index out of range')
       end if
-      do index = 1, MIN(get_ncols_p(lcid), wghtdim)
+      do index = 1, MIN(get_ncols_p(lcid, subname_in=subname), wghtdim)
          phys_ind = chunks(lcid)%phys_cols(index)
          wghts(index) = phys_columns(phys_ind)%weight
       end do
@@ -783,16 +783,26 @@ CONTAINS
 
    !========================================================================
 
-   integer function get_ncols_p(lcid)
+   integer function get_ncols_p(lcid, subname_in)
+      use cam_abortutils, only: endrun
       !-----------------------------------------------------------------------
       !
       ! get_ncols_p: Return number of columns in chunk given the local chunk id.
       !
       !-----------------------------------------------------------------------
-      ! Dummy argument
+      ! Dummy arguments
       integer, intent(in)  :: lcid      ! local chunk id
+      character(len=*), optional, intent(in) :: subname_in
 
-      get_ncols_p = chunks(lcid)%ncols
+      if (.not. phys_grid_initialized()) then
+         if (present(subname_in)) then
+            call endrun(trim(subname_in)//'physics grid not initialized')
+         else
+            call endrun('get_ncols_p: physics grid not initialized')
+         end if
+      else
+         get_ncols_p = chunks(lcid)%ncols
+      end if
 
    end function get_ncols_p
 

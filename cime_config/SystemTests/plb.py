@@ -29,9 +29,9 @@ class PLB(SystemTestsCompareTwo):
         append_to_user_nl_files(caseroot = self._get_caseroot(),
                                 component = "cam",
                                 contents = "phys_loadbalance = 2")
-        comments = "Setting phys_loadbalance to default 2."
+        comments = "Overriding phys_loadbalance to 2 (usual default)."
         append_testlog(comments, self._orig_caseroot)
 
     def _case_two_setup(self):
-        comments = "Using phys_loadbalance to value that's set in the testmod."
+        comments = "Leave phys_loadbalance at value that's set in the testmod."
         append_testlog(comments, self._orig_caseroot)

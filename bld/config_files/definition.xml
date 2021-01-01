@@ -320,8 +320,5 @@ SPCAM horizontal grid spacing, m
 <entry id="spcam_dt" value="1">
 SPCAM time step, s
 </entry>
-<entry id="weak_scale_fix" valid_values="0,1" value="0">
-Use weak scaling version of physics grid and d_p coupling: 0=off, 1=on.
-</entry>
 
 </config_definition>
