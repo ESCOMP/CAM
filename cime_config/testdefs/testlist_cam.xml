@@ -174,7 +174,6 @@
     <options>
       <option name="wallclock">00:10:00</option>
     </options>
-<!--  Replace f10_f10_mg37 with CAM-SE-CSLAM grid when ready -->
   </test>
   <test compset="QPC6" grid="ne5pg3_ne5pg3_mg37" name="ERP_Ln9" testmods="cam/outfrq9s_clubbmf">
     <machines>

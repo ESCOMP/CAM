@@ -296,15 +296,16 @@ contains
   end subroutine permute_array_r8
 
   subroutine cam_pio_handle_error(ierr, errorstr)
-    use cam_abortutils,   only: endrun
-    use pio,          only: pio_noerr
+    use shr_kind_mod,   only: SHR_KIND_CL
+    use cam_abortutils, only: endrun
+    use pio,            only: pio_noerr
 
     ! Dummy arguments
     integer,          intent(in)  :: ierr
     character(len=*), intent(in)  :: errorstr
 
     ! Local variables
-    character(len=256) :: errormsg
+    character(len=SHR_KIND_CL) :: errormsg
 
     if (ierr /= PIO_NOERR) then
       write(errormsg, '(a,i6,2a)') '(PIO:', ierr, ') ', trim(errorstr)
@@ -500,7 +501,6 @@ contains
 
     ! Local variables
     logical                                        :: found
-    integer                                        :: i
     integer(PIO_OFFSET_KIND),  pointer             :: dof(:)
     type(iodesc_list),         pointer             :: iodesc_p
     character(len=errormsg_str_len)                :: errormsg

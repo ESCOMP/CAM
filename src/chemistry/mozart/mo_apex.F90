@@ -4,19 +4,19 @@ module mo_apex
 ! Purpose:
 !
 !   Calculate apex coordinates and magnetic field magnitudes
-!   at global geographic grid for year of current model run. 
+!   at global geographic grid for year of current model run.
 !
-! Method: 
+! Method:
 !
 !   The magnetic field parameters output by this module are time and height
-!     independent. They are chunked for waccm physics, i.e., allocated as 
+!     independent. They are chunked for waccm physics, i.e., allocated as
 !     (pcols,begchunk:endchunk)
 !   Interface sub apexmag is called once per run from sub inti.
 !     Sub apexmag may be called for years 1900 through 2005.
 !   This module is dependent on routines in apex_subs.F (modified IGRF model).
 !   Apex_subs has several authors, but has been modified and maintained
 !     in recent years by Roy Barnes (bozo@ucar.edu).
-!   Subs apxmka and apxmall are called with the current lat x lon grid 
+!   Subs apxmka and apxmall are called with the current lat x lon grid
 !     resolution.
 !
 ! Author: Ben Foster, foster@ucar.edu (Nov, 2003)
@@ -110,7 +110,7 @@ end subroutine mo_apex_readnl
 !======================================================================
 subroutine mo_apex_init1()
    use time_manager,  only: get_curr_date
-   use dyn_grid,      only: get_horiz_grid_dim_d
+   use phys_grid,     only: get_grid_dims
 
    integer  :: i, j, ist          ! indices
 
@@ -155,7 +155,7 @@ subroutine mo_apex_init1()
 ! Initialize APEX with a regular lat/lon grid ...
 ! (Note apex_mka expects longitudes in -180 -> +180)
 !-------------------------------------------------------------------------------
-   call get_horiz_grid_dim_d(hdim1_d,hdim2_d)
+   call get_grid_dims(hdim1_d,hdim2_d)
    ngcols = hdim1_d*hdim2_d
    if (     ngcols < 1000 ) then ! 10-degrees
       nglats = 19
@@ -205,7 +205,7 @@ end subroutine mo_apex_init1
 !======================================================================
 subroutine mo_apex_init(phys_state)
 !-------------------------------------------------------------------------------
-! Driver for apex code to calculate apex magnetic coordinates at 
+! Driver for apex code to calculate apex magnetic coordinates at
 !   current geographic spatial resolution for given year. This calls
 !   routines in apex_subs.F.
 !
@@ -311,7 +311,7 @@ subroutine mo_apex_init(phys_state)
    maglon0 = -alon*dtr ! (radians) geograghic latitude where the geomagnetic latitude is zero
                        ! where longitude ranges from -180E to 180E
 
-   call apex_dypol( colatp, elonp, rdum )       ! get geomagnetic dipole north pole 
+   call apex_dypol( colatp, elonp, rdum )       ! get geomagnetic dipole north pole
 
    if (masterproc) then
       write(iulog, "('mo_apex_init: colatp,elonp ', 2f12.6)") colatp, elonp

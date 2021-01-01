@@ -325,7 +325,6 @@ contains
     ! Author: J. Olson
     !
     !-----------------------------------------------------------------------
-!    use phys_grid,    only: get_lat_p, get_lon_p
     use physconst,    only: gravit, latvap
     use constituents, only: qmin
     use cam_history,  only: outfld

@@ -14,6 +14,7 @@ module phys_grid
 !
 !      get_chunk_indices_p get local chunk index range
 !      get_ncols_p         get number of columns for a given chunk
+!      get_grid_dims       return physics grid axis global sizes
 !      get_xxx_all_p       get global indices, coordinates, or values
 !                          for a given chunk
 !      get_xxx_vec_p       get global indices, coordinates, or values
@@ -118,9 +119,9 @@ module phys_grid
                                        ! hdim2_d == 1.
 
 ! physics field data structures
-   integer         :: ngcols           ! global column count in physics grid (all)
-   integer, public :: ngcols_p         ! global column count in physics grid
-                                       ! (without holes)
+   integer, private :: ngcols           ! global column count in physics grid (all)
+   integer, public  :: num_global_phys_cols ! global column count in phys grid
+                                            ! (without holes)
 
    integer, dimension(:), allocatable, private :: dyn_to_latlon_gcol_map
                                        ! map from unsorted (dynamics) to lat/lon sorted grid indices
@@ -294,6 +295,8 @@ module phys_grid
    integer, private, parameter :: def_alltoall = -1                ! default
    integer, private :: phys_alltoall = def_alltoall
 
+   logical :: calc_memory_increase = .false.
+
 !========================================================================
 contains
 !========================================================================
@@ -362,7 +365,7 @@ subroutine phys_grid_readnl(nlfile)
 
    lbal_opt = phys_loadbalance
 
-   if (lbal_opt .eq. 3) then
+   if (lbal_opt == 3) then
       phys_mirror_decomp_req = .true.
    else
       phys_mirror_decomp_req = .false.
@@ -374,12 +377,12 @@ subroutine phys_grid_readnl(nlfile)
 
    ! Some consistency checks
 
-   if (((phys_alltoall .lt. min_alltoall) .or.    &
-        (phys_alltoall .gt. max_alltoall))        &
+   if (((phys_alltoall < min_alltoall) .or.   &
+        (phys_alltoall > max_alltoall))       &
 # if defined(MODCM_DP_TRANSPOSE)
-      .and.                                       &
-      ((phys_alltoall .lt. modmin_alltoall) .or. &
-       (phys_alltoall .gt. modmax_alltoall))     &
+      .and.                                   &
+      ((phys_alltoall < modmin_alltoall) .or. &
+       (phys_alltoall > modmax_alltoall))     &
 # endif
       ) then
       if (masterproc) then
@@ -446,15 +449,17 @@ end subroutine phys_grid_readnl
     ! Author: John Drake and Patrick Worley
     !
     !-----------------------------------------------------------------------
-    use pmgrid, only: plev
-    use dycore, only: dycore_is
-    use dyn_grid, only: get_block_bounds_d, &
-         get_block_gcol_d, get_block_gcol_cnt_d, &
-         get_block_levels_d, get_block_lvl_cnt_d, &
-         get_block_owner_d, &
-         get_gcol_block_d, get_gcol_block_cnt_d, &
+    use mpi,              only: MPI_REAL8, MPI_MAX
+    use shr_mem_mod,      only: shr_mem_getusage
+    use pmgrid,           only: plev
+    use dycore,           only: dycore_is
+    use dyn_grid,         only: get_block_bounds_d, &
+         get_block_gcol_d, get_block_gcol_cnt_d,    &
+         get_block_levels_d, get_block_lvl_cnt_d,   &
+         get_block_owner_d,                         &
+         get_gcol_block_d, get_gcol_block_cnt_d,    &
          get_horiz_grid_dim_d, get_horiz_grid_d, physgrid_copy_attributes_d
-    use spmd_utils, only: pair, ceil2
+    use spmd_utils,       only: pair, ceil2, masterprocid, mpicom
     use cam_grid_support, only: cam_grid_register, cam_grid_attribute_register
     use cam_grid_support, only: iMap, max_hcoordname_len
     use cam_grid_support, only: horiz_coord_t, horiz_coord_create
@@ -525,6 +530,8 @@ end subroutine phys_grid_readnl
     character(len=max_hcoordname_len)   :: copy_gridname
     logical                             :: unstructured
     real(r8)                            :: lonmin, latmin
+    real(r8)                            :: mem_hw_beg, mem_hw_end
+    real(r8)                            :: mem_beg, mem_end
 
     nullify(area_d)
     nullify(lonvals)
@@ -533,7 +540,10 @@ end subroutine phys_grid_readnl
     nullify(lat_coord)
     nullify(lon_coord)
 
-    call t_adj_detailf(-2)
+    if (calc_memory_increase) then
+       call shr_mem_getusage(mem_hw_beg, mem_beg)
+    end if
+
     call t_startf("phys_grid_init")
 
     !-----------------------------------------------------------------------
@@ -553,13 +563,12 @@ end subroutine phys_grid_readnl
     call get_horiz_grid_d(ngcols, clat_d_out=clat_d, clon_d_out=clon_d, lat_d_out=lat_d, lon_d_out=lon_d)
     latmin = minval(lat_d)
     lonmin = minval(lon_d)
-!!XXgoldyXX: To do: replace collection above with local physics points
 
     ! count number of "real" column indices
-    ngcols_p = 0
+    num_global_phys_cols = 0
     do i=1,ngcols
        if (clon_d(i) < 100000.0_r8) then
-          ngcols_p = ngcols_p + 1
+          num_global_phys_cols = num_global_phys_cols + 1
        endif
     enddo
 
@@ -569,7 +578,7 @@ end subroutine phys_grid_readnl
     clon_p_tmp = clon_d(cdex(1))
     clon_p_tot = 1
 
-    do i=2,ngcols_p
+    do i=2,num_global_phys_cols
        if (clon_d(cdex(i)) > clon_p_tmp) then
           clon_p_tot = clon_p_tot + 1
           clon_p_tmp = clon_d(cdex(i))
@@ -584,7 +593,7 @@ end subroutine phys_grid_readnl
     clon_p_tot = 1
     clon_p(1) = clon_d(cdex(1))
     londeg_p(1) = lon_d(cdex(1))
-    do i=2,ngcols_p
+    do i=2,num_global_phys_cols
        if (clon_d(cdex(i)) > clon_p(clon_p_tot)) then
           clon_p_cnt(clon_p_tot) = i-pre_i
           pre_i = i
@@ -593,14 +602,14 @@ end subroutine phys_grid_readnl
           londeg_p(clon_p_tot) = lon_d(cdex(i))
        endif
     enddo
-    clon_p_cnt(clon_p_tot) = (ngcols_p+1)-pre_i
+    clon_p_cnt(clon_p_tot) = (num_global_phys_cols+1)-pre_i
 
     ! sort over latitude and identify unique latitude coordinates
     call IndexSet(ngcols,cdex)
     call IndexSort(ngcols,cdex,clat_d,descend=.false.)
     clat_p_tmp = clat_d(cdex(1))
     clat_p_tot = 1
-    do i=2,ngcols_p
+    do i=2,num_global_phys_cols
        if (clat_d(cdex(i)) > clat_p_tmp) then
           clat_p_tot = clat_p_tot + 1
           clat_p_tmp = clat_d(cdex(i))
@@ -616,7 +625,7 @@ end subroutine phys_grid_readnl
     clat_p_tot = 1
     clat_p(1) = clat_d(cdex(1))
     latdeg_p(1) = lat_d(cdex(1))
-    do i=2,ngcols_p
+    do i=2,num_global_phys_cols
        if (clat_d(cdex(i)) > clat_p(clat_p_tot)) then
           clat_p_cnt(clat_p_tot) = i-pre_i
           pre_i = i
@@ -625,7 +634,7 @@ end subroutine phys_grid_readnl
           latdeg_p(clat_p_tot) = lat_d(cdex(i))
        endif
     enddo
-    clat_p_cnt(clat_p_tot) = (ngcols_p+1)-pre_i
+    clat_p_cnt(clat_p_tot) = (num_global_phys_cols+1)-pre_i
 
     clat_p_idx(1) = 1
     do j=2,clat_p_tot
@@ -645,8 +654,9 @@ end subroutine phys_grid_readnl
 
     ! Early clean-up, to minimize memory high water mark
     ! (not executing find_partner or find_twin)
-    if (((twin_alg .ne. 1) .and. (lbal_opt .ne. 3)) .or. &
-        (lbal_opt .eq. -1)) deallocate( clat_p_cnt)
+    if (((twin_alg /= 1) .and. (lbal_opt /= 3)) .or. (lbal_opt == -1)) then
+       deallocate( clat_p_cnt)
+    end if
 
     ! save "longitude within latitude" column ordering
     ! and determine mapping from unsorted global column index to
@@ -654,13 +664,15 @@ end subroutine phys_grid_readnl
     allocate( lat_p(1:ngcols) )
     allocate( lon_p(1:ngcols) )
     allocate( dyn_to_latlon_gcol_map(1:ngcols) )
-    if (lbal_opt .ne. -1) allocate( latlon_to_dyn_gcol_map(1:ngcols_p) )
+    if (lbal_opt /= -1) then
+       allocate(latlon_to_dyn_gcol_map(1:num_global_phys_cols))
+    end if
 
     clat_p_dex = 1
     lat_p = -1
     dyn_to_latlon_gcol_map = -1
-    do i=1,ngcols_p
-       if (lbal_opt .ne. -1) latlon_to_dyn_gcol_map(i) = cdex(i)
+    do i = 1, num_global_phys_cols
+       if (lbal_opt /= -1) latlon_to_dyn_gcol_map(i) = cdex(i)
        dyn_to_latlon_gcol_map(cdex(i)) = i
 
        do while ((clat_p(clat_p_dex) < clat_d(cdex(i))) .and. &
@@ -682,17 +694,17 @@ end subroutine phys_grid_readnl
 
     ! Early clean-up, to minimize memory high water mark
     ! (not executing find_twin)
-    if ((twin_alg .ne. 1) .or. (lbal_opt .eq. -1)) deallocate( clon_p_cnt )
+    if ((twin_alg /= 1) .or. (lbal_opt == -1)) deallocate( clon_p_cnt )
 
     ! save "latitude within longitude" column ordering
     ! (only need in find_twin)
-    if ((twin_alg .eq. 1) .and. (lbal_opt .ne. -1)) &
-       allocate( lonlat_to_dyn_gcol_map(1:ngcols_p) )
+    if ((twin_alg == 1) .and. (lbal_opt /= -1)) &
+       allocate( lonlat_to_dyn_gcol_map(1:num_global_phys_cols) )
 
     clon_p_dex = 1
     lon_p = -1
-    do i=1,ngcols_p
-       if ((twin_alg .eq. 1) .and. (lbal_opt .ne. -1)) &
+    do i=1,num_global_phys_cols
+       if ((twin_alg == 1) .and. (lbal_opt /= -1)) &
          lonlat_to_dyn_gcol_map(i) = cdex(i)
        do while ((clon_p(clon_p_dex) < clon_d(cdex(i))) .and. &
                  (clon_p_dex < clon_p_tot))
@@ -762,7 +774,7 @@ end subroutine phys_grid_readnl
              ! check whether global index is for a column that dynamics
              ! intends to pass to the physics
              curgcol_d = cdex(i)
-             if (dyn_to_latlon_gcol_map(curgcol_d) .ne. -1) then
+             if (dyn_to_latlon_gcol_map(curgcol_d) /= -1) then
                 ! yes - then save the information
                 ncols = ncols + 1
                 chunks(cid)%gcol(ncols) = curgcol_d
@@ -832,9 +844,9 @@ end subroutine phys_grid_readnl
        deallocate( lat_p )
        deallocate( lon_p )
        deallocate( latlon_to_dyn_gcol_map )
-       if  (twin_alg .eq. 1) deallocate( lonlat_to_dyn_gcol_map )
-       if  (twin_alg .eq. 1) deallocate( clon_p_cnt )
-       if ((twin_alg .eq. 1) .or. (lbal_opt .eq. 3)) deallocate( clat_p_cnt )
+       if  (twin_alg == 1) deallocate( lonlat_to_dyn_gcol_map )
+       if  (twin_alg == 1) deallocate( clon_p_cnt )
+       if ((twin_alg == 1) .or. (lbal_opt == 3)) deallocate( clat_p_cnt )
 
        !
        ! Determine whether dynamics and physics decompositions
@@ -848,7 +860,7 @@ end subroutine phys_grid_readnl
              call get_gcol_block_d(curgcol_d,block_cnt,blockids,bcids)
              do jb=1,block_cnt
                 owner_d = get_block_owner_d(blockids(jb))
-                if (owner_d .ne. chunks(cid)%owner) then
+                if (owner_d /= chunks(cid)%owner) then
                    local_dp_map = .false.
                 endif
              enddo
@@ -858,7 +870,7 @@ end subroutine phys_grid_readnl
     !
     ! Allocate and initialize data structures for gather/scatter
     !
-    allocate( pgcols(1:ngcols_p) )
+    allocate( pgcols(1:num_global_phys_cols) )
     allocate( gs_col_offset(0:npes) )
     allocate( pchunkid(0:npes) )
 
@@ -971,7 +983,7 @@ end subroutine phys_grid_readnl
        glbcnt = 0
        curcnt = 0
        curp = 0
-       do curgcol=1,ngcols_p
+       do curgcol=1,num_global_phys_cols
           cid = pgcols(curgcol)%chunk
           i   = pgcols(curgcol)%ccol
           owner_p   = chunks(cid)%owner
@@ -1137,10 +1149,12 @@ end subroutine phys_grid_readnl
     !      However, these will be in the dynamics decomposition
 
     if (unstructured) then
-      lon_coord => horiz_coord_create('lon', 'ncol', ngcols_p, 'longitude',   &
-           'degrees_east', 1, size(lonvals), lonvals, map=grid_map(3,:))
-      lat_coord => horiz_coord_create('lat', 'ncol', ngcols_p, 'latitude',    &
-           'degrees_north', 1, size(latvals), latvals, map=grid_map(3,:))
+      lon_coord => horiz_coord_create('lon', 'ncol', num_global_phys_cols,    &
+           'longitude', 'degrees_east', 1, size(lonvals), lonvals,            &
+           map=grid_map(3,:))
+      lat_coord => horiz_coord_create('lat', 'ncol', num_global_phys_cols,    &
+           'latitude', 'degrees_north', 1, size(latvals), latvals,            &
+           map=grid_map(3,:))
     else
 
       allocate(coord_map(size(grid_map, 2)))
@@ -1216,8 +1230,25 @@ end subroutine phys_grid_readnl
     physgrid_set = .true.   ! Set flag indicating physics grid is now set
     !
     call t_stopf("phys_grid_init")
-    call t_adj_detailf(+2)
-    return
+
+    if (calc_memory_increase) then
+       call shr_mem_getusage(mem_hw_end, mem_end)
+       clat_p_tmp = mem_end - mem_beg
+       call MPI_reduce(clat_p_tmp, mem_end, 1, MPI_REAL8, MPI_MAX,            &
+            masterprocid, mpicom, curp)
+       if (masterproc) then
+          write(iulog, *) 'phys_grid_init: Increase in memory usage = ',      &
+               mem_end, ' (MB)'
+       end if
+       clat_p_tmp = mem_hw_end - mem_hw_beg
+       call MPI_reduce(clat_p_tmp, mem_hw_end, 1, MPI_REAL8, MPI_MAX,         &
+            masterprocid, mpicom, curp)
+       if (masterproc) then
+          write(iulog, *) 'phys_grid_init: Increase in memory highwater = ',  &
+               mem_end, ' (MB)'
+       end if
+    end if
+
   end subroutine phys_grid_init
 
 !========================================================================
@@ -1531,6 +1562,24 @@ logical function phys_grid_initialized ()
 
    return
    end function get_ncols_p
+
+!========================================================================
+
+   subroutine get_grid_dims(hdim1_d_out, hdim2_d_out)
+      use cam_abortutils, only: endrun
+      ! retrieve dynamics field grid information
+      ! hdim1_d and hdim2_d are dimensions of rectangular horizontal grid
+      ! data structure, If 1D data structure, then hdim2_d == 1.
+      integer, intent(out) :: hdim1_d_out
+      integer, intent(out) :: hdim2_d_out
+
+      if (.not. phys_grid_initialized()) then
+         call endrun('get_grid_dims: physics grid not initialized')
+      end if
+      hdim1_d_out = hdim1_d
+      hdim2_d_out = hdim2_d
+
+   end subroutine get_grid_dims
 !
 !========================================================================
 !
@@ -2043,92 +2092,6 @@ logical function phys_grid_initialized ()
 !
 !========================================================================
 !
-!  integer function get_gcol_owner_p(gcol)
-!-----------------------------------------------------------------------
-!
-! Purpose: Return owner of physics column with indicate index
-!
-! Method:
-!
-! Author: P. Worley
-!
-!-----------------------------------------------------------------------
-!------------------------------Arguments--------------------------------
-!  integer, intent(in)  :: gcol     ! physics column index
-!
-!-----------------------------------------------------------------------
-!
-!  get_gcol_owner_p = chunks(knuhcs(gcol)%chunkid)%owner
-!
-!  return
-!  end function get_gcol_owner_p
-!
-!========================================================================
-
-!  subroutine buff_to_chunk(fdim,mdim,lbuff,localchunks)
-!-----------------------------------------------------------------------
-!
-! Purpose: Copy from local buffer
-!          to local chunk data structure.
-!          Needed for cpl6.
-!
-! Method:
-!
-! Author: Pat Worley and Robert Jacob
-!
-!-----------------------------------------------------------------------
-!------------------------------Arguments--------------------------------
-!  integer, intent(in) :: fdim      ! declared length of first lbuff dimension
-!  integer, intent(in) :: mdim      ! declared length of middle lbuff dimension
-!  real(r8), intent(in) :: lbuff(fdim, mdim) ! local lon/lat buffer
-!
-!  real(r8), intent(out):: localchunks(pcols,mdim,begchunk:endchunk) ! local chunks
-!
-!
-!---------------------------Local workspace-----------------------------
-!  integer :: i,j,m,n                      ! loop indices
-!
-!  integer, save :: numcols = 0
-!  integer, allocatable, save :: columnid(:), chunkid(:)
-!-----------------------------------------------------------------------
-!
-!  if (numcols .eq. 0) then
-!     n = 0
-!     do i=1,ngcols
-!        if (dyn_to_latlon_gcol_map(i) .ne. -1) then
-!           if(chunks(knuhcs(i)%chunkid)%owner .eq. iam) then
-!              n = n + 1
-!           endif
-!        endif
-!     enddo
-!     allocate(columnid(1:n))
-!     allocate(chunkid(1:n))
-!
-!     n = 0
-!     do i=1,ngcols
-!        if (dyn_to_latlon_gcol_map(i) .ne. -1) then
-!           if(chunks(knuhcs(i)%chunkid)%owner .eq. iam) then
-!              n = n + 1
-!              columnid(n) = knuhcs(i)%col
-!              chunkid(n)  = chunks(knuhcs(i)%chunkid)%lcid
-!           endif
-!        endif
-!     end do
-!
-!     numcols = n
-!  endif
-!
-!  if (numcols .gt. fdim) call endrun('buff_to_chunk')
-!  do m=1,mdim
-!     do n = 1, numcols
-!        localchunks(columnid(n),m,chunkid(n)) = lbuff(n,m)
-!     end do
-!  end do
-!
-!  return
-!  end subroutine buff_to_chunk
-!
-!========================================================================
 
    subroutine scatter_field_to_chunk(fdim,mdim,ldim, &
                                      hdim1d,globalfield,localchunks)
@@ -2201,7 +2164,7 @@ logical function phys_grid_initialized ()
 ! copy field into global (process-ordered) chunked data structure
 
       do l=1,ldim
-         do i=1,ngcols_p
+         do i=1,num_global_phys_cols
             cid  = pgcols(i)%chunk
             lid  = pgcols(i)%ccol
             gcol = chunks(cid)%gcol(lid)
@@ -2247,7 +2210,7 @@ logical function phys_grid_initialized ()
 !  local ordering)
 
    do l=1,ldim
-      do i=1,ngcols_p
+      do i=1,num_global_phys_cols
          cid  = pgcols(i)%chunk
          lcid = chunks(cid)%lcid
          lid  = pgcols(i)%ccol
@@ -2336,7 +2299,7 @@ logical function phys_grid_initialized ()
    if (masterproc) then
       ! copy field into global (process-ordered) chunked data structure
       do l=1,ldim
-         do i=1,ngcols_p
+         do i=1,num_global_phys_cols
             cid  = pgcols(i)%chunk
             lid  = pgcols(i)%ccol
             gcol = chunks(cid)%gcol(lid)
@@ -2381,7 +2344,7 @@ logical function phys_grid_initialized ()
    ! (pgcol ordering chosen to reflect begchunk:endchunk
    !  local ordering)
    do l=1,ldim
-      do i=1,ngcols_p
+      do i=1,num_global_phys_cols
          cid  = pgcols(i)%chunk
          lcid = chunks(cid)%lcid
          lid  = pgcols(i)%ccol
@@ -2471,7 +2434,7 @@ logical function phys_grid_initialized ()
 ! copy field into global (process-ordered) chunked data structure
 
       do l=1,ldim
-         do i=1,ngcols_p
+         do i=1,num_global_phys_cols
             cid = pgcols(i)%chunk
             lid = pgcols(i)%ccol
             gcol = chunks(cid)%gcol(lid)
@@ -2516,7 +2479,7 @@ logical function phys_grid_initialized ()
 ! (pgcol ordering chosen to reflect begchunk:endchunk
 !  local ordering)
    do l=1,ldim
-      do i=1,ngcols_p
+      do i=1,num_global_phys_cols
          cid  = pgcols(i)%chunk
          lcid = chunks(cid)%lcid
          lid  = pgcols(i)%ccol
@@ -2536,71 +2499,6 @@ logical function phys_grid_initialized ()
 
    return
    end subroutine scatter_field_to_chunk_int
-!
-!========================================================================
-!
-!  subroutine chunk_to_buff(fdim,mdim,localchunks,lbuff)
-!
-!-----------------------------------------------------------------------
-!
-! Purpose: Copy from local chunk data structure
-!          to local buffer.  Needed for cpl6.
-!          (local = assigned to same process)
-!
-! Method:
-!
-! Author: Pat Worley and Robert Jacob
-!-----------------------------------------------------------------------
-!------------------------------Arguments--------------------------------
-!  integer, intent(in) :: fdim      ! declared length of first lbuff dimension
-!  integer, intent(in) :: mdim      ! declared length of middle lbuff dimension
-!  real(r8), intent(in):: localchunks(pcols,mdim, begchunk:endchunk) ! local chunks
-!
-!  real(r8), intent(out) :: lbuff(fdim,mdim) ! local buff
-!
-!---------------------------Local workspace-----------------------------
-!  integer :: i,j,m,n                  ! loop indices
-!
-!  integer, save :: numcols = 0
-!  integer, allocatable, save :: columnid(:), chunkid(:)
-!-----------------------------------------------------------------------
-!
-!  if (numcols .eq. 0) then
-!     n = 0
-!     do i=1,ngcols
-!        if (dyn_to_latlon_gcol_map(i) .ne. -1) then
-!           if(chunks(knuhcs(i)%chunkid)%owner .eq. iam) then
-!              n = n + 1
-!           endif
-!        endif
-!     enddo
-!     allocate(columnid(1:n))
-!     allocate(chunkid(1:n))
-!
-!     n = 0
-!     do i=1,ngcols
-!        if (dyn_to_latlon_gcol_map(i) .ne. -1) then
-!           if(chunks(knuhcs(i)%chunkid)%owner .eq. iam) then
-!              n = n + 1
-!              columnid(n) = knuhcs(i)%col
-!              chunkid(n)  = chunks(knuhcs(i)%chunkid)%lcid
-!           endif
-!        endif
-!     end do
-!
-!     numcols = n
-!  endif
-!
-!  if (numcols .gt. fdim) call endrun('chunk_to_buff')
-!  do m=1,mdim
-!     do n = 1, numcols
-!        lbuff(n,m) = localchunks(columnid(n),m,chunkid(n))
-!     end do
-!  end do
-!
-!  return
-!  end subroutine chunk_to_buff
-!
 !
 !========================================================================
 !
@@ -2698,7 +2596,7 @@ logical function phys_grid_initialized ()
 
 ! copy gathered columns into lon/lat field
 
-      do i=1,ngcols_p
+      do i=1,num_global_phys_cols
          cid  = pgcols(i)%chunk
          lid  = pgcols(i)%ccol
          gcol = chunks(cid)%gcol(lid)
@@ -2721,7 +2619,7 @@ logical function phys_grid_initialized ()
    ! (pgcol ordering chosen to reflect begchunk:endchunk
    !  local ordering)
    do l=1,ldim
-      do i=1,ngcols_p
+      do i=1,num_global_phys_cols
          cid  = pgcols(i)%chunk
          lcid = chunks(cid)%lcid
          lid  = pgcols(i)%ccol
@@ -2839,7 +2737,7 @@ logical function phys_grid_initialized ()
 
 ! copy gathered columns into lon/lat field
 
-      do i=1,ngcols_p
+      do i=1,num_global_phys_cols
          cid  = pgcols(i)%chunk
          lid  = pgcols(i)%ccol
          gcol = chunks(cid)%gcol(lid)
@@ -2863,7 +2761,7 @@ logical function phys_grid_initialized ()
 !  local ordering)
 
    do l=1,ldim
-      do i=1,ngcols_p
+      do i=1,num_global_phys_cols
          cid  = pgcols(i)%chunk
          lcid = chunks(cid)%lcid
          lid  = pgcols(i)%ccol
@@ -2979,7 +2877,7 @@ logical function phys_grid_initialized ()
 
 ! copy gathered columns into lon/lat field
 
-      do i=1,ngcols_p
+      do i=1,num_global_phys_cols
          cid  = pgcols(i)%chunk
          lid  = pgcols(i)%ccol
          gcol = chunks(cid)%gcol(lid)
@@ -3002,7 +2900,7 @@ logical function phys_grid_initialized ()
    ! (pgcol ordering chosen to reflect begchunk:endchunk
    !  local ordering)
    do l=1,ldim
-      do i=1,ngcols_p
+      do i=1,num_global_phys_cols
          cid  = pgcols(i)%chunk
          lcid = chunks(cid)%lcid
          lid  = pgcols(i)%ccol
@@ -3194,7 +3092,7 @@ logical function phys_grid_initialized ()
 ! Also, sendbl and recvbl must have exactly npes elements, to match
 ! this size of the communicator, or the transpose will fail.
 !
-      if (phys_alltoall .ge. modmin_alltoall) then
+      if (phys_alltoall >= modmin_alltoall) then
          mod_method = phys_alltoall - modmin_alltoall
          ione = 1
          allocate( sendbl(0:npes-1) )
@@ -3218,7 +3116,7 @@ logical function phys_grid_initialized ()
       first = .false.
    endif
 !
-   if (record_size .ne. prev_record_size) then
+   if (record_size /= prev_record_size) then
 !
 ! Compute send/recv/put counts and displacements
       sdispls(0) = 0
@@ -3238,13 +3136,13 @@ logical function phys_grid_initialized ()
       call mpialltoallint(rdispls, 1, pdispls, 1, mpicom)
 !
 # if defined(MODCM_DP_TRANSPOSE)
-      if (phys_alltoall .ge. modmin_alltoall) then
+      if (phys_alltoall >= modmin_alltoall) then
          do p = 0,npes-1
 
             sendbl(p)%type = MPI_DATATYPE_NULL
-            if ( sndcnts(p) .ne. 0 ) then
+            if ( sndcnts(p) /= 0 ) then
 
-               if (phys_alltoall .gt. modmin_alltoall) then
+               if (phys_alltoall > modmin_alltoall) then
                   call MPI_TYPE_INDEXED(ione, sndcnts(p),   &
                        sdispls(p), mpir8, &
                        sendbl(p)%type, ierror)
@@ -3267,9 +3165,9 @@ logical function phys_grid_initialized ()
             max_nparcels = max(max_nparcels, sendbl(p)%nparcels)
 
             recvbl(p)%type = MPI_DATATYPE_NULL
-            if ( rcvcnts(p) .ne. 0) then
+            if ( rcvcnts(p) /= 0) then
 
-               if (phys_alltoall .gt. modmin_alltoall) then
+               if (phys_alltoall > modmin_alltoall) then
                   call MPI_TYPE_INDEXED(ione, rcvcnts(p),   &
                        rdispls(p), mpir8, &
                        recvbl(p)%type, ierror)
@@ -3309,7 +3207,7 @@ logical function phys_grid_initialized ()
       endif
    else
       lopt = phys_alltoall
-      if ((lopt .eq. 2) .and. ( .not. present(window) )) lopt = 1
+      if ((lopt == 2) .and. ( .not. present(window) )) lopt = 1
    endif
    if (lopt < 4) then
 !
@@ -3524,7 +3422,7 @@ logical function phys_grid_initialized ()
 ! Also, sendbl and recvbl must have exactly npes elements, to match
 ! this size of the communicator, or the transpose will fail.
 !
-      if (phys_alltoall .ge. modmin_alltoall) then
+      if (phys_alltoall >= modmin_alltoall) then
          mod_method = phys_alltoall - modmin_alltoall
          ione = 1
          allocate( sendbl(0:npes-1) )
@@ -3548,7 +3446,7 @@ logical function phys_grid_initialized ()
       first = .false.
    endif
 !
-   if (record_size .ne. prev_record_size) then
+   if (record_size /= prev_record_size) then
 !
 ! Compute send/recv/put counts and displacements
       sdispls(0) = 0
@@ -3568,13 +3466,13 @@ logical function phys_grid_initialized ()
       call mpialltoallint(rdispls, 1, pdispls, 1, mpicom)
 !
 # if defined(MODCM_DP_TRANSPOSE)
-      if (phys_alltoall .ge. modmin_alltoall) then
+      if (phys_alltoall >= modmin_alltoall) then
          do p = 0,npes-1
 
             sendbl(p)%type = MPI_DATATYPE_NULL
-            if ( sndcnts(p) .ne. 0 ) then
+            if ( sndcnts(p) /= 0 ) then
 
-               if (phys_alltoall .gt. modmin_alltoall) then
+               if (phys_alltoall > modmin_alltoall) then
                   call MPI_TYPE_INDEXED(ione, sndcnts(p),   &
                        sdispls(p), mpir8, &
                        sendbl(p)%type, ierror)
@@ -3597,9 +3495,9 @@ logical function phys_grid_initialized ()
             max_nparcels = max(max_nparcels, sendbl(p)%nparcels)
 
             recvbl(p)%type = MPI_DATATYPE_NULL
-            if ( rcvcnts(p) .ne. 0) then
+            if ( rcvcnts(p) /= 0) then
 
-               if (phys_alltoall .gt. modmin_alltoall) then
+               if (phys_alltoall > modmin_alltoall) then
                   call MPI_TYPE_INDEXED(ione, rcvcnts(p),   &
                        rdispls(p), mpir8, &
                        recvbl(p)%type, ierror)
@@ -3639,7 +3537,7 @@ logical function phys_grid_initialized ()
       endif
    else
       lopt = phys_alltoall
-      if ((lopt .eq. 2) .and. ( .not. present(window) )) lopt = 1
+      if ((lopt == 2) .and. ( .not. present(window) )) lopt = 1
    endif
    if (lopt < 4) then
 !
@@ -4030,7 +3928,7 @@ logical function phys_grid_initialized ()
 !     (wrap map)
       nsmpy = 0
       do p=0,npes-1
-         if (proc_smp_mapx(p) .eq. -1) then
+         if (proc_smp_mapx(p) == -1) then
             proc_smp_mapx(p) = nsmpy
             nsmpy = mod(nsmpy+1,nsmpx)
          endif
@@ -4070,15 +3968,15 @@ logical function phys_grid_initialized ()
 !
    col_smp_mapx(:) = -1
    error = .false.
-   do i=1,ngcols_p
+   do i=1,num_global_phys_cols
       curgcol = latlon_to_dyn_gcol_map(i)
       block_cnt = get_gcol_block_cnt_d(curgcol)
       call get_gcol_block_d(curgcol,block_cnt,blockids,bcids)
       do jb=1,block_cnt
          p = get_block_owner_d(blockids(jb))
-         if (col_smp_mapx(i) .eq. -1) then
+         if (col_smp_mapx(i) == -1) then
             col_smp_mapx(i) = proc_smp_mapx(p)
-         elseif (col_smp_mapx(i) .ne. proc_smp_mapx(p)) then
+         elseif (col_smp_mapx(i) /= proc_smp_mapx(p)) then
             error = .true.
          endif
       enddo
@@ -4091,7 +3989,7 @@ logical function phys_grid_initialized ()
 !
    allocate( nsmpcolumns(0:nsmpx-1) )
    nsmpcolumns(:) = 0
-   do i=1,ngcols_p
+   do i=1,num_global_phys_cols
       curgcol = latlon_to_dyn_gcol_map(i)
       smp = col_smp_mapx(curgcol)
       nsmpcolumns(smp) = nsmpcolumns(smp) + 1
@@ -4138,13 +4036,13 @@ logical function phys_grid_initialized ()
       nchunks = 0
       do smp=0,nsmpx-1
          nsmpchunks(smp) = nsmpcolumns(smp)/pcols
-         if (mod(nsmpcolumns(smp), pcols) .ne. 0) then
+         if (mod(nsmpcolumns(smp), pcols) /= 0) then
             nsmpchunks(smp) = nsmpchunks(smp) + 1
          endif
          if (nsmpchunks(smp) < chunks_per_thread*nsmpthreads(smp)) then
             nsmpchunks(smp) = chunks_per_thread*nsmpthreads(smp)
          endif
-         do while (mod(nsmpchunks(smp), nsmpthreads(smp)) .ne. 0)
+         do while (mod(nsmpchunks(smp), nsmpthreads(smp)) /= 0)
             nsmpchunks(smp) = nsmpchunks(smp) + 1
          enddo
          if (nsmpchunks(smp) > nsmpcolumns(smp)) then
@@ -4204,7 +4102,7 @@ logical function phys_grid_initialized ()
 !
 ! Assign column to a chunk if not already assigned
             curgcol = cols(ib)
-            if ((dyn_to_latlon_gcol_map(curgcol) .ne. -1) .and. &
+            if ((dyn_to_latlon_gcol_map(curgcol) /= -1) .and. &
                 (knuhcs(curgcol)%chunkid == -1)) then
 !
 ! Find next chunk with space
@@ -4222,7 +4120,7 @@ logical function phys_grid_initialized ()
                   enddo
                endif
                chunks(cid)%ncols = chunks(cid)%ncols + 1
-               if (chunks(cid)%ncols .eq. maxcol_chk(smp)) &
+               if (chunks(cid)%ncols == maxcol_chk(smp)) &
                   maxcol_chks(smp) = maxcol_chks(smp) - 1
 !
                i = chunks(cid)%ncols
@@ -4243,7 +4141,7 @@ logical function phys_grid_initialized ()
 
                      if (twingcol > 0) then
                         chunks(cid)%ncols = chunks(cid)%ncols + 1
-                        if (chunks(cid)%ncols .eq. maxcol_chk(smp)) &
+                        if (chunks(cid)%ncols == maxcol_chk(smp)) &
                            maxcol_chks(smp) = maxcol_chks(smp) - 1
 !
                         i = chunks(cid)%ncols
@@ -4323,7 +4221,7 @@ logical function phys_grid_initialized ()
                ! check whether global index is for a column that dynamics
                ! intends to pass to the physics
                curgcol = cols(ib)
-               if (dyn_to_latlon_gcol_map(curgcol) .ne. -1) then
+               if (dyn_to_latlon_gcol_map(curgcol) /= -1) then
                   ! yes - then save the information
                   ncols = ncols + 1
                   chunks(cid)%gcol(ncols) = curgcol
@@ -4426,7 +4324,7 @@ logical function phys_grid_initialized ()
    twin_proc_mapx(:) = -1
 
    error = .false.
-   do gcol_latlon=1,ngcols_p
+   do gcol_latlon=1,num_global_phys_cols
 
       ! Assume latitude and longitude symmetries and that index manipulations
       ! are sufficient to find partners. (Will be true for lon/lat grids.)
@@ -4442,9 +4340,9 @@ logical function phys_grid_initialized ()
       call get_gcol_block_d(gcol,block_cnt,blockids,bcids)
       do jb=1,block_cnt
          p = get_block_owner_d(blockids(jb))
-         if (col_proc_mapx(gcol) .eq. -1) then
+         if (col_proc_mapx(gcol) == -1) then
             col_proc_mapx(gcol) = p
-         elseif (col_proc_mapx(gcol) .ne. p) then
+         elseif (col_proc_mapx(gcol) /= p) then
             error = .true.
          endif
       enddo
@@ -4453,9 +4351,9 @@ logical function phys_grid_initialized ()
       call get_gcol_block_d(twingcol,block_cnt,blockids,bcids)
       do jb=1,block_cnt
          p = get_block_owner_d(blockids(jb))
-         if (twin_proc_mapx(gcol) .eq. -1) then
+         if (twin_proc_mapx(gcol) == -1) then
             twin_proc_mapx(gcol) = p
-         elseif (twin_proc_mapx(gcol) .ne. p) then
+         elseif (twin_proc_mapx(gcol) /= p) then
             error = .true.
          endif
       enddo
@@ -4483,9 +4381,9 @@ logical function phys_grid_initialized ()
 ! For each process, determine number of twins in each of the other processes
 ! (running over all columns multiple times to minimize memory requirements).
 !
-         do gcol_latlon=1,ngcols_p
+         do gcol_latlon=1,num_global_phys_cols
             gcol = latlon_to_dyn_gcol_map(gcol_latlon)
-            if (col_proc_mapx(gcol) .eq. p) then
+            if (col_proc_mapx(gcol) == p) then
                twin_cnt(twin_proc_mapx(gcol)) = &
                   twin_cnt(twin_proc_mapx(gcol)) + 1
             endif
@@ -4497,7 +4395,7 @@ logical function phys_grid_initialized ()
          maxpartner = -1
          maxcnt = 0
          do twp=0,npes-1
-            if ((.not. assigned(twp)) .and. (twp .ne. p)) then
+            if ((.not. assigned(twp)) .and. (twp /= p)) then
                if (twin_cnt(twp) >= maxcnt) then
                   maxcnt = twin_cnt(twp)
                   maxpartner = twp
@@ -4507,7 +4405,7 @@ logical function phys_grid_initialized ()
 !
 ! Assign p and twp to the same SMP node
 !
-         if (maxpartner .ne. -1) then
+         if (maxpartner /= -1) then
             assigned(p) = .true.
             assigned(maxpartner) = .true.
             proc_smp_mapx(p) = nsmpx
@@ -4598,7 +4496,7 @@ logical function phys_grid_initialized ()
    clat = clat_p(lat)
    twinclat = -clat
    twinlat = clat_p_tot+1-lat
-   if (clat_p(twinlat) .eq. twinclat) then
+   if (clat_p(twinlat) == twinclat) then
       found = .true.
    else
       found = .false.
@@ -4609,7 +4507,7 @@ logical function phys_grid_initialized ()
    endif
    do while (.not. found)
       if      ((abs(clat_p(upper)-twinclat) < abs(clat_p(twinlat)-twinclat)) .and. &
-               (upper .ne. twinlat)) then
+               (upper /= twinlat)) then
          twinlat = upper
          if (upper < clat_p_tot) then
             upper = twinlat + 1
@@ -4617,7 +4515,7 @@ logical function phys_grid_initialized ()
             found = .true.
          endif
       else if ((abs(clat_p(lower)-twinclat) < abs(clat_p(twinlat)-twinclat)) .and. &
-               (lower .ne. twinlat))    then
+               (lower /= twinlat))    then
          twinlat = lower
          if (lower > 1) then
             lower = twinlat - 1
@@ -4635,7 +4533,7 @@ logical function phys_grid_initialized ()
    clon = clon_p(lon)
    twinclon = mod(clon+pi,twopi)
    twinlon = mod((lon-1)+(clon_p_tot/2), clon_p_tot) + 1
-   if (clon_p(twinlon) .eq. twinclon) then
+   if (clon_p(twinlon) == twinclon) then
       found = .true.
    else
       found = .false.
@@ -4646,7 +4544,7 @@ logical function phys_grid_initialized ()
    endif
    do while (.not. found)
       if      ((abs(clon_p(upper)-twinclon) < abs(clon_p(twinlon)-twinclon)) .and. &
-               (upper .ne. twinlon)) then
+               (upper /= twinlon)) then
          twinlon = upper
          if (upper < clon_p_tot) then
             upper = twinlon + 1
@@ -4654,7 +4552,7 @@ logical function phys_grid_initialized ()
             found = .true.
          endif
       else if ((abs(clon_p(lower)-twinclon) < abs(clon_p(twinlon)-twinclon)) .and. &
-               (lower .ne. twinlon))    then
+               (lower /= twinlon))    then
          twinlon = lower
          if (lower > 1) then
             lower = twinlon - 1
@@ -4672,7 +4570,7 @@ logical function phys_grid_initialized ()
    twingcol = latlon_to_dyn_gcol_map(twingcol_latlon)
 
    ! otherwise, look around for an approximate match using lonlat sorted indices
-   if ((lon_p(twingcol) .ne. twinlon) .or. (lat_p(twingcol) .ne. twinlat)) then
+   if ((lon_p(twingcol) /= twinlon) .or. (lat_p(twingcol) /= twinlat)) then
       twingcol_lonlat = clon_p_idx(twinlon)
       twingcol = lonlat_to_dyn_gcol_map(twingcol_lonlat)
       min_diff = abs(lat_p(twingcol) - twinlat)
@@ -4696,7 +4594,7 @@ logical function phys_grid_initialized ()
    twinproc = get_block_owner_d(jbtwin(1))
    twinsmp  = proc_smp_mapx(twinproc)
 !
-   if ((twinsmp .eq. smp) .and. &
+   if ((twinsmp == smp) .and. &
        (knuhcs(twingcol)%chunkid == -1)) then
       found = .true.
       twingcol_f = twingcol
@@ -4712,8 +4610,8 @@ logical function phys_grid_initialized ()
 
       ! otherwise, look around for an approximate match using lonlat
       ! column ordering
-      if ((lon_p(twingcol) .ne. twinlon) .or. &
-          (lat_p(twingcol) .ne. lat)) then
+      if ((lon_p(twingcol) /= twinlon) .or. &
+          (lat_p(twingcol) /= lat)) then
          twingcol_lonlat = clon_p_idx(twinlon)
          twingcol = lonlat_to_dyn_gcol_map(twingcol_lonlat)
          min_diff = abs(lat_p(twingcol) - lat)
@@ -4735,7 +4633,7 @@ logical function phys_grid_initialized ()
       twinproc = get_block_owner_d(jbtwin(1))
       twinsmp  = proc_smp_mapx(twinproc)
 !
-      if ((twinsmp .eq. smp) .and. &
+      if ((twinsmp == smp) .and. &
           (knuhcs(twingcol)%chunkid == -1)) then
          found = .true.
          twingcol_f = twingcol
@@ -4865,7 +4763,7 @@ logical function phys_grid_initialized ()
 ! Update extra chunk increment
       if (ntmp3_smp(smp) > 0) then
          ntmp3_smp(smp) = ntmp3_smp(smp) - 1
-         if (ntmp3_smp(smp) .eq. 0) then
+         if (ntmp3_smp(smp) == 0) then
             ntmp4_smp(smp) = ntmp4_smp(smp) - 1
          endif
       endif
