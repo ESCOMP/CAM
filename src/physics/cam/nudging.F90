@@ -1395,7 +1395,7 @@ contains
    use pio             ,only: PIO_BCAST_ERROR,PIO_INTERNAL_ERROR
    use pio             ,only: pio_closefile,pio_seterrorhandling,file_desc_t
    use ncdio_atm       ,only: infld
-   use cam_grid_support,only: cam_grid_id,cam_grid_get_dim_names
+   use cam_grid_support,only: cam_grid_id,cam_grid_get_dim_names,DLEN=>max_hcoordname_len
 
    ! Arguments
    !-------------
@@ -1403,12 +1403,12 @@ contains
 
    ! Local values
    !-------------
-   type(file_desc_t):: fileID
-   integer          :: nn,Nindex
-   logical          :: VARflag
-   integer          :: grid_id
-   character(len=8) :: dim1name,dim2name
-
+   type(file_desc_t)  :: fileID
+   integer            :: nn,Nindex
+   logical            :: VARflag
+   integer            :: grid_id
+   character(len=DLEN):: dim1name,dim2name
+   integer            :: err_handling
 
    real(r8),allocatable:: Tmp3D(:,:,:)
    real(r8),allocatable:: Tmp2D(:,:)
@@ -1436,13 +1436,11 @@ contains
    ! Open the file and get the fileID.
    !-------------------------------------
    call cam_pio_openfile(fileID,trim(anal_file),0)
-   call pio_seterrorhandling(fileID,PIO_BCAST_ERROR   )
-   call pio_seterrorhandling(fileID,PIO_INTERNAL_ERROR)
+   call pio_seterrorhandling(fileID,PIO_BCAST_ERROR,oldmethod=err_handling)
    if(masterproc) write(iulog,*)'PIO_OPEN: file=',trim(anal_file)
 
    grid_id = cam_grid_id('physgrid')
    call cam_grid_get_dim_names(grid_id,dim1name,dim2name)
-!   if(masterproc) write(iulog,*)'PIO: DIM1NAME=',dim1name,' DIM2NAME=',dim2name
 
    allocate(Tmp3D(pcols,pver,begchunk:endchunk))
    allocate(Tmp2D(pcols,begchunk:endchunk))
@@ -1452,32 +1450,51 @@ contains
    call infld('U',fileID,dim1name,'lev',dim2name,     &
               1,pcols,1,pver,begchunk,endchunk,Tmp3D, &
               VARflag,gridname='physgrid',timelevel=1 )
-   Nobs_U(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
-!   if(masterproc) write(iulog,*)'PIO: INFLD U done'
+   if(VARflag) then
+     Nobs_U(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
+   else
+     call endrun('Varibale "U" is missing in '//trim(anal_file))
+   endif
 
    call infld('V',fileID,dim1name,'lev',dim2name,     &
               1,pcols,1,pver,begchunk,endchunk,Tmp3D, &
               VARflag,gridname='physgrid',timelevel=1 )
-   Nobs_V(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
-!   if(masterproc) write(iulog,*)'PIO: INFLD V done'
+   if(VARflag) then
+     Nobs_V(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
+   else
+     call endrun('Varibale "V" is missing in '//trim(anal_file))
+   endif
 
    call infld('T',fileID,dim1name,'lev',dim2name,     &
               1,pcols,1,pver,begchunk,endchunk,Tmp3D, &
               VARflag,gridname='physgrid',timelevel=1 )
-   Nobs_T(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
-!   if(masterproc) write(iulog,*)'PIO: INFLD T done'
+   if(VARflag) then
+     Nobs_T(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
+   else
+     call endrun('Varibale "T" is missing in '//trim(anal_file))
+   endif
 
    call infld('Q',fileID,dim1name,'lev',dim2name,     &
               1,pcols,1,pver,begchunk,endchunk,Tmp3D, &
               VARflag,gridname='physgrid',timelevel=1 )
-   Nobs_Q(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
-!   if(masterproc) write(iulog,*)'PIO: INFLD Q done'
+   if(VARflag) then
+     Nobs_Q(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
+   else
+     call endrun('Varibale "Q" is missing in '//trim(anal_file))
+   endif
 
    call infld('PS',fileID,dim1name,dim2name,          &
               1,pcols,begchunk,endchunk,Tmp2D,        &
               VARflag,gridname='physgrid',timelevel=1 )
-   Nobs_PS(:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp2D(:,begchunk:endchunk)
-!   if(masterproc) write(iulog,*)'PIO: INFLD PS done'
+   if(VARflag) then
+     Nobs_PS(:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp2D(:,begchunk:endchunk)
+   else
+     call endrun('Varibale "PS" is missing in '//trim(anal_file))
+   endif
+
+   ! Restore old error handling
+   !----------------------------
+   call pio_seterrorhandling(fileID,err_handling)
 
    ! Close the analyses file
    !-----------------------
@@ -1505,7 +1522,7 @@ contains
    use pio             ,only: PIO_BCAST_ERROR,PIO_INTERNAL_ERROR
    use pio             ,only: pio_closefile,pio_seterrorhandling,file_desc_t
    use ncdio_atm       ,only: infld
-   use cam_grid_support,only: cam_grid_id,cam_grid_get_dim_names
+   use cam_grid_support,only: cam_grid_id,cam_grid_get_dim_names,DLEN=>max_hcoordname_len
 
    ! Arguments
    !-------------
@@ -1513,11 +1530,12 @@ contains
 
    ! Local values
    !-------------
-   type(file_desc_t):: fileID
-   integer          :: nn,Nindex
-   logical          :: VARflag
-   integer          :: grid_id
-   character(len=8) :: dim1name,dim2name
+   type(file_desc_t)  :: fileID
+   integer            :: nn,Nindex
+   logical            :: VARflag
+   integer            :: grid_id
+   character(len=DLEN):: dim1name,dim2name
+   integer            :: err_handling
 
    real(r8),allocatable:: Tmp3D(:,:,:)
    real(r8),allocatable:: Tmp2D(:,:)
@@ -1545,13 +1563,11 @@ contains
    ! Open the file and get the fileID.
    !-------------------------------------
    call cam_pio_openfile(fileID,trim(anal_file),0)
-   call pio_seterrorhandling(fileID,PIO_BCAST_ERROR   )
-   call pio_seterrorhandling(fileID,PIO_INTERNAL_ERROR)
+   call pio_seterrorhandling(fileID,PIO_BCAST_ERROR,oldmethod=err_handling)
    if(masterproc) write(iulog,*)'PIO_OPEN: file=',trim(anal_file)
 
    grid_id = cam_grid_id('physgrid')
    call cam_grid_get_dim_names(grid_id,dim1name,dim2name)
-!   if(masterproc) write(iulog,*)'PIO: DIM1NAME=',dim1name,' DIM2NAME=',dim2name
 
    allocate(Tmp3D(pcols,pver,begchunk:endchunk))
    allocate(Tmp2D(pcols,begchunk:endchunk))
@@ -1561,32 +1577,51 @@ contains
    call infld('U',fileID,dim1name,'lev',dim2name,     &
               1,pcols,1,pver,begchunk,endchunk,Tmp3D, &
               VARflag,gridname='physgrid',timelevel=1 )
-   Nobs_U(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
-!   if(masterproc) write(iulog,*)'PIO: INFLD U done'
+   if(VARflag) then
+     Nobs_U(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
+   else
+     call endrun('Varibale "U" is missing in '//trim(anal_file))
+   endif
 
    call infld('V',fileID,dim1name,'lev',dim2name,     &
               1,pcols,1,pver,begchunk,endchunk,Tmp3D, &
               VARflag,gridname='physgrid',timelevel=1 )
-   Nobs_V(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
-!   if(masterproc) write(iulog,*)'PIO: INFLD V done'
+   if(VARflag) then
+     Nobs_V(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
+   else
+     call endrun('Varibale "V" is missing in '//trim(anal_file))
+   endif
 
    call infld('T',fileID,dim1name,'lev',dim2name,     &
               1,pcols,1,pver,begchunk,endchunk,Tmp3D, &
               VARflag,gridname='physgrid',timelevel=1 )
-   Nobs_T(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
-!   if(masterproc) write(iulog,*)'PIO: INFLD T done'
+   if(VARflag) then
+     Nobs_T(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
+   else
+     call endrun('Varibale "T" is missing in '//trim(anal_file))
+   endif
 
    call infld('Q',fileID,dim1name,'lev',dim2name,     &
               1,pcols,1,pver,begchunk,endchunk,Tmp3D, &
               VARflag,gridname='physgrid',timelevel=1 )
-   Nobs_Q(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
-!   if(masterproc) write(iulog,*)'PIO: INFLD Q done'
+   if(VARflag) then
+     Nobs_Q(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
+   else
+     call endrun('Varibale "Q" is missing in '//trim(anal_file))
+   endif
 
    call infld('PS',fileID,dim1name,dim2name,          &
               1,pcols,begchunk,endchunk,Tmp2D,        &
               VARflag,gridname='physgrid',timelevel=1 )
-   Nobs_PS(:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp2D(:,begchunk:endchunk)
-!   if(masterproc) write(iulog,*)'PIO: INFLD PS done'
+   if(VARflag) then
+     Nobs_PS(:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp2D(:,begchunk:endchunk)
+   else
+     call endrun('Varibale "PS" is missing in '//trim(anal_file))
+   endif
+
+   ! Restore old error handling
+   !----------------------------
+   call pio_seterrorhandling(fileID,err_handling)
 
    ! Close the analyses file
    !-----------------------
@@ -1614,7 +1649,7 @@ contains
    use pio             ,only: PIO_BCAST_ERROR,PIO_INTERNAL_ERROR
    use pio             ,only: pio_closefile,pio_seterrorhandling,file_desc_t
    use ncdio_atm       ,only: infld
-   use cam_grid_support,only: cam_grid_id,cam_grid_get_dim_names
+   use cam_grid_support,only: cam_grid_id,cam_grid_get_dim_names,DLEN=>max_hcoordname_len
 
    ! Arguments
    !-------------
@@ -1622,11 +1657,12 @@ contains
 
    ! Local values
    !-------------
-   type(file_desc_t):: fileID
-   integer          :: nn,Nindex
-   logical          :: VARflag
-   integer          :: grid_id
-   character(len=8) :: dim1name,dim2name
+   type(file_desc_t)  :: fileID
+   integer            :: nn,Nindex
+   logical            :: VARflag
+   integer            :: grid_id
+   character(len=DLEN):: dim1name,dim2name
+   integer            :: err_handling
 
    real(r8),allocatable:: Tmp3D(:,:,:)
    real(r8),allocatable:: Tmp2D(:,:)
@@ -1654,13 +1690,11 @@ contains
    ! Open the file and get the fileID.
    !-------------------------------------
    call cam_pio_openfile(fileID,trim(anal_file),0)
-   call pio_seterrorhandling(fileID,PIO_BCAST_ERROR   )
-   call pio_seterrorhandling(fileID,PIO_INTERNAL_ERROR)
+   call pio_seterrorhandling(fileID,PIO_BCAST_ERROR,oldmethod=err_handling)
    if(masterproc) write(iulog,*)'PIO_OPEN: file=',trim(anal_file)
 
    grid_id = cam_grid_id('physgrid')
    call cam_grid_get_dim_names(grid_id,dim1name,dim2name)
-!   if(masterproc) write(iulog,*)'PIO: DIM1NAME=',dim1name,' DIM2NAME=',dim2name
 
    allocate(Tmp3D(pcols,pver,begchunk:endchunk))
    allocate(Tmp2D(pcols,begchunk:endchunk))
@@ -1670,32 +1704,51 @@ contains
    call infld('U',fileID,dim1name,'lev',dim2name,     &
               1,pcols,1,pver,begchunk,endchunk,Tmp3D, &
               VARflag,gridname='physgrid',timelevel=1 )
-   Nobs_U(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
-!   if(masterproc) write(iulog,*)'PIO: INFLD U done'
+   if(VARflag) then
+     Nobs_U(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
+   else
+     call endrun('Varibale "U" is missing in '//trim(anal_file))
+   endif
 
    call infld('V',fileID,dim1name,'lev',dim2name,     &
               1,pcols,1,pver,begchunk,endchunk,Tmp3D, &
               VARflag,gridname='physgrid',timelevel=1 )
-   Nobs_V(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
-!   if(masterproc) write(iulog,*)'PIO: INFLD V done'
+   if(VARflag) then
+     Nobs_V(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
+   else
+     call endrun('Varibale "V" is missing in '//trim(anal_file))
+   endif
 
    call infld('T',fileID,dim1name,'lev',dim2name,     &
               1,pcols,1,pver,begchunk,endchunk,Tmp3D, &
               VARflag,gridname='physgrid',timelevel=1 )
-   Nobs_T(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
-!   if(masterproc) write(iulog,*)'PIO: INFLD T done'
+   if(VARflag) then
+     Nobs_T(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
+   else
+     call endrun('Varibale "T" is missing in '//trim(anal_file))
+   endif
 
    call infld('Q',fileID,dim1name,'lev',dim2name,     &
               1,pcols,1,pver,begchunk,endchunk,Tmp3D, &
               VARflag,gridname='physgrid',timelevel=1 )
-   Nobs_Q(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
-!   if(masterproc) write(iulog,*)'PIO: INFLD Q done'
+   if(VARflag) then
+     Nobs_Q(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
+   else
+     call endrun('Varibale "Q" is missing in '//trim(anal_file))
+   endif
 
    call infld('PS',fileID,dim1name,dim2name,          &
               1,pcols,begchunk,endchunk,Tmp2D,        &
               VARflag,gridname='physgrid',timelevel=1 )
-   Nobs_PS(:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp2D(:,begchunk:endchunk)
-!   if(masterproc) write(iulog,*)'PIO: INFLD PS done'
+   if(VARflag) then
+     Nobs_PS(:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp2D(:,begchunk:endchunk)
+   else
+     call endrun('Varibale "PS" is missing in '//trim(anal_file))
+   endif
+
+   ! Restore old error handling
+   !----------------------------
+   call pio_seterrorhandling(fileID,err_handling)
 
    ! Close the analyses file
    !-----------------------
