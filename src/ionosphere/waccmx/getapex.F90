@@ -6,7 +6,7 @@ module getapex
    use shr_kind_mod, only : r8 => shr_kind_r8
    use cam_logfile, only: iulog
    use cam_abortutils, only: endrun
-   use edyn_geogrid, only: nlon,nlonp1,ylatg,ylong,dlong,&
+   use edyn_geogrid, only: nlon,nlonp1,ylatg,ylong, &
                               jspole,jnpole
    use edyn_maggrid, only: nmlon,nmlonp1,nmlat,ylatm,ylonm,dlonm
 
@@ -24,13 +24,6 @@ module getapex
    public :: gdlatdeg, gdlondeg
    public :: rjac
 
-   integer ::             &
-        ig(nmlonp1,nmlat),   & ! geog lon grid containing each geomag point
-        jg(nmlonp1,nmlat)      ! geog lat grid containing each geomag point
-
-   real(r8) ::              &
-        wt(4,nmlonp1,nmlat)      ! interpolation weights for geo2mag
-
    real(r8),dimension(nmlonp1,nmlat) :: & ! geo lat,lon coords on mag grid
         gdlatdeg,   & ! geographic latitude of each magnetic grid point (deg)
         gdlondeg      ! geographic longitude of each magnetic grid point (deg)
@@ -38,28 +31,20 @@ module getapex
 ! Variables on geographic grid needed by other modules must
 ! be allocated dynamically to be grid-independent (sub alloc_apex):
 !
-   integer,allocatable :: & ! (nlonp1,jspole:jnpole))
-        im(:,:),             & ! geomag lon grid containing each geog point
-        jm(:,:)                ! geomag lat grid containing each geog point
+   real(r8),allocatable :: & ! (nlonp1,jspole:jnpole,3,2)
+        dvec(:,:,:,:)        ! vectors from apxmall
 
-   real(r8),allocatable ::  & ! (nlonp1,jspole:jnpole)
-        dim(:,:),              & ! fraction in lon for grid interp
-        djm(:,:)                 ! fraction in lat for grid interp
+   real(r8),allocatable :: & ! (nlonp1,jspole:jnpole)
+        dddarr(:,:),       & ! from apxmall
+        be3arr(:,:)          ! from apxmall
 
-   real(r8),allocatable ::  & ! (nlonp1,jspole:jnpole,3,2)
-        dvec(:,:,:,:)            ! vectors from apxmall
-
-   real(r8),allocatable ::  & ! (nlonp1,jspole:jnpole)
-        dddarr(:,:),           & ! from apxmall
-        be3arr(:,:)              ! from apxmall
-
-   real(r8),allocatable ::  & ! (nlonp1,jspole:jnpole)
-        alatm(:,:),            & ! geomagnetic latitude at each geographic grid point (radians)
-        alonm(:,:),            & ! geomagnetic longitude at each geographic grid point (radians)
-        xb(:,:),               & ! northward component of magnetic field
-        yb(:,:),               & ! eastward component of magnetic field
-        zb(:,:),               & ! downward component of magnetic field (gauss)
-        bmod(:,:)                ! magnitude of magnetic field (gauss)
+   real(r8),allocatable :: & ! (nlonp1,jspole:jnpole)
+        alatm(:,:),        & ! geomagnetic latitude at each geographic grid point (radians)
+        alonm(:,:),        & ! geomagnetic longitude at each geographic grid point (radians)
+        xb(:,:),           & ! northward component of magnetic field
+        yb(:,:),           & ! eastward component of magnetic field
+        zb(:,:),           & ! downward component of magnetic field (gauss)
+        bmod(:,:)            ! magnitude of magnetic field (gauss)
 !
 ! rjac: scaled derivatives of geomagnetic coords wrt geographic coordinates.
 ! rjac(1,1) = cos(thetas)/cos(theta)*d(lamdas)/d(lamda)
@@ -89,10 +74,9 @@ contains
 
       !
       ! Local:
-      integer            :: i, j, ier, jjm, jjg
-      real(r8)           :: r8tmp
+      integer            :: i, j, ier
       real(r8)           :: rekm, h0km, alt, hr, ror03, glat, glon
-      real(r8)           :: xlonmi, qdlon, qdlat, gdlon, gdlat, xlongi, frki, frkj
+      real(r8)           :: qdlon, qdlat, gdlon, gdlat
       integer, parameter :: nalt=2
 
       !
@@ -133,7 +117,7 @@ contains
                  b,bhat,bmag,si,                          & !Mag Fld
                  alon,                                    & !Apx Lon
                  xlatm,vmp,w,d,be3,sim,d1,d2,d3,e1,e2,e3, & !Mod Apx
-                 xlatqd,f,f1,f2, ier)                      !Qsi-Dpl
+                 xlatqd,f,f1,f2, ier)                       !Qsi-Dpl
 
             if (ier /= 0) then
                call endrun('get_apex: apxmall error')
@@ -153,28 +137,6 @@ contains
             !
             ! Set up parameters for magnetic to geographic interpolation.
             !
-            xlonmi = (alonm(i,j) - ylonm(1))/dlonm
-            r8tmp = real(nmlon, r8)
-            if (xlonmi < 0._r8) then
-               xlonmi = xlonmi + r8tmp
-            end if
-            im(i,j) = xlonmi
-            r8tmp = real(im(i,j), r8)
-            dim(i,j) = xlonmi - r8tmp
-            im(i,j) = im(i,j) + 1
-            if (im(i,j) >= nmlonp1) then
-               im(i,j) = im(i,j) - nmlon
-            end if
-            alatm(i,j) = min(alatm(i,j), ylatm(nmlat))
-            do jjm = 2, nmlat
-               if (alatm(i,j) > ylatm(jjm)) then
-                  cycle
-               end if
-               jm(i,j) = jjm - 1
-               djm(i,j) = (alatm(i,j) - ylatm(jm(i,j))) /  &
-                    (ylatm(jjm) - ylatm(jm(i,j)))
-               exit
-            end do
             dvec(i,j,1,1) = d1(1)
             dvec(i,j,2,1) = d1(2)
             dvec(i,j,3,1) = d1(3)
@@ -205,37 +167,6 @@ contains
             end if
             gdlat = gdlat * dtr
             gdlon = gdlon * dtr
-            xlongi = (gdlon - ylong(1)) / dlong
-            r8tmp = real(nlon, r8)
-            if (xlongi < 0._r8) then
-               xlongi = xlongi + r8tmp
-            end if
-            ig(i,j) = xlongi
-            r8tmp = real(ig(i,j), r8)
-            frki = xlongi - r8tmp
-            ig(i,j) = ig(i,j) + 1
-            if (ig(i,j) >= nlonp1) then
-               ig(i,j) = ig(i,j) - nlon
-            end if
-            gdlat = min(gdlat, ylatg(jnpole))
-            do jjg = 1, jnpole
-               if (gdlat > ylatg(jjg)) then
-                  cycle
-               end if
-               jg(i,j) = jjg - 1
-               frkj = (gdlat - ylatg(jg(i,j))) / (ylatg(jjg) - ylatg(jg(i,j)))
-               !
-               ! 99/2/25b Add one to JG to account for the fact that AG in geo2mag has
-               !  a second (J) index starting at 1, while the second index of the
-               !  array in the calling arguments begins at 0.
-               !
-               jg(i,j) = jg(i,j) + 1
-               exit
-            enddo
-            wt(1,i,j) = (1._r8 - frki)*(1._r8 - frkj)
-            wt(2,i,j) =          frki *(1._r8 - frkj)
-            wt(3,i,j) =          frki *frkj
-            wt(4,i,j) = (1._r8 - frki)*frkj
             !
             ! gdlatdeg,gdlondeg will be coordY,coordX of the mag grid for ESMF
             ! regridding (see edyn_esmf.F)
@@ -335,10 +266,6 @@ contains
 !------------------------------------------------------------------------------------------
 ! Do allocations, checking if previously allocated in case of year boundary crossing
 !------------------------------------------------------------------------------------------
-    if (.not.allocated(im)) allocate(im (nlonp1,jspole:jnpole))
-    if (.not.allocated(jm)) allocate(jm (nlonp1,jspole:jnpole))
-    if (.not.allocated(dim)) allocate(dim(nlonp1,jspole:jnpole))
-    if (.not.allocated(djm)) allocate(djm(nlonp1,jspole:jnpole))
 
     if (.not.allocated(xb)) allocate(xb   (nlonp1,jspole:jnpole))
     if (.not.allocated(yb)) allocate(yb   (nlonp1,jspole:jnpole))
