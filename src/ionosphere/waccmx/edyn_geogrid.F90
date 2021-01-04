@@ -36,8 +36,6 @@ module edyn_geogrid
     nlonp2,  & ! nlon+2
     nlatp1     ! nlat+1
 
-  real(r8) :: dlatg, dlong
-  public   :: dlong
   real(r8), public, protected :: dphi
   real(r8), public, protected :: dlamda
 !
@@ -222,15 +220,13 @@ contains
       !
       allocate(ylatg(nlat))   ! waccm grid includes poles
       allocate(ylong(nlonp1)) ! single periodic point
-      dlatg = pi / real(nlat,r8)
-      dlong = 2._r8*pi / real(nlon,r8)
       ylatg(1)    = -pi/2._r8+eps ! south pole
       ylatg(nlat) =  pi/2._r8-eps ! north pole
       do latind = 2, nlat-1
-         ylatg(latind) = -0.5_r8*(pi-dlatg)+real(latind-1,r8)*dlatg
+         ylatg(latind) = -0.5_r8*(pi-dphi)+real(latind-1,r8)*dphi
       end do
       do lonind = 1, nlonp1
-         ylong(lonind) = -pi+real(lonind-1,r8)*dlong
+         ylong(lonind) = -pi+real(lonind-1,r8)*dlamda
       end do
       !
       ! Calculate cosine of latitude

@@ -405,8 +405,8 @@ contains
     if (istat /= 0) call endrun('alloc_edyn: zpotm3d')
     zpotm3d = finit
     allocate(zpot_mag(mlon0:mlon1,mlat0:mlat1,mlev0:mlev1),stat=istat)
-    if (istat /= 0) call endrun('alloc_edyn: zpotm3d')
-    zpotm3d = finit
+    if (istat /= 0) call endrun('alloc_edyn: zpot_mag')
+    zpot_mag = finit
 !
 ! Fields at mag equator (subdomain longitudes and full column):
 !

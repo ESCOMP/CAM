@@ -97,17 +97,19 @@ module edyn_esmf
 
 contains
 
+   !-----------------------------------------------------------------------
+   !-----------------------------------------------------------------------
    subroutine edyn_esmf_chkerr(subname, routine, rc)
+      use shr_kind_mod, only: shr_kind_cl
 
       character(len=*), intent(in) :: subname
       character(len=*), intent(in) :: routine
       integer,          intent(in) :: rc
 
-      character(len=512)           :: errmsg
+      character(len=shr_kind_cl) :: errmsg
 
       if (rc /= ESMF_SUCCESS) then
-         write(errmsg, '(4a,i0)') subname, ': Error return from ',            &
-              trim(routine), ', rc = ', rc
+         write(errmsg, '(4a,i0)') trim(subname), ': Error return from ', trim(routine), ', rc = ', rc
          if (masterproc) then
             write(iulog, '(2a)') 'ERROR: ', trim(errmsg)
          end if
@@ -271,12 +273,13 @@ contains
          !
          ! Get 3d bounds of source geo field:
          !
-         call ESMF_FieldGet(geo_3dfld, localDe=0, farrayPtr=fptr,               &
-              computationalLBound=lbnd_srcgeo,                                   &
+         call ESMF_FieldGet(geo_3dfld, localDe=0, farrayPtr=fptr,     &
+              computationalLBound=lbnd_srcgeo,                        &
               computationalUBound=ubnd_srcgeo, rc=rc)
+         call edyn_esmf_chkerr(subname, 'ESMF_FieldGet, geo_3dfld', rc)
 
-         write(iulog,"(2a,i4,2(', ',i4),a,i4,2(', ',i4),a)") subname,         &
-              ': Bounds of source geo field: lbnd_srcgeo = (',                &
+         write(iulog,"(2a,i4,2(', ',i4),a,i4,2(', ',i4),a)") subname, &
+              ': Bounds of source geo field: lbnd_srcgeo = (',        &
               lbnd_srcgeo, '), ubnd_srcgeo = (', ubnd_srcgeo,')'
       end if
 
@@ -284,42 +287,43 @@ contains
          !
          ! Get 3d bounds of destination mag field:
          !
-         call ESMF_FieldGet(mag_des_3dfld, localDe=0, farrayPtr=fptr,                  &
-              computationalLBound=lbnd_destmag,                                  &
+         call ESMF_FieldGet(mag_des_3dfld, localDe=0, farrayPtr=fptr,     &
+              computationalLBound=lbnd_destmag,                           &
               computationalUBound=ubnd_destmag, rc=rc)
+         call edyn_esmf_chkerr(subname, 'ESMF_FieldGet, mag_des_3dfld', rc)
 
-         write(iulog,"(2a,3i4,a,3i4,' gmlon=',2f9.3)") subname,               &
-              ': Bounds of destination mag field: lbnd_destmag = ',           &
+         write(iulog,"(2a,3i4,a,3i4,' gmlon=',2f9.3)") subname,           &
+              ': Bounds of destination mag field: lbnd_destmag = ',       &
               lbnd_destmag, ' ubnd_destmag = ', ubnd_destmag
-         write(iulog,"(a,': lon bnd_destmag =',2i4,' gmlon = ',2f9.3)")       &
-              subname, lbnd_destmag(1), ubnd_destmag(1),                      &
+         write(iulog,"(a,': lon bnd_destmag =',2i4,' gmlon = ',2f9.3)")   &
+              subname, lbnd_destmag(1), ubnd_destmag(1),                  &
               gmlon(lbnd_destmag(1)), gmlon(ubnd_destmag(1))
-         write(iulog,"(a,': lat bnd_destmag = ',2i4,' gmlat = ',2f9.3)")      &
-              subname, lbnd_destmag(2), ubnd_destmag(2),                      &
+         write(iulog,"(a,': lat bnd_destmag = ',2i4,' gmlat = ',2f9.3)")  &
+              subname, lbnd_destmag(2), ubnd_destmag(2),                  &
               gmlat(lbnd_destmag(2)), gmlat(ubnd_destmag(2))
          !
          ! Get 3d bounds of source mag field:
          !
-         call ESMF_FieldGet(mag_src_3dfld, localDe=0, farrayPtr=fptr,                &
-              computationalLBound=lbnd_srcmag,                                   &
+         call ESMF_FieldGet(mag_src_3dfld, localDe=0, farrayPtr=fptr,     &
+              computationalLBound=lbnd_srcmag,                            &
               computationalUBound=ubnd_srcmag, rc=rc)
-         call edyn_esmf_chkerr(subname, 'ESMF_FieldGet, mag_phi3d', rc)
+         call edyn_esmf_chkerr(subname, 'ESMF_FieldGet, mag_src_3dfld', rc)
 
-         write(iulog,"(a,2(a,i4),a)") subname, ': lon srcmag bounds = (',     &
+         write(iulog,"(a,2(a,i4),a)") subname, ': lon srcmag bounds = (', &
               lbnd_srcmag(1), ', ', ubnd_srcmag(1), ')'
-         write(iulog,"(a,2(a,i4),a)") subname, ': lat srcmag bounds = (',     &
+         write(iulog,"(a,2(a,i4),a)") subname, ': lat srcmag bounds = (', &
               lbnd_srcmag(2), ', ', ubnd_srcmag(2), ')'
          !
          ! Get 3d bounds of destination geo field:
          !
-         call ESMF_FieldGet(geo_3dfld, localDe=0, farrayPtr=fptr,               &
-              computationalLBound=lbnd_destgeo,                                  &
+         call ESMF_FieldGet(geo_3dfld, localDe=0, farrayPtr=fptr,         &
+              computationalLBound=lbnd_destgeo,                           &
               computationalUBound=ubnd_destgeo, rc=rc)
-         call edyn_esmf_chkerr(subname, 'ESMF_FieldGet, phys_phi3d', rc)
+         call edyn_esmf_chkerr(subname, 'ESMF_FieldGet, geo_3dfld', rc)
 
-         write(iulog,"(a,': lon bnd_destgeo=',2i4)") subname,                 &
+         write(iulog,"(a,': lon bnd_destgeo=',2i4)") subname,             &
               lbnd_destgeo(1),ubnd_destgeo(1)
-         write(iulog,"(a,': lat bnd_destgeo=',2i4)") subname,                 &
+         write(iulog,"(a,': lat bnd_destgeo=',2i4)") subname,             &
               lbnd_destgeo(2),ubnd_destgeo(2)
       end if
 
@@ -361,18 +365,9 @@ contains
            factorList=factorList, srcTermProcessing=smm_srctermproc,          &
            pipelineDepth=smm_pipelinedep, rc=rc)
       call edyn_esmf_chkerr(subname, 'ESMF_FieldRegridStore for 3D phys2mag', rc)
-
       !
-      ! Save route handle and get esmf indices and weights for mag2phys:
-      ! (this overwrites factorIndexList and factorList from above)
-      !
-      ! These calls will leave *.vtk info files in execdir:
-      !   call ESMF_GridWriteVTK(mag_src_grid, &
-      !     staggerloc=ESMF_STAGGERLOC_CENTER, filename="magSrcGrid",rc=rc)
-      !   call ESMF_GridWriteVTK(geo_des_grid, &
-      !     staggerloc=ESMF_STAGGERLOC_CENTER, filename="geoDesGrid",rc=rc)
-
       ! Compute and store route handle for mag2phys 2d (amie) fields:
+      !
       call ESMF_FieldRegridStore(srcField=mag_src_2dfld, dstField=phys_2dfld,&
            regridMethod=ESMF_REGRIDMETHOD_BILINEAR,                           &
            polemethod=ESMF_POLEMETHOD_ALLAVG,                                 &

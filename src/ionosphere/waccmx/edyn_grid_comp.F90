@@ -1,9 +1,9 @@
 !-------------------------------------------------------------------------------
-! This treats the physics mesh as a ESMF gridded component and localizes ESMF
-! regridding operations to allow for multiple instances of CAM.
+! This localizes ESMF regridding operations to allow for multiple instances of
+! CAM.
 !-------------------------------------------------------------------------------
 module edyn_grid_comp
-   use shr_kind_mod,   only: r8 => shr_kind_r8
+   use shr_kind_mod,   only: r8 => shr_kind_r8, cs=>shr_kind_cs
    use ESMF,           only: ESMF_KIND_I4, ESMF_Mesh, ESMF_DistGrid
    use ESMF,           only: ESMF_State, ESMF_Clock, ESMF_GridComp
    use ppgrid,         only: pcols
@@ -102,7 +102,7 @@ CONTAINS
       real(r8)                :: lats(pcols)                       ! array of chunk latitudes
       real(r8)                :: lons(pcols)                       ! array of chunk longitude
       integer :: i, c, n
-      character(len=80)       :: tempc1,tempc2
+      character(len=cs)       :: tempc1,tempc2
       character(len=300)      :: errstr
 
       real(r8), parameter :: abstol =  1.e-6_r8
@@ -223,7 +223,7 @@ CONTAINS
       ! Local variables
       type(ESMF_Array)                    :: run_type
       integer                             :: cols, cole, blksize
-      character(len=64)                   :: errmsg
+      character(len=cs)                   :: errmsg
       character(len=*), parameter         :: subname = 'edyn_gcomp_run'
 
       if (do_run == 1) then

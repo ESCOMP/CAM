@@ -1,5 +1,5 @@
 module edyn_mpi
-   use shr_kind_mod,   only: r8 => shr_kind_r8
+   use shr_kind_mod,   only: r8 => shr_kind_r8, cl=>shr_kind_cl
    use cam_logfile,    only: iulog
    use cam_abortutils, only: endrun
 
@@ -157,7 +157,7 @@ contains
       !
       ! Initialize MPI, and allocate task table.
       !
-      integer, intent(in) :: mpi_comm 
+      integer, intent(in) :: mpi_comm
       integer, intent(in) :: ionos_npes
       integer, intent(in) :: nlon_geo_in
       integer, intent(in) :: nlat_geo_in
@@ -165,6 +165,7 @@ contains
 
       integer :: ierr
       integer :: color, npes
+      character(len=cl) :: errmsg
 
       nlon_geo = nlon_geo_in
       nlat_geo = nlat_geo_in
@@ -181,8 +182,9 @@ contains
       !
       allocate(tasks(0:npes-1), stat=ierr)
       if (ierr /= 0) then
-         write(iulog,"('>>> mp_init: error allocating tasks(',i3,')')") ntask
-         call endrun('edyn_mpi mp_init')
+         write(errmsg,"('>>> mp_init: error allocating tasks(',i3,')')") ntask
+         write(iulog,*) trim(errmsg)
+         call endrun(errmsg)
       endif
    end subroutine mp_init
    !-----------------------------------------------------------------------
@@ -303,7 +305,7 @@ contains
             endif
          enddo
       endif
-   
+
       !
       ! Create sub-communicators for each task row (used by mp_geopole_3d):
       !
@@ -330,7 +332,7 @@ contains
       !
       ! Local:
       integer                     :: i, j, n, irank, ier, tidcol, nj, ni, ncells
-      character(len=256)          :: errmsg
+      character(len=cl)          :: errmsg
       character(len=*), parameter :: subname = 'mp_distribute_mag'
       !
       ! Number of tasks in mag lon,lat same as geo grid:
@@ -477,7 +479,7 @@ contains
    subroutine mp_exchange_tasks(mpi_comm, iprint, gmlat)
       !
       ! Args:
-      integer,  intent(in) :: mpi_comm 
+      integer,  intent(in) :: mpi_comm
       integer,  intent(in) :: iprint
       real(r8), intent(in) :: gmlat(:)
       !
@@ -492,9 +494,9 @@ contains
            itasks_send(:,:), & ! send buffer
            itasks_recv(:,:)    ! send buffer
       integer :: npes
-      
+
       call mpi_comm_size(mpi_comm, npes, ier)
-      
+
       !
       ! Pack tasks(mytid) into itasks_send:
       allocate(itasks_send(len_task_type,0:npes-1),stat=ier)
@@ -1995,7 +1997,7 @@ contains
          return ! subdomain does not include poles
       end if
 
-      rnlon = dble(nlon_geo)
+      rnlon = real(nlon_geo,kind=r8)
       allocate(ptr(1)%ptr(k0:k1,nlon_geo,j0:j1))
       !
       ! Define subdomains in global longitude dimension of ptmp:
@@ -2025,7 +2027,6 @@ contains
                enddo
                fave(k) = fave(k) / rnlon
             enddo
-            !if (debug.and.masterproc) write(iulog,"('setpoles: spole ave(k0:k1)=',/,(8es12.4))") fave
             !
             ! Define south pole in ptmp on subdomains for each tasks in my latitude row
             ! (I am SW corner task):

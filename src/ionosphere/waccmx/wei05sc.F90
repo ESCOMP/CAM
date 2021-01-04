@@ -365,6 +365,8 @@ contains
       integer :: rd_csize, rd_n_schfits, rd_n_alschfits
       integer :: id
       character(len=shr_kind_cl) :: filen
+      character(len=shr_kind_cl) :: errmsg
+      character(len=*), parameter :: prefix = 'read_wei05_ncfile: '
       type(file_desc_t) :: ncid
       !
       ! Open netcdf file for reading:
@@ -382,19 +384,19 @@ contains
       istat = pio_inq_dimid(ncid, 'na', id)
       istat = pio_inquire_dimension(ncid, id, len=rd_na)
       if (rd_na /= na) then
-         write(iulog,"(/,a,i4,' na = ',i4)")                                  &
-              '>>> wei05sc: rd_na /= na: rd_na = ', rd_na, na
-         call endrun('wei05sc: rd_na /= na')
+         write(errmsg,"(a,i4,a,i4)") prefix//'rd_na /= na: rd_na = ', rd_na,' na = ', na
+         write(iulog,*) trim(errmsg)
+         call endrun(errmsg)
       end if
       !
       ! nb=7
       !
       istat = pio_inq_dimid(ncid, 'nb', id)
       istat = pio_inquire_dimension(ncid, id, len=rd_nb)
-      if (rd_na /= na) then
-         write(iulog,"(/,a,i4,' nb = ',i4)")                                  &
-              '>>> wei05sc: rd_nb /= nb: rd_nb = ', rd_nb, nb
-         call endrun('wei05sc: rd_nb /= nb: rd_nb')
+      if (rd_nb /= nb) then
+         write(errmsg,"(a,i4,a,i4)") prefix//'rd_nb /= nb: rd_nb = ', rd_nb,' nb = ', nb
+         write(iulog,*) trim(errmsg)
+         call endrun(errmsg)
       end if
       !
       ! nex=2
@@ -402,9 +404,9 @@ contains
       istat = pio_inq_dimid(ncid, 'nex', id)
       istat = pio_inquire_dimension(ncid, id, len=rd_nex)
       if (rd_nex /= nex) then
-         write(iulog,"(/,a,i4,' nex = ',i4)")                                 &
-              '>>> wei05sc: rd_nex /= nex: rd_nex=', rd_nex, nex
-         call endrun('wei05sc: rd_nex /= nex')
+         write(errmsg,"(a,i4,a,i4)") prefix//'rd_nex /= nex rd_nex = ', rd_nex,' nex = ', nex
+         write(iulog,*) trim(errmsg)
+         call endrun(errmsg)
       end if
       !
       ! n1_scha=19
@@ -412,10 +414,9 @@ contains
       istat = pio_inq_dimid(ncid, 'n1_scha', id)
       istat = pio_inquire_dimension(ncid, id, len=rd_n1_scha)
       if (rd_n1_scha /= n1_scha) then
-         write(iulog,"(/,a,i4,' n1_scha = ',i4)")                             &
-              '>>> wei05sc: rd_n1_scha /= n1_scha: rd_n1_scha = ',            &
-              rd_n1_scha, n1_scha
-         call endrun('wei05sc: rd_n1_scha /= n1_scha')
+         write(errmsg,"(a,i4,a,i4)") prefix//'rd_n1_scha /= n1_scha rd_n1_scha = ', rd_n1_scha,' n1_scha = ', n1_scha
+         write(iulog,*) trim(errmsg)
+         call endrun(errmsg)
       end if
       !
       ! n2_scha=7
@@ -423,10 +424,9 @@ contains
       istat = pio_inq_dimid(ncid, 'n2_scha', id)
       istat = pio_inquire_dimension(ncid, id, len=rd_n2_scha)
       if (rd_n2_scha /= n2_scha) then
-         write(iulog,"(/,a,i4,' n2_scha = ',i4)")                             &
-              '>>> wei05sc: rd_n2_scha /= n2_scha: rd_n2_scha=',              &
-              rd_n2_scha, n2_scha
-         call endrun('wei05sc: rd_n2_scha /= n2_scha')
+         write(errmsg,"(a,i4,a,i4)") prefix//'rd_n2_scha /= n2_scha rd_n2_scha = ', rd_n2_scha,' n2_scha = ', n2_scha
+         write(iulog,*) trim(errmsg)
+         call endrun(errmsg)
       end if
       !
       ! n3_scha=68
@@ -434,10 +434,9 @@ contains
       istat = pio_inq_dimid(ncid, 'n3_scha', id)
       istat = pio_inquire_dimension(ncid, id, len=rd_n3_scha)
       if (rd_n3_scha /= n3_scha) then
-         write(6,"(/,a,i4,' n3_scha = ',i4)")                                 &
-              '>>> wei05sc: rd_n3_scha /= n3_scha: rd_n3_scha=',              &
-              rd_n3_scha, n3_scha
-         call endrun('wei05sc: rd_n3_scha /= n3_scha')
+         write(errmsg,"(a,i4,a,i4)") prefix//'rd_n3_scha /= n3_scha rd_n3_scha = ', rd_n3_scha,' n3_scha = ', n3_scha
+         write(iulog,*) trim(errmsg)
+         call endrun(errmsg)
       end if
       !
       ! csize=28
@@ -445,9 +444,9 @@ contains
       istat = pio_inq_dimid(ncid, 'csize', id)
       istat = pio_inquire_dimension(ncid, id, len=rd_csize)
       if (rd_csize /= csize) then
-         write(iulog,"(/,a,i4,' csize = ',i4)")                               &
-              '>>> wei05sc: rd_csize /= csize: rd_csize = ', rd_csize, csize
-         call endrun('wei05sc: rd_csize /= csize')
+         write(errmsg,"(a,i4,a,i4)") prefix//'rd_csize /= csize rd_csize = ', rd_csize,' csize = ', csize
+         write(iulog,*) trim(errmsg)
+         call endrun(errmsg)
       end if
       !
       ! n_schfits=15
@@ -455,10 +454,9 @@ contains
       istat = pio_inq_dimid(ncid, 'n_schfits', id)
       istat = pio_inquire_dimension(ncid, id, len=rd_n_schfits)
       if (rd_n_schfits /= n_schfits) then
-         write(iulog,"(/,a,i4,' n_schfits = ',i4)")                           &
-              '>>> wei05sc: rd_n_schfits /= n_schfits: rd_n_schfits = ',      &
-              rd_n_schfits, n_schfits
-         call endrun('wei05sc: rd_n_schfits /= n_schfits')
+         write(errmsg,"(a,i4,a,i4)") prefix//'rd_n_schfits /= n_schfits rd_n_schfits = ', rd_n_schfits,' n_schfits = ', n_schfits
+         write(iulog,*) trim(errmsg)
+         call endrun(errmsg)
       end if
       !
       ! n_alschfits=18
@@ -466,10 +464,9 @@ contains
       istat = pio_inq_dimid(ncid, 'n_alschfits', id)
       istat = pio_inquire_dimension(ncid, id, len=rd_n_alschfits)
       if (rd_n_alschfits /= n_alschfits) then
-         write(iulog,"(/,a,i4,' n_alschfits = ',i4)")                         &
-              '>>> wei05sc: rd_n_alschfits /= n_alschfits: rd_n_alschfits= ', &
-              rd_n_alschfits, n_alschfits
-         call endrun('wei05sc: rd_n_alschfits /= n_alschfits')
+         write(errmsg,"(a,i4,a,i4)") prefix//'rd_n_alschfits /= n_alschfits rd_n_alschfits = ', rd_n_alschfits,' n_alschfits = ', n_alschfits
+         write(iulog,*) trim(errmsg)
+         call endrun(errmsg)
       end if
       !
       ! integer :: maxk_scha, maxm_scha, maxl_pot, maxm_pot
@@ -1025,6 +1022,7 @@ contains
   real(r8) :: cth(mxtablesize)
   real(r8),save :: prevth0=1.e36_r8
   integer,save :: tablesize
+  character(len=shr_kind_cl) :: errmsg
 !
   scplm = 0._r8
   skip = 0 ! Added by B.Foster, 4/23/14
@@ -1032,9 +1030,10 @@ contains
   if (prevth0 /= th0) then
     tablesize = 3*nint(th0)
     if (tablesize > mxtablesize) then
-      write(iulog,"('>>> tablesize > mxtablesize: tablesize=',i8,' mxtablesize=',i8,' th0=',e12.4)") &
-        tablesize,mxtablesize,th0
-      call endrun('tablesize')
+      write(errmsg,"('>>> tablesize > mxtablesize: tablesize=',i8,' mxtablesize=',i8,' th0=',e12.4)") &
+           tablesize,mxtablesize,th0
+      write(iulog,*) trim(errmsg)
+      call endrun(errmsg)
     end if
     do i=1,tablesize
       colattable(i) = real(i-1, r8) * (th0 / real(tablesize-1, r8))
