@@ -830,16 +830,16 @@ contains
     !==================================================================
 
 #if defined( SPMD )
-    CALL MPIBCAST( nTracers,    1,                               MPIINT,  0, MPICOM )
-    CALL MPIBCAST( tracerNames, LEN(tracerNames(1))*nTracersMax, MPICHAR, 0, MPICOM )
-    CALL MPIBCAST( nSls,        1,                               MPIINT,  0, MPICOM )
-    CALL MPIBCAST( slsNames,    LEN(slsNames(1))*nSlsMax,        MPICHAR, 0, MPICOM )
+    CALL MPIBCAST ( nTracers,    1,                               MPIINT,  0, MPICOM )
+    CALL MPIBCAST ( tracerNames, LEN(tracerNames(1))*nTracersMax, MPICHAR, 0, MPICOM )
+    CALL MPIBCAST ( nSls,        1,                               MPIINT,  0, MPICOM )
+    CALL MPIBCAST ( slsNames,    LEN(slsNames(1))*nSlsMax,        MPICHAR, 0, MPICOM )
 
     ! The following files are required to compute land maps, required to perform
     ! aerosol dry deposition
-    CALL MPIBCAST(depvel_lnd_file, LEN(depvel_lnd_file), MPICHAR, 0, MPICOM)
-    CALL MPIBCAST(clim_soilw_file, LEN(clim_soilw_file), MPICHAR, 0, MPICOM)
-    CALL MPIBCAST(season_wes_file, LEN(season_wes_file), MPICHAR, 0, MPICOM)
+    CALL MPIBCAST (depvel_lnd_file, LEN(depvel_lnd_file), MPICHAR, 0, MPICOM)
+    CALL MPIBCAST (clim_soilw_file, LEN(clim_soilw_file), MPICHAR, 0, MPICOM)
+    CALL MPIBCAST (season_wes_file, LEN(season_wes_file), MPICHAR, 0, MPICOM)
 
     CALL MPIBCAST (lght_no_prd_factor, 1,                                MPIR8,   0, MPICOM)
     CALL MPIBCAST (depvel_file,        LEN(depvel_file),                 MPICHAR, 0, MPICOM)
@@ -848,7 +848,7 @@ contains
     CALL MPIBCAST (srf_emis_cycle_yr,  1,                                MPIINT,  0, MPICOM)
     CALL MPIBCAST (srf_emis_fixed_ymd, 1,                                MPIINT,  0, MPICOM)
     CALL MPIBCAST (srf_emis_fixed_tod, 1,                                MPIINT,  0, MPICOM)
-    CALL MPIBCAST (srf_emis_specifier, LEN(srf_emis_specifier(1))*pcnst, MPICHAR, 0, MPICOM)
+    CALL MPIBCAST (ext_frc_specifier,  LEN(ext_frc_specifier(1))*pcnst,  MPICHAR, 0, MPICOM)
     CALL MPIBCAST (ext_frc_type,       LEN(ext_frc_type),                MPICHAR, 0, MPICOM)
     CALL MPIBCAST (ext_frc_cycle_yr,   1,                                MPIINT,  0, MPICOM)
     CALL MPIBCAST (ext_frc_fixed_ymd,  1,                                MPIINT,  0, MPICOM)
@@ -1992,6 +1992,7 @@ contains
 
     ! For GEOS-Chem diagnostics
     REAL(r8)              :: mmr1(state%NCOL,PVER,gas_pcnst)
+    REAL(r8)              :: mmr_tend(state%NCOL,PVER,gas_pcnst)
     REAL(r8)              :: wk_out(state%NCOL)
     LOGICAL               :: isWD
     LOGICAL               :: Found
@@ -2202,6 +2203,8 @@ contains
           DO L = 1, nZ
              vmr0(J,L,N) = State_Chm(LCHNK)%Species(1,J,nZ+1-L,M) * &
                 MWDry / adv_mass(N)
+             ! We'll substract concentrations after chemistry later
+             mmr_tend(J,L,N) = REAL(State_Chm(LCHNK)%Species(1,J,nZ+1-L,M),r8)
           ENDDO
           ENDDO
        ELSEIF ( M < 0 ) THEN
@@ -3723,15 +3726,6 @@ contains
     Air_Total     = Air_Total + tmpMass
 #endif
 
-    CALL CESMGC_Diag_Calc( Input_Opt  = Input_Opt,         &
-                           State_Chm  = State_Chm(LCHNK),  &
-                           State_Diag = State_Diag(LCHNK), &
-                           State_Grid = State_Grid(LCHNK), &
-                           State_Met  = State_Met(LCHNK),  &
-                           cam_in     = cam_in,            &
-                           state      = state,             &
-                           LCHNK      = LCHNK             )
-
     DO N = 1, pcnst
        M = map2GC(N)
        IF ( M > 0 ) THEN
@@ -3748,11 +3742,33 @@ contains
        ENDIF
     ENDDO
 
+    DO N = 1, gas_pcnst
+       ! See definition of map2chm
+       M = map2chm(N)
+       IF ( M > 0 ) THEN
+          DO J = 1, nY
+          DO L = 1, nZ
+             mmr_tend(J,L,N) = ( REAL(State_Chm(LCHNK)%Species(1,J,nZ+1-L,M),r8) - mmr_tend(J,L,N) ) / dT
+          ENDDO
+          ENDDO
+       ENDIF
+    ENDDO
+
     IF ( Input_Opt%applyQtend ) THEN
        ! Apply GEOS-Chem's H2O mixing ratio tendency to CAM's specific humidity
        ! This requires to set lq(cQ) = lq(cH2O) ( = .True. )
        ptend%q(:,:,cQ) = ptend%q(:,:,cH2O)
     ENDIF
+
+    CALL CESMGC_Diag_Calc( Input_Opt  = Input_Opt,         &
+                           State_Chm  = State_Chm(LCHNK),  &
+                           State_Diag = State_Diag(LCHNK), &
+                           State_Grid = State_Grid(LCHNK), &
+                           State_Met  = State_Met(LCHNK),  &
+                           cam_in     = cam_in,            &
+                           state      = state,             &
+                           mmr_tend   = mmr_tend,          &
+                           LCHNK      = LCHNK             )
 
     ! Debug statements
     ! Ozone tendencies

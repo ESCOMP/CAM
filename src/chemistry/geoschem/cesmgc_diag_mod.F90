@@ -16,8 +16,10 @@ MODULE CESMGC_Diag_Mod
 ! !USES:
 !
   USE SHR_KIND_MOD,        ONLY : r8 => shr_kind_r8
+  USE CAM_HISTORY,         ONLY : fieldname_len
+  USE CHEM_MODS,           ONLY : gas_pcnst
   USE SPMD_UTILS,          ONLY : MasterProc
-  USE PPGRID,              ONLY : begchunk
+  USE PPGRID,              ONLY : begchunk, pver
   USE CAM_LOGFILE,         ONLY : iulog
   USE Error_Mod                                 ! For error checking
   USE ErrCode_Mod                               ! Error codes for success or failure
@@ -32,8 +34,8 @@ MODULE CESMGC_Diag_Mod
   PUBLIC :: CESMGC_Diag_Init
   PUBLIC :: CESMGC_Diag_Calc
 
-  ! Number of diagnosed photolytic reactions
-  INTEGER :: nPhotol
+  INTEGER                      :: nPhotol           ! Number of diagnosed photolytic reactions
+  CHARACTER(LEN=FIELDNAME_LEN) :: srcnam(gas_pcnst) ! Names of source/sink tendencies
 !
 ! !REVISION HISTORY:
 !  28 Oct 2020 - T. M. Fritz   - Initial version
@@ -68,11 +70,11 @@ CONTAINS
   USE CHEM_MODS,           ONLY : nTracers, nSls
   USE CHEM_MODS,           ONLY : tracerNames, tracerLongNames
   USE CHEM_MODS,           ONLY : slsNames, slsLongNames
-  USE CHEM_MODS,           ONLY : gas_pcnst
   USE CHEM_MODS,           ONLY : iFirstCnst
   USE CHEM_MODS,           ONLY : map2chm
   USE MO_TRACNAME,         ONLY : solsym
-  USE CONSTITUENTS,        ONLY : pcnst, cnst_name
+  USE CONSTITUENTS,        ONLY : pcnst, cnst_name, sflxnam
+  USE CONSTITUENTS,        ONLY : cnst_get_ind
   USE CAM_HISTORY,         ONLY : addfld, add_default, horiz_only
   USE GAS_WETDEP_OPTS,     ONLY : gas_wetdep_method
   USE DRYDEP_MOD,          ONLY : depName
@@ -106,6 +108,7 @@ CONTAINS
     CHARACTER(LEN=255)     :: tagName
     CHARACTER(LEN=255)     :: ThisLoc
     CHARACTER(LEN=255)     :: ErrMsg
+    CHARACTER(LEN=2)       :: unit_basename  ! Units 'kg' or '1' 
 
     ! Objects
     TYPE(Species),     POINTER :: SpcInfo
@@ -124,7 +127,10 @@ CONTAINS
     ! Assume a successful return until otherwise
     RC                      = GC_SUCCESS
 
-    ! Can add history output here too with the "addfld" & "add_default" routines
+    CALL Addfld( 'MASS', (/ 'lev' /), 'A', 'kg', 'Mass of grid box' )
+    CALL Addfld( 'AREA', horiz_only,  'A', 'm2', 'Area of grid box' )
+    CALL Addfld( 'HEIGHT', (/ 'ilev' /),'A','m', 'Geopotential height above surface at interfaces' )
+
     ! Note that constituents are already output by default
     ! Add all species as output fields if desired
     DO I = 1, nTracers
@@ -153,7 +159,7 @@ CONTAINS
 
     IF ( Input_Opt%LDryD ) THEN
        DO I = 1, State_Chm%nDryDep
-          SpcName = 'DepVel_'//TRIM(depName(I))
+          SpcName = 'DV_'//TRIM(depName(I))
           CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'm/s', &
             TRIM(SpcName)//' dry deposition velocity')
        ENDDO
@@ -164,7 +170,7 @@ CONTAINS
 
           ! Get info about this species from the species database
           SpcInfo => State_Chm%SpcData(L)%Info
-          SpcName = 'DepFlux_'//TRIM(SpcInfo%Name)
+          SpcName = 'DF_'//TRIM(SpcInfo%Name)
 
           CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'kg/m2/s', &
              TRIM(SpcName)//' dry deposition flux')
@@ -174,11 +180,22 @@ CONTAINS
        ENDDO
     ENDIF
 
-    ! Surface fluxes (emissions - drydep)
-    DO I = iFirstCnst, pcnst
-       SpcName = 'SurfFlux_'//TRIM(cnst_name(I))
-       CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'kg/m2/s', &
-          TRIM(SpcName)//' surface flux')
+    ! Chemical tendencies and surface fluxes
+    DO N = 1, gas_pcnst
+       srcnam(N) = 'CT_'//TRIM(solsym(N)) ! chem tendency (source/sink)
+       SpcName = srcnam(N)
+       CALL Addfld( TRIM(SpcName), (/ 'lev' /), 'A', 'kg/kg/s', TRIM(SpcName)//' source/sink' )
+
+       CALL cnst_get_ind(solsym(N), M, abort=.false. ) 
+       IF ( M > 0 ) THEN
+          IF (sflxnam(M)(3:5) == 'num') then  ! name is in the form of "SF****"
+             unit_basename = ' 1'
+          ELSE
+             unit_basename = 'kg'  
+          ENDIF
+          CALL Addfld (sflxnam(M), horiz_only, 'A',  unit_basename//'/m2/s', &
+             TRIM(solsym(N))//' surface flux')
+       ENDIF
     ENDDO
 
     IF ( gas_wetdep_method == 'GEOS-CHEM' ) THEN
@@ -262,23 +279,30 @@ CONTAINS
        ! Only print on the root CPU
        IF ( ASSOCIATED( Item ) ) THEN
 
-          IF (( TRIM(Item%FullName(1:8)) /= 'MET_XLAI' ) .AND. &
-              ( TRIM(Item%FullName(1:8)) /= 'MET_IUSE' ) .AND. &
-              ( TRIM(Item%FullName(1:9)) /= 'MET_ILAND' )) THEN
-             IF ( TRIM(Item%DimNames) == 'xy' ) THEN
-                CALL Addfld( TRIM( Item%FullName ), horiz_only, 'A', &
-                   TRIM( Item%Units ), TRIM( Item%Description ) )
-             ELSE
-                CALL Addfld( TRIM( Item%FullName ), (/ 'lev' /), 'A', &
-                   TRIM( Item%Units ), TRIM( Item%Description ) )
-             ENDIF
-          ENDIF
+          !IF (( TRIM(Item%FullName(1:8)) /= 'MET_XLAI' ) .AND. &
+          !    ( TRIM(Item%FullName(1:8)) /= 'MET_IUSE' ) .AND. &
+          !    ( TRIM(Item%FullName(1:9)) /= 'MET_ILAND' )) THEN
+          !   IF ( TRIM(Item%DimNames) == 'xy' ) THEN
+          !      CALL Addfld( TRIM( Item%FullName ), horiz_only, 'A', &
+          !         TRIM( Item%Units ), TRIM( Item%Description ) )
+          !   ELSE
+          !      CALL Addfld( TRIM( Item%FullName ), (/ 'lev' /), 'A', &
+          !         TRIM( Item%Units ), TRIM( Item%Description ) )
+          !   ENDIF
+          !ENDIF
 
        ENDIF
 
        ! Point to next node of the Registry
        Current => Current%Next
 
+    ENDDO
+
+    ! Chemical tendencies
+    DO N = 1, gas_pcnst
+       SpcName = TRIM(solsym(N))
+       CALL Addfld( 'D'//TRIM(SpcName)//'CHM', (/ 'lev' /), 'A', 'kg/s', &
+          'net tendency from chemistry' )
     ENDDO
 
     !=======================================================================
@@ -302,7 +326,7 @@ CONTAINS
 !
   SUBROUTINE CESMGC_Diag_Calc( Input_Opt,  State_Chm, State_Diag, &
                                State_Grid, State_Met, cam_in, state, &
-                               LCHNK )
+                               mmr_tend,   LCHNK )
 !
 ! !USES:
 !
@@ -319,7 +343,7 @@ CONTAINS
   USE PRECISION_MOD
   USE MO_TRACNAME,         ONLY : solsym
   USE CAM_HISTORY,         ONLY : outfld
-  USE CONSTITUENTS,        ONLY : pcnst, cnst_name
+  USE CONSTITUENTS,        ONLY : pcnst, cnst_name, sflxnam
   USE CHEM_MODS,           ONLY : MWRatio
   USE CHEM_MODS,           ONLY : SlsMWRatio
   USE CHEM_MODS,           ONLY : tracerNames
@@ -346,6 +370,8 @@ CONTAINS
     TYPE(MetState),      INTENT(IN)    :: State_Met   ! Meteorology State object
     TYPE(cam_in_t),      INTENT(IN)    :: cam_in      ! import state
     TYPE(physics_state), INTENT(IN)    :: state       ! Physics state variables
+    REAL(r8),            INTENT(IN)    :: mmr_tend(state%ncol,pver,gas_pcnst) 
+                                                      ! Net tendency from chemistry in kg/s
     INTEGER,             INTENT(IN)    :: LCHNK       ! Chunk number
 !
 ! !REVISION HISTORY:
@@ -407,6 +433,10 @@ CONTAINS
     ! Define rootChunk
     rootChunk = ( MasterProc.and.(LCHNK==BEGCHUNK) )
 
+    CALL OutFld( 'AREA', State_Grid%Area_M2(1,1:nY), nY, LCHNK)
+    CALL OutFld( 'MASS', State_Met%AD(1,1:nY,nZ:1:-1), nY, LCHNK)
+    CALL Outfld( 'HEIGHT', state%zi(:nY,:), nY, LCHNK )
+
     ! Write diagnostic output
     DO N = iFirstCnst, pcnst
        M = map2GC(N)
@@ -449,7 +479,7 @@ CONTAINS
     IF ( Input_Opt%LDryD ) THEN
        DO N = 1, State_Chm%nDryDep
           ND = NDVZIND(N)
-          SpcName = 'DepVel_'//TRIM(depName(N))
+          SpcName = 'DV_'//TRIM(depName(N))
           CALL OutFld( TRIM(SpcName), State_Chm%DryDepVel(1,:nY,ND), nY, LCHNK )
        ENDDO
 
@@ -459,7 +489,7 @@ CONTAINS
 
           ! Get info about this species from the species database
           SpcInfo => State_Chm%SpcData(L)%Info
-          SpcName = 'DepFlux_'//TRIM(SpcInfo%Name)
+          SpcName = 'DF_'//TRIM(SpcInfo%Name)
 
           ! SurfaceFlux is Emissions - Drydep, but Emissions = 0, as it is applied
           ! externally
@@ -472,8 +502,26 @@ CONTAINS
 
     ! Surface fluxes (emissions - drydep)
     DO N = iFirstCnst, pcnst
-       SpcName = 'SurfFlux_'//TRIM(cnst_name(N))
+       SpcName = sflxnam(N)
        CALL OutFld( TRIM(SpcName), cam_in%cflx(:nY,N), nY, LCHNK )
+    ENDDO
+
+    ! Chemical tendencies in kg/kg/s
+    DO N = 1, gas_pcnst
+       SpcName = TRIM(srcnam(N))
+       CALL OutFld( TRIM(SpcName), mmr_tend(:nY,:,N), nY, LCHNK )
+    ENDDO
+
+    ! Chemical tendencies in kg/s
+    DO N = 1, gas_pcnst
+       SpcName = 'D'//TRIM(solsym(N))//'CHM'
+       outTmp  = 0.0e+0_r8
+       DO J = 1, nY
+       DO L = 1, nZ
+          outTmp(J,L) = mmr_tend(J,L,N) * REAL(State_Met%AD(1,J,nZ+1-L),r8)
+       ENDDO
+       ENDDO
+       CALL OutFld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
     ENDDO
 
     ! Photolysis rates
@@ -559,24 +607,24 @@ CONTAINS
                                    Ptr3d_8        = Ptr3d_8,             &
                                    RC             = RC                  )
 
-             IF ( Source_KindVal /= KINDVAL_I4 ) THEN
-                IF ( Rank == 2 ) THEN
-                   outTmp(:,nZ) = REAL(Ptr2d_8(1,:),r8)
-                   CALL Outfld( TRIM( Item%FullName ), outTmp(:,nZ), nY, LCHNK )
-                ELSEIF ( Rank == 3 ) THEN
-                   ! For now, treat variables defined on level edges by ignoring top
-                   ! most layer
-                   DO J = 1, nY
-                   DO L = 1, nZ
-                      outTmp(J,nZ+1-L) = REAL(Ptr3d_8(1,J,L),r8)
-                   ENDDO
-                   ENDDO
-                   CALL Outfld( TRIM( Item%FullName ), outTmp, nY, LCHNK )
-                ELSE
-                   IF ( rootChunk ) Write(iulog,*) " Item ", TRIM(Item%FullName), &
-                      " is of rank ", Rank, " and will not be diagnosed!"
-                ENDIF
-             ENDIF
+             !IF ( Source_KindVal /= KINDVAL_I4 ) THEN
+             !   IF ( Rank == 2 ) THEN
+             !      outTmp(:,nZ) = REAL(Ptr2d_8(1,:),r8)
+             !      CALL Outfld( TRIM( Item%FullName ), outTmp(:,nZ), nY, LCHNK )
+             !   ELSEIF ( Rank == 3 ) THEN
+             !      ! For now, treat variables defined on level edges by ignoring top
+             !      ! most layer
+             !      DO J = 1, nY
+             !      DO L = 1, nZ
+             !         outTmp(J,nZ+1-L) = REAL(Ptr3d_8(1,J,L),r8)
+             !      ENDDO
+             !      ENDDO
+             !      CALL Outfld( TRIM( Item%FullName ), outTmp, nY, LCHNK )
+             !   ELSE
+             !      IF ( rootChunk ) Write(iulog,*) " Item ", TRIM(Item%FullName), &
+             !         " is of rank ", Rank, " and will not be diagnosed!"
+             !   ENDIF
+             !ENDIF
           ENDIF
 
        ENDIF
