@@ -496,7 +496,7 @@ CONTAINS
 
     ! Distributed fire emissions if elevated forcing
     ! extfrc is in molec/cm3/s
-    ! TMMF - vertical distributino of fire emissions is not implemented yet
+    ! TMMF - vertical distribution of fire emissions is not implemented yet
     !CALL fire_emissions_vrt( nY, LCHNK, zint, cam_in%fireflx, cam_in%fireztop, extfrc )
 
     !-----------------------------------------------------------------------
