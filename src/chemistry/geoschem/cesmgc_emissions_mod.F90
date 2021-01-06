@@ -18,6 +18,8 @@ MODULE CESMGC_Emissions_Mod
   USE SHR_KIND_MOD,        ONLY : r8 => shr_kind_r8
   USE SPMD_UTILS,          ONLY : MasterProc
   USE CAM_ABORTUTILS,      ONLY : endrun
+  USE CHEM_MODS,           ONLY : iFirstCnst
+  USE CONSTITUENTS,        ONLY : pcnst, cnst_name
   USE SHR_MEGAN_MOD,       ONLY : shr_megan_mechcomps, shr_megan_mechcomps_n 
   USE CAM_LOGFILE,         ONLY : iulog
 
@@ -230,6 +232,21 @@ CONTAINS
        ENDDO
     ENDIF
 
+    DO N = iFirstCnst, pcnst
+       SpcName = TRIM(cnst_name(N))//'_XFRC'
+       CALL Addfld( TRIM(SpcName), (/ 'lev' /), 'A', 'molec/cm3/s', &
+          'External forcing for '//TRIM(cnst_name(N)))
+       SpcName = TRIM(cnst_name(N))//'_CLXF'
+       CALL Addfld( TRIM(SpcName), (/ 'lev' /), 'A', 'molec/cm2/s', &
+          'Vertically-integrated external forcing for '//TRIM(cnst_name(N)))
+       SpcName = TRIM(cnst_name(N))//'_CMXF'
+       CALL Addfld( TRIM(SpcName), (/ 'lev' /), 'A', 'kg/m2/s', &
+          'Vertically-integrated external forcing for '//TRIM(cnst_name(N)))
+    ENDDO
+
+    CALL Addfld( 'NO_Lightning', (/ 'lev' /), 'A','molec/cm3/s', &
+          'lightning NO source' )
+
     !-----------------------------------------------------------------------
     ! ... Fire emissions
     !-----------------------------------------------------------------------
@@ -255,7 +272,7 @@ CONTAINS
 !
     USE State_Met_Mod,       ONLY : MetState
     USE CAMSRFEXCH,          ONLY : cam_in_t
-    USE CONSTITUENTS,        ONLY : cnst_name, cnst_get_ind, cnst_mw, pcnst
+    USE CONSTITUENTS,        ONLY : cnst_get_ind, cnst_mw
     USE CHEM_MODS,           ONLY : tracerNames, nTracers, map2GCinv
     USE PHYSICS_TYPES,       ONLY : physics_state
     USE PHYSICS_BUFFER,      ONLY : pbuf_get_index, pbuf_get_chunk
@@ -280,7 +297,7 @@ CONTAINS
     ! GEOS-Chem version of physical constants
     USE PHYSCONSTANTS,       ONLY : AVO
     ! CAM version of physical constants
-    USE PHYSCONST,           ONLY : rga
+    USE PHYSCONST,           ONLY : rga, avogad
 !
 ! !INPUT PARAMETERS:
 !
@@ -324,6 +341,7 @@ CONTAINS
     REAL(r8), PARAMETER                    :: m2km  = 1.e-3_r8
 
     ! Strings
+    CHARACTER(LEN=255)                     :: SpcName
     CHARACTER(LEN=255)                     :: fldname_ns   ! field name HCO_*
 
     !=================================================================
@@ -393,26 +411,6 @@ CONTAINS
        ENDIF
     ENDDO
 
-    !-----------------------------------------------------------------------
-    ! Lightning NO emissions
-    !-----------------------------------------------------------------------
-    M = iNO
-
-    ! prod_NO is in atom N cm^-3 s^-1 <=> molec cm^-3 s^-1
-    ! We need to convert this to kg NO/m2/s
-    ! Multiply by MWNO * BXHEIGHT * 1.0E+06 / AVO
-    !           = mole/molec * kg NO/mole * m * cm^3/m^3
-    ! cnst_mw(M) is in g/mole
-    SCALFAC = cnst_mw(M) * 1.0E-03 * 1.0E+06 / AVO
-    DO J = 1, nY
-    DO L = 1, nZ
-       eflx(J,L,M) = eflx(J,L,M)                      &
-                   + prod_NO(J,L,LCHNK)               &
-                     * State_Met%BXHEIGHT(1,J,nZ+1-L) &
-                     * SCALFAC
-    ENDDO
-    ENDDO
-
 #if defined( MODAL_AERO_4MODE )
     !-----------------------------------------------------------------------
     ! Aerosol emissions (dust + seasalt) ...
@@ -453,6 +451,43 @@ CONTAINS
     eflx(:nY,:nZ,iPOM4)  = eflx(:nY,:nZ,iOCPO)
     eflx(:nY,:nZ,iOCPO)  = 0.0e+00_r8
 #endif
+
+    ! Output fields before lightning NO emissions are applied to eflx
+    DO N = iFirstCnst, pcnst
+       SpcName = TRIM(cnst_name(N))//'_XFRC'
+       CALL Outfld( TRIM(SpcName), eflx(:,:,N) / State_Met%BXHEIGHT(1,:,nZ:1:-1) * 1.0E-06 / cnst_mw(N) * avogad, nY, LCHNK )
+
+       SpcName = TRIM(cnst_name(N))//'_CLXF'
+       ! Convert from kg/m2/s to molec/cm2/s
+       ! Note 1: cnst_mw is in kg/kmole
+       ! Note 2: avogad is in molecules/kmole
+       CALL Outfld( TRIM(SpcName), SUM(eflx(:,:,N), DIM=2) * 1.0E-04 / cnst_mw(N) * avogad, nY, LCHNK )
+
+       SpcName = TRIM(cnst_name(N))//'_CMXF'
+       CALL Outfld( TRIM(SpcName), SUM(eflx(:,:,N), DIM=2), nY, LCHNK )
+    ENDDO
+
+    !-----------------------------------------------------------------------
+    ! Lightning NO emissions
+    !-----------------------------------------------------------------------
+    M = iNO
+
+    ! prod_NO is in atom N cm^-3 s^-1 <=> molec cm^-3 s^-1
+    ! We need to convert this to kg NO/m2/s
+    ! Multiply by MWNO * BXHEIGHT * 1.0E+06 / AVO
+    !           = mole/molec * kg NO/mole * m * cm^3/m^3
+    ! cnst_mw(M) is in g/mole
+    SCALFAC = cnst_mw(M) * 1.0E-03 * 1.0E+06 / AVO
+    DO J = 1, nY
+    DO L = 1, nZ
+       eflx(J,L,M) = eflx(J,L,M)                      &
+                   + prod_NO(J,L,LCHNK)               &
+                     * State_Met%BXHEIGHT(1,J,nZ+1-L) &
+                     * SCALFAC
+    ENDDO
+    ENDDO
+
+    CALL Outfld( 'NO_Lightning', prod_NO(:nY,:,LCHNK), nY, LCHNK )
 
     !-----------------------------------------------------------------------
     ! MEGAN emissions ...
