@@ -214,9 +214,7 @@ module nudging
   public:: nudging_init
   public:: nudging_timestep_init
   public:: nudging_timestep_tend
-  private::nudging_update_analyses_se
-  private::nudging_update_analyses_eul
-  private::nudging_update_analyses_fv
+  private::nudging_update_analyses
   private::nudging_set_PSprofile
   private::nudging_set_profile
   private::calc_DryStaticEnergy
@@ -925,13 +923,7 @@ contains
    ! the Nudge observation arrays with analysis data at the 
    ! NEXT==Nudge_ObsInd(1) time.
    !----------------------------------------------------------
-   if(dycore_is('UNSTRUCTURED')) then
-     call nudging_update_analyses_se (trim(Nudge_Path)//trim(Nudge_File))
-   elseif(dycore_is('EUL')) then
-     call nudging_update_analyses_eul(trim(Nudge_Path)//trim(Nudge_File))
-   else !if(dycore_is('LR')) then
-     call nudging_update_analyses_fv (trim(Nudge_Path)//trim(Nudge_File))
-   endif
+   call nudging_update_analyses(trim(Nudge_Path)//trim(Nudge_File))
 
    ! Initialize Nudging Coeffcient profiles in local arrays
    ! Load zeros into nudging arrays
@@ -1158,14 +1150,8 @@ contains
      ! the Nudge observation arrays with analysis data at the 
      ! NEXT==Nudge_ObsInd(1) time.
      !----------------------------------------------------------
-     if(dycore_is('UNSTRUCTURED')) then
-       call nudging_update_analyses_se (trim(Nudge_Path)//trim(Nudge_File))
-     elseif(dycore_is('EUL')) then
-       call nudging_update_analyses_eul(trim(Nudge_Path)//trim(Nudge_File))
-     else !if(dycore_is('LR')) then
-       call nudging_update_analyses_fv (trim(Nudge_Path)//trim(Nudge_File))
-     endif
-   endif ! ((Before_End).and.(Update_Nudge)) then
+     call nudging_update_analyses(trim(Nudge_Path)//trim(Nudge_File))
+   endif
 
    !----------------------------------------------------------------
    ! Toggle Nudging flag when the time interval is between 
@@ -1383,9 +1369,9 @@ contains
 
 
   !================================================================
-  subroutine nudging_update_analyses_se(anal_file)
+  subroutine nudging_update_analyses(anal_file)
    ! 
-   ! NUDGING_UPDATE_ANALYSES_SE: 
+   ! NUDGING_UPDATE_ANALYSES: 
    !                 Open the given analyses data file, read in 
    !                 U,V,T,Q, and PS values and then distribute
    !                 the values to all of the chunks.
@@ -1453,7 +1439,7 @@ contains
    if(VARflag) then
      Nobs_U(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
    else
-     call endrun('Varibale "U" is missing in '//trim(anal_file))
+     call endrun('Variable "U" is missing in '//trim(anal_file))
    endif
 
    call infld('V',fileID,dim1name,'lev',dim2name,     &
@@ -1462,7 +1448,7 @@ contains
    if(VARflag) then
      Nobs_V(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
    else
-     call endrun('Varibale "V" is missing in '//trim(anal_file))
+     call endrun('Variable "V" is missing in '//trim(anal_file))
    endif
 
    call infld('T',fileID,dim1name,'lev',dim2name,     &
@@ -1471,7 +1457,7 @@ contains
    if(VARflag) then
      Nobs_T(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
    else
-     call endrun('Varibale "T" is missing in '//trim(anal_file))
+     call endrun('Variable "T" is missing in '//trim(anal_file))
    endif
 
    call infld('Q',fileID,dim1name,'lev',dim2name,     &
@@ -1480,7 +1466,7 @@ contains
    if(VARflag) then
      Nobs_Q(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
    else
-     call endrun('Varibale "Q" is missing in '//trim(anal_file))
+     call endrun('Variable "Q" is missing in '//trim(anal_file))
    endif
 
    call infld('PS',fileID,dim1name,dim2name,          &
@@ -1489,7 +1475,7 @@ contains
    if(VARflag) then
      Nobs_PS(:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp2D(:,begchunk:endchunk)
    else
-     call endrun('Varibale "PS" is missing in '//trim(anal_file))
+     call endrun('Variable "PS" is missing in '//trim(anal_file))
    endif
 
    ! Restore old error handling
@@ -1505,261 +1491,7 @@ contains
    ! End Routine
    !------------
    return
-  end subroutine ! nudging_update_analyses_se
-  !================================================================
-
-
-  !================================================================
-  subroutine nudging_update_analyses_eul(anal_file)
-   ! 
-   ! NUDGING_UPDATE_ANALYSES_EUL: 
-   !                 Open the given analyses data file, read in 
-   !                 U,V,T,Q, and PS values and then distribute
-   !                 the values to all of the chunks.
-   !===============================================================
-   use ppgrid          ,only: pcols,pver,begchunk,endchunk
-   use cam_pio_utils   ,only: cam_pio_openfile
-   use pio             ,only: PIO_BCAST_ERROR,PIO_INTERNAL_ERROR
-   use pio             ,only: pio_closefile,pio_seterrorhandling,file_desc_t
-   use ncdio_atm       ,only: infld
-   use cam_grid_support,only: cam_grid_id,cam_grid_get_dim_names,DLEN=>max_hcoordname_len
-
-   ! Arguments
-   !-------------
-   character(len=*),intent(in):: anal_file
-
-   ! Local values
-   !-------------
-   type(file_desc_t)  :: fileID
-   integer            :: nn,Nindex
-   logical            :: VARflag
-   integer            :: grid_id
-   character(len=DLEN):: dim1name,dim2name
-   integer            :: err_handling
-
-   real(r8),allocatable:: Tmp3D(:,:,:)
-   real(r8),allocatable:: Tmp2D(:,:)
-
-   ! Rotate Nudge_ObsInd() indices, then check the existence of the analyses 
-   ! file; broadcast the updated indices and file status to all the other MPI nodes. 
-   ! If the file is not there, then just return.
-   !------------------------------------------------------------------------
-   if(masterproc) then
-     Nindex=Nudge_ObsInd(Nudge_NumObs)
-     do nn=Nudge_NumObs,2,-1
-       Nudge_ObsInd(nn)=Nudge_ObsInd(nn-1)
-     end do
-     Nudge_ObsInd(1)=Nindex
-     inquire(FILE=trim(anal_file),EXIST=Nudge_File_Present(Nudge_ObsInd(1)))
-     write(iulog,*)'NUDGING: Nudge_ObsInd=',Nudge_ObsInd
-     write(iulog,*)'NUDGING: Nudge_File_Present=',Nudge_File_Present
-   endif
-#ifdef SPMD
-   call mpibcast(Nudge_File_Present, Nudge_NumObs, mpilog, 0, mpicom)
-   call mpibcast(Nudge_ObsInd      , Nudge_NumObs, mpiint, 0, mpicom)
-#endif
-   if(.not.Nudge_File_Present(Nudge_ObsInd(1))) return
-
-   ! Open the file and get the fileID.
-   !-------------------------------------
-   call cam_pio_openfile(fileID,trim(anal_file),0)
-   call pio_seterrorhandling(fileID,PIO_BCAST_ERROR,oldmethod=err_handling)
-   if(masterproc) write(iulog,*)'PIO_OPEN: file=',trim(anal_file)
-
-   grid_id = cam_grid_id('physgrid')
-   call cam_grid_get_dim_names(grid_id,dim1name,dim2name)
-
-   allocate(Tmp3D(pcols,pver,begchunk:endchunk))
-   allocate(Tmp2D(pcols,begchunk:endchunk))
-
-   ! Read in, U,V,T,Q, and PS  
-   !----------------------------------
-   call infld('U',fileID,dim1name,'lev',dim2name,     &
-              1,pcols,1,pver,begchunk,endchunk,Tmp3D, &
-              VARflag,gridname='physgrid',timelevel=1 )
-   if(VARflag) then
-     Nobs_U(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
-   else
-     call endrun('Varibale "U" is missing in '//trim(anal_file))
-   endif
-
-   call infld('V',fileID,dim1name,'lev',dim2name,     &
-              1,pcols,1,pver,begchunk,endchunk,Tmp3D, &
-              VARflag,gridname='physgrid',timelevel=1 )
-   if(VARflag) then
-     Nobs_V(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
-   else
-     call endrun('Varibale "V" is missing in '//trim(anal_file))
-   endif
-
-   call infld('T',fileID,dim1name,'lev',dim2name,     &
-              1,pcols,1,pver,begchunk,endchunk,Tmp3D, &
-              VARflag,gridname='physgrid',timelevel=1 )
-   if(VARflag) then
-     Nobs_T(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
-   else
-     call endrun('Varibale "T" is missing in '//trim(anal_file))
-   endif
-
-   call infld('Q',fileID,dim1name,'lev',dim2name,     &
-              1,pcols,1,pver,begchunk,endchunk,Tmp3D, &
-              VARflag,gridname='physgrid',timelevel=1 )
-   if(VARflag) then
-     Nobs_Q(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
-   else
-     call endrun('Varibale "Q" is missing in '//trim(anal_file))
-   endif
-
-   call infld('PS',fileID,dim1name,dim2name,          &
-              1,pcols,begchunk,endchunk,Tmp2D,        &
-              VARflag,gridname='physgrid',timelevel=1 )
-   if(VARflag) then
-     Nobs_PS(:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp2D(:,begchunk:endchunk)
-   else
-     call endrun('Varibale "PS" is missing in '//trim(anal_file))
-   endif
-
-   ! Restore old error handling
-   !----------------------------
-   call pio_seterrorhandling(fileID,err_handling)
-
-   ! Close the analyses file
-   !-----------------------
-   deallocate(Tmp3D)
-   deallocate(Tmp2D)
-   call pio_closefile(fileID)
-
-   ! End Routine
-   !------------
-   return
-  end subroutine ! nudging_update_analyses_eul
-  !================================================================
-
-
-  !================================================================
-  subroutine nudging_update_analyses_fv(anal_file)
-   ! 
-   ! NUDGING_UPDATE_ANALYSES_FV: 
-   !                 Open the given analyses data file, read in 
-   !                 U,V,T,Q, and PS values and then distribute
-   !                 the values to all of the chunks.
-   !===============================================================
-   use ppgrid          ,only: pcols,pver,begchunk,endchunk
-   use cam_pio_utils   ,only: cam_pio_openfile
-   use pio             ,only: PIO_BCAST_ERROR,PIO_INTERNAL_ERROR
-   use pio             ,only: pio_closefile,pio_seterrorhandling,file_desc_t
-   use ncdio_atm       ,only: infld
-   use cam_grid_support,only: cam_grid_id,cam_grid_get_dim_names,DLEN=>max_hcoordname_len
-
-   ! Arguments
-   !-------------
-   character(len=*),intent(in):: anal_file
-
-   ! Local values
-   !-------------
-   type(file_desc_t)  :: fileID
-   integer            :: nn,Nindex
-   logical            :: VARflag
-   integer            :: grid_id
-   character(len=DLEN):: dim1name,dim2name
-   integer            :: err_handling
-
-   real(r8),allocatable:: Tmp3D(:,:,:)
-   real(r8),allocatable:: Tmp2D(:,:)
-
-   ! Rotate Nudge_ObsInd() indices, then check the existence of the analyses 
-   ! file; broadcast the updated indices and file status to all the other MPI nodes. 
-   ! If the file is not there, then just return.
-   !------------------------------------------------------------------------
-   if(masterproc) then
-     Nindex=Nudge_ObsInd(Nudge_NumObs)
-     do nn=Nudge_NumObs,2,-1
-       Nudge_ObsInd(nn)=Nudge_ObsInd(nn-1)
-     end do
-     Nudge_ObsInd(1)=Nindex
-     inquire(FILE=trim(anal_file),EXIST=Nudge_File_Present(Nudge_ObsInd(1)))
-     write(iulog,*)'NUDGING: Nudge_ObsInd=',Nudge_ObsInd
-     write(iulog,*)'NUDGING: Nudge_File_Present=',Nudge_File_Present
-   endif
-#ifdef SPMD
-   call mpibcast(Nudge_File_Present, Nudge_NumObs, mpilog, 0, mpicom)
-   call mpibcast(Nudge_ObsInd      , Nudge_NumObs, mpiint, 0, mpicom)
-#endif
-   if(.not.Nudge_File_Present(Nudge_ObsInd(1))) return
-
-   ! Open the file and get the fileID.
-   !-------------------------------------
-   call cam_pio_openfile(fileID,trim(anal_file),0)
-   call pio_seterrorhandling(fileID,PIO_BCAST_ERROR,oldmethod=err_handling)
-   if(masterproc) write(iulog,*)'PIO_OPEN: file=',trim(anal_file)
-
-   grid_id = cam_grid_id('physgrid')
-   call cam_grid_get_dim_names(grid_id,dim1name,dim2name)
-
-   allocate(Tmp3D(pcols,pver,begchunk:endchunk))
-   allocate(Tmp2D(pcols,begchunk:endchunk))
-
-   ! Read in, U,V,T,Q, and PS  
-   !----------------------------------
-   call infld('U',fileID,dim1name,'lev',dim2name,     &
-              1,pcols,1,pver,begchunk,endchunk,Tmp3D, &
-              VARflag,gridname='physgrid',timelevel=1 )
-   if(VARflag) then
-     Nobs_U(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
-   else
-     call endrun('Varibale "U" is missing in '//trim(anal_file))
-   endif
-
-   call infld('V',fileID,dim1name,'lev',dim2name,     &
-              1,pcols,1,pver,begchunk,endchunk,Tmp3D, &
-              VARflag,gridname='physgrid',timelevel=1 )
-   if(VARflag) then
-     Nobs_V(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
-   else
-     call endrun('Varibale "V" is missing in '//trim(anal_file))
-   endif
-
-   call infld('T',fileID,dim1name,'lev',dim2name,     &
-              1,pcols,1,pver,begchunk,endchunk,Tmp3D, &
-              VARflag,gridname='physgrid',timelevel=1 )
-   if(VARflag) then
-     Nobs_T(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
-   else
-     call endrun('Varibale "T" is missing in '//trim(anal_file))
-   endif
-
-   call infld('Q',fileID,dim1name,'lev',dim2name,     &
-              1,pcols,1,pver,begchunk,endchunk,Tmp3D, &
-              VARflag,gridname='physgrid',timelevel=1 )
-   if(VARflag) then
-     Nobs_Q(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
-   else
-     call endrun('Varibale "Q" is missing in '//trim(anal_file))
-   endif
-
-   call infld('PS',fileID,dim1name,dim2name,          &
-              1,pcols,begchunk,endchunk,Tmp2D,        &
-              VARflag,gridname='physgrid',timelevel=1 )
-   if(VARflag) then
-     Nobs_PS(:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp2D(:,begchunk:endchunk)
-   else
-     call endrun('Varibale "PS" is missing in '//trim(anal_file))
-   endif
-
-   ! Restore old error handling
-   !----------------------------
-   call pio_seterrorhandling(fileID,err_handling)
-
-   ! Close the analyses file
-   !-----------------------
-   deallocate(Tmp3D)
-   deallocate(Tmp2D)
-   call pio_closefile(fileID)
-
-   ! End Routine
-   !------------
-   return
-  end subroutine ! nudging_update_analyses_fv
+  end subroutine ! nudging_update_analyses
   !================================================================
 
 
