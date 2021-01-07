@@ -27,8 +27,8 @@ module hk_conv
    real(r8), parameter :: unset_r8 = huge(1.0_r8)
 
   ! Namelist variables
-   real(r8) :: hkconv_c0 = unset_r8    
-   real(r8) :: hkconv_cmftau = unset_r8 
+   real(r8) :: hkconv_c0 = unset_r8
+   real(r8) :: hkconv_cmftau = unset_r8
 
    real(r8) :: hlat        ! latent heat of vaporization
    real(r8) :: c0          ! rain water autoconversion coefficient set from namelist input hkconv_c0
@@ -41,7 +41,7 @@ module hk_conv
    real(r8) :: tiny        ! arbitrary small num used in transport estimates
    real(r8) :: eps         ! convergence criteria (machine dependent)
    real(r8) :: tpmax       ! maximum acceptable t perturbation (degrees C)
-   real(r8) :: shpmax      ! maximum acceptable q perturbation (g/g)           
+   real(r8) :: shpmax      ! maximum acceptable q perturbation (g/g)
 
    integer :: iloc         ! longitude location for diagnostics
    integer :: jloc         ! latitude  location for diagnostics
@@ -50,7 +50,7 @@ module hk_conv
    logical :: rlxclm       ! logical to relax column versus cloud triplet
 
    real(r8) cp          ! specific heat of dry air
-   real(r8) grav        ! gravitational constant       
+   real(r8) grav        ! gravitational constant
    real(r8) rgrav       ! reciprocal of grav
    real(r8) rgas        ! gas constant for dry air
    integer limcnv          ! top interface level limit for convection
@@ -104,17 +104,17 @@ end subroutine hkconv_readnl
 !================================================================================================
 
 subroutine mfinti (rair    ,cpair   ,gravit  ,latvap  ,rhowtr,limcnv_in )
-!----------------------------------------------------------------------- 
-! 
-! Purpose: 
+!-----------------------------------------------------------------------
+!
+! Purpose:
 ! Initialize moist convective mass flux procedure common block, cmfmca
-! 
-! Method: 
-! <Describe the algorithm(s) used in the routine.> 
-! <Also include any applicable external references.> 
-! 
+!
+! Method:
+! <Describe the algorithm(s) used in the routine.>
+! <Also include any applicable external references.>
+!
 ! Author: J. Hack
-! 
+!
 !-----------------------------------------------------------------------
    use spmd_utils, only: masterproc
 !------------------------------Arguments--------------------------------
@@ -186,14 +186,14 @@ subroutine cmfmca(lchnk   ,ncol    , &
                   rpdel   ,zm      ,tpert   ,qpert   ,phis    , &
                   pblh    ,t       ,q       ,cmfdt   ,dq      , &
                   cmfmc   ,cmfdqr  ,cmfsl   ,cmflq   ,precc   , &
-                  qc      ,cnt     ,cnb     ,icwmr   ,rliq    , & 
+                  qc      ,cnt     ,cnb     ,icwmr   ,rliq    , &
                   pmiddry ,pdeldry ,rpdeldry)
-!----------------------------------------------------------------------- 
-! 
-! Purpose: 
+!-----------------------------------------------------------------------
+!
+! Purpose:
 ! Moist convective mass flux procedure:
-! 
-! Method: 
+!
+! Method:
 ! If stratification is unstable to nonentraining parcel ascent,
 ! complete an adjustment making successive use of a simple cloud model
 ! consisting of three layers (sometimes referred to as a triplet)
@@ -205,13 +205,13 @@ subroutine cmfmca(lchnk   ,ncol    , &
 ! in the calling list from the block of other transported
 ! constituents, even though as currently designed, it is the
 ! first component in the constituents field.
-! 
+!
 ! Author: J. Hack
 !
 ! BAB: changed code to report tendencies in cmfdt and dq, instead of
 ! updating profiles. Cmfdq contains water only, made it a local variable
 ! made dq (all constituents) the argument.
-! 
+!
 !-----------------------------------------------------------------------
 
 !#######################################################################
@@ -222,7 +222,9 @@ subroutine cmfmca(lchnk   ,ncol    , &
    use constituents,  only: pcnst
    use constituents,    only: cnst_get_type_byind
    use ppgrid,    only: pcols, pver, pverp
+#if ( defined DIAGNS )
    use phys_grid, only: get_lat_all_p, get_lon_all_p
+#endif
    use wv_saturation, only: qsat
 
    real(r8) ssfac               ! supersaturation bound (detrained air)
@@ -265,7 +267,7 @@ subroutine cmfmca(lchnk   ,ncol    , &
    real(r8), intent(out) :: cnb(pcols)          ! bottom level of convective activity
    real(r8), intent(out) :: dq(pcols,pver,pcnst) ! constituent tendencies
    real(r8), intent(out) :: icwmr(pcols,pver)
-   real(r8), intent(out) :: rliq(pcols) 
+   real(r8), intent(out) :: rliq(pcols)
 !
 !---------------------------Local workspace-----------------------------
 !
@@ -741,7 +743,7 @@ subroutine cmfmca(lchnk   ,ncol    , &
             dq1(i) = etagdt(i)*(shbh(i,k+1) - shc(i))*rpdel(i,k+1)
             ds2(i) = (etagdt(i)*(sc(i) - sbh(i,k+1)) +  &
                      hlat*grav*cldwtr(i) - beta(i)*etagdt(i)*(sc(i) - sbh(i,k)))*rpdel(i,k)
-! JJH change for export of cloud liquid water; must use total condensate 
+! JJH change for export of cloud liquid water; must use total condensate
 ! since rainwater no longer represents total condensate
             dq2(i) = (etagdt(i)*(shc(i) - shbh(i,k+1)) - grav*totcond(i) - beta(i)* &
                      etagdt(i)*(shc(i) - shbh(i,k)))*rpdel(i,k)
@@ -1013,7 +1015,7 @@ subroutine cmfmca(lchnk   ,ncol    , &
 !!$                        q(i,k,1) = q(i,k,1) + cmfdq(i,k)*ztodt
 !!$                     end do
 !!$                  end do
-! Set output q tendencies 
+! Set output q tendencies
       dq(:ncol,:,1 ) = cmfdq(:ncol,:)
       dq(:ncol,:,2:) = (dq(:ncol,:,2:) - q(:ncol,:,2:))/ztodt
 !

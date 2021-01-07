@@ -28,7 +28,7 @@ get_dir_abspath () {
 }
 
 # Set CAM top-level directory:
-cam_top_dir=$(get_dir_abspath ${CAM_SCRIPTDIR}/../..)
+cam_top_dir=$(get_dir_abspath ${CAM_ROOT})
 
 # Initialize error variable:
 rc=0

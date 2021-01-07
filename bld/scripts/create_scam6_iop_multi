@@ -40,7 +40,15 @@ set COMPILER=intel
 cd  $CASEDIR
 
 ## location of IOP data in CESM Tag
-set MODSDIR = $CESMDIR/components/cam/cime_config/usermods_dirs
+
+if( -d $CESMDIR/components/cam/cime_config/usermods_dirs ) then
+  set MODSDIR = $CESMDIR/components/cam/cime_config/usermods_dirs
+else if ( -d $CESMDIR/cime_config/usermods_dirs) then
+  set MODSDIR = $CESMDIR/cime_config/usermods_dirs
+else
+  echo "Can't find usermods_dirs directory.  Please double-check $CESMDIR path."
+  exit 1
+endif
 
 set CASENAME=${CASETITLE}.${COMPSET}
 

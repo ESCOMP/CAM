@@ -360,7 +360,7 @@ Add CAM3 prescribed aerosols to the physics buffer.
 Default: FALSE
 </entry>
 
-<!-- Coupler between Physics and Dynamics -->
+<!-- Physics grid decomp including physics dynamics coupling methods -->
 
 <entry id="phys_alltoall" type="integer"  category="perf_dp_coup"
        group="phys_grid_nl" valid_values="-1,0,1,2,11,12,13">
@@ -2521,7 +2521,6 @@ dense precipitating ice as hail. mg3 only.
 Default: .false.
 </entry>
 
-
 <entry id="micro_mg_num_steps" type="integer" category="microphys"
        group="micro_mg_nl" valid_values="" >
 Number of substeps over MG microphysics.
@@ -2601,7 +2600,82 @@ Default: 0.1e6 m-3
 <entry id="micro_mg_ngnst" type="real" category="microphys"
        group="micro_mg_nl" valid_values="" >
 In-cloud graupel number concentration when micro_mg_nicons=.true.
-Default: 0.1e6 m-3
+Default: 0.0005e6 m-3
+</entry>
+
+<entry id="micro_mg_nrcons" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+Set .true. to hold cloud rain number constant.
+Default: .false.
+</entry>
+
+<entry id="micro_mg_nrnst" type="real" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+In-cloud rain number concentration when micro_mg_nrcons=.true.
+Default: 0.2e6 m-3
+</entry>
+
+<entry id="micro_mg_nscons" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+Set .true. to hold cloud snow number constant.
+Default: .false.
+</entry>
+
+<entry id="micro_mg_nsnst" type="real" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+In-cloud snow number concentration when micro_mg_nscons=.true.
+Default: 0.005e6 m-3
+</entry>
+
+<entry id="micro_mg_evap_sed_off" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+If .true., sedimenting condensate does not evaporate
+Default: .false.
+</entry>
+
+<entry id="micro_mg_icenuc_rh_off" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+If .true., remove RH threshold from ice nucelation calculation
+Default: .false.
+</entry>
+
+<entry id="micro_mg_icenuc_use_meyers" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+Hard code Meyers 1992 Temp dependent ice nucleation in microphysics
+Default: .false.
+</entry>
+
+<entry id="micro_mg_evap_scl_ifs" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+Apply 0.3 scaling factor to evaporation of precipitation as done in the
+IFS model (https://www.ecmwf.int/en/forecasts/documentation-and-support)
+Default: .false.
+</entry>
+
+<entry id="micro_mg_evap_rhthrsh_ifs" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+Do not evaporate precipitation until RH<90% as done in the
+IFS model (https://www.ecmwf.int/en/forecasts/documentation-and-support)
+Default: .false.
+</entry>
+
+<entry id="micro_mg_rainfreeze_ifs" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+Freeze rain at 0C as done in the
+IFS model (https://www.ecmwf.int/en/forecasts/documentation-and-support)
+Default: .false.
+</entry>
+
+<entry id="micro_mg_ifs_sed" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+If .false., use the default sedimentation fall speed calculation from MG2 for all species. If .true., use constant sedimentation fall speeds for snow and ice, and no sedimentation of liquid, to be consistant with how species descend in the IFS model (https://www.ecmwf.int/en/forecasts/documentation-and-support)
+Default: .false.
+</entry>
+
+<entry id="micro_mg_precip_fall_corr" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+If .true., ensure non-zero precipitation fallspeed (rain,snow and graupel) if precipitation exists above in column (from M2005 in WRFv3.3)
+Default: .false.
 </entry>
 
 <!-- Aerosol microphysics -->
@@ -3616,6 +3690,40 @@ in the wp2 (variance of vertical velocity) predictive equation.
 Apply adjustments to dry static energy so that CLUBB conserves
 energy.
 Default: true
+</entry>
+
+<!-- for CLUBB+MF -->
+<entry id="do_clubb_mf" type="logical" category="conv"
+       group="clubb_mf_nl" valid_values="" >
+If .true. add ensemble mass fluxes to CLUBB's higher-order equation set.
+Together with CLUBB, this constitutes an eddy-diffusivity mass-flux approach.
+Default: .false.
+</entry>
+
+<entry id="do_clubb_mf_diag" type="logical" category="conv"
+       group="clubb_mf_nl" valid_values="" >
+If .true. add detailed budget terms to output by default.  Note that do_clubb_mf must also be set to .true.
+Default: .false.
+</entry>
+
+<entry id="clubb_mf_L0" type="real" category="conv"
+       group="clubb_mf_nl" valid_values="" >
+Entrainment length scale in meters for individual plumes. Not used if
+do_clubb_mf=FALSE.
+Default: 50.0
+</entry>
+
+<entry id="clubb_mf_ent0" type="real" category="conv"
+       group="clubb_mf_nl" valid_values="" >
+Entrainment efficiency for individual plumes. Not used if
+do_clubb_mf=FALSE.
+Default: 0.22
+</entry>
+
+<entry id="clubb_mf_nup" type="integer" category="conv"
+       group="clubb_mf_nl" valid_values="" >
+Real: number of plumes in mass flux ensemble
+Default: 10
 </entry>
 
 <!-- CARMA Sectional Microphysics -->
@@ -5384,31 +5492,9 @@ Full pathname of boundary dataset for airplane emissions.
 Default: set by build-namelist.
 </entry>
 
-<entry id="clim_soilw_file" type="char*256" input_pathname="abs" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-Full pathname of dataset containing soil moisture fraction information used in 'xactive_atm'
-method of calculating dry deposition of chemical tracers.
-Default: set by build-namelist.
-</entry>
-
-<entry id="depvel_file" type="char*256" input_pathname="abs" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-Full pathname of dataset which contains the prescribed deposition velocities used
-in the 'table' method of calculating dry deposition  of chemical tracers.
-Default: set by build-namelist.
-</entry>
-
 <entry id="depvel_lnd_file" type="char*256" input_pathname="abs" category="cam_chem"
        group="chem_inparm" valid_values="" >
-Full pathname of dataset which contains land vegitation information used in 'xactive_atm'
-method of calculating dry deposition of chemical tracers.
-Default: set by build-namelist.
-</entry>
-
-<entry id="season_wes_file" type="char*256" input_pathname="abs" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-Full pathname of dataset which contains season information used in 'xactive_atm'
-method of calculating dry deposition of chemical tracers.
+Full pathname of dataset which contains land vegetation information used in modal aerosol deposition.
 Default: set by build-namelist.
 </entry>
 
@@ -6371,90 +6457,6 @@ Frequency in time steps at which the chemical equations are solved.
 Default: 1
 </entry>
 
-<entry id="chlorine_loading_file" type="char*256" input_pathname="abs" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-Filename of dataset for linoz cholirine loading.
-Default: none.
-</entry>
-<entry id="chlorine_loading_type" type="char*8" category="cam_chem"
-       group="chem_inparm" valid_values="SERIAL,FIXED" >
-Type of time interpolation type for data in  {{ hilight }}chlorine_loading_file{{ closehilight }}
-Default: 'SERIAL'
-</entry>
-<entry id="chlorine_loading_fixed_tod" type="integer" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-The time of day (seconds) corresponding to {{ hilight }}chlorine_loading_fixed_ymd{{ closehilight }}
-at which the chlorine loading data is fixed
-if {{ hilight }}chlorine_loading_type{{ closehilight }} is 'FIXED'.
-Default: 0 seconds
-</entry>
-<entry id="chlorine_loading_fixed_ymd" type="integer" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-The date at which the chlorine loading data is fixed
-if {{ hilight }}chlorine_loading_type{{ closehilight }} is 'FIXED'.
-Format: YYYYMMDD
-Default: 0
-</entry>
-
-
-<entry id="linoz_data_path" type="char*256" input_pathname="abs" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-Full pathname of the directory that contains the files specified in
-{{ hilight }}linoz_data_filelist{{ closehilight }}.
-Default: none.
-</entry>
-
-<entry id="linoz_data_file" type="char*256" input_pathname="rel:linoz_data_path" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-Filename of dataset for LINOZ data.
-Default: none.
-</entry>
-
-<entry id="linoz_data_filelist" type="char*256" input_pathname="rel:linoz_data_datapath" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-Filename of file that contains a sequence of filenames of the linoz data.
-The filenames in this file are relative to the directory specified
-by {{ hilight }}linoz_data_datapath{{ closehilight }}.
-Default: set by build-namelist.
-</entry>
-
-<entry id="linoz_data_type" type="char*24" category="cam_chem"
-       group="chem_inparm" valid_values="CYCLICAL,SERIAL,INTERP_MISSING_MONTHS,FIXED" >
-Type of time interpolation for data in linoz_data files.
-Can be set to 'CYCLICAL', 'SERIAL', 'INTERP_MISSING_MONTHS', or 'FIXED'.
-Default: 'SERIAL'
-</entry>
-
-<entry id="linoz_data_rmfile" type="logical" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-Remove the file containing LINOZ data from local disk when no longer needed.
-Default: FALSE
-</entry>
-
-<entry id="linoz_data_cycle_yr" type="integer" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-The  cycle year of the LINOZ data
-if {{ hilight }}linoz_data_type{{ closehilight }} is 'CYCLICAL'.
-Format: YYYY
-Default: 0
-</entry>
-
-<entry id="linoz_data_fixed_ymd" type="integer" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-The date at which the LINOZ data  is fixed
-if {{ hilight }}linoz_data_type{{ closehilight }} is 'FIXED'.
-Format: YYYYMMDD
-Default: 0
-</entry>
-
-<entry id="linoz_data_fixed_tod" type="integer" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-The time of day (seconds) corresponding to {{ hilight }}linoz_data_fixed_ymd{{ closehilight }}
-at which the LINOZ data is fixed
-if {{ hilight }}linoz_data_type{{ closehilight }} is 'FIXED'.
-Default: 0 seconds
-</entry>
-
 <entry id="tracer_cnst_datapath" type="char*256" input_pathname="abs" category="cam_chem"
        group="chem_inparm" valid_values="" >
 Full pathname of the directory that contains the files specified in
@@ -6613,17 +6615,6 @@ Default: set by build-namelist.
        group="drydep_inparm" valid_values="" >
 List of species that undergo dry deposition.
 Default: set by build-namelist.
-</entry>
-
-<entry id="drydep_method" type="char*16" category="dry_deposition"
-       group="drydep_inparm" valid_values="xactive_atm,xactive_lnd,table" >
-Dry deposition method used.  This specifies the method used to calculate dry
-deposition velocities of gas-phase chemical species.  The available methods
-are:
- 'table'       - prescribed method in CAM
- 'xactive_atm' - interactive method in CAM
- 'xactive_lnd' - interactive method in CLM
-Default: set by build-namelist
 </entry>
 
 <entry id="rxn_rate_sums" type="char*256(200)" category="cam_chem"
@@ -7393,6 +7384,265 @@ Number of threads to use when processing loops over threads.
 Normally equal to se_vert_num_threads.
 Default: Set by build-namelist.
 </entry>
+
+
+<!-- MPAS dycore -->
+
+<entry id="mpas_time_integration" type="char*512" category="mpas"
+       group="nhyd_model" valid_values="SRK3">
+Time integration scheme in MPAS dycore.
+Default: SRK3
+</entry>
+
+<entry id="mpas_time_integration_order" type="integer" category="mpas"
+       group="nhyd_model" valid_values="2,3">
+Order for RK time integration in MPAS dycore.
+Default: 2
+</entry>
+
+<entry id="mpas_dt" type="real" category="mpas"
+       group="nhyd_model" valid_values="">
+Time step (seconds) in MPAS dycore
+Default: Set by build-namelist.
+</entry>
+
+<entry id="mpas_split_dynamics_transport" type="logical" category="mpas"
+       group="nhyd_model" valid_values="">
+Whether to super-cycle scalar transport in MPAS dycore.
+Default: TRUE
+</entry>
+
+<entry id="mpas_number_of_sub_steps" type="integer" category="mpas"
+       group="nhyd_model" valid_values="">
+Number of acoustic steps per full RK step in MPAS dycore.
+Default: 2
+</entry>
+
+<entry id="mpas_dynamics_split_steps" type="integer" category="mpas"
+       group="nhyd_model" valid_values="">
+When {{ hilight }}mpas_split_dynamics_transport{{ closehilight }} = .true., the
+number of RK steps per transport step in MPAS dycore.
+Default: 3
+</entry>
+
+<entry id="mpas_h_mom_eddy_visc2" type="real" category="mpas"
+       group="nhyd_model" valid_values="">
+Del^2 eddy viscosity for horizontal diffusion of momentum in MPAS dycore.
+Default: 0.0
+</entry>
+
+<entry id="mpas_h_mom_eddy_visc4" type="real" category="mpas"
+       group="nhyd_model" valid_values="">
+Del^4 eddy hyper-viscosity for horizontal diffusion of momentum in MPAS dycore.
+Default: 0.0
+</entry>
+
+<entry id="mpas_v_mom_eddy_visc2" type="real" category="mpas"
+       group="nhyd_model" valid_values="">
+Del^2 eddy viscosity for vertical diffusion of momentum in MPAS dycore.
+Default: 0.0
+</entry>
+
+<entry id="mpas_h_theta_eddy_visc2" type="real" category="mpas"
+       group="nhyd_model" valid_values="">
+Del^2 eddy viscosity for horizontal diffusion of theta in MPAS dycore.
+Default: 0.0
+</entry>
+
+<entry id="mpas_h_theta_eddy_visc4" type="real" category="mpas"
+       group="nhyd_model" valid_values="">
+Del^4 eddy hyper-viscosity for horizontal diffusion of theta in MPAS dycore.
+Default: 0.0
+</entry>
+
+<entry id="mpas_v_theta_eddy_visc2" type="real" category="mpas"
+       group="nhyd_model" valid_values="">
+Del^2 eddy viscosity for vertical diffusion of theta in MPAS dycore.
+Default: 0.0
+</entry>
+
+<entry id="mpas_horiz_mixing" type="char*512" category="mpas"
+       group="nhyd_model" valid_values="2d_fixed,2d_smagorinsky">
+Formulation of horizontal mixing in MPAS dycore.
+Default: 2d_smagorinsky
+</entry>
+
+<entry id="mpas_len_disp" type="real" category="mpas"
+       group="nhyd_model" valid_values="">
+Horizontal length scale, used by the Smagorinsky formulation of horizontal
+diffusion and by 3-d divergence damping in MPAS dycore.
+Default: 120000.0
+</entry>
+
+<entry id="mpas_visc4_2dsmag" type="real" category="mpas"
+       group="nhyd_model" valid_values="">
+Scaling coefficient of delta_x^3 to obtain Del^4 diffusion coefficient in
+MPAS dycore.
+Default: 0.05
+</entry>
+
+<entry id="mpas_del4u_div_factor" type="real" category="mpas"
+       group="nhyd_model" valid_values="">
+Scaling factor for the divergent component of Del^4 u calculation in MPAS
+dycore.
+Default: 10.0
+</entry>
+
+<entry id="mpas_w_adv_order" type="integer" category="mpas"
+       group="nhyd_model" valid_values="2,3,4">
+Horizontal advection order for w in MPAS dycore.
+Default: 3
+</entry>
+
+<entry id="mpas_theta_adv_order" type="integer" category="mpas"
+       group="nhyd_model" valid_values="2,3,4">
+Horizontal advection order for theta in MPAS dycore.
+Default: 3
+</entry>
+
+<entry id="mpas_scalar_adv_order" type="integer" category="mpas"
+       group="nhyd_model" valid_values="2,3,4">
+Horizontal advection order for scalars in MPAS dycore.
+Default: 3
+</entry>
+
+<entry id="mpas_u_vadv_order" type="integer" category="mpas"
+       group="nhyd_model" valid_values="2,3,4">
+Vertical advection order for normal velocities (u) in MPAS dycore
+Default: 3
+</entry>
+
+<entry id="mpas_w_vadv_order" type="integer" category="mpas"
+       group="nhyd_model" valid_values="2,3,4">
+Vertical advection order for w in MPAS dycore.
+Default: 3
+</entry>
+
+<entry id="mpas_theta_vadv_order" type="integer" category="mpas"
+       group="nhyd_model" valid_values="2,3,4">
+Vertical advection order for theta in MPAS dycore.
+Default: 3
+</entry>
+
+<entry id="mpas_scalar_vadv_order" type="integer" category="mpas"
+       group="nhyd_model" valid_values="2,3,4">
+Vertical advection order for scalars in MPAS dycore.
+Default: 3
+</entry>
+
+<entry id="mpas_scalar_advection" type="logical" category="mpas"
+       group="nhyd_model" valid_values="">
+Whether to advect scalar fields in MPAS dycore
+Default: TRUE
+</entry>
+
+<entry id="mpas_positive_definite" type="logical" category="mpas"
+       group="nhyd_model" valid_values="">
+Whether to enable positive-definite advection of scalars in MPAS dycore.
+Default: FALSE
+</entry>
+
+<entry id="mpas_monotonic" type="logical" category="mpas"
+       group="nhyd_model" valid_values="">
+Whether to enable monotonic limiter in scalar advection in MPAS dycore.
+Default: TRUE
+</entry>
+
+<entry id="mpas_coef_3rd_order" type="real" category="mpas"
+       group="nhyd_model" valid_values="">
+Upwinding coefficient in the 3rd order advection scheme in MPAS dycore.
+Default: 0.25
+</entry>
+
+<entry id="mpas_smagorinsky_coef" type="real" category="mpas"
+       group="nhyd_model" valid_values="">
+Dimensionless empirical parameter relating the strain tensor to the eddy
+viscosity in the Smagorinsky turbulence model in MPAS dycore.
+Default: 0.125
+</entry>
+
+<entry id="mpas_mix_full" type="logical" category="mpas"
+       group="nhyd_model" valid_values="">
+Mix full theta and u fields, or mix perturbation from intitial state in
+MPAS dycore.
+Default: TRUE
+</entry>
+
+<entry id="mpas_epssm" type="real" category="mpas"
+       group="nhyd_model" valid_values="">
+Off-centering parameter for the vertically implicit acoustic integration in
+MPAS dycore
+Default: 0.1
+</entry>
+
+<entry id="mpas_smdiv" type="real" category="mpas"
+       group="nhyd_model" valid_values="">
+3-d divergence damping coefficient in MPAS dycore.
+Default: 0.1
+</entry>
+
+<entry id="mpas_apvm_upwinding" type="real" category="mpas"
+       group="nhyd_model" valid_values="">
+Amount of upwinding in APVM in MPAS dycore.
+Default: 0.5
+</entry>
+
+<entry id="mpas_h_ScaleWithMesh" type="logical" category="mpas"
+       group="nhyd_model" valid_values="">
+Scale eddy viscosities with mesh-density function for horizontal diffusion
+in MPAS dycore.
+Default: TRUE
+</entry>
+
+<entry id="mpas_zd" type="real" category="mpas"
+       group="damping" valid_values="">
+Height in meters above MSL to begin w-damping profile in MPAS dycore.
+Default: 22000.0
+</entry>
+
+<entry id="mpas_xnutr" type="real" category="mpas"
+       group="damping" valid_values="">
+Maximum w-damping coefficient at model top in MPAS dycore.
+Default: 0.2
+</entry>
+
+<entry id="mpas_block_decomp_file_prefix" type="char*512" input_pathname="abs" category="mpas"
+       group="decomposition" valid_values="">
+Prefix of the MPAS graph decomposition file, to be suffixed with the MPI
+task count.  The prefix includes the full pathname of the directory
+containing the file.
+Default: Set by build-namelist.
+</entry>
+
+<entry id="mpas_do_restart" type="logical" category="mpas"
+       group="restart" valid_values="">
+Whether this run with the MPAS dycore is to restart from a previous restart
+file or not.
+Default: Set by build-namelist.
+</entry>
+
+<entry id="mpas_print_global_minmax_vel" type="logical" category="mpas"
+       group="printout" valid_values="">
+Whether to print the global min/max of horizontal normal velocity and
+vertical velocity each timestep in MPAS dycore.
+Default: TRUE
+</entry>
+
+<entry id="mpas_print_detailed_minmax_vel" type="logical" category="mpas"
+       group="printout" valid_values="">
+Whether to print the global min/max of horizontal normal velocity and
+vertical velocity each timestep, along with the location in the domain
+where those extrema occurred in MPAS dycore.
+Default: FALSE
+</entry>
+
+<entry id="mpas_print_global_minmax_sca" type="logical" category="mpas"
+       group="printout" valid_values="">
+Whether to print the global min/max of scalar fields each timestep in MPAS
+dycore.
+Default: FALSE
+</entry>
+
 
 <!-- Dycore testing  -->
 
