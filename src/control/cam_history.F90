@@ -1141,7 +1141,7 @@ CONTAINS
     restartvars(rvindex)%dims(1) = maxnflds_dim_ind
     restartvars(rvindex)%dims(2) = ptapes_dim_ind
     restartvars(rvindex)%fillset = .true.
-    restartvars(rvindex)%dfill = 0.0
+    restartvars(rvindex)%dfill = 0.0_r8
 
 
     rvindex = rvindex + 1
@@ -1285,10 +1285,10 @@ CONTAINS
              restartdims(i)%dimid, existOK=.true.)
       end do
 
-      do i=1,restartvarcnt
-        ndims= restartvars(i)%ndims
-        do k=1,ndims
-          dimids(k)=restartdims(restartvars(i)%dims(k))%dimid
+      do i = 1, restartvarcnt
+        ndims = restartvars(i)%ndims
+        do k = 1 ,ndims
+          dimids(k) = restartdims(restartvars(i)%dims(k))%dimid
         end do
         allocate(restartvars(i)%vdesc)
         ierr = pio_def_var(File, restartvars(i)%name, restartvars(i)%type, dimids(1:ndims), restartvars(i)%vdesc)
@@ -1297,15 +1297,15 @@ CONTAINS
            if(restartvars(i)%type == PIO_INT) then
               ierr = pio_put_att(File, restartvars(i)%vdesc, "_FillValue",    &
                    restartvars(i)%ifill)
-           elseif(restartvars(i)%type == PIO_REAL) then
+           else if(restartvars(i)%type == PIO_REAL) then
               ierr = pio_put_att(File, restartvars(i)%vdesc, "_FillValue",    &
                    restartvars(i)%rfill)
-           elseif(restartvars(i)%type == PIO_DOUBLE) then
+           else if(restartvars(i)%type == PIO_DOUBLE) then
               ierr = pio_put_att(File, restartvars(i)%vdesc, "_FillValue",    &
                    restartvars(i)%dfill)
-           endif
+           end if
            call cam_pio_handle_error(ierr, 'INIT_RESTART_HISTORY: Error setting fill'//trim(restartvars(i)%name))
-        endif
+        end if
       end do
     end if
   end subroutine init_restart_history
