@@ -4097,6 +4097,9 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
    tv(:ncol,:) = t(:ncol,:) *(1._r8+1.608_r8*q(:ncol,:))/ (1._r8+q(:ncol,:))
    tpv(:ncol,:) = tv(:ncol,:)
    buoy(:ncol,:) = 0._r8
+   plev_ke(:ncol,:) = 0._r8
+   w_incld(:ncol,:) = 0._r8   
+   w_nrg(:ncol,:) = -r_universal*t(:ncol,:)*omega(:ncol,:)/(grav*100._r8*p(:ncol,:))  
 
 !
 ! set "launching" level(mx) to be at maximum moist static energy.
@@ -4180,10 +4183,44 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
 !-------------------------------------------------------------------------------
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
-
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
+! -- RBN July 2006 --
+! If parcel obtains a total energy deficit (KE+PE) then
+! it detrains.
+! Assumes a parcel initial energy and PE->KE conversion 
+! efficiency.
+! -RBN 3 Nov 2008
+! For CIN to really matter need to include the parcel calculation below the LCL
+!
+! -Calcuated bottom to top 
+! -Initializes parcel energy with initial value at hmax level
+! -Increments KE base on buoyancy conversion with pe2ke efficiency
+! -Parcel terminates at level of zero energy   
+   
+   do k = pver, msg + 2, -1
+      do i = 1,ncol
+         if (k == mx(i)) then
+            plev_ke(i,k) = pini_ke
+         end if
+         if (k < mx(i).and.plge600(i)) then
+            plev_ke(i,k) = plev_ke(i,k) + pe2ke_eff*rd*buoy(i,k)*log(pf(i,k+1)/pf(i,k)) + 0.5*w_nrg(i,k)*w_nrg(i,k)
+            w_incld(i,k) = sqrt(max(0._r8,2._r8*plev_ke(i,k)))
+            if (plev_ke(i,k) <= 0._r8 .and. first_kelt0(i)) then ! Parcel terminates at level of zero energy
+               knt(i) = min(5,knt(i) + 1)
+               lelten(i,knt(i)) = k
+               first_kelt0(i) = .False. ! Make sure that this bit of code cannot be used once ke<0.
+            end if
+         end if
+      end do
+   end do
+
+
+ !
+ ! Default way to determine plume top
+ ! -Calculated top to bottom
+ ! -Starts at LCL
+   
    do k = msg + 2,pver
       do i = 1,ncol
          if (k < lcl(i) .and. plge600(i)) then
