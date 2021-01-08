@@ -4049,6 +4049,13 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
    integer knt(pcols)
    integer lelten(pcols,5)
 
+! RBN variables for parcel total energy consideration
+   real(r8),parameter :: pini_ke  = 10        ! Convective parcel initial kinetic energy (J/kg).
+   real(r8),parameter :: pe2ke_eff = 0.2      ! PE->KE parcel energy conversion efficiency.
+   real(r8)           :: plev_ke(pcols,pver)  ! Parcel kinetic energy at a particular level (J/kg).
+   real(r8)           :: w_nrg(pcols,pver)    ! Energy associated with the large scale w(omega) 
+   logical            :: first_kelt0(pcols)   ! Indicating first time ke<0 in a column.   
+   
    real(r8) cp
    real(r8) e
    real(r8) grav
