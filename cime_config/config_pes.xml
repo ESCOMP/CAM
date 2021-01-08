@@ -1698,6 +1698,11 @@
             <nthrds_glc>1</nthrds_glc>
           </nthrds>
         </pes>
+        <pes pesize="any" compset="GC">
+          <nthrds>
+            <nthrds_atm>1</nthrds_atm>
+          </nthrds>
+        </pes>
       </mach>
     </grid>
   </overrides>

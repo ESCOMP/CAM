@@ -11,7 +11,7 @@
     <desc atm="CAM60[%1PCT][%4xCO2][%CCTS][%CFIRE][%CVBSX][%PORT][%RCO2][%SCAM][%SDYN][%WCCM][%WCMD][%WCSC][%WCTS][%GC]">CAM cam6 physics:</desc>
     <desc atm="CAM50[%CCTS][%CLB][%PORT][%RCO2][%SCAM][%SDYN][%WCSC][%WCTS][%GC]">CAM cam5 physics:</desc>
     <desc atm="CAM40[%PORT][%RCO2][%SCAM][%SDYN][%TMOZ][%WXIE][%WXIED][%WCMD][%GC]">CAM cam4 physics:</desc>
-    <desc atm="CAM[%ADIAB][%DABIP04][%TJ16][%HS94][%GCHS][%KESSLER][%RCO2][%SPCAMS][%SPCAMCLBS][%SPCAMM][%SPCAMCLBM]">CAM simplified and non-versioned physics :</desc>
+    <desc atm="CAM[%ADIAB][%DABIP04][%TJ16][%HS94][%GCHS][%KESSLER][%RCO2][%SPCAMS][%SPCAMCLBS][%SPCAMM][%SPCAMMGC][%SPCAMCLBM]">CAM simplified and non-versioned physics :</desc>
 
   <!--
     ===============
@@ -34,13 +34,15 @@
     ===============
    -->
     <desc option="CCTS"         >CAM-Chem troposphere/stratosphere chem with simplified volatility basis set SOA scheme and modal aersols :</desc>
+    <desc option="GC"           >GEOS-Chem troposphere/stratosphere chemistry :</desc>
     <desc option="CFIRE"        >CAM-Chem troposphere/stratosphere chem with simplified volatility basis set SOA scheme and fire emissons :</desc>
     <desc option="CLB"          >CAM CLUBB - turned on by default in CAM60:</desc>
-    <desc option="CVBSX"        >CAM-Chem troposphere/stratosphere chem with extended volatility basis set SOA scheme and modal aersols :</desc>
+    <desc option="CVBSX"        >CAM-Chem troposphere/stratosphere chem with extended volatility basis set SOA scheme and modal aerosols :</desc>
     <desc option="RCO2"         >CAM CO2 ramp: </desc>
     <desc option="SPCAMS"       >CAM super-parameterized CAM one moment SAM microphysics </desc>
     <desc option="SPCAMCLBS"    >CAM super-parameterized CAM one moment SAM microphysics using CLUBB </desc>
     <desc option="SPCAMM"       >CAM super-parameterized CAM double moment m2005 SAM microphysics </desc>
+    <desc option="SPCAMMGC"     >CAM super-parameterized CAM double moment m2005 SAM microphysics using GEOS-Chem</desc>
     <desc option="SPCAMCLBM"    >CAM super-parameterized CAM double moment m2005 SAM microphysics using CLUBB </desc>
     <desc option="TMOZ"         >CAM tropospheric chemistry with bulk aerosols:</desc>
 
@@ -65,7 +67,6 @@
     <desc option="DABIP04"      >CAM dry adiabatic baroclinic instability (Polvani et al., 2004):</desc>
     <desc option="TJ16"         >CAM moist Held-Suarez forcing (Thatcher and Jablonowski, 2016):</desc>
     <desc option="HS94"         >CAM dry Held-Suarez forcing (Held and Suarez (1994)):</desc>
-    <desc option="GC"           >CAM with GEOS-Chem:</desc>
     <desc option="GCHS"         >CAM with GEOS-Chem dycore test:</desc>
     <desc option="KESSLER"      >CAM moist dynamical core test with Ullrich et al. (2014) baroclinic wave IC, Kessler physics and terminator chemistry:</desc>
 
@@ -119,12 +120,14 @@
 
       <!-- Modifiers for CAM runs -->
       <value compset="_(CAM50|CAM60)%(CCTS|CFIRE)">-chem trop_strat_mam4_vbs</value>
+      <value compset="_(CAM50|CAM60)%(GC)">-chem geoschem_mam4</value>
       <value compset="CAM60%CVBSX">-chem trop_strat_mam4_vbsext</value>
       <value compset="_CAM50%CLB">-clubb_sgs</value>
       <value compset="_(CAM40|CAM50|CAM60)%SCAM">-dyn eul -scam</value>
       <value compset="CAM%SPCAMS">-rad camrt -chem none -spcam_nx 32 -spcam_ny 1 -spcam_dx 4000 -spcam_dt 20 -phys spcam_sam1mom </value>
       <value compset="CAM%SPCAMCLBS">-rad camrt -chem none -spcam_nx 32 -spcam_ny 1 -spcam_dx 4000 -spcam_dt 20 -phys spcam_sam1mom -spcam_clubb_sgs </value>
       <value compset="CAM%SPCAMM">-rad rrtmg -chem trop_mam3 -spcam_nx 32 -spcam_ny 1 -spcam_dx 4000 -spcam_dt 20 -phys spcam_m2005 </value>
+      <value compset="CAM%SPCAMMGC">-rad rrtmg -chem geoschem_mam3 -spcam_nx 32 -spcam_ny 1 -spcam_dx 4000 -spcam_dt 20 -phys spcam_m2005 </value>
       <value compset="CAM%SPCAMCLBM">-rad rrtmg -chem trop_mam3 -spcam_nx 32 -spcam_ny 1 -spcam_dx 4000 -spcam_dt 20 -phys spcam_m2005 -spcam_clubb_sgs </value>
       <value compset="_CAM40%TMOZ">-chem trop_mozart</value>
 
@@ -196,11 +199,17 @@
       <value compset="2000_CAM40%TMOZ"   >2000_cam4_trop_chem</value>
       <value compset="2000_CAM40%WXIE"   >waccmxie_ma_2000_cam4</value>
 
+      <value compset="2000_CAM40%GC"     >geoschem</value>
+      <value compset="CAM%GC"            >geoschem</value>
+      <value compset="CAM[456]0%GC"      >geoschem</value>
+      <value compset="CAM%GCHS"          >geoschem_baro_moist</value>
+
       <value compset="2000_CAM60"        >2000_cam6</value>
       <value compset="2000_CAM60%WCTS"   >waccm_tsmlt_2000_cam6</value>
       <value compset="2000_CAM60%WCCM"   >waccm_ma_2000_cam6</value>
       <value compset="2000_CAM60%WCSC"   >waccm_sc_2000_cam6</value>
       <value compset="2000_CAM60%CCTS"   >2000_trop_strat_vbs_cam6</value>
+      <value compset="2000_CAM60%GC"     >geoschem_2000</value>
 
       <value compset="2000_CAM40_SLND_SICE_DOCN%SOMAQP">aquaplanet_cam4</value>
       <value compset="2000_CAM40_SLND_SICE_DOCN%AQP"   >aquaplanet_cam4</value>
@@ -213,6 +222,7 @@
       <value compset="2010_CAM60%CCTS"   >2010_trop_strat_vbs_cam6</value>
       <value compset="2010_CAM60%WCTS"   >waccm_tsmlt_2010_cam6</value>
       <value compset="2010_CAM60%WCSC"   >waccm_sc_2010_cam6</value>
+      <value compset="2010_CAM60%GC"     >geoschem_2010</value>
 
       <value compset="AMIP_CAM50"        >1850-2005_cam5</value>
       <value compset="AMIP_CAM40"        >1850-2005_cam4</value>
@@ -230,6 +240,7 @@
       <value compset="HIST_CAM60%CCTS"   >hist_trop_strat_vbs_cam6</value>
       <value compset="HIST_CAM60%CVBSX"  >hist_trop_strat_vbsext_cam6</value>
       <value compset="HIST_CAM60%CFIRE"  >hist_trop_strat_vbsfire_cam6</value>
+      <value compset="HIST_CAM60%GC"     >hist_geoschem</value>
 
       <value compset="PIPD_CAM50"        >1850-PD_cam5</value>
 
@@ -261,6 +272,7 @@
       <value compset="_CAM60%WCMD%SDYN"   >sd_waccm_mad_cam6</value>
       <value compset="_CAM40%WCMD%SDYN"   >sd_waccm_ma_cam4</value>
       <value compset="_CAM60%CCTS%SDYN"   >sd_trop_strat_vbs_cam6</value>
+      <value compset="_CAM60%GC%SDYN"     >sd_geoschem</value>
       <value compset="_CAM60%SDYN_CLM50"  >sd_cam6</value>
 
       <value compset="2000_CAM%DABIP04"  >dabi_p2004</value>
@@ -271,10 +283,6 @@
       <!-- SCAM defaults to ARM97, all other IOPs are in usermods_dirs -->
       <value compset="CAM[456]0%SCAM"    >scam_arm97</value>
 
-      <value compset="2000_CAM40%GC"     >geoschem</value>
-      <value compset="CAM%GC"            >geoschem</value>
-      <value compset="CAM[456]0%GC"      >geoschem</value>
-      <value compset="CAM%GCHS"          >geoschem_baro_moist</value>
     </values>
     <group>run_component_cam</group>
     <file>env_run.xml</file>
