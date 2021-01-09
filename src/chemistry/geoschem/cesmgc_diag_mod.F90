@@ -286,7 +286,6 @@ CONTAINS
           ELSE
              sflxnam_loc(M) = sflxnam(M)
           ENDIF
-          Write(iulog,*) " sflxnam_loc = ", TRIM(sflxnam_loc(M)), TRIM(cnst_name(M)), M
           SpcName = sflxnam_loc(M)
           CALL Addfld ( TRIM(SpcName), horiz_only, 'A',  unit_basename//'/m2/s', &
              TRIM(solsym(N))//' surface flux')
