@@ -1202,6 +1202,7 @@ contains
         old_mode = oldfill
      end if
 #else
+     ierr = 0
      if (present(old_mode)) then
         old_mode = 0
      end if
