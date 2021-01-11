@@ -390,23 +390,23 @@ CONTAINS
 
           IF ( M <= 0 ) CYCLE
 
-          eflx(1:nY,:,M) = pbuf_ik(1:nY,:)
+          eflx(1:nY,:nZ,M) = pbuf_ik(1:nY,:nZ)
 
           ! Reset pointers
           pbuf_ik   => NULL()
           pbuf_chnk => NULL()
 
-          IF ( MINVAL(eflx(:,:,M)) < 0.0e+00_r8 ) THEN
+          IF ( MINVAL(eflx(:nY,:nZ,M)) < 0.0e+00_r8 ) THEN
              Write(iulog,*) " CESMGC_Emissions_Calc: HEMCO emission flux is negative for ", &
-                TRIM(cnst_name(M)), " with value ", MINVAL(eflx(:,:,M)), " at ", &
-                MINLOC(eflx(:,:,M))
+                TRIM(cnst_name(M)), " with value ", MINVAL(eflx(:nY,:nZ,M)), " at ", &
+                MINLOC(eflx(:nY,:nZ,M))
           ENDIF
 
-          IF ( rootChunk .and. ( MAXVAL(eflx(1:nY,:,M)) > 0.0e+0_r8 ) ) THEN
+          IF ( rootChunk .and. ( MAXVAL(eflx(:nY,:nZ,M)) > 0.0e+0_r8 ) ) THEN
              Write(iulog,'(a,a,a,a)') " CESMGC_Emissions_Calc: HEMCO flux ", &
                 TRIM(fldname_ns), " added to ", TRIM(cnst_name(M))
              Write(iulog,'(a,a,E16.4)') " CESMGC_Emissions_Calc: Maximum flux ", &
-                TRIM(fldname_ns), MAXVAL(eflx(1:nY,:,M))
+                TRIM(fldname_ns), MAXVAL(eflx(:nY,:nZ,M))
           ENDIF
        ENDIF
     ENDDO
@@ -455,16 +455,16 @@ CONTAINS
     ! Output fields before lightning NO emissions are applied to eflx
     DO N = iFirstCnst, pcnst
        SpcName = TRIM(cnst_name(N))//'_XFRC'
-       CALL Outfld( TRIM(SpcName), eflx(:,:,N) / State_Met%BXHEIGHT(1,:,nZ:1:-1) * 1.0E-06 / cnst_mw(N) * avogad, nY, LCHNK )
+       CALL Outfld( TRIM(SpcName), eflx(:nY,:nZ,N) / State_Met%BXHEIGHT(1,:nY,nZ:1:-1) * 1.0E-06 / cnst_mw(N) * avogad, nY, LCHNK )
 
        SpcName = TRIM(cnst_name(N))//'_CLXF'
        ! Convert from kg/m2/s to molec/cm2/s
        ! Note 1: cnst_mw is in kg/kmole
        ! Note 2: avogad is in molecules/kmole
-       CALL Outfld( TRIM(SpcName), SUM(eflx(:,:,N), DIM=2) * 1.0E-04 / cnst_mw(N) * avogad, nY, LCHNK )
+       CALL Outfld( TRIM(SpcName), SUM(eflx(:nY,:nZ,N), DIM=2) * 1.0E-04 / cnst_mw(N) * avogad, nY, LCHNK )
 
        SpcName = TRIM(cnst_name(N))//'_CMXF'
-       CALL Outfld( TRIM(SpcName), SUM(eflx(:,:,N), DIM=2), nY, LCHNK )
+       CALL Outfld( TRIM(SpcName), SUM(eflx(:nY,:nZ,N), DIM=2), nY, LCHNK )
     ENDDO
 
     !-----------------------------------------------------------------------
@@ -487,7 +487,7 @@ CONTAINS
     ENDDO
     ENDDO
 
-    CALL Outfld( 'NO_Lightning', prod_NO(:nY,:,LCHNK), nY, LCHNK )
+    CALL Outfld( 'NO_Lightning', prod_NO(:nY,:nZ,LCHNK), nY, LCHNK )
 
     !-----------------------------------------------------------------------
     ! MEGAN emissions ...

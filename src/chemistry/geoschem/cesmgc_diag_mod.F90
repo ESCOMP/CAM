@@ -938,7 +938,7 @@ CONTAINS
           IF ( M > 0 ) THEN
              outTmp(:nY,:) = REAL(State_Chm%Species(1,:nY,nZ:1:-1,M),r8) * MWDry / adv_mass(N)
           ELSE
-             outTmp(:nY,:) = state%q(:nY,:,-M)
+             outTmp(:nY,:) = state%q(:nY,:nZ,-M)
           ENDIF
           CALL OutFld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
           CALL OutFld( TRIM(SpcName)//'_SRF', outTmp(:nY,nZ), nY, LCHNK )
@@ -1339,7 +1339,7 @@ CONTAINS
        SpcName = TRIM(srcnam(N))
        IF ( TRIM(SpcName) == '' ) CYCLE
        IF ( .NOT. hist_fld_active(TRIM(SpcName)) ) CYCLE
-       CALL OutFld( TRIM(SpcName), mmr_tend(:nY,:,N), nY, LCHNK )
+       CALL OutFld( TRIM(SpcName), mmr_tend(:nY,:nZ,N), nY, LCHNK )
     ENDDO
 
     ! Chemical tendencies in kg/s
@@ -1347,11 +1347,7 @@ CONTAINS
        SpcName = TRIM(dtchem_name(N))
        IF ( .NOT. hist_fld_active(TRIM(SpcName)) ) CYCLE
        outTmp  = 0.0e+0_r8
-       DO J = 1, nY
-       DO L = 1, nZ
-          outTmp(J,L) = mmr_tend(J,L,N) * REAL(State_Met%AD(1,J,nZ+1-L),r8)
-       ENDDO
-       ENDDO
+       outTmp(:nY,:nZ) = mmr_tend(:nY,:nZ,N) * REAL(State_Met%AD(1,:nY,nZ:1:-1),r8)
        CALL OutFld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
     ENDDO
 
@@ -1377,33 +1373,21 @@ CONTAINS
 
           SpcName = 'Jval_' // TRIM( tagName )
           IF ( .NOT. hist_fld_active(TRIM(SpcName)) ) CYCLE
-          DO J = 1, nY
-          DO L = 1, nZ
-             outTmp(J,nZ+1-L) = REAL(State_Diag%Jval(1,J,L,M),r8)
-          ENDDO
-          ENDDO
+          outTmp(:nY,:nZ) = REAL(State_Diag%Jval(1,:nY,nZ:1:-1,M),r8)
           CALL OutFld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
        ENDDO
     ENDIF
     IF ( ASSOCIATED(State_Diag%JvalO3O1D) ) THEN
        SpcName = 'Jval_O3O1D'
        IF ( hist_fld_active(TRIM(SpcName)) ) THEN
-          DO J = 1, nY
-          DO L = 1, nZ
-             outTmp(J,nZ+1-L) = REAL(State_Diag%JvalO3O1D(1,J,L),r8)
-          ENDDO
-          ENDDO
+          outTmp(:nY,:nZ) = REAL(State_Diag%JvalO3O1D(1,:nY,nZ:1:-1),r8)
           CALL OutFld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
        ENDIF
     ENDIF
     IF ( ASSOCIATED(State_Diag%JvalO3O3P) ) THEN
        SpcName = 'Jval_O3O3P'
        IF ( hist_fld_active(TRIM(SpcName)) ) THEN
-          DO J = 1, nY
-          DO L = 1, nZ
-             outTmp(J,nZ+1-L) = REAL(State_Diag%JvalO3O3P(1,J,L),r8)
-          ENDDO
-          ENDDO
+          outTmp(:nY,:nZ) = REAL(State_Diag%JvalO3O3P(1,:nY,nZ:1:-1),r8)
           CALL OutFld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
        ENDIF
     ENDIF
@@ -1450,8 +1434,8 @@ CONTAINS
              !IF ( hist_fld_active(TRIM(SpcName)) ) THEN
              !   IF ( Source_KindVal /= KINDVAL_I4 ) THEN
              !      IF ( Rank == 2 ) THEN
-             !         outTmp(:,nZ) = REAL(Ptr2d_8(1,:),r8)
-             !         CALL Outfld( TRIM( Item%FullName ), outTmp(:,nZ), nY, LCHNK )
+             !         outTmp(:nY,nZ) = REAL(Ptr2d_8(1,:),r8)
+             !         CALL Outfld( TRIM( Item%FullName ), outTmp(:nY,nZ), nY, LCHNK )
              !      ELSEIF ( Rank == 3 ) THEN
              !         ! For now, treat variables defined on level edges by ignoring top
              !         ! most layer
