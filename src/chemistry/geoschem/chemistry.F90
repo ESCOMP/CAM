@@ -2202,21 +2202,14 @@ contains
        ! See definition of map2chm
        M = map2chm(N)
        IF ( M > 0 ) THEN
-          DO J = 1, nY
-          DO L = 1, nZ
-             vmr0(J,L,N) = State_Chm(LCHNK)%Species(1,J,nZ+1-L,M) * &
-                MWDry / adv_mass(N)
-             ! We'll substract concentrations after chemistry later
-             mmr_tend(J,L,N) = REAL(State_Chm(LCHNK)%Species(1,J,nZ+1-L,M),r8)
-          ENDDO
-          ENDDO
+          vmr0(:nY,:nZ,N) = State_Chm(LCHNK)%Species(1,:nY,nZ:1:-1,M) * &
+                            MWDry / adv_mass(N)
+          ! We'll substract concentrations after chemistry later
+          mmr_tend(:nY,:nZ,N) = REAL(State_Chm(LCHNK)%Species(1,:nY,nZ:1:-1,M),r8)
        ELSEIF ( M < 0 ) THEN
-          DO J = 1, nY
-          DO L = 1, nZ
-             vmr0(J,L,N) = state%q(J,L,-M) * &
-                MWDry / adv_mass(N)
-          ENDDO
-          ENDDO
+          vmr0(:nY,:nZ,N) = state%q(:nY,:nZ,-M) * &
+                            MWDry / adv_mass(N)
+          mmr_tend(:nY,:nZ,N) = state%q(:nY,:nZ,-M)
        ENDIF
     ENDDO
 
@@ -3771,11 +3764,9 @@ contains
        ! See definition of map2chm
        M = map2chm(N)
        IF ( M > 0 ) THEN
-          DO J = 1, nY
-          DO L = 1, nZ
-             mmr_tend(J,L,N) = ( REAL(State_Chm(LCHNK)%Species(1,J,nZ+1-L,M),r8) - mmr_tend(J,L,N) ) / dT
-          ENDDO
-          ENDDO
+          mmr_tend(:nY,:nZ,N) = ( REAL(State_Chm(LCHNK)%Species(1,:nY,nZ:1:-1,M),r8) - mmr_tend(:nY,:nZ,N) ) / dT
+       ELSEIF ( M < 0 ) THEN
+          mmr_tend(:nY,:nZ,N) = ( state%q(:nY,:nZ,-M) - mmr_tend(:nY,:nZ,-M) ) / dT
        ENDIF
     ENDDO
 
