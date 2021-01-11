@@ -383,8 +383,8 @@
   </compset>
 
   <!-- GEOS-Chem Test Compsets (MSL - 1/2018 | TMMF - 11/2019) -->
-  <!-- Note: GEOS-Chem compsets require NTHRDS_ATM=1 -->
-  <!--       To do so, we enforce NTHRDS_ATM for all compset that contain "GC" -->
+  <!-- Note: GEOS-Chem compsets require NTHRDS=1 -->
+  <!--       To do so, we enforce NTHRDS for all compset that contain "GC" -->
   <!--       Thus, make sure that all GEOS-Chem compset contain "GC" -->
   <!--       We base what we did by copying what is done for SPCAMM -->
   <!--       Make sure you check config_pes.xml as well -->
@@ -644,6 +644,7 @@
       <values match="first">
         <value compset="SPCAMS">1</value>
         <value compset="SPCAMM">1</value>
+        <value compset="GC">1</value>
       </values>
     </entry>
 
@@ -651,6 +652,7 @@
       <values match="first">
         <value compset="SPCAMS">1</value>
         <value compset="SPCAMM">1</value>
+        <value compset="GC">1</value>
       </values>
     </entry>
 
@@ -658,6 +660,7 @@
       <values match="first">
         <value compset="SPCAMS">1</value>
         <value compset="SPCAMM">1</value>
+        <value compset="GC">1</value>
       </values>
     </entry>
 
@@ -665,6 +668,7 @@
       <values match="first">
         <value compset="SPCAMS">1</value>
         <value compset="SPCAMM">1</value>
+        <value compset="GC">1</value>
       </values>
     </entry>
 
@@ -672,6 +676,7 @@
       <values match="first">
         <value compset="SPCAMS">1</value>
         <value compset="SPCAMM">1</value>
+        <value compset="GC">1</value>
       </values>
     </entry>
 
@@ -679,6 +684,7 @@
       <values match="first">
         <value compset="SPCAMS">1</value>
         <value compset="SPCAMM">1</value>
+        <value compset="GC">1</value>
       </values>
     </entry>
 
@@ -686,6 +692,7 @@
       <values match="first">
         <value compset="SPCAMS">1</value>
         <value compset="SPCAMM">1</value>
+        <value compset="GC">1</value>
       </values>
     </entry>
 
@@ -693,6 +700,7 @@
       <values match="first">
         <value compset="SPCAMS">1</value>
         <value compset="SPCAMM">1</value>
+        <value compset="GC">1</value>
       </values>
     </entry>
 
@@ -700,6 +708,7 @@
       <values match="first">
         <value compset="SPCAMS">1</value>
         <value compset="SPCAMM">1</value>
+        <value compset="GC">1</value>
       </values>
     </entry>
 
