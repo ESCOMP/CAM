@@ -4207,7 +4207,7 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
             plev_ke(i,k) = plev_ke(i,k) + pe2ke_eff*rd*buoy(i,k)*log(pf(i,k+1)/pf(i,k)) + 0.5*w_nrg(i,k)*w_nrg(i,k)
             w_incld(i,k) = sqrt(max(0._r8,2._r8*plev_ke(i,k)))
             if (plev_ke(i,k) <= 0._r8 .and. first_kelt0(i)) then ! Parcel terminates at level of zero energy
-               knt(i) = min(5,knt(i) + 1)
+               knt(i) = min(num_cin,knt(i) + 1)
                lelten(i,knt(i)) = k
                first_kelt0(i) = .False. ! Make sure that this bit of code cannot be used once ke<0.
             end if
@@ -4221,16 +4221,27 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
  ! -Calculated top to bottom
  ! -Starts at LCL
    
-   do k = msg + 2,pver
-      do i = 1,ncol
-         if (k < lcl(i) .and. plge600(i)) then
-            if (buoy(i,k+1) > 0._r8 .and. buoy(i,k) <= 0._r8) then
-               knt(i) = min(num_cin,knt(i) + 1)
-               lelten(i,knt(i)) = k
-            end if
-         end if
-      end do
-   end do
+ !  do k = msg + 2,pver
+ !     do i = 1,ncol
+ !        if (k < lcl(i) .and. plge600(i)) then
+ !           if (buoy(i,k+1) > 0._r8 .and. buoy(i,k) <= 0._r8) then
+ !              knt(i) = min(num_cin,knt(i) + 1)
+ !              lelten(i,knt(i)) = k
+ !           end if
+ !        end if
+ !     end do
+ !  end do
+   
+   call outfld('WINCLD', w_incld, pcols, lchnk)     
+   call outfld('BUOY', buoy, pcols, lchnk)
+   call outfld('LCL',real(lcl,r8),pcols, lchnk)
+   call outfld('KHMAX',real(mx,r8),pcols, lchnk)  
+   call outfld('PLCL', pl, pcols, lchnk)            ! Pressure at the lifting condensation level.
+   call outfld('TLCL', tl, pcols, lchnk)            ! Temp        "
+   call outfld('HMAX', hmax, pcols, lchnk)     
+   call outfld('KEPAR', plev_ke, pcols, lchnk)    ! Parcel K.E.
+
+   
 !
 ! calculate convective available potential energy (cape).
 !
