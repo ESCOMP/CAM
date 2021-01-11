@@ -242,6 +242,11 @@
   </compset>
 
   <compset>
+    <alias>FFRIERSON</alias>
+    <lname>2000_CAM%FRIERSON_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
     <alias>FKESSLER</alias>
     <lname>2000_CAM%KESSLER_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>
   </compset>
@@ -363,6 +368,11 @@
   <compset>
     <alias>FTJ16</alias>
     <lname>2000_CAM%TJ16_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>FFRIERSON</alias>
+    <lname>2000_CAM%FRIERSON_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>
   </compset>
 
   <compset>

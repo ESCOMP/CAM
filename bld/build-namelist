@@ -472,7 +472,7 @@ if ($phys eq 'adiabatic') {
     ++$phys_mode_flags;
 }
 my $ideal_mode = 0;
-if ($phys eq 'kessler' or $phys eq 'held_suarez' or $phys eq 'tj2016') {
+if ($phys eq 'kessler' or $phys eq 'held_suarez' or $phys eq 'tj2016' or $phys eq 'frierson' ) {
     $ideal_mode = 1;
     ++$phys_mode_flags;
 }
@@ -4524,6 +4524,8 @@ sub check_snapshot_settings {
             push (@validList_bc, ("'kessler_tend'"));
         } elsif ($phys eq 'tj2016') {
             push (@validList_bc, ("'thatcher_jablonowski_precip_tend'"));
+        } elsif ($phys eq 'frierson') {
+            push (@validList_bc, ("'frierson_tend'"));
         }
         if ($chem ne 'none') {
             push (@validList_bc, ("'chem_timestep_tend'"));

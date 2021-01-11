@@ -19,7 +19,7 @@ module physpkg
   use camsrfexch,      only: cam_out_t, cam_in_t, cam_export
 
   ! Note: ideal_phys is true for Held-Suarez (1994) physics
-  use cam_control_mod, only: moist_physics, adiabatic, ideal_phys, kessler_phys, tj2016_phys
+  use cam_control_mod, only: moist_physics, adiabatic, ideal_phys, kessler_phys, tj2016_phys, frierson_phys
   use phys_control,    only: phys_getopts
   use perf_mod,        only: t_barrierf, t_startf, t_stopf, t_adj_detailf
   use cam_logfile,     only: iulog
@@ -77,6 +77,7 @@ contains
     use check_energy,       only: check_energy_register
     use kessler_cam,        only: kessler_register
     use tj2016_cam,         only: thatcher_jablonowski_register
+    use frierson_cam,       only: frierson_register
 
     !---------------------------Local variables-----------------------------
     !
@@ -108,6 +109,8 @@ contains
       call kessler_register()
     else if (tj2016_phys) then
       call thatcher_jablonowski_register()
+    else if (frierson_phys) then
+      call frierson_register()
     end if
 
     ! Fields for physics package diagnostics
@@ -192,10 +195,12 @@ contains
     use held_suarez_cam,    only: held_suarez_init
     use kessler_cam,        only: kessler_cam_init
     use tj2016_cam,         only: thatcher_jablonowski_init
+    use frierson_cam,       only: frierson_init
     use tracers,            only: tracers_init
     use wv_saturation,      only: wv_sat_init
     use phys_debug_util,    only: phys_debug_init
     use qneg_module,        only: qneg_init
+    use nudging,            only: Nudge_Model, nudging_init
     use cam_snapshot,       only: cam_snapshot_init
 
     ! Input/output arguments
@@ -237,7 +242,7 @@ contains
 
     ! wv_saturation is relatively independent of everything else and
     ! low level, so init it early. Must at least do this before radiation.
-    if (kessler_phys .or. tj2016_phys) then
+    if (kessler_phys .or. tj2016_phys .or. frierson_phys) then
       call wv_sat_init()
     end if
 
@@ -253,7 +258,13 @@ contains
       call kessler_cam_init(pbuf2d)
     else if (tj2016_phys) then
       call thatcher_jablonowski_init(pbuf2d)
+    else if (frierson_phys) then
+      call frierson_init(phys_state,pbuf2d)
     end if
+
+    ! Initialize Nudging Parameters
+    !--------------------------------
+    if(Nudge_Model) call nudging_init
 
     if (chem_is_active()) then
       ! Prognostic chemistry.
@@ -467,11 +478,16 @@ contains
     use constituents,    only: cnst_get_ind, pcnst
     use cam_diagnostics, only: diag_phys_tend_writeout, diag_surf
     use tj2016_cam,      only: thatcher_jablonowski_sfc_pbl_hs_tend
+    use frierson_cam,    only: frierson_pbl_tend
     use dycore,          only: dycore_is
     use check_energy,    only: calc_te_and_aam_budgets
     use cam_history,     only: hist_fld_active
     use cam_snapshot,    only: cam_snapshot_all_outfld
     use cam_snapshot,    only: cam_snapshot_ptend_outfld
+    use time_manager,    only: get_nstep
+
+    use nudging,         only: Nudge_Model, Nudge_ON, nudging_timestep_tend
+    use check_energy,    only: check_energy_chng
 
     ! Arguments
     !
@@ -484,6 +500,9 @@ contains
     type(physics_buffer_desc), pointer       :: pbuf(:)
 
     !---------------------------Local workspace-----------------------------
+
+    integer :: nstep                               ! current timestep number
+    real(r8):: zero(pcols)                         ! array of zeros
 
     type(physics_ptend)                      :: ptend  ! indivdual parameterization tendencies
     real(r8)                                 :: tmp_q(pcols, pver)
@@ -503,6 +522,10 @@ contains
     real(r8) :: tmp_pdel  (pcols,pver)       ! tmp space
     real(r8) :: tmp_ps    (pcols)            ! tmp space
     !--------------------------------------------------------------------------
+
+    ! get nstep and zero array for energy checker
+    zero = 0._r8
+    nstep = get_nstep()
 
     ! number of active atmospheric columns
     ncol  = state%ncol
@@ -535,6 +558,20 @@ contains
        call thatcher_jablonowski_sfc_pbl_hs_tend(state, ptend, ztodt, cam_in)
        call physics_update(state, ptend, ztodt, tend)
     end if
+
+    if (frierson_phys) then
+       ! Update surface, PBL 
+       call frierson_pbl_tend(state, ptend, ztodt, cam_in)
+       call physics_update(state, ptend, ztodt, tend)
+    end if
+
+    ! Update Nudging values, if needed
+    !----------------------------------
+    if((Nudge_Model).and.(Nudge_ON)) then
+      call nudging_timestep_tend(state,ptend)
+      call physics_update(state, ptend, ztodt, tend)
+      call check_energy_chng(state, tend, "nudging", nstep, ztodt, zero, zero, zero, zero)
+    endif
 
     ! FV: convert dry-type mixing ratios to moist here because
     !     physics_dme_adjust assumes moist. This is done in p_d_coupling for
@@ -654,6 +691,8 @@ contains
     use held_suarez_cam,   only: held_suarez_tend
     use kessler_cam,       only: kessler_tend
     use tj2016_cam,        only: thatcher_jablonowski_precip_tend
+    use frierson_cam,      only: frierson_convection_tend, frierson_condensate_tend
+    use frierson_cam,      only: frierson_radiative_tend
     use dycore,            only: dycore_is
     use cam_snapshot,      only: cam_snapshot_all_outfld
     use cam_snapshot,      only: cam_snapshot_ptend_outfld
@@ -830,6 +869,52 @@ contains
        if (trim(cam_take_snapshot_after) == "thatcher_jablonowski_precip_tend") then
           call cam_snapshot_all_outfld(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf)
        end if
+    else if (frierson_phys) then
+       ! Compute the convective precipitation
+       !--------------------------------------
+       if (trim(cam_take_snapshot_before) == "frierson_convection_tend") then
+          call cam_snapshot_all_outfld(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf)
+       end if
+       call frierson_convection_tend(state, ptend, ztodt, pbuf)
+       if ( (trim(cam_take_snapshot_after) == "frierson_convection_tend") .and. &
+            (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
+          call cam_snapshot_ptend_outfld(ptend, lchnk)
+       end if
+       call physics_update(state, ptend, ztodt, tend)
+       if (trim(cam_take_snapshot_after) == "frierson_convection_tend") then
+          call cam_snapshot_all_outfld(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf)
+       end if
+
+       ! Compute the large-scale precipitation
+       !----------------------------------------
+       if (trim(cam_take_snapshot_before) == "frierson_condensate_tend") then
+          call cam_snapshot_all_outfld(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf)
+       end if
+       call frierson_condensate_tend(state, ptend, ztodt, pbuf)
+       if ( (trim(cam_take_snapshot_after) == "frierson_condensate_tend") .and. &
+            (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
+          call cam_snapshot_ptend_outfld(ptend, lchnk)
+       end if
+       call physics_update(state, ptend, ztodt, tend)
+       if (trim(cam_take_snapshot_after) == "frierson_condensate_tend") then
+          call cam_snapshot_all_outfld(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf)
+       end if
+
+       ! Compute the radiative tendencies
+       !-----------------------------------
+       if (trim(cam_take_snapshot_before) == "frierson_radiative_tend") then
+          call cam_snapshot_all_outfld(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf)
+       end if
+       call frierson_radiative_tend(state, ptend, ztodt, cam_in, cam_out)
+       if ( (trim(cam_take_snapshot_after) == "frierson_radiative_tend") .and. &
+            (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
+          call cam_snapshot_ptend_outfld(ptend, lchnk)
+       end if
+       call physics_update(state, ptend, ztodt, tend)
+       if (trim(cam_take_snapshot_after) == "frierson_radiative_tend") then
+          call cam_snapshot_all_outfld(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf)
+       end if
+
     end if
 
     ! Can't turn on conservation error messages unless the appropriate heat
@@ -889,6 +974,7 @@ contains
     !--------------------------------------------------------------------------
     use physics_types,       only: physics_state
     use physics_buffer,      only: physics_buffer_desc
+    use nudging,             only: Nudge_Model, nudging_timestep_init
 
     implicit none
 
@@ -899,6 +985,10 @@ contains
     type(physics_buffer_desc), pointer                 :: pbuf2d(:,:)
 
     !--------------------------------------------------------------------------
+
+    ! Update Nudging values, if needed
+    !----------------------------------
+    if(Nudge_Model) call nudging_timestep_init(phys_state)
 
   end subroutine phys_timestep_init
 
