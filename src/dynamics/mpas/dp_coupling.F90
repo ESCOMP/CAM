@@ -83,6 +83,8 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    integer, allocatable :: bpter(:,:)  ! offsets into block buffer for packing data
    integer, allocatable :: cpter(:,:)  ! offsets into chunk buffer for unpacking data
 
+   real(r8), allocatable:: pmid(:,:)   !mid-level pressure consisten with MPAS discrete state
+
    real(r8), allocatable, dimension(:) :: bbuffer, cbuffer ! transpose buffers
 
    character(len=*), parameter :: subname = 'd_p_coupling'
@@ -103,10 +105,13 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    theta_m  => dyn_out % theta_m
    exner    => dyn_out % exner
    tracers  => dyn_out % tracers
-
-   ! diagnose pintdry, pmiddry
-   call dry_hydrostatic_pressure( &
-      nCellsSolve, plev, zz, zint, rho_zz, theta_m, pmiddry, pintdry)
+   !
+   ! diagnose pintdry, pmiddry, pmid
+   !
+   allocate(pmid(plev, nCellsSolve))
+   call hydrostatic_pressure( &
+        nCellsSolve, plev, zz, zint, rho_zz, theta_m(:,:), tracers(index_qv,:,:),&
+        pmiddry, pintdry, pmid)
 
    call t_startf('dpcopy')
 
@@ -134,6 +139,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
                phys_state(lchnk)%v(icol,k)       = uy(kk,i)
                phys_state(lchnk)%omega(icol,k)   = -rho_zz(kk,i)*zz(kk,i)*gravit*0.5_r8*(w(kk,i)+w(kk+1,i))   ! omega
                phys_state(lchnk)%pmiddry(icol,k) = pmiddry(kk,i)
+               phys_state(lchnk)%pmid   (icol,k) = pmid(kk,i)
             end do
 
             do k = 1, pverp
@@ -152,7 +158,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
 
    else  ! .not. local_dp_map
 
-      tsize = 6 + pcnst
+      tsize = 7 + pcnst
       allocate(bbuffer(tsize*block_buf_nrecs))    ! block buffer
       bbuffer = 0.0_r8
       allocate(cbuffer(tsize*chunk_buf_nrecs))    ! chunk buffer
@@ -176,13 +182,14 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
             bbuffer(bpter(i,k)+2) = uy(k,i)
             bbuffer(bpter(i,k)+3) = -rho_zz(k,i) * zz(k,i) * gravit * 0.5_r8 * (w(k,i) + w(k+1,i))   ! omega
             bbuffer(bpter(i,k)+4) = pmiddry(k,i)
+            bbuffer(bpter(i,k)+5) = pmid(k,i)
             do m=1,pcnst
-               bbuffer(bpter(i,k)+4+m) = tracers(cam_from_mpas_cnst(m),k,i)
+               bbuffer(bpter(i,k)+5+m) = tracers(cam_from_mpas_cnst(m),k,i)
             end do
          end do
 
          do k = 1, pverp
-            bbuffer(bpter(i,k-1)+5+pcnst) = pintdry(k,i)
+            bbuffer(bpter(i,k-1)+6+pcnst) = pintdry(k,i)
          end do
       end do
 
@@ -210,14 +217,15 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
                phys_state(lchnk)%v      (icol,kk)  = cbuffer(cpter(icol,k)+2)
                phys_state(lchnk)%omega  (icol,kk)  = cbuffer(cpter(icol,k)+3)
                phys_state(lchnk)%pmiddry(icol,kk)  = cbuffer(cpter(icol,k)+4)
+               phys_state(lchnk)%pmid   (icol,kk)  = cbuffer(cpter(icol,k)+5)
                do m = 1, pcnst
-                  phys_state(lchnk)%q  (icol,kk,m) = cbuffer(cpter(icol,k)+4+m)
+                  phys_state(lchnk)%q  (icol,kk,m) = cbuffer(cpter(icol,k)+5+m)
                end do
             end do
 
             do k = 0, pver
                kk = pverp - k
-               phys_state(lchnk)%pintdry(icol,kk) = cbuffer(cpter(icol,k)+5+pcnst)
+               phys_state(lchnk)%pintdry(icol,kk) = cbuffer(cpter(icol,k)+6+pcnst)
             end do
          end do
       end do
@@ -226,6 +234,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
       deallocate( cbuffer, cpter )
 
    end if
+   deallocate(pmid)
    call t_stopf('dpcopy')
 
    call t_startf('derived_phys')
@@ -523,9 +532,6 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
       phys_state(lchnk)%ps(:ncol) = phys_state(lchnk)%pint(:ncol,pverp)
 
       do k = 1, pver
-         phys_state(lchnk)%pmid(:ncol,k) = (phys_state(lchnk)%pint(:ncol,k+1) + &
-                                            phys_state(lchnk)%pint(:ncol,k)) / 2._r8
-
          call shr_vmath_log(phys_state(lchnk)%pmid(:ncol,k), &
                             phys_state(lchnk)%lnpmid(:ncol,k), ncol)
       end do
@@ -693,7 +699,7 @@ end subroutine derived_tend
 
 !=========================================================================================
 
-subroutine dry_hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, theta_m, pmiddry, pintdry)
+subroutine hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, theta_m, q, pmiddry, pintdry,pmid)
 
    ! Compute dry hydrostatic pressure at layer interfaces and midpoints
    !
@@ -702,69 +708,56 @@ subroutine dry_hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, thet
    ! The vertical dimension for 3-d arrays is innermost, and k=1 represents
    ! the lowest layer or level in the fields.
    !
-   ! IMPORTANT NOTE: At present, this routine is probably not correct when there
-   !                 is moisture in the atmosphere.
-
-   use mpas_constants, only : cp, rgas, cv, gravity, p0
+  use mpas_constants, only : cp, rgas, cv, gravity, p0
+  use physconst,      only:  rair, cpair  
 
    ! Arguments
    integer, intent(in) :: nCells
    integer, intent(in) :: nVertLevels
-   real(r8), dimension(nVertLevels, nCells), intent(in) :: zz         ! d(zeta)/dz [-]
-   real(r8), dimension(nVertLevels+1, nCells), intent(in) :: zgrid    ! geometric heights of layer interfaces [m]
-   real(r8), dimension(nVertLevels, nCells), intent(in) :: rho_zz     ! dry density / zz [kg m^-3]
-   real(r8), dimension(nVertLevels, nCells), intent(in) :: theta_m    ! potential temperature * (1 + Rv/Rd * qv)
-   real(r8), dimension(nVertLevels, nCells), intent(out) :: pmiddry   ! layer midpoint dry hydrostatic pressure [Pa]
-   real(r8), dimension(nVertLevels+1, nCells), intent(out) :: pintdry ! layer interface dry hydrostatic pressure [Pa]
+   real(r8), dimension(nVertLevels, nCells),   intent(in) :: zz      ! d(zeta)/dz [-]
+   real(r8), dimension(nVertLevels+1, nCells), intent(in) :: zgrid   ! geometric heights of layer interfaces [m]
+   real(r8), dimension(nVertLevels, nCells),   intent(in) :: rho_zz  ! dry density / zz [kg m^-3]
+   real(r8), dimension(nVertLevels, nCells),   intent(in) :: theta_m ! modified potential temperature
+   real(r8), dimension(nVertLevels, nCells),   intent(in) :: q       ! water vapor dry mixing ratio
+   real(r8), dimension(nVertLevels, nCells),   intent(out):: pmiddry ! layer midpoint dry hydrostatic pressure [Pa]
+   real(r8), dimension(nVertLevels+1, nCells), intent(out):: pintdry ! layer interface dry hydrostatic pressure [Pa]
+   real(r8), dimension(nVertLevels, nCells),   intent(out):: pmid    ! layer midpoint hydrostatic pressure [Pa]
 
    ! Local variables
    integer :: iCell, k
-   real(r8), dimension(nCells) :: ptop_int   ! Extrapolated pressure at top of the model
-   real(r8), dimension(nCells) :: ptop_mid   ! Full non-hydrostatic pressure at top layer midpoint
-   real(r8), dimension(nCells) :: ttop_mid   ! Temperature at top layer midpoint
    real(r8), dimension(nVertLevels) :: dz    ! Geometric layer thickness in column
    real(r8) :: pi, t
-
-   !
-   ! Compute full non-hydrostatic pressure and temperature at top layer midpoint
-   !
-   ptop_mid(:) = p0 * (rgas * rho_zz(nVertLevels,:) * zz(nVertLevels,:) * theta_m(nVertLevels,:) / p0)**(cp/cv)
-   ttop_mid(:) = theta_m(nVertLevels,:) * &
-                 (zz(nVertLevels,:) * rgas * rho_zz(nVertLevels,:) * theta_m(nVertLevels,:) / p0)**(rgas/(cp-rgas))
-
-
-   !
-   ! Extrapolate upward from top layer midpoint to top of the model
-   ! The formula used here results from combination of the hypsometric equation with the equation
-   ! for the layer mid-point pressure (i.e., (pint_top + pint_bot)/2 = pmid)
-   !
-   ! TODO: Should temperature here be virtual temperature?
-   !
-   ptop_int(:) = 2.0_r8 * ptop_mid(:) &
-                 / (1.0_r8 + exp( (zgrid(nVertLevels+1,:) - zgrid(nVertLevels,:)) * gravity / rgas / ttop_mid(:)))
-
-
+   real(r8) :: pk,rhok,rhodryk,thetavk,kap1,kap2
    !
    ! For each column, integrate downward from model top to compute dry hydrostatic pressure at layer
    ! midpoints and interfaces. The pressure averaged to layer midpoints should be consistent with
-   ! the ideal gas law using the rho_zz and theta_m values prognosed by MPAS at layer midpoints.
+   ! the ideal gas law using the rho_zz and theta values prognosed by MPAS at layer midpoints.
    !
-   ! TODO: Should temperature here be virtual temperature?
-   ! TODO: Is it problematic that the computed temperature is consistent with the non-hydrostatic pressure?
-   !
+   kap1 = p0**(-rgas/cp)           ! pre-compute constants
+   kap2 = (1.0_r8/(1.0_r8-rgas/cp))! pre-compute constants
    do iCell = 1, nCells
 
       dz(:) = zgrid(2:nVertLevels+1,iCell) - zgrid(1:nVertLevels,iCell)
 
-      pintdry(nVertLevels+1,iCell) = ptop_int(iCell)
+      k = nVertLevels
+      rhok = (1.0_r8+q(k,iCell))*zz(k,iCell) * rho_zz(k,iCell) !full CAM physics density
+      thetavk = theta_m(k,iCell)/ (1.0_r8 + q(k,iCell)) !convert modified theta to virtual theta
+      pk     = (rhok*rgas*thetavk*(kap1))**kap2         !mid-level pressure
+      !
+      ! model top pressure consistently diagnosed using the assumption that the mid level
+      ! is at heigh z(nVertLevels-1)+0.5*dz
+      !
+      pintdry(nVertLevels+1,iCell) = pk-0.5_r8*dz(nVertLevels)*rhok*gravity 
       do k = nVertLevels, 1, -1
-         pintdry(k,iCell) = pintdry(k+1,iCell) + gravity * zz(k,iCell) * rho_zz(k,iCell) * dz(k)
-         pmiddry(k,iCell) = 0.5_r8 * (pintdry(k+1,iCell) + pintdry(k,iCell))
+        rhodryk = zz(k,iCell) * rho_zz(k,iCell) 
+        rhok    = (1.0_r8+q(k,iCell))*rhodryk
+        pintdry(k,iCell) = pintdry(k+1,iCell) + gravity * rhodryk * dz(k)
+        pmiddry(k,iCell) = 0.5_r8 * (pintdry(k+1,iCell) + pintdry(k,iCell))
+        
+        thetavk = theta_m(k,iCell)/ (1.0_r8 + q(k,iCell)) !convert modified theta to virtual theta
+        pmid(k,iCell) = (rhok*rgas*thetavk*(kap1))**kap2  !mid-level pressure
       end do
-   end do
-
-end subroutine dry_hydrostatic_pressure
-
-!=========================================================================================
+    end do
+end subroutine hydrostatic_pressure
 
 end module dp_coupling
