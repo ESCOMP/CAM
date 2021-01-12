@@ -286,6 +286,22 @@ subroutine zm_conv_init(pref_edge)
     call addfld ('CAPE',     horiz_only,   'A', 'J/kg', 'Convectively available potential energy')
     call addfld ('FREQZM',   horiz_only  , 'A', 'fraction', 'Fractional occurance of ZM convection') 
 
+! RBN: Output variables for more detailed ZM analysis (+dynamica parcel and tau)
+
+    call addfld ('TAUZM   ','/s      ',1,'A', 'ZM deep convection timescale',phys_decomp)  
+    call addfld ('WINCLD  ','m/s     ',plev,'A', 'Deep convective in-cloud vertical velocity',phys_decomp)
+    call addfld ('KEPAR   ','J/kg   ',plev, 'A','Convective parcel kinetic energy',phys_decomp)
+    call addfld ('BUOY    ','K       ',plev,'A', 'Buoyancy as temperature',phys_decomp)
+    call addfld ('MWINCLD ','m/s     ',1,    'A','Deep convective mean in-cloud vertical velocity',phys_decomp) 
+    call addfld ('HMAX    ','unitless',1,    'A','Moist Static energy maximum',phys_decomp)
+    call addfld ('LCL     ','unitless',1,    'A','Lifting condensation model level index',phys_decomp)
+    call addfld ('LEL     ','unitless',1,    'A','Convective top negative buoyancy level index',phys_decomp)
+    call addfld ('KHMAX   ','unitless',1,    'A','Moist Static energy maximum level index',phys_decomp) 
+    call addfld ('TLCL    ','K       ',1,    'A','Temperature at the lifting condensation level',phys_decomp)
+    call addfld ('PLCL    ','K       ',1,    'A','Pressure at the lifting condensation level',phys_decomp)
+    
+!!!!
+    
     call addfld ('ZMMTT',    (/ 'lev' /),  'A', 'K/s', 'T tendency - ZM convective momentum transport')
     call addfld ('ZMMTU',    (/ 'lev' /),  'A', 'm/s2', 'U tendency - ZM convective momentum transport')
     call addfld ('ZMMTV',    (/ 'lev' /),  'A', 'm/s2', 'V tendency - ZM convective momentum transport')
@@ -632,7 +648,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    endif
 
    call zm_convr(   lchnk   ,ncol    , &
-                    state%t       ,state%q(:,:,1),      prec    ,jctop   ,jcbot   , &
+                    state%t       ,state%q(:,:,1),    state%omega,  prec    ,jctop   ,jcbot   , &
                     pblh    ,state%zm      ,state%phis    ,state%zi      ,ptend_loc%q(:,:,1)    , &
                     ptend_loc%s    , state%pmid     ,state%pint    ,state%pdel     , &
                     .5_r8*ztodt    ,mcon    ,cme     , cape,      &
