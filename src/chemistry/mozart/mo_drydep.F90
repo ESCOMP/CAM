@@ -1,7 +1,7 @@
 module mo_drydep
 
   !---------------------------------------------------------------------
-  !       ... Dry deposition 
+  !       ... Dry deposition
   !---------------------------------------------------------------------
 
   use shr_kind_mod,     only : r8 => shr_kind_r8, shr_kind_cl
@@ -80,7 +80,7 @@ module mo_drydep
   integer, parameter :: n_land_type = 11
 
   integer, allocatable :: spc_ndx(:) ! nddvels
-  real(r8), public :: crb 
+  real(r8), public :: crb
 
   type lnd_dvel_type
      real(r8), pointer :: dvel(:,:)   ! deposition velocity over land (cm/s)
@@ -93,7 +93,7 @@ contains
 
   !---------------------------------------------------------------------------
   !---------------------------------------------------------------------------
-  subroutine dvel_inti_fromlnd 
+  subroutine dvel_inti_fromlnd
     use mo_chem_utls,         only : get_spc_ndx
     use cam_abortutils,       only : endrun
 
@@ -120,10 +120,10 @@ contains
   !-------------------------------------------------------------------------------------
   subroutine drydep_update( state, cam_in )
     use physics_types,   only : physics_state
-    use camsrfexch,      only : cam_in_t     
+    use camsrfexch,      only : cam_in_t
 
     type(physics_state), intent(in) :: state           ! Physics state variables
-    type(cam_in_t),  intent(in) :: cam_in 
+    type(cam_in_t),  intent(in) :: cam_in
 
     if (nddvels<1) return
 
@@ -137,15 +137,15 @@ contains
                              wind_speed, spec_hum, air_temp, pressure_10m, rain, &
                              snow, solar_flux, dvelocity, dflx, mmr, &
                              tv, ncol, lchnk )
-                          
+
     !-------------------------------------------------------------------------------------
-    ! combines the deposition velocities provided by the land model with deposition 
-    ! velocities over ocean and sea ice 
+    ! combines the deposition velocities provided by the land model with deposition
+    ! velocities over ocean and sea ice
     !-------------------------------------------------------------------------------------
 
     use ppgrid,         only : pcols
     use chem_mods,      only : gas_pcnst
-      
+
 #if (defined OFFLINE_DYN)
     use metdata, only: get_met_fields
 #endif
@@ -154,8 +154,8 @@ contains
     ! 	... dummy arguments
     !-------------------------------------------------------------------------------------
 
-    real(r8), intent(in)      :: icefrac(pcols)            
-    real(r8), intent(in)      :: ocnfrac(pcols)            
+    real(r8), intent(in)      :: icefrac(pcols)
+    real(r8), intent(in)      :: ocnfrac(pcols)
     integer,  intent(in)      :: ncol
     integer,  intent(in)      :: lchnk                    ! chunk number
     real(r8), intent(in)      :: sfc_temp(pcols)          ! surface temperature (K)
@@ -164,7 +164,7 @@ contains
     real(r8), intent(in)      :: spec_hum(pcols)          ! specific humidity (kg/kg)
     real(r8), intent(in)      :: air_temp(pcols)          ! surface air temperature (K)
     real(r8), intent(in)      :: pressure_10m(pcols)      ! 10 meter pressure (Pa)
-    real(r8), intent(in)      :: rain(pcols)              
+    real(r8), intent(in)      :: rain(pcols)
     real(r8), intent(in)      :: snow(pcols)              ! snow height (m)
     real(r8), intent(in)      :: solar_flux(pcols)        ! direct shortwave radiation at surface (W/m^2)
     real(r8), intent(in)      :: tv(pcols)                ! potential temperature
@@ -180,17 +180,17 @@ contains
 
     real(r8), dimension(ncol) :: term    ! work array
     integer  :: ispec
-    real(r8)  :: lndfrac(pcols)            
+    real(r8)  :: lndfrac(pcols)
 #if (defined OFFLINE_DYN)
     real(r8)  :: met_ocnfrac(pcols)
-    real(r8)  :: met_icefrac(pcols)            
+    real(r8)  :: met_icefrac(pcols)
 #endif
     integer :: i
 
     lndfrac(:ncol) = 1._r8 - ocnfrac(:ncol) - icefrac(:ncol)
 
-    where( lndfrac(:ncol) < 0._r8 ) 
-       lndfrac(:ncol) = 0._r8 
+    where( lndfrac(:ncol) < 0._r8 )
+       lndfrac(:ncol) = 0._r8
     endwhere
 
 #if (defined OFFLINE_DYN)
@@ -201,7 +201,7 @@ contains
     !   ... initialize
     !-------------------------------------------------------------------------------------
     dvelocity(:,:) = 0._r8
-    
+
     !-------------------------------------------------------------------------------------
     !   ... compute the dep velocities over ocean and sea ice
     !       land type 7 is used for ocean
@@ -226,7 +226,7 @@ contains
        dvelocity(:ncol,spc_ndx(ispec)) = lnd(lchnk)%dvel(:ncol,ispec)*lndfrac(:ncol) &
                                        + ocnice_dvel(:ncol,spc_ndx(ispec))
     enddo
-    
+
     !-------------------------------------------------------------------------------------
     !        ... special adjustments
     !-------------------------------------------------------------------------------------
@@ -249,10 +249,10 @@ contains
           dvelocity(:ncol,hcooh_ndx) = dvelocity(:ncol,ch3cooh_ndx)
        end if
     end if
-    
+
     !-------------------------------------------------------------------------------------
     !        ... assign CO tags to CO
-    ! put this kludge in for now ...  
+    ! put this kludge in for now ...
     !  -- should be able to set all these via the table mapping in seq_drydep_mod
     !-------------------------------------------------------------------------------------
     if( cohc_ndx>0 .and. co_ndx>0 ) then
@@ -533,11 +533,11 @@ contains
     use ncdio_atm, only : infld
 
     logical :: readvar
-    
+
     type(file_desc_t) :: piofile
     character(len=shr_kind_cl) :: locfn
     logical :: lexist
-    
+
     call getfil (drydep_srf_file, locfn, 1, lexist)
     if(lexist) then
        call cam_pio_openfile(piofile, locfn, PIO_NOWRITE)
@@ -630,10 +630,10 @@ contains
     if (single_column) then
        if (scm_cambfb_mode) then
           piofile => initial_file_get_id()
-          call shr_scam_getCloseLatLon(piofile%fh,scmlat,scmlon,closelat,closelon,latidx,lonidx)
+          call shr_scam_getCloseLatLon(piofile,scmlat,scmlon,closelat,closelon,latidx,lonidx)
           ploniop=size(loniop)
           platiop=size(latiop)
-       else 
+       else
           latidx=1
           lonidx=1
           ploniop=1
@@ -697,7 +697,7 @@ contains
     write(iulog,*) 'interp_map : mapping_ext ',mapping_ext
 #endif
     do j = 1,plon+1
-       lon1 = lon_edge(j) 
+       lon1 = lon_edge(j)
        do i = -veg_ext,nlon_veg+veg_ext
           dx = lon_veg_edge_ext(i  ) - lon1
           dy = lon_veg_edge_ext(i+1) - lon1
@@ -729,17 +729,17 @@ contains
           fraction         = 0._r8
           do jj = ind_lat(j),ind_lat(j+1)
              y1 = max( lat_edge(j),lat_veg_edge(jj) )
-             y2 = min( lat_edge(j+1),lat_veg_edge(jj+1) ) 
+             y2 = min( lat_edge(j+1),lat_veg_edge(jj+1) )
              dy = (y2 - y1)/(lat_veg_edge(jj+1) - lat_veg_edge(jj))
              do ii =ind_lon(i),ind_lon(i+1)
                 i_ndx = mapping_ext(ii)
                 x1 = max( lon_edge(i),lon_veg_edge_ext(ii) )
-                x2 = min( lon_edge(i+1),lon_veg_edge_ext(ii+1) ) 
+                x2 = min( lon_edge(i+1),lon_veg_edge_ext(ii+1) )
                 dx = (x2 - x1)/(lon_veg_edge_ext(ii+1) - lon_veg_edge_ext(ii))
                 area = dx * dy
                 total_area = total_area + area
                 !-----------------------------------------------------------------
-                ! 	... special case for ocean grid point 
+                ! 	... special case for ocean grid point
                 !-----------------------------------------------------------------
                 if( nint(landmask(i_ndx,jj)) == 0 ) then
                    fraction(npft_veg+1) = fraction(npft_veg+1) + area
@@ -790,7 +790,7 @@ contains
           tmp_frac_lu(i,11, j) = sum(fraction(10:12))
        end do lon_loop
     end do lat_loop
-    
+
     do lchnk = begchunk, endchunk
        ncol = get_ncols_p(lchnk)
        call get_rlat_all_p(lchnk, ncol, rlats(:ncol))
@@ -819,7 +819,7 @@ contains
     end do
 
   end subroutine interp_map
-  
+
   !-------------------------------------------------------------------------------------
   !-------------------------------------------------------------------------------------
   subroutine drydep_xactive( sfc_temp, pressure_sfc,  &
@@ -860,7 +860,7 @@ contains
     real(r8), intent(in)      :: spec_hum(pcols)          ! specific humidity (kg/kg)
     real(r8), intent(in)      :: air_temp(pcols)          ! surface air temperature (K)
     real(r8), intent(in)      :: pressure_10m(pcols)      ! 10 meter pressure (Pa)
-    real(r8), intent(in)      :: rain(pcols)              
+    real(r8), intent(in)      :: rain(pcols)
     real(r8), intent(in)      :: snow(pcols)              ! snow height (m)
 
     real(r8), intent(in)      :: solar_flux(pcols)        ! direct shortwave radiation at surface (W/m^2)
@@ -874,8 +874,8 @@ contains
     integer, intent(in), optional     ::  beglandtype
     integer, intent(in), optional     ::  endlandtype
 
-    real(r8), intent(in), optional      :: ocnfrc(pcols) 
-    real(r8), intent(in), optional      :: icefrc(pcols) 
+    real(r8), intent(in), optional      :: ocnfrc(pcols)
+    real(r8), intent(in), optional      :: icefrc(pcols)
 
     !-------------------------------------------------------------------------------------
     ! 	... local variables
@@ -952,7 +952,7 @@ contains
     logical  :: fr_lnduse(ncol,n_land_type)           ! wrking array
     real(r8) :: dewm                                  ! multiplier for rs when dew occurs
 
-    real(r8) :: lcl_frc_landuse(ncol,n_land_type) 
+    real(r8) :: lcl_frc_landuse(ncol,n_land_type)
 
     integer :: beglt, endlt
 
@@ -966,16 +966,16 @@ contains
                                 0.005_r8, 0.000_r8, 0.000_r8, 0.000_r8, 0.075_r8, 0.002_r8 /)
 
     if (present( beglandtype)) then
-      beglt = beglandtype 
+      beglt = beglandtype
     else
       beglt = 1
     endif
     if (present( endlandtype)) then
-      endlt = endlandtype 
+      endlt = endlandtype
     else
       endlt = n_land_type
     endif
-  
+
     !-------------------------------------------------------------------------------------
     ! initialize
     !-------------------------------------------------------------------------------------
@@ -1001,7 +1001,7 @@ contains
     !-------------------------------------------------------------------------------------
     ! season index only for ocn and sea ice
     !-------------------------------------------------------------------------------------
-    index_season = 4 
+    index_season = 4
     !-------------------------------------------------------------------------------------
     ! special case for snow covered terrain
     !-------------------------------------------------------------------------------------
@@ -1141,7 +1141,7 @@ contains
     !-------------------------------------------------------------------------------------
     ! revise calculation of friction velocity and z0 over water
     !-------------------------------------------------------------------------------------
-    lt = 7    
+    lt = 7
     do i = 1,ncol
        if( fr_lnduse(i,lt) ) then
           if( unstable(i) ) then
@@ -1386,7 +1386,7 @@ contains
                 if( lt == 7 ) then
                    where( fr_lnduse(:ncol,lt) )
                       ! assume no surface resistance for SO2 over water`
-                      wrk(:) = wrk(:) + lnd_frc(:)/(dep_ra(:ncol,lt,lchnk) + dep_rb(:ncol,lt,lchnk)) 
+                      wrk(:) = wrk(:) + lnd_frc(:)/(dep_ra(:ncol,lt,lchnk) + dep_rb(:ncol,lt,lchnk))
                    endwhere
                 else
                    where( fr_lnduse(:ncol,lt) )

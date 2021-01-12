@@ -45,12 +45,12 @@ module cam_history
    use cam_logfile,         only: iulog
    use cam_history_support, only: max_fieldname_len, fieldname_suffix_len,    &
                                   max_chars, ptapes, fieldname_len,           &
-                                  max_string_len, date2yyyymmdd, pflds,       &
-                                  fieldname_lenp2, sec2hms,                   &
+                                  max_string_len, pflds, fieldname_lenp2,     &
                                   field_info, active_entry, hentry,           &
                                   horiz_only, write_hist_coord_attrs,         &
                                   write_hist_coord_vars, interp_info_t,       &
                                   lookup_hist_coord_indices, get_hist_coord_index
+   use string_utils,        only: date2yyyymmdd, sec2hms
    use sat_hist,            only: is_satfile
    use solar_parms_data,    only: solar_parms_on, kp=>solar_parms_kp, ap=>solar_parms_ap
    use solar_parms_data,    only: f107=>solar_parms_f107, f107a=>solar_parms_f107a, f107p=>solar_parms_f107p
@@ -97,15 +97,19 @@ module cam_history
   type (active_entry), target, allocatable :: restarthistory_tape(:) ! restart history tapes
 
   type rvar_id
-    type(var_desc_t), pointer :: vdesc => null()
-    integer :: type
-    integer :: ndims
-    integer :: dims(4)
+    type(var_desc_t), pointer      :: vdesc => null()
+    integer                        :: type
+    integer                        :: ndims
+    integer                        :: dims(4)
     character(len=fieldname_lenp2) :: name
+    logical                        :: fillset = .false.
+    integer                        :: ifill
+    real(r4)                       :: rfill
+    real(r8)                       :: dfill
   end type rvar_id
   type rdim_id
-    integer :: len
-    integer :: dimid
+    integer                        :: len
+    integer                        :: dimid
     character(len=fieldname_lenp2) :: name
   end type rdim_id
   !
@@ -1044,6 +1048,8 @@ CONTAINS
     restartvars(rvindex)%ndims = 2
     restartvars(rvindex)%dims(1) = maxnflds_dim_ind
     restartvars(rvindex)%dims(2) = ptapes_dim_ind
+    restartvars(rvindex)%fillset = .true.
+    restartvars(rvindex)%ifill = 0
 
     rvindex = rvindex + 1
     restartvars(rvindex)%name = 'numlev'
@@ -1051,6 +1057,8 @@ CONTAINS
     restartvars(rvindex)%ndims = 2
     restartvars(rvindex)%dims(1) = maxnflds_dim_ind
     restartvars(rvindex)%dims(2) = ptapes_dim_ind
+    restartvars(rvindex)%fillset = .true.
+    restartvars(rvindex)%ifill = 0
 
     rvindex = rvindex + 1
     restartvars(rvindex)%name = 'hrestpath'
@@ -1065,6 +1073,8 @@ CONTAINS
     restartvars(rvindex)%ndims = 2
     restartvars(rvindex)%dims(1) = maxnflds_dim_ind
     restartvars(rvindex)%dims(2) = ptapes_dim_ind
+    restartvars(rvindex)%fillset = .true.
+    restartvars(rvindex)%ifill = 0
 
     rvindex = rvindex + 1
     restartvars(rvindex)%name = 'avgflag'
@@ -1130,6 +1140,9 @@ CONTAINS
     restartvars(rvindex)%ndims = 2
     restartvars(rvindex)%dims(1) = maxnflds_dim_ind
     restartvars(rvindex)%dims(2) = ptapes_dim_ind
+    restartvars(rvindex)%fillset = .true.
+    restartvars(rvindex)%dfill = 0.0_r8
+
 
     rvindex = rvindex + 1
     restartvars(rvindex)%name = 'mdims'
@@ -1189,6 +1202,8 @@ CONTAINS
     restartvars(rvindex)%ndims = 2
     restartvars(rvindex)%dims(1) = maxnflds_dim_ind
     restartvars(rvindex)%dims(2) = ptapes_dim_ind
+    restartvars(rvindex)%fillset = .true.
+    restartvars(rvindex)%ifill = 0
 
     rvindex = rvindex + 1
     restartvars(rvindex)%name = 'zonal_complement'
@@ -1196,6 +1211,8 @@ CONTAINS
     restartvars(rvindex)%ndims = 2
     restartvars(rvindex)%dims(1) = maxnflds_dim_ind
     restartvars(rvindex)%dims(2) = ptapes_dim_ind
+    restartvars(rvindex)%fillset = .true.
+    restartvars(rvindex)%ifill = 0
 
   end subroutine restart_vars_setnames
 
@@ -1268,15 +1285,27 @@ CONTAINS
              restartdims(i)%dimid, existOK=.true.)
       end do
 
-      do i=1,restartvarcnt
-        ndims= restartvars(i)%ndims
-        do k=1,ndims
-          dimids(k)=restartdims(restartvars(i)%dims(k))%dimid
+      do i = 1, restartvarcnt
+        ndims = restartvars(i)%ndims
+        do k = 1 ,ndims
+          dimids(k) = restartdims(restartvars(i)%dims(k))%dimid
         end do
         allocate(restartvars(i)%vdesc)
         ierr = pio_def_var(File, restartvars(i)%name, restartvars(i)%type, dimids(1:ndims), restartvars(i)%vdesc)
         call cam_pio_handle_error(ierr, 'INIT_RESTART_HISTORY: Error defining '//trim(restartvars(i)%name))
-
+        if(restartvars(i)%fillset) then
+           if(restartvars(i)%type == PIO_INT) then
+              ierr = pio_put_att(File, restartvars(i)%vdesc, "_FillValue",    &
+                   restartvars(i)%ifill)
+           else if(restartvars(i)%type == PIO_REAL) then
+              ierr = pio_put_att(File, restartvars(i)%vdesc, "_FillValue",    &
+                   restartvars(i)%rfill)
+           else if(restartvars(i)%type == PIO_DOUBLE) then
+              ierr = pio_put_att(File, restartvars(i)%vdesc, "_FillValue",    &
+                   restartvars(i)%dfill)
+           end if
+           call cam_pio_handle_error(ierr, 'INIT_RESTART_HISTORY: Error setting fill'//trim(restartvars(i)%name))
+        end if
       end do
     end if
   end subroutine init_restart_history
@@ -4683,6 +4712,7 @@ end subroutine print_active_fldlst
     integer                          :: fdecomp
     integer                          :: num_patches
     integer                          :: mdimsize   ! Total # on-node elements
+    integer                          :: bdim3, edim3
     logical                          :: interpolate
     logical                          :: patch_output
     type(history_patch_t), pointer   :: patchptr
@@ -4760,11 +4790,25 @@ end subroutine print_active_fldlst
           end if
         else if (nadims == 2) then
           ! Special case for 2D field (no levels) due to hbuf structure
-          call cam_grid_write_dist_array(tape(t)%File, fdecomp,               &
-               adims(1:nadims), fdims(1:frank), tape(t)%hlist(f)%hbuf(:,1,:), varid)
+           if(tape(t)%hlist(f)%hwrt_prec == 4) Then
+              call cam_grid_write_dist_array(tape(t)%File, fdecomp,           &
+                   adims(1:nadims), fdims(1:frank),                           &
+                   real(tape(t)%hlist(f)%hbuf(:,1,:), kind=r4), varid)
+           else
+              call cam_grid_write_dist_array(tape(t)%File, fdecomp,           &
+                   adims(1:nadims), fdims(1:frank),                           &
+                   tape(t)%hlist(f)%hbuf(:,1,:), varid)
+           end if
         else
-          call cam_grid_write_dist_array(tape(t)%File, fdecomp, adims,        &
-               fdims(1:frank), tape(t)%hlist(f)%hbuf, varid)
+           if(tape(t)%hlist(f)%hwrt_prec == 4) Then
+              call cam_grid_write_dist_array(tape(t)%File, fdecomp, adims,    &
+                   fdims(1:frank),                                            &
+                   real(tape(t)%hlist(f)%hbuf, kind=r4), varid)
+           else
+              call cam_grid_write_dist_array(tape(t)%File, fdecomp, adims,    &
+                   fdims(1:frank),                                            &
+                   tape(t)%hlist(f)%hbuf, varid)
+           end if
         end if
       end if
     end do
@@ -4774,11 +4818,13 @@ end subroutine print_active_fldlst
            ! write variance data to restart file for standard deviation calc
           if (nadims == 2) then
            ! Special case for 2D field (no levels) due to sbuf structure
-             call cam_grid_write_dist_array(tape(t)%File, fdecomp, adims(1:nadims), &
-                  fdims(1:frank), tape(t)%hlist(f)%sbuf(:,1,:), tape(t)%hlist(f)%sbuf_varid)
+             call cam_grid_write_dist_array(tape(t)%File, fdecomp,            &
+                  adims(1:nadims), fdims(1:frank),                            &
+                  tape(t)%hlist(f)%sbuf(:,1,:), tape(t)%hlist(f)%sbuf_varid)
           else
-             call cam_grid_write_dist_array(tape(t)%File, fdecomp, adims,        &
-                  fdims(1:frank), tape(t)%hlist(f)%sbuf, tape(t)%hlist(f)%sbuf_varid)
+             call cam_grid_write_dist_array(tape(t)%File, fdecomp, adims,     &
+                  fdims(1:frank), tape(t)%hlist(f)%sbuf,                      &
+                  tape(t)%hlist(f)%sbuf_varid)
           endif
        endif
      !! NACS
@@ -4788,11 +4834,14 @@ end subroutine print_active_fldlst
              nadims = 2
           end if
           call cam_grid_dimensions(fdecomp, fdims(1:2), nacsrank)
-          call cam_grid_write_dist_array(tape(t)%File, fdecomp, adims(1:nadims), &
-               fdims(1:nacsrank), tape(t)%hlist(f)%nacs, tape(t)%hlist(f)%nacs_varid)
+          call cam_grid_write_dist_array(tape(t)%File, fdecomp, &
+               adims(1:nadims), fdims(1:nacsrank), &
+               tape(t)%hlist(f)%nacs, tape(t)%hlist(f)%nacs_varid)
        else
-          ierr = pio_put_var(tape(t)%File, tape(t)%hlist(f)%nacs_varid,     &
-               tape(t)%hlist(f)%nacs(:, tape(t)%hlist(f)%field%begdim3:tape(t)%hlist(f)%field%enddim3))
+          bdim3 = tape(t)%hlist(f)%field%begdim3
+          edim3 = tape(t)%hlist(f)%field%enddim3
+          ierr = pio_put_var(tape(t)%File, tape(t)%hlist(f)%nacs_varid,       &
+               tape(t)%hlist(f)%nacs(:, bdim3:edim3))
        end if
     end if
 
