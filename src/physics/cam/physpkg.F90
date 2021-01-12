@@ -2274,6 +2274,9 @@ contains
        prec_pcw_macmic = 0._r8
        snow_pcw_macmic = 0._r8
 
+       ! contrail parameterization
+       ! see Chen et al., 2012: Global contrail coverage simulated
+       !                        by CAM5 with the inventory of 2006 global aircraft emissions, JAMES
        call ssatcontrail_d0(state, pbuf, ztodt, ptend, tend)
        call physics_update(state, ptend, ztodt, tend)
 

@@ -167,10 +167,11 @@ contains
     use dyn_grid,        only : get_dyn_grid_parm, get_horiz_grid_d
     use phys_grid,       only : get_rlat_all_p, get_rlon_all_p, get_ncols_p
     use dycore,          only : dycore_is
-    use horizontal_interpolate, only : xy_interp_init, xy_interp0_init
+    use horizontal_interpolate, only : xy_interp_init
 #if ( defined SPMD )
     use mpishorthand,    only: mpicom, mpir8, mpiint
 #endif
+    use aircraf_emit,       only: get_aircraft
 
     implicit none
 
@@ -203,6 +204,7 @@ contains
     real(r8):: rlats(pcols), rlons(pcols)
     integer :: lchnk, ncol, icol, i,j
     logical :: found
+    integer :: aircrat_cnt
 
     call specify_fields( specifier, flds )
 
@@ -594,8 +596,11 @@ contains
         call get_horiz_grid_d(plat, clat_d_out=phi)
         call get_horiz_grid_d(plon, clon_d_out=lam)
 
-        if(.not.allocated(lon_global_grid_ndx)) allocate(lon_global_grid_ndx(pcols,begchunk:endchunk))
-        if(.not.allocated(lat_global_grid_ndx)) allocate(lat_global_grid_ndx(pcols,begchunk:endchunk))
+        call get_aircraft(aircraft_cnt)
+        if(aircraft_cnt.gt.0) then
+         if(.not.allocated(lon_global_grid_ndx)) allocate(lon_global_grid_ndx(pcols,begchunk:endchunk))
+         if(.not.allocated(lat_global_grid_ndx)) allocate(lat_global_grid_ndx(pcols,begchunk:endchunk))
+        endif
         lon_global_grid_ndx=-huge(1)
         lat_global_grid_ndx=-huge(1)
 
@@ -651,7 +656,7 @@ contains
 
         if(masterproc) then
 ! compute weighting 
-            call xy_interp_init(file%nlon,file%nlat,file%lons,file%lats,plon,plat,file%weight_x,file%weight_y)
+            call xy_interp_init(file%nlon,file%nlat,file%lons,file%lats,plon,plat,file%weight_x,file%weight_y,1)
 
             do i2=1,plon
                file%count_x(i2) = 0
@@ -673,7 +678,7 @@ contains
                enddo
             enddo
 
-            call xy_interp0_init(file%nlon,file%nlat,file%lons,file%lats,plon,plat,file%weight0_x,file%weight0_y)
+            call xy_interp_init(file%nlon,file%nlat,file%lons,file%lats,plon,plat,file%weight0_x,file%weight0_y,0)
 
             do i2=1,plon
                file%count0_x(i2) = 0
@@ -1891,13 +1896,13 @@ contains
                    call vert_interp_ub(ncol, file%nlev, file%levs,  datain(:ncol,:), data_out(:ncol,:) )
                 else if(file%conserve_column) then
                  if( file%dist ) then
-                   call vert_rebin(ncol,file%nlev,pver,state(c)%pint, &
-                                       datain,data_out(:,:), &
-                                       file%p0,ps,file%hyai,file%hybi)
+                   call vert_interp_mixrat(ncol,file%nlev,pver,state(c)%pint, &
+                        datain, data_out(:,:), &
+                        file%p0,ps,file%hyai,file%hybi,0)
                  else
                    call vert_interp_mixrat(ncol,file%nlev,pver,state(c)%pint, &
                         datain, data_out(:,:), &
-                        file%p0,ps,file%hyai,file%hybi)
+                        file%p0,ps,file%hyai,file%hybi,1)
                  endif
                 else
                    call vert_interp(ncol, file%nlev, pin, state(c)%pmid, datain, data_out(:,:) )
@@ -2369,7 +2374,7 @@ contains
   end subroutine interpz_conserve
 
 !------------------------------------------------------------------------------
-   subroutine vert_interp_mixrat( ncol, nsrc, ntrg, trg_x, src, trg, p0, ps, hyai, hybi)
+   subroutine vert_interp_mixrat( ncol, nsrc, ntrg, trg_x, src, trg, p0, ps, hyai, hybi, ii)
   
     implicit none
 
@@ -2379,6 +2384,7 @@ contains
     real(r8)              :: src_x(nsrc+1)         ! source coordinates
     real(r8), intent(in)      :: trg_x(pcols,ntrg+1)         ! target coordinates
     real(r8), intent(in)      :: src(pcols,nsrc)             ! source array
+    integer, intent(in)   :: ii                    ! 0: rebin only, otherwise mixing ratio
     real(r8), intent(out)     :: trg(pcols,ntrg)             ! target array
 
     real(r8) :: ps(pcols), p0, hyai(nsrc+1), hybi(nsrc+1)
@@ -2414,10 +2420,18 @@ contains
           top = trg_x(n,i)
           do j = sil,1,-1
            if( top.lt.src_x(j) ) then
+            if(ii.eq.0) then
+             y = y+(bot-src_x(j))*src(n,j)/(src_x(j+1)-src_x(j))
+            else
              y = y+(bot-src_x(j))*src(n,j)
+            endif
             bot = src_x(j)
            else
-            y = y+(bot-top)*src(n,j)
+            if(ii.eq.0) then
+             y = y+(bot-top)*src(n,j)/(src_x(j+1)-src_x(j))
+            else
+             y = y+(bot-top)*src(n,j)
+            endif
             exit
            endif
           enddo
@@ -2433,10 +2447,18 @@ contains
      y = 0.0_r8
      do j=nsrc,1,-1
       if( top.lt.src_x(j) ) then
-       y = y+(bot-src_x(j))*src(n,j)
+       if(ii.eq.0) then
+        y = y+(bot-src_x(j))*src(n,j)/(src_x(j+1)-src_x(j))
+       else
+        y = y+(bot-src_x(j))*src(n,j)
+       endif
        bot = src_x(j)
       else
-       y = y+(bot-top)*src(n,j)
+       if(ii.eq.0) then
+        y = y+(bot-top)*src(n,j)/(src_x(j+1)-src_x(j))
+       else
+        y = y+(bot-top)*src(n,j)
+       endif
        exit
       endif
      enddo
@@ -2444,94 +2466,15 @@ contains
     endif
 
 ! turn mass into mixing ratio 
-    do i=1,ntrg
-     trg(n,i) = trg(n,i)/(trg_x(n,i+1)-trg_x(n,i))
-    enddo
-    
+    if(ii.ne.0) then
+     do i=1,ntrg
+      trg(n,i) = trg(n,i)/(trg_x(n,i+1)-trg_x(n,i))
+     enddo
+    endif
+ 
     enddo
 
    end subroutine vert_interp_mixrat
-!------------------------------------------------------------------------------
-   subroutine vert_rebin( ncol, nsrc, ntrg, trg_x, src, trg, p0, ps, hyai, hybi)
-  
-    implicit none
-
-    integer, intent(in)   :: ncol 
-    integer, intent(in)   :: nsrc                  ! dimension source array
-    integer, intent(in)   :: ntrg                  ! dimension target array
-    real(r8)              :: src_x(nsrc+1)         ! source coordinates
-    real(r8), intent(in)      :: trg_x(pcols,ntrg+1)         ! target coordinates
-    real(r8), intent(in)      :: src(pcols,nsrc)             ! source array
-    real(r8), intent(out)     :: trg(pcols,ntrg)             ! target array
-
-    real(r8) :: ps(pcols), p0, hyai(nsrc+1), hybi(nsrc+1)
-    !---------------------------------------------------------------
-    !   ... local variables
-    !---------------------------------------------------------------
-    integer  :: i, j, n
-    integer  :: sil
-    real(r8)     :: tl, y
-    real(r8)     :: bot, top
-
-    do n = 1,ncol
-   
-    do i=1,nsrc+1
-     src_x(i) = p0*hyai(i)+ps(n)*hybi(i)
-    enddo
-
-    do i = 1, ntrg
-       tl = trg_x(n,i+1)
-       if( (tl.gt.src_x(1)).and.(trg_x(n,i).lt.src_x(nsrc+1)) ) then
-          do sil = 1,nsrc
-             if( (tl-src_x(sil))*(tl-src_x(sil+1)).le.0.0_r8 ) then
-                exit
-             end if
-          end do
-
-          if( tl.gt.src_x(nsrc+1)) sil = nsrc
-
-          y = 0.0_r8
-          bot = min(tl,src_x(nsrc+1))   
-          top = trg_x(n,i)
-          do j = sil,1,-1
-           if( top.lt.src_x(j) ) then
-             y = y+(bot-src_x(j))*src(n,j)/(src_x(j+1)-src_x(j))
-            bot = src_x(j)
-           else
-            y = y+(bot-top)*src(n,j)/(src_x(j+1)-src_x(j))
-            exit
-           endif
-          enddo
-          trg(n,i) = y
-       else
-        trg(n,i) = 0.0_r8
-       end if
-    end do
-
-    if( trg_x(n,ntrg+1).lt.src_x(nsrc+1) ) then
-     top = trg_x(n,ntrg+1)
-     bot = src_x(nsrc+1)
-     y = 0.0_r8
-     do j=nsrc,1,-1
-      if( top.lt.src_x(j) ) then
-       y = y+(bot-src_x(j))*src(n,j)/(src_x(j+1)-src_x(j))
-       bot = src_x(j)
-      else
-       y = y+(bot-top)*src(n,j)/(src_x(j+1)-src_x(j))
-       exit
-      endif
-     enddo
-     trg(n,ntrg) = trg(n,ntrg)+y
-    endif
-
-! turn mass into mixing ratio 
-!    do i=1,ntrg
-!     trg(n,i) = trg(n,i)/(trg_x(n,i+1)-trg_x(n,i))
-!    enddo
-    
-    enddo
-
-   end subroutine vert_rebin    
 !------------------------------------------------------------------------------
   subroutine vert_interp( ncol, levsiz, pin, pmid, datain, dataout )
     !-------------------------------------------------------------------------- 

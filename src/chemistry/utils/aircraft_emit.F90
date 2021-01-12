@@ -23,6 +23,7 @@ module aircraft_emit
   public :: aircraft_emit_adv
   public :: aircraft_emit_register
   public :: aircraft_emit_readnl
+  public :: get_aircraft
 
   type :: forcing_air
      real(r8)              :: mw
@@ -71,6 +72,20 @@ module aircraft_emit
 
 contains
 
+  subroutine get_aircraft(cnt, spc_name_list_out)
+  integer, intent(out) :: cnt 
+  character(len=16), optional, intent(out) :: spc_name_list_out(N_AERO)
+  integer :: i
+
+  cnt = aircraft_cnt
+  if( cnt.gt. 0 ) then
+    do i=1,cnt
+       spc_name_list_out(i) = spc_name_list(i)
+    end do
+  end if
+
+  end subroutine get_aircraft
+ 
   subroutine aircraft_emit_register()
 
 !------------------------------------------------------------------
@@ -111,7 +126,7 @@ contains
 	 call endrun('aircraft_emit_register: '//trim(spc_name)//' is not in the aircraft emission dataset')
         endif
 
-        if( mm<=2 ) dist(n) = 1
+        if (trim(spc_name) == 'ac_SLANT_DIST'.or. trim(spc_name) == 'ac_TRACK_DIST') dist(n) = 1
 
         aircraft_cnt = aircraft_cnt + 1
         call pbuf_add_field(aero_names(mm),'physpkg',dtype_r8,(/pcols,pver/),idx)
