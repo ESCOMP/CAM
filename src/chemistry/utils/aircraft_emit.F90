@@ -64,8 +64,8 @@ module aircraft_emit
 
   integer :: number_flds
 
-  integer, public :: aircraft_cnt = 0
-  character(len=16), public :: spc_name_list(N_AERO)
+  integer :: aircraft_cnt = 0
+  character(len=16) :: spc_name_list(N_AERO)
   character(len=256) :: spc_flist(N_AERO),spc_fname(N_AERO)
   integer :: dist(N_AERO)
 
