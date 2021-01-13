@@ -7606,6 +7606,34 @@ Maximum w-damping coefficient at model top in MPAS dycore.
 Default: 0.2
 </entry>
 
+<entry id="mpas_cam_coef" type="real" category="mpas"
+       group="damping" valid_values="">
+Coefficient for scaling the 2nd-order horizontal mixing in the mpas_cam absorbing layer
+Default: 1.0
+</entry>
+
+<entry id="mpas_rayleigh_damp_u" type="logical" category="mpas"
+       group="damping" valid_values="">
+Whether to apply Rayleigh damping on horizontal velocity in the top-most model levels.
+The number of levels is specified by the config_number_rayleigh_damp_u_levels option,
+and the damping timescale is specified by the config_rayleigh_damp_u_timescale_days option.
+Default: FALSE
+</entry>
+
+<entry id="mpas_rayleigh_damp_u_timescale_days" type="real" category="mpas"
+       group="damping" valid_values="">
+Timescale, in days (86400 s), for the Rayleigh damping on horizontal velocity in
+the top-most model levels.
+Default: 5.0
+</entry>
+
+<entry id="mpas_number_rayleigh_damp_u_levels" type="integer" category="mpas"
+       group="damping" valid_values="">
+Number layers in which to apply Rayleigh damping on horizontal velocity at top of model;
+damping linearly ramps to zero by layer number from the top
+Default: 6
+</entry>
+
 <entry id="mpas_block_decomp_file_prefix" type="char*512" input_pathname="abs" category="mpas"
        group="decomposition" valid_values="">
 Prefix of the MPAS graph decomposition file, to be suffixed with the MPI

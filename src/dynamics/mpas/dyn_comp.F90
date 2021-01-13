@@ -1190,6 +1190,10 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
    logical                 :: mpas_h_ScaleWithMesh = .true.
    real(r8)                :: mpas_zd = 22000.0_r8
    real(r8)                :: mpas_xnutr = 0.2_r8
+   real(r8)                :: mpas_cam_coef = 1.0_r8
+   logical                 :: mpas_rayleigh_damp_u = .false.
+   real(r8)                :: mpas_rayleigh_damp_u_timescale_days = 5.0_r8
+   integer                 :: mpas_number_rayleigh_damp_u_levels = 6
    character (len=StrKIND) :: mpas_block_decomp_file_prefix = 'x1.40962.graph.info.part.'
    logical                 :: mpas_do_restart = .false.
    logical                 :: mpas_print_global_minmax_vel = .true.
@@ -1233,7 +1237,11 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
 
    namelist /damping/ &
            mpas_zd, &
-           mpas_xnutr
+           mpas_xnutr, &
+           mpas_cam_coef, &
+           mpas_rayleigh_damp_u, &
+           mpas_rayleigh_damp_u_timescale_days, &
+           mpas_number_rayleigh_damp_u_levels
 
    namelist /decomposition/ &
            mpas_block_decomp_file_prefix
@@ -1357,11 +1365,19 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
       end if
    end if
 
-   call mpi_bcast(mpas_zd,    1, mpi_real8, masterprocid, mpicom, mpi_ierr)
-   call mpi_bcast(mpas_xnutr, 1, mpi_real8, masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_zd,       1, mpi_real8, masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_xnutr,    1, mpi_real8, masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_cam_coef, 1, mpi_real8, masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_rayleigh_damp_u,                1, mpi_logical, masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_rayleigh_damp_u_timescale_days, 1, mpi_real8, masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_number_rayleigh_damp_u_levels,  1, mpi_integer, masterprocid, mpicom, mpi_ierr)
 
    call mpas_pool_add_config(configPool, 'config_zd', mpas_zd)
    call mpas_pool_add_config(configPool, 'config_xnutr', mpas_xnutr)
+   call mpas_pool_add_config(configPool, 'config_mpas_cam_coef', mpas_cam_coef)
+   call mpas_pool_add_config(configPool, 'config_rayleigh_damp_u', mpas_rayleigh_damp_u)
+   call mpas_pool_add_config(configPool, 'config_rayleigh_damp_u_timescale_days', mpas_rayleigh_damp_u_timescale_days)
+   call mpas_pool_add_config(configPool, 'config_number_rayleigh_damp_u_levels', mpas_number_rayleigh_damp_u_levels)
 
    ! Read namelist group &decomposition
    if (masterproc) then
@@ -1471,6 +1487,10 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
       write(iulog,*) '   mpas_h_ScaleWithMesh = ', mpas_h_ScaleWithMesh
       write(iulog,*) '   mpas_zd = ', mpas_zd
       write(iulog,*) '   mpas_xnutr = ', mpas_xnutr
+      write(iulog,*) '   mpas_cam_coef = ', mpas_cam_coef
+      write(iulog,*) '   mpas_rayleigh_damp_u = ', mpas_rayleigh_damp_u
+      write(iulog,*) '   mpas_rayleigh_damp_u_timescale_days = ', mpas_rayleigh_damp_u_timescale_days
+      write(iulog,*) '   mpas_number_rayleigh_damp_u_levels = ', mpas_number_rayleigh_damp_u_levels
       write(iulog,*) '   mpas_block_decomp_file_prefix = ', trim(mpas_block_decomp_file_prefix)
       write(iulog,*) '   mpas_do_restart = ', mpas_do_restart
       write(iulog,*) '   mpas_print_global_minmax_vel = ', mpas_print_global_minmax_vel
