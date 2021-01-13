@@ -150,6 +150,7 @@
       <value compset="_CAM.*%SDYN">-offline_dyn</value>
       <value compset="_CAM\d0%SDYN_CLM">-nlev 56</value>
       <value compset="_CAM\d0%CC.*%SDYN">-nlev 56</value>
+      <value compset="_CAM\d0%GC%SDYN">-nlev 56</value>
       <value compset="_CAM\d0%WC.*%SDYN">-nlev 88</value>
       <value compset="_CAM\d0%WX.*%SDYN">-nlev 145</value>
 
