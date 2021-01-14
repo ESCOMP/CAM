@@ -8,7 +8,6 @@ module ssatcontrail
     use physics_types,  only: physics_ptend_sum, physics_update
     use physics_types,  only: physics_state_copy, physics_ptend_init
     use physconst,      only: cpair,mwdry,mwh2o, gravit, zvir, rair, pi, rearth
-!    use phys_buffer,    only: pbuf_size_max, pbuf_fld, pbuf_old_tim_idx, pbuf_get_fld_idx, pbuf_times
     use physics_buffer, only : pbuf_get_index, pbuf_get_field, physics_buffer_desc, pbuf_set_field,  pbuf_old_tim_idx
     use constituents, only: cnst_get_ind, pcnst    
     use geopotential,     only: geopotential_dse
@@ -24,7 +23,6 @@ module ssatcontrail
     public ssatcontrail_d0
 
     ! Private data
-!    real(r8), parameter :: ICIWC0 = 2.0e-6   ! ICIWC = 2 mg/m3, converted to kg/kg here by dividing rho_air
     real(r8), parameter :: rhoi = 500.0_r8             ! density of ice (500 kg/m3)
     real(r8), parameter :: radius = 3.75e-6            ! diameter of ice particle = 7.5 microns
 

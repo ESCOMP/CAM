@@ -628,7 +628,8 @@ contains
         deallocate(phi,lam)
         
 ! weight_x & weight_y are weighting function for x & y interpolation
-        allocate(file%weight_x(plon,file%nlon))
+       if(aircraft_cnt.gt.0) then
+   	allocate(file%weight_x(plon,file%nlon))
         allocate(file%weight_y(plat,file%nlat))
         allocate(file%count_x(plon))
         allocate(file%count_y(plat))
@@ -656,7 +657,8 @@ contains
 
         if(masterproc) then
 ! compute weighting 
-            call xy_interp_init(file%nlon,file%nlat,file%lons,file%lats,plon,plat,file%weight_x,file%weight_y,1)
+            call xy_interp_init(file%nlon,file%nlat,file%lons,file%lats, &
+                                plon,plat,file%weight_x,file%weight_y,.false.)
 
             do i2=1,plon
                file%count_x(i2) = 0
@@ -678,7 +680,8 @@ contains
                enddo
             enddo
 
-            call xy_interp_init(file%nlon,file%nlat,file%lons,file%lats,plon,plat,file%weight0_x,file%weight0_y,0)
+            call xy_interp_init(file%nlon,file%nlat,file%lons,file%lats,&
+                                plon,plat,file%weight0_x,file%weight0_y,.true.)
 
             do i2=1,plon
                file%count0_x(i2) = 0
@@ -700,7 +703,7 @@ contains
                enddo
             enddo
         endif
-
+          
 #if ( defined SPMD)
         call mpibcast(file%weight_x, plon*file%nlon, mpir8 , 0, mpicom)
         call mpibcast(file%weight_y, plat*file%nlat, mpir8 , 0, mpicom)
@@ -715,6 +718,7 @@ contains
         call mpibcast(file%index0_x, plon*file%nlon, mpiint , 0, mpicom)
         call mpibcast(file%index0_y, plat*file%nlat, mpiint , 0, mpicom)
 #endif
+     endif
     endif
 
   end subroutine trcdata_init

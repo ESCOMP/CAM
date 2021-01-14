@@ -17,7 +17,7 @@ module horizontal_interpolate
   public :: xy_interp_init, xy_interp
 
 contains
-  subroutine xy_interp_init(im1,jm1,lon0,lat0,im2,jm2,weight_x,weight_y,ii)
+  subroutine xy_interp_init(im1,jm1,lon0,lat0,im2,jm2,weight_x,weight_y,itype)
 !------------------------------------------------------------------------------------------------------------
 ! This program computes weighting functions to map a variable of (im1,jm1) resolution to (im2,jm2) resolution
 ! weight_x(im2,im1) is the weighting function for zonal interpolation
@@ -27,7 +27,8 @@ contains
 !
 !------------------------------------------------------------------------------------------------------------
   implicit none
-  integer,  intent(in)  :: im1, jm1, im2, jm2, ii
+  integer,  intent(in)  :: im1, jm1, im2, jm2
+  logical,  intent(in)  :: itype   !.true. = flight distance only, .false. =  all mixing ratios
   real(r8), intent(in)  :: lon0(im1), lat0(jm1)
   real(r8), intent(out) :: weight_x(im2,im1), weight_y(jm2,jm1)
 
@@ -116,7 +117,7 @@ contains
 !                  |-------------------|
 !            |---------------------------------|
 !          x2_west                           x2_east
-    if(ii.eq.0) then
+    if(itype.eq.0) then
      weight_x(i2,i1) = 1.0_r8
     else
      weight_x(i2,i1) =  (x1_east-x1_west)/(x2_east-x2_west)
@@ -127,7 +128,7 @@ contains
 !                  |--------------------------------|
 !            |---------------------------------|
 !          x2_west                           x2_east
-   if(ii.eq.0) then
+   if(itype.eq.0) then
      weight_x(i2,i1) = (x2_east-x1_west)/(x1_east-x1_west)
    else
      weight_x(i2,i1) = (x2_east-x1_west)/(x2_east-x2_west)
@@ -138,7 +139,7 @@ contains
 !         |--------------------------------|
 !                |---------------------------------|
 !              x2_west                           x2_east
-   if(ii.eq.0) then
+   if(itype.eq.0) then
      weight_x(i2,i1) = (x1_east-x2_west)/(x1_east-x1_west)
    else
      weight_x(i2,i1) = (x1_east-x2_west)/(x2_east-x2_west)
@@ -163,7 +164,7 @@ contains
 !              |-------------------------|
 !           |----------------|......................|
 !        slon2(im2)         slon2(im2+1)        slon2(2)  (note: slon2(im2+1) = slon2(1))
-       if(ii.eq.0) then
+       if(itype.eq.0) then
         weight_x(1,im1)= weight_x(1,im1)+(slon1(im1+1)-slon2(im2+1))/(slon1(im1+1)-slon1(im1))
        else
      	weight_x(1,im1)= weight_x(1,im1)+(slon1(im1+1)-slon2(im2+1))/(slon2(2)-slon2(1))
@@ -176,7 +177,7 @@ contains
 !              |-------------------------|.............................|
 !                   |-------------------------------|
 !               slon2(im2)                        slon2(im2+1) <--- end point
-       if(ii.eq.0) then
+       if(itype.eq.0) then
         weight_x(im2,1) = weight_x(im2,1)+(slon2(1)-slon1(1))/(slon1(2)-slon1(1))
        else
         weight_x(im2,1) = weight_x(im2,1)+(slon2(1)-slon1(1))/(slon2(2)-slon2(1)) 
@@ -207,7 +208,7 @@ contains
 !                  |-------------------|
 !            |---------------------------------|
 !          y2_south                           y2_north
-                if(ii.eq.0) then
+                if(itype.eq.0) then
                  weight_y(j2,j1) =  1.0_r8
                 else
                  weight_y(j2,j1) =  gw1(j1)/gw2(j2)
@@ -218,7 +219,7 @@ contains
 !                  |--------------------------------|
 !            |---------------------------------|
 !          y2_south                           y2_north
-                if(ii.eq.0) then
+                if(itype.eq.0) then
                  weight_y(j2,j1) = (y2_north-y1_south)/(y1_north-y1_south)
                 else
                  weight_y(j2,j1) = (y2_north-y1_south)/(y1_north-y1_south)*gw1(j1)/gw2(j2)
@@ -229,7 +230,7 @@ contains
 !         |--------------------------------|
 !                |---------------------------------|
 !              y2_south                           y2_north
-                if(ii.eq.0) then
+                if(itype.eq.0) then
                  weight_y(j2,j1) = (y1_north-y2_south)/(y1_north-y1_south)
                 else
                  weight_y(j2,j1) = (y1_north-y2_south)/(y1_north-y1_south)*gw1(j1)/gw2(j2)
@@ -240,7 +241,7 @@ contains
 !         |--------------------------------|
 !                |---------------------|
 !              y2_south             y2_north
-                if(ii.eq.0) then
+                if(itype.eq.0) then
                  weight_y(j2,j1) = 1._r8
                 else
                  weight_y(j2,j1) = gw1(j1)/gw2(j2)
