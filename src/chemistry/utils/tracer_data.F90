@@ -1902,11 +1902,11 @@ contains
                  if( file%dist ) then
                    call vert_interp_mixrat(ncol,file%nlev,pver,state(c)%pint, &
                         datain, data_out(:,:), &
-                        file%p0,ps,file%hyai,file%hybi,0)
+                        file%p0,ps,file%hyai,file%hybi,.true.)
                  else
                    call vert_interp_mixrat(ncol,file%nlev,pver,state(c)%pint, &
                         datain, data_out(:,:), &
-                        file%p0,ps,file%hyai,file%hybi,1)
+                        file%p0,ps,file%hyai,file%hybi,.false.)
                  endif
                 else
                    call vert_interp(ncol, file%nlev, pin, state(c)%pmid, datain, data_out(:,:) )
@@ -2378,7 +2378,7 @@ contains
   end subroutine interpz_conserve
 
 !------------------------------------------------------------------------------
-   subroutine vert_interp_mixrat( ncol, nsrc, ntrg, trg_x, src, trg, p0, ps, hyai, hybi, ii)
+   subroutine vert_interp_mixrat( ncol, nsrc, ntrg, trg_x, src, trg, p0, ps, hyai, hybi, use_flight_distance)
   
     implicit none
 
@@ -2388,7 +2388,7 @@ contains
     real(r8)              :: src_x(nsrc+1)         ! source coordinates
     real(r8), intent(in)      :: trg_x(pcols,ntrg+1)         ! target coordinates
     real(r8), intent(in)      :: src(pcols,nsrc)             ! source array
-    integer, intent(in)   :: ii                    ! 0: rebin only, otherwise mixing ratio
+    logical, intent(in)   :: use_flight_distance                    ! .true. = flight distance, .flase. = mixing ratio 
     real(r8), intent(out)     :: trg(pcols,ntrg)             ! target array
 
     real(r8) :: ps(pcols), p0, hyai(nsrc+1), hybi(nsrc+1)
@@ -2424,14 +2424,14 @@ contains
           top = trg_x(n,i)
           do j = sil,1,-1
            if( top.lt.src_x(j) ) then
-            if(ii.eq.0) then
+            if(use_flight_distance) then
              y = y+(bot-src_x(j))*src(n,j)/(src_x(j+1)-src_x(j))
             else
              y = y+(bot-src_x(j))*src(n,j)
             endif
             bot = src_x(j)
            else
-            if(ii.eq.0) then
+            if(use_flight_distance) then
              y = y+(bot-top)*src(n,j)/(src_x(j+1)-src_x(j))
             else
              y = y+(bot-top)*src(n,j)
@@ -2451,14 +2451,14 @@ contains
      y = 0.0_r8
      do j=nsrc,1,-1
       if( top.lt.src_x(j) ) then
-       if(ii.eq.0) then
+       if(use_flight_distance) then
         y = y+(bot-src_x(j))*src(n,j)/(src_x(j+1)-src_x(j))
        else
         y = y+(bot-src_x(j))*src(n,j)
        endif
        bot = src_x(j)
       else
-       if(ii.eq.0) then
+       if(use_flight_distance) then
         y = y+(bot-top)*src(n,j)/(src_x(j+1)-src_x(j))
        else
         y = y+(bot-top)*src(n,j)
@@ -2470,7 +2470,7 @@ contains
     endif
 
 ! turn mass into mixing ratio 
-    if(ii.ne.0) then
+    if(.not. use_flight_distance) then
      do i=1,ntrg
       trg(n,i) = trg(n,i)/(trg_x(n,i+1)-trg_x(n,i))
      enddo
