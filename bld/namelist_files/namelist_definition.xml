@@ -360,7 +360,7 @@ Add CAM3 prescribed aerosols to the physics buffer.
 Default: FALSE
 </entry>
 
-<!-- Coupler between Physics and Dynamics -->
+<!-- Physics grid decomp including physics dynamics coupling methods -->
 
 <entry id="phys_alltoall" type="integer"  category="perf_dp_coup"
        group="phys_grid_nl" valid_values="-1,0,1,2,11,12,13">
@@ -2647,21 +2647,21 @@ Default: .false.
 
 <entry id="micro_mg_evap_scl_ifs" type="logical" category="microphys"
        group="micro_mg_nl" valid_values="" >
-Apply 0.3 scaling factor to evaporation of precipitation as done in the 
+Apply 0.3 scaling factor to evaporation of precipitation as done in the
 IFS model (https://www.ecmwf.int/en/forecasts/documentation-and-support)
 Default: .false.
 </entry>
 
 <entry id="micro_mg_evap_rhthrsh_ifs" type="logical" category="microphys"
        group="micro_mg_nl" valid_values="" >
-Do not evaporate precipitation until RH<90% as done in the                                                        
+Do not evaporate precipitation until RH<90% as done in the
 IFS model (https://www.ecmwf.int/en/forecasts/documentation-and-support)
 Default: .false.
 </entry>
 
 <entry id="micro_mg_rainfreeze_ifs" type="logical" category="microphys"
        group="micro_mg_nl" valid_values="" >
-Freeze rain at 0C as done in the                                                        
+Freeze rain at 0C as done in the
 IFS model (https://www.ecmwf.int/en/forecasts/documentation-and-support)
 Default: .false.
 </entry>
@@ -3695,8 +3695,8 @@ Default: true
 <!-- for CLUBB+MF -->
 <entry id="do_clubb_mf" type="logical" category="conv"
        group="clubb_mf_nl" valid_values="" >
-If .true. add ensemble mass fluxes to CLUBB's higher-order equation set. 
-Together with CLUBB, this constitutes an eddy-diffusivity mass-flux approach. 
+If .true. add ensemble mass fluxes to CLUBB's higher-order equation set.
+Together with CLUBB, this constitutes an eddy-diffusivity mass-flux approach.
 Default: .false.
 </entry>
 

@@ -28,7 +28,7 @@ contains
   !--------------------------------------------------------------------------------
   !--------------------------------------------------------------------------------
   subroutine ionosphere_init()
-    
+
   end subroutine ionosphere_init
 
   !--------------------------------------------------------------------------------
@@ -46,12 +46,12 @@ contains
 
     use physics_types,  only: physics_state
     use physics_buffer, only: physics_buffer_desc
-    use phys_grid,      only: begchunk, endchunk
+    use ppgrid,         only: begchunk, endchunk
     use dyn_comp,       only: dyn_import_t
 
     ! args
     type(physics_state),    intent(in) :: phys_state(begchunk:endchunk)
-    type(dyn_import_t),     intent(in) :: dyn_in  ! dynamics import 
+    type(dyn_import_t),     intent(in) :: dyn_in  ! dynamics import
 
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 

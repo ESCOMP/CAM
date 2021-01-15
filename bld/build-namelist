@@ -2831,7 +2831,6 @@ $cam_chempkg = "'" . "$chem" . "'";  # add quotes to this string value
 
 $nl->set_variable_value('phys_ctl_nl', 'cam_chempkg', $cam_chempkg);
 
-
 # Check the snapshot settings.
 add_default($nl, 'cam_snapshot_before_num');
 add_default($nl, 'cam_snapshot_after_num');
@@ -4260,7 +4259,7 @@ sub check_input_files {
                         if ($var eq 'mpas_block_decomp_file_prefix') {
                             $pathname = "$pathname$opts{'ntasks'}";
                         }
-                        
+
                         print $fh "$var = $pathname\n";
                     }
                     else {
