@@ -1336,6 +1336,7 @@ contains
     real(r8) :: tmp_trac  (pcols,pver,pcnst) ! tmp space
     real(r8) :: tmp_pdel  (pcols,pver) ! tmp space
     real(r8) :: tmp_ps    (pcols)      ! tmp space
+    logical  :: moist_mixing_ratio_dycore
 
     ! physics buffer fields for total energy and mass adjustment
     integer itim_old, ifld
@@ -1721,10 +1722,11 @@ contains
        call unicon_cam_org_diags(state, pbuf)
 
     end if
+    moist_mixing_ratio_dycore = dycore_is('LR').or. dycore_is('FV3')    
     !
     ! FV: convert dry-type mixing ratios to moist here because physics_dme_adjust
     !     assumes moist. This is done in p_d_coupling for other dynamics. Bundy, Feb 2004.
-    if ( dycore_is('LR').or. dycore_is('FV3')) call set_dry_to_wet(state)    ! Physics had dry, dynamics wants moist
+    if (moist_mixing_ratio_dycore) call set_dry_to_wet(state)    ! Physics had dry, dynamics wants moist
 
     ! Scale dry mass and energy (does nothing if dycore is EUL or SLD)
     call cnst_get_ind('CLDLIQ', ixcldliq)
@@ -1734,18 +1736,16 @@ contains
     tmp_cldliq(:ncol,:pver) = state%q(:ncol,:pver,ixcldliq)
     tmp_cldice(:ncol,:pver) = state%q(:ncol,:pver,ixcldice)
 
-    ! For not ('FV'|'FV3'), physics_dme_adjust is called for energy diagnostic purposes only.  So, save off tracers
-    if (.not.(dycore_is('FV').or.dycore_is('FV3')).and.&
+    ! for dry mixing ratio dycore, physics_dme_adjust is called for energy diagnostic purposes only.  
+    ! So, save off tracers 
+    if (.not.moist_mixing_ratio_dycore.and.&
          (hist_fld_active('SE_pAM').or.hist_fld_active('KE_pAM').or.hist_fld_active('WV_pAM').or.&
-         hist_fld_active('WL_pAM').or.hist_fld_active('WI_pAM'))) then
+          hist_fld_active('WL_pAM').or.hist_fld_active('WI_pAM'))) then
       tmp_trac(:ncol,:pver,:pcnst) = state%q(:ncol,:pver,:pcnst)
       tmp_pdel(:ncol,:pver)        = state%pdel(:ncol,:pver)
       tmp_ps(:ncol)                = state%ps(:ncol)
-      !
-      ! pint, lnpint,rpdel are altered by dme_adjust but not used for tendencies in dynamics of SE
-      ! we do not reset them to pre-dme_adjust values
-      !
-      if (dycore_is('SE')) call set_dry_to_wet(state)
+
+      call set_dry_to_wet(state)
 
       if (trim(cam_take_snapshot_before) == "physics_dme_adjust") then
          call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
@@ -1766,7 +1766,7 @@ contains
       state%ps(:ncol)             = tmp_ps(:ncol)
     end if
 
-    if (dycore_is('LR') .or. dycore_is('FV3')) then
+    if (moist_mixing_ratio_dycore) then
 
       if (trim(cam_take_snapshot_before) == "physics_dme_adjust") then
          call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
@@ -2061,7 +2061,7 @@ contains
     call t_startf('energy_fixer')
 
     call calc_te_and_aam_budgets(state, 'pBF')
-    if (dycore_is('LR') .or. dycore_is('FV3') .or. dycore_is('SE'))  then
+    if (.not.dycore_is('EUL')) then
        call check_energy_fix(state, ptend, nstep, flx_heat)
        call physics_update(state, ptend, ztodt, tend)
        call check_energy_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)
