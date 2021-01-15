@@ -147,6 +147,7 @@ contains
        use pio_types, only : iosystem_desc_t
 
        use mpas_framework, only : mpas_framework_init_phase2
+       use mpas_timer, only : mpas_timer_start
 
        type (iosystem_desc_t), pointer :: pio_subsystem
        procedure(halt_model) :: endrun
@@ -174,6 +175,8 @@ contains
 
        ! 4) Continue with normal procedure from MPAS subdriver
        call mpas_framework_init_phase2(domain_ptr, io_system=pio_subsystem, calendar=trim(mpas_calendar))
+
+       call mpas_timer_start('total time')
 
        ierr = domain_ptr % core % define_packages(domain_ptr % packages)
        if ( ierr /= 0 ) then
@@ -2292,12 +2295,41 @@ contains
        use mpas_decomp, only : mpas_decomp_destroy_decomp_list
        use mpas_timekeeping, only : mpas_destroy_clock
        use mpas_atm_threading, only : mpas_atm_threading_finalize
+       use mpas_timer, only : mpas_timer_write_header, mpas_timer_write, mpas_timer_finalize
+       use mpas_log, only : mpas_log_finalize
+       use mpas_timer, only : mpas_timer_stop
+!       use mpas_framework, only : mpas_framework_finalize
 
+       ! Local variables
        integer :: ierr
+
 
        call mpas_destroy_clock(clock, ierr)
        call mpas_decomp_destroy_decomp_list(domain_ptr % decompositions)
        call mpas_atm_threading_finalize(domain_ptr % blocklist)
+
+       call mpas_timer_stop('total time')
+
+       call mpas_timer_write_header()
+       call mpas_timer_write()
+       call mpas_timer_finalize(domain_ptr)
+
+       !
+       ! Finalize infrastructure
+       !
+
+       ! Print out log stats and close log file
+       !   (Do this after timer stats are printed and stream mgr finalized,
+       !    but before framework is finalized because domain is destroyed there.)
+       call mpas_log_finalize(ierr)
+
+! Before we can make the call, below, changes are needed in the mpas_framework_finalize
+! routine so that the call to mpas_timekeeping_finalize only finalizes the ESMF
+! timekeeping library if ESMF was initialized by MPAS (and not, e.g., by CESM).
+!       call mpas_framework_finalize(domain_ptr % dminfo, domain_ptr)
+
+       deallocate(corelist % domainlist)
+       deallocate(corelist)
 
     end subroutine cam_mpas_finalize
 
