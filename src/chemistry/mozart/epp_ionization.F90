@@ -8,7 +8,8 @@ module epp_ionization
   use spmd_utils,     only : masterproc
   use cam_abortutils, only : endrun
   use cam_logfile,    only : iulog
-  use phys_grid,      only : pcols, pver, begchunk, endchunk, get_ncols_p
+  use ppgrid,         only : pcols, pver, begchunk, endchunk
+  use phys_grid,      only : get_ncols_p
   use pio,            only : var_desc_t, file_desc_t
   use pio,            only : pio_get_var, pio_inq_varid, pio_get_att
   use pio,            only : pio_inq_varndims, pio_inq_vardimid, pio_inq_dimname, pio_inq_dimlen
@@ -123,7 +124,7 @@ contains
 
     character(len=32) :: fldunits
     fldunits = ''
-    
+
     if (epp_all_filepath /= 'NONE') then
        epp_in => create_input_obj(epp_all_filepath,epp_all_varname)
        fldunits = trim(epp_in%units)
@@ -203,7 +204,7 @@ contains
 
     if ( associated(epp_in) ) then
        ionpairs(:ncol,:) = ionpairs(:ncol,:) + interp_ionpairs( ncol, lchnk, pmid, temp, epp_in )
-    else 
+    else
        if ( associated(spe_in) ) then
           ionpairs(:ncol,:) = ionpairs(:ncol,:) + interp_ionpairs( ncol, lchnk, pmid, temp, spe_in )
        endif
@@ -258,7 +259,7 @@ contains
     real(r8), intent(in) :: temp(:,:) ! K
     type(input_obj_t), pointer :: input
     real(r8) :: ionpairs(ncol,pver)
- 
+
     real(r8) :: fctr1, fctr2
     real(r8) :: wrk(ncol,input%nlevs)
     real(r8) :: ions_diags(ncol,pver) ! for diagnostics
@@ -284,9 +285,9 @@ contains
        call lininterp( wrk(i,:input%nlevs), input%nlevs, &
                        ionpairs(i,:pver), pver, interp_wgts )
        call lininterp_finish(interp_wgts)
-       
+
        ions_diags(i,:pver) = ionpairs(i,:pver)
-       
+
        if ( index(trim(input%units), 'g^-1') > 0 ) then
           ! convert to ionpairs/cm3/sec
           ionpairs(i,:pver) = ionpairs(i,:pver) *(1.e-3_r8*pmid(i,:pver)/(rairv(i,:pver,lchnk)*temp(i,:pver)))
@@ -298,7 +299,7 @@ contains
   end function interp_ionpairs
 
   !-----------------------------------------------------------------------------
-  ! read 2D profile (geomag-lat vs press) and transfer to geographic grid 
+  ! read 2D profile (geomag-lat vs press) and transfer to geographic grid
   !-----------------------------------------------------------------------------
   subroutine read_2d_profile( input )
 
@@ -443,13 +444,13 @@ contains
        allocate( in_obj%press(in_obj%nlevs) )
        ierr = pio_get_var( in_obj%fid, pres_vid, in_obj%press )
     endif
-    if (glat_did>0) then 
+    if (glat_did>0) then
        ierr = pio_inq_dimlen( in_obj%fid, glat_did, in_obj%nglats )
        allocate( in_obj%glats(in_obj%nglats) )
        ierr = pio_get_var( in_obj%fid, glat_vid, in_obj%glats )
        allocate( in_obj%glatn(pcols,begchunk:endchunk) )
     endif
-       
+
     allocate( in_obj%gwght(pcols,begchunk:endchunk) )
 
     if (in_obj%time_coord%time_interp) then

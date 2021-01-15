@@ -2105,6 +2105,12 @@ sub write_filepath
       print $fh "$camsrcdir/src/atmos_phys/kessler\n";
     }
 
+    # Weak scaling fix. This has to come before physics/cam and before dycores
+    # It also has to come before utils (which is already near the end).
+    if ($dyn eq 'se') {
+      print $fh "$camsrcdir/src/infrastructure\n";
+    }
+
     if ($carma ne 'none') {
         # This directory needs to precede physics/cam/ to replace
         # the CARMA stub package with CARMA. Putting it first allows

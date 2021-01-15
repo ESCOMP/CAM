@@ -205,6 +205,7 @@ fi
 #will attach timestamp onto end of script name to prevent overwriting
 start_date="`date --iso-8601=seconds`"
 cur_time=`date '+%H%M%S'`
+date_str="`date '+%Y%m%d%H%M%S'`"
 
 hostname=`hostname`
 
@@ -322,13 +323,6 @@ EOF
 
     ##izumi
     izu* | i[[:digit:]]* )
-    
-    # Run git and r8 tests
-    echo "###################################################"
-    export ADDREALKIND_EXE=/fs/cgd/csm/tools/addrealkind/addrealkind;  ${CAM_ROOT}/test/system/TR8.sh
-    echo "###################################################"
-    ${CAM_ROOT}/test/system/TGIT.sh
-    echo "###################################################"
 
     submit_script_cime="`pwd -P`/test_driver_izumi_cime_${cur_time}.sh"
     export PATH=/cluster/torque/bin:${PATH}
@@ -417,11 +411,15 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
     if [ -n "${use_existing}" ]; then
       test_id="${use_existing}"
     else
-      idstr="`date '+%Y%m%d%H%M%S'`"
-      test_id=${cesm_test}${comp}"_"${idstr}
+      test_id=${cesm_test}${comp}"_"${date_str}
     fi
     currdir="`pwd -P`"
     logfile="${currdir}/${test_id}.log"
+    # Create an empty logfile so that other tasks can append to it
+    if [ -f "${logfile}" ]; then
+      rm -f ${logfile}
+    fi
+    touch ${logfile}
     script_dir="${CIME_ROOT}/scripts"
     if [ ! -d "${script_dir}" ]; then
       echo "ERROR: CIME scripts dir not found at ${script_dir}"
@@ -432,7 +430,31 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
       exit 1
     fi
 
-    ##setup CESM work directory
+    ## If this is a Nag test, run the r8 and git tests
+    if [ "${comp}" == "_nag" ]; then
+      sepstr="################################################################"
+      echo "${sepstr}" | tee -a ${logfile}
+      ark_file="/fs/cgd/csm/tools/addrealkind/addrealkind"
+      tr8_script="${CAM_ROOT}/test/system/TR8.sh"
+      export ADDREALKIND_EXE="${ark_file}"; ${tr8_script} | tee -a ${logfile}
+      res=$?
+      if [ $res -eq 0 ]; then
+        echo "TR8 test PASS" | tee -a ${logfile}
+      else
+        echo "TR8 test FAIL, rc = $res" | tee -a ${logfile}
+      fi
+      echo "${sepstr}" | tee -a ${logfile}
+      ${CAM_ROOT}/test/system/TGIT.sh | tee -a ${logfile}
+      res=$?
+      if [ $res -eq 0 ]; then
+        echo "TGIT test PASS" | tee -a ${logfile}
+      else
+        echo "TGIT test FAIL, rc = $res" | tee -a ${logfile}
+      fi
+      echo "${sepstr}" | tee -a ${logfile}
+    fi
+
+    ## Setup CESM work directory
     cesm_testdir=$mach_workspace/$LOGNAME/$test_id
 
     if [ -e ${cesm_testdir} ]; then
@@ -521,7 +543,7 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
 
 
     echo ""
-    echo "CESM test results will be in: ${cesm_testdir}" | tee ${logfile}
+    echo "CESM test results will be in: ${cesm_testdir}" | tee -a ${logfile}
     echo "Running ./create_test ${testargs}"             | tee -a ${logfile}
 
     if [ "${hostname:0:2}" == "ch" ]; then

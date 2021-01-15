@@ -68,10 +68,7 @@ subroutine cam_ctrl_init( &
    logical,           intent(in) :: brnch_retain_casename_in ! Flag to allow a branch to use the same
                                                              ! caseid as the run being branched from.
 
-   integer :: unitn, ierr
-
    character(len=*), parameter :: sub='cam_ctrl_init'
-   character(len=128) :: errmsg
    !---------------------------------------------------------------------------------------------
 
    caseid = caseid_in
