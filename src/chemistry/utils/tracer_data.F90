@@ -1685,8 +1685,9 @@ contains
         lons(:ncols) = lon_global_grid_ndx(:ncols,c)
         lats(:ncols) = lat_global_grid_ndx(:ncols,c)
 
-        call xy_interp(file%nlon,file%nlat,file%nlev,plon,plat,pcols,ncols,file%weight0_x,file%weight0_y,wrk3d_in,loc_arr(:,:,c-begchunk+1),  &
-                            lons,lats,file%count0_x,file%count0_y,file%index0_x,file%index0_y) 
+        call xy_interp(file%nlon,file%nlat,file%nlev,plon,plat,pcols,ncols, &
+                       file%weight0_x,file%weight0_y,wrk3d_in,loc_arr(:,:,c-begchunk+1),  &
+                       lons,lats,file%count0_x,file%count0_y,file%index0_x,file%index0_y) 
       enddo
      else
       do c = begchunk,endchunk
@@ -1694,8 +1695,9 @@ contains
         lons(:ncols) = lon_global_grid_ndx(:ncols,c)
         lats(:ncols) = lat_global_grid_ndx(:ncols,c)
 
-        call xy_interp(file%nlon,file%nlat,file%nlev,plon,plat,pcols,ncols,file%weight_x,file%weight_y,wrk3d_in, &
-             loc_arr(:,:,c-begchunk+1), lons,lats,file%count_x,file%count_y,file%index_x,file%index_y) 
+        call xy_interp(file%nlon,file%nlat,file%nlev,plon,plat,pcols,ncols,&
+                       file%weight_x,file%weight_y,wrk3d_in,loc_arr(:,:,c-begchunk+1), &
+                       lons,lats,file%count_x,file%count_y,file%index_x,file%index_y) 
       enddo
      endif
      call t_stopf('xy_interp')
