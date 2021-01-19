@@ -140,9 +140,6 @@ module chemistry
   CHARACTER(LEN=255)         :: ThisLoc
   CHARACTER(LEN=255)         :: ErrMsg
 
-  REAL(r8)                   :: OH_Total
-  REAL(r8)                   :: Air_Total
-
   ! Filenames to compute dry deposition velocities similarly to MOZART
   character(len=shr_kind_cl) :: clim_soilw_file = 'clim_soilw_file'
   character(len=shr_kind_cl) :: depvel_file     = ''
@@ -3736,29 +3733,6 @@ contains
     ENDDO
     CALL set_short_lived_species( SlsData, LCHNK, nY, pbuf )
 
-#if defined( SPMD )
-    ! We here compute a mass-weighted OH average [molec OH/cm3] * [molec air]
-    ! Species is in kg/kg dry. Convert to molec/box
-    ! kg/kg air * kg air/m3 * molec/mole / (kg/mole) * m3/cm3 = molec/cm3
-    tmpMass       = 0.0e+00_r8
-    CALL MPISum ( SUM(State_Chm(LCHNK)%Species(1,:nY,:nZ,iOH) * &
-                  State_Met(LCHNK)%AIRDEN(1,:nY,:nZ)          * &
-                  State_Met(LCHNK)%AIRNUMDEN(1,:nY,:nZ)       * &
-                  State_Met(LCHNK)%AIRVOL(1,:nY,:nZ))         * &
-                  AVO / MWOH * 1.0e+03_r8,                      &
-                  tmpMass, 1, MPIR8, 0, MPICOM )
-    ! This is in [molec OH/cm3] * [molec air]
-    OH_Total      = OH_Total + tmpMass
-
-    ! molec/cm3 * m3/box * cm3/m3 = molec/box
-    tmpMass       = 0.0e+00_r8
-    CALL MPISum ( SUM(State_Met(LCHNK)%AIRNUMDEN(1,:nY,:nZ)       * &
-                  State_Met(LCHNK)%AIRVOL(1,:nY,:nZ) * 1.0e+06_r8), &
-                  tmpMass, 1, MPIR8, 0, MPICOM )
-    ! This is in [molec air]
-    Air_Total     = Air_Total + tmpMass
-#endif
-
     DO N = 1, pcnst
        M = map2GC(N)
        IF ( M > 0 ) THEN
@@ -3921,17 +3895,6 @@ contains
 
     ! Local variables
     INTEGER  :: I, RC
-
-    REAL(r8) :: OHCONC
-
-    OHCONC = OH_Total / Air_Total / 1.0e+05_r8
-
-    IF ( MasterProc ) THEN
-       WRITE(iulog,'(/,a)') REPEAT( '=', 79 )
-       WRITE(iulog,*      ) 'Mass-Weighted OH Concentration'
-       WRITE(iulog,*      ) 'Mean OH = ', OHCONC, ' [1e5 molec/cm3]'
-       WRITE(iulog,'(  a)') REPEAT( '=', 79 )
-    ENDIF
 
     ! Finalize GEOS-Chem
 
