@@ -1099,8 +1099,9 @@ contains
                      gridToFieldMap=(/2/), rc=rc)
                 if (ChkErr(rc,__LINE__,u_FILE_u)) return
                 if (masterproc) then
-                   write(iulog,'(a)') trim(subname)// trim(tag)//" Field = "//trim(stdname)// " is connected using mesh ", &
-                        "with lbound ", fldlist(n)%ungridded_lbound,' and with ubound ',fldlist(n)%ungridded_ubound
+                   write(iulog,'(a,i8,a,i8)') trim(subname)// trim(tag)//" Field = "//trim(stdname)// &
+                        " is connected using mesh with lbound ", fldlist(n)%ungridded_lbound,&
+                        " and with ubound ",fldlist(n)%ungridded_ubound
                 end if
              else
                 field = ESMF_FieldCreate(mesh, ESMF_TYPEKIND_R8, name=stdname, meshloc=ESMF_MESHLOC_ELEMENT, rc=rc)
