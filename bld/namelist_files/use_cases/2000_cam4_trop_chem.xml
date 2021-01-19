@@ -33,7 +33,6 @@
 <prescribed_ozone_cycle_yr> 2000                                  </prescribed_ozone_cycle_yr>
 
 <chem_rad_passive>.true.</chem_rad_passive>
-<drydep_method>'xactive_lnd'</drydep_method>
 
 <!-- sim_year used for CLM datasets -->
 <sim_year>2000</sim_year>

@@ -175,6 +175,14 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
+  <test compset="QPC6" grid="ne5pg3_ne5pg3_mg37" name="ERP_Ln9" testmods="cam/outfrq9s_clubbmf">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
+  </test>
   <test compset="QPRCEMIP" grid="ne30_ne30_mg17" name="ERP_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prebeta"/>
@@ -223,7 +231,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="QSC6" grid="ne30_ne30_mg17" name="ERP_Ln9" testmods="cam/outfrq9s">
+  <test compset="QPC6" grid="ne30_ne30_mg17" name="ERP_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prebeta"/>
     </machines>
@@ -785,6 +793,15 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
+  <test compset="QPC6" grid="f10_f10_mg37" name="SMS_D_Ln9" testmods="cam/outfrq3s_ba">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="comment" >cam6 physics with prescribed bulk aerosols</option>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
 <!--              003                        -->
   <test compset="QPSCAMC5" grid="T42_T42_mg17" name="SMS_D_Ln7" testmods="cam/scmarm">
     <machines>
@@ -922,6 +939,24 @@
     </machines>
     <options>
       <option name="comment" >001 tsc</option>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
+
+  <test compset="FKESSLER" grid="mpasa120z32_mpasa120" name="ERC_D_Ln9" testmods="cam/outfrq3s_usecase">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
+
+  <test compset="FHS94" grid="mpasa480z32_mpasa480" name="ERC_D_Ln9" testmods="cam/outfrq3s_usecase">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="prealpha"/>
+    </machines>
+    <options>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
@@ -1246,13 +1281,13 @@
   <!--  Test of finite volume CAM-SE grid with CSLAM tracer advection -->
   <test compset="FKESSLER" grid="ne5pg3_ne5pg3_mg37" name="ERS_Ln27" testmods="cam/outfrq9s" supported="false">
     <machines>
-      <machine name="hobart" compiler="nag" category="aux_cam"/>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
   </test>
   <!--  DART -->
   <test compset="FHS94" grid="f45_f45_mg37" name="DAE" testmods="cam/dae">
     <machines>
-      <machine name="hobart" compiler="nag" category="aux_cam"/>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
     <options>
       <option name="wallclock"> 00:20:00 </option>
@@ -1543,7 +1578,7 @@
     <options>
       <option name="wallclock">00:30:00</option>
     </options>
-  </test>    
+  </test>
   <test compset="FW1850" grid="f09_f09_mg17" name="SMS_Ld1" testmods="cam/outfrq1d">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>

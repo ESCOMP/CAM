@@ -36,8 +36,10 @@ module atm_comp_nuopc
   use ioFileMod
   use perf_mod            , only : t_startf, t_stopf
   use ppgrid              , only : pcols, begchunk, endchunk
-  use phys_grid           , only : get_ncols_p, get_gcol_p, get_rlon_all_p, get_rlat_all_p, ngcols
-  use dyn_grid            , only : get_horiz_grid_dim_d
+  use phys_grid           , only : get_ncols_p, get_gcol_p
+  use phys_grid           , only : get_rlon_all_p, get_rlat_all_p
+  use phys_grid           , only : ngcols => num_global_phys_cols
+  use phys_grid           , only : get_grid_dims
   use cam_control_mod     , only : cam_ctrl_set_orbit
   use cam_pio_utils       , only : cam_pio_createfile, cam_pio_openfile, cam_pio_closefile, pio_subsystem
   use cam_initfiles       , only : cam_initfiles_get_caseid, cam_initfiles_get_restdir

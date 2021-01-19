@@ -33,12 +33,20 @@
 <dtime dyn="se"    hgrid="ne0np4.ARCTIC.ne30x4">450</dtime>
 <dtime dyn="se"    hgrid="ne0np4.ARCTICGRIS.ne30x8">225</dtime>
 
-<!-- Initial conditions -->
-<!-- Vertical coordinates only, good for analytic initial conditions -->
+<dtime dyn="mpas"                  >1800</dtime>
+
+<!-- Initial files -->
+
+<!-- Vertical coordinates only -->
 <ncdata nlev="26" analytic_ic="1" >atm/cam/inic/cam_vcoords_L26_c180105.nc</ncdata>
 <ncdata nlev="30" analytic_ic="1" >atm/cam/inic/cam_vcoords_L30_c180105.nc</ncdata>
 <ncdata nlev="32" analytic_ic="1" >atm/cam/inic/cam_vcoords_L32_c180105.nc</ncdata>
 
+<!-- Vertical coordinates and grid only -->
+<ncdata hgrid="mpasa480" nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa480_L32_v6.1.grid_c190924.nc</ncdata>
+<ncdata hgrid="mpasa120" nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa120_L32_topo_grid_c201022.nc</ncdata>
+
+<!-- Files with initial conditions -->
 <ncdata dyn="fv"  hgrid="0.23x0.31" nlev="26" ic_ymd="101"      >atm/cam/inic/fv/cami_0000-01-01_0.23x0.31_L26_c100513.nc</ncdata>
 <ncdata dyn="fv"  hgrid="0.23x0.31" nlev="26" ic_ymd="901"      >atm/cam/inic/fv/cami_0000-09-01_0.23x0.31_L26_c061106.nc</ncdata>
 <ncdata dyn="fv"  hgrid="0.47x0.63" nlev="26" ic_ymd="101"      >atm/cam/inic/fv/cami_1980-01-01_0.47x0.63_L26_c071226.nc</ncdata>
@@ -227,6 +235,8 @@
 
 <ncdata dyn="se" hgrid="ne0np4CONUS.ne30x8"       nlev="70" ic_ymd="101">atm/waccm/ic/FW2000_CONUS_30x8_L70_01-01-0001_c200602.nc</ncdata>
 
+<ncdata hgrid="mpasa120" nlev="32" >atm/cam/inic/mpas/mpasa120_L32_init.umjs.dry_c201021.nc</ncdata>
+
 <!-- Topography -->
 <bnd_topo hgrid="256x512" >atm/cam/topo/topo-from-cami_0000-01-01_256x512_L26_c030918.nc</bnd_topo>
 <bnd_topo hgrid="128x256" >atm/cam/topo/USGS-gtopo30_128x256_c050520.nc</bnd_topo>
@@ -279,6 +289,8 @@
 <bnd_topo hgrid="ne0np4CONUS.ne30x8"       >atm/cam/topo/se/ne30x8_CONUS_nc3000_Co060_Fi001_MulG_PF_RR_Nsw042_c200428.nc</bnd_topo>
 <bnd_topo hgrid="ne0np4.ARCTIC.ne30x4"     >atm/cam/topo/se/ne30x4_ARCTIC_nc3000_Co060_Fi001_MulG_PF_RR_Nsw042_c200428.nc</bnd_topo>
 <bnd_topo hgrid="ne0np4.ARCTICGRIS.ne30x8" >atm/cam/topo/se/ne30x8_ARCTICGRIS_nc3000_Co060_Fi001_MulG_PF_RR_Nsw042_c200428.nc</bnd_topo>
+
+<bnd_topo hgrid="mpasa120" >atm/cam/topo/mpas/mpas_120_nc3000_Co060_Fi001_MulG_PF_Nsw042_c200921.nc</bnd_topo>
 
 <!-- Ridge parameterization (gamma) -->
 <bnd_rdggm hgrid="0.9x1.25">atm/cam/topo/fv_0.9x1.25_nc3000_Nsw006_Nrs002_Co008_Fi001_ZR_c160505.nc</bnd_rdggm>
@@ -1632,9 +1644,6 @@
 <gas_wetdep_method  phys="spcam_sam1mom" >MOZ</gas_wetdep_method>
 <gas_wetdep_method  phys="spcam_m2005"   >OFF</gas_wetdep_method>
 
-<!-- dry deposition method for gas-phase species -->
-<drydep_method>xactive_lnd</drydep_method>
-
 <!-- Dry Dep surface data file needed by prognostic MAM on unstructured grid only. -->
 <drydep_srf_file hgrid="ne5np4"          >atm/cam/chem/trop_mam/atmsrf_ne5np4_110920.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne16np4"         >atm/cam/chem/trop_mam/atmsrf_ne16np4_110920.nc</drydep_srf_file>
@@ -1657,11 +1666,8 @@
 <drydep_srf_file hgrid="C384">atm/cam/chem/trop_mam/atmsrf_C384_c200625.nc</drydep_srf_file>
 
 <!-- depvel data -->
-<depvel_file    >atm/cam/chem/trop_mozart/dvel/depvel_monthly.nc</depvel_file>
 <depvel_lnd_file>atm/cam/chem/trop_mozart/dvel/regrid_vegetation.nc</depvel_lnd_file>
 <depvel_lnd_file   aquaplanet="1" >atm/cam/chem/trop_mozart/dvel/regrid_vegetation_all_zero_aquaplanet_1deg_regularGrid_c20170421.nc</depvel_lnd_file>
-<clim_soilw_file>atm/cam/chem/trop_mozart/dvel/clim_soilw.nc</clim_soilw_file>
-<season_wes_file>atm/cam/chem/trop_mozart/dvel/season_wes.nc</season_wes_file>
 
 <!-- photolysis inputs -->
 <xs_coef_file>atm/waccm/phot/effxstex.txt</xs_coef_file>
@@ -1678,9 +1684,6 @@
 
 <!-- Boundary data for Tropopheric Chemistry -->
 <fstrat_file    >atm/cam/chem/trop_mozart/ub/ubvals_b40.20th.track1_1996-2005_c110315.nc</fstrat_file>
-<linoz_data_path>atm/cam/chem/trop_mozart/ub</linoz_data_path>
-<linoz_data_file>linoz2004_2006jpl_c081216.nc</linoz_data_file>
-<chlorine_loading_file>atm/cam/chem/trop_mozart/ub/EESC_1850-2100_c090603.nc</chlorine_loading_file>
 
 <!-- Fossil fuel carbon aerosol surface emissions-->
   <!-- standard 4 species carbon -->
@@ -1849,6 +1852,13 @@
 <clubb_l_vert_avg_closure               silhs="1" > .false. </clubb_l_vert_avg_closure>
 <clubb_l_diag_Lscale_from_tau           silhs="1" > .false. </clubb_l_diag_Lscale_from_tau>
 <clubb_l_damp_wp2_using_em              silhs="1" > .true.  </clubb_l_damp_wp2_using_em>
+
+<!-- CLUBB+MF options -->
+<do_clubb_mf                       > .false. </do_clubb_mf>
+<do_clubb_mf_diag                  > .false. </do_clubb_mf_diag>
+<clubb_mf_L0                       > 50.0    </clubb_mf_L0>
+<clubb_mf_ent0                     > 0.22    </clubb_mf_ent0>
+<clubb_mf_nup                      > 10      </clubb_mf_nup>
 
 <!-- Microphysics scheme -->
 <micro_mg_do_hail                       > .false. </micro_mg_do_hail>
@@ -2398,14 +2408,8 @@
 <!-- default namelist for SCAM mode -->
 <ncdata             hgrid="64x128"    nlev="30"   scam="1"  >atm/cam/inic/gaus/cami_0000-09-01_64x128_L30_c031210.nc</ncdata>
 <iopfile dyn="eul"                                scam="1"  >atm/cam/scam/iop/ARM97_4scam.nc</iopfile>
-<scmlat                                           scam="1"  >   36.6     </scmlat>
-<scmlon                                           scam="1"  >   262.5    </scmlon>
-<start_ymd                                        scam="1"  >   19970618 </start_ymd>
-<start_tod                                        scam="1"  >   84585    </start_tod>
-<stop_n                                           scam="1"  >   2088     </stop_n>
 <mfilt                                            scam="1"  >   1500     </mfilt>
 <nhtfrq                                           scam="1"  >   9        </nhtfrq>
-<stop_option                                      scam="1"  >   nsteps    </stop_option>
 <scm_use_obs_uv                                   scam="1"  >   .true.   </scm_use_obs_uv>
 <scm_zadv_q                                       scam="1"  >   slt      </scm_zadv_q>
 
@@ -2457,7 +2461,6 @@
 <history_clubb>                .true.   </history_clubb>
 <history_dust>                 .false.  </history_dust>
 
-
 <cam_snapshot_before_num>  -1 </cam_snapshot_before_num>
 <cam_snapshot_after_num>   -1 </cam_snapshot_after_num>
 
@@ -2491,7 +2494,7 @@
 <fv3_dddmp                                                                  > 0.0D0     </fv3_dddmp>
 <fv3_delt_max                                                               > 0.0D0     </fv3_delt_max>
 <fv3_dnats                                                                  > 0         </fv3_dnats>
-<fv3_do_sat_adj                                                             > .false.   </fv3_do_sat_adj>  
+<fv3_do_sat_adj                                                             > .false.   </fv3_do_sat_adj>
 <fv3_do_vort_damp      dyn="fv3nh"                                          > .true.    </fv3_do_vort_damp>
 <fv3_do_vort_damp      dyn="fv3"                                            > .false.   </fv3_do_vort_damp>
 <fv3_dwind_2d                                                               > .false.   </fv3_dwind_2d>
@@ -2672,43 +2675,64 @@
 <se_tracer_num_threads> 0 </se_tracer_num_threads>
 <se_vert_num_threads> 0 </se_vert_num_threads>
 
-<!-- ================================================================== -->
-<!-- Defaults for driver namelist seq_infodata_inparm                   -->
-<!-- ================================================================== -->
-
-<!-- Case name -->
-<case_name>camrun</case_name>
-
-<!-- Run-type of simulation -->
-<start_type>startup</start_type>
 
 <!-- ================================================================== -->
-<!-- Defaults for driver namelist seq_flux_mct_inparm                   -->
+<!-- Defaults for MPAS                                                  -->
 <!-- ================================================================== -->
 
-<seq_flux_mct_albdif>0.06</seq_flux_mct_albdif>
-<seq_flux_mct_albdir>0.07</seq_flux_mct_albdir>
-<seq_flux_atmocn_minwind>0.5</seq_flux_atmocn_minwind>
+<mpas_time_integration        > SRK3 </mpas_time_integration>
+<mpas_time_integration_order  > 2 </mpas_time_integration_order>
+<mpas_dt                      > 1800.0D0 </mpas_dt>
+<mpas_dt hgrid="mpasa120"     >  600.0D0 </mpas_dt>
 
-<!-- ================================================================== -->
-<!-- Defaults for driver namelist seq_timemgr_inparm                    -->
-<!-- ================================================================== -->
+<mpas_split_dynamics_transport>.true.</mpas_split_dynamics_transport>
+<mpas_number_of_sub_steps     > 2 </mpas_number_of_sub_steps>
+<mpas_dynamics_split_steps    > 3 </mpas_dynamics_split_steps>
+<mpas_h_mom_eddy_visc2        > 0.0D0 </mpas_h_mom_eddy_visc2>
+<mpas_h_mom_eddy_visc4        > 0.0D0 </mpas_h_mom_eddy_visc4>
+<mpas_v_mom_eddy_visc2        > 0.0D0 </mpas_v_mom_eddy_visc2>
+<mpas_h_theta_eddy_visc2      > 0.0D0 </mpas_h_theta_eddy_visc2>
+<mpas_h_theta_eddy_visc4      > 0.0D0 </mpas_h_theta_eddy_visc4>
+<mpas_v_theta_eddy_visc2      > 0.0D0 </mpas_v_theta_eddy_visc2>
+<mpas_horiz_mixing            > 2d_smagorinsky </mpas_horiz_mixing>
 
-<!-- Length of run -->
-<stop_option>ndays</stop_option>
-<stop_n>1</stop_n>
+<mpas_len_disp hgrid="mpasa480">480000.0D0</mpas_len_disp>
+<mpas_len_disp hgrid="mpasa120">120000.0D0</mpas_len_disp>
 
-<!-- Length of time for restarts -->
-<restart_option>'monthly'</restart_option>
+<mpas_visc4_2dsmag            > 0.05D0 </mpas_visc4_2dsmag>
+<mpas_del4u_div_factor        > 10.0D0 </mpas_del4u_div_factor>
+<mpas_w_adv_order             > 3 </mpas_w_adv_order>
+<mpas_theta_adv_order         > 3 </mpas_theta_adv_order>
+<mpas_scalar_adv_order        > 3 </mpas_scalar_adv_order>
+<mpas_u_vadv_order            > 3 </mpas_u_vadv_order>
+<mpas_w_vadv_order            > 3 </mpas_w_vadv_order>
+<mpas_theta_vadv_order        > 3 </mpas_theta_vadv_order>
+<mpas_scalar_vadv_order       > 3 </mpas_scalar_vadv_order>
+<mpas_scalar_advection        > .true. </mpas_scalar_advection>
+<mpas_positive_definite       > .false. </mpas_positive_definite>
+<mpas_monotonic               > .true. </mpas_monotonic>
+<mpas_coef_3rd_order          > 0.25D0 </mpas_coef_3rd_order>
+<mpas_smagorinsky_coef        > 0.125D0 </mpas_smagorinsky_coef>
+<mpas_mix_full                > .true. </mpas_mix_full>
+<mpas_epssm                   > 0.1D0 </mpas_epssm>
+<mpas_smdiv                   > 0.1D0 </mpas_smdiv>
+<mpas_apvm_upwinding          > 0.5D0 </mpas_apvm_upwinding>
+<mpas_h_ScaleWithMesh         > .true. </mpas_h_ScaleWithMesh>
+<mpas_zd                      > 22000.0D0 </mpas_zd>
+<mpas_xnutr                   > 0.2D0 </mpas_xnutr>
 
-<!-- Starting date.  The value of start_ymd is used to match the ic_ymd    -->
-<!-- attribute of the ncdata files -->
-<start_ymd>101</start_ymd>
+<mpas_block_decomp_file_prefix hgrid="mpasa480">atm/cam/inic/mpas/mpasa480.graph.info.part.</mpas_block_decomp_file_prefix>
+<mpas_block_decomp_file_prefix hgrid="mpasa120">atm/cam/inic/mpas/mpasa120.graph.info.part.</mpas_block_decomp_file_prefix>
+<mpas_block_decomp_file_prefix hgrid="mpasa60">atm/cam/inic/mpas/mpasa60.graph.info.part.</mpas_block_decomp_file_prefix>
+<mpas_block_decomp_file_prefix hgrid="mpasa30">atm/cam/inic/mpas/mpasa30.graph.info.part.</mpas_block_decomp_file_prefix>
+<mpas_block_decomp_file_prefix hgrid="mpasa15">atm/cam/inic/mpas/mpasa15.graph.info.part.</mpas_block_decomp_file_prefix>
+<mpas_block_decomp_file_prefix hgrid="mpasa12">atm/cam/inic/mpas/mpasa12.graph.info.part.</mpas_block_decomp_file_prefix>
+<mpas_block_decomp_file_prefix hgrid="mpasa15-3">atm/cam/inic/mpas/mpasa15-3.graph.info.part.</mpas_block_decomp_file_prefix>
 
-<!-- Orbit -->
-<orb_iyear >1990</orb_iyear>
-
-<cpl_seq_option >'CESM1_MOD_TIGHT'</cpl_seq_option>
+<mpas_do_restart               > .false. </mpas_do_restart>
+<mpas_print_global_minmax_vel  > .true. </mpas_print_global_minmax_vel>
+<mpas_print_detailed_minmax_vel> .false. </mpas_print_detailed_minmax_vel>
+<mpas_print_global_minmax_sca  > .false. </mpas_print_global_minmax_sca>
 
 <!-- ================================================================== -->
 <!-- Chemistry Rates Diagnostics                                        -->

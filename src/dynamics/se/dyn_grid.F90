@@ -27,24 +27,21 @@ module dyn_grid
 !-------------------------------------------------------------------------------
 
 use shr_kind_mod,           only: r8 => shr_kind_r8, shr_kind_cl
-use spmd_utils,             only: masterproc, iam, mpicom, mstrid=>masterprocid, &
-                                  npes, mpi_integer, mpi_real8, mpi_success
+use spmd_utils,             only: masterproc, iam, mpicom, mstrid=>masterprocid
+use spmd_utils,             only: npes, mpi_integer, mpi_real8
 use constituents,           only: pcnst
 use physconst,              only: pi
 use cam_initfiles,          only: initial_file_get_id
 use cam_grid_support,       only: iMap
-use dp_mapping,             only: dp_reoorder
+use physics_column_type,    only: physics_column_t
 
 use cam_logfile,            only: iulog
 use cam_abortutils,         only: endrun
-use shr_sys_mod,            only: shr_sys_flush
 
-use pio,                    only: file_desc_t, pio_seterrorhandling, pio_bcast_error, &
-                                  pio_internal_error, pio_noerr, pio_inq_dimid,       &
-                                  pio_inq_dimlen
+use pio,                    only: file_desc_t
 
-use dimensions_mod,         only: globaluniquecols, nelem, nelemd, nelemdmax, &
-                                  ne, np, npsq, fv_nphys, nlev, nc, ntrac
+use dimensions_mod,         only: globaluniquecols, nelem, nelemd, nelemdmax
+use dimensions_mod,         only: ne, np, npsq, fv_nphys, nlev, ntrac
 use element_mod,            only: element_t
 use fvm_control_volume_mod, only: fvm_struct
 use hybvcoord_mod,          only: hvcoord_t
@@ -61,6 +58,10 @@ save
 integer, parameter :: dyn_decomp = 101 ! The SE dynamics grid
 integer, parameter :: fvm_decomp = 102 ! The FVM (CSLAM) grid
 integer, parameter :: physgrid_d = 103 ! physics grid on dynamics decomp
+integer, parameter :: ini_decomp = 104 ! alternate dynamics grid for reading initial file
+
+character(len=3), protected :: ini_grid_name
+
 integer, parameter :: ptimelevels = 2
 
 type (TimeLevel_t)         :: TimeLevel     ! main time level struct (used by tracers)
@@ -68,35 +69,29 @@ type (hvcoord_t)           :: hvcoord
 type(element_t),   pointer :: elem(:) => null()  ! local GLL elements for this task
 type(fvm_struct),  pointer :: fvm(:) => null()   ! local FVM elements for this task
 
-public ::       &
-   dyn_decomp,  &
-   ptimelevels, &
-   TimeLevel,   &
-   hvcoord,     &
-   elem,        &
-   fvm,         &
-   edgebuf
+public :: dyn_decomp
+public :: ini_grid_name
+public :: ptimelevels
+public :: TimeLevel
+public :: hvcoord
+public :: elem
+public :: fvm
+public :: edgebuf
 
-public :: &
-   dyn_grid_init,            &
-   get_block_bounds_d,       & ! get first and last indices in global block ordering
-   get_block_gcol_d,         & ! get column indices for given block
-   get_block_gcol_cnt_d,     & ! get number of columns in given block
-   get_block_lvl_cnt_d,      & ! get number of vertical levels in column
-   get_block_levels_d,       & ! get vertical levels in column
-   get_block_owner_d,        & ! get process "owning" given block
-   get_gcol_block_d,         & ! get global block indices and local columns
-                               ! index for given global column index
-   get_gcol_block_cnt_d,     & ! get number of blocks containing data
-                               ! from a given global column index
-   get_horiz_grid_dim_d,     &
-   get_horiz_grid_d,         & ! get horizontal grid coordinates
-   get_dyn_grid_parm,        &
-   get_dyn_grid_parm_real1d, &
-   dyn_grid_get_elem_coords, & ! get coordinates of a specified block element
-   dyn_grid_get_colndx,      & ! get element block/column and MPI process indices
-                               ! corresponding to a specified global column index
-   physgrid_copy_attributes_d
+public :: dyn_grid_init              ! Initialize the dynamics grid
+public :: get_dyn_grid_info          ! Return physics grid column information
+public :: physgrid_copy_attributes_d ! Attributes to copy to physics grid
+
+!!XXgoldyXX: v These need to be removed to complete the weak scaling transition.
+public :: get_horiz_grid_d
+public :: get_horiz_grid_dim_d
+public :: get_dyn_grid_parm
+public :: get_dyn_grid_parm_real1d
+!!XXgoldyXX: ^ These need to be removed to complete the weak scaling transition.
+public :: dyn_grid_get_elem_coords ! get coords of a specified block element
+
+! Note: dyn_grid_get_colndx is not implemenented in SE
+public :: dyn_grid_get_colndx ! get element block/column and MPI process indices
 
 ! Namelist variables controlling grid writing.
 ! Read in dyn_readnl from dyn_se_inparm group.
@@ -104,15 +99,10 @@ character(len=16),          public :: se_write_grid_file   = 'no'
 character(len=shr_kind_cl), public :: se_grid_filename     = ''
 logical,                    public :: se_write_gll_corners = .false.
 
-type block_global_data
-   integer :: UniquePtOffset  ! global index of first column in element
-   integer :: NumUniqueP      ! number of unique columns in element
-   integer :: LocalID         ! local index of element in a task
-   integer :: Owner           ! task id of element owner
-end type block_global_data
+! Name of horizontal grid dimension in initial file.
+character(len=6) :: ini_grid_hdim_name = ' '
 
-! Only need this global data for the GLL grid if it is also the physics grid.
-type(block_global_data), allocatable :: gblocks(:)
+type(physics_column_t), allocatable, target :: local_dyn_columns(:)
 
 ! number of global dynamics columns. Set by SE dycore init.
 integer :: ngcols_d = 0
@@ -142,14 +132,13 @@ subroutine dyn_grid_init()
    use parallel_mod,        only: par
    use hybrid_mod,          only: hybrid_t, init_loop_ranges, &
                                   get_loop_ranges, config_thread_region
-   use thread_mod ,         only: horz_num_threads
    use control_mod,         only: qsplit, rsplit
    use time_mod,            only: tstep, nsplit
    use fvm_mod,             only: fvm_init2, fvm_init3, fvm_pg_init
    use dimensions_mod,      only: irecons_tracer
    use comp_gll_ctr_vol,    only: gll_grid_write
    use physconst,           only: thermodynamic_active_species_num
-   
+
    ! Local variables
 
    type(file_desc_t), pointer  :: fh_ini
@@ -159,7 +148,6 @@ subroutine dyn_grid_init()
 
    type(hybrid_t)              :: hybrid
    integer                     :: ierr
-   integer                     :: neltmp(3)
    integer                     :: dtime
 
    real(r8), allocatable       ::clat(:), clon(:), areaa(:)
@@ -231,6 +219,9 @@ subroutine dyn_grid_init()
    ! initial SE (subcycled) nstep
    TimeLevel%nstep0 = 0
 
+   ! determine whether initial file uses 'ncol' or 'ncol_d'
+   call get_hdim_name(fh_ini, ini_grid_hdim_name)
+
    ! Define the dynamics and physics grids on the dynamics decompostion.
    ! Physics grid on the physics decomposition is defined in phys_grid_init.
    call define_cam_grids()
@@ -251,11 +242,6 @@ subroutine dyn_grid_init()
          call fvm_init3(elem, fvm, hybrid, nets, nete, irecons_tracer)
       end if
 
-   else
-
-      ! construct global arrays needed when GLL grid used by physics
-      call gblocks_init()
-
    end if
 
    ! write grid and mapping files
@@ -275,7 +261,7 @@ subroutine dyn_grid_init()
 
       allocate(areaA(ngcols_d))
       allocate(clat(ngcols_d),clon(ngcols_d))
-      call get_horiz_grid_d(ngcols_d, clat_d_out=clat, clon_d_out=clon, area_d_out=areaA)
+      call get_horiz_grid_int(ngcols_d, clat_d_out=clat, clon_d_out=clon, area_d_out=areaA)
 
       ! Create mapping files using SE basis functions
       call create_native_mapping_files(par, elem, 'native', ngcols_d, clat, clon, areaa)
@@ -288,304 +274,140 @@ subroutine dyn_grid_init()
 
 end subroutine dyn_grid_init
 
-!=========================================================================================
+!==============================================================================
 
-subroutine get_block_bounds_d(block_first, block_last)
-
-   ! Return first and last indices used in global block ordering
-
-   integer, intent(out) :: block_first  ! first (global) index used for blocks
-   integer, intent(out) :: block_last   ! last (global) index used for blocks
-   !----------------------------------------------------------------------------
-
-   block_first = 1
-   block_last = nelem_d
-
-end subroutine get_block_bounds_d
-
-!=========================================================================================
-
-subroutine get_block_gcol_d(blockid, asize, cdex)
-
-   ! Return list of global column indices in given block
-
-   !------------------------------Arguments--------------------------------
-   integer, intent(in) :: blockid      ! global block id
-   integer, intent(in) :: asize        ! array size
-
-   integer, intent(out):: cdex(asize)  ! global column indices
-
-   integer :: ic
-   !----------------------------------------------------------------------------
-
-   if (fv_nphys > 0) then
-      cdex(1) = (blockid-1)*fv_nphys*fv_nphys + 1
-      do ic = 2, asize
-         cdex(ic) = cdex(1) + ic - 1
-      end do
-   else
-
-      do ic = 1, asize
-         cdex(ic) = gblocks(blockid)%UniquePtOffset + ic - 1
-      end do
-   end if
-
-end subroutine get_block_gcol_d
-
-!=========================================================================================
-
-integer function get_block_gcol_cnt_d(blockid)
-
-   ! Return number of dynamics columns in indicated block
-
-   integer, intent(in) :: blockid
-
-   integer :: ie
-   !----------------------------------------------------------------------------
-
-   if (fv_nphys > 0) then
-      get_block_gcol_cnt_d = fv_nphys*fv_nphys
-   else
-      get_block_gcol_cnt_d = gblocks(blockid)%NumUniqueP
-   end if
-
-end function get_block_gcol_cnt_d
-
-!=========================================================================================
-
-integer function get_block_lvl_cnt_d(blockid, bcid)
-
-   ! Return number of levels in indicated column. If column
-   ! includes surface fields, then it is defined to also
-   ! include level 0.
-
-   use pmgrid, only: plevp
-
-   integer, intent(in) :: blockid  ! global block id
-   integer, intent(in) :: bcid     ! column index within block
-   !-----------------------------------------------------------------------
-
-   get_block_lvl_cnt_d = plevp
-
-end function get_block_lvl_cnt_d
-
-!=========================================================================================
-
-subroutine get_block_levels_d(blockid, bcid, lvlsiz, levels)
-
-   use pmgrid, only: plev
-
-   ! Return level indices in indicated column. If column
-   ! includes surface fields, then it is defined to also
-   ! include level 0.
-
-   ! arguments
-   integer, intent(in) :: blockid  ! global block id
-   integer, intent(in) :: bcid    ! column index within block
-   integer, intent(in) :: lvlsiz   ! dimension of levels array
-
-   integer, intent(out) :: levels(lvlsiz) ! levels indices for block
-
-   ! local variables
-   integer :: k
-   character(len=128) :: errmsg
-   !---------------------------------------------------------------------------
-
-   if (lvlsiz < plev + 1) then
-      write(errmsg,*) 'levels array not large enough (', lvlsiz,' < ',plev + 1,')'
-      call endrun('GET_BLOCK_LEVELS_D: '//trim(errmsg))
-   else
-      do k = 0, plev
-         levels(k+1) = k
-      end do
-      do k = plev+2, lvlsiz
-         levels(k) = -1
-      end do
-   end if
-
-end subroutine get_block_levels_d
-
-!=========================================================================================
-
-integer function get_gcol_block_cnt_d(gcol)
-
-   ! Return number of blocks containg data for the vertical column with the
-   ! given global column index.
+subroutine get_dyn_grid_info(hdim1_d, hdim2_d, num_lev,                       &
+     index_model_top_layer, index_surface_layer, unstructured, dyn_columns)
+   !------------------------------------------------------------
    !
-   ! For SE dycore each column is "owned" by a single element, so this routine
-   ! always returns 1.
-
-   integer, intent(in) :: gcol     ! global column index
-   !----------------------------------------------------------------------------
-
-   get_gcol_block_cnt_d = 1
-
-end function get_gcol_block_cnt_d
-
-!=========================================================================================
-
-subroutine get_gcol_block_d(gcol, cnt, blockid, bcid, localblockid)
-
-   use dp_mapping,     only: dp_owner
-
-   ! Return global block index and local column index for given global column index.
+   ! get_dyn_grid_info returns physics grid column information
    !
-   ! The SE dycore assigns each global column to a singe element.  So cnt is assumed
-   ! to be 1.
+   !------------------------------------------------------------
+   use shr_const_mod,          only: SHR_CONST_PI
+   use cam_abortutils,         only: endrun
+   use spmd_utils,             only: iam
+   use coordinate_systems_mod, only: spherical_polar_t
+   ! Dummy arguments
+   integer,          intent(out)   :: hdim1_d ! # longitudes or grid size
+   integer,          intent(out)   :: hdim2_d ! # latitudes or 1
+   integer,          intent(out)   :: num_lev ! # levels
+   integer,          intent(out)   :: index_model_top_layer
+   integer,          intent(out)   :: index_surface_layer
+   logical,          intent(out)   :: unstructured
+   ! dyn_columns will contain a copy of the physics column info local to this
+   ! dynamics task
+   type(physics_column_t), allocatable, intent(out) :: dyn_columns(:)
+   ! Local variables
+   integer                         :: lindex
+   integer                         :: gindex
+   integer                         :: elem_ind, col_ind, ii, jj
+   integer                         :: num_local_cols
+   type(spherical_polar_t)         :: coord
+   real(r8)                        :: dcoord
+   real(r8),         parameter     :: radtodeg = 180.0_r8 / SHR_CONST_PI
+   real(r8),         parameter     :: degtorad = SHR_CONST_PI / 180.0_r8
+   character(len=*), parameter     :: subname = 'get_dyn_grid_info'
 
-   ! arguments
-   integer, intent(in)            :: gcol     ! global column index
-   integer, intent(in)            :: cnt      ! size of blockid and bcid arrays
-
-   integer, intent(out)           :: blockid(cnt) ! block index
-   integer, intent(out)           :: bcid(cnt)    ! column index within block
-   integer, intent(out), optional :: localblockid(cnt)
-
-   ! local variables
-   integer :: sb, eb, ie, high, low
-   logical :: found
-   integer, save :: iedex_save = 1
-   character(len=*), parameter :: subname='get_gcol_block_d'
-   !----------------------------------------------------------------------------
-
-   if (fv_nphys > 0) then
-
-      blockid(1) = 1 + ((gcol-1) / (fv_nphys*fv_nphys))
-      bcid(1) = 1 + mod(gcol-1, fv_nphys*fv_nphys)
-
-      if (present(localblockid)) then
-         localblockid = -1
-         if (iam == dp_owner(blockid(1))) then
-            if (blockid(1) == elem(iedex_save)%globalid) then
-               localblockid = iedex_save
-            else
-               do ie = 1,nelemd
-                  if (blockid(1) == elem(ie)%globalid) then
-                     localblockid = ie
-                     iedex_save = ie
-                     exit
-                  end if
-               end do
-            end if
-         end if
+   unstructured = .true. ! SE is an unstructured dycore
+   if (fv_nphys > 0) then ! physics uses an FVM grid
+      num_local_cols = nelemd * fv_nphys * fv_nphys
+   else
+      num_local_cols = 0
+      do elem_ind = 1, nelemd
+         num_local_cols = num_local_cols + elem(elem_ind)%idxP%NumUniquePts
+      end do
+   end if
+   if (allocated(local_dyn_columns)) then
+      ! Check for correct number of columns
+      if (size(local_dyn_columns) /= num_local_cols) then
+         call endrun(subname//': called with inconsistent column numbers')
       end if
-
    else
-
-      found = .false.
-      low = 1
-      high = nelem_d
-
-      ! check whether previous found element is the same here
-      if (.not. found) then
-         ie = iedex_save
-         sb = gblocks(ie)%UniquePtOffset
-         if (gcol >= sb) then
-            eb = sb + gblocks(ie)%NumUniqueP
-            if (gcol < eb) then
-               found = .true.
-            else
-               low = ie
-            endif
-         else
-            high = ie
-         endif
-      endif
-
-      ! check whether next element  is the one wanted
-      if ((.not. found) .and. &
-         ((low .eq. iedex_save) .or. (iedex_save .eq. nelem_d))) then
-         ie = iedex_save + 1
-         if (ie > nelem_d) ie = 1
-
-         sb = gblocks(ie)%UniquePtOffset
-         if (gcol >= sb) then
-            eb = sb + gblocks(ie)%NumUniqueP
-            if (gcol < eb) then
-               found = .true.
-            else
-               low = ie
-            endif
-         else
-            high = ie
-         endif
-      endif
-
-      ! otherwise, use a binary search to find element
-      if (.not. found) then
-         ! (start with a sanity check)
-         ie = low
-         sb = gblocks(ie)%UniquePtOffset
-
-         ie = high
-         eb = gblocks(ie)%UniquePtOffset + gblocks(ie)%NumUniqueP
-
-         if ((gcol < sb) .or.  (gcol >= eb)) then
-            do ie=1,nelemd
-               write(iulog,*) __LINE__,ie,elem(ie)%idxP%UniquePtOffset,elem(ie)%idxP%NumUniquePts
+      allocate(local_dyn_columns(num_local_cols))
+      if (fv_nphys > 0) then ! physics uses an FVM grid
+         hdim1_d = nelem * fv_nphys * fv_nphys
+      else
+         hdim1_d = ngcols_d
+      end if
+      hdim2_d = 1
+      num_lev = nlev
+      index_model_top_layer = 1
+      index_surface_layer = nlev
+      lindex = 0
+      do elem_ind = 1, nelemd
+         if (fv_nphys > 0) then ! physics uses an FVM grid
+            do col_ind = 0, (fv_nphys * fv_nphys) - 1
+               lindex = lindex + 1
+               ii = MOD(col_ind, fv_nphys) + 1
+               jj = (col_ind / fv_nphys) + 1
+               coord = fvm(elem_ind)%center_cart_physgrid(ii, jj)
+               local_dyn_columns(lindex)%lat_rad = coord%lat
+               dcoord = local_dyn_columns(lindex)%lat_rad * radtodeg
+               local_dyn_columns(lindex)%lat_deg = dcoord
+               local_dyn_columns(lindex)%lon_rad = coord%lon
+               dcoord = local_dyn_columns(lindex)%lon_rad * radtodeg
+               local_dyn_columns(lindex)%lon_deg = dcoord
+               local_dyn_columns(lindex)%area =                               &
+                    fvm(elem_ind)%area_sphere_physgrid(ii,jj)
+               local_dyn_columns(lindex)%weight =                             &
+                    local_dyn_columns(lindex)%area
+               ! File decomposition
+               gindex = ((elem(elem_ind)%GlobalId-1) * fv_nphys * fv_nphys) + &
+                    col_ind + 1
+               local_dyn_columns(lindex)%global_col_num = gindex
+               ! Note, coord_indices not used for unstructured dycores
+               ! Dynamics decomposition
+               local_dyn_columns(lindex)%dyn_task = iam
+               local_dyn_columns(lindex)%local_dyn_block = elem_ind
+               local_dyn_columns(lindex)%global_dyn_block =                   &
+                    elem(elem_ind)%GlobalId
+               allocate(local_dyn_columns(lindex)%dyn_block_index(1))
+               local_dyn_columns(lindex)%dyn_block_index(1) = col_ind + 1
             end do
-            call endrun(subname//': binary search to find element')
+         else
+            do col_ind = 1, elem(elem_ind)%idxP%NumUniquePts
+               lindex = lindex + 1
+               ii = elem(elem_ind)%idxP%ia(col_ind)
+               jj = elem(elem_ind)%idxP%ja(col_ind)
+
+               dcoord = elem(elem_ind)%spherep(ii,jj)%lat
+               local_dyn_columns(lindex)%lat_rad = dcoord
+               dcoord = local_dyn_columns(lindex)%lat_rad * radtodeg
+               local_dyn_columns(lindex)%lat_deg = dcoord
+               dcoord = elem(elem_ind)%spherep(ii,jj)%lon
+               local_dyn_columns(lindex)%lon_rad = dcoord
+               dcoord = local_dyn_columns(lindex)%lon_rad * radtodeg
+               local_dyn_columns(lindex)%lon_deg = dcoord
+               local_dyn_columns(lindex)%area =                               &
+                    1.0_r8 / elem(elem_ind)%rspheremp(ii,jj)
+               local_dyn_columns(lindex)%weight = local_dyn_columns(lindex)%area
+               ! File decomposition
+               gindex = elem(elem_ind)%idxP%UniquePtoffset + col_ind - 1
+               local_dyn_columns(lindex)%global_col_num = gindex
+               ! Note, coord_indices not used for unstructured dycores
+               ! Dynamics decomposition
+               local_dyn_columns(lindex)%dyn_task = iam
+               local_dyn_columns(lindex)%local_dyn_block = elem_ind
+               local_dyn_columns(lindex)%global_dyn_block =                   &
+                    elem(elem_ind)%GlobalId
+               allocate(local_dyn_columns(lindex)%dyn_block_index(1))
+               local_dyn_columns(lindex)%dyn_block_index(1) = col_ind
+            end do
          end if
-
-         do while (.not. found)
-
-            ie = low + (high-low)/2;
-            sb = gblocks(ie)%UniquePtOffset
-            if (gcol >= sb) then
-               eb = sb + gblocks(ie)%NumUniqueP
-               if (gcol < eb) then
-                  found = .true.
-               else
-                  low = ie+1
-               end if
-            else
-               high = ie-1
-            end if
-         end do
-      end if
-
-      blockid(1) = ie
-      bcid(1)    = gcol - sb + 1
-      iedex_save = ie
-
-      if (present(localblockid)) localblockid(1) = gblocks(ie)%LocalID
-
+      end do
    end if
-
-end subroutine get_gcol_block_d
-
-!=========================================================================================
-
-integer function get_block_owner_d(blockid)
-
-   ! Return id of processor that "owns" the indicated block
-
-   use dp_mapping,     only: dp_owner
-
-   integer, intent(in) :: blockid  ! global block id
-
-   character(len=*), parameter :: name = 'get_block_owner_d'
-   !----------------------------------------------------------------------------
-
-   if (fv_nphys > 0) then
-      if (dp_owner(blockid) > -1) then
-         get_block_owner_d = dp_owner(blockid)
-      else
-         call endrun(name//': Block owner not assigned in gblocks_init')
-      end if
-
-   else
-
-      if (gblocks(blockid)%Owner > -1) then
-         get_block_owner_d = gblocks(blockid)%Owner
-      else
-         call endrun(name//': Block owner not assigned in gblocks_init')
-      end if
+   ! Copy the information to the output array
+   if (allocated(dyn_columns)) then
+      deallocate(dyn_columns)
    end if
+   allocate(dyn_columns(lindex))
+   do lindex = 1, num_local_cols
+      dyn_columns(lindex) = local_dyn_columns(lindex)
+   end do
 
-end function get_block_owner_d
+   end subroutine get_dyn_grid_info
 
-!=========================================================================================
+!==============================================================================
 
 subroutine get_horiz_grid_dim_d(hdim1_d,hdim2_d)
 
@@ -611,8 +433,8 @@ end subroutine get_horiz_grid_dim_d
 
 !=========================================================================================
 
-subroutine get_horiz_grid_d(nxy, clat_d_out, clon_d_out, area_d_out, &
-                            wght_d_out, lat_d_out, lon_d_out)
+subroutine get_horiz_grid_int(nxy, clat_d_out, clon_d_out, area_d_out, &
+     wght_d_out, lat_d_out, lon_d_out)
 
    ! Return global arrays of latitude and longitude (in radians), column
    ! surface area (in radians squared) and surface integration weights for
@@ -632,8 +454,8 @@ subroutine get_horiz_grid_d(nxy, clat_d_out, clon_d_out, area_d_out, &
    ! local variables
    real(r8),           pointer :: area_d(:)
    real(r8),           pointer :: temp(:)
-   character(len=256)          :: errormsg
-   character(len=*), parameter :: sub = 'get_horiz_grid_d'
+   character(len=SHR_KIND_CL)  :: errormsg
+   character(len=*), parameter :: sub = 'get_horiz_grid_int'
    !----------------------------------------------------------------------------
 
    ! check that nxy is set to correct size for global arrays
@@ -701,7 +523,7 @@ subroutine get_horiz_grid_d(nxy, clat_d_out, clon_d_out, area_d_out, &
 
    end if
 
-end subroutine get_horiz_grid_d
+end subroutine get_horiz_grid_int
 
 !=========================================================================================
 
@@ -735,33 +557,12 @@ end subroutine physgrid_copy_attributes_d
 
 !=========================================================================================
 
-function get_dyn_grid_parm_real1d(name) result(rval)
-
-   ! This routine is not used for SE, but still needed as a dummy interface to satisfy
-   ! references from mo_synoz.F90 and phys_gmean.F90
-
-   character(len=*), intent(in) :: name
-   real(r8), pointer :: rval(:)
-
-   if(name.eq.'w') then
-      call endrun('get_dyn_grid_parm_real1d: w not defined')
-   else if(name.eq.'clat') then
-      call endrun('get_dyn_grid_parm_real1d: clat not supported, use get_horiz_grid_d')
-   else if(name.eq.'latdeg') then
-      call endrun('get_dyn_grid_parm_real1d: latdeg not defined')
-   else
-      nullify(rval)
-   end if
-end function get_dyn_grid_parm_real1d
-
-!=========================================================================================
-
 integer function get_dyn_grid_parm(name) result(ival)
 
    ! This function is in the process of being deprecated, but is still needed
    ! as a dummy interface to satisfy external references from some chemistry routines.
 
-   use pmgrid,          only: plat, plon, plev, plevp
+   use pmgrid,          only: plat, plev
 
    character(len=*), intent(in) :: name
    !----------------------------------------------------------------------------
@@ -799,31 +600,12 @@ subroutine dyn_grid_get_colndx(igcol, ncols, owners, col, lbk)
    integer, intent(out) :: col(ncols)
    integer, intent(out) :: lbk(ncols)
 
-   integer  :: i, j, k, ii
-   integer  :: blockid(1), bcid(1), lclblockid(1)
    !----------------------------------------------------------------------------
 
-   if (fv_nphys > 0) then
-      call endrun('dyn_grid_get_colndx: not implemented for the FVM physics grid')
-   end if
-
-   do i = 1, ncols
-
-      call get_gcol_block_d(igcol(i), 1, blockid, bcid, lclblockid)
-      owners(i) = get_block_owner_d(blockid(1))
-
-      if (owners(i) == iam) then
-         lbk(i) = lclblockid(1)
-         ii     = igcol(i) - elem(lbk(i))%idxp%UniquePtoffset + 1
-         k      = elem(lbk(i))%idxp%ia(ii)
-         j      = elem(lbk(i))%idxp%ja(ii)
-         col(i) = k + (j - 1)*np
-      else
-         lbk(i) = -1
-         col(i) = -1
-      end if
-
-   end do
+   owners = (igcol * 0) -1 ! Kill compiler warnings
+   col    = -1             ! Kill compiler warnings
+   lbk    = -1             ! Kill compiler warnings
+   call endrun('dyn_grid_get_colndx: not implemented for unstructured grids')
 
 end subroutine dyn_grid_get_colndx
 
@@ -879,6 +661,58 @@ end subroutine dyn_grid_get_elem_coords
 ! Private routines.
 !=========================================================================================
 
+subroutine get_hdim_name(fh_ini, ini_grid_hdim_name)
+   use pio, only: pio_inq_dimid, pio_seterrorhandling
+   use pio, only: PIO_BCAST_ERROR, PIO_NOERR
+
+   ! Determine whether the initial file uses 'ncol' or 'ncol_d' horizontal
+   ! dimension in the unstructured grid.  It is also possible when using
+   ! analytic initial conditions that the initial file only contains
+   ! vertical coordinates.
+   ! Return 'none' if that is the case.
+
+   ! Arguments
+   type(file_desc_t),   pointer  :: fh_ini
+   character(len=6), intent(out) :: ini_grid_hdim_name ! horizontal dimension name
+
+   ! local variables
+   integer  :: ierr, pio_errtype
+   integer  :: ncol_did
+
+   character(len=*), parameter :: sub = 'get_hdim_name'
+   !----------------------------------------------------------------------------
+
+   ! Set PIO to return error flags.
+   call pio_seterrorhandling(fh_ini, PIO_BCAST_ERROR, pio_errtype)
+
+   ! Check for ncol_d first just in case the initial file also contains fields on
+   ! the physics grid.
+   ierr = pio_inq_dimid(fh_ini, 'ncol_d', ncol_did)
+   if (ierr == PIO_NOERR) then
+
+      ini_grid_hdim_name = 'ncol_d'
+
+   else
+
+      ! if 'ncol_d' not in file, check for 'ncol'
+      ierr = pio_inq_dimid(fh_ini, 'ncol', ncol_did)
+
+      if (ierr == PIO_NOERR) then
+
+         ini_grid_hdim_name = 'ncol'
+
+      else
+
+         ini_grid_hdim_name = 'none'
+
+      end if
+   end if
+
+   ! Return PIO to previous error handling.
+   call pio_seterrorhandling(fh_ini, pio_errtype)
+
+end subroutine get_hdim_name
+
 subroutine define_cam_grids()
 
    ! Create grid objects on the dynamics decomposition for grids used by
@@ -900,7 +734,7 @@ subroutine define_cam_grids()
 
    use cam_grid_support, only: horiz_coord_t, horiz_coord_create
    use cam_grid_support, only: cam_grid_register, cam_grid_attribute_register
-   use spmd_utils,       only: MPI_MAX, MPI_INTEGER, mpicom
+   use dimensions_mod,   only: nc
 
    ! Local variables
    integer                      :: i, ii, j, k, ie, mapind
@@ -1002,6 +836,25 @@ subroutine define_cam_grids()
          trim(ncolname), pearea, map=pemap)
    call cam_grid_attribute_register('GLL', 'np', '', np)
    call cam_grid_attribute_register('GLL', 'ne', '', ne)
+
+   ! With CSLAM if the initial file uses the horizontal dimension 'ncol' rather than
+   ! 'ncol_d' then we need a grid object with the names ncol,lat,lon to read it.
+   ! Create that grid object here if it's needed.
+   if (fv_nphys > 0 .and. ini_grid_hdim_name == 'ncol') then
+
+      lat_coord => horiz_coord_create('lat', 'ncol', ngcols_d,  &
+         'latitude', 'degrees_north', 1, size(pelat_deg), pelat_deg, map=pemap)
+      lon_coord => horiz_coord_create('lon', 'ncol', ngcols_d,  &
+         'longitude', 'degrees_east', 1, size(pelon_deg), pelon_deg, map=pemap)
+
+      call cam_grid_register('INI', ini_decomp, lat_coord, lon_coord,         &
+         grid_map, block_indexed=.false., unstruct=.true.)
+
+      ini_grid_name = 'INI'
+   else
+      ! The dyn_decomp grid can be used to read the initial file.
+      ini_grid_name = 'GLL'
+   end if
 
    ! Coordinate values and maps are copied into the coordinate and attribute objects.
    ! Locally allocated storage is no longer needed.
@@ -1229,72 +1082,8 @@ end subroutine write_grid_mapping
 
 !=========================================================================================
 
-subroutine gblocks_init()
-
-   ! construct global array of type block_global_data objects for GLL grid
-
-   integer :: ie, p
-   integer :: ibuf
-   integer :: ierr
-   integer :: rdispls(npes), recvcounts(npes), gid(npes), lid(npes)
-   !----------------------------------------------------------------------------
-
-   if (.not. allocated(gblocks)) then
-      if (masterproc) then
-         write(iulog, *) 'INFO: Non-scalable action: Allocating global blocks in SE dycore.'
-      end if
-      allocate(gblocks(nelem_d))
-      do ie = 1, nelem_d
-         gblocks(ie)%Owner          = -1
-         gblocks(ie)%UniquePtOffset = -1
-         gblocks(ie)%NumUniqueP     = -1
-         gblocks(ie)%LocalID        = -1
-      end do
-   end if
-
-   ! nelemdmax is the maximum number of elements in a dynamics task
-   ! nelemd is the actual number of elements in a dynamics task
-
-   do ie = 1, nelemdmax
-
-      if (ie <= nelemd) then
-         rdispls(iam+1)    = elem(ie)%idxP%UniquePtOffset - 1
-         gid(iam+1)        = elem(ie)%GlobalID
-         lid(iam+1)        = ie
-         recvcounts(iam+1) = elem(ie)%idxP%NumUniquePts
-      else
-         rdispls(iam+1)    = 0
-         recvcounts(iam+1) = 0
-         gid(iam+1)        = 0
-      endif
-
-      ibuf = lid(iam+1)
-      call mpi_allgather(ibuf, 1, mpi_integer, lid, 1, mpi_integer, mpicom, ierr)
-
-      ibuf = gid(iam+1)
-      call mpi_allgather(ibuf, 1, mpi_integer, gid, 1, mpi_integer, mpicom, ierr)
-
-      ibuf = rdispls(iam+1)
-      call mpi_allgather(ibuf, 1, mpi_integer, rdispls, 1, mpi_integer, mpicom, ierr)
-
-      ibuf = recvcounts(iam+1)
-      call mpi_allgather(ibuf, 1, mpi_integer, recvcounts, 1, mpi_integer, mpicom, ierr)
-
-      do p = 1, npes
-         if (gid(p) > 0) then
-            gblocks(gid(p))%UniquePtOffset = rdispls(p) + 1
-            gblocks(gid(p))%NumUniqueP     = recvcounts(p)
-            gblocks(gid(p))%LocalID        = lid(p)
-            gblocks(gid(p))%Owner          = p - 1
-         end if
-      end do
-   end do
-
-end subroutine gblocks_init
-
-!=========================================================================================
-
 subroutine create_global_area(area_d)
+   use dp_mapping, only: dp_reorder, dp_allocate, dp_deallocate
 
    ! Gather global array of column areas for the physics grid,
    ! reorder to global column order, then broadcast it to all tasks.
@@ -1320,7 +1109,7 @@ subroutine create_global_area(area_d)
    if (fv_nphys > 0) then ! physics uses an FVM grid
 
       ! first gather all data onto masterproc, in mpi task order (via
-      ! mpi_gatherv) then redorder into globalID order (via dp_reoorder)
+      ! mpi_gatherv) then redorder into globalID order (via dp_reorder)
       ncol = fv_nphys*fv_nphys*nelem_d
       allocate(rbuf(ncol))
       allocate(dp_area(fv_nphys*fv_nphys,nelem_d))
@@ -1354,7 +1143,9 @@ subroutine create_global_area(area_d)
                        recvcounts, rdispls, mpi_real8, mstrid, mpicom, ierr)
 
       ! Reorder to global order
-      if (masterproc) call dp_reoorder(rbuf, area_d)
+      call dp_allocate(elem)
+      if (masterproc) call dp_reorder(rbuf, area_d)
+      call dp_deallocate()
 
       ! Send everyone else the data
       call mpi_bcast(area_d, ncol, mpi_real8, mstrid, mpicom, ierr)
@@ -1401,6 +1192,7 @@ end subroutine create_global_area
 !=========================================================================================
 
 subroutine create_global_coords(clat, clon, lat_out, lon_out)
+   use dp_mapping, only: dp_reorder, dp_allocate, dp_deallocate
 
    ! Gather global arrays of column coordinates for the physics grid,
    ! reorder to global column order, then broadcast to all tasks.
@@ -1437,7 +1229,7 @@ subroutine create_global_coords(clat, clon, lat_out, lon_out)
    if (fv_nphys > 0) then  ! physics uses an FVM grid
 
       ! first gather all data onto masterproc, in mpi task order (via
-      ! mpi_gatherv) then redorder into globalID order (via dp_reoorder)
+      ! mpi_gatherv) then redorder into globalID order (via dp_reorder)
 
       ncol = fv_nphys*fv_nphys*nelem_d
       allocate(rbuf(ncol))
@@ -1475,7 +1267,8 @@ subroutine create_global_coords(clat, clon, lat_out, lon_out)
                        recvcounts, rdispls, mpi_real8, mstrid, mpicom, ierr)
 
       ! Reorder to global order
-      if (masterproc) call dp_reoorder(rbuf, clat)
+      call dp_allocate(elem)
+      if (masterproc) call dp_reorder(rbuf, clat)
 
       ! Send everyone else the data
       call mpi_bcast(clat, ncol, mpi_real8, mstrid, mpicom, ierr)
@@ -1485,7 +1278,8 @@ subroutine create_global_coords(clat, clon, lat_out, lon_out)
                        recvcounts, rdispls, mpi_real8, mstrid, mpicom, ierr)
 
       ! Reorder to global order
-      if (masterproc) call dp_reoorder(rbuf, clon)
+      if (masterproc) call dp_reorder(rbuf, clon)
+      call dp_deallocate()
 
       ! Send everyone else the data
       call mpi_bcast(clon, ncol, mpi_real8, mstrid, mpicom, ierr)
@@ -1565,6 +1359,55 @@ subroutine create_global_coords(clat, clon, lat_out, lon_out)
 
 end subroutine create_global_coords
 
-!=========================================================================================
+!=============================================================================
+!==
+!!!!!! DUMMY INTERFACE TO TEST WEAK SCALING FIX, THIS SHOULD GO AWAY
+!==
+!=============================================================================
+
+subroutine get_horiz_grid_d(nxy, clat_d_out, clon_d_out, area_d_out, &
+                            wght_d_out, lat_d_out, lon_d_out)
+
+   ! Return global arrays of latitude and longitude (in radians), column
+   ! surface area (in radians squared) and surface integration weights for
+   ! global column indices that will be passed to/from physics
+
+   ! arguments
+   integer, intent(in)   :: nxy                     ! array sizes
+
+   real(r8), intent(out),         optional :: clat_d_out(:) ! column latitudes
+   real(r8), intent(out),         optional :: clon_d_out(:) ! column longitudes
+   real(r8), intent(out), target, optional :: area_d_out(:) ! column surface
+
+   real(r8), intent(out), target, optional :: wght_d_out(:) ! column integration weight
+   real(r8), intent(out),         optional :: lat_d_out(:)  ! column degree latitudes
+   real(r8), intent(out),         optional :: lon_d_out(:)  ! column degree longitudes
+   character(len=*), parameter :: subname = 'get_horiz_grid_d'
+
+   call endrun(subname//': NOT SUPPORTED WITH WEAK SCALING FIX')
+end subroutine get_horiz_grid_d
+
+!==============================================================================
+
+function get_dyn_grid_parm_real1d(name) result(rval)
+
+   ! This routine is not used for SE, but still needed as a dummy interface to satisfy
+   ! references from mo_synoz.F90
+
+   character(len=*), intent(in) :: name
+   real(r8), pointer :: rval(:)
+
+   if(name.eq.'w') then
+      call endrun('get_dyn_grid_parm_real1d: w not defined')
+   else if(name.eq.'clat') then
+      call endrun('get_dyn_grid_parm_real1d: clat not supported')
+   else if(name.eq.'latdeg') then
+      call endrun('get_dyn_grid_parm_real1d: latdeg not defined')
+   else
+      nullify(rval)
+   end if
+end function get_dyn_grid_parm_real1d
+
+!==============================================================================
 
 end module dyn_grid
