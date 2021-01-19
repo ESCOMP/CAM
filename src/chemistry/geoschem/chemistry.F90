@@ -1545,8 +1545,26 @@ contains
         CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
-    IF ( Input_Opt%LDryD ) THEN
+#if defined ( MODAL_AERO )
+    IF ( Input_Opt%LWetD ) THEN
+       DO I = BEGCHUNK, ENDCHUNK
+          DO N = 1, State_Chm(I)%nWetDep
+             M = State_Chm(I)%Map_WetDep(N)
+             SpcInfo => State_Chm(I)%SpcData(M)%Info
+             SELECT CASE ( TRIM(SpcInfo%Name) )
+             CASE ( 'BCPI', 'BCPO', 'DST1', 'DST2', 'DST3', 'DST4', &
+                    'SOAS', 'SO4', 'SALA', 'SALC', 'OCPI' , 'OCPO' )
+                SpcInfo%WD_ExternalDep = .True.
+             CASE DEFAULT
+                SpcInfo%WD_ExternalDep = .False.
+             END SELECT
+             SpcInfo => NULL()
+          ENDDO
+       ENDDO
+    ENDIF
+#endif
 
+    IF ( Input_Opt%LDryD ) THEN
        !==============================================================
        ! Get mapping between CESM dry deposited species and the
        ! indices of State_Chm%DryDepVel. This needs to be done after
@@ -1558,7 +1576,6 @@ contains
        IF ( IERR .NE. 0 ) CALL ENDRUN('Failed to allocate map2GC_dryDep')
 
        DO N = 1, nddvels
-
           ! Initialize index to -1
           map2GC_dryDep(N) = -1
 
@@ -1587,9 +1604,7 @@ contains
              ENDIF
 
           ENDIF
-
        ENDDO
-
     ENDIF
 
 #if defined( MODAL_AERO_4MODE )
@@ -1876,6 +1891,7 @@ contains
 #if defined( MODAL_AERO_4MODE )
     use modal_aero_data,     only : ntot_amode, nspec_amode
     use modal_aero_data,     only : lmassptr_amode
+    use modal_aero_data,     only : xname_massptr
 #endif
 
     use Olson_Landmap_Mod,   only : Compute_Olson_Landmap
@@ -1990,6 +2006,10 @@ contains
     REAL(r8)          :: vmr1(state%NCOL,PVER,gas_pcnst)
     REAL(r8)          :: wetdepflx(pcols,pcnst)       ! Wet deposition fluxes (kg/m2/s)
 
+#if defined( MODAL_AERO )
+    REAL(r8)          :: binRatio(MAXVAL(nspec_amode(:)),ntot_amode,state%NCOL,PVER)
+#endif
+
     ! For emissions
     REAL(r8)          :: eflx(pcols,pver,pcnst)       ! 3-D emissions in kg/m2/s
 
@@ -2056,6 +2076,7 @@ contains
 
     INTEGER, SAVE      :: iStep = 0
     LOGICAL            :: rootChunk
+    LOGICAL            :: lastChunk
     INTEGER            :: RC
 
 
@@ -2078,8 +2099,10 @@ contains
     ! NCOL: number of atmospheric columns on this chunk
     NCOL  = state%NCOL
 
-    ! Am I the first chunk on the first CPU?
-    rootChunk = ( MasterProc.and.(LCHNK==BEGCHUNK) )
+    ! Root Chunk
+    rootChunk = ( MasterProc .and. (LCHNK==BEGCHUNK) )
+    ! Last Chunk
+    lastChunk = ( MasterProc .and. (LCHNK==ENDCHUNK) )
 
     ! Count the number of steps which have passed
     IF (LCHNK.EQ.BEGCHUNK) iStep = iStep + 1
@@ -2225,19 +2248,30 @@ contains
     ! Map and flip aerosols
     DO M = 1, ntot_amode
        DO SM = 1, nspec_amode(M)
-          ! TMMF - Here we will have to store the bin to bulk mass ratio
           ! TMMF - Should there be a ratio of molar weights involved?
           P = map2MAM4(SM,M)
+          IF ( P <= 0 ) CYCLE
           N = lmassptr_amode(SM,M)
           ! Multiple MAM4 bins are mapped to same GEOS-Chem species
-          IF ( P > 0 ) THEN
-             DO J = 1, nY
-             DO L = 1, nZ
-                State_Chm(LCHNK)%Species(1,J,L,P) = State_Chm(LCHNK)%Species(1,J,L,P) &
-                                                  + REAL(state%q(J,nZ+1-L,N),fp)
-             ENDDO
-             ENDDO
-          ENDIF
+          State_Chm(LCHNK)%Species(1,:nY,:nZ,P) = State_Chm(LCHNK)%Species(1,:nY,:nZ,P) &
+                                                + REAL(state%q(:nY,nZ:1:-1,N),fp)
+       ENDDO
+    ENDDO
+    DO M = 1, ntot_amode
+       DO SM = 1, nspec_amode(M)
+          P = map2MAM4(SM,M)
+          IF ( P <= 0 ) CYCLE
+          N = lmassptr_amode(SM,M)
+          DO J = 1, nY
+          DO L = 1, nZ
+             IF ( State_Chm(LCHNK)%Species(1,J,nZ+1-L,P) > 0.0e+00_r8 ) THEN
+                binRatio(SM,M,J,L) = REAL(state%q(J,L,N),r8) &
+                   / State_Chm(LCHNK)%Species(1,J,nZ+1-L,P)
+             ELSE
+                binRatio(SM,M,J,L) = 0.0e+00_r8
+             ENDIF
+          ENDDO
+          ENDDO
        ENDDO
     ENDDO
 #endif
@@ -3523,17 +3557,7 @@ contains
                 ! See definition of map2chm
                 M = map2chm(N)
                 IF ( M > 0 ) THEN
-                   DO J = 1, nY
-                   DO L = 1, nZ
-                      mmr1(J,L,N) = State_Chm(LCHNK)%Species(1,J,nZ+1-L,M)
-                   ENDDO
-                   ENDDO
-                ELSEIF ( M < 0 ) THEN
-                   DO J = 1, nY
-                   DO L = 1, nZ
-                      mmr1(J,L,N) = state%q(J,L,-M)
-                   ENDDO
-                   ENDDO
+                   mmr1(:nY,:nZ,N) = State_Chm(LCHNK)%Species(1,:nY,nZ:1:-1,M)
                 ENDIF
              ENDIF
           ENDDO
@@ -3575,6 +3599,7 @@ contains
              ErrMsg = 'Error encountered in "Do_WetDep"!'
              CALL Error_Stop( ErrMsg, ThisLoc )
           ENDIF
+
        ELSE
           ErrMsg = 'Unknown gas_wetdep_method ' //TRIM(gas_wetdep_method)
           CALL Error_Stop( ErrMsg, ThisLoc )
@@ -3598,17 +3623,7 @@ contains
                 ! See definition of map2chm
                 M = map2chm(N)
                 IF ( M > 0 ) THEN
-                   DO J = 1, nY
-                   DO L = 1, nZ
-                      mmr1(J,L,N) = State_Chm(LCHNK)%Species(1,J,nZ+1-L,M) - mmr1(J,L,N)
-                   ENDDO
-                   ENDDO
-                ELSEIF ( M < 0 ) THEN
-                   DO J = 1, nY
-                   DO L = 1, nZ
-                      mmr1(J,L,N) = state%q(J,L,-M) - mmr1(J,L,N)
-                   ENDDO
-                   ENDDO
+                   mmr1(:nY,:nZ,N) = State_Chm(LCHNK)%Species(1,:nY,nZ:1:-1,M) - mmr1(:nY,:nZ,N)
                 ENDIF
 
                 SpcName = wetdep_name(N)
@@ -3760,13 +3775,35 @@ contains
        ENDIF
     ENDDO
 
+#if defined( MODAL_AERO_4MODE )
+    ! Here apply tendencies to MAM aerosols
+    ! Initial mass in bin SM is stored as state%q(N)
+    ! Final mass in bin SM is stored as binRatio(SM,M) * State_Chm(P)
+    !
+    ! We decide to apply chemical tendencies to all MAM aerosols,
+    ! except so4, for which the chemically-produced sulfate gets
+    ! partitioned in aero_model_gasaerexch
+    DO M = 1, ntot_amode
+       DO SM = 1, nspec_amode(M)
+          P = map2MAM4(SM,M)
+          IF ( P <= 0 .OR. to_upper(xname_massptr(SM,M)(:3)) == 'SO4' ) CYCLE
+          N = lmassptr_amode(SM,M)
+          ! Apply MAM4 chemical tendencies owing to GEOS-Chem aerosol processing
+          ptend%q(:nY,:nZ,N) = ptend%q(:nY,:nZ,N) &
+                             + (binRatio(SM,M,:nY,:nZ) * & 
+                                REAL(State_Chm(LCHNK)%Species(1,:nY,nZ:1:-1,P),r8) &
+                                - state%q(:nY,:nZ,N))/dT
+       ENDDO
+    ENDDO
+#endif
+
     DO N = 1, gas_pcnst
        ! See definition of map2chm
        M = map2chm(N)
        IF ( M > 0 ) THEN
           mmr_tend(:nY,:nZ,N) = ( REAL(State_Chm(LCHNK)%Species(1,:nY,nZ:1:-1,M),r8) - mmr_tend(:nY,:nZ,N) ) / dT
        ELSEIF ( M < 0 ) THEN
-          mmr_tend(:nY,:nZ,N) = ( state%q(:nY,:nZ,-M) - mmr_tend(:nY,:nZ,-M) ) / dT
+          mmr_tend(:nY,:nZ,N) = ptend%q(:nY,:nZ,-M)
        ENDIF
     ENDDO
 
@@ -3811,7 +3848,8 @@ contains
     Nullify(NEvapr  )
     Nullify(cmfdqr  )
 
-    IF (rootChunk) WRITE(iulog,*) ' GEOS-Chem Chemistry step ', iStep, ' completed'
+    IF ( rootChunk ) WRITE(iulog,*) ' GEOS-Chem Chemistry step ', iStep, ' completed'
+    IF ( lastChunk ) WRITE(iulog,*) ' Chemistry completed on all chunks completed of MasterProc'
 
   end subroutine chem_timestep_tend
 
