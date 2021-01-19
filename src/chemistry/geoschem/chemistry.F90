@@ -352,6 +352,12 @@ contains
           lngName     = cnstName
           MWTmp       = aerAdvMass(I - nTracers)
           ref_MMR(I)  = 1.0e-38_r8
+       ELSEIF ( I .EQ. (nTracers + nAer + 1) ) THEN
+          ! Add CO2 (which is not a GEOS-Chem tracer)
+          cnstName    = 'CO2'
+          lngName     = 'CO2'
+          MWTmp       = 44.009800_r8
+          ref_MMR(I)  = 1.0e-38_r8
        ELSE
           cnstName    = TRIM(tracerNames(I))
           lngName     = cnstName
@@ -422,15 +428,10 @@ contains
        !ELSEIF ( cnstName == 'TOLU' ) THEN
        !    cnstName = 'TOLUENE'
        ENDIF
-       If ( MasterProc ) Write(iulog,*) " Species = ", TRIM(cnstName)
-       ! GEOS-Chem lumped species are not on restart file.
-       ! Bromine, chlorine, iodine and halons species are missing
-       ! from CESM restart file.
-       ! These species will just be uniformily set to some low
-       ! concentration.
-       ! TMMF - 05/19/2020
 
-       ! This is the call to add a "constituent"
+       ! For debug, only
+       !If ( MasterProc ) Write(iulog,*) " Species = ", TRIM(cnstName)
+
        CALL cnst_add( cnstName, MWtmp, cptmp, qmin, N,        &
                       readiv=ic_from_cam2, mixtype=mixtype,   &
                       cam_outfld=camout, molectype=molectype, &
@@ -799,9 +800,10 @@ contains
        DO I = 1, nSpec
           ! Get the name of the species from KPP
           line = ADJUSTL(TRIM(Spc_Names(I)))
-          ! Only add this
-          validSLS = ( .NOT. ANY(TRIM(line) .EQ. tracerNames) )
-          IF (validSLS) THEN
+          ! Only add short-lived KPP species, except from CO2
+          validSLS = (( .NOT. ANY(TRIM(line) .EQ. tracerNames) ) &
+                        .AND. TRIM(line) /= 'CO2' )
+          IF ( validSLS ) THEN
              ! Genuine new short-lived species
              nSls = nSls + 1
              slsNames(nSls) = TRIM(line)
@@ -3839,23 +3841,23 @@ contains
     ! Will need a simple mapping structure as well as the CAM tracer registration
     ! routines.
 
-    INTEGER  :: iLev, NLEV, M
+    INTEGER  :: ilev, nlev, M
     REAL(r8) :: QTemp, Min_MMR
 
-    NLEV = SIZE(q, 2)
+    nlev = SIZE(q, 2)
     ! Retrieve a "background value" for this from the database
     Min_MMR = 1.0e-38_r8
-    DO M = 1, gas_pcnst
-       IF (TRIM(solsym(M)).eq.TRIM(name)) THEN
+    DO M = 1, nTracersMax
+       IF (TRIM(cnst_name(M)) .eq. TRIM(name)) THEN
           Min_MMR = ref_MMR(M)
           EXIT
        ENDIF
     ENDDO
 
-    DO iLev = 1, NLEV
+    DO ilev = 1, nlev
        WHERE(mask)
           ! Set to the minimum mixing ratio
-          q(:,iLev) = Min_MMR
+          q(:,ilev) = Min_MMR
        END WHERE
     ENDDO
 

@@ -998,7 +998,7 @@ my $radval = "'A:Q:H2O'";
 if (($chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/) and !$chem_rad_passive) {
     $radval .= ",'A:O2:O2','A:CO2:CO2'";
 }
-elsif ($chem =~ /trop_strat/ and !$chem_rad_passive) {
+elsif (($chem =~ /trop_strat/ or $chem =~ /geoschem/) and !$chem_rad_passive) {
     $radval .= ",'N:O2:O2','A:CO2:CO2'";
 }
 elsif ($co2_cycle and !$co2_cycle_rad_passive) {
