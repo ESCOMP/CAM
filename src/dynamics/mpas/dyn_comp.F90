@@ -333,6 +333,35 @@ subroutine dyn_init(dyn_in, dyn_out)
    character(len=128) :: errmsg
 
    character(len=*), parameter :: subname = 'dyn_comp::dyn_init'
+   ! variables for initializing energy and axial angular momentum diagnostics
+   character (len = 3), dimension(5) :: stage = (/"dED","dBD","dBF","dDP","dPD"/)
+   character (len = 70),dimension(5) :: stage_txt = (/&
+      " beginning dynamics                                 ",&  !dED beginning_of_timestep - MPAS state
+      " after physics update                               ",&  !dBD after_physics_update  - MPAS state
+      " end of time-step                                   ",&  !dBF end_of_timestep       - MPAS state
+      " dynamics state before physics                      ",&  !dDP before physics        - MPAS hydro state
+      " dynamics state with physics increment              " &  !dDP adding physics increment to dynamics state - MPAS hydro state
+      /)
+
+   character (len = 2)  , dimension(8) :: vars  = (/"WV"  ,"WL"  ,"WI"  ,"SE"   ,"KE"   ,"MR"   ,"MO"   ,"TT"   /)
+   !if ntrac>0 then tracers should be output on fvm grid but not energy (SE+KE) and AAM diags
+   character (len = 70) , dimension(8) :: vars_descriptor = (/&
+      "Total column water vapor                ",&
+      "Total column cloud water                ",&
+      "Total column cloud ice                  ",&
+      "Total column dry static energy          ",&
+      "Total column kinetic energy             ",&
+      "Total column wind axial angular momentum",&
+      "Total column mass axial angular momentum",&
+      "Total column test tracer                "/)
+   character (len = 14), dimension(8)  :: &
+      vars_unit = (/&
+      "kg/m2        ","kg/m2        ","kg/m2        ","J/m2         ",&
+      "J/m2         ","kg*m2/s*rad2 ","kg*m2/s*rad2 ","kg/m2        "/)
+
+   integer :: istage, ivars
+   character (len=108) :: str1, str2, str3
+
    !----------------------------------------------------------------------------
 
    if (initial_run) then
@@ -488,6 +517,16 @@ subroutine dyn_init(dyn_in, dyn_out)
    ! dtime has no fractional part, but use nint to deal with any roundoff errors.
    ! Set the interval over which the dycore should integrate during each call to dyn_run.
    call MPAS_set_timeInterval(integrationLength, S=nint(dtime), S_n=0, S_d=1)
+
+   do istage = 1,SIZE(stage)
+     do ivars=1,SIZE(vars)
+       write(str1,*) TRIM(ADJUSTL(vars(ivars))),TRIM(ADJUSTL("_")),TRIM(ADJUSTL(stage(istage)))
+       write(str2,*) TRIM(ADJUSTL(vars_descriptor(ivars))),&
+            TRIM(ADJUSTL(" ")),TRIM(ADJUSTL(stage_txt(istage)))
+       write(str3,*) TRIM(ADJUSTL(vars_unit(ivars)))
+       call addfld (TRIM(ADJUSTL(str1)),   horiz_only, 'A', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)), gridname='mpas_cell')
+     end do
+   end do
 
 end subroutine dyn_init
 
