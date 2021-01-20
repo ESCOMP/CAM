@@ -111,9 +111,9 @@ module chemistry
   type(physics_buffer_desc), pointer :: hco_pbuf2d(:,:)    ! Pointer to 2D pbuf
 
   ! Indices of critical species in GEOS-Chem
-  INTEGER                    :: iH2O, iO3, iCH4, iCO, iNO, iOH
+  INTEGER                    :: iH2O, iO3, iCO2
   INTEGER                    :: iO, iH, iO2, iPSO4
-  REAL(r8)                   :: MWOH, MWPSO4, MWO3
+  REAL(r8)                   :: MWPSO4, MWO3
   ! Indices of critical species in the constituent list
   INTEGER                    :: cQ, cH2O
 
@@ -349,17 +349,20 @@ contains
        ELSEIF ( I .LE. (nTracers + nAer) ) THEN
           ! Add MAM4 aerosols
           cnstName    = TRIM(aerNames(I - nTracers))
+          trueName    = cnstName
           lngName     = cnstName
           MWTmp       = aerAdvMass(I - nTracers)
           ref_MMR(I)  = 1.0e-38_r8
        ELSEIF ( I .EQ. (nTracers + nAer + 1) ) THEN
           ! Add CO2 (which is not a GEOS-Chem tracer)
           cnstName    = 'CO2'
+          trueName    = cnstName
           lngName     = 'CO2'
           MWTmp       = 44.009800_r8
           ref_MMR(I)  = 1.0e-38_r8
        ELSE
           cnstName    = TRIM(tracerNames(I))
+          trueName    = cnstName
           lngName     = cnstName
           MWTmp       = 1000.0e+0_r8 * (0.001e+0_r8)
           ref_MMR(I)  = 1.0e-38_r8
@@ -444,7 +447,7 @@ contains
        ! Add to GC mapping. When starting a timestep, we will want to update the
        ! concentration of State_Chm(x)%Species(1,iCol,iLev,m) with data from
        ! constituent n
-       M = Ind_(TRIM(tracerNames(I)))
+       M = Ind_(TRIM(trueName))
        IF ( M > 0 ) THEN
           ! Map constituent onto GEOS-Chem tracer as indexed in State_Chm(LCHNK)%Species
           map2GC(N)    = M
@@ -1748,21 +1751,12 @@ contains
 
     ! Get some indices
     iH2O  = Ind_('H2O')
-    iOH   = Ind_('OH')
     iO3   = Ind_('O3')
-    iCH4  = Ind_('CH4')
-    iCO   = Ind_('CO')
-    iNO   = Ind_('NO')
+    iCO2  = Ind_('CO2')
     ! The following indices are needed to compute invariants
     iO    = Ind_('O')
     iH    = Ind_('H')
     iO2   = Ind_('O2')
-
-    ! This is used to compute gas-phase H2SO4 production
-    SpcInfo => State_Chm(BEGCHUNK)%SpcData(iOH)%Info
-    MWOH    = REAL(SpcInfo%MW_g,r8)
-    ! Free pointer
-    SpcInfo => NULL()
 
     ! This is used to compute gas-phase H2SO4 production
     iPSO4   = Ind_('PSO4')
@@ -1957,8 +1951,8 @@ contains
     REAL(r8), OPTIONAL,  INTENT(OUT)   :: fh2o(PCOLS) ! h2o flux to balance source from chemistry
 
     ! Initial MMR for all species
-    REAL(r8) :: MMR_Beg(PCOLS,PVER,nSls+nTracers)
-    REAL(r8) :: MMR_End(PCOLS,PVER,nSls+nTracers)
+    REAL(r8) :: MMR_Beg(PCOLS,PVER,MAXVAL(map2GC(:)))
+    REAL(r8) :: MMR_End(PCOLS,PVER,MAXVAL(map2GC(:)))
 
     ! Logical to apply tendencies to mixing ratios
     LOGICAL :: lq(pcnst)
@@ -2177,23 +2171,21 @@ contains
     DO N = 1, pcnst
        M = map2GC(N)
        IF ( M > 0 ) THEN
-          DO J = 1, nY
-          DO L = 1, nZ
-             MMR_Beg(J,L,M) = state%q(J,nZ+1-L,N)
-             State_Chm(LCHNK)%Species(1,J,L,M) = REAL(MMR_Beg(J,L,M),fp)
-          ENDDO
-          ENDDO
+          MMR_Beg(:nY,:nZ,M) = state%q(:nY,nZ:1:-1,N)
+          State_Chm(LCHNK)%Species(1,:nY,:nZ,M) = REAL(MMR_Beg(:nY,:nZ,M),fp)
           lq(N) = .True.
        ENDIF
     ENDDO
+    ! GEOS-Chem considers CO2 as a "short-lived" species and its concentration
+    ! is overwritten at every time-step. The CO2 concentration after chemistry
+    ! corresponds to how much CO2 has been chemically produced. We thus reset
+    ! the initial CO2 MMR to zero such that we can compute a CO2 tendency due
+    ! to chemistry
+    MMR_Beg(:nY,:nZ,iCO2) = 0.0e+00_r8
 
     ! We need to let CAM know that 'H2O' and 'Q' are identical
-    DO J = 1, nY
-    DO L = 1, nZ
-       MMR_Beg(J,L,iH2O) = state%q(J,nZ+1-L,cQ)
-       State_Chm(LCHNK)%Species(1,J,L,iH2O) = REAL(MMR_Beg(J,L,iH2O),fp)
-    ENDDO
-    ENDDO
+    MMR_Beg(:nY,:nZ,iH2O) = state%q(:nY,nZ:1:-1,cQ)
+    State_Chm(LCHNK)%Species(1,:nY,:nZ,iH2O) = REAL(MMR_Beg(:nY,:nZ,iH2O),fp)
 
     ! Retrieve previous value of species data
     SlsData(:,:,:) = 0.0e+0_r8
@@ -2212,11 +2204,7 @@ contains
     DO N = 1, nSls
        M = map2GC_Sls(N)
        IF ( M > 0 ) THEN
-          DO J = 1, nY
-          DO L = 1, nZ
-             State_Chm(LCHNK)%Species(1,J,L,M) = REAL(SlsData(J,nZ+1-L,N),fp)
-          ENDDO
-          ENDDO
+          State_Chm(LCHNK)%Species(1,:nY,:nZ,M) = REAL(SlsData(:nY,nZ:1:-1,N),fp)
        ENDIF
     ENDDO
 
@@ -3448,22 +3436,14 @@ contains
        M = map2GC(N)
        IF ( M > 0 ) THEN
           ! Add to GEOS-Chem species
-          DO J = 1, nY
-          DO L = 1, nZ
-             State_Chm(LCHNK)%Species(1,J,L,M) = State_Chm(LCHNK)%Species(1,J,L,M) &
-                                               + eflx(J,nZ+1-L,N) * dT
-          ENDDO
-          ENDDO
+          State_Chm(LCHNK)%Species(1,:nY,:nZ,M) = State_Chm(LCHNK)%Species(1,:nY,:nZ,M) &
+                                                + eflx(:nY,nZ:1:-1,N) * dT
        ELSE
           ! Add to constituent (mostly for MAM4 aerosols)
           ! Convert from kg/m2/s to kg/kg/s
-          DO J = 1, nY
-          DO L = 1, nZ
-             ptend%q(J,nZ+1-L,N) = ptend%q(J,nZ+1-L,N) &
-                                 + eflx(J,nZ+1-L,N)    &
-                                   / ( g0_100 * State_Met(LCHNK)%DELP_DRY(1,J,L) )
-          ENDDO
-          ENDDO
+          ptend%q(:nY,nZ:1:-1,N) = ptend%q(:nY,nZ:1:-1,N) &
+                                 + eflx(:nY,nZ:1:-1,N)    &
+                                   / ( g0_100 * State_Met(LCHNK)%DELP_DRY(1,:nY,:nZ) )
        ENDIF
     ENDDO
 
@@ -3726,11 +3706,7 @@ contains
     DO N = 1, nSls
        M = map2GC_Sls(N)
        IF ( M > 0 ) THEN
-          DO J = 1, nY
-          DO L = 1, nZ
-             SlsData(J,nZ+1-L,N) = REAL(State_Chm(LCHNK)%Species(1,J,L,M),r8)
-          ENDDO
-          ENDDO
+          SlsData(:nY,nZ:1:-1,N) = REAL(State_Chm(LCHNK)%Species(1,:nY,:nZ,M),r8)
        ENDIF
     ENDDO
     CALL set_short_lived_species( SlsData, LCHNK, nY, pbuf )
@@ -3741,13 +3717,9 @@ contains
           ! Add change in mass mixing ratio to tendencies.
           ! For NEU wet deposition, the wet removal rates are added to
           ! ptend.
-          DO J = 1, nY
-          DO L = 1, nZ
-             MMR_End (J,L,M) = REAL(State_Chm(LCHNK)%Species(1,J,L,M),r8)
-             ptend%q(J,nZ+1-L,N) = ptend%q(J,nZ+1-L,N) &
-                                 + (MMR_End(J,L,M)-MMR_Beg(J,L,M))/dT
-          ENDDO
-          ENDDO
+          MMR_End(:nY,:nZ,M)     = REAL(State_Chm(LCHNK)%Species(1,:nY,:nZ,M),r8)
+          ptend%q(:nY,nZ:1:-1,N) = ptend%q(:nY,nZ:1:-1,N) &
+                                 + (MMR_End(:nY,:nZ,M)-MMR_Beg(:nY,:nZ,M))/dT
        ENDIF
     ENDDO
 
