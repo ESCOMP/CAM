@@ -36,10 +36,9 @@ module atm_comp_nuopc
   use ioFileMod
   use perf_mod            , only : t_startf, t_stopf
   use ppgrid              , only : pcols, begchunk, endchunk
-  use phys_grid           , only : get_ncols_p, get_gcol_p
-  use phys_grid           , only : get_rlon_all_p, get_rlat_all_p
-  use phys_grid           , only : ngcols => num_global_phys_cols
-  use phys_grid           , only : get_grid_dims
+  use dyn_grid            , only : get_horiz_grid_dim_d
+  use phys_grid           , only : get_ncols_p, get_gcol_p, get_rlon_all_p, get_rlat_all_p
+  use phys_grid           , only : ngcols=>num_global_phys_cols
   use cam_control_mod     , only : cam_ctrl_set_orbit
   use cam_pio_utils       , only : cam_pio_createfile, cam_pio_openfile, cam_pio_closefile, pio_subsystem
   use cam_initfiles       , only : cam_initfiles_get_caseid, cam_initfiles_get_restdir
@@ -581,35 +580,16 @@ contains
     end if
 
     call cam_init( &
-         caseid=caseid, &
-         ctitle=ctitle, &
-         model_doi_url=model_doi_url, &
-         initial_run_in=initial_run, &
-         restart_run_in=restart_run, &
-         branch_run_in=branch_run, &
-         calendar=calendar, &
-         brnch_retain_casename=brnch_retain_casename, &
-         aqua_planet=aqua_planet, &
-         single_column=single_column, &
-         scmlat=scmlat, &
-         scmlon=scmlon, &
-         eccen=eccen, &
-         obliqr=obliqr, &
-         lambm0=lambm0, &
-         mvelpp=mvelpp,  &
-         perpetual_run=perpetual_run, &
-         perpetual_ymd=perpetual_ymd, &
-         dtime=dtime, &
-         start_ymd=start_ymd, &
-         start_tod=start_tod, &
-         ref_ymd=ref_ymd, &
-         ref_tod=ref_tod, &
-         stop_ymd=stop_ymd, &
-         stop_tod=stop_tod, &
-         curr_ymd=curr_ymd, &
-         curr_tod=curr_tod, &
-         cam_out=cam_out, &
-         cam_in=cam_in)
+         caseid=caseid, ctitle=ctitle, model_doi_url=model_doi_url, &
+         initial_run_in=initial_run, restart_run_in=restart_run, &
+         branch_run_in=branch_run, post_assim_in=dart_mode, &
+         calendar=calendar, brnch_retain_casename=brnch_retain_casename, aqua_planet=aqua_planet, &
+         single_column=single_column, scmlat=scmlat, scmlon=scmlon, &
+         eccen=eccen, obliqr=obliqr, lambm0=lambm0, mvelpp=mvelpp,  &
+         perpetual_run=perpetual_run, perpetual_ymd=perpetual_ymd, &
+         dtime=dtime, start_ymd=start_ymd, start_tod=start_tod, ref_ymd=ref_ymd, ref_tod=ref_tod, &
+         stop_ymd=stop_ymd, stop_tod=stop_tod, curr_ymd=curr_ymd, curr_tod=curr_tod, &
+         cam_out=cam_out,  cam_in=cam_in)
 
     if (mediator_present) then
 
