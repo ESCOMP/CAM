@@ -5,6 +5,8 @@
 
 <co2vmr>367.0e-6</co2vmr>
 
+<gc_cheminputs>/glade/p/univ/umit0034/ExtData/CHEM_INPUTS/</gc_cheminputs>
+
 <ncdata dyn="fv"  hgrid="0.9x1.25">/glade/p/univ/umit0034/Shared/f.e20.FWAMIP.f09_f09.134.1975.009.cam.i.2010-01-01_32L_c170403.nc</ncdata>
 
 <ncdata dyn="fv"  hgrid="1.9x2.5">/glade/p/univ/umit0034/Shared/f.e20.FWAMIP.f19_f19.134.1975.009.cam.i.2010-01-01_32L_c170403.nc</ncdata>

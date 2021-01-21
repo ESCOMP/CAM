@@ -4009,11 +4009,17 @@ Full pathname of AMIE inputs for southern hemisphere.
 Default: NONE.
 </entry>
 
+<!-- GEOS-Chem specific entries -->
+<entry id="gc_cheminputs" type="char*256" input_pathname="abs" category="gc"
+       group="gc_nl" valid_values="" >
+Full pathname to GEOS-Chem chemistry inputs directory
+Default: set by build-namelist.
+</entry>
+
 <!-- HEMCO -->
 <entry id="hemco_config_file" type="char*256" input_pathname="abs" category="hemco"
        group="hemco_nl" valid_values="" >
-Full pathname of dataset for coefficient data used in Weimer05
-high latitude electric potential model.
+Full pathname to HEMCO_Config.rc, which prescribes emission inventories     
 Default: set by build-namelist.
 </entry>
 

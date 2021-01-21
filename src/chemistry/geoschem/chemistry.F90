@@ -94,8 +94,8 @@ module chemistry
   ! Location of valid species_database.yml
   CHARACTER(LEN=500) :: speciesDBPath
 
-  ! Location of chemistry input (for now)
-  CHARACTER(LEN=500) :: chemInputsDir
+  ! Location of chemistry input
+  CHARACTER(LEN=256) :: gc_cheminputs
 
   !-----------------------------
   ! Derived type objects
@@ -648,6 +648,8 @@ contains
 
   end subroutine chem_register
 
+!===============================================================================
+
   subroutine chem_readnl(nlfile)
 
     use cam_abortutils,  only : endrun
@@ -698,7 +700,6 @@ contains
 
     inputGeosPath='/glade/u/home/fritzt/input.geos.template'
     speciesDBPath='/glade/u/home/fritzt/species_database.yml'
-    chemInputsDir='/glade/p/univ/umit0034/ExtData/CHEM_INPUTS/'
 
     ALLOCATE(drySpc_ndx(nddvels), STAT=IERR)
     IF ( IERR .NE. 0 ) CALL ENDRUN('Failed to allocate drySpc_ndx')
@@ -744,6 +745,8 @@ contains
     ENDDO
 
     CALL gas_wetdep_readnl(nlfile)
+
+    CALL gc_readnl(nlfile)
 
     IF ( MasterProc ) THEN
 
@@ -1224,10 +1227,8 @@ contains
 
     Input_Opt%DryRun               = .False.
 
-    ! For now just hard-code it
     ! First setup directories
-    Input_Opt%Chem_Inputs_Dir      = TRIM(chemInputsDir)
-
+    Input_Opt%Chem_Inputs_Dir      = TRIM(gc_cheminputs)
     Input_Opt%SpcDatabaseFile      = TRIM(speciesDBPath)
 
     ! Simulation menu
@@ -1896,6 +1897,68 @@ contains
      ENDIF
 
   end subroutine
+
+!===============================================================================
+
+!------------------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: gc_readnl
+!
+! !DESCRIPTION: Reads the namelist from cam/src/control/runtime_opts.
+!\\
+!\\
+! !INTERFACE:
+!
+  subroutine gc_readnl(nlfile)
+!
+! !USES:
+!
+    use namelist_utils,  only: find_group_name
+    use units,           only: getunit, freeunit
+    use mpishorthand
+!
+! !INPUT PARAMETERS:
+!
+    character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
+!
+! !REVISION HISTORY:
+!  21 Jan 2021 - T.M. Fritz   - Initial version
+!EOP
+!------------------------------------------------------------------------------
+!BOC
+!
+! !LOCAL VARIABLES:
+!
+    integer :: unitn, ierr
+    character(len=*), parameter :: subname = 'gc_readnl'
+
+    namelist /gc_nl/ gc_cheminputs
+
+    !-----------------------------------------------------------------------------
+
+    ! Read namelist
+    IF ( MasterProc ) THEN
+       unitn = getunit()
+       OPEN( unitn, FILE=TRIM(nlfile), STATUS='old' )
+       CALL find_group_name(unitn, 'gc_nl', STATUS=ierr)
+       IF ( ierr == 0 ) THEN
+          READ(unitn, gc_nl, IOSTAT=ierr)
+          IF ( ierr /= 0 ) THEN
+             CALL ENDRUN(subname // ':: ERROR reading namelist')
+          ENDIF
+       ENDIF
+       CLOSE(unitn)
+       CALL freeunit(unitn)
+    ENDIF
+
+#ifdef SPMD
+    ! Broadcast namelist variables
+    CALL MPIBCAST(gc_cheminputs, LEN(gc_cheminputs),      MPICHAR,   0, MPICOM)
+#endif
+
+  end subroutine
+!EOC
 
 !===============================================================================
 
@@ -3869,6 +3932,7 @@ contains
   end subroutine chem_timestep_tend
 
 !===============================================================================
+
   subroutine chem_init_cnst(name, latvals, lonvals, mask, q)
 
     CHARACTER(LEN=*), INTENT(IN)  :: name       !  constituent name
@@ -3903,6 +3967,7 @@ contains
   end subroutine chem_init_cnst
 
 !===============================================================================
+
   subroutine chem_final
 
     use Input_Opt_Mod,  only : Cleanup_Input_Opt
@@ -4004,7 +4069,9 @@ contains
     RETURN
 
   end subroutine chem_final
+
 !===============================================================================
+
   subroutine chem_init_restart(File)
     use tracer_cnst,      only: init_tracer_cnst_restart
     use tracer_srcs,      only: init_tracer_srcs_restart
@@ -4024,7 +4091,9 @@ contains
     !call init_linoz_data_restart(File)
 
   end subroutine chem_init_restart
+
 !===============================================================================
+
   subroutine chem_write_restart( File )
     use tracer_cnst, only: write_tracer_cnst_restart
     use tracer_srcs, only: write_tracer_srcs_restart
@@ -4043,7 +4112,9 @@ contains
     call write_tracer_srcs_restart(File)
     !call write_linoz_data_restart(File)
   end subroutine chem_write_restart
+
 !===============================================================================
+
   subroutine chem_read_restart( File )
     use tracer_cnst, only: read_tracer_cnst_restart
     use tracer_srcs, only: read_tracer_srcs_restart
@@ -4062,7 +4133,9 @@ contains
     call read_tracer_srcs_restart(File)
     !call read_linoz_data_restart(File)
   end subroutine chem_read_restart
+
 !================================================================================
+
   subroutine chem_emissions( state, cam_in )
 
     use camsrfexch,          only : cam_in_t
@@ -4094,5 +4167,7 @@ contains
     ENDDO
 
   end subroutine chem_emissions
+
+!===============================================================================
 
 end module chemistry
