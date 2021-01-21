@@ -789,6 +789,8 @@ CONTAINS
     CALL Addfld( 'V_SRF',        horiz_only,  'I', 'm/s',     'Vertical wind velocity' )
     CALL Addfld( 'Q_SRF',        horiz_only,  'I', 'kg/kg',   'Specific humidity' )
 
+    CALL Addfld( 'CT_H2O_GHG',   (/ 'lev' /), 'A','kg/kg/s', 'ghg-chem h2o source/sink' )
+
     !=======================================================================
     ! Cleanup and quit
     !=======================================================================

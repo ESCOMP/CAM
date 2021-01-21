@@ -5,8 +5,9 @@ module mo_chem_utls
   public :: get_spc_ndx
   public :: get_inv_ndx
   public :: get_extfrc_ndx
+  public :: get_rxt_ndx
   public :: utls_chem_is
-  !, get_het_ndx, get_rxt_ndx
+  !, get_het_ndx
 
   save
 
@@ -146,34 +147,34 @@ contains
     end if
 
   end function get_extfrc_ndx
-!
-!  integer function get_rxt_ndx( rxt_tag )
-!    !-----------------------------------------------------------------------
-!    !     ... return overall external frcing index associated with spc_name
-!    !-----------------------------------------------------------------------
-!
-!    use chem_mods,  only : rxt_tag_cnt, rxt_tag_lst, rxt_tag_map
-!
-!    implicit none
-!
-!    !-----------------------------------------------------------------------
-!    !     ... dummy arguments
-!    !-----------------------------------------------------------------------
-!    character(len=*), intent(in) :: rxt_tag
-!
-!    !-----------------------------------------------------------------------
-!    !     ... local variables
-!    !-----------------------------------------------------------------------
-!    integer :: m
-!
-!    get_rxt_ndx = -1
-!    do m = 1,rxt_tag_cnt
-!       if( trim( rxt_tag ) == trim( rxt_tag_lst(m) ) ) then
-!          get_rxt_ndx = rxt_tag_map(m)
-!          exit
-!       end if
-!    end do
-!
-!  end function get_rxt_ndx
+
+  integer function get_rxt_ndx( rxt_tag )
+    !-----------------------------------------------------------------------
+    !     ... return overall external frcing index associated with spc_name
+    !-----------------------------------------------------------------------
+
+    use chem_mods,  only : rxt_tag_cnt, rxt_tag_lst, rxt_tag_map
+
+    implicit none
+
+    !-----------------------------------------------------------------------
+    !     ... dummy arguments
+    !-----------------------------------------------------------------------
+    character(len=*), intent(in) :: rxt_tag
+
+    !-----------------------------------------------------------------------
+    !     ... local variables
+    !-----------------------------------------------------------------------
+    integer :: m
+
+    get_rxt_ndx = -1
+    do m = 1,rxt_tag_cnt
+       if( trim( rxt_tag ) == trim( rxt_tag_lst(m) ) ) then
+          get_rxt_ndx = rxt_tag_map(m)
+          exit
+       end if
+    end do
+
+  end function get_rxt_ndx
 
 end module mo_chem_utls

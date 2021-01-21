@@ -30,8 +30,8 @@
       INTEGER              :: map2GCinv(nTracersMax)
       INTEGER              :: map2GC_Sls(nSlsMax)
 
-      ! Mapping from constituents to raw index
-      INTEGER              :: map2Idx(pcnst)
+      ! Mapping constituent onto chemical species (as listed in solsym)
+      INTEGER              :: mapCnst(pcnst)
 
       ! Aerosols
       INTEGER, PARAMETER   :: nAerMax = 35
@@ -105,7 +105,7 @@
       character(len=255), allocatable :: slvd_lst(:)
       real(r8), allocatable :: slvd_ref_mmr(:)
 
-      ! Mapping between constituents and solsym
+      ! Mapping between chemical species and GEOS-Chem species/other tracers
       INTEGER              :: map2chm(gas_pcnst)
 
       end module chem_mods

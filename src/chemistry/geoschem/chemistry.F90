@@ -60,8 +60,8 @@ module chemistry
   use chem_mods,           only : aerAdvMass
   use chem_mods,           only : map2GC, map2GCinv
   use chem_mods,           only : map2GC_Sls
+  use chem_mods,           only : mapCnst
   use chem_mods,           only : map2chm
-  use chem_mods,           only : map2Idx
   use chem_mods,           only : map2MAM4
 
   use mo_tracname,         only : solsym
@@ -132,6 +132,12 @@ module chemistry
   INTEGER                    :: ixCldLiq  ! Cloud liquid water
   INTEGER                    :: ixCldIce  ! Cloud ice
   INTEGER                    :: ixNDrop   ! Cloud droplet number index
+
+  ! ghg
+
+  LOGICAL                    :: ghg_chem = .false.  ! .true. => use ghg chem package
+  CHARACTER(len=shr_kind_cl) :: bndtvg = ' '   ! pathname for greenhouse gas loss rate
+  CHARACTER(len=shr_kind_cl) :: h2orates = ' ' ! pathname for greenhouse gas (lyman-alpha H2O loss)
 
   ! lightning
   REAL(r8)                   :: lght_no_prd_factor = 1._r8
@@ -324,6 +330,7 @@ contains
     ENDIF
 
     iFirstCnst = -1
+    mapCnst    = -1
     map2GC     = -1
     map2GCinv  = -1
     map2chm    = -1
@@ -346,6 +353,8 @@ contains
           IF ( ThisSpc%Is_Gas .eqv. .False. ) THEN
              Write(cnstName, "(a,a)") 'GC_AER_', to_upper(TRIM(trueName))
           ENDIF
+          ! Nullify pointer
+          ThisSpc => NULL()
        ELSEIF ( I .LE. (nTracers + nAer) ) THEN
           ! Add MAM4 aerosols
           cnstName    = TRIM(aerNames(I - nTracers))
@@ -357,7 +366,7 @@ contains
           ! Add CO2 (which is not a GEOS-Chem tracer)
           cnstName    = 'CO2'
           trueName    = cnstName
-          lngName     = 'CO2'
+          lngName     = cnstName
           MWTmp       = 44.009800_r8
           ref_MMR(I)  = 1.0e-38_r8
        ELSE
@@ -453,11 +462,12 @@ contains
           map2GC(N)    = M
           ! Map GEOS-Chem tracer onto constituent
           map2GCinv(M) = N
-          ! Map constituent onto raw index
-          map2Idx(N)   = I
        ENDIF
-       ! Nullify pointer
-       ThisSpc => NULL()
+       ! Map constituent onto chemically-active species (aka as indexed in solsym)
+       M = get_spc_ndx(TRIM(trueName))
+       IF ( M > 0 ) THEN
+          mapCnst(N) = M
+       ENDIF
     ENDDO
 
     ! Now unadvected species
@@ -682,6 +692,10 @@ contains
                            srf_emis_fixed_tod, &
                            srf_emis_type
 
+    ! ghg chem
+
+    namelist /chem_inparm/ bndtvg, h2orates, ghg_chem
+
     inputGeosPath='/glade/u/home/fritzt/input.geos.template'
     speciesDBPath='/glade/u/home/fritzt/species_database.yml'
     chemInputsDir='/glade/p/univ/umit0034/ExtData/CHEM_INPUTS/'
@@ -839,6 +853,8 @@ contains
     CALL MPIBCAST ( nSls,        1,                               MPIINT,  0, MPICOM )
     CALL MPIBCAST ( slsNames,    LEN(slsNames(1))*nSlsMax,        MPICHAR, 0, MPICOM )
 
+    ! Broadcast namelist variables
+
     ! The following files are required to compute land maps, required to perform
     ! aerosol dry deposition
     CALL MPIBCAST (depvel_lnd_file, LEN(depvel_lnd_file), MPICHAR, 0, MPICOM)
@@ -857,6 +873,10 @@ contains
     CALL MPIBCAST (ext_frc_cycle_yr,   1,                                MPIINT,  0, MPICOM)
     CALL MPIBCAST (ext_frc_fixed_ymd,  1,                                MPIINT,  0, MPICOM)
     CALL MPIBCAST (ext_frc_fixed_tod,  1,                                MPIINT,  0, MPICOM)
+
+    CALL MPIBCAST (ghg_chem,           1,                                MPILOG,  0, MPICOM)
+    CALL MPIBCAST (bndtvg,             LEN(bndtvg),                      MPICHAR, 0, MPICOM)
+    CALL MPIBCAST (h2orates,           LEN(h2orates),                    MPICHAR, 0, MPICOM)
 #endif
 
     ! Update "short_lived_species" arrays - will eventually unify these
@@ -972,6 +992,7 @@ contains
 
     use mo_setinv,             only : setinv_inti
     use mo_mean_mass,          only : init_mean_mass
+    use mo_ghg_chem,           only : ghg_chem_init
     use tracer_cnst,           only : tracer_cnst_init
     use tracer_srcs,           only : tracer_srcs_init
 
@@ -1796,6 +1817,10 @@ contains
     CALL tracer_cnst_init()
     CALL tracer_srcs_init()
 
+    IF ( ghg_chem ) THEN
+       CALL ghg_chem_init(phys_state, bndtvg, h2orates)
+    ENDIF
+
     ! Initialize diagnostics interface
     CALL CESMGC_Diag_Init( Input_Opt = Input_Opt,           &
                            State_Chm = State_Chm(BEGCHUNK), &
@@ -1816,12 +1841,24 @@ contains
 !===============================================================================
 
   subroutine chem_timestep_init(phys_state, pbuf2d)
-    use physics_buffer,   only: physics_buffer_desc
+
+    use physics_buffer,    only : physics_buffer_desc
+    use mo_flbc,           only : flbc_chk
+    use mo_ghg_chem,       only : ghg_chem_timestep_init
 
     TYPE(physics_state), INTENT(IN):: phys_state(begchunk:endchunk)
     TYPE(physics_buffer_desc), POINTER :: pbuf2d(:,:)
 
     ! Not sure what we would realistically do here rather than in tend
+
+    !-----------------------------------------------------------------------
+    ! Set fixed lower boundary timing factors
+    !-----------------------------------------------------------------------
+    CALL flbc_chk
+
+    IF ( ghg_chem ) THEN
+       CALL ghg_chem_timestep_init(phys_state)
+    ENDIF
 
   end subroutine chem_timestep_init
 
@@ -1879,6 +1916,8 @@ contains
     use chem_mods,           only : nfs, indexm, gas_pcnst
     use mo_mean_mass,        only : set_mean_mass
     use mo_setinv,           only : setinv
+    use mo_flbc,             only : flbc_set
+    use mo_ghg_chem,         only : ghg_chem_set_flbc
     use mo_neu_wetdep,       only : neu_wetdep_tend
     use gas_wetdep_opts,     only : gas_wetdep_method
 #if defined( MODAL_AERO_4MODE )
@@ -2152,10 +2191,8 @@ contains
     ! Note       : Set default value (in case of chunks with fewer columns)
     State_Grid(LCHNK)%Area_M2 = -1.0e+10_fp
     State_Met(LCHNK)%Area_M2  = -1.0e+10_fp
-    DO J = 1, nY
-       State_Grid(LCHNK)%Area_M2(1,J) = REAL(Col_Area(J) * Re**2,fp)
-       State_Met(LCHNK)%Area_M2(1,J)  = State_Grid(LCHNK)%Area_M2(1,J)
-    ENDDO
+    State_Grid(LCHNK)%Area_M2(1,:nY) = REAL(Col_Area(:nY) * Re**2,fp)
+    State_Met(LCHNK)%Area_M2(1,:nY)  = State_Grid(LCHNK)%Area_M2(1,:nY)
 
     ! 2. Copy tracers into State_Chm
     ! Data was received in kg/kg dry
@@ -2176,12 +2213,6 @@ contains
           lq(N) = .True.
        ENDIF
     ENDDO
-    ! GEOS-Chem considers CO2 as a "short-lived" species and its concentration
-    ! is overwritten at every time-step. The CO2 concentration after chemistry
-    ! corresponds to how much CO2 has been chemically produced. We thus reset
-    ! the initial CO2 MMR to zero such that we can compute a CO2 tendency due
-    ! to chemistry
-    MMR_Beg(:nY,:nZ,iCO2) = 0.0e+00_r8
 
     ! We need to let CAM know that 'H2O' and 'Q' are identical
     MMR_Beg(:nY,:nZ,iH2O) = state%q(:nY,nZ:1:-1,cQ)
@@ -2266,6 +2297,8 @@ contains
     ! If H2O tendencies are propagated to specific humidity, then make sure
     ! that Q actually applies tendencies
     IF ( Input_Opt%applyQtend ) lq(cQ) = .True.
+
+    IF ( ghg_chem ) lq(1) = .True.
 
     ! Initialize tendency array
     CALL Physics_ptend_init(ptend, state%psetcols, 'chemistry', lq=lq)
@@ -3499,7 +3532,10 @@ contains
        ENDIF
     ENDIF
 
+    ! Reset photolysis rates
     ZPJ = 0.0e+0_r8
+
+    ! Perform chemistry
     CALL Do_Chemistry( Input_Opt  = Input_Opt,         &
                        State_Chm  = State_Chm(LCHNK),  &
                        State_Diag = State_Diag(LCHNK), &
@@ -3511,6 +3547,21 @@ contains
        ErrMsg = 'Error encountered in "Do_Chemistry"!'
        CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
+
+
+    ! Make sure State_Chm(LCHNK) is back in kg/kg dry!
+    IF ( TRIM(State_Chm(LCHNK)%Spc_Units) /= 'kg/kg dry' ) THEN
+       Write(iulog,*) 'Current  unit = ', TRIM(State_Chm(LCHNK)%Spc_Units)
+       Write(iulog,*) 'Expected unit = kg/ kg dry'
+       CALL ENDRUN('Incorrect unit in GEOS-Chem State_Chm%Species')
+    ENDIF
+
+    ! GEOS-Chem considers CO2 as a dead species and resets its concentration
+    ! internally. Right after the call to `Do_Chemistry`, State_Chm%Species(iCO2)
+    ! corresponds to the chemically-produced CO2. The real CO2 concentration
+    ! is thus the concentration before chemistry + the chemically-produced CO2.
+    State_Chm(LCHNK)%Species(1,:nY,:nZ,iCO2) = State_Chm(LCHNK)%Species(1,:nY,:nZ,iCO2) &
+                                             + MMR_Beg(:nY,:nZ,iCO2)
 
     !==============================================================
     ! ***** W E T   D E P O S I T I O N  (rainout + washout) *****
@@ -3630,30 +3681,23 @@ contains
        ENDIF
     ENDIF
 
+    DO N = 1, gas_pcnst
+       ! See definition of map2chm
+       M = map2chm(N)
+       IF ( M > 0 ) THEN
+          vmr1(:nY,:nZ,N) = State_Chm(LCHNK)%Species(1,:nY,nZ:1:-1,M) * &
+                            MWDry / adv_mass(N)
+       ELSEIF ( M < 0 ) THEN
+          vmr1(:nY,:nZ,N) = state%q(:nY,:nZ,-M) * &
+                            MWDry / adv_mass(N)
+       ENDIF
+    ENDDO
+
     !==============================================================
     ! ***** M A M   G A S - A E R O S O L   E X C H A N G E *****
     !==============================================================
 
 #if defined( MODAL_AERO )
-    DO N = 1, gas_pcnst
-       ! See definition of map2chm
-       M = map2chm(N)
-       IF ( M > 0 ) THEN
-          DO J = 1, nY
-          DO L = 1, nZ
-             vmr1(J,L,N) = State_Chm(LCHNK)%Species(1,J,nZ+1-L,M) * &
-                MWDry / adv_mass(N)
-          ENDDO
-          ENDDO
-       ELSEIF ( M < 0 ) THEN
-          DO J = 1, nY
-          DO L = 1, nZ
-             vmr1(J,L,N) = state%q(J,L,-M) * &
-                MWDry / adv_mass(N)
-          ENDDO
-          ENDDO
-       ENDIF
-    ENDDO
 
     del_h2so4_gasprod = 0.0e+00_fp
     ! This needs to be in mol/mol over this timestep
@@ -3690,6 +3734,24 @@ contains
                                 vmr               = vmr1,                   &
                                 pbuf              = pbuf )
 #endif
+
+    ! Set boundary conditions of long-lived species (most likely
+    ! CH4, OCS, N2O, CFC11, CFC12).
+    ! Note: This will overwrite the UCX boundary conditions
+
+    CALL flbc_set( vmr1(:nY,:nZ,:), nY, LCHNK, mapCnst )
+
+    IF ( ghg_chem ) THEN
+       CALL ghg_chem_set_flbc( vmr1, nY )
+    ENDIF
+
+    DO N = 1, gas_pcnst
+       ! See definition of map2chm
+       M = map2chm(N)
+       IF ( M <= 0 ) CYCLE
+       State_Chm(LCHNK)%Species(1,:nY,nZ:1:-1,M) = vmr1(:nY,:nZ,N) * &
+                        adv_mass(N) / MWDry
+    ENDDO
 
     ! Make sure State_Chm(LCHNK) is back in kg/kg dry!
     IF ( TRIM(State_Chm(LCHNK)%Spc_Units) /= 'kg/kg dry' ) THEN
@@ -3770,6 +3832,11 @@ contains
                            state      = state,             &
                            mmr_tend   = mmr_tend,          &
                            LCHNK      = LCHNK             )
+
+    IF ( ghg_chem ) THEN
+       ptend%lq(1) = .True.
+       CALL outfld( 'CT_H2O_GHG', ptend%q(:,:,1), PCOLS, LCHNK )
+    ENDIF
 
     ! Debug statements
     ! Ozone tendencies
