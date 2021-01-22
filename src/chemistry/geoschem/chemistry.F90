@@ -991,7 +991,8 @@ contains
     use Ucx_Mod,               only : Init_Ucx
     use Strat_chem_Mod,        only : Init_Strat_Chem
     use isorropiaII_Mod,       only : Init_IsorropiaII
-    use Input_mod,             only : Validate_Directories
+    use Input_Mod,             only : Read_Input_File
+    use Input_Mod,             only : Validate_Directories
     use Olson_Landmap_Mod
     use Vdiff_Mod
 
@@ -1097,17 +1098,8 @@ contains
                         Input_Opt = Input_Opt,  &
                         RC        = RC         )
 
-    ! Set some basic flags
-    Input_Opt%LUCX      = .True.
-
     IF ( RC /= GC_SUCCESS ) THEN
        ErrMsg = 'Error encountered within call to "Set_Input_Opt"!'
-       CALL Error_Stop( ErrMsg, ThisLoc )
-    ENDIF
-
-    CALL Validate_Directories( Input_Opt, RC )
-    IF ( RC /= GC_SUCCESS ) THEN
-       ErrMsg = 'Error encountered in "Validation_Directories"!'
        CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
@@ -1116,7 +1108,6 @@ contains
     DO WHILE ( hyam(nZ+1-nStrat) * ps0 < 100.0 )
        nStrat = nStrat-1
     ENDDO
-
 
     ! Initialize grid with largest number of columns
     ! This is required as State_Grid(LCHNK) can have different
@@ -1137,6 +1128,180 @@ contains
     maxGrid%NX = nX
     maxGrid%NY = nY
     maxGrid%NZ = nZ
+
+    Input_Opt%thisCPU  = myCPU
+    Input_Opt%amIRoot  = MasterProc
+
+    ! TODO: Mimic GEOS-Chem's reading of input options
+    IF ( MasterProc ) THEN
+       CALL Read_Input_File( Input_Opt  = Input_Opt, &
+                             State_Grid = maxGrid,   &
+                             RC         = RC        )
+
+       !Input_Opt%DryRun               = .False.
+
+       ! First setup directories
+       Input_Opt%Chem_Inputs_Dir      = TRIM(gc_cheminputs)
+       Input_Opt%SpcDatabaseFile      = TRIM(speciesDBPath)
+
+       !! Simulation menu
+       !Input_Opt%NYMDb                = 20000101
+       !Input_Opt%NHMSb                =   000000
+       !Input_Opt%NYMDe                = 20010101
+       !Input_Opt%NHMSe                =   000000
+
+       !! Now READ_SIMULATION_MENU
+       !Input_Opt%ITS_A_CH4_SIM          = .False.
+       !Input_Opt%ITS_A_CO2_SIM          = .False.
+       !Input_Opt%ITS_A_FULLCHEM_SIM     = .True.
+       !Input_Opt%ITS_A_MERCURY_SIM      = .False.
+       !Input_Opt%ITS_A_POPS_SIM         = .False.
+       !Input_Opt%ITS_A_RnPbBe_SIM       = .False.
+       !Input_Opt%ITS_A_TAGO3_SIM        = .False.
+       !Input_Opt%ITS_A_TAGCO_SIM        = .False.
+       !Input_Opt%ITS_AN_AEROSOL_SIM     = .False.
+
+       ! Now READ_ADVECTED_SPECIES_MENU
+       !Input_Opt%N_Advect               = nTracers
+       !IF (Input_Opt%N_Advect.GT.Input_Opt%Max_AdvectSpc) THEN
+       !   CALL ENDRUN('Number of tracers exceeds max count')
+       !ENDIF
+       !! Assign tracer names
+       !DO J = 1, Input_Opt%N_Advect
+       !   Input_Opt%AdvectSpc_Name(J) = TRIM(tracerNames(J))
+       !ENDDO
+       !! No tagged species
+       !Input_Opt%LSplit = .False.
+
+       !! Now READ_TRANSPORT_MENU
+       !Input_Opt%LTran                  = .True.
+       !Input_Opt%LFill                  = .True.
+       !Input_Opt%TPCore_IOrd            = 3
+       !Input_Opt%TPCore_JOrd            = 3
+       !Input_Opt%TPCore_KOrd            = 3
+
+       ! Now READ_PHOTOLYSIS_MENU
+       Input_Opt%FAST_JX_DIR            = TRIM(gc_cheminputs)//'FAST_JX/v2020-02'
+
+       !! Now READ_CONVECTION_MENU
+       !Input_Opt%LConv                  = .False.
+       !Input_Opt%LTurb                  = .True.
+       !Input_Opt%LNLPBL                 = .True.
+
+       !! Now READ_EMISSIONS_MENU
+       !! This menu is pointless in CESM-GC
+       !Input_Opt%LEmis                  = .False.
+       !Input_Opt%HCOConfigFile          = 'HEMCO_Config.rc'
+
+       !Input_Opt%LSoilNOx               = .False.
+
+       !! Set surface VMRs - turn this off so that CAM can handle it
+       !Input_Opt%LCH4Emis               = .False.
+       !Input_Opt%LCH4SBC                = .False.
+
+       ! Set initial conditions
+       Input_Opt%LSetH2O                = .False. !TMMF
+
+       !! Now READ_AEROSOL_MENU
+       !Input_Opt%LSulf                  = .True.
+       !Input_Opt%LMetalcatSO2           = .True.
+       !Input_Opt%LCarb                  = .True.
+       !Input_Opt%LBrC                   = .False.
+       !Input_Opt%LSOA                   = .False.
+       !Input_Opt%LSVPOA                 = .False.
+       !Input_Opt%LDust                  = .True.
+       !Input_Opt%LDstUp                 = .False.
+       !Input_Opt%LSSalt                 = .True.
+       !Input_Opt%SalA_rEdge_um(1)       = 0.01e+0_fp
+       !Input_Opt%SalA_rEdge_um(2)       = 0.50e+0_fp
+       !Input_Opt%SalC_rEdge_um(1)       = 0.50e+0_fp
+       !Input_Opt%SalC_rEdge_um(2)       = 8.00e+0_fp
+       !Input_Opt%LMPOA                  = .False.
+
+       ! For now, disable solid PSCs and strat aerosol settling
+       ! Our treatment of the stratosphere isn't really sophisticated
+       ! enough to warrant it yet
+       Input_Opt%LGravStrat             = .False.
+       Input_Opt%LSolidPSC              = .False.
+       !Input_Opt%LHomNucNAT             = .False.
+       !Input_Opt%T_NAT_Supercool        = 3.0e+0_fp
+       !Input_Opt%P_Ice_Supersat         = 1.2e+0_fp
+       !Input_Opt%LPSCChem               = .True.
+       !Input_Opt%LStratOD               = .True.
+
+       !Input_Opt%LBCAE                  = .True.
+       !Input_Opt%BCAE_1                 = 1.5e+0_fp
+       !Input_Opt%BCAE_2                 = 1.0e+0_fp
+       !Input_Opt%hvAerNIT               = .False.
+       !Input_Opt%hvAerNIT_JNIT          = 0.0e+00_fp
+       !Input_Opt%hvAerNIT_JNITs         = 0.0e+00_fp
+       !Input_Opt%JNITChanA              = 66.667e+0_fp
+       !Input_Opt%JNITChanB              = 33.333e+0_fp
+
+       !! Now READ_DEPOSITION_MENU
+       !Input_Opt%LDryD                  = .True.
+       !!==================================================================
+       !! Add the following options:
+       !! + GEOS-Chem computes ALL dry-deposition velocities
+       !! + CLM computes land velocities. Velocities over ocean and ice are
+       !!   computed in a MOZART-like way
+       !! + CLM computes land velocities. Velocities over ocean and ice are
+       !!   computed from GEOS-Chem
+       !!
+       !! Note: What to do about aerosols? Who should compute the dry
+       !!       deposition velocities
+       !!
+       !! Thibaud M. Fritz - 26 Feb 2020
+       !!==================================================================
+       !Input_Opt%LWetD                  = .True.
+       !Input_Opt%CO2_Effect             = .False.
+       !Input_Opt%CO2_Level              = 600.0_fp
+       !Input_Opt%CO2_Ref                = 390.0_fp
+
+       ! Now READ_CHEMISTRY_MENU
+       !Input_Opt%LChem                  = .True.
+       Input_Opt%LSChem                 = .False. ! .True. !TMMF
+       !Input_Opt%LLinoz                 = .True.
+       !Input_Opt%LSynoz                 = .True.
+       !Input_Opt%LUCX                   = .True.
+       !Input_Opt%LActiveH2O             = .True.
+       !Input_Opt%Use_Online_O3          = .True.
+       ! Expect to get total overhead ozone, although it should not
+       ! make too much of a difference since we want to use "full-UCX"
+       !Input_Opt%Use_O3_from_Met        = .True.
+       !Input_Opt%Use_TOMS_O3            = .False.
+       !Input_Opt%Gamma_HO2              = 0.2e+0_fp
+
+       !Input_Opt%LPRT                   = .False.
+
+       !==================================================================
+       ! CESM-specific input flags
+       !==================================================================
+
+       ! onlineAlbedo    -> True  (use CLM albedo)
+       !                 -> False (read monthly-mean albedo from HEMCO)
+       Input_Opt%onlineAlbedo           = .True.
+
+       ! onlineLandTypes -> True  (use CLM landtypes)
+       !                 -> False (read landtypes from HEMCO)
+       Input_Opt%onlineLandTypes        = .True.
+
+       ! ddVel_CLM       -> True  (use CLM dry deposition velocities)
+       !                 -> False (let GEOS-Chem compute dry deposition velocities)
+       Input_Opt%ddVel_CLM              = .False.
+
+       ! applyQtend: apply tendencies of water vapor to specific humidity
+       Input_Opt%applyQtend             = .False.
+
+       CALL MPIBCAST( Input_Opt, 1, OptInput, 0, MPICOM )
+    ENDIF
+
+    CALL Validate_Directories( Input_Opt, RC )
+
+    IF ( RC /= GC_SUCCESS ) THEN
+       ErrMsg = 'Error encountered in "Validation_Directories"!'
+       CALL Error_Stop( ErrMsg, ThisLoc )
+    ENDIF
 
     ! Initialize GEOS-Chem horizontal grid structure
     CALL GC_Init_Grid( Input_Opt  = Input_Opt, &
@@ -1213,172 +1378,6 @@ contains
        ErrMsg = 'Error encountered in "GC_Allocate_All"!'
        CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
-
-    Input_Opt%thisCPU  = myCPU
-    Input_Opt%amIRoot  = MasterProc
-
-    ! TODO: Mimic GEOS-Chem's reading of input options
-    !IF (MasterProc) THEN
-    !   CALL Read_Input_File( Input_Opt   = Input_Opt,     &
-    !                         srcFile     = inputGeosPath, &
-    !                         RC          = RC )
-    !ENDIF
-    !CALL <broadcast data to other CPUs>
-
-    Input_Opt%DryRun               = .False.
-
-    ! First setup directories
-    Input_Opt%Chem_Inputs_Dir      = TRIM(gc_cheminputs)
-    Input_Opt%SpcDatabaseFile      = TRIM(speciesDBPath)
-
-    ! Simulation menu
-    Input_Opt%NYMDb                = 20000101
-    Input_Opt%NHMSb                =   000000
-    Input_Opt%NYMDe                = 20010101
-    Input_Opt%NHMSe                =   000000
-
-    ! Now READ_SIMULATION_MENU
-    Input_Opt%ITS_A_CH4_SIM          = .False.
-    Input_Opt%ITS_A_CO2_SIM          = .False.
-    Input_Opt%ITS_A_FULLCHEM_SIM     = .True.
-    Input_Opt%ITS_A_MERCURY_SIM      = .False.
-    Input_Opt%ITS_A_POPS_SIM         = .False.
-    Input_Opt%ITS_A_RnPbBe_SIM       = .False.
-    Input_Opt%ITS_A_TAGO3_SIM        = .False.
-    Input_Opt%ITS_A_TAGCO_SIM        = .False.
-    Input_Opt%ITS_AN_AEROSOL_SIM     = .False.
-
-    ! Now READ_ADVECTED_SPECIES_MENU
-    Input_Opt%N_Advect               = nTracers
-    IF (Input_Opt%N_Advect.GT.Input_Opt%Max_AdvectSpc) THEN
-       CALL ENDRUN('Number of tracers exceeds max count')
-    ENDIF
-    ! Assign tracer names
-    DO J = 1, Input_Opt%N_Advect
-       Input_Opt%AdvectSpc_Name(J) = TRIM(tracerNames(J))
-    ENDDO
-    ! No tagged species
-    Input_Opt%LSplit = .False.
-
-    ! Now READ_TRANSPORT_MENU
-    Input_Opt%LTran                  = .True.
-    Input_Opt%LFill                  = .True.
-    Input_Opt%TPCore_IOrd            = 3
-    Input_Opt%TPCore_JOrd            = 3
-    Input_Opt%TPCore_KOrd            = 3
-
-    ! Now READ_PHOTOLYSIS_MENU
-    Input_Opt%FAST_JX_DIR            ='/glade/p/univ/umit0034/ExtData/' // &
-     'CHEM_INPUTS/FAST_JX/v2020-02/'
-
-    ! Now READ_CONVECTION_MENU
-    Input_Opt%LConv                  = .False.
-    Input_Opt%LTurb                  = .True.
-    Input_Opt%LNLPBL                 = .True.
-
-    ! Now READ_EMISSIONS_MENU
-    ! This menu is pointless in CESM-GC
-    Input_Opt%LEmis                  = .False.
-    Input_Opt%HCOConfigFile          = 'HEMCO_Config.rc'
-
-    Input_Opt%LSoilNOx               = .True.
-
-    ! Set surface VMRs - turn this off so that CAM can handle it
-    Input_Opt%LCH4Emis               = .False.
-    Input_Opt%LCH4SBC                = .False.
-
-    ! Set initial conditions
-    Input_Opt%LSetH2O                = .False. !TMMF
-
-    ! Now READ_AEROSOL_MENU
-    Input_Opt%LSulf                  = .True.
-    Input_Opt%LMetalcatSO2           = .True.
-    Input_Opt%LCarb                  = .True.
-    Input_Opt%LBrC                   = .False.
-    Input_Opt%LSOA                   = .False.
-    Input_Opt%LSVPOA                 = .False.
-    Input_Opt%LDust                  = .True.
-    Input_Opt%LDstUp                 = .False.
-    Input_Opt%LSSalt                 = .True.
-    Input_Opt%SalA_rEdge_um(1)       = 0.01e+0_fp
-    Input_Opt%SalA_rEdge_um(2)       = 0.50e+0_fp
-    Input_Opt%SalC_rEdge_um(1)       = 0.50e+0_fp
-    Input_Opt%SalC_rEdge_um(2)       = 8.00e+0_fp
-    Input_Opt%LMPOA                  = .False.
-    ! For now, disable solid PSCs and strat aerosol settling
-    ! Our treatment of the stratosphere isn't really sophisticated
-    ! enough to warrant it yet
-    Input_Opt%LGravStrat             = .False.
-    Input_Opt%LSolidPSC              = .False.
-    Input_Opt%LHomNucNAT             = .False.
-    Input_Opt%T_NAT_Supercool        = 3.0e+0_fp
-    Input_Opt%P_Ice_Supersat         = 1.2e+0_fp
-    Input_Opt%LPSCChem               = .True.
-    Input_Opt%LStratOD               = .True.
-
-    Input_Opt%LBCAE                  = .True.
-    Input_Opt%BCAE_1                 = 1.5e+0_fp
-    Input_Opt%BCAE_2                 = 1.0e+0_fp
-    Input_Opt%hvAerNIT               = .False.
-    Input_Opt%hvAerNIT_JNIT          = 0.0e+00_fp
-    Input_Opt%hvAerNIT_JNITs         = 0.0e+00_fp
-    Input_Opt%JNITChanA              = 66.667e+0_fp
-    Input_Opt%JNITChanB              = 33.333e+0_fp
-
-    ! Now READ_DEPOSITION_MENU
-    Input_Opt%LDryD                  = .True.
-    !==================================================================
-    ! Add the following options:
-    ! + GEOS-Chem computes ALL dry-deposition velocities
-    ! + CLM computes land velocities. Velocities over ocean and ice are
-    !   computed in a MOZART-like way
-    ! + CLM computes land velocities. Velocities over ocean and ice are
-    !   computed from GEOS-Chem
-    !
-    ! Note: What to do about aerosols? Who should compute the dry
-    !       deposition velocities
-    !
-    ! Thibaud M. Fritz - 26 Feb 2020
-    !==================================================================
-    Input_Opt%LWetD                  = .True.
-    Input_Opt%CO2_Effect             = .False.
-    Input_Opt%CO2_Level              = 600.0_fp
-    Input_Opt%CO2_Ref                = 390.0_fp
-
-    ! Now READ_CHEMISTRY_MENU
-    Input_Opt%LChem                  = .True.
-    Input_Opt%LSChem                 = .False. ! .True. !TMMF
-    Input_Opt%LLinoz                 = .True.
-    Input_Opt%LSynoz                 = .True.
-    Input_Opt%LUCX                   = .True.
-    Input_Opt%LActiveH2O             = .True.
-    Input_Opt%Use_Online_O3          = .True.
-    ! Expect to get total overhead ozone, although it should not
-    ! make too much of a difference since we want to use "full-UCX"
-    Input_Opt%Use_O3_from_Met        = .True.
-    Input_Opt%Use_TOMS_O3            = .False.
-    Input_Opt%Gamma_HO2              = 0.2e+0_fp
-
-    Input_Opt%LPRT                   = .False.
-
-    !==================================================================
-    ! CESM-specific input flags
-    !==================================================================
-
-    ! onlineAlbedo    -> True  (use CLM albedo)
-    !                 -> False (read monthly-mean albedo from HEMCO)
-    Input_Opt%onlineAlbedo           = .True.
-
-    ! onlineLandTypes -> True  (use CLM landtypes)
-    !                 -> False (read landtypes from HEMCO)
-    Input_Opt%onlineLandTypes        = .True.
-
-    ! ddVel_CLM       -> True  (use CLM dry deposition velocities)
-    !                 -> False (let GEOS-Chem compute dry deposition velocities)
-    Input_Opt%ddVel_CLM              = .False.
-
-    ! applyQtend: apply tendencies of water vapor to specific humidity
-    Input_Opt%applyQtend             = .False.
 
     ! Read in data for Linoz. All CPUs allocate one array to hold the data. Only
     ! the root CPU reads in the data; then we copy it out to a temporary array,
