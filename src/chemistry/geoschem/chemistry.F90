@@ -698,8 +698,8 @@ contains
 
     namelist /chem_inparm/ bndtvg, h2orates, ghg_chem
 
-    inputGeosPath='/glade/u/home/fritzt/input.geos.template'
-    speciesDBPath='/glade/u/home/fritzt/species_database.yml'
+    inputGeosPath='input.geos'
+    speciesDBPath='species_database.yml'
 
     ALLOCATE(drySpc_ndx(nddvels), STAT=IERR)
     IF ( IERR .NE. 0 ) CALL ENDRUN('Failed to allocate drySpc_ndx')
@@ -793,6 +793,8 @@ contains
           READ(unitn,'(26x,a)', IOSTAT=IERR) line
 
           IF ( INDEX( TRIM(line), '---' ) > 0 ) EXIT
+
+          IF ( INDEX( TRIM(line), 'CLOCK' ) > 0 ) CYCLE
 
           nTracers = nTracers + 1
           tracerNames(nTracers) = TRIM(line)
@@ -1060,8 +1062,6 @@ contains
     LCHNK = phys_state%LCHNK
     ! NCOL: number of atmospheric columns for each chunk
     NCOL  = phys_state%NCOL
-
-    write(iulog,'(2(a,x,I6,x))') 'chem_init called on PE ', myCPU, ' of ', nCPUs
 
     ! The GEOS-Chem grids on every "chunk" will all be the same size, to avoid
     ! the possibility of having differently-sized chunks

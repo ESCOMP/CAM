@@ -36,6 +36,7 @@ def buildnml(case, caseroot, compname):
     din_loc_root        = case.get_value("DIN_LOC_ROOT")
     atm_ncpl            = case.get_value("ATM_NCPL")
     CAM_NAMELIST_OPTS   = case.get_value("CAM_NAMELIST_OPTS")
+    CAM_CONFIG_OPTS     = case.get_value("CAM_CONFIG_OPTS")
     CAM_NML_USE_CASE    = case.get_value("CAM_NML_USE_CASE")
     DEBUG               = case.get_value("DEBUG")
     NINST_ATM           = case.get_value("NINST_ATM")
@@ -176,16 +177,51 @@ def buildnml(case, caseroot, compname):
         expect(rc==0,"Command %s failed rc=%d\nout=%s\nerr=%s"%(cmd,rc,out,err))
 
         # -----------------------------------------------------
+        # For GEOS-Chem / HEMCO only:
+        # Copy input files from storage location into Buildconf/camconf
+        # This only needs to be done once
+        # -----------------------------------------------------
+
+        # We use this to figure out if we are using the GEOS-Chem chemistry
+        # mechanism.
+        # Might have to do something else with HEMCO_CESM?
+        if '-chem geoschem' in CAM_CONFIG_OPTS:
+            geoschem_src = os.path.join(srcroot, "src/chemistry/geoschem/geoschem_src")
+            if not os.path.isdir(geoschem_src):
+                raise SystemExit("ERROR: Did not find path to GEOS-Chem source code at {:s}".format(geoschem_src))
+            if os.path.isdir(rundir):
+                for fileName in ['species_database.yml', 'input.geos',
+                                 'HISTORY.rc', 'HEMCO_Config.rc', 'HEMCO_Diagn.rc']:
+                    file1 = os.path.join(geoschem_src, "run/CESM", fileName)
+                    file2 = os.path.join(camconf, fileName)
+                    if not os.path.exists(file2):
+                        logger.info("CAM namelist one-time copy: file1 %s file2 %s ", file1, file2)
+                        shutil.copy(file1,file2)
+
+        # -----------------------------------------------------
         # copy resolved namelist, atm_in, to rundir
         # -----------------------------------------------------
 
         if os.path.isdir(rundir):
-            file1 = os.path.join(camconf, "atm_in")
-            file2 = os.path.join(rundir, "atm_in")
-            if ninst > 1:
-                file2 += inst_string
-            logger.info("CAM namelist copy: file1 %s file2 %s ", file1, file2)
-            shutil.copy(file1,file2)
+            for fileName in ['atm_in', 'species_database.yml', 'input.geos',
+                             'HISTORY.rc', 'HEMCO_Config.rc', 'HEMCO_Diagn.rc']:
+                file1 = os.path.join(camconf, fileName)
+                file2 = os.path.join(rundir, fileName)
+                if fileName == 'atm_in' and ninst > 1:
+                    file2 += inst_string
+                if os.path.exists(file1) or fileName == 'atm_in':
+                    logger.info("CAM namelist copy: file1 %s file2 %s ", file1, file2)
+                    shutil.copy(file1,file2)
+
+                    if fileName == 'input.geos':
+                        # We need to replace the simulation name by "Standard" 
+                        # in input.geos
+                        # This should already be the case, but just making sure
+                        with open(file2, 'r') as file:
+                            inputGC = file.read()
+                        inputGC = inputGC.replace('{SIM}', 'Standard')
+                        with open(file2, 'w') as file:
+                            file.write(inputGC)
 
         # -----------------------------------------------------
         # copy drv_flds_in to rundir if it does not exist
