@@ -579,7 +579,7 @@ contains
           enddo
 
           call pio_setframe(File, vardesc, int(nfils,kind=pio_offset_kind)) ! sets varsesc -- correct offset
-          call pio_write_darray(File, vardesc, iodesc, buf, ierr, fillval=fillvalue)
+          call pio_write_darray(File, vardesc, iodesc, buf, ierr)
        endif
 
     enddo
