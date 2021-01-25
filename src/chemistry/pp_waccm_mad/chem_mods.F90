@@ -13,19 +13,19 @@
                             nfs = 2, & ! number of "fixed" species
                             relcnt = 0, & ! number of relationship species
                             grpcnt = 0, & ! number of group members
-                            nzcnt = 1825, & ! number of non-zero matrix entries
+                            nzcnt = 1745, & ! number of non-zero matrix entries
                             extcnt = 12, & ! number of species with external forcing
-                            clscnt1 = 22, & ! number of species in explicit class
+                            clscnt1 = 23, & ! number of species in explicit class
                             clscnt2 = 0, & ! number of species in hov class
                             clscnt3 = 0, & ! number of species in ebi class
-                            clscnt4 = 88, & ! number of species in implicit class
+                            clscnt4 = 87, & ! number of species in implicit class
                             clscnt5 = 0, & ! number of species in rodas class
                             indexm = 1, & ! index of total atm density in invariant array
                             indexh2o = 0, & ! index of water vapor density
                             clsze = 1, & ! loop length for implicit chemistry
                             rxt_tag_cnt = 585, &
                             enthalpy_cnt = 54, &
-                            nslvd = 51
+                            nslvd = 50
       integer :: clscnt(5) = 0
       integer :: cls_rxt_cnt(4,5) = 0
       integer :: clsmap(gas_pcnst,5) = 0
@@ -47,5 +47,4 @@
       logical :: is_vector
       logical :: is_scalar
       character(len=16) :: slvd_lst(max(1,nslvd))
-      integer, parameter :: veclen = 32
       end module chem_mods
