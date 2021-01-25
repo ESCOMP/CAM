@@ -220,7 +220,7 @@ contains
     REAL(r8)                       :: cptmp
     REAL(r8)                       :: MWTmp
     REAL(r8)                       :: qmin
-    REAL(r8)                       :: ref_VMR
+    REAL(r8)                       :: refmmr, refvmr
     CHARACTER(LEN=128)             :: mixtype
     CHARACTER(LEN=128)             :: molectype
     CHARACTER(LEN=128)             :: lngName
@@ -253,8 +253,6 @@ contains
     ! hplin 2020-05-16: Call set_sim_dat to populate chemistry constituent information
     ! from mo_sim_dat.F90 in other places. This is needed for HEMCO_CESM.
     CALL Set_sim_dat()
-
-    ! Generate fake state_chm
 
     ! Prevent Reporting
     IO%amIRoot             = .False.
@@ -342,8 +340,8 @@ contains
           ThisSpc     => SC%SpcData(N)%Info
           lngName     = TRIM(ThisSpc%FullName)
           MWTmp       = REAL(ThisSpc%MW_g,r8)
-          ref_VMR     = REAL(ThisSpc%BackgroundVV,r8)
-          ref_MMR(I)  = ref_VMR / (MWDry / MWTmp)
+          refvmr      = REAL(ThisSpc%BackgroundVV,r8)
+          refmmr      = refvmr / (MWDry / MWTmp)
           ! This is required as we need to distinguish between MAM and GEOS-Chem aerosols
           ! (Both are included in aer_drydep_list)
           IF ( ThisSpc%Is_Gas .eqv. .False. ) THEN
@@ -363,20 +361,20 @@ contains
           trueName    = cnstName
           lngName     = cnstName
           MWTmp       = aerAdvMass(I - nTracers)
-          ref_MMR(I)  = 1.0e-38_r8
+          refmmr      = 1.0e-38_r8
        ELSEIF ( I .EQ. (nTracers + nAer + 1) ) THEN
           ! Add CO2 (which is not a GEOS-Chem tracer)
           cnstName    = 'CO2'
           trueName    = cnstName
           lngName     = cnstName
           MWTmp       = 44.009800_r8
-          ref_MMR(I)  = 1.0e-38_r8
+          refmmr      = 1.0e-38_r8
        ELSE
           cnstName    = TRIM(tracerNames(I))
           trueName    = cnstName
           lngName     = cnstName
           MWTmp       = 1000.0e+0_r8 * (0.001e+0_r8)
-          ref_MMR(I)  = 1.0e-38_r8
+          refmmr      = 1.0e-38_r8
        ENDIF
        MWRatio(I) = MWDry/MWTmp
        tracerLongNames(I) = TRIM(lngName)
@@ -455,6 +453,8 @@ contains
 
        IF ( iFirstCnst < 0 ) iFirstCnst = N
 
+       ref_MMR(N) = refmmr
+
        ! Add to GC mapping. When starting a timestep, we will want to update the
        ! concentration of State_Chm(x)%Species(1,iCol,iLev,m) with data from
        ! constituent n
@@ -482,10 +482,10 @@ contains
        IF ( N .GT. 0 ) THEN
           ThisSpc         => SC%SpcData(N)%Info
           MWTmp           = REAL(ThisSpc%MW_g,r8)
-          ref_VMR         = REAL(ThisSpc%BackgroundVV,r8)
+          refvmr          = REAL(ThisSpc%BackgroundVV,r8)
           lngName         = TRIM(ThisSpc%FullName)
           slsLongNames(I) = lngName
-          sls_ref_MMR(I)  = ref_VMR / (MWDry / MWTmp)
+          sls_ref_MMR(I)  = refvmr / (MWDry / MWTmp)
           SlsMWRatio(I)   = MWDry / MWTmp
           map2GC_Sls(I)   = N
           ThisSpc         => NULL()
@@ -881,7 +881,7 @@ contains
     CALL MPIBCAST (h2orates,           LEN(h2orates),                    MPICHAR, 0, MPICOM)
 #endif
 
-    ! Update "short_lived_species" arrays - will eventually unify these
+    ! Update "short_lived_species" arrays
     nSlvd = nSls
     ALLOCATE(slvd_Lst(nSlvd), STAT=IERR)
     IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating slvd_Lst')
@@ -3811,14 +3811,11 @@ contains
     REAL(r8) :: QTemp, Min_MMR
 
     nlev = SIZE(q, 2)
+
     ! Retrieve a "background value" for this from the database
     Min_MMR = 1.0e-38_r8
-    DO M = 1, nTracersMax
-       IF (TRIM(cnst_name(M)) .eq. TRIM(name)) THEN
-          Min_MMR = ref_MMR(M)
-          EXIT
-       ENDIF
-    ENDDO
+    CALL cnst_get_ind(TRIM(name), M, abort=.False.)
+    IF ( M > 0 ) Min_MMR = ref_MMR(M)
 
     DO ilev = 1, nlev
        WHERE(mask)

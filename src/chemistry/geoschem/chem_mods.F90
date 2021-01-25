@@ -12,7 +12,7 @@
       CHARACTER(LEN=255)   :: tracerNames(nTracersMax)
       CHARACTER(LEN=255)   :: tracerLongNames(nTracersMax)
       REAL(r8)             :: MWRatio(nTracersMax)
-      REAL(r8)             :: ref_MMR(nTracersMax)
+      REAL(r8)             :: ref_MMR(pcnst)
 
       ! Index of first constituent
       INTEGER              :: iFirstCnst
