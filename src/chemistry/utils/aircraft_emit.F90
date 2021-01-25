@@ -78,7 +78,7 @@ contains
   integer :: i
 
   cnt = aircraft_cnt
-  if( cnt.gt. 0 ) then
+  if( cnt>0 ) then
     do i=1,cnt
        spc_name_list_out(i) = spc_name_list(i)
     end do

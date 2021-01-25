@@ -1,5 +1,7 @@
 module ssatcontrail
-
+! contrail parameterization
+! see Chen et al., 2012: Global contrail coverage simulated
+!     by CAM5 with the inventory of 2006 global aircraft emissions, JAMES
     use shr_kind_mod,   only: r8 => shr_kind_r8
     use ppgrid,         only: pcols, pver
     use cam_history,    only: outfld
@@ -68,8 +70,6 @@ contains
     integer :: aircraft_cnt
     character(len=16) :: spc_name_list(30)
  
-!    ICIWC = ICIWC0/rhodair
-
     has_aircraft_H2O = .false.
     has_aircraft_distance = .false.
 
@@ -90,6 +90,15 @@ contains
     endif
     if(.not. has_aircraft_H2O)  return
     if(.not. has_aircraft_distance) return
+
+!------------------------------------------------------------------------------------------
+    lq(:) = .FALSE.
+    lq(1) = .TRUE.
+    lq(ixcldice) = .TRUE.
+    lq(ixnumice) = .TRUE.
+
+    call physics_ptend_init(ptend_loc, state1%psetcols,'ssatcontrail',ls=.true.,lq = lq)
+!-----------------------------------------------------------------------------------------
 
     particle_mass = 4._r8/3._r8*pi*rhoi*radius**3   ! mass of ice particle
    
@@ -123,15 +132,6 @@ contains
     ! the indices will be set to -1)
     call cnst_get_ind('NUMICE', ixnumice, abort=.false.)
     call cnst_get_ind('NUMLIQ', ixnumliq, abort=.false.)
-
-!------------------------------------------------------------------------------------------
-    lq(:) = .FALSE.
-    lq(1) = .TRUE.
-    lq(ixcldice) = .TRUE.
-    lq(ixnumice) = .TRUE.
-
-    call physics_ptend_init(ptend_loc, state1%psetcols,'ssatcontrail',ls=.true.,lq = lq)
-!-----------------------------------------------------------------------------------------
 
 ! adjust h2o to volume mixing ratio (mass adjustment and conversion from g/kg to kg/kg)
     Ma = mwdry   

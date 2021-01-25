@@ -597,7 +597,7 @@ contains
         call get_horiz_grid_d(plon, clon_d_out=lam)
 
         call get_aircraft(aircraft_cnt)
-        if(aircraft_cnt.gt.0) then
+        if(aircraft_cnt>0) then
          if(.not.allocated(lon_global_grid_ndx)) allocate(lon_global_grid_ndx(pcols,begchunk:endchunk))
          if(.not.allocated(lat_global_grid_ndx)) allocate(lat_global_grid_ndx(pcols,begchunk:endchunk))
         endif
@@ -628,7 +628,7 @@ contains
         deallocate(phi,lam)
         
 ! weight_x & weight_y are weighting function for x & y interpolation
-       if(aircraft_cnt.gt.0) then
+       if(aircraft_cnt>0) then
    	allocate(file%weight_x(plon,file%nlon))
         allocate(file%weight_y(plat,file%nlat))
         allocate(file%count_x(plon))
@@ -703,8 +703,10 @@ contains
                enddo
             enddo
         endif
-          
+       endif
+   
 #if ( defined SPMD)
+       if(aircraft_cnt>0) then
         call mpibcast(file%weight_x, plon*file%nlon, mpir8 , 0, mpicom)
         call mpibcast(file%weight_y, plat*file%nlat, mpir8 , 0, mpicom)
         call mpibcast(file%count_x, plon, mpiint , 0, mpicom)
@@ -717,8 +719,8 @@ contains
         call mpibcast(file%count0_y, plat, mpiint , 0, mpicom)
         call mpibcast(file%index0_x, plon*file%nlon, mpiint , 0, mpicom)
         call mpibcast(file%index0_y, plat*file%nlat, mpiint , 0, mpicom)
+       endif
 #endif
-     endif
     endif
 
   end subroutine trcdata_init
