@@ -349,6 +349,12 @@ contains
           IF ( ThisSpc%Is_Gas .eqv. .False. ) THEN
              Write(cnstName, "(a,a)") 'GC_AER_', to_upper(TRIM(trueName))
           ENDIF
+          ! Make sure that solsym is following the list of tracers as listed in input.geos
+          IF ( to_upper(TRIM(tracerNames(I))) /= to_upper(TRIM(solsym(I))) ) THEN
+             Write(iulog,*) "tracerNames (", TRIM(tracerNames(I)), ") /= solsym (", &
+                   TRIM(solsym(I)), ")"
+             CALL ENDRUN('Solsym must be following GEOS-Chem tracer. Check geoschem/mo_sim.dat')
+          ENDIF
           ! Nullify pointer
           ThisSpc => NULL()
        ELSEIF ( I .LE. (nTracers + nAer) ) THEN
