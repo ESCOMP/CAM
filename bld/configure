@@ -385,6 +385,7 @@ my $cfg_ref = Build::Config->new("$cfgdir/$config_def_file");
 # CAM root directory.
 # Check for standalone or CESM checkout
 my $cam_root = absolute_path("$cfgdir/..");
+print "DEBUG: cam_root is ",$cam_root;
 my $cam_dir = $cam_root;
 if (! -d "$cam_root/cime") {
   $cam_root = absolute_path("$cfgdir/../../..");
@@ -2315,7 +2316,7 @@ sub write_mpas_makefile
 
     print $fh_out  <<"EOF";
 
-MPAS_SRC_ROOT := $cam_root/src/dynamics/mpas
+MPAS_SRC_ROOT := $cam_dir/src/dynamics/mpas
 
 EOF
 

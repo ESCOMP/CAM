@@ -1,2 +1,4 @@
 ./xmlchange RUN_STARTDATE=2013-10-01
-./xmlchange NTASKS=-50
+./xmlchange NTASKS=-65
+./xmlchange ROF_NCPL=\$ATM_NCPL
+./xmlchange GLC_NCPL=\$ATM_NCPL
