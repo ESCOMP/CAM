@@ -44,16 +44,14 @@ module chemistry
   use chem_mods,           only : nTracersMax
   use chem_mods,           only : nTracers
   use chem_mods,           only : gas_pcnst
-  use chem_mods,           only : tracerNames, tracerLongNames
+  use chem_mods,           only : tracerNames
   use chem_mods,           only : adv_mass
-  use chem_mods,           only : mwRatio
   use chem_mods,           only : ref_MMR
   use chem_mods,           only : iFirstCnst
   use chem_mods,           only : nSlsMax
   use chem_mods,           only : nSls
-  use chem_mods,           only : slsNames, slsLongNames
+  use chem_mods,           only : slsNames
   use chem_mods,           only : sls_ref_MMR
-  use chem_mods,           only : slsmwRatio
   use chem_mods,           only : nAerMax
   use chem_mods,           only : nAer
   use chem_mods,           only : aerNames
@@ -329,8 +327,6 @@ contains
     map2GCinv  = -1
     map2chm    = -1
     ref_MMR(:) = 0.0e+0_r8
-    MWRatio(:) = 1.0e+0_r8
-    tracerLongNames = ''
 
     DO I = 1, nTracersMax
        IF ( I .LE. nTracers ) THEN
@@ -376,8 +372,6 @@ contains
           MWTmp       = 1000.0e+0_r8 * (0.001e+0_r8)
           refmmr      = 1.0e-38_r8
        ENDIF
-       MWRatio(I) = MWDry/MWTmp
-       tracerLongNames(I) = TRIM(lngName)
 
        ! dummy value for specific heat of constant pressure (Cp)
        cptmp = 666._r8
@@ -475,8 +469,6 @@ contains
     ! Now unadvected species
     map2GC_Sls = 0
     sls_ref_MMR(:) = 0.0e+0_r8
-    SlsMWRatio(:)  = -1.0e+0_r8
-    slsLongNames = ''
     DO I = 1, nSls
        N = Ind_(slsNames(I))
        IF ( N .GT. 0 ) THEN
@@ -484,9 +476,7 @@ contains
           MWTmp           = REAL(ThisSpc%MW_g,r8)
           refvmr          = REAL(ThisSpc%BackgroundVV,r8)
           lngName         = TRIM(ThisSpc%FullName)
-          slsLongNames(I) = lngName
           sls_ref_MMR(I)  = refvmr / (MWDry / MWTmp)
-          SlsMWRatio(I)   = MWDry / MWTmp
           map2GC_Sls(I)   = N
           ThisSpc         => NULL()
        ENDIF

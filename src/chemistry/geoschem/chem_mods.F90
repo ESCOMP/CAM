@@ -11,7 +11,6 @@
       INTEGER              :: nTracers
       CHARACTER(LEN=255)   :: tracerNames(nTracersMax)
       CHARACTER(LEN=255)   :: tracerLongNames(nTracersMax)
-      REAL(r8)             :: MWRatio(nTracersMax)
       REAL(r8)             :: ref_MMR(pcnst)
 
       ! Index of first constituent
@@ -23,7 +22,6 @@
       CHARACTER(LEN=255)   :: slsNames(nSlsMax)
       CHARACTER(LEN=255)   :: slsLongnames(nSlsMax)
       REAL(r8)             :: sls_Ref_MMR(nSlsMax)
-      REAL(r8)             :: slsMWRatio(nSlsMax)
 
       ! Mapping between constituents and GEOS-Chem tracers
       INTEGER              :: map2GC(pcnst)
