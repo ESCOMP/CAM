@@ -17,7 +17,6 @@ module short_lived_species
 
   save
   private
-  !public :: map
   public :: register_short_lived_species
   public :: short_lived_species_initic
   public :: short_lived_species_writeic
@@ -28,7 +27,6 @@ module short_lived_species
   public :: pbf_idx
 
   integer :: pbf_idx
-  !integer :: map(nslvd)
 
   character(len=16), parameter :: pbufname = 'ShortLivedSpecies'
 
@@ -129,8 +127,6 @@ contains
     allocate(tmpptr(pcols,pver,begchunk:endchunk))
 
     do m=1,nslvd
-       !n = map(m)
-       !fieldname = solsym(n)
        write(fieldname,'(a,a)') trim(slvd_lst(m))
        call infld( fieldname,ncid_ini,dim1name, 'lev', dim2name, 1, pcols, 1, pver, begchunk, endchunk, &
                    tmpptr, found, gridname='physgrid')
@@ -170,8 +166,6 @@ contains
     if ( nslvd < 1 ) return
 
     do m=1,nslvd
-       !n = map(m)
-       !call pbuf_set_field(pbuf, pbf_idx, q(:,:,m), start=(/1,1,n/),kount=(/pcols,pver,1/))
        call pbuf_set_field(pbuf, pbf_idx, q(:,:,m), start=(/1,1,m/),kount=(/pcols,pver,1/))
     enddo
 
@@ -195,9 +189,7 @@ contains
     if ( nslvd < 1 ) return
 
     do m=1,nslvd
-       !n = map(m)
        call pbuf_get_field(pbuf, pbf_idx, tmpptr, start=(/1,1,m/), kount=(/ pcols,pver,1 /))
-       !q(:ncol,:,n) = tmpptr(:ncol,:)
        q(:ncol,:,m) = tmpptr(:ncol,:)
     enddo
 
