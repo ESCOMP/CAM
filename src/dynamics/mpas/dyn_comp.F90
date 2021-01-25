@@ -334,13 +334,14 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    character(len=*), parameter :: subname = 'dyn_comp::dyn_init'
    ! variables for initializing energy and axial angular momentum diagnostics
-   character (len = 3), dimension(5) :: stage = (/"dED","dBD","dBF","dDP","dPD"/)
-   character (len = 70),dimension(5) :: stage_txt = (/&
-      " beginning dynamics                                 ",&  !dED beginning_of_timestep - MPAS state
-      " after physics update                               ",&  !dBD after_physics_update  - MPAS state
-      " end of time-step                                   ",&  !dBF end_of_timestep       - MPAS state
-      " dynamics state before physics                      ",&  !dDP before physics        - MPAS hydro state
-      " dynamics state with physics increment              " &  !dDP adding physics increment to dynamics state - MPAS hydro state
+   character (len = 3), dimension(6) :: stage = (/"dED","dBD","dBF","dDP","dDM","dPD"/)
+   character (len = 70),dimension(6) :: stage_txt = (/&
+      " beginning dynamics                                 ",&  
+      " after physics update                               ",&  
+      " end of time-step                                   ",&  
+      " dynamics state before physics                      ",&  
+      " dynamics state with T,u,V increment but not q      ",&  
+      " dynamics state with full physics increment         " &  
       /)
 
    character (len = 2)  , dimension(8) :: vars  = (/"WV"  ,"WL"  ,"WI"  ,"SE"   ,"KE"   ,"MR"   ,"MO"   ,"TT"   /)
