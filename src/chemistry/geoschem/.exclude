@@ -5,14 +5,16 @@ tpcore_fvdas_mod.F90
 flexgrid_read_mod.F90
 get_met_mod.F90
 planeflight_mod.F90
-diag51_mod.F90
 diag1.F90
 diag03_mod.F90
 diag3.F90
+diag51_mod.F90
 diag51b_mod.F90
 diag53_mod.F90
 emissions_mod.F90
 gamap_mod.F90
+gosat_ch4_mod.F90
+tccon_ch4_mod.F90
 initialize.F90
 cleanup.F90
 main.F90
