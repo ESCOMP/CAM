@@ -1005,7 +1005,7 @@ contains
     INTEGER                :: LCHNK(BEGCHUNK:ENDCHUNK), NCOL(BEGCHUNK:ENDCHUNK)
     INTEGER                :: IWAIT, IERR
     INTEGER                :: nX, nY, nZ
-    INTEGER                :: nStrat
+    INTEGER                :: nStrat, nTrop
     INTEGER                :: I, J, L, N, M
     INTEGER                :: RC
     INTEGER                :: nLinoz
@@ -1090,6 +1090,12 @@ contains
        CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
+    ! Find maximum tropopause level, set at 40 hPa (based on GEOS-Chem 72 and 47
+    ! layer grids)
+    nTrop = nZ
+    DO WHILE ( hyam(nZ+1-nTrop) * ps0 < 4000.0 )
+       nTrop = nTrop-1
+    ENDDO
     ! Find stratopause level, defined at 1 hPa
     nStrat = nZ
     DO WHILE ( hyam(nZ+1-nStrat) * ps0 < 100.0 )
@@ -1168,14 +1174,13 @@ contains
     ENDIF
 
     ! Define more variables for maxGrid
-    maxGrid%MaxTropLev  = nZ
+    maxGrid%MaxTropLev  = nTrop
     maxGrid%MaxStratLev = nStrat
     IF ( Input_Opt%LUCX ) THEN
        maxGrid%MaxChemLev = maxGrid%MaxStratLev
     ELSE
        maxGrid%MaxChemLev = maxGrid%MaxTropLev
     ENDIF
-
 
     DO I = BEGCHUNK, ENDCHUNK
 
@@ -1204,7 +1209,7 @@ contains
        ENDIF
 
        ! Define more variables for State_Grid
-       State_Grid(I)%MaxTropLev  = nZ
+       State_Grid(I)%MaxTropLev  = nTrop
        State_Grid(I)%MaxStratLev = nStrat
 
        ! Set maximum number of levels in the chemistry grid
@@ -1247,7 +1252,7 @@ contains
                             Input_Opt%Linoz_NLat,        &
                             Input_Opt%Linoz_NMonths,     &
                             Input_Opt%Linoz_NFields  ), STAT=IERR)
-       IF (IERR.NE.0) CALL ENDRUN('Failure while allocating linozData')
+       IF (IERR .NE. 0) CALL ENDRUN('Failure while allocating linozData')
        linozData = 0.0e+0_r8
 
        IF ( MasterProc ) THEN
@@ -1865,6 +1870,9 @@ contains
     use State_Diag_Mod,      only : get_TagInfo
     use Unitconv_Mod,        only : Convert_Spc_Units
 
+    use Strat_Chem_Mod,      only : Strat_TrID_GC, GC_Bry_TrID, NSCHEM
+    use Strat_Chem_Mod,      only : BrPtrDay, BrPtrNight, PLVEC, STRAT_OH 
+
     use CESMGC_Emissions_Mod,only : CESMGC_Emissions_Calc
     use CESMGC_Diag_Mod,     only : CESMGC_Diag_Calc
     use CESMGC_Diag_Mod,     only : wetdep_name, wtrate_name
@@ -2001,31 +2009,31 @@ contains
     REAL(r8)      :: Calday
 
     CHARACTER(LEN=255)     :: SpcName
+    CHARACTER(LEN=255)     :: Prefix, FieldName
+    LOGICAL                :: FND
     INTEGER                :: SpcId
     TYPE(Species), POINTER :: SpcInfo
 
     CHARACTER(LEN=63)      :: OrigUnit
 
-    REAL(r8)           :: SlsData(PCOLS, PVER, nSls)
+    REAL(r8)               :: SlsData(PCOLS, PVER, nSls)
 
-    INTEGER            :: currYr, currMo, currDy, currTOD
-    INTEGER            :: currYMD, currHMS, currHr, currMn, currSc
-    REAL(f4)           :: currUTC
-    LOGICAL            :: firstDay = .True.
-    LOGICAL            :: newDay   = .False.
-    LOGICAL            :: newMonth = .False.
+    INTEGER                :: currYr, currMo, currDy, currTOD
+    INTEGER                :: currYMD, currHMS, currHr, currMn, currSc
+    REAL(f4)               :: currUTC
 
     TYPE(physics_buffer_desc), POINTER :: pbuf_chnk(:) ! slice of pbuf in chnk
-    REAL(r8), POINTER     :: pbuf_ik(:,:)          ! ptr to pbuf data (/pcols,pver/)
-    INTEGER               :: tmpIdx                ! pbuf field id
-    CHARACTER(LEN=255)    :: fldname_ns            ! field name
+    REAL(r8), POINTER      :: pbuf_ik(:,:)          ! ptr to pbuf data (/pcols,pver/)
+    INTEGER                :: tmpIdx                ! pbuf field id
+    CHARACTER(LEN=255)     :: fldname_ns            ! field name
 
-    INTEGER            :: TIM_NDX
+    INTEGER                :: TIM_NDX
+    INTEGER                :: IERR
 
-    INTEGER, SAVE      :: iStep = 0
-    LOGICAL            :: rootChunk
-    LOGICAL            :: lastChunk
-    INTEGER            :: RC
+    INTEGER, SAVE          :: iStep = 0
+    LOGICAL                :: rootChunk
+    LOGICAL                :: lastChunk
+    INTEGER                :: RC
 
 
     ! Initialize pointers
@@ -2053,7 +2061,7 @@ contains
     lastChunk = ( MasterProc .and. (LCHNK==ENDCHUNK) )
 
     ! Count the number of steps which have passed
-    IF (LCHNK.EQ.BEGCHUNK) iStep = iStep + 1
+    IF ( LCHNK .EQ. BEGCHUNK ) iStep = iStep + 1
 
     ! Need to update the timesteps throughout the code
     CALL GC_Update_Timesteps(dT)
@@ -2228,8 +2236,6 @@ contains
                         day = currDy,  &
                         tod = currTOD )
 
-    ! For now, force year to be 2000
-    currYr  = 2000
     currYMD = (currYr*1000) + (currMo*100) + (currDy)
     ! Deal with subdaily
     currUTC = REAL(currTOD,f4)/3600.0e+0_f4
@@ -2246,22 +2252,6 @@ contains
     ENDDO
     currSc  = currTOD
     currHMS = (currHr*1000) + (currMn*100) + (currSc)
-
-    IF ( firstDay ) THEN
-       newDay   = .True.
-       newMonth = .True.
-       firstDay = .False.
-    ELSE IF ( currHMS < dT ) THEN
-       newDay = .True.
-       IF ( currDy == 1 ) THEN
-          newMonth = .True.
-       ELSE
-          newMonth = .False.
-       ENDIF
-    ELSE
-       newDay   = .False.
-       newMonth = .False.
-    ENDIF
 
     ! Calculate COS(SZA)
     Calday = Get_Curr_Calday( INT(dT/2) )
@@ -3059,58 +3049,172 @@ contains
     ! Dimensions : nX, nY
     State_Met(LCHNK)%TO3       (1,:nY) = O3col(:nY)
 
-    !----------------------------------------------------------
-    ! %%% GET SOME NON-EMISSIONS DATA FIELDS VIA HEMCO %%%
-    !
-    ! HEMCO can track non-emission data fields for chemistry
-    ! simulations.  Put these subroutine calls after the
-    ! call to EMISSIONS_RUN, so that the HEMCO data structure
-    ! will be initialized. (bmy, 3/20/15)
-    !
-    ! HEMCO data list is now updated further above, so can
-    ! take these calls out of the emissions sequence.
-    ! (ckeller, 4/01/15)
-    !----------------------------------------------------------
-    !IF ( Input_Opt%LCHEM .and. newMonth ) THEN
-    !
-    !   ! The following only apply when photolysis is used,
-    !   ! that is for fullchem or aerosol simulations.
-    !   IF ( Input_Opt%Its_A_Fullchem_Sim  .or. Input_Opt%Its_An_Aerosol_Sim ) THEN
-    !
-    !      IF ( Input_Opt%USE_TOMS_O3 ) THEN
-    !         ! Get TOMS overhead O3 columns for photolysis from
-    !         ! the HEMCO data structure (bmy, 3/20/15)
-    !         CALL Read_TOMS( Input_Opt = Input_Opt,  &
-    !                         RC        = RC         )
-    !
-    !         ! Trap potential errors
-    !         IF ( RC /= GC_SUCCESS ) THEN
-    !            ErrMsg = 'Error encountered in "Read_TOMS"!'
-    !            CALL Error_Stop( ErrMsg, ThisLoc )
-    !         ENDIF
-    !      ENDIF
-    !
-    !   ENDIF
-    !
-    !   ! Read data required for Hg2 gas-particle partitioning
-    !   ! (H Amos, 25 Oct 2011)
-    !   IF ( ITS_A_MERCURY_SIM ) THEN
-    !      CALL Read_Hg2_Partitioning( Input_Opt  = Input_Opt,         &
-    !                                  State_Grid = State_Grid(LCHNK), &
-    !                                  State_Met  = State_Met(LCHNK),  &
-    !                                  MONTH      = 1,                 & !TMMF
-    !                                  RC         = RC                )
-    !
-    !      ! Trap potential errors
-    !      IF ( RC /= GC_SUCCESS ) THEN
-    !         ErrMsg =
-    !            'Error encountered in "Read_Hg2_Partitioning"!'
-    !         CALL Error_Stop( ErrMsg, ThisLoc )
-    !      ENDIF
-    !
-    !   ENDIF
-    !ENDIF
+    IF ( Input_Opt%LSCHEM .AND. &
+         State_Grid(LCHNK)%MaxChemLev /= State_Grid(LCHNK)%nZ ) THEN
+       IF ( iStep == 1 ) THEN
+          ALLOCATE( BrPtrDay  ( 6 ), STAT=IERR )
+          IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating BrPtrDay')
+          ALLOCATE( BrPtrNight( 6 ), STAT=IERR )
+          IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating BrPtrNight')
+          DO N = 1, 6
+             ! Skip if species is not defined
+             IF ( GC_Bry_TrID(N) <= 0 ) CYCLE
 
+             ! Get Bry name
+             SpcName = State_Chm(LCHNK)%SpcData(GC_Bry_TrID(N))%Info%Name
+
+             ! Construct field name using Bry name
+             PREFIX = 'GEOSCCM_'//TRIM(SpcName)
+
+             ALLOCATE( BrPtrDay(N)%MR(1,PCOLS,nZ), STAT=IERR )
+             IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating BrPtrDay%MR')
+             ALLOCATE( BrPtrNight(N)%MR(1,PCOLS,nZ), STAT=IERR )
+             IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating BrPtrNight%MR')
+
+             ! Get pointer to this field. These are the mixing ratios (pptv).
+
+             ! Day
+             FIELDNAME = TRIM(PREFIX) // '_DAY'
+             fldname_ns = FIELDNAME
+             tmpIdx = pbuf_get_index(fldname_ns, RC)
+             IF ( tmpIdx < 0 .or. ( iStep == 1 ) ) THEN
+                IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(fldname_ns)
+                BrPtrDay(N)%MR(1,:nY,nZ:1:-1) = 0.0e+0_f4
+             ELSE
+                pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
+                CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_ik)
+                BrPtrDay(N)%MR(1,:nY,nZ:1:-1) = REAL(pbuf_ik(:nY,:nZ), f4)
+                pbuf_chnk => NULL()
+                pbuf_ik   => NULL()
+             ENDIF
+             !CALL HCO_GetPtr( HcoState, FIELDNAME, BrPtrDay(N)%MR, RC )
+
+             ! Night
+             FIELDNAME = TRIM(PREFIX) // '_NIGHT'
+             tmpIdx = pbuf_get_index(fldname_ns, RC)
+             IF ( tmpIdx < 0 .or. ( iStep == 1 ) ) THEN
+                IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(fldname_ns)
+                BrPtrDay(N)%MR(1,:nY,nZ:1:-1) = 0.0e+0_f4
+             ELSE
+                pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
+                CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_ik)
+                BrPtrNight(N)%MR(1,:nY,nZ:1:-1) = REAL(pbuf_ik(:nY,:nZ), f4)
+                pbuf_chnk => NULL()
+                pbuf_ik   => NULL()
+             ENDIF
+             !CALL HCO_GetPtr( HcoState, FIELDNAME, BrPtrNight(N)%MR, RC )
+
+          ENDDO
+
+          DO N = 1,NSCHEM
+
+             ! Get GEOS-Chem species index
+             M = Strat_TrID_GC(N)
+
+             ! Skip if species is not defined
+             IF ( M <= 0 ) CYCLE
+
+             ! Get species name
+             SpcName = State_Chm(LCHNK)%SpcData(M)%Info%Name
+
+             ! ---------------------------------------------------------------
+             ! Get pointers to fields
+             ! ---------------------------------------------------------------
+
+             ! Production rates [v/v/s]
+             IF ( Input_Opt%LUCX ) THEN
+                FIELDNAME = 'GMI_PROD_'//TRIM(SpcName)
+             ELSE
+                FIELDNAME = 'UCX_PROD_'//TRIM(SpcName)
+             ENDIF
+
+             ALLOCATE( PLVEC(N)%PROD(1,PCOLS,nZ), STAT=IERR )
+             IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating PLVEC%PROD')
+             ALLOCATE( PLVEC(N)%LOSS(1,PCOLS,nZ), STAT=IERR )
+             IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating PLVEC%PROD')
+
+             ! Get pointer from HEMCO
+             tmpIdx = pbuf_get_index(fldname_ns, RC)
+             IF ( tmpIdx < 0 .or. ( iStep == 1 ) ) THEN
+                IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(fldname_ns)
+                PLVEC(N)%PROD(1,:nY,nZ:1:-1) = 0.0e+0_f4
+                FND = .False.
+             ELSE
+                pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
+                CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_ik)
+                PLVEC(N)%PROD(1,:nY,nZ:1:-1) = REAL(pbuf_ik(:nY,:nZ),f4)
+                FND = .True.
+                pbuf_chnk => NULL()
+                pbuf_ik   => NULL()
+             ENDIF
+             !CALL HCO_GetPtr( HcoState, FIELDNAME, PLVEC(N)%PROD, RC, FOUND=FND )
+
+             ! Warning message
+             IF ( .NOT. FND .AND. Input_Opt%amIRoot ) THEN
+                ErrMsg = 'Cannot find archived production rates for '       // &
+                          TRIM(SpcName) // ' - will use value of 0.0. '        // &
+                         'To use archived rates, add the following field '      // &
+                         'to the HEMCO configuration file: '// TRIM( FIELDNAME )
+                CALL GC_Warning( ErrMsg, RC, ThisLoc )
+             ENDIF
+
+             ! Loss frequency [s-1]
+             IF ( Input_Opt%LUCX ) THEN
+                FIELDNAME = 'GMI_LOSS_'//TRIM(SpcName)
+             ELSE
+                FIELDNAME = 'UCX_LOSS_'//TRIM(SpcName)
+             ENDIF
+
+             ! Get pointer from HEMCO
+             tmpIdx = pbuf_get_index(fldname_ns, RC)
+             IF ( tmpIdx < 0 .or. ( iStep == 1 ) ) THEN
+                IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(fldname_ns)
+                PLVEC(N)%LOSS(1,:nY,nZ:1:-1) = 0.0e+0_f4
+                FND = .False.
+             ELSE
+                pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
+                CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_ik)
+                PLVEC(N)%LOSS(1,:nY,nZ:1:-1) = REAL(pbuf_ik(:nY,:nZ), f4)
+                FND = .True.
+                pbuf_chnk => NULL()
+                pbuf_ik   => NULL()
+             ENDIF
+             !CALL HCO_GetPtr( HcoState, FIELDNAME, PLVEC(N)%LOSS, RC, FOUND=FND )
+
+             ! Warning message
+             IF ( .NOT. FND .AND. Input_Opt%amIRoot ) THEN
+                ErrMsg= 'Cannot find archived loss frequencies for '        // &
+                        TRIM(SpcName) // ' - will use value of 0.0. '          // &
+                        'To use archived rates, add the following field '       // &
+                        'to the HEMCO configuration file: '//TRIM(FIELDNAME)
+                CALL GC_Warning( ErrMsg, RC, ThisLoc )
+             ENDIF
+
+          ENDDO !N
+
+          ! Get pointer to STRAT_OH
+
+          ALLOCATE( STRAT_OH(1,PCOLS,nZ), STAT=IERR )
+          IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating STRAT_OH')
+
+          tmpIdx = pbuf_get_index(fldname_ns, RC)
+          IF ( tmpIdx < 0 .or. ( iStep == 1 ) ) THEN
+             IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(fldname_ns)
+             STRAT_OH(1,:nY,nZ:1:-1) = 0.0e+0_f4
+          ELSE
+             pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
+             CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_ik)
+             STRAT_OH(1,:nY,nZ:1:-1) = REAL(pbuf_ik(:nY,:nZ), f4)
+             pbuf_chnk => NULL()
+             pbuf_ik   => NULL()
+          ENDIF
+          !CALL HCO_GetPtr( HcoState, 'STRAT_OH', STRAT_OH,  RC, FOUND=FND )
+       ENDIF
+
+    ENDIF
+
+    ! This is not necessary as we prescribe CH4 surface mixing ratios
+    ! through CAM.
     !! Prescribe methane surface concentrations throughout PBL
     !IF ( ITS_A_FULLCHEM_SIM .and. id_CH4 > 0 ) THEN
     !
