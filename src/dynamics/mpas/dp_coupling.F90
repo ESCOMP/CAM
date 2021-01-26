@@ -584,7 +584,8 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, qv_tend, dy
      ! Compute q not updated by physics
      !
      qk = tracers(index_qv,:,1:nCellsSolve)-dtime*qv_tend(:,1:nCellsSolve)
-     call tot_energy(nCellsSolve, plev, zz, zint, rho_zz, theta_m, qk,ux,uy,'dDP')
+     call tot_energy(nCellsSolve, plev, zz, zint, rho_zz, theta_m, qk,&
+          ux(:,1:nCellsSolve),uy(:,1:nCellsSolve),'dDP')
      !************************************************************************************
      !
      ! total energy without water vapor update (for computing pressure work / DME_adjust)
@@ -601,9 +602,9 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, qv_tend, dy
      !
      theta_m_new = theta_m(:,1:nCellsSolve)+dtime*rtheta_tmp/rho_zz(:,1:nCellsSolve) 
      call tot_energy( &
-          nCellsSolve, plev, zz, zint, rho_zz, theta_m_new, qk,                      &
-          ux(:,1:nCellsSolve)+u_tend(:,1:nCellsSolve)/rho_zz(:,1:nCellsSolve),       &
-          uy(:,1:nCellsSolve)+v_tend(:,1:nCellsSolve)/rho_zz(:,1:nCellsSolve),'dDM')
+          nCellsSolve, plev, zz, zint, rho_zz, theta_m_new, qk,                            &
+          ux(:,1:nCellsSolve)+dtime*u_tend(:,1:nCellsSolve)/rho_zz(:,1:nCellsSolve),       &
+          uy(:,1:nCellsSolve)+dtime*v_tend(:,1:nCellsSolve)/rho_zz(:,1:nCellsSolve),'dDM')
      !************************************************************************************
      !
      ! compute theta_m updated by physics
@@ -615,9 +616,9 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, qv_tend, dy
      theta_m_new = theta_m(:,1:nCellsSolve)+dtime*rtheta_tend(:,1:nCellsSolve)/rho_zz(:,1:nCellsSolve) 
      call tot_energy( &
           nCellsSolve, plev, zz, zint, rho_zz, theta_m_new,  &
-          tracers(index_qv,:,1:nCellsSolve),                                         &
-          ux(:,1:nCellsSolve)+u_tend(:,1:nCellsSolve)/rho_zz(:,1:nCellsSolve),       &
-          uy(:,1:nCellsSolve)+v_tend(:,1:nCellsSolve)/rho_zz(:,1:nCellsSolve),'dPD')
+          tracers(index_qv,:,1:nCellsSolve),                                               &
+          ux(:,1:nCellsSolve)+dtime*u_tend(:,1:nCellsSolve)/rho_zz(:,1:nCellsSolve),       &
+          uy(:,1:nCellsSolve)+dtime*v_tend(:,1:nCellsSolve)/rho_zz(:,1:nCellsSolve),'dPD')
    end if
 end subroutine derived_tend
 
