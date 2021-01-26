@@ -33,7 +33,6 @@ module atm_comp_nuopc
   use atm_import_export   , only : import_fields, export_fields
   use nuopc_shr_methods   , only : chkerr, state_setscalar, state_getscalar, state_diagnose, alarmInit
   use nuopc_shr_methods   , only : set_component_logging, get_component_instance, log_clock_advance
-  use ioFileMod
   use perf_mod            , only : t_startf, t_stopf
   use ppgrid              , only : pcols, begchunk, endchunk
   use dyn_grid            , only : get_horiz_grid_dim_d
@@ -51,6 +50,7 @@ module atm_comp_nuopc
   use pio                 , only : pio_read_darray, pio_write_darray
   use pio                 , only : pio_noerr, pio_bcast_error, pio_internal_error, pio_seterrorhandling
   use pio                 , only : pio_def_var, pio_get_var, pio_put_var, PIO_INT
+  use ioFileMod
 !$use omp_lib             , only : omp_set_num_threads
 
   implicit none
