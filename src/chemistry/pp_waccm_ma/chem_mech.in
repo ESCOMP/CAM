@@ -1,19 +1,16 @@
 * Comments
-* User-given Tag Description: WACCMX_MA_1
-* Tag database identifier : MZ236_WACCMX_MA_20181001
-* Tag created by : ajc
-* Tag created from branch : WACCMX-MA
-* Tag created on : 2018-10-01 13:28:14.849463-06
+* User-given Tag Description: WACCM_MA
+* Tag database identifier : MZ282_MA_20210122
+* Tag created by : lke
+* Tag created from branch : MA
+* Tag created on : 2021-01-22 15:26:54.35253-07
 * Comments for this tag follow:
-*     ajc : 2018-10-01 : Update reaction rates to jpl15
-*     Remove H1202
-*     CO2 explicit solve
-*     O1D_N2 cph update
-*     Update Machine Specifications
+*     lke : 2021-01-22 : Middle Atmosphere mechanism for WACCM, no aerosols, with BR, CL transported
 
       SPECIES
 
       Solution
+ BR -> Br,
  BRCL -> BrCl,
  BRO -> BrO,
  BRONO2 -> BrONO2,
@@ -35,6 +32,7 @@
  CH3OOH,
  CH4,
  CHBR3 -> CHBr3,
+ CL -> Cl,
  CL2 -> Cl2,
  CL2O2 -> Cl2O2,
  CLO -> ClO,
@@ -56,7 +54,6 @@
  HCL -> HCl,
  HF,
  HNO3,
- HO2,
  HO2NO2,
  HOBR -> HOBr,
  HOCL -> HOCl,
@@ -71,9 +68,8 @@
  O3,
  OCLO -> OClO,
  SF6,
- BR -> Br,
- CL -> Cl,
  e -> E,
+ HO2,
  N2D -> N,
  N2p -> N2,
  NOp -> NO,
@@ -101,9 +97,8 @@
       End Col-int
 
       Not-Transported
- BR,
- CL,
  e,
+ HO2,
  N2D,
  N2p,
  NOp,
@@ -149,12 +144,14 @@
       End Explicit
 
       Implicit
+ BR
  BRCL
  BRO
  BRONO2
  CH2O
  CH3O2
  CH3OOH
+ CL
  CL2
  CL2O2
  CLO
@@ -170,7 +167,6 @@
  HCL
  HF
  HNO3
- HO2
  HO2NO2
  HOBR
  HOCL
@@ -183,9 +179,8 @@
  O2
  O3
  OCLO
- BR
- CL
  e
+ HO2
  N2D
  N2p
  NOp
@@ -536,6 +531,7 @@
 [ion_O2p_NO,cph=271.38] O2p + NO  -> NOp + O2                                   ; 4.4e-10 
 [ion_Op_CO2]           Op + CO2  -> O2p + CO                                    ; 9e-10 
 [ion_Op_N2,cph=105.04] Op + N2  -> NOp + N                                       
+[ion_Op_N2D,cph=139.9] Op + N2D  -> Np + O                                      ; 1.3e-10 
 [ion_Op_O2,cph=150.11] Op + O2  -> O2p + O                                       
 [Op2D_e,cph=319.37]    Op2D + e  -> Op + e                                       
 [Op2D_N2,cph=128.32]   Op2D + N2  -> N2p + O                                    ; 8e-10 
