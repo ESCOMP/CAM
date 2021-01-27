@@ -48,16 +48,14 @@ module atm_import_export
   type (fldlist_type) , public, protected :: fldsFrAtm(fldsMax)
 
   ! area correction factors for fluxes send and received from mediator
-  real(r8), allocatable :: model2med_areacor(:)
-  real(r8), allocatable :: med2model_areacor(:)
+  real(r8), allocatable :: mod2med_areacor(:)
+  real(r8), allocatable :: med2mod_areacor(:)
 
   character(len=cx)      :: carma_fields     ! list of CARMA fields from lnd->atm
   integer                :: drydep_nflds     ! number of dry deposition velocity fields lnd-> atm
   integer                :: megan_nflds      ! number of MEGAN voc fields from lnd-> atm
   integer                :: emis_nflds       ! number of fire emission fields from lnd-> atm
   integer, public        :: ndep_nflds       ! number  of nitrogen deposition fields from atm->lnd/ocn
-  integer, parameter     :: debug_import = 0 ! internal debug level
-  integer, parameter     :: debug_export = 0 ! internal debug level
   character(*),parameter :: F01 = "('(cam_import_export) ',a,i8,2x,i8,2x,d21.14)"
   character(*),parameter :: F02 = "('(cam_import_export) ',a,i8,2x,i8,2x,i8,2x,d21.14)"
   character(*),parameter :: u_FILE_u = &
@@ -357,13 +355,13 @@ contains
     deallocate(area)
 
     ! Determine flux correction factors (module variables)
-    allocate (model2med_areacor(numOwnedElements))
-    allocate (med2model_areacor(numOwnedElements))
+    allocate (mod2med_areacor(numOwnedElements))
+    allocate (med2mod_areacor(numOwnedElements))
     do n = 1,numOwnedElements
-       model2med_areacor(n) = model_areas(n) / mesh_areas(n)
-       med2model_areacor(n) = 1._r8 / model2med_areacor(n)
-       ! write(6,'(a,i8,2x,3(d13.5,2x))')' DEBUG cam: n,model_area, mesh_area, model2med, med2model= ',&
-       !      n,model_areas(n),mesh_areas(n),model2med_areacor(n),med2model_areacor(n) 
+       mod2med_areacor(n) = model_areas(n) / mesh_areas(n)
+       med2mod_areacor(n) = 1._r8 / mod2med_areacor(n)
+       ! write(6,'(a,i8,2x,3(d13.5,2x))')' DEBUG cam: n,model_area, mesh_area, mod2med, med2mod= ',&
+       !      n,model_areas(n),mesh_areas(n),mod2med_areacor(n),med2mod_areacor(n) 
     end do
     deallocate(model_areas)
     deallocate(mesh_areas)
@@ -460,10 +458,10 @@ contains
        g = 1
        do c = begchunk,endchunk
           do i = 1,get_ncols_p(c)
-             cam_in(c)%wsx(i)    = -fldptr_taux(g) * med2model_areacor(g)
-             cam_in(c)%wsy(i)    = -fldptr_tauy(g) * med2model_areacor(g)
-             cam_in(c)%shf(i)    = -fldptr_sen(g)  * med2model_areacor(g)
-             cam_in(c)%cflx(i,1) = -fldptr_evap(g) * med2model_areacor(g)
+             cam_in(c)%wsx(i)    = -fldptr_taux(g) * med2mod_areacor(g)
+             cam_in(c)%wsy(i)    = -fldptr_tauy(g) * med2mod_areacor(g)
+             cam_in(c)%shf(i)    = -fldptr_sen(g)  * med2mod_areacor(g)
+             cam_in(c)%cflx(i,1) = -fldptr_evap(g) * med2mod_areacor(g)
              g = g + 1
           end do
        end do
@@ -506,8 +504,8 @@ contains
     g = 1
     do c = begchunk,endchunk
        do i = 1,get_ncols_p(c)
-          cam_in(c)%lhf(i)       = -fldptr_lat(g)  * med2model_areacor(g)
-          cam_in(c)%lwup(i)      = -fldptr_lwup(g) * med2model_areacor(g)
+          cam_in(c)%lhf(i)       = -fldptr_lat(g)  * med2mod_areacor(g)
+          cam_in(c)%lwup(i)      = -fldptr_lwup(g) * med2mod_areacor(g)
           cam_in(c)%asdir(i)     =  fldptr_avsdr(g)
           cam_in(c)%aldir(i)     =  fldptr_anidr(g)
           cam_in(c)%asdif(i)     =  fldptr_avsdf(g)
@@ -580,7 +578,7 @@ contains
           if ( associated(cam_in(c)%dstflx) ) then
              do i = 1,get_ncols_p(c)
                 do n = 1, size(fldptr2d, dim=1)
-                   cam_in(c)%dstflx(i,n) = fldptr2d(n,g) * med2model_areacor(g)
+                   cam_in(c)%dstflx(i,n) = fldptr2d(n,g) * med2mod_areacor(g)
                 end do
                 g = g + 1
              end do
@@ -597,7 +595,7 @@ contains
           if ( associated(cam_in(c)%meganflx) ) then
              do i = 1,get_ncols_p(c)
                 do n = 1, size(fldptr2d, dim=1)
-                   cam_in(c)%meganflx(i,n) = fldptr2d(n,g) * med2model_areacor(g)
+                   cam_in(c)%meganflx(i,n) = fldptr2d(n,g) * med2mod_areacor(g)
                 end do
                 g = g + 1
              end do
@@ -614,7 +612,7 @@ contains
           if ( associated(cam_in(c)%fireflx) .and. associated(cam_in(c)%fireztop) ) then
              do i = 1,get_ncols_p(c)
                 do n = 1, size(fldptr2d, dim=1)
-                   cam_in(c)%fireflx(i,n) = fldptr2d(n,g) * med2model_areacor(g)
+                   cam_in(c)%fireflx(i,n) = fldptr2d(n,g) * med2mod_areacor(g)
                 end do
                 g = g + 1
              end do
@@ -689,7 +687,7 @@ contains
        g = 1
        do c = begchunk,endchunk
           do i = 1,get_ncols_p(c)
-             cam_in(c)%fco2_lnd(i) = -fldptr1d(g) * med2model_areacor(g)
+             cam_in(c)%fco2_lnd(i) = -fldptr1d(g) * med2mod_areacor(g)
              g = g + 1
           end do
        end do
@@ -700,7 +698,7 @@ contains
        g = 1
        do c = begchunk,endchunk
           do i = 1,get_ncols_p(c)
-             cam_in(c)%fco2_ocn(i) = -fldptr1d(g) * med2model_areacor(g)
+             cam_in(c)%fco2_ocn(i) = -fldptr1d(g) * med2mod_areacor(g)
              g = g + 1
           end do
        end do
@@ -715,7 +713,7 @@ contains
        g = 1
        do c = begchunk,endchunk
           do i = 1,get_ncols_p(c)
-             cam_in(c)%fdms(i) = -fldptr1d(g) * med2model_areacor(g)
+             cam_in(c)%fdms(i) = -fldptr1d(g) * med2mod_areacor(g)
              g = g + 1
           end do
        end do
@@ -786,40 +784,6 @@ contains
           end do
        end if
        first_time = .false.
-    end if
-
-    !-----------------------------------------------------------------
-    ! Debug import
-    !-----------------------------------------------------------------
-
-    if (debug_import > 0 .and. masterproc .and. get_nstep()<5) then
-       nstep = get_nstep()
-       g=1
-       do c=begchunk, endchunk
-          do i=1, get_ncols_p(c)
-             write(iulog,F01)'import: nstep, g, Faxx_tauy = ',nstep,g,-cam_in(c)%wsy(i)
-             write(iulog,F01)'import: nstep, g, Faxx_taux = ',nstep,g,-cam_in(c)%wsx(i)
-             write(iulog,F01)'import: nstep, g, Faxx_shf  = ',nstep,g,-cam_in(c)%shf(i)
-             write(iulog,F01)'import: nstep, g, Faxx_lhf  = ',nstep,g,-cam_in(c)%lhf(i)
-             write(iulog,F01)'import: nstep, g, Faxx_evap = ',nstep,g,-cam_in(c)%cflx(i,1)
-             write(iulog,F01)'import: nstep, g, Faxa_lwup = ',nstep,g,-cam_in(c)%lwup(i)
-             write(iulog,F01)'import: nstep, g, Sx_asdir  = ',nstep,g, cam_in(c)%asdir(i)
-             write(iulog,F01)'import: nstep, g, Sx_aldir  = ',nstep,g, cam_in(c)%aldir(i)
-             write(iulog,F01)'import: nstep, g, Sx_asdif  = ',nstep,g, cam_in(c)%asdif(i)
-             write(iulog,F01)'import: nstep, g, Sx_aldif  = ',nstep,g, cam_in(c)%aldif(i)
-             write(iulog,F01)'import: nstep, g, Sx_t      = ',nstep,g, cam_in(c)%ts(i)
-             write(iulog,F01)'import: nstep, g, So_t      = ',nstep,g, cam_in(c)%sst(i)
-             write(iulog,F01)'import: nstep, g, Sl_snowh  = ',nstep,g, cam_in(c)%snowhland(i)
-             write(iulog,F01)'import: nstep, g, Si_snowh  = ',nstep,g, cam_in(c)%snowhice(i)
-             write(iulog,F01)'import: nstep, g, Si_ifrac  = ',nstep,g, cam_in(c)%icefrac(i)
-             write(iulog,F01)'import: nstep, g, So_ofrac  = ',nstep,g, cam_in(c)%ocnfrac(i)
-             write(iulog,F01)'import: nstep, g, Sl_lfrac  = ',nstep,g, cam_in(c)%landfrac(i)
-             write(iulog,F01)'import: nstep, g, Sx_tref   = ',nstep,g, cam_in(c)%tref(i)
-             write(iulog,F01)'import: nstep, g, Sx_qref   = ',nstep,g, cam_in(c)%qref(i)
-             write(iulog,F01)'import: nstep, g, Sx_qu10   = ',nstep,g, cam_in(c)%u10(i)
-             g = g + 1
-          end do
-       end do
     end if
 
   end subroutine import_fields
@@ -918,7 +882,7 @@ contains
     end do
 
     ! required export flux variables
-    call state_getfldptr(exportState, 'Faxa_swnet', fldptr=fldptr_swnet,  rc=rc)
+    call state_getfldptr(exportState, 'Faxa_swnet', fldptr=fldptr_swnet, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     call state_getfldptr(exportState, 'Faxa_lwdn' , fldptr=fldptr_lwdn , rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
@@ -941,16 +905,16 @@ contains
     g = 1
     do c = begchunk,endchunk
        do i = 1,get_ncols_p(c)
-          fldptr_lwdn(g)  = cam_out(c)%flwds(i) * model2med_areacor(g)
-          fldptr_swnet(g) = cam_out(c)%netsw(i) * model2med_areacor(g)
-          fldptr_snowc(g) = cam_out(c)%precsc(i)*1000._r8 * model2med_areacor(g)
-          fldptr_snowl(g) = cam_out(c)%precsl(i)*1000._r8 * model2med_areacor(g)
-          fldptr_rainc(g) = (cam_out(c)%precc(i)-cam_out(c)%precsc(i))*1000._r8 * model2med_areacor(g)
-          fldptr_rainl(g) = (cam_out(c)%precl(i)-cam_out(c)%precsl(i))*1000._r8 * model2med_areacor(g)
-          fldptr_soll(g)  = cam_out(c)%soll(i) * model2med_areacor(g)
-          fldptr_sols(g)  = cam_out(c)%sols(i) * model2med_areacor(g)
-          fldptr_solld(g) = cam_out(c)%solld(i) * model2med_areacor(g)
-          fldptr_solsd(g) = cam_out(c)%solsd(i) * model2med_areacor(g)
+          fldptr_lwdn(g)  = cam_out(c)%flwds(i) * mod2med_areacor(g)
+          fldptr_swnet(g) = cam_out(c)%netsw(i) * mod2med_areacor(g)
+          fldptr_snowc(g) = cam_out(c)%precsc(i)*1000._r8 * mod2med_areacor(g)
+          fldptr_snowl(g) = cam_out(c)%precsl(i)*1000._r8 * mod2med_areacor(g)
+          fldptr_rainc(g) = (cam_out(c)%precc(i) - cam_out(c)%precsc(i))*1000._r8 * mod2med_areacor(g)
+          fldptr_rainl(g) = (cam_out(c)%precl(i) - cam_out(c)%precsl(i))*1000._r8 * mod2med_areacor(g)
+          fldptr_soll(g)  = cam_out(c)%soll(i)  * mod2med_areacor(g)
+          fldptr_sols(g)  = cam_out(c)%sols(i)  * mod2med_areacor(g)
+          fldptr_solld(g) = cam_out(c)%solld(i) * mod2med_areacor(g)
+          fldptr_solsd(g) = cam_out(c)%solsd(i) * mod2med_areacor(g)
           g = g + 1
        end do
     end do
@@ -969,20 +933,20 @@ contains
     g = 1
     do c = begchunk,endchunk
        do i = 1,get_ncols_p(c)
-          fldptr_bcph(1,g)   = cam_out(c)%bcphidry(i) * model2med_areacor(g)
-          fldptr_bcph(2,g)   = cam_out(c)%bcphodry(i) * model2med_areacor(g)
-          fldptr_bcph(3,g)   = cam_out(c)%bcphiwet(i) * model2med_areacor(g)
-          fldptr_ocph(1,g)   = cam_out(c)%ocphidry(i) * model2med_areacor(g)
-          fldptr_ocph(2,g)   = cam_out(c)%ocphodry(i) * model2med_areacor(g)
-          fldptr_ocph(3,g)   = cam_out(c)%ocphiwet(i) * model2med_areacor(g)
-          fldptr_dstdry(1,g) = cam_out(c)%dstdry1(i)  * model2med_areacor(g)
-          fldptr_dstdry(2,g) = cam_out(c)%dstdry2(i)  * model2med_areacor(g)
-          fldptr_dstdry(3,g) = cam_out(c)%dstdry3(i)  * model2med_areacor(g)
-          fldptr_dstdry(4,g) = cam_out(c)%dstdry4(i)  * model2med_areacor(g)
-          fldptr_dstwet(1,g) = cam_out(c)%dstwet1(i)  * model2med_areacor(g)
-          fldptr_dstwet(2,g) = cam_out(c)%dstwet2(i)  * model2med_areacor(g)
-          fldptr_dstwet(3,g) = cam_out(c)%dstwet3(i)  * model2med_areacor(g)
-          fldptr_dstwet(4,g) = cam_out(c)%dstwet4(i)  * model2med_areacor(g)
+          fldptr_bcph(1,g)   = cam_out(c)%bcphidry(i) * mod2med_areacor(g)
+          fldptr_bcph(2,g)   = cam_out(c)%bcphodry(i) * mod2med_areacor(g)
+          fldptr_bcph(3,g)   = cam_out(c)%bcphiwet(i) * mod2med_areacor(g)
+          fldptr_ocph(1,g)   = cam_out(c)%ocphidry(i) * mod2med_areacor(g)
+          fldptr_ocph(2,g)   = cam_out(c)%ocphodry(i) * mod2med_areacor(g)
+          fldptr_ocph(3,g)   = cam_out(c)%ocphiwet(i) * mod2med_areacor(g)
+          fldptr_dstdry(1,g) = cam_out(c)%dstdry1(i)  * mod2med_areacor(g)
+          fldptr_dstdry(2,g) = cam_out(c)%dstdry2(i)  * mod2med_areacor(g)
+          fldptr_dstdry(3,g) = cam_out(c)%dstdry3(i)  * mod2med_areacor(g)
+          fldptr_dstdry(4,g) = cam_out(c)%dstdry4(i)  * mod2med_areacor(g)
+          fldptr_dstwet(1,g) = cam_out(c)%dstwet1(i)  * mod2med_areacor(g)
+          fldptr_dstwet(2,g) = cam_out(c)%dstwet2(i)  * mod2med_areacor(g)
+          fldptr_dstwet(3,g) = cam_out(c)%dstwet3(i)  * mod2med_areacor(g)
+          fldptr_dstwet(4,g) = cam_out(c)%dstwet4(i)  * mod2med_areacor(g)
           g = g + 1
        end do
     end do
@@ -1018,57 +982,8 @@ contains
        g = 1
        do c = begchunk,endchunk
           do i = 1,get_ncols_p(c)
-             fldptr_ndep(1,g) = cam_out(c)%nhx_nitrogen_flx(i) * model2med_areacor(g)
-             fldptr_ndep(2,g) = cam_out(c)%noy_nitrogen_flx(i) * model2med_areacor(g)
-             g = g + 1
-          end do
-       end do
-    end if
-
-    !-----------------------------------------------------------------
-    ! Debug export
-    !-----------------------------------------------------------------
-
-    if (debug_export > 0 .and. masterproc .and. get_nstep()<5) then
-       nstep = get_nstep()
-       g=1
-       do c=begchunk, endchunk
-          do i=1, get_ncols_p(c)
-             write(iulog,F01)'export: nstep, g, Sa_z          = ',nstep,g,cam_out(c)%zbot(i)
-             write(iulog,F01)'export: nstep, g, Sa_topo       = ',nstep,g,cam_out(c)%topo(i)
-             write(iulog,F01)'export: nstep, g, Sa_u          = ',nstep,g,cam_out(c)%ubot(i)
-             write(iulog,F01)'export: nstep, g, Sa_v          = ',nstep,g,cam_out(c)%vbot(i)
-             write(iulog,F01)'export: nstep, g, Sa_tbot       = ',nstep,g,cam_out(c)%tbot(i)
-             write(iulog,F01)'export: nstep, g, Sa_ptem       = ',nstep,g,cam_out(c)%thbot(i)
-             write(iulog,F01)'export: nstep, g, Sa_pbot       = ',nstep,g,cam_out(c)%pbot(i)
-             write(iulog,F01)'export: nstep, g, Sa_shum       = ',nstep,g,cam_out(c)%qbot(i,1)
-             write(iulog,F01)'export: nstep, g, Sa_dens       = ',nstep,g,cam_out(c)%rho(i)
-             write(iulog,F01)'export: nstep, g, Faxa_swnet    = ',nstep,g,cam_out(c)%netsw(i)
-             write(iulog,F01)'export: nstep, g, Faxa_lwdn     = ',nstep,g,cam_out(c)%flwds(i)
-             write(iulog,F01)'export: nstep, g, Faxa_rainc    = ',nstep,g,(cam_out(c)%precc(i)-cam_out(c)%precsc(i))*1000._r8
-             write(iulog,F01)'export: nstep, g, Faxa_rainl    = ',nstep,g,(cam_out(c)%precl(i)-cam_out(c)%precsl(i))*1000._r8
-             write(iulog,F01)'export: nstep, g, Faxa_snowc    = ',nstep,g,cam_out(c)%precsc(i)*1000._r8
-             write(iulog,F01)'export: nstep, g, Faxa_snowl    = ',nstep,g,cam_out(c)%precsl(i)*1000._r8
-             write(iulog,F01)'export: nstep, g, Faxa_swndr    = ',nstep,g,cam_out(c)%soll(i)
-             write(iulog,F01)'export: nstep, g, Faxa_swvdr    = ',nstep,g,cam_out(c)%sols(i)
-             write(iulog,F01)'export: nstep, g, Faxa_swndf    = ',nstep,g,cam_out(c)%solld(i)
-             write(iulog,F01)'export: nstep, g, Faxa_swvdf    = ',nstep,g,cam_out(c)%solsd(i)
-             write(iulog,F01)'export: nstep, g, Faxa_bcphidry = ',nstep,g,cam_out(c)%bcphidry(i)
-             write(iulog,F01)'export: nstep, g, Faxa_bcphodry = ',nstep,g,cam_out(c)%bcphodry(i)
-             write(iulog,F01)'export: nstep, g, Faxa_bcphiwet = ',nstep,g,cam_out(c)%bcphiwet(i)
-             write(iulog,F01)'export: nstep, g, Faxa_ocphidry = ',nstep,g,cam_out(c)%ocphidry(i)
-             write(iulog,F01)'export: nstep, g, Faxa_ocphodry = ',nstep,g,cam_out(c)%ocphodry(i)
-             write(iulog,F01)'export: nstep, g, Faxa_ocphidry = ',nstep,g,cam_out(c)%ocphiwet(i)
-             write(iulog,F01)'export: nstep, g, Faxa_dstwet1  = ',nstep,g,cam_out(c)%dstwet1(i)
-             write(iulog,F01)'export: nstep, g, Faxa_dstwet1  = ',nstep,g,cam_out(c)%dstdry1(i)
-             write(iulog,F01)'export: nstep, g, Faxa_dstwet2  = ',nstep,g,cam_out(c)%dstwet2(i)
-             write(iulog,F01)'export: nstep, g, Faxa_dstwet2  = ',nstep,g,cam_out(c)%dstdry2(i)
-             write(iulog,F01)'export: nstep, g, Faxa_dstwet3  = ',nstep,g,cam_out(c)%dstwet3(i)
-             write(iulog,F01)'export: nstep, g, Faxa_dstwet3  = ',nstep,g,cam_out(c)%dstdry3(i)
-             write(iulog,F01)'export: nstep, g, Faxa_dstwet4  = ',nstep,g,cam_out(c)%dstwet4(i)
-             write(iulog,F01)'export: nstep, g, Faxa_dstwet4  = ',nstep,g,cam_out(c)%dstdry4(i)
-             write(iulog,F01)'export: nstep, g, Sa_co2prog    = ',nstep,g,cam_out(c)%co2prog(i)
-             write(iulog,F01)'export: nstep, g, Sa_co2diag    = ',nstep,g,cam_out(c)%co2diag(i)
+             fldptr_ndep(1,g) = cam_out(c)%nhx_nitrogen_flx(i) * mod2med_areacor(g)
+             fldptr_ndep(2,g) = cam_out(c)%noy_nitrogen_flx(i) * mod2med_areacor(g)
              g = g + 1
           end do
        end do
@@ -1249,37 +1164,27 @@ contains
     type(ESMF_Field)            :: lfield
     type(ESMF_Mesh)             :: lmesh
     integer                     :: nnodes, nelements
+    logical                     :: lexists 
     character(len=*), parameter :: subname='(atm_import_export:state_getfldptr)'
     ! ----------------------------------------------
 
     rc = ESMF_SUCCESS
 
+    lexists = .true.
+
     ! Determine if field with name fldname exists in state
-    call ESMF_StateGet(state, trim(fldname), itemFlag, rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
     if (present(exists)) then
-       ! if field exists then create output array - else do nothing
+       call ESMF_StateGet(state, trim(fldname), itemFlag, rc=rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
        if (itemflag == ESMF_STATEITEM_NOTFOUND) then
-          exists = .false.
-          RETURN
-       else
-          exists = .true.
+          lexists = .false.
        end if
-    else
-       if (itemflag == ESMF_STATEITEM_NOTFOUND) then
-          call shr_sys_abort('variable '//trim(fldname)//' must be present ')
-       end if
+       exists = lexists
     end if
 
-    call ESMF_StateGet(State, itemName=trim(fldname), field=lfield, rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    call ESMF_FieldGet(lfield, status=status, rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    if (status /= ESMF_FIELDSTATUS_COMPLETE) then
-       call ESMF_LogWrite(trim(subname)//": ERROR data not allocated ", ESMF_LOGMSG_INFO, rc=rc)
-       rc = ESMF_FAILURE
-       return
-    else
+    if (lexists) then
+       call ESMF_StateGet(State, itemName=trim(fldname), field=lfield, rc=rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
        if (present(fldptr)) then
           call ESMF_FieldGet(lfield, farrayPtr=fldptr, rc=rc)
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
@@ -1287,7 +1192,7 @@ contains
           call ESMF_FieldGet(lfield, farrayPtr=fldptr2d, rc=rc)
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
        end if
-    endif  ! status
+    end if
 
   end subroutine state_getfldptr
 
