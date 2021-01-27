@@ -6,7 +6,8 @@ use shr_kind_mod,     only: r8=>shr_kind_r8
 use spmd_utils,       only: masterproc
 use ppgrid,           only: pcols
 use physconst,        only: rair
-use wv_saturation,    only: qsat_water, svp_water, svp_ice
+use wv_saturation,    only: qsat_water, svp_water, svp_ice, &
+                            svp_water_vect, svp_ice_vect
 use cam_logfile,      only: iulog
 use cam_abortutils,   only: endrun
 
@@ -951,8 +952,8 @@ subroutine aist_vector(qv_in, T_in, p_in, qi_in, ni_in, landfrac_in, snowh_in, a
    real(r8) ttmp                            ! Limited temperature
    real(r8) icicval                         ! Empirical IWC value [ kg/kg ]
    real(r8) rho                             ! Local air density
-   real(r8) esl                             ! Liq sat vapor pressure
-   real(r8) esi                             ! Ice sat vapor pressure
+   real(r8) esl(pcols)                      ! Liq sat vapor pressure
+   real(r8) esi(pcols)                      ! Ice sat vapor pressure
    real(r8) ncf,phi                         ! Wilson and Ballard parameters
    real(r8) qs
    real(r8) esat_in(pcols)
@@ -1007,11 +1008,12 @@ subroutine aist_vector(qv_in, T_in, p_in, qi_in, ni_in, landfrac_in, snowh_in, a
      esat_in(:)  = 0._r8
      qsat_in(:)  = 0._r8
 
-     call qsat_water(T_in(1:ncol), p_in(1:ncol), &
-          esat_in(1:ncol), qsat_in(1:ncol))
-     
-     do i = 1, ncol
+     call qsat_water(T_in(1:ncol), p_in(1:ncol), esat_in(1:ncol), qsat_in(1:ncol), ncol)
+     call svp_water_vect(T_in(1:ncol), esl(1:ncol), ncol)
+     call svp_ice_vect(T_in(1:ncol), esi(1:ncol), ncol)
 
+     do i = 1, ncol
+     
      landfrac = landfrac_in(i)     
      snowh = snowh_in(i)   
      T = T_in(i)
@@ -1020,8 +1022,6 @@ subroutine aist_vector(qv_in, T_in, p_in, qi_in, ni_in, landfrac_in, snowh_in, a
      qi = qi_in(i)
      ni = ni_in(i)
      qs = qsat_in(i)
-     esl = svp_water(T)
-     esi = svp_ice(T)
 
      if (present(rhmaxi_in))          rhmaxi          = rhmaxi_in(i)
      if (present(rhmini_in))          rhmini          = rhmini_in(i)      
@@ -1042,7 +1042,7 @@ subroutine aist_vector(qv_in, T_in, p_in, qi_in, ni_in, landfrac_in, snowh_in, a
          endif
          aist =  max(0._r8,min(qi/icicval,1._r8)) 
      elseif( iceopt.eq.3 ) then
-         aist = 1._r8 - exp(-Kc*qi/(qs*(esi/esl)))
+         aist = 1._r8 - exp(-Kc*qi/(qs*(esi(i)/esl(i))))
          aist = max(0._r8,min(aist,1._r8))
      elseif( iceopt.eq.4) then
          if( p .ge. premib ) then
@@ -1075,7 +1075,7 @@ subroutine aist_vector(qv_in, T_in, p_in, qi_in, ni_in, landfrac_in, snowh_in, a
              aist = max(0._r8,min(aist,1._r8))
      elseif (iceopt.eq.5) then 
         ! set rh ice cloud fraction
-        rhi= (qv+qi)/qs * (esl/esi)
+        rhi= (qv+qi)/qs * (esl(i)/esi(i))
         if (rhmaxi .eq. rhmini) then
            if (rhi .gt. rhmini) then
               rhdif = 1._r8

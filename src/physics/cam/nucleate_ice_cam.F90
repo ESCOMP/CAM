@@ -610,10 +610,8 @@ subroutine nucleate_ice_cam_calc( &
    endif
 
    do k = top_lev, pver
-
       ! Get humidity and saturation vapor pressures
-      call qsat_water(t(:ncol,k), pmid(:ncol,k), &
-           es(:ncol), qs(:ncol), gam=gammas(:ncol))
+      call qsat_water(t(1:ncol,k), pmid(1:ncol,k), es(1:ncol), qs(1:ncol), ncol, gam=gammas(1:ncol))
 
       do i = 1, ncol
 

@@ -393,7 +393,7 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
    call pbuf_get_field(pbuf, cld_idx, cldn, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
 
    do k = top_lev, pver
-      call qsat_water(t(:ncol,k), pmid(:ncol,k), es(:ncol), qs(:ncol))
+      call qsat_water(t(1:ncol,k), pmid(1:ncol,k), es(1:ncol), qs(1:ncol), ncol)
       do i = 1, ncol
          if (qs(i) > h2ommr(i,k)) then
             rh(i,k) = h2ommr(i,k)/qs(i)
