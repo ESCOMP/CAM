@@ -1371,9 +1371,9 @@ contains
 
     ifld = pbuf_get_index('DTCORE')
     call pbuf_get_field(pbuf, ifld, dtcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-    ifld = pbuf_get_index('UTEND_CORE')
+    ifld = pbuf_get_index('DUCORE')
     call pbuf_get_field(pbuf, ifld, ducore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-    ifld = pbuf_get_index('VTEND_CORE')
+    ifld = pbuf_get_index('DVCORE')
     call pbuf_get_field(pbuf, ifld, dvcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
 
     call pbuf_get_field(pbuf, qini_idx, qini)
@@ -2059,9 +2059,9 @@ contains
 
     ifld   =  pbuf_get_index('DTCORE')
     call pbuf_get_field(pbuf, ifld, dtcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-    ifld   =  pbuf_get_index('UTEND_CORE')
+    ifld   =  pbuf_get_index('DUCORE')
     call pbuf_get_field(pbuf, ifld, ducore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-    ifld   =  pbuf_get_index('VTEND_CORE')
+    ifld   =  pbuf_get_index('DVCORE')
     call pbuf_get_field(pbuf, ifld, dvcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
 
     ifld    = pbuf_get_index('FRACIS')
