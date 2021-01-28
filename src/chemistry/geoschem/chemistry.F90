@@ -3728,8 +3728,6 @@ contains
     del_h2so4_gasprod = 0.0e+00_fp
     ! This needs to be in mol/mol over this timestep
     IF ( ( iPSO4 > 0 ) .and. ( MWPSO4 > 0.0e+00_fp ) ) THEN
-       If ( rootChunk ) Write(iulog,*) " MAXVAL(PSO4) = ", &
-          MAXVAL(State_Chm(LCHNK)%Species(1,:nY,:nZ,iPSO4))
        DO L = 1, nZ
           ! Convert from kg SO4/kg to mol/mol
           del_h2so4_gasprod(:nY,L) = &
