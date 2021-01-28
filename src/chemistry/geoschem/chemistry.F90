@@ -1824,6 +1824,7 @@ contains
 
     use physics_buffer,      only : physics_buffer_desc, pbuf_get_field, pbuf_old_tim_idx
     use physics_buffer,      only : pbuf_get_chunk, pbuf_get_index
+    use perf_mod,            only : t_startf, t_stopf
     use cam_history,         only : outfld, hist_fld_active
     use camsrfexch,          only : cam_in_t, cam_out_t
 
@@ -3517,6 +3518,9 @@ contains
     !==============================================================
     !               ***** C H E M I S T R Y *****
     !==============================================================
+
+    call t_startf( 'chemdr' )
+
     ! Get the overhead column O3 for use with FAST-J
     IF ( Input_Opt%Its_A_FullChem_Sim .OR. &
          Input_Opt%Its_An_Aerosol_Sim ) THEN
@@ -3583,6 +3587,8 @@ contains
     State_Chm(LCHNK)%Species(1,:nY,:nZ,iCO2) = State_Chm(LCHNK)%Species(1,:nY,:nZ,iCO2) &
                                              + MMR_Beg(:nY,:nZ,iCO2)
 
+    call t_stopf( 'chemdr' )
+
     !==============================================================
     ! ***** W E T   D E P O S I T I O N  (rainout + washout) *****
     !==============================================================
@@ -3592,6 +3598,8 @@ contains
        IF ( gas_wetdep_method == 'GEOS-CHEM' ) THEN
           DO N = 1, gas_pcnst
              isWD = .False.
+             ! See definition of map2chm
+             M = map2chm(N)
              IF ( M > 0 ) THEN
                 SpcInfo => State_Chm(BEGCHUNK)%SpcData(M)%Info
                 isWD = SpcInfo%Is_WetDep
@@ -3604,8 +3612,6 @@ contains
 
              IF ( hist_fld_active( TRIM(wetdep_name(N)) ) .OR. &
                   hist_fld_active( TRIM(wtrate_name(N)) ) ) THEN
-                ! See definition of map2chm
-                M = map2chm(N)
                 IF ( M > 0 ) THEN
                    mmr1(:nY,:nZ,N) = State_Chm(LCHNK)%Species(1,:nY,nZ:1:-1,M)
                 ENDIF
@@ -3658,6 +3664,8 @@ contains
        IF ( gas_wetdep_method == 'GEOS-CHEM' ) THEN
           DO N = 1, gas_pcnst
              isWD = .False.
+             ! See definition of map2chm
+             M = map2chm(N)
              IF ( M > 0 ) THEN
                 SpcInfo => State_Chm(BEGCHUNK)%SpcData(M)%Info
                 isWD = SpcInfo%Is_WetDep
@@ -3670,8 +3678,6 @@ contains
 
              IF ( hist_fld_active( TRIM(wetdep_name(N)) ) .OR. &
                   hist_fld_active( TRIM(wtrate_name(N)) ) ) THEN
-                ! See definition of map2chm
-                M = map2chm(N)
                 IF ( M > 0 ) THEN
                    mmr1(:nY,:nZ,N) = State_Chm(LCHNK)%Species(1,:nY,nZ:1:-1,M) - mmr1(:nY,:nZ,N)
                 ENDIF
