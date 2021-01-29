@@ -215,6 +215,7 @@ contains
     end if
     call addfld ('TTEND_TOT', (/ 'lev' /), 'A', 'K/s',        'Total temperature tendency')
 
+    ! outfld calls in diag_phys_tend_writeout
     call addfld ('UTEND_TOT', (/ 'lev' /), 'A', 'm/s2',       'Total zonal wind tendency')
     call addfld ('VTEND_TOT', (/ 'lev' /), 'A', 'm/s2',       'Total meridional wind tendency')
     call register_vector_field('UTEND_TOT','VTEND_TOT')
