@@ -86,6 +86,8 @@ module physpkg
   integer ::  prec_sh_idx        = 0
   integer ::  snow_sh_idx        = 0
   integer ::  dlfzm_idx          = 0     ! detrained convective cloud water mixing ratio.
+  integer ::  ducore_idx         = 0
+  integer ::  dvcore_idx         = 0
 
 !=======================================================================
 contains
@@ -1024,6 +1026,9 @@ contains
        call add_default ( 'VTEND_CORE'   , history_budget_histfile_num, ' ')
     end if
 
+    ducore_idx = pbuf_get_index('DUCORE')
+    dvcore_idx = pbuf_get_index('DVCORE')
+
   end subroutine phys_init
 
   !
@@ -1443,10 +1448,8 @@ contains
 
     ifld = pbuf_get_index('DTCORE')
     call pbuf_get_field(pbuf, ifld, dtcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-    ifld = pbuf_get_index('DUCORE')
-    call pbuf_get_field(pbuf, ifld, ducore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-    ifld = pbuf_get_index('DVCORE')
-    call pbuf_get_field(pbuf, ifld, dvcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+    call pbuf_get_field(pbuf, ducore_idx, ducore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+    call pbuf_get_field(pbuf, dvcore_idx, dvcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
 
     call pbuf_get_field(pbuf, qini_idx, qini)
     call pbuf_get_field(pbuf, cldliqini_idx, cldliqini)
@@ -2131,10 +2134,8 @@ contains
 
     ifld   =  pbuf_get_index('DTCORE')
     call pbuf_get_field(pbuf, ifld, dtcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-    ifld   =  pbuf_get_index('DUCORE')
-    call pbuf_get_field(pbuf, ifld, ducore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-    ifld   =  pbuf_get_index('DVCORE')
-    call pbuf_get_field(pbuf, ifld, dvcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+    call pbuf_get_field(pbuf, ducore_idx, ducore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+    call pbuf_get_field(pbuf, dvcore_idx, dvcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
 
     ifld    = pbuf_get_index('FRACIS')
     call pbuf_get_field(pbuf, ifld, fracis, start=(/1,1,1/), kount=(/pcols, pver, pcnst/)  )
