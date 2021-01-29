@@ -139,13 +139,13 @@ end subroutine check_energy_readnl
 
     call pbuf_add_field('TEOUT', 'global',dtype_r8 , (/pcols,dyn_time_lvls/),      teout_idx)
     call pbuf_add_field('DTCORE','global',dtype_r8,  (/pcols,pver,dyn_time_lvls/),dtcore_idx)
-    call pbuf_add_field('UTEND_CORE','global',dtype_r8,  (/pcols,pver,dyn_time_lvls/),ducore_idx)
-    call pbuf_add_field('VTEND_CORE','global',dtype_r8,  (/pcols,pver,dyn_time_lvls/),dvcore_idx)
+    call pbuf_add_field('DUCORE','global',dtype_r8,  (/pcols,pver,dyn_time_lvls/),ducore_idx)
+    call pbuf_add_field('DVCORE','global',dtype_r8,  (/pcols,pver,dyn_time_lvls/),dvcore_idx)
     if(is_subcol_on()) then
       call pbuf_register_subcol('TEOUT', 'phys_register', teout_idx)
       call pbuf_register_subcol('DTCORE', 'phys_register', dtcore_idx)
-      call pbuf_register_subcol('UTEND_CORE', 'phys_register', ducore_idx)
-      call pbuf_register_subcol('VTEND_CORE', 'phys_register', dvcore_idx)
+      call pbuf_register_subcol('DUCORE', 'phys_register', ducore_idx)
+      call pbuf_register_subcol('DVCORE', 'phys_register', dvcore_idx)
     end if
 
   end subroutine check_energy_register
