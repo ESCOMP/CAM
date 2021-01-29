@@ -222,7 +222,7 @@ contains
 
     ! Back out tendencies from updated fields
     do k = 1, pver
-      ptend%s(:ncol,k)          = 0.01_r8* cpair / ztodt!xxx (th(:ncol,k)*pk(:ncol,k) - state%t(:ncol,k)) * cpair / ztodt
+      ptend%s(:ncol,k)           = (th(:ncol,k)*pk(:ncol,k) - state%t(:ncol,k)) * cpair / ztodt
       ptend%q(:ncol,k,1)         = (qv(:ncol,k) - state%q(:ncol,k,1)) / ztodt
       ptend%q(:ncol,k,ixcldliq)  = (qc(:ncol,k) - state%q(:ncol,k,ixcldliq)) / ztodt
       ptend%q(:ncol,k,ixrain)    = (qr(:ncol,k) - state%q(:ncol,k,ixrain)) / ztodt
