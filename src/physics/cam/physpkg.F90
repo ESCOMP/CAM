@@ -991,6 +991,10 @@ contains
     call addfld ( 'UTEND_NDG', (/ 'lev' /), 'A', 'm/s2', 'Zonal wind tendency by nudging')
     call addfld ( 'VTEND_NDG', (/ 'lev' /), 'A', 'm/s2', 'Meridional wind tendency by nudging')
     call register_vector_field ( 'UTEND_NDG', 'VTEND_NDG')
+    call addfld('UTEND_CORE', (/ 'lev' /), 'A', 'm/s2' , 'U tendency due to dynamical core')
+    call addfld('VTEND_CORE', (/ 'lev' /), 'A', 'm/s2' , 'V tendency due to dynamical core')
+    call register_vector_field('UTEND_CORE','VTEND_CORE')
+
 
     call phys_getopts(history_budget_out = history_budget, &
          history_budget_histfile_num_out = history_budget_histfile_num)
@@ -1016,6 +1020,8 @@ contains
        call add_default ( 'VTEND_IONDRG'   , history_budget_histfile_num, ' ')
        call add_default ( 'UTEND_NDG'   , history_budget_histfile_num, ' ')
        call add_default ( 'VTEND_NDG'   , history_budget_histfile_num, ' ')
+       call add_default ( 'UTEND_CORE'   , history_budget_histfile_num, ' ')
+       call add_default ( 'VTEND_CORE'   , history_budget_histfile_num, ' ')
     end if
 
   end subroutine phys_init

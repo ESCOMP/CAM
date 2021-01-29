@@ -199,19 +199,12 @@ end subroutine check_energy_get_integrals
     call addfld('TEFIX',  horiz_only,  'A', 'J/m2', 'Total energy after fixer')
     call addfld('EFIX',   horiz_only,  'A', 'W/m2', 'Effective sensible heat flux due to energy fixer')
     call addfld('DTCORE', (/ 'lev' /), 'A', 'K/s' , 'T tendency due to dynamical core')
-    call addfld('UTEND_CORE', (/ 'lev' /), 'A', 'm/s2' , 'U tendency due to dynamical core')
-    call addfld('VTEND_CORE', (/ 'lev' /), 'A', 'm/s2' , 'V tendency due to dynamical core')
-    call register_vector_field('UTEND_CORE','VTEND_CORE')
 
     if ( history_budget ) then
        call add_default ('DTCORE', history_budget_histfile_num, ' ')
-       call add_default ('UTEND_CORE', history_budget_histfile_num, ' ')
-       call add_default ('VTEND_CORE', history_budget_histfile_num, ' ')
     end if
     if ( history_waccm ) then
        call add_default ('DTCORE', 1, ' ')
-       call add_default ('UTEND_CORE', 1, ' ')
-       call add_default ('VTEND_CORE', 1, ' ')
     end if
 
   end subroutine check_energy_init
