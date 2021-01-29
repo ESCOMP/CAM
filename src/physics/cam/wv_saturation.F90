@@ -575,9 +575,9 @@ subroutine calc_hltalt_vect(t, hltalt, vlen, tterm)
   call no_ip_hltalt_vect(t,hltalt,vlen)
 
   do j = 1, vlen
-     if (t(i) < tmelt) then
+     if (t(j) < tmelt) then
         ! Weighting of hlat accounts for transition from water to ice.
-        tc = t(i) - tmelt
+        tc = t(j) - tmelt
    
         if (tc >= -ttrice) then
            weight = -tc/ttrice
