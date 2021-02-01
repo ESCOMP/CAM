@@ -360,8 +360,10 @@ contains
     do n = 1,numOwnedElements
        mod2med_areacor(n) = model_areas(n) / mesh_areas(n)
        med2mod_areacor(n) = 1._r8 / mod2med_areacor(n)
-       ! write(6,'(a,i8,2x,3(d13.5,2x))')' DEBUG cam: n,model_area, mesh_area, mod2med, med2mod= ',&
-       !      n,model_areas(n),mesh_areas(n),mod2med_areacor(n),med2mod_areacor(n) 
+       if (abs(mod2med_areacor(n) - 1._r8) > 1.e-13) then
+          write(6,'(a,i8,2x,d21.14,2x)')' AREACOR cam: n, abs(mod2med_areacor(n)-1)', &
+               n, abs(mod2med_areacor(n) - 1._r8)
+       end if
     end do
     deallocate(model_areas)
     deallocate(mesh_areas)
