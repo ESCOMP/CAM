@@ -66,8 +66,8 @@ module check_energy
 
   integer  :: teout_idx  = 0       ! teout index in physics buffer
   integer  :: dtcore_idx = 0       ! dtcore index in physics buffer
-  integer  :: ducore_idx = 0       ! dtcore index in physics buffer
-  integer  :: dvcore_idx = 0       ! dtcore index in physics buffer
+  integer  :: ducore_idx = 0       ! ducore index in physics buffer
+  integer  :: dvcore_idx = 0       ! dvcore index in physics buffer
 
   type check_tracers_data
      real(r8) :: tracer(pcols,pcnst)       ! initial vertically integrated total (kinetic + static) energy

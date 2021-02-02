@@ -2095,7 +2095,7 @@ contains
     ftem3(:ncol,:) = (state%v(:ncol,:) - t_vtend(:ncol,:))/ztodt
     call outfld('VTEND_TOT', ftem3, pcols, lchnk)
 
-    !! update physics buffer with this time-step's temperature
+    !! update physics buffer with this time-step's temperature, U, and V
     t_ttend(:ncol,:) = state%t(:ncol,:)
     t_utend(:ncol,:) = state%u(:ncol,:)
     t_vtend(:ncol,:) = state%v(:ncol,:)
