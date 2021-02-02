@@ -2081,7 +2081,7 @@ contains
 
     ! Total (physics+dynamics, everything!) tendency for Temperature
 
-    !! get temperature stored in physics buffer
+    !! get temperature, U, and V stored in physics buffer
     itim_old = pbuf_old_tim_idx()
     call pbuf_get_field(pbuf, t_ttend_idx, t_ttend, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
     call pbuf_get_field(pbuf, t_utend_idx, t_utend, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
