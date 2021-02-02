@@ -2198,7 +2198,7 @@ contains
     call outfld('TEINP', state%te_ini, pcols, lchnk   )
     call outfld('TEFIX', state%te_cur, pcols, lchnk   )
 
-    ! T tendency due to dynamics
+    ! T, U, V tendency due to dynamics
     if( nstep > dyn_time_lvls-1 ) then
        dtcore(:ncol,:pver) = (state%t(:ncol,:pver) - dtcore(:ncol,:pver))/ztodt
        ducore(:ncol,:pver) = (state%u(:ncol,:pver) - ducore(:ncol,:pver))/ztodt
