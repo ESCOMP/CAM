@@ -1602,8 +1602,10 @@ contains
          (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
        call cam_snapshot_ptend_outfld(ptend, lchnk)
     end if
-    if ( ptend%lu .and. ptend%lv ) then
+    if ( ptend%lu ) then
       call outfld( 'UTEND_VDIFF', ptend%u, pcols, lchnk)
+    end if
+    if ( ptend%lv ) then
       call outfld( 'VTEND_VDIFF', ptend%v, pcols, lchnk)
     end if
     call physics_update(state, ptend, ztodt, tend)
@@ -1620,8 +1622,10 @@ contains
     !===================================================
     call t_startf('rayleigh_friction')
     call rayleigh_friction_tend( ztodt, state, ptend)
-    if ( ptend%lu .and. ptend%lv ) then
+    if ( ptend%lu ) then
       call outfld( 'UTEND_RAYLEIGH', ptend%u, pcols, lchnk)
+    end if
+    if ( ptend%lv ) then
       call outfld( 'VTEND_RAYLEIGH', ptend%v, pcols, lchnk)
     end if
     call physics_update(state, ptend, ztodt, tend)
@@ -1696,8 +1700,10 @@ contains
          (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
        call cam_snapshot_ptend_outfld(ptend, lchnk)
     end if
-    if ( ptend%lu .and. ptend%lv ) then
+    if ( ptend%lu ) then
       call outfld( 'UTEND_GWDTOT', ptend%u, pcols, lchnk)
+    end if
+    if ( ptend%lv ) then
       call outfld( 'VTEND_GWDTOT', ptend%v, pcols, lchnk)
     end if
     call physics_update(state, ptend, ztodt, tend)
@@ -1724,8 +1730,10 @@ contains
          (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
        call cam_snapshot_ptend_outfld(ptend, lchnk)
     end if
-    if ( ptend%lu .and. ptend%lv ) then
+    if ( ptend%lu ) then
       call outfld( 'UTEND_QBORLX', ptend%u, pcols, lchnk)
+    end if
+    if ( ptend%lv ) then
       call outfld( 'VTEND_QBORLX', ptend%v, pcols, lchnk)
     end if
     call physics_update(state, ptend, ztodt, tend)
@@ -1740,8 +1748,10 @@ contains
 
     ! Lunar tides
     call lunar_tides_tend( state, ptend )
-    if ( ptend%lu .and. ptend%lv ) then
+    if ( ptend%lu ) then
       call outfld( 'UTEND_LUNART', ptend%u, pcols, lchnk)
+    end if
+    if ( ptend%lv ) then
       call outfld( 'VTEND_LUNART', ptend%v, pcols, lchnk)
     end if
     call physics_update(state, ptend, ztodt, tend)
@@ -1772,8 +1782,10 @@ contains
          (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
        call cam_snapshot_ptend_outfld(ptend, lchnk)
     end if
-    if ( ptend%lu .and. ptend%lv ) then
+    if ( ptend%lu ) then
       call outfld( 'UTEND_IONDRG', ptend%u, pcols, lchnk)
+    end if
+    if ( ptend%lv ) then
       call outfld( 'VTEND_IONDRG', ptend%v, pcols, lchnk)
     end if
     call physics_update(state, ptend, ztodt, tend)
@@ -1801,8 +1813,10 @@ contains
     !----------------------------------
     if((Nudge_Model).and.(Nudge_ON)) then
       call nudging_timestep_tend(state,ptend)
-      if ( ptend%lu .and. ptend%lv ) then
+      if ( ptend%lu ) then
         call outfld( 'UTEND_NDG', ptend%u, pcols, lchnk)
+      end if
+      if ( ptend%lv ) then
         call outfld( 'VTEND_NDG', ptend%v, pcols, lchnk)
       end if
       call physics_update(state,ptend,ztodt,tend)
@@ -2259,8 +2273,10 @@ contains
             call cam_snapshot_ptend_outfld(ptend, lchnk)
     end if
     
-    if ( ptend%lu .and. ptend%lv ) then
+    if ( ptend%lu ) then
       call outfld( 'UTEND_DCONV', ptend%u, pcols, lchnk)
+    end if
+    if ( ptend%lv ) then
       call outfld( 'VTEND_DCONV', ptend%v, pcols, lchnk)
     end if
     call physics_update(state, ptend, ztodt, tend)
@@ -2320,8 +2336,10 @@ contains
          (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
             call cam_snapshot_ptend_outfld(ptend, lchnk)
     end if
-    if ( ptend%lu .and. ptend%lv ) then
+    if ( ptend%lu ) then
       call outfld( 'UTEND_SHCONV', ptend%u, pcols, lchnk)
+    end if
+    if ( ptend%lv ) then
       call outfld( 'VTEND_SHCONV', ptend%v, pcols, lchnk)
     end if
     call physics_update(state, ptend, ztodt, tend)
