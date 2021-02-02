@@ -2087,7 +2087,7 @@ contains
     call pbuf_get_field(pbuf, t_utend_idx, t_utend, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
     call pbuf_get_field(pbuf, t_vtend_idx, t_vtend, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
 
-    !! calculate and outfld the total temperature tendency
+    !! calculate and outfld the total temperature, U, and V tendencies
     ftem3(:ncol,:) = (state%t(:ncol,:) - t_ttend(:ncol,:))/ztodt
     call outfld('TTEND_TOT', ftem3, pcols, lchnk)
     ftem3(:ncol,:) = (state%u(:ncol,:) - t_utend(:ncol,:))/ztodt
