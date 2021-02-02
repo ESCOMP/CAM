@@ -199,8 +199,8 @@ contains
 
     ! State before physics
     call addfld ('TBP',     (/ 'lev' /), 'A','K',             'Temperature (before physics)')
-    call addfld ('UBP',     (/ 'lev' /), 'A','m/s2',          'Zonal wind (before physics)')
-    call addfld ('VBP',     (/ 'lev' /), 'A','m/s2',          'Meridional Wind (before physics)')
+    call addfld ('UBP',     (/ 'lev' /), 'A','m/s',           'Zonal wind (before physics)')
+    call addfld ('VBP',     (/ 'lev' /), 'A','m/s',           'Meridional Wind (before physics)')
     call addfld (bpcnst(1), (/ 'lev' /), 'A','kg/kg',         trim(cnst_longname(1))//' (before physics)')
     ! State after physics
     call addfld ('TAP',     (/ 'lev' /), 'A','K',             'Temperature (after physics)'       )
