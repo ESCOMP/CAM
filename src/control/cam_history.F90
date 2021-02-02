@@ -4676,7 +4676,7 @@ end subroutine print_active_fldlst
       tape(t)%hlist(f)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c)=0._r8
       if (associated(tape(t)%hlist(f)%sbuf)) then ! zero out variance buffer for standard deviation
          tape(t)%hlist(f)%sbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c)=0._r8
-      endif
+      end if
     end do
     tape(t)%hlist(f)%nacs(:,:) = 0
 
@@ -4688,7 +4688,7 @@ end subroutine print_active_fldlst
   !#######################################################################
 
   subroutine dump_field (f, t, restart)
-    use cam_history_support, only: history_patch_t, dim_index_3d
+    use cam_history_support, only: history_patch_t, dim_index_2d, dim_index_3d
     use cam_grid_support,    only: cam_grid_write_dist_array, cam_grid_dimensions
     use interp_mod,       only : write_interpolated
 
@@ -4711,6 +4711,7 @@ end subroutine print_active_fldlst
     integer                          :: fdims(8)   ! Field file dim sizes
     integer                          :: frank      ! Field file rank
     integer                          :: nacsrank   ! Field file rank for nacs
+    type(dim_index_2d)               :: dimind2    ! 2-D dimension index
     type(dim_index_3d)               :: dimind     ! 3-D dimension index
     integer                          :: adims(3)   ! Field array dim sizes
     integer                          :: nadims     ! # of used adims
@@ -4722,9 +4723,9 @@ end subroutine print_active_fldlst
     logical                          :: patch_output
     type(history_patch_t), pointer   :: patchptr
     integer                          :: index
-    real(r8),            allocatable :: rtemp2(:,:)
-    real(r8),            allocatable :: rtemp3(:,:,:)
-    integer                          :: isize1, isize2, isize3
+    real(r4),            allocatable :: rtemp2(:,:)
+    real(r4),            allocatable :: rtemp3(:,:,:)
+    integer                          :: begdim3, enddim3, ind3
 
     interpolate = (interpolate_output(t) .and. (.not. restart))
     patch_output = (associated(tape(t)%patches) .and. (.not. restart))
@@ -4798,11 +4799,15 @@ end subroutine print_active_fldlst
           end if
         else if (nadims == 2) then
           ! Special case for 2D field (no levels) due to hbuf structure
-           if(tape(t)%hlist(f)%hwrt_prec == 4) Then
-              isize1 = SIZE(tape(t)%hlist(f)%hbuf, 1)
-              isize3 = SIZE(tape(t)%hlist(f)%hbuf, 3)
-              allocate(rtemp2(isize1, isize3))
-              rtemp2(:,:) = real(tape(t)%hlist(f)%hbuf(:,1,:), kind=r4)
+           if ((tape(t)%hlist(f)%hwrt_prec == 4) .and. (.not. restart)) then
+              call tape(t)%hlist(f)%field%get_bounds(3, begdim3, enddim3)
+              allocate(rtemp2(dimind%beg1:dimind%end1, begdim3:enddim3))
+              rtemp2 = 0.0_r4
+              do ind3 = begdim3, enddim3
+                 dimind2 = tape(t)%hlist(f)%field%get_dims(ind3)
+                 rtemp2(dimind2%beg1:dimind2%end1,ind3) = &
+                      tape(t)%hlist(f)%hbuf(dimind2%beg1:dimind2%end1, 1, ind3)
+              end do
               call cam_grid_write_dist_array(tape(t)%File, fdecomp,           &
                    adims(1:nadims), fdims(1:frank), rtemp2, varid)
               deallocate(rtemp2)
@@ -4812,12 +4817,17 @@ end subroutine print_active_fldlst
                    tape(t)%hlist(f)%hbuf(:,1,:), varid)
            end if
         else
-           if(tape(t)%hlist(f)%hwrt_prec == 4) Then
-              isize1 = SIZE(tape(t)%hlist(f)%hbuf, 1)
-              isize2 = SIZE(tape(t)%hlist(f)%hbuf, 2)
-              isize3 = SIZE(tape(t)%hlist(f)%hbuf, 3)
-              allocate(rtemp3(isize1, isize2, isize3))
-              rtemp3(:,:,:) = real(tape(t)%hlist(f)%hbuf(:,:,:), kind=r4)
+           if ((tape(t)%hlist(f)%hwrt_prec == 4) .and. (.not. restart)) then
+              call tape(t)%hlist(f)%field%get_bounds(3, begdim3, enddim3)
+              allocate(rtemp3(dimind%beg1:dimind%end1,                        &
+                   dimind%beg2:dimind%end2, begdim3:enddim3))
+              rtemp3 = 0.0_r4
+              do ind3 = begdim3, enddim3
+                 dimind2 = tape(t)%hlist(f)%field%get_dims(ind3)
+                 rtemp3(dimind2%beg1:dimind2%end1, dimind2%beg2:dimind2%end2, &
+                      ind3) = tape(t)%hlist(f)%hbuf(dimind2%beg1:dimind2%end1,&
+                      dimind2%beg2:dimind2%end2, ind3)
+              end do
               call cam_grid_write_dist_array(tape(t)%File, fdecomp, adims,    &
                    fdims(1:frank), rtemp3, varid)
               deallocate(rtemp3)
