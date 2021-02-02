@@ -993,8 +993,8 @@ contains
     call addfld ( 'UTEND_NDG', (/ 'lev' /), 'A', 'm/s2', 'Zonal wind tendency by nudging')
     call addfld ( 'VTEND_NDG', (/ 'lev' /), 'A', 'm/s2', 'Meridional wind tendency by nudging')
     call register_vector_field ( 'UTEND_NDG', 'VTEND_NDG')
-    call addfld('UTEND_CORE', (/ 'lev' /), 'A', 'm/s2' , 'U tendency due to dynamical core')
-    call addfld('VTEND_CORE', (/ 'lev' /), 'A', 'm/s2' , 'V tendency due to dynamical core')
+    call addfld('UTEND_CORE', (/ 'lev' /), 'A', 'm/s2' , 'Zonal wind tendency due to dynamical core')
+    call addfld('VTEND_CORE', (/ 'lev' /), 'A', 'm/s2' , 'Meridional wind tendency due to dynamical core')
     call register_vector_field('UTEND_CORE','VTEND_CORE')
 
 
