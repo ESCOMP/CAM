@@ -237,10 +237,10 @@ CONTAINS
        CALL Addfld( TRIM(SpcName), (/ 'lev' /), 'A', 'molec/cm3/s', &
           'External forcing for '//TRIM(cnst_name(N)))
        SpcName = TRIM(cnst_name(N))//'_CLXF'
-       CALL Addfld( TRIM(SpcName), (/ 'lev' /), 'A', 'molec/cm2/s', &
+       CALL Addfld( TRIM(SpcName), horiz_only, 'A', 'molec/cm2/s', &
           'Vertically-integrated external forcing for '//TRIM(cnst_name(N)))
        SpcName = TRIM(cnst_name(N))//'_CMXF'
-       CALL Addfld( TRIM(SpcName), (/ 'lev' /), 'A', 'kg/m2/s', &
+       CALL Addfld( TRIM(SpcName), horiz_only, 'A', 'kg/m2/s', &
           'Vertically-integrated external forcing for '//TRIM(cnst_name(N)))
     ENDDO
 
@@ -465,6 +465,7 @@ CONTAINS
 
        SpcName = TRIM(cnst_name(N))//'_CMXF'
        CALL Outfld( TRIM(SpcName), SUM(eflx(:nY,:nZ,N), DIM=2), nY, LCHNK )
+
     ENDDO
 
     !-----------------------------------------------------------------------
