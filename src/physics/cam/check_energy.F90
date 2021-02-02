@@ -179,7 +179,7 @@ end subroutine check_energy_get_integrals
 ! Initialize the energy conservation module
 !
 !-----------------------------------------------------------------------
-    use cam_history,       only: addfld, add_default, horiz_only, register_vector_field
+    use cam_history,       only: addfld, add_default, horiz_only
     use phys_control,      only: phys_getopts
 
     implicit none
