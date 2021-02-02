@@ -86,8 +86,8 @@ module physpkg
   integer ::  prec_sh_idx        = 0
   integer ::  snow_sh_idx        = 0
   integer ::  dlfzm_idx          = 0     ! detrained convective cloud water mixing ratio.
-  integer ::  ducore_idx         = 0
-  integer ::  dvcore_idx         = 0
+  integer ::  ducore_idx         = 0     ! ducore index in physics buffer
+  integer ::  dvcore_idx         = 0     ! dvcore index in physics buffer
 
 !=======================================================================
 contains
