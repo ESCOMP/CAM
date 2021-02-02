@@ -2404,7 +2404,7 @@ contains
 
        ! initialize ptend structures where macro and microphysics tendencies are
        ! accumulated over macmic substeps
-       call physics_ptend_init(ptend_macp_all,state%psetcols,'macrophysics',ls=.false.,lu=.true.,lv=.true.)
+       call physics_ptend_init(ptend_macp_all,state%psetcols,'macrophysics',lu=.true.,lv=.true.)
 
        do macmic_it = 1, cld_macmic_num_steps
 
