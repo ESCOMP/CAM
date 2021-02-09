@@ -170,29 +170,28 @@ contains
       else
          call subcol_get_nsubcol(state%lchnk, nsubcol)
          ! Since this is a test generator, check for nsubcol correctness.
-10       format(a,i3,a,i5)
          do i = 1, pcols
             if (i > ngrdcol) then
                if (nsubcol(i) /= 0) then
-                  write(errmsg, 10) 'subcol_gen_tstcp: Bad value for nsubcol(',&
+                  write(errmsg, *) 'subcol_gen_tstcp: Bad value for nsubcol(',&
                        i,') = ',nsubcol(i),', /= 0'
                   call endrun(errmsg)
                end if
             else if (state%lat(i) > 0.7854_r8) then
                if (nsubcol(i) /= 1) then
-                  write(errmsg, 10) 'subcol_gen_tstcp: Bad value for nsubcol(',&
+                  write(errmsg, *) 'subcol_gen_tstcp: Bad value for nsubcol(',&
                        i,') = ',nsubcol(i),', /= 1'
                   call endrun(errmsg)
                end if
             else if (state%lat(i) < -0.7854_r8) then
                if (nsubcol(i) /= 2) then
-                  write(errmsg, 10) 'subcol_gen_tstcp: Bad value for nsubcol(',&
+                  write(errmsg, *) 'subcol_gen_tstcp: Bad value for nsubcol(',&
                        i,') = ',nsubcol(i),', /= 2'
                   call endrun(errmsg)
                end if
             else
                if (nsubcol(i) /= psubcols) then
-                  write(errmsg, 10) 'subcol_gen_tstcp: Bad value for nsubcol(',&
+                  write(errmsg, *) 'subcol_gen_tstcp: Bad value for nsubcol(',&
                        i,') = ',nsubcol(i),', /=',psubcols
                   call endrun(errmsg)
                end if

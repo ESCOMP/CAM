@@ -1215,14 +1215,20 @@ contains
 #endif
      use pio, only: PIO_NOERR
 
+     ! Dummy arguments
      type(File_desc_t),  intent(in)  :: File
      type(var_desc_t),   intent(in)  :: vdesc
      ! fillvalue needs to not be optional to avoid ambiguity
      integer, target,    intent(out) :: fillvalue
      integer, optional,  intent(out) :: no_fill
+     ! Local variable
+     integer :: no_fill_use
 
 #ifdef PIO2
-     ierr = pio_inq_var_fill(File, vdesc, no_fill, fillvalue)
+     ierr = pio_inq_var_fill(File, vdesc, no_fill_use, fillvalue)
+     if (present(no_fill)) then
+        no_fill = no_fill_use
+     end if
 #else
      ierr = PIO_NOERR
      fillvalue = 0
@@ -1236,14 +1242,20 @@ contains
 #endif
      use pio, only: PIO_NOERR
 
+     ! Dummy arguments
      type(File_desc_t),   intent(in)  :: File
      type(var_desc_t),    intent(in)  :: vdesc
      ! fillvalue needs to not be optional to avoid ambiguity
      real(r4), target,    intent(out) :: fillvalue
      integer,  optional,  intent(out) :: no_fill
+     ! Local variable
+     integer :: no_fill_use
 
 #ifdef PIO2
-     ierr = pio_inq_var_fill(File, vdesc, no_fill, fillvalue)
+     ierr = pio_inq_var_fill(File, vdesc, no_fill_use, fillvalue)
+     if (present(no_fill)) then
+        no_fill = no_fill_use
+     end if
 #else
      ierr = PIO_NOERR
      fillvalue = 0.0_R4
@@ -1257,14 +1269,20 @@ contains
 #endif
      use pio, only: PIO_NOERR
 
+     ! Dummy arguments
      type(File_desc_t),   intent(in)  :: File
      type(var_desc_t),    intent(in)  :: vdesc
      ! fillvalue needs to not be optional to avoid ambiguity
      real(r8), target,    intent(out) :: fillvalue
      integer,  optional,  intent(out) :: no_fill
+     ! Local variable
+     integer :: no_fill_use
 
 #ifdef PIO2
-     ierr = pio_inq_var_fill(File, vdesc, no_fill, fillvalue)
+     ierr = pio_inq_var_fill(File, vdesc, no_fill_use, fillvalue)
+     if (present(no_fill)) then
+        no_fill = no_fill_use
+     end if
 #else
      ierr = PIO_NOERR
      fillvalue = 0.0_R8
