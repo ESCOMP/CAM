@@ -1665,6 +1665,9 @@
 <drydep_srf_file hgrid="C192">atm/cam/chem/trop_mam/atmsrf_C192_c200625.nc</drydep_srf_file>
 <drydep_srf_file hgrid="C384">atm/cam/chem/trop_mam/atmsrf_C384_c200625.nc</drydep_srf_file>
 
+<drydep_srf_file hgrid="mpasa120">atm/cam/chem/trop_mam/atmsrf_mpasa120_c090720.nc</drydep_srf_file>
+<drydep_srf_file hgrid="mpasa480">atm/cam/chem/trop_mam/atmsrf_mpasa480_c090720.nc</drydep_srf_file>
+
 <!-- depvel data -->
 <depvel_lnd_file>atm/cam/chem/trop_mozart/dvel/regrid_vegetation.nc</depvel_lnd_file>
 <depvel_lnd_file   aquaplanet="1" >atm/cam/chem/trop_mozart/dvel/regrid_vegetation_all_zero_aquaplanet_1deg_regularGrid_c20170421.nc</depvel_lnd_file>
@@ -2724,7 +2727,7 @@
 <mpas_rayleigh_damp_u         > .false. </mpas_rayleigh_damp_u>
 <mpas_rayleigh_damp_u_timescale_days> 5.0 </mpas_rayleigh_damp_u_timescale_days>
 <mpas_number_rayleigh_damp_u_levels> 6 </mpas_number_rayleigh_damp_u_levels>
-
+<mpas_print_detailed_minmax_vel> .true.  </mpas_print_detailed_minmax_vel>
 <mpas_block_decomp_file_prefix hgrid="mpasa480">atm/cam/inic/mpas/mpasa480.graph.info.part.</mpas_block_decomp_file_prefix>
 <mpas_block_decomp_file_prefix hgrid="mpasa120">atm/cam/inic/mpas/mpasa120.graph.info.part.</mpas_block_decomp_file_prefix>
 <mpas_block_decomp_file_prefix hgrid="mpasa60">atm/cam/inic/mpas/mpasa60.graph.info.part.</mpas_block_decomp_file_prefix>
