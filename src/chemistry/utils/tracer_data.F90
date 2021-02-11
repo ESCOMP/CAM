@@ -171,7 +171,6 @@ contains
 #if ( defined SPMD )
     use mpishorthand,    only: mpicom, mpir8, mpiint
 #endif
-    use aircraf_emit,       only: get_aircraft
 
     implicit none
 
@@ -204,7 +203,7 @@ contains
     real(r8):: rlats(pcols), rlons(pcols)
     integer :: lchnk, ncol, icol, i,j
     logical :: found
-    integer :: aircrat_cnt
+    integer :: aircraft_cnt
 
     call specify_fields( specifier, flds )
 
@@ -596,11 +595,8 @@ contains
         call get_horiz_grid_d(plat, clat_d_out=phi)
         call get_horiz_grid_d(plon, clon_d_out=lam)
 
-        call get_aircraft(aircraft_cnt)
-        if(aircraft_cnt>0) then
          if(.not.allocated(lon_global_grid_ndx)) allocate(lon_global_grid_ndx(pcols,begchunk:endchunk))
          if(.not.allocated(lat_global_grid_ndx)) allocate(lat_global_grid_ndx(pcols,begchunk:endchunk))
-        endif
         lon_global_grid_ndx=-huge(1)
         lat_global_grid_ndx=-huge(1)
 
@@ -628,7 +624,6 @@ contains
         deallocate(phi,lam)
         
 ! weight_x & weight_y are weighting function for x & y interpolation
-       if(aircraft_cnt>0) then
    	allocate(file%weight_x(plon,file%nlon))
         allocate(file%weight_y(plat,file%nlat))
         allocate(file%count_x(plon))
@@ -642,18 +637,20 @@ contains
         file%index_x(:,:) = 0
         file%index_y(:,:) = 0
 
-        allocate(file%weight0_x(plon,file%nlon))
-        allocate(file%weight0_y(plat,file%nlat))
-        allocate(file%count0_x(plon))
-        allocate(file%count0_y(plat))
-        allocate(file%index0_x(plon,file%nlon))
-        allocate(file%index0_y(plat,file%nlat))
-        file%weight0_x(:,:) = 0.0_r8
-        file%weight0_y(:,:) = 0.0_r8
-        file%count0_x(:) = 0
-        file%count0_y(:) = 0
-        file%index0_x(:,:) = 0
-        file%index0_y(:,:) = 0
+        if( file%dist ) then
+         allocate(file%weight0_x(plon,file%nlon))
+         allocate(file%weight0_y(plat,file%nlat))
+         allocate(file%count0_x(plon))
+         allocate(file%count0_y(plat))
+         allocate(file%index0_x(plon,file%nlon))
+         allocate(file%index0_y(plat,file%nlat))
+         file%weight0_x(:,:) = 0.0_r8
+         file%weight0_y(:,:) = 0.0_r8
+         file%count0_x(:) = 0
+         file%count0_y(:) = 0
+         file%index0_x(:,:) = 0
+         file%index0_y(:,:) = 0
+        endif
 
         if(masterproc) then
 ! compute weighting 
@@ -680,6 +677,7 @@ contains
                enddo
             enddo
 
+           if( file%dist ) then
             call xy_interp_init(file%nlon,file%nlat,file%lons,file%lats,&
                                 plon,plat,file%weight0_x,file%weight0_y,.true.)
 
@@ -702,17 +700,17 @@ contains
                   endif
                enddo
             enddo
+           endif
         endif
-       endif
    
 #if ( defined SPMD)
-       if(aircraft_cnt>0) then
         call mpibcast(file%weight_x, plon*file%nlon, mpir8 , 0, mpicom)
         call mpibcast(file%weight_y, plat*file%nlat, mpir8 , 0, mpicom)
         call mpibcast(file%count_x, plon, mpiint , 0, mpicom)
         call mpibcast(file%count_y, plat, mpiint , 0, mpicom)
         call mpibcast(file%index_x, plon*file%nlon, mpiint , 0, mpicom)
         call mpibcast(file%index_y, plat*file%nlat, mpiint , 0, mpicom)
+       if( file%dist ) then
         call mpibcast(file%weight0_x, plon*file%nlon, mpir8 , 0, mpicom)
         call mpibcast(file%weight0_y, plat*file%nlat, mpir8 , 0, mpicom)
         call mpibcast(file%count0_x, plon, mpiint , 0, mpicom)

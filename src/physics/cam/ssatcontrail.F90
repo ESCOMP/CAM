@@ -2,6 +2,7 @@ module ssatcontrail
 ! contrail parameterization
 ! see Chen et al., 2012: Global contrail coverage simulated
 !     by CAM5 with the inventory of 2006 global aircraft emissions, JAMES
+!     https://doi.org/10.1029/2011MS000105
     use shr_kind_mod,   only: r8 => shr_kind_r8
     use ppgrid,         only: pcols, pver
     use cam_history,    only: outfld
@@ -15,8 +16,8 @@ module ssatcontrail
     use geopotential,     only: geopotential_dse
     use phys_grid, only    : get_wght_all_p
     use time_manager,       only: get_curr_date
-    use aircraf_emit,       only: get_aircraft
     use wv_saturation,    only: qsat_water, qsat_ice
+    use aircraft_emit,    only: get_aircraft
 
     implicit none
     private
@@ -88,9 +89,6 @@ contains
       endif
      enddo
     endif
-    if(.not. has_aircraft_H2O)  return
-    if(.not. has_aircraft_distance) return
-
 !------------------------------------------------------------------------------------------
     lq(:) = .FALSE.
     lq(1) = .TRUE.
@@ -99,6 +97,8 @@ contains
 
     call physics_ptend_init(ptend_loc, state1%psetcols,'ssatcontrail',ls=.true.,lq = lq)
 !-----------------------------------------------------------------------------------------
+    if(.not. has_aircraft_H2O)  return
+    if(.not. has_aircraft_distance) return
 
     particle_mass = 4._r8/3._r8*pi*rhoi*radius**3   ! mass of ice particle
    
