@@ -312,7 +312,6 @@ contains
     type(ESMF_Time)         :: stopTime                          ! Stop time
     type(ESMF_Time)         :: refTime                           ! Ref time
     type(ESMF_TimeInterval) :: timeStep
-    type(ESMF_Calendar)     :: esmf_calendar                     ! esmf calendar
     type(ESMF_CalKind_Flag) :: esmf_caltype                      ! esmf calendar type
     type(ESMF_DistGrid)     :: distGrid
     type(ESMF_Mesh)         :: Emesh, EmeshTemp
