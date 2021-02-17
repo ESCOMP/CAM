@@ -8,7 +8,10 @@ module nlte_lw
   use ppgrid,             only: pcols, pver
   use pmgrid,             only: plev
   use rad_constituents,   only: rad_cnst_get_gas, rad_cnst_get_info
+ 
   use nlte_fomichev,      only: nlte_fomichev_init, nlte_fomichev_calc, nocooling, o3pcooling
+  use nlte_aliarms,       only: nlte_aliarms_init, nlte_aliarms_calc
+ 
   use waccm_forcing,      only: waccm_forcing_init, waccm_forcing_adv,  get_cnst
   use cam_logfile,        only: iulog
 
@@ -153,6 +156,9 @@ contains
 ! Initialize Fomichev parameterization
     call nlte_fomichev_init (co2_mw, n2_mw, o1_mw, o2_mw, o3_mw, no_mw, nlte_limit_co2)
 
+! Initialize Fomichev parameterization
+    call nlte_aliarms_init ()
+
 ! Initialize waccm forcing data
     if (use_waccm_forcing) then
        call waccm_forcing_init ()
@@ -240,6 +246,8 @@ contains
     real(r8) :: qout (pcols,pver)    ! temp for outfld
     real(r8) :: co2cool(pcols,pver), o3cool(pcols,pver), c2scool(pcols,pver)
 
+    real(r8) :: qrlaliarms(pcols,pver) ! ALI-ARMS NLTE CO2 cooling rate
+
     real(r8), pointer, dimension(:,:) :: xco2mmr  ! CO2 mmr 
     real(r8), pointer, dimension(:,:) :: xommr    ! O   mmr 
     real(r8), pointer, dimension(:,:) :: xo2mmr   ! O2  mmr 
@@ -289,9 +297,13 @@ contains
     enddo
     xn2mmr  => n2mmr(:,:)
 
-! do non-LTE parameterization 
+! do non-LTE cooling rate calculations
+
     call nlte_fomichev_calc (lchnk,ncol,state%pmid,state%pint,state%t, &
          xo2mmr,xommr,xo3mmr,xn2mmr,xco2mmr,qrlf,co2cool,o3cool,c2scool)
+         
+    call nlte_aliarms_calc (lchnk,ncol,state%pmid,state%t, &
+         xo2mmr,xommr,xn2mmr,xco2mmr,qrlaliarms)
 
 ! do NO cooling 
     call nocooling (ncol, state%t, state%pmid, xnommr,xommr,xo2mmr,xo3mmr,xn2mmr,nocool)
