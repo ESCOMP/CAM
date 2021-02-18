@@ -18,7 +18,7 @@ use ndrop_bam,         only: ndrop_bam_run
 use nucleate_ice,      only: nucleati
 use shr_spfn_mod,     only: erf => shr_spfn_erf 
 use shr_spfn_mod,     only: gamma => shr_spfn_gamma
-use wv_saturation,  only: svp_water, svp_ice
+use wv_saturation,  only: svp_water_vect, svp_ice_vect
 use cam_logfile,       only: iulog
 use cam_abortutils,        only: endrun
 use micro_mg_utils, only:ice_autoconversion, snow_self_aggregation, accrete_cloud_water_snow, &
@@ -948,6 +948,9 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
            fhmrm (i,k) = 0._r8
         end do
 
+        call svp_water_vect(t(i,msg+2:pver), es(i,msg+2:pver), pver-msg+1)     ! over water in mixed clouds
+        call svp_ice_vect(t(i,msg+2:pver), esi(i,msg+2:pver), pver-msg+1)      ! over ice
+
         do k = pver,msg+2,-1
   
            if (k > jt(i) .and. k <= jb(i) .and. eps0(i) > 0._r8      &
@@ -1520,8 +1523,6 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
 
               !..............................................................................
               !ice nucleation
-              es(i,k)  = svp_water(t(i,k))     ! over water in mixed clouds
-              esi(i,k) = svp_ice(t(i,k))     ! over ice
               qs(i,k) = 0.622_r8*es(i,k)/(ph(i,k) - (1.0_r8-0.622_r8)*es(i,k))
               qs(i,k) = min(1.0_r8,qs(i,k))
               if (qs(i,k) < 0.0_r8)  qs(i,k) = 1.0_r8
