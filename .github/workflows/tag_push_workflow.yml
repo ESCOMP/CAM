@@ -25,7 +25,7 @@ jobs:
       if: github.repository == 'ESCOMP/CAM' # Only run on main repo
       run: |
         python -m pip install --upgrade pip  # Install latest version of PIP
-        pip install PyGithub                 # Install PyGithub pythong package
+        pip install PyGithub                 # Install PyGithub python package
     # Run CAM README tag update script
     - name: Run python README tag-updating script
       if: github.repository == 'ESCOMP/CAM' # Only run on main repo
