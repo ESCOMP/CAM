@@ -11,6 +11,7 @@ src/physics/pumas
 src/dynamics/fv3/atmos_cubed_sphere
 libraries/FMS
 src/atmos_phys
+src/dynamics/mpas/dycore
 
 # Ignore compiled python
 buildnmlc

@@ -131,7 +131,7 @@ contains
     use chem_mods,     only : adv_mass
     use ioFileMod,     only : getfil
     use mo_chem_utls,  only : get_spc_ndx, get_extfrc_ndx
-    use phys_grid,     only : get_ncols_p, get_rlat_all_p, get_rlon_all_p, ngcols_p
+    use phys_grid,     only : get_ncols_p, get_rlat_all_p, get_rlon_all_p
     use ppgrid,        only : begchunk, endchunk, pcols
     use mo_constants,  only : pi, d2r, rearth
     use gmean_mod,     only : gmean
@@ -146,7 +146,7 @@ contains
     !	... Local variables
     !-----------------------------------------------------------------------
     real(r8), parameter :: msq2cmsq = 1.e4_r8, zero=0._r8, twopi=2._r8*pi
-    integer  :: ios, k, j
+    integer  :: k
     integer  :: nlat, nlon, nlev, ndims
     integer  :: ierr
     type(file_desc_t) :: piofile

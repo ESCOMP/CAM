@@ -592,7 +592,7 @@ if ( ($chem ne 'none') or ( $prog_species ) ){
 if ($chem) {
     # drydep_srf_file is only needed for prognostic MAM when the grid is unstructured.
     # structured grids can do interpolation on the fly.
-    if ($chem =~ /_mam/ and ($dyn =~ /se/ or $dyn =~ /fv3/)) {
+    if ($chem =~ /_mam/ and ($dyn =~ /se|fv3|mpas/)) {
         add_default($nl, 'drydep_srf_file');
     }
 }
@@ -2831,7 +2831,6 @@ $cam_chempkg = "'" . "$chem" . "'";  # add quotes to this string value
 
 $nl->set_variable_value('phys_ctl_nl', 'cam_chempkg', $cam_chempkg);
 
-
 # Check the snapshot settings.
 add_default($nl, 'cam_snapshot_before_num');
 add_default($nl, 'cam_snapshot_after_num');
@@ -2893,7 +2892,11 @@ if ($cfg->get('microphys') =~ /^mg/) {
 
 # Ice nucleation options
 if (!$simple_phys) {
-    add_default($nl, 'use_hetfrz_classnuc');
+    if ($chem =~ /_mam/) {
+        add_default($nl, 'use_hetfrz_classnuc');
+    } else {
+        add_default($nl, 'use_hetfrz_classnuc', 'val'=>'.false.');
+    }
     add_default($nl, 'use_preexisting_ice');
     if ($chem =~ /_mam7/) {
         if ($nl->get_value('use_preexisting_ice') =~ m/$TRUE/io) {
@@ -3050,6 +3053,11 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_l_vert_avg_closure');
    add_default($nl, 'clubb_l_diag_Lscale_from_tau');
    add_default($nl, 'clubb_l_damp_wp2_using_em');
+   add_default($nl, 'do_clubb_mf');
+   add_default($nl, 'do_clubb_mf_diag');
+   add_default($nl, 'clubb_mf_L0');
+   add_default($nl, 'clubb_mf_ent0');
+   add_default($nl, 'clubb_mf_nup');
 }
 
 # Tuning for wet scavenging of modal aerosols
@@ -3648,6 +3656,78 @@ if ($dyn =~ /se/) {
     }
 }
 
+# MPAS-Atmosphere dycore
+# ======================
+
+if ($dyn =~ /mpas/) {
+
+    ####################################################
+    # namelist group: dyn_mpas                         #
+    ####################################################
+
+    add_default($nl, 'mpas_time_integration');
+    add_default($nl, 'mpas_time_integration_order');
+    add_default($nl, 'mpas_dt');
+    add_default($nl, 'mpas_split_dynamics_transport');
+    add_default($nl, 'mpas_number_of_sub_steps');
+    add_default($nl, 'mpas_dynamics_split_steps');
+    add_default($nl, 'mpas_h_mom_eddy_visc2');
+    add_default($nl, 'mpas_h_mom_eddy_visc4');
+    add_default($nl, 'mpas_v_mom_eddy_visc2');
+    add_default($nl, 'mpas_h_theta_eddy_visc2');
+    add_default($nl, 'mpas_h_theta_eddy_visc4');
+    add_default($nl, 'mpas_v_theta_eddy_visc2');
+    add_default($nl, 'mpas_horiz_mixing');
+    add_default($nl, 'mpas_len_disp');
+    add_default($nl, 'mpas_visc4_2dsmag');
+    add_default($nl, 'mpas_del4u_div_factor');
+    add_default($nl, 'mpas_w_adv_order');
+    add_default($nl, 'mpas_theta_adv_order');
+    add_default($nl, 'mpas_scalar_adv_order');
+    add_default($nl, 'mpas_u_vadv_order');
+    add_default($nl, 'mpas_w_vadv_order');
+    add_default($nl, 'mpas_theta_vadv_order');
+    add_default($nl, 'mpas_scalar_vadv_order');
+    add_default($nl, 'mpas_scalar_advection');
+    add_default($nl, 'mpas_positive_definite');
+    add_default($nl, 'mpas_monotonic');
+    add_default($nl, 'mpas_coef_3rd_order');
+    add_default($nl, 'mpas_smagorinsky_coef');
+    add_default($nl, 'mpas_mix_full');
+    add_default($nl, 'mpas_epssm');
+    add_default($nl, 'mpas_smdiv');
+    add_default($nl, 'mpas_apvm_upwinding');
+    add_default($nl, 'mpas_h_ScaleWithMesh');
+    add_default($nl, 'mpas_zd');
+    add_default($nl, 'mpas_xnutr');
+    add_default($nl, 'mpas_do_restart');
+    add_default($nl, 'mpas_print_global_minmax_vel');
+    add_default($nl, 'mpas_print_detailed_minmax_vel');
+    add_default($nl, 'mpas_print_global_minmax_sca');
+
+    # mpas_block_decomp_file_prefix should only be set when more than one task is used.
+    # Otherwise the file is not used and should not be added to the input dataset file.
+    if ($opts{'ntasks'} > 1) {
+        add_default($nl, 'mpas_block_decomp_file_prefix');
+    }
+
+    # invoke MPAS utility to generate streams files
+    my $mpas_libdir = $cfg->get('mpas_libdir');
+
+    # Check that the executable file streams_gen is present.  streams_gen is built
+    # at the same time as the MPAS library.  This allows build-namelist
+    # to be called before the MPAS library is built (via CESM scripts).
+    if ( -x "$mpas_libdir/streams_gen") {
+
+        my $cmnd = "$mpas_libdir/streams_gen $mpas_libdir/Registry_processed.xml ".
+               "streams.atmosphere stream_list.atmosphere. listed ";
+
+        system($cmnd) == 0 or die
+            "$ProgName - ERROR: generating MPAS streams files via command:\n".
+            "$cmnd";
+    }
+}
+
 # Defaults for history output
 add_default($nl, 'history_amwg');
 add_default($nl, 'history_vdiag');
@@ -4194,6 +4274,14 @@ sub check_input_files {
 
                 if ($input_pathname_type eq 'abs') {
                     if ($inputdata_rootdir) {
+
+                        # Special cases:
+                        # The file referenced by mpas_block_decomp_file_prefix needs to have the
+                        # task count appended before being added to the inputdata file.
+                        if ($var eq 'mpas_block_decomp_file_prefix') {
+                            $pathname = "$pathname$opts{'ntasks'}";
+                        }
+
                         print $fh "$var = $pathname\n";
                     }
                     else {
