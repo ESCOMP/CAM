@@ -238,7 +238,7 @@ def _main_prog():
     #Push updated README file back to default branch
     #+++++++++++++++++++++++++++++++++++++++++++++++
 
-    cam_repo.update_file("README.md","Auto-update development tag.", new_content, readme_obj.sha)
+    cam_repo.update_file("README.md", "Auto-update development tag.", new_content, readme_obj.sha)
 
     #++++++++++
     #End script
