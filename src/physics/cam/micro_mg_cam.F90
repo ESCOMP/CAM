@@ -2576,9 +2576,9 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
               packed_pra,             packed_prc,             &
               packed_mnuccc,  packed_mnucct,  packed_msacwi,  &
               packed_psacws,  packed_bergs,   packed_berg,    &
-              packed_melt,    packed_meltstot, packed_meltgtot,           packed_homo,            &
+              packed_melt,            packed_homo,            &
               packed_qcres,   packed_prci,    packed_prai,    &
-              packed_qires,   packed_mnuccr,  packed_mnudeptot, packed_mnuccri, packed_pracs,   &
+              packed_qires,   packed_mnuccr,  packed_mnuccri, packed_pracs,   &
               packed_meltsdt, packed_frzrdt,  packed_mnuccd,  &
               packed_pracg,   packed_psacwg,  packed_pgsacw,  &
               packed_pgracs,  packed_prdg,   &
@@ -2602,7 +2602,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
               packed_frzimm,  packed_frzcnt,  packed_frzdep   )
       end select
 
-      call handle_errmsg(errstring, subname="micro_mg_tend")
+      call handle_errmsg(errstring, subname="micro_mg_  tend")
 
       call physics_ptend_init(ptend_loc, psetcols, "micro_mg", &
                               ls=.true., lq=lq)
