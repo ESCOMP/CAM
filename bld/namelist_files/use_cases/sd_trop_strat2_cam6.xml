@@ -19,6 +19,7 @@
 <use_gw_front>.true.</use_gw_front>
 <use_gw_convect_dp>.true.</use_gw_convect_dp>
 <tau_0_ubc>.false.</tau_0_ubc>
+<gw_qbo_hdepth_scaling>0.25D0</gw_qbo_hdepth_scaling>
 
 <!-- LBC, UBC Files -->
 <flbc_type>SERIAL</flbc_type>
