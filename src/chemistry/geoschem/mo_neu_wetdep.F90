@@ -53,6 +53,8 @@ subroutine neu_wetdep_init
   use constituents, only : cnst_get_ind,cnst_mw
   use cam_history,  only : addfld, add_default, horiz_only
   use phys_control, only : phys_getopts
+
+  use mo_chem_utls, only : utls_chem_is
 !
   integer :: m,l
   character*20 :: test_name
@@ -124,6 +126,24 @@ subroutine neu_wetdep_init
          test_name = 'SOAGff3'  
       case(  'SOAGbb4' )
          test_name = 'SOAGff4'  
+      case( 'H2O2' )
+         test_name = 'GC_H2O2'
+      case( 'HCHO' )
+         test_name = 'GC_CH2O'
+      case( 'CH2O' )
+         test_name = 'GC_CH2O'
+      case( 'NO2' )
+         test_name = 'GC_NO2'
+      case( 'HNO3' )
+         test_name = 'GC_HNO3'
+      case( 'NH3' )
+         test_name = 'GC_NH3'
+      case( 'N2O5' )
+         test_name = 'GC_N2O5'
+      case( 'PAN' )
+         test_name = 'GC_PAN'
+      case( 'SO2' )
+         test_name = 'GC_SO2'
     end select
 !
     do l = 1,n_species_table
@@ -168,6 +188,9 @@ subroutine neu_wetdep_init
   do m=1,gas_wetdep_cnt
     if ( debug ) print '(i4,a)',m,trim(gas_wetdep_list(m))
     call cnst_get_ind(gas_wetdep_list(m), mapping_to_mmr(m), abort=.false. )
+    if ( ( mapping_to_mmr(m) <= 0 ) .and. utls_chem_is('GEOS-Chem') ) then
+       call cnst_get_ind('GC_AER_'//gas_wetdep_list(m), mapping_to_mmr(m), abort=.false. )
+    endif
     if ( debug ) print '(a,i4)','mapping_to_mmr ',mapping_to_mmr(m)
     if ( mapping_to_mmr(m) <= 0 ) then
       print *,'problem with mapping_to_mmr of ',gas_wetdep_list(m)

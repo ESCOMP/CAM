@@ -4743,11 +4743,10 @@ Default: FALSE
 </entry>
 
 <entry id="gas_wetdep_method" type="char*9" category="cam_chem"
-       group="wetdep_inparm" valid_values="MOZ,NEU,GEOS-CHEM,OFF" >
+       group="wetdep_inparm" valid_values="MOZ,NEU,OFF" >
 Wet deposition method used
   MOZ --> mozart scheme is used
   NEU --> J Neu's scheme is used
-  GEOS-CHEM --> GEOS-Chem scheme is used (only when GEOS-Chem chemistry is used)
   OFF --> wet deposition is turned off
 Default: NEU except for SPCAM runs
 </entry>

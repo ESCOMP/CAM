@@ -341,7 +341,7 @@ contains
           ! This is required as we need to distinguish between MAM and GEOS-Chem aerosols
           ! (Both are included in aer_drydep_list)
           IF ( ThisSpc%Is_Gas .eqv. .False. ) THEN
-             Write(cnstName, "(a,a)") 'GC_AER_', to_upper(TRIM(trueName))
+             Write(cnstName, "(a,a)") 'GC_AER_', TRIM(trueName)
           ENDIF
           ! Make sure that solsym is following the list of tracers as listed in input.geos
           IF ( to_upper(TRIM(tracerNames(I))) /= to_upper(TRIM(solsym(I))) ) THEN
@@ -1427,25 +1427,6 @@ contains
         CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
-#if defined ( MODAL_AERO )
-    IF ( Input_Opt%LWetD ) THEN
-       DO I = BEGCHUNK, ENDCHUNK
-          DO N = 1, State_Chm(I)%nWetDep
-             M = State_Chm(I)%Map_WetDep(N)
-             SpcInfo => State_Chm(I)%SpcData(M)%Info
-             SELECT CASE ( TRIM(SpcInfo%Name) )
-             CASE ( 'BCPI', 'BCPO', 'DST1', 'DST2', 'DST3', 'DST4', &
-                    'SOAS', 'SO4', 'SALA', 'SALC', 'OCPI' , 'OCPO' )
-                SpcInfo%WD_ExternalDep = .True.
-             CASE DEFAULT
-                SpcInfo%WD_ExternalDep = .False.
-             END SELECT
-             SpcInfo => NULL()
-          ENDDO
-       ENDDO
-    ENDIF
-#endif
-
     IF ( Input_Opt%LDryD ) THEN
        !==============================================================
        ! Get mapping between CESM dry deposited species and the
@@ -1741,8 +1722,6 @@ contains
 
     ! Only bother updating the module information if there's been a change
     IF (DT_MIN .NE. DT_MIN_LAST) THEN
-        IF (MasterProc) WRITE(iulog,'(a,F7.1,a)') ' --> GC: updating dt to ', DT, ' seconds'
-
         CALL Set_Timesteps( Input_Opt  =  Input_Opt, &
                             CHEMISTRY  =  DT_MIN,    &
                             EMISSION   =  DT_MIN,    &
@@ -1863,7 +1842,7 @@ contains
     use Time_Mod,            only : Accept_External_Date_Time
     use Toms_Mod,            only : Compute_Overhead_O3
     use Chemistry_Mod,       only : Do_Chemistry
-    use Wetscav_Mod,         only : Setup_Wetscav, Do_WetDep
+    use Wetscav_Mod,         only : Setup_Wetscav
     use CMN_Size_Mod,        only : PTop
     use PBL_Mix_Mod,         only : Compute_PBL_Height
     use UCX_Mod,             only : Set_H2O_Trac
@@ -1971,7 +1950,6 @@ contains
     REAL(r8)          :: eflx(pcols,pver,pcnst)       ! 3-D emissions in kg/m2/s
 
     ! For GEOS-Chem diagnostics
-    REAL(r8)              :: mmr1(state%NCOL,PVER,gas_pcnst)
     REAL(r8)              :: mmr_tend(state%NCOL,PVER,gas_pcnst)
     REAL(r8)              :: wk_out(state%NCOL)
     LOGICAL               :: isWD
@@ -2132,11 +2110,10 @@ contains
     MMR_End = 0.0e+0_r8
     DO N = 1, pcnst
        M = map2GC(N)
-       IF ( M > 0 ) THEN
-          MMR_Beg(:nY,:nZ,M) = state%q(:nY,nZ:1:-1,N)
-          State_Chm(LCHNK)%Species(1,:nY,:nZ,M) = REAL(MMR_Beg(:nY,:nZ,M),fp)
-          lq(N) = .True.
-       ENDIF
+       IF ( M <= 0 ) CYCLE
+       MMR_Beg(:nY,:nZ,M) = state%q(:nY,nZ:1:-1,N)
+       State_Chm(LCHNK)%Species(1,:nY,:nZ,M) = REAL(MMR_Beg(:nY,:nZ,M),fp)
+       lq(N) = .True.
     ENDDO
 
     ! We need to let CAM know that 'H2O' and 'Q' are identical
@@ -2159,9 +2136,8 @@ contains
     ! Map and flip gaseous short-lived species
     DO N = 1, nSls
        M = map2GC_Sls(N)
-       IF ( M > 0 ) THEN
-          State_Chm(LCHNK)%Species(1,:nY,:nZ,M) = REAL(SlsData(:nY,nZ:1:-1,N),fp)
-       ENDIF
+       IF ( M <= 0 ) CYCLE
+       State_Chm(LCHNK)%Species(1,:nY,:nZ,M) = REAL(SlsData(:nY,nZ:1:-1,N),fp)
     ENDDO
 
     DO N = 1, gas_pcnst
@@ -3492,7 +3468,7 @@ contains
           ! Add to GEOS-Chem species
           State_Chm(LCHNK)%Species(1,:nY,:nZ,M) = State_Chm(LCHNK)%Species(1,:nY,:nZ,M) &
                                                 + eflx(:nY,nZ:1:-1,N) * dT
-       ELSE
+       ELSEIF ( M < 0 ) THEN
           ! Add to constituent (mostly for MAM4 aerosols)
           ! Convert from kg/m2/s to kg/kg/s
           ptend%q(:nY,nZ:1:-1,N) = ptend%q(:nY,nZ:1:-1,N) &
@@ -3594,31 +3570,6 @@ contains
     !==============================================================
     IF ( Input_Opt%LWetD ) THEN
 
-       ! Store mass mixing ratios before wet deposition is applied
-       IF ( gas_wetdep_method == 'GEOS-CHEM' ) THEN
-          DO N = 1, gas_pcnst
-             isWD = .False.
-             ! See definition of map2chm
-             M = map2chm(N)
-             IF ( M > 0 ) THEN
-                SpcInfo => State_Chm(BEGCHUNK)%SpcData(M)%Info
-                isWD = SpcInfo%Is_WetDep
-
-                ! Free pointer
-                SpcInfo => NULL()
-             ENDIF
-
-             IF ( .NOT. isWD ) CYCLE
-
-             IF ( hist_fld_active( TRIM(wetdep_name(N)) ) .OR. &
-                  hist_fld_active( TRIM(wtrate_name(N)) ) ) THEN
-                IF ( M > 0 ) THEN
-                   mmr1(:nY,:nZ,N) = State_Chm(LCHNK)%Species(1,:nY,nZ:1:-1,M)
-                ENDIF
-             ENDIF
-          ENDDO
-       ENDIF
-
        IF ( gas_wetdep_method == 'NEU' ) THEN
           CALL Neu_wetdep_tend( LCHNK       = LCHNK,      &
                                 NCOL        = NCOL,       &
@@ -3634,77 +3585,11 @@ contains
                                 cmfdqr      = cmfdqr,     &
                                 wd_tend     = ptend%q,    &
                                 wd_tend_int = wetdepflx  )
-       ELSEIF ( gas_wetdep_method == 'GEOS-CHEM' ) THEN
-          ! TMMF, If we perform GEOS-Chem washout and rainout, we should turn
-          ! it off for MAM4 aerosols, as this is done in physpkg.F90
-          ! A way to do this would be to reapply vmr of MAM4 aerosols before
-          ! wetdep is applied
-
-          ! Do wet deposition
-          ! Tracer concentration units are converted locally
-          ! to [kg/m2] in wet deposition to enable calculations
-          ! along the column (ewl, 9/18/15)
-          CALL Do_WetDep( Input_Opt  = Input_Opt,         &
-                          State_Chm  = State_Chm(LCHNK),  &
-                          State_Diag = State_Diag(LCHNK), &
-                          State_Grid = State_Grid(LCHNK), &
-                          State_Met  = State_Met(LCHNK),  &
-                          RC         = RC                )
-
-          IF ( RC /= GC_SUCCESS ) THEN
-             ErrMsg = 'Error encountered in "Do_WetDep"!'
-             CALL Error_Stop( ErrMsg, ThisLoc )
-          ENDIF
-
        ELSE
-          ErrMsg = 'Unknown gas_wetdep_method ' //TRIM(gas_wetdep_method)
+          ErrMsg = 'Unknown gas_wetdep_method '//TRIM(gas_wetdep_method)
           CALL Error_Stop( ErrMsg, ThisLoc )
        ENDIF
 
-       IF ( gas_wetdep_method == 'GEOS-CHEM' ) THEN
-          DO N = 1, gas_pcnst
-             isWD = .False.
-             ! See definition of map2chm
-             M = map2chm(N)
-             IF ( M > 0 ) THEN
-                SpcInfo => State_Chm(BEGCHUNK)%SpcData(M)%Info
-                isWD = SpcInfo%Is_WetDep
-
-                ! Free pointer
-                SpcInfo => NULL()
-             ENDIF
-
-             IF ( .NOT. isWD ) CYCLE
-
-             IF ( hist_fld_active( TRIM(wetdep_name(N)) ) .OR. &
-                  hist_fld_active( TRIM(wtrate_name(N)) ) ) THEN
-                IF ( M > 0 ) THEN
-                   mmr1(:nY,:nZ,N) = State_Chm(LCHNK)%Species(1,:nY,nZ:1:-1,M) - mmr1(:nY,:nZ,N)
-                ENDIF
-
-                SpcName = wetdep_name(N)
-                IF ( hist_fld_active(TRIM(SpcName)) ) THEN 
-                   CALL Outfld( TRIM(SpcName), mmr1(1:nY,:nZ,N)/dT, nY, LCHNK )
-                ENDIF
-
-                SpcName = wtrate_name(N)
-                IF ( hist_fld_active(TRIM(SpcName)) ) THEN 
-                   wk_out = 0._r8
-                   DO L = 1, nZ
-                      wk_out(1:nY) = wk_out(1:nY) &
-                                   + mmr1(1:nY,L,N)/dT                    * &
-                                       State_Met(LCHNK)%AD(1,1:nY,nZ+1-L) / &
-                                       State_Met(LCHNK)%Area_M2(1,1:nY)
-                   ENDDO
-                   CALL Outfld( TRIM(SpcName), wk_out(1:nY), nY, LCHNK )
-                ENDIF
-             ENDIF
-
-             ! GEOS-Chem does not currently store HEFF, but calculates it
-             ! internally. Some potential work around would be to add a
-             ! SpcInfo%Heff variable.
-          ENDDO
-       ENDIF
     ENDIF
 
     DO N = 1, gas_pcnst
@@ -3791,22 +3676,20 @@ contains
     SlsData = 0.0e+0_r8
     DO N = 1, nSls
        M = map2GC_Sls(N)
-       IF ( M > 0 ) THEN
-          SlsData(:nY,nZ:1:-1,N) = REAL(State_Chm(LCHNK)%Species(1,:nY,:nZ,M),r8)
-       ENDIF
+       IF ( M <= 0 ) CYCLE
+       SlsData(:nY,nZ:1:-1,N) = REAL(State_Chm(LCHNK)%Species(1,:nY,:nZ,M),r8)
     ENDDO
     CALL set_short_lived_species( SlsData, LCHNK, nY, pbuf )
 
     DO N = 1, pcnst
        M = map2GC(N)
-       IF ( M > 0 ) THEN
-          ! Add change in mass mixing ratio to tendencies.
-          ! For NEU wet deposition, the wet removal rates are added to
-          ! ptend.
-          MMR_End(:nY,:nZ,M)     = REAL(State_Chm(LCHNK)%Species(1,:nY,:nZ,M),r8)
-          ptend%q(:nY,nZ:1:-1,N) = ptend%q(:nY,nZ:1:-1,N) &
-                                 + (MMR_End(:nY,:nZ,M)-MMR_Beg(:nY,:nZ,M))/dT
-       ENDIF
+       IF ( M <= 0 ) CYCLE
+       ! Add change in mass mixing ratio to tendencies.
+       ! For NEU wet deposition, the wet removal rates are added to
+       ! ptend.
+       MMR_End(:nY,:nZ,M)     = REAL(State_Chm(LCHNK)%Species(1,:nY,:nZ,M),r8)
+       ptend%q(:nY,nZ:1:-1,N) = ptend%q(:nY,nZ:1:-1,N) &
+                              + (MMR_End(:nY,:nZ,M)-MMR_Beg(:nY,:nZ,M))/dT
     ENDDO
 
 #if defined( MODAL_AERO_4MODE )

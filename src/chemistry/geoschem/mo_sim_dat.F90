@@ -97,7 +97,7 @@
                         'NO             ','NO2            ','NO3            ', &
                         'NPRNO3         ','O3             ','OClO           ', &
                         'OCPI           ','OCPO           ','OCS            ', &
-                        'OIO            ','PAN            ','PFE            ', &
+                        'OIO            ','PAN            ','pFe            ', &
                         'PIP            ','PP             ','PPN            ', &
                         'PROPNN         ','PRPE           ','PRPN           ', &
                         'PYAC           ','R4N2           ','R4P            ', &
