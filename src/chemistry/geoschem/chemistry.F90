@@ -338,11 +338,6 @@ contains
           MWTmp       = REAL(ThisSpc%MW_g,r8)
           refvmr      = REAL(ThisSpc%BackgroundVV,r8)
           refmmr      = refvmr / (MWDry / MWTmp)
-          ! This is required as we need to distinguish between MAM and GEOS-Chem aerosols
-          ! (Both are included in aer_drydep_list)
-          IF ( ThisSpc%Is_Gas .eqv. .False. ) THEN
-             Write(cnstName, "(a,a)") 'GC_AER_', TRIM(trueName)
-          ENDIF
           ! Make sure that solsym is following the list of tracers as listed in input.geos
           IF ( to_upper(TRIM(tracerNames(I))) /= to_upper(TRIM(solsym(I))) ) THEN
              Write(iulog,*) "tracerNames (", TRIM(tracerNames(I)), ") /= solsym (", &
@@ -1952,7 +1947,6 @@ contains
     ! For GEOS-Chem diagnostics
     REAL(r8)              :: mmr_tend(state%NCOL,PVER,gas_pcnst)
     REAL(r8)              :: wk_out(state%NCOL)
-    LOGICAL               :: isWD
     LOGICAL               :: Found
     CHARACTER(LEN=255)    :: tagName
 

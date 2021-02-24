@@ -53,8 +53,6 @@ subroutine neu_wetdep_init
   use constituents, only : cnst_get_ind,cnst_mw
   use cam_history,  only : addfld, add_default, horiz_only
   use phys_control, only : phys_getopts
-
-  use mo_chem_utls, only : utls_chem_is
 !
   integer :: m,l
   character*20 :: test_name
@@ -100,7 +98,7 @@ subroutine neu_wetdep_init
          test_name = 'SO2'
       case ( 'CLONO2','BRONO2','HCL','HOCL','HOBR','HBR', 'Pb', 'MACROOH', 'ISOPOOH', 'XOOH', 'H2SO4', 'HF', 'COF2', 'COFCL')
          test_name = 'HNO3'
-      case ( 'NH_50W', 'NDEP', 'NHDEP', 'NH4', 'NH4NO3' ) 
+      case ( 'NH_50W', 'NDEP', 'NHDEP', 'NH4NO3' ) 
          test_name = 'HNO3'
       case ( 'ALKOOH', 'MEKOOH', 'TOLOOH' )
          test_name = 'CH3OOH'        
@@ -144,6 +142,14 @@ subroutine neu_wetdep_init
          test_name = 'GC_PAN'
       case( 'SO2' )
          test_name = 'GC_SO2'
+      ! Now list all non-MAM GEOS-Chem aerosols. These will be scavenged similarly
+      ! to HNO3
+      case( 'AERI', 'BrSALA', 'BrSALC', 'DMS', 'INDIOL',    &
+            'IONITA', 'ISALA', 'ISALC', 'LVOCOA', 'MONITA', & 
+            'MSA', 'NH4', 'NIT', 'NITs', 'pFe',             &
+            'SALAAL', 'SALACL', 'SALCAL', 'SALCCL', 'SO4s', &
+            'SOAGX', 'SOAIE' )
+         test_name = 'HNO3'
     end select
 !
     do l = 1,n_species_table
@@ -188,9 +194,6 @@ subroutine neu_wetdep_init
   do m=1,gas_wetdep_cnt
     if ( debug ) print '(i4,a)',m,trim(gas_wetdep_list(m))
     call cnst_get_ind(gas_wetdep_list(m), mapping_to_mmr(m), abort=.false. )
-    if ( ( mapping_to_mmr(m) <= 0 ) .and. utls_chem_is('GEOS-Chem') ) then
-       call cnst_get_ind('GC_AER_'//gas_wetdep_list(m), mapping_to_mmr(m), abort=.false. )
-    endif
     if ( debug ) print '(a,i4)','mapping_to_mmr ',mapping_to_mmr(m)
     if ( mapping_to_mmr(m) <= 0 ) then
       print *,'problem with mapping_to_mmr of ',gas_wetdep_list(m)

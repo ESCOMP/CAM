@@ -150,7 +150,6 @@ CONTAINS
   USE CONSTITUENTS,        ONLY : cnst_name, sflxnam
   USE CONSTITUENTS,        ONLY : cnst_get_ind
   USE CAM_HISTORY,         ONLY : addfld, add_default, horiz_only
-  USE GAS_WETDEP_OPTS,     ONLY : gas_wetdep_method
   USE DRYDEP_MOD,          ONLY : depName
 !
 ! !INPUT PARAMETERS:
@@ -172,7 +171,6 @@ CONTAINS
 
     ! Logical
     LOGICAL                :: Found
-    LOGICAL                :: isWD
 
     ! Strings
     CHARACTER(LEN=255)     :: SpcName
@@ -263,12 +261,6 @@ CONTAINS
        CALL Addfld( TRIM(SpcName), (/ 'lev' /), 'A', 'kg/kg/s', TRIM(SpcName)//' source/sink' )
 
        SpcName = TRIM(solsym(N))
-       IF ( map2chm(N) > 0 ) THEN
-          !SpcName = to_upper(SpcName)
-          IF ( State_Chm%SpcData(map2chm(N))%Info%Is_Gas .eqv. .False. ) THEN
-             SpcName = 'GC_AER_'//to_upper(TRIM(SpcName))
-          ENDIF
-       ENDIF
        CALL cnst_get_ind( SpcName, M, abort=.false. )
        IF ( M > 0 ) THEN
           IF (sflxnam(M)(3:5) == 'num') then  ! name is in the form of "SF****"
@@ -277,12 +269,7 @@ CONTAINS
              unit_basename = 'kg'
           ENDIF
           IF ( map2chm(N) > 0 ) THEN
-             IF ( State_Chm%SpcData(map2chm(N))%Info%Is_Gas .eqv. .True. ) THEN
-                sflxnam_loc(M) = to_upper(sflxnam(M))
-             ELSE
-                ! Prevent from saving as GC_AER_...
-                sflxnam_loc(M) = 'SF'//to_upper(cnst_name(M)(8:))
-             ENDIF
+             sflxnam_loc(M) = to_upper(sflxnam(M))
           ELSE
              sflxnam_loc(M) = sflxnam(M)
           ENDIF
@@ -291,32 +278,6 @@ CONTAINS
              TRIM(solsym(N))//' surface flux')
        ENDIF
     ENDDO
-
-    IF ( gas_wetdep_method == 'GEOS-CHEM' ) THEN
-       DO N = 1, gas_pcnst
-          isWD = .False.
-          wetdep_name(N) = 'DTWR_'//to_upper(TRIM(solsym(N)))
-          wtrate_name(N) = 'WD_'//to_upper(TRIM(solsym(N)))
-
-          M = map2chm(N)
-          IF ( M > 0 ) THEN
-             SpcInfo => State_Chm%SpcData(M)%Info
-             isWD = SpcInfo%Is_WetDep
-
-             ! Free pointer
-             SpcInfo => NULL()
-          ENDIF
-
-          IF ( .NOT. isWD ) CYCLE
-
-          SpcName = wetdep_name(N)
-          CALL Addfld( TRIM(SpcName), (/ 'lev' /), 'A', 'kg/kg/s', &
-             'wet removal tendency' )
-          SpcName = wtrate_name(N)
-          CALL Addfld( TRIM(SpcName), horiz_only, 'A', 'kg/m2/s', &
-             'vertical integrated wet deposition flux' )
-       ENDDO
-    ENDIF
 
     CALL get_TagInfo( Input_Opt = Input_Opt,  &
                       tagID     = 'PHO',      &
@@ -1436,17 +1397,13 @@ CONTAINS
              !IF ( hist_fld_active(TRIM(SpcName)) ) THEN
              !   IF ( Source_KindVal /= KINDVAL_I4 ) THEN
              !      IF ( Rank == 2 ) THEN
-             !         outTmp(:nY,nZ) = REAL(Ptr2d_8(1,:),r8)
+             !         outTmp(:nY,nZ) = REAL(Ptr2d_8(1,:nY),r8)
              !         CALL Outfld( TRIM( Item%FullName ), outTmp(:nY,nZ), nY, LCHNK )
              !      ELSEIF ( Rank == 3 ) THEN
              !         ! For now, treat variables defined on level edges by ignoring top
              !         ! most layer
-             !         DO J = 1, nY
-             !         DO L = 1, nZ
-             !            outTmp(J,nZ+1-L) = REAL(Ptr3d_8(1,J,L),r8)
-             !         ENDDO
-             !         ENDDO
-             !         CALL Outfld( TRIM( Item%FullName ), outTmp, nY, LCHNK )
+             !         outTmp(:nY,:nZ) = REAL(Ptr3d_8(1,:nY,nZ:1:-1),r8)
+             !         CALL Outfld( TRIM( Item%FullName ), outTmp(:nY,:), nY, LCHNK )
              !      ELSE
              !         IF ( rootChunk ) Write(iulog,*) " Item ", TRIM(Item%FullName), &
              !            " is of rank ", Rank, " and will not be diagnosed!"

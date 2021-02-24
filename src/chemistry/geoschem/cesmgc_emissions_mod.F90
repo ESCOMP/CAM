@@ -129,8 +129,6 @@ CONTAINS
 
 #if defined( MODAL_AERO_4MODE )
     ! Get constituent index for aerosols
-    CALL cnst_get_ind('bc_a1',       iBC1,   abort=.True.)
-    CALL cnst_get_ind('bc_a4',       iBC4,   abort=.True.)
     CALL cnst_get_ind('soa1_a1',     iSOA11, abort=.True.)
     CALL cnst_get_ind('soa1_a2',     iSOA12, abort=.True.)
     CALL cnst_get_ind('soa2_a1',     iSOA21, abort=.True.)
@@ -141,16 +139,8 @@ CONTAINS
     CALL cnst_get_ind('soa4_a2',     iSOA42, abort=.True.)
     CALL cnst_get_ind('soa5_a1',     iSOA51, abort=.True.)
     CALL cnst_get_ind('soa5_a2',     iSOA52, abort=.True.)
-    CALL cnst_get_ind('H2SO4',       iH2SO4, abort=.True.)
-    CALL cnst_get_ind('pom_a1',      iPOM1,  abort=.True.)
-    CALL cnst_get_ind('pom_a4',      iPOM4,  abort=.True.)
 
-    CALL cnst_get_ind('GC_AER_BCPI', iBCPI,  abort=.True.)
-    CALL cnst_get_ind('GC_AER_BCPO', iBCPO,  abort=.True.)
-    CALL cnst_get_ind('GC_AER_SOAS', iSOAS,  abort=.True.)
-    CALL cnst_get_ind('GC_AER_SO4',  iSO4,   abort=.True.)
-    CALL cnst_get_ind('GC_AER_OCPI', iOCPI,  abort=.True.)
-    CALL cnst_get_ind('GC_AER_OCPO', iOCPO,  abort=.True.)
+    CALL cnst_get_ind('SOAS', iSOAS,  abort=.True.)
 #endif
 
     !-----------------------------------------------------------------------
@@ -273,7 +263,6 @@ CONTAINS
     USE State_Met_Mod,       ONLY : MetState
     USE CAMSRFEXCH,          ONLY : cam_in_t
     USE CONSTITUENTS,        ONLY : cnst_get_ind, cnst_mw
-    USE CHEM_MODS,           ONLY : tracerNames, nTracers, map2GCinv
     USE PHYSICS_TYPES,       ONLY : physics_state
     USE PHYSICS_BUFFER,      ONLY : pbuf_get_index, pbuf_get_chunk
     USE PHYSICS_BUFFER,      ONLY : physics_buffer_desc, pbuf_get_field
@@ -322,15 +311,15 @@ CONTAINS
     ! Integers
     INTEGER                                :: LCHNK
     INTEGER                                :: nY, nZ
-    INTEGER                                :: I, M, N, J, L
-    INTEGER                                :: RC           ! return code
-    INTEGER                                :: tmpIdx       ! pbuf field id
+    INTEGER                                :: J, L, N
+    INTEGER                                :: RC            ! return code
+    INTEGER                                :: tmpIdx        ! pbuf field id
 
     ! Logical
     LOGICAL                                :: rootChunk
 
     ! Objects
-    TYPE(physics_buffer_desc), POINTER     :: pbuf_chnk(:) ! slice of pbuf in current chunk
+    TYPE(physics_buffer_desc), POINTER     :: pbuf_chnk(:)  ! slice of pbuf in current chunk
 
     ! Real
     REAL(r8),                      POINTER :: pbuf_ik(:,:)  ! pointer to pbuf data (/pcols,pver/)
@@ -342,7 +331,7 @@ CONTAINS
 
     ! Strings
     CHARACTER(LEN=255)                     :: SpcName
-    CHARACTER(LEN=255)                     :: fldname_ns   ! field name HCO_*
+    CHARACTER(LEN=255)                     :: fldname_ns    ! field name HCO_*
 
     !=================================================================
     ! CESMGC_Emissions_Calc begins here!
@@ -362,17 +351,9 @@ CONTAINS
     ! Initialize emission flux
     eflx(:,:,:) = 0.0e+0_r8
 
-    DO N = 1, nTracers
-
-       fldname_ns = 'HCO_' // TRIM(tracerNames(N))
+    DO N = iFirstCnst, pcnst
+       fldname_ns = 'HCO_'//TRIM(cnst_name(N))
        tmpIdx = pbuf_get_index(fldname_ns, RC)
-
-       IF ( tmpIdx < 0 ) THEN
-          ! If previous field name was not found, try with capitalized version
-          ! to_upper is required because pFe /= PFE
-          fldname_ns = 'HCO_' // to_upper(TRIM(tracerNames(N)))
-          tmpIdx = pbuf_get_index(fldname_ns, RC)
-       ENDIF
 
        IF ( tmpIdx < 0 .OR. ( iStep == 1 ) ) THEN
           IF ( rootChunk ) Write(iulog,'(a,a)') " CESMGC_Emissions_Calc: Field not found ", &
@@ -386,27 +367,23 @@ CONTAINS
              CALL ENDRUN("CESMGC_Emissions_Calc: FATAL - tmpIdx > 0 but pbuf_ik not associated")
           ENDIF
 
-          M = map2GCinv(N)
-
-          IF ( M <= 0 ) CYCLE
-
-          eflx(1:nY,:nZ,M) = pbuf_ik(1:nY,:nZ)
+          eflx(1:nY,:nZ,N) = pbuf_ik(1:nY,:nZ)
 
           ! Reset pointers
           pbuf_ik   => NULL()
           pbuf_chnk => NULL()
 
-          IF ( MINVAL(eflx(:nY,:nZ,M)) < 0.0e+00_r8 ) THEN
+          IF ( MINVAL(eflx(:nY,:nZ,N)) < 0.0e+00_r8 ) THEN
              Write(iulog,*) " CESMGC_Emissions_Calc: HEMCO emission flux is negative for ", &
-                TRIM(cnst_name(M)), " with value ", MINVAL(eflx(:nY,:nZ,M)), " at ", &
-                MINLOC(eflx(:nY,:nZ,M))
+                TRIM(cnst_name(N)), " with value ", MINVAL(eflx(:nY,:nZ,N)), " at ", &
+                MINLOC(eflx(:nY,:nZ,N))
           ENDIF
 
-          IF ( rootChunk .and. ( MAXVAL(eflx(:nY,:nZ,M)) > 0.0e+0_r8 ) ) THEN
+          IF ( rootChunk .and. ( MAXVAL(eflx(:nY,:nZ,N)) > 0.0e+0_r8 ) ) THEN
              Write(iulog,'(a,a,a,a)') " CESMGC_Emissions_Calc: HEMCO flux ", &
-                TRIM(fldname_ns), " added to ", TRIM(cnst_name(M))
+                TRIM(fldname_ns), " added to ", TRIM(cnst_name(N))
              Write(iulog,'(a,a,E16.4)') " CESMGC_Emissions_Calc: Maximum flux ", &
-                TRIM(fldname_ns), MAXVAL(eflx(:nY,:nZ,M))
+                TRIM(fldname_ns), MAXVAL(eflx(:nY,:nZ,N))
           ENDIF
        ENDIF
     ENDDO
@@ -421,16 +398,9 @@ CONTAINS
     ! need to feed MAM dust emissions into the GEOS-Chem DST* constituents
     ! Same thing applies for sea salt.
 
-    ! However, emissions of other aerosols (black carbon, organic carbon,
-    ! secondary organic aerosols and SO4), as read by HEMCO, need to be fed
-    ! to MAM's aerosol emission flux
-    eflx(:nY,:nZ,iBC1)   = eflx(:nY,:nZ,iBCPI)
-    eflx(:nY,:nZ,iBCPI)  = 0.0e+00_r8
-    eflx(:nY,:nZ,iBC4)   = eflx(:nY,:nZ,iBCPO)
-    eflx(:nY,:nZ,iBCPO)  = 0.0e+00_r8
-
-    eflx(:nY,:nZ,iH2SO4) = eflx(:nY,:nZ,iSO4)
-    eflx(:nY,:nZ,iSO4)   = 0.0e+00_r8
+    ! HEMCO aerosol emissions are fed to MAM through the HEMCO_Config.rc
+    ! where all GEOS-Chem aerosols (BCPI, BCPO, OCPI, OCPO, SO4) have been
+    ! replaced with the corresponding MAM aerosols
 
     ! For SOA emission, split evently GEOS-Chem SOAS emission into each 
     ! VBS bin.
@@ -446,10 +416,6 @@ CONTAINS
     eflx(:nY,:nZ,iSOA52) = eflx(:nY,:nZ,iSOAS) / 10.0e+00_r8
     eflx(:nY,:nZ,iSOAS)  = 0.0e+00_r8
 
-    eflx(:nY,:nZ,iPOM1)  = eflx(:nY,:nZ,iOCPI)
-    eflx(:nY,:nZ,iOCPI)  = 0.0e+00_r8
-    eflx(:nY,:nZ,iPOM4)  = eflx(:nY,:nZ,iOCPO)
-    eflx(:nY,:nZ,iOCPO)  = 0.0e+00_r8
 #endif
 
     ! Output fields before lightning NO emissions are applied to eflx
@@ -465,23 +431,22 @@ CONTAINS
 
        SpcName = TRIM(cnst_name(N))//'_CMXF'
        CALL Outfld( TRIM(SpcName), SUM(eflx(:nY,:nZ,N), DIM=2), nY, LCHNK )
-
     ENDDO
 
     !-----------------------------------------------------------------------
     ! Lightning NO emissions
     !-----------------------------------------------------------------------
-    M = iNO
+    N = iNO
 
     ! prod_NO is in atom N cm^-3 s^-1 <=> molec cm^-3 s^-1
     ! We need to convert this to kg NO/m2/s
     ! Multiply by MWNO * BXHEIGHT * 1.0E+06 / AVO
     !           = mole/molec * kg NO/mole * m * cm^3/m^3
-    ! cnst_mw(M) is in g/mole
-    SCALFAC = cnst_mw(M) * 1.0E-03 * 1.0E+06 / AVO
+    ! cnst_mw(N) is in g/mole
+    SCALFAC = cnst_mw(N) * 1.0E-03 * 1.0E+06 / AVO
     DO J = 1, nY
     DO L = 1, nZ
-       eflx(J,L,M) = eflx(J,L,M)                      &
+       eflx(J,L,N) = eflx(J,L,N)                      &
                    + prod_NO(J,L,LCHNK)               &
                      * State_Met%BXHEIGHT(1,J,nZ+1-L) &
                      * SCALFAC
@@ -497,13 +462,13 @@ CONTAINS
     IF ( index_x2a_Fall_flxvoc > 0 .AND. shr_megan_mechcomps_n > 0 ) THEN
        ! set MEGAN fluxes 
        DO N = 1, shr_megan_mechcomps_n
-          DO I = 1, nY
-             megflx(I) = -cam_in%meganflx(I,N) * megan_wght_factors(N)
+          DO J = 1, nY
+             megflx(J) = -cam_in%meganflx(J,N) * megan_wght_factors(N)
           ENDDO
           IF ( ( megan_indices_map(N) > 0 ) .AND. ( megan_wght_factors(N) > 0.0e+00_r8 ) ) THEN
-             DO I = 1, nY
-                cam_in%cflx(I,megan_indices_map(N)) = cam_in%cflx(I,megan_indices_map(N)) &
-                                                    + megflx(I)
+             DO J = 1, nY
+                cam_in%cflx(J,megan_indices_map(N)) = cam_in%cflx(J,megan_indices_map(N)) &
+                                                    + megflx(J)
              ENDDO
           ENDIF
           ! output MEGAN emis fluxes to history
