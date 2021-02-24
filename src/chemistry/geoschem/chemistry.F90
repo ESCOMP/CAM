@@ -1842,6 +1842,7 @@ contains
     use PBL_Mix_Mod,         only : Compute_PBL_Height
     use UCX_Mod,             only : Set_H2O_Trac
     use CMN_FJX_MOD,         only : ZPJ
+    USE FAST_JX_MOD,         only : RXN_NO2, RXN_O3_1, RXN_O3_2a
     use State_Diag_Mod,      only : get_TagInfo
     use Unitconv_Mod,        only : Convert_Spc_Units
 
@@ -3046,10 +3047,9 @@ contains
 
              ! Day
              FIELDNAME = TRIM(PREFIX) // '_DAY'
-             fldname_ns = FIELDNAME
-             tmpIdx = pbuf_get_index(fldname_ns, RC)
+             tmpIdx = pbuf_get_index(FIELDNAME, RC)
              IF ( tmpIdx < 0 .or. ( iStep == 1 ) ) THEN
-                IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(fldname_ns)
+                IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(FIELDNAME)
                 BrPtrDay(N)%MR(1,:nY,nZ:1:-1) = 0.0e+0_f4
              ELSE
                 pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
@@ -3062,9 +3062,9 @@ contains
 
              ! Night
              FIELDNAME = TRIM(PREFIX) // '_NIGHT'
-             tmpIdx = pbuf_get_index(fldname_ns, RC)
+             tmpIdx = pbuf_get_index(FIELDNAME, RC)
              IF ( tmpIdx < 0 .or. ( iStep == 1 ) ) THEN
-                IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(fldname_ns)
+                IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(FIELDNAME)
                 BrPtrDay(N)%MR(1,:nY,nZ:1:-1) = 0.0e+0_f4
              ELSE
                 pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
@@ -3105,9 +3105,9 @@ contains
              IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating PLVEC%PROD')
 
              ! Get pointer from HEMCO
-             tmpIdx = pbuf_get_index(fldname_ns, RC)
+             tmpIdx = pbuf_get_index(FIELDNAME, RC)
              IF ( tmpIdx < 0 .or. ( iStep == 1 ) ) THEN
-                IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(fldname_ns)
+                IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(FIELDNAME)
                 PLVEC(N)%PROD(1,:nY,nZ:1:-1) = 0.0e+0_f4
                 FND = .False.
              ELSE
@@ -3137,9 +3137,9 @@ contains
              ENDIF
 
              ! Get pointer from HEMCO
-             tmpIdx = pbuf_get_index(fldname_ns, RC)
+             tmpIdx = pbuf_get_index(FIELDNAME, RC)
              IF ( tmpIdx < 0 .or. ( iStep == 1 ) ) THEN
-                IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(fldname_ns)
+                IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(FIELDNAME)
                 PLVEC(N)%LOSS(1,:nY,nZ:1:-1) = 0.0e+0_f4
                 FND = .False.
              ELSE
@@ -3168,9 +3168,9 @@ contains
           ALLOCATE( STRAT_OH(1,PCOLS,nZ), STAT=IERR )
           IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating STRAT_OH')
 
-          tmpIdx = pbuf_get_index(fldname_ns, RC)
+          tmpIdx = pbuf_get_index(FIELDNAME, RC)
           IF ( tmpIdx < 0 .or. ( iStep == 1 ) ) THEN
-             IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(fldname_ns)
+             IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(FIELDNAME)
              STRAT_OH(1,:nY,nZ:1:-1) = 0.0e+0_f4
           ELSE
              pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
@@ -3548,6 +3548,44 @@ contains
        Write(iulog,*) 'Current  unit = ', TRIM(State_Chm(LCHNK)%Spc_Units)
        Write(iulog,*) 'Expected unit = kg/ kg dry'
        CALL ENDRUN('Incorrect unit in GEOS-Chem State_Chm%Species')
+    ENDIF
+
+    ! Save and write J-values to pbuf for HEMCO
+    ! in HCO_IN_JNO2, HCO_IN_JOH
+    FIELDNAME = 'HCO_IN_JNO2'
+    tmpIdx = pbuf_get_index(FIELDNAME, RC)
+    IF ( tmpIdx < 0 .or. ( iStep == 1 ) ) THEN
+       IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(FIELDNAME)
+    ELSE
+       pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
+       CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_ik)
+
+       ! RXN_NO2: NO2 + hv --> NO  + O
+       pbuf_ik(:nY,:nZ) = ZPJ(nZ:1:-1, RXN_NO2, 1, :nY)
+
+       pbuf_chnk => NULL()
+       pbuf_ik   => NULL()
+    ENDIF
+
+
+    FIELDNAME = 'HCO_IN_JOH'
+    tmpIdx = pbuf_get_index(FIELDNAME, RC)
+    IF ( tmpIdx < 0 .or. ( iStep == 1 ) ) THEN
+       IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(FIELDNAME)
+    ELSE
+       pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
+       CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_ik)
+
+       IF ( Input_Opt%LUCX ) THEN
+        ! RXN_O3_1: O3  + hv --> O2  + O
+        pbuf_ik(:nY,:nZ) = ZPJ(nZ:1:-1, RXN_O3_1, 1, :nY)
+       ELSE
+        ! RXN_O3_2a: O3 + hv --> 2OH
+        pbuf_ik(:nY,:nZ) = ZPJ(nZ:1:-1, RXN_O3_2a, 1, :nY)
+       ENDIF
+       
+       pbuf_chnk => NULL()
+       pbuf_ik   => NULL()
     ENDIF
 
     ! GEOS-Chem considers CO2 as a dead species and resets its concentration
