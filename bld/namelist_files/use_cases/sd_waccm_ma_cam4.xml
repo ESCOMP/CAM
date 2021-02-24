@@ -37,11 +37,6 @@
 <gcr_ionization_datapath>atm/waccm/gcrs</gcr_ionization_datapath>
 <gcr_ionization_filename>gcr_prod_NO_1949-2142_c150309.nc</gcr_ionization_filename>
 
-<!-- QBO settings --> 
-<qbo_cyclic>.false.</qbo_cyclic>
-<qbo_forcing_file>atm/waccm/qbo/qbocoefficients_c151023.nc</qbo_forcing_file>
-<qbo_use_forcing>.true.</qbo_use_forcing>
-
 <!-- Lower Boundary Conditions -->
 <flbc_file>atm/waccm/lb/LBC_1765-2100_1.9x2.5_CCMI_RCP60_za_c130313.nc </flbc_file>
 <flbc_type>'SERIAL'</flbc_type>
