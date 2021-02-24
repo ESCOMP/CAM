@@ -2005,7 +2005,6 @@ contains
     TYPE(physics_buffer_desc), POINTER :: pbuf_chnk(:) ! slice of pbuf in chnk
     REAL(r8), POINTER      :: pbuf_ik(:,:)          ! ptr to pbuf data (/pcols,pver/)
     INTEGER                :: tmpIdx                ! pbuf field id
-    CHARACTER(LEN=255)     :: fldname_ns            ! field name
 
     INTEGER                :: TIM_NDX
     INTEGER                :: IERR
@@ -2411,11 +2410,10 @@ contains
        ENDIF
     ELSE
        DO N = 1, NSURFTYPE
-          Write(fldname_ns, '(a,i2.2)') 'HCO_LANDTYPE', N-1
-          tmpIdx = pbuf_get_index(fldname_ns, rc)
-          IF ( tmpIdx < 0 ) THEN
-             ! there is an error here and the field was not found
-             IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(fldname_ns)
+          Write(FieldName, '(a,i2.2)') 'HCO_LANDTYPE', N-1
+          tmpIdx = pbuf_get_index(FieldName, rc)
+          IF ( tmpIdx < 0 .or. ( iStep == 1 ) ) THEN
+             IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(FieldName)
           ELSE
              CALL pbuf_get_field(pbuf, tmpIdx, pbuf_ik)
              DO J = 1, nY
@@ -2426,11 +2424,10 @@ contains
              pbuf_ik   => NULL()
           ENDIF
 
-          Write(fldname_ns, '(a,i2.2)') 'HCO_XLAI', N-1
-          tmpIdx = pbuf_get_index(fldname_ns, rc)
-          IF ( tmpIdx < 0 ) THEN
-             ! there is an error here and the field was not found
-             IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(fldname_ns)
+          Write(FieldName, '(a,i2.2)') 'HCO_XLAI', N-1
+          tmpIdx = pbuf_get_index(FieldName, rc)
+          IF ( tmpIdx < 0 .or. ( iStep == 1 ) ) THEN
+             IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(FieldName)
           ELSE
              CALL pbuf_get_field(pbuf, tmpIdx, pbuf_ik)
              DO J = 1, nY
@@ -2569,10 +2566,10 @@ contains
     IF ( Input_Opt%onlineAlbedo ) THEN
        State_Met(LCHNK)%UVALBEDO(1,:nY) = cam_in%asdir(:nY)
     ELSE
-       fldname_ns = 'HCO_UV_ALBEDO'
-       tmpIdx = pbuf_get_index(fldname_ns, RC)
+       FieldName = 'HCO_UV_ALBEDO'
+       tmpIdx = pbuf_get_index(FieldName, RC)
        IF ( tmpIdx < 0 .or. ( iStep == 1 ) ) THEN
-          IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(fldname_ns)
+          IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(FieldName)
           State_Met(LCHNK)%UVALBEDO(1,:nY) = 0.0e+0_fp
        ELSE
           pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
@@ -2612,11 +2609,11 @@ contains
     ! Description: Surface iodide concentration
     ! Unit       : nM
     ! Dimensions : nX, nY
-    fldname_ns = 'HCO_iodide'
-    tmpIdx = pbuf_get_index(fldname_ns, RC)
+    FieldName = 'HCO_iodide'
+    tmpIdx = pbuf_get_index(FieldName, RC)
     IF ( tmpIdx < 0 .or. ( iStep == 1 ) ) THEN
-       IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(fldname_ns)
-       State_Chm(LCHNK)%IODIDE(1,:nY)   = 0.0e+0_fp
+       IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(FieldName)
+       State_Chm(LCHNK)%IODIDE(1,:nY) = 0.0e+0_fp
     ELSE
        pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
        CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_ik)
@@ -2630,10 +2627,10 @@ contains
     ! Unit       : PSU
     ! Dimensions : nX, nY
     ! Note       : Possibly get ocean salinity from POP?
-    fldname_ns = 'HCO_salinity'
-    tmpIdx = pbuf_get_index(fldname_ns, RC)
+    FieldName = 'HCO_salinity'
+    tmpIdx = pbuf_get_index(FieldName, RC)
     IF ( tmpIdx < 0 .or. ( iStep == 1 ) ) THEN
-       IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(fldname_ns)
+       IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(FieldName)
        State_Chm(LCHNK)%SALINITY(1,:nY) = 0.0e+0_fp
     ELSE
        pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
@@ -2648,18 +2645,18 @@ contains
     ! Unit       : -
     ! Dimensions : nX, nY
     IF      ( currMo == 12 .or. currMo == 1  .or. currMo == 2  ) THEN
-       fldname_ns = 'HCO_OMOC_DJF'
+       FieldName = 'HCO_OMOC_DJF'
     ELSE IF ( currMo == 3  .or. currMo == 4  .or. currMo == 5  ) THEN
-       fldname_ns = 'HCO_OMOC_MAM'
+       FieldName = 'HCO_OMOC_MAM'
     ELSE IF ( currMo == 6  .or. currMo == 7  .or. currMo == 8  ) THEN
-       fldname_ns = 'HCO_OMOC_JJA'
+       FieldName = 'HCO_OMOC_JJA'
     ELSE IF ( currMo == 9  .or. currMo == 10 .or. currMo == 11 ) THEN
-       fldname_ns = 'HCO_OMOC_SON'
+       FieldName = 'HCO_OMOC_SON'
     ENDIF
-    tmpIdx = pbuf_get_index(fldname_ns, rc)
-    IF ( tmpIdx < 0 ) THEN
+    tmpIdx = pbuf_get_index(FieldName, rc)
+    IF ( tmpIdx < 0 .or. ( iStep == 1 ) ) THEN
        ! there is an error here and the field was not found
-       IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(fldname_ns)
+       IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(FieldName)
     ELSE
        CALL pbuf_get_field(pbuf, tmpIdx, pbuf_ik)
        DO J = 1, nY
@@ -3052,10 +3049,10 @@ contains
              ! Get pointer to this field. These are the mixing ratios (pptv).
 
              ! Day
-             FIELDNAME = TRIM(PREFIX) // '_DAY'
-             tmpIdx = pbuf_get_index(FIELDNAME, RC)
+             FieldName = TRIM(PREFIX) // '_DAY'
+             tmpIdx = pbuf_get_index(FieldName, RC)
              IF ( tmpIdx < 0 .or. ( iStep == 1 ) ) THEN
-                IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(FIELDNAME)
+                IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(FieldName)
                 BrPtrDay(N)%MR(1,:nY,nZ:1:-1) = 0.0e+0_f4
              ELSE
                 pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
@@ -3064,13 +3061,12 @@ contains
                 pbuf_chnk => NULL()
                 pbuf_ik   => NULL()
              ENDIF
-             !CALL HCO_GetPtr( HcoState, FIELDNAME, BrPtrDay(N)%MR, RC )
 
              ! Night
-             FIELDNAME = TRIM(PREFIX) // '_NIGHT'
-             tmpIdx = pbuf_get_index(FIELDNAME, RC)
+             FieldName = TRIM(PREFIX) // '_NIGHT'
+             tmpIdx = pbuf_get_index(FieldName, RC)
              IF ( tmpIdx < 0 .or. ( iStep == 1 ) ) THEN
-                IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(FIELDNAME)
+                IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(FieldName)
                 BrPtrDay(N)%MR(1,:nY,nZ:1:-1) = 0.0e+0_f4
              ELSE
                 pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
@@ -3079,7 +3075,6 @@ contains
                 pbuf_chnk => NULL()
                 pbuf_ik   => NULL()
              ENDIF
-             !CALL HCO_GetPtr( HcoState, FIELDNAME, BrPtrNight(N)%MR, RC )
 
           ENDDO
 
@@ -3100,9 +3095,9 @@ contains
 
              ! Production rates [v/v/s]
              IF ( Input_Opt%LUCX ) THEN
-                FIELDNAME = 'GMI_PROD_'//TRIM(SpcName)
+                FieldName = 'GMI_PROD_'//TRIM(SpcName)
              ELSE
-                FIELDNAME = 'UCX_PROD_'//TRIM(SpcName)
+                FieldName = 'UCX_PROD_'//TRIM(SpcName)
              ENDIF
 
              ALLOCATE( PLVEC(N)%PROD(1,PCOLS,nZ), STAT=IERR )
@@ -3111,9 +3106,9 @@ contains
              IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating PLVEC%PROD')
 
              ! Get pointer from HEMCO
-             tmpIdx = pbuf_get_index(FIELDNAME, RC)
+             tmpIdx = pbuf_get_index(FieldName, RC)
              IF ( tmpIdx < 0 .or. ( iStep == 1 ) ) THEN
-                IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(FIELDNAME)
+                IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(FieldName)
                 PLVEC(N)%PROD(1,:nY,nZ:1:-1) = 0.0e+0_f4
                 FND = .False.
              ELSE
@@ -3124,28 +3119,27 @@ contains
                 pbuf_chnk => NULL()
                 pbuf_ik   => NULL()
              ENDIF
-             !CALL HCO_GetPtr( HcoState, FIELDNAME, PLVEC(N)%PROD, RC, FOUND=FND )
 
              ! Warning message
              IF ( .NOT. FND .AND. Input_Opt%amIRoot ) THEN
                 ErrMsg = 'Cannot find archived production rates for '       // &
                           TRIM(SpcName) // ' - will use value of 0.0. '        // &
                          'To use archived rates, add the following field '      // &
-                         'to the HEMCO configuration file: '// TRIM( FIELDNAME )
+                         'to the HEMCO configuration file: '// TRIM( FieldName )
                 CALL GC_Warning( ErrMsg, RC, ThisLoc )
              ENDIF
 
              ! Loss frequency [s-1]
              IF ( Input_Opt%LUCX ) THEN
-                FIELDNAME = 'GMI_LOSS_'//TRIM(SpcName)
+                FieldName = 'GMI_LOSS_'//TRIM(SpcName)
              ELSE
-                FIELDNAME = 'UCX_LOSS_'//TRIM(SpcName)
+                FieldName = 'UCX_LOSS_'//TRIM(SpcName)
              ENDIF
 
              ! Get pointer from HEMCO
-             tmpIdx = pbuf_get_index(FIELDNAME, RC)
+             tmpIdx = pbuf_get_index(FieldName, RC)
              IF ( tmpIdx < 0 .or. ( iStep == 1 ) ) THEN
-                IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(FIELDNAME)
+                IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(FieldName)
                 PLVEC(N)%LOSS(1,:nY,nZ:1:-1) = 0.0e+0_f4
                 FND = .False.
              ELSE
@@ -3156,14 +3150,13 @@ contains
                 pbuf_chnk => NULL()
                 pbuf_ik   => NULL()
              ENDIF
-             !CALL HCO_GetPtr( HcoState, FIELDNAME, PLVEC(N)%LOSS, RC, FOUND=FND )
 
              ! Warning message
              IF ( .NOT. FND .AND. Input_Opt%amIRoot ) THEN
                 ErrMsg= 'Cannot find archived loss frequencies for '        // &
                         TRIM(SpcName) // ' - will use value of 0.0. '          // &
                         'To use archived rates, add the following field '       // &
-                        'to the HEMCO configuration file: '//TRIM(FIELDNAME)
+                        'to the HEMCO configuration file: '//TRIM(FieldName)
                 CALL GC_Warning( ErrMsg, RC, ThisLoc )
              ENDIF
 
@@ -3174,9 +3167,9 @@ contains
           ALLOCATE( STRAT_OH(1,PCOLS,nZ), STAT=IERR )
           IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating STRAT_OH')
 
-          tmpIdx = pbuf_get_index(FIELDNAME, RC)
+          tmpIdx = pbuf_get_index(FieldName, RC)
           IF ( tmpIdx < 0 .or. ( iStep == 1 ) ) THEN
-             IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(FIELDNAME)
+             IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(FieldName)
              STRAT_OH(1,:nY,nZ:1:-1) = 0.0e+0_f4
           ELSE
              pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
@@ -3558,10 +3551,10 @@ contains
 
     ! Save and write J-values to pbuf for HEMCO
     ! in HCO_IN_JNO2, HCO_IN_JOH
-    FIELDNAME = 'HCO_IN_JNO2'
-    tmpIdx = pbuf_get_index(FIELDNAME, RC)
+    FieldName = 'HCO_IN_JNO2'
+    tmpIdx = pbuf_get_index(FieldName, RC)
     IF ( tmpIdx < 0 .or. ( iStep == 1 ) ) THEN
-       IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(FIELDNAME)
+       IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(FieldName)
     ELSE
        pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
        CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_ik)
@@ -3574,10 +3567,10 @@ contains
     ENDIF
 
 
-    FIELDNAME = 'HCO_IN_JOH'
-    tmpIdx = pbuf_get_index(FIELDNAME, RC)
+    FieldName = 'HCO_IN_JOH'
+    tmpIdx = pbuf_get_index(FieldName, RC)
     IF ( tmpIdx < 0 .or. ( iStep == 1 ) ) THEN
-       IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(FIELDNAME)
+       IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(FieldName)
     ELSE
        pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
        CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_ik)
