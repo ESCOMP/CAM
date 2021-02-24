@@ -1898,7 +1898,7 @@ my $megan_emis = defined $nl->get_value('megan_specifier');
 if ( $megan_emis ) { add_default($nl, 'megan_factors_file'); }
 
 # Tropospheric full chemistry options
-if (($chem =~ /geoschem/ or $chem =~ /trop_mozart/ or $chem =~ /trop_strat/ or $chem =~ /waccm_tsmlt/) and ($phys !~ /cam6/)) {
+if (($chem =~ /trop_mozart/ or $chem =~ /trop_strat/ or $chem =~ /waccm_tsmlt/) and ($phys !~ /cam6/)) {
 
     # Surface emission datasets:
     my %verhash;
@@ -2084,7 +2084,8 @@ if ($chem =~ /geoschem/) {
     my $val;
 
     # Species with fixed lower boundary
-    $val = "'CH4','OCS','N2O','CO2','CFC11','CFC12'";
+    $val = "'CCL4','CH4','N2O','CO2','CFC11','CFC12','CH3BR','CH3CCL3','CH3CL'"
+           .",'HCFC22','CFC114','CFC115','HCFC141B','HCFC142B','CH2BR2','CHBR3','H2402'";
 
     if ($chem_has_ocs) {
         $val .= ",'OCS'";
@@ -3009,7 +3010,7 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_history');
    add_default($nl, 'clubb_rad_history');
 
-   if ($nl->get_value('clubb_history') =~ "true" &&  $nl->get_value('atm_nthreads') != 1) {
+   if ($nl->get_value('clubb_history') =~ "true" &&  $nl->get_value('atm_nthreads') > 1) {
      die "$ProgName - ERROR: clubb_history = .true. with multiple threads is not supported. \n";
    }
 
@@ -3185,7 +3186,7 @@ if ( length($nl->get_value('soil_erod_file'))>0 ) {
         add_default($nl, 'dust_emis_fact', 'tms'=>'1');
     }
     else {
-        if ($chem =~ /trop_strat/ or $chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/ or $chem =~ /trop_mozart/) {
+        if ($chem =~ /trop_strat/ or $chem =~ /geoschem/ or $chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/ or $chem =~ /trop_mozart/) {
             add_default($nl, 'dust_emis_fact', 'ver'=>'chem');
             # set scaling of lightning NOx production
 	    add_default($nl, 'lght_no_prd_factor' );
