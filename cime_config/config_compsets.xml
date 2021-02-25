@@ -223,29 +223,6 @@
     <lname>HIST_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV_BGC%BDRD</lname>
   </compset>
 
-  <!-- CAM simpler model compsets -->
-
-  <compset>
-    <alias>FADIAB</alias>
-    <lname>2000_CAM%ADIAB_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>
-  </compset>
-
-  <!-- CAM Dycore test compsets -->
-  <compset>
-    <alias>FHIST_DARTC6</alias>
-    <lname>HIST_CAM60_CLM50%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
-  </compset>
-
-  <compset>
-    <alias>FTJ16</alias>
-    <lname>2000_CAM%TJ16_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>
-  </compset>
-
-  <compset>
-    <alias>FKESSLER</alias>
-    <lname>2000_CAM%KESSLER_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>
-  </compset>
-
   <!-- PORT compsets -->
   <compset>
     <alias>PC4</alias>
