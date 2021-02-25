@@ -9,9 +9,10 @@ module atm_import_export
   use ESMF              , only : operator(/=), operator(==)
   use shr_kind_mod      , only : r8=>shr_kind_r8, i8=>shr_kind_i8, cl=>shr_kind_cl, cs=>shr_kind_cs, cx=>shr_kind_cx
   use shr_sys_mod       , only : shr_sys_abort
+  use shr_mpi_mod       , only : shr_mpi_min, shr_mpi_max
   use nuopc_shr_methods , only : chkerr
   use cam_logfile       , only : iulog
-  use spmd_utils        , only : masterproc
+  use spmd_utils        , only : masterproc, mpicom
   use srf_field_check   , only : set_active_Sl_ram1
   use srf_field_check   , only : set_active_Sl_fv
   use srf_field_check   , only : set_active_Sl_soilw
@@ -297,6 +298,14 @@ contains
     real(r8), allocatable :: model_areas(:)
     real(r8), allocatable :: area(:)
     real(r8), pointer     :: dataptr(:)
+    real(r8)              :: max_mod2med_areacor
+    real(r8)              :: max_med2mod_areacor
+    real(r8)              :: min_mod2med_areacor
+    real(r8)              :: min_med2mod_areacor
+    real(r8)              :: max_mod2med_areacor_glob
+    real(r8)              :: max_med2mod_areacor_glob
+    real(r8)              :: min_mod2med_areacor_glob
+    real(r8)              :: min_med2mod_areacor_glob
     character(len=*), parameter :: subname='(atm_import_export:realize_fields)'
     !---------------------------------------------------------------------------
 
@@ -360,13 +369,25 @@ contains
     do n = 1,numOwnedElements
        mod2med_areacor(n) = model_areas(n) / mesh_areas(n)
        med2mod_areacor(n) = 1._r8 / mod2med_areacor(n)
-       if (abs(mod2med_areacor(n) - 1._r8) > 1.e-13) then
-          write(6,'(a,i8,2x,d21.14,2x)')' AREACOR cam: n, abs(mod2med_areacor(n)-1)', &
-               n, abs(mod2med_areacor(n) - 1._r8)
-       end if
     end do
     deallocate(model_areas)
     deallocate(mesh_areas)
+
+    min_mod2med_areacor = minval(mod2med_areacor)
+    max_mod2med_areacor = maxval(mod2med_areacor)
+    min_med2mod_areacor = minval(med2mod_areacor)
+    max_med2mod_areacor = maxval(med2mod_areacor)
+    call shr_mpi_max(max_mod2med_areacor, max_mod2med_areacor_glob, mpicom)
+    call shr_mpi_min(min_mod2med_areacor, min_mod2med_areacor_glob, mpicom)
+    call shr_mpi_max(max_med2mod_areacor, max_med2mod_areacor_glob, mpicom)
+    call shr_mpi_min(min_med2mod_areacor, min_med2mod_areacor_glob, mpicom)
+
+    if (masterproc) then
+       write(iulog,'(2A,2g23.15,A )') trim(subname),' :  min_mod2med_areacor, max_mod2med_areacor ',&
+            min_mod2med_areacor_glob, max_mod2med_areacor_glob, 'CAM'
+       write(iulog,'(2A,2g23.15,A )') trim(subname),' :  min_med2mod_areacor, max_med2mod_areacor ',&
+            min_med2mod_areacor_glob, max_med2mod_areacor_glob, 'CAM'
+    end if
 
     call ESMF_LogWrite(trim(subname)//' done', ESMF_LOGMSG_INFO)
 
