@@ -43,18 +43,18 @@
       solsym(:318) = (/ 'ACET           ','ACTA           ','AERI           ', &
                         'ALD2           ','ALK4           ','ATOOH          ', &
                         'BCPI           ','BCPO           ','BENZ           ', &
-                        'Br             ','Br2            ','BrCl           ', &
-                        'BrNO2          ','BrNO3          ','BrO            ', &
-                        'BrSALA         ','BrSALC         ','C2H6           ', &
-                        'C3H8           ','CCl4           ','CFC11          ', &
+                        'BR             ','BR2            ','BRCL           ', &
+                        'BRNO2          ','BRNO3          ','BRO            ', &
+                        'BRSALA         ','BRSALC         ','C2H6           ', &
+                        'C3H8           ','CCL4           ','CFC11          ', &
                         'CFC113         ','CFC114         ','CFC115         ', &
-                        'CFC12          ','CH2Br2         ','CH2Cl2         ', &
-                        'CH2I2          ','CH2IBr         ','CH2ICl         ', &
-                        'CH2O           ','CH3Br          ','CH3CCl3        ', &
-                        'CH3Cl          ','CH3I           ','CH4            ', &
-                        'CHBr3          ','CHCl3          ','Cl             ', &
-                        'Cl2            ','Cl2O2          ','ClNO2          ', &
-                        'ClNO3          ','ClO            ','ClOO           ', &
+                        'CFC12          ','CH2BR2         ','CH2CL2         ', &
+                        'CH2I2          ','CH2IBR         ','CH2ICL         ', &
+                        'CH2O           ','CH3BR          ','CH3CCL3        ', &
+                        'CH3CL          ','CH3I           ','CH4            ', &
+                        'CHBR3          ','CHCL3          ','CL             ', &
+                        'CL2            ','CL2O2          ','CLNO2          ', &
+                        'CLNO3          ','CLO            ','CLOO           ', &
                         'CLOCK          ',                                     &
                         'CO             ','DMS            ','DST1           ', &
                         'DST2           ','DST3           ','DST4           ', &
@@ -62,17 +62,17 @@
                         'ETP            ','GLYC           ','GLYX           ', &
                         'H1211          ','H1301          ','H2402          ', &
                         'H2O            ','H2O2           ','HAC            ', &
-                        'HBr            ','HC5A           ','HCFC123        ', &
-                        'HCFC141b       ','HCFC142b       ','HCFC22         ', &
-                        'HCl            ','HCOOH          ','HI             ', &
+                        'HBR            ','HC5A           ','HCFC123        ', &
+                        'HCFC141B       ','HCFC142B       ','HCFC22         ', &
+                        'HCL            ','HCOOH          ','HI             ', &
                         'HMHP           ','HMML           ','HNO2           ', &
-                        'HNO3           ','HNO4           ','HOBr           ', &
-                        'HOCl           ','HOI            ','HONIT          ', &
+                        'HNO3           ','HNO4           ','HOBR           ', &
+                        'HOCL           ','HOI            ','HONIT          ', &
                         'HPALD1         ','HPALD2         ','HPALD3         ', &
                         'HPALD4         ','HPETHNL        ','I              ', &
                         'I2             ','I2O2           ','I2O3           ', &
-                        'I2O4           ','IBr            ','ICHE           ', &
-                        'ICl            ','ICN            ','ICPDH          ', &
+                        'I2O4           ','IBR            ','ICHE           ', &
+                        'ICL            ','ICN            ','ICPDH          ', &
                         'IDC            ','IDCHP          ','IDHDP          ', &
                         'IDHPE          ','IDN            ','IEPOXA         ', &
                         'IEPOXB         ','IEPOXD         ','IHN1           ', &
@@ -93,11 +93,11 @@
                         'MVKDH          ','MVKHC          ','MVKHCB         ', &
                         'MVKHP          ','MVKN           ','MVKPC          ', &
                         'N2O            ','N2O5           ','NH3            ', &
-                        'NH4            ','NIT            ','NITs           ', &
+                        'NH4            ','NIT            ','NITS           ', &
                         'NO             ','NO2            ','NO3            ', &
-                        'NPRNO3         ','O3             ','OClO           ', &
+                        'NPRNO3         ','O3             ','OCLO           ', &
                         'OCPI           ','OCPO           ','OCS            ', &
-                        'OIO            ','PAN            ','pFe            ', &
+                        'OIO            ','PAN            ','PFE            ', &
                         'PIP            ','PP             ','PPN            ', &
                         'PROPNN         ','PRPE           ','PRPN           ', &
                         'PYAC           ','R4N2           ','R4P            ', &
@@ -106,7 +106,7 @@
                         'RIPD           ','RP             ','SALA           ', &
                         'SALAAL         ','SALACL         ','SALC           ', &
                         'SALCAL         ','SALCCL         ','SO2            ', &
-                        'SO4            ','SO4s           ','SOAGX          ', &
+                        'SO4            ','SO4S           ','SOAGX          ', &
                         'SOAIE          ','SOAP           ','SOAS           ', &
                         'TOLU           ','XYLE           ','bc_a1          ', &
                         'bc_a4          ','dst_a1         ','dst_a2         ', &
@@ -124,7 +124,7 @@
                         'LISOPNO3       ','LTRO2H         ','LTRO2N         ', &
                         'LXRO2H         ','LXRO2N         ','SO4H1          ', &
                         'SO4H2          ','SO4H3          ','SO4H4          ', &
-                        'POx            ','LOx            ','PCO            ', &
+                        'POX            ','LOX            ','PCO            ', &
                         'LCO            ','PSO4           ','LCH4           ', &
                         'PH2O2          ','BRO2           ','TRO2           ', &
                         'N              ','XRO2           ','HPALD2OO       ', &

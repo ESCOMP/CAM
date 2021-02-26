@@ -132,22 +132,22 @@ subroutine neu_wetdep_init
          test_name = 'GC_CH2O'
       case( 'NO2' )
          test_name = 'GC_NO2'
-      case( 'HNO3' )
-         test_name = 'GC_HNO3'
+      !case( 'HNO3' )
+      !   test_name = 'GC_HNO3'
       case( 'NH3' )
          test_name = 'GC_NH3'
       case( 'N2O5' )
          test_name = 'GC_N2O5'
       case( 'PAN' )
          test_name = 'GC_PAN'
-      case( 'SO2' )
-         test_name = 'GC_SO2'
+      !case( 'SO2' )
+      !   test_name = 'GC_SO2'
       ! Now list all non-MAM GEOS-Chem aerosols. These will be scavenged similarly
       ! to HNO3
-      case( 'AERI', 'BrSALA', 'BrSALC', 'DMS', 'INDIOL',    &
+      case( 'AERI', 'BRSALA', 'BRSALC', 'INDIOL',           &
             'IONITA', 'ISALA', 'ISALC', 'LVOCOA', 'MONITA', & 
-            'MSA', 'NH4', 'NIT', 'NITs', 'pFe',             &
-            'SALAAL', 'SALACL', 'SALCAL', 'SALCCL', 'SO4s', &
+            'MSA', 'NH4', 'NIT', 'NITS', 'PFE',             &
+            'SALAAL', 'SALACL', 'SALCAL', 'SALCCL', 'SO4S', &
             'SOAGX', 'SOAIE' )
          test_name = 'HNO3'
     end select

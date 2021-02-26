@@ -331,7 +331,7 @@ contains
 
     DO I = 1, nTracersMax
        IF ( I .LE. nTracers ) THEN
-          cnstName    = TRIM(tracerNames(I))
+          cnstName    = to_upper(TRIM(tracerNames(I)))
           trueName    = cnstName
           N           = Ind_(cnstName)
           ThisSpc     => SC%SpcData(N)%Info
