@@ -215,6 +215,7 @@ contains
 
     INTEGER                        :: I, N, M, L
     INTEGER                        :: nIgnored
+    INTEGER                        :: tmpIdx
     REAL(r8)                       :: cptmp
     REAL(r8)                       :: MWTmp
     REAL(r8)                       :: qmin
@@ -632,6 +633,11 @@ contains
     Call Cleanup_State_Chm ( SC, RC )
     Call Cleanup_State_Grid( SG, RC )
     Call Cleanup_Input_Opt ( IO, RC )
+
+    ! Add data for HEMCO extensions to buffers
+    call pbuf_add_field('HCO_IN_JNO2', 'global', dtype_r8, (/pcols/), tmpIdx)
+    call pbuf_add_field('HCO_IN_JOH', 'global',  dtype_r8, (/pcols/), tmpIdx)
+
 
   end subroutine chem_register
 
