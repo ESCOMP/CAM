@@ -163,11 +163,6 @@
   </compset>
 
   <compset>
-    <alias>QPHISTC6</alias>
-    <lname>HIST_CAM60_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
-  </compset>
-
-  <compset>
     <alias>QPC2000climo</alias>
     <lname>2000_CAM60%CCTS1_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
   </compset>
