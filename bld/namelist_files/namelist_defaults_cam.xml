@@ -43,7 +43,7 @@
 <ncdata nlev="32" analytic_ic="1" >atm/cam/inic/cam_vcoords_L32_c180105.nc</ncdata>
 
 <!-- Vertical coordinates and grid only -->
-<ncdata hgrid="mpasa480" nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa480_L32_v6.1.grid_c190924.nc</ncdata>
+<ncdata hgrid="mpasa480" nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa480_L32_notopo_grid_c201125.nc</ncdata>
 <ncdata hgrid="mpasa120" nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa120_L32_topo_grid_c201022.nc</ncdata>
 
 <!-- Files with initial conditions -->
