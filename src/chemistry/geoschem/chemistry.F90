@@ -2035,6 +2035,7 @@ contains
 
     TYPE(physics_buffer_desc), POINTER :: pbuf_chnk(:) ! slice of pbuf in chnk
     REAL(r8), POINTER      :: pbuf_ik(:,:)          ! ptr to pbuf data (/pcols,pver/)
+    REAL(r8), POINTER      :: pbuf_i(:)             ! ptr to pbuf data (/pcols/) horizontal only (horiz_only)
     INTEGER                :: tmpIdx                ! pbuf field id
 
     INTEGER                :: TIM_NDX
@@ -2446,11 +2447,9 @@ contains
           IF ( tmpIdx < 0 .or. ( iStep == 1 ) ) THEN
              IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(FieldName)
           ELSE
-             CALL pbuf_get_field(pbuf, tmpIdx, pbuf_ik)
+             CALL pbuf_get_field(pbuf, tmpIdx, pbuf_i)
              DO J = 1, nY
-                State_Met(LCHNK)%LandTypeFrac(1,J,N) = pbuf_ik(J,nZ)
-                ! 2-D data is stored in the 1st level of a
-                ! 3-D array due to laziness
+                State_Met(LCHNK)%LandTypeFrac(1,J,N) = pbuf_i(J)
              ENDDO
              pbuf_ik   => NULL()
           ENDIF
@@ -2460,11 +2459,9 @@ contains
           IF ( tmpIdx < 0 .or. ( iStep == 1 ) ) THEN
              IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(FieldName)
           ELSE
-             CALL pbuf_get_field(pbuf, tmpIdx, pbuf_ik)
+             CALL pbuf_get_field(pbuf, tmpIdx, pbuf_i)
              DO J = 1, nY
-                State_Met(LCHNK)%XLAI_NATIVE(1,J,N) = pbuf_ik(J,nZ)
-                ! 2-D data is stored in the 1st level of a
-                ! 3-D array due to laziness
+                State_Met(LCHNK)%XLAI_NATIVE(1,J,N) = pbuf_i(J)
              ENDDO
              pbuf_ik   => NULL()
           ENDIF
@@ -2604,10 +2601,10 @@ contains
           State_Met(LCHNK)%UVALBEDO(1,:nY) = 0.0e+0_fp
        ELSE
           pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
-          CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_ik)
-          State_Met(LCHNK)%UVALBEDO(1,:nY) = pbuf_ik(:nY,nZ)
+          CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_i)
+          State_Met(LCHNK)%UVALBEDO(1,:nY) = pbuf_i(:nY)
           pbuf_chnk => NULL()
-          pbuf_ik   => NULL()
+          pbuf_i   => NULL()
        ENDIF
     ENDIF
 
@@ -2647,10 +2644,10 @@ contains
        State_Chm(LCHNK)%IODIDE(1,:nY) = 0.0e+0_fp
     ELSE
        pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
-       CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_ik)
-       State_Chm(LCHNK)%IODIDE(1,:nY) = pbuf_ik(:nY,nZ)
+       CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_i)
+       State_Chm(LCHNK)%IODIDE(1,:nY) = pbuf_i(:nY)
        pbuf_chnk => NULL()
-       pbuf_ik   => NULL()
+       pbuf_i   => NULL()
     ENDIF
 
     ! Field      : SALINITY
@@ -2665,10 +2662,10 @@ contains
        State_Chm(LCHNK)%SALINITY(1,:nY) = 0.0e+0_fp
     ELSE
        pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
-       CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_ik)
-       State_Chm(LCHNK)%SALINITY(1,:nY) = pbuf_ik(:nY,nZ)
+       CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_i)
+       State_Chm(LCHNK)%SALINITY(1,:nY) = pbuf_i(:nY)
        pbuf_chnk => NULL()
-       pbuf_ik   => NULL()
+       pbuf_i   => NULL()
     ENDIF
 
     ! Field      : OMOC
@@ -2689,13 +2686,11 @@ contains
        ! there is an error here and the field was not found
        IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(FieldName)
     ELSE
-       CALL pbuf_get_field(pbuf, tmpIdx, pbuf_ik)
+       CALL pbuf_get_field(pbuf, tmpIdx, pbuf_i)
        DO J = 1, nY
-          State_Chm(LCHNK)%OMOC(1,J) = pbuf_ik(J,nZ)
-          ! 2-D data is stored in the 1st level of a
-          ! 3-D array due to laziness
+          State_Chm(LCHNK)%OMOC(1,J) = pbuf_i(J)
        ENDDO
-       pbuf_ik   => NULL()
+       pbuf_i   => NULL()
     ENDIF
 
     ! Three-dimensional fields on level edges
