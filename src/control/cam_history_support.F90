@@ -1362,7 +1362,10 @@ contains
     ! Register the name if necessary
     if (i == 0) then
        call add_hist_coord(trim(name), i)
-       !  if(masterproc) write(iulog,*) 'Registering hist coord',name,'(',i,') with length: ',vlen
+       if(masterproc) then
+          write(iulog, '(3a,i0,a,i0)') 'Registering hist coord', trim(name),  &
+               '(', i, ') with length: ', vlen
+       end if
     end if
 
     ! Set the coord's values
@@ -1424,7 +1427,10 @@ contains
     ! Register the name if necessary
     if (i == 0) then
        call add_hist_coord(trim(name), i)
-       !  if(masterproc) write(iulog,*) 'Registering hist coord',name,'(',i,') with length: ',vlen
+       if(masterproc) then
+          write(iulog, '(3a,i0,a,i0)') 'Registering hist coord', trim(name),  &
+               '(', i, ') with length: ', vlen
+       end if
     end if
 
     ! Set the coord's size
@@ -1500,7 +1506,10 @@ contains
            positive=positive, standard_name=standard_name,                    &
            vertical_coord=.true.)
       i = get_hist_coord_index(trim(name))
-      !  if(masterproc) write(iulog,*) 'Registering hist coord',name,'(',i,') with length: ',vlen
+      if(masterproc) then
+         write(iulog, '(3a,i0,a,i0)') 'Registering hist coord', trim(name),   &
+              '(', i, ') with length: ', vlen
+      end if
     end if
 
     if (present(formula_terms)) then

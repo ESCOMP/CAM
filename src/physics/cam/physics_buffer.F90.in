@@ -167,8 +167,10 @@ module physics_buffer
   !
   ! private pio descriptor for time
   !
-
   type(var_desc_t) :: timeidx_desc
+
+  ! Set to .true. for more output
+  logical :: debug = .false.
 
 !===============================================================================
 CONTAINS
@@ -765,7 +767,7 @@ end subroutine pbuf_readnl
     integer                            :: ind
     type(physics_buffer_desc), pointer :: pbufPtr
 
-    if (masterproc) then
+    if (masterproc .and. debug) then
        write(iulog, *) __FILE__, __LINE__, currentpbufflds, size(pbuf)
        do ind = 1, currentpbufflds
           pbufPtr => pbuf(ind)

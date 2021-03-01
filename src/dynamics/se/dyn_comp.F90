@@ -2159,11 +2159,12 @@ subroutine read_dyn_field_2d(fieldname, fh, dimname, buffer)
 
    ! Local variables
    logical                  :: found
+   real(r8)                 :: fillvalue
    !----------------------------------------------------------------------------
 
    buffer = 0.0_r8
    call infld(trim(fieldname), fh, dimname, 1, npsq, 1, nelemd, buffer,    &
-         found, gridname=ini_grid_name)
+        found, gridname=ini_grid_name, fillvalue=fillvalue)
    if(.not. found) then
       call endrun('READ_DYN_FIELD_2D: Could not find '//trim(fieldname)//' field on input datafile')
    end if
@@ -2171,7 +2172,8 @@ subroutine read_dyn_field_2d(fieldname, fh, dimname, buffer)
    ! This code allows use of compiler option to set uninitialized values
    ! to NaN.  In that case infld can return NaNs where the element GLL points
    ! are not "unique columns"
-   where (isnan(buffer)) buffer = 0.0_r8
+   ! Set NaNs or fillvalue points to zero
+   where (isnan(buffer) .or. (buffer==fillvalue)) buffer = 0.0_r8
 
 end subroutine read_dyn_field_2d
 
@@ -2187,11 +2189,12 @@ subroutine read_dyn_field_3d(fieldname, fh, dimname, buffer)
 
    ! Local variables
    logical                  :: found
+   real(r8)                 :: fillvalue
    !----------------------------------------------------------------------------
 
    buffer = 0.0_r8
-   call infld(trim(fieldname), fh, dimname, 'lev',  1, npsq, 1, nlev,      &
-         1, nelemd, buffer, found, gridname=ini_grid_name)
+   call infld(trim(fieldname), fh, dimname, 'lev',  1, npsq, 1, nlev,         &
+        1, nelemd, buffer, found, gridname=ini_grid_name, fillvalue=fillvalue)
    if(.not. found) then
       call endrun('READ_DYN_FIELD_3D: Could not find '//trim(fieldname)//' field on input datafile')
    end if
@@ -2199,7 +2202,8 @@ subroutine read_dyn_field_3d(fieldname, fh, dimname, buffer)
    ! This code allows use of compiler option to set uninitialized values
    ! to NaN.  In that case infld can return NaNs where the element GLL points
    ! are not "unique columns"
-   where (isnan(buffer)) buffer = 0.0_r8
+   ! Set NaNs or fillvalue points to zero
+   where (isnan(buffer) .or. (buffer == fillvalue)) buffer = 0.0_r8
 
 end subroutine read_dyn_field_3d
 

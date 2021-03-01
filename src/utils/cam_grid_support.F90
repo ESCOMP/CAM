@@ -3983,6 +3983,7 @@ contains
       deallocate(coord)
       nullify(coord)
     end if
+    call pio_freedecomp(File, iodesc)
     ! Write out lat
     if (associated(this%latmap)) then
       field_lens(1) = size(this%latmap, 1)
