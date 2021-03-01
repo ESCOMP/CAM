@@ -905,7 +905,7 @@ contains
     call qbo_init
 
     call lunar_tides_init()
-    
+
     call iondrag_init(pref_mid)
     ! Geomagnetic module -- after iondrag_init
     if (epp_ionization_active) then

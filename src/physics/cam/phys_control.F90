@@ -36,7 +36,7 @@ integer,           parameter :: unset_int = huge(1)
 
 ! Namelist variables:
 character(len=16) :: cam_physpkg          = unset_str  ! CAM physics package
-character(len=32) :: cam_chempkg          = unset_str  ! CAM chemistry package 
+character(len=32) :: cam_chempkg          = unset_str  ! CAM chemistry package
 character(len=16) :: waccmx_opt           = unset_str  ! WACCMX run option [ionosphere | neutral | off
 character(len=16) :: deep_scheme          = unset_str  ! deep convection package
 character(len=16) :: shallow_scheme       = unset_str  ! shallow convection package
@@ -106,9 +106,9 @@ character(len=32) :: cam_take_snapshot_after = ''   ! Physics routine to take a 
 integer           :: cam_snapshot_before_num = -1   ! output history file number for CAM "before" snapshot
 integer           :: cam_snapshot_after_num = -1    ! output history file number for CAM "after" snapshot
 
-!======================================================================= 
+!=======================================================================
 contains
-!======================================================================= 
+!=======================================================================
 
 subroutine phys_ctl_readnl(nlfile)
 
@@ -219,7 +219,7 @@ subroutine phys_ctl_readnl(nlfile)
       write(iulog,*)'UW PBL is not compatible with RK microphysics.  Quiting'
       call endrun('PBL and Microphysics schemes incompatible')
    endif
-   
+
    ! Add a check to make sure CLUBB and MG are used together
    if ( do_clubb_sgs .and. ( microp_scheme .ne. 'MG') .and. .not. use_spcam) then
       write(iulog,*)'CLUBB is only compatible with MG microphysics.  Quiting'
@@ -233,7 +233,7 @@ subroutine phys_ctl_readnl(nlfile)
          call endrun('CLUBB and eddy, macrop or shallow schemes incompatible')
       endif
    endif
-      
+
    ! Macro/micro co-substepping support.
    if (cld_macmic_num_steps > 1) then
       if (microp_scheme /= "MG" .or. (macrop_scheme /= "park" .and. macrop_scheme /= "CLUBB_SGS")) then
@@ -254,7 +254,7 @@ logical function cam_physpkg_is(name)
    ! query for the name of the physics package
 
    character(len=*) :: name
-   
+
    cam_physpkg_is = (trim(name) == trim(cam_physpkg))
 end function cam_physpkg_is
 
@@ -265,7 +265,7 @@ logical function cam_chempkg_is(name)
    ! query for the name of the chemics package
 
    character(len=*) :: name
-   
+
    cam_chempkg_is = (trim(name) == trim(cam_chempkg))
 end function cam_chempkg_is
 
@@ -276,7 +276,7 @@ logical function waccmx_is(name)
    ! query for the name of the waccmx run option
 
    character(len=*) :: name
-   
+
    waccmx_is = (trim(name) == trim(waccmx_opt))
 end function waccmx_is
 

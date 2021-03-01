@@ -12,8 +12,10 @@ module dp_mapping
   save
 
   public :: dp_init
-  public :: dp_reoorder
+  public :: dp_reorder
   public :: dp_write
+  public :: dp_allocate
+  public :: dp_deallocate
 
   ! Total number of physics points per spectral element
   ! no physgrid:   nphys_pts = npsq   (physics on GLL grid)
@@ -43,14 +45,11 @@ module dp_mapping
 
 contains
   subroutine dp_init(elem,fvm)
-    use cam_abortutils, only: endrun
-    use dimensions_mod, only: nelemd,nc,irecons_tracer
-    use element_mod, only: element_t
-    use spmd_utils, only: masterproc
-    use cam_logfile, only: iulog
-    use thread_mod, only: horz_num_threads
+    use dimensions_mod, only: nelemd, nc, irecons_tracer
+    use element_mod,    only: element_t
+    use spmd_utils,     only: masterproc
+    use cam_logfile,    only: iulog
 
-    implicit none
     type(element_t)  , dimension(nelemd), intent(in) :: elem
     type (fvm_struct), dimension(nelemd), intent(in) :: fvm
 
@@ -75,8 +74,6 @@ contains
             weights_all_phys2fvm,weights_eul_index_all_phys2fvm,weights_lgr_index_all_phys2fvm,&
             jall_fvm2phys,jall_phys2fvm)
 
-      call dp_replicated_init(elem)
-
       if (masterproc) then
         write(iulog, *) 'dp_init: Initialized phys2fvm/fvm2phys mapping vars'
       end if
@@ -84,40 +81,35 @@ contains
     end if
   end subroutine dp_init
 
-  subroutine dp_reoorder(before,after)
+  subroutine dp_reorder(before, after)
     use cam_abortutils, only: endrun
     use dimensions_mod, only: nelem
-    !XXgoldyXX
     use cam_logfile,    only: iulog
     use spmd_utils,     only: masterproc
     use shr_sys_mod,    only: shr_sys_flush
-    !XXgoldyXX
-    implicit none
+
     real(r8), dimension(fv_nphys*fv_nphys,*), intent(in)  :: before
     real(r8), dimension(fv_nphys*fv_nphys,*), intent(out) :: after
     integer :: ie
 
     ! begin
     do ie = 1,nelem
-    !XXgoldyXX
        if (dp_gid(ie) < 0) then
           if (masterproc) then
              write(iulog,*) 'ie =',ie,', dp_gid(ie) =',dp_gid(ie)
              call shr_sys_flush(iulog)
           end if
-          call endrun('Bad element remap in dp_reoorder')
+          call endrun('Bad element remap in dp_reorder')
        end if
-    !XXgoldyXX
        after(:,dp_gid(ie)) = before(:,ie)
     end do
-  end subroutine dp_reoorder
+  end subroutine dp_reorder
 
   !!!
 
-  subroutine dp_replicated_init(elem)
+  subroutine dp_allocate(elem)
     use dimensions_mod, only: nelem, nelemd
     use element_mod,    only: element_t
-    use cam_abortutils, only: endrun
     use spmd_utils,     only: masterproc, masterprocid, npes
     use spmd_utils,     only: mpicom, mpi_integer
 
@@ -162,10 +154,14 @@ contains
     end if
     call mpi_bcast(dp_gid,nelem,mpi_integer,masterprocid,mpicom,ierror)
     call mpi_bcast(dp_owner,nelem,mpi_integer,masterprocid,mpicom,ierror)
-  end subroutine dp_replicated_init
+ end subroutine dp_allocate
 
   !!!
 
+  subroutine dp_deallocate()
+     deallocate(dp_gid)
+     deallocate(dp_owner)
+  end subroutine dp_deallocate
 
   !!!
 
@@ -183,20 +179,18 @@ contains
     use shr_sys_mod,            only: shr_sys_flush
     use dimensions_mod,         only: ne
     use coordinate_systems_mod, only: cart2spherical
-    
+
     ! Inputs
     type(element_t),   intent(in) :: elem(:)
     type (fvm_struct), intent(in) :: fvm(:)
     character(len=*),  intent(in) :: grid_format
     character(len=*),  intent(in) :: filename_in
-    
+
     real(r8), parameter :: rad2deg = 180._r8/pi
-    
+
     ! Local variables
     integer           :: i, ie, ierror, j, status, ivtx
     integer           :: grid_corners_id, grid_rank_id, grid_size_id
-    character(len=256) :: errormsg
-    character(len=shr_kind_cl) :: filename
     integer           :: ncid
     integer           :: grid_dims_id, grid_area_id, grid_center_lat_id
     integer           :: grid_center_lon_id, grid_corner_lat_id
@@ -204,6 +198,8 @@ contains
     integer           :: gridsize
     integer           :: IOrootID
     logical           :: IOroot
+    character(len=SHR_KIND_CL) :: errormsg
+    character(len=SHR_KIND_CL) :: filename
     integer,allocatable,dimension(:) :: displs,recvcount
 
     real(r8), dimension(fv_nphys, fv_nphys, nelemd, 4, 2)  :: corners
@@ -228,7 +224,7 @@ contains
         call endrun(errormsg)
       end if
     end if
-    
+
     ! Create the NetCDF file
     if (len_trim(filename_in) == 0) then
       write(filename, '(3(a,i0),3a)') "ne", ne, "np", np, ".pg", fv_nphys,    &
@@ -240,11 +236,11 @@ contains
     if (status /= nf90_noerr) then
       call endrun("dp_write: "//trim(nf90_strerror(status)))
     end if
-    
+
     ! PIO_put_var puts from its root node, find that (so we do our work there)
     IOrootID = masterprocid
     IOroot = masterproc
-    
+
     ! Allocate workspace and calculate PE displacement information
     if (IOroot) then
       allocate(displs(npes))
@@ -416,8 +412,9 @@ contains
     end do
     call mpi_gatherv(lwork, size(lwork), mpi_real8, recvbuf, recvcount, &
          displs, mpi_real8, IOrootID, mpicom, ierror)
+    call dp_allocate(elem)
     if (IOroot) then
-      call dp_reoorder(recvbuf, gwork(1,:))
+      call dp_reorder(recvbuf, gwork(1,:))
       status = nf90_put_var(ncid, grid_area_id, gwork(1,:))
       if (status /= nf90_noerr) then
         write(iulog, *) 'dp_write: Error writing variable grid_area'
@@ -431,7 +428,7 @@ contains
     call mpi_gatherv(lwork, size(lwork), mpi_real8, recvbuf, recvcount,       &
          displs, mpi_real8, IOrootID, mpicom, ierror)
     if (IOroot) then
-      call dp_reoorder(recvbuf, gwork(1,:))
+      call dp_reorder(recvbuf, gwork(1,:))
       status = nf90_put_var(ncid, grid_center_lat_id, gwork(1,:))
       if (status /= nf90_noerr) then
         write(iulog, *) 'dp_write: Error writing variable grid_center_lat'
@@ -446,7 +443,7 @@ contains
     call mpi_gatherv(lwork, size(lwork), mpi_real8, recvbuf, recvcount,       &
          displs, mpi_real8, IOrootID, mpicom, ierror)
     if (IOroot) then
-      call dp_reoorder(recvbuf, gwork(1,:))
+      call dp_reorder(recvbuf, gwork(1,:))
       status = nf90_put_var(ncid, grid_center_lon_id, gwork(1,:))
       if (status /= nf90_noerr) then
         write(iulog, *) 'dp_write: Error writing variable grid_center_lon'
@@ -473,7 +470,7 @@ contains
       call mpi_gatherv(corners(:,:,:,ivtx,1), size(corners(:,:,:,ivtx,1)), mpi_real8, recvbuf, recvcount,     &
            displs, mpi_real8, IOrootID, mpicom, ierror)
       if (IOroot) then
-        call dp_reoorder(recvbuf, gwork(ivtx,:))
+        call dp_reorder(recvbuf, gwork(ivtx,:))
       end if
     end do
     if (IOroot) then
@@ -489,9 +486,10 @@ contains
       call mpi_gatherv(corners(:,:,:,ivtx,2), size(corners(:,:,:,ivtx,2)), mpi_real8, recvbuf, recvcount,     &
            displs, mpi_real8, IOrootID, mpicom, ierror)
       if (IOroot) then
-        call dp_reoorder(recvbuf, gwork(ivtx,:))
+        call dp_reorder(recvbuf, gwork(ivtx,:))
       end if
     end do
+    call dp_deallocate()
     if (IOroot) then
       status = nf90_put_var(ncid, grid_corner_lon_id, gwork)
       if (status /= nf90_noerr) then
@@ -565,25 +563,25 @@ contains
     integer , dimension(jmax_segments_cell,2)        :: weights_eul_index_cell
     integer :: jcollect_cell,ie
     real(kind=r8), dimension(phys_nc,phys_nc) :: phys_area, factor
-    real(kind=r8), dimension(fvm_nc,fvm_nc)   :: fvm_area, facfvm
+    real(kind=r8), dimension(fvm_nc,fvm_nc)   :: fvm_area
 
     xgno_phys(0) = -1D20; xgno_phys(phys_nc+2) = 1D20
     xgno_fvm(0)  = -1D20; xgno_fvm(fvm_nc+2)   = 1D20
-    do ie=1,nelemd 
+    do ie=1,nelemd
       dalpha         = abs(elem(ie)%corners(1)%x-elem(ie)%corners(2)%x)/phys_nc !in alpha
       dbeta          = abs(elem(ie)%corners(1)%y-elem(ie)%corners(4)%y)/phys_nc  !in beta
       do i=1,phys_nc+1
         xgno_phys(i) = tan(elem(ie)%corners(1)%x+(i-1)*dalpha)
         ygno_phys(i) = tan(elem(ie)%corners(1)%y+(i-1)*dbeta )
       end do
-      
+
       dalpha         = abs(elem(ie)%corners(1)%x-elem(ie)%corners(2)%x)/fvm_nc !in alpha
       dbeta          = abs(elem(ie)%corners(1)%y-elem(ie)%corners(4)%y)/fvm_nc  !in beta
       do i=1,fvm_nc+1
         xgno_fvm(i) = tan(elem(ie)%corners(1)%x+(i-1)*dalpha)
         ygno_fvm(i) = tan(elem(ie)%corners(1)%y+(i-1)*dbeta )
       end do
-      
+
       !
       ! compute area using line-integrals
       !
@@ -600,9 +598,9 @@ contains
       !                  I_00(xgno_fvm(i  ),ygno_fvm(j  )) - I_00(xgno_fvm(i+1),ygno_fvm(j  )))
       !          end do
       !       end do
-      
+
       gauss_weights = 0.0D0; abscissae=0.0D0!not used since line-segments are parallel to coordinate
-      
+
       jall_fvm2phys(ie)=1
       do j=1,phys_nc
         do i=1,phys_nc
@@ -610,17 +608,17 @@ contains
           xcell(2) = xgno_phys(i)  ; ycell(2) = ygno_phys(j+1)
           xcell(3) = xgno_phys(i+1); ycell(3) = ygno_phys(j+1)
           xcell(4) = xgno_phys(i+1); ycell(4) = ygno_phys(j)
-          
+
           call compute_weights_cell(nvertex,.true.,&
                xcell,ycell,i,j,irecons,xgno_fvm,ygno_fvm,0,fvm_nc+2,&
                1,fvm_nc+1,1,fvm_nc+1,&
                ngpc,gauss_weights,abscissae,&
                weights_cell,weights_eul_index_cell,jcollect_cell,jmax_segments_cell)
-          
+
           if (jcollect_cell>0) then
             weights_all_fvm2phys(jall_fvm2phys(ie):jall_fvm2phys(ie)+jcollect_cell-1,:,ie) = &
-                 weights_cell(1:jcollect_cell,:)!/fvm(ie)%area_sphere_physgrid(i,j)!da_phys(i,j) 
-            
+                 weights_cell(1:jcollect_cell,:)!/fvm(ie)%area_sphere_physgrid(i,j)!da_phys(i,j)
+
             weights_eul_index_all_fvm2phys(jall_fvm2phys(ie):jall_fvm2phys(ie)+jcollect_cell-1,:,ie) = &
                  weights_eul_index_cell(1:jcollect_cell,:)
             weights_lgr_index_all_fvm2phys(jall_fvm2phys(ie):jall_fvm2phys(ie)+jcollect_cell-1,1,ie) = i
@@ -643,7 +641,7 @@ contains
         i  = weights_lgr_index_all_fvm2phys(h,1,ie); j  = weights_lgr_index_all_fvm2phys(h,2,ie)
         weights_all_fvm2phys(h,1,ie) = weights_all_fvm2phys(h,1,ie)*factor(i,j)
       end do
-      
+
       jall_phys2fvm(ie)=1
       do j=1,fvm_nc
         do i=1,fvm_nc
@@ -651,17 +649,17 @@ contains
           xcell(2) = xgno_fvm(i)  ; ycell(2) = ygno_fvm(j+1)
           xcell(3) = xgno_fvm(i+1); ycell(3) = ygno_fvm(j+1)
           xcell(4) = xgno_fvm(i+1); ycell(4) = ygno_fvm(j)
-          
+
           call compute_weights_cell(nvertex,.true.,&
                xcell,ycell,i,j,irecons,xgno_phys,ygno_phys,0,phys_nc+2,&
                1,phys_nc+1,1,phys_nc+1,&
                ngpc,gauss_weights,abscissae,&
                weights_cell,weights_eul_index_cell,jcollect_cell,jmax_segments_cell)
-          
+
           if (jcollect_cell>0) then
             weights_all_phys2fvm(jall_phys2fvm(ie):jall_phys2fvm(ie)+jcollect_cell-1,:,ie) &
                  = weights_cell(1:jcollect_cell,:)!/fvm(ie)%area_sphere(i,j)!da_fvm(i,j)
-            
+
             weights_eul_index_all_phys2fvm(jall_phys2fvm(ie):jall_phys2fvm(ie)+jcollect_cell-1,:,ie) = &
                  weights_eul_index_cell(1:jcollect_cell,:)
             weights_lgr_index_all_phys2fvm(jall_phys2fvm(ie):jall_phys2fvm(ie)+jcollect_cell-1,1,ie) = i
