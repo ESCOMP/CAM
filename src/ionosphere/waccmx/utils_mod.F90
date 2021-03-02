@@ -31,6 +31,10 @@ contains
 
     ! Local:
     integer :: i, iset, iset1
+
+    if (ibox > mtime) then
+       call endrun('boxcar_ave: ibox > mtime')
+    endif
     !
     iset = itime - ibox/2
     if (iset < 1) iset = 1

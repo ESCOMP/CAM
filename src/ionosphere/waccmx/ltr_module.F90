@@ -16,6 +16,7 @@ module ltr_module
   use pio,            only: file_desc_t, pio_noerr, pio_nowrite, pio_get_var
   use utils_mod,      only: check_ncerr, check_alloc
   use edyn_mpi,       only: ntask, mytid
+  use edyn_params,    only: pi, dtr, rtd
 
   implicit none
 
@@ -34,16 +35,16 @@ module ltr_module
   ! electric potential in Volt
   ! mean energy in KeV
   ! energy flux in W/m^2
-  ! Saved LTR outputs with suffix _ltr
+  ! Time interpolated LTR outputs with suffix _ltr
   !
   real(r8),allocatable,dimension(:,:,:) :: & ! (lonp1,latp1,ntimes)
-       ltr_pot, ltr_ekv, ltr_efx
+       pot_input, ekv_input, efx_input
   real(r8),allocatable,dimension(:,:) :: & ! (lonp1,latp1)
        pot_ltr, ekv_ltr, efx_ltr
   integer, allocatable,dimension(:) :: & ! (ntimes)
        year,month,day,jday
   real(r8), allocatable,dimension(:) :: & ! (ntimes)
-       ltr_hpi, ltr_pcp, ltr_ut
+       hpi_input, pcp_input, ltr_ut
   real(r8) :: hpi_ltr, pcp_ltr
   !
   type(file_desc_t) :: ncid
@@ -161,13 +162,13 @@ contains
        allocate(ltr_ut(ntimes), stat=ier)
        call check_alloc(ier, subname, 'ltr_ut', ntimes=ntimes)
     end if
-    if (.not. allocated(ltr_hpi)) then
-       allocate(ltr_hpi(ntimes), stat=ier)
-       call check_alloc(ier, subname, 'ltr_hpi', ntimes=ntimes)
+    if (.not. allocated(hpi_input)) then
+       allocate(hpi_input(ntimes), stat=ier)
+       call check_alloc(ier, subname, 'hpi_input', ntimes=ntimes)
     end if
-    if (.not. allocated(ltr_pcp)) then
-       allocate(ltr_pcp(ntimes), stat=ier)
-       call check_alloc(ier, subname, 'ltr_pcp', ntimes=ntimes)
+    if (.not. allocated(pcp_input)) then
+       allocate(pcp_input(ntimes), stat=ier)
+       call check_alloc(ier, subname, 'pcp_input', ntimes=ntimes)
     end if
     !
     ! Get ut
@@ -179,13 +180,13 @@ contains
     ! Get HPI
     istat = pio_inq_varid(ncid, 'hpiN', idv_hpi)
     call check_ncerr(istat, subname, 'LTR hpi id')
-    istat = pio_get_var(ncid, idv_hpi, ltr_hpi)
+    istat = pio_get_var(ncid, idv_hpi, hpi_input)
     call check_ncerr(istat, subname, 'LTR hpi')
     !
     ! Get PCP
     istat = pio_inq_varid(ncid, 'pcpN', idv_pcp)
     call check_ncerr(istat, subname, 'LTR pcp id')
-    istat = pio_get_var(ncid, idv_pcp, ltr_pcp)
+    istat = pio_get_var(ncid, idv_pcp, pcp_input)
     call check_ncerr(istat, subname, 'LTR pcp')
     !
     ! Allocate 2-d fields:
@@ -203,19 +204,19 @@ contains
     end if
     !
     ! Allocate 3-d fields:
-    if (.not. allocated(ltr_pot)) then
-       allocate(ltr_pot(lonp1, latp1, ntimes), stat=ier)
-       call check_alloc(ier, subname, 'ltr_pot', &
+    if (.not. allocated(pot_input)) then
+       allocate(pot_input(lonp1, latp1, ntimes), stat=ier)
+       call check_alloc(ier, subname, 'pot_input', &
             lonp1=lonp1, latp1=latp1, ntimes=ntimes)
     end if
-    if (.not. allocated(ltr_ekv)) then
-       allocate(ltr_ekv(lonp1, latp1, ntimes), stat=ier)
-       call check_alloc(ier, subname, 'ltr_ekv', &
+    if (.not. allocated(ekv_input)) then
+       allocate(ekv_input(lonp1, latp1, ntimes), stat=ier)
+       call check_alloc(ier, subname, 'ekv_input', &
             lonp1=lonp1, latp1=latp1, ntimes=ntimes)
     end if
-    if (.not. allocated(ltr_efx)) then
-       allocate(ltr_efx(lonp1, latp1, ntimes), stat=ier)
-       call check_alloc(ier, subname, 'ltr_efx', &
+    if (.not. allocated(efx_input)) then
+       allocate(efx_input(lonp1, latp1, ntimes), stat=ier)
+       call check_alloc(ier, subname, 'efx_input', &
             lonp1=lonp1, latp1=latp1, ntimes=ntimes)
     end if
   end subroutine rdltr
@@ -296,13 +297,8 @@ contains
     integer                     :: idate, bdate, edate
     real(r8)                    :: model_ut, denoma, f1, f2
     real(r8)                    :: del, xmlt, dmlat, dlatm, dlonm, dmltm, rot
-    real(r8)                    :: pi, dtr, rtd
     integer                     :: offset(3), kount(3)
     character(len=*), parameter :: subname = 'getltr'
-
-    pi = 4._r8 * atan(1._r8)
-    dtr = pi / 180._r8          ! degrees to radians
-    rtd = 180._r8 / pi          ! radians to degrees
 
     phihm = fillvalue
     ltr_efxm = fillvalue
@@ -402,15 +398,15 @@ contains
          'ltr_ut,denoma,f1,f2,iset,iset1 =',i2,f7.3,i3,f7.3,3f5.2,2i6)") &
          iday,model_ut,day(iset),ltr_ut(iset),denoma,f1,f2,iset,iset1
 
-    hpi_ltr = (f1*ltr_hpi(iset1) + f2*ltr_hpi(iset))
-    pcp_ltr = (f1*ltr_pcp(iset1) + f2*ltr_pcp(iset))
+    hpi_ltr = (f1*hpi_input(iset1) + f2*hpi_input(iset))
+    pcp_ltr = (f1*pcp_input(iset1) + f2*pcp_input(iset))
 
     offset = (/1,1,iset/)
     kount = (/lonp1,latp1,2/)
-    call update_3d_fields( ncid, offset, kount, ltr_pot,ltr_ekv,ltr_efx )
-    pot_ltr(:,:) = (f1*ltr_pot(:,:,2) + f2*ltr_pot(:,:,1))
-    ekv_ltr(:,:) = (f1*ltr_ekv(:,:,2) + f2*ltr_ekv(:,:,1))
-    efx_ltr(:,:) = (f1*ltr_efx(:,:,2) + f2*ltr_efx(:,:,1))
+    call update_3d_fields( ncid, offset, kount, pot_input,ekv_input,efx_input )
+    pot_ltr(:,:) = (f1*pot_input(:,:,2) + f2*pot_input(:,:,1))
+    ekv_ltr(:,:) = (f1*ekv_input(:,:,2) + f2*ekv_input(:,:,1))
+    efx_ltr(:,:) = (f1*efx_input(:,:,2) + f2*efx_input(:,:,1))
 
     active_task: if ( mytid<ntask ) then
 
@@ -459,20 +455,20 @@ contains
        alatm(jmxm) = pi / 2._r8
        alat(jmxm) = 90._r8
        do i = 2, ithmx
-          alat(i) = alat(i-1)+dlatm/dtr
-          alat(jmxm+1-i) = alat(jmxm+2-i)-dlatm/dtr
+          alat(i) = alat(i-1)+dlatm*rtd
+          alat(jmxm+1-i) = alat(jmxm+2-i)-dlatm*rtd
           alatm(i) = alatm(i-1)+dlatm
           alatm(jmxm+1-i) = alatm(jmxm+2-i)-dlatm
        end do
-       alon(1) = -pi/dtr
+       alon(1) = -pi*rtd
        alonm(1) = -pi
        do i = 2, lonp1
-          alon(i) = alon(i-1) + dlonm/dtr
+          alon(i) = alon(i-1) + dlonm*rtd
           alonm(i) = alonm(i-1) + dlonm
        end do
 
        !     ylatm and ylonm are arrays of latitudes and longitudes of the
-       !     distored magnetic grids in radian - from consdyn.h
+       !     distorted magnetic grids in radian - from consdyn.h
        !     Convert from apex magnetic grid to distorted magnetic grid
        !
        !     Allocate workspace for regrid routine rgrd_mod:
@@ -511,9 +507,6 @@ contains
        if (iprint > 0 .and. masterproc) then
           write(iulog, *) subname, ': Max, min ltr_efxm = ', &
                maxval(ltr_efxm), minval(ltr_efxm)
-       end if
-
-       if (iprint > 0 .and. masterproc) then
           write(iulog, "('getltr: LTR data interpolated to date and time')")
           write(iulog,"('getltr: iyear,imo,iday,iutsec = ',3i6,i10)")  &
                iyear,imo,iday,iutsec
@@ -531,7 +524,7 @@ contains
   subroutine close_files
 
     deallocate( year,month,day )
-    deallocate( ltr_hpi, ltr_pcp, ltr_ut )
+    deallocate( hpi_input, pcp_input, ltr_ut )
 
     call cam_pio_closefile(ncid)
 

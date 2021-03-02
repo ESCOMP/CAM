@@ -1304,8 +1304,10 @@ contains
   real(r8) function lngamma(xx)
      !
      ! This is an f90 translation from C code copied from
-     ! www.fizyka.umk.pl/nrbook/c6-1.pdf (numerical recipes gammln)
+     ! gammln routine from "Numerical Recipes in C" Chapter 6.1.
+     ! see: http://numerical.recipes
      !
+
      real(r8), intent(in) :: xx
      real(r8) :: x,y,tmp,ser
      real(r8) :: cof(6) = (/76.18009172947146_r8, -86.50532032941677_r8,      &

@@ -3,7 +3,7 @@
 ! CAM.
 !-------------------------------------------------------------------------------
 module edyn_grid_comp
-   use shr_kind_mod,   only: r8 => shr_kind_r8, cs=>shr_kind_cs
+   use shr_kind_mod,   only: r8 => shr_kind_r8, cs=>shr_kind_cs, cl=>shr_kind_cl
    use ESMF,           only: ESMF_KIND_I4, ESMF_Mesh, ESMF_DistGrid
    use ESMF,           only: ESMF_State, ESMF_Clock, ESMF_GridComp
    use ppgrid,         only: pcols
@@ -91,7 +91,7 @@ CONTAINS
       integer                               :: ncols
       integer                               :: chnk, col, dindex
       integer,                allocatable   :: decomp(:)
-      character(len=256)                    :: grid_file
+      character(len=cl)                     :: grid_file
       character(len=*),           parameter :: subname = 'edyn_gcomp_init'
       real(r8)        ,           parameter :: radtodeg = 180.0_r8/shr_const_pi
       integer                 :: spatialDim

@@ -72,7 +72,7 @@ module edynamo
 ! Fields at mag equator:
 !
   real(r8), allocatable, dimension(:,:) ::   & ! (mlon0:mlon1,nmlev)
-    ped_meq, hal_meq, adotv1_meq, adotv2_meq !, zpot_meq
+    ped_meq, hal_meq, adotv1_meq, adotv2_meq
   real(r8), allocatable, dimension(:,:,:) :: & ! (mlon0:mlon1,nmlev,4)
     fmeq_out
   real(r8), allocatable, dimension(:,:,:,:) :: & ! (mlon0:mlon1,mlat0:mlat1,nmlev,4)

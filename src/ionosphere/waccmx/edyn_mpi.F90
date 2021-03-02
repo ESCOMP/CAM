@@ -503,11 +503,13 @@ contains
       if (ier /= 0) then
          write(iulog,"(i4,i4)") '>>> Error allocating itasks_send: len_task_type=',&
               len_task_type,' npes=',npes
+         call endrun('mp_exchange_tasks: unable to allocate itasks_send')
       endif
       allocate(itasks_recv(len_task_type,0:npes-1),stat=ier)
       if (ier /= 0) then
          write(iulog,"(i4,i4)") '>>> Error allocating itasks_recv: len_task_type=',&
               len_task_type,' npes=',npes
+         call endrun('mp_exchange_tasks: unable to allocate itasks_recv')
       endif
       do n=0,npes-1
          itasks_send(1,n) = tasks(mytid)%mytid

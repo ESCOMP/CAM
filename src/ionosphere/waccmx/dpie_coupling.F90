@@ -53,7 +53,7 @@ contains
 
     ! Dynamo inputs (called from dpie_coupling. Fields are in waccm format, in CGS units):
     call addfld ('DPIE_OMEGA',(/ 'lev' /), 'I', 'Pa/s    ','OMEGA input to DPIE coupling', gridname='physgrid')
-    call addfld ('DPIE_MBAR' ,(/ 'lev' /), 'I', '        ','MBAR Mean Mass from dpie_coupling', gridname='physgrid')
+    call addfld ('DPIE_MBAR' ,(/ 'lev' /), 'I', 'kg/kmole','MBAR Mean Mass from dpie_coupling', gridname='physgrid')
     call addfld ('DPIE_TN   ',(/ 'lev' /), 'I', 'deg K   ','DPIE_TN'   , gridname='physgrid')
     call addfld ('DPIE_UN   ',(/ 'lev' /), 'I', 'cm/s    ','DPIE_UN'   , gridname='physgrid')
     call addfld ('DPIE_VN   ',(/ 'lev' /), 'I', 'cm/s    ','DPIE_VN'   , gridname='physgrid')

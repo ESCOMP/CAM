@@ -16,6 +16,7 @@ module amie_module
   use pio,            only: file_desc_t, pio_noerr, pio_nowrite, pio_get_var
   use utils_mod,      only: check_ncerr, check_alloc, boxcar_ave
   use edyn_mpi,       only: ntask, mytid
+  use edyn_params,    only: pi, dtr, rtd
 
   implicit none
 
@@ -34,26 +35,26 @@ module amie_module
   ! electric potential in Volt
   ! mean energy in KeV
   ! energy flux in W/m^2
-  ! amie_cusplat_nh(sh) and amie_cuspmlt_nh(sh) are
+  ! cusplat_nh_input(sh) and cuspmlt_nh_input(sh) are
   !   AMIE cusp latitude and MLT in NH and SH
-  ! amie_hpi_nh(sh) are AMIE hemi-integrated power
-  ! amie_pcp_nh(sh) are AMIE polar-cap potential drop
-  ! Saved AMIE outputs with suffix _amie
+  ! hpi_nh(sh) are AMIE hemi-integrated power
+  ! pcp_nh(sh) are AMIE polar-cap potential drop
+  ! Time interpolated AMIE outputs with suffix _amie
   !
   real(r8), allocatable, dimension(:,:,:), save :: & ! (lonp1,latp1,ntimes)
-       amie_pot_nh, amie_pot_sh,                   &
-       amie_ekv_nh, amie_ekv_sh,                   &
-       amie_efx_nh, amie_efx_sh
+       pot_nh_input, pot_sh_input,                   &
+       ekv_nh_input, ekv_sh_input,                   &
+       efx_nh_input, efx_sh_input
   real(r8), allocatable, dimension(:,:), save ::           &  ! (lonp1,latp1)
        pot_nh_amie, pot_sh_amie, ekv_nh_amie, ekv_sh_amie, &
        efx_nh_amie, efx_sh_amie
   integer,  allocatable, dimension(:), save ::                 & ! (ntimes)
        year, month, day, jday
   real(r8), allocatable, dimension(:), save ::                 & ! (ntimes)
-       amie_cusplat_nh, amie_cuspmlt_nh, amie_hpi_nh,          &
-       amie_pcp_nh, amie_nh_ut,                                &
-       amie_cusplat_sh, amie_cuspmlt_sh, amie_hpi_sh,          &
-       amie_pcp_sh, amie_sh_ut
+       cusplat_nh_input, cuspmlt_nh_input, hpi_nh_input,          &
+       pcp_nh_input, amie_nh_ut,                                &
+       cusplat_sh_input, cuspmlt_sh_input, hpi_sh_input,          &
+       pcp_sh_input, amie_sh_ut
   real(r8) ::                                                  &
        cusplat_nh_amie, cuspmlt_nh_amie, cusplat_sh_amie,      &
        cuspmlt_sh_amie, hpi_sh_amie, hpi_nh_amie, pcp_sh_amie, &
@@ -179,21 +180,21 @@ contains
        allocate(amie_nh_ut(ntimes), stat=ier)
        call check_alloc(ier, subname, 'amie_nh_ut', ntimes=ntimes)
     end if
-    if (.not. allocated(amie_cusplat_nh)) then
-       allocate(amie_cusplat_nh(ntimes), stat=ier)
-       call check_alloc(ier, subname, 'amie_cusplat_nh', ntimes=ntimes)
+    if (.not. allocated(cusplat_nh_input)) then
+       allocate(cusplat_nh_input(ntimes), stat=ier)
+       call check_alloc(ier, subname, 'cusplat_nh_input', ntimes=ntimes)
     end if
-    if (.not. allocated(amie_cuspmlt_nh)) then
-       allocate(amie_cuspmlt_nh(ntimes), stat=ier)
-       call check_alloc(ier, subname, 'amie_cuspmlt_nh', ntimes=ntimes)
+    if (.not. allocated(cuspmlt_nh_input)) then
+       allocate(cuspmlt_nh_input(ntimes), stat=ier)
+       call check_alloc(ier, subname, 'cuspmlt_nh_input', ntimes=ntimes)
     end if
-    if (.not. allocated(amie_hpi_nh)) then
-       allocate(amie_hpi_nh(ntimes), stat=ier)
-       call check_alloc(ier, subname, 'amie_hpi_nh', ntimes=ntimes)
+    if (.not. allocated(hpi_nh_input)) then
+       allocate(hpi_nh_input(ntimes), stat=ier)
+       call check_alloc(ier, subname, 'hpi_nh_input', ntimes=ntimes)
     end if
-    if (.not. allocated(amie_pcp_nh)) then
-       allocate(amie_pcp_nh(ntimes), stat=ier)
-       call check_alloc(ier, subname, 'amie_pcp_nh', ntimes=ntimes)
+    if (.not. allocated(pcp_nh_input)) then
+       allocate(pcp_nh_input(ntimes), stat=ier)
+       call check_alloc(ier, subname, 'pcp_nh_input', ntimes=ntimes)
     end if
     !
     ! Get ut
@@ -205,25 +206,25 @@ contains
     ! Get HPI
     istat = pio_inq_varid(ncid_nh, 'hpi', idv_hpi)
     call check_ncerr(istat, subname, 'AMIE hpi id')
-    istat = pio_get_var(ncid_nh, idv_hpi, amie_hpi_nh)
+    istat = pio_get_var(ncid_nh, idv_hpi, hpi_nh_input)
     call check_ncerr(istat, subname, 'AMIE hpi')
     !
     ! Get PCP
     istat = pio_inq_varid(ncid_nh, 'pcp', idv_pcp)
     call check_ncerr(istat, subname, 'AMIE pcp id')
-    istat = pio_get_var(ncid_nh, idv_pcp, amie_pcp_nh)
+    istat = pio_get_var(ncid_nh, idv_pcp, pcp_nh_input)
     call check_ncerr(istat, subname, 'AMIE pcp')
     !
     ! Get cusplat
     istat = pio_inq_varid(ncid_nh, 'cusplat', idv_cusplat)
     call check_ncerr(istat, subname, 'AMIE cusplat id')
-    istat = pio_get_var(ncid_nh, idv_cusplat, amie_cusplat_nh)
+    istat = pio_get_var(ncid_nh, idv_cusplat, cusplat_nh_input)
     call check_ncerr(istat, subname, 'AMIE cusplat')
     !
     ! Get cuspmlt
     istat = pio_inq_varid(ncid_nh, 'cuspmlt', idv_cuspmlt)
     call check_ncerr(istat, subname, 'AMIE cuspmlt id')
-    istat = pio_get_var(ncid_nh, idv_cuspmlt, amie_cuspmlt_nh)
+    istat = pio_get_var(ncid_nh, idv_cuspmlt, cuspmlt_nh_input)
     call check_ncerr(istat, subname, 'AMIE cuspmlt')
     !
     ! Allocate 2-d fields:
@@ -241,19 +242,19 @@ contains
     end if
     !
     ! Allocate 3-d fields:
-    if (.not. allocated(amie_pot_nh)) then
-       allocate(amie_pot_nh(lonp1, latp1, ntimes), stat=ier)
-       call check_alloc(ier, subname, 'amie_pot_nh', &
+    if (.not. allocated(pot_nh_input)) then
+       allocate(pot_nh_input(lonp1, latp1, ntimes), stat=ier)
+       call check_alloc(ier, subname, 'pot_nh_input', &
             lonp1=lonp1, latp1=latp1, ntimes=ntimes)
     end if
-    if (.not. allocated(amie_ekv_nh)) then
-       allocate(amie_ekv_nh(lonp1, latp1, ntimes), stat=ier)
-       call check_alloc(ier, subname, 'amie_ekv_nh', &
+    if (.not. allocated(ekv_nh_input)) then
+       allocate(ekv_nh_input(lonp1, latp1, ntimes), stat=ier)
+       call check_alloc(ier, subname, 'ekv_nh_input', &
             lonp1=lonp1, latp1=latp1, ntimes=ntimes)
     end if
-    if (.not. allocated(amie_efx_nh)) then
-       allocate(amie_efx_nh(lonp1, latp1, ntimes), stat=ier)
-       call check_alloc(ier, subname, 'amie_efx_nh', &
+    if (.not. allocated(efx_nh_input)) then
+       allocate(efx_nh_input(lonp1, latp1, ntimes), stat=ier)
+       call check_alloc(ier, subname, 'efx_nh_input', &
             lonp1=lonp1, latp1=latp1, ntimes=ntimes)
     end if
   end subroutine rdamie_nh
@@ -341,21 +342,21 @@ contains
        allocate(amie_sh_ut(ntimes), stat=ier)
        call check_alloc(ier, subname, 'amie_sh_ut', ntimes=ntimes)
     end if
-    if (.not. allocated(amie_cusplat_sh)) then
-       allocate(amie_cusplat_sh(ntimes), stat=ier)
-       call check_alloc(ier, subname, 'amie_cusplat_sh', ntimes=ntimes)
+    if (.not. allocated(cusplat_sh_input)) then
+       allocate(cusplat_sh_input(ntimes), stat=ier)
+       call check_alloc(ier, subname, 'cusplat_sh_input', ntimes=ntimes)
     end if
-    if (.not. allocated(amie_cuspmlt_sh)) then
-       allocate(amie_cuspmlt_sh(ntimes), stat=ier)
-       call check_alloc(ier, subname, 'amie_cuspmlt_sh', ntimes=ntimes)
+    if (.not. allocated(cuspmlt_sh_input)) then
+       allocate(cuspmlt_sh_input(ntimes), stat=ier)
+       call check_alloc(ier, subname, 'cuspmlt_sh_input', ntimes=ntimes)
     end if
-    if (.not. allocated(amie_hpi_sh)) then
-       allocate(amie_hpi_sh(ntimes), stat=ier)
-       call check_alloc(ier, subname, 'amie_hpi_sh', ntimes=ntimes)
+    if (.not. allocated(hpi_sh_input)) then
+       allocate(hpi_sh_input(ntimes), stat=ier)
+       call check_alloc(ier, subname, 'hpi_sh_input', ntimes=ntimes)
     end if
-    if (.not. allocated(amie_pcp_sh)) then
-       allocate(amie_pcp_sh(ntimes), stat=ier)
-       call check_alloc(ier, subname, 'amie_pcp_sh', ntimes=ntimes)
+    if (.not. allocated(pcp_sh_input)) then
+       allocate(pcp_sh_input(ntimes), stat=ier)
+       call check_alloc(ier, subname, 'pcp_sh_input', ntimes=ntimes)
     end if
     !
     ! Get ut
@@ -367,25 +368,25 @@ contains
     ! Get HPI
     istat = pio_inq_varid(ncid_sh, 'hpi', idv_hpi)
     call check_ncerr(istat, subname, 'AMIE hpi id')
-    istat = pio_get_var(ncid_sh, idv_hpi, amie_hpi_sh)
+    istat = pio_get_var(ncid_sh, idv_hpi, hpi_sh_input)
     call check_ncerr(istat, subname, 'AMIE hpi')
     !
     ! Get PCP
     istat = pio_inq_varid(ncid_sh, 'pcp', idv_pcp)
     call check_ncerr(istat, subname, 'AMIE pcp id')
-    istat = pio_get_var(ncid_sh, idv_pcp, amie_pcp_sh)
+    istat = pio_get_var(ncid_sh, idv_pcp, pcp_sh_input)
     call check_ncerr(istat, subname, 'AMIE pcp')
     !
     ! Get cusplat
     istat = pio_inq_varid(ncid_sh, 'cusplat', idv_cusplat)
     call check_ncerr(istat, subname, 'AMIE cusplat id')
-    istat = pio_get_var(ncid_sh, idv_cusplat, amie_cusplat_sh)
+    istat = pio_get_var(ncid_sh, idv_cusplat, cusplat_sh_input)
     call check_ncerr(istat, subname, 'AMIE cusplat')
     !
     ! Get cuspmlt
     istat = pio_inq_varid(ncid_sh, 'cuspmlt', idv_cuspmlt)
     call check_ncerr(istat, subname, 'AMIE cuspmlt id')
-    istat = pio_get_var(ncid_sh, idv_cuspmlt, amie_cuspmlt_sh)
+    istat = pio_get_var(ncid_sh, idv_cuspmlt, cuspmlt_sh_input)
     call check_ncerr(istat, subname, 'AMIE cuspmlt')
     !
     ! Allocate 2-d fields:
@@ -403,19 +404,19 @@ contains
     end if
     !
     ! Allocate 3-d fields:
-    if (.not. allocated(amie_pot_sh)) then
-       allocate(amie_pot_sh(lonp1, latp1, ntimes), stat=ier)
-       call check_alloc(ier, subname, 'amie_pot_sh', &
+    if (.not. allocated(pot_sh_input)) then
+       allocate(pot_sh_input(lonp1, latp1, ntimes), stat=ier)
+       call check_alloc(ier, subname, 'pot_sh_input', &
             lonp1=lonp1, latp1=latp1, ntimes=ntimes)
     end if
-    if (.not. allocated(amie_ekv_sh)) then
-       allocate(amie_ekv_sh(lonp1, latp1, ntimes), stat=ier)
-       call check_alloc(ier, subname, 'amie_ekv_sh', &
+    if (.not. allocated(ekv_sh_input)) then
+       allocate(ekv_sh_input(lonp1, latp1, ntimes), stat=ier)
+       call check_alloc(ier, subname, 'ekv_sh_input', &
             lonp1=lonp1, latp1=latp1, ntimes=ntimes)
     end if
-    if (.not. allocated(amie_efx_sh)) then
-       allocate(amie_efx_sh(lonp1, latp1, ntimes), stat=ier)
-       call check_alloc(ier, subname, 'amie_efx_sh', &
+    if (.not. allocated(efx_sh_input)) then
+       allocate(efx_sh_input(lonp1, latp1, ntimes), stat=ier)
+       call check_alloc(ier, subname, 'efx_sh_input', &
             lonp1=lonp1, latp1=latp1, ntimes=ntimes)
     end if
   end subroutine rdamie_sh
@@ -500,13 +501,8 @@ contains
     integer                     :: idate, bdate, edate
     real(r8)                    :: model_ut, denoma, f1, f2
     real(r8)                    :: del, xmlt, dmlat, dlatm, dlonm, dmltm, rot
-    real(r8)                    :: pi, dtr, rtd
     integer                     :: offset(3), kount(3)
     character(len=*), parameter :: subname = 'getamie'
-
-    pi = 4._r8 * atan(1._r8)
-    dtr = pi / 180._r8          ! degrees to radians
-    rtd = 180._r8 / pi          ! radians to degrees
 
     phihm = fillvalue
     amie_efxm = fillvalue
@@ -599,30 +595,30 @@ contains
        f2 = (model_ut+(iday-day(iset1))*24._r8 - &
             amie_sh_ut(iset))/denoma
     end if
-    cusplat_sh_amie = (f1*amie_cusplat_sh(iset1) + &
-         f2*amie_cusplat_sh(iset))
-    cuspmlt_sh_amie = (f1*amie_cuspmlt_sh(iset1) + &
-         f2*amie_cuspmlt_sh(iset))
-    hpi_sh_amie = (f1*amie_hpi_sh(iset1) + f2*amie_hpi_sh(iset))
-    pcp_sh_amie = (f1*amie_pcp_sh(iset1) + f2*amie_pcp_sh(iset))
+    cusplat_sh_amie = (f1*cusplat_sh_input(iset1) + &
+         f2*cusplat_sh_input(iset))
+    cuspmlt_sh_amie = (f1*cuspmlt_sh_input(iset1) + &
+         f2*cuspmlt_sh_input(iset))
+    hpi_sh_amie = (f1*hpi_sh_input(iset1) + f2*hpi_sh_input(iset))
+    pcp_sh_amie = (f1*pcp_sh_input(iset1) + f2*pcp_sh_input(iset))
 
     offset = (/1,1,iset/)
     kount = (/lonp1,latp1,2/)
 
-    call update_3d_fields( ncid_sh, offset, kount, amie_pot_sh,amie_ekv_sh,amie_efx_sh )
+    call update_3d_fields( ncid_sh, offset, kount, pot_sh_input,ekv_sh_input,efx_sh_input )
     if (iboxcar == 0) then
-       pot_sh_amie(:,:) = (f1*amie_pot_sh(:,:,2) + &
-            f2*amie_pot_sh(:,:,1))
-       ekv_sh_amie(:,:) = (f1*amie_ekv_sh(:,:,2) + &
-            f2*amie_ekv_sh(:,:,1))
-       efx_sh_amie(:,:) = (f1*amie_efx_sh(:,:,2) + &
-            f2*amie_efx_sh(:,:,1))
+       pot_sh_amie(:,:) = (f1*pot_sh_input(:,:,2) + &
+            f2*pot_sh_input(:,:,1))
+       ekv_sh_amie(:,:) = (f1*ekv_sh_input(:,:,2) + &
+            f2*ekv_sh_input(:,:,1))
+       efx_sh_amie(:,:) = (f1*efx_sh_input(:,:,2) + &
+            f2*efx_sh_input(:,:,1))
     else
-       call boxcar_ave(amie_pot_sh,pot_sh_amie,lonp1,latp1, &
+       call boxcar_ave(pot_sh_input,pot_sh_amie,lonp1,latp1, &
             nn,iset,iboxcar)
-       call boxcar_ave(amie_efx_sh,efx_sh_amie,lonp1,latp1, &
+       call boxcar_ave(efx_sh_input,efx_sh_amie,lonp1,latp1, &
             nn,iset,iboxcar)
-       call boxcar_ave(amie_ekv_sh,ekv_sh_amie,lonp1,latp1, &
+       call boxcar_ave(ekv_sh_input,ekv_sh_amie,lonp1,latp1, &
             nn,iset,iboxcar)
     end if
 !
@@ -662,31 +658,31 @@ contains
        f2 = (model_ut+(iday-day(iset1))*24._r8 - &
             amie_nh_ut(iset))/denoma
     end if
-    cusplat_nh_amie = (f1*amie_cusplat_nh(iset1) + &
-         f2*amie_cusplat_nh(iset))
-    cuspmlt_nh_amie = (f1*amie_cuspmlt_nh(iset1) + &
-         f2*amie_cuspmlt_nh(iset))
-    hpi_nh_amie = (f1*amie_hpi_nh(iset1) + f2*amie_hpi_nh(iset))
-    pcp_nh_amie = (f1*amie_pcp_nh(iset1) + f2*amie_pcp_nh(iset))
+    cusplat_nh_amie = (f1*cusplat_nh_input(iset1) + &
+         f2*cusplat_nh_input(iset))
+    cuspmlt_nh_amie = (f1*cuspmlt_nh_input(iset1) + &
+         f2*cuspmlt_nh_input(iset))
+    hpi_nh_amie = (f1*hpi_nh_input(iset1) + f2*hpi_nh_input(iset))
+    pcp_nh_amie = (f1*pcp_nh_input(iset1) + f2*pcp_nh_input(iset))
 
     offset = (/1,1,iset/)
     kount = (/lonp1,latp1,2/)
 
-    call update_3d_fields( ncid_nh, offset, kount, amie_pot_nh,amie_ekv_nh,amie_efx_nh )
+    call update_3d_fields( ncid_nh, offset, kount, pot_nh_input,ekv_nh_input,efx_nh_input )
 
     if (iboxcar == 0) then
-       pot_nh_amie(:,:) = (f1*amie_pot_nh(:,:,2) + &
-            f2*amie_pot_nh(:,:,1))
-       ekv_nh_amie(:,:) = (f1*amie_ekv_nh(:,:,2) + &
-            f2*amie_ekv_nh(:,:,1))
-       efx_nh_amie(:,:) = (f1*amie_efx_nh(:,:,2) + &
-            f2*amie_efx_nh(:,:,1))
+       pot_nh_amie(:,:) = (f1*pot_nh_input(:,:,2) + &
+            f2*pot_nh_input(:,:,1))
+       ekv_nh_amie(:,:) = (f1*ekv_nh_input(:,:,2) + &
+            f2*ekv_nh_input(:,:,1))
+       efx_nh_amie(:,:) = (f1*efx_nh_input(:,:,2) + &
+            f2*efx_nh_input(:,:,1))
     else
-       call boxcar_ave(amie_pot_nh,pot_nh_amie,lonp1,latp1, &
+       call boxcar_ave(pot_nh_input,pot_nh_amie,lonp1,latp1, &
             nn,iset,iboxcar)
-       call boxcar_ave(amie_efx_nh,efx_nh_amie,lonp1,latp1, &
+       call boxcar_ave(efx_nh_input,efx_nh_amie,lonp1,latp1, &
             nn,iset,iboxcar)
-       call boxcar_ave(amie_ekv_nh,ekv_nh_amie,lonp1,latp1, &
+       call boxcar_ave(ekv_nh_input,ekv_nh_amie,lonp1,latp1, &
             nn,iset,iboxcar)
     end if
     !
@@ -782,20 +778,20 @@ contains
        alatm(jmxm) = pi / 2._r8
        alat(jmxm) = 90._r8
        do i = 2, ithmx
-          alat(i) = alat(i-1)+dlatm/dtr
-          alat(jmxm+1-i) = alat(jmxm+2-i)-dlatm/dtr
+          alat(i) = alat(i-1)+dlatm*rtd
+          alat(jmxm+1-i) = alat(jmxm+2-i)-dlatm*rtd
           alatm(i) = alatm(i-1)+dlatm
           alatm(jmxm+1-i) = alatm(jmxm+2-i)-dlatm
        end do
-       alon(1) = -pi/dtr
+       alon(1) = -pi*rtd
        alonm(1) = -pi
        do i = 2, lonp1
-          alon(i) = alon(i-1) + dlonm/dtr
+          alon(i) = alon(i-1) + dlonm*rtd
           alonm(i) = alonm(i-1) + dlonm
        end do
 
        !     ylatm and ylonm are arrays of latitudes and longitudes of the
-       !     distored magnetic grids in radian - from consdyn.h
+       !     distorted magnetic grids in radian - from consdyn.h
        !     Convert from apex magnetic grid to distorted magnetic grid
        !
        !     Allocate workspace for regrid routine rgrd_mod:
@@ -834,9 +830,6 @@ contains
        if (iprint > 0 .and. masterproc) then
           write(iulog, *) subname, ': Max, min amie_efxm = ', &
                maxval(amie_efxm), minval(amie_efxm)
-       end if
-
-       if (iprint > 0 .and. masterproc) then
           write(iulog, "(a,': AMIE data interpolated to date and time')") subname
           write(iulog,"(a,': iyear,imo,iday,iutsec = ',3i6,i10)") subname,       &
                iyear, imo, iday, iutsec
@@ -853,10 +846,10 @@ contains
   subroutine close_files
 
     deallocate( year,month,day )
-    deallocate( amie_cusplat_nh, amie_cuspmlt_nh, amie_hpi_nh, &
-                amie_pcp_nh, amie_nh_ut, &
-                amie_cusplat_sh, amie_cuspmlt_sh, amie_hpi_sh, &
-                amie_pcp_sh, amie_sh_ut )
+    deallocate( cusplat_nh_input, cuspmlt_nh_input, hpi_nh_input, &
+                pcp_nh_input, amie_nh_ut, &
+                cusplat_sh_input, cuspmlt_sh_input, hpi_sh_input, &
+                pcp_sh_input, amie_sh_ut )
 
     call cam_pio_closefile(ncid_nh)
     call cam_pio_closefile(ncid_sh)

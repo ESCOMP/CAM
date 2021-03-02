@@ -7,7 +7,7 @@ module edyn_esmf
    use ESMF,           only: ESMF_Grid, ESMF_Mesh, ESMF_Field, ESMF_RouteHandle
    use ESMF,           only: ESMF_SUCCESS
    use ESMF,           only: ESMF_KIND_R8, ESMF_KIND_I4
-   use ESMF,           only: ESMF_FieldGet, ESMF_GridWriteVTK
+   use ESMF,           only: ESMF_FieldGet
    use ESMF,           only: ESMF_STAGGERLOC_CENTER, ESMF_FieldRegridStore, ESMF_FieldRegrid
    use ESMF,           only: ESMF_StaggerLoc
    use ESMF,           only: ESMF_REGRIDMETHOD_BILINEAR, ESMF_POLEMETHOD_ALLAVG
@@ -199,8 +199,7 @@ contains
       ! Create ESMF grids for physics, geographic (ion transport), and
       ! magnetic grids, and create ESMF fields as necessary on each grid.
       ! Define the 2d coordinates for each grid, and save an ESMF
-      ! routehandles for phys2mag, mag2phys, phys2geo, and geo2phys regridding.
-      ! Note: In the future, mag2geo might be added
+      ! routehandles for regridding.
       !
       ! Local:
       integer :: rc ! return code for ESMF calls
@@ -335,11 +334,6 @@ contains
       ! the timestep loop, the same routehandle can be used for all fields
       ! that are regridded in the given direction.
       !
-      ! These calls will leave *.vtk info files in execdir:
-      !   call ESMF_GridWriteVTK(geo_grid, &
-      !     staggerloc=ESMF_STAGGERLOC_CENTER, filename="geoGrid",rc=rc)
-      !   call ESMF_GridWriteVTK(mag_des_grid, &
-      !     staggerloc=ESMF_STAGGERLOC_CENTER, filename="magGrid",rc=rc)
 
       !
       ! Compute and store route handle for phys2mag 2d fields:
@@ -411,7 +405,7 @@ contains
            routeHandle=routehandle_geo2mag, factorIndexList=factorIndexList,  &
            factorList=factorList, srcTermProcessing=smm_srctermproc,          &
            pipelineDepth=smm_pipelinedep, rc=rc)
-      call edyn_esmf_chkerr(subname, 'ESMF_FieldRegridStore for 3D mag2geo', rc)
+      call edyn_esmf_chkerr(subname, 'ESMF_FieldRegridStore for 3D geo2mag', rc)
       !
       ! Compute and store route handle for geo2mag 2d fields:
       !
@@ -1019,9 +1013,13 @@ contains
     character(len=*), parameter :: subname = 'edyn_esmf_get_3dfield'
 
     if (mytid<ntask) then
-       call ESMF_FieldGet(field, localDe=0, farrayPtr=fptr,                   &
+       call ESMF_FieldGet(field, localDe=0, farrayPtr=fptr, &
             computationalLBound=lbnd, computationalUBound=ubnd, rc=rc)
        call edyn_esmf_chkerr(subname, 'ESMF_FieldGet', rc)
+
+       if (i0/=lbnd(1).or.i1/=ubnd(1).or.j0/=lbnd(2).or.j1/=ubnd(2).or.k0/=lbnd(3).or.k1/=ubnd(3)) then
+          call endrun(subname//' array bnds do not match')
+       endif
 
        data(:,:,:) = fptr(:,:,:)
     endif
@@ -1039,12 +1037,17 @@ contains
     !
     ! Local:
     real(r8), pointer :: fptr(:,:)
-    integer :: rc
+    integer :: rc, lbnd(2), ubnd(2)
     character(len=*),   parameter :: subname = 'edyn_esmf_get_2dfield'
     if (mytid<ntask) then
 
-       call ESMF_FieldGet(field, localDe=0, farrayPtr=fptr, rc=rc)
+       call ESMF_FieldGet(field, localDe=0, farrayPtr=fptr, &
+            computationalLBound=lbnd, computationalUBound=ubnd, rc=rc)
        call edyn_esmf_chkerr(subname, 'ESMF_FieldGet', rc)
+
+       if (i0/=lbnd(1).or.i1/=ubnd(1).or.j0/=lbnd(2).or.j1/=ubnd(2)) then
+          call endrun(subname//' array bnds do not match')
+       endif
 
        data(:,:) = fptr(:,:)
     endif
@@ -1061,11 +1064,16 @@ contains
     !
     ! Local:
     real(r8), pointer :: fptr(:,:)
-    integer :: rc
-    character(len=*),   parameter :: subname = 'edyn_esmf_get_2dfield'
+    integer :: rc, lbnd(2), ubnd(2)
+    character(len=*),   parameter :: subname = 'edyn_esmf_get_2dphysfield'
 
-    call ESMF_FieldGet(field, localDe=0, farrayPtr=fptr, rc=rc)
+    call ESMF_FieldGet(field, localDe=0, farrayPtr=fptr, &
+         computationalLBound=lbnd, computationalUBound=ubnd, rc=rc)
     call edyn_esmf_chkerr(subname, 'ESMF_FieldGet', rc)
+
+    if (i0/=lbnd(1).or.i1/=ubnd(1).or.j0/=lbnd(2).or.j1/=ubnd(2)) then
+       call endrun(subname//' array bnds do not match')
+    endif
 
     data(:,:) = fptr(:,:)
 
@@ -1082,11 +1090,16 @@ contains
     !
     ! Local:
     real(r8), pointer :: fptr(:)
-    integer :: rc
-    character(len=*),   parameter :: subname = 'edyn_esmf_get_2dfield'
+    integer :: rc, lbnd(1), ubnd(1)
+    character(len=*),   parameter :: subname = 'edyn_esmf_get_1dfield'
 
-    call ESMF_FieldGet(field, localDe=0, farrayPtr=fptr, rc=rc)
+    call ESMF_FieldGet(field, localDe=0, farrayPtr=fptr, &
+            computationalLBound=lbnd, computationalUBound=ubnd, rc=rc)
     call edyn_esmf_chkerr(subname, 'ESMF_FieldGet', rc)
+
+    if (i0/=lbnd(1).or.i1/=ubnd(1)) then
+       call endrun(subname//' array bnds do not match')
+    endif
 
     data(:) = fptr(:)
 

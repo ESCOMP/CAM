@@ -536,28 +536,91 @@ contains
             blksize = blksize + get_ncols_p(lchnk)
          end do
 
-         allocate(phis(pcols))
-         allocate(u_blck(pver, blksize))
-         allocate(v_blck(pver, blksize))
-         allocate(sigma_ped_blck(pver, blksize))
-         allocate(sigma_hall_blck(pver, blksize))
-         allocate(ti_blck(pver, blksize))
-         allocate(hi_blck(pver, blksize))
-         allocate(te_blck(pver, blksize))
-         allocate(zi_blck(pver, blksize))
-         allocate(ui_blck(pver, blksize))
-         allocate(vi_blck(pver, blksize))
-         allocate(wi_blck(pver, blksize))
-         allocate(omega_blck(pver, blksize))
-         allocate(tn_blck(pver, blksize))
-         allocate(n2mmr_blck(pver, blksize))
-         allocate(o2mmr_blck(pver, blksize))
-         allocate(o1mmr_blck(pver, blksize))
-         allocate(h1mmr_blck(pver, blksize))
-         allocate(mbar_blck(pver, blksize))
-         allocate(pmid_blck(pver, blksize))
+         allocate(phis(pcols), stat=astat)
+         if (astat /= 0) then
+            call endrun(subname//': failed to allocate phis')
+         end if
+         allocate(u_blck(pver, blksize), stat=astat)
+         if (astat /= 0) then
+            call endrun(subname//': failed to allocate u_blck')
+         end if
+         allocate(v_blck(pver, blksize), stat=astat)
+         if (astat /= 0) then
+            call endrun(subname//': failed to allocate v_blck')
+         end if
+         allocate(sigma_ped_blck(pver, blksize), stat=astat)
+         if (astat /= 0) then
+            call endrun(subname//': failed to allocate sigma_ped_blck')
+         end if
+         allocate(sigma_hall_blck(pver, blksize), stat=astat)
+         if (astat /= 0) then
+            call endrun(subname//': failed to allocate sigma_hall_blck')
+         end if
+         allocate(ti_blck(pver, blksize), stat=astat)
+         if (astat /= 0) then
+            call endrun(subname//': failed to allocate ti_blck')
+         end if
+         allocate(hi_blck(pver, blksize), stat=astat)
+         if (astat /= 0) then
+            call endrun(subname//': failed to allocate hi_blck')
+         end if
+         allocate(te_blck(pver, blksize), stat=astat)
+         if (astat /= 0) then
+            call endrun(subname//': failed to allocate te_blck')
+         end if
+         allocate(zi_blck(pver, blksize), stat=astat)
+         if (astat /= 0) then
+            call endrun(subname//': failed to allocate zi_blck')
+         end if
+         allocate(ui_blck(pver, blksize), stat=astat)
+         if (astat /= 0) then
+            call endrun(subname//': failed to allocate ui_blck')
+         end if
+         allocate(vi_blck(pver, blksize), stat=astat)
+         if (astat /= 0) then
+            call endrun(subname//': failed to allocate vi_blck')
+         end if
+         allocate(wi_blck(pver, blksize), stat=astat)
+         if (astat /= 0) then
+            call endrun(subname//': failed to allocate wi_blck')
+         end if
+         allocate(omega_blck(pver, blksize), stat=astat)
+         if (astat /= 0) then
+            call endrun(subname//': failed to allocate omega_blck')
+         end if
+         allocate(tn_blck(pver, blksize), stat=astat)
+         if (astat /= 0) then
+            call endrun(subname//': failed to allocate tn_blck')
+         end if
+         allocate(n2mmr_blck(pver, blksize), stat=astat)
+         if (astat /= 0) then
+            call endrun(subname//': failed to allocate n2mmr_blck')
+         end if
+         allocate(o2mmr_blck(pver, blksize), stat=astat)
+         if (astat /= 0) then
+            call endrun(subname//': failed to allocate o2mmr_blck')
+         end if
+         allocate(o1mmr_blck(pver, blksize), stat=astat)
+         if (astat /= 0) then
+            call endrun(subname//': failed to allocate o1mmr_blck')
+         end if
+         allocate(h1mmr_blck(pver, blksize), stat=astat)
+         if (astat /= 0) then
+            call endrun(subname//': failed to allocate h1mmr_blck')
+         end if
+         allocate(mbar_blck(pver, blksize), stat=astat)
+         if (astat /= 0) then
+            call endrun(subname//': failed to allocate mbar_blck')
+         end if
+         allocate(pmid_blck(pver, blksize), stat=astat)
+         if (astat /= 0) then
+            call endrun(subname//': failed to allocate pmid_blck')
+         end if
 
          allocate(opmmrtm1_blck(pver, blksize), stat=astat)
+         if (astat /= 0) then
+            call endrun(subname//': failed to allocate opmmrtm1_blck')
+         end if
 
          if (sIndxOp > 0) then
             allocate(opmmr_blck(pver, blksize), stat=astat)
@@ -584,7 +647,9 @@ contains
             end if
          end if
 
-         allocate(tempm(pcols, pver))
+         if (hist_fld_active('Z3GM')) then
+            allocate(tempm(pcols, pver))
+         end if
 
          if (hist_fld_active('Z3GMI')) then
             allocate(tempi(pcols, pver))
@@ -750,7 +815,6 @@ contains
                   r8tmp = r8tmp + (h1mmr_blck(k, j) / rmassH)
                   r8tmp = r8tmp + (n2mmr_blck(k, j) / rmassN2)
                   mbar_blck(k, j) = 1.0_r8 / r8tmp
-                  tempm(i, k) = mbar_blck(k, j)
                end do
             end do
          end do
