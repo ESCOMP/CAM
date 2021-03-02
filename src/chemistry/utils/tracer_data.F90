@@ -168,9 +168,7 @@ contains
     use phys_grid,       only : get_rlat_all_p, get_rlon_all_p, get_ncols_p
     use dycore,          only : dycore_is
     use horizontal_interpolate, only : xy_interp_init
-#if ( defined SPMD )
-    use mpishorthand,    only: mpicom, mpir8, mpiint
-#endif
+    use spmd_utils,       only: mpicom, mstrid=>masterprocid, mpi_real8, mpi_integer
 
     implicit none
 
@@ -185,6 +183,8 @@ contains
     integer,             intent(in)    :: data_fixed_ymd
     integer,             intent(in)    :: data_fixed_tod
     character(len=*),    intent(in)    :: data_type
+
+    character(len=*), parameter :: sub = 'trcdata_init'
 
     integer :: f, mxnflds, astat
     integer :: str_yr, str_mon, str_day
@@ -624,12 +624,36 @@ contains
         deallocate(phi,lam)
 
 ! weight_x & weight_y are weighting function for x & y interpolation
-   	allocate(file%weight_x(plon,file%nlon))
-        allocate(file%weight_y(plat,file%nlat))
-        allocate(file%count_x(plon))
-        allocate(file%count_y(plat))
-        allocate(file%index_x(plon,file%nlon))
-        allocate(file%index_y(plat,file%nlat))
+   	allocate(file%weight_x(plon,file%nlon), stat=astat)
+        if( astat /= 0 ) then
+           write(iulog,*) 'trcdata_init: file%weight_x allocation error = ',astat
+           call endrun('trcdata_init: failed to allocate weight_x array')
+        end if
+        allocate(file%weight_y(plat,file%nlat), stat=astat)
+        if( astat /= 0 ) then
+           write(iulog,*) 'trcdata_init: file%weight_y allocation error = ',astat
+           call endrun('trcdata_init: failed to allocate weight_y array')
+        end if
+        allocate(file%count_x(plon), stat=astat)
+        if( astat /= 0 ) then
+           write(iulog,*) 'trcdata_init: file%count_x allocation error = ',astat
+           call endrun('trcdata_init: failed to allocate count_x array')
+        end if
+        allocate(file%count_y(plat), stat=astat)
+        if( astat /= 0 ) then
+           write(iulog,*) 'trcdata_init: file%count_y allocation error = ',astat
+           call endrun('trcdata_init: failed to allocate count_y array')
+        end if
+        allocate(file%index_x(plon,file%nlon), stat=astat)
+        if( astat /= 0 ) then
+           write(iulog,*) 'trcdata_init: file%index_x allocation error = ',astat
+           call endrun('trcdata_init: failed to allocate index_x array')
+        end if
+        allocate(file%index_y(plat,file%nlat), stat=astat)
+        if( astat /= 0 ) then
+           write(iulog,*) 'trcdata_init: file%index_y allocation error = ',astat
+           call endrun('trcdata_init: failed to allocate index_y array')
+        end if
         file%weight_x(:,:) = 0.0_r8
         file%weight_y(:,:) = 0.0_r8
         file%count_x(:) = 0
@@ -638,12 +662,36 @@ contains
         file%index_y(:,:) = 0
 
         if( file%dist ) then
-         allocate(file%weight0_x(plon,file%nlon))
-         allocate(file%weight0_y(plat,file%nlat))
-         allocate(file%count0_x(plon))
-         allocate(file%count0_y(plat))
-         allocate(file%index0_x(plon,file%nlon))
-         allocate(file%index0_y(plat,file%nlat))
+         allocate(file%weight0_x(plon,file%nlon), stat=astat)
+         if( astat /= 0 ) then
+            write(iulog,*) 'trcdata_init: file%weight0_x allocation error = ',astat
+           call endrun('trcdata_init: failed to allocate weight0_x array')
+         end if
+         allocate(file%weight0_y(plat,file%nlat), stat=astat)
+         if( astat /= 0 ) then
+            write(iulog,*) 'trcdata_init: file%weight0_y allocation error = ',astat
+           call endrun('trcdata_init: failed to allocate weight0_y array')
+         end if
+         allocate(file%count0_x(plon), stat=astat)
+         if( astat /= 0 ) then
+            write(iulog,*) 'trcdata_init: file%count0_x allocation error = ',astat
+           call endrun('trcdata_init: failed to allocate count0_x array')
+         end if
+         allocate(file%count0_y(plat), stat=astat)
+         if( astat /= 0 ) then
+            write(iulog,*) 'trcdata_init: file%count0_y allocation error = ',astat
+           call endrun('trcdata_init: failed to allocate count0_y array')
+         end if
+         allocate(file%index0_x(plon,file%nlon), stat=astat)
+         if( astat /= 0 ) then
+            write(iulog,*) 'trcdata_init: file%index0_x allocation error = ',astat
+           call endrun('trcdata_init: failed to allocate index0_x array')
+         end if
+         allocate(file%index0_y(plat,file%nlat), stat=astat)
+         if( astat /= 0 ) then
+            write(iulog,*) 'trcdata_init: file%index0_y allocation error = ',astat
+           call endrun('trcdata_init: failed to allocate index0_y array')
+         end if
          file%weight0_x(:,:) = 0.0_r8
          file%weight0_y(:,:) = 0.0_r8
          file%count0_x(:) = 0
@@ -703,22 +751,32 @@ contains
            endif
         endif
    
-#if ( defined SPMD)
-        call mpibcast(file%weight_x, plon*file%nlon, mpir8 , 0, mpicom)
-        call mpibcast(file%weight_y, plat*file%nlat, mpir8 , 0, mpicom)
-        call mpibcast(file%count_x, plon, mpiint , 0, mpicom)
-        call mpibcast(file%count_y, plat, mpiint , 0, mpicom)
-        call mpibcast(file%index_x, plon*file%nlon, mpiint , 0, mpicom)
-        call mpibcast(file%index_y, plat*file%nlat, mpiint , 0, mpicom)
-       if( file%dist ) then
-        call mpibcast(file%weight0_x, plon*file%nlon, mpir8 , 0, mpicom)
-        call mpibcast(file%weight0_y, plat*file%nlat, mpir8 , 0, mpicom)
-        call mpibcast(file%count0_x, plon, mpiint , 0, mpicom)
-        call mpibcast(file%count0_y, plat, mpiint , 0, mpicom)
-        call mpibcast(file%index0_x, plon*file%nlon, mpiint , 0, mpicom)
-        call mpibcast(file%index0_y, plat*file%nlat, mpiint , 0, mpicom)
-       endif
-#endif
+        call mpi_bcast(file%weight_x, 1, mpi_real8 , mstrid, mpicom,ierr)
+        if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%weight_x")
+        call mpi_bcast(file%weight_y, 1, mpi_real8 , mstrid, mpicom,ierr)
+        if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%weight_y")
+        call mpi_bcast(file%count_x, 1, mpi_integer , mstrid, mpicom,ierr)
+        if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%count_x")
+        call mpi_bcast(file%count_y, 1, mpi_integer , mstrid, mpicom,ierr)
+        if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%count_y")
+        call mpi_bcast(file%index_x, 1, mpi_integer , mstrid, mpicom,ierr)
+        if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%index_x")
+        call mpi_bcast(file%index_y, 1, mpi_integer , mstrid, mpicom,ierr)
+        if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%index_y")
+        if( file%dist ) then
+           call mpi_bcast(file%weight0_x, 1, mpi_real8 , mstrid, mpicom,ierr)
+           if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%weight0_x")
+           call mpi_bcast(file%weight0_y, 1, mpi_real8 , mstrid, mpicom,ierr)
+           if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%weight0_y")
+           call mpi_bcast(file%count0_x, 1, mpi_integer , mstrid, mpicom,ierr)
+           if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%count0_x")
+           call mpi_bcast(file%count0_y, 1, mpi_integer , mstrid, mpicom,ierr)
+           if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%count0_y")
+           call mpi_bcast(file%index0_x, 1, mpi_integer , mstrid, mpicom,ierr)
+           if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%index0_x")
+           call mpi_bcast(file%index0_y, 1, mpi_integer , mstrid, mpicom,ierr)
+           if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%index0_y")
+        endif
     endif
 
   end subroutine trcdata_init
