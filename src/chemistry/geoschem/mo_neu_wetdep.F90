@@ -226,12 +226,13 @@ subroutine neu_wetdep_init
     call addfld     ('DTWR_'//trim(gas_wetdep_list(m)),(/ 'lev' /), 'A','kg/kg/s','wet removal Neu scheme tendency')
     call addfld     ('WD_'//trim(gas_wetdep_list(m)),horiz_only, 'A','kg/m2/s','vertical integrated wet deposition flux')
     call addfld     ('HEFF_'//trim(gas_wetdep_list(m)),(/ 'lev' /), 'A','M/atm','Effective Henrys Law coeff.')
-    call add_default('DTWR_'//trim(gas_wetdep_list(m)), 4, ' ')
-    call add_default('WD_'//trim(gas_wetdep_list(m)), 4, ' ')
-    !if (history_chemistry) then
-    !   call add_default('DTWR_'//trim(gas_wetdep_list(m)), 1, ' ')
-    !   call add_default('WD_'//trim(gas_wetdep_list(m)), 1, ' ')
-    !end if
+    call add_default('DTWR_'//trim(gas_wetdep_list(m)), 2, ' ')
+    call add_default('WD_'//trim(gas_wetdep_list(m)), 2, ' ')
+    !call add_default('HEFF_'//trim(gas_wetdep_list(m)), 2, ' ')
+    if (history_chemistry) then
+       call add_default('DTWR_'//trim(gas_wetdep_list(m)), 1, ' ')
+       call add_default('WD_'//trim(gas_wetdep_list(m)), 1, ' ')
+    end if
   end do
 !
   if ( do_diag ) then
@@ -481,7 +482,7 @@ subroutine neu_wetdep_tend(lchnk,ncol,mmr,pmid,pdel,zint,tfld,delt, &
   do m=1,gas_wetdep_cnt
     wd_tend(1:ncol,:,mapping_to_mmr(m)) = wd_tend(1:ncol,:,mapping_to_mmr(m)) + dtwr(1:ncol,:,m)
     call outfld( 'DTWR_'//trim(gas_wetdep_list(m)),dtwr(:,:,m),ncol,lchnk )
-    
+
     call outfld( 'HEFF_'//trim(gas_wetdep_list(m)),heff(:,pver:1:-1,m),ncol,lchnk )
 !
 ! vertical integrated wet deposition rate [kg/m2/s]

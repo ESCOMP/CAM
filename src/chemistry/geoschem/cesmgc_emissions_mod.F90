@@ -92,6 +92,7 @@ CONTAINS
 !
     USE PHYSICS_TYPES,       ONLY : physics_state
     USE CONSTITUENTS,        ONLY : cnst_get_ind
+    USE PHYS_CONTROL,        ONLY : phys_getopts
     USE MO_CHEM_UTLS,        ONLY : get_spc_ndx
     USE CAM_HISTORY,         ONLY : addfld, add_default, horiz_only
     USE MO_LIGHTNING,        ONLY : lightning_inti
@@ -113,6 +114,11 @@ CONTAINS
     INTEGER                :: IERR
     INTEGER                :: N, II
 
+    ! Logicals
+    LOGICAL                :: history_aerosol
+    LOGICAL                :: history_chemistry
+    LOGICAL                :: history_cesm_forcing
+
     ! Strings
     CHARACTER(LEN=255)     :: SpcName
     CHARACTER(LEN=255)     :: Description
@@ -123,6 +129,10 @@ CONTAINS
     !=================================================================
     ! CESMGC_Emissions_Init begins here!
     !=================================================================
+
+    CALL phys_getopts( history_aerosol_out      = history_aerosol,   &
+                       history_chemistry_out    = history_chemistry, &
+                       history_cesm_forcing_out = history_cesm_forcing )
 
     ! Get constituent index for NO
     CALL cnst_get_ind('NO', iNO, abort=.True.)
@@ -216,9 +226,9 @@ CONTAINS
           CALL Addfld( 'MEG_'//TRIM(SpcName), horiz_only, 'A', 'kg/m2/s', &
                Description )
 
-          !if (history_chemistry) then
-          CALL Add_default('MEG_'//TRIM(SpcName), 1, ' ')
-          !endif
+          IF ( history_chemistry ) THEN
+             CALL Add_default('MEG_'//TRIM(SpcName), 1, ' ')
+          ENDIF
        ENDDO
     ENDIF
 
@@ -229,9 +239,21 @@ CONTAINS
        SpcName = TRIM(cnst_name(N))//'_CLXF'
        CALL Addfld( TRIM(SpcName), horiz_only, 'A', 'molec/cm2/s', &
           'Vertically-integrated external forcing for '//TRIM(cnst_name(N)))
+       IF ( history_aerosol .OR. history_chemistry ) THEN
+          CALL Add_Default( TRIM(SpcName), 1, ' ' )
+       ENDIF
+       IF ( history_cesm_forcing .AND. TRIM(cnst_name(N)) == 'NO2' ) THEN
+          CALL Add_Default( TRIM(SpcName), 1, ' ' )
+       ENDIF
        SpcName = TRIM(cnst_name(N))//'_CMXF'
        CALL Addfld( TRIM(SpcName), horiz_only, 'A', 'kg/m2/s', &
           'Vertically-integrated external forcing for '//TRIM(cnst_name(N)))
+       IF ( history_aerosol .OR. history_chemistry ) THEN
+          CALL Add_Default( TRIM(SpcName), 1, ' ' )
+       ENDIF
+       IF ( history_cesm_forcing .AND. TRIM(cnst_name(N)) == 'NO2' ) THEN
+          CALL Add_Default( TRIM(SpcName), 1, ' ' )
+       ENDIF
     ENDDO
 
     CALL Addfld( 'NO_Lightning', (/ 'lev' /), 'A','molec/cm3/s', &

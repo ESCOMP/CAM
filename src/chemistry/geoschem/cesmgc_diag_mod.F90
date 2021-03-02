@@ -45,11 +45,12 @@ MODULE CESMGC_Diag_Mod
   CHARACTER(LEN=fieldname_len) :: wetdep_name(gas_pcnst) ! Wet deposition tendencies
   CHARACTER(LEN=fieldname_len) :: wtrate_name(gas_pcnst) ! Column tendencies for wet dep
   CHARACTER(LEN=fieldname_len) :: dtchem_name(gas_pcnst) ! Chemical tendencies
-  CHARACTER(LEN=16)            :: sflxnam_loc(pcnst)     ! Names of surface fluxes
+
+  INTEGER :: aer_species(gas_pcnst)
 
   ! Chemical families
   INTEGER  :: NOx_species(3)
-  INTEGER  :: NOy_species(63)
+  INTEGER  :: NOy_species(62)
   INTEGER  :: HOx_species(4)
   INTEGER  :: ClOx_species(6)
   INTEGER  :: ClOy_species(11)
@@ -61,7 +62,7 @@ MODULE CESMGC_Diag_Mod
   INTEGER  :: NHx_species(2)
   INTEGER  :: TOTH_species(3)
   REAL(r8) :: NOx_MWs(3)
-  REAL(r8) :: NOy_MWs(64)
+  REAL(r8) :: NOy_MWs(62)
   REAL(r8) :: HOx_MWs(4)
   REAL(r8) :: ClOx_MWs(6)
   REAL(r8) :: ClOy_MWs(11)
@@ -90,7 +91,7 @@ MODULE CESMGC_Diag_Mod
              i_MACRNO2, i_MCRHN, i_MCRHNB, i_MENO3, i_MONITS, i_MONITU, &
              i_MPAN, i_MPN, i_MVKN, i_N2O5, i_NO3, i_NPRNO3, i_OLND,    &
              i_OLNN, i_PAN, i_PPN, i_PRN1, i_PROPNN, i_PRPN, i_R4N1,    &
-             i_R4N2, i_HONIT, i_IONITA, i_NIT, i_NITs, i_NH4
+             i_R4N2, i_HONIT, i_IONITA, i_NIT, i_NITs
   ! HOx
   INTEGER :: i_H, i_OH, i_HO2, i_H2O2
   ! ClOx
@@ -112,9 +113,18 @@ MODULE CESMGC_Diag_Mod
   ! SOx
   INTEGER :: i_SO2, i_SO4
   ! NHx
-  INTEGER :: i_NH3 !NH4 already defined in NOy_species
+  INTEGER :: i_NH3, i_NH4
   ! TOTH
   INTEGER :: i_CH4, i_H2O, i_H2
+
+
+  ! Index in solsym
+  integer :: id_no,id_no3
+  integer :: id_cfc11,id_cfc12
+  integer :: id_ch4,id_h2o
+  integer :: id_o,id_o2,id_h,id_n2o
+  integer :: id_co2,id_o3,id_oh,id_ho2,id_so4_a1,id_so4_a2,id_so4_a3
+  integer :: id_num_a2,id_num_a3,id_dst_a3,id_ncl_a3
 !
 ! !REVISION HISTORY:
 !  28 Oct 2020 - T. M. Fritz   - Initial version
@@ -150,7 +160,9 @@ CONTAINS
   USE CONSTITUENTS,        ONLY : cnst_name, sflxnam
   USE CONSTITUENTS,        ONLY : cnst_get_ind
   USE CAM_HISTORY,         ONLY : addfld, add_default, horiz_only
+  USE PHYS_CONTROL,        ONLY : phys_getopts
   USE DRYDEP_MOD,          ONLY : depName
+  USE MO_CHEM_UTLS,        ONLY : get_spc_ndx
 !
 ! !INPUT PARAMETERS:
 !
@@ -165,12 +177,35 @@ CONTAINS
 !BOC
 !
     ! Integer
-    INTEGER                :: M, N, SM
+    INTEGER                :: M, N, K, SM
     INTEGER                :: idx
     INTEGER                :: RC
+    INTEGER                :: bulkaero_species(20)
+    INTEGER                :: id_so4, id_nh4no3
+    INTEGER                :: id_dst01, id_dst02, id_dst03, id_dst04
+    INTEGER                :: id_sslt01, id_sslt02, id_sslt03, id_sslt04
+    INTEGER                :: id_soa,  id_oc1, id_oc2, id_cb1, id_cb2
+    INTEGER                :: id_soam,id_soai,id_soat,id_soab,id_soax
+    INTEGER                :: id_bry, id_cly 
+    INTEGER                :: history_budget_histfile_num    ! output history file number
+                                                             ! for budget fields
 
     ! Logical
     LOGICAL                :: Found
+    LOGICAL                :: history_aerosol                ! Output the MAM aerosol
+                                                             ! tendencies
+    LOGICAL                :: history_chemistry
+    LOGICAL                :: history_cesm_forcing
+    LOGICAL                :: history_scwaccm_forcing
+    LOGICAL                :: history_chemspecies_srf        ! Output the chemistry
+                                                             ! constituents species
+                                                             ! in the surface layer
+    LOGICAL                :: history_dust
+    LOGICAL                :: history_budget                 ! output tendencies and state
+                                                             ! variables for CAM
+                                                             ! temperature, water vapor, 
+                                                             ! cloud ice and cloud
+                                                             ! liquid budgets.
 
     ! Strings
     CHARACTER(LEN=255)     :: SpcName
@@ -196,6 +231,79 @@ CONTAINS
     ! Assume a successful return until otherwise
     RC                      = GC_SUCCESS
 
+    CALL phys_getopts( history_aerosol_out             = history_aerosol,             &
+                       history_chemistry_out           = history_chemistry,           &
+                       history_chemspecies_srf_out     = history_chemspecies_srf,     &
+                       history_budget_out              = history_budget ,             &
+                       history_budget_histfile_num_out = history_budget_histfile_num, &
+                       history_cesm_forcing_out        = history_cesm_forcing,        &
+                       history_scwaccm_forcing_out     = history_scwaccm_forcing,     &
+                       history_dust_out                = history_dust )
+
+    id_no3     = get_spc_ndx( 'NO3' )
+    id_o3      = get_spc_ndx( 'O3' )
+    id_oh      = get_spc_ndx( 'OH' )
+    id_ho2     = get_spc_ndx( 'HO2' )
+    id_so4_a1  = get_spc_ndx( 'so4_a1' )
+    id_so4_a2  = get_spc_ndx( 'so4_a2' )
+    id_so4_a3  = get_spc_ndx( 'so4_a3' )
+    id_num_a2  = get_spc_ndx( 'num_a2' )
+    id_num_a3  = get_spc_ndx( 'num_a3' )
+    id_dst_a3  = get_spc_ndx( 'dst_a3' )
+    id_ncl_a3  = get_spc_ndx( 'ncl_a3' )
+    id_co2     = get_spc_ndx( 'CO2' )
+    id_no      = get_spc_ndx( 'NO' )
+    id_h       = get_spc_ndx( 'H' )
+    id_o       = get_spc_ndx( 'O' )
+    id_o2      = get_spc_ndx( 'O2' )
+    id_ch4     = get_spc_ndx( 'CH4' )
+    id_h2o     = get_spc_ndx( 'H2O' )
+    id_n2o     = get_spc_ndx( 'N2O' )
+    id_cfc11   = get_spc_ndx( 'CFC11' )
+    id_cfc12   = get_spc_ndx( 'CFC12' )
+
+    id_bry     = get_spc_ndx( 'BRY' )
+    id_cly     = get_spc_ndx( 'CLY' )
+
+    id_dst01   = get_spc_ndx( 'DST01' )
+    id_dst02   = get_spc_ndx( 'DST02' )
+    id_dst03   = get_spc_ndx( 'DST03' )
+    id_dst04   = get_spc_ndx( 'DST04' )
+    id_sslt01  = get_spc_ndx( 'SSLT01' )
+    id_sslt02  = get_spc_ndx( 'SSLT02' )
+    id_sslt03  = get_spc_ndx( 'SSLT03' )
+    id_sslt04  = get_spc_ndx( 'SSLT04' )
+    id_soa     = get_spc_ndx( 'SOA' )
+    id_so4     = get_spc_ndx( 'SO4' ); id_so4 = -1 ! Don't pick up GEOS-Chem's SO4!
+    id_oc1     = get_spc_ndx( 'OC1' )
+    id_oc2     = get_spc_ndx( 'OC2' )
+    id_cb1     = get_spc_ndx( 'CB1' )
+    id_cb2     = get_spc_ndx( 'CB2' )
+    id_nh4no3  = get_spc_ndx( 'NH4NO3' )
+    id_soam    = get_spc_ndx( 'SOAM' )
+    id_soai    = get_spc_ndx( 'SOAI' )
+    id_soat    = get_spc_ndx( 'SOAT' )
+    id_soab    = get_spc_ndx( 'SOAB' )
+    id_soax    = get_spc_ndx( 'SOAX' )
+
+    bulkaero_species(:) = -1
+    bulkaero_species(1:20) = (/ id_dst01, id_dst02, id_dst03, id_dst04, &
+                                id_sslt01, id_sslt02, id_sslt03, id_sslt04, &
+                                id_soa, id_so4, id_oc1, id_oc2, id_cb1, id_cb2, id_nh4no3, &
+                                id_soam,id_soai,id_soat,id_soab,id_soax /)
+    aer_species(:) = -1
+    n = 1
+    do m = 1,gas_pcnst
+       k=0
+       if ( any(bulkaero_species(:)==m) ) k=1
+       if ( k==0 ) k = index(trim(solsym(m)), '_a')
+       if ( k==0 ) k = index(trim(solsym(m)), '_c')
+       if ( k>0 ) then ! must be aerosol species
+          aer_species(n) = m
+          n = n+1
+       endif
+    enddo
+
     CALL Addfld( 'MASS', (/ 'lev' /), 'A', 'kg', 'Mass of grid box' )
     CALL Addfld( 'AREA', horiz_only,  'A', 'm2', 'Area of grid box' )
     CALL Addfld( 'HEIGHT', (/ 'ilev' /),'A','m', 'Geopotential height above surface at interfaces' )
@@ -203,17 +311,7 @@ CONTAINS
     ! Note that constituents are already output by default
     ! Add all species as output fields if desired
     DO N = 1, gas_pcnst
-       M = map2chm(N)
-       IF ( M > 0 ) THEN
-          ! It's a GEOS-Chem species
-          SpcName = to_upper(TRIM(solsym(N)))
-          CALL AddFld( TRIM(SpcName), (/ 'lev' /), 'A', 'mol/mol', &
-             TRIM(SpcName)//' volume mixing ratio')
-          CALL AddFld( TRIM(SpcName)//'_SRF', horiz_only, 'A', 'mol/mol', &
-             TRIM(SpcName)//' in bottom layer')
-          IF (TRIM(SpcName) == 'O3') CALL Add_Default( TRIM(SpcName), 2, ' ' )
-       ELSE
-          ! MAM aerosols
+       IF ( ANY( aer_species == N ) ) THEN
           SpcName = TRIM(solsym(N))
           unit_basename = 'kg'
           IF ( SpcName(1:3) == 'num' ) unit_basename = ' 1'
@@ -221,6 +319,56 @@ CONTAINS
              TRIM(SpcName)//' concentration' )
           CALL AddFld( TRIM(SpcName)//'_SRF', horiz_only, 'A', unit_basename//'/kg', &
              TRIM(SpcName)//' in bottom layer' )
+       ELSE
+          M = map2chm(N)
+          SpcName = TRIM(solsym(N))
+          CALL AddFld( TRIM(SpcName), (/ 'lev' /), 'A', 'mol/mol', &
+             TRIM(SpcName)//' volume mixing ratio')
+          CALL AddFld( TRIM(SpcName)//'_SRF', horiz_only, 'A', 'mol/mol', &
+             TRIM(SpcName)//' in bottom layer')
+       ENDIF
+       IF ( ( N /= id_cly ) .AND. ( N /= id_bry ) ) THEN
+          IF ( history_aerosol .OR. history_chemistry ) THEN
+             CALL Add_Default( TRIM(SpcName), 1, ' ' )
+          ENDIF
+          IF ( history_chemspecies_srf ) THEN
+             CALL Add_Default( TRIM(SpcName)//'_SRF', 1, ' ' )
+          ENDIF
+       ENDIF
+
+       IF ( history_cesm_forcing ) THEN
+          IF ( N == id_o3     ) CALL Add_Default( TRIM(SpcName), 1, ' ')
+          IF ( N == id_oh     ) CALL Add_Default( TRIM(SpcName), 1, ' ')
+          IF ( N == id_no3    ) CALL Add_Default( TRIM(SpcName), 1, ' ')
+          IF ( N == id_ho2    ) CALL Add_Default( TRIM(SpcName), 1, ' ')
+
+          IF ( N == id_o3     ) CALL Add_Default( TRIM(SpcName), 8, ' ')
+          IF ( N == id_so4_a1 ) CALL Add_Default( TRIM(SpcName), 8, ' ')
+          IF ( N == id_so4_a2 ) CALL Add_Default( TRIM(SpcName), 8, ' ')
+          IF ( N == id_so4_a3 ) CALL Add_Default( TRIM(SpcName), 8, ' ')
+
+          IF ( N == id_num_a2 ) CALL Add_Default( TRIM(SpcName), 8, ' ')
+          IF ( N == id_num_a3 ) CALL Add_Default( TRIM(SpcName), 8, ' ')
+          IF ( N == id_dst_a3 ) CALL Add_Default( TRIM(SpcName), 8, ' ')
+          IF ( N == id_ncl_a3 ) CALL Add_Default( TRIM(SpcName), 8, ' ')
+
+       ENDIF
+       IF ( history_scwaccm_forcing ) THEN
+          IF ( N == id_co2   ) CALL Add_Default( TRIM(SpcName), 8, ' ')
+          IF ( N == id_h     ) CALL Add_Default( TRIM(SpcName), 8, ' ')
+          IF ( N == id_no    ) CALL Add_Default( TRIM(SpcName), 8, ' ')
+          IF ( N == id_o     ) CALL Add_Default( TRIM(SpcName), 8, ' ')
+          IF ( N == id_o2    ) CALL Add_Default( TRIM(SpcName), 8, ' ')
+          IF ( N == id_o3    ) CALL Add_Default( TRIM(SpcName), 8, ' ')
+          IF ( N == id_h2o   ) CALL Add_Default( TRIM(SpcName), 1, ' ')
+          IF ( N == id_ch4   ) CALL Add_Default( TRIM(SpcName), 1, ' ')
+          IF ( N == id_n2o   ) CALL Add_Default( TRIM(SpcName), 1, ' ')
+          IF ( N == id_cfc11 ) CALL Add_Default( TRIM(SpcName), 1, ' ')
+          IF ( N == id_cfc12 ) CALL Add_Default( TRIM(SpcName), 1, ' ')
+       ENDIF
+
+       IF (history_dust .AND. (index(TRIM(SpcName),'dst_') > 0)) THEN
+          CALL Add_Default( TRIM(SpcName), 1, ' ')
        ENDIF
     ENDDO
 
@@ -240,13 +388,15 @@ CONTAINS
           SpcName = 'DF_'//to_upper(TRIM(SpcInfo%Name))
           CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'kg/m2/s', &
              TRIM(SpcName)//' dry deposition flux')
+          IF ( history_chemistry ) THEN
+             CALL Add_Default( TRIM(SpcName), 1, ' ' )
+          ENDIF
 
           ! Free pointer
           SpcInfo => NULL()
        ENDDO
     ENDIF
 
-    sflxnam_loc(:) = ''
     ! Chemical tendencies and surface fluxes
     DO N = 1, gas_pcnst
        IF ( map2chm(N) > 0 ) THEN
@@ -263,21 +413,30 @@ CONTAINS
        SpcName = TRIM(solsym(N))
        CALL cnst_get_ind( SpcName, M, abort=.false. )
        IF ( M > 0 ) THEN
-          IF (sflxnam(M)(3:5) == 'num') then  ! name is in the form of "SF****"
+          IF (sflxnam(M)(3:5) == 'num') THEN  ! name is in the form of "SF****"
              unit_basename = ' 1'
           ELSE
              unit_basename = 'kg'
           ENDIF
-          IF ( map2chm(N) > 0 ) THEN
-             sflxnam_loc(M) = to_upper(sflxnam(M))
-          ELSE
-             sflxnam_loc(M) = sflxnam(M)
-          ENDIF
-          SpcName = sflxnam_loc(M)
+          SpcName = sflxnam(M)
           CALL Addfld ( TRIM(SpcName), horiz_only, 'A',  unit_basename//'/m2/s', &
              TRIM(solsym(N))//' surface flux')
+          IF ( history_aerosol .OR. history_chemistry ) THEN 
+             CALL Add_Default( TRIM(SpcName), 1, ' ' )
+          ENDIF
+
+          IF ( history_cesm_forcing ) THEN
+             IF ( TRIM(SpcName(3:)) == 'NO' .OR. TRIM(SpcName(3:)) == 'NH3' ) THEN
+                CALL Add_Default( TRIM(SpcName), 1, ' ' )
+             ENDIF
+          ENDIF
        ENDIF
     ENDDO
+
+    ! Add chemical tendency of water vapor to water budget output
+    IF ( history_budget ) THEN 
+      CALL Add_Default ('CT_H2O' , history_budget_histfile_num, ' ')
+    ENDIF
 
     CALL get_TagInfo( Input_Opt = Input_Opt,  &
                       tagID     = 'PHO',      &
@@ -502,7 +661,7 @@ CONTAINS
                       i_MCRHNB, i_MENO3, i_MONITS, i_MONITU, i_MPAN, i_MPN,&
                       i_MVKN, i_N2O5, i_NO3, i_NPRNO3, i_OLND, i_OLNN,     &
                       i_PAN, i_PPN, i_PRN1, i_PROPNN, i_PRPN, i_R4N1,      &
-                      i_R4N2, i_HONIT, i_IONITA, i_NIT, i_NITs, i_NH4 /)
+                      i_R4N2, i_HONIT, i_IONITA, i_NIT, i_NITs /)
     HOx_species  = (/ i_H, i_OH, i_HO2, i_H2O2 /)
     ClOx_species = (/ i_Cl, i_ClO, i_HOCl, i_Cl2, i_Cl2O2, i_OClO /)
     ClOy_species = (/ i_Cl, i_ClO, i_HOCl, i_Cl2, i_Cl2O2, i_OClO, &
@@ -733,6 +892,9 @@ CONTAINS
     CALL Addfld( 'RAD_PSC',      (/ 'lev' /), 'I', 'cm',      'PSC aerosol radius' )
     CALL Addfld( 'SAD_TROP',     (/ 'lev' /), 'I', 'cm2/cm3', 'Tropospheric aerosol SAD' )
     CALL Addfld( 'SAD_AERO',     (/ 'lev' /), 'I', 'cm2/cm3', 'Aerosol surface area density' )
+    IF ( history_cesm_forcing ) THEN
+       CALL Add_Default( 'SAD_AERO', 8, ' ' )
+    ENDIF
     CALL Addfld( 'REFF_AERO',    (/ 'lev' /), 'I', 'cm',      'Aerosol effective radius')
     CALL Addfld( 'SULF_TROP',    (/ 'lev' /), 'I', 'cm2/cm3', 'Tropospheric sulfate area density')
 
@@ -889,19 +1051,18 @@ CONTAINS
 
     DO N = 1, gas_pcnst
        M = map2chm(N)
-       IF ( M > 0 ) THEN
-          ! It's a GEOS-Chem species
-          SpcName = to_upper(TRIM(solsym(N)))
-       ELSE
-          ! MAM aerosols
-          SpcName = TRIM(solsym(N))
-       ENDIF
+       SpcName = TRIM(solsym(N))
        outTmp = 0.0e+00_r8
        IF ( adv_mass(N) > 0.0e+00_r8 .AND. M /= 0 .AND. hist_fld_active(TRIM(SpcName)) ) THEN
           IF ( M > 0 ) THEN
+             ! mol/mol
              outTmp(:nY,:) = REAL(State_Chm%Species(1,:nY,nZ:1:-1,M),r8) * MWDry / adv_mass(N)
-          ELSE
+          ELSEIF ( ANY( aer_species == N ) ) THEN
+             ! kg/kg
              outTmp(:nY,:) = state%q(:nY,:nZ,-M)
+          ELSE
+             ! mol/mol
+             outTmp(:nY,:) = state%q(:nY,:nZ,-M) * MWDry / adv_mass(N)
           ENDIF
           CALL OutFld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
           CALL OutFld( TRIM(SpcName)//'_SRF', outTmp(:nY,nZ), nY, LCHNK )
@@ -1287,7 +1448,7 @@ CONTAINS
     ! ===============================================
 
     DO N = iFirstCnst, pcnst
-       SpcName = TRIM(sflxnam_loc(N))
+       SpcName = TRIM(sflxnam(N))
        IF ( TRIM(SpcName) == '' ) CYCLE
        IF ( .NOT. hist_fld_active(TRIM(SpcName)) ) CYCLE
        CALL OutFld( TRIM(SpcName), cam_in%cflx(:nY,N), nY, LCHNK )

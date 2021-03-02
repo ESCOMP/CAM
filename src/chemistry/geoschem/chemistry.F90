@@ -433,9 +433,6 @@ contains
        !    cnstName = 'TOLUENE'
        ENDIF
 
-       ! For debug, only
-       !If ( MasterProc ) Write(iulog,*) " Species = ", TRIM(cnstName)
-
        CALL cnst_add( cnstName, MWtmp, cptmp, qmin, N,        &
                       readiv=ic_from_cam2, mixtype=mixtype,   &
                       cam_outfld=camout, molectype=molectype, &
@@ -2212,6 +2209,8 @@ contains
        DO SM = 1, nspec_amode(M)
           P = map2MAM4(SM,M)
           IF ( P <= 0 ) CYCLE
+          ! Overwrite MMR_Beg with MAM value
+          MMR_Beg(:nY,:nZ,P) = State_Chm(LCHNK)%Species(1,:nY,:nZ,P)
           N = lmassptr_amode(SM,M)
           DO J = 1, nY
           DO L = 1, nZ
@@ -2451,7 +2450,7 @@ contains
              DO J = 1, nY
                 State_Met(LCHNK)%LandTypeFrac(1,J,N) = pbuf_i(J)
              ENDDO
-             pbuf_ik   => NULL()
+             pbuf_i   => NULL()
           ENDIF
 
           Write(FieldName, '(a,i2.2)') 'HCO_XLAI', N-1
@@ -2463,7 +2462,7 @@ contains
              DO J = 1, nY
                 State_Met(LCHNK)%XLAI_NATIVE(1,J,N) = pbuf_i(J)
              ENDDO
-             pbuf_ik   => NULL()
+             pbuf_i   => NULL()
           ENDIF
        ENDDO
     ENDIF
@@ -3715,6 +3714,12 @@ contains
        CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
+    ! GEOS-Chem considers CO2 as a dead species and resets its concentration
+    ! internally. Right after the call to `Do_Chemistry`, State_Chm%Species(iCO2)
+    ! corresponds to the chemically-produced CO2. The real CO2 concentration
+    ! is thus the concentration before chemistry + the chemically-produced CO2.
+    State_Chm(LCHNK)%Species(1,:nY,:nZ,iCO2) = State_Chm(LCHNK)%Species(1,:nY,:nZ,iCO2) &
+                                             + MMR_Beg(:nY,:nZ,iCO2)
 
     ! Make sure State_Chm(LCHNK) is back in kg/kg dry!
     IF ( TRIM(State_Chm(LCHNK)%Spc_Units) /= 'kg/kg dry' ) THEN
@@ -3731,15 +3736,14 @@ contains
        IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(FieldName)
     ELSE
        pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
-       CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_ik)
+       CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_i)
 
        ! RXN_NO2: NO2 + hv --> NO  + O
-       pbuf_ik(:nY,:nZ) = ZPJ(nZ:1:-1, RXN_NO2, 1, :nY)
+       pbuf_i(:nY) = ZPJ(1,RXN_NO2,1,:nY)
 
        pbuf_chnk => NULL()
-       pbuf_ik   => NULL()
+       pbuf_i    => NULL()
     ENDIF
-
 
     FieldName = 'HCO_IN_JOH'
     tmpIdx = pbuf_get_index(FieldName, RC)
@@ -3747,26 +3751,18 @@ contains
        IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(FieldName)
     ELSE
        pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
-       CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_ik)
+       CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_i)
 
        IF ( Input_Opt%LUCX ) THEN
-        ! RXN_O3_1: O3  + hv --> O2  + O
-        pbuf_ik(:nY,:nZ) = ZPJ(nZ:1:-1, RXN_O3_1, 1, :nY)
+          ! RXN_O3_1: O3  + hv --> O2  + O
+          pbuf_i(:nY) = ZPJ(1,RXN_O3_1,1,:nY)
        ELSE
-        ! RXN_O3_2a: O3 + hv --> 2OH
-        pbuf_ik(:nY,:nZ) = ZPJ(nZ:1:-1, RXN_O3_2a, 1, :nY)
+          ! RXN_O3_2a: O3 + hv --> 2OH
+          pbuf_i(:nY) = ZPJ(1,RXN_O3_2a,1,:nY)
        ENDIF
-       
        pbuf_chnk => NULL()
-       pbuf_ik   => NULL()
+       pbuf_i   => NULL()
     ENDIF
-
-    ! GEOS-Chem considers CO2 as a dead species and resets its concentration
-    ! internally. Right after the call to `Do_Chemistry`, State_Chm%Species(iCO2)
-    ! corresponds to the chemically-produced CO2. The real CO2 concentration
-    ! is thus the concentration before chemistry + the chemically-produced CO2.
-    State_Chm(LCHNK)%Species(1,:nY,:nZ,iCO2) = State_Chm(LCHNK)%Species(1,:nY,:nZ,iCO2) &
-                                             + MMR_Beg(:nY,:nZ,iCO2)
 
     call t_stopf( 'chemdr' )
 

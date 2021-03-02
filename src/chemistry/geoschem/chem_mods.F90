@@ -7,13 +7,11 @@
       implicit none
       save
 
-      INTEGER, PARAMETER :: nTracersMax = 250    ! Must be equal to nadv_chem
-      INTEGER            :: nTracers
-      CHARACTER(LEN=255) :: tracerNames(nTracersMax)
-      CHARACTER(LEN=255) :: tracerLongNames(nTracersMax)
-      REAL(r8)           :: adv_Mass(nTracersMax)
-      REAL(r8)           :: MWRatio(nTracersMax)
-      REAL(r8)           :: ref_MMR(nTracersMax)
+      INTEGER, PARAMETER   :: nTracersMax = 238    ! Must be equal to chem_nadv
+      INTEGER              :: nTracers
+      CHARACTER(LEN=255)   :: tracerNames(nTracersMax)
+      CHARACTER(LEN=255)   :: tracerLongNames(nTracersMax)
+      REAL(r8)             :: ref_MMR(pcnst)
 
       ! Index of first constituent
       INTEGER              :: iFirstCnst
