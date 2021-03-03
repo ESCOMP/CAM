@@ -1171,26 +1171,26 @@ module oplus
 ! electric field transport
            if (k <= nlev-2) then
               dfield(k,i0:i1,lat) = dfield(k,i0:i1,lat)+ &
-                   (0.5*(wi(k+1,i0:i1,lat)+wi(k+2,i0:i1,lat)))* &
-                    0.5*hdz(k+1,i0:i1,lat)* op_out(k-1,i0:i1,lat) &
-                   -0.5*(wi(k,i0:i1,lat)+wi(k+1,i0:i1,lat))* &
-                   6./Rearth* op_out(k,i0:i1,lat) &
-                   -(0.5*(wi(k,i0:i1,lat)+wi(k+1,i0:i1,lat)))*0.5*hdz(k,i0:i1,lat) &
+                   (0.5_r8*(wi(k+1,i0:i1,lat)+wi(k+2,i0:i1,lat)))* &
+                    0.5_r8*hdz(k+1,i0:i1,lat)* op_out(k-1,i0:i1,lat) &
+                   -0.5_r8*(wi(k,i0:i1,lat)+wi(k+1,i0:i1,lat))* &
+                   6._r8/Rearth* op_out(k,i0:i1,lat) &
+                   -(0.5_r8*(wi(k,i0:i1,lat)+wi(k+1,i0:i1,lat)))*0.5_r8*hdz(k,i0:i1,lat) &
                    * op_out(k+1,i0:i1,lat)
            else
               dfield(k,i0:i1,lat) = dfield(k,i0:i1,lat)+ &
                    (1*(wi(k+1,i0:i1,lat)))* &
-                   0.5*hdz(k+1,i0:i1,lat)* op_out(k-1,i0:i1,lat) &
-                   -0.5*(wi(k,i0:i1,lat)+wi(k+1,i0:i1,lat))* &
-                   6./Rearth* op_out(k,i0:i1,lat) &
-                   -(0.5*(wi(k,i0:i1,lat)+wi(k+1,i0:i1,lat)))*0.5*hdz(k,i0:i1,lat) &
+                   0.5_r8*hdz(k+1,i0:i1,lat)* op_out(k-1,i0:i1,lat) &
+                   -0.5_r8*(wi(k,i0:i1,lat)+wi(k+1,i0:i1,lat))* &
+                   6._r8/Rearth* op_out(k,i0:i1,lat) &
+                   -(0.5_r8*(wi(k,i0:i1,lat)+wi(k+1,i0:i1,lat)))*0.5_r8*hdz(k,i0:i1,lat) &
                    * op_out(k+1,i0:i1,lat)
            endif
 ! wind transport
            dwind(k,i0:i1,lat)=  &
-                (bz(i0:i1,lat)*bdotu(k,i0:i1,lat))* 0.5*hdz(k+1,i0:i1,lat) * op_out(k-1,i0:i1,lat) &
+                (bz(i0:i1,lat)*bdotu(k,i0:i1,lat))* 0.5_r8*hdz(k+1,i0:i1,lat) * op_out(k-1,i0:i1,lat) &
                 -bdotu(k,i0:i1,lat)*dvb(i0:i1,lat)*bz(i0:i1,lat)* op_out(k,i0:i1,lat) &
-                -(bz(i0:i1,lat)*bdotu(k+1,i0:i1,lat))*0.5*hdz(k,i0:i1,lat)* op_out(k+1,i0:i1,lat)
+                -(bz(i0:i1,lat)*bdotu(k+1,i0:i1,lat))*0.5_r8*hdz(k,i0:i1,lat)* op_out(k+1,i0:i1,lat)
 
 ! dO+/dt
            op_dt(k,i0:i1,lat)= dtx2inv* op_out(k,i0:i1,lat) + op_dt(k,i0:i1,lat)
