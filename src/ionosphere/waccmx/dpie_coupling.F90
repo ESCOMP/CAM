@@ -918,8 +918,8 @@ contains
   !-----------------------------------------------------------------------
   !-----------------------------------------------------------------------
   subroutine outfld_phys1d( fldname, array )
-    use ppgrid,   only: pcols
-    use phys_grid,only: begchunk, endchunk, get_ncols_p
+    use ppgrid,   only: pcols, begchunk, endchunk
+    use phys_grid,only: get_ncols_p
 
     character(len=*), intent(in) :: fldname
     real(r8), intent(in) :: array(:)
@@ -942,8 +942,8 @@ contains
   end subroutine outfld_phys1d
   !-----------------------------------------------------------------------
   subroutine outfld_phys( fldname, array )
-    use ppgrid,   only: pcols, pver
-    use phys_grid,only: begchunk, endchunk, get_ncols_p
+    use ppgrid,   only: pcols, pver, begchunk, endchunk
+    use phys_grid,only: get_ncols_p
 
     character(len=*), intent(in) :: fldname
     real(r8), intent(in) :: array(:,:)

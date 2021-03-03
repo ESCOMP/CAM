@@ -78,7 +78,7 @@ OPTIONS
      -cppdefs <string>  A string of user specified CPP defines.  Appended to
                         Makefile defaults.  E.g. -cppdefs '-DVAR1 -DVAR2'
      -cpl               Coupling framework [mct | nuopc].  Default: mct.
-     -dyn <name>        Dynamical core option: [eul | fv | se | fv3].  Default: fv.
+     -dyn <name>        Dynamical core option: [eul | fv | se | fv3 | mpas].  Default: fv.
      -edit_chem_mech    Invokes CAMCHEM_EDITOR to allow the user to edit the chemistry mechanism file
      -hgrid <name>      Specify horizontal grid.  Use nlatxnlon for spectral grids;
                         dlatxdlon for fv grids (dlat and dlon are the grid cell size
@@ -176,6 +176,7 @@ OPTIONS
      -ldflags <string>  A string of user specified load options.  Appended to
                         Makefile defaults.
      -linker <name>     User specified linker.  Overrides Makefile default of \$(FC).
+     -mpas_libdir <dir> Directory containing MPAS library.
      -mct_libdir <dir>  Directory containing MCT library.  Default: build the library from source
                         in a subdirectory of \$cam_bld.
      -mpi_inc <dir>     Directory containing MPI include files.
@@ -276,6 +277,7 @@ GetOptions(
     "max_n_rad_cnst=s"          => \$opts{'max_n_rad_cnst'},
     "mct_libdir=s"              => \$opts{'mct_libdir'},
     "microphys=s"               => \$opts{'microphys'},
+    "mpas_libdir=s"             => \$opts{'mpas_libdir'},
     "mpi_inc=s"                 => \$opts{'mpi_inc'},
     "mpi_lib=s"                 => \$opts{'mpi_lib'},
     "nadv=s"                    => \$opts{'nadv'},
@@ -696,9 +698,9 @@ if ($print>=2) { print "WACCM physics: $waccm_phys$eol"; }
 
 
 # WACCM physics only runs with FV, SE and FV3 dycores
-if ( ($waccm_phys) and ($dyn_pkg ne 'fv') and ($dyn_pkg ne 'se') and ($dyn_pkg ne 'fv3') ) {
+if ( ($waccm_phys) and ($dyn_pkg eq 'eul') ) {
     die <<"EOF";
-** ERROR: WACCM physics only runs with FV, Spectral Element and FV3 as the dycore.
+** ERROR: WACCM physics does not run with the Eulerian spectral dycore.
 EOF
 }
 
@@ -1212,6 +1214,9 @@ elsif ($dyn_pkg eq 'eul') {
 }
 elsif ($dyn_pkg eq 'se') {
     $hgrid = 'ne16np4';
+}
+elsif ($dyn_pkg eq 'mpas') {
+    $hgrid = 'mpasa480';
 }
 $cfg_ref->set('hgrid', $hgrid);
 
@@ -2003,6 +2008,37 @@ if ($dyn_pkg eq 'fv3') {
 }
 
 #-----------------------------------------------------------------------------------------------
+# MPAS library.
+if ($dyn_pkg eq 'mpas') {
+
+    # Set the directory used to build MPAS.  Add location and library name
+    # to the user specified load flags.
+    my $mpas_libdir = '';
+    if (defined $opts{'mpas_libdir'}) {
+      $mpas_libdir = $opts{'mpas_libdir'};
+    } else
+    {
+        $mpas_libdir = "$cam_bld/mpas";
+    }
+
+    $cfg_ref->set('mpas_libdir', "$mpas_libdir");
+
+    my $ldflags = $cfg_ref->get('ldflags');
+    $ldflags .= " -L$mpas_libdir -lmpas ";
+    $cfg_ref->set('ldflags', $ldflags);
+
+    # create the build directory for mpas
+    my $bld_dir = $mpas_libdir;
+    unless (-d $bld_dir or mkdirp($bld_dir)) {
+        die "** Could not create the mpas build directory: $bld_dir\n";
+    }
+
+    # Create the MPAS Makefile from a template and copy it into the mpas bld directory
+    write_mpas_makefile("$cfgdir/../src/dynamics/mpas/Makefile", "$mpas_libdir/Makefile");
+    if ($print) { print "creating $mpas_libdir/Makefile\n"; }
+}
+
+#-----------------------------------------------------------------------------------------------
 # Write configuration files ####################################################################
 #-----------------------------------------------------------------------------------------------
 
@@ -2090,6 +2126,12 @@ sub write_filepath
     if ($simple_phys) {
       print $fh "$camsrcdir/src/physics/simple\n";
       print $fh "$camsrcdir/src/atmos_phys/kessler\n";
+    }
+
+    # Weak scaling fix. This has to come before physics/cam and before dycores
+    # It also has to come before utils (which is already near the end).
+    if ($dyn eq 'se') {
+      print $fh "$camsrcdir/src/infrastructure\n";
     }
 
     if ($carma ne 'none') {
@@ -2284,6 +2326,34 @@ EOF
 
 #-------------------------------------------------------------------------------
 
+sub write_mpas_makefile
+{
+
+    my ($file_in, $file_out) = @_;
+    my  $fh_in = new IO::File;
+    my  $fh_out = new IO::File;
+
+    $fh_out->open(">$file_out") or die "** can't open file: $file_out\n";
+
+    print $fh_out  <<"EOF";
+
+MPAS_SRC_ROOT := $cam_dir/src/dynamics/mpas
+
+EOF
+
+    # Copy the "template" makefile to the new makefile.
+    $fh_in->open("<$file_in") or die "** can't open file: $file_in\n";
+    while (<$fh_in>) {
+        print $fh_out $_;
+    }
+
+    $fh_out->close;
+    $fh_in->close;
+}
+
+
+#-------------------------------------------------------------------------------
+
 sub write_config_h
 {
     my ($file) = @_;
@@ -2314,7 +2384,7 @@ sub set_horiz_grid
 
     my ($hgrid_file, $cfg_ref) = @_;
 
-    # Get dycore/grid from the package's configuration
+    # Get dycore/grid from the configuration object
     my $dyn_pkg = $cfg_ref->get('dyn');
     my $hgrid   = $cfg_ref->get('hgrid');
 
@@ -2344,9 +2414,9 @@ sub set_horiz_grid
         $hgrid =~ m/C(\d+)/;
         $cfg_ref->set('hgrid', $hgrid);
     }
-    else {
+    elsif ($dyn_pkg =~ m/^eul$|^fv/) {
 
-        # For non-SE dycores the parameters are read from an input file,
+        # For EUL and FV dycores the parameters are read from an input file,
         # and if no dycore/grid matches are found then issue error message.
 
         my $xml = XML::Lite->new( $hgrid_file );

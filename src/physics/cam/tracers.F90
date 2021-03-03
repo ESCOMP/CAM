@@ -291,11 +291,7 @@ subroutine tracers_init_cnst(name, latvals, lonvals, mask, q, z)
      do m = 1, test_tracer_num
        if (name == test_tracer_names(m)) then
          if (analytic_tracer(m)) then
-           if (present(z)) then
-             call test_func_set(name, latvals, lonvals, mask, q, z=z)
-           else
-             call test_func_set(name, latvals, lonvals, mask, q)
-           end if
+           call test_func_set(name, latvals, lonvals, mask, q, z=z)
            found = .true.
            exit
          else

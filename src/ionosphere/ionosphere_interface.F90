@@ -28,7 +28,7 @@ contains
   !--------------------------------------------------------------------------------
   !--------------------------------------------------------------------------------
   subroutine ionosphere_init()
-    
+
   end subroutine ionosphere_init
 
   !--------------------------------------------------------------------------------
@@ -43,11 +43,9 @@ contains
   !--------------------------------------------------------------------------------
   !--------------------------------------------------------------------------------
   subroutine ionosphere_run2( phys_state, pbuf2d )
-
+    use ppgrid, only: begchunk, endchunk
     use physics_types,  only: physics_state
     use physics_buffer, only: physics_buffer_desc
-    use phys_grid,      only: begchunk, endchunk
-    use dyn_comp,       only: dyn_import_t
 
     ! args
     type(physics_state),    intent(in) :: phys_state(begchunk:endchunk)

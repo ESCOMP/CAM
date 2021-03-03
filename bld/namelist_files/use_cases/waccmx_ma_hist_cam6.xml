@@ -15,11 +15,6 @@
 <epp_all_filepath>atm/cam/solar/SolarForcingCMIP6_18491230-23000102_c20200615.nc</epp_all_filepath>
 <epp_all_varname >epp_ion_rates</epp_all_varname>
 
-<!-- QBO settings -->
-<qbo_use_forcing dyn="fv" hgrid="1.9x2.5">.true.</qbo_use_forcing>
-<qbo_forcing_file dyn="fv" hgrid="1.9x2.5">atm/waccm/qbo/qbocoefficients_c151023.nc</qbo_forcing_file>
-<qbo_cyclic dyn="fv" hgrid="1.9x2.5">.false.</qbo_cyclic>
-
 <!-- Lower Boundary Conditions -->
 <flbc_type>SERIAL</flbc_type>
 <flbc_file>atm/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180905.nc</flbc_file>

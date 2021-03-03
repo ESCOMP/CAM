@@ -13,13 +13,6 @@
 <epp_all_filepath>atm/cam/solar/SolarForcing1995-2005avg_c160929.nc</epp_all_filepath>
 <epp_all_varname >epp_ion_rates</epp_all_varname>
 
-<!-- QBO settings -->
-<qbo_use_forcing >.true.</qbo_use_forcing>
-<qbo_use_forcing hgrid="0.9x1.25">.false.</qbo_use_forcing>
-<qbo_use_forcing dyn="se"        >.false.</qbo_use_forcing>
-<qbo_cyclic>.false.</qbo_cyclic>
-<qbo_forcing_file>atm/waccm/qbo/qbocoefficients_c151023.nc</qbo_forcing_file>
-
 <!-- Lower Boundary Conditions -->
 <!-- LBC, UBC Files -->
 <flbc_type>CYCLICAL</flbc_type>
@@ -49,15 +42,15 @@
 <nhtfrq hgrid="1.9x2.5">0,   -1,  -24,  -24, -120,  -24, -24 </nhtfrq>
 <mfilt  hgrid="1.9x2.5">1,   24,    7,    7,   10,    1, 365 </mfilt>
 
-<!-- Monthly --> 
-<fincl1> 
+<!-- Monthly -->
+<fincl1>
          'Z3', 'T', 'TIon', 'TElec', 'e', 'U', 'V', 'OMEGA', 'UI', 'VI',
          'WI', 'ElecColDens', 'PHIM2D', 'PS', 'EDYN_ZIGM11_PED', 'EDYN_ZIGM2_HAL', 'ED1', 'ED2', 'O', 'O2',
          'H', 'NO', 'CO2', 'N', 'O1D', 'Op2P', 'Op2D', 'Op', 'Np', 'N2p',
          'O2p', 'NOp', 'QJOULE', 'SIGMAHAL', 'SIGMAPED', 'SolIonRate_Tot', 'QRS_TOT', 'QO3', 'QCO2', 'QNO',
          'QO3P', 'QHC2S', 'QJOULE', 'QEN', 'QIN', 'QEI', 'EKGW', 'TTGW', 'UTGW_TOTAL', 'T_24_COS',
          'T_24_SIN', 'T_12_COS', 'T_12_SIN', 'T_08_COS', 'T_08_SIN', 'U_24_COS', 'U_24_SIN', 'U_12_COS', 'U_12_SIN', 'U_08_COS',
-         'U_08_SIN', 'V_24_COS', 'V_24_SIN', 'V_12_COS', 'V_12_SIN', 'V_08_COS', 'V_08_SIN', 
+         'U_08_SIN', 'V_24_COS', 'V_24_SIN', 'V_12_COS', 'V_12_SIN', 'V_08_COS', 'V_08_SIN',
          'OMEGA_24_COS', 'OMEGA_24_SIN', 'OMEGA_12_COS',
          'OMEGA_12_SIN', 'OMEGA_08_COS', 'OMEGA_08_SIN', 'ALATM', 'ALONM', 'AOA1', 'AOA2', 'BR', 'BRCL', 'BRO',
          'BRONO2', 'CCL4', 'CF2CLBR', 'CF3BR', 'CFC11', 'CFC113', 'CFC12', 'CH2O', 'CH3BR', 'CH3CCL3',
@@ -75,35 +68,35 @@
          'SNOWHLND', 'SNOWHICE', 'ICEFRAC', 'FSDSC', 'SFNO', 'SFCO', 'SFCH2O', 'CFC11STAR', 'TROPP_FD', 'KVH',
          'KVM', 'KVT', 'Qbkgndtot', 'Z3GM', 'OpDens', 'EDens'
 </fincl1>
-<!-- Instantaneous --> 
-<fincl2>  
-         'Z3', 'T', 'TIon', 'TElec', 'e', 'U', 'V', 'OMEGA', 'UI', 'VI', 'WI', 'ElecColDens', 'PHIM2D', 'PS', 
+<!-- Instantaneous -->
+<fincl2>
+         'Z3', 'T', 'TIon', 'TElec', 'e', 'U', 'V', 'OMEGA', 'UI', 'VI', 'WI', 'ElecColDens', 'PHIM2D', 'PS',
          'EDYN_ZIGM11_PED', 'EDYN_ZIGM2_HAL', 'ED1', 'ED2', 'O', 'O2', 'H'
 </fincl2>
-<!-- Instantaneous --> 
-<fincl3>  
-         'Z3', 'T', 'TIon', 'TElec', 'e', 'U', 'V', 'OMEGA', 'UI', 'VI', 'WI', 'ElecColDens', 'PHIM2D', 'PS', 
-         'EDYN_ZIGM11_PED', 'EDYN_ZIGM2_HAL', 'ED1', 'ED2', 'O', 'O2', 'H', 'NO', 'CO2', 'N', 'O1D', 
+<!-- Instantaneous -->
+<fincl3>
+         'Z3', 'T', 'TIon', 'TElec', 'e', 'U', 'V', 'OMEGA', 'UI', 'VI', 'WI', 'ElecColDens', 'PHIM2D', 'PS',
+         'EDYN_ZIGM11_PED', 'EDYN_ZIGM2_HAL', 'ED1', 'ED2', 'O', 'O2', 'H', 'NO', 'CO2', 'N', 'O1D',
 	 'Op2P', 'Op2D', 'Op', 'Np', 'N2p', 'O2p', 'NOp', 'QJOULE', 'SIGMAHAL', 'SIGMAPED', 'SolIonRate_Tot',
 	 'Z3GM', 'OpDens', 'EDens'
 </fincl3>
-<!-- Average every 5 days --> 
-<fincl4>  
-         'Z3', 'T', 'TIon', 'TElec', 'e', 'U', 'V', 'OMEGA', 'UI', 'VI', 'WI', 'ElecColDens', 'PHIM2D', 'PS', 
-         'EDYN_ZIGM11_PED', 'EDYN_ZIGM2_HAL', 'ED1', 'ED2', 'O', 'O2', 'H', 'NO', 'CO2', 'N', 'QRS_TOT', 
-	 'QO3', 'QCO2', 'QNO', 'QO3P', 'QHC2S', 'QJOULE', 'EKGW', 'TTGW', 'UTGW_TOTAL', 
+<!-- Average every 5 days -->
+<fincl4>
+         'Z3', 'T', 'TIon', 'TElec', 'e', 'U', 'V', 'OMEGA', 'UI', 'VI', 'WI', 'ElecColDens', 'PHIM2D', 'PS',
+         'EDYN_ZIGM11_PED', 'EDYN_ZIGM2_HAL', 'ED1', 'ED2', 'O', 'O2', 'H', 'NO', 'CO2', 'N', 'QRS_TOT',
+	 'QO3', 'QCO2', 'QNO', 'QO3P', 'QHC2S', 'QJOULE', 'EKGW', 'TTGW', 'UTGW_TOTAL',
 	 'SolIonRate_Tot', 'Z3GM', 'OpDens', 'EDens'
 </fincl4>
-<!-- Average every 5 days --> 
-<fincl5>  
+<!-- Average every 5 days -->
+<fincl5>
          'T_24_COS', 'T_24_SIN', 'T_12_COS', 'T_12_SIN', 'T_08_COS', 'T_08_SIN',
 	 'U_24_COS', 'U_24_SIN', 'U_12_COS', 'U_12_SIN', 'U_08_COS', 'U_08_SIN',
 	 'V_24_COS', 'V_24_SIN', 'V_12_COS', 'V_12_SIN', 'V_08_COS', 'V_08_SIN',
 	 'OMEGA_24_COS', 'OMEGA_24_SIN', 'OMEGA_12_COS', 'OMEGA_12_SIN', 'OMEGA_08_COS', 'OMEGA_08_SIN'
 </fincl5>
-<!-- Average every day --> 
-<fincl7>  
-         'MSKtem', 'PS', 'PSL', 'VTHzm', 'UVzm', 'UWzm', 'Uzm', 'Vzm', 'THzm','Wzm', 'PHIS' 
+<!-- Average every day -->
+<fincl7>
+         'MSKtem', 'PS', 'PSL', 'VTHzm', 'UVzm', 'UWzm', 'Uzm', 'Vzm', 'THzm','Wzm', 'PHIS'
 </fincl7>
 
 <fv_div24del2flag>42</fv_div24del2flag>

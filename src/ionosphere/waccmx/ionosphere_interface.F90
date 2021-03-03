@@ -2,8 +2,8 @@ module ionosphere_interface
 
    use shr_kind_mod,        only: r8 => shr_kind_r8, cl=>shr_kind_cl
    use cam_abortutils,      only: endrun
-   use ppgrid,              only: pcols, pver
-   use phys_grid,           only: begchunk, endchunk, get_ncols_p
+   use ppgrid,              only: begchunk, endchunk, pcols, pver
+   use phys_grid,           only: get_ncols_p
 
    use dpie_coupling,       only: d_pie_init
    use dpie_coupling,       only: d_pie_coupling         ! WACCM-X ionosphere/electrodynamics coupling

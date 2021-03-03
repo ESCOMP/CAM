@@ -8,7 +8,7 @@ module zm_conv_intr
 ! January 2010 modified by J. Kay to add COSP simulator fields to physics buffer
 !---------------------------------------------------------------------------------
    use shr_kind_mod, only: r8=>shr_kind_r8
-   use physconst,    only: cpair                              
+   use physconst,    only: cpair
    use ppgrid,       only: pver, pcols, pverp, begchunk, endchunk
    use zm_conv,      only: zm_conv_evap, zm_convr, convtran, momtran
    use zm_microphysics,  only: zm_aero_t, zm_conv_t
@@ -21,7 +21,7 @@ module zm_conv_intr
    use perf_mod
    use cam_logfile,  only: iulog
    use constituents, only: cnst_add
-   
+
    implicit none
    private
    save
@@ -67,19 +67,19 @@ module zm_conv_intr
    real(r8) :: zmconv_ke_lnd = unset_r8
    real(r8) :: zmconv_momcu  = unset_r8
    real(r8) :: zmconv_momcd  = unset_r8
-   integer  :: zmconv_num_cin            ! Number of negative buoyancy regions that are allowed 
+   integer  :: zmconv_num_cin            ! Number of negative buoyancy regions that are allowed
                                          ! before the convection top and CAPE calculations are completed.
-   logical  :: zmconv_org                ! Parameterization for sub-grid scale convective organization for the ZM deep 
+   logical  :: zmconv_org                ! Parameterization for sub-grid scale convective organization for the ZM deep
                                          ! convective scheme based on Mapes and Neale (2011)
    logical  :: zmconv_microp = .false.             ! switch for microphysics
 
 
 !  indices for fields in the physics buffer
-   integer  ::    cld_idx          = 0    
-   integer  ::    icwmrdp_idx      = 0     
-   integer  ::    rprddp_idx       = 0    
-   integer  ::    fracis_idx       = 0   
-   integer  ::    nevapr_dpcu_idx  = 0    
+   integer  ::    cld_idx          = 0
+   integer  ::    icwmrdp_idx      = 0
+   integer  ::    rprddp_idx       = 0
+   integer  ::    fracis_idx       = 0
+   integer  ::    nevapr_dpcu_idx  = 0
    integer  ::    dgnum_idx        = 0
 
    integer :: nmodes
@@ -103,38 +103,38 @@ subroutine zm_conv_register
 
   integer idx
 
-   call pbuf_add_field('ZM_MU', 'physpkg', dtype_r8, (/pcols,pver/), zm_mu_idx) 
-   call pbuf_add_field('ZM_EU', 'physpkg', dtype_r8, (/pcols,pver/), zm_eu_idx) 
-   call pbuf_add_field('ZM_DU', 'physpkg', dtype_r8, (/pcols,pver/), zm_du_idx) 
-   call pbuf_add_field('ZM_MD', 'physpkg', dtype_r8, (/pcols,pver/), zm_md_idx) 
-   call pbuf_add_field('ZM_ED', 'physpkg', dtype_r8, (/pcols,pver/), zm_ed_idx) 
+   call pbuf_add_field('ZM_MU', 'physpkg', dtype_r8, (/pcols,pver/), zm_mu_idx)
+   call pbuf_add_field('ZM_EU', 'physpkg', dtype_r8, (/pcols,pver/), zm_eu_idx)
+   call pbuf_add_field('ZM_DU', 'physpkg', dtype_r8, (/pcols,pver/), zm_du_idx)
+   call pbuf_add_field('ZM_MD', 'physpkg', dtype_r8, (/pcols,pver/), zm_md_idx)
+   call pbuf_add_field('ZM_ED', 'physpkg', dtype_r8, (/pcols,pver/), zm_ed_idx)
 
    ! wg layer thickness in mbs (between upper/lower interface).
-   call pbuf_add_field('ZM_DP', 'physpkg', dtype_r8, (/pcols,pver/), zm_dp_idx) 
+   call pbuf_add_field('ZM_DP', 'physpkg', dtype_r8, (/pcols,pver/), zm_dp_idx)
 
    ! wg layer thickness in mbs between lcl and maxi.
-   call pbuf_add_field('ZM_DSUBCLD', 'physpkg', dtype_r8, (/pcols/), zm_dsubcld_idx) 
+   call pbuf_add_field('ZM_DSUBCLD', 'physpkg', dtype_r8, (/pcols/), zm_dsubcld_idx)
 
    ! wg top level index of deep cumulus convection.
-   call pbuf_add_field('ZM_JT', 'physpkg', dtype_i4, (/pcols/), zm_jt_idx) 
+   call pbuf_add_field('ZM_JT', 'physpkg', dtype_i4, (/pcols/), zm_jt_idx)
 
    ! wg gathered values of maxi.
-   call pbuf_add_field('ZM_MAXG', 'physpkg', dtype_i4, (/pcols/), zm_maxg_idx) 
+   call pbuf_add_field('ZM_MAXG', 'physpkg', dtype_i4, (/pcols/), zm_maxg_idx)
 
    ! map gathered points to chunk index
-   call pbuf_add_field('ZM_IDEEP', 'physpkg', dtype_i4, (/pcols/), zm_ideep_idx) 
+   call pbuf_add_field('ZM_IDEEP', 'physpkg', dtype_i4, (/pcols/), zm_ideep_idx)
 
 ! Flux of precipitation from deep convection (kg/m2/s)
-   call pbuf_add_field('DP_FLXPRC','global',dtype_r8,(/pcols,pverp/),dp_flxprc_idx) 
+   call pbuf_add_field('DP_FLXPRC','global',dtype_r8,(/pcols,pverp/),dp_flxprc_idx)
 
-! Flux of snow from deep convection (kg/m2/s) 
-   call pbuf_add_field('DP_FLXSNW','global',dtype_r8,(/pcols,pverp/),dp_flxsnw_idx) 
+! Flux of snow from deep convection (kg/m2/s)
+   call pbuf_add_field('DP_FLXSNW','global',dtype_r8,(/pcols,pverp/),dp_flxsnw_idx)
 
 ! deep gbm cloud liquid water (kg/kg)
-   call pbuf_add_field('DP_CLDLIQ','global',dtype_r8,(/pcols,pver/), dp_cldliq_idx)  
+   call pbuf_add_field('DP_CLDLIQ','global',dtype_r8,(/pcols,pver/), dp_cldliq_idx)
 
-! deep gbm cloud liquid water (kg/kg)    
-   call pbuf_add_field('DP_CLDICE','global',dtype_r8,(/pcols,pver/), dp_cldice_idx)  
+! deep gbm cloud liquid water (kg/kg)
+   call pbuf_add_field('DP_CLDICE','global',dtype_r8,(/pcols,pver/), dp_cldice_idx)
 
    call pbuf_add_field('ICWMRDP',    'physpkg',dtype_r8,(/pcols,pver/),icwmrdp_idx)
    call pbuf_add_field('RPRDDP',     'physpkg',dtype_r8,(/pcols,pver/),rprddp_idx)
@@ -253,7 +253,7 @@ subroutine zm_conv_init(pref_edge)
 
   allocate(aero(begchunk:endchunk))
 
-! 
+!
 ! Register fields with the output buffer
 !
 
@@ -270,13 +270,13 @@ subroutine zm_conv_init(pref_edge)
     call addfld ('FZSNTZM',  (/ 'lev' /),  'A', 'K/s','T tendency - Rain to snow conversion from Zhang convection')
     call addfld ('EVSNTZM',  (/ 'lev' /),  'A', 'K/s','T tendency - Snow to rain prod from Zhang convection')
     call addfld ('EVAPQZM',  (/ 'lev' /),  'A', 'kg/kg/s','Q tendency - Evaporation from Zhang-McFarlane moist convection')
-    
+
     call addfld ('ZMFLXPRC', (/ 'ilev' /), 'A', 'kg/m2/s','Flux of precipitation from ZM convection'       )
     call addfld ('ZMFLXSNW', (/ 'ilev' /), 'A', 'kg/m2/s','Flux of snow from ZM convection'                )
     call addfld ('ZMNTPRPD', (/ 'lev' /) , 'A', 'kg/kg/s','Net precipitation production from ZM convection')
     call addfld ('ZMNTSNPD', (/ 'lev' /) , 'A', 'kg/kg/s','Net snow production from ZM convection'         )
     call addfld ('ZMEIHEAT', (/ 'lev' /) , 'A', 'W/kg'   ,'Heating by ice and evaporation in ZM convection')
-    
+
     call addfld ('CMFMCDZM', (/ 'ilev' /), 'A', 'kg/m2/s','Convection mass flux from ZM deep ')
     call addfld ('PRECCDZM', horiz_only,   'A', 'm/s','Convective precipitation rate from ZM deep')
 
@@ -284,7 +284,7 @@ subroutine zm_conv_init(pref_edge)
     call addfld ('PCONVT',   horiz_only ,  'A', 'Pa'    ,'convection top  pressure')
 
     call addfld ('CAPE',     horiz_only,   'A', 'J/kg', 'Convectively available potential energy')
-    call addfld ('FREQZM',   horiz_only  , 'A', 'fraction', 'Fractional occurance of ZM convection') 
+    call addfld ('FREQZM',   horiz_only  , 'A', 'fraction', 'Fractional occurance of ZM convection')
 
     call addfld ('ZMMTT',    (/ 'lev' /),  'A', 'K/s', 'T tendency - ZM convective momentum transport')
     call addfld ('ZMMTU',    (/ 'lev' /),  'A', 'm/s2', 'U tendency - ZM convective momentum transport')
@@ -343,12 +343,12 @@ subroutine zm_conv_init(pref_edge)
        end do
        if ( limcnv == 0 ) limcnv = plevp
     end if
-    
+
     if (masterproc) then
        write(iulog,*)'ZM_CONV_INIT: Deep convection will be capped at intfc ',limcnv, &
             ' which is ',pref_edge(limcnv),' pascals'
     end if
-        
+
     no_deep_pbl = phys_deepconv_pbl()
     call zm_convi(limcnv,zmconv_c0_lnd, zmconv_c0_ocn, zmconv_ke, zmconv_ke_lnd, &
                   zmconv_momcu, zmconv_momcd, zmconv_num_cin, zmconv_org, &
@@ -368,7 +368,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
      rliq    ,rice    ,ztodt    , &
      jctop   ,jcbot , &
      state   ,ptend_all   ,landfrac,  pbuf)
-  
+
 
    use cam_history,   only: outfld
    use physics_types, only: physics_state, physics_ptend
@@ -376,7 +376,6 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    use physics_types, only: physics_state_copy, physics_state_dealloc
    use physics_types, only: physics_ptend_sum, physics_ptend_dealloc
 
-   use phys_grid,     only: get_lat_p, get_lon_p
    use time_manager,  only: get_nstep, is_first_step
    use physics_buffer, only : pbuf_get_field, physics_buffer_desc, pbuf_old_tim_idx
    use constituents,  only: pcnst, cnst_get_ind, cnst_is_convtran1
@@ -393,7 +392,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    real(r8), intent(in) :: ztodt                       ! 2 delta t (model time increment)
    real(r8), intent(in) :: pblh(pcols)                 ! Planetary boundary layer height
    real(r8), intent(in) :: tpert(pcols)                ! Thermal temperature excess
-   real(r8), intent(in) :: landfrac(pcols)             ! RBN - Landfrac 
+   real(r8), intent(in) :: landfrac(pcols)             ! RBN - Landfrac
 
    real(r8), intent(out) :: mcon(pcols,pverp)  ! Convective mass flux--m sub c
    real(r8), intent(out) :: pflx(pcols,pverp)  ! scattered precip flux at each level
@@ -430,7 +429,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
 
    ! physics buffer fields
    real(r8), pointer, dimension(:)   :: prec         ! total precipitation
-   real(r8), pointer, dimension(:)   :: snow         ! snow from ZM convection 
+   real(r8), pointer, dimension(:)   :: snow         ! snow from ZM convection
    real(r8), pointer, dimension(:,:) :: cld
    real(r8), pointer, dimension(:,:) :: ql           ! wg grid slice of cloud liquid water.
    real(r8), pointer, dimension(:,:) :: rprd         ! rain production rate
@@ -447,16 +446,16 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    real(r8), pointer :: lambdadpcu(:,:) ! slope of cloud liquid size distr
    real(r8), pointer :: mudpcu(:,:)     ! width parameter of droplet size distr
 
-   real(r8), pointer :: mu(:,:)    ! (pcols,pver) 
-   real(r8), pointer :: eu(:,:)    ! (pcols,pver) 
-   real(r8), pointer :: du(:,:)    ! (pcols,pver) 
-   real(r8), pointer :: md(:,:)    ! (pcols,pver) 
-   real(r8), pointer :: ed(:,:)    ! (pcols,pver) 
-   real(r8), pointer :: dp(:,:)    ! (pcols,pver) 
-   real(r8), pointer :: dsubcld(:) ! (pcols) 
-   integer,  pointer :: jt(:)      ! (pcols) 
-   integer,  pointer :: maxg(:)    ! (pcols) 
-   integer,  pointer :: ideep(:)   ! (pcols) 
+   real(r8), pointer :: mu(:,:)    ! (pcols,pver)
+   real(r8), pointer :: eu(:,:)    ! (pcols,pver)
+   real(r8), pointer :: du(:,:)    ! (pcols,pver)
+   real(r8), pointer :: md(:,:)    ! (pcols,pver)
+   real(r8), pointer :: ed(:,:)    ! (pcols,pver)
+   real(r8), pointer :: dp(:,:)    ! (pcols,pver)
+   real(r8), pointer :: dsubcld(:) ! (pcols)
+   integer,  pointer :: jt(:)      ! (pcols)
+   integer,  pointer :: maxg(:)    ! (pcols)
+   integer,  pointer :: ideep(:)   ! (pcols)
    integer           :: lengath
 
    real(r8) :: jctop(pcols)  ! o row of top-of-deep-convection indices passed out.
@@ -480,7 +479,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    logical  :: l_windt(2)
    real(r8) :: tfinal1, tfinal2
    integer  :: ii
-   
+
    real(r8),pointer :: zm_org2d(:,:)
    real(r8),pointer :: orgt(:,:), org(:,:)
 
@@ -544,7 +543,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
        conv%dcape(pcols) )
    end if
 
-   ftem = 0._r8   
+   ftem = 0._r8
    mu_out(:,:) = 0._r8
    md_out(:,:) = 0._r8
    wind_tends(:ncol,:pver,:) = 0.0_r8
@@ -627,7 +626,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
 
    if (zmconv_org) then
       allocate(zm_org2d(pcols,pver))
-      org => state%q(:,:,ixorg) 
+      org => state%q(:,:,ixorg)
       orgt => ptend_loc%q(:,:,ixorg)
    endif
 
@@ -702,7 +701,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
   ! add tendency from this process to tendencies from other processes
   call physics_ptend_sum(ptend_loc,ptend_all, ncol)
 
-  ! update physics state type state1 with ptend_loc 
+  ! update physics state type state1 with ptend_loc
   call physics_update(state1, ptend_loc, ztodt)
 
   ! initialize ptend for next process
@@ -736,13 +735,13 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
          prec, snow, ntprprd, ntsnprd , flxprec, flxsnow, conv%sprd)
 
     evapcdp(:ncol,:pver) = ptend_loc%q(:ncol,:pver,1)
-    
+
      if (zmconv_org) then
          ptend_loc%q(:ncol,:pver,ixorg) = min(1._r8,max(0._r8,(50._r8*1000._r8*1000._r8*abs(evapcdp(:ncol,:pver))) &
                                           -(state%q(:ncol,:pver,ixorg)/10800._r8)))
-         ptend_loc%q(:ncol,:pver,ixorg) = (ptend_loc%q(:ncol,:pver,ixorg) - state%q(:ncol,:pver,ixorg))/ztodt 
-     endif    
-    
+         ptend_loc%q(:ncol,:pver,ixorg) = (ptend_loc%q(:ncol,:pver,ixorg) - state%q(:ncol,:pver,ixorg))/ztodt
+     endif
+
 !
 ! Write out variables from zm_conv_evap
 !
@@ -769,7 +768,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
   ! add tendency from this process to tend from other processes here
   call physics_ptend_sum(ptend_loc,ptend_all, ncol)
 
-  ! update physics state type state1 with ptend_loc 
+  ! update physics state type state1 with ptend_loc
   call physics_update(state1, ptend_loc, ztodt)
 
 
@@ -781,7 +780,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
 
      winds(:ncol,:pver,1) = state1%u(:ncol,:pver)
      winds(:ncol,:pver,2) = state1%v(:ncol,:pver)
-   
+
      l_windt(1) = .true.
      l_windt(2) = .true.
 
@@ -790,16 +789,16 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
                    l_windt,winds, 2,  mu, md,   &
                    du, eu, ed, dp, dsubcld,  &
                    jt, maxg, ideep, 1, lengath,  &
-                   nstep,  wind_tends, pguall, pgdall, icwu, icwd, ztodt, seten )  
+                   nstep,  wind_tends, pguall, pgdall, icwu, icwd, ztodt, seten )
      call t_stopf ('momtran')
 
      ptend_loc%u(:ncol,:pver) = wind_tends(:ncol,:pver,1)
      ptend_loc%v(:ncol,:pver) = wind_tends(:ncol,:pver,2)
-     ptend_loc%s(:ncol,:pver) = seten(:ncol,:pver)  
+     ptend_loc%s(:ncol,:pver) = seten(:ncol,:pver)
 
      call physics_ptend_sum(ptend_loc,ptend_all, ncol)
 
-     ! update physics state type state1 with ptend_loc 
+     ! update physics state type state1 with ptend_loc
      call physics_update(state1, ptend_loc, ztodt)
 
      ftem(:ncol,:pver) = seten(:ncol,:pver)/cpair
@@ -810,7 +809,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
      call outfld('ZMMTT', ftem             , pcols, lchnk)
      call outfld('ZMMTU', wind_tends(1,1,1), pcols, lchnk)
      call outfld('ZMMTV', wind_tends(1,1,2), pcols, lchnk)
-   
+
      ! Output apparent force from  pressure gradient
      call outfld('ZMUPGU', pguall(1,1,1), pcols, lchnk)
      call outfld('ZMUPGD', pgdall(1,1,1), pcols, lchnk)
@@ -925,11 +924,11 @@ subroutine zm_conv_tend_2( state,  ptend,  ztodt, pbuf)
    use time_manager,  only: get_nstep
    use physics_buffer, only: pbuf_get_index, pbuf_get_field, physics_buffer_desc
    use constituents,   only: pcnst, cnst_is_convtran2
- 
+
 ! Arguments
    type(physics_state), intent(in )   :: state          ! Physics state variables
    type(physics_ptend), intent(out)   :: ptend          ! indivdual parameterization tendencies
-   
+
    type(physics_buffer_desc), pointer :: pbuf(:)
 
    real(r8), intent(in) :: ztodt                          ! 2 delta t (model time increment)
@@ -941,18 +940,18 @@ subroutine zm_conv_tend_2( state,  ptend,  ztodt, pbuf)
 
    real(r8), dimension(pcols,pver) :: dpdry
 
-   ! physics buffer fields 
+   ! physics buffer fields
    real(r8), pointer :: fracis(:,:,:)  ! fraction of transported species that are insoluble
-   real(r8), pointer :: mu(:,:)    ! (pcols,pver) 
-   real(r8), pointer :: eu(:,:)    ! (pcols,pver) 
-   real(r8), pointer :: du(:,:)    ! (pcols,pver) 
-   real(r8), pointer :: md(:,:)    ! (pcols,pver) 
-   real(r8), pointer :: ed(:,:)    ! (pcols,pver) 
-   real(r8), pointer :: dp(:,:)    ! (pcols,pver) 
-   real(r8), pointer :: dsubcld(:) ! (pcols) 
-   integer,  pointer :: jt(:)      ! (pcols) 
-   integer,  pointer :: maxg(:)    ! (pcols) 
-   integer,  pointer :: ideep(:)   ! (pcols) 
+   real(r8), pointer :: mu(:,:)    ! (pcols,pver)
+   real(r8), pointer :: eu(:,:)    ! (pcols,pver)
+   real(r8), pointer :: du(:,:)    ! (pcols,pver)
+   real(r8), pointer :: md(:,:)    ! (pcols,pver)
+   real(r8), pointer :: ed(:,:)    ! (pcols,pver)
+   real(r8), pointer :: dp(:,:)    ! (pcols,pver)
+   real(r8), pointer :: dsubcld(:) ! (pcols)
+   integer,  pointer :: jt(:)      ! (pcols)
+   integer,  pointer :: maxg(:)    ! (pcols)
+   integer,  pointer :: ideep(:)   ! (pcols)
    !-----------------------------------------------------------------------------------
 
 
@@ -1009,7 +1008,7 @@ subroutine zm_conv_micro_init()
 
   integer :: i
 
-  ! 
+  !
   ! Register fields with the output buffer
   !
     call addfld ('ICIMRDP', (/ 'lev' /), 'A','kg/kg',  'Deep Convection in-cloud ice mixing ratio ')
