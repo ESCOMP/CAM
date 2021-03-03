@@ -42,9 +42,9 @@ module aircraft_emit
   type(forcing_air),allocatable :: forcings_air(:)
 
   integer, parameter :: N_AERO = 13
-  character(len=13)    :: aero_names(N_AERO) = (/'ac_SLANT_DIST','ac_TRACK_DIST','ac_HC      ','ac_NOX     ','ac_PMNV    ',&
-                          'ac_PMSO    ','ac_PMFO    ','ac_FUELBURN','ac_CO2     ','ac_H2O     ',&
-                          'ac_SOX     ','ac_CO      ','ac_BC      '/)
+  character(len=13)    :: aero_names(N_AERO) = (/'ac_SLANT_DIST','ac_TRACK_DIST','ac_HC        ','ac_NOX       ','ac_PMNV      ',&
+                                                 'ac_PMSO      ','ac_PMFO      ','ac_FUELBURN  ','ac_CO2       ','ac_H2O       ',&
+                                                 'ac_SOX       ','ac_CO        ','ac_BC        '/)
 
   real(r8), parameter :: molmass(N_AERO) = 1._r8
 

@@ -27,7 +27,7 @@ module ssatcontrail
 
     ! Private data
     real(r8), parameter :: rhoi = 500.0_r8             ! density of ice (500 kg/m3)
-    real(r8), parameter :: radius = 3.75e-6            ! diameter of ice particle = 7.5 microns
+    real(r8), parameter :: radius = 3.75e-6_r8         ! diameter of ice particle = 7.5 microns
 
   
 contains
@@ -73,6 +73,14 @@ contains
  
     has_aircraft_H2O = .false.
     has_aircraft_distance = .false.
+
+    ! Update constituents, all schemes use time split q: no tendency kept
+    call cnst_get_ind('CLDICE', ixcldice, abort=.false.)
+    call cnst_get_ind('CLDLIQ', ixcldliq, abort=.false.)
+    ! Check for number concentration of cloud liquid and cloud ice (if not present)
+    ! the indices will be set to -1)
+    call cnst_get_ind('NUMICE', ixnumice, abort=.false.)
+    call cnst_get_ind('NUMLIQ', ixnumliq, abort=.false.)
 
     call get_aircraft(aircraft_cnt, spc_name_list)
 !-----------------------------------------------------------------------------------------
@@ -125,14 +133,6 @@ contains
     call pbuf_get_field(pbuf,ifld,ac_SLANT_DIST)
  
 	
-    ! Update constituents, all schemes use time split q: no tendency kept
-    call cnst_get_ind('CLDICE', ixcldice, abort=.false.)
-    call cnst_get_ind('CLDLIQ', ixcldliq, abort=.false.)
-    ! Check for number concentration of cloud liquid and cloud ice (if not present)
-    ! the indices will be set to -1)
-    call cnst_get_ind('NUMICE', ixnumice, abort=.false.)
-    call cnst_get_ind('NUMLIQ', ixnumliq, abort=.false.)
-
 ! adjust h2o to volume mixing ratio (mass adjustment and conversion from g/kg to kg/kg)
     Ma = mwdry   
     Mh2o = mwh2o
@@ -142,7 +142,7 @@ contains
 
     epsi = Mh2o/Ma
     ei = 1.21_r8      ! water vapor emiision index (g) h2o per kg fuel (Schumann 96)?
-    Q = 43.e6         ! specific combustion heat Schummann 1996, Q = 43 MJ/kg
+    Q = 43.e6_r8      ! specific combustion heat Schummann 1996, Q = 43 MJ/kg
     eta = 0.3_r8      ! propulsion effieciency (Ponater 2002)
     
     ratio(i,k) = 0._r8
@@ -180,7 +180,7 @@ contains
 
         ICIWC0(i,k) = exp(6.97_r8+0.103_r8*(state1%t(i,k)-273.16_r8)) ! in mg/m3
         rho = p/(287._r8*state1%t(i,k))
-        ICIWC = ICIWC0(i,k)/rho*1.0e-6
+        ICIWC = ICIWC0(i,k)/rho*1.0e-6_r8
 
 
 ! persistent contrail condition
