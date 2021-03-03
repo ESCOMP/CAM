@@ -90,6 +90,8 @@ integer  ::      kvm_idx    = 0
 integer  ::      kvh_idx    = 0 
 integer  ::      cush_idx   = 0 
 integer  ::      t_ttend_idx = 0
+integer  ::      t_utend_idx = 0
+integer  ::      t_vtend_idx = 0
 
 integer  ::      prec_dp_idx  = 0
 integer  ::      snow_dp_idx  = 0
@@ -150,6 +152,8 @@ contains
 
     ! Request physics buffer space for fields that persist across timesteps.
     call pbuf_add_field('T_TTEND', 'global', dtype_r8, (/pcols,pver,dyn_time_lvls/), t_ttend_idx)
+    call pbuf_add_field('T_UTEND', 'global', dtype_r8, (/pcols,pver,dyn_time_lvls/), t_utend_idx)
+    call pbuf_add_field('T_VTEND', 'global', dtype_r8, (/pcols,pver,dyn_time_lvls/), t_vtend_idx)
   end subroutine diag_register_dry
 
   subroutine diag_register_moist()
@@ -195,6 +199,9 @@ contains
 
     ! State before physics
     call addfld ('TBP',     (/ 'lev' /), 'A','K',             'Temperature (before physics)')
+    call addfld ('UBP',     (/ 'lev' /), 'A','m/s',           'Zonal wind (before physics)')
+    call addfld ('VBP',     (/ 'lev' /), 'A','m/s',           'Meridional Wind (before physics)')
+    call register_vector_field('UBP','VBP')
     call addfld (bpcnst(1), (/ 'lev' /), 'A','kg/kg',         trim(cnst_longname(1))//' (before physics)')
     ! State after physics
     call addfld ('TAP',     (/ 'lev' /), 'A','K',             'Temperature (after physics)'       )
@@ -208,7 +215,12 @@ contains
       call addfld ('TFIX',    horiz_only,  'A', 'K/s',        'T fixer (T equivalent of Energy correction)')
     end if
     call addfld ('TTEND_TOT', (/ 'lev' /), 'A', 'K/s',        'Total temperature tendency')
-   
+
+    ! outfld calls in diag_phys_tend_writeout
+    call addfld ('UTEND_TOT', (/ 'lev' /), 'A', 'm/s2',       'Total zonal wind tendency')
+    call addfld ('VTEND_TOT', (/ 'lev' /), 'A', 'm/s2',       'Total meridional wind tendency')
+    call register_vector_field('UTEND_TOT','VTEND_TOT')
+
     ! Debugging negative water output fields
     call addfld ('INEGCLPTEND ', (/ 'lev' /), 'A', 'kg/kg/s', 'Cloud ice tendency due to clipping neg values after microp')
     call addfld ('LNEGCLPTEND ', (/ 'lev' /), 'A', 'kg/kg/s', 'Cloud liq tendency due to clipping neg values after microp')
@@ -330,9 +342,13 @@ contains
       call add_default ('U       '  , history_budget_histfile_num, ' ')
       call add_default ('V       '  , history_budget_histfile_num, ' ')
       call add_default ('TTEND_TOT' , history_budget_histfile_num, ' ')
+      call add_default ('UTEND_TOT' , history_budget_histfile_num, ' ')
+      call add_default ('VTEND_TOT' , history_budget_histfile_num, ' ')
 
       ! State before physics (FV)
       call add_default ('TBP     '  , history_budget_histfile_num, ' ')
+      call add_default ('UBP     '  , history_budget_histfile_num, ' ')
+      call add_default ('VBP     '  , history_budget_histfile_num, ' ')
       call add_default (bpcnst(1)   , history_budget_histfile_num, ' ')
       ! State after physics (FV)
       call add_default ('TAP     '  , history_budget_histfile_num, ' ')
@@ -351,9 +367,14 @@ contains
     end if
 
     ! outfld calls in diag_phys_tend_writeout
-    call addfld ('PTTEND',          (/ 'lev' /), 'A', 'K/s','T total physics tendency'                             )
+    call addfld ('PTTEND',          (/ 'lev' /), 'A', 'K/s','T total physics tendency')
+    call addfld ('UTEND_PHYSTOT',   (/ 'lev' /), 'A', 'm/s2','U total physics tendency')
+    call addfld ('VTEND_PHYSTOT',   (/ 'lev' /), 'A', 'm/s2','V total physics tendency')
+    call register_vector_field('UTEND_PHYSTOT','VTEND_PHYSTOT')
     if ( history_budget ) then
       call add_default ('PTTEND'          , history_budget_histfile_num, ' ')
+      call add_default ('UTEND_PHYSTOT'   , history_budget_histfile_num, ' ')
+      call add_default ('VTEND_PHYSTOT'   , history_budget_histfile_num, ' ')
     end if
 
     ! create history variables for fourier coefficients of the diurnal
@@ -613,6 +634,8 @@ contains
     if ( history_budget ) then
       call add_default (cnst_name(1), history_budget_histfile_num, ' ')
       call add_default ('PTTEND'          , history_budget_histfile_num, ' ')
+      call add_default ('UTEND_PHYSTOT'   , history_budget_histfile_num, ' ')
+      call add_default ('VTEND_PHYSTOT'   , history_budget_histfile_num, ' ')
       call add_default (ptendnam(       1), history_budget_histfile_num, ' ')
       if (ixcldliq > 0) then
          call add_default (ptendnam(ixcldliq), history_budget_histfile_num, ' ')
@@ -862,6 +885,8 @@ contains
 
     integer :: i, k, m, lchnk, ncol
     real(r8), pointer, dimension(:,:) :: t_ttend
+    real(r8), pointer, dimension(:,:) :: t_utend
+    real(r8), pointer, dimension(:,:) :: t_vtend
 
     lchnk = state%lchnk
     ncol  = state%ncol
@@ -885,6 +910,10 @@ contains
       do m = 1, dyn_time_lvls
         call pbuf_get_field(pbuf, t_ttend_idx, t_ttend, start=(/1,1,m/), kount=(/pcols,pver,1/))
         t_ttend(:ncol,:) = state%t(:ncol,:)
+        call pbuf_get_field(pbuf, t_utend_idx, t_utend, start=(/1,1,m/), kount=(/pcols,pver,1/))
+        t_utend(:ncol,:) = state%u(:ncol,:)
+        call pbuf_get_field(pbuf, t_vtend_idx, t_vtend, start=(/1,1,m/), kount=(/pcols,pver,1/))
+        t_vtend(:ncol,:) = state%v(:ncol,:)
       end do
     end if
 
@@ -2018,6 +2047,8 @@ contains
     real(r8) :: heat_glob         ! global energy integral (FV only)
     ! CAM pointers to get variables from the physics buffer
     real(r8), pointer, dimension(:,:) :: t_ttend
+    real(r8), pointer, dimension(:,:) :: t_utend
+    real(r8), pointer, dimension(:,:) :: t_vtend
     integer  :: itim_old,m
 
     !-----------------------------------------------------------------------
@@ -2043,19 +2074,31 @@ contains
       ftem3(:ncol,:pver)  = tend%dtdt(:ncol,:pver)
     end if
     call outfld('PTTEND',ftem3, pcols, lchnk )
+    ftem3(:ncol,:pver)  = tend%dudt(:ncol,:pver)
+    call outfld('UTEND_PHYSTOT',ftem3, pcols, lchnk )
+    ftem3(:ncol,:pver)  = tend%dvdt(:ncol,:pver)
+    call outfld('VTEND_PHYSTOT',ftem3, pcols, lchnk )
 
     ! Total (physics+dynamics, everything!) tendency for Temperature
 
-    !! get temperature stored in physics buffer
+    !! get temperature, U, and V stored in physics buffer
     itim_old = pbuf_old_tim_idx()
     call pbuf_get_field(pbuf, t_ttend_idx, t_ttend, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
+    call pbuf_get_field(pbuf, t_utend_idx, t_utend, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
+    call pbuf_get_field(pbuf, t_vtend_idx, t_vtend, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
 
-    !! calculate and outfld the total temperature tendency
+    !! calculate and outfld the total temperature, U, and V tendencies
     ftem3(:ncol,:) = (state%t(:ncol,:) - t_ttend(:ncol,:))/ztodt
     call outfld('TTEND_TOT', ftem3, pcols, lchnk)
+    ftem3(:ncol,:) = (state%u(:ncol,:) - t_utend(:ncol,:))/ztodt
+    call outfld('UTEND_TOT', ftem3, pcols, lchnk)
+    ftem3(:ncol,:) = (state%v(:ncol,:) - t_vtend(:ncol,:))/ztodt
+    call outfld('VTEND_TOT', ftem3, pcols, lchnk)
 
-    !! update physics buffer with this time-step's temperature
+    !! update physics buffer with this time-step's temperature, U, and V
     t_ttend(:ncol,:) = state%t(:ncol,:)
+    t_utend(:ncol,:) = state%u(:ncol,:)
+    t_vtend(:ncol,:) = state%v(:ncol,:)
 
   end subroutine diag_phys_tend_writeout_dry
 
@@ -2220,6 +2263,8 @@ contains
     lchnk = state%lchnk
 
     call outfld('TBP', state%t, pcols, lchnk   )
+    call outfld('UBP', state%u, pcols, lchnk   )
+    call outfld('VBP', state%v, pcols, lchnk   )
 
   end subroutine diag_state_b4_phys_write_dry
 
