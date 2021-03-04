@@ -431,9 +431,6 @@ contains
        !    cnstName = 'TOLUENE'
        ENDIF
 
-       ! For debug, only
-       !If ( MasterProc ) Write(iulog,*) " Species = ", TRIM(cnstName)
-
        CALL cnst_add( cnstName, MWtmp, cptmp, qmin, N,        &
                       readiv=ic_from_cam2, mixtype=mixtype,   &
                       cam_outfld=camout, molectype=molectype, &
@@ -2181,6 +2178,8 @@ contains
        DO SM = 1, nspec_amode(M)
           P = map2MAM4(SM,M)
           IF ( P <= 0 ) CYCLE
+          ! Overwrite MMR_Beg with MAM value
+          MMR_Beg(:nY,:nZ,P) = State_Chm(LCHNK)%Species(1,:nY,:nZ,P)
           N = lmassptr_amode(SM,M)
           DO J = 1, nY
           DO L = 1, nZ
