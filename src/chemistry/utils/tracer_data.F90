@@ -662,42 +662,42 @@ contains
         file%index_y(:,:) = 0
 
         if( file%dist ) then
-         allocate(file%weight0_x(plon,file%nlon), stat=astat)
-         if( astat /= 0 ) then
-            write(iulog,*) 'trcdata_init: file%weight0_x allocation error = ',astat
-           call endrun('trcdata_init: failed to allocate weight0_x array')
-         end if
-         allocate(file%weight0_y(plat,file%nlat), stat=astat)
-         if( astat /= 0 ) then
-            write(iulog,*) 'trcdata_init: file%weight0_y allocation error = ',astat
-           call endrun('trcdata_init: failed to allocate weight0_y array')
-         end if
-         allocate(file%count0_x(plon), stat=astat)
-         if( astat /= 0 ) then
-            write(iulog,*) 'trcdata_init: file%count0_x allocation error = ',astat
-           call endrun('trcdata_init: failed to allocate count0_x array')
-         end if
-         allocate(file%count0_y(plat), stat=astat)
-         if( astat /= 0 ) then
-            write(iulog,*) 'trcdata_init: file%count0_y allocation error = ',astat
-           call endrun('trcdata_init: failed to allocate count0_y array')
-         end if
-         allocate(file%index0_x(plon,file%nlon), stat=astat)
-         if( astat /= 0 ) then
-            write(iulog,*) 'trcdata_init: file%index0_x allocation error = ',astat
-           call endrun('trcdata_init: failed to allocate index0_x array')
-         end if
-         allocate(file%index0_y(plat,file%nlat), stat=astat)
-         if( astat /= 0 ) then
-            write(iulog,*) 'trcdata_init: file%index0_y allocation error = ',astat
-           call endrun('trcdata_init: failed to allocate index0_y array')
-         end if
-         file%weight0_x(:,:) = 0.0_r8
-         file%weight0_y(:,:) = 0.0_r8
-         file%count0_x(:) = 0
-         file%count0_y(:) = 0
-         file%index0_x(:,:) = 0
-         file%index0_y(:,:) = 0
+           allocate(file%weight0_x(plon,file%nlon), stat=astat)
+           if( astat /= 0 ) then
+              write(iulog,*) 'trcdata_init: file%weight0_x allocation error = ',astat
+              call endrun('trcdata_init: failed to allocate weight0_x array')
+           end if
+           allocate(file%weight0_y(plat,file%nlat), stat=astat)
+           if( astat /= 0 ) then
+              write(iulog,*) 'trcdata_init: file%weight0_y allocation error = ',astat
+              call endrun('trcdata_init: failed to allocate weight0_y array')
+           end if
+           allocate(file%count0_x(plon), stat=astat)
+           if( astat /= 0 ) then
+              write(iulog,*) 'trcdata_init: file%count0_x allocation error = ',astat
+              call endrun('trcdata_init: failed to allocate count0_x array')
+           end if
+           allocate(file%count0_y(plat), stat=astat)
+           if( astat /= 0 ) then
+              write(iulog,*) 'trcdata_init: file%count0_y allocation error = ',astat
+              call endrun('trcdata_init: failed to allocate count0_y array')
+           end if
+           allocate(file%index0_x(plon,file%nlon), stat=astat)
+           if( astat /= 0 ) then
+              write(iulog,*) 'trcdata_init: file%index0_x allocation error = ',astat
+              call endrun('trcdata_init: failed to allocate index0_x array')
+           end if
+           allocate(file%index0_y(plat,file%nlat), stat=astat)
+           if( astat /= 0 ) then
+              write(iulog,*) 'trcdata_init: file%index0_y allocation error = ',astat
+              call endrun('trcdata_init: failed to allocate index0_y array')
+           end if
+           file%weight0_x(:,:) = 0.0_r8
+           file%weight0_y(:,:) = 0.0_r8
+           file%count0_x(:) = 0
+           file%count0_y(:) = 0
+           file%index0_x(:,:) = 0
+           file%index0_y(:,:) = 0
         endif
 
         if(masterproc) then
@@ -2451,7 +2451,7 @@ contains
     real(r8)              :: src_x(nsrc+1)         ! source coordinates
     real(r8), intent(in)      :: trg_x(pcols,ntrg+1)         ! target coordinates
     real(r8), intent(in)      :: src(pcols,nsrc)             ! source array
-    logical, intent(in)   :: use_flight_distance                    ! .true. = flight distance, .flase. = mixing ratio 
+    logical, intent(in)   :: use_flight_distance                    ! .true. = flight distance, .false. = mixing ratio 
     real(r8), intent(out)     :: trg(pcols,ntrg)             ! target array
 
     real(r8) :: ps(pcols), p0, hyai(nsrc+1), hybi(nsrc+1)
@@ -2537,7 +2537,7 @@ contains
     do i=1,ntrg
      trg(n,i) = trg(n,i)/(trg_x(n,i+1)-trg_x(n,i))
     enddo
-    endif
+   endif
 
     enddo
 

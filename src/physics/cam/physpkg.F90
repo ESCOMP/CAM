@@ -2277,6 +2277,7 @@ contains
        ! contrail parameterization
        ! see Chen et al., 2012: Global contrail coverage simulated
        !                        by CAM5 with the inventory of 2006 global aircraft emissions, JAMES
+       !                        https://doi.org/10.1029/2011MS000105
        call ssatcontrail_d0(state, pbuf, ztodt, ptend, tend)
        call physics_update(state, ptend, ztodt, tend)
 

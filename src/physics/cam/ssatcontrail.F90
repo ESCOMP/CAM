@@ -10,7 +10,7 @@ module ssatcontrail
     use physics_types,  only: physics_state, physics_ptend, physics_tend
     use physics_types,  only: physics_ptend_sum, physics_update
     use physics_types,  only: physics_state_copy, physics_ptend_init
-    use physconst,      only: cpair,mwdry,mwh2o, gravit, zvir, rair, pi, rearth
+    use physconst,      only: cpair,mwdry,mwh2o, gravit, zvir, rair, pi, rearth, tmelt
     use physics_buffer, only : pbuf_get_index, pbuf_get_field, physics_buffer_desc, pbuf_set_field,  pbuf_old_tim_idx
     use constituents, only: cnst_get_ind, pcnst    
     use geopotential,     only: geopotential_dse
@@ -35,7 +35,7 @@ contains
     subroutine ssatcontrail_d0(state1,pbuf,dtime,ptend_loc, tend)
     implicit none
 
-    type(physics_state), intent(inout) :: state1
+    type(physics_state), intent(in) :: state1
     type(physics_ptend), intent(inout) :: ptend_loc
     type(physics_tend) :: tend
     type(physics_buffer_desc), pointer :: pbuf(:)
@@ -156,7 +156,7 @@ contains
         G = (ei*cpair*p)/(epsi*Q*(1.0_r8-eta))   ! eq 7, Ponater JGR 2002
 
         T_contr = -46.46_r8+9.43_r8*log(G-0.053_r8)+0.72_r8*log(G-0.053_r8)*log(G-0.053_r8) ! eq 8, Ponater JGR 2002
-        T_contr = T_contr + 273.15_r8  ! convert to Kelvin
+        T_contr = T_contr + tmelt  ! convert to Kelvin
        
         ! compute saturation pressure        
         call qsat_water(T_contr, p, eslTc, qslTc)
@@ -178,8 +178,8 @@ contains
 ! Schumann, 2002: IWC(g/m3) = exp(6.97+0.103*T(C))*1e-3
 !                 IWC(kg/m3) = exp(6.97+0.103*T(C))*1e-6 
 
-        ICIWC0(i,k) = exp(6.97_r8+0.103_r8*(state1%t(i,k)-273.16_r8)) ! in mg/m3
-        rho = p/(287._r8*state1%t(i,k))
+        ICIWC0(i,k) = exp(6.97_r8+0.103_r8*(state1%t(i,k)-tmelt)) ! in mg/m3
+        rho = p/(rair*state1%t(i,k))
         ICIWC = ICIWC0(i,k)/rho*1.0e-6_r8
 
 

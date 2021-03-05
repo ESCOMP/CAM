@@ -68,7 +68,7 @@ module aircraft_emit
   integer :: aircraft_cnt = 0
   character(len=16) :: spc_name_list(N_AERO)
   character(len=256) :: spc_flist(N_AERO),spc_fname(N_AERO)
-  integer :: dist(N_AERO)
+  logical :: dist(N_AERO)
 
 contains
 
@@ -106,7 +106,7 @@ contains
     !------------------------------------------------------------------
     ! Return if air_specifier is blank (no aircraft data to process)
     !------------------------------------------------------------------
-    dist(:) = 0
+    dist(:) = .false.
     aircraft_cnt = 0
     if (air_specifier(1) == "") return
 
@@ -126,7 +126,7 @@ contains
 	 call endrun('aircraft_emit_register: '//trim(spc_name)//' is not in the aircraft emission dataset')
         endif
 
-        if (trim(spc_name) == 'ac_SLANT_DIST'.or. trim(spc_name) == 'ac_TRACK_DIST') dist(n) = 1
+        if (trim(spc_name) == 'ac_SLANT_DIST'.or. trim(spc_name) == 'ac_TRACK_DIST') dist(n) = .true.
 
         aircraft_cnt = aircraft_cnt + 1
         call pbuf_add_field(aero_names(mm),'physpkg',dtype_r8,(/pcols,pver/),idx)
@@ -209,7 +209,7 @@ contains
           forcings_air(m)%file%cyclical_list    = .true.  ! Aircraft data cycles over the filename list
           forcings_air(m)%file%weight_by_lat     = .true.  ! Aircraft data -  interpolated with latitude weighting
           forcings_air(m)%file%conserve_column = .true. ! Aircraft data - vertically interpolated to conserve the total column
-          if( dist(m) == 1 ) forcings_air(m)%file%dist = .true.
+          forcings_air(m)%file%dist = dist(m)
           forcings_air(m)%species          = spc_name
           forcings_air(m)%sectors          = spc_name ! Only one species per file for aircraft data
           forcings_air(m)%nsectors         = 1
