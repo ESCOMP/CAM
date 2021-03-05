@@ -197,6 +197,10 @@
          call pbuf_set_field(pbuf2d, indxKev, x_nan)
       endif
 
+      if (indxAIPRS>0) then
+         call pbuf_set_field(pbuf2d, indxAIPRS, 0._r8)
+      endif
+
       theta0(:) = nan
       offa(:) = nan
       dskofa(:) = nan
