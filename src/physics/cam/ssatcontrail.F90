@@ -138,7 +138,7 @@ contains
     Mh2o = mwh2o
 
 ! contrail paramter (G = CF*p/epi)
-! and Schumann 1996, reprinted by Ponater 2002, JGR (eq 6-8)
+! and Schumann 1996, reprinted by Ponater 2002, JGR (eq 6-8) DOI: 10.1029/2011MS000105
 
     epsi = Mh2o/Ma
     ei = 1.21_r8      ! water vapor emiision index (g) h2o per kg fuel (Schumann 96)?
