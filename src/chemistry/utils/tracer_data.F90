@@ -2467,77 +2467,77 @@ contains
 
     do n = 1,ncol
 
-    do i=1,nsrc+1
-     src_x(i) = p0*hyai(i)+ps(n)*hybi(i)
-    enddo
+       do i=1,nsrc+1
+          src_x(i) = p0*hyai(i)+ps(n)*hybi(i)
+       enddo
 
-    do i = 1, ntrg
-       tl = trg_x(n,i+1)
-       if( (tl.gt.src_x(1)).and.(trg_x(n,i).lt.src_x(nsrc+1)) ) then
-          do sil = 1,nsrc
-             if( (tl-src_x(sil))*(tl-src_x(sil+1)).le.0.0_r8 ) then
-                exit
-             end if
-          end do
+       do i = 1, ntrg
+          tl = trg_x(n,i+1)
+          if( (tl.gt.src_x(1)).and.(trg_x(n,i).lt.src_x(nsrc+1)) ) then
+             do sil = 1,nsrc
+                if( (tl-src_x(sil))*(tl-src_x(sil+1)).le.0.0_r8 ) then
+                   exit
+                end if
+             end do
 
           if( tl.gt.src_x(nsrc+1)) sil = nsrc
 
+             y = 0.0_r8
+             bot = min(tl,src_x(nsrc+1))
+             top = trg_x(n,i)
+             do j = sil,1,-1
+                if( top.lt.src_x(j) ) then
+                    if(use_flight_distance) then
+                        y = y+(bot-src_x(j))*src(n,j)/(src_x(j+1)-src_x(j))
+                    else
+                        y = y+(bot-src_x(j))*src(n,j)
+                    endif
+                    bot = src_x(j)
+                else
+                   if(use_flight_distance) then
+                      y = y+(bot-top)*src(n,j)/(src_x(j+1)-src_x(j))
+                   else
+                      y = y+(bot-top)*src(n,j)
+                   endif
+                   exit
+                endif
+             enddo
+             trg(n,i) = y
+          else
+             trg(n,i) = 0.0_r8
+          end if
+       end do
+
+       if( trg_x(n,ntrg+1).lt.src_x(nsrc+1) ) then
+          top = trg_x(n,ntrg+1)
+          bot = src_x(nsrc+1)
           y = 0.0_r8
-          bot = min(tl,src_x(nsrc+1))
-          top = trg_x(n,i)
-          do j = sil,1,-1
-           if( top.lt.src_x(j) ) then
-            if(use_flight_distance) then
-             y = y+(bot-src_x(j))*src(n,j)/(src_x(j+1)-src_x(j))
-            else
-             y = y+(bot-src_x(j))*src(n,j)
-            endif
-            bot = src_x(j)
-           else
-            if(use_flight_distance) then
-             y = y+(bot-top)*src(n,j)/(src_x(j+1)-src_x(j))
-            else
-             y = y+(bot-top)*src(n,j)
-            endif
-            exit
-           endif
+          do j=nsrc,1,-1
+             if( top.lt.src_x(j) ) then
+                if(use_flight_distance) then
+                   y = y+(bot-src_x(j))*src(n,j)/(src_x(j+1)-src_x(j))
+                else
+                   y = y+(bot-src_x(j))*src(n,j)
+                endif
+                bot = src_x(j)
+             else
+                if(use_flight_distance) then
+                   y = y+(bot-top)*src(n,j)/(src_x(j+1)-src_x(j))
+                else
+                   y = y+(bot-top)*src(n,j)
+                endif
+                exit
+             endif
           enddo
-          trg(n,i) = y
-       else
-        trg(n,i) = 0.0_r8
-       end if
-    end do
-
-    if( trg_x(n,ntrg+1).lt.src_x(nsrc+1) ) then
-     top = trg_x(n,ntrg+1)
-     bot = src_x(nsrc+1)
-     y = 0.0_r8
-     do j=nsrc,1,-1
-      if( top.lt.src_x(j) ) then
-       if(use_flight_distance) then
-        y = y+(bot-src_x(j))*src(n,j)/(src_x(j+1)-src_x(j))
-       else
-        y = y+(bot-src_x(j))*src(n,j)
+          trg(n,ntrg) = trg(n,ntrg)+y
        endif
-       bot = src_x(j)
-      else
-       if(use_flight_distance) then
-        y = y+(bot-top)*src(n,j)/(src_x(j+1)-src_x(j))
-       else
-        y = y+(bot-top)*src(n,j)
-       endif
-       exit
-      endif
-     enddo
-     trg(n,ntrg) = trg(n,ntrg)+y
-    endif
 
-! turn mass into mixing ratio
-   if(.not. use_flight_distance) then
-    do i=1,ntrg
-     trg(n,i) = trg(n,i)/(trg_x(n,i+1)-trg_x(n,i))
-    enddo
-   endif
+       ! turn mass into mixing ratio
+       if(.not. use_flight_distance) then
+          do i=1,ntrg
+             trg(n,i) = trg(n,i)/(trg_x(n,i+1)-trg_x(n,i))
+          enddo
+       endif
 
     enddo
 

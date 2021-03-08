@@ -164,11 +164,11 @@ contains
 !              |-------------------------|
 !           |----------------|......................|
 !        slon2(im2)         slon2(im2+1)        slon2(2)  (note: slon2(im2+1) = slon2(1))
-       if(use_flight_distance) then
-        weight_x(1,im1)= weight_x(1,im1)+(slon1(im1+1)-slon2(im2+1))/(slon1(im1+1)-slon1(im1))
-       else
-     	weight_x(1,im1)= weight_x(1,im1)+(slon1(im1+1)-slon2(im2+1))/(slon2(2)-slon2(1))
-       endif
+         if(use_flight_distance) then
+            weight_x(1,im1)= weight_x(1,im1)+(slon1(im1+1)-slon2(im2+1))/(slon1(im1+1)-slon1(im1))
+         else
+            weight_x(1,im1)= weight_x(1,im1)+(slon1(im1+1)-slon2(im2+1))/(slon2(2)-slon2(1))
+         endif
       endif	
 
       if(slon1(im1+1).lt.slon2(im2+1)) then
@@ -177,11 +177,11 @@ contains
 !              |-------------------------|.............................|
 !                   |-------------------------------|
 !               slon2(im2)                        slon2(im2+1) <--- end point
-       if(use_flight_distance) then
-        weight_x(im2,1) = weight_x(im2,1)+(slon2(1)-slon1(1))/(slon1(2)-slon1(1))
-       else
-        weight_x(im2,1) = weight_x(im2,1)+(slon2(1)-slon1(1))/(slon2(2)-slon2(1)) 
-       endif
+         if(use_flight_distance) then
+            weight_x(im2,1) = weight_x(im2,1)+(slon2(1)-slon1(1))/(slon1(2)-slon1(1))
+         else
+            weight_x(im2,1) = weight_x(im2,1)+(slon2(1)-slon1(1))/(slon2(2)-slon2(1)) 
+         endif
       endif
 
 
@@ -209,9 +209,9 @@ contains
 !            |---------------------------------|
 !          y2_south                           y2_north
                 if(use_flight_distance) then
-                 weight_y(j2,j1) =  1.0_r8
+                   weight_y(j2,j1) =  1.0_r8
                 else
-                 weight_y(j2,j1) =  gw1(j1)/gw2(j2)
+                   weight_y(j2,j1) =  gw1(j1)/gw2(j2)
                 endif
             elseif ( (y1_south.ge.y2_south).and.(y1_south.lt.y2_north) ) then
 ! case 2: 
@@ -220,9 +220,9 @@ contains
 !            |---------------------------------|
 !          y2_south                           y2_north
                 if(use_flight_distance) then
-                 weight_y(j2,j1) = (y2_north-y1_south)/(y1_north-y1_south)
+                   weight_y(j2,j1) = (y2_north-y1_south)/(y1_north-y1_south)
                 else
-                 weight_y(j2,j1) = (y2_north-y1_south)/(y1_north-y1_south)*gw1(j1)/gw2(j2)
+                   weight_y(j2,j1) = (y2_north-y1_south)/(y1_north-y1_south)*gw1(j1)/gw2(j2)
                 endif
             elseif ( (y1_north.gt.y2_south).and.(y1_north.le.y2_north) ) then
 ! case 3: 
@@ -231,9 +231,9 @@ contains
 !                |---------------------------------|
 !              y2_south                           y2_north
                 if(use_flight_distance) then
-                 weight_y(j2,j1) = (y1_north-y2_south)/(y1_north-y1_south)
+                   weight_y(j2,j1) = (y1_north-y2_south)/(y1_north-y1_south)
                 else
-                 weight_y(j2,j1) = (y1_north-y2_south)/(y1_north-y1_south)*gw1(j1)/gw2(j2)
+                   weight_y(j2,j1) = (y1_north-y2_south)/(y1_north-y1_south)*gw1(j1)/gw2(j2)
                 endif
            elseif ( (y1_north.gt.y2_north).and.(y1_south.lt.y2_south) ) then
 ! case 4: 
@@ -242,9 +242,9 @@ contains
 !                |---------------------|
 !              y2_south             y2_north
                 if(use_flight_distance) then
-                 weight_y(j2,j1) = 1._r8
+                   weight_y(j2,j1) = 1._r8
                 else
-                 weight_y(j2,j1) = gw1(j1)/gw2(j2)
+                   weight_y(j2,j1) = gw1(j1)/gw2(j2)
                 endif
             endif
 
