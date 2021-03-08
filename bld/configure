@@ -1307,7 +1307,7 @@ elsif ($phys_pkg eq 'cam3') {
 else {
     # This will be used for Held-Suarez and other 'simple' physics
     # We may change this to 32 once IC files are available.
-    $nlev = 30;
+    $nlev = 32;
 }
 
 # user override

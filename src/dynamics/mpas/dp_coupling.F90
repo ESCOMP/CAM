@@ -175,7 +175,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
          bbuffer(bpter(i,0))   = pintdry(1,i)         ! psdry
          bbuffer(bpter(i,0)+1) = zint(1,i) * gravit   ! phis
 
-         do k = 1, pver
+         do k = 1, pver                                  ! vertical index in physics block
             bbuffer(bpter(i,k))   = theta_m(k,i) / (1.0_r8 + &
                                        Rv_over_Rd * tracers(index_qv,k,i)) * exner(k,i)
             bbuffer(bpter(i,k)+1) = ux(k,i)

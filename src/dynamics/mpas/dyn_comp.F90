@@ -1098,15 +1098,15 @@ subroutine set_base_state(dyn_in)
          pres_kp1 = p0*exp(-gravity*zint(klev+1,iCell)/(Rgas*t0b))
 
          ! integrate down to first mid level, set referfence state
-         pres = pres_kp1/(1.0-0.5*(zint(klev+1,iCell) - zint(klev,iCell))*gravity/(Rgas*t0b))
+         pres = pres_kp1/(1.0_r8-0.5_r8*(zint(klev+1,iCell) - zint(klev,iCell))*gravity/(Rgas*t0b))
          theta_base(klev,iCell) = t0b / (pres / p0)**(Rgas/cp)
          rho_base(klev,iCell) = pres / ( Rgas * t0b * zz(klev,iCell))
          pres_kp1 = pres
 
          ! integrate down the column
          do klev = dyn_in % nVertLevels-1, 1, -1
-            pres = pres_kp1*(1.0+0.5*(zint(klev+2,iCell)-zint(klev+1,iCell))*gravity/(rgas*t0b))/  &
-                            (1.0-0.5*(zint(klev+1,iCell)-zint(klev  ,iCell))*gravity/(rgas*t0b))
+            pres = pres_kp1*(1.0_r8+0.5_r8*(zint(klev+2,iCell)-zint(klev+1,iCell))*gravity/(rgas*t0b))/  &
+                            (1.0_r8-0.5_r8*(zint(klev+1,iCell)-zint(klev  ,iCell))*gravity/(rgas*t0b))
             theta_base(klev,iCell) = t0b / (pres / p0)**(Rgas/cp)
             rho_base(klev,iCell) = pres / ( Rgas * t0b * zz(klev,iCell))
             pres_kp1 = pres
