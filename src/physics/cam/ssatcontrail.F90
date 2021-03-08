@@ -175,7 +175,8 @@ contains
         RH = w/ws  ! relative humidity with respect to ice
         if( RH.ge.1.0_r8 ) RHcts(i,k) = 1.0_r8
 
-! Schumann, 2002: IWC(g/m3) = exp(6.97+0.103*T(C))*1e-3
+! Schumann, U. “Contrail Cirrus.” In Cirrus, edited by D. K. Lynch and others, 231–55. Oxford University Press, 2002
+!                 IWC(g/m3) = exp(6.97+0.103*T(C))*1e-3
 !                 IWC(kg/m3) = exp(6.97+0.103*T(C))*1e-6 
 
         ICIWC0(i,k) = exp(6.97_r8+0.103_r8*(state1%t(i,k)-tmelt)) ! in mg/m3
