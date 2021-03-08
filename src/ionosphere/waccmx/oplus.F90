@@ -12,11 +12,12 @@ module oplus
   use cam_logfile,     only: iulog
   use spmd_utils,      only: masterproc
   use savefield_waccm, only: savefld_waccm ! save field to waccm history
-  use edyn_geogrid,    only: dphi, dlamda, cs, zp, expz, p0
+  use edyn_geogrid,    only: dphi, dlamda, cs, p0
   use getapex,         only: bx, by, bz, bmod2 ! (0:nlonp1,jspole-1:jnpole+1)
   use edyn_params,     only: Rearth ! Radius of Earth (cm)
   use time_manager,    only: get_step_size, is_first_step, is_first_restart_step
   use edyn_mpi,        only: array_ptr_type
+  use infnan,          only: nan, assignment(=)
 
   implicit none
   private
@@ -64,6 +65,9 @@ module oplus
     logical  :: ring_polar_filter = .false.
     logical, parameter :: debug = .false.
 
+    real(r8), allocatable :: expz(:) ! exp(-zp)
+    real(r8), allocatable :: zp(:)   ! log pressure (as in tiegcm lev(nlev))
+
   contains
 
 !-----------------------------------------------------------------------
@@ -71,6 +75,7 @@ module oplus
 
     use cam_history,  only : addfld, horiz_only
     use filter_module,only : filter_init
+    use edyn_geogrid, only : nlev
 
     real(r8), intent(in) :: adiff_limiter_in
     real(r8), intent(in) :: shapiro_const_in
@@ -167,6 +172,10 @@ module oplus
     call addfld ('OPLUS_BZ'  , horiz_only , 'I', ' ','OPLUS_BZ'  , gridname='geo_grid')
     call addfld ('OPLUS_BMAG', horiz_only , 'I', ' ','OPLUS_BMAG', gridname='geo_grid')
 
+    allocate(zp(nlev))      ! log pressure (as in TIEGCM)
+    allocate(expz(nlev))    ! exp(-zp)
+    zp = nan
+    expz = nan
   end subroutine oplus_init
 
 !-----------------------------------------------------------------------

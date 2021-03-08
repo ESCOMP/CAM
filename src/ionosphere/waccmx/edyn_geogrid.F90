@@ -28,8 +28,6 @@ module edyn_geogrid
     zilev      ! interface vertical coordinates
 
   real(r8), public, allocatable, protected :: cs(:)   ! cos(phi) (0:nlat+1)
-  real(r8), public, allocatable            :: expz(:) ! exp(-zp)
-  real(r8), public, allocatable            :: zp(:)   ! log pressure (as in tiegcm lev(nlev))
 
   integer, public, protected :: & ! model independent (set by sub get_geogrid)
     nlonp1,  & ! nlon+1
@@ -136,12 +134,6 @@ contains
 
       allocate(zlev(nlev))
       allocate(zilev(nilev))
-      !
-      ! zp and expz are not set until oplus is called from dpie_coupling.
-      allocate(zp(nlev))      ! log pressure (as in TIEGCM)
-      allocate(expz(nlev))    ! exp(-zp)
-      zp = nan
-      expz = nan
       !
       ! Hybrid-sigma levels from ref_pres module:
       !

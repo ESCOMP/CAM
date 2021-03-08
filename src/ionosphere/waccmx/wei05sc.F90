@@ -454,7 +454,8 @@ contains
       istat = pio_inq_dimid(ncid, 'n_schfits', id)
       istat = pio_inquire_dimension(ncid, id, len=rd_n_schfits)
       if (rd_n_schfits /= n_schfits) then
-         write(errmsg,"(a,i4,a,i4)") prefix//'rd_n_schfits /= n_schfits rd_n_schfits = ', rd_n_schfits,' n_schfits = ', n_schfits
+         write(errmsg,"(a,i4,a,i4)") prefix//'rd_n_schfits /= n_schfits rd_n_schfits = ', &
+                                     rd_n_schfits,' n_schfits = ', n_schfits
          write(iulog,*) trim(errmsg)
          call endrun(errmsg)
       end if
@@ -464,7 +465,8 @@ contains
       istat = pio_inq_dimid(ncid, 'n_alschfits', id)
       istat = pio_inquire_dimension(ncid, id, len=rd_n_alschfits)
       if (rd_n_alschfits /= n_alschfits) then
-         write(errmsg,"(a,i4,a,i4)") prefix//'rd_n_alschfits /= n_alschfits rd_n_alschfits = ', rd_n_alschfits,' n_alschfits = ', n_alschfits
+         write(errmsg,"(a,i4,a,i4)") prefix//'rd_n_alschfits /= n_alschfits rd_n_alschfits = ',&
+                                     rd_n_alschfits,' n_alschfits = ', n_alschfits
          write(iulog,*) trim(errmsg)
          call endrun(errmsg)
       end if

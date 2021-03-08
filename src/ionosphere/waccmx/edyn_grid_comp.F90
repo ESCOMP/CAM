@@ -353,10 +353,17 @@ CONTAINS
       ! Local variables
       integer                                :: rc
       character(len=*), parameter            :: subname = 'edyn_grid_comp_run1'
+      logical :: args_present(6)
 
       do_run = 1
-      if ( present(cols) .and. present(cole) .and. &
-           present(efx_phys) .and. present(kev_phys) ) then
+      args_present(:) = (/ present(cols), present(cole),  present(efx_phys), present(kev_phys), &
+                           present(amie_in), present(ltr_in) /)
+
+      if ( any( args_present ) ) then
+         if (.not. all( args_present ) ) then
+            call endrun(subname//': all optional arguments must be present for AMIE/LTR')
+         endif
+
          ionos_epotential_amie = amie_in
          ionos_epotential_ltr = ltr_in
          prescr_efx_phys => efx_phys
