@@ -25,4 +25,4 @@ hist_nhtfrq = 9
 hist_mfilt  = 1
 hist_ndens  = 1
 
-fsurdat = '/glade/p/cesmdata/cseg/inputdata/lnd/clm2/surfdata_map/surfdata_0.47x0.63_78pfts_CMIP6_simyr2000_c180508.nc'
+fsurdat = '$DIN_LOC_ROOT/lnd/clm2/surfdata_map/surfdata_0.47x0.63_78pfts_CMIP6_simyr2000_c180508.nc'
