@@ -624,7 +624,7 @@ contains
         deallocate(phi,lam)
 
 ! weight_x & weight_y are weighting function for x & y interpolation
-   	allocate(file%weight_x(plon,file%nlon), stat=astat)
+        allocate(file%weight_x(plon,file%nlon), stat=astat)
         if( astat /= 0 ) then
            write(iulog,*) 'trcdata_init: file%weight_x allocation error = ',astat
            call endrun('trcdata_init: failed to allocate weight_x array')
