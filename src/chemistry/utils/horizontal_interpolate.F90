@@ -235,7 +235,7 @@ contains
                 else
                    weight_y(j2,j1) = (y1_north-y2_south)/(y1_north-y1_south)*gw1(j1)/gw2(j2)
                 endif
-           elseif ( (y1_north.gt.y2_north).and.(y1_south.lt.y2_south) ) then
+            elseif ( (y1_north.gt.y2_north).and.(y1_south.lt.y2_south) ) then
 ! case 4: 
 !       y1_south                          y1_north
 !         |--------------------------------|
