@@ -20,13 +20,6 @@
 <flbc_file>atm/waccm/lb/LBC_2000climo_CMIP6_0p5degLat_c180227.nc</flbc_file>
 <flbc_list>'CO2','CH4','N2O','CFC11','CFC12','CFC11eq'</flbc_list>
 
-<!-- QBO settings -->
-<qbo_use_forcing >.true.</qbo_use_forcing>
-<qbo_use_forcing hgrid="0.9x1.25">.false.</qbo_use_forcing>
-<qbo_use_forcing dyn="se"        >.false.</qbo_use_forcing>
-<qbo_cyclic>.false.</qbo_cyclic>
-<qbo_forcing_file>atm/waccm/qbo/qbocoefficients_c151023.nc</qbo_forcing_file>
-
 <!-- upper atmos forcings -->
 <waccm_forcing_type>FIXED</waccm_forcing_type>
 <waccm_forcing_fixed_ymd>20000101</waccm_forcing_fixed_ymd>
@@ -72,7 +65,7 @@
 <!-- Surface emissions -->
 <srf_emis_type>CYCLICAL</srf_emis_type>
 <srf_emis_cycle_yr>2000</srf_emis_cycle_yr>
-<srf_emis_specifier> 
+<srf_emis_specifier>
          'bc_a4 ->  $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_bc_a4_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
          'bc_a4 ->  $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_bc_a4_bb_surface_2000climo_0.9x1.25_c20170322.nc',
          'DMS ->    $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_DMS_bb_surface_2000climo_0.9x1.25_c20170322.nc',
@@ -95,7 +88,7 @@
          'SOAG ->   $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_SOAGx1.5_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
          'SOAG ->   $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_SOAGx1.5_bb_surface_2000climo_0.9x1.25_c20170322.nc',
          'SOAG ->   $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_SOAGx1.5_biogenic_surface_2000climo_0.9x1.25_c20170322.nc'
-</srf_emis_specifier> 
+</srf_emis_specifier>
 
 <!-- History Files -->
 <do_circulation_diags>.true.</do_circulation_diags>
@@ -118,7 +111,7 @@
 <!-- Reduce output size by removing some variables. -->
 <fexcl1>
  'BTAUN', 'BTAUS', 'BTAUE', 'BTAUW', 'BTAUNET', 'BUTEND1', 'BUTEND2', 'BUTEND3', 'BUTEND4', 'BUTEND5', 'BVTGWSPEC',
- 'MAXQ0', 'HDEPTH', 'NETDT', 'TAUN', 'TAUS', 'TAUE', 'TAUW', 'TAUGWX', 'TAUGWY', 'UTEND1', 'UTEND2', 'UTEND3', 
+ 'MAXQ0', 'HDEPTH', 'NETDT', 'TAUN', 'TAUS', 'TAUE', 'TAUW', 'TAUGWX', 'TAUGWY', 'UTEND1', 'UTEND2', 'UTEND3',
  'UTEND4', 'UTEND5', 'FRONTGF', 'FRONTGFA', 'EKGW', 'QNO', 'QRLNLTE', 'QRL_TOT', 'DUV', 'DVV', 'TTPXMLC'
 </fexcl1>
 

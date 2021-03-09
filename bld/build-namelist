@@ -1494,7 +1494,7 @@ elsif ($carma eq 'tholin') {
 
 # turn on stratospheric aerosol forcings in CAM6 configurations
 my $chem_has_ocs = chem_has_species($cfg, 'OCS');
-if ($phys =~ /cam6/) {
+if ($phys =~ /cam6/ and $chem =~ /_mam/) {
   # turn on volc forcings in cam6 -- prognostic or prescribed
   if ( $chem_has_ocs ) {
       # turn on prognostic stratospheric aerosols
@@ -3268,9 +3268,19 @@ if ($waccm_phys or
     add_default($nl, 'use_gw_front'     , 'val'=>'.true.');
     add_default($nl, 'use_gw_convect_dp', 'val'=>'.true.');
     my $hdepth_scaling = '0.25D0' ;
+    my $qbo_forcing = '.false.';
+    if ($dyn eq 'fv') {
+	my $nlon = $cfg->get('nlon');
+	my $nlat = $cfg->get('nlat');
+        # turn on QBO nudging only for coarse FV grids
+        if ($nlat <= 96 and $nlon <= 144) {
+	    $qbo_forcing = '.true.';
+        }
+    }
+    add_default($nl, 'qbo_use_forcing','val'=>$qbo_forcing);
     if ($nl->get_value('qbo_use_forcing') =~ /$TRUE/io) {
        $hdepth_scaling = '1.D0' ;
-       add_default($nl, 'qbo_cyclic','val'=>'.true.');
+       add_default($nl, 'qbo_cyclic','val'=>'.false.');
        add_default($nl, 'qbo_forcing_file');
     }
     add_default($nl, 'gw_qbo_hdepth_scaling', 'val'=>$hdepth_scaling);
