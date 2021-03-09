@@ -7,11 +7,9 @@ module ssatcontrail
     use ppgrid,         only: pcols, pver
     use physics_types,  only: physics_state, physics_ptend, physics_ptend_init
     use physconst,      only: cpair,mwdry,mwh2o, gravit, zvir, rair, pi, rearth, tmelt
-    use physics_buffer, only: pbuf_get_index, pbuf_get_field, physics_buffer_desc, pbuf_set_field,  pbuf_old_tim_idx
+    use physics_buffer, only: pbuf_get_index, pbuf_get_field, physics_buffer_desc,  pbuf_old_tim_idx
     use constituents,   only: cnst_get_ind, pcnst    
-    use geopotential,   only: geopotential_dse
     use phys_grid,      only: get_wght_all_p
-    use time_manager,   only: get_curr_date
     use wv_saturation,  only: qsat_water, qsat_ice
     use aircraft_emit,  only: get_aircraft
 

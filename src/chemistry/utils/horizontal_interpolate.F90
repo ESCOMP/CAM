@@ -111,7 +111,7 @@ contains
 ! check if there is any overlap between the source grid and the target grid
 ! if no overlap, then weighting is zero
 ! there are three scenarios overlaps can take place 
-   if( (x1_west.ge.x2_west).and.(x1_east.le.x2_east) ) then
+   if( (x1_west>=x2_west).and.(x1_east<=x2_east) ) then
 ! case 1: 
 !                x1_west             x1_east
 !                  |-------------------|
@@ -122,7 +122,7 @@ contains
     else
      weight_x(i2,i1) =  (x1_east-x1_west)/(x2_east-x2_west)
     endif
-   elseif ( (x1_west.ge.x2_west).and.(x1_west.lt.x2_east) ) then
+   elseif ( (x1_west>=x2_west).and.(x1_west<x2_east) ) then
 ! case 2: 
 !                x1_west                          x1_east
 !                  |--------------------------------|
@@ -133,7 +133,7 @@ contains
    else
      weight_x(i2,i1) = (x2_east-x1_west)/(x2_east-x2_west)
    endif
-   elseif ( (x1_east>x2_west).and.(x1_east.le.x2_east) ) then
+   elseif ( (x1_east>x2_west).and.(x1_east<=x2_east) ) then
 ! case 3: 
 !       x1_west                          x1_east
 !         |--------------------------------|
@@ -144,7 +144,7 @@ contains
    else
      weight_x(i2,i1) = (x1_east-x2_west)/(x2_east-x2_west)
    endif
-   elseif ( (x1_east.gt.x2_east).and.(x1_west.lt.x2_west) ) then
+   elseif ( (x1_east>x2_east).and.(x1_west<x2_west) ) then
 ! case 4: 
 !       x1_west                          x1_east
 !         |--------------------------------|
@@ -158,7 +158,7 @@ contains
 
 
 ! consider end points
-      if(slon1(im1+1).gt.slon2(im2+1)) then
+      if(slon1(im1+1)>slon2(im2+1)) then
 ! case 1:
 !           slon1(im1)                slon1(im1+1) <--- end point
 !              |-------------------------|
@@ -171,7 +171,7 @@ contains
          endif
       endif	
 
-      if(slon1(im1+1).lt.slon2(im2+1)) then
+      if(slon1(im1+1)<slon2(im2+1)) then
 ! case 1:
 !           slon1(im1)                slon1(im1+1)                  slon1(2)    (note: slon1(im1+1) = slon1(1))
 !              |-------------------------|.............................|
@@ -202,7 +202,7 @@ contains
 ! there are three scenarios overlaps can take place 
 ! note: there is Guassian weight to consider in the meridional direction!
 
-            if( (y1_south.ge.y2_south).and.(y1_north.le.y2_north) ) then
+            if( (y1_south>=y2_south).and.(y1_north<=y2_north) ) then
 ! case 1: 
 !                y1_south             y1_north
 !                  |-------------------|
@@ -213,7 +213,7 @@ contains
                 else
                    weight_y(j2,j1) =  gw1(j1)/gw2(j2)
                 endif
-            elseif ( (y1_south.ge.y2_south).and.(y1_south.lt.y2_north) ) then
+            elseif ( (y1_south>=y2_south).and.(y1_south<y2_north) ) then
 ! case 2: 
 !                y1_south                          y1_north
 !                  |--------------------------------|
@@ -224,7 +224,7 @@ contains
                 else
                    weight_y(j2,j1) = (y2_north-y1_south)/(y1_north-y1_south)*gw1(j1)/gw2(j2)
                 endif
-            elseif ( (y1_north.gt.y2_south).and.(y1_north.le.y2_north) ) then
+            elseif ( (y1_north>y2_south).and.(y1_north<=y2_north) ) then
 ! case 3: 
 !       y1_south                          y1_north
 !         |--------------------------------|
@@ -235,7 +235,7 @@ contains
                 else
                    weight_y(j2,j1) = (y1_north-y2_south)/(y1_north-y1_south)*gw1(j1)/gw2(j2)
                 endif
-            elseif ( (y1_north.gt.y2_north).and.(y1_south.lt.y2_south) ) then
+            elseif ( (y1_north>y2_north).and.(y1_south<y2_south) ) then
 ! case 4: 
 !       y1_south                          y1_north
 !         |--------------------------------|

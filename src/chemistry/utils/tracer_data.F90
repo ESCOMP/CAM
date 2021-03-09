@@ -708,7 +708,7 @@ contains
             do i2=1,plon
                file%count_x(i2) = 0
                do i1=1,file%nlon
-                  if(file%weight_x(i2,i1).gt.0.0_r8 ) then
+                  if(file%weight_x(i2,i1)>0.0_r8 ) then
                      file%count_x(i2) = file%count_x(i2) + 1
                      file%index_x(i2,file%count_x(i2)) = i1
                   endif
@@ -718,7 +718,7 @@ contains
             do j2=1,plat
                file%count_y(j2) = 0
                do j1=1,file%nlat
-                  if(file%weight_y(j2,j1).gt.0.0_r8 ) then
+                  if(file%weight_y(j2,j1)>0.0_r8 ) then
                      file%count_y(j2) = file%count_y(j2) + 1
                      file%index_y(j2,file%count_y(j2)) = j1
                   endif
@@ -1201,7 +1201,7 @@ contains
           datatimep = all_data_times(np1) !+ file%offset_time
        ! When stepTime, datatimep may not equal the time (as only datatimem is used)
        ! Should not break other runs?
-          if ( (time .ge. datatimem) .and. (time .lt. datatimep) ) then
+          if ( (time >= datatimem) .and. (time < datatimep) ) then
              times_found = .true.
              exit find_times_loop
           endif
@@ -2389,20 +2389,20 @@ contains
 
     do i = 1, ntrg
        tl = trg_x(i)
-       if ( (tl.lt.src_x(nsrc+1)).and.(trg_x(i+1).gt.src_x(1)) ) then
+       if ( (tl<src_x(nsrc+1)).and.(trg_x(i+1)>src_x(1)) ) then
           do sil = 1,nsrc
-             if ( (tl-src_x(sil))*(tl-src_x(sil+1)).le.0.0_r8 ) then
+             if ( (tl-src_x(sil))*(tl-src_x(sil+1))<=0.0_r8 ) then
                 exit
              end if
           end do
 
-          if ( tl.lt.src_x(1) ) sil = 1
+          if ( tl<src_x(1) ) sil = 1
 
           y = 0.0_r8
           bot = max(tl,src_x(1))
           top = trg_x(i+1)
           do j = sil, nsrc
-             if ( top.gt.src_x(j+1) ) then
+             if ( top>src_x(j+1) ) then
                 y = y+(src_x(j+1)-bot)*src(j)/(src_x(j+1)-src_x(j))
                 bot = src_x(j+1)
              else
@@ -2416,12 +2416,12 @@ contains
        end if
     end do
 
-    if ( trg_x(1).gt.src_x(1) ) then
+    if ( trg_x(1)>src_x(1) ) then
        top = trg_x(1)
        bot = src_x(1)
        y = 0.0_r8
        do j = 1, nsrc
-          if ( top.gt.src_x(j+1) ) then
+          if ( top>src_x(j+1) ) then
              y = y+(src_x(j+1)-bot)*src(j)/(src_x(j+1)-src_x(j))
              bot = src_x(j+1)
           else
@@ -2475,7 +2475,7 @@ contains
                 end if
              end do
 
-          if( tl.gt.src_x(nsrc+1)) sil = nsrc
+          if( tl>src_x(nsrc+1)) sil = nsrc
 
              y = 0.0_r8
              bot = min(tl,src_x(nsrc+1))
@@ -2587,16 +2587,16 @@ contains
        !
        do kk=kkstart,levsiz-1
           do i=1,ncol
-             if (pin(i,kk).lt.pmid(i,k) .and. pmid(i,k).le.pin(i,kk+1)) then
+             if (pin(i,kk)<pmid(i,k) .and. pmid(i,k)<=pin(i,kk+1)) then
                 kupper(i) = kk
              end if
           end do
        end do
        ! interpolate or extrapolate...
        do i=1,ncol
-          if (pmid(i,k) .lt. pin(i,1)) then
+          if (pmid(i,k) < pin(i,1)) then
              dataout(i,k) = datain(i,1)*pmid(i,k)/pin(i,1)
-          else if (pmid(i,k) .gt. pin(i,levsiz)) then
+          else if (pmid(i,k) > pin(i,levsiz)) then
              dataout(i,k) = datain(i,levsiz)
           else
              dpu = pmid(i,k) - pin(i,kupper(i))
