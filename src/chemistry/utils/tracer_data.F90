@@ -703,7 +703,7 @@ contains
         if(masterproc) then
 ! compute weighting
             call xy_interp_init(file%nlon,file%nlat,file%lons,file%lats, &
-                                plon,plat,file%weight_x,file%weight_y,.false.)
+                                plon,plat,file%weight_x,file%weight_y,file%dist)
 
             do i2=1,plon
                file%count_x(i2) = 0
@@ -727,12 +727,12 @@ contains
 
            if( file%dist ) then
             call xy_interp_init(file%nlon,file%nlat,file%lons,file%lats,&
-                                plon,plat,file%weight0_x,file%weight0_y,.true.)
+                                plon,plat,file%weight0_x,file%weight0_y,file%dist)
 
             do i2=1,plon
                file%count0_x(i2) = 0
                do i1=1,file%nlon
-                  if(file%weight0_x(i2,i1).gt.0.0_r8 ) then
+                  if(file%weight0_x(i2,i1)>0.0_r8 ) then
                      file%count0_x(i2) = file%count0_x(i2) + 1
                      file%index0_x(i2,file%count0_x(i2)) = i1
                   endif
@@ -742,7 +742,7 @@ contains
             do j2=1,plat
                file%count0_y(j2) = 0
                do j1=1,file%nlat
-                  if(file%weight0_y(j2,j1).gt.0.0_r8 ) then
+                  if(file%weight0_y(j2,j1)>0.0_r8 ) then
                      file%count0_y(j2) = file%count0_y(j2) + 1
                      file%index0_y(j2,file%count0_y(j2)) = j1
                   endif
@@ -1962,14 +1962,9 @@ contains
                 if ( file%top_bndry ) then
                    call vert_interp_ub(ncol, file%nlev, file%levs,  datain(:ncol,:), data_out(:ncol,:) )
                 else if(file%conserve_column) then
-                 if( file%dist ) then
                    call vert_interp_mixrat(ncol,file%nlev,pver,state(c)%pint, &
                         datain, data_out(:,:), &
-                        file%p0,ps,file%hyai,file%hybi,.true.)
-                 else
-                   call vert_interp_mixrat(ncol,file%nlev,pver,state(c)%pint, &
-                        datain, data_out(:,:), &
-                        file%p0,ps,file%hyai,file%hybi,.false.)
+                        file%p0,ps,file%hyai,file%hybi,file%dist)
                  endif
                 else
                    call vert_interp(ncol, file%nlev, pin, state(c)%pmid, datain, data_out(:,:) )
@@ -2473,9 +2468,9 @@ contains
 
        do i = 1, ntrg
           tl = trg_x(n,i+1)
-          if( (tl.gt.src_x(1)).and.(trg_x(n,i).lt.src_x(nsrc+1)) ) then
+          if( (tl>src_x(1)).and.(trg_x(n,i)<src_x(nsrc+1)) ) then
              do sil = 1,nsrc
-                if( (tl-src_x(sil))*(tl-src_x(sil+1)).le.0.0_r8 ) then
+                if( (tl-src_x(sil))*(tl-src_x(sil+1))<=0.0_r8 ) then
                    exit
                 end if
              end do
@@ -2486,7 +2481,7 @@ contains
              bot = min(tl,src_x(nsrc+1))
              top = trg_x(n,i)
              do j = sil,1,-1
-                if( top.lt.src_x(j) ) then
+                if( top<src_x(j) ) then
                     if(use_flight_distance) then
                         y = y+(bot-src_x(j))*src(n,j)/(src_x(j+1)-src_x(j))
                     else
@@ -2508,12 +2503,12 @@ contains
           end if
        end do
 
-       if( trg_x(n,ntrg+1).lt.src_x(nsrc+1) ) then
+       if( trg_x(n,ntrg+1)<src_x(nsrc+1) ) then
           top = trg_x(n,ntrg+1)
           bot = src_x(nsrc+1)
           y = 0.0_r8
           do j=nsrc,1,-1
-             if( top.lt.src_x(j) ) then
+             if( top<src_x(j) ) then
                 if(use_flight_distance) then
                    y = y+(bot-src_x(j))*src(n,j)/(src_x(j+1)-src_x(j))
                 else

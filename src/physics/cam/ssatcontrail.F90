@@ -5,11 +5,7 @@ module ssatcontrail
 !     https://doi.org/10.1029/2011MS000105
     use shr_kind_mod,   only: r8 => shr_kind_r8
     use ppgrid,         only: pcols, pver
-    use cam_history,    only: outfld
-    use cam_logfile,    only: iulog
-    use physics_types,  only: physics_state, physics_ptend, physics_tend
-    use physics_types,  only: physics_ptend_sum, physics_update
-    use physics_types,  only: physics_state_copy, physics_ptend_init
+    use physics_types,  only: physics_state, physics_ptend, physics_ptend_init
     use physconst,      only: cpair,mwdry,mwh2o, gravit, zvir, rair, pi, rearth, tmelt
     use physics_buffer, only: pbuf_get_index, pbuf_get_field, physics_buffer_desc, pbuf_set_field,  pbuf_old_tim_idx
     use constituents,   only: cnst_get_ind, pcnst    
@@ -32,12 +28,11 @@ module ssatcontrail
   
 contains
 
-    subroutine ssatcontrail_d0(state1,pbuf,dtime,ptend_loc, tend)
+    subroutine ssatcontrail_d0(state1,pbuf,dtime,ptend_loc)
     implicit none
 
     type(physics_state), intent(in) :: state1
     type(physics_ptend), intent(inout) :: ptend_loc
-    type(physics_tend) :: tend
     type(physics_buffer_desc), pointer :: pbuf(:)
     real(r8),            intent(in)    :: dtime      ! time step
 !------------------------Local storage------------------------------------------------------
@@ -141,7 +136,7 @@ contains
 ! and Schumann 1996 DOI: 10.1127/metz/5/1996/4, reprinted by Ponater 2002, JGR (eq 6-8) DOI: 10.1029/2011MS000105
 
     epsi = Mh2o/Ma
-    ei = 1.21_r8      ! water vapor emiision index (g) h2o per kg fuel (Schumann 96)?
+    ei = 1.21_r8      ! water vapor emision index (g) h2o per kg fuel (Schumann 96)
     Q = 43.e6_r8      ! specific combustion heat Schummann 1996, Q = 43 MJ/kg
     eta = 0.3_r8      ! propulsion effieciency (Ponater 2002)
     
@@ -164,8 +159,8 @@ contains
 
         RH_contr = (G*(state1%t(i,k)-T_contr)+eslTc)/eslT
         ! RH_contr ranges between 0 and 1
-        if(RH_contr.gt.1.0_r8) RH_contr = 1.0_r8
-        if(RH_contr.lt.0.0_r8) RH_contr = 0.0_r8
+        if(RH_contr>1.0_r8) RH_contr = 1.0_r8
+        if(RH_contr<0.0_r8) RH_contr = 0.0_r8
         
         w = state1%q(i,k,1)/(1.0_r8-state1%q(i,k,1))  ! mixing ratio from specific humidity        
         call qsat_ice(state1%t(i,k), p, esiT, qsiT) 
@@ -173,7 +168,7 @@ contains
         qs = ws/(1.0_r8+ws)
 
         RH = w/ws  ! relative humidity with respect to ice
-        if( RH.ge.1.0_r8 ) RHcts(i,k) = 1.0_r8
+        if( RH>=1.0_r8 ) RHcts(i,k) = 1.0_r8
 
 ! Schumann, U. “Contrail Cirrus.” In Cirrus, edited by D. K. Lynch and others, 231–55. Oxford University Press, 2002
 !                 IWC(g/m3) = exp(6.97+0.103*T(C))*1e-3
@@ -185,7 +180,7 @@ contains
 
 
 ! persistent contrail condition
-        if( (state1%t(i,k).lt.T_contr).and.(RH.gt.RH_contr).and.(RH.gt.1.0_r8).and.(ac_H2O(i,k).gt.0.0_r8) ) then
+        if( (state1%t(i,k)<T_contr).and.(RH>RH_contr).and.(RH>1.0_r8).and.(ac_H2O(i,k)>0.0_r8) ) then
 
 ! if persistent contrail, H2O emitted from aircraft turns into cloud ice
           dz = state1%zi(i,k)-state1%zi(i,k+1) 

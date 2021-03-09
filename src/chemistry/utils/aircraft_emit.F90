@@ -76,6 +76,8 @@ contains
   character(len=16), optional, intent(out) :: spc_name_list_out(N_AERO)
   integer :: i
 
+  spc_name_list_out = ''
+
   cnt = aircraft_cnt
   if( cnt>0 ) then
     do i=1,cnt
