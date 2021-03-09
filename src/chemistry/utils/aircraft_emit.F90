@@ -48,9 +48,8 @@ module aircraft_emit
 
   real(r8), parameter :: molmass(N_AERO) = 1._r8
 
-  logical :: advective_tracer(N_AERO) = (/.false., .false., .false., .false., .false., &
-                                          .false., .false., .false., .false.,.false.,.false.,.false.,.false./)
-  character(len=3) :: mixtype(N_AERO) = (/'wet','wet','wet','wet','wet','wet','wet','wet','wet','wet','wet','wet','wet'/)
+  logical :: advective_tracer(N_AERO) = .false.
+  character(len=3) :: mixtype(N_AERO) = 'wet'
 
   real(r8) :: cptmp = 666.0_r8
   real(r8) :: qmin = 0.0_r8

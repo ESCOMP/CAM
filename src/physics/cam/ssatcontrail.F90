@@ -11,13 +11,13 @@ module ssatcontrail
     use physics_types,  only: physics_ptend_sum, physics_update
     use physics_types,  only: physics_state_copy, physics_ptend_init
     use physconst,      only: cpair,mwdry,mwh2o, gravit, zvir, rair, pi, rearth, tmelt
-    use physics_buffer, only : pbuf_get_index, pbuf_get_field, physics_buffer_desc, pbuf_set_field,  pbuf_old_tim_idx
-    use constituents, only: cnst_get_ind, pcnst    
-    use geopotential,     only: geopotential_dse
-    use phys_grid, only    : get_wght_all_p
-    use time_manager,       only: get_curr_date
-    use wv_saturation,    only: qsat_water, qsat_ice
-    use aircraft_emit,    only: get_aircraft
+    use physics_buffer, only: pbuf_get_index, pbuf_get_field, physics_buffer_desc, pbuf_set_field,  pbuf_old_tim_idx
+    use constituents,   only: cnst_get_ind, pcnst    
+    use geopotential,   only: geopotential_dse
+    use phys_grid,      only: get_wght_all_p
+    use time_manager,   only: get_curr_date
+    use wv_saturation,  only: qsat_water, qsat_ice
+    use aircraft_emit,  only: get_aircraft
 
     implicit none
     private
@@ -138,7 +138,7 @@ contains
     Mh2o = mwh2o
 
 ! contrail paramter (G = CF*p/epi)
-! and Schumann 1996, reprinted by Ponater 2002, JGR (eq 6-8) DOI: 10.1029/2011MS000105
+! and Schumann 1996 DOI: 10.1127/metz/5/1996/4, reprinted by Ponater 2002, JGR (eq 6-8) DOI: 10.1029/2011MS000105
 
     epsi = Mh2o/Ma
     ei = 1.21_r8      ! water vapor emiision index (g) h2o per kg fuel (Schumann 96)?
