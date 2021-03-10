@@ -613,7 +613,7 @@ subroutine MurphyKoop_svp_water_vect(t, es, vlen)
       integer :: i
   ! Murphy, D. M., and T. Koop. “Review of the Vapour Pressure of Ice and
   ! Supercooled Water for Atmospheric Applications.” Q. J. R. Meteorol.
-  ! Soc. 131, no. 608 (2005): 1539–65.
+  ! Soc. 131, no. 608 (2005): 1539–65. 10.1256/qj.04.94
   ! (good for 123 < T < 332 K)
 
   do i = 1, vlen
