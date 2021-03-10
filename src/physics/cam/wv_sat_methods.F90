@@ -552,6 +552,8 @@ subroutine GoffGratch_svp_water_vect(t, es, vlen)
   real(r8), intent(in)  :: t(vlen)  ! Temperature in Kelvin
   real(r8), intent(out) :: es(vlen) ! SVP in Pa
   integer :: i
+  ! Goff, J. A., and S. Gratch. “Low-Pressure Properties of Water from -160F
+  ! to 212F.” Trans. Am. Soc. Heat. Vent. Eng. 52 (1946): 95–121.
   ! uncertain below -70 C
 
   do i=1,vlen
@@ -608,7 +610,10 @@ subroutine MurphyKoop_svp_water_vect(t, es, vlen)
   real(r8), intent(in)  :: t(vlen)  ! Temperature in Kelvin
   real(r8), intent(out) :: es(vlen)             ! SVP in Pa
   
-  integer :: i
+      integer :: i
+  ! Murphy, D. M., and T. Koop. “Review of the Vapour Pressure of Ice and
+  ! Supercooled Water for Atmospheric Applications.” Q. J. R. Meteorol.
+  ! Soc. 131, no. 608 (2005): 1539–65.
   ! (good for 123 < T < 332 K)
 
   do i = 1, vlen
