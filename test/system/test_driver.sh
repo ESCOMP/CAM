@@ -26,7 +26,7 @@ help () {
   echo "${hprefix} [ -j ] (number of jobs for gmake)"
   echo "${hprefix} [ --baseline-dir <directory> ] (directory for saving baselines of cime tests)"
   echo "${hprefix} [ --no-baseline] (baselines of cime tests are not saved)"
-  echo "${hprefix} [ --xml-driver ] (mct or nuopc)"
+  echo "${hprefix} [ --xml-driver <driver_name> ] (mct or nuopc)"
   echo "${hprefix} [ --cesm <test_name(s)> ] (default aux_cam)"
   echo "${hprefix} [ --rerun-cesm <test_id> ] (rerun the cesm tests with the --use-existing-flag)"
   echo "${hprefix} [ --namelists-only ] (Only perform namelist actions for tests.  Incompatible with --rerun-cesm.)"
@@ -80,6 +80,7 @@ interactive=false
 use_existing=''
 namelists_only=false
 batch=false
+xml_driver="mct"
 
 # Understand where we are and where the CAM root and CIME reside
 if [ -n "${CAM_ROOT}" ]; then
@@ -415,7 +416,7 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
   fi
 
   for cesm_test in ${cesm_test_suite}; do
-    testargs="--xml-category ${cesm_test} --xml-machine ${cesm_test_mach} --retry 2"
+    testargs="--xml-category ${cesm_test} --xml-machine ${cesm_test_mach} --xml-driver ${xml_driver} --retry 2"
 
     if [ -n "${use_existing}" ]; then
       test_id="${use_existing}"
@@ -548,10 +549,6 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
        else
         testargs="${testargs} --generate ${cesm_testdir}/baselines"
       fi
-    fi
-
-    if [ ${xml_driver} == "nuopc" ]; then
-       testargs="${testargs} --xml-driver nuopc"
     fi
 
     echo ""

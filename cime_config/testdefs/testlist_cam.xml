@@ -1440,6 +1440,7 @@
   <test compset="FKESSLER" grid="C48_C48_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="pgi" category="fv3_cam"/>
+      <machine name="izumi" compiler="intel" category="courtney_test" />
     </machines>
   </test>
 <!--              @@@@@@@@@@@@@@@@@@@@@@                 -->
