@@ -550,7 +550,7 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
       fi
     fi
 
-    if [ ${xml_driver} == nuopc ]; then
+    if [ ${xml_driver} == "nuopc" ]; then
        testargs="${testargs} --xml-driver nuopc"
     fi
 
