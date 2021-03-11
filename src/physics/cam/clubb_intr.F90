@@ -3515,7 +3515,7 @@ subroutine ice_macro_tend(naai,t,p,qv,qi,ni,xxls,deltat,stend,qvtend,qitend,nite
   integer,                   intent(in)  :: vlen
   real(r8), dimension(vlen), intent(in)  :: naai   !Activated number of ice nuclei 
   real(r8), dimension(vlen), intent(in)  :: t      !temperature (k)
-  real(r8), dimension(vlen), intent(in)  :: p      !pressure (pa0
+  real(r8), dimension(vlen), intent(in)  :: p      !pressure (pa)
   real(r8), dimension(vlen), intent(in)  :: qv     !water vapor mixing ratio
   real(r8), dimension(vlen), intent(in)  :: qi     !ice mixing ratio
   real(r8), dimension(vlen), intent(in)  :: ni     !ice number concentration
