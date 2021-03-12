@@ -654,11 +654,11 @@ subroutine cam_out_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num
 
    if (associated(cam_out%nhx_nitrogen_flx)) &
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%nhx_nitrogen_flx',     'cam_out_nhx_nitro_flx',  'kgN m2-1 sec-1', horiz_only)
+     'cam_out%nhx_nitrogen_flx',     'cam_out_nhx_nitrogen_flx',  'kgN m2-1 sec-1', horiz_only)
 
    if (associated(cam_out%noy_nitrogen_flx)) &
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%noy_nitrogen_flx',     'cam_out_noy_nitro_flx',  'kgN m2-1 sec-1', horiz_only)
+     'cam_out%noy_nitrogen_flx',     'cam_out_noy_nitrogen_flx',  'kgN m2-1 sec-1', horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'cam_out%bcphodry',             'cam_out_bcphodry',       'kg m-2 s-1',     horiz_only)
@@ -1774,10 +1774,10 @@ subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname)
 !          pbufname,                 'unset',        &
 !          pbufname,                 'unset',        &
 !          pbuf_names(i),            'unset',        &
-!          rad_name1,                'unset',        & 
-!          rad_name2,                'unset',        & 
-!          rad_name3,                'unset',        & 
-!          rad_name,                 'unset',        & 
+!          rad_name1,                'unset',        &
+!          rad_name2,                'unset',        &
+!          rad_name3,                'unset',        &
+!          rad_name,                 'unset',        &
 !          sad_name,                 'cm2/cm3',      &
 !          volcaero_name,            'kg/kg',        &
 !          volcrad_name,             'm',            &
