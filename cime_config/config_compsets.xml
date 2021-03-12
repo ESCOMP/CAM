@@ -112,7 +112,7 @@
     <lname>2000_CAM60%SCAM%CCTS_CLM50%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
     <science_support grid="T42_T42"/>
   </compset>
-  
+
   <compset>
     <alias>FADIAB</alias>
     <lname>2000_CAM%ADIAB_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>
