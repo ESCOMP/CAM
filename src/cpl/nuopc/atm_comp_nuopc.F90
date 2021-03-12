@@ -72,6 +72,7 @@ module atm_comp_nuopc
   private :: cam_write_srfrest
   private :: cam_orbital_init
   private :: cam_orbital_update
+  private :: cam_set_mesh_for_single_column
   private :: cam_pio_checkerr
 
   !--------------------------------------------------------------------------
@@ -351,7 +352,7 @@ contains
     logical                 :: aqua_planet                       ! Flag to run model in "aqua planet" mode
     logical                 :: brnch_retain_casename             ! true => branch run has same caseid as run being branched from
     logical                 :: single_column
-    character(len=cl)       :: single_column_domainfile
+    character(len=cl)       :: single_column_lnd_domainfile
     real(r8)                :: scol_lon
     real(r8)                :: scol_lat
     real(r8)                :: eccen
@@ -481,12 +482,14 @@ contains
     call NUOPC_CompAttributeGet(gcomp, name='scol_lat', value=cvalue, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     read(cvalue,*) scol_lat
-    call NUOPC_CompAttributeGet(gcomp, name='single_column_domainfile', value=single_column_domainfile, rc=rc)
+    call NUOPC_CompAttributeGet(gcomp, name='single_column_lnd_domainfile', value=single_column_lnd_domainfile, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    if (scol_lon >= 0. .and. scol_lat >= 0. .and. trim(single_column_domainfile) /= 'null') then
-       single_column = .true.
-    else
-       call shr_sys_abort('single_column_domainfile cannot be null for single column mode')
+    if (scol_lon >-999. .and. scol_lat > -999.) then
+       if (trim(single_column_lnd_domainfile) /= 'null') then
+          single_column = .true.
+       else
+          call shr_sys_abort('single_column_lnd_domainfile cannot be null for single column mode')
+       end if
     end if
 
     ! aqua planet input
@@ -601,7 +604,7 @@ contains
 
        if (single_column) then
 
-          call cam_createmesh_for_scol_nn(scol_lon, scol_lat, single_column_domainfile, mesh, rc=rc)
+          call cam_set_mesh_for_single_column(scol_lon, scol_lat, mesh, rc)
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
        else
@@ -693,7 +696,7 @@ contains
        end if ! end of if single_column
 
        ! realize the actively coupled fields
-       call realize_fields(gcomp,  mesh, flds_scalar_name, flds_scalar_num, rc)
+       call realize_fields(gcomp,  mesh, flds_scalar_name, flds_scalar_num, single_column, rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
        ! Create cam export array and set the state scalars
@@ -1983,127 +1986,37 @@ contains
     call cam_pio_closefile(File)
 
   end subroutine cam_write_clockrest
-
+ 
   !===============================================================================
-  subroutine cam_createmesh_for_scol_nn(scol_lon, scol_lat, domain_file, model_mesh, rc)
+  subroutine cam_set_mesh_for_single_column(scol_lon, scol_lat, mesh, rc)
 
-    ! Generate a new mesh from the input domain file and set the mask to 1
-    ! This is used in single column mode to obtain the mesh for a single gridcell
-    ! using a nearest neighbor search of a domain file
+    ! Generate a mesh for single column
+    use netcdf
+    use clm_varcon, only : spval
 
     ! input/output variables
-    character(len=*) , intent(in)    :: domain_file
-    real(r8)         , intent(inout) :: scol_lat
-    real(r8)         , intent(inout) :: scol_lon
-    type(ESMF_Mesh)  , intent(out)   :: model_mesh
-    integer          , intent(out)   :: rc
+    real(r8)        , intent(in)  :: scol_lon
+    real(r8)        , intent(in)  :: scol_lat
+    type(ESMF_Mesh) , intent(out) :: mesh
+    integer         , intent(out) :: rc
 
     ! local variables
-    type(ESMF_Grid)       :: lgrid
-    integer               :: i,j,g,n
-    integer               :: ni,nj
-    integer               :: nv
-    integer               :: ierr
-    integer               :: dimid
-    integer               :: varid_xc, varid_yc
-    integer               :: varid_area
-    real(r8), allocatable :: xc(:,:), yc(:,:)     ! coordinates of centers
-    integer               :: maxIndex(2)
-    real(r8)              :: mincornerCoord(2)
-    real(r8)              :: maxcornerCoord(2)
-    integer               :: start(2)             ! start index to read in for single column mode
-    integer               :: count(2)             ! number of points to read in
-    real(r8)              :: scol_data(1)         ! temporary
-    real(r8), allocatable :: lats(:)              ! temporary
-    real(r8), allocatable :: lons(:)              ! temporary
-    real(r8), allocatable :: pos_lons(:)          ! temporary
-    real(r8)              :: pos_scol_lon         ! temporary
-    real(r8)              :: scol_area            ! temporary
-    type(file_desc_t)     :: pioid
-    integer               :: rcode                ! error code
+    type(ESMF_Grid)        :: lgrid
+    integer                :: maxIndex(2)
+    real(r8)               :: mincornerCoord(2)
+    real(r8)               :: maxcornerCoord(2)
+    character(len=*), parameter :: subname= ' (lnd_set_mesh_for_single_column) '
     !-------------------------------------------------------------------------------
 
     rc = ESMF_SUCCESS
 
-    call cam_pio_openfile(pioid, trim(domain_file), pio_nowrite)
-    call pio_seterrorhandling(pioid, PIO_BCAST_ERROR)
-
-    rcode = pio_inq_dimid(pioid, 'ni', dimid)
-    call cam_pio_checkerr(rcode, 'pio_inq_dimid for ni in file '//trim(domain_file))
-    rcode = pio_inquire_dimension(pioid, dimid, len=ni)
-    call cam_pio_checkerr(rcode, 'pio_inq_dimension for ni in file '//trim(domain_file))
-
-    rcode = pio_inq_dimid(pioid, 'nj', dimid)
-    call cam_pio_checkerr(rcode, 'pio_inq_dimid for nj in file '//trim(domain_file))
-    rcode = pio_inquire_dimension(pioid, dimid, len=nj)
-    call cam_pio_checkerr(rcode, 'pio_inq_dimension for nj in file '//trim(domain_file))
-
-    rcode = pio_inq_varid(pioid, 'xc' , varid_xc)
-    call cam_pio_checkerr(rcode, 'pio_inq_varid for yc in file '//trim(domain_file))
-
-    rcode = pio_inq_varid(pioid, 'yc' , varid_yc)
-    call cam_pio_checkerr(rcode, 'pio_inq_varid for yc in file '//trim(domain_file))
-
-    rcode = pio_inq_varid(pioid, 'area', varid_area)
-    call cam_pio_checkerr(rcode, 'pio_inq_varid for area in file '//trim(domain_file))
-
-    ! In this case the domain file is not a single point file - but normally a
-    ! global domain file where a nearest neighbor search will be done to find
-    ! the closest point in the domin file to scol_lon and scol_lat
-
-    ! get center lats and lons from domain file
-    allocate(xc(ni,nj))
-    allocate(yc(ni,nj))
-    rcode = pio_get_var(pioid, varid_xc, xc)
-    call cam_pio_checkerr(rcode, 'pio_get_var for xc in file '//trim(domain_file))
-    rcode = pio_get_var(pioid, varid_yc, yc)
-    call cam_pio_checkerr(rcode, 'pio_get_var for yc in file '//trim(domain_file))
-
-    ! find nearest neighbor indices of scol_lon and scol_lat in domain file
-    allocate(lats(nj))
-    allocate(lons(ni))
-    allocate(pos_lons(ni))
-    do i = 1,ni
-       lons(i) = xc(i,1)
-    end do
-    do j = 1,nj
-       lats(j) = yc(1,j)
-    end do
-    pos_lons(:)  = mod(lons(:)  + 360._r8, 360._r8)
-    pos_scol_lon = mod(scol_lon + 360._r8, 360._r8)
-    start(1) = (MINLOC(abs(pos_lons - pos_scol_lon), dim=1))
-    start(2) = (MINLOC(abs(lats      -scol_lat    ), dim=1))
-    count(:) = 1
-    deallocate(lons)
-    deallocate(lats)
-
-    ! read in value of nearest neighbor lon and RESET scol_lat
-    rcode = pio_get_var(pioid, varid_xc, start, count, scol_data)
-    call cam_pio_checkerr(rcode, 'pio_get_var for xc in file '//trim(domain_file))
-    scol_lon = scol_data(1)
-
-    ! read in value of nearest neighbor lon and RESET scol_lon
-    rcode = pio_get_var(pioid, varid_yc, start, count, scol_data)
-    call cam_pio_checkerr(rcode, 'pio_get_var for yc in file '//trim(domain_file))
-    scol_lat = scol_data(1)
-
-    ! get area of gridcell
-    rcode = pio_get_var(pioid, varid_area, start, count, scol_data)
-    call cam_pio_checkerr(rcode, 'pio_get_var for area in file '//trim(domain_file))
-    scol_area = scol_data(1)
-
-    ! determine mincornerCoord and maxcornerCoord neede to create ESMF grid
-    maxIndex(1)       = 1                          ! number of lons
-    maxIndex(2)       = 1                          ! number of lats
-    mincornerCoord(1) = scol_lon - scol_area/2._r8 ! min lon
-    mincornerCoord(2) = scol_lat - scol_area/2._r8 ! min lat
-    maxcornerCoord(1) = scol_lon + scol_area/2._r8 ! max lon
-    maxcornerCoord(2) = scol_lat + scol_area/2._r8 ! max lat
-    deallocate(xc,yc)
-
-    ! close file
-    call pio_seterrorhandling(pioid, PIO_INTERNAL_ERROR)
-    call pio_closefile(pioid)
+    ! Use center and come up with arbitrary area delta lon and lat = .1 degree
+    maxIndex(1)       = 1                ! number of lons
+    maxIndex(2)       = 1                ! number of lats
+    mincornerCoord(1) = scol_lon - .1_r8 ! min lon
+    mincornerCoord(2) = scol_lat - .1_r8 ! min lat
+    maxcornerCoord(1) = scol_lon + .1_r8 ! max lon
+    maxcornerCoord(2) = scol_lat + .1_r8 ! max lat
 
     ! create the ESMF grid
     lgrid = ESMF_GridCreateNoPeriDimUfrm (maxindex=maxindex, &
@@ -2112,10 +2025,10 @@ contains
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     ! create the mesh from the lgrid
-    model_mesh = ESMF_MeshCreate(lgrid, rc=rc)
+    mesh = ESMF_MeshCreate(lgrid, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-  end subroutine cam_createmesh_for_scol_nn
+  end subroutine cam_set_mesh_for_single_column
 
   !===============================================================================
   subroutine cam_pio_checkerr(ierror, description)

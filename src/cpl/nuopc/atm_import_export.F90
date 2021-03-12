@@ -274,7 +274,7 @@ contains
 
   !===============================================================================
 
-  subroutine realize_fields(gcomp, Emesh, flds_scalar_name, flds_scalar_num, rc)
+  subroutine realize_fields(gcomp, Emesh, flds_scalar_name, flds_scalar_num, single_column, rc)
 
     use ESMF      , only : ESMF_MeshGet, ESMF_StateGet
     use ESMF      , only : ESMF_FieldRegridGetArea,ESMF_FieldGet
@@ -286,6 +286,7 @@ contains
     type(ESMF_Mesh)     , intent(in)    :: Emesh
     character(len=*)    , intent(in)    :: flds_scalar_name
     integer             , intent(in)    :: flds_scalar_num
+    logical             , intent(in)    :: single_column
     integer             , intent(out)   :: rc
 
     ! local variables
@@ -337,56 +338,67 @@ contains
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
 
-    ! Determine areas for regridding
+    ! allocate area correction factors
     call ESMF_MeshGet(Emesh, numOwnedElements=numOwnedElements, rc=rc)
     if (chkerr(rc,__LINE__,u_FILE_u)) return
-    call ESMF_StateGet(exportState, itemName=trim(fldsFrAtm(2)%stdname), field=lfield, rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    call ESMF_FieldRegridGetArea(lfield, rc=rc)
-    if (chkerr(rc,__LINE__,u_FILE_u)) return
-    call ESMF_FieldGet(lfield, farrayPtr=dataptr, rc=rc)
-    if (chkerr(rc,__LINE__,u_FILE_u)) return
-    allocate(mesh_areas(numOwnedElements))
-    mesh_areas(:) = dataptr(:)
-
-    ! Determine model areas
-    allocate(model_areas(numOwnedElements))
-    allocate(area(numOwnedElements))
-    n = 0
-    do c = begchunk, endchunk
-       ncols = get_ncols_p(c)
-       call get_area_all_p(c, ncols, area)
-       do i = 1,ncols
-          n = n + 1
-          model_areas(n) = area(i)
-       end do
-    end do
-    deallocate(area)
-
-    ! Determine flux correction factors (module variables)
     allocate (mod2med_areacor(numOwnedElements))
     allocate (med2mod_areacor(numOwnedElements))
-    do n = 1,numOwnedElements
-       mod2med_areacor(n) = model_areas(n) / mesh_areas(n)
-       med2mod_areacor(n) = 1._r8 / mod2med_areacor(n)
-    end do
-    deallocate(model_areas)
-    deallocate(mesh_areas)
 
-    min_mod2med_areacor = minval(mod2med_areacor)
-    max_mod2med_areacor = maxval(mod2med_areacor)
-    min_med2mod_areacor = minval(med2mod_areacor)
-    max_med2mod_areacor = maxval(med2mod_areacor)
-    call shr_mpi_max(max_mod2med_areacor, max_mod2med_areacor_glob, mpicom)
-    call shr_mpi_min(min_mod2med_areacor, min_mod2med_areacor_glob, mpicom)
-    call shr_mpi_max(max_med2mod_areacor, max_med2mod_areacor_glob, mpicom)
-    call shr_mpi_min(min_med2mod_areacor, min_med2mod_areacor_glob, mpicom)
+    if (single_column) then
 
-    if (masterproc) then
-       write(iulog,'(2A,2g23.15,A )') trim(subname),' :  min_mod2med_areacor, max_mod2med_areacor ',&
-            min_mod2med_areacor_glob, max_mod2med_areacor_glob, 'CAM'
-       write(iulog,'(2A,2g23.15,A )') trim(subname),' :  min_med2mod_areacor, max_med2mod_areacor ',&
-            min_med2mod_areacor_glob, max_med2mod_areacor_glob, 'CAM'
+       mod2med_areacor(:) = 1._r8
+       med2mod_areacor(:) = 1._r8
+       
+    else
+
+       ! Determine areas for regridding
+       call ESMF_StateGet(exportState, itemName=trim(fldsFrAtm(2)%stdname), field=lfield, rc=rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+       call ESMF_FieldRegridGetArea(lfield, rc=rc)
+       if (chkerr(rc,__LINE__,u_FILE_u)) return
+       call ESMF_FieldGet(lfield, farrayPtr=dataptr, rc=rc)
+       if (chkerr(rc,__LINE__,u_FILE_u)) return
+       allocate(mesh_areas(numOwnedElements))
+       mesh_areas(:) = dataptr(:)
+
+       ! Determine model areas
+       allocate(model_areas(numOwnedElements))
+       allocate(area(numOwnedElements))
+       n = 0
+       do c = begchunk, endchunk
+          ncols = get_ncols_p(c)
+          call get_area_all_p(c, ncols, area)
+          do i = 1,ncols
+             n = n + 1
+             model_areas(n) = area(i)
+          end do
+       end do
+       deallocate(area)
+
+       ! Determine flux correction factors (module variables)
+       do n = 1,numOwnedElements
+          mod2med_areacor(n) = model_areas(n) / mesh_areas(n)
+          med2mod_areacor(n) = 1._r8 / mod2med_areacor(n)
+       end do
+       deallocate(model_areas)
+       deallocate(mesh_areas)
+
+       min_mod2med_areacor = minval(mod2med_areacor)
+       max_mod2med_areacor = maxval(mod2med_areacor)
+       min_med2mod_areacor = minval(med2mod_areacor)
+       max_med2mod_areacor = maxval(med2mod_areacor)
+       call shr_mpi_max(max_mod2med_areacor, max_mod2med_areacor_glob, mpicom)
+       call shr_mpi_min(min_mod2med_areacor, min_mod2med_areacor_glob, mpicom)
+       call shr_mpi_max(max_med2mod_areacor, max_med2mod_areacor_glob, mpicom)
+       call shr_mpi_min(min_med2mod_areacor, min_med2mod_areacor_glob, mpicom)
+
+       if (masterproc) then
+          write(iulog,'(2A,2g23.15,A )') trim(subname),' :  min_mod2med_areacor, max_mod2med_areacor ',&
+               min_mod2med_areacor_glob, max_mod2med_areacor_glob, 'CAM'
+          write(iulog,'(2A,2g23.15,A )') trim(subname),' :  min_med2mod_areacor, max_med2mod_areacor ',&
+               min_med2mod_areacor_glob, max_med2mod_areacor_glob, 'CAM'
+       end if
+
     end if
 
     call ESMF_LogWrite(trim(subname)//' done', ESMF_LOGMSG_INFO)
