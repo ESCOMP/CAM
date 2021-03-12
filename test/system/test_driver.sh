@@ -80,7 +80,6 @@ interactive=false
 use_existing=''
 namelists_only=false
 batch=false
-xml_driver="mct"
 
 # Understand where we are and where the CAM root and CIME reside
 if [ -n "${CAM_ROOT}" ]; then
@@ -416,7 +415,7 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
   fi
 
   for cesm_test in ${cesm_test_suite}; do
-    testargs="--xml-category ${cesm_test} --xml-machine ${cesm_test_mach} --xml-driver ${xml_driver} --retry 2"
+    testargs="--xml-category ${cesm_test} --xml-machine ${cesm_test_mach} --retry 2"
 
     if [ -n "${use_existing}" ]; then
       test_id="${use_existing}"
@@ -549,6 +548,10 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
        else
         testargs="${testargs} --generate ${cesm_testdir}/baselines"
       fi
+    fi
+
+    if [ -n "${xml_driver}" ] ; then
+        testargs="${testargs} --xml-driver ${xml_driver}"
     fi
 
     echo ""
