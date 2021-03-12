@@ -7551,7 +7551,7 @@ Default: TRUE
 <entry id="mpas_coef_3rd_order" type="real" category="mpas"
        group="nhyd_model" valid_values="">
 Upwinding coefficient in the 3rd order advection scheme in MPAS dycore.
-Default: 0.25
+Default: 1.0
 </entry>
 
 <entry id="mpas_smagorinsky_coef" type="real" category="mpas"
@@ -7609,7 +7609,9 @@ Default: 0.2
 <entry id="mpas_cam_coef" type="real" category="mpas"
        group="damping" valid_values="">
 Coefficient for scaling the 2nd-order horizontal mixing in the mpas_cam absorbing layer
-Default: 1.0
+0.0 is no mixing in the absorbing layer - in this case must usually specify rayleigh 
+damping for stability
+Default: 0.0
 </entry>
 
 <entry id="mpas_rayleigh_damp_u" type="logical" category="mpas"
@@ -7617,7 +7619,7 @@ Default: 1.0
 Whether to apply Rayleigh damping on horizontal velocity in the top-most model levels.
 The number of levels is specified by the config_number_rayleigh_damp_u_levels option,
 and the damping timescale is specified by the config_rayleigh_damp_u_timescale_days option.
-Default: FALSE
+Default: TRUE
 </entry>
 
 <entry id="mpas_rayleigh_damp_u_timescale_days" type="real" category="mpas"
@@ -7631,7 +7633,7 @@ Default: 5.0
        group="damping" valid_values="">
 Number layers in which to apply Rayleigh damping on horizontal velocity at top of model;
 damping linearly ramps to zero by layer number from the top
-Default: 6
+Default: 3
 </entry>
 
 <entry id="mpas_block_decomp_file_prefix" type="char*512" input_pathname="abs" category="mpas"

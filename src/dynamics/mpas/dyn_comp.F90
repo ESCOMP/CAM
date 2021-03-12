@@ -1190,10 +1190,10 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
    logical                 :: mpas_h_ScaleWithMesh = .true.
    real(r8)                :: mpas_zd = 22000.0_r8
    real(r8)                :: mpas_xnutr = 0.2_r8
-   real(r8)                :: mpas_cam_coef = 1.0_r8
-   logical                 :: mpas_rayleigh_damp_u = .false.
+   real(r8)                :: mpas_cam_coef = 0.0_r8
+   logical                 :: mpas_rayleigh_damp_u = .true.
    real(r8)                :: mpas_rayleigh_damp_u_timescale_days = 5.0_r8
-   integer                 :: mpas_number_rayleigh_damp_u_levels = 6
+   integer                 :: mpas_number_rayleigh_damp_u_levels = 3
    character (len=StrKIND) :: mpas_block_decomp_file_prefix = 'x1.40962.graph.info.part.'
    logical                 :: mpas_do_restart = .false.
    logical                 :: mpas_print_global_minmax_vel = .true.
