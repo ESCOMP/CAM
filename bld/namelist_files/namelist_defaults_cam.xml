@@ -1665,6 +1665,9 @@
 <drydep_srf_file hgrid="C192">atm/cam/chem/trop_mam/atmsrf_C192_c200625.nc</drydep_srf_file>
 <drydep_srf_file hgrid="C384">atm/cam/chem/trop_mam/atmsrf_C384_c200625.nc</drydep_srf_file>
 
+<drydep_srf_file hgrid="mpasa120">atm/cam/chem/trop_mam/atmsrf_mpasa120_c090720.nc</drydep_srf_file>
+<drydep_srf_file hgrid="mpasa480">atm/cam/chem/trop_mam/atmsrf_mpasa480_c090720.nc</drydep_srf_file>
+
 <!-- depvel data -->
 <depvel_lnd_file>atm/cam/chem/trop_mozart/dvel/regrid_vegetation.nc</depvel_lnd_file>
 <depvel_lnd_file   aquaplanet="1" >atm/cam/chem/trop_mozart/dvel/regrid_vegetation_all_zero_aquaplanet_1deg_regularGrid_c20170421.nc</depvel_lnd_file>
@@ -2683,7 +2686,7 @@
 <mpas_time_integration        > SRK3 </mpas_time_integration>
 <mpas_time_integration_order  > 2 </mpas_time_integration_order>
 <mpas_dt                      > 1800.0D0 </mpas_dt>
-<mpas_dt hgrid="mpasa120"     >  600.0D0 </mpas_dt>
+<mpas_dt hgrid="mpasa120"     >  900.0D0 </mpas_dt>
 
 <mpas_split_dynamics_transport>.true.</mpas_split_dynamics_transport>
 <mpas_number_of_sub_steps     > 2 </mpas_number_of_sub_steps>
@@ -2711,7 +2714,7 @@
 <mpas_scalar_advection        > .true. </mpas_scalar_advection>
 <mpas_positive_definite       > .false. </mpas_positive_definite>
 <mpas_monotonic               > .true. </mpas_monotonic>
-<mpas_coef_3rd_order          > 0.25D0 </mpas_coef_3rd_order>
+<mpas_coef_3rd_order          > 1.0D0 </mpas_coef_3rd_order>
 <mpas_smagorinsky_coef        > 0.125D0 </mpas_smagorinsky_coef>
 <mpas_mix_full                > .true. </mpas_mix_full>
 <mpas_epssm                   > 0.1D0 </mpas_epssm>
@@ -2720,7 +2723,11 @@
 <mpas_h_ScaleWithMesh         > .true. </mpas_h_ScaleWithMesh>
 <mpas_zd                      > 22000.0D0 </mpas_zd>
 <mpas_xnutr                   > 0.2D0 </mpas_xnutr>
-
+<mpas_cam_coef                > 0.0D0 </mpas_cam_coef>
+<mpas_rayleigh_damp_u         > .true. </mpas_rayleigh_damp_u>
+<mpas_rayleigh_damp_u_timescale_days> 5.0 </mpas_rayleigh_damp_u_timescale_days>
+<mpas_number_rayleigh_damp_u_levels> 3 </mpas_number_rayleigh_damp_u_levels>
+<mpas_print_detailed_minmax_vel> .true.  </mpas_print_detailed_minmax_vel>
 <mpas_block_decomp_file_prefix hgrid="mpasa480">atm/cam/inic/mpas/mpasa480.graph.info.part.</mpas_block_decomp_file_prefix>
 <mpas_block_decomp_file_prefix hgrid="mpasa120">atm/cam/inic/mpas/mpasa120.graph.info.part.</mpas_block_decomp_file_prefix>
 <mpas_block_decomp_file_prefix hgrid="mpasa60">atm/cam/inic/mpas/mpasa60.graph.info.part.</mpas_block_decomp_file_prefix>

@@ -478,7 +478,9 @@ contains
 
     call addfld ('PSDRY',      horiz_only,  'A', 'Pa', 'Dry surface pressure')
     call addfld ('PMID',       (/ 'lev' /), 'A', 'Pa', 'Pressure at layer midpoints')
+    call addfld ('PINT',       (/ 'ilev' /), 'A', 'Pa', 'Pressure at layer interfaces')
     call addfld ('PDELDRY',    (/ 'lev' /), 'A', 'Pa', 'Dry pressure difference between levels')
+    call addfld ('PDEL',       (/ 'lev' /), 'A', 'Pa', 'Pressure difference between levels')
 
     ! outfld calls in diag_conv
 
@@ -625,6 +627,12 @@ contains
     if (dycore_is('SE')) then
       call add_default ('PSDRY', 1, ' ')
       call add_default ('PMID',  1, ' ')
+   end if
+
+    if (dycore_is('MPAS')) then
+      call add_default ('PINT', 1, ' ')
+      call add_default ('PMID',  1, ' ')
+      call add_default ('PDEL',  1, ' ')
    end if
 
     if (history_eddy) then
@@ -1311,7 +1319,9 @@ contains
 
     call outfld('PSDRY',   state%psdry,   pcols, lchnk)
     call outfld('PMID',    state%pmid,    pcols, lchnk)
+    call outfld('PINT',    state%pint,    pcols, lchnk)
     call outfld('PDELDRY', state%pdeldry, pcols, lchnk)
+    call outfld('PDEL',    state%pdel,    pcols, lchnk)
 
     !
     ! Meridional advection fields

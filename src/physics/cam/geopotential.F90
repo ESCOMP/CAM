@@ -187,17 +187,21 @@ use ppgrid, only : pcols
 
 ! First set hydrostatic elements consistent with dynamics
 
-       if (fvdyn) then
-          do i = 1,ncol
-             hkl(i) = piln(i,k+1) - piln(i,k)
-             hkk(i) = 1._r8 - pint(i,k) * hkl(i) * rpdel(i,k)
-          end do
-       else
-          do i = 1,ncol
-             hkl(i) = pdel(i,k) / pmid(i,k)
-             hkk(i) = 0.5_r8 * hkl(i)
-          end do
-       end if
+      if ((dycore_is('LR') .or. dycore_is('FV3'))) then
+        do i = 1,ncol
+          hkl(i) = piln(i,k+1) - piln(i,k)
+          hkk(i) = 1._r8 - pint(i,k) * hkl(i) * rpdel(i,k)
+        end do
+      else!MPAS, SE or EUL
+        !
+        ! For EUL and SE: pmid = 0.5*(pint(k+1)+pint(k))
+        ! For MPAS      : pmid is computed from theta_m, rhodry, etc.
+        !
+        do i = 1,ncol
+          hkl(i) = pdel(i,k) / pmid(i,k)
+          hkk(i) = 0.5_r8 * hkl(i)
+        end do
+      end if
 
 ! Now compute tv, zm, zi
 

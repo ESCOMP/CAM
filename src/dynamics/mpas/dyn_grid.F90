@@ -37,6 +37,7 @@ use cam_mpas_subdriver, only: domain_ptr, cam_mpas_init_phase3, cam_mpas_get_glo
 use mpas_pool_routines, only: mpas_pool_get_subpool, mpas_pool_get_dimension, mpas_pool_get_array
 use mpas_derived_types, only: mpas_pool_type
 
+use physics_column_type, only : physics_column_t
 
 implicit none
 private
@@ -55,6 +56,7 @@ public :: &
    dyn_decomp, &
    ptimelevels, &
    dyn_grid_init, &
+   get_dyn_grid_info, &
    get_block_bounds_d, &
    get_block_gcol_cnt_d, &
    get_block_gcol_d, &
@@ -72,7 +74,9 @@ public :: &
    physgrid_copy_attributes_d
 
 ! vertical reference heights (m) in CAM top to bottom order.
-real(r8) :: zw(plevp), zw_mid(plev)
+! These arrays are targets of the real_values pointers in the hist_coords
+! objects in the cam_history_support module.
+real(r8), target :: zw(plevp), zw_mid(plev)
 
 integer ::      &
    maxNCells,   &    ! maximum number of cells for any task (nCellsSolve <= maxNCells)
@@ -181,18 +185,6 @@ subroutine dyn_grid_init()
 
    ! Query global grid dimensions from MPAS
    call cam_mpas_get_global_dims(nCells_g, nEdges_g, nVertices_g, maxEdges, nVertLevels, maxNCells)
-
-   ! Temporary global arrays needed by phys_grid_init
-   allocate(lonCell_g(nCells_g))
-   allocate(latCell_g(nCells_g))
-   allocate(areaCell_g(nCells_g))
-   call cam_mpas_get_global_coords(latCell_g, lonCell_g, areaCell_g)
-   
-   allocate(num_col_per_block(npes))
-   allocate(col_indices_in_block(maxNCells,npes))
-   allocate(global_blockid(nCells_g))
-   allocate(local_col_index(nCells_g))
-   call cam_mpas_get_global_blocks(num_col_per_block, col_indices_in_block, global_blockID, local_col_index)
    
    ! Define the dynamics grids on the dynamics decompostion.  The cell
    ! centered grid is used by the physics parameterizations.  The physics
@@ -200,6 +192,96 @@ subroutine dyn_grid_init()
    call define_cam_grids()
    
 end subroutine dyn_grid_init
+
+!=========================================================================================
+
+subroutine get_dyn_grid_info(hdim1_d, hdim2_d, num_levels, index_model_top_layer, index_surface_layer, unstructured, dyn_columns)
+   !------------------------------------------------------------
+   !
+   ! get_dyn_grid_info return dynamics grid column information
+   !
+   ! Return dynamic grid columns information and other dycore information. After
+   ! this function is called, dyn_columns will be allocated to size nCellsSolve
+   ! and each entry will represent a dynamics column (cell) of the MPAS dynamics.
+   !
+   !------------------------------------------------------------
+
+   use shr_const_mod, only: SHR_CONST_PI ! TODO: Is this the correct PI constant to use?
+
+   ! Input variables
+   integer, intent(out) :: hdim1_d ! Global Longitudes or global grid size (nCells_g)
+   integer, intent(out) :: hdim2_d ! Latitudes or 1 for unstructured grids
+   integer, intent(out) :: num_levels ! Number of levels
+   integer, intent(out) :: index_model_top_layer
+   integer, intent(out) :: index_surface_layer
+   logical, intent(out) :: unstructured
+   type (physics_column_t), allocatable, intent(out):: dyn_columns(:)
+
+   ! Local variables
+   type(mpas_pool_type),   pointer :: meshPool
+   integer, pointer :: nCellsSolve ! Cells owned by this task, excluding halo cells
+   integer, pointer :: nVertLevels ! number of vertical layers (midpoints)
+   integer,  dimension(:), pointer :: indexToCellID ! global indices of cell centers
+   real(r8), dimension(:), pointer :: latCell   ! cell center latitude (radians)
+   real(r8), dimension(:), pointer :: lonCell   ! cell center longitudes (radians)
+   real(r8), dimension(:), pointer :: areaCell  ! cell areas in m^2
+   integer :: iCell
+   integer :: my_proc_id
+   character(len=*), parameter :: subname = 'get_dyn_grid_info'
+
+   ! TODO: Is it possible we can guarantee that local_dyn_columns will never be allocated before this function?
+   if (allocated(dyn_columns)) then
+       call endrun(subname//': dyn_columns must be unallocated')
+   end if
+
+   ! Retrieve MPAS grid dimensions and variables from the mesh pool
+   call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'mesh', meshPool)
+   call mpas_pool_get_dimension(meshPool, 'nCellsSolve', nCellsSolve)
+   call mpas_pool_get_dimension(meshPool, 'nVertLevels', nVertLevels)
+
+   call mpas_pool_get_array(meshPool, 'indexToCellID', indexToCellID)
+   call mpas_pool_get_array(meshPool, 'latCell', latCell)
+   call mpas_pool_get_array(meshPool, 'lonCell', lonCell)
+   call mpas_pool_get_array(meshPool, 'areaCell', areaCell)
+
+   allocate(dyn_columns(nCellsSolve))
+
+   ! Fill out subroutine arguments
+   hdim1_d = nCells_g
+   hdim2_d = 1
+   num_levels = nVertLevels
+   index_model_top_layer = nVertLevels
+   index_surface_layer = 1
+   unstructured = .True.
+
+   my_proc_id = domain_ptr % dminfo % my_proc_id
+
+   !
+   ! Fill out physics_t_column information, one member per cell (column)
+   !
+   do iCell = 1, nCellsSolve
+       ! Column information
+       dyn_columns(iCell) % lat_rad = latCell(iCell)
+       dyn_columns(iCell) % lon_rad = lonCell(iCell)
+       dyn_columns(iCell) % lat_deg = latCell(iCell) * rad2deg
+       dyn_columns(iCell) % lon_deg = lonCell(iCell) * rad2deg
+       ! Normalize cell areas and cell weights to a unit sphere
+       dyn_columns(iCell) % area = areaCell(iCell) / (sphere_radius**2)
+       dyn_columns(iCell) % weight = areaCell(iCell) / (sphere_radius**2)
+
+       ! File information
+       dyn_columns(iCell) % global_col_num = indexToCellID(iCell)
+
+       ! Dynamics decomposition
+       dyn_columns(iCell) % dyn_task = my_proc_id
+       dyn_columns(iCell) % local_dyn_block = iCell
+       dyn_columns(iCell) % global_dyn_block = indexToCellID(iCell)
+
+       ! dyn_block_index is not used, but it needs to be allocate to a 0 size
+       allocate(dyn_columns(iCell) % dyn_block_index(0))
+   end do
+
+end subroutine get_dyn_grid_info
 
 !=========================================================================================
 
