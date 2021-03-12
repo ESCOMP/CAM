@@ -86,6 +86,15 @@
     </options>
   </test>
 
+  <test compset="FHIST" grid="f19_f19_mg17" name="SMS_Ln9" testmods="cam/outfrq9s_nochem">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
+  </test>
+
 <!--              @@@@@@@@@@@@@@@@@@@@@@@@@@@                 -->
 <!--              CAM test-supported COMPSETS                 -->
 <!--              @@@@@@@@@@@@@@@@@@@@@@@@@@@                 -->

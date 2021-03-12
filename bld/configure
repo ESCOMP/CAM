@@ -2314,7 +2314,7 @@ sub write_mpas_makefile
 
     print $fh_out  <<"EOF";
 
-MPAS_SRC_ROOT := $cam_root/src/dynamics/mpas
+MPAS_SRC_ROOT := $cam_dir/src/dynamics/mpas
 
 EOF
 
