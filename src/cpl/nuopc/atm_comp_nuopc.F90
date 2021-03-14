@@ -355,6 +355,7 @@ contains
     character(len=cl)       :: single_column_lnd_domainfile
     real(r8)                :: scol_lon
     real(r8)                :: scol_lat
+    real(r8)                :: scol_spval
     real(r8)                :: eccen
     real(r8)                :: obliqr
     real(r8)                :: lambm0
@@ -482,10 +483,13 @@ contains
     call NUOPC_CompAttributeGet(gcomp, name='scol_lat', value=cvalue, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     read(cvalue,*) scol_lat
+    call NUOPC_CompAttributeGet(gcomp, name='scol_spval', value=cvalue, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    read(cvalue,*) scol_spval
     call NUOPC_CompAttributeGet(gcomp, name='single_column_lnd_domainfile', value=single_column_lnd_domainfile, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    if (scol_lon >-999. .and. scol_lat > -999.) then
-       if (trim(single_column_lnd_domainfile) /= 'null') then
+    if (scol_lon > scol_spval .and. scol_lat > scol_spval) then
+       if (trim(single_column_lnd_domainfile) /= 'UNSET') then
           single_column = .true.
        else
           call shr_sys_abort('single_column_lnd_domainfile cannot be null for single column mode')
@@ -678,13 +682,15 @@ contains
 
           ! error check differences between internally generated lons and those read in
           do n = 1,lsize
-             if (abs(lonMesh(n) - lon(n)) > 1.e-12_r8) then
+             if (abs(lonMesh(n) - lon(n)) > 1.e-12_r8 .and. abs(lonMesh(n) - lon(n)) /= 360._r8) then
                 write(6,100)n,lon(n),lonMesh(n), abs(lonMesh(n)-lon(n))
 100             format('ERROR: CAM n, lonmesh(n), lon(n), diff_lon = ',i6,2(f21.13,3x),d21.5)
+                call shr_sys_abort()
              end if
              if (abs(latMesh(n) - lat(n)) > 1.e-12_r8) then
                 write(6,100)n,lat(n),latMesh(n), abs(latMesh(n)-lat(n))
 101             format('ERROR: CAM n, latmesh(n), lat(n), diff_lat = ',i6,2(f21.13,3x),d21.5)
+                call shr_sys_abort()
              end if
           end do
 
@@ -1992,7 +1998,6 @@ contains
 
     ! Generate a mesh for single column
     use netcdf
-    use clm_varcon, only : spval
 
     ! input/output variables
     real(r8)        , intent(in)  :: scol_lon
