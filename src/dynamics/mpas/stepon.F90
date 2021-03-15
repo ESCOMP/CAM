@@ -1,5 +1,6 @@
 module stepon
 
+use cam_abortutils, only: endrun
 use shr_kind_mod,   only: r8 => shr_kind_r8
 use spmd_utils,     only: mpicom
 
@@ -173,6 +174,8 @@ subroutine write_dynvar(dyn_out)
    integer :: nCellsSolve, nEdgesSolve, nVerticesSolve
    integer :: qv_idx
    real(r8), allocatable :: arr2d(:,:)
+   integer :: ierr
+   character(len=*), parameter :: subname = 'stepon::write_dynvar'
    !----------------------------------------------------------------------------
 
    nCellsSolve    = dyn_out%nCellsSolve
@@ -181,7 +184,8 @@ subroutine write_dynvar(dyn_out)
    qv_idx         = dyn_out%index_qv
 
    if (hist_fld_active('u')) then
-      allocate(arr2d(nEdgesSolve,plev))
+      allocate(arr2d(nEdgesSolve,plev), stat=ierr)
+      if( ierr /= 0 ) call endrun(subname//':failed to allocate arr2d array')
       do k = 1, plev
          kk = plev - k + 1
          do i = 1, nEdgesSolve
@@ -193,7 +197,8 @@ subroutine write_dynvar(dyn_out)
    end if
 
    if (hist_fld_active('w')) then
-      allocate(arr2d(nCellsSolve,plevp))
+      allocate(arr2d(nCellsSolve,plevp), stat=ierr)
+      if( ierr /= 0 ) call endrun(subname//':failed to allocate arr2d array')
       do k = 1, plevp
          kk = plevp - k + 1
          do i = 1, nCellsSolve
@@ -204,7 +209,8 @@ subroutine write_dynvar(dyn_out)
       deallocate(arr2d)
    end if
 
-   allocate(arr2d(nCellsSolve,plev))
+   allocate(arr2d(nCellsSolve,plev), stat=ierr)
+   if( ierr /= 0 ) call endrun(subname//':failed to allocate arr2d array')
 
    if (hist_fld_active('theta')) then
       do k = 1, plev
@@ -269,7 +275,8 @@ subroutine write_dynvar(dyn_out)
    deallocate(arr2d)
 
    if (hist_fld_active('vorticity')) then
-      allocate(arr2d(nVerticesSolve,plev))
+      allocate(arr2d(nVerticesSolve,plev), stat=ierr)
+      if( ierr /= 0 ) call endrun(subname//':failed to allocate arr2d array')
       do k = 1, plev
          kk = plev - k + 1
          do i = 1, nVerticesSolve
@@ -299,6 +306,8 @@ subroutine write_forcings(dyn_in)
    integer :: i, k, kk
    integer :: nCellsSolve, nEdgesSolve
    real(r8), allocatable :: arr2d(:,:)
+   integer :: ierr
+   character(len=*), parameter :: subname = 'dyn_grid::write_forcings'
 
    !----------------------------------------------------------------------------
 
@@ -307,7 +316,8 @@ subroutine write_forcings(dyn_in)
    nEdgesSolve = dyn_in%nEdgesSolve
 
    if (hist_fld_active('ru_tend')) then
-      allocate(arr2d(nEdgesSolve,plev))
+      allocate(arr2d(nEdgesSolve,plev), stat=ierr)
+      if( ierr /= 0 ) call endrun(subname//':failed to allocate arr2d array')
       do k = 1, plev
          kk = plev - k + 1
          do i = 1, nEdgesSolve
@@ -318,7 +328,8 @@ subroutine write_forcings(dyn_in)
       deallocate(arr2d)
    end if
 
-   allocate(arr2d(nCellsSolve,plev))
+   allocate(arr2d(nCellsSolve,plev), stat=ierr)
+   if( ierr /= 0 ) call endrun(subname//':failed to allocate arr2d array')
 
    if (hist_fld_active('rtheta_tend')) then
       do k = 1, plev

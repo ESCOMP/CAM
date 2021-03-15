@@ -85,7 +85,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    real(r8), allocatable:: pmid(:,:)   !mid-level pressure consisten with MPAS discrete state
 
    real(r8), allocatable, dimension(:) :: bbuffer, cbuffer ! transpose buffers
-
+   integer :: ierr
    character(len=*), parameter :: subname = 'd_p_coupling'
    !----------------------------------------------------------------------------
 
@@ -107,7 +107,8 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    !
    ! diagnose pintdry, pmiddry, pmid
    !
-   allocate(pmid(plev, nCellsSolve))
+   allocate(pmid(plev, nCellsSolve), stat=ierr)
+   if( ierr /= 0 ) call endrun(subname//':failed to allocate dyn_out%pmiddry array')
    call hydrostatic_pressure( &
         nCellsSolve, plev, zz, zint, rho_zz, theta_m(:,:), tracers(index_qv,:,:),&
         pmiddry, pintdry, pmid)
@@ -116,7 +117,8 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
 
    ncols = columns_on_task! TODO: Correct way to get number of columns on task?
 
-   allocate(block_offset(0))
+   allocate(block_offset(0), stat=ierr)
+   if( ierr /= 0 ) call endrun(subname//':failed to allocate block_offset array')
 
    do icol = 1, ncols
       call get_dyn_col_p(icol, block_index, block_offset) ! Get the dynamic column (block_index)
@@ -216,6 +218,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
    type (mpas_pool_type), pointer :: tend_physics
    type (field2DReal), pointer :: tend_uzonal, tend_umerid
 
+   integer :: ierr
    character(len=*), parameter :: subname = 'dp_coupling::p_d_coupling'
    !----------------------------------------------------------------------------
 
@@ -226,8 +229,10 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
 
    tracers => dyn_in % tracers
 
-   allocate( t_tend(pver,nCellsSolve) )
-   allocate( qv_tend(pver,nCellsSolve) )
+   allocate( t_tend(pver,nCellsSolve), stat=ierr)
+   if( ierr /= 0 ) call endrun(subname//':failed to allocate t_tend array')
+   allocate( qv_tend(pver,nCellsSolve), stat=ierr)
+   if( ierr /= 0 ) call endrun(subname//':failed to allocate qv_tend array')
 
    nullify(tend_physics)
    call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'tend_physics', tend_physics)
@@ -248,8 +253,8 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
 
    ncols = columns_on_task ! should this be nCellsSolve?
 
-   allocate(block_offset(0))
-
+   allocate(block_offset(0), stat=ierr)
+   if( ierr /= 0 ) call endrun(subname//':failed to allocate block_offset array')
    do icol = 1, ncols                                   ! column index in physics chunk
       ! Get dynamics block
       call get_chunk_info_p(icol, lchnk, icol_p)          ! Get the matching physics column (icol_p)

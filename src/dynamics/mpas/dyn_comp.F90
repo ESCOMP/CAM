@@ -245,6 +245,7 @@ subroutine dyn_readnl(NLFileName)
    integer :: yr, mon, day, tod, ndate, nday, nsec
    character(len=10) :: date_str
    character(len=8)  :: tod_str
+   character(len=*), parameter :: subname = 'dyn_comp:dyn_readnl'
    !----------------------------------------------------------------------------
 
    logUnits(1) = iulog
@@ -439,14 +440,19 @@ subroutine dyn_init(dyn_in, dyn_out)
    dyn_out % ux    => dyn_in % ux
    dyn_out % uy    => dyn_in % uy
 
-   allocate(dyn_out % pmiddry(nVertLevels,   nCells))
-   allocate(dyn_out % pintdry(nVertLevels+1, nCells))
+   allocate(dyn_out % pmiddry(nVertLevels,   nCells), stat=ierr)
+   if( ierr /= 0 ) call endrun(subname//': failed to allocate dyn_out%pmiddry array')
+
+   allocate(dyn_out % pintdry(nVertLevels+1, nCells), stat=ierr)
+   if( ierr /= 0 ) call endrun(subname//': failed to allocate dyn_out%pintdry array')
 
    call mpas_pool_get_array(diag_pool, 'vorticity',  dyn_out % vorticity)
    call mpas_pool_get_array(diag_pool, 'divergence', dyn_out % divergence)
 
    call mpas_pool_get_array(mesh_pool, 'indexToCellID', indexToCellID)
-   allocate(glob_ind(nCellsSolve))
+   allocate(glob_ind(nCellsSolve), stat=ierr)
+   if( ierr /= 0 ) call endrun(subname//': failed to allocate glob_ind array')
+
    glob_ind = indexToCellID(1:nCellsSolve)
 
    call mpas_constants_compute_derived()
@@ -502,6 +508,7 @@ subroutine dyn_run(dyn_in, dyn_out)
 
    ! Local variables
    type(mpas_pool_type), pointer :: state_pool
+   character(len=*), parameter :: subname = 'dyn_comp:dyn_run'
 
    !----------------------------------------------------------------------------
 
@@ -534,6 +541,7 @@ subroutine dyn_final(dyn_in, dyn_out)
 
    type (dyn_import_t), intent(inout)  :: dyn_in
    type (dyn_export_t), intent(inout)  :: dyn_out
+   character(len=*), parameter :: subname = 'dyn_comp:dyn_final'
    !----------------------------------------------------------------------------
 
    !
@@ -683,7 +691,7 @@ subroutine read_inidat(dyn_in)
    real(r8), pointer :: uReconstructY(:,:)
    real(r8), pointer :: uReconstructZ(:,:)
 
-   integer :: mpas_idx, cam_idx
+   integer :: mpas_idx, cam_idx, ierr
    character(len=16) :: trac_name
    
    character(len=*), parameter :: subname = 'dyn_comp:read_inidat'
@@ -722,8 +730,11 @@ subroutine read_inidat(dyn_in)
    ! lat/lon needed in radians
    latvals_deg => cam_grid_get_latvals(cam_grid_id('mpas_cell'))
    lonvals_deg => cam_grid_get_lonvals(cam_grid_id('mpas_cell'))
-   allocate(latvals(nCellsSolve))
-   allocate(lonvals(nCellsSolve))
+   allocate(latvals(nCellsSolve), stat=ierr)
+   if( ierr /= 0 ) call endrun(subname//': failed to allocate latvals array')
+
+   allocate(lonvals(nCellsSolve), stat=ierr)
+   if( ierr /= 0 ) call endrun(subname//': failed to allocate lonvals array')
    latvals(:) = latvals_deg(:)*deg2rad
    lonvals(:) = lonvals_deg(:)*deg2rad
 
@@ -739,7 +750,8 @@ subroutine read_inidat(dyn_in)
       t(plev,nCellsSolve),             &
       pintdry(plevp,nCellsSolve),      &
       pmiddry(plev,nCellsSolve),       &
-      pmid(plev,nCellsSolve)           )
+      pmid(plev,nCellsSolve), stat=ierr)
+   if( ierr /= 0 ) call endrun(subname//': failed to allocate tmp arrays using CAM and MPAS indexing')
 
    do k = 1, plevp
       kk = plevp - k + 1
@@ -749,7 +761,8 @@ subroutine read_inidat(dyn_in)
    ! If using a topo file check that PHIS is consistent with the surface z coordinate.
    if (associated(fh_topo)) then    
 
-      allocate(zsurf(nCellsSolve))
+      allocate(zsurf(nCellsSolve), stat=ierr)
+      if( ierr /= 0 ) call endrun(subname//': failed to allocate zsurf array')
 
       call get_zsurf_from_topo(fh_topo, zsurf)
 
@@ -796,7 +809,8 @@ subroutine read_inidat(dyn_in)
 
       ! Constituents
 
-      allocate(m_ind(pcnst))
+      allocate(m_ind(pcnst), stat=ierr)
+      if( ierr /= 0 ) call endrun(subname//': failed to allocate m_ind array')
       do m = 1, pcnst
          m_ind(m) = m
       end do
@@ -828,8 +842,8 @@ subroutine read_inidat(dyn_in)
          pintdry(1,i) = cam2d(i)
       end do
       
-      allocate(qv(plev))
-      allocate(tm(plev))
+      allocate(qv(plev), tm(plev), stat=ierr)
+      if( ierr /= 0 ) call endrun(subname//': failed to allocate qv and tm arrays')
 
       do i = 1, nCellsSolve
          do k = 1, plev
@@ -871,7 +885,9 @@ subroutine read_inidat(dyn_in)
    else
 
       ! read uperp
-      allocate( mpas3d(plev,nEdgesSolve,1) )
+      allocate( mpas3d(plev,nEdgesSolve,1), stat=ierr)
+      if( ierr /= 0 ) call endrun(subname//': failed to allocate mpas3d array')
+
       call infld('u', fh_ini, 'lev', 'nEdges', 1, plev, 1, nEdgesSolve, 1, 1, &
                  mpas3d, readvar, gridname='mpas_edge')
       if (readvar) then
@@ -905,7 +921,8 @@ subroutine read_inidat(dyn_in)
          ux, uy)
 
       ! read w
-      allocate( mpas3d(plevp,nCellsSolve,1) )
+      allocate( mpas3d(plevp,nCellsSolve,1), stat=ierr)
+      if( ierr /= 0 ) call endrun(subname//': failed to allocate mpas3d array')
       call infld('w', fh_ini, 'ilev', 'nCells', 1, plevp, 1, nCellsSolve, 1, 1, &
                  mpas3d, readvar, gridname='mpas_cell')
       if (readvar) then
@@ -915,7 +932,8 @@ subroutine read_inidat(dyn_in)
       end if
       deallocate( mpas3d )
 
-      allocate( mpas3d(plev,nCellsSolve,1) )
+      allocate( mpas3d(plev,nCellsSolve,1), stat=ierr)
+      if( ierr /= 0 ) call endrun(subname//': failed to allocate mpas3d array')
 
       ! read theta
       call infld('theta', fh_ini, 'lev', 'nCells', 1, plev, 1, nCellsSolve, 1, 1, &
@@ -966,6 +984,7 @@ subroutine read_inidat(dyn_in)
    ! except for the water species.
 
    allocate( mpas3d(plev,nCellsSolve,1) )
+   if( ierr /= 0 ) call endrun(subname//': failed to allocate mpas3d array')
 
    do mpas_idx = 1, pcnst
 
@@ -1039,12 +1058,13 @@ subroutine get_zsurf_from_topo(fh_topo, zsurf)
    integer :: zsurf_len
    real(r8), allocatable :: phis(:,:)
    logical :: readvar
-
+   integer :: ierr
    character(len=*), parameter :: subname = 'dyn_comp:get_zsurf_from_topo'
    !--------------------------------------------------------------------------------------
 
    zsurf_len = size(zsurf)
    allocate(phis(zsurf_len,1))
+   if( ierr /= 0 ) call endrun(subname//': failed to allocate phis array')
 
    ! read theta
    call infld('PHIS', fh_topo, 'ncol', 1, zsurf_len, 1, 1, &
@@ -1080,6 +1100,7 @@ subroutine set_base_state(dyn_in)
    real(r8) :: pres
    real(r8) :: pres_kp1
    logical, parameter :: discrete_hydrostatic_base = .true.
+   character(len=*), parameter :: subname = 'dyn_comp:get_zsurf_from_topo'
    !--------------------------------------------------------------------------------------
 
    zint       => dyn_in % zint
