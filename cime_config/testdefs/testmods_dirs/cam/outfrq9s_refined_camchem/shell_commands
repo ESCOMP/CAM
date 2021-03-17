@@ -1,4 +1,1 @@
 ./xmlchange NTASKS=-65
-./xmlchange ROF_NCPL=\$ATM_NCPL
-./xmlchange GLC_NCPL=\$ATM_NCPL
-
