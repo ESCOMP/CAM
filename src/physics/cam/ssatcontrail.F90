@@ -8,7 +8,7 @@ module ssatcontrail
     use physics_types,  only: physics_state, physics_ptend, physics_ptend_init
     use physconst,      only: cpair,mwdry,mwh2o, gravit, zvir, rair, pi, rearth, tmelt
     use physics_buffer, only: pbuf_get_index, pbuf_get_field, physics_buffer_desc,  pbuf_old_tim_idx
-    use constituents,   only: cnst_get_ind, pcnst    
+    use constituents,   only: cnst_get_ind, pcnst
     use phys_grid,      only: get_wght_all_p
     use wv_saturation,  only: qsat_water, qsat_ice
     use aircraft_emit,  only: get_aircraft
@@ -23,7 +23,7 @@ module ssatcontrail
     real(r8), parameter :: rhoi = 500.0_r8             ! density of ice (500 kg/m3)
     real(r8), parameter :: radius = 3.75e-6_r8         ! diameter of ice particle = 7.5 microns
 
-  
+ 
 contains
 
     subroutine ssatcontrail_d0(state1,pbuf,dtime,ptend_loc)
@@ -36,7 +36,7 @@ contains
 !------------------------Local storage------------------------------------------------------
     real(r8) :: Ma, Mh2o, epsi, Q, eta, p, G, T_contr, eslTc, eslT, RH_contr, qslTc, qslT
     real(r8) :: w, esiT, qsiT, ws, RH, ei
-    integer  :: i,k 
+    integer  :: i,k
     integer  :: lchnk,ncol
     real(r8) :: contrail(pcols,pver), pcontrail(pcols,pver)
     real(r8), pointer, dimension(:,:) ::  cld    ! cloud fraction
@@ -49,12 +49,12 @@ contains
     logical :: has_aircraft_H2O
     logical :: has_aircraft_distance
     real(r8) :: hkl, hkk, tv
-    real(r8) :: particle_mass 
+    real(r8) :: particle_mass
     real(r8) :: ICIWC0(pcols,pver), ICIWC, rho
     real(r8) :: qs
     real(r8) :: wght(pcols)
     real(r8) :: dz, ratio(pcols,pver)
-    real(r8) :: dcld(pcols,pver) 
+    real(r8) :: dcld(pcols,pver)
     real(r8) :: ac_Q, ac_Q1, ac_Q2
     real(r8) :: RHcts(pcols,pver)
     logical :: lq(pcnst)
@@ -102,7 +102,7 @@ contains
     if(.not. has_aircraft_distance) return
 
     particle_mass = 4._r8/3._r8*pi*rhoi*radius**3   ! mass of ice particle
-   
+ 
     rog = rair/gravit                               ! Rd/Cp
 
 
@@ -113,7 +113,7 @@ contains
 
     lchnk = state1%lchnk
     ncol  = state1%ncol
-    
+ 
     call get_wght_all_p(lchnk, ncol, wght)
 
     itim = pbuf_old_tim_idx()
@@ -125,9 +125,8 @@ contains
     ifld = pbuf_get_index('ac_SLANT_DIST')
     call pbuf_get_field(pbuf,ifld,ac_SLANT_DIST)
  
-	
 ! adjust h2o to volume mixing ratio (mass adjustment and conversion from g/kg to kg/kg)
-    Ma = mwdry   
+    Ma = mwdry
     Mh2o = mwh2o
 
 ! contrail paramter (G = CF*p/epi)
@@ -137,21 +136,20 @@ contains
     ei = 1.21_r8      ! water vapor emision index (g) h2o per kg fuel (Schumann 96)
     Q = 43.e6_r8      ! specific combustion heat Schummann 1996, Q = 43 MJ/kg
     eta = 0.3_r8      ! propulsion effieciency (Ponater 2002)
-    
-    ratio(i,k) = 0._r8
-    dcld(i,k) = 0._r8
+ 
+    ratio = 0._r8
+    dcld = 0._r8
 
     do i=1,ncol
       do k=1,pver
-	
         p = (state1%pint(i,k)+state1%pint(i,k+1))/2.0_r8
-       
+ 
         G = (ei*cpair*p)/(epsi*Q*(1.0_r8-eta))   ! eq 7, Ponater JGR 2002
 
         T_contr = -46.46_r8+9.43_r8*log(G-0.053_r8)+0.72_r8*log(G-0.053_r8)*log(G-0.053_r8) ! eq 8, Ponater JGR 2002
         T_contr = T_contr + tmelt  ! convert to Kelvin
-       
-        ! compute saturation pressure        
+ 
+        ! compute saturation pressure
         call qsat_water(T_contr, p, eslTc, qslTc)
         call qsat_water(state1%t(i,k), p, eslT, qslT)
 
@@ -159,9 +157,9 @@ contains
         ! RH_contr ranges between 0 and 1
         if(RH_contr>1.0_r8) RH_contr = 1.0_r8
         if(RH_contr<0.0_r8) RH_contr = 0.0_r8
-        
-        w = state1%q(i,k,1)/(1.0_r8-state1%q(i,k,1))  ! mixing ratio from specific humidity        
-        call qsat_ice(state1%t(i,k), p, esiT, qsiT) 
+ 
+        w = state1%q(i,k,1)/(1.0_r8-state1%q(i,k,1))  ! mixing ratio from specific humidity
+        call qsat_ice(state1%t(i,k), p, esiT, qsiT)
         ws = epsi*esiT/(p-esiT)  ! saturation mixing ration with respect to ice
         qs = ws/(1.0_r8+ws)
 
@@ -170,7 +168,7 @@ contains
 
 ! Schumann, U. “Contrail Cirrus.” In Cirrus, edited by D. K. Lynch and others, 231–55. Oxford University Press, 2002
 !                 IWC(g/m3) = exp(6.97+0.103*T(C))*1e-3
-!                 IWC(kg/m3) = exp(6.97+0.103*T(C))*1e-6 
+!                 IWC(kg/m3) = exp(6.97+0.103*T(C))*1e-6
 
         ICIWC0(i,k) = exp(6.97_r8+0.103_r8*(state1%t(i,k)-tmelt)) ! in mg/m3
         rho = p/(rair*state1%t(i,k))
@@ -181,7 +179,7 @@ contains
         if( (state1%t(i,k)<T_contr).and.(RH>RH_contr).and.(RH>1.0_r8).and.(ac_H2O(i,k)>0.0_r8) ) then
 
 ! if persistent contrail, H2O emitted from aircraft turns into cloud ice
-          dz = state1%zi(i,k)-state1%zi(i,k+1) 
+          dz = state1%zi(i,k)-state1%zi(i,k+1)
           ratio(i,k) = (ac_SLANT_DIST(i,k)*dtime*1.e4_r8)/(dz*rearth*rearth*wght(i))
 
           ac_Q = min(ac_H2O(i,k)*dtime + (state1%q(i,k,1)-qs)*ratio(i,k),ratio(i,k)*ICIWC)
@@ -192,10 +190,10 @@ contains
 
 ! modify cloud fraction
 ! by a prescribed ICIWC, we may deduce the new cloud fraction
-        
+ 
          cld(i,k) = min(1._r8, cld(i,k)+ac_Q/ICIWC)
-        
-! modify cloud ice number concentration, 
+ 
+! modify cloud ice number concentration,
 ! by assuming the particle size, the number of ice particles may be obtained
           ptend_loc%q(i,k,ixnumice) = ac_Q/particle_mass/dtime
 
@@ -203,7 +201,7 @@ contains
 ! if not persistent contrail, just add ac_H2O to state1%q(1) (vapor phase)
 
           ptend_loc%q(i,k,1) = ac_H2O(i,k)
-          
+ 
         endif
 
 
@@ -221,7 +219,7 @@ contains
 
          tv = state1%t(i,k) * (1._r8 + zvir*(state1%q(i,k,1)+ptend_loc%q(i,k,1)*dtime))
 
-         zm = zi + rog * tv * hkk       
+         zm = zi + rog * tv * hkk
          zi = zi + rog * tv * hkl
 
          ptend_loc%s(i,k) = (cpair*state1%t(i,k)+gravit*zm + state1%phis(i) - state1%s(i,k) )/dtime
@@ -230,5 +228,5 @@ contains
      enddo
 
     end subroutine ssatcontrail_d0
-   
+
 end module ssatcontrail

@@ -1965,7 +1965,6 @@ contains
                    call vert_interp_mixrat(ncol,file%nlev,pver,state(c)%pint, &
                         datain, data_out(:,:), &
                         file%p0,ps,file%hyai,file%hybi,file%dist)
-                 endif
                 else
                    call vert_interp(ncol, file%nlev, pin, state(c)%pmid, datain, data_out(:,:) )
                 endif
