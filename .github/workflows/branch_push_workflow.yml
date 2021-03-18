@@ -36,6 +36,6 @@ jobs:
     - name: Run python Github issue-closing script
       if: github.repository == 'ESCOMP/CAM' # Only run on main repo
       env:
-        ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+        ACCESS_TOKEN: ${{ secrets.WRITE_ACCESS_TOKEN }}
       run: .github/scripts/branch_pr_issue_closer.py --access_token $ACCESS_TOKEN --trigger_sha $GITHUB_SHA
 
