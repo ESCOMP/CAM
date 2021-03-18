@@ -1,5 +1,5 @@
 driver=`./xmlquery --value COMP_INTERFACE`
-if [ $driver = "mct" ];
+if [ "$driver" = "mct" ];
 then
     ./xmlchange NTASKS=-50
 else
