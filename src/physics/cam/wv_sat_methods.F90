@@ -551,12 +551,15 @@ subroutine GoffGratch_svp_water_vect(t, es, vlen)
   integer, intent(in) :: vlen
   real(r8), intent(in)  :: t(vlen)  ! Temperature in Kelvin
   real(r8), intent(out) :: es(vlen) ! SVP in Pa
+  real(r8) :: log_tboil
   integer :: i
+  ! Goff, J. A., and S. Gratch. “Low-Pressure Properties of Water from -160F
+  ! to 212F.” Trans. Am. Soc. Heat. Vent. Eng. 52 (1946): 95–121.
   ! uncertain below -70 C
-
+  log_tboil = log10(tboil)
   do i=1,vlen
      es(i) = 10._r8**(-7.90298_r8*(tboil/t(i)-1._r8)+ &
-       5.02808_r8*log10(tboil/t(i))- &
+       5.02808_r8*(log_tboil-log10(t(i)))- &
        1.3816e-7_r8*(10._r8**(11.344_r8*(1._r8-t(i)/tboil))-1._r8)+ &
        8.1328e-3_r8*(10._r8**(-3.49149_r8*(tboil/t(i)-1._r8))-1._r8)+ &
        log10(1013.246_r8))*100._r8
@@ -578,14 +581,16 @@ end function GoffGratch_svp_ice
 subroutine GoffGratch_svp_ice_vect(t, es, vlen)
   integer, intent(in) :: vlen
   real(r8), intent(in)  :: t(vlen)  ! Temperature in Kelvin
-  real(r8), intent(out) :: es(vlen)             ! SVP in Pa
+      real(r8), intent(out) :: es(vlen) ! SVP in Pa
+  real(r8) :: log_param
   integer :: i
   ! good down to -100 C
 
+  log_param = log10(6.1071_r8)
   do i=1,vlen
      es(i) = 10._r8**(-9.09718_r8*(h2otrip/t(i)-1._r8)-3.56654_r8* &
           log10(h2otrip/t(i))+0.876793_r8*(1._r8-t(i)/h2otrip)+ &
-          log10(6.1071_r8))*100._r8
+          log_param)*100._r8
   enddo
 end subroutine GoffGratch_svp_ice_vect
 
@@ -609,6 +614,9 @@ subroutine MurphyKoop_svp_water_vect(t, es, vlen)
   real(r8), intent(out) :: es(vlen)             ! SVP in Pa
   
   integer :: i
+  ! Murphy, D. M., and T. Koop. “Review of the Vapour Pressure of Ice and
+  ! Supercooled Water for Atmospheric Applications.” Q. J. R. Meteorol.
+  ! Soc. 131, no. 608 (2005): 1539–65. 10.1256/qj.04.94
   ! (good for 123 < T < 332 K)
 
   do i = 1, vlen
@@ -690,10 +698,10 @@ subroutine OldGoffGratch_svp_water_vect(t,es,vlen)
      e2(i) = -3.49149_r8*(tboil/t(i) - 1.0_r8)
      f1(i) = -7.90298_r8*(tboil/t(i) - 1.0_r8)
      f2(i) = 5.02808_r8*log10(tboil/t(i))
-     f3(i) = -1.3816_r8*(10.0_r8**e1(i) - 1.0_r8)/10000000.0_r8
-     f4(i) = 8.1328_r8*(10.0_r8**e2(i) - 1.0_r8)/1000.0_r8
+     f3(i) = -1.3816_r8*(10.0_r8**e1(i) - 1.0_r8)*1e-7_r8
+     f4(i) = 8.1328_r8*(10.0_r8**e2(i) - 1.0_r8)*1e-3_r8
      f5(i) = log10(ps(i))
-      f(i) = f1(i) + f2(i) + f3(i) + f4(i) + f5(i)
+     f(i)  = f1(i) + f2(i) + f3(i) + f4(i) + f5(i)
      es(i) = (10.0_r8**f(i))*100.0_r8
   end do
 end subroutine OldGoffGratch_svp_water_vect
