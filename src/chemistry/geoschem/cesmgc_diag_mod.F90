@@ -47,6 +47,8 @@ MODULE CESMGC_Diag_Mod
   CHARACTER(LEN=fieldname_len) :: dtchem_name(gas_pcnst) ! Chemical tendencies
   CHARACTER(LEN=16)            :: sflxnam_loc(pcnst)     ! Names of surface fluxes
 
+  INTEGER :: aer_species(gas_pcnst)
+
   ! Chemical families
   INTEGER  :: NOx_species(3)
   INTEGER  :: NOy_species(63)
@@ -151,6 +153,7 @@ CONTAINS
   USE CONSTITUENTS,        ONLY : cnst_get_ind
   USE CAM_HISTORY,         ONLY : addfld, add_default, horiz_only
   USE DRYDEP_MOD,          ONLY : depName
+  USE MO_CHEM_UTLS,        ONLY : get_spc_ndx
 !
 ! !INPUT PARAMETERS:
 !
@@ -165,9 +168,15 @@ CONTAINS
 !BOC
 !
     ! Integer
-    INTEGER                :: M, N, SM
+    INTEGER                :: M, N, K, SM
     INTEGER                :: idx
     INTEGER                :: RC
+    INTEGER                :: bulkaero_species(20)
+    INTEGER                :: id_so4, id_nh4no3
+    INTEGER                :: id_dst01, id_dst02, id_dst03, id_dst04
+    INTEGER                :: id_sslt01, id_sslt02, id_sslt03, id_sslt04
+    INTEGER                :: id_soa,  id_oc1, id_oc2, id_cb1, id_cb2
+    INTEGER                :: id_soam,id_soai,id_soat,id_soab,id_soax
 
     ! Logical
     LOGICAL                :: Found
@@ -196,6 +205,45 @@ CONTAINS
     ! Assume a successful return until otherwise
     RC                      = GC_SUCCESS
 
+    id_dst01   = get_spc_ndx( 'DST01' )
+    id_dst02   = get_spc_ndx( 'DST02' )
+    id_dst03   = get_spc_ndx( 'DST03' )
+    id_dst04   = get_spc_ndx( 'DST04' )
+    id_sslt01  = get_spc_ndx( 'SSLT01' )
+    id_sslt02  = get_spc_ndx( 'SSLT02' )
+    id_sslt03  = get_spc_ndx( 'SSLT03' )
+    id_sslt04  = get_spc_ndx( 'SSLT04' )
+    id_soa     = get_spc_ndx( 'SOA' )
+    id_so4     = get_spc_ndx( 'SO4' )
+    id_oc1     = get_spc_ndx( 'OC1' )
+    id_oc2     = get_spc_ndx( 'OC2' )
+    id_cb1     = get_spc_ndx( 'CB1' )
+    id_cb2     = get_spc_ndx( 'CB2' )
+    id_nh4no3  = get_spc_ndx( 'NH4NO3' )
+    id_soam    = get_spc_ndx( 'SOAM' )
+    id_soai    = get_spc_ndx( 'SOAI' )
+    id_soat    = get_spc_ndx( 'SOAT' )
+    id_soab    = get_spc_ndx( 'SOAB' )
+    id_soax    = get_spc_ndx( 'SOAX' )
+
+    bulkaero_species(:) = -1
+    bulkaero_species(1:20) = (/ id_dst01, id_dst02, id_dst03, id_dst04, &
+                                id_sslt01, id_sslt02, id_sslt03, id_sslt04, &
+                                id_soa, id_so4, id_oc1, id_oc2, id_cb1, id_cb2, id_nh4no3, &
+                                id_soam,id_soai,id_soat,id_soab,id_soax /)
+    aer_species(:) = -1
+    n = 1
+    do m = 1,gas_pcnst
+       k=0
+       if ( any(bulkaero_species(:)==m) ) k=1
+       if ( k==0 ) k = index(trim(solsym(m)), '_a')
+       if ( k==0 ) k = index(trim(solsym(m)), '_c')
+       if ( k>0 ) then ! must be aerosol species
+          aer_species(n) = m
+          n = n+1
+       endif
+    enddo
+
     CALL Addfld( 'MASS', (/ 'lev' /), 'A', 'kg', 'Mass of grid box' )
     CALL Addfld( 'AREA', horiz_only,  'A', 'm2', 'Area of grid box' )
     CALL Addfld( 'HEIGHT', (/ 'ilev' /),'A','m', 'Geopotential height above surface at interfaces' )
@@ -203,17 +251,7 @@ CONTAINS
     ! Note that constituents are already output by default
     ! Add all species as output fields if desired
     DO N = 1, gas_pcnst
-       M = map2chm(N)
-       IF ( M > 0 ) THEN
-          ! It's a GEOS-Chem species
-          SpcName = to_upper(TRIM(solsym(N)))
-          CALL AddFld( TRIM(SpcName), (/ 'lev' /), 'A', 'mol/mol', &
-             TRIM(SpcName)//' volume mixing ratio')
-          CALL AddFld( TRIM(SpcName)//'_SRF', horiz_only, 'A', 'mol/mol', &
-             TRIM(SpcName)//' in bottom layer')
-          IF (TRIM(SpcName) == 'O3') CALL Add_Default( TRIM(SpcName), 2, ' ' )
-       ELSE
-          ! MAM aerosols
+       IF ( ANY( aer_species == N ) ) THEN
           SpcName = TRIM(solsym(N))
           unit_basename = 'kg'
           IF ( SpcName(1:3) == 'num' ) unit_basename = ' 1'
@@ -221,6 +259,13 @@ CONTAINS
              TRIM(SpcName)//' concentration' )
           CALL AddFld( TRIM(SpcName)//'_SRF', horiz_only, 'A', unit_basename//'/kg', &
              TRIM(SpcName)//' in bottom layer' )
+       ELSE
+          M = map2chm(N)
+          SpcName = TRIM(solsym(N))
+          CALL AddFld( TRIM(SpcName), (/ 'lev' /), 'A', 'mol/mol', &
+             TRIM(SpcName)//' volume mixing ratio')
+          CALL AddFld( TRIM(SpcName)//'_SRF', horiz_only, 'A', 'mol/mol', &
+             TRIM(SpcName)//' in bottom layer')
        ENDIF
     ENDDO
 
@@ -889,19 +934,18 @@ CONTAINS
 
     DO N = 1, gas_pcnst
        M = map2chm(N)
-       IF ( M > 0 ) THEN
-          ! It's a GEOS-Chem species
-          SpcName = to_upper(TRIM(solsym(N)))
-       ELSE
-          ! MAM aerosols
-          SpcName = TRIM(solsym(N))
-       ENDIF
+       SpcName = TRIM(solsym(N))
        outTmp = 0.0e+00_r8
        IF ( adv_mass(N) > 0.0e+00_r8 .AND. M /= 0 .AND. hist_fld_active(TRIM(SpcName)) ) THEN
           IF ( M > 0 ) THEN
+             ! mol/mol
              outTmp(:nY,:) = REAL(State_Chm%Species(1,:nY,nZ:1:-1,M),r8) * MWDry / adv_mass(N)
-          ELSE
+          ELSEIF ( ANY( aer_species == N ) ) THEN
+             ! kg/kg
              outTmp(:nY,:) = state%q(:nY,:nZ,-M)
+          ELSE
+             ! mol/mol
+             outTmp(:nY,:) = state%q(:nY,:nZ,-M) * MWDry / adv_mass(N)
           ENDIF
           CALL OutFld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
           CALL OutFld( TRIM(SpcName)//'_SRF', outTmp(:nY,nZ), nY, LCHNK )
