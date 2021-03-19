@@ -78,7 +78,8 @@ def buildcpp(case):
     #     other unstructured dycores?
     match = re.match(r'ne[0-9]', atm_grid)
     if match:
-        case.set_value('VECT_MAP', 'cart3d')
+        if (comp_interface == 'mct'):
+            case.set_value('VECT_MAP', 'cart3d')
 
     # if need to build - then construct configure command
     config_opts = ["-s", "-fc_type", compiler, "-dyn", cam_dycore,
