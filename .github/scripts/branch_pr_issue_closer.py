@@ -299,15 +299,15 @@ def _main_prog():
                     #so set the issue number to one that will never be found:
                     issue_num = -9999
 
-            #Check that number is actually for an issue (as opposed to a PR):
-            if issue_num in open_issues:
-                #Add issue number to "close issues" list:
-                close_issues.append(issue_num)
-            elif issue_num in open_pulls:
-                #If in fact a PR, then add to PR list:
+            #Check if number is actually for a PR (as opposed to an issue):
+            if issue_num in open_pulls:
+                #Add PR number to "close pulls" list:
                 close_pulls.append(issue_num)
+            elif issue_num in open_issues:
+                #If in fact an issue, then add to "close issues" list:
+                close_issues.append(issue_num)
 
-    #If no issue numbers are present after any of the keywords, then exit script:
+    #If no issue or PR numbers are present after any of the keywords, then exit script:
     if not close_issues and not close_pulls:
         endmsg = "No open issue or PR numbers were found in the merged PR message.  Thus there is nothing to close."
         end_script(endmsg)
