@@ -106,6 +106,7 @@ use mo_tracname,       only:  solsym
 use physconst,         only:  gravit, mwdry, rair
 use cam_abortutils,    only:  endrun
 use spmd_utils,        only:  iam, masterproc
+use mo_chem_utls,      only:  utls_chem_is
 
 
 implicit none
@@ -260,7 +261,11 @@ implicit none
 ! set gas species indices
    call cnst_get_ind( 'H2SO4', l_so4g, .false. )
    call cnst_get_ind( 'NH3',   l_nh4g, .false. )
-   call cnst_get_ind( 'MSA',   l_msag, .false. )
+   if ( .not. utls_chem_is('GEOS-Chem') ) then
+      call cnst_get_ind( 'MSA',   l_msag, .false. )
+   else
+      l_msag = 0
+   endif
    l_so4g = l_so4g - loffset
    l_nh4g = l_nh4g - loffset
    l_msag = l_msag - loffset
@@ -590,7 +595,6 @@ implicit none
             end do
             mw_poa_host = 12.0_r8
             mw_soa_host = 250.0_r8
-
             call modal_aero_soaexch( deltat, t(i,k), pmid(i,k), &
                  niter, niter_max, ntot_amode, ntot_soamode, npoa, nsoa, &
                  mw_poa_host, mw_soa_host, &
