@@ -494,6 +494,8 @@ contains
        else
           call shr_sys_abort('single_column_lnd_domainfile cannot be null for single column mode')
        end if
+    else
+       single_column = .false.
     end if
 
     ! aqua planet input
