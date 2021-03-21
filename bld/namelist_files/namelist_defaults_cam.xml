@@ -42,9 +42,9 @@
 <ncdata nlev="30" analytic_ic="1" >atm/cam/inic/cam_vcoords_L30_c180105.nc</ncdata>
 <ncdata nlev="32" analytic_ic="1" >atm/cam/inic/cam_vcoords_L32_c180105.nc</ncdata>
 
-<!-- Vertical coordinates and grid only -->
-<ncdata hgrid="mpasa480" nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa480_L32_v6.1.grid_c190924.nc</ncdata>
-<ncdata hgrid="mpasa120" nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa120_L32_topo_grid_c201022.nc</ncdata>
+<!-- Vertical/Horizontal coordinates only - MPAS initial files for analytic cases-->
+<ncdata hgrid="mpasa480" nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa480_L32_notopo_coords_c201125.nc</ncdata>
+<ncdata hgrid="mpasa120" nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa120_L32_topo_coords_c201022.nc</ncdata>
 
 <!-- Files with initial conditions -->
 <ncdata dyn="fv"  hgrid="0.23x0.31" nlev="26" ic_ymd="101"      >atm/cam/inic/fv/cami_0000-01-01_0.23x0.31_L26_c100513.nc</ncdata>
@@ -401,9 +401,9 @@
 <VOLC_MMR                        rad="camrt">atm/cam/physprops/volc_camRT_byradius_sigma1.6_c130724.nc</VOLC_MMR>
 <VOLC_MMR chem="none"            rad="camrt">atm/cam/physprops/sulfuricacid_cam3_c080918.nc</VOLC_MMR>
 <VOLC_MMR rad="rrtmg">atm/cam/physprops/volc_camRRTMG_byradius_sigma1.6_c130724.nc</VOLC_MMR>
-<VOLC_MMR1 rad="rrtmg">atm/cam/physprops/volc_camRRTMG_byradius_sigma1.6_mode1_c170214.nc</VOLC_MMR1>
-<VOLC_MMR2 rad="rrtmg">atm/cam/physprops/volc_camRRTMG_byradius_sigma1.6_mode2_c170214.nc</VOLC_MMR2>
-<VOLC_MMR3 rad="rrtmg">atm/cam/physprops/volc_camRRTMG_byradius_sigma1.2_mode3_c170214.nc</VOLC_MMR3>
+<VOLC_MMR1 rad="rrtmg">atm/cam/physprops/volc_camRRTMG_byradius_sigma1.6_mode1_c210211.nc</VOLC_MMR1>
+<VOLC_MMR2 rad="rrtmg">atm/cam/physprops/volc_camRRTMG_byradius_sigma1.6_mode2_c210211.nc</VOLC_MMR2>
+<VOLC_MMR3 rad="rrtmg">atm/cam/physprops/volc_camRRTMG_byradius_sigma1.2_mode3_c210211.nc</VOLC_MMR3>
 
 <!-- Modal optics calculations -->
 <mam3_mode1_file rad="rrtmg">atm/cam/physprops/mam4_mode1_rrtmg_aeronetdust_c141106.nc</mam3_mode1_file>
@@ -608,7 +608,7 @@
 <solar_wind_data_file>atm/waccm/solar/solar_wind_imf_OMNI_WACCMX_2000001-2017365_c180731.nc</solar_wind_data_file>
 
 <!-- nudged QBO  -->
-<qbo_forcing_file>atm/waccm/qbo/qbocyclic28months.nc</qbo_forcing_file>
+<qbo_forcing_file>atm/waccm/qbo/qbocoefficients_c151023.nc</qbo_forcing_file>
 
 <!-- Gravity wave settings for WACCM -->
 <effgw_oro>0.125D0</effgw_oro>
