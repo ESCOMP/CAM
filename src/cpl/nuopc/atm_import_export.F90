@@ -348,7 +348,7 @@ contains
 
        mod2med_areacor(:) = 1._r8
        med2mod_areacor(:) = 1._r8
-       
+
     else
 
        ! Determine areas for regridding
@@ -1199,7 +1199,7 @@ contains
     type(ESMF_Field)            :: lfield
     type(ESMF_Mesh)             :: lmesh
     integer                     :: nnodes, nelements
-    logical                     :: lexists 
+    logical                     :: lexists
     character(len=*), parameter :: subname='(atm_import_export:state_getfldptr)'
     ! ----------------------------------------------
 

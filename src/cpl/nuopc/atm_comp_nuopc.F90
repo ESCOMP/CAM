@@ -44,8 +44,8 @@ module atm_comp_nuopc
   use cam_history_support , only : fillvalue
   use filenames           , only : interpret_filename_spec
   use pio                 , only : file_desc_t, io_desc_t, var_desc_t, pio_double, pio_def_dim, PIO_MAX_NAME
-  use pio                 , only : pio_closefile, pio_put_att, pio_enddef, pio_nowrite 
-  use pio                 , only : pio_inq_dimid, pio_inq_varid, pio_inquire_dimension, pio_def_var  
+  use pio                 , only : pio_closefile, pio_put_att, pio_enddef, pio_nowrite
+  use pio                 , only : pio_inq_dimid, pio_inq_varid, pio_inquire_dimension, pio_def_var
   use pio                 , only : pio_initdecomp, pio_freedecomp
   use pio                 , only : pio_read_darray, pio_write_darray
   use pio                 , only : pio_noerr, pio_bcast_error, pio_internal_error, pio_seterrorhandling
@@ -503,7 +503,7 @@ contains
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     read(cvalue,*) aqua_planet
 
-    ! perpetual input 
+    ! perpetual input
     call NUOPC_CompAttributeGet(gcomp, name='perpetual', value=cvalue, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     read(cvalue,*) perpetual_run
@@ -1994,7 +1994,7 @@ contains
     call cam_pio_closefile(File)
 
   end subroutine cam_write_clockrest
- 
+
   !===============================================================================
   subroutine cam_set_mesh_for_single_column(scol_lon, scol_lat, mesh, rc)
 
