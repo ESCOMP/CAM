@@ -1961,7 +1961,7 @@ if ($dyn_pkg eq 'fv3') {
       $fv3core_libdir = $opts{'fv3core_libdir'};
     } else
     {
-        $fv3core_libdir = "$cam_bld/atmos_cubed_sphere";
+      $fv3core_libdir = "$cam_bld/atmos_cubed_sphere";
     }
 
     $cfg_ref->set('fv3core_libdir', "$fv3core_libdir");
