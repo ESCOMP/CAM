@@ -385,7 +385,6 @@ my $cfg_ref = Build::Config->new("$cfgdir/$config_def_file");
 # CAM root directory.
 # Check for standalone or CESM checkout
 my $cam_root = absolute_path("$cfgdir/..");
-print "DEBUG: cam_root is ",$cam_root;
 my $cam_dir = $cam_root;
 if (! -d "$cam_root/cime") {
   $cam_root = absolute_path("$cfgdir/../../..");
