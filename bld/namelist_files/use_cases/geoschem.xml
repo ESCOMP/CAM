@@ -39,6 +39,16 @@
 <nhtfrq>          0,-24,-24,-3,-1,1,-24,-120,-240 </nhtfrq>
 <avgflag_pertape>'A','A','A','A','A','A','A','A','I'</avgflag_pertape>
 
+<history_amwg>.true.</history_amwg>
+<history_aerosol>.false.</history_aerosol>
+<history_carma>.false.</history_carma>
+<history_chemistry>.false.</history_chemistry>
+<history_chemspecies_srf>.false.</history_chemspecies_srf>
+<history_clubb>.false.</history_clubb>
+<history_waccm>.false.</history_waccm>
+<history_cesm_forcing>.false.</history_cesm_forcing>
+<history_scwaccm_forcing>.false.</history_scwaccm_forcing>
+
 <fincl1>
   'Q', 'U', 'V', 'OMEGA', 'T', 'PS',
 </fincl1>
