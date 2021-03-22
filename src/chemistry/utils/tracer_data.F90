@@ -114,7 +114,7 @@ module tracer_data
      real(r8), pointer, dimension(:,:) :: weight0_x=>null(), weight0_y=>null()
      integer, pointer, dimension(:) :: count0_x=>null(), count0_y=>null()
      integer, pointer, dimension(:,:) :: index0_x=>null(), index0_y=>null()
-     logical :: dist = .false.
+     logical :: dist
      
      real(r8)                        :: p0
      type(var_desc_t) :: ps_id
@@ -222,6 +222,7 @@ contains
     file%fill_in_months = .false.
     file%cyclical = .false.
     file%cyclical_list = .false.
+    file%dist = .false.
 
     select case ( data_type )
     case( 'FIXED' )
@@ -751,30 +752,30 @@ contains
            endif
         endif
    
-        call mpi_bcast(file%weight_x, 1, mpi_real8 , mstrid, mpicom,ierr)
+        call mpi_bcast(file%weight_x, plon*file%nlon, mpi_real8 , mstrid, mpicom,ierr)
         if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%weight_x")
-        call mpi_bcast(file%weight_y, 1, mpi_real8 , mstrid, mpicom,ierr)
+        call mpi_bcast(file%weight_y, plat*file%nlat, mpi_real8 , mstrid, mpicom,ierr)
         if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%weight_y")
-        call mpi_bcast(file%count_x, 1, mpi_integer , mstrid, mpicom,ierr)
+        call mpi_bcast(file%count_x, plon, mpi_integer , mstrid, mpicom,ierr)
         if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%count_x")
-        call mpi_bcast(file%count_y, 1, mpi_integer , mstrid, mpicom,ierr)
+        call mpi_bcast(file%count_y, plat, mpi_integer , mstrid, mpicom,ierr)
         if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%count_y")
-        call mpi_bcast(file%index_x, 1, mpi_integer , mstrid, mpicom,ierr)
+        call mpi_bcast(file%index_x, plon*file%nlon, mpi_integer , mstrid, mpicom,ierr)
         if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%index_x")
-        call mpi_bcast(file%index_y, 1, mpi_integer , mstrid, mpicom,ierr)
+        call mpi_bcast(file%index_y, plat*file%nlat, mpi_integer , mstrid, mpicom,ierr)
         if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%index_y")
         if( file%dist ) then
-           call mpi_bcast(file%weight0_x, 1, mpi_real8 , mstrid, mpicom,ierr)
+           call mpi_bcast(file%weight0_x, plon*file%nlon, mpi_real8 , mstrid, mpicom,ierr)
            if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%weight0_x")
-           call mpi_bcast(file%weight0_y, 1, mpi_real8 , mstrid, mpicom,ierr)
+           call mpi_bcast(file%weight0_y,  plat*file%nlat, mpi_real8 , mstrid, mpicom,ierr)
            if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%weight0_y")
-           call mpi_bcast(file%count0_x, 1, mpi_integer , mstrid, mpicom,ierr)
+           call mpi_bcast(file%count0_x, plon, mpi_integer , mstrid, mpicom,ierr)
            if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%count0_x")
-           call mpi_bcast(file%count0_y, 1, mpi_integer , mstrid, mpicom,ierr)
+           call mpi_bcast(file%count0_y, plon, mpi_integer , mstrid, mpicom,ierr)
            if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%count0_y")
-           call mpi_bcast(file%index0_x, 1, mpi_integer , mstrid, mpicom,ierr)
+           call mpi_bcast(file%index0_x, plon*file%nlon, mpi_integer , mstrid, mpicom,ierr)
            if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%index0_x")
-           call mpi_bcast(file%index0_y, 1, mpi_integer , mstrid, mpicom,ierr)
+           call mpi_bcast(file%index0_y,  plat*file%nlat, mpi_integer , mstrid, mpicom,ierr)
            if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%index0_y")
         endif
     endif
