@@ -1961,7 +1961,7 @@ if ($dyn_pkg eq 'fv3') {
       $fv3core_libdir = $opts{'fv3core_libdir'};
     } else
     {
-      $fv3core_libdir = "$cam_bld/atmos_cubed_sphere";
+	$fv3core_libdir = "$cam_bld/atmos_cubed_sphere";
     }
 
     $cfg_ref->set('fv3core_libdir', "$fv3core_libdir");
@@ -2076,7 +2076,6 @@ sub write_filepath
     my $spmd          = $cfg_ref->get('spmd');
     my $offline_drv   = $cfg_ref->get('offline_drv');
     my $inic_val      = $cfg_ref->get('analytic_ic');
-    my $cpl           = $cfg_ref->get('cpl');
 
     # Root directory
     my $camsrcdir = $cfg_ref->get('cam_dir');
