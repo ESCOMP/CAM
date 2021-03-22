@@ -761,7 +761,10 @@ subroutine qsat_vect(t, p, es, qs, vlen, gam, dqsdt, enthalpy)
 
   call estblf_vect(t, es, vlen)
 
+  !$acc data copyin (es,p) &
+  !$acc      copyout(qs)
   call svp_to_qsat_vect(es, p, qs, vlen)
+  !$acc end data
 
   ! Ensures returned es is consistent with limiters on qs.
   do i = 1, vlen
@@ -814,7 +817,10 @@ subroutine qsat_2D(t, p, es, qs, dim1, dim2, gam, dqsdt, enthalpy)
 
   call estblf_vect(t, es, vlen)
 
+  !$acc data copyin (es,p) &
+  !$acc      copyout(qs)
   call svp_to_qsat_vect(es, p, qs, vlen)
+  !$acc end data
 
   ! Ensures returned es is consistent with limiters on qs.
   do i = 1, dim1
