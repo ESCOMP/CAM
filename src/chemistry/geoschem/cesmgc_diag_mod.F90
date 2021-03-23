@@ -45,7 +45,6 @@ MODULE CESMGC_Diag_Mod
   CHARACTER(LEN=fieldname_len) :: wetdep_name(gas_pcnst) ! Wet deposition tendencies
   CHARACTER(LEN=fieldname_len) :: wtrate_name(gas_pcnst) ! Column tendencies for wet dep
   CHARACTER(LEN=fieldname_len) :: dtchem_name(gas_pcnst) ! Chemical tendencies
-  CHARACTER(LEN=16)            :: sflxnam_loc(pcnst)     ! Names of surface fluxes
 
   INTEGER :: aer_species(gas_pcnst)
 
@@ -187,16 +186,26 @@ CONTAINS
     INTEGER                :: id_sslt01, id_sslt02, id_sslt03, id_sslt04
     INTEGER                :: id_soa,  id_oc1, id_oc2, id_cb1, id_cb2
     INTEGER                :: id_soam,id_soai,id_soat,id_soab,id_soax
-    integer :: id_bry, id_cly 
+    INTEGER                :: id_bry, id_cly 
+    INTEGER                :: history_budget_histfile_num    ! output history file number
+                                                             ! for budget fields
 
     ! Logical
     LOGICAL                :: Found
-    LOGICAL                :: history_aerosol      ! Output the MAM aerosol tendencies
+    LOGICAL                :: history_aerosol                ! Output the MAM aerosol
+                                                             ! tendencies
     LOGICAL                :: history_chemistry
     LOGICAL                :: history_cesm_forcing
     LOGICAL                :: history_scwaccm_forcing
-    LOGICAL                :: history_chemspecies_srf ! output the chemistry constituents species in the surface layer
+    LOGICAL                :: history_chemspecies_srf        ! Output the chemistry
+                                                             ! constituents species
+                                                             ! in the surface layer
     LOGICAL                :: history_dust
+    LOGICAL                :: history_budget                 ! output tendencies and state
+                                                             ! variables for CAM
+                                                             ! temperature, water vapor, 
+                                                             ! cloud ice and cloud
+                                                             ! liquid budgets.
 
     ! Strings
     CHARACTER(LEN=255)     :: SpcName
@@ -222,12 +231,14 @@ CONTAINS
     ! Assume a successful return until otherwise
     RC                      = GC_SUCCESS
 
-    CALL phys_getopts( history_aerosol_out         = history_aerosol,         &
-                       history_chemistry_out       = history_chemistry,       &
-                       history_chemspecies_srf_out = history_chemspecies_srf, &
-                       history_cesm_forcing_out    = history_cesm_forcing,    &
-                       history_scwaccm_forcing_out = history_scwaccm_forcing, &
-                       history_dust_out            = history_dust )
+    CALL phys_getopts( history_aerosol_out             = history_aerosol,             &
+                       history_chemistry_out           = history_chemistry,           &
+                       history_chemspecies_srf_out     = history_chemspecies_srf,     &
+                       history_budget_out              = history_budget ,             &
+                       history_budget_histfile_num_out = history_budget_histfile_num, &
+                       history_cesm_forcing_out        = history_cesm_forcing,        &
+                       history_scwaccm_forcing_out     = history_scwaccm_forcing,     &
+                       history_dust_out                = history_dust )
 
     id_no3     = get_spc_ndx( 'NO3' )
     id_o3      = get_spc_ndx( 'O3' )
@@ -386,7 +397,6 @@ CONTAINS
        ENDDO
     ENDIF
 
-    sflxnam_loc(:) = ''
     ! Chemical tendencies and surface fluxes
     DO N = 1, gas_pcnst
        IF ( map2chm(N) > 0 ) THEN
@@ -403,21 +413,30 @@ CONTAINS
        SpcName = TRIM(solsym(N))
        CALL cnst_get_ind( SpcName, M, abort=.false. )
        IF ( M > 0 ) THEN
-          IF (sflxnam(M)(3:5) == 'num') then  ! name is in the form of "SF****"
+          IF (sflxnam(M)(3:5) == 'num') THEN  ! name is in the form of "SF****"
              unit_basename = ' 1'
           ELSE
              unit_basename = 'kg'
           ENDIF
-          IF ( map2chm(N) > 0 ) THEN
-             sflxnam_loc(M) = to_upper(sflxnam(M))
-          ELSE
-             sflxnam_loc(M) = sflxnam(M)
-          ENDIF
-          SpcName = sflxnam_loc(M)
+          SpcName = sflxnam(M)
           CALL Addfld ( TRIM(SpcName), horiz_only, 'A',  unit_basename//'/m2/s', &
              TRIM(solsym(N))//' surface flux')
+          IF ( history_aerosol .OR. history_chemistry ) THEN 
+             CALL Add_Default( TRIM(SpcName), 1, ' ' )
+          ENDIF
+
+          IF ( history_cesm_forcing ) THEN
+             IF ( TRIM(SpcName(3:)) == 'NO' .OR. TRIM(SpcName(3:)) == 'NH3' ) THEN
+                CALL Add_Default( TRIM(SpcName), 1, ' ' )
+             ENDIF
+          ENDIF
        ENDIF
     ENDDO
+
+    ! Add chemical tendency of water vapor to water budget output
+    IF ( history_budget ) THEN 
+      CALL Add_Default ('CT_H2O' , history_budget_histfile_num, ' ')
+    ENDIF
 
     CALL get_TagInfo( Input_Opt = Input_Opt,  &
                       tagID     = 'PHO',      &
@@ -873,6 +892,9 @@ CONTAINS
     CALL Addfld( 'RAD_PSC',      (/ 'lev' /), 'I', 'cm',      'PSC aerosol radius' )
     CALL Addfld( 'SAD_TROP',     (/ 'lev' /), 'I', 'cm2/cm3', 'Tropospheric aerosol SAD' )
     CALL Addfld( 'SAD_AERO',     (/ 'lev' /), 'I', 'cm2/cm3', 'Aerosol surface area density' )
+    IF ( history_cesm_forcing ) THEN
+       CALL Add_Default( 'SAD_AERO', 8, ' ' )
+    ENDIF
     CALL Addfld( 'REFF_AERO',    (/ 'lev' /), 'I', 'cm',      'Aerosol effective radius')
     CALL Addfld( 'SULF_TROP',    (/ 'lev' /), 'I', 'cm2/cm3', 'Tropospheric sulfate area density')
 
@@ -1426,7 +1448,7 @@ CONTAINS
     ! ===============================================
 
     DO N = iFirstCnst, pcnst
-       SpcName = TRIM(sflxnam_loc(N))
+       SpcName = TRIM(sflxnam(N))
        IF ( TRIM(SpcName) == '' ) CYCLE
        IF ( .NOT. hist_fld_active(TRIM(SpcName)) ) CYCLE
        CALL OutFld( TRIM(SpcName), cam_in%cflx(:nY,N), nY, LCHNK )
