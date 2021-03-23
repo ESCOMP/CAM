@@ -1,0 +1,8 @@
+mfilt=1,1,1,1,1,1
+ndens=1,1,1,1,1,1
+nhtfrq=9,9,9,9,9,9
+inithist='ENDOFRUN'
+aircraft_datapath ='$DIN_LOC_ROOT/atm/cam/ggas'
+aircraft_specifier              =
+ 'ac_H2O         ->   ac_H2O_filelist_monthly_2006.txt'
+ 'ac_SLANT_DIST  ->   ac_SLANT_DIST_filelist_monthly_2006.txt'
