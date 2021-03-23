@@ -51,7 +51,7 @@ MODULE CESMGC_Diag_Mod
 
   ! Chemical families
   INTEGER  :: NOx_species(3)
-  INTEGER  :: NOy_species(63)
+  INTEGER  :: NOy_species(62)
   INTEGER  :: HOx_species(4)
   INTEGER  :: ClOx_species(6)
   INTEGER  :: ClOy_species(11)
@@ -63,7 +63,7 @@ MODULE CESMGC_Diag_Mod
   INTEGER  :: NHx_species(2)
   INTEGER  :: TOTH_species(3)
   REAL(r8) :: NOx_MWs(3)
-  REAL(r8) :: NOy_MWs(64)
+  REAL(r8) :: NOy_MWs(62)
   REAL(r8) :: HOx_MWs(4)
   REAL(r8) :: ClOx_MWs(6)
   REAL(r8) :: ClOy_MWs(11)
@@ -92,7 +92,7 @@ MODULE CESMGC_Diag_Mod
              i_MACRNO2, i_MCRHN, i_MCRHNB, i_MENO3, i_MONITS, i_MONITU, &
              i_MPAN, i_MPN, i_MVKN, i_N2O5, i_NO3, i_NPRNO3, i_OLND,    &
              i_OLNN, i_PAN, i_PPN, i_PRN1, i_PROPNN, i_PRPN, i_R4N1,    &
-             i_R4N2, i_HONIT, i_IONITA, i_NIT, i_NITs, i_NH4
+             i_R4N2, i_HONIT, i_IONITA, i_NIT, i_NITs
   ! HOx
   INTEGER :: i_H, i_OH, i_HO2, i_H2O2
   ! ClOx
@@ -114,9 +114,18 @@ MODULE CESMGC_Diag_Mod
   ! SOx
   INTEGER :: i_SO2, i_SO4
   ! NHx
-  INTEGER :: i_NH3 !NH4 already defined in NOy_species
+  INTEGER :: i_NH3, i_NH4
   ! TOTH
   INTEGER :: i_CH4, i_H2O, i_H2
+
+
+  ! Index in solsym
+  integer :: id_no,id_no3
+  integer :: id_cfc11,id_cfc12
+  integer :: id_ch4,id_h2o
+  integer :: id_o,id_o2,id_h,id_n2o
+  integer :: id_co2,id_o3,id_oh,id_ho2,id_so4_a1,id_so4_a2,id_so4_a3
+  integer :: id_num_a2,id_num_a3,id_dst_a3,id_ncl_a3
 !
 ! !REVISION HISTORY:
 !  28 Oct 2020 - T. M. Fritz   - Initial version
@@ -152,6 +161,7 @@ CONTAINS
   USE CONSTITUENTS,        ONLY : cnst_name, sflxnam
   USE CONSTITUENTS,        ONLY : cnst_get_ind
   USE CAM_HISTORY,         ONLY : addfld, add_default, horiz_only
+  USE PHYS_CONTROL,        ONLY : phys_getopts
   USE DRYDEP_MOD,          ONLY : depName
   USE MO_CHEM_UTLS,        ONLY : get_spc_ndx
 !
@@ -177,9 +187,16 @@ CONTAINS
     INTEGER                :: id_sslt01, id_sslt02, id_sslt03, id_sslt04
     INTEGER                :: id_soa,  id_oc1, id_oc2, id_cb1, id_cb2
     INTEGER                :: id_soam,id_soai,id_soat,id_soab,id_soax
+    integer :: id_bry, id_cly 
 
     ! Logical
     LOGICAL                :: Found
+    LOGICAL                :: history_aerosol      ! Output the MAM aerosol tendencies
+    LOGICAL                :: history_chemistry
+    LOGICAL                :: history_cesm_forcing
+    LOGICAL                :: history_scwaccm_forcing
+    LOGICAL                :: history_chemspecies_srf ! output the chemistry constituents species in the surface layer
+    LOGICAL                :: history_dust
 
     ! Strings
     CHARACTER(LEN=255)     :: SpcName
@@ -205,6 +222,38 @@ CONTAINS
     ! Assume a successful return until otherwise
     RC                      = GC_SUCCESS
 
+    CALL phys_getopts( history_aerosol_out         = history_aerosol,         &
+                       history_chemistry_out       = history_chemistry,       &
+                       history_chemspecies_srf_out = history_chemspecies_srf, &
+                       history_cesm_forcing_out    = history_cesm_forcing,    &
+                       history_scwaccm_forcing_out = history_scwaccm_forcing, &
+                       history_dust_out            = history_dust )
+
+    id_no3     = get_spc_ndx( 'NO3' )
+    id_o3      = get_spc_ndx( 'O3' )
+    id_oh      = get_spc_ndx( 'OH' )
+    id_ho2     = get_spc_ndx( 'HO2' )
+    id_so4_a1  = get_spc_ndx( 'so4_a1' )
+    id_so4_a2  = get_spc_ndx( 'so4_a2' )
+    id_so4_a3  = get_spc_ndx( 'so4_a3' )
+    id_num_a2  = get_spc_ndx( 'num_a2' )
+    id_num_a3  = get_spc_ndx( 'num_a3' )
+    id_dst_a3  = get_spc_ndx( 'dst_a3' )
+    id_ncl_a3  = get_spc_ndx( 'ncl_a3' )
+    id_co2     = get_spc_ndx( 'CO2' )
+    id_no      = get_spc_ndx( 'NO' )
+    id_h       = get_spc_ndx( 'H' )
+    id_o       = get_spc_ndx( 'O' )
+    id_o2      = get_spc_ndx( 'O2' )
+    id_ch4     = get_spc_ndx( 'CH4' )
+    id_h2o     = get_spc_ndx( 'H2O' )
+    id_n2o     = get_spc_ndx( 'N2O' )
+    id_cfc11   = get_spc_ndx( 'CFC11' )
+    id_cfc12   = get_spc_ndx( 'CFC12' )
+
+    id_bry     = get_spc_ndx( 'BRY' )
+    id_cly     = get_spc_ndx( 'CLY' )
+
     id_dst01   = get_spc_ndx( 'DST01' )
     id_dst02   = get_spc_ndx( 'DST02' )
     id_dst03   = get_spc_ndx( 'DST03' )
@@ -214,7 +263,7 @@ CONTAINS
     id_sslt03  = get_spc_ndx( 'SSLT03' )
     id_sslt04  = get_spc_ndx( 'SSLT04' )
     id_soa     = get_spc_ndx( 'SOA' )
-    id_so4     = get_spc_ndx( 'SO4' )
+    id_so4     = get_spc_ndx( 'SO4' ); id_so4 = -1 ! Don't pick up GEOS-Chem's SO4!
     id_oc1     = get_spc_ndx( 'OC1' )
     id_oc2     = get_spc_ndx( 'OC2' )
     id_cb1     = get_spc_ndx( 'CB1' )
@@ -267,6 +316,49 @@ CONTAINS
           CALL AddFld( TRIM(SpcName)//'_SRF', horiz_only, 'A', 'mol/mol', &
              TRIM(SpcName)//' in bottom layer')
        ENDIF
+       IF ( ( N /= id_cly ) .AND. ( N /= id_bry ) ) THEN
+          IF ( history_aerosol .OR. history_chemistry ) THEN
+             CALL Add_Default( TRIM(SpcName), 1, ' ' )
+          ENDIF
+          IF ( history_chemspecies_srf ) THEN
+             CALL Add_Default( TRIM(SpcName)//'_SRF', 1, ' ' )
+          ENDIF
+       ENDIF
+
+       IF ( history_cesm_forcing ) THEN
+          IF ( N == id_o3     ) CALL Add_Default( TRIM(SpcName), 1, ' ')
+          IF ( N == id_oh     ) CALL Add_Default( TRIM(SpcName), 1, ' ')
+          IF ( N == id_no3    ) CALL Add_Default( TRIM(SpcName), 1, ' ')
+          IF ( N == id_ho2    ) CALL Add_Default( TRIM(SpcName), 1, ' ')
+
+          IF ( N == id_o3     ) CALL Add_Default( TRIM(SpcName), 8, ' ')
+          IF ( N == id_so4_a1 ) CALL Add_Default( TRIM(SpcName), 8, ' ')
+          IF ( N == id_so4_a2 ) CALL Add_Default( TRIM(SpcName), 8, ' ')
+          IF ( N == id_so4_a3 ) CALL Add_Default( TRIM(SpcName), 8, ' ')
+
+          IF ( N == id_num_a2 ) CALL Add_Default( TRIM(SpcName), 8, ' ')
+          IF ( N == id_num_a3 ) CALL Add_Default( TRIM(SpcName), 8, ' ')
+          IF ( N == id_dst_a3 ) CALL Add_Default( TRIM(SpcName), 8, ' ')
+          IF ( N == id_ncl_a3 ) CALL Add_Default( TRIM(SpcName), 8, ' ')
+
+       ENDIF
+       IF ( history_scwaccm_forcing ) THEN
+          IF ( N == id_co2   ) CALL Add_Default( TRIM(SpcName), 8, ' ')
+          IF ( N == id_h     ) CALL Add_Default( TRIM(SpcName), 8, ' ')
+          IF ( N == id_no    ) CALL Add_Default( TRIM(SpcName), 8, ' ')
+          IF ( N == id_o     ) CALL Add_Default( TRIM(SpcName), 8, ' ')
+          IF ( N == id_o2    ) CALL Add_Default( TRIM(SpcName), 8, ' ')
+          IF ( N == id_o3    ) CALL Add_Default( TRIM(SpcName), 8, ' ')
+          IF ( N == id_h2o   ) CALL Add_Default( TRIM(SpcName), 1, ' ')
+          IF ( N == id_ch4   ) CALL Add_Default( TRIM(SpcName), 1, ' ')
+          IF ( N == id_n2o   ) CALL Add_Default( TRIM(SpcName), 1, ' ')
+          IF ( N == id_cfc11 ) CALL Add_Default( TRIM(SpcName), 1, ' ')
+          IF ( N == id_cfc12 ) CALL Add_Default( TRIM(SpcName), 1, ' ')
+       ENDIF
+
+       IF (history_dust .AND. (index(TRIM(SpcName),'dst_') > 0)) THEN
+          CALL Add_Default( TRIM(SpcName), 1, ' ')
+       ENDIF
     ENDDO
 
     IF ( Input_Opt%LDryD ) THEN
@@ -285,6 +377,9 @@ CONTAINS
           SpcName = 'DF_'//to_upper(TRIM(SpcInfo%Name))
           CALL AddFld( TRIM(SpcName), horiz_only, 'A', 'kg/m2/s', &
              TRIM(SpcName)//' dry deposition flux')
+          IF ( history_chemistry ) THEN
+             CALL Add_Default( TRIM(SpcName), 1, ' ' )
+          ENDIF
 
           ! Free pointer
           SpcInfo => NULL()
@@ -547,7 +642,7 @@ CONTAINS
                       i_MCRHNB, i_MENO3, i_MONITS, i_MONITU, i_MPAN, i_MPN,&
                       i_MVKN, i_N2O5, i_NO3, i_NPRNO3, i_OLND, i_OLNN,     &
                       i_PAN, i_PPN, i_PRN1, i_PROPNN, i_PRPN, i_R4N1,      &
-                      i_R4N2, i_HONIT, i_IONITA, i_NIT, i_NITs, i_NH4 /)
+                      i_R4N2, i_HONIT, i_IONITA, i_NIT, i_NITs /)
     HOx_species  = (/ i_H, i_OH, i_HO2, i_H2O2 /)
     ClOx_species = (/ i_Cl, i_ClO, i_HOCl, i_Cl2, i_Cl2O2, i_OClO /)
     ClOy_species = (/ i_Cl, i_ClO, i_HOCl, i_Cl2, i_Cl2O2, i_OClO, &
