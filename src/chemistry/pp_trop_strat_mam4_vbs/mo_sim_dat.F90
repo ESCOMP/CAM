@@ -242,15 +242,17 @@
                           1621,1672,1699,1734,1776,1837,1862,1893,1917,1996, &
                           2022 /)
 
-      extfrc_lst(: 17) = (/ 'so4_a2          ','NO              ','NO2             ','SO2             ','SVOC            ', &
+      extfrc_lst(: 25) = (/ 'so4_a2          ','NO              ','NO2             ','SO2             ','SVOC            ', &
                             'pom_a1          ','pom_a4          ','so4_a1          ','CO              ','bc_a1           ', &
-                            'bc_a4           ','num_a1          ','num_a2          ','num_a4          ','OH              ', &
-                            'N               ','AOA_NH          ' /)
+                            'bc_a4           ','num_a1          ','num_a2          ','num_a4          ','CH3COCH3        ', &
+                            'CH3CHO          ','BIGALK          ','C2H6            ','C3H8            ','CH2O            ', &
+                            'C3H6            ','MACR            ','OH              ','N               ','AOA_NH          ' /)
 
-      frc_from_dataset(: 17) = (/ .true., .true., .true., .true., .true., &
+      frc_from_dataset(: 25) = (/ .true., .true., .true., .true., .true., &
                                   .true., .true., .true., .true., .true., &
-                                  .true., .true., .true., .true., .false., &
-                                  .false., .false. /)
+                                  .true., .true., .true., .true., .true., &
+                                  .true., .true., .true., .true., .true., &
+                                  .true., .true., .false., .false., .false. /)
 
       inv_lst(:  3) = (/ 'M               ', 'N2              ', 'O2              ' /)
 

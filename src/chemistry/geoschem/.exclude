@@ -18,6 +18,3 @@ tccon_ch4_mod.F90
 initialize.F90
 cleanup.F90
 main.F90
-hcoi_gc_diagn_include.H
-hcoi_gc_diagn_mod.F90
-hco_interface_gc_mod.F90

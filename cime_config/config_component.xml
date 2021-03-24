@@ -210,7 +210,7 @@
       <value compset="2000_CAM60%WCCM"   >waccm_ma_2000_cam6</value>
       <value compset="2000_CAM60%WCSC"   >waccm_sc_2000_cam6</value>
       <value compset="2000_CAM60%CCTS"   >2000_trop_strat_vbs_cam6</value>
-      <value compset="2000_CAM60%GC"     >geoschem</value>
+      <value compset="2000_CAM60%GC"     >2000_geoschem</value>
 
       <value compset="2000_CAM40_SLND_SICE_DOCN%SOMAQP">aquaplanet_cam4</value>
       <value compset="2000_CAM40_SLND_SICE_DOCN%AQP"   >aquaplanet_cam4</value>
@@ -223,7 +223,7 @@
       <value compset="2010_CAM60%CCTS"   >2010_trop_strat_vbs_cam6</value>
       <value compset="2010_CAM60%WCTS"   >waccm_tsmlt_2010_cam6</value>
       <value compset="2010_CAM60%WCSC"   >waccm_sc_2010_cam6</value>
-      <value compset="2010_CAM60%GC"     >geoschem_2010</value>
+      <value compset="2010_CAM60%GC"     >2010_geoschem</value>
 
       <value compset="AMIP_CAM50"        >1850-2005_cam5</value>
       <value compset="AMIP_CAM40"        >1850-2005_cam4</value>

@@ -6,13 +6,51 @@
 
 <gc_cheminputs>/glade/p/univ/umit0034/ExtData/CHEM_INPUTS/</gc_cheminputs>
 
-<ncdata dyn="fv"  hgrid="0.9x1.25">/glade/p/univ/umit0034/Shared/f.e20.FWAMIP.f09_f09.134.1975.009.cam.i.2010-01-01_56L_c170403.nc</ncdata>
+<bnd_topo hgrid="0.47x0.63">atm/cam/met/MERRA2/0.5x0.63/fv_0.47x0.63_nc3000_Co030_Fi001_PF_nullRR_Nsw021_MERRA2_c180612.nc</bnd_topo>
+
+<ncdata dyn="fv"  hgrid="0.9x1.25">/glade/p/univ/umit0034/Shared/GEOS-Chem/f.e20.FCSD.f09_f09_mg17.cesm2.1-exp002.001.cam.i.2005-01-01-00000_c180801.nc</ncdata>
 <bnd_topo hgrid="0.9x1.25">atm/cam/met/MERRA2/0.9x1.25/fv_0.9x1.25_nc3000_Nsw042_Nrs008_Co060_Fi001_ZR_sgh30_24km_GRNL_MERRA2_c171218.nc</bnd_topo>
 
-<bnd_topo hgrid="0.47x0.63">atm/cam/met/MERRA2/0.5x0.63/fv_0.47x0.63_nc3000_Co030_Fi001_PF_nullRR_Nsw021_MERRA2_c180612.nc</bnd_topo>
+<ncdata dyn="fv"  hgrid="1.9x2.5">/glade/p/univ/umit0034/Shared/GEOS-Chem/f.e20.FCSD.f19_f19_mg17.cesm2.1-exp002.001.cam.i.2005-01-01-00000_c180801.nc</ncdata>
+<bnd_topo hgrid="1.9x2.5">atm/cam/met/MERRA2/1.9x2.5/fv_1.9x2.5_nc3000_Nsw084_Nrs016_Co120_Fi001_ZR_GRNL_MERRA2_c190617.nc</bnd_topo>
+
+<!-- turn on clm MEGAN VOC emis -->
+<megan_specifier>
+    'ISOP = isoprene',
+    'MOH = methanol', 
+    'EOH = ethanol',
+    'CH2O = formaldehyde',
+    'ALD2 = acetaldehyde', 
+    'ACTA = acetic_acid',
+    'ACET = acetone',
+    'HCOOH = formic_acid', 
+    'HCN = hydrogen_cyanide',
+    'CO = carbon_monoxide',
+    'C2H6 = ethane',
+    'C2H4 = ethene',
+    'C3H8 = propane',
+    'ALK4 = pentane + hexane + heptane + tricyclene', 
+    'PRPE = propene + butene',
+    'TOLU = toluene',
+    'LIMO = limonene',
+    'MTPA = pinene_a + pinene_b + sabinene + carene_3',
+    'MTPO = terpinene_g + terpinene_a + terpinolene + myrcene + ocimene_al + ocimene_t_b + ocimene_c_b + thujene_a + 2met_styrene + cymene_p + cymene_o + bornene + fenchene_a + camphene + phellandrene_a + phellandrene_b'
+</megan_specifier>
 
 <met_rlx_time>50.</met_rlx_time>
 <met_fix_mass>.true.</met_fix_mass>
+
+<met_data_file dyn="fv"  hgrid="1.9x2.5">2005/MERRA2_1.9x2.5_20050101.nc</met_data_file>
+<met_data_path dyn="fv"  hgrid="1.9x2.5">atm/cam/met/MERRA2/1.9x2.5</met_data_path>
+<met_filenames_list dyn="fv"  hgrid="1.9x2.5">atm/cam/met/MERRA2/1.9x2.5/filenames_list_c20210302</met_filenames_list>
+
+<met_data_file dyn="fv"  hgrid="0.9x1.25">2005/MERRA2_0.9x1.25_20050101.nc</met_data_file>
+<met_data_path dyn="fv"  hgrid="0.9x1.25">atm/cam/met/MERRA2/0.9x1.25</met_data_path>
+<met_filenames_list dyn="fv"  hgrid="0.9x1.25">atm/cam/met/MERRA2/0.9x1.25/filenames_1975-2017_c190125.txt</met_filenames_list>
+
+<met_data_file dyn="fv"  hgrid="0.47x0.63">2010/MERRA2_0.5x0.63_20100101.nc</met_data_file>
+<met_data_path dyn="fv"  hgrid="0.47x0.63">atm/cam/met/MERRA2/0.5x0.63</met_data_path>
+<met_filenames_list dyn="fv"  hgrid="0.47x0.63">atm/cam/met/MERRA2/0.5x0.63/filenames_list_c180612</met_filenames_list>
 
 <met_data_file dyn="fv"  hgrid="0.9x1.25">2005/MERRA2_0.9x1.25_20050101.nc</met_data_file>
 <met_data_path dyn="fv"  hgrid="0.9x1.25">atm/cam/met/MERRA2/0.9x1.25</met_data_path>
@@ -62,7 +100,7 @@
 <fincl1>
          'AODDUST', 'AODDUST2', 'T', 'U', 'V', 'O3', 'OH', 'NO3', 'HO2',
          'LNO_COL_PROD', 'NO2_CLXF', 'SFNO', 'SFNH3', 'BRO',
-         'CH3CL', 'CLO', 'CO2', 'HCL', 'HO2', 'HOCL', 'H2O', 'PHIS', 'Z3',
+         'CH3CL', 'CLO', 'CO2', 'HCL', 'HO2', 'HOCL', 'PHIS', 'Z3',
          'BENZ', 'C2H6', 'C3H8', 'CCL4', 'CFC11', 'CFC113', 'CFC12',
          'CH2O', 'CH3BR', 'CH3CCL3', 'ALD2', 'CH3CL', 'ACET', 'MOH', 'CH4',
          'CO', 'H2O2', 'HCFC22', 'HNO3', 'ISOP', 'MTPA', 'N2O', 'O3',
@@ -78,8 +116,10 @@
          'IHN4', 'INO2B', 'INO2D', 'INPB', 'INPD', 'RIPA', 'RIPB', 'RIPC', 'RIPD',
          'MACR', 'MVKHP', 'MEK', 'MCRDH', 'MPAN', 'MVK', 'N', 'N2O', 'N2O5', 'ICN', 
          'NH3', 'NH4', 'NO', 'NO2', 'NO3', 'PROPNN', 'OLND', 'OLNN', 'O', 'OCLO',
-         'OCS', 'PAN', 'SO2', 'SO4', 'SOAP', 'TOLU', 'XYLE', 
+         'OCS', 'PAN', 'SO2', 'SO4', 'TOLU', 'XYLE', 
          'R4O2', 'BRO2', 'ETO2', 'A3O2', 'MCO3', 'MO2', 'HO2', 'O1D', 'OH', 
+         'TSOA0', 'TSOA1', 'TSOA2', 'TSOA3', 'ASOAN', 'ASOA1', 'ASOA2', 'ASOA3',
+         'SOAIE', 'SOAGX',
          'H2O', 'SAD_PSC', 'SAD_SULFC', 'SAD_TROP', 'SAD_AERO', 'REFF_AERO',
          'PDELDRY', 'RAD_PSC', 'RAD_SULFC',
          'HNO3_GAS', 'HNO3_STS', 'HNO3_NAT', 'NOX', 'NOY', 'CLOX', 'CLOY',
@@ -102,16 +142,16 @@
          'DF_HAC', 'DF_IEPOXA', 'DF_IEPOXB', 'DF_IEPOXD', 
          'DF_MPAN', 'DF_NH3', 'DF_NH4', 'DF_NO',
          'DF_NO2', 'DF_O3', 'DF_PAN', 'DF_SO2',
-         'DF_SOAP', 'SO2_CLXF', 'SO2_XFRC', 
-         'CO_CLXF', 'NO2_CLXF', 'LNO_PROD', 'LNO_COL_PROD', 'SOAP_CLXF', 
+         'SO2_CLXF', 'SO2_XFRC', 
+         'CO_CLXF', 'NO2_CLXF', 'LNO_PROD', 'LNO_COL_PROD',
          'SFEOH', 'SFALD2', 'SFMEK', 'SFCH2O', 'SFC2H6', 'SFC3H8', 
          'SFALK4', 'SFPRPE', 'SFBENZ', 'SFTOLU', 'SFXYLE', 
          'SFNO', 'SFACTA', 'SFDMS', 'SFMEK', 'SFSO2', 'SFNH3', 
-         'SFISOP', 'SFMTPA', 'SFMOH', 'SFACET', 'SFCO', 'SFSOAP', 
-         'MEG_ISOP', 'MEG_MTERP', 'MEG_BCARY', 'MEG_CH3OH', 'MEG_C2H5OH', 'MEG_CH2O', 
-         'MEG_CH3CHO', 'MEG_CH3COOH', 'MEG_CH3COCH3', 'MEG_HCOOH', 'MEG_HCN', 'MEG_CO',
-         'MEG_C2H6', 'MEG_C2H4', 'MEG_C3H8', 'MEG_C3H6', 'MEG_BIGALK', 'MEG_BIGENE', 
-         'MEG_TOLUENE', 'Dso4_a1CHM', 'Dso4_a2CHM', 'Dso4_a3CHM', 'DO3CHM', 'DCOCHM',
+         'SFISOP', 'SFMTPA', 'SFMOH', 'SFACET', 'SFCO',
+         'MEG_ISOP', 'MEG_MOH', 'MEG_EOH', 'MEG_CH2O', 'MEG_ALD2', 'MEG_ACTA',
+         'MEG_ACET', 'MEG_HCOOH', 'MEG_HCN', 'MEG_CO', 'MEG_C2H6', 'MEG_C2H4',
+         'MEG_C3H8', 'MEG_ALK4', 'MEG_PRPE', 'MEG_TOLU', 'MEG_LIMO', 'MEG_MTPA',
+         'MEG_MTPO', 'Dso4_a1CHM', 'Dso4_a2CHM', 'Dso4_a3CHM', 'DO3CHM', 'DCOCHM',
          'DHNO3CHM', 'DH2O2CHM', 'DO3CHM', 'DCOCHM', 'AQ_SO2', 'GS_SO2', 'SO2_CLXF',
          'MASS', 'ABSORB', 
          'Jval_O3O1D', 'Jval_NO2', 'Jval_PAN', 'Jval_H2O2', 'Jval_Cl2O2',

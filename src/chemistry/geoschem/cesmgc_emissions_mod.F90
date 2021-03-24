@@ -41,25 +41,12 @@ MODULE CESMGC_Emissions_Mod
   INTEGER :: iBC1
   INTEGER :: iBC4
   INTEGER :: iH2SO4
-  INTEGER :: iSOA11
-  INTEGER :: iSOA12
-  INTEGER :: iSOA21
-  INTEGER :: iSOA22
-  INTEGER :: iSOA31
-  INTEGER :: iSOA32
-  INTEGER :: iSOA41
-  INTEGER :: iSOA42
-  INTEGER :: iSOA51
-  INTEGER :: iSOA52
-  INTEGER :: iPOM1
-  INTEGER :: iPOM4
 
   INTEGER :: iBCPI
   INTEGER :: iBCPO
   INTEGER :: iOCPI
   INTEGER :: iOCPO
   INTEGER :: iSO4
-  INTEGER :: iSOAS
 
   ! MEGAN Emissions
   INTEGER,  ALLOCATABLE :: megan_indices_map(:) 
@@ -137,22 +124,6 @@ CONTAINS
     ! Get constituent index for NO
     CALL cnst_get_ind('NO', iNO, abort=.True.)
 
-#if defined( MODAL_AERO_4MODE )
-    ! Get constituent index for aerosols
-    CALL cnst_get_ind('soa1_a1',     iSOA11, abort=.True.)
-    CALL cnst_get_ind('soa1_a2',     iSOA12, abort=.True.)
-    CALL cnst_get_ind('soa2_a1',     iSOA21, abort=.True.)
-    CALL cnst_get_ind('soa2_a2',     iSOA22, abort=.True.)
-    CALL cnst_get_ind('soa3_a1',     iSOA31, abort=.True.)
-    CALL cnst_get_ind('soa3_a2',     iSOA32, abort=.True.)
-    CALL cnst_get_ind('soa4_a1',     iSOA41, abort=.True.)
-    CALL cnst_get_ind('soa4_a2',     iSOA42, abort=.True.)
-    CALL cnst_get_ind('soa5_a1',     iSOA51, abort=.True.)
-    CALL cnst_get_ind('soa5_a2',     iSOA52, abort=.True.)
-
-    CALL cnst_get_ind('SOAS', iSOAS,  abort=.True.)
-#endif
-
     !-----------------------------------------------------------------------
     !	... initialize the lightning module
     !-----------------------------------------------------------------------
@@ -171,41 +142,50 @@ CONTAINS
 
        DO N = 1, shr_megan_mechcomps_n
           SpcName = TRIM(shr_megan_mechcomps(N)%name)
+
           ! Special handlings for GEOS-Chem species
-          IF ( TRIM(SpcName) == 'MTERP' ) THEN
-             SpcName = 'MTPA'
-          ELSEIF ( TRIM(SpcName) == 'BCARY' ) THEN
-             SpcName = 'None'
-             MW      = 204.342600_r8 ! Taken from pp_trop_strat_mam4_vbs
-          ELSEIF ( TRIM(SpcName) == 'CH3OH' ) THEN
-             SpcName = 'MOH'
-          ELSEIF ( TRIM(SpcName) == 'C2H5OH' ) THEN
-             SpcName = 'EOH'
-          ELSEIF ( TRIM(SpcName) == 'CH3CHO' ) THEN
-             SpcName = 'ALD2'
-          ELSEIF ( TRIM(SpcName) == 'CH3COOH' ) THEN
-             SpcName = 'ACTA'
-          ELSEIF ( TRIM(SpcName) == 'CH3COCH3' ) THEN
-             SpcName = 'ACET'
-          ELSEIF ( TRIM(SpcName) == 'HCN' ) THEN
+          IF ( TRIM(SpcName) == 'HCN' ) THEN
              SpcName = 'None'
              MW      = 27.025140_r8 ! Taken from pp_trop_strat_mam4_vbs
           ELSEIF ( TRIM(SpcName) == 'C2H4' ) THEN
              SpcName = 'None'
              MW      = 28.051600_r8 ! Taken from pp_trop_strat_mam4_vbs
-          ELSEIF ( TRIM(SpcName) == 'C3H6' ) THEN
-             SpcName = 'PRPE'
-          ELSEIF ( TRIM(SpcName) == 'BIGALK' ) THEN
-             ! BIGALK = Pentane + Hexane + Heptane + Tricyclene
-             SpcName = 'ALK4'
-          ELSEIF ( TRIM(SpcName) == 'BIGENE' ) THEN
-             ! BIGENE = butene (C4H8)
-             SpcName = 'PRPE' ! Lumped >= C3 alkenes
-          ELSEIF ( TRIM(SpcName) == 'TOLUENE' ) THEN
-             SpcName = 'TOLU'
           ENDIF
+          !IF ( TRIM(SpcName) == 'MTERP' ) THEN
+          !   SpcName = 'MTPA'
+          !ELSEIF ( TRIM(SpcName) == 'BCARY' ) THEN
+          !   SpcName = 'None'
+          !   MW      = 204.342600_r8 ! Taken from pp_trop_strat_mam4_vbs
+          !ELSEIF ( TRIM(SpcName) == 'CH3OH' ) THEN
+          !   SpcName = 'MOH'
+          !ELSEIF ( TRIM(SpcName) == 'C2H5OH' ) THEN
+          !   SpcName = 'EOH'
+          !ELSEIF ( TRIM(SpcName) == 'CH3CHO' ) THEN
+          !   SpcName = 'ALD2'
+          !ELSEIF ( TRIM(SpcName) == 'CH3COOH' ) THEN
+          !   SpcName = 'ACTA'
+          !ELSEIF ( TRIM(SpcName) == 'CH3COCH3' ) THEN
+          !   SpcName = 'ACET'
+          !ELSEIF ( TRIM(SpcName) == 'HCN' ) THEN
+          !   SpcName = 'None'
+          !   MW      = 27.025140_r8 ! Taken from pp_trop_strat_mam4_vbs
+          !ELSEIF ( TRIM(SpcName) == 'C2H4' ) THEN
+          !   SpcName = 'None'
+          !   MW      = 28.051600_r8 ! Taken from pp_trop_strat_mam4_vbs
+          !ELSEIF ( TRIM(SpcName) == 'C3H6' ) THEN
+          !   SpcName = 'PRPE'
+          !ELSEIF ( TRIM(SpcName) == 'BIGALK' ) THEN
+          !   ! BIGALK = Pentane + Hexane + Heptane + Tricyclene
+          !   SpcName = 'ALK4'
+          !ELSEIF ( TRIM(SpcName) == 'BIGENE' ) THEN
+          !   ! BIGENE = butene (C4H8)
+          !   SpcName = 'PRPE' ! Lumped >= C3 alkenes
+          !ELSEIF ( TRIM(SpcName) == 'TOLUENE' ) THEN
+          !   SpcName = 'TOLU'
+          !ENDIF
 
           CALL cnst_get_ind (SpcName, megan_indices_map(N), abort=.False.)
+
           II = get_spc_ndx(SpcName)
           IF ( II > 0 ) THEN
              SpcName = TRIM(shr_megan_mechcomps(N)%name)
@@ -291,6 +271,7 @@ CONTAINS
     USE PPGRID,              ONLY : pcols, pver, begchunk
     USE CAM_HISTORY,         ONLY : outfld
     USE STRING_UTILS,        ONLY : to_upper
+    USE PHYSCONSTANTS,       ONLY : PI
 
     ! Data from CLM
     USE CAM_CPL_INDICES,     ONLY : index_x2a_Fall_flxvoc
@@ -399,13 +380,14 @@ CONTAINS
           pbuf_ik   => NULL()
           pbuf_chnk => NULL()
 
-          IF ( MINVAL(eflx(:nY,:nZ,N)) < 0.0e+00_r8 ) THEN
-             Write(iulog,*) " CESMGC_Emissions_Calc: HEMCO emission flux is negative for ", &
-                TRIM(cnst_name(N)), " with value ", MINVAL(eflx(:nY,:nZ,N)), " at ", &
-                MINLOC(eflx(:nY,:nZ,N))
-          ENDIF
+          !IF ( MINVAL(eflx(:nY,:nZ,N)) < 0.0e+00_r8 ) THEN
+          !   Write(iulog,*) " CESMGC_Emissions_Calc: HEMCO emission flux is negative for ", &
+          !      TRIM(cnst_name(N)), " with value ", MINVAL(eflx(:nY,:nZ,N)), " at ", &
+          !      MINLOC(eflx(:nY,:nZ,N))
+          !ENDIF
 
-          IF ( rootChunk .and. ( MAXVAL(eflx(:nY,:nZ,N)) > 0.0e+0_r8 ) ) THEN
+          IF ( rootChunk .AND. (iStep == 2) .AND. ( MAXVAL(eflx(:nY,:nZ,N)) > 0.0e+0_r8 ) ) THEN
+             ! Only print this once
              Write(iulog,'(a,a,a,a)') " CESMGC_Emissions_Calc: HEMCO flux ", &
                 TRIM(fldname_ns), " added to ", TRIM(cnst_name(N))
              Write(iulog,'(a,a,E16.4)') " CESMGC_Emissions_Calc: Maximum flux ", &
@@ -444,10 +426,10 @@ CONTAINS
         ! apply loss flux to surface (level nZ)
         eflx(1:NY,nZ,id_O3) = eflx(1:NY,nZ,id_O3) - pbuf_i(1:nY)
 
-        IF ( MINVAL(eflx(:nY,nZ,id_O3)) < 0.0e+00_r8 ) THEN
-           Write(iulog,*) " CESMGC_Emissions_Calc: HEMCO sfc flux after ParaNOx is negative for O3 with value ", MINVAL(eflx(:nY,:nZ,id_O3)), " at ", &
-              MINLOC(eflx(:nY,nZ,id_O3))
-        ENDIF
+        !IF ( MINVAL(eflx(:nY,nZ,id_O3)) < 0.0e+00_r8 ) THEN
+        !   Write(iulog,*) " CESMGC_Emissions_Calc: HEMCO sfc flux after ParaNOx is negative for O3 with value ", MINVAL(eflx(:nY,:nZ,id_O3)), " at ", &
+        !      MINLOC(eflx(:nY,nZ,id_O3))
+        !ENDIF
 
         IF ( rootChunk .and. ( MINVAL(pbuf_i(1:nY)) < 0.0e+0_r8 ) ) THEN
            Write(iulog,'(a,a,a,a)') " CESMGC_Emissions_Calc: HEMCO dflx(paranox) O3 added to ", TRIM(cnst_name(id_O3))
@@ -472,10 +454,10 @@ CONTAINS
 
         eflx(1:NY,nZ,id_HNO3) = eflx(1:NY,nZ,id_HNO3) - pbuf_i(1:nY)
 
-        IF ( MINVAL(eflx(:nY,nZ,id_HNO3)) < 0.0e+00_r8 ) THEN
-           Write(iulog,*) " CESMGC_Emissions_Calc: HEMCO sfc flux after ParaNOx is negative for HNO3 with value ", MINVAL(eflx(:nY,nZ,id_HNO3)), " at ", &
-              MINLOC(eflx(:nY,nZ,id_HNO3))
-        ENDIF
+        !IF ( MINVAL(eflx(:nY,nZ,id_HNO3)) < 0.0e+00_r8 ) THEN
+        !   Write(iulog,*) " CESMGC_Emissions_Calc: HEMCO sfc flux after ParaNOx is negative for HNO3 with value ", MINVAL(eflx(:nY,nZ,id_HNO3)), " at ", &
+        !      MINLOC(eflx(:nY,nZ,id_HNO3))
+        !ENDIF
 
         IF ( rootChunk .and. ( MINVAL(pbuf_i(1:nY)) < 0.0e+0_r8 ) ) THEN
            Write(iulog,'(a,a,a,a)') " CESMGC_Emissions_Calc: HEMCO dflx(paranox) HNO3 added to ", TRIM(cnst_name(id_HNO3))
@@ -487,8 +469,8 @@ CONTAINS
         pbuf_chnk => NULL()
     ENDIF
 
+#if defined( MODAL_AERO )
 
-#if defined( MODAL_AERO_4MODE )
     !-----------------------------------------------------------------------
     ! Aerosol emissions (dust + seasalt) ...
     !-----------------------------------------------------------------------
@@ -502,35 +484,25 @@ CONTAINS
     ! where all GEOS-Chem aerosols (BCPI, BCPO, OCPI, OCPO, SO4) have been
     ! replaced with the corresponding MAM aerosols
 
-    ! For SOA emission, split evently GEOS-Chem SOAS emission into each 
-    ! VBS bin.
-    eflx(:nY,:nZ,iSOA11) = eflx(:nY,:nZ,iSOAS) / 10.0e+00_r8
-    eflx(:nY,:nZ,iSOA12) = eflx(:nY,:nZ,iSOAS) / 10.0e+00_r8
-    eflx(:nY,:nZ,iSOA21) = eflx(:nY,:nZ,iSOAS) / 10.0e+00_r8
-    eflx(:nY,:nZ,iSOA22) = eflx(:nY,:nZ,iSOAS) / 10.0e+00_r8
-    eflx(:nY,:nZ,iSOA31) = eflx(:nY,:nZ,iSOAS) / 10.0e+00_r8
-    eflx(:nY,:nZ,iSOA32) = eflx(:nY,:nZ,iSOAS) / 10.0e+00_r8
-    eflx(:nY,:nZ,iSOA41) = eflx(:nY,:nZ,iSOAS) / 10.0e+00_r8
-    eflx(:nY,:nZ,iSOA42) = eflx(:nY,:nZ,iSOAS) / 10.0e+00_r8
-    eflx(:nY,:nZ,iSOA51) = eflx(:nY,:nZ,iSOAS) / 10.0e+00_r8
-    eflx(:nY,:nZ,iSOA52) = eflx(:nY,:nZ,iSOAS) / 10.0e+00_r8
-    eflx(:nY,:nZ,iSOAS)  = 0.0e+00_r8
-
 #endif
 
     ! Output fields before lightning NO emissions are applied to eflx
+    ! Make sure that we do not include surface emissions in the diagnostics!
     DO N = iFirstCnst, pcnst
        SpcName = TRIM(cnst_name(N))//'_XFRC'
+       ! Convert from kg/m2/s to molec/cm3/s
+       ! Note 1: cnst_mw is in kg/kmole
+       ! Note 2: avogad is in molecules/kmole
        CALL Outfld( TRIM(SpcName), eflx(:nY,:nZ,N) / State_Met%BXHEIGHT(1,:nY,nZ:1:-1) * 1.0E-06 / cnst_mw(N) * avogad, nY, LCHNK )
 
        SpcName = TRIM(cnst_name(N))//'_CLXF'
        ! Convert from kg/m2/s to molec/cm2/s
        ! Note 1: cnst_mw is in kg/kmole
        ! Note 2: avogad is in molecules/kmole
-       CALL Outfld( TRIM(SpcName), SUM(eflx(:nY,:nZ,N), DIM=2) * 1.0E-04 / cnst_mw(N) * avogad, nY, LCHNK )
+       CALL Outfld( TRIM(SpcName), SUM(eflx(:nY,:nZ-1,N), DIM=2) * 1.0E-04 / cnst_mw(N) * avogad, nY, LCHNK )
 
        SpcName = TRIM(cnst_name(N))//'_CMXF'
-       CALL Outfld( TRIM(SpcName), SUM(eflx(:nY,:nZ,N), DIM=2), nY, LCHNK )
+       CALL Outfld( TRIM(SpcName), SUM(eflx(:nY,:nZ-1,N), DIM=2), nY, LCHNK )
     ENDDO
 
     !-----------------------------------------------------------------------

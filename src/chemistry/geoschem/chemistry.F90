@@ -61,6 +61,9 @@ module chemistry
   use chem_mods,           only : mapCnst
   use chem_mods,           only : map2chm
   use chem_mods,           only : map2MAM4
+#if defined( MODAL_AERO )
+  use modal_aero_data,     only : ntot_amode
+#endif
 
   use mo_tracname,         only : solsym
 
@@ -107,12 +110,31 @@ module chemistry
 
   type(physics_buffer_desc), pointer :: hco_pbuf2d(:,:)    ! Pointer to 2D pbuf
 
+  ! Mimic code in sfcvmr_mod.F90
+  TYPE :: SfcMrObj
+     CHARACTER(LEN=63)         :: FldName        ! Field name
+     INTEGER                   :: SpcID          ! ID in species database
+     TYPE(SfcMrObj), POINTER   :: Next           ! Next element in list
+  END TYPE SfcMrObj
+
+  ! Heat of linked list with SfcMrObj objects
+  TYPE(SfcMrObj),    POINTER   :: SfcMrHead => NULL()
+
+  ! Field prefix
+  CHARACTER(LEN=63), PARAMETER :: Prefix_SfcVMR = 'VMR_'
+
+
   ! Indices of critical species in GEOS-Chem
-  INTEGER                    :: iH2O, iO3, iCO2
-  INTEGER                    :: iO, iH, iO2, iPSO4
-  REAL(r8)                   :: MWPSO4, MWO3
+  INTEGER                    :: iH2O, iO3, iCO2, iSO4
+  INTEGER                    :: iO, iH, iO2
+  REAL(r8)                   :: MWO3
   ! Indices of critical species in the constituent list
-  INTEGER                    :: cQ, cH2O
+  INTEGER                    :: cQ, cH2O, cH2SO4
+  ! Indices of critical species in the solsym list
+  INTEGER                    :: l_H2SO4, l_SO4
+#if defined( MODAL_AERO )
+  INTEGER, ALLOCATABLE       :: iSulf(:)
+#endif
 
   ! Indices in the physics buffer
   INTEGER                    :: NDX_PBLH      ! PBL height [m]
@@ -196,7 +218,7 @@ contains
     use mo_sim_dat,          only : set_sim_dat
     use mo_chem_utls,        only : get_spc_ndx
     use chem_mods,           only : drySpc_ndx
-#if defined( MODAL_AERO_4MODE )
+#if defined( MODAL_AERO )
     use aero_model,          only : aero_model_register
     use modal_aero_data,     only : nspec_max
     use modal_aero_data,     only : ntot_amode, nspec_amode
@@ -496,9 +518,10 @@ contains
        ENDIF
     ENDDO
     ! Get constituent index of specific humidity
-    CALL cnst_get_ind('Q',   cQ,   abort=.True.)
-    CALL cnst_get_ind('H2O', cH2O, abort=.True.)
-
+    CALL cnst_get_ind('Q',     cQ,     abort=.True.)
+    CALL cnst_get_ind('H2O',   cH2O,   abort=.True.)
+    CALL cnst_get_ind('H2SO4', cH2SO4, abort=.True.)
+ 
     !==============================================================
     ! Get mapping between dry deposition species and species set
     !==============================================================
@@ -543,8 +566,12 @@ contains
     ALLOCATE(map2MAM4(nspec_max,ntot_amode), STAT=IERR)
     IF ( IERR .NE. 0 ) CALL ENDRUN('Failed to allocate map2MAM4')
 
+    ALLOCATE(iSulf(ntot_amode), STAT=IERR)
+    IF ( IERR .NE. 0 ) CALL ENDRUN('Failed to allocate iSulf')
+
     ! Initialize indices
     map2MAM4(:,:) = -1
+    iSulf(:)      = -1
 
     DO M = 1, ntot_amode
        DO L = 1, nspec_amode(M)
@@ -552,9 +579,9 @@ contains
              CASE ( 'BC_' )
                 SELECT CASE ( to_upper(xname_massptr(L,M)(4:5)) )
                    CASE ( 'A1' )
-                       map2MAM4(L,M) = Ind_('BCPI')
+                       CALL cnst_get_ind( 'BCPI', map2MAM4(L,M) )
                    CASE ( 'A4' )
-                       map2MAM4(L,M) = Ind_('BCPO')
+                       CALL cnst_get_ind( 'BCPO', map2MAM4(L,M) )
                 END SELECT
              CASE ( 'DST' )
                 SELECT CASE ( to_upper(xname_massptr(L,M)(5:6)) )
@@ -563,33 +590,34 @@ contains
                    ! DST3 - Dust aerosol, Reff = 2.4 micrometers
                    ! DST4 - Dust aerosol, Reff = 4.5 micrometers
                    CASE ( 'A1' )
-                       map2MAM4(L,M) = Ind_('DST1')
+                       CALL cnst_get_ind( 'DST1', map2MAM4(L,M) )
                    CASE ( 'A2' )
-                       map2MAM4(L,M) = Ind_('DST1')
+                       CALL cnst_get_ind( 'DST1', map2MAM4(L,M) )
                    CASE ( 'A3' )
-                       map2MAM4(L,M) = Ind_('DST4')
+                       CALL cnst_get_ind( 'DST4', map2MAM4(L,M) )
                 END SELECT
-             CASE ( 'SOA' )
-                map2MAM4(L,M) = Ind_('SOAS')
+             !CASE ( 'SOA' )
+             !   CALL cnst_get_ind( 'SOAS', map2MAM4(L,M) )
              CASE ( 'SO4' )
-                map2MAM4(L,M) = Ind_('SO4')
+                CALL cnst_get_ind( 'SO4', map2MAM4(L,M) )
+                iSulf(M) = L
              CASE ( 'NCL' )
                 SELECT CASE ( to_upper(xname_massptr(L,M)(5:6)) )
                    ! SALA - Fine (0.01-0.05 micros) sea salt aerosol
                    ! SALC - Coarse (0.5-8 micros) sea salt aerosol
                    CASE ( 'A1' )
-                      map2MAM4(L,M) = Ind_('SALA')
+                      CALL cnst_get_ind( 'SALA', map2MAM4(L,M) )
                    CASE ( 'A2' )
-                      map2MAM4(L,M) = Ind_('SALA')
+                      CALL cnst_get_ind( 'SALA', map2MAM4(L,M) )
                    CASE ( 'A3' )
-                      map2MAM4(L,M) = Ind_('SALC')
+                      CALL cnst_get_ind( 'SALC', map2MAM4(L,M) )
                 END SELECT
              CASE ( 'POM' )
                 SELECT CASE ( to_upper(xname_massptr(L,M)(5:6)) )
                    CASE ( 'A1' )
-                      map2MAM4(L,M) = Ind_('OCPI')
+                      CALL cnst_get_ind( 'OCPI', map2MAM4(L,M) )
                    CASE ( 'A4' )
-                      map2MAM4(L,M) = Ind_('OCPO')
+                      CALL cnst_get_ind( 'OCPO', map2MAM4(L,M) )
                 END SELECT
           END SELECT
        ENDDO
@@ -647,7 +675,7 @@ contains
     use cam_abortutils,  only : endrun
     use units,           only : getunit, freeunit
     use namelist_utils,  only : find_group_name
-#if defined( MODAL_AERO_4MODE )
+#if defined( MODAL_AERO )
     use aero_model,      only : aero_model_readnl
     use dust_model,      only : dust_readnl
 #endif
@@ -941,14 +969,14 @@ contains
     use Phys_Grid,             only : get_Area_All_p
     use hycoef,                only : ps0, hyai, hybi, hyam
 
-    use seq_drydep_mod,        only : drydep_method, DD_XLND
+    use seq_drydep_mod,        only : drydep_method, DD_XLND, DD_XATM
     use gas_wetdep_opts,       only : gas_wetdep_method
     use mo_neu_wetdep,         only : neu_wetdep_init
 
-#if defined( MODAL_AERO_4MODE )
+#if defined( MODAL_AERO )
     use aero_model,            only : aero_model_init
     use mo_setsox,             only : sox_inti
-    use mo_drydep,             only : drydep_inti_landuse
+    use mo_drydep,             only : drydep_inti
     use modal_aero_data,       only : ntot_amode, nspec_amode
     use modal_aero_data,       only : xname_massptr
 #endif
@@ -1127,7 +1155,7 @@ contains
        CALL Read_Input_File( Input_Opt  = Input_Opt, &
                              State_Grid = maxGrid,   &
                              RC         = RC        )
-
+    
        ! First setup directories
        Input_Opt%Chem_Inputs_Dir      = TRIM(gc_cheminputs)
        Input_Opt%SpcDatabaseFile      = TRIM(speciesDB)
@@ -1139,7 +1167,7 @@ contains
 
        ! onlineAlbedo    -> True  (use CLM albedo)
        !                 -> False (read monthly-mean albedo from HEMCO)
-       Input_Opt%onlineAlbedo           = .True.
+       Input_Opt%onlineAlbedo           = .False.
 
        ! onlineLandTypes -> True  (use CLM landtypes)
        !                 -> False (read landtypes from HEMCO)
@@ -1151,6 +1179,11 @@ contains
 
        ! applyQtend: apply tendencies of water vapor to specific humidity
        Input_Opt%applyQtend             = .False.
+
+       IF ( .NOT. Input_Opt%LSOA ) THEN
+          CALL ENDRUN('CESM2-GC requires the complex SOA option to be on!')
+       ENDIF
+
     ENDIF
 
     CALL Validate_Directories( Input_Opt, RC )
@@ -1469,7 +1502,7 @@ contains
        ENDDO
     ENDIF
 
-#if defined( MODAL_AERO_4MODE )
+#if defined( MODAL_AERO )
     ! Initialize aqueous chem
     CALL SOx_inti()
 
@@ -1477,13 +1510,14 @@ contains
     CALL aero_model_init( pbuf2d )
 
     ! Initialize land maps for aerosol dry deposition
-    IF ( drydep_method == DD_XLND ) THEN
-       CALL drydep_inti_landuse( depvel_lnd_file, &
-                                 clim_soilw_file )
+    IF ( drydep_method == DD_XATM .OR. drydep_method == DD_XLND ) THEN
+       CALL drydep_inti( depvel_lnd_file, &
+                         clim_soilw_file, &
+                         season_wes_file )
     ELSE
-       Write(iulog,'(a,a)') ' drydep_method is set to: ', TRIM(drydep_method)
-       CALL ENDRUN('drydep_method must be DD_XLND to compute land maps for aerosol' // &
-               ' dry deposition!')
+       IF ( masterProc ) Write(iulog,'(a,a)') ' drydep_method is set to: ', TRIM(drydep_method)
+       CALL ENDRUN('drydep_method must be DD_XLND or DD_XATM to compute land '// &
+               'maps for aerosol dry deposition!')
     ENDIF
 #endif
 
@@ -1643,23 +1677,20 @@ contains
     iH2O  = Ind_('H2O')
     iO3   = Ind_('O3')
     iCO2  = Ind_('CO2')
+    iSO4  = Ind_('SO4')
     ! The following indices are needed to compute invariants
     iO    = Ind_('O')
     iH    = Ind_('H')
     iO2   = Ind_('O2')
-
-    ! This is used to compute gas-phase H2SO4 production
-    iPSO4   = Ind_('PSO4')
-    SpcInfo => State_Chm(BEGCHUNK)%SpcData(iPSO4)%Info
-    MWPSO4  = REAL(SpcInfo%MW_g,r8)
-    ! Free pointer
-    SpcInfo => NULL()
 
     ! This is used to compute overhead ozone column
     SpcInfo => State_Chm(BEGCHUNK)%SpcData(iO3)%Info
     MWO3    = REAL(SpcInfo%MW_g,r8)
     ! Free pointer
     SpcInfo => NULL()
+
+    l_H2SO4 = get_spc_ndx('H2SO4')
+    l_SO4   = get_spc_ndx('SO4')
 
     ! Get indices for physical fields in physics buffer
     NDX_PBLH     = pbuf_get_index('pblh'     )
@@ -1699,8 +1730,6 @@ contains
     CALL CESMGC_Emissions_Init( lght_no_prd_factor = lght_no_prd_factor )
 
     hco_pbuf2d => pbuf2d
-
-    If ( MasterProc ) Write(iulog,*) "hco_pbuf2d now points to pbuf2d"
 
     ! Cleanup
     Call Cleanup_State_Grid( maxGrid, RC )
@@ -1842,6 +1871,7 @@ contains
 
     use phys_grid,           only : get_ncols_p, get_rlat_all_p, get_rlon_all_p
 
+    use mo_chem_utls,        only : get_spc_ndx
     use chem_mods,           only : drySpc_ndx, map2GC_dryDep
     use chem_mods,           only : nfs, indexm, gas_pcnst
     use mo_mean_mass,        only : set_mean_mass
@@ -1850,10 +1880,12 @@ contains
     use mo_ghg_chem,         only : ghg_chem_set_flbc
     use mo_neu_wetdep,       only : neu_wetdep_tend
     use gas_wetdep_opts,     only : gas_wetdep_method
-#if defined( MODAL_AERO_4MODE )
+#if defined( MODAL_AERO )
     use modal_aero_data,     only : ntot_amode, nspec_amode
-    use modal_aero_data,     only : lmassptr_amode
-    use modal_aero_data,     only : xname_massptr
+    use modal_aero_data,     only : nspec_max, nsoa
+    use modal_aero_data,     only : lmassptr_amode, numptr_amode
+    use modal_aero_data,     only : lptr_so4_a_amode
+    use modal_aero_data,     only : lptr2_soa_a_amode, lptr2_soa_g_amode
 #endif
 
     use Olson_Landmap_Mod,   only : Compute_Olson_Landmap
@@ -1876,9 +1908,10 @@ contains
     use PBL_Mix_Mod,         only : Compute_PBL_Height
     use UCX_Mod,             only : Set_H2O_Trac
     use CMN_FJX_MOD,         only : ZPJ
-    USE FAST_JX_MOD,         only : RXN_NO2, RXN_O3_1, RXN_O3_2a
+    use FAST_JX_MOD,         only : RXN_NO2, RXN_O3_1, RXN_O3_2a
     use State_Diag_Mod,      only : get_TagInfo
     use Unitconv_Mod,        only : Convert_Spc_Units
+    use State_Chm_Mod,       only : Ind_
 
     use Strat_Chem_Mod,      only : Strat_TrID_GC, GC_Bry_TrID, NSCHEM
     use Strat_Chem_Mod,      only : BrPtrDay, BrPtrNight, PLVEC, STRAT_OH 
@@ -1888,7 +1921,7 @@ contains
     use CESMGC_Diag_Mod,     only : wetdep_name, wtrate_name
 
     use Tropopause,          only : Tropopause_findChemTrop, Tropopause_Find
-    use HCO_Utilities_GC_Mod  ! Utility routines for GC-HEMCO interface
+    use HCO_Interface_GC_Mod  ! Utility routines for GC-HEMCO interface
 
     ! For calculating SZA
     use Orbit,               only : zenith
@@ -1931,7 +1964,7 @@ contains
     LOGICAL :: lq(pcnst)
 
     ! Indexing
-    INTEGER :: N, M, P, SM, ND
+    INTEGER :: K, N, M, P, SM, ND
     INTEGER :: I, J, L, nX, nY, nZ
 
     INTEGER :: LCHNK, NCOL
@@ -1968,12 +2001,28 @@ contains
 
     ! For aerosol formation
     REAL(r8)          :: del_h2so4_gasprod(state%NCOL,PVER)
+
     REAL(r8)          :: vmr0(state%NCOL,PVER,gas_pcnst)
     REAL(r8)          :: vmr1(state%NCOL,PVER,gas_pcnst)
+    REAL(r8)          :: vmr2(state%NCOL,PVER,gas_pcnst)
+
     REAL(r8)          :: wetdepflx(pcols,pcnst)       ! Wet deposition fluxes (kg/m2/s)
 
 #if defined( MODAL_AERO )
-    REAL(r8)          :: binRatio(MAXVAL(nspec_amode(:)),ntot_amode,state%NCOL,PVER)
+    REAL(r8)          :: binRatio(nspec_max,ntot_amode,state%NCOL,PVER)
+
+    REAL(r8)          :: SO4_gasRatio(state%NCOL,PVER)
+
+    ! For SOA mapping
+    REAL(r8)          :: totMass(state%NCOL,PVER)
+    REAL(r8)          :: bulkMass(state%NCOL,PVER)
+    REAL(r8)          :: tmpMW_g
+    CHARACTER(LEN=64) :: speciesName_1, speciesName_2, speciesName_3, speciesName_4
+    INTEGER           :: speciesId_1, speciesId_2, speciesId_3, speciesId_4
+    INTEGER           :: iMap, nMapping, iBin, binSOA_1, binSOA_2
+    INTEGER           :: K1, K2, K3, K4
+    LOGICAL           :: isSOA_aerosol
+
 #endif
 
     ! For emissions
@@ -2006,7 +2055,6 @@ contains
     REAL(r8)     :: Sd_Ice, Sd_Lnd, Sd_Avg, Frc_Ice
 
     ! Estimating cloud optical depth
-    REAL(r8)     :: cld(PCOLS,PVER)
     REAL(r8)     :: TauCli(PCOLS,PVER)
     REAL(r8)     :: TauClw(PCOLS,PVER)
     REAL(r8), PARAMETER :: re_m   = 1.0e-05_r8 ! Cloud drop radius in m
@@ -2016,11 +2064,12 @@ contains
     ! Calculating SZA
     REAL(r8)      :: Calday
 
-    CHARACTER(LEN=255)     :: SpcName
-    CHARACTER(LEN=255)     :: Prefix, FieldName
-    LOGICAL                :: FND
-    INTEGER                :: SpcId
-    TYPE(Species), POINTER :: SpcInfo
+    CHARACTER(LEN=255)      :: SpcName
+    CHARACTER(LEN=255)      :: Prefix, FieldName
+    LOGICAL                 :: FND
+    INTEGER                 :: SpcId
+    TYPE(Species),  POINTER :: SpcInfo
+    TYPE(SfcMrObj), POINTER :: iSfcMrObj
 
     CHARACTER(LEN=63)      :: OrigUnit
 
@@ -2057,6 +2106,7 @@ contains
     cmfdqr   => NULL()
     pbuf_chnk=> NULL()
     pbuf_ik  => NULL()
+    pbuf_i   => NULL()
 
     ! LCHNK: which chunk we have on this process
     LCHNK = state%LCHNK
@@ -2138,11 +2188,11 @@ contains
     MMR_Beg = 0.0e+0_r8
     MMR_End = 0.0e+0_r8
     DO N = 1, pcnst
+       IF ( mapCnst(N) > 0 ) lq(N) = .True.
        M = map2GC(N)
        IF ( M <= 0 ) CYCLE
        MMR_Beg(:nY,:nZ,M) = state%q(:nY,nZ:1:-1,N)
        State_Chm(LCHNK)%Species(1,:nY,:nZ,M) = REAL(MMR_Beg(:nY,:nZ,M),fp)
-       lq(N) = .True.
     ENDDO
 
     ! We need to let CAM know that 'H2O' and 'Q' are identical
@@ -2152,6 +2202,54 @@ contains
     ! Retrieve previous value of species data
     SlsData(:,:,:) = 0.0e+0_r8
     CALL get_short_lived_species( SlsData, LCHNK, nY, pbuf )
+
+    IF ( iStep == 1 ) THEN
+       ! Retrieve list of species with surface boundary conditions (copied from
+       ! sfcvmr_mod.F90)
+
+       ! Head of linked list
+       SfcMrHead => NULL()
+       iSfcMrObj => NULL()
+       SpcInfo   => NULL()
+
+       ! Loop over all species
+       DO N = 1, State_Chm(BEGCHUNK)%nSpecies
+          ! Species information
+          SpcInfo => State_Chm(BEGCHUNK)%SpcData(N)%Info
+
+          ! Check if field exists (note: this needs to be less than 16
+          ! characters long)
+          FieldName = 'HCO_'//TRIM(Prefix_SfcVMR)//TRIM(to_upper(SpcInfo%Name))
+          M = pbuf_get_index(FieldName, RC)
+          IF ( M > 0 ) THEN
+
+             ! Must have positive, non-zero MW
+             IF ( SpcInfo%MW_g <= 0.0_fp ) THEN
+                ErrMsg = 'Cannot use surface boundary condition for species '  &
+                       // TRIM(SpcInfo%Name) // ' due to invalid MW!'
+                CALL ENDRUN(TRIM(ErrMsg))
+             ENDIF
+
+             ! Create new object, add to list
+             ALLOCATE( iSfcMrObj, STAT=RC )
+             CALL GC_CheckVar( 'sfcvmr_mod.F90:iSfcMrObj', 0, RC )
+             IF ( RC /= GC_SUCCESS ) CALL ENDRUN('Failure while allocating iSfcMrObj')
+
+             iSfcMrObj%SpcID   =  N
+             iSfcMrObj%FldName =  FieldName
+             iSfcMrObj%Next    => SfcMrHead
+             SfcMrHead         => iSfcMrObj
+             IF ( rootChunk ) THEN
+                WRITE( 6, 110 ) TRIM( SpcInfo%Name ), TRIM( iSfcMrObj%FldName )
+ 110            FORMAT( '--> ', a, ' will use prescribed surface boundary ',   &
+                        'conditions from field ', a )
+             ENDIF
+
+             ! Free the pointer
+             iSfcMrObj => NULL()
+          ENDIF
+       ENDDO
+    ENDIF
 
     !-----------------------------------------------------------------------
     !        ... Set atmosphere mean mass
@@ -2169,6 +2267,208 @@ contains
        State_Chm(LCHNK)%Species(1,:nY,:nZ,M) = REAL(SlsData(:nY,nZ:1:-1,N),fp)
     ENDDO
 
+#if defined( MODAL_AERO )
+    ! First reset State_Chm%Species to zero out MAM-inherited GEOS-Chem aerosols
+    DO M = 1, ntot_amode
+       DO SM = 1, nspec_amode(M)
+          P = map2MAM4(SM,M) ! Constituent index for GEOS-Chem
+          IF ( P > 0 ) K = map2GC(P) ! Index in State_Chm
+          IF ( K > 0 ) State_Chm(LCHNK)%Species(1,:nY,:nZ,K) = 0.0e+00_fp
+       ENDDO
+    ENDDO
+
+    ! Map and vertically flip aerosols
+    DO M = 1, ntot_amode
+       DO SM = 1, nspec_amode(M)
+          P = map2MAM4(SM,M) ! Constituent index for GEOS-Chem
+          IF ( P <= 0 ) CYCLE
+          N = lmassptr_amode(SM,M)
+          K = map2GC(P) ! Index in State_Chm
+          ! /!\ MAM aerosols (with cnst index N) is mapped onto GEOS-Chem
+          ! species (with cnst index P, which corresponds to index K in
+          ! State_Chm)
+
+          ! Multiple MAM4 bins are mapped to same GEOS-Chem species
+          State_Chm(LCHNK)%Species(1,:nY,:nZ,K) = State_Chm(LCHNK)%Species(1,:nY,:nZ,K) &
+                                                + REAL(state%q(:nY,nZ:1:-1,N),fp) *     &
+                                                   adv_mass(mapCnst(P)) /               &
+                                                   adv_mass(mapCnst(N))
+       ENDDO
+    ENDDO
+
+    ! Compute ratios of bin to bulk mass
+    binRatio = 0.0e+00_r8
+    DO M = 1, ntot_amode
+       DO SM = 1, nspec_amode(M)
+          P = map2MAM4(SM,M)
+          IF ( P <= 0 ) CYCLE
+          K = map2GC(P) ! Index in State_Chm
+          N = lmassptr_amode(SM,M)
+          IF ( N < 0 ) CYCLE
+          DO J = 1, nY
+          DO L = 1, nZ
+             IF ( State_Chm(LCHNK)%Species(1,J,nZ+1-L,K) > 0.0e+00_r8 ) THEN
+                binRatio(SM,M,J,L) = state%q(J,L,N)              &
+                   * adv_mass(mapCnst(P)) / adv_mass(mapCnst(N)) &
+                   / REAL(State_Chm(LCHNK)%Species(1,J,nZ+1-L,K), r8)
+             ENDIF
+          ENDDO
+          ENDDO
+          ! Overwrite MMR_Beg with value from MAM
+          MMR_Beg(:nY,:nZ,K) = State_Chm(LCHNK)%Species(1,:nY,:nZ,K)
+       ENDDO
+    ENDDO
+
+    ! Deal with secondary organic aerosols (SOAs). This mapping is using the
+    ! complex SOA option in GEOS-Chem. 
+    ! MAM uses five volatility bins spanning saturation concentrations from 0.01
+    ! to 100 ug/m3 (logarithmically). The complex SOA option has four volatility
+    ! bins that 0.1 to 100 ug/m3. We lump the lowest two bins in CESM2 to the
+    ! lowest bin in GEOS-Chem.
+    !
+    ! The mapping goes as follows:
+    ! TSOA0 + ASOAN + SOAIE + SOAGX <- soa1_a* + soa2_a*
+    ! TSOA1 + ASOA1 <- soa3_a*
+    ! TSOA2 + ASOA2 <- soa4_a*
+    ! TSOA3 + ASOA3 <- soa5_a*
+    ! TSOG0         <- SOAG0 + SOAG1
+    ! TSOG1 + ASOG1 <- SOAG2
+    ! TSOG2 + ASOG2 <- SOAG3
+    ! TSOG3 + ASOG3 <- SOAG4
+
+    IF ( iStep > 1 ) THEN
+       ! Do not perform this mapping on initialization as we first want to
+       ! overwrite soa*_a* with the GEOS-Chem SOAs.
+       nMapping = 8
+       DO iMap = 1, nMapping
+          speciesName_1 = ''
+          speciesName_2 = ''
+          speciesName_3 = ''
+          speciesName_4 = ''
+          IF ( iMap == 1 ) THEN
+             binSOA_1 = 1
+             binSOA_2 = 2
+             speciesName_1 = 'TSOA0'
+             speciesName_2 = 'ASOAN'
+             speciesName_3 = 'SOAIE'
+             speciesName_4 = 'SOAGX'
+          ELSEIF ( iMap == 2 ) THEN
+             binSOA_1 = 3
+             binSOA_2 = 3
+             speciesName_1 = 'TSOA1'
+             speciesName_2 = 'ASOA1'
+          ELSEIF ( iMap == 3 ) THEN
+             binSOA_1 = 4
+             binSOA_2 = 4
+             speciesName_1 = 'TSOA2'
+             speciesName_2 = 'ASOA2'
+          ELSEIF ( iMap == 4 ) THEN
+             binSOA_1 = 5
+             binSOA_2 = 5
+             speciesName_1 = 'TSOA3'
+             speciesName_2 = 'ASOA3'
+          ELSEIF ( iMap == 5 ) THEN
+             binSOA_1 = 1
+             binSOA_2 = 2
+             speciesName_1 = 'TSOG0'
+             speciesName_2 = 'TSOG0'
+          ELSEIF ( iMap == 6 ) THEN
+             binSOA_1 = 3
+             binSOA_2 = 3
+             speciesName_1 = 'TSOG1'
+             speciesName_2 = 'ASOG1'
+          ELSEIF ( iMap == 7 ) THEN
+             binSOA_1 = 4
+             binSOA_2 = 4
+             speciesName_1 = 'TSOG2'
+             speciesName_2 = 'ASOG2'
+          ELSEIF ( iMap == 8 ) THEN
+             binSOA_1 = 5
+             binSOA_2 = 5
+             speciesName_1 = 'TSOG3'
+             speciesName_2 = 'ASOG3'
+          ELSE
+             CALL ENDRUN('Unknown SOA mapping!')
+          ENDIF
+          isSOA_aerosol = .False.
+          IF ( iMap <= 4 ) isSOA_aerosol = .True.
+
+          ! Compute total mass from GEOS-Chem species. This sets the ratio between
+          ! speciesId_1 and speciesId_2
+          totMass(:nY,:nZ) = 0.0e+00_r8
+
+          CALL cnst_get_ind( speciesName_1, speciesId_1, abort=.True. )
+          CALL cnst_get_ind( speciesName_2, speciesId_2, abort=.False. )
+          CALL cnst_get_ind( speciesName_3, speciesId_3, abort=.False. )
+          CALL cnst_get_ind( speciesName_4, speciesId_4, abort=.False. )
+          IF ( speciesId_1 > 0 ) totMass(:nY,:nZ) = totMass(:nY,:nZ) + state%q(:nY,:nZ,speciesId_1)
+          IF ( speciesId_2 > 0 ) totMass(:nY,:nZ) = totMass(:nY,:nZ) + state%q(:nY,:nZ,speciesId_2)
+          IF ( speciesId_3 > 0 ) totMass(:nY,:nZ) = totMass(:nY,:nZ) + state%q(:nY,:nZ,speciesId_3)
+          IF ( speciesId_4 > 0 ) totMass(:nY,:nZ) = totMass(:nY,:nZ) + state%q(:nY,:nZ,speciesId_4)
+
+          ! Compute total bulk mass from MAM
+          bulkMass(:nY,:nZ) = 0.0e+00_r8
+          IF ( isSOA_aerosol ) THEN
+             DO iBin = binSOA_1, binSOA_2
+                DO M = 1, ntot_amode
+                   N = lptr2_soa_a_amode(M,iBin)
+                   IF ( N <= 0 ) CYCLE
+                   tmpMW_g = adv_mass(mapCnst(N))
+                   bulkMass(:nY,:nZ) = bulkMass(:nY,:nZ) + state%q(:nY,:nZ,N)
+                ENDDO
+             ENDDO
+          ELSE
+             DO iBin = binSOA_1, binSOA_2
+                N = lptr2_soa_g_amode(iBin)
+                IF ( N <= 0 ) CYCLE
+                tmpMW_g = adv_mass(mapCnst(N))
+                bulkMass(:nY,:nZ) = bulkMass(:nY,:nZ) + state%q(:nY,:nZ,N)
+             ENDDO
+          ENDIF
+
+          K1 = Ind_(speciesName_1)
+          K2 = Ind_(speciesName_2)
+          K3 = Ind_(speciesName_3)
+          K4 = Ind_(speciesName_4)
+          DO J = 1, nY
+          DO L = 1, nZ
+             IF ( totMass(J,L) > 0.0e+00_r8 ) THEN
+                IF ( K1 > 0 ) State_Chm(LCHNK)%Species(1,J,L,K1) = state%q(J,nZ+1-L,speciesId_1) / totMass(J,nZ+1-L) * bulkMass(J,nZ+1-L) * adv_mass(mapCnst(speciesId_1)) / tmpMW_g
+                IF ( K2 > 0 ) State_Chm(LCHNK)%Species(1,J,L,K2) = state%q(J,nZ+1-L,speciesId_2) / totMass(J,nZ+1-L) * bulkMass(J,nZ+1-L) * adv_mass(mapCnst(speciesId_2)) / tmpMW_g
+                IF ( K3 > 0 ) State_Chm(LCHNK)%Species(1,J,L,K3) = state%q(J,nZ+1-L,speciesId_3) / totMass(J,nZ+1-L) * bulkMass(J,nZ+1-L) * adv_mass(mapCnst(speciesId_3)) / tmpMW_g
+                IF ( K4 > 0 ) State_Chm(LCHNK)%Species(1,J,L,K4) = state%q(J,nZ+1-L,speciesId_4) / totMass(J,nZ+1-L) * bulkMass(J,nZ+1-L) * adv_mass(mapCnst(speciesId_4)) / tmpMW_g
+             ELSE
+                IF ( K1 == K2 ) THEN
+                   State_Chm(LCHNK)%Species(1,J,L,K1) = bulkMass(J,nZ+1-L) * adv_mass(mapCnst(speciesId_1)) / tmpMW_g
+                ELSE
+                   State_Chm(LCHNK)%Species(1,J,L,K1) = bulkMass(J,nZ+1-L) * adv_mass(mapCnst(speciesId_1)) / tmpMW_g / 2.0_r8
+                   State_Chm(LCHNK)%Species(1,J,L,K2) = bulkMass(J,nZ+1-L) * adv_mass(mapCnst(speciesId_1)) / tmpMW_g / 2.0_r8
+                ENDIF
+             ENDIF
+          ENDDO
+          ENDDO
+          IF ( K1 > 0 ) MMR_Beg(:nY,:nZ,K1) = State_Chm(LCHNK)%Species(1,:nY,:nZ,K1)
+          IF ( K2 > 0 ) MMR_Beg(:nY,:nZ,K2) = State_Chm(LCHNK)%Species(1,:nY,:nZ,K2)
+          IF ( K3 > 0 ) MMR_Beg(:nY,:nZ,K4) = State_Chm(LCHNK)%Species(1,:nY,:nZ,K3)
+          IF ( K4 > 0 ) MMR_Beg(:nY,:nZ,K3) = State_Chm(LCHNK)%Species(1,:nY,:nZ,K4)
+       ENDDO
+    ENDIF
+
+    ! Add gas-phase H2SO4 to GEOS-Chem SO4 (which lumps SO4 aerosol and gaseous)
+    K = iSO4
+    N = cH2SO4
+    IF ( K > 0 .AND. N > 0 .AND. l_SO4 > 0 ) THEN
+       State_Chm(LCHNK)%Species(1,:nY,:nZ,K) = State_Chm(LCHNK)%Species(1,:nY,:nZ,K) &
+                                             + REAL(state%q(:nY,nZ:1:-1,N),fp) *     &
+                                                adv_mass(l_SO4) / adv_mass(mapCnst(N))
+       ! SO4_gasRatio is in mol/mol
+       SO4_gasRatio(:nY,:nZ) = state%q(:nY,:nZ,N)                      &
+                             * adv_mass(l_SO4) / adv_mass(mapCnst(N))  &
+                             / State_Chm(LCHNK)%Species(1,:nY,nZ:1:-1,K)
+       MMR_Beg(:nY,:nZ,K)    = State_Chm(LCHNK)%Species(1,:nY,:nZ,K)
+    ENDIF
+#endif
+
     DO N = 1, gas_pcnst
        ! See definition of map2chm
        M = map2chm(N)
@@ -2183,48 +2483,6 @@ contains
           mmr_tend(:nY,:nZ,N) = state%q(:nY,:nZ,-M)
        ENDIF
     ENDDO
-
-#if defined( MODAL_AERO_4MODE )
-    ! First reset State_Chm%Species to zero for aerosols
-    DO M = 1, ntot_amode
-       DO SM = 1, nspec_amode(M)
-          P = map2MAM4(SM,M)
-          IF ( P > 0 ) State_Chm(LCHNK)%Species(1,:nY,:nZ,P) = 0.0e+00_fp
-       ENDDO
-    ENDDO
-
-    ! Map and flip aerosols
-    DO M = 1, ntot_amode
-       DO SM = 1, nspec_amode(M)
-          ! TMMF - Should there be a ratio of molar weights involved?
-          P = map2MAM4(SM,M)
-          IF ( P <= 0 ) CYCLE
-          N = lmassptr_amode(SM,M)
-          ! Multiple MAM4 bins are mapped to same GEOS-Chem species
-          State_Chm(LCHNK)%Species(1,:nY,:nZ,P) = State_Chm(LCHNK)%Species(1,:nY,:nZ,P) &
-                                                + REAL(state%q(:nY,nZ:1:-1,N),fp)
-       ENDDO
-    ENDDO
-    DO M = 1, ntot_amode
-       DO SM = 1, nspec_amode(M)
-          P = map2MAM4(SM,M)
-          IF ( P <= 0 ) CYCLE
-          ! Overwrite MMR_Beg with MAM value
-          MMR_Beg(:nY,:nZ,P) = State_Chm(LCHNK)%Species(1,:nY,:nZ,P)
-          N = lmassptr_amode(SM,M)
-          DO J = 1, nY
-          DO L = 1, nZ
-             IF ( State_Chm(LCHNK)%Species(1,J,nZ+1-L,P) > 0.0e+00_r8 ) THEN
-                binRatio(SM,M,J,L) = REAL(state%q(J,L,N),r8) &
-                   / State_Chm(LCHNK)%Species(1,J,nZ+1-L,P)
-             ELSE
-                binRatio(SM,M,J,L) = 0.0e+00_r8
-             ENDIF
-          ENDDO
-          ENDDO
-       ENDDO
-    ENDDO
-#endif
 
     ! If H2O tendencies are propagated to specific humidity, then make sure
     ! that Q actually applies tendencies
@@ -2325,58 +2583,45 @@ contains
     TauCli = 0.0e+0_r8
     TauClw = 0.0e+0_r8
 
-    ! Note: all using CAM vertical convention (1 = TOA)
-    ! Calculation is based on that done for MOZART
-    DO J = 1, nY
-    DO L = nZ, 1, -1
-       cldW(J,L) = state%q(J,L,ixCldLiq) + state%q(J,L,ixCldIce)
-       ! Convert water mixing ratio [kg/kg] to water content [g/m^3]
-       IF ( cldW(J,L) * state%pmid(J,L) / &
-             (state%T(J,L) * 287.0e+00_r8) * 1.0e+03_r8 <= 0.01_r8 .AND. &
-            cldFrc(J,L) /= 0.0e+00_r8 ) THEN
-          cld(J,L) = 0.0e+00_r8
-       ELSE
-          cld(J,L) = cldFrc(J,L)
-       ENDIF
-       IF ( ixNDrop > 0 ) nCldWtr(J,L) = state%q(J,L,ixNDrop)
-    ENDDO
-    ENDDO
+    cldW(:nY,:nZ) = state%q(:nY,:nZ,ixCldLiq) + state%q(:nY,:nZ,ixCldIce)
+    IF ( ixNDrop > 0 ) nCldWtr(:nY,:nZ) = state%q(:nY,:nZ,ixNDrop)
 
     DO J = 1, nY
-       IF ( COUNT( cld(J,:nZ) > cldMin ) > 0 ) THEN
-          DO L = nZ, 1, -1
-             ! =================================================================
-             ! ===========   Compute cloud optical depth based on   ============
-             ! ===========     Liao et al. JGR, 104, 23697, 1999    ============
-             ! =================================================================
-             !
-             ! Tau = 3/2 * LWC * dZ / ( \rho_w * r_e )
-             ! dZ  = - dP / ( \rho_air * g )
-             ! since Pint is ascending, we can neglect the minus sign
-             !
-             ! Tau = 3/2 * LWC * dP / ( \rho_air * r_e * \rho_w * g )
-             ! LWC / \rho_air = Q
-             !
-             ! Tau    = 3/2 * Q * dP / ( r_e * rho_w * g )
-             ! Tau(L) = 3/2 * Q(L) * (Pint(L+1) - Pint(L)) / (re * rho_w * g )
-             ! Tau(L) = Q(L) * (Pint(L+1) - Pint(L)) * Cnst
-             !
-             ! Unit check:                    |
-             ! Q    : [kg H2O/kg air]         |
-             ! Pint : [Pa]=[kg air/m/s^2]     |
-             ! re   : [m]                     |   = 1.0e-5
-             ! rho_w: [kg H2O/m^3]            |   = 1.0e+3
-             ! g    : [m/s^2]                 |   = 9.81
-             TauClw(J,L) = state%q(J,L,ixCldLiq)               &
-                         * (state%pint(J,L+1)-state%pint(J,L)) &
-                         * cnst
-             TauClw(J,L) = MAX(TauClw(J,L), 0.0e+00_r8)
-             TauCli(J,L) = state%q(J,L,ixCldIce)               &
-                         * (state%pint(J,L+1)-state%pint(J,L)) &
-                         * cnst
-             TauCli(J,L) = MAX(TauCli(J,L), 0.0e+00_r8)
-          ENDDO
+    DO L = nZ, 1, -1
+       ! =================================================================
+       ! ===========   Compute cloud optical depth based on   ============
+       ! ===========     Liao et al. JGR, 104, 23697, 1999    ============
+       ! =================================================================
+       !
+       ! Tau = 3/2 * LWC * dZ / ( \rho_w * r_e )
+       ! dZ  = - dP / ( \rho_air * g )
+       ! since Pint is ascending, we can neglect the minus sign
+       !
+       ! Tau = 3/2 * LWC * dP / ( \rho_air * r_e * \rho_w * g )
+       ! LWC / \rho_air = Q
+       !
+       ! Tau    = 3/2 * Q * dP / ( r_e * rho_w * g )
+       ! Tau(L) = 3/2 * Q(L) * (Pint(L+1) - Pint(L)) / (re * rho_w * g )
+       ! Tau(L) = Q(L) * (Pint(L+1) - Pint(L)) * Cnst
+       ! Then divide by cloud fraction to get the in-cloud optical depth
+
+       ! Unit check:                    |
+       ! Q    : [kg H2O/kg air]         |
+       ! Pint : [Pa]=[kg air/m/s^2]     |
+       ! re   : [m]                     |   = 1.0e-5
+       ! rho_w: [kg H2O/m^3]            |   = 1.0e+3
+       ! g    : [m/s^2]                 |   = 9.81
+       IF ( cldFrc(J,L) > cldMin ) THEN
+          TauClw(J,L) = state%q(J,L,ixCldLiq)               &
+                      * (state%pint(J,L+1)-state%pint(J,L)) &
+                      * cnst / cldFrc(J,L)
+          TauClw(J,L) = MAX(TauClw(J,L), 0.0e+00_r8)
+          TauCli(J,L) = state%q(J,L,ixCldIce)               &
+                      * (state%pint(J,L+1)-state%pint(J,L)) &
+                      * cnst / cldFrc(J,L)
+          TauCli(J,L) = MAX(TauCli(J,L), 0.0e+00_r8)
        ENDIF
+    ENDDO
     ENDDO
 
     ! Retrieve tropopause level
@@ -3244,7 +3489,6 @@ contains
              pbuf_chnk => NULL()
              pbuf_ik   => NULL()
           ENDIF
-          !CALL HCO_GetPtr( HcoState, 'STRAT_OH', STRAT_OH,  RC, FOUND=FND )
        ENDIF
 
     ENDIF
@@ -3698,6 +3942,39 @@ contains
        ENDIF
     ENDIF
 
+    ! Here, we apply surface mixing ratios for long-lived species
+    ! (copied from sfcvmr_mod.F90)
+    ! Loop over all objects
+    iSfcMrObj => SfcMrHead
+    DO WHILE( ASSOCIATED( iSfcMrObj ) )
+
+       ! Get concentration for this species
+       tmpIdx = pbuf_get_index(TRIM(iSfcMrObj%FldName), RC)
+       IF ( tmpIdx < 0 .OR. (iStep == 1) ) THEN
+          IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(iSfcMrObj%FldName)
+       ELSE
+          CALL pbuf_get_field(pbuf, tmpIdx, pbuf_i)
+
+          ! Set mixing ratio in PBL
+          SpcInfo => State_Chm(LCHNK)%SpcData(iSfcMrObj%SpcID)%Info
+          N = SpcInfo%ModelID
+          IF ( N > 0 ) THEN
+             DO L = 1, nZ
+             DO J = 1, nY
+                IF ( State_Met(LCHNK)%F_UNDER_PBLTOP(1,J,L) > 0.0_fp ) THEN
+                   State_Chm(LCHNK)%Species(1,J,L,N) =     &
+                       ( pbuf_i(J) * 1.0e-9_fp       )     &
+                     / ( MWDry      / SpcInfo%MW_g   )
+                ENDIF  ! end selection of PBL boxes
+             ENDDO
+             ENDDO
+          ENDIF
+       ENDIF
+
+       ! Point to next element in list
+       iSfcMrObj => iSfcMrObj%Next
+    ENDDO
+
     ! Reset photolysis rates
     ZPJ = 0.0e+0_r8
 
@@ -3727,6 +4004,8 @@ contains
        Write(iulog,*) 'Expected unit = kg/ kg dry'
        CALL ENDRUN('Incorrect unit in GEOS-Chem State_Chm%Species')
     ENDIF
+
+    call t_stopf( 'chemdr' )
 
     ! Save and write J-values to pbuf for HEMCO
     ! in HCO_IN_JNO2, HCO_IN_JOH
@@ -3764,7 +4043,171 @@ contains
        pbuf_i   => NULL()
     ENDIF
 
-    call t_stopf( 'chemdr' )
+    DO N = 1, gas_pcnst
+       ! See definition of map2chm
+       M = map2chm(N)
+       IF ( M > 0 ) THEN
+          vmr1(:nY,:nZ,N) = State_Chm(LCHNK)%Species(1,:nY,nZ:1:-1,M) * &
+                            MWDry / adv_mass(N)
+       ELSEIF ( M < 0 ) THEN
+          vmr1(:nY,:nZ,N) = state%q(:nY,:nZ,-M) * &
+                            MWDry / adv_mass(N)
+       ENDIF
+    ENDDO
+
+    !==============================================================
+    ! ***** M A M   G A S - A E R O S O L   E X C H A N G E *****
+    !==============================================================
+
+#if defined( MODAL_AERO )
+    ! Repartition SO4 into H2SO4 and so4_a*
+    IF ( l_H2SO4 > 0 .AND. l_SO4 > 0 ) THEN
+       P = l_H2SO4
+       ! SO4_gasRatio is mol(SO4) (gaseous) / mol(SO4) (gaseous+aerosol)
+       vmr1(:nY,:nZ,P) = SO4_gasRatio(:nY,:nZ) * vmr1(:nY,:nZ,l_SO4)
+       ! binRatio is mol(SO4) (current bin) / mol(SO4) (all bins)
+       DO M = 1, ntot_amode
+          N = lptr_so4_a_amode(M)
+          IF ( N <= 0 ) CYCLE
+          P = mapCnst(N)
+          vmr1(:nY,:nZ,P) = vmr1(:nY,:nZ,l_SO4)                &
+                          * ( 1.0_r8 - SO4_gasRatio(:nY,:nZ) ) &
+                          * binRatio(iSulf(M),M,:nY,:nZ)
+       ENDDO
+    ENDIF
+
+    ! Amount of chemically-produced H2SO4 (mol/mol)
+    del_h2so4_gasprod(:nY,:nZ) = vmr1(:nY,:nZ,l_H2SO4) &
+                               - vmr0(:nY,:nZ,l_H2SO4)
+
+    call aero_model_gasaerexch( loffset           = iFirstCnst - 1,         &
+                                ncol              = NCOL,                   &
+                                lchnk             = LCHNK,                  &
+                                troplev           = Trop_Lev(:),            &
+                                delt              = dT,                     &
+                                reaction_rates    = reaction_rates,         &
+                                tfld              = state%t(:,:),           &
+                                pmid              = state%pmid(:,:),        &
+                                pdel              = state%pdel(:,:),        &
+                                mbar              = mBar,                   &
+                                relhum            = relHum(:,:),            &
+                                zm                = state%zm(:,:),          &
+                                qh2o              = qH2O(:,:),              &
+                                cwat              = cldW,                   &
+                                cldfr             = cldFrc,                 &
+                                cldnum            = nCldWtr,                &
+                                airdens           = invariants(:,:,indexm), &
+                                invariants        = invariants,             &
+                                del_h2so4_gasprod = del_h2so4_gasprod,      &
+                                vmr0              = vmr0,                   &
+                                vmr               = vmr1,                   &
+                                pbuf              = pbuf )
+
+    ! Repartition MAM SOAs following mapping:
+    ! TSOA0 + ASOAN + SOAIE + SOAGX -> soa1_a* + soa2_a*
+    ! TSOA1 + ASOA1                 -> soa3_a*
+    ! TSOA2 + ASOA2                 -> soa4_a*
+    ! TSOA3 + ASOA3                 -> soa5_a*
+    ! TSOG0                         -> SOAG0 + SOAG1
+    ! TSOG1 + ASOG1                 -> SOAG2
+    ! TSOG2 + ASOG2                 -> SOAG3
+    ! TSOG3 + ASOG3                 -> SOAG4
+
+    ! Deal with aerosol SOA species
+    ! First deal with lowest two volatility bins
+    speciesName_1 = 'TSOA0'
+    speciesName_2 = 'ASOAN'
+    speciesName_2 = 'SOAIE'
+    speciesName_2 = 'SOAGX'
+    K1 = get_spc_ndx(TRIM(speciesName_1))
+    K2 = get_spc_ndx(TRIM(speciesName_2))
+    K3 = get_spc_ndx(TRIM(speciesName_3))
+    K4 = get_spc_ndx(TRIM(speciesName_4))
+    bulkMass(:nY,:nZ) = 0.0e+00_r8
+    DO iBin = 1, 2
+       DO M = 1, ntot_amode
+          N = lptr2_soa_a_amode(M,iBin)
+          IF ( N <= 0 ) CYCLE
+          bulkMass(:nY,:nZ) = bulkMass(:nY,:nZ) + state%q(:nY,:nZ,N)
+       ENDDO
+    ENDDO
+    DO iBin = 1, 2
+       DO M = 1, ntot_amode
+          N = lptr2_soa_a_amode(M,iBin)
+          IF ( N <= 0 ) CYCLE
+          P = mapCnst(N)
+          IF ( P > 0 .AND. K1 > 0 .AND. K2 > 0 .AND. K3 > 0 .AND. K4 > 0 ) THEN
+             vmr1(:nY,:nZ,P) = state%q(:nY,:nZ,N) / bulkMass(:nY,:nZ) &
+                             * (vmr1(:nY,:nZ,K1) + vmr1(:nY,:nZ,K2) + &
+                                vmr1(:nY,:nZ,K3) + vmr1(:nY,:nZ,K4))
+          ENDIF
+       ENDDO
+    ENDDO
+
+    ! Now deal with other volatility bins
+    DO iBin = 3, nsoa
+       IF ( iBin == 3 ) THEN
+          speciesName_1 = 'TSOA1'
+          speciesName_2 = 'ASOA1'
+       ELSEIF ( iBin == 4 ) THEN
+          speciesName_1 = 'TSOA2'
+          speciesName_2 = 'ASOA2'
+       ELSEIF ( iBin == 5 ) THEN
+          speciesName_1 = 'TSOA3'
+          speciesName_2 = 'ASOA3'
+       ENDIF
+       K1 = get_spc_ndx(TRIM(speciesName_1))
+       K2 = get_spc_ndx(TRIM(speciesName_2))
+       bulkMass(:nY,:nZ) = 0.0e+00_r8
+       DO M = 1, ntot_amode
+          N = lptr2_soa_a_amode(M,iBin)
+          IF ( N <= 0 ) CYCLE
+          bulkMass(:nY,:nZ) = bulkMass(:nY,:nZ) + state%q(:nY,:nZ,N)
+       ENDDO
+       DO M = 1, ntot_amode
+          N = lptr2_soa_a_amode(M,iBin)
+          IF ( N <= 0 ) CYCLE
+          P = mapCnst(N)
+          IF ( P > 0 .AND. K1 > 0 .AND. K2 > 0 ) THEN
+             vmr1(:nY,:nZ,P) = state%q(:nY,:nZ,N) / bulkMass(:nY,:nZ) &
+                             * (vmr1(:nY,:nZ,K1) + vmr1(:nY,:nZ,K2))
+          ENDIF
+       ENDDO
+    ENDDO
+
+    ! Now deal with gaseous SOA species
+    ! Deal with lowest two volatility bins
+    speciesName_1 = 'TSOG0'
+    K1 = get_spc_ndx(TRIM(speciesName_1))
+    N = lptr2_soa_g_amode(1)
+    P = mapCnst(N)
+    vmr1(:nY,:nZ,P) = vmr0(:nY,:nZ,P) / (vmr0(:nY,:nZ,P) + vmr0(:nY,:nZ,mapCnst(lptr2_soa_g_amode(2)))) &
+                    * vmr1(:nY,:nZ,K1)
+    N = lptr2_soa_g_amode(2)
+    P = mapCnst(N)
+    vmr1(:nY,:nZ,P) = vmr0(:nY,:nZ,P) / (vmr0(:nY,:nZ,P) + vmr0(:nY,:nZ,mapCnst(lptr2_soa_g_amode(1)))) &
+                    * vmr1(:nY,:nZ,K1)
+
+    ! Deal with other volatility bins
+    DO iBin = 3, nsoa
+       N = lptr2_soa_g_amode(iBin)
+       P = mapCnst(N)
+       IF ( iBin == 3 ) THEN
+          speciesName_1 = 'TSOG1'
+          speciesName_2 = 'ASOG1'
+       ELSEIF ( iBin == 4 ) THEN
+          speciesName_1 = 'TSOG2'
+          speciesName_2 = 'ASOG2'
+       ELSEIF ( iBin == 5 ) THEN
+          speciesName_1 = 'TSOG3'
+          speciesName_2 = 'ASOG3'
+       ENDIF
+       K1 = get_spc_ndx(TRIM(speciesName_1))
+       K2 = get_spc_ndx(TRIM(speciesName_2))
+       IF ( P > 0 .AND. K1 > 0 .AND. K2 > 0 ) vmr1(:nY,:nZ,P) = vmr1(:nY,:nZ,K1) + vmr1(:nY,:nZ,K2)
+    ENDDO
+
+#endif
 
     !==============================================================
     ! ***** W E T   D E P O S I T I O N  (rainout + washout) *****
@@ -3793,58 +4236,9 @@ contains
 
     ENDIF
 
-    DO N = 1, gas_pcnst
-       ! See definition of map2chm
-       M = map2chm(N)
-       IF ( M > 0 ) THEN
-          vmr1(:nY,:nZ,N) = State_Chm(LCHNK)%Species(1,:nY,nZ:1:-1,M) * &
-                            MWDry / adv_mass(N)
-       ELSEIF ( M < 0 ) THEN
-          vmr1(:nY,:nZ,N) = state%q(:nY,:nZ,-M) * &
-                            MWDry / adv_mass(N)
-       ENDIF
-    ENDDO
-
     !==============================================================
-    ! ***** M A M   G A S - A E R O S O L   E X C H A N G E *****
+    ! ***** B O U N D A R Y   C O N D I T I O N S            *****
     !==============================================================
-
-#if defined( MODAL_AERO )
-
-    del_h2so4_gasprod = 0.0e+00_fp
-    ! This needs to be in mol/mol over this timestep
-    IF ( ( iPSO4 > 0 ) .and. ( MWPSO4 > 0.0e+00_fp ) ) THEN
-       DO L = 1, nZ
-          ! Convert from kg SO4/kg to mol/mol
-          del_h2so4_gasprod(:nY,L) = &
-          State_Chm(LCHNK)%Species(1,:nY,nZ+1-L,iPSO4) * MWDry / MWPSO4
-       ENDDO
-    ENDIF
-
-    call aero_model_gasaerexch( loffset           = iFirstCnst - 1,         &
-                                ncol              = NCOL,                   &
-                                lchnk             = LCHNK,                  &
-                                troplev           = Trop_Lev(:),            &
-                                delt              = dT,                     &
-                                reaction_rates    = reaction_rates,         &
-                                tfld              = state%t(:,:),           &
-                                pmid              = state%pmid(:,:),        &
-                                pdel              = state%pdel(:,:),        &
-                                mbar              = mBar,                   &
-                                relhum            = relHum(:,:),            &
-                                zm                = state%zm(:,:),          &
-                                qh2o              = qH2O(:,:),              &
-                                cwat              = cldW,                   &
-                                cldfr             = cldFrc,                 &
-                                cldnum            = nCldWtr,                &
-                                airdens           = invariants(:,:,indexm), &
-                                invariants        = invariants,             &
-                                del_h2so4_gasprod = del_h2so4_gasprod,      &
-                                vmr0              = vmr0,                   &
-                                vmr               = vmr1,                   &
-                                pbuf              = pbuf )
-#endif
-
     ! Set boundary conditions of long-lived species (most likely
     ! CH4, OCS, N2O, CFC11, CFC12).
     ! Note: This will overwrite the UCX boundary conditions
@@ -3882,6 +4276,7 @@ contains
     ENDDO
     CALL set_short_lived_species( SlsData, LCHNK, nY, pbuf )
 
+    ! Apply tendencies to GEOS-Chem species
     DO N = 1, pcnst
        M = map2GC(N)
        IF ( M <= 0 ) CYCLE
@@ -3893,25 +4288,56 @@ contains
                               + (MMR_End(:nY,:nZ,M)-MMR_Beg(:nY,:nZ,M))/dT
     ENDDO
 
-#if defined( MODAL_AERO_4MODE )
+#if defined( MODAL_AERO )
     ! Here apply tendencies to MAM aerosols
     ! Initial mass in bin SM is stored as state%q(N)
     ! Final mass in bin SM is stored as binRatio(SM,M) * State_Chm(P)
     !
     ! We decide to apply chemical tendencies to all MAM aerosols,
     ! except so4, for which the chemically-produced sulfate gets
-    ! partitioned in aero_model_gasaerexch
+    ! partitioned in aero_model_gasaerexch.
     DO M = 1, ntot_amode
        DO SM = 1, nspec_amode(M)
-          P = map2MAM4(SM,M)
-          IF ( P <= 0 .OR. to_upper(xname_massptr(SM,M)(:3)) == 'SO4' ) CYCLE
           N = lmassptr_amode(SM,M)
-          ! Apply MAM4 chemical tendencies owing to GEOS-Chem aerosol processing
+          P = mapCnst(N)
+          IF ( P <= 0 ) CYCLE
+          ! Apply tendency from MAM gasaerexch
           ptend%q(:nY,:nZ,N) = ptend%q(:nY,:nZ,N) &
-                             + (binRatio(SM,M,:nY,:nZ) * & 
-                                REAL(State_Chm(LCHNK)%Species(1,:nY,nZ:1:-1,P),r8) &
+                             + (vmr1(:nY,:nZ,P) - vmr0(:nY,:nZ,P))/dT &
+                                  * adv_mass(P) / MWDry
+          P = map2MAM4(SM,M)
+          IF ( P <= 0 ) CYCLE
+          K = map2GC(P)
+          IF ( K <= 0 .or. K == iSO4 ) CYCLE
+          ! Apply MAM4 chemical tendencies owing to GEOS-Chem aerosol processing
+          ptend%q(:nY,:nZ,N) = ptend%q(:nY,:nZ,N)                                  &
+                             + (binRatio(SM,M,:nY,:nZ) *                           &
+                                REAL(State_Chm(LCHNK)%Species(1,:nY,nZ:1:-1,K),r8) &
+                                  * adv_mass(mapCnst(N)) / adv_mass(mapCnst(P))    &
                                 - state%q(:nY,:nZ,N))/dT
        ENDDO
+       N = numptr_amode(M)
+       P = mapCnst(N)
+       IF ( P <= 0 ) CYCLE
+       ptend%q(:nY,:nZ,N) = ptend%q(:nY,:nZ,N) &
+                          + (vmr1(:nY,:nZ,P) - vmr0(:nY,:nZ,P))/dT &
+                               * adv_mass(P) / MWDry
+    ENDDO
+    N = cH2SO4
+    P = l_H2SO4
+    IF ( P > 0 ) THEN
+       ptend%q(:nY,:nZ,N) = ptend%q(:nY,:nZ,N) &
+                          + (vmr1(:nY,:nZ,P) - vmr0(:nY,:nZ,P))/dT &
+                               * adv_mass(P) / MWDry
+    ENDIF
+    DO iBin = 1, nsoa
+       N = lptr2_soa_g_amode(iBin)
+       P = mapCnst(N)
+       IF ( P > 0 ) THEN
+          ptend%q(:nY,:nZ,N) = ptend%q(:nY,:nZ,N) &
+                             + (vmr1(:nY,:nZ,P) - vmr0(:nY,:nZ,P))/dT &
+                                  * adv_mass(P) / MWDry
+       ENDIF
     ENDDO
 #endif
 
@@ -3946,12 +4372,12 @@ contains
        CALL outfld( 'CT_H2O_GHG', ptend%q(:,:,1), PCOLS, LCHNK )
     ENDIF
 
-    ! Debug statements
-    ! Ozone tendencies
-    IF ( rootChunk ) THEN
-       Write(iulog,*) " MMR_Beg = ", MMR_Beg(1,:,iO3)
-       Write(iulog,*) " MMR_End = ", MMR_End(1,:,iO3)
-    ENDIF
+    !! Debug statements
+    !! Ozone tendencies
+    !IF ( rootChunk ) THEN
+    !   Write(iulog,*) " MMR_Beg = ", MMR_Beg(1,:,iO3)
+    !   Write(iulog,*) " MMR_End = ", MMR_End(1,:,iO3)
+    !ENDIF
 
     IF (PRESENT(fh2o)) THEN
        fh2o(:nY) = 0.0e+0_r8
