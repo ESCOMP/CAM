@@ -942,14 +942,14 @@ contains
     use Phys_Grid,             only : get_Area_All_p
     use hycoef,                only : ps0, hyai, hybi, hyam
 
-    use seq_drydep_mod,        only : drydep_method, DD_XLND
+    use seq_drydep_mod,        only : drydep_method, DD_XLND, DD_XATM
     use gas_wetdep_opts,       only : gas_wetdep_method
     use mo_neu_wetdep,         only : neu_wetdep_init
 
 #if defined( MODAL_AERO_4MODE )
     use aero_model,            only : aero_model_init
     use mo_setsox,             only : sox_inti
-    use mo_drydep,             only : drydep_inti_landuse
+    use mo_drydep,             only : drydep_inti
     use modal_aero_data,       only : ntot_amode, nspec_amode
     use modal_aero_data,       only : xname_massptr
 #endif
@@ -1476,13 +1476,14 @@ contains
     CALL aero_model_init( pbuf2d )
 
     ! Initialize land maps for aerosol dry deposition
-    IF ( drydep_method == DD_XLND ) THEN
-       CALL drydep_inti_landuse( depvel_lnd_file, &
-                                 clim_soilw_file )
+    IF ( drydep_method == DD_XATM .OR. drydep_method == DD_XLND ) THEN
+       CALL drydep_inti( depvel_lnd_file, &
+                         clim_soilw_file, &
+                         season_wes_file )
     ELSE
-       Write(iulog,'(a,a)') ' drydep_method is set to: ', TRIM(drydep_method)
-       CALL ENDRUN('drydep_method must be DD_XLND to compute land maps for aerosol' // &
-               ' dry deposition!')
+       IF ( masterProc ) Write(iulog,'(a,a)') ' drydep_method is set to: ', TRIM(drydep_method)
+       CALL ENDRUN('drydep_method must be DD_XLND or DD_XATM to compute land '// &
+               'maps for aerosol dry deposition!')
     ENDIF
 #endif
 
