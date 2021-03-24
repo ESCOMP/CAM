@@ -334,26 +334,29 @@ CONTAINS
     INTEGER                                :: LCHNK
     INTEGER                                :: nY, nZ
     INTEGER                                :: J, L, N
-    INTEGER                                :: RC            ! return code
-    INTEGER                                :: tmpIdx        ! pbuf field id
+    INTEGER                                :: RC             ! return code
+    INTEGER                                :: tmpIdx         ! pbuf field id
+
+    INTEGER                                :: id_O3, id_HNO3 ! Species IDs for reuse
 
     ! Logical
     LOGICAL                                :: rootChunk
 
     ! Objects
-    TYPE(physics_buffer_desc), POINTER     :: pbuf_chnk(:)  ! slice of pbuf in current chunk
+    TYPE(physics_buffer_desc), POINTER     :: pbuf_chnk(:)   ! slice of pbuf in current chunk
 
     ! Real
-    REAL(r8),                      POINTER :: pbuf_ik(:,:)  ! pointer to pbuf data (/pcols,pver/)
-    REAL(r8), DIMENSION(state%NCOL,PVER+1) :: zint          ! Interface geopotential in km
-    REAL(r8), DIMENSION(state%NCOL)        :: zsurf         ! Surface height
-    REAL(r8)                               :: SCALFAC       ! Multiplying factor
-    REAL(r8)                               :: megflx(pcols) ! For MEGAN emissions
+    REAL(r8),                      POINTER :: pbuf_ik(:,:)   ! pointer to pbuf data (/pcols,pver/)
+    REAL(r8),                      POINTER :: pbuf_i(:)      ! pointer to 2-D (1-D in CAM) data (/pcols/)
+    REAL(r8), DIMENSION(state%NCOL,PVER+1) :: zint           ! Interface geopotential in km
+    REAL(r8), DIMENSION(state%NCOL)        :: zsurf          ! Surface height
+    REAL(r8)                               :: SCALFAC        ! Multiplying factor
+    REAL(r8)                               :: megflx(pcols)  ! For MEGAN emissions
     REAL(r8), PARAMETER                    :: m2km  = 1.e-3_r8
 
     ! Strings
     CHARACTER(LEN=255)                     :: SpcName
-    CHARACTER(LEN=255)                     :: fldname_ns    ! field name HCO_*
+    CHARACTER(LEN=255)                     :: fldname_ns     ! field name HCO_*
 
     !=================================================================
     ! CESMGC_Emissions_Calc begins here!
@@ -362,6 +365,7 @@ CONTAINS
     ! Initialize pointers
     pbuf_chnk => NULL()
     pbuf_ik   => NULL()
+    pbuf_i    => NULL()
 
     ! LCHNK: which chunk we have on this process
     LCHNK = state%LCHNK
@@ -409,6 +413,80 @@ CONTAINS
           ENDIF
        ENDIF
     ENDDO
+
+    !-----------------------------------------------------------------------
+    ! Deposition fluxes from HEMCO
+    !-----------------------------------------------------------------------
+
+    ! Part 1: Eventually retrieve deposition velocities [1/s] from HEMCO
+    ! and convert to negative flux and apply.
+    ! TODO hplin 3/24/21
+    
+
+    ! Part 2: Handle special deposition fluxes for the ParaNOx extension
+    ! for PAR_O3_DEP and PAR_HNO3_DEP
+    CALL cnst_get_ind('O3', id_O3)
+    CALL cnst_get_ind('HNO3', id_HNO3)
+
+    ! write(iulog,*) 'id_O3, cnst_name, id_HNO3, cnst_name', id_O3, cnst_name(id_O3), id_HNO3, cnst_name(id_HNO3)
+
+    tmpIdx = pbuf_get_index('HCO_PAR_O3_DEP', RC)
+    IF(tmpIdx < 0 .OR. ( iStep == 1 )) then
+        ! No ParaNOx dep flux for O3
+    ELSE
+        pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
+        CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_i)
+
+        IF ( .NOT. ASSOCIATED(pbuf_i) ) THEN ! Sanity check
+           CALL ENDRUN("CESMGC_Emissions_Calc: FATAL - tmpIdx > 0 but pbuf_i not associated (2)")
+        ENDIF
+
+        ! apply loss flux to surface (level nZ)
+        eflx(1:NY,nZ,id_O3) = eflx(1:NY,nZ,id_O3) - pbuf_i(1:nY)
+
+        IF ( MINVAL(eflx(:nY,nZ,id_O3)) < 0.0e+00_r8 ) THEN
+           Write(iulog,*) " CESMGC_Emissions_Calc: HEMCO sfc flux after ParaNOx is negative for O3 with value ", MINVAL(eflx(:nY,:nZ,id_O3)), " at ", &
+              MINLOC(eflx(:nY,nZ,id_O3))
+        ENDIF
+
+        IF ( rootChunk .and. ( MINVAL(pbuf_i(1:nY)) < 0.0e+0_r8 ) ) THEN
+           Write(iulog,'(a,a,a,a)') " CESMGC_Emissions_Calc: HEMCO dflx(paranox) O3 added to ", TRIM(cnst_name(id_O3))
+           Write(iulog,'(a,a,E16.4)') " CESMGC_Emissions_Calc: Minval dflx(paranox), eflx(sfc) O3 ", MINVAL(pbuf_i(1:nY)), MINVAL(eflx(:nY,nZ,id_O3))
+        ENDIF
+
+        ! Reset pointers
+        pbuf_i   => NULL()
+        pbuf_chnk => NULL()
+    ENDIF
+
+    tmpIdx = pbuf_get_index('HCO_PAR_HNO3_DEP', RC)
+    IF(tmpIdx < 0 .OR. ( iStep == 1 )) then
+        ! No ParaNOx dep flux for HNO3
+    ELSE
+        pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
+        CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_i)
+
+        IF ( .NOT. ASSOCIATED(pbuf_i) ) THEN ! Sanity check
+           CALL ENDRUN("CESMGC_Emissions_Calc: FATAL - tmpIdx > 0 but pbuf_i not associated (3)")
+        ENDIF
+
+        eflx(1:NY,nZ,id_HNO3) = eflx(1:NY,nZ,id_HNO3) - pbuf_i(1:nY)
+
+        IF ( MINVAL(eflx(:nY,nZ,id_HNO3)) < 0.0e+00_r8 ) THEN
+           Write(iulog,*) " CESMGC_Emissions_Calc: HEMCO sfc flux after ParaNOx is negative for HNO3 with value ", MINVAL(eflx(:nY,nZ,id_HNO3)), " at ", &
+              MINLOC(eflx(:nY,nZ,id_HNO3))
+        ENDIF
+
+        IF ( rootChunk .and. ( MINVAL(pbuf_i(1:nY)) < 0.0e+0_r8 ) ) THEN
+           Write(iulog,'(a,a,a,a)') " CESMGC_Emissions_Calc: HEMCO dflx(paranox) HNO3 added to ", TRIM(cnst_name(id_HNO3))
+           Write(iulog,'(a,a,E16.4)') " CESMGC_Emissions_Calc: Minval dflx(paranox), eflx(sfc) HNO3 ", MINVAL(pbuf_i(1:nY)), MINVAL(eflx(:nY,nZ,id_HNO3))
+        ENDIF
+
+        ! Reset pointers
+        pbuf_i   => NULL()
+        pbuf_chnk => NULL()
+    ENDIF
+
 
 #if defined( MODAL_AERO_4MODE )
     !-----------------------------------------------------------------------
