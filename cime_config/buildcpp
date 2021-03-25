@@ -76,6 +76,7 @@ def buildcpp(case):
     # The vector mapping (in the mediator) needs to be 'cart3d' for SE
     # NB: This is currently the default, is it working by conincidence for
     #     other unstructured dycores?
+    # For cmeps/nuopc cart3d is always the default option for all grids
     match = re.match(r'ne[0-9]', atm_grid)
     if match:
         if (comp_interface == 'mct'):
