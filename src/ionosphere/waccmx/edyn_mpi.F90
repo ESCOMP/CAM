@@ -1674,7 +1674,7 @@ contains
       real(r8),intent(out) :: fout(mlon00:mlon11,mxneed,nf) ! returned data at needed lats
       !
       ! Local:
-      integer,parameter :: sndbuf_cntr_max = 20 ! Maximum number of ibsend from one mpi task
+      integer,parameter :: sndbuf_cntr_max = 40 ! Maximum number of ibsend from one mpi task
       integer :: ier,njneed,i,j,n,nj,idest, &
            icount,len,nlons,isrc,msgid,ifld,sndbuf_cntr
       integer :: tij ! rank in cols_comm (0 to nmagtaskj-1)
