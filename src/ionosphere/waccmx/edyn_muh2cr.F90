@@ -1,32 +1,35 @@
 !-----------------------------------------------------------------------
-      subroutine muh(pe,jntl)
+      subroutine muh(pe,nlon,nlat,nlev,jntl)
       use shr_kind_mod ,only: r8 => shr_kind_r8
       use cam_abortutils   ,only: endrun
-      use edyn_solve,only:    nc,ncee,cee
+      use edyn_solve,only:    nc,cee
       use cam_logfile  ,only: iulog
+      use edyn_params, only: pi
 
       implicit none
-      integer jntl
+
+      integer,intent(in) :: nlon, nlat, nlev, jntl
+      real(r8),intent(out) :: PE(nlon+1,*)
 !
 !     set grid size params
 !
-      integer,parameter :: iixp = EDYN_NLON , jjyq = (EDYN_NLAT-1)/2,iiex = 1, jjey = 1
-      integer,parameter :: nnx=iixp*2**(iiex-1)+1, nny=jjyq*2**(jjey-1)+1
+      integer :: iixp, jjyq
+      integer,parameter :: iiex = 1, jjey = 1
+      integer :: nnx, nny
 !
 !     estimate work space for point relaxation (see muh2cr.d)
 !
-      integer,parameter :: llwork=(5*((nnx+2)*(nny+2)+18*nnx*nny)/3+ &
-                  (nnx+2)*(nny+2)+ (iixp+1)*(jjyq+1)*(2*iixp+3))
-      integer,parameter :: iiwork=(iixp+1)*(jjyq+1)
-      real(r8) :: phi(nnx,nny),rhs(nnx,nny),work(llwork)
-      integer iwork(iiwork)
+      integer :: llwork
+      integer :: iiwork
+      real(r8), allocatable :: phi(:,:),rhs(:,:),work(:)
+      integer, allocatable :: iwork(:)
 !
 !     put integer and floating point argument names in contiguous
 !     storage for labelling in vectors iprm,fprm
 !
-      integer iprm(17),mgopt(4)
+      integer :: iprm(17),mgopt(4)
       real(r8) :: fprm(6)
-      integer intl,nxa,nxb,nyc,nyd,ixp,jyq,iex,jey,nx,ny,&
+      integer :: intl,nxa,nxb,nyc,nyd,ixp,jyq,iex,jey,nx,ny,&
                     iguess,maxcy,method,nwork,lwrkqd,itero
       common/itmud2cr/intl,nxa,nxb,nyc,nyd,ixp,jyq,iex,jey,nx,ny,&
                     iguess,maxcy,method,nwork,lwrkqd,itero
@@ -34,19 +37,26 @@
       common/ftmud2cr/xa,xb,yc,yd,tolmax,relmax
       equivalence(intl,iprm)
       equivalence(xa,fprm)
-      integer i,j,ierror
-      real(r8) :: PE(NNX,1)
-      integer maxcya
-!      DATA MAXCYA/20/
-      DATA MAXCYA/1/
+      integer :: i,j,ierror
+      integer, parameter :: maxcya = 1
       integer mm,nn,jj,jjj
-      real(r8) :: pi
+
+      iixp = nlon
+      jjyq = (nlat-1)/2
+      nnx=iixp*2**(iiex-1)+1
+      nny=jjyq*2**(jjey-1)+1
+      llwork=(5*((nnx+2)*(nny+2)+18*nnx*nny)/3+ &
+           (nnx+2)*(nny+2)+ (iixp+1)*(jjyq+1)*(2*iixp+3))
+      iiwork=(iixp+1)*(jjyq+1)
+
+      allocate(phi(nnx,nny),rhs(nnx,nny),work(llwork))
+      allocate(iwork(iiwork))
+
 !
 !     set input integer arguments
 !
       MM = NNX
       NN = NNY
-      PI = 4._r8*ATAN(1._r8)
 !
 !     SET INPUT INTEGER PARAMETERS
 !
@@ -74,7 +84,7 @@
       mgopt(1) = 2
       mgopt(2) = 2
       mgopt(3) = 2
-      if (EDYN_NLAT<=97) then
+      if (nlat<=97) then
          mgopt(4) = 3
       else
          !  1 deg, changed to mgopt(4) = 1 per Astrid's suggestion
@@ -106,9 +116,9 @@
 !
 !     set error control flag
 !
-      if (EDYN_NLEV>6) then
+      if (nlev>6) then
          tolmax = 0.05_r8
-      else if (EDYN_NLEV>5) then
+      else if (nlev>5) then
          tolmax = 0.03_r8
       else
          tolmax = 0.01_r8
@@ -135,7 +145,7 @@
       DO I=1,NX
         PHI(I,NY) = RHS(I,NY)/CEE(I+(NY-1)*NX+8*NX*NY)
       END DO
-      
+
 !      write(iulog,100)
   100 format(//' mud2cr test ')
 !      write (iulog,101) (iprm(i),i=1,15)
@@ -186,8 +196,11 @@
           PE(I,JJJ) = PHI(I,J)
         END DO
       END DO
+
+      deallocate( phi, rhs, work, iwork)
+
       end subroutine muh
-!-----------------------------------------------------------------------      
+!-----------------------------------------------------------------------
       subroutine muh2cr(iparm,fparm,wk,iwk,rhs,phi,mgopt,ierror)
       use shr_kind_mod ,only: r8 => shr_kind_r8
       implicit none
@@ -471,7 +484,7 @@
               ij = jj+i+1
               phmax = max(phmax,abs(wk(ij)))
               relmax = max(relmax,abs(wk(ij)-phif(i,j)))
-              
+
               phif(i,j) = wk(ij)
             end do
           end do
@@ -479,7 +492,7 @@
 !     set maximum relative difference and check for convergence
 !
           if (phmax.gt.0.0_r8) relmax = relmax/phmax
-          
+
           if (relmax.le.tolmax) return
         end if
       end do
@@ -698,7 +711,7 @@
       subroutine dismh2cr(nx,ny,cf,tx,ty,wk,iwk,ier)
       use shr_kind_mod ,only: r8 => shr_kind_r8
       use cam_abortutils   ,only: endrun
-      use edyn_solve,only:    nc,ncee,cee,ceee
+      use edyn_solve,only:    nc,cee,ceee
       use cam_logfile  ,only: iulog
 !
 !     discretize elliptic pde for muh2cr, set nonfatal errors
@@ -973,7 +986,7 @@
           phi(i,j)=phi(i,j)-sum
         end do
       end do
-      return                                                                    
+      return
       end subroutine for2cr
 !-----------------------------------------------------------------------
       subroutine bkw2cr(nx,ny,phi,cof,beta,index,nxa)
@@ -1003,7 +1016,7 @@
         end if
         call sgsl(beta(1,1,jcur),nx ,nx ,index(1,jcur),phi(1,jcur),iz)
       end do
-      return                                                                    
+      return
       end subroutine bkw2cr
 !-----------------------------------------------------------------------
       subroutine lud2crp(nx,ny,cof,beta,alfa,zmat,dmat,index,nxa)
@@ -1395,11 +1408,11 @@
       do i=1,nx-1
         beta(i,i+1,jcur) = cof(i,jcur,1)
       end do
-      if (nxa.eq.0) then                                                        
+      if (nxa.eq.0) then
         beta(1,nx-1,jcur) = cof(1,jcur,5)
         beta(nx,2,jcur) = cof(nx,jcur,1)
-      end if                                                                    
-      return                                                                    
+      end if
+      return
       end subroutine setbcr
 !-----------------------------------------------------------------------
       subroutine setacr(nx,ny,cof,alfa,jcur,nxa)
@@ -1454,7 +1467,7 @@
                      iguess, maxcy,method,nwork,lwork,itero,ngrid, &
                      klevel,kcur,kcycle,iprer,ipost,intpol,kps
       common/fmud2cr/xa,xb,yc,yd,tolmax,relmax
-      
+
 
 !
 !     set specified boundaries in rhs from phi

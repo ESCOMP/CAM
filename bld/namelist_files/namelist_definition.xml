@@ -4382,6 +4382,12 @@ Oplus transport grid size, entered as num_longitudes, num_latitudes.
 Default: set by build-namelist
 </entry>
 
+<entry id="edyn_grid" type="char*8"
+       category="waccmx" group="ionosphere_nl" valid_values="80x97,160x193,320x385,640x769" >
+Magnetic grid resolution (nlon x nlat).
+Default: set by build-namelist
+</entry>
+
 <entry id="ionos_npes" type="integer"
        category="waccmx" group="ionosphere_nl" valid_values="" >
 Number of MPI processes on which to run the WACCM-X ionosphere

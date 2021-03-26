@@ -83,11 +83,11 @@ module edynamo
 ! and rhspde.  The nf2d 6 fields are: zigm11,zigm22,zigmc,zigm2,rim1,rim2,
 ! order is important (see feq_jpm1 and fpole_jpm2)!
 !
-  integer, parameter :: nf2d=6           ! 6 2d fields
-  real(r8) :: feq_jpm1(nmlonp1,2,nf2d)   ! 6 fields at 2 lats (eq-1, eq+1)
-  real(r8) :: fpole_jpm2(nmlonp1,4,nf2d) ! fields at S pole+1,2 and N pole-1,2
+  integer, parameter :: nf2d=6               ! 6 2d fields
+  real(r8), allocatable :: feq_jpm1(:,:,:)   ! 6 fields at 2 lats (eq-1, eq+1)
+  real(r8), allocatable :: fpole_jpm2(:,:,:) ! fields at S pole+1,2 and N pole-1,2
 
-  real(r8), parameter :: unitvm(nmlon) = 1._r8
+  real(r8), allocatable :: unitvm(:)
 !
 ! ed1,ed2: 2d electric field output on mag grid:
 ! (use-associated by dpie_coupling)
@@ -98,7 +98,7 @@ module edynamo
 !   edynamo has subdomains (mlon,mlat), whereas time3d has global (nmlat,nmlonp1)
 ! These are use-associated by time3d, and are init to zero in edyn_init.
 !
-  real(r8), dimension(nmlat,nmlonp1) :: ed1_glb, ed2_glb
+  real(r8), allocatable, dimension(:,:) :: ed1_glb, ed2_glb
   logical :: debug = .false. ! set true for prints to stdout at each call
 
   public :: alloc_edyn, ed1, ed2, ed1_glb, ed2_glb
@@ -466,6 +466,13 @@ contains
     if (istat /= 0) call endrun('alloc_edyn: ed2')
     ed2 = finit
 
+    allocate(unitvm(nmlon))
+    unitvm = 1._r8
+
+    allocate(feq_jpm1(nmlonp1,2,nf2d))
+    allocate(fpole_jpm2(nmlonp1,4,nf2d))
+    allocate(ed1_glb(nmlat,nmlonp1), ed2_glb(nmlat,nmlonp1))
+
   end subroutine alloc_edyn
 !-----------------------------------------------------------------------
   subroutine fieldline_integrals( ped_mag, hal_mag, adotv1_mag, adotv2_mag, &
@@ -662,7 +669,8 @@ contains
     integer :: i,j,ii,lonend
     real(r8) :: fmsub(mlon0:mlon1,mlat0:mlat1,nf2d)
     real(r8) :: corfac
-    real(r8), parameter :: r8_nmlon = dble(nmlon)
+    real(r8) :: r8_nmlon
+    r8_nmlon = real(nmlon, r8)
 !
 ! For equatorial values, we need latitudes eq+1 and eq-1:
 ! Local feq_jpm1(nmlonp1,2,6) is returned by mp_mageq_jpm1,
@@ -962,7 +970,8 @@ contains
       zigm2_meq(nmlonp1), & ! needed for rim1_meq
       zigmc_meq(nmlonp1), & ! needed for rim1_meq
       zigm22_meq(nmlonp1)   ! needed for rim1_meq
-    real(r8), parameter :: r8_nmlon = dble(nmlon)
+    real(r8) :: r8_nmlon
+    r8_nmlon = real(nmlon, r8)
 
     do j=1,nmlat
       tint1(j) = cos(-pi_dyn/2._r8+(j-1)*dlatm)
@@ -1219,8 +1228,8 @@ contains
     ixfind
 !
 ! Local:
-    real(r8), parameter :: eps = 1.e-10_r8, unitvm(nmlon)=1._r8
-    integer, parameter :: mxneed=nmlat+2
+    real(r8), parameter :: eps = 1.e-10_r8
+    integer :: mxneed
     integer  :: i,j,k,n,mlon00,mlon11,mlat00,mlat11
     real(r8) :: csth0, cosltm, sym, pi, phims, phimn, rind
     real(r8), dimension(nmlonp1) :: thetam,pslot,qslot
@@ -1234,15 +1243,15 @@ contains
     real(r8) :: fmsub(mlon0:mlon1,mlat0:mlat1,4)
     real(r8) :: fmsub1(mlon0-1:mlon1+1,mlat0-1:mlat1+1,5)
     real(r8) :: feq_jpm3(nmlonp1,-3:3,1) ! global lons at equator +/- 3
-    integer :: jneed(mxneed) ! lats needed from other tasks for interp
+    integer :: jneed(nmlat+2) ! lats needed from other tasks for interp
     integer :: njneed,icount
-    real(r8), dimension(mlon0-1:mlon1+1,mxneed) :: &
+    real(r8), dimension(mlon0-1:mlon1+1,nmlat+2) :: &
       phineed,   & ! phim2d at needed latitudes
       ed1need,   & ! ed1 at needed latitudes
       ed2need,   & ! ed2 at needed latitudes
       ephineed,  & ! ephi at needed latitudes
       elamneed     ! elam at needed latitudes
-    real(r8), dimension(mlon0-1:mlon1+1,mxneed,5) :: fmneed
+    real(r8), dimension(mlon0-1:mlon1+1,nmlat+2,5) :: fmneed
     real(r8) :: phi0j0,phi1j0,phi0j1,phi1j1
     real(r8) :: ed1i0j0,ed1i1j0,ed1i0j1,ed1i1j1
     real(r8) :: ed2i0j0,ed2i1j0,ed2i0j1,ed2i1j1
@@ -1250,6 +1259,7 @@ contains
     real(r8) :: elam0j0,elam1j0,elam0j1,elam1j1
     real(r8) :: fac_elam
 !
+    mxneed=nmlat+2
     pi = pi_dyn
     mlon00=mlon0-1 ; mlon11=mlon1+1
     mlat00=mlat0-1 ; mlat11=mlat1+1

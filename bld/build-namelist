@@ -2776,6 +2776,7 @@ if ($waccmx) {
   if ($ionos ne 'none') {
     add_default($nl, 'cam_physics_mesh');
     add_default($nl, 'oplus_grid');
+    add_default($nl, 'edyn_grid');
   }
   add_default($nl,'dadadj_niter');
   add_default($nl,'ionos_epotential_model');

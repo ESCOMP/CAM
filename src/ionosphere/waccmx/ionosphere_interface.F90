@@ -91,7 +91,10 @@ module ionosphere_interface
    integer           :: ionos_npes = -1
 
    logical :: state_debug_checks = .false.
-contains
+
+   integer :: mag_nlon=0, mag_nlat=0, mag_nlev=0, mag_ngrid=0
+
+ contains
 
    !---------------------------------------------------------------------------
    !---------------------------------------------------------------------------
@@ -106,8 +109,9 @@ contains
       character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
       ! Local variables
-      integer :: unitn, ierr
+      integer :: unitn, ierr, ipos
       integer :: oplus_grid(2)
+      character(len=8) :: edyn_grid
       integer :: total_pes
       character(len=*), parameter :: subname = 'ionosphere_readnl'
 
@@ -117,7 +121,7 @@ contains
       namelist /ionosphere_nl/ amienh_files, amiesh_files, wei05_coefs_file, ltr_files
       namelist /ionosphere_nl/ epot_crit_colats
       namelist /ionosphere_nl/ ionos_npes
-      namelist /ionosphere_nl/ oplus_grid
+      namelist /ionosphere_nl/ oplus_grid, edyn_grid
 
       oplus_grid = 0
 
@@ -155,10 +159,18 @@ contains
       call mpi_bcast(epot_crit_colats,    2, mpi_real8,   masterprocid, mpicom, ierr)
       call mpi_bcast(ionos_npes,          1, mpi_integer, masterprocid, mpicom, ierr)
       call mpi_bcast(oplus_grid,          2, mpi_integer, masterprocid, mpicom, ierr)
+      call mpi_bcast(edyn_grid,           8, mpi_character, masterprocid, mpicom, ierr)
 
       ! Extract grid settings
       oplus_nlon = oplus_grid(1)
       oplus_nlat = oplus_grid(2)
+
+      ipos = scan(edyn_grid,'x')
+      read(edyn_grid(:ipos-1),*) mag_nlon
+      read(edyn_grid(ipos+1:),*) mag_nlat
+
+      mag_nlev = 5 + int(log(real(mag_nlon,r8)/80._r8)/log(2._r8))
+      mag_ngrid = (mag_nlon/10)*2
 
       ! Set npes in case of default settings
       call mpi_comm_size(mpicom, total_pes, ierr)
@@ -187,6 +199,11 @@ contains
          if (ionos_xport_active) then
             write(iulog,'(a,i0)') 'ionosphere_readnl: oplus_nlon = ',oplus_nlon
             write(iulog,'(a,i0)') 'ionosphere_readnl: oplus_nlat = ',oplus_nlat
+            write(iulog,'(a,i0)') 'ionosphere_readnl: edyn_grid = '//edyn_grid
+            write(iulog,'(a,i0)') 'ionosphere_readnl: mag_nlon = ',mag_nlon
+            write(iulog,'(a,i0)') 'ionosphere_readnl: mag_nlat = ',mag_nlat
+            write(iulog,'(a,i0)') 'ionosphere_readnl: mag_nlev = ',mag_nlev
+            write(iulog,'(a,i0)') 'ionosphere_readnl: mag_ngrid = ',mag_ngrid
          end if
       end if
       epot_active = .true.
@@ -202,6 +219,7 @@ contains
       use cam_history,     only: addfld, add_default, horiz_only
       use edyn_mpi,        only: mp_init
       use edyn_geogrid,    only: set_geogrid
+      use edyn_maggrid,    only: alloc_maggrid
       use mo_apex,         only: mo_apex_init1
       ! Hybrid level definitions:
       use ref_pres,        only: pref_mid  ! target alev(pver) midpoint levels
@@ -309,6 +327,8 @@ contains
 
          call d_pie_init(ionos_edyn_active, ionos_oplus_xport,                &
               ionos_xport_nsplit, epot_crit_colats)
+
+         call alloc_maggrid( mag_nlon, mag_nlat, mag_nlev, mag_ngrid )
 
          call mp_init(mpicom, ionos_npes, oplus_nlon, oplus_nlat, pver) ! set ntask,mytid
          ! set global geographic grid (sets coordinate distribution)

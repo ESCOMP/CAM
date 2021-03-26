@@ -85,7 +85,6 @@ OPTIONS
                         in degrees for latitude and longitude respectively); nexnp for
                         se grids.
      -ionosphere        Ionophere module used in WACCMX [ none | wxie ].
-     -mgrid             Magnetic grid resolution for the ionosphere [ 97x80 | 193x160 | 385x320| 769x640 ].
      -macrophys <name>  Specify the macrophysics option [rk | park | clubb_sgs].
      -max_n_rad_cnst <n> Maximum number of constituents that are either radiatively
                         active, or in any single diagnostic list for the radiation.
@@ -269,7 +268,6 @@ GetOptions(
     "h|help"                    => \$opts{'help'},
     "hgrid=s"                   => \$opts{'hgrid'},
     "ionosphere=s"              => \$opts{'ionosphere'},
-    "mgrid=s"                   => \$opts{'mgrid'},
     "lapack_libdir=s"           => \$opts{'lapack_libdir'},
     "ldflags=s"                 => \$opts{'ldflags'},
     "linker=s"                  => \$opts{'linker'},
@@ -1807,7 +1805,6 @@ if ($camiop eq 'ON') { $cfg_cppdefs .= " -DBFB_CAM_SCAM_IOP"; }
 # Resolution parameters for rectangular lat/lon grids
 my $nlon = $cfg_ref->get('nlon');
 my $nlat = $cfg_ref->get('nlat');
-my $csne = $cfg_ref->get('csne');
 $cfg_cppdefs .= " -DPLON=$nlon -DPLAT=$nlat";
 
 # Parameters for multiple instances
@@ -1879,40 +1876,6 @@ if ($cfg_ref->get('analytic_ic')) {
 #WACCM-X extended thermosphere/ionosphere model
 if ($waccmx) {
     $cfg_cppdefs .= ' -DWACCMX_PHYS';
-    if ($ionos =~ /wxie/) {
-        my $mgrid;
-        if (defined $opts{'mgrid'}) {
-            $mgrid = $opts{'mgrid'};
-        } elsif ($nlat > 600 or $csne > 100) {
-            $mgrid = '769x640'; # ~0.25-deg magnetic lat
-        } elsif ($nlat > 300 or $csne > 50) {
-            $mgrid = '385x320'; # ~0.5-deg magnetic lat
-        } elsif ($nlat > 150 or $csne > 20) {
-            $mgrid = '193x160'; # ~1-deg magnetic lat
-        } else {
-            $mgrid = '97x80'; # default to ~2-deg magnetic lat
-        }
-
-        my ($nmlat, $nmlon) = split /x/, $mgrid;
-        my $nmlev = 5 + log($nmlon/80)/log(2);
-        my $ngrid = ($nmlon/10)*2;
-
-        if ($print>=2) {
-            print "***************************************************** \n";
-            print " Ionosphere magnetic grid parameters:\n";
-            print "   mgrid = $mgrid \n";
-            print "   nmlat = $nmlat \n";
-            print "   nmlon = $nmlon \n";
-            print "   nmlev = $nmlev \n";
-            print "   ngrid = $ngrid \n";
-            print "***************************************************** \n";
-        }
-
-        $cfg_ref->set('mgrid',$mgrid);
-
-        $cfg_cppdefs .= " -DEDYN_NLAT=$nmlat -DEDYN_NLON=$nmlon -DEDYN_NLEV=$nmlev -DEDYN_NGRID=$ngrid";
-        $cfg_cppdefs .= ' -DWACCMX_IONOS';
-    }
 }
 
 # PIO

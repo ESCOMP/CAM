@@ -2,41 +2,73 @@ module edyn_maggrid
    use shr_kind_mod,   only : r8 => shr_kind_r8            ! 8-byte reals
    use cam_logfile,    only: iulog
    use edyn_params,    only: finit
+
    implicit none
-   save
 
    !
    ! Global geomagnetic grid:
    !
-   integer, parameter ::       &
-        nmlat   = EDYN_NLAT,   & ! number of mag latitudes
-        nmlath  = (nmlat+1)/2, & ! index of magnetic equator
-        nmlon   = EDYN_NLON,   & ! number of mag longitudes
-        nmlonp1 = nmlon+1        ! number of longitudes plus periodic point
+   integer, protected ::       &
+        nmlat, &   ! number of mag latitudes
+        nmlath, &  ! index of magnetic equator
+        nmlon, &   ! number of mag longitudes
+        nmlonp1    ! number of longitudes plus periodic point
+
+   !
+   ! geomagnetic grid resolution parameters:
+   !
+   integer, protected :: res_nlev
+   integer, protected :: res_ngrid
+
    !
    ! Mag grid coordinates:
    !
-   real(r8), protected :: &
-        ylatm(nmlat),     & ! magnetic latitudes (radians)
-        ylonm(nmlonp1),   & ! magnetic longitudes (radians)
-        gmlat(nmlat),     & ! magnetic latitudes (degrees)
-        gmlon(nmlonp1),   & ! magnetic longitudes (degrees)
-        dlonm,dlatm
+   real(r8), allocatable, protected :: &
+        ylatm(:),   & ! magnetic latitudes (radians)
+        ylonm(:),   & ! magnetic longitudes (radians)
+        gmlat(:),   & ! magnetic latitudes (degrees)
+        gmlon(:)      ! magnetic longitudes (degrees)
+   real(r8), protected :: dlonm,dlatm
    !
    ! Level coordinates will be same as geographic levels:
    !
    integer, protected :: nmlev ! number of levels (same as nlev in geographic)
 
-   real(r8), protected :: &
-        rcos0s(nmlat),    & ! cos(theta0)/cos(thetas)
-        dt0dts(nmlat),    & ! d(theta0)/d(thetas)
-        dt1dts(nmlat)       ! dt0dts/abs(sinim) (non-zero at equator)
+   real(r8), allocatable, protected :: &
+        rcos0s(:),    & ! cos(theta0)/cos(thetas)
+        dt0dts(:),    & ! d(theta0)/d(thetas)
+        dt1dts(:)       ! dt0dts/abs(sinim) (non-zero at equator)
 
-   real(r8) :: table(91,2) = finit
 
-   logical :: debug = .false. ! set true for prints to stdout at each call
+   real(r8), protected :: table(91,2) = finit
 
-contains
+   logical, private :: debug = .false. ! set true for prints to stdout at each call
+
+ contains
+
+   !-----------------------------------------------------------------------
+   subroutine alloc_maggrid( mag_nlon, mag_nlat, mag_nlev, mag_ngrid )
+
+     integer, intent(in) :: mag_nlon, mag_nlat, mag_nlev, mag_ngrid
+
+     res_nlev = mag_nlev
+     res_ngrid = mag_ngrid
+
+     nmlat   = mag_nlat    ! number of mag latitudes
+     nmlath  = (nmlat+1)/2 ! index of magnetic equator
+     nmlon   = mag_nlon    ! number of mag longitudes
+     nmlonp1 = nmlon+1     ! number of longitudes plus periodic point
+
+     allocate(ylatm(nmlat))
+     allocate(ylonm(nmlonp1))
+     allocate(gmlat(nmlat))
+     allocate(gmlon(nmlonp1))
+     allocate(rcos0s(nmlat))
+     allocate(dt0dts(nmlat))
+     allocate(dt1dts(nmlat))
+
+   end subroutine alloc_maggrid
+
    !-----------------------------------------------------------------------
    subroutine set_maggrid()
       use edyn_params, only: pi, pi_dyn, rtd, r0

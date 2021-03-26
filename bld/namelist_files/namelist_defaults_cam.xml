@@ -721,6 +721,11 @@
 <oplus_grid hgrid="ne30np4"> 288,192 </oplus_grid>
 <oplus_grid hgrid="0.9x1.25"> 288,192 </oplus_grid>
 <oplus_grid hgrid="0.47x0.63"> 576,384 </oplus_grid>
+<!-- Magnetic grid resolution -->
+<edyn_grid>80x97</edyn_grid>
+<edyn_grid hgrid="0.9x1.25">160x193</edyn_grid>
+<edyn_grid hgrid="ne30np4" >160x193</edyn_grid>
+<edyn_grid hgrid="0.47x0.63">320x385</edyn_grid>
 
 <!-- ESMF mesh files for physics decomposition -->
 <cam_physics_mesh waccmx_opt="ionosphere" hgrid="0.47x0.63">atm/cam/coords/fv0.47x0.63_esmf_c210305.nc</cam_physics_mesh>

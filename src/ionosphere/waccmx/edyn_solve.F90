@@ -1,165 +1,173 @@
 module edyn_solve
 !
-! Prepare stencils and call mudpack PDE solver. This is executed 
+! Prepare stencils and call mudpack PDE solver. This is executed
 ! by the root task only, following the gather_edyn call in edynamo.F90.
 !
   use shr_kind_mod ,only: r8 => shr_kind_r8 ! 8-byte reals
   use cam_logfile  ,only: iulog
   use edyn_params  ,only: finit
   use edyn_maggrid ,only: nmlon,nmlonp1,nmlat,nmlath,nmlev
+  use edyn_maggrid ,only: res_nlev, res_ngrid
+  use spmd_utils,   only: masterproc
 
   implicit none
-  save
+  private
+
+  public :: ceee
+  public :: edyn_solve_init
+  public :: solve_edyn
+
 !
 ! Global 2d fields for root task to complete serial part of dynamo.
-! The zigmxxx, rhs and rims are gathered from subdomains by in sub 
+! The zigmxxx, rhs and rims are gathered from subdomains by in sub
 ! gather_edyn (edynamo.F90).
 !
-  real(r8),dimension(nmlonp1,nmlat) :: &
+  real(r8),allocatable, dimension(:,:), public :: &
     zigm11_glb  ,&
     zigm22_glb  ,&
     zigmc_glb   ,&
     zigm2_glb   ,&
     rhs_glb
-  real(r8),dimension(nmlonp1,nmlat,2) :: &
+  real(r8),allocatable, dimension(:,:,:), public :: &
     rim_glb    ! pde solver output
-  real(r8),dimension(0:nmlonp1,0:nmlat+1) :: &
+  real(r8),allocatable, dimension(:,:) :: &
     phisolv
 !
-! Dimensions of the 5 grid resolutions for the multi-grid PDE:
-  integer,parameter ::    &
-    nmlon0=nmlon+1,       &
-    nmlat0=(nmlat +1)/2,  &
-    nmlon1=(nmlon0+1)/2,  &
-    nmlat1=(nmlat0+1)/2,  &
-    nmlon2=(nmlon1+1)/2,  &
-    nmlat2=(nmlat1+1)/2,  &
-    nmlon3=(nmlon2+1)/2,  &
-    nmlat3=(nmlat2+1)/2,  &
-    nmlon4=(nmlon3+1)/2,  &
-    nmlat4=(nmlat3+1)/2
-#if ( EDYN_NLEV > 5 )
-  integer,parameter ::    &
-    nmlon5=(nmlon4+1)/2,  &
-    nmlat5=(nmlat4+1)/2
-#endif
-#if ( EDYN_NLEV > 6 )
-  integer,parameter ::    &
-    nmlon6=(nmlon5+1)/2,  &
-    nmlat6=(nmlat5+1)/2
-#endif
-#if ( EDYN_NLEV > 7 )
-  integer,parameter ::    &
-    nmlon7=(nmlon6+1)/2,  &
-    nmlat7=(nmlat6+1)/2
-#endif
+! Dimensions of the grid resolutions for the multi-grid PDE:
+  integer, public, protected :: &
+    nmlon0, &
+    nmlat0, &
+    nmlon1, &
+    nmlat1, &
+    nmlon2, &
+    nmlat2, &
+    nmlon3, &
+    nmlat3, &
+    nmlon4, &
+    nmlat4, &
+    nmlon5, &
+    nmlat5, &
+    nmlon6, &
+    nmlat6, &
+    nmlon7, &
+    nmlat7
 !
 ! Unmodified coefficients for using modified mudpack:
-  real(r8),dimension(nmlon0,nmlat0,9) :: cofum
+  real(r8), allocatable, public, protected :: cofum(:,:,:)
 !
-! Space needed for descretized coefficients of of dynamo pde at all
-!   EDYN_NLEV levels of resolution:
+! Space needed for descretized coefficients of of dynamo pde at all levels:
 !
-  integer,parameter :: &
-#if ( EDYN_NLEV == 5 )
-    ncee=10*nmlon0*nmlat0+9*(nmlon1*nmlat1+nmlon2*nmlat2+nmlon3* &
-      nmlat3+nmlon4*nmlat4)
-#elif ( EDYN_NLEV == 6 )
-    ncee=10*nmlon0*nmlat0+9*(nmlon1*nmlat1+nmlon2*nmlat2+nmlon3* &
-      nmlat3+nmlon4*nmlat4+nmlon5*nmlat5)
-#elif ( EDYN_NLEV == 7 )
-    ncee=10*nmlon0*nmlat0+9*(nmlon1*nmlat1+nmlon2*nmlat2+nmlon3* &
-      nmlat3+nmlon4*nmlat4+nmlon5*nmlat5+nmlon6*nmlat6)
-#elif ( EDYN_NLEV == 8 )
-    ncee=10*nmlon0*nmlat0+9*(nmlon1*nmlat1+nmlon2*nmlat2+nmlon3* &
-      nmlat3+nmlon4*nmlat4+nmlon5*nmlat5+nmlon6*nmlat6+nmlon7*nmlat7)
-#endif
+  integer :: ncee
 !
 ! Coefficients are stored in 1-d array cee(ncee)
 ! cee transmits descretized dynamo PDE coefficients to the multi-grid
 !   mudpack solver. (cee was formerly in ceee.h)
-! The common block /cee_com/ is retained from earlier versions because
-!   of the equivalencing below of coefficient arrays c0, c1, etc.
 !
-  real(r8) :: cee(ncee)
-  common/cee_com/ cee
+  real(r8), target, allocatable, public, protected :: cee(:)
 !
 ! The following parameters nc0,nc1,... are pointers to the beginning of
 !   the coefficients for each level of resolution.
 !
-  integer,parameter ::        &
-    nc0=1,                    &
-    nc1=nc0+10*nmlon0*nmlat0, &
-    nc2=nc1+9 *nmlon1*nmlat1, &
-    nc3=nc2+9 *nmlon2*nmlat2, &
-    nc4=nc3+9 *nmlon3*nmlat3
-#if ( EDYN_NLEV > 5 )
-  integer,parameter ::        &
-    nc5=nc4+9 *nmlon4*nmlat4
-#endif
-#if ( EDYN_NLEV > 6 )
-  integer,parameter ::        &
-    nc6=nc5+9 *nmlon5*nmlat5
-#endif
-#if ( EDYN_NLEV > 7 )
-  integer,parameter ::        &
-    nc7=nc6+9 *nmlon6*nmlat6
-#endif
+  integer :: &
+    nc0, &
+    nc1, &
+    nc2, &
+    nc3, &
+    nc4, &
+    nc5, &
+    nc6, &
+    nc7
 !
-! nc(1:6) are pointers to beginning of coefficient blocks at each of
-!   5 levels of resolution:
+! nc(1:9) are pointers to beginning of coefficient blocks at each of
+!   levels of resolution:
 ! nc(1) = nc0, pointer to coefficients for highest resolution.
 ! nc(2) = nc1, pointer to coefficients at half the resolution of nc0,
 !   and so on for nc(3), nc(4), nc(5), etc.
-! nc(6) = ncee, the dimension of the entire cee array, containing
-!   coefficients for all 5 levels of resolution.
+! nc(9) = ncee, the dimension of the entire cee array, containing
+!   coefficients for all levels.
 !
-  integer :: nc(EDYN_NLEV+1)
+  integer, public, protected :: nc(9)
 
-  real(r8) ::             &
-    c0(nmlon0,nmlat0,10), &
-    c1(nmlon1,nmlat1,9),  &
-    c2(nmlon2,nmlat2,9),  &
-    c3(nmlon3,nmlat3,9),  &
-    c4(nmlon4,nmlat4,9)
-#if ( EDYN_NLEV > 5 )
-  real(r8) ::             &
-    c5(nmlon5,nmlat5,9)
-#endif
-#if ( EDYN_NLEV > 6 )
-  real(r8) ::             &
-    c6(nmlon6,nmlat6,9)
-#endif
-#if ( EDYN_NLEV > 7 )
-  real(r8) ::             &
-    c7(nmlon7,nmlat7,9)
-#endif
-  equivalence             &
-    (cee,c0),             &
-    (cee(nc1),c1),        &
-    (cee(nc2),c2),        &
-    (cee(nc3),c3),        &
-    (cee(nc4),c4)
-#if ( EDYN_NLEV > 5 )
-  equivalence             &
-    (cee(nc5),c5)
-#endif
-#if ( EDYN_NLEV > 6 )
-  equivalence             &
-    (cee(nc6),c6)
-#endif
-#if ( EDYN_NLEV > 7 )
-  equivalence             &
-    (cee(nc7),c7)
-#endif
+  real(r8), private, pointer :: &
+    c0(:),  &
+    c1(:),  &
+    c2(:),  &
+    c3(:),  &
+    c4(:),  &
+    c5(:),  &
+    c6(:),  &
+    c7(:)
+
+! phihm is high-latitude potential, set by the high-latitude potential model (e.g. Heelis)
+! or is prescribed (e.g. AMIE)
 !
-! phihm is high-latitude potential, obtained from the Heelis model
-! (heelis.F90):
-!
-  real(r8) :: phihm(nmlonp1,nmlat)  ! high-latitude potential
-  real(r8) :: pfrac(nmlonp1,nmlat0) ! NH fraction of potential
-  
+  real(r8), allocatable, public :: phihm(:,:) ! high-latitude potential
+  real(r8), allocatable, public :: pfrac(:,:) ! NH fraction of potential
+
   contains
+
+!-----------------------------------------------------------------------
+  subroutine edyn_solve_init
+    use infnan, only: nan, assignment(=)
+
+    allocate(zigm11_glb(nmlonp1,nmlat))
+    allocate(zigm22_glb(nmlonp1,nmlat))
+    allocate(zigmc_glb(nmlonp1,nmlat))
+    allocate(zigm2_glb(nmlonp1,nmlat))
+    allocate(rhs_glb(nmlonp1,nmlat))
+    allocate(rim_glb(nmlonp1,nmlat,2))
+    allocate(phisolv(0:nmlonp1,0:nmlat+1))
+
+    nmlon0=nmlon+1
+    nmlat0=(nmlat +1)/2
+    nmlon1=(nmlon0+1)/2
+    nmlat1=(nmlat0+1)/2
+    nmlon2=(nmlon1+1)/2
+    nmlat2=(nmlat1+1)/2
+    nmlon3=(nmlon2+1)/2
+    nmlat3=(nmlat2+1)/2
+    nmlon4=(nmlon3+1)/2
+    nmlat4=(nmlat3+1)/2
+    nmlon5=(nmlon4+1)/2
+    nmlat5=(nmlat4+1)/2
+    nmlon6=(nmlon5+1)/2
+    nmlat6=(nmlat5+1)/2
+    nmlon7=(nmlon6+1)/2
+    nmlat7=(nmlat6+1)/2
+
+    allocate(cofum(nmlon0,nmlat0,9))
+
+    ncee=10*nmlon0*nmlat0+9*(nmlon1*nmlat1+nmlon2*nmlat2+nmlon3* &
+         nmlat3+nmlon4*nmlat4+nmlon5*nmlat5+nmlon6*nmlat6+nmlon7*nmlat7)
+
+    allocate(cee(ncee))
+
+    nc0=1
+    nc1=nc0+10*nmlon0*nmlat0
+    nc2=nc1+9 *nmlon1*nmlat1
+    nc3=nc2+9 *nmlon2*nmlat2
+    nc4=nc3+9 *nmlon3*nmlat3
+    nc5=nc4+9 *nmlon4*nmlat4
+    nc6=nc5+9 *nmlon5*nmlat5
+    nc7=nc6+9 *nmlon6*nmlat6
+
+    c0 => cee
+    c1 => cee(nc1:)
+    c2 => cee(nc2:)
+    c3 => cee(nc3:)
+    c4 => cee(nc4:)
+    c5 => cee(nc5:)
+    c6 => cee(nc6:)
+    c7 => cee(nc7:)
+
+    allocate(phihm(nmlonp1,nmlat))
+    allocate(pfrac(nmlonp1,nmlat0))
+
+    phihm = nan
+    pfrac = nan
+
+  end subroutine edyn_solve_init
+
 !-----------------------------------------------------------------------
   subroutine solve_edyn
 !
@@ -178,7 +186,7 @@ module edyn_solve
   use edyn_maggrid,only: dlatm,dlonm
 !
 ! Locals:
-    integer :: i,j,jj,jjj,j0,n,ncc,nmaglon,nmaglat
+    integer :: i,j,jj,jjj,j0,n,ncc,nmaglon,nmaglat, ndx1,ndx2
     real(r8) :: sym
     real(r8) :: cs(nmlat0)
 
@@ -190,16 +198,10 @@ module edyn_solve
     nc(3) = nc2
     nc(4) = nc3
     nc(5) = nc4
-#if ( EDYN_NLEV > 5 )
     nc(6) = nc5
-#endif   
-#if ( EDYN_NLEV > 6 )
     nc(7) = nc6
-#endif
-#if ( EDYN_NLEV > 7 )
     nc(8) = nc7
-#endif
-    nc(EDYN_NLEV+1) = ncee
+    nc(9) = ncee
 
     do j=1,nmlat0
       cs(j) = cos(pi_dyn/2._r8-(nmlat0-j)*dlatm)
@@ -279,10 +281,13 @@ module edyn_solve
     do j = 1,nmlat0
       jj = nmlath-nmlat0+j
       do i = 1,nmlon0
-        c0(i,j,10) = rhs_glb(i,jj)
+        ndx1 = 9*nmlat0*nmlon0 + (j-1)*nmlon0 + i
+        c0(ndx1) = rhs_glb(i,jj)
       enddo ! i = 1,nmlon0
     enddo ! j = 1,nmlat0
-    c0(nmlonp1,1,10) = c0(1,1,10)
+    ndx1 = 9*nmlat0*nmlon0 + nmlonp1
+    ndx2 = 9*nmlat0*nmlon0 + 1
+    c0(ndx1) = c0(ndx2)
 !
 ! Set boundary condition at the pole:
     call edges(c0,nmlon0,nmlat0)
@@ -290,15 +295,15 @@ module edyn_solve
     call edges(c2,nmlon2,nmlat2)
     call edges(c3,nmlon3,nmlat3)
     call edges(c4,nmlon4,nmlat4)
-#if ( EDYN_NLEV > 5 )
-    call edges(c5,nmlon5,nmlat5)
-#endif
-#if ( EDYN_NLEV > 6 )
-    call edges(c6,nmlon6,nmlat6)
-#endif
-#if ( EDYN_NLEV > 7 )
-    call edges(c7,nmlon7,nmlat7)
-#endif
+    if ( res_nlev > 5 ) then
+       call edges(c5,nmlon5,nmlat5)
+    endif
+    if ( res_nlev > 6 ) then
+       call edges(c6,nmlon6,nmlat6)
+    endif
+    if ( res_nlev > 7 ) then
+       call edges(c7,nmlon7,nmlat7)
+    endif
     call edges(cofum,nmlon0,nmlat0)
 !
 ! Divide stencils by cos(lam_0) (not rhs):
@@ -307,20 +312,21 @@ module edyn_solve
     call divide(c2,nmlon2,nmlat2,nmlon0,nmlat0,cs,1)
     call divide(c3,nmlon3,nmlat3,nmlon0,nmlat0,cs,1)
     call divide(c4,nmlon4,nmlat4,nmlon0,nmlat0,cs,1)
-#if ( EDYN_NLEV > 5 )
-    call divide(c5,nmlon5,nmlat5,nmlon0,nmlat0,cs,1)
-#endif
-#if ( EDYN_NLEV > 6 )
-    call divide(c6,nmlon6,nmlat6,nmlon0,nmlat0,cs,1)
-#endif
-#if ( EDYN_NLEV > 7 )
-    call divide(c7,nmlon7,nmlat7,nmlon0,nmlat0,cs,1)
-#endif
+    if ( res_nlev > 5 ) then
+       call divide(c5,nmlon5,nmlat5,nmlon0,nmlat0,cs,1)
+    endif
+    if ( res_nlev > 6 ) then
+       call divide(c6,nmlon6,nmlat6,nmlon0,nmlat0,cs,1)
+    endif
+    if ( res_nlev > 7 ) then
+       call divide(c7,nmlon7,nmlat7,nmlon0,nmlat0,cs,1)
+    endif
     call divide(cofum,nmlon0,nmlat0,nmlon0,nmlat0,cs,0)
 !
 ! Set value of solution to 1. at pole:
     do i=1,nmlon0
-      c0(i,nmlat0,10) = 1._r8
+      ndx1 = 9*nmlat0*nmlon0 + (nmlat0-1)*nmlon0 + i
+      c0(ndx1) = 1._r8
     enddo
 !
 ! Modify stencils and RHS so that the NH high lat potential is inserted at
@@ -337,7 +343,7 @@ module edyn_solve
     ncc = 1
     nmaglon = nmlon0
     nmaglat = nmlat0
-    do n=1,EDYN_NLEV ! resolution levels
+    do n=1,res_nlev ! resolution levels
       call stenmd(nmaglon,nmaglat,cee(ncc),phihm(1,nmlat0),pfrac)
       ncc = ncc+9*nmaglon*nmaglat
       if (n==1) ncc = ncc+nmaglon*nmaglat ! rhs is in 10th slot
@@ -365,7 +371,7 @@ module edyn_solve
     nlon = nlon0
     nlat = nlat0
     n = 0
-    do m=1,EDYN_NLEV ! resolution levels
+    do m=1,res_nlev ! resolution levels
       n = n+nlon*nlat
       nlon = (nlon+1)/2
       nlat = (nlat+1)/2
@@ -393,11 +399,11 @@ module edyn_solve
       sym,                 & !  1. if zigm symmetric w.r.t. equator, -1 otherwise
       cs(nlat0)
     real(r8),intent(inout) ::  & ! output stencil array consisting of c0,c1,c2,c3,c4
-      cee(*)  
+      cee(*)
 !
 ! Local:
     integer :: nc,nlon,nlat,n
-    real(r8) :: wkarray(-EDYN_NGRID+1:nmlon0+EDYN_NGRID,nmlat0)
+    real(r8) :: wkarray(-res_ngrid+1:nmlon0+res_ngrid,nmlat0)
 !
 ! Perform half-way interpolation and extend zigm in wkarray:
 !
@@ -418,7 +424,7 @@ module edyn_solve
     nlon = (nlon+1)/2
     nlat = (nlat+1)/2
 !
-    do n=2,EDYN_NLEV
+    do n=2,res_nlev
       call cnm(nlon0,nlat0,nlon,nlat,cee(nc),ncoef,wkarray)
       nc = nc+9*nlon*nlat
       if (n==1) nc = nc+nlon*nlat
@@ -435,7 +441,7 @@ module edyn_solve
 ! Args:
     integer,intent(in)   :: nmlon0,nmlat0
     real(r8),intent(in)  :: coeff(nmlon0,nmlat0),sym
-    real(r8),intent(out) :: wkarray(-EDYN_NGRID+1:nmlon0+EDYN_NGRID,nmlat0)
+    real(r8),intent(out) :: wkarray(-res_ngrid+1:nmlon0+res_ngrid,nmlat0)
 !
 ! Local:
     integer :: i,j,jj
@@ -448,17 +454,17 @@ module edyn_solve
       enddo ! i=1,nmlon0
     enddo ! j=1,nmlat0
 !
-! Extend over 2*EDYN_NGRID grid spaces to allow for a total of EDYN_NLEV grid levels:
-    do i=1,EDYN_NGRID
+! Extend over 2*res_ngrid grid spaces to allow for a total of res_nlev grid levels:
+    do i=1,res_ngrid
       do j=1,nmlat0
         wkarray(1-i,j) = wkarray(nmlon0-i,j)
         wkarray(nmlon0+i,j) = wkarray(1+i,j)
       enddo ! j=1,nmlat0
-    enddo ! i=1,EDYN_NGRID
+    enddo ! i=1,res_ngrid
   end subroutine htrpex
 !-----------------------------------------------------------------------
   subroutine cnm(nlon0,nlat0,nlon,nlat,c,ncoef,wkarray)
-! 
+!
 ! Compute contribution to stencil from zigm(ncoef) on grid nlon by nlat,
 ! Finest grid is nlon0 by nlat0.
 !
@@ -466,7 +472,7 @@ module edyn_solve
     integer,intent(in) :: &
       nlon0,nlat0,        & ! finest grid dimensions
       nlon,nlat             ! output grid dimensions
-    real(r8),intent(in) :: wkarray(-EDYN_NGRID+1:nmlon0+EDYN_NGRID,nmlat0)
+    real(r8),intent(in) :: wkarray(-res_ngrid+1:nmlon0+res_ngrid,nmlat0)
 !
 ! ncoef: integer id of coefficient:
 ! ncoef = 1 for zigm11
@@ -481,9 +487,9 @@ module edyn_solve
 ! Local:
     integer :: i,j,nint,i0,j0
 ! For now, retain this pi to insure bit compatability w/ old code
-    real(r8),parameter :: pi=3.141592654_r8 
+    real(r8),parameter :: pi=3.141592654_r8
     real(r8) :: wk(nlon0,3)
-! 
+!
 ! Compute separation of grid points of resolution nlon x nlat within
 ! grid of resolution nlon0,nlat0. Evaluate dlon and dlat, grid spacing
 ! of nlon x nlat.
@@ -494,12 +500,12 @@ module edyn_solve
 ! from zigm(ncoef)
     i0 = 1-nint
     j0 = 1-nint
-! 
-! zigm11: 
+!
+! zigm11:
 ! am 2001-6-27 include boundary condition at equator
-    if (ncoef==1) then 
+    if (ncoef==1) then
       do j = 1,nlat-1
-        do i = 1,nlon   
+        do i = 1,nlon
           c(i,j,1) = c(i,j,1)+0.5_r8*(wkarray(i0+i*nint,j0+j*nint)+ &
             wkarray(i0+(i+1)*nint,j0+j*nint))
           c(i,j,5) = c(i,j,5)+0.5_r8*(wkarray(i0+i*nint,j0+j*nint)+ &
@@ -601,16 +607,16 @@ module edyn_solve
 !
 ! Compute contribution to stencil from zigm(ncoef) on grid nlon by nlat,
 ! Finest grid is nlon0 by nlat0.
-! 
+!
 ! Args:
     integer,intent(in) :: &
       nlon0,nlat0,        & ! finest grid dimensions
       nlon,nlat             ! output grid dimensions
-    real(r8),intent(in) :: wkarray(-EDYN_NGRID+1:nmlon0+EDYN_NGRID,nmlat0) 
+    real(r8),intent(in) :: wkarray(-res_ngrid+1:nmlon0+res_ngrid,nmlat0)
     real(r8),dimension(nmlon0,nmlat0,9),intent(inout) :: cofum
-! 
+!
 ! ncoef: integer id of coefficient:
-! ncoef = 1 for zigm11 
+! ncoef = 1 for zigm11
 ! ncoef = 2 for zigm12 (=zigmc+zigm2)
 ! ncoef = 3 for zigm21 (=zigmc-zigm2)
 ! ncoef = 4 for zigm22
@@ -618,24 +624,24 @@ module edyn_solve
     integer,intent(in) :: ncoef
     real(r8),intent(inout) :: &
       c(nlon,nlat,*)  ! output array for grid point stencils at resolution nlon x nlat
-! 
+!
 ! Local:
     integer :: i,j,nint,i0,j0
 ! For now, retain this pi to insure bit compatability w/ old code
     real(r8),parameter :: pi=3.141592654_r8
     real(r8) :: wk(nlon0,3)
-! 
+!
 ! Compute separation of grid points of resolution nlon x nlat within
 ! grid of resolution nlon0,nlat0. Evaluate dlon and dlat, grid spacing
 ! of nlon x nlat.
 !
     nint = (nlon0-1)/(nlon-1)
-! 
+!
 ! Scan wkarray nlon x nlat calculating and adding contributions to stencil
 ! from zigm(ncoef)
     i0 = 1-nint
     j0 = 1-nint
-! 
+!
 ! zigm11:
 ! am 2001-6-27 include boundary condition at equator
     if (ncoef==1) then
@@ -705,7 +711,7 @@ module edyn_solve
             wkarray(i0+i*nint,j0+(j-1)*nint))
           wk(i,1) = 0.5_r8*(wkarray(i0+i*nint,j0+(j+1)*nint)- &
             wkarray(i0+i*nint,j0+(j-1)*nint))
-! 
+!
 ! Unmodified:
           cofum(i,j,2) = c(i,j,2)
           cofum(i,j,4) = c(i,j,4)
@@ -722,7 +728,7 @@ module edyn_solve
           c(i,j,9) = c(i,j,9)-2._r8*wk(i,3)
         enddo ! i = 1,nlon
       enddo ! j = 2,nlat-1
-! 
+!
 ! Low latitude boundary condition:
       j = 1
       do i=1,nlon
@@ -810,18 +816,20 @@ module edyn_solve
 !
 ! Args:
     integer,intent(in) :: nlon,nlat
-    real(r8),intent(out) :: c(nlon,nlat,*)
+    real(r8),intent(out) :: c(*)
 !
 ! Local:
-    integer :: n,i
+    integer :: n,i, ndx
 
     do n=1,8
-      do i=1,nlon
-        c(i,nlat,n) = 0._r8
+       do i=1,nlon
+        ndx = (n-1)*nlat*nlon + (nlat-1)*nlon + i
+        c(ndx) = 0._r8
       enddo
     enddo
     do i=1,nlon
-      c(i,nlat,9) = 1._r8
+      ndx = 8*nlat*nlon + (nlat-1)*nlon + i
+      c(ndx) = 1._r8
     enddo
   end subroutine edges
 !--------------------------------------------------------------------
@@ -831,25 +839,27 @@ module edyn_solve
 !
 ! Args:
     integer,intent(in) :: nlon,nlat,nlon0,nlat0,igrid
-    real(r8),intent(in) :: cs(*)
-    real(r8),intent(out) :: c(nlon,nlat,*)
+    real(r8),intent(in) :: cs(:)
+    real(r8),intent(out) :: c(*)
 !
 ! Local:
-    integer :: nint,j0,n,j,i
+    integer :: nint,j0,n,j,i, ndx
 !
     nint = (nlon0-1)/(nlon-1)
     j0 = 1-nint
     do n = 1,9
       do j = 1,nlat-1
         do i = 1,nlon
-          c(i,j,n) = c(i,j,n)/(cs(j0+j*nint)*nint**2)
+          ndx = (n-1)*nlat*nlon + (j-1)*nlon + i
+          c(ndx) = c(ndx)/(cs(j0+j*nint)*nint**2)
         enddo ! i = 1,nlon
       enddo ! j = 1,nlat-1
     enddo ! n = 1,9
 !
     if (nint==1.and.igrid > 0) then
       do i = 1,nlon
-        c(i,1,10) = c(i,1,10)/cs(1)
+        ndx = 9*nlat*nlon + i
+        c(ndx) = c(ndx)/cs(1)
       enddo ! i = 1,nlon
     endif
   end subroutine divide
@@ -956,10 +966,10 @@ module edyn_solve
     jntl = 0
     ier = 0
     isolve = 2
-    call mudmod(rim_glb,phisolv,jntl,isolve,ier)! solver in mudmod.F
+    call mudmod(rim_glb,phisolv,jntl,isolve,res_nlev,ier)! solver in mudmod.F
     if (ier < 0 ) then       ! not converged
-      write(iulog,*) 'muh: use direct solver'
-      call muh(rim_glb,jntl)            ! solver in mud.F
+      if (masterproc) write(iulog,*) 'muh: use direct solver'
+      call muh(rim_glb,nmlon,nmlat,res_nlev,jntl)   ! solver in mud.F
     endif
 
     l2norm=0._r8

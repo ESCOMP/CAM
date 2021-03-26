@@ -1,25 +1,24 @@
 !-----------------------------------------------------------------------
-      subroutine mudmod(pe,phi_out,jntl,isolve,ier)
+      subroutine mudmod(pe,phi_out,jntl,isolve,nlev,ier)
       use shr_kind_mod ,only: r8 => shr_kind_r8
       use cam_abortutils   ,only: endrun
       use edyn_solve   ,only: cee
+      use edyn_params, only: pi
 
       implicit none
 
-      integer jntl,ier  ! output: not converged ier < 0
-      integer,intent(in) :: isolve
+      integer,intent(in) :: jntl, isolve, nlev
+      integer,intent(out) :: ier  ! output: not converged ier < 0
 !
 !     set grid size params
 !
       integer iixp,jjyq,iiex,jjey,nnx,nny,llwork
-      parameter (iixp = 5 , jjyq = 3, iiex = EDYN_NLEV, jjey = EDYN_NLEV )
-      parameter (nnx=iixp*2**(iiex-1)+1, nny=jjyq*2**(jjey-1)+1)
+      parameter (iixp = 5 , jjyq = 3)
 !
 !     estimate work space for point relaxation (see mud2cr.d)
 !
-      parameter (llwork=(7*(nnx+2)*(nny+2)+76*nnx*nny)/3 )
-      real(r8) :: phi(nnx,nny),rhs(nnx,nny),work(llwork)
-      real(r8) :: phi_out(0:nnx+1,0:nny+1)
+      real(r8) :: phi_out(0:iixp*2**(nlev-1)+1+1,0:jjyq*2**(nlev-1)+1+1)
+      real(r8),allocatable :: phi(:,:),rhs(:,:),work(:)
       real(r8) :: time0,time1
 !
 !     put integer and floating point argument names in contiguous
@@ -36,17 +35,22 @@
       equivalence(intl,iprm)
       equivalence(xa,fprm)
       integer i,j,ierror
-      real(r8) :: PE(NNX,*)
-      integer maxcya
-      DATA MAXCYA/50/
+      real(r8) :: PE(iixp*2**(nlev-1)+1,*)
+      integer, parameter :: maxcya=50
       integer mm,nn,jj,jjj,ij
-      real(r8) :: pi
+
+      iiex = nlev
+      jjey = nlev
+      nnx=iixp*2**(iiex-1)+1
+      nny=jjyq*2**(jjey-1)+1
+      llwork=(7*(nnx+2)*(nny+2)+76*nnx*nny)/3
+
+      allocate(phi(nnx,nny),rhs(nnx,nny),work(llwork))
 !
 !     set input integer arguments
 !
       MM = NNX
       NN = NNY
-      PI = 4._r8*ATAN(1._r8)
 !
 !     SET INPUT INTEGER PARAMETERS
 !
@@ -154,6 +158,9 @@
       end do
 
   108 continue
+
+      deallocate(phi,rhs,work)
+
       end subroutine mudmod
 !-------------------------------------------------------------------
       subroutine mud2cm(iparm,fparm,work,rhs,phi,mgopt,ierror,isolve)

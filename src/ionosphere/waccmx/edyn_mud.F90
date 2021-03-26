@@ -2,7 +2,9 @@
       subroutine mud(pe,jntl,isolve)
       use shr_kind_mod ,only: r8 => shr_kind_r8
       use cam_abortutils   ,only: endrun
-      use edyn_solve,only: nc,ncee,cee
+      use edyn_solve,only: nc,cee
+      use edyn_params, only: pi
+      use edyn_maggrid, only: res_nlev
 !
       implicit none
       integer,intent(in) :: isolve
@@ -10,13 +12,14 @@
 !
 !     set grid size params
 !
-      integer,parameter :: iixp = 5 , jjyq = 3, iiex = EDYN_NLEV, jjey = EDYN_NLEV
-      integer,parameter :: nnx=iixp*2**(iiex-1)+1, nny=jjyq*2**(jjey-1)+1
+      integer,parameter :: iixp = 5 , jjyq = 3
+      integer :: iiex, jjey
+      integer :: nnx, nny
 !
 !     estimate work space for point relaxation (see mud2cr.d)
 !
-      integer,parameter :: llwork=(7*(nnx+2)*(nny+2)+76*nnx*nny)/3
-      real(r8) :: phi(nnx,nny),rhs(nnx,nny),work(llwork)
+      integer :: llwork
+      real(r8), allocatable :: phi(:,:),rhs(:,:),work(:)
       real(r8) :: time0,time1
 !
 !     put integer and floating point argument names in contiguous
@@ -35,17 +38,22 @@
       equivalence(intl,iprm)
       equivalence(xa,fprm)
       integer i,j,ierror
-      real(r8) :: PE(NNX,1)
-      integer maxcya
-      DATA MAXCYA/150/
+      real(r8) :: PE(iixp*2**(res_nlev-1)+1,1)
+      integer, parameter :: maxcya = 150
       integer mm,nn,jj,jjj
-      real(r8) :: pi
+
+      iiex = res_nlev
+      jjey = res_nlev
+      nnx=iixp*2**(iiex-1)+1
+      nny=jjyq*2**(jjey-1)+1
+      llwork=(7*(nnx+2)*(nny+2)+76*nnx*nny)/3
+
+      allocate(phi(nnx,nny),rhs(nnx,nny),work(llwork))
 !
 !     set input integer arguments
 !
       MM = NNX
       NN = NNY
-      PI = 4._r8*ATAN(1._r8)
 !
 !     SET INPUT INTEGER PARAMETERS
 !
@@ -73,7 +81,7 @@
       mgopt(1) = 2
       mgopt(2) = 2
       mgopt(3) = 1
-      if (EDYN_NLEV==5) then
+      if (res_nlev==5) then
          mgopt(4) = 3
       else
          !  1 deg, changed to mgopt(4) = 1 per Astrid's suggestion
@@ -105,12 +113,12 @@
 !
 !     set error control flag
 !
-      if (EDYN_NLEV>6) then
-         tolmax = 0.05_r8 ! EDYN_NLEV == 7 | 8
-      else if (EDYN_NLEV>5) then
-         tolmax = 0.03_r8 ! EDYN_NLEV == 6
+      if (res_nlev>6) then
+         tolmax = 0.05_r8 ! res_nlev == 7 | 8
+      else if (res_nlev>5) then
+         tolmax = 0.03_r8 ! res_nlev == 6
       else
-         tolmax = 0.01_r8 ! EDYN_NLEV == 5
+         tolmax = 0.01_r8 ! res_nlev == 5
       end if
 !
 !     set right hand side in rhs
@@ -164,6 +172,7 @@
 !     ITRANS = 0
 !     CALL EZCNTR(PE(1,JMX0),IMX0,JMX0)
 !     ITRANS = 1
+      deallocate(phi,rhs,work)
       end subroutine mud
 !-----------------------------------------------------------------------
 !
@@ -178,7 +187,7 @@
 ! ... For MUDPACK information, visit the website:
 !     (https://www2.cisl.ucar.edu/resources/legacy/mudpack)
 !
-! ... purpose 
+! ... purpose
 !
 !     mud2cr attempts to produce a second order finite difference
 !     approximation to the two dimensional nonseparable elliptic
@@ -191,7 +200,7 @@
 ! ... documentation
 !
 !     see the documentation on above website for a complete discussion
-!     of how to use subroutine mud2cr.  
+!     of how to use subroutine mud2cr.
 !
 ! ... required MUDPACK files
 !
@@ -657,9 +666,10 @@
       end subroutine kcymd2cr
 !-----------------------------------------------------------------------
       subroutine dismd2cr(nx,ny,cf,tx,ty,wk,ier,isolve)
-      use edyn_solve,only:    nc,ncee,cee,ceee
+      use edyn_solve,only:    nc,cee,ceee
       use shr_kind_mod ,only: r8 => shr_kind_r8
       use cam_abortutils   ,only: endrun
+      use edyn_maggrid, only: res_nlev
 !
 !     discretize elliptic pde for mud2cr, set nonfatal errors
 !
@@ -686,7 +696,7 @@
         call endrun('dismd2cr in mud')
       ENDIF
       if (isolve >= 0) then
-        call ceee(cee(nc(EDYN_NLEV+1-klevel)),nx,ny,cf)
+        call ceee(cee(nc(res_nlev+1-klevel)),nx,ny,cf)
       endif
 !
 !     set coefficient for specified boundaries

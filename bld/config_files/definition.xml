@@ -52,9 +52,6 @@ Option to turn on waccmx thermosphere/ionosphere extension: 0 => no, 1 => yes
 <entry id="ionosphere" valid_values="none,wxie" value="none">
 Ionosphere model used in WACCMX.
 </entry>
-<entry id="mgrid" valid_values="97x80,193x160,385x320,769x640" value="97x80">
-Magnetic grid specifier for the ionosphere: 97x80, 193x160, 385x320, 769x640.
-</entry>
 <entry id="phys" valid_values="cam3,cam4,cam5,cam6,held_suarez,adiabatic,kessler,tj2016,spcam_sam1mom,spcam_m2005" value="">
 Physics package: cam3, cam4, cam5, cam6, held_suarez, adiabatic, kessler, tj2016, spcam_sam1mom, spcam_m2005.
 </entry>

@@ -25,6 +25,8 @@ contains
       use edyn_mpi,     only: mp_distribute_mag
       use edynamo,      only: alloc_edyn
       use edyn_grid_comp, only: edyn_grid_comp_init
+      use edyn_solve, only: edyn_solve_init
+
       !
       ! Args:
       integer, intent(in) :: mpicomm
@@ -34,6 +36,8 @@ contains
       endif
 
       call set_maggrid ()   ! set parameter-based global magnetic grid
+
+      call edyn_solve_init
 
       call mp_distribute_mag(nmlonp1, nmlat, nmlath, nmlev)
 

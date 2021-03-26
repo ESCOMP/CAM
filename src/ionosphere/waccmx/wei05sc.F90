@@ -33,12 +33,10 @@ module wei05sc
   use shr_kind_mod,   only: r8 => shr_kind_r8
   use shr_kind_mod,   only: shr_kind_cl
   use spmd_utils,     only: masterproc
-#ifdef WACCMX_IONOS
   use cam_logfile,    only: iulog
   use cam_abortutils, only: endrun
   use time_manager,   only: get_curr_date
   use edyn_maggrid,   only: nmlat,nmlon,nmlonp1
-#endif
 
   use edyn_maggrid,   only: &
     ylonm,    & ! magnetic latitudes (nmlat) (radians)
@@ -53,7 +51,6 @@ module wei05sc
   implicit none
   private
 
-#ifdef WACCMX_IONOS
 !
 ! Coefficients read from netcdf data file wei05sc.nc:
 !
@@ -75,10 +72,10 @@ module wei05sc
   real(r8) :: rad2deg,deg2rad           ! set by setmodel
   real(r8) :: bndyfitr                  ! calculated by setboundary
   real(r8) :: esphc(csize),bsphc(csize) ! calculated by setmodel
-  real(r8) :: tmat(3,3) !,ttmat(3,3)      ! from setboundary
+  real(r8) :: tmat(3,3)                 ! from setboundary
   real(r8) :: plmtable(mxtablesize,csize),colattable(mxtablesize)
   real(r8) :: nlms(csize)
-  real(r8) :: wei05sc_fac(nmlonp1,nmlat)  ! field-aligned current output
+  real(r8),allocatable :: wei05sc_fac(:,:) ! field-aligned current output
 
 ! 05/08 bae:  Have ctpoten from both hemispheres from Weimer
   real(r8) :: weictpoten(2),phimin,phimax
@@ -90,8 +87,6 @@ module wei05sc
 !
   public :: weimer05
   public :: weimer05_init
-
-#endif
 
   real(r8), parameter :: r2d = 180._r8/pi  ! radians to degrees
   real(r8), parameter :: d2r = pi/180._r8  ! degrees to radians
@@ -105,6 +100,8 @@ contains
       use infnan, only: nan, assignment(=)
 
       character(len=*),intent(in) :: wei05_ncfile
+
+      allocate(wei05sc_fac(nmlonp1,nmlat))
 
       hpower = nan
       ctpoten = nan
@@ -145,7 +142,6 @@ contains
       real(r8), intent(in) :: bz_in, by, swvel, swden
       real(r8), intent(in) :: sunlon
 
-#ifdef WACCMX_IONOS
       !
       ! Local:
 
@@ -343,7 +339,6 @@ contains
       end if
       !
 
-#endif
    end subroutine weimer05
    !-----------------------------------------------------------------------
    subroutine read_wei05_ncfile(file)
@@ -357,7 +352,6 @@ contains
       !
       ! Arg:
       character(len=*), intent(in) :: file
-#ifdef WACCMX_IONOS
       !
       ! Local:
       integer :: istat
@@ -572,9 +566,9 @@ contains
       if(masterproc) then
          write(iulog,"('wei05sc: completed read of file ',a)") trim(file)
       end if
-#endif
+
    end subroutine read_wei05_ncfile
-#ifdef WACCMX_IONOS
+
    !-----------------------------------------------------------------------
    subroutine setmodel(angle,bt,tilt,swvel,swden,model)
       !
@@ -1718,6 +1712,5 @@ contains
                   R2D = 57.2957795130823208767981548147_r8)
       ATAN2D = R2D * ATAN2 (RNUM1,RNUM2)
       end function atan2d
-#endif
 !-----------------------------------------------------------------------
 end module wei05sc

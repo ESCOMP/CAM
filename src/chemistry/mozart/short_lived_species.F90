@@ -11,7 +11,7 @@ module short_lived_species
   use cam_logfile,  only : iulog
   use ppgrid,       only : pcols, pver, begchunk, endchunk
   use spmd_utils,   only : masterproc
-  
+
 
   implicit none
 
@@ -52,7 +52,7 @@ contains
 !---------------------------------------------------------------------
 !---------------------------------------------------------------------
   subroutine short_lived_species_initic
-#ifdef WACCMX_IONOS
+#ifdef WACCMX_PHYS
     use cam_history, only : addfld, add_default
 
     integer :: m
@@ -74,11 +74,11 @@ contains
 
     integer       , intent(in) :: lchnk  ! chunk identifier
     type(physics_buffer_desc), pointer :: pbuf(:)
-#ifdef WACCMX_IONOS
+#ifdef WACCMX_PHYS
     real(r8),pointer :: tmpptr(:,:)
     integer :: m
     character(len=24) :: varname
-    
+
     if ( write_inithist() ) then
        do m=1,nslvd
           varname = trim(slvd_lst(m))//'&IC'
@@ -139,9 +139,9 @@ contains
        endif
 
        call pbuf_set_field(pbuf2d, pbf_idx, tmpptr, start=(/1,1,m/),kount=(/pcols,pver,1/))
-       
+
        if (masterproc) write(iulog,*)  fieldname, ' is set to short-lived'
-  
+
     enddo
 
     deallocate(tmpptr)
@@ -154,7 +154,7 @@ contains
 
     use physics_buffer, only : physics_buffer_desc, pbuf_set_field
 
-    implicit none 
+    implicit none
 
     real(r8), intent(in)               :: q(pcols,pver,gas_pcnst)
     integer,  intent(in)               :: lchnk, ncol
@@ -176,7 +176,7 @@ contains
   subroutine get_short_lived_species( q, lchnk, ncol, pbuf )
     use physics_buffer, only : physics_buffer_desc, pbuf_get_field
 
-    implicit none 
+    implicit none
 
     real(r8), intent(inout)            :: q(pcols,pver,gas_pcnst)
     integer,  intent(in)               :: lchnk, ncol
@@ -184,7 +184,7 @@ contains
     real(r8),pointer                   :: tmpptr(:,:)
 
 
-    integer :: m,n 
+    integer :: m,n
 
     if ( nslvd < 1 ) return
 
@@ -213,7 +213,7 @@ contains
     do m=1,nslvd
        if ( name == slvd_lst(m) ) then
           slvd_index = m
-          return 
+          return
        endif
     enddo
 

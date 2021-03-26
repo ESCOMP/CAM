@@ -24,7 +24,7 @@ module getapex
    public :: gdlatdeg, gdlondeg
    public :: rjac
 
-   real(r8),dimension(nmlonp1,nmlat) :: & ! geo lat,lon coords on mag grid
+   real(r8),dimension(:,:), allocatable :: & ! geo lat,lon coords on mag grid
         gdlatdeg,   & ! geographic latitude of each magnetic grid point (deg)
         gdlondeg      ! geographic longitude of each magnetic grid point (deg)
 !
@@ -279,6 +279,9 @@ contains
     if (.not.allocated(be3arr)) allocate(be3arr(nlonp1,jspole:jnpole))
 
     if (.not.allocated(rjac)) allocate(rjac(nlon+1,jspole:jnpole,2,2))
+
+    if (.not.allocated(gdlatdeg)) allocate(gdlatdeg(nmlonp1,nmlat))
+    if (.not.allocated(gdlondeg)) allocate(gdlondeg(nmlonp1,nmlat))
 
   end subroutine alloc_apex
 !-----------------------------------------------------------------------
