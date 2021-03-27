@@ -1056,6 +1056,15 @@
       <machine name="cheyenne" compiler="intel" category="camchem"/>
     </machines>
   </test>
+  <test compset="F2000climo" grid="f09_f09_mg17" name="ERP_Ln9" testmods="cam/outfrq9s_mg3_casper">
+    <machines>
+      <machine name="casper" compiler="pgi"   category="casper_gpu"/>
+      <machine name="casper" compiler="intel" category="casper_cpu"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
   <test compset="QPC4" grid="f19_f19_mg17" name="ERP_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="test_release"/>
