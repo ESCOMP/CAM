@@ -3121,9 +3121,11 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    mu_grid(:ngrdcol,top_lev:) = mu_subgrid(:,:)
    lambdac_grid(:ngrdcol,top_lev:) = lambdac_subgrid(:,:)
 #else
-   call size_dist_param_liq(mg_liq_props, icwmrst_grid(:ngrdcol,top_lev:), &
-        ncic_grid(:ngrdcol,top_lev:), rho_grid(:ngrdcol,top_lev:), &
-        mu_grid(:ngrdcol,top_lev:), lambdac_grid(:ngrdcol,top_lev:), ngrdcol*(nlev-top_lev+1))
+   do k = top_lev, pver  
+      call size_dist_param_liq(mg_liq_props, icwmrst_grid(:ngrdcol,k), &
+                               ncic_grid(:ngrdcol,k), rho_grid(:ngrdcol,k), &
+                               mu_grid(:ngrdcol,k), lambdac_grid(:ngrdcol,k), ngrdcol)
+   end do
 #endif
 
    where (icwmrst_grid(:ngrdcol,top_lev:) > qsmall)
@@ -3158,9 +3160,11 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    mu_grid(:ngrdcol,top_lev:) = mu_subgrid(:,:)
    lambdac_grid(:ngrdcol,top_lev:) = lambdac_subgrid(:,:)
 #else
-   call size_dist_param_liq(mg_liq_props, icwmrst_grid(:ngrdcol,top_lev:), &
-        ncic_grid(:ngrdcol,top_lev:), rho_grid(:ngrdcol,top_lev:), &
-        mu_grid(:ngrdcol,top_lev:), lambdac_grid(:ngrdcol,top_lev:), ngrdcol*(nlev-top_lev+1))
+   do k = top_lev, pver
+      call size_dist_param_liq(mg_liq_props, icwmrst_grid(:ngrdcol,k), &
+           ncic_grid(:ngrdcol,k), rho_grid(:ngrdcol,k), &
+           mu_grid(:ngrdcol,k), lambdac_grid(:ngrdcol,k), ngrdcol)
+   end do
 #endif
 
    where (icwmrst_grid(:ngrdcol,top_lev:) >= qsmall)
@@ -3269,9 +3273,10 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    !$acc end data
    rei_grid(1:ngrdcol,top_lev:nlev) = rei_subgrid(1:ngrdcol,top_lev:nlev)
 #else
-   call size_dist_param_basic(mg_ice_props,icimrst_grid(1:ngrdcol,top_lev:), &
-                              niic_grid(1:ngrdcol,top_lev:),rei_grid(1:ngrdcol,top_lev:), &
-                              ngrdcol*(nlev-top_lev+1))
+   do k = top_lev, pver
+      call size_dist_param_basic(mg_ice_props,icimrst_grid(1:ngrdcol,k), &
+                                 niic_grid(1:ngrdcol,k),rei_grid(1:ngrdcol,k),ngrdcol)
+   end do
 #endif
 
    where (icimrst_grid(:ngrdcol,top_lev:) >= qsmall)
