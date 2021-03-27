@@ -3114,14 +3114,14 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    !$acc data copyin  (mg_liq_props,icwmrst_subgrid,rho_subgrid) &
    !$acc      copy    (ncic_subgrid) &
    !$acc      copyout (mu_subgrid,lambdac_subgrid)
-   call size_dist_param_liq_vect ( mg_liq_props, icwmrst_subgrid, ncic_subgrid, rho_subgrid, &
-                                   mu_subgrid, lambdac_subgrid, ngrdcol*(nlev-top_lev+1)     )
+   call size_dist_param_liq ( mg_liq_props, icwmrst_subgrid, ncic_subgrid, rho_subgrid, &
+                              mu_subgrid, lambdac_subgrid, ngrdcol*(nlev-top_lev+1)     )
    !$acc end data
    ncic_grid(:ngrdcol,top_lev:) = ncic_subgrid(:,:)
    mu_grid(:ngrdcol,top_lev:) = mu_subgrid(:,:)
    lambdac_grid(:ngrdcol,top_lev:) = lambdac_subgrid(:,:)
 #else
-   call size_dist_param_liq_vect(mg_liq_props, icwmrst_grid(:ngrdcol,top_lev:), &
+   call size_dist_param_liq(mg_liq_props, icwmrst_grid(:ngrdcol,top_lev:), &
         ncic_grid(:ngrdcol,top_lev:), rho_grid(:ngrdcol,top_lev:), &
         mu_grid(:ngrdcol,top_lev:), lambdac_grid(:ngrdcol,top_lev:), ngrdcol*(nlev-top_lev+1))
 #endif
@@ -3151,14 +3151,14 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    !$acc data copyin  (mg_liq_props,icwmrst_subgrid,rho_subgrid) &
    !$acc      copy    (ncic_subgrid) &
    !$acc      copyout (mu_subgrid,lambdac_subgrid)
-   call size_dist_param_liq_vect ( mg_liq_props, icwmrst_subgrid, ncic_subgrid, rho_subgrid, &
-                                   mu_subgrid, lambdac_subgrid, ngrdcol*(nlev-top_lev+1)     )
+   call size_dist_param_liq ( mg_liq_props, icwmrst_subgrid, ncic_subgrid, rho_subgrid, &
+                              mu_subgrid, lambdac_subgrid, ngrdcol*(nlev-top_lev+1)     )
    !$acc end data
    ncic_grid(:ngrdcol,top_lev:) = ncic_subgrid(:,:)
    mu_grid(:ngrdcol,top_lev:) = mu_subgrid(:,:)
    lambdac_grid(:ngrdcol,top_lev:) = lambdac_subgrid(:,:)
 #else
-   call size_dist_param_liq_vect(mg_liq_props, icwmrst_grid(:ngrdcol,top_lev:), &
+   call size_dist_param_liq(mg_liq_props, icwmrst_grid(:ngrdcol,top_lev:), &
         ncic_grid(:ngrdcol,top_lev:), rho_grid(:ngrdcol,top_lev:), &
         mu_grid(:ngrdcol,top_lev:), lambdac_grid(:ngrdcol,top_lev:), ngrdcol*(nlev-top_lev+1))
 #endif
@@ -3264,14 +3264,14 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    !$acc data copyin  (mg_ice_props,icimrst_subgrid(1:ngrdcol,top_lev:nlev)) &
    !$acc      copy    (niic_subgrid(1:ngrdcol,top_lev:nlev)) &
    !$acc      copyout (rei_subgrid(1:ngrdcol,top_lev:nlev))
-   call size_dist_param_basic_vect( mg_ice_props, icimrst_subgrid, niic_subgrid, &
-                                    rei_subgrid, ngrdcol*(nlev-top_lev+1)        )
+   call size_dist_param_basic( mg_ice_props, icimrst_subgrid, niic_subgrid, &
+                               rei_subgrid, ngrdcol*(nlev-top_lev+1)        )
    !$acc end data
    rei_grid(1:ngrdcol,top_lev:nlev) = rei_subgrid(1:ngrdcol,top_lev:nlev)
 #else
-   call size_dist_param_basic_vect(mg_ice_props,icimrst_grid(1:ngrdcol,top_lev:), &
-                                   niic_grid(1:ngrdcol,top_lev:),rei_grid(1:ngrdcol,top_lev:), &
-                                   ngrdcol*(nlev-top_lev+1))
+   call size_dist_param_basic(mg_ice_props,icimrst_grid(1:ngrdcol,top_lev:), &
+                              niic_grid(1:ngrdcol,top_lev:),rei_grid(1:ngrdcol,top_lev:), &
+                              ngrdcol*(nlev-top_lev+1))
 #endif
 
    where (icimrst_grid(:ngrdcol,top_lev:) >= qsmall)
