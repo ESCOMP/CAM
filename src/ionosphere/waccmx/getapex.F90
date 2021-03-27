@@ -6,9 +6,8 @@ module getapex
    use shr_kind_mod, only : r8 => shr_kind_r8
    use cam_logfile, only: iulog
    use cam_abortutils, only: endrun
-   use edyn_geogrid, only: nlon,nlonp1,ylatg,ylong, &
-                              jspole,jnpole
-   use edyn_maggrid, only: nmlon,nmlonp1,nmlat,ylatm,ylonm,dlonm
+   use edyn_geogrid, only: nlon,nlonp1,jspole,jnpole
+   use edyn_maggrid, only: nmlonp1,nmlat,ylatm,ylonm
 
    implicit none
    save

@@ -30,7 +30,7 @@ module short_lived_species
   integer :: pbf_idx
   integer :: map(nslvd)
 
-  character(len=16), parameter :: pbufname = 'ShortLivedSpecies'
+  character(len=*), parameter :: pbufname = 'ShortLivedSpecies'
 
 contains
 
@@ -38,10 +38,6 @@ contains
 !---------------------------------------------------------------------
   subroutine register_short_lived_species
     use physics_buffer, only : pbuf_add_field, dtype_r8
-
-    implicit none
-
-    integer :: m
 
     if ( nslvd < 1 ) return
 
@@ -98,20 +94,19 @@ contains
     use mo_tracname,      only : solsym
     use ncdio_atm,        only : infld
     use pio,              only : file_desc_t
-    use physics_buffer,   only : physics_buffer_desc, pbuf_set_field, pbuf_get_chunk, pbuf_get_field
+    use physics_buffer,   only : physics_buffer_desc, pbuf_set_field
 
     implicit none
 
     type(file_desc_t), intent(inout) :: ncid_ini
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
-    integer          :: m,n,lchnk
+    integer          :: m,n
     integer          :: grid_id
     character(len=8) :: fieldname
     character(len=4) :: dim1name, dim2name
     logical          :: found
     real(r8),pointer :: tmpptr(:,:,:)   ! temporary pointer
-    real(r8),pointer :: tmpptr2(:,:,:)   ! temporary pointer
     character(len=*), parameter :: subname='INITIALIZE_SHORT_LIVED_SPECIES'
 
     if ( nslvd < 1 ) return

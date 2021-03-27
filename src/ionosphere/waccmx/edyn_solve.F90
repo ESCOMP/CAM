@@ -6,7 +6,7 @@ module edyn_solve
   use shr_kind_mod ,only: r8 => shr_kind_r8 ! 8-byte reals
   use cam_logfile  ,only: iulog
   use edyn_params  ,only: finit
-  use edyn_maggrid ,only: nmlon,nmlonp1,nmlat,nmlath,nmlev
+  use edyn_maggrid ,only: nmlon,nmlonp1,nmlat,nmlath
   use edyn_maggrid ,only: res_nlev, res_ngrid
   use spmd_utils,   only: masterproc
 
@@ -263,19 +263,19 @@ module edyn_solve
 !
 ! Sigma_(phi phi)/( cos(lam_m)*dt0dts*(Delta lon)^2 )
     sym = 1._r8
-    call stencmd(zigm11_glb,cs,nmlon0,nmlat0,sym,cee,1)
+    call stencmd(zigm11_glb,nmlon0,nmlat0,sym,cee,1)
 !
 ! Sigma_(lam lam)*cos(lam_m)*dt0dts/(Delta lam)^2
     sym = 1._r8
-    call stencmd(zigm22_glb,cs,nmlon0,nmlat0,sym,cee,4)
+    call stencmd(zigm22_glb,nmlon0,nmlat0,sym,cee,4)
 !
 ! Sigma_(phi lam)/( 4*Delta lam* Delta lon )
     sym = -1._r8
-    call stencmd(zigmc_glb,cs,nmlon0,nmlat0,sym,cee,2)
+    call stencmd(zigmc_glb,nmlon0,nmlat0,sym,cee,2)
 !
 ! Sigma_(lam phi)/( 4*Delta lam* Delta lon )
     sym = -1._r8
-    call stencmd(zigm2_glb,cs,nmlon0,nmlat0,sym,cee,3)
+    call stencmd(zigm2_glb,nmlon0,nmlat0,sym,cee,3)
 !
 ! Insert RHS in finest stencil:
     do j = 1,nmlat0
@@ -307,21 +307,21 @@ module edyn_solve
     call edges(cofum,nmlon0,nmlat0)
 !
 ! Divide stencils by cos(lam_0) (not rhs):
-    call divide(c0,nmlon0,nmlat0,nmlon0,nmlat0,cs,1)
-    call divide(c1,nmlon1,nmlat1,nmlon0,nmlat0,cs,1)
-    call divide(c2,nmlon2,nmlat2,nmlon0,nmlat0,cs,1)
-    call divide(c3,nmlon3,nmlat3,nmlon0,nmlat0,cs,1)
-    call divide(c4,nmlon4,nmlat4,nmlon0,nmlat0,cs,1)
+    call divide(c0,nmlon0,nmlat0,nmlon0,cs,1)
+    call divide(c1,nmlon1,nmlat1,nmlon0,cs,1)
+    call divide(c2,nmlon2,nmlat2,nmlon0,cs,1)
+    call divide(c3,nmlon3,nmlat3,nmlon0,cs,1)
+    call divide(c4,nmlon4,nmlat4,nmlon0,cs,1)
     if ( res_nlev > 5 ) then
-       call divide(c5,nmlon5,nmlat5,nmlon0,nmlat0,cs,1)
+       call divide(c5,nmlon5,nmlat5,nmlon0,cs,1)
     endif
     if ( res_nlev > 6 ) then
-       call divide(c6,nmlon6,nmlat6,nmlon0,nmlat0,cs,1)
+       call divide(c6,nmlon6,nmlat6,nmlon0,cs,1)
     endif
     if ( res_nlev > 7 ) then
-       call divide(c7,nmlon7,nmlat7,nmlon0,nmlat0,cs,1)
+       call divide(c7,nmlon7,nmlat7,nmlon0,cs,1)
     endif
-    call divide(cofum,nmlon0,nmlat0,nmlon0,nmlat0,cs,0)
+    call divide(cofum,nmlon0,nmlat0,nmlon0,cs,0)
 !
 ! Set value of solution to 1. at pole:
     do i=1,nmlon0
@@ -384,7 +384,7 @@ module edyn_solve
     enddo
   end subroutine clearcee
 !-----------------------------------------------------------------------
-  subroutine stencmd(zigm,cs,nlon0,nlat0,sym,cee,ncoef)
+  subroutine stencmd(zigm,nlon0,nlat0,sym,cee,ncoef)
 !
 ! Calculate contribution fo 3 by 3 stencil from coefficient zigm
 ! at each grid point and level.
@@ -396,8 +396,7 @@ module edyn_solve
       ncoef                  ! integer identifier of coefficient
     real(r8),intent(in) :: &
       zigm(nlon0,nlat0),   & ! coefficients (nlon0+1/2,(nlat0+1)/2)
-      sym,                 & !  1. if zigm symmetric w.r.t. equator, -1 otherwise
-      cs(nlat0)
+      sym                    !  1. if zigm symmetric w.r.t. equator, -1 otherwise
     real(r8),intent(inout) ::  & ! output stencil array consisting of c0,c1,c2,c3,c4
       cee(*)
 !
@@ -417,7 +416,7 @@ module edyn_solve
 !
 ! Calculate modified and unmodified stencil on finest grid
 !
-    call cnmmod(nlon0,nlat0,nlon,nlat,cee(nc),ncoef,wkarray,cofum)
+    call cnmmod(nlon0,nlon,nlat,cee(nc),ncoef,wkarray,cofum)
 !
 ! Stencils on other grid levels remain the same.
     nc = nc+10*nlon*nlat
@@ -425,7 +424,7 @@ module edyn_solve
     nlat = (nlat+1)/2
 !
     do n=2,res_nlev
-      call cnm(nlon0,nlat0,nlon,nlat,cee(nc),ncoef,wkarray)
+      call cnm(nlon0,nlon,nlat,cee(nc),ncoef,wkarray)
       nc = nc+9*nlon*nlat
       if (n==1) nc = nc+nlon*nlat
       nlon = (nlon+1)/2
@@ -463,14 +462,14 @@ module edyn_solve
     enddo ! i=1,res_ngrid
   end subroutine htrpex
 !-----------------------------------------------------------------------
-  subroutine cnm(nlon0,nlat0,nlon,nlat,c,ncoef,wkarray)
+  subroutine cnm(nlon0,nlon,nlat,c,ncoef,wkarray)
 !
 ! Compute contribution to stencil from zigm(ncoef) on grid nlon by nlat,
-! Finest grid is nlon0 by nlat0.
+! Finest grid is nlon0.
 !
 ! Args:
     integer,intent(in) :: &
-      nlon0,nlat0,        & ! finest grid dimensions
+      nlon0,              & ! finest grid dimensions
       nlon,nlat             ! output grid dimensions
     real(r8),intent(in) :: wkarray(-res_ngrid+1:nmlon0+res_ngrid,nmlat0)
 !
@@ -491,7 +490,7 @@ module edyn_solve
     real(r8) :: wk(nlon0,3)
 !
 ! Compute separation of grid points of resolution nlon x nlat within
-! grid of resolution nlon0,nlat0. Evaluate dlon and dlat, grid spacing
+! grid of resolution nlon0. Evaluate dlon and dlat, grid spacing
 ! of nlon x nlat.
 !
     nint = (nlon0-1)/(nlon-1)
@@ -603,14 +602,14 @@ module edyn_solve
     endif ! ncoef
   end subroutine cnm
 !-----------------------------------------------------------------------
-  subroutine cnmmod(nlon0,nlat0,nlon,nlat,c,ncoef,wkarray,cofum)
+  subroutine cnmmod(nlon0,nlon,nlat,c,ncoef,wkarray,cofum)
 !
 ! Compute contribution to stencil from zigm(ncoef) on grid nlon by nlat,
-! Finest grid is nlon0 by nlat0.
+! Finest grid is nlon0.
 !
 ! Args:
     integer,intent(in) :: &
-      nlon0,nlat0,        & ! finest grid dimensions
+      nlon0,              & ! finest grid dimensions
       nlon,nlat             ! output grid dimensions
     real(r8),intent(in) :: wkarray(-res_ngrid+1:nmlon0+res_ngrid,nmlat0)
     real(r8),dimension(nmlon0,nmlat0,9),intent(inout) :: cofum
@@ -632,7 +631,7 @@ module edyn_solve
     real(r8) :: wk(nlon0,3)
 !
 ! Compute separation of grid points of resolution nlon x nlat within
-! grid of resolution nlon0,nlat0. Evaluate dlon and dlat, grid spacing
+! grid of resolution nlon0. Evaluate dlon and dlat, grid spacing
 ! of nlon x nlat.
 !
     nint = (nlon0-1)/(nlon-1)
@@ -833,12 +832,12 @@ module edyn_solve
     enddo
   end subroutine edges
 !--------------------------------------------------------------------
-  subroutine divide(c,nlon,nlat,nlon0,nlat0,cs,igrid)
+  subroutine divide(c,nlon,nlat,nlon0,cs,igrid)
 !
 ! Divide stencil C by cos(theta(i,j))
 !
 ! Args:
-    integer,intent(in) :: nlon,nlat,nlon0,nlat0,igrid
+    integer,intent(in) :: nlon,nlat,nlon0,igrid
     real(r8),intent(in) :: cs(:)
     real(r8),intent(out) :: c(*)
 !

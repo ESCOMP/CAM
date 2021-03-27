@@ -6,7 +6,6 @@ module ionosphere_interface
    use phys_grid,           only: get_ncols_p
 
    use dpie_coupling,       only: d_pie_init
-   use dpie_coupling,       only: d_pie_coupling         ! WACCM-X ionosphere/electrodynamics coupling
    use short_lived_species, only: slvd_index, slvd_pbf_ndx => pbf_idx ! Routines to access short lived species
 
    use chem_mods,           only: adv_mass      ! Array holding mass values for short lived species

@@ -2,7 +2,7 @@
       subroutine mud(pe,jntl,isolve)
       use shr_kind_mod ,only: r8 => shr_kind_r8
       use cam_abortutils   ,only: endrun
-      use edyn_solve,only: nc,cee
+      use edyn_solve,only: cee
       use edyn_params, only: pi
       use edyn_maggrid, only: res_nlev
 !
@@ -20,7 +20,6 @@
 !
       integer :: llwork
       real(r8), allocatable :: phi(:,:),rhs(:,:),work(:)
-      real(r8) :: time0,time1
 !
 !     put integer and floating point argument names in contiguous
 !     storage for labelling in vectors iprm,fprm
@@ -40,7 +39,7 @@
       integer i,j,ierror
       real(r8) :: PE(iixp*2**(res_nlev-1)+1,1)
       integer, parameter :: maxcya = 150
-      integer mm,nn,jj,jjj
+      integer jj,jjj
 
       iiex = res_nlev
       jjey = res_nlev
@@ -49,11 +48,6 @@
       llwork=(7*(nnx+2)*(nny+2)+76*nnx*nny)/3
 
       allocate(phi(nnx,nny),rhs(nnx,nny),work(llwork))
-!
-!     set input integer arguments
-!
-      MM = NNX
-      NN = NNY
 !
 !     SET INPUT INTEGER PARAMETERS
 !
@@ -1046,7 +1040,7 @@
 !
       implicit none
 
-      integer nx,ny,i,ib,j,ii
+      integer nx,ny,i,ib,j
       integer intl,nxa,nxb,nyc,nyd,ixp,jyq,iex,jey,nfx,nfy,iguess,&
                    maxcy,method,nwork,lwork,itero,ngrid,klevel,kcur,&
                    kcycle,iprer,ipost,intpol,kps
@@ -1054,7 +1048,6 @@
                      iguess, maxcy,method,nwork,lwork,itero,ngrid,&
                      klevel,kcur,kcycle,iprer,ipost,intpol,kps
       real(r8) :: phi(0:nx+1,0:ny+1),cof(nx,ny,10),tx(nx,ny,*),sum(ny)
-      real(r8) :: starttime,endtime
 !
 !     replace line x with point gauss-seidel if
 !     x direction is periodic and nx = 3 (coarsest)
@@ -1244,7 +1237,6 @@
                      iguess, maxcy,method,nwork,lwork,itero,ngrid, &
                      klevel,kcur,kcycle,iprer,ipost,intpol,kps
       real(r8) :: phi(0:nx+1,0:ny+1),cof(nx,ny,10),ty(ny,nx,*),sum(nx)
-      real(r8) :: starttime,endtime
 !
 !     replace line y with point gauss-seidel if
 !     y direction is periodic and ny = 3

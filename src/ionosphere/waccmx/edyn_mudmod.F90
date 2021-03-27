@@ -1,7 +1,6 @@
 !-----------------------------------------------------------------------
       subroutine mudmod(pe,phi_out,jntl,isolve,nlev,ier)
       use shr_kind_mod ,only: r8 => shr_kind_r8
-      use cam_abortutils   ,only: endrun
       use edyn_solve   ,only: cee
       use edyn_params, only: pi
 
@@ -19,7 +18,6 @@
 !
       real(r8) :: phi_out(0:iixp*2**(nlev-1)+1+1,0:jjyq*2**(nlev-1)+1+1)
       real(r8),allocatable :: phi(:,:),rhs(:,:),work(:)
-      real(r8) :: time0,time1
 !
 !     put integer and floating point argument names in contiguous
 !     storage for labelling in vectors iprm,fprm
@@ -37,7 +35,7 @@
       integer i,j,ierror
       real(r8) :: PE(iixp*2**(nlev-1)+1,*)
       integer, parameter :: maxcya=50
-      integer mm,nn,jj,jjj,ij
+      integer jj,jjj,ij
 
       iiex = nlev
       jjey = nlev
@@ -46,11 +44,6 @@
       llwork=(7*(nnx+2)*(nny+2)+76*nnx*nny)/3
 
       allocate(phi(nnx,nny),rhs(nnx,nny),work(llwork))
-!
-!     set input integer arguments
-!
-      MM = NNX
-      NN = NNY
 !
 !     SET INPUT INTEGER PARAMETERS
 !
@@ -356,7 +349,7 @@
       integer kpbgn,kcbgn,ktxbgn,ktybgn,nxk,nyk,isx,jsy
       integer k,kb,ip,ic,ir,ipc,irc,icc
       integer ncx,ncy,jj,ij,i,j,iter
-      integer iw,itx,ity,ierror
+
       common/imud2cr/intl,nxa,nxb,nyc,nyd,ixp,jyq,iex,jey,nfx,nfy, &
                      iguess, maxcy,method,nwork,lwork,itero,ngrid, &
                      klevel,kcur,kcycle,iprer,ipost,intpol,kps
@@ -712,9 +705,8 @@
                    maxcy,method,nwork,lwork,itero,ngrid,klevel,kcur, &
                    kcycle,iprer,ipost,intpol,kps
       real(r8) :: xa,xb,yc,yd,tolmax,relmax
-      integer nx,ny,i,j,kbdy,l,im1,jm1,ier,jc,nnx,nny
+      integer nx,ny,i,j,l
       real(r8) :: cf(nx,ny,*)
-      real(r8) :: dlx,dlx2,dlxx,dly,dly2,dlyy,cmin,alfmax,cemax
       common/imud2cr/intl,nxa,nxb,nyc,nyd,ixp,jyq,iex,jey,nfx,nfy, &
                      iguess, maxcy,method,nwork,lwork,itero,ngrid, &
                      klevel,kcur,kcycle,iprer,ipost,intpol,kps

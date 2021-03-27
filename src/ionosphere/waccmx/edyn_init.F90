@@ -2,7 +2,6 @@ module edyn_init
 !
 ! Initialize edynamo
 !
-   use shr_kind_mod,   only: r8 => shr_kind_r8 ! 8-byte reals
    use cam_logfile,    only: iulog
    use cam_abortutils, only: endrun
    use spmd_utils,     only: masterproc
@@ -166,8 +165,6 @@ contains
       integer(iMap),       pointer :: grid_map(:,:) => null()
       integer(iMap),       pointer :: coord_map(:) => null()
       integer                      :: i, j, ind
-
-      character(len=300) :: dbgstr
 
       if (mytid>=ntask) then
 

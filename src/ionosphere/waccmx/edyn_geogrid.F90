@@ -4,7 +4,6 @@ module edyn_geogrid
 ! See sub set_geogrid (edyn_init.F90)
 !
   use shr_kind_mod, only: r8 => shr_kind_r8 ! 8-byte reals
-  use infnan,       only: nan, assignment(=)
   use cam_logfile,  only: iulog
   use cam_abortutils, only: endrun
 
