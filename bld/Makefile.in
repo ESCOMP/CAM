@@ -418,6 +418,49 @@ rrtmg_sw_k_g.o: rrtmg_sw_k_g.f90
 
 endif
 
+# NVHPC
+
+ifeq ($(FC_TYPE),nvhpc)
+
+  CPPDEF        += -DNO_R16 -DCPRPGI $(NO_CONTIGUOUS_FLAG)
+  CFLAGS        += -gopt -O2
+  FC_FLAGS      := -i4 -Mdalign -Mextend -byteswapio
+  FC_FLAGS_NOOPT:= $(FC_FLAGS)
+  FREEFLAGS     := -Mfree
+  FIXEDFLAGS    := -Mfixed
+  LDFLAGS       := -Bdynamic
+
+  ifeq ($(DEBUG),TRUE)
+    FC_FLAGS       += -g -Ktrap=fp -Mbounds -Kieee -traceback
+  else
+    # Check for override of default Fortran compiler optimizations
+    ifeq ($(F_OPTIMIZATION_OVERRIDE),$(null))
+      FORTRAN_OPTIMIZATION := -gopt -O2 -Kieee
+    endif
+    FC_FLAGS += $(FORTRAN_OPTIMIZATION)
+  endif
+
+  ifeq ($(SMP),TRUE)
+    FC_FLAGS       += -mp
+    FC_FLAGS_NOOPT += -mp
+    CFLAGS         += -mp
+    LDFLAGS        += -mp
+  endif
+
+  FFLAGS       := $(cpp_path) $(mod_path) $(CPPDEF) $(FC_FLAGS)
+  FFLAGS_NOOPT := $(cpp_path) $(mod_path) $(CPPDEF) $(FC_FLAGS_NOOPT)
+  FC_AUTO_R8   := -r8
+
+# These RRTMG files cause a compiler error when using optimization.
+# Until mods are made to read the data from files, just remove optimization from
+# their compilation.
+rrtmg_lw_k_g.o: rrtmg_lw_k_g.f90
+	$(FC) -c $(FREEFLAGS) $(FFLAGS_NOOPT) $<
+rrtmg_sw_k_g.o: rrtmg_sw_k_g.f90
+	$(FC) -c $(FREEFLAGS) $(FFLAGS_NOOPT) $<
+
+endif
+
 # Intel
 
 ifeq ($(FC_TYPE),intel)

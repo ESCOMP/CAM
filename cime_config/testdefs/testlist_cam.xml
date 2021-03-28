@@ -1059,6 +1059,7 @@
   <test compset="F2000climo" grid="f09_f09_mg17" name="ERP_Ln9" testmods="cam/outfrq9s_mg3_casper">
     <machines>
       <machine name="casper" compiler="pgi"   category="casper_gpu"/>
+      <machine name="casper" compiler="nvhpc" category="casper_gpu"/>
       <machine name="casper" compiler="intel" category="casper_cpu"/>
     </machines>
     <options>
