@@ -250,6 +250,8 @@ subroutine wv_sat_qsat_water(t, p, es, qs, idx)
 
   integer,  intent(in), optional :: idx ! Scheme index
 
+  !$acc data present (t, p, es, qs)
+
   es = wv_sat_svp_water(t, idx)
 
   qs = wv_sat_svp_to_qsat(es, p)
@@ -449,13 +451,15 @@ subroutine  wv_sat_svp_water_vect(t, es, vlen, idx)
 end subroutine wv_sat_svp_water_vect
 
 function wv_sat_svp_ice(t, idx) result(es)
+  !$acc routine seq
+
   real(r8), intent(in)  :: t
   integer,  intent(in), optional :: idx
   real(r8)              :: es
 
   integer :: use_idx
 
-  !$acc routine seq
+  !$acc data present (t)
 
   if (present(idx)) then
      use_idx = idx
@@ -624,9 +628,10 @@ subroutine GoffGratch_svp_water_vect(t, es, vlen)
   ! to 212F.” Trans. Am. Soc. Heat. Vent. Eng. 52 (1946): 95–121.
   ! uncertain below -70 C
 
+  log_tboil = log10(tboil)
+
   !$acc parallel vector_length(VLEN) default(present)
   !$acc loop gang vector
-  log_tboil = log10(tboil)
   do i=1,vlen
      es(i) = 10._r8**(-7.90298_r8*(tboil/t(i)-1._r8)+ &
        5.02808_r8*(log_tboil-log10(t(i)))- &
@@ -665,9 +670,10 @@ subroutine GoffGratch_svp_ice_vect(t, es, vlen)
 
   !$acc data present (t,es)
 
+  log_param = log10(6.1071_r8)
+
   !$acc parallel vector_length(VLEN) default(present)
   !$acc loop gang vector
-  log_param = log10(6.1071_r8)
   do i=1,vlen
      es(i) = 10._r8**(-9.09718_r8*(h2otrip/t(i)-1._r8)-3.56654_r8* &
           log10(h2otrip/t(i))+0.876793_r8*(1._r8-t(i)/h2otrip)+ &
