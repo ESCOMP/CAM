@@ -3748,7 +3748,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    call physics_state_dealloc(state_loc)
 
 #if defined (__OPENACC__)
-   deallocate( icimrst_subgrid,rei_subgrid,niic_subgrid,icwmrst_subgrid
+   deallocate( icimrst_subgrid,rei_subgrid,niic_subgrid,icwmrst_subgrid, &
                ncic_subgrid,rho_subgrid,mu_subgrid,lambdac_subgrid )
 #endif
 
