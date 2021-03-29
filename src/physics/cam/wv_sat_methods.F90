@@ -395,6 +395,8 @@ end subroutine wv_sat_qsat_trans
 !---------------------------------------------------------------------
 
 function wv_sat_svp_water(t, idx) result(es)
+  !$acc routine seq
+
   real(r8), intent(in) :: t
   integer,  intent(in), optional :: idx
   real(r8)             :: es
@@ -687,6 +689,8 @@ end subroutine GoffGratch_svp_ice_vect
 ! Murphy & Koop (2005)
 
 function MurphyKoop_svp_water(t) result(es)
+  !$acc routine seq
+
   real(r8), intent(in) :: t  ! Temperature in Kelvin
   real(r8) :: es             ! SVP in Pa
 
