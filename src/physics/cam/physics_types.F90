@@ -428,7 +428,7 @@ contains
     end if
 
     ! Good idea to do this regularly.
-    call shr_sys_flush(iulog)
+!    call shr_sys_flush(iulog)
 
     if (state_debug_checks) call physics_state_check(state, ptend%name)
 
