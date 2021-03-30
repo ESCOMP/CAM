@@ -1164,7 +1164,9 @@ subroutine liquid_macro_tend(npccn,t,p,qv,qc,nc,xxlv,deltat,stend,qvtend,qctend,
   end do
 
   ! calculate qsatl from t,p,q
+  !$acc data copyin(t,p) copyout(ESL,QSL) 
   call wv_sat_qsat_water_vect(t, p, ESL, QSL, vlen)
+  !$acc end data
 
   do i = 1, vlen
      ! Don't allow supersaturation with respect to liquid.
