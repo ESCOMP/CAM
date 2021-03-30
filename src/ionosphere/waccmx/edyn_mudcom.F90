@@ -2033,7 +2033,7 @@ module edyn_mudcom
       integer lda,n,ipvt(1),info
       real(r8) :: a(lda,1)
       real(r8) :: t
-      integer isfmax,j,k,kp1,l,nm1
+      integer :: j,k,kp1,l,nm1
       info = 0
       nm1 = n - 1
       if (nm1 .lt. 1) go to 70
@@ -2072,7 +2072,7 @@ module edyn_mudcom
       implicit none
       integer lda,n,ipvt(1),job
       real(r8) :: a(lda,1),b(1)
-      real(r8) :: sdt,t
+      real(r8) :: t
       integer k,kb,l,nm1
       nm1 = n - 1
       if (job .ne. 0) go to 50
