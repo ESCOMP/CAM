@@ -333,7 +333,7 @@ subroutine svp_ice_vect(t, es, vlen)
   real(r8), intent(in)  :: t(vlen)  ! Temperature (K)
   real(r8), intent(out) :: es(vlen) ! SVP (Pa)
 
-  !$ac data copyin(t) copyout(es)
+  !$acc data copyin(t) copyout(es)
 
   call wv_sat_svp_ice_vect(t, es, vlen)
 
@@ -1180,7 +1180,7 @@ subroutine qsat_ice_vect(t, p, es, qs, vlen, gam, dqsdt, enthalpy)
   if (present_gam .or. present_dqsdt .or. present_enthalpy) then
 
      !$acc parallel vector_length(VLEN) default(present)
-     !$acc loop gang vector collapse(2)
+     !$acc loop gang vector
      do i = 1, vlen
         ! For pure ice, just add latent heats.
         hltalt(i) = latvap + latice
