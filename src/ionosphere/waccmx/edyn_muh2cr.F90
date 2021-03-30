@@ -1,8 +1,19 @@
+module edyn_muh2cr
+  use shr_kind_mod , only: r8 => shr_kind_r8
+  use cam_abortutils, only: endrun
+  use edyn_mudcom, only: prolon2, trsfc2, factri,factrp, sgfa, sgsl, transp
+  use edyn_mudcom, only: swk2, cor2, transp, res2
+
+  implicit none
+
+  private
+
+  public :: muh
+
+contains
 !-----------------------------------------------------------------------
       subroutine muh(pe,nlon,nlat,nlev,jntl)
-      use shr_kind_mod , only: r8 => shr_kind_r8
-      use cam_abortutils, only: endrun
-      use edyn_solve, only: cee
+      use edyn_solver_coefs, only: cee
       use edyn_params, only: pi
 
       implicit none
@@ -677,7 +688,7 @@
       subroutine dismh2cr(nx,ny,cf,tx,ty,wk,iwk)
       use shr_kind_mod ,only: r8 => shr_kind_r8
       use cam_abortutils   ,only: endrun
-      use edyn_solve,only:    nc,cee,ceee
+      use edyn_solver_coefs,only: nc,cee,ceee
 !
 !     discretize elliptic pde for muh2cr, set nonfatal errors
 !
@@ -2003,3 +2014,4 @@
       return
       end subroutine slymh2cr
 !-----------------------------------------------------------------------
+end module edyn_muh2cr

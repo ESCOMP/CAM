@@ -64,19 +64,21 @@ module edyn_mpi
    !
    ! Geographic subdomains for current task:
    !
+
    integer, protected :: &
-        nlon_geo,        & ! size of geo lon dimension
-        nlat_geo,        & ! size of geo lat dimension
         nlev_geo,        & !
-        lon0=1, lon1=0,      & ! first and last lons for each task
-        lat0=1, lat1=0,      & ! first and last lats for each task
+        lon0=1, lon1=0,  & ! first and last lons for each task
+        lat0=1, lat1=0,  & ! first and last lats for each task
         lev0, lev1,      & ! first and last levs for each task (not distributed)
         ntaski,          & ! number of tasks in lon dimension
         ntaskj,          & ! number of tasks in lat dimension
-        mytidi,          & ! i coord for current task in task table
-        mytidj,          & ! j coord for current task in task table
+        mytidi             ! i coord for current task in task table
+   integer :: &
+        nlon_geo,        & ! size of geo lon dimension
+        nlat_geo,        & ! size of geo lat dimension
         mxlon,           & ! max number of subdomain lon points among all tasks
-        mxlat              ! max number of subdomain lat points among all tasks
+        mxlat,           & ! max number of subdomain lat points among all tasks
+        mytidj             ! j coord for current task in task table
    !
    ! Magnetic subdomains for current task:
    !
@@ -87,8 +89,10 @@ module edyn_mpi
         magtidj,     & ! j coord for current task in task table
         mlat0=1,mlat1=0, & ! first and last mag lats for each task
         mlon0=1,mlon1=0, & ! first and last mag lons for each task
-        omlon1=0,      & ! last mag lons for each task to remove periodic point from outputs
-        mlev0,mlev1, & ! first and last mag levs (not distributed)
+        omlon1=0,    & ! last mag lons for each task to remove periodic point from outputs
+        mlev0,mlev1    ! first and last mag levs (not distributed)
+
+   integer :: &
         mxmaglon,    & ! max number of mag subdomain lon points among all tasks
         mxmaglat       ! max number of mag subdomain lat points among all tasks
 
@@ -246,13 +250,13 @@ contains
       end do ! j=0,ntaskj-1
 
       if (debug ) then
-         write(iulog,"('mp_distribute_geo: mytid=',i4,' ntaski,j=',2i4,' mytidi,j=',2i4,&
+         write(6,"('mp_distribute_geo: mytid=',i4,' ntaski,j=',2i4,' mytidi,j=',2i4,&
               ' lon0,1=',2i4,' lat0,1=',2i4,' lev0,1=',2i4)") &
               mytid,ntaski,ntaskj,mytidi,mytidj,lon0,lon1,lat0,lat1,lev0,lev1
          !
          ! Print table to stdout, including -1,ntaski:
          !
-         write(iulog,"(/,'ntask=',i3,' ntaski=',i2,' ntaskj=',i2,' Geo Task Table:')") &
+         write(6,"(/,'ntask=',i3,' ntaski=',i2,' ntaskj=',i2,' Geo Task Table:')") &
               ntask,ntaski,ntaskj
          do j=-1,ntaskj
             write(iulog,"('j=',i3,' itask_table_geo(:,j)=',100i3)") j,itask_table_geo(:,j)
@@ -270,8 +274,10 @@ contains
       ni = lon1-lon0+1 ! number of longitudes for this task
       !
       ! Report my stats to stdout:
-      !     write(iulog,"(/,'mytid=',i3,' mytidi,j=',2i3,' lat0,1=',2i3,' (',i2,') lon0,1=',2i3,' (',i2,') ncells=',i4)") &
-      !       mytid,mytidi,mytidj,lat0,lat1,nj,lon0,lon1,ni
+      if (debug ) then
+         write(6,"(/,'mytid=',i3,' mytidi,j=',2i3,' lat0,1=',2i3,' (',i2,') lon0,1=',2i3,' (',i2,') ncells=',i4)") &
+              mytid,mytidi,mytidj,lat0,lat1,nj,lon0,lon1,ni
+      endif
       !
       ! Define all task structures with current task values
       ! (redundant for alltoall):
@@ -294,7 +300,7 @@ contains
          do n=0,ntask-1
 
             if (debug) then
-               write(iulog,"('mp_distribute_geo: n=',i3,' tasks(n)%nlons=',i3,' tasks(n)%nlats=',i3)") &
+               write(6,"('mp_distribute_geo: n=',i3,' tasks(n)%nlons=',i3,' tasks(n)%nlats=',i3)") &
                     n,tasks(n)%nlons,tasks(n)%nlats
             endif
 
@@ -405,10 +411,10 @@ contains
          ni = mlon1 - mlon0 + 1 ! number of mag longitudes for this task
          ncells = nj * ni       ! total number of grid cells for this task
 
-         if (debug .and. masterproc) then
+         if (debug) then
             !
             ! Report my stats to stdout:
-            write(iulog,"(/,a,i3,a,2i3,a,2i3,a,i2,2a,2i3,a,i2,a,i4)")            &
+            write(6,"(/,a,i3,a,2i3,a,2i3,a,i2,2a,2i3,a,i2,a,i4)")            &
                  'mytid = ',mytid, ', magtidi,j = ', magtidi, magtidj,           &
                  ', mlat0,1 = ', mlat0, mlat1, ' (', nj, ')',                    &
                  ', mlon0,1 = ', mlon0, mlon1, ' (', ni, ') ncells = ', ncells

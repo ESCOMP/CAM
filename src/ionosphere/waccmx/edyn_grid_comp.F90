@@ -13,6 +13,8 @@ module edyn_grid_comp
 
    implicit none
 
+   private
+
    public :: edyn_grid_comp_init
    public :: edyn_grid_comp_run1
    public :: edyn_grid_comp_run2

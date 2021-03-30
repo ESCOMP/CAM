@@ -1,10 +1,20 @@
+module edyn_mudmod
+  use shr_kind_mod, only: r8 => shr_kind_r8
+  use cam_logfile, only: iulog
+  use edyn_mud, only: dismd2cr, mud2cr1, adjmd2cr, kcymd2cr, relmd2cr, resmd2cr
+  use edyn_mudcom, only: swk2, trsfc2, prolon2, cor2, res2
+
+  implicit none
+
+  private
+
+  public :: mudmod
+
+contains
 !-----------------------------------------------------------------------
       subroutine mudmod(pe,phi_out,jntl,isolve,nlev,ier)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
-      use edyn_solve   ,only: cee
+      use edyn_solver_coefs,only: cee
       use edyn_params, only: pi
-
-      implicit none
 
       integer,intent(in) :: jntl, isolve, nlev
       integer,intent(out) :: ier  ! output: not converged ier < 0
@@ -157,9 +167,7 @@
       end subroutine mudmod
 !-------------------------------------------------------------------
       subroutine mud2cm(iparm,fparm,work,rhs,phi,mgopt,ierror,isolve)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
-      use cam_logfile  ,only: iulog
-      implicit none
+
       integer,intent(in) :: isolve
       integer iparm,mgopt,ierror
       integer intl,nxa,nxb,nyc,nyd,ixp,jyq,iex,jey,nfx,nfy,iguess, &
@@ -338,8 +346,7 @@
       end subroutine mud2cm
 !------------------------------------------------------------------------
       subroutine mud2c1m(nx,ny,rhsf,phif,wk)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
-      implicit none
+
       integer nx,ny
       real(r8) :: phif(nx,ny),rhsf(nx,ny),wk(*)
       integer intl,nxa,nxb,nyc,nyd,ixp,jyq,iex,jey,nfx,nfy,iguess, &
@@ -470,13 +477,11 @@
 
 !------------------------------------------------------------------------
       subroutine kcym2cm(wk)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
-      use edyn_solve,only: cofum
+      use edyn_solver_coefs,only: cofum
 !
 !     execute multigrid k cycle from kcur grid level
 !     kcycle=1 for v cycles, kcycle=2 for w cycles
 !
-      implicit none
       real(r8) :: wk(*)
       integer intl,nxa,nxb,nyc,nyd,ixp,jyq,iex,jey,nfx,nfy,iguess, &
                    maxcy,method,nwork,lwork,itero,ngrid,klevel,kcur, &
@@ -639,12 +644,10 @@
       end subroutine kcym2cm
 !----------------------------------------------------------------------
       subroutine resm2cm(nx,ny,phi,ncx,ncy,phic,rhsc,cof,resf,cofum)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
 !
 !     restrict residual from fine to coarse mesh using fully weighted
 !     residual restriction
 !
-      implicit none
       integer intl,nxa,nxb,nyc,nyd,ixp,jyq,iex,jey,nfx,nfy,iguess, &
                    maxcy,method,nwork,lwork,itero,ngrid,klevel,kcur, &
                    kcycle,iprer,ipost,intpol,kps
@@ -696,11 +699,9 @@
 
 !-----------------------------------------------------------------------
       subroutine bnd2cm(nx,ny,cf)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
 !
 !     set stencil & boundary condition for finest stencil
 !
-      implicit none
       integer intl,nxa,nxb,nyc,nyd,ixp,jyq,iex,jey,nfx,nfy,iguess, &
                    maxcy,method,nwork,lwork,itero,ngrid,klevel,kcur, &
                    kcycle,iprer,ipost,intpol,kps
@@ -755,3 +756,4 @@
       return
       end subroutine bnd2cm
 !-----------------------------------------------------------------------
+end module edyn_mudmod

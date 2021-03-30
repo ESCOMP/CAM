@@ -1,173 +1,20 @@
-!-----------------------------------------------------------------------
-      subroutine mud(pe,jntl,isolve)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
-      use cam_abortutils   ,only: endrun
-      use edyn_solve,only: cee
-      use edyn_params, only: pi
-      use edyn_maggrid, only: res_nlev
-!
-      implicit none
-      integer,intent(in) :: isolve
-      integer jntl
-!
-!     set grid size params
-!
-      integer,parameter :: iixp = 5 , jjyq = 3
-      integer :: iiex, jjey
-      integer :: nnx, nny
-!
-!     estimate work space for point relaxation (see mud2cr.d)
-!
-      integer :: llwork
-      real(r8), allocatable :: phi(:,:),rhs(:,:),work(:)
-!
-!     put integer and floating point argument names in contiguous
-!     storage for labelling in vectors iprm,fprm
-!
-! btf 1/21/14: dimension iprm(17) to match iprm in edyn_muh2cr.F90
-!     integer iprm(16),mgopt(4)
-      integer iprm(17),mgopt(4)
-      real(r8) :: fprm(6)
-      integer intl,nxa,nxb,nyc,nyd,ixp,jyq,iex,jey,nx,ny, &
-                    iguess,maxcy,method,nwork,lwrkqd,itero
-      common/itmud2cr/intl,nxa,nxb,nyc,nyd,ixp,jyq,iex,jey,nx,ny, &
-                    iguess,maxcy,method,nwork,lwrkqd,itero
-      real(r8) :: xa,xb,yc,yd,tolmax,relmax
-      common/ftmud2cr/xa,xb,yc,yd,tolmax,relmax
-      equivalence(intl,iprm)
-      equivalence(xa,fprm)
-      integer i,j,ierror
-      real(r8) :: PE(iixp*2**(res_nlev-1)+1,1)
-      integer, parameter :: maxcya = 150
-      integer jj,jjj
+module edyn_mud
+  use shr_kind_mod,only: r8 => shr_kind_r8
+  use cam_abortutils,only: endrun
+  use edyn_mudcom, only: cor2, res2, factri, factrp, prolon2, trsfc2, swk2
 
-      iiex = res_nlev
-      jjey = res_nlev
-      nnx=iixp*2**(iiex-1)+1
-      nny=jjyq*2**(jjey-1)+1
-      llwork=(7*(nnx+2)*(nny+2)+76*nnx*nny)/3
+  implicit none
 
-      allocate(phi(nnx,nny),rhs(nnx,nny),work(llwork))
-!
-!     SET INPUT INTEGER PARAMETERS
-!
-      INTL = JNTL
-!
-!     set boundary condition flags
-!
-      nxa = 0
-      nxb = 0
-      nyc = 2
-      nyd = 1
-!
-!     set grid sizes from parameter statements
-!
-      ixp = iixp
-      jyq = jjyq
-      iex = iiex
-      jey = jjey
-      nx = nnx
-      ny = nny
-!
-!     set multigrid arguments (w(2,1) cycling with fully weighted
-!     residual restriction and cubic prolongation)
-!
-      mgopt(1) = 2
-      mgopt(2) = 2
-      mgopt(3) = 1
-      if (res_nlev==5) then
-         mgopt(4) = 3
-      else
-         !  1 deg, changed to mgopt(4) = 1 per Astrid's suggestion
-         mgopt(4) = 1
-      end if
-!
-!     set for one cycle
-!
-      maxcy = maxcya
-!
-!     set no initial guess forcing full multigrid cycling
-!
-      iguess = 0
-!
-!     set work space length approximation from parameter statement
-!
-      nwork = llwork
-!
-!     set line z relaxation
-!
-      method = 3
-!
-!     set end points of solution rectangle in (x,y) space
-!
-      xa = -pi
-      xb =  pi
-      yc = 0.0_r8
-      yd = 0.5_r8*pi
-!
-!     set error control flag
-!
-      if (res_nlev>6) then
-         tolmax = 0.05_r8 ! res_nlev == 7 | 8
-      else if (res_nlev>5) then
-         tolmax = 0.03_r8 ! res_nlev == 6
-      else
-         tolmax = 0.01_r8 ! res_nlev == 5
-      end if
-!
-!     set right hand side in rhs
-!     initialize phi to zero
-!
-      if (isolve >= 0) then ! called from dynamo
-        do i=1,nx
-          do j=1,ny
-            RHS(I,J) = CEE(I+(J-1)*NX+9*NX*NY)
-            phi(i,j) = 0.0_r8
-          end do
-        end do
-!
-!     set specified boundaries in phi
-!
-        DO I=1,NX
-          PHI(I,NY) = RHS(I,NY)/CEE(I+(NY-1)*NX+8*NX*NY)
-        END DO
-!
-!     set specified boundaries in phi
-!
-      endif ! isolve
-!
-!     intialization call
-!
-      call mud2cr(iprm,fprm,work,rhs,phi,mgopt,ierror,isolve)
-      if (ierror.gt.0) call endrun('mud call init mud2cr')
-!
-!     attempt solution
-!
-      intl = 1
-      call mud2cr(iprm,fprm,work,rhs,phi,mgopt,ierror,isolve)
-      if (ierror.gt.0) call endrun('mud call solve mud2cr')
-!
-!     COPY PHI TO PE
-!
-      DO J = 1,NY
-        JJ = NY+J-1
-        JJJ = NY+1-J
-        DO I = 1,NX
-          PE(I,JJ) = PHI(I,J)
-          PE(I,JJJ) = PHI(I,J)
-        END DO
-      END DO
-!     ITRANS = 0
-!     CALL EZCNTR(PE(1,JMX0),IMX0,JMX0)
-!     ITRANS = 1
-!     CALL SET(.05,.95,.05,.95,-1.,1.,-1.,1.,1)
-!     CALL CONREC(PE(1,JMX0),IMX0,IMX0,JMX0,0.,0.,0.,1,0,-1430B)
-!     CALL FRAME
-!     ITRANS = 0
-!     CALL EZCNTR(PE(1,JMX0),IMX0,JMX0)
-!     ITRANS = 1
-      deallocate(phi,rhs,work)
-      end subroutine mud
+  private
+
+  public :: mud2cr1
+  public :: dismd2cr
+  public :: adjmd2cr
+  public :: kcymd2cr
+  public :: relmd2cr
+  public :: resmd2cr
+
+  contains
 !-----------------------------------------------------------------------
 !
 !     file mud2cr.f  (version 4.0 modified for Cicley 2/99)
@@ -204,8 +51,7 @@
 !
       subroutine mud2cr(iparm,fparm,work,rhs,phi,mgopt, &
                         ierror,isolve)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
-      implicit none
+
       integer,intent(in) :: isolve
       integer iparm,mgopt,ierror
       integer intl,nxa,nxb,nyc,nyd,ixp,jyq,iex,jey,nfx,nfy,iguess, &
@@ -367,8 +213,7 @@
       end subroutine mud2cr
 !-----------------------------------------------------------------------
       subroutine mud2cr1(nx,ny,rhsf,phif,wk)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
-      implicit none
+
       integer nx,ny
       real(r8) :: phif(nx,ny),rhsf(nx,ny),wk(*)
       integer intl,nxa,nxb,nyc,nyd,ixp,jyq,iex,jey,nfx,nfy,iguess,&
@@ -498,12 +343,10 @@
       end subroutine mud2cr1
 !-----------------------------------------------------------------------
       subroutine kcymd2cr(wk)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
 !
 !     execute multigrid k cycle from kcur grid level
 !     kcycle=1 for v cycles, kcycle=2 for w cycles
 !
-      implicit none
       real(r8) :: wk(*)
       integer intl,nxa,nxb,nyc,nyd,ixp,jyq,iex,jey,nfx,nfy,iguess,&
                    maxcy,method,nwork,lwork,itero,ngrid,klevel,kcur,&
@@ -660,14 +503,11 @@
       end subroutine kcymd2cr
 !-----------------------------------------------------------------------
       subroutine dismd2cr(nx,ny,cf,tx,ty,wk,ier,isolve)
-      use edyn_solve,only:    nc,cee,ceee
-      use shr_kind_mod ,only: r8 => shr_kind_r8
-      use cam_abortutils   ,only: endrun
+      use edyn_solver_coefs,only:    nc,cee,ceee
       use edyn_maggrid, only: res_nlev
 !
 !     discretize elliptic pde for mud2cr, set nonfatal errors
 !
-      implicit none
       integer,intent(in) :: isolve
       integer nx,ny,i,j,l,im1,jm1,ier,nnx,nny
       real(r8) :: cf(nx,ny,10),tx(nx,ny,*),ty(ny,nx,*)
@@ -807,11 +647,9 @@
       end subroutine dismd2cr
 !-----------------------------------------------------------------------
       subroutine adjmd2cr(nx,ny,phi,cf)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
 !
 !     adjust righthand side in cf(i,j,10) for boundary conditions
 !
-      implicit none
       integer intl,nxa,nxb,nyc,nyd,ixp,jyq,iex,jey,nfx,nfy,iguess,&
                    maxcy,method,nwork,lwork,itero,ngrid,klevel,kcur,&
                    kcycle,iprer,ipost,intpol,kps
@@ -853,12 +691,10 @@
       end subroutine adjmd2cr
 !-----------------------------------------------------------------------
       subroutine resmd2cr(nx,ny,phi,ncx,ncy,phic,rhsc,cof,resf)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
 !
 !     restrict residual from fine to coarse mesh using fully weighted
 !     residual restriction
 !
-      implicit none
       integer intl,nxa,nxb,nyc,nyd,ixp,jyq,iex,jey,nfx,nfy,iguess,&
                    maxcy,method,nwork,lwork,itero,ngrid,klevel,kcur,&
                    kcycle,iprer,ipost,intpol,kps
@@ -902,11 +738,9 @@
       end subroutine resmd2cr
 !-----------------------------------------------------------------------
       subroutine relmd2cr(nx,ny,phi,cof,tx,ty,sum)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
 !
 !     relaxation for mud2
 !
-      implicit none
       integer nx,ny
       real(r8) :: phi(*),cof(*),tx(*),ty(*),sum(*)
       integer intl,nxa,nxb,nyc,nyd,ixp,jyq,iex,jey,nfx,nfy,iguess,&
@@ -929,11 +763,9 @@
       end subroutine relmd2cr
 !-----------------------------------------------------------------------
       subroutine relmd2crp(nx,ny,phi,cof)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
 !
 !     gauss-seidel four color point relaxation
 !
-      implicit none
       integer nx,ny,i,j,lcolor,i1,i2,i3,i4,it
       integer intl,nxa,nxb,nyc,nyd,ixp,jyq,iex,jey,nfx,nfy,iguess,&
                    maxcy,method,nwork,lwork,itero,ngrid,klevel,kcur,&
@@ -1034,11 +866,9 @@
       end subroutine relmd2crp
 !-----------------------------------------------------------------------
       subroutine slxmd2cr(nx,ny,phi,cof,tx,sum)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
 !
 !     line relaxation in the x direction (periodic or nonperiodic)
 !
-      implicit none
 
       integer nx,ny,i,ib,j
       integer intl,nxa,nxb,nyc,nyd,ixp,jyq,iex,jey,nfx,nfy,iguess,&
@@ -1226,8 +1056,6 @@
       end subroutine slxmd2cr
 !-----------------------------------------------------------------------
       subroutine slymd2cr(nx,ny,phi,cof,ty,sum)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
-      implicit none
 
       integer nx,ny,i,j,jb
       integer intl,nxa,nxb,nyc,nyd,ixp,jyq,iex,jey,nfx,nfy,iguess, &
@@ -1414,3 +1242,4 @@
       return
       end subroutine slymd2cr
 !-----------------------------------------------------------------------
+end module edyn_mud

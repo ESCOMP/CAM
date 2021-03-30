@@ -9,11 +9,11 @@ module edyn_solve
   use edyn_maggrid ,only: nmlon,nmlonp1,nmlat,nmlath
   use edyn_maggrid ,only: res_nlev, res_ngrid
   use spmd_utils,   only: masterproc
+  use edyn_solver_coefs, only: nc, cee, cofum
 
   implicit none
   private
 
-  public :: ceee
   public :: edyn_solve_init
   public :: solve_edyn
 
@@ -52,18 +52,9 @@ module edyn_solve
     nmlon7, &
     nmlat7
 !
-! Unmodified coefficients for using modified mudpack:
-  real(r8), allocatable, public, protected :: cofum(:,:,:)
-!
 ! Space needed for descretized coefficients of of dynamo pde at all levels:
 !
   integer :: ncee
-!
-! Coefficients are stored in 1-d array cee(ncee)
-! cee transmits descretized dynamo PDE coefficients to the multi-grid
-!   mudpack solver. (cee was formerly in ceee.h)
-!
-  real(r8), target, allocatable, public, protected :: cee(:)
 !
 ! The following parameters nc0,nc1,... are pointers to the beginning of
 !   the coefficients for each level of resolution.
@@ -77,16 +68,6 @@ module edyn_solve
     nc5, &
     nc6, &
     nc7
-!
-! nc(1:9) are pointers to beginning of coefficient blocks at each of
-!   levels of resolution:
-! nc(1) = nc0, pointer to coefficients for highest resolution.
-! nc(2) = nc1, pointer to coefficients at half the resolution of nc0,
-!   and so on for nc(3), nc(4), nc(5), etc.
-! nc(9) = ncee, the dimension of the entire cee array, containing
-!   coefficients for all levels.
-!
-  integer, public, protected :: nc(9)
 
   real(r8), private, pointer :: &
     c0(:),  &
@@ -786,28 +767,6 @@ module edyn_solve
       enddo ! i=1,nlon
     endif ! ncoef
   end subroutine cnmmod
-!-----------------------------------------------------------------------
-  subroutine ceee(cee,nx,ny,cf)
-
-!
-! Called from mudpack solvers to transfer coefficients.
-!
-! Args:
-    integer,intent(in) :: nx,ny
-    real(r8),intent(in) :: cee(nx,ny,*)
-    real(r8),intent(out) :: cf(nx,ny,*)
-!
-! Local:
-    integer :: i,j,n
-
-    do n = 1,9
-      do j = 1,ny
-        do i = 1,nx
-          cf(i,j,n) = cee(i,j,n)
-        enddo
-      enddo
-    enddo
-  end subroutine ceee
 !--------------------------------------------------------------------
   subroutine edges(c,nlon,nlat)
 !
@@ -936,8 +895,8 @@ module edyn_solve
   end subroutine stenmd
 !--------------------------------------------------------------------
   subroutine solver(cofum,c0)
-!   use edyn_mudmod, only: mudmod
-!   use edyn_muh2cr, only: muh
+   use edyn_mudmod, only: mudmod
+   use edyn_muh2cr, only: muh
 !
 ! Call mudpack to solve PDE. Solution is returned in rim:
 !     real,dimension(nmlonp1,nmlat,2) :: rim
@@ -965,10 +924,10 @@ module edyn_solve
     jntl = 0
     ier = 0
     isolve = 2
-    call mudmod(rim_glb,phisolv,jntl,isolve,res_nlev,ier)! solver in mudmod.F
+    call mudmod(rim_glb,phisolv,jntl,isolve,res_nlev,ier)
     if (ier < 0 ) then       ! not converged
-      if (masterproc) write(iulog,*) 'muh: use direct solver'
-      call muh(rim_glb,nmlon,nmlat,res_nlev,jntl)   ! solver in mud.F
+      if (masterproc) write(iulog,*) 'solver: use muh direct solver'
+      call muh(rim_glb,nmlon,nmlat,res_nlev,jntl)
     endif
 
     l2norm=0._r8
