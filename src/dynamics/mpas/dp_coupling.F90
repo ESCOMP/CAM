@@ -115,7 +115,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
 
    call t_startf('dpcopy')
 
-   ncols = columns_on_task! TODO: Correct way to get number of columns on task?
+   ncols = columns_on_task
 
    allocate(block_offset(0), stat=ierr)
    if( ierr /= 0 ) call endrun(subname//':failed to allocate block_offset array')

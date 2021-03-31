@@ -2314,7 +2314,7 @@ contains
        use mpas_timer, only : mpas_timer_write_header, mpas_timer_write, mpas_timer_finalize
        use mpas_log, only : mpas_log_finalize
        use mpas_timer, only : mpas_timer_stop
-!       use mpas_framework, only : mpas_framework_finalize
+       use mpas_framework, only : mpas_framework_finalize
 
        ! Local variables
        integer :: ierr
@@ -2340,10 +2340,7 @@ contains
        !    but before framework is finalized because domain is destroyed there.)
        call mpas_log_finalize(ierr)
 
-! Before we can make the call, below, changes are needed in the mpas_framework_finalize
-! routine so that the call to mpas_timekeeping_finalize only finalizes the ESMF
-! timekeeping library if ESMF was initialized by MPAS (and not, e.g., by CESM).
-!       call mpas_framework_finalize(domain_ptr % dminfo, domain_ptr)
+       call mpas_framework_finalize(domain_ptr % dminfo, domain_ptr)
 
        deallocate(corelist % domainlist)
        deallocate(corelist)

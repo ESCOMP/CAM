@@ -983,7 +983,7 @@ subroutine read_inidat(dyn_in)
    ! file to overwrite mixing ratios set by the default constituent initialization
    ! except for the water species.
 
-   allocate( mpas3d(plev,nCellsSolve,1) )
+   allocate( mpas3d(plev,nCellsSolve,1), stat=ierr)
    if( ierr /= 0 ) call endrun(subname//': failed to allocate mpas3d array')
 
    do mpas_idx = 1, pcnst
@@ -1063,7 +1063,7 @@ subroutine get_zsurf_from_topo(fh_topo, zsurf)
    !--------------------------------------------------------------------------------------
 
    zsurf_len = size(zsurf)
-   allocate(phis(zsurf_len,1))
+   allocate(phis(zsurf_len,1), stat=ierr)
    if( ierr /= 0 ) call endrun(subname//': failed to allocate phis array')
 
    ! read theta
