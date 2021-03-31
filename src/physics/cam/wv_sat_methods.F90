@@ -691,7 +691,7 @@ subroutine OldGoffGratch_svp_water_vect(t,es,vlen)
 
   real(r8), dimension(vlen) :: e1, e2, f1, f2, f3, f4
 
-  real(r8) :: psp = 1013.246_r8
+  real(r8), parameter :: psp = 1013.246_r8
   real(r8) :: f5 = log10(psp)
   real(r8) :: f = 0._r8
   integer :: i
