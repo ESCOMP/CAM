@@ -569,15 +569,20 @@ subroutine wv_sat_svp_trans_vect(t, es, vlen, idx)
 ! Water
 !
   call wv_sat_svp_water_vect(t,es,vlen,idx)
+  !$acc parallel vector_length(VLEN) default(present)
+  !$acc loop gang vector
   do i = 1, vlen
      if (t(i) < (tmelt - ttrice)) then
         es(i) = 0.0_r8
      end if
   end do
+  !$acc end parallel
 !
 ! Ice
 !
   call wv_sat_svp_ice_vect(t,esice,vlen,idx)
+  !$acc parallel vector_length(VLEN) default(present)
+  !$acc loop gang vector
   do i = 1, vlen
      if (t(i) < tmelt) then
         if ( (tmelt - t(i)) > ttrice ) then
@@ -589,6 +594,7 @@ subroutine wv_sat_svp_trans_vect(t, es, vlen, idx)
         es(i) = weight*esice(i) + (1.0_r8 - weight)*es(i)
      end if
   end do
+  !$acc end parallel
 
   !$acc end data
 end subroutine wv_sat_svp_trans_vect
@@ -813,9 +819,8 @@ subroutine OldGoffGratch_svp_water_vect(t,es,vlen)
   real(r8), dimension(vlen) :: ps, e1, e2, f1, f2, f3, f4, f5, f
   integer :: i
 
-  !$acc enter data create (ps,e1,e2,f1,f2,f3,f4,f5,f)
-
-  !$acc data present (t,es)
+  !$acc data present (t,es) &
+  !$acc      create  (ps,e1,e2,f1,f2,f3,f4,f5,f)
 
   !$acc parallel vector_length(VLEN) default(present)
   !$acc loop gang vector
