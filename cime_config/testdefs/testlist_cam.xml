@@ -562,16 +562,6 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-<!--              426                         -->
-  <test compset="QPC4X" grid="f45_f45_mg37" name="ERC_Ln9" testmods="cam/outfrq3s">
-    <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >426 tsm, ter</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
   <test compset="QPC4X" grid="ne5_ne5_mg37" name="SMS_D_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
