@@ -11,7 +11,7 @@ module short_lived_species
   use cam_logfile,  only : iulog
   use ppgrid,       only : pcols, pver, begchunk, endchunk
   use spmd_utils,   only : masterproc
-  
+
 
   implicit none
 
@@ -30,7 +30,7 @@ module short_lived_species
   integer :: pbf_idx
   integer :: map(nslvd)
 
-  character(len=16), parameter :: pbufname = 'ShortLivedSpecies'
+  character(len=*), parameter :: pbufname = 'ShortLivedSpecies'
 
 contains
 
@@ -38,10 +38,6 @@ contains
 !---------------------------------------------------------------------
   subroutine register_short_lived_species
     use physics_buffer, only : pbuf_add_field, dtype_r8
-
-    implicit none
-
-    integer :: m
 
     if ( nslvd < 1 ) return
 
@@ -52,7 +48,7 @@ contains
 !---------------------------------------------------------------------
 !---------------------------------------------------------------------
   subroutine short_lived_species_initic
-#ifdef WACCMX_IONOS
+#ifdef WACCMX_PHYS
     use cam_history, only : addfld, add_default
 
     integer :: m
@@ -74,11 +70,11 @@ contains
 
     integer       , intent(in) :: lchnk  ! chunk identifier
     type(physics_buffer_desc), pointer :: pbuf(:)
-#ifdef WACCMX_IONOS
+#ifdef WACCMX_PHYS
     real(r8),pointer :: tmpptr(:,:)
     integer :: m
     character(len=24) :: varname
-    
+
     if ( write_inithist() ) then
        do m=1,nslvd
           varname = trim(slvd_lst(m))//'&IC'
@@ -98,20 +94,19 @@ contains
     use mo_tracname,      only : solsym
     use ncdio_atm,        only : infld
     use pio,              only : file_desc_t
-    use physics_buffer,   only : physics_buffer_desc, pbuf_set_field, pbuf_get_chunk, pbuf_get_field
+    use physics_buffer,   only : physics_buffer_desc, pbuf_set_field
 
     implicit none
 
     type(file_desc_t), intent(inout) :: ncid_ini
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
-    integer          :: m,n,lchnk
+    integer          :: m,n
     integer          :: grid_id
     character(len=8) :: fieldname
     character(len=4) :: dim1name, dim2name
     logical          :: found
     real(r8),pointer :: tmpptr(:,:,:)   ! temporary pointer
-    real(r8),pointer :: tmpptr2(:,:,:)   ! temporary pointer
     character(len=*), parameter :: subname='INITIALIZE_SHORT_LIVED_SPECIES'
 
     if ( nslvd < 1 ) return
@@ -139,9 +134,9 @@ contains
        endif
 
        call pbuf_set_field(pbuf2d, pbf_idx, tmpptr, start=(/1,1,m/),kount=(/pcols,pver,1/))
-       
+
        if (masterproc) write(iulog,*)  fieldname, ' is set to short-lived'
-  
+
     enddo
 
     deallocate(tmpptr)
@@ -154,7 +149,7 @@ contains
 
     use physics_buffer, only : physics_buffer_desc, pbuf_set_field
 
-    implicit none 
+    implicit none
 
     real(r8), intent(in)               :: q(pcols,pver,gas_pcnst)
     integer,  intent(in)               :: lchnk, ncol
@@ -176,7 +171,7 @@ contains
   subroutine get_short_lived_species( q, lchnk, ncol, pbuf )
     use physics_buffer, only : physics_buffer_desc, pbuf_get_field
 
-    implicit none 
+    implicit none
 
     real(r8), intent(inout)            :: q(pcols,pver,gas_pcnst)
     integer,  intent(in)               :: lchnk, ncol
@@ -184,7 +179,7 @@ contains
     real(r8),pointer                   :: tmpptr(:,:)
 
 
-    integer :: m,n 
+    integer :: m,n
 
     if ( nslvd < 1 ) return
 
@@ -213,7 +208,7 @@ contains
     do m=1,nslvd
        if ( name == slvd_lst(m) ) then
           slvd_index = m
-          return 
+          return
        endif
     enddo
 

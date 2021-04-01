@@ -2754,20 +2754,15 @@ if ($waccmx) {
   if (($ionos eq 'none') and ($wmx_opt =~ /ionosphere/) ) {
     die "CAM Namelist ERROR: WACCMX must be configured with an active ionosphere wmx_opt is set to ionosphere\n";
   }
-  if (($ionos ne 'none') and ($wmx_opt =~ /neutral/) ) {
+  if (($ionos eq 'wxie') and ($wmx_opt =~ /neutral/) ) {
     die "CAM Namelist ERROR: WACCMX cannot be configured with an active ionosphere wmx_opt is set to neutral\n";
   }
 
-  if (($ionos eq 'wxie') and ($wmx_opt =~ /ionosphere/) and ($dyn eq 'fv')) {
+  if (($ionos eq 'wxie') and ($wmx_opt =~ /ionosphere/)) {
     # turn on electro-dynamo generated ion drift velocities
     add_default($nl, 'ionos_xport_active', 'val'=>'.true.');
     add_default($nl, 'ionos_edyn_active', 'val'=>'.true.');
     add_default($nl, 'empirical_ion_velocities', 'val'=>'.false.');
-  } elsif (($ionos eq 'wxi') and ($wmx_opt =~ /ionosphere/) and ($dyn eq 'fv')) {
-    # turn off electro-dynamo generated ion drift velocities
-    add_default($nl, 'ionos_xport_active', 'val'=>'.true.');
-    add_default($nl, 'ionos_edyn_active', 'val'=>'.false.');
-    add_default($nl, 'empirical_ion_velocities', 'val'=>'.true.');
   } elsif (($ionos eq 'none') and ($wmx_opt =~ /neutral/)) {
     add_default($nl, 'ionos_xport_active', 'val'=>'.false.');
     add_default($nl, 'ionos_edyn_active', 'val'=>'.false.');
@@ -2777,6 +2772,11 @@ if ($waccmx) {
   }
   if  ($dyn eq 'fv') {
     add_default($nl, 'fv_high_altitude', 'val'=>'.true.');
+  }
+  if ($ionos ne 'none') {
+    add_default($nl, 'cam_physics_mesh');
+    add_default($nl, 'oplus_grid');
+    add_default($nl, 'edyn_grid');
   }
   add_default($nl,'dadadj_niter');
   add_default($nl,'ionos_epotential_model');

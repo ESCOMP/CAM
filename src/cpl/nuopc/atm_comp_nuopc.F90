@@ -84,7 +84,7 @@ module atm_comp_nuopc
   integer                      :: flds_scalar_index_nx = 0
   integer                      :: flds_scalar_index_ny = 0
   integer                      :: flds_scalar_index_nextsw_cday = 0
-
+  integer                      :: nthrds
   integer         , parameter  :: dbug_flag = 0
   type(cam_in_t)  , pointer    :: cam_in(:)
   type(cam_out_t) , pointer    :: cam_out(:)
@@ -351,7 +351,7 @@ contains
     character(len=cl)       :: model_doi_url                     ! DOI for CESM model run
     logical                 :: aqua_planet                       ! Flag to run model in "aqua planet" mode
     logical                 :: brnch_retain_casename             ! true => branch run has same caseid as run being branched from
-    logical                 :: single_column
+    logical                 :: single_column = .false.
     character(len=cl)       :: single_column_lnd_domainfile
     real(r8)                :: scol_lon
     real(r8)                :: scol_lat
@@ -403,8 +403,16 @@ contains
     call ESMF_VMGet(vm, pet=localPet, peCount=localPeCount, rc=rc)
     if (chkerr(rc,__LINE__,u_FILE_u)) return
 
-!$  call omp_set_num_threads(localPeCount)
-    print *,__FILE__,__LINE__,localPeCount
+    if(localPeCount == 1) then
+       call NUOPC_CompAttributeGet(gcomp, "nthreads", value=cvalue, rc=rc)
+       if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
+       read(cvalue,*) nthrds
+    else
+       nthrds = localPeCount
+    endif
+
+!$  call omp_set_num_threads(nthrds)
+    print *,__FILE__,__LINE__,nthrds
 
     !----------------------------------------------------------------------------
     ! determine instance information
@@ -1008,12 +1016,7 @@ contains
 
     rc = ESMF_SUCCESS
 
-    call ESMF_GridCompGet(gcomp, vm=vm, localPet=localPet, rc=rc)
-    if (chkerr(rc,__LINE__,u_FILE_u)) return
-    call ESMF_VMGet(vm, pet=localPet, peCount=localPeCount, rc=rc)
-    if (chkerr(rc,__LINE__,u_FILE_u)) return
-
-!$  call omp_set_num_threads(localPeCount)
+!$  call omp_set_num_threads(nthrds)
 
     call shr_file_getLogUnit (shrlogunit)
     call shr_file_setLogUnit (iulog)

@@ -562,13 +562,11 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-<!--              426                         -->
-  <test compset="QPC4X" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s_newyear">
+  <test compset="QPC4X" grid="ne5_ne5_mg37" name="SMS_D_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
     <options>
-      <option name="comment" >426 tsm, ter</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
@@ -891,23 +889,23 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-<!--              390                        -->
-  <test compset="QPX2000" grid="f19_f19_mg17" name="ERC_D_Ln9" testmods="cam/outfrq3s_waccm_ma">
-    <machines>
-      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >390 tsm, ter</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
 <!--              391                        -->
-  <test compset="QPX2000" grid="f19_f19_mg17" name="ERC_D_Ln9" testmods="cam/outfrq3s_WX81">
+  <test compset="QPX2000" grid="f19_f19_mg17" name="ERC_D_Ln9" testmods="cam/outfrq3s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+      <machine name="cheyenne" compiler="intel" category="waccmx"/>
     </machines>
     <options>
       <option name="comment" >391 tsm, ter</option>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
+  <test compset="QPX2000" grid="ne16_ne16_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+      <machine name="cheyenne" compiler="intel" category="waccmx"/>
+    </machines>
+    <options>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
@@ -1620,6 +1618,15 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
+  <test compset="FX2000" grid="ne16_ne16_mg17" name="SMS_D_Ln9"   testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="waccmx"/>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
+  </test>
   <test compset="FX2000" grid="f09_f09_mg17" name="ERS_Ln9"   testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
@@ -1641,6 +1648,23 @@
     </machines>
     <options>
       <option name="wallclock">00:10:00</option>
+    </options>
+  </test>
+  <test compset="FXHIST" grid="f19_f19_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s_ltr">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="waccmx"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
+  </test>
+  <test compset="FXHIST" grid="f19_f19_mg17" name="SMS_Ln9" testmods="cam/outfrq9s_multi">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="waccmx"/>
+      <machine name="cheyenne" compiler="intel" category="prealpha"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
     </options>
   </test>
   <test compset="FXHIST" grid="f19_f19_mg17" name="ERS_Ld3"   testmods="cam/outfrq1d_amie">
@@ -1667,7 +1691,7 @@
       <option name="wallclock">00:50:00</option>
     </options>
   </test>
-  <test compset="FXHIST" grid="f19_f19_mg17" name="SMS_D_Ln9"   testmods="cam/waccmx_weimer">
+  <test compset="FXHIST" grid="f09_f09_mg17" name="SMS_D_Ln9"   testmods="cam/waccmx_weimer">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
     </machines>
@@ -1736,7 +1760,7 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FXSD" grid="f09_f09_mg17" name="SMS_D_Ln9"   testmods="cam/outfrq9s">
+  <test compset="FXSD" grid="f09_f09_mg17" name="SMS_Lh3"   testmods="cam/outfrq3h">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
     </machines>
@@ -1936,6 +1960,9 @@
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
     </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+    </options>
   </test>
   <test compset="FW2000climo" grid="ne30_ne30_mg17" name="SMS_Ln9" testmods="cam/outfrq9s_wcm_ne30">
     <machines>
