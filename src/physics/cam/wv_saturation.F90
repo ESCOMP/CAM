@@ -246,11 +246,11 @@ subroutine wv_sat_init
      estbl(i) = svp_trans(tmin + real(i-1,r8))
   end do
 
+  !$acc update device (plenest,estbl,omeps,c3,pcf)
+
   if (masterproc) then
      write(iulog,*)' *** SATURATION VAPOR PRESSURE TABLE COMPLETED ***'
   end if
-
-  !$acc update device (plenest,estbl,omeps,c3,pcf)
 
 end subroutine wv_sat_init
 

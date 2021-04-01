@@ -3274,8 +3274,8 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    rei_grid(1:ngrdcol,top_lev:nlev) = rei_subgrid(1:ngrdcol,top_lev:nlev)
 #else
    do k = top_lev, pver
-      call size_dist_param_basic(mg_ice_props,icimrst_grid(1:ngrdcol,k), &
-                                 niic_grid(1:ngrdcol,k),rei_grid(1:ngrdcol,k),ngrdcol)
+      call size_dist_param_basic(mg_ice_props,icimrst_grid(:ngrdcol,k), &
+                                 niic_grid(:ngrdcol,k),rei_grid(:ngrdcol,k),ngrdcol)
    end do
 #endif
 
