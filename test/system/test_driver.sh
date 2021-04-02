@@ -446,7 +446,7 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
       ark_file="/fs/cgd/csm/tools/addrealkind/addrealkind"
       tr8_script="${CAM_ROOT}/test/system/TR8.sh"
       export ADDREALKIND_EXE="${ark_file}"; ${tr8_script} | tee -a ${logfile}
-      res=$?
+      res=${PIPESTATUS[0]}
       if [ $res -eq 0 ]; then
         echo "TR8 test PASS" | tee -a ${logfile}
       else
@@ -454,7 +454,7 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
       fi
       echo "${sepstr}" | tee -a ${logfile}
       ${CAM_ROOT}/test/system/TGIT.sh | tee -a ${logfile}
-      res=$?
+      res==${PIPESTATUS[0]}
       if [ $res -eq 0 ]; then
         echo "TGIT test PASS" | tee -a ${logfile}
       else
