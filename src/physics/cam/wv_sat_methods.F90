@@ -53,6 +53,9 @@ integer, parameter :: Bolton_idx = 3
 integer, parameter :: initial_default_idx = GoffGratch_idx
 integer :: default_idx = initial_default_idx
 
+! Commonly used values
+real(r8), parameter :: log_ps = log10(1013.246_r8)
+
 public wv_sat_methods_init
 public wv_sat_get_scheme_idx
 public wv_sat_valid_idx
@@ -551,13 +554,12 @@ subroutine GoffGratch_svp_water_vect(t, es, vlen)
   integer, intent(in) :: vlen
   real(r8), intent(in)  :: t(vlen)  ! Temperature in Kelvin
   real(r8), intent(out) :: es(vlen) ! SVP in Pa
-  real(r8) :: log_tboil, log_ps
+  real(r8) :: log_tboil
   integer :: i
   ! Goff, J. A., and S. Gratch. “Low-Pressure Properties of Water from -160F
   ! to 212F.” Trans. Am. Soc. Heat. Vent. Eng. 52 (1946): 95–121.
   ! uncertain below -70 C
   log_tboil = log10(tboil)
-  log_ps = log10(1013.246_r8)
   do i=1,vlen
      es(i) = 10._r8**(-7.90298_r8*(tboil/t(i)-1._r8)+ &
        5.02808_r8*(log_tboil-log10(t(i)))- &
@@ -690,10 +692,7 @@ subroutine OldGoffGratch_svp_water_vect(t,es,vlen)
   real(r8), intent(out) :: es(vlen)
 
   real(r8), dimension(vlen) :: e1, e2, f1, f2, f3, f4
-
-  real(r8), parameter :: psp = 1013.246_r8
-  real(r8) :: f5 = log10(psp)
-  real(r8) :: f = 0._r8
+  real(r8) :: f
   integer :: i
 
   do i = 1, vlen
@@ -703,7 +702,7 @@ subroutine OldGoffGratch_svp_water_vect(t,es,vlen)
      f2(i) = 5.02808_r8*log10(tboil/t(i))
      f3(i) = -1.3816_r8*(10.0_r8**e1(i) - 1.0_r8)*1e-7_r8
      f4(i) = 8.1328_r8*(10.0_r8**e2(i) - 1.0_r8)*1e-3_r8
-     f = f1(i) + f2(i) + f3(i) + f4(i) + f5
+     f = f1(i) + f2(i) + f3(i) + f4(i) + log_ps
      es(i) = (10.0_r8**f)*100.0_r8
   end do
 end subroutine OldGoffGratch_svp_water_vect
