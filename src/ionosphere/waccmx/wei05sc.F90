@@ -1,8 +1,8 @@
 module wei05sc
 !
-! The Weimer model of high-latitude potential created by Daniel Weimer and 
-! if extracted, distributed, or used for any purpose other than as implemented 
-! in the NCAR TIEGCM and CESM/WACCM models, please contact Dan Weimer for 
+! The Weimer model of high-latitude potential created by Daniel Weimer and
+! if extracted, distributed, or used for any purpose other than as implemented
+! in the NCAR TIEGCM and CESM/WACCM models, please contact Dan Weimer for
 ! further information and discussion.
 !
 ! 2005 Version of the electric and magnetic potential (FAC) models
@@ -30,42 +30,41 @@ module wei05sc
 ! September, 2015 btf:
 ! Modified for free-format fortran, and for CESM/WACCM (r8, etc).
 !
-  use shr_kind_mod  ,only: r8 => shr_kind_r8
-  use shr_kind_mod  ,only: shr_kind_cl
-  use spmd_utils    ,only: masterproc
-#ifdef WACCMX_IONOS
-  use cam_logfile   ,only: iulog
-  use cam_abortutils,only: endrun  
-  use time_manager  ,only: get_curr_date
-  use edyn_maggrid  ,only: nmlat,nmlon,nmlonp1
-#endif
+  use shr_kind_mod,   only: r8 => shr_kind_r8
+  use shr_kind_mod,   only: shr_kind_cl
+  use spmd_utils,     only: masterproc
+  use cam_logfile,    only: iulog
+  use cam_abortutils, only: endrun
+  use time_manager,   only: get_curr_date
+  use edyn_maggrid,   only: nmlat,nmlon,nmlonp1
 
-  use edyn_maggrid,only: &
+  use edyn_maggrid,   only: &
     ylonm,    & ! magnetic latitudes (nmlat) (radians)
     ylatm       ! magnetic longtitudes (nmlonp1) (radians)
-  use edyn_solve,only: &
+  use edyn_solve,     only: &
     nmlat0,   & ! (nmlat+1)/2
     phihm       ! output: high-latitude potential (nmlonp1,nmlat)
 
-  use physconst, only: pi
-  use aurora_params, only: aurora_params_set, hpower, ctpoten, theta0
-  use aurora_params, only: offa, dskofa, dskofc, phid, rrad, offc, phin
+  use physconst,      only: pi
+  use aurora_params,  only: aurora_params_set, hpower, ctpoten, theta0
+  use aurora_params,  only: offa, dskofa, dskofc, phid, rrad, offc, phin
   implicit none
   private
 
-#ifdef WACCMX_IONOS
 !
 ! Coefficients read from netcdf data file wei05sc.nc:
 !
-  integer,parameter :: &
-    na=6, nb=7, nex=2, n1_scha=19, n2_scha=7, n3_scha=68, &
+  integer,parameter ::                                                        &
+    na=6, nb=7, nex=2, n1_scha=19, n2_scha=7, n3_scha=68,                     &
     csize=28, n_schfits=15, n_alschfits=18
-  integer :: maxk_scha, maxm_scha, maxl_pot, maxm_pot
+  integer  :: maxk_scha, maxm_scha, maxl_pot, maxm_pot
   real(r8) :: bndya(na), bndyb(nb), ex_bndy(nex), ex_epot(nex),ex_bpot(nex)
   real(r8) :: th0s(n3_scha), allnkm(n1_scha,n2_scha,n3_scha)
-  integer :: ab(csize), ls(csize), ms(csize)
-  real(r8) :: epot_alschfits(n_alschfits,csize), bpot_alschfits(n_alschfits,csize)
-  real(r8) :: bpot_schfits(n_schfits,csize),epot_schfits(n_schfits,csize)
+  integer  :: ab(csize), ls(csize), ms(csize)
+  real(r8) :: epot_alschfits(n_alschfits,csize)
+  real(r8) :: bpot_alschfits(n_alschfits,csize)
+  real(r8) :: epot_schfits(n_schfits,csize)
+  real(r8) :: bpot_schfits(n_schfits,csize)
 !
 ! Intermediate calculations:
 !
@@ -73,15 +72,13 @@ module wei05sc
   real(r8) :: rad2deg,deg2rad           ! set by setmodel
   real(r8) :: bndyfitr                  ! calculated by setboundary
   real(r8) :: esphc(csize),bsphc(csize) ! calculated by setmodel
-  real(r8) :: tmat(3,3) !,ttmat(3,3)      ! from setboundary
+  real(r8) :: tmat(3,3)                 ! from setboundary
   real(r8) :: plmtable(mxtablesize,csize),colattable(mxtablesize)
   real(r8) :: nlms(csize)
-  real(r8) :: wei05sc_fac(nmlonp1,nmlat)  ! field-aligned current output
+  real(r8),allocatable :: wei05sc_fac(:,:) ! field-aligned current output
 
 ! 05/08 bae:  Have ctpoten from both hemispheres from Weimer
   real(r8) :: weictpoten(2),phimin,phimax
-
-  real(r8) :: real8,real8a ! for type conversion to 8-byte real
 
 !
 ! Several items in the public list are for efield.F90 (chemistry/mozart)
@@ -91,537 +88,568 @@ module wei05sc
   public :: weimer05
   public :: weimer05_init
 
-#endif
-
   real(r8), parameter :: r2d = 180._r8/pi  ! radians to degrees
   real(r8), parameter :: d2r = pi/180._r8  ! degrees to radians
 
-  contains
+  logical             :: debug = .false.
+
+contains
 
 !-----------------------------------------------------------------------
-  subroutine weimer05_init(wei05_ncfile)
-    use infnan, only: nan, assignment(=)
+   subroutine weimer05_init(wei05_ncfile)
+      use infnan, only: nan, assignment(=)
 
-    character(len=*),intent(in) :: wei05_ncfile
+      character(len=*),intent(in) :: wei05_ncfile
 
-    hpower = nan
-    ctpoten = nan
-    phin = nan
-    phid = nan
-    theta0 = nan
-    offa = nan
-    dskofa = nan
-    rrad = nan
-    offc = nan
-    dskofc = nan
-    
-    bndya = nan
-    bndyb = nan
-    ex_bndy = nan
-    ex_bpot = nan
-    th0s = nan
-    allnkm = nan
-    bpot_schfits = nan
-    bpot_alschfits = nan
+      allocate(wei05sc_fac(nmlonp1,nmlat))
 
-    if (wei05_ncfile.ne.'NONE') then
-       call read_wei05_ncfile(wei05_ncfile)
-       aurora_params_set = .true.
-    endif
+      hpower = nan
+      ctpoten = nan
+      phin = nan
+      phid = nan
+      theta0 = nan
+      offa = nan
+      dskofa = nan
+      rrad = nan
+      offc = nan
+      dskofc = nan
 
-  end subroutine weimer05_init
+      bndya = nan
+      bndyb = nan
+      ex_bndy = nan
+      ex_bpot = nan
+      th0s = nan
+      allnkm = nan
+      bpot_schfits = nan
+      bpot_alschfits = nan
 
-!-----------------------------------------------------------------------
-  subroutine weimer05(by,bz_in,swvel,swden,sunlons)
-!
-! 9/16/15 btf: Driver to call Weimer 2005 model for waccm[x].
-!
+      if (wei05_ncfile.ne.'NONE') then
+         call read_wei05_ncfile(wei05_ncfile)
+         aurora_params_set = .true.
+      endif
 
-  implicit none
-!
-! Args:
-  real(r8),intent(in) :: bz_in,by,swvel,swden
-  real(r8),intent(in) :: sunlons(:)
-
-#ifdef WACCMX_IONOS
-!
-! Local:
-
-  real(r8) :: angl,angle,bt
-  integer :: i,j
-  real(r8) :: rmlt,mlat,tilt,htilt,hem,ut,secs
-  real(r8),parameter :: fill=0._r8
-  integer :: iyear,imon,iday,isecs
-  logical :: debug = .false.
-  real(r8) :: bz
-
-  bz = bz_in
-
-  hpower = hp_from_bz_swvel(bz,swvel)
-!
-! Get current date and time:
-!
-  call get_curr_date(iyear,imon,iday,isecs)
-!
-! Get sun's location (longitude at all latitudes):
-!
-  real8 = dble(isecs)
-  secs = real8
-
-!
-! At least one of by,bz must be non-zero: 
-  if (by==0._r8.and.bz==0._r8) then
-     if (masterproc) then
-        write(iulog,"(/,'>>> WARNING: by and bz cannot both be zero',&
-                        ' when calling the Weimer model: am setting bz=0.01')")
-     endif
-     bz = 0.01_r8
-  endif
-!
-  bt = sqrt(by**2+bz**2)
-  angl = atan2(by,bz)*r2d
-!
-! Convert from day-of-year to month,day and get tilt from date and ut:
-!
-  ut = secs/3600._r8    ! decimal hours
-!
-! Given year and day-of-year, cvt2md returns month and day of month.
-! We do not need this, since get_curr_date returns month and day of month.
-! call cvt2md(iulog,iyear,idoy,imon,iday)  ! given iyear,idoy, return imo,ida
-!
-  if (debug) write(iulog,"('weimer05: iyear,imon,iday=',3i5,' ut=',f8.2)") &
-    iyear,imon,iday,ut
-  tilt = get_tilt(iyear,imon,iday,ut)
-  if (debug) write(iulog,"('weimer05: tilt=',e12.4)") tilt
-
-  phihm = 0._r8 ! whole-array init (nmlonp1,nmlat)
-!
-! Call Weimer model for southern hemisphere electric potential:
-!
-  hem = -1._r8
-  htilt = hem * tilt
-  angle = hem * angl
-  if (debug) write(iulog,"('weimer05 call setmodel for SH potential')")
-  call setmodel(angle,bt,htilt,swvel,swden,'epot')
-  if (debug) write(iulog,"('weimer05 after setmodel for SH potential')")
-  do j=1,nmlat0 ! Spole to equator
-    do i=1,nmlon
-!
-! sunlons(nlat): sun's longitude in dipole coordinates (see sub sunloc) in rad
-!
-      rmlt = (ylonm(i)-sunlons(1)) * r2d / 15._r8 + 12._r8
-      mlat = abs(ylatm(j))*r2d
-!
-! Obtain electric potential and convert from kV to V
-!
-      call epotval(mlat,rmlt,fill,phihm(i,j))
-      phihm(i,j) = phihm(i,j)*1000._r8
-    enddo ! i=1,nmlon
-  enddo ! j=1,nmlat0
-  if (debug) write(iulog,"('weimer05: SH phihm min,max=',2es12.4)") &
-    minval(phihm(1:nmlon,1:nmlat0)),maxval(phihm(1:nmlon,1:nmlat0))
-!
-! Re-calculate SH values of offa, dskofa, arad, and phid and phin from
-!    Weimer 2005 setboundary values of offc, dskofc, and theta0
-!
-  call wei05loc (1, by, hpower, sunlons)
-!
-! Call Weimer model for southern hemisphere fac:
-!
-  if (debug) write(iulog,"('weimer05 call setmodel for SH fac')")
-  call setmodel(angle,bt,htilt,swvel,swden,'bpot')
-  if (debug) write(iulog,"('weimer05 after setmodel for SH fac')")
-  do j=1,nmlat0
-    do i=1,nmlon
-      rmlt = (ylonm(i)-sunlons(1)) * r2d / 15._r8 + 12._r8
-      mlat = abs(ylatm(j))*r2d
-      call mpfac(mlat,rmlt,fill,wei05sc_fac(i,j))
-    enddo ! i=1,nmlon
-  enddo ! j=1,nmlat0
-!
-! Call Weimer model for northern hemisphere epot:
-!
-  hem = 1._r8
-  htilt = hem * tilt
-  angle = hem * angl
-  if (debug) write(iulog,"('weimer05 call setmodel for NH potential')")
-  call setmodel(angle,bt,htilt,swvel,swden,'epot')
-  if (debug) write(iulog,"('weimer05 after setmodel for NH potential')")
-  do j=nmlat0+1,nmlat
-    do i=1,nmlon
-!
-! sunlons(nlat): sun's longitude in dipole coordinates (see sub sunloc) in rad
-      rmlt = (ylonm(i)-sunlons(1)) * r2d / 15._r8 + 12._r8
-      mlat = abs(ylatm(j))*r2d
-!
-! Obtain electric potential and convert from kV to V
-      call epotval(mlat,rmlt,fill,phihm(i,j))
-      phihm(i,j) = phihm(i,j)*1000._r8
-    enddo ! i=1,nmlon
-  enddo ! j=1,nmlat0+1,nmlat
-  if (debug) write(iulog,"('weimer05: NH phihm min,max=',2es12.4)") &
-    minval(phihm(1:nmlon,nmlat0+1:nmlat)),maxval(phihm(1:nmlon,nmlat0+1:nmlat))
-!
-! Re-calculate NH values of offa, dskofa, arad, and Heelis phid and phin from
-!   Weimer 2005 setboundary values of offc, dskofc, and theta0
-!
- call wei05loc (2, by, hpower, sunlons)
-!
-! Call Weimer model for northern hemisphere fac:
-  if (debug) write(iulog,"('weimer05 call setmodel for NH fac')")
-  call setmodel(angle,bt,htilt,swvel,swden,'bpot')
-  if (debug) write(iulog,"('weimer05 after setmodel for NH fac')")
-  do j=nmlat0+1,nmlat
-    do i=1,nmlon
-      rmlt = (ylonm(i)-sunlons(1)) * r2d / 15._r8 + 12._r8
-      mlat = abs(ylatm(j))*r2d
-      call mpfac(mlat,rmlt,fill,wei05sc_fac(i,j))
-    enddo ! i=1,nmlon
-  enddo ! j=1,nmlat0
-!
-! Periodic points:
-  do j=1,nmlat
-    phihm(nmlonp1,j) = phihm(1,j)
-    wei05sc_fac(nmlonp1,j) = wei05sc_fac(1,j)
-  enddo ! j=1,nmlat
-!
-! Calculate ctpoten for each hemisphere:
-! South:
-!
-  phimax = -1.e36_r8
-  phimin =  1.e36_r8
-  do j=1,nmlat0 ! SH
-    do i=1,nmlon
-      if (phihm(i,j) > phimax) phimax = phihm(i,j)
-      if (phihm(i,j) < phimin) phimin = phihm(i,j)
-    enddo
-  enddo 
-  weictpoten(1) = 0.001_r8 * (phimax - phimin)
-!
-! North:
-!
-  phimax = -1.e36_r8
-  phimin =  1.e36_r8
-  do j=nmlat0+1,nmlat ! NH
-    do i=1,nmlon
-      if (phihm(i,j) > phimax) phimax = phihm(i,j)
-      if (phihm(i,j) < phimin) phimin = phihm(i,j)
-    enddo
-  enddo 
-  weictpoten(2) = 0.001_r8 * (phimax - phimin)
-!
-! average of the SH and NH in ctpoten
-  ctpoten = 0.5_r8*(weictpoten(1)+weictpoten(2))
-
-  if (masterproc) then
-    write(iulog,"('weimer05: ctpoten=',f8.2,' phihm min,max=',2es12.4)") ctpoten,minval(phihm),maxval(phihm)
-  endif
-!
-
-#endif
-  end subroutine weimer05
-!-----------------------------------------------------------------------
-  subroutine read_wei05_ncfile(file)
-
-    use ioFileMod,     only: getfil
-    use cam_pio_utils, only: cam_pio_openfile, cam_pio_closefile
-    use pio, only: file_desc_t, pio_nowrite, pio_inq_dimid, pio_inquire_dimension, &
-                   pio_inq_varid, pio_get_var
-!
-! Read coefficients and other data from netcdf data file.
-!
-  implicit none
-!
-! Arg:
-  character(len=*),intent(in) :: file
-#ifdef WACCMX_IONOS
-!
-! Local:
-  integer :: istat
-  integer :: rd_na,rd_nb,rd_nex,rd_n1_scha,rd_n2_scha,rd_n3_scha,&
-    rd_csize,rd_n_schfits,rd_n_alschfits
-  integer :: id
-  character(len=shr_kind_cl) :: filen
-  type(file_desc_t) :: ncid
-!
-! Open netcdf file for reading:
-!
-  call getfil( file, filen, 0 )
-  call cam_pio_openfile(ncid, filen, PIO_NOWRITE)
-  
-  write(iulog,"('wei05sc: opened netcdf data file',a)") trim(filen)
-!
-! Read and check dimensions:
-!
-! na=6
-  istat = pio_inq_dimid(ncid,'na',id)
-  istat = pio_inquire_dimension(ncid,id,len=rd_na)
-  if (rd_na /= na) then
-     write(iulog,"(/,'>>> wei05sc: rd_na /= na: rd_na=',i4,' na=',i4)") rd_na,na
-     call endrun('wei05sc: rd_na /= na')
-  endif
-!
-! nb=7
-!
-  istat = pio_inq_dimid(ncid,'nb',id)
-  istat = pio_inquire_dimension(ncid,id,len=rd_nb)
-  if (rd_na /= na) then
-    write(iulog,"(/,'>>> wei05sc: rd_nb /= nb: rd_nb=',i4,' nb=',i4)") rd_nb,nb
-    call endrun('wei05sc: rd_nb /= nb: rd_nb')
-  endif
-!
-! nex=2
-!
-  istat = pio_inq_dimid(ncid,'nex',id)
-  istat = pio_inquire_dimension(ncid,id,len=rd_nex)
-  if (rd_nex /= nex) then
-    write(iulog,"(/,'>>> wei05sc: rd_nex /= nex: rd_nex=',i4,' nex=',i4)") &
-      rd_nex,nex
-    call endrun('wei05sc')
-  endif
-!
-! n1_scha=19
-!
-  istat = pio_inq_dimid(ncid,'n1_scha',id)
-  istat = pio_inquire_dimension(ncid,id,len=rd_n1_scha)
-  if (rd_n1_scha /= n1_scha) then
-    write(iulog,"(/,'>>> wei05sc: rd_n1_scha /= n1_scha: rd_n1_scha=',i4,' n1_scha=',i4)") &
-      rd_n1_scha,n1_scha
-    call endrun('wei05sc')
-  endif
-!
-! n2_scha=7
-!
-  istat = pio_inq_dimid(ncid,'n2_scha',id)
-  istat = pio_inquire_dimension(ncid,id,len=rd_n2_scha)
-  if (rd_n2_scha /= n2_scha) then
-    write(iulog,"(/,'>>> wei05sc: rd_n2_scha /= n2_scha: rd_n2_scha=',i4,' n2_scha=',i4)") &
-      rd_n2_scha,n2_scha
-    call endrun('wei05sc')
-  endif
-!
-! n3_scha=68
-!
-  istat = pio_inq_dimid(ncid,'n3_scha',id)
-  istat = pio_inquire_dimension(ncid,id,len=rd_n3_scha)
-  if (rd_n3_scha /= n3_scha) then
-    write(6,"(/,'>>> wei05sc: rd_n3_scha /= n3_scha: rd_n3_scha=',i4,' n3_scha=',i4)") &
-      rd_n3_scha,n3_scha
-    call endrun('wei05sc')
-  endif
-!
-! csize=28
-!
-  istat = pio_inq_dimid(ncid,'csize',id)
-  istat = pio_inquire_dimension(ncid,id,len=rd_csize)
-  if (rd_csize /= csize) then
-    write(iulog,"(/,'>>> wei05sc: rd_csize /= csize: rd_csize=',i4,' csize=',i4)") &
-      rd_csize,csize
-    call endrun('wei05sc')
-  endif
-!
-! n_schfits=15
-!
-  istat = pio_inq_dimid(ncid,'n_schfits',id)
-  istat = pio_inquire_dimension(ncid,id,len=rd_n_schfits)
-  if (rd_n_schfits /= n_schfits) then
-    write(iulog,"(/,'>>> wei05sc: rd_n_schfits /= n_schfits: rd_n_schfits=',i4,' n_schfits=',i4)") &
-      rd_n_schfits,n_schfits
-    call endrun('wei05sc')
-  endif
-!
-! n_alschfits=18
-!
-  istat = pio_inq_dimid(ncid,'n_alschfits',id)
-  istat = pio_inquire_dimension(ncid,id,len=rd_n_alschfits)
-  if (rd_n_alschfits /= n_alschfits) then
-    write(iulog,"(/,'>>> wei05sc: rd_n_alschfits /= n_alschfits: rd_n_alschfits=',i4,' n_alschfits=',i4)") & 
-      rd_n_alschfits,n_alschfits
-    call endrun('wei05sc')
-  endif
-!
-! integer :: maxk_scha, maxm_scha, maxl_pot, maxm_pot
-! maxk_scha = 18 ;
-! maxm_scha = 6 ;
-! maxl_pot = 12 ;
-! maxm_pot = 2 ;
-!
-  istat = pio_inq_dimid(ncid,"maxk_scha",id) 
-  istat = pio_inquire_dimension(ncid,id,len=maxk_scha)
-  istat = pio_inq_dimid(ncid,"maxm_scha",id) 
-  istat = pio_inquire_dimension(ncid,id,len=maxm_scha)
-  istat = pio_inq_dimid(ncid,"maxl_pot",id) 
-  istat = pio_inquire_dimension(ncid,id,len=maxl_pot)
-  istat = pio_inq_dimid(ncid,"maxm_pot",id) 
-  istat = pio_inquire_dimension(ncid,id,len=maxm_pot)
-
-! write(iulog,"('wei05sc: maxk_scha=',i3,' maxm_scha=',i3)") &
-!   maxk_scha,maxm_scha
-! write(iulog,"('wei05sc: maxl_pot=',i3,' maxm_pot=',i3)") &
-!   maxl_pot,maxm_pot
-!
-! Read variables:
-!
-! double bndya(na):
-  istat = pio_inq_varid(ncid,'bndya',id)
-  istat = pio_get_var(ncid,id,bndya)
-! write(iulog,"('wei05sc: bndya=',/,(8f8.3))") bndya
-!
-! double bndyb(nb):
-  istat = pio_inq_varid(ncid,'bndyb',id)
-  istat = pio_get_var(ncid,id,bndyb)
-! write(iulog,"('wei05sc: bndyb=',/,(8f8.3))") bndyb
-!
-! double ex_bndy(nex):
-  istat = pio_inq_varid(ncid,'ex_bndy',id)
-  istat = pio_get_var(ncid,id,ex_bndy)
-! write(iulog,"('wei05sc: ex_bndy=',/,(8f8.3))") ex_bndy
-!
-! double th0s(n3_scha):
-  istat = pio_inq_varid(ncid,'th0s',id)
-  istat = pio_get_var(ncid,id,th0s)
-! write(iulog,"('wei05sc: th0s=',/,(8f8.3))") th0s
-!
-! double allnkm(n1_scha,n2_scha,n3_scha):
-  istat = pio_inq_varid(ncid,'allnkm',id)
-  istat = pio_get_var(ncid,id,allnkm)
-! write(iulog,"('wei05sc: allnkm min,max=',2e12.4)") minval(allnkm),maxval(allnkm)
-!
-! int ab(csize):
-  istat = pio_inq_varid(ncid,'ab',id)
-  istat = pio_get_var(ncid,id,ab)
-! write(iulog,"('wei05sc: ab=',/,(10i4))") ab
-!
-! int ls(csize):
-  istat = pio_inq_varid(ncid,'ls',id)
-  istat = pio_get_var(ncid,id,ls)
-! write(iulog,"('wei05sc: ls=',/,(10i4))") ls
-!
-! int ms(csize):
-  istat = pio_inq_varid(ncid,'ms',id)
-  istat = pio_get_var(ncid,id,ms)
-! write(iulog,"('wei05sc: ms=',/,(10i4))") ms
-!
-! double ex_epot(nex):
-  istat = pio_inq_varid(ncid,'ex_epot',id)
-  istat = pio_get_var(ncid,id,ex_epot)
-! write(iulog,"('wei05sc: ex_epot=',/,(8f8.3))") ex_epot
-!
-! double ex_bpot(nex):
-  istat = pio_inq_varid(ncid,'ex_bpot',id)
-  istat = pio_get_var(ncid,id,ex_bpot)
-! write(iulog,"('wei05sc: ex_bpot=',/,(8f8.3))") ex_bpot
-!
-! double epot_schfits(csize,n_schfits):
-  istat = pio_inq_varid(ncid,'epot_schfits',id)
-  istat = pio_get_var(ncid,id,epot_schfits)
-! write(iulog,"('wei05sc: epot_schfits min,max=',2e12.4)") &
-!   minval(epot_schfits),maxval(epot_schfits)
-!
-! double bpot_schfits(csize,n_schfits):
-  istat = pio_inq_varid(ncid,'bpot_schfits',id)
-  istat = pio_get_var(ncid,id,bpot_schfits)
-! write(iulog,"('wei05sc: bpot_schfits min,max=',2e12.4)") &
-!   minval(bpot_schfits),maxval(bpot_schfits)
-!
-! double epot_alschfits(csize,n_alschfits):
-  istat = pio_inq_varid(ncid,'epot_alschfits',id)
-  istat = pio_get_var(ncid,id,epot_alschfits)
-! write(iulog,"('wei05sc: epot_alschfits min,max=',2e12.4)") &
-!   minval(epot_alschfits),maxval(epot_alschfits)
-!
-! double bpot_alschfits(csize,n_alschfits):
-  istat = pio_inq_varid(ncid,'bpot_alschfits',id)
-  istat = pio_get_var(ncid,id,bpot_alschfits)
-! write(iulog,"('wei05sc: bpot_alschfits min,max=',2e12.4)") &
-!   minval(bpot_alschfits),maxval(bpot_alschfits)
-!
-! Close file:
-  call cam_pio_closefile(ncid)
-  if(masterproc) write(iulog,"('wei05sc: completed read of file ',a)") trim(file)
-#endif
-  end subroutine read_wei05_ncfile
-#ifdef WACCMX_IONOS
-!-----------------------------------------------------------------------
-  subroutine setmodel(angle,bt,tilt,swvel,swden,model)
-!
-! Calculate the complete set of the models' SCHA coeficients,
-!   given an aribitrary IMF angle (degrees from northward toward +Y),
-!   given byimf, bzimf, solar wind velocity (km/sec), and density.
-!
-  implicit none
-!
-! Args:
-  real(r8),intent(in) :: angle,bt,tilt,swvel,swden
-  character(len=*),intent(in) :: model
-!
-! Local:
-  integer :: i,j
-  real(r8) :: pi,stilt,stilt2,sw,swp,swe,c0,rang,cosa,sina,cos2a,sin2a
-  real(r8) :: a(n_schfits)
-!
-  if (trim(model) /= 'epot'.and.trim(model) /= 'bpot') then
-    write(iulog,"('>>> model=',a)") trim(model)
-    write(iulog,"('>>> setmodel: model must be either','''epot'' or ''bpot''')")
-    call endrun('setmodel')
-  endif
-!
-  pi = 4._r8*atan(1._r8)
-  rad2deg = 180._r8/pi
-  deg2rad = pi/180._r8
-!
-! write(iulog,"('setmodel call setboundary: model=',a,' swvel=',e12.4)") &
-!   model, swvel
-
-  call setboundary(angle,bt,swvel,swden)
-!
-  stilt = sin(tilt*deg2rad)
-  stilt2 = stilt**2
-  sw = bt*swvel/1000._r8
-  if (trim(model) == 'epot') then
-    swe = (1._r8-exp(-sw*ex_epot(2)))*sw**ex_epot(1)
-  else
-    swe = (1._r8-exp(-sw*ex_bpot(2)))*sw**ex_bpot(1)
-  endif
-  c0 = 1._r8
-  swp = swvel**2 * swden*1.6726e-6_r8
-  rang = angle*deg2rad
-  cosa = cos(rang)
-  sina = sin(rang)
-  cos2a = cos(2._r8*rang)
-  sin2a = sin(2._r8*rang)
-  if (bt < 1._r8) then ! remove angle dependency for IMF under 1 nT
-    cosa = -1._r8+bt*(cosa+1._r8)
-    cos2a = 1._r8+bt*(cos2a-1._r8)
-    sina = bt*sina
-    sin2a = bt*sin2a
-  endif
-  a = (/c0      , swe       , stilt      , stilt2     , swp, & 
-    swe*cosa, stilt*cosa, stilt2*cosa, swp*cosa, &        
-    swe*sina, stilt*sina, stilt2*sina, swp*sina, &        
-    swe*cos2a,swe*sin2a/)
-  if (trim(model) == 'epot') then
-    esphc(:) = 0._r8
-    do j=1,csize
-      do i=1,n_schfits
-        esphc(j) = esphc(j)+epot_schfits(i,j)*a(i)
-      enddo
-    enddo
-!   write(iulog,"('setmodel: esphc=',/,(6e12.4))") esphc
-  else
-    bsphc(:) = 0._r8
-    do j=1,csize
-      do i=1,n_schfits
-        bsphc(j) = bsphc(j)+bpot_schfits(i,j)*a(i)
-      enddo
-    enddo
-!   write(iulog,"('setmodel: bsphc=',/,(6e12.4))") bsphc
-  endif
-  end subroutine setmodel
+   end subroutine weimer05_init
 
 !-----------------------------------------------------------------------
-!-----------------------------------------------------------------------
-      subroutine wei05loc (ih, byimf, power, sunlons)
+   subroutine weimer05(by, bz_in, swvel, swden, sunlon)
+      !
+      ! 9/16/15 btf: Driver to call Weimer 2005 model for waccm[x].
+      !
+
+      implicit none
+      !
+      ! Args:
+      real(r8), intent(in) :: bz_in, by, swvel, swden
+      real(r8), intent(in) :: sunlon
+
+      !
+      ! Local:
+
+      real(r8)            :: angl, angle, bt
+      integer             :: i, j
+      real(r8)            :: rmlt, mlat, tilt, htilt, hem, ut, secs
+      real(r8), parameter :: fill = 0._r8
+      integer             :: iyear, imon, iday, isecs
+      real(r8)            :: bz
+
+      bz = bz_in
+
+      hpower = hp_from_bz_swvel(bz,swvel)
+      !
+      ! Get current date and time:
+      !
+      call get_curr_date(iyear,imon,iday,isecs)
+      !
+      ! Get sun's location (longitude at all latitudes):
+      !
+      secs = real(isecs, r8)
+
+      !
+      ! At least one of by,bz must be non-zero:
+      if (by==0._r8 .and. bz==0._r8) then
+         if (masterproc) then
+            write(iulog,"(/,'>>> WARNING: by and bz cannot both be zero',&
+                 ' when calling the Weimer model: am setting bz=0.01')")
+         end if
+         bz = 0.01_r8
+      end if
+      !
+      bt = sqrt(by**2 + bz**2)
+      angl = atan2(by,bz) * r2d
+      !
+      ! Convert from day-of-year to month,day and get tilt from date and ut:
+      !
+      ut = secs / 3600._r8    ! decimal hours
+      !
+      ! Given year and day-of-year, cvt2md returns month and day of month.
+      ! We do not need this, since get_curr_date returns month and day of month.
+      ! call cvt2md(iulog,iyear,idoy,imon,iday)  ! given iyear,idoy, return imo,ida
+      !
+      if (debug .and. masterproc) then
+         write(iulog,"('weimer05: iyear,imon,iday=',3i5,' ut=',f8.2)")            &
+              iyear,imon,iday,ut
+      end if
+      tilt = get_tilt(iyear,imon,iday,ut)
+      if (debug .and. masterproc) then
+         write(iulog,"('weimer05: tilt=',e12.4)") tilt
+      end if
+
+      phihm = 0._r8 ! whole-array init (nmlonp1,nmlat)
+      !
+      ! Call Weimer model for southern hemisphere electric potential:
+      !
+      hem = -1._r8
+      htilt = hem * tilt
+      angle = hem * angl
+      if (debug .and. masterproc) then
+         write(iulog,"('weimer05 call setmodel for SH potential')")
+      end if
+      call setmodel(angle, bt, htilt, swvel, swden, 'epot')
+      if (debug .and. masterproc) then
+         write(iulog,"('weimer05 after setmodel for SH potential')")
+      end if
+      do j = 1, nmlat0 ! Spole to equator
+         do i = 1, nmlon
+            !
+            ! sunlon: sun's longitude in dipole coordinates
+            !
+            rmlt = (ylonm(i)-sunlon) * r2d / 15._r8 + 12._r8
+            mlat = abs(ylatm(j))*r2d
+            !
+            ! Obtain electric potential and convert from kV to V
+            !
+            call epotval(mlat,rmlt,fill,phihm(i,j))
+            phihm(i,j) = phihm(i,j)*1000._r8
+         end do ! i=1,nmlon
+      end do ! j=1,nmlat0
+      if (debug) write(iulog,"('weimer05: SH phihm min,max=',2es12.4)") &
+           minval(phihm(1:nmlon,1:nmlat0)),maxval(phihm(1:nmlon,1:nmlat0))
+      !
+      ! Re-calculate SH values of offa, dskofa, arad, and phid and phin from
+      !    Weimer 2005 setboundary values of offc, dskofc, and theta0
+      !
+      call wei05loc (1, by, hpower, sunlon)
+      !
+      ! Call Weimer model for southern hemisphere fac:
+      !
+      if (debug .and. masterproc) then
+         write(iulog,"('weimer05 call setmodel for SH fac')")
+      end if
+      call setmodel(angle,bt,htilt,swvel,swden,'bpot')
+      if (debug .and. masterproc) then
+         write(iulog,"('weimer05 after setmodel for SH fac')")
+      end if
+      do j = 1, nmlat0
+         do i = 1, nmlon
+            rmlt = (ylonm(i)-sunlon) * r2d / 15._r8 + 12._r8
+            mlat = abs(ylatm(j))*r2d
+            call mpfac(mlat,rmlt,fill,wei05sc_fac(i,j))
+         end do ! i=1,nmlon
+      end do ! j=1,nmlat0
+      !
+      ! Call Weimer model for northern hemisphere epot:
+      !
+      hem = 1._r8
+      htilt = hem * tilt
+      angle = hem * angl
+      if (debug .and. masterproc) then
+         write(iulog,"('weimer05 call setmodel for NH potential')")
+      end if
+      call setmodel(angle,bt,htilt,swvel,swden,'epot')
+      if (debug .and. masterproc) then
+         write(iulog,"('weimer05 after setmodel for NH potential')")
+      end if
+      do j = nmlat0+1, nmlat
+         do i = 1, nmlon
+            !
+            ! sunlon: sun's longitude in dipole coordinates
+            rmlt = ((ylonm(i) - sunlon) * r2d / 15._r8) + 12._r8
+            mlat = abs(ylatm(j)) * r2d
+            !
+            ! Obtain electric potential and convert from kV to V
+            call epotval(mlat, rmlt, fill, phihm(i,j))
+            phihm(i,j) = phihm(i,j) * 1000._r8
+         end do ! i=1,nmlon
+      end do ! j=1,nmlat0+1,nmlat
+      if (debug .and. masterproc) then
+         write(iulog,"('weimer05: NH phihm min,max=',2es12.4)")               &
+              minval(phihm(1:nmlon,nmlat0+1:nmlat)),                          &
+              maxval(phihm(1:nmlon,nmlat0+1:nmlat))
+      end if
+      !
+      ! Re-calculate NH values of offa, dskofa, arad, and Heelis phid and phin
+      !   from Weimer 2005 setboundary values of offc, dskofc, and theta0
+      !
+      call wei05loc (2, by, hpower, sunlon)
+      !
+      ! Call Weimer model for northern hemisphere fac:
+      if (debug .and. masterproc) then
+         write(iulog,"('weimer05 call setmodel for NH fac')")
+      end if
+      call setmodel(angle,bt,htilt,swvel,swden,'bpot')
+      if (debug .and. masterproc) then
+         write(iulog,"('weimer05 after setmodel for NH fac')")
+      end if
+      do j = nmlat0+1, nmlat
+         do i = 1, nmlon
+            rmlt = ((ylonm(i)-sunlon) * r2d / 15._r8) + 12._r8
+            mlat = abs(ylatm(j))*r2d
+            call mpfac(mlat,rmlt,fill,wei05sc_fac(i,j))
+         end do ! i=1,nmlon
+      end do ! j=1,nmlat0
+      !
+      ! Periodic points:
+      do j = 1, nmlat
+         phihm(nmlonp1,j) = phihm(1,j)
+         wei05sc_fac(nmlonp1,j) = wei05sc_fac(1,j)
+      end do ! j=1,nmlat
+      !
+      ! Calculate ctpoten for each hemisphere:
+      ! South:
+      !
+      phimax = -1.e36_r8
+      phimin =  1.e36_r8
+      do j = 1, nmlat0 ! SH
+         do i = 1, nmlon
+            if (phihm(i,j) > phimax) phimax = phihm(i,j)
+            if (phihm(i,j) < phimin) phimin = phihm(i,j)
+         end do
+      end do
+      weictpoten(1) = 0.001_r8 * (phimax - phimin)
+      !
+      ! North:
+      !
+      phimax = -1.e36_r8
+      phimin =  1.e36_r8
+      do j = nmlat0+1, nmlat ! NH
+         do i = 1, nmlon
+            if (phihm(i,j) > phimax) phimax = phihm(i,j)
+            if (phihm(i,j) < phimin) phimin = phihm(i,j)
+         end do
+      end do
+      weictpoten(2) = 0.001_r8 * (phimax - phimin)
+      !
+      ! average of the SH and NH in ctpoten
+      ctpoten = 0.5_r8*(weictpoten(1)+weictpoten(2))
+
+      if (masterproc) then
+         write(iulog,"(a,f8.2,a,2es12.4)")                                    &
+              'weimer05: ctpoten=', ctpoten, ', phihm min,max=',              &
+              minval(phihm), maxval(phihm)
+      end if
+      !
+
+   end subroutine weimer05
+   !-----------------------------------------------------------------------
+   subroutine read_wei05_ncfile(file)
+
+      use ioFileMod,     only: getfil
+      use cam_pio_utils, only: cam_pio_openfile, cam_pio_closefile
+      use pio,           only: file_desc_t, pio_nowrite, pio_inq_dimid
+      use pio,           only: pio_inquire_dimension, pio_inq_varid, pio_get_var
+      !
+      ! Read coefficients and other data from netcdf data file.
+      !
+      ! Arg:
+      character(len=*), intent(in) :: file
+      !
+      ! Local:
+      integer :: istat
+      integer :: rd_na, rd_nb, rd_nex, rd_n1_scha, rd_n2_scha, rd_n3_scha
+      integer :: rd_csize, rd_n_schfits, rd_n_alschfits
+      integer :: id
+      character(len=shr_kind_cl) :: filen
+      character(len=shr_kind_cl) :: errmsg
+      character(len=*), parameter :: prefix = 'read_wei05_ncfile: '
+      type(file_desc_t) :: ncid
+      !
+      ! Open netcdf file for reading:
+      !
+      call getfil( file, filen, 0 )
+      call cam_pio_openfile(ncid, filen, PIO_NOWRITE)
+
+      if (masterproc) then
+         write(iulog,"('wei05sc: opened netcdf data file',a)") trim(filen)
+      end if
+      !
+      ! Read and check dimensions:
+      !
+      ! na=6
+      istat = pio_inq_dimid(ncid, 'na', id)
+      istat = pio_inquire_dimension(ncid, id, len=rd_na)
+      if (rd_na /= na) then
+         write(errmsg,"(a,i4,a,i4)") prefix//'rd_na /= na: rd_na = ', rd_na,' na = ', na
+         write(iulog,*) trim(errmsg)
+         call endrun(errmsg)
+      end if
+      !
+      ! nb=7
+      !
+      istat = pio_inq_dimid(ncid, 'nb', id)
+      istat = pio_inquire_dimension(ncid, id, len=rd_nb)
+      if (rd_nb /= nb) then
+         write(errmsg,"(a,i4,a,i4)") prefix//'rd_nb /= nb: rd_nb = ', rd_nb,' nb = ', nb
+         write(iulog,*) trim(errmsg)
+         call endrun(errmsg)
+      end if
+      !
+      ! nex=2
+      !
+      istat = pio_inq_dimid(ncid, 'nex', id)
+      istat = pio_inquire_dimension(ncid, id, len=rd_nex)
+      if (rd_nex /= nex) then
+         write(errmsg,"(a,i4,a,i4)") prefix//'rd_nex /= nex rd_nex = ', rd_nex,' nex = ', nex
+         write(iulog,*) trim(errmsg)
+         call endrun(errmsg)
+      end if
+      !
+      ! n1_scha=19
+      !
+      istat = pio_inq_dimid(ncid, 'n1_scha', id)
+      istat = pio_inquire_dimension(ncid, id, len=rd_n1_scha)
+      if (rd_n1_scha /= n1_scha) then
+         write(errmsg,"(a,i4,a,i4)") prefix//'rd_n1_scha /= n1_scha rd_n1_scha = ', rd_n1_scha,' n1_scha = ', n1_scha
+         write(iulog,*) trim(errmsg)
+         call endrun(errmsg)
+      end if
+      !
+      ! n2_scha=7
+      !
+      istat = pio_inq_dimid(ncid, 'n2_scha', id)
+      istat = pio_inquire_dimension(ncid, id, len=rd_n2_scha)
+      if (rd_n2_scha /= n2_scha) then
+         write(errmsg,"(a,i4,a,i4)") prefix//'rd_n2_scha /= n2_scha rd_n2_scha = ', rd_n2_scha,' n2_scha = ', n2_scha
+         write(iulog,*) trim(errmsg)
+         call endrun(errmsg)
+      end if
+      !
+      ! n3_scha=68
+      !
+      istat = pio_inq_dimid(ncid, 'n3_scha', id)
+      istat = pio_inquire_dimension(ncid, id, len=rd_n3_scha)
+      if (rd_n3_scha /= n3_scha) then
+         write(errmsg,"(a,i4,a,i4)") prefix//'rd_n3_scha /= n3_scha rd_n3_scha = ', rd_n3_scha,' n3_scha = ', n3_scha
+         write(iulog,*) trim(errmsg)
+         call endrun(errmsg)
+      end if
+      !
+      ! csize=28
+      !
+      istat = pio_inq_dimid(ncid, 'csize', id)
+      istat = pio_inquire_dimension(ncid, id, len=rd_csize)
+      if (rd_csize /= csize) then
+         write(errmsg,"(a,i4,a,i4)") prefix//'rd_csize /= csize rd_csize = ', rd_csize,' csize = ', csize
+         write(iulog,*) trim(errmsg)
+         call endrun(errmsg)
+      end if
+      !
+      ! n_schfits=15
+      !
+      istat = pio_inq_dimid(ncid, 'n_schfits', id)
+      istat = pio_inquire_dimension(ncid, id, len=rd_n_schfits)
+      if (rd_n_schfits /= n_schfits) then
+         write(errmsg,"(a,i4,a,i4)") prefix//'rd_n_schfits /= n_schfits rd_n_schfits = ', &
+                                     rd_n_schfits,' n_schfits = ', n_schfits
+         write(iulog,*) trim(errmsg)
+         call endrun(errmsg)
+      end if
+      !
+      ! n_alschfits=18
+      !
+      istat = pio_inq_dimid(ncid, 'n_alschfits', id)
+      istat = pio_inquire_dimension(ncid, id, len=rd_n_alschfits)
+      if (rd_n_alschfits /= n_alschfits) then
+         write(errmsg,"(a,i4,a,i4)") prefix//'rd_n_alschfits /= n_alschfits rd_n_alschfits = ',&
+                                     rd_n_alschfits,' n_alschfits = ', n_alschfits
+         write(iulog,*) trim(errmsg)
+         call endrun(errmsg)
+      end if
+      !
+      ! integer :: maxk_scha, maxm_scha, maxl_pot, maxm_pot
+      ! maxk_scha = 18 ;
+      ! maxm_scha = 6 ;
+      ! maxl_pot = 12 ;
+      ! maxm_pot = 2 ;
+      !
+      istat = pio_inq_dimid(ncid,"maxk_scha", id)
+      istat = pio_inquire_dimension(ncid, id, len=maxk_scha)
+      istat = pio_inq_dimid(ncid,"maxm_scha", id)
+      istat = pio_inquire_dimension(ncid, id, len=maxm_scha)
+      istat = pio_inq_dimid(ncid,"maxl_pot", id)
+      istat = pio_inquire_dimension(ncid, id, len=maxl_pot)
+      istat = pio_inq_dimid(ncid,"maxm_pot", id)
+      istat = pio_inquire_dimension(ncid, id, len=maxm_pot)
+
+      ! write(iulog,"('wei05sc: maxk_scha=',i3,' maxm_scha=',i3)") &
+      !   maxk_scha,maxm_scha
+      ! write(iulog,"('wei05sc: maxl_pot=',i3,' maxm_pot=',i3)") &
+      !   maxl_pot,maxm_pot
+      !
+      ! Read variables:
+      !
+      ! double bndya(na):
+      istat = pio_inq_varid(ncid, 'bndya', id)
+      istat = pio_get_var(ncid, id,bndya)
+      ! write(iulog,"('wei05sc: bndya=',/,(8f8.3))") bndya
+      !
+      ! double bndyb(nb):
+      istat = pio_inq_varid(ncid, 'bndyb', id)
+      istat = pio_get_var(ncid, id,bndyb)
+      ! write(iulog,"('wei05sc: bndyb=',/,(8f8.3))") bndyb
+      !
+      ! double ex_bndy(nex):
+      istat = pio_inq_varid(ncid, 'ex_bndy', id)
+      istat = pio_get_var(ncid, id,ex_bndy)
+      ! write(iulog,"('wei05sc: ex_bndy=',/,(8f8.3))") ex_bndy
+      !
+      ! double th0s(n3_scha):
+      istat = pio_inq_varid(ncid, 'th0s', id)
+      istat = pio_get_var(ncid, id,th0s)
+      ! write(iulog,"('wei05sc: th0s=',/,(8f8.3))") th0s
+      !
+      ! double allnkm(n1_scha,n2_scha,n3_scha):
+      istat = pio_inq_varid(ncid, 'allnkm', id)
+      istat = pio_get_var(ncid, id,allnkm)
+      ! write(iulog,"('wei05sc: allnkm min,max=',2e12.4)") minval(allnkm),maxval(allnkm)
+      !
+      ! int ab(csize):
+      istat = pio_inq_varid(ncid, 'ab', id)
+      istat = pio_get_var(ncid, id,ab)
+      ! write(iulog,"('wei05sc: ab=',/,(10i4))") ab
+      !
+      ! int ls(csize):
+      istat = pio_inq_varid(ncid, 'ls', id)
+      istat = pio_get_var(ncid, id,ls)
+      ! write(iulog,"('wei05sc: ls=',/,(10i4))") ls
+      !
+      ! int ms(csize):
+      istat = pio_inq_varid(ncid, 'ms', id)
+      istat = pio_get_var(ncid, id,ms)
+      ! write(iulog,"('wei05sc: ms=',/,(10i4))") ms
+      !
+      ! double ex_epot(nex):
+      istat = pio_inq_varid(ncid, 'ex_epot', id)
+      istat = pio_get_var(ncid, id,ex_epot)
+      ! write(iulog,"('wei05sc: ex_epot=',/,(8f8.3))") ex_epot
+      !
+      ! double ex_bpot(nex):
+      istat = pio_inq_varid(ncid, 'ex_bpot', id)
+      istat = pio_get_var(ncid, id,ex_bpot)
+      ! write(iulog,"('wei05sc: ex_bpot=',/,(8f8.3))") ex_bpot
+      !
+      ! double epot_schfits(csize,n_schfits):
+      istat = pio_inq_varid(ncid, 'epot_schfits', id)
+      istat = pio_get_var(ncid, id,epot_schfits)
+      ! write(iulog,"('wei05sc: epot_schfits min,max=',2e12.4)") &
+      !   minval(epot_schfits),maxval(epot_schfits)
+      !
+      ! double bpot_schfits(csize,n_schfits):
+      istat = pio_inq_varid(ncid, 'bpot_schfits', id)
+      istat = pio_get_var(ncid, id,bpot_schfits)
+      ! write(iulog,"('wei05sc: bpot_schfits min,max=',2e12.4)") &
+      !   minval(bpot_schfits),maxval(bpot_schfits)
+      !
+      ! double epot_alschfits(csize,n_alschfits):
+      istat = pio_inq_varid(ncid, 'epot_alschfits', id)
+      istat = pio_get_var(ncid, id,epot_alschfits)
+      ! write(iulog,"('wei05sc: epot_alschfits min,max=',2e12.4)") &
+      !   minval(epot_alschfits),maxval(epot_alschfits)
+      !
+      ! double bpot_alschfits(csize,n_alschfits):
+      istat = pio_inq_varid(ncid, 'bpot_alschfits', id)
+      istat = pio_get_var(ncid, id,bpot_alschfits)
+      ! write(iulog,"('wei05sc: bpot_alschfits min,max=',2e12.4)") &
+      !   minval(bpot_alschfits),maxval(bpot_alschfits)
+      !
+      ! Close file:
+      call cam_pio_closefile(ncid)
+      if(masterproc) then
+         write(iulog,"('wei05sc: completed read of file ',a)") trim(file)
+      end if
+
+   end subroutine read_wei05_ncfile
+
+   !-----------------------------------------------------------------------
+   subroutine setmodel(angle,bt,tilt,swvel,swden,model)
+      !
+      ! Calculate the complete set of the models' SCHA coeficients,
+      !   given an aribitrary IMF angle (degrees from northward toward +Y),
+      !   given byimf, bzimf, solar wind velocity (km/sec), and density.
+      !
+      ! Args:
+      real(r8),         intent(in) :: angle, bt, tilt, swvel, swden
+      character(len=*), intent(in) :: model
+      !
+      ! Local:
+      integer  :: i, j
+      real(r8) :: pi,stilt,stilt2,sw,swp,swe,c0,rang,cosa,sina,cos2a,sin2a
+      real(r8) :: a(n_schfits)
+      !
+      if (trim(model) /= 'epot'.and.trim(model) /= 'bpot') then
+         if (masterproc) then
+            write(iulog, "('>>> model=',a)") trim(model)
+            write(iulog, "(a)")                                               &
+                 '>>> setmodel: model must be either ''epot'' or ''bpot'''
+         end if
+         call endrun("setmodel: model must be either 'epot' or 'bpot'")
+      end if
+      !
+      pi = 4._r8 * atan(1._r8)
+      rad2deg = 180._r8 / pi
+      deg2rad = pi / 180._r8
+      !
+      ! write(iulog,"('setmodel call setboundary: model=',a,' swvel=',e12.4)") &
+      !   model, swvel
+
+      call setboundary(angle, bt, swvel, swden)
+      !
+      stilt = sin(tilt * deg2rad)
+      stilt2 = stilt**2
+      sw = bt * swvel/ 1000._r8
+      if (trim(model) == 'epot') then
+         swe = (1._r8-exp(-sw*ex_epot(2)))*sw**ex_epot(1)
+      else
+         swe = (1._r8-exp(-sw*ex_bpot(2)))*sw**ex_bpot(1)
+      end if
+      c0 = 1._r8
+      swp = swvel**2 * swden*1.6726e-6_r8
+      rang = angle*deg2rad
+      cosa = cos(rang)
+      sina = sin(rang)
+      cos2a = cos(2._r8*rang)
+      sin2a = sin(2._r8*rang)
+      if (bt < 1._r8) then ! remove angle dependency for IMF under 1 nT
+         cosa = -1._r8+bt*(cosa+1._r8)
+         cos2a = 1._r8+bt*(cos2a-1._r8)
+         sina = bt*sina
+         sin2a = bt*sin2a
+      end if
+      a = (/c0, swe,  stilt,      stilt2,      swp,                           &
+           swe*cosa,  stilt*cosa, stilt2*cosa, swp*cosa,                      &
+           swe*sina,  stilt*sina, stilt2*sina, swp*sina,                      &
+           swe*cos2a, swe*sin2a/)
+      if (trim(model) == 'epot') then
+         esphc(:) = 0._r8
+         do j=1,csize
+            do i=1,n_schfits
+               esphc(j) = esphc(j)+epot_schfits(i,j)*a(i)
+            end do
+         end do
+         !   write(iulog,"('setmodel: esphc=',/,(6e12.4))") esphc
+      else
+         bsphc(:) = 0._r8
+         do j=1,csize
+            do i=1,n_schfits
+               bsphc(j) = bsphc(j)+bpot_schfits(i,j)*a(i)
+            end do
+         end do
+         !   write(iulog,"('setmodel: bsphc=',/,(6e12.4))") bsphc
+      end if
+   end subroutine setmodel
+
+   !-----------------------------------------------------------------------
+   !-----------------------------------------------------------------------
+   subroutine wei05loc (ih, byimf, power, sunlon)
 ! ih=1,2 for SH,NH called from weimer05
 !
 ! (dimension 2 is for south, north hemispheres)
@@ -646,134 +674,139 @@ module wei05sc
 !      rrad(2),   ! radius of auroral circle in radians
 !      offc(2),   ! offset of convection towards 0 MLT relative to mag pole (rad)
 !      dskofc(2)  ! offset of convection in radians towards 18 MLT (f(By))
-! sunlons(nlat): sun's longitude in dipole coordinates (see sub sunloc)
+! sunlon: sun's longitude in dipole coordinates (see sub sunloc)
 !
-
-!
-! Args:
+      !
+      ! Args:
       integer,intent(in) :: ih
       real(r8),intent(in) :: byimf
       real(r8),intent(in) :: power
-      real(r8),intent(in) :: sunlons(:)
-!
-! Local:
-      real(r8) :: rccp,racp,rahp,ramx,diffrac,plevel,tmltmin,tmltmax
+      real(r8),intent(in) :: sunlon
+      !
+      ! Local:
+      real(r8) :: rccp, racp, rahp, ramx, diffrac, plevel, tmltmin, tmltmax
       real(r8) :: offcdegp(2)
-      integer :: i,j,j1,j2
-      real(r8) :: vnx(2,2),hem,mltd,mltn
+      integer :: i, j, j1, j2
+      real(r8) :: vnx(2,2), hem, mltd, mltn
       integer :: inx(2,2)
-      real(r8) :: offcdeg,dskof,arad,crad
+      real(r8) :: offcdeg, dskof, arad, crad
       real(r8) :: byloc
-        
-! Limit size of byimf in phin and phid calculations (as in aurora.F) 
-!  NOTE:  This byloc is assymetric in hemisphere, which is probably not correct
+
+      ! Limit size of byimf in phin and phid calculations (as in aurora.F)
+      !  NOTE:  This byloc is assymetric in hemisphere, which is probably not correct
       byloc = byimf
       if (byloc .gt. 7._r8) byloc = 7._r8
       if (byloc .lt. -11._r8) byloc = -11._r8
-!
-!  ih=1 is SH, ih=2 is NH
-	if (ih .eq. 1) then
-	  j1 = 1
-	  j2 = nmlat0
-	  hem = -1._r8
-	else
-	  j1 = nmlat0 + 1
-	  j2 = nmlat
-	  hem = 1._r8
-	endif
-! Print out un-revised values:
-!       write (6,"(1x,'Original convection/oval params (hem,By,off,dsk',
-!    |    ',rad,phid,n=',10f9.4)") hem,byimf,offc(ih)*rtd,offa(ih)*rtd,
-!    |    dskofc(ih)*rtd,dskofa(ih)*rtd,theta0(ih)*rtd,rrad(ih)*rtd,
-!    |    phid(ih)*rtd/15.+12.,phin(ih)*rtd/15.+12.
-!  Find min/max
-	vnx(ih,1) = 0._r8
-	vnx(ih,2) = 0._r8
-	do j=j1,j2
-	  do i=1,nmlonp1-1
-	    if (phihm(i,j) .gt. vnx(ih,2)) then
-	      vnx(ih,2) = phihm(i,j)
-	      inx(ih,2) = i
-	    endif
-	    if (phihm(i,j) .lt. vnx(ih,1)) then
-	      vnx(ih,1) = phihm(i,j)
-	      inx(ih,1) = i
-	    endif
-	  enddo  !  i=1,nmlonp1-1
-	enddo  !  j=j1,j2
-! 05/08: Calculate weictpoten in kV from Weimer model min/max in V
-	weictpoten(ih) = 0.001_r8 * (vnx(ih,2) - vnx(ih,1))
-	tmltmin = (ylonm(inx(ih,1))-sunlons(1)) * r2d/15._r8 + 12._r8
-	if (tmltmin .gt. 24._r8) tmltmin = tmltmin - 24._r8
-	tmltmax = (ylonm(inx(ih,2))-sunlons(1)) * r2d/15._r8 + 12._r8
-	if (tmltmax .gt. 24._r8) tmltmax = tmltmax - 24._r8
-!       write (6,"('ih Bz By Hp ctpoten,wei min/max potV,lat,mlt=',i2,
-!    |    5f8.2,2x,e12.4,2f8.2,2x,e12.4,2f8.2))") ih,bzimf,byimf,power,
-!    |    ctpoten,weictpoten(ih),
-!    |    vnx(ih,1),ylatm(jnx(ih,1))*rtd,tmltmin,
-!    |    vnx(ih,2),ylatm(jnx(ih,2))*rtd,tmltmax
-! 05/08: From aurora_cons, calculate convection and aurora radii using IMF convection
-!   and power (plevel);  racp (DMSP/NOAA) - rccp (AMIE) = 5.32 (Bz>0) to 6.62 (Bz<0) deg
-!  Heelis et al [1980, JGR, 85, pp 3315-3324] Fig 8: ra=rc+2deg, and is 2.5 deg to dusk
-	rccp = -3.80_r8+8.48_r8*(weictpoten(ih)**0.1875_r8)
-	racp = -0.43_r8+9.69_r8*(weictpoten(ih)**0.1875_r8)
-	plevel = 0._r8
-	if (power >=1.00_r8) plevel = 2.09_r8*log(power)
-	rahp = 14.20_r8 + 0.96_r8*plevel
-	ramx = max(racp,rahp)
-	diffrac = ramx - rccp
+      !
+      !  ih=1 is SH, ih=2 is NH
+      if (ih .eq. 1) then
+         j1 = 1
+         j2 = nmlat0
+         hem = -1._r8
+      else
+         j1 = nmlat0 + 1
+         j2 = nmlat
+         hem = 1._r8
+      end if
+      ! Print out un-revised values:
+      !       write (6,"(1x,'Original convection/oval params (hem,By,off,dsk',
+      !    |    ',rad,phid,n=',10f9.4)") hem,byimf,offc(ih)*rtd,offa(ih)*rtd,
+      !    |    dskofc(ih)*rtd,dskofa(ih)*rtd,theta0(ih)*rtd,rrad(ih)*rtd,
+      !    |    phid(ih)*rtd/15.+12.,phin(ih)*rtd/15.+12.
+      !  Find min/max
+      vnx(ih,1) = 0._r8
+      vnx(ih,2) = 0._r8
+      do j=j1,j2
+         do i=1,nmlonp1-1
+            if (phihm(i,j) .gt. vnx(ih,2)) then
+               vnx(ih,2) = phihm(i,j)
+               inx(ih,2) = i
+            end if
+            if (phihm(i,j) .lt. vnx(ih,1)) then
+               vnx(ih,1) = phihm(i,j)
+               inx(ih,1) = i
+            end if
+         end do  !  i=1,nmlonp1-1
+      end do  !  j=j1,j2
+      ! 05/08: Calculate weictpoten in kV from Weimer model min/max in V
+      weictpoten(ih) = 0.001_r8 * (vnx(ih,2) - vnx(ih,1))
+      tmltmin = (ylonm(inx(ih,1))-sunlon) * r2d/15._r8 + 12._r8
+      if (tmltmin > 24._r8) then
+         tmltmin = tmltmin - 24._r8
+      end if
+      tmltmax = (ylonm(inx(ih,2))-sunlon) * r2d/15._r8 + 12._r8
+      if (tmltmax > 24._r8) then
+         tmltmax = tmltmax - 24._r8
+      end if
+      !       write (6,"('ih Bz By Hp ctpoten,wei min/max potV,lat,mlt=',i2,
+      !    |    5f8.2,2x,e12.4,2f8.2,2x,e12.4,2f8.2))") ih,bzimf,byimf,power,
+      !    |    ctpoten,weictpoten(ih),
+      !    |    vnx(ih,1),ylatm(jnx(ih,1))*rtd,tmltmin,
+      !    |    vnx(ih,2),ylatm(jnx(ih,2))*rtd,tmltmax
+      ! 05/08: From aurora_cons, calculate convection and aurora radii using IMF convection
+      !   and power (plevel);  racp (DMSP/NOAA) - rccp (AMIE) = 5.32 (Bz>0) to 6.62 (Bz<0) deg
+      !  Heelis et al [1980, JGR, 85, pp 3315-3324] Fig 8: ra=rc+2deg, and is 2.5 deg to dusk
+      rccp = -3.80_r8 + (8.48_r8*(weictpoten(ih)**0.1875_r8))
+      racp = -0.43_r8 + (9.69_r8*(weictpoten(ih)**0.1875_r8))
+      plevel = 0._r8
+      if (power >= 1.00_r8) then
+         plevel = 2.09_r8*log(power)
+      end if
+      rahp = 14.20_r8 + 0.96_r8*plevel
+      ramx = max(racp, rahp)
+      diffrac = ramx - rccp
 
-!  Set default values
-!  Use parameterization defaults for phid (phid(MLT)=9.39 +/- 0.21By - 12)
-!                             and phin (phin(MLT)=23.50 +/- 0.15By - 12)
-	mltd = 9.39_r8 - hem*0.21_r8*byloc
-	mltn = 23.50_r8 - hem*0.15_r8*byloc
-	phid(ih) = (mltd-12._r8) * 15._r8 *d2r
-	phin(ih) = (mltn-12._r8) * 15._r8 *d2r
-! 05/18/08:  Note that phid,phin are only for Heelis and are irrelevant for Weimer
-!       write (6,"(1x,'mltd mltn phid,n =',4f8.2)")
-!    |   mltd,mltn,phid(ih)*rtd/15.,phin(ih)*rtd/15.
-!  Use default constant value of offcdegp from setboundary in Weimer 2005
-	offcdeg = 4.2_r8
-	offcdegp(ih) = offcdeg
-	offc(ih) = offcdegp(ih) *d2r
-	offa(ih) = offcdegp(ih) *d2r
-!       write (6,"(1x,'offcdeg,rad =',2e12.4)") offcdeg,offc(ih)
-	dskof = 0._r8
-        dskofc(ih) = dskof *d2r
-!  oval offset is 2.5 deg towards dawn (more neg dskof)
-	dskofa(ih) = (dskof-2.5_r8) *d2r
-!       write (6,"(1x,'dskof,c,a=',3f8.2)")
-!    |    dskof,dskofc(ih)*rtd,dskofa(ih)*rtd
-! Set crad from bndyfitr/2 of setboundary of Weimer 2005
-	crad = bndyfitr/2._r8
-!      write (6,"(1x,'wei05loc: ih,bz,y,crad =',i2,3f8.2)") 
-!    |    ih,bzimf,byimf,crad
-!  Fig 8 Heelis et al [1980]: ra=rc+2deg, and shifted 2.5 deg to dusk
-	arad = crad + 2._r8
-! 05/08:  Make ra=rc+diffrac(=ramx-rccp) - same difference as in aurora.F
-! Choose to have arad=crad(Weimer) + diffrac(same diff as in aurora.F)
-	arad = crad + diffrac
-! 08/08: OR make ra=ramx=max(racp,rahp) so diffrac=arad-crad
-!	diffrac2 = ramx - crad
-! Choose to have arad=ramx (same as in aurora.F as determined by P/CP)
-!       arad = ramx
-	theta0(ih) = crad *d2r
-	rrad(ih) = arad *d2r
-!       write (6,"(1x,'radius: crad,rccp,racp,rahp diffa-c',
-!    |   '(aurF,ramx-Weic) ramx,Weic+d,arad deg=',9f8.2)") crad,rccp,
-!    |   racp,rahp,diffrac,diffrac2,ramx,crad+diffrac,arad
+      !  Set default values
+      !  Use parameterization defaults for phid (phid(MLT)=9.39 +/- 0.21By - 12)
+      !                             and phin (phin(MLT)=23.50 +/- 0.15By - 12)
+      mltd = 9.39_r8 - hem*0.21_r8*byloc
+      mltn = 23.50_r8 - hem*0.15_r8*byloc
+      phid(ih) = (mltd-12._r8) * 15._r8 *d2r
+      phin(ih) = (mltn-12._r8) * 15._r8 *d2r
+      ! 05/18/08:  Note that phid,phin are only for Heelis and are irrelevant for Weimer
+      !       write (6,"(1x,'mltd mltn phid,n =',4f8.2)")
+      !    |   mltd,mltn,phid(ih)*rtd/15.,phin(ih)*rtd/15.
+      !  Use default constant value of offcdegp from setboundary in Weimer 2005
+      offcdeg = 4.2_r8
+      offcdegp(ih) = offcdeg
+      offc(ih) = offcdegp(ih) *d2r
+      offa(ih) = offcdegp(ih) *d2r
+      !       write (6,"(1x,'offcdeg,rad =',2e12.4)") offcdeg,offc(ih)
+      dskof = 0._r8
+      dskofc(ih) = dskof *d2r
+      !  oval offset is 2.5 deg towards dawn (more neg dskof)
+      dskofa(ih) = (dskof-2.5_r8) *d2r
+      !       write (6,"(1x,'dskof,c,a=',3f8.2)")
+      !    |    dskof,dskofc(ih)*rtd,dskofa(ih)*rtd
+      ! Set crad from bndyfitr/2 of setboundary of Weimer 2005
+      crad = bndyfitr/2._r8
+      !      write (6,"(1x,'wei05loc: ih,bz,y,crad =',i2,3f8.2)")
+      !    |    ih,bzimf,byimf,crad
+      !  Fig 8 Heelis et al [1980]: ra=rc+2deg, and shifted 2.5 deg to dusk
+      arad = crad + 2._r8
+      ! 05/08:  Make ra=rc+diffrac(=ramx-rccp) - same difference as in aurora.F
+      ! Choose to have arad=crad(Weimer) + diffrac(same diff as in aurora.F)
+      arad = crad + diffrac
+      ! 08/08: OR make ra=ramx=max(racp,rahp) so diffrac=arad-crad
+      !	diffrac2 = ramx - crad
+      ! Choose to have arad=ramx (same as in aurora.F as determined by P/CP)
+      !       arad = ramx
+      theta0(ih) = crad *d2r
+      rrad(ih) = arad *d2r
+      !       write (6,"(1x,'radius: crad,rccp,racp,rahp diffa-c',
+      !    |   '(aurF,ramx-Weic) ramx,Weic+d,arad deg=',9f8.2)") crad,rccp,
+      !    |   racp,rahp,diffrac,diffrac2,ramx,crad+diffrac,arad
 
-! Print out revised values (revised 05/08):
-!       write (6,"(1x,'Revised convection/oval params (off,dsk,',
-!    |    'rad,phid,n=',8f9.4)")offc(ih)*rtd,offa(ih)*rtd,
-!    |    dskofc(ih)*rtd,dskofa(ih)*rtd,theta0(ih)*rtd,rrad(ih)*rtd,
-!    |    phid(ih)*rtd/15.+12.,phin(ih)*rtd/15.+12.
+      ! Print out revised values (revised 05/08):
+      !       write (6,"(1x,'Revised convection/oval params (off,dsk,',
+      !    |    'rad,phid,n=',8f9.4)")offc(ih)*rtd,offa(ih)*rtd,
+      !    |    dskofc(ih)*rtd,dskofa(ih)*rtd,theta0(ih)*rtd,rrad(ih)*rtd,
+      !    |    phid(ih)*rtd/15.+12.,phin(ih)*rtd/15.+12.
 
-      end subroutine wei05loc
+   end subroutine wei05loc
 
 !-----------------------------------------------------------------------
-! for now this is here ... might need to move to a gen util module      
+! for now this is here ... might need to move to a gen util module
 !-----------------------------------------------------------------------
     function hp_from_bz_swvel(bz,swvel) result(hp)
 !
@@ -792,7 +825,7 @@ module wei05sc
         hp = 6.0_r8 + 3.3_r8*abs(bz) + (0.05_r8 + 0.003_r8*abs(bz))* (min(swvel,700._r8)-300._r8)
       else
         hp = 5.0_r8 + 0.05_r8 * (min(swvel,700._r8)-300._r8)
-      endif
+      end if
       hp = max(2.5_r8,hp)*fac
 
     end function hp_from_bz_swvel
@@ -820,8 +853,8 @@ module wei05sc
   ct = cos(theta)
   st = sin(theta)
 !
-  tmat(1,:) = (/ ct, 0._r8, st/) 
-  tmat(2,:) = (/ 0._r8, 1._r8, 0._r8/) 
+  tmat(1,:) = (/ ct, 0._r8, st/)
+  tmat(2,:) = (/ 0._r8, 1._r8, 0._r8/)
   tmat(3,:) = (/-st, 0._r8, ct/)
 !
 !  ttmat(1,:) = (/ct, 0._r8,-st/)
@@ -835,7 +868,7 @@ module wei05sc
     btx = btx*bt**ex_bndy(2)
   else
     cosa = 1._r8+bt*(cosa-1._r8) ! remove angle dependency for IMF under 1 nT
-  endif
+  end if
   x = (/1._r8, cosa, btx, btx*cosa, swvel, swp/)
   c = bndya
   bndyfitr = 0._r8
@@ -844,15 +877,15 @@ module wei05sc
 
 !   write(iulog,"('setboundry: i=',i3,' bndyfitr=',e12.4)") i,bndyfitr
 
-  enddo
+  end do
   end subroutine setboundary
 !-----------------------------------------------------------------------
   subroutine epotval(lat,mlt,fill,epot)
 !
-! Return the Potential (in kV) at given combination of def. latitude 
-!   (lat) and MLT, in geomagnetic apex coordinates (practically identical 
-!   to AACGM).  
-! If the location is outside of the model's low-latitude boundary, then 
+! Return the Potential (in kV) at given combination of def. latitude
+!   (lat) and MLT, in geomagnetic apex coordinates (practically identical
+!   to AACGM).
+! If the location is outside of the model's low-latitude boundary, then
 !   the value "fill" is returned.
 !
   implicit none
@@ -873,14 +906,14 @@ module wei05sc
   if (inside == 0) then
     epot = fill
     return
-  endif
+  end if
 !
-! IDL code: 
+! IDL code:
 ! phim=phir # replicate(1,maxm) * ((indgen(maxm)+1) ## replicate(1,n_elements(phir)))
 !   where the '#' operator multiplies columns of first array by rows of second array,
 !   and the '##' operator multiplies rows of first array by columns of second array.
-! Here, maxm == maxm_pot == 2, and phir is a scalar. The above IDL statement then 
-!   becomes: phim = ([phir] # [1,1]) * ([1,2] ## [phir]) where phim will be 
+! Here, maxm == maxm_pot == 2, and phir is a scalar. The above IDL statement then
+!   becomes: phim = ([phir] # [1,1]) * ([1,2] ## [phir]) where phim will be
 !   dimensioned [1,2]
 !
   phim(1) = phir
@@ -894,7 +927,7 @@ module wei05sc
     if (skip == 1) then
       skip = 0
       cycle
-    endif
+    end if
     m = ms(j)
     if (ab(j)==1) then
       plm = scplm(j,colat,nlm) ! scplm function is in this module
@@ -904,10 +937,10 @@ module wei05sc
       else
         z = z+plm*(esphc(j)*cospm(m)+esphc(j+1)*sinpm(m))
         skip = 1
-      endif
-    endif ! ab(j)
-  enddo
-  epot = z 
+      end if
+    end if ! ab(j)
+  end do
+  epot = z
   end subroutine epotval
 !-----------------------------------------------------------------------
   subroutine mpfac(lat,mlt,fill,fac)
@@ -931,7 +964,7 @@ module wei05sc
   if (inside == 0) then
     fac = fill
     return
-  endif
+  end if
 !
   phim(1) = phir
   phim(2) = phir*2._r8
@@ -944,7 +977,7 @@ module wei05sc
     if (skip == 1) then
       skip = 0
       cycle
-    endif
+    end if
     if (ls(j) >= 11) exit jloop
     m = ms(j)
     if (ab(j) == 1) then
@@ -957,9 +990,9 @@ module wei05sc
       else
         z = z-(plm*(bsphc(j)*cospm(m)+bsphc(j+1)*sinpm(m)))
         skip = 1
-      endif
-    endif
-  enddo jloop ! j=1,csize
+      end if
+    end if
+  end do jloop ! j=1,csize
   pi = 4._r8*atan(1._r8)
   cfactor = -1.e5_r8/(4._r8*pi*re**2) ! convert to uA/m2
   z = z*cfactor
@@ -969,7 +1002,7 @@ module wei05sc
 !-----------------------------------------------------------------------
   real(r8) function scplm(index,colat,nlm)
 !
-! Return Spherical Cap Harmonic Associated Legendre values, given colat 
+! Return Spherical Cap Harmonic Associated Legendre values, given colat
 !   values and index i into array of L and M values.
 !
   implicit none
@@ -985,30 +1018,30 @@ module wei05sc
   real(r8) :: cth(mxtablesize)
   real(r8),save :: prevth0=1.e36_r8
   integer,save :: tablesize
+  character(len=shr_kind_cl) :: errmsg
 !
   scplm = 0._r8
   skip = 0 ! Added by B.Foster, 4/23/14
   th0 = bndyfitr
   if (prevth0 /= th0) then
     tablesize = 3*nint(th0)
-    if (tablesize > mxtablesize) then 
-      write(iulog,"('>>> tablesize > mxtablesize: tablesize=',i8,' mxtablesize=',i8,' th0=',e12.4)") &
-        tablesize,mxtablesize,th0
-      call endrun('tablesize')
-    endif
+    if (tablesize > mxtablesize) then
+      write(errmsg,"('>>> tablesize > mxtablesize: tablesize=',i8,' mxtablesize=',i8,' th0=',e12.4)") &
+           tablesize,mxtablesize,th0
+      write(iulog,*) trim(errmsg)
+      call endrun(errmsg)
+    end if
     do i=1,tablesize
-      real8 = dble(i-1)
-      real8a = dble(tablesize-1)
-      colattable(i) = real8*(th0/real8a)
-      cth(i) = cos(colattable(i)*deg2rad)
-    enddo
+      colattable(i) = real(i-1, r8) * (th0 / real(tablesize-1, r8))
+      cth(i) = cos(colattable(i) * deg2rad)
+    end do
     prevth0 = th0
-    nlms = 0._r8 ! whole array init 
+    nlms = 0._r8 ! whole array init
     do j=1,csize
       if (skip == 1) then
         skip = 0
         cycle
-      endif
+      end if
       l = ls(j)
       m = ms(j)
       nlms(j) = nkmlookup(l,m,th0) ! nkmlookup in this module
@@ -1020,9 +1053,9 @@ module wei05sc
         plmtable(1,j+1) = plmtable(1,j)
         nlms(j+1) = nlms(j)
         skip = 1
-      endif
-    enddo ! j=1,csize
-  endif ! prevth0
+      end if
+    end do ! j=1,csize
+  end if ! prevth0
   nlm = nlms(index)
   colata(1) = colat
   call interpol_quad(plmtable(1:tablesize,index), &
@@ -1031,147 +1064,138 @@ module wei05sc
   end function scplm
 !-----------------------------------------------------------------------
   subroutine pm_n(m,r,cth,plmtable,tablesize)
-!
-! Another SCHA function, returns the SCHA version of the associated 
-! Legendre Polynomial, Pmn
-!
-  implicit none
-!
-! Args:
-  integer,intent(in) :: m,tablesize
-  real(r8),intent(in) :: r
-  real(r8),intent(in) :: cth(tablesize)
-  real(r8),intent(out) :: plmtable(tablesize)
-!
-! Local:
-  integer :: i,k
-  real(r8) :: rm,rk,div,ans,xn
-  real(r8),dimension(tablesize) :: a,x,tmp,table
-!
-  if (m == 0) then 
-    a = 1._r8 ! whole array op
-  else
-    do i=1,tablesize
-      a(i) = sqrt(1._r8-cth(i)**2)**m
-    enddo
-  endif
-  xn = r*(r+1._r8)
-  x(:) = (1._r8-cth(:))/2._r8
-  table = a ! whole array init
-  k = 1
-  pmn_loop: do         ! repeat-until loop in idl code
-    do i=1,tablesize
-      real8 = dble(m)
-      rm = real8
-      real8 = dble(k)
-      rk = real8
-      a(i) = a(i)*(x(i)*((rk+rm-1._r8)*(rk+rm)-xn)/(rk*(rk+rm)))
-      table(i) = table(i)+a(i) ! "result" in idl code
-    enddo
-    k = k+1
-    do i=1,tablesize
-      div = abs(table(i))
-      if (div <= 1.e-6_r8) div = 1.e-6_r8
-      tmp(i) = abs(a(i)) / div
-    enddo
-    if (maxval(tmp) < 1.e-6_r8) exit pmn_loop
-  enddo pmn_loop
-  ans = km_n(m,r)
+     !
+     ! Another SCHA function, returns the SCHA version of the associated
+     ! Legendre Polynomial, Pmn
+     !
+     ! Args:
+     integer,intent(in) :: m,tablesize
+     real(r8),intent(in) :: r
+     real(r8),intent(in) :: cth(tablesize)
+     real(r8),intent(out) :: plmtable(tablesize)
+     !
+     ! Local:
+     integer :: i,k
+     real(r8) :: rm,rk,div,ans,xn
+     real(r8),dimension(tablesize) :: a,x,tmp,table
+     !
+     if (m == 0) then
+        a = 1._r8 ! whole array op
+     else
+        do i=1,tablesize
+           a(i) = sqrt(1._r8-cth(i)**2)**m
+        end do
+     end if
+     xn = r*(r+1._r8)
+     x(:) = (1._r8-cth(:))/2._r8
+     table = a ! whole array init
+     k = 1
+     pmn_loop: do         ! repeat-until loop in idl code
+        do i=1,tablesize
+           rm = real(m, r8)
+           rk = real(k, r8)
+           a(i) = a(i)*(x(i)*((rk+rm-1._r8)*(rk+rm)-xn)/(rk*(rk+rm)))
+           table(i) = table(i)+a(i) ! "result" in idl code
+        end do
+        k = k+1
+        do i=1,tablesize
+           div = abs(table(i))
+           if (div <= 1.e-6_r8) div = 1.e-6_r8
+           tmp(i) = abs(a(i)) / div
+        end do
+        if (maxval(tmp) < 1.e-6_r8) exit pmn_loop
+     end do pmn_loop
+     ans = km_n(m,r)
 
-  plmtable(:) = table(:)*ans
+     plmtable(:) = table(:)*ans
   end subroutine pm_n
 !-----------------------------------------------------------------------
   real(r8) function km_n(m,rn)
-!
-! A normalization function used by the SCHA routines.  See Haines.
-!
-  implicit none
-!
-! Args:
-  integer,intent(in) :: m
-  real(r8),intent(in) :: rn
-!
-! Local:
-  real(r8) :: rm
-!
-  if (m == 0) then 
-    km_n = 1._r8
-    return
-  endif
-  real8 = dble(m)
-  rm = real8
-  km_n = sqrt(2._r8*exp(lngamma(rn+rm+1._r8)-lngamma(rn-rm+1._r8))) / &
-    (2._r8**m*factorial(m))
+     !
+     ! A normalization function used by the SCHA routines.  See Haines.
+     !
+     ! Args:
+     integer,intent(in) :: m
+     real(r8),intent(in) :: rn
+     !
+     ! Local:
+     real(r8) :: rm
+     !
+     if (m == 0) then
+        km_n = 1._r8
+        return
+     end if
+     rm = real(m, r8)
+     km_n = sqrt(2._r8*exp(lngamma(rn+rm+1._r8)-lngamma(rn-rm+1._r8))) / &
+          (2._r8**m*factorial(m))
   end function km_n
 !-----------------------------------------------------------------------
-  real(r8) function nkmlookup(k,m,th0)
-!
-! Given the size of a spherical cap, defined by the polar cap angle, th0, 
-!   and also the values of integers k and m, returns the value of n, a 
-!   real number (see Haines).
-! It uses interpolation from a lookup table that had been precomputed, 
-!   in order to reduce the computation time.
-!
-  implicit none
-!
-! Args:
-  integer,intent(in) :: k,m
-  real(r8),intent(in) :: th0
-!
-! Local:
-  integer :: kk,mm
-  real(r8) :: th0a(1),out(1)
+  real(r8) function nkmlookup(k, m, th0)
+     !
+     ! Given the size of a spherical cap, defined by the polar cap angle, th0,
+     !   and also the values of integers k and m, returns the value of n, a
+     !   real number (see Haines).
+     ! It uses interpolation from a lookup table that had been precomputed,
+     !   in order to reduce the computation time.
+     !
+     ! Args:
+     integer,intent(in) :: k,m
+     real(r8),intent(in) :: th0
+     !
+     ! Local:
+     integer :: kk,mm
+     real(r8) :: th0a(1),out(1)
 
-  if (th0 == 90._r8) then
-    real8 = dble(k)
-    nkmlookup = real8
-    return
-  endif
-  th0a(1) = th0
-  kk = k+1
-  mm = m+1
-  if (kk > maxk_scha) then
-    call interpol_quad(allnkm(maxk_scha,mm,:),th0s,th0a,out)
-  endif
-  if (mm > maxm_scha) then
-    call interpol_quad(allnkm(kk,maxm_scha,:),th0s,th0a,out)
-  endif
-  if (th0 < th0s(1)) then
-    write(iulog,"('>>> nkmlookup: th0 < th0s(1): th0=',e12.4,' th0s(1)=',e12.4)") &
-      th0,th0s(1)
-  endif
-  call interpol_quad(allnkm(kk,mm,:),th0s,th0a,out)
-  nkmlookup = out(1)
+     if (th0 == 90._r8) then
+        nkmlookup = real(k, r8)
+        return
+     end if
+     th0a(1) = th0
+     kk = k+1
+     mm = m+1
+     if (kk > maxk_scha) then
+        call interpol_quad(allnkm(maxk_scha,mm,:),th0s,th0a,out)
+     end if
+     if (mm > maxm_scha) then
+        call interpol_quad(allnkm(kk,maxm_scha,:),th0s,th0a,out)
+     end if
+     if (th0 < th0s(1)) then
+        write(iulog,"(a,e12.4,',  th0s(1) = ',e12.4)")                        &
+             '>>> nkmlookup: th0 < th0s(1): th0 = ', th0, th0s(1)
+     end if
+     call interpol_quad(allnkm(kk,mm,:), th0s, th0a, out)
+     nkmlookup = out(1)
   end function nkmlookup
 !-----------------------------------------------------------------------
   subroutine checkinputs(lat,mlt,inside,phir,colat)
-  implicit none
-!
-! Args:
-  real(r8),intent(in) :: lat,mlt
-  integer,intent(out) :: inside
-  real(r8),intent(out) :: phir,colat
-!
-! Local:
-  real(r8) :: lon,tlat,tlon,radii
-!
-  lon = mlt*15._r8
-  call dorotation(lat,lon,tlat,tlon)
-  radii = 90._r8-tlat
-  inside = 0
-  if (radii <= bndyfitr) inside = 1 ! bndyfitr from setboundary
-  phir = tlon*deg2rad
-  colat = radii
+     !
+     ! Args:
+     real(r8), intent(in)  :: lat,mlt
+     integer,  intent(out) :: inside
+     real(r8), intent(out) :: phir,colat
+     !
+     ! Local:
+     real(r8) :: lon, tlat, tlon, radii
+     !
+     lon = mlt*15._r8
+     call dorotation(lat,lon,tlat,tlon)
+     radii = 90._r8-tlat
+     inside = 0
+     if (radii <= bndyfitr) then
+        inside = 1 ! bndyfitr from setboundary
+     end if
+     phir = tlon*deg2rad
+     colat = radii
   end subroutine checkinputs
 !-----------------------------------------------------------------------
   subroutine dorotation(latin,lonin,latout,lonout)
 !
 ! Uses transformation matrices tmat and ttmat, to convert between
-!   the given geomagnetic latatud/longitude, and the coordinate 
+!   the given geomagnetic latatud/longitude, and the coordinate
 !   system that is used within the model,that is offset from the pole.
 !
-! Rotate Lat/Lon spherical coordinates with the transformation given 
-!   by saved matrix. The coordinates are assumed to be on a sphere of 
+! Rotate Lat/Lon spherical coordinates with the transformation given
+!   by saved matrix. The coordinates are assumed to be on a sphere of
 !   Radius=1. Uses cartesian coordinates as an intermediate step.
 !
   implicit none
@@ -1201,124 +1225,119 @@ module wei05sc
 !
   do i=1,3
     pos(i) = tmat(1,i)*a + tmat(2,i)*b + tmat(3,i)*stc
-  enddo
+  end do
   latout = asin(pos(3))*rad2deg
   lonout = atan2(pos(2),pos(1))*rad2deg
   end subroutine dorotation
 !-----------------------------------------------------------------------
   subroutine interpol_quad(v,x,u,p)
-!
-! f90 translation of IDL function interpol(v,x,u,/quadratic)
-!
-  implicit none
-!
-! Args:
-  real(r8),intent(in) :: v(:),x(:),u(:)
-  real(r8),intent(out) :: p(:)
-!
-! Local:
-  integer :: nv,nx,nu,i,ix
-  real(r8) :: x0,x1,x2
-!
-  nv = size(v)
-  nx = size(x)
-  nu = size(u)
-  if (nx /= nv) then
-    p(:) = 0._r8
-    return
-  endif
-  do i=1,nu
-    ix = value_locate(x,u(i))
-! 01/14 bae: interpol_quad in wei05sc.F is called when inside=1 or radii<bndryfit 
-!  for Weimer 2005. The fix to ix<=1 and ix>=nx assures epot is non-zero near 
-!  the pole (85.8mlat,0MLT) and the boundary (bndryfit).
-    if (ix <=1) ix = 2        ! bug fix by bae 01/28/14
-    if (ix >=nx) ix = nx-1            ! bug fix by bae 01/29/14
-!   if (ix <= 1.or.ix >= nx) then ! bug fix by btf 12/23/09
-!      p(i) = 0._r8
-!      cycle                       ! bug fix by btf 12/23/09
-!    endif
-    x1 = x(ix)
-    x0 = x(ix-1)
-    x2 = x(ix+1)
-    p(i) = v(ix-1) * (u(i)-x1) * (u(i)-x2) / ((x0-x1) * (x0-x2)) + & 
-           v(ix)   * (u(i)-x0) * (u(i)-x2) / ((x1-x0) * (x1-x2)) + & 
-           v(ix+1) * (u(i)-x0) * (u(i)-x1) / ((x2-x0) * (x2-x1))
-  enddo
+     !
+     ! f90 translation of IDL function interpol(v,x,u,/quadratic)
+     !
+     ! Args:
+     real(r8),intent(in) :: v(:),x(:),u(:)
+     real(r8),intent(out) :: p(:)
+     !
+     ! Local:
+     integer :: nv,nx,nu,i,ix
+     real(r8) :: x0,x1,x2
+     !
+     nv = size(v)
+     nx = size(x)
+     nu = size(u)
+     if (nx /= nv) then
+        p(:) = 0._r8
+        return
+     end if
+     do i = 1, nu
+        ix = value_locate(x,u(i))
+        ! 01/14 bae: interpol_quad in wei05sc.F is called when inside=1 or
+        !  radii<bndryfit for Weimer 2005. The fix to ix<=1 and ix>=nx
+        !  assures epot is non-zero near the pole (85.8mlat,0MLT) and
+        !  the boundary (bndryfit).
+        if (ix <=1) ix = 2
+        if (ix >=nx) ix = nx-1
+        x1 = x(ix)
+        x0 = x(ix-1)
+        x2 = x(ix+1)
+        p(i) = v(ix-1) * (u(i)-x1) * (u(i)-x2) / ((x0-x1) * (x0-x2)) + &
+             v(ix)   * (u(i)-x0) * (u(i)-x2) / ((x1-x0) * (x1-x2)) + &
+             v(ix+1) * (u(i)-x0) * (u(i)-x1) / ((x2-x0) * (x2-x1))
+     end do
   end subroutine interpol_quad
 !-----------------------------------------------------------------------
   integer function value_locate(vec,val)
-!
-! f90 translation of IDL function value_locate
-! Return index i into vec for which vec(i) <= val >= vec(i+1)
-! Input vec must be monotonically increasing
-!
-  implicit none
-!
-! Args:
-  real(r8),intent(in) :: vec(:),val
-!
-! Local:
-  integer :: n,i
-!
-  value_locate = 0
-  n = size(vec)
-  if (val < vec(1)) return
-  if (val > vec(n)) then
-    value_locate = n
-    return
-  endif
-  do i=1,n-1
-    if (val >= vec(i) .and. val <= vec(i+1)) then
-      value_locate = i
-      return
-    endif
-  enddo
+     !
+     ! f90 translation of IDL function value_locate
+     ! Return index i into vec for which vec(i) <= val >= vec(i+1)
+     ! Input vec must be monotonically increasing
+     !
+     implicit none
+     !
+     ! Args:
+     real(r8),intent(in) :: vec(:),val
+     !
+     ! Local:
+     integer :: n,i
+     !
+     value_locate = 0
+     n = size(vec)
+     if (val < vec(1)) then
+        return
+     end if
+     if (val > vec(n)) then
+        value_locate = n
+        return
+     end if
+     do i = 1, n-1
+        if (val >= vec(i) .and. val <= vec(i+1)) then
+           value_locate = i
+           return
+        end if
+     end do
   end function value_locate
 !-----------------------------------------------------------------------
   real(r8) function lngamma(xx)
-!
-! This is an f90 translation from C code copied from 
-! www.fizyka.umk.pl/nrbook/c6-1.pdf (numerical recipes gammln)
-!
-  implicit none
-  real(r8),intent(in) :: xx
-  real(r8) :: x,y,tmp,ser
-  real(r8) :: cof(6) = (/76.18009172947146_r8, -86.50532032941677_r8,   &
-    24.01409824083091_r8, -1.231739572450155_r8, 0.1208650973866179e-2_r8, &
-    -0.5395239384953e-5_r8/)
-  integer :: j
-!
-  y = xx
-  x = xx
-  tmp = x+5.5_r8
-  tmp = tmp-(x+0.5_r8)*log(tmp)
-  ser = 1.000000000190015_r8
-  do j=1,5
-    y = y+1
-    ser = ser+cof(j)/y
-  enddo
-  lngamma = -tmp+log(2.5066282746310005_r8*ser/x)
+     !
+     ! This is an f90 translation from C code copied from
+     ! gammln routine from "Numerical Recipes in C" Chapter 6.1.
+     ! see: http://numerical.recipes
+     !
+
+     real(r8), intent(in) :: xx
+     real(r8) :: x,y,tmp,ser
+     real(r8) :: cof(6) = (/76.18009172947146_r8, -86.50532032941677_r8,      &
+          24.01409824083091_r8, -1.231739572450155_r8,                        &
+          0.1208650973866179e-2_r8, -0.5395239384953e-5_r8/)
+     integer :: j
+     !
+     y = xx
+     x = xx
+     tmp = x+5.5_r8
+     tmp = tmp-(x + 0.5_r8) * log(tmp)
+     ser = 1.000000000190015_r8
+     do j = 1, 5
+        y = y + 1
+        ser = ser + (cof(j) / y)
+     end do
+     lngamma = -tmp+log(2.5066282746310005_r8*ser/x)
   end function lngamma
 !-----------------------------------------------------------------------
   real(r8) function factorial(n)
-  implicit none
-  integer,intent(in) :: n
-  integer :: m
-  if (n <= 0) then
-    factorial = 0._r8
-    return
-  endif
-  if (n == 1) then
-    factorial = 1._r8
-    return
-  endif
-  real8 = dble(n)
-  factorial = real8
-  do m = n-1,1,-1
-    real8 = dble(m)
-    factorial = factorial * real8
-  enddo
+     integer,intent(in) :: n
+     integer :: m
+     if (n <= 0) then
+        factorial = 0._r8
+        return
+     end if
+     if (n == 1) then
+        factorial = 1._r8
+        return
+     end if
+     factorial = real(n, r8)
+     do m = n-1,1,-1
+        factorial = factorial * real(m, r8)
+     end do
   end function factorial
 !-----------------------------------------------------------------------
 !*********************** Copyright 1996,2001 Dan Weimer/MRC ***********************
@@ -1336,7 +1355,7 @@ module wei05sc
 
         INTEGER YEAR,MONTH,DAY,IDBUG
         real(r8) :: HOUR
-!         
+!
 !      THIS SUBROUTINE DERIVES THE ROTATION MATRICES AM(I,J,K) FOR 11
 !      TRANSFORMATIONS, IDENTIFIED BY K.
 !          K=1 TRANSFORMS GSE to GEO
@@ -1347,13 +1366,13 @@ module wei05sc
 !          K=6     "      GSM to MAG
 !          K=7     "      GSE to GEI
 !          K=8     "      GEI to GEO
-!          K=9     "      GSM to SM 
-!          K=10    "      GEO to SM 
-!          K=11    "      MAG to SM 
+!          K=9     "      GSM to SM
+!          K=10    "      GEO to SM
+!          K=11    "      MAG to SM
 !
 !      IF IDBUG IS NOT 0, THEN OUTPUTS DIAGNOSTIC INFORMATION TO
 !      FILE UNIT=IDBUG
-!       
+!
         INTEGER GSEGEO,GEOGSE,GEOMAG,MAGGEO
         INTEGER GSEMAG,MAGGSE,GSEGSM,GSMGSE
         INTEGER GEOGSM,GSMGEO,GSMMAG,MAGGSM
@@ -1373,14 +1392,14 @@ module wei05sc
 !       MAG - Geomagnetic
 !       GSM - Geocentric Solar Magnetospheric
 !       SM  - Solar Magnetic
-!       
+!
 !      THE ARRAY CX(I) ENCODES VARIOUS ANGLES, STORED IN DEGREES
-!      ST(I) AND CT(I) ARE SINES & COSINES.       
+!      ST(I) AND CT(I) ARE SINES & COSINES.
 !
 !      Program author:  D. R. Weimer
 !
 !      Some of this code has been copied from subroutines which had been
-!      obtained from D. Stern, NASA/GSFC.  Other formulas are from "Space 
+!      obtained from D. Stern, NASA/GSFC.  Other formulas are from "Space
 !      Physics Coordinate Transformations: A User Guide" by M. Hapgood (1991).
 !
 !      The formulas for the calculation of Greenwich mean sidereal time (GMST)
@@ -1397,10 +1416,10 @@ module wei05sc
 !                  the DATA statement for assignments (not block_data)
 !       COMMON/MFIELD/EPOCH,TH0,PH0,DIPOLE
 !       COMMON/TRANSDAT/CX(9),ST(6),CT(6),AM(3,3,11)
-!         
+!
         real(r8) TH0,PH0 !,DIPOLE
         real(r8) CX(9),ST(6),CT(6),AM(3,3,11)
-!         
+!
 !  TH0 = geog co-lat of NH magnetic pole
 !  PH0 = geog longitude of NH magnetic pole
 !  DIPOLE = magnitude of the B field in gauss at the equator
@@ -1418,12 +1437,11 @@ module wei05sc
           IYR=1900+YEAR
         ELSE
           IYR=YEAR
-        ENDIF
+        END IF
         UT=HOUR
         JD=JULDAY(MONTH,DAY,IYR)
         MJD=JD-2400001
-        real8 = dble(MJD)
-        T0=(real8-51544.5_r8)/36525.0_r8
+        T0=(real(MJD, r8) - 51544.5_r8) / 36525.0_r8
         GMSTD=100.4606184_r8 + 36000.770_r8*T0 + 3.87933E-4_r8*T0*T0 + &
               15.0410686_r8*UT
         CALL ADJUST(GMSTD)
@@ -1444,7 +1462,7 @@ module wei05sc
           WRITE(IDBUG,*) 'MEAN ANOMALY=',MA
           WRITE(IDBUG,*) 'MEAN LONGITUDE=',LAMD
           WRITE(IDBUG,*) 'TRUE LONGITUDE=',SUNLON
-        ENDIF
+        END IF
 
         CX(1)= GMSTD
         CX(2) = ECLIP
@@ -1452,7 +1470,7 @@ module wei05sc
         CX(4) = TH0
         CX(5) = PH0
 ! Derived later:
-!       CX(6) = Dipole tilt angle  
+!       CX(6) = Dipole tilt angle
 !       CX(7) = Angle between sun and magnetic pole
 !       CX(8) = Subsolar point latitude
 !       CX(9) = Subsolar point longitude
@@ -1460,8 +1478,8 @@ module wei05sc
         DO I=1,5
           ST(I) = SIND(CX(I))
           CT(I) = COSD(CX(I))
-        ENDDO
-!         
+        END DO
+!
       AM(1,1,GSEGEI) = CT(3)
       AM(1,2,GSEGEI) = -ST(3)
       AM(1,3,GSEGEI) = 0._r8
@@ -1470,74 +1488,74 @@ module wei05sc
       AM(2,3,GSEGEI) = -ST(2)
       AM(3,1,GSEGEI) = ST(3)*ST(2)
       AM(3,2,GSEGEI) = CT(3)*ST(2)
-      AM(3,3,GSEGEI) = CT(2)      
-!         
-      AM(1,1,GEIGEO) = CT(1)      
-      AM(1,2,GEIGEO) = ST(1)      
-      AM(1,3,GEIGEO) = 0._r8         
-      AM(2,1,GEIGEO) = -ST(1)     
-      AM(2,2,GEIGEO) = CT(1)      
-      AM(2,3,GEIGEO) = 0._r8         
-      AM(3,1,GEIGEO) = 0._r8         
-      AM(3,2,GEIGEO) = 0._r8         
-      AM(3,3,GEIGEO) = 1._r8         
-!         
-      DO I=1,3   
-      DO J=1,3   
+      AM(3,3,GSEGEI) = CT(2)
+!
+      AM(1,1,GEIGEO) = CT(1)
+      AM(1,2,GEIGEO) = ST(1)
+      AM(1,3,GEIGEO) = 0._r8
+      AM(2,1,GEIGEO) = -ST(1)
+      AM(2,2,GEIGEO) = CT(1)
+      AM(2,3,GEIGEO) = 0._r8
+      AM(3,1,GEIGEO) = 0._r8
+      AM(3,2,GEIGEO) = 0._r8
+      AM(3,3,GEIGEO) = 1._r8
+!
+      DO I=1,3
+      DO J=1,3
         AM(I,J,GSEGEO) = AM(I,1,GEIGEO)*AM(1,J,GSEGEI) + &
           AM(I,2,GEIGEO)*AM(2,J,GSEGEI) +  AM(I,3,GEIGEO)*AM(3,J,GSEGEI)
-      ENDDO
-      ENDDO
-!         
-      AM(1,1,GEOMAG) = CT(4)*CT(5) 
-      AM(1,2,GEOMAG) = CT(4)*ST(5) 
-      AM(1,3,GEOMAG) =-ST(4)       
-      AM(2,1,GEOMAG) =-ST(5)       
-      AM(2,2,GEOMAG) = CT(5)       
+      END DO
+      END DO
+!
+      AM(1,1,GEOMAG) = CT(4)*CT(5)
+      AM(1,2,GEOMAG) = CT(4)*ST(5)
+      AM(1,3,GEOMAG) =-ST(4)
+      AM(2,1,GEOMAG) =-ST(5)
+      AM(2,2,GEOMAG) = CT(5)
       AM(2,3,GEOMAG) = 0._r8
-      AM(3,1,GEOMAG) = ST(4)*CT(5) 
-      AM(3,2,GEOMAG) = ST(4)*ST(5) 
-      AM(3,3,GEOMAG) = CT(4)       
-!         
-      DO I=1,3   
-      DO J=1,3   
+      AM(3,1,GEOMAG) = ST(4)*CT(5)
+      AM(3,2,GEOMAG) = ST(4)*ST(5)
+      AM(3,3,GEOMAG) = CT(4)
+!
+      DO I=1,3
+      DO J=1,3
        AM(I,J,GSEMAG) = AM(I,1,GEOMAG)*AM(1,J,GSEGEO) + &
          AM(I,2,GEOMAG)*AM(2,J,GSEGEO) +  AM(I,3,GEOMAG)*AM(3,J,GSEGEO)
-      ENDDO
-      ENDDO
-!         
-      B32 = AM(3,2,GSEMAG)         
-      B33 = AM(3,3,GSEMAG)         
-      B3  = SQRT(B32*B32+B33*B33)       
-      IF (B33.LE.0._r8) B3 = -B3    
-!         
-      AM(2,2,GSEGSM) = B33/B3      
-      AM(3,3,GSEGSM) = AM(2,2,GSEGSM)   
-      AM(3,2,GSEGSM) = B32/B3      
-      AM(2,3,GSEGSM) =-AM(3,2,GSEGSM)   
+      END DO
+      END DO
+!
+      B32 = AM(3,2,GSEMAG)
+      B33 = AM(3,3,GSEMAG)
+      B3  = SQRT(B32*B32+B33*B33)
+      IF (B33.LE.0._r8) B3 = -B3
+!
+      AM(2,2,GSEGSM) = B33/B3
+      AM(3,3,GSEGSM) = AM(2,2,GSEGSM)
+      AM(3,2,GSEGSM) = B32/B3
+      AM(2,3,GSEGSM) =-AM(3,2,GSEGSM)
       AM(1,1,GSEGSM) = 1._r8
       AM(1,2,GSEGSM) = 0._r8
       AM(1,3,GSEGSM) = 0._r8
       AM(2,1,GSEGSM) = 0._r8
       AM(3,1,GSEGSM) = 0._r8
-!         
-      DO I=1,3   
-      DO J=1,3   
+!
+      DO I=1,3
+      DO J=1,3
         AM(I,J,GEOGSM) = AM(I,1,GSEGSM)*AM(J,1,GSEGEO) + &
           AM(I,2,GSEGSM)*AM(J,2,GSEGEO) + AM(I,3,GSEGSM)*AM(J,3,GSEGEO)
-      ENDDO
-      ENDDO
-!         
-      DO I=1,3   
-      DO J=1,3   
+      END DO
+      END DO
+!
+      DO I=1,3
+      DO J=1,3
         AM(I,J,GSMMAG) = AM(I,1,GEOMAG)*AM(J,1,GEOGSM) + &
          AM(I,2,GEOMAG)*AM(J,2,GEOGSM) + AM(I,3,GEOMAG)*AM(J,3,GEOGSM)
-      ENDDO
-      ENDDO
+      END DO
+      END DO
 !
-        ST(6) = AM(3,1,GSEMAG)       
-        CT(6) = SQRT(1._r8-ST(6)*ST(6))      
-        CX(6) = ASIND(ST(6))     
+        ST(6) = AM(3,1,GSEMAG)
+        CT(6) = SQRT(1._r8-ST(6)*ST(6))
+        CX(6) = ASIND(ST(6))
 
         AM(1,1,GSMSM) = CT(6)
         AM(1,2,GSMSM) = 0._r8
@@ -1548,20 +1566,20 @@ module wei05sc
         AM(3,1,GSMSM) = ST(6)
         AM(3,2,GSMSM) = 0._r8
         AM(3,3,GSMSM) = CT(6)
-!         
-      DO I=1,3   
-      DO J=1,3   
+!
+      DO I=1,3
+      DO J=1,3
         AM(I,J,GEOSM) = AM(I,1,GSMSM)*AM(1,J,GEOGSM) + &
           AM(I,2,GSMSM)*AM(2,J,GEOGSM) +  AM(I,3,GSMSM)*AM(3,J,GEOGSM)
-      ENDDO
-      ENDDO
-!         
-      DO I=1,3   
-      DO J=1,3   
+      END DO
+      END DO
+!
+      DO I=1,3
+      DO J=1,3
         AM(I,J,MAGSM) = AM(I,1,GSMSM)*AM(J,1,GSMMAG) + &
          AM(I,2,GSMSM)*AM(J,2,GSMMAG) + AM(I,3,GSMSM)*AM(J,3,GSMMAG)
-      ENDDO
-      ENDDO
+      END DO
+      END DO
 !
       CX(7)=ATAN2D( AM(2,1,11) , AM(1,1,11) )
       CX(8)=ASIND( AM(3,1,1) )
@@ -1577,11 +1595,11 @@ module wei05sc
          WRITE(IDBUG,1001) K
          DO I=1,3
            WRITE(IDBUG,1002) (AM(I,J,K),J=1,3)
-         ENDDO
-        ENDDO
+         END DO
+        END DO
  1001   FORMAT(' ROTATION MATRIX ',I2)
  1002   FORMAT(3F9.5)
-      ENDIF
+      END IF
 
 !NCAR      Mar 96: return the dipole tilt from this function call.
       GET_TILT = CX(6)
@@ -1602,12 +1620,12 @@ module wei05sc
         IF(ANGLE.LT.0._r8)THEN
           ANGLE=ANGLE+360._r8
           GOTO 10
-        ENDIF
+        END IF
  20     CONTINUE
         IF(ANGLE.GE.360._r8)THEN
           ANGLE=ANGLE-360._r8
           GOTO 20
-        ENDIF
+        END IF
         end subroutine adjust
 !-----------------------------------------------------------------------
       integer FUNCTION JULDAY(MM,ID,IYYY)
@@ -1622,12 +1640,12 @@ module wei05sc
       ELSE
         JY=IYYY-1
         JM=MM+13
-      ENDIF
+      END IF
       JULDAY=INT(365.25_r8*JY)+INT(30.6001_r8*JM)+ID+1720995
       IF (ID+31*(MM+12*IYYY).GE.IGREG) THEN
         JA=INT(0.01_r8*JY)
         JULDAY=JULDAY+2-JA+INT(0.25_r8*JA)
-      ENDIF
+      END IF
       end function julday
 !-----------------------------------------------------------------------
       SUBROUTINE CVT2MD(iulog,IYEAR,NDA,MON,DAY)
@@ -1640,10 +1658,10 @@ module wei05sc
       PARAMETER (MISS=-32767)
       SAVE LMON
       DATA LMON/31,28,31,30,31,30,31,31,30,31,30,31/
- 
+
       LMON(2)=28
       IF(MOD(IYEAR,4) .EQ. 0)LMON(2)=29
- 
+
       NUMD=0
       DO 100 I=1,12
       IF(NDA.GT.NUMD .AND. NDA.LE.NUMD+LMON(I))GO TO 200
@@ -1694,6 +1712,5 @@ module wei05sc
                   R2D = 57.2957795130823208767981548147_r8)
       ATAN2D = R2D * ATAN2 (RNUM1,RNUM2)
       end function atan2d
-#endif
 !-----------------------------------------------------------------------
 end module wei05sc

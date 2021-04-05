@@ -15,7 +15,7 @@
 <epp_all_varname>'epp_ion_rates'</epp_all_varname>
 
 <!--Species IC -->
-<ncdata dyn="fv"  hgrid="0.9x1.25">atm/waccm/ic/f.c61016.FC6XSD.f09_f09_mg17.test01.cam.i.2000-01-21-00000_c190325.nc</ncdata>
+<ncdata dyn="fv"  hgrid="0.9x1.25">atm/waccm/ic/f.c62004.FC6XSD.f09_f09_mg17.cam.i.1980-01-01-00000_c191211.nc</ncdata>
 <ncdata dyn="fv"  hgrid="1.9x2.5" >atm/waccm/ic/FC6XSD_f19_f19_mg17_L145_1981-01-01-00000_c190617.nc</ncdata>
 
 <met_rlx_bot>50.</met_rlx_bot>

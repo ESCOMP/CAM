@@ -1,0 +1,5 @@
+driver=`./xmlquery --value COMP_INTERFACE`
+if [ "$driver" = "nuopc" ]; then
+  ./xmlchange ROF_NCPL=\$ATM_NCPL
+  ./xmlchange GLC_NCPL=\$ATM_NCPL
+fi

@@ -146,6 +146,7 @@
       <value compset="_(CAM50|CAM60)%WCTS">-chem waccm_tsmlt_mam4</value>
       <value compset="_CAM40%WCMD">-chem waccm_mad</value>
       <value compset="_CAM\d0%WXIE">-waccmx -ionosphere wxie</value>
+      <value compset="_CAM\d0%WX_" >-waccmx -ionosphere none -chem waccm_ma</value>
       <value compset="_CAM40%WXIE(_|%)">-chem waccm_ma</value>
       <value compset="_CAM40%WXIED">-chem waccm_mad</value>
       <value compset="_CAM60%WXIE(_|%)">-chem waccm_ma_mam4</value>
@@ -198,6 +199,7 @@
 
       <value compset="2000_CAM40%TMOZ"   >2000_cam4_trop_chem</value>
       <value compset="2000_CAM40%WXIE"   >waccmxie_ma_2000_cam4</value>
+      <value compset="2000_CAM40%WX_"    >waccmx_ma_2000_cam4</value>
 
       <value compset="2000_CAM60"        >2000_cam6</value>
       <value compset="2000_CAM60%WCTS"   >waccm_tsmlt_2000_cam6</value>

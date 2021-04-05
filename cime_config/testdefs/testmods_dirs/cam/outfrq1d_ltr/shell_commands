@@ -1,0 +1,5 @@
+./xmlchange ROF_NCPL=\$ATM_NCPL
+./xmlchange GLC_NCPL=\$ATM_NCPL
+./xmlchange RUN_STARTDATE=2010-08-03
+./xmlchange START_TOD=0
+./xmlchange CLM_FORCE_COLDSTART=on

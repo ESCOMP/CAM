@@ -26,6 +26,7 @@ help () {
   echo "${hprefix} [ -j ] (number of jobs for gmake)"
   echo "${hprefix} [ --baseline-dir <directory> ] (directory for saving baselines of cime tests)"
   echo "${hprefix} [ --no-baseline] (baselines of cime tests are not saved)"
+  echo "${hprefix} [ --xml-driver <driver_name> ] (mct or nuopc; default mct)"
   echo "${hprefix} [ --cesm <test_name(s)> ] (default aux_cam)"
   echo "${hprefix} [ --rerun-cesm <test_id> ] (rerun the cesm tests with the --use-existing-flag)"
   echo "${hprefix} [ --namelists-only ] (Only perform namelist actions for tests.  Incompatible with --rerun-cesm.)"
@@ -179,6 +180,14 @@ while [ "${1:0:1}" == "-" ]; do
               echo "test_driver.sh: FATAL ERROR: --rerun-cesm and --namelists-only were set"
               exit 1
             fi
+            ;;
+
+        --xml-driver )
+            if [ $# -lt 2 ]; then
+                perr "${1} specify mct or nuopc)"
+            fi
+            xml_driver="${2}"
+            shift
             ;;
 
         --namelists-only )
@@ -541,6 +550,9 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
       fi
     fi
 
+    if [ -n "${xml_driver}" ] ; then
+        testargs="${testargs} --xml-driver ${xml_driver}"
+    fi
 
     echo ""
     echo "CESM test results will be in: ${cesm_testdir}" | tee -a ${logfile}
