@@ -107,10 +107,12 @@ public :: &
    micro_mg_cam_init,            &
    micro_mg_cam_tend,            &
    micro_mg_version,             &
+   micro_mg_num_steps,           &
    massless_droplet_destroyer
 
 integer :: micro_mg_version     = 1      ! Version number for MG.
 integer :: micro_mg_sub_version = 0      ! Second part of version number.
+integer :: micro_mg_num_steps   = 1      ! Number of substepping iterations done by MG (versions 1.5 and later).
 
 real(r8) :: micro_mg_dcs = -1._r8
 
@@ -299,8 +301,6 @@ subroutine micro_mg_cam_readnl(nlfile)
   ! Namelist variables
   logical :: micro_mg_do_cldice = .true. ! do_cldice = .true., MG microphysics is prognosing cldice
   logical :: micro_mg_do_cldliq = .true. ! do_cldliq = .true., MG microphysics is prognosing cldliq
-  integer :: micro_mg_num_steps = 1      ! Number of substepping iterations done by MG (1.5 only for now).
-
 
   ! Local variables
   integer :: unitn, ierr

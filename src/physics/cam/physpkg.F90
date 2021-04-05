@@ -1042,7 +1042,10 @@ contains
     ! First part of atmospheric physics package before updating of surface models
     !
     !-----------------------------------------------------------------------
-    use time_manager,   only: get_nstep
+    use time_manager,   only: get_nstep, is_first_step, is_first_restart_step
+    use clubb_intr,     only: clubb_timestep
+    use micro_mg_cam,   only: micro_mg_num_steps
+    use radiation,      only: iradsw, iradlw
     use cam_diagnostics,only: diag_allocate, diag_physvar_ic
     use check_energy,   only: check_energy_gmean
     use phys_control,   only: phys_getopts
@@ -1059,7 +1062,7 @@ contains
     !
     ! Input arguments
     !
-    real(r8), intent(in) :: ztodt            ! physics time step unless nstep=0
+    real(r8), intent(in) :: ztodt            ! physics time step
     !
     ! Input/Output arguments
     !
@@ -1077,6 +1080,13 @@ contains
     integer :: ncol                              ! number of columns
     integer :: nstep                             ! current timestep number
     logical :: use_spcam
+
+    real(r8):: cld_macmic_ztodt                  ! macro/micro timestep
+    real(r8):: clubb_timestep_actual             ! internally computed clubb timestep
+    real(r8):: micro_mg_timestep                 ! mg timestep
+    real(r8):: rrtmg_sw_timestep                 ! rrtmg timestep for shortwave radiation
+    real(r8):: rrtmg_lw_timestep                 ! rrtmg timestep for longwave radiation
+
     type(physics_buffer_desc), pointer :: phys_buffer_chunk(:)
 
     call t_startf ('physpkg_st1')
@@ -1118,6 +1128,53 @@ contains
     call gmean_mass ('before tphysbc DRY', phys_state)
 #endif
 
+    ! Compute SW radiation time-step
+    if (iradsw > 0) then
+      rrtmg_sw_timestep = ztodt*iradsw
+    else
+      rrtmg_sw_timestep = 3600._r8*iradsw
+    end if
+    ! Compute LW radiation time-step
+    if (iradlw > 0) then
+      rrtmg_lw_timestep = ztodt*iradlw
+    else
+      rrtmg_lw_timestep = 3600._r8*iradlw
+    end if
+    ! 
+    if( microp_scheme == 'MG' ) then
+      ! Compute macro/micro time-step
+      cld_macmic_ztodt = ztodt/cld_macmic_num_steps
+      ! Compute MG time-step
+      micro_mg_timestep = cld_macmic_ztodt/micro_mg_num_steps
+    end if
+    ! Compute CLUBB time-step
+    if (macrop_scheme == 'CLUBB_SGS') then
+      clubb_timestep_actual = clubb_timestep
+      if (mod(cld_macmic_ztodt,clubb_timestep_actual) .ne. 0) then
+        clubb_timestep_actual = cld_macmic_ztodt/2._r8
+        do while (clubb_timestep_actual > clubb_timestep)
+          clubb_timestep_actual = clubb_timestep_actual/2._r8
+        end do
+      endif
+    end if
+    ! Print physics time-steps
+    if ((is_first_step() .or. is_first_restart_step()) .and. masterproc) then
+      write(iulog,'(a)') '----------------------------------'
+      write(iulog,'(a)') 'TIME STEPS USED IN PHYSICS PACKAGE'
+      write(iulog,'(a)') '----------------------------------'
+      write(iulog,'(a,f10.2,a)') '  Physics time-step:     ', ztodt, ' s'
+      write(iulog,'(a,f10.2,a)') '  RRTMG SW time-step:    ', rrtmg_sw_timestep, ' s'
+      write(iulog,'(a,f10.2,a)') '  RRTMG LW time-step:    ', rrtmg_lw_timestep, ' s'
+      if (microp_scheme == 'MG') then
+        write(iulog,'(a,f10.2,a)') '  Macro/micro time-step: ', cld_macmic_ztodt, ' s'
+        write(iulog,'(a,f10.2,a)') '  MG time-step:          ', micro_mg_timestep, ' s'
+      end if
+      if (macrop_scheme == 'CLUBB_SGS') then
+        write(iulog,'(a,f10.2,a)') '  Target CLUBB time-step:', clubb_timestep, ' s'
+        write(iulog,'(a,f10.2,a)') '  Actual CLUBB time-step:', clubb_timestep_actual, ' s'
+      end if
+      write(iulog,'(a)') '----------------------------------'
+    end if
 
     !-----------------------------------------------------------------------
     ! Tendency physics before flux coupler invocation
