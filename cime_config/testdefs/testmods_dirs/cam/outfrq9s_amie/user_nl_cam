@@ -1,8 +1,11 @@
-mfilt=1,1,1,1,1,1
-ndens=1,1,1,1,1,1
-nhtfrq=9,9,9,9,9,9
+mfilt=1,1,1,1,1,1,1,1,1
+ndens=1,1,1,1,1,1,1,1,1
+nhtfrq=9,9,9,9,9,9,9,9,9
+avgflag_pertape = 'A',  'I',  'I',  'A',  'A', 'I', 'A'
 inithist='ENDOFRUN'
 ionos_epotential_amie=.true.
-amienh_file = '$DIN_LOC_ROOT/atm/waccm/amie_data/oct27_31_2003_nh.nc'
-amiesh_file = '$DIN_LOC_ROOT/atm/waccm/amie_data/oct27_31_2003_sh.nc'
-fincl6 = 'amie_phihm','amie_efxm','amie_kevm','amie_efxg','amie_kevg','amie_efx_phys','amie_kev_phys'
+amienh_files = '$DIN_LOC_ROOT/atm/waccm/amie_data/oct27_31_2003_nh.nc'
+amiesh_files = '$DIN_LOC_ROOT/atm/waccm/amie_data/oct27_31_2003_sh.nc'
+fincl6 = 'prescr_phihm','prescr_efxm','prescr_kevm','prescr_efxp','prescr_kevp','amie_efx_phys','amie_kev_phys'
+oplus_grid = 144,96
+ionos_npes = 72

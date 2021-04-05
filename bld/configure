@@ -84,7 +84,7 @@ OPTIONS
                         dlatxdlon for fv grids (dlat and dlon are the grid cell size
                         in degrees for latitude and longitude respectively); nexnp for
                         se grids.
-     -ionosphere        Ionophere module used in WACCMX [ none | wxi | wxie ].
+     -ionosphere        Ionophere module used in WACCMX [ none | wxie ].
      -macrophys <name>  Specify the macrophysics option [rk | park | clubb_sgs].
      -max_n_rad_cnst <n> Maximum number of constituents that are either radiatively
                         active, or in any single diagnostic list for the radiation.
@@ -1273,15 +1273,10 @@ my $nlev = 0;
 
 # Defaults
 if ($waccmx) {
-    if ($ionos =~ /wxi/) {
-      if ($phys_pkg eq 'cam6') {
+    if ($phys_pkg eq 'cam6') {
         $nlev = 130;
-      } else {
+    } else {
         $nlev = 126;
-      }
-    }
-    else {
-        $nlev = 81;
     }
 }
 elsif ($chem_pkg =~ /waccm_/) {
@@ -1881,15 +1876,6 @@ if ($cfg_ref->get('analytic_ic')) {
 #WACCM-X extended thermosphere/ionosphere model
 if ($waccmx) {
     $cfg_cppdefs .= ' -DWACCMX_PHYS';
-    if (($dyn_pkg ne 'fv') and ($ionos ne 'none'))  {
-        die "ERROR:  Ionosphere is only available for FV dycore \n";
-    }
-    if ($ionos =~ /wxi/) {
-       $cfg_cppdefs .= ' -DWACCMX_IONOS';
-    }
-    if ($ionos =~ /wxie/) {
-       $cfg_cppdefs .= ' -DWACCMX_EDYN_ESMF';
-    }
 }
 
 # PIO
@@ -2136,7 +2122,7 @@ sub write_filepath
 
     if ($waccmx) {
         print $fh "$camsrcdir/src/physics/waccmx\n";
-        if ($ionos =~ /wxi/) {
+        if ($ionos =~ /wxie/) {
             print $fh "$camsrcdir/src/ionosphere/waccmx\n";
         }
     }
@@ -2314,7 +2300,7 @@ sub write_mpas_makefile
 
     print $fh_out  <<"EOF";
 
-MPAS_SRC_ROOT := $cam_root/src/dynamics/mpas
+MPAS_SRC_ROOT := $cam_dir/src/dynamics/mpas
 
 EOF
 

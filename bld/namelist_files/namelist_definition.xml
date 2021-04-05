@@ -2149,9 +2149,8 @@ Default: 2,2,2,2,2,2,2,2,2,2
        group="cam_history_nl" valid_values="" >
 
 Array of write frequencies for each history file series.
-If {{ hilight }}nhtfrq(1){{ closehilight }} = 0, the file will be a monthly average.
-Only the first file series may be a monthly average.  If
-{{ hilight }}nhtfrq(i){{ closehilight }} &gt; 0, frequency is specified as number of
+If {{ hilight }}nhtfrq(i){{ closehilight }} = 0, the file will be a monthly average.
+If {{ hilight }}nhtfrq(i){{ closehilight }} &gt; 0, frequency is specified as number of
 timesteps.  If {{ hilight }}nhtfrq(i){{ closehilight }} &lt; 0, frequency is specified
 as number of hours.
 
@@ -4333,6 +4332,15 @@ cache file to be consistent with how CAM was built.
 Default: set by build-namelist
 </entry>
 
+<entry id="cam_physics_mesh" type="char*256" input_pathname="abs"
+       category="build" group="phys_ctl_nl" valid_values="" >
+Full pathname to CAM physics grid ESMF mesh file.
+N.B. this variable may not be set by the user.
+It is set by build-namelist via information in the configure
+cache file to be consistent with how CAM was built.
+Default: set by build-namelist
+</entry>
+
 <entry id="waccmx_opt" type="char*16" category="waccmx"
        group="phys_ctl_nl" valid_values="ionosphere,neutral,off" >
 Runtime options of upper thermosphere WACCM-X.  'ionosphere' for
@@ -4367,6 +4375,25 @@ Switch to apply ring polar filter within in ionosphere O+ transport.
 Default: FALSE
 </entry>
 
+<entry id="oplus_grid" type="integer(2)"
+       category="waccmx" group="ionosphere_nl" valid_values="" >
+Oplus transport grid size, entered as num_longitudes, num_latitudes.
+Default: set by build-namelist
+</entry>
+
+<entry id="edyn_grid" type="char*8"
+       category="waccmx" group="ionosphere_nl" valid_values="80x97,160x193,320x385,640x769" >
+Magnetic grid resolution (nlon x nlat).
+Default: set by build-namelist
+</entry>
+
+<entry id="ionos_npes" type="integer"
+       category="waccmx" group="ionosphere_nl" valid_values="" >
+Number of MPI processes on which to run the WACCM-X ionosphere
+electro-dynamo and O+ ion transport modules.
+Default: 0 (use all atmosphere tasks)
+</entry>
+
 <entry id="ionos_xport_active" type="logical"  category="waccmx"
        group="ionosphere_nl" valid_values="">
 Switch to to turn on/off O+ transport in ionosphere.
@@ -4393,12 +4420,6 @@ Electric potential model used in the waccmx ionosphere.
 Default: set by build-namelist
 </entry>
 
-<entry id="ionos_epotential_amie" type="logical"  category="waccmx"
-       group="ionosphere_nl" valid_values="">
-Give the user the ability to input prescribed high-latitude electric potential.
-Default: FALSE
-</entry>
-
 <entry id="epot_crit_colats" type="real*2"  category="waccmx"
        group="ionosphere_nl" valid_values="">
 Co-latitudes (degrees) of the critical angles where the ionosphere
@@ -4414,15 +4435,33 @@ high latitude electric potential model.
 Default: set by build-namelist.
 </entry>
 
-<entry id="amienh_file" type="char*256" input_pathname="abs" category="waccmx"
+<entry id="ionos_epotential_amie" type="logical"  category="waccmx"
+       group="ionosphere_nl" valid_values="">
+Give the user the ability to input prescribed high-latitude electric potential.
+Default: FALSE
+</entry>
+
+<entry id="amienh_files" type="char*256(20)" input_pathname="abs" category="waccmx"
        group="ionosphere_nl" valid_values="" >
-Full pathname of AMIE inputs for northern hemisphere.
+List of full pathnames of AMIE electic potential inputs for northern hemisphere.
 Default: NONE.
 </entry>
 
-<entry id="amiesh_file" type="char*256" input_pathname="abs" category="waccmx"
+<entry id="amiesh_files" type="char*256(20)" input_pathname="abs" category="waccmx"
        group="ionosphere_nl" valid_values="" >
-Full pathname of AMIE inputs for southern hemisphere.
+List of full pathnames of AMIE electic potential inputs for southern hemisphere.
+Default: NONE.
+</entry>
+
+<entry id="ionos_epotential_ltr" type="logical"  category="waccmx"
+       group="ionosphere_nl" valid_values="">
+Give the user the ability to input LTR high-latitude electric potential.
+Default: FALSE
+</entry>
+
+<entry id="ltr_files" type="char*256(20)" input_pathname="abs" category="waccmx"
+       group="ionosphere_nl" valid_values="" >
+List of full pathnames of LTR electic potential inputs for both hemispheres.
 Default: NONE.
 </entry>
 
