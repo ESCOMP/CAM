@@ -1132,13 +1132,13 @@ contains
     if (iradsw > 0) then
       rrtmg_sw_timestep = ztodt*iradsw
     else
-      rrtmg_sw_timestep = 3600._r8*iradsw
+      rrtmg_sw_timestep = -3600._r8*iradsw
     end if
     ! Compute LW radiation time-step
     if (iradlw > 0) then
       rrtmg_lw_timestep = ztodt*iradlw
     else
-      rrtmg_lw_timestep = 3600._r8*iradlw
+      rrtmg_lw_timestep = -3600._r8*iradlw
     end if
     ! 
     if( microp_scheme == 'MG' ) then
