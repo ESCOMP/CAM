@@ -1046,7 +1046,7 @@ subroutine read_inidat(dyn_in)
    theta_m(:,1:nCellsSolve) = theta(:,1:nCellsSolve) * (1.0_r8 + Rv_over_Rd * tracers(ixqv,:,1:nCellsSolve))
 
    ! if (.not. analytic_ic_active()) then  ! scale dry-air mass
-   !   call cam_mpas_global_sum_real( domain_ptr % dminfo, areaCell(1:nCellsSolve), surface_integral )
+   !   surface_integral = cam_mpas_global_sum_real(areaCell(1:nCellsSolve))
    !   write(iulog,*) subname//': Cell area test value = ', surface_integral
    !   test_value = sqrt(surface_integral/(4.0_r8*pi))
    !   write(iulog,*) subname//': earth radius from area = ', test_value
@@ -1073,9 +1073,9 @@ subroutine read_inidat(dyn_in)
 
       ! (3) compute average global dry surface pressure                                                                                           
       preliminary_dry_surface_pressure(1:nCellsSolve) =  preliminary_dry_surface_pressure(1:nCellsSolve)*areaCell(1:nCellsSolve)
-      call cam_mpas_global_sum_real( domain_ptr % dminfo, areaCell(1:nCellsSolve), sphere_surface_area )
-      call cam_mpas_global_sum_real( domain_ptr % dminfo, preliminary_dry_surface_pressure(1:nCellsSolve), preliminary_avg_dry_surface_pressure )
-      preliminary_avg_dry_surface_pressure = preliminary_avg_dry_surface_pressure/sphere_surface_area
+      sphere_surface_area = cam_mpas_global_sum_real(areaCell(1:nCellsSolve))
+      preliminary_avg_dry_surface_pressure = cam_mpas_global_sum_real(preliminary_dry_surface_pressure(1:nCellsSolve)) &
+                                                                      /sphere_surface_area
       write(iulog,*) subname//': initial dry globally avg surface pressure (hPa) = ', preliminary_avg_dry_surface_pressure/100.
 
       ! (4) scale dry air density                                                                                                                 

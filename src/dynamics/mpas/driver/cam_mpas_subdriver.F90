@@ -2571,7 +2571,7 @@ contains
     !>
     !
     !-----------------------------------------------------------------------
-    subroutine cam_mpas_global_sum_real(dminfo, rarray, global_sum)
+    function cam_mpas_global_sum_real(rarray) result(global_sum)
 
        use mpas_kind_types, only : RKIND
        use mpas_dmpar, only : mpas_dmpar_sum_real, mpas_dmpar_bcast_real
@@ -2579,16 +2579,15 @@ contains
        implicit none
 
        ! Input variables
-       type (dm_info), intent(in) :: dminfo
        real (RKIND), dimension(:), intent(in) :: rarray
-       real (RKIND), intent(out) :: global_sum
+       real (RKIND) :: global_sum
 
        real (RKIND) :: local_sum
 
        local_sum = sum(rarray)
-       call mpas_dmpar_sum_real(dminfo, local_sum, global_sum)
+       call mpas_dmpar_sum_real(domain_ptr % dminfo, local_sum, global_sum)
 
-    end subroutine cam_mpas_global_sum_real
+    end function cam_mpas_global_sum_real
 
 
 end module cam_mpas_subdriver
