@@ -302,8 +302,8 @@
       <option name="comment" >012 tsm</option>
     </options>
   </test>
-<!--              111 tsm, ter, tbr, tbl                              -->
-  <test compset="QPC5" grid="T5_T5_mg37" name="ERI_D_Ln18" testmods="cam/ghgrmp_e8">
+<!--              111 tsm, ter, tbr, tbl, changed to QPC6/f19      -->
+  <test compset="QPC6" grid="f19_f19_mg17" name="ERI_D_Ln18" testmods="cam/ghgrmp_e8">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
