@@ -17,7 +17,7 @@ use constituents,    only: pcnst, cnst_name, cnst_longname, cnst_cam_outfld
 use constituents,    only: ptendnam, dmetendnam, apcnst, bpcnst, cnst_get_ind
 use dycore,          only: dycore_is
 use phys_control,    only: phys_getopts
-use wv_saturation,   only: qsat, qsat_water, svp_ice
+use wv_saturation,   only: qsat, qsat_water, svp_ice_vect
 use time_manager,    only: is_first_step
 
 use scamMod,         only: single_column, wfld
@@ -1350,8 +1350,9 @@ contains
           call pbuf_get_field(pbuf, relhum_idx, ftem_ptr)
           ftem(:ncol,:) = ftem_ptr(:ncol,:)
        else
-          call qsat(state%t(:ncol,:), state%pmid(:ncol,:), &
-                    tem2(:ncol,:), ftem(:ncol,:))
+          do k = 1, pver
+             call qsat(state%t(1:ncol,k), state%pmid(1:ncol,k), tem2(1:ncol,k), ftem(1:ncol,k), ncol)
+          end do
           ftem(:ncol,:) = state%q(:ncol,:,1)/ftem(:ncol,:)*100._r8
        end if
        call outfld ('RELHUM  ',ftem    ,pcols   ,lchnk     )
@@ -1360,17 +1361,18 @@ contains
     if (hist_fld_active('RHW') .or. hist_fld_active('RHI') .or. hist_fld_active('RHCFMIP') ) then
 
       ! RH w.r.t liquid (water)
-      call qsat_water (state%t(:ncol,:), state%pmid(:ncol,:), &
-           esl(:ncol,:), ftem(:ncol,:))
+      do k = 1, pver
+         call qsat_water (state%t(1:ncol,k), state%pmid(1:ncol,k), esl(1:ncol,k), ftem(1:ncol,k), ncol)
+      end do
       ftem(:ncol,:) = state%q(:ncol,:,1)/ftem(:ncol,:)*100._r8
       call outfld ('RHW  ',ftem    ,pcols   ,lchnk     )
 
       ! Convert to RHI (ice)
-      do i=1,ncol
-        do k=1,pver
-          esi(i,k)=svp_ice(state%t(i,k))
-          ftem1(i,k)=ftem(i,k)*esl(i,k)/esi(i,k)
-        end do
+      do k=1,pver
+         call svp_ice_vect(state%t(1:ncol,k), esi(1:ncol,k), ncol)
+         do i=1,ncol
+            ftem1(i,k)=ftem(i,k)*esl(i,k)/esi(i,k)
+         end do
       end do
       call outfld ('RHI  ',ftem1    ,pcols   ,lchnk     )
 
@@ -1803,8 +1805,7 @@ contains
       call outfld('U10',      cam_in%u10,       pcols, lchnk)
       !
       ! Calculate and output reference height RH (RHREFHT)
-
-      call qsat(cam_in%tref(:ncol), state%ps(:ncol), tem2(:ncol), ftem(:ncol))
+      call qsat(cam_in%tref(1:ncol), state%ps(1:ncol), tem2(1:ncol), ftem(1:ncol), ncol)
       ftem(:ncol) = cam_in%qref(:ncol)/ftem(:ncol)*100._r8
 
 

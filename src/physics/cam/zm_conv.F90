@@ -1481,9 +1481,9 @@ subroutine zm_conv_evap(ncol,lchnk, &
     prec(:ncol) = prec(:ncol)*1000._r8
 
 ! determine saturation vapor pressure
-    call qsat(t(1:ncol, 1:pver), pmid(1:ncol, 1:pver), &
-         es(1:ncol, 1:pver), qs(1:ncol, 1:pver))
-
+    do k = 1,pver
+       call qsat(t(1:ncol,k), pmid(1:ncol,k), es(1:ncol,k), qs(1:ncol,k), ncol)
+    end do
 ! determine ice fraction in rain production (use cloud water parameterization fraction at present)
     call cldfrc_fice(ncol, t, fice, fsnow_conv)
 
@@ -4702,7 +4702,7 @@ end SUBROUTINE ientropy
 ! Wrapper for qsat_water that does translation between Pa and hPa
 ! qsat_water uses Pa internally, so get it right, need to pass in Pa.
 ! Afterward, set es back to hPa.
-elemental subroutine qsat_hPa(t, p, es, qm)
+subroutine qsat_hPa(t, p, es, qm)
   use wv_saturation, only: qsat_water
 
   ! Inputs

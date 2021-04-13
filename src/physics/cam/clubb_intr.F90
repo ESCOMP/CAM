@@ -1986,11 +1986,11 @@ end subroutine clubb_init_cnst
      qitend(:ncol,:)=0._r8
      initend(:ncol,:)=0._r8
 
-     call ice_macro_tend(naai(:ncol,top_lev:pver),state1%t(:ncol,top_lev:pver), &
-        state1%pmid(:ncol,top_lev:pver),state1%q(:ncol,top_lev:pver,1),state1%q(:ncol,top_lev:pver,ixcldice),&
-        state1%q(:ncol,top_lev:pver,ixnumice),latsub,hdtime,&
-        stend(:ncol,top_lev:pver),qvtend(:ncol,top_lev:pver),qitend(:ncol,top_lev:pver),&
-        initend(:ncol,top_lev:pver))
+     call ice_macro_tend(naai(1:ncol,top_lev:pver), state1%t(1:ncol,top_lev:pver),                       &
+                         state1%pmid(1:ncol,top_lev:pver), state1%q(1:ncol,top_lev:pver,1),              &
+                         state1%q(1:ncol,top_lev:pver,ixcldice), state1%q(1:ncol,top_lev:pver,ixnumice), &
+                         latsub, hdtime, stend(1:ncol,top_lev:pver), qvtend(1:ncol,top_lev:pver),        &
+                         qitend(1:ncol,top_lev:pver), initend(1:ncol,top_lev:pver), ncol*(pver-top_lev+1))
 
     ! update local copy of state with the tendencies
      ptend_loc%q(:ncol,top_lev:pver,1)=qvtend(:ncol,top_lev:pver)
@@ -3003,12 +3003,12 @@ end subroutine clubb_init_cnst
       qctend(:ncol,:)=0._r8
       inctend(:ncol,:)=0._r8
  
-      call liquid_macro_tend(npccn(:ncol,top_lev:pver),state1%t(:ncol,top_lev:pver), &
-         state1%pmid(:ncol,top_lev:pver),state1%q(:ncol,top_lev:pver,ixq),state1%q(:ncol,top_lev:pver,ixcldliq),&
-         state1%q(:ncol,top_lev:pver,ixnumliq),latvap,hdtime,&
-         stend(:ncol,top_lev:pver),qvtend(:ncol,top_lev:pver),qctend(:ncol,top_lev:pver),&
-         inctend(:ncol,top_lev:pver))
- 
+      call liquid_macro_tend(npccn(1:ncol,top_lev:pver), state1%t(1:ncol,top_lev:pver),                      &
+                             state1%pmid(1:ncol,top_lev:pver), state1%q(1:ncol,top_lev:pver,ixq),            &
+                             state1%q(1:ncol,top_lev:pver,ixcldliq), state1%q(1:ncol,top_lev:pver,ixnumliq), &
+                             latvap, hdtime, stend(1:ncol,top_lev:pver),qvtend(1:ncol,top_lev:pver),         &
+                             qctend(1:ncol,top_lev:pver), inctend(1:ncol,top_lev:pver), ncol*(pver-top_lev+1))
+
       ! update local copy of state with the tendencies
       ptend_loc%q(:ncol,top_lev:pver,ixq)=qvtend(:ncol,top_lev:pver)
       ptend_loc%q(:ncol,top_lev:pver,ixcldliq)=qctend(:ncol,top_lev:pver)
@@ -3508,50 +3508,52 @@ end subroutine clubb_init_cnst
 
 ! Saturation adjustment for ice
 ! Add ice mass if supersaturated
-elemental subroutine ice_macro_tend(naai,t,p,qv,qi,ni,xxls,deltat,stend,qvtend,qitend,nitend) 
+subroutine ice_macro_tend(naai,t,p,qv,qi,ni,xxls,deltat,stend,qvtend,qitend,nitend,vlen) 
 
-  use wv_sat_methods, only: wv_sat_qsat_ice
+  use wv_sat_methods, only: wv_sat_qsat_ice_vect
 
-  real(r8), intent(in)  :: naai   !Activated number of ice nuclei 
-  real(r8), intent(in)  :: t      !temperature (k)
-  real(r8), intent(in)  :: p      !pressure (pa0
-  real(r8), intent(in)  :: qv     !water vapor mixing ratio
-  real(r8), intent(in)  :: qi     !ice mixing ratio
-  real(r8), intent(in)  :: ni     !ice number concentration
-  real(r8), intent(in)  :: xxls   !latent heat of freezing
-  real(r8), intent(in)  :: deltat !timestep
-  real(r8), intent(out) :: stend  ! 'temperature' tendency 
-  real(r8), intent(out) :: qvtend !vapor tendency
-  real(r8), intent(out) :: qitend !ice mass tendency
-  real(r8), intent(out) :: nitend !ice number tendency  
+  integer,                   intent(in)  :: vlen
+  real(r8), dimension(vlen), intent(in)  :: naai   !Activated number of ice nuclei 
+  real(r8), dimension(vlen), intent(in)  :: t      !temperature (k)
+  real(r8), dimension(vlen), intent(in)  :: p      !pressure (pa)
+  real(r8), dimension(vlen), intent(in)  :: qv     !water vapor mixing ratio
+  real(r8), dimension(vlen), intent(in)  :: qi     !ice mixing ratio
+  real(r8), dimension(vlen), intent(in)  :: ni     !ice number concentration
+  real(r8),                  intent(in)  :: xxls   !latent heat of freezing
+  real(r8),                  intent(in)  :: deltat !timestep
+  real(r8), dimension(vlen), intent(out) :: stend  ! 'temperature' tendency 
+  real(r8), dimension(vlen), intent(out) :: qvtend !vapor tendency
+  real(r8), dimension(vlen), intent(out) :: qitend !ice mass tendency
+  real(r8), dimension(vlen), intent(out) :: nitend !ice number tendency  
  
-  real(r8) :: ESI
-  real(r8) :: QSI
-  real(r8) :: tau
+  real(r8) :: ESI(vlen)
+  real(r8) :: QSI(vlen)
+  integer  :: i
 
-  stend = 0._r8
-  qvtend = 0._r8
-  qitend = 0._r8
-  nitend = 0._r8
+  do i = 1, vlen
+     stend(i)  = 0._r8
+     qvtend(i) = 0._r8
+     qitend(i) = 0._r8
+     nitend(i) = 0._r8
+  end do
 
-!	calculate qsati from t,p,q
+! calculate qsati from t,p,q
+  call wv_sat_qsat_ice_vect(t, p, ESI, QSI, vlen)
 
-  call wv_sat_qsat_ice(t, p, ESI, QSI)
+  do i = 1, vlen
+     if (naai(i) > 1.e-18_r8 .and. qv(i) > QSI(i)) then
 
-  if (naai > 1.e-18_r8 .and. qv > QSI) then
+        qitend(i) = (qv(i)-QSI(i))/deltat
+        qvtend(i) = 0._r8 - qitend(i)
+        stend(i)  = qitend(i) * xxls      ! moist static energy tend...[J/kg/s] !
+   
+        ! if ice exists (more than 1 L-1) and there is condensation, do not add to number (= growth), else, add 10um ice
+        if (ni(i) < 1.e3_r8 .and. (qi(i)+qitend(i)*deltat) > 1.e-18_r8) then
+           nitend(i) = nitend(i) + 3._r8 * qitend(i)/(4._r8*3.14_r8* 10.e-6_r8**3*997._r8)
+        end if
 
-
-     qitend = (qv-QSI)/deltat !* exp(-tau/deltat)
-     qvtend = 0._r8 - qitend
-     stend  = qitend * xxls    ! moist static energy tend...[J/kg/s] !
-
-
- ! if ice exists (more than 1 L-1) and there is condensation, do not add to number (= growth), else, add 10um ice
-     if (ni < 1.e3_r8 .and. (qi+qitend*deltat) > 1.e-18_r8) then
-        nitend = nitend + 3._r8 * qitend/(4._r8*3.14_r8* 10.e-6_r8**3*997._r8)
-     endif
-
-  endif
+     end if
+  end do
 
 end subroutine ice_macro_tend
 
