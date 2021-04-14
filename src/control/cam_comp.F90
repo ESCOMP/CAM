@@ -307,7 +307,7 @@ subroutine cam_run2( cam_out, cam_in )
    ! Ion transport
    !
    call t_startf('ionosphere_run2')
-   call ionosphere_run2( phys_state, dyn_in, pbuf2d )
+   call ionosphere_run2( phys_state, pbuf2d )
    call t_stopf ('ionosphere_run2')
 
 end subroutine cam_run2

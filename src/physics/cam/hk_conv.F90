@@ -436,9 +436,11 @@ subroutine cmfmca(lchnk   ,ncol    , &
 !
 ! Compute sb,hb,shbs,hbs
 !
-   call qsat(tb(:ncol,limcnv:pver), pmid(:ncol,limcnv:pver), &
-        estemp(:ncol,limcnv:pver), shbs(:ncol,limcnv:pver), &
-        gam=gam(:ncol,limcnv:pver))
+   do k = limcnv,pver
+      call qsat(tb(1:ncol,k), pmid(1:ncol,k), &
+           estemp(1:ncol,k), shbs(1:ncol,k), ncol, &
+           gam=gam(1:ncol,k))
+   end do
 !
    do k=limcnv,pver
       do i=1,ncol
@@ -910,8 +912,8 @@ subroutine cmfmca(lchnk   ,ncol    , &
                      vtemp2(ii     ) = pmid(i,k)
                      vtemp2(ii+len1) = pmid(i,k-1)
                   end do
-                  call qsat(vtemp1(:2*len1), vtemp2(:2*len1), &
-                       vtemp5(:2*len1), vtemp3(:2*len1), gam=vtemp4(:2*len1))
+                  call qsat(vtemp1(1:2*len1), vtemp2(1:2*len1), &
+                            vtemp5(1:2*len1), vtemp3(1:2*len1), 2*len1, gam=vtemp4(1:2*len1))
                   do ii=1,len1
                      i = indx1(ii)
                      shbs(i,k  ) = vtemp3(ii     )
