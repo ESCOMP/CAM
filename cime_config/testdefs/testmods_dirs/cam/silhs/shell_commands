@@ -1,3 +1,8 @@
+driver=`./xmlquery --value COMP_INTERFACE`
+if [ "$driver" = "nuopc" ]; then
+  ./xmlchange ROF_NCPL=\$ATM_NCPL
+  ./xmlchange GLC_NCPL=\$ATM_NCPL
+fi
 ./xmlchange -append CAM_CONFIG_OPTS=" -silhs -psubcols 4"
 ./xmlchange RUN_STARTDATE="0000-01-01"
 ./xmlchange STOP_OPTION=nsteps

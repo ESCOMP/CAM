@@ -200,7 +200,6 @@ contains
 !-----------------------------------------------------------------------
 ! Update the state and or tendency structure with the parameterization tendencies
 !-----------------------------------------------------------------------
-    use shr_sys_mod,  only: shr_sys_flush
     use constituents, only: cnst_get_ind
     use scamMod,      only: scm_crm_mode, single_column
     use phys_control, only: phys_getopts
@@ -426,9 +425,6 @@ contains
                            + gravit*state%zm(:ncol,k) + state%phis(:ncol)
        end do
     end if
-
-    ! Good idea to do this regularly.
-    call shr_sys_flush(iulog)
 
     if (state_debug_checks) call physics_state_check(state, ptend%name)
 

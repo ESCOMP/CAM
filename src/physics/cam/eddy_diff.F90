@@ -501,9 +501,8 @@
 
     ! Calculate conservative scalars (qt,sl,slv) and buoyancy coefficients at the layer mid-points.
     ! Note that 'ntop_turb = 1', 'nbot_turb = pver'
-
     do k = ntop_turb, nbot_turb
-       call qsat( t(:ncol,k), pmid(:ncol,k), es(:ncol,k), qs(:ncol,k), gam=gam(:ncol,k))
+       call qsat( t(1:ncol,k), pmid(1:ncol,k), es(1:ncol,k), qs(1:ncol,k), ncol, gam=gam(1:ncol,k))
        do i = 1, ncol
           qt(i,k)  = qv(i,k) + ql(i,k) + qi(i,k) 
           sl(i,k)  = cpair * t(i,k) + g * z(i,k) - latvap * ql(i,k) - latsub * qi(i,k)

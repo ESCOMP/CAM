@@ -2014,6 +2014,7 @@ contains
     use micro_mg_cam,    only: massless_droplet_destroyer
     use cam_snapshot,    only: cam_snapshot_all_outfld_tphysbc
     use cam_snapshot,    only: cam_snapshot_ptend_outfld
+    use ssatcontrail,       only: ssatcontrail_d0
 
     ! Arguments
 
@@ -2419,6 +2420,13 @@ contains
        snow_sed_macmic = 0._r8
        prec_pcw_macmic = 0._r8
        snow_pcw_macmic = 0._r8
+
+       ! contrail parameterization
+       ! see Chen et al., 2012: Global contrail coverage simulated
+       !                        by CAM5 with the inventory of 2006 global aircraft emissions, JAMES
+       !                        https://doi.org/10.1029/2011MS000105
+       call ssatcontrail_d0(state, pbuf, ztodt, ptend)
+       call physics_update(state, ptend, ztodt, tend)
 
        ! initialize ptend structures where macro and microphysics tendencies are
        ! accumulated over macmic substeps

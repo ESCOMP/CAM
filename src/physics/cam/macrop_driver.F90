@@ -1128,55 +1128,64 @@ end subroutine macrop_driver_tend
 ! this issue is investigated in CLUBB, this routine will enfornce a 
 ! maximum RHliq of 1 everywhere in the atmosphere. Any excess water will
 ! be converted into cloud drops.
-elemental subroutine liquid_macro_tend(npccn,t,p,qv,qc,nc,xxlv,deltat,stend,qvtend,qctend,nctend)
+subroutine liquid_macro_tend(npccn,t,p,qv,qc,nc,xxlv,deltat,stend,qvtend,qctend,nctend,vlen)
 
-  use wv_sat_methods, only: wv_sat_qsat_ice, wv_sat_qsat_water
+  use wv_sat_methods, only: wv_sat_qsat_ice_vect, wv_sat_qsat_water_vect
   use micro_mg_utils, only: rhow
   use physconst,      only: rair
   use cldfrc2m,       only: rhmini_const, rhmaxi_const
 
-  real(r8), intent(in)  :: npccn  !Activated number of cloud condensation nuclei 
-  real(r8), intent(in)  :: t      !temperature (k)
-  real(r8), intent(in)  :: p      !pressure (pa)
-  real(r8), intent(in)  :: qv     !water vapor mixing ratio
-  real(r8), intent(in)  :: qc     !liquid mixing ratio
-  real(r8), intent(in)  :: nc     !liquid number concentration
-  real(r8), intent(in)  :: xxlv   !latent heat of vaporization
-  real(r8), intent(in)  :: deltat !timestep
-  real(r8), intent(out) :: stend  ! 'temperature' tendency 
-  real(r8), intent(out) :: qvtend !vapor tendency
-  real(r8), intent(out) :: qctend !liquid mass tendency
-  real(r8), intent(out) :: nctend !liquid number tendency 
+  integer,                   intent(in)  :: vlen
+  real(r8), dimension(vlen), intent(in)  :: npccn  !Activated number of cloud condensation nuclei 
+  real(r8), dimension(vlen), intent(in)  :: t      !temperature (k)
+  real(r8), dimension(vlen), intent(in)  :: p      !pressure (pa)
+  real(r8), dimension(vlen), intent(in)  :: qv     !water vapor mixing ratio
+  real(r8), dimension(vlen), intent(in)  :: qc     !liquid mixing ratio
+  real(r8), dimension(vlen), intent(in)  :: nc     !liquid number concentration
+  real(r8),                  intent(in)  :: xxlv   !latent heat of vaporization
+  real(r8),                  intent(in)  :: deltat !timestep
+  real(r8), dimension(vlen), intent(out) :: stend  ! 'temperature' tendency 
+  real(r8), dimension(vlen), intent(out) :: qvtend !vapor tendency
+  real(r8), dimension(vlen), intent(out) :: qctend !liquid mass tendency
+  real(r8), dimension(vlen), intent(out) :: nctend !liquid number tendency 
 
+  real(r8) :: ESL(vlen)
+  real(r8) :: QSL(vlen)
+  real(r8) :: drop_size_param    
+  integer  :: i
 
-  real(r8) :: ESL
-  real(r8) :: QSL
-
-  stend = 0._r8
-  qvtend = 0._r8
-  qctend = 0._r8
-  nctend = 0._r8
+  drop_size_param = 3._r8/(4._r8*3.14_r8*6.e-6_r8**3*rhow)
+      
+  do i = 1, vlen
+     stend(i) = 0._r8
+     qvtend(i) = 0._r8
+     qctend(i) = 0._r8
+     nctend(i) = 0._r8
+  end do
 
   ! calculate qsatl from t,p,q
-  call wv_sat_qsat_water(t, p, ESL, QSL)
+  call wv_sat_qsat_water_vect(t, p, ESL, QSL, vlen)
 
-  ! Don't allow supersaturation with respect to liquid.
-  if (qv.gt.QSL) then
+  do i = 1, vlen
+     ! Don't allow supersaturation with respect to liquid.
+     if (qv(i) > QSL(i)) then
+   
+        qctend(i) = (qv(i) - QSL(i)) / deltat
+        qvtend(i) = 0._r8 - qctend(i)
+        stend(i)  = qctend(i) * xxlv    ! moist static energy tend...[J/kg/s] !
+   
+        ! If drops  exists (more than 1 L-1) and there is condensation,
+        ! do not add to number (= growth), otherwise  add 6um drops.
+        !
+        ! This is somewhat arbitrary, but ensures that some reasonable droplet
+        ! size is created to remove the excess water. This could be enhanced to
+        ! look at npccn, but ideally this entire routine should go away.
+        if ((nc(i)*p(i)/rair/t(i) < 1e3_r8) .and. (qc(i)+qctend(i)*deltat > 1e-18_r8)) then
+           nctend(i) = nctend(i) + qctend(i)*drop_size_param
+        end if
+     end if
+  end do
 
-     qctend = (qv - QSL) / deltat
-     qvtend = 0._r8 - qctend
-     stend  = qctend * xxlv    ! moist static energy tend...[J/kg/s] !
-
-     ! If drops  exists (more than 1 L-1) and there is condensation,
-     ! do not add to number (= growth), otherwise  add 6um drops.
-     !
-     ! This is somewhat arbitrary, but ensures that some reasonable droplet
-     ! size is create to remove the excess water. This could be enhanced to
-     ! look at npccn, but ideally this entire routine should go away.
-     if (nc*p/rair/t.lt.1e3_r8.and.(qc+qctend*deltat).gt.1e-18_r8) then
-        nctend = nctend + 3._r8 * qctend/(4._r8*3.14_r8*6.e-6_r8**3*rhow)
-     endif
-  endif
 end subroutine liquid_macro_tend
 
 end module macrop_driver

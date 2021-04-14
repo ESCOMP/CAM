@@ -17,7 +17,7 @@ use constituents,    only: pcnst, cnst_name, cnst_longname, cnst_cam_outfld
 use constituents,    only: ptendnam, dmetendnam, apcnst, bpcnst, cnst_get_ind
 use dycore,          only: dycore_is
 use phys_control,    only: phys_getopts
-use wv_saturation,   only: qsat, qsat_water, svp_ice
+use wv_saturation,   only: qsat, qsat_water, svp_ice_vect
 use time_manager,    only: is_first_step
 
 use scamMod,         only: single_column, wfld
@@ -78,17 +78,17 @@ logical          :: history_waccm                  ! outputs typically used for 
 
 ! Physics buffer indices
 
-integer  ::      psl_idx    = 0 
-integer  ::      relhum_idx = 0 
-integer  ::      qcwat_idx  = 0 
-integer  ::      tcwat_idx  = 0 
-integer  ::      lcwat_idx  = 0 
-integer  ::      cld_idx    = 0 
-integer  ::      concld_idx = 0 
-integer  ::      tke_idx    = 0 
-integer  ::      kvm_idx    = 0 
-integer  ::      kvh_idx    = 0 
-integer  ::      cush_idx   = 0 
+integer  ::      psl_idx    = 0
+integer  ::      relhum_idx = 0
+integer  ::      qcwat_idx  = 0
+integer  ::      tcwat_idx  = 0
+integer  ::      lcwat_idx  = 0
+integer  ::      cld_idx    = 0
+integer  ::      concld_idx = 0
+integer  ::      tke_idx    = 0
+integer  ::      kvm_idx    = 0
+integer  ::      kvh_idx    = 0
+integer  ::      cush_idx   = 0
 integer  ::      t_ttend_idx = 0
 integer  ::      t_utend_idx = 0
 integer  ::      t_vtend_idx = 0
@@ -170,7 +170,7 @@ contains
   end subroutine diag_register
 
 !==============================================================================
-  
+
   subroutine diag_init_dry(pbuf2d)
     ! Declare the history fields for which this module contains outfld calls.
 
@@ -353,7 +353,7 @@ contains
       ! State after physics (FV)
       call add_default ('TAP     '  , history_budget_histfile_num, ' ')
       call add_default ('UAP     '  , history_budget_histfile_num, ' ')
-      call add_default ('VAP     '  , history_budget_histfile_num, ' ')  
+      call add_default ('VAP     '  , history_budget_histfile_num, ' ')
       call add_default (apcnst(1)   , history_budget_histfile_num, ' ')
       if ( dycore_is('LR') .or. dycore_is('SE') .or. dycore_is('FV3')  ) then
         call add_default ('TFIX    '    , history_budget_histfile_num, ' ')
@@ -433,6 +433,9 @@ contains
          'Total column mass axial angular momentum after parameterizations')
     call addfld ('MO_pAM',   horiz_only, 'A', 'kg*m2/s*rad2',&
          'Total column mass axial angular momentum after dry mass correction')
+
+    call addfld( 'CPAIRV', (/ 'lev' /), 'I', 'J/K/kg', 'Variable specific heat cap air' )
+    call addfld( 'RAIRV', (/ 'lev' /), 'I', 'J/K/kg', 'Variable dry air gas constant' )
 
   end subroutine diag_init_dry
 
@@ -943,6 +946,8 @@ contains
     use co2_cycle,          only: c_i, co2_transport
 
     use tidal_diag,         only: tidal_diag_write
+    use physconst,          only: cpairv,rairv
+
     !-----------------------------------------------------------------------
     !
     ! Arguments
@@ -988,6 +993,9 @@ contains
 #if (defined BFB_CAM_SCAM_IOP )
     call outfld('phis    ',state%phis,    pcols,   lchnk     )
 #endif
+
+    call outfld( 'CPAIRV', cpairv(:ncol,:,lchnk), ncol, lchnk )
+    call outfld( 'RAIRV', rairv(:ncol,:,lchnk), ncol, lchnk )
 
     do m = 1, pcnst
       if (cnst_cam_outfld(m)) then
@@ -1352,8 +1360,9 @@ contains
           call pbuf_get_field(pbuf, relhum_idx, ftem_ptr)
           ftem(:ncol,:) = ftem_ptr(:ncol,:)
        else
-          call qsat(state%t(:ncol,:), state%pmid(:ncol,:), &
-                    tem2(:ncol,:), ftem(:ncol,:))
+          do k = 1, pver
+             call qsat(state%t(1:ncol,k), state%pmid(1:ncol,k), tem2(1:ncol,k), ftem(1:ncol,k), ncol)
+          end do
           ftem(:ncol,:) = state%q(:ncol,:,1)/ftem(:ncol,:)*100._r8
        end if
        call outfld ('RELHUM  ',ftem    ,pcols   ,lchnk     )
@@ -1362,17 +1371,18 @@ contains
     if (hist_fld_active('RHW') .or. hist_fld_active('RHI') .or. hist_fld_active('RHCFMIP') ) then
 
       ! RH w.r.t liquid (water)
-      call qsat_water (state%t(:ncol,:), state%pmid(:ncol,:), &
-           esl(:ncol,:), ftem(:ncol,:))
+      do k = 1, pver
+         call qsat_water (state%t(1:ncol,k), state%pmid(1:ncol,k), esl(1:ncol,k), ftem(1:ncol,k), ncol)
+      end do
       ftem(:ncol,:) = state%q(:ncol,:,1)/ftem(:ncol,:)*100._r8
       call outfld ('RHW  ',ftem    ,pcols   ,lchnk     )
 
       ! Convert to RHI (ice)
-      do i=1,ncol
-        do k=1,pver
-          esi(i,k)=svp_ice(state%t(i,k))
-          ftem1(i,k)=ftem(i,k)*esl(i,k)/esi(i,k)
-        end do
+      do k=1,pver
+         call svp_ice_vect(state%t(1:ncol,k), esi(1:ncol,k), ncol)
+         do i=1,ncol
+            ftem1(i,k)=ftem(i,k)*esl(i,k)/esi(i,k)
+         end do
       end do
       call outfld ('RHI  ',ftem1    ,pcols   ,lchnk     )
 
@@ -1805,8 +1815,7 @@ contains
       call outfld('U10',      cam_in%u10,       pcols, lchnk)
       !
       ! Calculate and output reference height RH (RHREFHT)
-
-      call qsat(cam_in%tref(:ncol), state%ps(:ncol), tem2(:ncol), ftem(:ncol))
+      call qsat(cam_in%tref(1:ncol), state%ps(1:ncol), tem2(1:ncol), ftem(1:ncol), ncol)
       ftem(:ncol) = cam_in%qref(:ncol)/ftem(:ncol)*100._r8
 
 
