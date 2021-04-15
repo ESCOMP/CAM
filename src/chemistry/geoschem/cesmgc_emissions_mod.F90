@@ -291,6 +291,7 @@ CONTAINS
     USE PPGRID,              ONLY : pcols, pver, begchunk
     USE CAM_HISTORY,         ONLY : outfld
     USE STRING_UTILS,        ONLY : to_upper
+    USE PHYSCONSTANTS,       ONLY : PI
 
     ! Data from CLM
     USE CAM_CPL_INDICES,     ONLY : index_x2a_Fall_flxvoc
@@ -304,6 +305,9 @@ CONTAINS
 
     ! Aerosol emissions
     USE AERO_MODEL,          ONLY : aero_model_emissions
+    USE MODAL_AERO_DATA,     ONLY : ntot_amode, nspec_amode
+    USE MODAL_AERO_DATA,     ONLY : lmassptr_amode, numptr_amode
+    USE MODAL_AERO_DATA,     ONLY : specdens_amode
 
     ! GEOS-Chem version of physical constants
     USE PHYSCONSTANTS,       ONLY : AVO
@@ -333,7 +337,7 @@ CONTAINS
     ! Integers
     INTEGER                                :: LCHNK
     INTEGER                                :: nY, nZ
-    INTEGER                                :: J, L, N
+    INTEGER                                :: J, L, N, M, SM, P
     INTEGER                                :: RC             ! return code
     INTEGER                                :: tmpIdx         ! pbuf field id
 
@@ -353,6 +357,12 @@ CONTAINS
     REAL(r8)                               :: SCALFAC        ! Multiplying factor
     REAL(r8)                               :: megflx(pcols)  ! For MEGAN emissions
     REAL(r8), PARAMETER                    :: m2km  = 1.e-3_r8
+    REAL(r8)                               :: diam           ! Emission diameter
+                                                             ! for aerosols (m)
+    REAL(r8)                               :: voltonumb      ! Conversion factor
+                                                             ! between aerosol mass
+                                                             ! and number
+    REAL(r8)                               :: rho            ! Aerosol density (kg/m3)
 
     ! Strings
     CHARACTER(LEN=255)                     :: SpcName
@@ -444,10 +454,10 @@ CONTAINS
         ! apply loss flux to surface (level nZ)
         eflx(1:NY,nZ,id_O3) = eflx(1:NY,nZ,id_O3) - pbuf_i(1:nY)
 
-        IF ( MINVAL(eflx(:nY,nZ,id_O3)) < 0.0e+00_r8 ) THEN
-           Write(iulog,*) " CESMGC_Emissions_Calc: HEMCO sfc flux after ParaNOx is negative for O3 with value ", MINVAL(eflx(:nY,:nZ,id_O3)), " at ", &
-              MINLOC(eflx(:nY,nZ,id_O3))
-        ENDIF
+        !IF ( MINVAL(eflx(:nY,nZ,id_O3)) < 0.0e+00_r8 ) THEN
+        !   Write(iulog,*) " CESMGC_Emissions_Calc: HEMCO sfc flux after ParaNOx is negative for O3 with value ", MINVAL(eflx(:nY,:nZ,id_O3)), " at ", &
+        !      MINLOC(eflx(:nY,nZ,id_O3))
+        !ENDIF
 
         IF ( rootChunk .and. ( MINVAL(pbuf_i(1:nY)) < 0.0e+0_r8 ) ) THEN
            Write(iulog,'(a,a,a,a)') " CESMGC_Emissions_Calc: HEMCO dflx(paranox) O3 added to ", TRIM(cnst_name(id_O3))
@@ -472,10 +482,10 @@ CONTAINS
 
         eflx(1:NY,nZ,id_HNO3) = eflx(1:NY,nZ,id_HNO3) - pbuf_i(1:nY)
 
-        IF ( MINVAL(eflx(:nY,nZ,id_HNO3)) < 0.0e+00_r8 ) THEN
-           Write(iulog,*) " CESMGC_Emissions_Calc: HEMCO sfc flux after ParaNOx is negative for HNO3 with value ", MINVAL(eflx(:nY,nZ,id_HNO3)), " at ", &
-              MINLOC(eflx(:nY,nZ,id_HNO3))
-        ENDIF
+        !IF ( MINVAL(eflx(:nY,nZ,id_HNO3)) < 0.0e+00_r8 ) THEN
+        !   Write(iulog,*) " CESMGC_Emissions_Calc: HEMCO sfc flux after ParaNOx is negative for HNO3 with value ", MINVAL(eflx(:nY,nZ,id_HNO3)), " at ", &
+        !      MINLOC(eflx(:nY,nZ,id_HNO3))
+        !ENDIF
 
         IF ( rootChunk .and. ( MINVAL(pbuf_i(1:nY)) < 0.0e+0_r8 ) ) THEN
            Write(iulog,'(a,a,a,a)') " CESMGC_Emissions_Calc: HEMCO dflx(paranox) HNO3 added to ", TRIM(cnst_name(id_HNO3))
@@ -487,8 +497,48 @@ CONTAINS
         pbuf_chnk => NULL()
     ENDIF
 
+#if defined( MODAL_AERO )
 
-#if defined( MODAL_AERO_4MODE )
+    ! Estimate aerosol number emissions
+    ! Enumber = Emass / ( pi/6 * rho * D_emit^3 )
+    ! D_emit is sector-dependent and is taken from Table S4 of:
+    ! Emmons, Louisa K., et al. "The chemistry mechanism in the Community Earth
+    ! System Model version 2 (CESM2)." Journal of Advances in Modeling Earth
+    ! Systems 12.4 (2020).
+    DO M = 1, ntot_amode
+       P         = numptr_amode(M)
+       IF ( M == 1 ) THEN
+          ! Species affected: so4_a1
+          diam = 0.134E-06_r8
+          ! This diam value should be sector-dependent.
+          ! Agriculture, waste, solvents -> 0.134
+          ! Shipping                     -> 0.261
+          ! Energy, industrial           -> 0.261
+          ! Biomass burning              -> 0.134
+          ! Volcanoes                    -> 0.134
+       ELSEIF ( M == 2 ) THEN
+          ! Species affected: so4_a2
+          diam = 0.0504E-06_r8
+       ELSEIF ( M == 4 ) THEN
+          ! Species affected: bc_a4, pom_a4
+          diam = 0.134E-06_r8
+       ENDIF
+       voltonumb = 1.0_r8 / ( PI / 6.0_r8 * diam * diam * diam )
+
+       IF ( M == 3 ) THEN
+          ! There shouldn't be any a3 number emissions, so we just enforce
+          ! voltonumb to be 0
+          voltonumb = 0.0E-00_r8
+       ENDIF
+
+       DO SM = 1, nspec_amode(M)
+          N   = lmassptr_amode(SM,M)
+          rho = specdens_amode(SM,M)
+          eflx(:nY,:nZ,P) = eflx(:nY,:nZ,P) &
+                          + eflx(:nY,:nZ,N) * voltonumb / rho
+       ENDDO
+    ENDDO
+
     !-----------------------------------------------------------------------
     ! Aerosol emissions (dust + seasalt) ...
     !-----------------------------------------------------------------------
@@ -519,18 +569,22 @@ CONTAINS
 #endif
 
     ! Output fields before lightning NO emissions are applied to eflx
+    ! Make sure that we do not include surface emissions in the diagnostics!
     DO N = iFirstCnst, pcnst
        SpcName = TRIM(cnst_name(N))//'_XFRC'
+       ! Convert from kg/m2/s to molec/cm3/s
+       ! Note 1: cnst_mw is in kg/kmole
+       ! Note 2: avogad is in molecules/kmole
        CALL Outfld( TRIM(SpcName), eflx(:nY,:nZ,N) / State_Met%BXHEIGHT(1,:nY,nZ:1:-1) * 1.0E-06 / cnst_mw(N) * avogad, nY, LCHNK )
 
        SpcName = TRIM(cnst_name(N))//'_CLXF'
        ! Convert from kg/m2/s to molec/cm2/s
        ! Note 1: cnst_mw is in kg/kmole
        ! Note 2: avogad is in molecules/kmole
-       CALL Outfld( TRIM(SpcName), SUM(eflx(:nY,:nZ,N), DIM=2) * 1.0E-04 / cnst_mw(N) * avogad, nY, LCHNK )
+       CALL Outfld( TRIM(SpcName), SUM(eflx(:nY,:nZ-1,N), DIM=2) * 1.0E-04 / cnst_mw(N) * avogad, nY, LCHNK )
 
        SpcName = TRIM(cnst_name(N))//'_CMXF'
-       CALL Outfld( TRIM(SpcName), SUM(eflx(:nY,:nZ,N), DIM=2), nY, LCHNK )
+       CALL Outfld( TRIM(SpcName), SUM(eflx(:nY,:nZ-1,N), DIM=2), nY, LCHNK )
     ENDDO
 
     !-----------------------------------------------------------------------
