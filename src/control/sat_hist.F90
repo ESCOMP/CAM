@@ -5,6 +5,7 @@
 module sat_hist
 
   use perf_mod,            only: t_startf, t_stopf
+  use shr_kind_mod,        only: r4 => shr_kind_r8
   use shr_kind_mod,        only: r8 => shr_kind_r8, cl=>shr_kind_cl
   use cam_logfile,         only: iulog
   use ppgrid,              only: pcols, pver, pverp, begchunk, endchunk
@@ -22,8 +23,8 @@ module sat_hist
 #ifdef SPMD
   use mpishorthand,        only: mpichar, mpiint
 #endif
-   use physconst,          only: pi 
-  
+   use physconst,          only: pi
+
   implicit none
 
   private
@@ -56,7 +57,7 @@ module sat_hist
   integer, allocatable :: date_buffer(:), time_buffer(:)
   integer :: sat_tape_num=ptapes-1
 
-  
+
   ! input file
   integer :: n_profiles
   integer :: time_vid, date_vid, lat_vid, lon_vid, instr_vid, orbit_vid, prof_vid, zenith_vid
@@ -91,7 +92,7 @@ module sat_hist
   logical :: has_dyn_ilev_flds = .false.
 
 contains
-  
+
 !-------------------------------------------------------------------------------
 
   logical function is_satfile (file_index)
@@ -101,7 +102,7 @@ contains
 
 !-------------------------------------------------------------------------------
   subroutine sat_hist_readnl(nlfile, hfilename_spec, mfilt, fincl, nhtfrq, avgflag_pertape)
-    
+
     use namelist_utils,      only: find_group_name
     use units,               only: getunit, freeunit
     use cam_history_support, only: pflds
@@ -114,7 +115,7 @@ contains
     character(len=*), intent(inout) :: fincl(:,:)
     character(len=1), intent(inout) :: avgflag_pertape(:)
     integer,          intent(inout) :: mfilt(:), nhtfrq(:)
-    
+
     ! Local variables
     integer :: unitn, ierr
     character(len=*), parameter :: subname = 'sat_hist_readnl'
@@ -176,7 +177,7 @@ contains
            fcnt=fcnt+1
         end if
      enddo
-     
+
      nhtfrq(sat_tape_num) = 1
      avgflag_pertape(sat_tape_num) = 'I'
 
@@ -191,7 +192,7 @@ contains
 
    end subroutine sat_hist_readnl
 
-  
+
 !-------------------------------------------------------------------------------
 !-------------------------------------------------------------------------------
   subroutine sat_hist_init
@@ -291,7 +292,7 @@ contains
 
     ierr = pio_get_var( infile, time_vid, start, cnt, time )
     ierr = pio_get_var( infile, date_vid, start, cnt, date )
-    
+
     datetime = convert_date_time( date(1),time(1) )
 
   end subroutine read_datetime
@@ -309,14 +310,14 @@ contains
     integer :: cnt
     integer :: start
     integer :: date, time
-    
+
     ! If the request is outside of the buffer then reload the buffer.
     if ((last_start_index == -1) .or. (index < last_start_index) &
          .or. (index >= (last_start_index + t_buffer_size))) then
 
        start = (index - 1) / t_buffer_size * t_buffer_size + 1
        if ( start+t_buffer_size-1 <= n_profiles ) then
-          cnt = t_buffer_size 
+          cnt = t_buffer_size
        else
           cnt = n_profiles-start+1
        endif
@@ -348,7 +349,7 @@ contains
        yr = date/1000
        doy = date - yr*1000
        call set_time_float_from_date( datetime, yr, 1, doy, time )
-    else 
+    else
        yr = date/10000
        mon = (date - yr*10000)/100
        dom = date - yr*10000 - mon*100
@@ -364,7 +365,7 @@ contains
 
     integer :: coldim
     integer :: ierr
-    
+
     ierr = pio_inquire(outfile, unlimitedDimId=coldim)
 
     call pio_seterrorhandling(outfile, PIO_BCAST_ERROR)
@@ -415,13 +416,13 @@ contains
     use phys_grid, only: phys_decomp
     use dyn_grid,  only: dyn_decomp
     use cam_history_support, only : active_entry
-    use pio, only : pio_file_is_open
-    implicit none
+    use pio, only : pio_file_is_open, pio_syncfile
+
     type(active_entry) :: tape
     integer, intent(in) :: nflds
     integer, intent(inout) :: nfils
 
-    integer :: ncols, nocols    
+    integer :: ncols, nocols
     integer :: ierr
 
     integer, allocatable :: col_ndxs(:)
@@ -471,7 +472,7 @@ contains
 
 
     ierr = pio_inq_dimid(tape%File,'ncol',coldim )
-    
+
     ierr = pio_inq_varid(tape%File, 'lat', out_latid )
     ierr = pio_inq_varid(tape%File, 'lon', out_lonid )
     ierr = pio_inq_varid(tape%File, 'distance', out_dstid )
@@ -511,6 +512,7 @@ contains
     deallocate( col_ndxs, chk_ndxs, fdyn_ndxs, ldyn_ndxs, phs_owners, dyn_owners )
     deallocate( mlons, mlats, phs_dists )
     deallocate( obs_lons, obs_lats )
+    call pio_syncfile(tape%File)
 
     nfils = nfils + nocols
 
@@ -522,6 +524,7 @@ contains
   subroutine dump_columns( File, hitems, nflds, ncols, nlevs, nfils, fdims, ldims, owners, decomp )
     use cam_history_support, only: field_info, hentry, fillvalue
     use pio,                 only: pio_setframe, pio_offset_kind
+    use spmd_utils, only:  mpi_real4, mpi_real8, mpicom, mpi_sum
 
     type(File_desc_t),intent(inout)  :: File
     type(hentry),     intent(in), target :: hitems(:)
@@ -537,29 +540,15 @@ contains
 
     type(field_info), pointer :: field
     type(var_desc_t) :: vardesc
-    type(iosystem_desc_t), pointer :: sat_iosystem
     integer :: ierr
 
-    type(io_desc_t), pointer :: iodesc
-    real(r8), allocatable :: buf(:)
+    real(r8) :: sbuf1d(ncols),rbuf1d(ncols)
+    real(r4) :: buf1d(ncols)
+    real(r8) :: sbuf2d(nlevs,ncols), rbuf2d(nlevs,ncols)
+    real(r4) :: buf2d(nlevs,ncols)
     integer :: i,k,f, cnt
 
     call t_startf ('sat_hist::dump_columns')
-
-    sat_iosystem => File%iosystem
-
-    cnt = 0
-
-    do i = 1,ncols
-       do k = 1,nlevs
-          if ( iam == owners(i) ) then
-             cnt = cnt+1
-          endif
-       enddo
-    enddo
-    allocate( buf(cnt) )
-
-    iodesc => create_iodesc( File, ncols, nlevs, owners )
 
     do f = 1,nflds
        field => hitems(f)%field
@@ -567,107 +556,42 @@ contains
        if (field%numlev==nlevs .and. field%decomp_type==decomp) then
           vardesc = hitems(f)%varid(1)
 
-          cnt = 0
-          buf = fillvalue
-          do i = 1,ncols
-             do k = 1,nlevs
+          if (nlevs==1) then
+             sbuf1d = 0.0_r8
+             rbuf1d = 0.0_r8
+             do i=1,ncols
                 if ( iam == owners(i) ) then
-                   cnt = cnt+1
-                   buf(cnt) = hitems(f)%hbuf( fdims(i), k, ldims(i) )
+                   sbuf1d(i) = hitems(f)%hbuf( fdims(i), 1, ldims(i) )
                 endif
              enddo
-          enddo
+             call mpi_allreduce(sbuf1d,rbuf1d,ncols,mpi_real8, mpi_sum, mpicom, ierr)
+             buf1d(:) = real(rbuf1d(:),r4)
+             ierr = pio_put_var(File, vardesc, (/nfils/),(/ncols/), buf1d(:))
+          else
+             sbuf2d = 0.0_r8
+             rbuf2d = 0.0_r8
+             do i=1,ncols
+                if ( iam == owners(i) ) then
+                   do k = 1,nlevs
+                      sbuf2d(k,i) = hitems(f)%hbuf( fdims(i), k, ldims(i) )
+                   enddo
+                endif
+             enddo
+             call mpi_allreduce(sbuf2d,rbuf2d,ncols*nlevs,mpi_real8, mpi_sum, mpicom, ierr)
+             buf2d(:,:) = real(rbuf2d(:,:),r4)
+             ierr = pio_put_var(File, vardesc, (/1,nfils/),(/nlevs,ncols/), buf2d(:,:))
+          endif
 
-          call pio_setframe(File, vardesc, int(nfils,kind=pio_offset_kind)) ! sets varsesc -- correct offset
-          call pio_write_darray(File, vardesc, iodesc, buf, ierr, fillval=fillvalue)
        endif
 
     enddo
-
-    call destroy_iodesc( File, iodesc )
-
-    deallocate( buf )
 
     call t_stopf ('sat_hist::dump_columns')
 
   end subroutine dump_columns
 
 !-------------------------------------------------------------------------------
-! creates an iodesc object
-!-------------------------------------------------------------------------------
-  function create_iodesc( File, ncols, nlevs, owners ) result(iodesc)
-    use pio, only: pio_initdecomp, PIO_REARR_SUBSET
-
-    ! args
-    type(File_desc_t),intent(inout) :: File
-    integer,          intent(in)    :: ncols
-    integer,          intent(in)    :: nlevs
-    integer,          intent(in)    :: owners(:)
-
-    ! returned pointer
-    type(io_desc_t), pointer :: iodesc
-
-    ! local vars
-    integer :: i,k, cnt
-    integer,  allocatable :: dof(:)
-    integer,  allocatable :: dimlens(:)
-    integer :: ndims
-  
-    if (nlevs >1) then
-       ndims = 2
-    else
-       ndims = 1
-    endif
-    allocate (dimlens(ndims))
-    dimlens(:) = ncols
-    if (nlevs >1) then
-       dimlens(1) = nlevs
-    endif
-
-    cnt = 0
-
-    do i = 1,ncols
-       do k = 1,nlevs
-          if ( iam == owners(i) ) then
-             cnt = cnt+1
-          endif
-       enddo
-    enddo
-    allocate(dof(cnt))
-    dof = 0
-    cnt = 0
-    do i = 1,ncols
-       do k = 1,nlevs
-          if ( iam == owners(i) ) then
-             cnt = cnt+1
-             dof(cnt) = k + (i-1)*nlevs 
-          endif
-       enddo
-    enddo
-
-    allocate(iodesc)
-    call pio_initdecomp(File%iosystem, pio_double, dimlens, dof, iodesc, rearr=PIO_REARR_SUBSET ) 
-
-    deallocate( dof )
-    deallocate( dimlens )
-
-  end function create_iodesc
-
-!-------------------------------------------------------------------------------
-! cleans up iodesc obj
-!-------------------------------------------------------------------------------
-  subroutine destroy_iodesc( File, iodesc )
-    use pio, only:  pio_freedecomp
-
-    type(File_desc_t),intent(inout)  :: File
-    type(io_desc_t),  pointer :: iodesc
-
-    call pio_freedecomp(File, iodesc)
-    deallocate(iodesc)
-  end subroutine destroy_iodesc
-
-!-------------------------------------------------------------------------------
-! scan the fields for possible different decompositions 
+! scan the fields for possible different decompositions
 !-------------------------------------------------------------------------------
   subroutine scan_flds( tape, nflds )
     use cam_history_support, only : active_entry
@@ -727,13 +651,13 @@ contains
 
     flds_scanned = .true.
   end subroutine scan_flds
-  
+
 !-------------------------------------------------------------------------------
 !-------------------------------------------------------------------------------
   subroutine read_next_position( ncols )
     use time_manager, only: get_curr_date
     use time_manager, only: set_time_float_from_date
-   
+
     implicit none
 
     integer,  intent(out) :: ncols
@@ -798,7 +722,7 @@ contains
 
     call t_stopf ('sat_hist::read_next_position')
   end subroutine read_next_position
-  
+
 !-------------------------------------------------------------------------------
 !-------------------------------------------------------------------------------
   subroutine write_record_coord( tape, mod_lats, mod_lons, mod_dists, ncols, nfils )
@@ -837,14 +761,14 @@ contains
 
     allocate( itmp(ncols * sathist_nclosest) )
     allocate( rtmp(ncols * sathist_nclosest) )
-    
+
     itmp(:) = ncdate
     ierr = pio_put_var(tape%File, tape%dateid,(/nfils/), (/ncols * sathist_nclosest/),itmp)
     itmp(:) = ncsec
     ierr = pio_put_var(tape%File, tape%datesecid,(/nfils/),(/ncols * sathist_nclosest/),itmp)
     rtmp(:) = time
     ierr = pio_put_var(tape%File, tape%timeid, (/nfils/),(/ncols * sathist_nclosest/),rtmp)
-    
+
     deallocate(itmp)
     deallocate(rtmp)
 
@@ -852,11 +776,11 @@ contains
     ierr = pio_put_var(tape%File, out_latid, (/nfils/),(/ncols * sathist_nclosest/), mod_lats)
     ierr = pio_put_var(tape%File, out_lonid, (/nfils/),(/ncols * sathist_nclosest/), mod_lons)
     ierr = pio_put_var(tape%File, out_dstid, (/nfils/),(/ncols * sathist_nclosest/), mod_dists / 1000._r8)
-    
+
     ! output instrument location
     allocate( out_lats(ncols * sathist_nclosest) )
     allocate( out_lons(ncols * sathist_nclosest) )
-    
+
     do i = 1, ncols
       out_lats(((i-1)*sathist_nclosest)+1 : (i*sathist_nclosest)) = obs_lats(i)
       out_lons(((i-1)*sathist_nclosest)+1 : (i*sathist_nclosest)) = obs_lons(i)
@@ -867,11 +791,11 @@ contains
 
     deallocate(out_lats)
     deallocate(out_lons)
-    
-    
+
+
     ierr = copy_data( infile, date_vid, tape%File, out_obs_date_vid, in_start_col, nfils, ncols )
     ierr = copy_data( infile, time_vid, tape%File, out_obs_time_vid, in_start_col, nfils, ncols )
-    
+
     ! output observation identifiers
     if (instr_vid>0) then
        ierr = copy_data( infile, instr_vid, tape%File, out_instrid, in_start_col, nfils, ncols )
@@ -926,7 +850,7 @@ contains
 
     integer :: i, j, ndx
     real(r8) :: lat, lon
-    
+
     integer,  allocatable :: ichks(:),icols(:),idyn1s(:),idyn2s(:), iphs_owners(:), idyn_owners(:)
     real(r8), allocatable :: rlats(:), rlons(:), plats(:), plons(:), iphs_dists(:)
 
@@ -967,7 +891,7 @@ contains
           write(iulog,*) 'sat_hist::get_indices lon = ',lon
           call endrun('sat_hist::get_indices : lon must be between 0 and 360 degrees (0<=lon<360)')
        endif
-       
+
        call find_cols( lat, lon, sathist_nclosest, iphs_owners, ichks, icols, &
                        gcols, iphs_dists, plats, plons )
 
@@ -976,7 +900,7 @@ contains
        endif
 
        do j = 1, sathist_nclosest
-          
+
           if (debug .and. iam==iphs_owners(j) ) then
              if ( abs(plats(j)-rlats(j))>1.e-3_r8 ) then
                 write(*,'(a,3f20.12)') ' lat, plat, rlat = ', lat, plats(j), rlats(j)
@@ -989,9 +913,9 @@ contains
                 call endrun('sat_hist::get_indices: dyn lon is different than phys lon ')
              endif
           endif
-          
+
           ndx = ndx+1
-          
+
           chk_ndxs(ndx)   = ichks(j)
           col_ndxs(ndx)   = icols(j)
           fdyn_ndxs(ndx)  = idyn1s(j)
@@ -1060,11 +984,11 @@ contains
     res = pio_get_var( infile,  in_vid, (/instart/),  (/ncols/), data )
 
     allocate( outdata(ncols * sathist_nclosest) )
-    
+
     do i = 1, ncols
       outdata(((i-1)*sathist_nclosest)+1 : (i*sathist_nclosest)) = data(i)
     enddo
-  
+
     res = pio_put_var( outfile, out_id, (/outstart/), (/ncols * sathist_nclosest/), outdata )
 
     deallocate(outdata)
@@ -1085,7 +1009,7 @@ contains
     type(var_desc_t), intent(in) :: out_id
 
     character(len=1024) :: att
-    
+
 
     res = pio_get_att( infile, in_vid, trim(att_name), att )
     if (res==PIO_NOERR) then
@@ -1094,7 +1018,7 @@ contains
 
 
   end function copy_att
-  
+
   !-------------------------------------------------------------------------------
   !-------------------------------------------------------------------------------
   subroutine find_cols(lat, lon, nclosest, owner, lcid, icol, gcol, distmin, mlats, mlons)
@@ -1107,7 +1031,7 @@ contains
     integer, intent(out) :: owner(nclosest)     ! rank of chunk owner
     integer, intent(out) :: lcid(nclosest)      ! local chunk index
     integer, intent(out) :: icol(nclosest)      ! column index within the chunk
-    integer, intent(out) :: gcol(nclosest)      ! global column index 
+    integer, intent(out) :: gcol(nclosest)      ! global column index
     real(r8),intent(out) :: distmin(nclosest)   ! the distance (m) of the closest column(s)
     real(r8),intent(out) :: mlats(nclosest)     ! the latitude of the closest column(s)
     real(r8),intent(out) :: mlons(nclosest)     ! the longitude of the closest column(s)
@@ -1134,7 +1058,7 @@ contains
 
     latr = lat/rad2deg              ! to radians
     lonr = lon/rad2deg              ! to radians
-    
+
     my_owner(:)   = -999
     my_lcid(:)    = -999
     my_icol(:)    = -999
@@ -1150,7 +1074,7 @@ contains
 
        col_loop: do i = 1,ncols
           ! Use the Spherical Law of Cosines to find the great-circle distance.
-          dist = acos(sin(latr) * sin(rlats(i)) + cos(latr) * cos(rlats(i)) * cos(rlons(i) - lonr)) * rearth       
+          dist = acos(sin(latr) * sin(rlats(i)) + cos(latr) * cos(rlats(i)) * cos(rlons(i) - lonr)) * rearth
 
           closest_loop: do j = nclosest, 1, -1
              if (dist < my_distmin(j)) then
@@ -1173,7 +1097,7 @@ contains
                 my_mlats(j)   = rlats(i) * rad2deg
                 my_mlons(j)   = rlons(i) * rad2deg
              else
-                exit 
+                exit
              end if
           enddo closest_loop
 

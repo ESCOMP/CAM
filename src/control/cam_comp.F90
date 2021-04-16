@@ -5,7 +5,7 @@ module cam_comp
 !
 ! This interface layer is CAM specific, i.e., it deals entirely with CAM
 ! specific data structures.  It is the layer above this, either atm_comp_mct
-! or atm_comp_esmf, which translates between CAM and either MCT or ESMF
+! or atm_comp_nuopc, which translates between CAM and either MCT or NUOPC
 ! data structures in order to interface with the driver/coupler.
 !
 !-----------------------------------------------------------------------
@@ -92,7 +92,6 @@ subroutine cam_init(                                             &
 #if (defined BFB_CAM_SCAM_IOP)
    use history_defaults, only: initialize_iop_history
 #endif
-
 
    ! Arguments
    character(len=cl), intent(in) :: caseid                ! case ID
@@ -308,13 +307,9 @@ subroutine cam_run2( cam_out, cam_in )
    ! Ion transport
    !
    call t_startf('ionosphere_run2')
-   call ionosphere_run2( phys_state, dyn_in, pbuf2d )
+   call ionosphere_run2( phys_state, pbuf2d )
    call t_stopf ('ionosphere_run2')
 
-   if (is_first_step() .or. is_first_restart_step()) then
-      call t_startf ('cam_run2_memusage')
-      call t_stopf  ('cam_run2_memusage')
-   end if
 end subroutine cam_run2
 
 !
@@ -346,10 +341,6 @@ subroutine cam_run3( cam_out )
 
    call t_stopf  ('stepon_run3')
 
-   if (is_first_step() .or. is_first_restart_step()) then
-      call t_startf ('cam_run3_memusage')
-      call t_stopf  ('cam_run3_memusage')
-   end if
 end subroutine cam_run3
 
 !
@@ -423,12 +414,12 @@ subroutine cam_final( cam_out, cam_in )
 ! Purpose:  CAM finalization.
 !
 !-----------------------------------------------------------------------
-   use stepon,           only: stepon_final
-   use physpkg,          only: phys_final
-   use cam_initfiles,    only: cam_initfiles_close
-   use camsrfexch,       only: atm2hub_deallocate, hub2atm_deallocate
+   use stepon,               only: stepon_final
+   use physpkg,              only: phys_final
+   use cam_initfiles,        only: cam_initfiles_close
+   use camsrfexch,           only: atm2hub_deallocate, hub2atm_deallocate
    use ionosphere_interface, only: ionosphere_final
-   use cam_control_mod,  only: initial_run
+   use cam_control_mod,      only: initial_run
 
    !
    ! Arguments

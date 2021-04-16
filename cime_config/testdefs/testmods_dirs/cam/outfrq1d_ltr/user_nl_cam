@@ -1,0 +1,8 @@
+mfilt=1,1,1,1,1,1,1,1,1
+ndens=1,1,1,1,1,1,1,1,1
+nhtfrq=-24,-24,-24,-24,-24,-24,-24,-24,-24
+avgflag_pertape = 'A',  'I',  'I',  'A',  'A', 'I', 'A'
+inithist='ENDOFRUN'
+ionos_epotential_ltr=.true.
+ltr_files = '$DIN_LOC_ROOT/atm/waccm/amie_data/REMIX_3-4_Aug_2010.nc'
+fincl6 = 'prescr_phihm','prescr_efxm','prescr_kevm','prescr_efxp','prescr_kevp','ltr_efx_phys','ltr_kev_phys'

@@ -23,6 +23,7 @@ module aircraft_emit
   public :: aircraft_emit_adv
   public :: aircraft_emit_register
   public :: aircraft_emit_readnl
+  public :: get_aircraft
 
   type :: forcing_air
      real(r8)              :: mw
@@ -40,16 +41,15 @@ module aircraft_emit
 
   type(forcing_air),allocatable :: forcings_air(:)
 
-  integer, parameter :: N_AERO = 10 
-  character(len=11)    :: aero_names(N_AERO) = (/'ac_HC      ','ac_NOX     ','ac_PMNV    ',&
-                          'ac_PMSO    ','ac_PMFO    ','ac_FUELBURN','ac_CO2     ','ac_H2O     ',&
-                          'ac_SOX     ','ac_CO      '/)
+  integer, parameter :: N_AERO = 13
+  character(len=13)    :: aero_names(N_AERO) = (/'ac_SLANT_DIST','ac_TRACK_DIST','ac_HC        ','ac_NOX       ','ac_PMNV      ',&
+                                                 'ac_PMSO      ','ac_PMFO      ','ac_FUELBURN  ','ac_CO2       ','ac_H2O       ',&
+                                                 'ac_SOX       ','ac_CO        ','ac_BC        '/)
 
   real(r8), parameter :: molmass(N_AERO) = 1._r8
 
-  logical :: advective_tracer(N_AERO) = (/.false., .false., .false., .false., .false., &
-                                          .false., .false., .false., .false.,.false./)
-  character(len=3) :: mixtype(N_AERO) = (/'wet','wet','wet','wet','wet','wet','wet','wet','wet','wet'/)
+  logical :: advective_tracer(N_AERO) = .false.
+  character(len=3) :: mixtype(N_AERO) = 'wet'
 
   real(r8) :: cptmp = 666.0_r8
   real(r8) :: qmin = 0.0_r8
@@ -67,9 +67,26 @@ module aircraft_emit
   integer :: aircraft_cnt = 0
   character(len=16) :: spc_name_list(N_AERO)
   character(len=256) :: spc_flist(N_AERO),spc_fname(N_AERO)
+  logical :: dist(N_AERO)
 
 contains
 
+  subroutine get_aircraft(cnt, spc_name_list_out)
+  integer, intent(out) :: cnt 
+  character(len=16), optional, intent(out) :: spc_name_list_out(N_AERO)
+  integer :: i
+
+  spc_name_list_out = ''
+
+  cnt = aircraft_cnt
+  if( cnt>0 ) then
+    do i=1,cnt
+       spc_name_list_out(i) = spc_name_list(i)
+    end do
+  end if
+
+  end subroutine get_aircraft
+ 
   subroutine aircraft_emit_register()
 
 !------------------------------------------------------------------
@@ -90,6 +107,8 @@ contains
     !------------------------------------------------------------------
     ! Return if air_specifier is blank (no aircraft data to process)
     !------------------------------------------------------------------
+    dist(:) = .false.
+    aircraft_cnt = 0
     if (air_specifier(1) == "") return
 
 ! count aircraft emission species used in the simulation
@@ -107,6 +126,8 @@ contains
         if( mm < 1 ) then
 	 call endrun('aircraft_emit_register: '//trim(spc_name)//' is not in the aircraft emission dataset')
         endif
+
+        if (trim(spc_name) == 'ac_SLANT_DIST'.or. trim(spc_name) == 'ac_TRACK_DIST') dist(n) = .true.
 
         aircraft_cnt = aircraft_cnt + 1
         call pbuf_add_field(aero_names(mm),'physpkg',dtype_r8,(/pcols,pver/),idx)
@@ -189,6 +210,7 @@ contains
           forcings_air(m)%file%cyclical_list    = .true.  ! Aircraft data cycles over the filename list
           forcings_air(m)%file%weight_by_lat     = .true.  ! Aircraft data -  interpolated with latitude weighting
           forcings_air(m)%file%conserve_column = .true. ! Aircraft data - vertically interpolated to conserve the total column
+          forcings_air(m)%file%dist = dist(m)
           forcings_air(m)%species          = spc_name
           forcings_air(m)%sectors          = spc_name ! Only one species per file for aircraft data
           forcings_air(m)%nsectors         = 1
@@ -314,6 +336,8 @@ contains
               caseid = 4
           case ('kg m-2 s-1')
               caseid = 5
+          case ('m/sec' ) 
+              caseid = 6
           case default
              print*, 'aircraft_emit_adv: units = ',trim(forcings_air(m)%fields(i)%units) ,' are not recognized'
              call endrun('aircraft_emit_adv: units are not recognized')
@@ -338,6 +362,8 @@ contains
 !                end do
                 to_mmr(:ncol,:) = 1.0_r8
              elseif (caseid == 5) then
+                to_mmr(:ncol,:) = 1.0_r8
+             elseif (caseid == 6) then
                 to_mmr(:ncol,:) = 1.0_r8
              else
                 to_mmr(:ncol,:) = molmass(ind)/mwdry

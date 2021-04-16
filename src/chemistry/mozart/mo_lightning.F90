@@ -5,7 +5,7 @@ module mo_lightning
 
   use shr_kind_mod,      only : r8 => shr_kind_r8
   use ppgrid,            only : begchunk, endchunk, pcols, pver
-  use phys_grid,         only : ngcols_p
+  use phys_grid,         only : ngcols_p => num_global_phys_cols
   use cam_abortutils,    only : endrun
   use cam_logfile,       only : iulog
   use spmd_utils,        only : masterproc, mpicom
@@ -61,7 +61,7 @@ contains
     has_no_lightning_prod = no_ndx>0 .or. xno_ndx>0
     if (.not.has_no_lightning_prod) return
 
-    
+
     if( lght_no_prd_factor /= 1._r8 ) then
        factor = factor*lght_no_prd_factor
     end if
@@ -119,7 +119,7 @@ contains
     !	... set no production from lightning
     !----------------------------------------------------------------------
     use physics_types,    only : physics_state
-    
+
     use physics_buffer,   only : pbuf_get_index, physics_buffer_desc, pbuf_get_field, pbuf_get_chunk
     use physconst,        only : rga
     use phys_grid,        only : get_rlat_all_p, get_wght_all_p
@@ -133,7 +133,7 @@ contains
     !	... dummy args
     !----------------------------------------------------------------------
     type(physics_state), intent(in) :: state(begchunk:endchunk) ! physics state
-    
+
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
     type(cam_in_t), intent(in) :: cam_in(begchunk:endchunk) ! physics state
 
@@ -261,7 +261,7 @@ contains
              !       ... compute flash frequency for given cloud top height
              !           (flashes storm^-1 min^-1)
              !--------------------------------------------------------------------------------
-             flash_freq_land = 3.44e-5_r8 * cldhgt(i,c)**4.9_r8 
+             flash_freq_land = 3.44e-5_r8 * cldhgt(i,c)**4.9_r8
              flash_freq_ocn  = 6.40e-4_r8 * cldhgt(i,c)**1.7_r8
              flash_freq(i,c) = cam_in(c)%landfrac(i)*flash_freq_land + &
                                cam_in(c)%ocnfrac(i) *flash_freq_ocn
@@ -284,8 +284,8 @@ contains
              flash_energy(i,c) = 6.7e9_r8 * flash_freq(i,c)/60._r8
              !--------------------------------------------------------------------------------
              !       ... LKE Aug 23, 2005: scale production to account for different grid
-             !           box sizes. This requires a reduction in the overall fudge factor 
-             !           (e.g., from 1.2 to 0.5) 
+             !           box sizes. This requires a reduction in the overall fudge factor
+             !           (e.g., from 1.2 to 0.5)
              !--------------------------------------------------------------------------------
              flash_energy(i,c) =  flash_energy(i,c) * wght(i) * geo_factor
              !--------------------------------------------------------------------------------

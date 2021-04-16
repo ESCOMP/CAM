@@ -9,7 +9,7 @@ module cam_history_support
 !!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-  use shr_kind_mod,     only: r8=>shr_kind_r8, shr_kind_cl
+  use shr_kind_mod,     only: r8=>shr_kind_r8, shr_kind_cl, shr_kind_cxx
   use shr_sys_mod,      only: shr_sys_flush
   use pio,              only: var_desc_t, file_desc_t
   use cam_abortutils,   only: endrun
@@ -23,7 +23,7 @@ module cam_history_support
   private
   save
 
-  integer, parameter, public :: max_string_len = 256   ! Length of strings
+  integer, parameter, public :: max_string_len = shr_kind_cxx
   integer, parameter, public :: max_chars = shr_kind_cl         ! max chars for char variables
   integer, parameter, public :: fieldname_len = 24   ! max chars for field name
   integer, parameter, public :: fieldname_suffix_len =  3 ! length of field name suffix ("&IC")
@@ -1362,7 +1362,10 @@ contains
     ! Register the name if necessary
     if (i == 0) then
        call add_hist_coord(trim(name), i)
-       !  if(masterproc) write(iulog,*) 'Registering hist coord',name,'(',i,') with length: ',vlen
+       if(masterproc) then
+          write(iulog, '(3a,i0,a,i0)') 'Registering hist coord', trim(name),  &
+               '(', i, ') with length: ', vlen
+       end if
     end if
 
     ! Set the coord's values
@@ -1424,7 +1427,10 @@ contains
     ! Register the name if necessary
     if (i == 0) then
        call add_hist_coord(trim(name), i)
-       !  if(masterproc) write(iulog,*) 'Registering hist coord',name,'(',i,') with length: ',vlen
+       if(masterproc) then
+          write(iulog, '(3a,i0,a,i0)') 'Registering hist coord', trim(name),  &
+               '(', i, ') with length: ', vlen
+       end if
     end if
 
     ! Set the coord's size
@@ -1500,7 +1506,10 @@ contains
            positive=positive, standard_name=standard_name,                    &
            vertical_coord=.true.)
       i = get_hist_coord_index(trim(name))
-      !  if(masterproc) write(iulog,*) 'Registering hist coord',name,'(',i,') with length: ',vlen
+      if(masterproc) then
+         write(iulog, '(3a,i0,a,i0)') 'Registering hist coord', trim(name),   &
+              '(', i, ') with length: ', vlen
+      end if
     end if
 
     if (present(formula_terms)) then

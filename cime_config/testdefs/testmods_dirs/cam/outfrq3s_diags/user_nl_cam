@@ -12,3 +12,5 @@ history_waccmx=.true.
 history_chemistry=.true.
 history_carma=.true.
 history_clubb=.true.
+fincl2='Uzm:I','Vzm:I','Wzm:I','THzm:I'
+do_circulation_diags=.true.

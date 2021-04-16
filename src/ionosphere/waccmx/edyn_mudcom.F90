@@ -1,9 +1,23 @@
-!module mudcom
-!  use shr_kind_mod ,only: r8 => shr_kind_r8
-!  use cam_logfile  ,only: iulog
-!  use cam_abortutils   ,only: endrun
+module edyn_mudcom
+  use shr_kind_mod, only: r8 => shr_kind_r8
+
+  implicit none
+
+  private
+
+  public :: cor2
+  public :: factri
+  public :: factrp
+  public :: swk2
+  public :: trsfc2
+  public :: prolon2
+  public :: res2
+  public :: sgfa
+  public :: sgsl
+  public :: transp
+
 !-----------------------------------------------------------------------
-!  contains
+  contains
 !-----------------------------------------------------------------------
 !
 !     file mudcom.f
@@ -28,7 +42,6 @@
 !
 !-----------------------------------------------------------------------
       subroutine swk2(nfx,nfy,phif,rhsf,phi,rhs)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
 !
 !     set phif,rhsf input in arrays which include
 !     virtual boundaries for phi (for all 2-d real codes)
@@ -58,7 +71,6 @@
       end subroutine swk2
 !-----------------------------------------------------------------------
       subroutine trsfc2(nx,ny,phi,rhs,ncx,ncy,phic,rhsc)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
 !
 !     transfer fine grid to coarse grid
 !
@@ -118,7 +130,6 @@
       end subroutine trsfc2
 !-----------------------------------------------------------------------
       subroutine res2(nx,ny,resf,ncx,ncy,rhsc,nxa,nxb,nyc,nyd)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
       implicit none
       integer nx,ny,ncx,ncy,nxa,nxb,nyc,nyd
       integer i,j,ic,jc,im1,ip1,jm1,jp1,ix,jy
@@ -258,7 +269,6 @@
 !     prolon2 modified from rgrd2u 11/20/97
 !
       subroutine prolon2(ncx,ncy,p,nx,ny,q,nxa,nxb,nyc,nyd,intpol)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
       implicit none
       integer ncx,ncy,nx,ny,intpol,nxa,nxb,nyc,nyd
       real(r8) :: p(0:ncx+1,0:ncy+1),q(0:nx+1,0:ny+1)
@@ -402,7 +412,6 @@
 !     11/20/97  modification of rgrd1u.f for mudpack
 !
       subroutine prolon1(ncx,p,nx,q,nxa,nxb,intpol)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
       implicit none
       integer intpol,nxa,nxb,ncx,nx,i,ic,ist,ifn,ioddst,ioddfn
       real(r8) :: p(0:ncx+1),q(0:nx+1)
@@ -500,7 +509,6 @@
       end subroutine prolon1
 !-----------------------------------------------------------------------
       subroutine cor2(nx,ny,phif,ncx,ncy,phic,nxa,nxb,nyc,nyd,intpol,phcor)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
 !
 !     add coarse grid correction in phic to fine grid approximation
 !     in phif using linear or cubic interpolation
@@ -552,7 +560,6 @@
       end subroutine cor2
 !-----------------------------------------------------------------------
       subroutine pde2(nx,ny,u,i,j,ux3,ux4,uy3,uy4,nxa,nyc)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
       implicit none
       integer nx,ny,i,j,nxa,nyc
       real(r8) :: u(nx,ny),dlx,dly,dlxx,dlyy,tdlx3,tdly3,dlx4,dly4
@@ -679,7 +686,6 @@
       end subroutine pde2
 !-----------------------------------------------------------------------
       subroutine swk3(nfx,nfy,nfz,phif,rhsf,phi,rhs)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
 !
 !     set phif,rhsf input in arrays which include
 !     virtual boundaries for phi (for all 2-d real codes)
@@ -721,7 +727,6 @@
       end subroutine swk3
 !-----------------------------------------------------------------------
       subroutine trsfc3(nx,ny,nz,phi,rhs,ncx,ncy,ncz,phic,rhsc)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
 !
 !     transfer fine grid to coarse grid
 !
@@ -793,7 +798,6 @@
 !-----------------------------------------------------------------------
       subroutine res3(nx,ny,nz,resf,ncx,ncy,ncz,rhsc, &
                       nxa,nxb,nyc,nyd,nze,nzf)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
       implicit none
       integer nx,ny,nz,ncx,ncy,ncz,nxa,nxb,nyc,nyd,nze,nzf
       integer ix,jy,kz,i,j,k,ic,jc,kc,im1,ip1,jm1,jp1,km1,kp1
@@ -1138,7 +1142,6 @@
 !
       subroutine prolon3(ncx,ncy,ncz,p,nx,ny,nz,q,nxa,nxb,nyc,nyd, &
                          nze,nzf,intpol)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
       implicit none
       integer ncx,ncy,ncz,nx,ny,nz,intpol,nxa,nxb,nyc,nyd,nze,nzf
       real(r8) :: p(0:ncx+1,0:ncy+1,0:ncz+1),q(0:nx+1,0:ny+1,0:nz+1)
@@ -1310,7 +1313,6 @@
 !-----------------------------------------------------------------------
       subroutine cor3(nx,ny,nz,phif,ncx,ncy,ncz,phic,nxa,nxb,nyc,nyd, &
                       nze,nzf,intpol,phcor)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
       implicit none
       integer nx,ny,nz,ncx,ncy,ncz,nxa,nxb,nyc,nyd,nze,nzf,intpol
       integer i,j,k,ist,ifn,jst,jfn,kst,kfn
@@ -1384,7 +1386,6 @@
       end subroutine cor3
 !-----------------------------------------------------------------------
       subroutine per3vb(nx,ny,nz,phi,nxa,nyc,nze)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
 !
 !     set virtual periodic boundaries from interior values
 !     in three dimensions (for all 3-d solvers)
@@ -1423,7 +1424,6 @@
       end subroutine per3vb
 !-----------------------------------------------------------------------
       subroutine pde2cr(nx,ny,u,i,j,ux3y,uxy3,ux2y2)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
 !
 !     compute mixed partial derivative approximations
 !
@@ -1724,7 +1724,6 @@
 !-----------------------------------------------------------------------
       subroutine pde3(nx,ny,nz,u,i,j,k,ux3,ux4,uy3,uy4,uz3,uz4, &
                       nxa,nyc,nze)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
 !
 !     estimate third and fourth partial derivatives in x,y,z
 !
@@ -1801,7 +1800,6 @@
       end subroutine pde3
 !-----------------------------------------------------------------------
       subroutine p3de2(nx,ny,u,i,j,ux3,ux4,uy3,uy4,nxa,nyc)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
 !
 !     third and fourth partial derivatives in x and y
 !
@@ -1876,7 +1874,6 @@
       end subroutine p3de2
 !-----------------------------------------------------------------------
       subroutine p3de1(nx,u,i,ux3,ux4,nxa)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
 !
 !     third and fourth derivatives in x
 !
@@ -1944,7 +1941,6 @@
 !     of order n arising from nonperiodic or periodic discretizations
 !
       subroutine factri(m,n,a,b,c)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
 !
 !     factor the m simultaneous tridiagonal systems of order n
 !
@@ -1961,7 +1957,6 @@
       end subroutine factri
 !-----------------------------------------------------------------------
       subroutine factrp(m,n,a,b,c,d,e,sum)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
 !
 !     factor the m simultaneous "tridiagonal" systems of order n
 !     from discretized periodic system (leave out periodic n point)
@@ -2018,7 +2013,6 @@
       end subroutine factrp
 !-----------------------------------------------------------------------
       subroutine transp(n,amat)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
 !
 !     transpose n by n real matrix
 !
@@ -2036,95 +2030,92 @@
       end subroutine transp
 !-----------------------------------------------------------------------
       subroutine sgfa (a,lda,n,ipvt,info)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
-      integer lda,n,ipvt(1),info                                                
-      real(r8) :: a(lda,1)                                                             
-      real(r8) :: t                                                                    
-      integer isfmax,j,k,kp1,l,nm1
-      info = 0                                                                  
-      nm1 = n - 1                                                               
-      if (nm1 .lt. 1) go to 70                                                  
-      do 60 k = 1, nm1                                                          
-         kp1 = k + 1                                                            
+      integer lda,n,ipvt(1),info
+      real(r8) :: a(lda,1)
+      real(r8) :: t
+      integer :: j,k,kp1,l,nm1
+      info = 0
+      nm1 = n - 1
+      if (nm1 .lt. 1) go to 70
+      do 60 k = 1, nm1
+         kp1 = k + 1
          l = isfmax(n-k+1,a(k,k),1) + k - 1
-         ipvt(k) = l                                                            
-         if (a(l,k) .eq. 0.0e0_r8) go to 40                                        
-            if (l .eq. k) go to 10                                              
-               t = a(l,k)                                                       
-               a(l,k) = a(k,k)                                                  
-               a(k,k) = t                                                       
-   10       continue                                                            
-            t = -1.0e0_r8/a(k,k)                                                   
+         ipvt(k) = l
+         if (a(l,k) .eq. 0.0e0_r8) go to 40
+            if (l .eq. k) go to 10
+               t = a(l,k)
+               a(l,k) = a(k,k)
+               a(k,k) = t
+   10       continue
+            t = -1.0e0_r8/a(k,k)
             call sscl(n-k,t,a(k+1,k),1)
-            do 30 j = kp1, n                                                    
-               t = a(l,j)                                                       
-               if (l .eq. k) go to 20                                           
-                  a(l,j) = a(k,j)                                               
-                  a(k,j) = t                                                    
-   20          continue                                                         
+            do 30 j = kp1, n
+               t = a(l,j)
+               if (l .eq. k) go to 20
+                  a(l,j) = a(k,j)
+                  a(k,j) = t
+   20          continue
                call sxpy(n-k,t,a(k+1,k),1,a(k+1,j),1)
-   30       continue                                                            
-         go to 50                                                               
-   40    continue                                                               
-            info = k                                                            
-   50    continue                                                               
-   60 continue                                                                  
-   70 continue                                                                  
-      ipvt(n) = n                                                               
-      if (a(n,n) .eq. 0.0e0_r8) info = n                                           
-      return                                                                    
+   30       continue
+         go to 50
+   40    continue
+            info = k
+   50    continue
+   60 continue
+   70 continue
+      ipvt(n) = n
+      if (a(n,n) .eq. 0.0e0_r8) info = n
+      return
       end subroutine sgfa
 !-----------------------------------------------------------------------
       subroutine sgsl (a,lda,n,ipvt,b,job)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
       implicit none
       integer lda,n,ipvt(1),job
-      real(r8) :: a(lda,1),b(1)                              
-      real(r8) :: sdt,t
-      integer k,kb,l,nm1                                                        
-      nm1 = n - 1                                                               
-      if (job .ne. 0) go to 50                                                  
-         if (nm1 .lt. 1) go to 30                                               
-         do 20 k = 1, nm1                                                       
-            l = ipvt(k)                                                         
-            t = b(l)                                                            
-            if (l .eq. k) go to 10                                              
-               b(l) = b(k)                                                      
-               b(k) = t                                                         
-   10       continue                                                            
+      real(r8) :: a(lda,1),b(1)
+      real(r8) :: t
+      integer k,kb,l,nm1
+      nm1 = n - 1
+      if (job .ne. 0) go to 50
+         if (nm1 .lt. 1) go to 30
+         do 20 k = 1, nm1
+            l = ipvt(k)
+            t = b(l)
+            if (l .eq. k) go to 10
+               b(l) = b(k)
+               b(k) = t
+   10       continue
             call sxpy(n-k,t,a(k+1,k),1,b(k+1),1)
-   20    continue                                                               
-   30    continue                                                               
-         do 40 kb = 1, n                                                        
-            k = n + 1 - kb                                                      
-            b(k) = b(k)/a(k,k)                                                  
-            t = -b(k)                                                           
+   20    continue
+   30    continue
+         do 40 kb = 1, n
+            k = n + 1 - kb
+            b(k) = b(k)/a(k,k)
+            t = -b(k)
             call sxpy(k-1,t,a(1,k),1,b(1),1)
-   40    continue                                                               
-      go to 100                                                                 
-   50 continue                                                                  
-         do 60 k = 1, n                                                         
+   40    continue
+      go to 100
+   50 continue
+         do 60 k = 1, n
             t = sdt(k-1,a(1,k),1,b(1),1)
-            b(k) = (b(k) - t)/a(k,k)                                            
-   60    continue                                                               
-         if (nm1 .lt. 1) go to 90                                               
-         do 80 kb = 1, nm1                                                      
-            k = n - kb                                                          
+            b(k) = (b(k) - t)/a(k,k)
+   60    continue
+         if (nm1 .lt. 1) go to 90
+         do 80 kb = 1, nm1
+            k = n - kb
             b(k) = b(k) + sdt(n-k,a(k+1,k),1,b(k+1),1)
-            l = ipvt(k)                                                         
-            if (l .eq. k) go to 70                                              
-               t = b(l)                                                         
-               b(l) = b(k)                                                      
-               b(k) = t                                                         
-   70       continue                                                            
-   80    continue                                                               
-   90    continue                                                               
-  100 continue                                                                  
-      return                                                                    
+            l = ipvt(k)
+            if (l .eq. k) go to 70
+               t = b(l)
+               b(l) = b(k)
+               b(k) = t
+   70       continue
+   80    continue
+   90    continue
+  100 continue
+      return
       end subroutine sgsl
 !-----------------------------------------------------------------------
       function sdt(n,sx,incx,sy,incy) result(sdtx)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
 
       implicit none
 
@@ -2134,127 +2125,124 @@
       integer :: i,ix,iy,m,mp1
       real(r8) :: sdtx
       real(r8) :: stemp
-      
-      stemp = 0.0e0_r8                                                             
+
+      stemp = 0.0e0_r8
       sdtx = 0.0e0_r8
-      if(n.le.0)return                                                          
-      if(incx.eq.1.and.incy.eq.1)go to 20                                       
-      ix = 1                                                                    
-      iy = 1                                                                    
-      if(incx.lt.0)ix = (-n+1)*incx + 1                                         
-      if(incy.lt.0)iy = (-n+1)*incy + 1                                         
-      do 10 i = 1,n                                                             
-        stemp = stemp + sx(ix)*sy(iy)                                           
-        ix = ix + incx                                                          
-        iy = iy + incy                                                          
-   10 continue                                                                  
+      if(n.le.0)return
+      if(incx.eq.1.and.incy.eq.1)go to 20
+      ix = 1
+      iy = 1
+      if(incx.lt.0)ix = (-n+1)*incx + 1
+      if(incy.lt.0)iy = (-n+1)*incy + 1
+      do 10 i = 1,n
+        stemp = stemp + sx(ix)*sy(iy)
+        ix = ix + incx
+        iy = iy + incy
+   10 continue
       sdtx = stemp
-      return                                                                    
-   20 m = mod(n,5)                                                              
-      if( m .eq. 0 ) go to 40                                                   
-      do 30 i = 1,m                                                             
-        stemp = stemp + sx(i)*sy(i)                                             
-   30 continue                                                                  
-      if( n .lt. 5 ) go to 60                                                   
-   40 mp1 = m + 1                                                               
-      do 50 i = mp1,n,5                                                         
-        stemp = stemp + sx(i)*sy(i) + sx(i + 1)*sy(i + 1) + & 
-         sx(i + 2)*sy(i + 2) + sx(i + 3)*sy(i + 3) + sx(i + 4)*sy(i + 4)        
-   50 continue                                                                  
+      return
+   20 m = mod(n,5)
+      if( m .eq. 0 ) go to 40
+      do 30 i = 1,m
+        stemp = stemp + sx(i)*sy(i)
+   30 continue
+      if( n .lt. 5 ) go to 60
+   40 mp1 = m + 1
+      do 50 i = mp1,n,5
+        stemp = stemp + sx(i)*sy(i) + sx(i + 1)*sy(i + 1) + &
+         sx(i + 2)*sy(i + 2) + sx(i + 3)*sy(i + 3) + sx(i + 4)*sy(i + 4)
+   50 continue
    60 sdtx = stemp
-      return                                                                    
+      return
       end function sdt
 !-----------------------------------------------------------------------
       integer function isfmax(n,sx,incx)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
       implicit none
-      real(r8) :: sx(1),smax                                                           
-      integer i,incx,ix,n                                                       
+      real(r8) :: sx(1),smax
+      integer i,incx,ix,n
       isfmax = 0
-      if( n .lt. 1 ) return                                                     
+      if( n .lt. 1 ) return
       isfmax = 1
-      if(n.eq.1)return                                                          
-      if(incx.eq.1)go to 20                                                     
-      ix = 1                                                                    
-      smax = abs(sx(1))                                                         
-      ix = ix + incx                                                            
-      do 10 i = 2,n                                                             
-         if(abs(sx(ix)).le.smax) go to 5                                        
+      if(n.eq.1)return
+      if(incx.eq.1)go to 20
+      ix = 1
+      smax = abs(sx(1))
+      ix = ix + incx
+      do 10 i = 2,n
+         if(abs(sx(ix)).le.smax) go to 5
          isfmax = i
-         smax = abs(sx(ix))                                                     
-    5    ix = ix + incx                                                         
-   10 continue                                                                  
-      return                                                                    
-   20 smax = abs(sx(1))                                                         
-      do 30 i = 2,n                                                             
-         if(abs(sx(i)).le.smax) go to 30                                        
+         smax = abs(sx(ix))
+    5    ix = ix + incx
+   10 continue
+      return
+   20 smax = abs(sx(1))
+      do 30 i = 2,n
+         if(abs(sx(i)).le.smax) go to 30
          isfmax = i
-         smax = abs(sx(i))                                                      
-   30 continue                                                                  
-      return                                                                    
+         smax = abs(sx(i))
+   30 continue
+      return
       end function isfmax
 !-----------------------------------------------------------------------
       subroutine sxpy(n,sa,sx,incx,sy,incy)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
       implicit none
-      real(r8) :: sx(1),sy(1),sa                                                       
-      integer i,incx,incy,ix,iy,m,mp1,n                                         
-      if(n.le.0)return                                                          
-      if (sa .eq. 0.0_r8) return                                                   
-      if(incx.eq.1.and.incy.eq.1)go to 20                                       
-      ix = 1                                                                    
-      iy = 1                                                                    
-      if(incx.lt.0)ix = (-n+1)*incx + 1                                         
-      if(incy.lt.0)iy = (-n+1)*incy + 1                                         
-      do 10 i = 1,n                                                             
-        sy(iy) = sy(iy) + sa*sx(ix)                                             
-        ix = ix + incx                                                          
-        iy = iy + incy                                                          
-   10 continue                                                                  
-      return                                                                    
-   20 m = mod(n,4)                                                              
-      if( m .eq. 0 ) go to 40                                                   
-      do 30 i = 1,m                                                             
-        sy(i) = sy(i) + sa*sx(i)                                                
-   30 continue                                                                  
-      if( n .lt. 4 ) return                                                     
-   40 mp1 = m + 1                                                               
-      do 50 i = mp1,n,4                                                         
-        sy(i) = sy(i) + sa*sx(i)                                                
-        sy(i + 1) = sy(i + 1) + sa*sx(i + 1)                                    
-        sy(i + 2) = sy(i + 2) + sa*sx(i + 2)                                    
-        sy(i + 3) = sy(i + 3) + sa*sx(i + 3)                                    
-   50 continue                                                                  
-      return                                                                    
+      real(r8) :: sx(1),sy(1),sa
+      integer i,incx,incy,ix,iy,m,mp1,n
+      if(n.le.0)return
+      if (sa .eq. 0.0_r8) return
+      if(incx.eq.1.and.incy.eq.1)go to 20
+      ix = 1
+      iy = 1
+      if(incx.lt.0)ix = (-n+1)*incx + 1
+      if(incy.lt.0)iy = (-n+1)*incy + 1
+      do 10 i = 1,n
+        sy(iy) = sy(iy) + sa*sx(ix)
+        ix = ix + incx
+        iy = iy + incy
+   10 continue
+      return
+   20 m = mod(n,4)
+      if( m .eq. 0 ) go to 40
+      do 30 i = 1,m
+        sy(i) = sy(i) + sa*sx(i)
+   30 continue
+      if( n .lt. 4 ) return
+   40 mp1 = m + 1
+      do 50 i = mp1,n,4
+        sy(i) = sy(i) + sa*sx(i)
+        sy(i + 1) = sy(i + 1) + sa*sx(i + 1)
+        sy(i + 2) = sy(i + 2) + sa*sx(i + 2)
+        sy(i + 3) = sy(i + 3) + sa*sx(i + 3)
+   50 continue
+      return
       end subroutine sxpy
 !-----------------------------------------------------------------------
       subroutine sscl(n,sa,sx,incx)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
-      implicit none
-      real(r8) :: sa,sx(1)                                                             
-      integer i,incx,m,mp1,n,nincx                                              
-      if(n.le.0)return                                                          
-      if(incx.eq.1)go to 20                                                     
-      nincx = n*incx                                                            
-      do 10 i = 1,nincx,incx                                                    
-        sx(i) = sa*sx(i)                                                        
-   10 continue                                                                  
-      return                                                                    
-   20 m = mod(n,5)                                                              
-      if( m .eq. 0 ) go to 40                                                   
-      do 30 i = 1,m                                                             
-        sx(i) = sa*sx(i)                                                        
-   30 continue                                                                  
-      if( n .lt. 5 ) return                                                     
-   40 mp1 = m + 1                                                               
-      do 50 i = mp1,n,5                                                         
-        sx(i) = sa*sx(i)                                                        
-        sx(i + 1) = sa*sx(i + 1)                                                
-        sx(i + 2) = sa*sx(i + 2)                                                
-        sx(i + 3) = sa*sx(i + 3)                                                
-        sx(i + 4) = sa*sx(i + 4)                                                
-   50 continue                                                                  
-      return                                                                    
+
+      real(r8) :: sa,sx(1)
+      integer i,incx,m,mp1,n,nincx
+      if(n.le.0)return
+      if(incx.eq.1)go to 20
+      nincx = n*incx
+      do 10 i = 1,nincx,incx
+        sx(i) = sa*sx(i)
+   10 continue
+      return
+   20 m = mod(n,5)
+      if( m .eq. 0 ) go to 40
+      do 30 i = 1,m
+        sx(i) = sa*sx(i)
+   30 continue
+      if( n .lt. 5 ) return
+   40 mp1 = m + 1
+      do 50 i = mp1,n,5
+        sx(i) = sa*sx(i)
+        sx(i + 1) = sa*sx(i + 1)
+        sx(i + 2) = sa*sx(i + 2)
+        sx(i + 3) = sa*sx(i + 3)
+        sx(i + 4) = sa*sx(i + 4)
+   50 continue
+      return
       end subroutine sscl
 !-----------------------------------------------------------------------
-!end module mudcom
+end module edyn_mudcom

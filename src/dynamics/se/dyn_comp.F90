@@ -2057,11 +2057,17 @@ subroutine check_file_layout(file, elem, dyn_cols, file_desc, dyn_ok, dimname)
       indx = 1
       do j = 1, np
          do i = 1, np
-            if ((abs(dbuf2(indx,ie)) > 1.e-12_r8) .and. &
-               (abs((elem(ie)%spherep(i,j)%lat*rad2deg - dbuf2(indx,ie))/dbuf2(indx,ie)) > 1.0e-10_r8)) then
-               write(6, *) 'XXG ',iam,') ',ie,i,j,elem(ie)%spherep(i,j)%lat,dbuf2(indx,ie)*deg2rad
-               call shr_sys_flush(6)
-               found = .false.
+            if (abs(dbuf2(indx,ie)) > 1.e-12_r8) then
+               if (abs((elem(ie)%spherep(i,j)%lat*rad2deg - dbuf2(indx,ie)) / &
+                    dbuf2(indx,ie)) > 1.0e-10_r8) then
+                  write(iulog, '(2a,4(i0,a),f11.5,a,f11.5)')                  &
+                       "ncdata file latitudes not in correct column order",   &
+                       ' on task ', iam, ': elem(', ie, ')%spherep(', i,      &
+                       ', ', j, ')%lat = ', elem(ie)%spherep(i,j)%lat,        &
+                       ' /= ', dbuf2(indx, ie)*deg2rad
+                  call shr_sys_flush(iulog)
+                  found = .false.
+               end if
             end if
             indx = indx + 1
          end do
@@ -2082,11 +2088,17 @@ subroutine check_file_layout(file, elem, dyn_cols, file_desc, dyn_ok, dimname)
       indx = 1
       do j = 1, np
          do i = 1, np
-            if ((abs(dbuf2(indx,ie)) > 1.e-12_r8) .and. &
-               (abs((elem(ie)%spherep(i,j)%lon*rad2deg - dbuf2(indx,ie))/dbuf2(indx,ie)) > 1.0e-10_r8)) then
-               write(6, *) 'XXG ',iam,') ',ie,i,j,elem(ie)%spherep(i,j)%lon,dbuf2(indx,ie)*deg2rad
-               call shr_sys_flush(6)
-               found = .false.
+            if (abs(dbuf2(indx,ie)) > 1.e-12_r8) then
+               if (abs((elem(ie)%spherep(i,j)%lon*rad2deg - dbuf2(indx,ie)) / &
+                    dbuf2(indx,ie)) > 1.0e-10_r8) then
+                  write(iulog, '(2a,4(i0,a),f11.5,a,f11.5)')                  &
+                       "ncdata file longitudes not in correct column order",  &
+                       ' on task ', iam, ': elem(', ie, ')%spherep(', i,      &
+                       ', ', j, ')%lon = ', elem(ie)%spherep(i,j)%lon,        &
+                       ' /= ', dbuf2(indx, ie)*deg2rad
+                  call shr_sys_flush(iulog)
+                  found = .false.
+               end if
             end if
             indx = indx + 1
          end do
@@ -2147,11 +2159,12 @@ subroutine read_dyn_field_2d(fieldname, fh, dimname, buffer)
 
    ! Local variables
    logical                  :: found
+   real(r8)                 :: fillvalue
    !----------------------------------------------------------------------------
 
    buffer = 0.0_r8
    call infld(trim(fieldname), fh, dimname, 1, npsq, 1, nelemd, buffer,    &
-         found, gridname=ini_grid_name)
+        found, gridname=ini_grid_name, fillvalue=fillvalue)
    if(.not. found) then
       call endrun('READ_DYN_FIELD_2D: Could not find '//trim(fieldname)//' field on input datafile')
    end if
@@ -2159,7 +2172,8 @@ subroutine read_dyn_field_2d(fieldname, fh, dimname, buffer)
    ! This code allows use of compiler option to set uninitialized values
    ! to NaN.  In that case infld can return NaNs where the element GLL points
    ! are not "unique columns"
-   where (isnan(buffer)) buffer = 0.0_r8
+   ! Set NaNs or fillvalue points to zero
+   where (isnan(buffer) .or. (buffer==fillvalue)) buffer = 0.0_r8
 
 end subroutine read_dyn_field_2d
 
@@ -2175,11 +2189,12 @@ subroutine read_dyn_field_3d(fieldname, fh, dimname, buffer)
 
    ! Local variables
    logical                  :: found
+   real(r8)                 :: fillvalue
    !----------------------------------------------------------------------------
 
    buffer = 0.0_r8
-   call infld(trim(fieldname), fh, dimname, 'lev',  1, npsq, 1, nlev,      &
-         1, nelemd, buffer, found, gridname=ini_grid_name)
+   call infld(trim(fieldname), fh, dimname, 'lev',  1, npsq, 1, nlev,         &
+        1, nelemd, buffer, found, gridname=ini_grid_name, fillvalue=fillvalue)
    if(.not. found) then
       call endrun('READ_DYN_FIELD_3D: Could not find '//trim(fieldname)//' field on input datafile')
    end if
@@ -2187,7 +2202,8 @@ subroutine read_dyn_field_3d(fieldname, fh, dimname, buffer)
    ! This code allows use of compiler option to set uninitialized values
    ! to NaN.  In that case infld can return NaNs where the element GLL points
    ! are not "unique columns"
-   where (isnan(buffer)) buffer = 0.0_r8
+   ! Set NaNs or fillvalue points to zero
+   where (isnan(buffer) .or. (buffer == fillvalue)) buffer = 0.0_r8
 
 end subroutine read_dyn_field_3d
 

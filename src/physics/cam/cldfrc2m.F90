@@ -6,7 +6,8 @@ use shr_kind_mod,     only: r8=>shr_kind_r8
 use spmd_utils,       only: masterproc
 use ppgrid,           only: pcols
 use physconst,        only: rair
-use wv_saturation,    only: qsat_water, svp_water, svp_ice
+use wv_saturation,    only: qsat_water, svp_water, svp_ice, &
+                            svp_water_vect, svp_ice_vect
 use cam_logfile,      only: iulog
 use cam_abortutils,   only: endrun
 
@@ -951,8 +952,8 @@ subroutine aist_vector(qv_in, T_in, p_in, qi_in, ni_in, landfrac_in, snowh_in, a
    real(r8) ttmp                            ! Limited temperature
    real(r8) icicval                         ! Empirical IWC value [ kg/kg ]
    real(r8) rho                             ! Local air density
-   real(r8) esl                             ! Liq sat vapor pressure
-   real(r8) esi                             ! Ice sat vapor pressure
+   real(r8) esl(pcols)                      ! Liq sat vapor pressure
+   real(r8) esi(pcols)                      ! Ice sat vapor pressure
    real(r8) ncf,phi                         ! Wilson and Ballard parameters
    real(r8) qs
    real(r8) esat_in(pcols)
@@ -1007,29 +1008,28 @@ subroutine aist_vector(qv_in, T_in, p_in, qi_in, ni_in, landfrac_in, snowh_in, a
      esat_in(:)  = 0._r8
      qsat_in(:)  = 0._r8
 
-     call qsat_water(T_in(1:ncol), p_in(1:ncol), &
-          esat_in(1:ncol), qsat_in(1:ncol))
-     
+     call qsat_water(T_in(1:ncol), p_in(1:ncol), esat_in(1:ncol), qsat_in(1:ncol), ncol)
+     call svp_water_vect(T_in(1:ncol), esl(1:ncol), ncol)
+     call svp_ice_vect(T_in(1:ncol), esi(1:ncol), ncol)
+
      do i = 1, ncol
+     
+       landfrac = landfrac_in(i)     
+       snowh = snowh_in(i)   
+       T = T_in(i)
+       qv = qv_in(i)
+       p = p_in(i)
+       qi = qi_in(i)
+       ni = ni_in(i)
+       qs = qsat_in(i)
 
-     landfrac = landfrac_in(i)     
-     snowh = snowh_in(i)   
-     T = T_in(i)
-     qv = qv_in(i)
-     p = p_in(i)
-     qi = qi_in(i)
-     ni = ni_in(i)
-     qs = qsat_in(i)
-     esl = svp_water(T)
-     esi = svp_ice(T)
-
-     if (present(rhmaxi_in))          rhmaxi          = rhmaxi_in(i)
-     if (present(rhmini_in))          rhmini          = rhmini_in(i)      
-     if (present(rhminl_in))          rhminl          = rhminl_in(i)      
-     if (present(rhminl_adj_land_in)) rhminl_adj_land = rhminl_adj_land_in(i)
-     if (present(rhminh_in))          rhminh          = rhminh_in(i)
+       if (present(rhmaxi_in))          rhmaxi          = rhmaxi_in(i)
+       if (present(rhmini_in))          rhmini          = rhmini_in(i)      
+       if (present(rhminl_in))          rhminl          = rhminl_in(i)      
+       if (present(rhminl_adj_land_in)) rhminl_adj_land = rhminl_adj_land_in(i)
+       if (present(rhminh_in))          rhminh          = rhminh_in(i)
           
-     if( iceopt.lt.3 ) then
+       if( iceopt.lt.3 ) then
          if( iceopt.eq.1 ) then
              ttmp = max(195._r8,min(T,253._r8)) - 273.16_r8
              icicval = a + b * ttmp + c * ttmp**2._r8
@@ -1041,10 +1041,10 @@ subroutine aist_vector(qv_in, T_in, p_in, qi_in, ni_in, landfrac_in, snowh_in, a
              icicval = icicval * 1.e-6_r8 * 18._r8 / 28.97_r8
          endif
          aist =  max(0._r8,min(qi/icicval,1._r8)) 
-     elseif( iceopt.eq.3 ) then
-         aist = 1._r8 - exp(-Kc*qi/(qs*(esi/esl)))
+       elseif( iceopt.eq.3 ) then
+         aist = 1._r8 - exp(-Kc*qi/(qs*(esi(i)/esl(i))))
          aist = max(0._r8,min(aist,1._r8))
-     elseif( iceopt.eq.4) then
+       elseif( iceopt.eq.4) then
          if( p .ge. premib ) then
              if( land(i) .and. (snowh.le.0.000001_r8) ) then
                  rhmin = rhminl - rhminl_adj_land
@@ -1073,61 +1073,61 @@ subroutine aist_vector(qv_in, T_in, p_in, qi_in, ni_in, landfrac_in, snowh_in, a
              aist = 1._r8
          endif
              aist = max(0._r8,min(aist,1._r8))
-     elseif (iceopt.eq.5) then 
-        ! set rh ice cloud fraction
-        rhi= (qv+qi)/qs * (esl/esi)
-        if (rhmaxi .eq. rhmini) then
+       elseif (iceopt.eq.5) then 
+         ! set rh ice cloud fraction
+         rhi= (qv+qi)/qs * (esl(i)/esi(i))
+         if (rhmaxi .eq. rhmini) then
            if (rhi .gt. rhmini) then
               rhdif = 1._r8
            else
               rhdif = 0._r8
            end if
-        else
+         else
            rhdif = (rhi-rhmini) / (rhmaxi - rhmini)
-        end if
-        aist = min(1.0_r8, max(rhdif,0._r8)**2)
+         end if
+         aist = min(1.0_r8, max(rhdif,0._r8)**2)
 
-     elseif (iceopt.eq.6) then
-        !----- ICE CLOUD OPTION 6: fit based on T and Number (Gettelman: based on Heymsfield obs)
-        ! Use observations from Heymsfield et al 2012 of IWC and Ni v. Temp
-        ! Multivariate fit follows form of Boudala 2002: ICIWC = a * exp(b*T) * N^c
-        ! a=6.73e-8, b=0.05, c=0.349
-        ! N is #/L, so need to convert Ni_L=N*rhoa/1000.
-        ah= 6.73834e-08_r8
-        bh= 0.0533110_r8
-        ch= 0.3493813_r8
-        rho=p/(rair*T)
-        nil=ni*rho/1000._r8
-        icicval = ah * exp(bh*T) * nil**ch
-        !result is in g m-3, convert to kg H2O / kg air (icimr...)
-        icicval = icicval / rho / 1000._r8
-        aist =  max(0._r8,min(qi/icicval,1._r8))
-        aist =  min(aist,1._r8)
+       elseif (iceopt.eq.6) then
+         !----- ICE CLOUD OPTION 6: fit based on T and Number (Gettelman: based on Heymsfield obs)
+         ! Use observations from Heymsfield et al 2012 of IWC and Ni v. Temp
+         ! Multivariate fit follows form of Boudala 2002: ICIWC = a * exp(b*T) * N^c
+         ! a=6.73e-8, b=0.05, c=0.349
+         ! N is #/L, so need to convert Ni_L=N*rhoa/1000.
+         ah= 6.73834e-08_r8
+         bh= 0.0533110_r8
+         ch= 0.3493813_r8
+         rho=p/(rair*T)
+         nil=ni*rho/1000._r8
+         icicval = ah * exp(bh*T) * nil**ch
+         !result is in g m-3, convert to kg H2O / kg air (icimr...)
+         icicval = icicval / rho / 1000._r8
+         aist =  max(0._r8,min(qi/icicval,1._r8))
+         aist =  min(aist,1._r8)
 
-     endif     
+       endif     
 
-     if (iceopt.eq.5 .or. iceopt.eq.6) then
+       if (iceopt.eq.5 .or. iceopt.eq.6) then
 
-        ! Similar to alpha in Wilson & Ballard (1999), determine a
-        ! scaling factor for saturation vapor pressure that reflects
-        ! the cloud fraction, rhmini, and rhmaxi.
-        !
-        ! NOTE: Limit qsatfac so that adjusted RHliq would be 1. or less.
-        if (present(qsatfac_out) .and. cldfrc2m_do_subgrid_growth) then
+         ! Similar to alpha in Wilson & Ballard (1999), determine a
+         ! scaling factor for saturation vapor pressure that reflects
+         ! the cloud fraction, rhmini, and rhmaxi.
+         !
+         ! NOTE: Limit qsatfac so that adjusted RHliq would be 1. or less.
+         if (present(qsatfac_out) .and. cldfrc2m_do_subgrid_growth) then
            qsatfac_out(i) = max(min(qv / qs, 1._r8), (1._r8 - aist) * rhmini + aist * rhmaxi)
-        end if
+         end if
 
-        ! limiter to remove empty cloud and ice with no cloud
-        ! and set icecld fraction to mincld if ice exists
+         ! limiter to remove empty cloud and ice with no cloud
+         ! and set icecld fraction to mincld if ice exists
 
-        if (qi.lt.minice) then
+         if (qi.lt.minice) then
            aist=0._r8
-        else
+         else
            aist=max(mincld,aist)
-        endif
+         endif
 
-        ! enforce limits on icimr
-        if (qi.ge.minice) then
+         ! enforce limits on icimr
+         if (qi.ge.minice) then
            icimr=qi/aist
 
            !minimum
@@ -1139,15 +1139,15 @@ subroutine aist_vector(qv_in, T_in, p_in, qi_in, ni_in, landfrac_in, snowh_in, a
               aist = max(0._r8,min(1._r8,qi/qist_max))
            endif
 
-        endif
-     endif 
+         endif
+       endif 
 
-   ! 0.999_r8 is added to prevent infinite 'ql_st' at the end of instratus_condensate
-   ! computed after updating 'qi_st'.  
+       ! 0.999_r8 is added to prevent infinite 'ql_st' at the end of instratus_condensate
+       ! computed after updating 'qi_st'.  
 
-     aist = max(0._r8,min(aist,0.999_r8))
+       aist = max(0._r8,min(aist,0.999_r8))
 
-     aist_out(i) = aist
+       aist_out(i) = aist
 
      enddo
 
