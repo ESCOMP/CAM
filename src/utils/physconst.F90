@@ -1534,18 +1534,32 @@ end subroutine physconst_init
    !
    !*************************************************************************************************************************
    !
-   ! Compute generalized heat capacity at constant pressure
+   ! Compute generalized heat capacity at constant pressure (see, e.g., equation 38 in  https://doi.org/10.1029/2017MS001257)
+   !
+   !    The subroutine accepts both moist or dry tracer mixing ratios (as long as tracer and dp use the same basis):
+   !
+   !       cp = sum(cp(l)*m(l)) / sum(m(l))      (dry basis)
+   !
+   !    where m dry mixing ratio, l is tracer indext (water vapor, cloud liquid, major species, ...)
+   !
+   !       cp = sum(cp(l)*q(l)) / sum(q(l))      (moist basis)
+   !
+   !    where q moist mixing ratio.
+   !
+   !    The two formulaes are identical since q(idx) = m(idx)/sum(m(l))
+   !
    !
    !*************************************************************************************************************************
    !
-   subroutine get_cp(i0,i1,j0,j1,k0,k1,ntrac,tracer,inv_cp,cp,dp_dry,active_species_idx_dycore)
+   subroutine get_cp(i0,i1,j0,j1,k0,k1,ntrac,tracer,inv_cp,cp,dp,active_species_idx_dycore,moist_tracer_in)
      use cam_logfile,     only: iulog
      ! args
      integer,  intent(in)           :: i0,i1,j0,j1,k0,k1,ntrac
      real(r8), intent(in)           :: tracer(i0:i1,j0:j1,k0:k1,ntrac) ! Tracer array
-     real(r8), optional, intent(in) :: dp_dry(i0:i1,j0:j1,k0:k1)
+     real(r8), optional, intent(in) :: dp(i0:i1,j0:j1,k0:k1)
      logical , intent(in)           :: inv_cp!output inverse cp instead of cp
      real(r8), intent(out)          :: cp(i0:i1,j0:j1,k0:k1)
+     logical,optional               :: moist_tracer_in
      !
      ! array of indicies for index of thermodynamic active species in dycore tracer array
      ! (if different from physics index)
@@ -1556,6 +1570,13 @@ end subroutine physconst_init
      integer :: nq,i,j,k, itrac
      real(r8),  dimension(i0:i1,j0:j1,k0:k1)  :: sum_species, sum_cp, factor
      integer, dimension(thermodynamic_active_species_num) :: idx_local
+     logical :: moist_tracer
+
+     if (present(moist_tracer_in)) then
+       moist_tracer = moist_tracer_in
+     else
+       moist_tracer = .false.
+     end if
 
      if (present(active_species_idx_dycore)) then
        idx_local = active_species_idx_dycore
@@ -1563,17 +1584,19 @@ end subroutine physconst_init
        idx_local = thermodynamic_active_species_idx
      end if
 
-     if (present(dp_dry)) then
-       factor = 1.0_r8/dp_dry
+     if (present(dp)) then
+       factor = 1.0_r8/dp
      else
        factor = 1.0_r8
      end if
 
      sum_species = 1.0_r8 !all dry air species sum to 1
-     do nq=dry_air_species_num+1,thermodynamic_active_species_num
-       itrac = idx_local(nq)
-       sum_species(:,:,:) = sum_species(:,:,:) + tracer(:,:,:,itrac)*factor(:,:,:)
-     end do
+     if (.not.moist_tracer) then
+       do nq=dry_air_species_num+1,thermodynamic_active_species_num
+         itrac = idx_local(nq)
+         sum_species(:,:,:) = sum_species(:,:,:) + tracer(:,:,:,itrac)*factor(:,:,:)
+       end do
+     end if
 
      if (dry_air_species_num==0) then
        sum_cp = thermodynamic_active_species_cp(0)
