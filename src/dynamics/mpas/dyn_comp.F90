@@ -632,7 +632,7 @@ subroutine read_inidat(dyn_in)
    ! Set initial conditions.  Either from analytic expressions or read from file.
 
    use cam_mpas_subdriver, only : domain_ptr, cam_mpas_update_halo, cam_mpas_cell_to_edge_winds
-   use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_array
+   use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_array, mpas_pool_get_config
    use mpas_derived_types, only : mpas_pool_type
    use mpas_vector_reconstruction, only : mpas_reconstruct
    use mpas_constants, only : Rv_over_Rd => rvord
@@ -695,7 +695,7 @@ subroutine read_inidat(dyn_in)
    real(r8) :: target_avg_dry_surface_pressure, preliminary_avg_dry_surface_pressure
    real(r8) :: sphere_surface_area, scaling_ratio
    real(r8) :: surface_integral, test_value
-   logical  :: scale_dry_mass
+   logical, pointer :: mpas_scale_dry_air_mass
 
    real(r8) :: dz, h
    logical  :: readvar
@@ -1052,9 +1052,9 @@ subroutine read_inidat(dyn_in)
    !   write(iulog,*) subname//': earth radius from area = ', test_value
    ! end if
 
+   call mpas_pool_get_config(domain_ptr % configs, 'config_scale_dry_air_mass', mpas_scale_dry_air_mass)
 
-   scale_dry_mass = .true.  ! need to test on analytic IC and weather init, both which deactivate the following:
-   if (scale_dry_mass) then
+   if (mpas_scale_dry_air_mass) then
 
       allocate( p_top(nCellsSolve), preliminary_dry_surface_pressure(nCellsSolve), pm(plev) )
       ! (1) calculate pressure at the lid                                                                                                         
@@ -1289,6 +1289,7 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
    real(r8)                :: mpas_smdiv = 0.1_r8
    real(r8)                :: mpas_apvm_upwinding = 0.5_r8
    logical                 :: mpas_h_ScaleWithMesh = .true.
+   logical                 :: mpas_scale_dry_air_mass = .false.
    real(r8)                :: mpas_zd = 22000.0_r8
    real(r8)                :: mpas_xnutr = 0.2_r8
    real(r8)                :: mpas_cam_coef = 0.0_r8
@@ -1334,7 +1335,8 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
            mpas_epssm, &
            mpas_smdiv, &
            mpas_apvm_upwinding, &
-           mpas_h_ScaleWithMesh
+           mpas_h_ScaleWithMesh, &
+           mpas_scale_dry_air_mass
 
    namelist /damping/ &
            mpas_zd, &
@@ -1417,6 +1419,7 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
    call mpi_bcast(mpas_smdiv,                        1, mpi_real8,     masterprocid, mpicom, mpi_ierr)
    call mpi_bcast(mpas_apvm_upwinding,               1, mpi_real8,     masterprocid, mpicom, mpi_ierr)
    call mpi_bcast(mpas_h_ScaleWithMesh,              1, mpi_logical,   masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_scale_dry_air_mass,           1, mpi_logical,   masterprocid, mpicom, mpi_ierr)
 
    call mpas_pool_add_config(configPool, 'config_time_integration', mpas_time_integration)
    call mpas_pool_add_config(configPool, 'config_time_integration_order', mpas_time_integration_order)
@@ -1451,6 +1454,7 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
    call mpas_pool_add_config(configPool, 'config_smdiv', mpas_smdiv)
    call mpas_pool_add_config(configPool, 'config_apvm_upwinding', mpas_apvm_upwinding)
    call mpas_pool_add_config(configPool, 'config_h_ScaleWithMesh', mpas_h_ScaleWithMesh)
+   call mpas_pool_add_config(configPool, 'config_scale_dry_air_mass', mpas_scale_dry_air_mass)
 
    ! Read namelist group &damping
    if (masterproc) then
@@ -1586,6 +1590,7 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
       write(iulog,*) '   mpas_smdiv = ', mpas_smdiv
       write(iulog,*) '   mpas_apvm_upwinding = ', mpas_apvm_upwinding
       write(iulog,*) '   mpas_h_ScaleWithMesh = ', mpas_h_ScaleWithMesh
+      write(iulog,*) '   mpas_scale_dry_air_mass = ', mpas_scale_dry_air_mass
       write(iulog,*) '   mpas_zd = ', mpas_zd
       write(iulog,*) '   mpas_xnutr = ', mpas_xnutr
       write(iulog,*) '   mpas_cam_coef = ', mpas_cam_coef
