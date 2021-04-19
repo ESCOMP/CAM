@@ -7594,6 +7594,12 @@ in MPAS dycore.
 Default: TRUE
 </entry>
 
+<entry id="mpas_scale_dry_air_mass" type="logical" category="mpas"
+       group="nhyd_model" valid_values="">
+Scale dry-air mass at initaliation for the MPAS dycore.
+Default: FALSE
+</entry>
+
 <entry id="mpas_zd" type="real" category="mpas"
        group="damping" valid_values="">
 Height in meters above MSL to begin w-damping profile in MPAS dycore.

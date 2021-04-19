@@ -2721,6 +2721,7 @@
 <mpas_smdiv                   > 0.1D0 </mpas_smdiv>
 <mpas_apvm_upwinding          > 0.5D0 </mpas_apvm_upwinding>
 <mpas_h_ScaleWithMesh         > .true. </mpas_h_ScaleWithMesh>
+<mpas_scale_dry_air_mass      > .false. </mpas_scale_dry_air_mass>
 <mpas_zd                      > 22000.0D0 </mpas_zd>
 <mpas_xnutr                   > 0.2D0 </mpas_xnutr>
 <mpas_cam_coef                > 0.0D0 </mpas_cam_coef>
