@@ -1494,7 +1494,7 @@ elsif ($carma eq 'tholin') {
 
 # turn on stratospheric aerosol forcings in CAM6 configurations
 my $chem_has_ocs = chem_has_species($cfg, 'OCS');
-if ($phys =~ /cam6/) {
+if ($phys =~ /cam6/ and $chem =~ /_mam/) {
   # turn on volc forcings in cam6 -- prognostic or prescribed
   if ( $chem_has_ocs ) {
       # turn on prognostic stratospheric aerosols
@@ -2754,20 +2754,15 @@ if ($waccmx) {
   if (($ionos eq 'none') and ($wmx_opt =~ /ionosphere/) ) {
     die "CAM Namelist ERROR: WACCMX must be configured with an active ionosphere wmx_opt is set to ionosphere\n";
   }
-  if (($ionos ne 'none') and ($wmx_opt =~ /neutral/) ) {
+  if (($ionos eq 'wxie') and ($wmx_opt =~ /neutral/) ) {
     die "CAM Namelist ERROR: WACCMX cannot be configured with an active ionosphere wmx_opt is set to neutral\n";
   }
 
-  if (($ionos eq 'wxie') and ($wmx_opt =~ /ionosphere/) and ($dyn eq 'fv')) {
+  if (($ionos eq 'wxie') and ($wmx_opt =~ /ionosphere/)) {
     # turn on electro-dynamo generated ion drift velocities
     add_default($nl, 'ionos_xport_active', 'val'=>'.true.');
     add_default($nl, 'ionos_edyn_active', 'val'=>'.true.');
     add_default($nl, 'empirical_ion_velocities', 'val'=>'.false.');
-  } elsif (($ionos eq 'wxi') and ($wmx_opt =~ /ionosphere/) and ($dyn eq 'fv')) {
-    # turn off electro-dynamo generated ion drift velocities
-    add_default($nl, 'ionos_xport_active', 'val'=>'.true.');
-    add_default($nl, 'ionos_edyn_active', 'val'=>'.false.');
-    add_default($nl, 'empirical_ion_velocities', 'val'=>'.true.');
   } elsif (($ionos eq 'none') and ($wmx_opt =~ /neutral/)) {
     add_default($nl, 'ionos_xport_active', 'val'=>'.false.');
     add_default($nl, 'ionos_edyn_active', 'val'=>'.false.');
@@ -2777,6 +2772,11 @@ if ($waccmx) {
   }
   if  ($dyn eq 'fv') {
     add_default($nl, 'fv_high_altitude', 'val'=>'.true.');
+  }
+  if ($ionos ne 'none') {
+    add_default($nl, 'cam_physics_mesh');
+    add_default($nl, 'oplus_grid');
+    add_default($nl, 'edyn_grid');
   }
   add_default($nl,'dadadj_niter');
   add_default($nl,'ionos_epotential_model');
@@ -2831,10 +2831,6 @@ $cam_chempkg = "'" . "$chem" . "'";  # add quotes to this string value
 
 $nl->set_variable_value('phys_ctl_nl', 'cam_chempkg', $cam_chempkg);
 
-# Check the snapshot settings.
-add_default($nl, 'cam_snapshot_before_num');
-add_default($nl, 'cam_snapshot_after_num');
-check_snapshot_settings();
 
 # Tropopause climatology
 if (!$simple_phys) {
@@ -3268,9 +3264,19 @@ if ($waccm_phys or
     add_default($nl, 'use_gw_front'     , 'val'=>'.true.');
     add_default($nl, 'use_gw_convect_dp', 'val'=>'.true.');
     my $hdepth_scaling = '0.25D0' ;
+    my $qbo_forcing = '.false.';
+    if ($dyn eq 'fv') {
+	my $nlon = $cfg->get('nlon');
+	my $nlat = $cfg->get('nlat');
+        # turn on QBO nudging only for coarse FV grids
+        if ($nlat <= 96 and $nlon <= 144) {
+	    $qbo_forcing = '.true.';
+        }
+    }
+    add_default($nl, 'qbo_use_forcing','val'=>$qbo_forcing);
     if ($nl->get_value('qbo_use_forcing') =~ /$TRUE/io) {
        $hdepth_scaling = '1.D0' ;
-       add_default($nl, 'qbo_cyclic','val'=>'.true.');
+       add_default($nl, 'qbo_cyclic','val'=>'.false.');
        add_default($nl, 'qbo_forcing_file');
     }
     add_default($nl, 'gw_qbo_hdepth_scaling', 'val'=>$hdepth_scaling);
@@ -3824,6 +3830,11 @@ foreach my $comp (@comps) {
         if ($print>=1) { print "Writing modelio namelist to $outfile $eol"; }
     }
 }
+
+# Check the snapshot settings.
+add_default($nl, 'cam_snapshot_before_num');
+add_default($nl, 'cam_snapshot_after_num');
+check_snapshot_settings();
 
 #-----------------------------------------------------------------------------------------------
 # Write output files

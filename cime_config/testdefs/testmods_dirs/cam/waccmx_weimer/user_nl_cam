@@ -4,4 +4,5 @@
  nhtfrq = -24,-24,-24,-24,-24,-24,-24,-24,-24
  fincl7='UI','VI','WI','PHIM2D','POTEN','QIONSUM','ELECDEN','QJOULE',
         'UT_LUNAR','VT_LUNAR'
+ fincl8='op_dt','amb_diff','dfield','dwind'
  apply_lunar_tides=.true.

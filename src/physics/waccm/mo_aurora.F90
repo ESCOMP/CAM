@@ -56,7 +56,7 @@
       use spmd_utils,    only: masterproc
       use aurora_params, only: power=>hpower, plevel, aurora_params_set
       use aurora_params, only: ctpoten, theta0, dskofa, offa, phid, rrad
-      use aurora_params, only: amie_period
+      use aurora_params, only: prescribed_period
 
       implicit none
 
@@ -136,8 +136,8 @@
       logical :: aurora_active = .false.
       integer :: indxAIPRS    = -1
       integer :: indxQTe = -1
-      integer :: indxAMIEefxg = -1        ! am_amie_201712
-      integer :: indxAMIEkevg = -1        ! am_amie_201712
+      integer :: indxEfx = -1
+      integer :: indxKev = -1
 
       real(r8), parameter :: h2deg = 15._r8   ! hour to degree
 
@@ -152,8 +152,9 @@
 
         ! add ionization rates to phys buffer for waccmx ionosphere module
 
-        call pbuf_add_field('AurIPRateSum', 'physpkg', dtype_r8, (/pcols,pver/), indxAIPRS)     ! Sum of ion auroral production rates for O2
-        call pbuf_add_field('QTeAur', 'physpkg', dtype_r8, (/pcols/), indxQTe)     ! for electron temperature
+        ! Sum of ion auroral production rates for O2
+        call pbuf_add_field('AurIPRateSum', 'physpkg', dtype_r8, (/pcols,pver/), indxAIPRS)
+        call pbuf_add_field('QTeAur', 'physpkg', dtype_r8, (/pcols/), indxQTe) ! for electron temperature
 
       endsubroutine aurora_register
 
@@ -187,13 +188,17 @@
       integer  :: ierr
       real(r8) :: x_nan
 
-      indxAMIEefxg = pbuf_get_index('AMIE_efxg', errcode=ierr)
-      indxAMIEkevg = pbuf_get_index('AMIE_kevg', errcode=ierr)
+      indxEfx = pbuf_get_index('AUREFX', errcode=ierr)
+      indxKev = pbuf_get_index('AURKEV', errcode=ierr)
 
-      if (indxAMIEefxg>0 .and. indxAMIEkevg>0) then
+      if (indxEfx>0 .and. indxKev>0) then
          x_nan = nan
-         call pbuf_set_field(pbuf2d, indxAMIEefxg, x_nan)
-         call pbuf_set_field(pbuf2d, indxAMIEkevg, x_nan)
+         call pbuf_set_field(pbuf2d, indxEfx, x_nan)
+         call pbuf_set_field(pbuf2d, indxKev, x_nan)
+      endif
+
+      if (indxAIPRS>0) then
+         call pbuf_set_field(pbuf2d, indxAIPRS, 0._r8)
       endif
 
       theta0(:) = nan
@@ -794,8 +799,8 @@
         wrk, &                                  ! temp wrk array
         dtheta                                  ! latitudinal variation (Gaussian)
       real(r8) :: ekev 
-      real(r8), pointer   :: amie_efxg(:) ! Pointer to pbuf AMIE energy flux (mW m-2)
-      real(r8), pointer   :: amie_kevg(:) ! Pointer to pbuf AMIE mean energy (keV)
+      real(r8), pointer   :: pr_efx(:) ! Pointer to pbuf prescribed energy flux (mW m-2)
+      real(r8), pointer   :: pr_kev(:) ! Pointer to pbuf prescribed mean energy (keV)
       real(r8), pointer   :: qteaur(:)    ! for electron temperature
       integer  :: n
       
@@ -856,16 +861,16 @@
 !----------------------------------------------------------------------------------------------
 !       ... If turned on, use amie energy flux and mean energy to replace flux(:) and alfa(:)
 !----------------------------------------------------------------------------------------------
-      if (amie_period .and. indxAMIEefxg>0 .and. indxAMIEkevg>0) then
+      if (prescribed_period .and. indxEfx>0 .and. indxKev>0) then
          !---------------------------------------------------------------------------
-         ! Overwrite with AMIE mean energy and energy flux in physics buffer
+         ! Overwrite with prescribed mean energy and energy flux in physics buffer
          !---------------------------------------------------------------------------
-         call pbuf_get_field(pbuf, indxAMIEefxg, amie_efxg)
-         call pbuf_get_field(pbuf, indxAMIEkevg, amie_kevg)
+         call pbuf_get_field(pbuf, indxEfx, pr_efx)
+         call pbuf_get_field(pbuf, indxKev, pr_kev)
          do n=1,ncol
-            ekev = max(amie_kevg(n),1._r8)
+            ekev = max(pr_kev(n),1._r8)
             alfa(n) = ekev/2._r8
-            flux(n) = max(amie_efxg(n)/(ekev*1.602e-9_r8),1.e-20_r8)
+            flux(n) = max(pr_efx(n)/(ekev*1.602e-9_r8),1.e-20_r8)
          enddo
       endif
 
