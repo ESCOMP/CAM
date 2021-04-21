@@ -57,6 +57,9 @@ integer :: default_idx = initial_default_idx
 
 !$acc declare create (epsilo, tmelt, tboil, default_idx, omeps, h2otrip, ttrice)
 
+! Commonly used values
+real(r8), parameter :: log_ps = log10(1013.246_r8)
+
 public wv_sat_methods_init
 public wv_sat_get_scheme_idx
 public wv_sat_valid_idx
@@ -634,13 +637,11 @@ subroutine GoffGratch_svp_ice_vect(t, es, vlen)
   integer, intent(in)   :: vlen
   real(r8), intent(in)  :: t(vlen)  ! Temperature in Kelvin
   real(r8), intent(out) :: es(vlen) ! SVP in Pa
-  real(r8) :: log_param
+  real(r8), parameter   :: log_param = log10(6.1071_r8)
   integer :: i
   ! good down to -100 C
 
   !$acc data present (t,es)
-
-  log_param = log10(6.1071_r8)
 
   !$acc parallel vector_length(VLEN) default(present)
   !$acc loop gang vector
