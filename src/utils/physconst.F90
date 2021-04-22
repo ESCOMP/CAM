@@ -1179,13 +1179,14 @@ end subroutine physconst_init
    !
    ! compute column integrated total energy assuming constant pressure
    !
-   subroutine get_hydrostatic_energy(i0,i1,j0,j1,nlev,ntrac,tracer,pdel,cp,u,v,T,vcoord,te,H2O,ps,phis,z)
+   subroutine get_hydrostatic_energy(i0,i1,j0,j1,nlev,ntrac,tracer,pdel,cp_or_cv,u,v,T,vcoord,te,H2O,ps,phis,z)
      use dyn_tests_utils, only: vc_moist_pressure, vc_height, vc_moist_pressure, vc_dry_pressure, vc_height
      use cam_logfile,     only: iulog
      integer,  intent(in)            :: i0,i1,j0,j1,nlev,ntrac
      real(r8), intent(in)            :: tracer(i0:i1,j0:j1,nlev,1:ntrac)     ! tracer mixing ratio
      real(r8), intent(in)            :: pdel(i0:i1,j0:j1,nlev)               ! pressure level thickness
-     real(r8), intent(in)            :: cp(i0:i1,j0:j1,nlev)                 ! dry air heat capacity
+     real(r8), intent(in)            :: cp_or_cv(i0:i1,j0:j1,nlev)           ! dry air heat capacity under constant pressure
+                                                                             ! or constant volume (depends on vcoord)
      real(r8), intent(in)            :: u(i0:i1,j0:j1,nlev)                  ! U
      real(r8), intent(in)            :: v(i0:i1,j0:j1,nlev)                  ! V
      real(r8), intent(in)            :: T(i0:i1,j0:j1,nlev)                  ! T
@@ -1211,13 +1212,11 @@ end subroutine physconst_init
        ke = 0._r8
        se = 0._r8
        wv = 0._r8
-       liq = 0._r8
-       ice = 0._r8
        do k = 1, nlev
          do j = j0,j1
            do i = i0,i1
              ke(i,j) = ke(i,j) + 0.5_r8*(u(i,j,k)**2 + v(i,j,k)**2)*pdel(i,j,k)/gravit
-             se(i,j) = se(i,j) +         T(i,j,k)*cp(i,j,k)        *pdel(i,j,k)/gravit
+             se(i,j) = se(i,j) +         T(i,j,k)*cp_or_cv(i,j,k)  *pdel(i,j,k)/gravit
              wv(i,j) = wv(i,j) +         tracer(i,j,k,1)           *pdel(i,j,k)/gravit
            end do
          end do
@@ -1236,13 +1235,11 @@ end subroutine physconst_init
        ke = 0._r8
        se = 0._r8
        wv = 0._r8
-       liq = 0._r8
-       ice = 0._r8
        do k = 1, nlev
          do j = j0,j1
            do i = i0,i1
              ke(i,j) = ke(i,j) + 0.5_r8*(u(i,j,k)**2 + v(i,j,k)**2)*pdel(i,j,k)/gravit
-             se(i,j) = se(i,j) +         T(i,j,k)*cp(i,j,k)        *pdel(i,j,k)/gravit
+             se(i,j) = se(i,j) +         T(i,j,k)*cp_or_cv(i,j,k)  *pdel(i,j,k)/gravit!enthalpy
              wv(i,j) = wv(i,j) +         tracer(i,j,k,1)           *pdel(i,j,k)/gravit
            end do
          end do
@@ -1252,22 +1249,20 @@ end subroutine physconst_init
            se(i,j) = se(i,j) + phis(i,j)*ps(i,j)/gravit
          end do
        end do
-       te(i0:i1,j0:j1)  = se(i0:i1,j0:j1) + ke(i0:i1,j0:j1)
      case(vc_height)
-       if (.not. present(ps) .or. .not. present(phis)) then
-         write(iulog, *) subname//' ps and phis must be present for moist pressure vertical coordinate'
-         call endrun(subname // '::  ps and phis must be present for moist pressure vertical coordinate')
+       if (.not. present(z)) then
+         write(iulog, *) subname//' z must be present for moist pressure vertical coordinate'
+         call endrun(subname // '::  z must be present for moist pressure vertical coordinate')
        endif
        ke = 0._r8
        se = 0._r8
        wv = 0._r8
-       liq = 0._r8
-       ice = 0._r8
        do k = 1, nlev
          do j = j0,j1
            do i = i0,i1
              ke(i,j) = ke(i,j) + 0.5_r8*(u(i,j,k)**2 + v(i,j,k)**2)*pdel(i,j,k)/gravit
-             se(i,j) = se(i,j) +         T(i,j,k)*cp(i,j,k)        *pdel(i,j,k)/gravit
+             se(i,j) = se(i,j) +         T(i,j,k)*cp_or_cv(i,j,k)  *pdel(i,j,k)/gravit!internal energy
+             se(i,j) = se(i,j) +         z(i,j,k)                  *pdel(i,j,k)       !potential energy
              wv(i,j) = wv(i,j) +         tracer(i,j,k,1)           *pdel(i,j,k)/gravit
            end do
          end do
@@ -1277,14 +1272,15 @@ end subroutine physconst_init
            se(i,j) = se(i,j) + phis(i,j)*ps(i,j)/gravit
          end do
        end do
-       te(i0:i1,j0:j1)  = se(i0:i1,j0:j1) + ke(i0:i1,j0:j1)
      case default
        write(iulog, *) subname//' vertical coordinate not supported: ',vcoord
        call endrun(subname // ':: vertical coordinate not supported')
      end select
-       !
+     te(i0:i1,j0:j1)  = se(i0:i1,j0:j1) + ke(i0:i1,j0:j1)    
+     !
      ! vertical integral of total liquid water
      !
+     liq = 0._r8     
      do idx = 1,thermodynamic_active_species_liq_num
        do k = 1, nlev
          do j = j0,j1
@@ -1297,6 +1293,7 @@ end subroutine physconst_init
      !
      ! vertical integral of total frozen (ice) water
      !
+     ice = 0._r8
      do idx = 1,thermodynamic_active_species_ice_num
        do k = 1, nlev
          do j = j0,j1
@@ -1305,9 +1302,7 @@ end subroutine physconst_init
            end do
          end do
        end do
-     end do
-     
-     
+     end do     
      ! Compute vertical integrals of frozen static energy and total water.
      H2O(i0:i1,j0:j1) = wv(i0:i1,j0:j1) + liq(i0:i1,j0:j1) + ice(i0:i1,j0:j1)
      !

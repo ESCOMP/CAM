@@ -25,7 +25,7 @@ module check_energy
   use spmd_utils,      only: masterproc
 
   use gmean_mod,       only: gmean
-  use physconst,       only: gravit, latvap, latice, cpair, cpairv
+  use physconst,       only: gravit, latvap, latice, cpair, cpairv, rair, rairv
   use physics_types,   only: physics_state, physics_tend, physics_ptend, physics_ptend_init
   use constituents,    only: cnst_get_ind, pcnst, cnst_name, cnst_get_type_byind
   use time_manager,    only: is_first_step
@@ -215,7 +215,7 @@ end subroutine check_energy_get_integrals
     use physconst,      only: get_hydrostatic_energy
     use physics_buffer, only: physics_buffer_desc, pbuf_set_field
     use cam_abortutils, only: endrun
-    use dyn_tests_utils,only: vc_physics, vc_dycore
+    use dyn_tests_utils, only: vc_physics, vc_dycore, vc_height
 !-----------------------------------------------------------------------
 ! Compute initial values of energy and water integrals,
 ! zero cumulative tendencies
@@ -228,7 +228,7 @@ end subroutine check_energy_get_integrals
     integer, optional                       :: col_type  ! Flag inidicating whether using grid or subcolumns
 !---------------------------Local storage-------------------------------
 
-    real(r8),allocatable :: cpairv_loc(:,:,:)
+    real(r8),allocatable :: cp_or_cv(:,:,:)
 
     integer lchnk                                  ! chunk identifier
     integer ncol                                   ! number of atmospheric columns
@@ -238,16 +238,16 @@ end subroutine check_energy_get_integrals
     lchnk = state%lchnk
     ncol  = state%ncol
 
-    ! cpairv_loc needs to be allocated to a size which matches state and ptend
-    ! If psetcols == pcols, cpairv is the correct size and just copy into cpairv_loc
+    ! cp_or_cv needs to be allocated to a size which matches state and ptend
+    ! If psetcols == pcols, cpairv is the correct size and just copy into cp_or_cv
     ! If psetcols > pcols and all cpairv match cpair, then assign the constant cpair
 
     if (state%psetcols == pcols) then
-       allocate (cpairv_loc(state%psetcols,pver,begchunk:endchunk))
-       cpairv_loc(:,:,:) = cpairv(:,:,:)
+       allocate (cp_or_cv(state%psetcols,pver,begchunk:endchunk))
+       cp_or_cv(:,:,:) = cpairv(:,:,:)
     else if (state%psetcols > pcols .and. all(cpairv(:,:,:) == cpair)) then
-       allocate(cpairv_loc(state%psetcols,pver,begchunk:endchunk))
-       cpairv_loc(:,:,:) = cpair
+       allocate(cp_or_cv(state%psetcols,pver,begchunk:endchunk))
+       cp_or_cv(:,:,:) = cpair
     else
        call endrun('check_energy_timestep_init: cpairv is not allowed to vary when subcolumns are turned on')
     end if
@@ -255,7 +255,7 @@ end subroutine check_energy_get_integrals
     ! CAM physics total energy
     !
     call get_hydrostatic_energy(1,ncol,1,1,pver,pcnst,state%q(1:ncol,1:pver,1:pcnst),&
-         state%pdel(1:ncol,1:pver), cpairv_loc(1:ncol,1:pver,lchnk),                 &
+         state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver,lchnk),                   &
          state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), state%T(1:ncol,1:pver),     &
          vc_physics, state%te_ini(1:ncol,1), state%tw_ini(1:ncol,1),                 &
          ps = state%ps(1:ncol), phis = state%phis(1:ncol))
@@ -263,21 +263,29 @@ end subroutine check_energy_get_integrals
     ! Dynamical core total energy (phl continue coding)
     !
     state%temp_ini(:ncol,:) = state%T(:ncol,:)
+    state%z_ini(:ncol,:)    = state%zm(:ncol,:)
+    if (vc_dycore == vc_height) then
+      !
+      ! compute cv if vertical coordinate is height: cv = cp - R
+      !
+      if (state%psetcols == pcols) then
+        cp_or_cv(:,:,:) = cpairv(:,:,:)-rairv(:,:,:)
+      else
+        cp_or_cv(:,:,:) = cpair-rair
+      endif
+    end if
     call get_hydrostatic_energy(1,ncol,1,1,pver,pcnst,state%q(1:ncol,1:pver,1:pcnst),&
-         state%pdel(1:ncol,1:pver), cpairv_loc(1:ncol,1:pver,lchnk),                 &
+         state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver,lchnk),                   &
          state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), state%T(1:ncol,1:pver),     &
-         vc_physics, state%te_ini(1:ncol,2), state%tw_ini(1:ncol,2),                 &
-         ps = state%ps(1:ncol), phis = state%phis(1:ncol))
+         vc_dycore, state%te_ini(1:ncol,2), state%tw_ini(1:ncol,2),                  &
+         ps = state%ps(1:ncol), phis = state%phis(1:ncol), z = state%z_ini(1:ncol,:))
 
 
-    do i = 1, ncol
-       state%te_cur(i,1) = state%te_ini(i,1)
-       state%tw_cur(i,1) = state%tw_ini(i,1)
-    end do
-! (phl continue coding) compute te_cur(:,2)
-    do i = 1, ncol
-       state%te_cur(i,2) = state%te_ini(i,2)
-       state%tw_cur(i,2) = state%tw_ini(i,2)
+    do k=1,2
+      do i = 1, ncol
+        state%te_cur(i,k) = state%te_ini(i,k)
+        state%tw_cur(i,k) = state%tw_ini(i,k)
+      end do
     end do
 
 
@@ -293,7 +301,7 @@ end subroutine check_energy_get_integrals
 ! (phl continue coding) set te_ini(:,2)
     end if
 
-    deallocate(cpairv_loc)
+    deallocate(cp_or_cv)
 
   end subroutine check_energy_timestep_init
 
@@ -302,7 +310,7 @@ end subroutine check_energy_get_integrals
   subroutine check_energy_chng(state, tend, name, nstep, ztodt,        &
        flx_vap, flx_cnd, flx_ice, flx_sen)
     use physconst,       only: get_hydrostatic_energy
-    use dyn_tests_utils, only: vc_physics, vc_dycore
+    use dyn_tests_utils, only: vc_physics, vc_dycore, vc_height
     use cam_abortutils,  only: endrun
 
 !-----------------------------------------------------------------------
@@ -341,7 +349,10 @@ end subroutine check_energy_get_integrals
     real(r8) :: te(state%ncol)                     ! vertical integral of total energy
     real(r8) :: tw(state%ncol)                     ! vertical integral of total water
 
-    real(r8),allocatable :: cpairv_loc(:,:,:)
+    real(r8) :: tnew(state%ncol,pver)              ! updated temperature (under constant p or z depending on vcoord)
+
+    real(r8),allocatable :: cp_or_cv(:,:,:)        ! cp or cv depending on vcoord
+    real(r8) :: scaling(state%ncol,pver)           ! scaling for conversion of temperature increment
 
     integer lchnk                                  ! chunk identifier
     integer ncol                                   ! number of atmospheric columns
@@ -354,25 +365,48 @@ end subroutine check_energy_get_integrals
     lchnk = state%lchnk
     ncol  = state%ncol
 
-    ! cpairv_loc needs to be allocated to a size which matches state and ptend
-    ! If psetcols == pcols, cpairv is the correct size and just copy into cpairv_loc
+    ! cp_or_cv needs to be allocated to a size which matches state and ptend
+    ! If psetcols == pcols, cpairv is the correct size and just copy into cp_or_cv
     ! If psetcols > pcols and all cpairv match cpair, then assign the constant cpair
 
     if (state%psetcols == pcols) then
-       allocate (cpairv_loc(state%psetcols,pver,begchunk:endchunk))
-       cpairv_loc(:,:,:) = cpairv(:,:,:)
+       allocate (cp_or_cv(state%psetcols,pver,begchunk:endchunk))
+       cp_or_cv(:,:,:) = cpairv(:,:,:)
     else if (state%psetcols > pcols .and. all(cpairv(:,:,:) == cpair)) then
-       allocate(cpairv_loc(state%psetcols,pver,begchunk:endchunk))
-       cpairv_loc(:,:,:) = cpair
+       allocate(cp_or_cv(state%psetcols,pver,begchunk:endchunk))
+       cp_or_cv(:,:,:) = cpair
     else
        call endrun('check_energy_chng: cpairv is not allowed to vary when subcolumns are turned on')
     end if
 
     call get_hydrostatic_energy(1,ncol,1,1,pver,pcnst,state%q(1:ncol,1:pver,1:pcnst),&
-         state%pdel(1:ncol,1:pver), cpairv_loc(1:ncol,1:pver,lchnk),                 &
+         state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver,lchnk),                   &
          state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), state%T(1:ncol,1:pver),     &
          vc_physics, te, tw,                                                         &
          ps = state%ps(1:ncol), phis = state%phis(1:ncol))
+    !
+    ! Dynamical core total energy
+    !
+    if (vc_dycore == vc_height) then
+      !
+      ! compute cv if vertical coordinate is height: cv = cp - R
+      !
+      if (state%psetcols == pcols) then
+        cp_or_cv(:,:,:) = cpairv(:,:,:)-rairv(:,:,:)
+      else
+        cp_or_cv(:,:,:) = cpair-rair
+      endif
+      scaling(:,:) = cpairv(:,:,lchnk)/cp_or_cv(:,:,lchnk) !cp/cv scaling
+    else
+      scaling(:,:) = 1.0_r8
+    end if
+    tnew = state%temp_ini(1:ncol,:)+scaling(1:ncol,:)*(state%T(1:ncol,:)-state%temp_ini(1:ncol,:))
+
+    call get_hydrostatic_energy(1,ncol,1,1,pver,pcnst,state%q(1:ncol,1:pver,1:pcnst),&
+         state%pdel(1:ncol,1:pver),cp_or_cv(1:ncol,1:pver,lchnk),                    &
+         state%u(1:ncol,1:pver), state%v(1:ncol,1:pver),tnew(1:ncol,1:pver),         &
+         vc_dycore, state%te_ini(1:ncol,2), state%tw_ini(1:ncol,2),                  &
+         ps = state%ps(1:ncol), phis = state%phis(1:ncol), z = state%z_ini(1:ncol,:))
 
     ! compute expected values and tendencies
     do i = 1, ncol
@@ -436,7 +470,7 @@ end subroutine check_energy_get_integrals
       end do
     end do
 
-    deallocate(cpairv_loc)
+    deallocate(cp_or_cv)
 
   end subroutine check_energy_chng
 
