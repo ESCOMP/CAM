@@ -475,6 +475,7 @@ subroutine dyn_init(dyn_in, dyn_out)
 #endif
    use ctem,            only: ctem_init
    use diag_module,     only: fv_diag_init
+   use dyn_tests_utils, only: vc_dycore, vc_moist_pressure, string_vc
 
    ! arguments:
    type (dyn_import_t),     intent(out) :: dyn_in
@@ -497,8 +498,13 @@ subroutine dyn_init(dyn_in, dyn_out)
    integer :: budget_hfile_num
 
    character(len=*), parameter :: sub='dyn_init'
+   character(len=108)          :: str1
    !----------------------------------------------------------------------------
-
+   vc_dycore = vc_moist_pressure
+   if (masterproc) then
+     call string_vc(vc_dycore,str1)
+     write(iulog,*)'vertical coordinate dycore   : ',trim(str1)
+   end if
    dyn_state => get_dyn_state()
    grid      => dyn_state%grid
    constants => dyn_state%constants

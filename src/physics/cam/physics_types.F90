@@ -88,11 +88,12 @@ module physics_types
           q         ! constituent mixing ratio (kg/kg moist or dry air depending on type)
 
      real(r8), dimension(:,:),allocatable        :: &
-          pint,    &! interface pressure (Pa)
-          pintdry, &! interface pressure dry (Pa)
-          lnpint,  &! ln(pint)
+          pint,     &! interface pressure (Pa)
+          pintdry,  &! interface pressure dry (Pa)
+          lnpint,   &! ln(pint)
           lnpintdry,&! log interface pressure dry (Pa)
-          zi        ! geopotential height above surface at interfaces (m)
+          zi         ! geopotential height above surface at interfaces (m)
+
 
      real(r8), dimension(:,:),allocatable          :: &
                            ! Second dimension is (1) CAM physics total energy and (2) dycore total
@@ -100,7 +101,8 @@ module physics_types
           te_ini,         &! vertically integrated total (kinetic + static) energy of initial state
           te_cur,         &! vertically integrated total (kinetic + static) energy of current state
           tw_ini,         &! vertically integrated total water of initial state
-          tw_cur           ! vertically integrated total water of new state
+          tw_cur,         &! vertically integrated total water of new state
+          temp_ini         ! Temperature of initial state (used for energy computations)
      integer :: count ! count of values with significant energy or water imbalances
      integer, dimension(:),allocatable           :: &
           latmapback, &! map from column to unique lat for that column
@@ -536,6 +538,8 @@ contains
          varname="state%tw_ini",    msg=msg)
     call shr_assert_in_domain(state%tw_cur(:ncol,:),    is_nan=.false., &
          varname="state%tw_cur",    msg=msg)
+    call shr_assert_in_domain(state%temp_ini(:ncol,:),  is_nan=.false., &
+         varname="state%temp_ini",  msg=msg)
 
     ! 2-D variables (at midpoints)
     call shr_assert_in_domain(state%t(:ncol,:),         is_nan=.false., &
@@ -610,6 +614,8 @@ contains
          varname="state%tw_ini",    msg=msg)
     call shr_assert_in_domain(state%tw_cur(:ncol,:),    lt=posinf_r8, gt=neginf_r8, &
          varname="state%tw_cur",    msg=msg)
+    call shr_assert_in_domain(state%temp_ini(:ncol,:),  lt=posinf_r8, gt=neginf_r8, &
+         varname="state%temp_ini",  msg=msg)
 
     ! 2-D variables (at midpoints)
     call shr_assert_in_domain(state%t(:ncol,:),         lt=posinf_r8, gt=0._r8, &
@@ -1302,6 +1308,7 @@ end subroutine physics_ptend_copy
 
     do k = 1, pver
        do i = 1, ncol
+          state_out%temp_ini(i,k)  = state_in%temp_ini(i,k)
           state_out%t(i,k)         = state_in%t(i,k)
           state_out%u(i,k)         = state_in%u(i,k)
           state_out%v(i,k)         = state_in%v(i,k)
@@ -1585,6 +1592,9 @@ subroutine physics_state_alloc(state,lchnk,psetcols)
   allocate(state%tw_cur(psetcols,2), stat=ierr)
   if ( ierr /= 0 ) call endrun('physics_state_alloc error: allocation error for state%tw_cur')
 
+  allocate(state%temp_ini(psetcols,pver), stat=ierr)
+  if ( ierr /= 0 ) call endrun('physics_state_alloc error: allocation error for state%temp_ini')
+
   allocate(state%latmapback(psetcols), stat=ierr)
   if ( ierr /= 0 ) call endrun('physics_state_alloc error: allocation error for state%latmapback')
 
@@ -1628,6 +1638,7 @@ subroutine physics_state_alloc(state,lchnk,psetcols)
   state%te_cur(:,:) = inf
   state%tw_ini(:,:) = inf
   state%tw_cur(:,:) = inf
+  state%temp_ini(:,:) = inf
 
 end subroutine physics_state_alloc
 
@@ -1735,6 +1746,9 @@ subroutine physics_state_dealloc(state)
 
   deallocate(state%tw_cur, stat=ierr)
   if ( ierr /= 0 ) call endrun('physics_state_dealloc error: deallocation error for state%tw_cur')
+
+  deallocate(state%temp_ini, stat=ierr)
+  if ( ierr /= 0 ) call endrun('physics_state_dealloc error: deallocation error for state%temp_ini')
 
   deallocate(state%latmapback, stat=ierr)
   if ( ierr /= 0 ) call endrun('physics_state_dealloc error: deallocation error for state%latmapback')

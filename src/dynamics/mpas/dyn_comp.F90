@@ -303,7 +303,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    use mpas_timekeeping,   only : MPAS_set_timeInterval
    use mpas_derived_types, only : mpas_pool_type
    use mpas_constants,     only : mpas_constants_compute_derived
-
+   use dyn_tests_utils,    only : vc_dycore, vc_height, string_vc
    ! arguments:
    type(dyn_import_t), intent(inout)  :: dyn_in
    type(dyn_export_t), intent(inout)  :: dyn_out
@@ -363,6 +363,11 @@ subroutine dyn_init(dyn_in, dyn_out)
    integer :: istage, ivars
    character (len=108) :: str1, str2, str3
 
+   vc_dycore = vc_height
+   if (masterproc) then
+     call string_vc(vc_dycore,str1)
+     write(iulog,*)'vertical coordinate dycore   : ',trim(str1)
+   end if
    !----------------------------------------------------------------------------
 
    if (initial_run) then

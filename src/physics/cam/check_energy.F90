@@ -215,6 +215,7 @@ end subroutine check_energy_get_integrals
     use physconst,      only: get_hydrostatic_energy
     use physics_buffer, only: physics_buffer_desc, pbuf_set_field
     use cam_abortutils, only: endrun
+    use dyn_tests_utils,only: vc_physics, vc_dycore
 !-----------------------------------------------------------------------
 ! Compute initial values of energy and water integrals,
 ! zero cumulative tendencies
@@ -256,16 +257,18 @@ end subroutine check_energy_get_integrals
     call get_hydrostatic_energy(1,ncol,1,1,pver,pcnst,state%q(1:ncol,1:pver,1:pcnst),&
          state%pdel(1:ncol,1:pver), cpairv_loc(1:ncol,1:pver,lchnk),                 &
          state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), state%T(1:ncol,1:pver),     &
-         state%te_ini(1:ncol,1), state%tw_ini(1:ncol,1), ps = state%ps(1:ncol),      &
-         phis = state%phis(1:ncol))
+         vc_physics, state%te_ini(1:ncol,1), state%tw_ini(1:ncol,1),                 &
+         ps = state%ps(1:ncol), phis = state%phis(1:ncol))
     !
     ! Dynamical core total energy (phl continue coding)
     !
+    state%temp_ini(:ncol,:) = state%T(:ncol,:)
     call get_hydrostatic_energy(1,ncol,1,1,pver,pcnst,state%q(1:ncol,1:pver,1:pcnst),&
          state%pdel(1:ncol,1:pver), cpairv_loc(1:ncol,1:pver,lchnk),                 &
          state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), state%T(1:ncol,1:pver),     &
-         state%te_ini(1:ncol,2), state%tw_ini(1:ncol,2), ps = state%ps(1:ncol),      &
-         phis = state%phis(1:ncol))
+         vc_physics, state%te_ini(1:ncol,2), state%tw_ini(1:ncol,2),                 &
+         ps = state%ps(1:ncol), phis = state%phis(1:ncol))
+
 
     do i = 1, ncol
        state%te_cur(i,1) = state%te_ini(i,1)
@@ -298,8 +301,9 @@ end subroutine check_energy_get_integrals
 
   subroutine check_energy_chng(state, tend, name, nstep, ztodt,        &
        flx_vap, flx_cnd, flx_ice, flx_sen)
-    use physconst,      only: get_hydrostatic_energy
-    use cam_abortutils, only: endrun
+    use physconst,       only: get_hydrostatic_energy
+    use dyn_tests_utils, only: vc_physics, vc_dycore
+    use cam_abortutils,  only: endrun
 
 !-----------------------------------------------------------------------
 ! Check that the energy and water change matches the boundary fluxes
@@ -367,8 +371,8 @@ end subroutine check_energy_get_integrals
     call get_hydrostatic_energy(1,ncol,1,1,pver,pcnst,state%q(1:ncol,1:pver,1:pcnst),&
          state%pdel(1:ncol,1:pver), cpairv_loc(1:ncol,1:pver,lchnk),                 &
          state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), state%T(1:ncol,1:pver),     &
-         te, tw, state%ps(1:ncol),phis = state%phis(1:ncol))
-
+         vc_physics, te, tw,                                                         &
+         ps = state%ps(1:ncol), phis = state%phis(1:ncol))
 
     ! compute expected values and tendencies
     do i = 1, ncol

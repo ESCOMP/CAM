@@ -16,7 +16,6 @@ module physconst
    use shr_flux_mod,   only: shr_flux_adjust_constants
    use ppgrid,         only: pcols, pver, pverp, begchunk, endchunk
    use cam_abortutils, only: endrun
-   use dyn_tests_utils,only: vcoord=>vc_height
 use constituents,   only: pcnst
 
 implicit none
@@ -188,14 +187,14 @@ subroutine physconst_readnl(nlfile)
    use namelist_utils,  only: find_group_name
    use spmd_utils,      only: masterproc, mpicom, masterprocid, mpi_real8, mpi_character
    use cam_logfile,     only: iulog
-
+   use dyn_tests_utils, only: vc_physics, vc_dycore, string_vc, vc_moist_pressure
    character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
    ! Local variables
    integer :: unitn, ierr, i
    character(len=*), parameter :: subname = 'physconst_readnl'
    logical :: newg, newsday, newmwh2o, newcpwv, newmwdry, newcpair, newrearth, newtmelt, newomega
-
+   character (len=108) :: str
 
    ! Physical constants needing to be reset (e.g., for aqua planet experiments)
    namelist /physconst_nl/  gravit, sday, mwh2o, cpwv, mwdry, cpair, rearth, tmelt, omega
@@ -340,7 +339,14 @@ subroutine physconst_readnl(nlfile)
       write(iulog,*)'****************************************************************************'
 
    end if
-
+   !
+   ! vertical coordinate info
+   !
+   vc_physics = vc_moist_pressure
+   if (masterproc) then
+     call string_vc(vc_physics,str)
+     write(iulog,*)'vertical coordinate physics : ',trim(str)
+   end if
 end subroutine physconst_readnl
 
 !===============================================================================
@@ -1173,7 +1179,8 @@ end subroutine physconst_init
    !
    ! compute column integrated total energy assuming constant pressure
    !
-   subroutine get_hydrostatic_energy(i0,i1,j0,j1,nlev,ntrac,tracer,pdel,cp,u,v,T,te,H2O,ps,phis,z)
+   subroutine get_hydrostatic_energy(i0,i1,j0,j1,nlev,ntrac,tracer,pdel,cp,u,v,T,vcoord,te,H2O,ps,phis,z)
+     use dyn_tests_utils, only: vc_moist_pressure, vc_height, vc_moist_pressure, vc_dry_pressure, vc_height
      use cam_logfile,     only: iulog
      integer,  intent(in)            :: i0,i1,j0,j1,nlev,ntrac
      real(r8), intent(in)            :: tracer(i0:i1,j0:j1,nlev,1:ntrac)     ! tracer mixing ratio
@@ -1182,6 +1189,7 @@ end subroutine physconst_init
      real(r8), intent(in)            :: u(i0:i1,j0:j1,nlev)                  ! U
      real(r8), intent(in)            :: v(i0:i1,j0:j1,nlev)                  ! V
      real(r8), intent(in)            :: T(i0:i1,j0:j1,nlev)                  ! T
+     integer,  intent(in)            :: vcoord                               ! vertical coordinate
      real(r8), intent(in), optional  :: ps(i0:i1,j0:j1)                      ! PS
      real(r8), intent(in), optional  :: phis(i0:i1,j0:j1)                    ! PHIS
      real(r8), intent(in), optional  :: z(i0:i1,j0:j1,nlev)                  ! Z mid
@@ -1193,72 +1201,131 @@ end subroutine physconst_init
      real(r8)                        :: latsub         !latent heat of sublimation
      integer                         :: i,j,k,idx
      character(len=22)               :: subname='get_hydrostatic_energy' ! subroutine name
-     
-     ke = 0._r8
-     se = 0._r8
-     wv = 0._r8
-     liq = 0._r8
-     ice = 0._r8
-     do k = 1, nlev
-       do j = j0,j1
-         do i = i0,i1
-           ke(i,j) = ke(i,j) + 0.5_r8*(u(i,j,k)**2 + v(i,j,k)**2)*pdel(i,j,k)/gravit
-           se(i,j) = se(i,j) +         T(i,j,k)*cp(i,j,k)        *pdel(i,j,k)/gravit
-           wv(i,j) = wv(i,j) +         tracer(i,j,k,1)           *pdel(i,j,k)/gravit
+   
+     select case (vcoord)  
+     case(vc_moist_pressure)          
+       if (.not. present(ps) .or. .not. present(phis)) then
+         write(iulog, *) subname//' ps and phis must be present for moist pressure vertical coordinate'
+         call endrun(subname // '::  ps and phis must be present for moist pressure vertical coordinate')
+       endif
+       ke = 0._r8
+       se = 0._r8
+       wv = 0._r8
+       liq = 0._r8
+       ice = 0._r8
+       do k = 1, nlev
+         do j = j0,j1
+           do i = i0,i1
+             ke(i,j) = ke(i,j) + 0.5_r8*(u(i,j,k)**2 + v(i,j,k)**2)*pdel(i,j,k)/gravit
+             se(i,j) = se(i,j) +         T(i,j,k)*cp(i,j,k)        *pdel(i,j,k)/gravit
+             wv(i,j) = wv(i,j) +         tracer(i,j,k,1)           *pdel(i,j,k)/gravit
+           end do
          end do
        end do
-    end do
-    do j = j0,j1
-      do i = i0,i1
-        se(i,j) = se(i,j) + phis(i,j)*ps(i,j)/gravit
-      end do
-    end do
-    
-    !
-    ! vertical integral of total liquid water
-    !
-    do idx = 1,thermodynamic_active_species_liq_num
-      do k = 1, nlev
-        do j = j0,j1
-          do i = i0,i1
-            liq(i,j) = liq(i,j) + tracer(i,j,k,thermodynamic_active_species_liq_idx(idx))*pdel(i,j,k)/gravit
-          end do
-        end do
-      end do
-    end do
-    !
-    ! vertical integral of total frozen (ice) water
-    !
-    do idx = 1,thermodynamic_active_species_ice_num
-      do k = 1, nlev
-        do j = j0,j1
-          do i = i0,i1
-            ice(i,j) = ice(i,j) + tracer(i,j,k,thermodynamic_active_species_ice_idx(idx))*pdel(i,j,k)/gravit
-          end do
-        end do
-      end do
-    end do
-    
-    
-    ! Compute vertical integrals of frozen static energy and total water.
-    H2O(i0:i1,j0:j1) = wv(i0:i1,j0:j1) + liq(i0:i1,j0:j1) + ice(i0:i1,j0:j1)
-    te(i0:i1,j0:j1)  = se(i0:i1,j0:j1) + ke(i0:i1,j0:j1)
-    !
-    ! latent heat terms depend on enthalpy reference state
-    !
-    latsub = latvap+latice
-    select case (TRIM(enthalpy_reference_state))
-    case('ice')
-      te(i0:i1,j0:j1)  = te(i0:i1,j0:j1) + latsub*wv (i0:i1,j0:j1) + latice*liq(i0:i1,j0:j1)
-    case('liq')
-      te(i0:i1,j0:j1)  = te(i0:i1,j0:j1) + latvap*wv (i0:i1,j0:j1) - latice*liq(i0:i1,j0:j1)
-    case('wv')
-      te(i0:i1,j0:j1)  = te(i0:i1,j0:j1) - latvap*liq(i0:i1,j0:j1) - latsub*ice(i0:i1,j0:j1)
-    case default
-      write(iulog, *) subname//' enthalpy reference state not supported: ',TRIM(enthalpy_reference_state) 
-      call endrun(subname // ':: enthalpy reference state not supported')
-    end select
-  end subroutine get_hydrostatic_energy
+       do j = j0,j1
+         do i = i0,i1
+           se(i,j) = se(i,j) + phis(i,j)*ps(i,j)/gravit
+         end do
+       end do
+       te(i0:i1,j0:j1)  = se(i0:i1,j0:j1) + ke(i0:i1,j0:j1)
+     case(vc_dry_pressure)
+       if (.not. present(ps) .or. .not. present(phis)) then
+         write(iulog, *) subname//' ps and phis must be present for moist pressure vertical coordinate'
+         call endrun(subname // '::  ps and phis must be present for moist pressure vertical coordinate')
+       endif
+       ke = 0._r8
+       se = 0._r8
+       wv = 0._r8
+       liq = 0._r8
+       ice = 0._r8
+       do k = 1, nlev
+         do j = j0,j1
+           do i = i0,i1
+             ke(i,j) = ke(i,j) + 0.5_r8*(u(i,j,k)**2 + v(i,j,k)**2)*pdel(i,j,k)/gravit
+             se(i,j) = se(i,j) +         T(i,j,k)*cp(i,j,k)        *pdel(i,j,k)/gravit
+             wv(i,j) = wv(i,j) +         tracer(i,j,k,1)           *pdel(i,j,k)/gravit
+           end do
+         end do
+       end do
+       do j = j0,j1
+         do i = i0,i1
+           se(i,j) = se(i,j) + phis(i,j)*ps(i,j)/gravit
+         end do
+       end do
+       te(i0:i1,j0:j1)  = se(i0:i1,j0:j1) + ke(i0:i1,j0:j1)
+     case(vc_height)
+       if (.not. present(ps) .or. .not. present(phis)) then
+         write(iulog, *) subname//' ps and phis must be present for moist pressure vertical coordinate'
+         call endrun(subname // '::  ps and phis must be present for moist pressure vertical coordinate')
+       endif
+       ke = 0._r8
+       se = 0._r8
+       wv = 0._r8
+       liq = 0._r8
+       ice = 0._r8
+       do k = 1, nlev
+         do j = j0,j1
+           do i = i0,i1
+             ke(i,j) = ke(i,j) + 0.5_r8*(u(i,j,k)**2 + v(i,j,k)**2)*pdel(i,j,k)/gravit
+             se(i,j) = se(i,j) +         T(i,j,k)*cp(i,j,k)        *pdel(i,j,k)/gravit
+             wv(i,j) = wv(i,j) +         tracer(i,j,k,1)           *pdel(i,j,k)/gravit
+           end do
+         end do
+       end do
+       do j = j0,j1
+         do i = i0,i1
+           se(i,j) = se(i,j) + phis(i,j)*ps(i,j)/gravit
+         end do
+       end do
+       te(i0:i1,j0:j1)  = se(i0:i1,j0:j1) + ke(i0:i1,j0:j1)
+     case default
+       write(iulog, *) subname//' vertical coordinate not supported: ',vcoord
+       call endrun(subname // ':: vertical coordinate not supported')
+     end select
+       !
+     ! vertical integral of total liquid water
+     !
+     do idx = 1,thermodynamic_active_species_liq_num
+       do k = 1, nlev
+         do j = j0,j1
+           do i = i0,i1
+             liq(i,j) = liq(i,j) + tracer(i,j,k,thermodynamic_active_species_liq_idx(idx))*pdel(i,j,k)/gravit
+           end do
+         end do
+       end do
+     end do
+     !
+     ! vertical integral of total frozen (ice) water
+     !
+     do idx = 1,thermodynamic_active_species_ice_num
+       do k = 1, nlev
+         do j = j0,j1
+           do i = i0,i1
+             ice(i,j) = ice(i,j) + tracer(i,j,k,thermodynamic_active_species_ice_idx(idx))*pdel(i,j,k)/gravit
+           end do
+         end do
+       end do
+     end do
+     
+     
+     ! Compute vertical integrals of frozen static energy and total water.
+     H2O(i0:i1,j0:j1) = wv(i0:i1,j0:j1) + liq(i0:i1,j0:j1) + ice(i0:i1,j0:j1)
+     !
+     ! latent heat terms depend on enthalpy reference state
+     !
+     latsub = latvap+latice
+     select case (TRIM(enthalpy_reference_state))
+     case('ice')
+       te(i0:i1,j0:j1)  = te(i0:i1,j0:j1) + latsub*wv (i0:i1,j0:j1) + latice*liq(i0:i1,j0:j1)
+     case('liq')
+       te(i0:i1,j0:j1)  = te(i0:i1,j0:j1) + latvap*wv (i0:i1,j0:j1) - latice*liq(i0:i1,j0:j1)
+     case('wv')
+       te(i0:i1,j0:j1)  = te(i0:i1,j0:j1) - latvap*liq(i0:i1,j0:j1) - latsub*ice(i0:i1,j0:j1)
+     case default
+       write(iulog, *) subname//' enthalpy reference state not supported: ',TRIM(enthalpy_reference_state) 
+       call endrun(subname // ':: enthalpy reference state not supported')
+     end select
+   end subroutine get_hydrostatic_energy
 
    !
    !****************************************************************************************************************
