@@ -1827,6 +1827,9 @@ contains
     !-------------- Energy budget checks vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
     ! Save total energy for global fixer in next timestep (FV and SE dycores)
+
+    ! (phl continue coding) compute dycore total energy here and pass to pbuf_set_field
+
     call pbuf_set_field(pbuf, teout_idx, state%te_cur, (/1,itim_old/),(/pcols,1/))
 
     if (shallow_scheme .eq. 'UNICON') then

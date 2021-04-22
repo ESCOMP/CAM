@@ -16,6 +16,7 @@ module physconst
    use shr_flux_mod,   only: shr_flux_adjust_constants
    use ppgrid,         only: pcols, pver, pverp, begchunk, endchunk
    use cam_abortutils, only: endrun
+   use dyn_tests_utils,only: vcoord=>vc_height
 use constituents,   only: pcnst
 
 implicit none
@@ -53,6 +54,7 @@ public  :: get_molecular_diff_coef_reference  ! reference vertical profile of de
                                               ! and thermal conductivity
 public  :: get_rho_dry                        ! dry densisty from temperature (temp) and pressure (dp_dry and tracer)
 public  :: get_exner                          ! Exner pressure
+public  :: get_hydrostatic_energy             ! Vertically integrated total energy
 
 ! Constants based off share code or defined in physconst
 
@@ -149,6 +151,14 @@ real(r8), allocatable, protected, public :: thermodynamic_active_species_R(:)
 real(r8), allocatable, protected, public :: thermodynamic_active_species_mwi(:)!inverse molecular weights dry air
 real(r8), allocatable, protected, public :: thermodynamic_active_species_kv(:) !molecular diffusion
 real(r8), allocatable, protected, public :: thermodynamic_active_species_kc(:) !thermal conductivity
+!
+! for energy computations liquid and ice species need to be identified
+!
+integer,               protected, public :: thermodynamic_active_species_liq_num   !number of liquid water species
+integer,               protected, public :: thermodynamic_active_species_ice_num   !number of frozen water species
+integer,  allocatable, protected, public :: thermodynamic_active_species_liq_idx(:)!index of liquid water species
+integer,  allocatable, protected, public :: thermodynamic_active_species_ice_idx(:)!index of ice water species
+character(len=3) :: enthalpy_reference_state! choices: ice,liq,wv
 
 ! standard dry air (constant composition)
 real(r8) :: mmro2, mmrn2           ! Mass mixing ratios of O2 and N2
@@ -371,6 +381,12 @@ end subroutine physconst_init
 
     integer  :: icnst,ix,i
 
+    integer                           :: liq_num, ice_num
+    integer, dimension(pcnst)         :: liq_idx, ice_idx
+    logical                           :: liq,ice
+    liq_num=0
+    ice_num=0
+
     ! standard dry air (constant composition)
     o2_mwi = 1._r8/32._r8
     n2_mwi = 1._r8/28._r8
@@ -577,7 +593,10 @@ end subroutine physconst_init
           thermodynamic_active_species_idx(icnst) = ix
           thermodynamic_active_species_cp (icnst) = cpliq
           thermodynamic_active_species_cv (icnst) = cpliq
+          liq_num           = liq_num+1
+          liq_idx (liq_num) = ix
           icnst = icnst+1
+          liq = .true.
         end if
         !
         ! CLDICE
@@ -591,7 +610,10 @@ end subroutine physconst_init
           thermodynamic_active_species_idx(icnst) = ix
           thermodynamic_active_species_cp (icnst) = cpice
           thermodynamic_active_species_cv (icnst) = cpice
+          ice_num           = ice_num+1
+          ice_idx(ice_num)  = ix
           icnst = icnst+1
+          ice = .true.
         end if
         !
         ! RAINQM
@@ -605,7 +627,10 @@ end subroutine physconst_init
           thermodynamic_active_species_idx(icnst) = ix
           thermodynamic_active_species_cp (icnst) = cpliq
           thermodynamic_active_species_cv (icnst) = cpliq
+          liq_num           = liq_num+1
+          liq_idx(liq_num)  = ix
           icnst = icnst+1
+          liq = .true.
         end if
         !
         ! SNOWQM
@@ -619,7 +644,10 @@ end subroutine physconst_init
           thermodynamic_active_species_idx(icnst) = ix
           thermodynamic_active_species_cp (icnst) = cpice
           thermodynamic_active_species_cv (icnst) = cpice
+          ice_num           = ice_num+1
+          ice_idx(ice_num)  = ix
           icnst = icnst+1
+          ice = .true.
         end if
         !
         ! GRAUQM
@@ -634,7 +662,10 @@ end subroutine physconst_init
           thermodynamic_active_species_idx(icnst) = ix
           thermodynamic_active_species_cp (icnst) = cpice
           thermodynamic_active_species_cv (icnst) = cpice
+          ice_num           = ice_num+1
+          ice_idx(ice_num)  = ix
           icnst = icnst+1
+          ice = .true.
         end if
         !
         ! If support for more major species is to be included add code here
@@ -647,13 +678,37 @@ end subroutine physconst_init
       !
       !
       if (masterproc) then
-        write(iulog, *) "Thermodynamic active species ",TRIM(water_species_in_air(i)),&
-             icnst-1,thermodynamic_active_species_idx(icnst-1),&
-             thermodynamic_active_species_cp(icnst-1),&
-             thermodynamic_active_species_cv(icnst-1)
+        write(iulog, *) "Thermodynamic active species ",TRIM(water_species_in_air(i))
+        write(iulog, *) "   global index                    : ",icnst-1
+        write(iulog, *) "   thermodynamic_active_species_idx: ",thermodynamic_active_species_idx(icnst-1)
+        write(iulog, *) "   cp                              : ",thermodynamic_active_species_cp(icnst-1)
+        write(iulog, *) "   cv                              : ",thermodynamic_active_species_cv(icnst-1)
+        if (liq) &
+        write(iulog, *) "   register phase (liquid or ice)  : liquid"
+        if (ice) &
+        write(iulog, *) "   register phase (liquid or ice)  : ice"
+        write(iulog, *) "  "
       end if
+      liq = .false.
+      ice = .false.
     end do
 
+    allocate(thermodynamic_active_species_liq_idx(liq_num))
+    thermodynamic_active_species_liq_idx = liq_idx(1:liq_num)
+    thermodynamic_active_species_liq_num = liq_num
+
+    allocate(thermodynamic_active_species_ice_idx(ice_num))
+    thermodynamic_active_species_ice_idx = ice_idx(1:ice_num)
+    thermodynamic_active_species_ice_num = ice_num
+
+    if (water_species_in_air_num.ne.1+liq_num+ice_num) then
+      write(iulog, *) subname//'  water_species_in_air_num.ne.1+liq_num+ice_num'
+      call endrun(subname // ':: water_species_in_air_num.ne.1+liq_num+ice_num')
+    end if
+    enthalpy_reference_state = 'ice'
+    if (masterproc) then
+      write(iulog, *)   'Enthalpy reference state           : ',TRIM(enthalpy_reference_state)
+    end if
   end subroutine composition_init
   !
   !****************************************************************************************************************
@@ -1115,6 +1170,96 @@ end subroutine physconst_init
      thermalE(:,:,:) = cp_dry(:,:,:)*T_v(:,:,:)
      KE(:,:,:)       = 0.5_r8*(v(:,:,2,:)**2+v(:,:,1,:)**2)
    end subroutine get_hydrostatic_static_energy
+   !
+   ! compute column integrated total energy assuming constant pressure
+   !
+   subroutine get_hydrostatic_energy(i0,i1,j0,j1,nlev,ntrac,tracer,pdel,cp,u,v,T,te,H2O,ps,phis,z)
+     use cam_logfile,     only: iulog
+     integer,  intent(in)            :: i0,i1,j0,j1,nlev,ntrac
+     real(r8), intent(in)            :: tracer(i0:i1,j0:j1,nlev,1:ntrac)     ! tracer mixing ratio
+     real(r8), intent(in)            :: pdel(i0:i1,j0:j1,nlev)               ! pressure level thickness
+     real(r8), intent(in)            :: cp(i0:i1,j0:j1,nlev)                 ! dry air heat capacity
+     real(r8), intent(in)            :: u(i0:i1,j0:j1,nlev)                  ! U
+     real(r8), intent(in)            :: v(i0:i1,j0:j1,nlev)                  ! V
+     real(r8), intent(in)            :: T(i0:i1,j0:j1,nlev)                  ! T
+     real(r8), intent(in), optional  :: ps(i0:i1,j0:j1)                      ! PS
+     real(r8), intent(in), optional  :: phis(i0:i1,j0:j1)                    ! PHIS
+     real(r8), intent(in), optional  :: z(i0:i1,j0:j1,nlev)                  ! Z mid
+
+     real(r8), intent(out) :: H2O(i0:i1,j0:j1) !vertically integrated total water
+     real(r8), intent(out) :: te (i0:i1,j0:j1) !vertically integrated total energy
+
+     real(r8), dimension(i0:i1,j0:j1):: ke,se,wv,liq,ice !variables for vertical integrals
+     real(r8)                        :: latsub         !latent heat of sublimation
+     integer                         :: i,j,k,idx
+     character(len=22)               :: subname='get_hydrostatic_energy' ! subroutine name
+     
+     ke = 0._r8
+     se = 0._r8
+     wv = 0._r8
+     liq = 0._r8
+     ice = 0._r8
+     do k = 1, nlev
+       do j = j0,j1
+         do i = i0,i1
+           ke(i,j) = ke(i,j) + 0.5_r8*(u(i,j,k)**2 + v(i,j,k)**2)*pdel(i,j,k)/gravit
+           se(i,j) = se(i,j) +         T(i,j,k)*cp(i,j,k)        *pdel(i,j,k)/gravit
+           wv(i,j) = wv(i,j) +         tracer(i,j,k,1)           *pdel(i,j,k)/gravit
+         end do
+       end do
+    end do
+    do j = j0,j1
+      do i = i0,i1
+        se(i,j) = se(i,j) + phis(i,j)*ps(i,j)/gravit
+      end do
+    end do
+    
+    !
+    ! vertical integral of total liquid water
+    !
+    do idx = 1,thermodynamic_active_species_liq_num
+      do k = 1, nlev
+        do j = j0,j1
+          do i = i0,i1
+            liq(i,j) = liq(i,j) + tracer(i,j,k,thermodynamic_active_species_liq_idx(idx))*pdel(i,j,k)/gravit
+          end do
+        end do
+      end do
+    end do
+    !
+    ! vertical integral of total frozen (ice) water
+    !
+    do idx = 1,thermodynamic_active_species_ice_num
+      do k = 1, nlev
+        do j = j0,j1
+          do i = i0,i1
+            ice(i,j) = ice(i,j) + tracer(i,j,k,thermodynamic_active_species_ice_idx(idx))*pdel(i,j,k)/gravit
+          end do
+        end do
+      end do
+    end do
+    
+    
+    ! Compute vertical integrals of frozen static energy and total water.
+    H2O(i0:i1,j0:j1) = wv(i0:i1,j0:j1) + liq(i0:i1,j0:j1) + ice(i0:i1,j0:j1)
+    te(i0:i1,j0:j1)  = se(i0:i1,j0:j1) + ke(i0:i1,j0:j1)
+    !
+    ! latent heat terms depend on enthalpy reference state
+    !
+    latsub = latvap+latice
+    select case (TRIM(enthalpy_reference_state))
+    case('ice')
+      te(i0:i1,j0:j1)  = te(i0:i1,j0:j1) + latsub*wv (i0:i1,j0:j1) + latice*liq(i0:i1,j0:j1)
+    case('liq')
+      te(i0:i1,j0:j1)  = te(i0:i1,j0:j1) + latvap*wv (i0:i1,j0:j1) - latice*liq(i0:i1,j0:j1)
+    case('wv')
+      te(i0:i1,j0:j1)  = te(i0:i1,j0:j1) - latvap*liq(i0:i1,j0:j1) - latsub*ice(i0:i1,j0:j1)
+    case default
+      write(iulog, *) subname//' enthalpy reference state not supported: ',TRIM(enthalpy_reference_state) 
+      call endrun(subname // ':: enthalpy reference state not supported')
+    end select
+  end subroutine get_hydrostatic_energy
+
    !
    !****************************************************************************************************************
    !
