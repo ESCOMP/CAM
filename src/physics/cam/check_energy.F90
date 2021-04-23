@@ -212,9 +212,9 @@ end subroutine check_energy_get_integrals
 !===============================================================================
 
   subroutine check_energy_timestep_init(state, tend, pbuf, col_type)
-    use physconst,      only: get_hydrostatic_energy
-    use physics_buffer, only: physics_buffer_desc, pbuf_set_field
-    use cam_abortutils, only: endrun
+    use physconst,       only: get_hydrostatic_energy
+    use physics_buffer,  only: physics_buffer_desc, pbuf_set_field
+    use cam_abortutils,  only: endrun
     use dyn_tests_utils, only: vc_physics, vc_dycore, vc_height
 !-----------------------------------------------------------------------
 ! Compute initial values of energy and water integrals,
@@ -257,8 +257,9 @@ end subroutine check_energy_get_integrals
     call get_hydrostatic_energy(1,ncol,1,1,pver,pcnst,state%q(1:ncol,1:pver,1:pcnst),&
          state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver,lchnk),                   &
          state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), state%T(1:ncol,1:pver),     &
-         vc_physics, state%te_ini(1:ncol,1), state%tw_ini(1:ncol,1),                 &
-         ps = state%ps(1:ncol), phis = state%phis(1:ncol))
+         vc_physics, ps = state%ps(1:ncol), phis = state%phis(1:ncol),               &
+         te = state%te_ini(1:ncol,1), H2O = state%tw_ini(1:ncol,1))
+         
     !
     ! Dynamical core total energy (phl continue coding)
     !
@@ -277,9 +278,9 @@ end subroutine check_energy_get_integrals
     call get_hydrostatic_energy(1,ncol,1,1,pver,pcnst,state%q(1:ncol,1:pver,1:pcnst),&
          state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver,lchnk),                   &
          state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), state%T(1:ncol,1:pver),     &
-         vc_dycore, state%te_ini(1:ncol,2), state%tw_ini(1:ncol,2),                  &
-         ps = state%ps(1:ncol), phis = state%phis(1:ncol), z = state%z_ini(1:ncol,:))
-
+         vc_dycore, ps = state%ps(1:ncol), phis = state%phis(1:ncol),                &
+         z = state%z_ini(1:ncol,:),                                                  &
+         te = state%te_ini(1:ncol,2), H2O = state%tw_ini(1:ncol,2))
 
     do k=1,2
       do i = 1, ncol
@@ -382,8 +383,8 @@ end subroutine check_energy_get_integrals
     call get_hydrostatic_energy(1,ncol,1,1,pver,pcnst,state%q(1:ncol,1:pver,1:pcnst),&
          state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver,lchnk),                   &
          state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), state%T(1:ncol,1:pver),     &
-         vc_physics, te, tw,                                                         &
-         ps = state%ps(1:ncol), phis = state%phis(1:ncol))
+         vc_physics, ps = state%ps(1:ncol), phis = state%phis(1:ncol),               &
+         te = te, H2O = tw)
     !
     ! Dynamical core total energy
     !
@@ -405,8 +406,9 @@ end subroutine check_energy_get_integrals
     call get_hydrostatic_energy(1,ncol,1,1,pver,pcnst,state%q(1:ncol,1:pver,1:pcnst),&
          state%pdel(1:ncol,1:pver),cp_or_cv(1:ncol,1:pver,lchnk),                    &
          state%u(1:ncol,1:pver), state%v(1:ncol,1:pver),tnew(1:ncol,1:pver),         &
-         vc_dycore, state%te_ini(1:ncol,2), state%tw_ini(1:ncol,2),                  &
-         ps = state%ps(1:ncol), phis = state%phis(1:ncol), z = state%z_ini(1:ncol,:))
+         vc_dycore, ps = state%ps(1:ncol), phis = state%phis(1:ncol),                &
+         z = state%z_ini(1:ncol,:),                                                  &
+         te = state%te_ini(1:ncol,2), H2O = state%tw_ini(1:ncol,2))
 
     ! compute expected values and tendencies
     do i = 1, ncol
@@ -790,33 +792,38 @@ end subroutine check_energy_get_integrals
 
 !#######################################################################
 
-  subroutine calc_te_and_aam_budgets(state, outfld_name_suffix)
-    use physconst,   only: gravit,cpair,pi,rearth,omega
-    use cam_history, only: hist_fld_active, outfld
-
+  subroutine calc_te_and_aam_budgets(state, outfld_name_suffix,vc)
+    use physconst,       only: gravit,cpair,pi,rearth,omega,get_hydrostatic_energy
+    use cam_history,     only: hist_fld_active, outfld
+    use dyn_tests_utils, only: vc_physics, vc_height
+    use cam_abortutils,  only: endrun
 !------------------------------Arguments--------------------------------
 
     type(physics_state), intent(inout) :: state
-    character*(*),intent(in) :: outfld_name_suffix ! suffix for "outfld" names
+    character*(*),       intent(in)    :: outfld_name_suffix ! suffix for "outfld" names
+    integer, optional,   intent(in)    :: vc                 ! vertical coordinate
 
 !---------------------------Local storage-------------------------------
 
     real(r8) :: se(pcols)                          ! Dry Static energy (J/m2)
     real(r8) :: ke(pcols)                          ! kinetic energy    (J/m2)
     real(r8) :: wv(pcols)                          ! column integrated vapor       (kg/m2)
-    real(r8) :: wl(pcols)                          ! column integrated liquid      (kg/m2)
-    real(r8) :: wi(pcols)                          ! column integrated ice         (kg/m2)
+    real(r8) :: liq(pcols)                         ! column integrated liquid      (kg/m2)
+    real(r8) :: ice(pcols)                         ! column integrated ice         (kg/m2)
     real(r8) :: tt(pcols)                          ! column integrated test tracer (kg/m2)
     real(r8) :: mr(pcols)                          ! column integrated wind axial angular momentum (kg*m2/s)
     real(r8) :: mo(pcols)                          ! column integrated mass axial angular momentum (kg*m2/s)
-    real(r8) :: se_tmp,ke_tmp,wv_tmp,wl_tmp,wi_tmp,tt_tmp,mr_tmp,mo_tmp,cos_lat
+    real(r8) :: tt_tmp,mr_tmp,mo_tmp,cos_lat
     real(r8) :: mr_cnst, mo_cnst
+    real(r8) :: cp_or_cv(pcols,pver)               ! cp for pressure-based vcoord and cv for height vcoord
 
-    integer lchnk                                  ! chunk identifier
-    integer ncol                                   ! number of atmospheric columns
-    integer  i,k                                   ! column, level indices
-    integer :: ixcldice, ixcldliq,ixtt             ! CLDICE and CLDLIQ indices
+    integer :: lchnk                               ! chunk identifier
+    integer :: ncol                                ! number of atmospheric columns
+    integer :: i,k                                 ! column, level indices
+    integer :: vc_loc                              ! local vertical coordinate variable
+    integer :: ixtt                                ! test tracer index
     character(len=16) :: name_out1,name_out2,name_out3,name_out4,name_out5,name_out6
+
 !-----------------------------------------------------------------------
 
     name_out1 = 'SE_'   //trim(outfld_name_suffix)
@@ -831,54 +838,32 @@ end subroutine check_energy_get_integrals
 
       lchnk = state%lchnk
       ncol  = state%ncol
-      call cnst_get_ind('CLDICE', ixcldice, abort=.false.)
-      call cnst_get_ind('CLDLIQ', ixcldliq, abort=.false.)
+
+      if (present(vc)) then
+        vc_loc = vc
+      else
+        vc_loc = vc_physics
+      end if
+
+      if (state%psetcols == pcols) then
+        if (vc_loc == vc_height) then
+          cp_or_cv(:,:) = cpairv(:,:,lchnk)-rairv(:,:,lchnk)!cv
+        else
+          cp_or_cv(:,:) = cpairv(:,:,lchnk)                 !cp
+        end if
+      else 
+        call endrun('calc_te_and_aam_budgets: energy diagnostics not implemented/tested for subcolumns')
+      end if
+
+      call get_hydrostatic_energy(1,ncol,1,1,pver,pcnst,state%q(1:ncol,1:pver,1:pcnst),&
+           state%pdel(1:ncol,1:pver), cp_or_cv,                                        &
+           state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), state%T(1:ncol,1:pver),     &
+           vc_loc, ps = state%ps(1:ncol), phis = state%phis(1:ncol),                   &
+           z = state%z_ini(1:ncol,:), se = se, ke = ke, wv = wv)
+
       call cnst_get_ind('TT_LW' , ixtt    , abort=.false.)
 
-      ! Compute frozen static energy in 3 parts:  KE, SE, and energy associated with vapor and liquid
-
-      se    = 0._r8
-      ke    = 0._r8
-      wv    = 0._r8
-      wl    = 0._r8
-      wi    = 0._r8
       tt    = 0._r8
-
-      do k = 1, pver
-        do i = 1, ncol
-          ke_tmp   = 0.5_r8*(state%u(i,k)**2 + state%v(i,k)**2)*state%pdel(i,k)/gravit
-          se_tmp   =   cpair*state%t(i,k)                      *state%pdel(i,k)/gravit
-          wv_tmp   = state%q(i,k,1       )                     *state%pdel(i,k)/gravit
-
-          se   (i) = se   (i) + se_tmp
-          ke   (i) = ke   (i) + ke_tmp
-          wv   (i) = wv   (i) + wv_tmp
-        end do
-      end do
-      do i = 1, ncol
-        se(i) = se(i) + state%phis(i)*state%ps(i)/gravit
-      end do
-
-      ! Don't require cloud liq/ice to be present.  Allows for adiabatic/ideal phys.
-
-      if (ixcldliq > 1) then
-        do k = 1, pver
-          do i = 1, ncol
-            wl_tmp   = state%q(i,k,ixcldliq)*state%pdel(i,k)/gravit
-            wl   (i) = wl(i)    + wl_tmp
-          end do
-        end do
-      end if
-
-      if (ixcldice > 1) then
-        do k = 1, pver
-          do i = 1, ncol
-            wi_tmp   = state%q(i,k,ixcldice)*state%pdel(i,k)/gravit
-            wi(i)    = wi(i)    + wi_tmp
-          end do
-        end do
-      end if
-
       if (ixtt > 1) then
         if (name_out6 == 'TT_pAM') then
           !
@@ -905,12 +890,10 @@ end subroutine check_energy_get_integrals
       call outfld(name_out1  ,se      , pcols   ,lchnk   )
       call outfld(name_out2  ,ke      , pcols   ,lchnk   )
       call outfld(name_out3  ,wv      , pcols   ,lchnk   )
-      call outfld(name_out4  ,wl      , pcols   ,lchnk   )
-      call outfld(name_out5  ,wi      , pcols   ,lchnk   )
+      call outfld(name_out4  ,liq     , pcols   ,lchnk   )
+      call outfld(name_out5  ,ice     , pcols   ,lchnk   )
       call outfld(name_out6  ,tt      , pcols   ,lchnk   )
     end if
-
-
     !
     ! Axial angular momentum diagnostics
     !
