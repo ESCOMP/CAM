@@ -44,7 +44,6 @@ public  :: get_virtual_theta                  ! virtual potential temperature
 public  :: get_gz                             ! geopotential
 public  :: get_gz_given_dp_Tv_Rdry            ! geopotential (with dp,dry R and Tv as input)
 public  :: get_Richardson_number              ! Richardson number at layer interfaces
-public  :: get_hydrostatic_static_energy      ! geopotential, dry static energy, and kinetic energy
 public  :: get_R_dry                          ! (generalized) dry air gas constant
 public  :: get_kappa_dry                      ! (generalized) dry kappa = R_dry/cp_dry
 public  :: get_dp_ref                         ! reference pressure layer thickness (include topography)

@@ -184,12 +184,43 @@ contains
 
     integer :: k, m
     integer :: ierr
+    !
+    ! variables for energy diagnostics
+    !
+    integer                                    :: istage, ivars
+    character (len=108)                        :: str1, str2, str3
+    integer, parameter                         :: num_stages = 8, num_vars = 8
+    character (len = 3), dimension(num_stages) :: stage = (/"pBF","pBP","pAP","pAM","zBF","zBP","zAP","zAM"/)
+    character (len = 70),dimension(num_stages) :: stage_txt = (/&
+         " before energy fixer                     ",& !pBF - physics energy
+         " before parameterizations                ",& !pBF - physics energy
+         " after parameterizations                 ",& !pAP - physics energy
+         " after dry mass correction               ",& !pAM - physics energy
+         " before energy fixer (dycore)            ",& !zBF - dynamics energy
+         " before parameterizations (dycore)       ",& !zBF - dynamics energy
+         " after parameterizations (dycore)        ",& !zAP - dynamics energy
+         " after dry mass correction (dycore)      " & !zAM - dynamics energy
+         /)
+    character (len = 2)  , dimension(num_vars) :: vars  = (/"WV"  ,"WL"  ,"WI"  ,"SE"   ,"KE"   ,"MR"   ,"MO"   ,"TT"   /)
+    character (len = 70) , dimension(num_vars) :: vars_descriptor = (/&
+         "Total column water vapor                ",&
+         "Total column liquid water               ",&
+         "Total column frozen water               ",&
+         "Total column dry static energy          ",&
+         "Total column kinetic energy             ",&
+         "Total column wind axial angular momentum",&
+         "Total column mass axial angular momentum",&
+         "Total column test tracer                "/)
+    character (len = 14), dimension(num_vars)  :: &
+         vars_unit = (/&
+         "kg/m2        ","kg/m2        ","kg/m2        ","J/m2         ",&
+         "J/m2         ","kg*m2/s*rad2 ","kg*m2/s*rad2 ","kg/m2        "/)
 
     ! outfld calls in diag_phys_writeout
     call addfld (cnst_name(1), (/ 'lev' /), 'A', 'kg/kg',    cnst_longname(1))
     call addfld ('NSTEP',      horiz_only,  'A', 'timestep', 'Model timestep')
     call addfld ('PHIS',       horiz_only,  'I', 'm2/s2',    'Surface geopotential')
-
+    
     call addfld ('PS',         horiz_only,  'A', 'Pa',       'Surface pressure')
     call addfld ('T',          (/ 'lev' /), 'A', 'K',        'Temperature')
     call addfld ('U',          (/ 'lev' /), 'A', 'm/s',      'Zonal wind')
@@ -384,55 +415,15 @@ contains
     !
     ! energy diagnostics
     !
-    call addfld ('SE_pBF',   horiz_only, 'A', 'J/m2','Dry Static Energy before energy fixer')
-    call addfld ('SE_pBP',   horiz_only, 'A', 'J/m2','Dry Static Energy before parameterizations')
-    call addfld ('SE_pAP',   horiz_only, 'A', 'J/m2','Dry Static Energy after parameterizations')
-    call addfld ('SE_pAM',   horiz_only, 'A', 'J/m2','Dry Static Energy after dry mass correction')
-
-    call addfld ('KE_pBF',   horiz_only, 'A', 'J/m2','Kinetic Energy before energy fixer')
-    call addfld ('KE_pBP',   horiz_only, 'A', 'J/m2','Kinetic Energy before parameterizations')
-    call addfld ('KE_pAP',   horiz_only, 'A', 'J/m2','Kinetic Energy after parameterizations')
-    call addfld ('KE_pAM',   horiz_only, 'A', 'J/m2','Kinetic Energy after dry mass correction')
-
-    call addfld ('TT_pBF',   horiz_only, 'A', 'kg/m2','Total column test tracer before energy fixer')
-    call addfld ('TT_pBP',   horiz_only, 'A', 'kg/m2','Total column test tracer before parameterizations')
-    call addfld ('TT_pAP',   horiz_only, 'A', 'kg/m2','Total column test tracer after parameterizations')
-    call addfld ('TT_pAM',   horiz_only, 'A', 'kg/m2','Total column test tracer after dry mass correction')
-
-    call addfld ('WV_pBF',   horiz_only, 'A', 'kg/m2','Total column water vapor before energy fixer')
-    call addfld ('WV_pBP',   horiz_only, 'A', 'kg/m2','Total column water vapor before parameterizations')
-    call addfld ('WV_pAP',   horiz_only, 'A', 'kg/m2','Total column water vapor after parameterizations')
-    call addfld ('WV_pAM',   horiz_only, 'A', 'kg/m2','Total column water vapor after dry mass correction')
-
-    call addfld ('WL_pBF',   horiz_only, 'A', 'kg/m2','Total column liquid water before energy fixer')
-    call addfld ('WL_pBP',   horiz_only, 'A', 'kg/m2','Total column liquid water before parameterizations')
-    call addfld ('WL_pAP',   horiz_only, 'A', 'kg/m2','Total column liquid water after parameterizations')
-    call addfld ('WL_pAM',   horiz_only, 'A', 'kg/m2','Total column liquid water after dry mass correction')
-
-    call addfld ('WI_pBF',   horiz_only, 'A', 'kg/m2','Total column ice water before energy fixer')
-    call addfld ('WI_pBP',   horiz_only, 'A', 'kg/m2','Total column ice water before parameterizations')
-    call addfld ('WI_pAP',   horiz_only, 'A', 'kg/m2','Total column ice water after parameterizations')
-    call addfld ('WI_pAM',   horiz_only, 'A', 'kg/m2','Total column ice water after dry mass correction')
-    !
-    ! Axial Angular Momentum diagnostics
-    !
-    call addfld ('MR_pBF',   horiz_only, 'A', 'kg*m2/s*rad2',&
-    'Total column wind axial angular momentum before energy fixer')
-    call addfld ('MR_pBP',   horiz_only, 'A', 'kg*m2/s*rad2',&
-    'Total column wind axial angular momentum before parameterizations')
-    call addfld ('MR_pAP',   horiz_only, 'A', 'kg*m2/s*rad2',&
-         'Total column wind axial angular momentum after parameterizations')
-    call addfld ('MR_pAM',   horiz_only, 'A', 'kg*m2/s*rad2',&
-         'Total column wind axial angular momentum after dry mass correction')
-
-    call addfld ('MO_pBF',   horiz_only, 'A', 'kg*m2/s*rad2',&
-    'Total column mass axial angular momentum before energy fixer')
-    call addfld ('MO_pBP',   horiz_only, 'A', 'kg*m2/s*rad2',&
-    'Total column mass axial angular momentum before parameterizations')
-    call addfld ('MO_pAP',   horiz_only, 'A', 'kg*m2/s*rad2',&
-         'Total column mass axial angular momentum after parameterizations')
-    call addfld ('MO_pAM',   horiz_only, 'A', 'kg*m2/s*rad2',&
-         'Total column mass axial angular momentum after dry mass correction')
+    do istage = 1,SIZE(stage)
+      do ivars=1,SIZE(vars)
+        write(str1,*) TRIM(ADJUSTL(vars(ivars))),TRIM(ADJUSTL("_")),TRIM(ADJUSTL(stage(istage)))
+        write(str2,*) TRIM(ADJUSTL(vars_descriptor(ivars))),&
+             TRIM(ADJUSTL(" ")),TRIM(ADJUSTL(stage_txt(istage)))
+        write(str3,*) TRIM(ADJUSTL(vars_unit(ivars)))
+        call addfld (TRIM(ADJUSTL(str1)),   horiz_only, 'A', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)))
+      end do
+    end do
 
     call addfld( 'CPAIRV', (/ 'lev' /), 'I', 'J/K/kg', 'Variable specific heat cap air' )
     call addfld( 'RAIRV', (/ 'lev' /), 'I', 'J/K/kg', 'Variable dry air gas constant' )
