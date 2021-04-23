@@ -2028,31 +2028,12 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
 
    real(r8), pointer :: pckdptr(:,:)
 
-#if defined (__OPENACC__)
-   real(r8), dimension(:,:), allocatable :: icimrst_subgrid, rei_subgrid, &
-                                            niic_subgrid, icwmrst_subgrid, &
-                                            ncic_subgrid, rho_subgrid, &
-                                            mu_subgrid, lambdac_subgrid
-#endif
-
    !-------------------------------------------------------------------------------
 
    lchnk = state%lchnk
    ncol  = state%ncol
    psetcols = state%psetcols
    ngrdcol  = state%ngrdcol
-
-#if defined (__OPENACC__)
-   allocate( icimrst_subgrid(ngrdcol,nlev-top_lev+1), &
-             rei_subgrid(ngrdcol,nlev-top_lev+1),     &
-             niic_subgrid(ngrdcol,nlev-top_lev+1),    &
-             icwmrst_subgrid(ngrdcol,nlev-top_lev+1), &
-             ncic_subgrid(ngrdcol,nlev-top_lev+1),    &
-             rho_subgrid(ngrdcol,nlev-top_lev+1),     &
-             mu_subgrid(ngrdcol,nlev-top_lev+1),      &
-             lambdac_subgrid(ngrdcol,nlev-top_lev+1)  )
-#endif
-
    itim_old = pbuf_old_tim_idx()
 
    call phys_getopts(use_subcol_microp_out=use_subcol_microp)
@@ -3105,28 +3086,15 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
 
    ncic_grid = 1.e8_r8
 
-#if defined (__OPENACC__)
-   icwmrst_subgrid(:,:) = icwmrst_grid(:ngrdcol,top_lev:)
-   ncic_subgrid(:,:)    = ncic_grid(:ngrdcol,top_lev:)
-   rho_subgrid(:,:)     = rho_grid(:ngrdcol,top_lev:)
-   mu_subgrid(:,:)      = mu_grid(:ngrdcol,top_lev:)
-   lambdac_subgrid(:,:) = lambdac_grid(:ngrdcol,top_lev:)
-   !$acc data copyin  (mg_liq_props,icwmrst_subgrid,rho_subgrid) &
-   !$acc      copy    (ncic_subgrid) &
-   !$acc      copyout (mu_subgrid,lambdac_subgrid)
-   call size_dist_param_liq ( mg_liq_props, icwmrst_subgrid, ncic_subgrid, rho_subgrid, &
-                              mu_subgrid, lambdac_subgrid, ngrdcol, nlev-top_lev+1      )
-   !$acc end data
-   ncic_grid(:ngrdcol,top_lev:) = ncic_subgrid(:,:)
-   mu_grid(:ngrdcol,top_lev:) = mu_subgrid(:,:)
-   lambdac_grid(:ngrdcol,top_lev:) = lambdac_subgrid(:,:)
-#else
    do k = top_lev, pver  
+      !$acc data copyin  (mg_liq_props,icwmrst_grid(:ngrdcol,k),rho_grid(:ngrdcol,k)) &
+      !$acc      copy    (ncic_grid(:ngrdcol,k)) &
+      !$acc      copyout (mu_grid(:ngrdcol,k),lambdac_grid(:ngrdcol,k))
       call size_dist_param_liq(mg_liq_props, icwmrst_grid(:ngrdcol,k), &
                                ncic_grid(:ngrdcol,k), rho_grid(:ngrdcol,k), &
                                mu_grid(:ngrdcol,k), lambdac_grid(:ngrdcol,k), ngrdcol)
+      !$acc end data
    end do
-#endif
 
    where (icwmrst_grid(:ngrdcol,top_lev:) > qsmall)
       rel_fn_grid(:ngrdcol,top_lev:) = &
@@ -3144,28 +3112,15 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    ncic_grid(:ngrdcol,top_lev:) = nc_grid(:ngrdcol,top_lev:) / &
         max(mincld,liqcldf_grid(:ngrdcol,top_lev:))
 
-#if defined (__OPENACC__)
-   icwmrst_subgrid(:,:) = icwmrst_grid(:ngrdcol,top_lev:)
-   ncic_subgrid(:,:)    = ncic_grid(:ngrdcol,top_lev:)
-   rho_subgrid(:,:)     = rho_grid(:ngrdcol,top_lev:)
-   mu_subgrid(:,:)      = mu_grid(:ngrdcol,top_lev:)
-   lambdac_subgrid(:,:) = lambdac_grid(:ngrdcol,top_lev:)
-   !$acc data copyin  (mg_liq_props,icwmrst_subgrid,rho_subgrid) &
-   !$acc      copy    (ncic_subgrid) &
-   !$acc      copyout (mu_subgrid,lambdac_subgrid)
-   call size_dist_param_liq ( mg_liq_props, icwmrst_subgrid, ncic_subgrid, rho_subgrid, &
-                              mu_subgrid, lambdac_subgrid, ngrdcol, nlev-top_lev+1      )
-   !$acc end data
-   ncic_grid(:ngrdcol,top_lev:) = ncic_subgrid(:,:)
-   mu_grid(:ngrdcol,top_lev:) = mu_subgrid(:,:)
-   lambdac_grid(:ngrdcol,top_lev:) = lambdac_subgrid(:,:)
-#else
    do k = top_lev, pver
+      !$acc data copyin  (mg_liq_props,icwmrst_grid(:ngrdcol,k), rho_grid(:ngrdcol,k)) &
+      !$acc      copy    (ncic_grid(:ngrdcol,k)) &
+      !$acc      copyout (mu_grid(:ngrdcol,k),lambdac_grid(:ngrdcol,k))
       call size_dist_param_liq(mg_liq_props, icwmrst_grid(:ngrdcol,k), &
            ncic_grid(:ngrdcol,k), rho_grid(:ngrdcol,k), &
            mu_grid(:ngrdcol,k), lambdac_grid(:ngrdcol,k), ngrdcol)
+      !$acc end data
    end do
-#endif
 
    where (icwmrst_grid(:ngrdcol,top_lev:) >= qsmall)
       rel_grid(:ngrdcol,top_lev:) = &
@@ -3261,23 +3216,14 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    niic_grid(:ngrdcol,top_lev:) = ni_grid(:ngrdcol,top_lev:) / &
         max(mincld,icecldf_grid(:ngrdcol,top_lev:))
 
-#if defined (__OPENACC__)
-   icimrst_subgrid(1:ngrdcol,top_lev:nlev) = icimrst_grid(1:ngrdcol,top_lev:nlev)
-   niic_subgrid(1:ngrdcol,top_lev:nlev)    = niic_grid(1:ngrdcol,top_lev:nlev)
-   rei_subgrid(1:ngrdcol,top_lev:nlev)     = rei_grid(1:ngrdcol,top_lev:nlev)
-   !$acc data copyin  (mg_ice_props,icimrst_subgrid(1:ngrdcol,top_lev:nlev)) &
-   !$acc      copy    (niic_subgrid(1:ngrdcol,top_lev:nlev)) &
-   !$acc      copyout (rei_subgrid(1:ngrdcol,top_lev:nlev))
-   call size_dist_param_basic( mg_ice_props, icimrst_subgrid, niic_subgrid, &
-                               rei_subgrid, ngrdcol, nlev-top_lev+1         )
-   !$acc end data
-   rei_grid(1:ngrdcol,top_lev:nlev) = rei_subgrid(1:ngrdcol,top_lev:nlev)
-#else
    do k = top_lev, pver
+      !$acc data copyin  (mg_ice_props, icimrst_subgrid(:ngrdcol,k)) &
+      !$acc      copy    (niic_grid(:ngrdcol,k)) &
+      !$acc      copyout (rei_grid(:ngrdcol,k))
       call size_dist_param_basic(mg_ice_props,icimrst_grid(:ngrdcol,k), &
                                  niic_grid(:ngrdcol,k),rei_grid(:ngrdcol,k),ngrdcol)
+      !$acc end data
    end do
-#endif
 
    where (icimrst_grid(:ngrdcol,top_lev:) >= qsmall)
       rei_grid(:ngrdcol,top_lev:) = 1.5_r8/rei_grid(:ngrdcol,top_lev:) &
@@ -3746,11 +3692,6 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
 
    ! ptend_loc is deallocated in physics_update above
    call physics_state_dealloc(state_loc)
-
-#if defined (__OPENACC__)
-   deallocate( icimrst_subgrid,rei_subgrid,niic_subgrid,icwmrst_subgrid, &
-               ncic_subgrid,rho_subgrid,mu_subgrid,lambdac_subgrid )
-#endif
 
 end subroutine micro_mg_cam_tend_pack
 
