@@ -404,15 +404,15 @@ contains
     call addfld ('WV_pAP',   horiz_only, 'A', 'kg/m2','Total column water vapor after parameterizations')
     call addfld ('WV_pAM',   horiz_only, 'A', 'kg/m2','Total column water vapor after dry mass correction')
 
-    call addfld ('WL_pBF',   horiz_only, 'A', 'kg/m2','Total column cloud water before energy fixer')
-    call addfld ('WL_pBP',   horiz_only, 'A', 'kg/m2','Total column cloud water before parameterizations')
-    call addfld ('WL_pAP',   horiz_only, 'A', 'kg/m2','Total column cloud water after parameterizations')
-    call addfld ('WL_pAM',   horiz_only, 'A', 'kg/m2','Total column cloud water after dry mass correction')
+    call addfld ('WL_pBF',   horiz_only, 'A', 'kg/m2','Total column liquid water before energy fixer')
+    call addfld ('WL_pBP',   horiz_only, 'A', 'kg/m2','Total column liquid water before parameterizations')
+    call addfld ('WL_pAP',   horiz_only, 'A', 'kg/m2','Total column liquid water after parameterizations')
+    call addfld ('WL_pAM',   horiz_only, 'A', 'kg/m2','Total column liquid water after dry mass correction')
 
-    call addfld ('WI_pBF',   horiz_only, 'A', 'kg/m2','Total column cloud ice before energy fixer')
-    call addfld ('WI_pBP',   horiz_only, 'A', 'kg/m2','Total column cloud ice before parameterizations')
-    call addfld ('WI_pAP',   horiz_only, 'A', 'kg/m2','Total column cloud ice after parameterizations')
-    call addfld ('WI_pAM',   horiz_only, 'A', 'kg/m2','Total column cloud ice after dry mass correction')
+    call addfld ('WI_pBF',   horiz_only, 'A', 'kg/m2','Total column ice water before energy fixer')
+    call addfld ('WI_pBP',   horiz_only, 'A', 'kg/m2','Total column ice water before parameterizations')
+    call addfld ('WI_pAP',   horiz_only, 'A', 'kg/m2','Total column ice water after parameterizations')
+    call addfld ('WI_pAM',   horiz_only, 'A', 'kg/m2','Total column ice water after dry mass correction')
     !
     ! Axial Angular Momentum diagnostics
     !
