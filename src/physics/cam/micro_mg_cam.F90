@@ -3217,7 +3217,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
         max(mincld,icecldf_grid(:ngrdcol,top_lev:))
 
    do k = top_lev, pver
-      !$acc data copyin  (mg_ice_props, icimrst_subgrid(:ngrdcol,k)) &
+      !$acc data copyin  (mg_ice_props, icimrst_grid(:ngrdcol,k)) &
       !$acc      copy    (niic_grid(:ngrdcol,k)) &
       !$acc      copyout (rei_grid(:ngrdcol,k))
       call size_dist_param_basic(mg_ice_props,icimrst_grid(:ngrdcol,k), &
