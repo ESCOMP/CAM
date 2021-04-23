@@ -57,9 +57,6 @@ integer :: default_idx = initial_default_idx
 
 !$acc declare create (epsilo, tmelt, tboil, default_idx, omeps, h2otrip, ttrice)
 
-! Commonly used values
-real(r8), parameter :: log_ps = log10(1013.246_r8)
-
 public wv_sat_methods_init
 public wv_sat_get_scheme_idx
 public wv_sat_valid_idx
