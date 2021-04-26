@@ -400,7 +400,7 @@ end subroutine check_energy_get_integrals
     else
       scaling(:,:) = 1.0_r8
     end if
-    temp(1:ncol,:) = state%temp_ini(1:ncol,:)+scaling*(state%T(1:ncol,:)-state%temp_ini(1:ncol,:))
+    temp(1:ncol,:) = state%temp_ini(1:ncol,:)+scaling(1:ncol,:)*(state%T(1:ncol,:)-state%temp_ini(1:ncol,:))
 
     call get_hydrostatic_energy(1,ncol,1,1,pver,pcnst,state%q(1:ncol,1:pver,1:pcnst),&
          state%pdel(1:ncol,1:pver),cp_or_cv(1:ncol,1:pver,lchnk),                    &
@@ -816,7 +816,7 @@ end subroutine check_energy_get_integrals
     real(r8) :: mr_cnst, mo_cnst
     real(r8) :: cp_or_cv(pcols,pver)               ! cp for pressure-based vcoord and cv for height vcoord
     real(r8) :: temp(pcols,pver)                   ! temperature
-    real(r8) :: scaling(pcols,pver)                ! temperature
+    real(r8) :: scaling(pcols,pver)                ! scaling for conversion of temperature increment
 
     integer :: lchnk                               ! chunk identifier
     integer :: ncol                                ! number of atmospheric columns
@@ -864,8 +864,8 @@ end subroutine check_energy_get_integrals
       else
         scaling(:,:) = 1.0_r8
       end if
-      ! scale temperature increment for constant volume (otherwise effectively do nothing)
-      temp(1:ncol,:) = state%temp_ini(1:ncol,:)+scaling*(state%T(1:ncol,:)- state%temp_ini(1:ncol,:))
+      ! scale accumulated temperature increment for constant volume (otherwise effectively do nothing)
+      temp(1:ncol,:) = state%temp_ini(1:ncol,:)+scaling(1:ncol,:)*(state%T(1:ncol,:)- state%temp_ini(1:ncol,:))
 
       call get_hydrostatic_energy(1,ncol,1,1,pver,pcnst,state%q(1:ncol,1:pver,1:pcnst),&
            state%pdel(1:ncol,1:pver), cp_or_cv,                                        &
