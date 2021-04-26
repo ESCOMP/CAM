@@ -1251,11 +1251,6 @@ end subroutine physconst_init
            end do
          end do
        end do
-       do j = j0,j1
-         do i = i0,i1
-           se_loc(i,j) = se_loc(i,j) + phis(i,j)*ps(i,j)/gravit
-         end do
-       end do
      case default
        write(iulog, *) subname//' vertical coordinate not supported: ',vcoord
        call endrun(subname // ':: vertical coordinate not supported')

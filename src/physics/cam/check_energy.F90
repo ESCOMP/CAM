@@ -350,10 +350,9 @@ end subroutine check_energy_get_integrals
     real(r8) :: te(state%ncol)                     ! vertical integral of total energy
     real(r8) :: tw(state%ncol)                     ! vertical integral of total water
 
-    real(r8) :: tnew(state%ncol,pver)              ! updated temperature (under constant p or z depending on vcoord)
-
     real(r8),allocatable :: cp_or_cv(:,:,:)        ! cp or cv depending on vcoord
     real(r8) :: scaling(state%ncol,pver)           ! scaling for conversion of temperature increment
+    real(r8) :: temp(state%ncol,pver)              ! temperature
 
     integer lchnk                                  ! chunk identifier
     integer ncol                                   ! number of atmospheric columns
@@ -371,7 +370,7 @@ end subroutine check_energy_get_integrals
     ! If psetcols > pcols and all cpairv match cpair, then assign the constant cpair
 
     if (state%psetcols == pcols) then
-       allocate (cp_or_cv(state%psetcols,pver,begchunk:endchunk))
+       allocate (cp_or_cv(state%psetcols,pver,begchunk:endchunk))!phl why do begchunk:endchunk; why not just lchnk?
        cp_or_cv(:,:,:) = cpairv(:,:,:)
     else if (state%psetcols > pcols .and. all(cpairv(:,:,:) == cpair)) then
        allocate(cp_or_cv(state%psetcols,pver,begchunk:endchunk))
@@ -393,7 +392,7 @@ end subroutine check_energy_get_integrals
       ! compute cv if vertical coordinate is height: cv = cp - R
       !
       if (state%psetcols == pcols) then
-        cp_or_cv(:,:,:) = cpairv(:,:,:)-rairv(:,:,:)
+        cp_or_cv(:,:,:) = cpairv(:,:,:)-rairv(:,:,:)!phl why not just lchnk?
       else
         cp_or_cv(:,:,:) = cpair-rair
       endif
@@ -401,11 +400,11 @@ end subroutine check_energy_get_integrals
     else
       scaling(:,:) = 1.0_r8
     end if
-    tnew = state%temp_ini(1:ncol,:)+scaling(1:ncol,:)*(state%T(1:ncol,:)-state%temp_ini(1:ncol,:))
+    temp(1:ncol,:) = state%temp_ini(1:ncol,:)+scaling*(state%T(1:ncol,:)-state%temp_ini(1:ncol,:))
 
     call get_hydrostatic_energy(1,ncol,1,1,pver,pcnst,state%q(1:ncol,1:pver,1:pcnst),&
          state%pdel(1:ncol,1:pver),cp_or_cv(1:ncol,1:pver,lchnk),                    &
-         state%u(1:ncol,1:pver), state%v(1:ncol,1:pver),tnew(1:ncol,1:pver),         &
+         state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), temp(1:ncol,1:pver),        &
          vc_dycore, ps = state%ps(1:ncol), phis = state%phis(1:ncol),                &
          z = state%z_ini(1:ncol,:),                                                  &
          te = state%te_ini(1:ncol,2), H2O = state%tw_ini(1:ncol,2))
@@ -816,6 +815,8 @@ end subroutine check_energy_get_integrals
     real(r8) :: tt_tmp,mr_tmp,mo_tmp,cos_lat
     real(r8) :: mr_cnst, mo_cnst
     real(r8) :: cp_or_cv(pcols,pver)               ! cp for pressure-based vcoord and cv for height vcoord
+    real(r8) :: temp(pcols,pver)                   ! temperature
+    real(r8) :: scaling(pcols,pver)                ! temperature
 
     integer :: lchnk                               ! chunk identifier
     integer :: ncol                                ! number of atmospheric columns
@@ -847,6 +848,9 @@ end subroutine check_energy_get_integrals
 
       if (state%psetcols == pcols) then
         if (vc_loc == vc_height) then
+          !
+          ! compute cv if vertical coordinate is height: cv = cp - R
+          !
           cp_or_cv(:,:) = cpairv(:,:,lchnk)-rairv(:,:,lchnk)!cv
         else
           cp_or_cv(:,:) = cpairv(:,:,lchnk)                 !cp
@@ -855,9 +859,17 @@ end subroutine check_energy_get_integrals
         call endrun('calc_te_and_aam_budgets: energy diagnostics not implemented/tested for subcolumns')
       end if
 
+      if (vc_loc == vc_height) then
+        scaling(:,:) = cpairv(:,:,lchnk)/cp_or_cv(:,:) !cp/cv scaling for temperature increment under constant volume
+      else
+        scaling(:,:) = 1.0_r8
+      end if
+      ! scale temperature increment for constant volume (otherwise effectively do nothing)
+      temp(1:ncol,:) = state%temp_ini(1:ncol,:)+scaling*(state%T(1:ncol,:)- state%temp_ini(1:ncol,:))
+
       call get_hydrostatic_energy(1,ncol,1,1,pver,pcnst,state%q(1:ncol,1:pver,1:pcnst),&
            state%pdel(1:ncol,1:pver), cp_or_cv,                                        &
-           state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), state%T(1:ncol,1:pver),     &
+           state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), temp(1:ncol,1:pver),        &
            vc_loc, ps = state%ps(1:ncol), phis = state%phis(1:ncol),                   &
            z = state%z_ini(1:ncol,:), se = se, ke = ke, wv = wv)
 

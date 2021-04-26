@@ -1346,6 +1346,7 @@ contains
     use waccmx_phys_intr,   only: waccmx_phys_ion_elec_temp_tend ! WACCM-X
     use aoa_tracers,        only: aoa_tracers_timestep_tend
     use physconst,          only: rhoh2o, latvap,latice
+    use dyn_tests_utils,    only: vc_dycore
     use aero_model,         only: aero_model_drydep
     use carma_intr,         only: carma_emission_tend, carma_timestep_tend
     use carma_flags_mod,    only: carma_do_aerosol, carma_do_emission
@@ -1797,6 +1798,7 @@ contains
     end if
 
     call calc_te_and_aam_budgets(state, 'pAP')
+    call calc_te_and_aam_budgets(state, 'zAP',vc=vc_dycore)
 
     !---------------------------------------------------------------------------------
     ! Enforce charge neutrality after O+ change from ionos_tend
@@ -1886,6 +1888,7 @@ contains
       end if
 
       call calc_te_and_aam_budgets(state, 'pAM')
+      call calc_te_and_aam_budgets(state, 'zAM',vc=vc_dycore)
       ! Restore pre-"physics_dme_adjust" tracers
       state%q(:ncol,:pver,:pcnst) = tmp_trac(:ncol,:pver,:pcnst)
       state%pdel(:ncol,:pver)     = tmp_pdel(:ncol,:pver)
@@ -1907,6 +1910,7 @@ contains
       end if
 
       call calc_te_and_aam_budgets(state, 'pAM')
+      call calc_te_and_aam_budgets(state, 'zAM',vc=vc_dycore)
     endif
 
 !!!   REMOVE THIS CALL, SINCE ONLY Q IS BEING ADJUSTED. WON'T BALANCE ENERGY. TE IS SAVED BEFORE THIS
@@ -2017,8 +2021,8 @@ contains
     use micro_mg_cam,    only: massless_droplet_destroyer
     use cam_snapshot,    only: cam_snapshot_all_outfld_tphysbc
     use cam_snapshot,    only: cam_snapshot_ptend_outfld
-    use ssatcontrail,       only: ssatcontrail_d0
-
+    use ssatcontrail,    only: ssatcontrail_d0
+    use dyn_tests_utils, only: vc_dycore
     ! Arguments
 
     real(r8), intent(in) :: ztodt                          ! 2 delta t (model time increment)
@@ -2195,6 +2199,7 @@ contains
     call t_startf('energy_fixer')
 
     call calc_te_and_aam_budgets(state, 'pBF')
+    call calc_te_and_aam_budgets(state, 'zBF',vc=vc_dycore)
     if (.not.dycore_is('EUL')) then
        call check_energy_fix(state, ptend, nstep, flx_heat)
        call physics_update(state, ptend, ztodt, tend)
@@ -2202,6 +2207,7 @@ contains
        call outfld( 'EFIX', flx_heat    , pcols, lchnk   )
     end if
     call calc_te_and_aam_budgets(state, 'pBP')
+    call calc_te_and_aam_budgets(state, 'zBP',vc=vc_dycore)
     ! Save state for convective tendency calculations.
     call diag_conv_tend_ini(state, pbuf)
 
