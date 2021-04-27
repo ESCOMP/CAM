@@ -298,7 +298,7 @@ end subroutine check_energy_get_integrals
 
 ! initialize physics buffer
     if (is_first_step()) then
-       call pbuf_set_field(pbuf, teout_idx, state%te_ini(:,1), col_type=col_type)
+       call pbuf_set_field(pbuf, teout_idx, state%te_ini(:,2), col_type=col_type)
 ! (phl continue coding) set te_ini(:,2)
     end if
 
@@ -328,7 +328,7 @@ end subroutine check_energy_get_integrals
     real(r8), intent(in   ) :: flx_cnd(:)          ! (pcols) -boundary flux of liquid+ice    (m/s) (precip?)
     real(r8), intent(in   ) :: flx_ice(:)          ! (pcols) -boundary flux of ice           (m/s) (snow?)
     real(r8), intent(in   ) :: flx_sen(:)          ! (pcols) -boundary flux of sensible heat (w/m2)
-
+    
 !******************** BAB ******************************************************
 !******* Note that the precip and ice fluxes are in precip units (m/s). ********
 !******* I would prefer to have kg/m2/s.                                ********
@@ -384,30 +384,6 @@ end subroutine check_energy_get_integrals
          state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), state%T(1:ncol,1:pver),     &
          vc_physics, ps = state%ps(1:ncol), phis = state%phis(1:ncol),               &
          te = te, H2O = tw)
-    !
-    ! Dynamical core total energy
-    !
-    if (vc_dycore == vc_height) then
-      !
-      ! compute cv if vertical coordinate is height: cv = cp - R
-      !
-      if (state%psetcols == pcols) then
-        cp_or_cv(:,:,:) = cpairv(:,:,:)-rairv(:,:,:)!phl why not just lchnk?
-      else
-        cp_or_cv(:,:,:) = cpair-rair
-      endif
-      scaling(:,:) = cpairv(:,:,lchnk)/cp_or_cv(:,:,lchnk) !cp/cv scaling
-    else
-      scaling(:,:) = 1.0_r8
-    end if
-    temp(1:ncol,:) = state%temp_ini(1:ncol,:)+scaling(1:ncol,:)*(state%T(1:ncol,:)-state%temp_ini(1:ncol,:))
-
-    call get_hydrostatic_energy(1,ncol,1,1,pver,pcnst,state%q(1:ncol,1:pver,1:pcnst),&
-         state%pdel(1:ncol,1:pver),cp_or_cv(1:ncol,1:pver,lchnk),                    &
-         state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), temp(1:ncol,1:pver),        &
-         vc_dycore, ps = state%ps(1:ncol), phis = state%phis(1:ncol),                &
-         z = state%z_ini(1:ncol,:),                                                  &
-         te = state%te_ini(1:ncol,2), H2O = state%tw_ini(1:ncol,2))
 
     ! compute expected values and tendencies
     do i = 1, ncol
@@ -464,25 +440,52 @@ end subroutine check_energy_get_integrals
 
     ! copy new value to state
     
-    do k=1,2
-      do i = 1, ncol
-        state%te_cur(i,k) = te(i)
-        state%tw_cur(i,k) = tw(i)
-      end do
+    do i = 1, ncol
+      state%te_cur(i,1) = te(i)
+      state%tw_cur(i,1) = tw(i)
     end do
 
+
+    !
+    ! Dynamical core total energy
+    !
+    if (vc_dycore == vc_height) then
+      !
+      ! compute cv if vertical coordinate is height: cv = cp - R
+      !
+      ! Note: cp_or_cv set above for pressure coordinate
+      !
+      if (state%psetcols == pcols) then
+        cp_or_cv(:,:,:) = cpairv(:,:,:)-rairv(:,:,:)!phl why not just lchnk?
+      else
+        cp_or_cv(:,:,:) = cpair-rair
+      endif
+      scaling(:,:) = cpairv(:,:,lchnk)/cp_or_cv(:,:,lchnk) !cp/cv scaling
+    else
+      scaling(:,:) = 1.0_r8
+    end if
+    temp(1:ncol,:) = state%temp_ini(1:ncol,:)+scaling(1:ncol,:)*(state%T(1:ncol,:)-state%temp_ini(1:ncol,:))
+    
+    call get_hydrostatic_energy(1,ncol,1,1,pver,pcnst,state%q(1:ncol,1:pver,1:pcnst),&
+         state%pdel(1:ncol,1:pver),cp_or_cv(1:ncol,1:pver,lchnk),                    &
+         state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), temp(1:ncol,1:pver),        &
+         vc_dycore, ps = state%ps(1:ncol), phis = state%phis(1:ncol),                &
+         z = state%z_ini(1:ncol,:),                                                  &
+         te = state%te_cur(1:ncol,2), H2O = state%tw_cur(1:ncol,2))
+    
     deallocate(cp_or_cv)
 
   end subroutine check_energy_chng
 
 
-!===============================================================================
   subroutine check_energy_gmean(state, pbuf2d, dtime, nstep)
 
     use physics_buffer, only : physics_buffer_desc, pbuf_get_field, pbuf_get_chunk
 
 !-----------------------------------------------------------------------
 ! Compute global mean total energy of physics input and output states
+! computed consistently with dynamical core vertical coordinate
+! (under hydrostatic assumption)
 !-----------------------------------------------------------------------
 !------------------------------Arguments--------------------------------
 
@@ -496,42 +499,40 @@ end subroutine check_energy_get_integrals
     integer :: ncol                      ! number of active columns
     integer :: lchnk                     ! chunk index
 
-    real(r8) :: te(pcols,begchunk:endchunk,3)
+    real(r8) :: te(pcols,begchunk:endchunk,4)
                                          ! total energy of input/output states (copy)
-    real(r8) :: te_glob(3)               ! global means of total energy
+    real(r8) :: te_glob(4)               ! global means of total energy
     real(r8), pointer :: teout(:)
 !-----------------------------------------------------------------------
 
     ! Copy total energy out of input and output states
     do lchnk = begchunk, endchunk
        ncol = state(lchnk)%ncol
-       ! input energy
-
-!(phl continue coding) compute te_ini_dycore
-
-       te(:ncol,lchnk,1) = state(lchnk)%te_ini(:ncol,1)
+       ! input energy using dynamical core energy formula
+       te(:ncol,lchnk,1) = state(lchnk)%te_ini(:ncol,2)
        ! output energy
        call pbuf_get_field(pbuf_get_chunk(pbuf2d,lchnk),teout_idx, teout)
 
        te(:ncol,lchnk,2) = teout(1:ncol)
        ! surface pressure for heating rate
        te(:ncol,lchnk,3) = state(lchnk)%pint(:ncol,pver+1)
+       ! model top pressure for heating rate (not constant for z-based vertical coordinate!)
+       te(:ncol,lchnk,4) = state(lchnk)%pint(:ncol,1)
     end do
 
     ! Compute global means of input and output energies and of
     ! surface pressure for heating rate (assume uniform ptop)
-    call gmean(te, te_glob, 3)
+    call gmean(te, te_glob, 4)
 
     if (begchunk .le. endchunk) then
        teinp_glob = te_glob(1)
        teout_glob = te_glob(2)
        psurf_glob = te_glob(3)
-       ptopb_glob = state(begchunk)%pint(1,1)
+       ptopb_glob = te_glob(4)
 
        ! Global mean total energy difference
        tedif_glob =  teinp_glob - teout_glob
        heat_glob  = -tedif_glob/dtime * gravit / (psurf_glob - ptopb_glob)
-
        if (masterproc) then
           write(iulog,'(1x,a9,1x,i8,4(1x,e25.17))') "nstep, te", nstep, teinp_glob, teout_glob, heat_glob, psurf_glob
        end if
@@ -877,7 +878,7 @@ end subroutine check_energy_get_integrals
 
       tt    = 0._r8
       if (ixtt > 1) then
-        if (name_out6 == 'TT_pAM') then
+        if (name_out6 == 'TT_pAM'.or.name_out6 == 'TT_zAM') then
           !
           ! after dme_adjust mixing ratios are all wet
           !

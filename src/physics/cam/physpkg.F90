@@ -1832,7 +1832,7 @@ contains
 
     ! (phl continue coding) compute dycore total energy here and pass to pbuf_set_field
 
-    call pbuf_set_field(pbuf, teout_idx, state%te_cur, (/1,itim_old/),(/pcols,1/))
+    call pbuf_set_field(pbuf, teout_idx, state%te_cur(:,2), (/1,itim_old/),(/pcols,1/))
 
     if (shallow_scheme .eq. 'UNICON') then
 
@@ -2219,8 +2219,8 @@ contains
     cldiceini(:ncol,:pver) = state%q(:ncol,:pver,ixcldice)
 
     call outfld('TEOUT', teout       , pcols, lchnk   )
-    call outfld('TEINP', state%te_ini, pcols, lchnk   )
-    call outfld('TEFIX', state%te_cur, pcols, lchnk   )
+    call outfld('TEINP', state%te_ini(:,2), pcols, lchnk   )
+    call outfld('TEFIX', state%te_cur(:,2), pcols, lchnk   )
 
     ! T, U, V tendency due to dynamics
     if( nstep > dyn_time_lvls-1 ) then
