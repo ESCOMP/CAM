@@ -27,13 +27,13 @@ module wv_sat_methods
 ! wrap the function so that it can be given an explicit (non-
 ! elemental) interface.
 
-#define VLEN 128
-
 implicit none
 private
 save
 
 integer, parameter :: r8 = selected_real_kind(12) ! 8 byte real
+
+integer, parameter :: VLEN = 128 ! vector length for a GPU kernel
 
 real(r8) :: tmelt   ! Melting point of water at 1 atm (K)
 real(r8) :: h2otrip ! Triple point temperature of water (K)

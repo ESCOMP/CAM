@@ -23,8 +23,6 @@ module wv_saturation
 !                                                                    !
 !--------------------------------------------------------------------!
 
-#define VLEN 128
-
 use shr_kind_mod, only: r8 => shr_kind_r8
 use physconst,    only: epsilo, &
                         latvap, &
@@ -125,6 +123,8 @@ real(r8), parameter :: tboil = 373.16_r8
 !       1.37898276415e-02, &
 !       2.14444472424e-04, &
 !       1.36639103771e-06 /)
+
+  integer, parameter :: VLEN = 128 ! vector length for a GPU kernel
 
   !$acc declare create (plenest,estbl,omeps,c3,pcf)
 
