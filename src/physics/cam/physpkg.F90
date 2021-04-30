@@ -1046,6 +1046,7 @@ contains
     use clubb_intr,     only: clubb_timestep
     use micro_mg_cam,   only: micro_mg_num_steps
     use radiation,      only: iradsw, iradlw
+    use dycore,         only: dycore_is
     use cam_diagnostics,only: diag_allocate, diag_physvar_ic
     use check_energy,   only: check_energy_gmean
     use phys_control,   only: phys_getopts
@@ -1086,6 +1087,7 @@ contains
     real(r8):: micro_mg_timestep                 ! mg timestep
     real(r8):: rrtmg_sw_timestep                 ! rrtmg timestep for shortwave radiation
     real(r8):: rrtmg_lw_timestep                 ! rrtmg timestep for longwave radiation
+    real(r8):: ztodt_actual                      ! actual physics time-step
 
     type(physics_buffer_desc), pointer :: phys_buffer_chunk(:)
 
@@ -1128,22 +1130,29 @@ contains
     call gmean_mass ('before tphysbc DRY', phys_state)
 #endif
 
+    ! Compute actual physics time-step
+    if (dycore_is('EUL')) then
+      ztodt_actual = 2._r8*ztodt
+    else
+      ztodt_actual = ztodt
+    end if
+
     ! Compute SW radiation time-step
     if (iradsw > 0) then
-      rrtmg_sw_timestep = ztodt*iradsw
+      rrtmg_sw_timestep = ztodt_actual*iradsw
     else
       rrtmg_sw_timestep = -3600._r8*iradsw
     end if
     ! Compute LW radiation time-step
     if (iradlw > 0) then
-      rrtmg_lw_timestep = ztodt*iradlw
+      rrtmg_lw_timestep = ztodt_actual*iradlw
     else
       rrtmg_lw_timestep = -3600._r8*iradlw
     end if
     ! 
     if( microp_scheme == 'MG' ) then
       ! Compute macro/micro time-step
-      cld_macmic_ztodt = ztodt/cld_macmic_num_steps
+      cld_macmic_ztodt = ztodt_actual/cld_macmic_num_steps
       ! Compute MG time-step
       micro_mg_timestep = cld_macmic_ztodt/micro_mg_num_steps
     end if
@@ -1162,7 +1171,7 @@ contains
       write(iulog,'(a)') '----------------------------------'
       write(iulog,'(a)') 'TIME STEPS USED IN PHYSICS PACKAGE'
       write(iulog,'(a)') '----------------------------------'
-      write(iulog,'(a,f10.2,a)') '  Physics time-step:     ', ztodt, ' s'
+      write(iulog,'(a,f10.2,a)') '  Physics time-step:     ', ztodt_actual, ' s'
       write(iulog,'(a,f10.2,a)') '  RRTMG SW time-step:    ', rrtmg_sw_timestep, ' s'
       write(iulog,'(a,f10.2,a)') '  RRTMG LW time-step:    ', rrtmg_lw_timestep, ' s'
       if (microp_scheme == 'MG') then
@@ -1431,7 +1440,7 @@ contains
     !
     ! Arguments
     !
-    real(r8), intent(in) :: ztodt                  ! Two times model timestep (2 delta-t)
+    real(r8), intent(in) :: ztodt                  ! physics timestep
 
     type(cam_in_t),      intent(inout) :: cam_in
     type(cam_out_t),     intent(inout) :: cam_out
@@ -2075,7 +2084,7 @@ contains
 
     ! Arguments
 
-    real(r8), intent(in) :: ztodt                          ! 2 delta t (model time increment)
+    real(r8), intent(in) :: ztodt                          ! physics time-step
 
     type(physics_state), intent(inout) :: state
     type(physics_tend ), intent(inout) :: tend
