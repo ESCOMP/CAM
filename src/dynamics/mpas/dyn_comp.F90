@@ -639,6 +639,7 @@ subroutine read_inidat(dyn_in)
    use mpas_constants, only : rgas
    use mpas_constants, only : p0
    use mpas_constants, only : gravity
+   use physconst, only : ps_dry_topo, ps_dry_notopo
 
    ! arguments
    type(dyn_import_t), target, intent(inout) :: dyn_in
@@ -690,6 +691,7 @@ subroutine read_inidat(dyn_in)
    real(r8), allocatable :: qv(:), tm(:)
 
    logical, pointer :: mpas_scale_dry_air_mass
+   real(r8) :: target_global_avg_dry_ps
 
    real(r8) :: dz, h
    logical  :: readvar
@@ -1041,7 +1043,13 @@ subroutine read_inidat(dyn_in)
    ! Scale dry air mass if mpas_scale_dry_air_mass nl is .true.
    call mpas_pool_get_config(domain_ptr % configs, 'config_scale_dry_air_mass', mpas_scale_dry_air_mass)
    if (mpas_scale_dry_air_mass) then
-       call set_dry_mass(dyn_in)
+
+       target_global_avg_dry_ps = ps_dry_topo
+       if (.not. associated(fh_topo)) then
+           target_global_avg_dry_ps = ps_dry_notopo
+       end if
+
+       call set_dry_mass(dyn_in, target_global_avg_dry_ps)
    end if
 
    ! Update halos for initial state fields
@@ -1551,11 +1559,12 @@ end subroutine cam_mpas_namelist_read
 !> \details
 !
 !-----------------------------------------------------------------------
-subroutine set_dry_mass(dyn_in)
+subroutine set_dry_mass(dyn_in, target_avg_dry_surface_pressure)
 
    use mpas_constants, only : rgas, gravity, p0, Rv_over_Rd => rvord
 
    type(dyn_import_t), intent(in) :: dyn_in
+   real(r8), intent(in) :: target_avg_dry_surface_pressure
 
    integer :: i, k
    integer :: nCellsSolve
@@ -1572,8 +1581,9 @@ subroutine set_dry_mass(dyn_in)
                                      ! at layer midpoints               (nver,ncol)
 
    real(r8), allocatable :: preliminary_dry_surface_pressure(:), p_top(:), pm(:)
-   real(r8) :: target_avg_dry_surface_pressure, preliminary_avg_dry_surface_pressure
-   real(r8) :: sphere_surface_area, scaling_ratio
+   real(r8) :: preliminary_avg_dry_surface_pressure
+   real(r8) :: scaling_ratio
+   real(r8) :: sphere_surface_area
    real(r8) :: surface_integral, test_value
 
    integer :: ixqv
@@ -1620,8 +1630,7 @@ subroutine set_dry_mass(dyn_in)
    end if
 
    ! (4) scale dry air density
-   ! scaling_ratio = target_avg_dry_surface_pressure/preliminary_avg_dry_surface_pressure
-   scaling_ratio = 1.0
+   scaling_ratio = target_avg_dry_surface_pressure / preliminary_avg_dry_surface_pressure
    rho(:,:) = rho(:,:)*scaling_ratio
 
    ! (5) reset qv to conserve mass
