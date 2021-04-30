@@ -665,7 +665,6 @@ subroutine read_inidat(dyn_in)
                                      ! at layer interfaces            (nver+1,ncol)
    real(r8), pointer :: zz(:,:)      ! Vertical coordinate metric [dimensionless]
                                      ! at layer midpoints               (nver,ncol)
-   real(r8), pointer :: areaCell(:)  ! cell area (m^2)
    real(r8), pointer :: theta(:,:)   ! Potential temperature [K]        (nver,ncol)
    real(r8), pointer :: rho(:,:)     ! Dry density [kg/m^3]             (nver,ncol)
    real(r8), pointer :: ux(:,:)      ! Zonal veloc at center [m/s]      (nver,ncol)
@@ -690,11 +689,6 @@ subroutine read_inidat(dyn_in)
 
    real(r8), allocatable :: qv(:), tm(:)
 
-   ! for integral in mass scaling                                                                                                                
-   real(r8), allocatable :: preliminary_dry_surface_pressure(:), p_top(:), pm(:)
-   real(r8) :: target_avg_dry_surface_pressure, preliminary_avg_dry_surface_pressure
-   real(r8) :: sphere_surface_area, scaling_ratio
-   real(r8) :: surface_integral, test_value
    logical, pointer :: mpas_scale_dry_air_mass
 
    real(r8) :: dz, h
@@ -730,7 +724,6 @@ subroutine read_inidat(dyn_in)
 
    zint       => dyn_in % zint
    zz         => dyn_in % zz
-   areaCell   => dyn_in % areaCell
    theta      => dyn_in % theta
    rho        => dyn_in % rho
    ux         => dyn_in % ux
@@ -1045,67 +1038,10 @@ subroutine read_inidat(dyn_in)
 
    theta_m(:,1:nCellsSolve) = theta(:,1:nCellsSolve) * (1.0_r8 + Rv_over_Rd * tracers(ixqv,:,1:nCellsSolve))
 
-   ! if (.not. analytic_ic_active()) then  ! scale dry-air mass
-   !   surface_integral = cam_mpas_global_sum_real(areaCell(1:nCellsSolve))
-   !   write(iulog,*) subname//': Cell area test value = ', surface_integral
-   !   test_value = sqrt(surface_integral/(4.0_r8*pi))
-   !   write(iulog,*) subname//': earth radius from area = ', test_value
-   ! end if
-
+   ! Scale dry air mass if mpas_scale_dry_air_mass nl is .true.
    call mpas_pool_get_config(domain_ptr % configs, 'config_scale_dry_air_mass', mpas_scale_dry_air_mass)
-
    if (mpas_scale_dry_air_mass) then
-
-      allocate( p_top(nCellsSolve), preliminary_dry_surface_pressure(nCellsSolve), pm(plev) )
-      ! (1) calculate pressure at the lid                                                                                                         
-      do i=1, nCellsSolve
-         p_top(i) = p0*(rgas*rho(plev,i)*theta_m(plev,i)/p0)**(cpair/(cpair-rgas))
-         p_top(i) = p_top(i) - gravity*0.5_r8*(zint(plev+1,i)-zint(plev,i))*rho(plev,i)*(1.0_r8+tracers(ixqv,plev,i))
-      end do
-
-      ! (2) integrate dry mass in column to compute                                                                                               
-      do i=1, nCellsSolve
-         preliminary_dry_surface_pressure(i) = 0.0_r8
-         do k=1, plev
-            preliminary_dry_surface_pressure(i) = preliminary_dry_surface_pressure(i) + gravity*(zint(k+1,i)-zint(k,i))*rho(k,i)
-         end do
-      end do
-
-      ! (3) compute average global dry surface pressure                                                                                           
-      preliminary_dry_surface_pressure(1:nCellsSolve) =  preliminary_dry_surface_pressure(1:nCellsSolve)*areaCell(1:nCellsSolve)
-      sphere_surface_area = cam_mpas_global_sum_real(areaCell(1:nCellsSolve))
-      preliminary_avg_dry_surface_pressure = cam_mpas_global_sum_real(preliminary_dry_surface_pressure(1:nCellsSolve)) &
-                                                                      /sphere_surface_area
-      write(iulog,*) subname//': initial dry globally avg surface pressure (hPa) = ', preliminary_avg_dry_surface_pressure/100.
-
-      ! (4) scale dry air density                                                                                                                 
-      ! scaling_ratio = target_avg_dry_surface_pressure/preliminary_avg_dry_surface_pressure
-      scaling_ratio = 1.0
-      rho(:,:) = rho(:,:)*scaling_ratio
-
-      ! (5) reset qv to conserve mass                                                                                                             
-      tracers(ixqv,:,1:nCellsSolve) = tracers(ixqv,:,1:nCellsSolve)/scaling_ratio
-
-      ! (6) integrate down the column to compute full pressure given the density and qv                                                           
-
-      do i=1,nCellsSolve
-         pm(plev) = p_top(i) + 0.5_r8*(zint(plev+1,i)-zint(plev,i))*gravity*rho(plev,i)*(1.0_r8+tracers(ixqv,plev,i))
-         do k=plev-1,1,-1
-            pm(k) = pm(k+1) + 0.5_r8*(zint(k+2,i)-zint(k+1,i))*gravity*rho(k+1,i)*(1.0_r8+tracers(ixqv,k+1,i)) &
-                            + 0.5_r8*(zint(k+1,i)-zint(k  ,i))*gravity*rho(k  ,i)*(1.0_r8+tracers(ixqv,k  ,i))
-         end do
-
-      ! (7) theta_m from the state equation, compute rho_zz and theta while we are here                                                           
-
-         do k=1,plev
-            theta_m(k,i) = (pm(k)/p0)**((cpair-rgas)/cpair)*p0/rgas/rho(k,i)
-            theta(k,i) = theta_m(k,i)/(1.0_r8 + Rv_over_Rd * tracers(ixqv,k,i))
-            rho_zz(k,i) = rho(k,i)/zz(k,i)
-         end do
-      end do
-
-      deallocate( p_top, preliminary_dry_surface_pressure, pm )
-
+       call set_dry_mass(dyn_in)
    end if
 
    ! Update halos for initial state fields
@@ -1605,5 +1541,111 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
    end if
 
 end subroutine cam_mpas_namelist_read
+
+!-----------------------------------------------------------------------
+!  routine set_dry_mass
+!
+!> \brief Scale dry air mass
+!> \author Bill Skamarok, Miles Curry
+!> \date   25 April 2021
+!> \details
+!
+!-----------------------------------------------------------------------
+subroutine set_dry_mass(dyn_in)
+
+   use mpas_constants, only : rgas, gravity, p0, Rv_over_Rd => rvord
+
+   type(dyn_import_t), intent(in) :: dyn_in
+
+   integer :: i, k
+   integer :: nCellsSolve
+
+   real(r8), pointer :: theta_m(:,:) ! Moist potential temperature [K]  (nver,ncol)
+   real(r8), pointer :: zint(:,:)    ! Geometric height [m]
+   real(r8), pointer :: areaCell(:)  ! cell area (m^2)
+   real(r8), pointer :: theta(:,:)   ! Potential temperature [K]        (nver,ncol)
+   real(r8), pointer :: rho(:,:)     ! Dry density [kg/m^3]             (nver,ncol)
+   real(r8), pointer :: rho_zz(:,:)  ! Dry density [kg/m^3]
+                                     ! divided by d(zeta)/dz            (nver,ncol)
+   real(r8), pointer :: tracers(:,:,:) ! Tracers [kg/kg dry air]       (nq,nver,ncol)
+   real(r8), pointer :: zz(:,:)      ! Vertical coordinate metric [dimensionless]
+                                     ! at layer midpoints               (nver,ncol)
+
+   real(r8), allocatable :: preliminary_dry_surface_pressure(:), p_top(:), pm(:)
+   real(r8) :: target_avg_dry_surface_pressure, preliminary_avg_dry_surface_pressure
+   real(r8) :: sphere_surface_area, scaling_ratio
+   real(r8) :: surface_integral, test_value
+
+   integer :: ixqv
+
+   character(len=*), parameter :: subname = 'dyn_comp:set_dry_mass'
+
+   nCellsSolve = dyn_in % nCellsSolve
+   ixqv        = dyn_in % index_qv
+   theta_m    => dyn_in % theta_m
+   theta      => dyn_in % theta
+   zint       => dyn_in % zint
+   areaCell   => dyn_in % areaCell
+   rho        => dyn_in % rho
+   rho_zz     => dyn_in % rho_zz
+   zz         => dyn_in % zz
+   tracers    => dyn_in % tracers
+
+   allocate( p_top(nCellsSolve), preliminary_dry_surface_pressure(nCellsSolve), pm(plev) )
+   ! (1) calculate pressure at the lid
+   do i=1, nCellsSolve
+      p_top(i) = p0*(rgas*rho(plev,i)*theta_m(plev,i)/p0)**(cpair/(cpair-rgas))
+      p_top(i) = p_top(i) - gravity*0.5_r8*(zint(plev+1,i)-zint(plev,i))*rho(plev,i)*(1.0_r8+tracers(ixqv,plev,i))
+   end do
+
+   ! (2) integrate dry mass in column to compute
+   do i=1, nCellsSolve
+      preliminary_dry_surface_pressure(i) = 0.0_r8
+      do k=1, plev
+         preliminary_dry_surface_pressure(i) = preliminary_dry_surface_pressure(i) + gravity*(zint(k+1,i)-zint(k,i))*rho(k,i)
+      end do
+   end do
+
+   ! (3) compute average global dry surface pressure
+   preliminary_dry_surface_pressure(1:nCellsSolve) =  preliminary_dry_surface_pressure(1:nCellsSolve)*areaCell(1:nCellsSolve)
+   sphere_surface_area = cam_mpas_global_sum_real(areaCell(1:nCellsSolve))
+   preliminary_avg_dry_surface_pressure = cam_mpas_global_sum_real(preliminary_dry_surface_pressure(1:nCellsSolve)) &
+                                                                   /sphere_surface_area
+
+   if (masterproc) then
+       write(iulog,*) '---------------------------- set_dry_mass ----------------------------'
+       write(iulog,*) subname//': initial dry globally avg surface pressure (hPa) = ', &
+                                                                             preliminary_avg_dry_surface_pressure/100._r8
+       write(iulog,*) subname//': target dry globally avg surface pressure (hPa) = ', target_avg_dry_surface_pressure/100._r8
+   end if
+
+   ! (4) scale dry air density
+   ! scaling_ratio = target_avg_dry_surface_pressure/preliminary_avg_dry_surface_pressure
+   scaling_ratio = 1.0
+   rho(:,:) = rho(:,:)*scaling_ratio
+
+   ! (5) reset qv to conserve mass
+   tracers(ixqv,:,1:nCellsSolve) = tracers(ixqv,:,1:nCellsSolve)/scaling_ratio
+
+   ! (6) integrate down the column to compute full pressure given the density and qv
+   do i=1,nCellsSolve
+      pm(plev) = p_top(i) + 0.5_r8*(zint(plev+1,i)-zint(plev,i))*gravity*rho(plev,i)*(1.0_r8+tracers(ixqv,plev,i))
+      do k=plev-1,1,-1
+         pm(k) = pm(k+1) + 0.5_r8*(zint(k+2,i)-zint(k+1,i))*gravity*rho(k+1,i)*(1.0_r8+tracers(ixqv,k+1,i)) &
+                         + 0.5_r8*(zint(k+1,i)-zint(k  ,i))*gravity*rho(k  ,i)*(1.0_r8+tracers(ixqv,k  ,i))
+      end do
+
+   ! (7) compute theta_m from the state equation, compute rho_zz and theta while we are here
+
+      do k=1,plev
+         theta_m(k,i) = (pm(k)/p0)**((cpair-rgas)/cpair)*p0/rgas/rho(k,i)
+         theta(k,i) = theta_m(k,i)/(1.0_r8 + Rv_over_Rd * tracers(ixqv,k,i))
+         rho_zz(k,i) = rho(k,i)/zz(k,i)
+      end do
+   end do
+
+  deallocate( p_top, preliminary_dry_surface_pressure, pm )
+
+end subroutine set_dry_mass
 
 end module dyn_comp
