@@ -94,6 +94,10 @@ real(r8), public, parameter :: mwh2o2      =  34._r8
 real(r8), public, parameter :: mwdms       =  62._r8
 real(r8), public, parameter :: mwnh4       =  18._r8
 
+! CESM reference dry mass pressure with/without topo (Pa)
+real(r8), public, parameter :: ps_dry_topo   = 98288.0_r8
+real(r8), public, parameter :: ps_dry_notopo = 101325._r8 - 245._r8
+
 
 ! modifiable physical constants for aquaplanet
 
