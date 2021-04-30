@@ -1581,7 +1581,7 @@ subroutine set_dry_mass(dyn_in, target_avg_dry_surface_pressure)
                                      ! at layer midpoints               (nver,ncol)
 
    real(r8), allocatable :: preliminary_dry_surface_pressure(:), p_top(:), pm(:)
-   real(r8) :: preliminary_avg_dry_surface_pressure
+   real(r8) :: preliminary_avg_dry_surface_pressure, scaled_avg_dry_surface_pressure
    real(r8) :: scaling_ratio
    real(r8) :: sphere_surface_area
    real(r8) :: surface_integral, test_value
@@ -1624,14 +1624,29 @@ subroutine set_dry_mass(dyn_in, target_avg_dry_surface_pressure)
 
    if (masterproc) then
        write(iulog,*) '---------------------------- set_dry_mass ----------------------------'
-       write(iulog,*) subname//': initial dry globally avg surface pressure (hPa) = ', &
-                                                                             preliminary_avg_dry_surface_pressure/100._r8
-       write(iulog,*) subname//': target dry globally avg surface pressure (hPa) = ', target_avg_dry_surface_pressure/100._r8
+       write(iulog,*) 'Initial dry globally average surface pressure = ', preliminary_avg_dry_surface_pressure/100._r8, 'hPa'
+       write(iulog,*) 'target dry globally avg surface pressure = ', target_avg_dry_surface_pressure/100._r8, 'hPa'
    end if
 
    ! (4) scale dry air density
    scaling_ratio = target_avg_dry_surface_pressure / preliminary_avg_dry_surface_pressure
    rho(:,:) = rho(:,:)*scaling_ratio
+
+   ! (4a) recompute dry mass after scaling
+   do i = 1, nCellsSolve
+       preliminary_dry_surface_pressure(i) = 0.0_r8
+       do k = 1, plev
+           preliminary_dry_surface_pressure(i) = preliminary_dry_surface_pressure(i) + gravity*(zint(k+1,i)-zint(k,1))*rho(k,i)
+       end do
+   end do
+   preliminary_dry_surface_pressure(1:nCellsSolve) = preliminary_dry_surface_pressure(1:nCellsSolve)*areaCell(1:nCellsSolve)
+   scaled_avg_dry_surface_pressure = cam_mpas_global_sum_real(preliminary_dry_surface_pressure(1:nCellsSolve)) &
+                                                              / sphere_surface_area
+
+   if (masterproc) then
+      write(iulog,*) 'Average dry global surface pressure after scaling = ', scaled_avg_dry_surface_pressure/100._r8, 'hPa'
+      write(iulog,*) 'Change in dry surface pressure = ', scaled_avg_dry_surface_pressure-preliminary_avg_dry_surface_pressure,'Pa'
+   end if
 
    ! (5) reset qv to conserve mass
    tracers(ixqv,:,1:nCellsSolve) = tracers(ixqv,:,1:nCellsSolve)/scaling_ratio
