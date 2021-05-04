@@ -484,6 +484,7 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, qv_tend, dy
    real(r8)          :: rtheta_param(pver,nCellsSolve)!tendency from temperature change only (for diagnostics)
    real(r8)          :: qk(pver,nCellsSolve)          !water vapor before physics
    logical           :: compute_energy_diags=.false.
+   real(r8)          :: facnew, facold
 
    integer  :: iCell,k
 
