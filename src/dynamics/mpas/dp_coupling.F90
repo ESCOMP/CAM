@@ -599,7 +599,7 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, qv_tend, dy
        thetak    = theta_m(k,iCell)/facold
        
        exnerk    = (rgas*rhodk*theta_m(k,iCell)/p0)**(rgas/cv)
-       tknew     = exnerk*thetak+(cp/cv)*dtime*t_tend(k,icell)
+       tknew     = exnerk*thetak+(cp/cv)*dtime*t_tend(k,icell)!phl should be 3D cp/cv
        
        thetaknew = (tknew**(cv/cp))*((rgas*rhodk*facold)/p0)**(-rgas/cp)
        !
@@ -620,7 +620,7 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, qv_tend, dy
 
    if (compute_energy_diags) then   
      !
-     ! compute energy based in parameterization increment (excl. water change)
+     ! compute energy based on parameterization increment (excl. water change)
      !
      theta_m_new = theta_m(:,1:nCellsSolve)+dtime*rtheta_param(:,1:nCellsSolve)/rho_zz(:,1:nCellsSolve) 
      call tot_energy( &
