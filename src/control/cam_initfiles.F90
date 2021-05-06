@@ -40,6 +40,8 @@ real(r8), public, protected :: pertlim = 0.0_r8 ! maximum abs value of scale fac
                                                 ! initial values
 character(len=cl) :: cam_branch_file = ' '      ! Filepath of primary restart file for a branch run
 
+real(r8), public, protected :: scale_dry_air_mass = 0.0 ! Toggle and target avg air mass for MPAS dycore
+
 ! The restart pointer file contains name of most recently written primary restart file.
 ! The contents of this file are updated by cam_write_restart as new restart files are written.
 character(len=cl), public, protected :: rest_pfile
@@ -80,7 +82,7 @@ subroutine cam_initfiles_readnl(nlfile)
    character(len=*), parameter :: sub = 'cam_initfiles_readnl'
 
    namelist /cam_initfiles_nl/ ncdata, use_topo_file, bnd_topo, pertlim, &
-                               cam_branch_file
+                               cam_branch_file, scale_dry_air_mass
    !-----------------------------------------------------------------------------
 
    if (masterproc) then
@@ -107,6 +109,8 @@ subroutine cam_initfiles_readnl(nlfile)
    if (ierr /= 0) call endrun(sub//": ERROR: mpi_bcast: pertlim")
    call mpi_bcast(cam_branch_file, len(cam_branch_file), mpichar, mstrid, mpicom, ierr)
    if (ierr /= 0) call endrun(sub//": ERROR: mpi_bcast: cam_branch_file")
+   call mpi_bcast(scale_dry_air_mass, 1, mpir8, mstrid, mpicom, ierr)
+   if (ierr /= 0) call endrun(sub//": ERROR: mpi_bcast: scale_dry_air_mass")
 
    ! Set pointer file name based on instance suffix
    rest_pfile = './rpointer.atm' // trim(inst_suffix)

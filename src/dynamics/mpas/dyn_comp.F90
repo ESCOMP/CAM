@@ -632,6 +632,8 @@ subroutine read_inidat(dyn_in)
    ! Set initial conditions.  Either from analytic expressions or read from file.
 
    use cam_mpas_subdriver, only : domain_ptr, cam_mpas_update_halo, cam_mpas_cell_to_edge_winds
+   use cam_control_mod,   only : simple_phys
+   use cam_initfiles, only : scale_dry_air_mass
    use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_array, mpas_pool_get_config
    use mpas_derived_types, only : mpas_pool_type
    use mpas_vector_reconstruction, only : mpas_reconstruct
@@ -690,7 +692,6 @@ subroutine read_inidat(dyn_in)
 
    real(r8), allocatable :: qv(:), tm(:)
 
-   logical, pointer :: mpas_scale_dry_air_mass
    real(r8) :: target_global_avg_dry_ps
 
    real(r8) :: dz, h
@@ -1040,13 +1041,18 @@ subroutine read_inidat(dyn_in)
 
    theta_m(:,1:nCellsSolve) = theta(:,1:nCellsSolve) * (1.0_r8 + Rv_over_Rd * tracers(ixqv,:,1:nCellsSolve))
 
-   ! Scale dry air mass if mpas_scale_dry_air_mass nl is .true.
-   call mpas_pool_get_config(domain_ptr % configs, 'config_scale_dry_air_mass', mpas_scale_dry_air_mass)
-   if (mpas_scale_dry_air_mass) then
-
-       target_global_avg_dry_ps = ps_dry_topo
-       if (.not. associated(fh_topo)) then
-           target_global_avg_dry_ps = ps_dry_notopo
+   ! If scale_dry_air_mass < 0.0, then use the reference pressures defined in physconst.F90 as the
+   ! target global average dry pressure to scale to. If scale_dry_air_mass is not zero, then use it
+   ! as the target.
+   if (simple_phys /= .true. .and. scale_dry_air_mass /= 0.0) then  ! Don't scale air mass if < 0. or simple_phys is on
+       if (scale_dry_air_mass < 0.0) then
+           target_global_avg_dry_ps = ps_dry_topo
+           if (.not. associated(fh_topo)) then
+               target_global_avg_dry_ps = ps_dry_notopo
+           end if
+       else
+           ! User specified scaling target pressure
+           target_global_avg_dry_ps = scale_dry_air_mass
        end if
 
        call set_dry_mass(dyn_in, target_global_avg_dry_ps)
@@ -1233,7 +1239,6 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
    real(r8)                :: mpas_smdiv = 0.1_r8
    real(r8)                :: mpas_apvm_upwinding = 0.5_r8
    logical                 :: mpas_h_ScaleWithMesh = .true.
-   logical                 :: mpas_scale_dry_air_mass = .false.
    real(r8)                :: mpas_zd = 22000.0_r8
    real(r8)                :: mpas_xnutr = 0.2_r8
    real(r8)                :: mpas_cam_coef = 0.0_r8
@@ -1279,8 +1284,7 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
            mpas_epssm, &
            mpas_smdiv, &
            mpas_apvm_upwinding, &
-           mpas_h_ScaleWithMesh, &
-           mpas_scale_dry_air_mass
+           mpas_h_ScaleWithMesh
 
    namelist /damping/ &
            mpas_zd, &
@@ -1363,7 +1367,6 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
    call mpi_bcast(mpas_smdiv,                        1, mpi_real8,     masterprocid, mpicom, mpi_ierr)
    call mpi_bcast(mpas_apvm_upwinding,               1, mpi_real8,     masterprocid, mpicom, mpi_ierr)
    call mpi_bcast(mpas_h_ScaleWithMesh,              1, mpi_logical,   masterprocid, mpicom, mpi_ierr)
-   call mpi_bcast(mpas_scale_dry_air_mass,           1, mpi_logical,   masterprocid, mpicom, mpi_ierr)
 
    call mpas_pool_add_config(configPool, 'config_time_integration', mpas_time_integration)
    call mpas_pool_add_config(configPool, 'config_time_integration_order', mpas_time_integration_order)
@@ -1398,7 +1401,6 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
    call mpas_pool_add_config(configPool, 'config_smdiv', mpas_smdiv)
    call mpas_pool_add_config(configPool, 'config_apvm_upwinding', mpas_apvm_upwinding)
    call mpas_pool_add_config(configPool, 'config_h_ScaleWithMesh', mpas_h_ScaleWithMesh)
-   call mpas_pool_add_config(configPool, 'config_scale_dry_air_mass', mpas_scale_dry_air_mass)
 
    ! Read namelist group &damping
    if (masterproc) then
@@ -1534,7 +1536,6 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
       write(iulog,*) '   mpas_smdiv = ', mpas_smdiv
       write(iulog,*) '   mpas_apvm_upwinding = ', mpas_apvm_upwinding
       write(iulog,*) '   mpas_h_ScaleWithMesh = ', mpas_h_ScaleWithMesh
-      write(iulog,*) '   mpas_scale_dry_air_mass = ', mpas_scale_dry_air_mass
       write(iulog,*) '   mpas_zd = ', mpas_zd
       write(iulog,*) '   mpas_xnutr = ', mpas_xnutr
       write(iulog,*) '   mpas_cam_coef = ', mpas_cam_coef

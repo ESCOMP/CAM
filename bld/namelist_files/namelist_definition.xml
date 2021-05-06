@@ -2220,6 +2220,16 @@ Required for branch run.
 Default: none
 </entry>
 
+<entry id="scale_dry_air_mass" type="real" category="initial_conditions"
+       group="cam_initfiles_nl" valid_values="">
+Specifiy whether and how to preform dry surface pressure scaling. If set to less
+then 0., use the constants, ps_dry_topo and ps_dry_notopo, defined in physconst.f90
+as the target average dry surface pressure, and preform scaling. If equal to 0.0,
+do not preform scaling. If greater than 0.0, preform scaling but use scale_dry_air_mass
+value (in Pa) as the average dry surface pressure target.
+Default: 0.0
+</entry>
+
 <entry id="readtrace" type="logical"  category="initial_conditions"
        group="constituents_nl" valid_values="" >
 If TRUE, try to initialize data for all consituents by reading from the
@@ -2229,7 +2239,6 @@ try reading constituent data from the IC file; just use the
 internally-specified defaults.
 Default: TRUE
 </entry>
-
 
 <!-- COSP Cloud Simulator control LOGICALS -->
 
@@ -7592,12 +7601,6 @@ Default: 0.5
 Scale eddy viscosities with mesh-density function for horizontal diffusion
 in MPAS dycore.
 Default: TRUE
-</entry>
-
-<entry id="mpas_scale_dry_air_mass" type="logical" category="mpas"
-       group="nhyd_model" valid_values="">
-Scale dry-air mass at initaliation for the MPAS dycore.
-Default: FALSE
 </entry>
 
 <entry id="mpas_zd" type="real" category="mpas"
