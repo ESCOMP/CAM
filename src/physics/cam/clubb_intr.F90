@@ -1654,7 +1654,6 @@ end subroutine clubb_init_cnst
    real(r8) :: rcm_in_layer(pcols,pverp)	! CLUBB in-cloud liquid water mixing ratio	[kg/kg]
    real(r8) :: cloud_cover(pcols,pverp)		! CLUBB in-cloud cloud fraction			[fraction]
    real(r8) :: wprcp(pcols,pverp)		! CLUBB liquid water flux			[m/s kg/kg]
-   real(r8) :: wpthvp_diag(pcols,pverp)		! CLUBB buoyancy flux				[W/m^2]
    real(r8) :: rvm(pcols,pverp)
    real(r8) :: pdfp_rtp2(pcols, pverp)          ! Calculated R-tot variance from pdf_params     [kg^2/kg^2]
    real(r8) :: rtp2_zt(pverp+1-top_lev)         ! CLUBB R-tot variance on thermo levs
@@ -1712,7 +1711,7 @@ end subroutine clubb_init_cnst
    real(r8), pointer, dimension(:,:) :: vp3      ! north-south wind 3rd order			[m^3/s^3]
    real(r8), pointer, dimension(:,:) :: upwp     ! east-west momentum flux			[m^2/s^2]
    real(r8), pointer, dimension(:,:) :: vpwp     ! north-south momentum flux			[m^2/s^2]
-   real(r8), pointer, dimension(:,:) :: wpthvp   ! w'th_v' (momentum levels)			[m/s K]
+   real(r8), pointer, dimension(:,:) :: wpthvp   ! buoyancy flux (momentum levels)		[W/m^2]
    real(r8), pointer, dimension(:,:) :: wp2thvp  ! w'^2 th_v' (thermodynamic levels)		[m^2/s^2 K]
    real(r8), pointer, dimension(:,:) :: rtpthvp  ! r_t'th_v' (momentum levels)			[kg/kg K]
    real(r8), pointer, dimension(:,:) :: thlpthvp ! th_l'th_v' (momentum levels)			[K^2]
@@ -3166,14 +3165,9 @@ end subroutine clubb_init_cnst
    ! Diagnose some output variables                    !
    ! ------------------------------------------------- !
 
-   wpthvp_diag(:,:) = 0.0_r8
    do k=1,pver
       do i=1,ncol
          eps = rairv(i,k,lchnk)/rh2o
-         !  buoyancy flux
-         wpthvp_diag(i,k) = (wpthlp(i,k)-(apply_const*wpthlp_const))+((1._r8-eps)/eps)*theta0* &
-                       (wprtp(i,k)-(apply_const*wprtp_const))+((latvap/cpairv(i,k,lchnk))* &
-                       state1%exner(i,k)-(1._r8/eps)*theta0)*wprcp(i,k)
 
          !  total water mixing ratio
          qt_output(i,k) = state1%q(i,k,ixq)+state1%q(i,k,ixcldliq)+state1%q(i,k,ixcldice)
@@ -3188,6 +3182,7 @@ end subroutine clubb_init_cnst
       do i=1,ncol
          wpthlp_output(i,k)  = (wpthlp(i,k)-(apply_const*wpthlp_const))*rho_zm_out(i,k)*cpair !  liquid water potential temperature flux
          wprtp_output(i,k)   = (wprtp(i,k)-(apply_const*wprtp_const))*rho_zm_out(i,k)*latvap  !  total water mixig ratio flux
+         wpthvp(i,k)         = wpthvp(i,k)*rho_zm_out(i,k)*cpair
          rtpthlp_output(i,k) = rtpthlp(i,k)-(apply_const*rtpthlp_const)                !  rtpthlp output
          wp3_output(i,k)     = wp3(i,k) - (apply_const*wp3_const)                      !  wp3 output
          tke(i,k)            = 0.5_r8*(up2(i,k)+vp2(i,k)+wp2(i,k))                     !  turbulent kinetic energy
@@ -3391,7 +3386,7 @@ end subroutine clubb_init_cnst
      temp2d(:ncol,:) = rcm_in_layer(:ncol,1:pver) * 1000._r8
      call outfld( 'RCMINLAYER_CLUBB', temp2d,                  pcols, lchnk )
 
-     temp2dp(:ncol,:) = wpthvp(:ncol,:) * cpair
+     temp2dp(:ncol,:) = wpthvp(:ncol,:)
      call outfld( 'WPTHVP_CLUBB',     temp2dp,                 pcols, lchnk )
 
    call outfld( 'RTP2_ZT_CLUBB',    rtp2_zt_out(:ncol,1:pver), pcols, lchnk )
