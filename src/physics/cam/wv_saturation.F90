@@ -893,8 +893,8 @@ subroutine qsat_2D(t, p, es, qs, dim1, dim2, gam, dqsdt, enthalpy)
 
   !$acc parallel vector_length(VLEN) default(present)
   !$acc loop gang vector collapse(2)
-  do i = 1, dim1
-     do k = 1, dim2
+  do k = 1, dim2
+     do i = 1, dim1
         es(i,k) = min(es(i,k), p(i,k))
      end do
   end do
@@ -1063,8 +1063,8 @@ subroutine qsat_water_2D(t, p, es, qs, dim1, dim2, gam, dqsdt, enthalpy)
 
   !$acc parallel vector_length(VLEN) default(present)
   !$acc loop gang vector collapse(2)
-  do i = 1, dim1
-     do k = 1, dim2
+  do k = 1, dim2
+     do i = 1, dim1
         tterm(i,k) = 0._r8
      end do
   end do
@@ -1238,8 +1238,8 @@ subroutine qsat_ice_2D(t, p, es, qs, dim1, dim2, gam, dqsdt, enthalpy)
 
   !$acc parallel vector_length(VLEN) default(present)
   !$acc loop gang vector collapse(2)
-  do i = 1, dim1
-     do k = 1, dim2
+  do k = 1, dim2
+     do i = 1, dim1
         tterm(i,k) = 0._r8
      end do
   end do
@@ -1251,8 +1251,8 @@ subroutine qsat_ice_2D(t, p, es, qs, dim1, dim2, gam, dqsdt, enthalpy)
 
      !$acc parallel vector_length(VLEN) default(present)
      !$acc loop gang vector collapse(2)
-     do i = 1, dim1
-        do k = 1, dim2
+     do k = 1, dim2
+        do i = 1, dim1
            ! For pure ice, just add latent heats.
            hltalt(i,k) = latvap + latice
         end do
