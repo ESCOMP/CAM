@@ -305,9 +305,6 @@ CONTAINS
 
     ! Aerosol emissions
     USE AERO_MODEL,          ONLY : aero_model_emissions
-    USE MODAL_AERO_DATA,     ONLY : ntot_amode, nspec_amode
-    USE MODAL_AERO_DATA,     ONLY : lmassptr_amode, numptr_amode
-    USE MODAL_AERO_DATA,     ONLY : specdens_amode
 
     ! GEOS-Chem version of physical constants
     USE PHYSCONSTANTS,       ONLY : AVO
@@ -337,7 +334,7 @@ CONTAINS
     ! Integers
     INTEGER                                :: LCHNK
     INTEGER                                :: nY, nZ
-    INTEGER                                :: J, L, N, M, SM, P
+    INTEGER                                :: J, L, N
     INTEGER                                :: RC             ! return code
     INTEGER                                :: tmpIdx         ! pbuf field id
 
@@ -357,12 +354,6 @@ CONTAINS
     REAL(r8)                               :: SCALFAC        ! Multiplying factor
     REAL(r8)                               :: megflx(pcols)  ! For MEGAN emissions
     REAL(r8), PARAMETER                    :: m2km  = 1.e-3_r8
-    REAL(r8)                               :: diam           ! Emission diameter
-                                                             ! for aerosols (m)
-    REAL(r8)                               :: voltonumb      ! Conversion factor
-                                                             ! between aerosol mass
-                                                             ! and number
-    REAL(r8)                               :: rho            ! Aerosol density (kg/m3)
 
     ! Strings
     CHARACTER(LEN=255)                     :: SpcName
@@ -498,46 +489,6 @@ CONTAINS
     ENDIF
 
 #if defined( MODAL_AERO )
-
-    ! Estimate aerosol number emissions
-    ! Enumber = Emass / ( pi/6 * rho * D_emit^3 )
-    ! D_emit is sector-dependent and is taken from Table S4 of:
-    ! Emmons, Louisa K., et al. "The chemistry mechanism in the Community Earth
-    ! System Model version 2 (CESM2)." Journal of Advances in Modeling Earth
-    ! Systems 12.4 (2020).
-    DO M = 1, ntot_amode
-       P         = numptr_amode(M)
-       IF ( M == 1 ) THEN
-          ! Species affected: so4_a1
-          diam = 0.134E-06_r8
-          ! This diam value should be sector-dependent.
-          ! Agriculture, waste, solvents -> 0.134
-          ! Shipping                     -> 0.261
-          ! Energy, industrial           -> 0.261
-          ! Biomass burning              -> 0.134
-          ! Volcanoes                    -> 0.134
-       ELSEIF ( M == 2 ) THEN
-          ! Species affected: so4_a2
-          diam = 0.0504E-06_r8
-       ELSEIF ( M == 4 ) THEN
-          ! Species affected: bc_a4, pom_a4
-          diam = 0.134E-06_r8
-       ENDIF
-       voltonumb = 1.0_r8 / ( PI / 6.0_r8 * diam * diam * diam )
-
-       IF ( M == 3 ) THEN
-          ! There shouldn't be any a3 number emissions, so we just enforce
-          ! voltonumb to be 0
-          voltonumb = 0.0E-00_r8
-       ENDIF
-
-       DO SM = 1, nspec_amode(M)
-          N   = lmassptr_amode(SM,M)
-          rho = specdens_amode(SM,M)
-          eflx(:nY,:nZ,P) = eflx(:nY,:nZ,P) &
-                          + eflx(:nY,:nZ,N) * voltonumb / rho
-       ENDDO
-    ENDDO
 
     !-----------------------------------------------------------------------
     ! Aerosol emissions (dust + seasalt) ...
