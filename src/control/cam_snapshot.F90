@@ -767,7 +767,7 @@ subroutine cam_pbuf_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_nu
 
    do while (npbuf_var < npbuf)
       call snapshot_addfld_nd( npbuf_var, pbuf_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-        pbuf_info(npbuf_var+1)%name,   'pbuf_'//pbuf_info(npbuf_var+1)%standard_name,   pbuf_info(npbuf_var+1)%units,&
+        pbuf_info(npbuf_var+1)%name,   pbuf_info(npbuf_var+1)%standard_name,   pbuf_info(npbuf_var+1)%units,&
         pbuf_info(npbuf_var+1)%dim_string)
    end do
 
