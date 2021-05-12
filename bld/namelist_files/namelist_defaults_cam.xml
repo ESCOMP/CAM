@@ -244,7 +244,7 @@
 
 <ncdata dyn="se" hgrid="ne0np4CONUS.ne30x8"       nlev="70" ic_ymd="101">atm/waccm/ic/FW2000_CONUS_30x8_L70_01-01-0001_c200602.nc</ncdata>
 
-<ncdata hgrid="mpasa120" nlev="32" >atm/cam/inic/mpas/F2000climo.mpasa120_mpasa120.intel.1800x1pes.chey.013.cam.i.0022-01-01-00000.nc'</ncdata>
+<ncdata hgrid="mpasa120" nlev="32" >atm/cam/inic/mpas/mpasa120.CFSR.L32.nc'</ncdata>
 
 <!-- Topography -->
 <bnd_topo hgrid="256x512" >atm/cam/topo/topo-from-cami_0000-01-01_256x512_L26_c030918.nc</bnd_topo>
