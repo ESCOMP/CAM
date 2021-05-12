@@ -769,8 +769,8 @@ contains
     end if
 
     call outfld('TEOUT', teout       , pcols, lchnk   )
-    call outfld('TEINP', state%te_ini, pcols, lchnk   )
-    call outfld('TEFIX', state%te_cur, pcols, lchnk   )
+    call outfld('TEINP', state%te_ini(:,2), pcols, lchnk   )
+    call outfld('TEFIX', state%te_cur(:,2), pcols, lchnk   )
 
     ! T tendency due to dynamics
     if( nstep > dyn_time_lvls-1 ) then
@@ -873,7 +873,7 @@ contains
     call t_stopf('bc_history_write')
 
     ! Save total enery after physics for energy conservation checks
-    teout = state%te_cur
+    teout = state%te_cur(:,2)
 
     call cam_export(state, cam_out, pbuf)
 
