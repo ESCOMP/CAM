@@ -59,8 +59,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    integer :: index_qv
    integer, dimension(:), pointer :: cam_from_mpas_cnst
 
-   real(r8), pointer :: pmiddry(:,:)
-   real(r8), pointer :: pintdry(:,:)
+   real(r8), pointer :: exner(:,:)
    real(r8), pointer :: zint(:,:)
    real(r8), pointer :: zz(:,:)
    real(r8), pointer :: rho_zz(:,:)
@@ -68,7 +67,6 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    real(r8), pointer :: uy(:,:)
    real(r8), pointer :: w(:,:)
    real(r8), pointer :: theta_m(:,:)
-   real(r8), pointer :: exner(:,:)
    real(r8), pointer :: tracers(:,:,:)
 
 
@@ -82,7 +80,9 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    integer, allocatable :: bpter(:,:)  ! offsets into block buffer for packing data
    integer, allocatable :: cpter(:,:)  ! offsets into chunk buffer for unpacking data
 
-   real(r8), allocatable:: pmid(:,:)   !mid-level pressure consisten with MPAS discrete state
+   real(r8), allocatable:: pmid(:,:)      !mid-level hydrostatic pressure consistent with MPAS discrete state
+   real(r8), allocatable:: pintdry(:,:)   !interface hydrostatic pressure consistent with MPAS discrete state
+   real(r8), allocatable:: pmiddry(:,:)   !mid-level hydrostatic dry pressure consistent with MPAS discrete state
 
    real(r8), allocatable, dimension(:) :: bbuffer, cbuffer ! transpose buffers
    integer :: ierr
@@ -93,8 +93,6 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    index_qv    = dyn_out % index_qv
    cam_from_mpas_cnst => dyn_out % cam_from_mpas_cnst
 
-   pmiddry  => dyn_out % pmiddry
-   pintdry  => dyn_out % pintdry
    zint     => dyn_out % zint
    zz       => dyn_out % zz
    rho_zz   => dyn_out % rho_zz
@@ -107,10 +105,17 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    !
    ! diagnose pintdry, pmiddry, pmid
    !
-   allocate(pmid(plev, nCellsSolve), stat=ierr)
-   if( ierr /= 0 ) call endrun(subname//':failed to allocate dyn_out%pmiddry array')
+   allocate(pmid(plev, nCellsSolve),      stat=ierr)
+   if( ierr /= 0 ) call endrun(subname//':failed to allocate pmid array')
+
+   allocate(pmiddry(plev, nCellsSolve),   stat=ierr)!note: .neq. dyn_out % pmiddry since it is non-hydrostatic
+   if( ierr /= 0 ) call endrun(subname//':failed to allocate pmiddry array')
+
+   allocate(pintdry(plev+1, nCellsSolve), stat=ierr)!note: .neq. dyn_out % pintdry since it is non-hydrostatic
+   if( ierr /= 0 ) call endrun(subname//':failed to allocate pintdry array')
+
    call hydrostatic_pressure( &
-        nCellsSolve, plev, zz, zint, rho_zz, theta_m(:,:), tracers(index_qv,:,:),&
+        nCellsSolve, plev, zz, zint, rho_zz, theta_m, tracers(index_qv,:,:),&
         pmiddry, pintdry, pmid)
 
    call t_startf('dpcopy')
@@ -159,7 +164,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    call derived_phys(phys_state, phys_tend, pbuf2d)
    call t_stopf('derived_phys')
 
-   deallocate(pmid)
+   deallocate(pmid,pintdry,pmiddry)
 
 end subroutine d_p_coupling
 
@@ -433,8 +438,10 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, qv_tend, dy
    ! CAM's physics package.
 
    use cam_mpas_subdriver, only : cam_mpas_cell_to_edge_winds, cam_mpas_update_halo
-   use mpas_constants, only : Rv_over_Rd => rvord
-
+   use mpas_constants,     only : Rv_over_Rd => rvord
+   use mpas_constants, only : cp, rgas, cv, p0!xxx
+   use time_manager,       only : get_step_size
+   use cam_history,        only : hist_fld_active
    ! Arguments
    integer,             intent(in)    :: nCellsSolve
    integer,             intent(in)    :: nCells
@@ -446,7 +453,7 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, qv_tend, dy
 
 
    ! Local variables
-
+   real(r8) :: dtime
    ! variables from dynamics import container
    integer :: nEdges
    real(r8), pointer :: ru_tend(:,:)
@@ -464,9 +471,31 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, qv_tend, dy
    real(r8), pointer :: tracers(:,:,:)
 
    integer :: index_qv
+   real(r8) :: rhok,thetavk,thetak,pk,exnerk,tempk,tempk_new,exnerk_new,thetak_new,thetak_m_new,rhodk,tknew,thetaknew
+   !
+   ! variables for energy diagnostics
+   !
+   real(r8), pointer :: zz(:,:)
+   real(r8), pointer :: theta_m(:,:)   
+   real(r8), pointer :: zint(:,:)
+   real(r8), pointer :: ux(:,:)
+   real(r8), pointer :: uy(:,:)
+   real(r8)          :: theta_m_new(pver,nCellsSolve) !modified potential temperature after various physics updates
+   real(r8)          :: rtheta_param(pver,nCellsSolve)!tendency from temperature change only (for diagnostics)
+   real(r8)          :: qk(pver,nCellsSolve)          !water vapor before physics
+   logical           :: compute_energy_diags=.false.
+   real(r8)          :: facnew, facold
+
+   integer  :: iCell,k
 
    character(len=*), parameter :: subname = 'dp_coupling:derived_tend'
    !----------------------------------------------------------------------------
+
+   compute_energy_diags=&
+        (hist_fld_active('SE_dDP').or.hist_fld_active('SE_dDM').or.hist_fld_active('SE_dPD').or.&
+         hist_fld_active('KE_dDP').or.hist_fld_active('KE_dDM').or.hist_fld_active('KE_dPD').or.&
+         hist_fld_active('WV_dDP').or.hist_fld_active('WV_dDM').or.hist_fld_active('WV_dPD'))
+
 
    nEdges = dyn_in % nEdges
    ru_tend     => dyn_in % ru_tend
@@ -482,9 +511,7 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, qv_tend, dy
    exner       => dyn_in % exner
    rho_zz      => dyn_in % rho_zz
    tracers     => dyn_in % tracers
-
    index_qv    =  dyn_in % index_qv
-
 
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
    ! Momentum tendency
@@ -517,23 +544,20 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, qv_tend, dy
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
    ! Temperature tendency
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-
+#ifdef originalCode
    !
    ! Convert temperature tendency to potential temperature tendency
    !
    rtheta_tend(:,1:nCellsSolve) = t_tend(:,1:nCellsSolve) / exner(:,1:nCellsSolve)
-
    !
    ! Couple theta tendency with rho_zz
    !
    rtheta_tend(:,1:nCellsSolve) = rtheta_tend(:,1:nCellsSolve) * rho_zz(:,1:nCellsSolve)
-
    !
    ! Modify with moisture terms
    !
    rtheta_tend(:,1:nCellsSolve) = rtheta_tend(:,1:nCellsSolve) * (1.0_r8 + Rv_over_Rd * tracers(index_qv,:,1:nCellsSolve))
    rtheta_tend(:,1:nCellsSolve) = rtheta_tend(:,1:nCellsSolve) + Rv_over_Rd * theta(:,1:nCellsSolve) * qv_tend(:,1:nCellsSolve)
-
    !
    ! Update halo for rtheta_m tendency
    !
@@ -545,11 +569,90 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, qv_tend, dy
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
 
    rho_tend = 0.0_r8
+#else
+   dtime = get_step_size()
+   
+   zz       => dyn_in % zz
+   theta_m  => dyn_in % theta_m
+   zint     => dyn_in % zint
+   ux       => dyn_in % ux
+   uy       => dyn_in % uy
+   !
+   ! Compute q not updated by physics
+   !
+   qk = tracers(index_qv,:,1:nCellsSolve)-dtime*qv_tend(:,1:nCellsSolve)
+   
+   !*************************************
+   !
+   ! compute total energy before physics
+   !
+   !*************************************
+   if (compute_energy_diags) then
+     call tot_energy(nCellsSolve, plev, zz, zint, rho_zz, theta_m, qk,&
+          ux(:,1:nCellsSolve),uy(:,1:nCellsSolve),'dDP')
+   end if
 
+   do iCell = 1, nCellsSolve
+     do k = 1, pver
+       rhodk     = zz(k,iCell) * rho_zz(k,iCell)
+       facold    = 1.0_r8 + Rv_over_Rd *qk(k,iCell)
+       thetak    = theta_m(k,iCell)/facold
+       
+       exnerk    = (rgas*rhodk*theta_m(k,iCell)/p0)**(rgas/cv)
+       tknew     = exnerk*thetak+(cp/cv)*dtime*t_tend(k,icell)!phl should be 3D cp/cv
+       
+       thetaknew = (tknew**(cv/cp))*((rgas*rhodk*facold)/p0)**(-rgas/cp)
+       !
+       ! calculate theta_m tendency due to parameterizations (but no water adjustment)
+       !
+       rtheta_param(k,iCell) = (thetaknew-thetak)/dtime
+       rtheta_param(k,iCell) = rtheta_param(k,iCell)*(1.0_r8 + Rv_over_Rd *qk(k,iCell)) !convert to thetam
+       rtheta_param(k,iCell) = rtheta_param(k,iCell)*rho_zz(k,iCell)
+       !
+       ! include water change in theta_m
+       !
+       facnew               = 1.0_r8 + Rv_over_Rd *tracers(index_qv,k,iCell)
+       thetaknew            = (tknew**(cv/cp))*((rgas*rhodk*facnew)/p0)**(-rgas/cp)
+       rtheta_tend(k,iCell) = (thetaknew*facnew-thetak*facold)/dtime
+       rtheta_tend(k,iCell) = rtheta_tend(k,iCell) * rho_zz(k,iCell)
+     end do
+   end do
+
+   if (compute_energy_diags) then   
+     !
+     ! compute energy based on parameterization increment (excl. water change)
+     !
+     theta_m_new = theta_m(:,1:nCellsSolve)+dtime*rtheta_param(:,1:nCellsSolve)/rho_zz(:,1:nCellsSolve) 
+     call tot_energy( &
+          nCellsSolve, plev, zz, zint, rho_zz, theta_m_new, qk,                            &
+          ux(:,1:nCellsSolve)+dtime*u_tend(:,1:nCellsSolve)/rho_zz(:,1:nCellsSolve),       &
+          uy(:,1:nCellsSolve)+dtime*v_tend(:,1:nCellsSolve)/rho_zz(:,1:nCellsSolve),'dDM')
+     
+     !
+     ! compute energy incl. water change
+     !
+     theta_m_new = theta_m(:,1:nCellsSolve)+dtime*rtheta_tend(:,1:nCellsSolve)/rho_zz(:,1:nCellsSolve) 
+     call tot_energy( &
+          nCellsSolve, plev, zz, zint, rho_zz, theta_m_new,  &
+          tracers(index_qv,:,1:nCellsSolve),                                               &
+          ux(:,1:nCellsSolve)+dtime*u_tend(:,1:nCellsSolve)/rho_zz(:,1:nCellsSolve),       &
+          uy(:,1:nCellsSolve)+dtime*v_tend(:,1:nCellsSolve)/rho_zz(:,1:nCellsSolve),'dPD')
+   end if
+   !
+   ! Update halo for rtheta_m tendency
+   !
+   call cam_mpas_update_halo('tend_rtheta_physics', endrun)
+
+
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+   ! Density tendency
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+
+   rho_tend = 0.0_r8
+#endif
 end subroutine derived_tend
 
 !=========================================================================================
-
 subroutine hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, theta_m, q, pmiddry, pintdry,pmid)
 
    ! Compute dry hydrostatic pressure at layer interfaces and midpoints
@@ -585,30 +688,113 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, theta_m,
    ! the ideal gas law using the rho_zz and theta values prognosed by MPAS at layer midpoints.
    !
    kap1 = p0**(-rgas/cp)           ! pre-compute constants
-   kap2 = (1.0_r8/(1.0_r8-rgas/cp))! pre-compute constants
+   kap2 = cp/cv                    ! pre-compute constants
    do iCell = 1, nCells
 
       dz(:) = zgrid(2:nVertLevels+1,iCell) - zgrid(1:nVertLevels,iCell)
 
       k = nVertLevels
-      rhok = (1.0_r8+q(k,iCell))*zz(k,iCell) * rho_zz(k,iCell) !full CAM physics density
-      thetavk = theta_m(k,iCell)/ (1.0_r8 + q(k,iCell)) !convert modified theta to virtual theta
-      pk     = (rhok*rgas*thetavk*(kap1))**kap2         !mid-level pressure
+      rhok    = (1.0_r8+q(k,iCell))*zz(k,iCell) * rho_zz(k,iCell) !full CAM physics density
+      thetavk = theta_m(k,iCell)/ (1.0_r8 + q(k,iCell))           !convert modified theta to virtual theta
+      pk      = (rhok*rgas*thetavk*kap1)**kap2                    !mid-level pressure
       !
       ! model top pressure consistently diagnosed using the assumption that the mid level
       ! is at heigh z(nVertLevels-1)+0.5*dz
       !
-      pintdry(nVertLevels+1,iCell) = pk-0.5_r8*dz(nVertLevels)*rhok*gravity 
+      pintdry(nVertLevels+1,iCell) = pk-0.5_r8*dz(nVertLevels)*rhok*gravity  !hydrostatic
       do k = nVertLevels, 1, -1
         rhodryk = zz(k,iCell) * rho_zz(k,iCell) 
         rhok    = (1.0_r8+q(k,iCell))*rhodryk
         pintdry(k,iCell) = pintdry(k+1,iCell) + gravity * rhodryk * dz(k)
-        pmiddry(k,iCell) = 0.5_r8 * (pintdry(k+1,iCell) + pintdry(k,iCell))
+        pmiddry(k,iCell) = 0.5_r8 * (pintdry(k+1,iCell) + pintdry(k,iCell)) !phl check: compute from ideal gas law like pmid?
         
         thetavk = theta_m(k,iCell)/ (1.0_r8 + q(k,iCell)) !convert modified theta to virtual theta
-        pmid(k,iCell) = (rhok*rgas*thetavk*(kap1))**kap2  !mid-level pressure
+        pmid(k,iCell) = (rhok*rgas*thetavk*kap1)**kap2    !mid-level pressure
       end do
     end do
 end subroutine hydrostatic_pressure
 
+
+subroutine tot_energy(nCells, nVertLevels, zz, zgrid, rho_zz, theta_m, q, ux,uy,outfld_name_suffix)
+  use physconst,      only: rair, cpair, gravit,cappa!=R/cp (dry air)  
+  use mpas_constants, only: p0,cv,rv,rgas,cp
+  use cam_history,    only: outfld, hist_fld_active
+  use mpas_constants, only: Rv_over_Rd => rvord
+  ! Arguments
+  integer, intent(in) :: nCells
+  integer, intent(in) :: nVertLevels
+  real(r8), dimension(nVertLevels, nCells),   intent(in) :: zz      ! d(zeta)/dz [-]
+  real(r8), dimension(nVertLevels+1, nCells), intent(in) :: zgrid   ! geometric heights of layer interfaces [m]
+  real(r8), dimension(nVertLevels, nCells),   intent(in) :: rho_zz  ! dry density / zz [kg m^-3]
+  real(r8), dimension(nVertLevels, nCells),   intent(in) :: theta_m ! modified potential temperature
+  real(r8), dimension(nVertLevels, nCells),   intent(in) :: q       ! water vapor dry mixing ratio
+  real(r8), dimension(nVertLevels, nCells),   intent(in) :: ux      ! A-grid zonal velocity component
+  real(r8), dimension(nVertLevels, nCells),   intent(in) :: uy      ! A-grid meridional velocity component
+  character*(*)                             , intent(in) :: outfld_name_suffix ! suffix for "outfld" names
+  ! Local variables
+  integer :: iCell, k
+  real(r8) :: rho_dz,dz,zcell,temperature,rhod,rhok,thetak,pk,ptop,exnerk,pmid,thetavk
+  real(r8), dimension(nCells):: kinetic_energy,potential_energy,internal_energy,water_vapor
+  real(r8) :: kap1,kap2
+  
+  character(len=16) :: name_out1,name_out2,name_out3,name_out4,name_out5,name_out6
+  
+  name_out1 = 'SE_'   //trim(outfld_name_suffix)
+  name_out2 = 'KE_'   //trim(outfld_name_suffix)
+  name_out3 = 'WV_'   //trim(outfld_name_suffix)
+  name_out4 = 'WL_'   //trim(outfld_name_suffix)
+  name_out5 = 'WI_'   //trim(outfld_name_suffix)
+  name_out6 = 'TT_'   //trim(outfld_name_suffix)   
+  
+  if ( hist_fld_active(name_out1).or.hist_fld_active(name_out2).or.hist_fld_active(name_out3).or.&
+       hist_fld_active(name_out4).or.hist_fld_active(name_out5).or.hist_fld_active(name_out6)) then
+    
+    kinetic_energy   = 0.0_r8
+    potential_energy = 0.0_r8
+    internal_energy  = 0.0_r8
+    water_vapor      = 0.0_r8
+
+    kap1 = p0**(-rgas/cp) ! pre-compute constants for Exner
+    kap2 = cp/cv          ! pre-compute constants for Exner
+    do iCell = 1, nCells
+      do k = 1, nVertLevels
+        dz     = zgrid(k+1,iCell) - zgrid(k,iCell)
+        zcell  = 0.5_r8*(zgrid(k,iCell)+zgrid(k+1,iCell))
+        rhod   = zz(k,iCell) * rho_zz(k,iCell)
+        rho_dz = (1.0_r8+q(k,iCell))*rhod*dz
+        rhok   = (1.0_r8+q(k,iCell))*rhod
+        thetak = theta_m(k,iCell)/(1.0_r8 + Rv_over_Rd *q(k,iCell))!convert theta_m to theta
+
+        !
+        ! recomputing Exner pressure
+        !
+        ! note that Exner pressure could be more easily be computed using
+        !
+        !    exnerk = (Rgas*rhok*thetak/p0)**(Rgas/cv)
+        !
+        ! instead of computing pmid first. However, this leads
+        ! to larger internal energy discrepancy between CAM physics and MPAS
+        !
+        ! phl check: no longer true?
+        !
+        thetavk       = theta_m(k,iCell)/ (1.0_r8 + q(k,iCell)) !convert modified theta to virtual theta
+        pmid          = (rhok*rgas*thetavk*kap1)**kap2          !mid-level pressure
+        exnerk        = (pmid/p0)**(Rgas/cp)
+        temperature   = exnerk*thetak
+
+        water_vapor(iCell)      = water_vapor(iCell)     + rhod*q(k,iCell)*dz
+        kinetic_energy(iCell)   = kinetic_energy(iCell)  + &
+             0.5_r8*(ux(k,iCell)*ux(k,iCell)+uy(k,iCell)*uy(k,iCell))*rho_dz
+        potential_energy(iCell) = potential_energy(iCell)+ rho_dz*gravit*zcell
+        internal_energy(iCell)  = internal_energy(iCell) + rho_dz*cv*temperature
+      end do
+      internal_energy(iCell)  = internal_energy(iCell) + potential_energy(iCell) !static energy
+    end do
+    call outfld(name_out1,internal_energy,ncells,1)
+    call outfld(name_out2,kinetic_energy,ncells,1)
+    call outfld(name_out3,water_vapor    ,ncells,1)
+  end if
+end subroutine tot_energy
+
 end module dp_coupling
+

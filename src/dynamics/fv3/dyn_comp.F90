@@ -381,8 +381,8 @@ subroutine dyn_init(dyn_in, dyn_out)
   use physconst,       only: cpwv, cpliq, cpice
   use physconst,          only: thermodynamic_active_species_num, dry_air_species_num, thermodynamic_active_species_idx
   use physconst,          only: thermodynamic_active_species_idx_dycore, rair, cpair
-  use tracer_manager_mod,     only: register_tracers
-
+  use tracer_manager_mod, only: register_tracers
+  use dyn_tests_utils,    only: vc_dycore, vc_moist_pressure, string_vc
   ! arguments:
    type (dyn_import_t),     intent(out) :: dyn_in
    type (dyn_export_t),     intent(out) :: dyn_out
@@ -442,7 +442,11 @@ subroutine dyn_init(dyn_in, dyn_out)
    character(len=128) :: errmsg
    logical            :: wet_thermo_species
    !-----------------------------------------------------------------------
-
+   vc_dycore = vc_moist_pressure
+   if (masterproc) then
+     call string_vc(vc_dycore,str1)
+     write(iulog,*)'vertical coordinate dycore   : ',trim(str1)
+   end if
    ! Setup the condensate loading arrays and fv3/cam tracer mapping and
    ! finish initializing fv3 by allocating the tracer arrays in the fv3 atm structure
 

@@ -225,7 +225,7 @@ subroutine dyn_init(dyn_in, dyn_out)
 #if (defined BFB_CAM_SCAM_IOP )
    use history_defaults,     only: initialize_iop_history
 #endif
-
+   use dyn_tests_utils, only: vc_dycore, vc_moist_pressure,string_vc
    ! Arguments are not used in this dycore, included for compatibility
    type(dyn_import_t), intent(out) :: dyn_in
    type(dyn_export_t), intent(out) :: dyn_out
@@ -238,8 +238,13 @@ subroutine dyn_init(dyn_in, dyn_out)
                                  ! temperature, water vapor, cloud ice and cloud
                                  ! liquid budgets.
    integer :: history_budget_histfile_num  ! output history file number for budget fields
+   character (len=108) :: str1
    !----------------------------------------------------------------------------
-
+   vc_dycore = vc_moist_pressure
+   if (masterproc) then
+     call string_vc(vc_dycore,str1)
+     write(iulog,*)'vertical coordinate dycore   : ',trim(str1)
+   end if
    ! Initialize prognostics variables
    call initialize_prognostics
    call scanslt_alloc()

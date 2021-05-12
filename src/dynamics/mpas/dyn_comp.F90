@@ -310,7 +310,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    use mpas_timekeeping,   only : MPAS_set_timeInterval
    use mpas_derived_types, only : mpas_pool_type
    use mpas_constants,     only : mpas_constants_compute_derived
-
+   use dyn_tests_utils,    only : vc_dycore, vc_height, string_vc
    ! arguments:
    type(dyn_import_t), intent(inout)  :: dyn_in
    type(dyn_export_t), intent(inout)  :: dyn_out
@@ -340,6 +340,41 @@ subroutine dyn_init(dyn_in, dyn_out)
    character(len=128) :: errmsg
 
    character(len=*), parameter :: subname = 'dyn_comp::dyn_init'
+   ! variables for initializing energy and axial angular momentum diagnostics
+   character (len = 3), dimension(6) :: stage = (/"dED","dBD","dBF","dDP","dDM","dPD"/)
+   character (len = 70),dimension(6) :: stage_txt = (/&
+      " beginning dynamics                                 ",&  
+      " after physics update                               ",&  
+      " end of time-step                                   ",&  
+      " dynamics state before physics                      ",&  
+      " dynamics state with T,u,V increment but not q      ",&  
+      " dynamics state with full physics increment         " &  
+      /)
+
+   character (len = 2)  , dimension(8) :: vars  = (/"WV"  ,"WL"  ,"WI"  ,"SE"   ,"KE"   ,"MR"   ,"MO"   ,"TT"   /)
+   !if ntrac>0 then tracers should be output on fvm grid but not energy (SE+KE) and AAM diags
+   character (len = 70) , dimension(8) :: vars_descriptor = (/&
+      "Total column water vapor                ",&
+      "Total column cloud water                ",&
+      "Total column cloud ice                  ",&
+      "Total column dry static energy          ",&
+      "Total column kinetic energy             ",&
+      "Total column wind axial angular momentum",&
+      "Total column mass axial angular momentum",&
+      "Total column test tracer                "/)
+   character (len = 14), dimension(8)  :: &
+      vars_unit = (/&
+      "kg/m2        ","kg/m2        ","kg/m2        ","J/m2         ",&
+      "J/m2         ","kg*m2/s*rad2 ","kg*m2/s*rad2 ","kg/m2        "/)
+
+   integer :: istage, ivars
+   character (len=108) :: str1, str2, str3
+
+   vc_dycore = vc_height
+   if (masterproc) then
+     call string_vc(vc_dycore,str1)
+     write(iulog,*)'vertical coordinate dycore   : ',trim(str1)
+   end if
    !----------------------------------------------------------------------------
 
    if (initial_run) then
@@ -496,6 +531,16 @@ subroutine dyn_init(dyn_in, dyn_out)
    ! dtime has no fractional part, but use nint to deal with any roundoff errors.
    ! Set the interval over which the dycore should integrate during each call to dyn_run.
    call MPAS_set_timeInterval(integrationLength, S=nint(dtime), S_n=0, S_d=1)
+
+   do istage = 1,SIZE(stage)
+     do ivars=1,SIZE(vars)
+       write(str1,*) TRIM(ADJUSTL(vars(ivars))),TRIM(ADJUSTL("_")),TRIM(ADJUSTL(stage(istage)))
+       write(str2,*) TRIM(ADJUSTL(vars_descriptor(ivars))),&
+            TRIM(ADJUSTL(" ")),TRIM(ADJUSTL(stage_txt(istage)))
+       write(str3,*) TRIM(ADJUSTL(vars_unit(ivars)))
+       call addfld (TRIM(ADJUSTL(str1)),   horiz_only, 'A', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)), gridname='mpas_cell')
+     end do
+   end do
 
 end subroutine dyn_init
 
