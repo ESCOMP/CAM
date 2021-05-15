@@ -1053,7 +1053,8 @@ CONTAINS
        M = map2chm(N)
        SpcName = TRIM(solsym(N))
        outTmp = 0.0e+00_r8
-       IF ( adv_mass(N) > 0.0e+00_r8 .AND. M /= 0 .AND. hist_fld_active(TRIM(SpcName)) ) THEN
+       IF ( adv_mass(N) > 0.0e+00_r8 .AND. M /= 0 .AND. &
+            (hist_fld_active(TRIM(SpcName)) .OR. hist_fld_active(TRIM(SpcName)//'_SRF')) ) THEN
           IF ( M > 0 ) THEN
              ! mol/mol
              outTmp(:nY,:) = REAL(State_Chm%Species(1,:nY,nZ:1:-1,M),r8) * MWDry / adv_mass(N)
