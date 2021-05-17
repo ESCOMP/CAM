@@ -1,0 +1,91 @@
+<?xml version='1.0' encoding='us-ascii'?>
+
+<namelist_defaults>
+
+<start_ymd>00010101</start_ymd>
+
+<gc_cheminputs>/glade/p/univ/umit0034/ExtData/CHEM_INPUTS/</gc_cheminputs>
+
+<ncdata dyn="fv"  hgrid="0.9x1.25">/glade/p/univ/umit0034/Shared/GEOS-Chem/f.e20.FC2010.f09_f09.144.GC_vbsext.001.cam.i.0007-01-01-00000.nc</ncdata>
+
+<ncdata dyn="fv"  hgrid="1.9x2.5">/glade/p/univ/umit0034/Shared/GEOS-Chem/f.e20.FC2010.f19_f19.144.GC_vbsext.001.cam.i.0007-01-01-00000.nc</ncdata>
+
+<!-- turn on clm MEGAN VOC emis -->
+<megan_specifier>
+    'ISOP = isoprene',
+    'MOH = methanol', 
+    'EOH = ethanol',
+    'CH2O = formaldehyde',
+    'ALD2 = acetaldehyde', 
+    'ACTA = acetic_acid',
+    'ACET = acetone',
+    'HCOOH = formic_acid', 
+    'HCN = hydrogen_cyanide',
+    'CO = carbon_monoxide',
+    'C2H6 = ethane',
+    'C2H4 = ethene',
+    'C3H8 = propane',
+    'ALK4 = pentane + hexane + heptane + tricyclene', 
+    'PRPE = propene + butene',
+    'TOLU = toluene',
+    'LIMO = limonene',
+    'MTPA = pinene_a + pinene_b + sabinene + carene_3',
+    'MTPO = terpinene_g + terpinene_a + terpinolene + myrcene + ocimene_al + ocimene_t_b + ocimene_c_b + thujene_a + 2met_styrene + cymene_p + cymene_o + bornene + fenchene_a + camphene + phellandrene_a + phellandrene_b'
+</megan_specifier>
+
+<!-- Solar data -->
+<solar_irrad_data_file>atm/cam/solar/SolarForcing2006-2014avg_c180917.nc</solar_irrad_data_file>
+<solar_data_ymd>20100101</solar_data_ymd>
+<solar_data_type>FIXED</solar_data_type>
+
+<drydep_method>'xactive_lnd'</drydep_method>
+
+<!-- WACCM GW Settings -->
+<use_gw_front>.true.</use_gw_front>
+<use_gw_convect_dp>.true.</use_gw_convect_dp>
+<tau_0_ubc>.false.</tau_0_ubc>
+<gw_qbo_hdepth_scaling>0.25D0</gw_qbo_hdepth_scaling>
+
+<!-- fixed lower boundary data  -->
+<flbc_type>CYCLICAL</flbc_type>
+<flbc_cycle_yr>2010</flbc_cycle_yr>
+<flbc_file>atm/waccm/lb/LBC_2010climo_CMIP6_0p5degLat_c180227.nc</flbc_file>
+
+
+<!-- History Files -->
+
+<mfilt>           1,30,365,240,240,480,365,73,30  </mfilt>
+<nhtfrq>          0,-24,-24,-3,-1,1,-24,-120,-240 </nhtfrq>
+<avgflag_pertape>'A','A','A','A','A','A','A','A','I'</avgflag_pertape>
+
+<history_amwg>.true.</history_amwg>
+<history_aerosol>.false.</history_aerosol>
+<history_carma>.false.</history_carma>
+<history_chemistry>.false.</history_chemistry>
+<history_chemspecies_srf>.false.</history_chemspecies_srf>
+<history_clubb>.false.</history_clubb>
+<history_waccm>.false.</history_waccm>
+<history_cesm_forcing>.false.</history_cesm_forcing>
+<history_scwaccm_forcing>.false.</history_scwaccm_forcing>
+
+<fincl1>
+  'Q', 'U', 'V', 'OMEGA', 'T', 'PS',
+</fincl1>
+
+<drydep_list>
+  'ACET','ACTA','ALD2','ASOG1','ASOG2','ASOG3','ATOOH','BR2','BRCL','BRNO3','CH2O','CL2','CLNO2','CLNO3','CLO','CLOO','EOH','ETHLN','ETNO3','ETP','GLYC','GLYX','H2O2','HAC','HBR','HC5A','HCL','HCOOH','HG0','HG0_ANT','HG0_ARC','HG0_ATL','HG0_BB','HG0_CAM','HG0_CAN','HG0_EAF','HG0_EAS','HG0_EEU','HG0_EUR','HG0_GEO','HG0_JPN','HG0_MDE','HG0_NAF','HG0_NAT','HG0_NPA','HG0_OCE','HG0_OCN','HG0_SAF','HG0_SAM','HG0_SAS','HG0_SAT','HG0_SEA','HG0_SO','HG0_SOV','HG0_STR','HG0_USA','HG0_WAF','HG2','HG2_ANT','HG2_ARC','HG2_ATL','HG2_BB','HG2_CAM','HG2_CAN','HG2_EAF','HG2_EAS','HG2_EEU','HG2_EUR','HG2_GEO','HG2_JPN','HG2_MDE','HG2_NAF','HG2_NAT','HG2_NPA','HG2_OCE','HG2_OCN','HG2_SAF','HG2_SAM','HG2_SAS','HG2_SAT','HG2_SEA','HG2_SO','HG2_SOV','HG2_STR','HG2_USA','HG2_WAF','HI','HMHP','HMML','HNO3','HOBR','HOCL','HOI','HONIT','HPALD1','HPALD2','HPALD3','HPALD4','HPETHNL','I2','I2O2','I2O3','I2O4','IBR','ICHE','ICL','ICN','ICPDH','IDC','IDCHP','IDHDP','IDHPE','IDN','IEPOXA','IEPOXB','IEPOXD','IHN1','IHN2','IHN3','IHN4','INPB','INPD','IONO','IONO2','IPRNO3','ITCN','ITHN','LIMO','LVOC','MACR','MACR1OOH','MAP','MCRDH','MCRENOL','MCRHN','MCRHNB','MCRHP','MENO3','MGLY','MOH','MONITS','MONITU','MPAN','MTPA','MTPO','MVK','MVKDH','MVKHC','MVKHCB','MVKHP','MVKN','MVKPC','N2O5','NH3','NO2','NPRNO3','O3','O3AFBL','O3ASBL','O3ATBL','O3EUBL','O3INIT','O3MT','O3NABL','O3PCBL','O3ROW','O3STRAT','O3USA','O3UT','OPOG1','OPOG2','PAN','POG1','POG2','POPG_BAP','POPG_PHE','POPG_PYR','PP','PPN','PROPNN','PRPN','PYAC','R4N2','R4P','RA3P','RB3P','RIPA','RIPB','RIPC','RIPD','RP','SO2','TSOG0','TSOG1','TSOG2','TSOG3','AERI','ASOA1','ASOA2','ASOA3','ASOAN','BCPI','BCPO','BE10','BE10STRAT','BE7','BE7STRAT','BRSALA','BRSALC','DST1','DST2','DST3','DST4','DSTAL1','DSTAL2','DSTAL3','DSTAL4','HGP','HGP_ANT','HGP_ARC','HGP_ATL','HGP_BB','HGP_CAM','HGP_CAN','HGP_EAF','HGP_EAS','HGP_EEU','HGP_EUR','HGP_GEO','HGP_JPN','HGP_MDE','HGP_NAF','HGP_NAT','HGP_NPA','HGP_OCE','HGP_OCN','HGP_SAF','HGP_SAM','HGP_SAS','HGP_SAT','HGP_SEA','HGP_SO','HGP_SOV','HGP_STR','HGP_USA','HGP_WAF','INDIOL','IONITA','ISALA','ISALC','LVOCOA','MONITA','MOPI','MOPO','MSA','NH4','NIT','NITD1','NITD2','NITD3','NITD4','NITS','OCPI','OCPO','OPOA1','OPOA2','PB210','PB210STRAT','PFE','POA1','POA2','POPPBCPI_BAP','POPPBCPI_PHE','POPPBCPI_PYR','POPPBCPO_BAP','POPPBCPO_PHE','POPPBCPO_PYR','POPPOCPI_BAP','POPPOCPI_PHE','POPPOCPI_PYR','POPPOCPO_BAP','POPPOCPO_PHE','POPPOCPO_PYR','SALA','SALAAL','SALACL','SALC','SALCAL','SALCCL','SO4','SO4D1','SO4D2','SO4D3','SO4D4','SO4S','SOAGX','SOAIE','SOAS','TSOA0','TSOA1','TSOA2','TSOA3',
+</drydep_list>
+
+<aer_drydep_list>
+    'dst_a1','so4_a1','nh4_a1','pom_a1','pomff1_a1','pombb1_a1','soa_a1','bc_a1','ncl_a1','num_a1','so4_a2','nh4_a2','soa_a2','ncl_a2','dst_a2','num_a2','dst_a3','ncl_a3','so4_a3','pom_a3','bc_a3','num_a3','ncl_a4','so4_a4','pom_a4','pomff1_a4','pombb1_a4','bc_a4','nh4_a4','num_a4','dst_a5','so4_a5','nh4_a5','num_a5','ncl_a6','so4_a6','nh4_a6','num_a6','dst_a7','so4_a7','nh4_a7','num_a7','soa1_a1','soa1_a2','soa2_a1','soa2_a2','soa3_a1','soa3_a2','soa4_a1','soa4_a2','soa5_a1','soa5_a2','soaff1_a1','soaff2_a1','soaff3_a1','soaff4_a1','soaff5_a1','soabb1_a1','soabb2_a1','soabb3_a1','soabb4_a1','soabb5_a1','soabg1_a1','soabg2_a1','soabg3_a1','soabg4_a1','soabg5_a1','soaff1_a2','soaff2_a2','soaff3_a2','soaff4_a2','soaff5_a2','soabb1_a2','soabb2_a2','soabb3_a2','soabb4_a2','soabb5_a2','soabg1_a2','soabg2_a2','soabg3_a2','soabg4_a2','soabg5_a2'
+</aer_drydep_list>
+
+<gas_wetdep_list>
+  'ACTA','ALD2','ASOG1','ASOG2','ASOG3','ATOOH','BR2','BRCL','CH2O','EOH','ETHLN','ETP','GLYC','GLYX','H2O2','HAC','HBR','HC5A','HCL','HCOOH','HG2','HG2_ANT','HG2_ARC','HG2_ATL','HG2_BB','HG2_CAM','HG2_CAN','HG2_EAF','HG2_EAS','HG2_EEU','HG2_EUR','HG2_GEO','HG2_JPN','HG2_MDE','HG2_NAF','HG2_NAT','HG2_NPA','HG2_OCE','HG2_OCN','HG2_SAF','HG2_SAM','HG2_SAS','HG2_SAT','HG2_SEA','HG2_SO','HG2_SOV','HG2_STR','HG2_USA','HG2_WAF','HI','HMHP','HMML','HNO3','HOBR','HOCL','HOI','HONIT','HPETHNL','I2','I2O2','I2O3','I2O4','IBR','ICHE','ICL','ICN','ICPDH','IDCHP','IDHDP','IDHPE','IDN','IEPOXA','IEPOXB','IEPOXD','IHN1','IHN2','IHN3','IHN4','INPB','INPD','IONO','IONO2','ITCN','ITHN','LIMO','LVOC','MACR1OOH','MAP','MCRDH','MCRENOL','MCRHN','MCRHNB','MCRHP','MEK','MGLY','MOH','MONITS','MONITU','MP','MPAN','MPN','MTPA','MTPO','MVK','MVKDH','MVKHC','MVKHCB','MVKHP','MVKN','MVKPC','NH3','OPOG1','OPOG2','PAN','POG1','POG2','POPG_BAP','POPG_PHE','POPG_PYR','PP','PPN','PROPNN','PRPE','PRPN','PYAC','R4N2','R4P','RA3P','RB3P','RIPA','RIPB','RIPC','RIPD','RP','SO2','TSOG0','TSOG1','TSOG2','TSOG3','AERI','ASOA1','ASOA2','ASOA3','ASOAN','BCPI','BCPO','BE10','BE10STRAT','BE7','BE7STRAT','BRSALA','BRSALC','DST1','DST2','DST3','DST4','DSTAL1','DSTAL2','DSTAL3','DSTAL4','HGP','HGP_ANT','HGP_ARC','HGP_ATL','HGP_BB','HGP_CAM','HGP_CAN','HGP_EAF','HGP_EAS','HGP_EEU','HGP_EUR','HGP_GEO','HGP_JPN','HGP_MDE','HGP_NAF','HGP_NAT','HGP_NPA','HGP_OCE','HGP_OCN','HGP_SAF','HGP_SAM','HGP_SAS','HGP_SAT','HGP_SEA','HGP_SO','HGP_SOV','HGP_STR','HGP_USA','HGP_WAF','INDIOL','IONITA','ISALA','ISALC','LVOCOA','MONITA','MOPI','MOPO','MSA','NH4','NIT','NITD1','NITD2','NITD3','NITD4','NITS','OCPI','OCPO','OPOA1','OPOA2','PB210','PB210STRAT','PFE','POA1','POA2','POPPBCPI_BAP','POPPBCPI_PHE','POPPBCPI_PYR','POPPBCPO_BAP','POPPBCPO_PHE','POPPBCPO_PYR','POPPOCPI_BAP','POPPOCPI_PHE','POPPOCPI_PYR','POPPOCPO_BAP','POPPOCPO_PHE','POPPOCPO_PYR','SALA','SALAAL','SALACL','SALC','SALCAL','SALCCL','SO4','SO4D1','SO4D2','SO4D3','SO4D4','SO4S','SOAGX','SOAIE','SOAS','TSOA0','TSOA1','TSOA2','TSOA3',
+</gas_wetdep_list>
+
+<aer_wetdep_list>
+    'dst_a1','so4_a1','nh4_a1','pom_a1','pomff1_a1','pombb1_a1','soa_a1','bc_a1','ncl_a1','num_a1','so4_a2','nh4_a2','soa_a2','ncl_a2','dst_a2','num_a2','dst_a3','ncl_a3','so4_a3','pom_a3','bc_a3','num_a3','ncl_a4','so4_a4','pom_a4','pomff1_a4','pombb1_a4','bc_a4','nh4_a4','num_a4','dst_a5','so4_a5','nh4_a5','num_a5','ncl_a6','so4_a6','nh4_a6','num_a6','dst_a7','so4_a7','nh4_a7','num_a7','soa1_a1','soa1_a2','soa2_a1','soa2_a2','soa3_a1','soa3_a2','soa4_a1','soa4_a2','soa5_a1','soa5_a2','soaff1_a1','soaff2_a1','soaff3_a1','soaff4_a1','soaff5_a1','soabb1_a1','soabb2_a1','soabb3_a1','soabb4_a1','soabb5_a1','soabg1_a1','soabg2_a1','soabg3_a1','soabg4_a1','soabg5_a1','soaff1_a2','soaff2_a2','soaff3_a2','soaff4_a2','soaff5_a2','soabb1_a2','soabb2_a2','soabb3_a2','soabb4_a2','soabb5_a2','soabg1_a2','soabg2_a2','soabg3_a2','soabg4_a2','soabg5_a2'
+</aer_wetdep_list>
+
+</namelist_defaults>
