@@ -148,8 +148,14 @@ subroutine neu_wetdep_init
             'IONITA', 'ISALA', 'ISALC', 'LVOCOA', 'MONITA', & 
             'MSA', 'NH4', 'NIT', 'NITS', 'PFE',             &
             'SALAAL', 'SALACL', 'SALCAL', 'SALCCL', 'SO4S', &
-            'SOAGX', 'SOAIE' )
+            'SOAS', 'SOAGX', 'SOAIE', 'TSOA0', 'TSOA1',     &
+            'TSOA2', 'TSOA3', 'ASOAN', 'ASOA1', 'ASOA2',    &
+            'ASOA3' )
          test_name = 'HNO3'
+      case( 'ASOG1', 'ASOG2', 'ASOG3' )
+         test_name = 'ASOG'
+      case( 'TSOG0', 'TSOG1', 'TSOG2', 'TSOG3' )
+         test_name = 'TSOG'
     end select
 !
     do l = 1,n_species_table
@@ -226,8 +232,8 @@ subroutine neu_wetdep_init
     call addfld     ('DTWR_'//trim(gas_wetdep_list(m)),(/ 'lev' /), 'A','kg/kg/s','wet removal Neu scheme tendency')
     call addfld     ('WD_'//trim(gas_wetdep_list(m)),horiz_only, 'A','kg/m2/s','vertical integrated wet deposition flux')
     call addfld     ('HEFF_'//trim(gas_wetdep_list(m)),(/ 'lev' /), 'A','M/atm','Effective Henrys Law coeff.')
-    call add_default('DTWR_'//trim(gas_wetdep_list(m)), 2, ' ')
-    call add_default('WD_'//trim(gas_wetdep_list(m)), 2, ' ')
+    !call add_default('DTWR_'//trim(gas_wetdep_list(m)), 2, ' ')
+    !call add_default('WD_'//trim(gas_wetdep_list(m)), 2, ' ')
     !call add_default('HEFF_'//trim(gas_wetdep_list(m)), 2, ' ')
     if (history_chemistry) then
        call add_default('DTWR_'//trim(gas_wetdep_list(m)), 1, ' ')
