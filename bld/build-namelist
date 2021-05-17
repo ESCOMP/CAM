@@ -2795,6 +2795,9 @@ else {
     }
 }
 
+# HEMCO
+$nl->set_variable_value('hemco_nl', 'hemco_config_File', "'HEMCO_Config.rc'");
+
 # Physics options
 
 # Add the name of the physics package based on the info in configure.  If the user tries
