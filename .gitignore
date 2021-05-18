@@ -7,7 +7,7 @@ src/physics/carma/base
 src/physics/clubb
 src/physics/cosp2/src
 src/physics/silhs
-src/chemistry/pp_geoschem/geoschem_src
+src/chemistry/geoschem/geoschem_src
 src/hemco
 
 # Ignore compiled python
