@@ -110,6 +110,20 @@ module chemistry
 
   type(physics_buffer_desc), pointer :: hco_pbuf2d(:,:)    ! Pointer to 2D pbuf
 
+  ! Mimic code in sfcvmr_mod.F90
+  TYPE :: SfcMrObj
+     CHARACTER(LEN=63)         :: FldName        ! Field name
+     INTEGER                   :: SpcID          ! ID in species database
+     TYPE(SfcMrObj), POINTER   :: Next           ! Next element in list
+  END TYPE SfcMrObj
+
+  ! Heat of linked list with SfcMrObj objects
+  TYPE(SfcMrObj),    POINTER   :: SfcMrHead => NULL()
+
+  ! Field prefix
+  CHARACTER(LEN=63), PARAMETER :: Prefix_SfcVMR = 'VMR_'
+
+
   ! Indices of critical species in GEOS-Chem
   INTEGER                    :: iH2O, iO3, iCO2, iSO4
   INTEGER                    :: iO, iH, iO2
@@ -1686,8 +1700,6 @@ contains
 
     hco_pbuf2d => pbuf2d
 
-    If ( MasterProc ) Write(iulog,*) "hco_pbuf2d now points to pbuf2d"
-
     ! Cleanup
     Call Cleanup_State_Grid( maxGrid, RC )
 
@@ -2022,11 +2034,12 @@ contains
     ! Calculating SZA
     REAL(r8)      :: Calday
 
-    CHARACTER(LEN=255)     :: SpcName
-    CHARACTER(LEN=255)     :: Prefix, FieldName
-    LOGICAL                :: FND
-    INTEGER                :: SpcId
-    TYPE(Species), POINTER :: SpcInfo
+    CHARACTER(LEN=255)      :: SpcName
+    CHARACTER(LEN=255)      :: Prefix, FieldName
+    LOGICAL                 :: FND
+    INTEGER                 :: SpcId
+    TYPE(Species),  POINTER :: SpcInfo
+    TYPE(SfcMrObj), POINTER :: iSfcMrObj
 
     CHARACTER(LEN=63)      :: OrigUnit
 
@@ -2063,6 +2076,7 @@ contains
     cmfdqr   => NULL()
     pbuf_chnk=> NULL()
     pbuf_ik  => NULL()
+    pbuf_i   => NULL()
 
     ! LCHNK: which chunk we have on this process
     LCHNK = state%LCHNK
@@ -2158,6 +2172,54 @@ contains
     ! Retrieve previous value of species data
     SlsData(:,:,:) = 0.0e+0_r8
     CALL get_short_lived_species( SlsData, LCHNK, nY, pbuf )
+
+    IF ( iStep == 1 ) THEN
+       ! Retrieve list of species with surface boundary conditions (copied from
+       ! sfcvmr_mod.F90)
+
+       ! Head of linked list
+       SfcMrHead => NULL()
+       iSfcMrObj => NULL()
+       SpcInfo   => NULL()
+
+       ! Loop over all species
+       DO N = 1, State_Chm(BEGCHUNK)%nSpecies
+          ! Species information
+          SpcInfo => State_Chm(BEGCHUNK)%SpcData(N)%Info
+
+          ! Check if field exists (note: this needs to be less than 16
+          ! characters long)
+          FieldName = 'HCO_'//TRIM(Prefix_SfcVMR)//TRIM(to_upper(SpcInfo%Name))
+          M = pbuf_get_index(FieldName, RC)
+          IF ( M > 0 ) THEN
+
+             ! Must have positive, non-zero MW
+             IF ( SpcInfo%MW_g <= 0.0_fp ) THEN
+                ErrMsg = 'Cannot use surface boundary condition for species '  &
+                       // TRIM(SpcInfo%Name) // ' due to invalid MW!'
+                CALL ENDRUN(TRIM(ErrMsg))
+             ENDIF
+
+             ! Create new object, add to list
+             ALLOCATE( iSfcMrObj, STAT=RC )
+             CALL GC_CheckVar( 'sfcvmr_mod.F90:iSfcMrObj', 0, RC )
+             IF ( RC /= GC_SUCCESS ) CALL ENDRUN('Failure while allocating iSfcMrObj')
+
+             iSfcMrObj%SpcID   =  N
+             iSfcMrObj%FldName =  FieldName
+             iSfcMrObj%Next    => SfcMrHead
+             SfcMrHead         => iSfcMrObj
+             IF ( rootChunk ) THEN
+                WRITE( 6, 110 ) TRIM( SpcInfo%Name ), TRIM( iSfcMrObj%FldName )
+ 110            FORMAT( '--> ', a, ' will use prescribed surface boundary ',   &
+                        'conditions from field ', a )
+             ENDIF
+
+             ! Free the pointer
+             iSfcMrObj => NULL()
+          ENDIF
+       ENDDO
+    ENDIF
 
     !-----------------------------------------------------------------------
     !        ... Set atmosphere mean mass
@@ -3713,6 +3775,39 @@ contains
           CALL Error_Stop( ErrMsg, ThisLoc )
        ENDIF
     ENDIF
+
+    ! Here, we apply surface mixing ratios for long-lived species
+    ! (copied from sfcvmr_mod.F90)
+    ! Loop over all objects
+    iSfcMrObj => SfcMrHead
+    DO WHILE( ASSOCIATED( iSfcMrObj ) )
+
+       ! Get concentration for this species
+       tmpIdx = pbuf_get_index(TRIM(iSfcMrObj%FldName), RC)
+       IF ( tmpIdx < 0 .OR. (iStep == 1) ) THEN
+          IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(iSfcMrObj%FldName)
+       ELSE
+          CALL pbuf_get_field(pbuf, tmpIdx, pbuf_i)
+
+          ! Set mixing ratio in PBL
+          SpcInfo => State_Chm(LCHNK)%SpcData(iSfcMrObj%SpcID)%Info
+          N = SpcInfo%ModelID
+          IF ( N > 0 ) THEN
+             DO L = 1, nZ
+             DO J = 1, nY
+                IF ( State_Met(LCHNK)%F_UNDER_PBLTOP(1,J,L) > 0.0_fp ) THEN
+                   State_Chm(LCHNK)%Species(1,J,L,N) =     &
+                       ( pbuf_i(J) * 1.0e-9_fp       )     &
+                     / ( MWDry      / SpcInfo%MW_g   )
+                ENDIF  ! end selection of PBL boxes
+             ENDDO
+             ENDDO
+          ENDIF
+       ENDIF
+
+       ! Point to next element in list
+       iSfcMrObj => iSfcMrObj%Next
+    ENDDO
 
     ! Reset photolysis rates
     ZPJ = 0.0e+0_r8
