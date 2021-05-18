@@ -31,7 +31,6 @@ use cam_abortutils,    only: endrun
 use pio,               only: file_desc_t, pio_global, pio_get_att
 
 use cam_mpas_subdriver, only: domain_ptr, cam_mpas_init_phase3, cam_mpas_get_global_dims, &
-                              cam_mpas_get_global_coords, cam_mpas_get_global_blocks,     &
                               cam_mpas_read_static, cam_mpas_compute_unit_vectors
 
 use mpas_pool_routines, only: mpas_pool_get_subpool, mpas_pool_get_dimension, mpas_pool_get_array
@@ -57,14 +56,6 @@ public :: &
    ptimelevels, &
    dyn_grid_init, &
    get_dyn_grid_info, &
-   get_block_bounds_d, &
-   get_block_gcol_cnt_d, &
-   get_block_gcol_d, &
-   get_block_lvl_cnt_d, &
-   get_block_levels_d, &
-   get_block_owner_d, &
-   get_gcol_block_d, &
-   get_gcol_block_cnt_d, &
    get_horiz_grid_dim_d, &
    get_horiz_grid_d, &
    get_dyn_grid_parm, &
@@ -106,10 +97,6 @@ integer, allocatable :: col_indices_in_block(:,:)  ! global column indices in ea
 integer, allocatable :: num_col_per_block(:)       ! number of columns in each block
 integer, allocatable :: global_blockid(:)          ! block id for each global column
 integer, allocatable :: local_col_index(:)         ! local column index (in block) for each global column
-
-real(r8), dimension(:), pointer :: lonCell_g       ! global cell longitudes
-real(r8), dimension(:), pointer :: latCell_g       ! global cell latitudes
-real(r8), dimension(:), pointer :: areaCell_g      ! global cell areas
 
 !=========================================================================================
 contains
@@ -289,188 +276,6 @@ end subroutine get_dyn_grid_info
 
 !=========================================================================================
 
-subroutine get_block_bounds_d(block_first, block_last)
-
-   ! Return first and last indices used in global block ordering.
-   ! The indexing is 1-based.
-
-   integer, intent(out) :: block_first  ! first global index used for blocks
-   integer, intent(out) :: block_last   ! last global index used for blocks
-   !----------------------------------------------------------------------------
-
-   ! MPAS assigns 1 block per task.
-
-   block_first = 1
-   block_last = npes
-
-end subroutine get_block_bounds_d
-
-!=========================================================================================
-
-integer function get_block_gcol_cnt_d(blockid)
-
-   ! Return the number of dynamics columns in the block with the specified
-   ! global block ID.  The blockid can be for a block owned by any MPI
-   ! task.
-
-   integer, intent(in) :: blockid
-   !----------------------------------------------------------------------------
-
-   get_block_gcol_cnt_d = num_col_per_block(blockid)
-
-end function get_block_gcol_cnt_d
-
-!=========================================================================================
-
-subroutine get_block_gcol_d(blockid, asize, cdex)
-
-   ! Return list of global dynamics column indices in the block with the
-   ! specified global block ID.  The blockid can be for a block owned by
-   ! any MPI task.
-
-   integer, intent(in) :: blockid      ! global block id
-   integer, intent(in) :: asize        ! array size
-
-   integer, intent(out):: cdex(asize)  ! global column indices
-
-   integer :: icol
-
-   character(len=*), parameter :: subname = 'dyn_grid::get_block_gcol_d'
-   !----------------------------------------------------------------------------
-
-   if (asize < num_col_per_block(blockid)) then
-      write(iulog,*) subname//': array size too small: asize, num_col_per_block=', &
-         asize, num_col_per_block(blockid)
-      call endrun(subname//': array size too small')
-   end if
-
-   do icol = 1, num_col_per_block(blockid)
-      cdex(icol) = col_indices_in_block(icol, blockid)
-   end do
-   do icol = num_col_per_block(blockid)+1, asize
-      cdex(icol) = 0
-   end do
-
-end subroutine get_block_gcol_d
-   
-!=========================================================================================
-   
-integer function get_block_lvl_cnt_d(blockid, bcid)
-
-   ! Returns the number of levels in the specified column of the specified block.
-   ! If column includes surface fields, then it is defined to also
-   ! include level 0.
-
-   integer, intent(in) :: blockid  ! global block id
-   integer, intent(in) :: bcid     ! column index within block
-   !----------------------------------------------------------------------------
-
-   ! All blocks have the same number of levels.
-   get_block_lvl_cnt_d = plevp
-
-end function get_block_lvl_cnt_d
-
-!=========================================================================================
-
-subroutine get_block_levels_d(blockid, bcid, lvlsiz, levels)
-
-   ! Returns the level indices in the column of the specified global block.
-   ! For MPAS decomposition all columns in a block contain complete vertical grid.
-
-   integer, intent(in) :: blockid  ! global block id
-   integer, intent(in) :: bcid     ! column index within block
-   integer, intent(in) :: lvlsiz   ! dimension of levels array
-
-   integer, intent(out) :: levels(lvlsiz) ! level indices for block
-
-   integer :: k
-   character(len=128) :: errmsg
-
-   character(len=*), parameter :: subname = 'dyn_grid::get_block_levels_d'
-   !----------------------------------------------------------------------------
-
-   if ( lvlsiz < plev + 1 ) then
-      write(errmsg,*) ': levels array not large enough (', lvlsiz,' < ',plev + 1,')'
-      call endrun( subname // trim(errmsg) )
-   else
-      do k = 0, plev
-         levels(k+1) = k
-      end do
-      do k = plev+2, lvlsiz
-         levels(k) = -1
-      end do
-   end if
-
-end subroutine get_block_levels_d
-
-!=========================================================================================
-
-integer function get_gcol_block_cnt_d(gcol)
-
-   ! Return number of blocks containing data for the vertical column
-   ! with the specified global column index.
-
-   integer, intent(in) :: gcol     ! global column index
-   !----------------------------------------------------------------------------
-
-   ! Each global column is solved in just one block.  The blocks where that column may
-   ! be in a halo cell are not counted.
-   get_gcol_block_cnt_d = 1
-
-end function get_gcol_block_cnt_d
-
-!=========================================================================================
-
-subroutine get_gcol_block_d(gcol, cnt, blockid, bcid)
-
-   ! Return global block index and local column index for a global column index.
-   ! This routine can be called for global columns that are not owned by
-   ! the calling task.
-
-   integer, intent(in) :: gcol     ! global column index
-   integer, intent(in) :: cnt      ! size of blockid and bcid arrays
-
-   integer, intent(out) :: blockid(cnt) ! block index
-   integer, intent(out) :: bcid(cnt)    ! column index within block
-
-   integer :: j
-
-   character(len=*), parameter :: subname = 'dyn_grid::get_gcol_block_d'
-   !----------------------------------------------------------------------------
-
-   if ( cnt < 1 ) then
-      write(iulog,*) subname//': arrays not large enough: cnt= ', cnt
-      call endrun( subname // ': arrays not large enough' )
-   end if
-
-   ! Each global column is solved in just one block.
-   blockid(1) = global_blockid(gcol)
-   bcid(1) = local_col_index(gcol)
-
-   do j=2,cnt
-      blockid(j) = -1
-      bcid(j)    = -1
-   end do
-
-end subroutine get_gcol_block_d
-
-!=========================================================================================
-
-integer function get_block_owner_d(blockid)
-
-   ! Return the ID of the task that owns the indicated global block.
-   ! Assume that task IDs are 0-based as in MPI.
-
-   integer, intent(in) :: blockid  ! global block id
-   !----------------------------------------------------------------------------
-
-   ! MPAS assigns one block per task.
-   get_block_owner_d = (blockid - 1)
-
-end function get_block_owner_d
-
-!=========================================================================================
-
 subroutine get_horiz_grid_dim_d(hdim1_d, hdim2_d)
 
    ! Return declared horizontal dimensions of global grid.
@@ -508,35 +313,7 @@ subroutine get_horiz_grid_d(nxy, clat_d_out, clon_d_out, area_d_out, &
    character(len=*), parameter :: subname = 'dyn_grid::get_horiz_grid_d'
    !----------------------------------------------------------------------------
 
-   if ( nxy /= nCells_g ) then
-      write(iulog,*) subname//': incorrect number of cells: nxy, nCells_g= ', &
-         nxy, nCells_g
-      call endrun(subname//': incorrect number of cells')
-   end if
-
-   if ( present( clat_d_out ) ) then
-      clat_d_out(:) = latCell_g(:)
-   end if
-
-   if ( present( clon_d_out ) ) then
-      clon_d_out(:) = lonCell_g(:)
-   end if
-
-   if ( present( area_d_out ) ) then
-      area_d_out(:) = areaCell_g(:) / (sphere_radius**2)
-   end if
-
-   if ( present( wght_d_out ) ) then
-      wght_d_out(:) = areaCell_g(:) / (sphere_radius**2)
-   end if
-
-   if ( present( lat_d_out ) ) then
-      lat_d_out(:) = latCell_g(:) * rad2deg
-   end if
-
-   if ( present( lon_d_out ) ) then
-      lon_d_out(:) = lonCell_g(:) * rad2deg
-   end if
+   call endrun(subname//': NOT SUPPORTED WITH WEAK SCALING FIX')
 
 end subroutine get_horiz_grid_d
 
@@ -631,20 +408,7 @@ subroutine dyn_grid_get_colndx(igcol, ncols, owners, col, lbk )
    integer :: blockid(1), bcid(1)
    !----------------------------------------------------------------------------
 
-   do i = 1,ncols
-      
-      call  get_gcol_block_d(igcol(i), 1, blockid, bcid)
-      owners(i) = get_block_owner_d(blockid(1))
-  
-      if ( iam==owners(i) ) then
-         lbk(i) = 1         ! only 1 block per task
-         col(i) = bcid(1)
-      else
-         lbk(i) = -1
-         col(i) = -1
-      end if
-  
-   end do
+   call endrun('dyn_grid_get_colndx: not implemented for unstructured grids')
 
 end subroutine dyn_grid_get_colndx
 

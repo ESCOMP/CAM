@@ -13,7 +13,6 @@ use physconst,      only: gravit, cpairv, cappa, rairv, rh2o, zvir
 use spmd_dyn,       only: local_dp_map, block_buf_nrecs, chunk_buf_nrecs
 use spmd_utils,     only: mpicom, iam, masterproc
 
-use dyn_grid,       only: get_gcol_block_d
 use dyn_comp,       only: dyn_export_t, dyn_import_t
 
 use physics_types,  only: physics_state, physics_tend
