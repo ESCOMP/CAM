@@ -185,6 +185,18 @@ subroutine dyn_grid_init()
 
    ! Query global grid dimensions from MPAS
    call cam_mpas_get_global_dims(nCells_g, nEdges_g, nVertices_g, maxEdges, nVertLevels, maxNCells)
+
+   ! Temporary global arrays needed by phys_grid_init
+   allocate(lonCell_g(nCells_g))
+   allocate(latCell_g(nCells_g))
+   allocate(areaCell_g(nCells_g))
+   call cam_mpas_get_global_coords(latCell_g, lonCell_g, areaCell_g)
+   
+   allocate(num_col_per_block(npes))
+   allocate(col_indices_in_block(maxNCells,npes))
+   allocate(global_blockid(nCells_g))
+   allocate(local_col_index(nCells_g))
+   call cam_mpas_get_global_blocks(num_col_per_block, col_indices_in_block, global_blockID, local_col_index)
    
    ! Define the dynamics grids on the dynamics decompostion.  The cell
    ! centered grid is used by the physics parameterizations.  The physics

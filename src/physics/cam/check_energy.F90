@@ -351,7 +351,7 @@ end subroutine check_energy_get_integrals
     real(r8) :: tw(state%ncol)                     ! vertical integral of total water
 
     real(r8),allocatable :: cp_or_cv(:,:,:)        ! cp or cv depending on vcoord
-    real(r8) :: scaling(state%ncol,pver)           ! scaling for conversion of temperature increment
+    real(r8) :: scaling(pcols,pver)                ! scaling for conversion of temperature increment
     real(r8) :: temp(state%ncol,pver)              ! temperature
 
     integer lchnk                                  ! chunk identifier
