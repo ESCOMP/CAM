@@ -8,6 +8,7 @@ module waccmx_phys_intr
   use majorsp_diffusion, only: mspd_intr
   use ion_electron_temp, only: ion_electron_temp_readnl
   use ion_electron_temp, only: ion_electron_temp_init
+  use ion_electron_temp, only: ion_electron_temp_timestep_init
   use ion_electron_temp, only: ion_electron_temp_register
   use ion_electron_temp, only: ion_electron_temp_inidat
   use ion_electron_temp, only: ion_electron_temp_tend
@@ -22,6 +23,7 @@ module waccmx_phys_intr
   public :: waccmx_phys_ion_elec_temp_reg
   public :: waccmx_phys_ion_elec_temp_inidat
   public :: waccmx_phys_ion_elec_temp_init
+  public :: waccmx_phys_ion_elec_temp_timestep_init
   public :: waccmx_phys_ion_elec_temp_tend
   public :: waccmx_phys_ion_elec_temp_readnl
 
@@ -93,6 +95,19 @@ contains
     call ion_electron_temp_init(pbuf2d)
 #endif
   end subroutine waccmx_phys_ion_elec_temp_init
+
+  !------------------------------------------------------------------------------
+  !------------------------------------------------------------------------------
+  subroutine waccmx_phys_ion_elec_temp_timestep_init(phys_state,pbuf2d)
+    use ppgrid, only : begchunk, endchunk
+
+    type(physics_state), intent(in) :: phys_state(begchunk:endchunk)
+    type(physics_buffer_desc), pointer :: pbuf2d(:,:)
+
+#ifdef WACCMX_PHYS
+    call ion_electron_temp_timestep_init(phys_state,pbuf2d)
+#endif
+  end subroutine waccmx_phys_ion_elec_temp_timestep_init
 
   !------------------------------------------------------------------------------
   !------------------------------------------------------------------------------
