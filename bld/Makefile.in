@@ -377,7 +377,7 @@ endif
 
 # PGI and NVHPC compilers
 
-ifneq (,$(filter $(FC_TYPE),pgi nvhpc pgi-gpu nvhpc-gpu))
+ifneq (,$(filter $(FC_TYPE),pgi nvhpc pgi_gpu nvhpc_gpu))
 
   CPPDEF        += -DNO_R16 -DCPRPGI $(NO_CONTIGUOUS_FLAG)
   CFLAGS        += -gopt -O2
