@@ -124,7 +124,7 @@ real(r8), parameter :: tboil = 373.16_r8
 !       2.14444472424e-04, &
 !       1.36639103771e-06 /)
 
-  integer, parameter :: VLEN = 128 ! vector length for a GPU kernel
+  integer, parameter :: VLENS = 128 ! vector length for a GPU kernel
 
   !$acc declare create (plenest,estbl,omeps,c3,pcf)
 
@@ -409,7 +409,7 @@ subroutine estblf_vect(t, es, vlen)
 
   !$acc data present (t,es)
 
-  !$acc parallel vector_length(VLEN) default(present)
+  !$acc parallel vector_length(VLENS) default(present)
   !$acc loop gang vector private(t_tmp,weight,i)
   do j = 1, vlen
      t_tmp = max(min(t(j),tmax)-tmin, 0._r8)   ! Number of table entries above tmin
@@ -451,7 +451,7 @@ subroutine tq_enthalpy_vect(t, q, hltalt, enthalpy, vlen)
 
   !$acc data present(t,q,hltalt,enthalpy)
 
-  !$acc parallel vector_length(VLEN) default(present)
+  !$acc parallel vector_length(VLENS) default(present)
   !$acc loop gang vector
   do i = 1, vlen
      enthalpy(i) = cpair * t(i) + hltalt(i) * q(i)
@@ -504,7 +504,7 @@ subroutine no_ip_hltalt_vect(t, hltalt, vlen)
 
   !$acc data present(t,hltalt)
 
-  !$acc parallel vector_length(VLEN) default(present)
+  !$acc parallel vector_length(VLENS) default(present)
   !$acc loop gang vector
   do i = 1, vlen
      hltalt(i) = latvap  
@@ -604,7 +604,7 @@ subroutine calc_hltalt_vect(t, hltalt, vlen, tterm)
   !$acc data present(t,hltalt,tterm)
 
   if (present_tterm) then
-     !$acc parallel vector_length(VLEN) default(present)
+     !$acc parallel vector_length(VLENS) default(present)
      !$acc loop gang vector
      do i = 1, vlen
         tterm(i) = 0.0_r8
@@ -614,7 +614,7 @@ subroutine calc_hltalt_vect(t, hltalt, vlen, tterm)
 
   call no_ip_hltalt_vect(t,hltalt,vlen)
 
-  !$acc parallel vector_length(VLEN) default(present)
+  !$acc parallel vector_length(VLENS) default(present)
   !$acc loop gang vector private(tc,weight)
   do j = 1, vlen
      if (t(j) < tmelt) then
@@ -715,7 +715,7 @@ subroutine deriv_outputs_vect(t, p, es, qs, hltalt, tterm, vlen, &
  
   !$acc data present(t,p,es,qs,hltalt,tterm,gam,dqsdt)
 
-  !$acc parallel vector_length(VLEN) default(present)
+  !$acc parallel vector_length(VLENS) default(present)
   !$acc loop gang vector private(dqsdt_loc,desdt)
   do i = 1, vlen
      if (qs(i) == 1.0_r8) then
@@ -825,7 +825,7 @@ subroutine qsat_vect(t, p, es, qs, vlen, gam, dqsdt, enthalpy)
 
   ! Ensures returned es is consistent with limiters on qs.
 
-  !$acc parallel vector_length(VLEN) default(present)
+  !$acc parallel vector_length(VLENS) default(present)
   !$acc loop gang vector
   do i = 1, vlen
      es(i) = min(es(i), p(i))
@@ -891,7 +891,7 @@ subroutine qsat_2D(t, p, es, qs, dim1, dim2, gam, dqsdt, enthalpy)
 
   ! Ensures returned es is consistent with limiters on qs.
 
-  !$acc parallel vector_length(VLEN) default(present)
+  !$acc parallel vector_length(VLENS) default(present)
   !$acc loop gang vector collapse(2)
   do k = 1, dim2
      do i = 1, dim1
@@ -997,7 +997,7 @@ subroutine qsat_water_vect(t, p, es, qs, vlen, gam, dqsdt, enthalpy)
   !$acc      copyout (es,qs,gam,dqsdt,enthalpy) &
   !$acc      create  (tterm,hltalt)
 
-  !$acc parallel vector_length(VLEN) default(present)
+  !$acc parallel vector_length(VLENS) default(present)
   !$acc loop gang vector
   do i = 1, vlen
      tterm(i) = 0._r8
@@ -1061,7 +1061,7 @@ subroutine qsat_water_2D(t, p, es, qs, dim1, dim2, gam, dqsdt, enthalpy)
   !$acc      copyout (es,qs,gam,dqsdt,enthalpy) &
   !$acc      create  (hltalt,tterm)
 
-  !$acc parallel vector_length(VLEN) default(present)
+  !$acc parallel vector_length(VLENS) default(present)
   !$acc loop gang vector collapse(2)
   do k = 1, dim2
      do i = 1, dim1
@@ -1168,7 +1168,7 @@ subroutine qsat_ice_vect(t, p, es, qs, vlen, gam, dqsdt, enthalpy)
   !$acc      copyout (es,qs,gam,dqsdt,enthalpy) &
   !$acc      create  (hltalt,tterm)
 
-  !$acc parallel vector_length(VLEN) default(present)
+  !$acc parallel vector_length(VLENS) default(present)
   !$acc loop gang vector
   do i = 1, vlen
      tterm(i) = 0._r8
@@ -1179,7 +1179,7 @@ subroutine qsat_ice_vect(t, p, es, qs, vlen, gam, dqsdt, enthalpy)
 
   if (present_gam .or. present_dqsdt .or. present_enthalpy) then
 
-     !$acc parallel vector_length(VLEN) default(present)
+     !$acc parallel vector_length(VLENS) default(present)
      !$acc loop gang vector
      do i = 1, vlen
         ! For pure ice, just add latent heats.
@@ -1236,7 +1236,7 @@ subroutine qsat_ice_2D(t, p, es, qs, dim1, dim2, gam, dqsdt, enthalpy)
   !$acc      copyout (es,qs,gam,dqsdt,enthalpy) &
   !$acc      create  (hltalt,tterm)
 
-  !$acc parallel vector_length(VLEN) default(present)
+  !$acc parallel vector_length(VLENS) default(present)
   !$acc loop gang vector collapse(2)
   do k = 1, dim2
      do i = 1, dim1
@@ -1249,7 +1249,7 @@ subroutine qsat_ice_2D(t, p, es, qs, dim1, dim2, gam, dqsdt, enthalpy)
 
   if (present_gam .or. present_dqsdt .or. present_enthalpy) then
 
-     !$acc parallel vector_length(VLEN) default(present)
+     !$acc parallel vector_length(VLENS) default(present)
      !$acc loop gang vector collapse(2)
      do k = 1, dim2
         do i = 1, dim1
