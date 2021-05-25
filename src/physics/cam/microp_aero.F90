@@ -65,6 +65,7 @@ real(r8), parameter :: rn_dst3 = 1.576e-6_r8
 real(r8), parameter :: rn_dst4 = 3.026e-6_r8
 
 real(r8) :: bulk_scale    ! prescribed aerosol bulk sulfur scale factor
+real(r8) :: npccn_scale   !scaling for activated number
 
 ! smallest mixing ratio considered in microphysics
 real(r8), parameter :: qsmall = 1.e-18_r8
@@ -316,13 +317,14 @@ subroutine microp_aero_readnl(nlfile)
    character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
    ! Namelist variables
-   real(r8) :: microp_aero_bulk_scale = 2._r8  ! prescribed aerosol bulk sulfur scale factor
- 
+   real(r8) :: microp_aero_bulk_scale = 2._r8 ! prescribed aerosol bulk sulfur scale factor
+   real(r8) :: microp_aero_npccn_scale = 1._r8  ! prescribed aerosol bulk sulfur scale factor
+      
    ! Local variables
    integer :: unitn, ierr
    character(len=*), parameter :: subname = 'microp_aero_readnl'
 
-   namelist /microp_aero_nl/ microp_aero_bulk_scale
+   namelist /microp_aero_nl/ microp_aero_bulk_scale, microp_aero_npccn_scale
    !-----------------------------------------------------------------------------
 
    if (masterproc) then
@@ -342,10 +344,12 @@ subroutine microp_aero_readnl(nlfile)
 #ifdef SPMD
    ! Broadcast namelist variable
    call mpibcast(microp_aero_bulk_scale, 1, mpir8, 0, mpicom)
+   call mpibcast(microp_aero_npccn_scale, 1, mpir8, 0, mpicom)
 #endif
 
    ! set local variables
    bulk_scale = microp_aero_bulk_scale
+   npccn_scale = microp_aero_npccn_scale   
 
    call nucleate_ice_cam_readnl(nlfile)
    call hetfrz_classnuc_cam_readnl(nlfile)
@@ -613,7 +617,7 @@ subroutine microp_aero_run ( &
             lcldn, lcldo, cldliqf, nctend_mixnuc, factnum)
       end if
 
-      npccn(:ncol,:) = nctend_mixnuc(:ncol,:)
+      npccn(:ncol,:) = nctend_mixnuc(:ncol,:) * npccn_scale
 
    else
 

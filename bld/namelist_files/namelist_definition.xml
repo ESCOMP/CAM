@@ -2552,10 +2552,17 @@ Autoconversion prefactor
 Default: 0.001
 </entry>
 
-<entry id="micro_mg_autocon_exp" type="real" category="microphys"
+<entry id="micro_mg_autocon_nd_exp" type="real" category="microphys"
        group="micro_mg_nl" valid_values="" >
-Autoconversion exponent
+Autoconversion nd exponent
 Default: -1.1
+</entry>
+
+<entry id="micro_mg_autocon_lwp_exp" type="real" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+Autoconversion lwp exponent
+Default: 2.47
+</entry>
 
 <entry id="micro_mg_homog_size" type="real" category="microphys"
        group="micro_mg_nl" valid_values="" >
@@ -2730,6 +2737,12 @@ Default: .false.
        group="microp_aero_nl" valid_values="" >
 prescribed aerosol bulk sulfur scale factor
 Default: 2
+</entry>
+
+<entry id="microp_aero_npccn_scale" type="real" category="microphys"
+       group="microp_aero_nl" valid_values="" >
+ccn activated number scale factor
+Default: 1
 </entry>
 
 <entry id="use_hetfrz_classnuc" type="logical" category="microphys"
