@@ -681,7 +681,7 @@ contains
     end if
 
     !
-    fileSize = product(filelens)
+    fileSize = product( int(filelens,kind=iMap) )
     srccnt = size(fieldlens)
     srclens(1:srccnt) = fieldlens(1:srccnt)
     if (srccnt < 7) then
