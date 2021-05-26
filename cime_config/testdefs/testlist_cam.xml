@@ -564,7 +564,6 @@
   </test>
   <test compset="QPC4X" grid="ne5_ne5_mg37" name="SMS_Ln9" testmods="cam/outfrq9s">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
       <machine name="izumi" compiler="pgi" category="waccmx"/>
     </machines>
     <options>
@@ -935,9 +934,8 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-  <test compset="QPX2000" grid="ne30pg3_ne30pg3_mg17" name="ERC_Ln9" testmods="cam/outfrq3s_edyngrid_320x385">
+  <test compset="QPX2000" grid="ne30pg3_ne30pg3_mg17" name="SMS_D_Ln3" testmods="cam/outfrq3s_edyngrid_320x385">
     <machines>
-      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
     </machines>
     <options>
