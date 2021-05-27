@@ -2431,6 +2431,7 @@ contains
        State_Chm(LCHNK)%Species(1,:nY,:nZ,K) = State_Chm(LCHNK)%Species(1,:nY,:nZ,K) &
                                              + REAL(state%q(:nY,nZ:1:-1,N),fp) *     &
                                                 adv_mass(l_SO4) / adv_mass(mapCnst(N))
+       ! SO4_gasRatio is in mol/mol
        SO4_gasRatio(:nY,:nZ) = state%q(:nY,:nZ,N)                      &
                              * adv_mass(l_SO4) / adv_mass(mapCnst(N))  &
                              / State_Chm(LCHNK)%Species(1,:nY,nZ:1:-1,K)
@@ -3897,16 +3898,14 @@ contains
     ! Repartition SO4 into H2SO4 and so4_a*
     IF ( l_H2SO4 > 0 .AND. l_SO4 > 0 ) THEN
        P = l_H2SO4
-       ! SO4_gasRatio is kg(SO4) (gaseous) / kg(SO4) (gaseous+aerosol)
-       vmr1(:nY,:nZ,P) = SO4_gasRatio(:nY,:nZ) * vmr1(:nY,:nZ,l_SO4) &
-                       * adv_mass(l_SO4) / adv_mass(P)
-       ! binRatio is kg(SO4) (current bin) / kg(SO4) (all bins)
+       ! SO4_gasRatio is mol(SO4) (gaseous) / mol(SO4) (gaseous+aerosol)
+       vmr1(:nY,:nZ,P) = SO4_gasRatio(:nY,:nZ) * vmr1(:nY,:nZ,l_SO4)
+       ! binRatio is mol(SO4) (current bin) / mol(SO4) (all bins)
        DO M = 1, ntot_amode
           N = lptr_so4_a_amode(M)
           IF ( N <= 0 ) CYCLE
           P = mapCnst(N)
           vmr1(:nY,:nZ,P) = vmr1(:nY,:nZ,l_SO4)                &
-                          * adv_mass(l_SO4) / adv_mass(P)      &
                           * ( 1.0_r8 - SO4_gasRatio(:nY,:nZ) ) &
                           * binRatio(iSulf(M),M,:nY,:nZ)
        ENDDO
