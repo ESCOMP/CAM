@@ -227,7 +227,6 @@ end subroutine check_energy_get_integrals
     type(physics_buffer_desc), pointer      :: pbuf(:)
     integer, optional                       :: col_type  ! Flag inidicating whether using grid or subcolumns
 !---------------------------Local storage-------------------------------
-
     real(r8),allocatable :: cp_or_cv(:,:,:)
 
     integer lchnk                                  ! chunk identifier
@@ -313,7 +312,6 @@ end subroutine check_energy_get_integrals
     use physconst,       only: get_hydrostatic_energy
     use dyn_tests_utils, only: vc_physics, vc_dycore, vc_height
     use cam_abortutils,  only: endrun
-
 !-----------------------------------------------------------------------
 ! Check that the energy and water change matches the boundary fluxes
 !-----------------------------------------------------------------------
@@ -465,7 +463,7 @@ end subroutine check_energy_get_integrals
       scaling(:,:) = 1.0_r8
     end if
     temp(1:ncol,:) = state%temp_ini(1:ncol,:)+scaling(1:ncol,:)*(state%T(1:ncol,:)-state%temp_ini(1:ncol,:))
-    
+
     call get_hydrostatic_energy(1,ncol,1,1,pver,pcnst,state%q(1:ncol,1:pver,1:pcnst),&
          state%pdel(1:ncol,1:pver),cp_or_cv(1:ncol,1:pver,lchnk),                    &
          state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), temp(1:ncol,1:pver),        &
@@ -804,7 +802,6 @@ end subroutine check_energy_get_integrals
     integer, optional,   intent(in)    :: vc                 ! vertical coordinate
 
 !---------------------------Local storage-------------------------------
-
     real(r8) :: se(pcols)                          ! Dry Static energy (J/m2)
     real(r8) :: ke(pcols)                          ! kinetic energy    (J/m2)
     real(r8) :: wv(pcols)                          ! column integrated vapor       (kg/m2)
@@ -825,7 +822,6 @@ end subroutine check_energy_get_integrals
     integer :: vc_loc                              ! local vertical coordinate variable
     integer :: ixtt                                ! test tracer index
     character(len=16) :: name_out1,name_out2,name_out3,name_out4,name_out5,name_out6
-
 !-----------------------------------------------------------------------
 
     name_out1 = 'SE_'   //trim(outfld_name_suffix)
@@ -872,7 +868,7 @@ end subroutine check_energy_get_integrals
            state%pdel(1:ncol,1:pver), cp_or_cv,                                        &
            state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), temp(1:ncol,1:pver),        &
            vc_loc, ps = state%ps(1:ncol), phis = state%phis(1:ncol),                   &
-           z = state%z_ini(1:ncol,:), se = se, ke = ke, wv = wv)
+           z = state%z_ini(1:ncol,:), se = se, ke = ke, wv = wv, liq = liq, ice = ice)
 
       call cnst_get_ind('TT_LW' , ixtt    , abort=.false.)
 
