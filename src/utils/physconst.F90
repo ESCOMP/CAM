@@ -156,10 +156,12 @@ real(r8), allocatable, protected, public :: thermodynamic_active_species_kc(:) !
 !
 ! for energy computations liquid and ice species need to be identified
 !
-integer,               protected, public :: thermodynamic_active_species_liq_num   !number of liquid water species
-integer,               protected, public :: thermodynamic_active_species_ice_num   !number of frozen water species
-integer,  allocatable, protected, public :: thermodynamic_active_species_liq_idx(:)!index of liquid water species
-integer,  allocatable, protected, public :: thermodynamic_active_species_ice_idx(:)!index of ice water species
+integer,               protected, public :: thermodynamic_active_species_liq_num          !number of liquid water species
+integer,               protected, public :: thermodynamic_active_species_ice_num          !number of frozen water species
+integer,  allocatable, protected, public :: thermodynamic_active_species_liq_idx(:)       !index of liquid water species
+integer,  allocatable,            public :: thermodynamic_active_species_liq_idx_dycore(:)!index of liquid water species
+integer,  allocatable, protected, public :: thermodynamic_active_species_ice_idx(:)       !index of ice water species
+integer,  allocatable           , public :: thermodynamic_active_species_ice_idx_dycore(:)!index of ice water species
 character(len=3) :: enthalpy_reference_state! choices: ice,liq,wv
 
 ! standard dry air (constant composition)
@@ -186,7 +188,6 @@ contains
 
 ! Read namelist variables.
 subroutine physconst_readnl(nlfile)
-
    use namelist_utils,  only: find_group_name
    use spmd_utils,      only: masterproc, mpicom, masterprocid, mpi_real8, mpi_character
    use cam_logfile,     only: iulog
@@ -337,7 +338,6 @@ subroutine physconst_readnl(nlfile)
       do i = 1, water_species_in_air_num
          write(iulog,*)'   ', trim(water_species_in_air(i))
       end do
-
       write(iulog,*)' '
       write(iulog,*)'****************************************************************************'
 
@@ -395,7 +395,8 @@ end subroutine physconst_init
     logical                           :: liq,ice
     liq_num=0
     ice_num=0
-
+    liq    =.false.
+    ice    =.false.
     ! standard dry air (constant composition)
     o2_mwi = 1._r8/32._r8
     n2_mwi = 1._r8/28._r8
@@ -688,14 +689,14 @@ end subroutine physconst_init
       !
       if (masterproc) then
         write(iulog, *) "Thermodynamic active species ",TRIM(water_species_in_air(i))
-        write(iulog, *) "   global index                    : ",icnst-1
-        write(iulog, *) "   thermodynamic_active_species_idx: ",thermodynamic_active_species_idx(icnst-1)
-        write(iulog, *) "   cp                              : ",thermodynamic_active_species_cp(icnst-1)
-        write(iulog, *) "   cv                              : ",thermodynamic_active_species_cv(icnst-1)
+        write(iulog, *) "   global index                           : ",icnst-1
+        write(iulog, *) "   thermodynamic_active_species_idx       : ",thermodynamic_active_species_idx(icnst-1)
+        write(iulog, *) "   cp                                     : ",thermodynamic_active_species_cp(icnst-1)
+        write(iulog, *) "   cv                                     : ",thermodynamic_active_species_cv(icnst-1)
         if (liq) &
-        write(iulog, *) "   register phase (liquid or ice)  : liquid"
+        write(iulog, *) "   register phase (liquid or ice)         : liquid"
         if (ice) &
-        write(iulog, *) "   register phase (liquid or ice)  : ice"
+        write(iulog, *) "   register phase (liquid or ice)         : ice"
         write(iulog, *) "  "
       end if
       liq = .false.
@@ -705,10 +706,16 @@ end subroutine physconst_init
     allocate(thermodynamic_active_species_liq_idx(liq_num))
     thermodynamic_active_species_liq_idx = liq_idx(1:liq_num)
     thermodynamic_active_species_liq_num = liq_num
+    ! array initialized by the dycore
+    allocate(thermodynamic_active_species_liq_idx_dycore(liq_num))
+    thermodynamic_active_species_liq_idx_dycore = -99
 
     allocate(thermodynamic_active_species_ice_idx(ice_num))
     thermodynamic_active_species_ice_idx = ice_idx(1:ice_num)
     thermodynamic_active_species_ice_num = ice_num
+    ! array initialized by the dycore
+    allocate(thermodynamic_active_species_ice_idx_dycore(ice_num))
+    thermodynamic_active_species_ice_idx_dycore = -99
 
     if (water_species_in_air_num.ne.1+liq_num+ice_num) then
       write(iulog, *) subname//'  water_species_in_air_num.ne.1+liq_num+ice_num'
@@ -1250,7 +1257,8 @@ end subroutine physconst_init
            do i = i0,i1
              ke_loc(i,j) = ke_loc(i,j) + 0.5_r8*(u(i,j,k)**2 + v(i,j,k)**2)*pdel(i,j,k)/gravit
              se_loc(i,j) = se_loc(i,j) +         T(i,j,k)*cp_or_cv(i,j,k)  *pdel(i,j,k)/gravit!internal energy
-             se_loc(i,j) = se_loc(i,j) +         z(i,j,k)                  *pdel(i,j,k)       !potential energy
+             ! z is height above ground
+             se_loc(i,j) = se_loc(i,j) +         (z(i,j,k)+phis(i,j)/gravit)*pdel(i,j,k)       !potential energy
              wv_loc(i,j) = wv_loc(i,j) +         tracer(i,j,k,1)           *pdel(i,j,k)/gravit
            end do
          end do
