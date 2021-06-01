@@ -302,7 +302,11 @@ end subroutine dyn_register
 !=========================================================================================
 
 subroutine dyn_init(dyn_in, dyn_out)
-
+   use physconst,          only : thermodynamic_active_species_idx, thermodynamic_active_species_idx_dycore
+   use physconst,          only : thermodynamic_active_species_num
+   use physconst,          only : thermodynamic_active_species_liq_idx,thermodynamic_active_species_ice_idx
+   use physconst,          only : thermodynamic_active_species_liq_idx_dycore,thermodynamic_active_species_ice_idx_dycore
+   use physconst,          only : thermodynamic_active_species_liq_num, thermodynamic_active_species_ice_num
    use cam_mpas_subdriver, only : domain_ptr, cam_mpas_init_phase4
    use cam_mpas_subdriver, only : cam_mpas_define_scalars
    use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_array, mpas_pool_get_dimension, &
@@ -367,7 +371,7 @@ subroutine dyn_init(dyn_in, dyn_out)
       "kg/m2        ","kg/m2        ","kg/m2        ","J/m2         ",&
       "J/m2         ","kg*m2/s*rad2 ","kg*m2/s*rad2 ","kg/m2        "/)
 
-   integer :: istage, ivars
+   integer :: istage, ivars, m
    character (len=108) :: str1, str2, str3
 
    vc_dycore = vc_height
@@ -540,6 +544,27 @@ subroutine dyn_init(dyn_in, dyn_out)
        write(str3,*) TRIM(ADJUSTL(vars_unit(ivars)))
        call addfld (TRIM(ADJUSTL(str1)),   horiz_only, 'A', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)), gridname='mpas_cell')
      end do
+   end do
+   !
+   ! initialize CAM thermodynamic infrastructure
+   !
+   do m=1,thermodynamic_active_species_num
+     thermodynamic_active_species_idx_dycore(m) = dyn_in % mpas_from_cam_cnst(thermodynamic_active_species_idx(m))
+     if (masterproc) then
+       write(iulog,*) "m,thermodynamic_active_species_idx_dycore: ",m,thermodynamic_active_species_idx_dycore(m)
+     end if
+   end do
+   do m=1,thermodynamic_active_species_liq_num
+     thermodynamic_active_species_liq_idx_dycore(m) = dyn_in % mpas_from_cam_cnst(thermodynamic_active_species_liq_idx(m))
+     if (masterproc) then
+       write(iulog,*) "m,thermodynamic_active_species_idx_liq_dycore: ",m,thermodynamic_active_species_liq_idx_dycore(m)
+     end if
+   end do
+   do m=1,thermodynamic_active_species_ice_num
+     thermodynamic_active_species_ice_idx_dycore(m) = dyn_in % mpas_from_cam_cnst(thermodynamic_active_species_ice_idx(m))
+     if (masterproc) then
+       write(iulog,*) "m,thermodynamic_active_species_idx_ice_dycore: ",m,thermodynamic_active_species_ice_idx_dycore(m)
+     end if
    end do
 
 end subroutine dyn_init
@@ -832,7 +857,13 @@ subroutine read_inidat(dyn_in)
       end do
 
       deallocate(zsurf)
-
+   else
+      do i = 1, nCellsSolve
+         if (abs(zi(i,plevp)) > 1.0E-12_r8) then
+            write(iulog,*) subname//': ERROR: zi= ', zi(i,plevp), ' but PHIS should be zero'
+            call endrun(subname//': ERROR: PHIS not consistent with surface z coordinate')
+         end if
+      end do     
    end if
 
    if (analytic_ic_active()) then

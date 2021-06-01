@@ -591,6 +591,9 @@ subroutine dyn_init(dyn_in, dyn_out)
    use cam_pio_utils,      only: clean_iodesc_list
    use physconst,          only: thermodynamic_active_species_num, thermodynamic_active_species_idx
    use physconst,          only: thermodynamic_active_species_idx_dycore, rair, cpair
+   use physconst,          only: thermodynamic_active_species_liq_idx,thermodynamic_active_species_ice_idx
+   use physconst,          only: thermodynamic_active_species_liq_idx_dycore,thermodynamic_active_species_ice_idx_dycore
+   use physconst,          only: thermodynamic_active_species_liq_num, thermodynamic_active_species_ice_num
    use cam_history,        only: addfld, add_default, horiz_only, register_vector_field
    use gravity_waves_sources, only: gws_init
 
@@ -614,7 +617,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    type(dyn_export_t), intent(out) :: dyn_out
 
    ! Local variables
-   integer             :: ithr, nets, nete, ie, k, kmol_end
+   integer             :: ithr, nets, nete, ie, k, kmol_end, mfound
    real(r8), parameter :: Tinit = 300.0_r8
    real(r8)            :: press, ptop, tref
 
@@ -716,11 +719,37 @@ subroutine dyn_init(dyn_in, dyn_out)
        end if
        cnst_name_gll    (m)                = cnst_name    (m)
        cnst_longname_gll(m)                = cnst_longname(m)
-
      end if
    end do
 
-
+   do m=1,thermodynamic_active_species_liq_num
+     if (ntrac>0) then
+       do mfound=1,qsize
+         if (TRIM(cnst_name(thermodynamic_active_species_liq_idx(m)))==TRIM(cnst_name_gll(mfound))) then
+           thermodynamic_active_species_liq_idx_dycore(m) = mfound
+         end if
+       end do
+     else
+       thermodynamic_active_species_liq_idx_dycore(m) = thermodynamic_active_species_liq_idx(m)
+     end if
+     if (masterproc) then
+       write(iulog,*) "m,thermodynamic_active_species_idx_liq_dycore: ",m,thermodynamic_active_species_liq_idx_dycore(m)
+     end if
+   end do
+   do m=1,thermodynamic_active_species_ice_num
+     if (ntrac>0) then
+       do mfound=1,qsize
+         if (TRIM(cnst_name(thermodynamic_active_species_ice_idx(m)))==TRIM(cnst_name_gll(mfound))) then
+           thermodynamic_active_species_ice_idx_dycore(m) = mfound
+         end if
+       end do
+     else
+       thermodynamic_active_species_ice_idx_dycore(m) = thermodynamic_active_species_ice_idx(m)
+     end if
+     if (masterproc) then
+       write(iulog,*) "m,thermodynamic_active_species_idx_ice_dycore: ",m,thermodynamic_active_species_ice_idx_dycore(m)
+     end if
+   end do
 
    !
    ! Initialize the import/export objects
