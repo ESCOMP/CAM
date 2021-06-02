@@ -55,7 +55,7 @@ integer, parameter :: Bolton_idx = 3
 integer, parameter :: initial_default_idx = GoffGratch_idx
 integer :: default_idx = initial_default_idx
 
-!$acc declare create (epsilo, tmelt, tboil, default_idx, omeps, h2otrip, ttrice)
+!$acc declare create (epsilo, tmelt, tboil, omeps, h2otrip, ttrice)
 
 public wv_sat_methods_init
 public wv_sat_get_scheme_idx
