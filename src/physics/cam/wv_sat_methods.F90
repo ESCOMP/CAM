@@ -634,7 +634,7 @@ subroutine GoffGratch_svp_ice_vect(t, es, vlen)
   integer, intent(in)   :: vlen
   real(r8), intent(in)  :: t(vlen)  ! Temperature in Kelvin
   real(r8), intent(out) :: es(vlen) ! SVP in Pa
-  real(r8), parameter   :: log_param = log10(6.1071_r8)
+  real(r8), parameter :: log_param = log10(6.1071_r8)
   integer :: i
   ! good down to -100 C
 
