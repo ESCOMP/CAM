@@ -580,7 +580,7 @@ subroutine define_cam_grids()
  
    ! Map for cell centers grid
    allocate(grid_map(3, nCellsSolve), stat=ierr)
-   if( ierr /= 0 ) call endrun(subname//':failed to allocate grid_map array')
+   if( ierr /= 0 ) call endrun(subname//':failed to allocate grid_map array at line:'//int2str(__LINE__))
 
    do i = 1, nCellsSolve
       grid_map(1, i) = i
@@ -632,7 +632,7 @@ subroutine define_cam_grids()
  
    ! Map for edge node grid
    allocate(grid_map(3, nEdgesSolve), stat=ierr)
-   if( ierr /= 0 ) call endrun(subname//':failed to allocate grid_map array')
+   if( ierr /= 0 ) call endrun(subname//':failed to allocate grid_map array at line:'//int2str(__LINE__))
 
    do i = 1, nEdgesSolve
       grid_map(1, i) = i
@@ -669,7 +669,7 @@ subroutine define_cam_grids()
  
    ! Map for vertex node grid
    allocate(grid_map(3, nVerticesSolve), stat=ierr)
-   if( ierr /= 0 ) call endrun(subname//':failed to allocate grid_map array')
+   if( ierr /= 0 ) call endrun(subname//':failed to allocate grid_map array at line:'//int2str(__LINE__))
 
    do i = 1, nVerticesSolve
       grid_map(1, i) = i

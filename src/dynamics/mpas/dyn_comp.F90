@@ -1401,16 +1401,17 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
    call mpas_pool_add_config(configPool, 'config_rayleigh_damp_u_timescale_days', mpas_rayleigh_damp_u_timescale_days)
    call mpas_pool_add_config(configPool, 'config_number_rayleigh_damp_u_levels', mpas_number_rayleigh_damp_u_levels)
 
-   ! Read namelist group &decomposition
-   if (masterproc) then
+   ! Read namelist group &decomposition if npes > 1
+   if (masterproc .and. npes > 1) then
       rewind(unitNumber)
       call find_group_name(unitNumber, 'decomposition', status=ierr)
-      if (ierr == 0) then
+      if (ierr == 0 ) then
          read(unitNumber, decomposition, iostat=ierr2)
          if (ierr2 /= 0) then
             call endrun(subname // ':: Failed to read namelist group &decomposition')
          end if
-      ! no else clause needed.  &decomposition is not present for single task runs.
+      else
+         call endrun(subname // ':: Failed to find namelist group &decomposition. Required for multiprocessor execution.')
       end if
    end if
 
