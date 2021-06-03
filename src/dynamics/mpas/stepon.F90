@@ -166,6 +166,8 @@ subroutine write_dynvar(dyn_out)
    ! Output from the internal MPAS data structures to CAM history files.
    ! Make call to MPAS to write an initial file when requested.
 
+   use string_utils, only: int2str
+
    ! agruments
    type(dyn_export_t), intent(in) :: dyn_out
 
@@ -185,7 +187,7 @@ subroutine write_dynvar(dyn_out)
 
    if (hist_fld_active('u')) then
       allocate(arr2d(nEdgesSolve,plev), stat=ierr)
-      if( ierr /= 0 ) call endrun(subname//':failed to allocate arr2d array')
+      if( ierr /= 0 ) call endrun(subname//':failed to allocate arr2d array at line:'//int2str(__LINE__))
       do k = 1, plev
          kk = plev - k + 1
          do i = 1, nEdgesSolve
@@ -198,7 +200,7 @@ subroutine write_dynvar(dyn_out)
 
    if (hist_fld_active('w')) then
       allocate(arr2d(nCellsSolve,plevp), stat=ierr)
-      if( ierr /= 0 ) call endrun(subname//':failed to allocate arr2d array')
+      if( ierr /= 0 ) call endrun(subname//':failed to allocate arr2d array at line:'//int2str(__LINE__))
       do k = 1, plevp
          kk = plevp - k + 1
          do i = 1, nCellsSolve
@@ -210,7 +212,7 @@ subroutine write_dynvar(dyn_out)
    end if
 
    allocate(arr2d(nCellsSolve,plev), stat=ierr)
-   if( ierr /= 0 ) call endrun(subname//':failed to allocate arr2d array')
+   if( ierr /= 0 ) call endrun(subname//':failed to allocate arr2d array at line:'//int2str(__LINE__))
 
    if (hist_fld_active('theta')) then
       do k = 1, plev
@@ -276,7 +278,7 @@ subroutine write_dynvar(dyn_out)
 
    if (hist_fld_active('vorticity')) then
       allocate(arr2d(nVerticesSolve,plev), stat=ierr)
-      if( ierr /= 0 ) call endrun(subname//':failed to allocate arr2d array')
+      if( ierr /= 0 ) call endrun(subname//':failed to allocate arr2d array at line:'//int2str(__LINE__))
       do k = 1, plev
          kk = plev - k + 1
          do i = 1, nVerticesSolve
@@ -299,6 +301,8 @@ subroutine write_forcings(dyn_in)
 
    ! Output from the internal MPAS data structures to CAM history files.
 
+   use string_utils, only: int2str
+
    ! agruments
    type(dyn_import_t), intent(in) :: dyn_in
 
@@ -317,7 +321,7 @@ subroutine write_forcings(dyn_in)
 
    if (hist_fld_active('ru_tend')) then
       allocate(arr2d(nEdgesSolve,plev), stat=ierr)
-      if( ierr /= 0 ) call endrun(subname//':failed to allocate arr2d array')
+      if( ierr /= 0 ) call endrun(subname//':failed to allocate arr2d array at line:'//int2str(__LINE__))
       do k = 1, plev
          kk = plev - k + 1
          do i = 1, nEdgesSolve
@@ -329,7 +333,7 @@ subroutine write_forcings(dyn_in)
    end if
 
    allocate(arr2d(nCellsSolve,plev), stat=ierr)
-   if( ierr /= 0 ) call endrun(subname//':failed to allocate arr2d array')
+   if( ierr /= 0 ) call endrun(subname//':failed to allocate arr2d array at line:'//int2str(__LINE__))
 
    if (hist_fld_active('rtheta_tend')) then
       do k = 1, plev
@@ -366,9 +370,9 @@ subroutine write_initial_file()
    use cam_instance,     only: inst_suffix
    use time_manager,     only: get_curr_date, get_stop_date, timemgr_datediff
    use filenames,        only: interpret_filename_spec
-   use pio,              only: file_desc_t,  pio_enddef, pio_closefile, &
+   use pio,              only: file_desc_t,  pio_enddef, &
                                pio_seterrorhandling, PIO_BCAST_ERROR
-   use cam_pio_utils,    only: cam_pio_createfile
+   use cam_pio_utils,    only: cam_pio_createfile, cam_pio_closefile
    use cam_abortutils,   only: endrun
 
    use mpas_derived_types, only: MPAS_Stream_type, MPAS_IO_WRITE
@@ -387,7 +391,7 @@ subroutine write_initial_file()
 
    ! Check whether the current time is during the final partial timestep taken by
    ! CAM.  Don't write the initial file during that time.  This avoids the problem
-   ! of having an initial files written with a timestamp that is after the stop date.
+   ! of having an initial file written with a timestamp that is after the stop date.
    call get_curr_date(yr, mon, day, tod1)
    ymd1 = 10000*yr + 100*mon + day
    call get_stop_date(yr, mon, day, tod2)
@@ -412,7 +416,7 @@ subroutine write_initial_file()
 
    call cam_mpas_write_restart(initial_stream, endrun)
 
-   call pio_closefile(fh)
+   call cam_pio_closefile(fh)
 
 end subroutine write_initial_file
 

@@ -81,9 +81,8 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    integer, allocatable :: bpter(:,:)  ! offsets into block buffer for packing data
    integer, allocatable :: cpter(:,:)  ! offsets into chunk buffer for unpacking data
 
-   real(r8), allocatable:: pmid(:,:)   !mid-level pressure consisten with MPAS discrete state
+   real(r8), allocatable:: pmid(:,:)   !mid-level pressure consistent with MPAS discrete state
 
-   real(r8), allocatable, dimension(:) :: bbuffer, cbuffer ! transpose buffers
    integer :: ierr
    character(len=*), parameter :: subname = 'd_p_coupling'
    !----------------------------------------------------------------------------
@@ -211,8 +210,6 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
    integer :: tsize                    ! amount of data per grid point passed to dynamics
    integer, allocatable :: bpter(:,:)  ! offsets into block buffer for unpacking data
    integer, allocatable :: cpter(:,:)  ! offsets into chunk buffer for packing data
-
-   real(r8), allocatable, dimension(:) :: bbuffer, cbuffer ! transpose buffers
 
    type (mpas_pool_type), pointer :: tend_physics
    type (field2DReal), pointer :: tend_uzonal, tend_umerid
@@ -578,6 +575,7 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, theta_m,
    real(r8), dimension(nVertLevels) :: dz    ! Geometric layer thickness in column
    real(r8) :: pi, t
    real(r8) :: pk,rhok,rhodryk,thetavk,kap1,kap2
+
    !
    ! For each column, integrate downward from model top to compute dry hydrostatic pressure at layer
    ! midpoints and interfaces. The pressure averaged to layer midpoints should be consistent with
@@ -595,7 +593,7 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, theta_m,
       pk     = (rhok*rgas*thetavk*(kap1))**kap2         !mid-level pressure
       !
       ! model top pressure consistently diagnosed using the assumption that the mid level
-      ! is at heigh z(nVertLevels-1)+0.5*dz
+      ! is at height z(nVertLevels-1)+0.5*dz
       !
       pintdry(nVertLevels+1,iCell) = pk-0.5_r8*dz(nVertLevels)*rhok*gravity 
       do k = nVertLevels, 1, -1

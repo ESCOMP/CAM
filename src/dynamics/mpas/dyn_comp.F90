@@ -631,6 +631,7 @@ subroutine read_inidat(dyn_in)
    use mpas_constants, only : rgas
    use mpas_constants, only : p0
    use mpas_constants, only : gravity
+   use string_utils,   only : int2str
 
    ! arguments
    type(dyn_import_t), target, intent(inout) :: dyn_in
@@ -886,7 +887,7 @@ subroutine read_inidat(dyn_in)
 
       ! read uperp
       allocate( mpas3d(plev,nEdgesSolve,1), stat=ierr)
-      if( ierr /= 0 ) call endrun(subname//': failed to allocate mpas3d array')
+      if( ierr /= 0 ) call endrun(subname//': failed to allocate mpas3d array at line:'//int2str(__LINE__))
 
       call infld('u', fh_ini, 'lev', 'nEdges', 1, plev, 1, nEdgesSolve, 1, 1, &
                  mpas3d, readvar, gridname='mpas_edge')
@@ -922,7 +923,7 @@ subroutine read_inidat(dyn_in)
 
       ! read w
       allocate( mpas3d(plevp,nCellsSolve,1), stat=ierr)
-      if( ierr /= 0 ) call endrun(subname//': failed to allocate mpas3d array')
+      if( ierr /= 0 ) call endrun(subname//': failed to allocate mpas3d array at line:'//int2str(__LINE__))
       call infld('w', fh_ini, 'ilev', 'nCells', 1, plevp, 1, nCellsSolve, 1, 1, &
                  mpas3d, readvar, gridname='mpas_cell')
       if (readvar) then
@@ -933,7 +934,7 @@ subroutine read_inidat(dyn_in)
       deallocate( mpas3d )
 
       allocate( mpas3d(plev,nCellsSolve,1), stat=ierr)
-      if( ierr /= 0 ) call endrun(subname//': failed to allocate mpas3d array')
+      if( ierr /= 0 ) call endrun(subname//': failed to allocate mpas3d array at line:'//int2str(__LINE__))
 
       ! read theta
       call infld('theta', fh_ini, 'lev', 'nCells', 1, plev, 1, nCellsSolve, 1, 1, &
@@ -984,7 +985,7 @@ subroutine read_inidat(dyn_in)
    ! except for the water species.
 
    allocate( mpas3d(plev,nCellsSolve,1), stat=ierr)
-   if( ierr /= 0 ) call endrun(subname//': failed to allocate mpas3d array')
+   if( ierr /= 0 ) call endrun(subname//': failed to allocate mpas3d array at line:'//int2str(__LINE__))
 
    do mpas_idx = 1, pcnst
 

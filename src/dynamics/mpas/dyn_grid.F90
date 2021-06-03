@@ -19,24 +19,20 @@ module dyn_grid
 !
 !-------------------------------------------------------------------------------
 
-use shr_kind_mod,      only: r8 => shr_kind_r8
-use spmd_utils,        only: iam, masterproc, mpicom, npes
 
-use pmgrid,            only: plev, plevp
-use physconst,         only: pi
-
-use cam_logfile,       only: iulog
-use cam_abortutils,    only: endrun
-
-use pio,               only: file_desc_t, pio_global, pio_get_att
-
-use cam_mpas_subdriver, only: domain_ptr, cam_mpas_init_phase3, cam_mpas_get_global_dims, &
-                              cam_mpas_read_static, cam_mpas_compute_unit_vectors
-
-use mpas_pool_routines, only: mpas_pool_get_subpool, mpas_pool_get_dimension, mpas_pool_get_array
-use mpas_derived_types, only: mpas_pool_type
-
-use physics_column_type, only : physics_column_t
+use cam_abortutils,      only: endrun
+use cam_logfile,         only: iulog
+use cam_mpas_subdriver,  only: domain_ptr, cam_mpas_init_phase3, cam_mpas_get_global_dims, &
+                               cam_mpas_read_static, cam_mpas_compute_unit_vectors
+use mpas_derived_types,  only: mpas_pool_type
+use mpas_pool_routines,  only: mpas_pool_get_subpool, mpas_pool_get_dimension, mpas_pool_get_array
+use physconst,           only: pi
+use physics_column_type, only: physics_column_t
+use pio,                 only: file_desc_t, pio_global, pio_get_att
+use pmgrid,              only: plev, plevp
+use shr_kind_mod,        only: r8 => shr_kind_r8
+use spmd_utils,          only: iam, masterproc, mpicom, npes
+use string_utils,        only: int2str
 
 implicit none
 private
@@ -446,8 +442,9 @@ subroutine setup_time_invariant(fh_ini)
    ! Initialize all time-invariant fields needed by the MPAS-Atmosphere dycore,
    ! by reading these fields from the initial file.
 
-   use mpas_rbf_interpolation, only : mpas_rbf_interp_initialize
+   use mpas_rbf_interpolation,     only : mpas_rbf_interp_initialize
    use mpas_vector_reconstruction, only : mpas_init_reconstruct
+   use string_utils,               only: int2str
 
    ! Arguments
    type(file_desc_t), pointer :: fh_ini
@@ -481,7 +478,8 @@ subroutine setup_time_invariant(fh_ini)
    if (plev /= nVertLevelsSolve) then
       write(iulog,*) subname//': ERROR: number of levels in IC file does not match plev: file, plev=', &
                      nVertLevelsSolve, plev
-      call endrun(subname//': ERROR: number of levels in IC file does not match plev.')
+      call endrun(subname//': ERROR: number of levels in IC file ('//int2str(nVertLevelsSolve)// &
+                           ') does not match plev ('//int2str(nVertLevelsSolve)//').')
    end if
 
    ! Initialize fields needed for reconstruction of cell-centered winds from edge-normal winds
@@ -571,7 +569,7 @@ subroutine define_cam_grids()
    call mpas_pool_get_array(meshPool, 'areaCell', areaCell)
 
    allocate(gidx(nCellsSolve), stat=ierr)
-   if( ierr /= 0 ) call endrun(subname//':failed to allocate gidx array')
+   if( ierr /= 0 ) call endrun(subname//':failed to allocate gidx array at line:'//int2str(__LINE__))
 
    gidx = indexToCellID(1:nCellsSolve)
 
@@ -623,7 +621,7 @@ subroutine define_cam_grids()
    call mpas_pool_get_array(meshPool, 'lonEdge', lonEdge)
 
    allocate(gidx(nEdgesSolve), stat=ierr)
-   if( ierr /= 0 ) call endrun(subname//':failed to allocate gidx array')
+   if( ierr /= 0 ) call endrun(subname//':failed to allocate gidx array at line:'//int2str(__LINE__))
 
    gidx = indexToEdgeID(1:nEdgesSolve)
 
@@ -660,7 +658,7 @@ subroutine define_cam_grids()
    call mpas_pool_get_array(meshPool, 'lonVertex', lonVertex)
 
    allocate(gidx(nVerticesSolve), stat=ierr)
-   if( ierr /= 0 ) call endrun(subname//':failed to allocate gidx array')
+   if( ierr /= 0 ) call endrun(subname//':failed to allocate gidx array at line:'//int2str(__LINE__))
 
    gidx = indexToVertexID(1:nVerticesSolve)
 
