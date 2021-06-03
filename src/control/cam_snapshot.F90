@@ -109,7 +109,7 @@ end subroutine cam_snapshot_init
 subroutine cam_snapshot_all_outfld_tphysbc(file_num, state, tend, cam_in, cam_out, pbuf, flx_heat, cmfmc, cmfcme, &
         pflx, zdu, rliq, rice, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
 
-use time_manager,   only: is_first_step
+use time_manager,   only: is_first_step, is_first_restart_step
 
 !--------------------------------------------------------
 ! This subroutine does the outfld calls for ALL state, tend and pbuf fields for routines in tphysbc.
@@ -140,26 +140,26 @@ use time_manager,   only: is_first_step
    integer :: lchnk
 
    ! Return if the first timestep as not all fields may be filled in and this will cause a core dump
-   if (is_first_step()) return
+   if (is_first_step().or. is_first_restart_step()) return
 
    ! Return if not turned on 
    if (cam_snapshot_before_num <= 0 .and. cam_snapshot_after_num <= 0) return ! No snapshot files are being requested
 
    lchnk = state%lchnk
 
-   call outfld('flx_heat_snapshot', flx_heat, pcols, lchnk)
-   call outfld('cmfmc_snapshot', cmfmc, pcols, lchnk)
-   call outfld('cmfcme_snapshot', cmfcme, pcols, lchnk)
-   call outfld('pflx_snapshot', pflx, pcols, lchnk)
-   call outfld('zdu_snapshot', zdu, pcols, lchnk)
-   call outfld('rliq_snapshot', rliq, pcols, lchnk)
-   call outfld('rice_snapshot', rice, pcols, lchnk)
-   call outfld('dlf_snapshot', dlf, pcols, lchnk)
-   call outfld('dlf2_snapshot', dlf2, pcols, lchnk)
-   call outfld('rliq2_snapshot', rliq2, pcols, lchnk)
-   call outfld('det_s_snapshot', det_s, pcols, lchnk)
-   call outfld('det_ice_snapshot', det_ice, pcols, lchnk)
-   call outfld('net_flx_snapshot', net_flx, pcols, lchnk)
+   call outfld('tphysbc_flx_heat', flx_heat, pcols, lchnk)
+   call outfld('tphysbc_cmfmc', cmfmc, pcols, lchnk)
+   call outfld('tphysbc_cmfcme', cmfcme, pcols, lchnk)
+   call outfld('tphysbc_pflx', pflx, pcols, lchnk)
+   call outfld('tphysbc_zdu', zdu, pcols, lchnk)
+   call outfld('tphysbc_rliq', rliq, pcols, lchnk)
+   call outfld('tphysbc_rice', rice, pcols, lchnk)
+   call outfld('tphysbc_dlf', dlf, pcols, lchnk)
+   call outfld('tphysbc_dlf2', dlf2, pcols, lchnk)
+   call outfld('tphysbc_rliq2', rliq2, pcols, lchnk)
+   call outfld('tphysbc_det_s', det_s, pcols, lchnk)
+   call outfld('tphysbc_det_ice', det_ice, pcols, lchnk)
+   call outfld('tphysbc_net_flx', net_flx, pcols, lchnk)
 
    call cam_snapshot_all_outfld(file_num, state, tend, cam_in, cam_out, pbuf)
 
@@ -196,10 +196,10 @@ use time_manager,   only: is_first_step
 
    lchnk = state%lchnk
 
-   call outfld('fh2o_snapshot', fh2o, pcols, lchnk)
-   call outfld('surfric_snapshot', surfric, pcols, lchnk)
-   call outfld('obklen_snapshot', obklen, pcols, lchnk)
-   call outfld('flx_heat_snapshot', flx_heat, pcols, lchnk)
+   call outfld('tphysac_fh2o', fh2o, pcols, lchnk)
+   call outfld('tphysac_surfric', surfric, pcols, lchnk)
+   call outfld('tphysac_obklen', obklen, pcols, lchnk)
+   call outfld('tphysac_flx_heat', flx_heat, pcols, lchnk)
 
    call cam_snapshot_all_outfld(file_num, state, tend, cam_in, cam_out, pbuf)
 
@@ -309,85 +309,85 @@ subroutine cam_state_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_n
    !--------------------------------------------------------
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%ps',        'ps_snapshot',         'Pa',              horiz_only)
+     'state%ps',        'state_ps',         'Pa',              horiz_only)
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%psdry',     'psdry_snapshot',      'Pa',              horiz_only)
+     'state%psdry',     'state_psdry',      'Pa',              horiz_only)
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%phis',      'phis_snapshot',       'm2/m2',           horiz_only)
+     'state%phis',      'state_phis',       'm2/m2',           horiz_only)
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%t',         't_snapshot',          'K',               'lev')
+     'state%t',         'state_t',          'K',               'lev')
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%u',         'u_snapshot',          'm s-1',           'lev')
+     'state%u',         'state_u',          'm s-1',           'lev')
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%v',         'v_snapshot',          'm s-1',           'lev')
+     'state%v',         'state_v',          'm s-1',           'lev')
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%s',         's_snapshot',          ' ',               'lev')
+     'state%s',         'state_s',          ' ',               'lev')
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%omega',     'omega_snapshot',      'Pa s-1',           'lev')
+     'state%omega',     'state_omega',      'Pa s-1',           'lev')
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%pmid',      'pmid_snapshot',       'Pa',               'lev')
+     'state%pmid',      'state_pmid',       'Pa',               'lev')
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%pmiddry',   'pmiddry_snapshot',    'Pa',               'lev')
+     'state%pmiddry',   'state_pmiddry',    'Pa',               'lev')
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%pdel',      'pdel_snapshot',       'Pa',               'lev')
+     'state%pdel',      'state_pdel',       'Pa',               'lev')
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%pdeldry',   'pdeldry_snapshot',    'Pa',               'lev')
+     'state%pdeldry',   'state_pdeldry',    'Pa',               'lev')
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%rpdel',     'rpdel_snapshot',      'Pa',               'lev')
+     'state%rpdel',     'state_rpdel',      'Pa',               'lev')
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%rpdeldry',  'rpdeldry_snapshot',   'Pa',              'lev')
+     'state%rpdeldry',  'state_rpdeldry',   'Pa',              'lev')
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%lnpmid',    'lnpmid_snapshot',     'unset',           'lev')
+     'state%lnpmid',    'state_lnpmid',     'unset',           'lev')
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%lnpmiddry', 'lnpmiddry_snapshot',  'unset',           'lev')
+     'state%lnpmiddry', 'state_lnpmiddry',  'unset',           'lev')
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%exner',     'exner_snapshot',      'unset',            'lev')
+     'state%exner',     'state_exner',      'unset',            'lev')
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%zm',        'zm_snapshot',         'm',                'lev')
+     'state%zm',        'state_zm',         'm',                'lev')
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%pint',      'pint_snapshot',       'Pa',               'ilev')
+     'state%pint',      'state_pint',       'Pa',               'ilev')
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%pintdry',   'pintdry_snapshot',    'Pa',               'ilev')
+     'state%pintdry',   'state_pintdry',    'Pa',               'ilev')
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%lnpint',    'lnpint_snapshot',     'unset',            'ilev')
+     'state%lnpint',    'state_lnpint',     'unset',            'ilev')
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%lnpintdry', 'lnpintdry_snapshot',  'unset',            'ilev')
+     'state%lnpintdry', 'state_lnpintdry',  'unset',            'ilev')
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%zi',        'zi_snapshot',         'm',                'ilev')
+     'state%zi',        'state_zi',         'm',                'ilev')
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%te_ini',    'te_ini_snapshot',     'unset',            horiz_only)
+     'state%te_ini',    'state_te_ini',     'unset',            horiz_only)
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%te_cur',    'te_cur_snapshot',     'unset',            horiz_only)
+     'state%te_cur',    'state_te_cur',     'unset',            horiz_only)
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%tw_ini',    'tw_ini_snapshot',     'unset',            horiz_only)
+     'state%tw_ini',    'state_tw_ini',     'unset',            horiz_only)
 
    call snapshot_addfld( nstate_var, state_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'state%tw_cur',    'tw_cur_snapshot',     'unset',            horiz_only)
+     'state%tw_cur',    'state_tw_cur',     'unset',            horiz_only)
 
 end subroutine cam_state_snapshot_init
 
@@ -410,7 +410,7 @@ subroutine cam_cnst_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_nu
    do while (ncnst_var < pcnst)
       call snapshot_addfld(ncnst_var, cnst_snapshot, cam_snapshot_before_num, &
            cam_snapshot_after_num, cnst_name(ncnst_var+1),                    &
-           trim(cnst_name(ncnst_var+1))//'_snapshot', 'kg kg-1', 'lev')
+           trim('cnst_'//cnst_name(ncnst_var+1)), 'kg kg-1', 'lev')
    end do
 
 end subroutine cam_cnst_snapshot_init
@@ -430,22 +430,22 @@ subroutine cam_tend_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_nu
    !--------------------------------------------------------
 
    call snapshot_addfld( ntend_var, tend_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'tend%dtdt',        'dtdt_snapshot',         'K s-1',    'lev')
+     'tend%dtdt',        'tend_dtdt',         'K s-1',    'lev')
 
    call snapshot_addfld( ntend_var, tend_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'tend%dudt',        'dudt_snapshot',         '',    'lev')
+     'tend%dudt',        'tend_dudt',         '',    'lev')
 
    call snapshot_addfld( ntend_var, tend_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'tend%dvdt',        'dvdt_snapshot',         '',    'lev')
+     'tend%dvdt',        'tend_dvdt',         '',    'lev')
 
    call snapshot_addfld( ntend_var, tend_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'tend%flx_net',        'flx_net_snapshot',   '',    horiz_only)
+     'tend%flx_net',        'tend_flx_net',   '',    horiz_only)
 
    call snapshot_addfld( ntend_var, tend_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'tend%te_tnd',        'te_tnd_snapshot',   '',    horiz_only)
+     'tend%te_tnd',        'tend_te_tnd',   '',    horiz_only)
 
    call snapshot_addfld( ntend_var, tend_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'tend%tw_tnd',        'tw_tnd_snapshot',   '',    horiz_only)
+     'tend%tw_tnd',        'tend_tw_tnd',   '',    horiz_only)
 
 end subroutine cam_tend_snapshot_init
 
@@ -473,54 +473,54 @@ subroutine cam_ptend_snapshot_init(cam_snapshot_after_num)
       ! Add the physics_ptend variables to the output
       !--------------------------------------------------------
 
-      call addfld('ptend_s_snapshot', (/ 'lev' /), 'I', 'J kg-1 s-1',         &
+      call addfld('ptend_s', (/ 'lev' /), 'I', 'J kg-1 s-1',         &
            'heating rate snapshot')
-      call add_default('ptend_s_snapshot', cam_snapshot_after_num, ' ')
+      call add_default('ptend_s', cam_snapshot_after_num, ' ')
 
-      call addfld('ptend_u_snapshot', (/ 'lev' /), 'I', 'm s-1 s-1',          &
+      call addfld('ptend_u', (/ 'lev' /), 'I', 'm s-1 s-1',          &
            'momentum tendency snapshot')
-      call add_default('ptend_u_snapshot', cam_snapshot_after_num, ' ')
+      call add_default('ptend_u', cam_snapshot_after_num, ' ')
 
-      call addfld('ptend_v_snapshot', (/ 'lev' /), 'I', 'm s-1 s-1',          &
+      call addfld('ptend_v', (/ 'lev' /), 'I', 'm s-1 s-1',          &
            'momentum tendency snapshot')
-      call add_default('ptend_v_snapshot', cam_snapshot_after_num, ' ')
+      call add_default('ptend_v', cam_snapshot_after_num, ' ')
 
-      call addfld('ptend_hflux_srf_snapshot', horiz_only, 'I', 'W m-2',       &
+      call addfld('ptend_hflux_srf', horiz_only, 'I', 'W m-2',       &
            'net zonal stress at surface snapshot')
-      call add_default('ptend_hflux_srf_snapshot', cam_snapshot_after_num, ' ')
+      call add_default('ptend_hflux_srf', cam_snapshot_after_num, ' ')
 
-      call addfld('ptend_hflux_top_snapshot', horiz_only, 'I', 'W m-2',       &
+      call addfld('ptend_hflux_top', horiz_only, 'I', 'W m-2',       &
            'net zonal stress at top of model snapshot')
-      call add_default('ptend_hflux_top_snapshot', cam_snapshot_after_num, ' ')
+      call add_default('ptend_hflux_top', cam_snapshot_after_num, ' ')
 
-      call addfld('ptend_taux_srf_snapshot', horiz_only, 'I', 'Pa',           &
+      call addfld('ptend_taux_srf', horiz_only, 'I', 'Pa',           &
            'net meridional stress at surface snapshot')
-      call add_default('ptend_taux_srf_snapshot', cam_snapshot_after_num, ' ')
+      call add_default('ptend_taux_srf', cam_snapshot_after_num, ' ')
 
-      call addfld('ptend_taux_top_snapshot', horiz_only, 'I', 'Pa',           &
+      call addfld('ptend_taux_top', horiz_only, 'I', 'Pa',           &
            'net zonal stress at top of model snapshot')
-      call add_default('ptend_taux_top_snapshot', cam_snapshot_after_num, ' ')
+      call add_default('ptend_taux_top', cam_snapshot_after_num, ' ')
 
-      call addfld('ptend_tauy_srf_snapshot', horiz_only, 'I', 'Pa',           &
+      call addfld('ptend_tauy_srf', horiz_only, 'I', 'Pa',           &
            'net meridional stress at surface snapshot')
-      call add_default('ptend_tauy_srf_snapshot', cam_snapshot_after_num, ' ')
+      call add_default('ptend_tauy_srf', cam_snapshot_after_num, ' ')
 
-      call addfld('ptend_tauy_top_snapshot', horiz_only, 'I', 'Pa',           &
+      call addfld('ptend_tauy_top', horiz_only, 'I', 'Pa',           &
            'net meridional stress at top of model snapshot')
-      call add_default('ptend_tauy_top_snapshot', cam_snapshot_after_num, ' ')
+      call add_default('ptend_tauy_top', cam_snapshot_after_num, ' ')
 
       do mcnst = 1, pcnst
-         fname = 'ptend_'//trim(cnst_name(mcnst))//'_snapshot'
-         lname = 'tendency of '//trim(cnst_longname(mcnst))//' snapshot'
+         fname = 'ptend_'//trim(cnst_name(mcnst))
+         lname = 'tendency of '//trim(cnst_longname(mcnst))
          call addfld(trim(fname), (/ 'lev' /), 'I', 'kg kg-1 s-1', trim(lname))
          call add_default(trim(fname), cam_snapshot_after_num, ' ')
 
-         fname = 'cflx_srf_'//trim(cnst_name(mcnst))//'_snapshot'
+         fname = 'ptend_cflx_srf_'//trim(cnst_name(mcnst))
          lname = 'flux of '//trim(cnst_longname(mcnst))//' at surface snapshot'
          call addfld(trim(fname), horiz_only, 'I', 'kg m-2 s-1', trim(lname))
          call add_default(trim(fname), cam_snapshot_after_num, ' ')
 
-         fname = 'cflx_top_'//trim(cnst_name(mcnst))//'_snapshot'
+         fname = 'ptend_cflx_top_'//trim(cnst_name(mcnst))
          lname = 'flux of '//trim(cnst_longname(mcnst))//' at top of model snapshot'
          call addfld(trim(fname), horiz_only, 'I', 'kg m-2 s-1', trim(lname))
          call add_default(trim(fname), cam_snapshot_after_num, ' ')
@@ -547,80 +547,80 @@ subroutine cam_in_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num,
    !--------------------------------------------------------
 
    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_in%landfrac',        'landfrac_snapshot',          'unset',          horiz_only)
+     'cam_in%landfrac',        'cam_in_landfrac',          'unset',          horiz_only)
 
    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_in%ocnfrac',         'ocnfrac_snapshot',           'unset',          horiz_only)
+     'cam_in%ocnfrac',         'cam_in_ocnfrac',           'unset',          horiz_only)
 
    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_in%snowhland',       'snowhland_snapshot',         'unset',          horiz_only)
+     'cam_in%snowhland',       'cam_in_snowhland',         'unset',          horiz_only)
 
    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_in%ts',              'ts_snapshot',                'unset',          horiz_only)
+     'cam_in%ts',              'cam_in_ts',                'unset',          horiz_only)
 
    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_in%sst',             'sst_snapshot',               'unset',          horiz_only)
+     'cam_in%sst',             'cam_in_sst',               'unset',          horiz_only)
 
    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_in%icefrac',         'icefrac_snapshot',           'unset',          horiz_only)
+     'cam_in%icefrac',         'cam_in_icefrac',           'unset',          horiz_only)
 
    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_in%shf',             'shf_snapshot',               'unset',          horiz_only)
+     'cam_in%shf',             'cam_in_shf',               'unset',          horiz_only)
 
    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_in%cflx',            'cflx_snapshot',              'unset',          horiz_only)
+     'cam_in%cflx',            'cam_in_cflx',              'unset',          horiz_only)
 
    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_in%wsx',             'wsx_snapshot',               'unset',          horiz_only)
+     'cam_in%wsx',             'cam_in_wsx',               'unset',          horiz_only)
 
    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_in%wsy',             'wsy_snapshot',               'unset',          horiz_only)
+     'cam_in%wsy',             'cam_in_wsy',               'unset',          horiz_only)
 
    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_in%asdif',           'asdif_snapshot',             'unset',          horiz_only)
+     'cam_in%asdif',           'cam_in_asdif',             'unset',          horiz_only)
 
    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_in%aldif',           'aldif_snapshot',             'unset',          horiz_only)
+     'cam_in%aldif',           'cam_in_aldif',             'unset',          horiz_only)
 
    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_in%lwup',            'lwup_snapshot',              'unset',          horiz_only)
+     'cam_in%lwup',            'cam_in_lwup',              'unset',          horiz_only)
 
    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_in%asdir',           'asdir_snapshot',             'unset',          horiz_only)
+     'cam_in%asdir',           'cam_in_asdir',             'unset',          horiz_only)
 
    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_in%aldir',           'aldir_snapshot',             'unset',          horiz_only)
+     'cam_in%aldir',           'cam_in_aldir',             'unset',          horiz_only)
 
     if (associated (cam_in%meganflx)) &
     call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-      'cam_in%meganflx',        'meganflx_snapshot',          'unset',          horiz_only)
+      'cam_in%meganflx',        'cam_in_meganflx',          'unset',          horiz_only)
 
     if (associated (cam_in%fireflx)) &
     call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-      'cam_in%fireflx',         'fireflx_snapshot',           'unset',          horiz_only)
+      'cam_in%fireflx',         'cam_in_fireflx',           'unset',          horiz_only)
 
     if (associated (cam_in%fireztop)) &
     call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-      'cam_in%fireztop',        'fireztop_snapshot',          'unset',          horiz_only)
+      'cam_in%fireztop',        'cam_in_fireztop',          'unset',          horiz_only)
 
     if (associated (cam_in%depvel)) &
     call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-      'cam_in%depvel',          'depvel_snapshot',            'unset',          horiz_only)
+      'cam_in%depvel',          'cam_in_depvel',            'unset',          horiz_only)
 
    call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_in%lhf',             'lhf_snapshot',               'unset',          horiz_only)
+     'cam_in%lhf',             'cam_in_lhf',               'unset',          horiz_only)
 
     if (associated (cam_in%fv)) &
     call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-      'cam_in%fv',              'fv_snapshot',                'unset',          horiz_only)
+      'cam_in%fv',              'cam_in_fv',                'unset',          horiz_only)
 
     if (associated (cam_in%ram1)) &
     call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-      'cam_in%ram1',            'ram1_snapshot',              'unset',          horiz_only)
+      'cam_in%ram1',            'cam_in_ram1',              'unset',          horiz_only)
 
     if (associated (cam_in%dstflx)) &
     call snapshot_addfld( ncam_in_var, cam_in_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-      'cam_in%dstflx',          'dstflx_snapshot',            'unset',          horiz_only)
+      'cam_in%dstflx',          'cam_in_dstflx',            'unset',          horiz_only)
 
 end subroutine cam_in_snapshot_init
 
@@ -641,81 +641,81 @@ subroutine cam_out_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num
    !--------------------------------------------------------
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%precc',               'precc_snapshot',           'm s-1',          horiz_only)
+     'cam_out%precc',               'cam_out_precc',           'm s-1',          horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%precl',               'precl_snapshot',           'm s-1',          horiz_only)
+     'cam_out%precl',               'cam_out_precl',           'm s-1',          horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%precsc',               'precsc_snapshot',         'm s-1',          horiz_only)
+     'cam_out%precsc',               'cam_out_precsc',         'm s-1',          horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%precsl',               'precsl_snapshot',         'm s-1',          horiz_only)
+     'cam_out%precsl',               'cam_out_precsl',         'm s-1',          horiz_only)
 
    if (associated(cam_out%nhx_nitrogen_flx)) &
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%nhx_nitrogen_flx',     'nhx_nitro_flx_snapshot',  'kgN m2-1 sec-1', horiz_only)
+     'cam_out%nhx_nitrogen_flx',     'cam_out_nhx_nitrogen_flx',  'kgN m2-1 sec-1', horiz_only)
 
    if (associated(cam_out%noy_nitrogen_flx)) &
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%noy_nitrogen_flx',     'noy_nitro_flx_snapshot',  'kgN m2-1 sec-1', horiz_only)
+     'cam_out%noy_nitrogen_flx',     'cam_out_noy_nitrogen_flx',  'kgN m2-1 sec-1', horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%bcphodry',             'bcphodry_snapshot',       'kg m-2 s-1',     horiz_only)
+     'cam_out%bcphodry',             'cam_out_bcphodry',       'kg m-2 s-1',     horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%bcphidry',             'bcphidry_snapshot',       'kg m-2 s-1',     horiz_only)
+     'cam_out%bcphidry',             'cam_out_bcphidry',       'kg m-2 s-1',     horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%ocphodry',             'ocphodry_snapshot',       'kg m-2 s-1',     horiz_only)
+     'cam_out%ocphodry',             'cam_out_ocphodry',       'kg m-2 s-1',     horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%ocphidry',             'ocphidry_snapshot',       'kg m-2 s-1',     horiz_only)
+     'cam_out%ocphidry',             'cam_out_ocphidry',       'kg m-2 s-1',     horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%bcphiwet',             'bcphiwet_snapshot',       'kg m-2 s-1',     horiz_only)
+     'cam_out%bcphiwet',             'cam_out_bcphiwet',       'kg m-2 s-1',     horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%ocphiwet',             'ocphiwet_snapshot',       'kg m-2 s-1',     horiz_only)
+     'cam_out%ocphiwet',             'cam_out_ocphiwet',       'kg m-2 s-1',     horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%dstwet1',             'dstwet1_snapshot',         'kg m-2 s-1',     horiz_only)
+     'cam_out%dstwet1',             'cam_out_dstwet1',         'kg m-2 s-1',     horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%dstwet2',             'dstwet2_snapshot',         'kg m-2 s-1',     horiz_only)
+     'cam_out%dstwet2',             'cam_out_dstwet2',         'kg m-2 s-1',     horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%dstwet3',             'dstwet3_snapshot',         'kg m-2 s-1',     horiz_only)
+     'cam_out%dstwet3',             'cam_out_dstwet3',         'kg m-2 s-1',     horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%dstwet4',             'dstwet4_snapshot',         'kg m-2 s-1',     horiz_only)
+     'cam_out%dstwet4',             'cam_out_dstwet4',         'kg m-2 s-1',     horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%dstdry1',             'dstdry1_snapshot',         'kg m-2 s-1',     horiz_only)
+     'cam_out%dstdry1',             'cam_out_dstdry1',         'kg m-2 s-1',     horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%dstdry2',             'dstdry2_snapshot',         'kg m-2 s-1',     horiz_only)
+     'cam_out%dstdry2',             'cam_out_dstdry2',         'kg m-2 s-1',     horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%dstdry3',             'dstdry3_snapshot',         'kg m-2 s-1',     horiz_only)
+     'cam_out%dstdry3',             'cam_out_dstdry3',         'kg m-2 s-1',     horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%dstdry4',             'dstdry4_snapshot',         'kg m-2 s-1',     horiz_only)
+     'cam_out%dstdry4',             'cam_out_dstdry4',         'kg m-2 s-1',     horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%sols',                'sols_snapshot',            'W m-2',          horiz_only)
+     'cam_out%sols',                'cam_out_sols',            'W m-2',          horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%soll',                'soll_snapshot',            'W m-2',          horiz_only)
+     'cam_out%soll',                'cam_out_soll',            'W m-2',          horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%solsd',               'solsd_snapshot',           'W m-2',          horiz_only)
+     'cam_out%solsd',               'cam_out_solsd',           'W m-2',          horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%solld',               'solld_snapshot',           'W m-2',          horiz_only)
+     'cam_out%solld',               'cam_out_solld',           'W m-2',          horiz_only)
 
    call snapshot_addfld( ncam_out_var, cam_out_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cam_out%netsw',               'netsw_snapshot',           'unset',          horiz_only)
+     'cam_out%netsw',               'cam_out_netsw',           'unset',          horiz_only)
 
 end subroutine cam_out_snapshot_init
 
@@ -790,40 +790,43 @@ subroutine cam_tphysbc_snapshot_init(cam_snapshot_before_num, cam_snapshot_after
    !--------------------------------------------------------
 
    call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cmfmc',        'cmfmc_snapshot',         'unset',              'lev')
+     'flx',        'tphysbc_flx_heat',         'unset',              horiz_only)
 
    call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'cmfcme',        'cmfcme_snapshot',         'unset',              'lev')
+     'cmfmc',        'tphysbc_cmfmc',         'unset',              'lev')
 
    call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'pflx',        'pflx_snapshot',         'unset',              'lev')
+     'cmfcme',        'tphysbc_cmfcme',         'unset',              'lev')
 
    call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'zdu',        'zdu_snapshot',         'unset',              'lev')
+     'pflx',        'tphysbc_pflx',         'unset',              'lev')
 
    call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'rliq',        'rliq_snapshot',         'unset',              horiz_only)
+     'zdu',        'tphysbc_zdu',         'unset',              'lev')
 
    call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'rice',        'rice_snapshot',         'unset',              horiz_only)
+     'rliq',        'tphysbc_rliq',         'unset',              horiz_only)
 
    call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'dlf',        'dlf_snapshot',         'unset',              'lev')
+     'rice',        'tphysbc_rice',         'unset',              horiz_only)
 
    call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'dlf2',        'dlf2_snapshot',         'unset',              'lev')
+     'dlf',        'tphysbc_dlf',         'unset',              'lev')
 
    call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'rliq2',        'rliq2_snapshot',         'unset',              horiz_only)
+     'dlf2',        'tphysbc_dlf2',         'unset',              'lev')
 
    call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'det_s',        'det_s_snapshot',         'unset',              horiz_only)
+     'rliq2',        'tphysbc_rliq2',         'unset',              horiz_only)
 
    call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'det_ice',        'det_ice_snapshot',         'unset',              horiz_only)
+     'det_s',        'tphysbc_det_s',         'unset',              horiz_only)
 
    call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'net_flx',        'net_flx_snapshot',         'unset',              horiz_only)
+     'det_ice',        'tphysbc_det_ice',         'unset',              horiz_only)
+
+   call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
+     'net_flx',        'tphysbc_net_flx',         'unset',              horiz_only)
 
 
 end subroutine cam_tphysbc_snapshot_init
@@ -844,16 +847,16 @@ subroutine cam_tphysac_snapshot_init(cam_snapshot_before_num, cam_snapshot_after
    !--------------------------------------------------------
 
    call snapshot_addfld( ntphysac_var, tphysac_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'fh2o',        'fh2o_snapshot',         'unset',              horiz_only)
+     'fh2o',        'tphysac_fh2o',         'unset',              horiz_only)
 
    call snapshot_addfld( ntphysac_var, tphysac_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'surfric',        'surfric_snapshot',         'unset',              horiz_only)
+     'surfric',        'tphysac_surfric',         'unset',              horiz_only)
 
    call snapshot_addfld( ntphysac_var, tphysac_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'obklen',        'obklen_snapshot',         'unset',              horiz_only)
+     'obklen',        'tphysac_obklen',         'unset',              horiz_only)
 
    call snapshot_addfld( ntphysac_var, tphysac_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'flx',        'flx_heat_snapshot',         'unset',              horiz_only)
+     'flx',        'tphysac_flx_heat',         'unset',              horiz_only)
 
 end subroutine cam_tphysac_snapshot_init
 
@@ -1054,38 +1057,38 @@ subroutine cam_snapshot_ptend_outfld(ptend, lchnk)
    !--------------------------------------------------------
 
    if (ptend%ls) then
-      call outfld('ptend_s_snapshot', ptend%s, pcols, lchnk)
+      call outfld('ptend_s', ptend%s, pcols, lchnk)
 
-      call outfld('ptend_hflux_srf_snapshot', ptend%hflux_srf, pcols, lchnk)
+      call outfld('ptend_hflux_srf', ptend%hflux_srf, pcols, lchnk)
 
-      call outfld('ptend_hflux_top_snapshot', ptend%hflux_top, pcols, lchnk)
+      call outfld('ptend_hflux_top', ptend%hflux_top, pcols, lchnk)
    end if
 
    if (ptend%lu) then
-      call outfld('ptend_u_snapshot', ptend%u, pcols, lchnk)
+      call outfld('ptend_u', ptend%u, pcols, lchnk)
 
-      call outfld('ptend_taux_srf_snapshot', ptend%taux_srf, pcols, lchnk)
+      call outfld('ptend_taux_srf', ptend%taux_srf, pcols, lchnk)
 
-      call outfld('ptend_taux_top_snapshot', ptend%taux_top, pcols, lchnk)
+      call outfld('ptend_taux_top', ptend%taux_top, pcols, lchnk)
    end if
 
    if (ptend%lv) then
-      call outfld('ptend_v_snapshot', ptend%v, pcols, lchnk)
+      call outfld('ptend_v', ptend%v, pcols, lchnk)
 
-      call outfld('ptend_tauy_srf_snapshot', ptend%tauy_srf, pcols, lchnk)
+      call outfld('ptend_tauy_srf', ptend%tauy_srf, pcols, lchnk)
 
-      call outfld('ptend_tauy_top_snapshot', ptend%tauy_top, pcols, lchnk)
+      call outfld('ptend_tauy_top', ptend%tauy_top, pcols, lchnk)
    end if
 
    do mcnst = 1, pcnst
       if (ptend%lq(mcnst)) then
-         fname = 'ptend_'//trim(cnst_name(mcnst))//'_snapshot'
+         fname = 'ptend_'//trim(cnst_name(mcnst))
          call outfld(trim(fname), ptend%q(:,:,mcnst), pcols, lchnk)
 
-         fname = 'cflx_srf_'//trim(cnst_name(mcnst))//'_snapshot'
+         fname = 'ptend_cflx_srf_'//trim(cnst_name(mcnst))
          call outfld(trim(fname), ptend%cflx_srf(:,mcnst), pcols, lchnk)
 
-         fname = 'cflx_top_'//trim(cnst_name(mcnst))//'_snapshot'
+         fname = 'ptend_cflx_top_'//trim(cnst_name(mcnst))
          call outfld(trim(fname), ptend%cflx_top(:,mcnst), pcols, lchnk)
       end if
    end do
@@ -1789,7 +1792,7 @@ subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname)
      do while ((i <= npbuf_all) .and. .not. found(ipbuf))
         if (trim(pbuf_all(1,i)) == trim(pbuf_name)) then
            pbuf_info(ipbuf)%name          = trim(pbuf_all(1,i))
-           pbuf_info(ipbuf)%standard_name = trim(pbuf_all(1,i))//'_snapshot'
+           pbuf_info(ipbuf)%standard_name = 'pbuf_'//trim(pbuf_all(1,i))
            pbuf_info(ipbuf)%units         = trim(pbuf_all(2,i))
            pbuf_info(ipbuf)%dim_string(:) = ' '
            found(ipbuf) = .true.
@@ -1802,7 +1805,7 @@ subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname)
          ! Check if variable is a variation of constituent - then use the same units
          do while ((i <= ncnst_var) .and. .not. found(ipbuf))
             if (trim(const_cname(i)) == trim(pbuf_name)) then
-               pbuf_info(ipbuf) = pbuf_info_type(trim(const_cname(i)),trim(const_cname(i))//'_snapshot',&
+               pbuf_info(ipbuf) = pbuf_info_type(trim(const_cname(i)),trim('pbuf_'//const_cname(i)),&
                                                  trim(cnst_snapshot(i)%units),      ' ')
                found(ipbuf) = .true.
             end if
@@ -1815,7 +1818,7 @@ subroutine fill_pbuf_info(pbuf_info, pbuf, const_cname)
          write(iulog,*) 'WARNING - no units information for: '//trim(pbuf_name)
 
          pbuf_info(ipbuf)%name          = trim(pbuf_name)
-         pbuf_info(ipbuf)%standard_name = trim(pbuf_name)//'_snapshot'
+         pbuf_info(ipbuf)%standard_name = 'pbuf_'//trim(pbuf_name)
          pbuf_info(ipbuf)%units         = 'unset'
          pbuf_info(ipbuf)%dim_string(:) = ' '
          found(ipbuf) = .true.

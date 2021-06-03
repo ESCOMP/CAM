@@ -262,6 +262,11 @@ contains
     usr_PAN_M_ndx        = get_rxt_ndx( 'usr_PAN_M' )
     usr_CH3COCH3_OH_ndx  = get_rxt_ndx( 'usr_CH3COCH3_OH' )
     usr_MCO3_NO2_ndx     = get_rxt_ndx( 'usr_MCO3_NO2' )
+    tag_MCO3_NO2_ndx     = get_rxt_ndx( 'tag_MCO3_NO2' )
+    if( tag_MCO3_NO2_ndx<0 .and. usr_MCO3_NO2_ndx>0 ) then
+       tag_MCO3_NO2_ndx = usr_MCO3_NO2_ndx
+    endif
+
     usr_MPAN_M_ndx       = get_rxt_ndx( 'usr_MPAN_M' )
     usr_XOOH_OH_ndx      = get_rxt_ndx( 'usr_XOOH_OH' )
     usr_SO2_OH_ndx       = get_rxt_ndx( 'usr_SO2_OH' )
@@ -340,7 +345,6 @@ contains
     usr_ISOPNOOHDO2_NOa_ndx     = get_rxt_ndx( 'usr_ISOPNOOHDO2_NOa' )
     usr_NC4CHOO2_NOn_ndx     = get_rxt_ndx( 'usr_NC4CHOO2_NOn' )
     usr_NC4CHOO2_NOa_ndx     = get_rxt_ndx( 'usr_NC4CHOO2_NOa' )
-    tag_MCO3_NO2_ndx   = get_rxt_ndx( 'tag_MCO3_NO2' )
     tag_TERPACO3_NO2_ndx  = get_rxt_ndx( 'tag_TERPACO3_NO2' )
     usr_TERPAPAN_M_ndx     = get_rxt_ndx( 'usr_TERPAPAN_M' )
     tag_TERPA2CO3_NO2_ndx  = get_rxt_ndx( 'tag_TERPA2CO3_NO2' )

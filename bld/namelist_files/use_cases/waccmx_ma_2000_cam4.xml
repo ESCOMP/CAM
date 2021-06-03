@@ -28,7 +28,7 @@
 <cldfrc_rhminl>0.90D0</cldfrc_rhminl>
 
 <!--Species IC -->
-<ncdata dyn="fv"  hgrid="1.9x2.5" >atm/waccm/ic/f_2000_waccmx_cesm1_1_beta08.cam.i.2019-01-01-00000_c140827.nc</ncdata>
+<ncdata dyn="fv" nlev="81" hgrid="1.9x2.5" >atm/waccm/ic/f_2000_waccmx_cesm1_1_beta08.cam.i.2019-01-01-00000_c140827.nc</ncdata>
 
 <bnd_topo hgrid="1.9x2.5">atm/cam/topo/USGS-gtopo30_1.9x2.5_remap_c050602.nc</bnd_topo>
 
@@ -47,12 +47,12 @@
 <prescribed_strataero_type>CYCLICAL</prescribed_strataero_type>
 <prescribed_strataero_cycle_yr>2000</prescribed_strataero_cycle_yr>
 
-<!-- QBO settings --> 
+<!-- QBO settings -->
 <qbo_cyclic>.true.</qbo_cyclic>
 <qbo_forcing_file>atm/waccm/qbo/qbocyclic28months.nc'</qbo_forcing_file>
 
 <!-- volcanic aerosol heating -->
-<prescribed_strataero_feedback>.true.</prescribed_strataero_feedback> 
+<prescribed_strataero_feedback>.true.</prescribed_strataero_feedback>
 
 <!-- emis files -->
 
@@ -72,55 +72,55 @@
 <nhtfrq>           0,  -3, -24 </nhtfrq>
 <avgflag_pertape> 'A', 'I',  'I' </avgflag_pertape>
 
-<!-- Monthly --> 
+<!-- Monthly -->
 <fincl1>
-  'AOA1', 'AOA2', 'BR', 'BRCL', 'BRO', 'BRONO2', 'CCL4', 'CF2CLBR', 'CF3BR', 
-  'CFC11', 'CFC113', 'CFC12', 'CH2O', 'CH3BR', 'CH3CCL3', 'CH3CL', 'CH3O2', 'CH3OOH', 
-  'CH4', 'CL', 'CL2', 'CL2O2', 'CLDHGH', 'CLDLOW', 'CLDMED', 'CLDTOT', 'CLO', 'CLONO2', 
-  'CLOUD', 'CO', 'CO2', 'DTCOND', 'DTV', 'DUV', 'DVV', 'EKGW', 'FLNS', 'FLNSC', 'FLNT', 
+  'AOA1', 'AOA2', 'BR', 'BRCL', 'BRO', 'BRONO2', 'CCL4', 'CF2CLBR', 'CF3BR',
+  'CFC11', 'CFC113', 'CFC12', 'CH2O', 'CH3BR', 'CH3CCL3', 'CH3CL', 'CH3O2', 'CH3OOH',
+  'CH4', 'CL', 'CL2', 'CL2O2', 'CLDHGH', 'CLDLOW', 'CLDMED', 'CLDTOT', 'CLO', 'CLONO2',
+  'CLOUD', 'CO', 'CO2', 'DTCOND', 'DTV', 'DUV', 'DVV', 'EKGW', 'FLNS', 'FLNSC', 'FLNT',
   'FLNTC', 'FSDS', 'FSNS', 'FSNSC', 'FSNT', 'FSNTC', 'H', 'H2', 'H2O', 'H2O2', 'HBR',
   'HCFC22', 'HCL', 'HNO3', 'HO2', 'HO2NO2', 'HOBR', 'HOCL', 'HORZ', 'LANDFRAC', 'LHFLX',
   'N', 'N2O', 'N2O5', 'NO', 'NO2', 'NO3', 'O', 'O1D', 'O2', 'O3',
   'OCLO', 'OCNFRAC', 'OH', 'OMEGA', 'PHIS', 'PRECC', 'PRECL', 'PS', 'Q', 'QFLX',
   'QPERT', 'QRL', 'QRLNLTE', 'QRS', 'RELHUM', 'SHFLX', 'SOLIN', 'SWCF', 'QCP',
-  'QTHERMAL', 'QRL_TOT', 'QRS_TOT', 'QJOULE', 'PSL', 'HNO3_STS', 'HNO3_NAT', 
-  'HNO3_GAS', 'NO_Aircraft', 'NO_Lightning', 'QNO', 'QRS_AUR', 'QRS_CO2NIR', 'QRS_EUV', 
-  'SAD_ICE', 'SAD_LNAT', 'SAD_SULFC', 'T', 'TREFHT', 
-  'TTGW', 'U', 'UTGWORO', 'UTGWSPEC', 'V', 'VERT', 'VTGWORO', 'VTGWSPEC', 'Z3', 'O2_1S', 
-  'O2_1D', 'NOX', 'NOY', 'CLOX', 'CLOY', 'BROX', 'BROY', 'TCLY', 'TOTH', 'QJOULE','UI','VI','WI', 
+  'QTHERMAL', 'QRL_TOT', 'QRS_TOT', 'QJOULE', 'PSL', 'HNO3_STS', 'HNO3_NAT',
+  'HNO3_GAS', 'NO_Aircraft', 'NO_Lightning', 'QNO', 'QRS_AUR', 'QRS_CO2NIR', 'QRS_EUV',
+  'SAD_ICE', 'SAD_LNAT', 'SAD_SULFC', 'T', 'TREFHT',
+  'TTGW', 'U', 'UTGWORO', 'UTGWSPEC', 'V', 'VERT', 'VTGWORO', 'VTGWSPEC', 'Z3', 'O2_1S',
+  'O2_1D', 'NOX', 'NOY', 'CLOX', 'CLOY', 'BROX', 'BROY', 'TCLY', 'TOTH', 'QJOULE','UI','VI','WI',
   'UIONTEND', 'VIONTEND', 'DTCORE', 'T_24_COS',  'T_24_SIN', 'T_12_COS', 'T_12_SIN',
   'OMEGA_24_COS', 'OMEGA_24_SIN', 'OMEGA_12_COS', 'OMEGA_12_SIN',
-  'U_24_COS', 'U_24_SIN', 'U_12_COS', 'U_12_SIN', 'V_24_COS', 'V_24_SIN', 'V_12_COS', 
+  'U_24_COS', 'U_24_SIN', 'U_12_COS', 'U_12_SIN', 'V_24_COS', 'V_24_SIN', 'V_12_COS',
   'V_12_SIN', 'PS_24_COS', 'PS_24_SIN', 'PS_12_COS', 'PS_12_SIN', 'CLDLIQ','CLDICE','CONCLD',
   'FRONTGF:I', 'BUTGWSPEC', 'BTAUE', 'BTAUW', 'BTAUN', 'BTAUS','TAUE','TAUW','TAUN','TAUS',
   'TAUGWX', 'TAUGWY', 'TAUX','TAUY','SNOWHLND','SNOWHICE','ICEFRAC','FSDSC','SFNO', 'SFCO',
   'SFCH2O','CFC11STAR','TROPP_FD', 'Op', 'O2p', 'Np', 'NOp', 'N2p', 'e'
 </fincl1>
 
-<!-- Instantaneous every 3 hours --> 
+<!-- Instantaneous every 3 hours -->
 <fincl2>
-  'PS', 'Z3', 'T', 'U', 'V',  'FLNT','PSL', 
+  'PS', 'Z3', 'T', 'U', 'V',  'FLNT','PSL',
   'OMEGA','FSDS','FSDSC','CLOUD','CONCLD','SNOWHLND','SNOWHICE',
-  'CH3CL', 'CFC11', 'CFC12', 'CFC113', 'HCFC22', 'CCL4', 'CH3CCL3', 
+  'CH3CL', 'CFC11', 'CFC12', 'CFC113', 'HCFC22', 'CCL4', 'CH3CCL3',
   'CH3BR', 'CF3BR', 'CF2CLBR',
   'CO', 'CO2', 'CH2O', 'CH3OOH', 'CH4',
   'O3', 'O', 'O1D',
   'N', 'NO', 'NO2', 'NO3', 'N2O5', 'HNO3', 'HO2NO2', 'NOX', 'NOY', 'N2O',
   'H', 'H2', 'OH', 'HO2', 'H2O2',  'H2O',
-  'CL','CL2', 'CLO', 'OCLO', 'CL2O2', 'CLONO2', 'HOCL', 'HCL', 'CLOX', 'CLOY', 
+  'CL','CL2', 'CLO', 'OCLO', 'CL2O2', 'CLONO2', 'HOCL', 'HCL', 'CLOX', 'CLOY',
   'BR', 'BRO', 'HOBR', 'HBR', 'BRCL', 'BRONO2', 'BROX', 'BROY', 'TCLY',
   'jo2_a', 'jo2_b', 'jo3_a',  'jo3_b', 'jhocl', 'jno3_b', 'jcl2o2',
   'SAD_SULFC', 'SAD_LNAT', 'SAD_ICE','AOA1','AOA2',
   'O2', 'CLDLIQ', 'CLDICE', 'ASDIR',
   'VTHzm', 'WTHzm', 'UVzm', 'UWzm', 'TH', 'MSKtem',
   'O2_1S', 'O2_1D',
-  'Op', 'O2p', 'Np', 'NOp', 'N2p', 'e', 
-  'UIONTEND', 'VIONTEND', 'UTGWSPEC', 'UTGWORO', 'VTGWSPEC', 'VTGWORO', 'TTGW', 
+  'Op', 'O2p', 'Np', 'NOp', 'N2p', 'e',
+  'UIONTEND', 'VIONTEND', 'UTGWSPEC', 'UTGWORO', 'VTGWSPEC', 'VTGWORO', 'TTGW',
   'DTV', 'DUV', 'DVV', 'EKGW',
   'QJOULE', 'QCP', 'QRL_TOT', 'QRS_TOT', 'UI', 'VI', 'WI'
 </fincl2>
 
-<!-- Instantaneous every day --> 
+<!-- Instantaneous every day -->
 <fincl3>
   'AOA1', 'AOA2', 'BR', 'BRCL', 'BRO', 'BRONO2', 'CCL4', 'CF2CLBR', 'CF3BR', 'CFC11', 'CFC113',
   'CFC12', 'CH2O', 'CH3BR', 'CH3CCL3', 'CH3CL', 'CH3O2', 'CH3OOH', 'CH4', 'CL', 'CL2', 'CL2O2',
@@ -149,4 +149,3 @@
 <waccmx_opt>'neutral'</waccmx_opt>
 
 </namelist_defaults>
-

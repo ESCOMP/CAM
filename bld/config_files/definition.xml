@@ -49,7 +49,7 @@ Switch to turn on analytic initial conditions for the dynamics state:
 <entry id="waccmx" valid_values="0,1" value="0">
 Option to turn on waccmx thermosphere/ionosphere extension: 0 => no, 1 => yes
 </entry>
-<entry id="ionosphere" valid_values="none,wxi,wxie" value="none">
+<entry id="ionosphere" valid_values="none,wxie" value="none">
 Ionosphere model used in WACCMX.
 </entry>
 <entry id="phys" valid_values="cam3,cam4,cam5,cam6,held_suarez,adiabatic,kessler,tj2016,spcam_sam1mom,spcam_m2005" value="">

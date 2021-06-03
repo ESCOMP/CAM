@@ -1523,6 +1523,8 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
 
               !..............................................................................
               !ice nucleation
+              es(i,k)  = svp_water(t(i,k))     ! over water in mixed clouds
+              esi(i,k) = svp_ice(t(i,k))     ! over ice
               qs(i,k) = 0.622_r8*es(i,k)/(ph(i,k) - (1.0_r8-0.622_r8)*es(i,k))
               qs(i,k) = min(1.0_r8,qs(i,k))
               if (qs(i,k) < 0.0_r8)  qs(i,k) = 1.0_r8

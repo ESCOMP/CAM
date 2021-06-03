@@ -1180,7 +1180,7 @@ subroutine liquid_macro_tend(npccn,t,p,qv,qc,nc,xxlv,deltat,stend,qvtend,qctend,
         ! do not add to number (= growth), otherwise  add 6um drops.
         !
         ! This is somewhat arbitrary, but ensures that some reasonable droplet
-        ! size is create to remove the excess water. This could be enhanced to
+        ! size is created to remove the excess water. This could be enhanced to
         ! look at npccn, but ideally this entire routine should go away.
         if ((nc(i)*p(i)/rair/t(i) < 1e3_r8) .and. (qc(i)+qctend(i)*deltat > 1e-18_r8)) then
            nctend(i) = nctend(i) + qctend(i)*drop_size_param

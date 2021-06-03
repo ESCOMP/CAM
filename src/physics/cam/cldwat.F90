@@ -780,7 +780,6 @@ subroutine pcond (lchnk   ,ncol    ,troplev ,dlat    , &
 ! should have taken care of all of large scale condensation.
 ! 
 
-
        do i = 1,ncol
           qtmp = qn(i,k)-(cme(i,k)-evapprec(i,k))*deltat
           ttmp = tn(i,k) + deltat/cpair * ( meltheat(i,k) + evapheat(i,k) + prfzheat(i,k)      &
