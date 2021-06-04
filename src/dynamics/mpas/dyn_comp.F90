@@ -1405,7 +1405,7 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
    if (masterproc .and. npes > 1) then
       rewind(unitNumber)
       call find_group_name(unitNumber, 'decomposition', status=ierr)
-      if (ierr == 0 ) then
+      if (ierr == 0) then
          read(unitNumber, decomposition, iostat=ierr2)
          if (ierr2 /= 0) then
             call endrun(subname // ':: Failed to read namelist group &decomposition')
