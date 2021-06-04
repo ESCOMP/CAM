@@ -287,7 +287,7 @@ Class List
   ox_l2            ( 10)   OH + O3 ->  HO2 + O2                                                 rate = 1.70E-12*exp(   -940./t)   ( 50)
   ox_l3            ( 11)   HO2 + O3 ->  OH + 2*O2                                               rate = 1.00E-14*exp(   -490./t)   ( 51)
   usr_HO2_HO2      ( 12)   HO2 + HO2 ->  H2O2 + O2                                              rate = ** User defined **         ( 52)
-                   ( 13)   H2O2 + OH ->  H2O + HO2                                              rate = 1.80E-12                   ( 53)
+                   ( 13)   H2O2 + OH ->  H2O + HO2                                              rate = 2.90E-12*exp(   -160./t)   ( 53)
                    ( 14)   OH + HO2 ->  H2O + O2                                                rate = 4.80E-11*exp(    250./t)   ( 54)
                    ( 15)   OH + OH ->  H2O + O                                                  rate = 1.80E-12                   ( 55)
                    ( 16)   OH + OH + M ->  H2O2 + M                                             troe : ko=6.90E-31*(300/t)**1.00  ( 56)

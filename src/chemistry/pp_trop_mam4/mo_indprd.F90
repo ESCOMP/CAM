@@ -21,31 +21,31 @@
 ! ... "independent" production for Implicit species
 !--------------------------------------------------------------------
       if( class == 4 ) then
-         prod(:,:,1) =rxt(:,:,2)
-         prod(:,:,2) = 0._r8
-         prod(:,:,3) = + extfrc(:,:,1)
+         prod(:,:,1) = 0._r8
+         prod(:,:,2) = + extfrc(:,:,5)
+         prod(:,:,3) = 0._r8
          prod(:,:,4) = 0._r8
          prod(:,:,5) = 0._r8
-         prod(:,:,6) = + extfrc(:,:,2)
-         prod(:,:,7) = 0._r8
+         prod(:,:,6) = 0._r8
+         prod(:,:,7) =rxt(:,:,3)
          prod(:,:,8) = 0._r8
          prod(:,:,9) = 0._r8
          prod(:,:,10) = 0._r8
          prod(:,:,11) = 0._r8
-         prod(:,:,12) = + extfrc(:,:,6)
-         prod(:,:,13) = + extfrc(:,:,3)
+         prod(:,:,12) = + extfrc(:,:,7)
+         prod(:,:,13) = + extfrc(:,:,8)
          prod(:,:,14) = 0._r8
-         prod(:,:,15) = 0._r8
+         prod(:,:,15) = + extfrc(:,:,9)
          prod(:,:,16) = 0._r8
-         prod(:,:,17) = + extfrc(:,:,7)
-         prod(:,:,18) = 0._r8
-         prod(:,:,19) = 0._r8
-         prod(:,:,20) = 0._r8
+         prod(:,:,17) = + extfrc(:,:,4)
+         prod(:,:,18) = + extfrc(:,:,1)
+         prod(:,:,19) = + extfrc(:,:,2)
+         prod(:,:,20) = + extfrc(:,:,3)
          prod(:,:,21) = 0._r8
-         prod(:,:,22) = + extfrc(:,:,4)
-         prod(:,:,23) = + extfrc(:,:,5)
-         prod(:,:,24) = + extfrc(:,:,8)
-         prod(:,:,25) = + extfrc(:,:,9)
+         prod(:,:,22) = 0._r8
+         prod(:,:,23) = 0._r8
+         prod(:,:,24) = 0._r8
+         prod(:,:,25) = + extfrc(:,:,6)
       end if
       end subroutine indprd
       end module mo_indprd
