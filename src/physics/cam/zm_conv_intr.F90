@@ -58,7 +58,10 @@ module zm_conv_intr
       dnlfzm_idx,    &     ! detrained convective cloud water num concen.
       dnifzm_idx,    &     ! detrained convective cloud ice num concen.
       prec_dp_idx,   &
-      snow_dp_idx
+      snow_dp_idx,   &
+!+++ARH
+      mconzm_idx            ! convective mass flux
+!---ARH
 
    real(r8), parameter :: unset_r8 = huge(1.0_r8)
    real(r8) :: zmconv_c0_lnd = unset_r8
@@ -146,6 +149,9 @@ subroutine zm_conv_register
    call pbuf_add_field('DLFZM', 'physpkg', dtype_r8, (/pcols,pver/), dlfzm_idx)
    ! detrained convective cloud ice mixing ratio.
    call pbuf_add_field('DIFZM', 'physpkg', dtype_r8, (/pcols,pver/), difzm_idx)
+!+++ARH
+   call pbuf_add_field('CMFMCDZM', 'physpkg', dtype_r8, (/pcols,pverp/), mconzm_idx)
+!---ARH
 
    if (zmconv_microp) then
       ! Only add the number conc fields if the microphysics is active.
@@ -445,7 +451,9 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    real(r8), pointer :: dnif(:,:)   ! detrained convective cloud ice num concen.
    real(r8), pointer :: lambdadpcu(:,:) ! slope of cloud liquid size distr
    real(r8), pointer :: mudpcu(:,:)     ! width parameter of droplet size distr
-
+!+++ARH
+   real(r8), pointer :: mconzm(:,:)  !convective mass fluxes
+!---ARH
    real(r8), pointer :: mu(:,:)    ! (pcols,pver)
    real(r8), pointer :: eu(:,:)    ! (pcols,pver)
    real(r8), pointer :: du(:,:)    ! (pcols,pver)
@@ -583,7 +591,9 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
 
    call pbuf_get_field(pbuf, dlfzm_idx,  dlf)
    call pbuf_get_field(pbuf, difzm_idx,  dif)
-
+!+++ARH
+   call pbuf_get_field(pbuf, mconzm_idx,  mconzm)
+!---ARH
    if (zmconv_microp) then
       call pbuf_get_field(pbuf, dnlfzm_idx, dnlf)
       call pbuf_get_field(pbuf, dnifzm_idx, dnif)
@@ -658,8 +668,12 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
 ! Convert mass flux from reported mb/s to kg/m^2/s
 !
    mcon(:ncol,:pver) = mcon(:ncol,:pver) * 100._r8/gravit
+!+++ARH
+   mconzm(:ncol,:pver) = mcon(:ncol,:pver)
 
-   call outfld('CMFMCDZM', mcon, pcols, lchnk)
+   !call outfld('CMFMCDZM', mcon, pcols, lchnk)
+   call outfld('CMFMCDZM', mconzm, pcols, lchnk)
+!---ARH
 
    ! Store upward and downward mass fluxes in un-gathered arrays
    ! + convert from mb/s to kg/m^2/s
