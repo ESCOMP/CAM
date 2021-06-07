@@ -1169,7 +1169,8 @@ end subroutine physconst_init
    !
    !****************************************************************************************************************
    !
-   subroutine get_hydrostatic_energy(i0,i1,j0,j1,nlev,ntrac,tracer,pdel,cp_or_cv,u,v,T,vcoord,ps,phis,z,te,se,ke,wv,H2O,liq,ice)
+   subroutine get_hydrostatic_energy(i0,i1,j0,j1,nlev,ntrac,tracer,pdel,cp_or_cv,u,v,T,vcoord,ps,phis,z,dycore_idx,&
+        te,se,ke,wv,H2O,liq,ice)
      use dyn_tests_utils, only: vc_moist_pressure, vc_height, vc_moist_pressure, vc_dry_pressure, vc_height
      use cam_logfile,     only: iulog
      integer,  intent(in)            :: i0,i1,j0,j1,nlev,ntrac
@@ -1184,6 +1185,7 @@ end subroutine physconst_init
      real(r8), intent(in), optional  :: ps(i0:i1,j0:j1)                      ! PS
      real(r8), intent(in), optional  :: phis(i0:i1,j0:j1)                    ! PHIS
      real(r8), intent(in), optional  :: z(i0:i1,j0:j1,nlev)                  ! Z mid
+     logical,  intent(in), optional  :: dycore_idx                           ! use dycore index for thermodynamic active species
 
      real(r8), intent(out), optional :: H2O(i0:i1,j0:j1) !vertically integrated total water
      real(r8), intent(out), optional :: te (i0:i1,j0:j1) !vertically integrated total energy
@@ -1197,6 +1199,20 @@ end subroutine physconst_init
      real(r8)                        :: latsub         !latent heat of sublimation
      integer                         :: i,j,k,idx
      character(len=22)               :: subname='get_hydrostatic_energy' ! subroutine name
+     real(r8), allocatable           :: species_idx(:),species_liq_idx(:),species_ice_idx(:)
+
+     allocate(species_idx(thermodynamic_active_species_num))
+     allocate(species_liq_idx(thermodynamic_active_species_liq_num))
+     allocate(species_ice_idx(thermodynamic_active_species_ice_num))
+     if (present(dycore_idx).and.dycore_idx) then
+       species_idx(:) = thermodynamic_active_species_idx_dycore(:)
+       species_liq_idx(:) = thermodynamic_active_species_liq_idx_dycore(:)
+       species_ice_idx(:) = thermodynamic_active_species_ice_idx_dycore(:)
+     else
+       species_idx(:) = thermodynamic_active_species_idx(:)
+       species_liq_idx(:) = thermodynamic_active_species_liq_idx(:)
+       species_ice_idx(:) = thermodynamic_active_species_ice_idx(:)
+     end if
    
      select case (vcoord)  
      case(vc_moist_pressure)          
@@ -1279,7 +1295,7 @@ end subroutine physconst_init
        do k = 1, nlev
          do j = j0,j1
            do i = i0,i1
-             liq_loc(i,j) = liq_loc(i,j) + tracer(i,j,k,thermodynamic_active_species_liq_idx(idx))*pdel(i,j,k)/gravit
+             liq_loc(i,j) = liq_loc(i,j) + tracer(i,j,k,species_liq_idx(idx))*pdel(i,j,k)/gravit
            end do
          end do
        end do
@@ -1294,7 +1310,7 @@ end subroutine physconst_init
        do k = 1, nlev
          do j = j0,j1
            do i = i0,i1
-             ice_loc(i,j) = ice_loc(i,j) + tracer(i,j,k,thermodynamic_active_species_ice_idx(idx))*pdel(i,j,k)/gravit
+             ice_loc(i,j) = ice_loc(i,j) + tracer(i,j,k,species_ice_idx(idx))*pdel(i,j,k)/gravit
            end do
          end do
        end do
@@ -1320,6 +1336,7 @@ end subroutine physconst_init
        write(iulog, *) subname//' enthalpy reference state not supported: ',TRIM(enthalpy_reference_state) 
        call endrun(subname // ':: enthalpy reference state not supported')
      end select
+     deallocate(species_idx,species_liq_idx,species_ice_idx)
    end subroutine get_hydrostatic_energy
 
    !
