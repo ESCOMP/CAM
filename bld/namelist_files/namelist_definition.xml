@@ -7656,9 +7656,12 @@ Default: 0.2
 
 <entry id="mpas_cam_coef" type="real" category="mpas"
        group="damping" valid_values="">
-Coefficient for scaling the 2nd-order horizontal mixing in the mpas_cam absorbing layer
-0.0 is no mixing in the absorbing layer - in this case must usually specify rayleigh 
-damping for stability
+Coefficient for scaling the 2nd-order horizontal diffusion in the mpas_cam absorbing layer.
+A value of 1.0 will result in layered diffusion similar to CAM-SE and gives damping
+coefficients of 0.2216E7, 0.6482E6, 0.1927E6 in the top-most three layers on the dynamics
+variables u, w, and theta. The top 3 damping coefficients scale linearly with
+mpas_cam_coef. 0.0 disables SE like 2nd-order diffusion in the absorbing layer and is the
+current default. Sponge layer absorption can also be provided by Rayleigh damping.
 Default: 0.0
 </entry>
 

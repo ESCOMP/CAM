@@ -729,6 +729,7 @@ subroutine read_inidat(dyn_in)
    use mpas_constants, only : p0
    use mpas_constants, only : gravity
    use physconst, only : ps_dry_topo, ps_dry_notopo
+   use string_utils,   only : int2str
 
    ! arguments
    type(dyn_import_t), target, intent(inout) :: dyn_in
@@ -992,7 +993,7 @@ subroutine read_inidat(dyn_in)
 
       ! read uperp
       allocate( mpas3d(plev,nEdgesSolve,1), stat=ierr)
-      if( ierr /= 0 ) call endrun(subname//': failed to allocate mpas3d array')
+      if( ierr /= 0 ) call endrun(subname//': failed to allocate mpas3d array at line:'//int2str(__LINE__))
 
       call infld('u', fh_ini, 'lev', 'nEdges', 1, plev, 1, nEdgesSolve, 1, 1, &
                  mpas3d, readvar, gridname='mpas_edge')
@@ -1028,7 +1029,7 @@ subroutine read_inidat(dyn_in)
 
       ! read w
       allocate( mpas3d(plevp,nCellsSolve,1), stat=ierr)
-      if( ierr /= 0 ) call endrun(subname//': failed to allocate mpas3d array')
+      if( ierr /= 0 ) call endrun(subname//': failed to allocate mpas3d array at line:'//int2str(__LINE__))
       call infld('w', fh_ini, 'ilev', 'nCells', 1, plevp, 1, nCellsSolve, 1, 1, &
                  mpas3d, readvar, gridname='mpas_cell')
       if (readvar) then
@@ -1039,7 +1040,7 @@ subroutine read_inidat(dyn_in)
       deallocate( mpas3d )
 
       allocate( mpas3d(plev,nCellsSolve,1), stat=ierr)
-      if( ierr /= 0 ) call endrun(subname//': failed to allocate mpas3d array')
+      if( ierr /= 0 ) call endrun(subname//': failed to allocate mpas3d array at line:'//int2str(__LINE__))
 
       ! read theta
       call infld('theta', fh_ini, 'lev', 'nCells', 1, plev, 1, nCellsSolve, 1, 1, &
@@ -1090,7 +1091,7 @@ subroutine read_inidat(dyn_in)
    ! except for the water species.
 
    allocate( mpas3d(plev,nCellsSolve,1), stat=ierr)
-   if( ierr /= 0 ) call endrun(subname//': failed to allocate mpas3d array')
+   if( ierr /= 0 ) call endrun(subname//': failed to allocate mpas3d array at line:'//int2str(__LINE__))
 
    do mpas_idx = 1, pcnst
 
@@ -1523,8 +1524,8 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
    call mpas_pool_add_config(configPool, 'config_rayleigh_damp_u_timescale_days', mpas_rayleigh_damp_u_timescale_days)
    call mpas_pool_add_config(configPool, 'config_number_rayleigh_damp_u_levels', mpas_number_rayleigh_damp_u_levels)
 
-   ! Read namelist group &decomposition
-   if (masterproc) then
+   ! Read namelist group &decomposition if npes > 1
+   if (masterproc .and. npes > 1) then
       rewind(unitNumber)
       call find_group_name(unitNumber, 'decomposition', status=ierr)
       if (ierr == 0) then
@@ -1532,7 +1533,8 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
          if (ierr2 /= 0) then
             call endrun(subname // ':: Failed to read namelist group &decomposition')
          end if
-      ! no else clause needed.  &decomposition is not present for single task runs.
+      else
+         call endrun(subname // ':: Failed to find namelist group &decomposition. Required for multiprocessor execution.')
       end if
    end if
 

@@ -158,7 +158,6 @@ use ppgrid, only : pcols
 !
 !---------------------------Local variables-----------------------------
 !
-    logical  :: fvdyn                   ! finite volume dynamics
     integer  :: i,k                     ! Lon, level indices
     real(r8) :: hkk(ncol)               ! diagonal element of hydrostatic matrix
     real(r8) :: hkl(ncol)               ! off-diagonal element
@@ -169,10 +168,6 @@ use ppgrid, only : pcols
 !-----------------------------------------------------------------------
 !
     rog(:ncol,:) = rair(:ncol,:) / gravit
-
-! Set dynamics flag
-
-    fvdyn = (dycore_is('LR') .or. dycore_is('FV3'))
 
 ! The surface height is zero by definition.
 
