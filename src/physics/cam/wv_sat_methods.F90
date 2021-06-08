@@ -46,7 +46,6 @@ real(r8) :: omeps   ! 1._r8 - epsilo
 
 ! Indices representing individual schemes
 integer, parameter :: Invalid_idx = -1
-integer, parameter :: OldGoffGratch_idx = 0
 integer, parameter :: GoffGratch_idx = 1
 integer, parameter :: MurphyKoop_idx = 2
 integer, parameter :: Bolton_idx = 3
@@ -131,8 +130,6 @@ pure function wv_sat_get_scheme_idx(name) result(idx)
      idx = GoffGratch_idx
   case("MurphyKoop")
      idx = MurphyKoop_idx
-  case("OldGoffGratch")
-     idx = OldGoffGratch_idx
   case("Bolton")
      idx = Bolton_idx
   case default
@@ -392,8 +389,6 @@ function wv_sat_svp_water(t, idx) result(es)
      es = GoffGratch_svp_water(t)
   case(MurphyKoop_idx)
      es = MurphyKoop_svp_water(t)
-  case(OldGoffGratch_idx)
-     es = OldGoffGratch_svp_water(t)
   case(Bolton_idx)
      es = Bolton_svp_water(t)
   end select
@@ -421,8 +416,6 @@ subroutine  wv_sat_svp_water_vect(t, es, vlen, idx)
      call GoffGratch_svp_water_vect(t,es,vlen)
   case(MurphyKoop_idx)
      call MurphyKoop_svp_water_vect(t,es,vlen)
-  case(OldGoffGratch_idx)
-     call OldGoffGratch_svp_water_vect(t,es,vlen)
   case(Bolton_idx)
      call Bolton_svp_water_vect(t,es,vlen)
   end select
@@ -448,8 +441,6 @@ function wv_sat_svp_ice(t, idx) result(es)
      es = GoffGratch_svp_ice(t)
   case(MurphyKoop_idx)
      es = MurphyKoop_svp_ice(t)
-  case(OldGoffGratch_idx)
-     es = OldGoffGratch_svp_ice(t)
   case(Bolton_idx)
      es = Bolton_svp_water(t)
   end select
@@ -478,8 +469,6 @@ subroutine wv_sat_svp_ice_vect(t, es, vlen, idx)
      call GoffGratch_svp_ice_vect(t,es,vlen)
   case(MurphyKoop_idx)
      call MurphyKoop_svp_ice_vect(t,es,vlen)
-  case(OldGoffGratch_idx)
-     call OldGoffGratch_svp_ice_vect(t,es,vlen)
   case(Bolton_idx)
      call Bolton_svp_water_vect(t,es,vlen)
   end select
@@ -612,7 +601,7 @@ subroutine GoffGratch_svp_water_vect(t, es, vlen)
        5.02808_r8*(log_tboil-log10(t(i)))- &
        1.3816e-7_r8*(10._r8**(11.344_r8*(1._r8-t(i)/tboil))-1._r8)+ &
        8.1328e-3_r8*(10._r8**(-3.49149_r8*(tboil/t(i)-1._r8))-1._r8)+ &
-       log_ps)*100._r8
+       log10(1013.246_r8))*100._r8
   enddo
   !$acc end parallel
 
@@ -722,105 +711,6 @@ subroutine MurphyKoop_svp_ice_vect(t, es, vlen)
 
   !$acc end data
 end subroutine MurphyKoop_svp_ice_vect
-
-! Old CAM implementation, also labelled Goff & Gratch (1946)
-
-! The water formula differs only due to compiler-dependent order of
-! operations, so differences are roundoff level, usually 0.
-
-! The ice formula gives fairly close answers to the current
-! implementation, but has been rearranged, and uses the
-! 1 atm melting point of water as the triple point.
-! Differences are thus small but above roundoff.
-
-! A curious fact: although using the melting point of water was
-! probably a mistake, it mildly improves accuracy for ice svp,
-! since it compensates for a systematic error in Goff & Gratch.
-
-function OldGoffGratch_svp_water(t) result(es)
-  real(r8), intent(in) :: t
-  real(r8) :: es
-  real(r8) :: ps, e1, e2, f1, f2, f3, f4, f5, f
-
-  ps = 1013.246_r8
-  e1 = 11.344_r8*(1.0_r8 - t/tboil)
-  e2 = -3.49149_r8*(tboil/t - 1.0_r8)
-  f1 = -7.90298_r8*(tboil/t - 1.0_r8)
-  f2 = 5.02808_r8*log10(tboil/t)
-  f3 = -1.3816_r8*(10.0_r8**e1 - 1.0_r8)/10000000.0_r8
-  f4 = 8.1328_r8*(10.0_r8**e2 - 1.0_r8)/1000.0_r8
-  f5 = log10(ps)
-  f  = f1 + f2 + f3 + f4 + f5
-
-  es = (10.0_r8**f)*100.0_r8
-
-end function OldGoffGratch_svp_water
-
-subroutine OldGoffGratch_svp_water_vect(t,es,vlen)
-  integer, intent(in) :: vlen
-  real(r8), intent(in)  :: t(vlen)
-  real(r8), intent(out) :: es(vlen)
-
-  real(r8), dimension(vlen) :: e1, e2, f1, f2, f3, f4
-  real(r8) :: f
-  integer :: i
-
-  !$acc data present (t,es) &
-  !$acc      create  (ps,e1,e2,f1,f2,f3,f4,f5,f)
-
-  !$acc parallel vector_length(VLENS) default(present)
-  !$acc loop gang vector
-  do i = 1, vlen
-     e1(i) = 11.344_r8*(1.0_r8 - t(i)/tboil)
-     e2(i) = -3.49149_r8*(tboil/t(i) - 1.0_r8)
-     f1(i) = -7.90298_r8*(tboil/t(i) - 1.0_r8)
-     f2(i) = 5.02808_r8*log10(tboil/t(i))
-     f3(i) = -1.3816_r8*(10.0_r8**e1(i) - 1.0_r8)*1e-7_r8
-     f4(i) = 8.1328_r8*(10.0_r8**e2(i) - 1.0_r8)*1e-3_r8
-     f = f1(i) + f2(i) + f3(i) + f4(i) + log_ps
-     es(i) = (10.0_r8**f)*100.0_r8
-  end do
-  !$acc end parallel
-
-  !$acc end data
-end subroutine OldGoffGratch_svp_water_vect
-
-function OldGoffGratch_svp_ice(t) result(es)
-  real(r8), intent(in) :: t
-  real(r8) :: es
-  real(r8) :: term1, term2, term3
-  
-  term1 = 2.01889049_r8/(tmelt/t)
-  term2 = 3.56654_r8*log(tmelt/t)
-  term3 = 20.947031_r8*(tmelt/t)
-
-  es = 575.185606e10_r8*exp(-(term1 + term2 + term3))
-  
-end function OldGoffGratch_svp_ice
-
-subroutine OldGoffGratch_svp_ice_vect(t,es,vlen)
-  integer, intent(in) :: vlen
-  real(r8), intent(in) :: t(vlen)
-  real(r8), intent(out) :: es(vlen)
-  
-  real(r8), dimension(vlen) :: term1, term2, term3
-  integer :: i
-
-  !$acc data present (t,es) &
-  !$acc      create  (term1,term2,term3)
-
-  !$acc parallel vector_length(VLENS) default(present)
-  !$acc loop gang vector
-  do i = 1, vlen
-     term1(i) = 2.01889049_r8/(tmelt/t(i))
-     term2(i) = 3.56654_r8*log(tmelt/t(i))
-     term3(i) = 20.947031_r8*(tmelt/t(i))
-     es(i) = 575.185606e10_r8*exp(-(term1(i) + term2(i) + term3(i)))
-  end do
-  !$acc end parallel
-
-  !$acc end data
-end subroutine OldGoffGratch_svp_ice_vect
 
 ! Bolton (1980)
 ! zm_conv deep convection scheme contained this SVP calculation.
