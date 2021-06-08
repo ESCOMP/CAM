@@ -7590,7 +7590,7 @@ Default: TRUE
 <entry id="mpas_coef_3rd_order" type="real" category="mpas"
        group="nhyd_model" valid_values="">
 Upwinding coefficient in the 3rd order advection scheme in MPAS dycore.
-Default: 0.25
+Default: 1.0
 </entry>
 
 <entry id="mpas_smagorinsky_coef" type="real" category="mpas"
@@ -7643,6 +7643,39 @@ Default: 22000.0
        group="damping" valid_values="">
 Maximum w-damping coefficient at model top in MPAS dycore.
 Default: 0.2
+</entry>
+
+<entry id="mpas_cam_coef" type="real" category="mpas"
+       group="damping" valid_values="">
+Coefficient for scaling the 2nd-order horizontal diffusion in the mpas_cam absorbing layer.
+A value of 1.0 will result in layered diffusion similar to CAM-SE and gives damping
+coefficients of 0.2216E7, 0.6482E6, 0.1927E6 in the top-most three layers on the dynamics
+variables u, w, and theta. The top 3 damping coefficients scale linearly with
+mpas_cam_coef. 0.0 disables SE like 2nd-order diffusion in the absorbing layer and is the
+current default. Sponge layer absorption can also be provided by Rayleigh damping.
+Default: 0.0
+</entry>
+
+<entry id="mpas_rayleigh_damp_u" type="logical" category="mpas"
+       group="damping" valid_values="">
+Whether to apply Rayleigh damping on horizontal velocity in the top-most model levels.
+The number of levels is specified by the config_number_rayleigh_damp_u_levels option,
+and the damping timescale is specified by the config_rayleigh_damp_u_timescale_days option.
+Default: TRUE
+</entry>
+
+<entry id="mpas_rayleigh_damp_u_timescale_days" type="real" category="mpas"
+       group="damping" valid_values="">
+Timescale, in days (86400 s), for the Rayleigh damping on horizontal velocity in
+the top-most model levels.
+Default: 5.0
+</entry>
+
+<entry id="mpas_number_rayleigh_damp_u_levels" type="integer" category="mpas"
+       group="damping" valid_values="">
+Number layers in which to apply Rayleigh damping on horizontal velocity at top of model;
+damping linearly ramps to zero by layer number from the top
+Default: 3
 </entry>
 
 <entry id="mpas_block_decomp_file_prefix" type="char*512" input_pathname="abs" category="mpas"
