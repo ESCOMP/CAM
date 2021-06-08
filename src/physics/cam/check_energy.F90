@@ -227,8 +227,7 @@ end subroutine check_energy_get_integrals
     type(physics_buffer_desc), pointer      :: pbuf(:)
     integer, optional                       :: col_type  ! Flag inidicating whether using grid or subcolumns
 !---------------------------Local storage-------------------------------
-    real(r8),allocatable :: cp_or_cv(:,:,:)
-
+    real(r8)              :: cp_or_cv(state%psetcols,pver,begchunk:endchunk)
     integer lchnk                                  ! chunk identifier
     integer ncol                                   ! number of atmospheric columns
     integer  i,k                                   ! column, level indices
@@ -242,10 +241,8 @@ end subroutine check_energy_get_integrals
     ! If psetcols > pcols and all cpairv match cpair, then assign the constant cpair
 
     if (state%psetcols == pcols) then
-       allocate (cp_or_cv(state%psetcols,pver,begchunk:endchunk))
        cp_or_cv(:,:,:) = cpairv(:,:,:)
     else if (state%psetcols > pcols .and. all(cpairv(:,:,:) == cpair)) then
-       allocate(cp_or_cv(state%psetcols,pver,begchunk:endchunk))
        cp_or_cv(:,:,:) = cpair
     else
        call endrun('check_energy_timestep_init: cpairv is not allowed to vary when subcolumns are turned on')
@@ -301,8 +298,6 @@ end subroutine check_energy_get_integrals
 ! (phl continue coding) set te_ini(:,2)
     end if
 
-    deallocate(cp_or_cv)
-
   end subroutine check_energy_timestep_init
 
 !===============================================================================
@@ -347,9 +342,8 @@ end subroutine check_energy_get_integrals
 
     real(r8) :: te(state%ncol)                     ! vertical integral of total energy
     real(r8) :: tw(state%ncol)                     ! vertical integral of total water
-
-    real(r8),allocatable :: cp_or_cv(:,:,:)        ! cp or cv depending on vcoord
-    real(r8) :: scaling(pcols,pver)                ! scaling for conversion of temperature increment
+    real(r8) :: cp_or_cv(state%psetcols,pver,begchunk:endchunk)  ! cp or cv depending on vcoord
+    real(r8) :: scaling(state%psetcols,pver)       ! scaling for conversion of temperature increment
     real(r8) :: temp(state%ncol,pver)              ! temperature
 
     integer lchnk                                  ! chunk identifier
@@ -363,15 +357,12 @@ end subroutine check_energy_get_integrals
     lchnk = state%lchnk
     ncol  = state%ncol
 
-    ! cp_or_cv needs to be allocated to a size which matches state and ptend
     ! If psetcols == pcols, cpairv is the correct size and just copy into cp_or_cv
     ! If psetcols > pcols and all cpairv match cpair, then assign the constant cpair
 
     if (state%psetcols == pcols) then
-       allocate (cp_or_cv(state%psetcols,pver,begchunk:endchunk))!phl why do begchunk:endchunk; why not just lchnk?
        cp_or_cv(:,:,:) = cpairv(:,:,:)
     else if (state%psetcols > pcols .and. all(cpairv(:,:,:) == cpair)) then
-       allocate(cp_or_cv(state%psetcols,pver,begchunk:endchunk))
        cp_or_cv(:,:,:) = cpair
     else
        call endrun('check_energy_chng: cpairv is not allowed to vary when subcolumns are turned on')
@@ -471,8 +462,6 @@ end subroutine check_energy_get_integrals
          z = state%z_ini(1:ncol,:),                                                  &
          te = state%te_cur(1:ncol,2), H2O = state%tw_cur(1:ncol,2))
     
-    deallocate(cp_or_cv)
-
   end subroutine check_energy_chng
 
 

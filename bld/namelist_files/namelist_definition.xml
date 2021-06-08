@@ -2226,7 +2226,7 @@ then 0., use the constants, ps_dry_topo and ps_dry_notopo, defined in physconst.
 as the target average dry surface pressure, and preform scaling. If equal to 0.0,
 do not preform scaling. If greater than 0.0, preform scaling but use scale_dry_air_mass
 value (in Pa) as the average dry surface pressure target.
-Default: 0.0
+Default: -1.0
 </entry>
 
 <entry id="readtrace" type="logical"  category="initial_conditions"

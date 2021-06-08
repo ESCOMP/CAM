@@ -302,8 +302,12 @@
 
 <bnd_topo hgrid="mpasa120" >atm/cam/topo/mpas/mpas_120_nc3000_Co060_Fi001_MulG_PF_Nsw042_c200921.nc</bnd_topo>
 
-<!-- Scale Dry Air Mass -->
-<scale_dry_air_mass> 0.0 </scale_dry_air_mass>
+<!-- Scale Dry Air Mass: -1=>scaling to Pressure / 0=> no scaling / +nnn=>scale to nnn Pressure  -->
+<scale_dry_air_mass                                                                  > -1.0  </scale_dry_air_mass>
+<scale_dry_air_mass analytic_ic="1"                                                  >  0.0  </scale_dry_air_mass>
+<scale_dry_air_mass dyn="mpas"                                                       >  0.0 </scale_dry_air_mass>
+<scale_dry_air_mass dyn="mpas" analytic_ic="1"                                       >  0.0  </scale_dry_air_mass>
+<scale_dry_air_mass dyn="mpas" analytic_ic="0" hgrid="mpasa120"                      > -1.0 </scale_dry_air_mass>
 
 <!-- Ridge parameterization (gamma) -->
 <bnd_rdggm hgrid="0.9x1.25">atm/cam/topo/fv_0.9x1.25_nc3000_Nsw006_Nrs002_Co008_Fi001_ZR_c160505.nc</bnd_rdggm>
@@ -2765,7 +2769,7 @@
 <mpas_cam_coef                > 0.0D0 </mpas_cam_coef>
 <mpas_rayleigh_damp_u         > .true. </mpas_rayleigh_damp_u>
 <mpas_rayleigh_damp_u_timescale_days> 5.0 </mpas_rayleigh_damp_u_timescale_days>
-<mpas_number_rayleigh_damp_u_levels> 3 </mpas_number_rayleigh_damp_u_levels>
+<mpas_number_rayleigh_damp_u_levels> 5 </mpas_number_rayleigh_damp_u_levels>
 <mpas_print_detailed_minmax_vel> .true.  </mpas_print_detailed_minmax_vel>
 <mpas_block_decomp_file_prefix hgrid="mpasa480">atm/cam/inic/mpas/mpasa480.graph.info.part.</mpas_block_decomp_file_prefix>
 <mpas_block_decomp_file_prefix hgrid="mpasa120">atm/cam/inic/mpas/mpasa120.graph.info.part.</mpas_block_decomp_file_prefix>

@@ -3693,7 +3693,6 @@ if ($dyn =~ /mpas/) {
     add_default($nl, 'mpas_smdiv');
     add_default($nl, 'mpas_apvm_upwinding');
     add_default($nl, 'mpas_h_ScaleWithMesh');
-    add_default($nl, 'scale_dry_air_mass');
     add_default($nl, 'mpas_zd');
     add_default($nl, 'mpas_xnutr');
     add_default($nl, 'mpas_cam_coef');
@@ -3713,6 +3712,9 @@ if ($dyn =~ /mpas/) {
     }
 
 }
+
+# Defaults for scaling initial pressure
+add_default($nl, 'scale_dry_air_mass');
 
 # Defaults for history output
 add_default($nl, 'history_amwg');

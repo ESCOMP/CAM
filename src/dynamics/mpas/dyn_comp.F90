@@ -1138,8 +1138,8 @@ subroutine read_inidat(dyn_in)
    ! If scale_dry_air_mass < 0.0, then use the reference pressures defined in physconst.F90 as the
    ! target global average dry pressure to scale to. If scale_dry_air_mass is not zero, then use it
    ! as the target.
-   if (.not. simple_phys .and. scale_dry_air_mass /= 0.0) then  ! Don't scale air mass if < 0. or simple_phys is on
-       if (scale_dry_air_mass < 0.0) then
+   if (.not. simple_phys .and. scale_dry_air_mass /= 0.0_r8) then  ! Don't scale air mass if < 0. or simple_phys is on
+       if (scale_dry_air_mass < 0.0_r8) then
            target_global_avg_dry_ps = ps_dry_topo
            if (.not. associated(fh_topo)) then
                target_global_avg_dry_ps = ps_dry_notopo
