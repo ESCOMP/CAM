@@ -92,9 +92,9 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    !----------------------------------------------------------------------------
 
    compute_energy_diags=&
-        (hist_fld_active('SE_dDP').or.hist_fld_active('SE_dDM').or.hist_fld_active('SE_dPD').or.&
-         hist_fld_active('KE_dDP').or.hist_fld_active('KE_dDM').or.hist_fld_active('KE_dPD').or.&
-         hist_fld_active('WV_dDP').or.hist_fld_active('WV_dDM').or.hist_fld_active('WV_dPD'))
+        (hist_fld_active('SE_dBF').or.hist_fld_active('SE_dAP').or.hist_fld_active('SE_dAM').or.&
+         hist_fld_active('KE_dBF').or.hist_fld_active('KE_dAP').or.hist_fld_active('KE_dAM').or.&
+         hist_fld_active('WV_dBF').or.hist_fld_active('WV_dAP').or.hist_fld_active('WV_dAM'))
 
    nCellsSolve = dyn_out % nCellsSolve
    index_qv    = dyn_out % index_qv
@@ -113,7 +113,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    if (compute_energy_diags) then
      call tot_energy(nCellsSolve, plev,size(tracers(:,1,1)), index_qv, zz(:,1:nCellsSolve), zint(:,1:nCellsSolve), &
           rho_zz(:,1:nCellsSolve), theta_m(:,1:nCellsSolve), tracers(:,:,1:nCellsSolve),&
-          ux(:,1:nCellsSolve),uy(:,1:nCellsSolve),'dDP')
+          ux(:,1:nCellsSolve),uy(:,1:nCellsSolve),'dBF')
    end if
    !
    ! diagnose pintdry, pmiddry, pmid
@@ -710,7 +710,7 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, q_tend, dyn
           nCellsSolve, plev, size(tracers(:,1,1)), index_qv, zz(:,1:nCellsSolve), zint(:,1:nCellsSolve), rho_zz(:,1:nCellsSolve), &
           theta_m_new,  tracers(:,:,1:nCellsSolve),   &
           ux(:,1:nCellsSolve)+dtime*u_tend(:,1:nCellsSolve)/rho_zz(:,1:nCellsSolve),       &
-          uy(:,1:nCellsSolve)+dtime*v_tend(:,1:nCellsSolve)/rho_zz(:,1:nCellsSolve),'dDM')
+          uy(:,1:nCellsSolve)+dtime*v_tend(:,1:nCellsSolve)/rho_zz(:,1:nCellsSolve),'dAP')
      ! revert
      do m=1,thermodynamic_active_species_num
        idx_dycore                         = thermodynamic_active_species_idx_dycore(m)
@@ -724,7 +724,7 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, q_tend, dyn
           nCellsSolve, plev, size(tracers(:,1,1)), index_qv, zz(:,1:nCellsSolve), zint(:,1:nCellsSolve), &
           rho_zz(:,1:nCellsSolve), theta_m_new, tracers(:,:,1:nCellsSolve),    &
           ux(:,1:nCellsSolve)+dtime*u_tend(:,1:nCellsSolve)/rho_zz(:,1:nCellsSolve),       &
-          uy(:,1:nCellsSolve)+dtime*v_tend(:,1:nCellsSolve)/rho_zz(:,1:nCellsSolve),'dPD')
+          uy(:,1:nCellsSolve)+dtime*v_tend(:,1:nCellsSolve)/rho_zz(:,1:nCellsSolve),'dAM')
    end if
    !
    ! Update halo for rtheta_m tendency

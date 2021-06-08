@@ -649,7 +649,7 @@ subroutine dyn_init(dyn_in, dyn_out)
       "Total column water vapor                ",&
       "Total column cloud water                ",&
       "Total column cloud ice                  ",&
-      "Total column dry static energy          ",&
+      "Total column static energy              ",&
       "Total column kinetic energy             ",&
       "Total column wind axial angular momentum",&
       "Total column mass axial angular momentum",&

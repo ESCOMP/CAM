@@ -354,23 +354,19 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    character(len=*), parameter :: subname = 'dyn_comp::dyn_init'
    ! variables for initializing energy and axial angular momentum diagnostics
-   character (len = 3), dimension(6) :: stage = (/"dED","dBD","dBF","dDP","dDM","dPD"/)
-   character (len = 70),dimension(6) :: stage_txt = (/&
-      " beginning dynamics                                 ",&  
-      " after physics update                               ",&  
-      " end of time-step                                   ",&  
-      " dynamics state before physics                      ",&  
+   character (len = 3), dimension(3) :: stage = (/"dBF","dAP","dAM"/)
+   character (len = 70),dimension(3) :: stage_txt = (/&
+      " dynamics state before physics (d_p_coupling)       ",&  
       " dynamics state with T,u,V increment but not q      ",&  
-      " dynamics state with full physics increment         " &  
+      " dynamics state with full physics increment (incl.q)" &  
       /)
 
    character (len = 2)  , dimension(8) :: vars  = (/"WV"  ,"WL"  ,"WI"  ,"SE"   ,"KE"   ,"MR"   ,"MO"   ,"TT"   /)
-   !if ntrac>0 then tracers should be output on fvm grid but not energy (SE+KE) and AAM diags
    character (len = 70) , dimension(8) :: vars_descriptor = (/&
       "Total column water vapor                ",&
       "Total column cloud water                ",&
       "Total column cloud ice                  ",&
-      "Total column dry static energy          ",&
+      "Total column static energy              ",&
       "Total column kinetic energy             ",&
       "Total column wind axial angular momentum",&
       "Total column mass axial angular momentum",&
