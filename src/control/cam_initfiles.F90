@@ -40,7 +40,7 @@ real(r8), public, protected :: pertlim = 0.0_r8 ! maximum abs value of scale fac
                                                 ! initial values
 character(len=cl) :: cam_branch_file = ' '      ! Filepath of primary restart file for a branch run
 
-real(r8), public, protected :: scale_dry_air_mass = 0.0 ! Toggle and target avg air mass for MPAS dycore
+real(r8), public, protected :: scale_dry_air_mass = 0.0_r8 ! Toggle and target avg air mass for MPAS dycore
 
 ! The restart pointer file contains name of most recently written primary restart file.
 ! The contents of this file are updated by cam_write_restart as new restart files are written.

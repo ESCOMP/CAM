@@ -1199,19 +1199,25 @@ end subroutine physconst_init
      real(r8)                        :: latsub         !latent heat of sublimation
      integer                         :: i,j,k,idx
      character(len=22)               :: subname='get_hydrostatic_energy' ! subroutine name
-     real(r8), allocatable           :: species_idx(:),species_liq_idx(:),species_ice_idx(:)
+     integer, allocatable            :: species_idx(:),species_liq_idx(:),species_ice_idx(:)
 
      allocate(species_idx(thermodynamic_active_species_num))
      allocate(species_liq_idx(thermodynamic_active_species_liq_num))
      allocate(species_ice_idx(thermodynamic_active_species_ice_num))
-     if (present(dycore_idx).and.dycore_idx) then
-       species_idx(:) = thermodynamic_active_species_idx_dycore(:)
-       species_liq_idx(:) = thermodynamic_active_species_liq_idx_dycore(:)
-       species_ice_idx(:) = thermodynamic_active_species_ice_idx_dycore(:)
+     if (present(dycore_idx))then
+        if (dycore_idx) then
+           species_idx(:) = thermodynamic_active_species_idx_dycore(:)
+           species_liq_idx(:) = thermodynamic_active_species_liq_idx_dycore(:)
+           species_ice_idx(:) = thermodynamic_active_species_ice_idx_dycore(:)
+        else
+           species_idx(:) = thermodynamic_active_species_idx(:)
+           species_liq_idx(:) = thermodynamic_active_species_liq_idx(:)
+           species_ice_idx(:) = thermodynamic_active_species_ice_idx(:)
+        end if
      else
-       species_idx(:) = thermodynamic_active_species_idx(:)
-       species_liq_idx(:) = thermodynamic_active_species_liq_idx(:)
-       species_ice_idx(:) = thermodynamic_active_species_ice_idx(:)
+        species_idx(:) = thermodynamic_active_species_idx(:)
+        species_liq_idx(:) = thermodynamic_active_species_liq_idx(:)
+        species_ice_idx(:) = thermodynamic_active_species_ice_idx(:)
      end if
    
      select case (vcoord)  

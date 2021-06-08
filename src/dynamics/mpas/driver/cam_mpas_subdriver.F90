@@ -688,8 +688,6 @@ contains
        integer, pointer :: nVertLevelsLocal
 
        type (mpas_pool_type), pointer :: meshPool
-       character(len=*), parameter :: subname = 'cam_mpas_subdriver::cam_mpas_get_global_dims'
-
 
        call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'mesh', meshPool)
        call mpas_pool_get_dimension(meshPool, 'nCellsSolve', nCellsSolve)
@@ -826,6 +824,7 @@ contains
        use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_dimension, mpas_pool_get_array
        use mpas_derived_types, only : mpas_pool_type
        use mpas_dmpar, only : mpas_dmpar_max_int_array
+       use string_utils, only: int2str
 
        integer, dimension(:), intent(out) :: nCellsPerBlock
        integer, dimension(:,:), intent(out) :: indexToCellIDBlock
@@ -849,7 +848,7 @@ contains
        ! nCellsPerBlock
        !
        allocate(temp1d(size(nCellsPerBlock)), stat=ierr)
-       if( ierr /= 0 ) call endrun(subname//':failed to allocate temp1d array')
+       if( ierr /= 0 ) call endrun(subname//':failed to allocate temp1d array at line:'//int2str(__LINE__))
        temp1d(:) = 0
        temp1d(domain_ptr % dminfo % my_proc_id + 1) = nCellsSolve
 
@@ -861,7 +860,7 @@ contains
        ! indexToBlockID
        !
        allocate(temp1d(size(indexToBlockID)), stat=ierr)
-       if( ierr /= 0 ) call endrun(subname//':failed to allocate temp1d array')
+       if( ierr /= 0 ) call endrun(subname//':failed to allocate temp1d array at line:'//int2str(__LINE__))
        temp1d(:) = -1
        do iCell=1,nCellsSolve
           temp1d(indexToCellID(iCell)) = domain_ptr % dminfo % my_proc_id + 1   ! 1-based block indices?
@@ -875,7 +874,7 @@ contains
        ! localCellIDBlock
        !
        allocate(temp1d(size(localCellIDBlock)), stat=ierr)
-       if( ierr /= 0 ) call endrun(subname//':failed to allocate temp1d array')
+       if( ierr /= 0 ) call endrun(subname//':failed to allocate temp1d array at line:'//int2str(__LINE__))
        temp1d(:) = 0
        do iCell = 1, nCellsSolve
           temp1d(indexToCellID(iCell)) = iCell
