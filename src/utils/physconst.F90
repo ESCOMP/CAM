@@ -770,7 +770,6 @@ end subroutine physconst_init
     call get_molecular_diff_coef(1,ncol,1,1,pver,pver,t(:ncol,:),1,sponge_factor,kmvis(:ncol,:,lchnk), &
        kmcnd(:ncol,:,lchnk), pcnst, tracer=mmr(:ncol,:,:), fact=to_moist_fact(:ncol,:),                &
        active_species_idx_dycore=thermodynamic_active_species_idx)
-    cappav(:ncol,:,lchnk) = rairv(:ncol,:,lchnk)/cpairv(:ncol,:,lchnk)
   end subroutine physconst_update
   !
   !****************************************************************************************************************
@@ -1199,25 +1198,19 @@ end subroutine physconst_init
      real(r8)                        :: latsub         !latent heat of sublimation
      integer                         :: i,j,k,idx
      character(len=22)               :: subname='get_hydrostatic_energy' ! subroutine name
-     integer, allocatable            :: species_idx(:),species_liq_idx(:),species_ice_idx(:)
+     real(r8), allocatable           :: species_idx(:),species_liq_idx(:),species_ice_idx(:)
 
      allocate(species_idx(thermodynamic_active_species_num))
      allocate(species_liq_idx(thermodynamic_active_species_liq_num))
      allocate(species_ice_idx(thermodynamic_active_species_ice_num))
-     if (present(dycore_idx))then
-        if (dycore_idx) then
-           species_idx(:) = thermodynamic_active_species_idx_dycore(:)
-           species_liq_idx(:) = thermodynamic_active_species_liq_idx_dycore(:)
-           species_ice_idx(:) = thermodynamic_active_species_ice_idx_dycore(:)
-        else
-           species_idx(:) = thermodynamic_active_species_idx(:)
-           species_liq_idx(:) = thermodynamic_active_species_liq_idx(:)
-           species_ice_idx(:) = thermodynamic_active_species_ice_idx(:)
-        end if
+     if (present(dycore_idx).and.dycore_idx) then
+       species_idx(:) = thermodynamic_active_species_idx_dycore(:)
+       species_liq_idx(:) = thermodynamic_active_species_liq_idx_dycore(:)
+       species_ice_idx(:) = thermodynamic_active_species_ice_idx_dycore(:)
      else
-        species_idx(:) = thermodynamic_active_species_idx(:)
-        species_liq_idx(:) = thermodynamic_active_species_liq_idx(:)
-        species_ice_idx(:) = thermodynamic_active_species_ice_idx(:)
+       species_idx(:) = thermodynamic_active_species_idx(:)
+       species_liq_idx(:) = thermodynamic_active_species_liq_idx(:)
+       species_ice_idx(:) = thermodynamic_active_species_ice_idx(:)
      end if
    
      select case (vcoord)  
@@ -1761,35 +1754,22 @@ end subroutine physconst_init
      end if
      if (present(sum_q)) sum_q=sum_species
    end subroutine get_virtual_temp
+
    !
    !*************************************************************************************************************************
    !
-   ! Compute generalized heat capacity at constant pressure (see, e.g., equation 38 in  https://doi.org/10.1029/2017MS001257)
-   !
-   !    The subroutine accepts both moist or dry tracer mixing ratios (as long as tracer and dp use the same basis):
-   !
-   !       cp = sum(cp(l)*m(l)) / sum(m(l))      (dry basis)
-   !
-   !    where m dry mixing ratio, l is tracer indext (water vapor, cloud liquid, major species, ...)
-   !
-   !       cp = sum(cp(l)*q(l)) / sum(q(l))      (moist basis)
-   !
-   !    where q moist mixing ratio.
-   !
-   !    The two formulaes are identical since q(idx) = m(idx)/sum(m(l))
-   !
+   ! Compute generalized heat capacity at constant pressure
    !
    !*************************************************************************************************************************
    !
-   subroutine get_cp(i0,i1,j0,j1,k0,k1,ntrac,tracer,inv_cp,cp,dp,active_species_idx_dycore,moist_tracer_in)
+   subroutine get_cp(i0,i1,j0,j1,k0,k1,ntrac,tracer,inv_cp,cp,dp_dry,active_species_idx_dycore)
      use cam_logfile,     only: iulog
      ! args
      integer,  intent(in)           :: i0,i1,j0,j1,k0,k1,ntrac
      real(r8), intent(in)           :: tracer(i0:i1,j0:j1,k0:k1,ntrac) ! Tracer array
-     real(r8), optional, intent(in) :: dp(i0:i1,j0:j1,k0:k1)
+     real(r8), optional, intent(in) :: dp_dry(i0:i1,j0:j1,k0:k1)
      logical , intent(in)           :: inv_cp!output inverse cp instead of cp
      real(r8), intent(out)          :: cp(i0:i1,j0:j1,k0:k1)
-     logical,optional               :: moist_tracer_in
      !
      ! array of indicies for index of thermodynamic active species in dycore tracer array
      ! (if different from physics index)
@@ -1800,13 +1780,6 @@ end subroutine physconst_init
      integer :: nq,i,j,k, itrac
      real(r8),  dimension(i0:i1,j0:j1,k0:k1)  :: sum_species, sum_cp, factor
      integer, dimension(thermodynamic_active_species_num) :: idx_local
-     logical :: moist_tracer
-
-     if (present(moist_tracer_in)) then
-       moist_tracer = moist_tracer_in
-     else
-       moist_tracer = .false.
-     end if
 
      if (present(active_species_idx_dycore)) then
        idx_local = active_species_idx_dycore
@@ -1814,19 +1787,17 @@ end subroutine physconst_init
        idx_local = thermodynamic_active_species_idx
      end if
 
-     if (present(dp)) then
-       factor = 1.0_r8/dp
+     if (present(dp_dry)) then
+       factor = 1.0_r8/dp_dry
      else
        factor = 1.0_r8
      end if
 
      sum_species = 1.0_r8 !all dry air species sum to 1
-     if (.not.moist_tracer) then
-       do nq=dry_air_species_num+1,thermodynamic_active_species_num
-         itrac = idx_local(nq)
-         sum_species(:,:,:) = sum_species(:,:,:) + tracer(:,:,:,itrac)*factor(:,:,:)
-       end do
-     end if
+     do nq=dry_air_species_num+1,thermodynamic_active_species_num
+       itrac = idx_local(nq)
+       sum_species(:,:,:) = sum_species(:,:,:) + tracer(:,:,:,itrac)*factor(:,:,:)
+     end do
 
      if (dry_air_species_num==0) then
        sum_cp = thermodynamic_active_species_cp(0)
@@ -1844,6 +1815,7 @@ end subroutine physconst_init
      end if
 
    end subroutine get_cp
+
    !
    !*************************************************************************************************************************
    !
@@ -2070,33 +2042,6 @@ end subroutine physconst_init
            end do
          end do
        else if (get_at_interfaces==0) then
-         do k=1,k1
-           do j=j0,j1
-             do i=i0,i1
-               kmvis(i,j,k) = 0.0_r8
-               kmcnd(i,j,k) = 0.0_r8
-               residual = 1.0_r8
-               do icnst=1,dry_air_species_num-1
-                 ispecies = idx_local(icnst)
-                 mm       = tracer(i,j,k,ispecies)*factor(i,j,k)
-                 kmvis(i,j,k) = kmvis(i,j,k)+thermodynamic_active_species_kv(icnst)* &
-                                thermodynamic_active_species_mwi(icnst)*mm
-                 kmcnd(i,j,k) = kmcnd(i,j,k)+thermodynamic_active_species_kc(icnst)* &
-                                thermodynamic_active_species_mwi(icnst)*mm
-                 residual     = residual - mm
-               end do
-               icnst=dry_air_species_num
-               ispecies = idx_local(icnst)
-               kmvis(i,j,k) = kmvis(i,j,k)+thermodynamic_active_species_kv(icnst)* &
-                              thermodynamic_active_species_mwi(icnst)*residual
-               kmcnd(i,j,k) = kmcnd(i,j,k)+thermodynamic_active_species_kc(icnst)* &
-                              thermodynamic_active_species_mwi(icnst)*residual
-
-               kmvis(i,j,k) = kmvis(i,j,k)*mbarv(i,j,k)*temp(i,j,k)**kv4*1.e-7_r8
-               kmcnd(i,j,k) = kmcnd(i,j,k)*mbarv(i,j,k)*temp(i,j,k)**kc4*1.e-5_r8
-             enddo
-           enddo
-         end do
        else
          call endrun('get_molecular_diff_coef: get_at_interfaces must be 0 or 1')
        end if

@@ -1606,7 +1606,7 @@ contains
         call get_dp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,1:qsize,tl_qdp),2,thermodynamic_active_species_idx_dycore,&
              elem(ie)%state%dp3d(:,:,:,tl),pdel,ps=ps,ptop=hyai(1)*ps0)
         call get_cp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,1:qsize,tl_qdp),&
-             .false.,cp,dp=elem(ie)%state%dp3d(:,:,:,tl),&
+             .false.,cp,dp_dry=elem(ie)%state%dp3d(:,:,:,tl),&
              active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
         do k = 1, nlev
           do j=1,np
