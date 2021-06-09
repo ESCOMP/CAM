@@ -25,6 +25,7 @@ module physpkg
   use cam_logfile,     only: iulog
   use cam_abortutils,  only: endrun
   use shr_sys_mod,     only: shr_sys_flush
+  use dyn_tests_utils, only: vc_dycore
 
   implicit none
   private
@@ -527,6 +528,7 @@ contains
     end if
 
     call calc_te_and_aam_budgets(state, 'pAP')
+    call calc_te_and_aam_budgets(state, 'zAP',vc=vc_dycore)
 
     !=========================
     ! Compute physics tendency
@@ -587,6 +589,7 @@ contains
         end if
 
         call calc_te_and_aam_budgets(state, 'pAM')
+        call calc_te_and_aam_budgets(state, 'zAM',vc=vc_dycore)
         ! Restore pre-"physics_dme_adjust" tracers
         state%q(:ncol,:pver,:pcnst) = tmp_trac(:ncol,:pver,:pcnst)
         state%pdel(:ncol,:pver)     = tmp_pdel(:ncol,:pver)
@@ -596,6 +599,7 @@ contains
       if (moist_mixing_ratio_dycore) then
         call physics_dme_adjust(state, tend, qini, ztodt)
         call calc_te_and_aam_budgets(state, 'pAM')
+        call calc_te_and_aam_budgets(state, 'zAM',vc=vc_dycore)
       end if
 
     else
@@ -603,6 +607,7 @@ contains
       tmp_cldliq(:ncol,:pver) = 0.0_r8
       tmp_cldice(:ncol,:pver) = 0.0_r8
       call calc_te_and_aam_budgets(state, 'pAM')
+      call calc_te_and_aam_budgets(state, 'zAM',vc=vc_dycore)
     end if
 
     ! store T in buffer for use in computing dynamics T-tendency in next timestep
@@ -738,6 +743,7 @@ contains
     ! Global mean total energy fixer and AAM diagnostics
     !===================================================
     call calc_te_and_aam_budgets(state, 'pBF')
+    call calc_te_and_aam_budgets(state, 'zBF',vc=vc_dycore)
 
     call t_startf('energy_fixer')
 
@@ -751,6 +757,7 @@ contains
     call t_stopf('energy_fixer')
 
     call calc_te_and_aam_budgets(state, 'pBP')
+    call calc_te_and_aam_budgets(state, 'zBP',vc=vc_dycore)
 
     ! Save state for convective tendency calculations.
     call diag_conv_tend_ini(state, pbuf)
