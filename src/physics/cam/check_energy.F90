@@ -468,7 +468,7 @@ end subroutine check_energy_get_integrals
   subroutine check_energy_gmean(state, pbuf2d, dtime, nstep)
 
     use physics_buffer, only : physics_buffer_desc, pbuf_get_field, pbuf_get_chunk
-
+    use dyn_tests_utils, only: vc_dycore, vc_height
 !-----------------------------------------------------------------------
 ! Compute global mean total energy of physics input and output states
 ! computed consistently with dynamical core vertical coordinate
@@ -515,13 +515,24 @@ end subroutine check_energy_get_integrals
        teinp_glob = te_glob(1)
        teout_glob = te_glob(2)
        psurf_glob = te_glob(3)
-       ptopb_glob = te_glob(4)
+       if (vc_dycore==vc_height) then
+         ptopb_glob = te_glob(4)
+       else
+         !
+         ! for pressure-based vertical coordinates the model top pressure is constant
+         !
+         ptopb_glob = state(begchunk)%pint(1,1)
+       end if
+
+
 
        ! Global mean total energy difference
        tedif_glob =  teinp_glob - teout_glob
        heat_glob  = -tedif_glob/dtime * gravit / (psurf_glob - ptopb_glob)
        if (masterproc) then
-          write(iulog,'(1x,a9,1x,i8,4(1x,e25.17))') "nstep, te", nstep, teinp_glob, teout_glob, heat_glob, psurf_glob
+          write(iulog,'(1x,a9,1x,i8,5(1x,e25.17))') "nstep, te", nstep, teinp_glob, teout_glob, &
+               heat_glob, psurf_glob, ptopb_glob
+          write(iulog,'(1x,a9,1x,i8,2(1x,e25.17))') "nstep, te", nstep, tedif_glob/dtime * gravit,psurf_glob - ptopb_glob
        end if
     else
        heat_glob = 0._r8

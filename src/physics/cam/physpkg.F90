@@ -1828,9 +1828,7 @@ contains
 
     !-------------- Energy budget checks vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-    ! Save total energy for global fixer in next timestep (FV and SE dycores)
-
-    ! (phl continue coding) compute dycore total energy here and pass to pbuf_set_field
+    ! Save total energy for global fixer in next timestep
 
     call pbuf_set_field(pbuf, teout_idx, state%te_cur(:,2), (/1,itim_old/),(/pcols,1/))
 
@@ -2200,12 +2198,12 @@ contains
 
     call calc_te_and_aam_budgets(state, 'pBF')
     call calc_te_and_aam_budgets(state, 'zBF',vc=vc_dycore)
-    if (.not.dycore_is('EUL')) then
-       call check_energy_fix(state, ptend, nstep, flx_heat)
-       call physics_update(state, ptend, ztodt, tend)
-       call check_energy_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)
-       call outfld( 'EFIX', flx_heat    , pcols, lchnk   )
-    end if
+!xxx    if (.not.dycore_is('EUL')) then
+!xxx       call check_energy_fix(state, ptend, nstep, flx_heat)
+!xxx       call physics_update(state, ptend, ztodt, tend)
+!xxx       call check_energy_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)
+!xxx       call outfld( 'EFIX', flx_heat    , pcols, lchnk   )
+!xxx    end if
     call calc_te_and_aam_budgets(state, 'pBP')
     call calc_te_and_aam_budgets(state, 'zBP',vc=vc_dycore)
     ! Save state for convective tendency calculations.
