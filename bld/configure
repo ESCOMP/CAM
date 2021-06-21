@@ -1641,6 +1641,7 @@ elsif ($fc =~ /^nag/)   { $fc_type = 'nag'; }
 elsif ($fc =~ /path/)   { $fc_type = 'pathscale'; }
 elsif ($fc =~ /gfort/)  { $fc_type = 'gnu'; }
 elsif ($fc =~ /xlf/)    { $fc_type = 'ibm'; }
+elsif ($fc =~ /nvfor/)  { $fc_type = 'nvhpc'; }
 
 # User override for Fortran compiler type
 if (defined $opts{'fc_type'}) { $fc_type = $opts{'fc_type'}; }
@@ -1685,6 +1686,7 @@ if ($cc eq '') {
         elsif ($fc_type eq 'pathscale') { $cc = 'pathcc'; }
         elsif ($fc_type eq 'gnu')       { $cc = 'gcc'; }
         elsif ($fc_type eq 'ibm')       { $cc = 'xlc'; }
+        elsif ($fc_type eq 'nvhpc')     { $cc = 'nvc'; }
     }
 }
 
