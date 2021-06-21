@@ -3695,6 +3695,11 @@ if ($dyn =~ /mpas/) {
     add_default($nl, 'mpas_h_ScaleWithMesh');
     add_default($nl, 'mpas_zd');
     add_default($nl, 'mpas_xnutr');
+    add_default($nl, 'mpas_cam_coef');
+    add_default($nl, 'mpas_print_detailed_minmax_vel');
+    add_default($nl, 'mpas_rayleigh_damp_u');
+    add_default($nl, 'mpas_rayleigh_damp_u_timescale_days');
+    add_default($nl, 'mpas_number_rayleigh_damp_u_levels');
     add_default($nl, 'mpas_do_restart');
     add_default($nl, 'mpas_print_global_minmax_vel');
     add_default($nl, 'mpas_print_detailed_minmax_vel');
@@ -3706,21 +3711,6 @@ if ($dyn =~ /mpas/) {
         add_default($nl, 'mpas_block_decomp_file_prefix');
     }
 
-    # invoke MPAS utility to generate streams files
-    my $mpas_libdir = $cfg->get('mpas_libdir');
-
-    # Check that the executable file streams_gen is present.  streams_gen is built
-    # at the same time as the MPAS library.  This allows build-namelist
-    # to be called before the MPAS library is built (via CESM scripts).
-    if ( -x "$mpas_libdir/streams_gen") {
-
-        my $cmnd = "$mpas_libdir/streams_gen $mpas_libdir/Registry_processed.xml ".
-               "streams.atmosphere stream_list.atmosphere. listed ";
-
-        system($cmnd) == 0 or die
-            "$ProgName - ERROR: generating MPAS streams files via command:\n".
-            "$cmnd";
-    }
 }
 
 # Defaults for history output

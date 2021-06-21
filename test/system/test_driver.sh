@@ -454,7 +454,7 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
       fi
       echo "${sepstr}" | tee -a ${logfile}
       ${CAM_ROOT}/test/system/TGIT.sh | tee -a ${logfile}
-      res==${PIPESTATUS[0]}
+      res=${PIPESTATUS[0]}
       if [ $res -eq 0 ]; then
         echo "TGIT test PASS" | tee -a ${logfile}
       else
