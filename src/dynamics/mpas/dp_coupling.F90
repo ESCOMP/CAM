@@ -746,7 +746,7 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, theta_m,
    ! The vertical dimension for 3-d arrays is innermost, and k=1 represents
    ! the lowest layer or level in the fields.
    !
-  use mpas_constants, only : cp, rgas, cv, gravity, p0
+  use mpas_constants, only : cp, rgas, cv, gravity, p0, Rv_over_Rd => rvord
   use physconst,      only:  rair, cpair  
 
    ! Arguments
@@ -765,7 +765,7 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, theta_m,
    integer :: iCell, k
    real(r8), dimension(nVertLevels) :: dz    ! Geometric layer thickness in column
    real(r8) :: pi, t
-   real(r8) :: pk,rhok,rhodryk,thetavk,kap1,kap2
+   real(r8) :: pk,rhok,rhodryk,theta,thetavk,kap1,kap2
 
    !
    ! For each column, integrate downward from model top to compute dry hydrostatic pressure at layer
@@ -781,20 +781,26 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, theta_m,
       k = nVertLevels
       rhok    = (1.0_r8+q(k,iCell))*zz(k,iCell) * rho_zz(k,iCell) !full CAM physics density
       thetavk = theta_m(k,iCell)/ (1.0_r8 + q(k,iCell))           !convert modified theta to virtual theta
-      pk      = (rhok*rgas*thetavk*kap1)**kap2                    !mid-level pressure
+      pk      = (rhok*rgas*thetavk*kap1)**kap2                    !mid-level top pressure
       !
       ! model top pressure consistently diagnosed using the assumption that the mid level
       ! is at height z(nVertLevels-1)+0.5*dz
       !
       pintdry(nVertLevels+1,iCell) = pk-0.5_r8*dz(nVertLevels)*rhok*gravity  !hydrostatic
       do k = nVertLevels, 1, -1
+        !
+        ! compute hydrostatic dry interface pressure so that (pintdry(k+1)-pintdry(k))/g is pseudo density
+        !
         rhodryk = zz(k,iCell) * rho_zz(k,iCell) 
         rhok    = (1.0_r8+q(k,iCell))*rhodryk
         pintdry(k,iCell) = pintdry(k+1,iCell) + gravity * rhodryk * dz(k)
-        pmiddry(k,iCell) = 0.5_r8 * (pintdry(k+1,iCell) + pintdry(k,iCell)) !phl check: compute from ideal gas law like pmid?
-        
-        thetavk = theta_m(k,iCell)/ (1.0_r8 + q(k,iCell)) !convert modified theta to virtual theta
-        pmid(k,iCell) = (rhok*rgas*thetavk*kap1)**kap2    !mid-level pressure
+        !
+        ! compute non-hydrostatic mid level pressures based on equation of state consistent with MPAS
+        !        
+        thetavk          = theta_m(k,iCell)/ (1.0_r8 + q(k,iCell))            !convert modified theta to virtual theta
+        pmid(k,iCell)    = (rhok*rgas*thetavk*kap1)**kap2                     !mid-level pressure
+        theta            = theta_m(k,iCell)/(1.0_r8 + Rv_over_Rd * q(k,iCell))!potential temperature 
+        pmiddry(k,iCell) = (rhodryk*rgas*theta*kap1)**kap2                    !mid-level dry pressure
       end do
     end do
 end subroutine hydrostatic_pressure
