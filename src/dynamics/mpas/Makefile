@@ -2,8 +2,8 @@ CPPFLAGS := -D_MPI -DMPAS_NATIVE_TIMERS -DMPAS_GIT_VERSION=unknown -DMPAS_NAMELI
 ifdef PIODEF
   CPPFLAGS += $(PIODEF)
 endif
-ifdef ESMFDEF
-  CPPFLAGS += $(ESMFDEF)
+ifeq ($(strip $(COMP_INTERFACE)),nuopc)
+  CPPFLAGS += -DMPAS_EXTERNAL_ESMF_LIB
 endif
 
 REGISTRY_FILE := $(MPAS_SRC_ROOT)/dycore/src/core_atmosphere/Registry.xml
