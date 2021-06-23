@@ -484,9 +484,6 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
         zvirv(:,:) = zvir
       endif
 
-      ! fill zvirv 2D variables to be compatible with geopotential_t interface
-      zvirv(:,:) = zvir
-
       ! Compute geopotential height above surface - based on full pressure
       ! Note that phys_state%zi(:,plev+1) = 0 whereas zint in MPAS is surface height
       !
