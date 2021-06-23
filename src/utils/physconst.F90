@@ -931,7 +931,7 @@ end subroutine physconst_init
        pint_local(:,:,k) = dp(:,:,k-1)+pint_local(:,:,k-1)
      end do
 
-     if (dycore_is ('LR').or.dycore_is('FV3')) then
+     if (dycore_is ('LR').or.dycore_is('FV3').or.dycore_is('SE')) then
        do k=k0,k1
          pmid(:,:,k) = dp(:,:,k)/(log(pint_local(:,:,k+1))-log(pint_local(:,:,k)))
        end do
@@ -1086,7 +1086,7 @@ end subroutine physconst_init
      ! integrate hydrostatic eqn
      !
      gzh = phis
-     if (dycore_is ('LR').or.dycore_is('FV3')) then
+     if (dycore_is ('LR').or.dycore_is('FV3').or.dycore_is('SE')) then
        do k=nlev,1,-1
          Rdry_tv(:,:) = R_dry(:,:,k)*T_v(:,:,k)
          gz(:,:,k) = gzh(:,:)+Rdry_tv(:,:)*(1.0_r8-pint(:,:,k)/pmid_local(:,:,k))
