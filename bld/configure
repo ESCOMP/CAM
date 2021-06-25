@@ -1641,6 +1641,7 @@ elsif ($fc =~ /^nag/)   { $fc_type = 'nag'; }
 elsif ($fc =~ /path/)   { $fc_type = 'pathscale'; }
 elsif ($fc =~ /gfort/)  { $fc_type = 'gnu'; }
 elsif ($fc =~ /xlf/)    { $fc_type = 'ibm'; }
+elsif ($fc =~ /nvfor/)  { $fc_type = 'nvhpc'; }
 
 # User override for Fortran compiler type
 if (defined $opts{'fc_type'}) { $fc_type = $opts{'fc_type'}; }
@@ -1685,6 +1686,7 @@ if ($cc eq '') {
         elsif ($fc_type eq 'pathscale') { $cc = 'pathcc'; }
         elsif ($fc_type eq 'gnu')       { $cc = 'gcc'; }
         elsif ($fc_type eq 'ibm')       { $cc = 'xlc'; }
+        elsif ($fc_type eq 'nvhpc')     { $cc = 'nvc'; }
     }
 }
 
@@ -2089,6 +2091,7 @@ sub write_filepath
     if ($simple_phys) {
       print $fh "$camsrcdir/src/physics/simple\n";
       print $fh "$camsrcdir/src/atmos_phys/kessler\n";
+      print $fh "$camsrcdir/src/atmos_phys/held_suarez\n";
     }
 
     # Weak scaling fix. This has to come before physics/cam and before dycores
@@ -2301,6 +2304,7 @@ sub write_mpas_makefile
     print $fh_out  <<"EOF";
 
 MPAS_SRC_ROOT := $cam_dir/src/dynamics/mpas
+COMP_INTERFACE:= $cpl
 
 EOF
 

@@ -849,14 +849,22 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-<!--              353                        -->
-  <test compset="QPC4" grid="f19_f19_mg17" name="ERC_D_Ln9" testmods="cam/outfrq3s_tmoz">
+
+  <test compset="QPMOZ" grid="f19_f19_mg17" name="ERC_D_Ln9" testmods="cam/outfrq3s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+      <machine name="cheyenne" compiler="intel" category="camchem"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:20:00</option>
+    </options>
+  </test>
+  <test compset="QPC5M7" grid="f19_f19_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
     <options>
-      <option name="comment" >353 tsm, ter</option>
-      <option name="wallclock">00:30:00</option>
+      <option name="wallclock">00:20:00</option>
     </options>
   </test>
 <!--              360                        -->
@@ -1053,6 +1061,50 @@
     <machines>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
     </machines>
+  </test>
+  <test compset="F2000climo" grid="f09_f09_mg17" name="ERP_Ln9" testmods="cam/outfrq9s_mg3_casper">
+    <machines>
+      <machine name="casper" compiler="pgi-gpu"   category="casper_gpu"/>
+      <machine name="casper" compiler="nvhpc-gpu" category="casper_gpu"/>
+      <machine name="casper" compiler="intel"     category="casper_cpu"/>
+      <machine name="casper" compiler="pgi"       category="casper_cpu"/>
+      <machine name="casper" compiler="nvhpc"     category="casper_cpu"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
+  <test compset="QPC4" grid="f19_f19_mg17" name="ERP_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="test_release"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
+  </test>
+  <test compset="QPC5" grid="f19_f19_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="test_release"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
+  </test>
+  <test compset="QSC4" grid="f19_f19_mg17" name="ERP_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="test_release"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
+  </test>
+  <test compset="QSC5" grid="f19_f19_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="test_release"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
   </test>
   <test compset="FSD" grid="f19_f19_mg17" name="ERP_D_Ln9" testmods="cam/outfrq9s_sd">
     <machines>

@@ -40,12 +40,15 @@ contains
     use cam_history,        only: addfld, add_default
     use physconst,          only: cappa, cpair
     use ref_pres,           only: pref_mid_norm, psurf_ref
-    use held_suarez,        only: held_suarez_1994_init
+    use held_suarez_1994,   only: held_suarez_1994_init
 
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
+    character(len=512)            :: errmsg
+    integer                       :: errflg
+
     ! Set model constant values
-    call held_suarez_1994_init(cappa, cpair, psurf_ref, pref_mid_norm)
+    call held_suarez_1994_init(pver, cappa, cpair, psurf_ref, pref_mid_norm, errmsg, errflg)
 
     ! This field is added by radiation when full physics is used
     call addfld('QRS', (/ 'lev' /), 'A', 'K/s', &
@@ -60,7 +63,7 @@ contains
     use physics_types,      only: physics_ptend_init
     use cam_abortutils,     only: endrun
     use cam_history,        only: outfld
-    use held_suarez,        only: held_suarez_1994
+    use held_suarez_1994,   only: held_suarez_1994_run
 
     !
     ! Input arguments
@@ -81,6 +84,9 @@ contains
     real(r8)                           :: pmid(pcols,pver) ! mid-point pressure
     integer                            :: i, k             ! Longitude, level indices
 
+    character(len=512)            :: errmsg
+    integer                       :: errflg
+
     !
     !-----------------------------------------------------------------------
     !
@@ -98,8 +104,8 @@ contains
     ! initialize individual parameterization tendencies
     call physics_ptend_init(ptend, state%psetcols, 'held_suarez', ls=.true., lu=.true., lv=.true.)
 
-    call held_suarez_1994(pcols, ncol, clat, state%pmid, &
-         state%u, state%v, state%t, ptend%u, ptend%v, ptend%s)
+    call held_suarez_1994_run(pver, ncol, clat, state%pmid, &
+         state%u, state%v, state%t, ptend%u, ptend%v, ptend%s, errmsg, errflg)
 
     ! Note, we assume that there are no subcolumns in simple physics
     pmid(:ncol,:) = ptend%s(:ncol, :)/cpairv(:ncol,:,lchnk)

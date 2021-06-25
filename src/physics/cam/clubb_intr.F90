@@ -3510,7 +3510,7 @@ end subroutine clubb_init_cnst
 ! Add ice mass if supersaturated
 subroutine ice_macro_tend(naai,t,p,qv,qi,ni,xxls,deltat,stend,qvtend,qitend,nitend,vlen) 
 
-  use wv_sat_methods, only: wv_sat_qsat_ice_vect
+  use wv_sat_methods, only: wv_sat_qsat_ice
 
   integer,                   intent(in)  :: vlen
   real(r8), dimension(vlen), intent(in)  :: naai   !Activated number of ice nuclei 
@@ -3538,7 +3538,9 @@ subroutine ice_macro_tend(naai,t,p,qv,qi,ni,xxls,deltat,stend,qvtend,qitend,nite
   end do
 
 ! calculate qsati from t,p,q
-  call wv_sat_qsat_ice_vect(t, p, ESI, QSI, vlen)
+  do i = 1, vlen
+     call wv_sat_qsat_ice(t(i), p(i), ESI(i), QSI(i))
+  end do
 
   do i = 1, vlen
      if (naai(i) > 1.e-18_r8 .and. qv(i) > QSI(i)) then
