@@ -174,6 +174,7 @@ contains
     end if
 
 ! add to masterfield list
+    call addfld ('qrlaliarms',(/ 'lev' /), 'A','K/s','qrlaliarms')
     call addfld ('QRLNLTE',(/ 'lev' /), 'A','K/s','Non-LTE LW heating (includes QNO and QO3P)')
     call addfld ('QNO',    (/ 'lev' /), 'A','K/s','NO cooling')
     call addfld ('QCO2',   (/ 'lev' /), 'A','K/s','CO2 cooling')
@@ -228,6 +229,7 @@ contains
     use physconst,     only: mwdry, cpairv
     use physics_types, only: physics_state
     use physics_buffer, only : physics_buffer_desc
+    use perf_mod,      only: t_startf, t_stopf
     use cam_history,   only: outfld
 
 ! Arguments
@@ -299,11 +301,15 @@ contains
 
 ! do non-LTE cooling rate calculations
 
+    call t_startf('nlte_fomichev_calc')
     call nlte_fomichev_calc (lchnk,ncol,state%pmid,state%pint,state%t, &
          xo2mmr,xommr,xo3mmr,xn2mmr,xco2mmr,qrlf,co2cool,o3cool,c2scool)
+    call t_stopf('nlte_fomichev_calc')
          
-    call nlte_aliarms_calc (lchnk,ncol,state%pmid,state%t, &
+    call t_startf('nlte_aliarms_calc')
+    call nlte_aliarms_calc (lchnk,ncol,state%zm, state%pmid,state%t, &
          xo2mmr,xommr,xn2mmr,xco2mmr,qrlaliarms)
+    call t_stopf('nlte_aliarms_calc')
 
 ! do NO cooling 
     call nocooling (ncol, state%t, state%pmid, xnommr,xommr,xo2mmr,xo3mmr,xn2mmr,nocool)
@@ -315,6 +321,8 @@ contains
        qrlf(:ncol,k) = qrlf(:ncol,k) + nocool(:ncol,k) + o3pcool(:ncol,k)
     end do
 
+    qout(:ncol,:) = qrlaliarms(:ncol,:)/cpairv(:ncol,:,lchnk)
+    call outfld ('qrlaliarms'    , qout, pcols, lchnk)
     qout(:ncol,:) = nocool(:ncol,:)/cpairv(:ncol,:,lchnk)
     call outfld ('QNO'    , qout, pcols, lchnk)
     qout(:ncol,:) = o3pcool(:ncol,:)/cpairv(:ncol,:,lchnk)
