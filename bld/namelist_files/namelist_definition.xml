@@ -6860,6 +6860,12 @@ scheme is applied to all vertical levels regardless of this setting.
 Default: FALSE
 </entry>
 
+<entry id="nlte_use_aliarms" type="logical" category="waccm_phys"
+       group="radheat_nl" valid_values="" >
+If TRUE, then use the ALI-ARMS scheme (NOTE---Needs additional details)
+Default: FALSE
+</entry>
+
 <entry id="qbo_cyclic" type="logical" category="waccm_phys"
        group="qbo_nl" valid_values="" >
 TRUE implies assume cyclic qbo data.

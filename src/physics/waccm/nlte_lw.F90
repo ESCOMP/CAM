@@ -32,6 +32,8 @@ module nlte_lw
 !  = .true. uses MOZART constituents
 !  = .false. uses constituents from bnd dataset cftgcm
 
+  logical :: nlte_use_aliarms
+
   logical :: use_data_o3
   logical :: use_waccm_forcing = .false.
 
@@ -54,7 +56,7 @@ module nlte_lw
 contains
 !================================================================================================
 
-  subroutine nlte_init (pref_mid, nlte_use_mo_in, nlte_limit_co2)
+  subroutine nlte_init (pref_mid, nlte_use_mo_in, nlte_limit_co2, nlte_use_aliarms_in)
 !
 ! Initialize the nlte parameterizations and tgcm forcing data, if required
 !------------------------------------------------------------------------
@@ -67,6 +69,7 @@ contains
     real(r8),         intent(in) :: pref_mid(plev)
     logical,          intent(in) :: nlte_use_mo_in
     logical,          intent(in) :: nlte_limit_co2
+    logical,          intent(in) :: nlte_use_aliarms_in
 
     real(r8) :: o1_mw                      ! O molecular weight
     real(r8) :: o2_mw                      ! O2 molecular weight
@@ -85,8 +88,9 @@ contains
 
     call phys_getopts(history_waccm_out=history_waccm)
 
-! Set flag to use mozart (or tgcm) consituents 
+! Set flag to use mozart (or tgcm) consituents and flag to use ALI-ARMS scheme
     nlte_use_mo = nlte_use_mo_in
+    nlte_use_aliarms = nlte_use_aliarms_in
 
     ! ask rad_constituents module whether the O3 used in the climate
     ! calculation is from data
@@ -157,7 +161,7 @@ contains
     call nlte_fomichev_init (co2_mw, n2_mw, o1_mw, o2_mw, o3_mw, no_mw, nlte_limit_co2)
 
 ! Initialize Fomichev parameterization
-    call nlte_aliarms_init ()
+    if (nlte_use_aliarms) call nlte_aliarms_init ()
 
 ! Initialize waccm forcing data
     if (use_waccm_forcing) then
@@ -306,9 +310,11 @@ contains
          xo2mmr,xommr,xo3mmr,xn2mmr,xco2mmr,qrlf,co2cool,o3cool,c2scool)
     call t_stopf('nlte_fomichev_calc')
          
+
+!!! CAC NOTE -- When ready to replace qrlf with value calculated in ALI-ARMS, replace qrlaliarms with qrlf
     call t_startf('nlte_aliarms_calc')
-    call nlte_aliarms_calc (lchnk,ncol,state%zm, state%pmid,state%t, &
-         xo2mmr,xommr,xn2mmr,xco2mmr,qrlaliarms)
+    if (nlte_use_aliarms) call nlte_aliarms_calc (lchnk,ncol,state%zm, state%pmid,state%t, &
+                                                  xo2mmr,xommr,xn2mmr,xco2mmr,qrlaliarms)
     call t_stopf('nlte_aliarms_calc')
 
 ! do NO cooling 

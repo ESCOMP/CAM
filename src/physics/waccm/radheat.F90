@@ -42,6 +42,7 @@ module radheat
                                   !  = .true. uses prognostic constituents
                                   !  = .false. uses constituents from prescribed dataset waccm_forcing_file
   logical :: nlte_limit_co2 = .false. ! if true apply upper limit to co2 in the Formichev scheme 
+  logical :: nlte_use_aliarms = .false. ! If true, use ALI-ARMS instead of Formichev scheme
   
 ! Private variables for merging heating rates
   real(r8):: qrs_wt(pver)             ! merge weight for cam solar heating
@@ -87,7 +88,7 @@ contains
     integer :: unitn, ierr
     character(len=*), parameter :: subname = 'radheat_readnl'
 
-    namelist /radheat_nl/ nlte_use_mo, nlte_limit_co2
+    namelist /radheat_nl/ nlte_use_mo, nlte_limit_co2, nlte_use_aliarms
 
     if (masterproc) then
        unitn = getunit()
@@ -104,8 +105,12 @@ contains
 
     end if
 
-    call mpi_bcast (nlte_use_mo,    1, mpi_logical, masterprocid, mpicom, ierr)
-    call mpi_bcast (nlte_limit_co2, 1, mpi_logical, masterprocid, mpicom, ierr)
+    call mpi_bcast (nlte_use_mo,      1, mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun("radheat_readnl: FATAL: mpi_bcast: nlte_use_mo")
+    call mpi_bcast (nlte_limit_co2,   1, mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun("radheat_readnl: FATAL: mpi_bcast: nlte_limit_co2")
+    call mpi_bcast (nlte_use_aliarms, 1, mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun("radheat_readnl: FATAL: mpi_bcast: nlte_use_aliarms")
 
     ! Have waccm_forcing read its namelist as well.
     call waccm_forcing_readnl(nlfile)
@@ -219,7 +224,7 @@ contains
     end if
 
     if (waccm_heating) then
-       call nlte_init(pref_mid, nlte_use_mo, nlte_limit_co2)
+       call nlte_init(pref_mid, nlte_use_mo, nlte_limit_co2, nlte_use_aliarms)
     endif
 
 ! Add history variables to master field list
