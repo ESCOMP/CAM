@@ -10,26 +10,26 @@ jobs:
   #This job will update the README file on the default branch
   #if the push created a new development branch tag.
   update_readme_dev_tag:
+    if: github.repository == 'ESCOMP/CAM'
     runs-on: ubuntu-latest
     steps:
     # Acquire github action routines
     - uses: actions/checkout@v2
     # Acquire specific version of python
     - name: Set up Python 3.6
-      if: github.repository == 'ESCOMP/CAM' # Only run on main repo
       uses: actions/setup-python@v1
       with:
         python-version: '3.6' # Semantic version range syntax or exact version of a Python version
     # Install required python packages
     - name: Install dependencies
-      if: github.repository == 'ESCOMP/CAM' # Only run on main repo
       run: |
         python -m pip install --upgrade pip  # Install latest version of PIP
         pip install PyGithub                 # Install PyGithub python package
     # Run CAM README tag update script
     - name: Run python README tag-updating script
-      if: github.repository == 'ESCOMP/CAM' # Only run on main repo
       env:
         ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
-      run: .github/scripts/readme_tag_update.py --access_token $ACCESS_TOKEN --trigger_sha $GITHUB_SHA
+        CAM_PWORD: ${{ secrets.CAM_EMAIL_PWORD }}
+      run: |
+        .github/scripts/tag_check_readme_update.py --access_token $ACCESS_TOKEN --trigger_sha $GITHUB_SHA --cam_email_pword $CAM_PWORD
 
