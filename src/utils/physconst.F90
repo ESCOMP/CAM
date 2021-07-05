@@ -417,7 +417,7 @@ end subroutine physconst_init
       if (TRIM(dry_air_species(dry_air_species_num+1))=='N2') then
         call cnst_get_ind('N' ,ix, abort=.false.)
         if (ix<1) then
-          write(iulog, *) subname//' dry air component not found: ', dry_air_species(dry_air_species_num)
+          write(iulog, *) subname//' dry air component not found: ', dry_air_species(dry_air_species_num+1)
           call endrun(subname // ':: dry air component not found')
         else
           mw = 2.0_r8*cnst_mw(ix)
