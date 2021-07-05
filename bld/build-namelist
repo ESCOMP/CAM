@@ -3009,6 +3009,8 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_c6rt');
    add_default($nl, 'clubb_c6rtb');
    add_default($nl, 'clubb_c6rtc');
+   add_default($nl, 'clubb_c6thl');
+   add_default($nl, 'clubb_c6thlb');
    add_default($nl, 'clubb_c6thlc');
    add_default($nl, 'clubb_C7');
    add_default($nl, 'clubb_C7b');

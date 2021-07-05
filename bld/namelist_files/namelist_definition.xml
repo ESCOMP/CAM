@@ -2745,6 +2745,30 @@ ccn activated number scale factor
 Default: 1
 </entry>
 
+<entry id="microp_aero_wsub_scale" type="real" category="microphys"
+       group="microp_aero_nl" valid_values="" >
+Scaling factor for subgrid vertical velocity (liquid)
+Default: 1
+</entry>
+
+<entry id="microp_aero_wsubi_scale" type="real" category="microphys"
+       group="microp_aero_nl" valid_values="" >
+Scaling factor for subgrid vertical velocity (ice)
+Default: 1
+</entry>
+
+<entry id="microp_aero_wsub_min" type="real" category="microphys"
+       group="microp_aero_nl" valid_values="" >
+Minimum subgrid vertical velocity (liquid) ms-1
+Default: 0.2
+</entry>
+
+<entry id="microp_aero_wsubi_min" type="real" category="microphys"
+       group="microp_aero_nl" valid_values="" >
+Minimum subgrid vertical velocity (ice) ms-1
+Default: 0.001
+</entry>
+
 <entry id="use_hetfrz_classnuc" type="logical" category="microphys"
        group="phys_ctl_nl" valid_values="" >
 Switch to turn on heterogeneous freezing code.
@@ -3505,6 +3529,16 @@ CLUBB tunable parameter - High Skewness in C6rt Skw. Function
 <entry id="clubb_c6rtc" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 CLUBB tunable parameter - Degree of Slope of C6rt Skw. Function
+</entry>
+
+<entry id="clubb_c6thl" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+CLUBB tunable parameter - Low Skewness in C6thl Skw. Function
+</entry>
+
+<entry id="clubb_c6thlb" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+CLUBB tunable parameter - High Skewness in C6thl Skw. Function
 </entry>
 
 <entry id="clubb_c6thlc" type="real" category="pblrad"

@@ -111,6 +111,8 @@ module clubb_intr
   real(r8) :: clubb_C6rt = unset_r8
   real(r8) :: clubb_c6rtb = unset_r8
   real(r8) :: clubb_c6rtc = unset_r8
+  real(r8) :: clubb_c6thl = unset_r8
+  real(r8) :: clubb_c6thlb = unset_r8
   real(r8) :: clubb_c6thlc = unset_r8
   real(r8) :: clubb_C8 = unset_r8
   real(r8) :: clubb_C8b = unset_r8
@@ -527,7 +529,7 @@ end subroutine clubb_init_cnst
     namelist /clubb_params_nl/ clubb_c1, clubb_c1b, clubb_c11, clubb_c11b, clubb_c14, clubb_mult_coef, clubb_gamma_coef, &
                                clubb_c_K10, clubb_c_K10h, clubb_beta, clubb_C2rt, clubb_C2thl, &
 			       clubb_C2rtthl, clubb_C8, clubb_C8b, clubb_C7, clubb_C7b, clubb_Skw_denom_coef, &
-                               clubb_c6rt, clubb_c6rtb, clubb_c6rtc, clubb_c6thlc, &
+                               clubb_c6rt, clubb_c6rtb, clubb_c6rtc, clubb_c6thl, clubb_c6thlb, clubb_c6thlc, &
                                clubb_C4, clubb_c_K9, clubb_nu9, clubb_C_wp2_splat, clubb_wpxp_L_thresh, &
                                clubb_lambda0_stability_coef, clubb_l_lscale_plume_centered, &
                                clubb_l_use_ice_latent, clubb_do_liqsupersat, clubb_do_energyfix,&
@@ -630,6 +632,10 @@ end subroutine clubb_init_cnst
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_c6rtb")
     call mpi_bcast(clubb_c6rtc,                  1, mpi_real8,   mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_c6rtc")
+    call mpi_bcast(clubb_c6thl,                 1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_c6thl")
+    call mpi_bcast(clubb_c6thlb,                 1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_c6thlb")
     call mpi_bcast(clubb_c6thlc,                 1, mpi_real8,   mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_c6thlc")
     call mpi_bcast(clubb_wpxp_L_thresh,          1, mpi_real8,   mstrid, mpicom, ierr)
@@ -751,6 +757,8 @@ end subroutine clubb_init_cnst
   if(clubb_c6rt == unset_r8) call endrun(sub//": FATAL: clubb_c6rt is not set")
   if(clubb_c6rtb == unset_r8) call endrun(sub//": FATAL: clubb_c6rtb is not set")
   if(clubb_c6rtc == unset_r8) call endrun(sub//": FATAL: clubb_c6rtc is not set")
+  if(clubb_c6thl == unset_r8) call endrun(sub//": FATAL: clubb_c6thl is not set")
+  if(clubb_c6thlb == unset_r8) call endrun(sub//": FATAL: clubb_c6thlb is not set")
   if(clubb_c6thlc == unset_r8) call endrun(sub//": FATAL: clubb_c6thlc is not set")
   if(clubb_wpxp_L_thresh == unset_r8) call endrun(sub//": FATAL: clubb_wpxp_L_thresh is not set")
   if(clubb_C8 == unset_r8) call endrun(sub//": FATAL: clubb_C8 is not set")
@@ -813,7 +821,7 @@ end subroutine clubb_init_cnst
     ! These are needed to set parameters
     use clubb_api_module, only: &
          ilambda0_stability_coef, ic_K10, ic_K10h, iC7, iC7b, iC8, iC8b, iC11, iC11b, iC4, &
-         iC1, iC1b, iC6rt, iC6rtb, iC6rtc, iC6thlc, iup2_vp2_factor, iwpxp_L_thresh, &
+         iC1, iC1b, iC6rt, iC6rtb, iC6rtc, iC6thl, iC6thlb, iC6thlc, iup2_vp2_factor, iwpxp_L_thresh, &
          iC14, igamma_coef, igamma_coefb, imult_coef, ilmin_coef, iSkw_denom_coef, ibeta, iskw_max_mag, &
          iC2rt, iC2thl, iC2rtthl, ic_K9, inu9, iC_wp2_splat, params_list
 
@@ -1052,6 +1060,8 @@ end subroutine clubb_init_cnst
     clubb_params(iC6rt) = clubb_c6rt
     clubb_params(iC6rtb) = clubb_c6rtb
     clubb_params(iC6rtc) = clubb_c6rtc
+    clubb_params(iC6thl) = clubb_c6thl
+    clubb_params(iC6thlb) = clubb_c6thlb
     clubb_params(iC6thlc) = clubb_c6thlc
     clubb_params(iwpxp_L_thresh) = clubb_wpxp_L_thresh
     clubb_params(iC7) = clubb_C7
