@@ -49,7 +49,7 @@ Switch to turn on analytic initial conditions for the dynamics state:
 <entry id="waccmx" valid_values="0,1" value="0">
 Option to turn on waccmx thermosphere/ionosphere extension: 0 => no, 1 => yes
 </entry>
-<entry id="ionosphere" valid_values="none,wxi,wxie" value="none">
+<entry id="ionosphere" valid_values="none,wxie" value="none">
 Ionosphere model used in WACCMX.
 </entry>
 <entry id="phys" valid_values="cam3,cam4,cam5,cam6,held_suarez,adiabatic,kessler,tj2016,spcam_sam1mom,spcam_m2005" value="">
@@ -213,7 +213,7 @@ User specified C compiler options to append to Makefile defaults.
 <entry id="fc" value="">
 User specified Fortran compiler overrides Makefile default.
 </entry>
-<entry id="fc_type" valid_values="cray,pgi,intel,gnu,pathscale,ibm,nag" value="">
+<entry id="fc_type" valid_values="cray,pgi,intel,gnu,pathscale,ibm,nag,nvhpc,pgi-gpu,nvhpc-gpu" value="">
 Type of Fortran compiler.  Used when -fc specifies a generic wrapper script
 such as mpif90 or ftn.
 </entry>

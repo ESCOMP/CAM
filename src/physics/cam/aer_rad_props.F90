@@ -132,7 +132,7 @@ subroutine aer_rad_props_sw(list_idx, state, pbuf,  nnite, idxnite, &
 
    integer :: ncol
    integer :: lchnk
-   integer :: i, k       ! index
+   integer :: k       ! index
    integer :: troplev(pcols)
 
    ! optical props for each aerosol

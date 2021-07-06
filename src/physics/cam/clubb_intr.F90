@@ -3557,12 +3557,12 @@ end subroutine clubb_init_cnst
 ! Add ice mass if supersaturated
 subroutine ice_macro_tend(naai,t,p,qv,qi,ni,xxls,deltat,stend,qvtend,qitend,nitend,vlen) 
 
-  use wv_sat_methods, only: wv_sat_qsat_ice_vect
+  use wv_sat_methods, only: wv_sat_qsat_ice
 
   integer,                   intent(in)  :: vlen
   real(r8), dimension(vlen), intent(in)  :: naai   !Activated number of ice nuclei 
   real(r8), dimension(vlen), intent(in)  :: t      !temperature (k)
-  real(r8), dimension(vlen), intent(in)  :: p      !pressure (pa0
+  real(r8), dimension(vlen), intent(in)  :: p      !pressure (pa)
   real(r8), dimension(vlen), intent(in)  :: qv     !water vapor mixing ratio
   real(r8), dimension(vlen), intent(in)  :: qi     !ice mixing ratio
   real(r8), dimension(vlen), intent(in)  :: ni     !ice number concentration
@@ -3575,7 +3575,6 @@ subroutine ice_macro_tend(naai,t,p,qv,qi,ni,xxls,deltat,stend,qvtend,qitend,nite
  
   real(r8) :: ESI(vlen)
   real(r8) :: QSI(vlen)
-!!  real(r8) :: tau
   integer  :: i
 
   do i = 1, vlen
@@ -3586,12 +3585,14 @@ subroutine ice_macro_tend(naai,t,p,qv,qi,ni,xxls,deltat,stend,qvtend,qitend,nite
   end do
 
 ! calculate qsati from t,p,q
-  call wv_sat_qsat_ice_vect(t, p, ESI, QSI, vlen)
+  do i = 1, vlen
+     call wv_sat_qsat_ice(t(i), p(i), ESI(i), QSI(i))
+  end do
 
   do i = 1, vlen
      if (naai(i) > 1.e-18_r8 .and. qv(i) > QSI(i)) then
 
-        qitend(i) = (qv(i)-QSI(i))/deltat !* exp(-tau/deltat)
+        qitend(i) = (qv(i)-QSI(i))/deltat
         qvtend(i) = 0._r8 - qitend(i)
         stend(i)  = qitend(i) * xxls      ! moist static energy tend...[J/kg/s] !
    

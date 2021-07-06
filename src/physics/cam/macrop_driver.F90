@@ -1151,8 +1151,11 @@ subroutine liquid_macro_tend(npccn,t,p,qv,qc,nc,xxlv,deltat,stend,qvtend,qctend,
 
   real(r8) :: ESL(vlen)
   real(r8) :: QSL(vlen)
+  real(r8) :: drop_size_param    
   integer  :: i
 
+  drop_size_param = 3._r8/(4._r8*3.14_r8*6.e-6_r8**3*rhow)
+      
   do i = 1, vlen
      stend(i) = 0._r8
      qvtend(i) = 0._r8
@@ -1161,11 +1164,13 @@ subroutine liquid_macro_tend(npccn,t,p,qv,qc,nc,xxlv,deltat,stend,qvtend,qctend,
   end do
 
   ! calculate qsatl from t,p,q
+  !$acc data copyin(t,p) copyout(ESL,QSL) 
   call wv_sat_qsat_water_vect(t, p, ESL, QSL, vlen)
+  !$acc end data
 
   do i = 1, vlen
      ! Don't allow supersaturation with respect to liquid.
-     if (qv(i).gt.QSL(i)) then
+     if (qv(i) > QSL(i)) then
    
         qctend(i) = (qv(i) - QSL(i)) / deltat
         qvtend(i) = 0._r8 - qctend(i)
@@ -1175,10 +1180,10 @@ subroutine liquid_macro_tend(npccn,t,p,qv,qc,nc,xxlv,deltat,stend,qvtend,qctend,
         ! do not add to number (= growth), otherwise  add 6um drops.
         !
         ! This is somewhat arbitrary, but ensures that some reasonable droplet
-        ! size is create to remove the excess water. This could be enhanced to
+        ! size is created to remove the excess water. This could be enhanced to
         ! look at npccn, but ideally this entire routine should go away.
-        if (nc(i)*p(i)/rair/t(i).lt.1e3_r8.and.(qc(i)+qctend(i)*deltat).gt.1e-18_r8) then
-           nctend(i) = nctend(i) + 3._r8 * qctend(i)/(4._r8*3.14_r8*6.e-6_r8**3*rhow)
+        if ((nc(i)*p(i)/rair/t(i) < 1e3_r8) .and. (qc(i)+qctend(i)*deltat > 1e-18_r8)) then
+           nctend(i) = nctend(i) + qctend(i)*drop_size_param
         end if
      end if
   end do

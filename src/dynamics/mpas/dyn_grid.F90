@@ -19,24 +19,20 @@ module dyn_grid
 !
 !-------------------------------------------------------------------------------
 
-use shr_kind_mod,      only: r8 => shr_kind_r8
-use spmd_utils,        only: iam, masterproc, mpicom, npes
 
-use pmgrid,            only: plev, plevp
-use physconst,         only: pi
-
-use cam_logfile,       only: iulog
-use cam_abortutils,    only: endrun
-
-use pio,               only: file_desc_t, pio_global, pio_get_att
-
-use cam_mpas_subdriver, only: domain_ptr, cam_mpas_init_phase3, cam_mpas_get_global_dims, &
-                              cam_mpas_get_global_coords, cam_mpas_get_global_blocks,     &
-                              cam_mpas_read_static, cam_mpas_compute_unit_vectors
-
-use mpas_pool_routines, only: mpas_pool_get_subpool, mpas_pool_get_dimension, mpas_pool_get_array
-use mpas_derived_types, only: mpas_pool_type
-
+use cam_abortutils,      only: endrun
+use cam_logfile,         only: iulog
+use cam_mpas_subdriver,  only: domain_ptr, cam_mpas_init_phase3, cam_mpas_get_global_dims, &
+                               cam_mpas_read_static, cam_mpas_compute_unit_vectors
+use mpas_derived_types,  only: mpas_pool_type
+use mpas_pool_routines,  only: mpas_pool_get_subpool, mpas_pool_get_dimension, mpas_pool_get_array
+use physconst,           only: pi
+use physics_column_type, only: physics_column_t
+use pio,                 only: file_desc_t, pio_global, pio_get_att
+use pmgrid,              only: plev, plevp
+use shr_kind_mod,        only: r8 => shr_kind_r8
+use spmd_utils,          only: iam, masterproc, mpicom, npes
+use string_utils,        only: int2str
 
 implicit none
 private
@@ -55,14 +51,7 @@ public :: &
    dyn_decomp, &
    ptimelevels, &
    dyn_grid_init, &
-   get_block_bounds_d, &
-   get_block_gcol_cnt_d, &
-   get_block_gcol_d, &
-   get_block_lvl_cnt_d, &
-   get_block_levels_d, &
-   get_block_owner_d, &
-   get_gcol_block_d, &
-   get_gcol_block_cnt_d, &
+   get_dyn_grid_info, &
    get_horiz_grid_dim_d, &
    get_horiz_grid_d, &
    get_dyn_grid_parm, &
@@ -72,7 +61,9 @@ public :: &
    physgrid_copy_attributes_d
 
 ! vertical reference heights (m) in CAM top to bottom order.
-real(r8) :: zw(plevp), zw_mid(plev)
+! These arrays are targets of the real_values pointers in the hist_coords
+! objects in the cam_history_support module.
+real(r8), target :: zw(plevp), zw_mid(plev)
 
 integer ::      &
    maxNCells,   &    ! maximum number of cells for any task (nCellsSolve <= maxNCells)
@@ -102,10 +93,6 @@ integer, allocatable :: col_indices_in_block(:,:)  ! global column indices in ea
 integer, allocatable :: num_col_per_block(:)       ! number of columns in each block
 integer, allocatable :: global_blockid(:)          ! block id for each global column
 integer, allocatable :: local_col_index(:)         ! local column index (in block) for each global column
-
-real(r8), dimension(:), pointer :: lonCell_g       ! global cell longitudes
-real(r8), dimension(:), pointer :: latCell_g       ! global cell latitudes
-real(r8), dimension(:), pointer :: areaCell_g      ! global cell areas
 
 !=========================================================================================
 contains
@@ -181,18 +168,6 @@ subroutine dyn_grid_init()
 
    ! Query global grid dimensions from MPAS
    call cam_mpas_get_global_dims(nCells_g, nEdges_g, nVertices_g, maxEdges, nVertLevels, maxNCells)
-
-   ! Temporary global arrays needed by phys_grid_init
-   allocate(lonCell_g(nCells_g))
-   allocate(latCell_g(nCells_g))
-   allocate(areaCell_g(nCells_g))
-   call cam_mpas_get_global_coords(latCell_g, lonCell_g, areaCell_g)
-   
-   allocate(num_col_per_block(npes))
-   allocate(col_indices_in_block(maxNCells,npes))
-   allocate(global_blockid(nCells_g))
-   allocate(local_col_index(nCells_g))
-   call cam_mpas_get_global_blocks(num_col_per_block, col_indices_in_block, global_blockID, local_col_index)
    
    ! Define the dynamics grids on the dynamics decompostion.  The cell
    ! centered grid is used by the physics parameterizations.  The physics
@@ -203,185 +178,97 @@ end subroutine dyn_grid_init
 
 !=========================================================================================
 
-subroutine get_block_bounds_d(block_first, block_last)
+subroutine get_dyn_grid_info(hdim1_d, hdim2_d, num_levels, index_model_top_layer, index_surface_layer, unstructured, dyn_columns)
+   !------------------------------------------------------------
+   !
+   ! get_dyn_grid_info return dynamics grid column information
+   !
+   ! Return dynamic grid columns information and other dycore information. After
+   ! this function is called, dyn_columns will be allocated to size nCellsSolve
+   ! and each entry will represent a dynamics column (cell) of the MPAS dynamics.
+   !
+   !------------------------------------------------------------
 
-   ! Return first and last indices used in global block ordering.
-   ! The indexing is 1-based.
+   use shr_const_mod, only: SHR_CONST_PI ! TODO: Is this the correct PI constant to use?
 
-   integer, intent(out) :: block_first  ! first global index used for blocks
-   integer, intent(out) :: block_last   ! last global index used for blocks
-   !----------------------------------------------------------------------------
+   ! Input variables
+   integer, intent(out) :: hdim1_d ! Global Longitudes or global grid size (nCells_g)
+   integer, intent(out) :: hdim2_d ! Latitudes or 1 for unstructured grids
+   integer, intent(out) :: num_levels ! Number of levels
+   integer, intent(out) :: index_model_top_layer
+   integer, intent(out) :: index_surface_layer
+   logical, intent(out) :: unstructured
+   type (physics_column_t), allocatable, intent(out):: dyn_columns(:)
 
-   ! MPAS assigns 1 block per task.
+   ! Local variables
+   type(mpas_pool_type),   pointer :: meshPool
+   integer, pointer :: nCellsSolve ! Cells owned by this task, excluding halo cells
+   integer, pointer :: nVertLevels ! number of vertical layers (midpoints)
+   integer,  dimension(:), pointer :: indexToCellID ! global indices of cell centers
+   real(r8), dimension(:), pointer :: latCell   ! cell center latitude (radians)
+   real(r8), dimension(:), pointer :: lonCell   ! cell center longitudes (radians)
+   real(r8), dimension(:), pointer :: areaCell  ! cell areas in m^2
+   integer :: iCell
+   integer :: ierr
+   integer :: my_proc_id
+   character(len=*), parameter :: subname = 'get_dyn_grid_info'
 
-   block_first = 1
-   block_last = npes
-
-end subroutine get_block_bounds_d
-
-!=========================================================================================
-
-integer function get_block_gcol_cnt_d(blockid)
-
-   ! Return the number of dynamics columns in the block with the specified
-   ! global block ID.  The blockid can be for a block owned by any MPI
-   ! task.
-
-   integer, intent(in) :: blockid
-   !----------------------------------------------------------------------------
-
-   get_block_gcol_cnt_d = num_col_per_block(blockid)
-
-end function get_block_gcol_cnt_d
-
-!=========================================================================================
-
-subroutine get_block_gcol_d(blockid, asize, cdex)
-
-   ! Return list of global dynamics column indices in the block with the
-   ! specified global block ID.  The blockid can be for a block owned by
-   ! any MPI task.
-
-   integer, intent(in) :: blockid      ! global block id
-   integer, intent(in) :: asize        ! array size
-
-   integer, intent(out):: cdex(asize)  ! global column indices
-
-   integer :: icol
-
-   character(len=*), parameter :: subname = 'dyn_grid::get_block_gcol_d'
-   !----------------------------------------------------------------------------
-
-   if (asize < num_col_per_block(blockid)) then
-      write(iulog,*) subname//': array size too small: asize, num_col_per_block=', &
-         asize, num_col_per_block(blockid)
-      call endrun(subname//': array size too small')
+   ! TODO: Is it possible we can guarantee that local_dyn_columns will never be allocated before this function?
+   if (allocated(dyn_columns)) then
+       call endrun(subname//': dyn_columns must be unallocated')
    end if
 
-   do icol = 1, num_col_per_block(blockid)
-      cdex(icol) = col_indices_in_block(icol, blockid)
-   end do
-   do icol = num_col_per_block(blockid)+1, asize
-      cdex(icol) = 0
-   end do
+   ! Retrieve MPAS grid dimensions and variables from the mesh pool
+   call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'mesh', meshPool)
+   call mpas_pool_get_dimension(meshPool, 'nCellsSolve', nCellsSolve)
+   call mpas_pool_get_dimension(meshPool, 'nVertLevels', nVertLevels)
 
-end subroutine get_block_gcol_d
-   
-!=========================================================================================
-   
-integer function get_block_lvl_cnt_d(blockid, bcid)
+   call mpas_pool_get_array(meshPool, 'indexToCellID', indexToCellID)
+   call mpas_pool_get_array(meshPool, 'latCell', latCell)
+   call mpas_pool_get_array(meshPool, 'lonCell', lonCell)
+   call mpas_pool_get_array(meshPool, 'areaCell', areaCell)
 
-   ! Returns the number of levels in the specified column of the specified block.
-   ! If column includes surface fields, then it is defined to also
-   ! include level 0.
+   allocate(dyn_columns(nCellsSolve), stat=ierr)
+   if( ierr /= 0 ) call endrun(subname//':failed to allocate dyn_columns array')
 
-   integer, intent(in) :: blockid  ! global block id
-   integer, intent(in) :: bcid     ! column index within block
-   !----------------------------------------------------------------------------
+   ! Fill out subroutine arguments
+   hdim1_d = nCells_g
+   hdim2_d = 1
+   num_levels = nVertLevels
+   index_model_top_layer = nVertLevels
+   index_surface_layer = 1
+   unstructured = .True.
 
-   ! All blocks have the same number of levels.
-   get_block_lvl_cnt_d = plevp
+   my_proc_id = domain_ptr % dminfo % my_proc_id
 
-end function get_block_lvl_cnt_d
+   !
+   ! Fill out physics_t_column information, one member per cell (column)
+   !
+   do iCell = 1, nCellsSolve
+       ! Column information
+       dyn_columns(iCell) % lat_rad = latCell(iCell)
+       dyn_columns(iCell) % lon_rad = lonCell(iCell)
+       dyn_columns(iCell) % lat_deg = latCell(iCell) * rad2deg
+       dyn_columns(iCell) % lon_deg = lonCell(iCell) * rad2deg
+       ! Normalize cell areas and cell weights to a unit sphere
+       dyn_columns(iCell) % area = areaCell(iCell) / (sphere_radius**2)
+       dyn_columns(iCell) % weight = areaCell(iCell) / (sphere_radius**2)
 
-!=========================================================================================
+       ! File information
+       dyn_columns(iCell) % global_col_num = indexToCellID(iCell)
 
-subroutine get_block_levels_d(blockid, bcid, lvlsiz, levels)
+       ! Dynamics decomposition
+       dyn_columns(iCell) % dyn_task = my_proc_id
+       dyn_columns(iCell) % local_dyn_block = iCell
+       dyn_columns(iCell) % global_dyn_block = indexToCellID(iCell)
 
-   ! Returns the level indices in the column of the specified global block.
-   ! For MPAS decomposition all columns in a block contain complete vertical grid.
+       ! dyn_block_index is not used, but it needs to be allocate to a 0 size
+       allocate(dyn_columns(iCell) % dyn_block_index(0), stat=ierr)
+       if( ierr /= 0 ) call endrun(subname//':failed to allocate dyn_columns%dyn_block_index array')
 
-   integer, intent(in) :: blockid  ! global block id
-   integer, intent(in) :: bcid     ! column index within block
-   integer, intent(in) :: lvlsiz   ! dimension of levels array
-
-   integer, intent(out) :: levels(lvlsiz) ! level indices for block
-
-   integer :: k
-   character(len=128) :: errmsg
-
-   character(len=*), parameter :: subname = 'dyn_grid::get_block_levels_d'
-   !----------------------------------------------------------------------------
-
-   if ( lvlsiz < plev + 1 ) then
-      write(errmsg,*) ': levels array not large enough (', lvlsiz,' < ',plev + 1,')'
-      call endrun( subname // trim(errmsg) )
-   else
-      do k = 0, plev
-         levels(k+1) = k
-      end do
-      do k = plev+2, lvlsiz
-         levels(k) = -1
-      end do
-   end if
-
-end subroutine get_block_levels_d
-
-!=========================================================================================
-
-integer function get_gcol_block_cnt_d(gcol)
-
-   ! Return number of blocks containing data for the vertical column
-   ! with the specified global column index.
-
-   integer, intent(in) :: gcol     ! global column index
-   !----------------------------------------------------------------------------
-
-   ! Each global column is solved in just one block.  The blocks where that column may
-   ! be in a halo cell are not counted.
-   get_gcol_block_cnt_d = 1
-
-end function get_gcol_block_cnt_d
-
-!=========================================================================================
-
-subroutine get_gcol_block_d(gcol, cnt, blockid, bcid)
-
-   ! Return global block index and local column index for a global column index.
-   ! This routine can be called for global columns that are not owned by
-   ! the calling task.
-
-   integer, intent(in) :: gcol     ! global column index
-   integer, intent(in) :: cnt      ! size of blockid and bcid arrays
-
-   integer, intent(out) :: blockid(cnt) ! block index
-   integer, intent(out) :: bcid(cnt)    ! column index within block
-
-   integer :: j
-
-   character(len=*), parameter :: subname = 'dyn_grid::get_gcol_block_d'
-   !----------------------------------------------------------------------------
-
-   if ( cnt < 1 ) then
-      write(iulog,*) subname//': arrays not large enough: cnt= ', cnt
-      call endrun( subname // ': arrays not large enough' )
-   end if
-
-   ! Each global column is solved in just one block.
-   blockid(1) = global_blockid(gcol)
-   bcid(1) = local_col_index(gcol)
-
-   do j=2,cnt
-      blockid(j) = -1
-      bcid(j)    = -1
    end do
 
-end subroutine get_gcol_block_d
-
-!=========================================================================================
-
-integer function get_block_owner_d(blockid)
-
-   ! Return the ID of the task that owns the indicated global block.
-   ! Assume that task IDs are 0-based as in MPI.
-
-   integer, intent(in) :: blockid  ! global block id
-   !----------------------------------------------------------------------------
-
-   ! MPAS assigns one block per task.
-   get_block_owner_d = (blockid - 1)
-
-end function get_block_owner_d
+end subroutine get_dyn_grid_info
 
 !=========================================================================================
 
@@ -422,35 +309,7 @@ subroutine get_horiz_grid_d(nxy, clat_d_out, clon_d_out, area_d_out, &
    character(len=*), parameter :: subname = 'dyn_grid::get_horiz_grid_d'
    !----------------------------------------------------------------------------
 
-   if ( nxy /= nCells_g ) then
-      write(iulog,*) subname//': incorrect number of cells: nxy, nCells_g= ', &
-         nxy, nCells_g
-      call endrun(subname//': incorrect number of cells')
-   end if
-
-   if ( present( clat_d_out ) ) then
-      clat_d_out(:) = latCell_g(:)
-   end if
-
-   if ( present( clon_d_out ) ) then
-      clon_d_out(:) = lonCell_g(:)
-   end if
-
-   if ( present( area_d_out ) ) then
-      area_d_out(:) = areaCell_g(:) / (sphere_radius**2)
-   end if
-
-   if ( present( wght_d_out ) ) then
-      wght_d_out(:) = areaCell_g(:) / (sphere_radius**2)
-   end if
-
-   if ( present( lat_d_out ) ) then
-      lat_d_out(:) = latCell_g(:) * rad2deg
-   end if
-
-   if ( present( lon_d_out ) ) then
-      lon_d_out(:) = lonCell_g(:) * rad2deg
-   end if
+   call endrun(subname//': NOT SUPPORTED WITH WEAK SCALING FIX')
 
 end subroutine get_horiz_grid_d
 
@@ -465,13 +324,17 @@ subroutine physgrid_copy_attributes_d(gridname, grid_attribute_names)
 
    character(len=max_hcoordname_len),          intent(out) :: gridname
    character(len=max_hcoordname_len), pointer, intent(out) :: grid_attribute_names(:)
+   integer :: ierr
+   character(len=*), parameter :: subname = 'dyn_grid::physgrid_copy_attributes_d'
    !----------------------------------------------------------------------------
 
 
    ! Do not let the physics grid copy the mpas_cell "area" attribute because
    ! it is using a different dimension name.
    gridname = 'mpas_cell'
-   allocate(grid_attribute_names(0))
+   allocate(grid_attribute_names(0), stat=ierr)
+   if( ierr /= 0 ) call endrun(subname//':failed to allocate grid_attribute_names array')
+
 
 end subroutine physgrid_copy_attributes_d
 
@@ -541,20 +404,7 @@ subroutine dyn_grid_get_colndx(igcol, ncols, owners, col, lbk )
    integer :: blockid(1), bcid(1)
    !----------------------------------------------------------------------------
 
-   do i = 1,ncols
-      
-      call  get_gcol_block_d(igcol(i), 1, blockid, bcid)
-      owners(i) = get_block_owner_d(blockid(1))
-  
-      if ( iam==owners(i) ) then
-         lbk(i) = 1         ! only 1 block per task
-         col(i) = bcid(1)
-      else
-         lbk(i) = -1
-         col(i) = -1
-      end if
-  
-   end do
+   call endrun('dyn_grid_get_colndx: not implemented for unstructured grids')
 
 end subroutine dyn_grid_get_colndx
 
@@ -592,8 +442,9 @@ subroutine setup_time_invariant(fh_ini)
    ! Initialize all time-invariant fields needed by the MPAS-Atmosphere dycore,
    ! by reading these fields from the initial file.
 
-   use mpas_rbf_interpolation, only : mpas_rbf_interp_initialize
+   use mpas_rbf_interpolation,     only : mpas_rbf_interp_initialize
    use mpas_vector_reconstruction, only : mpas_init_reconstruct
+   use string_utils,               only: int2str
 
    ! Arguments
    type(file_desc_t), pointer :: fh_ini
@@ -604,8 +455,9 @@ subroutine setup_time_invariant(fh_ini)
    real(r8), allocatable :: dzw(:)
 
    integer :: k, kk
+   integer :: ierr
 
-   character(len=*), parameter :: routine = 'dyn_grid::setup_time_invariant'
+   character(len=*), parameter :: subname = 'dyn_grid::setup_time_invariant'
    !----------------------------------------------------------------------------
 
    ! Read time-invariant fields
@@ -624,9 +476,10 @@ subroutine setup_time_invariant(fh_ini)
 
    ! check that number of vertical layers matches MPAS grid data
    if (plev /= nVertLevelsSolve) then
-      write(iulog,*) routine//': ERROR: number of levels in IC file does not match plev: file, plev=', &
+      write(iulog,*) subname//': ERROR: number of levels in IC file does not match plev: file, plev=', &
                      nVertLevelsSolve, plev
-      call endrun(routine//': ERROR: number of levels in IC file does not match plev.')
+      call endrun(subname//': ERROR: number of levels in IC file ('//int2str(nVertLevelsSolve)// &
+                           ') does not match plev ('//int2str(nVertLevelsSolve)//').')
    end if
 
    ! Initialize fields needed for reconstruction of cell-centered winds from edge-normal winds
@@ -640,7 +493,9 @@ subroutine setup_time_invariant(fh_ini)
    ! in CAM coordinate objects.
    call mpas_pool_get_array(meshPool, 'rdzw', rdzw)
 
-   allocate(dzw(plev))
+   allocate(dzw(plev), stat=ierr)
+   if( ierr /= 0 ) call endrun(subname//':failed to allocate dzw array')
+
    dzw = 1._r8 / rdzw
    zw(plev+1) = 0._r8
    do k = plev, 1, -1
@@ -698,6 +553,8 @@ subroutine define_cam_grids()
    integer,  dimension(:), pointer :: indexToVertexID ! global indices of vertex nodes
    real(r8), dimension(:), pointer :: latVertex ! vertex node latitude (radians)
    real(r8), dimension(:), pointer :: lonVertex ! vertex node longitude (radians)
+   integer :: ierr
+   character(len=*), parameter :: subname = 'dyn_grid::define_cam_grids'
    !----------------------------------------------------------------------------
 
    call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'mesh', meshPool)
@@ -711,7 +568,9 @@ subroutine define_cam_grids()
    call mpas_pool_get_array(meshPool, 'lonCell', lonCell)
    call mpas_pool_get_array(meshPool, 'areaCell', areaCell)
 
-   allocate(gidx(nCellsSolve))
+   allocate(gidx(nCellsSolve), stat=ierr)
+   if( ierr /= 0 ) call endrun(subname//':failed to allocate gidx array at line:'//int2str(__LINE__))
+
    gidx = indexToCellID(1:nCellsSolve)
 
    lat_coord => horiz_coord_create('latCell', 'nCells', nCells_g, 'latitude',      &
@@ -720,7 +579,9 @@ subroutine define_cam_grids()
           'degrees_east', 1, nCellsSolve, lonCell(1:nCellsSolve)*rad2deg, map=gidx)
  
    ! Map for cell centers grid
-   allocate(grid_map(3, nCellsSolve))
+   allocate(grid_map(3, nCellsSolve), stat=ierr)
+   if( ierr /= 0 ) call endrun(subname//':failed to allocate grid_map array at line:'//int2str(__LINE__))
+
    do i = 1, nCellsSolve
       grid_map(1, i) = i
       grid_map(2, i) = 1
@@ -759,7 +620,9 @@ subroutine define_cam_grids()
    call mpas_pool_get_array(meshPool, 'latEdge', latEdge)
    call mpas_pool_get_array(meshPool, 'lonEdge', lonEdge)
 
-   allocate(gidx(nEdgesSolve))
+   allocate(gidx(nEdgesSolve), stat=ierr)
+   if( ierr /= 0 ) call endrun(subname//':failed to allocate gidx array at line:'//int2str(__LINE__))
+
    gidx = indexToEdgeID(1:nEdgesSolve)
 
    lat_coord => horiz_coord_create('latEdge', 'nEdges', nEdges_g, 'latitude',      &
@@ -768,7 +631,9 @@ subroutine define_cam_grids()
           'degrees_east', 1, nEdgesSolve, lonEdge(1:nEdgesSolve)*rad2deg, map=gidx)
  
    ! Map for edge node grid
-   allocate(grid_map(3, nEdgesSolve))
+   allocate(grid_map(3, nEdgesSolve), stat=ierr)
+   if( ierr /= 0 ) call endrun(subname//':failed to allocate grid_map array at line:'//int2str(__LINE__))
+
    do i = 1, nEdgesSolve
       grid_map(1, i) = i
       grid_map(2, i) = 1
@@ -792,7 +657,9 @@ subroutine define_cam_grids()
    call mpas_pool_get_array(meshPool, 'latVertex', latVertex)
    call mpas_pool_get_array(meshPool, 'lonVertex', lonVertex)
 
-   allocate(gidx(nVerticesSolve))
+   allocate(gidx(nVerticesSolve), stat=ierr)
+   if( ierr /= 0 ) call endrun(subname//':failed to allocate gidx array at line:'//int2str(__LINE__))
+
    gidx = indexToVertexID(1:nVerticesSolve)
 
    lat_coord => horiz_coord_create('latVertex', 'nVertices', nVertices_g, 'latitude',      &
@@ -801,7 +668,9 @@ subroutine define_cam_grids()
           'degrees_east', 1, nVerticesSolve, lonVertex(1:nVerticesSolve)*rad2deg, map=gidx)
  
    ! Map for vertex node grid
-   allocate(grid_map(3, nVerticesSolve))
+   allocate(grid_map(3, nVerticesSolve), stat=ierr)
+   if( ierr /= 0 ) call endrun(subname//':failed to allocate grid_map array at line:'//int2str(__LINE__))
+
    do i = 1, nVerticesSolve
       grid_map(1, i) = i
       grid_map(2, i) = 1
