@@ -31,6 +31,7 @@ module clubb_intr
   use clubb_api_module, only: pdf_parameter, implicit_coefs_terms
   use clubb_api_module, only: clubb_config_flags_type
   use clubb_mf,         only: do_clubb_mf, do_clubb_mf_diag
+  use cloud_fraction,   only: dp1, dp2
 #endif
 
   implicit none
@@ -785,7 +786,7 @@ end subroutine clubb_init_cnst
   if(clubb_detliq_rad == unset_r8) call endrun(sub//": FATAL: clubb_detliq_rad not set")
   if(clubb_detice_rad == unset_r8) call endrun(sub//": FATAL: clubb_detice_rad not set")
   if(clubb_detphase_lowtemp == unset_r8) call endrun(sub//": FATAL: clubb_detphase_lowtemp not set")
-  if(clubb_detphase_lowtemp >= 268.15_r8) & 
+  if(clubb_detphase_lowtemp >= meltpt_temp) & 
      call endrun(sub//": ERROR: clubb_detphase_lowtemp must be less than 268.15 K")
 
 #endif
@@ -895,6 +896,8 @@ end subroutine clubb_init_cnst
 
     ! CAM defines zi at the surface to be zero.
     real(r8), parameter :: sfc_elevation = 0._r8
+    ! Commonly used temperature for the melting temp of ice crystals [K] 
+    real(r8), parameter :: meltpt_temp = 268.15_r8  
 
     integer :: nlev
 
@@ -3122,12 +3125,12 @@ end subroutine clubb_init_cnst
    
    do k=1,pver
       do i=1,ncol
-         if( state1%t(i,k) > 268.15_r8 ) then
+         if( state1%t(i,k) > meltpt_temp ) then
             dum1 = 0.0_r8
          elseif ( state1%t(i,k) < dt_low ) then
             dum1 = 1.0_r8
          else
-            dum1 = ( 268.15_r8 - state1%t(i,k) ) / ( 268.15_r8 - dt_low ) 
+            dum1 = ( meltpt_temp - state1%t(i,k) ) / ( meltpt_temp - dt_low ) 
          endif
 
          if (zmconv_microp) then
@@ -3285,7 +3288,7 @@ end subroutine clubb_init_cnst
          !  deep convective mass flux, read in from pbuf.  Since shallow convection is never 
          !  called, the shallow convective mass flux will ALWAYS be zero, ensuring that this cloud
          !  fraction is purely from deep convection scheme.  
-         deepcu(i,k) = max(0.0_r8,min(0.1_r8*log(1.0_r8+500.0_r8*(cmfmc(i,k+1)-cmfmc_sh(i,k+1))),0.6_r8))
+         deepcu(i,k) = max(0.0_r8,min(dp1*log(1.0_r8+dp2*(cmfmc(i,k+1)-cmfmc_sh(i,k+1))),0.6_r8))
          shalcu(i,k) = 0._r8
        
          if (deepcu(i,k) <= frac_limit .or. dp_icwmr(i,k) < ic_limit) then

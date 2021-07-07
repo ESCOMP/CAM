@@ -2541,44 +2541,44 @@ Default: 1
 
 <entry id="micro_mg_accre_enhan_fact" type="real" category="microphys"
        group="micro_mg_nl" valid_values="" >
-Accretion enhancment factor
+Unitless ratio to increase the accretion process in microphysics as a method of accounting for unrepresented subgridscale variability.
 Default: 1
 </entry>
 
 <entry id="micro_mg_autocon_fact" type="real" category="microphys"
        group="micro_mg_nl" valid_values="" >
-Autoconversion prefactor
-Default: 0.001
+Unitless ratio to directly scale the autoconversion process in microphysics as a method of accounting for unrepresented subgridscale variability. 
+Default: 0.01
 </entry>
 
 <entry id="micro_mg_autocon_nd_exp" type="real" category="microphys"
        group="micro_mg_nl" valid_values="" >
-Autoconversion nd exponent
+Unitless exponent of cloud number condensation in the KK autoconversion parameterization equation. See Khairoutdinov and Kogan, 2002.
 Default: -1.1
 </entry>
 
 <entry id="micro_mg_autocon_lwp_exp" type="real" category="microphys"
        group="micro_mg_nl" valid_values="" >
-Autoconversion lwp exponent
+Unitless exponent of liquid water path in the KK autoconversion parameterization equation. See Khairoutdinov and Kogan, 2002.
 Default: 2.47
 </entry>
 
 <entry id="micro_mg_homog_size" type="real" category="microphys"
        group="micro_mg_nl" valid_values="" >
-Size of droplets feezing homogeneously 
-Default: 1
+Mean volume radius of droplets used in the process of homogeneously freezing below -40C in (m). Default value is currently the previously assumed 25 microns.
+Default: 25.e-6 m
 </entry>
 
 <entry id="micro_mg_vtrmi_factor" type="real" category="microphys"
        group="micro_mg_nl" valid_values="" >
-Ice fall speed factor
-Default: 1
+Unitless scaling factor for ice fall speed to account for sub-grid scale ice crystal shape variability.
+Default: 1.0
 </entry>
 
 <entry id="micro_mg_effi_factor" type="real" category="microphys"
        group="micro_mg_nl" valid_values="" >
-Ice effective radius factor
-Default: 25.e-6
+Unitless scaling factor for ice effective radius as seen by radiation. This scaling factor adjusts for sub-grid scale ice crystal shape variability.
+Default: 1.0
 </entry>
 
 <entry id="micro_mg_iaccr_factor" type="real" category="microphys"
@@ -2590,7 +2590,7 @@ Default: 1
 <entry id="micro_mg_max_nicons" type="real" category="microphys"
        group="micro_mg_nl" valid_values="" >
 Maximum allowed ice number concentration
-Default: 1000000.e3
+Default: 1.0e9
 </entry>
 
 <entry id="micro_do_sb_physics" type="logical" category="microphys"
@@ -2740,31 +2740,31 @@ Default: 2
 
 <entry id="microp_aero_npccn_scale" type="real" category="microphys"
        group="microp_aero_nl" valid_values="" >
-ccn activated number scale factor
-Default: 1
+Unitless scaling factor for the activated number concentration of cloud condensation nuclei.
+Default: 1.0
 </entry>
 
 <entry id="microp_aero_wsub_scale" type="real" category="microphys"
        group="microp_aero_nl" valid_values="" >
-Scaling factor for subgrid vertical velocity (liquid)
-Default: 1
+Unitless scaling factor for the liquid droplet subgrid scale vertical velocity during aerosol activation.
+Default: 1.0
 </entry>
 
 <entry id="microp_aero_wsubi_scale" type="real" category="microphys"
        group="microp_aero_nl" valid_values="" >
-Scaling factor for subgrid vertical velocity (ice)
-Default: 1
+Unitless scaling factor for ice droplet subgrid scale vertical velocity during aerosol activation.
+Default: 1.0
 </entry>
 
 <entry id="microp_aero_wsub_min" type="real" category="microphys"
        group="microp_aero_nl" valid_values="" >
-Minimum subgrid vertical velocity (liquid) ms-1
-Default: 0.2
+Minimum subgrid vertical velocity for liquid droplets during aerosol activation with units of (ms-1).
+Default: 0.2 ms-1
 </entry>
 
 <entry id="microp_aero_wsubi_min" type="real" category="microphys"
        group="microp_aero_nl" valid_values="" >
-Minimum subgrid vertical velocity (ice) ms-1
+Minimum subgrid vertical velocity for ice droplets during aerosol activation with units of (ms-1).
 Default: 0.001
 </entry>
 
@@ -3031,20 +3031,20 @@ Default: =&gt; 1 for CAM6;
 
 <entry id="zmconv_dmpdz" type="real" category="conv"
        group="zmconv_nl" valid_values="" >
-Tunable entrainment rate in ZM deep convection scheme.                     
-Default: set by build-namelist
+Tunable entrainment rate in ZM deep convection scheme in units of (1/m).
+Default: -1.0e-3 1/m
 </entry>
 
 <entry id="zmconv_tiedke_add" type="real" category="conv"
        group="zmconv_nl" valid_values="" >
-Tunable parcel temperature perturbation  in ZM deep convection scheme.
-Default: set by build-namelist
+Tunable parcel temperature perturbation in ZM deep convection scheme in units of (K).
+Default: 0.5K perturbation
 </entry>
 
 <entry id="zmconv_capelmt" type="real" category="conv"
        group="zmconv_nl" valid_values="" >
-Tunable triggering threshold for convection in ZM deep scheme.
-Default: set by build-namelist
+Tunable triggering threshold for convection in ZM deep scheme in units of (J/kg).
+Default: 70.0 J/kg
 </entry>
 
 <!-- Cloud sedimentation -->
@@ -3667,18 +3667,21 @@ Coefficient for gustiness near ground.
 
 <entry id="clubb_detliq_rad" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
-Radius of detrained liquid drops as they are used in the CLUBB parameterization.
+Radius of detrained liquid drops as they are used in the CLUBB parameterization in units of (m).
+Default: 8.0e-6 m
 </entry>
 
 <entry id="clubb_detice_rad" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
-Radius of detrained ice drops as they are used in the CLUBB parameterization.
+Radius of detrained ice drops as they are used in the CLUBB parameterization in units of (m).
+Default: 25.0e-6 m
 </entry>
 
 <entry id="clubb_detphase_lowtemp" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Temperature at which detrained water is classified as entirely ice (no liquid) 
-in the CLUBB parameterization.
+in the CLUBB parameterization in units of (K).
+Default: 238.15 K
 </entry>
 
 <!-- CLUBB logical parameters -->
