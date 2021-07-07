@@ -99,6 +99,9 @@ module clubb_intr
     rtpthlp_const = 0.01_r8             ! Constant to add to rtpthlp when moments are advected
     
   real(r8), parameter :: unset_r8 = huge(1.0_r8)
+
+  ! Commonly used temperature for the melting temp of ice crystals [K] 
+  real(r8), parameter :: meltpt_temp = 268.15_r8  
     
   real(r8) :: clubb_timestep = unset_r8  ! Default CLUBB timestep, unless overwriten by namelist
   real(r8) :: clubb_rnevap_effic = unset_r8
@@ -896,8 +899,6 @@ end subroutine clubb_init_cnst
 
     ! CAM defines zi at the surface to be zero.
     real(r8), parameter :: sfc_elevation = 0._r8
-    ! Commonly used temperature for the melting temp of ice crystals [K] 
-    real(r8), parameter :: meltpt_temp = 268.15_r8  
 
     integer :: nlev
 
