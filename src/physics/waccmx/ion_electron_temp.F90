@@ -277,7 +277,7 @@ contains
 
     if (index_te>0) then
        !---------------------------------------------------------------------------------
-       ! Electron temperature in to physics buffer.  If not found use neutral temperature
+       ! Electron temperature
        !---------------------------------------------------------------------------------
        allocate(tE(pcols,pver,begchunk:endchunk))
        call infld( 'TElec',ncid_ini,dim1name, 'lev', dim2name, 1, pcols, 1, pver, begchunk, endchunk, &
@@ -285,15 +285,13 @@ contains
 
        if (.not.found) then
           if (masterproc) write(iulog,*) 'ion_electron_temp_inidat: Could not find electron temperature in ic file. ' &
-                                      // 'Using neutral temperature'
+                                      // 'Try to read neutral temperature.'
           call infld( 'T',ncid_ini,dim1name, 'lev', dim2name, 1, pcols, 1, pver, begchunk, endchunk, &
                tE, found, gridname='physgrid')
        endif
        if (found) then
           call pbuf_set_field(pbuf2d, index_te, tE)
        else
-          if (masterproc) write(iulog,*) 'ion_electron_temp_inidat: Not able to read temperature from IC file.' &
-                                       //' Set TElec to NaN'
           call pbuf_set_field(pbuf2d, index_te, nanval)
        endif
 
@@ -303,28 +301,31 @@ contains
 
     if (index_ti>0) then
        !----------------------------------------------------------------------------
-       ! Ion temperature in to physics buffer.  If not found use neutral temperature
+       ! Ion temperature
        !----------------------------------------------------------------------------
        allocate(tI(pcols,pver,begchunk:endchunk))
-       call infld( 'TIon',ncid_ini,dim1name, 'lev', dim2name, 1, pcols, 1, pver, begchunk, endchunk, &
-            tI, found, gridname='physgrid')
-
-       if (.not.found) then
-          if (masterproc) write(iulog,*) 'ion_electron_temp_inidat: Could not find ion temperature in ic file. ' &
-                                      // 'Using neutral temperature'
-          call infld( 'T',ncid_ini,dim1name, 'lev', dim2name, 1, pcols, 1, pver, begchunk, endchunk, &
+       if (initialized_TiTe) then ! try to initialize ion temp only if electron temp was initialized above
+          call infld( 'TIon',ncid_ini,dim1name, 'lev', dim2name, 1, pcols, 1, pver, begchunk, endchunk, &
                tI, found, gridname='physgrid')
+          if (.not.found) then
+             if (masterproc) write(iulog,*) 'ion_electron_temp_inidat: Could not find ion temperature in ic file. ' &
+                                         // 'Try to read neutral temperature.'
+             call infld( 'T',ncid_ini,dim1name, 'lev', dim2name, 1, pcols, 1, pver, begchunk, endchunk, &
+                  tI, found, gridname='physgrid')
+          endif
        endif
        if (found) then
           call pbuf_set_field(pbuf2d, index_ti, tI)
        else
-          if (masterproc) write(iulog,*) 'ion_electron_temp_inidat: Not able to read temperature from IC file.' &
-                                       //' Set TIon to NaN'
           call pbuf_set_field(pbuf2d, index_ti, nanval)
        endif
 
        initialized_TiTe = initialized_TiTe .and. found
        deallocate(tI)
+    endif
+    if (index_te>0 .and. index_ti>0 .and. .not.initialized_TiTe) then
+       write(iulog,*) 'ion_electron_temp_inidat: Not able to read temperatures from IC file.' &
+            //' Will set ion and electron temperatures to neutral temperature (state%t) on initial timestep.'
     endif
 
   end subroutine ion_electron_temp_inidat
