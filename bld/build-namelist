@@ -3604,9 +3604,6 @@ if ($dyn =~ /se/) {
 		  se_kmin_jet
 		  se_kmax_jet
 		  se_phys_dyn_cp
-		  se_raytau0
-		  se_raykrange
-		  se_rayk0
                   se_molecular_diff
         );
 
