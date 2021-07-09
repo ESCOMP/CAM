@@ -9,8 +9,6 @@ from CIME.utils import append_testlog
 import glob, gzip
 
 
-logger = logging.getLogger(__name__)
-
 class TMC(SystemTestsCommon):
 
     def __init__(self, case):
@@ -21,46 +19,39 @@ class TMC(SystemTestsCommon):
 
     def run_phase(self):
 
+        with self._test_status:
+            self._test_status.set_status("COMPARE_MASS", TEST_PEND_STATUS)
         self.run_indv()
-        cesmlog = ''.join(self._get_latest_cpl_logs())
-        if '.gz' == cesmlog[-3:]:
+        cpllog = ''.join(self._get_latest_cpl_logs())
+        atmlog  = cpllog.replace("cpl.log","atm.log")
+        if '.gz' == atmlog[-3:]:
             fopen = gzip.open
         else:
             fopen = open
 
-        with fopen(cesmlog, "rb") as f:
-            lines = [line.rstrip('\n') for line in f]
-        first_val = 0.0
+        f = fopen(atmlog,'r')
+        lines = f.readlines()
+        first_val = -9.0
         with self._test_status:
-            self._test_status.set_status(RUN_PHASE, TEST_PASS_STATUS)
+            self._test_status.set_status("COMPARE_MASS", TEST_PASS_STATUS)
+        use_this_tt_un = False 
         for line in lines:
-            if re.search('between DRY m=30 name=TT_UN gavg dry, wet, min, max',line):
-                if first_val == 0.0:
-                    first_val = re.findall('\s*[\d]+ name=TT_UN [^0-9]+([\S]+)',line)
-                if first_val != re.findall('\s*[\d]+ name=TT_UN [^0-9]+([\S]+)',line):
-                    with self._test_status:
-                        self._test_status.set_status(RUN_PHASE, TEST_FAIL_STATUS)
-                    comments = "CAM mass conservation test FAILED."
-                    CIME.utils.append_testlog(comments, self._orig_caseroot)
-            first_var = 1.1
-
-    def _get_latest_cesm_logs(self):
-        """
-        find and return the latest cesm log file in the run directory
-        """
-        coupler_log_path = self._case.get_value("RUNDIR")
-        cesmlogs = glob.glob(os.path.join(coupler_log_path, 'cesm*.log.*'))
-        lastcesmlogs = []
-        if cesmlogs:
-            lastcesmlogs.append(max(cesmlogs, key=os.path.getctime))
-            basename = os.path.basename(lastcesmlogs[0])
-            suffix = basename.split('.',1)[1]
-            for log in cesmlogs:
-                if log in lastcesmlogs:
-                    continue
-
-                if log.endswith(suffix):
-                    lastcesmlogs.append(log)
-
-        return lastcesmlogs
+            if re.search('vvvvv gmean_mass: before tphysbc DRY',line.decode('utf-8')): 
+                use_this_tt_un = True
+            if re.search('TT_UN ',line.decode('utf-8')) and use_this_tt_un:
+                tt_un_flt=re.findall("\d+\.\d+",line.decode('utf-8'))
+                if len(tt_un_flt) > 0:
+                    if first_val == -9.0:
+                        first_val = tt_un_flt[0]
+                    if first_val != tt_un_flt[0]:
+                        with self._test_status:
+                            self._test_status.set_status("COMPARE_MASS", TEST_FAIL_STATUS, comments="Mass Not Conserved")
+                        comments = "CAM mass conservation test FAILED."
+                        append_testlog(comments, self._orig_caseroot)
+                use_this_tt_un = False 
+        if first_val == -9.0:
+                with self._test_status:
+                    self._test_status.set_status("COMPARE_MASS", TEST_FAIL_STATUS, comments="Failed to find TT_UN in atm.log")
+                comments = "CAM mass conservation test FAILED."
+                append_testlog(comments, self._orig_caseroot)
 

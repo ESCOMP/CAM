@@ -124,6 +124,10 @@ real(r8), parameter :: tboil = 373.16_r8
 !       2.14444472424e-04, &
 !       1.36639103771e-06 /)
 
+  integer, parameter :: VLENS = 128 ! vector length for a GPU kernel
+
+  !$acc declare create (plenest,estbl,omeps,c3,pcf)
+
 contains
 
 !---------------------------------------------------------------------
@@ -242,6 +246,8 @@ subroutine wv_sat_init
      estbl(i) = svp_trans(tmin + real(i-1,r8))
   end do
 
+  !$acc update device (plenest,estbl,omeps,c3,pcf)
+
   if (masterproc) then
      write(iulog,*)' *** SATURATION VAPOR PRESSURE TABLE COMPLETED ***'
   end if
@@ -297,8 +303,11 @@ subroutine svp_water_vect(t, es, vlen)
   real(r8), intent(in)  :: t(vlen)  ! Temperature (K)
   real(r8), intent(out) :: es(vlen) ! SVP (Pa)
 
+  !$acc data copyin (t) copyout (es)
+
   call wv_sat_svp_water_vect(t, es, vlen)
 
+  !$acc end data
 end subroutine svp_water_vect
 
 ! Compute saturation vapor pressure over ice
@@ -324,8 +333,11 @@ subroutine svp_ice_vect(t, es, vlen)
   real(r8), intent(in)  :: t(vlen)  ! Temperature (K)
   real(r8), intent(out) :: es(vlen) ! SVP (Pa)
 
+  !$acc data copyin(t) copyout(es)
+
   call wv_sat_svp_ice_vect(t, es, vlen)
 
+  !$acc end data
 end subroutine svp_ice_vect
 
 ! Compute saturation vapor pressure with an ice-water transition
@@ -351,8 +363,11 @@ subroutine svp_trans_vect(t, es, vlen)
   real(r8), intent(in)  :: t(vlen)   ! Temperature (K)
   real(r8), intent(out) :: es(vlen)  ! SVP (Pa)
 
+  !$acc data copyin(t) copyout(es)
+
   call wv_sat_svp_trans_vect(t, es, vlen)
 
+  !$acc end data
 end subroutine svp_trans_vect
 
 !---------------------------------------------------------------------
@@ -392,13 +407,19 @@ subroutine estblf_vect(t, es, vlen)
 
   real(r8) :: weight ! Weight for interpolation
 
+  !$acc data present (t,es)
+
+  !$acc parallel vector_length(VLENS) default(present)
+  !$acc loop gang vector private(t_tmp,weight,i)
   do j = 1, vlen
      t_tmp = max(min(t(j),tmax)-tmin, 0._r8)   ! Number of table entries above tmin
      i = int(t_tmp) + 1                     ! Corresponding index.
      weight = t_tmp - aint(t_tmp, r8)       ! Fractional part of t_tmp (for interpolation).
      es(j) = (1._r8 - weight)*estbl(i) + weight*estbl(i+1)
   end do
+  !$acc end parallel
 
+  !$acc end data
 end subroutine estblf_vect
 
 ! Get enthalpy based only on temperature
@@ -428,9 +449,16 @@ subroutine tq_enthalpy_vect(t, q, hltalt, enthalpy, vlen)
 
   integer :: i
 
+  !$acc data present(t,q,hltalt,enthalpy)
+
+  !$acc parallel vector_length(VLENS) default(present)
+  !$acc loop gang vector
   do i = 1, vlen
      enthalpy(i) = cpair * t(i) + hltalt(i) * q(i)
   end do
+  !$acc end parallel
+
+  !$acc end data
 end subroutine tq_enthalpy_vect
 
 !---------------------------------------------------------------------
@@ -474,6 +502,10 @@ subroutine no_ip_hltalt_vect(t, hltalt, vlen)
  
   integer :: i
 
+  !$acc data present(t,hltalt)
+
+  !$acc parallel vector_length(VLENS) default(present)
+  !$acc loop gang vector
   do i = 1, vlen
      hltalt(i) = latvap  
      ! Account for change of latvap with t above freezing where
@@ -482,7 +514,9 @@ subroutine no_ip_hltalt_vect(t, hltalt, vlen)
         hltalt(i) = hltalt(i) - 2369.0_r8*(t(i)-tmelt)
      end if
   end do
+  !$acc end parallel
 
+  !$acc end data
 end subroutine no_ip_hltalt_vect
 
 elemental subroutine calc_hltalt(t, hltalt, tterm)
@@ -562,18 +596,26 @@ subroutine calc_hltalt_vect(t, hltalt, vlen, tterm)
   real(r8) :: weight  ! Weight for es transition from water to ice
   logical  :: present_tterm
   ! Loop iterator
-  integer :: i, j
+  integer :: i, j, size_pcf
   
   present_tterm = present(tterm)
+  size_pcf      = size(pcf)
+ 
+  !$acc data present(t,hltalt,tterm)
 
   if (present_tterm) then
+     !$acc parallel vector_length(VLENS) default(present)
+     !$acc loop gang vector
      do i = 1, vlen
         tterm(i) = 0.0_r8
      end do
+     !$acc end parallel
   end if
 
   call no_ip_hltalt_vect(t,hltalt,vlen)
 
+  !$acc parallel vector_length(VLENS) default(present)
+  !$acc loop gang vector private(tc,weight)
   do j = 1, vlen
      if (t(j) < tmelt) then
         ! Weighting of hlat accounts for transition from water to ice.
@@ -587,7 +629,8 @@ subroutine calc_hltalt_vect(t, hltalt, vlen, tterm)
            ! ttrice is 40): required for accurate estimate of es
            ! derivative in transition range from ice to water
            if (present_tterm) then
-              do i = size(pcf), 1, -1
+              !$acc loop seq
+              do i = size_pcf, 1, -1
                  tterm(j) = pcf(i) + tc*tterm(j)
               end do
               tterm(j) = tterm(j)/ttrice
@@ -601,7 +644,9 @@ subroutine calc_hltalt_vect(t, hltalt, vlen, tterm)
    
      end if
   end do
+  !$acc end parallel
 
+  !$acc end data
 end subroutine calc_hltalt_vect
 
 !---------------------------------------------------------------------
@@ -667,7 +712,11 @@ subroutine deriv_outputs_vect(t, p, es, qs, hltalt, tterm, vlen, &
 
   present_dqsdt = present(dqsdt)
   present_gam   = present(gam)
-  
+ 
+  !$acc data present(t,p,es,qs,hltalt,tterm,gam,dqsdt)
+
+  !$acc parallel vector_length(VLENS) default(present)
+  !$acc loop gang vector private(dqsdt_loc,desdt)
   do i = 1, vlen
      if (qs(i) == 1.0_r8) then
         dqsdt_loc = 0._r8
@@ -679,7 +728,9 @@ subroutine deriv_outputs_vect(t, p, es, qs, hltalt, tterm, vlen, &
      if (present_dqsdt) dqsdt(i) = dqsdt_loc
      if (present_gam)   gam(i)   = dqsdt_loc * (hltalt(i)/cpair)
   end do
+  !$acc end parallel
 
+  !$acc end data
 end subroutine deriv_outputs_vect
 
 !---------------------------------------------------------------------
@@ -758,30 +809,44 @@ subroutine qsat_vect(t, p, es, qs, vlen, gam, dqsdt, enthalpy)
   real(r8), dimension(vlen) :: hltalt       ! Modified latent heat for T derivatives
   real(r8), dimension(vlen) :: tterm        ! Account for d(es)/dT in transition region
   integer                   :: i
+  logical                   :: present_gam, present_dqsdt, present_enthalpy
+
+  present_gam = present(gam)
+  present_dqsdt = present(dqsdt)
+  present_enthalpy = present(enthalpy)
+
+  !$acc data copyin  (t,p) &
+  !$acc      copyout (es,qs,gam,dqsdt,enthalpy) &
+  !$acc      create  (hltalt,tterm)
 
   call estblf_vect(t, es, vlen)
 
   call svp_to_qsat_vect(es, p, qs, vlen)
 
   ! Ensures returned es is consistent with limiters on qs.
+
+  !$acc parallel vector_length(VLENS) default(present)
+  !$acc loop gang vector
   do i = 1, vlen
      es(i) = min(es(i), p(i))
   end do
+  !$acc end parallel
 
   ! Calculate optional arguments.
-  if (present(gam) .or. present(dqsdt) .or. present(enthalpy)) then
+  if (present_gam .or. present_dqsdt .or. present_enthalpy) then
 
      ! "generalized" analytic expression for t derivative of es
      ! accurate to within 1 percent for 173.16 < t < 373.16
      call calc_hltalt_vect(t, hltalt, vlen, tterm)
 
-     if (present(enthalpy)) call tq_enthalpy_vect(t, qs, hltalt, enthalpy, vlen)
+     if (present_enthalpy) call tq_enthalpy_vect(t, qs, hltalt, enthalpy, vlen)
 
      call deriv_outputs_vect(t, p, es, qs, hltalt, tterm, vlen, &
           gam=gam, dqsdt=dqsdt)
 
   end if
 
+  !$acc end data
 end subroutine qsat_vect
 
 subroutine qsat_2D(t, p, es, qs, dim1, dim2, gam, dqsdt, enthalpy)
@@ -809,34 +874,47 @@ subroutine qsat_2D(t, p, es, qs, dim1, dim2, gam, dqsdt, enthalpy)
   real(r8), dimension(dim1,dim2) :: hltalt       ! Modified latent heat for T derivatives
   real(r8), dimension(dim1,dim2) :: tterm        ! Account for d(es)/dT in transition region
   integer                        :: i, k, vlen
+  logical                        :: present_gam, present_dqsdt, present_enthalpy
 
   vlen = dim1 * dim2
+  present_gam = present(gam)
+  present_dqsdt = present(dqsdt)
+  present_enthalpy = present(enthalpy)
+
+  !$acc data copyin  (t,p) &
+  !$acc      copyout (es,qs,gam,dqsdt,enthalpy) &
+  !$acc      create  (hltalt,tterm)
 
   call estblf_vect(t, es, vlen)
 
   call svp_to_qsat_vect(es, p, qs, vlen)
 
   ! Ensures returned es is consistent with limiters on qs.
-  do i = 1, dim1
-     do k = 1, dim2
+
+  !$acc parallel vector_length(VLENS) default(present)
+  !$acc loop gang vector collapse(2)
+  do k = 1, dim2
+     do i = 1, dim1
         es(i,k) = min(es(i,k), p(i,k))
      end do
   end do
+  !$acc end parallel
 
   ! Calculate optional arguments.
-  if (present(gam) .or. present(dqsdt) .or. present(enthalpy)) then
+  if (present_gam .or. present_dqsdt .or. present_enthalpy) then
 
      ! "generalized" analytic expression for t derivative of es
      ! accurate to within 1 percent for 173.16 < t < 373.16
      call calc_hltalt_vect(t, hltalt, vlen, tterm)
 
-     if (present(enthalpy)) call tq_enthalpy_vect(t, qs, hltalt, enthalpy, vlen)
+     if (present_enthalpy) call tq_enthalpy_vect(t, qs, hltalt, enthalpy, vlen)
 
      call deriv_outputs_vect(t, p, es, qs, hltalt, tterm, vlen, &
           gam=gam, dqsdt=dqsdt)
 
   end if
 
+  !$acc end data
 end subroutine qsat_2D
 
 subroutine qsat_water_line(t, p, es, qs, gam, dqsdt, enthalpy)
@@ -909,20 +987,32 @@ subroutine qsat_water_vect(t, p, es, qs, vlen, gam, dqsdt, enthalpy)
   real(r8), dimension(vlen) :: hltalt       ! Modified latent heat for T derivatives
   real(r8), dimension(vlen) :: tterm
   integer                   :: i
+  logical                   :: present_gam, present_dqsdt, present_enthalpy
 
+  present_gam      = present(gam)
+  present_dqsdt    = present(dqsdt) 
+  present_enthalpy = present(enthalpy) 
+
+  !$acc data copyin  (t,p) &
+  !$acc      copyout (es,qs,gam,dqsdt,enthalpy) &
+  !$acc      create  (tterm,hltalt)
+
+  !$acc parallel vector_length(VLENS) default(present)
+  !$acc loop gang vector
   do i = 1, vlen
      tterm(i) = 0._r8
   end do
+  !$acc end parallel
 
   call wv_sat_qsat_water_vect(t, p, es, qs, vlen)
 
-  if (present(gam) .or. present(dqsdt) .or. present(enthalpy)) then
+  if (present_gam .or. present_dqsdt .or. present_enthalpy) then
 
      ! "generalized" analytic expression for t derivative of es
      ! accurate to within 1 percent for 173.16 < t < 373.16
      call no_ip_hltalt_vect(t, hltalt, vlen)
 
-     if (present(enthalpy)) call tq_enthalpy_vect(t, qs, hltalt, enthalpy, vlen)
+     if (present_enthalpy) call tq_enthalpy_vect(t, qs, hltalt, enthalpy, vlen)
 
      ! For pure water/ice transition term is 0.
      call deriv_outputs_vect(t, p, es, qs, hltalt, tterm, vlen, &
@@ -930,6 +1020,7 @@ subroutine qsat_water_vect(t, p, es, qs, vlen, gam, dqsdt, enthalpy)
 
   end if
 
+  !$acc end data
 end subroutine qsat_water_vect
 
 subroutine qsat_water_2D(t, p, es, qs, dim1, dim2, gam, dqsdt, enthalpy)
@@ -959,24 +1050,35 @@ subroutine qsat_water_2D(t, p, es, qs, dim1, dim2, gam, dqsdt, enthalpy)
   real(r8), dimension(dim1,dim2) :: hltalt       ! Modified latent heat for T derivatives
   real(r8), dimension(dim1,dim2) :: tterm
   integer                        :: i, k, vlen
+  logical                        :: present_gam, present_dqsdt, present_enthalpy
 
   vlen = dim1 * dim2
+  present_gam = present(gam)
+  present_dqsdt = present(dqsdt)
+  present_enthalpy = present(enthalpy)
 
-  do i = 1, dim1
-     do k = 1, dim2
+  !$acc data copyin  (t,p) &
+  !$acc      copyout (es,qs,gam,dqsdt,enthalpy) &
+  !$acc      create  (hltalt,tterm)
+
+  !$acc parallel vector_length(VLENS) default(present)
+  !$acc loop gang vector collapse(2)
+  do k = 1, dim2
+     do i = 1, dim1
         tterm(i,k) = 0._r8
      end do
   end do
+  !$acc end parallel
 
   call wv_sat_qsat_water_vect(t, p, es, qs, vlen)
 
-  if (present(gam) .or. present(dqsdt) .or. present(enthalpy)) then
+  if (present_gam .or. present_dqsdt .or. present_enthalpy) then
 
      ! "generalized" analytic expression for t derivative of es
      ! accurate to within 1 percent for 173.16 < t < 373.16
      call no_ip_hltalt_vect(t, hltalt, vlen)
 
-     if (present(enthalpy)) call tq_enthalpy_vect(t, qs, hltalt, enthalpy, vlen)
+     if (present_enthalpy) call tq_enthalpy_vect(t, qs, hltalt, enthalpy, vlen)
 
      ! For pure water/ice transition term is 0.
      call deriv_outputs_vect(t, p, es, qs, hltalt, tterm, vlen, &
@@ -984,6 +1086,7 @@ subroutine qsat_water_2D(t, p, es, qs, dim1, dim2, gam, dqsdt, enthalpy)
 
   end if
 
+  !$acc end data
 end subroutine qsat_water_2D
 
 subroutine qsat_ice_line(t, p, es, qs, gam, dqsdt, enthalpy)
@@ -1055,21 +1158,36 @@ subroutine qsat_ice_vect(t, p, es, qs, vlen, gam, dqsdt, enthalpy)
   real(r8), dimension(vlen) :: hltalt       ! Modified latent heat for T derivatives
   real(r8), dimension(vlen) :: tterm
   integer                   :: i
+  logical                   :: present_gam, present_dqsdt, present_enthalpy
 
+  present_gam = present(gam)
+  present_dqsdt = present(dqsdt)
+  present_enthalpy = present(enthalpy)
+
+  !$acc data copyin  (t,p) &
+  !$acc      copyout (es,qs,gam,dqsdt,enthalpy) &
+  !$acc      create  (hltalt,tterm)
+
+  !$acc parallel vector_length(VLENS) default(present)
+  !$acc loop gang vector
   do i = 1, vlen
      tterm(i) = 0._r8
   end do
+  !$acc end parallel
 
   call wv_sat_qsat_ice_vect(t, p, es, qs, vlen)
 
-  if (present(gam) .or. present(dqsdt) .or. present(enthalpy)) then
+  if (present_gam .or. present_dqsdt .or. present_enthalpy) then
 
+     !$acc parallel vector_length(VLENS) default(present)
+     !$acc loop gang vector
      do i = 1, vlen
         ! For pure ice, just add latent heats.
         hltalt(i) = latvap + latice
      end do
+     !$acc end parallel
 
-     if (present(enthalpy)) call tq_enthalpy_vect(t, qs, hltalt, enthalpy, vlen)
+     if (present_enthalpy) call tq_enthalpy_vect(t, qs, hltalt, enthalpy, vlen)
 
      ! For pure water/ice transition term is 0.
      call deriv_outputs_vect(t, p, es, qs, hltalt, tterm, vlen, &
@@ -1077,6 +1195,7 @@ subroutine qsat_ice_vect(t, p, es, qs, vlen, gam, dqsdt, enthalpy)
 
   end if
 
+  !$acc end data
 end subroutine qsat_ice_vect
 
 subroutine qsat_ice_2D(t, p, es, qs, dim1, dim2, gam, dqsdt, enthalpy)
@@ -1106,27 +1225,41 @@ subroutine qsat_ice_2D(t, p, es, qs, dim1, dim2, gam, dqsdt, enthalpy)
   real(r8), dimension(dim1,dim2) :: hltalt       ! Modified latent heat for T derivatives
   real(r8), dimension(dim1,dim2) :: tterm
   integer                        :: i, k, vlen
+  logical                        :: present_gam, present_dqsdt, present_enthalpy
 
   vlen = dim1 * dim2
+  present_gam = present(gam)
+  present_dqsdt = present(dqsdt)
+  present_enthalpy = present(enthalpy)
 
-  do i = 1, dim1
-     do k = 1, dim2
+  !$acc data copyin  (t,p) &
+  !$acc      copyout (es,qs,gam,dqsdt,enthalpy) &
+  !$acc      create  (hltalt,tterm)
+
+  !$acc parallel vector_length(VLENS) default(present)
+  !$acc loop gang vector collapse(2)
+  do k = 1, dim2
+     do i = 1, dim1
         tterm(i,k) = 0._r8
      end do
   end do
+  !$acc end parallel
 
   call wv_sat_qsat_ice_vect(t, p, es, qs, vlen)
 
-  if (present(gam) .or. present(dqsdt) .or. present(enthalpy)) then
+  if (present_gam .or. present_dqsdt .or. present_enthalpy) then
 
-     do i = 1, dim1
-        do k = 1, dim2
+     !$acc parallel vector_length(VLENS) default(present)
+     !$acc loop gang vector collapse(2)
+     do k = 1, dim2
+        do i = 1, dim1
            ! For pure ice, just add latent heats.
            hltalt(i,k) = latvap + latice
         end do
      end do
+     !$acc end parallel
 
-     if (present(enthalpy)) call tq_enthalpy_vect(t, qs, hltalt, enthalpy, vlen)
+     if (present_enthalpy) call tq_enthalpy_vect(t, qs, hltalt, enthalpy, vlen)
 
      ! For pure water/ice transition term is 0.
      call deriv_outputs_vect(t, p, es, qs, hltalt, tterm, vlen, &
@@ -1134,6 +1267,7 @@ subroutine qsat_ice_2D(t, p, es, qs, dim1, dim2, gam, dqsdt, enthalpy)
 
   end if
 
+  !$acc end data
 end subroutine qsat_ice_2D
 
 !---------------------------------------------------------------------

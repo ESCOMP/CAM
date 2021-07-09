@@ -2034,7 +2034,6 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    ncol  = state%ncol
    psetcols = state%psetcols
    ngrdcol  = state%ngrdcol
-
    itim_old = pbuf_old_tim_idx()
 
    call phys_getopts(use_subcol_microp_out=use_subcol_microp)
@@ -3087,10 +3086,14 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
 
    ncic_grid = 1.e8_r8
 
-   do k = top_lev, pver
+   do k = top_lev, pver  
+      !$acc data copyin  (mg_liq_props,icwmrst_grid(:ngrdcol,k),rho_grid(:ngrdcol,k)) &
+      !$acc      copy    (ncic_grid(:ngrdcol,k)) &
+      !$acc      copyout (mu_grid(:ngrdcol,k),lambdac_grid(:ngrdcol,k))
       call size_dist_param_liq(mg_liq_props, icwmrst_grid(:ngrdcol,k), &
-           ncic_grid(:ngrdcol,k), rho_grid(:ngrdcol,k), &
-           mu_grid(:ngrdcol,k), lambdac_grid(:ngrdcol,k), ngrdcol)
+                               ncic_grid(:ngrdcol,k), rho_grid(:ngrdcol,k), &
+                               mu_grid(:ngrdcol,k), lambdac_grid(:ngrdcol,k), ngrdcol)
+      !$acc end data
    end do
 
    where (icwmrst_grid(:ngrdcol,top_lev:) > qsmall)
@@ -3110,9 +3113,13 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
         max(mincld,liqcldf_grid(:ngrdcol,top_lev:))
 
    do k = top_lev, pver
+      !$acc data copyin  (mg_liq_props,icwmrst_grid(:ngrdcol,k), rho_grid(:ngrdcol,k)) &
+      !$acc      copy    (ncic_grid(:ngrdcol,k)) &
+      !$acc      copyout (mu_grid(:ngrdcol,k),lambdac_grid(:ngrdcol,k))
       call size_dist_param_liq(mg_liq_props, icwmrst_grid(:ngrdcol,k), &
            ncic_grid(:ngrdcol,k), rho_grid(:ngrdcol,k), &
            mu_grid(:ngrdcol,k), lambdac_grid(:ngrdcol,k), ngrdcol)
+      !$acc end data
    end do
 
    where (icwmrst_grid(:ngrdcol,top_lev:) >= qsmall)
@@ -3210,8 +3217,12 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
         max(mincld,icecldf_grid(:ngrdcol,top_lev:))
 
    do k = top_lev, pver
-      call size_dist_param_basic(mg_ice_props, icimrst_grid(:ngrdcol,k), &
-           niic_grid(:ngrdcol,k), rei_grid(:ngrdcol,k), ngrdcol)
+      !$acc data copyin  (mg_ice_props, icimrst_grid(:ngrdcol,k)) &
+      !$acc      copy    (niic_grid(:ngrdcol,k)) &
+      !$acc      copyout (rei_grid(:ngrdcol,k))
+      call size_dist_param_basic(mg_ice_props,icimrst_grid(:ngrdcol,k), &
+                                 niic_grid(:ngrdcol,k),rei_grid(:ngrdcol,k),ngrdcol)
+      !$acc end data
    end do
 
    where (icimrst_grid(:ngrdcol,top_lev:) >= qsmall)

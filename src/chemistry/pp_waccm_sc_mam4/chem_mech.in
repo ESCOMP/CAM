@@ -54,12 +54,12 @@
 
       Reactions
     [ch4_loss]    CH4   -> 2.* H2O
-    [n2o_loss]    N2O   -> 
-    [cfc11_loss]  CFC11 -> 
-    [cfc12_loss]  CFC12 -> 
-    [lyman_alpha] H2O   -> 
+    [n2o_loss]    N2O   ->
+    [cfc11_loss]  CFC11 ->
+    [cfc12_loss]  CFC12 ->
+    [lyman_alpha] H2O   ->
     [usr_HO2_HO2] HO2 + HO2 -> H2O2
-                  H2O2 + OH -> H2O + HO2                                           ; 2.9e-12, -160
+                  H2O2 + OH -> H2O + HO2                                           ; 1.8e-12
     [usr_SO2_OH]  SO2 + OH -> H2SO4
                   DMS + OH -> SO2                                                  ; 9.6e-12, -234.
     [usr_DMS_OH]  DMS + OH -> .5 * SO2 + .5 * HO2
@@ -71,7 +71,7 @@
           so4_a1 <- dataset
           so4_a2 <- dataset
           pom_a1 <- dataset
-          pom_a4 <- dataset 
+          pom_a4 <- dataset
           bc_a1 <- dataset
           bc_a4  <- dataset
           num_a1 <- dataset
@@ -95,4 +95,3 @@
      End Version Options
 
    END SIMULATION PARAMETERS
-
