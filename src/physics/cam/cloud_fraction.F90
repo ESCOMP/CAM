@@ -24,7 +24,7 @@ module cloud_fraction
      cldfrc,           &! Computation of cloud fraction
      cldfrc_fice,      &! Calculate fraction of condensate in ice phase (radiation partitioning)
      dp1,              &! parameter for deep convection cloud fraction needed in clubb_intr
-     dp2               &! parameter for deep convection cloud fraction needed in clubb_intr
+     dp2               ! parameter for deep convection cloud fraction needed in clubb_intr
 
   ! Private data
   real(r8), parameter :: unset_r8 = huge(1.0_r8)

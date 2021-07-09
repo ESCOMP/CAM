@@ -3154,7 +3154,7 @@ end subroutine clubb_init_cnst
             ptend_loc%q(i,k,ixnumice) = 3._r8 * ( max(0._r8, ( dlf(i,k) - dlf2(i,k) )) *  dum1 ) &
                                      / (4._r8*3.14_r8*di_rad**3*500._r8) + & ! Deep    Convection
                                      3._r8 * (                         dlf2(i,k)    *  dum1 ) &
-                                     / (4._r8*3.14_r8*50.e-6**3*500._r8)     ! Shallow Convection
+                                     / (4._r8*3.14_r8*50.e-6_r8**3*500._r8)     ! Shallow Convection
             ptend_loc%s(i,k)          = dlf(i,k) * dum1 * latice
 
             dlf_liq_out(i,k) = dlf(i,k) * ( 1._r8 - dum1 ) 
