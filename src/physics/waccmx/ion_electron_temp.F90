@@ -201,7 +201,7 @@ contains
     integer :: lchnk
     type(physics_buffer_desc), pointer :: phys_buffer_chunk(:)
 
-    if (is_first_step() .and. .not.initialized_TiTe) then
+    if (is_first_step() .and. .not.initialized_TiTe .and. index_te>0 .and. index_ti>0) then
        do lchnk=begchunk,endchunk
           ncol=phys_state(lchnk)%ncol
           phys_buffer_chunk => pbuf_get_chunk(pbuf2d,lchnk)
