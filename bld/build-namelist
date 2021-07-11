@@ -2881,6 +2881,15 @@ if ($cfg->get('microphys') =~ /^mg/) {
     add_default($nl, 'micro_mg_do_graupel');
     add_default($nl, 'graupel_in_rad');
     add_default($nl, 'micro_do_massless_droplet_destroyer');
+    add_default($nl, 'micro_mg_accre_enhan_fact');
+    add_default($nl, 'micro_mg_autocon_fact');
+    add_default($nl, 'micro_mg_autocon_nd_exp');
+    add_default($nl, 'micro_mg_autocon_lwp_exp');
+    add_default($nl, 'micro_mg_homog_size');
+    add_default($nl, 'micro_mg_vtrmi_factor');
+    add_default($nl, 'micro_mg_effi_factor');
+    add_default($nl, 'micro_mg_iaccr_factor');
+    add_default($nl, 'micro_mg_max_nicons');
 
     # For CESM2, the decision was made to set micro_do_sb_physics to false
     add_default($nl, 'micro_do_sb_physics', 'val'=>'.false.');

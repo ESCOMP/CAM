@@ -121,6 +121,8 @@ logical :: micro_do_massless_droplet_destroyer ! turn on/off destruction of mass
 
 character(len=16) :: micro_mg_precip_frac_method = 'max_overlap' ! type of precipitation fraction method
 
+real(r8), parameter :: unset_r8 = huge(1.0_r8)
+
 ! Tunable namelist parameters (set in atm_in)
 real(r8) :: micro_mg_berg_eff_factor   = unset_r8        ! berg efficiency factor
 real(r8) :: micro_mg_accre_enhan_fact  = unset_r8        ! accretion enhancment factor
@@ -319,15 +321,15 @@ subroutine micro_mg_cam_readnl(nlfile)
 
   namelist /micro_mg_nl/ micro_mg_version, micro_mg_sub_version, &
        micro_mg_do_cldice, micro_mg_do_cldliq, micro_mg_num_steps, &
-       microp_uniform, micro_mg_dcs, micro_mg_precip_frac_method,  &
+       microp_uniform, micro_mg_dcs, micro_mg_precip_frac_method, &
        micro_mg_berg_eff_factor, micro_do_sb_physics, micro_mg_adjust_cpt, &
-       micro_mg_do_hail, micro_mg_do_graupel,micro_mg_ngcons, micro_mg_ngnst,&
-       micro_mg_vtrmi_factor, micro_mg_effi_factor, micro_mg_iaccr_factor,&
-       micro_mg_max_nicons, micro_mg_accre_enhan_fact ,&
-       micro_mg_autocon_fact , micro_mg_autocon_nd_exp, micro_mg_autocon_lwp_exp, micro_mg_homog_size,&
-       micro_mg_nccons, micro_mg_nicons, micro_mg_ncnst, micro_mg_ninst,&
-       micro_mg_nrcons, micro_mg_nscons, micro_mg_nrnst, micro_mg_nsnst,&
-       micro_do_massless_droplet_destroyer,&
+       micro_mg_do_hail, micro_mg_do_graupel, micro_mg_ngcons, micro_mg_ngnst, &
+       micro_mg_vtrmi_factor, micro_mg_effi_factor, micro_mg_iaccr_factor, &
+       micro_mg_max_nicons, micro_mg_accre_enhan_fact, &
+       micro_mg_autocon_fact, micro_mg_autocon_nd_exp, micro_mg_autocon_lwp_exp, micro_mg_homog_size, &
+       micro_mg_nccons, micro_mg_nicons, micro_mg_ncnst, micro_mg_ninst, &
+       micro_mg_nrcons, micro_mg_nscons, micro_mg_nrnst, micro_mg_nsnst, &
+       micro_do_massless_droplet_destroyer, &
        micro_mg_evap_sed_off, micro_mg_icenuc_rh_off, micro_mg_icenuc_use_meyers, &
        micro_mg_evap_scl_ifs, micro_mg_evap_rhthrsh_ifs, &
        micro_mg_rainfreeze_ifs, micro_mg_ifs_sed, micro_mg_precip_fall_corr
