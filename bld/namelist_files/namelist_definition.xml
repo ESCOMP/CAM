@@ -6805,6 +6805,17 @@ List of fluxes needed by the CARMA model, from CLM to CAM.
 Default: set by build-namelist.
 </entry>
 
+<!-- Ozone namelist variables shared between CAM and driver -->
+
+<entry id="atm_ozone_frequency" type="char*64" category="ozone_coupling"
+       group="ozone_coupling_nl" valid_values="instantaneous,monthly_interpolated">
+Frequency of surface ozone field passed from CAM to surface components.
+Surface ozone is passed every coupling interval, but this namelist flag
+indicates whether the timestep-level values are interpolated from a
+coarser temporal resolution.
+Default: set by build-namelist.
+</entry>
+
 <!-- WACCM_GHG Chemistry -->
 
 <entry id="waccm_forcing_file" type="char*256" input_pathname="rel:waccm_forcing_datapath" category="waccm_sc"
