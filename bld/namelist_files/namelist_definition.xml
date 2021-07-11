@@ -2221,10 +2221,10 @@ Default: none
 
 <entry id="scale_dry_air_mass" type="real" category="initial_conditions"
        group="cam_initfiles_nl" valid_values="">
-Specifiy whether and how to preform dry surface pressure scaling. If set to less
+Specifiy whether and how to perform dry surface pressure scaling. If set to less
 then 0., use the constants, ps_dry_topo and ps_dry_notopo, defined in physconst.f90
-as the target average dry surface pressure, and preform scaling. If equal to 0.0,
-do not preform scaling. If greater than 0.0, preform scaling but use scale_dry_air_mass
+as the target average dry surface pressure, and perform scaling. If equal to 0.0,
+do not perform scaling. If greater than 0.0, perform scaling but use scale_dry_air_mass
 value (in Pa) as the average dry surface pressure target.
 Default: -1.0
 </entry>
