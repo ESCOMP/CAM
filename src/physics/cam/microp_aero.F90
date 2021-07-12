@@ -380,6 +380,8 @@ end subroutine microp_aero_readnl
 subroutine microp_aero_run ( &
    state, ptend_all, deltatin, pbuf)
 
+  use shr_infnan_mod, only: is_nan => shr_infnan_isnan
+
    ! input arguments
    type(physics_state),         intent(in)    :: state
    type(physics_ptend),         intent(out)   :: ptend_all
@@ -546,8 +548,8 @@ subroutine microp_aero_run ( &
    end select
 
    ! Set minimum values above top_lev.
-   wsub(:ncol,:top_lev-1)  = wsub_min  !0.20_r8
-   wsubi(:ncol,:top_lev-1) = wsubi_min !0.001_r8
+   wsub(:ncol,:top_lev-1)  = wsub_min
+   wsubi(:ncol,:top_lev-1) = wsubi_min
 
    do k = top_lev, pver
       do i = 1, ncol
@@ -636,7 +638,16 @@ subroutine microp_aero_run ( &
             lcldn, lcldo, cldliqf, nctend_mixnuc, factnum)
       end if
 
-      npccn(:ncol,:) = nctend_mixnuc(:ncol,:) * npccn_scale
+      npccn(:ncol,:) = nctend_mixnuc(:ncol,:)
+
+      do k = 1, pver
+         do i = 1, ncol
+            if(not(is_nan(npccn(i,k)))) then
+               npccn(i,k) = npccn(i,k) * npccn_scale
+            end if
+         enddo
+      enddo
+
 
    else
 
