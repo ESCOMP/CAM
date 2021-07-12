@@ -54,8 +54,8 @@ save
 public :: microp_aero_init, microp_aero_run, microp_aero_readnl, microp_aero_register
 
 ! Private module data
-
 character(len=16)   :: eddy_scheme
+real(r8), parameter :: unset_r8 = huge(1.0_r8)
 
 ! contact freezing due to dust
 ! dust number mean radius (m), Zender et al JGR 2003 assuming number mode radius of 0.6 micron, sigma=2
@@ -317,17 +317,18 @@ subroutine microp_aero_readnl(nlfile)
 
    use namelist_utils,  only: find_group_name
    use units,           only: getunit, freeunit
-   use mpishorthand
+   use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_integer, mpi_real8, &
+                             mpi_logical, mpi_character
 
    character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
    ! Namelist variables
-   real(r8) :: microp_aero_bulk_scale = 2._r8 ! prescribed aerosol bulk sulfur scale factor
-   real(r8) :: microp_aero_npccn_scale = 1._r8  ! prescribed aerosol bulk sulfur scale factor
-   real(r8) :: microp_aero_wsub_scale = 1._r8  ! subgrid vertical velocity (liquid) scale factor
-   real(r8) :: microp_aero_wsubi_scale = 1._r8  ! subgrid vertical velocity (ice) scale factor
-   real(r8) :: microp_aero_wsub_min = 0.2_r8  ! subgrid vertical velocity (liquid) minimum
-   real(r8) :: microp_aero_wsubi_min = 0.001_r8  ! subgrid vertical velocity (ice) minimum
+   real(r8) :: microp_aero_bulk_scale = unset_r8 ! prescribed aerosol bulk sulfur scale factor
+   real(r8) :: microp_aero_npccn_scale = unset_r8  ! prescribed aerosol bulk sulfur scale factor
+   real(r8) :: microp_aero_wsub_scale = unset_r8  ! subgrid vertical velocity (liquid) scale factor
+   real(r8) :: microp_aero_wsubi_scale = unset_r8  ! subgrid vertical velocity (ice) scale factor
+   real(r8) :: microp_aero_wsub_min = unset_r8  ! subgrid vertical velocity (liquid) minimum
+   real(r8) :: microp_aero_wsubi_min = unset_r8  ! subgrid vertical velocity (ice) minimum
 
     
    ! Local variables
@@ -352,15 +353,19 @@ subroutine microp_aero_readnl(nlfile)
       call freeunit(unitn)
    end if
 
-#ifdef SPMD
-   ! Broadcast namelist variable
-   call mpibcast(microp_aero_bulk_scale, 1, mpir8, 0, mpicom)
-   call mpibcast(microp_aero_npccn_scale, 1, mpir8, 0, mpicom)
-   call mpibcast(microp_aero_wsub_scale, 1, mpir8, 0, mpicom)
-   call mpibcast(microp_aero_wsubi_scale, 1, mpir8, 0, mpicom)
-   call mpibcast(microp_aero_wsub_min, 1, mpir8, 0, mpicom)
-   call mpibcast(microp_aero_wsubi_min, 1, mpir8, 0, mpicom)
-#endif
+   ! Broadcast namelist variables     
+   call mpi_bcast(microp_aero_bulk_scale, 1, mpi_real8, mstrid, mpicom, ierr)
+   if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: microp_aero_bulk_scale")
+   call mpi_bcast(microp_aero_npccn_scale, 1, mpi_real8, mstrid, mpicom, ierr)
+   if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: microp_aero_npccn_scale")
+   call mpi_bcast(microp_aero_wsub_scale, 1, mpi_real8, mstrid, mpicom, ierr)
+   if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: microp_aero_wsub_scale")
+   call mpi_bcast(microp_aero_wsubi_scale, 1, mpi_real8, mstrid, mpicom, ierr)
+   if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: microp_aero_wsubi_scale")
+   call mpi_bcast(microp_aero_wsub_min, 1, mpi_real8, mstrid, mpicom, ierr)
+   if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: microp_aero_wsub_min")
+   call mpi_bcast(microp_aero_wsubi_min, 1, mpi_real8, mstrid, mpicom, ierr)
+   if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: microp_aero_wsubi_min")
 
    ! set local variables
    bulk_scale = microp_aero_bulk_scale
@@ -369,6 +374,13 @@ subroutine microp_aero_readnl(nlfile)
    wsubi_scale = microp_aero_wsubi_scale
    wsub_min = microp_aero_wsub_min
    wsubi_min = microp_aero_wsubi_min
+
+   if(bulk_scale == unset_r8) call endrun(subname//": FATAL: bulk_scale is not set")
+   if(npccn_scale == unset_r8) call endrun(subname//": FATAL: npccn_scale is not set")
+   if(wsub_scale == unset_r8) call endrun(subname//": FATAL: wsub_scale is not set")
+   if(wsubi_scale == unset_r8) call endrun(subname//": FATAL: wsubi_scale is not set")
+   if(wsub_min == unset_r8) call endrun(subname//": FATAL: wsub_min is not set")
+   if(wsubi_min == unset_r8) call endrun(subname//": FATAL: wsubi_min is not set")
 
    call nucleate_ice_cam_readnl(nlfile)
    call hetfrz_classnuc_cam_readnl(nlfile)

@@ -40,8 +40,8 @@ module zm_conv
 !
    real(r8) rl         ! wg latent heat of vaporization.
    real(r8) cpres      ! specific heat at constant pressure in j/kg-degk.
-   real(r8) :: capelmt = 70._r8  ! namelist configurable: 
-                                 ! threshold value for cape for deep convection.
+   real(r8) :: capelmt ! namelist configurable: 
+                       ! threshold value for cape for deep convection.
    real(r8) :: ke           ! Tunable evaporation efficiency set from namelist input zmconv_ke
    real(r8) :: ke_lnd
    real(r8) :: c0_lnd       ! set from namelist input zmconv_c0_lnd
@@ -73,8 +73,8 @@ module zm_conv
    
    integer  limcnv       ! top interface level limit for convection
 
-   real(r8) :: tiedke_add = 0.5_r8     ! New namelist configurable
-   real(r8) :: dmpdz_param = -1.e-3_r8 ! New namelist configurable
+   real(r8) :: tiedke_add      ! namelist configurable
+   real(r8) :: dmpdz_param     ! namelist configurable
 
 contains
 

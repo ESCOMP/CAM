@@ -2895,6 +2895,14 @@ if ($cfg->get('microphys') =~ /^mg/) {
     add_default($nl, 'micro_do_sb_physics', 'val'=>'.false.');
 }
 
+# Aerosol Namelist options
+add_default($nl, 'microp_aero_bulk_scale');
+add_default($nl, 'microp_aero_npccn_scale');
+add_default($nl, 'microp_aero_wsub_scale');
+add_default($nl, 'microp_aero_wsubi_scale');
+add_default($nl, 'microp_aero_wsub_min');
+add_default($nl, 'microp_aero_wsubi_min');
+
 # Ice nucleation options
 if (!$simple_phys) {
     if ($chem =~ /_mam/) {
