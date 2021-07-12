@@ -2623,7 +2623,7 @@
 <se_hypervis_subcycle  hgrid="ne0np4CONUS.ne30x8" waccm_phys="1" > 1 </se_hypervis_subcycle>
 
 <se_hypervis_subcycle_sponge                                          > 1  </se_hypervis_subcycle_sponge>
-<se_hypervis_subcycle_sponge waccmx="1"                               > 2  </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge waccmx="1"                               > 5  </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne120np4"                         > 4  </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge se_refined_mesh="1"                      > 2  </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"> 4  </se_hypervis_subcycle_sponge>
