@@ -7056,28 +7056,6 @@ Number of hyperviscosity subcycles per dynamics timestep in sponge del2 diffusio
 Default: Set by build-namelist
 </entry>
 
-
-<entry id="se_rayk0" type="integer" category="se"
-       group="dyn_se_inparm" valid_values="" >
-Variable to specify the vertical index at which the
-Rayleigh friction term is centered (the peak value).
-Default: 2
-</entry>
-
-<entry id="se_raykrange" type="real" category="se"
-       group="dyn_se_inparm" valid_values="" >
-Rayleigh friction parameter to determine the width of the profile.  If set
-to 0 then a width is chosen by the algorithm (see rayleigh_friction.F90).
-Default: 0.5.
-</entry>
-
-<entry id="se_raytau0" type="real" category="se"
-       group="dyn_se_inparm" valid_values="" >
-Rayleigh friction parameter to determine the approximate value of the decay
-time (days) at model top.  If 0.0 then no Rayleigh friction is applied.
-Default: 0.
-</entry>
-
 <entry id="se_molecular_diff" type="real" category="se"
        group="dyn_se_inparm" valid_values="" >
 Used by SE dycore to apply sponge layer diffusion to u, v, and T for

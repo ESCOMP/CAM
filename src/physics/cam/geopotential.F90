@@ -77,7 +77,7 @@ contains
     rog(:ncol,:) = rair(:ncol,:) / gravit
 
 ! set calculation method based on dycore type
-    calc1 = dycore_is ('LR').or.dycore_is ('SE').or. dycore_is('FV3')
+    calc1 = dycore_is ('LR').or.dycore_is('FV3')
 
 ! The surface height is zero by definition.
     do i = 1,ncol

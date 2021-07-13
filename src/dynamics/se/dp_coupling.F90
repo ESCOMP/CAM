@@ -378,7 +378,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
          end do
       end do
       call thermodynamic_consistency( &
-           phys_state(lchnk), phys_tend(lchnk), ncols, pver)
+           phys_state(lchnk), phys_tend(lchnk), ncols, pver, lchnk)
    end do
 
    call t_startf('pd_copy')
@@ -538,7 +538,7 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
    ! Finally compute energy and water column integrals of the physics input state.
 
    use constituents,  only: qmin
-   use physconst,     only: cpair, gravit, zvir, cappa, rairv, physconst_update
+   use physconst,     only: cpair, cpairv, gravit, zvir, cappav, rairv, physconst_update
    use shr_const_mod, only: shr_const_rwv
    use phys_control,  only: waccmx_is
    use geopotential,  only: geopotential_t
@@ -644,8 +644,6 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
       do k = 1, nlev
          do i = 1, ncol
             phys_state(lchnk)%rpdel(i,k)  = 1._r8/phys_state(lchnk)%pdel(i,k)
-            phys_state(lchnk)%exner (i,k) = (phys_state(lchnk)%pint(i,pver+1) &
-                                            / phys_state(lchnk)%pmid(i,k))**cappa
          end do
       end do
 
@@ -701,11 +699,19 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
       ! Fill local zvirv variable; calculated for WACCM-X.
       !-----------------------------------------------------------------------------
       if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
-        call physconst_update(phys_state(lchnk)%q, phys_state(lchnk)%t, lchnk, ncol)
+        call physconst_update(phys_state(lchnk)%q, phys_state(lchnk)%t, lchnk, ncol,&
+             to_moist_factor=phys_state(lchnk)%pdeldry(:ncol,:)/phys_state(lchnk)%pdel(:ncol,:) )
         zvirv(:,:) = shr_const_rwv / rairv(:,:,lchnk) -1._r8
       else
         zvirv(:,:) = zvir
       endif
+
+      do k = 1, nlev
+         do i = 1, ncol           
+            phys_state(lchnk)%exner (i,k) = (phys_state(lchnk)%pint(i,pver+1) &
+                                            / phys_state(lchnk)%pmid(i,k))**cappav(i,k,lchnk)
+         end do
+      end do
 
       ! Compute initial geopotential heights - based on full pressure
       call geopotential_t (phys_state(lchnk)%lnpint, phys_state(lchnk)%lnpmid  , phys_state(lchnk)%pint  , &
@@ -716,8 +722,8 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
       ! Compute initial dry static energy, include surface geopotential
       do k = 1, pver
          do i = 1, ncol
-            phys_state(lchnk)%s(i,k) = cpair*phys_state(lchnk)%t(i,k) &
-               + gravit*phys_state(lchnk)%zm(i,k) + phys_state(lchnk)%phis(i)
+            phys_state(lchnk)%s(i,k) = cpairv(i,k,lchnk)*phys_state(lchnk)%t(i,k) &
+                                     + gravit*phys_state(lchnk)%zm(i,k) + phys_state(lchnk)%phis(i)
          end do
       end do
 
@@ -736,19 +742,20 @@ end subroutine derived_phys_dry
 
 !=========================================================================================
 
-subroutine thermodynamic_consistency(phys_state, phys_tend, ncols, pver)
+subroutine thermodynamic_consistency(phys_state, phys_tend, ncols, pver, lchnk)
   !
    ! Adjust the physics temperature tendency for thermal energy consistency with the
    ! dynamics.
    ! Note: mixing ratios are assumed to be dry.
    !
    use dimensions_mod,    only: lcp_moist
-   use physconst,         only: get_cp, cpair
+   use physconst,         only: get_cp
    use control_mod,       only: phys_dyn_cp
+   use physconst,         only: cpair, cpairv
 
    type(physics_state), intent(in)    :: phys_state
    type(physics_tend ), intent(inout) :: phys_tend
-   integer,  intent(in)               :: ncols, pver
+   integer,  intent(in)               :: ncols, pver, lchnk
 
    real(r8):: inv_cp(ncols,pver)
    !----------------------------------------------------------------------------
@@ -762,7 +769,7 @@ subroutine thermodynamic_consistency(phys_state, phys_tend, ncols, pver)
      ! consistency (not taking into account dme adjust)
      !
      call get_cp(1,ncols,1,pver,1,1,pcnst,phys_state%q(1:ncols,1:pver,:),.true.,inv_cp)
-     phys_tend%dtdt(1:ncols,1:pver) = phys_tend%dtdt(1:ncols,1:pver)*cpair*inv_cp
+     phys_tend%dtdt(1:ncols,1:pver) = phys_tend%dtdt(1:ncols,1:pver)*cpairv(1:ncols,1:pver,lchnk)*inv_cp
    end if
 end subroutine thermodynamic_consistency
 

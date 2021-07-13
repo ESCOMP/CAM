@@ -115,7 +115,7 @@ subroutine dyn_readnl(NLFileName)
    use control_mod,    only: topology, phys_dyn_cp, variable_nsplit
    use control_mod,    only: fine_ne, hypervis_power, hypervis_scaling
    use control_mod,    only: max_hypervis_courant, statediag_numtrac,refined_mesh
-   use control_mod,    only: raytau0, raykrange, rayk0, molecular_diff
+   use control_mod,    only: molecular_diff
    use dimensions_mod, only: ne, npart
    use dimensions_mod, only: lcp_moist
    use dimensions_mod, only: hypervis_dynamic_ref_state,large_Courant_incr
@@ -173,9 +173,6 @@ subroutine dyn_readnl(NLFileName)
    integer                      :: se_kmin_jet
    integer                      :: se_kmax_jet
    integer                      :: se_phys_dyn_cp
-   real(r8)                     :: se_raytau0
-   real(r8)                     :: se_raykrange
-   integer                      :: se_rayk0
    real(r8)                     :: se_molecular_diff
 
    namelist /dyn_se_inparm/        &
@@ -221,9 +218,6 @@ subroutine dyn_readnl(NLFileName)
       se_kmin_jet,                 &
       se_kmax_jet,                 &
       se_phys_dyn_cp,              &
-      se_raytau0,                  &
-      se_raykrange,                &
-      se_rayk0,                    &
       se_molecular_diff
 
    !--------------------------------------------------------------------------
@@ -297,9 +291,6 @@ subroutine dyn_readnl(NLFileName)
    call MPI_bcast(se_kmin_jet, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_kmax_jet, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_phys_dyn_cp, 1, mpi_integer, masterprocid, mpicom, ierr)
-   call MPI_bcast(se_rayk0 , 1, mpi_integer, masterprocid, mpicom, ierr)
-   call MPI_bcast(se_raykrange, 1, mpi_real8, masterprocid, mpicom, ierr)
-   call MPI_bcast(se_raytau0, 1, mpi_real8, masterprocid, mpicom, ierr)
    call MPI_bcast(se_molecular_diff, 1, mpi_real8, masterprocid, mpicom, ierr)
 
    if (se_npes <= 0) then
@@ -367,9 +358,6 @@ subroutine dyn_readnl(NLFileName)
    kmax_jet                 = se_kmax_jet
    variable_nsplit          = .false.
    phys_dyn_cp              = se_phys_dyn_cp
-   raytau0                  = se_raytau0
-   raykrange                = se_raykrange
-   rayk0                    = se_rayk0
    molecular_diff           = se_molecular_diff
 
    if (fv_nphys > 0) then
@@ -499,9 +487,6 @@ subroutine dyn_readnl(NLFileName)
       write(iulog,'(a,l1)') 'dyn_readnl: write restart data on unstructured grid = ', &
                             se_write_restart_unstruct
 
-      write(iulog, '(a,e9.2)') 'dyn_readnl: se_raytau0         = ', raytau0
-      write(iulog, '(a,e9.2)') 'dyn_readnl: se_raykrange       = ', raykrange
-      write(iulog, '(a,i0)'  ) 'dyn_readnl: se_rayk0           = ', rayk0
       write(iulog, '(a,e9.2)') 'dyn_readnl: se_molecular_diff  = ', molecular_diff
    end if
 
@@ -598,16 +583,16 @@ subroutine dyn_init(dyn_in, dyn_out)
    use hybrid_mod,         only: get_loop_ranges, config_thread_region
    use dimensions_mod,     only: nu_scale_top, nu_lev, nu_div_lev
    use dimensions_mod,     only: ksponge_end, kmvis_ref, kmcnd_ref,rho_ref,km_sponge_factor
-   use dimensions_mod,     only: kmvisi_ref, kmcndi_ref,rhoi_ref
    use dimensions_mod,     only: cnst_name_gll, cnst_longname_gll
-   use dimensions_mod,     only: irecons_tracer_lev, irecons_tracer, otau, kord_tr, kord_tr_cslam
+   use dimensions_mod,     only: irecons_tracer_lev, irecons_tracer, kord_tr, kord_tr_cslam
    use prim_driver_mod,    only: prim_init2
    use time_mod,           only: time_at
-   use control_mod,        only: runtype, raytau0, raykrange, rayk0, molecular_diff, nu_top
+   use control_mod,        only: runtype, molecular_diff, nu_top
    use test_fvm_mapping,   only: test_mapping_addfld
    use phys_control,       only: phys_getopts
    use physconst,          only: get_molecular_diff_coef_reference
    use control_mod,        only: vert_remap_uvTq_alg, vert_remap_tracer_alg
+   use std_atm_profile,    only: std_atm_height
    ! Dummy arguments:
    type(dyn_import_t), intent(out) :: dyn_in
    type(dyn_export_t), intent(out) :: dyn_out
@@ -615,7 +600,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    ! Local variables
    integer             :: ithr, nets, nete, ie, k, kmol_end
    real(r8), parameter :: Tinit = 300.0_r8
-   real(r8)            :: press, ptop, tref
+   real(r8)            :: press(1), ptop, tref,z(1)
 
    type(hybrid_t)      :: hybrid
 
@@ -663,7 +648,6 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    character(len=*), parameter :: subname = 'dyn_init'
 
-   real(r8) :: tau0, krange, otau0, scale
    real(r8) :: km_sponge_factor_local(nlev+1)
    !----------------------------------------------------------------------------
 
@@ -740,27 +724,6 @@ subroutine dyn_init(dyn_in, dyn_out)
      call clean_iodesc_list()
    end if
    !
-   ! initialize Rayleigh friction
-   !
-   krange = raykrange
-   if (raykrange .eq. 0._r8) krange = (rayk0 - 1) / 2._r8
-   tau0 = (86400._r8) * raytau0   ! convert to seconds
-   otau0 = 0._r8
-   if (tau0 .ne. 0._r8) otau0 = 1._r8/tau0
-   do k = 1, nlev
-     otau(k) = otau0 * (1.0_r8 + tanh((rayk0 - k) / krange)) / (2._r8)
-   enddo
-   if (masterproc) then
-     if (tau0 > 0._r8) then
-       write (iulog,*) 'SE dycore Rayleigh friction - krange = ', krange
-       write (iulog,*) 'SE dycore Rayleigh friction - otau0 = ', 1.0_r8/tau0
-       write (iulog,*) 'SE dycore Rayleigh friction decay rate profile (only applied to (u,v))'
-       do k = 1, nlev
-         write (iulog,*) '   k = ', k, '   otau = ', otau(k)
-       enddo
-     end if
-   end if
-   !
    ! initialize diffusion in dycore
    !
    kmol_end = 0
@@ -772,9 +735,6 @@ subroutine dyn_init(dyn_in, dyn_out)
      tref = 1000._r8     !mean value at model top for solar max
      km_sponge_factor = molecular_diff
      km_sponge_factor_local = molecular_diff
-     call get_molecular_diff_coef_reference(1,nlev+1,tref,&
-          (hvcoord%hyai(:)+hvcoord%hybi(:))*hvcoord%ps0, km_sponge_factor_local,&
-          kmvisi_ref,kmcndi_ref,rhoi_ref)
      !
      ! get rho, kmvis and kmcnd at mid-levels
      !
@@ -786,8 +746,10 @@ subroutine dyn_init(dyn_in, dyn_out)
        ! only apply molecular viscosity where viscosity is > 1000 m/s^2
        if (MIN(kmvis_ref(k)/rho_ref(k),kmcnd_ref(k)/(cpair*rho_ref(k)))>1000.0_r8) then
          if (masterproc) then
-            write(iulog,'(a,i3,2e11.4)') "k, p, km_sponge_factor                   :",k, &
-               (hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0,km_sponge_factor(k)
+           press = (hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0
+           call std_atm_height(press,z)
+           write(iulog,'(a,i3,3e11.4)') "k, p, z, km_sponge_factor                   :",k, &
+                press, z,km_sponge_factor(k)
             write(iulog,'(a,2e11.4)') "kmvis_ref/rho_ref, kmcnd_ref/(cp*rho_ref): ", &
                kmvis_ref(k)/rho_ref(k),kmcnd_ref(k)/(cpair*rho_ref(k))
          end if
@@ -815,7 +777,7 @@ subroutine dyn_init(dyn_in, dyn_out)
      do k=1,nlev
        press = (hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0
        ptop  = hvcoord%hyai(1)*hvcoord%ps0
-       nu_scale_top(k) = 8.0_r8*(1.0_r8+tanh(1.0_r8*log(ptop/press))) ! tau will be maximum 8 at model top
+       nu_scale_top(k) = 8.0_r8*(1.0_r8+tanh(1.0_r8*log(ptop/press(1)))) ! tau will be maximum 8 at model top
        if (nu_scale_top(k).ge.0.15_r8) then
          ksponge_end = k
        else
@@ -829,8 +791,11 @@ subroutine dyn_init(dyn_in, dyn_out)
    if (masterproc) then
      write(iulog,*) subname//": ksponge_end = ",ksponge_end
      if (nu_top>0) then
-       do k=1,ksponge_end
-         write(iulog,'(a,i3,1e11.4)') subname//": nu_scale_top ",k,nu_scale_top(k)
+       do k=1,ksponge_end+1
+         press = (hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0
+         call std_atm_height(press,z)
+         write(iulog,'(a,i3,4e11.4)') subname//": k, p, z, nu_scale_top, nu ",k,press,z,&
+              nu_scale_top(k),nu_scale_top(k)*nu_top
        end do
      end if
    end if
