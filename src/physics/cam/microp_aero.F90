@@ -392,8 +392,6 @@ end subroutine microp_aero_readnl
 subroutine microp_aero_run ( &
    state, ptend_all, deltatin, pbuf)
 
-  use shr_infnan_mod, only: is_nan => shr_infnan_isnan
-
    ! input arguments
    type(physics_state),         intent(in)    :: state
    type(physics_ptend),         intent(out)   :: ptend_all
@@ -652,14 +650,7 @@ subroutine microp_aero_run ( &
 
       npccn(:ncol,:) = nctend_mixnuc(:ncol,:)
 
-      do k = 1, pver
-         do i = 1, ncol
-            if(not(is_nan(npccn(i,k)))) then
-               npccn(i,k) = npccn(i,k) * npccn_scale
-            end if
-         enddo
-      enddo
-
+      npccn(:ncol,:) = npccn(:ncol,:) * npccn_scale
 
    else
 
