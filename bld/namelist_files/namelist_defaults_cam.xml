@@ -1981,8 +1981,8 @@
 <micro_mg_iaccr_factor                  >  1.D0    </micro_mg_iaccr_factor>
 <micro_mg_iaccr_factor microphys="mg2"  >  1.D0    </micro_mg_iaccr_factor>
 
-<micro_mg_max_nicons                  >  100000.D3    </micro_mg_max_nicons>
-<micro_mg_max_nicons  microphys="mg2"  > 100000.D3    </micro_mg_max_nicons>
+<micro_mg_max_nicons                  >  1.D8    </micro_mg_max_nicons>
+<micro_mg_max_nicons  microphys="mg2"  > 1.D8    </micro_mg_max_nicons>
 
 
 <cld_macmic_num_steps>                                            1 </cld_macmic_num_steps>

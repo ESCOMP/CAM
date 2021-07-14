@@ -95,7 +95,7 @@ subroutine zm_convi(limcnv_in, zmconv_c0_lnd, zmconv_c0_ocn, zmconv_ke, zmconv_k
    real(r8),intent(in)           :: zmconv_momcd
    logical                       :: zmconv_org
    logical, intent(in)           :: zmconv_microp_in
-   logical, intent(in), optional :: no_deep_pbl_in  ! no_deep_pbl = .true. eliminates ZM convection entirely within PBL 
+   logical, intent(in)           :: no_deep_pbl_in  ! no_deep_pbl = .true. eliminates ZM convection entirely within PBL 
    real(r8),intent(in)           :: zmconv_tiedke_add
    real(r8),intent(in)           :: zmconv_capelmt
    real(r8),intent(in)           :: zmconv_dmpdz
@@ -126,12 +126,7 @@ subroutine zm_convi(limcnv_in, zmconv_c0_lnd, zmconv_c0_ocn, zmconv_ke, zmconv_k
    tiedke_add = zmconv_tiedke_add
    capelmt = zmconv_capelmt
    dmpdz_param = zmconv_dmpdz
-
-   if ( present(no_deep_pbl_in) )  then
-      no_deep_pbl = no_deep_pbl_in
-   else
-      no_deep_pbl = .false.
-   endif
+   no_deep_pbl = no_deep_pbl_in
 
    tau = 3600._r8
 
@@ -141,9 +136,9 @@ subroutine zm_convi(limcnv_in, zmconv_c0_lnd, zmconv_c0_ocn, zmconv_ke, zmconv_k
       write(iulog,*) 'tuning parameters zm_convi: num_cin', num_cin
       write(iulog,*) 'tuning parameters zm_convi: ke',ke
       write(iulog,*) 'tuning parameters zm_convi: no_deep_pbl',no_deep_pbl
-      write(iulog,*) 'tuning parameters zm_capelmt:', capelmt
-      write(iulog,*) 'tuning parameters zm_dmpdz:', dmpdz_param
-      write(iulog,*) 'tuning parameters zm_tiedke_add:', tiedke_add 
+      write(iulog,*) 'tuning parameters zm_convi: zm_capelmt', capelmt
+      write(iulog,*) 'tuning parameters zm_convi: zm_dmpdz', dmpdz_param
+      write(iulog,*) 'tuning parameters zm_convi: zm_tiedke_add', tiedke_add 
    endif
 
    if (masterproc) write(iulog,*)'**** ZM: DILUTE Buoyancy Calculation ****'
