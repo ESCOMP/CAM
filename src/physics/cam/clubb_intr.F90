@@ -31,6 +31,7 @@ module clubb_intr
   use clubb_api_module, only: pdf_parameter, implicit_coefs_terms
   use clubb_api_module, only: clubb_config_flags_type
   use clubb_mf,         only: do_clubb_mf, do_clubb_mf_diag
+  use cloud_fraction,   only: dp1, dp2
 #endif
 
   implicit none
@@ -98,6 +99,9 @@ module clubb_intr
     rtpthlp_const = 0.01_r8             ! Constant to add to rtpthlp when moments are advected
     
   real(r8), parameter :: unset_r8 = huge(1.0_r8)
+
+  ! Commonly used temperature for the melting temp of ice crystals [K] 
+  real(r8), parameter :: meltpt_temp = 268.15_r8  
     
   real(r8) :: clubb_timestep = unset_r8  ! Default CLUBB timestep, unless overwriten by namelist
   real(r8) :: clubb_rnevap_effic = unset_r8
@@ -108,6 +112,12 @@ module clubb_intr
   real(r8) :: clubb_C2thl = unset_r8
   real(r8) :: clubb_C2rtthl = unset_r8
   real(r8) :: clubb_C4 = unset_r8
+  real(r8) :: clubb_C6rt = unset_r8
+  real(r8) :: clubb_c6rtb = unset_r8
+  real(r8) :: clubb_c6rtc = unset_r8
+  real(r8) :: clubb_c6thl = unset_r8
+  real(r8) :: clubb_c6thlb = unset_r8
+  real(r8) :: clubb_c6thlc = unset_r8
   real(r8) :: clubb_C8 = unset_r8
   real(r8) :: clubb_C8b = unset_r8
   real(r8) :: clubb_C7 = unset_r8
@@ -129,6 +139,10 @@ module clubb_intr
   real(r8) :: clubb_skw_max_mag = unset_r8
   real(r8) :: clubb_up2_vp2_factor = unset_r8
   real(r8) :: clubb_C_wp2_splat = unset_r8
+  real(r8) :: clubb_wpxp_L_thresh = unset_r8
+  real(r8) :: clubb_detliq_rad = unset_r8
+  real(r8) :: clubb_detice_rad = unset_r8
+  real(r8) :: clubb_detphase_lowtemp = unset_r8
   logical  :: clubb_l_brunt_vaisala_freq_moist = .false.
   logical  :: clubb_l_call_pdf_closure_twice = .false.
   logical  :: clubb_l_damp_wp3_Skw_squared = .false.
@@ -519,11 +533,13 @@ end subroutine clubb_init_cnst
     namelist /clubb_params_nl/ clubb_c1, clubb_c1b, clubb_c11, clubb_c11b, clubb_c14, clubb_mult_coef, clubb_gamma_coef, &
                                clubb_c_K10, clubb_c_K10h, clubb_beta, clubb_C2rt, clubb_C2thl, &
 			       clubb_C2rtthl, clubb_C8, clubb_C8b, clubb_C7, clubb_C7b, clubb_Skw_denom_coef, &
-                               clubb_C4, clubb_c_K9, clubb_nu9, clubb_C_wp2_splat, &
+                               clubb_c6rt, clubb_c6rtb, clubb_c6rtc, clubb_c6thl, clubb_c6thlb, clubb_c6thlc, &
+                               clubb_C4, clubb_c_K9, clubb_nu9, clubb_C_wp2_splat, clubb_wpxp_L_thresh, &
                                clubb_lambda0_stability_coef, clubb_l_lscale_plume_centered, &
                                clubb_l_use_ice_latent, clubb_do_liqsupersat, clubb_do_energyfix,&
-                               clubb_lmin_coef, clubb_skw_max_mag, clubb_l_stability_correct_tau_zm, &
-                               clubb_gamma_coefb, clubb_up2_vp2_factor, &
+                               clubb_lmin_coef,clubb_skw_max_mag, clubb_l_stability_correct_tau_zm, &
+                               clubb_gamma_coefb, clubb_up2_vp2_factor, clubb_detliq_rad, clubb_detice_rad, &
+                               clubb_detphase_lowtemp, &
                                clubb_l_use_C7_Richardson, clubb_l_use_C11_Richardson, &
                                clubb_l_brunt_vaisala_freq_moist, clubb_l_use_thvm_in_bv_freq, &
                                clubb_l_rcm_supersat_adj, clubb_l_damp_wp3_Skw_squared, &
@@ -614,6 +630,20 @@ end subroutine clubb_init_cnst
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_c11b")
     call mpi_bcast(clubb_c14,                    1, mpi_real8,   mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_c14")
+    call mpi_bcast(clubb_c6rt,                   1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_c6rt")
+    call mpi_bcast(clubb_c6rtb,                  1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_c6rtb")
+    call mpi_bcast(clubb_c6rtc,                  1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_c6rtc")
+    call mpi_bcast(clubb_c6thl,                 1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_c6thl")
+    call mpi_bcast(clubb_c6thlb,                 1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_c6thlb")
+    call mpi_bcast(clubb_c6thlc,                 1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_c6thlc")
+    call mpi_bcast(clubb_wpxp_L_thresh,          1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_wpxp_L_thresh")
     call mpi_bcast(clubb_mult_coef,              1, mpi_real8,   mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mult_coef")
     call mpi_bcast(clubb_gamma_coef,             1, mpi_real8,   mstrid, mpicom, ierr)
@@ -669,6 +699,12 @@ end subroutine clubb_init_cnst
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_gamma_coefb")
     call mpi_bcast(clubb_up2_vp2_factor, 1, mpi_real8,   mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_up2_vp2_factor")
+    call mpi_bcast(clubb_detliq_rad, 1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_detliq_rad")
+    call mpi_bcast(clubb_detice_rad, 1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_detice_rad")
+    call mpi_bcast(clubb_detphase_lowtemp, 1, mpi_real8,   mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_detphase_lowtemp")
 
     call mpi_bcast(clubb_l_use_C7_Richardson,         1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_use_C7_Richardson")
@@ -722,6 +758,13 @@ end subroutine clubb_init_cnst
   if(clubb_C2thl == unset_r8) call endrun(sub//": FATAL: clubb_C2thl is not set")
   if(clubb_C2rtthl == unset_r8) call endrun(sub//": FATAL: clubb_C2rtthl is not set")
   if(clubb_C4 == unset_r8) call endrun(sub//": FATAL: clubb_C4 is not set")
+  if(clubb_c6rt == unset_r8) call endrun(sub//": FATAL: clubb_c6rt is not set")
+  if(clubb_c6rtb == unset_r8) call endrun(sub//": FATAL: clubb_c6rtb is not set")
+  if(clubb_c6rtc == unset_r8) call endrun(sub//": FATAL: clubb_c6rtc is not set")
+  if(clubb_c6thl == unset_r8) call endrun(sub//": FATAL: clubb_c6thl is not set")
+  if(clubb_c6thlb == unset_r8) call endrun(sub//": FATAL: clubb_c6thlb is not set")
+  if(clubb_c6thlc == unset_r8) call endrun(sub//": FATAL: clubb_c6thlc is not set")
+  if(clubb_wpxp_L_thresh == unset_r8) call endrun(sub//": FATAL: clubb_wpxp_L_thresh is not set")
   if(clubb_C8 == unset_r8) call endrun(sub//": FATAL: clubb_C8 is not set")
   if(clubb_C8b == unset_r8) call endrun(sub//": FATAL: clubb_C8b is not set")
   if(clubb_C7 == unset_r8) call endrun(sub//": FATAL: clubb_C7 is not set")
@@ -743,6 +786,11 @@ end subroutine clubb_init_cnst
   if(clubb_skw_max_mag == unset_r8) call endrun(sub//": FATAL: clubb_skw_max_mag is not set")
   if(clubb_up2_vp2_factor == unset_r8) call endrun(sub//": FATAL: clubb_up2_vp2_factor is not set")
   if(clubb_C_wp2_splat == unset_r8) call endrun(sub//": FATAL: clubb_C_wp2_splatis not set")
+  if(clubb_detliq_rad == unset_r8) call endrun(sub//": FATAL: clubb_detliq_rad not set")
+  if(clubb_detice_rad == unset_r8) call endrun(sub//": FATAL: clubb_detice_rad not set")
+  if(clubb_detphase_lowtemp == unset_r8) call endrun(sub//": FATAL: clubb_detphase_lowtemp not set")
+  if(clubb_detphase_lowtemp >= meltpt_temp) & 
+     call endrun(sub//": ERROR: clubb_detphase_lowtemp must be less than 268.15 K")
 
 #endif
   end subroutine clubb_readnl
@@ -774,15 +822,12 @@ end subroutine clubb_init_cnst
     use rad_constituents,       only: rad_cnst_get_info, rad_cnst_get_mode_num_idx, rad_cnst_get_mam_mmr_idx
     use cam_abortutils,         only: endrun
 
-    !  From the CLUBB libraries
-    use clubb_api_module, only: core_rknd, &
-                                iC11, iC11b, ibeta, iSkw_denom_coef, & ! Constant(s)
-                                em_min, &
-                                iC1, iC1b, iC2rt, iC2thl, iC2rtthl, igamma_coef, igamma_coefb, &
-                                imult_coef, ic_K10, iskw_max_mag, &
-                                iC8, iC8b, iC11, iC11b, iC4, iC14, iup2_vp2_factor, params_list
-                                
-
+    ! These are needed to set parameters
+    use clubb_api_module, only: &
+         ilambda0_stability_coef, ic_K10, ic_K10h, iC7, iC7b, iC8, iC8b, iC11, iC11b, iC4, &
+         iC1, iC1b, iC6rt, iC6rtb, iC6rtc, iC6thl, iC6thlb, iC6thlc, iup2_vp2_factor, iwpxp_L_thresh, &
+         iC14, igamma_coef, igamma_coefb, imult_coef, ilmin_coef, iSkw_denom_coef, ibeta, iskw_max_mag, &
+         iC2rt, iC2thl, iC2rtthl, ic_K9, inu9, iC_wp2_splat, params_list
 
     use clubb_api_module, only: &
          print_clubb_config_flags_api, &
@@ -815,12 +860,6 @@ end subroutine clubb_init_cnst
          iiedsclr_rt, &
          iiedsclr_thl, &
          iiedsclr_CO2
-
-    ! These are needed to set parameters
-    use clubb_api_module, only: &
-         ilambda0_stability_coef, ic_K10, ic_K10h, iC2rtthl, iC7, iC7b, iC8, iC8b, iC11, iC11b, &
-         iC14, igamma_coef, imult_coef, ilmin_coef, iSkw_denom_coef, ibeta, iskw_max_mag, &
-         iC2rt, iC2thl, iC2rtthl, ic_K9, inu9, iC_wp2_splat
 
     use time_manager,              only: is_first_step
     use clubb_api_module,          only: hydromet_dim
@@ -1022,6 +1061,13 @@ end subroutine clubb_init_cnst
     clubb_params(iC2rt) = clubb_C2rt
     clubb_params(iC2thl) = clubb_C2thl
     clubb_params(ibeta) = clubb_beta
+    clubb_params(iC6rt) = clubb_c6rt
+    clubb_params(iC6rtb) = clubb_c6rtb
+    clubb_params(iC6rtc) = clubb_c6rtc
+    clubb_params(iC6thl) = clubb_c6thl
+    clubb_params(iC6thlb) = clubb_c6thlb
+    clubb_params(iC6thlc) = clubb_c6thlc
+    clubb_params(iwpxp_L_thresh) = clubb_wpxp_L_thresh
     clubb_params(iC7) = clubb_C7
     clubb_params(iC7b) = clubb_C7b
     clubb_params(igamma_coef) = clubb_gamma_coef
@@ -1680,6 +1726,7 @@ end subroutine clubb_init_cnst
    real(r8) :: qrl_zm(pverp+1-top_lev)
    real(r8) :: thlp2_rad_out(pverp+1-top_lev)
    real(r8) :: apply_const, rtm_test
+   real(r8) :: dl_rad, di_rad, dt_low
 
    real(r8), dimension(nparams)  :: clubb_params    ! These adjustable CLUBB parameters (C1, C2 ...)
    real(r8), dimension(sclr_dim) :: sclr_tol 	! Tolerance on passive scalar 			[units vary]
@@ -1836,6 +1883,10 @@ end subroutine clubb_init_cnst
    wp2_zt_out  = 0._r8
    pdfp_rtp2   = 0._r8
    wm_zt_out   = 0._r8
+
+   dl_rad = clubb_detliq_rad
+   di_rad = clubb_detice_rad
+   dt_low = clubb_detphase_lowtemp
 
    frac_limit = 0.01_r8
    ic_limit   = 1.e-12_r8
@@ -3075,12 +3126,12 @@ end subroutine clubb_init_cnst
    
    do k=1,pver
       do i=1,ncol
-         if( state1%t(i,k) > 268.15_r8 ) then
+         if( state1%t(i,k) > meltpt_temp ) then
             dum1 = 0.0_r8
-         elseif ( state1%t(i,k) < 238.15_r8 ) then
+         elseif ( state1%t(i,k) < dt_low ) then
             dum1 = 1.0_r8
          else
-            dum1 = ( 268.15_r8 - state1%t(i,k) ) / 30._r8 
+            dum1 = ( meltpt_temp - state1%t(i,k) ) / ( meltpt_temp - dt_low ) 
          endif
 
          if (zmconv_microp) then
@@ -3088,20 +3139,20 @@ end subroutine clubb_init_cnst
             ptend_loc%q(i,k,ixcldice) = difzm(i,k) + dlf2(i,k) * dum1
 
             ptend_loc%q(i,k,ixnumliq) = dnlfzm(i,k) + 3._r8 * ( dlf2(i,k) * ( 1._r8 - dum1 ) )   &
-                                                   / (4._r8*3.14_r8*10.e-6_r8**3*997._r8)      ! Shallow Convection
+                                                   / (4._r8*3.14_r8*dl_rad**3*997._r8)      ! Shallow Convection
             ptend_loc%q(i,k,ixnumice) = dnifzm(i,k) + 3._r8 * ( dlf2(i,k) * dum1 ) &
-                                                   / (4._r8*3.14_r8*50.e-6_r8**3*500._r8)      ! Shallow Convection
+                                                   / (4._r8*3.14_r8*di_rad**3*500._r8)      ! Shallow Convection
             ptend_loc%s(i,k)          = dlf2(i,k) * dum1 * latice
          else       
 
             ptend_loc%q(i,k,ixcldliq) = dlf(i,k) * ( 1._r8 - dum1 )
             ptend_loc%q(i,k,ixcldice) = dlf(i,k) * dum1
             ptend_loc%q(i,k,ixnumliq) = 3._r8 * ( max(0._r8, ( dlf(i,k) - dlf2(i,k) )) * ( 1._r8 - dum1 ) ) &
-                                     / (4._r8*3.14_r8* 8.e-6_r8**3*997._r8) + & ! Deep    Convection
+                                     / (4._r8*3.14_r8*dl_rad**3*997._r8) + & ! Deep    Convection
                                      3._r8 * (                         dlf2(i,k)    * ( 1._r8 - dum1 ) ) &
                                      / (4._r8*3.14_r8*10.e-6_r8**3*997._r8)     ! Shallow Convection 
             ptend_loc%q(i,k,ixnumice) = 3._r8 * ( max(0._r8, ( dlf(i,k) - dlf2(i,k) )) *  dum1 ) &
-                                     / (4._r8*3.14_r8*25.e-6_r8**3*500._r8) + & ! Deep    Convection
+                                     / (4._r8*3.14_r8*di_rad**3*500._r8) + & ! Deep    Convection
                                      3._r8 * (                         dlf2(i,k)    *  dum1 ) &
                                      / (4._r8*3.14_r8*50.e-6_r8**3*500._r8)     ! Shallow Convection
             ptend_loc%s(i,k)          = dlf(i,k) * dum1 * latice
@@ -3238,7 +3289,7 @@ end subroutine clubb_init_cnst
          !  deep convective mass flux, read in from pbuf.  Since shallow convection is never 
          !  called, the shallow convective mass flux will ALWAYS be zero, ensuring that this cloud
          !  fraction is purely from deep convection scheme.  
-         deepcu(i,k) = max(0.0_r8,min(0.1_r8*log(1.0_r8+500.0_r8*(cmfmc(i,k+1)-cmfmc_sh(i,k+1))),0.6_r8))
+         deepcu(i,k) = max(0.0_r8,min(dp1*log(1.0_r8+dp2*(cmfmc(i,k+1)-cmfmc_sh(i,k+1))),0.6_r8))
          shalcu(i,k) = 0._r8
        
          if (deepcu(i,k) <= frac_limit .or. dp_icwmr(i,k) < ic_limit) then
