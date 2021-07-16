@@ -1828,7 +1828,7 @@
 <clubb_C_wp2_splat                                > 0.0     </clubb_C_wp2_splat>
 <clubb_detliq_rad                                 > 8.0D-6  </clubb_detliq_rad>
 <clubb_detice_rad                                 > 25.0D-6 </clubb_detice_rad>
-<clubb_detphase_lowtemp                           > 238.15  </clubb_detphase_lowtemp>
+<clubb_detphase_lowtemp                           > 238.15D0 </clubb_detphase_lowtemp>
 
 <clubb_l_brunt_vaisala_freq_moist                 > .false. </clubb_l_brunt_vaisala_freq_moist>
 <clubb_l_call_pdf_closure_twice                   > .true.  </clubb_l_call_pdf_closure_twice>
@@ -1956,7 +1956,7 @@
 <micro_mg_autocon_lwp_exp                  >  2.47D0    </micro_mg_autocon_lwp_exp>
 <micro_mg_autocon_lwp_exp microphys="mg2"  >  2.47D0    </micro_mg_autocon_lwp_exp>
 
-<microp_aero_bulk_scale                  >  1.D0    </microp_aero_bulk_scale>
+<microp_aero_bulk_scale                  >  2.D0    </microp_aero_bulk_scale>
 
 <microp_aero_npccn_scale                  >  1.D0    </microp_aero_npccn_scale>
 <microp_aero_npccn_scale microphys="mg2"  >  1.D0    </microp_aero_npccn_scale>
