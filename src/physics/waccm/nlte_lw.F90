@@ -14,6 +14,9 @@ module nlte_lw
  
   use waccm_forcing,      only: waccm_forcing_init, waccm_forcing_adv,  get_cnst
   use cam_logfile,        only: iulog
+  use cam_abortutils,     only: endrun
+
+  use shr_infnan_mod, only: is_nan => shr_infnan_isnan
 
   implicit none
   private
@@ -160,7 +163,7 @@ contains
 ! Initialize Fomichev parameterization
     call nlte_fomichev_init (co2_mw, n2_mw, o1_mw, o2_mw, o3_mw, no_mw, nlte_limit_co2)
 
-! Initialize Fomichev parameterization
+! Initialize ALI-ARMS parameterization
     if (nlte_use_aliarms) call nlte_aliarms_init ()
 
 ! Initialize waccm forcing data
@@ -266,7 +269,9 @@ contains
     real(r8), target :: o3mrg(pcols,pver)    ! merged O3
     real(r8), pointer, dimension(:,:) :: to3mmr  ! O3 mmr   (tgcm)
 
-    integer :: k
+    integer :: i,j,k
+    
+    character (len=80) :: errstring
 
 !------------------------------------------------------------------------
 
@@ -315,6 +320,20 @@ contains
     call t_startf('nlte_aliarms_calc')
     if (nlte_use_aliarms) call nlte_aliarms_calc (lchnk,ncol,state%zm, state%pmid,state%t, &
                                                   xo2mmr,xommr,xn2mmr,xco2mmr,qrlaliarms)
+    do i=1,pver
+       do j=1,pcols
+          if (is_nan(qrlaliarms(i,j))) then
+             write(errstring,*) 'nlte_lw: Nan in qrlaliarms for chunk', lchnk, 'and column',ncol
+             call endrun (errstring)
+          end if
+       end do
+    end do
+!!! CAC NOTE - PROBABABLY NEED TO PICK A MORE REALISTIC NUMBER THAN 1
+    if (any(qrlaliarms(:,:) > 1.0)) then
+       write(errstring,*) 'nlte_lw: Invalid value in qrlaliarms for chunk', lchnk, 'and column',ncol
+       call endrun (errstring)
+    end if
+
     call t_stopf('nlte_aliarms_calc')
 
 ! do NO cooling 
