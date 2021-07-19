@@ -7154,6 +7154,44 @@ Second-order viscosity applied only near the model top [m^2/s].
 Default: Set by build-namelist.
 </entry>
 
+<entry id="se_sponge_del4_nu_fac" type="real" category="se"
+       group="dyn_se_inparm" valid_values="" >
+Hyperviscosity coefficient se_nu [m^4/s] for u,v, T is increased to
+se_nu_p*se_sponge_del4_nu_fac following a hyperbolic tangent function
+centered around pressure at vertical index se_sponge_del4_lev:
+
+ 0.5_r8*(1.0_r8+tanh(2.0_r8*log(pmid(se_sponge_del4_lev)/press)))
+
+where press is pressure
+
+If &lt; 0, se_sponge_del4_nu_fac is automatically set based on model top location.
+Default: Set by build-namelist.
+</entry>
+
+<entry id="se_sponge_del4_nu_div_fac" type="integer" category="se"
+       group="dyn_se_inparm" valid_values="" >
+Divergence damping hyperviscosity coefficient se_nu_div [m^4/s] for u,v is increased to
+se_nu_p*se_sponge_del4_nu_fac following a hyperbolic tangent function
+centered around pressure at vertical index se_sponge_del4_lev:
+
+ 0.5_r8*(1.0_r8+tanh(2.0_r8*log(pmid(se_sponge_del4_lev)/press)))
+
+where press is pressure
+
+If &lt; 0, se_sponge_del4_nu_div_fac is automatically set based on model top location.
+Default: Set by build-namelist.
+</entry>
+
+<entry id="se_sponge_del4_lev" type="real" category="se"
+       group="dyn_se_inparm" valid_values="" >
+Level index around which increased del4 damping is centered.
+
+See se_sponge_del4_nu_fac and se_sponge_del4_nu_div_fac
+
+If &lt; 0, se_sponge_del4_lev is automatically set based on model top location.
+Default: Set by build-namelist.
+</entry>
+
 <entry id="se_hypervis_dynamic_ref_state" type="logical" category="se"
        group="dyn_se_inparm" valid_values="" >
 Hyperscosity for T and dp is applied to (T-Tref) and (dp-dp_ref) where
