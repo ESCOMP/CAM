@@ -1198,7 +1198,7 @@ contains
         if (ABS(dlatm(iCol)) < 10.0_r8) then
            FeDB = 0._r8
         else if (ABS(dlatm(iCol)) >= 10.0_r8 .and. ABS(dlatm(iCol)) < 40.0_r8) then
-           FeDB = 0.5_r8 * (1._r8 + SIN(pi * (ABS(dlatm(iCol)) - 15.0_r8) /30.0_r8))
+           FeDB = 0.5_r8 * (1._r8 + COS(pi * (ABS(dlatm(iCol)) - 40.0_r8) /30.0_r8))
         else
            FeDB = 1._r8
         end if

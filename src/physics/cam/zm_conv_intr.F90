@@ -11,6 +11,7 @@ module zm_conv_intr
    use physconst,    only: cpair
    use ppgrid,       only: pver, pcols, pverp, begchunk, endchunk
    use zm_conv,      only: zm_conv_evap, zm_convr, convtran, momtran
+   
    use zm_microphysics,  only: zm_aero_t, zm_conv_t
    use rad_constituents, only: rad_cnst_get_info, rad_cnst_get_mode_num, rad_cnst_get_aer_mmr, &
                                rad_cnst_get_aer_props, rad_cnst_get_mode_props !, &
@@ -72,6 +73,9 @@ module zm_conv_intr
    logical  :: zmconv_org                ! Parameterization for sub-grid scale convective organization for the ZM deep
                                          ! convective scheme based on Mapes and Neale (2011)
    logical  :: zmconv_microp = .false.             ! switch for microphysics
+   real(r8) :: zmconv_dmpdz = unset_r8        ! Parcel fractional mass entrainment rate
+   real(r8) :: zmconv_tiedke_add = unset_r8   ! Convective parcel temperature perturbation
+   real(r8) :: zmconv_capelmt = unset_r8      ! Triggering thereshold for ZM convection
 
 
 !  indices for fields in the physics buffer
@@ -178,7 +182,8 @@ subroutine zm_conv_readnl(nlfile)
 
    namelist /zmconv_nl/ zmconv_c0_lnd, zmconv_c0_ocn, zmconv_num_cin, &
                         zmconv_ke, zmconv_ke_lnd, zmconv_org, &
-                        zmconv_momcu, zmconv_momcd, zmconv_microp
+                        zmconv_momcu, zmconv_momcd, zmconv_microp, &
+                        zmconv_dmpdz, zmconv_tiedke_add, zmconv_capelmt
    !-----------------------------------------------------------------------------
 
    if (masterproc) then
@@ -215,6 +220,12 @@ subroutine zm_conv_readnl(nlfile)
    if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_org")
    call mpi_bcast(zmconv_microp,            1, mpi_logical, masterprocid, mpicom, ierr)
    if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_microp")
+   call mpi_bcast(zmconv_dmpdz,             1, mpi_real8, masterprocid, mpicom, ierr)
+   if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_dmpdz")
+   call mpi_bcast(zmconv_tiedke_add,        1, mpi_real8, masterprocid, mpicom, ierr)
+   if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_tiedke_add")
+   call mpi_bcast(zmconv_capelmt,           1, mpi_real8, masterprocid, mpicom, ierr)
+   if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_capelmt")
 
 end subroutine zm_conv_readnl
 
@@ -352,7 +363,8 @@ subroutine zm_conv_init(pref_edge)
     no_deep_pbl = phys_deepconv_pbl()
     call zm_convi(limcnv,zmconv_c0_lnd, zmconv_c0_ocn, zmconv_ke, zmconv_ke_lnd, &
                   zmconv_momcu, zmconv_momcd, zmconv_num_cin, zmconv_org, &
-                  zmconv_microp, no_deep_pbl_in = no_deep_pbl)
+                  zmconv_microp, no_deep_pbl, zmconv_tiedke_add, &
+                  zmconv_capelmt, zmconv_dmpdz)
 
     cld_idx         = pbuf_get_index('CLD')
     fracis_idx      = pbuf_get_index('FRACIS')
