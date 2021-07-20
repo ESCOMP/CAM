@@ -116,6 +116,7 @@ subroutine dyn_readnl(NLFileName)
    use control_mod,    only: fine_ne, hypervis_power, hypervis_scaling
    use control_mod,    only: max_hypervis_courant, statediag_numtrac,refined_mesh
    use control_mod,    only: molecular_diff
+   use control_mod,    only: sponge_del4_nu_div_fac, sponge_del4_nu_fac, sponge_del4_lev
    use dimensions_mod, only: ne, npart
    use dimensions_mod, only: lcp_moist
    use dimensions_mod, only: hypervis_dynamic_ref_state,large_Courant_incr
@@ -153,6 +154,9 @@ subroutine dyn_readnl(NLFileName)
    real(r8)                     :: se_nu_div
    real(r8)                     :: se_nu_p
    real(r8)                     :: se_nu_top
+   real(r8)                     :: se_sponge_del4_nu_fac
+   real(r8)                     :: se_sponge_del4_nu_div_fac
+   integer                      :: se_sponge_del4_lev
    integer                      :: se_qsplit
    logical                      :: se_refined_mesh
    integer                      :: se_rsplit
@@ -195,6 +199,9 @@ subroutine dyn_readnl(NLFileName)
       se_nu_div,                   &
       se_nu_p,                     &
       se_nu_top,                   &
+      se_sponge_del4_nu_fac,       &
+      se_sponge_del4_nu_div_fac,   &
+      se_sponge_del4_lev,          &
       se_qsplit,                   &
       se_refined_mesh,             &
       se_rsplit,                   &
@@ -267,6 +274,9 @@ subroutine dyn_readnl(NLFileName)
    call MPI_bcast(se_nu_div, 1, mpi_real8, masterprocid, mpicom, ierr)
    call MPI_bcast(se_nu_p, 1, mpi_real8, masterprocid, mpicom, ierr)
    call MPI_bcast(se_nu_top, 1, mpi_real8, masterprocid, mpicom, ierr)
+   call MPI_bcast(se_sponge_del4_nu_fac, 1, mpi_real8, masterprocid, mpicom, ierr)
+   call MPI_bcast(se_sponge_del4_nu_div_fac, 1, mpi_real8, masterprocid, mpicom, ierr)
+   call MPI_bcast(se_sponge_del4_lev, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_qsplit, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_refined_mesh, 1, mpi_logical, masterprocid, mpicom, ierr)
    call MPI_bcast(se_rsplit, 1, mpi_integer, masterprocid, mpicom, ierr)
@@ -342,6 +352,9 @@ subroutine dyn_readnl(NLFileName)
    nu_p                     = se_nu_p
    nu_q                     = se_nu_p !for tracer-wind consistency nu_q must me equal to nu_p
    nu_top                   = se_nu_top
+   sponge_del4_nu_fac       = se_sponge_del4_nu_fac
+   sponge_del4_nu_div_fac   = se_sponge_del4_nu_div_fac
+   sponge_del4_lev          = se_sponge_del4_lev
    qsplit                   = se_qsplit
    rsplit                   = se_rsplit
    statefreq                = se_statefreq

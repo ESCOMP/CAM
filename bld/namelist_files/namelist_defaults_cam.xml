@@ -2655,6 +2655,10 @@
 <se_molecular_diff               >  0.0 </se_molecular_diff>
 <se_molecular_diff waccmx="1"    >  1.0 </se_molecular_diff>
 
+<se_sponge_del4_nu_fac    > -1 </se_sponge_del4_nu_fac>
+<se_sponge_del4_nu_div_fac> -1 </se_sponge_del4_nu_div_fac>
+<se_sponge_del4_lev       > -1 </se_sponge_del4_lev>
+
 <se_qsplit > 1 </se_qsplit>
 
 <se_refined_mesh > .false. </se_refined_mesh>

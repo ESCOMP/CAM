@@ -3589,6 +3589,9 @@ if ($dyn =~ /se/) {
                   se_nu_div
                   se_nu_p
                   se_nu_top
+                  se_sponge_del4_nu_fac
+                  se_sponge_del4_nu_div_fac
+                  se_sponge_del4_lev
                   se_qsplit
                   se_rsplit
                   se_statediag_numtrac

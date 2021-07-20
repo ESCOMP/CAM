@@ -216,6 +216,7 @@ contains
     use physconst,      only: ra, rearth, pi
     use control_mod,    only: nu, nu_div, nu_q, nu_p, nu_s, nu_top, fine_ne, rk_stage_user, max_hypervis_courant
     use control_mod,    only: tstep_type, hypervis_power, hypervis_scaling
+    use control_mod,    only: sponge_del4_nu_div_fac, sponge_del4_nu_fac, sponge_del4_lev
     use cam_abortutils, only: endrun
     use parallel_mod,   only: global_shared_buf, global_shared_sum
     use edge_mod,       only: initedgebuffer, FreeEdgeBuffer, edgeVpack, edgeVunpack
@@ -258,8 +259,8 @@ contains
     real(kind=r8) :: I_sphere, nu_max, nu_div_max
     real(kind=r8) :: h(np,np,nets:nete)
 
+    logical :: top_000_042km, top_042_090km, top_090_140km, top_140_600km ! model top location ranges
 
-    
     ! Eigenvalues calculated by folks at UMich (Paul U & Jared W)
     select case (np)
     case (2)
@@ -557,38 +558,71 @@ contains
     nu_div_lev(:) = nu_div
     nu_lev(:)     = nu
     nu_s_lev(:)   = nu_p
-    
-    if (ptop>0.07_r8) then
-      !
-      ! CAM setting
-      !
-      nu_div_max =  4.5_r8*nu_p
-      do k=1,nlev
-        press = pmid(k)
-        scale1        = 0.5_r8*(1.0_r8+tanh(2.0_r8*log(pmid(3)/press)))!
-        nu_div_lev(k) = (1.0_r8-scale1)*nu_div+scale1*nu_div_max
 
-        if (hybrid%masterthread) write(iulog,*) "nu_s_lev     =",k,nu_s_lev(k)
-        if (hybrid%masterthread) write(iulog,*) "nu,nu_div_lev=",k,nu_lev(k),nu_div_lev(k)
-      end do
+    !
+    ! sponge layer strength needed for stability depends on model top location
+    !
+    top_000_042km = .false.
+    top_042_090km = .false.
+    top_090_140km = .false.
+    top_140_600km = .false.
+    if (ptop>1.0_r8) then
+      !
+      ! CAM6 top (~2.3 Pa)
+      !
+      top_000_042km = .true.
+    else if (ptop>3e-3_r8) then
+      !
+      ! CAM7 top (~4.35e-3 Pa)
+      !
+      top_042_090km = .true.
+    else if (ptop>3E-6_r8) then
+      !
+      ! WACCM top (~4.5e-6 Pa)
+      !
+      top_090_140km = .true.
     else
       !
-      ! high top setting
+      ! WACCM-x - geospace
       !
-      if (hybrid%masterthread) write(iulog,*) ": sponge layer viscosity scaling factor"
-      nu_max     =  5.0_r8*nu_p
-      nu_div_max =  7.5_r8*nu_p
-      do k=1,nlev
-        press = pmid(k)
-        scale1        = 0.5_r8*(1.0_r8+tanh(2.0_r8*log(pmid(10)/press)))!
-        nu_div_lev(k) = (1.0_r8-scale1)*nu_div+scale1*nu_div_max
+      top_140_600km = .true.
+    end if
+    !
+    ! if user or namelist is not specifying sponge del4 settings here are best guesses (emprically determined)
+    !
+    if (top_000_042km) then
+      if (sponge_del4_lev       <0) sponge_del4_lev        = 3
+      if (sponge_del4_nu_fac    <0) sponge_del4_nu_fac     = 1.0_r8
+      if (sponge_del4_nu_div_fac<0) sponge_del4_nu_div_fac = 4.5_r8
+    end if
+
+    if (top_042_090km) then
+      if (sponge_del4_lev       <0) sponge_del4_lev        = 3
+      if (sponge_del4_nu_fac    <0) sponge_del4_nu_fac     = 5.0_r8
+      if (sponge_del4_nu_div_fac<0) sponge_del4_nu_div_fac = 7.5_r8
+    end if
+
+    if (top_090_140km.or.top_140_600km) then
+      if (sponge_del4_lev       <0) sponge_del4_lev        = 10
+      if (sponge_del4_nu_fac    <0) sponge_del4_nu_fac     = 5.0_r8
+      if (sponge_del4_nu_div_fac<0) sponge_del4_nu_div_fac = 7.5_r8
+    end if
+
+    if (hybrid%masterthread) write(iulog,*) ": sponge layer viscosity scaling factor"
+    nu_max     =  sponge_del4_nu_fac*nu_p
+    nu_div_max =  sponge_del4_nu_div_fac*nu_p
+    do k=1,nlev
+      press = pmid(k)
+      scale1        = 0.5_r8*(1.0_r8+tanh(2.0_r8*log(pmid(sponge_del4_lev)/press)))!
+      nu_div_lev(k) = (1.0_r8-scale1)*nu_div+scale1*nu_div_max
+      if (sponge_del4_nu_fac.ne.1.0_r8) then
         nu_lev(k)     = (1.0_r8-scale1)*nu    +scale1*nu_max
         nu_s_lev(k)   = (1.0_r8-scale1)*nu_p  +scale1*nu_max
-
-        if (hybrid%masterthread) write(iulog,*) "nu_s_lev     =",k,nu_s_lev(k)
-        if (hybrid%masterthread) write(iulog,*) "nu,nu_div_lev=",k,nu_lev(k),nu_div_lev(k)
-      end do
-    end if
+      end if
+      
+      if (hybrid%masterthread) write(iulog,*) "nu_s_lev     =",k,nu_s_lev(k)
+      if (hybrid%masterthread) write(iulog,*) "nu,nu_div_lev=",k,nu_lev(k),nu_div_lev(k)
+    end do
 
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
