@@ -247,7 +247,7 @@ contains
     real (kind=r8) :: x, y, noreast, nw, se, sw
     real (kind=r8), dimension(np,np,nets:nete) :: zeta
     real (kind=r8) :: lambda_max, lambda_vis, min_gw, lambda,umax, ugw
-    real (kind=r8) :: press,scale1,scale2,scale3, max_laplace
+    real (kind=r8) :: scale1,scale2,scale3, max_laplace
     integer :: ie,corner, i, j, rowind, colind, k
     type (quadrature_t)    :: gp
     character(LEN=256) :: rk_str
@@ -612,8 +612,8 @@ contains
     nu_max     =  sponge_del4_nu_fac*nu_p
     nu_div_max =  sponge_del4_nu_div_fac*nu_p
     do k=1,nlev
-      press = pmid(k)
-      scale1        = 0.5_r8*(1.0_r8+tanh(2.0_r8*log(pmid(sponge_del4_lev)/press)))!
+      ! Vertical profile from FV dycore (see Lauritzen et al. 2012 DOI:10.1177/1094342011410088)
+      scale1        = 0.5_r8*(1.0_r8+tanh(2.0_r8*log(pmid(sponge_del4_lev)/pmid(k))))
       nu_div_lev(k) = (1.0_r8-scale1)*nu_div+scale1*nu_div_max
       if (sponge_del4_nu_fac.ne.1.0_r8) then
         nu_lev(k)     = (1.0_r8-scale1)*nu    +scale1*nu_max

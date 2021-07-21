@@ -72,10 +72,10 @@ module control_mod
   ! Del4 sponge layer diffusion
   !
   ! Divergence damping hyperviscosity coefficient nu_div [m^4/s] for u,v is increased to
-  ! nu_div*sponge_del4_nu_fac following a hyperbolic tangent function
+  ! nu_div*sponge_del4_nu_div_fac following a hyperbolic tangent function
   ! centered around pressure at vertical index sponge_del4_lev
   !
-  ! Similar for spnge_del4_nu_fac
+  ! Similar for sponge_del4_nu_fac
   !
   real(r8), public :: sponge_del4_nu_fac
   real(r8), public :: sponge_del4_nu_div_fac

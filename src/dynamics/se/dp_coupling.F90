@@ -538,7 +538,7 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
    ! Finally compute energy and water column integrals of the physics input state.
 
    use constituents,  only: qmin
-   use physconst,     only: cpair, cpairv, gravit, zvir, cappav, rairv, physconst_update
+   use physconst,     only: cpairv, gravit, zvir, cappav, rairv, physconst_update
    use shr_const_mod, only: shr_const_rwv
    use phys_control,  only: waccmx_is
    use geopotential,  only: geopotential_t
@@ -708,7 +708,7 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
 
       do k = 1, nlev
          do i = 1, ncol           
-            phys_state(lchnk)%exner (i,k) = (phys_state(lchnk)%pint(i,pver+1) &
+            phys_state(lchnk)%exner(i,k) = (phys_state(lchnk)%pint(i,pver+1) &
                                             / phys_state(lchnk)%pmid(i,k))**cappav(i,k,lchnk)
          end do
       end do
@@ -751,7 +751,7 @@ subroutine thermodynamic_consistency(phys_state, phys_tend, ncols, pver, lchnk)
    use dimensions_mod,    only: lcp_moist
    use physconst,         only: get_cp
    use control_mod,       only: phys_dyn_cp
-   use physconst,         only: cpair, cpairv
+   use physconst,         only: cpairv
 
    type(physics_state), intent(in)    :: phys_state
    type(physics_tend ), intent(inout) :: phys_tend
