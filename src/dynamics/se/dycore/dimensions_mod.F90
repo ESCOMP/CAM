@@ -74,7 +74,7 @@ module dimensions_mod
   
   real(r8), public :: nu_scale_top(PLEV)! scaling of del2 viscosity in sopnge layer (initialized in dyn_comp)
   real(r8), public :: nu_lev(PLEV)      ! level dependent del4 (u,v) damping
-  real(r8), public :: nu_s_lev(PLEV)    ! level depedendet del4 T damping
+  real(r8), public :: nu_t_lev(PLEV)    ! level depedendet del4 T damping
   integer,  public :: ksponge_end       ! sponge is active k=1,ksponge_end
   real(r8), public :: nu_div_lev(PLEV) = 1.0_r8 ! scaling of viscosity in sponge layer
                                                       ! (set in prim_state; if applicable)

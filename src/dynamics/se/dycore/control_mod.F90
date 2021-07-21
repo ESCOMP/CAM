@@ -63,7 +63,7 @@ module control_mod
                                                                ! (only used for variable viscosity, recommend 1.9 in namelist)
   real (kind=r8), public :: nu      = 7.0D5           ! viscosity (momentum equ)
   real (kind=r8), public :: nu_div  = -1              ! viscsoity (momentum equ, div component)
-  real (kind=r8), public :: nu_s    = -1              ! default = nu   T equ. viscosity
+  real (kind=r8), public :: nu_t    = -1              ! default = nu   T equ. viscosity
   real (kind=r8), public :: nu_q    = -1              ! default = nu   tracer viscosity
   real (kind=r8), public :: nu_p    = 0.0D5           ! default = 0    ps equ. viscosity
   real (kind=r8), public :: nu_top  = 0.0D5           ! top-of-the-model viscosity

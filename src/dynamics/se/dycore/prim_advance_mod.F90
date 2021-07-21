@@ -439,7 +439,7 @@ contains
     !
     !  take one timestep of:
     !          u(:,:,:,np) = u(:,:,:,np) +  dt2*nu*laplacian**order ( u )
-    !          T(:,:,:,np) = T(:,:,:,np) +  dt2*nu_s*laplacian**order ( T )
+    !          T(:,:,:,np) = T(:,:,:,np) +  dt2*nu_t*laplacian**order ( T )
     !
     !
     !  For correct scaling, dt2 should be the same 'dt2' used in the leapfrog advace
@@ -449,8 +449,8 @@ contains
     use dimensions_mod, only: np, nlev, nc, ntrac, npsq, qsize
     use dimensions_mod, only: hypervis_dynamic_ref_state,ksponge_end
     use dimensions_mod, only: nu_scale_top,nu_lev,kmvis_ref,kmcnd_ref,rho_ref,km_sponge_factor
-    use dimensions_mod, only: kmvisi_ref,kmcndi_ref,nu_s_lev
-    use control_mod,    only: nu, nu_s, hypervis_subcycle,hypervis_subcycle_sponge, nu_p, nu_top
+    use dimensions_mod, only: kmvisi_ref,kmcndi_ref,nu_t_lev
+    use control_mod,    only: nu, nu_t, hypervis_subcycle,hypervis_subcycle_sponge, nu_p, nu_top
     use control_mod,    only: molecular_diff
     use hybrid_mod,     only: hybrid_t!, get_loop_ranges
     use element_mod,    only: element_t
@@ -503,7 +503,7 @@ contains
     real (kind=r8), dimension(ksponge_end)      :: dtemp,du,dv
     real (kind=r8)                              :: nu_temp, nu_dp, nu_velo
 
-    if (nu_s == 0 .and. nu == 0 .and. nu_p==0 ) return;
+    if (nu_t == 0 .and. nu == 0 .and. nu_p==0 ) return;
 
     ptop = hvcoord%hyai(1)*hvcoord%ps0
 
@@ -590,7 +590,7 @@ contains
           !DIR_VECTOR_ALIGNED
           do j=1,np
             do i=1,np
-              ttens(i,j,k,ie)   = -nu_s_lev(k)*ttens(i,j,k,ie)
+              ttens(i,j,k,ie)   = -nu_t_lev(k)*ttens(i,j,k,ie)
               dptens(i,j,k,ie)  = -nu_p*dptens(i,j,k,ie)
               vtens(i,j,1,k,ie) = -nu_lev(k)*vtens(i,j,1,k,ie)
               vtens(i,j,2,k,ie) = -nu_lev(k)*vtens(i,j,2,k,ie)

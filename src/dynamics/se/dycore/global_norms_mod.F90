@@ -208,13 +208,13 @@ contains
     use hybrid_mod,     only: hybrid_t, PrintHybrid
     use element_mod,    only: element_t
     use dimensions_mod, only: np,ne,nelem,nelemd,nc,nhe,qsize,ntrac,nlev,large_Courant_incr
-    use dimensions_mod, only: nu_scale_top,nu_div_lev,nu_lev,nu_s_lev
+    use dimensions_mod, only: nu_scale_top,nu_div_lev,nu_lev,nu_t_lev
 
     use quadrature_mod, only: gausslobatto, quadrature_t
     
     use reduction_mod,  only: ParallelMin,ParallelMax
     use physconst,      only: ra, rearth, pi
-    use control_mod,    only: nu, nu_div, nu_q, nu_p, nu_s, nu_top, fine_ne, rk_stage_user, max_hypervis_courant
+    use control_mod,    only: nu, nu_div, nu_q, nu_p, nu_t, nu_top, fine_ne, rk_stage_user, max_hypervis_courant
     use control_mod,    only: tstep_type, hypervis_power, hypervis_scaling
     use control_mod,    only: sponge_del4_nu_div_fac, sponge_del4_nu_fac, sponge_del4_lev
     use cam_abortutils, only: endrun
@@ -553,11 +553,11 @@ contains
     call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu_div,2.5_r8 ,'_div')     
 
     if (nu_q<0) nu_q = nu_p ! necessary for consistency
-    if (nu_s<0) nu_s = nu_p ! temperature damping is always equal to nu_p
+    if (nu_t<0) nu_t = nu_p ! temperature damping is always equal to nu_p
 
     nu_div_lev(:) = nu_div
     nu_lev(:)     = nu
-    nu_s_lev(:)   = nu_p
+    nu_t_lev(:)   = nu_p
 
     !
     ! sponge layer strength needed for stability depends on model top location
@@ -617,10 +617,10 @@ contains
       nu_div_lev(k) = (1.0_r8-scale1)*nu_div+scale1*nu_div_max
       if (sponge_del4_nu_fac.ne.1.0_r8) then
         nu_lev(k)     = (1.0_r8-scale1)*nu    +scale1*nu_max
-        nu_s_lev(k)   = (1.0_r8-scale1)*nu_p  +scale1*nu_max
+        nu_t_lev(k)   = (1.0_r8-scale1)*nu_p  +scale1*nu_max
       end if
       
-      if (hybrid%masterthread) write(iulog,*) "nu_s_lev     =",k,nu_s_lev(k)
+      if (hybrid%masterthread) write(iulog,*) "nu_t_lev     =",k,nu_t_lev(k)
       if (hybrid%masterthread) write(iulog,*) "nu,nu_div_lev=",k,nu_lev(k),nu_div_lev(k)
     end do
 
@@ -680,7 +680,7 @@ contains
     else
       dt_max_tracer_fvm = -1.0_r8
     end if
-    nu_max = MAX(MAX(MAXVAL(nu_div_lev(:)),MAXVAL(nu_lev(:))),MAXVAL(nu_s_lev(:)))
+    nu_max = MAX(MAX(MAXVAL(nu_div_lev(:)),MAXVAL(nu_lev(:))),MAXVAL(nu_t_lev(:)))
     dt_max_hypervis        = s_hypervis/(nu_max*normDinv_hypervis)
     dt_max_hypervis_tracer = s_hypervis/(nu_q*normDinv_hypervis)
 
