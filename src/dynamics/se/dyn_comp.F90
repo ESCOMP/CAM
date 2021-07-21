@@ -852,7 +852,7 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    do m_cnst = 1, qsize
      call addfld ('F'//trim(cnst_name_gll(m_cnst))//'_gll',  (/ 'lev' /), 'I', 'kg/kg/s',   &
-          trim(cnst_longname(m_cnst))//' mixing ratio forcing term (q_new-q_old) on GLL grid', gridname='GLL')
+          trim(cnst_longname_gll(m_cnst))//' mixing ratio forcing term (q_new-q_old) on GLL grid', gridname='GLL')
    end do
 
    ! Energy diagnostics and axial angular momentum diagnostics
