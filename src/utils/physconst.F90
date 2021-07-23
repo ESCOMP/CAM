@@ -1832,7 +1832,6 @@ end subroutine physconst_init
                  residual     = residual - mm
                end do
                icnst=dry_air_species_num
-               ispecies = idx_local(icnst)
                kmvis(i,j,k) = kmvis(i,j,k)+thermodynamic_active_species_kv(icnst)* &
                               thermodynamic_active_species_mwi(icnst)*residual
                kmcnd(i,j,k) = kmcnd(i,j,k)+thermodynamic_active_species_kc(icnst)* &

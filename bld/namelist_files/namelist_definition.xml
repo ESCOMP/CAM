@@ -7325,7 +7325,7 @@ Default: Set by build-namelist.
 <entry id="se_sponge_del4_nu_div_fac" type="integer" category="se"
        group="dyn_se_inparm" valid_values="" >
 Divergence damping hyperviscosity coefficient se_nu_div [m^4/s] for u,v is increased to
-se_nu_p*se_sponge_del4_nu_fac following a hyperbolic tangent function
+se_nu_p*se_sponge_del4_nu_div_fac following a hyperbolic tangent function
 centered around pressure at vertical index se_sponge_del4_lev:
 
  0.5_r8*(1.0_r8+tanh(2.0_r8*log(pmid(se_sponge_del4_lev)/press)))

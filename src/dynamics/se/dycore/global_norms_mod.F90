@@ -260,6 +260,7 @@ contains
     real(kind=r8) :: h(np,np,nets:nete)
 
     logical :: top_000_042km, top_042_090km, top_090_140km, top_140_600km ! model top location ranges
+    logical :: nu_set,div_set,lev_set
 
     ! Eigenvalues calculated by folks at UMich (Paul U & Jared W)
     select case (np)
@@ -566,6 +567,9 @@ contains
     top_042_090km = .false.
     top_090_140km = .false.
     top_140_600km = .false.
+    nu_set = sponge_del4_nu_fac < 0
+    div_set = sponge_del4_nu_div_fac < 0
+    lev_set = sponge_del4_lev < 0
     if (ptop>1.0_r8) then
       !
       ! CAM6 top (~2.3 Pa)
@@ -588,7 +592,14 @@ contains
       top_140_600km = .true.
     end if
     !
-    ! if user or namelist is not specifying sponge del4 settings here are best guesses (emprically determined)
+    ! Logging text for sponge layer configuration
+    !
+    if (hybrid%masterthread .and. nu_set .or. div_set .or. lev_set) then
+       write(iulog,* )""
+       write(iulog,* )"Sponge layer del4 coefficient defaults based on model top location:"
+    end if
+    !
+    ! if user or namelist is not specifying sponge del4 settings here are best guesses (empirically determined)
     !
     if (top_000_042km) then
       if (sponge_del4_lev       <0) sponge_del4_lev        = 3
@@ -607,6 +618,16 @@ contains
       if (sponge_del4_nu_fac    <0) sponge_del4_nu_fac     = 5.0_r8
       if (sponge_del4_nu_div_fac<0) sponge_del4_nu_div_fac = 7.5_r8
     end if
+    !
+    ! Log sponge layer configuration
+    !
+    if (hybrid%masterthread.and.nu_set) &
+         write(iulog, '(a,e9.2)')   '  sponge_del4_nu_fac     = ',sponge_del4_nu_fac
+    if (hybrid%masterthread.and.div_set) &
+         write(iulog, '(a,e9.2)')   '  sponge_del4_nu_div_fac = ',sponge_del4_nu_div_fac
+    if (hybrid%masterthread.and.lev_set) &
+         write(iulog, '(a,i3)')   '  sponge_del4_lev        = ',sponge_del4_lev
+    write(iulog,* )""
 
     if (hybrid%masterthread) write(iulog,*) ": sponge layer viscosity scaling factor"
     nu_max     =  sponge_del4_nu_fac*nu_p
@@ -680,7 +701,7 @@ contains
     else
       dt_max_tracer_fvm = -1.0_r8
     end if
-    nu_max = MAX(MAX(MAXVAL(nu_div_lev(:)),MAXVAL(nu_lev(:))),MAXVAL(nu_t_lev(:)))
+    nu_max = MAX(MAXVAL(nu_div_lev(:)),MAXVAL(nu_lev(:)),MAXVAL(nu_t_lev(:)))
     dt_max_hypervis        = s_hypervis/(nu_max*normDinv_hypervis)
     dt_max_hypervis_tracer = s_hypervis/(nu_q*normDinv_hypervis)
 
