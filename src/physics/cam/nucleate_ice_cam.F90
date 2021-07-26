@@ -218,10 +218,10 @@ subroutine nucleate_ice_cam_init(mincld_in, bulk_scale_in, pbuf2d)
      call endrun(routine//': ERROR qsatfac is required when subgrid = -1 or subgrid_strat = -1')
    end if
    
-   call addfld('NIHF',  (/ 'lev' /), 'A', '1/m3', 'Activated Ice Number Concentation due to homogenous freezing')
-   call addfld('NIDEP', (/ 'lev' /), 'A', '1/m3', 'Activated Ice Number Concentation due to deposition nucleation')
-   call addfld('NIIMM', (/ 'lev' /), 'A', '1/m3', 'Activated Ice Number Concentation due to immersion freezing')
-   call addfld('NIMEY', (/ 'lev' /), 'A', '1/m3', 'Activated Ice Number Concentation due to meyers deposition')
+   call addfld('NIHF',  (/ 'lev' /), 'A', '1/m3/s', 'Activated Ice Number Concentation tendency due to homogenous freezing')
+   call addfld('NIDEP', (/ 'lev' /), 'A', '1/m3/s', 'Activated Ice Number Concentation tendency due to deposition nucleation')
+   call addfld('NIIMM', (/ 'lev' /), 'A', '1/m3/s', 'Activated Ice Number Concentation tendency due to immersion freezing')
+   call addfld('NIMEY', (/ 'lev' /), 'A', '1/m3/s', 'Activated Ice Number Concentation tendency due to meyers deposition')
 
    call addfld('NIREGM',(/ 'lev' /), 'A', 'C', 'Ice Nucleation Temperature Threshold for Regime')
    call addfld('NISUBGRID',(/ 'lev' /), 'A', '', 'Ice Nucleation subgrid saturation factor')
@@ -234,13 +234,13 @@ subroutine nucleate_ice_cam_init(mincld_in, bulk_scale_in, pbuf2d)
       call addfld('fhom',      (/ 'lev' /), 'A','fraction', 'Fraction of cirrus where homogeneous freezing occur'   ) 
       call addfld ('WICE',     (/ 'lev' /), 'A','m/s','Vertical velocity Reduction caused by preexisting ice'  )
       call addfld ('WEFF',     (/ 'lev' /), 'A','m/s','Effective Vertical velocity for ice nucleation' )
-      call addfld ('INnso4',   (/ 'lev' /), 'A','1/m3','Number Concentation so4 (in) to ice_nucleation')
-      call addfld ('INnbc',    (/ 'lev' /), 'A','1/m3','Number Concentation bc  (in) to ice_nucleation')
-      call addfld ('INndust',  (/ 'lev' /), 'A','1/m3','Number Concentation dust (in) ice_nucleation')
-      call addfld ('INondust',  (/ 'lev' /), 'A','1/m3','Number Concentation dust (out) from ice_nucleation')
-      call addfld ('INhet',    (/ 'lev' /), 'A','1/m3', &
+      call addfld ('INnso4',   (/ 'lev' /), 'A','1/m3/s','Number Concentation so4 (in) to ice_nucleation')
+      call addfld ('INnbc',    (/ 'lev' /), 'A','1/m3/s','Number Concentation bc  (in) to ice_nucleation')
+      call addfld ('INndust',  (/ 'lev' /), 'A','1/m3/s','Number Concentation dust (in) ice_nucleation')
+      call addfld ('INondust',  (/ 'lev' /), 'A','1/m3/s','Number Concentation dust (out) from ice_nucleation')
+      call addfld ('INhet',    (/ 'lev' /), 'A','1/m3/s', &
                 'contribution for in-cloud ice number density increase by het nucleation in ice cloud')
-      call addfld ('INhom',    (/ 'lev' /), 'A','1/m3', &
+      call addfld ('INhom',    (/ 'lev' /), 'A','1/m3/s', &
                 'contribution for in-cloud ice number density increase by hom nucleation in ice cloud')
       call addfld ('INFrehom', (/ 'lev' /), 'A','frequency','hom IN frequency ice cloud')
       call addfld ('INFreIN',  (/ 'lev' /), 'A','frequency','frequency of ice nucleation occur')
@@ -787,19 +787,20 @@ subroutine nucleate_ice_cam_calc( &
               end if
             end if
 
-            naai_hom(i,k) = nihf(i,k)
+            naai_hom(i,k) = nihf(i,k)/dtime
+            naai(i,k)= naai(i,k)/dtime            
 
-            ! output activated ice (convert from #/kg -> #/m3)
-            nihf(i,k)     = nihf(i,k) *rho(i,k)
-            niimm(i,k)    = niimm(i,k)*rho(i,k)
-            nidep(i,k)    = nidep(i,k)*rho(i,k)
-            nimey(i,k)    = nimey(i,k)*rho(i,k)
+            ! output activated ice (convert from #/kg -> #/m3/s)
+            nihf(i,k)     = nihf(i,k) *rho(i,k)/dtime
+            niimm(i,k)    = niimm(i,k)*rho(i,k)/dtime
+            nidep(i,k)    = nidep(i,k)*rho(i,k)/dtime
+            nimey(i,k)    = nimey(i,k)*rho(i,k)/dtime
 
             if (use_preexisting_ice) then
-               INnso4(i,k) =so4_num*1e6_r8  ! (convert from #/cm3 -> #/m3)
-               INnbc(i,k)  =soot_num*1e6_r8
-               INndust(i,k)=dst_num*1e6_r8
-               INondust(i,k)=odst_num*1e6_r8
+               INnso4(i,k) =so4_num*1e6_r8/dtime  ! (convert from #/cm3 -> #/m3/s)
+               INnbc(i,k)  =soot_num*1e6_r8/dtime
+               INndust(i,k)=dst_num*1e6_r8/dtime
+               INondust(i,k)=odst_num*1e6_r8/dtime
                INFreIN(i,k)=1.0_r8          ! 1,ice nucleation occur
                INhet(i,k) = (niimm(i,k) + nidep(i,k))   ! #/m3, nimey not in cirrus
                INhom(i,k) = nihf(i,k)                 ! #/m3
