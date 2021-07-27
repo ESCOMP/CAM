@@ -1,11 +1,11 @@
 module tracer_data
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------
 ! module used to read (and interpolate) offline tracer data (sources and
 ! mixing ratios)
 ! Created by: Francis Vitt -- 2 May 2006
 ! Modified by : Jim Edwards -- 10 March 2009
 ! Modified by : Cheryl Craig and Chih-Chieh (Jack) Chen  -- February 2010
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------
 
   use perf_mod,         only : t_startf, t_stopf
   use shr_kind_mod,     only : r8 => shr_kind_r8, shr_kind_cl
@@ -14,7 +14,7 @@ module tracer_data
   use ppgrid,           only : pcols, pver, pverp, begchunk, endchunk
   use cam_abortutils,   only : endrun
   use cam_logfile,      only : iulog
-  
+
   use physics_buffer,   only : physics_buffer_desc, pbuf_get_field, pbuf_get_index
   use time_manager,     only : set_time_float_from_date, set_date_from_time_float
   use pio,              only : file_desc_t, var_desc_t, &
@@ -30,7 +30,7 @@ module tracer_data
   implicit none
 
   private  ! all unless made public
-  save 
+  save
 
   public :: trfld, input3d, input2d, trfile
   public :: trcdata_init
@@ -74,7 +74,7 @@ module tracer_data
      type(file_desc_t) :: curr_fileid
      type(file_desc_t) :: next_fileid
 
-     type(var_desc_t), pointer :: currfnameid => null() ! pio restart file var id 
+     type(var_desc_t), pointer :: currfnameid => null() ! pio restart file var id
      type(var_desc_t), pointer :: nextfnameid => null() ! pio restart file var id
 
      character(len=shr_kind_cl) :: filenames_list = ''
@@ -110,13 +110,19 @@ module tracer_data
      real(r8), pointer, dimension(:,:) :: weight_x => null(), weight_y => null()
      integer, pointer, dimension(:) :: count_x => null(), count_y => null()
      integer, pointer, dimension(:,:) :: index_x => null(), index_y => null()
+
+     real(r8), pointer, dimension(:,:) :: weight0_x=>null(), weight0_y=>null()
+     integer, pointer, dimension(:) :: count0_x=>null(), count0_y=>null()
+     integer, pointer, dimension(:,:) :: index0_x=>null(), index0_y=>null()
+     logical :: dist
+     
      real(r8)                        :: p0
      type(var_desc_t) :: ps_id
      logical,  allocatable, dimension(:) :: in_pbuf
      logical :: has_ps = .false.
      logical :: zonal_ave = .false.
      logical :: unstructured = .false.
-     logical :: alt_data = .false.   
+     logical :: alt_data = .false.
      logical :: geop_alt = .false.
      logical :: cyclical = .false.
      logical :: cyclical_list = .false.
@@ -162,9 +168,7 @@ contains
     use phys_grid,       only : get_rlat_all_p, get_rlon_all_p, get_ncols_p
     use dycore,          only : dycore_is
     use horizontal_interpolate, only : xy_interp_init
-#if ( defined SPMD )
-    use mpishorthand,    only: mpicom, mpir8, mpiint
-#endif
+    use spmd_utils,       only: mpicom, mstrid=>masterprocid, mpi_real8, mpi_integer
 
     implicit none
 
@@ -179,6 +183,8 @@ contains
     integer,             intent(in)    :: data_fixed_ymd
     integer,             intent(in)    :: data_fixed_tod
     character(len=*),    intent(in)    :: data_type
+
+    character(len=*), parameter :: sub = 'trcdata_init'
 
     integer :: f, mxnflds, astat
     integer :: str_yr, str_mon, str_day
@@ -197,24 +203,26 @@ contains
     real(r8):: rlats(pcols), rlons(pcols)
     integer :: lchnk, ncol, icol, i,j
     logical :: found
+    integer :: aircraft_cnt
 
     call specify_fields( specifier, flds )
 
     file%datatimep=-1.e36_r8
     file%datatimem=-1.e36_r8
 
-    mxnflds = 0 
+    mxnflds = 0
     if (associated(flds)) mxnflds = size( flds )
 
     if (mxnflds < 1) return
-    
+
     file%remove_trc_file = rmv_file
     file%pathname = trim(datapath)
     file%filenames_list = trim(filelist)
 
     file%fill_in_months = .false.
-    file%cyclical = .false.  
-    file%cyclical_list = .false.  
+    file%cyclical = .false.
+    file%cyclical_list = .false.
+    file%dist = .false.
 
     select case ( data_type )
     case( 'FIXED' )
@@ -228,7 +236,7 @@ contains
        file%cyclical_list = .true.
        file%cyc_yr = data_cycle_yr
     case( 'SERIAL' )
-    case default 
+    case default
        write(iulog,*) 'trcdata_init: invalid data type: '//trim(data_type)//' file: '//trim(filename)
        write(iulog,*) 'trcdata_init: valid data types: SERIAL | CYCLICAL | CYCLICAL_LIST | FIXED | INTERP_MISSING_MONTHS '
        call endrun('trcdata_init: invalid data type: '//trim(data_type)//' file: '//trim(filename))
@@ -309,7 +317,7 @@ contains
           call get_dimension( file%curr_fileid, 'lon', file%nlon, dimid=old_dimid, data=file%lons )
 
           file%lons =  file%lons * d2r
-      
+
           lon_dimid = old_dimid
        end if
     endif
@@ -369,8 +377,8 @@ contains
        end if
     endif
 
-    if (masterproc) then 
-       write(iulog,*) 'trcdata_init: file%has_ps = ' , file%has_ps 
+    if (masterproc) then
+       write(iulog,*) 'trcdata_init: file%has_ps = ' , file%has_ps
     endif ! masterproc
 
     if (file%alt_data) then
@@ -468,7 +476,7 @@ contains
 
        ! allocate memory only if not already in pbuf2d
 
-       if ( .not. file%in_pbuf(f) ) then 
+       if ( .not. file%in_pbuf(f) ) then
           if ( flds(f)%srf_fld .or. file%top_bndry ) then
              allocate( flds(f)         %data(pcols,1,begchunk:endchunk), stat=astat   )
           else
@@ -481,7 +489,7 @@ contains
        else
           flds(f)%pbuf_ndx = pbuf_get_index(flds(f)%fldnam,errcode)
        endif
-   
+
        if (flds(f)%srf_fld) then
           allocate( flds(f)%input(1)%data(pcols,1,begchunk:endchunk), stat=astat   )
        else
@@ -588,8 +596,8 @@ contains
         call get_horiz_grid_d(plat, clat_d_out=phi)
         call get_horiz_grid_d(plon, clon_d_out=lam)
 
-        allocate(lon_global_grid_ndx(pcols,begchunk:endchunk))
-        allocate(lat_global_grid_ndx(pcols,begchunk:endchunk))
+         if(.not.allocated(lon_global_grid_ndx)) allocate(lon_global_grid_ndx(pcols,begchunk:endchunk))
+         if(.not.allocated(lat_global_grid_ndx)) allocate(lat_global_grid_ndx(pcols,begchunk:endchunk))
         lon_global_grid_ndx=-huge(1)
         lat_global_grid_ndx=-huge(1)
 
@@ -613,16 +621,40 @@ contains
               lat_global_grid_ndx(icol,lchnk) = j
            end do
         enddo
-        
+
         deallocate(phi,lam)
-        
+
 ! weight_x & weight_y are weighting function for x & y interpolation
-        allocate(file%weight_x(plon,file%nlon))
-        allocate(file%weight_y(plat,file%nlat))
-        allocate(file%count_x(plon))
-        allocate(file%count_y(plat))
-        allocate(file%index_x(plon,file%nlon))
-        allocate(file%index_y(plat,file%nlat))
+        allocate(file%weight_x(plon,file%nlon), stat=astat)
+        if( astat /= 0 ) then
+           write(iulog,*) 'trcdata_init: file%weight_x allocation error = ',astat
+           call endrun('trcdata_init: failed to allocate weight_x array')
+        end if
+        allocate(file%weight_y(plat,file%nlat), stat=astat)
+        if( astat /= 0 ) then
+           write(iulog,*) 'trcdata_init: file%weight_y allocation error = ',astat
+           call endrun('trcdata_init: failed to allocate weight_y array')
+        end if
+        allocate(file%count_x(plon), stat=astat)
+        if( astat /= 0 ) then
+           write(iulog,*) 'trcdata_init: file%count_x allocation error = ',astat
+           call endrun('trcdata_init: failed to allocate count_x array')
+        end if
+        allocate(file%count_y(plat), stat=astat)
+        if( astat /= 0 ) then
+           write(iulog,*) 'trcdata_init: file%count_y allocation error = ',astat
+           call endrun('trcdata_init: failed to allocate count_y array')
+        end if
+        allocate(file%index_x(plon,file%nlon), stat=astat)
+        if( astat /= 0 ) then
+           write(iulog,*) 'trcdata_init: file%index_x allocation error = ',astat
+           call endrun('trcdata_init: failed to allocate index_x array')
+        end if
+        allocate(file%index_y(plat,file%nlat), stat=astat)
+        if( astat /= 0 ) then
+           write(iulog,*) 'trcdata_init: file%index_y allocation error = ',astat
+           call endrun('trcdata_init: failed to allocate index_y array')
+        end if
         file%weight_x(:,:) = 0.0_r8
         file%weight_y(:,:) = 0.0_r8
         file%count_x(:) = 0
@@ -630,14 +662,54 @@ contains
         file%index_x(:,:) = 0
         file%index_y(:,:) = 0
 
+        if( file%dist ) then
+           allocate(file%weight0_x(plon,file%nlon), stat=astat)
+           if( astat /= 0 ) then
+              write(iulog,*) 'trcdata_init: file%weight0_x allocation error = ',astat
+              call endrun('trcdata_init: failed to allocate weight0_x array')
+           end if
+           allocate(file%weight0_y(plat,file%nlat), stat=astat)
+           if( astat /= 0 ) then
+              write(iulog,*) 'trcdata_init: file%weight0_y allocation error = ',astat
+              call endrun('trcdata_init: failed to allocate weight0_y array')
+           end if
+           allocate(file%count0_x(plon), stat=astat)
+           if( astat /= 0 ) then
+              write(iulog,*) 'trcdata_init: file%count0_x allocation error = ',astat
+              call endrun('trcdata_init: failed to allocate count0_x array')
+           end if
+           allocate(file%count0_y(plat), stat=astat)
+           if( astat /= 0 ) then
+              write(iulog,*) 'trcdata_init: file%count0_y allocation error = ',astat
+              call endrun('trcdata_init: failed to allocate count0_y array')
+           end if
+           allocate(file%index0_x(plon,file%nlon), stat=astat)
+           if( astat /= 0 ) then
+              write(iulog,*) 'trcdata_init: file%index0_x allocation error = ',astat
+              call endrun('trcdata_init: failed to allocate index0_x array')
+           end if
+           allocate(file%index0_y(plat,file%nlat), stat=astat)
+           if( astat /= 0 ) then
+              write(iulog,*) 'trcdata_init: file%index0_y allocation error = ',astat
+              call endrun('trcdata_init: failed to allocate index0_y array')
+           end if
+           file%weight0_x(:,:) = 0.0_r8
+           file%weight0_y(:,:) = 0.0_r8
+           file%count0_x(:) = 0
+           file%count0_y(:) = 0
+           file%index0_x(:,:) = 0
+           file%index0_y(:,:) = 0
+        endif
+
         if(masterproc) then
-! compute weighting 
-            call xy_interp_init(file%nlon,file%nlat,file%lons,file%lats,plon,plat,file%weight_x,file%weight_y)
+! compute weighting
+            call xy_interp_init(file%nlon,file%nlat,file%lons,file%lats, &
+                                plon,plat,file%weight_x,file%weight_y,file%dist)
 
             do i2=1,plon
                file%count_x(i2) = 0
                do i1=1,file%nlon
-                  if(file%weight_x(i2,i1).gt.0.0_r8 ) then
+                  if(file%weight_x(i2,i1)>0.0_r8 ) then
                      file%count_x(i2) = file%count_x(i2) + 1
                      file%index_x(i2,file%count_x(i2)) = i1
                   endif
@@ -647,28 +719,71 @@ contains
             do j2=1,plat
                file%count_y(j2) = 0
                do j1=1,file%nlat
-                  if(file%weight_y(j2,j1).gt.0.0_r8 ) then
+                  if(file%weight_y(j2,j1)>0.0_r8 ) then
                      file%count_y(j2) = file%count_y(j2) + 1
                      file%index_y(j2,file%count_y(j2)) = j1
                   endif
                enddo
             enddo
-        endif
 
-#if ( defined SPMD)
-        call mpibcast(file%weight_x, plon*file%nlon, mpir8 , 0, mpicom)
-        call mpibcast(file%weight_y, plat*file%nlat, mpir8 , 0, mpicom)
-        call mpibcast(file%count_x, plon, mpiint , 0, mpicom)
-        call mpibcast(file%count_y, plat, mpiint , 0, mpicom)
-        call mpibcast(file%index_x, plon*file%nlon, mpiint , 0, mpicom)
-        call mpibcast(file%index_y, plat*file%nlat, mpiint , 0, mpicom)
-#endif
+           if( file%dist ) then
+            call xy_interp_init(file%nlon,file%nlat,file%lons,file%lats,&
+                                plon,plat,file%weight0_x,file%weight0_y,file%dist)
+
+            do i2=1,plon
+               file%count0_x(i2) = 0
+               do i1=1,file%nlon
+                  if(file%weight0_x(i2,i1)>0.0_r8 ) then
+                     file%count0_x(i2) = file%count0_x(i2) + 1
+                     file%index0_x(i2,file%count0_x(i2)) = i1
+                  endif
+               enddo
+            enddo
+
+            do j2=1,plat
+               file%count0_y(j2) = 0
+               do j1=1,file%nlat
+                  if(file%weight0_y(j2,j1)>0.0_r8 ) then
+                     file%count0_y(j2) = file%count0_y(j2) + 1
+                     file%index0_y(j2,file%count0_y(j2)) = j1
+                  endif
+               enddo
+            enddo
+           endif
+        endif
+   
+        call mpi_bcast(file%weight_x, plon*file%nlon, mpi_real8 , mstrid, mpicom,ierr)
+        if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%weight_x")
+        call mpi_bcast(file%weight_y, plat*file%nlat, mpi_real8 , mstrid, mpicom,ierr)
+        if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%weight_y")
+        call mpi_bcast(file%count_x, plon, mpi_integer , mstrid, mpicom,ierr)
+        if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%count_x")
+        call mpi_bcast(file%count_y, plat, mpi_integer , mstrid, mpicom,ierr)
+        if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%count_y")
+        call mpi_bcast(file%index_x, plon*file%nlon, mpi_integer , mstrid, mpicom,ierr)
+        if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%index_x")
+        call mpi_bcast(file%index_y, plat*file%nlat, mpi_integer , mstrid, mpicom,ierr)
+        if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%index_y")
+        if( file%dist ) then
+           call mpi_bcast(file%weight0_x, plon*file%nlon, mpi_real8 , mstrid, mpicom,ierr)
+           if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%weight0_x")
+           call mpi_bcast(file%weight0_y,  plat*file%nlat, mpi_real8 , mstrid, mpicom,ierr)
+           if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%weight0_y")
+           call mpi_bcast(file%count0_x, plon, mpi_integer , mstrid, mpicom,ierr)
+           if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%count0_x")
+           call mpi_bcast(file%count0_y, plon, mpi_integer , mstrid, mpicom,ierr)
+           if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%count0_y")
+           call mpi_bcast(file%index0_x, plon*file%nlon, mpi_integer , mstrid, mpicom,ierr)
+           if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%index0_x")
+           call mpi_bcast(file%index0_y,  plat*file%nlat, mpi_integer , mstrid, mpicom,ierr)
+           if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%index0_y")
+        endif
     endif
 
   end subroutine trcdata_init
 
 !-----------------------------------------------------------------------
-! Reads more data if needed and interpolates data to current model time 
+! Reads more data if needed and interpolates data to current model time
 !-----------------------------------------------------------------------
   subroutine advance_trcdata( flds, file, state, pbuf2d )
     use physics_types,only : physics_state
@@ -678,7 +793,7 @@ contains
     type(trfile),        intent(inout) :: file
     type(trfld),         intent(inout) :: flds(:)
     type(physics_state), intent(in)    :: state(begchunk:endchunk)
-    
+
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
     real(r8) :: data_time
@@ -693,7 +808,7 @@ contains
        if ( file%cyclical .or. file%cyclical_list ) then
           ! wrap around
           if ( (file%datatimep<file%datatimem) .and. (file%curr_mod_time>file%datatimem) ) then
-             data_time = data_time + file%one_yr 
+             data_time = data_time + file%one_yr
           endif
        endif
 
@@ -707,7 +822,7 @@ contains
        end if
 
     endif
-    
+
     ! need to interpolate the data, regardless
     ! each mpi task needs to interpolate
     call t_startf('interpolate_trcdata')
@@ -733,7 +848,7 @@ contains
     integer, intent(in) :: lchnk
     integer, intent(in) :: ncol
     type(physics_buffer_desc), pointer :: pbuf(:)
-    
+
 
     integer :: f, nflds
     real(r8),pointer  :: tmpptr(:,:)
@@ -762,7 +877,7 @@ contains
 
     type(trfld), intent(in) :: flds(:)
     character(len=*), intent(in) :: field_name
-    integer, intent(out) :: idx    
+    integer, intent(out) :: idx
     integer :: f, nflds
 
     idx = -1
@@ -821,7 +936,7 @@ contains
               if ((file%curr_mod_time > file%datatimep)) then
 
                call advance_file(file)
-     
+
             endif
          endif
 
@@ -838,15 +953,15 @@ contains
           file%next_data_times = file%next_data_times - file%offset_time
        endif
     endif
-    
+
     !-----------------------------------------------------------------------
     !        If using next_data_times and the current is greater than or equal to the next, then
     !        close the current file, and set up for next file.
     !-----------------------------------------------------------------------
     if ( associated(file%next_data_times) ) then
-       if (file%cyclical_list .and. list_cycled) then    ! special case - list cycled 
+       if (file%cyclical_list .and. list_cycled) then    ! special case - list cycled
 
-          file%datatimem = file%curr_data_times(size(file%curr_data_times)) 
+          file%datatimem = file%curr_data_times(size(file%curr_data_times))
           itms(1)=size(file%curr_data_times)
           fids(1)=file%curr_fileid
 
@@ -881,7 +996,7 @@ contains
     implicit none
 
     character(len=*),           intent(in)    :: filename ! present dynamical dataset filename
-    character(len=*), optional, intent(in)    :: filenames_list 
+    character(len=*), optional, intent(in)    :: filenames_list
     character(len=*), optional, intent(in)    :: datapath
     logical         , optional, intent(in)    :: cyclical_list  ! If true, allow list to cycle
     logical         , optional, intent(out)   :: list_cycled
@@ -898,8 +1013,8 @@ contains
     character(len=shr_kind_cl) :: fn_new, line, filepath
     integer :: ios,unitnumber
     logical :: abort_run
- 
-    if (present(abort)) then 
+
+    if (present(abort)) then
        abort_run = abort
     else
        abort_run = .true.
@@ -946,11 +1061,11 @@ contains
        !-------------------------------------------------------------------
        !  ...  read file names
        !-------------------------------------------------------------------
-       read( unit=unitnumber, fmt='(A)', iostat=ios ) line 
+       read( unit=unitnumber, fmt='(A)', iostat=ios ) line
        if (ios /= 0) then
           if (abort_run) then
              call endrun('not able to increment file name from filenames_list file: '//trim(filenames_list))
-          else 
+          else
              fn_new = 'NOT_FOUND'
              incr_filename = trim(fn_new)
              return
@@ -961,31 +1076,31 @@ contains
        !      If current filename is '', then initialize with the first filename read in
        !      and skip this section.
        !-------------------------------------------------------------------
-       if (filename /= '') then 
+       if (filename /= '') then
 
           !-------------------------------------------------------------------
           !       otherwise read until find current filename
           !-------------------------------------------------------------------
           do while( trim(line) /= trim(filename) )
-             read( unit=unitnumber, fmt='(A)', iostat=ios ) line 
+             read( unit=unitnumber, fmt='(A)', iostat=ios ) line
              if (ios /= 0) then
                 if (abort_run) then
                    call endrun('not able to increment file name from filenames_list file: '//trim(filenames_list))
-                else 
+                else
                    fn_new = 'NOT_FOUND'
                    incr_filename = trim(fn_new)
                    return
                 endif
              endif
           enddo
-   
+
           !-------------------------------------------------------------------
           !      Read next filename
           !-------------------------------------------------------------------
-          read( unit=unitnumber, fmt='(A)', iostat=ios ) line 
+          read( unit=unitnumber, fmt='(A)', iostat=ios ) line
 
           !---------------------------------------------------------------------------------
-          !       If cyclical_list, then an end of file is not an error, but rather 
+          !       If cyclical_list, then an end of file is not an error, but rather
           !       a signal to rewind and start over
           !---------------------------------------------------------------------------------
 
@@ -994,7 +1109,7 @@ contains
                 if (cyclical_list) then
                    list_cycled=.true.
                    rewind(unitnumber)
-                   read( unit=unitnumber, fmt='(A)', iostat=ios ) line 
+                   read( unit=unitnumber, fmt='(A)', iostat=ios ) line
                      ! Error here should never happen, but check just in case
                    if (ios /= 0) then
                       call endrun('not able to increment file name from filenames_list file: '//trim(filenames_list))
@@ -1005,7 +1120,7 @@ contains
              else
                 if (abort_run) then
                    call endrun('not able to increment file name from filenames_list file: '//trim(filenames_list))
-                else 
+                else
                    fn_new = 'NOT_FOUND'
                    incr_filename = trim(fn_new)
                    return
@@ -1025,7 +1140,7 @@ contains
     endif
 
     !---------------------------------------------------------------------------------
-    !      return the current filename 
+    !      return the current filename
     !---------------------------------------------------------------------------------
     incr_filename = trim(fn_new)
     if ( masterproc ) write(iulog,*) 'incr_flnm: new filename = ',trim(incr_filename)
@@ -1050,7 +1165,7 @@ contains
     logical, intent(inout)  :: times_found
 
     integer :: np1        ! current forward time index of dataset
-    integer :: n,i      ! 
+    integer :: n,i      !
     integer :: curr_tsize, next_tsize, all_tsize
     integer :: astat
     integer :: cyc_tsize
@@ -1080,14 +1195,14 @@ contains
           call endrun('find_times: all(all_data_times(:) > time) '// trim(file%curr_filename) )
        endif
 
-       ! find bracketing times 
+       ! find bracketing times
        find_times_loop : do n=1, all_tsize-1
           np1 = n + 1
           datatimem = all_data_times(n)   !+ file%offset_time
           datatimep = all_data_times(np1) !+ file%offset_time
        ! When stepTime, datatimep may not equal the time (as only datatimem is used)
        ! Should not break other runs?
-          if ( (time .ge. datatimem) .and. (time .lt. datatimep) ) then
+          if ( (time >= datatimem) .and. (time < datatimep) ) then
              times_found = .true.
              exit find_times_loop
           endif
@@ -1107,8 +1222,8 @@ contains
              np1 = n+1
           endif
 
-          datatimem = all_data_times(n  +file%cyc_ndx_beg-1)   
-          datatimep = all_data_times(np1+file%cyc_ndx_beg-1) 
+          datatimem = all_data_times(n  +file%cyc_ndx_beg-1)
+          datatimep = all_data_times(np1+file%cyc_ndx_beg-1)
           times_found = .true.
 
        endif
@@ -1129,7 +1244,7 @@ contains
        write(iulog,*) 'find_times: failed to deallocate all_data_times array; error = ',astat
        call endrun
     end if
-  
+
     if ( .not. file%cyclical ) then
       itms(1) = n
       itms(2) = np1
@@ -1141,8 +1256,8 @@ contains
     fids(:) = file%curr_fileid
 
     do i=1,2
-       if ( itms(i) > curr_tsize ) then 
-          itms(i) = itms(i) - curr_tsize 
+       if ( itms(i) > curr_tsize ) then
+          itms(i) = itms(i) - curr_tsize
           fids(i) = file%next_fileid
        endif
     enddo
@@ -1157,28 +1272,28 @@ contains
     type (trfile), intent(inout) :: file
     type (trfld),intent(inout) :: flds(:)
 
-    integer :: recnos(4),i,f,nflds      ! 
+    integer :: recnos(4),i,f,nflds      !
     integer :: cnt4(4)            ! array of counts for each dimension
     integer :: strt4(4)           ! array of starting indices
     integer :: cnt3(3)            ! array of counts for each dimension
     integer :: strt3(3)           ! array of starting indices
     type(file_desc_t) :: fids(4)
-    logical :: times_found 
+    logical :: times_found
 
     integer :: cur_yr, cur_mon, cur_day, cur_sec, yr1, yr2, mon, date, sec
     real(r8) :: series1_time, series2_time
     type(file_desc_t) :: fid1, fid2
-   
+
     nflds = size(flds)
     times_found = .false.
-    
+
     do while( .not. times_found )
        call find_times( recnos, fids, file%curr_mod_time, file,file%datatimem, file%datatimep, times_found )
        if ( .not. times_found ) then
           call check_files( file, fids, recnos, times_found )
        endif
     enddo
-          
+
     !--------------------------------------------------------------
     !       If stepTime, then no time interpolation is to be done
     !--------------------------------------------------------------
@@ -1225,9 +1340,9 @@ contains
           call set_date_from_time_float( file%datatimes(1), yr1, mon, date, sec )
           call set_time_float_from_date( file%datatimem, cur_yr,  mon, date, sec )
           if (file%datatimes(1) > file%datatimes(2) ) then ! wrap around
-            if ( cur_mon == 1 ) then 
+            if ( cur_mon == 1 ) then
                call set_time_float_from_date( file%datatimem, cur_yr-1,  mon, date, sec )
-            endif 
+            endif
           endif
 
           call set_date_from_time_float( file%datatimes(2), yr1, mon, date, sec )
@@ -1235,7 +1350,7 @@ contains
           if (file%datatimes(1) > file%datatimes(2) ) then ! wrap around
             if ( cur_mon == 12 ) then
               call set_time_float_from_date( file%datatimep, cur_yr+1,  mon, date, sec )
-            endif 
+            endif
           endif
 
        endif
@@ -1267,7 +1382,7 @@ contains
              if ( file%unstructured ) then
                 ! read data directly onto the unstructureed phys grid -- assumes input data is on same grid as phys
                 call read_physgrid_2d( fids(i), flds(f)%fldnam,  recnos(i), flds(f)%input(i)%data(:,1,:) )
-             else   
+             else
                 cnt3( flds(f)%coords(LONDIM)) = file%nlon
                 cnt3( flds(f)%coords(LATDIM)) = file%nlat
                 cnt3( flds(f)%coords(PS_TIMDIM)) = 1
@@ -1283,7 +1398,7 @@ contains
                 else
                    call read_physgrid_3d( fids(i), flds(f)%fldnam, 'lev', file%nlev, recnos(i), flds(f)%input(i)%data(:,:,:) )
                 end if
-             else   
+             else
                 cnt4(flds(f)%coords(LONDIM)) = file%nlon
                 cnt4(flds(f)%coords(LATDIM)) = file%nlat
                 cnt4(flds(f)%coords(LEVDIM)) = file%nlev
@@ -1328,9 +1443,10 @@ contains
   subroutine read_2d_trc( fid, vid, loc_arr, strt, cnt, file, order )
     use interpolate_data,  only : lininterp_init, lininterp, interp_type, lininterp_finish
 
-    use phys_grid,    only : pcols, begchunk, endchunk, get_ncols_p, get_rlat_all_p, get_rlon_all_p
-    use mo_constants, only : pi
-    use dycore,       only: dycore_is		
+    use ppgrid,       only: pcols, begchunk, endchunk
+    use phys_grid,    only: get_ncols_p, get_rlat_all_p, get_rlon_all_p
+    use mo_constants, only: pi
+    use dycore,       only: dycore_is
     use polar_avg,    only: polar_average
     use horizontal_interpolate, only : xy_interp
 
@@ -1347,7 +1463,7 @@ contains
 
     integer :: c, ierr, ncols
     real(r8), parameter :: zero=0_r8, twopi=2_r8*pi
-    type(interp_type) :: lon_wgts, lat_wgts    
+    type(interp_type) :: lon_wgts, lat_wgts
     integer :: lons(pcols), lats(pcols)
     real(r8) :: file_lats(file%nlat)
 
@@ -1420,8 +1536,8 @@ contains
              call lininterp_init(file%lons, file%nlon, to_lons, ncols, 2, lon_wgts, zero, twopi)
              call lininterp_init(file%lats, file%nlat, to_lats, ncols, 1, lat_wgts)
 
-             call lininterp(wrk2d_in, file%nlon, file%nlat, loc_arr(1:ncols,c-begchunk+1), ncols, lon_wgts, lat_wgts)    
-       
+             call lininterp(wrk2d_in, file%nlon, file%nlat, loc_arr(1:ncols,c-begchunk+1), ncols, lon_wgts, lat_wgts)
+
              call lininterp_finish(lon_wgts)
              call lininterp_finish(lat_wgts)
           end do
@@ -1441,7 +1557,8 @@ contains
 
   subroutine read_za_trc( fid, vid, loc_arr, strt, cnt, file, order )
     use interpolate_data, only : lininterp_init, lininterp, interp_type, lininterp_finish
-    use phys_grid,        only : pcols, begchunk, endchunk, get_ncols_p, get_rlat_all_p
+    use ppgrid,           only : pcols, begchunk, endchunk
+    use phys_grid,        only : get_ncols_p, get_rlat_all_p
 
     implicit none
     type(file_desc_t), intent(in) :: fid
@@ -1487,7 +1604,7 @@ contains
 
        call lininterp_init(file%lats, file%nlat, to_lats, ncols, 1, lat_wgts)
        do k=1,file%nlev
-          call lininterp(wrk2d_in(:,k), file%nlat, wrk(1:ncols), ncols, lat_wgts)    
+          call lininterp(wrk2d_in(:,k), file%nlat, wrk(1:ncols), ncols, lat_wgts)
           loc_arr(1:ncols,k,c-begchunk+1) = wrk(1:ncols)
        end do
        call lininterp_finish(lat_wgts)
@@ -1530,7 +1647,7 @@ contains
     end if
 
   end subroutine read_physgrid_2d
-  
+
 !------------------------------------------------------------------------
 !------------------------------------------------------------------------
 ! this assumes the input data is gridded to match the physics grid
@@ -1564,14 +1681,15 @@ contains
     end if
 
   end subroutine read_physgrid_3d
-  
+
   !------------------------------------------------------------------------
-  
+
   subroutine read_3d_trc( fid, vid, loc_arr, strt, cnt, file, order)
     use interpolate_data, only : lininterp_init, lininterp, interp_type, lininterp_finish
-    use phys_grid,        only : pcols, begchunk, endchunk, get_ncols_p, get_rlat_all_p, get_rlon_all_p
+    use ppgrid,           only : pcols, begchunk, endchunk
+    use phys_grid,        only : get_ncols_p, get_rlat_all_p, get_rlon_all_p
     use mo_constants,     only : pi
-    use dycore,           only : dycore_is		
+    use dycore,           only : dycore_is
     use polar_avg,        only : polar_average
     use horizontal_interpolate, only : xy_interp
 
@@ -1581,7 +1699,7 @@ contains
     type(var_desc_t), intent(in) :: vid
     integer, intent(in) :: strt(:), cnt(:), order(3)
     real(r8),intent(out)  :: loc_arr(:,:,:)
-    
+
     type (trfile), intent(in) :: file
 
     integer :: astat, c, ncols
@@ -1593,7 +1711,7 @@ contains
     real(r8), pointer :: wrk3d_in(:,:,:)
     real(r8) :: to_lons(pcols), to_lats(pcols)
     real(r8), parameter :: zero=0_r8, twopi=2_r8*pi
-    type(interp_type) :: lon_wgts, lat_wgts    
+    type(interp_type) :: lon_wgts, lat_wgts
 
     loc_arr(:,:,:) = 0._r8
     nullify(wrk3d_in)
@@ -1623,16 +1741,27 @@ contains
    if(file%weight_by_lat) then
 
      call t_startf('xy_interp')
-
-     do c = begchunk,endchunk
+     if( file%dist ) then
+      do c = begchunk,endchunk
         ncols = get_ncols_p(c)
         lons(:ncols) = lon_global_grid_ndx(:ncols,c)
         lats(:ncols) = lat_global_grid_ndx(:ncols,c)
 
-        call xy_interp(file%nlon,file%nlat,file%nlev,plon,plat,pcols,ncols,file%weight_x,file%weight_y,wrk3d_in, &
-             loc_arr(:,:,c-begchunk+1), lons,lats,file%count_x,file%count_y,file%index_x,file%index_y) 
-     enddo
+        call xy_interp(file%nlon,file%nlat,file%nlev,plon,plat,pcols,ncols, &
+                       file%weight0_x,file%weight0_y,wrk3d_in,loc_arr(:,:,c-begchunk+1),  &
+                       lons,lats,file%count0_x,file%count0_y,file%index0_x,file%index0_y) 
+      enddo
+     else
+      do c = begchunk,endchunk
+        ncols = get_ncols_p(c)
+        lons(:ncols) = lon_global_grid_ndx(:ncols,c)
+        lats(:ncols) = lat_global_grid_ndx(:ncols,c)
 
+        call xy_interp(file%nlon,file%nlat,file%nlev,plon,plat,pcols,ncols,&
+                       file%weight_x,file%weight_y,wrk3d_in,loc_arr(:,:,c-begchunk+1), &
+                       lons,lats,file%count_x,file%count_y,file%index_x,file%index_y)
+      enddo
+     endif
      call t_stopf('xy_interp')
 
    else
@@ -1645,7 +1774,7 @@ contains
        call lininterp_init(file%lats, file%nlat, to_lats(1:ncols), ncols, 1, lat_wgts)
 
 
-       call lininterp(wrk3d_in, file%nlon, file%nlat, file%nlev, loc_arr(:,:,c-begchunk+1), ncols, pcols, lon_wgts, lat_wgts)    	
+       call lininterp(wrk3d_in, file%nlon, file%nlat, file%nlev, loc_arr(:,:,c-begchunk+1), ncols, pcols, lon_wgts, lat_wgts)
 
 
        call lininterp_finish(lon_wgts)
@@ -1674,10 +1803,10 @@ contains
 
     implicit none
 
-    type(physics_state), intent(in) :: state(begchunk:endchunk)                 
+    type(physics_state), intent(in) :: state(begchunk:endchunk)
     type (trfld),        intent(inout) :: flds(:)
     type (trfile),       intent(inout) :: file
-    
+
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
 
@@ -1704,10 +1833,10 @@ contains
        do c = begchunk,endchunk
           ncol = state(c)%ncol
           if ( file%has_ps ) then
-             file%ps_in(1)%data(:ncol,c) = fact1*file%ps_in(1)%data(:ncol,c) + fact2*file%ps_in(3)%data(:ncol,c) 
+             file%ps_in(1)%data(:ncol,c) = fact1*file%ps_in(1)%data(:ncol,c) + fact2*file%ps_in(3)%data(:ncol,c)
           endif
           do f = 1,nflds
-             flds(f)%input(1)%data(:ncol,:,c) = fact1*flds(f)%input(1)%data(:ncol,:,c) + fact2*flds(f)%input(3)%data(:ncol,:,c) 
+             flds(f)%input(1)%data(:ncol,:,c) = fact1*flds(f)%input(1)%data(:ncol,:,c) + fact2*flds(f)%input(3)%data(:ncol,:,c)
           enddo
        enddo
 
@@ -1719,10 +1848,10 @@ contains
        do c = begchunk,endchunk
           ncol = state(c)%ncol
           if ( file%has_ps ) then
-             file%ps_in(2)%data(:ncol,c) = fact1*file%ps_in(2)%data(:ncol,c) + fact2*file%ps_in(4)%data(:ncol,c) 
+             file%ps_in(2)%data(:ncol,c) = fact1*file%ps_in(2)%data(:ncol,c) + fact2*file%ps_in(4)%data(:ncol,c)
           endif
           do f = 1,nflds
-             flds(f)%input(2)%data(:ncol,:,c) = fact1*flds(f)%input(2)%data(:ncol,:,c) + fact2*flds(f)%input(4)%data(:ncol,:,c) 
+             flds(f)%input(2)%data(:ncol,:,c) = fact1*flds(f)%input(2)%data(:ncol,:,c) + fact2*flds(f)%input(4)%data(:ncol,:,c)
           enddo
        enddo
 
@@ -1779,10 +1908,10 @@ contains
              if (fact2 == 0) then  ! This needed as %data is not set if fact2=0 (and lahey compiler core dumps)
                 datain(:ncol,:) = fact1*flds(f)%input(nm)%data(:ncol,:,c)
              else
-                datain(:ncol,:) = fact1*flds(f)%input(nm)%data(:ncol,:,c) + fact2*flds(f)%input(np)%data(:ncol,:,c) 
+                datain(:ncol,:) = fact1*flds(f)%input(nm)%data(:ncol,:,c) + fact2*flds(f)%input(np)%data(:ncol,:,c)
              end if
              do i = 1,ncol
-                model_z(1:pverp) = m2km * state(c)%zi(i,pverp:1:-1) 
+                model_z(1:pverp) = m2km * state(c)%zi(i,pverp:1:-1)
                 if (file%geop_alt) then
                    model_z(1:pverp) = model_z(1:pverp) + m2km * state(c)%phis(i)*rga
                 endif
@@ -1801,7 +1930,7 @@ contains
                    if (fact2 == 0) then  ! This needed as %data is not set if fact2=0 (and lahey compiler core dumps)
                       ps(:ncol) = fact1*file%ps_in(nm)%data(:ncol,c)
                    else
-                      ps(:ncol) = fact1*file%ps_in(nm)%data(:ncol,c) + fact2*file%ps_in(np)%data(:ncol,c) 
+                      ps(:ncol) = fact1*file%ps_in(nm)%data(:ncol,c) + fact2*file%ps_in(np)%data(:ncol,c)
                    end if
                    do i = 1,ncol
                       do k = 1,file%nlev
@@ -1822,7 +1951,7 @@ contains
                            fact1*flds(f)%input(nm)%data(i,1,c)
                    else
                       data_out(i,1) = &
-                           fact1*flds(f)%input(nm)%data(i,1,c) + fact2*flds(f)%input(np)%data(i,1,c) 
+                           fact1*flds(f)%input(nm)%data(i,1,c) + fact2*flds(f)%input(np)%data(i,1,c)
                    endif
                 enddo
              else
@@ -1836,7 +1965,7 @@ contains
                 else if(file%conserve_column) then
                    call vert_interp_mixrat(ncol,file%nlev,pver,state(c)%pint, &
                         datain, data_out(:,:), &
-                        file%p0,ps,file%hyai,file%hybi)
+                        file%p0,ps,file%hyai,file%hybi,file%dist)
                 else
                    call vert_interp(ncol, file%nlev, pin, state(c)%pmid, datain, data_out(:,:) )
                 endif
@@ -1985,7 +2114,7 @@ contains
     if(masterproc) write(iulog,*)'open_trc_datafile: ',trim(filen)
 
     call get_dimension(piofile, 'time', timesize)
-    
+
     if ( associated(times) ) then
        deallocate(times, stat=ierr)
        if( ierr /= 0 ) then
@@ -2014,7 +2143,7 @@ contains
     call pio_seterrorhandling( piofile, PIO_BCAST_ERROR)
     ierr = pio_inq_varid( piofile, 'datesec', secid  )
     call pio_seterrorhandling( piofile, PIO_INTERNAL_ERROR)
-    
+
     if(ierr==PIO_NOERR) then
        ierr = pio_get_var( piofile, secid,  datesecs  )
     else
@@ -2047,12 +2176,12 @@ contains
        if(masterproc) write(iulog,*) 'open_trc_datafile: failed to deallocate dates array; error = ',astat
        call endrun
     end if
-    deallocate( datesecs, stat=astat  )       
+    deallocate( datesecs, stat=astat  )
     if( astat/= 0 ) then
        if(masterproc) write(iulog,*) 'open_trc_datafile: failed to deallocate datesec array; error = ',astat
        call endrun
     end if
-       
+
     if ( present(cyc_yr) .and. present(cyc_ndx_beg) ) then
        if (cyc_ndx_beg < 0) then
           write(iulog,*) 'open_trc_datafile: cycle year not found : ' , cyc_yr
@@ -2140,10 +2269,10 @@ contains
     character(len=*), intent(in) :: whence
     type(file_desc_t), intent(inout) :: piofile
     type(trfile), intent(inout) :: tr_file
- 
+
     character(len=32) :: name
     integer :: ioerr, mcdimid, maxlen
- 
+
 
     ! Dimension should already be defined in restart file
     call pio_seterrorhandling(pioFile, PIO_BCAST_ERROR)
@@ -2160,7 +2289,7 @@ contains
        ioerr = pio_def_var(pioFile, name,pio_char,  (/mcdimid/), tr_file%currfnameid)
        ioerr = pio_put_att(pioFile, tr_file%currfnameid, 'offset_time', tr_file%offset_time)
        maxlen = len_trim(tr_file%curr_filename)
-       ioerr = pio_put_att(pioFile, tr_file%currfnameid, 'actual_len', maxlen)	
+       ioerr = pio_put_att(pioFile, tr_file%currfnameid, 'actual_len', maxlen)
     else
        nullify(tr_file%currfnameid)
     end if
@@ -2239,7 +2368,7 @@ contains
   end subroutine read_trc_restart
 !------------------------------------------------------------------------------
   subroutine interpz_conserve( nsrc, ntrg, src_x, trg_x, src, trg)
-  
+
     implicit none
 
     integer, intent(in)   :: nsrc                  ! dimension source array
@@ -2256,24 +2385,24 @@ contains
     integer  :: sil
     real(r8) :: tl, y
     real(r8) :: bot, top
-   
-   
+
+
     do i = 1, ntrg
        tl = trg_x(i)
-       if ( (tl.lt.src_x(nsrc+1)).and.(trg_x(i+1).gt.src_x(1)) ) then
+       if ( (tl<src_x(nsrc+1)).and.(trg_x(i+1)>src_x(1)) ) then
           do sil = 1,nsrc
-             if ( (tl-src_x(sil))*(tl-src_x(sil+1)).le.0.0_r8 ) then
+             if ( (tl-src_x(sil))*(tl-src_x(sil+1))<=0.0_r8 ) then
                 exit
              end if
           end do
 
-          if ( tl.lt.src_x(1) ) sil = 1
+          if ( tl<src_x(1) ) sil = 1
 
           y = 0.0_r8
-          bot = max(tl,src_x(1))   
+          bot = max(tl,src_x(1))
           top = trg_x(i+1)
           do j = sil, nsrc
-             if ( top.gt.src_x(j+1) ) then
+             if ( top>src_x(j+1) ) then
                 y = y+(src_x(j+1)-bot)*src(j)/(src_x(j+1)-src_x(j))
                 bot = src_x(j+1)
              else
@@ -2287,12 +2416,12 @@ contains
        end if
     end do
 
-    if ( trg_x(1).gt.src_x(1) ) then
+    if ( trg_x(1)>src_x(1) ) then
        top = trg_x(1)
        bot = src_x(1)
        y = 0.0_r8
        do j = 1, nsrc
-          if ( top.gt.src_x(j+1) ) then
+          if ( top>src_x(j+1) ) then
              y = y+(src_x(j+1)-bot)*src(j)/(src_x(j+1)-src_x(j))
              bot = src_x(j+1)
           else
@@ -2307,16 +2436,17 @@ contains
   end subroutine interpz_conserve
 
 !------------------------------------------------------------------------------
-   subroutine vert_interp_mixrat( ncol, nsrc, ntrg, trg_x, src, trg, p0, ps, hyai, hybi)
-  
+   subroutine vert_interp_mixrat( ncol, nsrc, ntrg, trg_x, src, trg, p0, ps, hyai, hybi, use_flight_distance)
+
     implicit none
 
-    integer, intent(in)   :: ncol 
+    integer, intent(in)   :: ncol
     integer, intent(in)   :: nsrc                  ! dimension source array
     integer, intent(in)   :: ntrg                  ! dimension target array
     real(r8)              :: src_x(nsrc+1)         ! source coordinates
     real(r8), intent(in)      :: trg_x(pcols,ntrg+1)         ! target coordinates
     real(r8), intent(in)      :: src(pcols,nsrc)             ! source array
+    logical, intent(in)   :: use_flight_distance                    ! .true. = flight distance, .false. = mixing ratio 
     real(r8), intent(out)     :: trg(pcols,ntrg)             ! target array
 
     real(r8) :: ps(pcols), p0, hyai(nsrc+1), hybi(nsrc+1)
@@ -2327,72 +2457,90 @@ contains
     integer  :: sil
     real(r8)     :: tl, y
     real(r8)     :: bot, top
-   
-  
-    
+
+
+
     do n = 1,ncol
-    
-    do i=1,nsrc+1
-     src_x(i) = p0*hyai(i)+ps(n)*hybi(i)
-    enddo
 
-    do i = 1, ntrg
-       tl = trg_x(n,i+1)
-       if( (tl.gt.src_x(1)).and.(trg_x(n,i).lt.src_x(nsrc+1)) ) then
-          do sil = 1,nsrc
-             if( (tl-src_x(sil))*(tl-src_x(sil+1)).le.0.0_r8 ) then
-                exit
-             end if
-          end do
+       do i=1,nsrc+1
+          src_x(i) = p0*hyai(i)+ps(n)*hybi(i)
+       enddo
 
-          if( tl.gt.src_x(nsrc+1)) sil = nsrc
+       do i = 1, ntrg
+          tl = trg_x(n,i+1)
+          if( (tl>src_x(1)).and.(trg_x(n,i)<src_x(nsrc+1)) ) then
+             do sil = 1,nsrc
+                if( (tl-src_x(sil))*(tl-src_x(sil+1))<=0.0_r8 ) then
+                   exit
+                end if
+             end do
 
+          if( tl>src_x(nsrc+1)) sil = nsrc
+
+             y = 0.0_r8
+             bot = min(tl,src_x(nsrc+1))
+             top = trg_x(n,i)
+             do j = sil,1,-1
+                if( top<src_x(j) ) then
+                    if(use_flight_distance) then
+                        y = y+(bot-src_x(j))*src(n,j)/(src_x(j+1)-src_x(j))
+                    else
+                        y = y+(bot-src_x(j))*src(n,j)
+                    endif
+                    bot = src_x(j)
+                else
+                   if(use_flight_distance) then
+                      y = y+(bot-top)*src(n,j)/(src_x(j+1)-src_x(j))
+                   else
+                      y = y+(bot-top)*src(n,j)
+                   endif
+                   exit
+                endif
+             enddo
+             trg(n,i) = y
+          else
+             trg(n,i) = 0.0_r8
+          end if
+       end do
+
+       if( trg_x(n,ntrg+1)<src_x(nsrc+1) ) then
+          top = trg_x(n,ntrg+1)
+          bot = src_x(nsrc+1)
           y = 0.0_r8
-          bot = min(tl,src_x(nsrc+1))   
-          top = trg_x(n,i)
-          do j = sil,1,-1
-           if( top.lt.src_x(j) ) then
-             y = y+(bot-src_x(j))*src(n,j)
-            bot = src_x(j)
-           else
-            y = y+(bot-top)*src(n,j)
-            exit
-           endif
+          do j=nsrc,1,-1
+             if( top<src_x(j) ) then
+                if(use_flight_distance) then
+                   y = y+(bot-src_x(j))*src(n,j)/(src_x(j+1)-src_x(j))
+                else
+                   y = y+(bot-src_x(j))*src(n,j)
+                endif
+                bot = src_x(j)
+             else
+                if(use_flight_distance) then
+                   y = y+(bot-top)*src(n,j)/(src_x(j+1)-src_x(j))
+                else
+                   y = y+(bot-top)*src(n,j)
+                endif
+                exit
+             endif
           enddo
-          trg(n,i) = y
-       else
-        trg(n,i) = 0.0_r8
-       end if
-    end do
+          trg(n,ntrg) = trg(n,ntrg)+y
+       endif
 
-    if( trg_x(n,ntrg+1).lt.src_x(nsrc+1) ) then
-     top = trg_x(n,ntrg+1)
-     bot = src_x(nsrc+1)
-     y = 0.0_r8
-     do j=nsrc,1,-1
-      if( top.lt.src_x(j) ) then
-       y = y+(bot-src_x(j))*src(n,j)
-       bot = src_x(j)
-      else
-       y = y+(bot-top)*src(n,j)
-       exit
-      endif
-     enddo
-     trg(n,ntrg) = trg(n,ntrg)+y
-    endif
+       ! turn mass into mixing ratio
+       if(.not. use_flight_distance) then
+          do i=1,ntrg
+             trg(n,i) = trg(n,i)/(trg_x(n,i+1)-trg_x(n,i))
+          enddo
+       endif
 
-! turn mass into mixing ratio 
-    do i=1,ntrg
-     trg(n,i) = trg(n,i)/(trg_x(n,i+1)-trg_x(n,i))
-    enddo
-    
     enddo
 
    end subroutine vert_interp_mixrat
 !------------------------------------------------------------------------------
   subroutine vert_interp( ncol, levsiz, pin, pmid, datain, dataout )
-    !-------------------------------------------------------------------------- 
-    ! 
+    !--------------------------------------------------------------------------
+    !
     ! Interpolate data from current time-interpolated values to model levels
     !--------------------------------------------------------------------------
     implicit none
@@ -2401,9 +2549,9 @@ contains
     integer,  intent(in)  :: ncol                ! number of atmospheric columns
     integer,  intent(in)  :: levsiz
     real(r8), intent(in)  :: pin(pcols,levsiz)
-    real(r8), intent(in)  :: pmid(pcols,pver)          ! level pressures 
+    real(r8), intent(in)  :: pmid(pcols,pver)          ! level pressures
     real(r8), intent(in)  :: datain(pcols,levsiz)
-    real(r8), intent(out) :: dataout(pcols,pver)     
+    real(r8), intent(out) :: dataout(pcols,pver)
 
     !
     ! local storage
@@ -2439,16 +2587,16 @@ contains
        !
        do kk=kkstart,levsiz-1
           do i=1,ncol
-             if (pin(i,kk).lt.pmid(i,k) .and. pmid(i,k).le.pin(i,kk+1)) then
+             if (pin(i,kk)<pmid(i,k) .and. pmid(i,k)<=pin(i,kk+1)) then
                 kupper(i) = kk
              end if
           end do
        end do
        ! interpolate or extrapolate...
        do i=1,ncol
-          if (pmid(i,k) .lt. pin(i,1)) then
+          if (pmid(i,k) < pin(i,1)) then
              dataout(i,k) = datain(i,1)*pmid(i,k)/pin(i,1)
-          else if (pmid(i,k) .gt. pin(i,levsiz)) then
+          else if (pmid(i,k) > pin(i,levsiz)) then
              dataout(i,k) = datain(i,levsiz)
           else
              dpu = pmid(i,k) - pin(i,kupper(i))
@@ -2467,8 +2615,8 @@ contains
     use ref_pres, only : ptop_ref
 
 
-    !----------------------------------------------------------------------- 
-    ! 
+    !-----------------------------------------------------------------------
+    !
     ! Interpolate data from current time-interpolated values to top interface pressure
     !  -- from mo_tgcm_ubc.F90
     !--------------------------------------------------------------------------
@@ -2479,14 +2627,14 @@ contains
     integer,  intent(in)  :: nlevs
     real(r8), intent(in)  :: plevs(nlevs)
     real(r8), intent(in)  :: datain(ncol,nlevs)
-    real(r8), intent(out) :: dataout(ncol)   
+    real(r8), intent(out) :: dataout(ncol)
 
     !
     ! local variables
     !
     integer  :: i,ku,kl,kk
     real(r8) :: pinterp, delp
-    
+
     pinterp = ptop_ref
 
     if( pinterp <= plevs(1) ) then
@@ -2536,7 +2684,7 @@ contains
     !   local variables
     !-----------------------------------------------------------------------
     character(len=shr_kind_cl) :: ctmp
-    character(len=shr_kind_cl) :: loc_fname   
+    character(len=shr_kind_cl) :: loc_fname
     integer            :: istat, astat
 
     !-----------------------------------------------------------------------
@@ -2549,19 +2697,19 @@ contains
     !-----------------------------------------------------------------------
     if( file%remove_trc_file ) then
        call getfil( file%curr_filename, loc_fname, 0 )
-       write(iulog,*) 'advance_file: removing file = ',trim(loc_fname) 
-       ctmp = 'rm -f ' // trim(loc_fname) 
+       write(iulog,*) 'advance_file: removing file = ',trim(loc_fname)
+       ctmp = 'rm -f ' // trim(loc_fname)
        write(iulog,*) 'advance_file: fsystem issuing command - '
        write(iulog,*) trim(ctmp)
        call shr_sys_system( ctmp, istat )
     end if
-   
+
     !-----------------------------------------------------------------------
     !   Advance the filename and file id
     !-----------------------------------------------------------------------
     file%curr_filename = file%next_filename
     file%curr_fileid = file%next_fileid
-   
+
     !-----------------------------------------------------------------------
     !   Advance the curr_data_times
     !-----------------------------------------------------------------------
@@ -2576,12 +2724,12 @@ contains
        call endrun
     end if
     file%curr_data_times(:) = file%next_data_times(:)
-    
+
     !-----------------------------------------------------------------------
     !   delete information about next file (as was just assigned to current)
     !-----------------------------------------------------------------------
     file%next_filename = ''
-    
+
     deallocate( file%next_data_times, stat=astat )
     if( astat/= 0 ) then
        write(iulog,*) 'advance_file: failed to deallocate file%next_data_times array; error = ',astat

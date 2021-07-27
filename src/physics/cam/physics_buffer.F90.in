@@ -167,8 +167,10 @@ module physics_buffer
   !
   ! private pio descriptor for time
   !
-
   type(var_desc_t) :: timeidx_desc
+
+  ! Set to .true. for more output
+  logical :: debug = .false.
 
 !===============================================================================
 CONTAINS
@@ -357,6 +359,7 @@ end subroutine pbuf_readnl
   !  have been completed and should only be called once in a run
   !
   subroutine pbuf_initialize(pbuf2d)
+    use phys_grid, only: phys_grid_initialized
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
     integer :: i, c
@@ -365,7 +368,10 @@ end subroutine pbuf_readnl
     !
     ! Allocate memory
     !
-    if(buffer_initialized) return
+    if (buffer_initialized) return
+    if (.not. phys_grid_initialized()) then
+       call endrun('pbuf_initialize: Physics decomposition not initialized')
+    end if
     ! Allocate at least 1 to avoid unallocated error in ideal physics
     allocate(pbuf2d(max(1,currentpbufflds),begchunk:endchunk))
     if(currentpbufflds<1) return
@@ -754,15 +760,21 @@ end subroutine pbuf_readnl
   end subroutine pbuf2d_print
 
   subroutine pbuf1d_print(pbuf)
+    use spmd_utils, only: masterproc
+
     type(physics_buffer_desc), pointer :: pbuf(:)
-    integer :: i
+
+    integer                            :: ind
     type(physics_buffer_desc), pointer :: pbufPtr
 
-    print *,__FILE__,__LINE__,currentpbufflds,size(pbuf)
-    do i=1,currentpbufflds
-       pbufPtr => pbuf(i)
-       print *,__FILE__,__LINE__,i,trim(pbufPtr%hdr%name),pbufPtr%hdr%dtype,pbufPtr%hdr%persistence,pbufPtr%hdr%dimsizes
-    end do
+    if (masterproc .and. debug) then
+       write(iulog, *) __FILE__, __LINE__, currentpbufflds, size(pbuf)
+       do ind = 1, currentpbufflds
+          pbufPtr => pbuf(ind)
+          write(iulog, *) __FILE__, __LINE__, ind, trim(pbufPtr%hdr%name),    &
+               pbufPtr%hdr%dtype, pbufPtr%hdr%persistence, pbufPtr%hdr%dimsizes
+       end do
+    end if
 
   end subroutine pbuf1d_print
   !

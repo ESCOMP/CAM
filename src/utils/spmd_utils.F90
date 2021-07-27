@@ -1,11 +1,11 @@
 module spmd_utils
 
-!----------------------------------------------------------------------- 
-! 
+!-----------------------------------------------------------------------
+!
 ! Purpose: This module is responsible for miscellaneous SPMD utilities
-!          and information that are shared between dynamics and 
-!          physics packages.  
-! 
+!          and information that are shared between dynamics and
+!          physics packages.
+!
 ! Author:
 !   Original routines:  CMS
 !   Module:             T. Henderson, December 2003
@@ -14,7 +14,7 @@ module spmd_utils
 !   SMP node id logic:  P. Worley
 !
 ! $Id$
-! 
+!
 !-----------------------------------------------------------------------
 
 !
@@ -41,7 +41,7 @@ module spmd_utils
 !- module boilerplate --------------------------------------------------
 !-----------------------------------------------------------------------
    implicit none
-   include 'mpif.h'          
+   include 'mpif.h'
    private                   ! Make the default access private
    save
 !
@@ -61,12 +61,10 @@ module spmd_utils
              mpi_packed, mpi_tag_ub, mpi_info_null,                          &
              mpi_comm_null, mpi_group_null, mpi_undefined,                   &
              mpi_status_size, mpi_success, mpi_status_ignore,                &
-             mpi_max, mpi_min, mpi_sum, mpi_band,                            &
-             mpir8
-
-
-
-
+             mpi_max, mpi_min, mpi_sum, mpi_band, mpir8
+#if ( defined SPMD )
+   public :: mpi_address_kind
+#endif
 
 !-----------------------------------------------------------------------
 ! Public interfaces ----------------------------------------------------
@@ -85,13 +83,49 @@ module spmd_utils
 #endif
 
 !-----------------------------------------------------------------------
+! Public communication types--------------------------------------------
+!-----------------------------------------------------------------------
+   type, public :: spmd_col_trans
+      ! spmd_col_trans holds information for setting up a communications pattern
+      integer :: source_task
+      integer :: source_index
+      integer :: dest_task
+      integer :: dest_index
+      integer :: mpi_tag
+   end type spmd_col_trans
+
+   type, public :: column_redist_t
+      ! column_redist_t holds information needed to redistribute columns
+      ! Fields used for both send and receive
+      integer          :: mpi_comm = MPI_COMM_NULL  ! Comm for dest tasks
+      integer          :: recv_iam = -1             ! rank in mpi_comm
+      integer          :: recv_master_id = -1       ! rank of mpi_comm 'master'
+      integer          :: max_nflds = 0             ! max fields at one time
+      integer          :: num_rounds = 0            ! # of field sum blocks
+      integer, pointer :: dest_tasks(:) => NULL()   ! Destination tasks
+      integer, pointer :: col_starts(:) => NULL()   ! Global start col per dest
+      integer, pointer :: num_rflds(:) => NULL()    ! # flds per round
+      ! Data used by receiving tasks
+      integer, pointer :: recv_cnts(:) => NULL()    ! # cols from each PE
+      integer, pointer :: recv_disps(:) => NULL()   ! col offsets from each PE
+      integer, pointer :: recv_reorder(:) => NULL() ! Reordering after receive
+      ! Data used by sending tasks
+      integer          :: strt_nfld = -1            ! first field for this task
+      integer          :: my_nflds = 0              ! # fields for this task
+      integer, pointer :: task_sizes(:) => NULL()   ! # of task cols per dest
+      integer, pointer :: task_indices(:) => NULL() ! Global index for each col
+      integer, pointer :: send_disps(:) => NULL()   ! cols offsets to each PE
+      integer, pointer :: send_reorder(:) => NULL() ! Reordering before send
+   end type column_redist_t
+
+!-----------------------------------------------------------------------
 ! Public data ----------------------------------------------------------
 !-----------------------------------------------------------------------
 ! physics-motivated dynamics decomposition request
    logical, parameter :: def_mirror = .false.                 ! default
-   logical, public    :: phys_mirror_decomp_req = def_mirror 
+   logical, public    :: phys_mirror_decomp_req = def_mirror
                          ! flag indicating whether latitudes and their
-                         ! reflections across the equator should be 
+                         ! reflections across the equator should be
                          ! assigned to consecutive processes
 
 #if (defined SPMD)
@@ -107,9 +141,10 @@ module spmd_utils
    integer, public              :: npes
    integer, public              :: nsmps
    integer, allocatable, public :: proc_smp_map(:)
-   integer, parameter           :: DEFAULT_MASTERPROC=0 
-                                      ! the value of iam which is assigned 
-                                      ! the masterproc duties
+   ! DEFAULT_MASTERPROC is the value of iam which is assigned masterproc duties
+   integer, parameter           :: DEFAULT_MASTERPROC = 0
+   ! spmd_col_trans_mpi_type is a handle to be used for column reordering
+   integer, public, protected   :: spmd_col_trans_mpi_type
 
 !-----------------------------------------------------------------------
 ! Private data ---------------------------------------------------------
@@ -132,9 +167,9 @@ module spmd_utils
 
 ! Flow-controlled gather option:
 !   < 0: use MPI_Gather
-!  >= 0: use point-to-point with handshaking messages and 
-!        preposting receive requests up to 
-!         min(max(1,fc_gather_flow_cntl),max_gather_block_size) 
+!  >= 0: use point-to-point with handshaking messages and
+!        preposting receive requests up to
+!         min(max(1,fc_gather_flow_cntl),max_gather_block_size)
 !        ahead
    integer, private, parameter :: max_gather_block_size = 64 ! max and default
    integer, public :: fc_gather_flow_cntl = max_gather_block_size
@@ -172,17 +207,17 @@ contains
   end function ceil2
 
 !========================================================================
-  
+
   subroutine spmdinit( mpicom_atm )
-    !----------------------------------------------------------------------- 
-    ! 
-    ! Purpose: MPI initialization routine:  
-    ! 
+    !-----------------------------------------------------------------------
+    !
+    ! Purpose: MPI initialization routine:
+    !
     ! Method: get number of cpus, processes, tids, etc
     !         dynamics and physics decompositions are set up later
-    ! 
+    !
     ! Author: CCM Core Group
-    ! 
+    !
     !-----------------------------------------------------------------------
 
     implicit none
@@ -194,7 +229,7 @@ contains
     !
     integer i,j,c             ! indices
     integer npthreads         ! thread status
-    integer ier               ! return error status    
+    integer ier               ! return error status
     integer length            ! length of name
     integer max_len           ! maximum name length
     integer, allocatable :: lengths(:)! max lengths of names for use in gatherv
@@ -205,6 +240,14 @@ contains
     character(len=mpi_max_processor_name)              :: tmp_name      ! temporary storage
     character(len=mpi_max_processor_name), allocatable :: smp_names(:)  ! SMP name
     logical mpi_running       ! returned value indicates if MPI_INIT has been called
+    ! For creating new MPI type for column info transfer
+    integer                        :: h1, hind
+    integer                        :: ierr
+    integer(kind=MPI_ADDRESS_KIND) :: offsets(6)   ! For new MPI types
+    integer                        :: origtypes(6) ! For new MPI types
+    integer(kind=MPI_ADDRESS_KIND) :: extent       ! For new MPI types
+    type(spmd_col_trans)           :: dummy_loc(2) ! For new MPI types
+    type(spmd_col_trans)           :: col_trans_type_temp
 
     !---------------------------------------------------------------------------
     !
@@ -225,11 +268,11 @@ contains
     mpipk   = mpi_packed
     mpimax  = mpi_max
     !
-    ! Get my id  
+    ! Get my id
     !
-    call mpi_comm_rank (mpicom, iam, ier) 
+    call mpi_comm_rank (mpicom, iam, ier)
     masterprocid = DEFAULT_MASTERPROC
-    if (iam == DEFAULT_MASTERPROC) then 
+    if (iam == DEFAULT_MASTERPROC) then
        masterproc = .true.
     else
        masterproc = .false.
@@ -243,9 +286,9 @@ contains
     allocate ( lengths(npes) )
     allocate ( proc_name(max_len) )
     allocate ( proc_names(max_len*npes) )
- 
+
     !
-    ! Get processor names and send to root. 
+    ! Get processor names and send to root.
     !
     call mpi_get_processor_name (tmp_name, length, ier)
     proc_name(:) = ' '
@@ -324,8 +367,37 @@ contains
     deallocate(proc_name)
     deallocate(proc_names)
 
+     ! Create a type for transferring column information
+     allocate(lengths(6))
+     lengths(:) = 1
+     origtypes(:) = MPI_INTEGER
+     h1 = 0
+     h1 = h1 + 1
+     call MPI_Get_address(dummy_loc(1)%source_task,  offsets(h1), ierr)
+     h1 = h1 + 1
+     call MPI_Get_address(dummy_loc(1)%source_index, offsets(h1), ierr)
+     h1 = h1 + 1
+     call MPI_Get_address(dummy_loc(1)%dest_task,    offsets(h1), ierr)
+     h1 = h1 + 1
+     call MPI_Get_address(dummy_loc(1)%dest_index,   offsets(h1), ierr)
+     h1 = h1 + 1
+     call MPI_Get_address(dummy_loc(1)%mpi_tag,      offsets(h1), ierr)
+     do hind = h1, 1, -1
+        offsets(hind) = offsets(hind) - offsets(1)
+     end do
+     call MPI_type_create_struct(h1, lengths(1:h1), offsets(1:h1),            &
+          origtypes(1:h1), col_trans_type_temp, ierr)
+     ! Adjust for padding
+     call MPI_Get_address(dummy_loc(1)%source_task, offsets(1), ierr)
+     call MPI_Get_address(dummy_loc(2)%source_task, offsets(2), ierr)
+     extent = offsets(2) - offsets(1)
+     call MPI_type_create_resized(col_trans_type_temp, 0_MPI_ADDRESS_KIND,    &
+          extent, spmd_col_trans_mpi_type, ierr)
+    call MPI_type_commit(spmd_col_trans_mpi_type, ierr)
+    deallocate(lengths)
+
 #else
-    !	
+    !
     ! spmd is not defined
     !
     mpicom = mpicom_atm
@@ -337,7 +409,7 @@ contains
     allocate ( proc_smp_map(0:0) )
     proc_smp_map(:) = -1
 
-#endif   
+#endif
 
   end subroutine spmdinit
 
@@ -350,14 +422,14 @@ contains
                      rcvbuf, rbuf_siz, rcvlths, rdispls,   &
                      comm, comm_protocol, comm_maxreq      )
 
-!----------------------------------------------------------------------- 
-! 
-! Purpose: 
-!   Reduced version of original swapm (for swap of multiple messages 
-!   using MPI point-to-point routines), more efficiently implementing a 
+!-----------------------------------------------------------------------
+!
+! Purpose:
+!   Reduced version of original swapm (for swap of multiple messages
+!   using MPI point-to-point routines), more efficiently implementing a
 !   subset of the swap protocols.
-! 
-! Method: 
+!
+! Method:
 ! comm_protocol:
 !  = 3 or 5: use nonblocking send
 !  = 2 or 4: use blocking send
@@ -370,7 +442,7 @@ contains
 ! Author of original version:  P. Worley
 ! Ported to CAM: P. Worley, December 2003
 ! Simplified version: P. Worley, October, 2008
-! 
+!
 !-----------------------------------------------------------------------
 
 !-----------------------------------------------------------------------
@@ -388,7 +460,7 @@ contains
                                                !  buffer where outgoing messages
                                                !  should be sent from
    integer, intent(in)   :: rcvlths(0:nprocs-1)! length of incoming messages
-   integer, intent(in)   :: rdispls(0:nprocs-1)! offset from beginning of receive 
+   integer, intent(in)   :: rdispls(0:nprocs-1)! offset from beginning of receive
                                                !  buffer where incoming messages
                                                !  should be placed
    real(r8), intent(in)  :: sndbuf(sbuf_siz)   ! outgoing message buffer
@@ -396,7 +468,7 @@ contains
 
    integer, intent(in)   :: comm               ! MPI communicator
    integer, intent(in)   :: comm_protocol      ! swap_comm protocol
-   integer, intent(in)   :: comm_maxreq        ! maximum number of outstanding 
+   integer, intent(in)   :: comm_maxreq        ! maximum number of outstanding
                                                !  nonblocking requests
 
 !
@@ -404,23 +476,23 @@ contains
 !
    integer :: p                                ! process index
    integer :: istep                            ! loop index
-   integer :: offset_s                         ! index of message beginning in 
+   integer :: offset_s                         ! index of message beginning in
                                                !  send buffer
-   integer :: offset_r                         ! index of message beginning in 
+   integer :: offset_r                         ! index of message beginning in
                                                !  receive buffer
    integer :: sndids(steps)                    ! send request ids
    integer :: rcvids(steps)                    ! receive request ids
    integer :: hs_rcvids(steps)                 ! handshake receive request ids
 
-   integer :: maxreq, maxreqh                  ! maximum number of outstanding 
+   integer :: maxreq, maxreqh                  ! maximum number of outstanding
                                                !  nonblocking requests (and half)
    integer :: hs_s, hs_r(steps)                ! handshake variables (send/receive)
    integer :: rstep                            ! "receive" step index
 
    logical :: handshake, sendd                 ! protocol option flags
 
-   integer :: ier                              ! return error status    
-   integer :: status(MPI_STATUS_SIZE)          ! MPI status 
+   integer :: ier                              ! return error status
+   integer :: status(MPI_STATUS_SIZE)          ! MPI status
 !
 !-------------------------------------------------------------------------------------
 !
@@ -496,7 +568,7 @@ contains
       enddo
       rstep = maxreq
 
-      ! Send (and start receiving) data 
+      ! Send (and start receiving) data
       do istep=1,steps
          p = swapids(istep)
 
@@ -574,7 +646,7 @@ contains
       enddo
       rstep = maxreq
 
-      ! Send (and start receiving) data 
+      ! Send (and start receiving) data
       do istep=1,steps
          p = swapids(istep)
 
@@ -648,7 +720,7 @@ contains
       enddo
       rstep = maxreq
 
-      ! Send (and start receiving) data 
+      ! Send (and start receiving) data
       do istep=1,steps
          p = swapids(istep)
 
@@ -704,7 +776,7 @@ contains
       enddo
       rstep = maxreq
 
-      ! Send (and start receiving) data 
+      ! Send (and start receiving) data
       do istep=1,steps
          p = swapids(istep)
 
@@ -763,19 +835,19 @@ contains
 !
 !========================================================================
 
-!----------------------------------------------------------------------- 
-! 
-! Purpose: gather collective with additional flow control, so as to 
-!          be more robust when used with high process counts. 
-!          If flow_cntl optional parameter 
+!-----------------------------------------------------------------------
+!
+! Purpose: gather collective with additional flow control, so as to
+!          be more robust when used with high process counts.
+!          If flow_cntl optional parameter
 !           < 0: use MPI_Gather
-!          >= 0: use point-to-point with handshaking messages and 
-!                preposting receive requests up to 
-!                 min(max(1,flow_cntl),max_gather_block_size) 
+!          >= 0: use point-to-point with handshaking messages and
+!                preposting receive requests up to
+!                 min(max(1,flow_cntl),max_gather_block_size)
 !                ahead if optional flow_cntl parameter is present.
 !                Otherwise, fc_gather_flow_cntl is used in its place.
 !          Default value is 64.
-! 
+!
 ! Entry points:
 !      fc_gatherv       functionally equivalent to mpi_gatherv
 !      fc_gathervr4     functionally equivalent to mpi_gatherv for real*4 data
@@ -843,7 +915,7 @@ contains
    endif
 
    if (fc_gather) then
- 
+
 #if defined( WRAP_MPI_TIMING )
       call t_startf ('fc_gatherv_r8')
 #endif
@@ -904,7 +976,7 @@ contains
 #endif
 
    else
- 
+
 #if defined( WRAP_MPI_TIMING )
       call t_startf ('mpi_gatherv')
 #endif
@@ -981,7 +1053,7 @@ contains
    endif
 
    if (fc_gather) then
- 
+
 #if defined( WRAP_MPI_TIMING )
       call t_startf ('fc_gatherv_r4')
 #endif
@@ -1042,7 +1114,7 @@ contains
 #endif
 
    else
- 
+
 #if defined( WRAP_MPI_TIMING )
       call t_startf ('mpi_gatherv')
 #endif
@@ -1119,7 +1191,7 @@ contains
    endif
 
    if (fc_gather) then
- 
+
 #if defined( WRAP_MPI_TIMING )
       call t_startf ('fc_gatherv_int')
 #endif
@@ -1180,7 +1252,7 @@ contains
 #endif
 
    else
- 
+
 #if defined( WRAP_MPI_TIMING )
       call t_startf ('mpi_gatherv')
 #endif
@@ -1257,7 +1329,7 @@ contains
    endif
 
    if (fc_gather) then
- 
+
 #if defined( WRAP_MPI_TIMING )
       call t_startf ('fc_gatherv_char')
 #endif
@@ -1318,7 +1390,7 @@ contains
 #endif
 
    else
- 
+
 #if defined( WRAP_MPI_TIMING )
       call t_startf ('mpi_gatherv')
 #endif
@@ -1341,19 +1413,19 @@ contains
 !========================================================================
 #endif
 
-!----------------------------------------------------------------------- 
-! 
+!-----------------------------------------------------------------------
+!
 ! Purpose: implementations of MPI_Alltoall using different messaging
 !          layers and different communication protocols, controlled
 !          by option argument:
 !  0: use mpi_alltoallv
 !  1: use point-to-point MPI-1 two-sided implementation
-!  2: use point-to-point MPI-2 one-sided implementation if supported, 
+!  2: use point-to-point MPI-2 one-sided implementation if supported,
 !       otherwise use MPI-1 implementation
-!  3: use Co-Array Fortran implementation if supported, 
+!  3: use Co-Array Fortran implementation if supported,
 !       otherwise use MPI-1 implementation
 !  otherwise use mpi_sendrecv implementation
-! 
+!
 ! Entry points:
 !      altalltoallv
 !
@@ -1379,7 +1451,7 @@ contains
 
    integer, intent(in) :: option               ! 0: mpi_alltoallv
                                                ! 1: swap package
-                                               ! 2: mpi2 
+                                               ! 2: mpi2
                                                ! 3: co-array fortran
                                        ! otherwise: sendrecv
    integer, intent(in) :: mytid
@@ -1395,7 +1467,7 @@ contains
    integer, intent(in) :: rdispls(0:nprocs-1)
    integer, intent(in) :: recvtype
    integer, intent(in) :: msgtag
-   integer, intent(in) :: pdispls(0:nprocs-1)   ! displacement at 
+   integer, intent(in) :: pdispls(0:nprocs-1)   ! displacement at
                                                 !  destination
    integer, intent(in) :: desttype
    integer, intent(in) :: recvwin
@@ -1583,26 +1655,26 @@ contains
    end subroutine altalltoallv
 
 #endif
-   
+
    subroutine spmd_utils_readnl(nlfile)
-!----------------------------------------------------------------------- 
-! 
-! Purpose: 
+!-----------------------------------------------------------------------
+!
+! Purpose:
 !   Read spmd utils namelist to set swap communication protocol options as
 !   well as the flow control gather options
-! 
-! Method: 
+!
+! Method:
 ! spmd_utils_readnl:
 !
 ! Author of original version:  J. Truesdale
-! 
+!
 !-----------------------------------------------------------------------
 
 !-----------------------------------------------------------------------
      use namelist_utils,  only: find_group_name
      use units,           only: getunit, freeunit
      use mpishorthand
-     
+
      implicit none
 !---------------------------Input arguments--------------------------
 !
@@ -1613,7 +1685,7 @@ contains
 !
      integer :: unitn, ierr
      character(len=*), parameter :: subname = 'spmd_utils_readnl'
-     
+
      namelist /spmd_utils_nl/ swap_comm_protocol,swap_comm_maxreq,fc_gather_flow_cntl
 
 !-----------------------------------------------------------------------------
@@ -1631,8 +1703,8 @@ contains
         end if
         close(unitn)
         call freeunit(unitn)
-        
-           
+
+
         if ((swap_comm_protocol < min_comm_protocol) .or. &
              (swap_comm_protocol > max_comm_protocol)) then
            write(iulog,*)                                        &
@@ -1645,21 +1717,20 @@ contains
                 '  Using default value.'
            swap_comm_protocol = def_comm_protocol
         endif
-        
+
         write(iulog,*) 'SPMD SWAP_COMM OPTIONS: '
         write(iulog,*) '  swap_comm_protocol = ', swap_comm_protocol
-        write(iulog,*) '  swap_comm_maxreq   = ', swap_comm_maxreq         
+        write(iulog,*) '  swap_comm_maxreq   = ', swap_comm_maxreq
         write(iulog,*) 'SPMD FLOW CONTROL GATHER OPTION: '
         write(iulog,*) '  fc_gather_flow_cntl = ', fc_gather_flow_cntl
      endif
-        
+
      ! Broadcast namelist variables
      call mpibcast (swap_comm_protocol , 1,   mpiint ,  0, mpicom)
      call mpibcast (swap_comm_maxreq   , 1,   mpiint ,  0, mpicom)
      call mpibcast (fc_gather_flow_cntl, 1,   mpiint ,  0, mpicom)
 #endif
-      
-   end subroutine spmd_utils_readnl
- 
- end module spmd_utils
 
+   end subroutine spmd_utils_readnl
+
+ end module spmd_utils

@@ -592,7 +592,7 @@ if ( ($chem ne 'none') or ( $prog_species ) ){
 if ($chem) {
     # drydep_srf_file is only needed for prognostic MAM when the grid is unstructured.
     # structured grids can do interpolation on the fly.
-    if ($chem =~ /_mam/ and ($dyn =~ /se/ or $dyn =~ /fv3/)) {
+    if ($chem =~ /_mam/ and ($dyn =~ /se|fv3|mpas/)) {
         add_default($nl, 'drydep_srf_file');
     }
 }
@@ -1494,7 +1494,7 @@ elsif ($carma eq 'tholin') {
 
 # turn on stratospheric aerosol forcings in CAM6 configurations
 my $chem_has_ocs = chem_has_species($cfg, 'OCS');
-if ($phys =~ /cam6/) {
+if ($phys =~ /cam6/ and $chem =~ /_mam/) {
   # turn on volc forcings in cam6 -- prognostic or prescribed
   if ( $chem_has_ocs ) {
       # turn on prognostic stratospheric aerosols
@@ -1756,14 +1756,6 @@ if (defined $nl->get_value('prescribed_aero_file')) {
 
 my $megan_emis = defined $nl->get_value('megan_specifier');
 if ( $megan_emis ) { add_default($nl, 'megan_factors_file'); }
-
-# Aerosol convective processes
-if ($chem =~ /trop_strat/) {
-    add_default($nl, 'convproc_do_aer', 'val'=>'.true.');
-    add_default($nl, 'convproc_do_evaprain_atonce', 'val'=>'.true.');
-    add_default($nl, 'convproc_pom_spechygro', 'val'=>'0.2D0');
-    add_default($nl, 'convproc_wup_max', 'val'=>'4.0D0');
-}
 
 # Tropospheric full chemistry options
 if (($chem =~ /trop_mozart/ or $chem =~ /trop_strat/ or $chem =~ /waccm_tsmlt/) and ($phys !~ /cam6/)) {
@@ -2754,20 +2746,15 @@ if ($waccmx) {
   if (($ionos eq 'none') and ($wmx_opt =~ /ionosphere/) ) {
     die "CAM Namelist ERROR: WACCMX must be configured with an active ionosphere wmx_opt is set to ionosphere\n";
   }
-  if (($ionos ne 'none') and ($wmx_opt =~ /neutral/) ) {
+  if (($ionos eq 'wxie') and ($wmx_opt =~ /neutral/) ) {
     die "CAM Namelist ERROR: WACCMX cannot be configured with an active ionosphere wmx_opt is set to neutral\n";
   }
 
-  if (($ionos eq 'wxie') and ($wmx_opt =~ /ionosphere/) and ($dyn eq 'fv')) {
+  if (($ionos eq 'wxie') and ($wmx_opt =~ /ionosphere/)) {
     # turn on electro-dynamo generated ion drift velocities
     add_default($nl, 'ionos_xport_active', 'val'=>'.true.');
     add_default($nl, 'ionos_edyn_active', 'val'=>'.true.');
     add_default($nl, 'empirical_ion_velocities', 'val'=>'.false.');
-  } elsif (($ionos eq 'wxi') and ($wmx_opt =~ /ionosphere/) and ($dyn eq 'fv')) {
-    # turn off electro-dynamo generated ion drift velocities
-    add_default($nl, 'ionos_xport_active', 'val'=>'.true.');
-    add_default($nl, 'ionos_edyn_active', 'val'=>'.false.');
-    add_default($nl, 'empirical_ion_velocities', 'val'=>'.true.');
   } elsif (($ionos eq 'none') and ($wmx_opt =~ /neutral/)) {
     add_default($nl, 'ionos_xport_active', 'val'=>'.false.');
     add_default($nl, 'ionos_edyn_active', 'val'=>'.false.');
@@ -2777,6 +2764,11 @@ if ($waccmx) {
   }
   if  ($dyn eq 'fv') {
     add_default($nl, 'fv_high_altitude', 'val'=>'.true.');
+  }
+  if ($ionos ne 'none') {
+    add_default($nl, 'cam_physics_mesh');
+    add_default($nl, 'oplus_grid');
+    add_default($nl, 'edyn_grid');
   }
   add_default($nl,'dadadj_niter');
   add_default($nl,'ionos_epotential_model');
@@ -2832,11 +2824,6 @@ $cam_chempkg = "'" . "$chem" . "'";  # add quotes to this string value
 $nl->set_variable_value('phys_ctl_nl', 'cam_chempkg', $cam_chempkg);
 
 
-# Check the snapshot settings.
-add_default($nl, 'cam_snapshot_before_num');
-add_default($nl, 'cam_snapshot_after_num');
-check_snapshot_settings();
-
 # Tropopause climatology
 if (!$simple_phys) {
     add_default($nl, 'tropopause_climo_file');
@@ -2849,6 +2836,14 @@ if (($chem ne 'none') and ($chem ne 'terminator')) {
 
 # Deep convection scheme
 add_default($nl, 'deep_scheme');
+
+# Aerosol convective processes
+if ($phys =~ /cam6/ and $nl->get_value('deep_scheme') =~ /ZM/) {
+    add_default($nl, 'convproc_do_aer', 'val'=>'.true.');
+    add_default($nl, 'convproc_do_evaprain_atonce', 'val'=>'.true.');
+    add_default($nl, 'convproc_pom_spechygro', 'val'=>'0.2D0');
+    add_default($nl, 'convproc_wup_max', 'val'=>'4.0D0');
+}
 
 # Radiation scheme
 add_default($nl, 'radiation_scheme', 'val'=>$rad_pkg);
@@ -2886,14 +2881,35 @@ if ($cfg->get('microphys') =~ /^mg/) {
     add_default($nl, 'micro_mg_do_graupel');
     add_default($nl, 'graupel_in_rad');
     add_default($nl, 'micro_do_massless_droplet_destroyer');
+    add_default($nl, 'micro_mg_accre_enhan_fact');
+    add_default($nl, 'micro_mg_autocon_fact');
+    add_default($nl, 'micro_mg_autocon_nd_exp');
+    add_default($nl, 'micro_mg_autocon_lwp_exp');
+    add_default($nl, 'micro_mg_homog_size');
+    add_default($nl, 'micro_mg_vtrmi_factor');
+    add_default($nl, 'micro_mg_effi_factor');
+    add_default($nl, 'micro_mg_iaccr_factor');
+    add_default($nl, 'micro_mg_max_nicons');
 
     # For CESM2, the decision was made to set micro_do_sb_physics to false
     add_default($nl, 'micro_do_sb_physics', 'val'=>'.false.');
 }
 
+# Aerosol Namelist options
+add_default($nl, 'microp_aero_bulk_scale');
+add_default($nl, 'microp_aero_npccn_scale');
+add_default($nl, 'microp_aero_wsub_scale');
+add_default($nl, 'microp_aero_wsubi_scale');
+add_default($nl, 'microp_aero_wsub_min');
+add_default($nl, 'microp_aero_wsubi_min');
+
 # Ice nucleation options
 if (!$simple_phys) {
-    add_default($nl, 'use_hetfrz_classnuc');
+    if ($chem =~ /_mam/) {
+        add_default($nl, 'use_hetfrz_classnuc');
+    } else {
+        add_default($nl, 'use_hetfrz_classnuc', 'val'=>'.false.');
+    }
     add_default($nl, 'use_preexisting_ice');
     if ($chem =~ /_mam7/) {
         if ($nl->get_value('use_preexisting_ice') =~ m/$TRUE/io) {
@@ -3003,6 +3019,12 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_C2thl');
    add_default($nl, 'clubb_C2rtthl');
    add_default($nl, 'clubb_C4');
+   add_default($nl, 'clubb_c6rt');
+   add_default($nl, 'clubb_c6rtb');
+   add_default($nl, 'clubb_c6rtc');
+   add_default($nl, 'clubb_c6thl');
+   add_default($nl, 'clubb_c6thlb');
+   add_default($nl, 'clubb_c6thlc');
    add_default($nl, 'clubb_C7');
    add_default($nl, 'clubb_C7b');
    add_default($nl, 'clubb_C8');
@@ -3021,6 +3043,10 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_skw_max_mag');
    add_default($nl, 'clubb_up2_vp2_factor');
    add_default($nl, 'clubb_C_wp2_splat');
+   add_default($nl, 'clubb_wpxp_L_thresh');
+   add_default($nl, 'clubb_detliq_rad');
+   add_default($nl, 'clubb_detice_rad');
+   add_default($nl, 'clubb_detphase_lowtemp');
 
    add_default($nl, 'clubb_l_brunt_vaisala_freq_moist');
    add_default($nl, 'clubb_l_call_pdf_closure_twice');
@@ -3042,6 +3068,11 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_l_vert_avg_closure');
    add_default($nl, 'clubb_l_diag_Lscale_from_tau');
    add_default($nl, 'clubb_l_damp_wp2_using_em');
+   add_default($nl, 'do_clubb_mf');
+   add_default($nl, 'do_clubb_mf_diag');
+   add_default($nl, 'clubb_mf_L0');
+   add_default($nl, 'clubb_mf_ent0');
+   add_default($nl, 'clubb_mf_nup');
 }
 
 # Tuning for wet scavenging of modal aerosols
@@ -3131,6 +3162,9 @@ if (!$simple_phys) {
     add_default($nl, 'zmconv_org');
     add_default($nl, 'zmconv_microp');
     add_default($nl, 'zmconv_num_cin');
+    add_default($nl, 'zmconv_dmpdz');
+    add_default($nl, 'zmconv_tiedke_add');
+    add_default($nl, 'zmconv_capelmt');
 }
 
 # moist convection rainwater coefficients
@@ -3260,9 +3294,19 @@ if ($waccm_phys or
     add_default($nl, 'use_gw_front'     , 'val'=>'.true.');
     add_default($nl, 'use_gw_convect_dp', 'val'=>'.true.');
     my $hdepth_scaling = '0.25D0' ;
+    my $qbo_forcing = '.false.';
+    if ($dyn eq 'fv') {
+	my $nlon = $cfg->get('nlon');
+	my $nlat = $cfg->get('nlat');
+        # turn on QBO nudging only for coarse FV grids
+        if ($nlat <= 96 and $nlon <= 144) {
+	    $qbo_forcing = '.true.';
+        }
+    }
+    add_default($nl, 'qbo_use_forcing','val'=>$qbo_forcing);
     if ($nl->get_value('qbo_use_forcing') =~ /$TRUE/io) {
        $hdepth_scaling = '1.D0' ;
-       add_default($nl, 'qbo_cyclic','val'=>'.true.');
+       add_default($nl, 'qbo_cyclic','val'=>'.false.');
        add_default($nl, 'qbo_forcing_file');
     }
     add_default($nl, 'gw_qbo_hdepth_scaling', 'val'=>$hdepth_scaling);
@@ -3637,6 +3681,68 @@ if ($dyn =~ /se/) {
     }
 }
 
+# MPAS-Atmosphere dycore
+# ======================
+
+if ($dyn =~ /mpas/) {
+
+    ####################################################
+    # namelist group: dyn_mpas                         #
+    ####################################################
+
+    add_default($nl, 'mpas_time_integration');
+    add_default($nl, 'mpas_time_integration_order');
+    add_default($nl, 'mpas_dt');
+    add_default($nl, 'mpas_split_dynamics_transport');
+    add_default($nl, 'mpas_number_of_sub_steps');
+    add_default($nl, 'mpas_dynamics_split_steps');
+    add_default($nl, 'mpas_h_mom_eddy_visc2');
+    add_default($nl, 'mpas_h_mom_eddy_visc4');
+    add_default($nl, 'mpas_v_mom_eddy_visc2');
+    add_default($nl, 'mpas_h_theta_eddy_visc2');
+    add_default($nl, 'mpas_h_theta_eddy_visc4');
+    add_default($nl, 'mpas_v_theta_eddy_visc2');
+    add_default($nl, 'mpas_horiz_mixing');
+    add_default($nl, 'mpas_len_disp');
+    add_default($nl, 'mpas_visc4_2dsmag');
+    add_default($nl, 'mpas_del4u_div_factor');
+    add_default($nl, 'mpas_w_adv_order');
+    add_default($nl, 'mpas_theta_adv_order');
+    add_default($nl, 'mpas_scalar_adv_order');
+    add_default($nl, 'mpas_u_vadv_order');
+    add_default($nl, 'mpas_w_vadv_order');
+    add_default($nl, 'mpas_theta_vadv_order');
+    add_default($nl, 'mpas_scalar_vadv_order');
+    add_default($nl, 'mpas_scalar_advection');
+    add_default($nl, 'mpas_positive_definite');
+    add_default($nl, 'mpas_monotonic');
+    add_default($nl, 'mpas_coef_3rd_order');
+    add_default($nl, 'mpas_smagorinsky_coef');
+    add_default($nl, 'mpas_mix_full');
+    add_default($nl, 'mpas_epssm');
+    add_default($nl, 'mpas_smdiv');
+    add_default($nl, 'mpas_apvm_upwinding');
+    add_default($nl, 'mpas_h_ScaleWithMesh');
+    add_default($nl, 'mpas_zd');
+    add_default($nl, 'mpas_xnutr');
+    add_default($nl, 'mpas_cam_coef');
+    add_default($nl, 'mpas_print_detailed_minmax_vel');
+    add_default($nl, 'mpas_rayleigh_damp_u');
+    add_default($nl, 'mpas_rayleigh_damp_u_timescale_days');
+    add_default($nl, 'mpas_number_rayleigh_damp_u_levels');
+    add_default($nl, 'mpas_do_restart');
+    add_default($nl, 'mpas_print_global_minmax_vel');
+    add_default($nl, 'mpas_print_detailed_minmax_vel');
+    add_default($nl, 'mpas_print_global_minmax_sca');
+
+    # mpas_block_decomp_file_prefix should only be set when more than one task is used.
+    # Otherwise the file is not used and should not be added to the input dataset file.
+    if ($opts{'ntasks'} > 1) {
+        add_default($nl, 'mpas_block_decomp_file_prefix');
+    }
+
+}
+
 # Defaults for history output
 add_default($nl, 'history_amwg');
 add_default($nl, 'history_vdiag');
@@ -3744,6 +3850,11 @@ foreach my $comp (@comps) {
         if ($print>=1) { print "Writing modelio namelist to $outfile $eol"; }
     }
 }
+
+# Check the snapshot settings.
+add_default($nl, 'cam_snapshot_before_num');
+add_default($nl, 'cam_snapshot_after_num');
+check_snapshot_settings();
 
 #-----------------------------------------------------------------------------------------------
 # Write output files
@@ -4183,6 +4294,14 @@ sub check_input_files {
 
                 if ($input_pathname_type eq 'abs') {
                     if ($inputdata_rootdir) {
+
+                        # Special cases:
+                        # The file referenced by mpas_block_decomp_file_prefix needs to have the
+                        # task count appended before being added to the inputdata file.
+                        if ($var eq 'mpas_block_decomp_file_prefix') {
+                            $pathname = "$pathname$opts{'ntasks'}";
+                        }
+
                         print $fh "$var = $pathname\n";
                     }
                     else {

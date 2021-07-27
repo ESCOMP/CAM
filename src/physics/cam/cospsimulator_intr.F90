@@ -1856,9 +1856,9 @@ CONTAINS
     
     ! 2) rh - relative_humidity_liquid_water (%)
     ! calculate from CAM q and t using CAM built-in functions
-    call qsat_water(state%t(1:ncol,1:pver), state%pmid(1:ncol,1:pver), &
-         es(1:ncol,1:pver), qs(1:ncol,1:pver))
-    
+    do k = 1, pver
+       call qsat_water(state%t(1:ncol,k), state%pmid(1:ncol,k), es(1:ncol,k), qs(1:ncol,k), ncol)
+    end do
     ! initialize rh
     rh(1:ncol,1:pver)=0._r8
     

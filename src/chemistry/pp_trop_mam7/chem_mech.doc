@@ -104,7 +104,7 @@ Class List
   
      Reactions
   usr_HO2_HO2      (  1)   HO2 + HO2 ->  H2O2                                                   rate = ** User defined **         (  2)
-                   (  2)   H2O2 + OH ->  H2O + HO2                                              rate = 2.90E-12*exp(   -160./t)   (  3)
+                   (  2)   H2O2 + OH ->  H2O + HO2                                              rate = 1.80E-12                   (  3)
   usr_SO2_OH       (  3)   SO2 + OH ->  H2SO4                                                   rate = ** User defined **         (  4)
                    (  4)   DMS + OH ->  SO2                                                     rate = 9.60E-12*exp(   -234./t)   (  5)
   usr_DMS_OH       (  5)   DMS + OH ->  .5*SO2 + .5*HO2                                         rate = ** User defined **         (  6)

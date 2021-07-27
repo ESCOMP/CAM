@@ -104,6 +104,7 @@ contains
     use cam_pio_utils,    only: cam_pio_handle_error
     use cam_grid_support, only: cam_grid_read_dist_array
     use ppgrid,           only: begchunk, endchunk
+    use phys_grid,        only: get_ncols_p
 
     ! Dummy argument
     type(file_desc_t), intent(inout) :: File
@@ -112,6 +113,7 @@ contains
 
     integer                          :: ierr, c
     integer                          :: adimlens(3)
+    integer                          :: ncols
     character(len=*), parameter      :: subname = 'SUBCOL_PACK_READ_RESTART'
 
     ! Array dimensions
@@ -123,13 +125,15 @@ contains
     call cam_grid_read_dist_array(File, grid_id, adimlens(1:2),              &
          fdimlens(:), nsubcol2d, nsubcol_desc)
 
+
      ! We need to update indcol2d so set nsubcol2d to itself
      do c = begchunk, endchunk
+       ncols = get_ncols_p(c)
+       if(ncols < pcols) nsubcol2d(ncols+1:pcols,:) = 0
        call subcol_set_nsubcol(c, pcols, nsubcol2d(:, c))
      end do
 
   end subroutine subcol_pack_read_restart
-
 
   subroutine subcol_get_nsubcol(lchnk, nsubcol)
     !-----------------------------------------------------------------------
@@ -160,6 +164,7 @@ contains
   end subroutine subcol_get_indcol
 
   subroutine subcol_set_nsubcol(lchnk, ngrdcol, nsubcol)
+    use cam_logfile,      only : iulog
     !-----------------------------------------------------------------------
     ! Set a chunk of the nsubcol module variable
     ! Also, recompute indcol for lchnk
@@ -172,6 +177,7 @@ contains
     integer                   :: i, j, indx
 
     if (any(nsubcol(:) > psubcols)) then
+       write(iulog, *) __FILE__,__LINE__,psubcols, nsubcol
        call endrun('subcol_set_nsubcol: psubcols not set large enough to hold the number of subcolumns requested')
     end if
     if (any(nsubcol(:) < 0)) then

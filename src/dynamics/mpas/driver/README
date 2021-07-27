@@ -1,0 +1,2 @@
+Code in this directory is compiled using the MPAS-Atmosphere Makefile
+(src/dynamics/mpas/Makefile).

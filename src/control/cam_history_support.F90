@@ -9,7 +9,7 @@ module cam_history_support
 !!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-  use shr_kind_mod,     only: r8=>shr_kind_r8, shr_kind_cl
+  use shr_kind_mod,     only: r8=>shr_kind_r8, shr_kind_cl, shr_kind_cxx
   use shr_sys_mod,      only: shr_sys_flush
   use pio,              only: var_desc_t, file_desc_t
   use cam_abortutils,   only: endrun
@@ -23,7 +23,7 @@ module cam_history_support
   private
   save
 
-  integer, parameter, public :: max_string_len = 256   ! Length of strings
+  integer, parameter, public :: max_string_len = shr_kind_cxx
   integer, parameter, public :: max_chars = shr_kind_cl         ! max chars for char variables
   integer, parameter, public :: fieldname_len = 24   ! max chars for field name
   integer, parameter, public :: fieldname_suffix_len =  3 ! length of field name suffix ("&IC")
@@ -307,7 +307,6 @@ module cam_history_support
   public     :: write_hist_coord_attrs, write_hist_coord_vars
   public     :: lookup_hist_coord_indices, hist_coord_find_levels
   public     :: get_hist_coord_index, hist_coord_name, hist_coord_size
-  public     :: sec2hms, date2yyyymmdd
   public     :: hist_dimension_name
 
   interface add_hist_coord
@@ -1363,7 +1362,10 @@ contains
     ! Register the name if necessary
     if (i == 0) then
        call add_hist_coord(trim(name), i)
-       !  if(masterproc) write(iulog,*) 'Registering hist coord',name,'(',i,') with length: ',vlen
+       if(masterproc) then
+          write(iulog, '(3a,i0,a,i0)') 'Registering hist coord', trim(name),  &
+               '(', i, ') with length: ', vlen
+       end if
     end if
 
     ! Set the coord's values
@@ -1425,7 +1427,10 @@ contains
     ! Register the name if necessary
     if (i == 0) then
        call add_hist_coord(trim(name), i)
-       !  if(masterproc) write(iulog,*) 'Registering hist coord',name,'(',i,') with length: ',vlen
+       if(masterproc) then
+          write(iulog, '(3a,i0,a,i0)') 'Registering hist coord', trim(name),  &
+               '(', i, ') with length: ', vlen
+       end if
     end if
 
     ! Set the coord's size
@@ -1501,7 +1506,10 @@ contains
            positive=positive, standard_name=standard_name,                    &
            vertical_coord=.true.)
       i = get_hist_coord_index(trim(name))
-      !  if(masterproc) write(iulog,*) 'Registering hist coord',name,'(',i,') with length: ',vlen
+      if(masterproc) then
+         write(iulog, '(3a,i0,a,i0)') 'Registering hist coord', trim(name),   &
+              '(', i, ') with length: ', vlen
+      end if
     end if
 
     if (present(formula_terms)) then
@@ -1927,68 +1935,6 @@ contains
     end do
 
   end function hist_coord_find_levels
-
-  !#######################################################################
-
-  character(len=8) function sec2hms (seconds)
-
-    ! Input arguments
-
-    integer, intent(in) :: seconds
-
-    ! Local workspace
-
-    integer :: hours     ! hours of hh:mm:ss
-    integer :: minutes   ! minutes of hh:mm:ss
-    integer :: secs      ! seconds of hh:mm:ss
-
-    if (seconds < 0 .or. seconds > 86400) then
-      write(iulog,*)'SEC2HRS: bad input seconds:', seconds
-      call endrun ()
-    end if
-
-    hours   = seconds / 3600
-    minutes = (seconds - hours*3600) / 60
-    secs    = (seconds - hours*3600 - minutes*60)
-
-    if (minutes < 0 .or. minutes > 60) then
-      write(iulog,*)'SEC2HRS: bad minutes = ',minutes
-      call endrun ()
-    end if
-
-    if (secs < 0 .or. secs > 60) then
-      write(iulog,*)'SEC2HRS: bad secs = ',secs
-      call endrun ()
-    end if
-
-    write(sec2hms,80) hours, minutes, secs
-80  format(i2.2,':',i2.2,':',i2.2)
-    return
-  end function sec2hms
-  character(len=10) function date2yyyymmdd (date)
-
-    ! Input arguments
-
-    integer, intent(in) :: date
-
-    ! Local workspace
-
-    integer :: year    ! year of yyyy-mm-dd
-    integer :: month   ! month of yyyy-mm-dd
-    integer :: day     ! day of yyyy-mm-dd
-
-    if (date < 0) then
-      call endrun ('DATE2YYYYMMDD: negative date not allowed')
-    end if
-
-    year  = date / 10000
-    month = (date - year*10000) / 100
-    day   = date - year*10000 - month*100
-
-    write(date2yyyymmdd,80) year, month, day
-80  format(i4.4,'-',i2.2,'-',i2.2)
-    return
-  end function date2yyyymmdd
 
   !#######################################################################
 

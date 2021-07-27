@@ -430,6 +430,7 @@ subroutine pcond (lchnk   ,ncol    ,troplev ,dlat    , &
    pracwo(:ncol,:) = 0._r8
    psacwo(:ncol,:) = 0._r8
    psacio(:ncol,:) = 0._r8
+
 !
 ! find the wet bulb temp and saturation value
 ! for the provisional t and q without condensation
@@ -440,9 +441,10 @@ subroutine pcond (lchnk   ,ncol    ,troplev ,dlat    , &
       call findsp_vc(qn(:ncol,k), tn(:ncol,k), p(:ncol,k), .true., &
            tsp(:ncol,k), qsp(:ncol,k))
 
-      call qsat(t(:ncol,k), p(:ncol,k), &
-           es(:ncol), qs(:ncol), gam=gamma(:ncol))
+      call qsat(t(1:ncol,k), p(1:ncol,k), es(1:ncol), qs(1:ncol), ncol, gam=gamma(1:ncol))
+
       do i = 1,ncol
+!
          relhum(i) = q(i,k)/qs(i)
 !
          cldm(i) = max(cldn(i,k),mincld)

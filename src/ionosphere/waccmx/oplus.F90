@@ -1,29 +1,31 @@
 module oplus
 !
-! Horizontally transport the O+ ion, adapted for WACCM-X from TIEGCM. 
-! Input O+ is received from WACCM physics/chemistry, transported O+ 
+! Horizontally transport the O+ ion, adapted for WACCM-X from TIEGCM.
+! Input O+ is received from WACCM physics/chemistry, transported O+
 ! (op_out and opnm_out) are passed back to chemistry.
 !
 ! B. Foster (foster@ucar.edu), May, 2015.
 !
-  use shr_kind_mod   ,only: r8 => shr_kind_r8
-  use cam_abortutils ,only: endrun
-  use cam_logfile    ,only: iulog
-  use savefield_waccm,only: savefld_waccm, savefld_waccm_switch     ! save field to waccm history
-  use edyn_geogrid   ,only: dphi,dlamda,cs,zp,expz,p0 !, nlon, nlat, nlev
-  use getapex        ,only: bx,by,bz,bmod2       ! (0:nlonp1,jspole-1:jnpole+1)
-  use edyn_params    ,only: re
-  use time_manager   ,only: get_step_size,is_first_step,is_first_restart_step
-  use edyn_mpi       ,only: array_ptr_type
-  use shr_const_mod  ,only: shr_const_g         ! gravitational constant (m/s^2)
-  use spmd_utils     ,only: masterproc
+  use shr_kind_mod,    only: r8 => shr_kind_r8
+  use shr_const_mod,   only: shr_const_g        ! gravitational constant (m/s^2)
+  use cam_abortutils,  only: endrun
+  use cam_logfile,     only: iulog
+  use spmd_utils,      only: masterproc
+  use savefield_waccm, only: savefld_waccm ! save field to waccm history
+  use edyn_geogrid,    only: dphi, dlamda, cs, p0
+  use getapex,         only: bx, by, bz, bmod2 ! (0:nlonp1,jspole-1:jnpole+1)
+  use edyn_params,     only: Rearth ! Radius of Earth (cm)
+  use time_manager,    only: get_step_size, is_first_step, is_first_restart_step
+  use edyn_mpi,        only: array_ptr_type
+  use infnan,          only: nan, assignment(=)
 
   implicit none
   private
+
   public :: oplus_xport,  oplus_init
   public :: kbot
 
-  real(r8) :: pi,rtd
+  real(r8) :: pi, rtd
 !
 ! Constants in CGS:
 !
@@ -50,19 +52,22 @@ module oplus
 ! The shapiro constant .03 is used for spatial smoothing of oplus,
 ! (shapiro is tuneable, and maybe should be a function of timestep size).
 ! dtsmooth and dtsmooth_div2 are used in the time smoothing.
-! To turn off all smoothing here, set shapiro=0. and dtsmooth = 1. 
+! To turn off all smoothing here, set shapiro=0. and dtsmooth = 1.
 !
 
-    real(r8),parameter ::    & 
+    real(r8),parameter ::    &
       dtsmooth = 0.95_r8,    &                ! for time smoother
       dtsmooth_div2 = 0.5_r8*(1._r8-dtsmooth)
- 
+
     real(r8) :: adiff_limiter
     real(r8) :: shapiro_const
     logical  :: enforce_floor
     logical  :: ring_polar_filter = .false.
     logical, parameter :: debug = .false.
-    
+
+    real(r8), allocatable :: expz(:) ! exp(-zp)
+    real(r8), allocatable :: zp(:)   ! log pressure (as in tiegcm lev(nlev))
+
   contains
 
 !-----------------------------------------------------------------------
@@ -70,112 +75,120 @@ module oplus
 
     use cam_history,  only : addfld, horiz_only
     use filter_module,only : filter_init
-    use edyn_geogrid ,only : nlon
+    use edyn_geogrid, only : nlev
 
     real(r8), intent(in) :: adiff_limiter_in
     real(r8), intent(in) :: shapiro_const_in
     logical , intent(in) :: enforce_floor_in
     logical , intent(in) :: ring_polar_filter_in
-    
+
     shapiro_const = shapiro_const_in
     enforce_floor = enforce_floor_in
     adiff_limiter = adiff_limiter_in
     ring_polar_filter = ring_polar_filter_in
-    
+
     call filter_init( ring_polar_filter )
 
     !
     ! Save fields from oplus module:
     !
-    call addfld ('OPLUS_Z'    ,(/ 'lev' /), 'I', 'cm   ','OPLUS_Z'     , gridname='fv_centers')
-    call addfld ('OPLUS_TN'   ,(/ 'lev' /), 'I', 'deg K','OPLUS_TN'    , gridname='fv_centers')
-    call addfld ('OPLUS_TE'   ,(/ 'lev' /), 'I', 'deg K','OPLUS_TE'    , gridname='fv_centers')
-    call addfld ('OPLUS_TI'   ,(/ 'lev' /), 'I', 'deg K','OPLUS_TI'    , gridname='fv_centers')
-    call addfld ('OPLUS_UN'   ,(/ 'lev' /), 'I', 'cm/s' ,'OPLUS_UN'    , gridname='fv_centers')
-    call addfld ('OPLUS_VN'   ,(/ 'lev' /), 'I', 'cm/s' ,'OPLUS_VN'    , gridname='fv_centers')
-    call addfld ('OPLUS_OM'   ,(/ 'lev' /), 'I', 'Pa/s' ,'OPLUS_OM'    , gridname='fv_centers')
-    call addfld ('OPLUS_O2'   ,(/ 'lev' /), 'I', 'mmr'  ,'OPLUS_O2'    , gridname='fv_centers')
-    call addfld ('OPLUS_O1'   ,(/ 'lev' /), 'I', 'mmr'  ,'OPLUS_O1'    , gridname='fv_centers') 
+    call addfld ('OPLUS_Z'    ,(/ 'lev' /), 'I', 'cm   ','OPLUS_Z'     , gridname='geo_grid')
+    call addfld ('OPLUS_TN'   ,(/ 'lev' /), 'I', 'deg K','OPLUS_TN'    , gridname='geo_grid')
+    call addfld ('OPLUS_TE'   ,(/ 'lev' /), 'I', 'deg K','OPLUS_TE'    , gridname='geo_grid')
+    call addfld ('OPLUS_TI'   ,(/ 'lev' /), 'I', 'deg K','OPLUS_TI'    , gridname='geo_grid')
+    call addfld ('OPLUS_UN'   ,(/ 'lev' /), 'I', 'cm/s' ,'OPLUS_UN'    , gridname='geo_grid')
+    call addfld ('OPLUS_VN'   ,(/ 'lev' /), 'I', 'cm/s' ,'OPLUS_VN'    , gridname='geo_grid')
+    call addfld ('OPLUS_OM'   ,(/ 'lev' /), 'I', 'Pa/s' ,'OPLUS_OM'    , gridname='geo_grid')
+    call addfld ('OPLUS_O2'   ,(/ 'lev' /), 'I', 'mmr'  ,'OPLUS_O2'    , gridname='geo_grid')
+    call addfld ('OPLUS_O1'   ,(/ 'lev' /), 'I', 'mmr'  ,'OPLUS_O1'    , gridname='geo_grid')
 
-    call addfld ('OPLUS_N2'   ,(/ 'lev' /), 'I', 'mmr'  ,'OPLUS_N2'    , gridname='fv_centers')
-    call addfld ('OPLUS_OP'   ,(/ 'lev' /), 'I', 'cm^3' ,'OPLUS_OP'    , gridname='fv_centers')
-    call addfld ('OPLUS_UI'   ,(/ 'lev' /), 'I', 'm/s'  ,'OPLUS_UI'    , gridname='fv_centers')
-    call addfld ('OPLUS_VI'   ,(/ 'lev' /), 'I', 'm/s'  ,'OPLUS_VI'    , gridname='fv_centers')
-    call addfld ('OPLUS_WI'   ,(/ 'lev' /), 'I', 'm/s'  ,'OPLUS_WI'    , gridname='fv_centers')
-    call addfld ('OPLUS_MBAR' ,(/ 'lev' /), 'I', ' '    ,'OPLUS_MBAR'  , gridname='fv_centers')
-    call addfld ('OPLUS_TR'   ,(/ 'lev' /), 'I', ' '    ,'OPLUS_TR'    , gridname='fv_centers')
-    call addfld ('OPLUS_TP0'  ,(/ 'lev' /), 'I', ' '    ,'OPLUS_TP0'   , gridname='fv_centers')
-    call addfld ('OPLUS_TP1'  ,(/ 'lev' /), 'I', ' '    ,'OPLUS_TP1'   , gridname='fv_centers')
-    !       call addfld ('OPLUS_TP2'  ,(/ 'lev' /), 'I', ' '    ,'OPLUS_TP2'   , gridname='fv_centers')
-    call addfld ('OPLUS_DJ'   ,(/ 'lev' /), 'I', ' '    ,'OPLUS_DJ'    , gridname='fv_centers')
-    call addfld ('OPLUS_HJ'   ,(/ 'lev' /), 'I', ' '    ,'OPLUS_HJ'    , gridname='fv_centers')
-    call addfld ('OPLUS_BVEL' ,(/ 'lev' /), 'I', ' '    ,'OPLUS_BVEL'  , gridname='fv_centers')
-    call addfld ('OPLUS_DIFFJ',(/ 'lev' /), 'I', ' '    ,'OPLUS_DIFFJ' , gridname='fv_centers')
-    call addfld ('OPLUS_OPNM' ,(/ 'lev' /), 'I', ' '    ,'OPLUS_OPNM'  , gridname='fv_centers')
-    call addfld ('OPNM_SMOOTH',(/ 'lev' /), 'I', ' '    ,'OPNM_SMOOTH' , gridname='fv_centers')
-    call addfld ('BDOTDH_OP'  ,(/ 'lev' /), 'I', ' '    ,'BDOTDH_OP'   , gridname='fv_centers')
-    call addfld ('BDOTDH_OPJ' ,(/ 'lev' /), 'I', ' '    ,'BDOTDH_OPJ'  , gridname='fv_centers')
-    call addfld ('BDOTDH_DIFF',(/ 'lev' /), 'I', ' '    ,'BDOTDH_DIFF' , gridname='fv_centers')
-    call addfld ('BDZDVB_OP'  ,(/ 'lev' /), 'I', ' '    ,'BDZDVB_OP'   , gridname='fv_centers') 
-    call addfld ('EXPLICIT0'  ,(/ 'lev' /), 'I', ' '    ,'EXPLICIT0'   , gridname='fv_centers')
+    call addfld ('OPLUS_N2'   ,(/ 'lev' /), 'I', 'mmr'  ,'OPLUS_N2'    , gridname='geo_grid')
+    call addfld ('OPLUS_OP'   ,(/ 'lev' /), 'I', 'cm^3' ,'OPLUS_OP'    , gridname='geo_grid')
+    call addfld ('OPLUS_UI'   ,(/ 'lev' /), 'I', 'm/s'  ,'OPLUS_UI'    , gridname='geo_grid')
+    call addfld ('OPLUS_VI'   ,(/ 'lev' /), 'I', 'm/s'  ,'OPLUS_VI'    , gridname='geo_grid')
+    call addfld ('OPLUS_WI'   ,(/ 'lev' /), 'I', 'm/s'  ,'OPLUS_WI'    , gridname='geo_grid')
+    call addfld ('OPLUS_MBAR' ,(/ 'lev' /), 'I', ' '    ,'OPLUS_MBAR'  , gridname='geo_grid')
+    call addfld ('OPLUS_TR'   ,(/ 'lev' /), 'I', ' '    ,'OPLUS_TR'    , gridname='geo_grid')
+    call addfld ('OPLUS_TP0'  ,(/ 'lev' /), 'I', ' '    ,'OPLUS_TP0'   , gridname='geo_grid')
+    call addfld ('OPLUS_TP1'  ,(/ 'lev' /), 'I', ' '    ,'OPLUS_TP1'   , gridname='geo_grid')
+    !       call addfld ('OPLUS_TP2'  ,(/ 'lev' /), 'I', ' '    ,'OPLUS_TP2'   , gridname='geo_grid')
+    call addfld ('OPLUS_DJ'   ,(/ 'lev' /), 'I', ' '    ,'OPLUS_DJ'    , gridname='geo_grid')
+    call addfld ('OPLUS_HJ'   ,(/ 'lev' /), 'I', ' '    ,'OPLUS_HJ'    , gridname='geo_grid')
+    call addfld ('OPLUS_BVEL' ,(/ 'lev' /), 'I', ' '    ,'OPLUS_BVEL'  , gridname='geo_grid')
+    call addfld ('OPLUS_DIFFJ',(/ 'lev' /), 'I', ' '    ,'OPLUS_DIFFJ' , gridname='geo_grid')
+    call addfld ('OPLUS_OPNM' ,(/ 'lev' /), 'I', ' '    ,'OPLUS_OPNM'  , gridname='geo_grid')
+    call addfld ('OPNM_SMOOTH',(/ 'lev' /), 'I', ' '    ,'OPNM_SMOOTH' , gridname='geo_grid')
+    call addfld ('BDOTDH_OP'  ,(/ 'lev' /), 'I', ' '    ,'BDOTDH_OP'   , gridname='geo_grid')
+    call addfld ('BDOTDH_OPJ' ,(/ 'lev' /), 'I', ' '    ,'BDOTDH_OPJ'  , gridname='geo_grid')
+    call addfld ('BDOTDH_DIFF',(/ 'lev' /), 'I', ' '    ,'BDOTDH_DIFF' , gridname='geo_grid')
+    call addfld ('BDZDVB_OP'  ,(/ 'lev' /), 'I', ' '    ,'BDZDVB_OP'   , gridname='geo_grid')
+    call addfld ('EXPLICIT0'  ,(/ 'lev' /), 'I', ' '    ,'EXPLICIT0'   , gridname='geo_grid')
 
-    call addfld ('EXPLICITa'  ,(/ 'lev' /), 'I', ' '    ,'EXPLICITa'   , gridname='fv_centers') ! part a
-    call addfld ('EXPLICITb'  ,(/ 'lev' /), 'I', ' '    ,'EXPLICITb'   , gridname='fv_centers') ! part b
-    call addfld ('EXPLICIT1'  ,(/ 'lev' /), 'I', ' '    ,'EXPLICIT1'   , gridname='fv_centers') ! complete
-    call addfld ('EXPLICIT'   ,(/ 'lev' /), 'I', ' '    ,'EXPLICIT'    , gridname='fv_centers') ! final w/ poles
+    call addfld ('EXPLICITa'  ,(/ 'lev' /), 'I', ' '    ,'EXPLICITa'   , gridname='geo_grid') ! part a
+    call addfld ('EXPLICITb'  ,(/ 'lev' /), 'I', ' '    ,'EXPLICITb'   , gridname='geo_grid') ! part b
+    call addfld ('EXPLICIT1'  ,(/ 'lev' /), 'I', ' '    ,'EXPLICIT1'   , gridname='geo_grid') ! complete
+    call addfld ('EXPLICIT'   ,(/ 'lev' /), 'I', ' '    ,'EXPLICIT'    , gridname='geo_grid') ! final w/ poles
 
-    call addfld ('EXPLICIT2'  ,(/ 'lev' /), 'I', ' '    ,'EXPLICIT2'   , gridname='fv_centers')
-    call addfld ('EXPLICIT3'  ,(/ 'lev' /), 'I', ' '    ,'EXPLICIT3'   , gridname='fv_centers')
-    call addfld ('TPHDZ0'     ,(/ 'lev' /), 'I', ' '    ,'TPHDZ0'      , gridname='fv_centers')
-    call addfld ('TPHDZ1'     ,(/ 'lev' /), 'I', ' '    ,'TPHDZ1'      , gridname='fv_centers')
-    call addfld ('DIVBZ'      ,(/ 'lev' /), 'I', ' '    ,'DIVBZ'       , gridname='fv_centers')
-    call addfld ('HDZMBZ'     ,(/ 'lev' /), 'I', ' '    ,'HDZMBZ'      , gridname='fv_centers')
-    call addfld ('HDZPBZ'     ,(/ 'lev' /), 'I', ' '    ,'HDZPBZ'      , gridname='fv_centers')
-    call addfld ('P_COEFF0'   ,(/ 'lev' /), 'I', ' '    ,'P_COEFF0'    , gridname='fv_centers')
-    call addfld ('Q_COEFF0'   ,(/ 'lev' /), 'I', ' '    ,'Q_COEFF0'    , gridname='fv_centers')
-    call addfld ('R_COEFF0'   ,(/ 'lev' /), 'I', ' '    ,'R_COEFF0'    , gridname='fv_centers')
-    call addfld ('P_COEFF0a'  ,(/ 'lev' /), 'I', ' '    ,'P_COEFF0a'   , gridname='fv_centers')
-    call addfld ('Q_COEFF0a'  ,(/ 'lev' /), 'I', ' '    ,'Q_COEFF0a'   , gridname='fv_centers')
-    call addfld ('DJINT'      ,(/ 'lev' /), 'I', ' '    ,'DJINT'       , gridname='fv_centers')
-    call addfld ('BDOTU'      ,(/ 'lev' /), 'I', ' '    ,'BDOTU'       , gridname='fv_centers')
-    call addfld ('R_COEFF0a'  ,(/ 'lev' /), 'I', ' '    ,'R_COEFF0a'   , gridname='fv_centers')
-    call addfld ('P_COEFF1'   ,(/ 'lev' /), 'I', ' '    ,'P_COEFF1'    , gridname='fv_centers')
-    call addfld ('Q_COEFF1'   ,(/ 'lev' /), 'I', ' '    ,'Q_COEFF1'    , gridname='fv_centers')
-    call addfld ('R_COEFF1'   ,(/ 'lev' /), 'I', ' '    ,'R_COEFF1'    , gridname='fv_centers')
-    call addfld ('P_COEFF2'   ,(/ 'lev' /), 'I', ' '    ,'P_COEFF2'    , gridname='fv_centers')
-    call addfld ('Q_COEFF2'   ,(/ 'lev' /), 'I', ' '    ,'Q_COEFF2'    , gridname='fv_centers')
-    call addfld ('R_COEFF2'   ,(/ 'lev' /), 'I', ' '    ,'R_COEFF2'    , gridname='fv_centers')
+    call addfld ('EXPLICIT2'  ,(/ 'lev' /), 'I', ' '    ,'EXPLICIT2'   , gridname='geo_grid')
+    call addfld ('EXPLICIT3'  ,(/ 'lev' /), 'I', ' '    ,'EXPLICIT3'   , gridname='geo_grid')
+    call addfld ('TPHDZ0'     ,(/ 'lev' /), 'I', ' '    ,'TPHDZ0'      , gridname='geo_grid')
+    call addfld ('TPHDZ1'     ,(/ 'lev' /), 'I', ' '    ,'TPHDZ1'      , gridname='geo_grid')
+    call addfld ('DIVBZ'      ,(/ 'lev' /), 'I', ' '    ,'DIVBZ'       , gridname='geo_grid')
+    call addfld ('HDZMBZ'     ,(/ 'lev' /), 'I', ' '    ,'HDZMBZ'      , gridname='geo_grid')
+    call addfld ('HDZPBZ'     ,(/ 'lev' /), 'I', ' '    ,'HDZPBZ'      , gridname='geo_grid')
+    call addfld ('P_COEFF0'   ,(/ 'lev' /), 'I', ' '    ,'P_COEFF0'    , gridname='geo_grid')
+    call addfld ('Q_COEFF0'   ,(/ 'lev' /), 'I', ' '    ,'Q_COEFF0'    , gridname='geo_grid')
+    call addfld ('R_COEFF0'   ,(/ 'lev' /), 'I', ' '    ,'R_COEFF0'    , gridname='geo_grid')
+    call addfld ('P_COEFF0a'  ,(/ 'lev' /), 'I', ' '    ,'P_COEFF0a'   , gridname='geo_grid')
+    call addfld ('Q_COEFF0a'  ,(/ 'lev' /), 'I', ' '    ,'Q_COEFF0a'   , gridname='geo_grid')
+    call addfld ('DJINT'      ,(/ 'lev' /), 'I', ' '    ,'DJINT'       , gridname='geo_grid')
+    call addfld ('BDOTU'      ,(/ 'lev' /), 'I', ' '    ,'BDOTU'       , gridname='geo_grid')
+    call addfld ('R_COEFF0a'  ,(/ 'lev' /), 'I', ' '    ,'R_COEFF0a'   , gridname='geo_grid')
+    call addfld ('P_COEFF1'   ,(/ 'lev' /), 'I', ' '    ,'P_COEFF1'    , gridname='geo_grid')
+    call addfld ('Q_COEFF1'   ,(/ 'lev' /), 'I', ' '    ,'Q_COEFF1'    , gridname='geo_grid')
+    call addfld ('R_COEFF1'   ,(/ 'lev' /), 'I', ' '    ,'R_COEFF1'    , gridname='geo_grid')
+    call addfld ('P_COEFF2'   ,(/ 'lev' /), 'I', ' '    ,'P_COEFF2'    , gridname='geo_grid')
+    call addfld ('Q_COEFF2'   ,(/ 'lev' /), 'I', ' '    ,'Q_COEFF2'    , gridname='geo_grid')
+    call addfld ('R_COEFF2'   ,(/ 'lev' /), 'I', ' '    ,'R_COEFF2'    , gridname='geo_grid')
 
-    call addfld ('P_COEFF'    ,(/ 'lev' /), 'I', ' '    ,'P_COEFF'     , gridname='fv_centers') ! final w/ poles
-    call addfld ('Q_COEFF'    ,(/ 'lev' /), 'I', ' '    ,'Q_COEFF'     , gridname='fv_centers') ! final w/ poles
-    call addfld ('R_COEFF'    ,(/ 'lev' /), 'I', ' '    ,'R_COEFF'     , gridname='fv_centers') ! final w/ poles
+    call addfld ('P_COEFF'    ,(/ 'lev' /), 'I', ' '    ,'P_COEFF'     , gridname='geo_grid') ! final w/ poles
+    call addfld ('Q_COEFF'    ,(/ 'lev' /), 'I', ' '    ,'Q_COEFF'     , gridname='geo_grid') ! final w/ poles
+    call addfld ('R_COEFF'    ,(/ 'lev' /), 'I', ' '    ,'R_COEFF'     , gridname='geo_grid') ! final w/ poles
 
-    call addfld ('OP_SOLVE'   ,(/ 'lev' /), 'I', ' '    ,'OP_SOLVE'    , gridname='fv_centers')
+    call addfld ('OP_SOLVE'   ,(/ 'lev' /), 'I', ' '    ,'OP_SOLVE'    , gridname='geo_grid')
+    call addfld ('op_dt'  ,    (/ 'lev' /), 'I', ' '    ,'op_dt'       , gridname='geo_grid')
+    call addfld ('amb_diff'  , (/ 'lev' /), 'I', ' '    ,'amb_diff'    , gridname='geo_grid')
+    call addfld ('dfield'  ,   (/ 'lev' /), 'I', ' '    ,'dfield'      , gridname='geo_grid')
+    call addfld ('dwind'  ,    (/ 'lev' /), 'I', ' '    ,'dwind'       , gridname='geo_grid')
 
-    call addfld ('OP_OUT'     ,(/ 'lev' /), 'I', 'cm^3' ,'OPLUS (oplus_xport output)', gridname='fv_centers')
-    call addfld ('OPNM_OUT'   ,(/ 'lev' /), 'I', 'cm^3' ,'OPNM_OUT'    , gridname='fv_centers')
-    call addfld ('BMOD2'      ,(/ 'lev' /), 'I', ' '    ,'BMOD2'       , gridname='fv_centers')
+    call addfld ('OP_OUT'     ,(/ 'lev' /), 'I', 'cm^3' ,'OPLUS (oplus_xport output)', gridname='geo_grid')
+    call addfld ('OPNM_OUT'   ,(/ 'lev' /), 'I', 'cm^3' ,'OPNM_OUT'    , gridname='geo_grid')
+    call addfld ('BMOD2'      ,(/ 'lev' /), 'I', ' '    ,'BMOD2'       , gridname='geo_grid')
 
-    call addfld ('OPLUS_FLUX', horiz_only , 'I', ' ','OPLUS_FLUX', gridname='fv_centers')
-    call addfld ('OPLUS_DIVB', horiz_only , 'I', ' ','OPLUS_DIVB', gridname='fv_centers')
-    call addfld ('OPLUS_BX'  , horiz_only , 'I', ' ','OPLUS_BX'  , gridname='fv_centers')
-    call addfld ('OPLUS_BY'  , horiz_only , 'I', ' ','OPLUS_BY'  , gridname='fv_centers')
-    call addfld ('OPLUS_BZ'  , horiz_only , 'I', ' ','OPLUS_BZ'  , gridname='fv_centers')
-    call addfld ('OPLUS_BMAG', horiz_only , 'I', ' ','OPLUS_BMAG', gridname='fv_centers')
+    call addfld ('OPLUS_FLUX', horiz_only , 'I', ' ','OPLUS_FLUX', gridname='geo_grid')
+    call addfld ('OPLUS_DIVB', horiz_only , 'I', ' ','OPLUS_DIVB', gridname='geo_grid')
+    call addfld ('OPLUS_BX'  , horiz_only , 'I', ' ','OPLUS_BX'  , gridname='geo_grid')
+    call addfld ('OPLUS_BY'  , horiz_only , 'I', ' ','OPLUS_BY'  , gridname='geo_grid')
+    call addfld ('OPLUS_BZ'  , horiz_only , 'I', ' ','OPLUS_BZ'  , gridname='geo_grid')
+    call addfld ('OPLUS_BMAG', horiz_only , 'I', ' ','OPLUS_BMAG', gridname='geo_grid')
 
+    allocate(zp(nlev))      ! log pressure (as in TIEGCM)
+    allocate(expz(nlev))    ! exp(-zp)
+    zp = nan
+    expz = nan
   end subroutine oplus_init
 
 !-----------------------------------------------------------------------
-  subroutine oplus_xport(tn,te,ti,un,vn,om,zg,o2,o1,n2,op_in,opnm_in, &
-                         mbar,ui,vi,wi,pmid,op_out,opnm_out, &
-                         i0,i1,j0,j1,nspltop,ispltop )
+  subroutine oplus_xport(tn, te, ti, un, vn, om, zg, o2, o1, n2, op_in,        &
+                         opnm_in, mbar, ui, vi, wi, pmid, op_out, opnm_out,                      &
+                         i0, i1, j0, j1, nspltop, ispltop)
 !
-! All input fields from dpie_coupling are in "TIEGCM" format, i.e., 
+! All input fields from dpie_coupling are in "TIEGCM" format, i.e.,
 ! longitude (-180->180), vertical (bot2top), and units (CGS).
 !
-    use edyn_mpi,only:  mp_geo_halos,mp_pole_halos,setpoles
-    use edyn_geogrid,only : glat, nlat, nlev
-    use trsolv_mod, only : trsolv
+    use edyn_mpi,     only: mp_geo_halos,mp_pole_halos,setpoles
+    use edyn_geogrid, only: glat, nlat, nlev
+    use trsolv_mod,   only: trsolv
 !
 ! Transport O+ ion.
 ! March-May, 2015 B.Foster: Adapted from TIEGCM (oplus.F) for WACCM-X.
@@ -218,66 +231,73 @@ module oplus
 !
 ! Output:
 !
-    real(r8),intent(out) ::       &
-      op_out  (nlev,i0:i1,j0:j1), & ! O+ output
+    real(r8),intent(out) ::          &
+         op_out  (nlev,i0:i1,j0:j1), & ! O+ output
       opnm_out(nlev,i0:i1,j0:j1)    ! O+ output at time n-1
 !
 ! Local:
 !
-    integer :: i,j,k,lat,jm1,jp1,jm2,jp2,lat0,lat1
-    real(r8),dimension(i0:i1,j0:j1) :: &
-      opflux,   & ! upward number flux of O+ (returned by sub oplus_flux)
-      dvb         ! divergence of B-field
+    integer :: i, j, k, lat, jm1, jp1, jm2, jp2, lat0, lat1
+    real(r8), dimension(i0:i1,j0:j1) :: &
+         opflux,   & ! upward number flux of O+ (returned by sub oplus_flux)
+         dvb         ! divergence of B-field
 !
 ! Local inputs with added halo points in lat,lon:
-! 
+!
     real(r8),dimension(nlev,i0-2:i1+2,j0-2:j1+2),target :: op, opnm
 
-    real(r8),dimension(nlev,i0-2:i1+2,j0-2:j1+2),target :: & 
-      tr          ,&   ! Reduced temperature (.5*(tn+ti))
-      tp          ,&   ! Plasma temperature N(O+)*(te+ti)
-      dj          ,&   ! diffusion coefficients
-      bvel        ,&   ! bvel @ j   = (B.U)*N(O+)
-      diffj       ,&   ! (D/(H*DZ)*2.*TP+M*G/R)*N(O+)
-      bdotdh_op   ,&   ! (b(h)*del(h))*phi
-      bdotdh_opj  ,&   ! (b(h)*del(h))*phi
-      bdotdh_diff ,&   ! (b(h)*del(h))*phi
-      opnm_smooth      ! O+ at time-1, smoothed
+    real(r8),dimension(nlev,i0-2:i1+2,j0-2:j1+2),target :: &
+         tr          ,&   ! Reduced temperature (.5*(tn+ti))
+         tp          ,&   ! Plasma temperature N(O+)*(te+ti)
+         dj          ,&   ! diffusion coefficients
+         bvel        ,&   ! bvel @ j   = (B.U)*N(O+)
+         diffj       ,&   ! (D/(H*DZ)*2.*TP+M*G/R)*N(O+)
+         bdotdh_op   ,&   ! (b(h)*del(h))*phi
+         bdotdh_opj  ,&   ! (b(h)*del(h))*phi
+         bdotdh_diff ,&   ! (b(h)*del(h))*phi
+         opnm_smooth      ! O+ at time-1, smoothed
 
-    real(r8),dimension(nlev,i0:i1,j0:j1) :: & ! for saving to histories
-      diag0,diag1,diag2,diag3,diag4,diag5,diag6,diag7,diag8,diag9,&
-      diag10,diag11,diag12,diag13,diag14,diag15,diag16,diag17,&
-      diag18,diag19,diag20,diag21,diag22,diag23,diag24,diag25,&
-      diag26,diag27
-    real(r8),dimension(nlev,i0:i1,j0-1:j1+1) :: hj ! scale height
+    real(r8), dimension(nlev,i0:i1,j0:j1) :: & ! for saving to histories
+         diag0, diag1, diag2, diag3, diag4, diag5, diag6, diag7, diag8, diag9, &
+         diag10, diag11, diag12, diag13, diag14, diag15, diag16, diag17, &
+         diag18, diag19, diag20, diag21, diag22, diag23, diag24, diag25, &
+         diag26, diag27
+    real(r8), dimension(nlev,i0:i1,j0-1:j1+1) :: hj ! scale height
     real(r8) :: gmr,dtime,dtx2,dtx2inv
-    real(r8),dimension(nlev,i0:i1) :: &
+    real(r8), dimension(nlev,i0:i1) :: &
       bdzdvb_op,   &
-      hdz,         &
       tp1,         &
+      divbz
+    real(r8),dimension(nlev,i0:i1,j0:j1) :: &
+      hdz,         &
       tphdz0,      &
       tphdz1,      &
       djint,       &
-      divbz,       &
       hdzmbz,      &
       hdzpbz,      &
       bdotu
+! for term analysis, lei, 07
+    real(r8),dimension(nlev,i0:i1,j0:j1) :: &
+       op_dt,   &         ! dn/dt
+       amb_diff,&         ! ambipole diffion
+       dwind,   &         ! neutral wind transport
+       dfield             ! electric field transport
 !
 ! Arguments for tridiagonal solver trsolv (no halos):
-    real(r8),dimension(nlev,i0:i1,j0:j1) :: &
-      explicit,explicit_a,explicit_b,p_coeff,q_coeff,r_coeff
+    real(r8), dimension(nlev,i0:i1,j0:j1) :: &
+      explicit, explicit_a, explicit_b, p_coeff, q_coeff, r_coeff
 
-    real(r8),dimension(i0:i1) :: ubca, ubcb ! O+ upper boundary
-    real(r8),parameter :: one=1._r8
-    logical :: calltrsolv
+    real(r8),  dimension(i0:i1) :: ubca, ubcb ! O+ upper boundary
+    real(r8),  parameter        :: one=1._r8
+    logical                     :: calltrsolv
 !
 ! Pointers for multiple-field calls (e.g., mp_geo_halos)
-    integer :: nfields
-    real(r8),allocatable :: polesign(:)
-    type(array_ptr_type),allocatable :: ptrs(:)
+    integer                           :: nfields
+    real(r8),             allocatable :: polesign(:)
+    type(array_ptr_type), allocatable :: ptrs(:)
 
-    real(r8) :: zpmid(nlev), opfloor
-    real(r8),parameter :: opmin=3000.0_r8
+    real(r8)                          :: zpmid(nlev), opfloor
+    real(r8),             parameter   :: opmin=3000.0_r8
 !
 ! Execute:
 !
@@ -286,19 +306,22 @@ module oplus
     dtx2 = 2._r8*dtime
     dtx2inv = 1._r8/dtx2
 
-    if ((is_first_step().or.is_first_restart_step()).and.ispltop==1) then
-      if (masterproc) write(iulog,"('oplus: shapiro=',es12.4,' dtsmooth=',es12.4,' dtsmooth_div2=',es12.4)") &
-        shapiro_const,dtsmooth,dtsmooth_div2
-      if (masterproc) write(iulog,"('oplus: shr_const_g=',f8.3)") shr_const_g
-    endif
+    if ((is_first_step() .or. is_first_restart_step()) .and. ispltop==1) then
+       if (masterproc) then
+          write(iulog,"(a,es12.4,a,es12.4,a,es12.4)")                       &
+               'oplus: shapiro=', shapiro_const, ', dtsmooth=', dtsmooth,   &
+               ', dtsmooth_div2=', dtsmooth_div2
+          write(iulog,"('oplus: shr_const_g=',f8.3)") shr_const_g
+       end if
+    end if
 
     !
-    ! zp,expz are declared in edyn_geogrid.F90, and allocated in sub 
+    ! zp,expz are declared in edyn_geogrid.F90, and allocated in sub
     ! set_geogrid (edyn_init.F90). pmid was passed in here (bot2top)
     ! from dpie_coupling.
     !
     ! kbot is the k-index at the bottom of O+ transport calculations,
-    !   corresponding to pressure pbot. 
+    !   corresponding to pressure pbot.
     !
     if ((is_first_step().or.is_first_restart_step()).and.ispltop==1) then
        kloop: do k=1,nlev
@@ -312,34 +335,35 @@ module oplus
           expz(k) = exp(-zp(k))
        enddo
        if (debug.and.masterproc) then
-          write(iulog,"('oplus: kbot=',i4,' pmid(kbot)=',es12.4,' zp(kbot)=',es12.4)") &
-               kbot,pmid(kbot),zp(kbot)
-       endif
-    endif
+          write(iulog,"(a,i4,a,es12.4,a,es12.4)")                 &
+               'oplus: kbot=', kbot, ', pmid(kbot)=', pmid(kbot), &
+               ', zp(kbot)=', zp(kbot)
+       end if
+    end if
 
     if (kbot < 1) then
        call endrun('oplus_xport: kbot is not set')
     endif
 
-    dzp = zp(nlev)-zp(nlev-1)  ! use top 2 levels (typically dzp=0.5)
+    dzp = zp(nlev) - zp(nlev-1)  ! use top 2 levels (typically dzp=0.5)
 
-    if (debug.and.masterproc) then
-      write(iulog,"('oplus: nlev=',i3,' zp (bot2top)   =',/,(6es12.3))") nlev,zp
-      write(iulog,"('oplus: nlev=',i3,' expz (bot2top) =',/,(6es12.3))") nlev,expz
-      write(iulog,"('oplus: nlev=',i3,' dzp  =',/,(6es12.3))") nlev,dzp
-    endif
+    if (debug .and. masterproc) then
+       write(iulog,"('oplus: nlev=',i3,' zp (bot2top)   =',/,(6es12.3))") nlev, zp
+       write(iulog,"('oplus: nlev=',i3,' expz (bot2top) =',/,(6es12.3))") nlev, expz
+       write(iulog,"('oplus: nlev=',i3,' dzp  =',/,(6es12.3))") nlev, dzp
+    end if
 !
 ! Set subdomain blocks from input (composition is in mmr):
 !
 !$omp parallel do private(i, j, k)
-    do k=1,nlev
-      do j=j0,j1
-        do i=i0,i1
+    do k = 1, nlev
+      do j = j0, j1
+        do i = i0, i1
           op(k,i,j)   = op_in(k,i,j)
           opnm(k,i,j) = opnm_in(k,i,j)
-        enddo
-      enddo
-    enddo
+        end do
+      end do
+    end do
 
 !
 ! Define halo points on inputs:
@@ -362,7 +386,7 @@ module oplus
 !
 ! Set latitude halo points over the poles (this does not change the poles).
 ! (the 2nd halo over the poles will not actually be used (assuming lat loops
-!  are lat=2,nlat-1), because jp1,jm1 will be the pole itself, and jp2,jm2 
+!  are lat=2,nlat-1), because jp1,jm1 will be the pole itself, and jp2,jm2
 !  will be the first halo over the pole)
 !
 ! mp_pole_halos first arg:
@@ -382,29 +406,29 @@ module oplus
 ! Save input fields to WACCM histories. Sub savefld_waccm_switch converts
 ! fields from tiegcm-format to waccm-format before saving to waccm histories.
 !
-    call savefld_waccm_switch(tn(:,i0:i1,j0:j1),'OPLUS_TN',nlev,i0,i1,j0,j1)
-    call savefld_waccm_switch(te(:,i0:i1,j0:j1),'OPLUS_TE',nlev,i0,i1,j0,j1)
-    call savefld_waccm_switch(ti(:,i0:i1,j0:j1),'OPLUS_TI',nlev,i0,i1,j0,j1)
-    call savefld_waccm_switch(un(:,i0:i1,j0:j1),'OPLUS_UN',nlev,i0,i1,j0,j1)
-    call savefld_waccm_switch(vn(:,i0:i1,j0:j1),'OPLUS_VN',nlev,i0,i1,j0,j1)
-    call savefld_waccm_switch(om(:,i0:i1,j0:j1),'OPLUS_OM',nlev,i0,i1,j0,j1)
-    call savefld_waccm_switch(zg(:,i0:i1,j0:j1),'OPLUS_Z' ,nlev,i0,i1,j0,j1)
-    call savefld_waccm_switch(o2(:,i0:i1,j0:j1),'OPLUS_O2',nlev,i0,i1,j0,j1)
-    call savefld_waccm_switch(o1(:,i0:i1,j0:j1),'OPLUS_O1',nlev,i0,i1,j0,j1)
-    call savefld_waccm_switch(n2(:,i0:i1,j0:j1),'OPLUS_N2',nlev,i0,i1,j0,j1)
-    call savefld_waccm_switch(op(:,i0:i1,j0:j1),'OPLUS_OP',nlev,i0,i1,j0,j1)
-    call savefld_waccm_switch(ui(:,i0:i1,j0:j1),'OPLUS_UI',nlev,i0,i1,j0,j1)
-    call savefld_waccm_switch(vi(:,i0:i1,j0:j1),'OPLUS_VI',nlev,i0,i1,j0,j1)
-    call savefld_waccm_switch(wi(:,i0:i1,j0:j1),'OPLUS_WI',nlev,i0,i1,j0,j1)
-    call savefld_waccm_switch(mbar(:,i0:i1,j0:j1),'OPLUS_MBAR',nlev,i0,i1,j0,j1)
-    call savefld_waccm_switch(opnm(:,i0:i1,j0:j1),'OPLUS_OPNM',nlev,i0,i1,j0,j1)
+    call savefld_waccm(tn(:,i0:i1,j0:j1),'OPLUS_TN',nlev,i0,i1,j0,j1)
+    call savefld_waccm(te(:,i0:i1,j0:j1),'OPLUS_TE',nlev,i0,i1,j0,j1)
+    call savefld_waccm(ti(:,i0:i1,j0:j1),'OPLUS_TI',nlev,i0,i1,j0,j1)
+    call savefld_waccm(un(:,i0:i1,j0:j1),'OPLUS_UN',nlev,i0,i1,j0,j1)
+    call savefld_waccm(vn(:,i0:i1,j0:j1),'OPLUS_VN',nlev,i0,i1,j0,j1)
+    call savefld_waccm(om(:,i0:i1,j0:j1),'OPLUS_OM',nlev,i0,i1,j0,j1)
+    call savefld_waccm(zg(:,i0:i1,j0:j1),'OPLUS_Z' ,nlev,i0,i1,j0,j1)
+    call savefld_waccm(o2(:,i0:i1,j0:j1),'OPLUS_O2',nlev,i0,i1,j0,j1)
+    call savefld_waccm(o1(:,i0:i1,j0:j1),'OPLUS_O1',nlev,i0,i1,j0,j1)
+    call savefld_waccm(n2(:,i0:i1,j0:j1),'OPLUS_N2',nlev,i0,i1,j0,j1)
+    call savefld_waccm(op(:,i0:i1,j0:j1),'OPLUS_OP',nlev,i0,i1,j0,j1)
+    call savefld_waccm(ui(:,i0:i1,j0:j1),'OPLUS_UI',nlev,i0,i1,j0,j1)
+    call savefld_waccm(vi(:,i0:i1,j0:j1),'OPLUS_VI',nlev,i0,i1,j0,j1)
+    call savefld_waccm(wi(:,i0:i1,j0:j1),'OPLUS_WI',nlev,i0,i1,j0,j1)
+    call savefld_waccm(mbar(:,i0:i1,j0:j1),'OPLUS_MBAR',nlev,i0,i1,j0,j1)
+    call savefld_waccm(opnm(:,i0:i1,j0:j1),'OPLUS_OPNM',nlev,i0,i1,j0,j1)
 !
-! Initialize output op_out with input op at 1:kbot-1, to retain values from 
-! bottom of column up to kbot. This routine will change (transport) these 
+! Initialize output op_out with input op at 1:kbot-1, to retain values from
+! bottom of column up to kbot. This routine will change (transport) these
 ! outputs only from kbot to the top (nlev).
 !
-    op_out   = 0._r8 
-    opnm_out = 0._r8 
+    op_out   = 0._r8
+    opnm_out = 0._r8
     op_out  (1:kbot-1,i0:i1,j0:j1) = op  (1:kbot-1,i0:i1,j0:j1)
     opnm_out(1:kbot-1,i0:i1,j0:j1) = opnm(1:kbot-1,i0:i1,j0:j1)
 !
@@ -421,7 +445,7 @@ module oplus
 !
 ! The solver will be called only if calltrsolv=true. It is sometimes
 ! set false when skipping parts of the code for debug purposes.
-! 
+!
     calltrsolv = .true.
 
     tr  = 0._r8
@@ -442,13 +466,13 @@ module oplus
       jp2 = lat+2
 !
 ! as of April, 2015, TIEGCM incorrectly uses te+ti instead of tn+ti
-! This has not been fixed in TIEGCM, because fixing it causes a tuning 
+! This has not been fixed in TIEGCM, because fixing it causes a tuning
 ! problem (ask Hanli and Wenbin). For WACCM, it is correct as below.
 ! (see also tp)
 !
 !$omp parallel do private(i,k)
       do i=i0,i1
-! 
+!
 ! Reduced temperature (tpj in tiegcm):
 ! 'OPLUS_TR' (has constants at poles)
 !
@@ -574,21 +598,21 @@ module oplus
 !------------------------- End first latitude scan ---------------------
 !
 ! Set pole values for opnm_smooth. Do this before savefld calls, so plots will
-! include the poles. All other fields in 1st lat scan got values at the poles 
+! include the poles. All other fields in 1st lat scan got values at the poles
 ! via jm1,jp1 above.
 !
     call setpoles(opnm_smooth(kbot:nlev,i0:i1,j0:j1),kbot,nlev,i0,i1,j0,j1)
 !
 ! Save to history file (exclude halo points)
 !
-   call savefld_waccm_switch(tr   (:,i0:i1,j0:j1),'OPLUS_TR'   ,nlev,i0,i1,j0,j1)
-   call savefld_waccm_switch(dj   (:,i0:i1,j0:j1),'OPLUS_DJ'   ,nlev,i0,i1,j0,j1)
-   call savefld_waccm_switch(hj   (:,i0:i1,j0:j1),'OPLUS_HJ'   ,nlev,i0,i1,j0,j1)
-   call savefld_waccm_switch(bvel (:,i0:i1,j0:j1),'OPLUS_BVEL' ,nlev,i0,i1,j0,j1)
-   call savefld_waccm_switch(diffj(:,i0:i1,j0:j1),'OPLUS_DIFFJ',nlev,i0,i1,j0,j1)
-   call savefld_waccm_switch(diag0(:,i0:i1,j0:j1),'OPLUS_TP0'  ,nlev,i0,i1,j0,j1)
-   call savefld_waccm_switch(tp   (:,i0:i1,j0:j1),'OPLUS_TP1'  ,nlev,i0,i1,j0,j1)
-   call savefld_waccm_switch(opnm_smooth(:,i0:i1,j0:j1),'OPNM_SMOOTH',nlev,i0,i1,j0,j1)
+   call savefld_waccm(tr   (:,i0:i1,j0:j1),'OPLUS_TR'   ,nlev,i0,i1,j0,j1)
+   call savefld_waccm(dj   (:,i0:i1,j0:j1),'OPLUS_DJ'   ,nlev,i0,i1,j0,j1)
+   call savefld_waccm(hj   (:,i0:i1,j0:j1),'OPLUS_HJ'   ,nlev,i0,i1,j0,j1)
+   call savefld_waccm(bvel (:,i0:i1,j0:j1),'OPLUS_BVEL' ,nlev,i0,i1,j0,j1)
+   call savefld_waccm(diffj(:,i0:i1,j0:j1),'OPLUS_DIFFJ',nlev,i0,i1,j0,j1)
+   call savefld_waccm(diag0(:,i0:i1,j0:j1),'OPLUS_TP0'  ,nlev,i0,i1,j0,j1)
+   call savefld_waccm(tp   (:,i0:i1,j0:j1),'OPLUS_TP1'  ,nlev,i0,i1,j0,j1)
+   call savefld_waccm(opnm_smooth(:,i0:i1,j0:j1),'OPNM_SMOOTH',nlev,i0,i1,j0,j1)
 !
 ! Set halo points where needed.
 !
@@ -668,11 +692,11 @@ module oplus
 ! bdotdh_opj already has non-constant polar values, but bdotdh_op poles are zero.
 ! Sub setpoles will set poles to the zonal average of the latitude below each pole.
 !
-! This may not be necessary, but do it for plotting: 
+! This may not be necessary, but do it for plotting:
     call setpoles(bdotdh_op(kbot:nlev,i0:i1,j0:j1),kbot,nlev,i0,i1,j0,j1)
 
-   call savefld_waccm_switch(bdotdh_op (:,i0:i1,j0:j1),'BDOTDH_OP' ,nlev,i0,i1,j0,j1)
-   call savefld_waccm_switch(bdotdh_opj(:,i0:i1,j0:j1),'BDOTDH_OPJ',nlev,i0,i1,j0,j1)
+   call savefld_waccm(bdotdh_op (:,i0:i1,j0:j1),'BDOTDH_OP' ,nlev,i0,i1,j0,j1)
+   call savefld_waccm(bdotdh_opj(:,i0:i1,j0:j1),'BDOTDH_OPJ',nlev,i0,i1,j0,j1)
 !
 ! Note mp_geo_halos will overwrite jm1,jp1 that was set above.
 ! bdotdh_opj needs longitude halos for the bdotdh call below.
@@ -701,11 +725,15 @@ module oplus
     q_coeff(1:nlev,i0:i1,j0:j1)     = 0._r8
     r_coeff(1:nlev,i0:i1,j0:j1)     = 0._r8
     bdotu       = 0._r8
+    op_dt       = 0._r8
+    amb_diff    = 0._r8
+    dwind       = 0._r8
+    dfield      = 0._r8
 
     diag1  = 0._r8 ; diag2 = 0._r8 ; diag3 = 0._r8 ; diag4 = 0._r8 ; diag5 = 0._r8
-    diag6  = 0._r8 ; diag7 = 0._r8 ; diag8 = 0._r8 ; diag9 = 0._r8 ; diag10= 0._r8  
-    diag11 = 0._r8 ; diag12= 0._r8 ; diag13= 0._r8 ; diag14= 0._r8 ; diag15= 0._r8  
-    diag16 = 0._r8 ; diag17= 0._r8 ; diag18= 0._r8 ; diag19= 0._r8 ; diag20= 0._r8  
+    diag6  = 0._r8 ; diag7 = 0._r8 ; diag8 = 0._r8 ; diag9 = 0._r8 ; diag10= 0._r8
+    diag11 = 0._r8 ; diag12= 0._r8 ; diag13= 0._r8 ; diag14= 0._r8 ; diag15= 0._r8
+    diag16 = 0._r8 ; diag17= 0._r8 ; diag18= 0._r8 ; diag19= 0._r8 ; diag20= 0._r8
     diag21 = 0._r8 ; diag22= 0._r8 ; diag23= 0._r8 ; diag24= 0._r8 ; diag25= 0._r8
     diag26 = 0._r8 ; diag27= 0._r8
 
@@ -752,13 +780,13 @@ module oplus
 ! Collect explicit terms:
 ! 'EXPLICIT0' (this will have poles set after third lat scan, before
 !              plotting. The poles will be constant in longitude, and
-!              may differ structurally from adjacent latitudes. 
+!              may differ structurally from adjacent latitudes.
 !
 !$omp parallel do private( i, k )
       do i=i0,i1
         do k=kbot,nlev
-          explicit(k,i,lat) = -one*(bdzdvb_op(k,i)+bdotdh_diff(k,i,lat)+ &
-            bdotdh_op(k,i,lat))
+          explicit(k,i,lat) = -one*(bdzdvb_op(k,i)+bdotdh_diff(k,i,lat)+bdotdh_op(k,i,lat))
+          amb_diff(k,i,lat) = -explicit(k,i,lat)
         enddo ! k=kbot,nlev
       enddo ! i=i0,i1
       diag2(:,i0:i1,lat) = explicit(:,i0:i1,lat) ! EXPLICIT0
@@ -783,7 +811,7 @@ module oplus
         do k=kbot,nlev-1
 !
 ! Original TIEGCM statement:
-!         explicit(k,i) = explicit(k,i)+1._r8/(2._r8*re)*        &
+!         explicit(k,i) = explicit(k,i)+1._r8/(2._r8*Rearth)*    &
 !           (1._r8/(cs(lat)*dlamda)*(bx(i,lat)*                  &
 !           (bvel(k,i+1,lat)-bvel(k,i-1,lat))+                   &
 !           0.5_r8*(ui(k,i,lat)+ui(k+1,i,lat))*bmod2(i,lat)**2*  &
@@ -802,7 +830,7 @@ module oplus
             (bvel(k,i+1,lat)-bvel(k,i-1,lat))+                   &
             0.5_r8*(ui(k,i,lat)+ui(k+1,i,lat))*bmod2(i,lat)**2*  &
             (op(k,i+1,lat)/bmod2(i+1,lat)**2-                    &
-             op(k,i-1,lat)/bmod2(i-1,lat)**2))                   
+             op(k,i-1,lat)/bmod2(i-1,lat)**2))
 !
 ! 'EXPLICITb'
 !
@@ -815,10 +843,11 @@ module oplus
 ! 'EXPLICIT1'
 ! explicit will receive polar values after this latitude scan.
 !
-         explicit(k,i,lat) = explicit(k,i,lat)+1._r8/(2._r8*re)* &
-           (1._r8/(cs(lat)*dlamda)*explicit_a(k,i,lat)+          &
+         explicit(k,i,lat) = explicit(k,i,lat)+1._r8/(2._r8*Rearth)* &
+           (1._r8/(cs(lat)*dlamda)*explicit_a(k,i,lat)+               &
            1._r8/dphi*explicit_b(k,i,lat))
 
+         dfield(k,i,lat) = -(explicit(k,i,lat)+amb_diff(k,i,lat))
 !
 ! explicit is bad at i=1,72,73,144 near south pole (npole appears to be ok)
 ! This does not appear to adversely affect the final O+ output, and TIEGCM
@@ -858,11 +887,11 @@ module oplus
       do i=i0,i1
         dvb(i,lat) = dvb(i,lat)/bz(i,lat)
       enddo ! i=i0,i1
- 
+
 !$omp parallel do private( i, k )
       do i=i0,i1
         do k=kbot,nlev
-          hdz(k,i) = 1._r8/(hj(k,i,lat)*dzp)
+          hdz(k,i,lat) = 1._r8/(hj(k,i,lat)*dzp)
           tp1(k,i) = 0.5_r8*(ti(k,i,lat)+te(k,i,lat))
         enddo ! k=kbot,nlev
       enddo ! i=i0,i1
@@ -870,8 +899,8 @@ module oplus
 !$omp parallel do private( i, k )
       do i=i0,i1
         do k=kbot,nlev-1
-          tphdz1(k+1,i) = 2._r8*tp1(k+1,i)*(0.5_r8*(hdz(k,i)+hdz(k+1,i)))+gmr
-          tphdz0(k+1,i) = 2._r8*tp1(k  ,i)*(0.5_r8*(hdz(k,i)+hdz(k+1,i)))-gmr
+          tphdz1(k+1,i,lat) = 2._r8*tp1(k+1,i)*(0.5_r8*(hdz(k,i,lat)+hdz(k+1,i,lat)))+gmr
+          tphdz0(k+1,i,lat) = 2._r8*tp1(k  ,i)*(0.5_r8*(hdz(k,i,lat)+hdz(k+1,i,lat)))-gmr
         enddo ! k=kbot,nlev-1
       enddo ! i=lon0,lon1
 !
@@ -882,17 +911,17 @@ module oplus
 !
 !$omp parallel do private( i )
       do i=i0,i1
-        tphdz1(kbot,i) = 2._r8*tp1(kbot,i)*                             &
-                         (1.5_r8*hdz(kbot,i)-0.5_r8*hdz(kbot+1,i))+gmr
-        tphdz1(nlev,i) = 2._r8*(2._r8*tp1(nlev-1,i)-tp1(nlev-2,i))*     &
-                         (1.5_r8*hdz(nlev-1,i)-0.5_r8*hdz(nlev-2,i))+gmr
-        tphdz0(kbot,i) = 2._r8*(2._r8*tp1(kbot,i)-tp1(kbot+1,i))*       &
-                         (1.5_r8*hdz(kbot,i)-0.5_r8*hdz(kbot+1,i))-gmr
-        tphdz0(nlev,i) = 2._r8*tp1(nlev-1,i)*                           &
-                         (1.5_r8*hdz(nlev-1,i)-0.5_r8*hdz(nlev-2,i))-gmr
+        tphdz1(kbot,i,lat) = 2._r8*tp1(kbot,i)*                             &
+                             (1.5_r8*hdz(kbot,i,lat)-0.5_r8*hdz(kbot+1,i,lat))+gmr
+        tphdz1(nlev,i,lat) = 2._r8*(2._r8*tp1(nlev-1,i)-tp1(nlev-2,i))*     &
+                             (1.5_r8*hdz(nlev-1,i,lat)-0.5_r8*hdz(nlev-2,i,lat))+gmr
+        tphdz0(kbot,i,lat) = 2._r8*(2._r8*tp1(kbot,i)-tp1(kbot+1,i))*       &
+                             (1.5_r8*hdz(kbot,i,lat)-0.5_r8*hdz(kbot+1,i,lat))-gmr
+        tphdz0(nlev,i,lat) = 2._r8*tp1(nlev-1,i)*                           &
+                             (1.5_r8*hdz(nlev-1,i,lat)-0.5_r8*hdz(nlev-2,i,lat))-gmr
       enddo ! i=i0,i1
-      diag4(:,i0:i1,lat) = tphdz0(:,i0:i1) ! TPHDZ0
-      diag5(:,i0:i1,lat) = tphdz1(:,i0:i1) ! TPHDZ1
+      diag4(:,i0:i1,lat) = tphdz0(:,i0:i1,lat) ! TPHDZ0
+      diag5(:,i0:i1,lat) = tphdz1(:,i0:i1,lat) ! TPHDZ1
 !
 ! djint = dj diffusion at interfaces:
 ! 'DJINT' (zero at the poles - messes up the plots - may give
@@ -901,12 +930,12 @@ module oplus
 !$omp parallel do private( i, k )
       do i=i0,i1
         do k=kbot,nlev-1
-          djint(k+1,i) = 0.5_r8*(dj(k,i,lat)+dj(k+1,i,lat))
-        enddo 
-        djint(kbot,i) = (1.5_r8*dj(kbot  ,i,lat)-0.5_r8*dj(kbot+1,i,lat))
-        djint(nlev,i) = (1.5_r8*dj(nlev-1,i,lat)-0.5_r8*dj(nlev-2,i,lat))
+          djint(k+1,i,lat) = 0.5_r8*(dj(k,i,lat)+dj(k+1,i,lat))
+        enddo
+        djint(kbot,i,lat) = (1.5_r8*dj(kbot  ,i,lat)-0.5_r8*dj(kbot+1,i,lat))
+        djint(nlev,i,lat) = (1.5_r8*dj(nlev-1,i,lat)-0.5_r8*dj(nlev-2,i,lat))
       enddo ! i=i0,i1
-      diag6(:,i0:i1,lat) = djint(:,i0:i1) ! DJINT
+      diag6(:,i0:i1,lat) = djint(:,i0:i1,lat) ! DJINT
 !
 ! divbz = (DIV(B)+(DH*D*BZ)/(D*BZ)
 ! 'DIVBZ' Field appears as a line following mins along magnetic equator (zero at poles)
@@ -915,10 +944,10 @@ module oplus
 !$omp parallel do private( i, k )
       do i=i0,i1
         do k=kbot,nlev
-          divbz(k,i) =                                                 &
-            dvb(i,lat)+1._r8/(re*dj(k,i,lat)*bz(i,lat)**2)*(bx(i,lat)/ &
-            cs(lat)*(dj(k,i+1,lat)*bz(i+1,lat)-dj(k,i-1,lat)*          &
-            bz(i-1,lat))/(2._r8*dlamda)+by(i,lat)*(dj(k,i,jp1)*        &
+          divbz(k,i) =                                                     &
+            dvb(i,lat)+1._r8/(Rearth*dj(k,i,lat)*bz(i,lat)**2)*(bx(i,lat)/ &
+            cs(lat)*(dj(k,i+1,lat)*bz(i+1,lat)-dj(k,i-1,lat)*              &
+            bz(i-1,lat))/(2._r8*dlamda)+by(i,lat)*(dj(k,i,jp1)*            &
             bz(i,jp1)-dj(k,i,jm1)*bz(i,jm1))/(2._r8*dphi))
         enddo ! k=kbot,nlev
       enddo ! i=i0,i1
@@ -931,12 +960,12 @@ module oplus
 !$omp parallel do private( i, k )
       do i=i0,i1
         do k=kbot,nlev
-          hdzmbz(k,i) = (hdz(k,i)-0.5_r8*divbz(k,i))*bz(i,lat)**2
-          hdzpbz(k,i) = (hdz(k,i)+0.5_r8*divbz(k,i))*bz(i,lat)**2
+          hdzmbz(k,i,lat) = (hdz(k,i,lat)-0.5_r8*divbz(k,i))*bz(i,lat)**2
+          hdzpbz(k,i,lat) = (hdz(k,i,lat)+0.5_r8*divbz(k,i))*bz(i,lat)**2
         enddo ! k=kbot,nlev
       enddo ! i=i0,i1
-      diag8(:,i0:i1,lat) = hdzmbz(:,i0:i1) ! HDZMBZ
-      diag9(:,i0:i1,lat) = hdzpbz(:,i0:i1) ! HDZPBZ
+      diag8(:,i0:i1,lat) = hdzmbz(:,i0:i1,lat) ! HDZMBZ
+      diag9(:,i0:i1,lat) = hdzpbz(:,i0:i1,lat) ! HDZPBZ
 !
 ! Sum O+ at time n-1 to explicit terms: N(O+)/(2*DT) (N-1)
 ! 'EXPLICIT2' (zero at the poles)
@@ -948,6 +977,10 @@ module oplus
             (opnm_smooth(k,i+2,lat)+opnm_smooth(k,i-2,lat)-4._r8*      &
             (opnm_smooth(k,i+1,lat)+opnm_smooth(k,i-1,lat))+6._r8*     &
              opnm_smooth(k,i,lat)))*dtx2inv
+          op_dt(k,i,lat) = -(opnm_smooth(k,i,lat)-shapiro_const* &
+            (opnm_smooth(k,i+2,lat)+opnm_smooth(k,i-2,lat)-4._r8* &
+            (opnm_smooth(k,i+1,lat)+opnm_smooth(k,i-1,lat))+6._r8* &
+             opnm_smooth(k,i,lat)))*dtx2inv
         enddo ! k=kbot,nlev
       enddo ! i=i0,i1
       diag10(:,i0:i1,lat) = explicit(:,i0:i1,lat) ! EXPLICIT2
@@ -957,10 +990,10 @@ module oplus
 !$omp parallel do private( i, k )
       do i=i0,i1
         do k=kbot,nlev-1
-          p_coeff(k,i,lat) =   hdzmbz(k,i)*djint(k  ,i)*tphdz0(k  ,i)
-          q_coeff(k,i,lat) = -(hdzpbz(k,i)*djint(k+1,i)*tphdz0(k+1,i)+  &
-                               hdzmbz(k,i)*djint(k  ,i)*tphdz1(k  ,i))
-          r_coeff(k,i,lat) =   hdzpbz(k,i)*djint(k+1,i)*tphdz1(k+1,i)
+          p_coeff(k,i,lat) =   hdzmbz(k,i,lat)*djint(k  ,i,lat)*tphdz0(k  ,i,lat)
+          q_coeff(k,i,lat) = -(hdzpbz(k,i,lat)*djint(k+1,i,lat)*tphdz0(k+1,i,lat)+  &
+                               hdzmbz(k,i,lat)*djint(k  ,i,lat)*tphdz1(k  ,i,lat))
+          r_coeff(k,i,lat) =   hdzpbz(k,i,lat)*djint(k+1,i,lat)*tphdz1(k+1,i,lat)
         enddo ! k=kbot,nlev-1
       enddo ! i=i0,i1
 
@@ -976,11 +1009,11 @@ module oplus
 !$omp parallel do private( i, k )
       do i=i0,i1
         do k=kbot,nlev
-          bdotu(k,i) = bx(i,lat)*un(k,i,lat)+by(i,lat)*vn(k,i,lat)+ &
+          bdotu(k,i,lat) = bx(i,lat)*un(k,i,lat)+by(i,lat)*vn(k,i,lat)+ &
             hj(k,i,lat)*bz(i,lat)*om(k,i,lat)
         enddo ! k=kbot,nlev
       enddo ! i=i0,i1
-      diag14(:,i0:i1,lat) = bdotu(:,i0:i1) ! BDOTU
+      diag14(:,i0:i1,lat) = bdotu(:,i0:i1,lat) ! BDOTU
 !
 ! Continue coefficients with vertical ion drift:
 ! wi is converted from interfaces to midpoints (first use of wi).
@@ -990,13 +1023,13 @@ module oplus
       do i=i0,i1
         do k=kbot,nlev-2
 
-          p_coeff(k+1,i,lat) = p_coeff(k+1,i,lat)+(bz(i,lat)*bdotu(k,i)+  &
-            0.5_r8*(wi(k+1,i,lat)+wi(k+2,i,lat)))*0.5_r8*hdz(k+1,i)
+          p_coeff(k+1,i,lat) = p_coeff(k+1,i,lat)+(bz(i,lat)*bdotu(k,i,lat)+  &
+            0.5_r8*(wi(k+1,i,lat)+wi(k+2,i,lat)))*0.5_r8*hdz(k+1,i,lat)
 
-          q_coeff(k,i,lat) = q_coeff(k,i,lat)-0.5_r8*(wi(k,i,lat)+wi(k+1,i,lat))*6._r8/re
+          q_coeff(k,i,lat) = q_coeff(k,i,lat)-0.5_r8*(wi(k,i,lat)+wi(k+1,i,lat))*6._r8/Rearth
 
-          r_coeff(k,i,lat) = r_coeff(k,i,lat)-(bz(i,lat)*bdotu(k+1,i)+  &
-            0.5_r8*(wi(k,i,lat)+wi(k+1,i,lat)))*0.5_r8*hdz(k,i)
+          r_coeff(k,i,lat) = r_coeff(k,i,lat)-(bz(i,lat)*bdotu(k+1,i,lat)+  &
+            0.5_r8*(wi(k,i,lat)+wi(k+1,i,lat)))*0.5_r8*hdz(k,i,lat)
 
         enddo ! k=kbot,nlev-1
       enddo ! i=i0,i1
@@ -1013,16 +1046,16 @@ module oplus
 !
 !$omp parallel do private( i )
       do i=i0,i1
-        p_coeff(kbot,i,lat) = p_coeff(kbot,i,lat)+(bz(i,lat)*  &  ! reset p_coeff lbc 
-          (2._r8*bdotu(kbot,i)-bdotu(kbot+1,i))+               &
-          0.5_r8*(wi(kbot,i,lat)+wi(kbot+1,i,lat)))*0.5_r8*hdz(kbot,i)
+        p_coeff(kbot,i,lat) = p_coeff(kbot,i,lat)+(bz(i,lat)*  &  ! reset p_coeff lbc
+          (2._r8*bdotu(kbot,i,lat)-bdotu(kbot+1,i,lat))+               &
+          0.5_r8*(wi(kbot,i,lat)+wi(kbot+1,i,lat)))*0.5_r8*hdz(kbot,i,lat)
 
-        q_coeff(nlev-1,i,lat) = q_coeff(nlev-1,i,lat)-         & 
-          0.5_r8*(wi(nlev,i,lat)+wi(nlev-1,i,lat))*6._r8/re 
+        q_coeff(nlev-1,i,lat) = q_coeff(nlev-1,i,lat)-         &
+          0.5_r8*(wi(nlev,i,lat)+wi(nlev-1,i,lat))*6._r8/Rearth
 
-        r_coeff(nlev-1,i,lat) = r_coeff(nlev-1,i,lat)-(bz(i,lat)*  &  
-          (2._r8*bdotu(nlev-1,i)-bdotu(nlev-2,i))+                 &  
-          0.5_r8*(wi(nlev,i,lat)+wi(nlev-1,i,lat)))*0.5_r8*hdz(nlev-1,i)
+        r_coeff(nlev-1,i,lat) = r_coeff(nlev-1,i,lat)-(bz(i,lat)*  &
+          (2._r8*bdotu(nlev-1,i,lat)-bdotu(nlev-2,i,lat))+                 &
+          0.5_r8*(wi(nlev,i,lat)+wi(nlev-1,i,lat)))*0.5_r8*hdz(nlev-1,i,lat)
       enddo ! i=i0,i1
 !
 ! Extrapolate to top level (tiegcm does not do this):
@@ -1042,7 +1075,7 @@ module oplus
 !$omp parallel do private( i, k )
       do i=i0,i1
         do k=kbot,nlev
-          q_coeff(k,i,lat) = q_coeff(k,i,lat)-bdotu(k,i)*dvb(i,lat)*bz(i,lat)-dtx2inv
+          q_coeff(k,i,lat) = q_coeff(k,i,lat)-bdotu(k,i,lat)*dvb(i,lat)*bz(i,lat)-dtx2inv
         enddo ! k=kbot,nlev-1
       enddo ! i=i0,i1
 !
@@ -1053,8 +1086,8 @@ module oplus
 !$omp parallel do private( i )
       do i=i0,i1
         ubca(i) = 0._r8
-        ubcb(i) = -bz(i,lat)**2*djint(nlev,i)*tphdz0(nlev,i)-ubca(i)
-        ubca(i) = -bz(i,lat)**2*djint(nlev,i)*tphdz1(nlev,i)+ubca(i)
+        ubcb(i) = -bz(i,lat)**2*djint(nlev,i,lat)*tphdz0(nlev,i,lat)-ubca(i)
+        ubca(i) = -bz(i,lat)**2*djint(nlev,i,lat)*tphdz1(nlev,i,lat)+ubca(i)
 !
 ! Q = Q+B/A*R
         q_coeff(nlev,i,lat) = q_coeff(nlev,i,lat)+ubcb(i)/ubca(i)* &
@@ -1094,7 +1127,7 @@ module oplus
     call setpoles(diag6 (kbot:nlev,i0:i1,j0:j1),kbot,nlev,i0,i1,j0,j1) ! DJINT
 !
 ! All tasks have global 2d bmod2.
-! bmod2 was set by sub magfield (getapex.F90) 
+! bmod2 was set by sub magfield (getapex.F90)
 !   allocate(bmod2(0:nlonp1,jspole-1:jnpole+1))
 ! Copy bmod2 poles to diagnostic array.
 !
@@ -1105,7 +1138,7 @@ module oplus
         diag25(k,i,j1)   = bmod2(i,j1)
       enddo
     enddo
-   call savefld_waccm_switch(diag25,'BMOD2'     ,nlev,i0,i1,j0,j1)
+   call savefld_waccm(diag25,'BMOD2'     ,nlev,i0,i1,j0,j1)
 !
 ! Assign polar values to coefficients for trsolv.
 !
@@ -1117,7 +1150,7 @@ module oplus
 ! Call solver, defining O+ output op_out:
 !
 ! Its best not to call this unless the coefficients and explicit terms
-! have been properly set in the third latitude scan above (e.g., during 
+! have been properly set in the third latitude scan above (e.g., during
 ! "goto 300" debugging above, where the coeffs may not have been calculated).
 !
     if (calltrsolv) then
@@ -1132,9 +1165,56 @@ module oplus
                     op_out  (kbot:nlev,i0:i1,lat), &
                     kbot,nlev,kbot,nlev,i0,i1 )
 
+
+
+
+! for term analysis
+        do k=kbot,nlev-1
+! diffusion
+           amb_diff(k,i0:i1,lat) = amb_diff(k,i0:i1,lat) + &
+                  hdzmbz(k,i0:i1,lat)*djint(k,  i0:i1,lat)*tphdz0(k,  i0:i1,lat)* op_out(k-1,i0:i1,lat) &
+                -(hdzpbz(k,i0:i1,lat)*djint(k+1,i0:i1,lat)*tphdz0(k+1,i0:i1,lat)+ &
+                  hdzmbz(k,i0:i1,lat)*djint(k  ,i0:i1,lat)*tphdz1(k  ,i0:i1,lat))* op_out(k,i0:i1,lat) &
+                 +hdzpbz(k,i0:i1,lat)*djint(k+1,i0:i1,lat)*tphdz1(k+1,i0:i1,lat)* op_out(k+1,i0:i1,lat)
+
+! electric field transport
+           if (k <= nlev-2) then
+              dfield(k,i0:i1,lat) = dfield(k,i0:i1,lat)+ &
+                   (0.5_r8*(wi(k+1,i0:i1,lat)+wi(k+2,i0:i1,lat)))* &
+                    0.5_r8*hdz(k+1,i0:i1,lat)* op_out(k-1,i0:i1,lat) &
+                   -0.5_r8*(wi(k,i0:i1,lat)+wi(k+1,i0:i1,lat))* &
+                   6._r8/Rearth* op_out(k,i0:i1,lat) &
+                   -(0.5_r8*(wi(k,i0:i1,lat)+wi(k+1,i0:i1,lat)))*0.5_r8*hdz(k,i0:i1,lat) &
+                   * op_out(k+1,i0:i1,lat)
+           else
+              dfield(k,i0:i1,lat) = dfield(k,i0:i1,lat)+ &
+                   (1*(wi(k+1,i0:i1,lat)))* &
+                   0.5_r8*hdz(k+1,i0:i1,lat)* op_out(k-1,i0:i1,lat) &
+                   -0.5_r8*(wi(k,i0:i1,lat)+wi(k+1,i0:i1,lat))* &
+                   6._r8/Rearth* op_out(k,i0:i1,lat) &
+                   -(0.5_r8*(wi(k,i0:i1,lat)+wi(k+1,i0:i1,lat)))*0.5_r8*hdz(k,i0:i1,lat) &
+                   * op_out(k+1,i0:i1,lat)
+           endif
+! wind transport
+           dwind(k,i0:i1,lat)=  &
+                (bz(i0:i1,lat)*bdotu(k,i0:i1,lat))* 0.5_r8*hdz(k+1,i0:i1,lat) * op_out(k-1,i0:i1,lat) &
+                -bdotu(k,i0:i1,lat)*dvb(i0:i1,lat)*bz(i0:i1,lat)* op_out(k,i0:i1,lat) &
+                -(bz(i0:i1,lat)*bdotu(k+1,i0:i1,lat))*0.5_r8*hdz(k,i0:i1,lat)* op_out(k+1,i0:i1,lat)
+
+! dO+/dt
+           op_dt(k,i0:i1,lat)= dtx2inv* op_out(k,i0:i1,lat) + op_dt(k,i0:i1,lat)
+!
+        enddo ! k=lev0+1,lev1-1
+
+
       enddo
 
-      call savefld_waccm_switch(op_out,'OP_SOLVE',nlev,i0,i1,j0,j1)
+      call savefld_waccm(op_out,'OP_SOLVE',nlev,i0,i1,j0,j1)
+
+      call savefld_waccm(op_dt,'op_dt',nlev,i0,i1,j0,j1)
+      call savefld_waccm(amb_diff,'amb_diff',nlev,i0,i1,j0,j1)
+      call savefld_waccm(dfield,'dfield',nlev,i0,i1,j0,j1)
+      call savefld_waccm(dwind,'dwind',nlev,i0,i1,j0,j1)
 
     else ! trsolv not called (debug only)
       op_out  (kbot:nlev,i0:i1,j0:j1) = op  (kbot:nlev,i0:i1,j0:j1)
@@ -1143,38 +1223,38 @@ module oplus
 !
 ! Write fields from third latitude scan to waccm history:
 !
-   call savefld_waccm_switch(explicit,'EXPLICIT',nlev,i0,i1,j0,j1) ! non-zero at ubc
-   call savefld_waccm_switch(p_coeff ,'P_COEFF' ,nlev,i0,i1,j0,j1) ! zero at ubc?
-   call savefld_waccm_switch(q_coeff ,'Q_COEFF' ,nlev,i0,i1,j0,j1) ! non-zero at ubc
-   call savefld_waccm_switch(r_coeff ,'R_COEFF' ,nlev,i0,i1,j0,j1) ! is set zero at ubc
+   call savefld_waccm(explicit,'EXPLICIT',nlev,i0,i1,j0,j1) ! non-zero at ubc
+   call savefld_waccm(p_coeff ,'P_COEFF' ,nlev,i0,i1,j0,j1) ! zero at ubc?
+   call savefld_waccm(q_coeff ,'Q_COEFF' ,nlev,i0,i1,j0,j1) ! non-zero at ubc
+   call savefld_waccm(r_coeff ,'R_COEFF' ,nlev,i0,i1,j0,j1) ! is set zero at ubc
 
-   call savefld_waccm_switch(bdotdh_diff(:,i0:i1,j0:j1), 'BDOTDH_DIFF',nlev,i0,i1,j0,j1)
-   call savefld_waccm_switch(diag1 ,'BDZDVB_OP',nlev,i0,i1,j0,j1)
-   call savefld_waccm_switch(diag2 ,'EXPLICIT0',nlev,i0,i1,j0,j1)
-   call savefld_waccm_switch(diag26,'EXPLICITa',nlev,i0,i1,j0,j1)
-   call savefld_waccm_switch(diag27,'EXPLICITb',nlev,i0,i1,j0,j1)
-   call savefld_waccm_switch(diag3 ,'EXPLICIT1',nlev,i0,i1,j0,j1)
-   call savefld_waccm_switch(diag4 ,'TPHDZ0'   ,nlev,i0,i1,j0,j1)
-   call savefld_waccm_switch(diag5 ,'TPHDZ1'   ,nlev,i0,i1,j0,j1)
-   call savefld_waccm_switch(diag6 ,'DJINT'    ,nlev,i0,i1,j0,j1)
-   call savefld_waccm_switch(diag7 ,'DIVBZ'    ,nlev,i0,i1,j0,j1)
-   call savefld_waccm_switch(diag8 ,'HDZMBZ'   ,nlev,i0,i1,j0,j1)
-   call savefld_waccm_switch(diag9 ,'HDZPBZ'   ,nlev,i0,i1,j0,j1)
-   call savefld_waccm_switch(diag10,'EXPLICIT2',nlev,i0,i1,j0,j1)
-   call savefld_waccm_switch(diag11,'P_COEFF0' ,nlev,i0,i1,j0,j1)
-   call savefld_waccm_switch(diag12,'Q_COEFF0' ,nlev,i0,i1,j0,j1)
-   call savefld_waccm_switch(diag13,'R_COEFF0' ,nlev,i0,i1,j0,j1)
-   call savefld_waccm_switch(diag14,'BDOTU'    ,nlev,i0,i1,j0,j1)
-   call savefld_waccm_switch(diag15,'P_COEFF1' ,nlev,i0,i1,j0,j1)
-   call savefld_waccm_switch(diag16,'Q_COEFF1' ,nlev,i0,i1,j0,j1)
-   call savefld_waccm_switch(diag17,'R_COEFF1' ,nlev,i0,i1,j0,j1)
-   call savefld_waccm_switch(diag18,'EXPLICIT3',nlev,i0,i1,j0,j1)
-   call savefld_waccm_switch(diag19,'P_COEFF2' ,nlev,i0,i1,j0,j1)
-   call savefld_waccm_switch(diag20,'Q_COEFF2' ,nlev,i0,i1,j0,j1)
-   call savefld_waccm_switch(diag21,'R_COEFF2' ,nlev,i0,i1,j0,j1)
-   call savefld_waccm_switch(diag22,'P_COEFF0a',nlev,i0,i1,j0,j1)
-   call savefld_waccm_switch(diag23,'Q_COEFF0a',nlev,i0,i1,j0,j1)
-   call savefld_waccm_switch(diag24,'R_COEFF0a',nlev,i0,i1,j0,j1)
+   call savefld_waccm(bdotdh_diff(:,i0:i1,j0:j1), 'BDOTDH_DIFF',nlev,i0,i1,j0,j1)
+   call savefld_waccm(diag1 ,'BDZDVB_OP',nlev,i0,i1,j0,j1)
+   call savefld_waccm(diag2 ,'EXPLICIT0',nlev,i0,i1,j0,j1)
+   call savefld_waccm(diag26,'EXPLICITa',nlev,i0,i1,j0,j1)
+   call savefld_waccm(diag27,'EXPLICITb',nlev,i0,i1,j0,j1)
+   call savefld_waccm(diag3 ,'EXPLICIT1',nlev,i0,i1,j0,j1)
+   call savefld_waccm(diag4 ,'TPHDZ0'   ,nlev,i0,i1,j0,j1)
+   call savefld_waccm(diag5 ,'TPHDZ1'   ,nlev,i0,i1,j0,j1)
+   call savefld_waccm(diag6 ,'DJINT'    ,nlev,i0,i1,j0,j1)
+   call savefld_waccm(diag7 ,'DIVBZ'    ,nlev,i0,i1,j0,j1)
+   call savefld_waccm(diag8 ,'HDZMBZ'   ,nlev,i0,i1,j0,j1)
+   call savefld_waccm(diag9 ,'HDZPBZ'   ,nlev,i0,i1,j0,j1)
+   call savefld_waccm(diag10,'EXPLICIT2',nlev,i0,i1,j0,j1)
+   call savefld_waccm(diag11,'P_COEFF0' ,nlev,i0,i1,j0,j1)
+   call savefld_waccm(diag12,'Q_COEFF0' ,nlev,i0,i1,j0,j1)
+   call savefld_waccm(diag13,'R_COEFF0' ,nlev,i0,i1,j0,j1)
+   call savefld_waccm(diag14,'BDOTU'    ,nlev,i0,i1,j0,j1)
+   call savefld_waccm(diag15,'P_COEFF1' ,nlev,i0,i1,j0,j1)
+   call savefld_waccm(diag16,'Q_COEFF1' ,nlev,i0,i1,j0,j1)
+   call savefld_waccm(diag17,'R_COEFF1' ,nlev,i0,i1,j0,j1)
+   call savefld_waccm(diag18,'EXPLICIT3',nlev,i0,i1,j0,j1)
+   call savefld_waccm(diag19,'P_COEFF2' ,nlev,i0,i1,j0,j1)
+   call savefld_waccm(diag20,'Q_COEFF2' ,nlev,i0,i1,j0,j1)
+   call savefld_waccm(diag21,'R_COEFF2' ,nlev,i0,i1,j0,j1)
+   call savefld_waccm(diag22,'P_COEFF0a',nlev,i0,i1,j0,j1)
+   call savefld_waccm(diag23,'Q_COEFF0a',nlev,i0,i1,j0,j1)
+   call savefld_waccm(diag24,'R_COEFF0a',nlev,i0,i1,j0,j1)
 !
 !------------------------------------------------------------------------
 !
@@ -1185,10 +1265,9 @@ module oplus
 !
    if (ring_polar_filter) then
      call ringfilter_op(op_out(kbot:nlev,i0:i1,j0:j1),kbot,nlev,i0,i1,j0,j1)
-   else    
+   else
      call filter2_op(op_out(kbot:nlev,i0:i1,j0:j1),kbot,nlev,i0,i1,j0,j1)
    endif
-   
 !
 !----------------------- Begin fourth latitude scan ---------------------
 !
@@ -1210,7 +1289,7 @@ module oplus
       enddo ! i=lon0,lon1
 !
 ! Enforce O+ minimum if enforce_opfloor is true.
-! Opfloor is Stan's "smooth floor" (product of two Gaussians, 
+! Opfloor is Stan's "smooth floor" (product of two Gaussians,
 !   dependent on latitude and pressure level) (opmin=3000.0):
 !
       if (enforce_floor) then
@@ -1230,8 +1309,8 @@ module oplus
 
 !
 ! Save O+ output to WACCM history (cm^3):
-   call savefld_waccm_switch(op_out  (:,i0:i1,j0:j1),'OP_OUT'  ,nlev,i0,i1,j0,j1)
-   call savefld_waccm_switch(opnm_out(:,i0:i1,j0:j1),'OPNM_OUT',nlev,i0,i1,j0,j1)
+   call savefld_waccm(op_out  (:,i0:i1,j0:j1),'OP_OUT'  ,nlev,i0,i1,j0,j1)
+   call savefld_waccm(opnm_out(:,i0:i1,j0:j1),'OPNM_OUT',nlev,i0,i1,j0,j1)
   end subroutine oplus_xport
 !-----------------------------------------------------------------------
   subroutine oplus_flux(opflux,lon0,lon1,lat0,lat1)
@@ -1254,9 +1333,9 @@ module oplus
       phin = -2.0e8_r8,   &
 !     phin = 0._r8,       &
       ppolar = 0._r8
-    real(r8) :: a(lon0:lon1)    
-    real(r8) :: fed(lon0:lon1)  
-    real(r8) :: fen(lon0:lon1)  
+    real(r8) :: a(lon0:lon1)
+    real(r8) :: fed(lon0:lon1)
+    real(r8) :: fen(lon0:lon1)
 !
 ! Set some paramaters:
     pi  = 4._r8*atan(1._r8)
@@ -1324,7 +1403,7 @@ module oplus
       do i=i0,i1
         call zenith(calday,(/dtr*glat(j)/),(/dtr*glon(i)/),cosZenAngR,1)
         chi(i,j) = acos(cosZenAngR(1))
-      enddo 
+      enddo
     enddo
   end subroutine get_zenith
 !-----------------------------------------------------------------------
@@ -1335,11 +1414,10 @@ module oplus
 !
 ! Args:
     integer,intent(in) :: i0,i1,j0,j1
-    real(r8),intent(out) :: dvb(i0:i1,j0:j1) 
+    real(r8),intent(out) :: dvb(i0:i1,j0:j1)
 !
 ! Local:
     integer :: i,j,jm1,jp1
-    real(r8),parameter :: re = 6.37122e8_r8  ! earth radius (cm)
 
     dvb = 0._r8
 
@@ -1348,7 +1426,7 @@ module oplus
     call savefld_waccm(bz(i0:i1,j0:j1),'OPLUS_BZ',1,i0,i1,j0,j1)
     call savefld_waccm(bmod2(i0:i1,j0:j1),'OPLUS_BMAG',1,i0,i1,j0,j1)
 !
-! Note re is in cm.
+! Note Rearth is in cm.
 ! (bx,by,bz are set by sub magfield (getapex.F90))
 ! (dphi,dlamda, and cs are set by sub set_geogrid (edyn_init.F90))
 !
@@ -1358,7 +1436,7 @@ module oplus
       do i=i0,i1
         dvb(i,j) = (((bx(i+1,j)-bx(i-1,j))/(2._r8*dlamda)+      &
           (cs(jp1)*by(i,jp1)-cs(jm1)*by(i,jm1))/(2._r8*dphi))/  &
-          cs(j)+2._r8*bz(i,j))/re
+          cs(j)+2._r8*bz(i,j))/Rearth
       enddo ! i=i0,i1
     enddo ! j=j0,j1
   end subroutine divb
@@ -1380,7 +1458,7 @@ module oplus
 !$omp parallel do private(i,k)
     do i=lon0,lon1
       do k=lev0,lev1-1
- 
+
         ans(k,i) = 1.42e17_r8*boltz*t(k,i)/(p0*expz(k)*.5_r8*(rms(k,i)+    &
           rms(k+1,i))*(ps2(k,i)*rmassinv_o1*sqrt(tr(k,i))*(1._r8-0.064_r8* &
           log10(tr(k,i)))**2*colfac+18.6_r8*n2(k,i)*rmassinv_n2+18.1_r8*   &
@@ -1390,9 +1468,9 @@ module oplus
       ans(lev1,i) = ans(lev1-1,i) ! should not need to do this
 
     enddo ! i=lon0,lon1
-!     
+!
 ! Cap ambipolar diffusion coefficient in ans.
-! 
+!
     ! acceptable range for limiter 1.e8 to 1.e9 ...
     where( ans(:,:) > adiff_limiter )
       ans(:,:) = adiff_limiter
@@ -1404,7 +1482,7 @@ module oplus
 !                                      kbot,nlev
 ! Evaluates ans = (d/(h*dz)*tp+m*g/r)*en
 ! Remember: "bot2top": lev0=kbot=bottom, lev1=nlev=top
-!  
+!
 ! Args:
     integer :: i0,i1,lev0,lev1,lat
     real(r8),dimension(lev0:lev1,i0:i1),intent(in) :: tp,en,hj
@@ -1463,8 +1541,8 @@ module oplus
 !$omp parallel do private( i, k )
     do i=lon0,lon1
       do k=lev0,lev1
-        ans(k,i) = 1._r8/re*(bx(i,lat)/(cs(lat)*2._r8*dlamda)* &
-          (phij(k,i+1)-phij(k,i-1))+by(i,lat)*                 &
+        ans(k,i) = 1._r8/Rearth*(bx(i,lat)/(cs(lat)*2._r8*dlamda)* &
+          (phij(k,i+1)-phij(k,i-1))+by(i,lat)*                     &
           (phijp1(k,i)-phijm1(k,i))/(2._r8*dphi))
       enddo ! k=lev0,lev1
     enddo ! i=lon0,lon1
@@ -1571,7 +1649,7 @@ module oplus
           do k=k0,k1
             fik(i,k-k0+1) = fkij(1)%ptr(k-k0+1,i,j)
           enddo
-        enddo 
+        enddo
 !
 ! Remove wave numbers > kut(lat):
 !
@@ -1650,7 +1728,7 @@ module oplus
           do k=k0,k1
             fik(i,k-k0+1) = fkij(1)%ptr(k-k0+1,i,j)
           enddo
-        enddo 
+        enddo
 !
 ! Remove wave numbers > kut(lat):
 !
@@ -1681,6 +1759,7 @@ module oplus
     enddo
     deallocate(fkij(1)%ptr)
   end subroutine filter2_op
+!-----------------------------------------------------------------------
 !-----------------------------------------------------------------------
   subroutine ringfilter_op(f,k0,k1,i0,i1,j0,j1)
     use filter_module,only: ringfilter
@@ -1728,7 +1807,7 @@ module oplus
           do k=k0,k1
             fik(i,k-k0+1) = fkij(1)%ptr(k-k0+1,i,j)
           enddo
-        enddo 
+        enddo
 !
 ! Remove wave numbers > kut(lat):
 !
