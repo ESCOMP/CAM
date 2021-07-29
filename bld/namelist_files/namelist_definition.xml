@@ -2653,7 +2653,7 @@ Default: .false.
 
 <entry id="micro_mg_evap_rhthrsh_ifs" type="logical" category="microphys"
        group="micro_mg_nl" valid_values="" >
-Do not evaporate precipitation until RH<90% as done in the
+Do not evaporate precipitation until RH &lt; 90% as done in the
 IFS model (https://www.ecmwf.int/en/forecasts/documentation-and-support)
 Default: .false.
 </entry>
