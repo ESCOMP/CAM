@@ -1050,7 +1050,6 @@ subroutine micro_mg_cam_init(pbuf2d)
    call addfld ('MSACWIO',    (/ 'lev' /), 'A', 'kg/kg/s',  'Conversion of cloud water from rime-splintering'         )
    call addfld ('PSACWSO',    (/ 'lev' /), 'A', 'kg/kg/s',  'Accretion of cloud water by snow'                        )
    call addfld ('BERGSO',     (/ 'lev' /), 'A', 'kg/kg/s',  'Conversion of cloud water to snow from bergeron'         )
-   call addfld ('VAPDEPSO',   (/ 'lev' /), 'A', 'kg/kg/s',  'Vapor deposition onto snow'                            )
    call addfld ('BERGO',      (/ 'lev' /), 'A', 'kg/kg/s',  'Conversion of cloud water to cloud ice from bergeron'    )
    call addfld ('MELTO',      (/ 'lev' /), 'A', 'kg/kg/s',  'Melting of cloud ice'                                    )
    call addfld ('MELTSTOT',   (/ 'lev' /), 'A', 'kg/kg/s',  'Melting of snow'                                    )
@@ -1063,6 +1062,7 @@ subroutine micro_mg_cam_init(pbuf2d)
    call addfld ('MNUCCRO',    (/ 'lev' /), 'A', 'kg/kg/s',  'Heterogeneous freezing of rain to snow'                  )
    call addfld ('MNUCCRIO',   (/ 'lev' /), 'A', 'kg/kg/s',  'Heterogeneous freezing of rain to ice'                  )
    call addfld ('PRACSO',     (/ 'lev' /), 'A', 'kg/kg/s',  'Accretion of rain by snow'                               )
+   call addfld ('VAPDEPSO',   (/ 'lev' /), 'A', 'kg/kg/s',  'Vapor deposition onto snow'                            )
    call addfld ('MELTSDT',    (/ 'lev' /), 'A', 'W/kg',     'Latent heating rate due to melting of snow'              )
    call addfld ('FRZRDT',     (/ 'lev' /), 'A', 'W/kg',     'Latent heating rate due to homogeneous freezing of rain' )
    if (micro_mg_version > 1) then
@@ -1285,6 +1285,7 @@ subroutine micro_mg_cam_init(pbuf2d)
       call add_default ('PRAO     ', budget_histfile, ' ')
       call add_default ('PRAIO    ', budget_histfile, ' ')
       call add_default ('PRACSO   ', budget_histfile, ' ')
+      call add_default ('VAPDEPSO ', budget_histfile, ' ')
       call add_default ('MSACWIO  ', budget_histfile, ' ')
       call add_default ('MPDW2V   ', budget_histfile, ' ')
       call add_default ('MPDW2P   ', budget_histfile, ' ')
@@ -1306,7 +1307,6 @@ subroutine micro_mg_cam_init(pbuf2d)
       call add_default ('FRZRDT   ', budget_histfile, ' ')
       call add_default ('CMEIOUT  ', budget_histfile, ' ')
       call add_default ('BERGSO   ', budget_histfile, ' ')
-      call add_default ('VAPDEPSO ', budget_histfile, ' ')
       call add_default ('BERGO    ', budget_histfile, ' ')
       call add_default ('MELTSTOT ', budget_histfile, ' ')
       call add_default ('MNUDEPO  ', budget_histfile, ' ')
@@ -1579,7 +1579,6 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8), target :: qssedten(state%psetcols,pver)   ! Snow mixing ratio tendency from sedimentation
    real(r8), target :: qgsedten(state%psetcols,pver)   ! Graupel/Hail mixing ratio tendency from sedimentation
    real(r8), target :: umg(state%psetcols,pver)        ! Mass-weighted Graupel/Hail fallspeed
-   real(r8), target :: vapdepso(state%psetcols,pver)   ! Vapor deposition onto snow
 
    real(r8), target :: prao(state%psetcols,pver)
    real(r8), target :: prco(state%psetcols,pver)
@@ -1600,6 +1599,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8), target :: meltstot(state%psetcols,pver)
    real(r8), target :: meltgtot(state%psetcols,pver)
    real(r8), target :: pracso (state%psetcols,pver)
+   real(r8), target :: vapdepso(state%psetcols,pver)   ! Vapor deposition onto snow
    real(r8), target :: meltsdt(state%psetcols,pver)
    real(r8), target :: frzrdt (state%psetcols,pver)
    real(r8), target :: mnuccdo(state%psetcols,pver)
@@ -1745,7 +1745,6 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8), target :: packed_msacwi(mgncol,nlev)
    real(r8), target :: packed_psacws(mgncol,nlev)
    real(r8), target :: packed_bergs(mgncol,nlev)
-   real(r8), target :: packed_vapdeps(mgncol,nlev)
    real(r8), target :: packed_berg(mgncol,nlev)
    real(r8), target :: packed_melt(mgncol,nlev)
    real(r8), target :: packed_homo(mgncol,nlev)
@@ -1759,6 +1758,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8), target :: packed_meltgtot(mgncol,nlev)
    real(r8), target :: packed_meltstot(mgncol,nlev)
    real(r8), target :: packed_pracs(mgncol,nlev)
+   real(r8), target :: packed_vapdeps(mgncol,nlev)
    real(r8), target :: packed_meltsdt(mgncol,nlev)
    real(r8), target :: packed_frzrdt(mgncol,nlev)
    real(r8), target :: packed_mnuccd(mgncol,nlev)
@@ -2025,7 +2025,6 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8) :: umsout_grid(pcols,pver)
    real(r8) :: qcsevapout_grid(pcols,pver)
    real(r8) :: qisevapout_grid(pcols,pver)
-   real(r8) :: vapdepso_grid(pcols,pver)
 
    real(r8) :: nc_grid(pcols,pver)
    real(r8) :: ni_grid(pcols,pver)
@@ -2443,7 +2442,6 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    call post_proc%add_field(p(msacwio), p(packed_msacwi))
    call post_proc%add_field(p(psacwso), p(packed_psacws))
    call post_proc%add_field(p(bergso), p(packed_bergs))
-   call post_proc%add_field(p(vapdepso), p(packed_vapdeps))
    call post_proc%add_field(p(bergo), p(packed_berg))
    call post_proc%add_field(p(melto), p(packed_melt))
    call post_proc%add_field(p(homoo), p(packed_homo))
@@ -2453,6 +2451,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    call post_proc%add_field(p(qireso), p(packed_qires))
    call post_proc%add_field(p(mnuccro), p(packed_mnuccr))
    call post_proc%add_field(p(pracso), p(packed_pracs))
+   call post_proc%add_field(p(vapdepso), p(packed_vapdeps))
    call post_proc%add_field(p(meltsdt), p(packed_meltsdt))
    call post_proc%add_field(p(frzrdt), p(packed_frzrdt))
    call post_proc%add_field(p(mnuccdo), p(packed_mnuccd))
@@ -2940,7 +2939,6 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
       call subcol_field_avg(am_evp_st, ngrdcol, lchnk, am_evp_st_grid)
 
       ! Average fields which are not in pbuf
-      call subcol_field_avg(vapdepso,  ngrdcol, lchnk, vapdepso_grid)
       call subcol_field_avg(qrout,     ngrdcol, lchnk, qrout_grid)
       call subcol_field_avg(qsout,     ngrdcol, lchnk, qsout_grid)
       call subcol_field_avg(nsout,     ngrdcol, lchnk, nsout_grid)
@@ -3044,7 +3042,6 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
       nrout_grid      = nrout
       cld_grid        = cld
       qcreso_grid     = qcreso
-      vapdepso_grid   = vapdepso
       melto_grid      = melto
       mnuccco_grid    = mnuccco
       mnuccto_grid    = mnuccto
@@ -3646,6 +3643,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    call outfld('MNUCCDOhet',  mnuccdohet,  psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('MNUCCRO',     mnuccro,     psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('PRACSO',      pracso ,     psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('VAPDEPSO',    vapdepso,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('MELTSDT',     meltsdt,     psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('FRZRDT',      frzrdt ,     psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('FICE',        nfice,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
@@ -3732,7 +3730,6 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    call outfld('MSACWIO',     msacwio_grid,     pcols, lchnk)
    call outfld('PSACWSO',     psacwso_grid,     pcols, lchnk)
    call outfld('BERGSO',      bergso_grid,      pcols, lchnk)
-   call outfld('VAPDEPSO',    vapdepso_grid,    pcols, lchnk)
    call outfld('BERGO',       bergo_grid,       pcols, lchnk)
    call outfld('MELTO',       melto_grid,       pcols, lchnk)
    call outfld('HOMOO',       homoo_grid,       pcols, lchnk)
