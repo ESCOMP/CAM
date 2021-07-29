@@ -6808,7 +6808,7 @@ Default: set by build-namelist.
 <!-- Ozone namelist variables shared between CAM and driver -->
 
 <entry id="atm_ozone_frequency" type="char*64" category="ozone_coupling"
-       group="ozone_coupling_nl" valid_values="instantaneous,monthly_interpolated">
+       group="ozone_coupling_nl" valid_values="subdaily,multiday_average">
 Frequency of surface ozone field passed from CAM to surface components.
 Surface ozone is passed every coupling interval, but this namelist flag
 indicates whether the timestep-level values are interpolated from a
