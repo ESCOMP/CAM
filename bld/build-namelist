@@ -314,6 +314,12 @@ EOF
 
 if ($print>=2) { print "Using namelist defaults file $nl_defaults_file$eol"; }
 
+# CAMDEV
+my $phys_check = $cfg->get('phys');
+if ($phys_check eq 'cam64') {
+    $cfg->set('phys', 'cam6');
+}
+
 my $defaults = Build::NamelistDefaults->new($nl_defaults_file, $cfg);
 
 #-----------------------------------------------------------------------------------------------
@@ -2723,7 +2729,7 @@ if (defined $cam_physpkg) {
         "This variable is set by build-namelist based on information\n".
         "from the configure cache file.\n";
 }
-$cam_physpkg = "'" . "$phys" . "'";  # add quotes to this string value
+$cam_physpkg = "'" . "$phys_check" . "'";  # add quotes to this string value
 $nl->set_variable_value('phys_ctl_nl', 'cam_physpkg', $cam_physpkg);
 
 my $use_simple_phys = $nl->get_value('use_simple_phys');

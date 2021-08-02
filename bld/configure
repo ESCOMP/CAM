@@ -96,7 +96,7 @@ OPTIONS
      -pbl <name>        Specify the PBL option [uw | hb | hbr].
      -pcols <n>         Set maximum number of columns in a chunk to <n>.
      -pergro            Switch enables building CAM for perturbation growth tests.
-     -phys <name>       Physics option [cam3 | cam4 | cam5 | cam6 |
+     -phys <name>       Physics option [cam3 | cam4 | cam5 | cam6 | cam64 |
                                         held_suarez | adiabatic | kessler | tj2016 |
                                         spcam_sam1mom | spcam_m2005].  Default: cam6
      -prog_species <list>Comma-separate list of prognostic mozart species packages.
@@ -564,6 +564,13 @@ my $simple_phys = 0;
 if ($phys_pkg =~ m/^adiabatic$|^held_suarez$|^kessler$|^tj2016$/) {
     $simple_phys = 1;
 }
+
+# Set flag to indicate a camdev physics option
+my $camdev_phys = 0;
+if ($phys_pkg eq 'cam64') {
+    $camdev_phys = 1;
+    $phys_pkg = 'cam6';
+    }
 
 #-----------------------------------------------------------------------------------------------
 # Chemistry package
@@ -2085,6 +2092,10 @@ sub write_filepath
     # offline unit driver (defaults to stub)
     print $fh "$camsrcdir/src/unit_drivers\n";
     print $fh "$camsrcdir/src/unit_drivers/${offline_drv}\n";
+
+    if ($camdev_phys) {
+      print $fh "$camsrcdir/src/physics/camdev\n";
+    }
 
     if ($simple_phys) {
       print $fh "$camsrcdir/src/physics/simple\n";

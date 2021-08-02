@@ -8,6 +8,7 @@
       CAM
     ===============
    -->
+    <desc atm="CAM64"                                                                                                                              >CAM cam64 physics:</desc>
     <desc atm="CAM60[%1PCT][%4xCO2][%CCTS1]][%CCTS2][%CFIRE][%CVBSX][%NUDG][%PORT][%RCO2][%SCAM][%SDYN][%WCCM][%WCMD][%WCSC][%WCTS][%WXIE][%WXIED]">CAM cam6 physics:</desc>
     <desc atm="CAM50[%CCTS1][%CLB][%PORT][%RCO2][%SCAM][%SDYN][%WCSC][%WCTS]"                                                                      >CAM cam5 physics:</desc>
     <desc atm="CAM40[%PORT][%RCO2][%SCAM][%SDYN][%TMOZ][%WX][%WXIE][%WXIED][%WCMD]"                                                                >CAM cam4 physics:</desc>
@@ -120,6 +121,7 @@
       <value compset="_CAM40">-phys cam4</value>
       <value compset="_CAM50">-phys cam5</value>
       <value compset="_CAM60">-phys cam6</value>
+      <value compset="_CAM64">-phys cam64</value>
 
       <!-- Modifiers for CAM runs (%.* includes SCAM runs) -->
       <value compset="_(CAM50|CAM60)%.*(CCTS1|CFIRE)">-chem trop_strat_mam4_vbs</value>
@@ -201,6 +203,7 @@
       <value compset="2000_CAM40%WXIE"   >waccmxie_ma_2000_cam4</value>
       <value compset="2000_CAM40%WX_"    >waccmx_ma_2000_cam4</value>
 
+      <value compset="2000_CAM64"        >2000_cam6</value>
       <value compset="2000_CAM60"        >2000_cam6</value>
       <value compset="2000_CAM60%WCTS"   >waccm_tsmlt_2000_cam6</value>
       <value compset="2000_CAM60%WCCM"   >waccm_ma_2000_cam6</value>
