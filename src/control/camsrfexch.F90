@@ -60,7 +60,7 @@ module camsrfexch
      real(r8) :: thbot(pcols)        !
      real(r8) :: co2prog(pcols)      ! prognostic co2
      real(r8) :: co2diag(pcols)      ! diagnostic co2
-     real(r8) :: ozone(pcols)        ! surface ozone concentration (ppbv)
+     real(r8) :: ozone(pcols)        ! surface ozone concentration (mole/mole)
      real(r8) :: psl(pcols)
      real(r8) :: bcphiwet(pcols)     ! wet deposition of hydrophilic black carbon
      real(r8) :: bcphidry(pcols)     ! dry deposition of hydrophilic black carbon
@@ -506,7 +506,7 @@ subroutine cam_export(state,cam_out,pbuf)
 
    ! get bottom layer ozone concentrations to export to surface models
    call rad_cnst_get_gas(0, 'O3', state, pbuf, o3_ptr)
-   cam_out%ozone(:ncol) = o3_ptr(:ncol,pver) * 1.0e+9_r8 * mwdry/mwo3 ! ppbv
+   cam_out%ozone(:ncol) = o3_ptr(:ncol,pver) * mwdry/mwo3 ! mole/mole
 
    !
    ! Precipation and snow rates from shallow convection, deep convection and stratiform processes.
