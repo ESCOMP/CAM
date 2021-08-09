@@ -426,6 +426,7 @@ subroutine cam_export(state,cam_out,pbuf)
    integer :: psl_idx
    integer :: prec_dp_idx, snow_dp_idx, prec_sh_idx, snow_sh_idx
    integer :: prec_sed_idx,snow_sed_idx,prec_pcw_idx,snow_pcw_idx
+   integer :: srf_ozone_idx
 
    real(r8), pointer :: psl(:)
 
@@ -437,7 +438,7 @@ subroutine cam_export(state,cam_out,pbuf)
    real(r8), pointer :: snow_sed(:)                ! snow from ZM   convection
    real(r8), pointer :: prec_pcw(:)                ! total precipitation   from Hack convection
    real(r8), pointer :: snow_pcw(:)                ! snow from Hack   convection
-   real(r8), pointer :: o3_ptr(:,:)
+   real(r8), pointer :: o3_ptr(:,:), srf_o3_ptr(:)
    !-----------------------------------------------------------------------
 
    lchnk = state%lchnk
@@ -454,6 +455,7 @@ subroutine cam_export(state,cam_out,pbuf)
    snow_sed_idx = pbuf_get_index('SNOW_SED', errcode=i)
    prec_pcw_idx = pbuf_get_index('PREC_PCW', errcode=i)
    snow_pcw_idx = pbuf_get_index('SNOW_PCW', errcode=i)
+   srf_ozone_idx = pbuf_get_index('SRFOZONE', errcode=i)
 
    if (prec_dp_idx > 0) then
      call pbuf_get_field(pbuf, prec_dp_idx, prec_dp)
@@ -505,8 +507,13 @@ subroutine cam_export(state,cam_out,pbuf)
    end if
 
    ! get bottom layer ozone concentrations to export to surface models
-   call rad_cnst_get_gas(0, 'O3', state, pbuf, o3_ptr)
-   cam_out%ozone(:ncol) = o3_ptr(:ncol,pver) * mwdry/mwo3 ! mole/mole
+   if (srf_ozone_idx > 0) then
+      call pbuf_get_field(pbuf, srf_ozone_idx, srf_o3_ptr)
+      cam_out%ozone(:ncol) = srf_o3_ptr(:ncol)
+   else
+      call rad_cnst_get_gas(0, 'O3', state, pbuf, o3_ptr)
+      cam_out%ozone(:ncol) = o3_ptr(:ncol,pver) * mwdry/mwo3 ! mole/mole
+   endif
 
    !
    ! Precipation and snow rates from shallow convection, deep convection and stratiform processes.
