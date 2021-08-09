@@ -327,10 +327,6 @@ subroutine nucleati(  &
             ! MG is expecting to find.
             ni = n1
 
-            ! If using prexsiting ice, then add it to the total.
-!            if (use_preexisting_ice .and. (.not. call_frm_zm)) then
-!              ni = ni + Ni_preice * 1e-6_r8
-!            end if
          end if
       end if
    end if
