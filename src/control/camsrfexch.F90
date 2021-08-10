@@ -409,6 +409,7 @@ subroutine cam_export(state,cam_out,pbuf)
    use constituents,     only: pcnst
    use physics_buffer,   only: pbuf_get_index, pbuf_get_field, physics_buffer_desc
    use rad_constituents, only: rad_cnst_get_gas
+   use cam_control_mod,  only: simple_phys
 
    implicit none
 
@@ -510,7 +511,7 @@ subroutine cam_export(state,cam_out,pbuf)
    if (srf_ozone_idx > 0) then
       call pbuf_get_field(pbuf, srf_ozone_idx, srf_o3_ptr)
       cam_out%ozone(:ncol) = srf_o3_ptr(:ncol)
-   else
+   else if (.not.simple_phys) then
       call rad_cnst_get_gas(0, 'O3', state, pbuf, o3_ptr)
       cam_out%ozone(:ncol) = o3_ptr(:ncol,pver) * mwdry/mwo3 ! mole/mole
    endif
