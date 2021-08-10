@@ -2734,7 +2734,7 @@ Default: .false.
 <entry id="micro_mg_implicit_fall" type="logical" category="microphys"
        group="micro_mg_nl" valid_values="" >
 If .true., use implicit fall speed (sedimentation) routine for all hydrometeors. Improves numerical stability of precipitation
-Default: .true.
+Default: .false.
 </entry>
 
 <entry id="micro_mg_accre_sees_auto" type="logical" category="microphys"
