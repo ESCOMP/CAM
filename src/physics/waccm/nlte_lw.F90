@@ -316,22 +316,28 @@ contains
     call t_stopf('nlte_fomichev_calc')
          
 
-!!! CAC NOTE -- When ready to replace qrlf with value calculated in ALI-ARMS, replace qrlaliarms with qrlf
     call t_startf('nlte_aliarms_calc')
-    if (nlte_use_aliarms) call nlte_aliarms_calc (lchnk,ncol,state%zm, state%pmid,state%t, &
-                                                  xo2mmr,xommr,xn2mmr,xco2mmr,qrlaliarms)
-    do i=1,pver
-       do j=1,pcols
-          if (is_nan(qrlaliarms(i,j))) then
-             write(errstring,*) 'nlte_lw: Nan in qrlaliarms for chunk', lchnk, 'and column',ncol
-             call endrun (errstring)
-          end if
+    if (nlte_use_aliarms) then
+       call nlte_aliarms_calc (lchnk,ncol,state%zm, state%pmid,state%t, &
+                                xo2mmr,xommr,xn2mmr,xco2mmr,qrlaliarms)
+       do j=1,pver
+          do i=1,ncol
+             if (is_nan(qrlaliarms(i,j))) then
+                write(errstring,*) 'nlte_lw: Nan in qrlaliarms for chunk', lchnk, 'and column',ncol
+                call endrun (errstring)
+             end if
+          end do
        end do
-    end do
 !!! CAC NOTE - PROBABABLY NEED TO PICK A MORE REALISTIC NUMBER THAN 1
-    if (any(qrlaliarms(:,:) > 1.0)) then
-       write(errstring,*) 'nlte_lw: Invalid value in qrlaliarms for chunk', lchnk, 'and column',ncol
-       call endrun (errstring)
+       if (any(qrlaliarms(:,:) > 1.0)) then
+          write(errstring,*) 'nlte_lw: Invalid value in qrlaliarms for chunk', lchnk, 'and column',ncol
+          call endrun (errstring)
+       end if
+
+       ! Apply the ALI-ARMS heating rate to the qrlf summation
+       qrlf(:,:) = 0._r8
+       qrlf(:ncol,:) = o3cool(:ncol,:) + qrlaliarms(:ncol,:)
+
     end if
 
     call t_stopf('nlte_aliarms_calc')
