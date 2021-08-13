@@ -311,6 +311,7 @@ contains
                                       mpas_pool_get_field, mpas_pool_get_array, mpas_pool_initialize_time_levels
        use atm_core, only : atm_mpas_init_block, core_clock => clock
        use mpas_dmpar, only : mpas_dmpar_exch_halo_field
+       use atm_time_integration, only : mpas_atm_dynamics_init
 
        procedure(halt_model) :: endrun
 
@@ -409,6 +410,11 @@ contains
 
        call mpas_pool_get_field(diag, 'rw', rw_field)
        call mpas_dmpar_exch_halo_field(rw_field)
+
+       !
+       ! Prepare the dynamics for integration
+       !
+       call mpas_atm_dynamics_init(domain_ptr)
 
     end subroutine cam_mpas_init_phase4
 
@@ -2314,11 +2320,17 @@ contains
        use mpas_log, only : mpas_log_finalize
        use mpas_timer, only : mpas_timer_stop
        use mpas_framework, only : mpas_framework_finalize
+       use atm_time_integration, only : mpas_atm_dynamics_finalize
 
        ! Local variables
        integer :: ierr
        character(len=*), parameter :: subname = 'cam_mpas_subdriver::cam_mpas_finalize'
 
+
+       !
+       ! Finalize the dynamics
+       !
+       call mpas_atm_dynamics_finalize(domain_ptr)
 
        call mpas_destroy_clock(clock, ierr)
        call mpas_decomp_destroy_decomp_list(domain_ptr % decompositions)

@@ -7832,6 +7832,19 @@ damping linearly ramps to zero by layer number from the top
 Default: 3
 </entry>
 
+<entry id="mpas_apply_lbcs" type="logical" category="mpas"
+       group="limited_area" valid_values="">
+Whether to apply lateral boundary conditions
+Default: FALSE
+</entry>
+
+<entry id="mpas_jedi_da" type="logical" category="mpas"
+       group="assimilation" valid_values="">
+Whether this run is within the JEDI data assimilation framework; used to add
+temperature and specific humidity as diagnostics
+Default: FALSE
+</entry>
+
 <entry id="mpas_block_decomp_file_prefix" type="char*512" input_pathname="abs" category="mpas"
        group="decomposition" valid_values="">
 Prefix of the MPAS graph decomposition file, to be suffixed with the MPI
