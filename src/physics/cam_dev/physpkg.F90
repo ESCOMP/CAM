@@ -936,7 +936,7 @@ contains
     snow_sh_idx  = pbuf_get_index('SNOW_SH')
 
     dlfzm_idx = pbuf_get_index('DLFZM', ierr)
-    cmfmczm_idx = pbuf_get_index('CMFMCDZM')
+    cmfmczm_idx = pbuf_get_index('CMFMCDZM', ierr)
 
     call phys_getopts(prog_modal_aero_out=prog_modal_aero)
 
@@ -1529,8 +1529,13 @@ contains
     else
        dlf(:,:) = 0._r8
     end if
-    call pbuf_get_field(pbuf, cmfmczm_idx, cmfmczm)
-    cmfmc(:ncol,:) = cmfmczm
+
+    if (cmfmczm_idx > 0) then
+      call pbuf_get_field(pbuf, cmfmczm_idx, cmfmczm)
+      cmfmc(:ncol,:) = cmfmczm
+    else
+      cmfmc(:ncol,:) = 0._r8
+    end if
 
     ! Adjust the surface fluxes to reduce instabilities in near sfc layer
     if (phys_do_flux_avg()) then
