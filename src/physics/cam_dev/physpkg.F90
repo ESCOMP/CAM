@@ -1375,7 +1375,6 @@ contains
     use lunar_tides,        only: lunar_tides_tend
     use ssatcontrail,       only: ssatcontrail_d0
     use physics_types,      only: physics_ptend_init, physics_ptend_sum, physics_ptend_scale
-    use cam_snapshot,       only: camdev_snapshot_all_outfld_tphysbc
     use microp_driver,      only: microp_driver_tend
     use microp_aero,        only: microp_aero_run
     use macrop_driver,      only: macrop_driver_tend
@@ -1638,8 +1637,8 @@ contains
              ! =====================================================
 
              if (trim(cam_take_snapshot_before) == "clubb_tend_cam") then
-                call camdev_snapshot_all_outfld_tphysbc(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
-                     flx_heat, cmfmc, cmfcme, pflx, zdu, rliq, rice, dlf, dlf2, rliq2, net_flx)
+                call camdev_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
+                     fh2o, surfric, obklen, flx_heat, cmfmc, pflx, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
              end if
 
              call clubb_tend_cam(state, ptend, pbuf, cld_macmic_ztodt,&
@@ -1668,8 +1667,8 @@ contains
              call physics_update(state, ptend, ztodt, tend)
 
              if (trim(cam_take_snapshot_after) == "clubb_tend_cam") then
-                call camdev_snapshot_all_outfld_tphysbc(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
-                      flx_heat, cmfmc, cmfcme, pflx, zdu, rliq, rice, dlf, dlf2, rliq2, net_flx)
+                call camdev_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
+                      fh2o, surfric, obklen, flx_heat, cmfmc, pflx, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
              end if
 
              ! Use actual qflux (not lhf/latvap) for consistency with surface fluxes and revised code
@@ -1698,8 +1697,8 @@ contains
           end if
 
           if (trim(cam_take_snapshot_before) == "microp_section") then
-             call camdev_snapshot_all_outfld_tphysbc(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
-                  flx_heat, cmfmc, cmfcme, pflx, zdu, rliq, rice, dlf, dlf2, rliq2, net_flx)
+             call camdev_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
+                  fh2o, surfric, obklen, flx_heat, cmfmc, pflx, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
           end if
 
           call t_startf('microp_aero_run')
@@ -1711,8 +1710,8 @@ contains
           if (use_subcol_microp) then
 
              if (trim(cam_take_snapshot_before) == "microp_driver_tend_subcol") then
-                call camdev_snapshot_all_outfld_tphysbc(cam_snapshot_before_num, state_sc, tend_sc, cam_in, cam_out, pbuf, &
-                     flx_heat, cmfmc, cmfcme, pflx, zdu, rliq, rice, dlf, dlf2, rliq2, net_flx)
+                call camdev_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state_sc, tend_sc, cam_in, cam_out, pbuf, &
+                     fh2o, surfric, obklen, flx_heat, cmfmc, pflx, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
              end if
 
              call microp_driver_tend(state_sc, ptend_sc, cld_macmic_ztodt, pbuf)
@@ -1763,8 +1762,8 @@ contains
              call physics_update (state_sc, ptend_sc, ztodt, tend_sc)
 
              if (trim(cam_take_snapshot_after) == "microp_driver_tend_subcol") then
-                call camdev_snapshot_all_outfld_tphysbc(cam_snapshot_after_num, state_sc, tend_sc, cam_in, cam_out, pbuf, &
-                   flx_heat, cmfmc, cmfcme, pflx, zdu, rliq, rice, dlf, dlf2, rliq2, net_flx)
+                call camdev_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state_sc, tend_sc, cam_in, cam_out, pbuf, &
+                   fh2o, surfric, obklen, flx_heat, cmfmc, pflx, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
              end if
 
              call check_energy_chng(state_sc, tend_sc, "microp_tend_subcol", &
@@ -1795,8 +1794,8 @@ contains
           call physics_update (state, ptend, ztodt, tend)
 
           if (trim(cam_take_snapshot_after) == "microp_section") then
-             call camdev_snapshot_all_outfld_tphysbc(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
-                  flx_heat, cmfmc, cmfcme, pflx, zdu, rliq, rice, dlf, dlf2, rliq2, net_flx)
+             call camdev_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
+                  fh2o, surfric, obklen, flx_heat, cmfmc, pflx, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
           end if
 
           call check_energy_chng(state, tend, "microp_tend", nstep, ztodt, &
@@ -1845,8 +1844,8 @@ contains
        endif
 
        if (trim(cam_take_snapshot_before) == "aero_model_wetdep") then
-          call camdev_snapshot_all_outfld_tphysbc(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
-                  flx_heat, cmfmc, cmfcme, pflx, zdu, rliq, rice, dlf, dlf2, rliq2, net_flx)
+          call camdev_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
+                  fh2o, surfric, obklen, flx_heat, cmfmc, pflx, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
        end if
 
        call aero_model_wetdep( state, ztodt, dlf, cam_out, ptend, pbuf)
@@ -1857,8 +1856,8 @@ contains
        call physics_update(state, ptend, ztodt, tend)
 
        if (trim(cam_take_snapshot_after) == "aero_model_wetdep") then
-          call camdev_snapshot_all_outfld_tphysbc(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
-                  flx_heat, cmfmc, cmfcme, pflx, zdu, rliq, rice, dlf, dlf2, rliq2, net_flx)
+          call camdev_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
+                  fh2o, surfric, obklen, flx_heat, cmfmc, pflx, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
        end if
 
        call t_startf ('convect_deep_tend2')
@@ -1900,8 +1899,8 @@ contains
     call t_startf('radiation')
 
     if (trim(cam_take_snapshot_before) == "radiation_tend") then
-       call camdev_snapshot_all_outfld_tphysbc(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
-                  flx_heat, cmfmc, cmfcme, pflx, zdu, rliq, rice, dlf, dlf2, rliq2, net_flx)
+       call camdev_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
+                  fh2o, surfric, obklen, flx_heat, cmfmc, pflx, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
     end if
 
     call radiation_tend( &
@@ -1919,8 +1918,8 @@ contains
     call physics_update(state, ptend, ztodt, tend)
 
     if (trim(cam_take_snapshot_after) == "radiation_tend") then
-       call camdev_snapshot_all_outfld_tphysbc(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
-                  flx_heat, cmfmc, cmfcme, pflx, zdu, rliq, rice, dlf, dlf2, rliq2, net_flx)
+       call camdev_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
+                  fh2o, surfric, obklen, flx_heat, cmfmc, pflx, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
     end if
 
     call check_energy_chng(state, tend, "radheat", nstep, ztodt, zero, zero, zero, net_flx)
