@@ -2739,7 +2739,7 @@ Default: .false.
 
 <entry id="micro_mg_accre_sees_auto" type="logical" category="microphys"
        group="micro_mg_nl" valid_values="" >
-If true, then the autoconvered liquid is added to rain and removed from cloud before accretion is estimated.
+If true, then the autoconverted liquid is added to rain and removed from cloud before accretion is estimated.
 Default: .false.
 </entry>
 
