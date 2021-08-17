@@ -1168,7 +1168,7 @@ contains
 
        ! onlineAlbedo    -> True  (use CLM albedo)
        !                 -> False (read monthly-mean albedo from HEMCO)
-       Input_Opt%onlineAlbedo           = .True.
+       Input_Opt%onlineAlbedo           = .False.
 
        ! onlineLandTypes -> True  (use CLM landtypes)
        !                 -> False (read landtypes from HEMCO)
@@ -1890,7 +1890,7 @@ contains
     use CESMGC_Diag_Mod,     only : wetdep_name, wtrate_name
 
     use Tropopause,          only : Tropopause_findChemTrop, Tropopause_Find
-    use HCO_Utilities_GC_Mod  ! Utility routines for GC-HEMCO interface
+    use HCO_Interface_GC_Mod  ! Utility routines for GC-HEMCO interface
 
     ! For calculating SZA
     use Orbit,               only : zenith
@@ -2024,7 +2024,6 @@ contains
     REAL(r8)     :: Sd_Ice, Sd_Lnd, Sd_Avg, Frc_Ice
 
     ! Estimating cloud optical depth
-    REAL(r8)     :: cld(PCOLS,PVER)
     REAL(r8)     :: TauCli(PCOLS,PVER)
     REAL(r8)     :: TauClw(PCOLS,PVER)
     REAL(r8), PARAMETER :: re_m   = 1.0e-05_r8 ! Cloud drop radius in m
@@ -2553,58 +2552,45 @@ contains
     TauCli = 0.0e+0_r8
     TauClw = 0.0e+0_r8
 
-    ! Note: all using CAM vertical convention (1 = TOA)
-    ! Calculation is based on that done for MOZART
-    DO J = 1, nY
-    DO L = nZ, 1, -1
-       cldW(J,L) = state%q(J,L,ixCldLiq) + state%q(J,L,ixCldIce)
-       ! Convert water mixing ratio [kg/kg] to water content [g/m^3]
-       IF ( cldW(J,L) * state%pmid(J,L) / &
-             (state%T(J,L) * 287.0e+00_r8) * 1.0e+03_r8 <= 0.01_r8 .AND. &
-            cldFrc(J,L) /= 0.0e+00_r8 ) THEN
-          cld(J,L) = 0.0e+00_r8
-       ELSE
-          cld(J,L) = cldFrc(J,L)
-       ENDIF
-       IF ( ixNDrop > 0 ) nCldWtr(J,L) = state%q(J,L,ixNDrop)
-    ENDDO
-    ENDDO
+    cldW(:nY,:nZ) = state%q(:nY,:nZ,ixCldLiq) + state%q(:nY,:nZ,ixCldIce)
+    IF ( ixNDrop > 0 ) nCldWtr(:nY,:nZ) = state%q(:nY,:nZ,ixNDrop)
 
     DO J = 1, nY
-       IF ( COUNT( cld(J,:nZ) > cldMin ) > 0 ) THEN
-          DO L = nZ, 1, -1
-             ! =================================================================
-             ! ===========   Compute cloud optical depth based on   ============
-             ! ===========     Liao et al. JGR, 104, 23697, 1999    ============
-             ! =================================================================
-             !
-             ! Tau = 3/2 * LWC * dZ / ( \rho_w * r_e )
-             ! dZ  = - dP / ( \rho_air * g )
-             ! since Pint is ascending, we can neglect the minus sign
-             !
-             ! Tau = 3/2 * LWC * dP / ( \rho_air * r_e * \rho_w * g )
-             ! LWC / \rho_air = Q
-             !
-             ! Tau    = 3/2 * Q * dP / ( r_e * rho_w * g )
-             ! Tau(L) = 3/2 * Q(L) * (Pint(L+1) - Pint(L)) / (re * rho_w * g )
-             ! Tau(L) = Q(L) * (Pint(L+1) - Pint(L)) * Cnst
-             !
-             ! Unit check:                    |
-             ! Q    : [kg H2O/kg air]         |
-             ! Pint : [Pa]=[kg air/m/s^2]     |
-             ! re   : [m]                     |   = 1.0e-5
-             ! rho_w: [kg H2O/m^3]            |   = 1.0e+3
-             ! g    : [m/s^2]                 |   = 9.81
-             TauClw(J,L) = state%q(J,L,ixCldLiq)               &
-                         * (state%pint(J,L+1)-state%pint(J,L)) &
-                         * cnst
-             TauClw(J,L) = MAX(TauClw(J,L), 0.0e+00_r8)
-             TauCli(J,L) = state%q(J,L,ixCldIce)               &
-                         * (state%pint(J,L+1)-state%pint(J,L)) &
-                         * cnst
-             TauCli(J,L) = MAX(TauCli(J,L), 0.0e+00_r8)
-          ENDDO
+    DO L = nZ, 1, -1
+       ! =================================================================
+       ! ===========   Compute cloud optical depth based on   ============
+       ! ===========     Liao et al. JGR, 104, 23697, 1999    ============
+       ! =================================================================
+       !
+       ! Tau = 3/2 * LWC * dZ / ( \rho_w * r_e )
+       ! dZ  = - dP / ( \rho_air * g )
+       ! since Pint is ascending, we can neglect the minus sign
+       !
+       ! Tau = 3/2 * LWC * dP / ( \rho_air * r_e * \rho_w * g )
+       ! LWC / \rho_air = Q
+       !
+       ! Tau    = 3/2 * Q * dP / ( r_e * rho_w * g )
+       ! Tau(L) = 3/2 * Q(L) * (Pint(L+1) - Pint(L)) / (re * rho_w * g )
+       ! Tau(L) = Q(L) * (Pint(L+1) - Pint(L)) * Cnst
+       ! Then divide by cloud fraction to get the in-cloud optical depth
+
+       ! Unit check:                    |
+       ! Q    : [kg H2O/kg air]         |
+       ! Pint : [Pa]=[kg air/m/s^2]     |
+       ! re   : [m]                     |   = 1.0e-5
+       ! rho_w: [kg H2O/m^3]            |   = 1.0e+3
+       ! g    : [m/s^2]                 |   = 9.81
+       IF ( cldFrc(J,L) > cldMin ) THEN
+          TauClw(J,L) = state%q(J,L,ixCldLiq)               &
+                      * (state%pint(J,L+1)-state%pint(J,L)) &
+                      * cnst / cldFrc(J,L)
+          TauClw(J,L) = MAX(TauClw(J,L), 0.0e+00_r8)
+          TauCli(J,L) = state%q(J,L,ixCldIce)               &
+                      * (state%pint(J,L+1)-state%pint(J,L)) &
+                      * cnst / cldFrc(J,L)
+          TauCli(J,L) = MAX(TauCli(J,L), 0.0e+00_r8)
        ENDIF
+    ENDDO
     ENDDO
 
     ! Retrieve tropopause level

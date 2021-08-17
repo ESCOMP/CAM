@@ -471,13 +471,14 @@ CONTAINS
        CALL Addfld( TRIM(SpcName), (/ 'lev' /), 'A', '1/s', &
           TRIM(tagName) // ' photolysis rate' )
     ENDDO
-    ! Add Jval_O3O1D and Jval_O3O3P
-    SpcName = 'Jval_O3O1D'
+    ! Add JvalO3O1D and JvalO3O3P
+    SpcName = 'JvalO3O1D'
     CALL Addfld( TRIM(SpcName), (/ 'lev' /), 'A', '1/s', &
-       TRIM(tagName) // ' photolysis rate' )
-    SpcName = 'Jval_O3O3P'
+       'O3 -> O1D photolysis rate' )
+
+    SpcName = 'JvalO3O3P'
     CALL Addfld( TRIM(SpcName), (/ 'lev' /), 'A', '1/s', &
-       TRIM(tagName) // ' photolysis rate' )
+       'O3 -> O3P photolysis rate' )
 
     ! ==========================================
     ! Now add fields corresponding to State_Met
@@ -960,6 +961,7 @@ CONTAINS
   USE PHYSCONST,           ONLY : MWDry
   USE UCX_MOD,             ONLY : GET_STRAT_OPT!, AERFRAC
   USE CMN_SIZE_MOD,        ONLY : NDUST
+  USE CMN_FJX_MOD
 !
 ! !INPUT PARAMETERS:
 !
@@ -1503,14 +1505,14 @@ CONTAINS
        ENDDO
     ENDIF
     IF ( ASSOCIATED(State_Diag%JvalO3O1D) ) THEN
-       SpcName = 'Jval_O3O1D'
+       SpcName = 'JvalO3O1D'
        IF ( hist_fld_active(TRIM(SpcName)) ) THEN
           outTmp(:nY,:nZ) = REAL(State_Diag%JvalO3O1D(1,:nY,nZ:1:-1),r8)
           CALL OutFld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
        ENDIF
     ENDIF
     IF ( ASSOCIATED(State_Diag%JvalO3O3P) ) THEN
-       SpcName = 'Jval_O3O3P'
+       SpcName = 'JvalO3O3P'
        IF ( hist_fld_active(TRIM(SpcName)) ) THEN
           outTmp(:nY,:nZ) = REAL(State_Diag%JvalO3O3P(1,:nY,nZ:1:-1),r8)
           CALL OutFld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
