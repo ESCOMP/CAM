@@ -626,7 +626,7 @@ contains
     if (hybrid%masterthread.and.div_set) &
          write(iulog, '(a,e9.2)')   '  sponge_del4_nu_div_fac = ',sponge_del4_nu_div_fac
     if (hybrid%masterthread.and.lev_set) &
-         write(iulog, '(a,i3)')   '  sponge_del4_lev        = ',sponge_del4_lev
+         write(iulog, '(a,i0)')   '  sponge_del4_lev        = ',sponge_del4_lev
     write(iulog,* )""
 
     if (hybrid%masterthread) write(iulog,*) ": sponge layer viscosity scaling factor"
