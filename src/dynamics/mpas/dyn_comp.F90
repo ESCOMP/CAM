@@ -40,6 +40,8 @@ use cam_abortutils,     only: endrun
 
 use mpas_timekeeping,   only : MPAS_TimeInterval_type
 
+use cam_mpas_subdriver, only: cam_mpas_global_sum_real
+
 implicit none
 private
 save
@@ -110,7 +112,12 @@ type dyn_import_t
    real(r8), dimension(:),     pointer :: fzm     ! Interp weight from k layer midpoint to k layer
                                                   ! interface [dimensionless]             (nver)
    real(r8), dimension(:),     pointer :: fzp     ! Interp weight from k-1 layer midpoint to k
-                                                  ! layer interface [dimensionless]       (nver)
+                                                  ! layer interface [dimensionless]       (nver
+   !
+   ! Invariant -- cell area
+   !
+   real(r8), dimension(:),     pointer :: areaCell ! cell area (m^2)
+
 
    !
    ! Invariant -- needed to compute edge-normal velocities
@@ -209,6 +216,13 @@ type dyn_export_t
                                                       !                              (nver,ncol)
 end type dyn_export_t
 
+! constituent indices for waccm-x dry air properties
+integer, public, protected :: &
+   ixo  = -1, &
+   ixo2 = -1, &
+   ixh  = -1, &
+   ixh2 = -1
+
 real(r8), parameter :: rad2deg = 180.0_r8 / pi
 real(r8), parameter :: deg2rad = pi / 180.0_r8
 
@@ -295,7 +309,11 @@ end subroutine dyn_register
 !=========================================================================================
 
 subroutine dyn_init(dyn_in, dyn_out)
-
+   use physconst,          only : thermodynamic_active_species_idx, thermodynamic_active_species_idx_dycore
+   use physconst,          only : thermodynamic_active_species_num
+   use physconst,          only : thermodynamic_active_species_liq_idx,thermodynamic_active_species_ice_idx
+   use physconst,          only : thermodynamic_active_species_liq_idx_dycore,thermodynamic_active_species_ice_idx_dycore
+   use physconst,          only : thermodynamic_active_species_liq_num, thermodynamic_active_species_ice_num
    use cam_mpas_subdriver, only : domain_ptr, cam_mpas_init_phase4
    use cam_mpas_subdriver, only : cam_mpas_define_scalars
    use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_array, mpas_pool_get_dimension, &
@@ -303,7 +321,9 @@ subroutine dyn_init(dyn_in, dyn_out)
    use mpas_timekeeping,   only : MPAS_set_timeInterval
    use mpas_derived_types, only : mpas_pool_type
    use mpas_constants,     only : mpas_constants_compute_derived
-
+   use dyn_tests_utils,    only : vc_dycore, vc_height, string_vc
+   use phys_control,       only : waccmx_is
+   use constituents,       only : cnst_get_ind
    ! arguments:
    type(dyn_import_t), intent(inout)  :: dyn_in
    type(dyn_export_t), intent(inout)  :: dyn_out
@@ -333,6 +353,37 @@ subroutine dyn_init(dyn_in, dyn_out)
    character(len=128) :: errmsg
 
    character(len=*), parameter :: subname = 'dyn_comp::dyn_init'
+   ! variables for initializing energy and axial angular momentum diagnostics
+   character (len = 3), dimension(3) :: stage = (/"dBF","dAP","dAM"/)
+   character (len = 70),dimension(3) :: stage_txt = (/&
+      " dynamics state before physics (d_p_coupling)       ",&  
+      " dynamics state with T,u,V increment but not q      ",&  
+      " dynamics state with full physics increment (incl.q)" &  
+      /)
+
+   character (len = 2)  , dimension(8) :: vars  = (/"WV"  ,"WL"  ,"WI"  ,"SE"   ,"KE"   ,"MR"   ,"MO"   ,"TT"   /)
+   character (len = 70) , dimension(8) :: vars_descriptor = (/&
+      "Total column water vapor                ",&
+      "Total column cloud water                ",&
+      "Total column cloud ice                  ",&
+      "Total column static energy              ",&
+      "Total column kinetic energy             ",&
+      "Total column wind axial angular momentum",&
+      "Total column mass axial angular momentum",&
+      "Total column test tracer                "/)
+   character (len = 14), dimension(8)  :: &
+      vars_unit = (/&
+      "kg/m2        ","kg/m2        ","kg/m2        ","J/m2         ",&
+      "J/m2         ","kg*m2/s*rad2 ","kg*m2/s*rad2 ","kg/m2        "/)
+
+   integer :: istage, ivars, m
+   character (len=108) :: str1, str2, str3
+
+   vc_dycore = vc_height
+   if (masterproc) then
+     call string_vc(vc_dycore,str1)
+     write(iulog,*)'vertical coordinate dycore   : ',trim(str1)
+   end if
    !----------------------------------------------------------------------------
 
    if (initial_run) then
@@ -390,6 +441,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    call mpas_pool_get_array(mesh_pool,  'zz',                     dyn_in % zz)
    call mpas_pool_get_array(mesh_pool,  'fzm',                    dyn_in % fzm)
    call mpas_pool_get_array(mesh_pool,  'fzp',                    dyn_in % fzp)
+   call mpas_pool_get_array(mesh_pool,  'areaCell',               dyn_in % areaCell)
 
    call mpas_pool_get_array(mesh_pool,  'east',                   dyn_in % east)
    call mpas_pool_get_array(mesh_pool,  'north',                  dyn_in % north)
@@ -488,6 +540,45 @@ subroutine dyn_init(dyn_in, dyn_out)
    ! dtime has no fractional part, but use nint to deal with any roundoff errors.
    ! Set the interval over which the dycore should integrate during each call to dyn_run.
    call MPAS_set_timeInterval(integrationLength, S=nint(dtime), S_n=0, S_d=1)
+
+   do istage = 1,SIZE(stage)
+     do ivars=1,SIZE(vars)
+       write(str1,*) TRIM(ADJUSTL(vars(ivars))),TRIM(ADJUSTL("_")),TRIM(ADJUSTL(stage(istage)))
+       write(str2,*) TRIM(ADJUSTL(vars_descriptor(ivars))),&
+            TRIM(ADJUSTL(" ")),TRIM(ADJUSTL(stage_txt(istage)))
+       write(str3,*) TRIM(ADJUSTL(vars_unit(ivars)))
+       call addfld (TRIM(ADJUSTL(str1)),   horiz_only, 'A', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)), gridname='mpas_cell')
+     end do
+   end do
+   !
+   ! initialize CAM thermodynamic infrastructure
+   !
+   do m=1,thermodynamic_active_species_num
+     thermodynamic_active_species_idx_dycore(m) = dyn_in % mpas_from_cam_cnst(thermodynamic_active_species_idx(m))
+     if (masterproc) then
+       write(iulog,*) "m,thermodynamic_active_species_idx_dycore: ",m,thermodynamic_active_species_idx_dycore(m)
+     end if
+   end do
+   do m=1,thermodynamic_active_species_liq_num
+     thermodynamic_active_species_liq_idx_dycore(m) = dyn_in % mpas_from_cam_cnst(thermodynamic_active_species_liq_idx(m))
+     if (masterproc) then
+       write(iulog,*) "m,thermodynamic_active_species_idx_liq_dycore: ",m,thermodynamic_active_species_liq_idx_dycore(m)
+     end if
+   end do
+   do m=1,thermodynamic_active_species_ice_num
+     thermodynamic_active_species_ice_idx_dycore(m) = dyn_in % mpas_from_cam_cnst(thermodynamic_active_species_ice_idx(m))
+     if (masterproc) then
+       write(iulog,*) "m,thermodynamic_active_species_idx_ice_dycore: ",m,thermodynamic_active_species_ice_idx_dycore(m)
+     end if
+   end do
+
+   ! constituent indices for waccm-x
+   if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
+      call cnst_get_ind('O',  ixo)
+      call cnst_get_ind('O2', ixo2)
+      call cnst_get_ind('H',  ixh)
+      call cnst_get_ind('H2', ixh2)
+   end if
 
 end subroutine dyn_init
 
@@ -624,13 +715,16 @@ subroutine read_inidat(dyn_in)
    ! Set initial conditions.  Either from analytic expressions or read from file.
 
    use cam_mpas_subdriver, only : domain_ptr, cam_mpas_update_halo, cam_mpas_cell_to_edge_winds
-   use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_array
+   use cam_control_mod,   only : simple_phys
+   use cam_initfiles, only : scale_dry_air_mass
+   use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_array, mpas_pool_get_config
    use mpas_derived_types, only : mpas_pool_type
    use mpas_vector_reconstruction, only : mpas_reconstruct
    use mpas_constants, only : Rv_over_Rd => rvord
    use mpas_constants, only : rgas
    use mpas_constants, only : p0
    use mpas_constants, only : gravity
+   use physconst, only : ps_dry_topo, ps_dry_notopo
    use string_utils,   only : int2str
 
    ! arguments
@@ -681,6 +775,8 @@ subroutine read_inidat(dyn_in)
    real(r8), allocatable :: mpas3d(:,:,:)
 
    real(r8), allocatable :: qv(:), tm(:)
+
+   real(r8) :: target_global_avg_dry_ps
 
    real(r8) :: dz, h
    logical  :: readvar
@@ -775,7 +871,13 @@ subroutine read_inidat(dyn_in)
       end do
 
       deallocate(zsurf)
-
+   else
+      do i = 1, nCellsSolve
+         if (abs(zi(i,plevp)) > 1.0E-12_r8) then
+            write(iulog,*) subname//': ERROR: zi= ', zi(i,plevp), ' but PHIS should be zero'
+            call endrun(subname//': ERROR: PHIS not consistent with surface z coordinate')
+         end if
+      end do     
    end if
 
    if (analytic_ic_active()) then
@@ -1028,6 +1130,23 @@ subroutine read_inidat(dyn_in)
    deallocate( mpas3d )
 
    theta_m(:,1:nCellsSolve) = theta(:,1:nCellsSolve) * (1.0_r8 + Rv_over_Rd * tracers(ixqv,:,1:nCellsSolve))
+
+   ! If scale_dry_air_mass < 0.0, then use the reference pressures defined in physconst.F90 as the
+   ! target global average dry pressure to scale to. If scale_dry_air_mass is not zero, then use it
+   ! as the target.
+   if (.not. simple_phys .and. scale_dry_air_mass /= 0.0_r8) then  ! Don't scale air mass if < 0. or simple_phys is on
+       if (scale_dry_air_mass < 0.0_r8) then
+           target_global_avg_dry_ps = ps_dry_topo
+           if (.not. associated(fh_topo)) then
+               target_global_avg_dry_ps = ps_dry_notopo
+           end if
+       else
+           ! User specified scaling target pressure
+           target_global_avg_dry_ps = scale_dry_air_mass
+       end if
+
+       call set_dry_mass(dyn_in, target_global_avg_dry_ps)
+   end if
 
    ! Update halos for initial state fields
    ! halo for 'u' updated in both branches of conditional above
@@ -1522,5 +1641,127 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
    end if
 
 end subroutine cam_mpas_namelist_read
+
+!-----------------------------------------------------------------------
+!  routine set_dry_mass
+!
+!> \brief Scale dry air mass
+!> \author Bill Skamarok, Miles Curry
+!> \date   25 April 2021
+!> \details
+!
+!-----------------------------------------------------------------------
+subroutine set_dry_mass(dyn_in, target_avg_dry_surface_pressure)
+
+   use mpas_constants, only : rgas, gravity, p0, Rv_over_Rd => rvord
+
+   type(dyn_import_t), intent(in) :: dyn_in
+   real(r8), intent(in) :: target_avg_dry_surface_pressure
+
+   integer :: i, k
+   integer :: nCellsSolve
+
+   real(r8), pointer :: theta_m(:,:) ! Moist potential temperature [K]  (nver,ncol)
+   real(r8), pointer :: zint(:,:)    ! Geometric height [m]
+   real(r8), pointer :: areaCell(:)  ! cell area (m^2)
+   real(r8), pointer :: theta(:,:)   ! Potential temperature [K]        (nver,ncol)
+   real(r8), pointer :: rho(:,:)     ! Dry density [kg/m^3]             (nver,ncol)
+   real(r8), pointer :: rho_zz(:,:)  ! Dry density [kg/m^3]
+                                     ! divided by d(zeta)/dz            (nver,ncol)
+   real(r8), pointer :: tracers(:,:,:) ! Tracers [kg/kg dry air]       (nq,nver,ncol)
+   real(r8), pointer :: zz(:,:)      ! Vertical coordinate metric [dimensionless]
+                                     ! at layer midpoints               (nver,ncol)
+
+   real(r8), allocatable :: preliminary_dry_surface_pressure(:), p_top(:), pm(:)
+   real(r8) :: preliminary_avg_dry_surface_pressure, scaled_avg_dry_surface_pressure
+   real(r8) :: scaling_ratio
+   real(r8) :: sphere_surface_area
+   real(r8) :: surface_integral, test_value
+
+   integer :: ixqv
+
+   character(len=*), parameter :: subname = 'dyn_comp:set_dry_mass'
+
+   nCellsSolve = dyn_in % nCellsSolve
+   ixqv        = dyn_in % index_qv
+   theta_m    => dyn_in % theta_m
+   theta      => dyn_in % theta
+   zint       => dyn_in % zint
+   areaCell   => dyn_in % areaCell
+   rho        => dyn_in % rho
+   rho_zz     => dyn_in % rho_zz
+   zz         => dyn_in % zz
+   tracers    => dyn_in % tracers
+
+   allocate( p_top(nCellsSolve), preliminary_dry_surface_pressure(nCellsSolve), pm(plev) )
+   ! (1) calculate pressure at the lid
+   do i=1, nCellsSolve
+      p_top(i) = p0*(rgas*rho(plev,i)*theta_m(plev,i)/p0)**(cpair/(cpair-rgas))
+      p_top(i) = p_top(i) - gravity*0.5_r8*(zint(plev+1,i)-zint(plev,i))*rho(plev,i)*(1.0_r8+tracers(ixqv,plev,i))
+   end do
+
+   ! (2) integrate dry mass in column to compute
+   do i=1, nCellsSolve
+      preliminary_dry_surface_pressure(i) = 0.0_r8
+      do k=1, plev
+         preliminary_dry_surface_pressure(i) = preliminary_dry_surface_pressure(i) + gravity*(zint(k+1,i)-zint(k,i))*rho(k,i)
+      end do
+   end do
+
+   ! (3) compute average global dry surface pressure
+   preliminary_dry_surface_pressure(1:nCellsSolve) =  preliminary_dry_surface_pressure(1:nCellsSolve)*areaCell(1:nCellsSolve)
+   sphere_surface_area = cam_mpas_global_sum_real(areaCell(1:nCellsSolve))
+   preliminary_avg_dry_surface_pressure = cam_mpas_global_sum_real(preliminary_dry_surface_pressure(1:nCellsSolve)) &
+                                                                   /sphere_surface_area
+
+   if (masterproc) then
+       write(iulog,*) '---------------------------- set_dry_mass ----------------------------'
+       write(iulog,*) 'Initial dry globally average surface pressure = ', preliminary_avg_dry_surface_pressure/100._r8, 'hPa'
+       write(iulog,*) 'target dry globally avg surface pressure = ', target_avg_dry_surface_pressure/100._r8, 'hPa'
+   end if
+
+   ! (4) scale dry air density
+   scaling_ratio = target_avg_dry_surface_pressure / preliminary_avg_dry_surface_pressure
+   rho(:,:) = rho(:,:)*scaling_ratio
+
+   ! (4a) recompute dry mass after scaling
+   do i = 1, nCellsSolve
+       preliminary_dry_surface_pressure(i) = 0.0_r8
+       do k = 1, plev
+           preliminary_dry_surface_pressure(i) = preliminary_dry_surface_pressure(i) + gravity*(zint(k+1,i)-zint(k,1))*rho(k,i)
+       end do
+   end do
+   preliminary_dry_surface_pressure(1:nCellsSolve) = preliminary_dry_surface_pressure(1:nCellsSolve)*areaCell(1:nCellsSolve)
+   scaled_avg_dry_surface_pressure = cam_mpas_global_sum_real(preliminary_dry_surface_pressure(1:nCellsSolve)) &
+                                                              / sphere_surface_area
+
+   if (masterproc) then
+      write(iulog,*) 'Average dry global surface pressure after scaling = ', scaled_avg_dry_surface_pressure/100._r8, 'hPa'
+      write(iulog,*) 'Change in dry surface pressure = ', scaled_avg_dry_surface_pressure-preliminary_avg_dry_surface_pressure,'Pa'
+   end if
+
+   ! (5) reset qv to conserve mass
+   tracers(ixqv,:,1:nCellsSolve) = tracers(ixqv,:,1:nCellsSolve)/scaling_ratio
+
+   ! (6) integrate down the column to compute full pressure given the density and qv
+   do i=1,nCellsSolve
+      pm(plev) = p_top(i) + 0.5_r8*(zint(plev+1,i)-zint(plev,i))*gravity*rho(plev,i)*(1.0_r8+tracers(ixqv,plev,i))
+      do k=plev-1,1,-1
+         pm(k) = pm(k+1) + 0.5_r8*(zint(k+2,i)-zint(k+1,i))*gravity*rho(k+1,i)*(1.0_r8+tracers(ixqv,k+1,i)) &
+                         + 0.5_r8*(zint(k+1,i)-zint(k  ,i))*gravity*rho(k  ,i)*(1.0_r8+tracers(ixqv,k  ,i))
+      end do
+
+   ! (7) compute theta_m from the state equation, compute rho_zz and theta while we are here
+
+      do k=1,plev
+         theta_m(k,i) = (pm(k)/p0)**((cpair-rgas)/cpair)*p0/rgas/rho(k,i)
+         theta(k,i) = theta_m(k,i)/(1.0_r8 + Rv_over_Rd * tracers(ixqv,k,i))
+         rho_zz(k,i) = rho(k,i)/zz(k,i)
+      end do
+   end do
+
+  deallocate( p_top, preliminary_dry_surface_pressure, pm )
+
+end subroutine set_dry_mass
 
 end module dyn_comp

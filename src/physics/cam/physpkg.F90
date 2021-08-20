@@ -1346,6 +1346,7 @@ contains
     use waccmx_phys_intr,   only: waccmx_phys_ion_elec_temp_tend ! WACCM-X
     use aoa_tracers,        only: aoa_tracers_timestep_tend
     use physconst,          only: rhoh2o, latvap,latice
+    use dyn_tests_utils,    only: vc_dycore
     use aero_model,         only: aero_model_drydep
     use carma_intr,         only: carma_emission_tend, carma_timestep_tend
     use carma_flags_mod,    only: carma_do_aerosol, carma_do_emission
@@ -1413,6 +1414,7 @@ contains
     real(r8) :: tmp_trac  (pcols,pver,pcnst) ! tmp space
     real(r8) :: tmp_pdel  (pcols,pver) ! tmp space
     real(r8) :: tmp_ps    (pcols)      ! tmp space
+    logical  :: moist_mixing_ratio_dycore
 
     ! physics buffer fields for total energy and mass adjustment
     integer itim_old, ifld
@@ -1796,6 +1798,7 @@ contains
     end if
 
     call calc_te_and_aam_budgets(state, 'pAP')
+    call calc_te_and_aam_budgets(state, 'zAP',vc=vc_dycore)
 
     !---------------------------------------------------------------------------------
     ! Enforce charge neutrality after O+ change from ionos_tend
@@ -1825,8 +1828,9 @@ contains
 
     !-------------- Energy budget checks vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-    ! Save total energy for global fixer in next timestep (FV and SE dycores)
-    call pbuf_set_field(pbuf, teout_idx, state%te_cur, (/1,itim_old/),(/pcols,1/))
+    ! Save total energy for global fixer in next timestep
+
+    call pbuf_set_field(pbuf, teout_idx, state%te_cur(:,2), (/1,itim_old/),(/pcols,1/))
 
     if (shallow_scheme .eq. 'UNICON') then
 
@@ -1844,10 +1848,11 @@ contains
        call unicon_cam_org_diags(state, pbuf)
 
     end if
+    moist_mixing_ratio_dycore = dycore_is('LR').or. dycore_is('FV3')    
     !
     ! FV: convert dry-type mixing ratios to moist here because physics_dme_adjust
     !     assumes moist. This is done in p_d_coupling for other dynamics. Bundy, Feb 2004.
-    if ( dycore_is('LR').or. dycore_is('FV3')) call set_dry_to_wet(state)    ! Physics had dry, dynamics wants moist
+    if (moist_mixing_ratio_dycore) call set_dry_to_wet(state)    ! Physics had dry, dynamics wants moist
 
     ! Scale dry mass and energy (does nothing if dycore is EUL or SLD)
     call cnst_get_ind('CLDLIQ', ixcldliq)
@@ -1857,19 +1862,17 @@ contains
     tmp_cldliq(:ncol,:pver) = state%q(:ncol,:pver,ixcldliq)
     tmp_cldice(:ncol,:pver) = state%q(:ncol,:pver,ixcldice)
 
-    ! For not ('FV'|'FV3'), physics_dme_adjust is called for energy diagnostic purposes only.  So, save off tracers
-    if (.not.(dycore_is('FV').or.dycore_is('FV3')).and.&
+    ! for dry mixing ratio dycore, physics_dme_adjust is called for energy diagnostic purposes only.  
+    ! So, save off tracers 
+    if (.not.moist_mixing_ratio_dycore.and.&
          (hist_fld_active('SE_pAM').or.hist_fld_active('KE_pAM').or.hist_fld_active('WV_pAM').or.&
           hist_fld_active('WL_pAM').or.hist_fld_active('WI_pAM').or.hist_fld_active('MR_pAM').or.&
           hist_fld_active('MO_pAM'))) then         
       tmp_trac(:ncol,:pver,:pcnst) = state%q(:ncol,:pver,:pcnst)
       tmp_pdel(:ncol,:pver)        = state%pdel(:ncol,:pver)
       tmp_ps(:ncol)                = state%ps(:ncol)
-      !
-      ! pint, lnpint,rpdel are altered by dme_adjust but not used for tendencies in dynamics of SE
-      ! we do not reset them to pre-dme_adjust values
-      !
-      if (dycore_is('SE')) call set_dry_to_wet(state)
+
+      call set_dry_to_wet(state)
 
       if (trim(cam_take_snapshot_before) == "physics_dme_adjust") then
          call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
@@ -1884,13 +1887,14 @@ contains
       end if
 
       call calc_te_and_aam_budgets(state, 'pAM')
+      call calc_te_and_aam_budgets(state, 'zAM',vc=vc_dycore)
       ! Restore pre-"physics_dme_adjust" tracers
       state%q(:ncol,:pver,:pcnst) = tmp_trac(:ncol,:pver,:pcnst)
       state%pdel(:ncol,:pver)     = tmp_pdel(:ncol,:pver)
       state%ps(:ncol)             = tmp_ps(:ncol)
     end if
 
-    if (dycore_is('LR') .or. dycore_is('FV3')) then
+    if (moist_mixing_ratio_dycore) then
 
       if (trim(cam_take_snapshot_before) == "physics_dme_adjust") then
          call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
@@ -1905,6 +1909,7 @@ contains
       end if
 
       call calc_te_and_aam_budgets(state, 'pAM')
+      call calc_te_and_aam_budgets(state, 'zAM',vc=vc_dycore)
     endif
 
 !!!   REMOVE THIS CALL, SINCE ONLY Q IS BEING ADJUSTED. WON'T BALANCE ENERGY. TE IS SAVED BEFORE THIS
@@ -2015,8 +2020,8 @@ contains
     use micro_mg_cam,    only: massless_droplet_destroyer
     use cam_snapshot,    only: cam_snapshot_all_outfld_tphysbc
     use cam_snapshot,    only: cam_snapshot_ptend_outfld
-    use ssatcontrail,       only: ssatcontrail_d0
-
+    use ssatcontrail,    only: ssatcontrail_d0
+    use dyn_tests_utils, only: vc_dycore
     ! Arguments
 
     real(r8), intent(in) :: ztodt                          ! 2 delta t (model time increment)
@@ -2193,13 +2198,15 @@ contains
     call t_startf('energy_fixer')
 
     call calc_te_and_aam_budgets(state, 'pBF')
-    if (dycore_is('LR') .or. dycore_is('FV3') .or. dycore_is('SE'))  then
+    call calc_te_and_aam_budgets(state, 'zBF',vc=vc_dycore)
+    if (.not.dycore_is('EUL')) then
        call check_energy_fix(state, ptend, nstep, flx_heat)
        call physics_update(state, ptend, ztodt, tend)
        call check_energy_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)
        call outfld( 'EFIX', flx_heat    , pcols, lchnk   )
     end if
     call calc_te_and_aam_budgets(state, 'pBP')
+    call calc_te_and_aam_budgets(state, 'zBP',vc=vc_dycore)
     ! Save state for convective tendency calculations.
     call diag_conv_tend_ini(state, pbuf)
 
@@ -2211,8 +2218,8 @@ contains
     cldiceini(:ncol,:pver) = state%q(:ncol,:pver,ixcldice)
 
     call outfld('TEOUT', teout       , pcols, lchnk   )
-    call outfld('TEINP', state%te_ini, pcols, lchnk   )
-    call outfld('TEFIX', state%te_cur, pcols, lchnk   )
+    call outfld('TEINP', state%te_ini(:,2), pcols, lchnk   )
+    call outfld('TEFIX', state%te_cur(:,2), pcols, lchnk   )
 
     ! T, U, V tendency due to dynamics
     if( nstep > dyn_time_lvls-1 ) then

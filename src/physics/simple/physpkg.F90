@@ -25,6 +25,7 @@ module physpkg
   use cam_logfile,     only: iulog
   use cam_abortutils,  only: endrun
   use shr_sys_mod,     only: shr_sys_flush
+  use dyn_tests_utils, only: vc_dycore
 
   implicit none
   private
@@ -498,6 +499,7 @@ contains
     integer                                  :: k
     integer                                  :: ncol
     integer                                  :: itim_old
+    logical                                  :: moist_mixing_ratio_dycore
 
     real(r8) :: tmp_trac  (pcols,pver,pcnst) ! tmp space
     real(r8) :: tmp_pdel  (pcols,pver)       ! tmp space
@@ -525,8 +527,6 @@ contains
       cldiceini = 0.0_r8
     end if
 
-
-
     !=========================
     ! Compute physics tendency
     !=========================
@@ -537,12 +537,14 @@ contains
     end if
 
     call calc_te_and_aam_budgets(state, 'pAP')
+    call calc_te_and_aam_budgets(state, 'zAP',vc=vc_dycore)
     
     ! FV: convert dry-type mixing ratios to moist here because
     !     physics_dme_adjust assumes moist. This is done in p_d_coupling for
     !     other dynamics. Bundy, Feb 2004.
     !
-    if (moist_physics .and. (dycore_is('LR') .or. dycore_is('FV3'))) then
+    moist_mixing_ratio_dycore = dycore_is('LR').or. dycore_is('FV3')    
+    if (moist_physics .and. moist_mixing_ratio_dycore) then
       call set_dry_to_wet(state)    ! Physics had dry, dynamics wants moist
     end if
 
@@ -562,7 +564,7 @@ contains
         tmp_cldice(:ncol,:pver) = 0.0_r8
       end if
 
-      ! For not 'FV'|'FV3', physics_dme_adjust is called for energy diagnostic purposes only.
+      ! for dry mixing ratio dycore, physics_dme_adjust is called for energy diagnostic purposes only.  
       ! So, save off tracers
       if (.not.(dycore_is('FV').or.dycore_is('FV3')) .and. &
          (hist_fld_active('SE_pAM').or.hist_fld_active('KE_pAM').or.hist_fld_active('WV_pAM').or.&
@@ -575,7 +577,7 @@ contains
         ! pint, lnpint,rpdel are altered by dme_adjust but not used for tendencies in dynamics of SE
         ! we do not reset them to pre-dme_adjust values
         !
-        if (dycore_is('SE')) call set_dry_to_wet(state)
+        call set_dry_to_wet(state)
 
         if (trim(cam_take_snapshot_before) == "physics_dme_adjust") then
            call cam_snapshot_all_outfld(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf)
@@ -588,15 +590,17 @@ contains
         end if
 
         call calc_te_and_aam_budgets(state, 'pAM')
+        call calc_te_and_aam_budgets(state, 'zAM',vc=vc_dycore)
         ! Restore pre-"physics_dme_adjust" tracers
         state%q(:ncol,:pver,:pcnst) = tmp_trac(:ncol,:pver,:pcnst)
         state%pdel(:ncol,:pver)     = tmp_pdel(:ncol,:pver)
         state%ps(:ncol)             = tmp_ps(:ncol)
       end if
 
-      if (dycore_is('LR') .or. dycore_is('FV3')) then
+      if (moist_mixing_ratio_dycore) then
         call physics_dme_adjust(state, tend, qini, ztodt)
         call calc_te_and_aam_budgets(state, 'pAM')
+        call calc_te_and_aam_budgets(state, 'zAM',vc=vc_dycore)
       end if
 
     else
@@ -604,6 +608,7 @@ contains
       tmp_cldliq(:ncol,:pver) = 0.0_r8
       tmp_cldice(:ncol,:pver) = 0.0_r8
       call calc_te_and_aam_budgets(state, 'pAM')
+      call calc_te_and_aam_budgets(state, 'zAM',vc=vc_dycore)
     end if
 
     ! store T in buffer for use in computing dynamics T-tendency in next timestep
@@ -739,10 +744,11 @@ contains
     ! Global mean total energy fixer and AAM diagnostics
     !===================================================
     call calc_te_and_aam_budgets(state, 'pBF')
+    call calc_te_and_aam_budgets(state, 'zBF',vc=vc_dycore)
 
     call t_startf('energy_fixer')
 
-    if (adiabatic .and. (.not. dycore_is('EUL')) .and. (.not. dycore_is('MPAS'))) then
+    if (adiabatic .and. (.not. dycore_is('EUL'))) then
       call check_energy_fix(state, ptend, nstep, flx_heat)
       call physics_update(state, ptend, ztodt, tend)
       call check_energy_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)
@@ -752,6 +758,7 @@ contains
     call t_stopf('energy_fixer')
 
     call calc_te_and_aam_budgets(state, 'pBP')
+    call calc_te_and_aam_budgets(state, 'zBP',vc=vc_dycore)
 
     ! Save state for convective tendency calculations.
     call diag_conv_tend_ini(state, pbuf)
@@ -770,8 +777,8 @@ contains
     end if
 
     call outfld('TEOUT', teout       , pcols, lchnk   )
-    call outfld('TEINP', state%te_ini, pcols, lchnk   )
-    call outfld('TEFIX', state%te_cur, pcols, lchnk   )
+    call outfld('TEINP', state%te_ini(:,2), pcols, lchnk   )
+    call outfld('TEFIX', state%te_cur(:,2), pcols, lchnk   )
 
     ! T tendency due to dynamics
     if( nstep > dyn_time_lvls-1 ) then
@@ -874,7 +881,7 @@ contains
     call t_stopf('bc_history_write')
 
     ! Save total enery after physics for energy conservation checks
-    teout = state%te_cur
+    teout = state%te_cur(:,2)
 
     call cam_export(state, cam_out, pbuf)
 

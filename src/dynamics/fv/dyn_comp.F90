@@ -464,6 +464,11 @@ subroutine dyn_init(dyn_in, dyn_out)
    ! Initialize FV dynamical core state variables
 
    use physconst,       only: pi, omega, rearth, rair, cpair, zvir
+   use physconst,       only: thermodynamic_active_species_num, thermodynamic_active_species_idx
+   use physconst,       only: thermodynamic_active_species_idx_dycore, rair, cpair
+   use physconst,       only: thermodynamic_active_species_liq_idx,thermodynamic_active_species_ice_idx
+   use physconst,       only: thermodynamic_active_species_liq_idx_dycore,thermodynamic_active_species_ice_idx_dycore
+   use physconst,       only: thermodynamic_active_species_liq_num, thermodynamic_active_species_ice_num
    use infnan,          only: inf, assignment(=)
 
    use constituents,    only: pcnst, cnst_name, cnst_longname, tottnam, cnst_get_ind
@@ -475,6 +480,7 @@ subroutine dyn_init(dyn_in, dyn_out)
 #endif
    use ctem,            only: ctem_init
    use diag_module,     only: fv_diag_init
+   use dyn_tests_utils, only: vc_dycore, vc_moist_pressure, string_vc
 
    ! arguments:
    type (dyn_import_t),     intent(out) :: dyn_in
@@ -497,8 +503,13 @@ subroutine dyn_init(dyn_in, dyn_out)
    integer :: budget_hfile_num
 
    character(len=*), parameter :: sub='dyn_init'
+   character(len=108)          :: str1
    !----------------------------------------------------------------------------
-
+   vc_dycore = vc_moist_pressure
+   if (masterproc) then
+     call string_vc(vc_dycore,str1)
+     write(iulog,*)'vertical coordinate dycore   : ',trim(str1)
+   end if
    dyn_state => get_dyn_state()
    grid      => dyn_state%grid
    constants => dyn_state%constants
@@ -687,6 +698,20 @@ subroutine dyn_init(dyn_in, dyn_out)
       call add_default(tottnam(ixcldice), budget_hfile_num, ' ')
       call add_default('TTEND   '       , budget_hfile_num, ' ')
    end if
+
+   thermodynamic_active_species_idx_dycore(:) = thermodynamic_active_species_idx(:)
+   do m=1,thermodynamic_active_species_liq_num
+     thermodynamic_active_species_liq_idx_dycore(m) = thermodynamic_active_species_liq_idx(m)
+     if (masterproc) then
+       write(iulog,*) "m,thermodynamic_active_species_idx_liq_dycore: ",m,thermodynamic_active_species_liq_idx_dycore(m)
+     end if
+   end do
+   do m=1,thermodynamic_active_species_ice_num
+     thermodynamic_active_species_ice_idx_dycore(m) = thermodynamic_active_species_ice_idx(m)
+     if (masterproc) then
+       write(iulog,*) "m,thermodynamic_active_species_idx_ice_dycore: ",m,thermodynamic_active_species_ice_idx_dycore(m)
+     end if
+   end do
 
 end subroutine dyn_init
 

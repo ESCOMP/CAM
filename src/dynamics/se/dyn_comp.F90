@@ -597,6 +597,9 @@ subroutine dyn_init(dyn_in, dyn_out)
    use cam_pio_utils,      only: clean_iodesc_list
    use physconst,          only: thermodynamic_active_species_num, thermodynamic_active_species_idx
    use physconst,          only: thermodynamic_active_species_idx_dycore, rair, cpair
+   use physconst,          only: thermodynamic_active_species_liq_idx,thermodynamic_active_species_ice_idx
+   use physconst,          only: thermodynamic_active_species_liq_idx_dycore,thermodynamic_active_species_ice_idx_dycore
+   use physconst,          only: thermodynamic_active_species_liq_num, thermodynamic_active_species_ice_num
    use cam_history,        only: addfld, add_default, horiz_only, register_vector_field
    use gravity_waves_sources, only: gws_init
 
@@ -613,13 +616,13 @@ subroutine dyn_init(dyn_in, dyn_out)
    use phys_control,       only: phys_getopts
    use physconst,          only: get_molecular_diff_coef_reference
    use control_mod,        only: vert_remap_uvTq_alg, vert_remap_tracer_alg
-   use std_atm_profile,    only: std_atm_height
+   use dyn_tests_utils,    only: vc_dycore, vc_dry_pressure, string_vc
    ! Dummy arguments:
    type(dyn_import_t), intent(out) :: dyn_in
    type(dyn_export_t), intent(out) :: dyn_out
 
    ! Local variables
-   integer             :: ithr, nets, nete, ie, k, kmol_end
+   integer             :: ithr, nets, nete, ie, k, kmol_end, mfound
    real(r8), parameter :: Tinit = 300.0_r8
    real(r8)            :: press(1), ptop, tref,z(1)
 
@@ -651,7 +654,7 @@ subroutine dyn_init(dyn_in, dyn_out)
       "Total column water vapor                ",&
       "Total column cloud water                ",&
       "Total column cloud ice                  ",&
-      "Total column dry static energy          ",&
+      "Total column static energy              ",&
       "Total column kinetic energy             ",&
       "Total column wind axial angular momentum",&
       "Total column mass axial angular momentum",&
@@ -671,7 +674,11 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    real(r8) :: km_sponge_factor_local(nlev+1)
    !----------------------------------------------------------------------------
-
+   vc_dycore = vc_dry_pressure
+   if (masterproc) then
+     call string_vc(vc_dycore,str1)
+     write(iulog,*)'vertical coordinate dycore   : ',trim(str1)
+   end if
    ! Now allocate and set condenstate vars
    allocate(cnst_name_gll(qsize))     ! constituent names for gll tracers
    allocate(cnst_longname_gll(qsize)) ! long name of constituents for gll tracers
@@ -716,11 +723,37 @@ subroutine dyn_init(dyn_in, dyn_out)
        end if
        cnst_name_gll    (m)                = cnst_name    (m)
        cnst_longname_gll(m)                = cnst_longname(m)
-
      end if
    end do
 
-
+   do m=1,thermodynamic_active_species_liq_num
+     if (ntrac>0) then
+       do mfound=1,qsize
+         if (TRIM(cnst_name(thermodynamic_active_species_liq_idx(m)))==TRIM(cnst_name_gll(mfound))) then
+           thermodynamic_active_species_liq_idx_dycore(m) = mfound
+         end if
+       end do
+     else
+       thermodynamic_active_species_liq_idx_dycore(m) = thermodynamic_active_species_liq_idx(m)
+     end if
+     if (masterproc) then
+       write(iulog,*) "m,thermodynamic_active_species_idx_liq_dycore: ",m,thermodynamic_active_species_liq_idx_dycore(m)
+     end if
+   end do
+   do m=1,thermodynamic_active_species_ice_num
+     if (ntrac>0) then
+       do mfound=1,qsize
+         if (TRIM(cnst_name(thermodynamic_active_species_ice_idx(m)))==TRIM(cnst_name_gll(mfound))) then
+           thermodynamic_active_species_ice_idx_dycore(m) = mfound
+         end if
+       end do
+     else
+       thermodynamic_active_species_ice_idx_dycore(m) = thermodynamic_active_species_ice_idx(m)
+     end if
+     if (masterproc) then
+       write(iulog,*) "m,thermodynamic_active_species_idx_ice_dycore: ",m,thermodynamic_active_species_ice_idx_dycore(m)
+     end if
+   end do
 
    !
    ! Initialize the import/export objects
