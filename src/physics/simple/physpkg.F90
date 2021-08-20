@@ -527,9 +527,6 @@ contains
       cldiceini = 0.0_r8
     end if
 
-    call calc_te_and_aam_budgets(state, 'pAP')
-    call calc_te_and_aam_budgets(state, 'zAP',vc=vc_dycore)
-
     !=========================
     ! Compute physics tendency
     !=========================
@@ -539,6 +536,9 @@ contains
        call physics_update(state, ptend, ztodt, tend)
     end if
 
+    call calc_te_and_aam_budgets(state, 'pAP')
+    call calc_te_and_aam_budgets(state, 'zAP',vc=vc_dycore)
+    
     ! FV: convert dry-type mixing ratios to moist here because
     !     physics_dme_adjust assumes moist. This is done in p_d_coupling for
     !     other dynamics. Bundy, Feb 2004.
