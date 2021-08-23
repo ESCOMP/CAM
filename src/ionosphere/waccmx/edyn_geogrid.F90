@@ -161,7 +161,7 @@ contains
 
       do ntasks_lon = 1,nlon_g
          ntasks_lat = npes/ntasks_lon
-         if ( minlats_per_pe*ntasks_lat<nmlat .and. ntasks_lat*ntasks_lon==npes ) then
+         if ( minlats_per_pe*ntasks_lat<nmlat .and. minlats_per_pe*ntasks_lat<nlat_g .and. ntasks_lat*ntasks_lon==npes ) then
             exit
          endif
       end do
