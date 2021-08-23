@@ -1646,7 +1646,7 @@ end subroutine cam_mpas_namelist_read
 !  routine set_dry_mass
 !
 !> \brief Scale dry air mass
-!> \author Bill Skamarok, Miles Curry
+!> \author Bill Skamarock, Miles Curry
 !> \date   25 April 2021
 !> \details
 !
