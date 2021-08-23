@@ -40,7 +40,12 @@ module nlte_lw
   logical :: use_data_o3
   logical :: use_waccm_forcing = .false.
 
-  real(r8) :: o3_mw                         ! O3 molecular weight
+  real(r8) :: o3_mw                      ! O3 molecular weight
+  real(r8) :: o1_mw                      ! O molecular weight
+  real(r8) :: o2_mw                      ! O2 molecular weight
+  real(r8) :: co2_mw                     ! CO2 molecular weight
+  real(r8) :: n2_mw                      ! N2 molecular weight
+  real(r8) :: no_mw                      ! NO molecular weight
 
 ! indexes of required constituents in model constituent array
   integer :: ico2                           ! CO2 index
@@ -74,11 +79,6 @@ contains
     logical,          intent(in) :: nlte_limit_co2
     logical,          intent(in) :: nlte_use_aliarms_in
 
-    real(r8) :: o1_mw                      ! O molecular weight
-    real(r8) :: o2_mw                      ! O2 molecular weight
-    real(r8) :: co2_mw                     ! CO2 molecular weight
-    real(r8) :: n2_mw                      ! N2 molecular weight
-    real(r8) :: no_mw                      ! NO molecular weight
 
     real(r8) :: psh(pver)                  ! pressure scale height
     real(r8) :: pshmn                      ! lower range of merge
@@ -233,7 +233,7 @@ contains
 !
 ! Driver for nlte calculations
 !-------------------------------------------------------------------------
-    use physconst,     only: mwdry, cpairv
+    use physconst,     only: mwdry, cpairv, mbarv
     use physics_types, only: physics_state
     use physics_buffer, only : physics_buffer_desc
     use perf_mod,      only: t_startf, t_stopf
@@ -265,13 +265,21 @@ contains
     real(r8), pointer, dimension(:,:) :: xnommr   ! NO mmr
     real(r8), pointer, dimension(:,:) :: xn2mmr   ! N2  mmr 
 
+    ! VMR for ALI-ARMS
+    real(r8), allocatable, dimension(:,:) :: xco2VMR  ! CO2 VMR
+    real(r8), allocatable, dimension(:,:) :: xoVMR    ! O   VMR
+    real(r8), allocatable, dimension(:,:) :: xo2VMR   ! O2  VMR
+    real(r8), allocatable, dimension(:,:) :: xn2VMR   ! N2  VMR
+    real(r8), allocatable, dimension(:,:) :: xo3VMR   ! O3  VMR
+
     real(r8), target :: n2mmr (pcols,pver)   ! N2  mmr 
     real(r8), target :: o3mrg(pcols,pver)    ! merged O3
     real(r8), pointer, dimension(:,:) :: to3mmr  ! O3 mmr   (tgcm)
 
-    integer :: i,j,k
+    integer :: i,j,k, ierr
     
     character (len=80) :: errstring
+    character (len=7) :: subname='nlte_lw'
 
 !------------------------------------------------------------------------
 
@@ -302,11 +310,44 @@ contains
        call get_cnst (lchnk, co2=xco2mmr, o1=xommr, o2=xo2mmr, no=xnommr, h=xhmmr)
 
     endif
-    
+
     do k = 1,pver
        n2mmr (:ncol,k) = 1._r8 - (xommr(:ncol,k) + xo2mmr(:ncol,k) + xhmmr(:ncol,k))
     enddo
     xn2mmr  => n2mmr(:,:)
+
+    
+    ! Create the VMR arrays for ALI-ARMS
+    if (nlte_use_aliarms) then
+
+       allocate (xo2VMR(pcols,pver),stat=ierr)
+       if (ierr /=0) then
+         call endrun(subname // ': Allocate error for xo2VMR')
+       end if
+       allocate (xn2VMR(pcols,pver),stat=ierr)
+       if (ierr /=0) then
+         call endrun(subname // ': Allocate error for xn2VMR')
+       end if
+       allocate (xco2VMR(pcols,pver),stat=ierr)
+       if (ierr /=0) then
+         call endrun(subname // ': Allocate error for xco2VMR')
+       end if
+       allocate (xoVMR(pcols,pver),stat=ierr)
+       if (ierr /=0) then
+         call endrun(subname // ': Allocate error for xoVMR')
+       end if
+       allocate (xo3VMR(pcols,pver),stat=ierr)
+       if (ierr /=0) then
+         call endrun(subname // ': Allocate error for xo3VMR')
+       end if
+
+       xo2VMR(:ncol,:)  = mbarv(:ncol,:,lchnk) * xo2mmr(:,:) / o2_mw
+       xn2VMR(:ncol,:)  = mbarv(:ncol,:,lchnk) * xn2mmr(:,:) / n2_mw
+       xco2VMR(:ncol,:) = mbarv(:ncol,:,lchnk) * xco2mmr(:,:) / co2_mw
+       xoVMR(:ncol,:)   = mbarv(:ncol,:,lchnk) * xommr(:,:) /  o1_mw
+       xo3VMR(:ncol,:)  = mbarv(:ncol,:,lchnk) * xo3mmr(:,:) / o3_mw
+
+    end if
 
 ! do non-LTE cooling rate calculations
 
@@ -319,7 +360,7 @@ contains
     call t_startf('nlte_aliarms_calc')
     if (nlte_use_aliarms) then
        call nlte_aliarms_calc (lchnk,ncol,state%zm, state%pmid,state%t, &
-                                xo2mmr,xommr,xn2mmr,xco2mmr,qrlaliarms)
+                                xo2VMR,xoVMR,xn2VMR,xco2VMR,qrlaliarms)
        do j=1,pver
           do i=1,ncol
              if (is_nan(qrlaliarms(i,j))) then
@@ -367,6 +408,14 @@ contains
     call outfld ('QO3', qout, pcols, lchnk)
     qout(:ncol,:) = c2scool(:ncol,:)/cpairv(:ncol,:,lchnk)
     call outfld ('QHC2S', qout, pcols, lchnk)
+
+    if (nlte_use_aliarms) then
+       deallocate (xo2VMR)
+       deallocate (xn2VMR)
+       deallocate (xco2VMR)
+       deallocate (xoVMR)
+       deallocate (xo3VMR)
+    end if
 
   end subroutine nlte_tend
 
