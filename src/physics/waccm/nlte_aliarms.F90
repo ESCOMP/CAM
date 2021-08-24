@@ -18,10 +18,12 @@ module nlte_aliarms
      nlte_aliarms_init, &
      nlte_aliarms_calc
 
+  real :: max_pressure_aliarms   ! max_pressure_lw scaled mbar
+
 contains
 
 !-----------------------------------------------------------------
-  subroutine nlte_aliarms_init
+  subroutine nlte_aliarms_init(max_pressure_lw)
 !-----------------------------------------------------------------
 !
 !
@@ -30,13 +32,15 @@ contains
   use cam_history,  only: addfld
 
   implicit none
-
+  
+  real(r8), intent(in)  :: max_pressure_lw
 
   if (masterproc) then
     write(iulog,*) 'init: ALI-ARMS non-LTE code'
   end if
 
   call addfld ('ALIARMS_Q',(/ 'lev' /), 'A','K/s','Non-LTE LW CO2 heating')
+  max_pressure_aliarms = max_pressure_lw * 1.e-05_r8
 
   end subroutine nlte_aliarms_init
   
@@ -75,7 +79,7 @@ contains
   
   integer(c_int) :: pver_c
 
-  integer :: icol
+  integer :: icol, iver
 
   ! Interface to ali C routine
   interface
@@ -93,16 +97,29 @@ contains
   do icol=1,ncol
   
       ali_cool(:) = 0.0_r8 
+      zkm(:)      = 0.0_r8
+      tn(:)       = 0.0_r8
+      co2_vmr(:)  = 0.0_r8
+      o_vmr(:)    = 0.0_r8
+      n2_vmr(:)   = 0.0_r8
+      o2_vmr(:)   = 0.0_r8
 
       p = pmid(icol,:)*1.0e-5_r8 ! conver pmid in Pa to bars
-      zkm = state_zm(icol,:)/1000._r8
-      tn = t(icol,:)
+      pver_c=0
+      do iver = 1,pver
+        if (p(iver) .lt. max_pressure_aliarms) then
+          pver_c=pver_c+1
+        else
+          exit  ! Have gone pas the maximum pressure
+        end if
+      end do
+      zkm(:pver_c) = state_zm(icol,:pver_c)/1000._r8
+      tn(:pver_c) = t(icol,:pver_c)
       
-      co2_vmr = xco2(icol,:)
-      o_vmr = xo(icol,:)
-      n2_vmr = xn2(icol,:)
-      o2_vmr = xo2(icol,:)
-      pver_c = pver
+      co2_vmr(:pver_c) = xco2(icol,:pver_c)
+      o_vmr(:pver_c) = xo(icol,:pver_c)
+      n2_vmr(:pver_c) = xn2(icol,:pver_c)
+      o2_vmr(:pver_c) = xo2(icol,:pver_c)
       
       call ali(zkm, p, tn, co2_vmr, o_vmr, n2_vmr, o2_vmr, ali_cool, pver_c)
       

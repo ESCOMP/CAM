@@ -224,7 +224,7 @@ contains
     end if
 
     if (waccm_heating) then
-       call nlte_init(pref_mid, nlte_use_mo, nlte_limit_co2, nlte_use_aliarms)
+       call nlte_init(pref_mid, max_pressure_lw, nlte_use_mo, nlte_limit_co2, nlte_use_aliarms)
     endif
 
 ! Add history variables to master field list

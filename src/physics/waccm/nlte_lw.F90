@@ -64,7 +64,7 @@ module nlte_lw
 contains
 !================================================================================================
 
-  subroutine nlte_init (pref_mid, nlte_use_mo_in, nlte_limit_co2, nlte_use_aliarms_in)
+  subroutine nlte_init (pref_mid, max_pressure_lw, nlte_use_mo_in, nlte_limit_co2, nlte_use_aliarms_in)
 !
 ! Initialize the nlte parameterizations and tgcm forcing data, if required
 !------------------------------------------------------------------------
@@ -75,6 +75,7 @@ contains
     use phys_control, only: phys_getopts
 
     real(r8),         intent(in) :: pref_mid(plev)
+    real(r8),         intent(in) :: max_pressure_lw
     logical,          intent(in) :: nlte_use_mo_in
     logical,          intent(in) :: nlte_limit_co2
     logical,          intent(in) :: nlte_use_aliarms_in
@@ -164,7 +165,7 @@ contains
     call nlte_fomichev_init (co2_mw, n2_mw, o1_mw, o2_mw, o3_mw, no_mw, nlte_limit_co2)
 
 ! Initialize ALI-ARMS parameterization
-    if (nlte_use_aliarms) call nlte_aliarms_init ()
+    if (nlte_use_aliarms) call nlte_aliarms_init (max_pressure_lw)
 
 ! Initialize waccm forcing data
     if (use_waccm_forcing) then
