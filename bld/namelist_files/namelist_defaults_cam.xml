@@ -1714,6 +1714,7 @@
 <drydep_srf_file hgrid="C384">atm/cam/chem/trop_mam/atmsrf_C384_c200625.nc</drydep_srf_file>
 
 <drydep_srf_file hgrid="mpasa3.75">atm/cam/chem/trop_mam/atmsrf_mpasa3.75_20210804.nc</drydep_srf_file>
+<drydep_srf_file hgrid="mpasa7.5">atm/cam/chem/trop_mam/atmsrf_mpasa7.5_20210824.nc</drydep_srf_file>
 <drydep_srf_file hgrid="mpasa15">atm/cam/chem/trop_mam/atmsrf_mpasa15_20210804.nc</drydep_srf_file>
 <drydep_srf_file hgrid="mpasa30">atm/cam/chem/trop_mam/atmsrf_mpasa30_20210804.nc</drydep_srf_file>
 <drydep_srf_file hgrid="mpasa60">atm/cam/chem/trop_mam/atmsrf_mpasa60_20210803.nc</drydep_srf_file>
@@ -2800,6 +2801,7 @@
 <mpas_dt hgrid="mpasa60"      >  360.0D0 </mpas_dt>
 <mpas_dt hgrid="mpasa30"      >  180.0D0 </mpas_dt>
 <mpas_dt hgrid="mpasa15"      >   90.0D0 </mpas_dt>
+<mpas_dt hgrid="mpasa7.5"     >   45.0D0 </mpas_dt>
 
 <mpas_split_dynamics_transport>.true.</mpas_split_dynamics_transport>
 <mpas_number_of_sub_steps     > 2 </mpas_number_of_sub_steps>
@@ -2817,6 +2819,7 @@
 <mpas_len_disp hgrid="mpasa60" >60000.0D0</mpas_len_disp>
 <mpas_len_disp hgrid="mpasa30" >30000.0D0</mpas_len_disp>
 <mpas_len_disp hgrid="mpasa15" >15000.0D0</mpas_len_disp>
+<mpas_len_disp hgrid="mpasa7.5">7500.0D0</mpas_len_disp>
 
 <mpas_visc4_2dsmag            > 0.05D0 </mpas_visc4_2dsmag>
 <mpas_del4u_div_factor        > 10.0D0 </mpas_del4u_div_factor>
@@ -2853,6 +2856,7 @@
 <mpas_block_decomp_file_prefix hgrid="mpasa15">atm/cam/inic/mpas/mpasa15.graph.info.part.</mpas_block_decomp_file_prefix>
 <mpas_block_decomp_file_prefix hgrid="mpasa12">atm/cam/inic/mpas/mpasa12.graph.info.part.</mpas_block_decomp_file_prefix>
 <mpas_block_decomp_file_prefix hgrid="mpasa15-3">atm/cam/inic/mpas/mpasa15-3.graph.info.part.</mpas_block_decomp_file_prefix>
+<mpas_block_decomp_file_prefix hgrid="mpasa7.5">atm/cam/inic/mpas/mpasa7.5.graph.info.part</mpas_block_decomp_file_prefix>
 
 <mpas_do_restart               > .false. </mpas_do_restart>
 <mpas_print_global_minmax_vel  > .true. </mpas_print_global_minmax_vel>
