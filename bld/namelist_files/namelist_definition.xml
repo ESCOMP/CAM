@@ -7210,28 +7210,6 @@ Number of hyperviscosity subcycles per dynamics timestep in sponge del2 diffusio
 Default: Set by build-namelist
 </entry>
 
-
-<entry id="se_rayk0" type="integer" category="se"
-       group="dyn_se_inparm" valid_values="" >
-Variable to specify the vertical index at which the
-Rayleigh friction term is centered (the peak value).
-Default: 2
-</entry>
-
-<entry id="se_raykrange" type="real" category="se"
-       group="dyn_se_inparm" valid_values="" >
-Rayleigh friction parameter to determine the width of the profile.  If set
-to 0 then a width is chosen by the algorithm (see rayleigh_friction.F90).
-Default: 0.5.
-</entry>
-
-<entry id="se_raytau0" type="real" category="se"
-       group="dyn_se_inparm" valid_values="" >
-Rayleigh friction parameter to determine the approximate value of the decay
-time (days) at model top.  If 0.0 then no Rayleigh friction is applied.
-Default: 0.
-</entry>
-
 <entry id="se_molecular_diff" type="real" category="se"
        group="dyn_se_inparm" valid_values="" >
 Used by SE dycore to apply sponge layer diffusion to u, v, and T for
@@ -7327,6 +7305,44 @@ Default: Set by build-namelist.
 <entry id="se_nu_top" type="real" category="se"
        group="dyn_se_inparm" valid_values="" >
 Second-order viscosity applied only near the model top [m^2/s].
+Default: Set by build-namelist.
+</entry>
+
+<entry id="se_sponge_del4_nu_fac" type="real" category="se"
+       group="dyn_se_inparm" valid_values="" >
+Hyperviscosity coefficient se_nu [m^4/s] for u,v, T is increased to
+se_nu_p*se_sponge_del4_nu_fac following a hyperbolic tangent function
+centered around pressure at vertical index se_sponge_del4_lev:
+
+ 0.5_r8*(1.0_r8+tanh(2.0_r8*log(pmid(se_sponge_del4_lev)/press)))
+
+where press is pressure
+
+If &lt; 0, se_sponge_del4_nu_fac is automatically set based on model top location.
+Default: Set by build-namelist.
+</entry>
+
+<entry id="se_sponge_del4_nu_div_fac" type="integer" category="se"
+       group="dyn_se_inparm" valid_values="" >
+Divergence damping hyperviscosity coefficient se_nu_div [m^4/s] for u,v is increased to
+se_nu_p*se_sponge_del4_nu_div_fac following a hyperbolic tangent function
+centered around pressure at vertical index se_sponge_del4_lev:
+
+ 0.5_r8*(1.0_r8+tanh(2.0_r8*log(pmid(se_sponge_del4_lev)/press)))
+
+where press is pressure
+
+If &lt; 0, se_sponge_del4_nu_div_fac is automatically set based on model top location.
+Default: Set by build-namelist.
+</entry>
+
+<entry id="se_sponge_del4_lev" type="real" category="se"
+       group="dyn_se_inparm" valid_values="" >
+Level index around which increased del4 damping is centered.
+
+See se_sponge_del4_nu_fac and se_sponge_del4_nu_div_fac
+
+If &lt; 0, se_sponge_del4_lev is automatically set based on model top location.
 Default: Set by build-namelist.
 </entry>
 
