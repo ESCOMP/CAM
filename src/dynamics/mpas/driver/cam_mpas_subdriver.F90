@@ -100,6 +100,7 @@ contains
        domain_ptr % core => corelist
 
        call mpas_allocate_domain(domain_ptr)
+       domain_ptr % domainID = 0
 
 
        !
@@ -1378,10 +1379,6 @@ contains
        type (field1DReal), pointer :: u_init
        type (field1DReal), pointer :: qv_init
 
-       type (field2DReal), pointer :: tend_ru_physics
-       type (field2DReal), pointer :: tend_rtheta_physics
-       type (field2DReal), pointer :: tend_rho_physics
-
 
        call MPAS_createStream(restart_stream, domain_ptr % ioContext, 'not_used', MPAS_IO_NETCDF, &
                               direction, pio_file_desc=fh_rst, ierr=ierr)
@@ -1500,10 +1497,6 @@ contains
 
        call mpas_pool_get_field(allFields, 'u_init', u_init)
        call mpas_pool_get_field(allFields, 'qv_init', qv_init)
-
-       call mpas_pool_get_field(allFields, 'tend_ru_physics', tend_ru_physics)
-       call mpas_pool_get_field(allFields, 'tend_rtheta_physics', tend_rtheta_physics)
-       call mpas_pool_get_field(allFields, 'tend_rho_physics', tend_rho_physics)
 
        ierr_total = 0
 
@@ -1710,13 +1703,6 @@ contains
        call MPAS_streamAddField(restart_stream, qv_init, ierr=ierr)
        if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
 
-       call MPAS_streamAddField(restart_stream, tend_ru_physics, ierr=ierr)
-       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
-       call MPAS_streamAddField(restart_stream, tend_rtheta_physics, ierr=ierr)
-       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
-       call MPAS_streamAddField(restart_stream, tend_rho_physics, ierr=ierr)
-       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
-
        if (ierr_total > 0) then
            write(errString, '(a,i0,a)') subname//': FATAL: Failed to add ', ierr_total, ' fields to restart stream.'
            call endrun(trim(errString))
@@ -1886,10 +1872,6 @@ contains
        call cam_mpas_update_halo('rho_p', endrun)
        call cam_mpas_update_halo('surface_pressure', endrun)
        call cam_mpas_update_halo('t_init', endrun)
-
-       call cam_mpas_update_halo('tend_ru_physics', endrun)
-       call cam_mpas_update_halo('tend_rtheta_physics', endrun)
-       call cam_mpas_update_halo('tend_rho_physics', endrun)
 
        !
        ! Re-index from global index space to local index space
