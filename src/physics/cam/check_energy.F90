@@ -985,6 +985,9 @@ end subroutine check_energy_get_integrals
 
       mr_cnst = rearth**3/gravit
       mo_cnst = omega*rearth**4/gravit
+
+      mr = 0.0_r8
+      mo = 0.0_r8
       do k = 1, pver
         do i = 1, ncol
           cos_lat = cos(state%lat(i))
@@ -996,7 +999,7 @@ end subroutine check_energy_get_integrals
         end do
       end do
       call outfld(name_out1  ,mr, pcols,lchnk   )
-      call outfld(name_out1  ,mo, pcols,lchnk   )
+      call outfld(name_out2  ,mo, pcols,lchnk   )
     end if
   end subroutine calc_te_and_aam_budgets
 

@@ -4,9 +4,5 @@ nhtfrq=9,9,9,9,9,9,9,9,9
 inithist='ENDOFRUN'
 
 se_nsplit = 30
-se_rayk0= 10
-se_raykrange= 5
-se_raytau0=0.002 
- 
 state_debug_checks = .true.
 
