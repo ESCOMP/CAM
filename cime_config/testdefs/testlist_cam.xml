@@ -609,9 +609,35 @@
   <test compset="QPWmaC6" grid="f10_f10_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
+      <machine name="izumi" compiler="nag" category="waccm"/>
     </machines>
     <options>
       <option name="comment" >471 tsm, ter</option>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
+  <test compset="QPWmaC4" grid="f10_f10_mg37" name="SMS_D_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="izumi" compiler="nag" category="waccm"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
+  <test compset="QPWmadC6" grid="f10_f10_mg37" name="SMS_D_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="izumi" compiler="nag" category="waccm"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
+  <test compset="QPWmadC4" grid="f10_f10_mg37" name="SMS_D_Ln9" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+      <machine name="izumi" compiler="nag" category="waccm"/>
+    </machines>
+    <options>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
