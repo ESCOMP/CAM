@@ -1393,6 +1393,8 @@ contains
     use aero_model,         only: aero_model_wetdep
     use physics_buffer,     only: col_type_subcol
     use check_energy,       only: check_energy_timestep_init
+    use carma_intr,         only: carma_wetdep_tend, carma_timestep_tend, carma_emission_tend, carma_timestep_tend
+    use carma_flags_mod,    only: carma_do_aerosol, carma_do_emission, carma_do_detrain, carma_do_cldice, carma_do_cldliq, carma_do_wetdep
     !
     ! Arguments
     !
@@ -1471,6 +1473,10 @@ contains
     real(r8) :: snow_pcw_macmic(pcols)
     real(r8) :: prec_sed_macmic(pcols)
     real(r8) :: snow_sed_macmic(pcols)
+
+    ! carma precipitation variables
+    real(r8) :: prec_sed_carma(pcols)          ! total precip from cloud sedimentation (CARMA)
+    real(r8) :: snow_sed_carma(pcols)          ! snow from cloud ice sedimentation (CARMA)
 
     logical :: labort                            ! abort flag
 
@@ -1587,6 +1593,12 @@ contains
                     fh2o, surfric, obklen, flx_heat, cmfmc, pflx, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
     end if
 
+    if (carma_do_emission) then
+       ! carma emissions
+       call carma_emission_tend (state, ptend, cam_in, ztodt)
+       call physics_update(state, ptend, ztodt, tend)
+    end if
+
     ! get nstep and zero array for energy checker
     zero = 0._r8
     zero_sc(:) = 0._r8
@@ -1602,6 +1614,38 @@ contains
          cam_in%shf, cam_in%lhf, cam_in%cflx)
 
     call t_stopf('tphysac_init')
+
+    !===================================================
+    ! Calculate tendencies from CARMA bin microphysics.
+    !===================================================
+    !
+    ! If CARMA is doing detrainment, then on output, rliq no longer represents
+    ! water reserved
+    ! for detrainment, but instead represents potential snow fall. The mass and
+    ! number of the
+    ! snow are stored in the physics buffer and will be incorporated by the MG
+    ! microphysics.
+    !
+    ! Currently CARMA cloud microphysics is only supported with the MG
+    ! microphysics.
+    call t_startf('carma_timestep_tend')
+
+    if (carma_do_cldice .or. carma_do_cldliq) then
+       call carma_timestep_tend(state, cam_in, cam_out, ptend, ztodt, pbuf, dlf=dlf, rliq=rliq, &
+            prec_str=prec_str, snow_str=snow_str, prec_sed=prec_sed_carma, snow_sed=snow_sed_carma)
+       call physics_update(state, ptend, ztodt, tend)
+
+       ! Before the detrainment, the reserved condensate is all liquid, but if
+       ! CARMA is doing
+       ! detrainment, then the reserved condensate is snow.
+       if (carma_do_detrain) then
+          call check_energy_chng(state, tend, "carma_tend", nstep, ztodt, zero, prec_str+rliq, snow_str+rliq, zero)
+       else
+          call check_energy_chng(state, tend, "carma_tend", nstep, ztodt, zero, prec_str, snow_str, zero)
+       end if
+    end if
+
+    call t_stopf('carma_timestep_tend')
 
     if( microp_scheme == 'MG' ) then
        ! Start co-substepping of macrophysics and microphysics
@@ -1824,6 +1868,12 @@ contains
 
     endif
 
+    ! Add the precipitation from CARMA to the precipitation from stratiform.
+    if (carma_do_cldice .or. carma_do_cldliq) then
+       prec_sed(:ncol) = prec_sed(:ncol) + prec_sed_carma(:ncol)
+       snow_sed(:ncol) = snow_sed(:ncol) + snow_sed_carma(:ncol)
+    end if
+
     if ( .not. deep_scheme_does_scav_trans() ) then
 
        ! -------------------------------------------------------------------------------
@@ -1858,6 +1908,20 @@ contains
        if (trim(cam_take_snapshot_after) == "aero_model_wetdep") then
           call camdev_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
                   fh2o, surfric, obklen, flx_heat, cmfmc, pflx, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+       end if
+
+       if (carma_do_wetdep) then
+          ! CARMA wet deposition
+          !
+          ! NOTE: It needs to follow aero_model_wetdep, so that
+          ! cam_out%xxxwetxxx
+          ! fields have already been set for CAM aerosols and cam_out can be
+          ! added
+          ! to for CARMA aerosols.
+          call t_startf ('carma_wetdep_tend')
+          call carma_wetdep_tend(state, ptend, ztodt, pbuf, dlf, cam_out)
+          call physics_update(state, ptend, ztodt, tend)
+          call t_stopf ('carma_wetdep_tend')
        end if
 
        call t_startf ('convect_deep_tend2')
@@ -2090,6 +2154,26 @@ contains
    end if
 
     call t_stopf('aero_drydep')
+
+   ! CARMA microphysics
+   !
+   ! NOTE: This does both the timestep_tend for CARMA aerosols as well as doing
+   ! the dry
+   ! deposition for CARMA aerosols. It needs to follow vertical_diffusion_tend,
+   ! so that
+   ! obklen and surfric have been calculated. It needs to follow
+   ! aero_model_drydep, so
+   ! that cam_out%xxxdryxxx fields have already been set for CAM aerosols and
+   ! cam_out
+   ! can be added to for CARMA aerosols.
+   if (carma_do_aerosol) then
+     call t_startf('carma_timestep_tend')
+     call carma_timestep_tend(state, cam_in, cam_out, ptend, ztodt, pbuf, obklen=obklen, ustar=surfric)
+     call physics_update(state, ptend, ztodt, tend)
+
+     call check_energy_chng(state, tend, "carma_tend", nstep, ztodt, zero, zero, zero, zero)
+     call t_stopf('carma_timestep_tend')
+   end if
 
     !---------------------------------------------------------------------------------
     !   ... enforce charge neutrality
