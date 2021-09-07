@@ -382,7 +382,7 @@ subroutine dyn_init(dyn_in, dyn_out)
   use physconst,          only: thermodynamic_active_species_num, dry_air_species_num, thermodynamic_active_species_idx
   use physconst,          only: thermodynamic_active_species_idx_dycore, rair, cpair
   use tracer_manager_mod, only: register_tracers
-  use dyn_tests_utils,    only: vc_dycore, vc_moist_pressure, string_vc
+  use dyn_tests_utils,    only: vc_dycore, vc_moist_pressure, string_vc, vc_str_lgth
   ! arguments:
    type (dyn_import_t),     intent(out) :: dyn_in
    type (dyn_export_t),     intent(out) :: dyn_out
@@ -432,7 +432,8 @@ subroutine dyn_init(dyn_in, dyn_out)
       "J/m2         ","kg*m2/s*rad2 ","kg*m2/s*rad2 ","kg/m2        "/)
 
    integer :: istage, ivars
-   character (len=108) :: str1, str2, str3
+   character (len=108)         :: str1, str2, str3
+   character (len=vc_str_lgth) :: vc_str
    integer :: is,isd,ie,ied,js,jsd,je,jed
    integer :: fv3idx,idx
 
@@ -444,8 +445,8 @@ subroutine dyn_init(dyn_in, dyn_out)
    !-----------------------------------------------------------------------
    vc_dycore = vc_moist_pressure
    if (masterproc) then
-     call string_vc(vc_dycore,str1)
-     write(iulog,*)'vertical coordinate dycore   : ',trim(str1)
+     call string_vc(vc_dycore,vc_str)
+     write(iulog,*) sub//'vertical coordinate dycore   : ',trim(vc_str)
    end if
    ! Setup the condensate loading arrays and fv3/cam tracer mapping and
    ! finish initializing fv3 by allocating the tracer arrays in the fv3 atm structure
@@ -515,7 +516,7 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    if (masterproc) then
 
-      write(iulog,*) 'Creating field_table file to load tracer fields into fv3'
+      write(iulog,*) sub//'Creating field_table file to load tracer fields into fv3'
       ! overwrite file if it exists.
       open( newunit=unito, file='field_table', status='replace' )
       do i=1,pcnst

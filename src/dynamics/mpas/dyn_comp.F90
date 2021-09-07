@@ -321,7 +321,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    use mpas_timekeeping,   only : MPAS_set_timeInterval
    use mpas_derived_types, only : mpas_pool_type
    use mpas_constants,     only : mpas_constants_compute_derived
-   use dyn_tests_utils,    only : vc_dycore, vc_height, string_vc
+   use dyn_tests_utils,    only : vc_dycore, vc_height, string_vc, vc_str_lgth
    use phys_control,       only : waccmx_is
    use constituents,       only : cnst_get_ind
    ! arguments:
@@ -377,12 +377,13 @@ subroutine dyn_init(dyn_in, dyn_out)
       "J/m2         ","kg*m2/s*rad2 ","kg*m2/s*rad2 ","kg/m2        "/)
 
    integer :: istage, ivars, m
-   character (len=108) :: str1, str2, str3
+   character (len=108)         :: str1, str2, str3
+   character (len=vc_str_lgth) :: vc_str
 
    vc_dycore = vc_height
    if (masterproc) then
-     call string_vc(vc_dycore,str1)
-     write(iulog,*)'vertical coordinate dycore   : ',trim(str1)
+     call string_vc(vc_dycore,vc_str)
+     write(iulog,*)'vertical coordinate dycore   : ',trim(vc_str)
    end if
    !----------------------------------------------------------------------------
 

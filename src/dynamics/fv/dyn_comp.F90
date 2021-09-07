@@ -480,7 +480,7 @@ subroutine dyn_init(dyn_in, dyn_out)
 #endif
    use ctem,            only: ctem_init
    use diag_module,     only: fv_diag_init
-   use dyn_tests_utils, only: vc_dycore, vc_moist_pressure, string_vc
+   use dyn_tests_utils, only: vc_dycore, vc_moist_pressure, string_vc, vc_str_lgth
 
    ! arguments:
    type (dyn_import_t),     intent(out) :: dyn_in
@@ -503,12 +503,12 @@ subroutine dyn_init(dyn_in, dyn_out)
    integer :: budget_hfile_num
 
    character(len=*), parameter :: sub='dyn_init'
-   character(len=108)          :: str1
+   character (len=vc_str_lgth) :: vc_str
    !----------------------------------------------------------------------------
    vc_dycore = vc_moist_pressure
    if (masterproc) then
-     call string_vc(vc_dycore,str1)
-     write(iulog,*)'vertical coordinate dycore   : ',trim(str1)
+     call string_vc(vc_dycore,vc_str)
+     write(iulog,*) sub//': vertical coordinate dycore   : ',trim(vc_str)
    end if
    dyn_state => get_dyn_state()
    grid      => dyn_state%grid
@@ -703,13 +703,13 @@ subroutine dyn_init(dyn_in, dyn_out)
    do m=1,thermodynamic_active_species_liq_num
      thermodynamic_active_species_liq_idx_dycore(m) = thermodynamic_active_species_liq_idx(m)
      if (masterproc) then
-       write(iulog,*) "m,thermodynamic_active_species_idx_liq_dycore: ",m,thermodynamic_active_species_liq_idx_dycore(m)
+       write(iulog,*) sub//": m,thermodynamic_active_species_idx_liq_dycore: ",m,thermodynamic_active_species_liq_idx_dycore(m)
      end if
    end do
    do m=1,thermodynamic_active_species_ice_num
      thermodynamic_active_species_ice_idx_dycore(m) = thermodynamic_active_species_ice_idx(m)
      if (masterproc) then
-       write(iulog,*) "m,thermodynamic_active_species_idx_ice_dycore: ",m,thermodynamic_active_species_ice_idx_dycore(m)
+       write(iulog,*) sub//": m,thermodynamic_active_species_idx_ice_dycore: ",m,thermodynamic_active_species_ice_idx_dycore(m)
      end if
    end do
 

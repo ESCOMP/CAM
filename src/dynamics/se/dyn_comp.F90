@@ -617,7 +617,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    use physconst,          only: get_molecular_diff_coef_reference
    use control_mod,        only: vert_remap_uvTq_alg, vert_remap_tracer_alg
    use std_atm_profile,    only: std_atm_height
-   use dyn_tests_utils,    only: vc_dycore, vc_dry_pressure, string_vc
+   use dyn_tests_utils,    only: vc_dycore, vc_dry_pressure, string_vc, vc_str_lgth
    ! Dummy arguments:
    type(dyn_import_t), intent(out) :: dyn_in
    type(dyn_export_t), intent(out) :: dyn_out
@@ -666,19 +666,20 @@ subroutine dyn_init(dyn_in, dyn_out)
       "J/m2         ","kg*m2/s*rad2 ","kg*m2/s*rad2 ","kg/m2        "/)
 
    integer :: istage, ivars
-   character (len=108) :: str1, str2, str3
+   character (len=108)         :: str1, str2, str3
+   character (len=vc_str_lgth) :: vc_str
 
    logical :: history_budget      ! output tendencies and state variables for budgets
    integer :: budget_hfile_num
 
-   character(len=*), parameter :: subname = 'dyn_init'
+   character(len=*), parameter :: sub = 'dyn_init'
 
    real(r8) :: km_sponge_factor_local(nlev+1)
    !----------------------------------------------------------------------------
    vc_dycore = vc_dry_pressure
    if (masterproc) then
-     call string_vc(vc_dycore,str1)
-     write(iulog,*)'vertical coordinate dycore   : ',trim(str1)
+     call string_vc(vc_dycore,vc_str)
+     write(iulog,*) sub//': vertical coordinate dycore   : ',trim(vc_str)
    end if
    ! Now allocate and set condenstate vars
    allocate(cnst_name_gll(qsize))     ! constituent names for gll tracers
@@ -738,7 +739,7 @@ subroutine dyn_init(dyn_in, dyn_out)
        thermodynamic_active_species_liq_idx_dycore(m) = thermodynamic_active_species_liq_idx(m)
      end if
      if (masterproc) then
-       write(iulog,*) "m,thermodynamic_active_species_idx_liq_dycore: ",m,thermodynamic_active_species_liq_idx_dycore(m)
+       write(iulog,*) sub//": m,thermodynamic_active_species_idx_liq_dycore: ",m,thermodynamic_active_species_liq_idx_dycore(m)
      end if
    end do
    do m=1,thermodynamic_active_species_ice_num
@@ -752,7 +753,7 @@ subroutine dyn_init(dyn_in, dyn_out)
        thermodynamic_active_species_ice_idx_dycore(m) = thermodynamic_active_species_ice_idx(m)
      end if
      if (masterproc) then
-       write(iulog,*) "m,thermodynamic_active_species_idx_ice_dycore: ",m,thermodynamic_active_species_ice_idx_dycore(m)
+       write(iulog,*) sub//": m,thermodynamic_active_species_idx_ice_dycore: ",m,thermodynamic_active_species_ice_idx_dycore(m)
      end if
    end do
 
@@ -786,7 +787,7 @@ subroutine dyn_init(dyn_in, dyn_out)
      !
      ! molecular diffusion and thermal conductivity reference values
      !
-     if (masterproc) write(iulog,*) subname//": initialize molecular diffusion reference profiles"
+     if (masterproc) write(iulog,*) sub//": initialize molecular diffusion reference profiles"
      tref = 1000._r8     !mean value at model top for solar max
      km_sponge_factor = molecular_diff
      km_sponge_factor_local = molecular_diff
@@ -828,7 +829,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    !
    nu_scale_top(:) = 0.0_r8
    if (nu_top>0) then
-     if (masterproc) write(iulog,*) subname//": sponge layer viscosity scaling factor"
+     if (masterproc) write(iulog,*) sub//": sponge layer viscosity scaling factor"
      do k=1,nlev
        press = (hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0
        ptop  = hvcoord%hyai(1)*hvcoord%ps0
@@ -844,12 +845,12 @@ subroutine dyn_init(dyn_in, dyn_out)
    end if
    ksponge_end = MAX(MAX(ksponge_end,1),kmol_end)
    if (masterproc) then
-     write(iulog,*) subname//": ksponge_end = ",ksponge_end
+     write(iulog,*) sub//": ksponge_end = ",ksponge_end
      if (nu_top>0) then
        do k=1,ksponge_end+1
          press = (hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0
          call std_atm_height(press,z)
-         write(iulog,'(a,i3,4e11.4)') subname//": k, p, z, nu_scale_top, nu ",k,press,z,&
+         write(iulog,'(a,i3,4e11.4)') sub//": k, p, z, nu_scale_top, nu ",k,press,z,&
               nu_scale_top(k),nu_scale_top(k)*nu_top
        end do
      end if
@@ -1211,7 +1212,7 @@ subroutine read_inidat(dyn_in)
    integer                          :: i, j, indx, nq
    integer                          :: dyn_cols
    character(len=128)               :: errmsg
-   character(len=*), parameter      :: subname='READ_INIDAT'
+   character(len=*), parameter      :: sub='READ_INIDAT'
 
    ! fvm vars
    real(r8), allocatable            :: inv_dp_darea_fvm(:,:,:)
@@ -1363,12 +1364,12 @@ subroutine read_inidat(dyn_in)
          inic_wet = .false.
          call read_dyn_var(trim(fieldname2), fh_ini, dimname, dbuf2)
       else
-         call endrun(trim(subname)//': PS or PSDRY must be on GLL grid')
+         call endrun(trim(sub)//': PS or PSDRY must be on GLL grid')
       end if
 #ifndef planet_mars
       if (iam < par%nprocs) then
          if (minval(dbuf2, mask=reshape(pmask, (/npsq,nelemd/))) < 10000._r8) then
-            call endrun(trim(subname)//': Problem reading ps or psdry field -- bad values')
+            call endrun(trim(sub)//': Problem reading ps or psdry field -- bad values')
          end if
       end if
 #endif
@@ -1387,7 +1388,7 @@ subroutine read_inidat(dyn_in)
       if (dyn_field_exists(fh_ini, 'U')) then
          call read_dyn_var('U', fh_ini, dimname, dbuf3)
       else
-         call endrun(trim(subname)//': U not found')
+         call endrun(trim(sub)//': U not found')
       end if
       do ie = 1, nelemd
          elem(ie)%state%v = 0.0_r8
@@ -1403,7 +1404,7 @@ subroutine read_inidat(dyn_in)
       if (dyn_field_exists(fh_ini, 'V')) then
          call read_dyn_var('V', fh_ini, dimname, dbuf3)
       else
-         call endrun(trim(subname)//': V not found')
+         call endrun(trim(sub)//': V not found')
       end if
       do ie = 1, nelemd
          indx = 1
@@ -1418,7 +1419,7 @@ subroutine read_inidat(dyn_in)
       if (dyn_field_exists(fh_ini, 'T')) then
          call read_dyn_var('T', fh_ini, dimname, dbuf3)
       else
-         call endrun(trim(subname)//': T not found')
+         call endrun(trim(sub)//': T not found')
       end if
       do ie=1,nelemd
          elem(ie)%state%T = 0.0_r8
@@ -1433,7 +1434,7 @@ subroutine read_inidat(dyn_in)
 
       if (pertlim .ne. 0.0_r8) then
          if (masterproc) then
-            write(iulog,*) trim(subname), ': Adding random perturbation bounded', &
+            write(iulog,*) trim(sub), ': Adding random perturbation bounded', &
                'by +/- ', pertlim, ' to initial temperature field'
          end if
 
@@ -1480,11 +1481,11 @@ subroutine read_inidat(dyn_in)
       if (ntrac < pcnst) then
          write(errmsg, '(a,3(i0,a))') ': ntrac (',ntrac,') > qsize (',qsize, &
             ') but < pcnst (',pcnst,')'
-         call endrun(trim(subname)//errmsg)
+         call endrun(trim(sub)//errmsg)
       end if
    else if (qsize < pcnst) then
       write(errmsg, '(a,2(i0,a))') ': qsize (',qsize,') < pcnst (',pcnst,')'
-      call endrun(trim(subname)//errmsg)
+      call endrun(trim(sub)//errmsg)
    end if
 
    ! If using analytic ICs the initial file only needs the horizonal grid
@@ -1837,7 +1838,7 @@ subroutine set_phis(dyn_in)
    real(r8), allocatable            :: latvals_phys(:)
    real(r8), allocatable            :: lonvals_phys(:)
 
-   character(len=*), parameter      :: subname='set_phis'
+   character(len=*), parameter      :: sub='set_phis'
    !----------------------------------------------------------------------------
 
    fh_topo => topo_file_get_id()
@@ -1890,14 +1891,14 @@ subroutine set_phis(dyn_in)
       ! The dimension of the unstructured grid in the TOPO file is 'ncol'.
       ierr = pio_inq_dimid(fh_topo, 'ncol', ncol_did)
       if (ierr /= PIO_NOERR) then
-         call endrun(subname//': dimension ncol not found in bnd_topo file')
+         call endrun(sub//': dimension ncol not found in bnd_topo file')
       end if
       ierr = pio_inq_dimlen(fh_topo, ncol_did, ncol_size)
       if (ncol_size /= dyn_cols) then
          if (masterproc) then
-            write(iulog,*) subname//': ncol_size=', ncol_size, ' : dyn_cols=', dyn_cols
+            write(iulog,*) sub//': ncol_size=', ncol_size, ' : dyn_cols=', dyn_cols
          end if
-         call endrun(subname//': ncol size in bnd_topo file does not match grid definition')
+         call endrun(sub//': ncol size in bnd_topo file does not match grid definition')
       end if
 
       fieldname = 'PHIS'
@@ -1910,7 +1911,7 @@ subroutine set_phis(dyn_in)
                 phis_tmp, pmask)
          end if
       else
-         call endrun(subname//': Could not find PHIS field on input datafile')
+         call endrun(sub//': Could not find PHIS field on input datafile')
       end if
 
       ! Put the error handling back the way it was
@@ -2009,7 +2010,7 @@ subroutine set_phis(dyn_in)
       call edgeVpack(edgebuf, elem(ie)%state%phis, 1, kptr, ie)
    end do
    if(iam < par%nprocs) then
-      call bndry_exchange(par, edgebuf, location=subname)
+      call bndry_exchange(par, edgebuf, location=sub)
    end if
    do ie = 1, nelemd
       kptr = 0
@@ -2041,7 +2042,7 @@ subroutine check_file_layout(file, elem, dyn_cols, file_desc, dyn_ok, dimname)
    logical                          :: found
    character(len=max_fieldname_len) :: dimname2, coordname
 
-   character(len=*), parameter      :: subname = 'check_file_layout'
+   character(len=*), parameter      :: sub = 'check_file_layout'
    !----------------------------------------------------------------------------
 
    ! Check that number of columns in IC file matches grid definition.
@@ -2050,17 +2051,17 @@ subroutine check_file_layout(file, elem, dyn_cols, file_desc, dyn_ok, dimname)
 
    ierr = pio_inq_dimid(file, trim(dimname), ncol_did)
    if (ierr /= PIO_NOERR) then
-      call endrun(subname//': ERROR: either ncol or ncol_d dimension not found in ' &
+      call endrun(sub//': ERROR: either ncol or ncol_d dimension not found in ' &
          //trim(file_desc)//' file')
    end if
 
    ierr = pio_inq_dimlen(file, ncol_did, ncol_size)
    if (ncol_size /= dyn_cols) then
       if (masterproc) then
-         write(iulog, '(a,2(a,i0))') trim(subname), ': ncol_size=', ncol_size, &
+         write(iulog, '(a,2(a,i0))') trim(sub), ': ncol_size=', ncol_size, &
              ' : dyn_cols=', dyn_cols
       end if
-      call endrun(subname//': ERROR: dimension ncol size not same as in ncdata file')
+      call endrun(sub//': ERROR: dimension ncol size not same as in ncdata file')
    end if
 
    ! Set coordinate name associated with dimname.
