@@ -536,8 +536,8 @@ contains
        call physics_update(state, ptend, ztodt, tend)
     end if
 
-    call calc_te_and_aam_budgets(state, 'pAP')
-    call calc_te_and_aam_budgets(state, 'zAP',vc=vc_dycore)
+    call calc_te_and_aam_budgets(state, 'phAP')
+    call calc_te_and_aam_budgets(state, 'dyAP',vc=vc_dycore)
     
     ! FV: convert dry-type mixing ratios to moist here because
     !     physics_dme_adjust assumes moist. This is done in p_d_coupling for
@@ -567,9 +567,9 @@ contains
       ! for dry mixing ratio dycore, physics_dme_adjust is called for energy diagnostic purposes only.  
       ! So, save off tracers
       if (.not.moist_mixing_ratio_dycore.and.&
-         (hist_fld_active('SE_pAM').or.hist_fld_active('KE_pAM').or.hist_fld_active('WV_pAM').or.&
-          hist_fld_active('WL_pAM').or.hist_fld_active('WI_pAM').or.hist_fld_active('MR_pAM').or.&
-          hist_fld_active('MO_pAM'))) then         
+         (hist_fld_active('SE_phAM').or.hist_fld_active('KE_phAM').or.hist_fld_active('WV_phAM').or.&
+          hist_fld_active('WL_phAM').or.hist_fld_active('WI_phAM').or.hist_fld_active('MR_phAM').or.&
+          hist_fld_active('MO_phAM'))) then
         tmp_trac(:ncol,:pver,:pcnst) = state%q(:ncol,:pver,:pcnst)
         tmp_pdel(:ncol,:pver)        = state%pdel(:ncol,:pver)
         tmp_ps(:ncol)                = state%ps(:ncol)
@@ -589,8 +589,8 @@ contains
            call cam_snapshot_all_outfld(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf)
         end if
 
-        call calc_te_and_aam_budgets(state, 'pAM')
-        call calc_te_and_aam_budgets(state, 'zAM',vc=vc_dycore)
+        call calc_te_and_aam_budgets(state, 'phAM')
+        call calc_te_and_aam_budgets(state, 'dyAM',vc=vc_dycore)
         ! Restore pre-"physics_dme_adjust" tracers
         state%q(:ncol,:pver,:pcnst) = tmp_trac(:ncol,:pver,:pcnst)
         state%pdel(:ncol,:pver)     = tmp_pdel(:ncol,:pver)
@@ -599,16 +599,16 @@ contains
 
       if (moist_mixing_ratio_dycore) then
         call physics_dme_adjust(state, tend, qini, ztodt)
-        call calc_te_and_aam_budgets(state, 'pAM')
-        call calc_te_and_aam_budgets(state, 'zAM',vc=vc_dycore)
+        call calc_te_and_aam_budgets(state, 'phAM')
+        call calc_te_and_aam_budgets(state, 'dyAM',vc=vc_dycore)
       end if
 
     else
       tmp_q     (:ncol,:pver) = 0.0_r8
       tmp_cldliq(:ncol,:pver) = 0.0_r8
       tmp_cldice(:ncol,:pver) = 0.0_r8
-      call calc_te_and_aam_budgets(state, 'pAM')
-      call calc_te_and_aam_budgets(state, 'zAM',vc=vc_dycore)
+      call calc_te_and_aam_budgets(state, 'phAM')
+      call calc_te_and_aam_budgets(state, 'dyAM',vc=vc_dycore)
     end if
 
     ! store T in buffer for use in computing dynamics T-tendency in next timestep
@@ -743,8 +743,8 @@ contains
     !===================================================
     ! Global mean total energy fixer and AAM diagnostics
     !===================================================
-    call calc_te_and_aam_budgets(state, 'pBF')
-    call calc_te_and_aam_budgets(state, 'zBF',vc=vc_dycore)
+    call calc_te_and_aam_budgets(state, 'phBF')
+    call calc_te_and_aam_budgets(state, 'dyBF',vc=vc_dycore)
 
     call t_startf('energy_fixer')
 
@@ -757,8 +757,8 @@ contains
 
     call t_stopf('energy_fixer')
 
-    call calc_te_and_aam_budgets(state, 'pBP')
-    call calc_te_and_aam_budgets(state, 'zBP',vc=vc_dycore)
+    call calc_te_and_aam_budgets(state, 'phBP')
+    call calc_te_and_aam_budgets(state, 'dyBP',vc=vc_dycore)
 
     ! Save state for convective tendency calculations.
     call diag_conv_tend_ini(state, pbuf)
