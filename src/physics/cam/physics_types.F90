@@ -53,6 +53,9 @@ module physics_types
   public physics_ptend_dealloc ! deallocate individual components within tend
 
 !-------------------------------------------------------------------------------
+  integer, parameter, public :: phys_te_idx = 1
+  integer ,parameter, public :: dyn_te_idx = 2
+
   type physics_state
      integer                                     :: &
           lchnk,                &! chunk index
@@ -94,14 +97,14 @@ module physics_types
           lnpintdry,&! log interface pressure dry (Pa)
           zi         ! geopotential height above surface at interfaces (m)
 
-
      real(r8), dimension(:,:),allocatable          :: &
-                           ! Second dimension is (1) CAM physics total energy and (2) dycore total
-                           ! energy computed in physics
+                           ! Second dimension is (phys_te_idx) CAM physics total energy and 
+                           ! (dyn_te_idx) dycore total energy computed in physics
           te_ini,         &! vertically integrated total (kinetic + static) energy of initial state
           te_cur,         &! vertically integrated total (kinetic + static) energy of current state
           tw_ini,         &! vertically integrated total water of initial state
-          tw_cur,         &! vertically integrated total water of new state
+          tw_cur           ! vertically integrated total water of new state
+     real(r8), dimension(:,:),allocatable          :: &
           temp_ini,       &! Temperature of initial state (used for energy computations)
           z_ini            ! Height of initial state (used for energy computations)
      integer :: count ! count of values with significant energy or water imbalances

@@ -216,6 +216,7 @@ end subroutine check_energy_get_integrals
     use physics_buffer,  only: physics_buffer_desc, pbuf_set_field
     use cam_abortutils,  only: endrun
     use dyn_tests_utils, only: vc_physics, vc_dycore, vc_height
+    use physics_types,   only: phys_te_idx, dyn_te_idx
 !-----------------------------------------------------------------------
 ! Compute initial values of energy and water integrals,
 ! zero cumulative tendencies
@@ -254,10 +255,10 @@ end subroutine check_energy_get_integrals
          state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver,lchnk),                   &
          state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), state%T(1:ncol,1:pver),     &
          vc_physics, ps = state%ps(1:ncol), phis = state%phis(1:ncol),               &
-         te = state%te_ini(1:ncol,1), H2O = state%tw_ini(1:ncol,1))
+         te = state%te_ini(1:ncol,phys_te_idx), H2O = state%tw_ini(1:ncol,phys_te_idx))
          
     !
-    ! Dynamical core total energy (phl continue coding)
+    ! Dynamical core total energy
     !
     state%temp_ini(:ncol,:) = state%T(:ncol,:)
     state%z_ini(:ncol,:)    = state%zm(:ncol,:)
@@ -276,15 +277,10 @@ end subroutine check_energy_get_integrals
          state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), state%T(1:ncol,1:pver),     &
          vc_dycore, ps = state%ps(1:ncol), phis = state%phis(1:ncol),                &
          z = state%z_ini(1:ncol,:),                                                  &
-         te = state%te_ini(1:ncol,2), H2O = state%tw_ini(1:ncol,2))
+         te = state%te_ini(1:ncol,dyn_te_idx), H2O = state%tw_ini(1:ncol,dyn_te_idx))
 
-    do k=1,2
-      do i = 1, ncol
-        state%te_cur(i,k) = state%te_ini(i,k)
-        state%tw_cur(i,k) = state%tw_ini(i,k)
-      end do
-    end do
-
+    state%te_cur(:ncol,:) = state%te_ini(:ncol,:)
+    state%tw_cur(:ncol,:) = state%tw_ini(:ncol,:)
 
 ! zero cummulative boundary fluxes
     tend%te_tnd(:ncol) = 0._r8
@@ -294,8 +290,7 @@ end subroutine check_energy_get_integrals
 
 ! initialize physics buffer
     if (is_first_step()) then
-       call pbuf_set_field(pbuf, teout_idx, state%te_ini(:,2), col_type=col_type)
-! (phl continue coding) set te_ini(:,2)
+       call pbuf_set_field(pbuf, teout_idx, state%te_ini(:,dyn_te_idx), col_type=col_type)
     end if
 
   end subroutine check_energy_timestep_init
@@ -307,6 +302,7 @@ end subroutine check_energy_get_integrals
     use physconst,       only: get_hydrostatic_energy
     use dyn_tests_utils, only: vc_physics, vc_dycore, vc_height
     use cam_abortutils,  only: endrun
+    use physics_types,   only: phys_te_idx, dyn_te_idx
 !-----------------------------------------------------------------------
 ! Check that the energy and water change matches the boundary fluxes
 !-----------------------------------------------------------------------
@@ -377,8 +373,8 @@ end subroutine check_energy_get_integrals
     ! compute expected values and tendencies
     do i = 1, ncol
        ! change in static energy and total water
-       te_dif(i) = te(i) - state%te_cur(i,1)
-       tw_dif(i) = tw(i) - state%tw_cur(i,1)
+       te_dif(i) = te(i) - state%te_cur(i,phys_te_idx)
+       tw_dif(i) = tw(i) - state%tw_cur(i,phys_te_idx)
 
        ! expected tendencies from boundary fluxes for last process
        te_tnd(i) = flx_vap(i)*(latvap+latice) - (flx_cnd(i) - flx_ice(i))*1000._r8*latice + flx_sen(i)
@@ -389,11 +385,11 @@ end subroutine check_energy_get_integrals
        tend%tw_tnd(i) = tend%tw_tnd(i) + tw_tnd(i)
 
        ! expected new values from previous state plus boundary fluxes
-       te_xpd(i) = state%te_cur(i,1) + te_tnd(i)*ztodt
-       tw_xpd(i) = state%tw_cur(i,1) + tw_tnd(i)*ztodt
+       te_xpd(i) = state%te_cur(i,phys_te_idx) + te_tnd(i)*ztodt
+       tw_xpd(i) = state%tw_cur(i,phys_te_idx) + tw_tnd(i)*ztodt
 
        ! relative error, expected value - input state / previous state
-       te_rer(i) = (te_xpd(i) - te(i)) / state%te_cur(i,1)
+       te_rer(i) = (te_xpd(i) - te(i)) / state%te_cur(i,phys_te_idx)
     end do
 
     ! relative error for total water (allow for dry atmosphere)
@@ -430,8 +426,8 @@ end subroutine check_energy_get_integrals
     ! copy new value to state
     
     do i = 1, ncol
-      state%te_cur(i,1) = te(i)
-      state%tw_cur(i,1) = tw(i)
+      state%te_cur(i,phys_te_idx) = te(i)
+      state%tw_cur(i,phys_te_idx) = tw(i)
     end do
 
 
@@ -460,7 +456,7 @@ end subroutine check_energy_get_integrals
          state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), temp(1:ncol,1:pver),        &
          vc_dycore, ps = state%ps(1:ncol), phis = state%phis(1:ncol),                &
          z = state%z_ini(1:ncol,:),                                                  &
-         te = state%te_cur(1:ncol,2), H2O = state%tw_cur(1:ncol,2))
+         te = state%te_cur(1:ncol,dyn_te_idx), H2O = state%tw_cur(1:ncol,dyn_te_idx))
     
   end subroutine check_energy_chng
 
@@ -469,6 +465,7 @@ end subroutine check_energy_get_integrals
 
     use physics_buffer, only : physics_buffer_desc, pbuf_get_field, pbuf_get_chunk
     use dyn_tests_utils, only: vc_dycore, vc_height
+    use physics_types,   only: dyn_te_idx
 !-----------------------------------------------------------------------
 ! Compute global mean total energy of physics input and output states
 ! computed consistently with dynamical core vertical coordinate
@@ -496,7 +493,7 @@ end subroutine check_energy_get_integrals
     do lchnk = begchunk, endchunk
        ncol = state(lchnk)%ncol
        ! input energy using dynamical core energy formula
-       te(:ncol,lchnk,1) = state(lchnk)%te_ini(:ncol,2)
+       te(:ncol,lchnk,1) = state(lchnk)%te_ini(:ncol,dyn_te_idx)
        ! output energy
        call pbuf_get_field(pbuf_get_chunk(pbuf2d,lchnk),teout_idx, teout)
 

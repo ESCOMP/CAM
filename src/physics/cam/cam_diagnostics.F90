@@ -190,19 +190,19 @@ contains
     integer                                    :: istage, ivars
     character (len=108)                        :: str1, str2, str3
     integer, parameter                         :: num_stages = 8, num_vars = 8
-    character (len = 3), dimension(num_stages) :: stage = (/"pBF","pBP","pAP","pAM","zBF","zBP","zAP","zAM"/)
-    character (len = 70),dimension(num_stages) :: stage_txt = (/&
-         " before energy fixer                     ",& !pBF - physics energy
-         " before parameterizations                ",& !pBF - physics energy
-         " after parameterizations                 ",& !pAP - physics energy
-         " after dry mass correction               ",& !pAM - physics energy
-         " before energy fixer (dycore)            ",& !zBF - dynamics energy
-         " before parameterizations (dycore)       ",& !zBF - dynamics energy
-         " after parameterizations (dycore)        ",& !zAP - dynamics energy
-         " after dry mass correction (dycore)      " & !zAM - dynamics energy
+    character (len = 4), dimension(num_stages) :: stage = (/"phBF","phBP","phAP","phAM","dyBF","dyBP","dyAP","dyAM"/)
+    character (len = 45),dimension(num_stages) :: stage_txt = (/&
+         " before energy fixer                     ",& !phBF - physics energy
+         " before parameterizations                ",& !phBF - physics energy
+         " after parameterizations                 ",& !phAP - physics energy
+         " after dry mass correction               ",& !phAM - physics energy
+         " before energy fixer (dycore)            ",& !dyBF - dynamics energy
+         " before parameterizations (dycore)       ",& !dyBF - dynamics energy
+         " after parameterizations (dycore)        ",& !dyAP - dynamics energy
+         " after dry mass correction (dycore)      " & !dyAM - dynamics energy
          /)
     character (len = 2)  , dimension(num_vars) :: vars  = (/"WV"  ,"WL"  ,"WI"  ,"SE"   ,"KE"   ,"MR"   ,"MO"   ,"TT"   /)
-    character (len = 70) , dimension(num_vars) :: vars_descriptor = (/&
+    character (len = 45) , dimension(num_vars) :: vars_descriptor = (/&
          "Total column water vapor                ",&
          "Total column liquid water               ",&
          "Total column frozen water               ",&
@@ -415,11 +415,11 @@ contains
     !
     ! energy diagnostics
     !
-    do istage = 1,SIZE(stage)
-      do ivars=1,SIZE(vars)
-        write(str1,*) TRIM(ADJUSTL(vars(ivars))),TRIM(ADJUSTL("_")),TRIM(ADJUSTL(stage(istage)))
-        write(str2,*) TRIM(ADJUSTL(vars_descriptor(ivars))),&
-             TRIM(ADJUSTL(" ")),TRIM(ADJUSTL(stage_txt(istage)))
+    do istage = 1, num_stages
+      do ivars=1, num_vars
+        write(str1,*) TRIM(ADJUSTL(vars(ivars))),"_",TRIM(ADJUSTL(stage(istage)))
+        write(str2,*) TRIM(ADJUSTL(vars_descriptor(ivars)))," ", &
+                           TRIM(ADJUSTL(stage_txt(istage)))
         write(str3,*) TRIM(ADJUSTL(vars_unit(ivars)))
         call addfld (TRIM(ADJUSTL(str1)),   horiz_only, 'A', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)))
       end do
