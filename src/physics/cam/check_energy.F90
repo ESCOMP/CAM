@@ -228,7 +228,7 @@ end subroutine check_energy_get_integrals
     type(physics_buffer_desc), pointer      :: pbuf(:)
     integer, optional                       :: col_type  ! Flag inidicating whether using grid or subcolumns
 !---------------------------Local storage-------------------------------
-    real(r8)              :: cp_or_cv(state%psetcols,pver,begchunk:endchunk)
+    real(r8)              :: cp_or_cv(state%psetcols,pver)
     integer lchnk                                  ! chunk identifier
     integer ncol                                   ! number of atmospheric columns
     integer  i,k                                   ! column, level indices
@@ -242,9 +242,9 @@ end subroutine check_energy_get_integrals
     ! If psetcols > pcols and all cpairv match cpair, then assign the constant cpair
 
     if (state%psetcols == pcols) then
-       cp_or_cv(:,:,:) = cpairv(:,:,:)
-    else if (state%psetcols > pcols .and. all(cpairv(:,:,:) == cpair)) then
-       cp_or_cv(:,:,:) = cpair
+       cp_or_cv(:,:) = cpairv(:,:,lchnk)
+    else if (state%psetcols > pcols .and. all(cpairv(:,:,lchnk) == cpair)) then
+       cp_or_cv(:,:) = cpair
     else
        call endrun('check_energy_timestep_init: cpairv is not allowed to vary when subcolumns are turned on')
     end if
@@ -252,7 +252,7 @@ end subroutine check_energy_get_integrals
     ! CAM physics total energy
     !
     call get_hydrostatic_energy(1,ncol,1,1,pver,pcnst,state%q(1:ncol,1:pver,1:pcnst),&
-         state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver,lchnk),                   &
+         state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver),                         &
          state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), state%T(1:ncol,1:pver),     &
          vc_physics, ps = state%ps(1:ncol), phis = state%phis(1:ncol),               &
          te = state%te_ini(1:ncol,phys_te_idx), H2O = state%tw_ini(1:ncol,phys_te_idx))
@@ -267,13 +267,13 @@ end subroutine check_energy_get_integrals
       ! compute cv if vertical coordinate is height: cv = cp - R
       !
       if (state%psetcols == pcols) then
-        cp_or_cv(:,:,:) = cpairv(:,:,:)-rairv(:,:,:)
+        cp_or_cv(:,:) = cpairv(:,:,lchnk)-rairv(:,:,lchnk)
       else
-        cp_or_cv(:,:,:) = cpair-rair
+        cp_or_cv(:,:) = cpair-rair
       endif
     end if
     call get_hydrostatic_energy(1,ncol,1,1,pver,pcnst,state%q(1:ncol,1:pver,1:pcnst),&
-         state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver,lchnk),                   &
+         state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver),                         &
          state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), state%T(1:ncol,1:pver),     &
          vc_dycore, ps = state%ps(1:ncol), phis = state%phis(1:ncol),                &
          z = state%z_ini(1:ncol,:),                                                  &
@@ -338,7 +338,7 @@ end subroutine check_energy_get_integrals
 
     real(r8) :: te(state%ncol)                     ! vertical integral of total energy
     real(r8) :: tw(state%ncol)                     ! vertical integral of total water
-    real(r8) :: cp_or_cv(state%psetcols,pver,begchunk:endchunk)  ! cp or cv depending on vcoord
+    real(r8) :: cp_or_cv(state%psetcols,pver)      ! cp or cv depending on vcoord
     real(r8) :: scaling(state%psetcols,pver)       ! scaling for conversion of temperature increment
     real(r8) :: temp(state%ncol,pver)              ! temperature
 
@@ -357,15 +357,15 @@ end subroutine check_energy_get_integrals
     ! If psetcols > pcols and all cpairv match cpair, then assign the constant cpair
 
     if (state%psetcols == pcols) then
-       cp_or_cv(:,:,:) = cpairv(:,:,:)
+       cp_or_cv(:,:) = cpairv(:,:,lchnk)
     else if (state%psetcols > pcols .and. all(cpairv(:,:,:) == cpair)) then
-       cp_or_cv(:,:,:) = cpair
+       cp_or_cv(:,:) = cpair
     else
        call endrun('check_energy_chng: cpairv is not allowed to vary when subcolumns are turned on')
     end if
 
     call get_hydrostatic_energy(1,ncol,1,1,pver,pcnst,state%q(1:ncol,1:pver,1:pcnst),&
-         state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver,lchnk),                   &
+         state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver),                         &
          state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), state%T(1:ncol,1:pver),     &
          vc_physics, ps = state%ps(1:ncol), phis = state%phis(1:ncol),               &
          te = te, H2O = tw)
@@ -441,18 +441,18 @@ end subroutine check_energy_get_integrals
       ! Note: cp_or_cv set above for pressure coordinate
       !
       if (state%psetcols == pcols) then
-        cp_or_cv(:,:,:) = cpairv(:,:,:)-rairv(:,:,:)!phl why not just lchnk?
+        cp_or_cv(:,:) = cpairv(:,:,lchnk)-rairv(:,:,lchnk)
       else
-        cp_or_cv(:,:,:) = cpair-rair
+        cp_or_cv(:,:) = cpair-rair
       endif
-      scaling(:,:) = cpairv(:,:,lchnk)/cp_or_cv(:,:,lchnk) !cp/cv scaling
+      scaling(:,:) = cpairv(:,:,lchnk)/cp_or_cv(:,:) !cp/cv scaling
     else
       scaling(:,:) = 1.0_r8
     end if
     temp(1:ncol,:) = state%temp_ini(1:ncol,:)+scaling(1:ncol,:)*(state%T(1:ncol,:)-state%temp_ini(1:ncol,:))
 
     call get_hydrostatic_energy(1,ncol,1,1,pver,pcnst,state%q(1:ncol,1:pver,1:pcnst),&
-         state%pdel(1:ncol,1:pver),cp_or_cv(1:ncol,1:pver,lchnk),                    &
+         state%pdel(1:ncol,1:pver),cp_or_cv(1:ncol,1:pver),                          &
          state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), temp(1:ncol,1:pver),        &
          vc_dycore, ps = state%ps(1:ncol), phis = state%phis(1:ncol),                &
          z = state%z_ini(1:ncol,:),                                                  &
