@@ -1136,19 +1136,18 @@ subroutine read_inidat(dyn_in)
    ! target global average dry pressure to scale to. If scale_dry_air_mass is not zero, then use it
    ! as the target.
    if (.not. simple_phys .and. scale_dry_air_mass /= 0.0_r8) then  ! Don't scale air mass if < 0. or simple_phys is on
-       if (scale_dry_air_mass < 0.0_r8) then
-           target_global_avg_dry_ps = ps_dry_topo
-           if (.not. associated(fh_topo)) then
-               target_global_avg_dry_ps = ps_dry_notopo
-           end if
-       else
-           ! User specified scaling target pressure
-           target_global_avg_dry_ps = scale_dry_air_mass
+     if (scale_dry_air_mass < 0.0_r8) then
+       target_global_avg_dry_ps = ps_dry_topo
+       if (.not. associated(fh_topo)) then
+         target_global_avg_dry_ps = ps_dry_notopo
        end if
-
-       call set_dry_mass(dyn_in, target_global_avg_dry_ps)
+     else
+       ! User specified scaling target pressure
+       target_global_avg_dry_ps = scale_dry_air_mass
+     end if
+     
+     call set_dry_mass(dyn_in, target_global_avg_dry_ps)
    end if
-
    ! Update halos for initial state fields
    ! halo for 'u' updated in both branches of conditional above
    call cam_mpas_update_halo('w', endrun)

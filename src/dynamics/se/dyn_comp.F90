@@ -633,8 +633,9 @@ subroutine dyn_init(dyn_in, dyn_out)
    integer :: m_cnst, m
 
    ! variables for initializing energy and axial angular momentum diagnostics
-   character (len = 3), dimension(12) :: stage = (/"dED","dAF","dBD","dAD","dAR","dBF","dBH","dCH","dAH",'dBS','dAS','p2d'/)
-   character (len = 70),dimension(12) :: stage_txt = (/&
+   integer, parameter                         :: num_stages = 12, num_vars = 8
+   character (len = 3), dimension(num_stages) :: stage = (/"dED","dAF","dBD","dAD","dAR","dBF","dBH","dCH","dAH",'dBS','dAS','p2d'/)
+   character (len = 70),dimension(num_stages) :: stage_txt = (/&
       " end of previous dynamics                           ",& !dED
       " from previous remapping or state passed to dynamics",& !dAF - state in beginning of nsplit loop
       " state after applying CAM forcing                   ",& !dBD - state after applyCAMforcing
@@ -648,10 +649,10 @@ subroutine dyn_init(dyn_in, dyn_out)
       " state after sponge layer diffusion                 ",& !dAS - state after sponge del2
       " phys2dyn mapping errors (requires ftype-1)         " & !p2d - for assessing phys2dyn mapping errors
       /)
-   character (len = 2)  , dimension(8) :: vars  = (/"WV"  ,"WL"  ,"WI"  ,"SE"   ,"KE"   ,"MR"   ,"MO"   ,"TT"   /)
+   character (len = 2)  , dimension(num_vars) :: vars  = (/"WV"  ,"WL"  ,"WI"  ,"SE"   ,"KE"   ,"MR"   ,"MO"   ,"TT"   /)
    !if ntrac>0 then tracers should be output on fvm grid but not energy (SE+KE) and AAM diags
-   logical              , dimension(8) :: massv = (/.true.,.true.,.true.,.false.,.false.,.false.,.false.,.false./)
-   character (len = 70) , dimension(8) :: vars_descriptor = (/&
+   logical              , dimension(num_vars) :: massv = (/.true.,.true.,.true.,.false.,.false.,.false.,.false.,.false./)
+   character (len = 70) , dimension(num_vars) :: vars_descriptor = (/&
       "Total column water vapor                ",&
       "Total column cloud water                ",&
       "Total column cloud ice                  ",&
@@ -660,7 +661,7 @@ subroutine dyn_init(dyn_in, dyn_out)
       "Total column wind axial angular momentum",&
       "Total column mass axial angular momentum",&
       "Total column test tracer                "/)
-   character (len = 14), dimension(8)  :: &
+   character (len = 14), dimension(num_vars)  :: &
       vars_unit = (/&
       "kg/m2        ","kg/m2        ","kg/m2        ","J/m2         ",&
       "J/m2         ","kg*m2/s*rad2 ","kg*m2/s*rad2 ","kg/m2        "/)
@@ -916,20 +917,19 @@ subroutine dyn_init(dyn_in, dyn_out)
      call addfld ('TT_PDC',   horiz_only, 'A', 'kg/m2','Total column test tracer lost in physics-dynamics coupling',gridname='GLL')
    end if
 
-   do istage = 1,SIZE(stage)
-      do ivars=1,SIZE(vars)
-         write(str1,*) TRIM(ADJUSTL(vars(ivars))),TRIM(ADJUSTL("_")),TRIM(ADJUSTL(stage(istage)))
-         write(str2,*) TRIM(ADJUSTL(vars_descriptor(ivars))),&
-             TRIM(ADJUSTL(" ")),TRIM(ADJUSTL(stage_txt(istage)))
-         write(str3,*) TRIM(ADJUSTL(vars_unit(ivars)))
+   do istage = 1, num_stages
+     do ivars=1, num_vars
+       write(str1,*) TRIM(ADJUSTL(vars(ivars))),"_",TRIM(ADJUSTL(stage(istage)))
+       write(str2,*) TRIM(ADJUSTL(vars_descriptor(ivars)))," ", &
+                           TRIM(ADJUSTL(stage_txt(istage)))
+        write(str3,*) TRIM(ADJUSTL(vars_unit(ivars)))
          if (ntrac>0.and.massv(ivars)) then
            call addfld (TRIM(ADJUSTL(str1)),   horiz_only, 'A', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)),gridname='FVM')
          else
            call addfld (TRIM(ADJUSTL(str1)),   horiz_only, 'A', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)),gridname='GLL')
          end if
       end do
-   end do
-
+    end do
    !
    ! add dynamical core tracer tendency output
    !
@@ -1167,8 +1167,8 @@ subroutine read_inidat(dyn_in)
    use fvm_mapping,         only: dyn2fvm_mass_vars
    use control_mod,         only: runtype,initial_global_ave_dry_ps
    use prim_driver_mod,     only: prim_set_dry_mass
-   use physconst,           only: thermodynamic_active_species_idx
-
+   use physconst,           only: thermodynamic_active_species_idx, ps_dry_topo, ps_dry_notopo
+   use cam_initfiles,       only: scale_dry_air_mass
    ! Arguments
    type (dyn_import_t), target, intent(inout) :: dyn_in   ! dynamics import
 
@@ -1214,6 +1214,7 @@ subroutine read_inidat(dyn_in)
    character(len=128)               :: errmsg
    character(len=*), parameter      :: sub='READ_INIDAT'
 
+   real(r8)                         :: target_global_avg_dry_ps
    ! fvm vars
    real(r8), allocatable            :: inv_dp_darea_fvm(:,:,:)
    real(r8)                         :: min_val, max_val
@@ -1696,18 +1697,25 @@ subroutine read_inidat(dyn_in)
 
    ! scale PS to achieve prescribed dry mass following FV dycore (dryairm.F90)
 #ifndef planet_mars
+   ! If scale_dry_air_mass < 0.0, then use the reference pressures defined in physconst.F90 as the
+   ! target global average dry pressure to scale to. If scale_dry_air_mass is not zero, then use it
+   ! as the target.
    if (runtype == 0) then
-      initial_global_ave_dry_ps = 98288.0_r8
-      if (.not. associated(fh_topo)) then
-         initial_global_ave_dry_ps = 101325._r8 - 245._r8
-      end if
-      if (simple_phys) then
-         initial_global_ave_dry_ps = 0                  !do not scale psdry
-      end if
+     if (.not. simple_phys .and. scale_dry_air_mass /= 0.0_r8) then  ! Don't scale air mass if < 0. or simple_phys is on
+       if (scale_dry_air_mass < 0.0_r8) then
+         target_global_avg_dry_ps = ps_dry_topo
+         if (.not. associated(fh_topo)) then
+           target_global_avg_dry_ps = ps_dry_notopo
+         end if
+       else
+         ! User specified scaling target pressure
+         target_global_avg_dry_ps = scale_dry_air_mass
+       end if
       if (iam < par%nprocs) then
-        call prim_set_dry_mass(elem, hvcoord, initial_global_ave_dry_ps, qtmp)
+        call prim_set_dry_mass(elem, hvcoord, target_global_avg_dry_ps, qtmp)
       end if
-   endif
+    end if
+  end if
 #endif
    ! store Q values:
    !

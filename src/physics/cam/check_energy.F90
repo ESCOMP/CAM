@@ -529,7 +529,6 @@ end subroutine check_energy_get_integrals
        if (masterproc) then
           write(iulog,'(1x,a9,1x,i8,5(1x,e25.17))') "nstep, te", nstep, teinp_glob, teout_glob, &
                heat_glob, psurf_glob, ptopb_glob
-          write(iulog,'(1x,a9,1x,i8,2(1x,e25.17))') "nstep, te", nstep, tedif_glob/dtime * gravit,psurf_glob - ptopb_glob
        end if
     else
        heat_glob = 0._r8
@@ -795,7 +794,7 @@ end subroutine check_energy_get_integrals
 !------------------------------Arguments--------------------------------
 
     type(physics_state), intent(inout) :: state
-    character*(*),       intent(in)    :: outfld_name_suffix ! suffix for "outfld" names
+    character(len=*),    intent(in)    :: outfld_name_suffix ! suffix for "outfld" 
     integer, optional,   intent(in)    :: vc                 ! vertical coordinate
 
 !---------------------------Local storage-------------------------------

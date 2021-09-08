@@ -22,9 +22,9 @@ subroutine dryairm( grid,  moun,  ps,   tracer,  delp,                   &
  use mean_module,         only: gmeanxy
 
  use pio,                 only: file_desc_t
- use cam_initfiles,       only: topo_file_get_id
- 
+ use cam_initfiles,       only: topo_file_get_id, scale_dry_air_mass
  use cam_logfile,         only: iulog
+ use physconst,           only: ps_dry_topo, ps_dry_notopo
  implicit   none
 
  type (T_FVDYCORE_GRID), intent(in) :: grid
@@ -73,11 +73,8 @@ subroutine dryairm( grid,  moun,  ps,   tracer,  delp,                   &
 #if defined ( NAVY10 )
       parameter (drym = 98222.0_r8)           ! For US NAVY 10-min terrain
 #else
-      parameter (drym = 98288.0_r8)           ! For USGS terrain
+      parameter (drym = ps_dry_topo)           ! For USGS terrain
 #endif
-      real(r8), parameter ::  D245_0        = 245._r8
-      real(r8), parameter ::  D101325_0     = 101325._r8
-
       type(file_desc_t), pointer :: fh_topo
 
       integer  i, j, k, ic
@@ -98,10 +95,28 @@ subroutine dryairm( grid,  moun,  ps,   tracer,  delp,                   &
     nq         = grid%nq
     ptop       = grid%ptop
 
-    drym_loc = drym
-    if (.not. associated(fh_topo)) then
-       drym_loc = D101325_0 - D245_0
+    if (scale_dry_air_mass == 0.0_r8) then
+      !
+      ! no scaling of dry air mass
+      !
+      return
+    else
+      if (scale_dry_air_mass < 0.0_r8) then
+        !
+        ! use standard dry air mass
+        !
+        drym_loc = drym
+        if (.not. associated(fh_topo)) then
+          drym_loc = ps_dry_notopo
+        end if
+      else
+        !
+        ! use namelist specified dry air mass
+        !
+        drym_loc = scale_dry_air_mass
+      end if
     end if
+
 
 ! Check global maximum/minimum
 

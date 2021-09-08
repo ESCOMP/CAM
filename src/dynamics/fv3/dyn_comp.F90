@@ -858,6 +858,7 @@ subroutine read_inidat(dyn_in)
   use dimensions_mod,        only: nlev
   use constituents,          only: pcnst, cnst_is_a_water_species
   use physconst,             only: thermodynamic_active_species_num, dry_air_species_num, thermodynamic_active_species_idx_dycore
+  use physconst,             only: ps_dry_topo, ps_dry_notopo
   use pio,                   only: file_desc_t, pio_seterrorhandling, pio_bcast_error
   use ppgrid,                only: pver
   use cam_abortutils,        only: endrun
@@ -868,6 +869,7 @@ subroutine read_inidat(dyn_in)
                                    cam_grid_get_latvals, cam_grid_get_lonvals
   use cam_history_support,   only: max_fieldname_len
   use hycoef,                only: hyai, hybi, ps0
+  use cam_initfiles,         only: scale_dry_air_mass
 
   ! Arguments:
   type (dyn_import_t), target, intent(inout) :: dyn_in   ! dynamics import
@@ -913,8 +915,9 @@ subroutine read_inidat(dyn_in)
   real(r8)                                  :: pertval
   real(r8)                                  :: tracermass(pcnst),delpdry
   real(r8)                                  :: fv3_totwatermass, fv3_airmass
-  real(r8)                                  :: initial_global_ave_dry_ps,reldif
+  real(r8)                                  :: reldif
   logical                                   :: inic_wet !initial condition is based on wet pressure and water species
+  real(r8)                                  :: target_global_avg_dry_ps
 
   !-----------------------------------------------------------------------
 
@@ -1321,10 +1324,18 @@ subroutine read_inidat(dyn_in)
   !
   ! scale PS to achieve prescribed dry mass following FV dycore (dryairm.F90)
   !
-  initial_global_ave_dry_ps = 98288.0_r8
-  if (.not. associated(fh_topo)) initial_global_ave_dry_ps = 101325._r8-245._r8
-  if ( simple_phys ) initial_global_ave_dry_ps = 0                  !do not scale psdry
-  call set_dry_mass(Atm, initial_global_ave_dry_ps)
+  if (.not. simple_phys .and. scale_dry_air_mass /= 0.0_r8) then  ! Don't scale air mass if < 0. or simple_phys is on
+    if (scale_dry_air_mass < 0.0_r8) then
+      target_global_avg_dry_ps = ps_dry_topo
+      if (.not. associated(fh_topo)) then
+        target_global_avg_dry_ps = ps_dry_notopo
+      end if
+    else
+      ! User specified scaling target pressure
+      target_global_avg_dry_ps = scale_dry_air_mass
+    end if
+    call set_dry_mass(Atm, target_global_avg_dry_ps)
+  end if
 
 
   !$omp parallel do private(i, j)
