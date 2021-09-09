@@ -343,11 +343,11 @@ contains
          call endrun(subname // ': Allocate error for xo3VMR')
        end if
 
-       xo2VMR(:ncol,:)  = mbarv(:ncol,:,lchnk) * xo2mmr(:,:) / o2_mw
-       xn2VMR(:ncol,:)  = mbarv(:ncol,:,lchnk) * xn2mmr(:,:) / n2_mw
-       xco2VMR(:ncol,:) = mbarv(:ncol,:,lchnk) * xco2mmr(:,:) / co2_mw
-       xoVMR(:ncol,:)   = mbarv(:ncol,:,lchnk) * xommr(:,:) /  o1_mw
-       xo3VMR(:ncol,:)  = mbarv(:ncol,:,lchnk) * xo3mmr(:,:) / o3_mw
+       xo2VMR(:ncol,:)  = mbarv(:ncol,:,lchnk) * xo2mmr(:ncol,:) / o2_mw
+       xn2VMR(:ncol,:)  = mbarv(:ncol,:,lchnk) * xn2mmr(:ncol,:) / n2_mw
+       xco2VMR(:ncol,:) = mbarv(:ncol,:,lchnk) * xco2mmr(:ncol,:) / co2_mw
+       xoVMR(:ncol,:)   = mbarv(:ncol,:,lchnk) * xommr(:ncol,:) /  o1_mw
+       xo3VMR(:ncol,:)  = mbarv(:ncol,:,lchnk) * xo3mmr(:ncol,:) / o3_mw
 
     end if
 
