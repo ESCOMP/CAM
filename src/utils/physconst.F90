@@ -388,7 +388,7 @@ end subroutine physconst_init
     character(len=*), parameter :: subname = 'composition_init'
     real(r8) :: mw, dof1, dof2, dof3
 
-    integer  :: icnst,ix,i
+    integer  :: icnst,ix,i,ierr
 
     integer                           :: liq_num, ice_num
     integer, dimension(pcnst)         :: liq_idx, ice_idx
@@ -407,16 +407,22 @@ end subroutine physconst_init
     ! init for variable composition dry air
 
     i = dry_air_species_num+water_species_in_air_num
-    allocate(thermodynamic_active_species_idx(i))
-    allocate(thermodynamic_active_species_idx_dycore(i))
-    allocate(thermodynamic_active_species_cp(0:i))
-    allocate(thermodynamic_active_species_cv(0:i))
-    allocate(thermodynamic_active_species_R(0:i))
+    allocate(&
+         thermodynamic_active_species_idx(i),       &
+         thermodynamic_active_species_idx_dycore(i),&
+         thermodynamic_active_species_cp(0:i),      &
+         thermodynamic_active_species_cv(0:i),      &
+         thermodynamic_active_species_R(0:i),       &
+         stat=ierr)
+    if ( ierr /= 0 ) call endrun('composition_init error: allocation error for thermodynamic_active_species arrays 1')
 
     i = dry_air_species_num
-    allocate(thermodynamic_active_species_mwi(0:i))
-    allocate(thermodynamic_active_species_kv(0:i))
-    allocate(thermodynamic_active_species_kc(0:i))
+    allocate(&
+         thermodynamic_active_species_mwi(0:i),&
+         thermodynamic_active_species_kv(0:i), &
+         thermodynamic_active_species_kc(0:i), &
+         stat=ierr)
+    if ( ierr /= 0 ) call endrun('composition_init error: allocation error for thermodynamic_active_species arrays 2')
     thermodynamic_active_species_idx        = -999
     thermodynamic_active_species_idx_dycore = -999
     thermodynamic_active_species_cp         = 0.0_r8
@@ -703,18 +709,24 @@ end subroutine physconst_init
       ice = .false.
     end do
 
-    allocate(thermodynamic_active_species_liq_idx(liq_num))
+    allocate(&
+         thermodynamic_active_species_liq_idx(liq_num),        &
+         thermodynamic_active_species_liq_idx_dycore(liq_num), &
+         thermodynamic_active_species_ice_idx(ice_num),        &
+         thermodynamic_active_species_ice_idx_dycore(ice_num), &
+         stat=ierr)
+    if ( ierr /= 0 ) call endrun('composition_init error: allocation error for thermodynamic_active_species_liq/ice arrays')
+
     thermodynamic_active_species_liq_idx = liq_idx(1:liq_num)
     thermodynamic_active_species_liq_num = liq_num
+
     ! array initialized by the dycore
-    allocate(thermodynamic_active_species_liq_idx_dycore(liq_num))
     thermodynamic_active_species_liq_idx_dycore = -99
 
-    allocate(thermodynamic_active_species_ice_idx(ice_num))
     thermodynamic_active_species_ice_idx = ice_idx(1:ice_num)
     thermodynamic_active_species_ice_num = ice_num
+
     ! array initialized by the dycore
-    allocate(thermodynamic_active_species_ice_idx_dycore(ice_num))
     thermodynamic_active_species_ice_idx_dycore = -99
 
     if (water_species_in_air_num.ne.1+liq_num+ice_num) then
@@ -932,7 +944,7 @@ end subroutine physconst_init
        pint_local(:,:,k) = dp(:,:,k-1)+pint_local(:,:,k-1)
      end do
 
-     if (dycore_is ('LR').or.dycore_is('FV3')) then
+     if (dycore_is('LR').or.dycore_is('FV3')) then
        do k=k0,k1
          pmid(:,:,k) = dp(:,:,k)/(log(pint_local(:,:,k+1))-log(pint_local(:,:,k)))
        end do
@@ -1087,7 +1099,7 @@ end subroutine physconst_init
      ! integrate hydrostatic eqn
      !
      gzh = phis
-     if (dycore_is ('LR').or.dycore_is('FV3')) then
+     if (dycore_is('LR').or.dycore_is('FV3')) then
        do k=nlev,1,-1
          Rdry_tv(:,:) = R_dry(:,:,k)*T_v(:,:,k)
          gz(:,:,k) = gzh(:,:)+Rdry_tv(:,:)*(1.0_r8-pint(:,:,k)/pmid_local(:,:,k))
@@ -1221,10 +1233,10 @@ end subroutine physconst_init
      end if
    
      select case (vcoord)  
-     case(vc_moist_pressure)          
+     case(vc_moist_pressure,vc_dry_pressure)          
        if (.not. present(ps) .or. .not. present(phis)) then
-         write(iulog, *) subname//' ps and phis must be present for moist pressure vertical coordinate'
-         call endrun(subname // '::  ps and phis must be present for moist pressure vertical coordinate')
+         write(iulog, *) subname//' ps and phis must be present for moist/dry pressure vertical coordinate'
+         call endrun(subname // '::  ps and phis must be present for moist/dry pressure vertical coordinate')
        endif
        ke_loc = 0._r8
        se_loc = 0._r8
@@ -1243,33 +1255,10 @@ end subroutine physconst_init
            se_loc(i,j) = se_loc(i,j) + phis(i,j)*ps(i,j)/gravit
          end do
        end do
-       if (present(te)) te  = se_loc + ke_loc       
-     case(vc_dry_pressure)
-       if (.not. present(ps) .or. .not. present(phis)) then
-         write(iulog, *) subname//' ps and phis must be present for moist pressure vertical coordinate'
-         call endrun(subname // '::  ps and phis must be present for moist pressure vertical coordinate')
-       endif
-       ke_loc = 0._r8
-       se_loc = 0._r8
-       wv_loc = 0._r8
-       do k = 1, nlev
-         do j = j0,j1
-           do i = i0,i1
-             ke_loc(i,j) = ke_loc(i,j) + 0.5_r8*(u(i,j,k)**2 + v(i,j,k)**2)*pdel(i,j,k)/gravit
-             se_loc(i,j) = se_loc(i,j) +         T(i,j,k)*cp_or_cv(i,j,k)  *pdel(i,j,k)/gravit!enthalpy
-             wv_loc(i,j) = wv_loc(i,j) +         tracer(i,j,k,1)           *pdel(i,j,k)/gravit
-           end do
-         end do
-       end do
-       do j = j0,j1
-         do i = i0,i1
-           se_loc(i,j) = se_loc(i,j) + phis(i,j)*ps(i,j)/gravit
-         end do
-       end do
      case(vc_height)
        if (.not. present(z)) then
-         write(iulog, *) subname//' z must be present for moist pressure vertical coordinate'
-         call endrun(subname // '::  z must be present for moist pressure vertical coordinate')
+         write(iulog, *) subname//' z must be present for height vertical coordinate'
+         call endrun(subname // '::  z must be present for height vertical coordinate')
        endif
        ke_loc = 0._r8
        se_loc = 0._r8
@@ -1281,7 +1270,7 @@ end subroutine physconst_init
              se_loc(i,j) = se_loc(i,j) +         T(i,j,k)*cp_or_cv(i,j,k)  *pdel(i,j,k)/gravit!internal energy
              ! z is height above ground
              se_loc(i,j) = se_loc(i,j) +         (z(i,j,k)+phis(i,j)/gravit)*pdel(i,j,k)       !potential energy
-             wv_loc(i,j) = wv_loc(i,j) +         tracer(i,j,k,1)           *pdel(i,j,k)/gravit
+             wv_loc(i,j) = wv_loc(i,j) +         tracer(i,j,k,1)            *pdel(i,j,k)/gravit
            end do
          end do
        end do
@@ -1322,7 +1311,7 @@ end subroutine physconst_init
        end do
      end do     
      if (present(ice)) ice = ice_loc
-     ! Compute vertical integrals of frozen static energy and total water.
+     ! Compute vertical integrals of total water.
      if (present(H2O)) H2O = wv_loc + liq_loc + ice_loc
      !
      ! latent heat terms depend on enthalpy reference state
@@ -1334,7 +1323,7 @@ end subroutine physconst_init
             te = te + latsub*wv_loc  + latice*liq_loc
      case('liq')
        if (present(te)) &
-            te = te + latvap*wv_loc  - latice*liq_loc
+            te = te + latvap*wv_loc  - latice*ice_loc
      case('wv')
        if (present(te)) &
             te = te - latvap*liq_loc - latsub*ice_loc
