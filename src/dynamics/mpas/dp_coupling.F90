@@ -27,9 +27,9 @@ use cam_abortutils, only: endrun
 use physconst,      only: thermodynamic_active_species_num,thermodynamic_active_species_idx,thermodynamic_active_species_idx_dycore
 implicit none
 private
-   logical:: compute_energy_diags=.false.
-   integer:: index_qv_phys = -1
 save
+logical :: compute_energy_diags=.false.
+integer :: index_qv_phys = -1
 
 public :: &
    d_p_coupling, &
@@ -635,7 +635,7 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, q_tend, dyn
        thetak    = theta_m(k,iCell)/facold
        
        exnerk    = (rgas*rhodk*theta_m(k,iCell)/p0)**(rgas/cv)
-       tknew     = exnerk*thetak+(cp/cv)*dtime*t_tend(k,icell)!phl should be 3D cp/cv
+       tknew     = exnerk*thetak+(cp/cv)*dtime*t_tend(k,icell)
 
        
        thetaknew = (tknew**(cv/cp))*((rgas*rhodk*facold)/p0)**(-rgas/cp)
@@ -796,8 +796,9 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
 
   ! Local variables
   integer :: iCell, k, idx
-  real(r8) :: rho_dz,dz,zcell,temperature,rhod,theta,pk,ptop,exner
-  real(r8), dimension(nCells):: kinetic_energy,potential_energy,internal_energy,water_vapor,water_liq,water_ice
+  real(r8) :: rho_dz,zcell,temperature,theta,pk,ptop,exner
+  real(r8), dimension(nVertLevels, nCells) :: rhod, dz
+  real(r8), dimension(nCells)              :: kinetic_energy,potential_energy,internal_energy,water_vapor,water_liq,water_ice
   
   real(r8), dimension(nCells) :: liq !total column integrated liquid
   real(r8), dimension(nCells) :: ice !total column integrated ice
@@ -821,18 +822,18 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
 
     do iCell = 1, nCells
       do k = 1, nVertLevels
-        dz     = zgrid(k+1,iCell) - zgrid(k,iCell)
-        zcell  = 0.5_r8*(zgrid(k,iCell)+zgrid(k+1,iCell))
-        rhod   = zz(k,iCell) * rho_zz(k,iCell)
-        rho_dz = (1.0_r8+q(index_qv,k,iCell))*rhod*dz
-        theta  = theta_m(k,iCell)/(1.0_r8 + Rv_over_Rd *q(index_qv,k,iCell))!convert theta_m to theta
+        dz(k,iCell)   = zgrid(k+1,iCell) - zgrid(k,iCell)
+        zcell         = 0.5_r8*(zgrid(k,iCell)+zgrid(k+1,iCell))
+        rhod(k,iCell) = zz(k,iCell) * rho_zz(k,iCell)
+        rho_dz        = (1.0_r8+q(index_qv,k,iCell))*rhod(iCell,k)*dz(iCell,k)
+        theta         = theta_m(k,iCell)/(1.0_r8 + Rv_over_Rd *q(index_qv,k,iCell))!convert theta_m to theta
 
-        exner    = (rgas*rhod*theta_m(k,iCell)/p0)**(rgas/cv)
+        exner         = (rgas*rhod(k,iCell)*theta_m(k,iCell)/p0)**(rgas/cv)
         temperature   = exner*theta
 
-        water_vapor(iCell)    = water_vapor(iCell) + rhod*q(index_qv,k,iCell)*dz
+        water_vapor(iCell)      = water_vapor(iCell) + rhod(k,iCell)*q(index_qv,k,iCell)*dz(iCell,k)
         kinetic_energy(iCell)   = kinetic_energy(iCell)  + &
-             0.5_r8*(ux(k,iCell)*ux(k,iCell)+uy(k,iCell)*uy(k,iCell))*rho_dz
+                                  0.5_r8*(ux(k,iCell)**2._r8+uy(k,iCell)**2._r8)*rho_dz
         potential_energy(iCell) = potential_energy(iCell)+ rho_dz*gravit*zcell
         internal_energy(iCell)  = internal_energy(iCell) + rho_dz*cv*temperature
       end do
@@ -848,9 +849,8 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
     do idx = 1,thermodynamic_active_species_liq_num
       do iCell = 1, nCells
         do k = 1, nVertLevels
-          dz     = zgrid(k+1,iCell) - zgrid(k,iCell)
-          rhod   = zz(k,iCell) * rho_zz(k,iCell)
-          liq(iCell) = liq(iCell) + q(thermodynamic_active_species_liq_idx_dycore(idx),k,iCell)*rhod*dz
+          liq(iCell) = liq(iCell) + &
+                       q(thermodynamic_active_species_liq_idx_dycore(idx),k,iCell)*rhod(iCell,k)*dz(iCell,k)
         end do
       end do
     end do
@@ -862,9 +862,8 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
     do idx = 1,thermodynamic_active_species_ice_num
       do iCell = 1, nCells
         do k = 1, nVertLevels
-           dz     = zgrid(k+1,iCell) - zgrid(k,iCell)
-           rhod   = zz(k,iCell) * rho_zz(k,iCell)
-           ice(iCell) = ice(iCell) + q(thermodynamic_active_species_ice_idx_dycore(idx),k,iCell)*rhod*dz
+           ice(iCell) = ice(iCell) + &
+                        q(thermodynamic_active_species_ice_idx_dycore(idx),k,iCell)*rhod(iCell,k)*dz(iCell,k)
          end do
        end do
      end do

@@ -112,7 +112,7 @@ type dyn_import_t
    real(r8), dimension(:),     pointer :: fzm     ! Interp weight from k layer midpoint to k layer
                                                   ! interface [dimensionless]             (nver)
    real(r8), dimension(:),     pointer :: fzp     ! Interp weight from k-1 layer midpoint to k
-                                                  ! layer interface [dimensionless]       (nver
+                                                  ! layer interface [dimensionless]       (nver)
    !
    ! Invariant -- cell area
    !
@@ -353,16 +353,18 @@ subroutine dyn_init(dyn_in, dyn_out)
    character(len=128) :: errmsg
 
    character(len=*), parameter :: subname = 'dyn_comp::dyn_init'
+
    ! variables for initializing energy and axial angular momentum diagnostics
-   character (len = 3), dimension(3) :: stage = (/"dBF","dAP","dAM"/)
-   character (len = 70),dimension(3) :: stage_txt = (/&
+   integer, parameter                         :: num_stages = 3, num_vars = 8
+   character (len = 3), dimension(num_stages) :: stage = (/"dBF","dAP","dAM"/)
+   character (len = 45),dimension(num_stages) :: stage_txt = (/&
       " dynamics state before physics (d_p_coupling)       ",&  
       " dynamics state with T,u,V increment but not q      ",&  
       " dynamics state with full physics increment (incl.q)" &  
       /)
 
-   character (len = 2)  , dimension(8) :: vars  = (/"WV"  ,"WL"  ,"WI"  ,"SE"   ,"KE"   ,"MR"   ,"MO"   ,"TT"   /)
-   character (len = 70) , dimension(8) :: vars_descriptor = (/&
+   character (len = 2)  , dimension(num_vars) :: vars  = (/"WV"  ,"WL"  ,"WI"  ,"SE"   ,"KE"   ,"MR"   ,"MO"   ,"TT"   /)
+   character (len = 45) , dimension(num_vars) :: vars_descriptor = (/&
       "Total column water vapor                ",&
       "Total column cloud water                ",&
       "Total column cloud ice                  ",&
@@ -371,7 +373,7 @@ subroutine dyn_init(dyn_in, dyn_out)
       "Total column wind axial angular momentum",&
       "Total column mass axial angular momentum",&
       "Total column test tracer                "/)
-   character (len = 14), dimension(8)  :: &
+   character (len = 14), dimension(num_vars)  :: &
       vars_unit = (/&
       "kg/m2        ","kg/m2        ","kg/m2        ","J/m2         ",&
       "J/m2         ","kg*m2/s*rad2 ","kg*m2/s*rad2 ","kg/m2        "/)
@@ -542,34 +544,35 @@ subroutine dyn_init(dyn_in, dyn_out)
    ! Set the interval over which the dycore should integrate during each call to dyn_run.
    call MPAS_set_timeInterval(integrationLength, S=nint(dtime), S_n=0, S_d=1)
 
-   do istage = 1,SIZE(stage)
-     do ivars=1,SIZE(vars)
-       write(str1,*) TRIM(ADJUSTL(vars(ivars))),TRIM(ADJUSTL("_")),TRIM(ADJUSTL(stage(istage)))
-       write(str2,*) TRIM(ADJUSTL(vars_descriptor(ivars))),&
-            TRIM(ADJUSTL(" ")),TRIM(ADJUSTL(stage_txt(istage)))
-       write(str3,*) TRIM(ADJUSTL(vars_unit(ivars)))
-       call addfld (TRIM(ADJUSTL(str1)),   horiz_only, 'A', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)), gridname='mpas_cell')
-     end do
-   end do
+   do istage = 1, num_stages
+     do ivars=1, num_vars
+       write(str1,*) TRIM(ADJUSTL(vars(ivars))),"_",TRIM(ADJUSTL(stage(istage)))
+       write(str2,*) TRIM(ADJUSTL(vars_descriptor(ivars)))," ", &
+                           TRIM(ADJUSTL(stage_txt(istage)))
+        write(str3,*) TRIM(ADJUSTL(vars_unit(ivars)))
+        call addfld (TRIM(ADJUSTL(str1)),   horiz_only, 'A', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)), gridname='mpas_cell')
+      end do
+    end do
+
    !
    ! initialize CAM thermodynamic infrastructure
    !
    do m=1,thermodynamic_active_species_num
      thermodynamic_active_species_idx_dycore(m) = dyn_in % mpas_from_cam_cnst(thermodynamic_active_species_idx(m))
      if (masterproc) then
-       write(iulog,*) "m,thermodynamic_active_species_idx_dycore: ",m,thermodynamic_active_species_idx_dycore(m)
+       write(iulog,*) subname//": m,thermodynamic_active_species_idx_dycore: ",m,thermodynamic_active_species_idx_dycore(m)
      end if
    end do
    do m=1,thermodynamic_active_species_liq_num
      thermodynamic_active_species_liq_idx_dycore(m) = dyn_in % mpas_from_cam_cnst(thermodynamic_active_species_liq_idx(m))
      if (masterproc) then
-       write(iulog,*) "m,thermodynamic_active_species_idx_liq_dycore: ",m,thermodynamic_active_species_liq_idx_dycore(m)
+       write(iulog,*) subname//": m,thermodynamic_active_species_idx_liq_dycore: ",m,thermodynamic_active_species_liq_idx_dycore(m)
      end if
    end do
    do m=1,thermodynamic_active_species_ice_num
      thermodynamic_active_species_ice_idx_dycore(m) = dyn_in % mpas_from_cam_cnst(thermodynamic_active_species_ice_idx(m))
      if (masterproc) then
-       write(iulog,*) "m,thermodynamic_active_species_idx_ice_dycore: ",m,thermodynamic_active_species_ice_idx_dycore(m)
+       write(iulog,*) subname//": m,thermodynamic_active_species_idx_ice_dycore: ",m,thermodynamic_active_species_ice_idx_dycore(m)
      end if
    end do
 
@@ -782,6 +785,8 @@ subroutine read_inidat(dyn_in)
    real(r8) :: dz, h
    logical  :: readvar
 
+   character(len=45) :: str
+
    type(mpas_pool_type), pointer :: mesh_pool
    type(mpas_pool_type), pointer :: diag_pool
 
@@ -865,18 +870,20 @@ subroutine read_inidat(dyn_in)
       call get_zsurf_from_topo(fh_topo, zsurf)
 
       do i = 1, nCellsSolve
-         if (abs(zi(i,plevp) - zsurf(i)) > 0.001_r8) then
-            write(iulog,*) subname//': ERROR: zi= ', zi(i,plevp), ' zsurf= ', zsurf(i)
-            call endrun(subname//': ERROR: PHIS not consistent with surface z coordinate')
-         end if
+        if (abs(zi(i,plevp) - zsurf(i)) > 0.001_r8) then
+          write(str,*) 'zi= ', zi(i,plevp), ' zsurf= ', zsurf(i),' i= ',i
+          write(iulog,*) subname//': ERROR: '//TRIM(str)
+          call endrun(subname//': ERROR: PHIS not consistent with surface z coordinate; '//TRIM(str))
+        end if
       end do
 
       deallocate(zsurf)
    else
       do i = 1, nCellsSolve
          if (abs(zi(i,plevp)) > 1.0E-12_r8) then
-            write(iulog,*) subname//': ERROR: zi= ', zi(i,plevp), ' but PHIS should be zero'
-            call endrun(subname//': ERROR: PHIS not consistent with surface z coordinate')
+           write(str,*) 'zi= ', zi(i,plevp), ' but PHIS should be zero'
+           write(iulog,*) subname//': ERROR: '//TRIM(str)
+           call endrun(subname//': ERROR: PHIS not consistent with surface z coordinate; '//TRIM(str))
          end if
       end do     
    end if
@@ -1132,6 +1139,7 @@ subroutine read_inidat(dyn_in)
 
    theta_m(:,1:nCellsSolve) = theta(:,1:nCellsSolve) * (1.0_r8 + Rv_over_Rd * tracers(ixqv,:,1:nCellsSolve))
 
+   ! Don't scale air mass if scale_dry_air_mass=0.0 or simple_phys is on
    ! If scale_dry_air_mass < 0.0, then use the reference pressures defined in physconst.F90 as the
    ! target global average dry pressure to scale to. If scale_dry_air_mass is not zero, then use it
    ! as the target.
@@ -1678,7 +1686,7 @@ subroutine set_dry_mass(dyn_in, target_avg_dry_surface_pressure)
    real(r8) :: sphere_surface_area
    real(r8) :: surface_integral, test_value
 
-   integer :: ixqv
+   integer :: ixqv,ierr
 
    character(len=*), parameter :: subname = 'dyn_comp:set_dry_mass'
 
@@ -1693,14 +1701,15 @@ subroutine set_dry_mass(dyn_in, target_avg_dry_surface_pressure)
    zz         => dyn_in % zz
    tracers    => dyn_in % tracers
 
-   allocate( p_top(nCellsSolve), preliminary_dry_surface_pressure(nCellsSolve), pm(plev) )
+   allocate( p_top(nCellsSolve), preliminary_dry_surface_pressure(nCellsSolve), pm(plev), stat=ierr)
+   if( ierr /= 0 ) call endrun(subname//': failed to allocate  arrays preliminary_dry_surface_pressure and pm')
    ! (1) calculate pressure at the lid
    do i=1, nCellsSolve
       p_top(i) = p0*(rgas*rho(plev,i)*theta_m(plev,i)/p0)**(cpair/(cpair-rgas))
       p_top(i) = p_top(i) - gravity*0.5_r8*(zint(plev+1,i)-zint(plev,i))*rho(plev,i)*(1.0_r8+tracers(ixqv,plev,i))
    end do
 
-   ! (2) integrate dry mass in column to compute
+   ! (2) integrate dry mass in column
    do i=1, nCellsSolve
       preliminary_dry_surface_pressure(i) = 0.0_r8
       do k=1, plev
