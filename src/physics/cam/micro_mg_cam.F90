@@ -1449,6 +1449,9 @@ subroutine micro_mg_cam_tend(state, ptend, dtime, pbuf)
       endif
 
    end select
+  
+!  CAC addition to force mgncol to match ncol and override what set in the micro_mg_get_cols routine
+   mgncol = ncol
 
    call micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nlev)
 
@@ -1461,7 +1464,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
         mg_graupel_props, rhog, &
         qsmall, mincld
 
-   use micro_mg_data, only: MGPacker, MGPostProc, accum_null, accum_mean
+!   use micro_mg_data, only: MGPacker, MGPostProc, accum_null, accum_mean
 
    use micro_mg1_0, only: micro_mg_tend1_0 => micro_mg_tend
    use micro_mg3_0, only: micro_mg_tend3_0 => micro_mg_tend
@@ -1521,11 +1524,16 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8) :: rho(state%psetcols,pver)
    real(r8) :: cldmax(state%psetcols,pver)
 
+   real(r8), allocatable :: tlat(:,:)
+   real(r8), allocatable :: qvlat(:,:)
+   real(r8), allocatable :: qctend(:,:)
+   real(r8), allocatable :: qitend(:,:)
+   real(r8), allocatable :: qrtend(:,:)
+   real(r8), allocatable :: qstend(:,:)
+   real(r8), allocatable :: qgtend(:,:)
+
    real(r8), target :: rate1cld(state%psetcols,pver) ! array to hold rate1ord_cw2pr_st from microphysics
 
-   real(r8), target :: tlat(state%psetcols,pver)
-   real(r8), target :: qvlat(state%psetcols,pver)
-   real(r8), target :: qcten(state%psetcols,pver)
    real(r8), target :: qiten(state%psetcols,pver)
    real(r8), target :: ncten(state%psetcols,pver)
    real(r8), target :: niten(state%psetcols,pver)
@@ -1632,66 +1640,23 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8), target :: npsacwgo(state%psetcols,pver) 
 
    ! Object that packs columns with clouds/precip.
-   type(MGPacker) :: packer
+!   type(MGPacker) :: packer
 
-   ! Packed versions of inputs.
-   real(r8) :: packed_t(mgncol,nlev)
-   real(r8) :: packed_q(mgncol,nlev)
-   real(r8) :: packed_qc(mgncol,nlev)
-   real(r8) :: packed_nc(mgncol,nlev)
-   real(r8) :: packed_qi(mgncol,nlev)
-   real(r8) :: packed_ni(mgncol,nlev)
-   real(r8) :: packed_qr(mgncol,nlev)
-   real(r8) :: packed_nr(mgncol,nlev)
-   real(r8) :: packed_qs(mgncol,nlev)
-   real(r8) :: packed_ns(mgncol,nlev)
-   real(r8) :: packed_qg(mgncol,nlev)
-   real(r8) :: packed_ng(mgncol,nlev)   
-
-   real(r8) :: packed_relvar(mgncol,nlev)
-   real(r8) :: packed_accre_enhan(mgncol,nlev)
-
-   real(r8) :: packed_p(mgncol,nlev)
-   real(r8) :: packed_pdel(mgncol,nlev)
-
-   real(r8) :: packed_cldn(mgncol,nlev)
-   real(r8) :: packed_liqcldf(mgncol,nlev)
-   real(r8) :: packed_icecldf(mgncol,nlev)
-   real(r8), allocatable :: packed_qsatfac(:,:)
-
-   real(r8) :: packed_naai(mgncol,nlev)
-   real(r8) :: packed_npccn(mgncol,nlev)
-
-   real(r8), allocatable :: packed_rndst(:,:,:)
-   real(r8), allocatable :: packed_nacon(:,:,:)
-
-   ! Optional outputs.
-   real(r8) :: packed_tnd_qsnow(mgncol,nlev)
-   real(r8) :: packed_tnd_nsnow(mgncol,nlev)
-   real(r8) :: packed_re_ice(mgncol,nlev)
-
-   real(r8) :: packed_frzimm(mgncol,nlev)
-   real(r8) :: packed_frzcnt(mgncol,nlev)
-   real(r8) :: packed_frzdep(mgncol,nlev)
+   ! Initialized versions of inputs.
+   real(r8) :: graupel(mgncol,nlev)
+   real(r8) :: num_graupel(mgncol,nlev)   
 
    ! Output field post-processing.
-   type(MGPostProc) :: post_proc
+!   type(MGPostProc) :: post_proc
 
    ! Packed versions of outputs.
    real(r8), target :: packed_rate1ord_cw2pr_st(mgncol,nlev)
-   real(r8), target :: packed_tlat(mgncol,nlev)
-   real(r8), target :: packed_qvlat(mgncol,nlev)
-   real(r8), target :: packed_qctend(mgncol,nlev)
-   real(r8), target :: packed_qitend(mgncol,nlev)
-   real(r8), target :: packed_nctend(mgncol,nlev)
-   real(r8), target :: packed_nitend(mgncol,nlev)
+   real(r8), target :: nctend(mgncol,nlev)
+   real(r8), target :: nitend(mgncol,nlev)
 
-   real(r8), target :: packed_qrtend(mgncol,nlev)
-   real(r8), target :: packed_qstend(mgncol,nlev)
-   real(r8), target :: packed_nrtend(mgncol,nlev)
-   real(r8), target :: packed_nstend(mgncol,nlev)
-   real(r8), target :: packed_qgtend(mgncol,nlev)
-   real(r8), target :: packed_ngtend(mgncol,nlev)
+   real(r8), target :: nrtend(mgncol,nlev)
+   real(r8), target :: nstend(mgncol,nlev)
+   real(r8), target :: ngtend(mgncol,nlev)
 
    real(r8), target :: packed_prect(mgncol)
    real(r8), target :: packed_preci(mgncol)
@@ -1700,7 +1665,6 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8), target :: packed_evapsnow(mgncol,nlev)
    real(r8), target :: packed_prain(mgncol,nlev)
    real(r8), target :: packed_prodsnow(mgncol,nlev)
-   real(r8), target :: packed_cmeout(mgncol,nlev)
    real(r8), target :: packed_qsout(mgncol,nlev)
    real(r8), target :: packed_cflx(mgncol,nlev+1)
    real(r8), target :: packed_iflx(mgncol,nlev+1)
@@ -1711,7 +1675,6 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8), target :: packed_qcsevap(mgncol,nlev)
    real(r8), target :: packed_qisevap(mgncol,nlev)
    real(r8), target :: packed_qvres(mgncol,nlev)
-   real(r8), target :: packed_cmei(mgncol,nlev)
    real(r8), target :: packed_vtrmc(mgncol,nlev)
    real(r8), target :: packed_vtrmi(mgncol,nlev)
    real(r8), target :: packed_qcsedten(mgncol,nlev)
@@ -1722,29 +1685,29 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8), target :: packed_umg(mgncol,nlev)
    real(r8), target :: packed_umr(mgncol,nlev)
    real(r8), target :: packed_ums(mgncol,nlev)
-   real(r8), target :: packed_pra(mgncol,nlev)
-   real(r8), target :: packed_prc(mgncol,nlev)
-   real(r8), target :: packed_mnuccc(mgncol,nlev)
-   real(r8), target :: packed_mnucct(mgncol,nlev)
-   real(r8), target :: packed_msacwi(mgncol,nlev)
-   real(r8), target :: packed_psacws(mgncol,nlev)
-   real(r8), target :: packed_bergs(mgncol,nlev)
-   real(r8), target :: packed_berg(mgncol,nlev)
-   real(r8), target :: packed_melt(mgncol,nlev)
-   real(r8), target :: packed_homo(mgncol,nlev)
-   real(r8), target :: packed_qcres(mgncol,nlev)
-   real(r8), target :: packed_prci(mgncol,nlev)
-   real(r8), target :: packed_prai(mgncol,nlev)
-   real(r8), target :: packed_qires(mgncol,nlev)
-   real(r8), target :: packed_mnuccr(mgncol,nlev)
-   real(r8), target :: packed_mnuccri(mgncol,nlev)
-   real(r8), target :: packed_mnudeptot(mgncol,nlev)
+   real(r8) :: pra(mgncol,nlev)
+   real(r8) :: prc(mgncol,nlev)
+   real(r8) :: mnuccc(mgncol,nlev)
+   real(r8) :: mnucct(mgncol,nlev)
+   real(r8) :: msacwi(mgncol,nlev)
+   real(r8) :: psacws(mgncol,nlev)
+   real(r8) :: bergs(mgncol,nlev)
+   real(r8) :: berg(mgncol,nlev)
+   real(r8) :: melt(mgncol,nlev)
+   real(r8) :: homo(mgncol,nlev)
+   real(r8) :: qcres(mgncol,nlev)
+   real(r8) :: prci(mgncol,nlev)
+   real(r8) :: prai(mgncol,nlev)
+   real(r8) :: qires(mgncol,nlev)
+   real(r8) :: mnuccr(mgncol,nlev)
+   real(r8) :: mnuccri(mgncol,nlev)
+   real(r8) :: mnudeptot(mgncol,nlev)
    real(r8), target :: packed_meltgtot(mgncol,nlev)
    real(r8), target :: packed_meltstot(mgncol,nlev)
-   real(r8), target :: packed_pracs(mgncol,nlev)
+   real(r8) :: pracs(mgncol,nlev)
    real(r8), target :: packed_meltsdt(mgncol,nlev)
    real(r8), target :: packed_frzrdt(mgncol,nlev)
-   real(r8), target :: packed_mnuccd(mgncol,nlev)
+   real(r8) :: mnuccd(mgncol,nlev)
    real(r8), target :: packed_nrout(mgncol,nlev)
    real(r8), target :: packed_nsout(mgncol,nlev)
    real(r8), target :: packed_refl(mgncol,nlev)
@@ -1785,20 +1748,20 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8), target :: packed_ngout2(mgncol,nlev) 
    real(r8), target :: packed_dgout2(mgncol,nlev) 
 !Hail/Graupel Process Rates                
-   real(r8), target :: packed_psacr(mgncol,nlev)   
-   real(r8), target :: packed_pracg(mgncol,nlev)   
-   real(r8), target :: packed_psacwg(mgncol,nlev)  
-   real(r8), target :: packed_pgsacw(mgncol,nlev)
-   real(r8), target :: packed_pgracs(mgncol,nlev) 
-   real(r8), target :: packed_prdg(mgncol,nlev)   
-   real(r8), target :: packed_qmultg(mgncol,nlev)  
-   real(r8), target :: packed_qmultrg(mgncol,nlev)   
-   real(r8), target :: packed_npracg(mgncol,nlev)
-   real(r8), target :: packed_nscng(mgncol,nlev)
-   real(r8), target :: packed_ngracs(mgncol,nlev)
-   real(r8), target :: packed_nmultg(mgncol,nlev)
-   real(r8), target :: packed_nmultrg(mgncol,nlev)
-   real(r8), target :: packed_npsacwg(mgncol,nlev)
+   real(r8) :: psacr(mgncol,nlev)   
+   real(r8) :: pracg(mgncol,nlev)   
+   real(r8) :: psacwg(mgncol,nlev)  
+   real(r8) :: pgsacw(mgncol,nlev)
+   real(r8) :: pgracs(mgncol,nlev) 
+   real(r8) :: prdg(mgncol,nlev)   
+   real(r8) :: qmultg(mgncol,nlev)  
+   real(r8) :: qmultrg(mgncol,nlev)   
+   real(r8) :: npracg(mgncol,nlev)
+   real(r8) :: nscng(mgncol,nlev)
+   real(r8) :: ngracs(mgncol,nlev)
+   real(r8) :: nmultg(mgncol,nlev)
+   real(r8) :: nmultrg(mgncol,nlev)
+   real(r8) :: npsacwg(mgncol,nlev)
 
    ! Dummy arrays for cases where we throw away the MG version and
    ! recalculate sizes on the CAM grid to avoid time/subcolumn averaging
@@ -2031,6 +1994,17 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8) :: es
    real(r8) :: qs
 
+   real(r8), allocatable :: state_loc_t(:,:)
+   real(r8), allocatable :: state_loc_q(:,:)
+   real(r8), allocatable :: state_loc_liq(:,:)
+   real(r8), allocatable :: state_loc_ice(:,:)
+   real(r8), allocatable :: state_loc_numliq(:,:)
+   real(r8), allocatable :: state_loc_numice(:,:)
+   real(r8), allocatable :: state_loc_rain(:,:)
+   real(r8), allocatable :: state_loc_snow(:,:)
+   real(r8), allocatable :: state_loc_numrain(:,:)
+   real(r8), allocatable :: state_loc_numsnow(:,:)
+
    real(r8), pointer :: cmeliq_grid(:,:)
 
    real(r8), pointer :: prec_str_grid(:)
@@ -2093,7 +2067,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8), parameter :: mucon  = 5.3_r8            ! Convective size distribution shape parameter
    real(r8), parameter :: deicon = 50._r8            ! Convective ice effective diameter (meters)
 
-   real(r8), pointer :: pckdptr(:,:)
+!   real(r8), pointer :: pckdptr(:,:)
 
    !-------------------------------------------------------------------------------
 
@@ -2141,7 +2115,32 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
       call pbuf_get_field(pbuf, frzdep_idx, frzdep, col_type=col_type, copy_if_needed=use_subcol_microp)
    end if
 
-   if (qsatfac_idx > 0) call pbuf_get_field(pbuf, qsatfac_idx, qsatfac, col_type=col_type, copy_if_needed=use_subcol_microp)
+   if (qsatfac_idx > 0) then
+      call pbuf_get_field(pbuf, qsatfac_idx, qsatfac, col_type=col_type, copy_if_needed=use_subcol_microp)
+   else
+      allocate(qsatfac(mgncol,nlev))
+      qsatfac = 1._r8
+   end if
+
+   ! allocate tendency variables
+   allocate(tlat(mgncol,nlev))
+   allocate(qvlat(mgncol,nlev))
+   allocate(qctend(mgncol,nlev))
+   allocate(qitend(mgncol,nlev))
+   allocate(qrtend(mgncol,nlev))
+   allocate(qstend(mgncol,nlev))
+   allocate(qgtend(mgncol,nlev))
+
+   allocate(state_loc_t(mgncol,nlev))
+   allocate(state_loc_q(mgncol,nlev))
+   allocate(state_loc_liq(mgncol,nlev))
+   allocate(state_loc_ice(mgncol,nlev))
+   allocate(state_loc_numliq(mgncol,nlev))
+   allocate(state_loc_numice(mgncol,nlev))
+   allocate(state_loc_rain(mgncol,nlev))
+   allocate(state_loc_snow(mgncol,nlev))
+   allocate(state_loc_numrain(mgncol,nlev))
+   allocate(state_loc_numsnow(mgncol,nlev))
 
    !-----------------------
    ! These physics buffer fields are calculated and set in this parameterization
@@ -2359,212 +2358,176 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    ! and cldice in physics_update
    call physics_ptend_init(ptend, psetcols, "cldwat", ls=.true., lq=lq)
 
-   packer = MGPacker(psetcols, pver, mgcols, top_lev)
-   post_proc = MGPostProc(packer)
-   pckdptr => packed_rate1ord_cw2pr_st ! workaround an apparent pgi compiler bug
-   call post_proc%add_field(p(rate1cld), pckdptr)
-   call post_proc%add_field(p(tlat) , p(packed_tlat))
-   call post_proc%add_field(p(qvlat), p(packed_qvlat))
-   call post_proc%add_field(p(qcten), p(packed_qctend))
-   call post_proc%add_field(p(qiten), p(packed_qitend))
-   call post_proc%add_field(p(ncten), p(packed_nctend))
-   call post_proc%add_field(p(niten), p(packed_nitend))
+!   packer = MGPacker(psetcols, pver, mgcols, top_lev)
+!   post_proc = MGPostProc(packer)
+!   pckdptr => packed_rate1ord_cw2pr_st ! workaround an apparent pgi compiler bug
+!   call post_proc%add_field(p(rate1cld), pckdptr)
+!   call post_proc%add_field(p(tlat) , p(packed_tlat))
+!   call post_proc%add_field(p(qvlat), p(packed_qvlat))
+!   call post_proc%add_field(p(qcten), p(packed_qctend))
+!   call post_proc%add_field(p(qiten), p(packed_qitend))
+!   call post_proc%add_field(p(ncten), p(packed_nctend))
+!   call post_proc%add_field(p(niten), p(packed_nitend))
 
-   if (micro_mg_version > 1) then
-      call post_proc%add_field(p(qrten), p(packed_qrtend))
-      call post_proc%add_field(p(qsten), p(packed_qstend))
-      call post_proc%add_field(p(nrten), p(packed_nrtend))
-      call post_proc%add_field(p(nsten), p(packed_nstend))
-      call post_proc%add_field(p(umr), p(packed_umr))
-      call post_proc%add_field(p(ums), p(packed_ums))
-      call post_proc%add_field(p(cflx), p(packed_cflx))
-      call post_proc%add_field(p(iflx), p(packed_iflx))
-   end if
+!   if (micro_mg_version > 1) then
+!      call post_proc%add_field(p(qrten), p(packed_qrtend))
+!      call post_proc%add_field(p(qsten), p(packed_qstend))
+!      call post_proc%add_field(p(nrten), p(packed_nrtend))
+!      call post_proc%add_field(p(nsten), p(packed_nstend))
+!      call post_proc%add_field(p(umr), p(packed_umr))
+!      call post_proc%add_field(p(ums), p(packed_ums))
+!      call post_proc%add_field(p(cflx), p(packed_cflx))
+!      call post_proc%add_field(p(iflx), p(packed_iflx))
+!   end if
 
-   if (micro_mg_version > 2) then
-      call post_proc%add_field(p(qgten), p(packed_qgtend))
-      call post_proc%add_field(p(ngten), p(packed_ngtend))
-      call post_proc%add_field(p(umg), p(packed_umg))
-   end if
+!   if (micro_mg_version > 2) then
+!      call post_proc%add_field(p(qgten), p(packed_qgtend))
+!      call post_proc%add_field(p(ngten), p(packed_ngtend))
+!      call post_proc%add_field(p(umg), p(packed_umg))
+!   end if
 
-   call post_proc%add_field(p(am_evp_st), p(packed_am_evp_st))
+!   call post_proc%add_field(p(am_evp_st), p(packed_am_evp_st))
 
-   call post_proc%add_field(p(prect), p(packed_prect))
-   call post_proc%add_field(p(preci), p(packed_preci))
-   call post_proc%add_field(p(nevapr), p(packed_nevapr))
-   call post_proc%add_field(p(evapsnow), p(packed_evapsnow))
-   call post_proc%add_field(p(prain), p(packed_prain))
-   call post_proc%add_field(p(prodsnow), p(packed_prodsnow))
-   call post_proc%add_field(p(cmeice), p(packed_cmeout))
-   call post_proc%add_field(p(qsout), p(packed_qsout))
-   call post_proc%add_field(p(rflx), p(packed_rflx))
-   call post_proc%add_field(p(sflx), p(packed_sflx))
-   call post_proc%add_field(p(qrout), p(packed_qrout))
-   call post_proc%add_field(p(qcsevap), p(packed_qcsevap))
-   call post_proc%add_field(p(qisevap), p(packed_qisevap))
-   call post_proc%add_field(p(qvres), p(packed_qvres))
-   call post_proc%add_field(p(cmeiout), p(packed_cmei))
-   call post_proc%add_field(p(vtrmc), p(packed_vtrmc))
-   call post_proc%add_field(p(vtrmi), p(packed_vtrmi))
-   call post_proc%add_field(p(qcsedten), p(packed_qcsedten))
-   call post_proc%add_field(p(qisedten), p(packed_qisedten))
-   if (micro_mg_version > 1) then
-      call post_proc%add_field(p(qrsedten), p(packed_qrsedten))
-      call post_proc%add_field(p(qssedten), p(packed_qssedten))
-   end if
+!   call post_proc%add_field(p(prect), p(packed_prect))
+!   call post_proc%add_field(p(preci), p(packed_preci))
+!   call post_proc%add_field(p(nevapr), p(packed_nevapr))
+!   call post_proc%add_field(p(evapsnow), p(packed_evapsnow))
+!   call post_proc%add_field(p(prain), p(packed_prain))
+!   call post_proc%add_field(p(prodsnow), p(packed_prodsnow))
+!   call post_proc%add_field(p(cmeice), p(packed_cmeout))
+!   call post_proc%add_field(p(qsout), p(packed_qsout))
+!   call post_proc%add_field(p(rflx), p(packed_rflx))
+!   call post_proc%add_field(p(sflx), p(packed_sflx))
+!   call post_proc%add_field(p(qrout), p(packed_qrout))
+!   call post_proc%add_field(p(qcsevap), p(packed_qcsevap))
+!   call post_proc%add_field(p(qisevap), p(packed_qisevap))
+!   call post_proc%add_field(p(qvres), p(packed_qvres))
+!   call post_proc%add_field(p(cmeiout), p(packed_cmei))
+!   call post_proc%add_field(p(vtrmc), p(packed_vtrmc))
+!   call post_proc%add_field(p(vtrmi), p(packed_vtrmi))
+!   call post_proc%add_field(p(qcsedten), p(packed_qcsedten))
+!   call post_proc%add_field(p(qisedten), p(packed_qisedten))
+!   if (micro_mg_version > 1) then
+!      call post_proc%add_field(p(qrsedten), p(packed_qrsedten))
+!      call post_proc%add_field(p(qssedten), p(packed_qssedten))
+!   end if
 
-   if (micro_mg_version > 2) then
-      call post_proc%add_field(p(qgsedten), p(packed_qgsedten))
-      call post_proc%add_field(p(gflx), p(packed_gflx))
-   end if
+!   if (micro_mg_version > 2) then
+!      call post_proc%add_field(p(qgsedten), p(packed_qgsedten))
+!      call post_proc%add_field(p(gflx), p(packed_gflx))
+!   end if
 
-   call post_proc%add_field(p(prao), p(packed_pra))
-   call post_proc%add_field(p(prco), p(packed_prc))
-   call post_proc%add_field(p(mnuccco), p(packed_mnuccc))
-   call post_proc%add_field(p(mnuccto), p(packed_mnucct))
-   call post_proc%add_field(p(msacwio), p(packed_msacwi))
-   call post_proc%add_field(p(psacwso), p(packed_psacws))
-   call post_proc%add_field(p(bergso), p(packed_bergs))
-   call post_proc%add_field(p(bergo), p(packed_berg))
-   call post_proc%add_field(p(melto), p(packed_melt))
-   call post_proc%add_field(p(homoo), p(packed_homo))
-   call post_proc%add_field(p(qcreso), p(packed_qcres))
-   call post_proc%add_field(p(prcio), p(packed_prci))
-   call post_proc%add_field(p(praio), p(packed_prai))
-   call post_proc%add_field(p(qireso), p(packed_qires))
-   call post_proc%add_field(p(mnuccro), p(packed_mnuccr))
-   call post_proc%add_field(p(pracso), p(packed_pracs))
-   call post_proc%add_field(p(meltsdt), p(packed_meltsdt))
-   call post_proc%add_field(p(frzrdt), p(packed_frzrdt))
-   call post_proc%add_field(p(mnuccdo), p(packed_mnuccd))
-   call post_proc%add_field(p(nrout), p(packed_nrout))
-   call post_proc%add_field(p(nsout), p(packed_nsout))
-   call post_proc%add_field(p(mnudepo), p(packed_mnudeptot))
-   call post_proc%add_field(p(meltstot), p(packed_meltstot))
+!   call post_proc%add_field(p(prao), p(packed_pra))
+!   call post_proc%add_field(p(prco), p(packed_prc))
+!   call post_proc%add_field(p(mnuccco), p(packed_mnuccc))
+!   call post_proc%add_field(p(mnuccto), p(packed_mnucct))
+!   call post_proc%add_field(p(msacwio), p(packed_msacwi))
+!   call post_proc%add_field(p(psacwso), p(packed_psacws))
+!   call post_proc%add_field(p(bergso), p(packed_bergs))
+!   call post_proc%add_field(p(bergo), p(packed_berg))
+!   call post_proc%add_field(p(melto), p(packed_melt))
+!   call post_proc%add_field(p(homoo), p(packed_homo))
+!   call post_proc%add_field(p(qcreso), p(packed_qcres))
+!   call post_proc%add_field(p(prcio), p(packed_prci))
+!   call post_proc%add_field(p(praio), p(packed_prai))
+!   call post_proc%add_field(p(qireso), p(packed_qires))
+!   call post_proc%add_field(p(mnuccro), p(packed_mnuccr))
+!   call post_proc%add_field(p(pracso), p(packed_pracs))
+!   call post_proc%add_field(p(meltsdt), p(packed_meltsdt))
+!   call post_proc%add_field(p(frzrdt), p(packed_frzrdt))
+!   call post_proc%add_field(p(mnuccdo), p(packed_mnuccd))
+!   call post_proc%add_field(p(nrout), p(packed_nrout))
+!   call post_proc%add_field(p(nsout), p(packed_nsout))
+!   call post_proc%add_field(p(mnudepo), p(packed_mnudeptot))
+!   call post_proc%add_field(p(meltstot), p(packed_meltstot))
 
-   call post_proc%add_field(p(refl), p(packed_refl), fillvalue=-9999._r8)
-   call post_proc%add_field(p(arefl), p(packed_arefl))
-   call post_proc%add_field(p(areflz), p(packed_areflz))
-   call post_proc%add_field(p(frefl), p(packed_frefl))
-   call post_proc%add_field(p(csrfl), p(packed_csrfl), fillvalue=-9999._r8)
-   call post_proc%add_field(p(acsrfl), p(packed_acsrfl))
-   call post_proc%add_field(p(fcsrfl), p(packed_fcsrfl))
+!   call post_proc%add_field(p(refl), p(packed_refl), fillvalue=-9999._r8)
+!   call post_proc%add_field(p(arefl), p(packed_arefl))
+!   call post_proc%add_field(p(areflz), p(packed_areflz))
+!   call post_proc%add_field(p(frefl), p(packed_frefl))
+!   call post_proc%add_field(p(csrfl), p(packed_csrfl), fillvalue=-9999._r8)
+!   call post_proc%add_field(p(acsrfl), p(packed_acsrfl))
+!   call post_proc%add_field(p(fcsrfl), p(packed_fcsrfl))
 
-   call post_proc%add_field(p(rercld), p(packed_rercld))
-   call post_proc%add_field(p(ncai), p(packed_ncai))
-   call post_proc%add_field(p(ncal), p(packed_ncal))
-   call post_proc%add_field(p(qrout2), p(packed_qrout2))
-   call post_proc%add_field(p(qsout2), p(packed_qsout2))
-   call post_proc%add_field(p(nrout2), p(packed_nrout2))
-   call post_proc%add_field(p(nsout2), p(packed_nsout2))
-   call post_proc%add_field(p(freqs), p(packed_freqs))
-   call post_proc%add_field(p(freqr), p(packed_freqr))
-   call post_proc%add_field(p(nfice), p(packed_nfice))
-   if (micro_mg_version /= 1) then
-      call post_proc%add_field(p(qcrat), p(packed_qcrat), fillvalue=1._r8)
-      call post_proc%add_field(p(mnuccrio), p(packed_mnuccri))
-   end if
+!   call post_proc%add_field(p(rercld), p(packed_rercld))
+!   call post_proc%add_field(p(ncai), p(packed_ncai))
+!   call post_proc%add_field(p(ncal), p(packed_ncal))
+!   call post_proc%add_field(p(qrout2), p(packed_qrout2))
+!   call post_proc%add_field(p(qsout2), p(packed_qsout2))
+!   call post_proc%add_field(p(nrout2), p(packed_nrout2))
+!   call post_proc%add_field(p(nsout2), p(packed_nsout2))
+!   call post_proc%add_field(p(freqs), p(packed_freqs))
+!   call post_proc%add_field(p(freqr), p(packed_freqr))
+!   call post_proc%add_field(p(nfice), p(packed_nfice))
+!   if (micro_mg_version /= 1) then
+!      call post_proc%add_field(p(qcrat), p(packed_qcrat), fillvalue=1._r8)
+!      call post_proc%add_field(p(mnuccrio), p(packed_mnuccri))
+!   end if
 
-   if (micro_mg_version > 2) then
-      call post_proc%add_field(p(freqg), p(packed_freqg))
-! Graupel/Hail size
-      call post_proc%add_field(p(qgout), p(packed_qgout))
-      call post_proc%add_field(p(qgout2), p(packed_qgout2))
-      call post_proc%add_field(p(ngout2), p(packed_ngout2))
-! Graupel/Hail process rates
-      call post_proc%add_field(p(psacro), p(packed_psacr))
-      call post_proc%add_field(p(pracgo), p(packed_pracg))
-      call post_proc%add_field(p(psacwgo), p(packed_psacwg))
-      call post_proc%add_field(p(pgsacwo), p(packed_pgsacw))
-      call post_proc%add_field(p(pgracso), p(packed_pgracs))
-      call post_proc%add_field(p(prdgo), p(packed_prdg))
-      call post_proc%add_field(p(qmultgo), p(packed_qmultg))
-      call post_proc%add_field(p(qmultrgo), p(packed_qmultrg))
-      call post_proc%add_field(p(meltgtot), p(packed_meltgtot))
-   end if
+!   if (micro_mg_version > 2) then
+!      call post_proc%add_field(p(freqg), p(packed_freqg))
+!! Graupel/Hail size
+!      call post_proc%add_field(p(qgout), p(packed_qgout))
+!      call post_proc%add_field(p(qgout2), p(packed_qgout2))
+!      call post_proc%add_field(p(ngout2), p(packed_ngout2))
+!! Graupel/Hail process rates
+!      call post_proc%add_field(p(psacro), p(packed_psacr))
+!      call post_proc%add_field(p(pracgo), p(packed_pracg))
+!      call post_proc%add_field(p(psacwgo), p(packed_psacwg))
+!      call post_proc%add_field(p(pgsacwo), p(packed_pgsacw))
+!      call post_proc%add_field(p(pgracso), p(packed_pgracs))
+!      call post_proc%add_field(p(prdgo), p(packed_prdg))
+!      call post_proc%add_field(p(qmultgo), p(packed_qmultg))
+!      call post_proc%add_field(p(qmultrgo), p(packed_qmultrg))
+!      call post_proc%add_field(p(meltgtot), p(packed_meltgtot))
+!   end if
 
-   ! The following are all variables related to sizes, where it does not
-   ! necessarily make sense to average over time steps. Instead, we keep
-   ! the value from the last substep, which is what "accum_null" does.
-   call post_proc%add_field(p(rel), p(packed_rel), &
-        fillvalue=10._r8, accum_method=accum_null)
-   call post_proc%add_field(p(rei), p(packed_rei), &
-        fillvalue=25._r8, accum_method=accum_null)
-   call post_proc%add_field(p(sadice), p(packed_sadice), &
-        accum_method=accum_null)
-   call post_proc%add_field(p(sadsnow), p(packed_sadsnow), &
-        accum_method=accum_null)
-   call post_proc%add_field(p(lambdac), p(packed_lambdac), &
-        accum_method=accum_null)
-   call post_proc%add_field(p(mu), p(packed_mu), &
-        accum_method=accum_null)
-   call post_proc%add_field(p(des), p(packed_des), &
-        accum_method=accum_null)
-   call post_proc%add_field(p(dei), p(packed_dei), &
-        accum_method=accum_null)
-   call post_proc%add_field(p(prer_evap), p(packed_prer_evap), &
-        accum_method=accum_null)
+!   ! The following are all variables related to sizes, where it does not
+!   ! necessarily make sense to average over time steps. Instead, we keep
+!   ! the value from the last substep, which is what "accum_null" does.
+!   call post_proc%add_field(p(rel), p(packed_rel), &
+!        fillvalue=10._r8, accum_method=accum_null)
+!   call post_proc%add_field(p(rei), p(packed_rei), &
+!        fillvalue=25._r8, accum_method=accum_null)
+!   call post_proc%add_field(p(sadice), p(packed_sadice), &
+!        accum_method=accum_null)
+!   call post_proc%add_field(p(sadsnow), p(packed_sadsnow), &
+!        accum_method=accum_null)
+!   call post_proc%add_field(p(lambdac), p(packed_lambdac), &
+!        accum_method=accum_null)
+!   call post_proc%add_field(p(mu), p(packed_mu), &
+!        accum_method=accum_null)
+!   call post_proc%add_field(p(des), p(packed_des), &
+!        accum_method=accum_null)
+!   call post_proc%add_field(p(dei), p(packed_dei), &
+!        accum_method=accum_null)
+!   call post_proc%add_field(p(prer_evap), p(packed_prer_evap), &
+!        accum_method=accum_null)
 
-   ! Pack input variables that are not updated during substeps.
-   packed_relvar = packer%pack(relvar)
-   packed_accre_enhan = packer%pack(accre_enhan)
-
-   packed_p = packer%pack(state_loc%pmid)
-   packed_pdel = packer%pack(state_loc%pdel)
-
-   packed_cldn = packer%pack(ast)
-   packed_liqcldf = packer%pack(alst_mic)
-   packed_icecldf = packer%pack(aist_mic)
-   allocate(packed_qsatfac(mgncol,nlev))
-   if (qsatfac_idx > 0) then
-      packed_qsatfac = packer%pack(qsatfac)
-   else
-      packed_qsatfac = 1._r8
-   endif
-   packed_naai = packer%pack(naai)
-   packed_npccn = packer%pack(npccn)
-
-   allocate(packed_rndst(mgncol,nlev,size(rndst, 3)))
-   packed_rndst = packer%pack(rndst)
-
-   allocate(packed_nacon(mgncol,nlev,size(nacon, 3)))
-   packed_nacon = packer%pack(nacon)
-
-   if (.not. do_cldice) then
-      packed_tnd_qsnow = packer%pack(tnd_qsnow)
-      packed_tnd_nsnow = packer%pack(tnd_nsnow)
-      packed_re_ice = packer%pack(re_ice)
-   end if
-
-   if (use_hetfrz_classnuc) then
-      packed_frzimm = packer%pack(frzimm)
-      packed_frzcnt = packer%pack(frzcnt)
-      packed_frzdep = packer%pack(frzdep)
-   end if
-
+   ! Assign state_loc variables to non-pointers (gnu compiler might be getting confused if pointers passed in)
+    state_loc_t(:mgncol,:) = state_loc%t(:mgncol,:)
+    state_loc_q(:mgncol,:) = state_loc%q(:mgncol,:,1)
+    state_loc_liq(:mgncol,:) = state_loc%q(:mgncol,:,ixcldliq)
+    state_loc_ice(:mgncol,:) = state_loc%q(:mgncol,:,ixcldice)
+    state_loc_numliq(:mgncol,:) = state_loc%q(:mgncol,:,ixnumliq)
+    state_loc_numice(:mgncol,:) = state_loc%q(:mgncol,:,ixnumice)
+    state_loc_rain(:mgncol,:) = state_loc%q(:mgncol,:,ixrain)
+    state_loc_snow(:mgncol,:) = state_loc%q(:mgncol,:,ixsnow)
+    state_loc_numrain(:mgncol,:) = state_loc%q(:mgncol,:,ixnumrain)
+    state_loc_numsnow(:mgncol,:) = state_loc%q(:mgncol,:,ixnumsnow)
+   
    do it = 1, num_steps
 
-      ! Pack input variables that are updated during substeps.
-      packed_t = packer%pack(state_loc%t)
-      packed_q = packer%pack(state_loc%q(:,:,1))
-      packed_qc = packer%pack(state_loc%q(:,:,ixcldliq))
-      packed_nc = packer%pack(state_loc%q(:,:,ixnumliq))
-      packed_qi = packer%pack(state_loc%q(:,:,ixcldice))
-      packed_ni = packer%pack(state_loc%q(:,:,ixnumice))
-      if (micro_mg_version > 1) then
-         packed_qr = packer%pack(state_loc%q(:,:,ixrain))
-         packed_nr = packer%pack(state_loc%q(:,:,ixnumrain))
-         packed_qs = packer%pack(state_loc%q(:,:,ixsnow))
-         packed_ns = packer%pack(state_loc%q(:,:,ixnumsnow))
-      end if
-
+! Set up the ptend_loc structure
+      call physics_ptend_init(ptend_loc, psetcols, "micro_mg", &
+                              ls=.true., lq=lq)
       if (micro_mg_version > 1) then
          if (micro_mg_version > 2) then
-            packed_qg = packer%pack(state_loc%q(:,:,ixgraupel))
-            packed_ng = packer%pack(state_loc%q(:,:,ixnumgraupel))
+            graupel = state_loc%q(:,:,ixgraupel)
+            num_graupel = state_loc%q(:,:,ixnumgraupel)
          else
-            packed_qg(:,:) = 0._r8
-            packed_ng(:,:) = 0._r8
+            graupel(:,:) = 0._r8
+            num_graupel(:,:) = 0._r8
          end if
       end if
 
@@ -2574,136 +2537,141 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
          case (0)
             call micro_mg_tend1_0( &
                  microp_uniform, mgncol, nlev, mgncol, 1, dtime/num_steps, &
-                 packed_t, packed_q, packed_qc, packed_qi, packed_nc,     &
-                 packed_ni, packed_p, packed_pdel, packed_cldn, packed_liqcldf,&
-                 packed_relvar, packed_accre_enhan,                             &
-                 packed_icecldf, packed_rate1ord_cw2pr_st, packed_naai, packed_npccn,                 &
-                 packed_rndst, packed_nacon, packed_tlat, packed_qvlat, packed_qctend,                &
-                 packed_qitend, packed_nctend, packed_nitend, packed_rel, rel_fn_dum,      &
-                 packed_rei, packed_prect, packed_preci, packed_nevapr, packed_evapsnow, packed_am_evp_st, &
-                 packed_prain, packed_prodsnow, packed_cmeout, packed_dei, packed_mu,                &
-                 packed_lambdac, packed_qsout, packed_des, packed_rflx, packed_sflx,                 &
-                 packed_qrout, reff_rain_dum, reff_snow_dum, packed_qcsevap, packed_qisevap,   &
-                 packed_qvres, packed_cmei, packed_vtrmc, packed_vtrmi, packed_qcsedten,          &
-                 packed_qisedten, packed_pra, packed_prc, packed_mnuccc, packed_mnucct,          &
-                 packed_msacwi, packed_psacws, packed_bergs, packed_berg, packed_melt,          &
-                 packed_homo, packed_qcres, packed_prci, packed_prai, packed_qires,             &
-                 packed_mnuccr, packed_pracs, packed_meltsdt, packed_frzrdt, packed_mnuccd,       &
-                 packed_nrout, packed_nsout, packed_refl, packed_arefl, packed_areflz,               &
-                 packed_frefl, packed_csrfl, packed_acsrfl, packed_fcsrfl, packed_rercld,            &
-                 packed_ncai, packed_ncal, packed_qrout2, packed_qsout2, packed_nrout2,              &
-                 packed_nsout2, drout_dum, dsout2_dum, packed_freqs,packed_freqr,            &
-                 packed_nfice, packed_prer_evap, do_cldice, errstring,                      &
-                 packed_tnd_qsnow, packed_tnd_nsnow, packed_re_ice,             &
-                 packed_frzimm, packed_frzcnt, packed_frzdep)
+                 state_loc%t, state_loc%q(:,:,1), state_loc%q(:,:,ixcldliq), state_loc%q(:,:,ixcldice), state_loc%q(:,:,ixnumliq),     &
+                 state_loc%q(:,:,ixnumice), state_loc%pmid,  state_loc%pdel, ast, alst_mic,&
+                 relvar, accre_enhan,                             &
+                 aist_mic, rate1cld, naai, npccn,                 &
+                 rndst, nacon, tlat, qvlat, qctend,                &
+                 qitend, nctend, nitend, rel, rel_fn_dum,      &
+                 rei, prect, preci, nevapr, evapsnow, am_evp_st, &
+                 prain, prodsnow, cmeice, dei, mu,                &
+                 lambdac, qsout, des, rflx, sflx,                 &
+                 qrout, reff_rain_dum, reff_snow_dum, qcsevap, qisevap,   &
+                 qvres, cmeiout, vtrmc, vtrmi, qcsedten,          &
+                 qisedten, prao, prco, mnuccco, mnuccto,          &
+                 msacwio, psacwso, bergso, bergo, melto,          &
+                 homoo, qcreso, prcio, praio, qireso,             &
+                 mnuccro, pracso, meltsdt, frzrdt, mnuccdo,       &
+                 nrout, nsout, refl, arefl, areflz,               &
+                 frefl, csrfl, acsrfl, fcsrfl, rercld,            &
+                 ncai, ncal, qrout2, qsout2, nrout2,              &
+                 nsout2, drout_dum, dsout2_dum, freqs,freqr,            &
+                 nfice, prer_evap, do_cldice, errstring,                      &
+                 tnd_qsnow, tnd_nsnow, re_ice,             &
+                 frzimm, frzcnt, frzdep)
 
          end select
       case(2:3)
          call micro_mg_tend3_0( &
               mgncol,         nlev,           dtime/num_steps,&
-              packed_t,               packed_q,               &
-              packed_qc,              packed_qi,              &
-              packed_nc,              packed_ni,              &
-              packed_qr,              packed_qs,              &
-              packed_nr,              packed_ns,              &
-              packed_qg,              packed_ng,              &
-              packed_relvar,          packed_accre_enhan,     &
-              packed_p,               packed_pdel,            &
-              packed_cldn, packed_liqcldf, packed_icecldf, packed_qsatfac, &
-              packed_rate1ord_cw2pr_st,                       &
-              packed_naai,            packed_npccn,           &
-              packed_rndst,           packed_nacon,           &
-              packed_tlat,            packed_qvlat,           &
-              packed_qctend,          packed_qitend,          &
-              packed_nctend,          packed_nitend,          &
-              packed_qrtend,          packed_qstend,          &
-              packed_nrtend,          packed_nstend,          &
-              packed_qgtend,          packed_ngtend,          &
-              packed_rel,     rel_fn_dum,     packed_rei,     &
-              packed_sadice,          packed_sadsnow,         &
-              packed_prect,           packed_preci,           &
-              packed_nevapr,          packed_evapsnow,        &
-              packed_am_evp_st,                               &
-              packed_prain,           packed_prodsnow,        &
-              packed_cmeout,          packed_dei,             &
-              packed_mu,              packed_lambdac,         &
-              packed_qsout,           packed_des,             &
-              packed_qgout,   packed_ngout,   packed_dgout,   &
-              packed_cflx,    packed_iflx,                    &
-              packed_gflx,                                    &
-              packed_rflx,    packed_sflx,    packed_qrout,   &
+              state_loc_t,                    state_loc_q,               &
+              state_loc_liq,                  state_loc_ice,              &
+              state_loc_numliq,               state_loc_numice,              &
+              state_loc_rain,                 state_loc_snow,              &
+              state_loc_numrain,              state_loc_numsnow,              &
+              graupel,              num_graupel,              &
+              relvar,         accre_enhan,     &
+              state_loc%pmid,                state_loc%pdel,            &
+              ast, alst_mic, aist_mic, qsatfac, &
+              rate1cld,                         &
+              naai,            npccn,           &
+              rndst,           nacon,           &
+              tlat,            qvlat,           &
+              qctend,          qitend,          &
+              nctend,          nitend,          &
+              qrtend,          qstend,          &
+              nrtend,          nstend,          &
+              qgtend,          ngtend,          &
+              rel,     rel_fn_dum,     rei,     &
+              sadice,          sadsnow,         &
+              prect,           preci,           &
+              nevapr,          evapsnow,        &
+              am_evp_st,                               &
+              prain,           prodsnow,        &
+              cmeice,          dei,             &
+              mu,              lambdac,         &
+              qsout,           des,             &
+              qgout,   ngout,   dgout,   &
+              cflx,    iflx,                    &
+              gflx,                                    &
+              rflx,    sflx,    qrout,   &
               reff_rain_dum,          reff_snow_dum,   reff_grau_dum,       &
-              packed_qcsevap, packed_qisevap, packed_qvres,   &
-              packed_cmei,    packed_vtrmc,   packed_vtrmi,   &
-              packed_umr,             packed_ums,             &
-              packed_umg,             packed_qgsedten,        &
-              packed_qcsedten,        packed_qisedten,        &
-              packed_qrsedten,        packed_qssedten,        &
-              packed_pra,             packed_prc,             &
-              packed_mnuccc,  packed_mnucct,  packed_msacwi,  &
-              packed_psacws,  packed_bergs,   packed_berg,    &
-              packed_melt,    packed_meltstot,packed_meltgtot,  packed_homo, &
-              packed_qcres,   packed_prci,    packed_prai,    &
-              packed_qires,   packed_mnuccr,  packed_mnudeptot, packed_mnuccri, packed_pracs, &
-              packed_meltsdt, packed_frzrdt,  packed_mnuccd,  &
-              packed_pracg,   packed_psacwg,  packed_pgsacw,  &
-              packed_pgracs,  packed_prdg,   &
-              packed_qmultg,  packed_qmultrg, packed_psacr,   &
-              packed_npracg,  packed_nscng,   packed_ngracs,  &
-              packed_nmultg,  packed_nmultrg, packed_npsacwg, & 
-              packed_nrout,           packed_nsout,           &
-              packed_refl,    packed_arefl,   packed_areflz,  &
-              packed_frefl,   packed_csrfl,   packed_acsrfl,  &
-              packed_fcsrfl,          packed_rercld,          &
-              packed_ncai,            packed_ncal,            &
-              packed_qrout2,          packed_qsout2,          &
-              packed_nrout2,          packed_nsout2,          &
+              qcsevap, qisevap, qvres,   &
+              cmeiout,    vtrmc,   vtrmi,   &
+              umr,             ums,             &
+              umg,             qgsedten,        &
+              qcsedten,        qisedten,        &
+              qrsedten,        qssedten,        &
+              prao,             prco,             &
+              mnuccco,  mnuccto,  msacwio,  &
+              psacwso,  bergso,   bergo,    &
+              melto,    meltstot, meltgtot,           homoo,            &
+              qcreso,   prcio,    praio,    &
+              qireso,   mnuccro,  mnudepo, mnuccrio, pracso,   &
+              meltsdt, frzrdt,  mnuccdo,  &
+              pracgo,   psacwgo,  pgsacwo,  &
+              pgracso,  prdgo,   &
+              qmultgo,  qmultrgo, psacro,   &
+              npracg,  nscng,   ngracs,  &
+              nmultg,  nmultrg, npsacwg, & 
+              nrout,           nsout,           &
+              refl,    arefl,   areflz,  &
+              frefl,   csrfl,   acsrfl,  &
+              fcsrfl,          rercld,          &
+              ncai,            ncal,            &
+              qrout2,          qsout2,          &
+              nrout2,          nsout2,          &
               drout_dum,              dsout2_dum,             &
-              packed_qgout2, packed_ngout2, packed_dgout2, packed_freqg,   &
-              packed_freqs,           packed_freqr,           &
-              packed_nfice,           packed_qcrat,           &
+              qgout2, ngout2, dgout2, freqg,   &
+              freqs,           freqr,           &
+              nfice,           qcrat,           &
               errstring, &
-              packed_tnd_qsnow,packed_tnd_nsnow,packed_re_ice,&
-              packed_prer_evap,                                     &
-              packed_frzimm,  packed_frzcnt,  packed_frzdep   )
+              tnd_qsnow,tnd_nsnow,re_ice,&
+              prer_evap,                                     &
+              frzimm,  frzcnt,  frzdep   )
       end select
 
       call handle_errmsg(errstring, subname="micro_mg_tend")
 
-      call physics_ptend_init(ptend_loc, psetcols, "micro_mg", &
-                              ls=.true., lq=lq)
-
       ! Set local tendency.
-      ptend_loc%s               = packer%unpack(packed_tlat, 0._r8)
-      ptend_loc%q(:,:,1)        = packer%unpack(packed_qvlat, 0._r8)
-      ptend_loc%q(:,:,ixcldliq) = packer%unpack(packed_qctend, 0._r8)
-      ptend_loc%q(:,:,ixcldice) = packer%unpack(packed_qitend, 0._r8)
-      ptend_loc%q(:,:,ixnumliq) = packer%unpack(packed_nctend, &
-           -state_loc%q(:,:,ixnumliq)/(dtime/num_steps))
+      ptend_loc%s(:mgncol,:) = tlat(:mgncol,:)
+      ptend_loc%q(:mgncol,:,1) = qvlat(:mgncol,:)
+      ptend_loc%q(:mgncol,:,ixcldliq) = qctend(:mgncol,:)
+      ptend_loc%q(:mgncol,:,ixcldice) = qitend(:mgncol,:)
+      ptend_loc%q(:mgncol,:,ixnumliq) = nctend(:mgncol,:)-state_loc%q(:,:,ixnumliq)/(dtime/num_steps)
+
+      ! Assign state_loc variables back to the structure
+      state_loc%t(:mgncol,:) =  state_loc_t(:mgncol,:)
+      state_loc%q(:mgncol,:,1) =  state_loc_liq(:mgncol,:)
+      state_loc%q(:mgncol,:,ixcldice) = state_loc_ice(:mgncol,:)
+      state_loc%q(:mgncol,:,ixnumliq) = state_loc_numliq(:mgncol,:)
+      state_loc%q(:mgncol,:,ixnumice) =  state_loc_numice(:mgncol,:)
+      state_loc%q(:mgncol,:,ixrain) =  state_loc_rain(:mgncol,:)
+      state_loc%q(:mgncol,:,ixsnow) = state_loc_snow(:mgncol,:)
+      state_loc%q(:mgncol,:,ixnumrain) = state_loc_numrain(:mgncol,:)
+      state_loc%q(:mgncol,:,ixnumsnow) = state_loc_numsnow(:mgncol,:)
+   
       if (do_cldice) then
-         ptend_loc%q(:,:,ixnumice) = packer%unpack(packed_nitend, &
-              -state_loc%q(:,:,ixnumice)/(dtime/num_steps))
+         ptend_loc%q(:mgncol,:,ixnumice) = nitend -state_loc%q(:mgncol,:,ixnumice)/(dtime/num_steps)
       else
          ! In this case, the tendency should be all 0.
-         if (any(packed_nitend /= 0._r8)) &
+         if (any(nitend(:mgncol,:) /= 0._r8)) &
               call endrun("micro_mg_cam:ERROR - MG microphysics is configured not to prognose cloud ice,"// &
               " but micro_mg_tend has ice number tendencies.")
-         ptend_loc%q(:,:,ixnumice) = 0._r8
+         ptend_loc%q(:mgncol,:,ixnumice) = 0._r8
       end if
 
+!CAC
       if (micro_mg_version > 1) then
-         ptend_loc%q(:,:,ixrain)    = packer%unpack(packed_qrtend, 0._r8)
-         ptend_loc%q(:,:,ixsnow)    = packer%unpack(packed_qstend, 0._r8)
-         ptend_loc%q(:,:,ixnumrain) = packer%unpack(packed_nrtend, &
-              -state_loc%q(:,:,ixnumrain)/(dtime/num_steps))
-         ptend_loc%q(:,:,ixnumsnow) = packer%unpack(packed_nstend, &
-              -state_loc%q(:,:,ixnumsnow)/(dtime/num_steps))
+         ptend_loc%q(:mgncol,:,ixrain) = qrtend(:mgncol,:)
+         ptend_loc%q(:mgncol,:,ixsnow) = qstend(:mgncol,:)
+         ptend_loc%q(:mgncol,:,ixnumrain) = nrtend(:mgncol,:) -state_loc%q(:mgncol,:,ixnumrain)/(dtime/num_steps)
+         ptend_loc%q(:mgncol,:,ixnumsnow) = nstend(:mgncol,:) -state_loc%q(:mgncol,:,ixnumsnow)/(dtime/num_steps)
       end if
 
       if (micro_mg_version > 2) then
-         ptend_loc%q(:,:,ixgraupel)    = packer%unpack(packed_qgtend, 0._r8)
-         ptend_loc%q(:,:,ixnumgraupel) = packer%unpack(packed_ngtend, &
-              -state_loc%q(:,:,ixnumgraupel)/(dtime/num_steps))
+         ptend_loc%q(:mgncol,:,ixgraupel) = qgtend(:mgncol,:)
+         ptend_loc%q(:mgncol,:,ixnumgraupel) = ngtend -state_loc%q(:mgncol,:,ixnumgraupel)/(dtime/num_steps)
       end if
 
       ! Sum into overall ptend
@@ -2712,18 +2680,18 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
       ! Update local state
       call physics_update(state_loc, ptend_loc, dtime/num_steps)
 
-      ! Sum all outputs for averaging.
-      call post_proc%accumulate()
+!      ! Sum all outputs for averaging.
+!      call post_proc%accumulate()
 
    end do
 
    ! Divide ptend by substeps.
    call physics_ptend_scale(ptend, 1._r8/num_steps, ncol)
 
-   ! Use summed outputs to produce averages
-   call post_proc%process_and_unpack()
+!   ! Use summed outputs to produce averages
+!   call post_proc%process_and_unpack()
 
-   call post_proc%finalize()
+!   call post_proc%finalize()
 
    ! Check to make sure that the microphysics code is respecting the flags that control
    ! whether MG should be prognosing cloud ice and cloud liquid or not.
@@ -2785,13 +2753,13 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    wsedl(:ncol,top_lev:pver) = vtrmc(:ncol,top_lev:pver)
 
    ! Microphysical tendencies for use in the macrophysics at the next time step
-   CC_T(:ncol,top_lev:pver)    =  tlat(:ncol,top_lev:pver)/cpair
+   CC_T(:ncol,top_lev:pver)    = tlat(:ncol,top_lev:pver)/cpair
    CC_qv(:ncol,top_lev:pver)   = qvlat(:ncol,top_lev:pver)
-   CC_ql(:ncol,top_lev:pver)   = qcten(:ncol,top_lev:pver)
-   CC_qi(:ncol,top_lev:pver)   = qiten(:ncol,top_lev:pver)
-   CC_nl(:ncol,top_lev:pver)   = ncten(:ncol,top_lev:pver)
-   CC_ni(:ncol,top_lev:pver)   = niten(:ncol,top_lev:pver)
-   CC_qlst(:ncol,top_lev:pver) = qcten(:ncol,top_lev:pver)/max(0.01_r8,alst_mic(:ncol,top_lev:pver))
+   CC_ql(:ncol,top_lev:pver)   = qctend(:ncol,top_lev:pver)
+   CC_qi(:ncol,top_lev:pver)   = qitend(:ncol,top_lev:pver)
+   CC_nl(:ncol,top_lev:pver)   = nctend(:ncol,top_lev:pver)
+   CC_ni(:ncol,top_lev:pver)   = nitend(:ncol,top_lev:pver)
+   CC_qlst(:ncol,top_lev:pver) = qctend(:ncol,top_lev:pver)/max(0.01_r8,alst_mic(:ncol,top_lev:pver))
 
    ! Net micro_mg_cam condensation rate
    qme(:ncol,:top_lev-1) = 0._r8
@@ -3600,9 +3568,9 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    call outfld('ANSNOW',      nsout2,      psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('FREQR',       freqr,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('FREQS',       freqs,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('MPDT',        tlat,        psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('MPDQ',        qvlat,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('MPDLIQ',      qcten,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('MPDT',        ptend_loc%s,        psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('MPDQ',        ptend_loc%q(:,:,1),       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('MPDLIQ',      ptend_loc%q(:,:,ixcldliq),       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('MPDICE',      qiten,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('MPDNLIQ',     ncten,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('MPDNICE',     niten,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
@@ -3653,7 +3621,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    ! Example subcolumn outfld call
    if (use_subcol_microp) then
       call outfld('FICE_SCOL',   nfice,       psubcols*pcols, lchnk)
-      call outfld('MPDLIQ_SCOL', qcten,       psubcols*pcols, lchnk)
+      call outfld('MPDLIQ_SCOL', ptend_loc%q(:,:,ixcldliq),       psubcols*pcols, lchnk)
       call outfld('MPDICE_SCOL', qiten,       psubcols*pcols, lchnk)
    end if
 
@@ -3760,6 +3728,17 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    ! ptend_loc is deallocated in physics_update above
    call physics_state_dealloc(state_loc)
 
+   if (qsatfac_idx == 0) then
+      deallocate(qsatfac)
+   end if
+
+   deallocate(tlat)
+   deallocate(qvlat)
+   deallocate(qctend)
+   deallocate(qitend)
+   deallocate(qrtend)
+   deallocate(qstend)
+   deallocate(qgtend)
 end subroutine micro_mg_cam_tend_pack
 
 subroutine massless_droplet_destroyer(ztodt, state,  ptend)
