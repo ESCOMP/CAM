@@ -257,6 +257,7 @@ contains
     real(r8) :: co2cool(pcols,pver), o3cool(pcols,pver), c2scool(pcols,pver)
 
     real(r8) :: qrlaliarms(pcols,pver) ! ALI-ARMS NLTE CO2 cooling rate
+    real(r8) :: qrlfomichev(pcols,pver) ! Fomichev cooling rate
 
     real(r8), pointer, dimension(:,:) :: xco2mmr  ! CO2 mmr 
     real(r8), pointer, dimension(:,:) :: xommr    ! O   mmr 
@@ -354,12 +355,13 @@ contains
 
     call t_startf('nlte_fomichev_calc')
     call nlte_fomichev_calc (lchnk,ncol,state%pmid,state%pint,state%t, &
-         xo2mmr,xommr,xo3mmr,xn2mmr,xco2mmr,qrlf,co2cool,o3cool,c2scool)
+         xo2mmr,xommr,xo3mmr,xn2mmr,xco2mmr,qrlfomichev,co2cool,o3cool,c2scool)
     call t_stopf('nlte_fomichev_calc')
          
 
     call t_startf('nlte_aliarms_calc')
     if (nlte_use_aliarms) then
+       qrlaliarms(:,:) = 0._r8
        call nlte_aliarms_calc (lchnk,ncol,state%zm, state%pmid,state%t, &
                                 xo2VMR,xoVMR,xn2VMR,xco2VMR,qrlaliarms)
        do j=1,pver
@@ -377,8 +379,14 @@ contains
        end if
 
        ! Apply the ALI-ARMS heating rate to the qrlf summation
-       qrlf(:,:) = 0._r8
+       qrlf(:ncol,:) = 0._r8
+       qrlaliarms(:ncol,:) = qrlaliarms(:ncol,:) * cpairv(:ncol,:,lchnk)
        qrlf(:ncol,:) = o3cool(:ncol,:) + qrlaliarms(:ncol,:)
+
+    else
+
+       qrlf(:ncol,:) = 0._r8
+       qrlf(:ncol,:) = qrlfomichev(:ncol,:)
 
     end if
 
@@ -394,7 +402,7 @@ contains
        qrlf(:ncol,k) = qrlf(:ncol,k) + nocool(:ncol,k) + o3pcool(:ncol,k)
     end do
 
-    qout(:ncol,:) = qrlaliarms(:ncol,:)/cpairv(:ncol,:,lchnk)
+    qout(:ncol,:) = qrlaliarms(:ncol,:)
     call outfld ('qrlaliarms'    , qout, pcols, lchnk)
     qout(:ncol,:) = nocool(:ncol,:)/cpairv(:ncol,:,lchnk)
     call outfld ('QNO'    , qout, pcols, lchnk)
