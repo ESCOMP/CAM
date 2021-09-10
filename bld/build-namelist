@@ -3054,6 +3054,13 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_mf_nup');
 }
 
+# Force exit if running cam64 and CLUBB is off
+if ($phys_check eq 'cam64') {
+    if ($clubb_sgs  =~ /$FALSE/io) {
+        die "$ProgName - ERROR: If running cam64 physics, do_clubb_sgs must be .true.\n";
+    }
+}
+
 # Tuning for wet scavenging of modal aerosols
 if ($chem =~ /_mam/) {
     add_default($nl, 'sol_facti_cloud_borne');

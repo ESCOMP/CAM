@@ -130,7 +130,7 @@ contains
     use ghg_data,           only: ghg_data_register
     use vertical_diffusion, only: vd_register
     use convect_deep,       only: convect_deep_register
-    use convect_shallow_stub, only: convect_shallow_register
+    use convect_shallow,    only: convect_shallow_register
     use radiation,          only: radiation_register
     use co2_cycle,          only: co2_register
     use flux_avg,           only: flux_avg_register
@@ -720,7 +720,7 @@ contains
     use cldfrc2m,           only: cldfrc2m_init
     use co2_cycle,          only: co2_init, co2_transport
     use convect_deep,       only: convect_deep_init
-    use convect_shallow_stub, only: convect_shallow_init
+    use convect_shallow,    only: convect_shallow_init
     use cam_diagnostics,    only: diag_init
     use gw_drag,            only: gw_init
     use cam3_aero_data,     only: cam3_aero_data_on, cam3_aero_data_init
@@ -2456,7 +2456,7 @@ contains
     use constituents,    only: pcnst, qmin, cnst_get_ind
     use convect_deep,    only: convect_deep_tend, convect_deep_tend_2, deep_scheme_does_scav_trans
     use time_manager,    only: is_first_step, get_nstep
-    use convect_shallow_stub, only: convect_shallow_tend
+    use convect_shallow, only: convect_shallow_tend
     use check_energy,    only: check_energy_chng, check_energy_fix, check_energy_timestep_init
     use check_energy,    only: check_tracers_data, check_tracers_init, check_tracers_chng
     use check_energy,    only: calc_te_and_aam_budgets
