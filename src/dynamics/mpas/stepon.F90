@@ -1,5 +1,6 @@
 module stepon
 
+use cam_abortutils, only: endrun
 use shr_kind_mod,   only: r8 => shr_kind_r8
 use spmd_utils,     only: mpicom
 
@@ -9,14 +10,13 @@ use ppgrid,         only: begchunk, endchunk
 use physics_types,  only: physics_state, physics_tend
 use physics_buffer, only: physics_buffer_desc
 
-use dyn_comp,       only: dyn_import_t, dyn_export_t, dyn_run, dyn_final, &
-                          swap_time_level_ptrs
+use dyn_comp,       only: dyn_import_t, dyn_export_t, dyn_run, dyn_final
 
 use dp_coupling,    only: d_p_coupling, p_d_coupling
 
 use camsrfexch,     only: cam_out_t     
 
-use cam_history,    only: addfld, outfld, hist_fld_active
+use cam_history,    only: addfld, outfld, hist_fld_active, write_inithist
 
 use time_manager,   only: get_step_size, get_nstep, is_first_step, is_first_restart_step
 
@@ -92,9 +92,7 @@ subroutine stepon_run1(dtime_out, phys_state, phys_tend, &
    ! This call writes the dycore output (on the dynamics grids) to the
    ! history file.  Note that when nstep=0, these fields will be the result
    ! of the dynamics initialization (done in dyn_init) since the dycore
-   ! does not run and dyn_in is simply copied to dyn_out for use in the cam
-   ! initialization sequence.  On subsequent calls dyn_out will contain the
-   ! dycore output.
+   ! does not run and dyn_in points to the same memory as dyn_out.
    call write_dynvar(dyn_out)
    
    call t_barrierf('sync_d_p_coupling', mpicom)
@@ -103,18 +101,6 @@ subroutine stepon_run1(dtime_out, phys_state, phys_tend, &
    call d_p_coupling (phys_state, phys_tend, pbuf2d, dyn_out)
    call t_stopf('d_p_coupling')
    
-   ! Update pointers for prognostic fields if necessary.  Note that this shift
-   ! should not take place the first time stepon_run1 is called which is during
-   ! the CAM initialization sequence before the dycore is called.  Nor should it
-   ! occur for the first step of a restart run.
-   if (.not. is_first_step() .and. &
-       .not. is_first_restart_step() .and. &
-       swap_time_level_ptrs) then
-
-      call shift_time_levels(dyn_in, dyn_out)
-
-   end if
-
 end subroutine stepon_run1
 
 !=========================================================================================
@@ -178,6 +164,9 @@ end subroutine stepon_final
 subroutine write_dynvar(dyn_out)
 
    ! Output from the internal MPAS data structures to CAM history files.
+   ! Make call to MPAS to write an initial file when requested.
+
+   use string_utils, only: int2str
 
    ! agruments
    type(dyn_export_t), intent(in) :: dyn_out
@@ -187,6 +176,8 @@ subroutine write_dynvar(dyn_out)
    integer :: nCellsSolve, nEdgesSolve, nVerticesSolve
    integer :: qv_idx
    real(r8), allocatable :: arr2d(:,:)
+   integer :: ierr
+   character(len=*), parameter :: subname = 'stepon::write_dynvar'
    !----------------------------------------------------------------------------
 
    nCellsSolve    = dyn_out%nCellsSolve
@@ -195,7 +186,8 @@ subroutine write_dynvar(dyn_out)
    qv_idx         = dyn_out%index_qv
 
    if (hist_fld_active('u')) then
-      allocate(arr2d(nEdgesSolve,plev))
+      allocate(arr2d(nEdgesSolve,plev), stat=ierr)
+      if( ierr /= 0 ) call endrun(subname//':failed to allocate arr2d array at line:'//int2str(__LINE__))
       do k = 1, plev
          kk = plev - k + 1
          do i = 1, nEdgesSolve
@@ -207,7 +199,8 @@ subroutine write_dynvar(dyn_out)
    end if
 
    if (hist_fld_active('w')) then
-      allocate(arr2d(nCellsSolve,plevp))
+      allocate(arr2d(nCellsSolve,plevp), stat=ierr)
+      if( ierr /= 0 ) call endrun(subname//':failed to allocate arr2d array at line:'//int2str(__LINE__))
       do k = 1, plevp
          kk = plevp - k + 1
          do i = 1, nCellsSolve
@@ -218,7 +211,8 @@ subroutine write_dynvar(dyn_out)
       deallocate(arr2d)
    end if
 
-   allocate(arr2d(nCellsSolve,plev))
+   allocate(arr2d(nCellsSolve,plev), stat=ierr)
+   if( ierr /= 0 ) call endrun(subname//':failed to allocate arr2d array at line:'//int2str(__LINE__))
 
    if (hist_fld_active('theta')) then
       do k = 1, plev
@@ -283,7 +277,8 @@ subroutine write_dynvar(dyn_out)
    deallocate(arr2d)
 
    if (hist_fld_active('vorticity')) then
-      allocate(arr2d(nVerticesSolve,plev))
+      allocate(arr2d(nVerticesSolve,plev), stat=ierr)
+      if( ierr /= 0 ) call endrun(subname//':failed to allocate arr2d array at line:'//int2str(__LINE__))
       do k = 1, plev
          kk = plev - k + 1
          do i = 1, nVerticesSolve
@@ -294,6 +289,10 @@ subroutine write_dynvar(dyn_out)
       deallocate(arr2d)
    end if
 
+   if (write_inithist()) then
+      call write_initial_file()
+   end if
+
 end subroutine write_dynvar
 
 !=========================================================================================
@@ -302,6 +301,8 @@ subroutine write_forcings(dyn_in)
 
    ! Output from the internal MPAS data structures to CAM history files.
 
+   use string_utils, only: int2str
+
    ! agruments
    type(dyn_import_t), intent(in) :: dyn_in
 
@@ -309,6 +310,8 @@ subroutine write_forcings(dyn_in)
    integer :: i, k, kk
    integer :: nCellsSolve, nEdgesSolve
    real(r8), allocatable :: arr2d(:,:)
+   integer :: ierr
+   character(len=*), parameter :: subname = 'dyn_grid::write_forcings'
 
    !----------------------------------------------------------------------------
 
@@ -317,7 +320,8 @@ subroutine write_forcings(dyn_in)
    nEdgesSolve = dyn_in%nEdgesSolve
 
    if (hist_fld_active('ru_tend')) then
-      allocate(arr2d(nEdgesSolve,plev))
+      allocate(arr2d(nEdgesSolve,plev), stat=ierr)
+      if( ierr /= 0 ) call endrun(subname//':failed to allocate arr2d array at line:'//int2str(__LINE__))
       do k = 1, plev
          kk = plev - k + 1
          do i = 1, nEdgesSolve
@@ -328,7 +332,8 @@ subroutine write_forcings(dyn_in)
       deallocate(arr2d)
    end if
 
-   allocate(arr2d(nCellsSolve,plev))
+   allocate(arr2d(nCellsSolve,plev), stat=ierr)
+   if( ierr /= 0 ) call endrun(subname//':failed to allocate arr2d array at line:'//int2str(__LINE__))
 
    if (hist_fld_active('rtheta_tend')) then
       do k = 1, plev
@@ -356,43 +361,65 @@ end subroutine write_forcings
 
 !========================================================================================
 
-subroutine shift_time_levels(dyn_in, dyn_out)
+subroutine write_initial_file()
 
-   ! The MPAS dycore swaps the pool time indices after each timestep
-   ! (mpas_dt).  If an odd number of these shifts occur during the CAM
-   ! timestep (i.e., the dynamics/physics coupling interval), then CAM
-   ! needs a corresponding update to the pointers in the dyn_in and dyn_out
-   ! objects.
+   ! Make use of the MPAS functionality for writting a restart file to
+   ! write an initial file.
 
-   ! arguments
-   type (dyn_import_t), intent(inout)  :: dyn_in
-   type (dyn_export_t), intent(inout)  :: dyn_out
+   use shr_kind_mod,     only: cl=>shr_kind_cl
+   use cam_instance,     only: inst_suffix
+   use time_manager,     only: get_curr_date, get_stop_date, timemgr_datediff
+   use filenames,        only: interpret_filename_spec
+   use pio,              only: file_desc_t,  pio_enddef, &
+                               pio_seterrorhandling, PIO_BCAST_ERROR
+   use cam_pio_utils,    only: cam_pio_createfile, cam_pio_closefile
+   use cam_abortutils,   only: endrun
 
-   ! local variables
-   real(r8), dimension(:,:),   pointer :: ptr2d
-   real(r8), dimension(:,:,:), pointer :: ptr3d
-   !--------------------------------------------------------------------------------------
+   use mpas_derived_types, only: MPAS_Stream_type, MPAS_IO_WRITE
+   use cam_mpas_subdriver, only: cam_mpas_setup_restart, cam_mpas_write_restart
 
-   ptr2d             => dyn_out % uperp
-   dyn_out % uperp   => dyn_in % uperp
-   dyn_in % uperp    => ptr2d
+   ! Local variables
+   integer           :: yr, mon, day, tod1, tod2, ymd1, ymd2
+   real(r8)          :: days
+   character(len=cl) :: filename_spec ! filename specifier
+   character(len=cl) :: fname         ! initial filename
+   type(file_desc_t) :: fh
+   integer           :: ierr
 
-   ptr2d             => dyn_out % w
-   dyn_out % w       => dyn_in % w
-   dyn_in % w        => ptr2d
+   type (MPAS_Stream_type) :: initial_stream
+   !----------------------------------------------------------------------------
 
-   ptr2d             => dyn_out % theta_m
-   dyn_out % theta_m => dyn_in % theta_m
-   dyn_in % theta_m  => ptr2d
+   ! Check whether the current time is during the final partial timestep taken by
+   ! CAM.  Don't write the initial file during that time.  This avoids the problem
+   ! of having an initial file written with a timestamp that is after the stop date.
+   call get_curr_date(yr, mon, day, tod1)
+   ymd1 = 10000*yr + 100*mon + day
+   call get_stop_date(yr, mon, day, tod2)
+   ymd2 = 10000*yr + 100*mon + day
+   ! (ymd2,tod2) - (ymd1,tod1)
+   call timemgr_datediff(ymd1, tod1, ymd2, tod2, days)
+   if (days < 0._r8) return
 
-   ptr2d             => dyn_out % rho_zz
-   dyn_out % rho_zz  => dyn_in % rho_zz
-   dyn_in % rho_zz   => ptr2d
+   ! Set filename template for initial file based on instance suffix
+   ! (%c = caseid, %y = year, %m = month, %d = day, %s = seconds in day)
+   filename_spec = '%c.cam' // trim(inst_suffix) //'.i.%y-%m-%d-%s.nc'
 
-   ptr3d             => dyn_out % tracers
-   dyn_out % tracers => dyn_in % tracers
-   dyn_in % tracers  => ptr3d
+   fname = interpret_filename_spec( filename_spec )
 
-end subroutine shift_time_levels
+   call cam_pio_createfile(fh, trim(fname), 0)
+
+   call pio_seterrorhandling(fh, PIO_BCAST_ERROR)
+
+   call cam_mpas_setup_restart(fh, initial_stream, MPAS_IO_WRITE, endrun)
+
+   ierr = pio_enddef(fh)
+
+   call cam_mpas_write_restart(initial_stream, endrun)
+
+   call cam_pio_closefile(fh)
+
+end subroutine write_initial_file
+
+!========================================================================================
 
 end module stepon

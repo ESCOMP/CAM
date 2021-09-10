@@ -22,7 +22,9 @@ module cloud_fraction
      cldfrc_init,      &! Inititialization of cloud_fraction run-time parameters
      cldfrc_getparams, &! public access of tuning parameters
      cldfrc,           &! Computation of cloud fraction
-     cldfrc_fice        ! Calculate fraction of condensate in ice phase (radiation partitioning)
+     cldfrc_fice,      &! Calculate fraction of condensate in ice phase (radiation partitioning)
+     dp1,              &! parameter for deep convection cloud fraction needed in clubb_intr
+     dp2               ! parameter for deep convection cloud fraction needed in clubb_intr
 
   ! Private data
   real(r8), parameter :: unset_r8 = huge(1.0_r8)
@@ -264,7 +266,7 @@ subroutine cldfrc(lchnk   ,ncol    , pbuf,  &
     !-----------------------------------------------------------------------
     use cam_history,   only: outfld
     use physconst,     only: cappa, gravit, rair, tmelt
-    use wv_saturation, only: qsat, qsat_water, svp_ice
+    use wv_saturation, only: qsat, qsat_water, svp_ice_vect
     use phys_grid,     only: get_rlat_all_p, get_rlon_all_p
 
    
@@ -409,14 +411,15 @@ subroutine cldfrc(lchnk   ,ncol    , pbuf,  &
     ! Evaluate potential temperature and relative humidity
     ! If not computing ice cloud fraction then hybrid RH, if MG then water RH
     if ( cldfrc_ice ) then
-       call qsat_water(temp(1:ncol,top_lev:pver), pmid(1:ncol,top_lev:pver), &
-            esl(1:ncol,top_lev:pver), qs(1:ncol,top_lev:pver))
-
-       esi(1:ncol,top_lev:pver) = svp_ice(temp(1:ncol,top_lev:pver))
+       do k = top_lev,pver
+          call qsat_water(temp(1:ncol,k), pmid(1:ncol,k), esl(1:ncol,k), qs(1:ncol,k), ncol)
+          call svp_ice_vect(temp(1:ncol,k), esi(1:ncol,k), ncol)
+       end do
     else
-       call qsat(temp(1:ncol,top_lev:pver), pmid(1:ncol,top_lev:pver), &
-            es(1:ncol,top_lev:pver), qs(1:ncol,top_lev:pver))
-    endif
+       do k = top_lev,pver
+          call qsat(temp(1:ncol,k), pmid(1:ncol,k), es(1:ncol,k), qs(1:ncol,k), ncol)
+       end do
+    end if
 
     cloud    = 0._r8
     icecldf  = 0._r8

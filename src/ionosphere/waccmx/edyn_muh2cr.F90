@@ -1,32 +1,45 @@
+module edyn_muh2cr
+  use shr_kind_mod , only: r8 => shr_kind_r8
+  use cam_abortutils, only: endrun
+  use edyn_mudcom, only: prolon2, trsfc2, factri,factrp, sgfa, sgsl, transp
+  use edyn_mudcom, only: swk2, cor2, transp, res2
+
+  implicit none
+
+  private
+
+  public :: muh
+
+contains
 !-----------------------------------------------------------------------
-      subroutine muh(pe,jntl)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
-      use cam_abortutils   ,only: endrun
-      use edyn_solve,only:    nc,ncee,cee
-      use cam_logfile  ,only: iulog
+      subroutine muh(pe,nlon,nlat,nlev,jntl)
+      use edyn_solver_coefs, only: cee
+      use edyn_params, only: pi
 
       implicit none
-      integer jntl
+
+      integer,intent(in) :: nlon, nlat, nlev, jntl
+      real(r8),intent(out) :: PE(nlon+1,*)
 !
 !     set grid size params
 !
-      integer,parameter :: iixp = 80 , jjyq = 48,iiex = 1, jjey = 1
-      integer,parameter :: nnx=iixp*2**(iiex-1)+1, nny=jjyq*2**(jjey-1)+1
+      integer :: iixp, jjyq
+      integer,parameter :: iiex = 1, jjey = 1
+      integer :: nnx, nny
 !
 !     estimate work space for point relaxation (see muh2cr.d)
 !
-      integer,parameter :: llwork=(5*((nnx+2)*(nny+2)+18*nnx*nny)/3+ &
-                  (nnx+2)*(nny+2)+ (iixp+1)*(jjyq+1)*(2*iixp+3))
-      integer,parameter :: iiwork=(iixp+1)*(jjyq+1)
-      real(r8) :: phi(nnx,nny),rhs(nnx,nny),work(llwork)
-      integer iwork(iiwork)
+      integer :: llwork
+      integer :: iiwork
+      real(r8), allocatable :: phi(:,:),rhs(:,:),work(:)
+      integer, allocatable :: iwork(:)
 !
 !     put integer and floating point argument names in contiguous
 !     storage for labelling in vectors iprm,fprm
 !
-      integer iprm(17),mgopt(4)
+      integer :: iprm(17),mgopt(4)
       real(r8) :: fprm(6)
-      integer intl,nxa,nxb,nyc,nyd,ixp,jyq,iex,jey,nx,ny,&
+      integer :: intl,nxa,nxb,nyc,nyd,ixp,jyq,iex,jey,nx,ny,&
                     iguess,maxcy,method,nwork,lwrkqd,itero
       common/itmud2cr/intl,nxa,nxb,nyc,nyd,ixp,jyq,iex,jey,nx,ny,&
                     iguess,maxcy,method,nwork,lwrkqd,itero
@@ -34,19 +47,21 @@
       common/ftmud2cr/xa,xb,yc,yd,tolmax,relmax
       equivalence(intl,iprm)
       equivalence(xa,fprm)
-      integer i,j,ierror
-      real(r8) :: PE(NNX,1)
-      integer maxcya
-!      DATA MAXCYA/20/
-      DATA MAXCYA/1/
-      integer mm,nn,jj,jjj
-      real(r8) :: pi
-!
-!     set input integer arguments
-!
-      MM = NNX
-      NN = NNY
-      PI = 4._r8*ATAN(1._r8)
+      integer :: i,j,ierror
+      integer, parameter :: maxcya = 1
+      integer jj,jjj
+
+      iixp = nlon
+      jjyq = (nlat-1)/2
+      nnx=iixp*2**(iiex-1)+1
+      nny=jjyq*2**(jjey-1)+1
+      llwork=(5*((nnx+2)*(nny+2)+18*nnx*nny)/3+ &
+           (nnx+2)*(nny+2)+ (iixp+1)*(jjyq+1)*(2*iixp+3))
+      iiwork=(iixp+1)*(jjyq+1)
+
+      allocate(phi(nnx,nny),rhs(nnx,nny),work(llwork))
+      allocate(iwork(iiwork))
+
 !
 !     SET INPUT INTEGER PARAMETERS
 !
@@ -74,7 +89,12 @@
       mgopt(1) = 2
       mgopt(2) = 2
       mgopt(3) = 2
-      mgopt(4) = 3
+      if (nlat<=97) then
+         mgopt(4) = 3
+      else
+         !  1 deg, changed to mgopt(4) = 1 per Astrid's suggestion
+         mgopt(4) = 1
+      end if
 !
 !     set for one cycle
 !
@@ -101,7 +121,13 @@
 !
 !     set error control flag
 !
-      tolmax = 0.01_r8
+      if (nlev>6) then
+         tolmax = 0.05_r8
+      else if (nlev>5) then
+         tolmax = 0.03_r8
+      else
+         tolmax = 0.01_r8
+      end if
 !
 !     set right hand side in rhs
 !     initialize phi to zero
@@ -124,45 +150,17 @@
       DO I=1,NX
         PHI(I,NY) = RHS(I,NY)/CEE(I+(NY-1)*NX+8*NX*NY)
       END DO
-      
-!      write(iulog,100)
-  100 format(//' mud2cr test ')
-!      write (iulog,101) (iprm(i),i=1,15)
-! 101 format(/,' integer input arguments ',/,
-!    |  ' intl =  ',i2,/,' nxa = ',i2,' nxb = ',i2,' nyc = ',i2,
-!    |  ' nyd =   ',i2,/,' ixp = ',i2,' jyq = ',i2,' iex = ',i2,
-!    |  ' jey =   ',i2,/,' nx =  ',i3,' ny =  ',i3,' iguess = ',i2,
-!    |  ' maxcy = ',i3,/,' method = ',i2, ' work space estimate = ',i7)
-!      write (iulog,102) (mgopt(i),i=1,4)
-! 102 format(/' multigrid option arguments ',
-!    |  /,' kcycle = ',i2,
-!    |  /,' iprer = ',i2,
-!    |  /,' ipost = ',i2
-!    |  /,' intpol = ',i2)
-!      write(iulog,103) xa,xb,yc,yd,tolmax
-! 103 format(/' floating point input parameters ',
-!    |  /,' xa = ',f6.3,' xb = ',f6.3,' yc = ',f6.3,' yd = ',f6.3,
-!    |  /,' tolerance (error control) =   ',e10.3)
-!      write(iulog,"('fprm(1-5) (xa,xb,yc,yd,tolmax=',6f8.3)") fprm(1:5)
+
 !
 !     intialization call
 !
-!      write(iulog,104) intl
-  104 format(/' discretization call to muh2cr', ' intl = ', i2)
       call muh2cr(iprm,fprm,work,iwork,rhs,phi,mgopt,ierror)
-!      write (iulog,200) ierror,iprm(16)
-! 200 format(' ierror = ',i2, ' minimum work space = ',i7)
       if (ierror.gt.0) call endrun('muh call init muh2cr')
 !
 !     attempt solution
 !
       intl = 1
-!      write(iulog,106) intl,method,iguess
-! 106 format(/' approximation call to muh2cr',
-!    +/' intl = ',i2, ' method = ',i2,' iguess = ',i2)
       call muh2cr(iprm,fprm,work,iwork,rhs,phi,mgopt,ierror)
-!      write (iulog,107) ierror
-  107 format(' ierror = ',i2)
       if (ierror.gt.0) call endrun('muh call solve muh2cr')
 !
 !     COPY PHI TO PE
@@ -175,8 +173,11 @@
           PE(I,JJJ) = PHI(I,J)
         END DO
       END DO
+
+      deallocate( phi, rhs, work, iwork)
+
       end subroutine muh
-!-----------------------------------------------------------------------      
+!-----------------------------------------------------------------------
       subroutine muh2cr(iparm,fparm,wk,iwk,rhs,phi,mgopt,ierror)
       use shr_kind_mod ,only: r8 => shr_kind_r8
       implicit none
@@ -338,7 +339,7 @@
           itx = ktxbgn(k)
           ity = ktybgn(k)
           klevel = k
-          call dismh2cr(nx,ny,wk(ic),wk(itx),wk(ity),wk,iwk,ierror)
+          call dismh2cr(nx,ny,wk(ic),wk(itx),wk(ity),wk,iwk)
           end do
         return
       end if   ! end of intl=0 initialization call block
@@ -460,7 +461,7 @@
               ij = jj+i+1
               phmax = max(phmax,abs(wk(ij)))
               relmax = max(relmax,abs(wk(ij)-phif(i,j)))
-              
+
               phif(i,j) = wk(ij)
             end do
           end do
@@ -468,7 +469,7 @@
 !     set maximum relative difference and check for convergence
 !
           if (phmax.gt.0.0_r8) relmax = relmax/phmax
-          
+
           if (relmax.le.tolmax) return
         end if
       end do
@@ -684,11 +685,10 @@
       return
       end subroutine kcymh2cr
 !-----------------------------------------------------------------------
-      subroutine dismh2cr(nx,ny,cf,tx,ty,wk,iwk,ier)
+      subroutine dismh2cr(nx,ny,cf,tx,ty,wk,iwk)
       use shr_kind_mod ,only: r8 => shr_kind_r8
       use cam_abortutils   ,only: endrun
-      use edyn_solve,only:    nc,ncee,cee,ceee
-      use cam_logfile  ,only: iulog
+      use edyn_solver_coefs,only: nc,cee,ceee
 !
 !     discretize elliptic pde for muh2cr, set nonfatal errors
 !
@@ -697,7 +697,7 @@
                    maxcy,method,nwork,lwork,itero,ngrid,klevel,kcur,&
                    kcycle,iprer,ipost,intpol,kps
       real(r8) :: xa,xb,yc,yd,tolmax,relmax
-      integer nx,ny,iwk(*),i,j,kbdy,l,im1,jm1,ier,jc
+      integer nx,ny,iwk(*),i,j,l,im1,jm1
       real(r8) :: cf(nx,ny,10),tx(nx,ny,*),ty(ny,nx,*)
       real(r8) :: wk(*)
       common/imud2cr/intl,nxa,nxb,nyc,nyd,ixp,jyq,iex,jey,nfx,nfy,&
@@ -962,7 +962,7 @@
           phi(i,j)=phi(i,j)-sum
         end do
       end do
-      return                                                                    
+      return
       end subroutine for2cr
 !-----------------------------------------------------------------------
       subroutine bkw2cr(nx,ny,phi,cof,beta,index,nxa)
@@ -992,7 +992,7 @@
         end if
         call sgsl(beta(1,1,jcur),nx ,nx ,index(1,jcur),phi(1,jcur),iz)
       end do
-      return                                                                    
+      return
       end subroutine bkw2cr
 !-----------------------------------------------------------------------
       subroutine lud2crp(nx,ny,cof,beta,alfa,zmat,dmat,index,nxa)
@@ -1384,11 +1384,11 @@
       do i=1,nx-1
         beta(i,i+1,jcur) = cof(i,jcur,1)
       end do
-      if (nxa.eq.0) then                                                        
+      if (nxa.eq.0) then
         beta(1,nx-1,jcur) = cof(1,jcur,5)
         beta(nx,2,jcur) = cof(nx,jcur,1)
-      end if                                                                    
-      return                                                                    
+      end if
+      return
       end subroutine setbcr
 !-----------------------------------------------------------------------
       subroutine setacr(nx,ny,cof,alfa,jcur,nxa)
@@ -1424,26 +1424,18 @@
 !     adjust righthand side in cf(i,j,10) for boundary conditions
 !
       implicit none
-      integer intl,nxa,nxb,nyc,nyd,ixp,jyq,iex,jey,nfx,nfy,iguess, &
+      integer :: intl,nxa,nxb,nyc,nyd,ixp,jyq,iex,jey,nfx,nfy,iguess, &
                    maxcy,method,nwork,lwork,itero,ngrid,klevel,kcur, &
                    kcycle,iprer,ipost,intpol,kps
       real(r8) :: xa,xb,yc,yd,tolmax,relmax
-      integer nx,ny,i,j,kbdy
+      integer  :: nx,ny,i,j
       real(r8) :: cf(nx,ny,10),phi(0:nx+1,0:ny+1)
-      real(r8) :: dlx,dlx2,dlxx,dly,dly2,dlyy,dlxy,dlxy2,dlxy4,dxoy,dyox
-      real(r8) :: x,y,cxx,cxy,cyy,cx,cy,ce,c1,c2,c3,c4,c5
-      real(r8) :: c6,c7,c8
-      real(r8) :: alfaa,alfab,alfac,alfad,betaa,betab,betac,betad,det
-      real(r8) :: gamaa,gamab,gamac,gamad
-      real(r8) :: alfim1,alfi,alfip1,betim1,beti,betip1,gamim1,gami,gamip1
-      real(r8) :: alfjm1,alfj,alfjp1,betjm1,betj,betjp1,gamjm1,gamj,gamjp1
-      real(r8) :: gbdim1,gbdi,gbdip1,gbdj,gbdjm1,gbdjp1
-      real(r8) :: gbdya,gbdyb,gbdyc,gbdyd
+
       common/imud2cr/intl,nxa,nxb,nyc,nyd,ixp,jyq,iex,jey,nfx,nfy, &
                      iguess, maxcy,method,nwork,lwork,itero,ngrid, &
                      klevel,kcur,kcycle,iprer,ipost,intpol,kps
       common/fmud2cr/xa,xb,yc,yd,tolmax,relmax
-      
+
 
 !
 !     set specified boundaries in rhs from phi
@@ -2022,3 +2014,4 @@
       return
       end subroutine slymh2cr
 !-----------------------------------------------------------------------
+end module edyn_muh2cr

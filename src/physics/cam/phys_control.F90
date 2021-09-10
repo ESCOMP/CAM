@@ -13,7 +13,7 @@ module phys_control
 use spmd_utils,     only: masterproc
 use cam_logfile,    only: iulog
 use cam_abortutils, only: endrun
-use shr_kind_mod,   only: r8 => shr_kind_r8
+use shr_kind_mod,   only: r8 => shr_kind_r8, cl=>shr_kind_cl
 
 implicit none
 private
@@ -44,6 +44,7 @@ character(len=16) :: eddy_scheme          = unset_str  ! vertical diffusion pack
 character(len=16) :: microp_scheme        = unset_str  ! microphysics package
 character(len=16) :: macrop_scheme        = unset_str  ! macrophysics package
 character(len=16) :: radiation_scheme     = unset_str  ! radiation package
+character(len=cl) :: cam_physics_mesh     = unset_str  ! SCRIP file for phys
 integer           :: srf_flux_avg         = unset_int  ! 1 => smooth surface fluxes, 0 otherwise
 
 logical           :: use_subcol_microp    = .false.    ! if .true. then use sub-columns in microphysics
@@ -133,7 +134,7 @@ subroutine phys_ctl_readnl(nlfile)
       do_clubb_sgs, state_debug_checks, use_hetfrz_classnuc, use_gw_oro, use_gw_front, &
       use_gw_front_igw, use_gw_convect_dp, use_gw_convect_sh, cld_macmic_num_steps, &
       offline_driver, convproc_do_aer, cam_snapshot_before_num, cam_snapshot_after_num, &
-      cam_take_snapshot_before, cam_take_snapshot_after
+      cam_take_snapshot_before, cam_take_snapshot_after, cam_physics_mesh
    !-----------------------------------------------------------------------------
 
    if (masterproc) then
@@ -195,6 +196,7 @@ subroutine phys_ctl_readnl(nlfile)
    call mpi_bcast(cam_snapshot_after_num,      1,                     mpi_integer,   masterprocid, mpicom, ierr)
    call mpi_bcast(cam_take_snapshot_before,    len(cam_take_snapshot_before), mpi_character, masterprocid, mpicom, ierr)
    call mpi_bcast(cam_take_snapshot_after,     len(cam_take_snapshot_after),  mpi_character, masterprocid, mpicom, ierr)
+   call mpi_bcast(cam_physics_mesh,            len(cam_physics_mesh), mpi_character, masterprocid, mpicom, ierr)
 
    use_spcam       = (     cam_physpkg_is('spcam_sam1mom') &
                       .or. cam_physpkg_is('spcam_m2005'))
@@ -292,7 +294,7 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
                         cam_chempkg_out, prog_modal_aero_out, macrop_scheme_out, &
                         do_clubb_sgs_out, use_spcam_out, state_debug_checks_out, cld_macmic_num_steps_out, &
                         offline_driver_out, convproc_do_aer_out, cam_snapshot_before_num_out, cam_snapshot_after_num_out,&
-                        cam_take_snapshot_before_out, cam_take_snapshot_after_out)
+                        cam_take_snapshot_before_out, cam_take_snapshot_after_out, physics_grid_out)
 !-----------------------------------------------------------------------
 ! Purpose: Return runtime settings
 !          deep_scheme_out   : deep convection scheme
@@ -339,6 +341,7 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
    integer,           intent(out), optional :: cam_snapshot_after_num_out
    character(len=32), intent(out), optional :: cam_take_snapshot_before_out
    character(len=32), intent(out), optional :: cam_take_snapshot_after_out
+   character(len=cl), intent(out), optional :: physics_grid_out
 
    if ( present(deep_scheme_out         ) ) deep_scheme_out          = deep_scheme
    if ( present(shallow_scheme_out      ) ) shallow_scheme_out       = shallow_scheme
@@ -377,6 +380,7 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
    if ( present(cam_snapshot_after_num_out  ) ) cam_snapshot_after_num_out  = cam_snapshot_after_num
    if ( present(cam_take_snapshot_before_out) ) cam_take_snapshot_before_out = cam_take_snapshot_before
    if ( present(cam_take_snapshot_after_out ) ) cam_take_snapshot_after_out  = cam_take_snapshot_after
+   if ( present(physics_grid_out         ) ) physics_grid_out        = cam_physics_mesh
 
 end subroutine phys_getopts
 

@@ -23,7 +23,7 @@ use physics_buffer, only: pbuf_add_field, dtype_r8, pbuf_old_tim_idx, &
 use cam_history,    only: addfld, add_default, outfld
 
 use ref_pres,       only: top_lev => trop_cloud_top_lev
-use wv_saturation,  only: svp_water, svp_ice
+use wv_saturation,  only: svp_water_vect, svp_ice_vect
 
 use cam_logfile,    only: iulog
 use error_messages, only: handle_errmsg, alloc_err
@@ -608,7 +608,7 @@ subroutine hetfrz_classnuc_cam_calc( &
 
    real(r8) :: fn_cloudborne_aer_num(pcols,pver,3)
 
-
+   real(r8) :: esi(pcols), esl(pcols) 
    real(r8) :: con1, r3lx, supersatice
 
    real(r8) :: qcic
@@ -773,8 +773,10 @@ subroutine hetfrz_classnuc_cam_calc( &
    nicnt_dst(:,:) = 0._r8
    nidep_dst(:,:) = 0._r8
 
-   do i = 1, ncol
-      do k = top_lev, pver
+   do k = top_lev, pver
+      call svp_water_vect(t(1:ncol,k), esl(1:ncol), ncol)
+      call svp_ice_vect(t(1:ncol,k), esi(1:ncol), ncol)
+      do i = 1, ncol
 
          if (t(i,k) > 235.15_r8 .and. t(i,k) < 269.15_r8) then
             qcic = min(qc(i,k)/lcldm(i,k), 5.e-3_r8)
@@ -783,7 +785,7 @@ subroutine hetfrz_classnuc_cam_calc( &
             con1 = 1._r8/(1.333_r8*pi)**0.333_r8
             r3lx = con1*(rho(i,k)*qcic/(rhoh2o*max(ncic*rho(i,k), 1.0e6_r8)))**0.333_r8 ! in m
             r3lx = max(4.e-6_r8, r3lx)
-            supersatice = svp_water(t(i,k))/svp_ice(t(i,k))
+            supersatice = esl(i)/esi(i)
 
             fn(1) = factnum(i,k,mode_accum_idx)  ! bc accumulation mode
             if (nmodes == MAM3_nmodes .or. nmodes == MAM4_nmodes) then

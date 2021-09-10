@@ -73,8 +73,8 @@ module dimensions_mod
   integer, allocatable, public :: kord_tr(:), kord_tr_cslam(:)
   
   real(r8), public :: nu_scale_top(PLEV)! scaling of del2 viscosity in sopnge layer (initialized in dyn_comp)
-  real(r8), public :: nu_lev(PLEV)    
-  real(r8), public :: otau(PLEV)
+  real(r8), public :: nu_lev(PLEV)      ! level dependent del4 (u,v) damping
+  real(r8), public :: nu_t_lev(PLEV)    ! level depedendet del4 T damping
   integer,  public :: ksponge_end       ! sponge is active k=1,ksponge_end
   real(r8), public :: nu_div_lev(PLEV) = 1.0_r8 ! scaling of viscosity in sponge layer
                                                       ! (set in prim_state; if applicable)
@@ -84,7 +84,6 @@ module dimensions_mod
   real(r8), public :: km_sponge_factor(PLEV) !scaling for molecular diffusion (when used as sponge)
   real(r8), public :: kmvisi_ref(PLEV+1)        !reference profiles for molecular diffusion 
   real(r8), public :: kmcndi_ref(PLEV+1)        !reference profiles for molecular diffusion  
-  real(r8), public :: rhoi_ref(PLEV+1)          !reference profiles for rho
 
 
   integer,  public :: nhc_phys 

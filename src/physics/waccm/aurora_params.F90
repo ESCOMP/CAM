@@ -20,6 +20,6 @@ module aurora_params
   real(r8) :: dskofc(2) = -huge(1.0_r8)
   real(r8) :: phin(2) = -huge(1.0_r8)
 
-  logical  :: amie_period = .false. ! true during a period of prescribed high-latitude electric potential
+  logical  :: prescribed_period = .false. ! true during a period of prescribed high-latitude electric potential
 
 end module aurora_params

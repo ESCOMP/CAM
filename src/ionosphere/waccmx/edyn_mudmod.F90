@@ -1,27 +1,33 @@
+module edyn_mudmod
+  use shr_kind_mod, only: r8 => shr_kind_r8
+  use cam_logfile, only: iulog
+  use edyn_mud, only: dismd2cr, mud2cr1, adjmd2cr, kcymd2cr, relmd2cr, resmd2cr
+  use edyn_mudcom, only: swk2, trsfc2, prolon2, cor2, res2
+
+  implicit none
+
+  private
+
+  public :: mudmod
+
+contains
 !-----------------------------------------------------------------------
-      subroutine mudmod(pe,phi_out,jntl,isolve,ier)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
-      use cam_abortutils   ,only: endrun
-      use edyn_solve   ,only: cee
-      use cam_logfile  ,only: iulog
+      subroutine mudmod(pe,phi_out,jntl,isolve,nlev,ier)
+      use edyn_solver_coefs,only: cee
+      use edyn_params, only: pi
 
-      implicit none
-
-      integer jntl,ier  ! output: not converged ier < 0
-      integer,intent(in) :: isolve
+      integer,intent(in) :: jntl, isolve, nlev
+      integer,intent(out) :: ier  ! output: not converged ier < 0
 !
 !     set grid size params
 !
       integer iixp,jjyq,iiex,jjey,nnx,nny,llwork
-      parameter (iixp = 5 , jjyq = 3, iiex = 5, jjey = 5 )
-      parameter (nnx=iixp*2**(iiex-1)+1, nny=jjyq*2**(jjey-1)+1)
+      parameter (iixp = 5 , jjyq = 3)
 !
 !     estimate work space for point relaxation (see mud2cr.d)
 !
-      parameter (llwork=(7*(nnx+2)*(nny+2)+76*nnx*nny)/3 )
-      real(r8) :: phi(nnx,nny),rhs(nnx,nny),work(llwork)
-      real(r8) :: phi_out(0:nnx+1,0:nny+1)
-      real(r8) :: time0,time1
+      real(r8) :: phi_out(0:iixp*2**(nlev-1)+1+1,0:jjyq*2**(nlev-1)+1+1)
+      real(r8),allocatable :: phi(:,:),rhs(:,:),work(:)
 !
 !     put integer and floating point argument names in contiguous
 !     storage for labelling in vectors iprm,fprm
@@ -37,17 +43,17 @@
       equivalence(intl,iprm)
       equivalence(xa,fprm)
       integer i,j,ierror
-      real(r8) :: PE(NNX,*)
-      integer maxcya
-      DATA MAXCYA/50/
-      integer mm,nn,jj,jjj,ij
-      real(r8) :: pi
-!
-!     set input integer arguments
-!
-      MM = NNX
-      NN = NNY
-      PI = 4._r8*ATAN(1._r8)
+      real(r8) :: PE(iixp*2**(nlev-1)+1,*)
+      integer, parameter :: maxcya=50
+      integer jj,jjj,ij
+
+      iiex = nlev
+      jjey = nlev
+      nnx=iixp*2**(iiex-1)+1
+      nny=jjyq*2**(jjey-1)+1
+      llwork=(7*(nnx+2)*(nny+2)+76*nnx*nny)/3
+
+      allocate(phi(nnx,nny),rhs(nnx,nny),work(llwork))
 !
 !     SET INPUT INTEGER PARAMETERS
 !
@@ -119,52 +125,17 @@
       do i=1,nx
         phi(i,ny) = rhs(i,ny)/cee(i+(ny-1)*nx+8*nx*ny)
       end do
-      
-!     write(iulog,100)
-! 100 format(//' mud2cr test ')
-!     write (iulog,101) (iprm(i),i=1,15)
-! 101 format(/,' integer input arguments ',/,
-!    |  ' intl =  ',i2,/,' nxa = ',i2,' nxb = ',i2,' nyc = ',i2,
-!    |  ' nyd =   ',i2,/,' ixp = ',i2,' jyq = ',i2,' iex = ',i2,
-!    |  ' jey =   ',i2,/,' nx =  ',i3,' ny =  ',i3,' iguess = ',i2,
-!    |  ' maxcy = ',i3,/,' method = ',i2, ' work space estimate = ',i7)
-!     write (iulog,102) (mgopt(i),i=1,4)
-! 102 format(/' multigrid option arguments ',
-!    |  /,' kcycle = ',i2,
-!    |  /,' iprer = ',i2,
-!    |  /,' ipost = ',i2
-!    |  /,' intpol = ',i2)
-!     write(iulog,103) xa,xb,yc,yd,tolmax
-! 103 format(/' floating point input parameters ',
-!    |  /,' xa = ',f6.3,' xb = ',f6.3,' yc = ',f6.3,' yd = ',f6.3,
-!    |  /,' tolerance (error control) =   ',e10.3)
-!     write(iulog,"('fprm(1-5) (xa,xb,yc,yd,tolmax=',6f8.3)") fprm(1:5)
-!
-!     intialization call
-!
-!     write(iulog,104) intl
-! 104 format(/' discretization call to mud2cr', ' intl = ', i2)
 
       call mud2cm(iprm,fprm,work,rhs,phi,mgopt,ierror,isolve)
 
-!     write (iulog,200) ierror,iprm(16)
-! 200 format(' ierror = ',i2, ' minimum work space = ',i7)
-!     if (ierror.gt.0) call exit(0)
 !
 !     attempt solution
 !
       intl = 1
-!     write(iulog,106) intl,method,iguess
-! 106 format(/' approximation call to mud2cr',
-!    +/' intl = ',i2, ' method = ',i2,' iguess = ',i2)
-      
+
       call mud2cm(iprm,fprm,work,rhs,phi,mgopt,ierror,isolve)
       ier = ierror ! ier < 0 not converged
       if(ier < 0 )  goto 108
-      
-!     write (iulog,107) ierror
-! 107 format(' ierror = ',i2)
-      if (ierror.gt.0) call endrun('mudmod call mud2cm')
 !
 !     COPY PHI TO PE
 !
@@ -179,7 +150,7 @@
 
 ! am 8/10 for calculating residual: convert work array (solution) into array
 ! sized as coefficient stencil (c0, cofum) including values at index 0, nmlon0+1
-! and nmlat0+1     
+! and nmlat0+1
 
       do j=0,ny+1
         jj = j*(nx+2)
@@ -188,14 +159,15 @@
           phi_out(i,j) = work(ij)
         end do
       end do
-      
-  108 continue   
+
+  108 continue
+
+      deallocate(phi,rhs,work)
+
       end subroutine mudmod
 !-------------------------------------------------------------------
       subroutine mud2cm(iparm,fparm,work,rhs,phi,mgopt,ierror,isolve)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
-      use cam_logfile  ,only: iulog
-      implicit none
+
       integer,intent(in) :: isolve
       integer iparm,mgopt,ierror
       integer intl,nxa,nxb,nyc,nyd,ixp,jyq,iex,jey,nfx,nfy,iguess, &
@@ -212,7 +184,7 @@
       common/fmud2cr/xa,xb,yc,yd,tolmax,relmax
       common/mud2crc/kpbgn(50),kcbgn(50),ktxbgn(50),ktybgn(50), &
         nxk(50),nyk(50),isx,jsy
-      
+
       data int / 0 /
       save int
 
@@ -353,29 +325,28 @@
       if (tolmax.gt.0.0_r8) then   ! check for convergence
         fparm(6) = relmax
         if (relmax.gt.tolmax) then
-        
+
 !          ierror = -1   ! flag convergenc failure
            write(iulog,*) "no convergence with mudmod"
-!         
-           iguess = 1 
-           iparm(12)= iguess                               
+!
+           iguess = 1
+           iparm(12)= iguess
            call mud2cr1(nx,ny,rhs,phi,work) !  solve with modified stencils
-           
+
            fparm(6) = relmax
            if (relmax.gt.tolmax) then
              write(iulog,*) "no convergence with mud"
              ierror = -1   ! flag convergenc failure
            end if
-           
+
         end if
       end if
-      
+
       return
       end subroutine mud2cm
-!------------------------------------------------------------------------      
+!------------------------------------------------------------------------
       subroutine mud2c1m(nx,ny,rhsf,phif,wk)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
-      implicit none
+
       integer nx,ny
       real(r8) :: phif(nx,ny),rhsf(nx,ny),wk(*)
       integer intl,nxa,nxb,nyc,nyd,ixp,jyq,iex,jey,nfx,nfy,iguess, &
@@ -385,7 +356,7 @@
       integer kpbgn,kcbgn,ktxbgn,ktybgn,nxk,nyk,isx,jsy
       integer k,kb,ip,ic,ir,ipc,irc,icc
       integer ncx,ncy,jj,ij,i,j,iter
-      integer iw,itx,ity,ierror
+
       common/imud2cr/intl,nxa,nxb,nyc,nyd,ixp,jyq,iex,jey,nfx,nfy, &
                      iguess, maxcy,method,nwork,lwork,itero,ngrid, &
                      klevel,kcur,kcycle,iprer,ipost,intpol,kps
@@ -473,14 +444,14 @@
 !
           relmax = 0.0_r8
           phmax = 0.0_r8
-          
+
           do j=1,nfy
             jj = j*(nfx+2)
             do i=1,nfx
               ij = jj+i+1
               phmax = max(phmax,abs(wk(ij)))
               relmax = max(relmax,abs(wk(ij)-phif(i,j)))
-              
+
               phif(i,j) = wk(ij)
             end do
           end do
@@ -506,13 +477,11 @@
 
 !------------------------------------------------------------------------
       subroutine kcym2cm(wk)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
-      use edyn_solve,only: cofum
+      use edyn_solver_coefs,only: cofum
 !
 !     execute multigrid k cycle from kcur grid level
 !     kcycle=1 for v cycles, kcycle=2 for w cycles
 !
-      implicit none
       real(r8) :: wk(*)
       integer intl,nxa,nxb,nyc,nyd,ixp,jyq,iex,jey,nfx,nfy,iguess, &
                    maxcy,method,nwork,lwork,itero,ngrid,klevel,kcur, &
@@ -528,8 +497,8 @@
         nxk(50),nyk(50),isx,jsy
       integer kount(50)
 !     real(r8) :: ::  cofum
-!     common/mudmd/cofum(1) 
-      
+!     common/mudmd/cofum(1)
+
       klevel = kcur
       nx = nxk(klevel)
       ny = nyk(klevel)
@@ -673,14 +642,12 @@
       end do
       return
       end subroutine kcym2cm
-!----------------------------------------------------------------------      
+!----------------------------------------------------------------------
       subroutine resm2cm(nx,ny,phi,ncx,ncy,phic,rhsc,cof,resf,cofum)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
 !
 !     restrict residual from fine to coarse mesh using fully weighted
 !     residual restriction
 !
-      implicit none
       integer intl,nxa,nxb,nyc,nyd,ixp,jyq,iex,jey,nfx,nfy,iguess, &
                    maxcy,method,nwork,lwork,itero,ngrid,klevel,kcur, &
                    kcycle,iprer,ipost,intpol,kps
@@ -700,12 +667,12 @@
           phic(ic,jc) = 0.0_r8
         end do
       end do
-      
+
       call bnd2cm(nx,ny,cofum)
 !
 !     compute residual on fine mesh in resf
 !
-      l2norm = 0._r8    
+      l2norm = 0._r8
 !$OMP PARALLEL DO SHARED(resf,cof,phi,nx,ny) PRIVATE(i,j)
       do j=1,ny
         do i=1,nx
@@ -719,7 +686,7 @@
                       cofum(i,j,7)*phi(i,j-1)+   &
                       cofum(i,j,8)*phi(i+1,j-1)+ &
                       cofum(i,j,9)*phi(i,j))
-          
+
               l2norm = l2norm + resf(i,j)*resf(i,j)
         end do
       end do
@@ -732,23 +699,20 @@
 
 !-----------------------------------------------------------------------
       subroutine bnd2cm(nx,ny,cf)
-      use shr_kind_mod ,only: r8 => shr_kind_r8
 !
 !     set stencil & boundary condition for finest stencil
 !
-      implicit none
       integer intl,nxa,nxb,nyc,nyd,ixp,jyq,iex,jey,nfx,nfy,iguess, &
                    maxcy,method,nwork,lwork,itero,ngrid,klevel,kcur, &
                    kcycle,iprer,ipost,intpol,kps
       real(r8) :: xa,xb,yc,yd,tolmax,relmax
-      integer nx,ny,i,j,kbdy,l,im1,jm1,ier,jc,nnx,nny
+      integer nx,ny,i,j,l
       real(r8) :: cf(nx,ny,*)
-      real(r8) :: dlx,dlx2,dlxx,dly,dly2,dlyy,cmin,alfmax,cemax
       common/imud2cr/intl,nxa,nxb,nyc,nyd,ixp,jyq,iex,jey,nfx,nfy, &
                      iguess, maxcy,method,nwork,lwork,itero,ngrid, &
                      klevel,kcur,kcycle,iprer,ipost,intpol,kps
       common/fmud2cr/xa,xb,yc,yd,tolmax,relmax
- 
+
 !
 !     set coefficient for specified boundaries
 !
@@ -792,3 +756,4 @@
       return
       end subroutine bnd2cm
 !-----------------------------------------------------------------------
+end module edyn_mudmod
