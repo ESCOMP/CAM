@@ -16,7 +16,7 @@ module tracer_data
   use cam_logfile,      only : iulog
 
   use physics_buffer,   only : physics_buffer_desc, pbuf_get_field, pbuf_get_index
-  use time_manager,     only : set_time_float_from_date, set_date_from_time_float
+  use time_manager,     only : set_time_float_from_date, set_date_from_time_float, is_leapyear
   use pio,              only : file_desc_t, var_desc_t, &
                                pio_seterrorhandling, pio_internal_error, pio_bcast_error, &
                                pio_char, pio_noerr, &
@@ -115,7 +115,7 @@ module tracer_data
      integer, pointer, dimension(:) :: count0_x=>null(), count0_y=>null()
      integer, pointer, dimension(:,:) :: index0_x=>null(), index0_y=>null()
      logical :: dist
-     
+
      real(r8)                        :: p0
      type(var_desc_t) :: ps_id
      logical,  allocatable, dimension(:) :: in_pbuf
@@ -751,7 +751,7 @@ contains
             enddo
            endif
         endif
-   
+
         call mpi_bcast(file%weight_x, plon*file%nlon, mpi_real8 , mstrid, mpicom,ierr)
         if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%weight_x")
         call mpi_bcast(file%weight_y, plat*file%nlat, mpi_real8 , mstrid, mpicom,ierr)
@@ -1281,6 +1281,7 @@ contains
     logical :: times_found
 
     integer :: cur_yr, cur_mon, cur_day, cur_sec, yr1, yr2, mon, date, sec
+    integer :: use_day
     real(r8) :: series1_time, series2_time
     type(file_desc_t) :: fid1, fid2
 
@@ -1312,8 +1313,17 @@ contains
           call set_date_from_time_float(file%datatimem, yr1, mon, date, sec )
           call set_date_from_time_float(file%datatimep, yr2, mon, date, sec )
 
-          call set_time_float_from_date( series1_time, yr1, cur_mon, cur_day, cur_sec )
-          call set_time_float_from_date( series2_time, yr2, cur_mon, cur_day, cur_sec )
+          use_day=cur_day
+          if ( cur_mon==2 .and. cur_day==29 .and. .not.is_leapyear(yr1)) then
+             use_day=28
+          end if
+          call set_time_float_from_date( series1_time, yr1, cur_mon, use_day, cur_sec )
+
+          use_day=cur_day
+          if ( cur_mon==2 .and. cur_day==29 .and. .not.is_leapyear(yr2)) then
+             use_day=28
+          end if
+          call set_time_float_from_date( series2_time, yr2, cur_mon, use_day, cur_sec )
 
           fid1 = fids(1)
           fid2 = fids(2)
@@ -1749,7 +1759,7 @@ contains
 
         call xy_interp(file%nlon,file%nlat,file%nlev,plon,plat,pcols,ncols, &
                        file%weight0_x,file%weight0_y,wrk3d_in,loc_arr(:,:,c-begchunk+1),  &
-                       lons,lats,file%count0_x,file%count0_y,file%index0_x,file%index0_y) 
+                       lons,lats,file%count0_x,file%count0_y,file%index0_x,file%index0_y)
       enddo
      else
       do c = begchunk,endchunk
@@ -2446,7 +2456,7 @@ contains
     real(r8)              :: src_x(nsrc+1)         ! source coordinates
     real(r8), intent(in)      :: trg_x(pcols,ntrg+1)         ! target coordinates
     real(r8), intent(in)      :: src(pcols,nsrc)             ! source array
-    logical, intent(in)   :: use_flight_distance                    ! .true. = flight distance, .false. = mixing ratio 
+    logical, intent(in)   :: use_flight_distance                    ! .true. = flight distance, .false. = mixing ratio
     real(r8), intent(out)     :: trg(pcols,ntrg)             ! target array
 
     real(r8) :: ps(pcols), p0, hyai(nsrc+1), hybi(nsrc+1)
