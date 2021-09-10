@@ -90,7 +90,16 @@ module physpkg
   integer ::  ducore_idx         = 0     ! ducore index in physics buffer
   integer ::  dvcore_idx         = 0     ! dvcore index in physics buffer
   integer ::  cmfmczm_idx        = 0     ! Zhang-McFarlane convective mass fluxes
-
+!+++ARH
+  !integer ::  rprdsh_idx         = 0
+  !integer ::  rprddp_idx         = 0
+  !integer ::  rprdtot_idx        = 0
+  !integer ::  nevapr_shcu_idx    = 0
+  !integer ::  icwmrsh_idx        = 0
+  !integer ::  cmfmc_sh_idx       = 0
+  !integer ::  cldtop_idx         = 0
+  !integer ::  cldbot_idx         = 0
+!---ARH
 !=======================================================================
 contains
 !=======================================================================
@@ -130,7 +139,7 @@ contains
     use ghg_data,           only: ghg_data_register
     use vertical_diffusion, only: vd_register
     use convect_deep,       only: convect_deep_register
-    use convect_shallow,    only: convect_shallow_register
+    use convect_shallow_stub, only: convect_shallow_register
     use radiation,          only: radiation_register
     use co2_cycle,          only: co2_register
     use flux_avg,           only: flux_avg_register
@@ -301,10 +310,19 @@ contains
 
        ! deep convection
        call convect_deep_register
-
-       !  shallow convection
+!+++ARH
+       !!  shallow convection
        call convect_shallow_register
-
+       !call pbuf_add_field('ICWMRSH',    'physpkg' ,dtype_r8,(/pcols,pver/), icwmrsh_idx )
+       !call pbuf_add_field('RPRDSH',     'physpkg' ,dtype_r8,(/pcols,pver/), rprdsh_idx )
+       !call pbuf_add_field('RPRDTOT',    'physpkg' ,dtype_r8,(/pcols,pver/), rprdtot_idx )
+       !call pbuf_add_field('NEVAPR_SHCU','physpkg' ,dtype_r8,(/pcols,pver/), nevapr_shcu_idx )
+       !call pbuf_add_field('CMFMC_SH',   'physpkg' ,dtype_r8,(/pcols,pverp/), cmfmc_sh_idx )
+       !call pbuf_add_field('CLDTOP',     'physpkg' ,dtype_r8,(/pcols,1/), cldtop_idx )
+       !call pbuf_add_field('CLDBOT',     'physpkg' ,dtype_r8,(/pcols,1/), cldbot_idx )
+       !call pbuf_add_field('PREC_SH',    'physpkg' ,dtype_r8,(/pcols/), prec_sh_idx )
+       !call pbuf_add_field('SNOW_SH',    'physpkg' ,dtype_r8,(/pcols/), snow_sh_idx )
+!---ARH
 
        call spcam_register
 
@@ -721,7 +739,7 @@ contains
     use cldfrc2m,           only: cldfrc2m_init
     use co2_cycle,          only: co2_init, co2_transport
     use convect_deep,       only: convect_deep_init
-    use convect_shallow,    only: convect_shallow_init
+    use convect_shallow_stub, only: convect_shallow_init
     use cam_diagnostics,    only: diag_init
     use gw_drag,            only: gw_init
     use cam3_aero_data,     only: cam3_aero_data_on, cam3_aero_data_init
@@ -888,9 +906,10 @@ contains
     call cloud_diagnostics_init()
 
     call radheat_init(pref_mid)
-
+!+++ARH
     call convect_shallow_init(pref_edge, pbuf2d)
-
+    !rprddp_idx = pbuf_get_index('RPRDDP')
+!---ARH
     call cldfrc_init()
     call cldfrc2m_init()
 
@@ -2444,6 +2463,9 @@ contains
     use physics_buffer,  only: physics_buffer_desc, pbuf_get_field
     use physics_buffer,  only: pbuf_get_index, pbuf_old_tim_idx
     use physics_buffer,  only: col_type_subcol, dyn_time_lvls
+!+++ARH
+    !use physics_buffer,  only: pbuf_set_field
+!---ARH
     use shr_kind_mod,    only: r8 => shr_kind_r8
 
     use dadadj_cam,      only: dadadj_tend
@@ -2457,7 +2479,7 @@ contains
     use constituents,    only: pcnst, qmin, cnst_get_ind
     use convect_deep,    only: convect_deep_tend, convect_deep_tend_2, deep_scheme_does_scav_trans
     use time_manager,    only: is_first_step, get_nstep
-    use convect_shallow, only: convect_shallow_tend
+    use convect_shallow_stub, only: convect_shallow_tend
     use check_energy,    only: check_energy_chng, check_energy_fix, check_energy_timestep_init
     use check_energy,    only: check_tracers_data, check_tracers_init, check_tracers_chng
     use check_energy,    only: calc_te_and_aam_budgets
@@ -2526,7 +2548,13 @@ contains
     real(r8), pointer, dimension(:,:,:) :: fracis  ! fraction of transported species that are insoluble
 
     real(r8), pointer :: dlfzm(:,:)                ! ZM detrained convective cloud water mixing ratio.
-
+!+++ARH
+    !real(r8), pointer, dimension(:,:) :: rprddp   ! dq/dt due to deep convective rainout
+    !real(r8), pointer, dimension(:,:) :: rprdsh   ! dq/dt due to deep and shallow convective rainout
+    !real(r8), pointer, dimension(:,:) :: evapcsh
+    !real(r8), pointer, dimension(:,:) :: icwmrsh
+    !real(r8), pointer, dimension(:,:) :: cmfmcsh
+!---ARH
     ! convective precipitation variables
     real(r8),pointer :: prec_dp(:)                ! total precipitation from ZM convection
     real(r8),pointer :: snow_dp(:)                ! snow from ZM convection
@@ -2749,7 +2777,6 @@ contains
     call check_energy_chng(state, tend, "convect_deep", nstep, ztodt, zero, flx_cnd, snow_dp, zero)
     snow_dp(:ncol) = snow_dp(:ncol) - rice(:ncol)
 
-!+++ARH Begin code block targeting for removal
     !
     ! Call Hack (1994) convection scheme to deal with shallow/mid-level convection
     !
@@ -2767,11 +2794,26 @@ contains
            flx_heat, cmfmc, cmfcme, pflx, zdu, rliq, rice, dlf, dlf2, rliq2, net_flx)
     end if
 
-    !+++ARH Begin only subroutine whose removal breaks bfb in code block
+!+++ARH
     call convect_shallow_tend (ztodt   , cmfmc, &
          dlf        , dlf2   ,  rliq   , rliq2, &
          state      , ptend  ,  pbuf, cam_in)
-    !---ARH End only subroutine whose removal breaks bfb in code block 
+
+    !call pbuf_get_field(pbuf, nevapr_shcu_idx, evapcsh)
+    !call pbuf_get_field(pbuf, icwmrsh_idx, icwmrsh)
+    !call pbuf_get_field(pbuf, cmfmc_sh_idx, cmfmcsh)
+    !call pbuf_get_field(pbuf, rprdsh_idx, rprdsh)
+    !evapcsh = 0._r8
+    !icwmrsh = 0._r8
+    !cmfmcsh = 0._r8
+    !rprdsh  = 0._r8
+
+    !call pbuf_get_field(pbuf, rprddp_idx, rprddp)
+    !call pbuf_set_field(pbuf, rprdtot_idx, rprdsh(:ncol,:pver) + rprddp(:ncol,:pver), start=(/1,1/), kount=(/ncol,pver/))
+
+    !prec_sh = 0._r8
+    !snow_sh = 0._r8
+!---ARH
 
     call t_stopf ('convect_shallow_tend')
 
@@ -2796,7 +2838,6 @@ contains
     call check_energy_chng(state, tend, "convect_shallow", nstep, ztodt, zero, flx_cnd, snow_sh, zero)
 
     call check_tracers_chng(state, tracerint, "convect_shallow", nstep, ztodt, zero_tracers)
-!+++ARH End code block targeting for removal
 
     call t_stopf('moist_convection')
 
