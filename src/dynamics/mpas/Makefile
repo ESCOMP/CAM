@@ -2,8 +2,8 @@ CPPFLAGS := -D_MPI -DMPAS_NATIVE_TIMERS -DMPAS_GIT_VERSION=unknown -DMPAS_NAMELI
 ifdef PIODEF
   CPPFLAGS += $(PIODEF)
 endif
-ifdef ESMFDEF
-  CPPFLAGS += $(ESMFDEF)
+ifeq ($(strip $(COMP_INTERFACE)),nuopc)
+  CPPFLAGS += -DMPAS_EXTERNAL_ESMF_LIB
 endif
 
 REGISTRY_FILE := $(MPAS_SRC_ROOT)/dycore/src/core_atmosphere/Registry.xml
@@ -22,6 +22,7 @@ INTERFACE_OBJS = \
 
 DYN_OBJS = \
 	mpas_atm_time_integration.o \
+	mpas_atm_boundaries.o \
 	mpas_atm_iau.o
 
 DIAG_OBJS = \
@@ -228,7 +229,7 @@ incs: $(REGISTRY_FILE)
 #
 dycore: $(DYN_OBJS) $(DIAGNOSTICS) $(DIAG_OBJS) $(INTERFACE_OBJS)
 
-mpas_atm_time_integration.o: mpas_atm_iau.o mpas_atm_dimensions.o
+mpas_atm_time_integration.o: mpas_atm_iau.o mpas_atm_dimensions.o mpas_atm_boundaries.o
 
 
 #

@@ -402,10 +402,6 @@ subroutine dyn_init(dyn_in, dyn_out)
    call mpas_pool_get_array(diag_pool,  'uReconstructZonal',      dyn_in % ux)
    call mpas_pool_get_array(diag_pool,  'uReconstructMeridional', dyn_in % uy)
 
-   call mpas_pool_get_array(tend_physics_pool, 'tend_ru_physics',     dyn_in % ru_tend)
-   call mpas_pool_get_array(tend_physics_pool, 'tend_rtheta_physics', dyn_in % rtheta_tend)
-   call mpas_pool_get_array(tend_physics_pool, 'tend_rho_physics',    dyn_in % rho_tend)
-
    ! Let dynamics export state point to memory managed by MPAS-Atmosphere
    ! Exception: pmiddry and pintdry are not managed by the MPAS infrastructure
 
@@ -465,6 +461,13 @@ subroutine dyn_init(dyn_in, dyn_out)
    end if
 
    call cam_mpas_init_phase4(endrun)
+
+   !
+   ! Set pointers to tendency fields that are not allocated until the call to cam_mpas_init_phase4
+   !
+   call mpas_pool_get_array(tend_physics_pool, 'tend_ru_physics',     dyn_in % ru_tend)
+   call mpas_pool_get_array(tend_physics_pool, 'tend_rtheta_physics', dyn_in % rtheta_tend)
+   call mpas_pool_get_array(tend_physics_pool, 'tend_rho_physics',    dyn_in % rho_tend)
 
    ! Check that CAM's timestep, i.e., the dynamics/physics coupling interval, is an integer multiple
    ! of the MPAS timestep.
@@ -1216,6 +1219,8 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
    logical                 :: mpas_rayleigh_damp_u = .true.
    real(r8)                :: mpas_rayleigh_damp_u_timescale_days = 5.0_r8
    integer                 :: mpas_number_rayleigh_damp_u_levels = 3
+   logical                 :: mpas_apply_lbcs = .false.
+   logical                 :: mpas_jedi_da = .false.
    character (len=StrKIND) :: mpas_block_decomp_file_prefix = 'x1.40962.graph.info.part.'
    logical                 :: mpas_do_restart = .false.
    logical                 :: mpas_print_global_minmax_vel = .true.
@@ -1264,6 +1269,12 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
            mpas_rayleigh_damp_u, &
            mpas_rayleigh_damp_u_timescale_days, &
            mpas_number_rayleigh_damp_u_levels
+
+   namelist /limited_area/ &
+           mpas_apply_lbcs
+
+   namelist /assimilation/ &
+           mpas_jedi_da
 
    namelist /decomposition/ &
            mpas_block_decomp_file_prefix
@@ -1401,6 +1412,42 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
    call mpas_pool_add_config(configPool, 'config_rayleigh_damp_u_timescale_days', mpas_rayleigh_damp_u_timescale_days)
    call mpas_pool_add_config(configPool, 'config_number_rayleigh_damp_u_levels', mpas_number_rayleigh_damp_u_levels)
 
+   ! Read namelist group &limited_area
+   if (masterproc) then
+      rewind(unitNumber)
+      call find_group_name(unitNumber, 'limited_area', status=ierr)
+      if (ierr == 0) then
+         read(unitNumber, limited_area, iostat=ierr2)
+         if (ierr2 /= 0) then
+            call endrun(subname // ':: Failed to read namelist group &limited_area')
+         end if
+      else
+         call endrun(subname // ':: Failed to find namelist group &limited_area')
+      end if
+   end if
+
+   call mpi_bcast(mpas_apply_lbcs, 1, mpi_logical, masterprocid, mpicom, mpi_ierr)
+
+   call mpas_pool_add_config(configPool, 'config_apply_lbcs', mpas_apply_lbcs)
+
+   ! Read namelist group &assimilation
+   if (masterproc) then
+      rewind(unitNumber)
+      call find_group_name(unitNumber, 'assimilation', status=ierr)
+      if (ierr == 0) then
+         read(unitNumber, assimilation, iostat=ierr2)
+         if (ierr2 /= 0) then
+            call endrun(subname // ':: Failed to read namelist group &assimilation')
+         end if
+      else
+         call endrun(subname // ':: Failed to find namelist group &assimilation')
+      end if
+   end if
+
+   call mpi_bcast(mpas_jedi_da, 1, mpi_logical, masterprocid, mpicom, mpi_ierr)
+
+   call mpas_pool_add_config(configPool, 'config_jedi_da', mpas_jedi_da)
+
    ! Read namelist group &decomposition if npes > 1
    if (masterproc .and. npes > 1) then
       rewind(unitNumber)
@@ -1514,6 +1561,8 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
       write(iulog,*) '   mpas_rayleigh_damp_u = ', mpas_rayleigh_damp_u
       write(iulog,*) '   mpas_rayleigh_damp_u_timescale_days = ', mpas_rayleigh_damp_u_timescale_days
       write(iulog,*) '   mpas_number_rayleigh_damp_u_levels = ', mpas_number_rayleigh_damp_u_levels
+      write(iulog,*) '   mpas_apply_lbcs = ', mpas_apply_lbcs
+      write(iulog,*) '   mpas_jedi_da = ', mpas_jedi_da
       write(iulog,*) '   mpas_block_decomp_file_prefix = ', trim(mpas_block_decomp_file_prefix)
       write(iulog,*) '   mpas_do_restart = ', mpas_do_restart
       write(iulog,*) '   mpas_print_global_minmax_vel = ', mpas_print_global_minmax_vel

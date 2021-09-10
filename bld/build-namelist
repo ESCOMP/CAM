@@ -2887,10 +2887,27 @@ if ($cfg->get('microphys') =~ /^mg/) {
     add_default($nl, 'micro_mg_do_graupel');
     add_default($nl, 'graupel_in_rad');
     add_default($nl, 'micro_do_massless_droplet_destroyer');
+    add_default($nl, 'micro_mg_accre_enhan_fact');
+    add_default($nl, 'micro_mg_autocon_fact');
+    add_default($nl, 'micro_mg_autocon_nd_exp');
+    add_default($nl, 'micro_mg_autocon_lwp_exp');
+    add_default($nl, 'micro_mg_homog_size');
+    add_default($nl, 'micro_mg_vtrmi_factor');
+    add_default($nl, 'micro_mg_effi_factor');
+    add_default($nl, 'micro_mg_iaccr_factor');
+    add_default($nl, 'micro_mg_max_nicons');
 
     # For CESM2, the decision was made to set micro_do_sb_physics to false
     add_default($nl, 'micro_do_sb_physics', 'val'=>'.false.');
 }
+
+# Aerosol Namelist options
+add_default($nl, 'microp_aero_bulk_scale');
+add_default($nl, 'microp_aero_npccn_scale');
+add_default($nl, 'microp_aero_wsub_scale');
+add_default($nl, 'microp_aero_wsubi_scale');
+add_default($nl, 'microp_aero_wsub_min');
+add_default($nl, 'microp_aero_wsubi_min');
 
 # Ice nucleation options
 if (!$simple_phys) {
@@ -3008,6 +3025,12 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_C2thl');
    add_default($nl, 'clubb_C2rtthl');
    add_default($nl, 'clubb_C4');
+   add_default($nl, 'clubb_c6rt');
+   add_default($nl, 'clubb_c6rtb');
+   add_default($nl, 'clubb_c6rtc');
+   add_default($nl, 'clubb_c6thl');
+   add_default($nl, 'clubb_c6thlb');
+   add_default($nl, 'clubb_c6thlc');
    add_default($nl, 'clubb_C7');
    add_default($nl, 'clubb_C7b');
    add_default($nl, 'clubb_C8');
@@ -3026,6 +3049,10 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_skw_max_mag');
    add_default($nl, 'clubb_up2_vp2_factor');
    add_default($nl, 'clubb_C_wp2_splat');
+   add_default($nl, 'clubb_wpxp_L_thresh');
+   add_default($nl, 'clubb_detliq_rad');
+   add_default($nl, 'clubb_detice_rad');
+   add_default($nl, 'clubb_detphase_lowtemp');
 
    add_default($nl, 'clubb_l_brunt_vaisala_freq_moist');
    add_default($nl, 'clubb_l_call_pdf_closure_twice');
@@ -3148,6 +3175,9 @@ if (!$simple_phys) {
     add_default($nl, 'zmconv_org');
     add_default($nl, 'zmconv_microp');
     add_default($nl, 'zmconv_num_cin');
+    add_default($nl, 'zmconv_dmpdz');
+    add_default($nl, 'zmconv_tiedke_add');
+    add_default($nl, 'zmconv_capelmt');
 }
 
 # moist convection rainwater coefficients
@@ -3602,6 +3632,9 @@ if ($dyn =~ /se/) {
                   se_nu_div
                   se_nu_p
                   se_nu_top
+                  se_sponge_del4_nu_fac
+                  se_sponge_del4_nu_div_fac
+                  se_sponge_del4_lev
                   se_qsplit
                   se_rsplit
                   se_statediag_numtrac
@@ -3617,9 +3650,6 @@ if ($dyn =~ /se/) {
 		  se_kmin_jet
 		  se_kmax_jet
 		  se_phys_dyn_cp
-		  se_raytau0
-		  se_raykrange
-		  se_rayk0
                   se_molecular_diff
         );
 
@@ -3713,6 +3743,8 @@ if ($dyn =~ /mpas/) {
     add_default($nl, 'mpas_rayleigh_damp_u');
     add_default($nl, 'mpas_rayleigh_damp_u_timescale_days');
     add_default($nl, 'mpas_number_rayleigh_damp_u_levels');
+    add_default($nl, 'mpas_apply_lbcs');
+    add_default($nl, 'mpas_jedi_da');
     add_default($nl, 'mpas_do_restart');
     add_default($nl, 'mpas_print_global_minmax_vel');
     add_default($nl, 'mpas_print_detailed_minmax_vel');

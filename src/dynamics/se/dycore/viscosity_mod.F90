@@ -9,7 +9,7 @@ module viscosity_mod
 !
   use shr_kind_mod,   only: r8=>shr_kind_r8
   use thread_mod,     only: max_num_threads, omp_get_num_threads
-  use dimensions_mod, only: np, nc, nlev,qsize,nelemd
+  use dimensions_mod, only: np, nc, nlev,nlevp, qsize,nelemd
   use hybrid_mod,     only: hybrid_t, get_loop_ranges, config_thread_region
   use parallel_mod,   only: parallel_t
   use element_mod,    only: element_t
@@ -50,11 +50,11 @@ module viscosity_mod
 
 CONTAINS
 
-subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,nt,nets,nete,kbeg,kend,&
-     dp3d_ref,T_ref)
+subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,nt,nets,nete,kbeg,kend,hvcoord,&
+     dp3d_ref,T_ref,pmid_ref)
   use derivative_mod, only : subcell_Laplace_fluxes
   use dimensions_mod, only : ntrac, nu_div_lev,nu_lev
-  
+  use hybvcoord_mod,  only : hvcoord_t  
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ! compute weak biharmonic operator
   !    input:  h,v (stored in elem()%, in lat-lon coordinates
@@ -68,17 +68,22 @@ subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,
   real (kind=r8), intent(out), dimension(nc,nc,4,nlev,nets:nete) :: dpflux
   real (kind=r8), dimension(np,np,2,nlev,nets:nete)  :: vtens
   real (kind=r8), dimension(np,np,nlev,nets:nete) :: ttens,dptens
-  real (kind=r8), dimension(np,np,nlev,nets:nete), optional :: dp3d_ref,T_ref
+  real (kind=r8), dimension(np,np,nlev,nets:nete), optional :: dp3d_ref,T_ref,pmid_ref
   type (EdgeBuffer_t)  , intent(inout) :: edge3
   type (derivative_t)  , intent(in) :: deriv
-  
+  type (hvcoord_t)     , intent(in) :: hvcoord  
   ! local
   integer :: i,j,k,kptr,ie,kblk
 !  real (kind=r8), dimension(:,:), pointer :: rspheremv
   real (kind=r8), dimension(np,np) :: tmp
   real (kind=r8), dimension(np,np) :: tmp2
   real (kind=r8), dimension(np,np,2) :: v
-  real (kind=r8) :: nu_ratio1, nu_ratio2
+  
+  real (kind=r8), dimension(np,np,nlev) :: lap_p_wk
+  real (kind=r8), dimension(np,np,nlevp) :: T_i
+
+
+  real (kind=r8) :: nu_ratio1, nu_ratio2, dp_thresh
   logical var_coef1
   
   kblk = kend - kbeg + 1
@@ -88,8 +93,7 @@ subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,
   !so tensor is only used on second call to laplace_sphere_wk
   var_coef1 = .true.
   if(hypervis_scaling > 0)    var_coef1 = .false.
-  
-  
+  dp_thresh=.025_r8  ! tunable coefficient 
   do ie=nets,nete    
 !$omp parallel do num_threads(vert_num_threads) private(k,tmp)
     do k=kbeg,kend
@@ -123,7 +127,37 @@ subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,
 
       call vlaplace_sphere_wk(elem(ie)%state%v(:,:,:,k,nt),deriv,elem(ie),.true.,vtens(:,:,:,k,ie), &
            var_coef=var_coef1,nu_ratio=nu_ratio1)
-    enddo
+     enddo
+
+     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+     ! add p correction to approximate Laplace on pressure surfaces
+     ! Laplace_p(T) = Laplace(T) - dT/dp Laplace(p)
+     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+     
+     ! lap_p_wk should be precomputed:     
+     do k=1,nlev
+       call laplace_sphere_wk(pmid_ref(:,:,k,ie),deriv,elem(ie),lap_p_wk(:,:,k),var_coef=.false.)
+     enddo
+     
+     ! average T to interfaces, then compute dT/dp on midpoints:
+     T_i(:,:,1) = elem(ie)%state%T(:,:,1,nt)
+     T_i(:,:,nlevp) = elem(ie)%state%T(:,:,nlev,nt)
+     do k=2,nlev
+       T_i(:,:,k)=(elem(ie)%state%T(:,:,k,nt) + elem(ie)%state%T(:,:,k-1,nt))/2
+     enddo
+
+     do k=1,nlev
+       if (hvcoord%hybm(k)>0) then
+         tmp(:,:) = (T_i(:,:,k+1)-T_i(:,:,k))/dp3d_ref(:,:,k,ie)
+         tmp(:,:)=tmp(:,:) / (1.0_r8 + abs(tmp(:,:))/dp_thresh)
+         ttens(:,:,k,ie)=ttens(:,:,k,ie)-tmp(:,:)*lap_p_wk(:,:,k)   ! correction term
+       endif
+     enddo
+
+      
+
+      
+
     
     kptr = kbeg - 1
     call edgeVpack(edge3,ttens(:,:,kbeg:kend,ie),kblk,kptr,ie)

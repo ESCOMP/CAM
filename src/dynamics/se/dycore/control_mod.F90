@@ -23,7 +23,7 @@ module control_mod
                                           ! every rsplit tracer timesteps
   logical, public :: variable_nsplit=.false.
 
-  integer, public :: phys_dyn_cp = 0 !=0; no thermal energy scaling of T increment
+  integer, public :: phys_dyn_cp = 1 !=0; no thermal energy scaling of T increment
                                      !=1; scale increment for cp consistency between dynamics and physics
 
   logical, public :: refined_mesh
@@ -63,10 +63,25 @@ module control_mod
                                                                ! (only used for variable viscosity, recommend 1.9 in namelist)
   real (kind=r8), public :: nu      = 7.0D5           ! viscosity (momentum equ)
   real (kind=r8), public :: nu_div  = -1              ! viscsoity (momentum equ, div component)
-  real (kind=r8), public :: nu_s    = -1              ! default = nu   T equ. viscosity
+  real (kind=r8), public :: nu_t    = -1              ! default = nu   T equ. viscosity
   real (kind=r8), public :: nu_q    = -1              ! default = nu   tracer viscosity
   real (kind=r8), public :: nu_p    = 0.0D5           ! default = 0    ps equ. viscosity
   real (kind=r8), public :: nu_top  = 0.0D5           ! top-of-the-model viscosity
+
+  !
+  ! Del4 sponge layer diffusion
+  !
+  ! Divergence damping hyperviscosity coefficient nu_div [m^4/s] for u,v is increased to
+  ! nu_div*sponge_del4_nu_div_fac following a hyperbolic tangent function
+  ! centered around pressure at vertical index sponge_del4_lev
+  !
+  ! Similar for sponge_del4_nu_fac
+  !
+  real(r8), public :: sponge_del4_nu_fac
+  real(r8), public :: sponge_del4_nu_div_fac
+  integer , public :: sponge_del4_lev
+
+
   integer, public :: hypervis_subcycle=1    ! number of subcycles for hyper viscsosity timestep
   integer, public :: hypervis_subcycle_sponge=1    ! number of subcycles for hyper viscsosity timestep in sponge
   integer, public :: hypervis_subcycle_q=1  ! number of subcycles for hyper viscsosity timestep on TRACERS
@@ -106,12 +121,6 @@ module control_mod
   integer, public, parameter :: nwest = 7
   integer, public, parameter :: neast = 8
 
-  !
-  ! parameters for sponge layer Rayleigh damping
-  !
-  real(r8), public :: raytau0
-  real(r8), public :: raykrange
-  integer,  public :: rayk0 
   !
   ! molecular diffusion
   !  

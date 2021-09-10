@@ -950,6 +950,9 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
 
         do k = pver,msg+2,-1
   
+           es(i,k)  = svp_water(t(i,k))     ! over water in mixed clouds
+           esi(i,k) = svp_ice(t(i,k))       ! over ice
+
            if (k > jt(i) .and. k <= jb(i) .and. eps0(i) > 0._r8      &
               .and.mu(i,k).gt.0._r8 .and. mu(i,k-1).gt.0._r8) then
 
