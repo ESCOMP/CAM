@@ -207,19 +207,19 @@ subroutine phys_ctl_readnl(nlfile)
 
    ! Check that eddy_scheme, macrop_scheme, shallow_scheme are all set to CLUBB
    if (eddy_scheme .ne. 'CLUBB_SGS' .or. macrop_scheme .ne. 'CLUBB_SGS' .or. shallow_scheme .ne. 'CLUBB_SGS') then
-      write(iulog,*)'CAM64 is only compatible with CLUBB.  Quiting'
+      write(iulog,*)'CAM64 is only compatible with CLUBB.  Quitting'
       call endrun('eddy, macrophyiscs or shallow schemes incompatible')
    endif
 
    ! Add a check to make sure CLUBB and MG are used together
    if ( microp_scheme .ne. 'MG') then
-      write(iulog,*)'CLUBB is only compatible with MG microphysics.  Quiting'
+      write(iulog,*)'CLUBB is only compatible with MG microphysics.  Quitting'
       call endrun('CLUBB and microphysics schemes incompatible')
    endif
 
    ! Add a check to make sure SPCAM is not used
    if (use_spcam) then
-      write(iulog,*)'SPCAM not compatbile with CAM64 physics.  Quiting'
+      write(iulog,*)'SPCAM not compatbile with CAM64 physics.  Quitting'
       call endrun('SPCAM and CAM64 incompatible')
    endif
 

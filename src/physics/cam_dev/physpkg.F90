@@ -2335,7 +2335,8 @@ contains
     ! For not ('FV'|'FV3'), physics_dme_adjust is called for energy diagnostic purposes only.  So, save off tracers
     if (.not.(dycore_is('FV').or.dycore_is('FV3')).and.&
          (hist_fld_active('SE_pAM').or.hist_fld_active('KE_pAM').or.hist_fld_active('WV_pAM').or.&
-         hist_fld_active('WL_pAM').or.hist_fld_active('WI_pAM'))) then
+          hist_fld_active('WL_pAM').or.hist_fld_active('WI_pAM').or.hist_fld_active('MR_pAM').or.&
+          hist_fld_active('MO_pAM'))) then
       tmp_trac(:ncol,:pver,:pcnst) = state%q(:ncol,:pver,:pcnst)
       tmp_pdel(:ncol,:pver)        = state%pdel(:ncol,:pver)
       tmp_ps(:ncol)                = state%ps(:ncol)
@@ -2893,6 +2894,7 @@ subroutine phys_timestep_init(phys_state, cam_in, cam_out, pbuf2d)
   use epp_ionization,      only: epp_ionization_active
   use iop_forcing,         only: scam_use_iop_srf
   use nudging,             only: Nudge_Model, nudging_timestep_init
+  use waccmx_phys_intr,    only: waccmx_phys_ion_elec_temp_timestep_init
 
   implicit none
 
@@ -2919,6 +2921,10 @@ subroutine phys_timestep_init(phys_state, cam_in, cam_out, pbuf2d)
 
   ! Time interpolate for chemistry.
   call chem_timestep_init(phys_state, pbuf2d)
+
+  if( waccmx_is('ionosphere') ) then
+     call waccmx_phys_ion_elec_temp_timestep_init(phys_state,pbuf2d)
+  endif
 
   ! Prescribed tracers
   call prescribed_ozone_adv(phys_state, pbuf2d)
