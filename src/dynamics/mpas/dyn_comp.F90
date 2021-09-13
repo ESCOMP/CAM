@@ -1736,7 +1736,7 @@ subroutine set_dry_mass(dyn_in, target_avg_dry_surface_pressure)
    do i = 1, nCellsSolve
        preliminary_dry_surface_pressure(i) = 0.0_r8
        do k = 1, plev
-           preliminary_dry_surface_pressure(i) = preliminary_dry_surface_pressure(i) + gravity*(zint(k+1,i)-zint(k,1))*rho(k,i)
+           preliminary_dry_surface_pressure(i) = preliminary_dry_surface_pressure(i) + gravity*(zint(k+1,i)-zint(k,i))*rho(k,i)
        end do
    end do
    preliminary_dry_surface_pressure(1:nCellsSolve) = preliminary_dry_surface_pressure(1:nCellsSolve)*areaCell(1:nCellsSolve)
