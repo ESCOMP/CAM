@@ -2547,7 +2547,7 @@ Default: 1
 
 <entry id="micro_mg_autocon_fact" type="real" category="microphys"
        group="micro_mg_nl" valid_values="" >
-Unitless ratio to directly scale the autoconversion process in microphysics as a method of accounting for unrepresented subgridscale variability. 
+Unitless ratio to directly scale the autoconversion process in microphysics as a method of accounting for unrepresented subgridscale variability.
 Default: 0.01
 </entry>
 
@@ -3679,7 +3679,7 @@ Default: 25.0e-6 m
 
 <entry id="clubb_detphase_lowtemp" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
-Temperature at which detrained water is classified as entirely ice (no liquid) 
+Temperature at which detrained water is classified as entirely ice (no liquid)
 in the CLUBB parameterization in units of (K).
 Default: 238.15 K
 </entry>
@@ -6801,6 +6801,13 @@ Default: set by build-namelist.
 Full pathname of cross section dataset for short wavelengh photolysis
 Default: set by build-namelist.
 </entry>
+
+<entry id="photo_max_zen" type="real" category="cam_chem"
+       group="chem_inparm" valid_values="" >
+Maximum zeniith angle (degrees) used for photolysis.
+Default: set by build-namelist.
+</entry>
+
 
 <!-- Namelist read by seq_drydep_mod and shared by CAM and CLM -->
 
