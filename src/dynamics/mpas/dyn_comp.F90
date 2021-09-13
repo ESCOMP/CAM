@@ -719,7 +719,6 @@ subroutine read_inidat(dyn_in)
    ! Set initial conditions.  Either from analytic expressions or read from file.
 
    use cam_mpas_subdriver, only : domain_ptr, cam_mpas_update_halo, cam_mpas_cell_to_edge_winds
-   use cam_control_mod,   only : simple_phys
    use cam_initfiles, only : scale_dry_air_mass
    use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_array, mpas_pool_get_config
    use mpas_derived_types, only : mpas_pool_type
@@ -1139,11 +1138,11 @@ subroutine read_inidat(dyn_in)
 
    theta_m(:,1:nCellsSolve) = theta(:,1:nCellsSolve) * (1.0_r8 + Rv_over_Rd * tracers(ixqv,:,1:nCellsSolve))
 
-   ! Don't scale air mass if scale_dry_air_mass=0.0 or simple_phys is on
+   ! Don't scale air mass if scale_dry_air_mass=0.0
    ! If scale_dry_air_mass < 0.0, then use the reference pressures defined in physconst.F90 as the
-   ! target global average dry pressure to scale to. If scale_dry_air_mass is not zero, then use it
+   ! target global average dry pressure to scale to. If scale_dry_air_mass > 0, then use it
    ! as the target.
-   if (.not. simple_phys .and. scale_dry_air_mass /= 0.0_r8) then  ! Don't scale air mass if < 0. or simple_phys is on
+   if (scale_dry_air_mass /= 0.0_r8) then
      if (scale_dry_air_mass < 0.0_r8) then
        target_global_avg_dry_ps = ps_dry_topo
        if (.not. associated(fh_topo)) then

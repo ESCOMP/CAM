@@ -8,7 +8,7 @@ use spmd_utils,             only: iam, masterproc
 use constituents,           only: pcnst, cnst_get_ind, cnst_name, cnst_longname, &
                                   cnst_read_iv, qmin, cnst_type, tottnam,        &
                                   cnst_is_a_water_species
-use cam_control_mod,        only: initial_run, simple_phys
+use cam_control_mod,        only: initial_run
 use cam_initfiles,          only: initial_file_get_id, topo_file_get_id, pertlim
 use phys_control,           only: use_gw_front, use_gw_front_igw, waccmx_is
 use dyn_grid,               only: ini_grid_name, timelevel, hvcoord, edgebuf
@@ -1698,10 +1698,10 @@ subroutine read_inidat(dyn_in)
    ! scale PS to achieve prescribed dry mass following FV dycore (dryairm.F90)
 #ifndef planet_mars
    ! If scale_dry_air_mass < 0.0, then use the reference pressures defined in physconst.F90 as the
-   ! target global average dry pressure to scale to. If scale_dry_air_mass is not zero, then use it
+   ! target global average dry pressure to scale to. If scale_dry_air_mass>0, then use it
    ! as the target.
    if (runtype == 0) then
-     if (.not. simple_phys .and. scale_dry_air_mass /= 0.0_r8) then  ! Don't scale air mass if < 0. or simple_phys is on
+     if (scale_dry_air_mass /= 0.0_r8) then
        if (scale_dry_air_mass < 0.0_r8) then
          target_global_avg_dry_ps = ps_dry_topo
          if (.not. associated(fh_topo)) then

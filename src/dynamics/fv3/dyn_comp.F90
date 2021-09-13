@@ -1320,11 +1320,12 @@ subroutine read_inidat(dyn_in)
      end do
      deallocate(pstmp)
   end if
-
   !
-  ! scale PS to achieve prescribed dry mass following FV dycore (dryairm.F90)
-  !
-  if (.not. simple_phys .and. scale_dry_air_mass /= 0.0_r8) then  ! Don't scale air mass if < 0. or simple_phys is on
+  ! Don't scale air mass if scale_dry_air_mass=0.0
+  ! If scale_dry_air_mass < 0.0, then use the reference pressures defined in physconst.F90 as the
+  ! target global average dry pressure to scale to. If scale_dry_air_mass > 0, then use it
+  ! as the target.
+  if (scale_dry_air_mass /= 0.0_r8) then
     if (scale_dry_air_mass < 0.0_r8) then
       target_global_avg_dry_ps = ps_dry_topo
       if (.not. associated(fh_topo)) then

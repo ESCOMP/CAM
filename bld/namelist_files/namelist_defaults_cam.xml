@@ -305,6 +305,11 @@
 <!-- Scale Dry Air Mass: -1=>scaling to Pressure / 0=> no scaling / +nnn=>scale to nnn Pressure  -->
 <scale_dry_air_mass                                                                  > -1.0  </scale_dry_air_mass>
 <scale_dry_air_mass analytic_ic="1"                                                  >  0.0  </scale_dry_air_mass>
+<scale_dry_air_mass phys="adiabatic"                                                 >  0.0  </scale_dry_air_mass>
+<scale_dry_air_mass phys="held_suarez"                                               >  0.0  </scale_dry_air_mass>
+<scale_dry_air_mass phys="kessler"                                                   >  0.0  </scale_dry_air_mass>
+<scale_dry_air_mass phys="tj2016"                                                    >  0.0  </scale_dry_air_mass>
+
 <scale_dry_air_mass dyn="mpas"                                                       >  0.0 </scale_dry_air_mass>
 <scale_dry_air_mass dyn="mpas" analytic_ic="1"                                       >  0.0  </scale_dry_air_mass>
 <scale_dry_air_mass dyn="mpas" analytic_ic="0" hgrid="mpasa120"                      > -1.0 </scale_dry_air_mass>
