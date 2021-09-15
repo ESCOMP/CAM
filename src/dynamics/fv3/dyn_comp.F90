@@ -388,7 +388,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    type (dyn_export_t),     intent(out) :: dyn_out
 
    ! Locals
-   character(len=*), parameter :: sub='dyn_init'
+   character(len=*), parameter :: subname='dyn_init'
    real(r8)                    :: alpha
 
 
@@ -446,7 +446,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    vc_dycore = vc_moist_pressure
    if (masterproc) then
      call string_vc(vc_dycore,vc_str)
-     write(iulog,*) sub//'vertical coordinate dycore   : ',trim(vc_str)
+     write(iulog,*) subname//': vertical coordinate dycore   : ',trim(vc_str)
    end if
    ! Setup the condensate loading arrays and fv3/cam tracer mapping and
    ! finish initializing fv3 by allocating the tracer arrays in the fv3 atm structure
@@ -516,7 +516,7 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    if (masterproc) then
 
-      write(iulog,*) sub//'Creating field_table file to load tracer fields into fv3'
+      write(iulog,*) subname//': Creating field_table file to load tracer fields into fv3'
       ! overwrite file if it exists.
       open( newunit=unito, file='field_table', status='replace' )
       do i=1,pcnst
@@ -1327,9 +1327,10 @@ subroutine read_inidat(dyn_in)
   ! as the target.
   if (scale_dry_air_mass /= 0.0_r8) then
     if (scale_dry_air_mass < 0.0_r8) then
-      target_global_avg_dry_ps = ps_dry_topo
       if (.not. associated(fh_topo)) then
         target_global_avg_dry_ps = ps_dry_notopo
+      else
+        target_global_avg_dry_ps = ps_dry_topo
       end if
     else
       ! User specified scaling target pressure

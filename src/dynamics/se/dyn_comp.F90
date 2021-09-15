@@ -1703,9 +1703,10 @@ subroutine read_inidat(dyn_in)
    if (runtype == 0) then
      if (scale_dry_air_mass /= 0.0_r8) then
        if (scale_dry_air_mass < 0.0_r8) then
-         target_global_avg_dry_ps = ps_dry_topo
          if (.not. associated(fh_topo)) then
            target_global_avg_dry_ps = ps_dry_notopo
+         else
+           target_global_avg_dry_ps = ps_dry_topo
          end if
        else
          ! User specified scaling target pressure

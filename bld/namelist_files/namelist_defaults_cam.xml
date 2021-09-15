@@ -245,7 +245,7 @@
 
 <ncdata dyn="se" hgrid="ne0np4CONUS.ne30x8"       nlev="70" ic_ymd="101">atm/waccm/ic/FW2000_CONUS_30x8_L70_01-01-0001_c200602.nc</ncdata>
 
-<ncdata hgrid="mpasa120" nlev="32" >atm/cam/inic/mpas/mpasa120.CFSR.L32.nc'</ncdata>
+<ncdata hgrid="mpasa120" nlev="32" >atm/cam/inic/mpas/mpasa120.CFSR.L32.nc</ncdata>
 
 <!-- Topography -->
 <bnd_topo hgrid="256x512" >atm/cam/topo/topo-from-cami_0000-01-01_256x512_L26_c030918.nc</bnd_topo>
@@ -311,7 +311,6 @@
 <scale_dry_air_mass phys="tj2016"                                                    >  0.0  </scale_dry_air_mass>
 
 <scale_dry_air_mass dyn="mpas"                                                       >  0.0 </scale_dry_air_mass>
-<scale_dry_air_mass dyn="mpas" analytic_ic="1"                                       >  0.0  </scale_dry_air_mass>
 <scale_dry_air_mass dyn="mpas" analytic_ic="0" hgrid="mpasa120"                      > -1.0 </scale_dry_air_mass>
 
 <!-- Ridge parameterization (gamma) -->

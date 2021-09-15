@@ -105,9 +105,10 @@ subroutine dryairm( grid,  moun,  ps,   tracer,  delp,                   &
         !
         ! use standard dry air mass
         !
-        drym_loc = drym
         if (.not. associated(fh_topo)) then
           drym_loc = ps_dry_notopo
+        else
+          drym_loc = drym
         end if
       else
         !

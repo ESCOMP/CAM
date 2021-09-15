@@ -394,7 +394,7 @@ end subroutine check_energy_get_integrals
 
     ! relative error for total water (allow for dry atmosphere)
     tw_rer = 0._r8
-    where (state%tw_cur(:ncol,1) > 0._r8)
+    where (state%tw_cur(:ncol,phys_te_idx) > 0._r8)
        tw_rer(:ncol) = (tw_xpd(:ncol) - tw(:ncol)) / state%tw_cur(:ncol,1)
     end where
 

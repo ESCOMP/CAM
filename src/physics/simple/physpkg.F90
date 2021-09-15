@@ -665,7 +665,7 @@ contains
     use dycore,            only: dycore_is
     use cam_snapshot,      only: cam_snapshot_all_outfld
     use cam_snapshot,      only: cam_snapshot_ptend_outfld
-
+    use physics_types,     only: dyn_te_idx
     ! Arguments
 
     real(r8),                  intent(in)    :: ztodt ! model time increment
@@ -777,8 +777,8 @@ contains
     end if
 
     call outfld('TEOUT', teout       , pcols, lchnk   )
-    call outfld('TEINP', state%te_ini(:,2), pcols, lchnk   )
-    call outfld('TEFIX', state%te_cur(:,2), pcols, lchnk   )
+    call outfld('TEINP', state%te_ini(:,dyn_te_idx), pcols, lchnk   )
+    call outfld('TEFIX', state%te_cur(:,dyn_te_idx), pcols, lchnk   )
 
     ! T tendency due to dynamics
     if( nstep > dyn_time_lvls-1 ) then

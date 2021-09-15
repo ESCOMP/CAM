@@ -31,10 +31,9 @@ contains
   subroutine string_vc(vc,str)
     use cam_abortutils, only: endrun
     use cam_logfile,    only: iulog
-
+    use string_utils,   only: int2str
     integer,                     intent(in)  :: vc    
     character (len=vc_str_lgth), intent(out) :: str
-    character(len=2)                         :: str_local
     
     select case (vc)
     case(vc_moist_pressure)
@@ -45,8 +44,7 @@ contains
       str = 'Height (z) vertical coordinate'
     case default
       write(iulog,*) 'string_vc: invalid vc= ',vc
-      write (str_local, *) vc
-      call endrun('string_vc: invalid vc ='//TRIM(str_local))
+      call endrun('string_vc: invalid vc ='//int2str(vc))
     end select
   end subroutine string_vc
 end module dyn_tests_utils

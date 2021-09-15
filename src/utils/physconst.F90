@@ -390,9 +390,9 @@ end subroutine physconst_init
 
     integer  :: icnst,ix,i,ierr
 
-    integer                           :: liq_num, ice_num
-    integer, dimension(pcnst)         :: liq_idx, ice_idx
-    logical                           :: liq,ice
+    integer                                      :: liq_num, ice_num
+    integer, dimension(water_species_in_air_num) :: liq_idx, ice_idx
+    logical                                      :: liq,ice
     liq_num=0
     ice_num=0
     liq    =.false.
@@ -1209,13 +1209,17 @@ end subroutine physconst_init
 
      real(r8), dimension(i0:i1,j0:j1):: ke_loc,se_loc,wv_loc,liq_loc,ice_loc !variables for vertical integrals
      real(r8)                        :: latsub         !latent heat of sublimation
-     integer                         :: i,j,k,idx
+     integer                         :: i,j,k,idx,ierr
      character(len=22)               :: subname='get_hydrostatic_energy' ! subroutine name
      integer, allocatable            :: species_idx(:),species_liq_idx(:),species_ice_idx(:)
 
-     allocate(species_idx(thermodynamic_active_species_num))
-     allocate(species_liq_idx(thermodynamic_active_species_liq_num))
-     allocate(species_ice_idx(thermodynamic_active_species_ice_num))
+     allocate(&
+          species_idx(thermodynamic_active_species_num),        &
+          species_liq_idx(thermodynamic_active_species_liq_num),&
+          species_ice_idx(thermodynamic_active_species_ice_num),&
+          stat=ierr)
+     if ( ierr /= 0 ) call endrun('get_hydrostatic_energy: allocation error for species_xxx arrays')
+
      if (present(dycore_idx))then
         if (dycore_idx) then
            species_idx(:) = thermodynamic_active_species_idx_dycore(:)

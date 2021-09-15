@@ -357,7 +357,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    ! variables for initializing energy and axial angular momentum diagnostics
    integer, parameter                         :: num_stages = 3, num_vars = 8
    character (len = 3), dimension(num_stages) :: stage = (/"dBF","dAP","dAM"/)
-   character (len = 45),dimension(num_stages) :: stage_txt = (/&
+   character (len = 55),dimension(num_stages) :: stage_txt = (/&
       " dynamics state before physics (d_p_coupling)       ",&  
       " dynamics state with T,u,V increment but not q      ",&  
       " dynamics state with full physics increment (incl.q)" &  
@@ -727,9 +727,9 @@ subroutine read_inidat(dyn_in)
    use mpas_constants, only : rgas
    use mpas_constants, only : p0
    use mpas_constants, only : gravity
-   use physconst, only : ps_dry_topo, ps_dry_notopo
+   use physconst,      only : ps_dry_topo, ps_dry_notopo
    use string_utils,   only : int2str
-
+   use shr_kind_mod,   only : shr_kind_cx
    ! arguments
    type(dyn_import_t), target, intent(inout) :: dyn_in
 
@@ -784,7 +784,7 @@ subroutine read_inidat(dyn_in)
    real(r8) :: dz, h
    logical  :: readvar
 
-   character(len=45) :: str
+   character(len=shr_kind_cx) :: str
 
    type(mpas_pool_type), pointer :: mesh_pool
    type(mpas_pool_type), pointer :: diag_pool
@@ -1144,9 +1144,10 @@ subroutine read_inidat(dyn_in)
    ! as the target.
    if (scale_dry_air_mass /= 0.0_r8) then
      if (scale_dry_air_mass < 0.0_r8) then
-       target_global_avg_dry_ps = ps_dry_topo
        if (.not. associated(fh_topo)) then
          target_global_avg_dry_ps = ps_dry_notopo
+       else
+         target_global_avg_dry_ps = ps_dry_topo
        end if
      else
        ! User specified scaling target pressure
