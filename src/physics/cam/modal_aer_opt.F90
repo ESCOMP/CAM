@@ -30,7 +30,7 @@ use cam_logfile,       only: iulog
 use perf_mod,          only: t_startf, t_stopf
 use cam_abortutils,    only: endrun
 
-use modal_aero_wateruptake, only: modal_aero_wateruptake_dr
+use modal_aero_wateruptake, only: modal_aero_wateruptake_dr, modal_aero_wateruptake_rmmin, modal_aero_wateruptake_rmmax
 use modal_aero_calcsize,    only: modal_aero_calcsize_diag
 
 implicit none
@@ -113,7 +113,7 @@ subroutine modal_aer_opt_init()
    ! Local variables
 
    integer  :: i, m
-   real(r8) :: rmmin, rmmax       ! min, max aerosol surface mode radius treated (m)
+
    character(len=256) :: locfile
    
    logical           :: history_amwg            ! output the variables used by the AMWG diag package
@@ -130,10 +130,8 @@ subroutine modal_aer_opt_init()
 
    !----------------------------------------------------------------------------
 
-   rmmin = 0.01e-6_r8
-   rmmax = 25.e-6_r8
-   xrmin = log(rmmin)
-   xrmax = log(rmmax)
+   xrmin = log(modal_aero_wateruptake_rmmin)
+   xrmax = log(modal_aero_wateruptake_rmmax)
 
    ! Check that dimension sizes in the coefficient arrays used to
    ! parameterize aerosol radiative properties are consistent between this
@@ -1532,6 +1530,7 @@ subroutine modal_size_parameters(ncol, sigma_logr_aer, dgnumwet, radsurf, lograd
          ! convert from number mode diameter to surface area
          radsurf(i,k) = 0.5_r8*dgnumwet(i,k)*explnsigma
          logradsurf(i,k) = log(radsurf(i,k))
+
          ! normalize size parameter
          xrad(i) = max(logradsurf(i,k),xrmin)
          xrad(i) = min(xrad(i),xrmax)
