@@ -2569,8 +2569,8 @@ contains
     !-----------------------------------------------------------------------
     function cam_mpas_global_sum_real(rarray) result(global_sum)
 
-       use mpas_kind_types, only : RKIND
-       use mpas_dmpar, only : mpas_dmpar_sum_real, mpas_dmpar_bcast_real
+       use mpas_kind_types, only: RKIND
+       use mpas_dmpar, only: mpas_dmpar_sum_real
 
        implicit none
 
