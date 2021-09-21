@@ -109,7 +109,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    tracers  => dyn_out % tracers
 
    if (compute_energy_diags) then
-     call tot_energy(nCellsSolve, plev,size(tracers(:,1,1)), index_qv, zz(:,1:nCellsSolve), zint(:,1:nCellsSolve), &
+     call tot_energy(nCellsSolve, plev,size(tracers, 1), index_qv, zz(:,1:nCellsSolve), zint(:,1:nCellsSolve), &
           rho_zz(:,1:nCellsSolve), theta_m(:,1:nCellsSolve), tracers(:,:,1:nCellsSolve),&
           ux(:,1:nCellsSolve),uy(:,1:nCellsSolve),'dBF')
    end if
