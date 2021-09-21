@@ -5,7 +5,7 @@ CAM code is stored in this repository on branches other than master.  The detail
 Please see the [wiki](https://github.com/ESCOMP/CAM/wiki) for complete documentation on CAM, getting started with git and how to contribute to CAM's development.
 
 This repository has four branches:
-* master - contains this readme and the Code of Conduct information
+* main - contains this readme and the Code of Conduct information
 * cam_cesm2_2_rel - contains the current CESM2.2 CAM code
 * cam_cesm2_1_rel - contains the current CESM2.1 CAM code
 * cam_development - contains the current CAM development code (see the important note below before using this branch)
