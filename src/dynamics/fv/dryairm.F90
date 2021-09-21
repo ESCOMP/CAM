@@ -95,27 +95,25 @@ subroutine dryairm( grid,  moun,  ps,   tracer,  delp,                   &
     nq         = grid%nq
     ptop       = grid%ptop
 
-    if (scale_dry_air_mass == 0.0_r8) then
+    if (scale_dry_air_mass < 0.0_r8) then
       !
-      ! no scaling of dry air mass
+      ! use standard dry air mass
+      !
+      if (.not. associated(fh_topo)) then
+        drym_loc = ps_dry_notopo
+      else
+        drym_loc = drym
+      end if
+    else if (scale_dry_air_mass > 0.0_r8) then
+      !
+      ! use namelist specified dry air mass
+      !
+      drym_loc = scale_dry_air_mass
+    else
+      !
+      ! scale_dry_air_mass == 0.0_r8, no scaling of dry air mass
       !
       return
-    else
-      if (scale_dry_air_mass < 0.0_r8) then
-        !
-        ! use standard dry air mass
-        !
-        if (.not. associated(fh_topo)) then
-          drym_loc = ps_dry_notopo
-        else
-          drym_loc = drym
-        end if
-      else
-        !
-        ! use namelist specified dry air mass
-        !
-        drym_loc = scale_dry_air_mass
-      end if
     end if
 
 
