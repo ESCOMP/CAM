@@ -1145,13 +1145,14 @@ subroutine read_inidat(dyn_in)
      else
        target_global_avg_dry_ps = ps_dry_topo
      end if
+     call set_dry_mass(dyn_in, target_global_avg_dry_ps)
    else if (scale_dry_air_mass > 0.0_r8) then
      ! User specified scaling target pressure
      target_global_avg_dry_ps = scale_dry_air_mass
-   end if
-     
      call set_dry_mass(dyn_in, target_global_avg_dry_ps)
    end if
+
+
    ! Update halos for initial state fields
    ! halo for 'u' updated in both branches of conditional above
    call cam_mpas_update_halo('w', endrun)

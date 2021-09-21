@@ -881,7 +881,7 @@ contains
     call t_stopf('bc_history_write')
 
     ! Save total enery after physics for energy conservation checks
-    teout = state%te_cur(:,2)
+    teout = state%te_cur(:,dyn_te_idx)
 
     call cam_export(state, cam_out, pbuf)
 

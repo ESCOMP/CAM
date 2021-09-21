@@ -271,13 +271,17 @@ end subroutine check_energy_get_integrals
       else
         cp_or_cv(:,:) = cpair-rair
       endif
+
+      call get_hydrostatic_energy(1,ncol,1,1,pver,pcnst,state%q(1:ncol,1:pver,1:pcnst),&
+           state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver),                         &
+           state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), state%T(1:ncol,1:pver),     &
+           vc_dycore, ps = state%ps(1:ncol), phis = state%phis(1:ncol),                &
+           z = state%z_ini(1:ncol,:),                                                  &
+           te = state%te_ini(1:ncol,dyn_te_idx), H2O = state%tw_ini(1:ncol,dyn_te_idx))
+    else
+      state%te_ini(1:ncol,dyn_te_idx) = state%te_ini(1:ncol,phys_te_idx)
+      state%tw_ini(1:ncol,dyn_te_idx) = state%tw_ini(1:ncol,phys_te_idx)
     end if
-    call get_hydrostatic_energy(1,ncol,1,1,pver,pcnst,state%q(1:ncol,1:pver,1:pcnst),&
-         state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver),                         &
-         state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), state%T(1:ncol,1:pver),     &
-         vc_dycore, ps = state%ps(1:ncol), phis = state%phis(1:ncol),                &
-         z = state%z_ini(1:ncol,:),                                                  &
-         te = state%te_ini(1:ncol,dyn_te_idx), H2O = state%tw_ini(1:ncol,dyn_te_idx))
 
     state%te_cur(:ncol,:) = state%te_ini(:ncol,:)
     state%tw_cur(:ncol,:) = state%tw_ini(:ncol,:)
@@ -317,7 +321,7 @@ end subroutine check_energy_get_integrals
     real(r8), intent(in   ) :: flx_cnd(:)          ! (pcols) -boundary flux of liquid+ice    (m/s) (precip?)
     real(r8), intent(in   ) :: flx_ice(:)          ! (pcols) -boundary flux of ice           (m/s) (snow?)
     real(r8), intent(in   ) :: flx_sen(:)          ! (pcols) -boundary flux of sensible heat (w/m2)
-    
+
 !******************** BAB ******************************************************
 !******* Note that the precip and ice fluxes are in precip units (m/s). ********
 !******* I would prefer to have kg/m2/s.                                ********
@@ -430,7 +434,6 @@ end subroutine check_energy_get_integrals
       state%tw_cur(i,phys_te_idx) = tw(i)
     end do
 
-
     !
     ! Dynamical core total energy
     !
@@ -446,21 +449,21 @@ end subroutine check_energy_get_integrals
         cp_or_cv(:,:) = cpair-rair
       endif
       scaling(:,:) = cpairv(:,:,lchnk)/cp_or_cv(:,:) !cp/cv scaling
+
+      temp(1:ncol,:) = state%temp_ini(1:ncol,:)+scaling(1:ncol,:)*(state%T(1:ncol,:)-state%temp_ini(1:ncol,:))  
+      call get_hydrostatic_energy(1,ncol,1,1,pver,pcnst,state%q(1:ncol,1:pver,1:pcnst),&
+           state%pdel(1:ncol,1:pver),cp_or_cv(1:ncol,1:pver),                          &
+           state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), temp(1:ncol,1:pver),        &
+           vc_dycore, ps = state%ps(1:ncol), phis = state%phis(1:ncol),                &
+           z = state%z_ini(1:ncol,:),                                                  &
+           te = state%te_cur(1:ncol,dyn_te_idx), H2O = state%tw_cur(1:ncol,dyn_te_idx))
     else
-      scaling(:,:) = 1.0_r8
+      state%te_cur(1:ncol,dyn_te_idx) = te(1:ncol)
+      state%tw_cur(1:ncol,dyn_te_idx) = tw(1:ncol)
     end if
-    temp(1:ncol,:) = state%temp_ini(1:ncol,:)+scaling(1:ncol,:)*(state%T(1:ncol,:)-state%temp_ini(1:ncol,:))
-
-    call get_hydrostatic_energy(1,ncol,1,1,pver,pcnst,state%q(1:ncol,1:pver,1:pcnst),&
-         state%pdel(1:ncol,1:pver),cp_or_cv(1:ncol,1:pver),                          &
-         state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), temp(1:ncol,1:pver),        &
-         vc_dycore, ps = state%ps(1:ncol), phis = state%phis(1:ncol),                &
-         z = state%z_ini(1:ncol,:),                                                  &
-         te = state%te_cur(1:ncol,dyn_te_idx), H2O = state%tw_cur(1:ncol,dyn_te_idx))
-    
   end subroutine check_energy_chng
-
-
+    
+    
   subroutine check_energy_gmean(state, pbuf2d, dtime, nstep)
 
     use physics_buffer, only : physics_buffer_desc, pbuf_get_field, pbuf_get_chunk

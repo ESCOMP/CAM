@@ -191,14 +191,14 @@ subroutine physconst_readnl(nlfile)
    use namelist_utils,  only: find_group_name
    use spmd_utils,      only: masterproc, mpicom, masterprocid, mpi_real8, mpi_character
    use cam_logfile,     only: iulog
-   use dyn_tests_utils, only: vc_physics, vc_dycore, string_vc, vc_moist_pressure
+   use dyn_tests_utils, only: vc_physics, vc_dycore, string_vc, vc_moist_pressure, vc_str_lgth
    character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
    ! Local variables
    integer :: unitn, ierr, i
    character(len=*), parameter :: subname = 'physconst_readnl'
    logical :: newg, newsday, newmwh2o, newcpwv, newmwdry, newcpair, newrearth, newtmelt, newomega
-   character (len=108) :: str
+   character (len=vc_str_lgth) :: str
 
    ! Physical constants needing to be reset (e.g., for aqua planet experiments)
    namelist /physconst_nl/  gravit, sday, mwh2o, cpwv, mwdry, cpair, rearth, tmelt, omega
@@ -699,10 +699,8 @@ end subroutine physconst_init
         write(iulog, *) "   thermodynamic_active_species_idx       : ",thermodynamic_active_species_idx(icnst-1)
         write(iulog, *) "   cp                                     : ",thermodynamic_active_species_cp(icnst-1)
         write(iulog, *) "   cv                                     : ",thermodynamic_active_species_cv(icnst-1)
-        if (liq) &
-        write(iulog, *) "   register phase (liquid or ice)         : liquid"
-        if (ice) &
-        write(iulog, *) "   register phase (liquid or ice)         : ice"
+        if (liq) write(iulog, *) "   register phase (liquid or ice)         : liquid"
+        if (ice) write(iulog, *) "   register phase (liquid or ice)         : ice"
         write(iulog, *) "  "
       end if
       liq = .false.
@@ -1323,14 +1321,11 @@ end subroutine physconst_init
      latsub = latvap+latice
      select case (TRIM(enthalpy_reference_state))
      case('ice')
-       if (present(te)) &
-            te = te + latsub*wv_loc  + latice*liq_loc
+       if (present(te)) te = te + latsub*wv_loc  + latice*liq_loc
      case('liq')
-       if (present(te)) &
-            te = te + latvap*wv_loc  - latice*ice_loc
+       if (present(te)) te = te + latvap*wv_loc  - latice*ice_loc
      case('wv')
-       if (present(te)) &
-            te = te - latvap*liq_loc - latsub*ice_loc
+       if (present(te)) te = te - latvap*liq_loc - latsub*ice_loc
      case default
        write(iulog, *) subname//' enthalpy reference state not supported: ',TRIM(enthalpy_reference_state) 
        call endrun(subname // ':: enthalpy reference state not supported')
