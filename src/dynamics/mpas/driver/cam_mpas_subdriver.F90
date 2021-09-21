@@ -2572,8 +2572,6 @@ contains
        use mpas_kind_types, only: RKIND
        use mpas_dmpar, only: mpas_dmpar_sum_real
 
-       implicit none
-
        ! Input variables
        real (RKIND), dimension(:), intent(in) :: rarray
        real (RKIND) :: global_sum
