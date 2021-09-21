@@ -243,7 +243,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    vc_dycore = vc_moist_pressure
    if (masterproc) then
      call string_vc(vc_dycore,str1)
-     write(iulog,*)'vertical coordinate dycore   : ',trim(str1)
+     write(iulog,*)'dycore vertical coordinate : ',trim(str1)
    end if
    ! Initialize prognostics variables
    call initialize_prognostics
