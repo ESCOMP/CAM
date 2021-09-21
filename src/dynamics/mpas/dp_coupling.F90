@@ -129,10 +129,6 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
         nCellsSolve, plev, zz, zint, rho_zz, theta_m, tracers(index_qv,:,:),&
         pmiddry, pintdry, pmid)
 
-!   if (use_gw_front .or. use_gw_front_igw) then
-!     call gws_src_fnct(elem, tl_f, tl_qdp_np0, frontgf, frontga, nphys) ! VARS FOR FRONTAL GRAVITY WAVE - NOT IMPLEMENTED FOR MPAS YET
-!   end if
-
    call t_startf('dpcopy')
 
    ncols = columns_on_task
@@ -803,23 +799,22 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
   real(r8), dimension(nCells) :: liq !total column integrated liquid
   real(r8), dimension(nCells) :: ice !total column integrated ice
 
-  character(len=16) :: name_out1,name_out2,name_out3,name_out4,name_out5,name_out6
+  character(len=16) :: name_out1,name_out2,name_out3,name_out4,name_out5
   
   name_out1 = 'SE_'   //trim(outfld_name_suffix)
   name_out2 = 'KE_'   //trim(outfld_name_suffix)
   name_out3 = 'WV_'   //trim(outfld_name_suffix)
   name_out4 = 'WL_'   //trim(outfld_name_suffix)
   name_out5 = 'WI_'   //trim(outfld_name_suffix)
-  name_out6 = 'TT_'   //trim(outfld_name_suffix)   
   
   if ( hist_fld_active(name_out1).or.hist_fld_active(name_out2).or.hist_fld_active(name_out3).or.&
-       hist_fld_active(name_out4).or.hist_fld_active(name_out5).or.hist_fld_active(name_out6)) then
+       hist_fld_active(name_out4).or.hist_fld_active(name_out5)) then
     
     kinetic_energy   = 0.0_r8
     potential_energy = 0.0_r8
     internal_energy  = 0.0_r8
     water_vapor      = 0.0_r8
-
+    
     do iCell = 1, nCells
       do k = 1, nVertLevels
         dz(k,iCell)   = zgrid(k+1,iCell) - zgrid(k,iCell)
@@ -827,7 +822,7 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
         rhod(k,iCell) = zz(k,iCell) * rho_zz(k,iCell)
         rho_dz        = (1.0_r8+q(index_qv,k,iCell))*rhod(iCell,k)*dz(iCell,k)
         theta         = theta_m(k,iCell)/(1.0_r8 + Rv_over_Rd *q(index_qv,k,iCell))!convert theta_m to theta
-
+        
         exner         = (rgas*rhod(k,iCell)*theta_m(k,iCell)/p0)**(rgas/cv)
         temperature   = exner*theta
 
@@ -845,30 +840,34 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
     !
     ! vertical integral of total liquid water
     !
-    liq = 0._r8     
-    do idx = 1,thermodynamic_active_species_liq_num
-      do iCell = 1, nCells
-        do k = 1, nVertLevels
-          liq(iCell) = liq(iCell) + &
-                       q(thermodynamic_active_species_liq_idx_dycore(idx),k,iCell)*rhod(iCell,k)*dz(iCell,k)
+    if (hist_fld_active(name_out4)) then 
+      liq = 0._r8     
+      do idx = 1,thermodynamic_active_species_liq_num
+        do iCell = 1, nCells
+          do k = 1, nVertLevels
+            liq(iCell) = liq(iCell) + &
+                 q(thermodynamic_active_species_liq_idx_dycore(idx),k,iCell)*rhod(iCell,k)*dz(iCell,k)
+          end do
         end do
       end do
-    end do
-    call outfld(name_out4,liq,ncells,1)
+      call outfld(name_out4,liq,ncells,1)
+    end if
     !
     ! vertical integral of total frozen (ice) water
     !
-    ice = 0._r8     
-    do idx = 1,thermodynamic_active_species_ice_num
-      do iCell = 1, nCells
-        do k = 1, nVertLevels
-           ice(iCell) = ice(iCell) + &
-                        q(thermodynamic_active_species_ice_idx_dycore(idx),k,iCell)*rhod(iCell,k)*dz(iCell,k)
-         end do
-       end do
-     end do
-     call outfld(name_out5,ice,ncells,1)
-   end if
+    if (hist_fld_active(name_out5)) then 
+      ice = 0._r8     
+      do idx = 1,thermodynamic_active_species_ice_num
+        do iCell = 1, nCells
+          do k = 1, nVertLevels
+            ice(iCell) = ice(iCell) + &
+                 q(thermodynamic_active_species_ice_idx_dycore(idx),k,iCell)*rhod(iCell,k)*dz(iCell,k)
+          end do
+        end do
+      end do
+      call outfld(name_out5,ice,ncells,1)
+    end if
+  end if
  end subroutine tot_energy
  
 end module dp_coupling

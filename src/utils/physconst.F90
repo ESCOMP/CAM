@@ -230,15 +230,15 @@ subroutine physconst_readnl(nlfile)
    call MPI_bcast(tmelt,  1, mpi_real8, masterprocid, mpicom, ierr)
    call MPI_bcast(omega,  1, mpi_real8, masterprocid, mpicom, ierr)
 
-   newg     =  gravit .ne. shr_const_g
-   newsday  =  sday   .ne. shr_const_sday
-   newmwh2o =  mwh2o  .ne. shr_const_mwwv
-   newcpwv  =  cpwv   .ne. shr_const_cpwv
-   newmwdry =  mwdry  .ne. shr_const_mwdair
-   newcpair =  cpair  .ne. shr_const_cpdair
-   newrearth=  rearth .ne. shr_const_rearth
-   newtmelt =  tmelt  .ne. shr_const_tkfrz
-   newomega =  omega  .ne. shr_const_omega
+   newg     =  gravit /= shr_const_g
+   newsday  =  sday   /= shr_const_sday
+   newmwh2o =  mwh2o  /= shr_const_mwwv
+   newcpwv  =  cpwv   /= shr_const_cpwv
+   newmwdry =  mwdry  /= shr_const_mwdair
+   newcpair =  cpair  /= shr_const_cpdair
+   newrearth=  rearth /= shr_const_rearth
+   newtmelt =  tmelt  /= shr_const_tkfrz
+   newomega =  omega  /= shr_const_omega
 
    if (newg .or. newsday .or. newmwh2o .or. newcpwv .or. newmwdry .or. newrearth .or. newtmelt .or. newomega) then
       if (masterproc) then
@@ -729,9 +729,9 @@ end subroutine physconst_init
     ! array initialized by the dycore
     thermodynamic_active_species_ice_idx_dycore = -99
 
-    if (water_species_in_air_num.ne.1+liq_num+ice_num) then
-      write(iulog, *) subname//'  water_species_in_air_num.ne.1+liq_num+ice_num'
-      call endrun(subname // ':: water_species_in_air_num.ne.1+liq_num+ice_num')
+    if (water_species_in_air_num /= 1+liq_num+ice_num) then
+      write(iulog, *) subname//'  water_species_in_air_num /= 1+liq_num+ice_num'
+      call endrun(subname // ':: water_species_in_air_num /= 1+liq_num+ice_num')
     end if
     enthalpy_reference_state = 'ice'
     if (masterproc) then

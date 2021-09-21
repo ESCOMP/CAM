@@ -464,7 +464,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    ! Initialize FV dynamical core state variables
 
    use physconst,       only: pi, omega, rearth, rair, cpair, zvir
-   use physconst,       only: thermodynamic_active_species_num, thermodynamic_active_species_idx
+   use physconst,       only: thermodynamic_active_species_idx
    use physconst,       only: thermodynamic_active_species_idx_dycore, rair, cpair
    use physconst,       only: thermodynamic_active_species_liq_idx,thermodynamic_active_species_ice_idx
    use physconst,       only: thermodynamic_active_species_liq_idx_dycore,thermodynamic_active_species_ice_idx_dycore

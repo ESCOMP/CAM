@@ -355,7 +355,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    character(len=*), parameter :: subname = 'dyn_comp::dyn_init'
 
    ! variables for initializing energy and axial angular momentum diagnostics
-   integer, parameter                         :: num_stages = 3, num_vars = 8
+   integer, parameter                         :: num_stages = 3, num_vars = 5
    character (len = 3), dimension(num_stages) :: stage = (/"dBF","dAP","dAM"/)
    character (len = 55),dimension(num_stages) :: stage_txt = (/&
       " dynamics state before physics (d_p_coupling)       ",&  
@@ -363,20 +363,17 @@ subroutine dyn_init(dyn_in, dyn_out)
       " dynamics state with full physics increment (incl.q)" &  
       /)
 
-   character (len = 2)  , dimension(num_vars) :: vars  = (/"WV"  ,"WL"  ,"WI"  ,"SE"   ,"KE"   ,"MR"   ,"MO"   ,"TT"   /)
+   character (len = 2)  , dimension(num_vars) :: vars  = (/"WV"  ,"WL"  ,"WI"  ,"SE"   ,"KE"/)
    character (len = 45) , dimension(num_vars) :: vars_descriptor = (/&
       "Total column water vapor                ",&
       "Total column cloud water                ",&
       "Total column cloud ice                  ",&
       "Total column static energy              ",&
-      "Total column kinetic energy             ",&
-      "Total column wind axial angular momentum",&
-      "Total column mass axial angular momentum",&
-      "Total column test tracer                "/)
+      "Total column kinetic energy             "/)
    character (len = 14), dimension(num_vars)  :: &
       vars_unit = (/&
       "kg/m2        ","kg/m2        ","kg/m2        ","J/m2         ",&
-      "J/m2         ","kg*m2/s*rad2 ","kg*m2/s*rad2 ","kg/m2        "/)
+      "J/m2         "/)
 
    integer :: istage, ivars, m
    character (len=108)         :: str1, str2, str3
@@ -1655,7 +1652,13 @@ end subroutine cam_mpas_namelist_read
 !> \brief Scale dry air mass
 !> \author Bill Skamarock, Miles Curry
 !> \date   25 April 2021
-!> \details
+!> \details Given a target dry air mass surface pressure, 
+!> target_avg_dry_surface_pressure, scale the current dry air mass so 
+!> that the average dry surface pressure equals 
+!> target_avg_dry_surface_pressure. Water vapor is scaled for mass-
+!> conservation; all other tracer mixing ratios are unaltered
+!> (i.e. tracer mass is not conserved but gradients are during the
+!> dry mass scaling process)
 !
 !-----------------------------------------------------------------------
 subroutine set_dry_mass(dyn_in, target_avg_dry_surface_pressure)
