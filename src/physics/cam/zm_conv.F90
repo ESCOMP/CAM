@@ -159,7 +159,7 @@ end subroutine zm_convi
 
 
 subroutine zm_convr(lchnk   ,ncol    , &
-                    t       ,qh      ,omega  ,prec    ,jctop   ,jcbot   , &
+                    t       ,qh      ,prec    ,jctop   ,jcbot   , &
                     pblh    ,zm      ,geos    ,zi      ,qtnd    , &
                     heat    ,pap     ,paph    ,dpp     , &
                     delt    ,mcon    ,cme     ,cape    , &
@@ -292,7 +292,6 @@ subroutine zm_convr(lchnk   ,ncol    , &
 
    real(r8), intent(in) :: t(pcols,pver)          ! grid slice of temperature at mid-layer.
    real(r8), intent(in) :: qh(pcols,pver)   ! grid slice of specific humidity.
-   real(r8), intent(in) :: omega(pcols,pver)      ! RBN - Omega to be used in parcel energy calculation
    real(r8), intent(in) :: pap(pcols,pver)     
    real(r8), intent(in) :: paph(pcols,pver+1)
    real(r8), intent(in) :: dpp(pcols,pver)        ! local sigma half-level thickness (i.e. dshj).
@@ -800,7 +799,7 @@ subroutine zm_convr(lchnk   ,ncol    , &
       !     lcl, lel, parcel launch level at index maxi()=hmax
 
       call buoyan_dilute(lchnk   ,ncol    , &
-                  q       ,t       ,omega   ,p       ,z       ,pf       , &
+                  q       ,t       ,p       ,z       ,pf       , &
                   tp      ,qstp    ,tl      ,rl      ,cape     , &
                   pblt    ,lcl     ,lel     ,lon     ,maxi     , &
                   rgas    ,grav    ,cpres   ,msg     , &

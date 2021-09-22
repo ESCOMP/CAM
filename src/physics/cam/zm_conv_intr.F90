@@ -76,6 +76,7 @@ module zm_conv_intr
    real(r8) :: zmconv_dmpdz = unset_r8        ! Parcel fractional mass entrainment rate
    real(r8) :: zmconv_tiedke_add = unset_r8   ! Convective parcel temperature perturbation
    real(r8) :: zmconv_capelmt = unset_r8      ! Triggering thereshold for ZM convection
+   logical  :: zmconv_parcel_pbl = .false.             ! switch for parcl pbl calculation
 
 
 !  indices for fields in the physics buffer
@@ -367,7 +368,7 @@ subroutine zm_conv_init(pref_edge)
     call zm_convi(limcnv,zmconv_c0_lnd, zmconv_c0_ocn, zmconv_ke, zmconv_ke_lnd, &
                   zmconv_momcu, zmconv_momcd, zmconv_num_cin, zmconv_org, &
                   zmconv_microp, no_deep_pbl, zmconv_tiedke_add, &
-                  zmconv_capelmt, zmconv_dmpdz)
+                  zmconv_capelmt, zmconv_dmpdz,zmconv_parcel_pbl)
 
     cld_idx         = pbuf_get_index('CLD')
     fracis_idx      = pbuf_get_index('FRACIS')
