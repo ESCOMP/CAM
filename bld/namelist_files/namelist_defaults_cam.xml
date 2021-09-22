@@ -2444,7 +2444,7 @@
 <zmconv_tiedke_add                                                    > 0.5     </zmconv_tiedke_add>
 <zmconv_capelmt                                                       > 70.0    </zmconv_capelmt>
 
-<zmconv_parcel_pdf                                                    > .false. </zmconv_parcel_pdf>
+<zmconv_parcel_pbl                                                    > .false. </zmconv_parcel_pbl>
 
 <!-- Cloud sedimentation -->
 
