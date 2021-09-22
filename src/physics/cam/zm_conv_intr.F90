@@ -183,7 +183,8 @@ subroutine zm_conv_readnl(nlfile)
    namelist /zmconv_nl/ zmconv_c0_lnd, zmconv_c0_ocn, zmconv_num_cin, &
                         zmconv_ke, zmconv_ke_lnd, zmconv_org, &
                         zmconv_momcu, zmconv_momcd, zmconv_microp, &
-                        zmconv_dmpdz, zmconv_tiedke_add, zmconv_capelmt
+                        zmconv_dmpdz, zmconv_tiedke_add, zmconv_capelmt, &
+                        zmconv_parcel_pbl
    !-----------------------------------------------------------------------------
 
    if (masterproc) then
@@ -226,6 +227,8 @@ subroutine zm_conv_readnl(nlfile)
    if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_tiedke_add")
    call mpi_bcast(zmconv_capelmt,           1, mpi_real8, masterprocid, mpicom, ierr)
    if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_capelmt")
+   call mpi_bcast(zmconv_parcel_pbl,        1, mpi_real8, masterprocid, mpicom, ierr)
+   if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_parcel_pbl") 
 
 end subroutine zm_conv_readnl
 
