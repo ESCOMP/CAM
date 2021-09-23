@@ -4033,6 +4033,9 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
    real(r8), intent(in) :: pblt(pcols)          ! index of pbl depth
    real(r8), intent(in) :: tpert(pcols)         ! perturbation temperature by pbl processes
 
+! RBN: Use z interface for parcel calculations.
+   real(r8), intent(in) :: zf(pcols,pver+1)     ! height at interfaces
+
 !
 ! output arguments
 !
@@ -4122,7 +4125,6 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
       mx(i) = lon(i)
       cape(i) = 0._r8
       hmax(i) = 0._r8
-      first_kelt0 = .True.
       pbl_z(i) = z(i,pblt(i)) 
       parcel_ztop(i) = 0.5_r8*pbl_z(i) ! 0.5*Boundary layer top by default
       parcel_hdp(i) = 0._r8
