@@ -117,6 +117,7 @@ fi
 
 # Initialize variables which may not be set
 submit_script_cime=''
+xml_driver="mct"
 
 while [ "${1:0:1}" == "-" ]; do
     case $1 in

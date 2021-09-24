@@ -22,6 +22,7 @@ INTERFACE_OBJS = \
 
 DYN_OBJS = \
 	mpas_atm_time_integration.o \
+	mpas_atm_boundaries.o \
 	mpas_atm_iau.o
 
 DIAG_OBJS = \
@@ -228,7 +229,7 @@ incs: $(REGISTRY_FILE)
 #
 dycore: $(DYN_OBJS) $(DIAGNOSTICS) $(DIAG_OBJS) $(INTERFACE_OBJS)
 
-mpas_atm_time_integration.o: mpas_atm_iau.o mpas_atm_dimensions.o
+mpas_atm_time_integration.o: mpas_atm_iau.o mpas_atm_dimensions.o mpas_atm_boundaries.o
 
 
 #
