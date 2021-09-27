@@ -6804,7 +6804,7 @@ Default: set by build-namelist.
 
 <entry id="photo_max_zen" type="real" category="cam_chem"
        group="chem_inparm" valid_values="" >
-Maximum zeniith angle (degrees) used for photolysis.
+Maximum zenith angle (degrees) used for photolysis.
 Default: set by build-namelist.
 </entry>
 
