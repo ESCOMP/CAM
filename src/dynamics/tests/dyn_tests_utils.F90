@@ -44,7 +44,7 @@ contains
       str = 'Height (z) vertical coordinate'
     case default
       write(iulog,*) 'string_vc: invalid vc= ',vc
-      call endrun('string_vc: invalid vc ='//int2str(vc))
+      call endrun('string_vc: invalid vc ='//trim(int2str(vc)))
     end select
   end subroutine string_vc
 end module dyn_tests_utils
