@@ -260,7 +260,9 @@ subroutine set_time_float_from_date( time, year, month, day, sec )
   type(ESMF_TimeInterval) :: diff
   integer :: useday
 
-  if ( (calendar==shr_cal_noleap) .and. (month==2) .and. (day==29) ) then ! workaround leap days for NOLEAP cal
+  if ( ((calendar==shr_cal_noleap).or.(.not.is_leapyear(year))) &
+       .and. (month==2) .and. (day==29) ) then
+     ! set day to 28 when the calendar / year does not have a leap day
      useday = 28
   else
      useday = day
@@ -319,7 +321,7 @@ endsubroutine set_date_from_time_float
 
 logical function is_leapyear( yr )
   integer, intent(in) :: yr
-  is_leapyear = mod(yr,100)/=0 .and. mod(yr,4)==0
+  is_leapyear = (mod(yr, 400) == 0 .or. mod(yr,100) /= 0) .and. mod(yr,4)==0
 end function is_leapyear
 
 
