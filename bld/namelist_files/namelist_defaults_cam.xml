@@ -52,6 +52,8 @@
 <ncdata hgrid="mpasa480" nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa480_L32_notopo_coords_c201125.nc</ncdata>
 <ncdata hgrid="mpasa120" nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa120_L32_notopo_coords_c201216.nc</ncdata>
 <ncdata hgrid="mpasa120" nlev="32" analytic_ic="1" phys="cam6" >atm/cam/inic/mpas/mpasa120_L32_topo_coords_c201022.nc</ncdata>
+<ncdata hgrid="mpasa60"  nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa60_L32_notopo_coords_c210518.nc</ncdata>
+<ncdata hgrid="mpasa60"  nlev="32" analytic_ic="1" phys="cam6" >atm/cam/inic/mpas/mpasa60_L32_topo_coords_c210518.nc</ncdata>
 
 <!-- Files with initial conditions -->
 <ncdata dyn="fv"  hgrid="0.23x0.31" nlev="26" ic_ymd="101"      >atm/cam/inic/fv/cami_0000-01-01_0.23x0.31_L26_c100513.nc</ncdata>
@@ -251,6 +253,7 @@
 
 <ncdata hgrid="mpasa120" nlev="32" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa120_L32_CFSR_c210426.nc</ncdata>
 <ncdata hgrid="mpasa480" nlev="32" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa480_L32_CFSR_c211013.nc</ncdata>
+<ncdata hgrid="mpasa60"  nlev="32" >atm/cam/inic/mpas/mpasa60.CFSR2000.L32.210518.nc</ncdata>
 
 <!-- Topography -->
 <bnd_topo hgrid="256x512" >atm/cam/topo/topo-from-cami_0000-01-01_256x512_L26_c030918.nc</bnd_topo>
@@ -306,6 +309,7 @@
 <bnd_topo hgrid="ne0np4.ARCTICGRIS.ne30x8" >atm/cam/topo/se/ne30x8_ARCTICGRIS_nc3000_Co060_Fi001_MulG_PF_RR_Nsw042_c200428.nc</bnd_topo>
 
 <bnd_topo hgrid="mpasa120" >atm/cam/topo/mpas/mpas_120_nc3000_Co060_Fi001_MulG_PF_Nsw042_c200921.nc</bnd_topo>
+<<<<<<< HEAD
 <bnd_topo hgrid="mpasa480" >atm/cam/topo/mpas_480_nc3000_Co240_Fi001_MulG_PF_Nsw170.nc</bnd_topo>
 
 <!-- Scale Dry Air Mass: 0=> no scaling / +nnn=>scale to nnn Pressure  -->
@@ -317,6 +321,9 @@
 <scale_dry_air_mass phys="cam6"                                                    >  98288.0D0 </scale_dry_air_mass>
 <scale_dry_air_mass phys="spcam_m2005"                                             >  98288.0D0 </scale_dry_air_mass>
 <scale_dry_air_mass phys="spcam_sam1mom"                                           >  98288.0D0 </scale_dry_air_mass>
+=======
+<bnd_topo hgrid="mpasa60"  >atm/cam/topo/mpas_60_nc3000_Co030_Fi001_MulG_PF_Nsw021.nc</bnd_topo>
+>>>>>>> 8dbed14f1... Add mpasa60 topography and initial conditions to namelist defaults
 
 <!-- Ridge parameterization (gamma) -->
 <bnd_rdggm hgrid="0.9x1.25">atm/cam/topo/fv_0.9x1.25_nc3000_Nsw006_Nrs002_Co008_Fi001_ZR_c160505.nc</bnd_rdggm>
