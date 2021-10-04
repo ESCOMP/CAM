@@ -7059,6 +7059,12 @@ If TRUE, then use the ALI-ARMS scheme (NOTE---Needs additional details)
 Default: FALSE
 </entry>
 
+<entry id="nlte_aliarms_every_x" type="integer" category="waccm_phys"
+       group="radheat_nl" valid_values="" >
+Call ALI-ARMS every X times
+Default: 1
+</entry>
+
 <entry id="qbo_cyclic" type="logical" category="waccm_phys"
        group="qbo_nl" valid_values="" >
 TRUE implies assume cyclic qbo data.

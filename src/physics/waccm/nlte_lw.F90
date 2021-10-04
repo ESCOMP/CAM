@@ -24,6 +24,7 @@ module nlte_lw
 
 ! Public interfaces
   public &
+       nlte_register,      &
        nlte_init,          &
        nlte_timestep_init, &
        nlte_tend
@@ -36,6 +37,7 @@ module nlte_lw
 !  = .false. uses constituents from bnd dataset cftgcm
 
   logical :: nlte_use_aliarms
+  integer :: nlte_aliarms_every_X
 
   logical :: use_data_o3
   logical :: use_waccm_forcing = .false.
@@ -54,6 +56,8 @@ module nlte_lw
   integer :: io3                            ! O3 index
   integer :: ih                             ! H index
   integer :: ino                            ! NO index
+  integer :: qrlaliarms_idx = -1
+  integer :: aliarms_count_idx = -1
 
 ! merge limits for data ozone
   integer :: nbot_mlt                       ! bottom of pure tgcm range
@@ -64,7 +68,23 @@ module nlte_lw
 contains
 !================================================================================================
 
-  subroutine nlte_init (pref_mid, max_pressure_lw, nlte_use_mo_in, nlte_limit_co2, nlte_use_aliarms_in)
+  subroutine nlte_register(nlte_aliarms_every_X)
+  use physics_buffer,   only: pbuf_add_field, dtype_r8, dtype_i4
+
+  integer, intent(in) :: nlte_aliarms_every_X
+
+  call pbuf_add_field('qrlaliarms',  'global', dtype_r8, (/pcols,pver/),qrlaliarms_idx)
+
+  if (nlte_aliarms_every_X > 1) then
+     call pbuf_add_field('aliarms_count',  'global', dtype_i4, (/pcols/),aliarms_count_idx)
+  end if
+
+  end subroutine nlte_register
+
+!================================================================================================
+
+  subroutine nlte_init (pref_mid, max_pressure_lw, nlte_use_mo_in, nlte_limit_co2, nlte_use_aliarms_in, nlte_aliarms_every_X_in,&
+                        pbuf2d)
 !
 ! Initialize the nlte parameterizations and tgcm forcing data, if required
 !------------------------------------------------------------------------
@@ -73,12 +93,16 @@ contains
     use cam_history,  only: add_default, addfld
     use mo_waccm_hrates,  only: has_hrates
     use phys_control, only: phys_getopts
+    use physics_buffer, only : physics_buffer_desc, pbuf_set_field
 
     real(r8),         intent(in) :: pref_mid(plev)
     real(r8),         intent(in) :: max_pressure_lw
     logical,          intent(in) :: nlte_use_mo_in
     logical,          intent(in) :: nlte_limit_co2
     logical,          intent(in) :: nlte_use_aliarms_in
+    integer,          intent(in) :: nlte_aliarms_every_X_in
+
+    type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
 
     real(r8) :: psh(pver)                  ! pressure scale height
@@ -93,8 +117,12 @@ contains
     call phys_getopts(history_waccm_out=history_waccm)
 
 ! Set flag to use mozart (or tgcm) consituents and flag to use ALI-ARMS scheme
-    nlte_use_mo = nlte_use_mo_in
-    nlte_use_aliarms = nlte_use_aliarms_in
+    nlte_use_mo          = nlte_use_mo_in
+    nlte_use_aliarms     = nlte_use_aliarms_in
+    nlte_aliarms_every_X = nlte_aliarms_every_X_in
+
+    ! Force the aliarms to be called on the first timestep by setting it to the value of nlte_aliarms_every_X
+    if (aliarms_count_idx > 1) call pbuf_set_field(pbuf2d, aliarms_count_idx, nlte_aliarms_every_X)
 
     ! ask rad_constituents module whether the O3 used in the climate
     ! calculation is from data
@@ -182,7 +210,10 @@ contains
     end if
 
 ! add to masterfield list
-    call addfld ('qrlaliarms',(/ 'lev' /), 'A','K/s','qrlaliarms')
+    if (nlte_use_aliarms) then 
+       call addfld ('qrlaliarms',(/ 'lev' /), 'A','K/s','qrlaliarms')
+    end if
+
     call addfld ('QRLNLTE',(/ 'lev' /), 'A','K/s','Non-LTE LW heating (includes QNO and QO3P)')
     call addfld ('QNO',    (/ 'lev' /), 'A','K/s','NO cooling')
     call addfld ('QCO2',   (/ 'lev' /), 'A','K/s','CO2 cooling')
@@ -239,6 +270,7 @@ contains
     use physics_buffer, only : physics_buffer_desc
     use perf_mod,      only: t_startf, t_stopf
     use cam_history,   only: outfld
+    use physics_buffer,only: pbuf_get_field
 
 ! Arguments
     type(physics_state), target, intent(in)  :: state   ! Physics state variables
@@ -256,7 +288,9 @@ contains
     real(r8) :: qout (pcols,pver)    ! temp for outfld
     real(r8) :: co2cool(pcols,pver), o3cool(pcols,pver), c2scool(pcols,pver)
 
-    real(r8) :: qrlaliarms(pcols,pver) ! ALI-ARMS NLTE CO2 cooling rate
+    real(r8), pointer :: qrlaliarms(:,:) ! ALI-ARMS NLTE CO2 cooling rate
+    integer, pointer :: aliarms_count(:)! Counter for optional skipping of ALI-ARMS
+
     real(r8) :: qrlfomichev(pcols,pver) ! Fomichev cooling rate
 
     real(r8), pointer, dimension(:,:) :: xco2mmr  ! CO2 mmr 
@@ -322,6 +356,19 @@ contains
     ! Create the VMR arrays for ALI-ARMS
     if (nlte_use_aliarms) then
 
+       call pbuf_get_field(pbuf, qrlaliarms_idx, qrlaliarms )
+
+       ! If not skipping ALI-ARMS calls, need to allocate space and set to 1
+       if (nlte_aliarms_every_X == 1) then
+          allocate(aliarms_count(pcols),stat=ierr)
+          if (ierr /=0) then
+            call endrun(subname // ': Allocate error for aliarms_count')
+          end if
+          aliarms_count(:) = 1
+       else
+          call pbuf_get_field(pbuf, aliarms_count_idx, aliarms_count)
+       end if
+
        allocate (xo2VMR(pcols,pver),stat=ierr)
        if (ierr /=0) then
          call endrun(subname // ': Allocate error for xo2VMR')
@@ -361,26 +408,34 @@ contains
 
     call t_startf('nlte_aliarms_calc')
     if (nlte_use_aliarms) then
-       qrlaliarms(:,:) = 0._r8
-       call nlte_aliarms_calc (lchnk,ncol,state%zm, state%pmid,state%t, &
+       ! Only need to test the first aliarms_count as all pcols of them move together
+       if (aliarms_count(1) == nlte_aliarms_every_X) then
+          qrlaliarms(:,:) = 0._r8
+          call nlte_aliarms_calc (lchnk,ncol,state%zm, state%pmid,state%t, &
                                 xo2VMR,xoVMR,xn2VMR,xco2VMR,qrlaliarms)
-       do j=1,pver
-          do i=1,ncol
-             if (is_nan(qrlaliarms(i,j))) then
-                write(errstring,*) 'nlte_lw: Nan in qrlaliarms for chunk', lchnk, 'and column',ncol
-                call endrun (errstring)
-             end if
+          do j=1,pver
+             do i=1,ncol
+                if (is_nan(qrlaliarms(i,j))) then
+                   write(errstring,*) 'nlte_lw: Nan in qrlaliarms for chunk', lchnk, 'and column',ncol
+                   call endrun (errstring)
+                end if
+             end do
           end do
-       end do
+
+          qrlaliarms(:ncol,:) = qrlaliarms(:ncol,:) * cpairv(:ncol,:,lchnk)
+
 !!! CAC NOTE - PROBABABLY NEED TO PICK A MORE REALISTIC NUMBER THAN 1
-       if (any(qrlaliarms(:,:) > 1.0)) then
-          write(errstring,*) 'nlte_lw: Invalid value in qrlaliarms for chunk', lchnk, 'and column',ncol
-          call endrun (errstring)
+          if (any(qrlaliarms(:,:) > 1.0)) then
+             write(errstring,*) 'nlte_lw: Invalid value in qrlaliarms for chunk', lchnk, 'and column',ncol
+             call endrun (errstring)
+          end if
+          aliarms_count(:) = 1
+       else
+         aliarms_count(:) = aliarms_count(:) +1
        end if
 
        ! Apply the ALI-ARMS heating rate to the qrlf summation
        qrlf(:ncol,:) = 0._r8
-       qrlaliarms(:ncol,:) = qrlaliarms(:ncol,:) * cpairv(:ncol,:,lchnk)
        qrlf(:ncol,:) = o3cool(:ncol,:) + qrlaliarms(:ncol,:)
 
     else
@@ -402,8 +457,10 @@ contains
        qrlf(:ncol,k) = qrlf(:ncol,k) + nocool(:ncol,k) + o3pcool(:ncol,k)
     end do
 
-    qout(:ncol,:) = qrlaliarms(:ncol,:)
-    call outfld ('qrlaliarms'    , qout, pcols, lchnk)
+    if (nlte_use_aliarms) then 
+       qout(:ncol,:) = qrlaliarms(:ncol,:)
+       call outfld ('qrlaliarms'    , qout, pcols, lchnk)
+    end if
     qout(:ncol,:) = nocool(:ncol,:)/cpairv(:ncol,:,lchnk)
     call outfld ('QNO'    , qout, pcols, lchnk)
     qout(:ncol,:) = o3pcool(:ncol,:)/cpairv(:ncol,:,lchnk)
@@ -424,6 +481,7 @@ contains
        deallocate (xco2VMR)
        deallocate (xoVMR)
        deallocate (xo3VMR)
+       if (nlte_aliarms_every_X == 1) deallocate(aliarms_count)
     end if
 
   end subroutine nlte_tend

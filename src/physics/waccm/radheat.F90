@@ -31,6 +31,7 @@ module radheat
 ! Public interfaces
   public  &
        radheat_readnl,        &!
+       radheat_register,      &!
        radheat_init,          &!
        radheat_timestep_init, &!
        radheat_tend            ! return net radiative heating
@@ -43,6 +44,7 @@ module radheat
                                   !  = .false. uses constituents from prescribed dataset waccm_forcing_file
   logical :: nlte_limit_co2 = .false. ! if true apply upper limit to co2 in the Formichev scheme 
   logical :: nlte_use_aliarms = .false. ! If true, use ALI-ARMS instead of Formichev scheme
+  integer :: nlte_aliarms_every_X = 1 ! Call aliarms every X times radiation is called
   
 ! Private variables for merging heating rates
   real(r8):: qrs_wt(pver)             ! merge weight for cam solar heating
@@ -78,7 +80,7 @@ contains
     use namelist_utils,  only: find_group_name
     use units,           only: getunit, freeunit
     use cam_abortutils,  only: endrun
-    use spmd_utils,     only : mpicom, masterprocid, mpi_logical
+    use spmd_utils,     only : mpicom, masterprocid, mpi_logical, mpi_integer
 
     use waccm_forcing,   only: waccm_forcing_readnl
 
@@ -88,7 +90,7 @@ contains
     integer :: unitn, ierr
     character(len=*), parameter :: subname = 'radheat_readnl'
 
-    namelist /radheat_nl/ nlte_use_mo, nlte_limit_co2, nlte_use_aliarms
+    namelist /radheat_nl/ nlte_use_mo, nlte_limit_co2, nlte_use_aliarms,nlte_aliarms_every_X
 
     if (masterproc) then
        unitn = getunit()
@@ -111,6 +113,8 @@ contains
     if (ierr /= 0) call endrun("radheat_readnl: FATAL: mpi_bcast: nlte_limit_co2")
     call mpi_bcast (nlte_use_aliarms, 1, mpi_logical, masterprocid, mpicom, ierr)
     if (ierr /= 0) call endrun("radheat_readnl: FATAL: mpi_bcast: nlte_use_aliarms")
+    call mpi_bcast (nlte_aliarms_every_X, 1, mpi_integer, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun("radheat_readnl: FATAL: mpi_bcast: nlte_aliarms_every_X")
 
     ! Have waccm_forcing read its namelist as well.
     call waccm_forcing_readnl(nlfile)
@@ -119,15 +123,30 @@ contains
 
 !================================================================================================
 
-  subroutine radheat_init(pref_mid)
+  subroutine radheat_register
+
+    use nlte_lw, only : nlte_register
+
+    ! only ALI-ARMS has pbuf fields to register
+    if (nlte_use_aliarms) then
+       call nlte_register(nlte_aliarms_every_X)
+    end if
+
+  end subroutine radheat_register
+
+!================================================================================================
+
+  subroutine radheat_init(pref_mid, pbuf2d)
 
     use nlte_lw,          only: nlte_init
     use cam_history,      only: add_default, addfld
     use phys_control,     only: phys_getopts
+    use physics_buffer, only : physics_buffer_desc
 
     ! args
 
     real(r8),          intent(in) :: pref_mid(pver) ! mid point reference pressure
+    type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
     ! local vars
 
@@ -224,7 +243,7 @@ contains
     end if
 
     if (waccm_heating) then
-       call nlte_init(pref_mid, max_pressure_lw, nlte_use_mo, nlte_limit_co2, nlte_use_aliarms)
+       call nlte_init(pref_mid, max_pressure_lw, nlte_use_mo, nlte_limit_co2, nlte_use_aliarms,nlte_aliarms_every_X, pbuf2d)
     endif
 
 ! Add history variables to master field list
