@@ -425,7 +425,7 @@ contains
           qrlaliarms(:ncol,:) = qrlaliarms(:ncol,:) * cpairv(:ncol,:,lchnk)
 
 !!! CAC NOTE - PROBABABLY NEED TO PICK A MORE REALISTIC NUMBER THAN 1
-          if (any(qrlaliarms(:,:) > 1.0)) then
+          if (any(qrlaliarms(:,:) > 1.0_r8)) then
              write(errstring,*) 'nlte_lw: Invalid value in qrlaliarms for chunk', lchnk, 'and column',ncol
              call endrun (errstring)
           end if

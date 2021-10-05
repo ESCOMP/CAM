@@ -18,7 +18,7 @@ module nlte_aliarms
      nlte_aliarms_init, &
      nlte_aliarms_calc
 
-  real :: max_pressure_aliarms   ! max_pressure_lw scaled mbar
+  real(r8) :: max_pressure_aliarms   ! max_pressure_lw scaled mbar
 
 contains
 
