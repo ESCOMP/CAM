@@ -24,6 +24,7 @@ save
 ! Public interfaces
 public  &
    radheat_readnl,        &!
+   radheat_register,      &!
    radheat_init,          &!
    radheat_timestep_init, &!
    radheat_tend            ! return net radiative heating
@@ -44,13 +45,21 @@ end subroutine radheat_readnl
 
 !================================================================================================
 
-subroutine radheat_init(pref_mid)
+  subroutine radheat_register
+
+  ! No options for this version of radheat; this is just a stub.
+
+  end subroutine radheat_register
+
+!================================================================================================
+
+subroutine radheat_init(pref_mid,pbuf2d)
 
    use pmgrid, only: plev
    use physics_buffer, only : physics_buffer_desc
 
    real(r8), intent(in) :: pref_mid(plev)
-
+   type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
 end subroutine radheat_init
 
