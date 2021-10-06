@@ -398,8 +398,6 @@ subroutine dyn_init(dyn_in, dyn_out)
    type(domain2d), pointer     :: domain
    integer                     :: i,j,m
 
-   character(len=*), parameter :: subname = 'dyn_init'
-
    ! variables for initializing energy and axial angular momentum diagnostics
    character (len = 3), dimension(8) :: stage = (/"dED","dAP","dBD","dAT","dAF","dAD","dAR","dBF"/)
    character (len = 70),dimension(8) :: stage_txt = (/&
@@ -858,7 +856,6 @@ subroutine read_inidat(dyn_in)
   use dimensions_mod,        only: nlev
   use constituents,          only: pcnst, cnst_is_a_water_species
   use physconst,             only: thermodynamic_active_species_num, dry_air_species_num, thermodynamic_active_species_idx_dycore
-  use physconst,             only: ps_dry_topo, ps_dry_notopo
   use pio,                   only: file_desc_t, pio_seterrorhandling, pio_bcast_error
   use ppgrid,                only: pver
   use cam_abortutils,        only: endrun
@@ -917,7 +914,6 @@ subroutine read_inidat(dyn_in)
   real(r8)                                  :: fv3_totwatermass, fv3_airmass
   real(r8)                                  :: reldif
   logical                                   :: inic_wet !initial condition is based on wet pressure and water species
-  real(r8)                                  :: target_global_avg_dry_ps
 
   !-----------------------------------------------------------------------
 
@@ -1321,22 +1317,10 @@ subroutine read_inidat(dyn_in)
      deallocate(pstmp)
   end if
   !
-  ! Don't scale air mass if scale_dry_air_mass=0.0
-  ! If scale_dry_air_mass < 0.0, then use the reference pressures defined in physconst.F90 as the
-  ! target global average dry pressure to scale to. If scale_dry_air_mass > 0, then use it
-  ! as the target.
-  if (scale_dry_air_mass /= 0.0_r8) then
-    if (scale_dry_air_mass < 0.0_r8) then
-      if (.not. associated(fh_topo)) then
-        target_global_avg_dry_ps = ps_dry_notopo
-      else
-        target_global_avg_dry_ps = ps_dry_topo
-      end if
-    else
-      ! User specified scaling target pressure
-      target_global_avg_dry_ps = scale_dry_air_mass
-    end if
-    call set_dry_mass(Atm, target_global_avg_dry_ps)
+  ! If scale_dry_air_mass > 0.0 then scale dry air mass to scale_dry_air_mass global average dry pressure
+  ! If scale_dry_air_mass = 0.0 don't scale
+  if (scale_dry_air_mass > 0.0_r8) then
+    call set_dry_mass(Atm, scale_dry_air_mass)
   end if
 
 

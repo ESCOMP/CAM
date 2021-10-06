@@ -302,16 +302,16 @@
 
 <bnd_topo hgrid="mpasa120" >atm/cam/topo/mpas/mpas_120_nc3000_Co060_Fi001_MulG_PF_Nsw042_c200921.nc</bnd_topo>
 
-<!-- Scale Dry Air Mass: -1=>scaling to Pressure / 0=> no scaling / +nnn=>scale to nnn Pressure  -->
-<scale_dry_air_mass                                                                  > -1.0  </scale_dry_air_mass>
-<scale_dry_air_mass analytic_ic="1"                                                  >  0.0  </scale_dry_air_mass>
-<scale_dry_air_mass phys="adiabatic"                                                 >  0.0  </scale_dry_air_mass>
-<scale_dry_air_mass phys="held_suarez"                                               >  0.0  </scale_dry_air_mass>
-<scale_dry_air_mass phys="kessler"                                                   >  0.0  </scale_dry_air_mass>
-<scale_dry_air_mass phys="tj2016"                                                    >  0.0  </scale_dry_air_mass>
-
-<scale_dry_air_mass dyn="mpas"                                                       >  0.0 </scale_dry_air_mass>
-<scale_dry_air_mass dyn="mpas" analytic_ic="0" hgrid="mpasa120"                      > -1.0 </scale_dry_air_mass>
+<!-- Scale Dry Air Mass: 0=> no scaling / +nnn=>scale to nnn Pressure  -->
+<!-- Scale Dry Air Mass: for cases without topography -->
+<scale_dry_air_mass                                                                >      0.0D0 </scale_dry_air_mass>
+<scale_dry_air_mass aquaplanet="1"                                                 > 101080.0D0 </scale_dry_air_mass>
+<scale_dry_air_mass phys="held_suarez"                                             > 101080.0D0 </scale_dry_air_mass>
+<scale_dry_air_mass analytic_ic="1"                                                > 101080.0D0 </scale_dry_air_mass>
+<!-- Scale Dry Air Mass: for cases with topography -->
+<scale_dry_air_mass phys="cam4"                                                    >  98288.0D0 </scale_dry_air_mass>
+<scale_dry_air_mass phys="cam5"                                                    >  98288.0D0 </scale_dry_air_mass>
+<scale_dry_air_mass phys="cam6"                                                    >  98288.0D0 </scale_dry_air_mass>
 
 <!-- Ridge parameterization (gamma) -->
 <bnd_rdggm hgrid="0.9x1.25">atm/cam/topo/fv_0.9x1.25_nc3000_Nsw006_Nrs002_Co008_Fi001_ZR_c160505.nc</bnd_rdggm>

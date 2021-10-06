@@ -22,7 +22,7 @@ use phys_control,    only: phys_getopts
 use constituents,    only: pcnst, cnst_name, cnst_longname, sflxnam, tendnam, &
                            fixcnam, tottnam, hadvnam, vadvnam, cnst_get_ind,  &
                            cnst_read_iv, qmin
-use cam_initfiles,   only: initial_file_get_id, topo_file_get_id, pertlim
+use cam_initfiles,   only: initial_file_get_id, topo_file_get_id, pertlim, scale_dry_air_mass
 use inic_analytic,   only: analytic_ic_active, analytic_ic_set_ic
 use dyn_tests_utils, only: vc_moist_pressure
 use cam_history,     only: addfld, add_default, horiz_only
@@ -1091,8 +1091,7 @@ subroutine global_int()
          tmass0 = tmassf_tmp - qmassf_tmp
       else
          ! Globally avgd sfc. partial pressure of dry air (i.e. global dry mass):
-         tmass0 = 98222._r8/gravit
-         if (.not. associated(fh_topo)) tmass0 = (101325._r8-245._r8)/gravit
+         tmass0 = scale_dry_air_mass/gravit
       end if
 
       if (masterproc) then

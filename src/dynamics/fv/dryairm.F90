@@ -24,7 +24,6 @@ subroutine dryairm( grid,  moun,  ps,   tracer,  delp,                   &
  use pio,                 only: file_desc_t
  use cam_initfiles,       only: topo_file_get_id, scale_dry_air_mass
  use cam_logfile,         only: iulog
- use physconst,           only: ps_dry_topo, ps_dry_notopo
  implicit   none
 
  type (T_FVDYCORE_GRID), intent(in) :: grid
@@ -63,18 +62,12 @@ subroutine dryairm( grid,  moun,  ps,   tracer,  delp,                   &
       real(r8), allocatable :: psdkg(:,:,:)    ! global work array
 ! dry surface pressure
       real(r8)    psd(grid%ifirstxy:grid%ilastxy,grid%jfirstxy:grid%jlastxy)
-      real(r8)   drym,drym_loc            ! global mean dry air mass in pascals
 
       integer :: im, jm, km                            ! Dimensions
       integer :: ifirstxy, ilastxy, jfirstxy, jlastxy  ! XY slice
       integer :: nq                            ! Number of advective tracers         
       real(r8):: ptop
 
-#if defined ( NAVY10 )
-      parameter (drym = 98222.0_r8)           ! For US NAVY 10-min terrain
-#else
-      parameter (drym = ps_dry_topo)           ! For USGS terrain
-#endif
       type(file_desc_t), pointer :: fh_topo
 
       integer  i, j, k, ic
@@ -94,28 +87,8 @@ subroutine dryairm( grid,  moun,  ps,   tracer,  delp,                   &
     jlastxy    = grid%jlastxy
     nq         = grid%nq
     ptop       = grid%ptop
-
-    if (scale_dry_air_mass < 0.0_r8) then
-      !
-      ! use standard dry air mass
-      !
-      if (.not. associated(fh_topo)) then
-        drym_loc = ps_dry_notopo
-      else
-        drym_loc = drym
-      end if
-    else if (scale_dry_air_mass > 0.0_r8) then
-      !
-      ! use namelist specified dry air mass
-      !
-      drym_loc = scale_dry_air_mass
-    else
-      !
-      ! scale_dry_air_mass == 0.0_r8, no scaling of dry air mass
-      !
-      return
-    end if
-
+    
+    if (scale_dry_air_mass == 0.0_r8) return
 
 ! Check global maximum/minimum
 
@@ -208,7 +181,7 @@ subroutine dryairm( grid,  moun,  ps,   tracer,  delp,                   &
     if( nlres_loc ) return
 
     if(moun) then
-       dpd = drym_loc - psdry
+       dpd = scale_dry_air_mass - psdry
     else
        dpd = 1000._r8*100._r8 - psdry
     endif

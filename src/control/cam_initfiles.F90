@@ -182,6 +182,13 @@ subroutine cam_initfiles_readnl(nlfile)
 
       write(iulog,*) &
          '  Maximum abs value of scale factor used to perturb initial conditions, pertlim= ', pertlim
+      if (scale_dry_air_mass == 0) then
+         write(iulog,*) &
+              '  Initial condition dry mass will not be scaled.'
+      else
+         write(iulog,*) &
+              '  Initial condition dry mass will be scaled to: ',scale_dry_air_mass,' Pa'
+      end if
 
 #ifdef PERGRO
       write(iulog,*)'  The PERGRO CPP token is defined.'

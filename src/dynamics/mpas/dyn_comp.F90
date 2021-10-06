@@ -727,7 +727,6 @@ subroutine read_inidat(dyn_in)
    use mpas_constants, only : rgas
    use mpas_constants, only : p0
    use mpas_constants, only : gravity
-   use physconst,      only : ps_dry_topo, ps_dry_notopo
    use string_utils,   only : int2str
    use shr_kind_mod,   only : shr_kind_cx
    ! arguments
@@ -778,8 +777,6 @@ subroutine read_inidat(dyn_in)
    real(r8), allocatable :: mpas3d(:,:,:)
 
    real(r8), allocatable :: qv(:), tm(:)
-
-   real(r8) :: target_global_avg_dry_ps
 
    real(r8) :: dz, h
    logical  :: readvar
@@ -1138,21 +1135,10 @@ subroutine read_inidat(dyn_in)
 
    theta_m(:,1:nCellsSolve) = theta(:,1:nCellsSolve) * (1.0_r8 + Rv_over_Rd * tracers(ixqv,:,1:nCellsSolve))
 
-   ! Don't scale air mass if scale_dry_air_mass=0.0
-   ! If scale_dry_air_mass < 0.0, then use the reference pressures defined in physconst.F90 as the
-   ! target global average dry pressure to scale to. If scale_dry_air_mass > 0, then use it
-   ! as the target.
-   if (scale_dry_air_mass < 0.0_r8) then
-     if (.not. associated(fh_topo)) then
-       target_global_avg_dry_ps = ps_dry_notopo
-     else
-       target_global_avg_dry_ps = ps_dry_topo
-     end if
-     call set_dry_mass(dyn_in, target_global_avg_dry_ps)
-   else if (scale_dry_air_mass > 0.0_r8) then
-     ! User specified scaling target pressure
-     target_global_avg_dry_ps = scale_dry_air_mass
-     call set_dry_mass(dyn_in, target_global_avg_dry_ps)
+   ! If scale_dry_air_mass > 0.0 then scale dry air mass to scale_dry_air_mass global average dry pressure
+   ! If scale_dry_air_mass = 0.0 don't scale
+   if (scale_dry_air_mass > 0.0_r8) then
+     call set_dry_mass(dyn_in, scale_dry_air_mass)
    end if
 
 

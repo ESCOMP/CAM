@@ -1167,7 +1167,7 @@ subroutine read_inidat(dyn_in)
    use fvm_mapping,         only: dyn2fvm_mass_vars
    use control_mod,         only: runtype,initial_global_ave_dry_ps
    use prim_driver_mod,     only: prim_set_dry_mass
-   use physconst,           only: thermodynamic_active_species_idx, ps_dry_topo, ps_dry_notopo
+   use physconst,           only: thermodynamic_active_species_idx
    use cam_initfiles,       only: scale_dry_air_mass
    ! Arguments
    type (dyn_import_t), target, intent(inout) :: dyn_in   ! dynamics import
@@ -1214,7 +1214,6 @@ subroutine read_inidat(dyn_in)
    character(len=128)               :: errmsg
    character(len=*), parameter      :: sub='READ_INIDAT'
 
-   real(r8)                         :: target_global_avg_dry_ps
    ! fvm vars
    real(r8), allocatable            :: inv_dp_darea_fvm(:,:,:)
    real(r8)                         :: min_val, max_val
@@ -1695,29 +1694,16 @@ subroutine read_inidat(dyn_in)
       end do
    end if
 
-   ! scale PS to achieve prescribed dry mass following FV dycore (dryairm.F90)
-#ifndef planet_mars
-   ! If scale_dry_air_mass < 0.0, then use the reference pressures defined in physconst.F90 as the
-   ! target global average dry pressure to scale to. If scale_dry_air_mass>0, then use it
-   ! as the target.
+   ! If scale_dry_air_mass > 0.0 then scale dry air mass to scale_dry_air_mass global average dry pressure
+   ! If scale_dry_air_mass = 0.0 don't scale
    if (runtype == 0) then
-     if (scale_dry_air_mass /= 0.0_r8) then
-       if (scale_dry_air_mass < 0.0_r8) then
-         if (.not. associated(fh_topo)) then
-           target_global_avg_dry_ps = ps_dry_notopo
-         else
-           target_global_avg_dry_ps = ps_dry_topo
-         end if
-       else
-         ! User specified scaling target pressure
-         target_global_avg_dry_ps = scale_dry_air_mass
+     if (scale_dry_air_mass > 0.0_r8) then
+       if (iam < par%nprocs) then
+         call prim_set_dry_mass(elem, hvcoord, scale_dry_air_mass, qtmp)
        end if
-      if (iam < par%nprocs) then
-        call prim_set_dry_mass(elem, hvcoord, target_global_avg_dry_ps, qtmp)
-      end if
-    end if
-  end if
-#endif
+     end if
+   end if
+
    ! store Q values:
    !
    ! if CSLAM is NOT active then state%Qdp for all constituents
