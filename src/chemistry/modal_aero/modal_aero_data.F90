@@ -16,7 +16,7 @@
       use spmd_utils,      only: masterproc
       use ppgrid,          only: pcols, pver, begchunk, endchunk
       use mo_tracname,     only: solsym
-      use chem_mods,       only: gas_pcnst  
+      use chem_mods,       only: gas_pcnst
       use radconstants,    only: nswbands, nlwbands
       use shr_const_mod,   only: pi => shr_const_pi
       use rad_constituents,only: rad_cnst_get_info, rad_cnst_get_aer_props, rad_cnst_get_mode_props
@@ -40,7 +40,7 @@
       !
       ! definitions for aerosol chemical components
       !
-      
+
       real(r8), public, protected, allocatable :: specmw_amode(:,:)
       character(len=16), public, protected, allocatable :: modename_amode(:)
 
@@ -58,6 +58,7 @@
       real(r8), public, protected, allocatable :: dgnum_amode(:)
       real(r8), public, protected, allocatable :: dgnumlo_amode(:)
       real(r8), public, protected, allocatable :: dgnumhi_amode(:)
+      integer,  public, protected, allocatable :: mode_size_order(:)
 
       !   input sigmag_amode
       real(r8), public, protected, allocatable :: sigmag_amode(:)
@@ -139,7 +140,7 @@
       real(r8) :: qneg3_worst_thresh_amode(pcnst)
 
       integer :: qqcw(pcnst)=-1 ! Remaps modal_aero indices into pbuf
-      
+
       logical :: convproc_do_aer
       logical :: cam_do_aero_conv = .true.
     contains
@@ -150,11 +151,9 @@
 
     character(len=6) :: xname_numptr, xname_numptrcw
     character(len=1) :: modechr
-    integer :: m, l, iptr,i, n, tot_spec, idx
+    integer :: m, l, iptr,i, idx
     character(len=3) :: trnum       ! used to hold mode number (as characters)
 
-    character(len=20) :: dumStr1, specNameMode
-    character(len=1000) :: msg
     character(len=32) :: spec_name, mode_type
     character(len=1) :: modestr
 
@@ -176,6 +175,7 @@
        mcalcwater_amode(:) = 0
     endif
     allocate(dgnum_amode(ntot_amode))
+    allocate(mode_size_order(ntot_amode))
     allocate(dgnumlo_amode(ntot_amode))
     allocate(dgnumhi_amode(ntot_amode))
     allocate(sigmag_amode(ntot_amode))
@@ -250,7 +250,7 @@
           if (xname_massptr(l,m)(:3) == 'so4') nSO4=nSO4+1
        enddo
     enddo
-    
+
     allocate( &
          lmassptr_amode( nspec_max, ntot_amode ),&
          lmassptrcw_amode( nspec_max, ntot_amode ),&
@@ -259,6 +259,7 @@
          lptr2_bc_a_amode(ntot_amode,nbc),   lptr2_bc_cw_amode(ntot_amode,nbc), &
          lptr2_soa_g_amode(nsoa) &
          )
+    lmassptr_amode = -999999
     lptr2_soa_g_amode = -999999
 
     allocate( specrefndxsw(nswbands,nspec_max,ntot_amode ) )
@@ -407,21 +408,15 @@
        !--------------------------------------------------------------
        ! ... local variables
        !--------------------------------------------------------------
-       integer :: l, m, i, lchnk
-       integer :: m_idx, s_idx, ndx
+       integer :: l, m, i, lchnk, tmp
 
-       character(len=3) :: trnum       ! used to hold mode number (as characters)
        integer :: qArrIndex
-       integer  :: numaerosols     ! number of bulk aerosols in climate list
-       character(len=20) :: bulkname
        complex(r8), pointer  :: refindex_aer_sw(:), &
             refindex_aer_lw(:)
        real(r8), pointer :: qqcw(:,:)
        real(r8), parameter :: huge_r8 = huge(1._r8)
        character(len=*), parameter :: routine='modal_aero_initialize'
        character(len=32) :: spec_type
-       character(len=32) :: spec_name
-       character(len=1) :: modestr
        integer :: soa_ndx
 
        !-----------------------------------------------------------------------
@@ -431,6 +426,8 @@
           call rad_cnst_get_mode_props(0, m, &
              sigmag=sigmag_amode(m), dgnum=dgnum_amode(m), dgnumlo=dgnumlo_amode(m), &
              dgnumhi=dgnumhi_amode(m), rhcrystal=rhcrystal_amode(m), rhdeliques=rhdeliques_amode(m))
+
+          mode_size_order(m) = m
 
           !   compute frequently used parameters: ln(sigmag),
           !   volume-to-number and volume-to-surface conversions, ...
@@ -448,6 +445,17 @@
           alnv2nhi_amode(m) = log( voltonumbhi_amode(m) )
 
        end do
+
+       do i = 1, ntot_amode-1 ! order from largest to smallest
+          do m = 2, ntot_amode
+             if (dgnum_amode(mode_size_order(m-1))<dgnum_amode(mode_size_order(m))) then
+                tmp = mode_size_order(m-1)
+                mode_size_order(m-1)= mode_size_order(m)
+                mode_size_order(m) = tmp
+             endif
+          enddo
+       enddo
+
        lptr2_soa_g_amode(:) = -1
        soa_ndx = 0
        do i = 1, pcnst
@@ -459,7 +467,7 @@
        if (.not.any(lptr2_soa_g_amode>0)) call endrun('modal_aero_data_init: lptr2_soa_g_amode is not set properly')
        ! Properties of mode specie types.
 
-       !     values from Koepke, Hess, Schult and Shettle, Global Aerosol Data Set 
+       !     values from Koepke, Hess, Schult and Shettle, Global Aerosol Data Set
        !     Report #243, Max-Planck Institute for Meteorology, 1997a
        !     See also Hess, Koepke and Schult, Optical Properties of Aerosols and Clouds (OPAC)
        !     BAMS, 1998.
@@ -485,31 +493,8 @@
                   density_aer=specdens_amode(l,m), &
                   hygro_aer=spechygro(l,m)         )
 
-             if ( soa_multi_species ) then
-                ! Molecular weight for the species
-                specmw_amode(l,m) = cnst_mw(qArrIndex)
-             else ! the follow preserves the molecular weights historically used in MAM
-                call rad_cnst_get_info(0, m, l, spec_type=spec_type )
-                select case( spec_type )
-                case('sulfate')
-                   if (ntot_amode==7) then
-                      specmw_amode(l,m) = 96._r8
-                   else
-                      specmw_amode(l,m) = 115._r8
-                   endif
-                case('ammonium')
-                   specmw_amode(l,m) = 18._r8
-                case('p-organic','s-organic','black-c')
-                   specmw_amode(l,m) = 12._r8
-                case('seasalt')
-                   specmw_amode(l,m) = 58.5_r8
-                case('dust')
-                   specmw_amode(l,m) = 135._r8
-                case default
-                   call endrun('modal_aero_data_init: species type not recognized: '//trim(spec_type))
-                end select
-             endif
- 
+                 specmw_amode(l,m) = cnst_mw(qArrIndex)
+
              if(masterproc) then
                 write(iulog,9212) '        name : ', cnst_name(qArrIndex)
                 write(iulog,9213) ' density, MW : ', specdens_amode(l,m), specmw_amode(l,m)
@@ -545,7 +530,7 @@
        !   set threshold for reporting negatives from subr qneg3
        !   for aerosol number species set this to
        !      1e3 #/kg ~= 1e-3 #/cm3 for accum, aitken, pcarbon, ufine modes
-       !      3e1 #/kg ~= 3e-5 #/cm3 for fineseas and finedust modes 
+       !      3e1 #/kg ~= 3e-5 #/cm3 for fineseas and finedust modes
        !      1e0 #/kg ~= 1e-6 #/cm3 for other modes which are coarse
        !   for other species, set this to zero so that it will be ignored
        !      by qneg3
@@ -598,7 +583,7 @@
 !--------------------------------------------------------------
         subroutine qqcw_set_ptr(index, iptr)
           use cam_abortutils, only : endrun
-          
+
 
           integer, intent(in) :: index, iptr
 
@@ -625,13 +610,13 @@
           nullify(qqcw_get_field)
           error = .false.
           if (index>0 .and. index <= pcnst) then
-             if (qqcw(index)>0) then 
+             if (qqcw(index)>0) then
                 call pbuf_get_field(pbuf, qqcw(index), qqcw_get_field)
              else
                 error = .true.
              endif
           else
-             error = .true.             
+             error = .true.
           end if
 
           if (error .and. .not. present(errorhandle)) then
@@ -820,7 +805,7 @@
        character(len=*), intent(in):: name_to_find, list_of_names(:)
        integer, intent(in) :: list_length
        integer, intent(out) :: name_id
-       
+
        integer :: i
        name_id = -999888777
        if (name_to_find .ne. ' ') then
@@ -847,7 +832,7 @@
        implicit none
 
        !   local variables
-       integer :: i, l, l2, lmassa, lmassc, m
+       integer :: i, l, lmassa, lmassc, m
        character(len=1000) :: msg
        character*8 :: dumname
        character*3 :: tmpch3
@@ -973,7 +958,7 @@
              dumname = trim(adjustl(xname_massptr(l,m)))
              tmpch3  = trim(adjustl(dumname(:3)))
              if(trim(adjustl(tmpch3)) == 'so4' .or. trim(adjustl(tmpch3)) == 'SO4') then
-                specmw_so4_amode = specmw_amode(l,m) 
+                specmw_so4_amode = specmw_amode(l,m)
              endif
           enddo
        enddo
@@ -992,7 +977,7 @@
        write(iulog,*) 'modeptr_finedust =', modeptr_finedust
        write(iulog,*) 'modeptr_coarseas =', modeptr_coarseas
        write(iulog,*) 'modeptr_coardust =', modeptr_coardust
-       
+
        dumname = 'none'
        write(iulog,9240)
        write(iulog,9000) 'sulfate    '
@@ -1041,7 +1026,7 @@
           write(iulog,'(i4,2x,i12,2x,a,20x,a,i2.2,a)') i, l, cnst_name(l), 'lptr2_soa', i, '_g'
        end do
 
-       write(iulog,9000) 'black-c    '    
+       write(iulog,9000) 'black-c    '
        do m = 1, ntot_amode
           do i = 1, nbc
              write(dumname,'(a,i2.2)') 'bc', i
@@ -1111,8 +1096,6 @@
           m, laptr, lcptr, txtdum )
        !
        !   does some output for initaermodes_setspecptrs
-
-       use constituents, only: pcnst, cnst_name
 
        implicit none
 
@@ -1200,5 +1183,3 @@
      end subroutine initaermodes_set_cnstnamecw
 
   end module modal_aero_data
-
-

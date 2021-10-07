@@ -237,10 +237,9 @@ module modal_aero_newnuc
 	mass1p_aithi = tmpa*(dphim_mode(1)**3)
 
 !   compute qv_sat = saturation specific humidity
-	call qsat(t(1:ncol, 1:pver), pmid(1:ncol, 1:pver), &
-            ev_sat(1:ncol, 1:pver), qv_sat(1:ncol, 1:pver))
-
-
+        do k = 1, pver
+	   call qsat(t(1:ncol,k), pmid(1:ncol,k), ev_sat(1:ncol,k), qv_sat(1:ncol,k), ncol)
+        end do
 !
 !   loop over levels and columns to calc the renaming
 !

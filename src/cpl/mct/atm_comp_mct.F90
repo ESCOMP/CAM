@@ -2,13 +2,13 @@ module atm_comp_mct
 
   use pio              , only: file_desc_t, io_desc_t, var_desc_t, pio_double, pio_def_dim, &
                                pio_put_att, pio_enddef, pio_initdecomp, pio_read_darray, pio_freedecomp, &
-                               pio_closefile, pio_write_darray, pio_def_var, pio_inq_varid, &
+                               pio_write_darray, pio_def_var, pio_inq_varid, &
 	                       pio_noerr, pio_bcast_error, pio_internal_error, pio_seterrorhandling
   use mct_mod
   use seq_cdata_mod
   use esmf
 
-  use seq_comm_mct      , only: seq_comm_inst, seq_comm_name, seq_comm_suffix, num_inst_atm
+  use seq_comm_mct      , only: seq_comm_inst, seq_comm_name, seq_comm_suffix
   use shr_flds_mod      , only: shr_flds_dom_coord, shr_flds_dom_other
   use seq_flds_mod      , only: seq_flds_x2a_fields, seq_flds_a2x_fields
   use seq_infodata_mod
@@ -28,16 +28,16 @@ module atm_comp_mct
   use cam_cpl_indices
   use atm_import_export
   use cam_comp,          only: cam_init, cam_run1, cam_run2, cam_run3, cam_run4, cam_final
-  use cam_instance     , only: cam_instance_init, inst_suffix, inst_index
+  use cam_instance     , only: cam_instance_init
   use cam_control_mod  , only: cam_ctrl_set_orbit
   use radiation        , only: radiation_nextsw_cday
-  use phys_grid        , only: get_ncols_p, ngcols, get_gcol_p, get_rlat_all_p, &
-	                       get_rlon_all_p, get_area_all_p
+  use phys_grid        , only: pgcols => num_global_phys_cols
+  use phys_grid        , only: get_ncols_p, get_gcol_p, get_area_all_p
+  use phys_grid        , only: get_rlat_all_p, get_rlon_all_p
+  use phys_grid        , only: get_grid_dims
   use ppgrid           , only: pcols, begchunk, endchunk
-  use dyn_grid         , only: get_horiz_grid_dim_d
   use camsrfexch       , only: cam_out_t, cam_in_t
   use cam_initfiles    , only: cam_initfiles_get_caseid, cam_initfiles_get_restdir
-  use cam_abortutils   , only: endrun
   use filenames        , only: interpret_filename_spec
   use spmd_utils       , only: spmdinit, masterproc, iam
   use time_manager     , only: get_curr_calday, advance_timestep, get_curr_date, get_nstep, &
@@ -81,9 +81,9 @@ module atm_comp_mct
 
   logical :: dart_mode = .false.
 
-!================================================================================
+!==============================================================================
 CONTAINS
-!================================================================================
+!==============================================================================
 
   subroutine atm_init_mct( EClock, cdata_a, x2a_a, a2x_a, NLFilename )
 
@@ -257,6 +257,7 @@ CONTAINS
             initial_run_in=initial_run, &
             restart_run_in=restart_run, &
             branch_run_in=branch_run, &
+            post_assim_in=dart_mode, &
             calendar=calendar, &
             brnch_retain_casename=brnch_retain_casename, &
             aqua_planet=aqua_planet, &
@@ -280,6 +281,7 @@ CONTAINS
             curr_tod=curr_tod, &
             cam_out=cam_out, &
             cam_in=cam_in)
+
        !
        ! Initialize MCT gsMap, domain and attribute vectors (and dof)
        !
@@ -308,7 +310,7 @@ CONTAINS
        ! Set flag to specify that an extra albedo calculation is to be done (i.e. specify active)
        !
        call seq_infodata_PutData(infodata, atm_prognostic=.true.)
-       call get_horiz_grid_dim_d(hdim1_d, hdim2_d)
+       call get_grid_dims(hdim1_d, hdim2_d)
        call seq_infodata_PutData(infodata, atm_nx=hdim1_d, atm_ny=hdim2_d)
 
        ! Set flag to indicate that CAM will provide carbon and dust deposition fluxes.
@@ -610,7 +612,6 @@ CONTAINS
     !
     integer, allocatable :: gindex(:)
     integer :: i, n, c, ncols, sizebuf, nlcols
-    integer :: ier            ! error status
     !-------------------------------------------------------------------
 
     ! Build the atmosphere grid numbering for MCT
@@ -639,7 +640,7 @@ CONTAINS
     end do
 
     nlcols = get_nlcols_p()
-    call mct_gsMap_init( gsMap_atm, gindex, mpicom_atm, ATMID, nlcols, ngcols)
+    call mct_gsMap_init( gsMap_atm, gindex, mpicom_atm, ATMID, nlcols, pgcols)
 
     deallocate(gindex)
 
@@ -793,7 +794,7 @@ CONTAINS
     call getfil(pname_srf_cam, fname_srf_cam)
 
     call cam_pio_openfile(File, fname_srf_cam, 0)
-    call pio_initdecomp(pio_subsystem, pio_double, (/ngcols/), dof, iodesc)
+    call pio_initdecomp(pio_subsystem, pio_double, (/pgcols/), dof, iodesc)
     allocate(tmp(size(dof)))
 
     nf_x2a = mct_aVect_nRattr(x2a_a)
@@ -868,12 +869,12 @@ CONTAINS
          yr_spec=yr_spec, mon_spec=mon_spec, day_spec=day_spec, sec_spec= sec_spec )
 
     call cam_pio_createfile(File, fname_srf_cam, 0)
-    call pio_initdecomp(pio_subsystem, pio_double, (/ngcols/), dof, iodesc)
+    call pio_initdecomp(pio_subsystem, pio_double, (/pgcols/), dof, iodesc)
 
     nf_x2a = mct_aVect_nRattr(x2a_a)
     allocate(varid_x2a(nf_x2a))
 
-    rcode = pio_def_dim(File,'x2a_nx',ngcols,dimid(1))
+    rcode = pio_def_dim(File,'x2a_nx',pgcols,dimid(1))
     do k = 1,nf_x2a
        call mct_aVect_getRList(mstring,k,x2a_a)
        itemc = mct_string_toChar(mstring)
@@ -885,7 +886,7 @@ CONTAINS
     nf_a2x = mct_aVect_nRattr(a2x_a)
     allocate(varid_a2x(nf_a2x))
 
-    rcode = pio_def_dim(File,'a2x_nx',ngcols,dimid(1))
+    rcode = pio_def_dim(File,'a2x_nx',pgcols,dimid(1))
     do k = 1,nf_a2x
        call mct_aVect_getRList(mstring,k,a2x_a)
        itemc = mct_string_toChar(mstring)

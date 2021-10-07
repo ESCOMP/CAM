@@ -15,7 +15,6 @@ module cam_grid_support
   public iMap
 
   integer, parameter, public :: max_hcoordname_len   = 16
-  real(r8), parameter :: grid_fill_value = -900.0_r8
   !---------------------------------------------------------------------------
   !
   !  horiz_coord_t: Information for horizontal dimension attributes
@@ -580,8 +579,6 @@ contains
       allocate(this%vardesc)
       call cam_pio_def_var(File, trim(this%name), pio_double,                 &
            (/ dimid /), this%vardesc, existOK=.false.)
-      ierr= pio_put_att(File, this%vardesc, '_FillValue', grid_fill_value)
-      call cam_pio_handle_error(ierr, 'Error writing "_FillValue" attr in write_horiz_coord_attr')
       ! long_name
       ierr=pio_put_att(File, this%vardesc, 'long_name', trim(this%long_name))
       call cam_pio_handle_error(ierr, 'Error writing "long_name" attr in write_horiz_coord_attr')
@@ -600,9 +597,6 @@ contains
         ! long_name
         ierr=pio_put_att(File, this%bndsvdesc, 'long_name', trim(this%name)//' bounds')
         call cam_pio_handle_error(ierr, 'Error writing bounds "long_name" attr in write_horiz_coord_attr')
-        ! fill value
-        ierr= pio_put_att(File, this%vardesc, '_FillValue', grid_fill_value)
-        call cam_pio_handle_error(ierr, 'Error writing "_FillValue" attr in write_horiz_coord_attr')
         ! units
         ierr=pio_put_att(File, this%bndsvdesc, 'units', trim(this%units))
         call cam_pio_handle_error(ierr, 'Error writing bounds "units" attr in write_horiz_coord_attr')
@@ -2145,8 +2139,6 @@ contains
         allocate(attr%vardesc)
         call cam_pio_def_var(File, trim(attr%name), pio_int, attr%vardesc,    &
              existOK=.false.)
-        ierr= pio_put_att(File, attr%vardesc, '_FillValue', int(grid_fill_value))
-        call cam_pio_handle_error(ierr, 'Error writing "_FillValue" attr in write_cam_grid_attr_0d_int')
         ierr=pio_put_att(File, attr%vardesc, 'long_name', trim(attr%long_name))
         call cam_pio_handle_error(ierr, 'Error writing "long_name" attr in write_cam_grid_attr_0d_int')
       else
@@ -2238,8 +2230,6 @@ contains
       allocate(attr%vardesc)
       call cam_pio_def_var(File, trim(attr%name), pio_int, (/dimid/),         &
            attr%vardesc, existOK=.false.)
-      ierr= pio_put_att(File, attr%vardesc, '_FillValue', int(grid_fill_value))
-      call cam_pio_handle_error(ierr, 'Error writing "_FillValue" attr in write_cam_grid_attr_1d_int')
       ierr = pio_put_att(File, attr%vardesc, 'long_name', trim(attr%long_name))
       call cam_pio_handle_error(ierr, 'Error writing "long_name" attr in write_cam_grid_attr_1d_int')
     end if
@@ -2284,9 +2274,6 @@ contains
       allocate(attr%vardesc)
       call cam_pio_def_var(File, trim(attr%name), pio_double, (/dimid/),      &
            attr%vardesc, existOK=.false.)
-      ! fill value
-      ierr =  pio_put_att(File, attr%vardesc, '_FillValue', grid_fill_value)
-      call cam_pio_handle_error(ierr, 'Error writing "_FillValue" attr in write_cam_grid_attr_1d_r8')
       ! long_name
       ierr = pio_put_att(File, attr%vardesc, 'long_name', trim(attr%long_name))
       call cam_pio_handle_error(ierr, 'Error writing "long_name" attr in write_cam_grid_attr_1d_r8')
@@ -3996,6 +3983,7 @@ contains
       deallocate(coord)
       nullify(coord)
     end if
+    call pio_freedecomp(File, iodesc)
     ! Write out lat
     if (associated(this%latmap)) then
       field_lens(1) = size(this%latmap, 1)

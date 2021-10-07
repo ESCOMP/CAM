@@ -1,5 +1,8 @@
  ionos_epotential_model = 'weimer'
- nhtfrq = -24,-24,-24,-24,-24,-24,-24
+ ndens = 1,1,1,1,1,1,1,1,1
+ mfilt = 1,1,1,1,1,1,1,1,1
+ nhtfrq = -24,-24,-24,-24,-24,-24,-24,-24,-24
  fincl7='UI','VI','WI','PHIM2D','POTEN','QIONSUM','ELECDEN','QJOULE',
         'UT_LUNAR','VT_LUNAR'
+ fincl8='op_dt','amb_diff','dfield','dwind'
  apply_lunar_tides=.true.

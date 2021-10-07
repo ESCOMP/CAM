@@ -21,64 +21,6 @@
 # that the root of the source tree can be derived from the location of this
 # script.
 #
-# configure has an optional test mode to check that the Fortran90 compiler
-# works and that external references to the netCDF and MPI libraries can be
-# resolved at link time.
-#
-#
-# Date        Contributor         Modification
-# -----------------------------------------------------------------------------------------------------
-# 2012-09-10  Fischer             Use MCT configure script, and build as seperate library.
-# 2011-08-18  Eaton               Produce a config.h file needed by the latest PIO and MCT source.
-#
-# 2011-08-05  Fischer             Set number of instances when running cam stand alone.  Otherwise use
-#                                 values set by CESM1 scripts.
-#
-# 2010-01-22  Kay, Eaton          Added COSP simulator option.
-#
-# 2008-09-22  Edwards             Removed obsolete macros DYN_STATE_INTERFACE and LSMLON, LSMLAT
-#
-# 2008-08-26  Edwards             Added support for external pnetcdf library (-pnc_inc and -pnc_lib) as
-#                                 well as PIO support for Spectral Element dycore
-#
-# 2008-07-30  Eaton               Revise the default calculation of nadv.  Add new option to specify
-#                                 the number of test tracers.  Add new option to specify a non-default
-#                                 microphysics option.
-#
-# 2007-04-13  Eaton               Restore the commandline option -phys so that it can be used with the
-#                                 adiabatic and held_suarez physics options.
-#
-# 2007-03-04  Eaton               The script has been refactored to move the generic configuration file
-#                                 functionality into a separate module (Build::Config).
-#
-# 2006-09-14  Eaton               Add support for linking to external ESMF library.
-#                                 Deprecate interactive mode.
-#
-# 2006-02-14  Eaton               Remove -cam_cfg option and CAM_CFGDIR environment variable: require all
-#                                 configuration files to be in the same directory as the configure script.
-#                                 Remove -cam_root option and CAM_ROOT environment variable: require
-#                                 configure to be located in the CAM src tree.
-#                                 Modifications for CCSM build: delete setting of locations for all
-#                                 external include/mod/lib directories.  These are only needed for the
-#                                 CAM Makefile which is not produced when doing a CCSM build.
-#                                 Remove -esmf_* options.  This was used with the ESMF prototype
-#                                 library which is no longer supported.  Will re-implement ESMF options
-#                                 when we start linking the new ESMF library.
-#
-# 2005-05-05  Eaton               Add -lapack_libdir option to specify directory that contains
-#                                 lapack and blas libraries.  Can also set LAPACK_LIBDIR environment
-#                                 variable.  Currently only used by waccm_mozart on IBM.
-#
-# 2004-12-01  Eaton               Add phys option waccm.  Because this must be consistent
-#                                 with the -chem option, remove commandline option -phys.
-#                                 phys="waccm" is needed so that WACCM specific initial files
-#                                 can be present in DefaultCAMEXPNamelist.xml.
-#
-# 2004-11-15  Eaton               Add -chem options waccm_ghg or waccm_mozart.  Remove old code
-#                                 for ccm366 and lsm options.
-#
-# 2002-05-03  Brian Eaton         Original version
-#-----------------------------------------------------------------------------------------------
 
 use strict;
 #use warnings;
@@ -121,27 +63,28 @@ OPTIONS
                           test_tracers, test_tracers2].
                         Default: none.
      -chem <name>       Build CAM with specified prognostic chemistry package
-                        [ trop_mam3 | trop_mam4 | trop_mam7 | trop_mozart | trop_strat_mam4_vbs | trop_strat_mam4_vbsext | 
-                          waccm_ma | waccm_mad | waccm_mad_mam4 | waccm_ma_mam4 | 
-                          waccm_ma_sulfur | waccm_sc | waccm_sc_mam4 | waccm_tsmlt_mam4 | 
+                        [ trop_mam3 | trop_mam4 | trop_mam7 | trop_mozart |
+                          trop_strat_mam4_ts2 | trop_strat_mam4_vbs | trop_strat_mam4_vbsext |
+                          waccm_ma | waccm_mad | waccm_mad_mam4 | waccm_ma_mam4 |
+                          waccm_ma_sulfur | waccm_sc | waccm_sc_mam4 | waccm_tsmlt_mam4 |
                           terminator | none ].
                         Default: trop_mam4 for cam6 and trop_mam3 for cam5.
      -[no]clubb_sgs     Switch on [off] CLUBB_SGS.  Default: on for cam6, otherwise off.
      -clubb_opts <list> Comma separated list of CLUBB options to turn on/off.  By default they are all off.
                         Current option is: clubb_do_adv (Advect CLUBB moments)
-     -co2_cycle         This option is meant to be used with the -ccsm_seq option.  It modifies the
-                        CAM configuration by increasing the number of advected constituents by 4.
+     -co2_cycle         This option modifies the CAM configuration by
+                        increasing the number of advected constituents by 4.
      -cosp              Enable the COSP simulator.
      -cppdefs <string>  A string of user specified CPP defines.  Appended to
                         Makefile defaults.  E.g. -cppdefs '-DVAR1 -DVAR2'
      -cpl               Coupling framework [mct | nuopc].  Default: mct.
-     -dyn <name>        Dynamical core option: [eul | fv | se].  Default: fv.
+     -dyn <name>        Dynamical core option: [eul | fv | se | fv3 | mpas].  Default: fv.
      -edit_chem_mech    Invokes CAMCHEM_EDITOR to allow the user to edit the chemistry mechanism file
      -hgrid <name>      Specify horizontal grid.  Use nlatxnlon for spectral grids;
                         dlatxdlon for fv grids (dlat and dlon are the grid cell size
                         in degrees for latitude and longitude respectively); nexnp for
                         se grids.
-     -ionosphere        Ionophere module used in WACCMX [ none | wxi | wxie ].
+     -ionosphere        Ionophere module used in WACCMX [ none | wxie ].
      -macrophys <name>  Specify the macrophysics option [rk | park | clubb_sgs].
      -max_n_rad_cnst <n> Maximum number of constituents that are either radiatively
                         active, or in any single diagnostic list for the radiation.
@@ -160,7 +103,7 @@ OPTIONS
                         Currently available: DST,SSLT,SO4,GHG,OC,BC,CARBON16
      -psubcols <n>      Maximum number of sub-columns in a run - set to 1 if not using sub-columns (default)
      -rad <name>        Specify the radiation package [rrtmg | camrt]
-     -silhs             Switch on SILHS. 
+     -silhs             Switch on SILHS.
      -spcam_clubb_sgs   Turn on the SPCAM version of CLUBB
      -spcam_nx <n>      SPCAM x-grid. - defaults to 4 (note the CRM requires spcam_nx to be greater than or equal to 4)
      -spcam_ny <n>      SPCAM y-grid. - defaults to 1
@@ -191,10 +134,8 @@ OPTIONS
 
      -cache <file>      Name of output cache file (default: config_cache.xml).
      -cachedir <file>   Name of directory where output cache file is written (default: CAM build directory).
-     -ccsm_seq          Switch to specify that CAM is being built via CESM scripts.
      -help [or -h]      Print usage to STDOUT.
      -silent [or -s]    Turns on silent mode - only fatal messages issued.
-     -test              Switch on testing of Fortran compiler and external libraries.
      -verbose [or -v]   Turn on verbose echoing of settings made by configure.
      -version           Echo the CVS tag name used to check out this CAM distribution.
 
@@ -214,6 +155,7 @@ OPTIONS
      -debug             Switch to turn on building CAM with debugging compiler options.
      -cosp_libdir <dir> Directory containing COSP library.
      -esmf_libdir <dir> Directory containing ESMF library and esmf.mk file.
+     -fv3core_libdir <dir>  Directory containing FV3 library.
      -fc <name>         User specified Fortran compiler.  Overrides Makefile default.
      -fc_type <name>    Type of Fortran compiler [pgi | intel | gnu | pathscale
                         | ibm | nag].  This argument is used in conjunction
@@ -233,6 +175,7 @@ OPTIONS
      -ldflags <string>  A string of user specified load options.  Appended to
                         Makefile defaults.
      -linker <name>     User specified linker.  Overrides Makefile default of \$(FC).
+     -mpas_libdir <dir> Directory containing MPAS library.
      -mct_libdir <dir>  Directory containing MCT library.  Default: build the library from source
                         in a subdirectory of \$cam_bld.
      -mpi_inc <dir>     Directory containing MPI include files.
@@ -302,7 +245,6 @@ GetOptions(
     "cam_exedir=s"              => \$opts{'cam_exedir'},
     "camiop"                    => \$opts{'camiop'},
     "cc=s"                      => \$opts{'cc'},
-    "ccsm_seq"                  => \$opts{'ccsm_seq'},
     "cflags=s"                  => \$opts{'cflags'},
     "chem=s"                    => \$opts{'chem'},
     "clubb_sgs!"                => \$opts{'clubb_sgs'},
@@ -321,6 +263,7 @@ GetOptions(
     "fc_type=s"                 => \$opts{'fc_type'},
     "fflags=s"                  => \$opts{'fflags'},
     "fopt=s"                    => \$opts{'fopt'},
+    "fv3core_libdir=s"          => \$opts{'fv3core_libdir'},
     "gmake=s"                   => \$opts{'gmake'},
     "h|help"                    => \$opts{'help'},
     "hgrid=s"                   => \$opts{'hgrid'},
@@ -332,6 +275,7 @@ GetOptions(
     "max_n_rad_cnst=s"          => \$opts{'max_n_rad_cnst'},
     "mct_libdir=s"              => \$opts{'mct_libdir'},
     "microphys=s"               => \$opts{'microphys'},
+    "mpas_libdir=s"             => \$opts{'mpas_libdir'},
     "mpi_inc=s"                 => \$opts{'mpi_inc'},
     "mpi_lib=s"                 => \$opts{'mpi_lib'},
     "nadv=s"                    => \$opts{'nadv'},
@@ -364,7 +308,6 @@ GetOptions(
     "spcam_dt=s"                => \$opts{'spcam_dt'},
     "spmd!"                     => \$opts{'spmd'},
     "target_os=s"               => \$opts{'target_os'},
-    "test"                      => \$opts{'test'},
     "unicon"                    => \$opts{'unicon'},
     "usr_mech_infile=s"         => \$opts{'usr_mech_infile'},
     "usr_src=s"                 => \$opts{'usr_src'},
@@ -439,20 +382,6 @@ require Build::Config;
 my $cfg_ref = Build::Config->new("$cfgdir/$config_def_file");
 
 #-----------------------------------------------------------------------------------------------
-# Building from within ccsm scripts?
-my $ccsm_seq = (defined $opts{'ccsm_seq'}) ? 1 : 0;
-$cfg_ref->set('ccsm_seq', $ccsm_seq);
-
-# Note that when building within the CESM scripts the CAM Makefile is not written
-# since the CESM build does not use it.  Many of the checks to ensure that a working
-# CAM Makefile is produced are disabled when the ccsm option is set.  Use the $cam_build
-# variable to turn on CAM specific tests.
-my $cam_build = 1;
-if (($ccsm_seq)) {
-    $cam_build = 0;
-}
-
-#-----------------------------------------------------------------------------------------------
 # CAM root directory.
 # Check for standalone or CESM checkout
 my $cam_root = absolute_path("$cfgdir/..");
@@ -514,20 +443,6 @@ if (defined $opts{'cam_exedir'}) {
 }
 else { # use default value
     $cam_exedir = absolute_path($cfg_ref->get('cam_exedir'));
-}
-
-if ($cam_build) {
-
-    if (-d $cam_exedir or mkdirp($cam_exedir)) {
-        # If the install directory exists or can be made then set the value...
-        $cfg_ref->set('cam_exedir', $cam_exedir);
-    } else {
-        die <<"EOF";
-** Could not create the specified CAM installation directory: $cam_exedir
-EOF
-    }
-
-    if ($print>=2) { print "CAM executable will be created in: $cam_exedir$eol"; }
 }
 
 #-----------------------------------------------------------------------------------------------
@@ -723,6 +638,10 @@ if (defined $opts{'dyn'}) {
 }
 my $dyn_pkg = $cfg_ref->get('dyn');
 
+if ($dyn_pkg eq 'fv3' and $spmd eq 'OFF') {
+    die "configure: FATAL: the fv3 dycore requires at least 6 tasks SPMD must not be switched off.$eol";
+}
+
 if ($print>=2) { print "Dynamics package: $dyn_pkg$eol"; }
 
 $cfg_ref->set('analytic_ic', (defined $opts{'analytic_ic'}) ? $opts{'analytic_ic'} : 0);
@@ -776,10 +695,10 @@ $waccm_phys = $cfg_ref->get('waccm_phys');
 if ($print>=2) { print "WACCM physics: $waccm_phys$eol"; }
 
 
-# WACCM physics only runs with FV or SE dycores
-if ( ($waccm_phys) and ($dyn_pkg ne 'fv') and ($dyn_pkg ne 'se') ) {
+# WACCM physics only runs with FV, SE and FV3 dycores
+if ( ($waccm_phys) and ($dyn_pkg eq 'eul') ) {
     die <<"EOF";
-** ERROR: WACCM physics only runs with FV or Spectral Element as the dycore.
+** ERROR: WACCM physics does not run with the Eulerian spectral dycore.
 EOF
 }
 
@@ -969,7 +888,7 @@ if (defined $opts{'silhs'}) {
     $silhs = $opts{'silhs'};
 }
 
-# SILHS only works with CLUBB_SGS 
+# SILHS only works with CLUBB_SGS
 if ($silhs and not ($clubb_sgs )) {
     die <<"EOF";
 **    ERROR: SILHS is turned on, but CLUBB_SGS is not
@@ -1209,10 +1128,6 @@ if (defined $opts{'offline_drv'}) {
 # It is independent of which model is used to specify the aquaplanet surface properties.
 my $aquaplanet = 0;
 
-# aquaplanet mode is the default for CAM standalone builds unless using
-# simple physics
-if ($cam_build and !$simple_phys) {$aquaplanet = 1;}
-
 # user override
 if (defined $opts{'aquaplanet'}) {
     $aquaplanet = 1;
@@ -1298,6 +1213,9 @@ elsif ($dyn_pkg eq 'eul') {
 elsif ($dyn_pkg eq 'se') {
     $hgrid = 'ne16np4';
 }
+elsif ($dyn_pkg eq 'mpas') {
+    $hgrid = 'mpasa480';
+}
 $cfg_ref->set('hgrid', $hgrid);
 
 # User override.
@@ -1355,15 +1273,10 @@ my $nlev = 0;
 
 # Defaults
 if ($waccmx) {
-    if ($ionos =~ /wxi/) {
-      if ($phys_pkg eq 'cam6') {
+    if ($phys_pkg eq 'cam6') {
         $nlev = 130;
-      } else {
+    } else {
         $nlev = 126;
-      }
-    }
-    else {
-        $nlev = 81;
     }
 }
 elsif ($chem_pkg =~ /waccm_/) {
@@ -1728,6 +1641,7 @@ elsif ($fc =~ /^nag/)   { $fc_type = 'nag'; }
 elsif ($fc =~ /path/)   { $fc_type = 'pathscale'; }
 elsif ($fc =~ /gfort/)  { $fc_type = 'gnu'; }
 elsif ($fc =~ /xlf/)    { $fc_type = 'ibm'; }
+elsif ($fc =~ /nvfor/)  { $fc_type = 'nvhpc'; }
 
 # User override for Fortran compiler type
 if (defined $opts{'fc_type'}) { $fc_type = $opts{'fc_type'}; }
@@ -1772,6 +1686,7 @@ if ($cc eq '') {
         elsif ($fc_type eq 'pathscale') { $cc = 'pathcc'; }
         elsif ($fc_type eq 'gnu')       { $cc = 'gcc'; }
         elsif ($fc_type eq 'ibm')       { $cc = 'xlc'; }
+        elsif ($fc_type eq 'nvhpc')     { $cc = 'nvc'; }
     }
 }
 
@@ -1861,16 +1776,6 @@ if ($usr_cppdefs and $print>=2) { print "Commandline CPP definitions: \'$usr_cpp
 # the CPP definitions that were explicitly set in the defaults file or by the user on the commandline.
 my $cfg_cppdefs = ' ';
 
-# Fortran name mangling
-if ($cam_build) {
-    if ( $fc_type eq 'ibm') {
-        $cfg_cppdefs .= " -DFORTRAN_SAME";
-    }
-    else {
-        $cfg_cppdefs .= " -DFORTRANUNDERSCORE";
-    }
-}
-
 # Building for perturbation growth tests
 if ($pergro eq "ON") { $cfg_cppdefs .= " -DPERGRO"; }
 
@@ -1905,11 +1810,9 @@ my $nlat = $cfg_ref->get('nlat');
 $cfg_cppdefs .= " -DPLON=$nlon -DPLAT=$nlat";
 
 # Parameters for multiple instances
-if (!$ccsm_seq){
-    $cfg_cppdefs .= " -DNUM_COMP_INST_ATM=1 -DNUM_COMP_INST_LND=1 -DNUM_COMP_INST_OCN=1 -DNUM_COMP_INST_ICE=1";
-    $cfg_cppdefs .= " -DNUM_COMP_INST_GLC=1 -DNUM_COMP_INST_ROF=1 -DNUM_COMP_INST_WAV=1 -DNUM_COMP_INST_IAC=1";
-    $cfg_cppdefs .= " -DNUM_COMP_INST_ESP=1";
-}
+$cfg_cppdefs .= " -DNUM_COMP_INST_ATM=1 -DNUM_COMP_INST_LND=1 -DNUM_COMP_INST_OCN=1 -DNUM_COMP_INST_ICE=1";
+$cfg_cppdefs .= " -DNUM_COMP_INST_GLC=1 -DNUM_COMP_INST_ROF=1 -DNUM_COMP_INST_WAV=1 -DNUM_COMP_INST_IAC=1";
+$cfg_cppdefs .= " -DNUM_COMP_INST_ESP=1";
 
 # Parameters for spectral element dycore.
 # HAVE_F2003_PTR_BND_REMAP definition turns on standard-conforming method of causing edge
@@ -1934,6 +1837,11 @@ if ($dyn_pkg eq 'se') {
     }
 }
 
+# FV3 preprocessor symbols to use FMS decomposition functionality and more accurate FV3 thermodynamics.
+if ($dyn_pkg eq 'fv3') {
+    $cfg_cppdefs .= " -Duse_libMPI -Duse_netCDF -DUSE_COND -DMOIST_CAPPA";
+}
+
 # Resolution parameters for vertical grid, number of constituents, chunk size
 my $nlev = $cfg_ref->get('nlev');
 my $nadv = $cfg_ref->get('nadv');
@@ -1953,8 +1861,8 @@ $cfg_cppdefs .= " -DPTRM=$trm -DPTRN=$trn -DPTRK=$trk";
 # offline driver for FV dycore
 if ($offline_dyn) { $cfg_cppdefs .= ' -DOFFLINE_DYN'; }
 
-# -DSPMD only added for CESM build.  The CAM Makefile has a separate SPMD macro.
-if ( ($ccsm_seq) and ($spmd eq 'ON') ) { $cfg_cppdefs .= " -DSPMD"; }
+# -DSPMD added for parallel builds.
+if ($spmd eq 'ON') { $cfg_cppdefs .= " -DSPMD"; }
 
 # Chem CPP defs
 $cfg_cppdefs .= $chem_cppdefs;
@@ -1969,26 +1877,11 @@ if ($cfg_ref->get('analytic_ic')) {
 
 #WACCM-X extended thermosphere/ionosphere model
 if ($waccmx) {
-    $cfg_cppdefs .= ' -DWACCMX_PHYS'; 
-    if (($dyn_pkg ne 'fv') and ($ionos ne 'none'))  {
-        die "ERROR:  Ionosphere is only available for FV dycore \n";
-    }
-    if ($ionos =~ /wxi/) {
-       $cfg_cppdefs .= ' -DWACCMX_IONOS';
-    }
-    if ($ionos =~ /wxie/) {
-       $cfg_cppdefs .= ' -DWACCMX_EDYN_ESMF';
-    }
+    $cfg_cppdefs .= ' -DWACCMX_PHYS';
 }
 
 # PIO
 my $pio2_build = (defined $opts{'pio2'}) ? 1 : 0;
-if ($cam_build) {
-    if (!$pio2_build) {
-        # Only needed for pio1
-        $cfg_cppdefs .= " -D_USEBOX";
-    }
-}
 
 # COSP simulator
 if ($cosp) { $cfg_cppdefs .= ' -DUSE_COSP'; }
@@ -2006,327 +1899,6 @@ if ($silhs == 1) {
 
 # UNICON
 if ($unicon) { $cfg_cppdefs .= ' -DUSE_UNICON'; }
-
-# GPTL Timing library
-# The GPTL configure script in timing/gptl/suggestions may help
-# if modifications are needed here.
-$cfg_cppdefs .= ' -DHAVE_VPRINTF -DHAVE_TIMES -DHAVE_GETTIMEOFDAY -DHAVE_COMM_F2C';
-unless ($target_os eq 'aix' or $target_os =~ 'bg' or $target_os eq 'darwin') {
-    $cfg_cppdefs .= ' -DHAVE_NANOTIME -DBIT64 -DHAVE_SLASHPROC';
-}
-#-----------------------------------------------------------------------------------------------
-# External libraries ###########################################################################
-#-----------------------------------------------------------------------------------------------
-
-#-----------------------------------------------------------------------------------------------
-# NetCDF include
-my $nc_inc = '';
-if ($cam_build) {
-    if (defined $opts{'nc_inc'}) {
-        $nc_inc = $opts{'nc_inc'};
-    }
-    elsif (defined $ENV{INC_NETCDF}) {
-        $nc_inc = $ENV{INC_NETCDF};
-    }
-
-    $cfg_ref->set('nc_inc', $nc_inc);
-
-    if ($nc_inc and $print>=2) { print "Will look for NetCDF include file in: $nc_inc$eol"; }
-}
-
-# NetCDF library
-my $nc_lib = '';
-my $nc_ldflags = '';
-if ($cam_build) {
-    if (defined $opts{'nc_lib'}) {
-        $nc_lib = $opts{'nc_lib'};
-    }
-    elsif (defined $ENV{LIB_NETCDF}) {
-        $nc_lib = $ENV{LIB_NETCDF};
-    }
-
-    $cfg_ref->set('nc_lib', $nc_lib);
-    if ($nc_lib and $print>=2) { print "Will look for netCDF library in: $nc_lib$eol"; }
-
-    # If the location of the NetCDF libraries has not been specified, then
-    # assume the compiler wrapper script is providing the information.
-    # Otherwise we attempt to set the necessary link arguments in the
-    # nc_ldflags variable using the nc-config utility.  We check that
-    # nc-config returns at least the netcdff and netcdf libraries, and
-    # if not then attempt using a generic setting.
-
-    if ($nc_lib ne '') {
-        if (-f "$nc_lib/../bin/nc-config") {
-            $nc_ldflags = `$nc_lib/../bin/nc-config --flibs --libs`;
-            $nc_ldflags =~ s/\n/ /g; # replace newlines with spaces
-            if ($?) {
-                if ($print >= 2) {print "INFO: error return from: nc-config --flibs --libs \n";}
-                $nc_ldflags = '';
-            }
-        }
-
-        # If the nc-config script was not found, or if it returned an error
-        # status, or if they return a string that doesn't contain two
-        # library (-l) specifiers, then try default link args.
-
-        if ($nc_ldflags !~ m/-l.*-l/) {
-            $nc_ldflags = "-L$nc_lib -lnetcdff -lnetcdf";
-        }
-
-        # Set rpath for shared libs.  First check whether the nc-config script
-        # has already set an arg to be passed to the linker.
-        if ($nc_ldflags !~ m/-Wl/) {
-            if ($fc_type eq 'nag') {
-                $nc_ldflags .= " -Wl,-Wl,,-rpath -Wl,-Wl,,$nc_lib";
-            }
-            else {
-                $nc_ldflags .= " -Wl,-rpath -Wl,$nc_lib";
-            }
-        }
-
-    }
-
-    $cfg_ref->set('nc_ldflags', $nc_ldflags);
-    if ($nc_ldflags and $print>=2) { print "Link flags for netCDF library: $nc_ldflags$eol"; }
-
-    # PIO Support
-    if (!$pio2_build) {
-        # Only needed for pio1
-        $cfg_cppdefs .= " -D_NETCDF  ";
-    }
-}
-
-# NetCDF module files
-my $nc_mod = '';
-if ($cam_build) {
-    if (defined $opts{'nc_mod'}) {
-        $nc_mod = $opts{'nc_mod'};
-    }
-    elsif (defined $ENV{MOD_NETCDF}) {
-        $nc_mod = $ENV{MOD_NETCDF};
-    }
-
-    # check for the mod files in the user specified location
-    if ($nc_mod and (-f "$nc_mod/netcdf.mod"    or -f "$nc_mod/NETCDF.mod")
-                and (-f "$nc_mod/typesizes.mod" or -f "$nc_mod/TYPESIZES.mod") ) {
-    }
-    # if not there check in the netcdf lib directory
-    elsif ($nc_lib and (-f "$nc_lib/netcdf.mod"    or -f "$nc_lib/NETCDF.mod")
-                   and (-f "$nc_lib/typesizes.mod" or -f "$nc_lib/TYPESIZES.mod") ) {
-        $nc_mod = $nc_lib;
-    }
-    # then check in the netcdf include directory
-    elsif ($nc_inc and (-f "$nc_inc/netcdf.mod"    or -f "$nc_inc/NETCDF.mod")
-                   and (-f "$nc_inc/typesizes.mod" or -f "$nc_inc/TYPESIZES.mod") ) {
-        $nc_mod = $nc_inc;
-    }
-    else {
-        $nc_mod = '';
-    }
-    $cfg_ref->set('nc_mod', $nc_mod);
-
-    if ($nc_mod and $print>=2) { print "Found netCDF module files in: $nc_mod$eol"; }
-}
-
-# PNetCDF include
-my $pnc_inc = '';
-if ($cam_build) {
-    if (defined $opts{'pnc_inc'}) {
-      $pnc_inc = $opts{'pnc_inc'};
-    }
-    elsif (defined $ENV{INC_PNETCDF}) {
-      $pnc_inc = $ENV{INC_PNETCDF};
-    }
-    else {
-      $pnc_inc = '/usr/local/include';
-    }
-
-    if (-f "$pnc_inc/pnetcdf.inc") {
-      $cfg_ref->set('pnc_inc', $pnc_inc);
-      if ($print>=2) { print "Found PnetCDF include file in: $pnc_inc$eol"; }
-    }else{
-      undef $pnc_inc;
-    }
-}
-
-# PNetCDF library
-my $pnc_lib = '';
-if ($cam_build) {
-    if (defined $opts{'pnc_lib'}) {
-      $pnc_lib = $opts{'pnc_lib'};
-    }
-    elsif (defined $ENV{LIB_PNETCDF}) {
-      $pnc_lib = $ENV{LIB_PNETCDF};
-    }
-    else {
-      $pnc_lib = '/usr/local/lib';
-    }
-
-    if (-f "$pnc_lib/libpnetcdf.a" and $spmd eq 'ON') {
-      $cfg_ref->set('pnc_lib', $pnc_lib);
-      if ($print>=2) { print "Found PnetCDF library in: $pnc_lib$eol"; }
-      # PIO Support
-      $cfg_cppdefs .= " -D_PNETCDF ";
-    }else{
-      undef $pnc_lib;
-    }
-}
-
-#-----------------------------------------------------------------------------------------------
-# LAPACK library
-my $lapack_libdir = '';
-if ($cam_build) {
-    if (defined $opts{'lapack_libdir'}) {
-        $lapack_libdir = $opts{'lapack_libdir'};
-    }
-    elsif (defined $ENV{LAPACK_LIBDIR}) {
-        $lapack_libdir = $ENV{LAPACK_LIBDIR};
-    }
-
-    if ($lapack_libdir ne '') {
-        if (-f "$lapack_libdir/liblapack.a") {
-            $cfg_ref->set('lapack_libdir', $lapack_libdir);
-        }
-        elsif (-f "$lapack_libdir/liblapack.so") {
-            $cfg_ref->set('lapack_libdir', $lapack_libdir);
-        }
-        elsif (-f "$lapack_libdir/liblapack.dylib") {
-            $cfg_ref->set('lapack_libdir', $lapack_libdir);
-        }
-        else {
-            die <<"EOF";
-** Cannot find liblapack.a in specified directory: $lapack_libdir
-**
-** The LAPACK library directory is determined from the following set of options listed
-** from highest to lowest precedence:
-** * by the command-line option -lapack_libdir
-** * by the environment variable LAPACK_LIBDIR
-EOF
-        }
-    }
-
-    if ($lapack_libdir and $print>=2) { print "Found LAPACK library in: $lapack_libdir$eol"; }
-}
-
-#-----------------------------------------------------------------------------------------------
-# ESSL library -- add this library to the LDFLAGS for CAMChem when we're on an AIX system.
-#                 Assume that the xlf compiler is used to link.
-if ($cam_build) {
-    if ($chem_pkg and $target_os eq 'aix') {
-        my $ldflags = $cfg_ref->get('ldflags');
-        $ldflags .= " -lessl";
-        $cfg_ref->set('ldflags', $ldflags);
-    }
-}
-
-#-----------------------------------------------------------------------------------------------
-# MPI
-# Only check for the MPI include or library files if the user has explicitly specified
-# where to look.  Often the Fortran compiler knows where to look for these files and so
-# not specifying them is the best strategy.
-my $mpi_inc = '';
-my $mpi_lib = '';
-my $mpi_lib_name = '';
-if ($cam_build and $spmd eq 'ON') {
-
-    # MPI include
-    if (defined $opts{'mpi_inc'}) {
-        $mpi_inc = $opts{'mpi_inc'};
-    }
-    elsif (defined $ENV{INC_MPI}) {
-        $mpi_inc = $ENV{INC_MPI};
-    }
-
-    if ($mpi_inc eq '' or -f "$mpi_inc/mpif.h") {
-        $cfg_ref->set('mpi_inc', $mpi_inc);
-    }
-    else {
-        die <<"EOF";
-** Cannot find mpif.h in specified directory: $mpi_inc
-**
-** The MPI include directory is determined from the following set of options listed
-** from highest to lowest precedence:
-** * by the command-line option -mpi_inc
-** * by the environment variable INC_MPI
-EOF
-    }
-
-    if ($mpi_inc and $print>=2) { print "Found MPI include file in: $mpi_inc$eol"; }
-
-    # MPI library
-    if (defined $opts{'mpi_lib'}) {
-        $mpi_lib = $opts{'mpi_lib'};
-    }
-    elsif (defined $ENV{LIB_MPI}) {
-        $mpi_lib = $ENV{LIB_MPI};
-    }
-
-    if ($mpi_lib eq '') {
-        $cfg_ref->set('mpi_lib', $mpi_lib);
-        $cfg_ref->set('mpi_lib_name', '');
-    }
-    elsif (-f "$mpi_lib/libmpi.a" or -f "$mpi_lib/libmpi.so") {
-        $cfg_ref->set('mpi_lib', $mpi_lib);
-        $cfg_ref->set('mpi_lib_name', 'mpi');
-    }
-    elsif (-f "$mpi_lib/libmpich.a") {
-        $cfg_ref->set('mpi_lib', $mpi_lib);
-        $cfg_ref->set('mpi_lib_name', 'mpich');
-        if (-f  "$mpi_lib/../bin/mpich2version") {
-            $cfg_cppdefs .= " -DNO_SIZEOF";
-        } else {
-            $cfg_cppdefs .= " -DNO_MPI2 -DNO_MPIMOD -DNO_SIZEOF";
-        }
-    }
-    else {
-        die <<"EOF";
-** Cannot find libmpi.a, libmpi.so or libmpich.a in specified directory: $mpi_lib
-**
-** The MPI library directory is determined from the following set of options listed
-** from highest to lowest precedence:
-** * by the command-line option -mpi_lib
-** * by the environment variable LIB_MPI
-EOF
-    }
-
-    if ($mpi_lib and $print>=2) { print "Found MPI library in: $mpi_lib$eol"; }
-
-}
-
-#-----------------------------------------------------------------------------------------------
-# ESMF library.
-
-my $esmf_libdir = '';
-if (defined $opts{'esmf_libdir'}) {
-    $esmf_libdir = $opts{'esmf_libdir'};
-}
-elsif (defined $ENV{ESMF_LIBDIR}) {
-    $esmf_libdir = $ENV{ESMF_LIBDIR};
-}
-
-if ($cam_build and $esmf_libdir) {
-
-    # Check that both the library and the esmf.mk file are found.  Makefile macros
-    # defined in esmf.mk are referenced by the Makefile.
-    if ( (-f "$esmf_libdir/libesmf.a" or -f "$esmf_libdir/libesmf.so") and -f "$esmf_libdir/esmf.mk" ) {
-        $cfg_ref->set('esmf_libdir', $esmf_libdir);
-
-        $cfg_cppdefs .= " -DUSE_ESMF_LIB";
-
-        if ($print>=2 ) { print "Found ESMF library in: $esmf_libdir$eol"; }
-    }
-    else {
-        die <<"EOF";
-** Cannot find libesmf.a, libesmf.so, or esmf.mk in specified directory: $esmf_libdir
-**
-** The ESMF library directory is determined from the following set of options listed
-** from highest to lowest precedence:
-** * by the command-line option -esmf_libdir
-** * by the environment variable ESMF_LIBDIR
-EOF
-    }
-
-}
 
 #-----------------------------------------------------------------------------------------------
 # CPP defines to put on Makefile
@@ -2363,400 +1935,111 @@ if ($cosp) {
     }
 
     # Create the COSP Makefile from a template and copy it into the cosp bld directory
-    write_cosp_makefile("$cfgdir/../src/physics/cosp2/Makefile.in", "$cosp_libdir/Makefile");
     if ($print) { print "creating $cosp_libdir/Makefile\n"; }
-}
-
-
-#-----------------------------------------------------------------------------------------------
-# MCT library.
-# Only build MCT as a separate library if doing a CAM standalone build.
-# If -mct_libdir is specified, then check for existing libs and build
-# only if necessary.  Note that separate versions of the lib must be built
-# for parallel and serial use.
-
-if ($cam_build) {
-
-    my $mct_libdir = "$cam_bld/mct";
-    if (defined $opts{'mct_libdir'}) {
-        $mct_libdir = $opts{'mct_libdir'};
-    }
-    elsif (defined $ENV{MCT_LIBDIR}) {
-        $mct_libdir = $ENV{MCT_LIBDIR};
-    }
-
-    # strip a trailing slash
-    $mct_libdir =~ s!/$!!;
-
-    # modify the name of the serial version so it can be made in the same
-    # directory as the parallel version
-    if ($spmd eq 'OFF') {
-        $mct_libdir .= '-serial';
-    }
-    $cfg_ref->set('mct_libdir', $mct_libdir);
-
-    my $ldflags = $cfg_ref->get('ldflags');
-    $ldflags .= " -L$mct_libdir/mct -lmct -L$mct_libdir/mpeu -lmpeu ";
-    if ($spmd eq 'OFF') {
-      $ldflags .= " -L$mct_libdir/mpi-serial -lmpi-serial ";
-    }
-    $cfg_ref->set('ldflags', $ldflags);
-
-    # Check whether the MCT libs already exist.  The MCT configuration here is
-    # set up to build mct, mpeu, and mpi-serial libs.  So either they all should
-    # exist, or non of them should exist.  Otherwise it's an error.
-    my $libs_exist = 0;
-    my $libs_expected = 2;
-    if (-f "$mct_libdir/mct/libmct.a" or
-        -f "$mct_libdir/mct/libmct.so") {++$libs_exist;}
-    if (-f "$mct_libdir/mpeu/libmpeu.a" or
-        -f "$mct_libdir/mpeu/libmpeu.so") {++$libs_exist;}
-    if ($spmd eq 'OFF') {
-        $libs_expected = 3;
-        if (-f "$mct_libdir/mpi-serial/libmpi-serial.a" or
-            -f "$mct_libdir/mpi-serial/libmpi-serial.so") {++$libs_exist;}
-    }
-
-    my $build_mct;
-    if ($libs_exist == 0) {
-        $build_mct = 1;
-    }
-    elsif ($libs_exist == $libs_expected) {
-        $build_mct = 0;
-    }
-    else {
-        die <<"EOF";
-** The MCT build in $mct_libdir is incomplete.  Remove the contents of
-   $mct_libdir and run the CAM configure script again. **
-EOF
-    }
-
-
-    if ($build_mct) {
-
-        # If the libdirs do not exist then create them.
-        if (! -d "$mct_libdir/mct") {
-            mkdirp("$mct_libdir/mct") or
-                die "** Could not create the mct build directory: $mct_libdir/mct\n";
-        }
-        if (! -d "$mct_libdir/mpeu") {
-            mkdirp("$mct_libdir/mpeu") or
-                die "** Could not create the mct build directory: $mct_libdir/mpeu\n";
-        }
-
-        if ($spmd eq 'OFF') {
-            # The mpi-serial lib is only built when the mct and mpeu libs are configured
-            # to run in a serial mode (with the --enable-mpiserial option).
-            if (! -d "$mct_libdir/mpi-serial") {
-                mkdirp("$mct_libdir/mpi-serial") or
-                    die "** Could not create the mct build directory: $mct_libdir/mpi-serial\n";
-            }
-        }
-
-        system("cp $cam_root/cime/src/externals/mct/Makefile $mct_libdir/.") == 0
-            or die "Unable to copy mct top level Makefile\n";
-        system("cp $cam_root/cime/src/externals/mct/mct/Makefile $mct_libdir/mct/.") == 0
-            or die "Unable to copy mct Makefile\n";
-        system("cp $cam_root/cime/src/externals/mct/mpeu/Makefile $mct_libdir/mpeu/.") == 0
-            or die "Unable to copy mpeu Makefile\n";
-        if ($spmd eq 'OFF') {
-            system("cp $cam_root/cime/src/externals/mct/mpi-serial/Makefile $mct_libdir/mpi-serial/.") == 0
-                or die "Unable to copy mpi-serial Makefile\n";
-            system("cp $cam_root/cime/src/externals/mct/mpi-serial/mpif.h $mct_libdir/mpi-serial/.") == 0
-                or die "Unable to copy mpi-serial/mpif.h \n";
-            system("cp $cam_root/cime/src/externals/mct/mpi-serial/mpi.h $mct_libdir/mpi-serial/.") == 0
-                or die "Unable to copy mpi-serial/mpi.h\n";
-        }
-
-        my $mct_quiet = '> /dev/null 2>&1';
-        if ($print >= 2) {$mct_quiet = '';}
-
-        my $mct_debug = '';
-        if ($debug eq 'ON') {$mct_debug = '--enable-debugging';}
-
-        my $mpi_serial = '--enable-mpiserial';
-        if ($spmd eq 'ON') {$mpi_serial = '';}
-
-        my $mpi_hdr = '';
-        if ($spmd eq 'ON') {
-            if ($mpi_inc) {$mpi_hdr = "MPIHEADER=-I$mpi_inc"; }
-        }
-
-        # Set F[C]FLAGS for MCT for compilers where the defaults won't work.
-        # Blank string does nothing, letting MCT's configure decide.
-        my $mct_flags_str = " ";
-        my $mct_ldflags   = " ";
-        if ($fc_type eq "nag") {
-            # Take options from CESM's Machines directory.
-            $mct_flags_str = " -O2 -wmismatch=mpi_send,mpi_recv,mpi_bcast,".
-                   "mpi_allreduce,mpi_reduce,mpi_isend,mpi_irecv,mpi_irsend,mpi_rsend,mpi_gatherv,".
-                   "mpi_gather,mpi_scatterv,mpi_allgather,mpi_alltoallv,mpi_file_read_all,".
-                   "mpi_file_write_all,mpibcast,mpiscatterv ";
-
-            if ($debug eq 'ON') { $mct_flags_str .= " -g -gline -time -f95 -C=all "; }
-
-            # Set to both FFLAGS and FCFLAGS to ensure all files use this.
-            $mct_flags_str = " FFLAGS=\"$mct_flags_str\" ".
-                             "FCFLAGS=\"$mct_flags_str\" ";
-
-            # This workaround tells gcc how to link to the NAG runtime,
-            # which is the only way to run MCT's configure with runtime
-            # checks enabled.
-            # Note that this hard-codes the NAG path, lib62rts for NAG6.2.
-            if ($debug eq 'ON') {
-               $mct_flags_str .= " CFLAGS=\" -g -Wl,--as-needed,--allow-shlib-undefined\" ";
-               $mct_flags_str .= " LIBS=\" -L/usr/local/nag-6.2/lib/NAG_Fortran -lf62rts \" ";
-            }
-        }
-        elsif ($fc_type eq "pgi") {
-
-            # 11 Feb 2014: This is a workaround for a problem with PGI-13
-            # on the CGD cluster when pgf90 is invoked by the openmpi
-            # version of mpif90 (undefined omp_set_schedule in pgf90rtl lib)
-            $mct_ldflags = "-Wl,--allow-shlib-undefined ";
-        }
-
-        $mct_ldflags = "LDFLAGS=\'$mct_ldflags\' ";
-
-        my $cfg_cmnd = "$cam_root/cime/src/externals/mct/configure FC=$fc CC=$cc ".
-            "$mct_flags_str --srcdir=$cam_root/cime/src/externals/mct $mpi_hdr ".
-            "$mpi_serial $mct_debug $mct_quiet $mct_ldflags ";
-
-        chdir $mct_libdir      or die "FAILURE: cd to $mct_libdir\n";
-        system($cfg_cmnd) == 0 or die "FAILURE: MCT configure\n";
-        chdir $cam_bld         or die "FAILURE: cd to $cam_bld\n";
-
-        if ($print) {print "MCT configure is done.\n";}
-    }
-    else {
-        if ($print) {print "Using MCT libs in $mct_libdir.\n";}
-    }
+    write_cosp_makefile("$cfgdir/../src/physics/cosp2/Makefile.in", "$cosp_libdir/Makefile");
 }
 
 #-----------------------------------------------------------------------------------------------
-# PIO library.
-# Only build PIO as a separate library if doing a CAM standalone build with PIO2.
-# If -pio2_install_dir is specified, then check for existing libs and build
-# only if necessary.  Note that separate versions of the lib must be built
-# for parallel and serial use.
-
-if ($cam_build and $pio2_build) {
-
-    my $pio_build_dir   = "$cam_bld/pio_bld";
-    my $pio_install_dir = "$cam_bld/pio";
-    if (defined $opts{'pio2_install_dir'}) {
-        $pio_install_dir = $opts{'pio2_install_dir'};
-    }
-    elsif (defined $ENV{PIO2_INSTALL_DIR}) {
-        $pio_install_dir = $ENV{PIO2_INSTALL_DIR};
+# FV3CORE library.
+if ($dyn_pkg eq 'fv3') {
+    # Set the directory used to build fv3core.  Add location and library name
+    # to the user specified load flags.
+    my $fv3core_libdir = '';
+    if (defined $opts{'fv3core_libdir'}) {
+      $fv3core_libdir = $opts{'fv3core_libdir'};
+    } else
+    {
+	$fv3core_libdir = "$cam_bld/atmos_cubed_sphere";
     }
 
-    # strip a trailing slash
-    $pio_install_dir =~ s!/$!!;
-
-    # modify the name of the serial version so it can be made in the same
-    # directory as the parallel version
-    if ($spmd eq 'OFF') {
-        $pio_build_dir .= '-serial';
-        $pio_install_dir .= '-serial';
-    }
-    $cfg_ref->set('pio_build_dir',   $pio_build_dir);
-    $cfg_ref->set('pio_install_dir', $pio_install_dir);
+    $cfg_ref->set('fv3core_libdir', "$fv3core_libdir");
 
     my $ldflags = $cfg_ref->get('ldflags');
-    # prepend the pio libs.  The serial build which depends on the MCT mpi-serial
-    # lib needs to come after the pio libs to properly resolve mpi references.
-    $ldflags = " -L$pio_install_dir/lib -lpiof -lpioc $ldflags ";
+    $ldflags .= " -L$fv3core_libdir -lfv3core ";
     $cfg_ref->set('ldflags', $ldflags);
 
-    # Check whether the PIO libs already exist.
-    my $libs_exist = 0;
-    my $libs_expected = 2;
-    if (-f "$pio_install_dir/lib/libpioc.a" or
-        -f "$pio_install_dir/lib/libpioc.so") {++$libs_exist;}
-    if (-f "$pio_install_dir/lib/libpiof.a" or
-        -f "$pio_install_dir/lib/libpiof.so") {++$libs_exist;}
-
-    my $build_pio;
-    if ($libs_exist == 0) {
-        $build_pio = 1;
-    }
-    elsif ($libs_exist == $libs_expected) {
-        $build_pio = 0;
-    }
-    else {
-        die <<"EOF";
-** PIO build in $pio_install_dir is incomplete.  Remove the contents of
-   $pio_install_dir and run the CAM configure script again. **
-EOF
+    # create the build directory for fv3core
+    unless (-d $fv3core_libdir or mkdirp($fv3core_libdir)) {
+        die "** Could not create the fv3core build directory: $fv3core_libdir\n";
     }
 
-    if ($build_pio) {
+    # Write the filepath file.
+    if ($print) { print "creating $fv3core_libdir/Filepath\n"; }
+    write_fv3core_filepath("$fv3core_libdir/Filepath", $cfg_ref);
 
-        # The PIO configuration requires CMake.  Check return from --version just as a way
-        # to make sure it is found in user path.
-        if ($print) { print "Looking for a valid CMake... "; }
-        my $cmake_ver = get_cmake_version();
-        if ($cmake_ver) {
-            if ($print) { print "using cmake version $cmake_ver$eol"; }
-        } else {
-            print "\n** Cannot find a valid CMake.\n";
-            die "** CMake must be installed on your system and the cmake command in your PATH\n";
-        }
-
-        # If the build directory does not exist then create it.
-        if (! -d "$pio_build_dir") {
-            mkdirp("$pio_build_dir") or
-                die "** Could not create the PIO build directory: $pio_build_dir\n";
-        }
-
-        # If the install directory does not exist then create it.
-        if (! -d "$pio_install_dir") {
-            mkdirp("$pio_install_dir") or
-                die "** Could not create the PIO install directory: $pio_install_dir\n";
-        }
-
-        # Root directory for PIO source code
-        my $pio_src_dir = "$cam_root/cime/src/externals/pio2";
-
-        # Set compilers
-        my $compilers = "FC=$fc CC=$cc";
-
-        # Set options
-        my $opts;
-
-        my $nc_lib = $cfg_ref->get('nc_lib');
-        if ($nc_lib) {$opts .= "-DNetCDF_PATH=$nc_lib ";}
-
-        $opts .= '-DCMAKE_VERBOSE_MAKEFILE=1 -DPIO_ENABLE_TIMING=OFF -DWITH_PNETCDF=OFF -DPIO_ENABLE_TESTS=OFF ';
-
-        $opts .= "-DCMAKE_INSTALL_PREFIX=$pio_install_dir ";
-
-        # For serial runs the MPI library is supplied by MCT:
-        # If the mpi-serial library is already built then specifying MPISERIAL_PATH is
-        # sufficient since CMake will find what it needs by looking there.  But if the
-        # mpi-serial lib hasn't been built yet, then the MPISERIAL_C_* and MPISERIAL_Fortran_*
-        # options must be specified to tell CMake where the include and lib files will be
-        # found after the build is done.
-        if ($spmd eq 'OFF') {
-            my $mct_libdir = $cfg_ref->get('mct_libdir');
-            $opts .= "-DPIO_USE_MPISERIAL=TRUE ";
-            $opts .= "-DMPISERIAL_PATH=$mct_libdir/mpi-serial ";
-            $opts .= "-DMPISERIAL_C_INCLUDE_PATH=$mct_libdir/mpi-serial ";
-            $opts .= "-DMPISERIAL_C_LIBRARY=$mct_libdir/mpi-serial/libmpi-serial.a ";
-            $opts .= "-DMPISERIAL_Fortran_INCLUDE_PATH=$mct_libdir/mpi-serial ";
-            $opts .= "-DMPISERIAL_Fortran_LIBRARY=$mct_libdir/mpi-serial/libmpi-serial.a ";
-        }
-
-        # Configure command
-        my $cfg_cmnd = "env $compilers cmake $opts $pio_src_dir >| pio_cmake_log 2>&1 ";
-
-
-        chdir $pio_build_dir   or die "FAILURE: cd to $pio_build_dir\n";
-        system($cfg_cmnd) == 0 or die "FAILURE: PIO configure: see $pio_build_dir/pio_cmake_log \n";
-        chdir $cam_bld         or die "FAILURE: cd to $cam_bld\n";
-
-        if ($print) {print "PIO configure is done.\n";}
-    }
-    else {
-        if ($print) {print "Using PIO libs in $pio_install_dir.\n";}
-    }
+    # Create the FV3CORE Makefile from a template and copy it into the fv3core bld directory
+    if ($print) { print "creating $fv3core_libdir/Makefile\n"; }
+    write_fv3_makefile("$cam_dir/src/dynamics/fv3/Makefile.in.fv3",  "$fv3core_libdir/Makefile");
 }
 
+#-----------------------------------------------------------------------------------------------
+# MPAS library.
+if ($dyn_pkg eq 'mpas') {
+
+    # Set the directory used to build MPAS.  Add location and library name
+    # to the user specified load flags.
+    my $mpas_libdir = '';
+    if (defined $opts{'mpas_libdir'}) {
+      $mpas_libdir = $opts{'mpas_libdir'};
+    } else
+    {
+        $mpas_libdir = "$cam_bld/mpas";
+    }
+
+    $cfg_ref->set('mpas_libdir', "$mpas_libdir");
+
+    my $ldflags = $cfg_ref->get('ldflags');
+    $ldflags .= " -L$mpas_libdir -lmpas ";
+    $cfg_ref->set('ldflags', $ldflags);
+
+    # create the build directory for mpas
+    my $bld_dir = $mpas_libdir;
+    unless (-d $bld_dir or mkdirp($bld_dir)) {
+        die "** Could not create the mpas build directory: $bld_dir\n";
+    }
+
+    # Create the MPAS Makefile from a template and copy it into the mpas bld directory
+    write_mpas_makefile("$cfgdir/../src/dynamics/mpas/Makefile", "$mpas_libdir/Makefile");
+    if ($print) { print "creating $mpas_libdir/Makefile\n"; }
+}
 
 #-----------------------------------------------------------------------------------------------
 # Write configuration files ####################################################################
 #-----------------------------------------------------------------------------------------------
 
 my $fp_filename      = 'Filepath';             # name of output filepath file
-my $cpp_filename     = 'CESM_cppdefs';         # name of output file for cam's cppdefs in cesm
+my $cpp_filename     = 'CESM_cppdefs';         # name of output file for CAM's cppdefs in cesm
 
 # Write the filepath file.
-write_filepath("$cam_bld/$fp_filename", $cfg_ref);
 if ($print) { print "creating $cam_bld/$fp_filename\n"; }
+write_filepath("$cam_bld/$fp_filename", $cfg_ref);
 
-if (($ccsm_seq)) {
-
-    # Write the file for cam's cppdefs needed in ccsm.
-    write_cppdefs("$cam_bld/$cpp_filename", $make_cppdefs);
-    if ($print) { print "creating $cam_bld/$cpp_filename\n"; }
-
-} else {
-
-    # Write the Makefile.
-    write_makefile("$cfgdir/Makefile.in", "$cam_bld/Makefile", $cfg_ref, $make_cppdefs);
-    if ($print) { print "creating $cam_bld/Makefile\n"; }
-
-    # Write the config.h file for PIO and MCT
-    write_config_h("$cam_bld/config.h");
-    if ($print) { print "creating $cam_bld/config.h\n"; }
-
-}
+# Write the file for CAM's cppdefs needed in CESM.
+if ($print) { print "creating $cam_bld/$cpp_filename\n"; }
+write_cppdefs("$cam_bld/$cpp_filename", $make_cppdefs);
 
 # Write the configuration cache file.
-$cfg_ref->write_file($config_cache_file, $commandline);
 if ($print) { print "creating $config_cache_file\n"; }
+$cfg_ref->write_file($config_cache_file, $commandline);
 
-#-----------------------------------------------------------------------------------------------
-# Finished unless testing requested ############################################################
-#-----------------------------------------------------------------------------------------------
-unless ($cam_build and $opts{'test'}) {
-    if ($print) { print "CAM configure done.\n"; }
-    exit;
+#-------------------------------------------------------------------------------
+
+sub write_fv3core_filepath
+{
+    my ($file, $cfg_ref) = @_;
+    my  $fh = new IO::File;
+
+    $fh->open(">$file") or die "** can't open filepath file: $file\n";
+    my $camsrcdir   = $cfg_ref->get('cam_dir');
+    my $CASEROOT = "$ENV{'CASEROOT'}";
+    print $fh "$CASEROOT/SourceMods/src.cam\n";
+    print $fh "$camsrcdir/src/dynamics/fv3/microphys\n";
+    print $fh "$camsrcdir/src/dynamics/fv3/atmos_cubed_sphere/model\n";
+    print $fh "$camsrcdir/src/dynamics/fv3/atmos_cubed_sphere/tools\n";
+
+    $fh->close;
 }
-
-# create a subdirectory of the current directory for testing
-my $test_dir = "$cam_bld/configure-tests";
-unless (-d $test_dir or mkdirp($test_dir)) {
-    die <<"EOF";
-** Could not create the testing directory: $test_dir
-EOF
-}
-chdir( $test_dir ) || die <<"EOF";
-** Trouble changing directory to $test_dir
-**
-EOF
-
-# The CAM Makefile requires a Filepath file.  To run the tests construct a Filepath file
-# that contains only the test directory.
-write_tests_filepath($test_dir);
-
-# Test for Fortran 90 compatible compiler
-if ($print) { print "Testing for Fortran 90 compatible compiler... "; }
-my $fc = check_fc($gmake, "$cam_bld/Makefile");
-if ($fc) {
-    if ($print) { print "using $fc$eol"; }
-}
-
-# Test NetCDF library
-if ($print) { print "Test linking to NetCDF library... "; }
-if (check_netcdf($gmake, "$cam_bld/Makefile")==0) { if ($print) { print "ok$eol"; } }
-
-# Test MPI library
-if ($spmd eq 'ON') {
-    if ($print) { print "Test linking to MPI library... "; }
-    if (check_mpi($gmake, "$cam_bld/Makefile")==0) { if ($print) { print "ok$eol"; } }
-}
-
-# Test ESMF library
-if ($esmf_libdir) {
-    if ($print) { print "Test linking to ESMF library... "; }
-    if (check_esmf($gmake, "$cam_bld/Makefile")==0) { if ($print) { print "ok$eol"; } }
-}
-
-#-----------------------------------------------------------------------------------------------
-# Done testing.
-chdir( $cwd ) || die <<"EOF";
-** Trouble changing directory back to $cwd
-**
-EOF
-if ($print) { print "CAM configure done.\n"; }
-exit;
-
-#-----------------------------------------------------------------------------------------------
-# REALLY FINISHED ##############################################################################
-#-----------------------------------------------------------------------------------------------
-
+#-------------------------------------------------------------------------------
 sub write_filepath
 {
     my ($file, $cfg_ref) = @_;
@@ -2779,8 +2062,6 @@ sub write_filepath
     my $cppdefs       = $cfg_ref->get('cppdefs');
     my $cosp          = $cfg_ref->get('cosp');
     my $spmd          = $cfg_ref->get('spmd');
-    my $esmf_libdir   = $cfg_ref->get('esmf_libdir');
-    my $ocn           = $cfg_ref->get('ocn');
     my $offline_drv   = $cfg_ref->get('offline_drv');
     my $inic_val      = $cfg_ref->get('analytic_ic');
 
@@ -2800,10 +2081,8 @@ sub write_filepath
     }
 
     # CESM has a standard source mods location.
-    if ($ccsm_seq) {
-        my $CASEROOT = "$ENV{'CASEROOT'}";
-        print $fh "$CASEROOT/SourceMods/src.cam\n";
-    }
+    my $CASEROOT = "$ENV{'CASEROOT'}";
+    print $fh "$CASEROOT/SourceMods/src.cam\n";
 
     # offline unit driver (defaults to stub)
     print $fh "$camsrcdir/src/unit_drivers\n";
@@ -2811,6 +2090,14 @@ sub write_filepath
 
     if ($simple_phys) {
       print $fh "$camsrcdir/src/physics/simple\n";
+      print $fh "$camsrcdir/src/atmos_phys/kessler\n";
+      print $fh "$camsrcdir/src/atmos_phys/held_suarez\n";
+    }
+
+    # Weak scaling fix. This has to come before physics/cam and before dycores
+    # It also has to come before utils (which is already near the end).
+    if ($dyn eq 'se' or $dyn eq 'mpas') {
+      print $fh "$camsrcdir/src/infrastructure\n";
     }
 
     if ($carma ne 'none') {
@@ -2838,7 +2125,7 @@ sub write_filepath
 
     if ($waccmx) {
         print $fh "$camsrcdir/src/physics/waccmx\n";
-        if ($ionos =~ /wxi/) {
+        if ($ionos =~ /wxie/) {
             print $fh "$camsrcdir/src/ionosphere/waccmx\n";
         }
     }
@@ -2866,6 +2153,7 @@ sub write_filepath
        print $fh "$camsrcdir/src/physics/silhs\n";
     }
 
+    print $fh "$camsrcdir/src/physics/pumas\n";
 
     # Superparameterization
     if ($phys_pkg eq 'spcam_m2005' or $phys_pkg eq 'spcam_sam1mom') {
@@ -2919,75 +2207,8 @@ sub write_filepath
     print $fh "$camsrcdir/src/cpl/$cpl\n";
     print $fh "$camsrcdir/src/control\n";
     print $fh "$camsrcdir/src/utils\n";
+    print $fh "$camsrcdir/src/atmos_phys/utilities\n";
 
-    if ($cam_build) {
-
-        # These paths are only needed for CAM standalone builds
-
-        if (!$pio2_build) {
-            print $fh "$cam_root/cime/src/externals/pio1/pio\n";
-        }
-
-        unless ($esmf_libdir) {
-            print $fh "$cam_root/cime/src/share/esmf_wrf_timemgr\n";
-        }
-
-        # Sequential Driver
-        print $fh "$cam_root/cime/src/drivers/mct/main\n";
-        print $fh "$cam_root/cime/src/drivers/mct/shr\n";
-
-	# Ocean package.
-	if ($ocn eq 'dom') {
-	    print $fh "$camsrcdir/src/utils/cam_dom\n";
-	}
-	elsif ($ocn eq 'docn' or $ocn eq 'som') {
-	    print $fh "$cam_root/cime/src/components/data_comps/docn\n";
-	    print $fh "$cam_root/cime/src/components/data_comps/docn/mct\n";
-	}
-	elsif ($ocn eq 'aquaplanet') {
-	    print $fh "$camsrcdir/src/utils/cam_aqua\n";
-	    print $fh "$camsrcdir/src/utils/cam_aqua/cpl\n";
-	}
-	elsif ($ocn eq 'socn') {
-	    print $fh "$cam_root/cime/src/components/stub_comps/socn/mct\n";
-	}
-
-        # Land package
-        print $fh "$cam_root/cime/src/components/stub_comps/slnd/mct\n";
-
-        # Sea ice package
-        print $fh "$cam_root/cime/src/components/stub_comps/sice/mct\n";
-
-        # Land ice package
-        print $fh "$cam_root/cime/src/components/stub_comps/sglc/mct\n";
-
-        # include stub ESP component
-        print $fh "$cam_root/cime/src/components/stub_comps/sesp/mct\n";
-
-        # Runoff package
-        print $fh "$cam_root/cime/src/components/stub_comps/srof/mct\n";
-
-        # Wave package
-        print $fh "$cam_root/cime/src/components/stub_comps/swav/mct\n";
-
-        # IAC package
-        print $fh "$cam_root/cime/src/components/stub_comps/siac/mct\n";
-
-        # Share utilities
-        print $fh "$cam_root/cime/src/share/util\n";
-        print $fh "$cam_root/cime/src/share/streams\n";
-        print $fh "$cam_root/cime/src/share/include\n";
-        print $fh "$cam_root/cime/src/share/RandNum/include\n";
-        print $fh "$cam_root/cime/src/share/RandNum/src\n";
-        print $fh "$cam_root/cime/src/share/RandNum/src/dsfmt_f03\n";
-        print $fh "$cam_root/cime/src/share/RandNum/src/kissvec\n";
-        print $fh "$cam_root/cime/src/share/RandNum/src/mt19937\n";
-
-        # GPTL and timing code
-#        print $fh "$cam_root/cime/src/externals/pio2/src/gptl\n";
-        print $fh "$cam_root/cime/src/share/timing\n";
-
-    }
 
     $fh->close;
 }
@@ -3004,111 +2225,6 @@ sub write_cppdefs
     print $fh "$make_cppdefs\n";
 
     $fh->close;
-}
-
-#-------------------------------------------------------------------------------
-
-sub write_makefile
-{
-    # Add macro definitions to the beginning of the Makefile
-    # in the CAM configuration script directory
-
-    my ($file_in, $file_out, $cfg_ref, $make_cppdefs) = @_;
-    my  $fh_in = new IO::File;
-    my  $fh_out = new IO::File;
-
-    $fh_out->open(">$file_out") or die "** can't open file: $file_out\n";
-
-    # configuration parameters
-    my $target_os    = $cfg_ref->get('target_os');
-    my $cam_root     = $cfg_ref->get('cam_root');
-    my $cam_exe      = $cfg_ref->get('cam_exe');
-    my $cam_exedir   = $cfg_ref->get('cam_exedir');
-    my $nc_inc       = $cfg_ref->get('nc_inc');
-    my $nc_lib       = $cfg_ref->get('nc_lib');
-    my $nc_mod       = $cfg_ref->get('nc_mod');
-    my $mpi_inc      = $cfg_ref->get('mpi_inc');
-    my $mpi_lib      = $cfg_ref->get('mpi_lib');
-    my $mpi_lib_name = $cfg_ref->get('mpi_lib_name');
-    my $debug        = $cfg_ref->get('debug') ? 'TRUE' : 'FALSE';
-    my $spmd         = $cfg_ref->get('spmd') ? 'TRUE' : 'FALSE';
-    my $smp          = $cfg_ref->get('smp') ? 'TRUE' : 'FALSE';
-    my $fc           = $cfg_ref->get('fc');
-    my $fc_type      = $cfg_ref->get('fc_type');
-    my $cc           = $cfg_ref->get('cc');
-    my $linker       = $cfg_ref->get('linker');
-    my $cflags       = $cfg_ref->get('cflags');
-    my $fflags       = $cfg_ref->get('fflags');
-    my $fopt         = $cfg_ref->get('fopt');
-    my $ldflags      = $cfg_ref->get('ldflags');
-    my $cosp_libdir  = $cfg_ref->get('cosp_libdir');
-    my $mct_libdir   = $cfg_ref->get('mct_libdir');
-    my $pio_build_dir   = $cfg_ref->get('pio_build_dir');
-    my $pio_install_dir = $cfg_ref->get('pio_install_dir');
-
-    # map between local os names ($OSNAME) and names which are
-    # used in the Makefile (return value from "uname -s" command).
-    my %uname_map = ( 'aix'      => 'AIX',
-                      'darwin'   => 'Darwin',
-                      'dec_osf'  => 'OSF1',
-                      'es'       => 'ES',
-                      'irix'     => 'IRIX64',
-                      'linux'    => 'Linux',
-                      'solaris'  => 'SunOS',
-                      'super-ux' => 'SUPER-UX',
-                      'unicosmp' => 'UNICOS/mp',
-                      'bgl'      => 'BGL',
-                      'bgp'      => 'BGP',
-                      'bgq'      => 'BGQ',
-                      );
-
-    print $fh_out  <<"EOF";
-# Make macros for CAM.
-
-UNAMES          := $uname_map{$target_os}
-ROOTDIR         := $cam_root
-EXENAME         := $cam_exe
-MODEL_EXEDIR    := $cam_exedir
-INC_NETCDF      := $nc_inc
-LIB_NETCDF      := $nc_lib
-NC_LDFLAGS      := $nc_ldflags
-MOD_NETCDF      := $nc_mod
-INC_PNETCDF     := $pnc_inc
-LIB_PNETCDF     := $pnc_lib
-INC_MPI         := $mpi_inc
-LIB_MPI         := $mpi_lib
-MPI_LIB_NAME    := $mpi_lib_name
-LAPACK_LIBDIR   := $lapack_libdir
-ESMF_LIBDIR     := $esmf_libdir
-DEBUG           := $debug
-SPMD            := $spmd
-SMP             := $smp
-FC              := $fc
-FC_TYPE         := $fc_type
-CC              := $cc
-USER_LINKER     := $linker
-USER_CPPDEFS    := $make_cppdefs
-USER_CFLAGS     := $cflags
-USER_FFLAGS     := $fflags
-F_OPTIMIZATION_OVERRIDE := $fopt
-USER_LDFLAGS    := $ldflags
-COSP_LIBDIR     := $cosp_libdir
-MCT_LIBDIR      := $mct_libdir
-PIO_BUILD_DIR   := $pio_build_dir
-PIO_INSTALL_DIR := $pio_install_dir
-#GPTL_SRCDIR     := $cam_root/cime/src/externals/pio2/gptl
-TIMING_SRCDIR   := $cam_root/cime/src/share/timing
-
-EOF
-
-    # Copy the "template" makefile to the new makefile.
-    $fh_in->open("<$file_in") or die "** can't open file: $file_in\n";
-    while (<$fh_in>) {
-        print $fh_out $_;
-    }
-
-    $fh_out->close;
-    $fh_in->close;
 }
 
 #-------------------------------------------------------------------------------
@@ -3133,6 +2249,62 @@ CS_PATH      := $cam_dir/src/physics/cosp2/src/simulator/actsim
 MISR_PATH    := $cam_dir/src/physics/cosp2/src/simulator/MISR_simulator
 MODIS_PATH   := $cam_dir/src/physics/cosp2/src/simulator/MODIS_simulator
 PARASOL_PATH := $cam_dir/src/physics/cosp2/src/simulator/parasol
+
+EOF
+
+    # Copy the "template" makefile to the new makefile.
+    $fh_in->open("<$file_in") or die "** can't open file: $file_in\n";
+    while (<$fh_in>) {
+        print $fh_out $_;
+    }
+
+    $fh_out->close;
+    $fh_in->close;
+}
+
+
+#-------------------------------------------------------------------------------
+sub write_fv3_makefile
+{
+
+    my ($file_in, $file_out) = @_;
+    my  $fh_in = new IO::File;
+    my  $fh_out = new IO::File;
+
+    $fh_out->open(">$file_out") or die "** can't open file: $file_out\n";
+
+    print $fh_out  <<"EOF";
+
+CAM_BLD      := $cam_bld
+
+EOF
+
+    # Copy the "template" makefile to the new makefile.
+    $fh_in->open("<$file_in") or die "** can't open file: $file_in\n";
+    while (<$fh_in>) {
+        print $fh_out $_;
+    }
+
+    $fh_out->close;
+    $fh_in->close;
+}
+
+
+#-------------------------------------------------------------------------------
+
+sub write_mpas_makefile
+{
+
+    my ($file_in, $file_out) = @_;
+    my  $fh_in = new IO::File;
+    my  $fh_out = new IO::File;
+
+    $fh_out->open(">$file_out") or die "** can't open file: $file_out\n";
+
+    print $fh_out  <<"EOF";
+
+MPAS_SRC_ROOT := $cam_dir/src/dynamics/mpas
+COMP_INTERFACE:= $cpl
 
 EOF
 
@@ -3179,7 +2351,7 @@ sub set_horiz_grid
 
     my ($hgrid_file, $cfg_ref) = @_;
 
-    # Get dycore/grid from the package's configuration
+    # Get dycore/grid from the configuration object
     my $dyn_pkg = $cfg_ref->get('dyn');
     my $hgrid   = $cfg_ref->get('hgrid');
 
@@ -3204,9 +2376,14 @@ sub set_horiz_grid
         $hgrid =~ s/\.pg\d+//;   # strip the '.pgN' extension
         $cfg_ref->set('hgrid', $hgrid);
     }
-    else {
+    elsif ( $dyn_pkg eq 'fv3') {
+        # For FV3 dycore parse the parameters out of the grid specifier string.
+        $hgrid =~ m/C(\d+)/;
+        $cfg_ref->set('hgrid', $hgrid);
+    }
+    elsif ($dyn_pkg =~ m/^eul$|^fv/) {
 
-        # For non-SE dycores the parameters are read from an input file,
+        # For EUL and FV dycores the parameters are read from an input file,
         # and if no dycore/grid matches are found then issue error message.
 
         my $xml = XML::Lite->new( $hgrid_file );
@@ -3257,9 +2434,6 @@ sub set_horiz_grid
         elsif ( $dyn_pkg eq 'fv' ) {
             $cfg_ref->set('nlat', $a{'nlat'});
             $cfg_ref->set('nlon', $a{'nlon'});
-        }
-        elsif ( $dyn_pkg eq 'fvcubed' ) {
-            $cfg_ref->set('csnp', $a{'csnp'});
         }
         else {
             die "set_horiz_grid: unrecognized dycore: $dyn_pkg\n";
@@ -3406,302 +2580,6 @@ sub get_gmake {
 
 #-------------------------------------------------------------------------------
 
-sub write_tests_filepath
-{
-    my ($test_dir) = @_;
-    my  $fh = new IO::File;
-
-    $fh->open(">Filepath") or die "** can't open file: $test_dir/Filepath\n";
-
-    print $fh "$test_dir\n";
-
-    $fh->close;
-}
-
-#-------------------------------------------------------------------------------
-
-sub run_test
-{
-    # Return true if the test should be run after a successful build.
-    # Note that this function is depending on the main package variables
-    # main::$spmd and main:: $target_os.
-
-    # Default is to try running a test that's been successfully built.
-    my $result = 1;
-
-    # But don't attempt to run a test if...
-    if ( $spmd eq 'ON'                     # SPMD is enabled
-         or $target_os ne $OSNAME          # cross compilation
-         ) {$result = 0;}
-
-    return $result;
-}
-
-#-------------------------------------------------------------------------------
-
-sub check_fc {
-
-# Create a "hello world" test code in Fortran 90 syntax to check the compiler.
-# If successful then the name of the compiler used is returned.
-
-    my ($gmake, $makefile) = @_;
-    my $fh = new IO::File;
-    my $file = 'test_fc.F90';
-
-    # create test program
-    $fh->open(">$file") or die "** can't open file: $file\n";
-    print $fh  <<"EOF";
-module m1
-   private
-   public :: hello
-contains
-subroutine hello()
-   implicit none
-   print *, 'hello world'
-end subroutine hello
-end module m1
-program main
-   use m1, only: hello
-   implicit none
-   call hello
-end program main
-EOF
-    $fh->close;
-
-    # Build the test_fc target in the CAM Makefile
-    my $cmd = "$gmake -f $makefile test_fc 2>&1";
-    my $out = `$cmd`;
-    my $cmd_error = $CHILD_ERROR;
-    my $test_output = "Issued the command:\n$cmd\n\nThe output was:\n$out\n";
-
-    if ($cmd_error) {
-        die "**** FAILED ****\n$test_output";
-    } elsif ($print>=2) {
-        print "**** PASS ****\n$test_output";
-    }
-
-    # search make output for name of Fortran compiler -- Assume that the Makefile
-    # rule has the syntax "$(FC) -c ..."
-    $out =~ m{ ^\s*      # leading whitespace
-               (\w+)     # 1st word (name of compiler)
-               \s+       # followed by one or more spaces
-               -c        # and the -c option
-               \s
-             }xm;
-
-    my $fc_compiler_name = $1;
-
-    if (run_test()) {
-        # Run test_fc.
-        my $cmd = "./test_fc";
-        my $out = `$cmd`;
-        my $cmd_error = $CHILD_ERROR;
-        my $test_output = "Issued the command:\n$cmd\n\nThe output was:\n$out\n";
-
-        if ($cmd_error) {
-            die "**** FAILED ****\n$test_output";
-        } elsif ($print>=2) {
-            print "**** PASS ****\n$test_output";
-        }
-    }
-
-    # clean-up (Srcfiles and Depends are created by the makefile)
-    unlink 'test_fc.F90', 'test_fc.o', 'test_fc', 'Depends', 'Srcfiles', glob("[Mm]1.[Mm][Oo][Dd]");
-
-    return $fc_compiler_name;
-}
-
-#-------------------------------------------------------------------------------
-
-sub check_netcdf {
-
-# Create a test code that has an external reference to the netCDF library
-# and check that the Makefile can build it.  Returns 0 on success.
-
-    my ($gmake, $makefile) = @_;
-    my $fh = new IO::File;
-    my $file = 'test_nc.F90';
-
-    # create test program
-    $fh->open(">$file") or die "** can't open file: $file\n";
-    print $fh  <<"EOF";
-program main
-   use netcdf
-   implicit none
-   integer :: ncid, ret
-   ret = nf90_create('foo.nc', NF90_CLOBBER, ncid)
-   if ( ret == NF90_NOERR ) then
-      print *, 'created foo.nc'
-   else
-      print *, nf90_strerror( ret )
-   end if
-end program main
-EOF
-    $fh->close;
-
-    # Build the test_nc target in the CAM Makefile
-    my $cmd = "$gmake -f $makefile test_nc 2>&1";
-    my $out = `$cmd`;
-    my $cmd_error = $CHILD_ERROR;
-    my $test_output = "Issued the command:\n$cmd\n\nThe output was:\n$out\n";
-
-    if ($cmd_error) {
-        die "**** FAILED ****\n$test_output";
-    } elsif ($print>=2) {
-        print "**** PASS ****\n$test_output";
-    }
-
-    if (run_test()) {
-        # Run test_nc.
-        my $cmd = "./test_nc";
-        my $out = `$cmd`;
-        my $cmd_error = $CHILD_ERROR;
-        my $test_output = "Issued the command:\n$cmd\n\nThe output was:\n$out\n";
-
-        if ($cmd_error) {
-            die "**** FAILED ****\n$test_output";
-        } elsif ($print>=2) {
-            print "**** PASS ****\n$test_output";
-        }
-    }
-
-    # clean-up
-    unlink 'test_nc.F90', 'test_nc.o', 'test_nc', 'foo.nc', 'Depends', 'Srcfiles';
-
-    return 0;
-}
-
-#-------------------------------------------------------------------------------
-
-sub check_mpi {
-
-# Create a test code that has an external reference to the MPI library
-# and check that the Makefile can build it.  Returns 0 on success.
-
-    my ($gmake, $makefile) = @_;
-    my $fh = new IO::File;
-    my $file = 'test_mpi.F90';
-
-    # create the test program
-    $fh->open(">$file") or die "** can't open file: $file\n";
-    print $fh  <<"EOF";
-      program test_mpi
-      implicit none
-#include <mpif.h>
-      integer :: ierr
-      call mpi_init(ierr)
-      if ( ierr == MPI_SUCCESS ) then
-         print *, 'successfully called mpi_init'
-      else
-         print *, 'ERROR returned from mpi_init'
-      end if
-      end program test_mpi
-EOF
-    $fh->close;
-
-    # Build the test_mpi target in the CAM Makefile
-    my $cmd = "$gmake -f $makefile test_mpi 2>&1";
-    my $out = `$cmd`;
-    my $cmd_error = $CHILD_ERROR;
-    my $test_output = "Issued the command:\n$cmd\n\nThe output was:\n$out\n";
-
-    if ($cmd_error) {
-        die "**** FAILED ****\n$test_output";
-    } elsif ($print>=2) {
-        print "**** PASS ****\n$test_output";
-    }
-
-    if (run_test()) {
-        # Run test_mpi.
-        my $cmd = "./test_mpi";
-        my $out = `$cmd`;
-        my $cmd_error = $CHILD_ERROR;
-        my $test_output = "Issued the command:\n$cmd\n\nThe output was:\n$out\n";
-
-        if ($cmd_error) {
-            die "**** FAILED ****\n$test_output";
-        } elsif ($print>=2) {
-            print "**** PASS ****\n$test_output";
-        }
-    }
-
-    # clean-up
-    unlink 'test_mpi.F90', 'test_mpi.o', 'test_mpi', 'Depends', 'Srcfiles';
-
-    return 0;
-}
-
-#-------------------------------------------------------------------------------
-
-sub check_esmf {
-
-# Create a test code that has an external reference to the ESMF library
-# and check that the Makefile can build it.  Returns 0 on success.
-
-    my ($gmake, $makefile) = @_;
-    my $fh = new IO::File;
-    my $file = 'test_esmf.F90';
-
-    # create the test program
-    $fh->open(">$file") or die "** can't open file: $file\n";
-    print $fh  <<"EOF";
-      program test_esmf
-      use ESMF
-      implicit none
-      integer :: ierr
-
-      ! Writes a log called ESMF_LogFile to bld/configure-tests
-      call ESMF_Initialize(rc=ierr,logkindflag=ESMF_LOGKIND_SINGLE)
-
-      if ( ierr == ESMF_SUCCESS ) then
-         print *, 'successfully called ESMF_Initialize'
-      else
-         print *, 'ERROR returned from ESMF_Initialize'
-      end if
-
-      ! Close the log file in order to flush it
-      call ESMF_Finalize(rc=ierr)
-
-      end program test_esmf
-EOF
-    $fh->close;
-
-    # Build the test_esmf target in the CAM Makefile
-    my $cmd = "$gmake -f $makefile test_esmf 2>&1";
-    my $out = `$cmd`;
-    my $cmd_error = $CHILD_ERROR;
-    my $test_output = "Issued the command:\n$cmd\n\nThe output was:\n$out\n";
-
-    if ($cmd_error) {
-        die "**** FAILED ****\n$test_output";
-    } elsif ($print>=2) {
-        print "**** PASS ****\n$test_output";
-    }
-
-    if (run_test()) {
-        # Run test_esmf.
-        $cmd = "./test_esmf";
-        my $out = `$cmd`;
-        my $cmd_error = $CHILD_ERROR;
-        my $test_output = "Issued the command:\n$cmd\n\nThe output was:\n$out\n";
-
-
-        if ($cmd_error) {
-            die "**** FAILED ****\n$test_output";
-        } elsif ($print>=2) {
-            print "**** PASS ****\n$test_output";
-        }
-    }
-
-    # clean-up
-    unlink 'test_esmf.F90', 'test_esmf.o', 'test_esmf', 'Depends', 'Srcfiles';
-
-    return 0;
-}
-#-------------------------------------------------------------------------------
-
-#-------------------------------------------------------------------------------
-
 sub version {
 # The version is found in CAM's ChangeLog file.
 # $cfgdir is set by the configure script to the name of its directory.
@@ -3720,13 +2598,4 @@ sub version {
         }
     }
 
-}
-
-
-#-------------------------------------------------------------------------------
-
-sub print_hash {
-    my %h = @_;
-    my ($k, $v);
-    while ( ($k,$v) = each %h ) { print "$k => $v\n"; }
 }

@@ -47,7 +47,7 @@
 
       Reactions
  [usr_HO2_HO2] HO2 + HO2 -> H2O2
-               H2O2 + OH -> H2O + HO2                                           ; 2.9e-12, -160
+               H2O2 + OH -> H2O + HO2                                           ; 1.8e-12
  [usr_SO2_OH]  SO2 + OH -> H2SO4
                DMS + OH -> SO2                                                  ; 9.6e-12, -234.
  [usr_DMS_OH]  DMS + OH -> .5 * SO2 + .5 * HO2

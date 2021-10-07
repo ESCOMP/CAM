@@ -21,7 +21,7 @@ module mo_gas_phase_chemdr
 
   integer :: map2chm(pcnst) = 0           ! index map to/from chemistry/constituents list
 
-  integer :: synoz_ndx, so4_ndx, h2o_ndx, o2_ndx, o_ndx, hno3_ndx, hcl_ndx, dst_ndx, cldice_ndx, snow_ndx
+  integer :: so4_ndx, h2o_ndx, o2_ndx, o_ndx, hno3_ndx, hcl_ndx, dst_ndx, cldice_ndx, snow_ndx
   integer :: o3_ndx, o3s_ndx
   integer :: het1_ndx
   integer :: ndx_cldfr, ndx_cmfdqr, ndx_nevapr, ndx_cldtop, ndx_prain
@@ -60,8 +60,6 @@ contains
     use physics_buffer,    only : pbuf_get_index
     use rate_diags,        only : rate_diags_init
     use cam_abortutils,    only : endrun
-
-    implicit none
 
     character(len=3) :: string
     integer          :: n, m, err, ii
@@ -126,7 +124,6 @@ contains
     hno3_ndx = get_spc_ndx('HNO3')
     hcl_ndx  = get_spc_ndx('HCL')
     dst_ndx = get_spc_ndx( dust_names(1) )
-    synoz_ndx = get_extfrc_ndx( 'SYNOZ' )
     call cnst_get_ind( 'CLDICE', cldice_ndx )
     call cnst_get_ind( 'SNOWQM', snow_ndx, abort=.false. )
 
@@ -265,7 +262,6 @@ contains
     use mo_setrxt,         only : setrxt
     use mo_adjrxt,         only : adjrxt
     use mo_phtadj,         only : phtadj
-    use llnl_O1D_to_2OH_adj,only : O1D_to_2OH_adj
     use mo_usrrxt,         only : usrrxt
     use mo_setinv,         only : setinv
     use mo_negtrc,         only : negtrc
@@ -273,18 +269,15 @@ contains
     use mo_setext,         only : setext
     use fire_emissions,    only : fire_emissions_vrt
     use mo_sethet,         only : sethet
-    use mo_drydep,         only : drydep, set_soilw
-    use seq_drydep_mod,    only : DD_XLND, DD_XATM, DD_TABL, drydep_method
+    use mo_drydep,         only : drydep
     use mo_fstrat,         only : set_fstrat_vals, set_fstrat_h2o
     use noy_ubc,           only : noy_ubc_set
     use mo_flbc,           only : flbc_set
-    use phys_grid,         only : get_rlat_all_p, get_rlon_all_p, get_lat_all_p, get_lon_all_p
+    use phys_grid,         only : get_rlat_all_p, get_rlon_all_p
     use mo_mean_mass,      only : set_mean_mass
     use cam_history,       only : outfld
     use wv_saturation,     only : qsat
     use constituents,      only : cnst_mw
-    use mo_drydep,         only : has_drydep
-    use time_manager,      only : get_ref_date
     use mo_ghg_chem,       only : ghg_chem_set_rates, ghg_chem_set_flbc
     use mo_sad,            only : sad_strat_calc
     use charge_neutrality, only : charge_balance
@@ -303,18 +296,11 @@ contains
     use mo_mass_xforms,    only : mmr2vmr, vmr2mmr, h2o_to_vmr, mmr2vmri
     use orbit,             only : zenith
 !
-! LINOZ
-!
-    use lin_strat_chem,    only : do_lin_strat_chem, lin_strat_chem_solve
-    use linoz_data,        only : has_linoz_data
-!
 ! for aqueous chemistry and aerosol growth
 !
     use aero_model,        only : aero_model_gasaerexch
 
     use aero_model,        only : aero_model_strat_surfarea
-
-    implicit none
 
     !-----------------------------------------------------------------------
     !        ... Dummy arguments
@@ -377,8 +363,6 @@ contains
     integer      ::  tim_ndx
     real(r8)     ::  delt_inverse
     real(r8)     ::  esfact
-    integer      ::  latndx(pcols)                         ! chunk lat indicies
-    integer      ::  lonndx(pcols)                         ! chunk lon indicies
     real(r8)     ::  invariants(ncol,pver,nfs)
     real(r8)     ::  col_dens(ncol,pver,max(1,nabscol))    ! column densities (molecules/cm^2)
     real(r8)     ::  col_delta(ncol,0:pver,max(1,nabscol)) ! layer column densities (molecules/cm^2)
@@ -420,11 +404,7 @@ contains
     real(r8)                  ::  reff_strat(pcols,pver)  ! stratospheric aerosol effective radius (cm)
 
     real(r8) :: tvs(pcols)
-    integer  :: ncdate,yr,mon,day,sec
     real(r8) :: wind_speed(pcols)        ! surface wind speed (m/s)
-    logical, parameter :: dyn_soilw = .false.
-    logical  :: table_soilw
-    real(r8) :: soilw(pcols)
     real(r8) :: prect(pcols)
     real(r8) :: sflx(pcols,gas_pcnst)
     real(r8) :: wetdepflx_diag(pcols,gas_pcnst)
@@ -491,8 +471,6 @@ contains
     !-----------------------------------------------------------------------      
     !        ... Get chunck latitudes and longitudes
     !-----------------------------------------------------------------------      
-    call get_lat_all_p( lchnk, ncol, latndx )
-    call get_lon_all_p( lchnk, ncol, lonndx )
     call get_rlat_all_p( lchnk, ncol, rlats )
     call get_rlon_all_p( lchnk, ncol, rlons )
     tim_ndx = pbuf_old_tim_idx()
@@ -762,7 +740,9 @@ contains
     !-----------------------------------------------------------------
     !	... compute the relative humidity
     !-----------------------------------------------------------------
-    call qsat(tfld(:ncol,:), pmid(:ncol,:), satv, satq)
+    do k = 1, pver
+       call qsat(tfld(1:ncol,k), pmid(1:ncol,k), satv(1:ncol,k), satq(1:ncol,k), ncol)
+    end do
 
     do k = 1,pver
        relhum(:,k) = .622_r8 * h2ovmr(:,k) / satq(:,k)
@@ -857,7 +837,6 @@ contains
     !-----------------------------------------------------------------------      
     !     	... Adjust the photodissociation rates
     !-----------------------------------------------------------------------  
-    call O1D_to_2OH_adj( reaction_rates, invariants, invariants(:,:,indexm), ncol, tfld )
     call phtadj( reaction_rates, invariants, invariants(:,:,indexm), ncol,pver )
 
     !-----------------------------------------------------------------------
@@ -876,7 +855,7 @@ contains
     call fire_emissions_vrt( ncol, lchnk, zint, fire_sflx, fire_ztop, extfrc )
 
     do m = 1,extcnt
-       if( m /= synoz_ndx .and. m /= aoa_nh_ext_ndx ) then
+       if( m /= aoa_nh_ext_ndx ) then
           do k = 1,pver
              extfrc(:ncol,k,m) = extfrc(:ncol,k,m) / invariants(:ncol,k,indexm)
           end do
@@ -908,11 +887,7 @@ contains
        enddo
     end if
 
-    if ( has_linoz_data ) then
-       ltrop_sol(:ncol) = troplev(:ncol)
-    else
-       ltrop_sol(:ncol) = 0 ! apply solver to all levels
-    endif
+    ltrop_sol(:ncol) = 0 ! apply solver to all levels
 
     ! save h2so4 before gas phase chem (for later new particle nucleation)
     if (ndx_h2so4 > 0) then
@@ -1028,13 +1003,6 @@ contains
 
     endif
 
-!
-! LINOZ
-!
-    if ( do_lin_strat_chem ) then
-       call lin_strat_chem_solve( ncol, lchnk, vmr(:,:,o3_ndx), col_dens(:,:,1), tfld, zen_angle, pmid, delt, rlats, troplev )
-    end if
-
     !-----------------------------------------------------------------------      
     !         ... Check for negative values and reset to zero
     !-----------------------------------------------------------------------      
@@ -1089,33 +1057,16 @@ contains
     tvs(:ncol) = tfld(:ncol,pver) * (1._r8 + qh2o(:ncol,pver))
 
     sflx(:,:) = 0._r8
-    call get_ref_date(yr, mon, day, sec)
-    ncdate = yr*10000 + mon*100 + day
     wind_speed(:ncol) = sqrt( ufld(:ncol,pver)*ufld(:ncol,pver) + vfld(:ncol,pver)*vfld(:ncol,pver) )
     prect(:ncol) = precc(:ncol) + precl(:ncol)
 
-    if ( drydep_method == DD_XLND ) then
-       soilw = -99
-       call drydep( ocnfrac, icefrac, ncdate, ts, ps,  &
-            wind_speed, qh2o(:,pver), tfld(:,pver), pmid(:,pver), prect, &
-            snowhland, fsds, depvel, sflx, mmr, &
-            tvs, soilw, relhum(:,pver:pver), ncol, lonndx, latndx, lchnk )
-    else if ( drydep_method == DD_XATM ) then
-       table_soilw = has_drydep( 'H2' ) .or. has_drydep( 'CO' )
-       if( .not. dyn_soilw .and. table_soilw ) then
-          call set_soilw( soilw, lchnk, calday )
-       end if
-       call drydep( ncdate, ts, ps,  &
-            wind_speed, qh2o(:,pver), tfld(:,pver), pmid(:,pver), prect, &
-            snowhland, fsds, depvel, sflx, mmr, &
-            tvs, soilw, relhum(:,pver:pver), ncol, lonndx, latndx, lchnk )
-    else if ( drydep_method == DD_TABL ) then
-       call drydep( calday, ts, zen_angle, &
-            depvel, sflx, mmr, pmid(:,pver), &
-            tvs, ncol, icefrac, ocnfrac, lchnk )
-    endif
+    call drydep( ocnfrac, icefrac, ts, ps,  &
+                 wind_speed, qh2o(:,pver), tfld(:,pver), pmid(:,pver), prect, &
+                 snowhland, fsds, depvel, sflx, mmr, &
+                 tvs, ncol, lchnk )
 
     drydepflx(:,:) = 0._r8
+    wetdepflx_diag(:,:) = 0._r8
     do m = 1,pcnst
        n = map2chm( m )
        if ( n > 0 ) then

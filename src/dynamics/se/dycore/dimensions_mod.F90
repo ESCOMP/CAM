@@ -11,12 +11,11 @@ module dimensions_mod
 
 ! set MAX number of tracers.  actual number of tracers is a run time argument  
 #ifdef FVM_TRACERS
-  integer, parameter         :: qsize_d = 6 ! SE tracers (currently SE supports 6 condensate loading tracers)
+  integer, parameter         :: qsize_d =10 ! SE tracers (currently SE supports 10 condensate loading tracers)
 #else
   integer, parameter         :: ntrac_d = 0 ! No fvm tracers if CSLAM is off
 #endif
 
-  integer,               public :: qsize_condensate_loading = 1 !how many water variables to include in full density
   !
   ! The variables below hold indices of water vapor and condensate loading tracers as well as
   ! associated heat capacities (initialized in dyn_init):
@@ -30,10 +29,6 @@ module dimensions_mod
   !
   ! but when running with CSLAM then SE tracers are only the water tracers included in the condensate loading
   !
-  integer,            allocatable, public :: qsize_condensate_loading_idx(:)    
-  integer,            allocatable, public :: qsize_condensate_loading_idx_gll(:)
-  real(r8),           allocatable, public :: qsize_condensate_loading_cp(:)
-  real(r8),           allocatable, public :: qsize_condensate_loading_R(:)
   character(len=16),  allocatable, public :: cnst_name_gll(:)     ! constituent names for SE tracers
   character(len=128), allocatable, public :: cnst_longname_gll(:) ! long name of SE tracers
   !
@@ -74,14 +69,22 @@ module dimensions_mod
   integer, public :: kmin_jet,kmax_jet !min and max level index for the jet
   integer, public :: fvm_supercycling    
   integer, public :: fvm_supercycling_jet
+
+  integer, allocatable, public :: kord_tr(:), kord_tr_cslam(:)
   
-  real(r8), public :: max_nu_scale_del4 ! for sponge viscosity - maximum nu can be scaled with and still be
-                                        ! theoretically stable (computed in global_norms_mod.F90)
   real(r8), public :: nu_scale_top(PLEV)! scaling of del2 viscosity in sopnge layer (initialized in dyn_comp)
-  real(r8), public :: otau(PLEV)
+  real(r8), public :: nu_lev(PLEV)      ! level dependent del4 (u,v) damping
+  real(r8), public :: nu_t_lev(PLEV)    ! level depedendet del4 T damping
   integer,  public :: ksponge_end       ! sponge is active k=1,ksponge_end
-  real(r8), public :: nu_div_scale_top(PLEV) = 1.0_r8 ! scaling of viscosity in sponge layer
+  real(r8), public :: nu_div_lev(PLEV) = 1.0_r8 ! scaling of viscosity in sponge layer
                                                       ! (set in prim_state; if applicable)
+  real(r8), public :: kmvis_ref(PLEV)        !reference profiles for molecular diffusion 
+  real(r8), public :: kmcnd_ref(PLEV)        !reference profiles for molecular diffusion  
+  real(r8), public :: rho_ref(PLEV)          !reference profiles for rho
+  real(r8), public :: km_sponge_factor(PLEV) !scaling for molecular diffusion (when used as sponge)
+  real(r8), public :: kmvisi_ref(PLEV+1)        !reference profiles for molecular diffusion 
+  real(r8), public :: kmcndi_ref(PLEV+1)        !reference profiles for molecular diffusion  
+
 
   integer,  public :: nhc_phys 
   integer,  public :: nhe_phys 
@@ -114,8 +117,6 @@ module dimensions_mod
   integer, public :: nPhysProc                          ! This is the number of physics processors/ per dynamics processor
   integer, public :: nnodes,npart,nmpi_per_node
   integer, public :: GlobalUniqueCols
-
-
 
   public :: set_mesh_dimensions
 

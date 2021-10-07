@@ -1,0 +1,38 @@
+name: Pushed commit workflow
+
+#For some reason GitHub does not allow secrets
+#when a PR from a fork is closed.  Thus instead
+#the workflow must activate whenever a commit
+#is pushed to the repo.  Theoretically this should
+#behave the same way as if triggered from a pull
+#request, just as long as no user ever pushes
+#directly to the repo.
+on: push
+
+jobs:
+  #This job is designed to close any issues or pull requests specified
+  #in the body of a pull request merged into a non-default branch.
+  issue_closer:
+    runs-on: ubuntu-latest
+    steps:
+    # acquire github action routines
+    - uses: actions/checkout@v2
+    # acquire specific version of python
+    - name: Set up Python 3.6
+      if: github.repository == 'ESCOMP/CAM' #Only run on main repo
+      uses: actions/setup-python@v1
+      with:
+        python-version: '3.6' # Semantic version range syntax or exact version of a Python version
+    # install required python packages
+    - name: Install dependencies
+      if: github.repository == 'ESCOMP/CAM' #Only run on main repo
+      run: |
+        python -m pip install --upgrade pip  # Install latest version of PIP
+        pip install PyGithub                 # Install PyGithub python package
+    # run CAM issue-closing script
+    - name: python action scripts
+      if: github.repository == 'ESCOMP/CAM' #Only run on main repo
+      env:
+        ACCESS_TOKEN: ${{ secrets.WRITE_ACCESS_TOKEN }}
+        TRIGGER_SHA: ${{ github.sha }}
+      run: .github/scripts/branch_pr_issue_closer.py --access_token $ACCESS_TOKEN --trigger_sha $TRIGGER_SHA

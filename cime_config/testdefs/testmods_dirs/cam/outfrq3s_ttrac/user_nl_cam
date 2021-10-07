@@ -1,0 +1,8 @@
+mfilt=1,1,1,1,1,1
+ndens=1,1,1,1,1,1
+nhtfrq=3,3,3,3,3,3
+inithist='ENDOFRUN'
+interpolate_output=.false.,.true.
+interpolate_nlat=0,30
+interpolate_nlon=0,60
+fincl2='Q:I','T:I','U:I','V:I','Q_gll:I','T_gll:I','U_gll:I','V_gll:I'

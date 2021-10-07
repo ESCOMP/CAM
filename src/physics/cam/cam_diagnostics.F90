@@ -17,7 +17,7 @@ use constituents,    only: pcnst, cnst_name, cnst_longname, cnst_cam_outfld
 use constituents,    only: ptendnam, dmetendnam, apcnst, bpcnst, cnst_get_ind
 use dycore,          only: dycore_is
 use phys_control,    only: phys_getopts
-use wv_saturation,   only: qsat, qsat_water, svp_ice
+use wv_saturation,   only: qsat, qsat_water, svp_ice_vect
 use time_manager,    only: is_first_step
 
 use scamMod,         only: single_column, wfld
@@ -78,18 +78,20 @@ logical          :: history_waccm                  ! outputs typically used for 
 
 ! Physics buffer indices
 
-integer  ::      psl_idx    = 0 
-integer  ::      relhum_idx = 0 
-integer  ::      qcwat_idx  = 0 
-integer  ::      tcwat_idx  = 0 
-integer  ::      lcwat_idx  = 0 
-integer  ::      cld_idx    = 0 
-integer  ::      concld_idx = 0 
-integer  ::      tke_idx    = 0 
-integer  ::      kvm_idx    = 0 
-integer  ::      kvh_idx    = 0 
-integer  ::      cush_idx   = 0 
+integer  ::      psl_idx    = 0
+integer  ::      relhum_idx = 0
+integer  ::      qcwat_idx  = 0
+integer  ::      tcwat_idx  = 0
+integer  ::      lcwat_idx  = 0
+integer  ::      cld_idx    = 0
+integer  ::      concld_idx = 0
+integer  ::      tke_idx    = 0
+integer  ::      kvm_idx    = 0
+integer  ::      kvh_idx    = 0
+integer  ::      cush_idx   = 0
 integer  ::      t_ttend_idx = 0
+integer  ::      t_utend_idx = 0
+integer  ::      t_vtend_idx = 0
 
 integer  ::      prec_dp_idx  = 0
 integer  ::      snow_dp_idx  = 0
@@ -150,6 +152,8 @@ contains
 
     ! Request physics buffer space for fields that persist across timesteps.
     call pbuf_add_field('T_TTEND', 'global', dtype_r8, (/pcols,pver,dyn_time_lvls/), t_ttend_idx)
+    call pbuf_add_field('T_UTEND', 'global', dtype_r8, (/pcols,pver,dyn_time_lvls/), t_utend_idx)
+    call pbuf_add_field('T_VTEND', 'global', dtype_r8, (/pcols,pver,dyn_time_lvls/), t_vtend_idx)
   end subroutine diag_register_dry
 
   subroutine diag_register_moist()
@@ -166,7 +170,7 @@ contains
   end subroutine diag_register
 
 !==============================================================================
-  
+
   subroutine diag_init_dry(pbuf2d)
     ! Declare the history fields for which this module contains outfld calls.
 
@@ -195,6 +199,9 @@ contains
 
     ! State before physics
     call addfld ('TBP',     (/ 'lev' /), 'A','K',             'Temperature (before physics)')
+    call addfld ('UBP',     (/ 'lev' /), 'A','m/s',           'Zonal wind (before physics)')
+    call addfld ('VBP',     (/ 'lev' /), 'A','m/s',           'Meridional Wind (before physics)')
+    call register_vector_field('UBP','VBP')
     call addfld (bpcnst(1), (/ 'lev' /), 'A','kg/kg',         trim(cnst_longname(1))//' (before physics)')
     ! State after physics
     call addfld ('TAP',     (/ 'lev' /), 'A','K',             'Temperature (after physics)'       )
@@ -204,11 +211,16 @@ contains
     call register_vector_field('UAP','VAP')
 
     call addfld (apcnst(1), (/ 'lev' /), 'A','kg/kg',         trim(cnst_longname(1))//' (after physics)')
-    if ( dycore_is('LR') .or. dycore_is('SE') ) then
+    if ( dycore_is('LR') .or. dycore_is('SE')  .or. dycore_is('FV3') ) then
       call addfld ('TFIX',    horiz_only,  'A', 'K/s',        'T fixer (T equivalent of Energy correction)')
     end if
     call addfld ('TTEND_TOT', (/ 'lev' /), 'A', 'K/s',        'Total temperature tendency')
-   
+
+    ! outfld calls in diag_phys_tend_writeout
+    call addfld ('UTEND_TOT', (/ 'lev' /), 'A', 'm/s2',       'Total zonal wind tendency')
+    call addfld ('VTEND_TOT', (/ 'lev' /), 'A', 'm/s2',       'Total meridional wind tendency')
+    call register_vector_field('UTEND_TOT','VTEND_TOT')
+
     ! Debugging negative water output fields
     call addfld ('INEGCLPTEND ', (/ 'lev' /), 'A', 'kg/kg/s', 'Cloud ice tendency due to clipping neg values after microp')
     call addfld ('LNEGCLPTEND ', (/ 'lev' /), 'A', 'kg/kg/s', 'Cloud liq tendency due to clipping neg values after microp')
@@ -330,16 +342,20 @@ contains
       call add_default ('U       '  , history_budget_histfile_num, ' ')
       call add_default ('V       '  , history_budget_histfile_num, ' ')
       call add_default ('TTEND_TOT' , history_budget_histfile_num, ' ')
+      call add_default ('UTEND_TOT' , history_budget_histfile_num, ' ')
+      call add_default ('VTEND_TOT' , history_budget_histfile_num, ' ')
 
       ! State before physics (FV)
       call add_default ('TBP     '  , history_budget_histfile_num, ' ')
+      call add_default ('UBP     '  , history_budget_histfile_num, ' ')
+      call add_default ('VBP     '  , history_budget_histfile_num, ' ')
       call add_default (bpcnst(1)   , history_budget_histfile_num, ' ')
       ! State after physics (FV)
       call add_default ('TAP     '  , history_budget_histfile_num, ' ')
       call add_default ('UAP     '  , history_budget_histfile_num, ' ')
-      call add_default ('VAP     '  , history_budget_histfile_num, ' ')  
+      call add_default ('VAP     '  , history_budget_histfile_num, ' ')
       call add_default (apcnst(1)   , history_budget_histfile_num, ' ')
-      if ( dycore_is('LR') .or. dycore_is('SE') ) then
+      if ( dycore_is('LR') .or. dycore_is('SE') .or. dycore_is('FV3')  ) then
         call add_default ('TFIX    '    , history_budget_histfile_num, ' ')
       end if
     end if
@@ -351,9 +367,14 @@ contains
     end if
 
     ! outfld calls in diag_phys_tend_writeout
-    call addfld ('PTTEND',          (/ 'lev' /), 'A', 'K/s','T total physics tendency'                             )
+    call addfld ('PTTEND',          (/ 'lev' /), 'A', 'K/s','T total physics tendency')
+    call addfld ('UTEND_PHYSTOT',   (/ 'lev' /), 'A', 'm/s2','U total physics tendency')
+    call addfld ('VTEND_PHYSTOT',   (/ 'lev' /), 'A', 'm/s2','V total physics tendency')
+    call register_vector_field('UTEND_PHYSTOT','VTEND_PHYSTOT')
     if ( history_budget ) then
       call add_default ('PTTEND'          , history_budget_histfile_num, ' ')
+      call add_default ('UTEND_PHYSTOT'   , history_budget_histfile_num, ' ')
+      call add_default ('VTEND_PHYSTOT'   , history_budget_histfile_num, ' ')
     end if
 
     ! create history variables for fourier coefficients of the diurnal
@@ -413,6 +434,9 @@ contains
     call addfld ('MO_pAM',   horiz_only, 'A', 'kg*m2/s*rad2',&
          'Total column mass axial angular momentum after dry mass correction')
 
+    call addfld( 'CPAIRV', (/ 'lev' /), 'I', 'J/K/kg', 'Variable specific heat cap air' )
+    call addfld( 'RAIRV', (/ 'lev' /), 'I', 'J/K/kg', 'Variable dry air gas constant' )
+
   end subroutine diag_init_dry
 
   subroutine diag_init_moist(pbuf2d)
@@ -457,7 +481,9 @@ contains
 
     call addfld ('PSDRY',      horiz_only,  'A', 'Pa', 'Dry surface pressure')
     call addfld ('PMID',       (/ 'lev' /), 'A', 'Pa', 'Pressure at layer midpoints')
+    call addfld ('PINT',       (/ 'ilev' /), 'A', 'Pa', 'Pressure at layer interfaces')
     call addfld ('PDELDRY',    (/ 'lev' /), 'A', 'Pa', 'Dry pressure difference between levels')
+    call addfld ('PDEL',       (/ 'lev' /), 'A', 'Pa', 'Pressure difference between levels')
 
     ! outfld calls in diag_conv
 
@@ -526,7 +552,7 @@ contains
     if (ixcldice > 0) then
       call addfld (ptendnam(ixcldice),(/ 'lev' /), 'A', 'kg/kg/s',trim(cnst_name(ixcldice))//' total physics tendency ')
     end if
-    if ( dycore_is('LR') )then
+    if ( dycore_is('LR') .or. dycore_is('FV3')  )then
       call addfld (dmetendnam(       1),(/ 'lev' /), 'A','kg/kg/s', &
            trim(cnst_name(       1))//' dme adjustment tendency (FV) ')
       if (ixcldliq > 0) then
@@ -606,6 +632,12 @@ contains
       call add_default ('PMID',  1, ' ')
    end if
 
+    if (dycore_is('MPAS')) then
+      call add_default ('PINT', 1, ' ')
+      call add_default ('PMID',  1, ' ')
+      call add_default ('PDEL',  1, ' ')
+   end if
+
     if (history_eddy) then
       call add_default ('VQ      ', 1, ' ')
     endif
@@ -613,6 +645,8 @@ contains
     if ( history_budget ) then
       call add_default (cnst_name(1), history_budget_histfile_num, ' ')
       call add_default ('PTTEND'          , history_budget_histfile_num, ' ')
+      call add_default ('UTEND_PHYSTOT'   , history_budget_histfile_num, ' ')
+      call add_default ('VTEND_PHYSTOT'   , history_budget_histfile_num, ' ')
       call add_default (ptendnam(       1), history_budget_histfile_num, ' ')
       if (ixcldliq > 0) then
          call add_default (ptendnam(ixcldliq), history_budget_histfile_num, ' ')
@@ -620,7 +654,7 @@ contains
       if (ixcldice > 0) then
         call add_default (ptendnam(ixcldice), history_budget_histfile_num, ' ')
       end if
-      if ( dycore_is('LR') )then
+      if ( dycore_is('LR') .or. dycore_is('FV3')  )then
         call add_default(dmetendnam(1)       , history_budget_histfile_num, ' ')
         if (ixcldliq > 0) then
            call add_default(dmetendnam(ixcldliq), history_budget_histfile_num, ' ')
@@ -862,6 +896,8 @@ contains
 
     integer :: i, k, m, lchnk, ncol
     real(r8), pointer, dimension(:,:) :: t_ttend
+    real(r8), pointer, dimension(:,:) :: t_utend
+    real(r8), pointer, dimension(:,:) :: t_vtend
 
     lchnk = state%lchnk
     ncol  = state%ncol
@@ -885,6 +921,10 @@ contains
       do m = 1, dyn_time_lvls
         call pbuf_get_field(pbuf, t_ttend_idx, t_ttend, start=(/1,1,m/), kount=(/pcols,pver,1/))
         t_ttend(:ncol,:) = state%t(:ncol,:)
+        call pbuf_get_field(pbuf, t_utend_idx, t_utend, start=(/1,1,m/), kount=(/pcols,pver,1/))
+        t_utend(:ncol,:) = state%u(:ncol,:)
+        call pbuf_get_field(pbuf, t_vtend_idx, t_vtend, start=(/1,1,m/), kount=(/pcols,pver,1/))
+        t_vtend(:ncol,:) = state%v(:ncol,:)
       end do
     end if
 
@@ -906,6 +946,8 @@ contains
     use co2_cycle,          only: c_i, co2_transport
 
     use tidal_diag,         only: tidal_diag_write
+    use physconst,          only: cpairv,rairv
+
     !-----------------------------------------------------------------------
     !
     ! Arguments
@@ -951,6 +993,9 @@ contains
 #if (defined BFB_CAM_SCAM_IOP )
     call outfld('phis    ',state%phis,    pcols,   lchnk     )
 #endif
+
+    call outfld( 'CPAIRV', cpairv(:ncol,:,lchnk), ncol, lchnk )
+    call outfld( 'RAIRV', rairv(:ncol,:,lchnk), ncol, lchnk )
 
     do m = 1, pcnst
       if (cnst_cam_outfld(m)) then
@@ -1282,7 +1327,9 @@ contains
 
     call outfld('PSDRY',   state%psdry,   pcols, lchnk)
     call outfld('PMID',    state%pmid,    pcols, lchnk)
+    call outfld('PINT',    state%pint,    pcols, lchnk)
     call outfld('PDELDRY', state%pdeldry, pcols, lchnk)
+    call outfld('PDEL',    state%pdel,    pcols, lchnk)
 
     !
     ! Meridional advection fields
@@ -1313,8 +1360,9 @@ contains
           call pbuf_get_field(pbuf, relhum_idx, ftem_ptr)
           ftem(:ncol,:) = ftem_ptr(:ncol,:)
        else
-          call qsat(state%t(:ncol,:), state%pmid(:ncol,:), &
-                    tem2(:ncol,:), ftem(:ncol,:))
+          do k = 1, pver
+             call qsat(state%t(1:ncol,k), state%pmid(1:ncol,k), tem2(1:ncol,k), ftem(1:ncol,k), ncol)
+          end do
           ftem(:ncol,:) = state%q(:ncol,:,1)/ftem(:ncol,:)*100._r8
        end if
        call outfld ('RELHUM  ',ftem    ,pcols   ,lchnk     )
@@ -1323,17 +1371,18 @@ contains
     if (hist_fld_active('RHW') .or. hist_fld_active('RHI') .or. hist_fld_active('RHCFMIP') ) then
 
       ! RH w.r.t liquid (water)
-      call qsat_water (state%t(:ncol,:), state%pmid(:ncol,:), &
-           esl(:ncol,:), ftem(:ncol,:))
+      do k = 1, pver
+         call qsat_water (state%t(1:ncol,k), state%pmid(1:ncol,k), esl(1:ncol,k), ftem(1:ncol,k), ncol)
+      end do
       ftem(:ncol,:) = state%q(:ncol,:,1)/ftem(:ncol,:)*100._r8
       call outfld ('RHW  ',ftem    ,pcols   ,lchnk     )
 
       ! Convert to RHI (ice)
-      do i=1,ncol
-        do k=1,pver
-          esi(i,k)=svp_ice(state%t(i,k))
-          ftem1(i,k)=ftem(i,k)*esl(i,k)/esi(i,k)
-        end do
+      do k=1,pver
+         call svp_ice_vect(state%t(1:ncol,k), esi(1:ncol,k), ncol)
+         do i=1,ncol
+            ftem1(i,k)=ftem(i,k)*esl(i,k)/esi(i,k)
+         end do
       end do
       call outfld ('RHI  ',ftem1    ,pcols   ,lchnk     )
 
@@ -1766,8 +1815,7 @@ contains
       call outfld('U10',      cam_in%u10,       pcols, lchnk)
       !
       ! Calculate and output reference height RH (RHREFHT)
-
-      call qsat(cam_in%tref(:ncol), state%ps(:ncol), tem2(:ncol), ftem(:ncol))
+      call qsat(cam_in%tref(1:ncol), state%ps(1:ncol), tem2(1:ncol), ftem(1:ncol), ncol)
       ftem(:ncol) = cam_in%qref(:ncol)/ftem(:ncol)*100._r8
 
 
@@ -2018,6 +2066,8 @@ contains
     real(r8) :: heat_glob         ! global energy integral (FV only)
     ! CAM pointers to get variables from the physics buffer
     real(r8), pointer, dimension(:,:) :: t_ttend
+    real(r8), pointer, dimension(:,:) :: t_utend
+    real(r8), pointer, dimension(:,:) :: t_vtend
     integer  :: itim_old,m
 
     !-----------------------------------------------------------------------
@@ -2034,7 +2084,7 @@ contains
     ! Total physics tendency for Temperature
     ! (remove global fixer tendency from total for FV and SE dycores)
 
-    if (dycore_is('LR') .or. dycore_is('SE')) then
+    if (dycore_is('LR') .or. dycore_is('SE') .or. dycore_is('FV3') ) then
       call check_energy_get_integrals( heat_glob_out=heat_glob )
       ftem2(:ncol)  = heat_glob/cpair
       call outfld('TFIX', ftem2, pcols, lchnk   )
@@ -2043,19 +2093,31 @@ contains
       ftem3(:ncol,:pver)  = tend%dtdt(:ncol,:pver)
     end if
     call outfld('PTTEND',ftem3, pcols, lchnk )
+    ftem3(:ncol,:pver)  = tend%dudt(:ncol,:pver)
+    call outfld('UTEND_PHYSTOT',ftem3, pcols, lchnk )
+    ftem3(:ncol,:pver)  = tend%dvdt(:ncol,:pver)
+    call outfld('VTEND_PHYSTOT',ftem3, pcols, lchnk )
 
     ! Total (physics+dynamics, everything!) tendency for Temperature
 
-    !! get temperature stored in physics buffer
+    !! get temperature, U, and V stored in physics buffer
     itim_old = pbuf_old_tim_idx()
     call pbuf_get_field(pbuf, t_ttend_idx, t_ttend, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
+    call pbuf_get_field(pbuf, t_utend_idx, t_utend, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
+    call pbuf_get_field(pbuf, t_vtend_idx, t_vtend, start=(/1,1,itim_old/), kount=(/pcols,pver,1/))
 
-    !! calculate and outfld the total temperature tendency
+    !! calculate and outfld the total temperature, U, and V tendencies
     ftem3(:ncol,:) = (state%t(:ncol,:) - t_ttend(:ncol,:))/ztodt
     call outfld('TTEND_TOT', ftem3, pcols, lchnk)
+    ftem3(:ncol,:) = (state%u(:ncol,:) - t_utend(:ncol,:))/ztodt
+    call outfld('UTEND_TOT', ftem3, pcols, lchnk)
+    ftem3(:ncol,:) = (state%v(:ncol,:) - t_vtend(:ncol,:))/ztodt
+    call outfld('VTEND_TOT', ftem3, pcols, lchnk)
 
-    !! update physics buffer with this time-step's temperature
+    !! update physics buffer with this time-step's temperature, U, and V
     t_ttend(:ncol,:) = state%t(:ncol,:)
+    t_utend(:ncol,:) = state%u(:ncol,:)
+    t_vtend(:ncol,:) = state%v(:ncol,:)
 
   end subroutine diag_phys_tend_writeout_dry
 
@@ -2114,7 +2176,7 @@ contains
 
     ! Tendency for dry mass adjustment of q (FV only)
 
-    if (dycore_is('LR')) then
+    if (dycore_is('LR') .or. dycore_is('FV3') ) then
       tmp_q     (:ncol,:pver) = (state%q(:ncol,:pver,       1) - tmp_q     (:ncol,:pver))*rtdt
       if (ixcldliq > 0) then
         tmp_cldliq(:ncol,:pver) = (state%q(:ncol,:pver,ixcldliq) - tmp_cldliq(:ncol,:pver))*rtdt
@@ -2220,6 +2282,8 @@ contains
     lchnk = state%lchnk
 
     call outfld('TBP', state%t, pcols, lchnk   )
+    call outfld('UBP', state%u, pcols, lchnk   )
+    call outfld('VBP', state%v, pcols, lchnk   )
 
   end subroutine diag_state_b4_phys_write_dry
 

@@ -3,7 +3,7 @@ module cam_pio_utils
 
   use pio,          only: io_desc_t, iosystem_desc_t, file_desc_t, var_desc_t
   use pio,          only: pio_freedecomp, pio_rearr_subset, pio_rearr_box
-  use shr_kind_mod, only: r8=>shr_kind_r8
+  use shr_kind_mod, only: r4 => shr_kind_r4, r8 => shr_kind_r8
   use cam_logfile,  only: iulog
   use perf_mod,     only: t_startf, t_stopf
   use spmd_utils,   only: masterproc
@@ -20,6 +20,8 @@ module cam_pio_utils
   public :: init_pio_subsystem   ! called from cam_comp
   public :: cam_pio_get_decomp   ! Find an existing decomp or create a new one
   public :: cam_pio_handle_error ! If error, print a custom error message
+  public :: cam_pio_set_fill     ! Set the PIO fill value to PIO_FILL
+  public :: cam_pio_inq_var_fill ! Return the buffer fill value
 
   public :: cam_permute_array
   public :: calc_permutation
@@ -40,7 +42,8 @@ module cam_pio_utils
   public :: cam_pio_dump_field
 
   integer            :: pio_iotype
-  integer            :: pio_rearranger 
+  integer            :: pio_rearranger
+  integer            :: pio_ioformat
 
   ! This variable should be private ?
   type(iosystem_desc_t), pointer, public :: pio_subsystem => null()
@@ -76,6 +79,12 @@ module cam_pio_utils
     module procedure cam_pio_get_var_3d_r8
     module procedure cam_pio_get_var_3d_r8_perm
   end interface
+
+  interface cam_pio_inq_var_fill
+     module procedure inq_var_fill_i4
+     module procedure inq_var_fill_r4
+     module procedure inq_var_fill_r8
+  end interface cam_pio_inq_var_fill
 
   interface calc_permutation
     module procedure calc_permutation_int
@@ -295,21 +304,22 @@ contains
   end subroutine permute_array_r8
 
   subroutine cam_pio_handle_error(ierr, errorstr)
-    use cam_abortutils,   only: endrun
-    use pio,          only: pio_noerr
+    use shr_kind_mod,   only: SHR_KIND_CL
+    use cam_abortutils, only: endrun
+    use pio,            only: pio_noerr
 
     ! Dummy arguments
     integer,          intent(in)  :: ierr
     character(len=*), intent(in)  :: errorstr
 
     ! Local variables
-    character(len=256) :: errormsg
+    character(len=SHR_KIND_CL) :: errormsg
 
     if (ierr /= PIO_NOERR) then
       write(errormsg, '(a,i6,2a)') '(PIO:', ierr, ') ', trim(errorstr)
       call endrun(errormsg)
     end if
-    
+
   end subroutine cam_pio_handle_error
 
   !-----------------------------------------------------------------------
@@ -454,16 +464,19 @@ contains
   end subroutine cam_pio_check_var
 
   subroutine init_pio_subsystem()
-    use shr_pio_mod,   only: shr_pio_getiosys, shr_pio_getiotype
+    use shr_pio_mod,  only: shr_pio_getiosys, shr_pio_getiotype
+    use shr_pio_mod,  only: shr_pio_getioformat
     use cam_instance, only: atm_id
 
     pio_subsystem => shr_pio_getiosys(atm_id)
     pio_iotype =  shr_pio_getiotype(atm_id)
+    pio_ioformat = shr_pio_getioformat(atm_id)
 
     if (masterproc) then
        write(iulog,*)' '
        write(iulog,*)'Initialize PIO subsystem:'
        write(iulog,*)'  iotype  = ', pio_iotype
+       write(iulog,*)'  ioformat  = ', pio_ioformat
     end if
 
   end subroutine init_pio_subsystem
@@ -477,7 +490,7 @@ contains
   !                        field array are not in map order
   !                     file_dist_in is used if the dimensions of the
   !                        field on file are not in map order
-  !                     
+  !
   subroutine cam_pio_get_decomp(iodesc, ldims, fdims, dtype, map,             &
        field_dist_in, file_dist_in, permute)
     use pio,            only: pio_offset_kind
@@ -496,7 +509,6 @@ contains
 
     ! Local variables
     logical                                        :: found
-    integer                                        :: i
     integer(PIO_OFFSET_KIND),  pointer             :: dof(:)
     type(iodesc_list),         pointer             :: iodesc_p
     character(len=errormsg_str_len)                :: errormsg
@@ -550,14 +562,7 @@ contains
     integer(kind=PIO_OFFSET_KIND),     intent(in)  :: dof(:)
     integer,                           intent(in)  :: dtype
 
-    if(pio_iotype == pio_iotype_pnetcdf) then
-       pio_rearranger = PIO_REARR_SUBSET
-    else
-       pio_rearranger = PIO_REARR_BOX
-    endif
-
-    call pio_initdecomp(pio_subsystem, dtype, dims, dof, iodesc,              &
-         rearr=pio_rearranger)
+    call pio_initdecomp(pio_subsystem, dtype, dims, dof, iodesc)
 
   end subroutine cam_pio_newdecomp
 
@@ -639,7 +644,7 @@ contains
       iodesc_p => curr
     end if
 !    if(masterproc) write(iulog,*) 'Using decomp: ',curr%tag
-    
+
   end subroutine find_iodesc
 
 
@@ -783,7 +788,7 @@ contains
     integer, optional, intent(in)    :: start(2)
     integer, optional, intent(in)    :: kount(2)
     logical, optional, intent(out)   :: found
-    
+
     ! Local variables
     character(len=*), parameter      :: subname = 'cam_pio_get_var_2d_r8'
     character(len=PIO_MAX_NAME)      :: tmpname
@@ -800,7 +805,7 @@ contains
          (present(kount) .and. (.not. present(start)))) then
       call endrun(trim(subname)//': start and kount must both be present')
     end if
-      
+
     call cam_pio_find_var(File, trim(varname), varid, exists)
     if (present(found)) then
       found = exists
@@ -851,7 +856,7 @@ contains
     integer, optional, intent(in)    :: start(2)
     integer, optional, intent(in)    :: kount(2)
     logical, optional, intent(out)   :: found
-    
+
     ! Local variables
     character(len=*), parameter      :: subname = 'cam_pio_get_var_2d_r8_perm'
     type(var_desc_t)                 :: varid   ! Var descriptor
@@ -927,7 +932,7 @@ contains
     integer, optional, intent(in)    :: start(3)
     integer, optional, intent(in)    :: kount(3)
     logical, optional, intent(out)   :: found
-    
+
     ! Local variables
     character(len=*), parameter      :: subname = 'cam_pio_get_var_3d_r8'
     character(len=PIO_MAX_NAME)      :: tmpname
@@ -997,7 +1002,7 @@ contains
     integer, optional, intent(in)    :: start(3)
     integer, optional, intent(in)    :: kount(3)
     logical, optional, intent(out)   :: found
-    
+
     ! Local variables
     character(len=*), parameter      :: subname = 'cam_pio_get_var_3d_r8_perm'
     type(var_desc_t)                 :: varid   ! Var descriptor
@@ -1078,7 +1083,7 @@ contains
       nullify(this%iodesc)
       this => this%next
       nullify(iodesc_list_top%next)
-       
+
       ! All the other list items were allocated, blow them away
       do while(associated(this))
         call pio_freedecomp(pio_subsystem, this%iodesc)
@@ -1091,8 +1096,7 @@ contains
   end subroutine clean_iodesc_list
 
   subroutine cam_pio_createfile(file, fname, mode_in)
-    use pio, only : pio_createfile, file_desc_t, pio_noerr, pio_clobber,      &
-         pio_64bit_offset, pio_iotask_rank
+    use pio, only : pio_createfile, file_desc_t, pio_noerr, pio_clobber, pio_iotask_rank
     use cam_abortutils, only : endrun
 
     ! Dummy arguments
@@ -1103,8 +1107,8 @@ contains
     ! Local variables
     integer                                   :: ierr
     integer                                   :: mode
-    
-    mode = ior(PIO_CLOBBER, PIO_64BIT_OFFSET)
+
+    mode = ior(PIO_CLOBBER, pio_ioformat)
     if (present(mode_in)) then
       mode = ior(mode, mode_in)
     end if
@@ -1175,11 +1179,122 @@ contains
 
   end function cam_pio_fileexists
 
+  integer function cam_pio_set_fill(File, fillmode, old_mode) result(ierr)
+#ifdef PIO2
+     use pio, only: PIO_FILL, pio_set_fill
+#endif
+     ! Dummy arguments
+     type(File_desc_t), intent(in)  :: File
+     integer, optional, intent(in)  :: fillmode
+     integer, optional, intent(out) :: old_mode
+     ! Local variables
+     integer                        :: oldfill
+     integer                        :: fillval
+
+#ifdef PIO2
+     if (present(fillmode)) then
+        fillval = fillmode
+     else
+        fillval = PIO_FILL
+     end if
+     ierr =  pio_set_fill(File, fillval, oldfill)
+     if (present(old_mode)) then
+        old_mode = oldfill
+     end if
+#else
+     ierr = 0
+     if (present(old_mode)) then
+        old_mode = 0
+     end if
+#endif
+  end function cam_pio_set_fill
+
+  integer function inq_var_fill_i4(File, vdesc, fillvalue, no_fill) result(ierr)
+#ifdef PIO2
+     use pio, only: pio_inq_var_fill
+#endif
+     use pio, only: PIO_NOERR
+
+     ! Dummy arguments
+     type(File_desc_t),  intent(in)  :: File
+     type(var_desc_t),   intent(in)  :: vdesc
+     ! fillvalue needs to not be optional to avoid ambiguity
+     integer, target,    intent(out) :: fillvalue
+     integer, optional,  intent(out) :: no_fill
+     ! Local variable
+     integer :: no_fill_use
+
+#ifdef PIO2
+     ierr = pio_inq_var_fill(File, vdesc, no_fill_use, fillvalue)
+     if (present(no_fill)) then
+        no_fill = no_fill_use
+     end if
+#else
+     ierr = PIO_NOERR
+     fillvalue = 0
+#endif
+
+  end function inq_var_fill_i4
+
+  integer function inq_var_fill_r4(File, vdesc, fillvalue, no_fill) result(ierr)
+#ifdef PIO2
+     use pio, only: pio_inq_var_fill
+#endif
+     use pio, only: PIO_NOERR
+
+     ! Dummy arguments
+     type(File_desc_t),   intent(in)  :: File
+     type(var_desc_t),    intent(in)  :: vdesc
+     ! fillvalue needs to not be optional to avoid ambiguity
+     real(r4), target,    intent(out) :: fillvalue
+     integer,  optional,  intent(out) :: no_fill
+     ! Local variable
+     integer :: no_fill_use
+
+#ifdef PIO2
+     ierr = pio_inq_var_fill(File, vdesc, no_fill_use, fillvalue)
+     if (present(no_fill)) then
+        no_fill = no_fill_use
+     end if
+#else
+     ierr = PIO_NOERR
+     fillvalue = 0.0_R4
+#endif
+
+  end function inq_var_fill_r4
+
+  integer function inq_var_fill_r8(File, vdesc, fillvalue, no_fill) result(ierr)
+#ifdef PIO2
+     use pio, only: pio_inq_var_fill
+#endif
+     use pio, only: PIO_NOERR
+
+     ! Dummy arguments
+     type(File_desc_t),   intent(in)  :: File
+     type(var_desc_t),    intent(in)  :: vdesc
+     ! fillvalue needs to not be optional to avoid ambiguity
+     real(r8), target,    intent(out) :: fillvalue
+     integer,  optional,  intent(out) :: no_fill
+     ! Local variable
+     integer :: no_fill_use
+
+#ifdef PIO2
+     ierr = pio_inq_var_fill(File, vdesc, no_fill_use, fillvalue)
+     if (present(no_fill)) then
+        no_fill = no_fill_use
+     end if
+#else
+     ierr = PIO_NOERR
+     fillvalue = 0.0_R8
+#endif
+
+  end function inq_var_fill_r8
+
   subroutine find_dump_filename(fieldname, filename)
 
     ! Dummy arguments
-    character(len=*),   intent(in)        :: fieldname 
-    character(len=*),   intent(inout)     :: filename 
+    character(len=*),   intent(in)        :: fieldname
+    character(len=*),   intent(inout)     :: filename
 
     ! Local variable
     integer                               :: fnum
@@ -1201,7 +1316,7 @@ contains
     use spmd_utils,     only: iam, npes, mpi_max, mpi_integer, mpicom
 
     ! Dummy arguments
-    character(len=*),   intent(in)        :: fieldname 
+    character(len=*),   intent(in)        :: fieldname
     integer,            intent(in)        :: dim1b
     integer,            intent(in)        :: dim1e
     integer,            intent(in)        :: dim2b
@@ -1313,7 +1428,7 @@ contains
     use spmd_utils,     only: iam, npes, mpi_max, mpi_integer, mpicom
 
     ! Dummy arguments
-    character(len=*),   intent(in)        :: fieldname 
+    character(len=*),   intent(in)        :: fieldname
     integer,            intent(in)        :: dim1b
     integer,            intent(in)        :: dim1e
     integer,            intent(in)        :: dim2b
@@ -1433,7 +1548,7 @@ contains
     use spmd_utils,     only: iam, npes, mpi_max, mpi_integer, mpicom
 
     ! Dummy arguments
-    character(len=*),   intent(in)        :: fieldname 
+    character(len=*),   intent(in)        :: fieldname
     integer,            intent(in)        :: dim1b
     integer,            intent(in)        :: dim1e
     integer,            intent(in)        :: dim2b
@@ -1563,7 +1678,7 @@ contains
     use spmd_utils,     only: iam, npes, mpi_max, mpi_integer, mpicom
 
     ! Dummy arguments
-    character(len=*),   intent(in)        :: fieldname 
+    character(len=*),   intent(in)        :: fieldname
     integer,            intent(in)        :: dimbs(:)
     integer,            intent(in)        :: dimes(:)
     real(r8), target,   intent(in)        :: field(:,:,:,:,:,:)

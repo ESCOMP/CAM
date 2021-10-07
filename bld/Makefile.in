@@ -41,6 +41,7 @@
 # F_OPTIMIZATION_OVERRIDE
 #               Use this to replace default Fortran compiler optimization.
 # COSP_LIBDIR   Directory where COSP library will be built.
+# FV3CORE_LIBDIR   Directory where FV3 library will be built.
 # MCT_LIBDIR    Directory where MCT library will be built.
 # PIO_BUILD_DIR Directory where PIO will be built (pio2 only)
 # PIO_INSTALL_DIR Directory containing PIO libraries and include files (pio2 only)
@@ -153,6 +154,15 @@ $(COSP_LIBDIR)/libcosp.a: cam_abortutils.o
 cospsimulator_intr.o: $(COSP_LIBDIR)/libcosp.a
 endif
 
+ifneq ($(strip $(FV3CORE_LIBDIR)),)
+# Rules to build FV3CORE in its own library.
+$(FV3CORE_LIBDIR)/libfv3core.a: cam_abortutils.o
+	$(MAKE) -C $(FV3CORE_LIBDIR) complib COMPLIB='$(FV3CORE_LIBDIR)/libfv3core.a' F90='$(FC)' CC='$(CC)' FFLAGS='$(FFLAGS) $(FC_AUTO_R8)'  CFLAGS='$(CFLAGS)' INCLDIR+='-I$(ROOTDIR)/libraries/FMS/src/include' FC_TYPE='$(FC_TYPE)'
+
+
+dyn_grid.o: $(FV3CORE_LIBDIR)/libfv3core.a
+endif
+
 # Rules to build MCT library. 
 # SRCDIR is passed via the commandline because of a bug in the MCT configure.
 $(MCT_LIBDIR)/mct/libmct.a: 
@@ -263,6 +273,10 @@ ifneq ($(strip $(COSP_LIBDIR)),)
   mod_path     += -I$(COSP_LIBDIR)
 endif
 
+ifneq ($(strip $(FV3CORE_LIBDIR)),)
+  mod_path     += -I$(FV3CORE_LIBDIR)
+endif
+
 FC_FLAGS       := -q64 -qarch=auto -qspillsize=2500 -g -qfullpath
 FC_FLAGS_NOOPT := $(FC_FLAGS)
 FREEFLAGS      := -qsuffix=f=f90:cpp=F90
@@ -357,10 +371,13 @@ endif
 ifneq ($(strip $(COSP_LIBDIR)),)
   mod_path += -I$(COSP_LIBDIR)
 endif
+ifneq ($(strip $(FV3CORE_LIBDIR)),)
+  mod_path += -I$(FV3CORE_LIBDIR)
+endif
 
-# PGI
+# PGI and NVHPC compilers
 
-ifeq ($(FC_TYPE),pgi)
+ifneq (,$(filter $(FC_TYPE),pgi nvhpc pgi-gpu nvhpc-gpu))
 
   CPPDEF        += -DNO_R16 -DCPRPGI $(NO_CONTIGUOUS_FLAG)
   CFLAGS        += -gopt -O2
@@ -750,7 +767,12 @@ ifeq ($(UNAMES),Darwin)
       mod_path += -I$(COSP_LIBDIR)
     endif
 
-    # COSP needs to autopromote to get its precision to match CAM
+    # Needed for FV3CORE, since it builds in its own directory.
+    ifneq ($(strip $(FV3CORE_LIBDIR)),)
+      mod_path += -I$(FV3CORE_LIBDIR)
+    endif
+
+    # COSP, FV3 and FMS needs to autopromote to get its precision to match CAM
     FC_AUTO_R8  := -autodouble
 
     # NOTE: use-asm is require to work with Xcode 3.2.2 and ifort 11.1.088. Perhaps this
@@ -824,7 +846,12 @@ ifeq ($(UNAMES),Darwin)
       mod_path += -I$(COSP_LIBDIR)
     endif
 
-    # COSP needs to autopromote to get its precision to match CAM
+    # Needed for FV3CORE, since it builds in its own directory.
+    ifneq ($(strip $(FV3CORE_LIBDIR)),)
+      mod_path += -I$(FV3CORE_LIBDIR)
+    endif
+
+    # COSP, FV3 and FMS needs to autopromote to get its precision to match CAM
     FC_AUTO_R8   := -qrealsize=8
 
     FFLAGS     := $(cpp_path) $(mod_path) $(FPPFLAGS) -qspillsize=2500 

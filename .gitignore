@@ -7,6 +7,11 @@ src/physics/carma/base
 src/physics/clubb
 src/physics/cosp2/src
 src/physics/silhs
+src/physics/pumas
+src/dynamics/fv3/atmos_cubed_sphere
+libraries/FMS
+src/atmos_phys
+src/dynamics/mpas/dycore
 
 # Ignore compiled python
 buildnmlc
@@ -19,10 +24,10 @@ buildcppc
 *.swp
 
 # Ignore test output files
-test_dr.o*
 cime-tests.o*
 aux_cam_*.log
-td.*.log
-td.*.status
 test_driver_*.sh
 cam_test_summaries
+
+# Ignore python bytecode files
+*.pyc

@@ -1,12 +1,11 @@
 module interp_mod
-  use cam_logfile,         only: iulog
   use shr_kind_mod,        only: r8 => shr_kind_r8
   use dimensions_mod,      only: nelemd, np, ne
   use interpolate_mod,     only: interpdata_t
   use interpolate_mod,     only: interp_lat => lat, interp_lon => lon
   use interpolate_mod,     only: interp_gweight => gweight
   use dyn_grid,            only: elem,fvm
-  use spmd_utils,          only: masterproc, iam
+  use spmd_utils,          only: iam
   use cam_history_support, only: fillvalue
   use hybrid_mod,          only: hybrid_t, config_thread_region
   use cam_abortutils,      only: endrun
@@ -53,7 +52,6 @@ CONTAINS
     use interpolate_mod,     only: get_interp_parameter, set_interp_parameter
     use interpolate_mod,     only: get_interp_gweight, setup_latlon_interp
     use parallel_mod,        only: par
-    use thread_mod,          only: omp_get_thread_num
 
     ! Dummy arguments
     logical,             intent(inout) :: interp_ok
@@ -62,7 +60,7 @@ CONTAINS
     type(interp_info_t), intent(inout) :: interp_info(:)
 
     ! Local variables
-    integer                            :: ithr, i, j
+    integer                            :: i
     real(r8),            pointer       :: w(:)
     integer(iMap),       pointer       :: grid_map(:,:)
     type(horiz_coord_t), pointer       :: lat_coord
@@ -77,8 +75,6 @@ CONTAINS
 
     if (interp_ok) then
       hybrid = config_thread_region(par,'serial')
-!      ithr = omp_get_thread_num()
-!      hybrid = hybrid_create(par,ithr,1)
 
       if(any(interp_output)) then
         allocate(interpdata_set(mtapes))
@@ -197,12 +193,10 @@ CONTAINS
     use pio,              only: io_desc_t, pio_write_darray
     use interpolate_mod,  only: interpolate_scalar
     use cam_instance,     only: atm_id
-    use spmd_dyn,         only: local_dp_map, block_buf_nrecs, chunk_buf_nrecs
-    use ppgrid,           only: begchunk, endchunk, pcols, pverp, pver
-    use phys_grid,        only: get_gcol_all_p, get_ncols_p, chunk_to_block_send_pters, chunk_to_block_recv_pters, &
-                               transpose_chunk_to_block
-    use dyn_grid,         only: get_gcol_block_d
-    use dimensions_mod,   only: npsq, fv_nphys,nc,nhc,nhc_phys
+    use spmd_dyn,         only: local_dp_map
+    use ppgrid,           only: begchunk
+    use phys_grid,        only: get_dyn_col_p, columns_on_task, get_chunk_info_p
+    use dimensions_mod,   only: fv_nphys, nc, nhc, nhc_phys
     use dof_mod,          only: PutUniquePoints
     use interpolate_mod,  only: get_interp_parameter
     use shr_pio_mod,      only: shr_pio_getiosys
@@ -212,8 +206,7 @@ CONTAINS
     use parallel_mod,     only: par
     use thread_mod,       only: horz_num_threads
     use cam_grid_support, only: cam_grid_id
-    use hybrid_mod,       only: hybrid_t,config_thread_region, get_loop_ranges
-    use fvm_mapping,      only: fvm2dyn,phys2dyn
+    use hybrid_mod,       only: hybrid_t, config_thread_region, get_loop_ranges
     use fvm_mod,          only: fill_halo_and_extend_panel
 
     type(file_desc_t), intent(inout) :: File
@@ -229,20 +222,20 @@ CONTAINS
     type (EdgeBuffer_t)            :: edgebuf              ! edge buffer
 
 
-    integer              :: lchnk, i, j, icol, ncols, pgcols(pcols), ierr
-    integer              :: idmb1(1), idmb2(1), idmb3(1), nets, nete
-    integer, allocatable :: bpter(:,:)! offsets into block buffer for packing data
-    integer              :: cpter(pcols,0:pver)    ! offsets into chunk buffer for unpacking data
-    integer              :: phys_decomp, fvm_decomp,gll_decomp
+    integer              :: lchnk, i, col_index, icol, ncols, ierr
+    integer              :: nets, nete
+    integer              :: phys_decomp, fvm_decomp, gll_decomp
 
     real(r8), pointer     :: dest(:,:,:,:)
-    real(r8), pointer     :: bbuffer(:), cbuffer(:), fldout(:,:)
+    real(r8), pointer     :: fldout(:,:)
     real(r8), allocatable :: fld_dyn(:,:,:), fld_tmp(:,:,:,:,:)
 
-    integer          :: st, en, ie, ioff, ncnt_out, k
+    integer          :: st, en ! Start and end temporaries
+    integer          :: ie, blk_ind(1), ncnt_out, k
     integer, pointer :: idof(:)
-    integer          :: nlon, nlat, ncol,nsize,nhalo,nhcc
+    integer          :: nlon, nlat, ncol, nsize, nhalo, nhcc
     logical          :: usefillvalues
+    character(len=*), parameter :: subname = 'write_interpolated_scalar'
 
     usefillvalues=.false.
 
@@ -256,7 +249,10 @@ CONTAINS
     !   else                    : data is on dynamics decomposition
     !
     if (decomp_type==phys_decomp) then
-      if (fv_nphys>0) then
+       if(.not. local_dp_map) then
+          call endrun(subname//': weak scaling does not support load balancing')
+       end if
+      if (fv_nphys > 0) then
         !
         ! note that even if fv_nphys<4 then SIZE(fld,DIM=1)=PCOLS
         !
@@ -268,21 +264,20 @@ CONTAINS
         nhalo = 0!no halo needed (lat-lon point always surrounded by GLL points)
         nhcc  = 0
       end if
-    else if (decomp_type==fvm_decomp) then
+    else if (decomp_type == fvm_decomp) then
       !
       ! CSLAM grid output
       !
       nsize = nc
       nhalo = 1!for bilinear only a halo of 1 is needed
       nhcc  = nhc
-    else if (decomp_type==gll_decomp) then
+    else if (decomp_type == gll_decomp) then
       nsize = np
       nhalo = 0!no halo needed (lat-lon point always surrounded by GLL points)
       nhcc  = 0
     else
-      call endrun('write_interpolated_scalar: unknown decomp_type')
+      call endrun(subname//': unknown decomp_type')
     end if
-    allocate(fld_dyn(nsize*nsize,numlev,nelemd))
     allocate(fld_tmp(1-nhcc:nsize+nhcc,1-nhcc:nsize+nhcc,numlev,1,nelemd))
     allocate(dest(1-nhalo:nsize+nhalo,1-nhalo:nsize+nhalo,numlev,nelemd))
 
@@ -290,94 +285,41 @@ CONTAINS
     nlat=get_interp_parameter('nlat')
     pio_subsystem => shr_pio_getiosys(atm_id)
 
-    if(decomp_type==phys_decomp) then
+    if(decomp_type == phys_decomp) then
+
+      allocate(fld_dyn(nsize*nsize,numlev,nelemd))
       fld_dyn = -999_R8
-      if(local_dp_map) then
-        !!$omp parallel do num_threads(horz_num_threads) private (lchnk, ncols, pgcols, icol, idmb1, idmb2, idmb3, ie, ioff,k)
-        do lchnk=begchunk,endchunk
-          ncols=get_ncols_p(lchnk)
-          call get_gcol_all_p(lchnk,pcols,pgcols)
-          if (fv_nphys>0) ncols = fv_nphys*fv_nphys
-          do icol=1,ncols
-            call get_gcol_block_d(pgcols(icol),1,idmb1,idmb2,idmb3)
-            ie = idmb3(1)
-            ioff=idmb2(1)
-            do k=1,numlev
-              fld_dyn(ioff,k,ie) = fld(icol, k, lchnk-begchunk+1)
-            end do
-          end do
-        end do
-      else
-        allocate( bbuffer(block_buf_nrecs*numlev) )!xxx Steve: this is different that dp_coupling? (no numlev in dp_coupling)
-        allocate( cbuffer(chunk_buf_nrecs*numlev) )
+      !!$omp parallel do num_threads(horz_num_threads) private (col_index, lchnk, icol, ie, blk_ind, k)
+      do col_index = 1, columns_on_task
+         call get_dyn_col_p(col_index, ie, blk_ind)
+         call get_chunk_info_p(col_index, lchnk, icol)
+         do k = 1, numlev
+            fld_dyn(blk_ind(1), k, ie) = fld(icol, k, lchnk-begchunk+1)
+         end do
+      end do
 
-        !!$omp parallel do num_threads(horz_num_threads) private (lchnk, ncols, cpter, i, k, icol)
-        do lchnk = begchunk,endchunk
-          ncols = get_ncols_p(lchnk)
-
-          call chunk_to_block_send_pters(lchnk,pcols,pverp,1,cpter)
-
-          do i=1,ncols
-            cbuffer(cpter(i,1):cpter(i,1)) = 0.0_r8
-          end do
-
-          do k=1,numlev
-            do icol=1,ncols
-              cbuffer(cpter(icol,k-1)) = fld(icol,k,lchnk-begchunk+1)
-            end do
-          end do
-
-        end do
-
-        call transpose_chunk_to_block(1, cbuffer, bbuffer)
-        if(iam < par%nprocs) then
-          if (fv_nphys>0) then
-             allocate(bpter(fv_nphys*fv_nphys,0:pver))
-          else
-             allocate(bpter(npsq,0:pver))
-          end if
-          !!$omp parallel do num_threads(horz_num_threads) private (ie, bpter, k, ncols, icol)
-          do ie=1,nelemd
-            if (fv_nphys>0) then
-              call chunk_to_block_recv_pters(elem(ie)%GlobalID,fv_nphys*fv_nphys,pverp,1,bpter)
-              ncols = fv_nphys*fv_nphys
-            else
-              call chunk_to_block_recv_pters(elem(ie)%GlobalID,npsq,pverp,1,bpter)
-              ncols = elem(ie)%idxp%NumUniquePts
-            end if
-            do k = 1, numlev
-              do icol=1,ncols
-                fld_dyn(icol,k,ie) = bbuffer(bpter(icol,k-1))
-              end do
-            end do
-          end do
-        end if
-        deallocate( bbuffer )
-        deallocate( cbuffer )
-        deallocate( bpter   )
-
-      end if!local_dp_map
-      if (fv_nphys>0) then
+      if (fv_nphys > 0) then
         do ie = 1, nelemd
           fld_tmp(1:nsize,1:nsize,:,1,ie) = RESHAPE(fld_dyn(:,:,ie),(/nsize,nsize,numlev/))
         end do
       else
         call initEdgeBuffer(par, edgebuf, elem, numlev,nthreads=1)
 
-        do ie=1,nelemd
+        do ie = 1, nelemd
           ncols = elem(ie)%idxp%NumUniquePts
           call putUniquePoints(elem(ie)%idxP, numlev, fld_dyn(1:ncols,1:numlev,ie), fld_tmp(:,:,1:numlev,1,ie))
           call edgeVpack(edgebuf, fld_tmp(:,:,1:numlev,1,ie), numlev, 0, ie)
         end do
         if(iam < par%nprocs) then
-          call bndry_exchange(par, edgebuf,location='write_interpolated_scalar')
+          call bndry_exchange(par, edgebuf,location=subname)
         end if
-        do ie=1,nelemd
+        do ie = 1, nelemd
           call edgeVunpack(edgebuf, fld_tmp(:,:,1:numlev,1,ie), numlev, 0, ie)
         end do
         call freeEdgeBuffer(edgebuf)
         usefillvalues = any(fld_tmp == fillvalue)
       end if
+      deallocate(fld_dyn)
     else
       !
       ! not physics decomposition
@@ -386,7 +328,6 @@ CONTAINS
         fld_tmp(1:nsize,1:nsize,1:numlev,1,ie) = RESHAPE(fld(1:nsize*nsize,1:numlev,ie),(/nsize,nsize,numlev/))
       end do
     end if
-    deallocate(fld_dyn)
     !
     ! code for non-GLL grids: need to fill halo and interpolate (if on panel edge/corner) for bilinear interpolation
     !
@@ -458,13 +399,10 @@ CONTAINS
     use pio,              only: io_desc_t, pio_write_darray
     use cam_instance,     only: atm_id
     use interpolate_mod,  only: interpolate_scalar, vec_latlon_to_contra,get_interp_parameter
-    use spmd_dyn,         only: local_dp_map, block_buf_nrecs, chunk_buf_nrecs
-    use ppgrid,           only: begchunk, endchunk, pcols, pverp, pver
-    use phys_grid,        only: get_gcol_all_p, get_ncols_p, chunk_to_block_send_pters, chunk_to_block_recv_pters, &
-         transpose_chunk_to_block
-    use dyn_grid,         only: get_gcol_block_d
-    use hybrid_mod,       only: hybrid_t,config_thread_region, get_loop_ranges
-    use dimensions_mod,   only: npsq, fv_nphys,nc,nhc,nhc_phys
+    use spmd_dyn,         only: local_dp_map
+    use ppgrid,           only: begchunk
+    use phys_grid,        only: get_dyn_col_p, columns_on_task, get_chunk_info_p
+    use dimensions_mod,   only: fv_nphys,nc,nhc,nhc_phys
     use dof_mod,          only: PutUniquePoints
     use shr_pio_mod,      only: shr_pio_getiosys
     use edge_mod,         only: edgevpack, edgevunpack, initedgebuffer, freeedgebuffer
@@ -473,11 +411,11 @@ CONTAINS
     use parallel_mod,     only: par
     use thread_mod,       only: horz_num_threads
     use cam_grid_support, only: cam_grid_id
+    use hybrid_mod,       only: hybrid_t,config_thread_region, get_loop_ranges
     use fvm_mod,          only: fill_halo_and_extend_panel
     use control_mod,      only: cubed_sphere_map
     use cube_mod,         only: dmap
 
-    implicit none
     type(file_desc_t), intent(inout) :: File
     type(var_desc_t),  intent(inout) :: varidu, varidv
     real(r8),          intent(in)    :: fldu(:,:,:), fldv(:,:,:)
@@ -488,22 +426,22 @@ CONTAINS
     type(iosystem_desc_t), pointer :: pio_subsystem
     type (EdgeBuffer_t)            :: edgebuf              ! edge buffer
 
-    integer              :: lchnk, i, j, icol, ncols, pgcols(pcols), ierr, nets, nete
-    integer              :: idmb1(1), idmb2(1), idmb3(1)
-    integer, allocatable :: bpter(:,:)    ! offsets into block buffer for packing data
-    integer              :: cpter(pcols,0:pver)   ! offsets into chunk buffer for unpacking data
+    integer              :: lchnk, i, col_index, icol, ncols, ierr
+    integer              :: nets, nete
 
     real(r8), allocatable :: dest(:,:,:,:,:)
-    real(r8), pointer     :: bbuffer(:), cbuffer(:), fldout(:,:,:)
-    real(r8), allocatable :: fld_dyn(:,:,:,:),fld_tmp(:,:,:,:,:)
+    real(r8), pointer     :: fldout(:,:,:)
+    real(r8), allocatable :: fld_dyn(:,:,:,:), fld_tmp(:,:,:,:,:)
 
-    integer          :: st, en, ie, ioff, ncnt_out, k
+    integer          :: st, en ! Start and end temporaries
+    integer          :: ie, blk_ind(1), ncnt_out, k
     integer, pointer :: idof(:)
     integer          :: nlon, nlat, ncol,nsize,nhalo,nhcc
     logical          :: usefillvalues
     integer          :: phys_decomp, fvm_decomp,gll_decomp
     real (r8)        :: D(2,2)   ! derivative of gnomonic mapping
     real (r8)        :: v1,v2
+    character(len=*), parameter :: subname = 'write_interpolated_vector'
 
     usefillvalues=.false.
 
@@ -517,7 +455,10 @@ CONTAINS
     !   else                    : data is on dynamics decomposition
     !
     if (decomp_type==phys_decomp) then
-      if (fv_nphys>0) then
+       if(.not. local_dp_map) then
+          call endrun(subname//': weak scaling does not support load balancing')
+       end if
+      if (fv_nphys > 0) then
         !
         ! note that even if fv_nphys<4 then SIZE(fld,DIM=1)=npsq
         !
@@ -529,116 +470,61 @@ CONTAINS
         nhalo = 0!no halo needed (lat-lon point always surrounded by GLL points)
         nhcc  = 0
       end if
-    else if (decomp_type==fvm_decomp) then
+    else if (decomp_type == fvm_decomp) then
       !
       ! CSLAM grid output
       !
       nsize = nc
       nhalo = 1!for bilinear only a halo of 1 is needed
       nhcc  = nhc
-    else if (decomp_type==gll_decomp) then
+    else if (decomp_type == gll_decomp) then
       nsize = np
       nhalo = 0!no halo needed (lat-lon point always surrounded by GLL points)
       nhcc  = 0
     else
-      call endrun('write_interpolated_scalar: unknown decomp_type')
+      call endrun(subname//': unknown decomp_type')
     end if
-    allocate(fld_dyn(nsize*nsize,2,numlev,nelemd))
     allocate(fld_tmp(1-nhcc:nsize+nhcc,1-nhcc:nsize+nhcc,2,numlev,nelemd))
     allocate(dest(1-nhalo:nsize+nhalo,1-nhalo:nsize+nhalo,2,numlev,nelemd))
 
     nlon=get_interp_parameter('nlon')
     nlat=get_interp_parameter('nlat')
     pio_subsystem => shr_pio_getiosys(atm_id)
-    fld_dyn = -999_R8
-    if(decomp_type==phys_decomp) then
-      if(local_dp_map) then
-        !!$omp parallel do num_threads(horz_num_threads) private (lchnk, ncols, pgcols, icol, idmb1, idmb2, idmb3, ie, k, ioff)
-        do lchnk=begchunk,endchunk
-          ncols=get_ncols_p(lchnk)
-          call get_gcol_all_p(lchnk,pcols,pgcols)
-          if (fv_nphys>0) ncols = fv_nphys*fv_nphys
-          do icol=1,ncols
-            call get_gcol_block_d(pgcols(icol),1,idmb1,idmb2,idmb3)
-            ie = idmb3(1)
-            ioff=idmb2(1)
-            do k=1,numlev
-              fld_dyn(ioff,1,k,ie)      = fldu(icol, k, lchnk-begchunk+1)
-              fld_dyn(ioff,2,k,ie)      = fldv(icol, k, lchnk-begchunk+1)
-            end do
-          end do
-        end do
-      else
-        allocate( bbuffer(2*block_buf_nrecs*numlev) )
-        allocate( cbuffer(2*chunk_buf_nrecs*numlev) )
-        !!$omp parallel do num_threads(horz_num_threads) private (lchnk, ncols, cpter, i, k, icol)
-        do lchnk = begchunk,endchunk
-          ncols = get_ncols_p(lchnk)
-
-          call chunk_to_block_send_pters(lchnk,pcols,pverp,2,cpter)
-
-          do i=1,ncols
-            cbuffer(cpter(i,1):cpter(i,1)) = 0.0_r8
-          end do
-
-          do icol=1,ncols
-            do k=1,numlev
-              cbuffer(cpter(icol,k-1))   = fldu(icol,k,lchnk-begchunk+1)
-              cbuffer(cpter(icol,k-1)+1) = fldv(icol,k,lchnk-begchunk+1)
-            end do
-          end do
-        end do
-
-        call transpose_chunk_to_block(2, cbuffer, bbuffer)
-        if(iam < par%nprocs) then
-          if (fv_nphys>0) then
-            allocate(bpter(fv_nphys*fv_nphys,0:pver))
-          else
-            allocate(bpter(npsq,0:pver))
-          end if
-          !!$omp parallel do num_threads(horz_num_threads) private (ie, bpter, k, icol)
-          do ie=1,nelemd
-            if (fv_nphys>0) then
-              call chunk_to_block_recv_pters(elem(ie)%GlobalID,fv_nphys*fv_nphys,pverp,2,bpter)
-              ncols = fv_nphys*fv_nphys
-            else
-              call chunk_to_block_recv_pters(elem(ie)%GlobalID,npsq,pverp,2,bpter)
-              ncols = elem(ie)%idxp%NumUniquePts
-            end if
-            do icol=1,ncols
-              do k=1,numlev
-                fld_dyn(icol,1,k,ie) = bbuffer(bpter(icol,k-1))
-                fld_dyn(icol,2,k,ie) = bbuffer(bpter(icol,k-1)+1)
-              enddo
-            end do
-          end do
-        end if
-        deallocate( bbuffer )
-        deallocate( cbuffer )
-        deallocate( bpter   )
-      end if!local_dp_map
-      if (fv_nphys>0) then
+    if(decomp_type == phys_decomp) then
+      allocate(fld_dyn(nsize*nsize,2,numlev,nelemd))
+      fld_dyn = -999_R8
+       !!$omp parallel do num_threads(horz_num_threads) private (col_index, lchnk, icol, ie, blk_ind, k)
+      do col_index = 1, columns_on_task
+         call get_dyn_col_p(col_index, ie, blk_ind)
+         call get_chunk_info_p(col_index, lchnk, icol)
+         do k = 1, numlev
+            fld_dyn(blk_ind(1), 1, k, ie) = fldu(icol, k, lchnk-begchunk+1)
+            fld_dyn(blk_ind(1), 2, k, ie) = fldv(icol, k, lchnk-begchunk+1)
+         end do
+      end do
+      if (fv_nphys > 0) then
         do ie = 1, nelemd
           fld_tmp(1:nsize,1:nsize,:,:,ie) = RESHAPE(fld_dyn(:,:,:,ie),(/nsize,nsize,2,numlev/))
         end do
       else
         call initEdgeBuffer(par, edgebuf, elem, 2*numlev,nthreads=1)
 
-        do ie=1,nelemd
+        do ie = 1, nelemd
           ncols = elem(ie)%idxp%NumUniquePts
           call putUniquePoints(elem(ie)%idxP, 2, numlev, fld_dyn(1:ncols,:,1:numlev,ie), fld_tmp(:,:,:,1:numlev,ie))
           call edgeVpack(edgebuf, fld_tmp(:,:,:,:,ie), 2*numlev, 0, ie)
-        enddo
+        end do
         if(iam < par%nprocs) then
-          call bndry_exchange(par, edgebuf,location='write_interpolated_vector')
+          call bndry_exchange(par, edgebuf,location=subname)
         end if
 
-        do ie=1,nelemd
+        do ie = 1, nelemd
           call edgeVunpack(edgebuf, fld_tmp(:,:,:,:,ie), 2*numlev, 0, ie)
-        enddo
+        end do
         call freeEdgeBuffer(edgebuf)
         usefillvalues = any(fld_tmp==fillvalue)
       end if
+      deallocate(fld_dyn)
     else
       !
       ! not physics decomposition
@@ -649,7 +535,6 @@ CONTAINS
         fld_tmp(1:nsize,1:nsize,2,1:numlev,ie) = RESHAPE(fldv(1:nsize*nsize,1:numlev,ie),(/nsize,nsize,numlev/))
       end do
     endif
-    deallocate(fld_dyn)
     !
     !***************************************************************************
     !

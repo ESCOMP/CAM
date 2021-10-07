@@ -1,5 +1,9 @@
 module string_utils
 
+! Miscellaneous string utilities.
+
+   use cam_abortutils,   only: endrun
+   use cam_logfile,      only: iulog
 
    implicit none
    private
@@ -7,10 +11,14 @@ module string_utils
 ! Public interface methods
 
    public ::&
-      to_upper, &   ! Convert character string to upper case
-      to_lower, &   ! Convert character string to lower case
-      INCSTR, &     ! increments a string
-      GLC           ! Position of last significant character in string
+      to_upper,        & ! Convert character string to upper case
+      to_lower,        & ! Convert character string to lower case
+      INCSTR,          & ! increments a string
+      GLC,             & ! Position of last significant character in string
+      strlist_get_ind, & ! find string in a list of strings and return its index
+      date2yyyymmdd,   & ! convert encoded date integer to "yyyy-mm-dd" format
+      sec2hms,         & ! convert integer seconds past midnight to "hh:mm:ss" format
+      int2str            ! convert integer to left justified string
 
 contains
 
@@ -23,9 +31,6 @@ function to_upper(str)
 ! Method: 
 ! Use achar and iachar intrinsics to ensure use of ascii collating sequence.
 !
-! Author:  B. Eaton, July 2001
-!     
-! $Id$
 !----------------------------------------------------------------------- 
    implicit none
 
@@ -60,9 +65,6 @@ function to_lower(str)
 ! Method: 
 ! Use achar and iachar intrinsics to ensure use of ascii collating sequence.
 !
-! Author:  B. Eaton, July 2001
-!     
-! $Id$
 !----------------------------------------------------------------------- 
    implicit none
 
@@ -239,5 +241,118 @@ integer function GLC( cs )
   GLC = n
 
 end function GLC
+
+!=========================================================================================
+
+subroutine strlist_get_ind(strlist, str, ind, abort)
+
+   ! Get the index of a given string in a list of strings.  Optional abort argument
+   ! allows returning control to caller when the string is not found.  Default
+   ! behavior is to call endrun when string is not found.
+
+   ! Arguments
+   character(len=*),  intent(in)  :: strlist(:) ! list of strings
+   character(len=*),  intent(in)  :: str        ! string to search for
+   integer,           intent(out) :: ind        ! index of str in strlist
+   logical, optional, intent(in)  :: abort      ! flag controlling abort
+
+   ! Local variables
+   integer :: m
+   logical :: abort_on_error
+   character(len=*), parameter :: sub='strlist_get_ind'
+   !----------------------------------------------------------------------------
+
+   ! Find string in list
+   do m = 1, size(strlist)
+      if (str == strlist(m)) then
+         ind  = m
+         return
+      end if
+   end do
+
+   ! String not found
+   abort_on_error = .true.
+   if (present(abort)) abort_on_error = abort
+
+   if (abort_on_error) then
+      write(iulog, *) sub//': FATAL: string:', trim(str), ' not found in list:', strlist(:)
+      call endrun(sub//': FATAL: string not found')
+   end if
+
+   ! error return
+   ind = -1
+
+end subroutine strlist_get_ind
+
+!=========================================================================================
+
+character(len=10) function date2yyyymmdd (date)
+
+   ! Input arguments
+
+   integer, intent(in) :: date
+
+   ! Local workspace
+
+   integer :: year    ! year of yyyy-mm-dd
+   integer :: month   ! month of yyyy-mm-dd
+   integer :: day     ! day of yyyy-mm-dd
+
+   if (date < 0) then
+      call endrun ('DATE2YYYYMMDD: negative date not allowed')
+   end if
+
+   year  = date / 10000
+   month = (date - year*10000) / 100
+   day   = date - year*10000 - month*100
+
+   write(date2yyyymmdd,80) year, month, day
+80 format(i4.4,'-',i2.2,'-',i2.2)
+
+end function date2yyyymmdd
+
+!=========================================================================================
+
+character(len=8) function sec2hms (seconds)
+
+   ! Input arguments
+
+   integer, intent(in) :: seconds
+
+   ! Local workspace
+
+   integer :: hours     ! hours of hh:mm:ss
+   integer :: minutes   ! minutes of hh:mm:ss
+   integer :: secs      ! seconds of hh:mm:ss
+
+   if (seconds < 0 .or. seconds > 86400) then
+      write(iulog,*)'SEC2HMS: bad input seconds:', seconds
+      call endrun ('SEC2HMS: bad input seconds:')
+   end if
+
+   hours   = seconds / 3600
+   minutes = (seconds - hours*3600) / 60
+   secs    = (seconds - hours*3600 - minutes*60)
+
+   write(sec2hms,80) hours, minutes, secs
+80 format(i2.2,':',i2.2,':',i2.2)
+
+end function sec2hms
+
+!=========================================================================================
+
+character(len=10) function int2str(n)
+
+   ! return default integer as a left justified string
+
+   ! arguments
+   integer, intent(in) :: n
+   !----------------------------------------------------------------------------
+
+   write(int2str,'(i0)') n
+     
+end function int2str
+
+!=========================================================================================
 
 end module string_utils

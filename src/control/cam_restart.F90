@@ -6,7 +6,7 @@ use shr_kind_mod,     only: cl=>shr_kind_cl
 use spmd_utils,       only: masterproc
 use cam_control_mod,  only: restart_run, caseid
 use ioFileMod,        only: opnfil
-use camsrfexch,       only: cam_in_t, cam_out_t     
+use camsrfexch,       only: cam_in_t, cam_out_t
 use dyn_comp,         only: dyn_import_t, dyn_export_t
 use physics_buffer,   only: physics_buffer_desc
 use units,            only: getunit, freeunit
@@ -53,11 +53,11 @@ subroutine cam_read_restart(cam_in, cam_out, dyn_in, dyn_out, pbuf2d, &
 
    character(len=*), parameter :: sub = 'cam_read_restart'
    !---------------------------------------------------------------------------
-  
+
    ! get filehandle pointer to primary restart file
    fh_ini => initial_file_get_id()
 
-   call read_restart_dynamics(fh_ini, dyn_in, dyn_out)   
+   call read_restart_dynamics(fh_ini, dyn_in, dyn_out)
    call ionosphere_read_restart(fh_ini)
 
    call hub2atm_alloc(cam_in)
@@ -79,7 +79,7 @@ subroutine cam_write_restart(cam_in, cam_out, dyn_out, pbuf2d, &
                              yr_spec, mon_spec, day_spec, sec_spec )
 
    use filenames,        only: interpret_filename_spec
-   use cam_pio_utils,    only: cam_pio_createfile
+   use cam_pio_utils,    only: cam_pio_createfile, cam_pio_set_fill
    use restart_dynamics, only: write_restart_dynamics, init_restart_dynamics
    use restart_physics,  only: write_restart_physics, init_restart_physics
    use cam_history,      only: write_restart_history, init_restart_history
@@ -114,7 +114,7 @@ subroutine cam_write_restart(cam_in, cam_out, dyn_out, pbuf2d, &
    end if
 
    call cam_pio_createfile(fh, trim(fname), 0)
-
+   ierr = cam_pio_set_fill(fh)
    call init_restart_dynamics(fh, dyn_out)
    call ionosphere_init_restart(fh)
    call init_restart_physics(fh, pbuf2d)
@@ -142,7 +142,7 @@ subroutine cam_write_restart(cam_in, cam_out, dyn_out, pbuf2d, &
 
    ! Close the primary restart file
    call pio_closefile(fh)
-      
+
    ! Update the restart pointer file
    call write_rest_pfile(fname)
 
@@ -161,7 +161,7 @@ subroutine write_rest_pfile(restart_file)
    integer :: nsds, ierr
    character(len=*), parameter :: sub='write_rest_pfile'
    !---------------------------------------------------------------------------
-   
+
    if (masterproc) then
 
       nsds = getunit()

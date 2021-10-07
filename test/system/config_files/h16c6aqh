@@ -1,7 +1,0 @@
--spmd -smp
--dyn se
--hgrid ne16np4
--phys cam6
--aquaplanet
--ocn docn
--s

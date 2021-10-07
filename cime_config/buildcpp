@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """
 API for cam's configure
@@ -53,6 +53,8 @@ def buildcpp(case):
     # between how the CESM scripts specify the grid and how it is specified
     # by CAM's build and run system.
 
+    if atm_grid == 'T5':
+        atm_grid = '8x16'
     if atm_grid == 'T31':
         atm_grid = '48x96'
     if atm_grid == 'T42':
@@ -62,15 +64,27 @@ def buildcpp(case):
     if atm_grid == 'T341':
         atm_grid = '512x1024'
 
-    # This special case for backwards compatibility.  The CESM config_grids.xml file
-    # has specifiers that CAM's configure script recognizes for all other SE grids.
-    if atm_grid == 'ne30pg3':
-        atm_grid = 'ne30np4.pg3'
+    # Need to relax this error tolerance for the SE variable resolution grids
+    if atm_grid[0:3] == 'ne0':
+        case.set_value("EPS_AAREA", "1.0e-04")
 
+    # Need to relax this error tolerance for the T42 grids
+    if atm_grid[0:6] == '64x128':
+        case.set_value("EPS_AAREA", "1.0e-04")
+        case.set_value("EPS_AGRID", "1.0e-05")
+
+    # The vector mapping (in the mediator) needs to be 'cart3d' for SE
+    # NB: This is currently the default, is it working by conincidence for
+    #     other unstructured dycores?
+    # For cmeps/nuopc cart3d is always the default option for all grids
+    match = re.match(r'ne[0-9]', atm_grid)
+    if match:
+        if (comp_interface == 'mct'):
+            case.set_value('VECT_MAP', 'cart3d')
 
     # if need to build - then construct configure command
-    config_opts = ["-s", "-fc_type", compiler, "-ccsm_seq",
-                   "-dyn", cam_dycore, "-hgrid", atm_grid, "-cpl", comp_interface,
+    config_opts = ["-s", "-fc_type", compiler, "-dyn", cam_dycore,
+                   "-hgrid", atm_grid, "-cpl", comp_interface,
                    "-usr_src", os.path.join(caseroot, "SourceMods", "src.cam")]
 
     if nlev:
@@ -90,6 +104,9 @@ def buildcpp(case):
     else:
         config_opts.append("-smp")
 
+    if cam_dycore == 'fv3':
+         config_opts += ["-fv3core_libdir", os.path.join(exeroot,"atm","obj","atmos_cubed_sphere")]
+
     # The ocean component setting is only used by CAM to do attribute matching for
     # setting default tuning parameter values.  In SOM mode we want to use the same
     # tunings as the fully coupled B compset, so set the ocean component to pop in
@@ -105,6 +122,9 @@ def buildcpp(case):
 
     if "-cosp" in config_opts:
         config_opts += ["-cosp_libdir", os.path.join(exeroot, "atm", "obj", "cosp")]
+
+    if cam_dycore == 'mpas':
+        config_opts += ["-mpas_libdir", os.path.join(exeroot, "atm", "obj", "mpas")]
 
     camconf = os.path.join(caseroot, "Buildconf", "camconf")
     if not os.path.isdir(camconf):

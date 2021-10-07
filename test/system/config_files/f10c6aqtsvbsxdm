@@ -1,8 +1,0 @@
--spmd -nosmp
--dyn fv
--hgrid 10x15
--phys cam6
--aquaplanet
--chem trop_strat_mam4_vbsext
--debug
--s

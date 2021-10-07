@@ -8,11 +8,6 @@ module control_mod
   integer, public, parameter :: MAX_FILE_LEN=240
 !  character(len=MAX_STRING_LEN)    , public :: integration    ! time integration (only one currently supported is "explicit")
 
-  ! Tracer transport type
-  integer, public, parameter :: TRACERTRANSPORT_SE_GLL            = 1
-  integer, public, parameter :: TRACERTRANSPORT_CONSISTENT_SE_FVM = 2
-  integer, public            :: tracer_transport_type = TRACERTRANSPORT_SE_GLL
-
 !shallow water advection tests:
 !kmass points to a level with density.  other levels contain test tracers
 
@@ -28,26 +23,19 @@ module control_mod
                                           ! every rsplit tracer timesteps
   logical, public :: variable_nsplit=.false.
 
-  integer, public :: phys_dyn_cp = 0 !=0; no thermal energy scaling of T increment
+  integer, public :: phys_dyn_cp = 1 !=0; no thermal energy scaling of T increment
                                      !=1; scale increment for cp consistency between dynamics and physics
 
-  logical, public :: del2_physics_tendencies=.false.
-  
   logical, public :: refined_mesh
 
-! vert_remap_q_alg:    0  default value, Zerroukat monotonic splines
-!                      1  PPM vertical remap with mirroring at the boundaries
-!                         (solid wall bc's, high-order throughout)
-!                      2  PPM vertical remap without mirroring at the boundaries
-!                         (no bc's enforced, first-order at two cells bordering top and bottom boundaries)
-  integer, public :: vert_remap_q_alg = 0
+  integer, public :: vert_remap_q_alg = 10
 
 
- integer, public :: cubed_sphere_map = -1  ! -1 = chosen at run time
-                                           !  0 = equi-angle Gnomonic (default)
-                                           !  1 = equi-spaced Gnomonic (not yet coded)
-                                           !  2 = element-local projection  (for var-res)
-                                           !  3 = parametric (not yet coded)
+  integer, public :: cubed_sphere_map = -1  ! -1 = chosen at run time
+                                            !  0 = equi-angle Gnomonic (default)
+                                            !  1 = equi-spaced Gnomonic (not yet coded)
+                                            !  2 = element-local projection  (for var-res)
+                                            !  3 = parametric (not yet coded)
 
 !tolerance to define smth small, was introduced for lim 8 in 2d and 3d
   real (kind=r8), public, parameter :: tol_limiter=1.0e-13_r8
@@ -75,10 +63,25 @@ module control_mod
                                                                ! (only used for variable viscosity, recommend 1.9 in namelist)
   real (kind=r8), public :: nu      = 7.0D5           ! viscosity (momentum equ)
   real (kind=r8), public :: nu_div  = -1              ! viscsoity (momentum equ, div component)
-  real (kind=r8), public :: nu_s    = -1              ! default = nu   T equ. viscosity
+  real (kind=r8), public :: nu_t    = -1              ! default = nu   T equ. viscosity
   real (kind=r8), public :: nu_q    = -1              ! default = nu   tracer viscosity
   real (kind=r8), public :: nu_p    = 0.0D5           ! default = 0    ps equ. viscosity
   real (kind=r8), public :: nu_top  = 0.0D5           ! top-of-the-model viscosity
+
+  !
+  ! Del4 sponge layer diffusion
+  !
+  ! Divergence damping hyperviscosity coefficient nu_div [m^4/s] for u,v is increased to
+  ! nu_div*sponge_del4_nu_div_fac following a hyperbolic tangent function
+  ! centered around pressure at vertical index sponge_del4_lev
+  !
+  ! Similar for sponge_del4_nu_fac
+  !
+  real(r8), public :: sponge_del4_nu_fac
+  real(r8), public :: sponge_del4_nu_div_fac
+  integer , public :: sponge_del4_lev
+
+
   integer, public :: hypervis_subcycle=1    ! number of subcycles for hyper viscsosity timestep
   integer, public :: hypervis_subcycle_sponge=1    ! number of subcycles for hyper viscsosity timestep in sponge
   integer, public :: hypervis_subcycle_q=1  ! number of subcycles for hyper viscsosity timestep on TRACERS
@@ -106,14 +109,6 @@ module control_mod
 !            (\div * tensor * \grad) operator uses cartesian laplace
 !
 
-  integer, public :: prescribed_wind=0    ! fix the velocities?
-  logical, public :: se_prescribed_wind_2d=.false.
-  real (kind=r8), public :: se_met_nudge_u = 0.D0  ! velocity nudging rate (1/sec)
-  real (kind=r8), public :: se_met_nudge_p = 0.D0  ! pressure nudging rate (1/sec)
-  real (kind=r8), public :: se_met_nudge_t = 0.D0  ! temperature nudging rate (1/sec)
-  integer,               public :: se_met_tevolve = 0     ! switch to turn on time evolution of nudging within dynamics
-  integer,               public :: prescribed_vertwind = 0
-
   real (kind=r8), public :: initial_global_ave_dry_ps = 0._r8 ! scale dry surface pressure to initial_global_ave_dry_ps
 
   integer, public, parameter :: west  = 1
@@ -126,12 +121,11 @@ module control_mod
   integer, public, parameter :: nwest = 7
   integer, public, parameter :: neast = 8
 
-  logical, public :: disable_diagnostics = .FALSE.
   !
-  ! parameters for sponge layer Rayleigh damping
-  !
-  real(r8), public :: raytau0
-  real(r8), public :: raykrange
-  integer,  public :: rayk0 
+  ! molecular diffusion
+  !  
+  real(r8), public :: molecular_diff = -1.0_r8
+
+  integer, public  :: vert_remap_uvTq_alg, vert_remap_tracer_alg
   
 end module control_mod

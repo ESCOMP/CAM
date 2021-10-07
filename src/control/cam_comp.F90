@@ -5,7 +5,7 @@ module cam_comp
 !
 ! This interface layer is CAM specific, i.e., it deals entirely with CAM
 ! specific data structures.  It is the layer above this, either atm_comp_mct
-! or atm_comp_esmf, which translates between CAM and either MCT or ESMF
+! or atm_comp_nuopc, which translates between CAM and either MCT or NUOPC
 ! data structures in order to interface with the driver/coupler.
 !
 !-----------------------------------------------------------------------
@@ -55,15 +55,15 @@ real(r8) :: dtime_phys         ! Time step for physics tendencies.  Set by call 
 contains
 !-----------------------------------------------------------------------
 
-subroutine cam_init( &
-   caseid, ctitle, model_doi_url, &
-   initial_run_in, restart_run_in, branch_run_in, &
-   calendar, brnch_retain_casename, aqua_planet, &
-   single_column, scmlat, scmlon,               &
-   eccen, obliqr, lambm0, mvelpp,               &
-   perpetual_run, perpetual_ymd, &
-   dtime, start_ymd, start_tod, ref_ymd, ref_tod, &
-   stop_ymd, stop_tod, curr_ymd, curr_tod, &
+subroutine cam_init(                                             &
+   caseid, ctitle, model_doi_url,                                &
+   initial_run_in, restart_run_in, branch_run_in, post_assim_in, &
+   calendar, brnch_retain_casename, aqua_planet,                 &
+   single_column, scmlat, scmlon,                                &
+   eccen, obliqr, lambm0, mvelpp,                                &
+   perpetual_run, perpetual_ymd,                                 &
+   dtime, start_ymd, start_tod, ref_ymd, ref_tod,                &
+   stop_ymd, stop_tod, curr_ymd, curr_tod,                       &
    cam_out, cam_in)
 
    !-----------------------------------------------------------------------
@@ -88,11 +88,10 @@ subroutine cam_init( &
    use cam_pio_utils,    only: init_pio_subsystem
    use cam_instance,     only: inst_suffix
    use cam_snapshot,     only: cam_snapshot_deactivate
-
+   use physconst,        only: composition_init
 #if (defined BFB_CAM_SCAM_IOP)
    use history_defaults, only: initialize_iop_history
 #endif
-
 
    ! Arguments
    character(len=cl), intent(in) :: caseid                ! case ID
@@ -101,6 +100,7 @@ subroutine cam_init( &
    logical,           intent(in) :: initial_run_in        ! true => inital run
    logical,           intent(in) :: restart_run_in        ! true => restart run
    logical,           intent(in) :: branch_run_in         ! true => branch run
+   logical,           intent(in) :: post_assim_in         ! true => resume mode
    character(len=cs), intent(in) :: calendar              ! Calendar type
    logical,           intent(in) :: brnch_retain_casename ! Flag to allow a branch to use the same
                                                           ! caseid as the run being branched from.
@@ -138,13 +138,14 @@ subroutine cam_init( &
    call init_pio_subsystem()
 
    ! Initializations using data passed from coupler.
-   call cam_ctrl_init( &
-      caseid_in=caseid, &
-      ctitle_in=ctitle, &
+   call cam_ctrl_init(               &
+      caseid_in=caseid,              &
+      ctitle_in=ctitle,              &
       initial_run_in=initial_run_in, &
       restart_run_in=restart_run_in, &
-      branch_run_in=branch_run_in, &
-      aqua_planet_in=aqua_planet, &
+      branch_run_in=branch_run_in,   &
+      post_assim_in=post_assim_in,   &
+      aqua_planet_in=aqua_planet,    &
       brnch_retain_casename_in=brnch_retain_casename)
 
    call cam_ctrl_set_orbit(eccen, obliqr, lambm0, mvelpp)
@@ -174,6 +175,7 @@ subroutine cam_init( &
    ! are set in dyn_init
    call chem_surfvals_init()
 
+   call composition_init()
    ! initialize ionosphere
    call ionosphere_init()
 
@@ -305,13 +307,9 @@ subroutine cam_run2( cam_out, cam_in )
    ! Ion transport
    !
    call t_startf('ionosphere_run2')
-   call ionosphere_run2( phys_state, dyn_in, pbuf2d )
+   call ionosphere_run2( phys_state, pbuf2d )
    call t_stopf ('ionosphere_run2')
 
-   if (is_first_step() .or. is_first_restart_step()) then
-      call t_startf ('cam_run2_memusage')
-      call t_stopf  ('cam_run2_memusage')
-   end if
 end subroutine cam_run2
 
 !
@@ -343,10 +341,6 @@ subroutine cam_run3( cam_out )
 
    call t_stopf  ('stepon_run3')
 
-   if (is_first_step() .or. is_first_restart_step()) then
-      call t_startf ('cam_run3_memusage')
-      call t_stopf  ('cam_run3_memusage')
-   end if
 end subroutine cam_run3
 
 !
@@ -420,12 +414,12 @@ subroutine cam_final( cam_out, cam_in )
 ! Purpose:  CAM finalization.
 !
 !-----------------------------------------------------------------------
-   use stepon,           only: stepon_final
-   use physpkg,          only: phys_final
-   use cam_initfiles,    only: cam_initfiles_close
-   use camsrfexch,       only: atm2hub_deallocate, hub2atm_deallocate
+   use stepon,               only: stepon_final
+   use physpkg,              only: phys_final
+   use cam_initfiles,        only: cam_initfiles_close
+   use camsrfexch,           only: atm2hub_deallocate, hub2atm_deallocate
    use ionosphere_interface, only: ionosphere_final
-   use cam_control_mod,  only: initial_run
+   use cam_control_mod,      only: initial_run
 
    !
    ! Arguments
