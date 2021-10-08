@@ -306,7 +306,6 @@
 <!-- Scale Dry Air Mass: for cases without topography -->
 <scale_dry_air_mass                                                                >      0.0D0 </scale_dry_air_mass>
 <scale_dry_air_mass aquaplanet="1"                                                 > 101080.0D0 </scale_dry_air_mass>
-<scale_dry_air_mass phys="held_suarez"                                             > 101080.0D0 </scale_dry_air_mass>
 <scale_dry_air_mass analytic_ic="1"                                                > 101080.0D0 </scale_dry_air_mass>
 <!-- Scale Dry Air Mass: for cases with topography -->
 <scale_dry_air_mass phys="cam4"                                                    >  98288.0D0 </scale_dry_air_mass>
