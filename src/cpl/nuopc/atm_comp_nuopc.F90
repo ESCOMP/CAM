@@ -25,6 +25,12 @@ module atm_comp_nuopc
   use cam_instance        , only : cam_instance_init, inst_suffix, inst_index
   use cam_comp            , only : cam_init, cam_run1, cam_run2, cam_run3, cam_run4, cam_final
   use radiation           , only : radiation_nextsw_cday
+!+++ARH
+! comment to be deleted after code review
+! once atm_comp_mct changes are approved, I will
+! copy those changes here (treats restart and run-time
+! nextsw_cday identically to mct) 
+!---ARH
   use camsrfexch          , only : cam_out_t, cam_in_t
   use cam_logfile         , only : iulog
   use spmd_utils          , only : spmdinit, masterproc, iam, mpicom
