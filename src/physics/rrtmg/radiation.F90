@@ -62,6 +62,8 @@ public :: &
 integer,public, allocatable :: cosp_cnt(:)       ! counter for cosp
 integer,public              :: cosp_cnt_init = 0 !initial value for cosp counter
 
+real(r8),public, protected  :: nextsw_cday, caldayp1 ! future radiation calday for surface models
+
 type rad_out_t
    real(r8) :: solin(pcols)         ! Solar incident flux
 
@@ -750,6 +752,7 @@ subroutine radiation_tend( &
    integer  :: i, k
    integer  :: lchnk, ncol
    logical  :: dosw, dolw
+   integer  :: dtime           ! time step increment (sec)
 
    real(r8) :: calday          ! current calendar day
    real(r8) :: delta           ! Solar declination angle  in radians
@@ -946,6 +949,12 @@ subroutine radiation_tend( &
    if (hist_fld_active('FSNR') .or. hist_fld_active('FLNR')) then
       call tropopause_find(state, troplev, tropP=p_trop, primary=TROP_ALG_HYBSTOB, backup=TROP_ALG_CLIMATE)
    endif
+
+   ! Get time of next radiation calculation - albedos will need to be
+   ! calculated by each surface model at this time
+   nextsw_cday = radiation_nextsw_cday()
+   dtime = get_step_size()
+   caldayp1 = get_curr_calday(offset=int(dtime))
 
    if (dosw .or. dolw) then
 
