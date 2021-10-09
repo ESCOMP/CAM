@@ -205,6 +205,14 @@ subroutine phys_ctl_readnl(nlfile)
 
    ! Error checking:
 
+!+++ARH
+! comment to be removed after code review
+! I'm second guessing having a seperate phys_control for cam_dev physics
+! since I already put a check in build-namelists to exit if do_clubb_sgs=F
+! The point of this phys_control is to prevent users from modifying eddy_scheme,
+! macrop_scheme, shallow_scheme to be different than CLUBB_SGS. But this just seems overkill.
+! Ideally we could take care of these conflicts in build-namelist
+!---ARH
    ! Check that eddy_scheme, macrop_scheme, shallow_scheme are all set to CLUBB
    if (eddy_scheme .ne. 'CLUBB_SGS' .or. macrop_scheme .ne. 'CLUBB_SGS' .or. shallow_scheme .ne. 'CLUBB_SGS') then
       write(iulog,*)'CAM64 is only compatible with CLUBB.  Quitting'
