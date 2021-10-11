@@ -1427,12 +1427,13 @@ subroutine micro_mg_cam_tend(state, ptend, dtime, pbuf)
    type(physics_buffer_desc),   pointer       :: pbuf(:)
 
    ! Local variables
-   integer :: ncol, nlev, mgncol
+   integer :: ncol, nlev, mgncol, psetcols
    integer, allocatable :: mgcols(:) ! Columns with microphysics performed
 
    ! Find the number of levels used in the microphysics.
    nlev  = pver - top_lev + 1 
    ncol  = state%ncol
+   psetcols = state%psetcols
    
    select case (micro_mg_version)
    case (1)
@@ -1638,9 +1639,18 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8), target :: nmultgo(state%psetcols,pver) 
    real(r8), target :: nmultrgo(state%psetcols,pver) 
    real(r8), target :: npsacwgo(state%psetcols,pver) 
+!Local tendencies
+   real(r8), target :: ptend_loc_mpdt(state%psetcols,pver)
+   real(r8), target :: ptend_loc_mpdq(state%psetcols,pver)
+   real(r8), target :: ptend_loc_mpdliq(state%psetcols,pver)
 
    ! Object that packs columns with clouds/precip.
 !   type(MGPacker) :: packer
+
+   ! Optional outputs
+   real(r8), target :: tnd_qsnow_opt(mgncol,nlev)
+   real(r8), target :: tnd_nsnow_opt(mgncol,nlev)
+   real(r8), target :: re_ice_opt(mgncol,nlev)
 
    ! Initialized versions of inputs.
    real(r8) :: graupel(mgncol,nlev)
@@ -1996,6 +2006,8 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
 
    real(r8), allocatable :: state_loc_t(:,:)
    real(r8), allocatable :: state_loc_q(:,:)
+   real(r8), allocatable :: state_loc_pmid(:,:)
+   real(r8), allocatable :: state_loc_pdel(:,:)
    real(r8), allocatable :: state_loc_liq(:,:)
    real(r8), allocatable :: state_loc_ice(:,:)
    real(r8), allocatable :: state_loc_numliq(:,:)
@@ -2104,9 +2116,16 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
         col_type=col_type, copy_if_needed=use_subcol_microp)
 
    if (.not. do_cldice) then
+      ! If we are NOT progronosing ice and snow tendencies, then get them from the Pbuf
       call pbuf_get_field(pbuf, tnd_qsnow_idx,   tnd_qsnow,   col_type=col_type, copy_if_needed=use_subcol_microp)
       call pbuf_get_field(pbuf, tnd_nsnow_idx,   tnd_nsnow,   col_type=col_type, copy_if_needed=use_subcol_microp)
       call pbuf_get_field(pbuf, re_ice_idx,      re_ice,      col_type=col_type, copy_if_needed=use_subcol_microp)
+   else
+      ! If we ARE prognosing tendencies, then just point to the optional output fields to have 
+      ! something for PUMAS to use
+      tnd_qsnow => tnd_qsnow_opt
+      tnd_nsnow => tnd_nsnow_opt
+      re_ice => re_ice_opt
    end if
 
    if (use_hetfrz_classnuc) then
@@ -2133,6 +2152,8 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
 
    allocate(state_loc_t(mgncol,nlev))
    allocate(state_loc_q(mgncol,nlev))
+   allocate(state_loc_pmid(mgncol,nlev))
+   allocate(state_loc_pdel(mgncol,nlev))
    allocate(state_loc_liq(mgncol,nlev))
    allocate(state_loc_ice(mgncol,nlev))
    allocate(state_loc_numliq(mgncol,nlev))
@@ -2507,6 +2528,8 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    ! Assign state_loc variables to non-pointers (gnu compiler might be getting confused if pointers passed in)
     state_loc_t(:mgncol,:) = state_loc%t(:mgncol,:)
     state_loc_q(:mgncol,:) = state_loc%q(:mgncol,:,1)
+    state_loc_pmid(:mgncol,:) = state_loc%pmid(:mgncol,:)
+    state_loc_pdel(:mgncol,:) = state_loc%pdel(:mgncol,:)
     state_loc_liq(:mgncol,:) = state_loc%q(:mgncol,:,ixcldliq)
     state_loc_ice(:mgncol,:) = state_loc%q(:mgncol,:,ixcldice)
     state_loc_numliq(:mgncol,:) = state_loc%q(:mgncol,:,ixnumliq)
@@ -2571,7 +2594,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
               state_loc_numrain,              state_loc_numsnow,              &
               graupel,              num_graupel,              &
               relvar,         accre_enhan,     &
-              state_loc%pmid,                state_loc%pdel,            &
+              state_loc_pmid,                state_loc_pdel,            &
               ast, alst_mic, aist_mic, qsatfac, &
               rate1cld,                         &
               naai,            npccn,           &
@@ -2673,6 +2696,11 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
          ptend_loc%q(:mgncol,:,ixgraupel) = qgtend(:mgncol,:)
          ptend_loc%q(:mgncol,:,ixnumgraupel) = ngtend -state_loc%q(:mgncol,:,ixnumgraupel)/(dtime/num_steps)
       end if
+
+      ! Save output variables
+      ptend_loc_mpdt = ptend_loc%s
+      ptend_loc_mpdq = ptend_loc%q(:,:,1)
+      ptend_loc_mpdliq = ptend_loc%q(:,:,ixcldliq)
 
       ! Sum into overall ptend
       call physics_ptend_sum(ptend_loc, ptend, ncol)
@@ -3568,9 +3596,9 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    call outfld('ANSNOW',      nsout2,      psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('FREQR',       freqr,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('FREQS',       freqs,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('MPDT',        ptend_loc%s,        psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('MPDQ',        ptend_loc%q(:,:,1),       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('MPDLIQ',      ptend_loc%q(:,:,ixcldliq),       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('MPDT',        ptend_loc_mpdt,   psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('MPDQ',        ptend_loc_mpdq,   psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('MPDLIQ',      ptend_loc_mpdliq, psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('MPDICE',      qiten,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('MPDNLIQ',     ncten,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('MPDNICE',     niten,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
@@ -3621,7 +3649,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    ! Example subcolumn outfld call
    if (use_subcol_microp) then
       call outfld('FICE_SCOL',   nfice,       psubcols*pcols, lchnk)
-      call outfld('MPDLIQ_SCOL', ptend_loc%q(:,:,ixcldliq),       psubcols*pcols, lchnk)
+      call outfld('MPDLIQ_SCOL', ptend%q(:,:,ixcldliq),       psubcols*pcols, lchnk)
       call outfld('MPDICE_SCOL', qiten,       psubcols*pcols, lchnk)
    end if
 
@@ -3739,6 +3767,18 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    deallocate(qrtend)
    deallocate(qstend)
    deallocate(qgtend)
+   deallocate(state_loc_t)
+   deallocate(state_loc_q)
+   deallocate(state_loc_pmid)
+   deallocate(state_loc_pdel)
+   deallocate(state_loc_liq)
+   deallocate(state_loc_ice)
+   deallocate(state_loc_numliq)
+   deallocate(state_loc_numice)
+   deallocate(state_loc_rain)
+   deallocate(state_loc_snow)
+   deallocate(state_loc_numrain)
+   deallocate(state_loc_numsnow)
 end subroutine micro_mg_cam_tend_pack
 
 subroutine massless_droplet_destroyer(ztodt, state,  ptend)
