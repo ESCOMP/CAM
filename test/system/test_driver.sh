@@ -412,7 +412,6 @@ fi
 
 if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
   if [ "${hostname:0:5}" != "izumi" ]; then
-    source /etc/profile.d/modules.sh
     module load python
   fi
 
