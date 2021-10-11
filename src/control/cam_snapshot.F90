@@ -1970,7 +1970,7 @@ subroutine camdev_tphysbc_snapshot_init(cam_snapshot_before_num, cam_snapshot_af
 
 end subroutine camdev_tphysbc_snapshot_init
 
-subroutine camdev_snapshot_all_outfld_tphysbc(file_num, state, tend, cam_in, cam_out, pbuf, flx_heat, cmfmc, cmfcme, &
+subroutine camdev_snapshot_all_outfld_tphysbc(file_num, state, tend, cam_in, cam_out, pbuf, cmfmc, cmfcme, &
         pflx, zdu, rliq, rice, dlf, dlf2, rliq2, net_flx)
 
 use time_manager,   only: is_first_step, is_first_restart_step
@@ -1987,7 +1987,6 @@ use time_manager,   only: is_first_step, is_first_restart_step
    type(cam_in_t),      intent(in) :: cam_in
    type(cam_out_t),     intent(in) :: cam_out
    type(physics_buffer_desc), pointer, intent(in) :: pbuf(:)
-   real(r8),            intent(in) :: flx_heat(:)   ! Heat flux for check_energy_chng.
    real(r8),            intent(in) :: cmfmc(:,:)    ! convective mass flux
    real(r8),            intent(in) :: cmfcme(:,:)   ! cmf condensation - evaporation
    real(r8),            intent(in) :: pflx(:,:)     ! convective rain flux throughout bottom of level
@@ -2009,7 +2008,6 @@ use time_manager,   only: is_first_step, is_first_restart_step
 
    lchnk = state%lchnk
 
-   call outfld('tphysbc_flx_heat', flx_heat, pcols, lchnk)
    call outfld('tphysbc_cmfmc', cmfmc, pcols, lchnk)
    call outfld('tphysbc_cmfcme', cmfcme, pcols, lchnk)
    call outfld('tphysbc_pflx', pflx, pcols, lchnk)
@@ -2026,7 +2024,7 @@ use time_manager,   only: is_first_step, is_first_restart_step
 end subroutine camdev_snapshot_all_outfld_tphysbc
 
 subroutine camdev_snapshot_all_outfld_tphysac(file_num, state, tend, cam_in, cam_out, pbuf, fh2o, surfric, obklen, flx_heat, &
-       cmfmc, pflx, zdu, rliq, dlf, dlf2, rliq2, det_s, det_ice, net_flx)
+       cmfmc, dlf, det_s, det_ice, net_flx)
 
 use time_manager,   only: is_first_step
 
@@ -2047,12 +2045,7 @@ use time_manager,   only: is_first_step
    real(r8),            intent(in) :: obklen(:)          ! Obukhov length
    real(r8),            intent(in) :: flx_heat(:)        ! Heat flux for check_energy_chng.
    real(r8),            intent(in) :: cmfmc(:,:)    ! convective mass flux
-   real(r8),            intent(in) :: pflx(:,:)     ! convective rain flux throughout bottom of level
-   real(r8),            intent(in) :: zdu(:,:)      ! detraining mass flux from deep convection
-   real(r8),            intent(in) :: rliq(:)       ! vertical integral of liquid not yet in q(ixcldliq)
    real(r8),            intent(in) :: dlf(:,:)      ! local copy of DLFZM (copy so need to output)
-   real(r8),            intent(in) :: dlf2(:,:)     ! Detraining cld H20 from shallow convections
-   real(r8),            intent(in) :: rliq2(:)      ! vertical integral of liquid from shallow scheme
    real(r8),            intent(in) :: det_s(:)      ! vertical integral of detrained static energy from ice
    real(r8),            intent(in) :: det_ice(:)    ! vertical integral of detrained ice
    real(r8),            intent(in) :: net_flx(:)
@@ -2072,11 +2065,7 @@ use time_manager,   only: is_first_step
    call outfld('tphysac_obklen', obklen, pcols, lchnk)
    call outfld('tphysac_flx_heat', flx_heat, pcols, lchnk)
    call outfld('tphysac_cmfmc', cmfmc, pcols, lchnk)
-   call outfld('tphysac_zdu', zdu, pcols, lchnk)
-   call outfld('tphysac_rliq', rliq, pcols, lchnk)
    call outfld('tphysac_dlf', dlf, pcols, lchnk)
-   call outfld('tphysac_dlf2', dlf2, pcols, lchnk)
-   call outfld('tphysac_rliq2', rliq2, pcols, lchnk)
    call outfld('tphysac_det_s', det_s, pcols, lchnk)
    call outfld('tphysac_det_ice', det_ice, pcols, lchnk)
    call outfld('tphysac_net_flx', net_flx, pcols, lchnk)
