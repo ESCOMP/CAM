@@ -359,7 +359,7 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
    !--------------------------------------------
     real(r8) :: mmrSum_O_O2_H                ! Sum of mass mixing ratios for O, O2, and H
     real(r8), parameter :: mmrMin=1.e-20_r8  ! lower limit of o2, o, and h mixing ratios
-    real(r8), parameter :: N2mmrMin=1.e-6_r8 ! lower limit of o2, o, and h mixing ratios
+    real(r8), parameter :: N2mmrMin=1.e-6_r8 ! lower limit of N2 mass mixing ratio
    !----------------------------------------------------------------------------
 
    !$omp parallel do private (lchnk, ncol, k, factor)
@@ -436,7 +436,7 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
       end do
 
       !------------------------------------------------------------
-      ! Ensure O2 + O + H (N2) mmr greater than one.
+      ! Ensure N2 = 1-(O2 + O + H) mmr is greater than 0
       ! Check for unusually large H2 values and set to lower value.
       !------------------------------------------------------------
        if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then

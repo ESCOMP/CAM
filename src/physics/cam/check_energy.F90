@@ -251,12 +251,13 @@ end subroutine check_energy_get_integrals
     !
     ! CAM physics total energy
     !
-    call get_hydrostatic_energy(1,ncol,1,1,pver,pcnst,state%q(1:ncol,1:pver,1:pcnst),&
-         state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver),                         &
-         state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), state%T(1:ncol,1:pver),     &
-         vc_physics, ps = state%ps(1:ncol), phis = state%phis(1:ncol),               &
-         te = state%te_ini(1:ncol,phys_te_idx), H2O = state%tw_ini(1:ncol,phys_te_idx))
-         
+    if (vc_dycore /= vc_height) then
+      call get_hydrostatic_energy(1,ncol,1,1,pver,pcnst,state%q(1:ncol,1:pver,1:pcnst),&
+           state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver),                         &
+           state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), state%T(1:ncol,1:pver),     &
+           vc_physics, ps = state%ps(1:ncol), phis = state%phis(1:ncol),               &
+           te = state%te_ini(1:ncol,phys_te_idx), H2O = state%tw_ini(1:ncol,phys_te_idx))
+    end if
     !
     ! Dynamical core total energy
     !

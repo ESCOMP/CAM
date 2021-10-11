@@ -306,7 +306,11 @@
 <scale_dry_air_mass                                                                >      0.0D0 </scale_dry_air_mass>
 <scale_dry_air_mass aquaplanet="1"                                                 > 101080.0D0 </scale_dry_air_mass>
 <!-- Scale Dry Air Mass: for cases with topography -->
-<scale_dry_air_mass phys="cam4|cam5|cam6"                                          >  98288.0D0 </scale_dry_air_mass>
+<scale_dry_air_mass phys="cam4"                                                    >  98288.0D0 </scale_dry_air_mass>
+<scale_dry_air_mass phys="cam5"                                                    >  98288.0D0 </scale_dry_air_mass>
+<scale_dry_air_mass phys="cam6"                                                    >  98288.0D0 </scale_dry_air_mass>
+<scale_dry_air_mass phys="spcam_m2005"                                             >  98288.0D0 </scale_dry_air_mass>
+<scale_dry_air_mass phys="spcam_sam1mom"                                           >  98288.0D0 </scale_dry_air_mass>
 
 <!-- Ridge parameterization (gamma) -->
 <bnd_rdggm hgrid="0.9x1.25">atm/cam/topo/fv_0.9x1.25_nc3000_Nsw006_Nrs002_Co008_Fi001_ZR_c160505.nc</bnd_rdggm>
