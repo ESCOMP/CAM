@@ -13,9 +13,6 @@
    use shr_kind_mod,      only : r8=>shr_kind_r8
    use ppgrid,            only : pver, pcols, pverp
    use cam_history,       only : outfld, addfld, horiz_only
-!+++ARH
-!   use cam_logfile,       only : iulog
-!---ARH
    use phys_control,      only : phys_getopts
    implicit none
    private                 
@@ -52,9 +49,6 @@
   !-------------------------------------------------- !
   ! Purpose : Register fields with the physics buffer !
   !-------------------------------------------------- !
-!+++ARH
-!  use physics_buffer, only : pbuf_add_field, dtype_r8, dyn_time_lvls
-!---ARH
   use physics_buffer, only : pbuf_add_field, dtype_r8
 
   call phys_getopts( shallow_scheme_out = shallow_scheme )
@@ -82,15 +76,8 @@
   !------------------------------------------------------------------------------- !
   ! Purpose : Declare output fields, and initialize variables needed by convection !
   !------------------------------------------------------------------------------- !
-!+++ARH
-!  use cam_history,       only : addfld, add_default
-!---ARH
   use cam_history,       only : addfld
   use pmgrid,            only : plev, plevp
-!+++ARH
-!  use spmd_utils,        only : masterproc
-!  use cam_abortutils,    only : endrun
-!---ARH
   use phys_control,      only : cam_physpkg_is
   
   use physics_buffer,    only : pbuf_get_index, physics_buffer_desc, pbuf_set_field
@@ -133,9 +120,7 @@
   subroutine convect_shallow_tend( ztodt  , cmfmc   , &
                                    qc     , qc2     , rliq     , rliq2    , & 
                                    state  , ptend_all, pbuf, cam_in)
-!+++ARH
-!   use physics_buffer,  only : physics_buffer_desc, pbuf_get_field, pbuf_set_field, pbuf_old_tim_idx
-!---ARH
+
    use physics_buffer,  only : physics_buffer_desc, pbuf_get_field, pbuf_set_field
    use cam_history,     only : outfld
    use physics_types,   only : physics_state, physics_ptend
@@ -162,9 +147,6 @@
 
    type(cam_in_t),      intent(in)    :: cam_in
 
-!+++ARH
-!   integer  :: i, k, m
-!---ARH
    integer  :: i
    integer  :: lchnk                                           ! Chunk identifier
    integer  :: ncol                                            ! Number of atmospheric columns
@@ -176,9 +158,7 @@
    real(r8) :: cnb2(pcols)                                     ! Bottom level of convective activity
    real(r8) :: pcnt(pcols)                                     ! Top    pressure level of shallow + deep convective activity
    real(r8) :: pcnb(pcols)                                     ! Bottom pressure level of shallow + deep convective activity
-!+++ARH
-!   integer itim_old, ifld
-!---ARH
+
    real(r8), pointer, dimension(:,:) :: icwmr                  ! In cloud water + ice mixing ratio
    real(r8), pointer, dimension(:,:) :: rprddp                 ! dq/dt due to deep convective rainout
    real(r8), pointer, dimension(:,:) :: rprdsh                 ! dq/dt due to deep and shallow convective rainout

@@ -31,6 +31,11 @@ module atm_comp_mct
   use cam_instance     , only: cam_instance_init
   use cam_control_mod  , only: cam_ctrl_set_orbit
   use radiation        , only: radiation_nextsw_cday
+!+++ARH
+! comments to be deleted after code review
+! rad_xxx are future caldays *relative to when radiation_tend was last called*
+  use radiation        , only: rad_nextsw_cday=>nextsw_cday, rad_caldayp1=>caldayp1
+!---ARH
   use phys_grid        , only: pgcols => num_global_phys_cols
   use phys_grid        , only: get_ncols_p, get_gcol_p, get_area_all_p
   use phys_grid        , only: get_rlat_all_p, get_rlon_all_p
@@ -322,6 +327,12 @@ CONTAINS
        ! Set time step of radiation computation as the current calday
        ! This will only be used on the first timestep of an initial run
        !
+!+++ARH
+! comment to be deleted after code review
+! do not change the way initial_run handles nextsw_cday
+! The implication is if you are going to move radiation out of CAM_run1
+! you still need to call radiation in CAM_run1 for the first time-step
+!---ARH
        if (initial_run) then
           nextsw_cday = get_curr_calday()
           call seq_infodata_PutData( infodata, nextsw_cday=nextsw_cday )
@@ -361,7 +372,15 @@ CONTAINS
        end if
 
        ! Compute time of next radiation computation, like in run method for exact restart
-
+!+++ARH
+! comment to be deleted after code review
+! I'm not changing this because if I move radiation out of CAM_run1
+! then the public vars rad_caldayp1 and rad_nextsw_cday have not yet
+! been defined. I don't want to allow for radiation to be called in CAM_run1
+! for the first step of a restart run (like I do for an initial run), 
+! because then a continous run would not be bfb compared to a run 
+! with multiple restarts of the same run length.  
+!---ARH
        call seq_timemgr_EClockGetData(Eclock,dtime=atm_cpl_dt)
        dtime = get_step_size()
        nstep = get_nstep()
@@ -431,7 +450,6 @@ CONTAINS
     integer :: day             ! CAM current day
     integer :: tod             ! CAM current time of day (sec)
 
-    real(r8):: caldayp1        ! CAM calendar day for for next cam time step
     real(r8):: nextsw_cday     ! calendar of next atm shortwave
     logical :: rstwr           ! .true. ==> write restart file before returning
     logical :: nlend           ! Flag signaling last time-step
@@ -532,15 +550,25 @@ CONTAINS
 
     ! Get time of next radiation calculation - albedos will need to be
     ! calculated by each surface model at this time
-
+!+++ARH
+! comment to be deleted after code review
+! I am defining a local nextsw_cday that I populate with the 
+! public rad_nextsw_cday set in radiation_tend, if it's a radiation
+! time-step. If it's not, then I set the local value to -1.
+! The reason I don't do this part in radiation_tend is because
+! it depends on atm_cpl_dt, and it's very sloppy to try to access
+! atm_cpl_dt in radiation_tend. Or rather, I can't think of a clean way to do it.
+!---ARH
     call seq_timemgr_EClockGetData(Eclock,dtime=atm_cpl_dt)
     dtime = get_step_size()
     if (dtime < atm_cpl_dt) then
-       nextsw_cday = radiation_nextsw_cday()
+       nextsw_cday = rad_nextsw_cday
     else if (dtime == atm_cpl_dt) then
-       caldayp1 = get_curr_calday(offset=int(dtime))
-       nextsw_cday = radiation_nextsw_cday()
-       if (caldayp1 /= nextsw_cday) nextsw_cday = -1._r8
+       if (rad_caldayp1 /= rad_nextsw_cday) then
+          nextsw_cday = -1._r8
+       else
+          nextsw_cday = rad_nextsw_cday
+       end if
     else
        call shr_sys_abort('dtime must be less than or equal to atm_cpl_dt')
     end if
