@@ -360,6 +360,7 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
     real(r8) :: mmrSum_O_O2_H                ! Sum of mass mixing ratios for O, O2, and H
     real(r8), parameter :: mmrMin=1.e-20_r8  ! lower limit of o2, o, and h mixing ratios
     real(r8), parameter :: N2mmrMin=1.e-6_r8 ! lower limit of N2 mass mixing ratio
+    real(r8), parameter :: H2lim=6.e-5_r8    ! H2 limiter: 10x global H2 MMR (Roble, 1995)
    !----------------------------------------------------------------------------
 
    !$omp parallel do private (lchnk, ncol, k, factor)
@@ -459,8 +460,8 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
 
                 endif
 
-                if(phys_state(lchnk)%q(i,k,ixh2) .gt. 6.e-5_r8) then
-                   phys_state(lchnk)%q(i,k,ixh2) = 6.e-5_r8
+                if(phys_state(lchnk)%q(i,k,ixh2) .gt. H2lim) then
+                   phys_state(lchnk)%q(i,k,ixh2) = H2lim
                 endif
 
              end do
