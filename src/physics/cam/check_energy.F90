@@ -516,16 +516,7 @@ end subroutine check_energy_get_integrals
        teinp_glob = te_glob(1)
        teout_glob = te_glob(2)
        psurf_glob = te_glob(3)
-       if (vc_dycore==vc_height) then
-         ptopb_glob = te_glob(4)
-       else
-         !
-         ! for pressure-based vertical coordinates the model top pressure is constant
-         !
-         ptopb_glob = state(begchunk)%pint(1,1)
-       end if
-
-
+       ptopb_glob = te_glob(4)
 
        ! Global mean total energy difference
        tedif_glob =  teinp_glob - teout_glob
