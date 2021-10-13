@@ -429,7 +429,7 @@ end subroutine check_energy_get_integrals
     end if
 
     ! copy new value to state
-    
+
     do i = 1, ncol
       state%te_cur(i,phys_te_idx) = te(i)
       state%tw_cur(i,phys_te_idx) = tw(i)
@@ -451,7 +451,7 @@ end subroutine check_energy_get_integrals
       endif
       scaling(:,:) = cpairv(:,:,lchnk)/cp_or_cv(:,:) !cp/cv scaling
 
-      temp(1:ncol,:) = state%temp_ini(1:ncol,:)+scaling(1:ncol,:)*(state%T(1:ncol,:)-state%temp_ini(1:ncol,:))  
+      temp(1:ncol,:) = state%temp_ini(1:ncol,:)+scaling(1:ncol,:)*(state%T(1:ncol,:)-state%temp_ini(1:ncol,:))
       call get_hydrostatic_energy(1,ncol,1,1,pver,pcnst,state%q(1:ncol,1:pver,1:pcnst),&
            state%pdel(1:ncol,1:pver),cp_or_cv(1:ncol,1:pver),                          &
            state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), temp(1:ncol,1:pver),        &
@@ -463,8 +463,8 @@ end subroutine check_energy_get_integrals
       state%tw_cur(1:ncol,dyn_te_idx) = tw(1:ncol)
     end if
   end subroutine check_energy_chng
-    
-    
+
+
   subroutine check_energy_gmean(state, pbuf2d, dtime, nstep)
 
     use physics_buffer, only : physics_buffer_desc, pbuf_get_field, pbuf_get_chunk
@@ -789,7 +789,7 @@ end subroutine check_energy_get_integrals
 !------------------------------Arguments--------------------------------
 
     type(physics_state), intent(inout) :: state
-    character(len=*),    intent(in)    :: outfld_name_suffix ! suffix for "outfld" 
+    character(len=*),    intent(in)    :: outfld_name_suffix ! suffix for "outfld"
     integer, optional,   intent(in)    :: vc                 ! vertical coordinate
 
 !---------------------------Local storage-------------------------------
@@ -843,7 +843,7 @@ end subroutine check_energy_get_integrals
         else
           cp_or_cv(:,:) = cpairv(:,:,lchnk)                 !cp
         end if
-      else 
+      else
         call endrun('calc_te_and_aam_budgets: energy diagnostics not implemented/tested for subcolumns')
       end if
 

@@ -358,9 +358,9 @@ subroutine dyn_init(dyn_in, dyn_out)
    integer, parameter                         :: num_stages = 3, num_vars = 5
    character (len = 3), dimension(num_stages) :: stage = (/"dBF","dAP","dAM"/)
    character (len = 55),dimension(num_stages) :: stage_txt = (/&
-      " dynamics state before physics (d_p_coupling)       ",&  
-      " dynamics state with T,u,V increment but not q      ",&  
-      " dynamics state with full physics increment (incl.q)" &  
+      " dynamics state before physics (d_p_coupling)       ",&
+      " dynamics state with T,u,V increment but not q      ",&
+      " dynamics state with full physics increment (incl.q)" &
       /)
 
    character (len = 2)  , dimension(num_vars) :: vars  = (/"WV"  ,"WL"  ,"WI"  ,"SE"   ,"KE"/)
@@ -470,12 +470,12 @@ subroutine dyn_init(dyn_in, dyn_out)
    ! in timeLevel=1.  Thus we want dyn_out to also point to timeLevel=1.  Can just copy
    ! the pointers from dyn_in.
 
-   dyn_out % uperp   => dyn_in % uperp   
-   dyn_out % w       => dyn_in % w       
-   dyn_out % theta_m => dyn_in % theta_m 
-   dyn_out % rho_zz  => dyn_in % rho_zz  
-   dyn_out % tracers => dyn_in % tracers 
-   
+   dyn_out % uperp   => dyn_in % uperp
+   dyn_out % w       => dyn_in % w
+   dyn_out % theta_m => dyn_in % theta_m
+   dyn_out % rho_zz  => dyn_in % rho_zz
+   dyn_out % tracers => dyn_in % tracers
+
    ! These components don't have a time level index.
    dyn_out % zint  => dyn_in % zint
    dyn_out % zz    => dyn_in % zz
@@ -617,11 +617,11 @@ subroutine dyn_run(dyn_in, dyn_out)
    call mpas_pool_get_array(state_pool, 'theta_m', dyn_in % theta_m, timeLevel=1)
    call mpas_pool_get_array(state_pool, 'rho_zz',  dyn_in % rho_zz,  timeLevel=1)
    call mpas_pool_get_array(state_pool, 'scalars', dyn_in % tracers, timeLevel=1)
-   dyn_out % uperp   => dyn_in % uperp   
-   dyn_out % w       => dyn_in % w       
-   dyn_out % theta_m => dyn_in % theta_m 
-   dyn_out % rho_zz  => dyn_in % rho_zz  
-   dyn_out % tracers => dyn_in % tracers 
+   dyn_out % uperp   => dyn_in % uperp
+   dyn_out % w       => dyn_in % w
+   dyn_out % theta_m => dyn_in % theta_m
+   dyn_out % rho_zz  => dyn_in % rho_zz
+   dyn_out % tracers => dyn_in % tracers
 
 end subroutine dyn_run
 
@@ -792,7 +792,7 @@ subroutine read_inidat(dyn_in)
 
    integer :: mpas_idx, cam_idx, ierr
    character(len=16) :: trac_name
-   
+
    character(len=*), parameter :: subname = 'dyn_comp:read_inidat'
    !--------------------------------------------------------------------------------------
 
@@ -804,7 +804,7 @@ subroutine read_inidat(dyn_in)
 
    ixqv        = dyn_in % index_qv
    mpas_from_cam_cnst => dyn_in % mpas_from_cam_cnst
-   
+
    uperp      => dyn_in % uperp
    w          => dyn_in % w
    theta_m    => dyn_in % theta_m
@@ -858,7 +858,7 @@ subroutine read_inidat(dyn_in)
    end do
 
    ! If using a topo file check that PHIS is consistent with the surface z coordinate.
-   if (associated(fh_topo)) then    
+   if (associated(fh_topo)) then
 
       allocate(zsurf(nCellsSolve), stat=ierr)
       if( ierr /= 0 ) call endrun(subname//': failed to allocate zsurf array')
@@ -881,7 +881,7 @@ subroutine read_inidat(dyn_in)
            write(iulog,*) subname//': ERROR: '//TRIM(str)
            call endrun(subname//': ERROR: PHIS not consistent with surface z coordinate; '//TRIM(str))
          end if
-      end do     
+      end do
    end if
 
    if (analytic_ic_active()) then
@@ -948,7 +948,7 @@ subroutine read_inidat(dyn_in)
       do i = 1, nCellsSolve
          pintdry(1,i) = cam2d(i)
       end do
-      
+
       allocate(qv(plev), tm(plev), stat=ierr)
       if( ierr /= 0 ) call endrun(subname//': failed to allocate qv and tm arrays')
 
@@ -1107,7 +1107,7 @@ subroutine read_inidat(dyn_in)
       trac_name = cnst_name(cam_idx)
       if (mpas_idx == 1) trac_name = 'qv'
 
-      
+
       readvar = .false.
       if (cnst_read_iv(cam_idx)) then
 
@@ -1136,7 +1136,6 @@ subroutine read_inidat(dyn_in)
    theta_m(:,1:nCellsSolve) = theta(:,1:nCellsSolve) * (1.0_r8 + Rv_over_Rd * tracers(ixqv,:,1:nCellsSolve))
 
    ! If scale_dry_air_mass > 0.0 then scale dry air mass to scale_dry_air_mass global average dry pressure
-   ! If scale_dry_air_mass = 0.0 don't scale
    if (scale_dry_air_mass > 0.0_r8) then
      call set_dry_mass(dyn_in, scale_dry_air_mass)
    end if
@@ -1165,7 +1164,7 @@ subroutine get_zsurf_from_topo(fh_topo, zsurf)
 
    ! Arguments
    type(file_desc_t), pointer :: fh_topo
-   
+
    real(r8), intent(out) :: zsurf(:)
 
    ! Local variables
@@ -1222,7 +1221,7 @@ subroutine set_base_state(dyn_in)
    rho_base   => dyn_in % rho_base
    theta_base => dyn_in % theta_base
 
-   ! reference state with discrete MPAS hydrostatic balance                                                 
+   ! reference state with discrete MPAS hydrostatic balance
 
    if (discrete_hydrostatic_base) then
 
@@ -1688,9 +1687,9 @@ end subroutine cam_mpas_namelist_read
 !> \brief Scale dry air mass
 !> \author Bill Skamarock, Miles Curry
 !> \date   25 April 2021
-!> \details Given a target dry air mass surface pressure, 
-!> target_avg_dry_surface_pressure, scale the current dry air mass so 
-!> that the average dry surface pressure equals 
+!> \details Given a target dry air mass surface pressure,
+!> target_avg_dry_surface_pressure, scale the current dry air mass so
+!> that the average dry surface pressure equals
 !> target_avg_dry_surface_pressure. Water vapor is scaled for mass-
 !> conservation; all other tracer mixing ratios are unaltered
 !> (i.e. tracer mass is not conserved but gradients are during the

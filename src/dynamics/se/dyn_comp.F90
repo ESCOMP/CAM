@@ -1695,7 +1695,6 @@ subroutine read_inidat(dyn_in)
    end if
 
    ! If scale_dry_air_mass > 0.0 then scale dry air mass to scale_dry_air_mass global average dry pressure
-   ! If scale_dry_air_mass = 0.0 don't scale
    if (runtype == 0) then
      if (scale_dry_air_mass > 0.0_r8) then
        if (iam < par%nprocs) then

@@ -88,7 +88,7 @@ subroutine dryairm( grid,  moun,  ps,   tracer,  delp,                   &
     nq         = grid%nq
     ptop       = grid%ptop
     
-    if (scale_dry_air_mass == 0.0_r8) return
+    if (scale_dry_air_mass <= 0.0_r8) return
 
 ! Check global maximum/minimum
 
