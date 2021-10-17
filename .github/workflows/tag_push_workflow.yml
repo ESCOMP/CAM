@@ -16,10 +16,10 @@ jobs:
     # Acquire github action routines
     - uses: actions/checkout@v2
     # Acquire specific version of python
-    - name: Set up Python 3.6
+    - name: Set up Python 3.9
       uses: actions/setup-python@v1
       with:
-        python-version: '3.6' # Semantic version range syntax or exact version of a Python version
+        python-version: '3.9' # Semantic version range syntax or exact version of a Python version
     # Install required python packages
     - name: Install dependencies
       run: |

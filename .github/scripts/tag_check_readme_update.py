@@ -92,10 +92,11 @@ def email_msg(receiver_list, pword, title, msg):
 #Script message and exit function
 #++++++++++++++++++++++++++++++++
 
-def end_script(msg):
+def end_script_pass(msg):
 
     """
-    Prints message to screen, and then exits script.
+    Prints message to screen, and then exits script
+    with a zero exit code (so Github counts it as a success).
     """
     print("\n{}\n".format(msg))
     print("README tag update script has completed successfully.")
@@ -191,7 +192,7 @@ def _main_prog():
 
     if not tag_name:
         endmsg = "No tag was created by this push, so there is nothing to do."
-        end_script(endmsg)
+        end_script_pass(endmsg)
     else:
         print("Script found tag name of '{}'".format(tag_name))
 
@@ -200,36 +201,21 @@ def _main_prog():
     #+++++++++++++++++++++++++++++++
 
     #Extract tag commit message:
-    commit_message = tag_commit.commit.message
+    commit_message = tag_commit.commit.message.strip()
 
     #Compile Pull Request merge text expression:
-    pr_merge_pattern = re.compile(r'Merge pull request ')
+    pr_merge_pattern = re.compile(r'Merge pull request [#]([0-9]+)')
 
     #Search for merge text, starting at beginning of message:
     commit_msg_match = pr_merge_pattern.match(commit_message)
 
     #Check if match exists:
     if commit_msg_match is not None:
-        #If it does then pull out text immediately after message:
-        post_msg_text = commit_message[commit_msg_match.end():]
-
-        #Split text into individual words:
-        post_msg_word_list = post_msg_text.split()
-
-        #Extract first word:
-        first_word = post_msg_word_list[0]
+        #Try assuming the second group is just a number:
+        pr_num = int(commit_msg_match.group(1))
 
         #Print merged pr number to screen:
-        print("Merged PR associated with tag: {}".format(first_word))
-
-        try:
-            #Try assuming the word is just a number:
-            pr_num = int(first_word[1:]) #ignore "#" symbol
-        except ValueError:
-            #If the conversion fails, then this is likely not a real PR merge, so end the script:
-            endmsg = "No Pull Request number was found in the tagged commit message.\n"
-            endmsg += "This is a non-normal tag commit, and so would be worth double-checking."
-            end_script_fail(cam_pword, endmsg)
+        print("Merged PR number associated with tag: {}".format(pr_num))
 
     else:
         endmsg = "No Pull Request merges were found in the tagged commit message.\n"
@@ -261,7 +247,7 @@ def _main_prog():
     #If PR is not to the development branch, then exit script:
     if merged_branch != "cam_development":
         endmsg = "Tagged PR merged into non-development branch. No further action will thus be taken."
-        end_script(endmsg)
+        end_script_pass(endmsg)
 
     #++++++++++++++++++++++
     #Extract ChangeLog file
@@ -295,8 +281,10 @@ def _main_prog():
     #Search for tag in ChangeLog, to ensure log was properly updated
     #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    #Make ChangeLog all lowercase, so that searching is case independent:
-    changelog = changelog.lower()
+    #Make ChangeLog all lowercase, so that searching is case independent.
+    #Also only keep the first 256 characters, as the tag name should
+    #show up somewhere there.
+    changelog = changelog[0:256].lower()
 
     #Find first occurence of "Tag name" string:
     tag_log_idx = changelog.find("tag name")
@@ -350,13 +338,10 @@ def _main_prog():
     if not dev_tag_match:
         endmsg = "No text matches expected development tag pattern in README.md file, "
         endmsg += "so no further action will be taken."
-        end_script(endmsg)
-
-    #Extract start and end indices of matched tag text:
-    dev_tag_idx = dev_tag_match.span()
+        end_script_pass(endmsg)
 
     #Add new tag to README text:
-    new_content = readme_text[:dev_tag_idx[0]] + tag_name + readme_text[dev_tag_idx[1]:]
+    new_content = readme_text.replace(dev_tag_match.group(0), tag_name)
 
     #+++++++++++++++++++++++++++++++++++++++++++++++
     #Push updated README file back to default branch
