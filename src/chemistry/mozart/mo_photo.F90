@@ -177,7 +177,7 @@ contains
     ! maximum solar zenith angle for which photo-chemical rates are computed
     max_zen_angle = maxzen
     if (.not. max_zen_angle>0._r8) then
-       write(*,*) 'photo_inti: max_zen_angle = ',max_zen_angle
+       write(iulog,*) 'photo_inti: max_zen_angle = ',max_zen_angle
        call endrun ('photo_inti: max_zen_angle must be greater then zero')
     end if
 
