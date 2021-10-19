@@ -3745,6 +3745,9 @@ if ($dyn =~ /mpas/) {
 
 }
 
+# Defaults for scaling initial pressure
+add_default($nl, 'scale_dry_air_mass');
+
 # Defaults for history output
 add_default($nl, 'history_amwg');
 add_default($nl, 'history_vdiag');

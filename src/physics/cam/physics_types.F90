@@ -53,6 +53,9 @@ module physics_types
   public physics_ptend_dealloc ! deallocate individual components within tend
 
 !-------------------------------------------------------------------------------
+  integer, parameter, public :: phys_te_idx = 1
+  integer ,parameter, public :: dyn_te_idx = 2
+
   type physics_state
      integer                                     :: &
           lchnk,                &! chunk index
@@ -88,17 +91,22 @@ module physics_types
           q         ! constituent mixing ratio (kg/kg moist or dry air depending on type)
 
      real(r8), dimension(:,:),allocatable        :: &
-          pint,    &! interface pressure (Pa)
-          pintdry, &! interface pressure dry (Pa)
-          lnpint,  &! ln(pint)
+          pint,     &! interface pressure (Pa)
+          pintdry,  &! interface pressure dry (Pa)
+          lnpint,   &! ln(pint)
           lnpintdry,&! log interface pressure dry (Pa)
-          zi        ! geopotential height above surface at interfaces (m)
+          zi         ! geopotential height above surface at interfaces (m)
 
-     real(r8), dimension(:),allocatable          :: &
-          te_ini,  &! vertically integrated total (kinetic + static) energy of initial state
-          te_cur,  &! vertically integrated total (kinetic + static) energy of current state
-          tw_ini,  &! vertically integrated total water of initial state
-          tw_cur    ! vertically integrated total water of new state
+     real(r8), dimension(:,:),allocatable          :: &
+                           ! Second dimension is (phys_te_idx) CAM physics total energy and 
+                           ! (dyn_te_idx) dycore total energy computed in physics
+          te_ini,         &! vertically integrated total (kinetic + static) energy of initial state
+          te_cur,         &! vertically integrated total (kinetic + static) energy of current state
+          tw_ini,         &! vertically integrated total water of initial state
+          tw_cur           ! vertically integrated total water of new state
+     real(r8), dimension(:,:),allocatable          :: &
+          temp_ini,       &! Temperature of initial state (used for energy computations)
+          z_ini            ! Height of initial state (used for energy computations)
      integer :: count ! count of values with significant energy or water imbalances
      integer, dimension(:),allocatable           :: &
           latmapback, &! map from column to unique lat for that column
@@ -526,14 +534,18 @@ contains
          varname="state%psdry",     msg=msg)
     call shr_assert_in_domain(state%phis(:ncol),        is_nan=.false., &
          varname="state%phis",      msg=msg)
-    call shr_assert_in_domain(state%te_ini(:ncol),      is_nan=.false., &
+    call shr_assert_in_domain(state%te_ini(:ncol,:),    is_nan=.false., &
          varname="state%te_ini",    msg=msg)
-    call shr_assert_in_domain(state%te_cur(:ncol),      is_nan=.false., &
+    call shr_assert_in_domain(state%te_cur(:ncol,:),    is_nan=.false., &
          varname="state%te_cur",    msg=msg)
-    call shr_assert_in_domain(state%tw_ini(:ncol),      is_nan=.false., &
+    call shr_assert_in_domain(state%tw_ini(:ncol,:),    is_nan=.false., &
          varname="state%tw_ini",    msg=msg)
-    call shr_assert_in_domain(state%tw_cur(:ncol),      is_nan=.false., &
+    call shr_assert_in_domain(state%tw_cur(:ncol,:),    is_nan=.false., &
          varname="state%tw_cur",    msg=msg)
+    call shr_assert_in_domain(state%temp_ini(:ncol,:),  is_nan=.false., &
+         varname="state%temp_ini",  msg=msg)
+    call shr_assert_in_domain(state%z_ini(:ncol,:),  is_nan=.false., &
+         varname="state%z_ini",  msg=msg)
 
     ! 2-D variables (at midpoints)
     call shr_assert_in_domain(state%t(:ncol,:),         is_nan=.false., &
@@ -600,14 +612,18 @@ contains
          varname="state%psdry",     msg=msg)
     call shr_assert_in_domain(state%phis(:ncol),        lt=posinf_r8, gt=neginf_r8, &
          varname="state%phis",      msg=msg)
-    call shr_assert_in_domain(state%te_ini(:ncol),      lt=posinf_r8, gt=neginf_r8, &
+    call shr_assert_in_domain(state%te_ini(:ncol,:),    lt=posinf_r8, gt=neginf_r8, &
          varname="state%te_ini",    msg=msg)
-    call shr_assert_in_domain(state%te_cur(:ncol),      lt=posinf_r8, gt=neginf_r8, &
+    call shr_assert_in_domain(state%te_cur(:ncol,:),    lt=posinf_r8, gt=neginf_r8, &
          varname="state%te_cur",    msg=msg)
-    call shr_assert_in_domain(state%tw_ini(:ncol),      lt=posinf_r8, gt=neginf_r8, &
+    call shr_assert_in_domain(state%tw_ini(:ncol,:),    lt=posinf_r8, gt=neginf_r8, &
          varname="state%tw_ini",    msg=msg)
-    call shr_assert_in_domain(state%tw_cur(:ncol),      lt=posinf_r8, gt=neginf_r8, &
+    call shr_assert_in_domain(state%tw_cur(:ncol,:),    lt=posinf_r8, gt=neginf_r8, &
          varname="state%tw_cur",    msg=msg)
+    call shr_assert_in_domain(state%temp_ini(:ncol,:),  lt=posinf_r8, gt=neginf_r8, &
+         varname="state%temp_ini",  msg=msg)
+    call shr_assert_in_domain(state%z_ini(:ncol,:),  lt=posinf_r8, gt=neginf_r8, &
+         varname="state%z_ini",  msg=msg)
 
     ! 2-D variables (at midpoints)
     call shr_assert_in_domain(state%t(:ncol,:),         lt=posinf_r8, gt=0._r8, &
@@ -1288,18 +1304,20 @@ end subroutine physics_ptend_copy
     state_out%count    = state_in%count
 
     do i = 1, ncol
-       state_out%lat(i)    = state_in%lat(i)
-       state_out%lon(i)    = state_in%lon(i)
-       state_out%ps(i)     = state_in%ps(i)
-       state_out%phis(i)   = state_in%phis(i)
-       state_out%te_ini(i) = state_in%te_ini(i)
-       state_out%te_cur(i) = state_in%te_cur(i)
-       state_out%tw_ini(i) = state_in%tw_ini(i)
-       state_out%tw_cur(i) = state_in%tw_cur(i)
-    end do
+       state_out%lat(i)      = state_in%lat(i)
+       state_out%lon(i)      = state_in%lon(i)
+       state_out%ps(i)       = state_in%ps(i)
+       state_out%phis(i)     = state_in%phis(i)
+     end do
+     state_out%te_ini(:ncol,:) = state_in%te_ini(:ncol,:)
+     state_out%te_cur(:ncol,:) = state_in%te_cur(:ncol,:)
+     state_out%tw_ini(:ncol,:) = state_in%tw_ini(:ncol,:)
+     state_out%tw_cur(:ncol,:) = state_in%tw_cur(:ncol,:)
 
     do k = 1, pver
        do i = 1, ncol
+          state_out%temp_ini(i,k)  = state_in%temp_ini(i,k)
+          state_out%z_ini(i,k)     = state_in%z_ini(i,k)
           state_out%t(i,k)         = state_in%t(i,k)
           state_out%u(i,k)         = state_in%u(i,k)
           state_out%v(i,k)         = state_in%v(i,k)
@@ -1571,17 +1589,23 @@ subroutine physics_state_alloc(state,lchnk,psetcols)
   allocate(state%zi(psetcols,pver+1), stat=ierr)
   if ( ierr /= 0 ) call endrun('physics_state_alloc error: allocation error for state%zi')
 
-  allocate(state%te_ini(psetcols), stat=ierr)
+  allocate(state%te_ini(psetcols,2), stat=ierr)
   if ( ierr /= 0 ) call endrun('physics_state_alloc error: allocation error for state%te_ini')
 
-  allocate(state%te_cur(psetcols), stat=ierr)
+  allocate(state%te_cur(psetcols,2), stat=ierr)
   if ( ierr /= 0 ) call endrun('physics_state_alloc error: allocation error for state%te_cur')
 
-  allocate(state%tw_ini(psetcols), stat=ierr)
+  allocate(state%tw_ini(psetcols,2), stat=ierr)
   if ( ierr /= 0 ) call endrun('physics_state_alloc error: allocation error for state%tw_ini')
 
-  allocate(state%tw_cur(psetcols), stat=ierr)
+  allocate(state%tw_cur(psetcols,2), stat=ierr)
   if ( ierr /= 0 ) call endrun('physics_state_alloc error: allocation error for state%tw_cur')
+
+  allocate(state%temp_ini(psetcols,pver), stat=ierr)
+  if ( ierr /= 0 ) call endrun('physics_state_alloc error: allocation error for state%temp_ini')
+
+  allocate(state%z_ini(psetcols,pver), stat=ierr)
+  if ( ierr /= 0 ) call endrun('physics_state_alloc error: allocation error for state%z_ini')
 
   allocate(state%latmapback(psetcols), stat=ierr)
   if ( ierr /= 0 ) call endrun('physics_state_alloc error: allocation error for state%latmapback')
@@ -1622,10 +1646,12 @@ subroutine physics_state_alloc(state,lchnk,psetcols)
   state%lnpintdry(:,:) = inf
   state%zi(:,:) = inf
 
-  state%te_ini(:) = inf
-  state%te_cur(:) = inf
-  state%tw_ini(:) = inf
-  state%tw_cur(:) = inf
+  state%te_ini(:,:) = inf
+  state%te_cur(:,:) = inf
+  state%tw_ini(:,:) = inf
+  state%tw_cur(:,:) = inf
+  state%temp_ini(:,:) = inf
+  state%z_ini(:,:)  = inf
 
 end subroutine physics_state_alloc
 
@@ -1733,6 +1759,12 @@ subroutine physics_state_dealloc(state)
 
   deallocate(state%tw_cur, stat=ierr)
   if ( ierr /= 0 ) call endrun('physics_state_dealloc error: deallocation error for state%tw_cur')
+
+  deallocate(state%temp_ini, stat=ierr)
+  if ( ierr /= 0 ) call endrun('physics_state_dealloc error: deallocation error for state%temp_ini')
+
+  deallocate(state%z_ini, stat=ierr)
+  if ( ierr /= 0 ) call endrun('physics_state_dealloc error: deallocation error for state%z_ini')
 
   deallocate(state%latmapback, stat=ierr)
   if ( ierr /= 0 ) call endrun('physics_state_dealloc error: deallocation error for state%latmapback')

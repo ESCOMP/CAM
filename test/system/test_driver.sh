@@ -26,7 +26,7 @@ help () {
   echo "${hprefix} [ -j ] (number of jobs for gmake)"
   echo "${hprefix} [ --baseline-dir <directory> ] (directory for saving baselines of cime tests)"
   echo "${hprefix} [ --no-baseline] (baselines of cime tests are not saved)"
-  echo "${hprefix} [ --xml-driver <driver_name> ] (mct or nuopc; default mct)"
+  echo "${hprefix} [ --xml-driver <driver_name> ] (mct or nuopc)"
   echo "${hprefix} [ --cesm <test_name(s)> ] (default aux_cam)"
   echo "${hprefix} [ --rerun-cesm <test_id> ] (rerun the cesm tests with the --use-existing-flag)"
   echo "${hprefix} [ --namelists-only ] (Only perform namelist actions for tests.  Incompatible with --rerun-cesm.)"
@@ -117,7 +117,7 @@ fi
 
 # Initialize variables which may not be set
 submit_script_cime=''
-xml_driver="mct"
+xml_driver=''
 
 while [ "${1:0:1}" == "-" ]; do
     case $1 in
