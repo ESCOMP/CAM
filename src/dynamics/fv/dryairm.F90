@@ -22,8 +22,7 @@ subroutine dryairm( grid,  moun,  ps,   tracer,  delp,                   &
  use mean_module,         only: gmeanxy
 
  use pio,                 only: file_desc_t
- use cam_initfiles,       only: topo_file_get_id
- 
+ use cam_initfiles,       only: topo_file_get_id, scale_dry_air_mass
  use cam_logfile,         only: iulog
  implicit   none
 
@@ -63,20 +62,11 @@ subroutine dryairm( grid,  moun,  ps,   tracer,  delp,                   &
       real(r8), allocatable :: psdkg(:,:,:)    ! global work array
 ! dry surface pressure
       real(r8)    psd(grid%ifirstxy:grid%ilastxy,grid%jfirstxy:grid%jlastxy)
-      real(r8)   drym,drym_loc            ! global mean dry air mass in pascals
 
       integer :: im, jm, km                            ! Dimensions
       integer :: ifirstxy, ilastxy, jfirstxy, jlastxy  ! XY slice
       integer :: nq                            ! Number of advective tracers         
       real(r8):: ptop
-
-#if defined ( NAVY10 )
-      parameter (drym = 98222.0_r8)           ! For US NAVY 10-min terrain
-#else
-      parameter (drym = 98288.0_r8)           ! For USGS terrain
-#endif
-      real(r8), parameter ::  D245_0        = 245._r8
-      real(r8), parameter ::  D101325_0     = 101325._r8
 
       type(file_desc_t), pointer :: fh_topo
 
@@ -97,11 +87,8 @@ subroutine dryairm( grid,  moun,  ps,   tracer,  delp,                   &
     jlastxy    = grid%jlastxy
     nq         = grid%nq
     ptop       = grid%ptop
-
-    drym_loc = drym
-    if (.not. associated(fh_topo)) then
-       drym_loc = D101325_0 - D245_0
-    end if
+    
+    if (scale_dry_air_mass <= 0.0_r8) return
 
 ! Check global maximum/minimum
 
@@ -194,7 +181,7 @@ subroutine dryairm( grid,  moun,  ps,   tracer,  delp,                   &
     if( nlres_loc ) return
 
     if(moun) then
-       dpd = drym_loc - psdry
+       dpd = scale_dry_air_mass - psdry
     else
        dpd = 1000._r8*100._r8 - psdry
     endif
