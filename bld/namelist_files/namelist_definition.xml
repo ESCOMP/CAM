@@ -6809,6 +6809,13 @@ Full pathname of cross section dataset for short wavelengh photolysis
 Default: set by build-namelist.
 </entry>
 
+<entry id="photo_max_zen" type="real" category="cam_chem"
+       group="chem_inparm" valid_values="" >
+Maximum zenith angle (degrees) used for photolysis.
+Default: set by build-namelist.
+</entry>
+
+
 <!-- Namelist read by seq_drydep_mod and shared by CAM and CLM -->
 
 <entry id="drydep_list" type="char*16(1000)" category="dry_deposition"
