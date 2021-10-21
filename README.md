@@ -1,6 +1,6 @@
 # CAM: The Community Atmosphere Model
 
-CAM code is stored in this repository on branches other than master.  The details are explained below.
+CAM code is stored in this repository on branches other than main.  The details are explained below.
 
 Please see the [wiki](https://github.com/ESCOMP/CAM/wiki) for complete documentation on CAM, getting started with git and how to contribute to CAM's development.
 
@@ -27,7 +27,7 @@ git checkout cam_cesm2_2_rel_02
 git checkout cam_cesm2_1_rel_41
 ./manage_externals/checkout_externals
 ```
-### To view the release branches in Github, go to the "Branch:master" pulldown menu and select the appropriate branch.
+### To view the release branches in Github, go to the "Branch:main" pulldown menu and select the appropriate branch.
 
 ### To use unsupported CAM **development** code:
 
