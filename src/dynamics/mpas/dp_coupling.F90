@@ -15,7 +15,7 @@ use spmd_utils,     only: mpicom, iam, masterproc
 
 use dyn_comp,       only: dyn_export_t, dyn_import_t
 
-use physics_types,  only: physics_state, physics_tend
+use physics_types,  only: physics_state, physics_tend, physics_cnst_limit
 use phys_grid,      only: get_dyn_col_p, get_chunk_info_p, get_ncols_p, get_gcol_all_p
 use phys_grid,      only: columns_on_task
 
@@ -333,7 +333,6 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
    use phys_control,  only: waccmx_is
    use physconst,     only: rairv, physconst_update
    use qneg_module,   only: qneg3
-   use dyn_comp,      only: ixo, ixo2, ixh, ixh2
    use shr_const_mod, only: shr_const_rwv
    use constituents,  only: qmin
    ! Arguments
@@ -436,45 +435,18 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
          end if
       end do
 
-      !------------------------------------------------------------
-      ! Ensure N2 = 1-(O2 + O + H) mmr is greater than 0
-      ! Check for unusually large H2 values and set to lower value.
-      !------------------------------------------------------------
-       if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
 
-          do i=1,ncol
-             do k=1,pver
-
-                if (phys_state(lchnk)%q(i,k,ixo) < mmrMin) phys_state(lchnk)%q(i,k,ixo) = mmrMin
-                if (phys_state(lchnk)%q(i,k,ixo2) < mmrMin) phys_state(lchnk)%q(i,k,ixo2) = mmrMin
-
-                mmrSum_O_O2_H = phys_state(lchnk)%q(i,k,ixo)+phys_state(lchnk)%q(i,k,ixo2)+phys_state(lchnk)%q(i,k,ixh)
-
-                if ((1._r8-mmrMin-mmrSum_O_O2_H) < 0._r8) then
-
-                   phys_state(lchnk)%q(i,k,ixo) = phys_state(lchnk)%q(i,k,ixo) * (1._r8 - N2mmrMin) / mmrSum_O_O2_H
-
-                   phys_state(lchnk)%q(i,k,ixo2) = phys_state(lchnk)%q(i,k,ixo2) * (1._r8 - N2mmrMin) / mmrSum_O_O2_H
-
-                   phys_state(lchnk)%q(i,k,ixh) = phys_state(lchnk)%q(i,k,ixh) * (1._r8 - N2mmrMin) / mmrSum_O_O2_H
-
-                endif
-
-                if(phys_state(lchnk)%q(i,k,ixh2) > H2lim) then
-                   phys_state(lchnk)%q(i,k,ixh2) = H2lim
-                endif
-
-             end do
-          end do
-       endif
-
-      !-----------------------------------------------------------------------------
-      ! Call physconst_update to compute cpairv, rairv, mbarv, and cappav as
-      ! constituent dependent variables.
-      ! Compute molecular viscosity(kmvis) and conductivity(kmcnd).
-      ! Fill local zvirv variable; calculated for WACCM-X.
-      !-----------------------------------------------------------------------------
       if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
+        !------------------------------------------------------------
+        ! Apply limiters to mixing ratios of major species
+        !------------------------------------------------------------
+        call physics_cnst_limit( phys_state(lchnk) )
+        !-----------------------------------------------------------------------------
+        ! Call physconst_update to compute cpairv, rairv, mbarv, and cappav as
+        ! constituent dependent variables.
+        ! Compute molecular viscosity(kmvis) and conductivity(kmcnd).
+        ! Fill local zvirv variable; calculated for WACCM-X.
+        !-----------------------------------------------------------------------------
         call physconst_update(phys_state(lchnk)%q, phys_state(lchnk)%t, lchnk, ncol)
         zvirv(:,:) = shr_const_rwv / rairv(:,:,lchnk) -1._r8
       else
