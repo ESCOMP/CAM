@@ -299,14 +299,14 @@
       <pes pesize="any" compset="_CAM\d0%WX">
 	<comment>none</comment>
 	<ntasks>
-	  <ntasks_atm>864</ntasks_atm>
-	  <ntasks_lnd>864</ntasks_lnd>
-	  <ntasks_rof>864</ntasks_rof>
-	  <ntasks_ice>864</ntasks_ice>
-	  <ntasks_ocn>864</ntasks_ocn>
-	  <ntasks_glc>864</ntasks_glc>
-	  <ntasks_wav>864</ntasks_wav>
-	  <ntasks_cpl>864</ntasks_cpl>
+	  <ntasks_atm>1728</ntasks_atm>
+	  <ntasks_lnd>1728</ntasks_lnd>
+	  <ntasks_rof>1728</ntasks_rof>
+	  <ntasks_ice>1728</ntasks_ice>
+	  <ntasks_ocn>1728</ntasks_ocn>
+	  <ntasks_glc>1728</ntasks_glc>
+	  <ntasks_wav>1728</ntasks_wav>
+	  <ntasks_cpl>1728</ntasks_cpl>
 	</ntasks>
 	<nthrds>
 	  <nthrds_atm>1</nthrds_atm>
@@ -818,14 +818,14 @@
       <pes pesize="any" compset="_CAM\d0%WX">
 	<comment>none</comment>
 	<ntasks>
-	  <ntasks_atm>384</ntasks_atm>
-	  <ntasks_lnd>384</ntasks_lnd>
-	  <ntasks_rof>384</ntasks_rof>
-	  <ntasks_ice>384</ntasks_ice>
-	  <ntasks_ocn>384</ntasks_ocn>
-	  <ntasks_glc>384</ntasks_glc>
-	  <ntasks_wav>384</ntasks_wav>
-	  <ntasks_cpl>384</ntasks_cpl>
+	  <ntasks_atm>576</ntasks_atm>
+	  <ntasks_lnd>576</ntasks_lnd>
+	  <ntasks_rof>576</ntasks_rof>
+	  <ntasks_ice>576</ntasks_ice>
+	  <ntasks_ocn>576</ntasks_ocn>
+	  <ntasks_glc>576</ntasks_glc>
+	  <ntasks_wav>576</ntasks_wav>
+	  <ntasks_cpl>576</ntasks_cpl>
 	</ntasks>
 	<nthrds>
 	  <nthrds_atm>3</nthrds_atm>
@@ -958,14 +958,14 @@
       <pes pesize="any" compset="_CAM\d0%WX">
 	<comment>none</comment>
 	<ntasks>
-	  <ntasks_atm>576</ntasks_atm>
-	  <ntasks_lnd>576</ntasks_lnd>
-	  <ntasks_rof>576</ntasks_rof>
-	  <ntasks_ice>576</ntasks_ice>
-	  <ntasks_ocn>576</ntasks_ocn>
-	  <ntasks_glc>576</ntasks_glc>
-	  <ntasks_wav>576</ntasks_wav>
-	  <ntasks_cpl>576</ntasks_cpl>
+	  <ntasks_atm>864</ntasks_atm>
+	  <ntasks_lnd>864</ntasks_lnd>
+	  <ntasks_rof>864</ntasks_rof>
+	  <ntasks_ice>864</ntasks_ice>
+	  <ntasks_ocn>864</ntasks_ocn>
+	  <ntasks_glc>864</ntasks_glc>
+	  <ntasks_wav>864</ntasks_wav>
+	  <ntasks_cpl>864</ntasks_cpl>
 	</ntasks>
 	<nthrds>
 	  <nthrds_atm>3</nthrds_atm>
@@ -1175,14 +1175,14 @@
       <pes pesize="any" compset="_CAM\d0%WX">
 	<comment>none</comment>
 	<ntasks>
-	  <ntasks_atm>576</ntasks_atm>
-	  <ntasks_lnd>576</ntasks_lnd>
-	  <ntasks_rof>576</ntasks_rof>
-	  <ntasks_ice>576</ntasks_ice>
-	  <ntasks_ocn>576</ntasks_ocn>
-	  <ntasks_glc>576</ntasks_glc>
-	  <ntasks_wav>576</ntasks_wav>
-	  <ntasks_cpl>576</ntasks_cpl>
+	  <ntasks_atm>768</ntasks_atm>
+	  <ntasks_lnd>768</ntasks_lnd>
+	  <ntasks_rof>768</ntasks_rof>
+	  <ntasks_ice>768</ntasks_ice>
+	  <ntasks_ocn>768</ntasks_ocn>
+	  <ntasks_glc>768</ntasks_glc>
+	  <ntasks_wav>768</ntasks_wav>
+	  <ntasks_cpl>768</ntasks_cpl>
 	</ntasks>
 	<nthrds>
 	  <nthrds_atm>3</nthrds_atm>

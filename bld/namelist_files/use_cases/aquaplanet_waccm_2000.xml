@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+
+<namelist_defaults>
+
+<start_ymd>00010101</start_ymd>
+
+<!-- Solar data -->
+<solar_data_ymd>20000101</solar_data_ymd>
+<solar_data_type>FIXED</solar_data_type>
+
+<!-- Kp and F10.7 -->
+<solar_parms_data_file>atm/waccm/phot/wa_smax_c100517.nc</solar_parms_data_file>
+
+
+<history_cesm_forcing>.true.</history_cesm_forcing>
+<history_scwaccm_forcing>.true. </history_scwaccm_forcing>
+<history_waccm>.true.</history_waccm>
+<history_amwg>.true.</history_amwg>
+<history_carma>.false.</history_carma>
+<history_clubb>.false.</history_clubb>
+<history_chemistry>.false.</history_chemistry>
+<history_chemspecies_srf>.false.</history_chemspecies_srf>
+<history_aerosol>.false.</history_aerosol>
+<history_aero_optics>.false.</history_aero_optics>
+
+</namelist_defaults>
