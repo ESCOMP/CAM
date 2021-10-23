@@ -198,8 +198,21 @@
   </compset>
 
   <compset>
+    <alias>QPWmaC4</alias>
+    <lname>2000_CAM40%WCCM_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
+  </compset>
+  <compset>
     <alias>QPWmaC6</alias>
     <lname>2000_CAM60%WCCM_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>QPWmadC4</alias>
+    <lname>2000_CAM40%WCMD_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
+  </compset>
+  <compset>
+    <alias>QPWmadC6</alias>
+    <lname>2000_CAM60%WCMD_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
   </compset>
 
   <compset>
