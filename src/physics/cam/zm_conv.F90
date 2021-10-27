@@ -78,6 +78,13 @@ module zm_conv
    real(r8) :: tiedke_add      ! namelist configurable
    real(r8) :: dmpdz_param     ! namelist configurable
 
+
+! RBN: KE parcel
+   logical :: ltau_dynamic    ! Use a dynamic tau calculation
+   logical :: lparcel_dynamic ! Calculate buoyancy/convective top base on parcel K.E.
+   
+
+   
 contains
 
 
@@ -4027,7 +4034,7 @@ subroutine q1q2_pjr(lchnk   , &
 end subroutine q1q2_pjr
 
 subroutine buoyan_dilute(lchnk   ,ncol    , &
-                  q       ,t       .omega, ,p       ,z       ,pf      , &
+                  q       ,t       .omega ,p       ,z       ,pf      , &
                   tp      ,qstp    ,tl      ,rl      ,cape    , &
                   pblt    ,lcl     ,lel     ,lon     ,mx      , &
                   rd      ,grav    ,cp      ,msg     , &
@@ -4093,7 +4100,7 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
 !
 !--------------------------Local Variables------------------------------
 !
-   real(r8) capeten(pcols,5)     ! provisional value of cape
+   real(r8) capeten(pcols,num_cin)     ! provisional value of cape
    real(r8) tv(pcols,pver)       !
    real(r8) tpv(pcols,pver)      !
    real(r8) buoy(pcols,pver)
@@ -4111,11 +4118,11 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
 
    logical plge600(pcols)
    integer knt(pcols)
-   integer lelten(pcols,5)
+   integer lelten(pcols,num_cin)
 
 ! RBN variables for parcel total energy consideration
-   real(r8),parameter :: pini_ke  = 10        ! Convective parcel initial kinetic energy (J/kg).
-   real(r8),parameter :: pe2ke_eff = 0.2      ! PE->KE parcel energy conversion efficiency.
+   real(r8),parameter :: pini_ke  = 5._r8        ! Convective parcel initial kinetic energy (J/kg).
+   real(r8),parameter :: pe2ke_eff = 0.1_r8      ! PE->KE parcel energy conversion efficiency.
    real(r8)           :: plev_ke(pcols,pver)  ! Parcel kinetic energy at a particular level (J/kg).
    real(r8)           :: w_nrg(pcols,pver)    ! Energy associated with the large scale w(omega) 
    logical            :: first_kelt0(pcols)   ! Indicating first time ke<0 in a column.   
@@ -4137,7 +4144,7 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
 !
 !-----------------------------------------------------------------------
 !
-   do n = 1,5
+   do n = 1,num_cin
       do i = 1,ncol
          lelten(i,n) = pver
          capeten(i,n) = 0._r8
@@ -4263,7 +4270,9 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
 ! -Increments KE base on buoyancy conversion with pe2ke efficiency
 ! -Parcel terminates at level of zero energy   
 
-   if (lke_parcel) then ! Calculate dynamic parcel energy?
+   lparcel_dynamic = .true.
+   
+   if (lparcel_dynamic) then ! Calculate dynamic parcel energy?
       
       do k = pver, msg + 2, -1
          do i = 1,ncol
@@ -4271,11 +4280,11 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
                plev_ke(i,k) = pini_ke
             end if
             if (k < mx(i).and.plge600(i)) then
-               plev_ke(i,k) = plev_ke(i,k) + pe2ke_eff*rd*buoy(i,k)*log(pf(i,k+1)/pf(i,k)) + 0.5*w_nrg(i,k)*w_nrg(i,k)
+               plev_ke(i,k) = plev_ke(i,k+1) + pe2ke_eff*rd*buoy(i,k)*log(pf(i,k+1)/pf(i,k)) + 0.5*w_nrg(i,k)*w_nrg(i,k)
                w_incld(i,k) = sqrt(max(0._r8,2._r8*plev_ke(i,k)))
                if (plev_ke(i,k) <= 0._r8 .and. first_kelt0(i)) then ! Parcel terminates at level of zero energy
-                  knt(i) = min(num_cin,knt(i) + 1)
-                  lelten(i,knt(i)) = k
+                  knt(i) = 1 ! This is regardless of num_cin (integer)
+                  lelten(i,1) = k
                   first_kelt0(i) = .False. ! Make sure that this bit of code cannot be used once ke<0.
                end if
             end if
@@ -4301,15 +4310,8 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
       
      
    end if ! End dynamic parcel logic
-   
-   call outfld('WINCLD', w_incld, pcols, lchnk)     
-   call outfld('LCL',real(lcl,r8),pcols, lchnk)
-   call outfld('KHMAX',real(mx,r8),pcols, lchnk)  
-   call outfld('PLCL', pl, pcols, lchnk)            ! Pressure at the lifting condensation level.
-   call outfld('TLCL', tl, pcols, lchnk)            ! Temp        "
-   call outfld('HMAX', hmax, pcols, lchnk)     
-   call outfld('KEPAR', plev_ke, pcols, lchnk)    ! Parcel K.E.
-   
+
+ 
 !
 ! calculate convective available potential energy (cape).
 !
@@ -4338,22 +4340,26 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
 
 ! For dynamic parcel, Now we know convective top let's find mean in-cloud w
 
-   if (lke_parcel) then
+   if (lparcel_dynamic) then
       do k = msg + 1,pver
          do i = 1,ncol
             if ( k >= lel(i) .and. k <= lcl(i) - 1) then
-               wm_incld(i) =  wm_incld(i)+w_incld(i,k)*(pf(i,k+1)-pf(i,k))/(pf(i,lcl(i)-1)-pf(i,lel(i)))
+              wm_incld(i) =  wm_incld(i)+w_incld(i,k)*(pf(i,k+1)-pf(i,k))/(pf(i,lcl(i))-pf(i,lel(i)))
             end if
          end do
       end do
  
-      write(iulog,*)'WMINCLD =',wm_incld
-      write(iulog,*)'MINCLD =',w_incld
 
    end if
    
    call outfld('MWINCLD',wm_incld, pcols, lchnk)  ! In-cloud vertical velocity
-   
+   call outfld('WINCLD', w_incld, pcols, lchnk)     
+   call outfld('LCL',real(lcl,r8),pcols, lchnk)
+   call outfld('KHMAX',real(mx,r8),pcols, lchnk)  
+   call outfld('PLCL', pl, pcols, lchnk)            ! Pressure at the lifting condensation level.
+   call outfld('TLCL', tl, pcols, lchnk)            ! Temp        "
+   call outfld('HMAX', hmax, pcols, lchnk)     
+   call outfld('KEPAR', plev_ke, pcols, lchnk)    ! Parcel K.E.
    
 !
 ! put lower bound on cape for diagnostic purposes.
@@ -4469,7 +4475,7 @@ if (zm_org) then
 endif
 nit_lheat = 2 ! iterations for ds,dq changes from condensation freezing.
 dmpdz=dmpdz_param       ! Entrainment rate. (-ve for /m)
-dmpdz_lnd=-1.e-3_r8
+dmpdz_lnd=dmpdz_param
 !dmpdpc = 3.e-2_r8   ! In cloud entrainment rate (/mb).
 lwmax = 1.e-3_r8    ! Need to put formula in for this.
 tscool = 0.0_r8   ! Temp at which water loading freezes in the cloud.
@@ -4635,7 +4641,7 @@ do k = pver, msg+1, -1
 
       if (k < klaunch(i)) then
             
-! Initiaite loop if switch(2) = .T. - RBN:DILUTE - TAKEN OUT BUT COULD BE RETURNED LATER.
+! Initiate loop if switch(2) = .T. - RBN:DILUTE - TAKEN OUT BUT COULD BE RETURNED LATER.
 
 ! Iterate nit_lheat times for s,qt changes.
 

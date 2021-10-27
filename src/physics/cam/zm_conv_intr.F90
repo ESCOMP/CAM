@@ -299,17 +299,26 @@ subroutine zm_conv_init(pref_edge)
 
 ! RBN: Output variables for more detailed ZM analysis (+dynamica parcel and tau)
 
-    call addfld ('TAUZM   ','/s      ',1,'A', 'ZM deep convection timescale',phys_decomp)  
-    call addfld ('WINCLD  ','m/s     ',plev,'A', 'Deep convective in-cloud vertical velocity',phys_decomp)
-    call addfld ('KEPAR   ','J/kg   ',plev, 'A','Convective parcel kinetic energy',phys_decomp)
-    call addfld ('BUOY    ','K       ',plev,'A', 'Buoyancy as temperature',phys_decomp)
-    call addfld ('MWINCLD ','m/s     ',1,    'A','Deep convective mean in-cloud vertical velocity',phys_decomp) 
-    call addfld ('HMAX    ','unitless',1,    'A','Moist Static energy maximum',phys_decomp)
-    call addfld ('LCL     ','unitless',1,    'A','Lifting condensation model level index',phys_decomp)
-    call addfld ('LEL     ','unitless',1,    'A','Convective top negative buoyancy level index',phys_decomp)
-    call addfld ('KHMAX   ','unitless',1,    'A','Moist Static energy maximum level index',phys_decomp) 
-    call addfld ('TLCL    ','K       ',1,    'A','Temperature at the lifting condensation level',phys_decomp)
-    call addfld ('PLCL    ','K       ',1,    'A','Pressure at the lifting condensation level',phys_decomp)
+   
+    call addfld ('TAUZM',   horiz_only,   'A', '/s      ', 'ZM deep convection timescale')  
+    call addfld ('WINCLD', (/ 'lev' /),   'A', 'm/s     ', 'Deep convective in-cloud vertical velocity')
+    call addfld ('KEPAR',  (/ 'lev' /),   'A', 'J/kg    ', 'Convective parcel kinetic energy')
+    call addfld ('BUOY',   (/ 'lev' /),   'A', 'K       ', 'Buoyancy as temperature')
+
+    call addfld ('MWINCLD', horiz_only,'A','m/s     ',    'Deep convective mean in-cloud vertical velocity')
+    call addfld ('HMAX',    horiz_only,'A','J/kg',    'Moist Static energy maximum')
+    call addfld ('LCL',     horiz_only,'A','level',    'Lifting condensation model level index')
+    call addfld ('LEL',     horiz_only,'A','level',    'Convective top negative buoyancy level index')
+    call addfld ('KHMAX',   horiz_only,'A','level',    'Moist Static energy maximum level index') 
+    call addfld ('TLCL',    horiz_only,'A','K',        'Temperature at the lifting condensation level')
+    call addfld ('PLCL',    horiz_only,'A','Pa',       'Pressure at the lifting condensation level')
+     
+
+
+
+
+
+
     
 !!!!
     
@@ -404,6 +413,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    use physics_types, only: physics_state_copy, physics_state_dealloc
    use physics_types, only: physics_ptend_sum, physics_ptend_dealloc
 
+   use phys_grid,     only: get_lat_p, get_lon_p
    use time_manager,  only: get_nstep, is_first_step
    use physics_buffer, only : pbuf_get_field, physics_buffer_desc, pbuf_old_tim_idx
    use constituents,  only: pcnst, cnst_get_ind, cnst_is_convtran1
