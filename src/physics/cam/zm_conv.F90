@@ -142,7 +142,7 @@ subroutine zm_convi(limcnv_in, zmconv_c0_lnd, zmconv_c0_ocn, zmconv_ke, zmconv_k
 ! RBN: Modification logicals switches
    
    ltau_dynamic = .false. ! Use a dynamic tau calculation
-   lparcel_dynamic = .true. ! Calculate buoyancy/convective top base on parcel K.E.
+   lparcel_dynamic = .false. ! Calculate buoyancy/convective top base on parcel K.E.
    
    if ( masterproc ) then
       write(iulog,*) 'tuning parameters zm_convi: tau',tau
