@@ -810,7 +810,7 @@ subroutine zm_convr(lchnk   ,ncol    , &
       !     lcl, lel, parcel launch level at index maxi()=hmax
 
       call buoyan_dilute(lchnk   ,ncol    , &
-                  q       ,t       ,omega,  ,p       ,z       ,pf       , &
+                  q       ,t       ,omega  ,p       ,z       ,pf       , &
                   tp      ,qstp    ,tl      ,rl      ,cape     , &
                   pblt    ,lcl     ,lel     ,lon     ,maxi     , &
                   rgas    ,grav    ,cpres   ,msg     , &
