@@ -3880,6 +3880,8 @@ subroutine closure(lchnk   , &
          if (dadt(i) /= 0._r8) mb(i) = max(dltaa/tau/dadt(i),0._r8)
       end do
 !
+   end if
+
    return
       
 end subroutine closure
