@@ -4034,7 +4034,7 @@ subroutine q1q2_pjr(lchnk   , &
 end subroutine q1q2_pjr
 
 subroutine buoyan_dilute(lchnk   ,ncol    , &
-                  q       ,t       .omega ,p       ,z       ,pf      , &
+                  q       ,t       ,omega ,p       ,z       ,pf      , &
                   tp      ,qstp    ,tl      ,rl      ,cape    , &
                   pblt    ,lcl     ,lel     ,lon     ,mx      , &
                   rd      ,grav    ,cp      ,msg     , &
