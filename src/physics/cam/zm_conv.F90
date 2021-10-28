@@ -4270,7 +4270,7 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
 ! -Increments KE base on buoyancy conversion with pe2ke efficiency
 ! -Parcel terminates at level of zero energy   
 
-   lparcel_dynamic = .true.
+   lparcel_dynamic = .false.
    
    if (lparcel_dynamic) then ! Calculate dynamic parcel energy?
       
