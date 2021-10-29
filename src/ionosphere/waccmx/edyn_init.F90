@@ -92,7 +92,6 @@ contains
       call addfld ('EDYN_A1DTA2 ', horiz_only , 'I', '        ','EDYN_A1DTA2' , gridname='geo_grid')
       call addfld ('EDYN_BE3    ', horiz_only , 'I', '        ','EDYN_BE3'    , gridname='geo_grid')
 
-
       call addfld ('ADOTA1_MAG', horiz_only , 'I', ' ','ADOTA1 in geo-mag coords' , gridname='gmag_grid')
       call addfld ('SINI_MAG',   horiz_only , 'I', ' ','sini in geo-mag coords' , gridname='gmag_grid')
 
@@ -110,9 +109,9 @@ contains
 
       call addfld ('POTEN'  ,(/ 'lev' /), 'I', 'Volts','POTEN: Electric Potential',&
            gridname='geo_grid')
-      call addfld ('EX'     ,(/ 'lev' /), 'I', 'V/m'  ,'EX: Zonal component of Electric Field',&
+      call addfld ('EX'     ,(/ 'lev' /), 'I', 'V/m'  ,'EX: Geographic zonal component of Electric Field',&
            gridname='geo_grid')
-      call addfld ('EY'     ,(/ 'lev' /), 'I', 'V/m'  ,'EY: Meridional component of Electric Field',&
+      call addfld ('EY'     ,(/ 'lev' /), 'I', 'V/m'  ,'EY: Geographic meridional component of Electric Field',&
            gridname='geo_grid')
       call addfld ('EZ'     ,(/ 'lev' /), 'I', 'V/m'  ,'EZ: Vertical component of Electric Field',&
            gridname='geo_grid')
