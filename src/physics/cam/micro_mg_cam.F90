@@ -1532,6 +1532,11 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8), allocatable :: qrtend(:,:)
    real(r8), allocatable :: qstend(:,:)
    real(r8), allocatable :: qgtend(:,:)
+   real(r8), allocatable :: nctend(:,:)
+   real(r8), allocatable :: nitend(:,:)
+   real(r8), allocatable :: nrtend(:,:)
+   real(r8), allocatable :: nstend(:,:)
+   real(r8), allocatable :: ngtend(:,:)
 
    real(r8), target :: rate1cld(state%psetcols,pver) ! array to hold rate1ord_cw2pr_st from microphysics
 
@@ -1661,12 +1666,12 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
 
    ! Packed versions of outputs.
    real(r8), target :: packed_rate1ord_cw2pr_st(mgncol,nlev)
-   real(r8), target :: nctend(mgncol,nlev)
-   real(r8), target :: nitend(mgncol,nlev)
 
-   real(r8), target :: nrtend(mgncol,nlev)
-   real(r8), target :: nstend(mgncol,nlev)
-   real(r8), target :: ngtend(mgncol,nlev)
+   !real(r8), target :: nctend(mgncol,nlev)
+   !real(r8), target :: nitend(mgncol,nlev)
+   !real(r8), target :: nrtend(mgncol,nlev)
+   !real(r8), target :: nstend(mgncol,nlev)
+   !real(r8), target :: ngtend(mgncol,nlev)
 
    real(r8), target :: packed_prect(mgncol)
    real(r8), target :: packed_preci(mgncol)
@@ -2016,6 +2021,8 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8), allocatable :: state_loc_snow(:,:)
    real(r8), allocatable :: state_loc_numrain(:,:)
    real(r8), allocatable :: state_loc_numsnow(:,:)
+   real(r8), allocatable :: state_loc_graup(:,:)
+   real(r8), allocatable :: state_loc_numgraup(:,:)
 
    real(r8), pointer :: cmeliq_grid(:,:)
 
@@ -2149,6 +2156,23 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    allocate(qrtend(mgncol,nlev))
    allocate(qstend(mgncol,nlev))
    allocate(qgtend(mgncol,nlev))
+   allocate(nctend(mgncol,nlev))
+   allocate(nitend(mgncol,nlev))
+   allocate(nrtend(mgncol,nlev))
+   allocate(nstend(mgncol,nlev))
+   allocate(ngtend(mgncol,nlev))
+   tlat   = 0._r8
+   qvlat  = 0._r8
+   qctend = 0._r8
+   qitend = 0._r8
+   qrtend = 0._r8
+   qstend = 0._r8
+   qgtend = 0._r8
+   nctend = 0._r8
+   nitend = 0._r8
+   nrtend = 0._r8
+   nstend = 0._r8
+   ngtend = 0._r8
 
    allocate(state_loc_t(mgncol,nlev))
    allocate(state_loc_q(mgncol,nlev))
@@ -2162,6 +2186,22 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    allocate(state_loc_snow(mgncol,nlev))
    allocate(state_loc_numrain(mgncol,nlev))
    allocate(state_loc_numsnow(mgncol,nlev))
+   allocate(state_loc_graup(mgncol,nlev))
+   allocate(state_loc_numgraup(mgncol,nlev))
+   state_loc_t      = 0._r8
+   state_loc_q      = 0._r8
+   state_loc_pmid   = 0._r8
+   state_loc_pdel   = 0._r8
+   state_loc_liq    = 0._r8
+   state_loc_ice    = 0._r8
+   state_loc_numliq = 0._r8
+   state_loc_numice = 0._r8
+   state_loc_rain   = 0._r8
+   state_loc_snow   = 0._r8
+   state_loc_numrain = 0._r8
+   state_loc_numsnow = 0._r8
+   state_loc_graup  = 0._r8
+   state_loc_numgraup = 0._r8
 
    !-----------------------
    ! These physics buffer fields are calculated and set in this parameterization
@@ -2526,33 +2566,51 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
 !        accum_method=accum_null)
 
    ! Assign state_loc variables to non-pointers (gnu compiler might be getting confused if pointers passed in)
-    state_loc_t(:mgncol,:) = state_loc%t(:mgncol,:)
-    state_loc_q(:mgncol,:) = state_loc%q(:mgncol,:,1)
-    state_loc_pmid(:mgncol,:) = state_loc%pmid(:mgncol,:)
-    state_loc_pdel(:mgncol,:) = state_loc%pdel(:mgncol,:)
-    state_loc_liq(:mgncol,:) = state_loc%q(:mgncol,:,ixcldliq)
-    state_loc_ice(:mgncol,:) = state_loc%q(:mgncol,:,ixcldice)
-    state_loc_numliq(:mgncol,:) = state_loc%q(:mgncol,:,ixnumliq)
-    state_loc_numice(:mgncol,:) = state_loc%q(:mgncol,:,ixnumice)
-    state_loc_rain(:mgncol,:) = state_loc%q(:mgncol,:,ixrain)
-    state_loc_snow(:mgncol,:) = state_loc%q(:mgncol,:,ixsnow)
-    state_loc_numrain(:mgncol,:) = state_loc%q(:mgncol,:,ixnumrain)
-    state_loc_numsnow(:mgncol,:) = state_loc%q(:mgncol,:,ixnumsnow)
+    state_loc_t(:mgncol,top_lev:pver)    = state_loc%t(:mgncol,top_lev:pver)
+    state_loc_q(:mgncol,top_lev:pver)    = state_loc%q(:mgncol,top_lev:pver,1)
+    state_loc_pmid(:mgncol,top_lev:pver) = state_loc%pmid(:mgncol,top_lev:pver)
+    state_loc_pdel(:mgncol,top_lev:pver) = state_loc%pdel(:mgncol,top_lev:pver)
+    state_loc_liq(:mgncol,top_lev:pver)  = state_loc%q(:mgncol,top_lev:pver,ixcldliq)
+    state_loc_ice(:mgncol,top_lev:pver)  = state_loc%q(:mgncol,top_lev:pver,ixcldice)
+    state_loc_numliq(:mgncol,top_lev:pver) = state_loc%q(:mgncol,top_lev:pver,ixnumliq)
+    state_loc_numice(:mgncol,top_lev:pver) = state_loc%q(:mgncol,top_lev:pver,ixnumice)
+    ! Do I need a version check for these?
+    state_loc_rain(:mgncol,top_lev:pver) = state_loc%q(:mgncol,top_lev:pver,ixrain)
+    state_loc_snow(:mgncol,top_lev:pver) = state_loc%q(:mgncol,top_lev:pver,ixsnow)
+    state_loc_numrain(:mgncol,top_lev:pver) = state_loc%q(:mgncol,top_lev:pver,ixnumrain)
+    state_loc_numsnow(:mgncol,top_lev:pver) = state_loc%q(:mgncol,top_lev:pver,ixnumsnow)
+    if (micro_mg_version > 1) then
+       if (micro_mg_version > 2) then
+          state_loc_graup(:mgncol,top_lev:pver) = state_loc%q(:mgncol,top_lev:pver,ixgraupel)
+          state_loc_numgraup(:mgncol,top_lev:pver) = state_loc%q(:mgncol,top_lev:pver,ixnumgraupel)
+       else
+          state_loc_graup(:mgncol,top_lev:pver) = 0._r8
+          state_loc_numgraup(:mgncol,top_lev:pver) = 0._r8
+       end if
+    end if
+
+    ! Previously, the packer would only pass values from top_lev and below into microphys.
+    ! So, here we will zero out values above top_lev before passing into _tend for some
+    ! pbuf variables that are inputs.
+    naai(:mgncol,:top_lev-1) = 0._r8
+    npccn(:mgncol,:top_lev-1) = 0._r8
+    ! The null value for qsatfac is 1, not zero
+    qsatfac(:mgncol,:top_lev-1) = 1._r8
    
    do it = 1, num_steps
 
 ! Set up the ptend_loc structure
       call physics_ptend_init(ptend_loc, psetcols, "micro_mg", &
                               ls=.true., lq=lq)
-      if (micro_mg_version > 1) then
-         if (micro_mg_version > 2) then
-            graupel = state_loc%q(:,:,ixgraupel)
-            num_graupel = state_loc%q(:,:,ixnumgraupel)
-         else
-            graupel(:,:) = 0._r8
-            num_graupel(:,:) = 0._r8
-         end if
-      end if
+      !if (micro_mg_version > 1) then
+      !   if (micro_mg_version > 2) then
+      !      graupel = state_loc%q(:,:,ixgraupel)
+      !      num_graupel = state_loc%q(:,:,ixnumgraupel)
+      !   else
+      !      graupel(:,:) = 0._r8
+      !      num_graupel(:,:) = 0._r8
+      !   end if
+      !end if
 
       select case (micro_mg_version)
       case (1)
@@ -2587,14 +2645,14 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
       case(2:3)
          call micro_mg_tend3_0( &
               mgncol,         nlev,           dtime/num_steps,&
-              state_loc_t,                    state_loc_q,               &
-              state_loc_liq,                  state_loc_ice,              &
-              state_loc_numliq,               state_loc_numice,              &
-              state_loc_rain,                 state_loc_snow,              &
-              state_loc_numrain,              state_loc_numsnow,              &
-              graupel,              num_graupel,              &
+              state_loc_t,                    state_loc_q,            &
+              state_loc_liq,                  state_loc_ice,          &
+              state_loc_numliq,               state_loc_numice,       &
+              state_loc_rain,                 state_loc_snow,         &
+              state_loc_numrain,              state_loc_numsnow,      &
+              state_loc_graup,                state_loc_numgraup,     &
               relvar,         accre_enhan,     &
-              state_loc_pmid,                state_loc_pdel,            &
+              state_loc_pmid,                state_loc_pdel,          &
               ast, alst_mic, aist_mic, qsatfac, &
               rate1cld,                         &
               naai,            npccn,           &
@@ -2661,21 +2719,10 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
       ptend_loc%q(:mgncol,:,1) = qvlat(:mgncol,:)
       ptend_loc%q(:mgncol,:,ixcldliq) = qctend(:mgncol,:)
       ptend_loc%q(:mgncol,:,ixcldice) = qitend(:mgncol,:)
-      ptend_loc%q(:mgncol,:,ixnumliq) = nctend(:mgncol,:)-state_loc%q(:,:,ixnumliq)/(dtime/num_steps)
-
-      ! Assign state_loc variables back to the structure
-      state_loc%t(:mgncol,:) =  state_loc_t(:mgncol,:)
-      state_loc%q(:mgncol,:,1) =  state_loc_liq(:mgncol,:)
-      state_loc%q(:mgncol,:,ixcldice) = state_loc_ice(:mgncol,:)
-      state_loc%q(:mgncol,:,ixnumliq) = state_loc_numliq(:mgncol,:)
-      state_loc%q(:mgncol,:,ixnumice) =  state_loc_numice(:mgncol,:)
-      state_loc%q(:mgncol,:,ixrain) =  state_loc_rain(:mgncol,:)
-      state_loc%q(:mgncol,:,ixsnow) = state_loc_snow(:mgncol,:)
-      state_loc%q(:mgncol,:,ixnumrain) = state_loc_numrain(:mgncol,:)
-      state_loc%q(:mgncol,:,ixnumsnow) = state_loc_numsnow(:mgncol,:)
+      ptend_loc%q(:mgncol,:,ixnumliq) = nctend(:mgncol,:)
    
       if (do_cldice) then
-         ptend_loc%q(:mgncol,:,ixnumice) = nitend -state_loc%q(:mgncol,:,ixnumice)/(dtime/num_steps)
+         ptend_loc%q(:mgncol,:,ixnumice) = nitend(:mgncol,:)
       else
          ! In this case, the tendency should be all 0.
          if (any(nitend(:mgncol,:) /= 0._r8)) &
@@ -2684,17 +2731,16 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
          ptend_loc%q(:mgncol,:,ixnumice) = 0._r8
       end if
 
-!CAC
       if (micro_mg_version > 1) then
          ptend_loc%q(:mgncol,:,ixrain) = qrtend(:mgncol,:)
          ptend_loc%q(:mgncol,:,ixsnow) = qstend(:mgncol,:)
-         ptend_loc%q(:mgncol,:,ixnumrain) = nrtend(:mgncol,:) -state_loc%q(:mgncol,:,ixnumrain)/(dtime/num_steps)
-         ptend_loc%q(:mgncol,:,ixnumsnow) = nstend(:mgncol,:) -state_loc%q(:mgncol,:,ixnumsnow)/(dtime/num_steps)
+         ptend_loc%q(:mgncol,:,ixnumrain) = nrtend(:mgncol,:)
+         ptend_loc%q(:mgncol,:,ixnumsnow) = nstend(:mgncol,:)
       end if
 
       if (micro_mg_version > 2) then
          ptend_loc%q(:mgncol,:,ixgraupel) = qgtend(:mgncol,:)
-         ptend_loc%q(:mgncol,:,ixnumgraupel) = ngtend -state_loc%q(:mgncol,:,ixnumgraupel)/(dtime/num_steps)
+         ptend_loc%q(:mgncol,:,ixnumgraupel) = ngtend(:mgncol,:)
       end if
 
       ! Save output variables
