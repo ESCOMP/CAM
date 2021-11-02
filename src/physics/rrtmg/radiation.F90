@@ -62,7 +62,7 @@ public :: &
 integer,public, allocatable :: cosp_cnt(:)       ! counter for cosp
 integer,public              :: cosp_cnt_init = 0 !initial value for cosp counter
 
-real(r8),public, protected  :: nextsw_cday, caldayp1 ! future radiation calday for surface models
+real(r8), public, protected :: nextsw_cday, caldayp1 ! future radiation calday for surface models
 
 type rad_out_t
    real(r8) :: solin(pcols)         ! Solar incident flux

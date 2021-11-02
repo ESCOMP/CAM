@@ -302,9 +302,10 @@ contains
        ! deep convection
        call convect_deep_register
 
-       !  shallow convection
+       ! shallow convection
        call convect_shallow_register
 
+       ! SP-CAM  
        call spcam_register
 
        ! radiation
@@ -398,7 +399,10 @@ contains
     end if
     call cam_grid_get_dim_names(grid_id, dim1name, dim2name)
 
-    allocate(tptr(1:pcols,begchunk:endchunk))
+    allocate(tptr(1:pcols,begchunk:endchunk), stat=ierr)
+    if (ierr /= 0) then
+       call endrun(subname//': Failed to allocate tptr(1:pcols,begchunk:endchunk)')
+    end if
 
     if (associated(fh_topo) .and. .not. aqua_planet) then
       call infld('SGH', fh_topo, dim1name, dim2name, 1, pcols, begchunk, endchunk, &
@@ -407,7 +411,10 @@ contains
 
       call pbuf_set_field(pbuf2d, sgh_idx, tptr)
 
-      allocate(tptr_2(1:pcols,begchunk:endchunk))
+      allocate(tptr_2(1:pcols,begchunk:endchunk), stat=ierr)
+      if (ierr /= 0) then
+         call endrun(subname//': Failed to allocate tptr_2(1:pcols,begchunk:endchunk)')
+      end if
       call infld('SGH30', fh_topo, dim1name, dim2name, 1, pcols, begchunk, endchunk, &
            tptr_2, found, gridname='physgrid')
       if(found) then
@@ -462,7 +469,10 @@ contains
           if (masterproc) write(iulog,*) trim(fieldname), ' initialized to 0.'
        end if
 
-       allocate(tptr3d_2(pcols,pcnst,begchunk:endchunk))
+       allocate(tptr3d_2(pcols,pcnst,begchunk:endchunk), stat=ierr)
+       if (ierr /= 0) then
+          call endrun(subname//': Failed to allocate tptr3d_2(pcols,pcnst,begchunk:endchunk)')
+       end if
        tptr3d_2 = 0_r8
        tptr3d_2(:,1,:) = tptr(:,:)
 
@@ -489,7 +499,10 @@ contains
     ! 3-D fields
     !
 
-    allocate(tptr3d(pcols,pver,begchunk:endchunk))
+    allocate(tptr3d(pcols,pver,begchunk:endchunk), stat=ierr)
+    if (ierr /= 0) then
+       call endrun(subname//': Failed to allocate tptr3d(pcols,pver,begchunk:endchunk)')
+    end if
 
     fieldname='CLOUD'
     m = pbuf_get_index('CLD')
@@ -565,7 +578,10 @@ contains
              call pbuf_set_field(pbuf2d, m, tptr3d, (/1,1,n/),(/pcols,pver,1/))
           end do
        else
-          allocate(tptr3d_2(pcols,pver,begchunk:endchunk))
+          allocate(tptr3d_2(pcols,pver,begchunk:endchunk), stat=ierr)
+          if (ierr /= 0) then
+             call endrun(subname//': Failed to allocate tptr3d_2(pcols,pver,begchunk:endchunk)')
+          end if
           call cnst_get_ind('CLDICE', ixcldice)
           call cnst_get_ind('CLDLIQ', ixcldliq)
           call infld('CLDICE',fh_ini,dim1name, 'lev', dim2name, 1, pcols, 1, pver, begchunk, endchunk, &
@@ -598,9 +614,6 @@ contains
        end if
     end if
 
-    deallocate(tptr3d)
-    allocate(tptr3d(pcols,pver,begchunk:endchunk))
-
     fieldname = 'TCWAT'
     m = pbuf_get_index(fieldname,ierr)
     if (m > 0) then
@@ -622,8 +635,30 @@ contains
        end do
     end if
 
+    fieldname = 'CONCLD'
+    m = pbuf_get_index('CONCLD',ierr)
+    if (m > 0) then
+       call infld(fieldname, fh_ini, dim1name, 'lev', dim2name, 1, pcols, 1, pver, begchunk, endchunk, &
+            tptr3d, found, gridname='physgrid')
+       if(found) then
+          do n = 1, dyn_time_lvls
+             call pbuf_set_field(pbuf2d, m, tptr3d, (/1,1,n/),(/pcols,pver,1/))
+          end do
+       else
+          call pbuf_set_field(pbuf2d, m, 0._r8)
+          if (masterproc) write(iulog,*) trim(fieldname), ' initialized to 0.'
+       end if
+
+!+++ARH: delete this?
+!       deallocate (tptr3d)
+!---ARH
+    end if
+
     deallocate(tptr3d)
-    allocate(tptr3d(pcols,pverp,begchunk:endchunk))
+    allocate(tptr3d(pcols,pverp,begchunk:endchunk), stat=ierr)
+    if (ierr /= 0) then
+       call endrun(subname//': Failed to allocate tptr3d(pcols,pver,begchunk:endchunk)')
+    end if
 
     fieldname = 'TKE'
     m = pbuf_get_index( 'tke')
@@ -658,26 +693,6 @@ contains
     else
        call pbuf_set_field(pbuf2d, m, 0._r8)
        if (masterproc) write(iulog,*) trim(fieldname), ' initialized to 0.'
-    end if
-
-    deallocate(tptr3d)
-    allocate(tptr3d(pcols,pver,begchunk:endchunk))
-
-    fieldname = 'CONCLD'
-    m = pbuf_get_index('CONCLD',ierr)
-    if (m > 0) then
-       call infld(fieldname, fh_ini, dim1name, 'lev', dim2name, 1, pcols, 1, pver, begchunk, endchunk, &
-            tptr3d, found, gridname='physgrid')
-       if(found) then
-          do n = 1, dyn_time_lvls
-             call pbuf_set_field(pbuf2d, m, tptr3d, (/1,1,n/),(/pcols,pver,1/))
-          end do
-       else
-          call pbuf_set_field(pbuf2d, m, 0._r8)
-          if (masterproc) write(iulog,*) trim(fieldname), ' initialized to 0.'
-       end if
-
-       deallocate (tptr3d)
     end if
 
     call initialize_short_lived_species(fh_ini, pbuf2d)
@@ -946,7 +961,7 @@ contains
     if (clim_modal_aero) then
 
        ! If climate calculations are affected by prescribed modal aerosols, the
-       ! the initialization routine for the dry mode radius calculation is called
+       ! initialization routine for the dry mode radius calculation is called
        ! here.  For prognostic MAM the initialization is called from
        ! modal_aero_initialize
        if (.not. prog_modal_aero) then
@@ -1287,10 +1302,10 @@ contains
   !
 
   subroutine phys_final( phys_state, phys_tend, pbuf2d )
-    use physics_buffer, only : physics_buffer_desc, pbuf_deallocate
-    use chemistry, only : chem_final
-    use carma_intr, only : carma_final
-    use wv_saturation, only : wv_sat_final
+    use physics_buffer, only: physics_buffer_desc, pbuf_deallocate
+    use chemistry,      only: chem_final
+    use carma_intr,     only: carma_final
+    use wv_saturation,  only: wv_sat_final
     !-----------------------------------------------------------------------
     !
     ! Purpose:
@@ -1540,8 +1555,9 @@ contains
     endif
 
     ! Validate the physics state.
-    if (state_debug_checks) &
-         call physics_state_check(state, name="before tphysac")
+    if (state_debug_checks) then
+       call physics_state_check(state, name="before tphysac")
+    end if
 
     call t_startf('tphysac_init')
     ! Associate pointers with physics buffer fields
@@ -2063,7 +2079,7 @@ contains
 
     !===================================================
     ! Vertical diffusion/pbl calculation
-    ! Call vertical diffusion code (pbl, free atmosphere and molecular)
+    ! Call vertical diffusion (apply tracer emissions, molecular diffusion and pbl form drag)
     !===================================================
 
     call t_startf('vertical_diffusion_tend')
@@ -2585,13 +2601,14 @@ contains
     fracis (:ncol,:,1:pcnst) = 1._r8
 
     ! Set physics tendencies to 0
-    tend %dTdt(:ncol,:pver)  = 0._r8
-    tend %dudt(:ncol,:pver)  = 0._r8
-    tend %dvdt(:ncol,:pver)  = 0._r8
+    tend%dTdt(:ncol,:pver)  = 0._r8
+    tend%dudt(:ncol,:pver)  = 0._r8
+    tend%dvdt(:ncol,:pver)  = 0._r8
 
     ! Verify state coming from the dynamics
-    if (state_debug_checks) &
-         call physics_state_check(state, name="before tphysbc (dycore?)")
+    if (state_debug_checks) then
+       call physics_state_check(state, name="before tphysbc (dycore?)")
+    end if
 
     call clybry_fam_adj( ncol, lchnk, map2chm, state%q, pbuf )
 
@@ -2601,9 +2618,9 @@ contains
          1, pcnst, qmin  ,state%q )
 
     ! Validate output of clybry_fam_adj.
-    if (state_debug_checks) &
-         call physics_state_check(state, name="clybry_fam_adj")
-
+    if (state_debug_checks) then
+       call physics_state_check(state, name="clybry_fam_adj")
+    end if
     !
     ! Dump out "before physics" state
     !
@@ -2633,7 +2650,7 @@ contains
     call cnst_get_ind('Q', ixq)
     call cnst_get_ind('CLDLIQ', ixcldliq)
     call cnst_get_ind('CLDICE', ixcldice)
-    qini     (:ncol,:pver) = state%q(:ncol,:pver,       1)
+    qini     (:ncol,:pver) = state%q(:ncol,:pver,     ixq)
     cldliqini(:ncol,:pver) = state%q(:ncol,:pver,ixcldliq)
     cldiceini(:ncol,:pver) = state%q(:ncol,:pver,ixcldice)
 
@@ -2642,7 +2659,7 @@ contains
     call outfld('TEFIX', state%te_cur, pcols, lchnk   )
 
     ! T, U, V tendency due to dynamics
-    if( nstep > dyn_time_lvls-1 ) then
+    if ( nstep > dyn_time_lvls-1 ) then
        dtcore(:ncol,:pver) = (state%t(:ncol,:pver) - dtcore(:ncol,:pver))/ztodt
        ducore(:ncol,:pver) = (state%u(:ncol,:pver) - ducore(:ncol,:pver))/ztodt
        dvcore(:ncol,:pver) = (state%v(:ncol,:pver) - dvcore(:ncol,:pver))/ztodt
@@ -2835,7 +2852,7 @@ contains
 
       call t_stopf('radiation')
 
-  end if
+    end if
 
     ! Save atmospheric fields to force surface models
     call t_startf('cam_export')
