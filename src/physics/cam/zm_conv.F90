@@ -4188,10 +4188,7 @@ if (lparcel_pbl) then
       mx(i) = ipar       
    end do
 
- end if ! RBN: End parcel mixing logic
-
-
-if (.not.lparcel_pbl) then ! Default method finding level of MSE maximum (nlev senstitve though)
+else ! Default method finding level of MSE maximum (nlev senstitve though)
     !
     ! set "launching" level(mx) to be at maximum moist static energy.
     ! search for this level stops at planetary boundary layer top.
