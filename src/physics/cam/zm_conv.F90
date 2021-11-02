@@ -107,7 +107,7 @@ subroutine zm_convi(limcnv_in, zmconv_c0_lnd, zmconv_c0_ocn, zmconv_ke, zmconv_k
    real(r8),intent(in)           :: zmconv_tiedke_add
    real(r8),intent(in)           :: zmconv_capelmt
    real(r8),intent(in)           :: zmconv_dmpdz
-   logical, intent(in)           :: zmconv_parcel_pbl ! Should the parcel properties in clude PBL mixing? 
+   logical, intent(in)           :: zmconv_parcel_pbl ! Should the parcel properties include PBL mixing? 
 
 
    ! Initialization of ZM constants
