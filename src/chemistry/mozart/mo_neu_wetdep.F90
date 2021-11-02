@@ -12,7 +12,7 @@ module mo_neu_wetdep
   use constituents,     only : pcnst
   use spmd_utils,       only : masterproc
   use cam_abortutils,   only : endrun
-  use seq_drydep_mod,   only : n_species_table, species_name_table, dheff
+  use shr_drydep_mod,   only : n_species_table, species_name_table, dheff
   use gas_wetdep_opts,  only : gas_wetdep_method, gas_wetdep_list, gas_wetdep_cnt
 !
   implicit none
@@ -329,7 +329,7 @@ subroutine neu_wetdep_tend(lchnk,ncol,mmr,pmid,pdel,zint,tfld,delt, &
   end do
 !
 ! compute effective Henry's law coefficients
-! code taken from models/drv/shr/seq_drydep_mod.F90
+! code taken from models/drv/shr/shr_drydep_mod.F90
 !
   heff = 0._r8
   do k=1,pver

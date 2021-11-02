@@ -50,7 +50,6 @@ contains
     use mo_photo,          only : photo_inti
     use mo_lightning,      only : lightning_inti
     use mo_drydep,         only : drydep_inti
-    use seq_drydep_mod,    only : DD_XLND, drydep_method
     use mo_imp_sol,        only : imp_slv_inti
     use mo_exp_sol,        only : exp_sol_inti
     use spmd_utils,        only : iam
@@ -171,11 +170,7 @@ contains
     !-----------------------------------------------------------------------
     !	... initialize the dry deposition module
     !-----------------------------------------------------------------------
-    if ( drydep_method == DD_XLND ) then
-       call drydep_inti(depvel_lnd_file)
-    else
-       call endrun('chemini: drydep_method must equal DD_XLND')
-    endif
+    call drydep_inti(depvel_lnd_file)
 
     if (masterproc) write(iulog,*) 'chemini: after drydep_inti on node ',iam
 
