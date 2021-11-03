@@ -316,7 +316,7 @@ if ($print>=2) { print "Using namelist defaults file $nl_defaults_file$eol"; }
 
 # CAMDEV
 my $phys_check = $cfg->get('phys');
-if ($phys_check eq 'cam64') {
+if ($phys_check eq 'cam_dev') {
     $cfg->set('phys', 'cam6');
 }
 
@@ -3081,10 +3081,10 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_mf_nup');
 }
 
-# Force exit if running cam64 and CLUBB is off
-if ($phys_check eq 'cam64') {
+# Force exit if running cam_dev and CLUBB is off
+if ($phys_check eq 'cam_dev') {
     if ($clubb_sgs  =~ /$FALSE/io) {
-        die "$ProgName - ERROR: If running cam64 physics, do_clubb_sgs must be .true.\n";
+        die "$ProgName - ERROR: If running cam_dev physics, do_clubb_sgs must be .true.\n";
     }
 }
 

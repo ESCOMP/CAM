@@ -96,7 +96,7 @@ OPTIONS
      -pbl <name>        Specify the PBL option [uw | hb | hbr].
      -pcols <n>         Set maximum number of columns in a chunk to <n>.
      -pergro            Switch enables building CAM for perturbation growth tests.
-     -phys <name>       Physics option [cam3 | cam4 | cam5 | cam6 | cam64 |
+     -phys <name>       Physics option [cam3 | cam4 | cam5 | cam6 | cam_dev |
                                         held_suarez | adiabatic | kessler | tj2016 |
                                         spcam_sam1mom | spcam_m2005].  Default: cam6
      -prog_species <list>Comma-separate list of prognostic mozart species packages.
@@ -567,7 +567,7 @@ if ($phys_pkg =~ m/^adiabatic$|^held_suarez$|^kessler$|^tj2016$/) {
 
 # Set flag to indicate a camdev physics option
 my $camdev_phys = 0;
-if ($phys_pkg eq 'cam64') {
+if ($phys_pkg eq 'cam_dev') {
     $camdev_phys = 1;
     $phys_pkg = 'cam6';
     }
