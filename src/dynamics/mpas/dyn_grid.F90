@@ -168,7 +168,7 @@ subroutine dyn_grid_init()
 
    ! Query global grid dimensions from MPAS
    call cam_mpas_get_global_dims(nCells_g, nEdges_g, nVertices_g, maxEdges, nVertLevels, maxNCells)
-   
+
    ! Define the dynamics grids on the dynamics decompostion.  The cell
    ! centered grid is used by the physics parameterizations.  The physics
    ! decomposition of the cell centered grid is defined in phys_grid_init.

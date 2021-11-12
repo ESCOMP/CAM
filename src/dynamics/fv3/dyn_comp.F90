@@ -381,14 +381,14 @@ subroutine dyn_init(dyn_in, dyn_out)
   use physconst,       only: cpwv, cpliq, cpice
   use physconst,          only: thermodynamic_active_species_num, dry_air_species_num, thermodynamic_active_species_idx
   use physconst,          only: thermodynamic_active_species_idx_dycore, rair, cpair
-  use tracer_manager_mod,     only: register_tracers
-
+  use tracer_manager_mod, only: register_tracers
+  use dyn_tests_utils,    only: vc_dycore, vc_moist_pressure, string_vc, vc_str_lgth
   ! arguments:
    type (dyn_import_t),     intent(out) :: dyn_in
    type (dyn_export_t),     intent(out) :: dyn_out
 
    ! Locals
-   character(len=*), parameter :: sub='dyn_init'
+   character(len=*), parameter :: subname='dyn_init'
    real(r8)                    :: alpha
 
 
@@ -397,8 +397,6 @@ subroutine dyn_init(dyn_in, dyn_out)
    logical, pointer :: cubed_sphere
    type(domain2d), pointer     :: domain
    integer                     :: i,j,m
-
-   character(len=*), parameter :: subname = 'dyn_init'
 
    ! variables for initializing energy and axial angular momentum diagnostics
    character (len = 3), dimension(8) :: stage = (/"dED","dAP","dBD","dAT","dAF","dAD","dAR","dBF"/)
@@ -432,7 +430,8 @@ subroutine dyn_init(dyn_in, dyn_out)
       "J/m2         ","kg*m2/s*rad2 ","kg*m2/s*rad2 ","kg/m2        "/)
 
    integer :: istage, ivars
-   character (len=108) :: str1, str2, str3
+   character (len=108)         :: str1, str2, str3
+   character (len=vc_str_lgth) :: vc_str
    integer :: is,isd,ie,ied,js,jsd,je,jed
    integer :: fv3idx,idx
 
@@ -442,7 +441,11 @@ subroutine dyn_init(dyn_in, dyn_out)
    character(len=128) :: errmsg
    logical            :: wet_thermo_species
    !-----------------------------------------------------------------------
-
+   vc_dycore = vc_moist_pressure
+   if (masterproc) then
+     call string_vc(vc_dycore,vc_str)
+     write(iulog,*) subname//': vertical coordinate dycore   : ',trim(vc_str)
+   end if
    ! Setup the condensate loading arrays and fv3/cam tracer mapping and
    ! finish initializing fv3 by allocating the tracer arrays in the fv3 atm structure
 
@@ -511,7 +514,7 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    if (masterproc) then
 
-      write(iulog,*) 'Creating field_table file to load tracer fields into fv3'
+      write(iulog,*) subname//': Creating field_table file to load tracer fields into fv3'
       ! overwrite file if it exists.
       open( newunit=unito, file='field_table', status='replace' )
       do i=1,pcnst
@@ -863,6 +866,7 @@ subroutine read_inidat(dyn_in)
                                    cam_grid_get_latvals, cam_grid_get_lonvals
   use cam_history_support,   only: max_fieldname_len
   use hycoef,                only: hyai, hybi, ps0
+  use cam_initfiles,         only: scale_dry_air_mass
 
   ! Arguments:
   type (dyn_import_t), target, intent(inout) :: dyn_in   ! dynamics import
@@ -908,7 +912,7 @@ subroutine read_inidat(dyn_in)
   real(r8)                                  :: pertval
   real(r8)                                  :: tracermass(pcnst),delpdry
   real(r8)                                  :: fv3_totwatermass, fv3_airmass
-  real(r8)                                  :: initial_global_ave_dry_ps,reldif
+  real(r8)                                  :: reldif
   logical                                   :: inic_wet !initial condition is based on wet pressure and water species
 
   !-----------------------------------------------------------------------
@@ -1312,14 +1316,12 @@ subroutine read_inidat(dyn_in)
      end do
      deallocate(pstmp)
   end if
-
   !
-  ! scale PS to achieve prescribed dry mass following FV dycore (dryairm.F90)
-  !
-  initial_global_ave_dry_ps = 98288.0_r8
-  if (.not. associated(fh_topo)) initial_global_ave_dry_ps = 101325._r8-245._r8
-  if ( simple_phys ) initial_global_ave_dry_ps = 0                  !do not scale psdry
-  call set_dry_mass(Atm, initial_global_ave_dry_ps)
+  ! If scale_dry_air_mass > 0.0 then scale dry air mass to scale_dry_air_mass global average dry pressure
+  ! If scale_dry_air_mass = 0.0 don't scale
+  if (scale_dry_air_mass > 0.0_r8) then
+    call set_dry_mass(Atm, scale_dry_air_mass)
+  end if
 
 
   !$omp parallel do private(i, j)
