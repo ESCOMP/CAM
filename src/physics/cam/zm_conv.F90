@@ -4292,6 +4292,20 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
             end if
          end do
       end do
+
+     !                                                                                                                                                                                                                                                                         
+! calculate convective available potential energy (cape).                                                                                                                                                                                                                ! INCLUDE Negative CAPE for CAM6 default calculation  
+!                                                                                                                                                                                                                                                                         
+      do n = 1,num_cin
+         do k = msg + 1,pver
+            do i = 1,ncol
+               if (plge600(i) .and. k <= mx(i) .and. k > lelten(i,n)) then
+                 capeten(i,n) = capeten(i,n) + rd*buoy(i,k)*log(pf(i,k+1)/pf(i,k))                                                                                                                                                                                                      end if
+            end do
+         end do
+      end do
+
+
       
    else ! Or default parcel energy.
  
@@ -4310,22 +4324,26 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
          end do
       end do
       
-     
+!                                                                                                                                                                                                                                                                         
+! calculate convective available potential energy (cape).                                                                                                                                                                                                                ! EXCLUDE -ve CAPE for dynamic parcel calculation. 
+!                                                                                                                                                                                                                                                                         
+      do n = 1,num_cin
+         do k = msg + 1,pver
+            do i = 1,ncol
+               if (plge600(i) .and. k <= mx(i) .and. k > lelten(i,n) .and. buoy(i,k) > 0) then
+                  capeten(i,n) = capeten(i,n) + rd*buoy(i,k)*log(pf(i,k+1)/pf(i,k))                                                                                                                                                                                      
+               end if
+            end do
+         end do
+      end do     
+
+!!
+
    end if ! End dynamic parcel logic
 
- 
-!
-! calculate convective available potential energy (cape).
-!
-   do n = 1,num_cin
-      do k = msg + 1,pver
-         do i = 1,ncol
-            if (plge600(i) .and. k <= mx(i) .and. k > lelten(i,n)) then
-               capeten(i,n) = capeten(i,n) + rd*buoy(i,k)*log(pf(i,k+1)/pf(i,k))
-            end if
-         end do
-      end do
-   end do
+!!!!!
+!!!!! 
+
 !
 ! find maximum cape from all possible tentative capes from
 ! one sounding,
