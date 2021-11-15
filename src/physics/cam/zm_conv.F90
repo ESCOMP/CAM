@@ -4135,7 +4135,7 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
 
    tp(:ncol,:) = t(:ncol,:)
    qstp(:ncol,:) = q(:ncol,:)
-   hmn_lev(:ncol,:) = 0._r8 ! RBN: MSE as a function of ncol and height
+   hmn_lev(:ncol,:) = 0._r8 
     
 
 
