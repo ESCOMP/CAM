@@ -36,6 +36,7 @@
 
 <dtime dyn="mpas"                  >1800</dtime>
 <dtime dyn="mpas"  hgrid="mpasa480">5760</dtim> <!-- 2x mpas_dt -->
+<dtime dyn="mpas"  hgrid="mpasa240">2880</dtime><!-- 2x mpas_dt -->
 <dtime dyn="mpas"  hgrid="mpasa60" >720</dtime> <!-- 2x mpas_dt -->
 <dtime dyn="mpas"  hgrid="mpasa30" >360</dtime> <!-- 2x mpas_dt -->
 <dtime dyn="mpas"  hgrid="mpasa15" >180</dtime> <!-- 2x mpas_dt -->
@@ -2807,6 +2808,7 @@
 <mpas_time_integration_order  > 2 </mpas_time_integration_order>
 <mpas_dt                      > 1800.0D0 </mpas_dt>
 <mpas_dt hgrid="mpasa480"     > 2880.0D0 </mpas_dt>
+<mpas_dt hgrid="mpasa240"     > 1440.0D0 </mpas_dt>
 <mpas_dt hgrid="mpasa120"     >  900.0D0 </mpas_dt>
 <mpas_dt hgrid="mpasa60"      >  360.0D0 </mpas_dt>
 <mpas_dt hgrid="mpasa30"      >  180.0D0 </mpas_dt>
@@ -2825,6 +2827,7 @@
 <mpas_horiz_mixing            > 2d_smagorinsky </mpas_horiz_mixing>
 
 <mpas_len_disp hgrid="mpasa480">480000.0D0</mpas_len_disp>
+<mpas_len_disp hgrid="mpasa240">240000.0D0</mpas_len_disp>
 <mpas_len_disp hgrid="mpasa120">120000.0D0</mpas_len_disp>
 <mpas_len_disp hgrid="mpasa60" >60000.0D0</mpas_len_disp>
 <mpas_len_disp hgrid="mpasa30" >30000.0D0</mpas_len_disp>
