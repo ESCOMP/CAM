@@ -76,7 +76,7 @@ module zm_conv_intr
    real(r8) :: zmconv_dmpdz = unset_r8        ! Parcel fractional mass entrainment rate
    real(r8) :: zmconv_tiedke_add = unset_r8   ! Convective parcel temperature perturbation
    real(r8) :: zmconv_capelmt = unset_r8      ! Triggering thereshold for ZM convection
-   logical  :: zmconv_parcel_pbl = .false.             ! switch for parcl pbl calculation
+   logical  :: zmconv_parcel_pbl = .false.             ! switch for parcel pbl calculation
 
 
 !  indices for fields in the physics buffer
