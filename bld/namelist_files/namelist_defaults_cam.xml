@@ -1728,6 +1728,7 @@
 
 <drydep_srf_file hgrid="mpasa3.75">atm/cam/chem/trop_mam/atmsrf_mpasa3.75_20210804.nc</drydep_srf_file>
 <drydep_srf_file hgrid="mpasa7.5">atm/cam/chem/trop_mam/atmsrf_mpasa7.5_20210824.nc</drydep_srf_file>
+<drydep_srf_file hgrid="mpasa15-3-conus">atm/cam/chem/trop_mam/atmsrf_mpasa15-3.conus_210609.nc</drydep_srf_file>
 <drydep_srf_file hgrid="mpasa15">atm/cam/chem/trop_mam/atmsrf_mpasa15_20210804.nc</drydep_srf_file>
 <drydep_srf_file hgrid="mpasa30">atm/cam/chem/trop_mam/atmsrf_mpasa30_20210804.nc</drydep_srf_file>
 <drydep_srf_file hgrid="mpasa60">atm/cam/chem/trop_mam/atmsrf_mpasa60_20210803.nc</drydep_srf_file>
