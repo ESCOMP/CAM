@@ -35,6 +35,11 @@
 <dtime dyn="se"    hgrid="ne0np4.ARCTICGRIS.ne30x8">225</dtime>
 
 <dtime dyn="mpas"                  >1800</dtime>
+<dtime dyn="mpas"  hgrid="mpasa480">5760</dtim> <!-- 2x mpas_dt -->
+<dtime dyn="mpas"  hgrid="mpasa60" >720</dtime> <!-- 2x mpas_dt -->
+<dtime dyn="mpas"  hgrid="mpasa30" >360</dtime> <!-- 2x mpas_dt -->
+<dtime dyn="mpas"  hgrid="mpasa15" >180</dtime> <!-- 2x mpas_dt -->
+<dtime dyn="mpas"  hgrid="mpasa7.5" >90</dtime> <!-- 2x mpas_dt -->
 
 <!-- Initial files -->
 
@@ -2790,6 +2795,7 @@
 <mpas_time_integration        > SRK3 </mpas_time_integration>
 <mpas_time_integration_order  > 2 </mpas_time_integration_order>
 <mpas_dt                      > 1800.0D0 </mpas_dt>
+<mpas_dt hgrid="mpasa480"     > 2880.0D0 </mpas_dt>
 <mpas_dt hgrid="mpasa120"     >  900.0D0 </mpas_dt>
 
 <mpas_split_dynamics_transport>.true.</mpas_split_dynamics_transport>
