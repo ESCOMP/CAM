@@ -42,6 +42,7 @@
 <dtime dyn="mpas"  hgrid="mpasa15" >180</dtime> <!-- 2x mpas_dt -->
 <dtime dyn="mpas"  hgrid="mpasa15-3-conus">36</dtime> <!-- 2x mpas_dt -->
 <dtime dyn="mpas"  hgrid="mpasa7.5" >90</dtime> <!-- 2x mpas_dt -->
+<dtime dyn="mpas"  hgrid="mpasa3.75">46</dtime> <!-- 2x mpas_dt -->
 
 <!-- Initial files -->
 
@@ -2816,6 +2817,7 @@
 <mpas_dt hgrid="mpasa15"      >   90.0D0 </mpas_dt>
 <mpas_dt hgrid="mpasa15-3-conus"> 18.0D0 </mpas_dt>
 <mpas_dt hgrid="mpasa7.5"     >   45.0D0 </mpas_dt>
+<mpas_dt hgrid="mpasa3.75"    >   23.0D0 </mpas_dt>
 
 <mpas_split_dynamics_transport>.true.</mpas_split_dynamics_transport>
 <mpas_number_of_sub_steps     > 2 </mpas_number_of_sub_steps>
@@ -2836,6 +2838,7 @@
 <mpas_len_disp hgrid="mpasa15" >15000.0D0</mpas_len_disp>
 <mpas_len_disp hgrid="mpasa15-3-conus">3000.0D0</mpas_len_disp>
 <mpas_len_disp hgrid="mpasa7.5">7500.0D0</mpas_len_disp>
+<mpas_len_disp hgrid="mpasa3.75">3750.0D0</mpas_len_disp>
 
 <mpas_visc4_2dsmag            > 0.05D0 </mpas_visc4_2dsmag>
 <mpas_del4u_div_factor        > 10.0D0 </mpas_del4u_div_factor>
