@@ -80,9 +80,6 @@ module zm_conv
    real(r8) :: tiedke_add      ! namelist configurable
    real(r8) :: dmpdz_param     ! namelist configurable
 
-
-
-
 contains
 
 
