@@ -416,7 +416,7 @@
   </compset>
   <compset>
     <alias>FW2000mam5</alias>
-    <lname>2000_CAM60%MAM5%WCTS_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
+    <lname>2000_CAM60%WCTS%MAM5_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
   </compset>
 
   <compset>

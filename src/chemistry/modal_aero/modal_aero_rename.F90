@@ -23,6 +23,7 @@
   use modal_aero_data, only: modeptr_stracoar
   use modal_aero_data, only: specmw_amode, specdens_amode, lmassptr_amode, lmassptrcw_amode, numptr_amode, numptrcw_amode
   use modal_aero_data, only: dgnumhi_amode, dgnumlo_amode, cnst_name_cw, modeptr_aitken
+  use rad_constituents,only: rad_cnst_get_mode_idx
 
   implicit none
   private
@@ -34,23 +35,9 @@
 ! !PUBLIC DATA MEMBERS:
   integer, parameter :: pcnstxx = gas_pcnst
 
-! *** select one of the 3 following options
-! *** for maxpair_renamexf = 2 or 3, use mode definition files with
-!     dgnumhi_amode(modeptr_accum)  = 1.1e-6 m
-!     dgnumlo_amode(modeptr_coarse) = 0.9e-6 m
-
-! integer, parameter, public :: maxpair_renamexf = 1
-! integer, parameter, public :: ipair_select_renamexf(maxpair_renamexf) = (/ 2001 /)
-
-! integer, parameter, public :: maxpair_renamexf = 2
-! integer, parameter, public :: ipair_select_renamexf(maxpair_renamexf) = (/ 2001, 1003 /)
-
   integer, parameter, public :: maxpair_renamexf = 3
-#ifdef MODAL_AERO_5MODE
-  integer, parameter, public :: ipair_select_renamexf(maxpair_renamexf) = (/ 2001, 1005, 5001 /)
-#else
-  integer, parameter, public :: ipair_select_renamexf(maxpair_renamexf) = (/ 2001, 1003, 3001 /) !original
-#endif
+
+  integer, protected, public :: ipair_select_renamexf(maxpair_renamexf)
 ! ipair_select_renamexf defines the mode_from and mode_too for each renaming pair
 ! 2001 = aitken --> accum
 ! 1003 = accum  --> coarse
@@ -115,6 +102,18 @@ contains
   !------------------------------------------------------------------
   subroutine modal_aero_rename_init(modal_accum_coarse_exch_in)
     logical, optional, intent(in) :: modal_accum_coarse_exch_in
+
+    ! ipair_select_renamexf defines the mode_from and mode_too for each renaming pair
+    ! 2001 = aitken --> accum
+    ! 1003 = accum  --> coarse
+    ! 3001 = coarse --> accum
+    ! 1005 = accum  --> stracoar
+    ! 5001 = stracoar --> accum
+    if( rad_cnst_get_mode_idx(0,'coarse_strat') > 0 ) then
+       ipair_select_renamexf(1:maxpair_renamexf) = (/ 2001, 1005, 5001 /)
+    else
+       ipair_select_renamexf(1:maxpair_renamexf) = (/ 2001, 1003, 3001 /)
+    endif
 
     allocate( lspecfrma_renamexf(maxspec_renamexf,maxpair_renamexf) )
     allocate( lspecfrmc_renamexf(maxspec_renamexf,maxpair_renamexf) )
