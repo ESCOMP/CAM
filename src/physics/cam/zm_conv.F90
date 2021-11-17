@@ -1600,15 +1600,12 @@ subroutine zm_conv_evap(ncol,lchnk, &
 ! scheme to be used for small flxprec amounts.  This is to address error growth problems.
 
       if( old_snow ) then
-#ifdef PERGRO
-          work1 = min(max(0._r8,flxsnow(i,k)/(flxprec(i,k)+8.64e-11_r8)),1._r8)
-#else
           if (flxprec(i,k).gt.0._r8) then
              work1 = min(max(0._r8,flxsnow(i,k)/flxprec(i,k)),1._r8)
           else
              work1 = 0._r8
           endif
-#endif
+
           work2 = max(fsnow_conv(i,k), work1)
           if (snowmlt(i).gt.0._r8) work2 = 0._r8
 !         work2 = fsnow_conv(i,k)
@@ -2478,9 +2475,6 @@ subroutine buoyan(lchnk   ,ncol    , &
 
    real(r8) rd
    real(r8) rl
-#ifdef PERGRO
-   real(r8) rhd
-#endif
 !
 !-----------------------------------------------------------------------
 !
@@ -2513,21 +2507,6 @@ subroutine buoyan(lchnk   ,ncol    , &
 ! set "launching" level(mx) to be at maximum moist static energy.
 ! search for this level stops at planetary boundary layer top.
 !
-#ifdef PERGRO
-   do k = pver,msg + 1,-1
-      do i = 1,ncol
-         hmn(i) = cp*t(i,k) + grav*z(i,k) + rl*q(i,k)
-!
-! Reset max moist static energy level when relative difference exceeds 1.e-4
-!
-         rhd = (hmn(i) - hmax(i))/(hmn(i) + hmax(i))
-         if (k >= nint(pblt(i)) .and. k <= lon(i) .and. rhd > -1.e-4_r8) then
-            hmax(i) = hmn(i)
-            mx(i) = k
-         end if
-      end do
-   end do
-#else
    do k = pver,msg + 1,-1
       do i = 1,ncol
          hmn(i) = cp*t(i,k) + grav*z(i,k) + rl*q(i,k)
@@ -2537,7 +2516,7 @@ subroutine buoyan(lchnk   ,ncol    , &
          end if
       end do
    end do
-#endif
+
 !
    do i = 1,ncol
       lcl(i) = mx(i)
@@ -4101,9 +4080,6 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
 
    real(r8) rd
    real(r8) rl
-#ifdef PERGRO
-   real(r8) rhd
-#endif
 !
 !-----------------------------------------------------------------------
 !
@@ -4184,21 +4160,6 @@ else ! Default method finding level of MSE maximum (nlev sensitive though)
     ! set "launching" level(mx) to be at maximum moist static energy.
     ! search for this level stops at planetary boundary layer top.
     !
-#ifdef PERGRO
-    do k = pver,msg + 1,-1
-       do i = 1,ncol
-          hmn(i) = cp*t(i,k) + grav*z(i,k) + rl*q(i,k)
-          !
-          ! Reset max moist static energy level when relative difference exceeds 1.e-4
-          !
-          rhd = (hmn(i) - hmax(i))/(hmn(i) + hmax(i))
-          if (k >= nint(pblt(i)) .and. k <= lon(i) .and. rhd > -1.e-4_r8) then
-             hmax(i) = hmn(i)
-             mx(i) = k
-          end if
-       end do
-    end do
-#else
     do k = pver,msg + 1,-1
        do i = 1,ncol
           hmn(i) = cp*t(i,k) + grav*z(i,k) + rl*q(i,k)
@@ -4208,7 +4169,6 @@ else ! Default method finding level of MSE maximum (nlev sensitive though)
           end if
        end do
     end do
-#endif
 
 end if ! Default method of determining parcel launch properties.
 
