@@ -4097,7 +4097,7 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
       mx(i) = lon(i)
       cape(i) = 0._r8
       hmax(i) = 0._r8
-      pbl_z(i) = z(i,pblt(i)) 
+      pbl_z(i) = z(i,nint(pblt(i))) 
       parcel_ztop(i) = 0.5_r8*pbl_z(i) ! 0.5*Boundary layer top by default
       parcel_hdp(i) = 0._r8
       parcel_dp(i) = 0._r8
