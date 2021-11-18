@@ -35,7 +35,7 @@
 <dtime dyn="se"    hgrid="ne0np4.ARCTICGRIS.ne30x8">225</dtime>
 
 <dtime dyn="mpas"                  >1800</dtime>
-<dtime dyn="mpas"  hgrid="mpasa480">5760</dtim> <!-- 2x mpas_dt -->
+<dtime dyn="mpas"  hgrid="mpasa480">5760</dtime> <!-- 2x mpas_dt -->
 <dtime dyn="mpas"  hgrid="mpasa240">2880</dtime><!-- 2x mpas_dt -->
 <dtime dyn="mpas"  hgrid="mpasa60" >720</dtime> <!-- 2x mpas_dt -->
 <dtime dyn="mpas"  hgrid="mpasa30" >360</dtime> <!-- 2x mpas_dt -->
