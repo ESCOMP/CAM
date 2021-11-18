@@ -59,6 +59,10 @@
 <ncdata hgrid="mpasa60"  nlev="32" analytic_ic="1" phys="cam6" >atm/cam/inic/mpas/mpasa60_L32_topo_coords_c210518.nc</ncdata>
 <ncdata hgrid="mpasa30"  nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa30_L32_notopo_coords_c210611.nc</ncdata>
 <ncdata hgrid="mpasa30"  nlev="32" analytic_ic="1" phys="cam6">atm/cam/inic/mpas/mpasa30_L32_topo_coords_c210611.nc</ncdata>
+<ncdata hgrid="mpasa15"  nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa15_L32_notopo_coords_c211118.nc</ncdata>
+<ncdata hgrid="mpasa15-3-conus"  nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa15-3_CONUS_L32_notopo_coords_c211118.nc</ncdata>
+<ncdata hgrid="mpasa7.5" nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa7.5_L32_notopo_coords_c211118.nc</ncdata>
+<ncdata hgrid="mpasa3.75" nlev="32" analytic_ic="1">atm/cam/inic/mpas/mpasa3.75_L32_notopo_coords_c211118.nc</ncdata>
 
 <!-- Files with initial conditions -->
 <ncdata dyn="fv"  hgrid="0.23x0.31" nlev="26" ic_ymd="101"      >atm/cam/inic/fv/cami_0000-01-01_0.23x0.31_L26_c100513.nc</ncdata>
@@ -2870,13 +2874,17 @@
 <mpas_jedi_da> .false. </mpas_jedi_da>
 <mpas_print_detailed_minmax_vel> .true.  </mpas_print_detailed_minmax_vel>
 <mpas_block_decomp_file_prefix hgrid="mpasa480">atm/cam/inic/mpas/mpasa480.graph.info.part.</mpas_block_decomp_file_prefix>
+<mpas_block_decomp_file_prefix hgrid="mpasa240">atm/cam/inic/mpas/mpasa240.graph.info.part.</mpas_block_decomp_file_prefix>
 <mpas_block_decomp_file_prefix hgrid="mpasa120">atm/cam/inic/mpas/mpasa120.graph.info.part.</mpas_block_decomp_file_prefix>
 <mpas_block_decomp_file_prefix hgrid="mpasa60">atm/cam/inic/mpas/mpasa60.graph.info.part.</mpas_block_decomp_file_prefix>
 <mpas_block_decomp_file_prefix hgrid="mpasa30">atm/cam/inic/mpas/mpasa30.graph.info.part.</mpas_block_decomp_file_prefix>
 <mpas_block_decomp_file_prefix hgrid="mpasa15">atm/cam/inic/mpas/mpasa15.graph.info.part.</mpas_block_decomp_file_prefix>
 <mpas_block_decomp_file_prefix hgrid="mpasa12">atm/cam/inic/mpas/mpasa12.graph.info.part.</mpas_block_decomp_file_prefix>
 <mpas_block_decomp_file_prefix hgrid="mpasa15-3">atm/cam/inic/mpas/mpasa15-3.graph.info.part.</mpas_block_decomp_file_prefix>
+<!-- A rotated MPAS grid can use the same block decomps as the non-rotated - Such as the 15-3 and the 15-3-conus grid -->
+<mpas_block_decomp_file_prefix hgrid="mpasa15-3-conus">atm/cam/inic/mpas/mpasa15-3.graph.info.part.</mpas_block_decomp_file_prefix>
 <mpas_block_decomp_file_prefix hgrid="mpasa7.5">atm/cam/inic/mpas/mpasa7.5.graph.info.part</mpas_block_decomp_file_prefix>
+<mpas_block_decomp_file_prefix hgrid="mpasa3.75">atm/cam/inic/mpas/mpasa3.75.graph.info.part</mpas_block_decomp_file_prefix>
 
 <mpas_do_restart               > .false. </mpas_do_restart>
 <mpas_print_global_minmax_vel  > .true. </mpas_print_global_minmax_vel>
