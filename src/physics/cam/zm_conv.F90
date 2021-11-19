@@ -82,7 +82,7 @@ contains
 subroutine zm_convi(limcnv_in, zmconv_c0_lnd, zmconv_c0_ocn, zmconv_ke, zmconv_ke_lnd, &
                     zmconv_momcu, zmconv_momcd, zmconv_num_cin, zmconv_org, &
                     zmconv_microp_in, no_deep_pbl_in, zmconv_tiedke_add, &
-                    zmconv_capelmt, zmconv_dmpdz)
+                    zmconv_capelmt, zmconv_dmpdz, zmconv_tau)
 
    integer, intent(in)           :: limcnv_in       ! top interface level limit for convection
    integer, intent(in)           :: zmconv_num_cin  ! Number negative buoyancy regions that are allowed 
@@ -99,6 +99,7 @@ subroutine zm_convi(limcnv_in, zmconv_c0_lnd, zmconv_c0_ocn, zmconv_ke, zmconv_k
    real(r8),intent(in)           :: zmconv_tiedke_add
    real(r8),intent(in)           :: zmconv_capelmt
    real(r8),intent(in)           :: zmconv_dmpdz
+   real(r8),intent(in)           :: zmconv_tau
 
 
    ! Initialization of ZM constants
@@ -128,7 +129,8 @@ subroutine zm_convi(limcnv_in, zmconv_c0_lnd, zmconv_c0_ocn, zmconv_ke, zmconv_k
    dmpdz_param = zmconv_dmpdz
    no_deep_pbl = no_deep_pbl_in
 
-   tau = 3600._r8
+   ! Previously hardcoded: tau = 3600._r8
+   tau = zmconv_tau
 
    if ( masterproc ) then
       write(iulog,*) 'tuning parameters zm_convi: tau',tau
