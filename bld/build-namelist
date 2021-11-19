@@ -314,12 +314,6 @@ EOF
 
 if ($print>=2) { print "Using namelist defaults file $nl_defaults_file$eol"; }
 
-# CAMDEV
-my $phys_check = $cfg->get('phys');
-if ($phys_check eq 'cam_dev') {
-    $cfg->set('phys', 'cam6');
-}
-
 my $defaults = Build::NamelistDefaults->new($nl_defaults_file, $cfg);
 
 #-----------------------------------------------------------------------------------------------
@@ -1500,7 +1494,7 @@ elsif ($carma eq 'tholin') {
 
 # turn on stratospheric aerosol forcings in CAM6 configurations
 my $chem_has_ocs = chem_has_species($cfg, 'OCS');
-if ($phys =~ /cam6/ and $chem =~ /_mam/) {
+if (($phys =~ /cam6/ or $phys =~ /cam_dev/) and $chem =~ /_mam/) {
   # turn on volc forcings in cam6 -- prognostic or prescribed
   if ( $chem_has_ocs ) {
       # turn on prognostic stratospheric aerosols
@@ -1532,7 +1526,7 @@ my $het_chem = chem_has_species($cfg, 'N2O5');
 
 # Default for CAM6, is that prescribed_strataero_3modes is TRUE, but allow user to override
 my $prescribed_strataero_3modes = $FALSE;
-if ($phys =~ /cam6/) {
+if ($phys =~ /cam6/ or $phys =~ /cam_dev/) {
    $prescribed_strataero_3modes = $TRUE;
 }
 if (defined $nl->get_value('prescribed_strataero_3modes')) {
@@ -1764,7 +1758,7 @@ my $megan_emis = defined $nl->get_value('megan_specifier');
 if ( $megan_emis ) { add_default($nl, 'megan_factors_file'); }
 
 # Tropospheric full chemistry options
-if (($chem =~ /trop_mozart/ or $chem =~ /trop_strat/ or $chem =~ /waccm_tsmlt/) and ($phys !~ /cam6/)) {
+if (($chem =~ /trop_mozart/ or $chem =~ /trop_strat/ or $chem =~ /waccm_tsmlt/) and ($phys !~ /cam6/ or $phys =~ /cam_dev/)) {
 
     # Surface emission datasets:
     my %verhash;
@@ -2090,7 +2084,7 @@ if ($chem eq 'trop_mam3') {
 }
 
 # CMIP6 emissions
-if ($chem =~ /_mam4/ and $phys =~ /cam6/) {
+if ($chem =~ /_mam4/ and ($phys =~ /cam6/ or $phys =~ /cam_dev/)) {
     my %species;
 
     # Surface emission datasets:
@@ -2228,6 +2222,8 @@ if ($chem =~ /_mam4/ and $phys =~ /cam6/) {
         }
     }
 
+    # Note, this section might need to be modified if cam_dev values
+    #   diverge from cam6 values
     my %verhash = ('ver'=>'cam6');
     my $first = 1;
     my $pre = "";
@@ -2729,7 +2725,7 @@ if (defined $cam_physpkg) {
         "This variable is set by build-namelist based on information\n".
         "from the configure cache file.\n";
 }
-$cam_physpkg = "'" . "$phys_check" . "'";  # add quotes to this string value
+$cam_physpkg = "'" . "$phys" . "'";  # add quotes to this string value
 $nl->set_variable_value('phys_ctl_nl', 'cam_physpkg', $cam_physpkg);
 
 my $use_simple_phys = $nl->get_value('use_simple_phys');
@@ -2849,6 +2845,15 @@ if ($phys =~ /cam6/ and $nl->get_value('deep_scheme') =~ /ZM/) {
     add_default($nl, 'convproc_do_evaprain_atonce', 'val'=>'.true.');
     add_default($nl, 'convproc_pom_spechygro', 'val'=>'0.2D0');
     add_default($nl, 'convproc_wup_max', 'val'=>'4.0D0');
+}
+
+# Aerosol convective processes
+if ($phys =~ /cam_dev/ and $nl->get_value('deep_scheme') =~ /ZM/) {
+    add_default($nl, 'convproc_do_aer', 'val'=>'.true.');
+    add_default($nl, 'convproc_do_evaprain_atonce', 'val'=>'.true.');
+    add_default($nl, 'convproc_pom_spechygro', 'val'=>'0.2D0');
+    add_default($nl, 'convproc_wup_max', 'val'=>'4.0D0');
+    # NB: XXgoldyXX: Add new ZM zm_conv_parcel_pbl switch when available
 }
 
 # Radiation scheme
@@ -3082,7 +3087,7 @@ if ($clubb_sgs  =~ /$TRUE/io) {
 }
 
 # Force exit if running cam_dev and CLUBB is off
-if ($phys_check eq 'cam_dev') {
+if ($phys eq 'cam_dev') {
     if ($clubb_sgs  =~ /$FALSE/io) {
         die "$ProgName - ERROR: If running cam_dev physics, do_clubb_sgs must be .true.\n";
     }
@@ -3270,7 +3275,7 @@ if ($chem =~ /_mam(\d)/) {
 # By default, orographic waves are always on
 if (!$simple_phys) {
 
-    if ($phys =~ /cam6/) {
+    if ($phys =~ /cam6/ or $phys =~ /cam_dev/) {
 
        add_default($nl, 'use_gw_oro',        'val'=>'.false.');
 
