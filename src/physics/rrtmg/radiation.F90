@@ -952,9 +952,10 @@ subroutine radiation_tend( &
 
    ! Get time of next radiation calculation - albedos will need to be
    ! calculated by each surface model at this time
-   nextsw_cday = radiation_nextsw_cday()
    dtime = get_step_size()
    caldayp1 = get_curr_calday(offset=int(dtime))
+   nextsw_cday = radiation_nextsw_cday()
+   if (caldayp1 /= nextsw_cday) nextsw_cday = -1._r8
 
    if (dosw .or. dolw) then
 

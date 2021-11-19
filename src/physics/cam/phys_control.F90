@@ -238,7 +238,7 @@ subroutine phys_ctl_readnl(nlfile)
       endif
    endif
 
-   if (cam_physpkg_is("cam_dev") then
+   if (cam_physpkg_is("cam_dev")) then
       ! Check that eddy_scheme, macrop_scheme, shallow_scheme are all set to CLUBB
       if (eddy_scheme /= 'CLUBB_SGS' .or. macrop_scheme /= 'CLUBB_SGS' .or. shallow_scheme /= 'CLUBB_SGS') then
          write(iulog,*) 'cam_dev is only compatible with CLUBB.  Quitting'
