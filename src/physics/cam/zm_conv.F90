@@ -129,7 +129,6 @@ subroutine zm_convi(limcnv_in, zmconv_c0_lnd, zmconv_c0_ocn, zmconv_ke, zmconv_k
    dmpdz_param = zmconv_dmpdz
    no_deep_pbl = no_deep_pbl_in
 
-   ! Previously hardcoded: tau = 3600._r8
    tau = zmconv_tau
 
    if ( masterproc ) then

@@ -3,7 +3,7 @@
 !===============================================================================
 module cloud_cover_diags
 
-  use shr_kind_mod,  only: r8=>shr_kind_r8
+  use shr_kind_mod,  only: r8=>shr_kind_r8, shr_kind_CS
   use ppgrid,        only: pcols, pver,pverp
   use cam_history,   only: addfld, add_default, outfld, horiz_only
   use phys_control,  only: phys_getopts
@@ -35,7 +35,7 @@ subroutine cloud_cover_diags_init(sampling_seq)
 
   character(len=*), intent(in) :: sampling_seq
   logical :: history_amwg         ! output the variables used by the AMWG diag package
-  character(len=80) :: long_name_string
+  character(len=shr_kind_CS) :: long_name_string
 
   call addfld ('CLOUD', (/ 'lev' /), 'A','fraction','Cloud fraction'                        , sampling_seq=sampling_seq)
   call addfld ('CLDTOT',horiz_only,  'A','fraction','Vertically-integrated total cloud'     , sampling_seq=sampling_seq)
