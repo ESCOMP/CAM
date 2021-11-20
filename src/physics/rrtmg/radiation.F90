@@ -62,7 +62,7 @@ public :: &
 integer,public, allocatable :: cosp_cnt(:)       ! counter for cosp
 integer,public              :: cosp_cnt_init = 0 !initial value for cosp counter
 
-real(r8), public, protected :: nextsw_cday, caldayp1 ! future radiation calday for surface models
+real(r8), public, protected :: nextsw_cday       ! future radiation calday for surface models
 
 type rad_out_t
    real(r8) :: solin(pcols)         ! Solar incident flux
@@ -755,6 +755,7 @@ subroutine radiation_tend( &
    integer  :: dtime           ! time step increment (sec)
 
    real(r8) :: calday          ! current calendar day
+   real(r8) :: caldayp1        ! future calendar day
    real(r8) :: delta           ! Solar declination angle  in radians
    real(r8) :: eccf            ! Earth orbit eccentricity factor
    real(r8) :: clat(pcols)     ! current latitudes(radians)

@@ -24,13 +24,7 @@ module atm_comp_nuopc
   use shr_orb_mod         , only : shr_orb_decl, shr_orb_params, SHR_ORB_UNDEF_REAL, SHR_ORB_UNDEF_INT
   use cam_instance        , only : cam_instance_init, inst_suffix, inst_index
   use cam_comp            , only : cam_init, cam_run1, cam_run2, cam_run3, cam_run4, cam_final
-  use radiation           , only : radiation_nextsw_cday
-!+++ARH
-! comment to be deleted after code review
-! once atm_comp_mct changes are approved, I will
-! copy those changes here (treats restart and run-time
-! nextsw_cday identically to mct) 
-!---ARH
+  use radiation           , only : radiation_nextsw_cday, rad_nextsw_cday=>nextsw_cday
   use camsrfexch          , only : cam_out_t, cam_in_t
   use cam_logfile         , only : iulog
   use spmd_utils          , only : spmdinit, masterproc, iam, mpicom
@@ -893,16 +887,23 @@ contains
        end if
 
        ! Compute time of next radiation computation, like in run method for exact restart
+!+++ARH
+! comment to be deleted after code review
+! I'm not changing this because if I move radiation out of CAM_run1
+! then the public var rad_nextsw_cday has not yet
+! been defined. I don't want to allow for radiation to be called in CAM_run1
+! for the first step of a restart run (like I do for an initial run), 
+! because then a continous run would not be bfb compared to a run 
+! with multiple restarts of the same run length.  
+!---ARH
        dtime = get_step_size()
        nstep = get_nstep()
-       if (nstep < 1 .or. dtime < atm_cpl_dt) then
+       if (nstep < 1) then
           nextsw_cday = radiation_nextsw_cday()
-       else if (dtime == atm_cpl_dt) then
+       else 
           caldayp1 = get_curr_calday(offset=int(dtime))
           nextsw_cday = radiation_nextsw_cday()
           if (caldayp1 /= nextsw_cday) nextsw_cday = -1._r8
-       else
-          call shr_sys_abort('dtime must be less than or equal to atm_cpl_dt')
        end if
 
        call State_SetScalar(nextsw_cday, flds_scalar_index_nextsw_cday, exportState, &
@@ -999,7 +1000,6 @@ contains
     real(r8)                :: mvelpp
     logical                 :: dosend      ! true => send data back to driver
     integer                 :: dtime       ! time step increment (sec)
-    integer                 :: atm_cpl_dt  ! driver atm coupling time step
     integer                 :: ymd_sync    ! Sync ymd
     integer                 :: yr_sync     ! Sync current year
     integer                 :: mon_sync    ! Sync current month
@@ -1010,7 +1010,6 @@ contains
     integer                 :: mon         ! CAM current month
     integer                 :: day         ! CAM current day
     integer                 :: tod         ! CAM current time of day (sec)
-    real(r8)                :: caldayp1    ! CAM calendar day for for next cam time step
     real(r8)                :: nextsw_cday ! calendar of next atm shortwave
     logical                 :: rstwr       ! .true. ==> write restart file before returning
     logical                 :: nlend       ! Flag signaling last time-step
@@ -1076,6 +1075,13 @@ contains
     ! Unpack import state
     if (mediator_present) then
        call t_startf ('CAM_import')
+!+++ARH - comment to be deleted after code review
+    ! get scalar call is the reason I can't replace all uses of nextsw_cday
+    ! with the public protected rad_nextsw_cday, and so I have to declare a
+    ! local copy. Is this call to "get" nextsw_cday necessary? this vairable is
+    ! overwritten below to reflect the current nextsw_cday, so I'm not sure
+    ! this call is necessary.
+!---ARH
        call State_GetScalar(importState, flds_scalar_index_nextsw_cday, nextsw_cday, &
             flds_scalar_name, flds_scalar_num, rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
@@ -1162,23 +1168,7 @@ contains
        ! Set the coupling scalars
        ! Return time of next radiation calculation - albedos will need to be
        ! calculated by each surface model at this time
-
-       call ESMF_ClockGet( clock, TimeStep=timeStep, rc=rc)
-       if (ChkErr(rc,__LINE__,u_FILE_u)) return
-       call ESMF_TimeIntervalGet( timeStep, s=atm_cpl_dt, rc=rc )
-       if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
-       dtime = get_step_size()
-       if (dtime < atm_cpl_dt) then
-          nextsw_cday = radiation_nextsw_cday()
-       else if (dtime == atm_cpl_dt) then
-          caldayp1 = get_curr_calday(offset=int(dtime))
-          nextsw_cday = radiation_nextsw_cday()
-          if (caldayp1 /= nextsw_cday) nextsw_cday = -1._r8
-       else
-          call shr_sys_abort('dtime must be less than or equal to atm_cpl_dt')
-       end if
-
+       nextsw_cday = rad_nextsw_cday
        call State_SetScalar(nextsw_cday, flds_scalar_index_nextsw_cday, exportState, &
             flds_scalar_name, flds_scalar_num, rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return

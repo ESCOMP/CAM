@@ -30,8 +30,7 @@ module atm_comp_mct
   use cam_comp,          only: cam_init, cam_run1, cam_run2, cam_run3, cam_run4, cam_final
   use cam_instance     , only: cam_instance_init
   use cam_control_mod  , only: cam_ctrl_set_orbit
-  use radiation        , only: radiation_nextsw_cday, &
-                               rad_nextsw_cday=>nextsw_cday, rad_caldayp1=>caldayp1
+  use radiation        , only: radiation_nextsw_cday, rad_nextsw_cday=>nextsw_cday
   use phys_grid        , only: pgcols => num_global_phys_cols
   use phys_grid        , only: get_ncols_p, get_gcol_p, get_area_all_p
   use phys_grid        , only: get_rlat_all_p, get_rlon_all_p
@@ -364,7 +363,7 @@ CONTAINS
 !+++ARH
 ! comment to be deleted after code review
 ! I'm not changing this because if I move radiation out of CAM_run1
-! then the public vars rad_caldayp1 and rad_nextsw_cday have not yet
+! then the public var rad_nextsw_cday has not yet
 ! been defined. I don't want to allow for radiation to be called in CAM_run1
 ! for the first step of a restart run (like I do for an initial run), 
 ! because then a continous run would not be bfb compared to a run 
