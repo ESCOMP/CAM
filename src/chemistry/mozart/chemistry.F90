@@ -64,11 +64,8 @@ module chemistry
 
   ! photolysis
 
-  logical            :: xactive_prates = .false.
   character(len=shr_kind_cl) :: rsf_file = 'rsf_file'
   character(len=shr_kind_cl) :: exo_coldens_file = ''
-  character(len=shr_kind_cl) :: tuv_xsect_file = 'tuv_xsect_file'
-  character(len=shr_kind_cl) :: o2_xsect_file = 'o2_xsect_file'
   character(len=shr_kind_cl) :: xs_coef_file = 'xs_coef_file'
   character(len=shr_kind_cl) :: xs_short_file = 'xs_short_file'
   character(len=shr_kind_cl) :: xs_long_file = 'xs_long_file'
@@ -391,9 +388,9 @@ end function chem_is
     namelist /chem_inparm/ chem_freq, airpl_emis_file, &
          euvac_file, photon_file, electron_file, &
          xs_coef_file, xs_short_file, &
-         exo_coldens_file, tuv_xsect_file, o2_xsect_file, &
+         exo_coldens_file, &
          xs_long_file, rsf_file, photo_max_zen, &
-         lght_no_prd_factor, xactive_prates, &
+         lght_no_prd_factor, &
          depvel_lnd_file, drydep_srf_file, &
          srf_emis_type, srf_emis_cycle_yr, srf_emis_fixed_ymd, srf_emis_fixed_tod, srf_emis_specifier,  &
          fstrat_file, fstrat_list, &
@@ -493,13 +490,10 @@ end function chem_is
 
     call mpibcast (rsf_file,          len(rsf_file),                   mpichar, 0, mpicom)
     call mpibcast (exo_coldens_file,  len(exo_coldens_file),           mpichar, 0, mpicom)
-    call mpibcast (tuv_xsect_file,    len(tuv_xsect_file),             mpichar, 0, mpicom)
-    call mpibcast (o2_xsect_file,     len(o2_xsect_file),              mpichar, 0, mpicom)
     call mpibcast (xs_coef_file,      len(xs_coef_file),               mpichar, 0, mpicom)
     call mpibcast (xs_short_file,     len(xs_short_file),              mpichar, 0, mpicom)
     call mpibcast (xs_long_file,      len(xs_long_file),               mpichar, 0, mpicom)
     call mpibcast (photo_max_zen,     1,                               mpir8,   0, mpicom)
-    call mpibcast (xactive_prates,    1,                               mpilog,  0, mpicom)
     call mpibcast (electron_file,     len(electron_file),              mpichar, 0, mpicom)
     call mpibcast (euvac_file,        len(euvac_file),                 mpichar, 0, mpicom)
 
@@ -839,10 +833,7 @@ end function chem_is_active
        , ext_frc_cycle_yr &
        , ext_frc_fixed_ymd &
        , ext_frc_fixed_tod &
-       , xactive_prates &
        , exo_coldens_file &
-       , tuv_xsect_file &
-       , o2_xsect_file &
        , lght_no_prd_factor &
        , pbuf2d &
        )
@@ -1294,7 +1285,7 @@ end function chem_is_active
                           state%phis, state%zm, state%zi, calday, &
                           state%t, state%pmid, state%pdel, state%pint, &
                           cldw, tropLev, tropLevChem, ncldwtr, state%u, state%v, &
-                          chem_dt, state%ps, xactive_prates, &
+                          chem_dt, state%ps, &
                           fsds, cam_in%ts, cam_in%asdir, cam_in%ocnfrac, cam_in%icefrac, &
                           cam_out%precc, cam_out%precl, cam_in%snowhland, ghg_chem, state%latmapback, &
                           drydepflx, wetdepflx, cam_in%cflx, cam_in%fireflx, cam_in%fireztop, &

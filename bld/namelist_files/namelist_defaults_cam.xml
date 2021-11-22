@@ -1743,8 +1743,6 @@
 
 <!-- photolysis inputs -->
 <xs_coef_file>atm/waccm/phot/effxstex.txt</xs_coef_file>
-<tuv_xsect_file>atm/cam/chem/trop_mozart/phot/tuv_xsect.nc</tuv_xsect_file>
-<o2_xsect_file>atm/cam/chem/trop_mozart/phot/o2src.nc</o2_xsect_file>
 <xs_short_file>atm/waccm/phot/xs_short_jpl10_c140303.nc</xs_short_file>
 <xs_long_file >atm/waccm/phot/temp_prs_GT200nm_JPL10_c140624.nc</xs_long_file>
 <rsf_file     >atm/waccm/phot/RSF_GT200nm_v3.0_c080811.nc</rsf_file>
