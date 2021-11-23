@@ -64,7 +64,6 @@ contains
 
     use tracer_cnst,       only : tracer_cnst_init
     use tracer_srcs,       only : tracer_srcs_init
-    use mo_chem_utls,      only : get_spc_ndx
     use mo_airglow,        only : init_airglow
     use mo_mean_mass,      only : init_mean_mass
     use mo_mass_xforms,    only : init_mass_xforms

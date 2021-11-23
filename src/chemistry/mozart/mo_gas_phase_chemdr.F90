@@ -6,7 +6,6 @@ module mo_gas_phase_chemdr
   use cam_history,      only : fieldname_len
   use chem_mods,        only : phtcnt, rxntot, gas_pcnst
   use chem_mods,        only : rxt_tag_cnt, rxt_tag_lst, rxt_tag_map, extcnt, num_rnts
-  use dust_model,       only : dust_names, ndust => dust_nbin
   use ppgrid,           only : pcols, pver
   use phys_control,     only : phys_getopts
   use carma_flags_mod,  only : carma_hetchem_feedback
@@ -21,7 +20,7 @@ module mo_gas_phase_chemdr
 
   integer :: map2chm(pcnst) = 0           ! index map to/from chemistry/constituents list
 
-  integer :: so4_ndx, h2o_ndx, o2_ndx, o_ndx, hno3_ndx, hcl_ndx, dst_ndx, cldice_ndx, snow_ndx
+  integer :: so4_ndx, h2o_ndx, o2_ndx, o_ndx, hno3_ndx, hcl_ndx, cldice_ndx, snow_ndx
   integer :: o3_ndx, o3s_ndx
   integer :: het1_ndx
   integer :: ndx_cldfr, ndx_cmfdqr, ndx_nevapr, ndx_cldtop, ndx_prain
@@ -123,7 +122,6 @@ contains
     h2o_ndx = get_spc_ndx('H2O')
     hno3_ndx = get_spc_ndx('HNO3')
     hcl_ndx  = get_spc_ndx('HCL')
-    dst_ndx = get_spc_ndx( dust_names(1) )
     call cnst_get_ind( 'CLDICE', cldice_ndx )
     call cnst_get_ind( 'SNOWQM', snow_ndx, abort=.false. )
 
@@ -364,7 +362,6 @@ contains
          h2ovmr, &                                         ! water vapor volume mixing ratio
          mbar, &                                           ! mean wet atmospheric mass ( amu )
          zmid, &                                           ! midpoint geopotential in km
-         zmidr, &                                          ! midpoint geopotential in km realitive to surf
          sulfate, &                                        ! trop sulfate aerosols
          pmb                                               ! pressure at midpoints ( hPa )
     real(r8), dimension(ncol,pver) :: &
@@ -397,9 +394,6 @@ contains
     real(r8) :: prect(pcols)
     real(r8) :: sflx(pcols,gas_pcnst)
     real(r8) :: wetdepflx_diag(pcols,gas_pcnst)
-    real(r8) :: dust_vmr(ncol,pver,ndust)
-    real(r8) :: dt_diag(pcols,8)               ! od diagnostics
-    real(r8) :: fracday(pcols)                 ! fraction of day
     real(r8) :: o2mmr(ncol,pver)               ! o2 concentration (kg/kg)
     real(r8) :: ommr(ncol,pver)                ! o concentration (kg/kg)
     real(r8) :: mmr(pcols,pver,gas_pcnst)      ! chem working concentrations (kg/kg)
@@ -490,7 +484,6 @@ contains
     zsurf(:ncol) = rga * phis(:ncol)
     do k = 1,pver
        zintr(:ncol,k) = m2km * zi(:ncol,k)
-       zmidr(:ncol,k) = m2km * zm(:ncol,k)
        zmid(:ncol,k) = m2km * (zm(:ncol,k) + zsurf(:ncol))
        zint(:ncol,k) = m2km * (zi(:ncol,k) + zsurf(:ncol))
        pmb(:ncol,k)  = Pa2mb * pmid(:ncol,k)
@@ -774,7 +767,7 @@ contains
     !-----------------------------------------------------------------------
     !     	... Set the column densities
     !-----------------------------------------------------------------------
-    call setcol( col_delta, col_dens, vmr, pdel,  ncol )
+    call setcol( col_delta, col_dens )
 
     !-----------------------------------------------------------------------
     !     	... Calculate the photodissociation rates

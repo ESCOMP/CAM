@@ -4,15 +4,14 @@ module mo_photo
   !----------------------------------------------------------------------
 
   use shr_kind_mod,     only : r8 => shr_kind_r8
-  use ppgrid,           only : pcols, pver, pverp, begchunk, endchunk
+  use ppgrid,           only : pcols, pver, begchunk, endchunk
   use cam_abortutils,   only : endrun
-  use mo_constants,     only : pi,r2d,boltz,d2r
+  use mo_constants,     only : r2d,d2r
   use ref_pres,         only : num_pr_lev, ptop_ref
   use pio
   use cam_pio_utils,    only : cam_pio_openfile
   use spmd_utils,       only : masterproc
   use cam_logfile,      only : iulog
-  use phys_control,     only : waccmx_is
   use solar_parms_data, only : f107=>solar_parms_f107, f107a=>solar_parms_f107a
 
   implicit none
@@ -33,15 +32,8 @@ module mo_photo
   integer ::  jno_ndx
   integer ::  jonitr_ndx
   integer ::  jho2no2_ndx
-  integer ::  jch3cho_a_ndx, jch3cho_b_ndx, jch3cho_c_ndx
   integer ::  jo2_a_ndx, jo2_b_ndx
   integer ::  ox_ndx, o3_ndx, o3_inv_ndx, o3rad_ndx
-  integer ::  oc1_ndx, oc2_ndx
-  integer ::  cb1_ndx, cb2_ndx
-  integer ::  soa_ndx
-  integer ::  ant_ndx
-  integer ::  so4_ndx
-  integer ::  sa1_ndx, sa2_ndx, sa3_ndx, sa4_ndx
   integer ::  n2_ndx, no_ndx, o2_ndx, o_ndx
   integer, allocatable :: lng_indexer(:)
   integer, allocatable :: sht_indexer(:)
@@ -78,9 +70,6 @@ module mo_photo
   integer :: jepn7_ndx, jpni1_ndx, jpni2_ndx, jpni3_ndx, jpni4_ndx, jpni5_ndx
   logical :: do_jeuv = .false.
   logical :: do_jshort = .false.
-#ifdef DEBUG
-  logical :: do_diag = .false.
-#endif
   integer :: ion_rates_idx = -1
 
 contains
@@ -115,7 +104,6 @@ contains
     use ioFileMod,     only : getfil
     use mo_chem_utls,  only : get_spc_ndx, get_rxt_ndx, get_inv_ndx
     use mo_jlong,      only : jlong_init
-    use seasalt_model, only : sslt_names=>seasalt_names, sslt_ncnst=>seasalt_nbin
     use mo_jshort,     only : jshort_init
     use mo_jeuv,       only : jeuv_init, neuv
     use phys_grid,     only : get_ncols_p, get_rlat_all_p
@@ -391,20 +379,6 @@ contains
     if ( len_trim(exo_coldens_file) == 0 ) then
        has_o2_col = .false.
        has_o3_col = .false.
-    endif
-
-    oc1_ndx = get_spc_ndx( 'OC1' )
-    oc2_ndx = get_spc_ndx( 'OC2' )
-    cb1_ndx = get_spc_ndx( 'CB1' )
-    cb2_ndx = get_spc_ndx( 'CB2' )
-    soa_ndx = get_spc_ndx( 'SOA' )
-    ant_ndx = get_spc_ndx( 'NH4NO3' )
-    so4_ndx = get_spc_ndx( 'SO4' )
-    if (sslt_ncnst == 4) then
-       sa1_ndx = get_spc_ndx( sslt_names(1) )
-       sa2_ndx = get_spc_ndx( sslt_names(2) )
-       sa3_ndx = get_spc_ndx( sslt_names(3) )
-       sa4_ndx = get_spc_ndx( sslt_names(4) )
     endif
 
     has_abs_columns : if( has_o2_col .or. has_o3_col ) then
@@ -1276,21 +1250,18 @@ contains
 
   end subroutine p_interp
 
-  subroutine setcol( col_delta, col_dens, vmr, pdel,  ncol )
+  subroutine setcol( col_delta, col_dens )
     !---------------------------------------------------------------
     !     	... set the column densities
     !---------------------------------------------------------------
 
-    use chem_mods, only : ncol_abs=>nabscol, gas_pcnst
+    use chem_mods, only : ncol_abs=>nabscol
 
     implicit none
 
     !---------------------------------------------------------------
     !     	... dummy arguments
     !---------------------------------------------------------------
-    integer,  intent(in)    :: ncol                              ! no. of columns in current chunk
-    real(r8), intent(in)    :: vmr(ncol,pver,gas_pcnst)          ! xported species vmr
-    real(r8), intent(in)    :: pdel(pcols,pver)                  ! delta about midpoints
     real(r8), intent(in)    :: col_delta(:,0:,:)                 ! layer column densities (molecules/cm^2)
     real(r8), intent(out)   :: col_dens(:,:,:)                   ! column densities ( /cm**2 )
 
