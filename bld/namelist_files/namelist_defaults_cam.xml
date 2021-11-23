@@ -2455,6 +2455,8 @@
 <zmconv_tiedke_add                                                    > 0.5     </zmconv_tiedke_add>
 <zmconv_capelmt                                                       > 70.0    </zmconv_capelmt>
 
+<zmconv_parcel_pbl                                                    > .false. </zmconv_parcel_pbl>
+
 <!-- Cloud sedimentation -->
 
 <cldsed_ice_stokes_fac                                    > 1.0D0 </cldsed_ice_stokes_fac>
