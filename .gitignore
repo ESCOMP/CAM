@@ -10,8 +10,11 @@ src/physics/silhs
 src/physics/pumas
 src/dynamics/fv3/atmos_cubed_sphere
 libraries/FMS
+libraries/mct
+libraries/parallelio
 src/atmos_phys
 src/dynamics/mpas/dycore
+share
 
 # Ignore compiled python
 buildnmlc

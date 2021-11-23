@@ -2544,6 +2544,19 @@ if ($chem eq 'trop_mam7') {
 
 my $waccmx = $cfg->get('waccmx');
 
+# set maximum solar zenith angle for photolysis
+my $maxzen = 0.0;
+if ($waccmx){
+    $maxzen = 116.;
+} elsif ($chem =~ "trop_strat" or $chem =~ "waccm_") {
+    $maxzen = 97.01;
+} elsif ($chem =~ "trop_mam" or $chem =~ "trop_mozart") {
+    $maxzen = 88.85;
+}
+if ($maxzen>0.0) {
+    add_default($nl, 'photo_max_zen', 'val'=>"${maxzen}D0");
+}
+
 # WACCM options.
 if ($chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/) {
 
@@ -3619,6 +3632,9 @@ if ($dyn =~ /se/) {
                   se_nu_div
                   se_nu_p
                   se_nu_top
+                  se_sponge_del4_nu_fac
+                  se_sponge_del4_nu_div_fac
+                  se_sponge_del4_lev
                   se_qsplit
                   se_rsplit
                   se_statediag_numtrac
@@ -3634,9 +3650,6 @@ if ($dyn =~ /se/) {
 		  se_kmin_jet
 		  se_kmax_jet
 		  se_phys_dyn_cp
-		  se_raytau0
-		  se_raykrange
-		  se_rayk0
                   se_molecular_diff
         );
 
@@ -3730,6 +3743,8 @@ if ($dyn =~ /mpas/) {
     add_default($nl, 'mpas_rayleigh_damp_u');
     add_default($nl, 'mpas_rayleigh_damp_u_timescale_days');
     add_default($nl, 'mpas_number_rayleigh_damp_u_levels');
+    add_default($nl, 'mpas_apply_lbcs');
+    add_default($nl, 'mpas_jedi_da');
     add_default($nl, 'mpas_do_restart');
     add_default($nl, 'mpas_print_global_minmax_vel');
     add_default($nl, 'mpas_print_detailed_minmax_vel');
@@ -3742,6 +3757,9 @@ if ($dyn =~ /mpas/) {
     }
 
 }
+
+# Defaults for scaling initial pressure
+add_default($nl, 'scale_dry_air_mass');
 
 # Defaults for history output
 add_default($nl, 'history_amwg');

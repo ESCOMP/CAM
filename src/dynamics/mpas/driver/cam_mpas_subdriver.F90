@@ -32,7 +32,9 @@ module cam_mpas_subdriver
               cam_mpas_cell_to_edge_winds, &
               cam_mpas_run, &
               cam_mpas_finalize, &
-              cam_mpas_debug_stream
+              cam_mpas_debug_stream, &
+              cam_mpas_global_sum_real
+
     public :: corelist, domain_ptr
 
     private
@@ -100,6 +102,7 @@ contains
        domain_ptr % core => corelist
 
        call mpas_allocate_domain(domain_ptr)
+       domain_ptr % domainID = 0
 
 
        !
@@ -311,6 +314,7 @@ contains
                                       mpas_pool_get_field, mpas_pool_get_array, mpas_pool_initialize_time_levels
        use atm_core, only : atm_mpas_init_block, core_clock => clock
        use mpas_dmpar, only : mpas_dmpar_exch_halo_field
+       use atm_time_integration, only : mpas_atm_dynamics_init
 
        procedure(halt_model) :: endrun
 
@@ -409,6 +413,11 @@ contains
 
        call mpas_pool_get_field(diag, 'rw', rw_field)
        call mpas_dmpar_exch_halo_field(rw_field)
+
+       !
+       ! Prepare the dynamics for integration
+       !
+       call mpas_atm_dynamics_init(domain_ptr)
 
     end subroutine cam_mpas_init_phase4
 
@@ -1372,10 +1381,6 @@ contains
        type (field1DReal), pointer :: u_init
        type (field1DReal), pointer :: qv_init
 
-       type (field2DReal), pointer :: tend_ru_physics
-       type (field2DReal), pointer :: tend_rtheta_physics
-       type (field2DReal), pointer :: tend_rho_physics
-
 
        call MPAS_createStream(restart_stream, domain_ptr % ioContext, 'not_used', MPAS_IO_NETCDF, &
                               direction, pio_file_desc=fh_rst, ierr=ierr)
@@ -1494,10 +1499,6 @@ contains
 
        call mpas_pool_get_field(allFields, 'u_init', u_init)
        call mpas_pool_get_field(allFields, 'qv_init', qv_init)
-
-       call mpas_pool_get_field(allFields, 'tend_ru_physics', tend_ru_physics)
-       call mpas_pool_get_field(allFields, 'tend_rtheta_physics', tend_rtheta_physics)
-       call mpas_pool_get_field(allFields, 'tend_rho_physics', tend_rho_physics)
 
        ierr_total = 0
 
@@ -1704,13 +1705,6 @@ contains
        call MPAS_streamAddField(restart_stream, qv_init, ierr=ierr)
        if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
 
-       call MPAS_streamAddField(restart_stream, tend_ru_physics, ierr=ierr)
-       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
-       call MPAS_streamAddField(restart_stream, tend_rtheta_physics, ierr=ierr)
-       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
-       call MPAS_streamAddField(restart_stream, tend_rho_physics, ierr=ierr)
-       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
-
        if (ierr_total > 0) then
            write(errString, '(a,i0,a)') subname//': FATAL: Failed to add ', ierr_total, ' fields to restart stream.'
            call endrun(trim(errString))
@@ -1880,10 +1874,6 @@ contains
        call cam_mpas_update_halo('rho_p', endrun)
        call cam_mpas_update_halo('surface_pressure', endrun)
        call cam_mpas_update_halo('t_init', endrun)
-
-       call cam_mpas_update_halo('tend_ru_physics', endrun)
-       call cam_mpas_update_halo('tend_rtheta_physics', endrun)
-       call cam_mpas_update_halo('tend_rho_physics', endrun)
 
        !
        ! Re-index from global index space to local index space
@@ -2314,11 +2304,17 @@ contains
        use mpas_log, only : mpas_log_finalize
        use mpas_timer, only : mpas_timer_stop
        use mpas_framework, only : mpas_framework_finalize
+       use atm_time_integration, only : mpas_atm_dynamics_finalize
 
        ! Local variables
        integer :: ierr
        character(len=*), parameter :: subname = 'cam_mpas_subdriver::cam_mpas_finalize'
 
+
+       !
+       ! Finalize the dynamics
+       !
+       call mpas_atm_dynamics_finalize(domain_ptr)
 
        call mpas_destroy_clock(clock, ierr)
        call mpas_decomp_destroy_decomp_list(domain_ptr % decompositions)
@@ -2551,6 +2547,35 @@ contains
        end if
 
     end subroutine cam_mpas_debug_stream
+
+
+    !-----------------------------------------------------------------------
+    !  routine cam_mpas_global_sum_real
+    !
+    !> \brief  Compute the global sum of real array
+    !> \author Miles Curry
+    !> \date   25 February 2021
+    !> \details
+    !>  This routine computes a global sum of a real array across all tasks
+    !> in a communicator and returns that sum to all tasks.
+    !>
+    !
+    !-----------------------------------------------------------------------
+    function cam_mpas_global_sum_real(rarray) result(global_sum)
+
+       use mpas_kind_types, only: RKIND
+       use mpas_dmpar, only: mpas_dmpar_sum_real
+
+       ! Input variables
+       real (RKIND), dimension(:), intent(in) :: rarray
+       real (RKIND) :: global_sum
+
+       real (RKIND) :: local_sum
+
+       local_sum = sum(rarray)
+       call mpas_dmpar_sum_real(domain_ptr % dminfo, local_sum, global_sum)
+
+    end function cam_mpas_global_sum_real
 
 
 end module cam_mpas_subdriver
