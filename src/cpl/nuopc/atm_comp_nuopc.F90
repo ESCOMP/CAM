@@ -1010,7 +1010,6 @@ contains
     integer                 :: mon         ! CAM current month
     integer                 :: day         ! CAM current day
     integer                 :: tod         ! CAM current time of day (sec)
-    real(r8)                :: nextsw_cday ! calendar of next atm shortwave
     logical                 :: rstwr       ! .true. ==> write restart file before returning
     logical                 :: nlend       ! Flag signaling last time-step
     integer                 :: lbnum
@@ -1075,17 +1074,6 @@ contains
     ! Unpack import state
     if (mediator_present) then
        call t_startf ('CAM_import')
-!+++ARH - comment to be deleted after code review
-    ! get scalar call is the reason I can't replace all uses of nextsw_cday
-    ! with the public protected rad_nextsw_cday, and so I have to declare a
-    ! local copy. Is this call to "get" nextsw_cday necessary? this vairable is
-    ! overwritten below to reflect the current nextsw_cday, so I'm not sure
-    ! this call is necessary.
-!---ARH
-       call State_GetScalar(importState, flds_scalar_index_nextsw_cday, nextsw_cday, &
-            flds_scalar_name, flds_scalar_num, rc)
-       if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
        call State_diagnose(importState, string=subname//':IS', rc=rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
@@ -1168,8 +1156,7 @@ contains
        ! Set the coupling scalars
        ! Return time of next radiation calculation - albedos will need to be
        ! calculated by each surface model at this time
-       nextsw_cday = rad_nextsw_cday
-       call State_SetScalar(nextsw_cday, flds_scalar_index_nextsw_cday, exportState, &
+       call State_SetScalar(rad_nextsw_cday, flds_scalar_index_nextsw_cday, exportState, &
             flds_scalar_name, flds_scalar_num, rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
