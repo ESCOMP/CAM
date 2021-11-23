@@ -3054,6 +3054,12 @@ Tunable triggering threshold for convection in ZM deep scheme in units of (J kg-
 Default: 70.0 J kg-1
 </entry>
 
+<entry id="zmconv_parcel_pbl" type="logical" category="conv"
+       group="zmconv_nl" valid_values="" >
+Turn on ZM deep convection initial parcel properties as a function of a well mixed boundary layer
+Default: .false.
+</entry>
+
 <entry id="zmconv_tau" type="real" category="conv"
        group="zmconv_nl" valid_values="" >
 Convective adjustment timescale in units of (s)
