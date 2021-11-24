@@ -3,7 +3,7 @@ ndens=1,1,1,1,1,1
 nhtfrq=9,9,9,9,9,9
 inithist='ENDOFRUN'
 
-mee_fluxes_filepath='$DIN_LOC_ROOT/atm/waccm/mee/RBSP-ECT_FB_precip.greg.nc'
+mee_fluxes_filepath='$DIN_LOC_ROOT/atm/waccm/mee/RBSP-ECT_FB_precip_c211124.nc'
 mee_fluxes_fillin = .true.
 mee_ion_blc = 66.66
 mee_ion_inline=.true.

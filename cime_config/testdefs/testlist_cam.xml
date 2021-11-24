@@ -633,6 +633,23 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
+  <test compset="QPWmaC4" grid="f45_f45_mg37" name="SMS_D_Ln9_P24x3_Vmct" testmods="cam/outfrq9s_apmee" supported="false">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="waccm"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:20:00</option>
+    </options>
+  </test>
+  <test compset="QPWmaC6" grid="f45_f45_mg37" name="ERP_Ln9_P24x3_Vmct" testmods="cam/outfrq9s_mee_fluxes" supported="false">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+      <machine name="cheyenne" compiler="intel" category="waccm"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:20:00</option>
+    </options>
+  </test>
 <!--              700                         -->
   <test compset="FADIAB" grid="ne5_ne5_mg37" name="ERI_D_Ln18_Vmct" testmods="cam/outfrq3s_bwic">
     <machines>
