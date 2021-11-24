@@ -1671,7 +1671,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8) :: packed_p(mgncol,nlev)
    real(r8) :: packed_pdel(mgncol,nlev)
    real(r8) :: packed_pint(mgncol,nlev+1)
-   
+
    real(r8) :: packed_cldn(mgncol,nlev)
    real(r8) :: packed_liqcldf(mgncol,nlev)
    real(r8) :: packed_icecldf(mgncol,nlev)
@@ -2380,7 +2380,6 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
 
    packer = MGPacker(psetcols, pver, mgcols, top_lev)
    packerp = MGPacker(psetcols, pverp, mgcols, top_lev)
-
    post_proc = MGPostProc(packer)
    pckdptr => packed_rate1ord_cw2pr_st ! workaround an apparent pgi compiler bug
    call post_proc%add_field(p(rate1cld), pckdptr)
@@ -2534,7 +2533,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    packed_p = packer%pack(state_loc%pmid)
    packed_pdel = packer%pack(state_loc%pdel)
    packed_pint = packerp%pack(state_loc%pint)
-   
+
    packed_cldn = packer%pack(ast)
    packed_liqcldf = packer%pack(alst_mic)
    packed_icecldf = packer%pack(aist_mic)
