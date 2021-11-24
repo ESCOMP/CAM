@@ -2228,9 +2228,6 @@ subroutine gw_rdg_calc( &
          call outfld('HWDTH1' , hwdth(:,nn) ,  ncol, lchnk)
          call outfld('CLNGT1' , clngt(:,nn) ,  ncol, lchnk)
          call outfld('GBXAR1' , gbxar ,        ncol, lchnk)
-      endif
-
-      if (nn == 1) then
          call outfld('TAUM1_DIAG' , tau_diag ,  ncol, lchnk)
          call outfld('TAU1RDG'//trim(type)//'M', tau(:,0,:),  ncol, lchnk)
          call outfld('UBM1'//trim(type),         ubm,         ncol, lchnk)
